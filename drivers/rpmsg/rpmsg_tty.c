@@ -22,7 +22,7 @@ static struct tty_driver *rpmsg_tty_driver;
 static struct tty_port_operations  rpmsg_tty_port_ops = { };
 
 struct rpmsg_tty_port {
-	struct tty_port		port;	/* TTY port data */
+	struct tty_port		*port;	/* TTY port data */
 	struct list_head	list;	/* TTY device list */
 	u32			id;	/* tty rpmsg index */
 	spinlock_t		rx_lock; /* message reception lock */
@@ -46,7 +46,7 @@ static int rpmsg_tty_cb(struct rpmsg_device *rpdev, void *data, int len,
 			     true);
 
 	spin_lock(&cport->rx_lock);
-	space = tty_prepare_flip_string(&cport->port, &cbuf, len);
+	space = tty_prepare_flip_string(cport->port, &cbuf, len);
 	if (space <= 0) {
 		dev_err(&rpdev->dev, "No memory for tty_prepare_flip_string\n");
 		spin_unlock(&cport->rx_lock);
@@ -58,7 +58,7 @@ static int rpmsg_tty_cb(struct rpmsg_device *rpdev, void *data, int len,
 			 len, space);
 
 	memcpy(cbuf, data, space);
-	tty_flip_buffer_push(&cport->port);
+	tty_flip_buffer_push(cport->port);
 	spin_unlock(&cport->rx_lock);
 
 	return 0;
@@ -70,7 +70,7 @@ static struct rpmsg_tty_port *rpmsg_tty_get(unsigned int index)
 
 	mutex_lock(&rpmsg_tty_lock);
 	list_for_each_entry(cport, &rpmsg_tty_list, list) {
-		if (index  == cport->id) {
+		if (index == cport->id) {
 			mutex_unlock(&rpmsg_tty_lock);
 			return cport;
 		}
@@ -87,7 +87,7 @@ static int rpmsg_tty_install(struct tty_driver *driver, struct tty_struct *tty)
 	if (!cport)
 		return -ENODEV;
 
-	return tty_port_install(&cport->port, driver, tty);
+	return tty_port_install(cport->port, driver, tty);
 }
 
 static int rpmsg_tty_open(struct tty_struct *tty, struct file *filp)
@@ -102,11 +102,7 @@ static int rpmsg_tty_open(struct tty_struct *tty, struct file *filp)
 
 static void rpmsg_tty_close(struct tty_struct *tty, struct file *filp)
 {
-	struct rpmsg_tty_port *cport = rpmsg_tty_get(tty->index);
-
-	if (!cport)
-		return;
-	return tty_port_close(tty->port, tty, filp);
+	tty_port_close(tty->port, tty, filp);
 }
 
 static int rpmsg_tty_write(struct tty_struct *tty, const unsigned char *buf,
@@ -114,8 +110,8 @@ static int rpmsg_tty_write(struct tty_struct *tty, const unsigned char *buf,
 {
 	int count, ret = 0;
 	const unsigned char *tbuf;
-	struct rpmsg_tty_port *cport = container_of(tty->port,
-						struct rpmsg_tty_port, port);
+	struct rpmsg_tty_port *cport = rpmsg_tty_get(tty->index);
+
 	struct rpmsg_device *rpdev = cport->rpdev;
 	int msg_size;
 
@@ -155,8 +151,7 @@ static int rpmsg_tty_write(struct tty_struct *tty, const unsigned char *buf,
 
 static int rpmsg_tty_write_room(struct tty_struct *tty)
 {
-	struct rpmsg_tty_port *cport = container_of(tty->port,
-			struct rpmsg_tty_port, port);
+	struct rpmsg_tty_port *cport = rpmsg_tty_get(tty->index);
 	struct rpmsg_device *rpdev = cport->rpdev;
 
 	/* report the space in the rpmsg buffer */
@@ -176,26 +171,20 @@ static int rpmsg_tty_probe(struct rpmsg_device *rpdev)
 	struct rpmsg_tty_port *cport, *tmp;
 	unsigned int index;
 	struct device *tty_dev;
+	int ret = 0;
 
 	cport = devm_kzalloc(&rpdev->dev, sizeof(*cport), GFP_KERNEL);
 	if (!cport)
 		return -ENOMEM;
 
-	tty_port_init(&cport->port);
-	cport->port.ops = &rpmsg_tty_port_ops;
-	spin_lock_init(&cport->rx_lock);
-
-	cport->port.low_latency = cport->port.flags | ASYNC_LOW_LATENCY;
-
-	cport->rpdev = rpdev;
-
-	/* get free index */
 	mutex_lock(&rpmsg_tty_lock);
+
+	/* Get free index */
 	for (index = 0; index < MAX_TTY_RPMSG_INDEX; index++) {
 		bool id_found = false;
 
 		list_for_each_entry(tmp, &rpmsg_tty_list, list) {
-			if (index  == tmp->id) {
+			if (index == tmp->id) {
 				id_found = true;
 				break;
 			}
@@ -204,35 +193,69 @@ static int rpmsg_tty_probe(struct rpmsg_device *rpdev)
 			break;
 	}
 
-	tty_dev = tty_port_register_device(&cport->port, rpmsg_tty_driver,
+	if (index >= MAX_TTY_RPMSG_INDEX) {
+		ret = -ENOSPC;
+		goto end_probe;
+	}
+
+	/*
+	 * the tty port allocation has to be independent from the tty device
+	 * The reason is that it can be use after device removing, for instance
+	 * if a user has opened it.
+	 * So it is not possible to release the port on device remove.
+	 * A solution is to store the port in the driver structure. The port
+	 * structure is reused on next probe to save memory.
+	 */
+	if (!rpmsg_tty_driver->ports[index]) {
+		/* first allocation of the port associated to the index */
+		rpmsg_tty_driver->ports[index] = kzalloc(sizeof(*cport->port),
+							 GFP_KERNEL);
+		if (!rpmsg_tty_driver->ports[index]) {
+			ret = -ENOMEM;
+			goto end_probe;
+		}
+	}
+
+	cport->port = rpmsg_tty_driver->ports[index];
+	tty_port_init(cport->port);
+	cport->port->ops = &rpmsg_tty_port_ops;
+
+	spin_lock_init(&cport->rx_lock);
+	cport->port->low_latency = cport->port->flags | ASYNC_LOW_LATENCY;
+	cport->rpdev = rpdev;
+
+	tty_dev = tty_port_register_device(cport->port, rpmsg_tty_driver,
 					   index, &rpdev->dev);
 	if (IS_ERR(tty_dev)) {
 		dev_err(&rpdev->dev, "failed to register tty port\n");
-		tty_port_destroy(&cport->port);
-		mutex_unlock(&rpmsg_tty_lock);
-		return PTR_ERR(tty_dev);
+		tty_port_destroy(cport->port);
+		ret = PTR_ERR(tty_dev);
+		goto end_probe;
 	}
 
 	cport->id = index;
 	list_add_tail(&cport->list, &rpmsg_tty_list);
-	mutex_unlock(&rpmsg_tty_lock);
 	dev_set_drvdata(&rpdev->dev, cport);
 
 	dev_info(&rpdev->dev, "new channel: 0x%x -> 0x%x : ttyRPMSG%d\n",
 		 rpdev->src, rpdev->dst, index);
+end_probe:
+	mutex_unlock(&rpmsg_tty_lock);
 
-	return 0;
+	return ret;
 }
 
 static void rpmsg_tty_remove(struct rpmsg_device *rpdev)
 {
 	struct rpmsg_tty_port *cport = dev_get_drvdata(&rpdev->dev);
+	struct tty_struct *tty;
 
-	/* User hang up to release the tty */
-	if (tty_port_initialized(&cport->port))
-		tty_port_tty_hangup(&cport->port, false);
-	tty_port_destroy(&cport->port);
 	tty_unregister_device(rpmsg_tty_driver, cport->id);
+	tty = tty_port_tty_get(cport->port);
+	if (tty) {
+		tty_vhangup(cport->port->tty);
+		tty_kref_put(tty);
+	}
 	list_del(&cport->list);
 
 	dev_info(&rpdev->dev, "rpmsg tty device %d is removed\n", cport->id);
@@ -297,8 +320,14 @@ tty_error:
 
 static void __exit rpmsg_tty_exit(void)
 {
+	unsigned int index;
+
 	unregister_rpmsg_driver(&rpmsg_tty_rmpsg_drv);
 	tty_unregister_driver(rpmsg_tty_driver);
+
+	/* release port allocations */
+	for (index = 0; index < MAX_TTY_RPMSG_INDEX; index++)
+		kfree(rpmsg_tty_driver->ports[index]);
 	put_tty_driver(rpmsg_tty_driver);
 }
 
