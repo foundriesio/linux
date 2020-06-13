@@ -476,7 +476,6 @@ static PVRSRV_ERROR _GpuTraceSetEnabled(PVRSRV_RGXDEV_INFO *psRgxDevInfo,
 	PVR_DPF_RETURN_RC(eError);
 }
 
-// TODO: change the name to something more appropriate
 static PVRSRV_ERROR _GpuTraceSetEnabledForAllDevices(IMG_BOOL bNewValue)
 {
 	PVRSRV_ERROR eError = PVRSRV_OK;

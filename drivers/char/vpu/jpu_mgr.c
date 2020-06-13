@@ -68,7 +68,7 @@ VpuList_t* jmgr_list_manager(VpuList_t* args, unsigned int cmd);
 
 static int (*gs_fpTccJpuDec) (int Op, codec_handle_t* pHandle, void* pParam1, void* pParam2);
 
-#if defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC901X)
+#if defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC901X) || defined(CONFIG_ARCH_TCC805X)
 
 //#define DEBUG_TRACE_TA
 #ifdef DEBUG_TRACE_TA
@@ -271,7 +271,7 @@ int tcc_jpu_dec_internal(int Op, codec_handle_t* pHandle, void* pParam1, void* p
 
     return ret;
 }
-#endif //#if defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC901X)
+#endif //#if defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC901X) || defined(CONFIG_ARCH_TCC805X)
 
 
 
@@ -467,7 +467,7 @@ static int _jmgr_process(vputype type, int cmd, long pHandle, void* args)
 
                     gs_fpTccJpuDec = (int (*) (int Op, codec_handle_t* pHandle, void* pParam1, void* pParam2))tcc_jpu_dec;
                     dprintk("@@ Dec :: loading JPU ... \n");
-                #if defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC901X)
+                #if defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC901X) || defined(CONFIG_ARCH_TCC805X)
                     if (arg->gsJpuDecInit.m_uiDecOptFlags & (1<<30)) {
                         printk("@@ Dec :: USE OPTEE_JPU \n");
                         gs_fpTccJpuDec = (int (*) (int Op, codec_handle_t* pHandle, void* pParam1, void* pParam2))tcc_jpu_dec_internal;
@@ -919,7 +919,7 @@ static int _jmgr_cmd_open(char *str)
         jmgr_data.clk_limitation = 1;
         jmgr_data.cmd_processing = 0;
 
-		jmgr_hw_reset(0);
+        jmgr_hw_reset();
         jmgr_enable_irq(jmgr_data.irq);
         vetc_reg_init(jmgr_data.base_addr);
         if(0 > (ret = vmem_init()))
@@ -983,7 +983,8 @@ static int _jmgr_cmd_release(char *str)
 
 		vmem_deinit();
 		
-		jmgr_hw_reset(1);
+        jmgr_hw_assert();
+        udelay(1000);
     }
 
     jmgr_disable_clock(0, 0);
@@ -1048,8 +1049,7 @@ static long _jmgr_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
             break;
 
         case VPU_HW_RESET:
-			jmgr_hw_reset(1);
-			jmgr_hw_reset(0);
+            jmgr_hw_reset();
             break;
 
         case VPU_SET_MEM_ALLOC_MODE:
@@ -1410,7 +1410,8 @@ static int _jmgr_thread(void *kthread)
             //wait_event_interruptible(jmgr_data.comm_data.thread_wq, jmgr_data.comm_data.thread_intr > 0);
             wait_event_interruptible_timeout(jmgr_data.comm_data.thread_wq,
 											 jmgr_data.comm_data.thread_intr > 0,
-											 msecs_to_jiffies(50));
+                    msecs_to_jiffies(50)
+                    );
             jmgr_data.comm_data.thread_intr = 0;
         } else {
             if(atomic_read(&jmgr_data.dev_opened) || jmgr_data.external_proc){

@@ -232,6 +232,18 @@ PVRSRV_ERROR
 HTBLogKM(IMG_UINT32 PID, IMG_UINT64 ui64TimeStamp, HTB_LOG_SFids SF,
 		 IMG_UINT32 ui32NumArgs, IMG_UINT32 *aui32Args);
 
+/*************************************************************************/ /*!
+ @Function      HTBIsConfigured
+ @Description   Determine if HTB stream has been configured
+
+ @Input         none
+
+ @Return        IMG_FALSE       Stream has not been configured
+                IMG_TRUE        Stream has been configured
+
+*/ /**************************************************************************/
+IMG_BOOL
+HTBIsConfigured(void);
 #endif /* __HTBSERVER_H__ */
 
 /* EOF */

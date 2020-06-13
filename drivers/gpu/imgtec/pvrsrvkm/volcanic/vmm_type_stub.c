@@ -71,49 +71,6 @@ StubVMMUnmapDevPhysHeap(IMG_UINT32 ui32FuncID,
 	return PVRSRV_ERROR_NOT_IMPLEMENTED;
 }
 
-static PVRSRV_ERROR
-StubVMMGetDevPhysHeapAddrSize(PVRSRV_DEVICE_CONFIG *psDevConfig,
-							  PVRSRV_DEVICE_PHYS_HEAP eHeapType,
-							  IMG_UINT64 *pui64Size,
-							  IMG_UINT64 *pui64Addr)
-{
-#if defined(LMA)
-	IMG_UINT64 ui32FwHeapBase=0x0, ui32GpuHeapBase;
-	IMG_UINT64 ui32FwHeapSize=RGX_FIRMWARE_RAW_HEAP_SIZE, ui32GpuHeapSize;
-	PVRSRV_VZ_RET_IF_MODE(GUEST, PVRSRV_ERROR_NOT_IMPLEMENTED);
-
-	/* In this setup, all available LMA memory is allocated to host (less fw heap size), no guest support */
-	ui32GpuHeapSize = psDevConfig->pasPhysHeaps[PVRSRV_DEVICE_PHYS_HEAP_GPU_LOCAL].pasRegions[0].uiSize;
-	ui32GpuHeapSize = ui32GpuHeapSize - ui32FwHeapSize;
-	ui32GpuHeapBase = ui32FwHeapSize;
-
-	switch (eHeapType)
-	{
-		case PVRSRV_DEVICE_PHYS_HEAP_FW_LOCAL:
-			*pui64Size = ui32FwHeapSize;
-			*pui64Addr = ui32FwHeapBase;
-			break;
-
-		case PVRSRV_DEVICE_PHYS_HEAP_GPU_LOCAL:
-			*pui64Size = ui32GpuHeapSize;
-			*pui64Addr = ui32GpuHeapBase;
-			break;
-
-		default:
-			*pui64Size = 0;
-			*pui64Addr = 0;
-			return PVRSRV_ERROR_NOT_IMPLEMENTED;
-			break;
-	}
-#else
-	*pui64Size = 0;
-	*pui64Addr = 0;
-#endif
-	PVR_UNREFERENCED_PARAMETER(psDevConfig);
-	PVR_UNREFERENCED_PARAMETER(eHeapType);
-	return PVRSRV_OK;
-}
-
 static VMM_PVZ_CONNECTION gsStubVmmPvz =
 {
 	.sClientFuncTab = {
@@ -132,11 +89,6 @@ static VMM_PVZ_CONNECTION gsStubVmmPvz =
 		&PvzServerUnmapDevPhysHeap
 	},
 
-	.sConfigFuncTab = {
-		/* pfnGetDevPhysHeapAddrSize */
-		&StubVMMGetDevPhysHeapAddrSize
-	},
-
 	.sVmmFuncTab = {
 		/* pfnOnVmOnline */
 		&PvzServerOnVmOnline,
@@ -149,18 +101,17 @@ static VMM_PVZ_CONNECTION gsStubVmmPvz =
 	}
 };
 
-PVRSRV_ERROR VMMCreatePvzConnection(PVRSRV_DEVICE_CONFIG *psDevConfig, VMM_PVZ_CONNECTION **psPvzConnection)
+PVRSRV_ERROR VMMCreatePvzConnection(VMM_PVZ_CONNECTION **psPvzConnection)
 {
 	PVR_LOG_RETURN_IF_FALSE((NULL != psPvzConnection), "VMMCreatePvzConnection", PVRSRV_ERROR_INVALID_PARAMS);
-	PVR_UNREFERENCED_PARAMETER(psDevConfig);
 	*psPvzConnection = &gsStubVmmPvz;
+	PVR_DPF((PVR_DBG_ERROR, "Using a stub VM manager type, no runtime VZ support"));
 	return PVRSRV_OK;
 }
 
-void VMMDestroyPvzConnection(PVRSRV_DEVICE_CONFIG *psDevConfig, VMM_PVZ_CONNECTION *psPvzConnection)
+void VMMDestroyPvzConnection(VMM_PVZ_CONNECTION *psPvzConnection)
 {
 	PVR_LOG_IF_FALSE((NULL != psPvzConnection), "VMMDestroyPvzConnection");
-	PVR_UNREFERENCED_PARAMETER(psDevConfig);
 }
 
 /******************************************************************************

@@ -111,7 +111,6 @@ X(EnablePollOnChecksumErrorStatus,  UINT32,         VALIDATION,  0,             
 ******************************************************************************/
 #define APPHINT_LIST_DEBUGFS_DEVICE \
 /* name,                            type,           class,       default,                                         helper,         */ \
-X(HWValInjectSPUPowerStateMask,     BOOL,           VALIDATION,  PVRSRV_APPHINT_HWVALINJECTSPUPOWERSTATEMASK,     NO_PARAM_TABLE   ) \
 
 /*
 *******************************************************************************

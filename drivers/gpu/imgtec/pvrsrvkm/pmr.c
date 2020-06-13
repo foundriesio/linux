@@ -1234,13 +1234,6 @@ PMRUnmapMemoryObject(PMR *psPMR,
 	return eError;
 }
 
-#if defined(USING_HYPERVISOR)
-IMG_HANDLE PMRGetPmr(PMR *psPMR, size_t ulOffset)
-{
-	PVR_ASSERT(psPMR->psFuncTab->pfnGetPmr != NULL);
-	return psPMR->psFuncTab->pfnGetPmr(psPMR->pvFlavourData, ulOffset);
-}
-#endif
 #endif /* INTEGRITY_OS */
 
 /*

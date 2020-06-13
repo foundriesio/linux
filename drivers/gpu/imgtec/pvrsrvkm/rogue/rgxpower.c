@@ -214,7 +214,7 @@ PVRSRV_ERROR RGXPrePowerState(IMG_HANDLE				hDevHandle,
 
 					get_irq_cnt_val(ui32IrqCnt, ui32idx, psDevInfo);
 
-					/* Wait for the pending META/MIPS to host interrupts to come back. */
+					/* Wait for the pending FW processor to host interrupts to come back. */
 					eError = PVRSRVPollForValueKM(psDeviceNode,
 					                              (IMG_UINT32 __iomem *)&psDevInfo->aui32SampleIRQCount[ui32idx],
 					                              ui32IrqCnt,
@@ -304,6 +304,10 @@ static INLINE void RGXCheckFWBootStage(PVRSRV_RGXDEV_INFO *psDevInfo)
 		/* Boot stage temporarily stored to the register below */
 		eStage = OSReadHWReg32(psDevInfo->pvRegsBaseKM,
 		                       RGX_FW_BOOT_STAGE_REGISTER);
+	}
+	else if (RGX_IS_FEATURE_SUPPORTED(psDevInfo, RISCV_FW_PROCESSOR))
+	{
+		eStage = OSReadHWReg32(psDevInfo->pvRegsBaseKM, RGX_CR_SCRATCH14);
 	}
 	else
 	{

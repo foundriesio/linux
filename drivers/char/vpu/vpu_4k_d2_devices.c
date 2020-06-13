@@ -12,6 +12,8 @@
  *
  */
 
+#ifdef CONFIG_SUPPORT_TCC_WAVE512_4K_D2
+
 #include <linux/moduleparam.h>
 #include <linux/device.h>
 #include <linux/module.h>
@@ -35,8 +37,6 @@
 
 #include <asm/io.h>
 #include <asm/div64.h>
-
-#ifdef CONFIG_SUPPORT_TCC_WAVE512_4K_D2
 
 #include "vpu_comm.h"
 #include "vpu_devices.h"

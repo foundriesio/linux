@@ -38,7 +38,8 @@
  * @addtogroup secdrv
  * @{
  * @file tcc_sec_ipc.c This file contains sec_ipc device driver,
- *	communicating with a53 <-> A7, R5, M4.
+ *	communicating with a53 <-> A7, R5, M4. (for TCC803x)
+ *	communicating with a72 <-> A53, R5, M4. (for TCC805x)
  */
 
 #define DEVICE_NAME "sec-ipc"
@@ -64,6 +65,7 @@ static const struct of_device_id sec_ipc_dt_id[] = {
 	{.compatible = "telechips,sec-ipc-m4"},
 	{.compatible = "telechips,sec-ipc-a7"},
 	{.compatible = "telechips,sec-ipc-a53"},
+	{.compatible = "telechips,sec-ipc-a72"},
 	{.compatible = "telechips,sec-ipc-r5"},
 	{},
 };
@@ -115,6 +117,8 @@ static int sec_set_device(int device_id, struct sec_device *sec_dev)
 		sec_device[MBOX_DEV_A7] = sec_dev;
 	} else if (device_id == MBOX_DEV_A53) {
 		sec_device[MBOX_DEV_A53] = sec_dev;
+	} else if (device_id == MBOX_DEV_A72) {
+		sec_device[MBOX_DEV_A72] = sec_dev;
 	} else if (device_id == MBOX_DEV_R5) {
 		sec_device[MBOX_DEV_R5] = sec_dev;
 	} else {
@@ -132,6 +136,8 @@ static struct sec_device *sec_get_device(int device_id)
 		return sec_device[MBOX_DEV_A7];
 	} else if (device_id == MBOX_DEV_A53) {
 		return sec_device[MBOX_DEV_A53];
+	} else if (device_id == MBOX_DEV_A72) {
+		return sec_device[MBOX_DEV_A72];
 	} else if (device_id == MBOX_DEV_R5) {
 		return sec_device[MBOX_DEV_R5];
 	} else {
@@ -147,6 +153,8 @@ static int sec_get_device_id(const char *dev_name)
 		return MBOX_DEV_A7;
 	} else if (!strcmp(dev_name, "sec-ipc-a53")) {
 		return MBOX_DEV_A53;
+	} else if (!strcmp(dev_name, "sec-ipc-a72")) {
+		return MBOX_DEV_A72;
 	} else if (!strcmp(dev_name, "sec-ipc-r5")) {
 		return MBOX_DEV_R5;
 	} else {
@@ -678,15 +686,7 @@ static int sec_probe(struct platform_device *pdev)
 	cfgbase = of_iomap(pdev->dev.of_node, 1);
 	DLOG("code(%p) cfg(%p)\n", codebase, cfgbase);
 
-	of_dma_configure(sec_dev->device, NULL);
-	if (dma_set_coherent_mask(sec_dev->device, DMA_BIT_MASK(32))) {
-		ELOG("DMA mask set fail\n");
-		result = -EINVAL;
-		goto dma_alloc_error;
-	}
-
-	sec_dev->vaddr =
-		dma_alloc_writecombine(sec_dev->device, MBOX_DMA_SIZE, &sec_dev->paddr, GFP_KERNEL);
+	sec_dev->vaddr = dma_alloc_coherent(&pdev->dev, MBOX_DMA_SIZE, &sec_dev->paddr, GFP_KERNEL);
 	if (sec_dev->vaddr == NULL) {
 		result = PTR_ERR(sec_dev->vaddr);
 		ELOG("DMA alloc fail: %d\n", result);

@@ -420,13 +420,15 @@ static void pdp_lastclose(struct drm_device *dev)
 	struct pdp_fbdev *fbdev = dev_priv->fbdev;
 	int err;
 
-	/*
-	 * This is a fbdev driver, therefore never attempt to shutdown on
-	 * a client disconnecting.
-	 */
-	err = drm_fb_helper_restore_fbdev_mode_unlocked(&fbdev->helper);
-	if (err)
-		DRM_ERROR("failed to restore mode (err=%d)\n", err);
+	if (fbdev) {
+		/*
+		 * This is a fbdev driver, therefore never attempt to shutdown
+		 * on a client disconnecting.
+		 */
+		err = drm_fb_helper_restore_fbdev_mode_unlocked(&fbdev->helper);
+		if (err)
+			DRM_ERROR("failed to restore mode (err=%d)\n", err);
+	}
 #else
 	pdp_teardown_drm_config(dev);
 #endif

@@ -265,7 +265,7 @@ void DeviceMemCopy(void *pvDst, const void *pvSrc, size_t uSize)
 		NSHST();
 #endif
 
-		pcSrc = (char *)pSrc;
+		pcSrc = (char *)((void *)pSrc);
 		pcDst = (char *)((void *)pDst);
 	}
 

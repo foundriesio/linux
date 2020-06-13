@@ -101,7 +101,7 @@ static inline void tcc_adma_rx_reset_enable(void __iomem *base_addr, bool enable
 	adma_writel(value, base_addr + TCC_ADMA_RESET_OFFSET);
 }
 
-#if defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC901X)
+#if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC901X)
 static inline void tcc_adma_dai_tx_reset_enable(void __iomem *base_addr, bool enable)
 {
 	uint32_t value = readl(base_addr + TCC_ADMA_RESET_OFFSET);
@@ -734,7 +734,7 @@ static inline int tcc_adma_set_dai_tx_dma_buffer(void __iomem *base_addr,
 	TCC_ADMA_WORD_SIZE wsize = TCC_ADMA_WORD_SIZE_32;
 	uint32_t dma_buffer = 0;
 	uint32_t txdaparam, txdatcnt;
-#if !defined(CONFIG_ARCH_TCC802X) && !defined(CONFIG_ARCH_TCC898X)
+#if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X) || defined(CONFIG_ARCH_TCC806X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC901X)
 	uint32_t txdaadrcnt;
 #endif
 	int buffer_bytes_tmp = buffer_bytes - 1;
@@ -746,7 +746,7 @@ static inline int tcc_adma_set_dai_tx_dma_buffer(void __iomem *base_addr,
 	if (buffer_bytes == 0)
 		return -1;
 
-#if !defined(CONFIG_ARCH_TCC802X) && !defined(CONFIG_ARCH_TCC898X)
+#if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X) || defined(CONFIG_ARCH_TCC806X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC901X)
 	if (adrcnt_mode) {
 		uint32_t adrcnt = (uint32_t) buffer_bytes / ((uint32_t) 1 << (uint32_t)wsize);
 		int32_t adrcnt_tmp;
@@ -776,7 +776,7 @@ static inline int tcc_adma_set_dai_tx_dma_buffer(void __iomem *base_addr,
 	txdatcnt_tmp = (int32_t) txdatcnt - 1;
 	txdatcnt = (uint32_t) txdatcnt_tmp;
 	
-#if !defined(CONFIG_ARCH_TCC802X) && !defined(CONFIG_ARCH_TCC898X)
+#if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X) || defined(CONFIG_ARCH_TCC806X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC901X)
 	adma_writel(txdaadrcnt, base_addr + TCC_ADMA_TXDAADRCNT_OFFSET);
 #endif
 	adma_writel(txdaparam, base_addr + TCC_ADMA_TXDAPARAM_OFFSET);
@@ -806,7 +806,7 @@ static inline int tcc_adma_set_dai_rx_dma_buffer(void __iomem *base_addr,
 	TCC_ADMA_WORD_SIZE wsize = TCC_ADMA_WORD_SIZE_32;
 	uint32_t dma_buffer = 0;
 	uint32_t rxdaparam, rxdatcnt;
-#if !defined(CONFIG_ARCH_TCC802X) && !defined(CONFIG_ARCH_TCC898X)
+#if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X) || defined(CONFIG_ARCH_TCC806X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC901X)
 	uint32_t rxdaadrcnt;
 #endif
 	int buffer_bytes_tmp = buffer_bytes - 1;
@@ -818,7 +818,7 @@ static inline int tcc_adma_set_dai_rx_dma_buffer(void __iomem *base_addr,
 	if (buffer_bytes == 0)
 		return -1;
 
-#if !defined(CONFIG_ARCH_TCC802X) && !defined(CONFIG_ARCH_TCC898X)
+#if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X) || defined(CONFIG_ARCH_TCC806X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC901X)
 	if (adrcnt_mode) {
 		uint32_t adrcnt = (uint32_t) buffer_bytes / ((uint32_t) 1 << (uint32_t)wsize);
 		int32_t adrcnt_tmp;
@@ -848,7 +848,7 @@ static inline int tcc_adma_set_dai_rx_dma_buffer(void __iomem *base_addr,
 	rxdatcnt_tmp = (int32_t) rxdatcnt - 1;
 	rxdatcnt = (uint32_t) rxdatcnt_tmp;
 	
-#if !defined(CONFIG_ARCH_TCC802X) && !defined(CONFIG_ARCH_TCC898X)
+#if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X) || defined(CONFIG_ARCH_TCC806X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC901X)
 	adma_writel(rxdaadrcnt, base_addr + TCC_ADMA_RXDAADRCNT_OFFSET);
 #endif
 	adma_writel(rxdaparam, base_addr + TCC_ADMA_RXDAPARAM_OFFSET);
@@ -877,7 +877,7 @@ static inline int tcc_adma_set_spdif_tx_dma_buffer(void __iomem *base_addr, uint
 	TCC_ADMA_WORD_SIZE wsize = TCC_ADMA_WORD_SIZE_32;
 	uint32_t dma_buffer = 0;
 	uint32_t txspparam, txsptcnt;
-#if !defined(CONFIG_ARCH_TCC802X) && !defined(CONFIG_ARCH_TCC898X)
+#if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X) || defined(CONFIG_ARCH_TCC806X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC901X)
 	uint32_t txspadrcnt;
 #endif
 	int buffer_bytes_tmp = buffer_bytes - 1;
@@ -889,7 +889,7 @@ static inline int tcc_adma_set_spdif_tx_dma_buffer(void __iomem *base_addr, uint
 	if (buffer_bytes == 0)
 		return -1;
 
-#if !defined(CONFIG_ARCH_TCC802X) && !defined(CONFIG_ARCH_TCC898X)
+#if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X) || defined(CONFIG_ARCH_TCC806X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC901X)
 	if (adrcnt_mode) {
 		uint32_t adrcnt = (uint32_t) buffer_bytes / ((uint32_t) 1 << (uint32_t)wsize);
 		int32_t adrcnt_tmp;
@@ -912,7 +912,7 @@ static inline int tcc_adma_set_spdif_tx_dma_buffer(void __iomem *base_addr, uint
 	txsptcnt_tmp = (int32_t) txsptcnt - 1;
 	txsptcnt = (uint32_t) txsptcnt_tmp;
 	
-#if !defined(CONFIG_ARCH_TCC802X) && !defined(CONFIG_ARCH_TCC898X)
+#if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X) || defined(CONFIG_ARCH_TCC806X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC901X)
 	adma_writel(txspadrcnt, base_addr + TCC_ADMA_TXSPADRCNT_OFFSET);
 #endif
 	adma_writel(txspparam, base_addr + TCC_ADMA_TXSPPARAM_OFFSET);
@@ -940,7 +940,7 @@ static inline int tcc_adma_set_spdif_cdif_rx_dma_buffer(void __iomem *base_addr,
 	TCC_ADMA_WORD_SIZE wsize = TCC_ADMA_WORD_SIZE_32;
 	uint32_t dma_buffer = 0;
 	uint32_t rxspparam, rxsptcnt;
-#if !defined(CONFIG_ARCH_TCC802X) && !defined(CONFIG_ARCH_TCC898X)
+#if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X) || defined(CONFIG_ARCH_TCC806X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC901X)
 	uint32_t rxspadrcnt;
 #endif
 	int buffer_bytes_tmp = buffer_bytes - 1;
@@ -952,7 +952,7 @@ static inline int tcc_adma_set_spdif_cdif_rx_dma_buffer(void __iomem *base_addr,
 	if (buffer_bytes == 0)
 		return -1;
 
-#if !defined(CONFIG_ARCH_TCC802X) && !defined(CONFIG_ARCH_TCC898X)
+#if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X) || defined(CONFIG_ARCH_TCC806X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC901X)
 	if (adrcnt_mode) {
 		uint32_t adrcnt = (uint32_t) buffer_bytes / ((uint32_t) 1 << (uint32_t)wsize);
 		int32_t adrcnt_tmp;
@@ -975,7 +975,7 @@ static inline int tcc_adma_set_spdif_cdif_rx_dma_buffer(void __iomem *base_addr,
 	rxsptcnt_tmp = (int32_t) rxsptcnt - 1;
 	rxsptcnt = (uint32_t) rxsptcnt_tmp;
 	
-#if !defined(CONFIG_ARCH_TCC802X) && !defined(CONFIG_ARCH_TCC898X)
+#if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X) || defined(CONFIG_ARCH_TCC806X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC901X)
 	adma_writel(rxspadrcnt, base_addr + TCC_ADMA_RXSPADRCNT_OFFSET);
 #endif
 	adma_writel(rxspparam, base_addr + TCC_ADMA_RXCDPARAM_OFFSET);

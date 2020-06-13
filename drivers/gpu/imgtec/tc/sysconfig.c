@@ -46,6 +46,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "sysinfo.h"
 #include "apollo_regs.h"
 
+#include "pvrsrv.h"
 #include "pvrsrv_device.h"
 #include "rgxdevice.h"
 #include "syscommon.h"
@@ -236,7 +237,6 @@ PVRSRV_ERROR IonInit(void *pvPrivateData)
 	if (IS_ERR(psSysData->ion_client))
 	{
 		PVR_DPF((PVR_DBG_ERROR, "%s: Failed to create ION client (%ld)", __func__, PTR_ERR(psSysData->ion_client)));
-		/* FIXME: Find a better matching error code */
 		eError = PVRSRV_ERROR_PCI_CALL_FAILED;
 		goto err_out;
 	}
@@ -245,7 +245,6 @@ PVRSRV_ERROR IonInit(void *pvPrivateData)
 	if (IS_ERR(psSysData->ion_rogue_allocation))
 	{
 		PVR_DPF((PVR_DBG_ERROR, "%s: Failed to allocate ION rogue buffer (%ld)", __func__, PTR_ERR(psSysData->ion_rogue_allocation)));
-		/* FIXME: Find a better matching error code */
 		eError = PVRSRV_ERROR_PCI_CALL_FAILED;
 		goto err_destroy_client;
 
@@ -571,8 +570,8 @@ static PVRSRV_ERROR DeviceConfigCreate(SYS_DATA *psSysData,
 		return PVRSRV_ERROR_OUT_OF_MEMORY;
 	}
 
-	psRGXData = (RGX_DATA *)((IMG_CHAR *)psDevConfig + sizeof(*psDevConfig));
-	psRGXTimingInfo = (RGX_TIMING_INFORMATION *)((IMG_CHAR *)psRGXData + sizeof(*psRGXData));
+	psRGXData = (RGX_DATA *) IMG_OFFSET_ADDR(psDevConfig, sizeof(*psDevConfig));
+	psRGXTimingInfo = (RGX_TIMING_INFORMATION *) IMG_OFFSET_ADDR(psRGXData, sizeof(*psRGXData));
 
 	eError = PhysHeapsCreate(psSysData, psDevConfig, &pasPhysHeaps, &uiPhysHeapCount);
 	if (eError != PVRSRV_OK)

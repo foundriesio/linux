@@ -65,6 +65,8 @@ static int forced_error_count = FORCED_ERR_CNT;
 #define W5_VPU_FIO_DATA             0x0024
 #endif
 
+static unsigned int cntInt_4kd2 = 0;
+
 #ifdef DEBUG_VPU_4K_D2_K
 typedef struct debug_4k_d2_k_isr_t {
     int ret_code_vmgr_hdr;
@@ -72,7 +74,6 @@ typedef struct debug_4k_d2_k_isr_t {
     unsigned int wakeup_interrupt_cnt;
 } debug_4k_d2_k_isr_t;
 debug_4k_d2_k_isr_t vpu_4k_d2_isr_param_debug;
-static unsigned int cntInt_4kd2 = 0;
 static unsigned int cntwk_4kd2 = 0;
 #endif
 /////////////////////////////////////////////////////////////////////////////
@@ -762,7 +763,7 @@ static int _vmgr_4k_d2_process(vputype type, int cmd, long pHandle, void* args)
 
                 dprintk("@@ Dec :: VPU_4K_D2_DEC_SEQ_HEADER in :: size(%d) \n", iSize);
                 ret = tcc_vpu_4k_d2_dec(cmd & ~VPU_BASE_OP_KERNEL,
-                                        &pHandle,
+                                        (codec_handle_t*)&pHandle,
                                         (vmgr_4k_d2_data.bDiminishInputCopy
                                             ? (void*)(&((VPU_4K_D2_DECODE_t *)arg)->gsV4kd2DecInput) : (void*)iSize),
                                         (void*)gsV4kd2DecInitialInfo);
@@ -787,7 +788,7 @@ static int _vmgr_4k_d2_process(vputype type, int cmd, long pHandle, void* args)
                 dprintk("@@ Dec :: VPU_4K_D2_DEC_REG_FRAME_BUFFER in :: 0x%x/0x%x \n",
                         arg->gsV4kd2DecBuffer.m_FrameBufferStartAddr[0], arg->gsV4kd2DecBuffer.m_FrameBufferStartAddr[1]);
 
-                ret = tcc_vpu_4k_d2_dec(cmd & ~VPU_BASE_OP_KERNEL, &pHandle, (void*)(&arg->gsV4kd2DecBuffer), (void*)NULL);
+                ret = tcc_vpu_4k_d2_dec(cmd & ~VPU_BASE_OP_KERNEL, (codec_handle_t*)&pHandle, (void*)(&arg->gsV4kd2DecBuffer), (void*)NULL);
                 dprintk("@@ Dec :: VPU_4K_D2_DEC_REG_FRAME_BUFFER out \n");
             }
             break;
@@ -811,7 +812,7 @@ static int _vmgr_4k_d2_process(vputype type, int cmd, long pHandle, void* args)
                         arg->gsV4kd2DecInput.m_iSkipFrameMode);
 
                 vmgr_4k_d2_data.check_interrupt_detection = 1;
-                ret = tcc_vpu_4k_d2_dec(cmd & ~VPU_BASE_OP_KERNEL, &pHandle, (void *)&arg->gsV4kd2DecInput, (void *)&arg->gsV4kd2DecOutput);
+                ret = tcc_vpu_4k_d2_dec(cmd & ~VPU_BASE_OP_KERNEL, (codec_handle_t*)&pHandle, (void *)&arg->gsV4kd2DecInput, (void *)&arg->gsV4kd2DecOutput);
 
                 dprintk("@@ Dec: Dec Out => %d - %d - %d, %d - %d - %d \n",
                         arg->gsV4kd2DecOutput.m_DecOutInfo.m_iDisplayWidth,
@@ -860,7 +861,7 @@ static int _vmgr_4k_d2_process(vputype type, int cmd, long pHandle, void* args)
                 VPU_4K_D2_DECODE_t *arg = (VPU_4K_D2_DECODE_t *)args;
 
                 dprintk("@@ Dec: VPU_DEC_GET_OUTPUT_INFO \n");
-                ret = tcc_vpu_4k_d2_dec(cmd & ~VPU_BASE_OP_KERNEL, &pHandle, (void *)arg, (void *)&arg->gsV4kd2DecOutput);
+                ret = tcc_vpu_4k_d2_dec(cmd & ~VPU_BASE_OP_KERNEL, (codec_handle_t*)&pHandle, (void *)arg, (void *)&arg->gsV4kd2DecOutput);
 
                 dprintk("@@ Dec: Dec Out => %d - %d - %d, %d - %d - %d \n",
                         arg->gsV4kd2DecOutput.m_DecOutInfo.m_iDisplayWidth,
@@ -905,7 +906,7 @@ static int _vmgr_4k_d2_process(vputype type, int cmd, long pHandle, void* args)
             {
                 int *arg = (int *)args;
                 dprintk("@@ Dec :: DispIdx Clear %d \n", *arg);
-                ret = tcc_vpu_4k_d2_dec(cmd & ~VPU_BASE_OP_KERNEL, &pHandle, (void*)(arg), (void*)NULL);
+                ret = tcc_vpu_4k_d2_dec(cmd & ~VPU_BASE_OP_KERNEL, (codec_handle_t*)&pHandle, (void*)(arg), (void*)NULL);
             }
             break;
 
@@ -914,7 +915,7 @@ static int _vmgr_4k_d2_process(vputype type, int cmd, long pHandle, void* args)
             {
                 VPU_4K_D2_DECODE_t *arg = (VPU_4K_D2_DECODE_t *)args;
                 printk("@@ Dec :: VPU_4K_D2_DEC_FLUSH_OUTPUT !! \n");
-                ret = tcc_vpu_4k_d2_dec(cmd & ~VPU_BASE_OP_KERNEL, &pHandle, (void *)&arg->gsV4kd2DecInput, (void *)&arg->gsV4kd2DecOutput);
+                ret = tcc_vpu_4k_d2_dec(cmd & ~VPU_BASE_OP_KERNEL, (codec_handle_t*)&pHandle, (void *)&arg->gsV4kd2DecInput, (void *)&arg->gsV4kd2DecOutput);
             }
             break;
 
@@ -923,7 +924,7 @@ static int _vmgr_4k_d2_process(vputype type, int cmd, long pHandle, void* args)
             {
                 //VPU_4K_D2_DECODE_t *arg = (VPU_4K_D2_DECODE_t *)args;
                 //vmgr_4k_d2_data.check_interrupt_detection = 1;
-                ret = tcc_vpu_4k_d2_dec(cmd & ~VPU_BASE_OP_KERNEL, &pHandle, (void *)NULL, (void *)NULL/*(&arg->gsV4kd2DecOutput)*/);
+                ret = tcc_vpu_4k_d2_dec(cmd & ~VPU_BASE_OP_KERNEL, (codec_handle_t*)&pHandle, (void *)NULL, (void *)NULL/*(&arg->gsV4kd2DecOutput)*/);
                 dprintk("@@ Dec :: VPU_4K_D2_DEC_CLOSED !! \n");
                 vmgr_4k_d2_set_close(type, 1, 1);
             }
@@ -935,7 +936,7 @@ static int _vmgr_4k_d2_process(vputype type, int cmd, long pHandle, void* args)
                 VPU_4K_D2_RINGBUF_GETINFO_t *arg = (VPU_4K_D2_RINGBUF_GETINFO_t *)args;
                 //vmgr_4k_d2_data.check_interrupt_detection = 1;
 
-                ret = tcc_vpu_4k_d2_dec(cmd & ~VPU_BASE_OP_KERNEL, &pHandle, (void *)NULL, (void *)&arg->gsV4kd2DecRingStatus);
+                ret = tcc_vpu_4k_d2_dec(cmd & ~VPU_BASE_OP_KERNEL, (codec_handle_t*)&pHandle, (void *)NULL, (void *)&arg->gsV4kd2DecRingStatus);
             }
             break;
 
@@ -944,7 +945,7 @@ static int _vmgr_4k_d2_process(vputype type, int cmd, long pHandle, void* args)
             {
                 VPU_4K_D2_RINGBUF_SETBUF_t *arg = (VPU_4K_D2_RINGBUF_SETBUF_t *)args;
                 //vmgr_4k_d2_data.check_interrupt_detection = 1;
-                ret = tcc_vpu_4k_d2_dec(cmd & ~VPU_BASE_OP_KERNEL, &pHandle, (void *)&arg->gsV4kd2DecInit, (void *)&arg->gsV4kd2DecRingFeed);
+                ret = tcc_vpu_4k_d2_dec(cmd & ~VPU_BASE_OP_KERNEL, (codec_handle_t*)&pHandle, (void *)&arg->gsV4kd2DecInit, (void *)&arg->gsV4kd2DecRingFeed);
                 dprintk("@@ Dec :: ReadPTR : 0x%08x, WritePTR : 0x%08x\n",
                         vetc_reg_read(vmgr_4k_d2_data.base_addr, 0x120), vetc_reg_read(vmgr_4k_d2_data.base_addr, 0x124));
             }
@@ -955,7 +956,7 @@ static int _vmgr_4k_d2_process(vputype type, int cmd, long pHandle, void* args)
             {
                 VPU_4K_D2_RINGBUF_SETBUF_PTRONLY_t *arg = (VPU_4K_D2_RINGBUF_SETBUF_PTRONLY_t *)args;
                 vmgr_4k_d2_data.check_interrupt_detection = 1;
-                ret = tcc_vpu_4k_d2_dec(cmd & ~VPU_BASE_OP_KERNEL, &pHandle, (void*)(arg->iCopiedSize), (void*)(arg->iFlushBuf));
+                ret = tcc_vpu_4k_d2_dec(cmd & ~VPU_BASE_OP_KERNEL, (codec_handle_t*)&pHandle, (void*)(arg->iCopiedSize), (void*)(arg->iFlushBuf));
             }
             break;
 
@@ -964,7 +965,7 @@ static int _vmgr_4k_d2_process(vputype type, int cmd, long pHandle, void* args)
             {
                 VPU_4K_D2_SEQ_HEADER_t *arg = (VPU_4K_D2_SEQ_HEADER_t *)args;
                 //vmgr_4k_d2_data.check_interrupt_detection = 1;
-                ret = tcc_vpu_4k_d2_dec(cmd & ~VPU_BASE_OP_KERNEL, &pHandle, (void*)(&arg->gsV4kd2DecInitialInfo), NULL);
+                ret = tcc_vpu_4k_d2_dec(cmd & ~VPU_BASE_OP_KERNEL, (codec_handle_t*)&pHandle, (void*)(&arg->gsV4kd2DecInitialInfo), NULL);
             }
             break;
 
@@ -973,7 +974,7 @@ static int _vmgr_4k_d2_process(vputype type, int cmd, long pHandle, void* args)
             {
                 VPU_4K_D2_GET_VERSION_t *arg = (VPU_4K_D2_GET_VERSION_t *)args;
                 //vmgr_4k_d2_data.check_interrupt_detection = 1;
-                ret = tcc_vpu_4k_d2_dec(cmd & ~VPU_BASE_OP_KERNEL, &pHandle, arg->pszVersion, arg->pszBuildData);
+                ret = tcc_vpu_4k_d2_dec(cmd & ~VPU_BASE_OP_KERNEL, (codec_handle_t*)&pHandle, arg->pszVersion, arg->pszBuildData);
                 dprintk("@@ Dec: version : %s, build : %s\n", arg->pszVersion, arg->pszBuildData);
             }
             break;
@@ -981,7 +982,7 @@ static int _vmgr_4k_d2_process(vputype type, int cmd, long pHandle, void* args)
             case VPU_DEC_SWRESET:
             case VPU_DEC_SWRESET_KERNEL:
             {
-                ret = tcc_vpu_4k_d2_dec(cmd & ~VPU_BASE_OP_KERNEL, &pHandle, NULL, NULL);
+                ret = tcc_vpu_4k_d2_dec(cmd & ~VPU_BASE_OP_KERNEL, (codec_handle_t*)&pHandle, NULL, NULL);
             }
             break;
 
@@ -1098,7 +1099,6 @@ static int _vmgr_4k_d2_external_all_close(int wait_ms)
     return 0;
 }
 
-//static unsigned int cntInt_4kd2 = 0;
 static int _vmgr_4k_d2_cmd_open(char *str)
 {
 	int ret = 0;
@@ -1120,7 +1120,7 @@ static int _vmgr_4k_d2_cmd_open(char *str)
         vmgr_4k_d2_data.clk_limitation = 1;
         vmgr_4k_d2_data.cmd_processing = 0;
 
-		vmgr_4k_d2_hw_reset(0);
+        vmgr_4k_d2_hw_reset();
         vmgr_4k_d2_enable_irq(vmgr_4k_d2_data.irq);
         //vetc_reg_init(vmgr_4k_d2_data.base_addr);
         if(0 > (ret = vmem_init()))
@@ -1190,7 +1190,8 @@ static int _vmgr_4k_d2_cmd_release(char *str)
 
 		vmem_deinit();
 		
-		vmgr_4k_d2_hw_reset(1);
+        vmgr_4k_d2_hw_assert();
+        udelay(1000); //1ms
     }
 
     vmgr_4k_d2_disable_clock(0, 0);
@@ -1255,8 +1256,7 @@ static long _vmgr_4k_d2_ioctl(struct file *file, unsigned int cmd, unsigned long
             break;
 
         case VPU_HW_RESET:
-			vmgr_4k_d2_hw_reset(1);
-			vmgr_4k_d2_hw_reset(0);
+            vmgr_4k_d2_hw_reset();
             break;
 
         case VPU_SET_MEM_ALLOC_MODE:
@@ -1451,9 +1451,6 @@ static int _vmgr_4k_d2_open(struct inode *inode, struct file *filp)
 #endif
 
     filp->private_data = &vmgr_4k_d2_data;
-        #ifdef DEBUG_VPU_4K_D2_K
-        cntwk_4kd2 = 0;
-        #endif
     return 0;
 }
 
@@ -1576,12 +1573,14 @@ static int _vmgr_4k_d2_operation(void)
 							*(oper_data->vpu_result), oper_data->type, oper_data->handle, oper_data->cmd_type, vmgr_4k_d2_data.szFrame_Len);
 				}
 
-                if(*(oper_data->vpu_result) == RETCODE_CODEC_EXIT) {
+                if(*(oper_data->vpu_result) == RETCODE_CODEC_EXIT)
+                {
                 	vmgr_4k_d2_restore_clock(0, atomic_read(&vmgr_4k_d2_data.dev_opened));
 					_vmgr_4k_d2_close_all(1);
                 }
             }
-        } else {
+        }
+        else {
             printk("_vmgr_4k_d2_operation :: missed info or unknown command => type = 0x%x, cmd = 0x%x,  \n", oper_data->type, oper_data->cmd_type);
 
             *(oper_data->vpu_result) = RETCODE_FAILURE;

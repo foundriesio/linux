@@ -249,11 +249,11 @@ static void RGXFWConfigureSegMMU(const void       *hPrivate,
 
 	if (RGX_DEVICE_HAS_FEATURE(hPrivate, SLC_VIVT))
 	{
-		ui64SegOutAddrTop = RGXFW_SEGMMU_OUTADDR_TOP_VIVT_SLC_CACHED(META_MMU_CONTEXT_MAPPING_FWPRIV);
+		ui64SegOutAddrTop = RGXFW_SEGMMU_OUTADDR_TOP_VIVT_SLC_CACHED(MMU_CONTEXT_MAPPING_FWPRIV);
 	}
 	else
 	{
-		ui64SegOutAddrTop = RGXFW_SEGMMU_OUTADDR_TOP_SLC(META_MMU_CONTEXT_MAPPING_FWPRIV, RGXFW_SEGMMU_META_BIFDM_ID);
+		ui64SegOutAddrTop = RGXFW_SEGMMU_OUTADDR_TOP_SLC(MMU_CONTEXT_MAPPING_FWPRIV, RGXFW_SEGMMU_META_BIFDM_ID);
 	}
 
 	for (i = 0; i < ui32LayoutEntryNum; i++)
@@ -646,13 +646,15 @@ NextBlock:
 
  @Function      ProcessELFCommandStream
 
- @Description   Process the output of the Mips toolchain in the .ELF format
-                copying code and data sections into their final location
+ @Description   Process a file in .ELF format copying code and data sections
+                into their final location
 
- @Input         hPrivate          : Implementation specific data
- @Input         pbELF             : Pointer to FW blob
- @Input         pvHostFWCodeAddr  : Pointer to FW code
- @Input         pvHostFWDataAddr  : Pointer to FW data
+ @Input         hPrivate                 : Implementation specific data
+ @Input         pbELF                    : Pointer to FW blob
+ @Input         pvHostFWCodeAddr         : Pointer to FW code
+ @Input         pvHostFWDataAddr         : Pointer to FW data
+ @Input         pvHostFWCorememCodeAddr  : Pointer to FW coremem code
+ @Input         pvHostFWCorememDataAddr  : Pointer to FW coremem data
 
  @Return        PVRSRV_ERROR
 
@@ -660,7 +662,9 @@ NextBlock:
 PVRSRV_ERROR ProcessELFCommandStream(const void *hPrivate,
                                      const IMG_BYTE *pbELF,
                                      void *pvHostFWCodeAddr,
-                                     void *pvHostFWDataAddr)
+                                     void *pvHostFWDataAddr,
+                                     void* pvHostFWCorememCodeAddr,
+                                     void* pvHostFWCorememDataAddr)
 {
 	IMG_UINT32 ui32Entry;
 	IMG_ELF_HDR *psHeader = (IMG_ELF_HDR *)pbELF;
@@ -678,8 +682,8 @@ PVRSRV_ERROR ProcessELFCommandStream(const void *hPrivate,
 		eError = FindMMUSegment(psProgramHeader->ui32Pvaddr,
 		                        pvHostFWCodeAddr,
 		                        pvHostFWDataAddr,
-		                        NULL, /* coremem n/a */
-		                        NULL, /* coremem n/a */
+		                        pvHostFWCorememCodeAddr,
+		                        pvHostFWCorememDataAddr,
 		                        &pvWriteAddr);
 
 		if (eError != PVRSRV_OK)
@@ -890,8 +894,10 @@ PVRSRV_ERROR RGXProcessFWImage(const void *hPrivate,
 {
 	PVRSRV_ERROR eError = PVRSRV_OK;
 	IMG_BOOL bMIPS = RGX_DEVICE_HAS_FEATURE(hPrivate, MIPS);
+	IMG_BOOL bRISCV = RGX_DEVICE_HAS_FEATURE(hPrivate, RISCV_FW_PROCESSOR);
+	IMG_BOOL bMETA = !bMIPS && !bRISCV;
 
-	if (!bMIPS)
+	if (bMETA)
 	{
 		IMG_UINT32 *pui32BootConf = NULL;
 		/* Skip bootloader configuration if a pointer to the FW code
@@ -975,14 +981,15 @@ PVRSRV_ERROR RGXProcessFWImage(const void *hPrivate,
 
 		}
 	}
-
-	if (bMIPS)
+	else if (bMIPS)
 	{
 		/* Process FW image data stream */
 		eError = ProcessELFCommandStream(hPrivate,
 		                                 pbRGXFirmware,
 		                                 pvFWCode,
-		                                 pvFWData);
+		                                 pvFWData,
+		                                 NULL,
+		                                 NULL);
 		if (eError != PVRSRV_OK)
 		{
 			RGXErrorLog(hPrivate, "RGXProcessFWImage: Processing FW image failed (%d)", eError);
@@ -993,11 +1000,11 @@ PVRSRV_ERROR RGXProcessFWImage(const void *hPrivate,
 		{
 			RGXMIPSFW_BOOT_DATA *psBootData = (RGXMIPSFW_BOOT_DATA*)
 				/* To get a pointer to the bootloader configuration data start from a pointer to the FW image... */
-				((IMG_BYTE *) pvFWData
+				IMG_OFFSET_ADDR(pvFWData,
 				/* ... jump to the boot/NMI data page... */
-				+ RGXGetFWImageSectionOffset(NULL, MIPS_BOOT_DATA)
+				(RGXGetFWImageSectionOffset(NULL, MIPS_BOOT_DATA)
 				/* ... and then jump to the bootloader data offset within the page */
-				+ RGXMIPSFW_BOOTLDR_CONF_OFFSET);
+				+ RGXMIPSFW_BOOTLDR_CONF_OFFSET));
 
 			/* Rogue Registers physical address */
 			psBootData->ui64RegBase = puFWParams->sMips.sGPURegAddr.uiAddr;
@@ -1016,6 +1023,35 @@ PVRSRV_ERROR RGXProcessFWImage(const void *hPrivate,
 			/* Reserved for future use */
 			psBootData->ui32Reserved1 = 0;
 			psBootData->ui32Reserved2 = 0;
+		}
+	}
+	else
+	{
+		/* Process FW image data stream */
+		eError = ProcessELFCommandStream(hPrivate,
+		                                 pbRGXFirmware,
+		                                 pvFWCode,
+		                                 pvFWData,
+		                                 pvFWCorememCode,
+		                                 pvFWCorememData);
+		if (eError != PVRSRV_OK)
+		{
+			RGXErrorLog(hPrivate, "RGXProcessFWImage: Processing FW image failed (%d)", eError);
+			return eError;
+		}
+
+		if (pvFWData)
+		{
+			RGXRISCVFW_BOOT_DATA *psBootData = (RGXRISCVFW_BOOT_DATA*)
+				IMG_OFFSET_ADDR(pvFWData, RGXRISCVFW_BOOTLDR_CONF_OFFSET);
+
+			psBootData->ui64CorememCodeDevVAddr = puFWParams->sRISCV.sFWCorememCodeDevVAddr.uiAddr;
+			psBootData->ui32CorememCodeFWAddr   = puFWParams->sRISCV.sFWCorememCodeFWAddr.ui32Addr;
+			psBootData->ui32CorememCodeSize     = puFWParams->sRISCV.uiFWCorememCodeSize;
+
+			psBootData->ui64CorememDataDevVAddr = puFWParams->sRISCV.sFWCorememDataDevVAddr.uiAddr;
+			psBootData->ui32CorememDataFWAddr   = puFWParams->sRISCV.sFWCorememDataFWAddr.ui32Addr;
+			psBootData->ui32CorememDataSize     = puFWParams->sRISCV.uiFWCorememDataSize;
 		}
 	}
 

@@ -49,14 +49,14 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "pdumpdesc.h"
 
 /*
- * There are two different set of functions one for META and one for MIPS
+ * There are two different set of functions one for META/RISCV and one for MIPS
  * because the Pdump player does not implement the support for
  * the MIPS MMU yet. So for MIPS builds we cannot use DevmemPDumpSaveToFileVirtual,
  * we have to use DevmemPDumpSaveToFile instead.
  */
-static PVRSRV_ERROR _MetaDumpSignatureBufferKM(CONNECTION_DATA * psConnection,
-                                               PVRSRV_DEVICE_NODE *psDeviceNode,
-                                               IMG_UINT32 ui32PDumpFlags)
+static PVRSRV_ERROR _FWDumpSignatureBufferKM(CONNECTION_DATA * psConnection,
+                                             PVRSRV_DEVICE_NODE *psDeviceNode,
+                                             IMG_UINT32 ui32PDumpFlags)
 {
 	PVRSRV_RGXDEV_INFO	*psDevInfo = psDeviceNode->pvDevice;
 
@@ -109,9 +109,9 @@ static PVRSRV_ERROR _MetaDumpSignatureBufferKM(CONNECTION_DATA * psConnection,
 
 	return PVRSRV_OK;
 }
-static PVRSRV_ERROR _MetaDumpTraceBufferKM(CONNECTION_DATA * psConnection,
-									  PVRSRV_DEVICE_NODE	*psDeviceNode,
-									  IMG_UINT32			ui32PDumpFlags)
+static PVRSRV_ERROR _FWDumpTraceBufferKM(CONNECTION_DATA * psConnection,
+										 PVRSRV_DEVICE_NODE	*psDeviceNode,
+										 IMG_UINT32			ui32PDumpFlags)
 {
 	PVRSRV_RGXDEV_INFO	*psDevInfo = psDeviceNode->pvDevice;
 	IMG_UINT32	ui32ThreadNum, ui32Size, ui32OutFileOffset;
@@ -327,9 +327,9 @@ PVRSRV_ERROR PVRSRVPDumpSignatureBufferKM(CONNECTION_DATA * psConnection,
 	}
 	else
 	{
-		return _MetaDumpSignatureBufferKM(psConnection,
-										  psDeviceNode,
-										  ui32PDumpFlags);
+		return _FWDumpSignatureBufferKM(psConnection,
+										psDeviceNode,
+										ui32PDumpFlags);
 	}
 }
 
@@ -357,7 +357,7 @@ PVRSRV_ERROR PVRSRVPDumpTraceBufferKM(CONNECTION_DATA *psConnection,
 	}
 	else
 	{
-		return _MetaDumpTraceBufferKM(psConnection, psDeviceNode, ui32PDumpFlags);
+		return _FWDumpTraceBufferKM(psConnection, psDeviceNode, ui32PDumpFlags);
 	}
 }
 
@@ -385,7 +385,7 @@ PVRSRV_ERROR RGXPDumpPrepareOutputImageDescriptorHdr(PVRSRV_DEVICE_NODE *psDevic
 		return PVRSRV_ERROR_INVALID_PARAMS;
 	}
 
-	pui32Word = (IMG_PUINT32) pbyPDumpImageHdr;
+	pui32Word = IMG_OFFSET_ADDR(pbyPDumpImageHdr, 0);
 	pui32Word[0] = (IMAGE_HEADER_TYPE << HEADER_WORD0_TYPE_SHIFT);
 	pui32Word[1] = (IMAGE_HEADER_SIZE << HEADER_WORD1_SIZE_SHIFT) |
 				   (IMAGE_HEADER_VERSION << HEADER_WORD1_VERSION_SHIFT);
@@ -432,19 +432,30 @@ PVRSRV_ERROR RGXPDumpPrepareOutputImageDescriptorHdr(PVRSRV_DEVICE_NODE *psDevic
 			pui32Word[9] |= IMAGE_HEADER_WORD9_FBCCOMPAT_V2;
 			break;
 		case 3:
-			pui32Word[9] |= IMAGE_HEADER_WORD9_FBCCOMPAT_V3_REMAP;
+			pui32Word[9] |= IMAGE_HEADER_WORD9_FBCCOMPAT_V3_0_LAYOUT2;
 			break;
 		case 4:
 			pui32Word[9] |= IMAGE_HEADER_WORD9_FBCCOMPAT_V4;
 
-			if (eFBCompression == IMG_FB_COMPRESSION_DIRECT_LOSSY_8x8  ||
-				eFBCompression == IMG_FB_COMPRESSION_DIRECT_LOSSY_16x4 ||
-				eFBCompression == IMG_FB_COMPRESSION_DIRECT_LOSSY_32x2)
+			if (eFBCompression == IMG_FB_COMPRESSION_DIRECT_LOSSY50_8x8  ||
+				eFBCompression == IMG_FB_COMPRESSION_DIRECT_LOSSY50_16x4 ||
+				eFBCompression == IMG_FB_COMPRESSION_DIRECT_LOSSY50_32x2)
 			{
 				pui32Word[9] |= IMAGE_HEADER_WORD9_LOSSY_ON;
 			}
 
 			pui32Word[9] |= (eFBCSwizzle << IMAGE_HEADER_WORD9_SWIZZLE_SHIFT) & IMAGE_HEADER_WORD9_SWIZZLE_CLRMSK;
+
+			break;
+		case 50:
+			pui32Word[9] |= IMAGE_HEADER_WORD9_FBCCOMPAT_TFBC;
+
+			if (eFBCompression == IMG_FB_COMPRESSION_DIRECT_LOSSY50_8x8  ||
+				eFBCompression == IMG_FB_COMPRESSION_DIRECT_LOSSY50_16x4 ||
+				eFBCompression == IMG_FB_COMPRESSION_DIRECT_LOSSY50_32x2)
+			{
+				pui32Word[9] |= IMAGE_HEADER_WORD9_LOSSY_ON;
+			}
 
 			break;
 		default:
@@ -459,17 +470,17 @@ PVRSRV_ERROR RGXPDumpPrepareOutputImageDescriptorHdr(PVRSRV_DEVICE_NODE *psDevic
 	case IMG_FB_COMPRESSION_NONE:
 		break;
 	case IMG_FB_COMPRESSION_DIRECT_8x8:
-	case IMG_FB_COMPRESSION_DIRECT_LOSSY_8x8:
+	case IMG_FB_COMPRESSION_DIRECT_LOSSY50_8x8:
 		pui32Word[8] |= IMAGE_HEADER_WORD8_FBCTYPE_8X8;
 		pui32Word[9] |= IMAGE_HEADER_WORD9_FBCDECOR_ENABLE;
 		break;
 	case IMG_FB_COMPRESSION_DIRECT_16x4:
-	case IMG_FB_COMPRESSION_DIRECT_LOSSY_16x4:
+	case IMG_FB_COMPRESSION_DIRECT_LOSSY50_16x4:
 		pui32Word[8] |= IMAGE_HEADER_WORD8_FBCTYPE_16x4;
 		pui32Word[9] |= IMAGE_HEADER_WORD9_FBCDECOR_ENABLE;
 		break;
 	case IMG_FB_COMPRESSION_DIRECT_32x2:
-	case IMG_FB_COMPRESSION_DIRECT_LOSSY_32x2:
+	case IMG_FB_COMPRESSION_DIRECT_LOSSY50_32x2:
 		pui32Word[9] |= IMAGE_HEADER_WORD9_FBCDECOR_ENABLE;
 		break;
 	default:
@@ -501,7 +512,7 @@ PVRSRV_ERROR RGXPDumpPrepareOutputDataDescriptorHdr(PVRSRV_DEVICE_NODE *psDevice
 		return PVRSRV_ERROR_INVALID_PARAMS;
 	}
 
-	pui32Word = (IMG_PUINT32) pbyPDumpDataHdr;
+	pui32Word = IMG_OFFSET_ADDR(pbyPDumpDataHdr, 0);
 
 	if (ui32HeaderType == DATA_HEADER_TYPE)
 	{

@@ -57,6 +57,8 @@ struct tcc_tsif_handle
 	unsigned int dma_mode;
 	unsigned int serial_mode;
 	unsigned int working_mode; // 0:tsif for tdmb, 1:tsif mode for dvbt & isdbt, 2:internal mode
+	const char *fw_data;
+    unsigned int fw_size;
 	struct clk *pkt_gen_clk;
 	struct tca_tsif_port_config port_cfg;
 };

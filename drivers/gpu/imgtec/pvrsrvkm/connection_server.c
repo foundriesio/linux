@@ -174,7 +174,7 @@ static PVRSRV_ERROR ConnectionDataDestroy(CONNECTION_DATA *psConnection)
 	return PVRSRV_OK;
 }
 
-PVRSRV_ERROR PVRSRVConnectionConnect(void **ppvPrivData, void *pvOSData)
+PVRSRV_ERROR PVRSRVCommonConnectionConnect(void **ppvPrivData, void *pvOSData)
 {
 	CONNECTION_DATA *psConnection;
 	PVRSRV_ERROR eError;
@@ -322,7 +322,7 @@ static PVRSRV_ERROR _CleanupThreadPurgeConnectionData(void *pvConnectionData)
 	return eErrorConnection;
 }
 
-void PVRSRVConnectionDisconnect(void *pvDataPtr)
+void PVRSRVCommonConnectionDisconnect(void *pvDataPtr)
 {
 	CONNECTION_DATA *psConnectionData = pvDataPtr;
 	PVRSRV_DEVICE_NODE *psDevNode = OSGetDevNode(psConnectionData);

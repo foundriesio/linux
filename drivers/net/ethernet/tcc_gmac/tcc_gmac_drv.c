@@ -144,6 +144,26 @@ static int rxdv_dly = 0;
 module_param(rxdv_dly, int, S_IRUGO | S_IWUSR);
 MODULE_PARM_DESC(rxdv_dly, "RX DATA VALID DELAY VALUE (0~31 ns)");
 
+static int txen_dly = 0;
+module_param(txen_dly, int, S_IRUGO | S_IWUSR);
+MODULE_PARM_DESC(rxdv_dly, "TXEN DELAY VALUE (0~31 ns)");
+
+static int txd0_dly = 0;
+module_param(txd0_dly, int, S_IRUGO | S_IWUSR);
+MODULE_PARM_DESC(txd0_dly, "TX DATA0 DELAY VALUE (0~31 ns)");
+
+static int txd1_dly = 0;
+module_param(txd1_dly, int, S_IRUGO | S_IWUSR);
+MODULE_PARM_DESC(txd1_dly, "TX DATA1 DELAY VALUE (0~31 ns)");
+
+static int txd2_dly = 0;
+module_param(txd2_dly, int, S_IRUGO | S_IWUSR);
+MODULE_PARM_DESC(txd2_dly, "TX DATA2 DELAY VALUE (0~31 ns)");
+
+static int txd3_dly = 0;
+module_param(txd3_dly, int, S_IRUGO | S_IWUSR);
+MODULE_PARM_DESC(txd3_dly, "TX DATA3 DELAY VALUE (0~31 ns)");
+
 
 //#define DMA_TX_SIZE 16
 //#define DMA_TX_SIZE 256
@@ -1617,8 +1637,14 @@ static int tcc_gmac_open(struct net_device *dev)
 		timing_info.rxd1_dly = rxd1_dly;
 		timing_info.rxd2_dly = rxd2_dly;
 		timing_info.rxd3_dly = rxd3_dly;
+
+		timing_info.txd0_dly = txd0_dly;
+		timing_info.txd1_dly = txd1_dly;
+		timing_info.txd2_dly = txd2_dly;
+		timing_info.txd3_dly = txd3_dly;
 		
 		timing_info.rxdv_dly = rxdv_dly;
+		timing_info.txen_dly = txen_dly;
 	}
 
 	tca_gmac_tunning_timing(&timing_info, ioaddr);
@@ -2588,6 +2614,7 @@ static int tcc_gmac_probe(struct platform_device *pdev)
 		return -ENODEV;
 	}
 
+#if 0
 	err = get_board_mac(mac_addr);
 
 	if (of_get_property(np, "ecid-mac-addr", NULL)) {
@@ -2608,6 +2635,9 @@ static int tcc_gmac_probe(struct platform_device *pdev)
 			memcpy(dev->dev_addr, mac_addr, ETH_ALEN);
 		}
 	}
+#endif
+	// set default mac_addr
+	memcpy(dev->dev_addr, default_mac_addr, ETH_ALEN);
 	
 	printk(KERN_INFO "[INFO][GMAC] mac_addr - %02x:%02x:%02x:%02x:%02x:%02x\n", dev->dev_addr[0],
 														dev->dev_addr[1],

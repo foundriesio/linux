@@ -4,6 +4,7 @@ obj-$(CONFIG_LCD_AT070TN93) += lcd_at070tn93.o
 obj-$(CONFIG_LCD_CVBS)  += lcd_cvbs.o
 obj-$(CONFIG_LCD_CCIR656)  += lcd_ccir656.o
 obj-$(CONFIG_LCD_TM123XDHP90) += lcd_TM123XDHP90.o
+obj-$(CONFIG_LCDlcd_PVLBJT020) += lcd_PVLBJT020.o
 obj-$(CONFIG_FB_TCC_OVERLAY)	+= tcc_overlay.o
 ifdef CONFIG_ANDROID
 EXTRA_CFLAGS += -Idrivers/staging/android

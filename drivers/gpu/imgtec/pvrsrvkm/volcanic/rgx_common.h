@@ -152,10 +152,12 @@ typedef enum _RGX_KICK_TYPE_DM_
  ******************************************************************************
  * RGXFW Compiler alignment definitions
  *****************************************************************************/
-#if defined(__GNUC__)
+#if defined(__GNUC__) || defined(INTEGRITY_OS)
 #define RGXFW_ALIGN			__attribute__ ((aligned (8)))
+#define	RGXFW_ALIGN_DCACHEL		__attribute__((aligned (64)))
 #elif defined(_MSC_VER)
 #define RGXFW_ALIGN			__declspec(align(8))
+#define	RGXFW_ALIGN_DCACHEL		__declspec(align(64))
 #pragma warning (disable : 4324)
 #else
 #error "Align MACROS need to be defined for this compiler"

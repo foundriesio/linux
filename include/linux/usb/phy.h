@@ -180,7 +180,7 @@ struct usb_phy {
 	unsigned int (*write_u30phy_reg)(struct usb_phy *phy, unsigned int address, unsigned int write_data);
 	void (*bit_set_phy)(void __iomem *base, u32 offset, u32 value);
 	void (*bit_clear_phy)(void __iomem *base, u32 offset, u32 value);
-#if defined (CONFIG_ARCH_TCC803X) || defined (CONFIG_ARCH_TCC899X) 
+#if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC805X)
 	unsigned int (*read_ss_u30phy_reg)(struct usb_phy *phy, unsigned int address);
 	void (*read_ss_u30phy_reg_all)(struct usb_phy *phy);
 	unsigned int (*write_ss_u30phy_reg)(struct usb_phy *phy, unsigned int address, unsigned int write_data);	

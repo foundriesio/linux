@@ -2676,7 +2676,7 @@ PVRSRV_ERROR PDumpInternalVarToMemLabel(PMR *psPMR,
 /*!
 *******************************************************************************
 
- @Function	PDumpWriteRegANDValueOp
+ @Function	PDumpWriteRegORValueOp
 
  @Description
 
@@ -2754,6 +2754,90 @@ PVRSRV_ERROR PDumpWriteVarORValueOp(const IMG_CHAR *pszInternalVariable,
 
 	PDUMP_UNLOCK(ui32PDumpFlags);
 
+	PDUMP_RELEASE_SCRIPT_STRING()
+	return PVRSRV_OK;
+}
+
+/*!
+*******************************************************************************
+
+ @Function	PDumpWriteVarORVarOp
+
+ @Description
+
+ Emits the PDump commands for the logical OR operation
+ Var <- Var OR Var2
+
+ @Return   PVRSRV_ERROR
+
+******************************************************************************/
+PVRSRV_ERROR PDumpWriteVarORVarOp(const IMG_CHAR *pszInternalVar,
+                                  const IMG_CHAR *pszInternalVar2,
+                                  const IMG_UINT32 ui32PDumpFlags)
+{
+	PVRSRV_ERROR eErr;
+
+	PDUMP_GET_SCRIPT_STRING();
+
+	eErr = PDumpSNPrintf(hScript,
+			ui32MaxLen,
+			"OR %s %s %s",
+			pszInternalVar,
+			pszInternalVar,
+			pszInternalVar2);
+
+	if (eErr != PVRSRV_OK)
+	{
+		PDUMP_RELEASE_SCRIPT_STRING()
+		return eErr;
+	}
+
+	PDUMP_LOCK(ui32PDumpFlags);
+	PDumpWriteScript(hScript, ui32PDumpFlags);
+
+	PDUMP_UNLOCK(ui32PDumpFlags);
+	PDUMP_RELEASE_SCRIPT_STRING()
+	return PVRSRV_OK;
+}
+
+/*!
+*******************************************************************************
+
+ @Function	PDumpWriteVarANDVarOp
+
+ @Description
+
+ Emits the PDump commands for the logical AND operation
+ Var <- Var AND Var2
+
+ @Return   PVRSRV_ERROR
+
+******************************************************************************/
+PVRSRV_ERROR PDumpWriteVarANDVarOp(const IMG_CHAR *pszInternalVar,
+                                   const IMG_CHAR *pszInternalVar2,
+                                   const IMG_UINT32 ui32PDumpFlags)
+{
+	PVRSRV_ERROR eErr;
+
+	PDUMP_GET_SCRIPT_STRING();
+
+	eErr = PDumpSNPrintf(hScript,
+			ui32MaxLen,
+			"AND %s %s %s",
+			pszInternalVar,
+			pszInternalVar,
+			pszInternalVar2);
+
+	if (eErr != PVRSRV_OK)
+	{
+		PDUMP_RELEASE_SCRIPT_STRING()
+		return eErr;
+	}
+
+	PDUMP_LOCK(ui32PDumpFlags);
+	PDumpWriteScript(hScript, ui32PDumpFlags);
+
+	PDUMP_UNLOCK(ui32PDumpFlags);
 	PDUMP_RELEASE_SCRIPT_STRING()
 	return PVRSRV_OK;
 }
@@ -5115,6 +5199,84 @@ void PDumpDisconnectionNotify(void)
 }
 
 /******************************************************************************
+ * Function Name  : PDumpRegCondStr
+ * Inputs         : Description of what this register read is trying to do
+ *					pszPDumpDevName
+ *					Register offset
+ *					expected value
+ *					mask for that value
+ * Outputs        : PDump conditional test for use with 'IF' and 'DOW'
+ * Returns        : None
+ * Description    : Create a PDUMP conditional test. The string is allocated
+ *					on the heap and should be freed by the caller on success.
+******************************************************************************/
+PVRSRV_ERROR PDumpRegCondStr(IMG_CHAR            **ppszPDumpCond,
+                             IMG_CHAR            *pszPDumpRegName,
+                             IMG_UINT32          ui32RegAddr,
+                             IMG_UINT32          ui32RegValue,
+                             IMG_UINT32          ui32Mask,
+                             IMG_UINT32          ui32Flags,
+                             PDUMP_POLL_OPERATOR eOperator)
+{
+	IMG_UINT32	ui32PollCount;
+
+	PDUMP_GET_MSG_STRING();
+
+	ui32PollCount = POLL_COUNT_SHORT;
+
+	if (0 == OSSNPrintf(pszMsg, ui32MaxLen, ":%s:0x%08X 0x%08X 0x%08X %d %u %d",
+						pszPDumpRegName, ui32RegAddr, ui32RegValue,
+						ui32Mask, eOperator, ui32PollCount, POLL_DELAY))
+	{
+		PDUMP_RELEASE_MSG_STRING()
+		return PVRSRV_ERROR_INTERNAL_ERROR;
+	}
+
+	*ppszPDumpCond = pszMsg;
+
+	return PVRSRV_OK;
+}
+
+/******************************************************************************
+ * Function Name  : PDumpInternalValCondStr
+ * Inputs         : Description of what this register read is trying to do
+ *					pszPDumpDevName
+ *					Internal variable
+ *					expected value
+ *					mask for that value
+ * Outputs        : PDump conditional test for use with 'IF' and 'DOW'
+ * Returns        : None
+ * Description    : Create a PDUMP conditional test. The string is allocated
+ *					on the heap and should be freed by the caller on success.
+******************************************************************************/
+PVRSRV_ERROR PDumpInternalValCondStr(IMG_CHAR            **ppszPDumpCond,
+                                     IMG_CHAR            *pszInternalVar,
+                                     IMG_UINT32          ui32RegValue,
+                                     IMG_UINT32          ui32Mask,
+                                     IMG_UINT32          ui32Flags,
+                                     PDUMP_POLL_OPERATOR eOperator)
+{
+	IMG_UINT32	ui32PollCount;
+
+	PDUMP_GET_MSG_STRING();
+
+	ui32PollCount = POLL_COUNT_SHORT;
+
+	if (0 == OSSNPrintf(pszMsg, ui32MaxLen, "%s 0x%08X 0x%08X %d %u %d",
+						pszInternalVar, ui32RegValue,
+						ui32Mask, eOperator, ui32PollCount, POLL_DELAY))
+	{
+		PDUMP_RELEASE_MSG_STRING()
+		return PVRSRV_ERROR_INTERNAL_ERROR;
+	}
+
+	*ppszPDumpCond = pszMsg;
+
+	return PVRSRV_OK;
+}
+
+
+/******************************************************************************
  * Function Name  : PDumpIfKM
  * Inputs         : pszPDumpCond - string for condition
  * Outputs        : None
@@ -5202,6 +5364,67 @@ PVRSRV_ERROR PDumpFiKM(IMG_CHAR *pszPDumpCond, IMG_UINT32 ui32PDumpFlags)
 
 	return PVRSRV_OK;
 }
+
+/******************************************************************************
+ * Function Name  : PDumpStartDoLoopKM
+ * Inputs         : None
+ * Outputs        : None
+ * Returns        : None
+ * Description    : Create a PDUMP string which represents SDO command
+					with condition.
+******************************************************************************/
+PVRSRV_ERROR PDumpStartDoLoopKM(IMG_UINT32 ui32PDumpFlags)
+{
+	PVRSRV_ERROR eErr;
+	PDUMP_GET_SCRIPT_STRING()
+
+	eErr = PDumpSNPrintf(hScript, ui32MaxLen, "SDO");
+
+	if (eErr != PVRSRV_OK)
+	{
+		PDUMP_RELEASE_SCRIPT_STRING();
+		return eErr;
+	}
+
+	PDUMP_LOCK(ui32PDumpFlags);
+	PDumpWriteScript(hScript, ui32PDumpFlags);
+	PDUMP_UNLOCK(ui32PDumpFlags);
+
+	PDUMP_RELEASE_SCRIPT_STRING();
+
+	return PVRSRV_OK;
+}
+
+/******************************************************************************
+ * Function Name  : PDumpEndDoWhileLoopKM
+ * Inputs         : pszPDumpWhileCond - string for loop condition
+ * Outputs        : None
+ * Returns        : None
+ * Description    : Create a PDUMP string which represents DOW command
+					with condition.
+******************************************************************************/
+PVRSRV_ERROR PDumpEndDoWhileLoopKM(IMG_CHAR *pszPDumpWhileCond, IMG_UINT32 ui32PDumpFlags)
+{
+	PVRSRV_ERROR eErr;
+	PDUMP_GET_SCRIPT_STRING()
+
+	eErr = PDumpSNPrintf(hScript, ui32MaxLen, "DOW %s\n", pszPDumpWhileCond);
+
+	if (eErr != PVRSRV_OK)
+	{
+		PDUMP_RELEASE_SCRIPT_STRING();
+		return eErr;
+	}
+
+	PDUMP_LOCK(ui32PDumpFlags);
+	PDumpWriteScript(hScript, ui32PDumpFlags);
+	PDUMP_UNLOCK(ui32PDumpFlags);
+
+	PDUMP_RELEASE_SCRIPT_STRING();
+
+	return PVRSRV_OK;
+}
+
 
 void PDumpLock(void)
 {

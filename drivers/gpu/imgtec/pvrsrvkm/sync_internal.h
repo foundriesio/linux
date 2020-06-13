@@ -98,24 +98,12 @@ typedef struct SYNC_PRIM_LOCAL_TAG
 	IMG_HANDLE				hRecord;		/*!< Sync record handle */
 } SYNC_PRIM_LOCAL;
 
-#if defined(SUPPORT_SERVER_SYNC_IMPL)
-typedef struct SYNC_PRIM_SERVER_TAG
-{
-	SYNC_BRIDGE_HANDLE		hBridge;			/*!< Bridge handle */
-	IMG_HANDLE				hServerSync;		/*!< Handle to the server sync */
-	IMG_UINT32				ui32FirmwareAddr;	/*!< Firmware address of the sync */
-} SYNC_PRIM_SERVER;
-#endif
-
 typedef struct SYNC_PRIM_TAG
 {
 	PVRSRV_CLIENT_SYNC_PRIM	sCommon;		/*!< Client visible part of the sync prim */
 	SYNC_PRIM_TYPE			eType;			/*!< Sync primitive type */
 	union {
 		SYNC_PRIM_LOCAL		sLocal;			/*!< Local sync primitive data */
-#if defined(SUPPORT_SERVER_SYNC_IMPL)
-		SYNC_PRIM_SERVER	sServer;		/*!< Server sync primitive data */
-#endif
 	} u;
 } SYNC_PRIM;
 

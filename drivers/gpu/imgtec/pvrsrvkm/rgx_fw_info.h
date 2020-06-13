@@ -66,6 +66,11 @@ typedef enum
 	MIPS_PRIVATE_DATA,
 	MIPS_BOOT_DATA,
 	MIPS_STACK,
+	RISCV_UNCACHED_CODE,
+	RISCV_CACHED_CODE,
+	RISCV_PRIVATE_DATA,
+	RISCV_COREMEM_CODE,
+	RISCV_COREMEM_DATA,
 } RGX_FW_SECTION_ID;
 
 typedef enum
@@ -109,7 +114,7 @@ typedef struct
 	IMG_UINT32 ui32LayoutEntryNum;   /* Number of entries in the layout table */
 	IMG_UINT32 ui32LayoutEntrySize;  /* Size of an entry in the layout table */
 	IMG_UINT64 RGXFW_ALIGN ui64BVNC; /* BVNC */
-	IMG_UINT32 ui32FwPageSize;       /* Page size of processor (mips/meta) on which firmware executes */
+	IMG_UINT32 ui32FwPageSize;       /* Page size of processor on which firmware executes */
 	IMG_UINT32 ui32Flags;            /* Compatibility flags */
 } RGX_FW_INFO_HEADER;
 

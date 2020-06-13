@@ -50,7 +50,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #if defined(SUPPORT_ION)
 #include "ion_support.h"
 #endif
-#include "vz_support.h"
+#include "vz_vmm_pvz.h"
 
 #include <linux/dma-mapping.h>
 #include <mach/platform.h>

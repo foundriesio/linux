@@ -35,7 +35,7 @@ static int debug = 0;
 #define PWM_DIVID_MAX	3 	// clock divide max value 3(divide 16)
 #define PWM_PERI_CLOCK 	(400 * 1000 * 1000) // 400Mhz
 
-#if defined(CONFIG_ARCH_TCC802X) || defined(CONFIG_ARCH_TCC803X)
+#if defined(CONFIG_ARCH_TCC802X) || defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X)
 #define TCC_USE_GFB_PORT
 #endif
 
@@ -358,7 +358,8 @@ static int tcc_pwm_probe(struct platform_device *pdev)
 	clk_set_rate(tcc->pwm_pclk, freq);
 	printk("pwm peri clock set :%d return :%ld \n", freq, clk_get_rate(tcc->pwm_pclk));
 	platform_set_drvdata(pdev, tcc);
-	//Make to  disable 
+	//Make to  disable
+	if((pwm_readl(tcc->pwm_base) & 0xF) == 0)
 	pwm_writel(0 , tcc->pwm_base + PWMEN);
 	return 0;
 }

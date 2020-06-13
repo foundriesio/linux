@@ -50,6 +50,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define IMG_EXPLICIT_INCLUDE_HWDEFS
 #if defined(__KERNEL__)
 #include "rgx_cr_defs_km.h"
+#include "tmp_rgx_cr_defs_riscv_km.h"
 #endif
 #undef IMG_EXPLICIT_INCLUDE_HWDEFS
 
@@ -109,10 +110,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define GET_N(x)            (((x) & (N_POSTION_MASK)) >> (N_POSITION))
 #define GET_C(x)            (((x) & (C_POSTION_MASK)) >> (C_POSITION))
 
-#define BVNC_PACK(B,V,N,C)  ((((IMG_UINT64)B)) << (B_POSITION) | \
-                             (((IMG_UINT64)V)) << (V_POSITION) | \
-                             (((IMG_UINT64)N)) << (N_POSITION) | \
-                             (((IMG_UINT64)C)) << (C_POSITION) \
+#define BVNC_PACK(B,V,N,C)  ((((IMG_UINT64)(B))) << (B_POSITION) | \
+                             (((IMG_UINT64)(V))) << (V_POSITION) | \
+                             (((IMG_UINT64)(N))) << (N_POSITION) | \
+                             (((IMG_UINT64)(C))) << (C_POSITION) \
                             )
 
 #define RGX_CR_CORE_ID_CONFIG_N_SHIFT    (8U)
@@ -160,7 +161,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #endif
 #endif
 
-#define GET_ROGUE_CACHE_LINE_SIZE(x)    ((((IMG_INT32)x) > 0) ? ((x)/8) : (0))
+#define GET_ROGUE_CACHE_LINE_SIZE(x)    ((((IMG_INT32)(x)) > 0) ? ((x)/8) : (0))
 
 
 #define MAX_HW_TA3DCONTEXTS	2U
@@ -235,6 +236,18 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 #if defined(RGX_FEATURE_META) && (RGX_FEATURE_META == MTP218 || RGX_FEATURE_META == MTP219) && defined(RGX_FEATURE_S7_TOP_INFRASTRUCTURE) && (RGX_FEATURE_META_COREMEM_SIZE == 256)
 #define RGXFW_META_SUPPORT_2ND_THREAD
+#endif
+
+
+/*
+ * FW MMU contexts
+ */
+#if defined(SUPPORT_TRUSTED_DEVICE)
+#define MMU_CONTEXT_MAPPING_FWPRIV (0x0) /* FW code/private data */
+#define MMU_CONTEXT_MAPPING_FWIF   (0x7) /* Host/FW data */
+#else
+#define MMU_CONTEXT_MAPPING_FWPRIV (0x0)
+#define MMU_CONTEXT_MAPPING_FWIF   (0x0)
 #endif
 
 

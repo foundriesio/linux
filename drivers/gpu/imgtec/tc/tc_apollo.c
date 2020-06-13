@@ -1328,7 +1328,7 @@ int apollo_sys_strings(struct tc_device *tc,
 		pci_resource_start(tc->pdev, SYS_APOLLO_REG_PCI_BASENUM)
 				+ 0x40F0;
 
-	host_fpga_registers = ioremap_nocache(host_fpga_base, 0x04);
+	host_fpga_registers = ioremap(host_fpga_base, 0x04);
 	if (!host_fpga_registers) {
 		dev_err(&tc->pdev->dev,
 			"Failed to map host fpga registers\n");

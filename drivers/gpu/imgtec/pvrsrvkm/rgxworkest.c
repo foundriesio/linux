@@ -303,6 +303,7 @@ PVRSRV_ERROR WorkEstPrepare(PVRSRV_RGXDEV_INFO        *psDevInfo,
 
 #if defined(SUPPORT_SOC_TIMER)
 	psDevConfig = psDevInfo->psDeviceNode->psDevConfig;
+	PVR_LOG_RETURN_IF_FALSE(psDevConfig->pfnSoCTimerRead, "SoC timer not available", eError);
 	ui64CurrentSoCTime = psDevConfig->pfnSoCTimerRead(psDevConfig->hSysData);
 #endif
 

@@ -191,27 +191,26 @@ PVRSRV_ERROR PVRSRVPoolGet(PVRSRV_POOL *psPool,
 {
 	PVRSRV_POOL_ENTRY *psEntry;
 	PVRSRV_ERROR eError = PVRSRV_OK;
+	DLLIST_NODE *psChosenNode;
 
 	OSLockAcquire(psPool->hLock);
 
-	/* check if we already have a free element ready */
-	if (psPool->uiNumFree)
-	{
-		DLLIST_NODE *psChosenNode;
-		psChosenNode = dllist_get_next_node(&psPool->sFreeList);
-		dllist_remove_node(psChosenNode);
-
-		psEntry = IMG_CONTAINER_OF(psChosenNode, PVRSRV_POOL_ENTRY, sNode);
-
-		psPool->uiNumFree--;
-	}
-	else
+	psChosenNode = dllist_get_next_node(&psPool->sFreeList);
+	if (unlikely(psChosenNode == NULL))
 	{
 		/* no available elements in the pool. try to create one */
 
 		eError = _CreateNewPoolEntry(psPool, &psEntry);
 
 		PVR_GOTO_IF_ERROR(eError, out_unlock);
+	}
+	else
+	{
+		dllist_remove_node(psChosenNode);
+
+		psEntry = IMG_CONTAINER_OF(psChosenNode, PVRSRV_POOL_ENTRY, sNode);
+
+		psPool->uiNumFree--;
 	}
 
 #if defined(DEBUG) || defined(SUPPORT_VALIDATION)

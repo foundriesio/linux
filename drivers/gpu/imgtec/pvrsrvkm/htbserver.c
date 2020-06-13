@@ -783,6 +783,7 @@ HTBLogKM(
 
 	PVR_LOG_GOTO_IF_INVALID_PARAM(ui32NumArgs == HTB_SF_PARAMNUM(SF), eError, ReturnError);
 	PVR_LOG_GOTO_IF_INVALID_PARAM(!(ui32NumArgs != 0 && aui32Args == NULL), eError, ReturnError);
+	PVR_LOG_GOTO_IF_INVALID_PARAM(ui32NumArgs <= HTB_LOG_MAX_PARAMS, eError, ReturnError);
 
 	if ( g_hTLStream
 			&& ( 0 == PID || ~0 == PID || HTB_LOGMODE_ALLPID == g_sCtrl.eLogMode || _ValidPID(PID) )
@@ -866,4 +867,19 @@ ReturnError:
 	return eError;
 }
 
+/*************************************************************************/ /*!
+ @Function      HTBIsConfigured
+ @Description   Determine if HTB stream has been configured
+
+ @Input         none
+
+ @Return        IMG_FALSE       Stream has not been configured
+                IMG_TRUE        Stream has been configured
+
+*/ /**************************************************************************/
+IMG_BOOL
+HTBIsConfigured(void)
+{
+	return g_bConfigured;
+}
 /* EOF */

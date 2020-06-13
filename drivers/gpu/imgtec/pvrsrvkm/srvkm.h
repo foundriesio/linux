@@ -53,49 +53,53 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 struct _PVRSRV_DEVICE_NODE_;
 
 /*************************************************************************/ /*!
-@Function     PVRSRVDriverInit
-@Description  Performs one time initialisation of Services.
+@Function     PVRSRVCommonDriverInit
+@Description  Performs one time driver initialisation of Services Common and
+              Device layers.
 @Return       PVRSRV_ERROR   PVRSRV_OK on success and an error otherwise
 */ /**************************************************************************/
-PVRSRV_ERROR IMG_CALLCONV PVRSRVDriverInit(void);
+PVRSRV_ERROR IMG_CALLCONV PVRSRVCommonDriverInit(void);
 
 /*************************************************************************/ /*!
-@Function     PVRSRVDriverInit
-@Description  Performs one time de-initialisation of Services.
+@Function     PVRSRVCommonDriverInit
+@Description  Performs one time driver de-initialisation of Services.
 @Return       void
 */ /**************************************************************************/
-void IMG_CALLCONV PVRSRVDriverDeInit(void);
+void IMG_CALLCONV PVRSRVCommonDriverDeInit(void);
 
 /*************************************************************************/ /*!
-@Function     PVRSRVDeviceCreate
-@Description  Creates a PVR Services device node for an OS native device.
+@Function     PVRSRVCommonDeviceCreate
+@Description  Creates and initialises a common layer Services device node
+              for an OS native device. First stage device discovery.
 @Input        pvOSDevice      OS native device
-@Input        i32UMIdentifier A unique identifier which helps recognize this
+@Input        i32UMIdentifier A unique identifier which helps recognise this
                               Device in the UM space.
 @Output       ppsDeviceNode   Points to the new device node on success
 @Return       PVRSRV_ERROR    PVRSRV_OK on success and an error otherwise
 */ /**************************************************************************/
 PVRSRV_ERROR IMG_CALLCONV
-PVRSRVDeviceCreate(void *pvOSDevice, IMG_INT32 i32UMIdentifier,
+PVRSRVCommonDeviceCreate(void *pvOSDevice, IMG_INT32 i32UMIdentifier,
 				   struct _PVRSRV_DEVICE_NODE_ **ppsDeviceNode);
 
 /*************************************************************************/ /*!
-@Function     PVRSRVDeviceInitialise
-@Description  Initialises the given device, created by PVRSRVDeviceCreate, so
-              that's in a functional state ready to be used.
+@Function     PVRSRVCommonDeviceInitialise
+@Description  Initialises the device layer specifics (e.g. boot FW etc)
+              for the supplied device node, created previously by
+              PVRSRVCommonDeviceCreate. The device is ready for use when this
+              second stage device initialisation returns successfully.
 @Input        psDeviceNode  Device node of the device to be initialised
 @Return       PVRSRV_ERROR  PVRSRV_OK on success and an error otherwise
 */ /**************************************************************************/
-PVRSRV_ERROR PVRSRVDeviceInitialise(struct _PVRSRV_DEVICE_NODE_ *psDeviceNode);
+PVRSRV_ERROR PVRSRVCommonDeviceInitialise(struct _PVRSRV_DEVICE_NODE_ *psDeviceNode);
 
 /*************************************************************************/ /*!
-@Function     PVRSRVDeviceDestroy
+@Function     PVRSRVCommonDeviceDestroy
 @Description  Destroys a PVR Services device node.
 @Input        psDeviceNode  Device node to destroy
 @Return       PVRSRV_ERROR  PVRSRV_OK on success and an error otherwise
 */ /**************************************************************************/
 PVRSRV_ERROR IMG_CALLCONV
-PVRSRVDeviceDestroy(struct _PVRSRV_DEVICE_NODE_ *psDeviceNode);
+PVRSRVCommonDeviceDestroy(struct _PVRSRV_DEVICE_NODE_ *psDeviceNode);
 
 /******************
 HIGHER LEVEL MACROS

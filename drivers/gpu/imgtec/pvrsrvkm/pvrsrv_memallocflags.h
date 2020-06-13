@@ -650,7 +650,7 @@ typedef IMG_UINT32 PVRSRV_MEMALLOCFLAGS_T;
 /*!
  * The privileged OSID 0 driver (i.e. host/primary) can map allocations
  * on behalf of an unprivileged drivers (i.e. OSIDs 1 up to 7).
- * This value indicates which OSid is this allocation for.
+ * This value indicates which OSid this allocation is for.
  */
 #define PVRSRV_MEMALLOCFLAG_FW_ALLOC_OSID_SHIFT			(23)
 #define PVRSRV_MEMALLOCFLAG_FW_ALLOC_OSID_MASK			(7U << 23)

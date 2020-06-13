@@ -40,47 +40,53 @@
 	| TCC897X_SDHC_FBEN(0))
 
 /* Telechips SDHC Specific Registers for TCC803x rev. 1*/
-#define TCC803X_SDHC_CORE_CLK_REG0			(0x100)
-#define TCC803X_SDHC_CORE_CLK_REG1			(0x104)
-#define TCC803X_SDHC_CORE_CLK_REG2			(0x108)
+#define TCC_SDHC_CORE_CLK_REG0			(0x100)
+#define TCC_SDHC_CORE_CLK_REG1			(0x104)
+#define TCC_SDHC_CORE_CLK_REG2			(0x108)
 
-#define TCC803X_SDHC_CORE_CLK_DIV_EN(x)			((x & 0x1) << 0)
-#define TCC803X_SDHC_CORE_CLK_CLK_SEL(x)		((x & 0x1) << 1)
-#define TCC803X_SDHC_CORE_CLK_DIV_VAL_OFFSET	(8)
-#define TCC803X_SDHC_CORE_CLK_DIV_VAL(x)		((x & 0xFF) << TCC803X_SDHC_CORE_CLK_DIV_VAL_OFFSET)
+#define TCC_SDHC_CORE_CLK_DIV_EN(x)			((x & 0x1) << 0)
+#define TCC_SDHC_CORE_CLK_CLK_SEL(x)		((x & 0x1) << 1)
+#define TCC_SDHC_CORE_CLK_DIV_VAL_OFFSET	(8)
+#define TCC_SDHC_CORE_CLK_DIV_VAL(x)		((x & 0xFF) << TCC_SDHC_CORE_CLK_DIV_VAL_OFFSET)
 
-#define TCC803X_SDHC_CORE_CLK_MASK_EN(x)	((x & 0x1) << 0)
-#define TCC803X_SDHC_CORE_CLK_GATE_DIS(x)	((x & 0x1) << 16)
+#define TCC_SDHC_CORE_CLK_MASK_EN(x)	((x & 0x1) << 0)
+#define TCC_SDHC_CORE_CLK_GATE_DIS(x)	((x & 0x1) << 16)
 
-#define TCC803X_SDHC_DQS_POS_DETECT_DLY(x)	((x & 0xF) << 4)
-#define TCC803X_SDHC_DQS_NEG_DETECT_DLY(x)	((x & 0xF) << 20)
+#define TCC_SDHC_DQS_POS_DETECT_DLY(x)	((x & 0xF) << 4)
+#define TCC_SDHC_DQS_NEG_DETECT_DLY(x)	((x & 0xF) << 20)
 
-#define TCC803X_SDHC_SD_DQS_DLY			(0x114)
+#define TCC_SDHC_SD_DQS_DLY		(0x114)
 
-#define TCC803X_SDHC_TX_CLKDLY_OFFSET(ch)	(0x10C - (ch * 0x50) + ((ch/2) * 0x4))
-#define TCC803X_SDHC_RX_CLKDLY_VAL_OFFSET(ch)	(0x128 - (ch * 0x48))
+#define TCC_SDHC_TX_CLKDLY_OFFSET(ch)		(0x10C - (ch * 0x50) + ((ch/2) * 0x4))
+#define TCC_SDHC_RX_CLKDLY_VAL_OFFSET(ch)	(0x128 - (ch * 0x48))
 /* (0x128 - (ch * 0x50) + (ch * 0x8)) */
-#define TCC803X_SDHC_TAPDLY_OFFSET(ch)		(0x12C - (ch * 0x2C))
+#define TCC_SDHC_TAPDLY_OFFSET(ch)		(0x12C - (ch * 0x2C))
 
-#define TCC803X_SDHC_CMDDLY(ch)		TCC803X_SDHC_TAPDLY_OFFSET(ch)
-#define TCC803X_SDHC_DATADLY(ch, x)	TCC803X_SDHC_TAPDLY_OFFSET(ch) + (0x4 + (x * 0x4))
+#define TCC_SDHC_TX_CLKDLY_OFFSET(ch)		(0x10C - (ch * 0x50) + ((ch/2) * 0x4))
+#define TCC_SDHC_RX_CLKDLY_VAL_OFFSET(ch)	(0x128 - (ch * 0x48))
+>>>>>>> origin/kernel-v4.14-tcc805x-rebase
+/* (0x128 - (ch * 0x50) + (ch * 0x8)) */
+#define TCC_SDHC_TAPDLY_OFFSET(ch)		(0x12C - (ch * 0x2C))
 
-#define TCC803X_SDHC_TAPDLY_IN(x)	((x & 0x1F) << 0)
-#define TCC803X_SDHC_TAPDLY_OUT(x)	((x & 0x1F) << 8)
-#define TCC803X_SDHC_TAPDLY_OEN(x)	((x & 0x1F) << 16)
+#define TCC_SDHC_CMDDLY(ch)			TCC_SDHC_TAPDLY_OFFSET(ch)
+#define TCC_SDHC_DATADLY(ch, x)		TCC_SDHC_TAPDLY_OFFSET(ch) + (0x4 + (x * 0x4))
 
-#define TCC803X_SDHC_MK_TX_CLKDLY(ch, x) (ch != 2 ? \
+#define TCC_SDHC_TAPDLY_IN(x)	((x & 0x1F) << 0)
+#define TCC_SDHC_TAPDLY_OUT(x)	((x & 0x1F) << 8)
+#define TCC_SDHC_TAPDLY_OEN(x)	((x & 0x1F) << 16)
+
+#define TCC_SDHC_MK_TX_CLKDLY(ch, x) (ch != 2 ? \
 	((x & 0x1F) << (ch * 16)) : \
 	(((x & 0x1E) << 16) | (x & 0x1)) )
-#define TCC803X_SDHC_MK_RX_CLKTA_VAL(x) ((x & 0x3) << 0)
-#define TCC803X_SDHC_MK_TAPDLY(in, out)	(TCC803X_SDHC_TAPDLY_IN(in) \
-	| TCC803X_SDHC_TAPDLY_OUT(out) \
-	| TCC803X_SDHC_TAPDLY_OEN(out) )
+#define TCC_SDHC_MK_RX_CLKTA_VAL(x) ((x & 0x3) << 0)
+#define TCC_SDHC_MK_TAPDLY(in, out)	(TCC_SDHC_TAPDLY_IN(in) \
+	| TCC_SDHC_TAPDLY_OUT(out) \
+	| TCC_SDHC_TAPDLY_OEN(out) )
 
-#define TCC803X_SDHC_CLKOUTDLY_DEF_TAP	15
-#define TCC803X_SDHC_CMDDLY_DEF_TAP		15
-#define TCC803X_SDHC_DATADLY_DEF_TAP	15
-#define TCC803X_SDHC_CLK_TXDLY_DEF_TAP	15
+#define TCC_SDHC_CLKOUTDLY_DEF_TAP_V2	15
+#define TCC_SDHC_CMDDLY_DEF_TAP_V2		15
+#define TCC_SDHC_DATADLY_DEF_TAP_V2		15
+#define TCC_SDHC_CLK_TXDLY_DEF_TAP_V2	15
 
 /* Telechips SDHC Specific Registers for others (such as TCC803x rev. 0, tcc899x, and so on)*/
 /* Specific registers of SDMMC registers */

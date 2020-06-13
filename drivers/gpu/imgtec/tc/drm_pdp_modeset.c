@@ -390,13 +390,15 @@ err_config_cleanup:
 static inline int pdp_modeset_init_fbdev(struct pdp_drm_private *dev_priv)
 {
 #if defined(CONFIG_DRM_FBDEV_EMULATION)
+	struct pdp_fbdev *fbdev;
 	int err;
 
-	dev_priv->fbdev = pdp_fbdev_create(dev_priv);
-	if (IS_ERR(dev_priv->fbdev)) {
+	fbdev = pdp_fbdev_create(dev_priv);
+	if (IS_ERR(fbdev)) {
 		DRM_ERROR("failed to create a fb device");
-		return PTR_ERR(dev_priv->fbdev);
+		return PTR_ERR(fbdev);
 	}
+	dev_priv->fbdev = fbdev;
 
 	/*
 	 * pdpdrmfb is registered and available for userspace to use. If this

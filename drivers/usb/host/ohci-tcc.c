@@ -573,7 +573,7 @@ static int tcc_ohci_resume(struct device *dev)
 	tcc_ohci_phy_ctrl(tcc_ohci, ON);
 	tcc_ohci_vbus_ctrl(tcc_ohci, ON);
 	tcc_ohci_clk_ctrl(tcc_ohci, ON);
-	#if !defined(CONFIG_ARCH_TCC898X) && !defined(CONFIG_ARCH_TCC899X) && defined(CONFIG_ARCH_TCC803X) && !defined(CONFIG_ARCH_TCC901X) && defined(CONFIG_ARCH_TCC805X)
+	#if !defined(CONFIG_ARCH_TCC898X) && !defined(CONFIG_ARCH_TCC899X) && !defined(CONFIG_ARCH_TCC803X) && !defined(CONFIG_ARCH_TCC901X) && !defined(CONFIG_ARCH_TCC805X)
 	tcc_ohci_PHY_cfg(dev);
 	#endif
 	#endif

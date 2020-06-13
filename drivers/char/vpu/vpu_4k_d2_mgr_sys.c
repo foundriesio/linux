@@ -27,11 +27,6 @@
 
 #include "vpu_4k_d2_mgr_sys.h"
 
-#define dprintk(msg...) //printk( "TCC_4K_D2_VMGR_SYS: " msg);
-#define detailk(msg...) //printk( "TCC_4K_D2_VMGR_SYS: " msg);
-#define err(msg...) printk("TCC_4K_D2_VMGR_SYS[Err]: "msg);
-#define info(msg...) printk("TCC_4K_D2_VMGR_SYS[Info]: "msg);
-
 static struct clk *fbus_vbus_clk = NULL;
 static struct clk *fbus_chevc_clk = NULL;
 static struct clk *fbus_bhevc_clk = NULL;
@@ -78,7 +73,7 @@ inline void vbus_matrix(void)
 
 void vmgr_4k_d2_enable_clock(int vbus_no_ctrl, int only_clk_ctrl)
 {
-    dprintk("@@ vmgr_4k_d2_enable_clock \n");
+    _DBG(DEBUG_RSTCLK, "enter");
     if (fbus_vbus_clk && !vbus_no_ctrl)
         clk_prepare_enable(fbus_vbus_clk);
     if (fbus_chevc_clk)
@@ -112,7 +107,7 @@ void vmgr_4k_d2_enable_clock(int vbus_no_ctrl, int only_clk_ctrl)
 
 void vmgr_4k_d2_disable_clock(int vbus_no_ctrl, int only_clk_ctrl)
 {
-    dprintk("@@ vmgr_4k_d2_disable_clock \n");
+    _DBG(DEBUG_RSTCLK, "enter");
 
     if (vbus_hevc_bus_clk)
         clk_disable_unprepare(vbus_hevc_bus_clk);
@@ -128,8 +123,8 @@ void vmgr_4k_d2_disable_clock(int vbus_no_ctrl, int only_clk_ctrl)
 #endif
 
 #if (defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC901X)) && defined(USE_TA_LOADING)
-	if(!only_clk_ctrl)
-	    vpu_optee_close();
+    if(!only_clk_ctrl)
+        vpu_optee_close();
 #endif
 }
 
@@ -226,8 +221,7 @@ void vmgr_4k_d2_change_clock(unsigned int width, unsigned int height)
 	if(fbus_vbus_clk){
 		err = clk_set_rate(fbus_bhevc_clk, vbus_clk_value);
 		if (err) {
-	        pr_err("cannot change fbus_vbus_clk rate to %ld: %d\n",
-	               vbus_clk_value, err);
+			pr_err("cannot change fbus_vbus_clk rate to %ld: %d\n", vbus_clk_value, err);
 		}
 		else
 			bclk_changed |= 0x1;
@@ -236,8 +230,7 @@ void vmgr_4k_d2_change_clock(unsigned int width, unsigned int height)
 	if(fbus_bhevc_clk){
 		err = clk_set_rate(fbus_bhevc_clk, bhevc_clk_value);
 		if (err) {
-	        pr_err("cannot change fbus_bhevc_clk rate to %ld: %d\n",
-	               bhevc_clk_value, err);
+			pr_err("cannot change fbus_bhevc_clk rate to %ld: %d\n", bhevc_clk_value, err);
 		}
 		else
 			bclk_changed |= 0x2;
@@ -246,8 +239,7 @@ void vmgr_4k_d2_change_clock(unsigned int width, unsigned int height)
 	if(fbus_chevc_clk){
  		err = clk_set_rate(fbus_chevc_clk, chevc_clk_value);
 		if (err) {
-	        pr_err("cannot change fbus_chevc_clk rate to %ld: %d\n",
-	               chevc_clk_value, err);
+			pr_err("cannot change fbus_chevc_clk rate to %ld: %d\n", chevc_clk_value, err);
 		}
 		else
 			bclk_changed |= 0x4;
@@ -261,41 +253,13 @@ void vmgr_4k_d2_change_clock(unsigned int width, unsigned int height)
 #endif
 }
 
-void vmgr_4k_d2_restore_clock(int vbus_no_ctrl, int opened_cnt)
-{
-#if 1
-	int opened_count = opened_cnt;
-
-	vmgr_4k_d2_hw_reset(1);
-    while(opened_count)
-    {
-        vmgr_4k_d2_disable_clock(vbus_no_ctrl, 0);
-        if(opened_count > 0)
-            opened_count--;
-    }
-
-    //msleep(1);
-    opened_count = opened_cnt;
-    while(opened_count)
-    {
-        vmgr_4k_d2_enable_clock(vbus_no_ctrl, 0);
-        if(opened_count > 0)
-            opened_count--;
-    }
-	vmgr_4k_d2_hw_reset(0);
-#else
-    vmgr_4k_d2_hw_reset(1);
-	vmgr_4k_d2_hw_reset(0);
-#endif
-}
-
 void vmgr_4k_d2_get_reset(struct device_node *node)
 {
 #if defined( VIDEO_IP_DIRECT_RESET_CTRL)
     if(node == NULL) {
         printk("device node is null\n");
     }
-	
+
     vbus_hevc_bus_reset = of_reset_control_get(node, "hevc_bus");
     BUG_ON(IS_ERR(vbus_hevc_bus_reset));
 
@@ -318,31 +282,95 @@ void vmgr_4k_d2_put_reset(void)
 #endif
 }
 
-void vmgr_4k_d2_hw_reset(int reset)
+int vmgr_4k_d2_get_reset_register(void)
+{
+    return 0;
+}
+
+void vmgr_4k_d2_hw_assert(void)
 {
 #if defined( VIDEO_IP_DIRECT_RESET_CTRL)
-	if(reset) {
-	    udelay(1000); //1ms
+    _DBG(DEBUG_RSTCLK, "enter");
 
-	    if (vbus_hevc_bus_reset) {
-	        reset_control_assert(vbus_hevc_bus_reset);
-	    }
-	    if (vbus_hevc_core_reset) {
-	        reset_control_assert(vbus_hevc_core_reset);
-	    }
-		udelay(1000); //1ms
-	}
-	else {
-	    udelay(1000); //1ms
+    if (vbus_hevc_bus_reset)
+    {
+        reset_control_assert(vbus_hevc_bus_reset);
+    }
 
-	    if (vbus_hevc_bus_reset) {
-	        reset_control_deassert(vbus_hevc_bus_reset);
-	    }
-	    if (vbus_hevc_core_reset) {
-	        reset_control_deassert(vbus_hevc_core_reset);
-	    }
-	    udelay(1000); //1ms
-	}
+    if (vbus_hevc_core_reset)
+    {
+        reset_control_assert(vbus_hevc_core_reset);
+    }
+
+    _DBG(DEBUG_RSTCLK, "out!! (rsr:0x%x)", vmgr_4k_d2_get_reset_register());
+#endif
+}
+
+void vmgr_4k_d2_hw_deassert(void)
+{
+#if defined( VIDEO_IP_DIRECT_RESET_CTRL)
+    _DBG(DEBUG_RSTCLK, "enter");
+
+    if (vbus_hevc_bus_reset) {
+        reset_control_deassert(vbus_hevc_bus_reset);
+    }
+
+    if (vbus_hevc_core_reset) {
+        reset_control_deassert(vbus_hevc_core_reset);
+    }
+
+    _DBG(DEBUG_RSTCLK, "out!! (rsr:0x%x)", vmgr_4k_d2_get_reset_register());
+#endif
+}
+
+void vmgr_4k_d2_hw_reset(void)
+{
+#if defined( VIDEO_IP_DIRECT_RESET_CTRL)
+    _DBG(DEBUG_RSTCLK, "enter");
+
+    udelay(1000); //1ms
+
+    vmgr_4k_d2_hw_assert();
+
+    udelay(1000); //1ms
+
+    vmgr_4k_d2_hw_deassert();
+
+    udelay(1000); //1ms
+
+    _DBG(DEBUG_RSTCLK, "out (rsr:0x%x)", vmgr_4k_d2_get_reset_register());
+#endif
+}
+
+void vmgr_4k_d2_restore_clock(int vbus_no_ctrl, int opened_cnt)
+{
+#if 1
+    int opened_count = opened_cnt;
+
+    vmgr_4k_d2_hw_assert();
+
+    udelay(1000); //1ms
+
+    while(opened_count)
+    {
+        vmgr_4k_d2_disable_clock(vbus_no_ctrl, 0);
+        if(opened_count > 0)
+            opened_count--;
+    }
+
+    udelay(1000); //1ms
+
+    opened_count = opened_cnt;
+    while(opened_count)
+    {
+        vmgr_4k_d2_enable_clock(vbus_no_ctrl, 0);
+        if(opened_count > 0)
+            opened_count--;
+    }
+
+    vmgr_4k_d2_hw_deassert();
+#else
+    vmgr_4k_d2_hw_reset();
 #endif
 }
 
@@ -356,7 +384,8 @@ void vmgr_4k_d2_disable_irq(unsigned int irq)
     disable_irq(irq);
 }
 
-void vmgr_4k_d2_free_irq(unsigned int irq, void * dev_id) {
+void vmgr_4k_d2_free_irq(unsigned int irq, void * dev_id)
+{
     free_irq(irq, dev_id);
 }
 

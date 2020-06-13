@@ -321,8 +321,10 @@ typedef struct
 	IMG_UINT32                 aui32CrPollCount[RGXFW_THREAD_NUM];
 	IMG_UINT64 RGXFW_ALIGN     ui64StartIdleTime;
 #if defined(SUPPORT_POWMON_COMPONENT)
+#if defined(SUPPORT_POWER_VALIDATION_VIA_DEBUGFS)
 	RGXFWIF_TRACEBUF_SPACE     sPowerMonBuf;
 	IMG_UINT32                 ui32PowerMonBufSizeInDWords;
+#endif
 	IMG_UINT32                 ui32PowMonEnergy;                      /*!< Non-volatile power monitoring results:
 	                                                                   * static power (by default)
 	                                                                   * energy count (PVR_POWER_MONITOR_DYNAMIC_ENERGY) */
@@ -676,7 +678,6 @@ typedef struct
 
 } UNCACHED_ALIGN RGXFWIF_FWMEMCONTEXT;
 
-
 /*!
  * FW context state flags
  */
@@ -797,7 +798,7 @@ typedef struct
 */
 typedef struct
 {
-	RGXFWIF_FWCOMMONCONTEXT	sCDMContext;				/*!< Firmware context for the CDM */
+	RGXFWIF_FWCOMMONCONTEXT sCDMContext;				/*!< Firmware context for the CDM */
 
 	RGXFWIF_STATIC_COMPUTECONTEXT_STATE sStaticComputeContextState;
 
@@ -964,7 +965,7 @@ typedef struct
 	RGXFWIF_POWER_TYPE					ePowType;					/*!< Type of power request */
 	union
 	{
-		IMG_UINT32						ui32SPUPowerStateMask;	/*!< New SPU power state mask*/
+		IMG_UINT32						ui32PowUnitsStateMask;/*!< New power units state mask*/
 		IMG_BOOL						bForced;				/*!< If the operation is mandatory */
 		RGXFWIF_POWER_FORCE_IDLE_TYPE	ePowRequestType;		/*!< Type of Request. Consolidating Force Idle, Cancel Forced Idle, Host Timeout */
 		IMG_UINT32						ui32ActivePMLatencyms;	/*!< Number of milliseconds to set APM latency */
@@ -1192,7 +1193,7 @@ typedef enum
 	RGXFWIF_KCCB_CMD_HWPERF_CONFIG_BLKS                = 202U | RGX_CMD_MAGIC_DWORD_SHIFTED, /*!< Configure, clear and enable multiple HWPerf blocks */
 	RGXFWIF_KCCB_CMD_HWPERF_CTRL_BLKS                  = 203U | RGX_CMD_MAGIC_DWORD_SHIFTED, /*!< Enable or disable multiple HWPerf blocks (reusing existing configuration) */
 	RGXFWIF_KCCB_CMD_CORECLKSPEEDCHANGE                = 204U | RGX_CMD_MAGIC_DWORD_SHIFTED, /*!< Core clock speed change event */
-	RGXFWIF_KCCB_CMD_HWPERF_CONFIG_BLKS_DIRECT         = 205U | RGX_CMD_MAGIC_DWORD_SHIFTED, /*!< Configure, clear and enable multiple HWPerf blocks during the init process */
+	RGXFWIF_KCCB_CMD_HWPERF_CONFIG_ENABLE_BLKS_DIRECT  = 205U | RGX_CMD_MAGIC_DWORD_SHIFTED, /*!< Configure, clear and enable multiple HWPerf blocks during the init process */
 	RGXFWIF_KCCB_CMD_LOGTYPE_UPDATE                    = 206U | RGX_CMD_MAGIC_DWORD_SHIFTED, /*!< Ask the firmware to update its cached ui32LogType value from the (shared) tracebuf control structure */
 	RGXFWIF_KCCB_CMD_PDVFS_LIMIT_MAX_FREQ              = 208U | RGX_CMD_MAGIC_DWORD_SHIFTED,
 	/* Free slot */
@@ -1246,7 +1247,6 @@ typedef struct
 		RGXFWIF_OS_STATE_CHANGE_DATA        sCmdOSOnlineStateData;  /*!< Data for updating the Guest Online states */
 		RGXFWIF_DEV_VIRTADDR                sTBIBuffer;             /*!< Dev address for TBI buffer allocated on demand */
 		RGXFWIF_KCCB_CMD_FORCE_UPDATE_DATA  sForceUpdateData;       /*!< Data for signalling all unmet fences for a given CCB */
-		RGXFWIF_HWPERF_CNTR_CONFIG          eCntrConfigCmd;         /*!< Data for configuring HWPerf Counter block */
 		RGXFWIF_KCCB_CMD_PHR_CFG_DATA       sPeriodicHwResetCfg;    /*!< Data for configuring the Periodic Hw Reset behaviour */
 	} UNCACHED_ALIGN uCmdData;
 } UNCACHED_ALIGN RGXFWIF_KCCB_CMD;
@@ -1553,7 +1553,7 @@ typedef struct
 {
 	RGXFWIF_COMPCHECKS_BVNC		sHWBVNC;				/*!< hardware BVNC (from the RGX registers) */
 	RGXFWIF_COMPCHECKS_BVNC		sFWBVNC;				/*!< firmware BVNC */
-	IMG_UINT32					ui32FWProcessorVersion;	/*!< identifier of the MIPS/META version */
+	IMG_UINT32					ui32FWProcessorVersion;	/*!< identifier of the FW processor version */
 	IMG_UINT32					ui32DDKVersion;			/*!< software DDK version */
 	IMG_UINT32					ui32DDKBuild;			/*!< software DDK build no. */
 	IMG_UINT32					ui32BuildOptions;		/*!< build options bit-field */
@@ -1571,7 +1571,7 @@ typedef struct
 	IMG_UINT32         ui32RuntimeCfgFlags;        /* Compatibility and other flags */
 	IMG_BOOL           bActivePMLatencyPersistant; /* If set, APM latency does not reset to system default each GPU power transition */
 	IMG_UINT32         ui32CoreClockSpeed;         /* Core clock speed, currently only used to calculate timer ticks */
-	IMG_UINT32         ui32SPUPowerStateMask;      /* SPU power state mask set by the host */
+	IMG_UINT32         ui32PowUnitsStateMask;      /* Power Unit state mask set by the host */
 	PRGXFWIF_HWPERFBUF sHWPerfBuf;                 /* On-demand allocated HWPerf buffer address, to be passed to the FW */
 	RGXFWIF_DMA_ADDR   sHWPerfDMABuf;
 } RGXFWIF_RUNTIME_CFG;
@@ -1841,7 +1841,6 @@ typedef struct
 #define RGXFWIF_KICK_TEST_OSID_SHIFT   0x1
 #endif
 
-
 /*!
  *****************************************************************************
  * Timer correlation shared data and defines
@@ -1965,31 +1964,34 @@ typedef struct
 
 typedef struct
 {
-	IMG_DEV_VIRTADDR	RGXFW_ALIGN sFreeListBaseDevVAddr;		/*!< Free list device base address */
-	IMG_DEV_VIRTADDR	RGXFW_ALIGN	sFreeListStateDevVAddr;		/*!< Free list state buffer */
-	IMG_DEV_VIRTADDR	RGXFW_ALIGN sFreeListLastGrowDevVAddr;	/*!< Free list base address at last grow */
+	IMG_DEV_VIRTADDR		RGXFW_ALIGN sFreeListBaseDevVAddr;		/*!< Free list device base address */
+	IMG_DEV_VIRTADDR		RGXFW_ALIGN	sFreeListStateDevVAddr;		/*!< Free list state buffer */
+	IMG_DEV_VIRTADDR		RGXFW_ALIGN sFreeListLastGrowDevVAddr;	/*!< Free list base address at last grow */
 
 #if defined(PM_INTERACTIVE_MODE)
-	IMG_UINT64			RGXFW_ALIGN ui64CurrentDevVAddr;
-	IMG_UINT32			ui32CurrentStackTop;
+	IMG_UINT64				RGXFW_ALIGN ui64CurrentDevVAddr;
+	IMG_UINT32				ui32CurrentStackTop;
 #endif
 
-	IMG_UINT32			ui32MaxPages;
-	IMG_UINT32			ui32GrowPages;
-	IMG_UINT32			ui32CurrentPages; /* HW pages */
+	IMG_UINT32				ui32MaxPages;
+	IMG_UINT32				ui32GrowPages;
+	IMG_UINT32				ui32CurrentPages; /* HW pages */
 #if defined(PM_INTERACTIVE_MODE)
-	IMG_UINT32			ui32AllocatedPageCount;
-	IMG_UINT32			ui32AllocatedMMUPageCount;
+	IMG_UINT32				ui32AllocatedPageCount;
+	IMG_UINT32				ui32AllocatedMMUPageCount;
 #endif
-	IMG_UINT32			ui32HWRCounter;
-	IMG_UINT32			ui32FreeListID;
-	IMG_BOOL			bGrowPending;
-	IMG_UINT32			ui32ReadyPages; /* Pages that should be used only when OOM is reached */
-	IMG_UINT32			ui32FreelistFlags; /* Compatibility and other flags */
+#if defined(SUPPORT_SHADOW_FREELISTS)
+	IMG_UINT32				ui32HWRCounter;
+	PRGXFWIF_FWMEMCONTEXT	psFWMemContext;
+#endif
+	IMG_UINT32				ui32FreeListID;
+	IMG_BOOL				bGrowPending;
+	IMG_UINT32				ui32ReadyPages; /* Pages that should be used only when OOM is reached */
+	IMG_UINT32				ui32FreelistFlags; /* Compatibility and other flags */
 
-	IMG_BOOL            bUpdatePending;
-	IMG_UINT32          ui32UpdateNewPages;
-	IMG_UINT32          ui32UpdateNewReadyPages;
+	IMG_BOOL				bUpdatePending;
+	IMG_UINT32				ui32UpdateNewPages;
+	IMG_UINT32				ui32UpdateNewReadyPages;
 } UNCACHED_ALIGN RGXFWIF_FREELIST;
 
 
@@ -2004,6 +2006,56 @@ typedef struct
 #define HWRTDATA_PARTIAL_RENDERED         (1U << 3)
 #define HWRTDATA_KILLED                   (1U << 4)
 #define HWRTDATA_KILL_AFTER_TARESTART     (1U << 5)
+
+#if defined(SUPPORT_SW_TRP)
+#define SW_TRP_SIGNATURE_FIRST_KICK 0U
+#define SW_TRP_SIGNATURE_SECOND_KICK 1U
+#define SW_TRP_SIGNATURE_COUNT 2U
+#define SW_TRP_GEOMETRY_SIGNATURE_SIZE 8U
+#define SW_TRP_FRAGMENT_SIGNATURE_SIZE 8U
+/* Space for tile usage bitmap, one bit per tile on screen */
+#define RGX_FEATURE_TILE_SIZE_X (32U)
+#define RGX_FEATURE_TILE_SIZE_Y (32U)
+#define SW_TRP_TILE_USED_SIZE ((ROGUE_RENDERSIZE_MAXX / RGX_FEATURE_TILE_SIZE_X + ROGUE_RENDERSIZE_MAXY / RGX_FEATURE_TILE_SIZE_Y) / (8U * sizeof(IMG_UINT32)))
+#endif
+
+/*!
+ ******************************************************************************
+ * Parameter Management (PM) control data for RGX
+ *****************************************************************************/
+typedef enum
+{
+	RGXFW_SPM_STATE_NONE = 0,
+	RGXFW_SPM_STATE_PR_BLOCKED,
+	RGXFW_SPM_STATE_WAIT_FOR_GROW,
+	RGXFW_SPM_STATE_WAIT_FOR_HW,
+	RGXFW_SPM_STATE_PR_RUNNING,
+	RGXFW_SPM_STATE_PR_AVOIDED,
+	RGXFW_SPM_STATE_PR_EXECUTED,
+	RGXFW_SPM_STATE_PR_FORCEFREE,
+} RGXFW_SPM_STATE;
+
+typedef struct
+{
+	/* Make sure the structure is aligned to the dcache line */
+	IMG_CHAR RGXFW_ALIGN_DCACHEL align[1];
+
+	RGXFW_SPM_STATE			eSPMState;							/*!< current owner of this PM data structure */
+	RGXFWIF_UFO				sPartialRenderTA3DFence;			/*!< TA/3D fence object holding the value to let through the 3D partial command */
+#if defined(RGX_FIRMWARE)
+	RGXFWIF_FWCOMMONCONTEXT	*ps3dContext;
+	RGXFWIF_CCB_CMD_HEADER	*psCmdHeader;						/*!< Pointer to the header of the command holding the partial render */
+	struct RGXFWIF_CMD3D_STRUCT			*ps3DCmd;							/*!< Pointer to the 3D command holding the partial render register info*/
+	RGXFWIF_PRBUFFER		*apsPRBuffer[RGXFWIF_PRBUFFER_MAXSUPPORTED];	/*!< Array of pointers to PR Buffers which may be used if partial render is needed */
+#else
+	RGXFWIF_DEV_VIRTADDR	ps3dContext;
+	RGXFWIF_DEV_VIRTADDR	psCmdHeader;						/*!< Pointer to the header of the command holding the partial render */
+	RGXFWIF_DEV_VIRTADDR	ps3DCmd;							/*!< Pointer to the 3D command holding the partial render register info*/
+	RGXFWIF_DEV_VIRTADDR	apsPRBuffer[RGXFWIF_PRBUFFER_MAXSUPPORTED];		/*!< Array of pointers to PR Buffers which may be used if partial render is needed */
+#endif
+	RGXFW_FREELIST_TYPE		eOOMFreeListType;					/*!< Indicates the freelist type that went out of memory */
+	bool					b3DMemFreeDetected;					/*!< Indicates if a 3D Memory Free has been detected, which resolves OOM */
+} RGXFW_SPMCTL;
 
 typedef enum
 {
@@ -2080,6 +2132,19 @@ typedef struct
 #if defined(PM_INTERACTIVE_MODE)
 	IMG_UINT64							RGXFW_ALIGN ui64PMAListStackPointer;
 	IMG_UINT32							ui32PMMListStackPointer;
+#endif
+#if defined(SUPPORT_SW_TRP)
+	/* SW-TRP state and signature data
+	 *
+	 * Stored state is used to kick the same geometry or 3D twice,
+	 * State is stored before first kick and restored before second to rerun the same data.
+	 * Signatures from both kicks are stored and compared */
+    IMG_UINT32							aaui32GeometrySignature[SW_TRP_SIGNATURE_COUNT][SW_TRP_GEOMETRY_SIGNATURE_SIZE];
+    IMG_UINT32							aaui32FragmentSignature[SW_TRP_SIGNATURE_COUNT][SW_TRP_FRAGMENT_SIGNATURE_SIZE];
+	IMG_UINT32							ui32KickFlagsCopy;
+	IMG_UINT32							ui32SW_TRPState;
+	IMG_UINT32							aui32TileUsed[SW_TRP_TILE_USED_SIZE];
+	RGXFW_SPMCTL						sSPMCtlCopy;
 #endif
 #if defined(SUPPORT_TRP)
 	/* TRP state

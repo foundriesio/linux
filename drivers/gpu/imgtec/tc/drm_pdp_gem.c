@@ -278,11 +278,13 @@ static void *pdp_gem_prime_kmap_atomic(struct dma_buf *dma_buf,
 }
 #endif
 
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(5, 6, 0))
 static void *pdp_gem_prime_kmap(struct dma_buf *dma_buf,
 				unsigned long page_num)
 {
 	return NULL;
 }
+#endif
 
 static int pdp_gem_prime_mmap(struct dma_buf *dma_buf,
 			      struct vm_area_struct *vma)
@@ -338,7 +340,9 @@ static const struct dma_buf_ops pdp_gem_prime_dmabuf_ops = {
 #if (LINUX_VERSION_CODE < KERNEL_VERSION(4, 19, 0))
 	.map_atomic	= pdp_gem_prime_kmap_atomic,
 #endif
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(5, 6, 0))
 	.map		= pdp_gem_prime_kmap,
+#endif
 #else
 	.kmap_atomic	= pdp_gem_prime_kmap_atomic,
 	.kmap		= pdp_gem_prime_kmap,

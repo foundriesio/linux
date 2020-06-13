@@ -1602,18 +1602,10 @@ static void _RGXClientCCBDumpCommands(RGX_CLIENT_CCB *psClientCCB,
 void RGXCmdHelperInitCmdCCB_CommandSize(IMG_UINT64 ui64FBSCEntryMask,
                                         IMG_UINT32 ui32ClientFenceCount,
                                         IMG_UINT32 ui32ClientUpdateCount,
-#if defined(SUPPORT_SERVER_SYNC_IMPL)
-                                        IMG_UINT32 ui32ServerSyncCount,
-                                        IMG_UINT32 *paui32ServerSyncFlags,
-                                        IMG_UINT32 ui32ServerSyncFlagMask,
-#endif /* SUPPORT_SERVER_SYNC_IMPL */
                                         IMG_UINT32 ui32CmdSize,
                                         RGX_CCB_CMD_HELPER_DATA *psCmdHelperData)
 {
 	IMG_UINT32 ui32FenceCount, ui32UpdateCount, ui32UnfencedUpdateCount;
-#if defined(SUPPORT_SERVER_SYNC_IMPL)
-	IMG_UINT32 i;
-#endif
 
 	/* Init the generated data members */
 	psCmdHelperData->ui32FBSCInvalCmdSize = 0;
@@ -1626,36 +1618,6 @@ void RGXCmdHelperInitCmdCCB_CommandSize(IMG_UINT64 ui64FBSCEntryMask,
 	psCmdHelperData->ui32UnfencedUpdateCmdSize = 0;
 
 	/* Work out how many fences and updates this command will have */
-
-#if defined(SUPPORT_SERVER_SYNC_IMPL)
-	for (i = 0; i < ui32ServerSyncCount; i++)
-	{
-		IMG_UINT32 ui32Flag = paui32ServerSyncFlags[i] & ui32ServerSyncFlagMask;
-
-		if (BITMASK_HAS(ui32Flag, PVRSRV_CLIENT_SYNC_PRIM_OP_CHECK))
-		{
-			/* Server syncs must fence */
-			psCmdHelperData->ui32ServerFenceCount++;
-		}
-
-		/* If it is an update */
-		if (BITMASK_HAS(ui32Flag, PVRSRV_CLIENT_SYNC_PRIM_OP_UPDATE))
-		{
-			/* Is it a fenced update or a progress update (a.k.a unfenced
-			 * update)?*/
-			if (BITMASK_HAS(ui32Flag, PVRSRV_CLIENT_SYNC_PRIM_OP_UNFENCED_UPDATE))
-			{
-				/* it is a progress update */
-				psCmdHelperData->ui32ServerUnfencedUpdateCount++;
-			}
-			else
-			{
-				/* it is a fenced update */
-				psCmdHelperData->ui32ServerUpdateCount++;
-			}
-		}
-	}
-#endif
 
 	/* Total FBSC invalidate command size (header plus command data) */
 
@@ -1716,12 +1678,6 @@ void RGXCmdHelperInitCmdCCB_OtherData(RGX_CLIENT_CCB            *psClientCCB,
                                       IMG_UINT32                ui32ClientUpdateCount,
                                       PRGXFWIF_UFO_ADDR         *pauiUpdateUFOAddress,
                                       IMG_UINT32                *paui32UpdateValue,
-#if defined(SUPPORT_SERVER_SYNC_IMPL)
-                                      IMG_UINT32 ui32ServerSyncCount,
-                                      IMG_UINT32 *paui32ServerSyncFlags,
-                                      IMG_UINT32 ui32ServerSyncFlagMask,
-                                      SERVER_SYNC_PRIMITIVE **papsServerSyncs,
-#endif /* SUPPORT_SERVER_SYNC_IMPL */
                                       IMG_UINT32                ui32CmdSize,
                                       IMG_PBYTE                 pui8DMCmd,
                                       RGXFWIF_CCB_CMD_TYPE      eType,
@@ -1760,14 +1716,6 @@ void RGXCmdHelperInitCmdCCB_OtherData(RGX_CLIENT_CCB            *psClientCCB,
 	psCmdHelperData->pauiUpdateUFOAddress = pauiUpdateUFOAddress;
 	psCmdHelperData->paui32UpdateValue = paui32UpdateValue;
 
-#if defined(SUPPORT_SERVER_SYNC_IMPL)
-	/* Server sync data */
-	psCmdHelperData->ui32ServerSyncCount = ui32ServerSyncCount;
-	psCmdHelperData->paui32ServerSyncFlags = paui32ServerSyncFlags;
-	psCmdHelperData->ui32ServerSyncFlagMask = ui32ServerSyncFlagMask;
-	psCmdHelperData->papsServerSyncs = papsServerSyncs;
-#endif
-
 	/* Command data */
 	psCmdHelperData->ui32CmdSize = ui32CmdSize;
 	psCmdHelperData->pui8DMCmd = pui8DMCmd;
@@ -1794,12 +1742,6 @@ void RGXCmdHelperInitCmdCCB(RGX_CLIENT_CCB            *psClientCCB,
                             IMG_UINT32                ui32ClientUpdateCount,
                             PRGXFWIF_UFO_ADDR         *pauiUpdateUFOAddress,
                             IMG_UINT32                *paui32UpdateValue,
-#if defined(SUPPORT_SERVER_SYNC_IMPL)
-                            IMG_UINT32                ui32ServerSyncCount,
-                            IMG_UINT32                *paui32ServerSyncFlags,
-                            IMG_UINT32                ui32ServerSyncFlagMask,
-                            SERVER_SYNC_PRIMITIVE     **papsServerSyncs,
-#endif /* SUPPORT_SERVER_SYNC_IMPL */
                             IMG_UINT32                ui32CmdSize,
                             IMG_PBYTE                 pui8DMCmd,
                             RGXFWIF_CCB_CMD_TYPE      eType,
@@ -1818,12 +1760,6 @@ void RGXCmdHelperInitCmdCCB(RGX_CLIENT_CCB            *psClientCCB,
 	                                 ui32ClientUpdateCount,
 	                                 pauiUpdateUFOAddress,
 	                                 paui32UpdateValue,
-#if defined(SUPPORT_SERVER_SYNC_IMPL)
-	                                 ui32ServerSyncCount,
-	                                 paui32ServerSyncFlags,
-	                                 ui32ServerSyncFlagMask,
-	                                 papsServerSyncs,
-#endif /* SUPPORT_SERVER_SYNC_IMPL */
 	                                 ui32CmdSize,
 	                                 pui8DMCmd,
 	                                 eType,
@@ -1838,11 +1774,6 @@ void RGXCmdHelperInitCmdCCB(RGX_CLIENT_CCB            *psClientCCB,
 	RGXCmdHelperInitCmdCCB_CommandSize(ui64FBSCEntryMask,
 	                                 ui32ClientFenceCount,
 	                                 ui32ClientUpdateCount,
-#if defined(SUPPORT_SERVER_SYNC_IMPL)
-	                                 ui32ServerSyncCount,
-	                                 paui32ServerSyncFlags,
-	                                 ui32ServerSyncFlagMask,
-#endif /* SUPPORT_SERVER_SYNC_IMPL */
 	                                 ui32CmdSize,
 	                                 psCmdHelperData);
 }
@@ -2190,128 +2121,16 @@ void RGXCmdHelperReleaseCmdCCB(IMG_UINT32 ui32CmdCount,
 		Work out how much space we need for all the command(s)
 	*/
 	ui32AllocSize = RGXCmdHelperGetCommandSize(ui32CmdCount, asCmdHelperData);
-#if defined(SUPPORT_SERVER_SYNC_IMPL)
-	PVRSRVLockServerSync();
-#endif
 	/*
 		For each command fill in the server sync info
 	*/
 	for (i=0;i<ui32CmdCount;i++)
 	{
 		RGX_CCB_CMD_HELPER_DATA *psCmdHelperData = &asCmdHelperData[i];
-#if defined(SUPPORT_SERVER_SYNC_IMPL)
-		void *pvServerFenceStart = psCmdHelperData->pui8ServerFenceStart;
-		void *pvServerUpdateStart = psCmdHelperData->pui8ServerUpdateStart;
-		void *pvServerUnfencedUpdateStart = psCmdHelperData->pui8ServerUnfencedUpdateStart;
-		IMG_UINT32 j;
 
-		/* Now fill in the server fence and updates together */
-		for (j = 0; j < psCmdHelperData->ui32ServerSyncCount; j++)
-		{
-			RGXFWIF_UFO *psUFOPtr;
-			IMG_UINT32 ui32UpdateValue;
-			IMG_UINT32 ui32FenceValue;
-			IMG_UINT32 ui32SyncAddr;
-			PVRSRV_ERROR eError;
-			IMG_UINT32 ui32Flag = psCmdHelperData->paui32ServerSyncFlags[j] & psCmdHelperData->ui32ServerSyncFlagMask;
-			IMG_BOOL bFence = ((ui32Flag & PVRSRV_CLIENT_SYNC_PRIM_OP_CHECK)!=0)?IMG_TRUE:IMG_FALSE;
-			IMG_BOOL bUpdate = ((ui32Flag & PVRSRV_CLIENT_SYNC_PRIM_OP_UPDATE)!=0)?IMG_TRUE:IMG_FALSE;
-			const IMG_BOOL bUnfencedUpdate = ((ui32Flag & PVRSRV_CLIENT_SYNC_PRIM_OP_UNFENCED_UPDATE) == PVRSRV_CLIENT_SYNC_PRIM_OP_UNFENCED_UPDATE)
-				? IMG_TRUE
-				: IMG_FALSE;
-
-			eError = PVRSRVServerSyncQueueHWOpKM_NoGlobalLock(psCmdHelperData->papsServerSyncs[j],
-												 bUpdate,
-												 &ui32FenceValue,
-												 &ui32UpdateValue);
-			/* This function can't fail */
-			PVR_ASSERT(eError == PVRSRV_OK);
-
-			/*
-				As server syncs always fence (we have a check in RGXCmcdHelperInitCmdCCB
-				which ensures the client is playing ball) the filling in of the fence
-				is unconditional.
-			*/
-			eError = ServerSyncGetFWAddr(psCmdHelperData->papsServerSyncs[j], &ui32SyncAddr);
-			if (unlikely(PVRSRV_OK != eError))
-			{
-				PVR_DPF((PVR_DBG_ERROR,
-					"%s: Failed to read Server Sync FW address (%d)",
-					__func__, eError));
-				PVR_ASSERT(eError == PVRSRV_OK);
-			}
-			if (bFence)
-			{
-				PVR_ASSERT(pvServerFenceStart != NULL);
-
-				psUFOPtr = pvServerFenceStart;
-				psUFOPtr->puiAddrUFO.ui32Addr = ui32SyncAddr;
-				psUFOPtr->ui32Value = ui32FenceValue;
-				pvServerFenceStart = IMG_OFFSET_ADDR(pvServerFenceStart, sizeof(RGXFWIF_UFO));
-
-#if defined(LINUX) && defined(SUPPORT_RGX)
-				if (bTraceChecks)
-				{
-					trace_rogue_fence_checks(psCmdHelperData->pszCommandName,
-											 pcszDMName,
-											 ui32CtxAddr,
-											 psCmdHelperData->psClientCCB->ui32HostWriteOffset + ui32AllocSize,
-											 1,
-											 &psUFOPtr->puiAddrUFO,
-											 &psUFOPtr->ui32Value);
-				}
-#endif
-			}
-
-			/* If there is an update then fill that in as well */
-			if (bUpdate)
-			{
-				if (bUnfencedUpdate)
-				{
-					PVR_ASSERT(pvServerUnfencedUpdateStart != NULL);
-
-					psUFOPtr = pvServerUnfencedUpdateStart;
-					psUFOPtr->puiAddrUFO.ui32Addr = ui32SyncAddr;
-					psUFOPtr->ui32Value = ui32UpdateValue;
-					pvServerUnfencedUpdateStart = IMG_OFFSET_ADDR(pvServerUnfencedUpdateStart, sizeof(RGXFWIF_UFO));
-				}
-				else
-				{
-					/* fenced update */
-					PVR_ASSERT(pvServerUpdateStart != NULL);
-
-					psUFOPtr = pvServerUpdateStart;
-					psUFOPtr->puiAddrUFO.ui32Addr = ui32SyncAddr;
-					psUFOPtr->ui32Value = ui32UpdateValue;
-					pvServerUpdateStart = IMG_OFFSET_ADDR(pvServerUpdateStart, sizeof(RGXFWIF_UFO));
-				}
-#if defined(LINUX) && defined(SUPPORT_RGX)
-				if (bTraceUpdates)
-				{
-					trace_rogue_fence_updates(psCmdHelperData->pszCommandName,
-											  pcszDMName,
-											  ui32CtxAddr,
-											  psCmdHelperData->psClientCCB->ui32HostWriteOffset + ui32AllocSize,
-											  1,
-											  &psUFOPtr->puiAddrUFO,
-											  &psUFOPtr->ui32Value);
-				}
-#endif
-
-#if defined(NO_HARDWARE)
-				/*
-				  There is no FW so the host has to do any Sync updates
-				  (client sync updates are done in the client
-				*/
-				PVRSRVServerSyncPrimSetKM(psCmdHelperData->papsServerSyncs[j], ui32UpdateValue);
-#endif
-			}
-		}
-#else
 #if (!defined(LINUX) || !defined(SUPPORT_RGX)) && !defined(PDUMP)
 		PVR_UNREFERENCED_PARAMETER(psCmdHelperData);
 #endif
-#endif /* defined(SUPPORT_SERVER_SYNC_IMPL) */
 
 #if defined(LINUX) && defined(SUPPORT_RGX)
 		if (bTraceChecks)
@@ -2335,42 +2154,6 @@ void RGXCmdHelperReleaseCmdCCB(IMG_UINT32 ui32CmdCount,
 									  psCmdHelperData->paui32UpdateValue);
 		}
 #endif
-
-#if defined(SUPPORT_SERVER_SYNC_IMPL)
-		if (psCmdHelperData->ui32ServerSyncCount)
-		{
-			/*
-				Do some sanity checks to ensure we did the point math right
-			*/
-			if (pvServerFenceStart != NULL)
-			{
-				PVR_ASSERT(pvServerFenceStart ==
-						   (psCmdHelperData->pui8StartPtr +
-						   psCmdHelperData->ui32FenceCmdSize));
-			}
-
-			if (pvServerUpdateStart != NULL)
-			{
-				PVR_ASSERT(pvServerUpdateStart ==
-				           psCmdHelperData->pui8StartPtr             +
-				           psCmdHelperData->ui32FenceCmdSize         +
-				           psCmdHelperData->ui32FBSCInvalCmdSize     +
-				           psCmdHelperData->ui32DMCmdSize            +
-				           psCmdHelperData->ui32UpdateCmdSize);
-			}
-
-			if (pvServerUnfencedUpdateStart != NULL)
-			{
-				PVR_ASSERT(pvServerUnfencedUpdateStart ==
-				           psCmdHelperData->pui8StartPtr             +
-				           psCmdHelperData->ui32FenceCmdSize         +
-				           psCmdHelperData->ui32FBSCInvalCmdSize     +
-				           psCmdHelperData->ui32DMCmdSize            +
-				           psCmdHelperData->ui32UpdateCmdSize        +
-				           psCmdHelperData->ui32UnfencedUpdateCmdSize);
-			}
-		}
-#endif
 		/*
 			All the commands have been filled in so release the CCB space.
 			The FW still won't run this command until we kick it
@@ -2379,9 +2162,6 @@ void RGXCmdHelperReleaseCmdCCB(IMG_UINT32 ui32CmdCount,
 				"%s Command Server Release on FWCtx %08x",
 				psCmdHelperData->pszCommandName, ui32CtxAddr);
 	}
-#if defined(SUPPORT_SERVER_SYNC_IMPL)
-	PVRSRVUnlockServerSync();
-#endif
 
 	_RGXClientCCBDumpCommands(asCmdHelperData[0].psClientCCB,
 							  asCmdHelperData[0].psClientCCB->ui32HostWriteOffset,

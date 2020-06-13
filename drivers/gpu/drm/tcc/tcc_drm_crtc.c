@@ -148,16 +148,6 @@ static void tcc_drm_crtc_disable_vblank(struct drm_crtc *crtc)
 		tcc_crtc->ops->disable_vblank(tcc_crtc);
 }
 
-static u32 tcc_drm_crtc_get_vblank_counter(struct drm_crtc *crtc)
-{
-	struct tcc_drm_crtc *tcc_crtc = to_tcc_crtc(crtc);
-
-	if (tcc_crtc->ops->get_vblank_counter)
-		return tcc_crtc->ops->get_vblank_counter(tcc_crtc);
-
-	return 0;
-}
-
 static const struct drm_crtc_funcs tcc_crtc_funcs = {
 	.set_config	= drm_atomic_helper_set_config,
 	.page_flip	= drm_atomic_helper_page_flip,
@@ -167,7 +157,6 @@ static const struct drm_crtc_funcs tcc_crtc_funcs = {
 	.atomic_destroy_state = drm_atomic_helper_crtc_destroy_state,
 	.enable_vblank = tcc_drm_crtc_enable_vblank,
 	.disable_vblank = tcc_drm_crtc_disable_vblank,
-	.get_vblank_counter = tcc_drm_crtc_get_vblank_counter,
 };
 
 struct tcc_drm_crtc *tcc_drm_crtc_create(struct drm_device *drm_dev,

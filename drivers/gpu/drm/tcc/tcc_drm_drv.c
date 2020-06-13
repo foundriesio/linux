@@ -29,11 +29,16 @@
 #include "tcc_drm_plane.h"
 #include "tcc_drm_vidi.h"
 
+#if defined(CONFIG_ARCH_TCC805X)
+#define DRIVER_NAME	"tccdrm"
+#else
 #define DRIVER_NAME	"tcc-drm"
+#endif
 #define DRIVER_DESC	"Telechips SoC DRM"
 #define DRIVER_DATE	"20160107"
 #define DRIVER_MAJOR	1
 #define DRIVER_MINOR	0
+#define DRIVER_BUILD 	1
 
 static struct device *tcc_drm_get_dma_device(void);
 
@@ -177,6 +182,7 @@ static struct drm_driver tcc_drm_driver = {
 	.date	= DRIVER_DATE,
 	.major	= DRIVER_MAJOR,
 	.minor	= DRIVER_MINOR,
+	.patchlevel = DRIVER_BUILD,
 };
 
 #ifdef CONFIG_PM_SLEEP
@@ -380,6 +386,13 @@ static int tcc_drm_bind(struct device *dev)
 	ret = drm_dev_register(drm, 0);
 	if (ret < 0)
 		goto err_cleanup_fbdev;
+	DRM_INFO("Initialized %s %d.%d.%d %s on minor %d\n",
+		tcc_drm_driver.name,
+		tcc_drm_driver.major,
+		tcc_drm_driver.minor,
+		tcc_drm_driver.patchlevel,
+		tcc_drm_driver.date,
+		drm->primary->index);
 
 	return 0;
 
@@ -450,7 +463,7 @@ static struct platform_driver tcc_drm_platform_driver = {
 	.probe	= tcc_drm_platform_probe,
 	.remove	= tcc_drm_platform_remove,
 	.driver	= {
-		.name	= "tcc-drm",
+		.name	= DRIVER_NAME,
 		.pm	= &tcc_drm_pm_ops,
 	},
 };

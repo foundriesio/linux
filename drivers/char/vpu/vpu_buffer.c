@@ -56,6 +56,10 @@
 #ifdef CONFIG_SUPPORT_TCC_G2V2_VP9
 #include "vp9_mgr.h"
 #endif
+#ifdef CONFIG_SUPPORT_TCC_WAVE420L_VPU_HEVC_ENC
+#include "vpu_hevc_enc_mgr.h"
+#endif
+
 #include <soc/tcc/pmap.h>
 
 #include <video/tcc/tcc_vpu_wbuffer.h>
@@ -110,6 +114,12 @@ extern int vp9mgr_opened(void);
 static MEM_ALLOC_INFO_t gsJpuWork_memInfo;
 extern int jmgr_opened(void);
 #endif
+
+#ifdef CONFIG_SUPPORT_TCC_WAVE420L_VPU_HEVC_ENC
+static MEM_ALLOC_INFO_t gsVpuHevcEncWork_memInfo;
+extern int vmgr_hevc_enc_opened(void);
+#endif
+
 
 #if defined(CONFIG_VENC_CNT_1) || defined(CONFIG_VENC_CNT_2) || defined(CONFIG_VENC_CNT_3) || defined(CONFIG_VENC_CNT_4)
 static MEM_ALLOC_INFO_t gsVpuEncSeqheader_memInfo[VPU_ENC_MAX_CNT];
@@ -167,8 +177,8 @@ int vmem_alloc_count(int type)
 /////////////////////////////////////////
 // page type configuration
 #define PAGE_TYPE_MAX	16
-static int           g_iMmapPropCnt = 0;
-static int           g_aiProperty[PAGE_TYPE_MAX];
+static int g_iMmapPropCnt = 0;
+static int g_aiProperty[PAGE_TYPE_MAX];
 static unsigned long g_aulPageOffset[PAGE_TYPE_MAX];
 
 static char gMemConfigDone = 0;
@@ -546,6 +556,9 @@ static phys_addr_t _vmem_request_phyaddr(unsigned int request_size, vputype type
 			else // only for 1st Decoder.
 			{
 				if( vmgr_get_close(VPU_DEC_EXT) && vmgr_get_close(VPU_ENC)
+#ifdef CONFIG_SUPPORT_TCC_WAVE420L_VPU_HEVC_ENC // VPU HEVC ENC
+					&& vmgr_hevc_enc_get_close(VPU_ENC)
+#endif
 #ifdef CONFIG_SUPPORT_TCC_WAVE512_4K_D2 // HEVC/VP9
 					&& vmgr_4k_d2_get_close(VPU_DEC_EXT) && vmgr_4k_d2_get_close(VPU_ENC)
 #endif
@@ -711,6 +724,7 @@ int _vmem_alloc_dedicated_buffer(void)
 {
 	int ret = 0;
 	int type = 0;
+	unsigned int vpu_hevc_enc_alloc_size = 0;
 	unsigned int vpu_4k_d2_alloc_size = 0;
 	unsigned int hevc_alloc_size = 0;
 	unsigned int jpu_alloc_size = 0;
@@ -723,29 +737,67 @@ int _vmem_alloc_dedicated_buffer(void)
 	unsigned int alloc_slice_size = 0;
 #endif
 
+#ifdef CONFIG_SUPPORT_TCC_WAVE420L_VPU_HEVC_ENC // VPU HEVC ENC
+	if (gsVpuHevcEncWork_memInfo.kernel_remap_addr == 0)
+	{
+		// VPU_HEVC_ENC (WAVE420L) WORK BUFFER
+		gsVpuHevcEncWork_memInfo.request_size = VPU_HEVC_ENC_WORK_BUF_SIZE;
+		if (gsVpuHevcEncWork_memInfo.request_size)
+		{
+			gsVpuHevcEncWork_memInfo.phy_addr = ptr_sw_addr_mem + vpu_hevc_enc_alloc_size + vpu_4k_d2_alloc_size +
+				hevc_alloc_size + jpu_alloc_size + vpu_alloc_size + vp9_alloc_size + seq_alloc_size + user_alloc_size;
+
+			gsVpuHevcEncWork_memInfo.kernel_remap_addr = _vmem_get_virtaddr((phys_addr_t) gsVpuHevcEncWork_memInfo.phy_addr,
+				PAGE_ALIGN(gsVpuHevcEncWork_memInfo.request_size/*-PAGE_SIZE*/));
+
+			dprintk_mem("alloc VPU_4K_D2 workbuffer :: phy = 0x%x, remap = 0x%p, size = 0x%x !! \n", gsVpuHevcEncWork_memInfo.phy_addr,
+				gsVpuHevcEncWork_memInfo.kernel_remap_addr, gsVpuHevcEncWork_memInfo.request_size);
+
+			if (gsVpuHevcEncWork_memInfo.kernel_remap_addr == 0)
+			{
+				err("[0x%p] VPU_4K_D2 workbuffer remap ALLOC_MEMORY failed.\n", gsVpuHevcEncWork_memInfo.kernel_remap_addr );
+				ret = -1;
+				goto Error;
+			}
+
+			vpu_hevc_enc_alloc_size = gsVpuHevcEncWork_memInfo.request_size;
+		}
+	}
+	else
+	{
+		err("[0x%p] VPU_HEVC_ENC (WAVE420L) - WorkBuff : already remapped? \n", gsVpuHevcEncWork_memInfo.kernel_remap_addr );
+	}
+#endif
+
 #ifdef CONFIG_SUPPORT_TCC_WAVE512_4K_D2 // HEVC/VP9
-    if (gsVpu4KD2Work_memInfo.kernel_remap_addr == 0) {
-        // VPU_4K_D2 WORK BUFFER
-        gsVpu4KD2Work_memInfo.request_size = WAVExxx_WORK_BUF_SIZE;
-        if (gsVpu4KD2Work_memInfo.request_size)
-        {
-            gsVpu4KD2Work_memInfo.phy_addr = ptr_sw_addr_mem + vpu_4k_d2_alloc_size + hevc_alloc_size + jpu_alloc_size + vpu_alloc_size + vp9_alloc_size + seq_alloc_size + user_alloc_size;
-			gsVpu4KD2Work_memInfo.kernel_remap_addr = _vmem_get_virtaddr((phys_addr_t)gsVpu4KD2Work_memInfo.phy_addr, PAGE_ALIGN(gsVpu4KD2Work_memInfo.request_size/*-PAGE_SIZE*/));
+    if (gsVpu4KD2Work_memInfo.kernel_remap_addr == 0)
+	{
+		// VPU_4K_D2 WORK BUFFER
+		gsVpu4KD2Work_memInfo.request_size = WAVExxx_WORK_BUF_SIZE;
+		if (gsVpu4KD2Work_memInfo.request_size)
+		{
+			gsVpu4KD2Work_memInfo.phy_addr = ptr_sw_addr_mem + vpu_hevc_enc_alloc_size + vpu_4k_d2_alloc_size +
+				hevc_alloc_size + jpu_alloc_size + vpu_alloc_size + vp9_alloc_size + seq_alloc_size + user_alloc_size;
+			gsVpu4KD2Work_memInfo.kernel_remap_addr = _vmem_get_virtaddr((phys_addr_t)gsVpu4KD2Work_memInfo.phy_addr,
+				PAGE_ALIGN(gsVpu4KD2Work_memInfo.request_size/*-PAGE_SIZE*/));
 
-            dprintk_mem("alloc VPU_4K_D2 workbuffer :: phy = 0x%x, remap = 0x%p, size = 0x%x !! \n", gsVpu4KD2Work_memInfo.phy_addr, gsVpu4KD2Work_memInfo.kernel_remap_addr, gsVpu4KD2Work_memInfo.request_size);
+			dprintk_mem("alloc VPU_4K_D2 workbuffer :: phy = 0x%x, remap = 0x%p, size = 0x%x !! \n", gsVpu4KD2Work_memInfo.phy_addr,
+				gsVpu4KD2Work_memInfo.kernel_remap_addr, gsVpu4KD2Work_memInfo.request_size);
 
-            if (gsVpu4KD2Work_memInfo.kernel_remap_addr == 0) {
-                err("[0x%p] VPU_4K_D2 workbuffer remap ALLOC_MEMORY failed.\n", gsVpu4KD2Work_memInfo.kernel_remap_addr );
-                ret = -1;
-                goto Error;
-            }
-            //memset_io(gsVpu4KD2Work_memInfo.kernel_remap_addr, 0x00, WAVExxx_WORK_BUF_SIZE);
-            vpu_4k_d2_alloc_size = gsVpu4KD2Work_memInfo.request_size;
-        }
-    }
-    else{
-        err("[0x%p] VPU_4K_D2-WorkBuff : already remapped? \n", gsVpu4KD2Work_memInfo.kernel_remap_addr );
-    }
+			if (gsVpu4KD2Work_memInfo.kernel_remap_addr == 0)
+			{
+				err("[0x%p] VPU_4K_D2 workbuffer remap ALLOC_MEMORY failed.\n", gsVpu4KD2Work_memInfo.kernel_remap_addr );
+				ret = -1;
+				goto Error;
+			}
+			//memset_io(gsVpu4KD2Work_memInfo.kernel_remap_addr, 0x00, WAVExxx_WORK_BUF_SIZE);
+			vpu_4k_d2_alloc_size = gsVpu4KD2Work_memInfo.request_size;
+		}
+	}
+	else
+	{
+		err("[0x%p] VPU_4K_D2-WorkBuff : already remapped? \n", gsVpu4KD2Work_memInfo.kernel_remap_addr );
+	}
 #endif
 
 #ifdef CONFIG_SUPPORT_TCC_WAVE410_HEVC // HEVC
@@ -755,12 +807,16 @@ int _vmem_alloc_dedicated_buffer(void)
 		gsWave410_Work_memInfo.request_size = WAVExxx_WORK_BUF_SIZE;
 		if( gsWave410_Work_memInfo.request_size )
 		{
-			gsWave410_Work_memInfo.phy_addr 			= ptr_sw_addr_mem + vpu_4k_d2_alloc_size + hevc_alloc_size + jpu_alloc_size + vpu_alloc_size + vp9_alloc_size + seq_alloc_size + user_alloc_size;
-			gsWave410_Work_memInfo.kernel_remap_addr = _vmem_get_virtaddr((phys_addr_t)gsWave410_Work_memInfo.phy_addr, PAGE_ALIGN(gsWave410_Work_memInfo.request_size/*-PAGE_SIZE*/));
+			gsWave410_Work_memInfo.phy_addr = ptr_sw_addr_mem + vpu_hevc_enc_alloc_size + vpu_4k_d2_alloc_size +
+				hevc_alloc_size + jpu_alloc_size + vpu_alloc_size + vp9_alloc_size + seq_alloc_size + user_alloc_size;
+			gsWave410_Work_memInfo.kernel_remap_addr = _vmem_get_virtaddr((phys_addr_t)gsWave410_Work_memInfo.phy_addr,
+				PAGE_ALIGN(gsWave410_Work_memInfo.request_size/*-PAGE_SIZE*/));
 
-			dprintk_mem("alloc HEVC workbuffer :: phy = 0x%x, remap = 0x%p, size = 0x%x !! \n", gsWave410_Work_memInfo.phy_addr, gsWave410_Work_memInfo.kernel_remap_addr, gsWave410_Work_memInfo.request_size);
+			dprintk_mem("alloc HEVC workbuffer :: phy = 0x%x, remap = 0x%p, size = 0x%x !! \n", gsWave410_Work_memInfo.phy_addr,
+				gsWave410_Work_memInfo.kernel_remap_addr, gsWave410_Work_memInfo.request_size);
 
-			if (gsWave410_Work_memInfo.kernel_remap_addr == 0) {
+			if (gsWave410_Work_memInfo.kernel_remap_addr == 0)
+			{
 				err("[0x%p] HEVC workbuffer remap ALLOC_MEMORY failed.\n", gsWave410_Work_memInfo.kernel_remap_addr );
 				ret = -1;
 				goto Error;
@@ -769,7 +825,8 @@ int _vmem_alloc_dedicated_buffer(void)
 			hevc_alloc_size = gsWave410_Work_memInfo.request_size;
 		}
 	}
-	else{
+	else
+	{
 		err("[0x%p] HEVC-WorkBuff : already remapped? \n", gsWave410_Work_memInfo.kernel_remap_addr );
 	}
 #endif
@@ -781,7 +838,7 @@ int _vmem_alloc_dedicated_buffer(void)
 		gsG2V2_Vp9Work_memInfo.request_size = G2V2_VP9_WORK_BUF_SIZE;
 		if( gsG2V2_Vp9Work_memInfo.request_size )
 		{
-			gsG2V2_Vp9Work_memInfo.phy_addr 			= ptr_sw_addr_mem + vpu_4k_d2_alloc_size + hevc_alloc_size + jpu_alloc_size + vpu_alloc_size + vp9_alloc_size + seq_alloc_size + user_alloc_size;
+			gsG2V2_Vp9Work_memInfo.phy_addr	= ptr_sw_addr_mem + vpu_hevc_enc_alloc_size + vpu_4k_d2_alloc_size + hevc_alloc_size + jpu_alloc_size + vpu_alloc_size + vp9_alloc_size + seq_alloc_size + user_alloc_size;
 			gsG2V2_Vp9Work_memInfo.kernel_remap_addr = _vmem_get_virtaddr((phys_addr_t)gsG2V2_Vp9Work_memInfo.phy_addr, PAGE_ALIGN(gsG2V2_Vp9Work_memInfo.request_size/*-PAGE_SIZE*/));
 
 			dprintk_mem("alloc VP9 workbuffer :: phy = 0x%x, remap = 0x%p, size = 0x%x !! \n", gsG2V2_Vp9Work_memInfo.phy_addr, gsG2V2_Vp9Work_memInfo.kernel_remap_addr, gsG2V2_Vp9Work_memInfo.request_size);
@@ -807,7 +864,7 @@ int _vmem_alloc_dedicated_buffer(void)
 		gsJpuWork_memInfo.request_size = JPU_WORK_BUF_SIZE;
 		if( gsJpuWork_memInfo.request_size )
 		{
-			gsJpuWork_memInfo.phy_addr 			= ptr_sw_addr_mem + vpu_4k_d2_alloc_size + hevc_alloc_size + jpu_alloc_size + vpu_alloc_size + vp9_alloc_size + seq_alloc_size + user_alloc_size;
+			gsJpuWork_memInfo.phy_addr = ptr_sw_addr_mem + vpu_hevc_enc_alloc_size + vpu_4k_d2_alloc_size + hevc_alloc_size + jpu_alloc_size + vpu_alloc_size + vp9_alloc_size + seq_alloc_size + user_alloc_size;
 			gsJpuWork_memInfo.kernel_remap_addr = _vmem_get_virtaddr((phys_addr_t)gsJpuWork_memInfo.phy_addr, PAGE_ALIGN(gsJpuWork_memInfo.request_size/*-PAGE_SIZE*/));
 
 			dprintk_mem("alloc JPU workbuffer :: phy = 0x%x, remap = 0x%p, size = 0x%x !! \n", gsJpuWork_memInfo.phy_addr, gsJpuWork_memInfo.kernel_remap_addr, gsJpuWork_memInfo.request_size);
@@ -832,7 +889,7 @@ int _vmem_alloc_dedicated_buffer(void)
 		gsVpuWork_memInfo.request_size = VPU_WORK_BUF_SIZE;
 		if( gsVpuWork_memInfo.request_size )
 		{
-			gsVpuWork_memInfo.phy_addr 			= ptr_sw_addr_mem + vpu_4k_d2_alloc_size + hevc_alloc_size + jpu_alloc_size + vpu_alloc_size + vp9_alloc_size + seq_alloc_size + user_alloc_size;
+			gsVpuWork_memInfo.phy_addr = ptr_sw_addr_mem + vpu_hevc_enc_alloc_size + vpu_4k_d2_alloc_size + hevc_alloc_size + jpu_alloc_size + vpu_alloc_size + vp9_alloc_size + seq_alloc_size + user_alloc_size;
 			gsVpuWork_memInfo.kernel_remap_addr = _vmem_get_virtaddr((phys_addr_t)gsVpuWork_memInfo.phy_addr, PAGE_ALIGN(gsVpuWork_memInfo.request_size/*-PAGE_SIZE*/));
 
 			dprintk_mem("alloc VPU workbuffer :: phy = 0x%x, remap = 0x%p, size = 0x%x !! \n", gsVpuWork_memInfo.phy_addr, gsVpuWork_memInfo.kernel_remap_addr, gsVpuWork_memInfo.request_size);
@@ -856,10 +913,10 @@ int _vmem_alloc_dedicated_buffer(void)
 		if( gsVpuEncSeqheader_memInfo[type].kernel_remap_addr == 0 )
 		{
 		// SEQ-HEADER BUFFER FOR ENCODER
-			gsVpuEncSeqheader_memInfo[type].request_size 		= PAGE_ALIGN(ENC_HEADER_BUF_SIZE);
+			gsVpuEncSeqheader_memInfo[type].request_size = PAGE_ALIGN(ENC_HEADER_BUF_SIZE);
 			if( gsVpuEncSeqheader_memInfo[type].request_size )
 			{
-				gsVpuEncSeqheader_memInfo[type].phy_addr 			= ptr_sw_addr_mem + vpu_4k_d2_alloc_size + hevc_alloc_size + jpu_alloc_size + vpu_alloc_size + vp9_alloc_size + seq_alloc_size + user_alloc_size;
+				gsVpuEncSeqheader_memInfo[type].phy_addr = ptr_sw_addr_mem + vpu_hevc_enc_alloc_size + vpu_4k_d2_alloc_size + hevc_alloc_size + jpu_alloc_size + vpu_alloc_size + vp9_alloc_size + seq_alloc_size + user_alloc_size;
 				gsVpuEncSeqheader_memInfo[type].kernel_remap_addr = _vmem_get_virtaddr((phys_addr_t)gsVpuEncSeqheader_memInfo[type].phy_addr, PAGE_ALIGN(gsVpuEncSeqheader_memInfo[type].request_size/*-PAGE_SIZE*/));
 
 				dprintk_mem("alloc VPU seqheader_mem[%d] Info buffer :: phy = 0x%x, remap = 0x%p, size = 0x%x !! \n", type, gsVpuEncSeqheader_memInfo[type].phy_addr, gsVpuEncSeqheader_memInfo[type].kernel_remap_addr, gsVpuEncSeqheader_memInfo[type].request_size);
@@ -883,10 +940,10 @@ int _vmem_alloc_dedicated_buffer(void)
 		if( gsVpuUserData_memInfo[type].kernel_remap_addr == 0 )
 		{
 		// USER DATA
-			gsVpuUserData_memInfo[type].request_size 		= PAGE_ALIGN(USER_DATA_BUF_SIZE);
+			gsVpuUserData_memInfo[type].request_size = PAGE_ALIGN(USER_DATA_BUF_SIZE);
 			if( gsVpuUserData_memInfo[type].request_size )
 			{
-				gsVpuUserData_memInfo[type].phy_addr 			= ptr_sw_addr_mem + vpu_4k_d2_alloc_size + hevc_alloc_size + jpu_alloc_size + vpu_alloc_size + vp9_alloc_size + seq_alloc_size + user_alloc_size;
+				gsVpuUserData_memInfo[type].phy_addr = ptr_sw_addr_mem + vpu_hevc_enc_alloc_size + vpu_4k_d2_alloc_size + hevc_alloc_size + jpu_alloc_size + vpu_alloc_size + vp9_alloc_size + seq_alloc_size + user_alloc_size;
 				gsVpuUserData_memInfo[type].kernel_remap_addr = _vmem_get_virtaddr((phys_addr_t)gsVpuUserData_memInfo[type].phy_addr, PAGE_ALIGN(gsVpuUserData_memInfo[type].request_size/*-PAGE_SIZE*/));
 
 				dprintk_mem("alloc VPU userdata_mem[%d] Info buffer :: phy = 0x%x, remap = 0x%p, size = 0x%x !! \n", type, gsVpuUserData_memInfo[type].phy_addr, gsVpuUserData_memInfo[type].kernel_remap_addr, gsVpuUserData_memInfo[type].request_size);
@@ -907,10 +964,10 @@ int _vmem_alloc_dedicated_buffer(void)
 #if defined(CONFIG_TEST_VPU_DRAM_INTLV)
 	if( gsPs_memInfo[VPU_DEC_EXT2].kernel_remap_addr == 0 )
 	{
-		gsPs_memInfo[VPU_DEC_EXT2].request_size 			= PAGE_ALIGN(PS_SAVE_SIZE);
+		gsPs_memInfo[VPU_DEC_EXT2].request_size = PAGE_ALIGN(PS_SAVE_SIZE);
 		if( gsPs_memInfo[VPU_DEC_EXT2].request_size )
 		{
-			gsPs_memInfo[VPU_DEC_EXT2].phy_addr 			= ptr_sw_addr_mem + vpu_4k_d2_alloc_size + hevc_alloc_size + jpu_alloc_size + vpu_alloc_size + vp9_alloc_size + seq_alloc_size + user_alloc_size + alloc_ps_size + alloc_slice_size;
+			gsPs_memInfo[VPU_DEC_EXT2].phy_addr = ptr_sw_addr_mem + vpu_hevc_enc_alloc_size + vpu_4k_d2_alloc_size + hevc_alloc_size + jpu_alloc_size + vpu_alloc_size + vp9_alloc_size + seq_alloc_size + user_alloc_size + alloc_ps_size + alloc_slice_size;
 			gsPs_memInfo[VPU_DEC_EXT2].kernel_remap_addr = _vmem_get_virtaddr((phys_addr_t)gsPs_memInfo[VPU_DEC_EXT2].phy_addr, PAGE_ALIGN(gsPs_memInfo[VPU_DEC_EXT2].request_size/*-PAGE_SIZE*/));
 
 			dprintk_mem("alloc VPU Ps[%d] Info buffer :: phy = 0x%x, remap = 0x%p, size = 0x%x !! \n", VPU_DEC_EXT2, gsPs_memInfo[VPU_DEC_EXT2].phy_addr, gsPs_memInfo[VPU_DEC_EXT2].kernel_remap_addr, gsPs_memInfo[VPU_DEC_EXT2].request_size);
@@ -929,10 +986,10 @@ int _vmem_alloc_dedicated_buffer(void)
 
 	if( gsSlice_memInfo[VPU_DEC_EXT2].kernel_remap_addr == 0 )
 	{
-		gsSlice_memInfo[VPU_DEC_EXT2].request_size 			= PAGE_ALIGN(SLICE_SAVE_SIZE);
+		gsSlice_memInfo[VPU_DEC_EXT2].request_size = PAGE_ALIGN(SLICE_SAVE_SIZE);
 		if( gsSlice_memInfo[VPU_DEC_EXT2].request_size )
 		{
-			gsSlice_memInfo[VPU_DEC_EXT2].phy_addr 			= ptr_sw_addr_mem + vpu_4k_d2_alloc_size + hevc_alloc_size + jpu_alloc_size + vpu_alloc_size + vp9_alloc_size + seq_alloc_size + user_alloc_size + alloc_ps_size + alloc_slice_size;
+			gsSlice_memInfo[VPU_DEC_EXT2].phy_addr = ptr_sw_addr_mem + vpu_hevc_enc_alloc_size + vpu_4k_d2_alloc_size + hevc_alloc_size + jpu_alloc_size + vpu_alloc_size + vp9_alloc_size + seq_alloc_size + user_alloc_size + alloc_ps_size + alloc_slice_size;
 			gsSlice_memInfo[VPU_DEC_EXT2].kernel_remap_addr = _vmem_get_virtaddr((phys_addr_t)gsSlice_memInfo[VPU_DEC_EXT2].phy_addr, PAGE_ALIGN(gsSlice_memInfo[VPU_DEC_EXT2].request_size/*-PAGE_SIZE*/));
 
 			dprintk_mem("alloc VPU Slice[%d] Info buffer :: phy = 0x%x, remap = 0x%p, size = 0x%x !! \n", VPU_DEC_EXT2, gsSlice_memInfo[VPU_DEC_EXT2].phy_addr, gsSlice_memInfo[VPU_DEC_EXT2].kernel_remap_addr, gsSlice_memInfo[VPU_DEC_EXT2].request_size);
@@ -951,10 +1008,10 @@ int _vmem_alloc_dedicated_buffer(void)
 
 	if( gsStream_memInfo[VPU_DEC_EXT2].kernel_remap_addr == 0 )
 	{
-		gsStream_memInfo[VPU_DEC_EXT2].request_size 			= PAGE_ALIGN(LARGE_STREAM_BUF_SIZE);
+		gsStream_memInfo[VPU_DEC_EXT2].request_size = PAGE_ALIGN(LARGE_STREAM_BUF_SIZE);
 		if( gsStream_memInfo[VPU_DEC_EXT2].request_size )
 		{
-			gsStream_memInfo[VPU_DEC_EXT2].phy_addr 			= ptr_sw_addr_mem + vpu_4k_d2_alloc_size + hevc_alloc_size + jpu_alloc_size + vpu_alloc_size + vp9_alloc_size + seq_alloc_size + user_alloc_size + alloc_ps_size + alloc_slice_size;
+			gsStream_memInfo[VPU_DEC_EXT2].phy_addr = ptr_sw_addr_mem + vpu_hevc_enc_alloc_size + vpu_4k_d2_alloc_size + hevc_alloc_size + jpu_alloc_size + vpu_alloc_size + vp9_alloc_size + seq_alloc_size + user_alloc_size + alloc_ps_size + alloc_slice_size;
 			gsStream_memInfo[VPU_DEC_EXT2].kernel_remap_addr = _vmem_get_virtaddr((phys_addr_t)gsStream_memInfo[VPU_DEC_EXT2].phy_addr, PAGE_ALIGN(gsStream_memInfo[VPU_DEC_EXT2].request_size/*-PAGE_SIZE*/));
 
 			dprintk_mem("alloc VPU Stream[%d] Info buffer :: phy = 0x%x, remap = 0x%p, size = 0x%x !! \n", VPU_DEC_EXT2, gsStream_memInfo[VPU_DEC_EXT2].phy_addr, gsStream_memInfo[VPU_DEC_EXT2].kernel_remap_addr, gsStream_memInfo[VPU_DEC_EXT2].request_size);
@@ -974,10 +1031,10 @@ int _vmem_alloc_dedicated_buffer(void)
 
 	if( gsPs_memInfo[VPU_DEC].kernel_remap_addr == 0 )
 	{
-		gsPs_memInfo[VPU_DEC].request_size 			= PAGE_ALIGN(PS_SAVE_SIZE);
+		gsPs_memInfo[VPU_DEC].request_size = PAGE_ALIGN(PS_SAVE_SIZE);
 		if( gsPs_memInfo[VPU_DEC].request_size )
 		{
-			gsPs_memInfo[VPU_DEC].phy_addr 			= ptr_ext_rear_addr_mem + alloc_ps_size + alloc_slice_size;
+			gsPs_memInfo[VPU_DEC].phy_addr = ptr_ext_rear_addr_mem + alloc_ps_size + alloc_slice_size;
 			gsPs_memInfo[VPU_DEC].kernel_remap_addr = _vmem_get_virtaddr((phys_addr_t)gsPs_memInfo[VPU_DEC].phy_addr, PAGE_ALIGN(gsPs_memInfo[VPU_DEC].request_size/*-PAGE_SIZE*/));
 
 			dprintk_mem("alloc VPU Ps[%d] Info buffer :: phy = 0x%x, remap = 0x%p, size = 0x%x !! \n", VPU_DEC, gsPs_memInfo[VPU_DEC].phy_addr, gsPs_memInfo[VPU_DEC].kernel_remap_addr, gsPs_memInfo[VPU_DEC].request_size);
@@ -996,10 +1053,10 @@ int _vmem_alloc_dedicated_buffer(void)
 
 	if( gsSlice_memInfo[VPU_DEC].kernel_remap_addr == 0 )
 	{
-		gsSlice_memInfo[VPU_DEC].request_size 			= PAGE_ALIGN(SLICE_SAVE_SIZE);
+		gsSlice_memInfo[VPU_DEC].request_size = PAGE_ALIGN(SLICE_SAVE_SIZE);
 		if( gsSlice_memInfo[VPU_DEC].request_size )
 		{
-			gsSlice_memInfo[VPU_DEC].phy_addr 			= ptr_ext_rear_addr_mem + alloc_ps_size + alloc_slice_size;
+			gsSlice_memInfo[VPU_DEC].phy_addr = ptr_ext_rear_addr_mem + alloc_ps_size + alloc_slice_size;
 			gsSlice_memInfo[VPU_DEC].kernel_remap_addr = _vmem_get_virtaddr((phys_addr_t)gsSlice_memInfo[VPU_DEC].phy_addr, PAGE_ALIGN(gsSlice_memInfo[VPU_DEC].request_size/*-PAGE_SIZE*/));
 
 			dprintk_mem("alloc VPU Slice[%d] Info buffer :: phy = 0x%x, remap = 0x%p, size = 0x%x !! \n", VPU_DEC, gsSlice_memInfo[VPU_DEC].phy_addr, gsSlice_memInfo[VPU_DEC].kernel_remap_addr, gsSlice_memInfo[VPU_DEC].request_size);
@@ -1018,10 +1075,10 @@ int _vmem_alloc_dedicated_buffer(void)
 
 	if( gsStream_memInfo[VPU_DEC].kernel_remap_addr == 0 )
 	{
-		gsStream_memInfo[VPU_DEC].request_size 			= PAGE_ALIGN(LARGE_STREAM_BUF_SIZE);
+		gsStream_memInfo[VPU_DEC].request_size = PAGE_ALIGN(LARGE_STREAM_BUF_SIZE);
 		if( gsStream_memInfo[VPU_DEC].request_size )
 		{
-			gsStream_memInfo[VPU_DEC].phy_addr 			= ptr_ext_rear_addr_mem + alloc_ps_size + alloc_slice_size;
+			gsStream_memInfo[VPU_DEC].phy_addr = ptr_ext_rear_addr_mem + alloc_ps_size + alloc_slice_size;
 			gsStream_memInfo[VPU_DEC].kernel_remap_addr = _vmem_get_virtaddr((phys_addr_t)gsStream_memInfo[VPU_DEC].phy_addr, PAGE_ALIGN(gsStream_memInfo[VPU_DEC].request_size/*-PAGE_SIZE*/));
 
 			dprintk_mem("alloc VPU Stream[%d] Info buffer :: phy = 0x%x, remap = 0x%p, size = 0x%x !! \n", VPU_DEC, gsStream_memInfo[VPU_DEC].phy_addr, gsStream_memInfo[VPU_DEC].kernel_remap_addr, gsStream_memInfo[VPU_DEC].request_size);
@@ -1048,6 +1105,17 @@ void _vmem_free_dedicated_buffer(void)
 
 	dprintk_mem("%s \n", __func__);
 	// Memory Management!!
+
+#ifdef CONFIG_SUPPORT_TCC_WAVE420L_VPU_HEVC_ENC // VPU HEVC ENC
+	if( gsVpuHevcEncWork_memInfo.kernel_remap_addr != 0 )
+	{
+		dprintk("free VPU_HEVC_ENC (WAVE420L) workbuffer:: phy = 0x%x, remap = 0x%p, size = 0x%x !! \n", gsVpuHevcEncWork_memInfo.phy_addr,
+			gsVpuHevcEncWork_memInfo.kernel_remap_addr, gsVpuHevcEncWork_memInfo.request_size);
+		_vmem_release_virtaddr(((void*)gsVpuHevcEncWork_memInfo.kernel_remap_addr), gsVpuHevcEncWork_memInfo.phy_addr,
+			gsVpuHevcEncWork_memInfo.request_size);
+		memset(&gsVpuHevcEncWork_memInfo, 0x00, sizeof(MEM_ALLOC_INFO_t));
+	}
+#endif
 #ifdef CONFIG_SUPPORT_TCC_JPU
 	if( gsJpuWork_memInfo.kernel_remap_addr != 0 )
 	{
@@ -1141,6 +1209,14 @@ void _vmem_free_dedicated_buffer(void)
 static phys_addr_t _vmem_request_workbuff_phyaddr(int codec_type, void **remapped_addr)
 {
 	phys_addr_t phy_address = 0x00;
+#ifdef CONFIG_SUPPORT_TCC_WAVE420L_VPU_HEVC_ENC // VPU HEVC ENC
+	if(codec_type == STD_HEVC_ENC)
+	{
+		*remapped_addr = gsVpuHevcEncWork_memInfo.kernel_remap_addr;
+		phy_address = gsVpuHevcEncWork_memInfo.phy_addr;
+	}
+	else
+#endif
 #ifdef CONFIG_SUPPORT_TCC_JPU // M-Jpeg
 	if(codec_type == STD_MJPG)
 	{
@@ -1719,6 +1795,9 @@ unsigned int vmem_get_free_memory(vputype type)
 	if( type == VPU_DEC )
 	{
 		if( vmgr_get_close(VPU_DEC_EXT) && vmgr_get_close(VPU_ENC)
+#ifdef CONFIG_SUPPORT_TCC_WAVE420L_VPU_HEVC_ENC // VPU HEVC ENC
+			&& vmgr_hevc_enc_get_close(VPU_ENC)
+#endif
 #ifdef CONFIG_SUPPORT_TCC_WAVE512_4K_D2 // HEVC/VP9
 			&& vmgr_4k_d2_get_close(VPU_DEC_EXT) && vmgr_4k_d2_get_close(VPU_ENC)
 #endif
@@ -1939,6 +2018,9 @@ int vmem_init(void)
 #ifdef CONFIG_SUPPORT_TCC_G2V2_VP9 // VP9
 			&& (vp9mgr_opened() == 0)
 #endif
+#ifdef CONFIG_SUPPORT_TCC_WAVE420L_VPU_HEVC_ENC
+			&& (vmgr_hevc_enc_opened() == 0)
+#endif
 		){
 			if(!atomic_read(&cntMem_Reference))
 			{
@@ -2137,6 +2219,8 @@ void venc_get_instance(int *nIdx)
 		else
 			err("failed to get new instance for encoder(%d) \n", nInstance);
 
+		_DBG(DEBUG_ENC_INSTANCE, "Instance is gotten #%d", nInstance);
+
 		*nIdx = nInstance;
 	}
 	mutex_unlock(&mem_mutex);
@@ -2164,6 +2248,9 @@ void venc_clear_instance(int nIdx)
 {
 	mutex_lock(&mem_mutex);
 	{
+
+		_DBG(DEBUG_ENC_INSTANCE, "Instance is cleared #%d", nIdx);
+
 		if(nIdx >= 0)
 			venc_used[nIdx] = 0;
 		else

@@ -33,6 +33,10 @@
 #include "tcc803x/vioc_mc.h"
 #endif
 
+#ifdef CONFIG_ARCH_TCC805X
+#include "tcc805x/vioc_mc.h"
+#endif
+
 #ifdef CONFIG_ARCH_TCC901X
 #include "tcc901x/vioc_mc.h"
 #endif

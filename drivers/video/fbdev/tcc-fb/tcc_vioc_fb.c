@@ -1126,12 +1126,12 @@ static int tccfb_ioctl(struct fb_info *info, unsigned int cmd,unsigned long arg)
                                                         hdmi_set_activate_callback(NULL, 0, 0);
                                                 }
         					#endif /* CONFIG_VIOC_DOLBY_VISION_EDR */
-                                                #if defined(CONFIG_DRM_TCC)
+                                                #if defined(CONFIG_DRM)
                                                 skip_activate = 1;
                                                 if(pdp_data->FbPowerState){
                                         		VIOC_DISP_TurnOn(pdp_data->ddc_info.virt_addr);
                                         	}
-                                                #endif /*CONFIG_DRM_TCC */
+                                                #endif /*CONFIG_DRM */
                                                 #endif /* CONFIG_TCC_HDMI_DRIVER_V2_0 */
 
                                                 if(!skip_activate) {

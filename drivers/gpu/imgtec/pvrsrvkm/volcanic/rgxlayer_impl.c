@@ -101,9 +101,9 @@ void RGXErrorLog(const void *hPrivate,
 	PVR_DPF((PVR_DBG_ERROR, "%s", szBuffer));
 }
 
-IMG_UINT32 RGXDeviceGetFeatureValue(const void *hPrivate, IMG_UINT64 ui64Feature)
+IMG_INT32 RGXDeviceGetFeatureValue(const void *hPrivate, IMG_UINT64 ui64Feature)
 {
-	IMG_UINT32 ui32Ret = 0;
+	IMG_INT32 i32Ret = -1;
 	RGX_LAYER_PARAMS *psParams;
 	PVRSRV_RGXDEV_INFO *psDevInfo;
 	PVRSRV_DEVICE_NODE *psDeviceNode;
@@ -116,10 +116,10 @@ IMG_UINT32 RGXDeviceGetFeatureValue(const void *hPrivate, IMG_UINT64 ui64Feature
 
 	if ((psDeviceNode->pfnGetDeviceFeatureValue))
 	{
-		ui32Ret = psDeviceNode->pfnGetDeviceFeatureValue(psDeviceNode, ui64Feature);
+		i32Ret = psDeviceNode->pfnGetDeviceFeatureValue(psDeviceNode, ui64Feature);
 	}
 
-	return ui32Ret;
+	return i32Ret;
 }
 
 IMG_BOOL RGXDeviceHasFeature(const void *hPrivate, IMG_UINT64 ui64Feature)
@@ -606,8 +606,8 @@ PVRSRV_ERROR RGXFabricCoherencyTest(const void *hPrivate)
 	sFabricCohNcTestBufferDevVA.ui32Addr |= RGXFW_SEGMMU_DATA_META_UNCACHED;
 
 	/* Obtain the META segment addresses corresponding to cached and uncached windows into SLC */
-	ui64SegOutAddrTopCached   = RGXFW_SEGMMU_OUTADDR_TOP_VIVT_SLC_CACHED(META_MMU_CONTEXT_MAPPING_FWIF);
-	ui64SegOutAddrTopUncached = RGXFW_SEGMMU_OUTADDR_TOP_VIVT_SLC_UNCACHED(META_MMU_CONTEXT_MAPPING_FWIF);
+	ui64SegOutAddrTopCached   = RGXFW_SEGMMU_OUTADDR_TOP_VIVT_SLC_CACHED(MMU_CONTEXT_MAPPING_FWIF);
+	ui64SegOutAddrTopUncached = RGXFW_SEGMMU_OUTADDR_TOP_VIVT_SLC_UNCACHED(MMU_CONTEXT_MAPPING_FWIF);
 
 	/* At the top level, we perform snoop-miss (i.e. to verify slave port) & snoop-hit (i.e. to verify ACE) test.
 	   NOTE: For now, skip snoop-miss test as Services currently forces all firmware allocations to be coherent */
@@ -929,4 +929,24 @@ IMG_UINT32 RGXGetDeviceCacheLineSize(const void *hPrivate)
 		return 0;
 	}
 	return RGX_GET_FEATURE_VALUE(psDevInfo, SLC_CACHE_LINE_SIZE_BITS);
+}
+
+void RGXAcquireBootCodeAddr(const void *hPrivate, IMG_DEV_VIRTADDR *psBootCodeAddr)
+{
+	PVRSRV_RGXDEV_INFO *psDevInfo;
+
+	PVR_ASSERT(hPrivate != NULL);
+	psDevInfo = ((RGX_LAYER_PARAMS*)hPrivate)->psDevInfo;
+
+	*psBootCodeAddr = psDevInfo->sFWCodeDevVAddrBase;
+}
+
+void RGXAcquireBootDataAddr(const void *hPrivate, IMG_DEV_VIRTADDR *psBootDataAddr)
+{
+	PVRSRV_RGXDEV_INFO *psDevInfo;
+
+	PVR_ASSERT(hPrivate != NULL);
+	psDevInfo = ((RGX_LAYER_PARAMS*)hPrivate)->psDevInfo;
+
+	*psBootDataAddr = psDevInfo->sFWDataDevVAddrBase;
 }

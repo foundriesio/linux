@@ -42,7 +42,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef RGXCONFIG_KM_15_V_1_64_H
 #define RGXCONFIG_KM_15_V_1_64_H
 
-/* Automatically generated file (11/02/2020 09:01:02): Do not edit manually */
+/* Automatically generated file (30/03/2020 09:01:02): Do not edit manually */
 
 #define RGX_BNC_KM_B 15
 #define RGX_BNC_KM_N 1
@@ -72,6 +72,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define RGX_FEATURE_NUM_RASTER_PIPES (1U)
 #define RGX_FEATURE_ROGUEXE
 #define RGX_FEATURE_BIF_TILING
+#define RGX_FEATURE_LAYOUT_MARS (0U)
 
 
 #endif /* RGXCONFIG_15_V_1_64_H */

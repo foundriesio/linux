@@ -67,8 +67,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #endif
 
 #include "dma_support.h"
-#include "vz_support.h"
-#include "vz_physheap.h"
+#include "vz_vmm_pvz.h"
 
 /*!
  * For OSThreadDestroy(), which may require a retry
@@ -76,20 +75,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 #define OS_THREAD_DESTROY_TIMEOUT_US 100000ULL
 #define OS_THREAD_DESTROY_RETRY_COUNT 10
-
-typedef enum _VMM_CONF_PARAM_
-{
-	VMM_CONF_PRIO_OSID0 = 0,
-	VMM_CONF_PRIO_OSID1 = 1,
-	VMM_CONF_PRIO_OSID2 = 2,
-	VMM_CONF_PRIO_OSID3 = 3,
-	VMM_CONF_PRIO_OSID4 = 4,
-	VMM_CONF_PRIO_OSID5 = 5,
-	VMM_CONF_PRIO_OSID6 = 6,
-	VMM_CONF_PRIO_OSID7 = 7,
-	VMM_CONF_ISOL_THRES = 8,
-	VMM_CONF_HCS_DEADLINE = 9
-} VMM_CONF_PARAM;
 
 typedef enum _FIRMWARE_ALLOC_TYPE_
 {
@@ -422,29 +407,38 @@ void PopulateLMASubArenas(PVRSRV_DEVICE_NODE *psDeviceNode, IMG_UINT32 aui32OSid
 
 /*!
 ******************************************************************************
- @Function			PVRSRVVzRegisterFirmwarePhysHeap
+ @Function			: PVRSRVCreateRegionRA
 
- @Description		Request to map a physical heap to kernel FW memory context
+ @Description		: Create a Resource Arena and initialises it with a given
+					  memory range.
+
+ @Input psDevConfig	: Pointer to the Device configuration structure
+
+ @Output ppsRegionRA: Pointer address of the region RA to be created.
+
+ @Output pszRAName	: Pointer to RA name
+
+ @Input ui64CpuBase	: CPU Physical Base Address of the RA
+
+ @Input ui64DevBase	: Device Physical Base Address of the RA
+
+ @Input ui64Size	: Size of the RA to be created
+
+ @Input ui32RegionId: Index of the region being initialised
+
+ @Input pszLabel	: String briefly describing the RA's purpose
 
  @Return			PVRSRV_ERROR	PVRSRV_OK on success. Otherwise, a PVRSRV_
 									error code
 ******************************************************************************/
-PVRSRV_ERROR PVRSRVVzRegisterFirmwarePhysHeap(PVRSRV_DEVICE_NODE *psDeviceNode,
-											  IMG_DEV_PHYADDR sDevPAddr,
-											  IMG_UINT64 ui64DevPSize,
-											  IMG_UINT32 uiOSID);
-
-/*!
-******************************************************************************
- @Function			PVRSRVVzUnregisterFirmwarePhysHeap
-
- @Description		Request to unmap a physical heap from kernel FW memory context
-
- @Return			PVRSRV_ERROR	PVRSRV_OK on success. Otherwise, a PVRSRV_
-									error code
-******************************************************************************/
-PVRSRV_ERROR PVRSRVVzUnregisterFirmwarePhysHeap(PVRSRV_DEVICE_NODE *psDeviceNode,
-												IMG_UINT32 uiOSID);
+PVRSRV_ERROR PVRSRVCreateRegionRA(PVRSRV_DEVICE_CONFIG *psDevConfig,
+								  RA_ARENA             **ppsRegionRA,
+								  IMG_CHAR             *pszRAName,
+								  IMG_UINT64           ui64CpuBase,
+								  IMG_UINT64           ui64DevBase,
+								  IMG_UINT64           ui64Size,
+								  IMG_UINT32           ui32RegionId,
+								  IMG_CHAR             *pszLabel);
 
 /*!
 ******************************************************************************

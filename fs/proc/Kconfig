@@ -88,3 +88,10 @@ config PROC_UID
 	depends on PROC_FS && RT_MUTEXES
 	help
 	Provides aggregated per-uid information under /proc/uid.
+
+config PROC_MBOX
+	bool "Enable /proc/mbox monitoring"
+	default n
+	depends on PROC_FS && TCC_MULTI_MAILBOX && ARCH_TCC805X
+	help
+	Enable mbox monitoring

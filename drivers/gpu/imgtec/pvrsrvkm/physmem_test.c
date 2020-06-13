@@ -159,7 +159,7 @@ PhysMemTestInit(PVRSRV_DEVICE_NODE **ppsDeviceNode, PVRSRV_DEVICE_CONFIG *psDevC
 	eError = PVRSRVPhysMemHeapsInit(psDeviceNode, psDevConfig);
 	PVR_LOG_GOTO_IF_ERROR(eError, "PVRSRVPhysMemHeapsInit", ErrorSysDevDeInit);
 
-	psDeviceNode->uiMMUPxLog2AllocGran = OSGetPageShift();
+	psDeviceNode->sDevMMUPxSetup.uiMMUPxLog2AllocGran = OSGetPageShift();
 
 	*ppsDeviceNode = psDeviceNode;
 
@@ -243,7 +243,7 @@ PMRValidationTest(PVRSRV_DEVICE_NODE *psDeviceNode, PVRSRV_MEMALLOCFLAGS_T uiFla
 									pui32MappingTable,
 									OSGetPageShift(),
 									uiFlags,
-									(OSStringLength("PMR ValidationTest") + 1),
+									sizeof("PMR ValidationTest"),
 									"PMR ValidationTest",
 									OSGetCurrentClientProcessIDKM(),
 									&psPMR,
@@ -571,7 +571,7 @@ MemTestPatterns(PVRSRV_DEVICE_NODE *psDeviceNode, PVRSRV_MEMALLOCFLAGS_T uiFlags
 									&ui32MappingTable,
 									OSGetPageShift(),
 									uiFlags,
-									(OSStringLength("PMR PhysMemTest") + 1),
+									sizeof("PMR PhysMemTest"),
 									"PMR PhysMemTest",
 									OSGetCurrentClientProcessIDKM(),
 									&psPMR,
@@ -687,14 +687,6 @@ PhysMemTest(void *pvDevConfig, IMG_UINT32 ui32MemTestPasses)
 	if (eError != PVRSRV_OK)
 	{
 		PVR_DPF((PVR_DBG_ERROR, "GPU local memory test failed!"));
-		goto ErrorPhysMemTestDeinit;
-	}
-
-	/* FW local mem */
-	eError = PhysMemTestRun(psDeviceNode, PVRSRV_MEMALLOCFLAG_FW_ALLOC_MAIN, ui32MemTestPasses);
-	if (eError != PVRSRV_OK)
-	{
-		PVR_DPF((PVR_DBG_ERROR, "FW local memory test failed!"));
 		goto ErrorPhysMemTestDeinit;
 	}
 

@@ -209,7 +209,7 @@ PVRSRV_ERROR RGXPrePowerState(IMG_HANDLE				hDevHandle,
 				IMG_UINT32 ui32TID;
 				for (ui32TID = 0; ui32TID < RGXFW_THREAD_NUM; ui32TID++)
 				{
-					/* Wait for the pending META/MIPS to host interrupts to come back. */
+					/* Wait for the pending FW processor to host interrupts to come back. */
 					eError = PVRSRVPollForValueKM(psDeviceNode,
 										          (IMG_UINT32 __iomem *)&psDevInfo->aui32SampleIRQCount[ui32TID],
 										          psFwSysData->aui32InterruptCount[ui32TID],
@@ -659,43 +659,43 @@ PVRSRV_ERROR RGXPostClockSpeedChange(IMG_HANDLE				hDevHandle,
 }
 
 /*************************************************************************/ /*!
-@Function       RGXSPUPowerStateMaskChange
-@Description    Changes power state of SPUs
+@Function       RGXPowUnitsStateMaskChange
+@Description    Changes power state of power units/islands
 @Input          hDevHandle         RGX Device Node.
-@Input          ui32SPUPowerStateMask   Mask containing power state of SPUs.
-                                        Each bit corresponds to an SPU.
-                                        Bit position corresponds to SPU number i.e. Bit0 is SPU0, Bit1 is SPU1 etc.
+@Input          ui32PowUnitsStateMask   Mask containing power state of PUs.
+                                        Each bit corresponds to an PU.
+                                        Bit position corresponds to PU number i.e. Bit0 is PU0, Bit1 is PU1 etc.
                                         '1' indicates ON and '0' indicates OFF.
                                         Value must be non-zero.
 @Return         PVRSRV_ERROR.
 */ /**************************************************************************/
-PVRSRV_ERROR RGXSPUPowerStateMaskChange(IMG_HANDLE hDevHandle, IMG_UINT32 ui32SPUPowerStateMask)
+PVRSRV_ERROR RGXPowUnitsStateMaskChange(IMG_HANDLE hDevHandle, IMG_UINT32 ui32PowUnitsStateMask)
 {
 
 	PVRSRV_DEVICE_NODE	*psDeviceNode = hDevHandle;
 	PVRSRV_RGXDEV_INFO	*psDevInfo = psDeviceNode->pvDevice;
 	PVRSRV_ERROR		eError;
-	RGXFWIF_KCCB_CMD	sSPUPowerStateMaskChange;
-	IMG_UINT32 ui32SPUMask = psDevInfo->ui32AvailableSPUMask;
+	RGXFWIF_KCCB_CMD	sPowUnitsStateMaskChange;
+	IMG_UINT32 ui32PowUnitsMask = psDevInfo->ui32AvailablePowUnitsMask;
 	IMG_UINT32			ui32CmdKCCBSlot;
 	RGXFWIF_RUNTIME_CFG *psRuntimeCfg = psDevInfo->psRGXFWIfRuntimeCfg;
 	PVRSRV_VZ_RET_IF_MODE(GUEST, PVRSRV_OK);
 
 	/**
-	 * Validate the input. At-least one SPU must be powered on and all requested
-	 * SPU's must be a subset of full SPU mask.
+	 * Validate the input. At-least one PU must be powered on and all requested
+	 * PU's must be a subset of full PU mask.
 	 */
-	if ((ui32SPUPowerStateMask == 0) || (ui32SPUPowerStateMask & ~ui32SPUMask))
+	if ((ui32PowUnitsStateMask == 0) || (ui32PowUnitsStateMask & ~ui32PowUnitsMask))
 	{
 		PVR_DPF((PVR_DBG_ERROR,
-				"%s: Invalid SPU mask requested (0x%X). Value should be non-zero and sub-set of 0x%X mask",
+				"%s: Invalid Power Units mask requested (0x%X). Value should be non-zero and sub-set of 0x%X mask",
 				__func__,
-				ui32SPUPowerStateMask,
-				ui32SPUMask));
+				ui32PowUnitsStateMask,
+				ui32PowUnitsMask));
 		return PVRSRV_ERROR_INVALID_SPU_MASK;
 	}
 
-	psRuntimeCfg->ui32SPUPowerStateMask = ui32SPUPowerStateMask;
+	psRuntimeCfg->ui32PowUnitsStateMask = ui32PowUnitsStateMask;
 
 #if !defined(NO_HARDWARE)
 	{
@@ -710,7 +710,7 @@ PVRSRV_ERROR RGXSPUPowerStateMaskChange(IMG_HANDLE hDevHandle, IMG_UINT32 ui32SP
 		{
 			eError = PVRSRV_ERROR_DEVICE_POWER_CHANGE_DENIED;
 			PVR_DPF((PVR_DBG_ERROR,
-					 "%s: SPUs Power state can not be changed, when not IDLE",
+					 "%s: Powered units state can not be changed, when not IDLE",
 					 __func__));
 			return eError;
 		}
@@ -725,21 +725,21 @@ PVRSRV_ERROR RGXSPUPowerStateMaskChange(IMG_HANDLE hDevHandle, IMG_UINT32 ui32SP
 		return eError;
 	}
 
-	sSPUPowerStateMaskChange.eCmdType = RGXFWIF_KCCB_CMD_POW;
-	sSPUPowerStateMaskChange.uCmdData.sPowData.ePowType = RGXFWIF_POW_NUM_UNITS_CHANGE;
-	sSPUPowerStateMaskChange.uCmdData.sPowData.uPowerReqData.ui32SPUPowerStateMask = ui32SPUPowerStateMask;
+	sPowUnitsStateMaskChange.eCmdType = RGXFWIF_KCCB_CMD_POW;
+	sPowUnitsStateMaskChange.uCmdData.sPowData.ePowType = RGXFWIF_POW_NUM_UNITS_CHANGE;
+	sPowUnitsStateMaskChange.uCmdData.sPowData.uPowerReqData.ui32PowUnitsStateMask = ui32PowUnitsStateMask;
 
-	PDUMPCOMMENT("Scheduling command to change SPU power state to 0x%X", ui32SPUPowerStateMask);
+	PDUMPCOMMENT("Scheduling command to change power units state to 0x%X", ui32PowUnitsStateMask);
 	eError = RGXSendCommandAndGetKCCBSlot(psDeviceNode->pvDevice,
-	                                      &sSPUPowerStateMaskChange,
+	                                      &sPowUnitsStateMaskChange,
 	                                      PDUMP_FLAGS_NONE,
 	                                      &ui32CmdKCCBSlot);
 
 	if (eError != PVRSRV_OK)
 	{
-		PDUMPCOMMENT("Scheduling command to change SPU power state. Error:%u", eError);
+		PDUMPCOMMENT("Scheduling command to change power units state. Error:%u", eError);
 		PVR_DPF((PVR_DBG_ERROR,
-				 "%s: Scheduling KCCB to change SPU power state. Error:%u",
+				 "%s: Scheduling KCCB to change power units state. Error:%u",
 				 __func__, eError));
 		return eError;
 	}
@@ -1068,19 +1068,19 @@ ErrorExit:
 }
 
 #if defined(SUPPORT_VALIDATION)
-#define RGX_SPU_POWER_DOMAIN_STATE_INVALID (0xFFFFFFFF)
+#define RGX_POWER_DOMAIN_STATE_INVALID (0xFFFFFFFF)
 
-PVRSRV_ERROR RGXSPUPowerDomainInitState(RGX_SPU_POWER_DOMAIN_STATE *psState,
-										IMG_UINT32 ui32MaxSPUCount)
+PVRSRV_ERROR RGXPowerDomainInitState(RGX_POWER_DOMAIN_STATE *psState,
+										IMG_UINT32 ui32MaxPowUnitsCount)
 {
 	/*
-	 * Total SPU power domain states = 2^(Max SPU count)
+	 * Total power domain states = 2^(Max power unit count)
 	 */
-	IMG_UINT32 ui32TotalStates = 1 << ui32MaxSPUCount;
+	IMG_UINT32 ui32TotalStates = 1 << ui32MaxPowUnitsCount;
 	IMG_UINT32 i;
 
 	/**
-	 * Allocate memory for storing last transition for each SPU power domain
+	 * Allocate memory for storing last transition for each power domain
 	 * state.
 	 */
 	psState->paui32LastTransition = OSAllocMem(ui32TotalStates *
@@ -1097,18 +1097,18 @@ PVRSRV_ERROR RGXSPUPowerDomainInitState(RGX_SPU_POWER_DOMAIN_STATE *psState,
 	 */
 	for (i=0; i<ui32TotalStates; i++)
 	{
-		psState->paui32LastTransition[i] = RGX_SPU_POWER_DOMAIN_STATE_INVALID;
+		psState->paui32LastTransition[i] = RGX_POWER_DOMAIN_STATE_INVALID;
 	}
 
-	psState->ui32SPUCount = ui32MaxSPUCount;
-	psState->ui32CurrentState = RGX_SPU_POWER_DOMAIN_STATE_INVALID;
+	psState->ui32PowUnitsCount = ui32MaxPowUnitsCount;
+	psState->ui32CurrentState = RGX_POWER_DOMAIN_STATE_INVALID;
 
 	return PVRSRV_OK;
 }
 
-void RGXSPUPowerDomainDeInitState(RGX_SPU_POWER_DOMAIN_STATE *psState)
+void RGXPowerDomainDeInitState(RGX_POWER_DOMAIN_STATE *psState)
 {
-	psState->ui32SPUCount = 0;
+	psState->ui32PowUnitsCount = 0;
 
 	if (psState->paui32LastTransition)
 	{
@@ -1116,19 +1116,19 @@ void RGXSPUPowerDomainDeInitState(RGX_SPU_POWER_DOMAIN_STATE *psState)
 	}
 }
 
-IMG_UINT32 RGXSPUPowerDomainGetNextState(RGX_SPU_POWER_DOMAIN_STATE *psState)
+IMG_UINT32 RGXPowerDomainGetNextState(RGX_POWER_DOMAIN_STATE *psState)
 {
 	IMG_UINT32 ui32NextState, ui32CurrentState = psState->ui32CurrentState;
-	IMG_UINT32 ui32TotalStates = 1 << psState->ui32SPUCount;
+	IMG_UINT32 ui32TotalStates = 1 << psState->ui32PowUnitsCount;
 
-	if (ui32CurrentState == RGX_SPU_POWER_DOMAIN_STATE_INVALID)
+	if (ui32CurrentState == RGX_POWER_DOMAIN_STATE_INVALID)
 	{
 		/**
-		 * Start with all SPU powered off.
+		 * Start with all units powered off.
 		 */
 		ui32NextState = 0;
 	}
-	else if (psState->paui32LastTransition[ui32CurrentState] == RGX_SPU_POWER_DOMAIN_STATE_INVALID)
+	else if (psState->paui32LastTransition[ui32CurrentState] == RGX_POWER_DOMAIN_STATE_INVALID)
 	{
 		ui32NextState = ui32CurrentState;
 		psState->paui32LastTransition[ui32CurrentState] = ui32CurrentState;

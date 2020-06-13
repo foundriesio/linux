@@ -27,6 +27,7 @@
 
 #include <video/tcc/vioc_global.h>
 #include <video/tcc/vioc_ddicfg.h>	// is_VIOC_REMAP
+#include <video/tcc/vioc_intr.h>
 #include <video/tcc/vioc_vin.h>
 
 #define VIOC_VIN_IREQ_UPD_MASK 0x00000001UL
@@ -93,6 +94,15 @@ void VIOC_VIN_SetCaptureModeEnable(volatile void __iomem *reg,
 	unsigned long val;
 	val = (__raw_readl(reg + VIN_CTRL) & ~(VIN_CTRL_CP_MASK));
 	val |= ((cap_en & 0x1) << VIN_CTRL_CP_SHIFT);
+	__raw_writel(val, reg + VIN_CTRL);
+}
+
+/* VIN Skip Frame Number */
+void VIOC_VIN_SetFrameSkipNumber(volatile void __iomem *reg, unsigned int skip)
+{
+	unsigned long val;
+	val = (__raw_readl(reg + VIN_CTRL) & ~(VIN_CTRL_SKIP_MASK));
+	val |= ((skip & 0x1) << VIN_CTRL_SKIP_SHIFT);
 	__raw_writel(val, reg + VIN_CTRL);
 }
 
@@ -185,14 +195,10 @@ void VIOC_VIN_SetLUT(volatile void __iomem *reg, unsigned int *pLUT)
 		 (0x1 << VIN_MISC_LUTIF_SHIFT)),
 		reg + VIN_MISC); /* Access Look-Up Table Using Slave Port */
 
-	for (uiCount = 0; uiCount < 256;
-	     uiCount = uiCount + 4) { /* Initialize Look-up Table */
-		*pLUT0++ = ((uiCount + 3) << 24) | ((uiCount + 2) << 16) |
-			   ((uiCount + 1) << 8) | ((uiCount + 0) << 0);
-		*pLUT1++ = ((uiCount + 3) << 24) | ((uiCount + 2) << 16) |
-			   ((uiCount + 1) << 8) | ((uiCount + 0) << 0);
-		*pLUT2++ = ((uiCount + 3) << 24) | ((uiCount + 2) << 16) |
-			   ((uiCount + 1) << 8) | ((uiCount + 0) << 0);
+	for(uiCount=0; uiCount<256; uiCount+=4) {
+		__raw_writel(*pLUT0++, reg + VIN_LUT_C + 0x000 + uiCount);
+		__raw_writel(*pLUT1++, reg + VIN_LUT_C + 0x100 + uiCount);
+		__raw_writel(*pLUT2++, reg + VIN_LUT_C + 0x200 + uiCount);
 	}
 
 	__raw_writel(
@@ -251,7 +257,7 @@ void VIOC_VIN_SetSEEnable(volatile void __iomem *reg, unsigned int se)
 	__raw_writel(val, reg + VIN_CTRL);
 }
 
-#if defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X)
+#if defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X)
 void VIOC_VIN_SetFlushBufferEnable(volatile void __iomem *reg, unsigned int fvs)
 {
 	unsigned long val;
@@ -260,6 +266,70 @@ void VIOC_VIN_SetFlushBufferEnable(volatile void __iomem *reg, unsigned int fvs)
 	__raw_writel(val, reg + VIN_MISC);
 }
 #endif
+
+void VIOC_VIN_SetIreqMask(volatile void __iomem *reg, unsigned int mask, unsigned int set)
+{
+	/*
+	 * set 1 : IREQ Masked(interrupt disable),
+	 * set 0 : IREQ UnMasked(interrput enable)
+	 */
+	unsigned long value;
+	value = (__raw_readl(reg + VIN_INT) & ~(mask));
+
+	if (set) /* Interrupt Disable*/
+		value |= mask;
+	__raw_writel(value, reg + VIN_INT);
+}
+
+void VIOC_VIN_GetStatus(volatile void __iomem *reg, unsigned int *status)
+{
+	*status = __raw_readl(reg + VIN_INT) & VIOC_VIN_INT_MASK;
+}
+
+void VIOC_VIN_ClearAllMonitorCounters(volatile void __iomem *reg)
+{
+	__raw_writel(1, reg + VIN_MON_CLR);
+}
+
+unsigned int VIOC_VIN_GetHSyncMax(volatile void __iomem *reg)
+{
+	return (__raw_readl(reg + VIN_MON_HS) & VIN_MON_HS_MAX_MASK) >> VIN_MON_HS_MAX_SHIFT;
+}
+
+unsigned int VIOC_VIN_GetHSyncCounter(volatile void __iomem *reg)
+{
+	return (__raw_readl(reg + VIN_MON_HS) & VIN_MON_HS_CNT_MASK) >> VIN_MON_HS_CNT_SHIFT;
+}
+
+unsigned int VIOC_VIN_GetDataEnableMax(volatile void __iomem *reg)
+{
+	return (__raw_readl(reg + VIN_MON_DE) & VIN_MON_DE_MAX_MASK) >> VIN_MON_DE_MAX_SHIFT;
+}
+
+unsigned int VIOC_VIN_GetDataEnableCounter(volatile void __iomem *reg)
+{
+	return (__raw_readl(reg + VIN_MON_DE) & VIN_MON_DE_CNT_MASK) >> VIN_MON_DE_CNT_SHIFT;
+}
+
+unsigned int VIOC_VIN_GetLineCountMax(volatile void __iomem *reg)
+{
+	return (__raw_readl(reg + VIN_MON_LCNT) & VIN_MON_LCNT_MAX_MASK) >> VIN_MON_LCNT_MAX_SHIFT;
+}
+
+unsigned int VIOC_VIN_GetLineCountCounter(volatile void __iomem *reg)
+{
+	return (__raw_readl(reg + VIN_MON_LCNT) & VIN_MON_LCNT_CNT_MASK) >> VIN_MON_LCNT_CNT_SHIFT;
+}
+
+unsigned int VIOC_VIN_GetVSyncMax(volatile void __iomem *reg)
+{
+	return __raw_readl(reg + VIN_MON_VSMAX);
+}
+
+unsigned int VIOC_VIN_GetVSyncCounter(volatile void __iomem *reg)
+{
+	return __raw_readl(reg + VIN_MON_VSCNT);
+}
 
 volatile void __iomem *VIOC_VIN_GetAddress(unsigned int Num)
 {

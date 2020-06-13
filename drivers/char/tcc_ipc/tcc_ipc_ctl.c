@@ -212,13 +212,10 @@ void receive_message(struct mbox_client *client, void *message)
 					INIT_LIST_HEAD(&ipc_list->queue);
 					ipc_list->ipc_dev = ipc_dev;
 
-					ipc_list->data.cmd[0] = msg->cmd[0];
-					ipc_list->data.cmd[1] = msg->cmd[1];
-					ipc_list->data.cmd[2] = msg->cmd[2];
-					ipc_list->data.cmd[3] = msg->cmd[3];
-					ipc_list->data.cmd[4] = msg->cmd[4];
-					ipc_list->data.cmd[5] = msg->cmd[5];
-					ipc_list->data.cmd[6] = msg->cmd[6];
+					for(i=0; i< MBOX_CMD_FIFO_SIZE; i++)
+					{
+						ipc_list->data.cmd[i] = msg->cmd[i];
+					}
 
 					if(msg->data_len <= MBOX_DATA_FIFO_SIZE)
 					{

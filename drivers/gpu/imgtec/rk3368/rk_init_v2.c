@@ -762,8 +762,8 @@ fail0:
 
 }
 
-
-#if defined(SUPPORT_ION)
+/* Running upstream kernel on Geekbox from kernel 4.14 onwards. */
+#if defined(SUPPORT_ION) && (LINUX_VERSION_CODE < KERNEL_VERSION(4, 14, 0))
 struct ion_device *g_psIonDev;
 extern struct ion_device *rockchip_ion_dev;
 
@@ -788,4 +788,4 @@ void IonDeinit(void)
 {
     g_psIonDev = NULL;
 }
-#endif /* defined(SUPPORT_ION) */
+#endif /* defined(SUPPORT_ION) && (LINUX_VERSION_CODE < KERNEL_VERSION(4, 14, 0)) */

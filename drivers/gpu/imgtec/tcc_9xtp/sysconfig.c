@@ -1,6 +1,6 @@
 /*******************************************************************************
 *   FileName : sysconfig.c
-*   Copyright (c) Telechips Inc. 
+*   Copyright (c) Telechips Inc.
 *   SPDX-license-Identifier : Dual MIT/GPLv2
 *   Description : 9XTP GT9524 system configuration
 
@@ -153,7 +153,7 @@ PVRSRV_ERROR SysDevInit(void *pvOSDevice, PVRSRV_DEVICE_CONFIG **ppsDevConfig)
 	if (psDevMemRes)
 	{
 		gsDevices[0].sRegsCpuPBase.uiAddr = psDevMemRes->start;
-		gsDevices[0].ui32RegsSize         = (unsigned int)(psDevMemRes->end - psDevMemRes->start);
+		gsDevices[0].ui32RegsSize         = resource_size(psDevMemRes);
 	}
 	else
 	{

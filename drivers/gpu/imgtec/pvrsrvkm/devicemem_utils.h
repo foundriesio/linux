@@ -193,6 +193,10 @@ struct DEVMEM_HEAP_TAG
 	 * We have a handle to that here.
 	 */
 	IMG_HANDLE hDevMemServerHeap;
+
+	/* This heap is fully allocated and premapped into the device address space.
+	 * Used in virtualisation for firmware heaps of Guest and optionally Host drivers. */
+	IMG_BOOL bPremapped;
 };
 
 typedef IMG_UINT32 DEVMEM_PROPERTIES_T;                  /*!< Typedef for Devicemem properties */

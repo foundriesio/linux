@@ -58,7 +58,6 @@ typedef union _RGX_FW_BOOT_PARAMS_
 {
 	struct
 	{
-		/* META-only parameters */
 		IMG_DEV_VIRTADDR sFWCodeDevVAddr;
 		IMG_DEV_VIRTADDR sFWDataDevVAddr;
 		IMG_DEV_VIRTADDR sFWCorememCodeDevVAddr;
@@ -68,6 +67,18 @@ typedef union _RGX_FW_BOOT_PARAMS_
 		RGXFWIF_DEV_VIRTADDR sFWCorememDataFWAddr;
 		IMG_UINT32 ui32NumThreads;
 	} sMeta;
+
+	struct
+	{
+		IMG_DEV_VIRTADDR sFWCorememCodeDevVAddr;
+		RGXFWIF_DEV_VIRTADDR sFWCorememCodeFWAddr;
+		IMG_DEVMEM_SIZE_T uiFWCorememCodeSize;
+
+		IMG_DEV_VIRTADDR sFWCorememDataDevVAddr;
+		RGXFWIF_DEV_VIRTADDR sFWCorememDataFWAddr;
+		IMG_DEVMEM_SIZE_T uiFWCorememDataSize;
+	} sRISCV;
+
 } RGX_FW_BOOT_PARAMS;
 
 /*!
@@ -180,6 +191,31 @@ PVRSRV_ERROR ProcessLDRCommandStream(const void *hPrivate,
                                      void* pvHostFWCorememCodeAddr,
                                      void* pvHostFWCorememDataAddr,
                                      IMG_UINT32 **ppui32BootConf);
+
+/*!
+*******************************************************************************
+
+ @Function      ProcessELFCommandStream
+
+ @Description   Process a file in .ELF format copying code and data sections
+                into their final location
+
+ @Input         hPrivate                 : Implementation specific data
+ @Input         pbELF                    : Pointer to FW blob
+ @Input         pvHostFWCodeAddr         : Pointer to FW code
+ @Input         pvHostFWDataAddr         : Pointer to FW data
+ @Input         pvHostFWCorememCodeAddr  : Pointer to FW coremem code
+ @Input         pvHostFWCorememDataAddr  : Pointer to FW coremem data
+
+ @Return        PVRSRV_ERROR
+
+******************************************************************************/
+PVRSRV_ERROR ProcessELFCommandStream(const void *hPrivate,
+                                     const IMG_BYTE *pbELF,
+                                     void *pvHostFWCodeAddr,
+                                     void *pvHostFWDataAddr,
+                                     void* pvHostFWCorememCodeAddr,
+                                     void* pvHostFWCorememDataAddr);
 
 /*!
 *******************************************************************************

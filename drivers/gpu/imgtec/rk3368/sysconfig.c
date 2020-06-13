@@ -52,7 +52,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "ion_support.h"
 #endif
 #include "rk_init.h"
-#include "vz_support.h"
+#include "vz_vmm_pvz.h"
 
 static RGX_TIMING_INFORMATION	gsRGXTimingInfo;
 static RGX_DATA					gsRGXData;

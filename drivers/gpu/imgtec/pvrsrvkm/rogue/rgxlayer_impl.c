@@ -751,8 +751,8 @@ PVRSRV_ERROR RGXFabricCoherencyTest(const void *hPrivate)
 
 	if (bFeatureS7)
 	{
-		ui64SegOutAddrTopCached   = RGXFW_SEGMMU_OUTADDR_TOP_VIVT_SLC_CACHED(META_MMU_CONTEXT_MAPPING_FWIF);
-		ui64SegOutAddrTopUncached = RGXFW_SEGMMU_OUTADDR_TOP_VIVT_SLC_UNCACHED(META_MMU_CONTEXT_MAPPING_FWIF);
+		ui64SegOutAddrTopCached   = RGXFW_SEGMMU_OUTADDR_TOP_VIVT_SLC_CACHED(MMU_CONTEXT_MAPPING_FWIF);
+		ui64SegOutAddrTopUncached = RGXFW_SEGMMU_OUTADDR_TOP_VIVT_SLC_UNCACHED(MMU_CONTEXT_MAPPING_FWIF);
 
 		/* Configure META to use SLC force-linefill for the bootloader segment */
 		RGXWriteMetaRegThroughSP(hPrivate, META_CR_MMCU_SEGMENTn_OUTA1(6),
@@ -1229,4 +1229,24 @@ IMG_BOOL RGXDevicePA0IsValid(const void *hPrivate)
 	psDevInfo = psParams->psDevInfo;
 
 	return psDevInfo->sLayerParams.bDevicePA0IsValid;
+}
+
+void RGXAcquireBootCodeAddr(const void *hPrivate, IMG_DEV_VIRTADDR *psBootCodeAddr)
+{
+	PVRSRV_RGXDEV_INFO *psDevInfo;
+
+	PVR_ASSERT(hPrivate != NULL);
+	psDevInfo = ((RGX_LAYER_PARAMS*)hPrivate)->psDevInfo;
+
+	*psBootCodeAddr = psDevInfo->sFWCodeDevVAddrBase;
+}
+
+void RGXAcquireBootDataAddr(const void *hPrivate, IMG_DEV_VIRTADDR *psBootDataAddr)
+{
+	PVRSRV_RGXDEV_INFO *psDevInfo;
+
+	PVR_ASSERT(hPrivate != NULL);
+	psDevInfo = ((RGX_LAYER_PARAMS*)hPrivate)->psDevInfo;
+
+	*psBootDataAddr = psDevInfo->sFWDataDevVAddrBase;
 }

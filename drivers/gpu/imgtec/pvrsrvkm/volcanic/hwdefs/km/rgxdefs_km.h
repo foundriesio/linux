@@ -50,6 +50,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define IMG_EXPLICIT_INCLUDE_HWDEFS
 #if defined(__KERNEL__)
 #include "rgx_cr_defs_km.h"
+#include "tmp_rgx_cr_defs_riscv_km.h"
 #endif
 #undef IMG_EXPLICIT_INCLUDE_HWDEFS
 
@@ -149,14 +150,16 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #undef RGX_FEATURE_META_COREMEM_SIZE
 #define RGX_FEATURE_META_COREMEM_SIZE (0)
 #define RGX_META_COREMEM_SIZE         (0)
-#else
+#elif defined(RGX_FEATURE_META_COREMEM_SIZE)
 #define RGX_META_COREMEM_SIZE         (RGX_FEATURE_META_COREMEM_SIZE*1024U)
+#else
+#define RGX_META_COREMEM_SIZE         (0)
 #endif
 
-#if defined(RGX_FEATURE_META_COREMEM_SIZE) && RGX_FEATURE_META_COREMEM_SIZE != 0
-#define RGX_META_COREMEM          (1)
-#define RGX_META_COREMEM_CODE     (1)
-#define RGX_META_COREMEM_DATA     (1)
+#if RGX_META_COREMEM_SIZE != 0
+#define RGX_META_COREMEM
+#define RGX_META_COREMEM_CODE
+#define RGX_META_COREMEM_DATA
 #endif
 #endif
 
@@ -285,6 +288,18 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 
 /*
+ * FW MMU contexts
+ */
+#if defined(SUPPORT_TRUSTED_DEVICE)
+#define MMU_CONTEXT_MAPPING_FWPRIV (0x0) /* FW code/private data */
+#define MMU_CONTEXT_MAPPING_FWIF   (0x7) /* Host/FW data */
+#else
+#define MMU_CONTEXT_MAPPING_FWPRIV (0x0)
+#define MMU_CONTEXT_MAPPING_FWIF   (0x0)
+#endif
+
+
+/*
  * FBC clear color register defaults based on HW defaults
  * non-YUV clear colour 0: 0x00000000 (encoded as ch3,2,1,0)
  * non-YUV clear colour 1: 0x01000000 (encoded as ch3,2,1,0)
@@ -303,6 +318,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 /* GPU CR timer tick in GPU cycles */
 #define RGX_CRTIME_TICK_IN_CYCLES (256U)
+
+#define ROGUE_RENDERSIZE_MAXX						(RGX_FEATURE_RENDER_TARGET_XY_MAX)
+#define ROGUE_RENDERSIZE_MAXY						(RGX_FEATURE_RENDER_TARGET_XY_MAX)
 
 /*
  * Register used by the FW to track the current boot stage (not used in MIPS)

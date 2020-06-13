@@ -64,7 +64,7 @@ PVRSRV_DEVICE_NODE* OSGetDevNode(CONNECTION_DATA *psConnection);
 @Function       OSConnectionPrivateDataInit
 @Description    Allocates and initialises any OS-specific private data
                 relating to a connection.
-                Called from PVRSRVConnectionConnect().
+                Called from PVRSRVCommonConnectionConnect().
 @Input          pvOSData            pointer to any OS private data
 @Output         phOsPrivateData     handle to the created connection
                                     private data

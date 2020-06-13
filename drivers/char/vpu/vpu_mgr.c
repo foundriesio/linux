@@ -869,7 +869,7 @@ static int _vmgr_cmd_open(char *str)
         vmgr_data.clk_limitation = 1;
         vmgr_data.cmd_processing = 0;
 
-		vmgr_hw_reset(0);
+        vmgr_hw_reset();
         vmgr_enable_irq(vmgr_data.irq);
         vetc_reg_init(vmgr_data.base_addr);
         if(0 > (ret = vmem_init()))
@@ -893,7 +893,8 @@ static int _vmgr_cmd_release(char *str)
 {
     dprintk("======> _vmgr_%s_release In!! %d'th \n", str, atomic_read(&vmgr_data.dev_opened));
 
-    if (atomic_read(&vmgr_data.dev_opened) > 0) {
+    if (atomic_read(&vmgr_data.dev_opened) > 0)
+    {
         atomic_dec(&vmgr_data.dev_opened);
 	}
 
@@ -938,7 +939,8 @@ static int _vmgr_cmd_release(char *str)
 
 		vmem_deinit();
 		
-		vmgr_hw_reset(1);
+        vmgr_hw_assert();
+        udelay(1000); //1ms
     }
 
     vmgr_disable_clock(0, 0);
@@ -1024,8 +1026,7 @@ static long _vmgr_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
         break;
 
         case VPU_HW_RESET:
-			vmgr_hw_reset(1);
-			vmgr_hw_reset(0);
+            vmgr_hw_reset();
         break;
 
         case VPU_SET_MEM_ALLOC_MODE:
@@ -1473,18 +1474,16 @@ Error:
 }
 
 void vmgr_waitlist_init_pending(int type, int force_clear)
-{	
-	if (IsUseWaitList()) {
-		if((wait_entry_info.type == type) || force_clear){
-			wait_entry_info.wait_dec_status = 0;
-			printk(
-				"@@@@@@ =====> [wait_entry(%d) vs. type(%d)] end waiting with closing VPU (by %s)\n",
-				wait_entry_info.type,
-				type,
-				force_clear?"RETCODE_CODEC_EXIT":"VPU_DEC_CLOSE"
-			);
-		}
-	}
+{
+    if (IsUseWaitList())
+    {
+        if((wait_entry_info.type == type) || force_clear)
+        {
+            wait_entry_info.wait_dec_status = 0;
+            printk("@@@@@@ =====> [wait_entry(%d) vs. type(%d)] end waiting with closing VPU (by %s)\n",
+                wait_entry_info.type,
+                type,
+                force_clear?"RETCODE_CODEC_EXIT":"VPU_DEC_CLOSE"
 }
 #endif
 
@@ -1502,7 +1501,8 @@ static int _vmgr_operation(void)
 #ifdef USE_WAIT_LIST
 			|| (!vmgr_waitlist_manager(NULL, LIST_IS_EMPTY))
 #endif
-	) {
+    )
+    {
         vmgr_data.cmd_processing = 1;
         oper_finished = 1;
 
@@ -1592,7 +1592,9 @@ static int _vmgr_operation(void)
 				#endif
                 }
             }
-        } else {
+        } 
+        else
+        {
             printk("_vmgr_operation: missed info or unknown command => type = 0x%x, cmd = 0x%x \n", oper_data->type, oper_data->cmd_type);
 
             *(oper_data->vpu_result) = RETCODE_FAILURE;

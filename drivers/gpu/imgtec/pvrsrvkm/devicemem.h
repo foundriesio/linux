@@ -711,4 +711,19 @@ GetMaxDevMemSize(SHARED_DEV_CONNECTION hDevConnection,
 		 IMG_DEVMEM_SIZE_T *puiLMASize,
 		 IMG_DEVMEM_SIZE_T *puiUMASize);
 
+/*************************************************************************/ /*!
+@Function       DevmemHeapSetPremapStatus
+@Description    In some special cases like virtualisation, a device memory heap
+			    must be entirely backed by physical memory and mapped into the
+				device's virtual address space. This is done at context creation.
+			    When objects are allocated from such a heap, the mapping part
+			    must be skipped. The 'bPremapped' flag dictates if allocations
+			    are to be mapped or not.
+
+@Input          psHeap            Device memory heap to be updated
+@Input          IsPremapped       The premapping status to be set
+*/ /**************************************************************************/
+IMG_INTERNAL void
+DevmemHeapSetPremapStatus(DEVMEM_HEAP *psHeap, IMG_BOOL IsPremapped);
+
 #endif /* #ifndef SRVCLIENT_DEVICEMEM_H */

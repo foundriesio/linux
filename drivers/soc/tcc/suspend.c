@@ -84,7 +84,7 @@ failed_soc_reg_save:
 	return ret;
 }
 
-#if CONFIG_ARCH_TCC803X 
+#if defined(CONFIG_ARCH_TCC803X)
 static int tcc_suspend_begin(suspend_state_t state)
 {
 	int ret;
@@ -112,7 +112,7 @@ static void tcc_suspend_end(void)
 static struct platform_suspend_ops suspend_ops = {
 	.valid	= suspend_valid_only_mem,
 	.enter	= tcc_pm_enter,
-#if CONFIG_ARCH_TCC803X
+#if defined(CONFIG_ARCH_TCC803X)
 	.begin= tcc_suspend_begin,
 	.end= tcc_suspend_end,
 #endif

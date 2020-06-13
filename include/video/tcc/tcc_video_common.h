@@ -46,7 +46,7 @@
 
 #if defined(CONFIG_ARCH_TCC897X) || defined(CONFIG_ARCH_TCC898X) \
 	|| defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X) \
-	|| defined(CONFIG_ARCH_TCC901X)
+	|| defined(CONFIG_ARCH_TCC901X) || defined(CONFIG_ARCH_TCC805X)
 #   define _JPU_C6_INCLUDE_
 #else
 #   define _JPU_C5_INCLUDE_

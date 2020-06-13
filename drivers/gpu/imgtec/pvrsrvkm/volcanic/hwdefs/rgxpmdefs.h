@@ -3567,7 +3567,7 @@ Init Bit Sent Flag for VCE0
 
 #if defined(RGX_FEATURE_PM_BYTE_ALIGNED_BASE_ADDRESSES)
 /*
-The PM FreeListState Buffer Layout - this will apply to 3 resources - FSTACK, UFSTACK and MMUSTACK 
+The PM FreeListState Buffer Layout - this will apply to 3 resources - FSTACK, UFSTACK and MMUSTACK
 */
 typedef struct _RGX_PM_FREELISTSTATE_BUFFER {
      IMG_UINT32 u32_0;
@@ -3645,7 +3645,7 @@ Base address of the free stack - points to the bottom of the stack.
 
 #if !defined(RGX_FEATURE_PM_BYTE_ALIGNED_BASE_ADDRESSES)
 /*
-The PM FreeListState Buffer Layout - this will apply to 3 resources - FSTACK, UFSTACK and MMUSTACK 
+The PM FreeListState Buffer Layout - this will apply to 3 resources - FSTACK, UFSTACK and MMUSTACK
 */
 typedef struct _RGX_PM_FREELISTSTATE_BUFFER {
      IMG_UINT32 u32_0;
@@ -3774,7 +3774,7 @@ Maximum range supported by hardware is 23 bits.
 
 #if defined(RGX_FEATURE_PM_REGISTER_CONFIG_MODE)&&defined(RGX_FEATURE_PM_BYTE_ALIGNED_BASE_ADDRESSES)
 /*
-The PM Render Context Buffer Layout 
+The PM Render Context Buffer Layout
 */
 typedef struct _RGX_PM_RENDERSTATE_BUFFER {
      IMG_UINT32 u32_0;
@@ -3920,7 +3920,7 @@ The number of entries on the ALIST.  Must be initialised to zero, meaning no pag
 
 #if defined(RGX_FEATURE_PM_REGISTER_CONFIG_MODE)&&!defined(RGX_FEATURE_PM_BYTE_ALIGNED_BASE_ADDRESSES)
 /*
-The PM Render Context Buffer Layout 
+The PM Render Context Buffer Layout
 */
 typedef struct _RGX_PM_RENDERSTATE_BUFFER {
      IMG_UINT32 u32_0;
@@ -4032,7 +4032,7 @@ The number of entries on the ALIST.  Must be initialised to zero, meaning no pag
 
 #if !defined(RGX_FEATURE_PM_REGISTER_CONFIG_MODE)
 /*
-The PM Render Context Buffer Layout 
+The PM Render Context Buffer Layout
 */
 typedef struct _RGX_PM_RENDERSTATE_BUFFER {
      IMG_UINT32 u32_0;
@@ -4643,4 +4643,3 @@ The 40-bit, 16-byte-aligned address is packed into bits 35:0 of the two DWORDs.
 /*****************************************************************************
  End of file (rgxpmdefs.h)
 *****************************************************************************/
-

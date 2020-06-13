@@ -64,7 +64,7 @@ typedef struct {
 
 static bool pmap_list_sorted = false;
 static unsigned int num_pmaps = 0;
-static unsigned int pmap_total_size = 0;
+static u64 pmap_total_size = 0;
 
 struct pmap_entry {
 	pmap_t info;
@@ -126,7 +126,7 @@ static pmap_t *pmap_find_info_by_name(const char *name)
 	return NULL;
 }
 
-static inline __u32 pmap_get_base(pmap_t *info)
+static inline u64 pmap_get_base(pmap_t *info)
 {
 	struct pmap_entry *entry = pmap_entry_of(info);
 	struct pmap_entry *iter = NULL;
@@ -169,10 +169,11 @@ static __u32 pmap_cma_alloc(pmap_t *info)
 		return 0;
 	}
 
-	info->base = (__u32) phys;
+	info->base = (u64) phys;
 
-	pr_debug("[DEBUG][PMAP] cma: %s is allocated at 0x%08x\n",
+	pr_debug("[DEBUG][PMAP] cma: %s is allocated at 0x%08llx\n",
 			info->name, info->base);
+
 
 #ifdef CONFIG_OPTEE
 	if ((strlen(info->name) == 12) && !strncmp(info->name, "secure_area", 11)) {
@@ -192,7 +193,7 @@ static __u32 pmap_cma_alloc(pmap_t *info)
 			elapsed = end.tv_nsec - start.tv_nsec;
 		}
 
-		pr_debug("[DEBUG][PMAP] %s: 0x%08x++0x%08x, area_%d, elapsed:%09ldns\n",
+		pr_debug("[DEBUG][PMAP] %s: 0x%08x++0x%08llx, area_%d, elapsed:%09ldns\n",
 				__func__, info->base, info->size, id, elapsed);
 #endif
 	}
@@ -443,13 +444,13 @@ static int proc_pmap_show(struct seq_file *m, void *v)
 			secured_info = 1;
 		}
 
-		seq_printf(m, "0x%8.8x 0x%8.8x  %c  %-3u %s\n",
+		seq_printf(m, "0x%8.8llx 0x%8.8llx  %c  %-3u %s\n",
 				pmap_get_base(info), info->size, is_cma,
 				info->rc, info->name);
 	}
 
 	seq_printf(m, " ======= Total Area Info. ======= \n");
-	seq_printf(m, "0x00000000 0x%8.8x         total\n", pmap_total_size);
+	seq_printf(m, "0x00000000 0x%8.8llx         total\n", pmap_total_size);
 
 	return 0;
 }
@@ -523,7 +524,9 @@ static void pmap_update_info(struct device_node *np, pmap_t *info)
 		struct device_node *node;
 		const char *name;
 		pmap_t *shared;
-		u32 offset = 0, size = 0;
+		const __be32 *prop;
+		int len;
+		u64 offset = 0, size = 0;
 
 		node = of_parse_phandle(np, "telechips,pmap-shared", 0);
 		if (of_property_read_string(node, "telechips,pmap-name", &name)) {
@@ -534,8 +537,12 @@ static void pmap_update_info(struct device_node *np, pmap_t *info)
 			return;
 		}
 
-		of_property_read_u32(np, "telechips,pmap-offset", &offset);
-		of_property_read_u32(np, "telechips,pmap-shared-size", &size);
+		prop = of_get_property(np, "telechips,pmap-offset", &len);
+		if (prop && of_n_addr_cells(np) == len/sizeof(u32))
+			offset = of_read_number(prop, of_n_addr_cells(np));
+		prop = of_get_property(np, "telechips,pmap-shared-size", &len);
+		if (prop && of_n_size_cells(np) == len/sizeof(u32))
+			size = of_read_number(prop, of_n_size_cells(np));
 
 		entry->parent = pmap_entry_of(shared);
 		info->base = offset;
@@ -684,7 +691,7 @@ static int __init tcc_pmap_init(void)
 		}
 	}
 
-	pr_info("[INFO][PMAP] total reserved %u bytes (%u KiB, %u MiB)\n",
+	pr_info("[INFO][PMAP] total reserved %llu bytes (%llu KiB, %llu MiB)\n",
 			pmap_total_size, pmap_total_size >> 10,
 			pmap_total_size >> 20);
 

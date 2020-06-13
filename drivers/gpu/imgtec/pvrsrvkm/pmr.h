@@ -396,8 +396,6 @@ PMRLocalImportPMR(PMR *psPMR,
 
 /*
  * Equivalent mapping functions when in kernel mode.
- * TODO: should unify this and the PMRAcquireMMapArgs API with
- * a suitable abstraction
  */
 PVRSRV_ERROR
 PMRAcquireKernelMappingData(PMR *psPMR,

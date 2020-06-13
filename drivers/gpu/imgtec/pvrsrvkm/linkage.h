@@ -49,7 +49,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 PVRSRV_ERROR PVROSFuncInit(void);
 void PVROSFuncDeInit(void);
 
-int PVRDebugCreateDebugFSEntries(void);
-void PVRDebugRemoveDebugFSEntries(void);
+int PVRDebugCreateDIEntries(void);
+void PVRDebugRemoveDIEntries(void);
 
 #endif /* !defined(__LINKAGE_H__) */

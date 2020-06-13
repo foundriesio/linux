@@ -54,11 +54,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef _SYNC_SERVER_H_
 #define _SYNC_SERVER_H_
 
-#if defined(SUPPORT_SERVER_SYNC_IMPL)
-typedef struct _SERVER_OP_COOKIE_ SERVER_OP_COOKIE;
-typedef struct _SERVER_SYNC_EXPORT_ SERVER_SYNC_EXPORT;
-typedef struct _SERVER_SYNC_PRIMITIVE_ SERVER_SYNC_PRIMITIVE;
-#endif
 typedef struct _SYNC_PRIMITIVE_BLOCK_ SYNC_PRIMITIVE_BLOCK;
 typedef struct _SYNC_CONNECTION_DATA_ SYNC_CONNECTION_DATA;
 typedef struct SYNC_RECORD* SYNC_RECORD_HANDLE;
@@ -127,52 +122,6 @@ PVRSRVFreeSyncPrimitiveBlockKM(SYNC_PRIMITIVE_BLOCK *ppsSyncBlk);
 PVRSRV_ERROR
 PVRSRVSyncPrimSetKM(SYNC_PRIMITIVE_BLOCK *psSyncBlk, IMG_UINT32 ui32Index,
 					IMG_UINT32 ui32Value);
-#if defined(SUPPORT_SERVER_SYNC_IMPL)
-PVRSRV_ERROR
-PVRSRVServerSyncPrimSetKM(SERVER_SYNC_PRIMITIVE *psServerSync, IMG_UINT32 ui32Value);
-
-
-#if defined(SUPPORT_INSECURE_EXPORT)
-PVRSRV_ERROR
-PVRSRVSyncPrimServerExportKM(SERVER_SYNC_PRIMITIVE *psSync,
-							SERVER_SYNC_EXPORT **ppsExport);
-
-PVRSRV_ERROR
-PVRSRVSyncPrimServerUnexportKM(SERVER_SYNC_EXPORT *psExport);
-
-PVRSRV_ERROR
-PVRSRVSyncPrimServerImportKM(CONNECTION_DATA *psConnection,
-							 PVRSRV_DEVICE_NODE *psDevNode,
-							 SERVER_SYNC_EXPORT *psExport,
-							 SERVER_SYNC_PRIMITIVE **ppsSync,
-							 IMG_UINT32 *pui32SyncPrimVAddr);
-#endif
-
-#if defined(SUPPORT_SECURE_EXPORT)
-
-
-PVRSRV_ERROR
-PVRSRVSyncPrimServerSecureExportKM(CONNECTION_DATA *psConnection,
-                                   PVRSRV_DEVICE_NODE * psDevNode,
-								   SERVER_SYNC_PRIMITIVE *psSync,
-								   IMG_SECURE_TYPE *phSecure,
-								   SERVER_SYNC_EXPORT **ppsExport,
-								   CONNECTION_DATA **ppsSecureConnection);
-
-PVRSRV_ERROR
-PVRSRVSyncPrimServerSecureUnexportKM(SERVER_SYNC_EXPORT *psExport);
-
-PVRSRV_ERROR
-PVRSRVSyncPrimServerSecureImportKM(CONNECTION_DATA *psConnection,
-								   PVRSRV_DEVICE_NODE *psDevNode,
-								   IMG_SECURE_TYPE hSecure,
-								   SERVER_SYNC_PRIMITIVE **ppsSync,
-								   IMG_UINT32 *pui32SyncPrimVAddr);
-#endif
-
-IMG_UINT32 PVRSRVServerSyncRequesterRegisterKM(IMG_UINT32 *pui32SyncRequesterID);
-void PVRSRVServerSyncRequesterUnregisterKM(IMG_UINT32 ui32SyncRequesterID);
-#endif
 
 PVRSRV_ERROR
 PVRSRVSyncAllocEventKM(CONNECTION_DATA *psConnection,
@@ -201,102 +150,6 @@ PVRSRVSyncRecordAddKM(CONNECTION_DATA *psConnection,
 PVRSRV_ERROR
 PVRSRVSyncRecordRemoveByHandleKM(
 			SYNC_RECORD_HANDLE hRecord);
-
-#if defined(SUPPORT_SERVER_SYNC_IMPL)
-PVRSRV_ERROR
-PVRSRVServerSyncAllocKM(CONNECTION_DATA * psConnection,
-                        PVRSRV_DEVICE_NODE *psDevNode,
-						SERVER_SYNC_PRIMITIVE **ppsSync,
-						IMG_UINT32 *pui32SyncPrimVAddr,
-						IMG_UINT32 ui32ClassNameSize,
-						const IMG_CHAR *szClassName);
-PVRSRV_ERROR
-PVRSRVServerSyncFreeKM(SERVER_SYNC_PRIMITIVE *psSync);
-
-PVRSRV_ERROR
-PVRSRVServerSyncGetStatusKM(IMG_UINT32 ui32SyncCount,
-							SERVER_SYNC_PRIMITIVE **papsSyncs,
-							IMG_UINT32 *pui32UID,
-							IMG_UINT32 *pui32FWAddr,
-							IMG_UINT32 *pui32CurrentOp,
-							IMG_UINT32 *pui32NextOp);
-
-PVRSRV_ERROR
-PVRSRVServerSyncQueueSWOpKM(SERVER_SYNC_PRIMITIVE *psSync,
-						  IMG_UINT32 *pui32FenceValue,
-						  IMG_UINT32 *pui32UpdateValue,
-						  IMG_UINT32 ui32SyncRequesterID,
-						  IMG_BOOL bUpdate,
-						  IMG_BOOL *pbFenceRequired);
-PVRSRV_ERROR
-PVRSRVServerSyncQueueSWOpKM_NoGlobalLock(SERVER_SYNC_PRIMITIVE *psSync,
-						  IMG_UINT32 *pui32FenceValue,
-						  IMG_UINT32 *pui32UpdateValue,
-						  IMG_UINT32 ui32SyncRequesterID,
-						  IMG_BOOL bUpdate,
-						  IMG_BOOL *pbFenceRequired);
-
-PVRSRV_ERROR
-PVRSRVServerSyncQueueHWOpKM(SERVER_SYNC_PRIMITIVE *psSync,
-							   IMG_BOOL bUpdate,
-						       IMG_UINT32 *pui32FenceValue,
-						       IMG_UINT32 *pui32UpdateValue);
-
-PVRSRV_ERROR
-PVRSRVServerSyncQueueHWOpKM_NoGlobalLock(SERVER_SYNC_PRIMITIVE *psSync,
-							   IMG_BOOL bUpdate,
-						       IMG_UINT32 *pui32FenceValue,
-						       IMG_UINT32 *pui32UpdateValue);
-
-IMG_BOOL
-ServerSyncFenceIsMet(SERVER_SYNC_PRIMITIVE *psSync,
-					 IMG_UINT32 ui32FenceValue);
-
-void
-ServerSyncCompleteOp(SERVER_SYNC_PRIMITIVE *psSync,
-					 IMG_BOOL bDoUpdate,
-					 IMG_UINT32 ui32UpdateValue);
-
-PVRSRV_ERROR
-PVRSRVSyncPrimOpCreateKM(IMG_UINT32 ui32SyncBlockCount,
-						 SYNC_PRIMITIVE_BLOCK **papsSyncPrimBlock,
-						 IMG_UINT32 ui32ClientSyncCount,
-						 IMG_UINT32 *paui32SyncBlockIndex,
-						 IMG_UINT32 *paui32Index,
-						 IMG_UINT32 ui32ServerSyncCount,
-						 SERVER_SYNC_PRIMITIVE **papsServerSync,
-						 SERVER_OP_COOKIE **ppsServerCookie);
-
-PVRSRV_ERROR
-PVRSRVSyncPrimOpTakeKM(SERVER_OP_COOKIE *psServerCookie,
-					       IMG_UINT32 ui32ClientSyncCount,
-					       IMG_UINT32 *paui32Flags,
-					       IMG_UINT32 *paui32FenceValue,
-					       IMG_UINT32 *paui32UpdateValue,
-					       IMG_UINT32 ui32ServerSyncCount,
-						   IMG_UINT32 *paui32ServerFlags);
-
-PVRSRV_ERROR
-PVRSRVSyncPrimOpReadyKM(SERVER_OP_COOKIE *psServerCookie,
-						IMG_BOOL *pbReady);
-
-PVRSRV_ERROR
-PVRSRVSyncPrimOpCompleteKM(SERVER_OP_COOKIE *psServerCookie);
-
-PVRSRV_ERROR
-PVRSRVSyncPrimOpDestroyKM(SERVER_OP_COOKIE *psServerCookie);
-
-IMG_UINT32 ServerSyncGetId(SERVER_SYNC_PRIMITIVE *psSync);
-
-PVRSRV_ERROR
-ServerSyncGetFWAddr(SERVER_SYNC_PRIMITIVE *psSync, IMG_UINT32 *pui32SyncAddr);
-
-IMG_UINT32 ServerSyncGetValue(SERVER_SYNC_PRIMITIVE *psSync);
-
-IMG_UINT32 ServerSyncGetNextValue(SERVER_SYNC_PRIMITIVE *psSync);
-
-PVRSRV_DEVICE_NODE* ServerSyncGetDeviceNode(SERVER_SYNC_PRIMITIVE *psSync);
-#endif
 void SyncRecordLookup(PVRSRV_DEVICE_NODE *psDevNode, IMG_UINT32 ui32FwAddr,
 					  IMG_CHAR * pszSyncInfo, size_t len);
 
@@ -308,23 +161,13 @@ void SyncConnectionPDumpSyncBlocks(void *hSyncPrivData, PDUMP_TRANSITION_EVENT e
 
 /*!
 ******************************************************************************
-@Function      ServerSyncInit
+@Function      SyncServerInit
 
 @Description   Per-device initialisation for the ServerSync module
 ******************************************************************************/
-PVRSRV_ERROR ServerSyncInit(PVRSRV_DEVICE_NODE *psDevNode);
-void ServerSyncDeinit(PVRSRV_DEVICE_NODE *psDevNode);
+PVRSRV_ERROR SyncServerInit(PVRSRV_DEVICE_NODE *psDevNode);
+void SyncServerDeinit(PVRSRV_DEVICE_NODE *psDevNode);
 
-#if defined(SUPPORT_SERVER_SYNC_IMPL)
-/*!
-******************************************************************************
-@Function      ServerSyncInitOnce
-
-@Description   One-time initialisation for the ServerSync module
-******************************************************************************/
-PVRSRV_ERROR ServerSyncInitOnce(PVRSRV_DATA *psPVRSRVData);
-void ServerSyncDeinitOnce(PVRSRV_DATA *psPVRSRVData);
-#endif
 
 /*!
 ******************************************************************************
@@ -354,13 +197,6 @@ PVRSRVSyncPrimPDumpPolKM(SYNC_PRIMITIVE_BLOCK *psSyncBlk, IMG_UINT32 ui32Offset,
 						 IMG_UINT32 ui32Value, IMG_UINT32 ui32Mask,
 						 PDUMP_POLL_OPERATOR eOperator,
 						 PDUMP_FLAGS_T uiDumpFlags);
-
-#if defined(SUPPORT_SERVER_SYNC_IMPL)
-PVRSRV_ERROR
-PVRSRVSyncPrimOpPDumpPolKM(SERVER_OP_COOKIE *psServerCookie,
-						 PDUMP_POLL_OPERATOR eOperator,
-						 PDUMP_FLAGS_T ui32PDumpFlags);
-#endif
 
 PVRSRV_ERROR
 PVRSRVSyncPrimPDumpCBPKM(SYNC_PRIMITIVE_BLOCK *psSyncBlk, IMG_UINT64 ui32Offset,
@@ -410,22 +246,6 @@ PVRSRVSyncPrimPDumpPolKM(SYNC_PRIMITIVE_BLOCK *psSyncBlk, IMG_UINT32 ui32Offset,
 	PVR_UNREFERENCED_PARAMETER(uiDumpFlags);
 	return PVRSRV_OK;
 }
-
-#if defined(SUPPORT_SERVER_SYNC_IMPL)
-#ifdef INLINE_IS_PRAGMA
-#pragma inline(PVRSRVSyncPrimOpPDumpPolKM)
-#endif
-static INLINE PVRSRV_ERROR
-PVRSRVSyncPrimOpPDumpPolKM(SERVER_OP_COOKIE *psServerCookie,
-						 PDUMP_POLL_OPERATOR eOperator,
-						 PDUMP_FLAGS_T uiDumpFlags)
-{
-	PVR_UNREFERENCED_PARAMETER(psServerCookie);
-	PVR_UNREFERENCED_PARAMETER(eOperator);
-	PVR_UNREFERENCED_PARAMETER(uiDumpFlags);
-	return PVRSRV_OK;
-}
-#endif
 
 #ifdef INLINE_IS_PRAGMA
 #pragma inline(PVRSRVSyncPrimPDumpCBPKM)

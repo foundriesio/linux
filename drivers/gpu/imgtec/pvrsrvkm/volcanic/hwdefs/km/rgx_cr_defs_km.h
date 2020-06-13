@@ -58,7 +58,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "img_defs.h"
 
 
-#define RGX_CR_DEFS_KM_REVISION 103
+#define RGX_CR_DEFS_KM_REVISION 106
 
 /*
     Register RGX_CR_USC_INDIRECT
@@ -640,14 +640,55 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 
 /*
+    Register RGX_CR_MULTICORE_GPU
+*/
+#define RGX_CR_MULTICORE_GPU                              (0x0588U)
+#define RGX_CR_MULTICORE_GPU_MASKFULL                     (IMG_UINT64_C(0x00000000000000FF))
+#define RGX_CR_MULTICORE_GPU_CAPABILITY_TDM_SHIFT         (7U)
+#define RGX_CR_MULTICORE_GPU_CAPABILITY_TDM_CLRMSK        (0xFFFFFF7FU)
+#define RGX_CR_MULTICORE_GPU_CAPABILITY_TDM_EN            (0x00000080U)
+#define RGX_CR_MULTICORE_GPU_CAPABILITY_FRAGMENT_SHIFT    (6U)
+#define RGX_CR_MULTICORE_GPU_CAPABILITY_FRAGMENT_CLRMSK   (0xFFFFFFBFU)
+#define RGX_CR_MULTICORE_GPU_CAPABILITY_FRAGMENT_EN       (0x00000040U)
+#define RGX_CR_MULTICORE_GPU_CAPABILITY_GEOMETRY_SHIFT    (5U)
+#define RGX_CR_MULTICORE_GPU_CAPABILITY_GEOMETRY_CLRMSK   (0xFFFFFFDFU)
+#define RGX_CR_MULTICORE_GPU_CAPABILITY_GEOMETRY_EN       (0x00000020U)
+#define RGX_CR_MULTICORE_GPU_CAPABILITY_COMPUTE_SHIFT     (4U)
+#define RGX_CR_MULTICORE_GPU_CAPABILITY_COMPUTE_CLRMSK    (0xFFFFFFEFU)
+#define RGX_CR_MULTICORE_GPU_CAPABILITY_COMPUTE_EN        (0x00000010U)
+#define RGX_CR_MULTICORE_GPU_CAPABILITY_PRIMARY_SHIFT     (3U)
+#define RGX_CR_MULTICORE_GPU_CAPABILITY_PRIMARY_CLRMSK    (0xFFFFFFF7U)
+#define RGX_CR_MULTICORE_GPU_CAPABILITY_PRIMARY_EN        (0x00000008U)
+#define RGX_CR_MULTICORE_GPU_ID_SHIFT                     (0U)
+#define RGX_CR_MULTICORE_GPU_ID_CLRMSK                    (0xFFFFFFF8U)
+
+
+
+
+/*
+    Register RGX_CR_MULTICORE_SYSTEM
+*/
+#define RGX_CR_MULTICORE_SYSTEM                           (0x0590U)
+#define RGX_CR_MULTICORE_SYSTEM_MASKFULL                  (IMG_UINT64_C(0x000000000000000F))
+#define RGX_CR_MULTICORE_SYSTEM_GPU_COUNT_SHIFT           (0U)
+#define RGX_CR_MULTICORE_SYSTEM_GPU_COUNT_CLRMSK          (0xFFFFFFF0U)
+
+
+
+
+/*
     Register RGX_CR_EVENT_STATUS
 */
 #define RGX_CR_EVENT_STATUS                               (0x0130U)
 #define RGX_CR_EVENT_STATUS__ALRIF_V1__MASKFULL           (IMG_UINT64_C(0x00000000FFFFFFFF))
+#define RGX_CR_EVENT_STATUS__ALRIF_V2__MASKFULL           (IMG_UINT64_C(0x00000000FFFBFFFF))
 #define RGX_CR_EVENT_STATUS_MASKFULL                      (IMG_UINT64_C(0x00000000FFFFFFFF))
 #define RGX_CR_EVENT_STATUS_TDM_FENCE_FINISHED_SHIFT      (31U)
 #define RGX_CR_EVENT_STATUS_TDM_FENCE_FINISHED_CLRMSK     (0x7FFFFFFFU)
 #define RGX_CR_EVENT_STATUS_TDM_FENCE_FINISHED_EN         (0x80000000U)
+#define RGX_CR_EVENT_STATUS_TDM_FINISHED_SHIFT            (31U)
+#define RGX_CR_EVENT_STATUS_TDM_FINISHED_CLRMSK           (0x7FFFFFFFU)
+#define RGX_CR_EVENT_STATUS_TDM_FINISHED_EN               (0x80000000U)
 #define RGX_CR_EVENT_STATUS_TDM_BUFFER_STALL_SHIFT        (30U)
 #define RGX_CR_EVENT_STATUS_TDM_BUFFER_STALL_CLRMSK       (0xBFFFFFFFU)
 #define RGX_CR_EVENT_STATUS_TDM_BUFFER_STALL_EN           (0x40000000U)
@@ -714,9 +755,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define RGX_CR_EVENT_STATUS_MMU_PAGE_FAULT_SHIFT          (9U)
 #define RGX_CR_EVENT_STATUS_MMU_PAGE_FAULT_CLRMSK         (0xFFFFFDFFU)
 #define RGX_CR_EVENT_STATUS_MMU_PAGE_FAULT_EN             (0x00000200U)
-#define RGX_CR_EVENT_STATUS_PM_3D_MEM_FREE_SHIFT          (8U)
-#define RGX_CR_EVENT_STATUS_PM_3D_MEM_FREE_CLRMSK         (0xFFFFFEFFU)
-#define RGX_CR_EVENT_STATUS_PM_3D_MEM_FREE_EN             (0x00000100U)
+#define RGX_CR_EVENT_STATUS_PM_FRAG_DONE_SHIFT            (8U)
+#define RGX_CR_EVENT_STATUS_PM_FRAG_DONE_CLRMSK           (0xFFFFFEFFU)
+#define RGX_CR_EVENT_STATUS_PM_FRAG_DONE_EN               (0x00000100U)
 #define RGX_CR_EVENT_STATUS_PM_OUT_OF_MEMORY_SHIFT        (7U)
 #define RGX_CR_EVENT_STATUS_PM_OUT_OF_MEMORY_CLRMSK       (0xFFFFFF7FU)
 #define RGX_CR_EVENT_STATUS_PM_OUT_OF_MEMORY_EN           (0x00000080U)
@@ -1142,6 +1183,326 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define RGX_CR_SCRATCH15_MASKFULL                         (IMG_UINT64_C(0xFFFFFFFFFFFFFFFF))
 #define RGX_CR_SCRATCH15_DATA_SHIFT                       (0U)
 #define RGX_CR_SCRATCH15_DATA_CLRMSK                      (IMG_UINT64_C(0x0000000000000000))
+
+
+/*
+    Register group: RGX_CR_OS0_SCRATCH, with 4 repeats
+*/
+#define RGX_CR_OS0_SCRATCH_REPEATCOUNT                    (4U)
+/*
+    Register RGX_CR_OS0_SCRATCH0
+*/
+#define RGX_CR_OS0_SCRATCH0                               (0x0880U)
+#define RGX_CR_OS0_SCRATCH0_MASKFULL                      (IMG_UINT64_C(0x00000000FFFFFFFF))
+#define RGX_CR_OS0_SCRATCH0_DATA_SHIFT                    (0U)
+#define RGX_CR_OS0_SCRATCH0_DATA_CLRMSK                   (0x00000000U)
+
+
+/*
+    Register RGX_CR_OS0_SCRATCH1
+*/
+#define RGX_CR_OS0_SCRATCH1                               (0x0888U)
+#define RGX_CR_OS0_SCRATCH1_MASKFULL                      (IMG_UINT64_C(0x00000000FFFFFFFF))
+#define RGX_CR_OS0_SCRATCH1_DATA_SHIFT                    (0U)
+#define RGX_CR_OS0_SCRATCH1_DATA_CLRMSK                   (0x00000000U)
+
+
+/*
+    Register RGX_CR_OS0_SCRATCH2
+*/
+#define RGX_CR_OS0_SCRATCH2                               (0x0890U)
+#define RGX_CR_OS0_SCRATCH2_MASKFULL                      (IMG_UINT64_C(0x00000000FFFFFFFF))
+#define RGX_CR_OS0_SCRATCH2_DATA_SHIFT                    (0U)
+#define RGX_CR_OS0_SCRATCH2_DATA_CLRMSK                   (0x00000000U)
+
+
+/*
+    Register RGX_CR_OS0_SCRATCH3
+*/
+#define RGX_CR_OS0_SCRATCH3                               (0x0898U)
+#define RGX_CR_OS0_SCRATCH3_MASKFULL                      (IMG_UINT64_C(0x00000000FFFFFFFF))
+#define RGX_CR_OS0_SCRATCH3_DATA_SHIFT                    (0U)
+#define RGX_CR_OS0_SCRATCH3_DATA_CLRMSK                   (0x00000000U)
+
+
+/*
+    Register group: RGX_CR_OS1_SCRATCH, with 4 repeats
+*/
+#define RGX_CR_OS1_SCRATCH_REPEATCOUNT                    (4U)
+/*
+    Register RGX_CR_OS1_SCRATCH0
+*/
+#define RGX_CR_OS1_SCRATCH0                               (0x10880U)
+#define RGX_CR_OS1_SCRATCH0_MASKFULL                      (IMG_UINT64_C(0x00000000FFFFFFFF))
+#define RGX_CR_OS1_SCRATCH0_DATA_SHIFT                    (0U)
+#define RGX_CR_OS1_SCRATCH0_DATA_CLRMSK                   (0x00000000U)
+
+
+/*
+    Register RGX_CR_OS1_SCRATCH1
+*/
+#define RGX_CR_OS1_SCRATCH1                               (0x10888U)
+#define RGX_CR_OS1_SCRATCH1_MASKFULL                      (IMG_UINT64_C(0x00000000FFFFFFFF))
+#define RGX_CR_OS1_SCRATCH1_DATA_SHIFT                    (0U)
+#define RGX_CR_OS1_SCRATCH1_DATA_CLRMSK                   (0x00000000U)
+
+
+/*
+    Register RGX_CR_OS1_SCRATCH2
+*/
+#define RGX_CR_OS1_SCRATCH2                               (0x10890U)
+#define RGX_CR_OS1_SCRATCH2_MASKFULL                      (IMG_UINT64_C(0x00000000FFFFFFFF))
+#define RGX_CR_OS1_SCRATCH2_DATA_SHIFT                    (0U)
+#define RGX_CR_OS1_SCRATCH2_DATA_CLRMSK                   (0x00000000U)
+
+
+/*
+    Register RGX_CR_OS1_SCRATCH3
+*/
+#define RGX_CR_OS1_SCRATCH3                               (0x10898U)
+#define RGX_CR_OS1_SCRATCH3_MASKFULL                      (IMG_UINT64_C(0x00000000FFFFFFFF))
+#define RGX_CR_OS1_SCRATCH3_DATA_SHIFT                    (0U)
+#define RGX_CR_OS1_SCRATCH3_DATA_CLRMSK                   (0x00000000U)
+
+
+/*
+    Register group: RGX_CR_OS2_SCRATCH, with 4 repeats
+*/
+#define RGX_CR_OS2_SCRATCH_REPEATCOUNT                    (4U)
+/*
+    Register RGX_CR_OS2_SCRATCH0
+*/
+#define RGX_CR_OS2_SCRATCH0                               (0x20880U)
+#define RGX_CR_OS2_SCRATCH0_MASKFULL                      (IMG_UINT64_C(0x00000000FFFFFFFF))
+#define RGX_CR_OS2_SCRATCH0_DATA_SHIFT                    (0U)
+#define RGX_CR_OS2_SCRATCH0_DATA_CLRMSK                   (0x00000000U)
+
+
+/*
+    Register RGX_CR_OS2_SCRATCH1
+*/
+#define RGX_CR_OS2_SCRATCH1                               (0x20888U)
+#define RGX_CR_OS2_SCRATCH1_MASKFULL                      (IMG_UINT64_C(0x00000000FFFFFFFF))
+#define RGX_CR_OS2_SCRATCH1_DATA_SHIFT                    (0U)
+#define RGX_CR_OS2_SCRATCH1_DATA_CLRMSK                   (0x00000000U)
+
+
+/*
+    Register RGX_CR_OS2_SCRATCH2
+*/
+#define RGX_CR_OS2_SCRATCH2                               (0x20890U)
+#define RGX_CR_OS2_SCRATCH2_MASKFULL                      (IMG_UINT64_C(0x00000000FFFFFFFF))
+#define RGX_CR_OS2_SCRATCH2_DATA_SHIFT                    (0U)
+#define RGX_CR_OS2_SCRATCH2_DATA_CLRMSK                   (0x00000000U)
+
+
+/*
+    Register RGX_CR_OS2_SCRATCH3
+*/
+#define RGX_CR_OS2_SCRATCH3                               (0x20898U)
+#define RGX_CR_OS2_SCRATCH3_MASKFULL                      (IMG_UINT64_C(0x00000000FFFFFFFF))
+#define RGX_CR_OS2_SCRATCH3_DATA_SHIFT                    (0U)
+#define RGX_CR_OS2_SCRATCH3_DATA_CLRMSK                   (0x00000000U)
+
+
+/*
+    Register group: RGX_CR_OS3_SCRATCH, with 4 repeats
+*/
+#define RGX_CR_OS3_SCRATCH_REPEATCOUNT                    (4U)
+/*
+    Register RGX_CR_OS3_SCRATCH0
+*/
+#define RGX_CR_OS3_SCRATCH0                               (0x30880U)
+#define RGX_CR_OS3_SCRATCH0_MASKFULL                      (IMG_UINT64_C(0x00000000FFFFFFFF))
+#define RGX_CR_OS3_SCRATCH0_DATA_SHIFT                    (0U)
+#define RGX_CR_OS3_SCRATCH0_DATA_CLRMSK                   (0x00000000U)
+
+
+/*
+    Register RGX_CR_OS3_SCRATCH1
+*/
+#define RGX_CR_OS3_SCRATCH1                               (0x30888U)
+#define RGX_CR_OS3_SCRATCH1_MASKFULL                      (IMG_UINT64_C(0x00000000FFFFFFFF))
+#define RGX_CR_OS3_SCRATCH1_DATA_SHIFT                    (0U)
+#define RGX_CR_OS3_SCRATCH1_DATA_CLRMSK                   (0x00000000U)
+
+
+/*
+    Register RGX_CR_OS3_SCRATCH2
+*/
+#define RGX_CR_OS3_SCRATCH2                               (0x30890U)
+#define RGX_CR_OS3_SCRATCH2_MASKFULL                      (IMG_UINT64_C(0x00000000FFFFFFFF))
+#define RGX_CR_OS3_SCRATCH2_DATA_SHIFT                    (0U)
+#define RGX_CR_OS3_SCRATCH2_DATA_CLRMSK                   (0x00000000U)
+
+
+/*
+    Register RGX_CR_OS3_SCRATCH3
+*/
+#define RGX_CR_OS3_SCRATCH3                               (0x30898U)
+#define RGX_CR_OS3_SCRATCH3_MASKFULL                      (IMG_UINT64_C(0x00000000FFFFFFFF))
+#define RGX_CR_OS3_SCRATCH3_DATA_SHIFT                    (0U)
+#define RGX_CR_OS3_SCRATCH3_DATA_CLRMSK                   (0x00000000U)
+
+
+/*
+    Register group: RGX_CR_OS4_SCRATCH, with 4 repeats
+*/
+#define RGX_CR_OS4_SCRATCH_REPEATCOUNT                    (4U)
+/*
+    Register RGX_CR_OS4_SCRATCH0
+*/
+#define RGX_CR_OS4_SCRATCH0                               (0x40880U)
+#define RGX_CR_OS4_SCRATCH0_MASKFULL                      (IMG_UINT64_C(0x00000000FFFFFFFF))
+#define RGX_CR_OS4_SCRATCH0_DATA_SHIFT                    (0U)
+#define RGX_CR_OS4_SCRATCH0_DATA_CLRMSK                   (0x00000000U)
+
+
+/*
+    Register RGX_CR_OS4_SCRATCH1
+*/
+#define RGX_CR_OS4_SCRATCH1                               (0x40888U)
+#define RGX_CR_OS4_SCRATCH1_MASKFULL                      (IMG_UINT64_C(0x00000000FFFFFFFF))
+#define RGX_CR_OS4_SCRATCH1_DATA_SHIFT                    (0U)
+#define RGX_CR_OS4_SCRATCH1_DATA_CLRMSK                   (0x00000000U)
+
+
+/*
+    Register RGX_CR_OS4_SCRATCH2
+*/
+#define RGX_CR_OS4_SCRATCH2                               (0x40890U)
+#define RGX_CR_OS4_SCRATCH2_MASKFULL                      (IMG_UINT64_C(0x00000000FFFFFFFF))
+#define RGX_CR_OS4_SCRATCH2_DATA_SHIFT                    (0U)
+#define RGX_CR_OS4_SCRATCH2_DATA_CLRMSK                   (0x00000000U)
+
+
+/*
+    Register RGX_CR_OS4_SCRATCH3
+*/
+#define RGX_CR_OS4_SCRATCH3                               (0x40898U)
+#define RGX_CR_OS4_SCRATCH3_MASKFULL                      (IMG_UINT64_C(0x00000000FFFFFFFF))
+#define RGX_CR_OS4_SCRATCH3_DATA_SHIFT                    (0U)
+#define RGX_CR_OS4_SCRATCH3_DATA_CLRMSK                   (0x00000000U)
+
+
+/*
+    Register group: RGX_CR_OS5_SCRATCH, with 4 repeats
+*/
+#define RGX_CR_OS5_SCRATCH_REPEATCOUNT                    (4U)
+/*
+    Register RGX_CR_OS5_SCRATCH0
+*/
+#define RGX_CR_OS5_SCRATCH0                               (0x50880U)
+#define RGX_CR_OS5_SCRATCH0_MASKFULL                      (IMG_UINT64_C(0x00000000FFFFFFFF))
+#define RGX_CR_OS5_SCRATCH0_DATA_SHIFT                    (0U)
+#define RGX_CR_OS5_SCRATCH0_DATA_CLRMSK                   (0x00000000U)
+
+
+/*
+    Register RGX_CR_OS5_SCRATCH1
+*/
+#define RGX_CR_OS5_SCRATCH1                               (0x50888U)
+#define RGX_CR_OS5_SCRATCH1_MASKFULL                      (IMG_UINT64_C(0x00000000FFFFFFFF))
+#define RGX_CR_OS5_SCRATCH1_DATA_SHIFT                    (0U)
+#define RGX_CR_OS5_SCRATCH1_DATA_CLRMSK                   (0x00000000U)
+
+
+/*
+    Register RGX_CR_OS5_SCRATCH2
+*/
+#define RGX_CR_OS5_SCRATCH2                               (0x50890U)
+#define RGX_CR_OS5_SCRATCH2_MASKFULL                      (IMG_UINT64_C(0x00000000FFFFFFFF))
+#define RGX_CR_OS5_SCRATCH2_DATA_SHIFT                    (0U)
+#define RGX_CR_OS5_SCRATCH2_DATA_CLRMSK                   (0x00000000U)
+
+
+/*
+    Register RGX_CR_OS5_SCRATCH3
+*/
+#define RGX_CR_OS5_SCRATCH3                               (0x50898U)
+#define RGX_CR_OS5_SCRATCH3_MASKFULL                      (IMG_UINT64_C(0x00000000FFFFFFFF))
+#define RGX_CR_OS5_SCRATCH3_DATA_SHIFT                    (0U)
+#define RGX_CR_OS5_SCRATCH3_DATA_CLRMSK                   (0x00000000U)
+
+
+/*
+    Register group: RGX_CR_OS6_SCRATCH, with 4 repeats
+*/
+#define RGX_CR_OS6_SCRATCH_REPEATCOUNT                    (4U)
+/*
+    Register RGX_CR_OS6_SCRATCH0
+*/
+#define RGX_CR_OS6_SCRATCH0                               (0x60880U)
+#define RGX_CR_OS6_SCRATCH0_MASKFULL                      (IMG_UINT64_C(0x00000000FFFFFFFF))
+#define RGX_CR_OS6_SCRATCH0_DATA_SHIFT                    (0U)
+#define RGX_CR_OS6_SCRATCH0_DATA_CLRMSK                   (0x00000000U)
+
+
+/*
+    Register RGX_CR_OS6_SCRATCH1
+*/
+#define RGX_CR_OS6_SCRATCH1                               (0x60888U)
+#define RGX_CR_OS6_SCRATCH1_MASKFULL                      (IMG_UINT64_C(0x00000000FFFFFFFF))
+#define RGX_CR_OS6_SCRATCH1_DATA_SHIFT                    (0U)
+#define RGX_CR_OS6_SCRATCH1_DATA_CLRMSK                   (0x00000000U)
+
+
+/*
+    Register RGX_CR_OS6_SCRATCH2
+*/
+#define RGX_CR_OS6_SCRATCH2                               (0x60890U)
+#define RGX_CR_OS6_SCRATCH2_MASKFULL                      (IMG_UINT64_C(0x00000000FFFFFFFF))
+#define RGX_CR_OS6_SCRATCH2_DATA_SHIFT                    (0U)
+#define RGX_CR_OS6_SCRATCH2_DATA_CLRMSK                   (0x00000000U)
+
+
+/*
+    Register RGX_CR_OS6_SCRATCH3
+*/
+#define RGX_CR_OS6_SCRATCH3                               (0x60898U)
+#define RGX_CR_OS6_SCRATCH3_MASKFULL                      (IMG_UINT64_C(0x00000000FFFFFFFF))
+#define RGX_CR_OS6_SCRATCH3_DATA_SHIFT                    (0U)
+#define RGX_CR_OS6_SCRATCH3_DATA_CLRMSK                   (0x00000000U)
+
+
+/*
+    Register group: RGX_CR_OS7_SCRATCH, with 4 repeats
+*/
+#define RGX_CR_OS7_SCRATCH_REPEATCOUNT                    (4U)
+/*
+    Register RGX_CR_OS7_SCRATCH0
+*/
+#define RGX_CR_OS7_SCRATCH0                               (0x70880U)
+#define RGX_CR_OS7_SCRATCH0_MASKFULL                      (IMG_UINT64_C(0x00000000FFFFFFFF))
+#define RGX_CR_OS7_SCRATCH0_DATA_SHIFT                    (0U)
+#define RGX_CR_OS7_SCRATCH0_DATA_CLRMSK                   (0x00000000U)
+
+
+/*
+    Register RGX_CR_OS7_SCRATCH1
+*/
+#define RGX_CR_OS7_SCRATCH1                               (0x70888U)
+#define RGX_CR_OS7_SCRATCH1_MASKFULL                      (IMG_UINT64_C(0x00000000FFFFFFFF))
+#define RGX_CR_OS7_SCRATCH1_DATA_SHIFT                    (0U)
+#define RGX_CR_OS7_SCRATCH1_DATA_CLRMSK                   (0x00000000U)
+
+
+/*
+    Register RGX_CR_OS7_SCRATCH2
+*/
+#define RGX_CR_OS7_SCRATCH2                               (0x70890U)
+#define RGX_CR_OS7_SCRATCH2_MASKFULL                      (IMG_UINT64_C(0x00000000FFFFFFFF))
+#define RGX_CR_OS7_SCRATCH2_DATA_SHIFT                    (0U)
+#define RGX_CR_OS7_SCRATCH2_DATA_CLRMSK                   (0x00000000U)
+
+
+/*
+    Register RGX_CR_OS7_SCRATCH3
+*/
+#define RGX_CR_OS7_SCRATCH3                               (0x70898U)
+#define RGX_CR_OS7_SCRATCH3_MASKFULL                      (IMG_UINT64_C(0x00000000FFFFFFFF))
+#define RGX_CR_OS7_SCRATCH3_DATA_SHIFT                    (0U)
+#define RGX_CR_OS7_SCRATCH3_DATA_CLRMSK                   (0x00000000U)
 
 
 /*
@@ -3150,7 +3511,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
     Register RGX_CR_SLC_IDLE
 */
 #define RGX_CR_SLC_IDLE                                   (0xE230U)
-#define RGX_CR_SLC_IDLE__ARIF_NOT_V0_AND_COHERENCY__MASKFULL (IMG_UINT64_C(0x00000000000FFFFF))
+#define RGX_CR_SLC_IDLE__COHERENCY_AND_ALRIF_GT0__MASKFULL (IMG_UINT64_C(0x00000000000FFFFF))
 #define RGX_CR_SLC_IDLE_MASKFULL                          (IMG_UINT64_C(0x000000000000FFFF))
 #define RGX_CR_SLC_IDLE_ACE_CLBS_SHIFT                    (16U)
 #define RGX_CR_SLC_IDLE_ACE_CLBS_CLRMSK                   (0xFFF0FFFFU)
@@ -4275,7 +4636,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
     Register RGX_CR_SWIFT_SOFT_RESET
 */
 #define RGX_CR_SWIFT_SOFT_RESET                           (0x0650U)
-#define RGX_CR_SWIFT_SOFT_RESET__ALRIF_V1__MASKFULL       (IMG_UINT64_C(0x7FFFFFFFFFFFFFFF))
+#define RGX_CR_SWIFT_SOFT_RESET__ALRIF_GT0__MASKFULL      (IMG_UINT64_C(0x7FFFFFFFFFFFFFFF))
 #define RGX_CR_SWIFT_SOFT_RESET_MASKFULL                  (IMG_UINT64_C(0x00000000FFFFFFFF))
 #define RGX_CR_SWIFT_SOFT_RESET_SPU20_SWIFT2_SHIFT        (62U)
 #define RGX_CR_SWIFT_SOFT_RESET_SPU20_SWIFT2_CLRMSK       (IMG_UINT64_C(0xBFFFFFFFFFFFFFFF))
@@ -4672,4 +5033,3 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 /*****************************************************************************
  End of file (rgx_cr_defs_km.h)
 *****************************************************************************/
-

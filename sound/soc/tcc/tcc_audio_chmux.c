@@ -363,6 +363,7 @@ static struct of_device_id tcc_audio_chmux_of_match[] = {
 	{ .compatible = "telechips,audio-chmux-898x" },
 	{ .compatible = "telechips,audio-chmux-899x" },
 	{ .compatible = "telechips,audio-chmux-803x" },
+	{ .compatible = "telechips,audio-chmux-805x" },
 	{ .compatible = "telechips,audio-chmux-901x" },
 	{ .compatible = "" }
 };

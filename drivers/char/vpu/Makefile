@@ -39,11 +39,24 @@ obj-$(CONFIG_TCC_VPU_DRV) += vpu_4k_d2_dev.o
 vpu_4k_d2_dev-y += vpu_4k_d2_devices.o
 endif
 
+ifdef CONFIG_SUPPORT_TCC_WAVE420L_VPU_HEVC_ENC
+obj-$(CONFIG_TCC_VPU_DRV) += vpu_hevc_enc_lib/
+vpu-y += vpu_hevc_enc_mgr.o
+vpu-y += vpu_hevc_enc_mgr_sys.o
+
+obj-$(CONFIG_TCC_VPU_DRV) += vpu_hevc_enc_dev.o
+vpu_hevc_enc_dev-y += vpu_hevc_enc_devices.o
+endif
+
 ifdef CONFIG_ARCH_TCC899X
 vpu-y += smp_driver.o	###__FXXX__
 endif
 
 ifdef CONFIG_ARCH_TCC901X
+vpu-y += smp_driver.o	###__FXXX__
+endif
+
+ifdef CONFIG_ARCH_TCC805X
 vpu-y += smp_driver.o	###__FXXX__
 endif
 

@@ -323,7 +323,8 @@ int tccvin_core_probe(struct platform_device * pdev) {
 	memset(vdev, 0x00, sizeof(tccvin_dev_t));
 
 	if(pdev->dev.of_node) {
-		vdev->dev_plt = &pdev->dev;
+		vdev->plt_dev = pdev;
+		vdev->plt_dev->dev.platform_data = vdev;
 
 		memset(&vdev->cif, 0x00, sizeof(tccvin_cif_t));
 		memset(&vdev->v4l2, 0x00, sizeof(tccvin_v4l2_t));
@@ -380,7 +381,7 @@ int tccvin_core_probe(struct platform_device * pdev) {
 	tccvin_create_attr_loglevel(&pdev->dev);
 
 	// Create the tccvin_attr_diagnostics sysfs
-	tccvin_create_attr_diagnostics(&pdev->dev);
+	tccvin_create_attr_diagnostics(vdev);
 
 #ifdef CONFIG_VIDEO_TCCVIN_SWITCHMANAGER
 	// switchmanager

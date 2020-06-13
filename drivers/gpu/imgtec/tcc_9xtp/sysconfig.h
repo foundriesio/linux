@@ -1,6 +1,6 @@
 /*******************************************************************************
 *   FileName : sysconfig.h
-*   Copyright (c) Telechips Inc. 
+*   Copyright (c) Telechips Inc.
 *   SPDX-license-Identifier : Dual MIT/GPLv2
 *   Description : System Description Header
 
@@ -52,8 +52,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define RGX_TCC8059_CORE_CLOCK_SPEED (420*1000*1000)	/* Dolphin+QD */
 #define RGX_TCC8060_CORE_CLOCK_SPEED (700*1000*1000)	/* Dolphin3H */
 #define TCC_PowerVR_9XTP_PBASE        0x10100000
-#define TCC_PowerVR_9XTP_SIZE           0x10000
-#define TCC_PowerVR_9XTP_IRQ             40
+#define TCC_PowerVR_9XTP_SIZE         0x10000
+#define TCC_PowerVR_9XTP_IRQ          123
 
 #define SYS_RGX_ACTIVE_POWER_LATENCY_MS (100)
 

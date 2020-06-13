@@ -69,6 +69,12 @@ config PCI_TCC
         select PCIEPORTBUS
         select PCIE_DW
         
+config PCI_DOLPHIN3
+        bool "Telechips PCIe controller, Dolphin3"
+        depends on SOC_TCC
+        #depends on PCI_MSI_IRQ_DOMAIN
+        select PCIEPORTBUS
+        select PCIE_DW
 
 config PCI_EXYNOS
 	bool "Samsung Exynos PCIe controller"

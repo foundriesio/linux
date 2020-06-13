@@ -69,6 +69,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "pvrsrv_apphint.h"
 #include "pvrsrv_sync_server.h"
 #include "km_apphint_defs.h"
+#include "di_server.h"
 
 /* This header must always be included last */
 #if defined(LINUX)
@@ -242,7 +243,7 @@ typedef struct _CACHEOP_WORK_QUEUE_
 /*
   CacheOp statistics
  */
-	void *pvStatsEntry;
+	DI_ENTRY *psDIEntry;
 	IMG_HANDLE hStatsExecLock;
 	IMG_UINT32 ui32ServerASync;
 	IMG_UINT32 ui32ServerSyncVA;
@@ -263,7 +264,7 @@ typedef struct _CACHEOP_WORK_QUEUE_
 /*
   CacheOp (re)configuration
  */
-	void *pvConfigTune;
+	DI_ENTRY *psConfigTune;
 	IMG_HANDLE hConfigLock;
 /*
   CacheOp deferred worker thread
@@ -508,8 +509,7 @@ e0:
 	OSLockRelease(gsCwq.hStatsExecLock);
 }
 
-static void CacheOpStatsExecLogRead(void *pvFilePtr, void *pvData,
-								OS_STATS_PRINTF_FUNC* pfnOSStatsPrintf)
+static int CacheOpStatsExecLogRead(OSDI_IMPL_ENTRY *psEntry, void *pvData)
 {
 	IMG_CHAR *pszFlushype;
 	IMG_CHAR *pszCacheOpType;
@@ -524,13 +524,13 @@ static void CacheOpStatsExecLogRead(void *pvFilePtr, void *pvData,
 
 	OSLockAcquire(gsCwq.hStatsExecLock);
 
-	pfnOSStatsPrintf(pvFilePtr,
+	DIPrintf(psEntry,
 			"Primary CPU d-cache architecture: LSZ: 0x%d, URBF: %s\n",
 			gsCwq.uiLineSize,
 			gsCwq.bSupportsUMFlush ? "Yes" : "No"
 		);
 
-	pfnOSStatsPrintf(pvFilePtr,
+	DIPrintf(psEntry,
 			"Configuration: QSZ: %d, UKT: %d, KDFT: %d, KDF: %s, URBF: %s\n",
 			CACHEOP_INDICES_MAX,
 			gsCwq.pui32InfoPage[CACHEOP_INFO_UMKMTHRESHLD],
@@ -539,7 +539,7 @@ static void CacheOpStatsExecLogRead(void *pvFilePtr, void *pvData,
 			gsCwq.eConfig & CACHEOP_CONFIG_URBF ? "Yes" : "No"
 		);
 
-	pfnOSStatsPrintf(pvFilePtr,
+	DIPrintf(psEntry,
 			"Summary: OP[F][TL] (tot.avg): %d.%d/%d.%d/%d, [KM][UM][A]SYNC: %d.%d/%d/%d, RBF (um/km): %d/%d\n",
 			gsCwq.ui32TotalExecOps, gsCwq.ui32AvgExecTime, gsCwq.ui32TotalFenceOps, gsCwq.ui32AvgFenceTime, gsCwq.ui32ServerDTL,
 			gsCwq.ui32ServerSync, gsCwq.ui32ServerSyncVA, gsCwq.ui32ClientSync,	gsCwq.ui32ServerASync,
@@ -547,7 +547,7 @@ static void CacheOpStatsExecLogRead(void *pvFilePtr, void *pvData,
 		);
 
 	CacheOpStatsExecLogHeader(szBuffer);
-	pfnOSStatsPrintf(pvFilePtr, "%s\n", szBuffer);
+	DIPrintf(psEntry, "%s\n", szBuffer);
 
 	i32WriteOffset = gsCwq.i32StatsExecWriteIdx;
 	for (i32ReadOffset = DECR_WRAP(i32WriteOffset);
@@ -611,7 +611,7 @@ static void CacheOpStatsExecLogRead(void *pvFilePtr, void *pvData,
 			}
 #endif
 
-			pfnOSStatsPrintf(pvFilePtr,
+			DIPrintf(psEntry,
 #if defined(PVRSRV_ENABLE_GPU_MEMORY_INFO) && defined(DEBUG)
 							CACHEOP_RI_PRINTF,
 #else
@@ -622,8 +622,8 @@ static void CacheOpStatsExecLogRead(void *pvFilePtr, void *pvData,
 							pszFenceType,
 							pszMode,
 #if defined(PVRSRV_ENABLE_GPU_MEMORY_INFO) && defined(DEBUG)
-							"",
-							"",
+							0ull,
+							0ull,
 #endif
 							gsCwq.asStatsExecuted[i32ReadOffset].uiOffset,
 							gsCwq.asStatsExecuted[i32ReadOffset].uiSize,
@@ -686,7 +686,7 @@ static void CacheOpStatsExecLogRead(void *pvFilePtr, void *pvData,
 					break;
 			}
 
-			pfnOSStatsPrintf(pvFilePtr,
+			DIPrintf(psEntry,
 #if defined(PVRSRV_ENABLE_GPU_MEMORY_INFO) && defined(DEBUG)
 							CACHEOP_RI_PRINTF,
 #else
@@ -709,6 +709,8 @@ static void CacheOpStatsExecLogRead(void *pvFilePtr, void *pvData,
 	}
 
 	OSLockRelease(gsCwq.hStatsExecLock);
+
+	return 0;
 }
 #endif /* defined(CACHEOP_DEBUG) */
 
@@ -820,16 +822,15 @@ static void CacheOpConfigUpdate(IMG_UINT32 ui32Config)
 	OSLockRelease(gsCwq.hConfigLock);
 }
 
-static INLINE void CacheOpConfigRead(void *pvFilePtr,
-									 void *pvData,
-									 OS_STATS_PRINTF_FUNC* pfnOSStatsPrintf)
+static int CacheOpConfigRead(OSDI_IMPL_ENTRY *psEntry, void *pvData)
 {
 	PVR_UNREFERENCED_PARAMETER(pvData);
-	pfnOSStatsPrintf(pvFilePtr,
+	DIPrintf(psEntry,
 			"KDF: %s, URBF: %s\n",
 			gsCwq.eConfig & CACHEOP_CONFIG_KDF  ? "Yes" : "No",
 			gsCwq.eConfig & CACHEOP_CONFIG_URBF ? "Yes" : "No"
 		);
+	return 0;
 }
 
 static INLINE PVRSRV_ERROR CacheOpConfigQuery(const PVRSRV_DEVICE_NODE *psDevNode,
@@ -1014,13 +1015,9 @@ static INLINE PVRSRV_ERROR CacheOpTimelineBind(PVRSRV_DEVICE_NODE *psDevNode,
 		return PVRSRV_OK;
 	}
 
-#if defined(PVR_USE_FENCE_SYNC_MODEL)
 	psCacheOpWorkItem->iTimeline = iTimeline;
 	eError = SyncSWGetTimelineObj(iTimeline, &psCacheOpWorkItem->sSWTimelineObj);
 	PVR_LOG_IF_ERROR(eError, "SyncSWGetTimelineObj");
-#else
-	eError = PVRSRV_ERROR_NOT_IMPLEMENTED;
-#endif
 
 	return eError;
 }
@@ -1035,13 +1032,9 @@ static INLINE PVRSRV_ERROR CacheOpTimelineExec(CACHEOP_WORK_ITEM *psCacheOpWorkI
 	}
 	CACHEOP_PVR_ASSERT(psCacheOpWorkItem->sSWTimelineObj.pvTlObj);
 
-#if defined(PVR_USE_FENCE_SYNC_MODEL)
 	eError = SyncSWTimelineAdvanceKM(psCacheOpWorkItem->psDevNode,
 	                                 &psCacheOpWorkItem->sSWTimelineObj);
 	(void) SyncSWTimelineReleaseKM(&psCacheOpWorkItem->sSWTimelineObj);
-#else
-	eError = PVRSRV_ERROR_NOT_IMPLEMENTED;
-#endif
 
 	return eError;
 }
@@ -1256,7 +1249,7 @@ static PVRSRV_ERROR CacheOpPMRExec (PMR *psPMR,
 	IMG_BOOL bPMRIsSparse;
 	IMG_UINT32 ui32PageIndex;
 	IMG_UINT32 ui32NumOfPages;
-	IMG_DEVMEM_SIZE_T uiOutSize;
+	size_t uiOutSize;	/* Effectively unused */
 	PVRSRV_DEVICE_NODE *psDevNode;
 	IMG_DEVMEM_SIZE_T uiPgAlignedSize;
 	IMG_DEVMEM_OFFSET_T uiPgAlignedOffset;
@@ -1354,7 +1347,7 @@ static PVRSRV_ERROR CacheOpPMRExec (PMR *psPMR,
 														   0,
 														   gsCwq.uiPageSize,
 														   (void **)&pbCpuVirtAddr,
-														   (size_t*)&uiOutSize,
+														   &uiOutSize,
 														   &hPrivOut);
 				PVR_LOG_GOTO_IF_ERROR(eError, "PMRAcquireSparseKernelMappingData", e0);
 			}
@@ -1364,7 +1357,7 @@ static PVRSRV_ERROR CacheOpPMRExec (PMR *psPMR,
 													 0,
 													 gsCwq.uiPageSize,
 													 (void **)&pbCpuVirtAddr,
-													 (size_t*)((void *)&uiOutSize),
+													 &uiOutSize,
 													 &hPrivOut);
 				PVR_LOG_GOTO_IF_ERROR(eError, "PMRAcquireKernelMappingData", e0);
 			}
@@ -1553,7 +1546,7 @@ static PVRSRV_ERROR CacheOpPMRExec (PMR *psPMR,
 													  uiPgAlignedOffset,
 													  gsCwq.uiPageSize,
 													  (void **)&pbCpuVirtAddr,
-													  (size_t*)((void *)&uiOutSize),
+													  &uiOutSize,
 													  &hPrivOut);
 				PVR_LOG_GOTO_IF_ERROR(eError, "PMRAcquireSparseKernelMappingData", e0);
 			}
@@ -1564,7 +1557,7 @@ static PVRSRV_ERROR CacheOpPMRExec (PMR *psPMR,
 												uiPgAlignedOffset,
 												gsCwq.uiPageSize,
 												(void **)&pbCpuVirtAddr,
-												(size_t*)((void *)&uiOutSize),
+												&uiOutSize,
 												&hPrivOut);
 				PVR_LOG_GOTO_IF_ERROR(eError, "PMRAcquireKernelMappingData", e0);
 			}
@@ -2423,14 +2416,14 @@ PVRSRV_ERROR CacheOpInit2 (void)
 									psPVRSRVData,
 									OS_THREAD_HIGHEST_PRIORITY);
 	PVR_LOG_GOTO_IF_ERROR(eError, "OSThreadCreatePriority", e0);
-
-	/* Writing the unsigned integer binary encoding of CACHEOP_CONFIG
-	   into this file cycles through avail. configuration(s) */
-	gsCwq.pvConfigTune = OSCreateStatisticEntry("cacheop_config",
-											NULL,
-											CacheOpConfigRead,
-											NULL);
-	PVR_LOG_GOTO_IF_FALSE(gsCwq.pvConfigTune, "OSCreateStatisticEntry", e0);
+	{
+		DI_ITERATOR_CB sIterator = {.pfnShow = CacheOpConfigRead};
+		/* Writing the unsigned integer binary encoding of CACHEOP_CONFIG
+		   into this file cycles through avail. configuration(s) */
+		eError = DICreateEntry("cacheop_config", NULL, &sIterator, NULL,
+		                       DI_ENTRY_TYPE_GENERIC, &gsCwq.psConfigTune);
+		PVR_LOG_GOTO_IF_FALSE(gsCwq.psConfigTune, "DICreateEntry", e0);
+	}
 
 	/* Register the CacheOp framework (re)configuration handlers */
 	PVRSRVAppHintRegisterHandlersUINT32(APPHINT_ID_CacheOpConfig,
@@ -2513,9 +2506,10 @@ void CacheOpDeInit2 (void)
 		gsCwq.hDeferredLock = NULL;
 	}
 
-	if (gsCwq.pvConfigTune)
+	if (gsCwq.psConfigTune)
 	{
-		OSRemoveStatisticEntry(&gsCwq.pvConfigTune);
+		DIDestroyEntry(gsCwq.psConfigTune);
+		gsCwq.psConfigTune = NULL;
 	}
 
 	gsCwq.pui32InfoPage = NULL;
@@ -2562,12 +2556,13 @@ PVRSRV_ERROR CacheOpInit (void)
 	gsCwq.i32StatsExecWriteIdx = 0;
 	OSCachedMemSet(gsCwq.asStatsExecuted, 0, sizeof(gsCwq.asStatsExecuted));
 
-	/* File captures the most recent subset of CacheOp(s) executed */
-	gsCwq.pvStatsEntry = OSCreateStatisticEntry("cacheop_history",
-												NULL,
-												CacheOpStatsExecLogRead,
-												NULL);
-	PVR_LOG_GOTO_IF_ERROR(eError, "OSCreateStatisticEntry", e0);
+	{
+		DI_ITERATOR_CB sIterator = {.pfnShow = CacheOpStatsExecLogRead};
+		/* File captures the most recent subset of CacheOp(s) executed */
+		eError = DICreateEntry("cacheop_history", NULL, &sIterator, NULL,
+		                       DI_ENTRY_TYPE_GENERIC, &gsCwq.psDIEntry);
+		PVR_LOG_GOTO_IF_ERROR(eError, "DICreateEntry", e0);
+	}
 e0:
 #endif
 	return eError;
@@ -2582,10 +2577,10 @@ void CacheOpDeInit (void)
 		gsCwq.hStatsExecLock = NULL;
 	}
 
-	if (gsCwq.pvStatsEntry)
+	if (gsCwq.psDIEntry)
 	{
-		OSRemoveStatisticEntry(&gsCwq.pvStatsEntry);
+		DIDestroyEntry(gsCwq.psDIEntry);
+		gsCwq.psDIEntry = NULL;
 	}
 #endif
-
 }

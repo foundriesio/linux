@@ -26,5 +26,7 @@
 #include "tcc803x/vioc_lvds.h"
 #elif defined(CONFIG_ARCH_TCC897X)
 #include "tcc897x/vioc_lvds.h"
+#else
+#include "tcc805x/vioc_lvds.h"
 #endif
 

@@ -108,4 +108,3 @@ config SCSI_UFS_TCC
 	  This selects the Telechips UFS host controller support.
 
 	  If unsure, say N.
-

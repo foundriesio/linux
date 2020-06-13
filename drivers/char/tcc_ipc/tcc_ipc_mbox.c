@@ -41,15 +41,27 @@ IPC_INT32 ipc_mailbox_send(struct ipc_device *ipc_dev, struct tcc_mbox_data * ip
 		dprintk(ipc_dev->dev,"ipc_msg(0x%p)\n",(void *)ipc_msg);
 		for(i=0; i<(MBOX_CMD_FIFO_SIZE);i++)
 		{
-			dprintk(ipc_dev->dev,"cmd[%d]: (0x%02x)\n", i, ipc_msg->cmd[i]);
+			dprintk(ipc_dev->dev,"cmd[%d]: (0x%08x)\n", i, ipc_msg->cmd[i]);
 		}
 		dprintk(ipc_dev->dev,"data size(%d)\n", ipc_msg->data_len);
 
 		mutex_lock(&ipc_handle->mboxMutex);
+#ifdef CONFIG_ARCH_TCC803X
 		(void)mbox_send_message(ipc_dev->mbox_ch, ipc_msg);
 		mbox_client_txdone(ipc_dev->mbox_ch,0);
-		mutex_unlock(&ipc_handle->mboxMutex);
 		ret = IPC_SUCCESS;
+#else
+		ret = mbox_send_message(ipc_dev->mbox_ch, ipc_msg);
+		if(ret <= 0 )
+		{
+			ret = IPC_ERR_TIMEOUT;
+		}
+		else
+		{
+			ret = IPC_SUCCESS;
+		}
+#endif
+		mutex_unlock(&ipc_handle->mboxMutex);
 	}
 	else
 	{
@@ -67,32 +79,34 @@ struct mbox_chan *ipc_request_channel(struct platform_device *pdev, const IPC_CH
 
 	if((pdev != NULL)&&(name != NULL)&&(handler != NULL))
 	{
-		client = devm_kzalloc(&pdev->dev, sizeof(*client), GFP_KERNEL);
+		client = devm_kzalloc(&pdev->dev, sizeof(struct mbox_client), GFP_KERNEL);
 		if (!client)
 		{
-			channel = ERR_PTR(-ENOMEM);
+			channel = NULL;
 		}
 		else
 		{
-
 			client->dev = &pdev->dev;
 			client->rx_callback = handler;
 			client->tx_done = &tcc_msg_sent;
-			client->tx_block = (bool)false;
 			client->knows_txdone = (bool)false;
+#ifdef CONFIG_ARCH_TCC803X
+			client->tx_block = (bool)false;
 			client->tx_tout = 10;
+#else
+			client->tx_block = (bool)true;
+			/* Set smaller than the tx timeout value of the client.*/
+			client->tx_tout = (MBOX_TX_TIMEOUT - 1);
+#endif
 
 			channel = mbox_request_channel_byname(client, name);
 			if (IS_ERR(channel)) {
 				eprintk(&pdev->dev, "Failed to request %s channel\n", name);
-				channel = ERR_PTR(-EINVAL);
+				channel = NULL;
 			}
 		}
 	}
-	else
-	{
-		channel = ERR_PTR(-EINVAL);
-	}
+
 	return channel;
 }
 

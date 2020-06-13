@@ -363,8 +363,7 @@ int setup_io_region(struct pci_dev *pdev,
 	region->region.base = pci_phys_addr + offset;
 	region->region.size = size;
 
-	region->registers
-		= ioremap_nocache(region->region.base, region->region.size);
+	region->registers = ioremap(region->region.base, region->region.size);
 
 	if (!region->registers) {
 		dev_err(&pdev->dev, "Failed to map tc registers\n");

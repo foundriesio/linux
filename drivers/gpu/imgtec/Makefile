@@ -14,7 +14,10 @@ else
     endif
 endif
 
-
+ifeq ($(DISPLAY_CONTROLLER), dc_fbdev)
+obj-$(CONFIG_POWERVR_DC_FBDEV) += dc_fbdev.o
+dc_fbdev-y += dc_fbdev.o
+endif
 ccflags-y += \
 	-I$(srctree)/$(src) \
 	-I$(srctree)/drivers/staging/android

@@ -67,13 +67,13 @@ typedef struct {
  ******************************************************************************
  * Device state flags
  *****************************************************************************/
-#define RGXKM_DEVICE_STATE_ZERO_FREELIST                          (0x1) /*!< Zeroing the physical pages of reconstructed free lists */
-#define RGXKM_DEVICE_STATE_DISABLE_DW_LOGGING_EN                  (0x2) /*!< Used to disable the Devices Watchdog logging */
+#define RGXKM_DEVICE_STATE_ZERO_FREELIST               (0x1) /*!< Zeroing the physical pages of reconstructed free lists */
+#define RGXKM_DEVICE_STATE_DISABLE_DW_LOGGING_EN       (0x2) /*!< Used to disable the Devices Watchdog logging */
 #if defined(SUPPORT_VALIDATION)
-#define RGXKM_DEVICE_STATE_INJECT_SPU_POWER_STATE_MASK_CHANGE_EN  (0x4) /*!< Used for HW validation to inject SPU power state mask change every DM kick */
+#define RGXKM_DEVICE_STATE_GPU_UNITS_POWER_CHANGE_EN   (0x4) /*!< Used for HW validation to inject SPU power state mask change every DM kick */
 #endif
-#define RGXKM_DEVICE_STATE_CCB_GROW_EN                            (0x8) /*!< Used to indicate CCB grow is permitted */
-#define RGXKM_DEVICE_STATE_MASK                                   (0xF)
+#define RGXKM_DEVICE_STATE_CCB_GROW_EN                 (0x8) /*!< Used to indicate CCB grow is permitted */
+#define RGXKM_DEVICE_STATE_MASK                        (0xF)
 
 /*!
  ******************************************************************************
@@ -175,21 +175,21 @@ typedef struct _PVRSRV_STUB_PBDESC_ PVRSRV_STUB_PBDESC;
 /**
  * Structure containing information for calculating next SPU power domain state.
  */
-typedef struct _RGX_SPU_POWER_DOMAIN_STATE_
+typedef struct _RGX_POWER_DOMAIN_STATE_
 {
 	/**
-	 * Total number of SPUs in the core.
+	 * Total number of power units in the core.
 	 */
-	IMG_UINT32 ui32SPUCount;
+	IMG_UINT32 ui32PowUnitsCount;
 	/**
 	 * Current power domain state
 	 */
 	IMG_UINT32 ui32CurrentState;
 	/**
-	 * Stores last transition that happened for each SPU power domain state.
+	 * Stores last transition that happened for each power domain state.
 	 */
 	IMG_UINT32 *paui32LastTransition;
-} RGX_SPU_POWER_DOMAIN_STATE;
+} RGX_POWER_DOMAIN_STATE;
 #endif
 
 typedef struct _PVRSRV_DEVICE_FEATURE_CONFIG_
@@ -203,7 +203,7 @@ typedef struct _PVRSRV_DEVICE_FEATURE_CONFIG_
 	IMG_UINT32 ui32FeaturesValues[RGX_FEATURE_WITH_VALUES_MAX_IDX];
 	IMG_UINT32 ui32MAXDMCount;
 	IMG_UINT32 ui32MAXDMMTSCount;
-	IMG_UINT32 ui32MAXDustCount;
+	IMG_UINT32 ui32MAXPowUnitCount;
 	IMG_PCHAR  pszBVNCString;
 }PVRSRV_DEVICE_FEATURE_CONFIG;
 
@@ -695,10 +695,10 @@ typedef struct _PVRSRV_RGXDEV_INFO_
 	POS_LOCK				hMMUCtxUnregLock;		/*!< Lock to protect list of unregistered MMU contexts */
 
 #if defined(SUPPORT_VALIDATION)
-	RGX_SPU_POWER_DOMAIN_STATE	sSPUPowerDomainState;
+	RGX_POWER_DOMAIN_STATE	sPowerDomainState;		/*!< Power island sequence */
 	IMG_UINT32				ui32ValidationFlags;	/*!< Validation flags for host driver */
 #endif
-	IMG_UINT32				ui32AvailableSPUMask;
+	IMG_UINT32				ui32AvailablePowUnitsMask;
 
 	RGX_LAYER_PARAMS		sLayerParams;
 
@@ -735,8 +735,6 @@ typedef struct _PVRSRV_RGXDEV_INFO_
 
 	IMG_HANDLE				hTQCLISharedMem;		/*!< TQ Client Shared Mem PMR */
 	IMG_HANDLE				hTQUSCSharedMem;		/*!< TQ USC Shared Mem PMR */
-	POS_LOCK				hTQSharedMemLock;		/*!< Lock protecting TQ Shared memory PMRs and the ref count */
-	IMG_UINT32				ui32TQSharedMemRefCount;/*!< TQ Shared Mem ref count */
 
 #if defined(SUPPORT_VALIDATION)
 	IMG_UINT32				ui32TestSLRInterval; /* Don't enqueue an update sync checkpoint every nth kick */

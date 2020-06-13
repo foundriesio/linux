@@ -1,6 +1,4 @@
-ifeq ($(CONFIG_POWERVR_MT8173),y)
-	include $(srctree)/drivers/staging/imgtec/config_kernel.mk
-endif
+include $(srctree)/drivers/staging/imgtec/config_kernel.mk
 
 obj-$(CONFIG_POWERVR_MT8173) += mt8173.o
 mt8173-y += ../pvr_mtk_drv.o
@@ -18,5 +16,4 @@ ccflags-y += -include $(srctree)/drivers/staging/imgtec/config_kernel.h \
  -I$(srctree)/drivers/staging/imgtec/pvrsrvkm/$(PVR_ARCH)/hwdefs/km
 
 tmp := $(addprefix -I,$(wildcard $(srctree)/drivers/staging/imgtec/pvrsrvkm/$(PVR_ARCH)/generated/*))
-$(warning $(tmp))
 ccflags-y += $(tmp)

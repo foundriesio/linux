@@ -143,6 +143,24 @@ RGXInitFirmware(PVRSRV_DEVICE_NODE       *psDeviceNode,
 ******************************************************************************/
 const void *RGXLoadAndGetFWData(PVRSRV_DEVICE_NODE *psDeviceNode, OS_FW_IMAGE **ppsRGXFW);
 
+#if defined(PDUMP)
+/*!
+*******************************************************************************
+
+ @Function	RGXInitHWPerfCounters
+
+ @Description
+
+ Initialisation of the performance counters
+
+ @Input psDeviceNode - device node
+
+ @Return   PVRSRV_ERROR
+
+******************************************************************************/
+PVRSRV_ERROR RGXInitHWPerfCounters(PVRSRV_DEVICE_NODE	*psDeviceNode);
+#endif
+
 /*!
 *******************************************************************************
 
@@ -303,24 +321,5 @@ PVRSRV_ERROR RGXInitCreateFWKernelMemoryContext(PVRSRV_DEVICE_NODE *psDeviceNode
  @Input         psDeviceNode  device node
  ******************************************************************************/
 void RGXDeInitDestroyFWKernelMemoryContext(PVRSRV_DEVICE_NODE *psDeviceNode);
-
-/*!
-*******************************************************************************
-
- @Function		RGXVzInitHeaps
-
- @Description	Called to perform additional initialisation
-******************************************************************************/
-PVRSRV_ERROR RGXVzInitHeaps(DEVICE_MEMORY_INFO *psNewMemoryInfo,
-							DEVMEM_HEAP_BLUEPRINT *psDeviceMemoryHeapCursor);
-
-/*!
-*******************************************************************************
-
- @Function		RGXVzDeInitHeaps
-
- @Description	Called to perform additional deinitialisation
-******************************************************************************/
-void RGXVzDeInitHeaps(DEVICE_MEMORY_INFO *psDevMemoryInfo);
 
 #endif /* __RGXINIT_H__ */

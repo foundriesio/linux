@@ -436,7 +436,7 @@ PVRSRV_ERROR RGXGrowFreeList(RGX_FREELIST *psFreeList,
 	IMG_DEVMEM_SIZE_T uiLength;
 	IMG_DEVMEM_SIZE_T uistartPage;
 	PVRSRV_ERROR eError;
-	const IMG_CHAR * pszAllocName = "Free List";
+	static const IMG_CHAR szAllocName[] = "Free List";
 
 	/* Are we allowed to grow ? */
 	if (psFreeList->ui32MaxFLPages - (psFreeList->ui32CurrentFLPages + psFreeList->ui32ReadyFLPages) < ui32NumPages)
@@ -508,8 +508,8 @@ PVRSRV_ERROR RGXGrowFreeList(RGX_FREELIST *psFreeList,
 			&ui32MappingTable,
 			RGX_BIF_PM_PHYSICAL_PAGE_ALIGNSHIFT,
 			PVRSRV_MEMALLOCFLAG_GPU_READABLE,
-			OSStringLength(pszAllocName) + 1,
-			pszAllocName,
+			sizeof(szAllocName),
+			szAllocName,
 			psFreeList->ownerPid,
 			&psPMRNode->psPMR,
 			PDUMP_NONE);
@@ -556,8 +556,8 @@ PVRSRV_ERROR RGXGrowFreeList(RGX_FREELIST *psFreeList,
 
 	 /* Attach RI information */
 	eError = RIWriteMEMDESCEntryKM(psPMRNode->psPMR,
-	                               OSStringNLength(pszAllocName, DEVMEM_ANNOTATION_MAX_LEN),
-	                               pszAllocName,
+	                               OSStringNLength(szAllocName, DEVMEM_ANNOTATION_MAX_LEN),
+	                               szAllocName,
 	                               0,
 	                               uiSize,
 	                               IMG_FALSE,
@@ -1049,7 +1049,6 @@ static PVRSRV_ERROR RGXReconstructFreeList(RGX_FREELIST *psFreeList)
 		psFWFreeList->ui32UpdateNewReadyPages          = 0;
 		psFWFreeList->sFreeListLastGrowDevVAddr.uiAddr = 0;
 #endif
-		psFWFreeList->ui32HWRCounter++;
 
 		DevmemReleaseCpuVirtAddr(psFreeList->psFWFreelistMemDesc);
 	}
@@ -1591,6 +1590,7 @@ PVRSRV_ERROR RGXDestroyHWRTDataSet(RGX_KM_HW_RT_DATASET *psKMHWRTDataSet)
 
 PVRSRV_ERROR RGXCreateFreeList(CONNECTION_DATA      *psConnection,
                                PVRSRV_DEVICE_NODE	*psDeviceNode,
+							   IMG_HANDLE			hMemCtxPrivData,
 							   IMG_UINT32			ui32MaxFLPages,
 							   IMG_UINT32			ui32InitFLPages,
 							   IMG_UINT32			ui32GrowFLPages,
@@ -1731,7 +1731,26 @@ PVRSRV_ERROR RGXCreateFreeList(CONNECTION_DATA      *psConnection,
 	                                         ((ui32MaxFLPages - psFWFreeList->ui32CurrentPages) * sizeof(IMG_UINT32))) &
 			                                ~((IMG_UINT64)RGX_BIF_PM_FREELIST_BASE_ADDR_ALIGNSIZE-1);
 #endif
+		psFWFreeList->ui32FreeListID = psFreeList->ui32FreelistID;
+		psFWFreeList->bGrowPending = IMG_FALSE;
 		psFWFreeList->ui32ReadyPages = ui32ReadyPages;
+
+#if defined(SUPPORT_SHADOW_FREELISTS)
+		/* Get the FW Memory Context address... */
+		eError = RGXSetFirmwareAddress(&psFWFreeList->psFWMemContext,
+		                               RGXGetFWMemDescFromMemoryContextHandle(hMemCtxPrivData),
+		                               0, RFW_FWADDR_NOREF_FLAG);
+		if (eError != PVRSRV_OK)
+		{
+			PVR_DPF((PVR_DBG_ERROR,
+					"%s: RGXSetFirmwareAddress for RGXFWIF_FWMEMCONTEXT failed",
+					__func__));
+			DevmemReleaseCpuVirtAddr(psFreeList->psFWFreelistMemDesc);
+			goto FWFreeListCpuMap;
+		}
+#else
+		PVR_UNREFERENCED_PARAMETER(hMemCtxPrivData);
+#endif
 
 		/*
 		 * Only the PM state buffer address is needed which contains the PM
@@ -1742,8 +1761,6 @@ PVRSRV_ERROR RGXCreateFreeList(CONNECTION_DATA      *psConnection,
 		 */
 		psFWFreeList->sFreeListLastGrowDevVAddr.uiAddr = 0;
 		psFWFreeList->sFreeListStateDevVAddr = sFreeListStateDevVAddr;
-		psFWFreeList->ui32FreeListID = psFreeList->ui32FreelistID;
-		psFWFreeList->bGrowPending = IMG_FALSE;
 	}
 
 	PVR_DPF((PVR_DBG_MESSAGE,
@@ -3062,24 +3079,10 @@ PVRSRV_ERROR PVRSRVRGXKickTA3DKM(RGX_SERVER_RENDER_CONTEXT	*psRenderContext,
 								 SYNC_PRIMITIVE_BLOCK		**apsClientTAUpdateSyncPrimBlock,
 								 IMG_UINT32					*paui32ClientTAUpdateSyncOffset,
 								 IMG_UINT32					*paui32ClientTAUpdateValue,
-#if defined(SUPPORT_SERVER_SYNC_IMPL)
-								 IMG_UINT32					ui32ServerTASyncPrims,
-								 IMG_UINT32					*paui32ServerTASyncFlags,
-								 SERVER_SYNC_PRIMITIVE		**pasServerTASyncs,
-#endif
-								 IMG_UINT32					ui32Client3DFenceCount,
-								 SYNC_PRIMITIVE_BLOCK		**apsClient3DFenceSyncPrimBlock,
-								 IMG_UINT32					*paui32Client3DFenceSyncOffset,
-								 IMG_UINT32					*paui32Client3DFenceValue,
 								 IMG_UINT32					ui32Client3DUpdateCount,
 								 SYNC_PRIMITIVE_BLOCK		**apsClient3DUpdateSyncPrimBlock,
 								 IMG_UINT32					*paui32Client3DUpdateSyncOffset,
 								 IMG_UINT32					*paui32Client3DUpdateValue,
-#if defined(SUPPORT_SERVER_SYNC_IMPL)
-								 IMG_UINT32					ui32Server3DSyncPrims,
-								 IMG_UINT32					*paui32Server3DSyncFlags,
-								 SERVER_SYNC_PRIMITIVE		**pasServer3DSyncs,
-#endif
 								 SYNC_PRIMITIVE_BLOCK		*psPRFenceSyncPrimBlock,
 								 IMG_UINT32					ui32PRFenceSyncOffset,
 								 IMG_UINT32					ui32PRFenceValue,
@@ -3126,9 +3129,7 @@ PVRSRV_ERROR PVRSRVRGXKickTA3DKM(RGX_SERVER_RENDER_CONTEXT	*psRenderContext,
 	IMG_UINT32				ui32TACmdOffset=0;
 	IMG_UINT32				ui323DCmdOffset=0;
 	RGXFWIF_UFO				sPRUFO;
-#if defined(SUPPORT_SERVER_SYNC_IMPL) || defined(PVR_USE_FENCE_SYNC_MODEL)
 	IMG_UINT32				i;
-#endif
 	PVRSRV_ERROR			eError = PVRSRV_OK;
 	PVRSRV_ERROR			eError2;
 
@@ -3146,20 +3147,16 @@ PVRSRV_ERROR PVRSRVRGXKickTA3DKM(RGX_SERVER_RENDER_CONTEXT	*psRenderContext,
 	PRGXFWIF_UFO_ADDR		*pauiClient3DUpdateUFOAddress = NULL;
 	PRGXFWIF_UFO_ADDR		uiPRFenceUFOAddress;
 
-#if defined(PVR_USE_FENCE_SYNC_MODEL)
 	IMG_UINT64               uiCheckTAFenceUID = 0;
 	IMG_UINT64               uiCheck3DFenceUID = 0;
 	IMG_UINT64               uiUpdateTAFenceUID = 0;
 	IMG_UINT64               uiUpdate3DFenceUID = 0;
-#endif
 
 	IMG_BOOL bUseCombined3DAnd3DPR = bKickPR && bKick3D && !pui83DPRDMCmd;
 
 	IMG_UINT32 ui32TACmdSizeTmp = 0, ui323DCmdSizeTmp = 0;
 
-#if defined(PVR_USE_FENCE_SYNC_MODEL) || defined(SUPPORT_BUFFER_SYNC)
 	IMG_BOOL bTAFenceOnSyncCheckpointsOnly = IMG_FALSE;
-#endif /* defined(PVR_USE_FENCE_SYNC_MODEL) || defined(SUPPORT_BUFFER_SYNC) */
 
 	RGXFWIF_KCCB_CMD_KICK_DATA	sTACmdKickData;
 	RGXFWIF_KCCB_CMD_KICK_DATA	s3DCmdKickData;
@@ -3168,7 +3165,6 @@ PVRSRV_ERROR PVRSRVRGXKickTA3DKM(RGX_SERVER_RENDER_CONTEXT	*psRenderContext,
 	PVRSRV_FENCE	iUpdateTAFence = PVRSRV_NO_FENCE;
 	PVRSRV_FENCE	iUpdate3DFence = PVRSRV_NO_FENCE;
 
-#if defined(PVR_USE_FENCE_SYNC_MODEL)
 	IMG_BOOL b3DFenceOnSyncCheckpointsOnly = IMG_FALSE;
 	IMG_UINT32 ui32TAFenceTimelineUpdateValue = 0;
 	IMG_UINT32 ui323DFenceTimelineUpdateValue = 0;
@@ -3199,7 +3195,6 @@ PVRSRV_ERROR PVRSRVRGXKickTA3DKM(RGX_SERVER_RENDER_CONTEXT	*psRenderContext,
 	PVRSRV_FENCE hTestSLRTmpFence = PVRSRV_NO_FENCE;
 	PSYNC_CHECKPOINT psDummySyncCheckpoint;
 #endif
-#endif /* defined(PVR_USE_FENCE_SYNC_MODEL) */
 
 #if defined(SUPPORT_BUFFER_SYNC)
 	PSYNC_CHECKPOINT *apsBufferFenceSyncCheckpoints = NULL;
@@ -3225,9 +3220,9 @@ PVRSRV_ERROR PVRSRVRGXKickTA3DKM(RGX_SERVER_RENDER_CONTEXT	*psRenderContext,
 	IMG_UINT32 ui32TAUpdateCount, ui323DUpdateCount;
 	IMG_UINT32 ui32PRUpdateCount;
 
-#if defined(PVR_USE_FENCE_SYNC_MODEL)
 	IMG_PID uiCurrentProcess = OSGetCurrentClientProcessIDKM();
-#endif
+
+	IMG_UINT32 ui32Client3DFenceCount = 0;
 
 	/* Ensure we haven't been given a null ptr to
 	 * TA fence values if we have been told we
@@ -3249,17 +3244,6 @@ PVRSRV_ERROR PVRSRVRGXKickTA3DKM(RGX_SERVER_RENDER_CONTEXT	*psRenderContext,
 		PVR_LOG_RETURN_IF_FALSE(paui32ClientTAUpdateValue != NULL,
 		                        "paui32ClientTAUpdateValue NULL but "
 		                        "ui32ClientTAUpdateCount > 0",
-		                        PVRSRV_ERROR_INVALID_PARAMS);
-	}
-	/* Ensure we haven't been given a null ptr to
-	 * 3D fence values if we have been told we
-	 * have 3D sync prim fences
-	 */
-	if (ui32Client3DFenceCount > 0)
-	{
-		PVR_LOG_RETURN_IF_FALSE(paui32Client3DFenceValue != NULL,
-		                        "paui32Client3DFenceValue NULL but "
-		                        "ui32Client3DFenceCount > 0",
 		                        PVRSRV_ERROR_INVALID_PARAMS);
 	}
 	/* Ensure we haven't been given a null ptr to
@@ -3335,7 +3319,6 @@ PVRSRV_ERROR PVRSRVRGXKickTA3DKM(RGX_SERVER_RENDER_CONTEXT	*psRenderContext,
 		}
 	}
 
-#if defined(PVR_USE_FENCE_SYNC_MODEL)
 	if (unlikely(iUpdateTATimeline >= 0 && !piUpdateTAFence))
 	{
 		return PVRSRV_ERROR_INVALID_PARAMS;
@@ -3344,18 +3327,6 @@ PVRSRV_ERROR PVRSRVRGXKickTA3DKM(RGX_SERVER_RENDER_CONTEXT	*psRenderContext,
 	{
 		return PVRSRV_ERROR_INVALID_PARAMS;
 	}
-#else /* defined(PVR_USE_FENCE_SYNC_MODEL) */
-	if (unlikely(iUpdateTATimeline >= 0 || iUpdate3DTimeline >= 0))
-	{
-		PVR_DPF((PVR_DBG_WARNING, "%s: Providing update timeline (TA=%d, 3D=%d) in non-supporting driver",
-			__func__, iUpdateTATimeline, iUpdate3DTimeline));
-	}
-	if (unlikely(iCheckTAFence >= 0 || iCheck3DFence >= 0))
-	{
-		PVR_DPF((PVR_DBG_WARNING, "%s: Providing check fence (TA=%d, 3D=%d) in non-supporting driver",
-				__func__, iCheckTAFence, iCheck3DFence));
-	}
-#endif /* defined(PVR_USE_FENCE_SYNC_MODEL) */
 
 	CHKPT_DBG((PVR_DBG_ERROR,
 			   "%s: ui32ClientTAFenceCount=%d, ui32ClientTAUpdateCount=%d, "
@@ -3363,44 +3334,6 @@ PVRSRV_ERROR PVRSRVRGXKickTA3DKM(RGX_SERVER_RENDER_CONTEXT	*psRenderContext,
 			   __func__,
 			   ui32ClientTAFenceCount, ui32ClientTAUpdateCount,
 			   ui32Client3DFenceCount, ui32Client3DUpdateCount));
-
-#if defined(SUPPORT_SERVER_SYNC_IMPL)
-	CHKPT_DBG((PVR_DBG_ERROR,
-			   "%s: ui32ServerTASyncPrims=%d, ui32Server3DSyncPrims=%d",
-			   __func__, ui32ServerTASyncPrims, ui32Server3DSyncPrims));
-
-	/* Sanity check the server fences */
-	for (i = 0; i < ui32ServerTASyncPrims; i++)
-	{
-		if (unlikely(!BITMASK_HAS(paui32ServerTASyncFlags[i],
-		                        PVRSRV_CLIENT_SYNC_PRIM_OP_CHECK)))
-		{
-			PVR_DPF((PVR_DBG_ERROR, "%s: Server fence (on TA) must fence",
-			        __func__));
-			return PVRSRV_ERROR_INVALID_SYNC_PRIM_OP;
-		}
-	}
-
-	for (i = 0; i < ui32Server3DSyncPrims; i++)
-	{
-		if (unlikely(!BITMASK_HAS(paui32Server3DSyncFlags[i],
-		                        PVRSRV_CLIENT_SYNC_PRIM_OP_CHECK)))
-		{
-			PVR_DPF((PVR_DBG_ERROR, "%s: Server fence (on 3D) must fence",
-					 __func__));
-			return PVRSRV_ERROR_INVALID_SYNC_PRIM_OP;
-		}
-	}
-
-	/* Sanity check we have a PR kick if there are client or server fences */
-	if (unlikely(!bKickPR && ((ui32Client3DFenceCount != 0) ||
-	                          (ui32Server3DSyncPrims != 0))))
-	{
-		PVR_DPF((PVR_DBG_ERROR, "%s: 3D fence (client or server) passed without"
-		        " a PR kick", __func__));
-		return PVRSRV_ERROR_INVALID_PARAMS;
-	}
-#else /* SUPPORT_SERVER_SYNC_IMPL */
 	/* Sanity check we have a PR kick if there are client fences */
 	if (unlikely(!bKickPR && ui32Client3DFenceCount != 0))
 	{
@@ -3408,7 +3341,6 @@ PVRSRV_ERROR PVRSRVRGXKickTA3DKM(RGX_SERVER_RENDER_CONTEXT	*psRenderContext,
 		        __func__));
 		return PVRSRV_ERROR_INVALID_PARAMS;
 	}
-#endif /* SUPPORT_SERVER_SYNC_IMPL */
 
 	/* Ensure the string is null-terminated (Required for safety) */
 	szFenceNameTA[PVRSRV_SYNC_NAME_LENGTH-1] = '\0';
@@ -3491,7 +3423,6 @@ PVRSRV_ERROR PVRSRVRGXKickTA3DKM(RGX_SERVER_RENDER_CONTEXT	*psRenderContext,
 #error "Invalid value for UPDATE_FENCE_CHECKPOINT_COUNT. Must be either 1 or 2."
 #endif /* !defined(UPDATE_FENCE_CHECKPOINT_COUNT) || UPDATE_FENCE_CHECKPOINT_COUNT != 1 && UPDATE_FENCE_CHECKPOINT_COUNT != 2 */
 
-#if defined(PVR_USE_FENCE_SYNC_MODEL)
 	if (iCheckTAFence != PVRSRV_NO_FENCE)
 	{
 		CHKPT_DBG((PVR_DBG_ERROR, "%s: calling SyncCheckpointResolveFence[TA]"
@@ -3644,7 +3575,6 @@ PVRSRV_ERROR PVRSRVRGXKickTA3DKM(RGX_SERVER_RENDER_CONTEXT	*psRenderContext,
 		}
 	}
 #endif /* defined(SUPPORT_VALIDATION) */
-#endif /* defined(PVR_USE_FENCE_SYNC_MODEL) */
 
 	/*
 	 * Extract the FBSC entries from MMU Context for the deferred FBSC invalidate command,
@@ -3681,11 +3611,6 @@ PVRSRV_ERROR PVRSRVRGXKickTA3DKM(RGX_SERVER_RENDER_CONTEXT	*psRenderContext,
 		    ui64FBSCEntryMask,
 		    ui32TAFenceCount,
 		    ui32TAUpdateCount,
-#if defined(SUPPORT_SERVER_SYNC_IMPL)
-		    ui32ServerTASyncPrims,
-		    paui32ServerTASyncFlags,
-		    SYNC_FLAG_MASK_ALL,
-#endif /* SUPPORT_SERVER_SYNC_IMPL */
 		    ui32TACmdSize,
 		    pasTACmdHelperData
 		);
@@ -3707,11 +3632,6 @@ PVRSRV_ERROR PVRSRVRGXKickTA3DKM(RGX_SERVER_RENDER_CONTEXT	*psRenderContext,
 		        * not invalidate FBSC */
 		    ui323DFenceCount,
 		    0,
-#if defined(SUPPORT_SERVER_SYNC_IMPL)
-		    (bKick3D ? ui32Server3DSyncPrims : 0),
-		    paui32Server3DSyncFlags,
-		    PVRSRV_CLIENT_SYNC_PRIM_OP_CHECK,
-#endif /* SUPPORT_SERVER_SYNC_IMPL */
 		    sizeof(sPRUFO),
 		    &pas3DCmdHelperData[ui323DCmdCount++]
 		);
@@ -3728,11 +3648,6 @@ PVRSRV_ERROR PVRSRVRGXKickTA3DKM(RGX_SERVER_RENDER_CONTEXT	*psRenderContext,
 		        * not invalidate FBSC */
 		    0,
 		    ui32PRUpdateCount,
-#if defined(SUPPORT_SERVER_SYNC_IMPL)
-		    0,
-		    NULL,
-		    SYNC_FLAG_MASK_ALL,
-#endif /* SUPPORT_SERVER_SYNC_IMPL */
 		    /* if the client has not provided a 3DPR command, the regular 3D
 		     * command should be used instead */
 		    pui83DPRDMCmd ? ui323DPRCmdSize : ui323DCmdSize,
@@ -3754,11 +3669,6 @@ PVRSRV_ERROR PVRSRVRGXKickTA3DKM(RGX_SERVER_RENDER_CONTEXT	*psRenderContext,
 		                        *         [b] value from the MMU ctx otherwise */
 			bKickTA ? 0 : ui323DFenceCount,
 		    ui323DUpdateCount,
-#if defined(SUPPORT_SERVER_SYNC_IMPL)
-		    ui32Server3DSyncPrims,
-		    paui32Server3DSyncFlags,
-		    PVRSRV_CLIENT_SYNC_PRIM_OP_UPDATE,
-#endif /* SUPPORT_SERVER_SYNC_IMPL */
 		    ui323DCmdSize,
 		    &pas3DCmdHelperData[ui323DCmdCount++]
 		);
@@ -3842,19 +3752,12 @@ PVRSRV_ERROR PVRSRVRGXKickTA3DKM(RGX_SERVER_RENDER_CONTEXT	*psRenderContext,
 			   __func__, ui32Client3DFenceCount));
 	eError = SyncAddrListPopulate(&psRenderContext->sSyncAddrList3DFence,
 										ui32Client3DFenceCount,
-										apsClient3DFenceSyncPrimBlock,
-										paui32Client3DFenceSyncOffset);
+										NULL,
+										NULL);
 	if (unlikely(eError != PVRSRV_OK))
 	{
 		goto err_populate_sync_addr_list_3d_fence;
 	}
-
-	if (ui32Client3DFenceCount)
-	{
-		pauiClient3DFenceUFOAddress = psRenderContext->sSyncAddrList3DFence.pasFWAddrs;
-	}
-	CHKPT_DBG((PVR_DBG_ERROR, "%s: pauiClient3DFenceUFOAddress=<%p> ",
-			   __func__, (void*)pauiClient3DFenceUFOAddress));
 
 	CHKPT_DBG((PVR_DBG_ERROR,
 			   "%s: SyncAddrListPopulate(psRenderContext->sSyncAddrList3DUpdate, %d updates)...",
@@ -3868,11 +3771,7 @@ PVRSRV_ERROR PVRSRVRGXKickTA3DKM(RGX_SERVER_RENDER_CONTEXT	*psRenderContext,
 		goto err_populate_sync_addr_list_3d_update;
 	}
 
-#if defined(PVR_USE_FENCE_SYNC_MODEL)
 	if (ui32Client3DUpdateCount || (iUpdate3DTimeline != PVRSRV_NO_TIMELINE && piUpdate3DFence && bKick3D))
-#else
-	if (ui32Client3DUpdateCount)
-#endif
 	{
 		pauiClient3DUpdateUFOAddress = psRenderContext->sSyncAddrList3DUpdate.pasFWAddrs;
 	}
@@ -3894,7 +3793,7 @@ PVRSRV_ERROR PVRSRVRGXKickTA3DKM(RGX_SERVER_RENDER_CONTEXT	*psRenderContext,
 	            ui32Client3DUpdateCount,
 	            pauiClientTAFenceUFOAddress, paui32ClientTAFenceValue,
 	            pauiClientTAUpdateUFOAddress, paui32ClientTAUpdateValue,
-	            pauiClient3DFenceUFOAddress, paui32Client3DFenceValue,
+	            pauiClient3DFenceUFOAddress, NULL,
 	            pauiClient3DUpdateUFOAddress, paui32Client3DUpdateValue);
 #endif /* (ENABLE_TA3D_UFO_DUMP == 1) */
 
@@ -4011,7 +3910,6 @@ PVRSRV_ERROR PVRSRVRGXKickTA3DKM(RGX_SERVER_RENDER_CONTEXT	*psRenderContext,
 #endif /* defined(SUPPORT_BUFFER_SYNC) */
 	}
 
-#if defined(PVR_USE_FENCE_SYNC_MODEL)
 	/*
 	 * The hardware requires a PR to be submitted if there is a TA (otherwise
 	 * it can wedge if we run out of PB space with no PR to run)
@@ -4339,10 +4237,7 @@ PVRSRV_ERROR PVRSRVRGXKickTA3DKM(RGX_SERVER_RENDER_CONTEXT	*psRenderContext,
 		if (ui32Client3DFenceCount)
 		{
 			PVR_ASSERT(pauiClient3DFenceUFOAddress);
-			if (!b3DFenceOnSyncCheckpointsOnly)
-			{
-				PVR_ASSERT(paui32Client3DFenceValue);
-			}
+			PVR_ASSERT(b3DFenceOnSyncCheckpointsOnly);
 		}
 		if (ui32Client3DUpdateCount)
 		{
@@ -4362,7 +4257,6 @@ PVRSRV_ERROR PVRSRVRGXKickTA3DKM(RGX_SERVER_RENDER_CONTEXT	*psRenderContext,
 		}
 
 	}
-#endif /* defined(PVR_USE_FENCE_SYNC_MODEL) */
 	CHKPT_DBG((PVR_DBG_ERROR,
 			   "%s: ui32ClientTAFenceCount=%d, pauiClientTAFenceUFOAddress=<%p> Line ",
 			   __func__,
@@ -4379,7 +4273,7 @@ PVRSRV_ERROR PVRSRVRGXKickTA3DKM(RGX_SERVER_RENDER_CONTEXT	*psRenderContext,
 	            ui32Client3DUpdateCount,
 	            pauiClientTAFenceUFOAddress, paui32ClientTAFenceValue,
 	            pauiClientTAUpdateUFOAddress, paui32ClientTAUpdateValue,
-	            pauiClient3DFenceUFOAddress, paui32Client3DFenceValue,
+	            pauiClient3DFenceUFOAddress, NULL,
 	            pauiClient3DUpdateUFOAddress, paui32Client3DUpdateValue);
 #endif /* (ENABLE_TA3D_UFO_DUMP == 1) */
 
@@ -4453,12 +4347,6 @@ PVRSRV_ERROR PVRSRVRGXKickTA3DKM(RGX_SERVER_RENDER_CONTEXT	*psRenderContext,
 		                                 ui32ClientTAUpdateCount,
 		                                 pauiClientTAUpdateUFOAddress,
 		                                 paui32ClientTAUpdateValue,
-#if defined(SUPPORT_SERVER_SYNC_IMPL)
-		                                 ui32ServerTASyncPrims,
-		                                 paui32ServerTASyncFlags,
-		                                 SYNC_FLAG_MASK_ALL,
-		                                 pasServerTASyncs,
-#endif
 		                                 ui32TACmdSize,
 		                                 pui8TADMCmd,
 		                                 RGXFWIF_CCB_CMD_TYPE_GEOM,
@@ -4513,16 +4401,10 @@ PVRSRV_ERROR PVRSRVRGXKickTA3DKM(RGX_SERVER_RENDER_CONTEXT	*psRenderContext,
 		RGXCmdHelperInitCmdCCB_OtherData(FWCommonContextGetClientCCB(ps3DData->psServerCommonContext),
 		                                 ui32Client3DFenceCount + (bTestSLRAdd3DCheck ? 1 : 0),
 		                                 pauiClient3DFenceUFOAddress,
-		                                 paui32Client3DFenceValue,
+		                                 NULL,
 		                                 0,
 		                                 NULL,
 		                                 NULL,
-#if defined(SUPPORT_SERVER_SYNC_IMPL)
-		                                 (bKick3D ? ui32Server3DSyncPrims : 0),
-		                                 paui32Server3DSyncFlags,
-		                                 PVRSRV_CLIENT_SYNC_PRIM_OP_CHECK,
-		                                 pasServer3DSyncs,
-#endif
 		                                 sizeof(sPRUFO),
 		                                 (IMG_UINT8*) &sPRUFO,
 		                                 RGXFWIF_CCB_CMD_TYPE_FENCE_PR,
@@ -4541,7 +4423,6 @@ PVRSRV_ERROR PVRSRVRGXKickTA3DKM(RGX_SERVER_RENDER_CONTEXT	*psRenderContext,
 			other 3D already in flight for the same timeline (PR-updates are done in the 3D cCCB).
 			This out of order timeline sync prim update could happen if we attach it to the TA update.
 		*/
-#if defined(PVR_USE_FENCE_SYNC_MODEL)
 		if (ui32ClientPRUpdateCount)
 		{
 			CHKPT_DBG((PVR_DBG_ERROR,
@@ -4554,7 +4435,6 @@ PVRSRV_ERROR PVRSRVRGXKickTA3DKM(RGX_SERVER_RENDER_CONTEXT	*psRenderContext,
 					   ui32ClientPRUpdateValueCount,
 					   (ui32ClientPRUpdateValueCount == 0) ? PVRSRV_SYNC_CHECKPOINT_SIGNALLED : *paui32ClientPRUpdateValue));
 		}
-#endif
 		if (!bUseCombined3DAnd3DPR)
 		{
 			CHKPT_DBG((PVR_DBG_ERROR,
@@ -4567,12 +4447,6 @@ PVRSRV_ERROR PVRSRVRGXKickTA3DKM(RGX_SERVER_RENDER_CONTEXT	*psRenderContext,
 			                                 ui32ClientPRUpdateCount,
 			                                 pauiClientPRUpdateUFOAddress,
 			                                 paui32ClientPRUpdateValue,
-#if defined(SUPPORT_SERVER_SYNC_IMPL)
-			                                 0,
-			                                 NULL,
-			                                 SYNC_FLAG_MASK_ALL,
-			                                 NULL,
-#endif
 			                                 pui83DPRDMCmd ? ui323DPRCmdSize : ui323DCmdSize, // If the client has not provided a 3DPR command, the regular 3D command should be used instead
 			                                 pui83DPRDMCmd ? pui83DPRDMCmd : pui83DDMCmd,
 			                                 RGXFWIF_CCB_CMD_TYPE_3D_PR,
@@ -4605,16 +4479,10 @@ PVRSRV_ERROR PVRSRVRGXKickTA3DKM(RGX_SERVER_RENDER_CONTEXT	*psRenderContext,
 		RGXCmdHelperInitCmdCCB_OtherData(FWCommonContextGetClientCCB(ps3DData->psServerCommonContext),
 		                                 bKickTA ? 0 : ui32Client3DFenceCount,  /* For a kick with a TA, the 3D fences are added before the PR command instead */
 		                                 bKickTA ? NULL : pauiClient3DFenceUFOAddress,
-		                                 bKickTA ? NULL : paui32Client3DFenceValue,
+		                                 NULL,
 		                                 ui32Client3DUpdateCount,
 		                                 pauiClient3DUpdateUFOAddress,
 		                                 paui32Client3DUpdateValue,
-#if defined(SUPPORT_SERVER_SYNC_IMPL)
-		                                 ui32Server3DSyncPrims,
-		                                 paui32Server3DSyncFlags,
-		                                 PVRSRV_CLIENT_SYNC_PRIM_OP_UPDATE,
-		                                 pasServer3DSyncs,
-#endif
 		                                 ui323DCmdSize,
 		                                 pui83DDMCmd,
 		                                 RGXFWIF_CCB_CMD_TYPE_3D,
@@ -4750,7 +4618,6 @@ PVRSRV_ERROR PVRSRVRGXKickTA3DKM(RGX_SERVER_RENDER_CONTEXT	*psRenderContext,
 				sTACmdKickData.psContext,
 				ui32TACmdOffset
 				);
-#if defined(PVR_USE_FENCE_SYNC_MODEL)
 		RGXSRV_HWPERF_ENQ(psRenderContext, OSGetCurrentClientProcessIDKM(),
 		                  ui32FWCtx, ui32ExtJobRef, ui32IntJobRef,
 		                  RGX_HWPERF_KICK_TYPE_TA3D,
@@ -4758,7 +4625,6 @@ PVRSRV_ERROR PVRSRVRGXKickTA3DKM(RGX_SERVER_RENDER_CONTEXT	*psRenderContext,
 		                  iUpdateTAFence,
 		                  iUpdateTATimeline,
 				          uiCheckTAFenceUID, uiUpdateTAFenceUID);
-#endif
 
 		if (!bUseSingleFWCommand)
 		{
@@ -4872,7 +4738,6 @@ PVRSRV_ERROR PVRSRVRGXKickTA3DKM(RGX_SERVER_RENDER_CONTEXT	*psRenderContext,
 	}
 #endif
 
-#if defined(PVR_USE_FENCE_SYNC_MODEL)
 #if defined(NO_HARDWARE)
 	/* If NO_HARDWARE, signal the output fence's sync checkpoint and sync prim */
 	if (psUpdateTASyncCheckpoint)
@@ -4901,7 +4766,6 @@ PVRSRV_ERROR PVRSRVRGXKickTA3DKM(RGX_SERVER_RENDER_CONTEXT	*psRenderContext,
 	SyncCheckpointNoHWUpdateTimelines(NULL);
 
 #endif /* defined(NO_HARDWARE) */
-#endif /* defined(PVR_USE_FENCE_SYNC_MODEL) */
 
 #if defined(SUPPORT_BUFFER_SYNC)
 	if (psBufferSyncData)
@@ -4926,7 +4790,6 @@ PVRSRV_ERROR PVRSRVRGXKickTA3DKM(RGX_SERVER_RENDER_CONTEXT	*psRenderContext,
 		*piUpdate3DFence = iUpdate3DFence;
 	}
 
-#if defined(PVR_USE_FENCE_SYNC_MODEL)
 	/* Drop the references taken on the sync checkpoints in the
 	 * resolved input fence.
 	 * NOTE: 3D fence is always submitted, either via 3D or TA(PR).
@@ -4975,7 +4838,6 @@ PVRSRV_ERROR PVRSRVRGXKickTA3DKM(RGX_SERVER_RENDER_CONTEXT	*psRenderContext,
 		SyncCheckpointFree(psDummySyncCheckpoint);
 	}
 #endif
-#endif /* defined(PVR_USE_FENCE_SYNC_MODEL) */
 	OSLockRelease(psRenderContext->hLock);
 
 	return PVRSRV_OK;
@@ -4999,7 +4861,6 @@ fail_taacquirecmd:
 		SyncCheckpointRollbackFromUFO(psRenderContext->psDeviceNode, pauiClientPRUpdateUFOAddress->ui32Addr);
 	}
 
-#if defined(PVR_USE_FENCE_SYNC_MODEL)
 fail_alloc_update_values_mem_3D:
 	/* FIXME: sTASyncData.paui32ClientPRUpdateValue points to the same buffer, needs a review */
 fail_alloc_update_values_mem_TA:
@@ -5021,7 +4882,6 @@ fail_create_output_fence:
 		SyncAddrListDeRefCheckpoints(ui32FenceTASyncCheckpointCount, apsFenceTASyncCheckpoints);
 	}
 	SyncAddrListDeRefCheckpoints(ui32Fence3DSyncCheckpointCount, apsFence3DSyncCheckpoints);
-#endif /* defined(PVR_USE_FENCE_SYNC_MODEL) */
 
 err_pr_fence_address:
 err_populate_sync_addr_list_3d_update:
@@ -5030,7 +4890,6 @@ err_populate_sync_addr_list_ta_update:
 err_populate_sync_addr_list_ta_fence:
 err_not_enough_space:
 fail_tacmdinvalfbsc:
-#if defined(PVR_USE_FENCE_SYNC_MODEL)
 fail_resolve_input_fence:
 	/* Free the memory that was allocated for the sync checkpoint list returned by ResolveFence() */
 	if (apsFenceTASyncCheckpoints)
@@ -5055,7 +4914,6 @@ fail_resolve_input_fence:
 		SyncCheckpointFree(psDummySyncCheckpoint);
 	}
 #endif
-#endif /* defined(PVR_USE_FENCE_SYNC_MODEL) */
 #if defined(SUPPORT_BUFFER_SYNC)
 	if (psBufferSyncData)
 	{

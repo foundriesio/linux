@@ -73,53 +73,59 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define	RGX_FEATURE_GPU_CPU_COHERENCY_POS                           	(3U)
 #define	RGX_FEATURE_GPU_CPU_COHERENCY_BIT_MASK                      	(IMG_UINT64_C(0x0000000000000008))
 
-#define	RGX_FEATURE_GPU_VIRTUALISATION_POS                          	(4U)
-#define	RGX_FEATURE_GPU_VIRTUALISATION_BIT_MASK                     	(IMG_UINT64_C(0x0000000000000010))
+#define	RGX_FEATURE_GPU_MULTICORE_SUPPORT_POS                       	(4U)
+#define	RGX_FEATURE_GPU_MULTICORE_SUPPORT_BIT_MASK                  	(IMG_UINT64_C(0x0000000000000010))
 
-#define	RGX_FEATURE_HYPERVISOR_MMU_POS                              	(5U)
-#define	RGX_FEATURE_HYPERVISOR_MMU_BIT_MASK                         	(IMG_UINT64_C(0x0000000000000020))
+#define	RGX_FEATURE_GPU_VIRTUALISATION_POS                          	(5U)
+#define	RGX_FEATURE_GPU_VIRTUALISATION_BIT_MASK                     	(IMG_UINT64_C(0x0000000000000020))
 
-#define	RGX_FEATURE_META_DMA_POS                                    	(6U)
-#define	RGX_FEATURE_META_DMA_BIT_MASK                               	(IMG_UINT64_C(0x0000000000000040))
+#define	RGX_FEATURE_HYPERVISOR_MMU_POS                              	(6U)
+#define	RGX_FEATURE_HYPERVISOR_MMU_BIT_MASK                         	(IMG_UINT64_C(0x0000000000000040))
 
-#define	RGX_FEATURE_META_REGISTER_UNPACKED_ACCESSES_POS             	(7U)
-#define	RGX_FEATURE_META_REGISTER_UNPACKED_ACCESSES_BIT_MASK        	(IMG_UINT64_C(0x0000000000000080))
+#define	RGX_FEATURE_META_DMA_POS                                    	(7U)
+#define	RGX_FEATURE_META_DMA_BIT_MASK                               	(IMG_UINT64_C(0x0000000000000080))
 
-#define	RGX_FEATURE_PBE_CHECKSUM_2D_POS                             	(8U)
-#define	RGX_FEATURE_PBE_CHECKSUM_2D_BIT_MASK                        	(IMG_UINT64_C(0x0000000000000100))
+#define	RGX_FEATURE_META_REGISTER_UNPACKED_ACCESSES_POS             	(8U)
+#define	RGX_FEATURE_META_REGISTER_UNPACKED_ACCESSES_BIT_MASK        	(IMG_UINT64_C(0x0000000000000100))
 
-#define	RGX_FEATURE_PERFBUS_POS                                     	(9U)
-#define	RGX_FEATURE_PERFBUS_BIT_MASK                                	(IMG_UINT64_C(0x0000000000000200))
+#define	RGX_FEATURE_PBE_CHECKSUM_2D_POS                             	(9U)
+#define	RGX_FEATURE_PBE_CHECKSUM_2D_BIT_MASK                        	(IMG_UINT64_C(0x0000000000000200))
 
-#define	RGX_FEATURE_PM_BYTE_ALIGNED_BASE_ADDRESSES_POS              	(10U)
-#define	RGX_FEATURE_PM_BYTE_ALIGNED_BASE_ADDRESSES_BIT_MASK         	(IMG_UINT64_C(0x0000000000000400))
+#define	RGX_FEATURE_PERFBUS_POS                                     	(10U)
+#define	RGX_FEATURE_PERFBUS_BIT_MASK                                	(IMG_UINT64_C(0x0000000000000400))
 
-#define	RGX_FEATURE_PM_MMUSTACK_POS                                 	(11U)
-#define	RGX_FEATURE_PM_MMUSTACK_BIT_MASK                            	(IMG_UINT64_C(0x0000000000000800))
+#define	RGX_FEATURE_PM_BYTE_ALIGNED_BASE_ADDRESSES_POS              	(11U)
+#define	RGX_FEATURE_PM_BYTE_ALIGNED_BASE_ADDRESSES_BIT_MASK         	(IMG_UINT64_C(0x0000000000000800))
 
-#define	RGX_FEATURE_PM_MMU_VFP_POS                                  	(12U)
-#define	RGX_FEATURE_PM_MMU_VFP_BIT_MASK                             	(IMG_UINT64_C(0x0000000000001000))
+#define	RGX_FEATURE_PM_MMUSTACK_POS                                 	(12U)
+#define	RGX_FEATURE_PM_MMUSTACK_BIT_MASK                            	(IMG_UINT64_C(0x0000000000001000))
 
-#define	RGX_FEATURE_SIGNAL_SNOOPING_POS                             	(13U)
-#define	RGX_FEATURE_SIGNAL_SNOOPING_BIT_MASK                        	(IMG_UINT64_C(0x0000000000002000))
+#define	RGX_FEATURE_PM_MMU_VFP_POS                                  	(13U)
+#define	RGX_FEATURE_PM_MMU_VFP_BIT_MASK                             	(IMG_UINT64_C(0x0000000000002000))
 
-#define	RGX_FEATURE_SLC_FAULT_ACCESS_ADDR_PHYS_POS                  	(14U)
-#define	RGX_FEATURE_SLC_FAULT_ACCESS_ADDR_PHYS_BIT_MASK             	(IMG_UINT64_C(0x0000000000004000))
+#define	RGX_FEATURE_RISCV_FW_PROCESSOR_POS                          	(14U)
+#define	RGX_FEATURE_RISCV_FW_PROCESSOR_BIT_MASK                     	(IMG_UINT64_C(0x0000000000004000))
 
-#define	RGX_FEATURE_SLC_VIVT_POS                                    	(15U)
-#define	RGX_FEATURE_SLC_VIVT_BIT_MASK                               	(IMG_UINT64_C(0x0000000000008000))
+#define	RGX_FEATURE_SIGNAL_SNOOPING_POS                             	(15U)
+#define	RGX_FEATURE_SIGNAL_SNOOPING_BIT_MASK                        	(IMG_UINT64_C(0x0000000000008000))
 
-#define	RGX_FEATURE_SYS_BUS_SECURE_RESET_POS                        	(16U)
-#define	RGX_FEATURE_SYS_BUS_SECURE_RESET_BIT_MASK                   	(IMG_UINT64_C(0x0000000000010000))
+#define	RGX_FEATURE_SLC_FAULT_ACCESS_ADDR_PHYS_POS                  	(16U)
+#define	RGX_FEATURE_SLC_FAULT_ACCESS_ADDR_PHYS_BIT_MASK             	(IMG_UINT64_C(0x0000000000010000))
 
-#define	RGX_FEATURE_TDM_PDS_CHECKSUM_POS                            	(17U)
-#define	RGX_FEATURE_TDM_PDS_CHECKSUM_BIT_MASK                       	(IMG_UINT64_C(0x0000000000020000))
+#define	RGX_FEATURE_SLC_VIVT_POS                                    	(17U)
+#define	RGX_FEATURE_SLC_VIVT_BIT_MASK                               	(IMG_UINT64_C(0x0000000000020000))
 
-#define	RGX_FEATURE_TESSELLATION_POS                                	(18U)
-#define	RGX_FEATURE_TESSELLATION_BIT_MASK                           	(IMG_UINT64_C(0x0000000000040000))
+#define	RGX_FEATURE_SYS_BUS_SECURE_RESET_POS                        	(18U)
+#define	RGX_FEATURE_SYS_BUS_SECURE_RESET_BIT_MASK                   	(IMG_UINT64_C(0x0000000000040000))
 
-#define	RGX_FEATURE_ZLS_CHECKSUM_POS                                	(19U)
-#define	RGX_FEATURE_ZLS_CHECKSUM_BIT_MASK                           	(IMG_UINT64_C(0x0000000000080000))
+#define	RGX_FEATURE_TDM_PDS_CHECKSUM_POS                            	(19U)
+#define	RGX_FEATURE_TDM_PDS_CHECKSUM_BIT_MASK                       	(IMG_UINT64_C(0x0000000000080000))
+
+#define	RGX_FEATURE_TESSELLATION_POS                                	(20U)
+#define	RGX_FEATURE_TESSELLATION_BIT_MASK                           	(IMG_UINT64_C(0x0000000000100000))
+
+#define	RGX_FEATURE_ZLS_CHECKSUM_POS                                	(21U)
+#define	RGX_FEATURE_ZLS_CHECKSUM_BIT_MASK                           	(IMG_UINT64_C(0x0000000000200000))
 
 
 /******************************************************************************
@@ -146,6 +152,7 @@ typedef enum _RGX_FEATURE_WITH_VALUE_INDEX_ {
 	RGX_FEATURE_PBE_PER_SPU_IDX,
 	RGX_FEATURE_PHYS_BUS_WIDTH_IDX,
 	RGX_FEATURE_POWER_ISLAND_VERSION_IDX,
+	RGX_FEATURE_RENDER_TARGET_XY_MAX_IDX,
 	RGX_FEATURE_SCALABLE_TE_ARCH_IDX,
 	RGX_FEATURE_SCALABLE_VCE_IDX,
 	RGX_FEATURE_SLC_BANKS_IDX,

@@ -29,7 +29,7 @@
 #include "vpu_structure.h"
 #include "vpu_etc.h"
 
-#if defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC901X)
+#if defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC901X) || defined(CONFIG_ARCH_TCC805X)
 #include "smp_driver.h"
 #endif
 
@@ -59,6 +59,11 @@
 #ifdef CONFIG_SUPPORT_TCC_G2V2_VP9
 #include <video/tcc/TCC_VP9_CODEC.h>
 #include <video/tcc/tcc_vp9_ioctl.h>
+#endif
+
+#ifdef CONFIG_SUPPORT_TCC_WAVE420L_VPU_HEVC_ENC
+#include <video/tcc/TCC_VPU_HEVC_ENC_CODEC.h>
+#include <video/tcc/tcc_vpu_hevc_enc_ioctl.h>
 #endif
 
 //In case of kernel operation (open/close in the kernel level) like TMS, open/close works asynchronosly.
@@ -272,11 +277,18 @@ typedef struct _vpu_encoder_data{
     // JPU_GET_VERSION_t gsJpuEncVersion;
 #endif
 
+#ifdef CONFIG_SUPPORT_TCC_WAVE420L_VPU_HEVC_ENC
+    VENC_HEVC_INIT_t gsVpuHevcEncInit_Info;
+    VENC_HEVC_SET_BUFFER_t gsVpuHevcEncBuffer_Info;
+    VENC_HEVC_PUT_HEADER_t gsVpuHevcEncPutHeader_Info;
+    VENC_HEVC_ENCODE_t gsVpuHevcEncInOut_Info;
+#endif
+
     int gsCommEncResult;
     unsigned char list_idx;
 
     VpuList_t venc_list[LIST_MAX];
 } vpu_encoder_data;
 #endif
-#endif
 
+#endif //_VPU_COMM_H_

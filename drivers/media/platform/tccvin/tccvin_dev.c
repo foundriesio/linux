@@ -121,10 +121,9 @@ struct format_conversion format_conversion_table[] = {
 	},
 };
 
-atomic_t	tccvin_attr_diagnostics;
-
 ssize_t tccvin_attr_diagnostics_show(struct device * dev, struct device_attribute * attr, char * buf) {
-	long val = atomic_read(&tccvin_attr_diagnostics);
+	tccvin_dev_t * vdev = (tccvin_dev_t *)dev->platform_data;
+	long val = atomic_read(&vdev->tccvin_attr_diagnostics);
 
 	sprintf(buf, "%ld\n", val);
 
@@ -132,22 +131,23 @@ ssize_t tccvin_attr_diagnostics_show(struct device * dev, struct device_attribut
 }
 
 ssize_t tccvin_attr_diagnostics_store(struct device * dev, struct device_attribute * attr, const char * buf, size_t count) {
+	tccvin_dev_t * vdev = (tccvin_dev_t *)dev->platform_data;
 	long val;
 	int error = kstrtoul(buf, 10, &val);
 	if(error)
 		return error;
 
-	atomic_set(&tccvin_attr_diagnostics, val);
+	atomic_set(&vdev->tccvin_attr_diagnostics, val);
 
 	return count;
 }
 
 static DEVICE_ATTR(tccvin_attr_diagnostics, S_IRUGO|S_IWUSR|S_IWGRP, tccvin_attr_diagnostics_show, tccvin_attr_diagnostics_store);
 
-int tccvin_create_attr_diagnostics(struct device * dev) {
+int tccvin_create_attr_diagnostics(tccvin_dev_t * vdev) {
 	int		ret = 0;
 
-	ret = device_create_file(dev, &dev_attr_tccvin_attr_diagnostics);
+	ret = device_create_file(&vdev->plt_dev->dev, &dev_attr_tccvin_attr_diagnostics);
 	if(ret < 0)
 		log("failed create sysfs: tccvin_attr_diagnostics\n");
 
@@ -260,6 +260,7 @@ int tccvin_parse_device_tree(tccvin_dev_t * vdev) {
 	}
 
 	// cif port
+	vdev->cif.cifport_addr = NULL;
 	vdev->cif.cif_port = -1;
 	vioc_node = of_find_compatible_node(NULL, NULL, "telechips,cif-port");
 	if(vioc_node != NULL) {
@@ -303,9 +304,21 @@ int tccvin_parse_device_tree(tccvin_dev_t * vdev) {
 	}
 #endif//CONFIG_OVERLAY_PGL
 
+	// DEINTLS
+	vdev->cif.vioc_path.deintl_s = -1;
+	vioc_node = of_parse_phandle(main_node, "deintls", 0);
+	if(vioc_node) {
+		of_property_read_u32_index(main_node, "deintls", 1, &vdev->cif.vioc_path.deintl_s);
+		if(vdev->cif.vioc_path.deintl_s != -1) {
+			address = VIOC_DEINTLS_GetAddress(/*vdev->cif.vioc_path.deintl_s*/);
+			dlog("%10s[%2d]: 0x%p\n", "DEINTL_S", get_vioc_index(vdev->cif.vioc_path.deintl_s), address);
+		}
+	} else {
+		dlog("\"deintls\" node is not found.\n");
+	}
+
 	// VIQE
 	vdev->cif.vioc_path.viqe = -1;
-	vdev->cif.vioc_path.deintl_s = -1;
 	vioc_node = of_parse_phandle(main_node, "viqe", 0);
 	if(vioc_node) {
 		of_property_read_u32_index(main_node, "viqe", 1, &vdev->cif.vioc_path.viqe);
@@ -315,18 +328,6 @@ int tccvin_parse_device_tree(tccvin_dev_t * vdev) {
 		}
 	} else {
 		dlog("\"viqe\" node is not found.\n");
-
-		// DEINTL_S
-		vioc_node = of_parse_phandle(main_node, "deintls", 0);
-		if(vioc_node) {
-			of_property_read_u32_index(main_node, "deintls", 1, &vdev->cif.vioc_path.deintl_s);
-			if(vdev->cif.vioc_path.deintl_s != -1) {
-				address = VIOC_DEINTLS_GetAddress();//vdev->cif.vioc_path.deintl_s);
-				dlog("%10s[%2d]: 0x%p\n", "DEINTL_S", get_vioc_index(vdev->cif.vioc_path.deintl_s), address);
-			}
-		} else {
-			dlog("\"deintls\" node is not found.\n");
-		}
 	}
 
 	// SCALER
@@ -561,7 +562,7 @@ end:
 #endif//defined(CONFIG_TCC803X_CA7S) && defined(CONFIG_VIOC_MGR)
 
 	FUNCTION_OUT
-	return 0;
+	return ret;
 }
 
 /*
@@ -703,7 +704,7 @@ int tccvin_set_vin(tccvin_dev_t * vdev) {
 	unsigned int	interlaced			= !!(vs_info->interlaced & V4L2_DV_INTERLACED);
 	unsigned int	width				= vs_info->width;
 	unsigned int	height				= vs_info->height >> interlaced;
-#if defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X)
+#if defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X)
 	unsigned int	se					= vs_info->se;
 	unsigned int	fvs 				= vs_info->fvs;
 #endif//defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X)
@@ -720,7 +721,7 @@ int tccvin_set_vin(tccvin_dev_t * vdev) {
 	VIOC_VIN_SetImageCropOffset(pVIN, 0, 0);
 	VIOC_VIN_SetY2RMode(pVIN, 2);
 
-#if defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X)
+#if defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X)
 	VIOC_VIN_SetSEEnable(pVIN, se);
 	VIOC_VIN_SetFlushBufferEnable(pVIN, fvs);
 #endif//defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X)
@@ -1409,7 +1410,7 @@ int tccvin_request_irq(tccvin_dev_t * vdev) {
 		vdev->cif.vioc_intr.id   = -1;
 		vdev->cif.vioc_intr.bits = -1;
 
-#ifdef CONFIG_ARCH_TCC803X
+#if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X)
 		if(vdev->cif.vioc_path.wdma < VIOC_WDMA09)
 			vdev->cif.vioc_intr.id		= VIOC_INTR_WD0 + get_vioc_index(vdev->cif.vioc_path.wdma);
 		else
@@ -1545,7 +1546,7 @@ int tccvin_diagnostics(tccvin_dev_t * vdev) {
 	int		idxLoop = 0, nLoop = 1;
 	int		ret	= 0;
 
-	diagnostics_enable = atomic_read(&tccvin_attr_diagnostics);
+	diagnostics_enable = atomic_read(&vdev->tccvin_attr_diagnostics);
 	if(diagnostics_enable == 1) {
 		for(idxLoop=0; idxLoop<nLoop; idxLoop++) {
 			// check cif port mapping

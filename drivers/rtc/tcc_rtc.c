@@ -94,7 +94,6 @@ static atomic_t irq_flag = ATOMIC_INIT(0);
 
 struct tcc_rtc_data {
 	void __iomem	*regs;
-	struct clk	*fclk;
 	struct clk	*hclk;
 	int		irq;
 	struct rtc_device *rtc_dev;
@@ -516,11 +515,6 @@ static int tcc_rtc_remove(struct platform_device *pdev)
 	tcc_rtc_setaie(&pdev->dev, 0);
 	free_irq(tcc_rtc->irq, &pdev->dev);
 
-	if (tcc_rtc->fclk) {
-		clk_disable_unprepare(tcc_rtc->fclk);
-		clk_put(tcc_rtc->fclk);
-		tcc_rtc->fclk = NULL;
-	}
 	if (tcc_rtc->hclk) {
 		clk_disable_unprepare(tcc_rtc->hclk);
 		clk_put(tcc_rtc->hclk);
@@ -686,22 +680,13 @@ static int tcc_rtc_probe(struct platform_device *pdev)
 		goto err_get_dt_property;
 	}
 
-	tcc_rtc->hclk = of_clk_get(pdev->dev.of_node, 1);
+	tcc_rtc->hclk = of_clk_get(pdev->dev.of_node, 0);
 	if (IS_ERR(tcc_rtc->hclk)) {
 		dev_err(&pdev->dev, "[ERROR][tcc-rtc]failed to get hclk\n");
 		ret = -ENXIO;
 		goto err_get_hclk;
 	}
 	clk_prepare_enable(tcc_rtc->hclk);
-
-	tcc_rtc->fclk = of_clk_get(pdev->dev.of_node, 0);
-	if (IS_ERR(tcc_rtc->fclk)) {
-		dev_err(&pdev->dev, "[ERROR][tcc-rtc]failed to get fclk\n");
-		ret = -ENXIO;
-		goto err_get_fclk;
-	}
-	clk_prepare_enable(tcc_rtc->fclk);
-
 
 	/* When rtc protection enable bit set, no need to rtc initialize. */
 	if((rtc_reg(INTCON) & 0x8000)  != 0x00008000){		
@@ -800,12 +785,8 @@ err_request_irq:
 	rtc_device_unregister(tcc_rtc->rtc_dev);
 
 err_nortc:
-	clk_disable_unprepare(tcc_rtc->fclk);
-	clk_put(tcc_rtc->fclk);
-
-err_get_fclk:
 	clk_disable_unprepare(tcc_rtc->hclk);
-	clk_put(tcc_rtc->hclk);	
+	clk_put(tcc_rtc->hclk);
 
 err_get_hclk:
 	

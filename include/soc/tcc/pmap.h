@@ -27,8 +27,8 @@
 
 typedef struct {
 	char name[TCC_PMAP_NAME_LEN];
-	__u32 base;
-	__u32 size;
+	u64 base;
+	u64 size;
 	__u32 groups;
 	__u32 rc;
 	unsigned int flags;

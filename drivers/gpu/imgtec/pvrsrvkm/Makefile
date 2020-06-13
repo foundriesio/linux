@@ -48,6 +48,7 @@ pvrsrvkm-y += event.o
 pvrsrvkm-y += fwload.o
 pvrsrvkm-y += handle.o
 pvrsrvkm-y += handle_idr.o
+pvrsrvkm-y += di_server.o
 pvrsrvkm-y += hash.o
 pvrsrvkm-y += htbserver.o
 pvrsrvkm-y += htbuffer.o
@@ -71,8 +72,10 @@ pvrsrvkm-y += pmr_os.o
 pvrsrvkm-y += power.o
 pvrsrvkm-y += process_stats.o
 pvrsrvkm-y += pvr_bridge_k.o
+pvrsrvkm-y += pvr_debug.o
 pvrsrvkm-y += pvr_debugfs.o
 pvrsrvkm-y += pvr_notifier.o
+pvrsrvkm-y += pvrsrv.o
 pvrsrvkm-y += pvrsrv_bridge_init.o
 pvrsrvkm-y += pvrsrv_error.o
 pvrsrvkm-y += pvrsrv_pool.o
@@ -81,6 +84,7 @@ pvrsrvkm-y += rgxfwdbg.o
 pvrsrvkm-y += rgxfwtrace_strings.o
 pvrsrvkm-y += rgxshader.o
 pvrsrvkm-y += rgxtimecorr.o
+pvrsrvkm-y += srvcore.o
 pvrsrvkm-y += sync.o
 pvrsrvkm-y += sync_checkpoint.o
 pvrsrvkm-y += sync_server.o
@@ -89,17 +93,11 @@ pvrsrvkm-y += tlintern.o
 pvrsrvkm-y += tlserver.o
 pvrsrvkm-y += tlstream.o
 pvrsrvkm-y += uniq_key_splay_tree.o
+pvrsrvkm-y += vmm_pvz_server.o
+pvrsrvkm-y += vmm_pvz_client.o
+pvrsrvkm-y += vz_vmm_pvz.o
+pvrsrvkm-y += vz_vmm_vm.o
 
-pvrsrvkm-y += $(PVR_ARCH)/pvrsrv.o
-pvrsrvkm-y += $(PVR_ARCH)/srvcore.o
-pvrsrvkm-y += $(PVR_ARCH)/vmm_pvz_client.o
-pvrsrvkm-y += $(PVR_ARCH)/vmm_pvz_server.o
-pvrsrvkm-y += $(PVR_ARCH)/vz_vmm_pvz.o
-pvrsrvkm-y += $(PVR_ARCH)/vz_vmm_vm.o
-pvrsrvkm-y += $(PVR_ARCH)/vz_support.o
-pvrsrvkm-y += $(PVR_ARCH)/vz_physheap_generic.o
-pvrsrvkm-y += $(PVR_ARCH)/vz_physheap_common.o
-pvrsrvkm-y += $(PVR_ARCH)/pvr_debug.o
 pvrsrvkm-y += $(PVR_ARCH)/rgxbvnc.o
 pvrsrvkm-y += $(PVR_ARCH)/rgxccb.o
 pvrsrvkm-y += $(PVR_ARCH)/rgxcompute.o
@@ -110,6 +108,7 @@ pvrsrvkm-y += $(PVR_ARCH)/rgxinit.o
 pvrsrvkm-y += $(PVR_ARCH)/rgxkicksync.o
 pvrsrvkm-y += $(PVR_ARCH)/rgxmem.o
 pvrsrvkm-y += $(PVR_ARCH)/rgxmmuinit.o
+pvrsrvkm-y += $(PVR_ARCH)/rgxmulticore.o
 pvrsrvkm-y += $(PVR_ARCH)/rgxpower.o
 pvrsrvkm-y += $(PVR_ARCH)/rgxregconfig.o
 pvrsrvkm-y += $(PVR_ARCH)/rgxsignals.o
@@ -157,7 +156,12 @@ ccflags-$(CONFIG_POWERVR_ROGUE_RESOURCE_INFO) += -DPVRSRV_ENABLE_GPU_MEMORY_INFO
 pvrsrvkm-$(CONFIG_POWERVR_ROGUE_DEVICEMEM_HISTORY) += devicemem_history_server.o
 
 # GPU tracing in systrace
+# TCC
+ifeq ($(CONFIG_ANDROID),y)
 pvrsrvkm-$(CONFIG_FTRACE) += pvr_gputrace.o
+else
+pvrsrvkm-y += pvr_gputrace.o
+endif
 
 # Event tracing
 pvrsrvkm-$(CONFIG_EVENT_TRACING) += trace_events.o
@@ -184,8 +188,22 @@ pvrsrvkm-$(CONFIG_POWERVR_ROGUE_PDUMP) += pdump_physmem.o
 pvrsrvkm-$(CONFIG_POWERVR_ROGUE_PDUMP) += srvinit_pdump.o
 ccflags-$(CONFIG_POWERVR_ROGUE_PDUMP) += -DPDUMP=1
 
+ifeq ($(SUPPORT_DISPLAY_CLASS),1)
+pvrsrvkm-y += \
+ dc_server.o \
+ scp.o
+endif
+
+
+# Linux synchronisation
+ifeq ($(SUPPORT_BUFFER_SYNC),1)
+ pvrsrvkm-y += \
+  ../pvr_buffer_sync.o \
+  ../pvr_fence.o
+endif
+
 # Android native synchronisation
-ifeq ($(SUPPORT_NATIVE_FENCE_SYNC),1)                                                                                                   
+ifeq ($(SUPPORT_NATIVE_FENCE_SYNC),1)
 ifeq ($(SUPPORT_DMA_FENCE),1)
  pvrsrvkm-y += \
   ../pvr_sync_file.o \
@@ -195,10 +213,17 @@ ifeq ($(SUPPORT_DMA_FENCE),1)
 else
  pvrsrvkm-y += ../pvr_sync2.o
 endif
+else
+ifeq ($(SUPPORT_FALLBACK_FENCE_SYNC),1)
+ pvrsrvkm-y += \
+ ../sync_fallback_server.o \
+ ossecure_export.o \
+ $(PVR_ARCH)/generated/syncfallback_bridge/server_syncfallback_bridge.o
+endif
 endif
 
 ifeq ($(SUPPORT_LINUX_DVFS),1)
- pvrsrvkm-y += pvr_dvfs_device.o 
+ pvrsrvkm-y += pvr_dvfs_device.o
 endif
 
 # Generated bridge code
@@ -241,4 +266,8 @@ pvrsrvkm-$(CONFIG_DMA_SHARED_BUFFER) += $(PVR_ARCH)/generated/dmabuf_bridge/serv
 ifeq ($(PVR_ARCH),rogue)
 pvrsrvkm-y += $(PVR_ARCH)/generated/rgxtq_bridge/server_rgxtq_bridge.o
 pvrsrvkm-y += $(PVR_ARCH)/generated/rgxbreakpoint_bridge/server_rgxbreakpoint_bridge.o
+endif
+
+ifeq ($(SUPPORT_DISPLAY_CLASS),1)
+pvrsrvkm-y += $(PVR_ARCH)/generated/dc_bridge/server_dc_bridge.o
 endif

@@ -1,6 +1,4 @@
-ifeq ($(CONFIG_POWERVR_TC),y)
-    include $(srctree)/drivers/staging/imgtec/config_kernel.mk
-endif
+include $(srctree)/drivers/staging/imgtec/config_kernel.mk
 
 obj-$(CONFIG_POWERVR_TC) += tc.o
 tc-y += tc_drv.o tc_apollo.o tc_odin.o

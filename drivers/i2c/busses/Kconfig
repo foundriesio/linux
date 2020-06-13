@@ -1328,7 +1328,14 @@ config I2C_ZX2967
 
 config I2C_TCC
 	tristate "Telechips I2C Master driver"
-	depends on ARCH_TCC
+	depends on !ARCH_TCC805X
+	default y
+	help
+	  Enable Telechips I2C Master driver
+
+config I2C_TCC_V2
+	tristate "Telechips I2C Master driver"
+	depends on ARCH_TCC805X
 	default y
 	help
 	  Enable Telechips I2C Master driver

@@ -1329,10 +1329,6 @@ static PMR_IMPL_FUNCTAB _sPMRLMAFuncTab = {
 	NULL,
 	/* pfnUnmapMemoryObject */
 	NULL,
-#if defined(USING_HYPERVISOR)
-    /* pfnGetPmr */
-    NULL,
-#endif
 #endif
 	/* pfnReadBytes */
 	&PMRReadBytesLocalMem,

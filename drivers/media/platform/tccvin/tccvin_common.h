@@ -27,8 +27,9 @@ extern int						tccvin_loglevel;
 #define log(fmt, ...)			logl(KERN_INFO,		fmt, ##__VA_ARGS__)
 #define loge(fmt, ...)			logl(KERN_ERR,		fmt, ##__VA_ARGS__)
 #define logw(fmt, ...)			logl(KERN_WARNING,	fmt, ##__VA_ARGS__)
+#define logn(fmt, ...)			logl(KERN_NOTICE,	fmt, ##__VA_ARGS__)
 #define logd(fmt, ...)			logl(KERN_DEBUG,	fmt, ##__VA_ARGS__)
-#define dlog(fmt, ...)			do { if(tccvin_loglevel) { logl(KERN_DEBUG, fmt, ##__VA_ARGS__); } } while(0)
+#define dlog(fmt, ...)			do { if(tccvin_loglevel) { logl(KERN_ERR, fmt, ##__VA_ARGS__); } } while(0)
 
 #define FUNCTION_IN				dlog("IN\n");
 #define FUNCTION_OUT			dlog("OUT\n");

@@ -133,18 +133,18 @@ PVRSRV_ERROR RGXPostClockSpeedChange(IMG_HANDLE				hDevHandle,
 
 
 /*************************************************************************/ /*!
-@Function       RGXSPUPowerStateMaskChange
+@Function       RGXPowUnitsStateMaskChange
 @Description    Changes power state of SPUs
 @Input          hDevHandle              RGX Device Node.
-@Input          ui32SPUPowerStateMask   Mask containing power state of SPUs.
+@Input          ui32PowUnitsStateMask   Mask containing power state of SPUs.
                                         Each bit corresponds to an SPU.
                                         Bit position corresponds to SPU number i.e. Bit0 is SPU0, Bit1 is SPU1 etc.
                                         '1' indicates ON and '0' indicates OFF.
                                         Value must be non-zero.
 @Return         PVRSRV_ERROR.
 */ /**************************************************************************/
-PVRSRV_ERROR RGXSPUPowerStateMaskChange(IMG_HANDLE hDevHandle,
-										IMG_UINT32 ui32SPUPowerStateMask);
+PVRSRV_ERROR RGXPowUnitsStateMaskChange(IMG_HANDLE hDevHandle,
+										IMG_UINT32 ui32PowUnitsStateMask);
 
 /*!
 ******************************************************************************
@@ -214,11 +214,11 @@ PVRSRV_ERROR RGXCancelForcedIdleRequest(IMG_HANDLE hDevHandle);
 
 
 #if defined(SUPPORT_VALIDATION)
-PVRSRV_ERROR RGXSPUPowerDomainInitState(RGX_SPU_POWER_DOMAIN_STATE *psState,
-										IMG_UINT32 ui32MaxSPUCount);
+PVRSRV_ERROR RGXPowerDomainInitState(RGX_POWER_DOMAIN_STATE *psState,
+										IMG_UINT32 ui32MaxPowUnitsCount);
 
-void RGXSPUPowerDomainDeInitState(RGX_SPU_POWER_DOMAIN_STATE *psState);
+void RGXPowerDomainDeInitState(RGX_POWER_DOMAIN_STATE *psState);
 
-IMG_UINT32 RGXSPUPowerDomainGetNextState(RGX_SPU_POWER_DOMAIN_STATE *psState);
+IMG_UINT32 RGXPowerDomainGetNextState(RGX_POWER_DOMAIN_STATE *psState);
 #endif
 #endif /* __RGXPOWER_H__ */

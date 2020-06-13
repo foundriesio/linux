@@ -25,6 +25,8 @@
 #include "videodecoder/videodecoder.h"
 #include "mipi-deserializer/mipi-deserializer.h"
 
+#define MODULE_NAME		"videosource"
+
 int DDI_I2C_Write(struct i2c_client * client, unsigned char * data, unsigned short reg_bytes, unsigned short data_bytes) {
 	unsigned short bytes = reg_bytes + data_bytes;
 

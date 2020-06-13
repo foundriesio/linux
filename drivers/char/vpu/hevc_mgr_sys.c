@@ -196,41 +196,13 @@ void hmgr_put_clock(void)
 	}
 }
 
-void hmgr_restore_clock(int vbus_no_ctrl, int opened_cnt)
-{
-#if 1
-	int opened_count = opened_cnt;
-
-    hmgr_hw_reset(1);
-    while(opened_count)
-    {
-        hmgr_disable_clock(vbus_no_ctrl);
-        if(opened_count > 0)
-            opened_count--;
-    }
-
-    //msleep(1);
-    opened_count = opened_cnt;
-    while(opened_count)
-    {
-        hmgr_enable_clock(vbus_no_ctrl);
-        if(opened_count > 0)
-            opened_count--;
-    }
-    hmgr_hw_reset(0);
-#else
-    hmgr_hw_reset(1);
-    hmgr_hw_reset(0);
-#endif
-}
-
 void hmgr_get_reset(struct device_node *node)
 {
 #if defined( VIDEO_IP_DIRECT_RESET_CTRL)
     if(node == NULL) {
         printk("device node is null\n");
     }
-	printk("############# hmgr_get_reset\n");
+    printk("############# hmgr_get_reset\n");
     vbus_hevc_bus_reset = of_reset_control_get(node, "hevc_bus");
     BUG_ON(IS_ERR(vbus_hevc_bus_reset));
 
@@ -253,28 +225,91 @@ void hmgr_put_reset(void)
 #endif
 }
 
-void hmgr_hw_reset(int reset)
+int hmgr_get_reset_register(void)
+{
+    return 0;
+}
+
+void hmgr_hw_assert(void)
 {
 #if defined( VIDEO_IP_DIRECT_RESET_CTRL)
-	if(reset) {
-		udelay(1000);
-		if(vbus_hevc_bus_reset) {
-			reset_control_assert(vbus_hevc_bus_reset);
-		}
-		if(vbus_hevc_core_reset) {
-			reset_control_assert(vbus_hevc_core_reset);
-		}
-	}
-	else {
-		udelay(1000);
-		if(vbus_hevc_bus_reset) {
-			reset_control_deassert(vbus_hevc_bus_reset);
-		}
-		if(vbus_hevc_core_reset) {
-			reset_control_deassert(vbus_hevc_core_reset);
-		}
-		udelay(1000);
-	}
+    _DBG(DEBUG_RSTCLK, "enter");
+
+
+    if(vbus_hevc_bus_reset) {
+        reset_control_assert(vbus_hevc_bus_reset);
+    }
+
+    if(vbus_hevc_core_reset) {
+        reset_control_assert(vbus_hevc_core_reset);
+    }
+
+    _DBG(DEBUG_RSTCLK, "out!! (rsr:0x%x)", hmgr_get_reset_register());
+#endif
+}
+
+void hmgr_hw_deassert(void)
+{
+#if defined( VIDEO_IP_DIRECT_RESET_CTRL)
+    _DBG(DEBUG_RSTCLK, "enter");
+
+
+    if(vbus_hevc_bus_reset)
+    {
+        reset_control_deassert(vbus_hevc_bus_reset);
+    }
+
+    if(vbus_hevc_core_reset)
+    {
+        reset_control_deassert(vbus_hevc_core_reset);
+    }
+
+    _DBG(DEBUG_RSTCLK, "out!! (rsr:0x%x)", hmgr_get_reset_register());
+#endif
+}
+
+void hmgr_hw_reset(void)
+{
+#if defined(VIDEO_IP_DIRECT_RESET_CTRL)
+
+    udelay(1000);
+
+    hmgr_hw_assert();
+
+    udelay(1000);
+
+    hmgr_hw_deassert();
+
+    udelay(1000);
+
+#endif
+}
+
+void hmgr_restore_clock(int vbus_no_ctrl, int opened_cnt)
+{
+#if 1
+    int opened_count = opened_cnt;
+
+    hmgr_hw_assert();
+    while(opened_count)
+    {
+        hmgr_disable_clock(vbus_no_ctrl);
+        if(opened_count > 0)
+            opened_count--;
+    }
+
+    udelay(1000);
+
+    opened_count = opened_cnt;
+    while(opened_count)
+    {
+        hmgr_enable_clock(vbus_no_ctrl);
+        if(opened_count > 0)
+            opened_count--;
+    }
+    hmgr_hw_deassert();
+#else
+    hmgr_hw_reset();
 #endif
 }
 
@@ -299,7 +334,7 @@ int hmgr_request_irq(unsigned int irq, irqreturn_t (*handler)(int irq, void *dev
 
 unsigned long hmgr_get_int_flags(void)
 {
-	return IRQ_INT_TYPE;
+    return IRQ_INT_TYPE;
 }
 
 void hmgr_init_interrupt(void)
@@ -308,7 +343,7 @@ void hmgr_init_interrupt(void)
 
 int hmgr_BusPrioritySetting(int mode, int type)
 {
-	return 0;
+    return 0;
 }
 
 void hmgr_status_clear(unsigned int *base_addr)
@@ -324,7 +359,7 @@ EXPORT_SYMBOL(hmgr_is_loadable);
 
 void hmgr_init_variable(void)
 {
-	cache_droped = 0;
+    cache_droped = 0;
 }
 
 MODULE_AUTHOR("Telechips.");

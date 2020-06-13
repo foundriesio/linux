@@ -516,10 +516,6 @@ struct _PMR_IMPL_FUNCTAB_ {
                   void **pvClientAddr,
                   IMG_HANDLE *phHandleOut);
     PVRSRV_ERROR (*pfnUnmapMemoryObject)(PMR_IMPL_PRIVDATA pvPriv);
-
-#if defined(USING_HYPERVISOR)
-    IMG_HANDLE (*pfnGetPmr)(PMR_IMPL_PRIVDATA pvPriv, size_t ulOffset);
-#endif
 #endif
 
     /*! Callback function pointer, see ::PFN_READ_BYTES_FN */

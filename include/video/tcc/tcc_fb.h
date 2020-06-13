@@ -24,7 +24,8 @@ enum {
 	PANEL_ID_ED090NA,	
 	PANEL_ID_FLD0800,
 	PANEL_ID_TM123XDHP90,
-	PANEL_ID_HDMI	
+	PANEL_ID_PVLBJT02,
+	PANEL_ID_HDMI,
 };
 
 // Display Device 
@@ -79,7 +80,7 @@ enum{
 	TCC_DB_OUT_HDMI,
 };
 
-#if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC897X)
+#if defined(CONFIG_ARCH_TCC803X) ||  defined(CONFIG_ARCH_TCC805X)
 struct lvds_gpio {
 	int power_on;
 	int display_on;

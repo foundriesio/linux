@@ -81,7 +81,7 @@ static int pvr_pm_suspend(struct device *dev)
 
 	DRM_DEBUG_DRIVER("device %p\n", dev);
 
-	return PVRSRVCommonDeviceSuspend(priv->dev_node);
+	return PVRSRVDeviceSuspend(priv->dev_node);
 }
 
 static int pvr_pm_resume(struct device *dev)
@@ -91,7 +91,7 @@ static int pvr_pm_resume(struct device *dev)
 
 	DRM_DEBUG_DRIVER("device %p\n", dev);
 
-	return PVRSRVCommonDeviceResume(priv->dev_node);
+	return PVRSRVDeviceResume(priv->dev_node);
 }
 
 const struct dev_pm_ops pvr_pm_ops = {
@@ -146,7 +146,7 @@ int pvr_drm_load(struct drm_device *ddev, unsigned long flags)
 	}
 #endif
 
-	srv_err = PVRSRVDeviceCreate(ddev->dev, deviceId, &priv->dev_node);
+	srv_err = PVRSRVCommonDeviceCreate(ddev->dev, deviceId, &priv->dev_node);
 	if (srv_err != PVRSRV_OK) {
 		DRM_ERROR("failed to create device node for device %p (%s)\n",
 			  ddev->dev, PVRSRVGetErrorString(srv_err));
@@ -157,7 +157,7 @@ int pvr_drm_load(struct drm_device *ddev, unsigned long flags)
 		goto err_workqueue_destroy;
 	}
 
-	err = PVRSRVCommonDeviceInit(priv->dev_node);
+	err = PVRSRVDeviceInit(priv->dev_node);
 	if (err) {
 		DRM_ERROR("device %p initialisation failed (err=%d)\n",
 			  ddev->dev, err);
@@ -169,7 +169,7 @@ int pvr_drm_load(struct drm_device *ddev, unsigned long flags)
 	return 0;
 
 err_device_destroy:
-	PVRSRVDeviceDestroy(priv->dev_node);
+	PVRSRVCommonDeviceDestroy(priv->dev_node);
 err_workqueue_destroy:
 #if defined(SUPPORT_BUFFER_SYNC) || defined(SUPPORT_NATIVE_FENCE_SYNC)
 	destroy_workqueue(priv->fence_status_wq);
@@ -197,9 +197,9 @@ void pvr_drm_unload(struct drm_device *ddev)
 
 	drm_mode_config_cleanup(ddev);
 
-	PVRSRVCommonDeviceDeinit(priv->dev_node);
+	PVRSRVDeviceDeinit(priv->dev_node);
 
-	PVRSRVDeviceDestroy(priv->dev_node);
+	PVRSRVCommonDeviceDestroy(priv->dev_node);
 
 #if defined(SUPPORT_BUFFER_SYNC) || defined(SUPPORT_NATIVE_FENCE_SYNC)
 	destroy_workqueue(priv->fence_status_wq);
@@ -226,7 +226,7 @@ static int pvr_drm_open(struct drm_device *ddev, struct drm_file *dfile)
 		return -ENOENT;
 	}
 
-	err = PVRSRVCommonDeviceOpen(priv->dev_node, dfile);
+	err = PVRSRVDeviceOpen(priv->dev_node, dfile);
 	if (err)
 		module_put(THIS_MODULE);
 
@@ -237,7 +237,7 @@ static void pvr_drm_release(struct drm_device *ddev, struct drm_file *dfile)
 {
 	struct pvr_drm_private *priv = ddev->dev_private;
 
-	PVRSRVCommonDeviceRelease(priv->dev_node, dfile);
+	PVRSRVDeviceRelease(priv->dev_node, dfile);
 
 	module_put(THIS_MODULE);
 }
@@ -266,12 +266,6 @@ static const struct file_operations pvr_drm_fops = {
 	.owner			= THIS_MODULE,
 	.open			= drm_open,
 	.release		= drm_release,
-	/*
-	 * FIXME:
-	 * Wrap this in a function that checks enough data has been
-	 * supplied with the ioctl (e.g. _IOCDIR(nr) != _IOC_NONE &&
-	 * _IOC_SIZE(nr) == size).
-	 */
 	.unlocked_ioctl		= drm_ioctl,
 #if defined(CONFIG_COMPAT)
 	.compat_ioctl		= pvr_compat_ioctl,

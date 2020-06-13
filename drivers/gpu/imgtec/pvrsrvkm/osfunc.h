@@ -879,6 +879,15 @@ PVRSRV_ERROR OSEventObjectWaitKernel(IMG_HANDLE hOSEventKM, IMG_UINT64 uiTimeout
 #endif
 
 /*************************************************************************/ /*!
+@Function       OSSuspendTaskInterruptible
+@Description    Suspend the current task into interruptible state.
+@Return         none.
+*/ /**************************************************************************/
+#if defined(LINUX) && defined(__KERNEL__)
+void OSSuspendTaskInterruptible(void);
+#endif
+
+/*************************************************************************/ /*!
 @Function       OSEventObjectWaitTimeout
 @Description    Wait for an event object to signal or timeout. The function
                 is passed an OS event object handle (which allows the OS to
@@ -1487,137 +1496,6 @@ IMG_UINT32 OSDivide64(IMG_UINT64 ui64Divident, IMG_UINT32 ui32Divisor, IMG_UINT3
 @Return         None
 */ /**************************************************************************/
 void OSDumpStack(void);
-
-/*
- *  Functions for providing support for PID statistics.
- */
-
-/*************************************************************************/ /*!
-@Description    Pointer to a function for printing statistics.
-@Input  pvFilePtr   File identifier.
-@Input  pszFormat   Text to be printed including format specifiers.
-@Input  ...         Additional arguments depending on the pszFormat string.
-*/ /**************************************************************************/
-typedef void (OS_STATS_PRINTF_FUNC)(void *pvFilePtr, const IMG_CHAR *pszFormat, ...);
-
-/*************************************************************************/ /*!
-@Description    Pointer to a function responsible for parsing and printing of
-                formatted process statistics. Actual output should be done by
-                the function pointed to by the pfnOSGetStatsPrintf variable.
-@Input  pvFilePtr            File identifier passed to pfnOSGetStatsPrintf.
-@Input  pvStatPtr            Pointer to statistics structure.
-@Input  pfnOSGetStatsPrintf  Pointer to a function for printing the statistics.
-*/ /**************************************************************************/
-typedef void (OS_STATS_PRINT_FUNC)(void *pvFilePtr,
-								   void *pvStatPtr,
-								   OS_STATS_PRINTF_FUNC* pfnOSGetStatsPrintf);
-
-/*************************************************************************/ /*!
-@Description    Pointer to a function used to atomically increment a reference
-                count on the memory backing the statistic entry.
-@Input  pvStatPtr   Pointer to the statistics structure.
-@Return         Reference count after the operation.
-*/ /**************************************************************************/
-typedef IMG_UINT32 (OS_INC_STATS_MEM_REFCOUNT_FUNC)(void *pvStatPtr);
-
-/*************************************************************************/ /*!
-@Description    Pointer to a function used to atomically decrement a reference
-                count on the memory backing the statistic entry.
-@Input  pvStatPtr   Pointer to the statistics structure.
-@Return         Reference count after the operation.
-*/ /**************************************************************************/
-typedef IMG_UINT32 (OS_DEC_STATS_MEM_REFCOUNT_FUNC)(void *pvStatPtr);
-
-/*************************************************************************/ /*!
-@Function       OSCreateStatisticEntry
-@Description    Create a statistic entry in the specified folder.
-                Where operating systems do not support a debugfs,
-                file system this function may be implemented as a stub.
-@Input          pszName        String containing the name for the entry.
-@Input          pvFolder       Reference from OSCreateStatisticFolder() of the
-                               folder to create the entry in, or NULL for the
-                               root.
-@Input          pfnStatsPrint  Pointer to function that can be used to print the
-                               values of all the statistics.
-@Input          pvData         OS specific reference that can be used by
-                               pfnGetElement.
-@Return         Pointer void reference to the entry created, which can be
-                passed to OSRemoveStatisticEntry() to remove the entry.
-*/ /**************************************************************************/
-void *OSCreateStatisticEntry(const IMG_CHAR* pszName, void *pvFolder,
-							 OS_STATS_PRINT_FUNC* pfnStatsPrint,
-							 void *pvData);
-
-/*************************************************************************/ /*!
-@Function       OSRemoveStatisticEntry
-@Description    Removes a statistic entry.
-                Where operating systems do not support a debugfs,
-                file system this function may be implemented as a stub.
-@Input          ppvEntry  Double Pointer void reference to the entry created by
-                          OSCreateStatisticEntry().
-                          Double pointer is used so that it can be NULLed
-                          right after memory is freed to avoid possible races
-                          and use-after-free situations.
-*/ /**************************************************************************/
-void OSRemoveStatisticEntry(void **ppvEntry);
-
-#if defined(PVRSRV_ENABLE_MEMTRACK_STATS_FILE)
-/*************************************************************************/ /*!
-@Function       OSCreateRawStatisticEntry
-@Description    Create a raw statistic entry in the specified folder.
-                Where operating systems do not support a debugfs
-                file system this function may be implemented as a stub.
-@Input          pszFileName    String containing the name for the entry.
-@Input          pvParentDir    Reference from OSCreateStatisticFolder() of the
-                               folder to create the entry in, or NULL for the
-                               root.
-@Input          pfnStatsPrint  Pointer to function that can be used to print the
-                               values of all the statistics.
-@Return         Pointer void reference to the entry created, which can be
-                passed to OSRemoveRawStatisticEntry() to remove the entry.
-*/ /**************************************************************************/
-void *OSCreateRawStatisticEntry(const IMG_CHAR *pszFileName, void *pvParentDir,
-                                OS_STATS_PRINT_FUNC *pfStatsPrint);
-
-/*************************************************************************/ /*!
-@Function       OSRemoveRawStatisticEntry
-@Description    Removes a raw statistic entry.
-                Where operating systems do not support a debugfs
-                file system this function may be implemented as a stub.
-@Input          ppvEntry  Double Pointer void reference to the entry created by
-                          OSCreateRawStatisticEntry().
-                          Double pointer is used so that it can be NULLed
-                          right after memory is freed to avoid possible races
-                          and use-after-free situations.
-*/ /**************************************************************************/
-void OSRemoveRawStatisticEntry(void **ppvEntry);
-#endif
-
-/*************************************************************************/ /*!
-@Function       OSCreateStatisticFolder
-@Description    Create a statistic folder to hold statistic entries.
-                Where operating systems do not support a debugfs,
-                file system this function may be implemented as a stub.
-@Input          pszName   String containing the name for the folder.
-@Input          pvFolder  Reference from OSCreateStatisticFolder() of the folder
-                          to create the folder in, or NULL for the root.
-@Return         Pointer void reference to the folder created, which can be
-                passed to OSRemoveStatisticFolder() to remove the folder.
-*/ /**************************************************************************/
-void *OSCreateStatisticFolder(const IMG_CHAR *pszName, void *pvFolder);
-
-/*************************************************************************/ /*!
-@Function       OSRemoveStatisticFolder
-@Description    Removes a statistic folder.
-                Where operating systems do not support a debugfs,
-                file system this function may be implemented as a stub.
-@Input          ppvFolder  Reference from OSCreateStatisticFolder() of the
-                           folder that should be removed.
-                           This needs to be double pointer because it has to
-                           be NULLed right after memory is freed to avoid
-                           possible races and use-after-free situations.
-*/ /**************************************************************************/
-void OSRemoveStatisticFolder(void **ppvFolder);
 
 /*************************************************************************/ /*!
 @Function       OSUserModeAccessToPerfCountersEn

@@ -81,10 +81,10 @@ static INLINE PVRSRV_ERROR _SelectDevMemHeap(PVRSRV_RGXDEV_INFO *psDevInfo,
 		}
 		case FW_ALLOC_RAW:
 		{
-			/* Allocations for Raw Guest firmware heaps are done through a different path,
-			 * see RGXVzDevMemAllocateGuestFwHeap */
-			*ppsFwHeap = NULL;
-			PVR_DPF_RETURN_RC(PVRSRV_ERROR_INVALID_FLAGS);
+			IMG_UINT32 ui32OSID = PVRSRV_FW_RAW_ALLOC_OSID(*puiFlags);
+
+			PVR_LOG_RETURN_IF_INVALID_PARAM(ui32OSID < RGX_NUM_OS_SUPPORTED, "ui32OSID");
+			*ppsFwHeap = psDevInfo->psGuestFirmwareRawHeap[ui32OSID];
 			break;
 		}
 		default:
@@ -1198,56 +1198,71 @@ PVRSRV_ERROR RGXPdumpDrainKCCB(PVRSRV_RGXDEV_INFO *psDevInfo,
 
 /*!
 *******************************************************************************
-@Function       RGXVzRegisterFirmwarePhysHeap
+@Function       RGXFwRawHeapAllocMap
 
-@Description    Register and maps to device, a guest firmware physheap
-
-@Return         PVRSRV_ERROR    PVRSRV_OK on success.
-                                Otherwise, a PVRSRV error code
-******************************************************************************/
-PVRSRV_ERROR RGXVzRegisterFirmwarePhysHeap(PVRSRV_DEVICE_NODE *psDeviceNode,
-										   IMG_UINT32 ui32OSID,
-										   IMG_DEV_PHYADDR sDevPAddr,
-										   IMG_UINT64 ui64DevPSize);
-
-/*!
-*******************************************************************************
-@Function       RGXVzUnregisterFirmwarePhysHeap
-
-@Description    Unregister and unmap from device, a guest firmware physheap
+@Description    Register and maps to device, a raw firmware physheap
 
 @Return         PVRSRV_ERROR    PVRSRV_OK on success.
                                 Otherwise, a PVRSRV error code
 ******************************************************************************/
-PVRSRV_ERROR RGXVzUnregisterFirmwarePhysHeap(PVRSRV_DEVICE_NODE *psDeviceNode,
-											 IMG_UINT32 ui32OSID);
+PVRSRV_ERROR RGXFwRawHeapAllocMap(PVRSRV_DEVICE_NODE *psDeviceNode,
+								  IMG_UINT32 ui32OSID,
+								  IMG_DEV_PHYADDR sDevPAddr,
+								  IMG_UINT64 ui64DevPSize);
 
 /*!
 *******************************************************************************
-@Function       RGXGetFwMainHeapSize
+@Function       RGXFwRawHeapUnmapFree
 
-@Description    Return size of the main FW heap in bytes
+@Description    Unregister and unmap from device, a raw firmware physheap
 
-@Return         IMG_UINT32
 ******************************************************************************/
-IMG_UINT32 RGXGetFwMainHeapSize(PVRSRV_RGXDEV_INFO *psDevInfo);
+void RGXFwRawHeapUnmapFree(PVRSRV_DEVICE_NODE *psDeviceNode,
+						   IMG_UINT32 ui32OSID);
 
+#if defined(SUPPORT_AUTOVZ_HW_REGS) && !defined(SUPPORT_AUTOVZ)
+#error "VZ build configuration error: use of OS scratch registers supported only in Auto-VZ drivers."
+#endif
 
+#if defined(SUPPORT_AUTOVZ_HW_REGS)
+/* auto-vz with hw support */
+#define KM_GET_FW_CONNECTION(psDevInfo)				OSReadHWReg32(psDevInfo->pvRegsBaseKM, RGX_CR_OS0_SCRATCH3)
+#define KM_GET_OS_CONNECTION(psDevInfo)				OSReadHWReg32(psDevInfo->pvRegsBaseKM, RGX_CR_OS0_SCRATCH2)
+#define KM_SET_OS_CONNECTION(val, psDevInfo)		OSWriteHWReg32(psDevInfo->pvRegsBaseKM, RGX_CR_OS0_SCRATCH2, RGXFW_CONNECTION_OS_##val)
+
+#define KM_GET_FW_ALIVE_TOKEN(psDevInfo)			OSReadHWReg32(psDevInfo->pvRegsBaseKM, RGX_CR_OS0_SCRATCH1)
+#define KM_GET_OS_ALIVE_TOKEN(psDevInfo)			OSReadHWReg32(psDevInfo->pvRegsBaseKM, RGX_CR_OS0_SCRATCH0)
+#define KM_SET_OS_ALIVE_TOKEN(val, psDevInfo)		OSWriteHWReg32(psDevInfo->pvRegsBaseKM, RGX_CR_OS0_SCRATCH0, val)
+
+#else
+
+#if defined(SUPPORT_AUTOVZ)
+#define KM_GET_FW_ALIVE_TOKEN(psDevInfo)			(psDevInfo->psRGXFWIfConnectionCtl->ui32AliveFwToken)
+#define KM_GET_OS_ALIVE_TOKEN(psDevInfo)			(psDevInfo->psRGXFWIfConnectionCtl->ui32AliveOsToken)
+#define KM_SET_OS_ALIVE_TOKEN(val, psDevInfo)		psDevInfo->psRGXFWIfConnectionCtl->ui32AliveOsToken = val
+#endif /* defined(SUPPORT_AUTOVZ) */
 
 #if !defined(NO_HARDWARE) && (defined(RGX_VZ_STATIC_CARVEOUT_FW_HEAPS) || (defined(RGX_NUM_OS_SUPPORTED) && (RGX_NUM_OS_SUPPORTED == 1)))
-/* native and static-vz */
-#define KM_GET_FW_CONNECTION()			(psDevInfo->psRGXFWIfConnectionCtl->eConnectionFwState)
-#define KM_GET_OS_CONNECTION()			(psDevInfo->psRGXFWIfConnectionCtl->eConnectionOsState)
-#define KM_SET_OS_CONNECTION(val)		(psDevInfo->psRGXFWIfConnectionCtl->eConnectionOsState = RGXFW_CONNECTION_OS_##val)
+/* native, static-vz and auto-vz using shared memory */
+#define KM_GET_FW_CONNECTION(psDevInfo)			(psDevInfo->psRGXFWIfConnectionCtl->eConnectionFwState)
+#define KM_GET_OS_CONNECTION(psDevInfo)			(psDevInfo->psRGXFWIfConnectionCtl->eConnectionOsState)
+#define KM_SET_OS_CONNECTION(val, psDevInfo)		(psDevInfo->psRGXFWIfConnectionCtl->eConnectionOsState = RGXFW_CONNECTION_OS_##val)
 #else
 /* dynamic-vz & nohw */
-#define KM_GET_FW_CONNECTION()			(RGXFW_CONNECTION_FW_ACTIVE)
-#define KM_GET_OS_CONNECTION()			(RGXFW_CONNECTION_OS_ACTIVE)
-#define KM_SET_OS_CONNECTION(val)
+#define KM_GET_FW_CONNECTION(psDevInfo)			(RGXFW_CONNECTION_FW_ACTIVE)
+#define KM_GET_OS_CONNECTION(psDevInfo)			(RGXFW_CONNECTION_OS_ACTIVE)
+#define KM_SET_OS_CONNECTION(val, psDevInfo)
 #endif /* defined(RGX_VZ_STATIC_CARVEOUT_FW_HEAPS) || (RGX_NUM_OS_SUPPORTED == 1) */
+#endif /* defined(SUPPORT_AUTOVZ_HW_REGS) */
 
-#define KM_OS_CONNECTION_IS(val)		(KM_GET_OS_CONNECTION() == RGXFW_CONNECTION_OS_##val)
-#define KM_FW_CONNECTION_IS(val)		(KM_GET_FW_CONNECTION() == RGXFW_CONNECTION_FW_##val)
+#if defined(SUPPORT_AUTOVZ)
+#define RGX_FIRST_RAW_HEAP_OSID		RGXFW_HOST_OS
+#else
+#define RGX_FIRST_RAW_HEAP_OSID		RGXFW_GUEST_OSID_START
+#endif
+
+#define KM_OS_CONNECTION_IS(val, psDevInfo)		(KM_GET_OS_CONNECTION(psDevInfo) == RGXFW_CONNECTION_OS_##val)
+#define KM_FW_CONNECTION_IS(val, psDevInfo)		(KM_GET_FW_CONNECTION(psDevInfo) == RGXFW_CONNECTION_FW_##val)
 
 #endif /* RGXFWUTILS_H */
 /******************************************************************************

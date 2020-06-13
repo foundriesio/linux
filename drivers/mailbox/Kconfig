@@ -201,6 +201,14 @@ config TCC_MULTI_MAILBOX
 	help
 	  Mailbox implementation for the Telechips Core communication.
 
+config TCC_MULTI_MAILBOX_TEST
+	tristate "Telechips Multi Channel Mailbox Test"
+	depends on TCC_MULTI_MAILBOX
+	depends on ARCH_TCC805X
+	default n
+	help
+	  Test drivr for Tcc multi channel mailbox.
+
 config TCC_MAILBOX_HLC
 	tristate "Telechips HLC Mailbox"
 	depends on TCC_MULTI_MAILBOX

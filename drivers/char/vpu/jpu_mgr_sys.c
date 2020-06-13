@@ -16,11 +16,6 @@
 
 #include "jpu_mgr_sys.h"
 
-#define dprintk(msg...) //printk( "TCC_JPU_MGR_SYS: " msg);
-#define detailk(msg...) //printk( "TCC_JPU_MGR_SYS: " msg);
-#define err(msg...) printk("TCC_JPU_MGR_SYS[Err]: "msg);
-#define info(msg...) printk("TCC_JPU_MGR_SYS[Info]: "msg);
-
 static struct clk *fbus_vbus_clk = NULL;
 static struct clk *vbus_jpeg_clk = NULL; // for pwdn and vBus.
 
@@ -91,35 +86,6 @@ void jmgr_put_clock(void)
     }
 }
 
-void jmgr_restore_clock(int vbus_no_ctrl, int opened_cnt)
-{
-#if 1
-	int opened_count = opened_cnt;
-
-	jmgr_hw_reset(1);
-
-    while(opened_count)
-    {
-        jmgr_disable_clock(vbus_no_ctrl, 0);
-        if(opened_count > 0)
-            opened_count--;
-    }
-
-    //msleep(1);
-    opened_count = opened_cnt;
-    while(opened_count)
-    {
-        jmgr_enable_clock(vbus_no_ctrl, 0);
-        if(opened_count > 0)
-            opened_count--;
-    }
-	jmgr_hw_reset(0);
-#else
-	jmgr_hw_reset(1);
-    jmgr_hw_reset(0);
-#endif
-}
-
 void jmgr_get_reset(struct device_node *node)
 {
 #if defined( VIDEO_IP_DIRECT_RESET_CTRL)
@@ -141,23 +107,83 @@ void jmgr_put_reset(void)
 #endif
 }
 
-void jmgr_hw_reset(int reset)
+int jmgr_get_reset_register(void)
+{
+    return 0;
+}
+
+void jmgr_hw_assert(void)
 {
 #if defined( VIDEO_IP_DIRECT_RESET_CTRL)
-	if(vbus_jpeg_reset) {
-		if(reset) {
-			udelay(1000);
+    _DBG(DEBUG_RSTCLK, "enter");
+
+    if(vbus_jpeg_reset) 
+    {
 			reset_control_assert(vbus_jpeg_reset);
 		}
-		else {
-			udelay(1000);
-			reset_control_deassert(vbus_jpeg_reset);
-			udelay(1000);
-		}
-	}
+
+    _DBG(DEBUG_RSTCLK, "out!! (rsr:0x%x)", jmgr_get_reset_register());
 #endif
 }
 
+void jmgr_hw_deassert(void)
+{
+#if defined( VIDEO_IP_DIRECT_RESET_CTRL)
+    _DBG(DEBUG_RSTCLK, "enter");
+
+    if(vbus_jpeg_reset)
+    {
+			reset_control_deassert(vbus_jpeg_reset);
+		}
+
+    _DBG(DEBUG_RSTCLK, "out!! (rsr:0x%x)", jmgr_get_reset_register());
+#endif
+	}
+
+void jmgr_hw_reset(void)
+{
+#if defined( VIDEO_IP_DIRECT_RESET_CTRL)
+    udelay(1000);
+
+    jmgr_hw_assert();
+
+    udelay(1000);
+
+    jmgr_hw_deassert();
+
+    udelay(1000);
+#endif
+}
+
+void jmgr_restore_clock(int vbus_no_ctrl, int opened_cnt)
+{
+#if 1
+    int opened_count = opened_cnt;
+
+    jmgr_hw_assert();
+
+    while(opened_count)
+    {
+        jmgr_disable_clock(vbus_no_ctrl, 0);
+        if(opened_count > 0)
+            opened_count--;
+    }
+
+    udelay(1000);
+
+    opened_count = opened_cnt;
+    while(opened_count)
+    {
+        jmgr_enable_clock(vbus_no_ctrl, 0);
+        if(opened_count > 0)
+            opened_count--;
+    }
+
+    jmgr_hw_deassert();
+#else
+    jmgr_hw_reset();
+#endif
+}
 
 void jmgr_enable_irq(unsigned int irq)
 {

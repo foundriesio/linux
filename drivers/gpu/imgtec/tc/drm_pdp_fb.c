@@ -167,7 +167,7 @@ static int pdp_fbdev_probe(struct drm_fb_helper *helper,
 	obj = pdp_gem_object_create(dev, gem_priv, obj_size, 0);
 	if (IS_ERR(obj)) {
 		err = PTR_ERR(obj);
-		goto err_release_framebuffer;
+		goto err_unlock_dev;
 	}
 
 	pdp_obj = to_pdp_obj(obj);
@@ -214,9 +214,6 @@ err_gem_unmap:
 err_gem_destroy:
 	pdp_gem_object_free_priv(gem_priv, obj);
 
-err_release_framebuffer:
-	drm_fb_helper_unregister_fbi(helper);
-
 err_unlock_dev:
 	mutex_unlock(&dev->struct_mutex);
 
@@ -251,13 +248,13 @@ struct pdp_fbdev *pdp_fbdev_create(struct pdp_drm_private *dev_priv)
 	/* Call ->fb_probe() */
 	err = drm_fb_helper_initial_config(&pdp_fbdev->helper, pdp_fbdev->preferred_bpp);
 	if (err)
-		goto err_unregister_fb;
+		goto err_fb_helper_fini;
 
 	DRM_DEBUG_DRIVER(FBDEV_NAME " - fb device registered\n");
 	return pdp_fbdev;
 
-err_unregister_fb:
-	drm_fb_helper_unregister_fbi(&pdp_fbdev->helper);
+err_fb_helper_fini:
+	drm_fb_helper_fini(&pdp_fbdev->helper);
 
 err_free_fbdev:
 	kfree(pdp_fbdev);

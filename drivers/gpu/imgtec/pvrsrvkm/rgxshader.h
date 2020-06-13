@@ -55,27 +55,31 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 @Function       PVRSRVTQLoadShaders
 @Description    If PMR is not allocated, reads shader binary data from file
                 and allocates new PMR memory.
-@Input          psConnection Device connection
 @Input          psDeviceNode Device node
-@Output         ppsCLIPMRMem Shader data used by CPU client side.
-@Output         ppsUSCPMRMem Shader usc code used by GPU.
 @Return         PVRSRV_ERROR Returns PVRSRV_OK on success.
 */ /**************************************************************************/
 PVRSRV_ERROR
-PVRSRVTQLoadShaders(CONNECTION_DATA     * psConnection,
-					PVRSRV_DEVICE_NODE  * psDeviceNode,
-					PMR                ** ppsCLIPMRMem,
-					PMR                ** ppsUSCPMRMem);
+PVRSRVTQLoadShaders(PVRSRV_DEVICE_NODE *psDeviceNode);
+
+/*************************************************************************/ /*!
+@Function       PVRSRVTQAcquireShaders
+@Description    Get handle to ready allocated shader PMR memory
+@Input          psDeviceNode Device node
+@Output         ppsCLIPMRMem Shader data used by CPU client side.
+@Output         ppsUSCPMRMem Shader usc code used by GPU.
+*/ /**************************************************************************/
+void
+PVRSRVTQAcquireShaders(PVRSRV_DEVICE_NODE  *psDeviceNode,
+                       PMR                **ppsCLIPMRMem,
+                       PMR                **ppsUSCPMRMem);
 
 /*************************************************************************/ /*!
 @Function       PVRSRVTQUnLoadShaders
 @Description    Unref PMR memory.
 @Input          psDeviceNode Device node
-@Output         ppsUSCPMRMem Shader PMR memory.
 @Return         PVRSRV_ERROR Returns PVRSRV_OK on success.
 */ /**************************************************************************/
 PVRSRV_ERROR
-PVRSRVTQUnloadShaders(PVRSRV_DEVICE_NODE * psDeviceNode,
-					  PMR                * ppsPMRMem);
+PVRSRVTQUnloadShaders(PVRSRV_DEVICE_NODE *psDeviceNode);
 
 #endif /* RGXSHADER_H */

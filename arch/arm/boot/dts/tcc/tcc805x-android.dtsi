@@ -1,0 +1,19 @@
+// SPDX-License-Identifier: (GPL-2.0-or-later OR MIT)
+/*
+ * Copyright (C) Telechips Inc.
+ * Device tree for Telechips TCC805x Android platform
+ */
+
+&firmware_android {
+	compatible = "android,firmware";
+	fstab {
+		compatible = "android,fstab";
+		vendor {
+			compatible = "android,vendor";
+			dev = "/dev/block/platform/1d2a0000.sdhc/by-name/vendor";
+			type = "ext4";
+			mnt_flags = "ro,barrier=1";
+			fsmgr_flags = "wait";
+		};
+	};
+};

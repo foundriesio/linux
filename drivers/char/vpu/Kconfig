@@ -7,9 +7,17 @@ menuconfig TCC_VPU_DRV
 
 if TCC_VPU_DRV
 
+# For test of WAVE420L in TCC805x
+config SUPPORT_TCC_WAVE420L_VPU_HEVC_ENC
+    bool "support HEVC encoder using WAVE420L"
+    depends on (ARCH_TCC805X)
+    default y
+        help
+        Enable HEVC codec using WAVE420L.
+
 config SUPPORT_TCC_WAVE512_4K_D2
     bool "support HEVC/VP9 Decoder using WAVE512"
-    depends on (ARCH_TCC899X || ARCH_TCC901X)
+    depends on (ARCH_TCC899X || ARCH_TCC901X || ARCH_TCC805X)
     default y
 	help
 	Enable HEVC/VP9 codec using WAVE512.
@@ -69,7 +77,7 @@ config SUPPORT_TCC_JPU
 choice
         prompt "Max Frame Size (W x H)"
         default DEC_MAX_FRAME_SIZE_1
-		depends on (ARCH_TCC899X || ARCH_TCC901X)
+		depends on (ARCH_TCC899X || ARCH_TCC901X ||ARCH_TCC805X)
         help
           max frame size(width/height) for decoder
 
@@ -85,7 +93,7 @@ endchoice
 
 choice
 	prompt "Instance count of Decoder"
-	default VDEC_MAX_CNT_1
+	default VDEC_MAX_CNT_5
 	help
 	  max instance count for decoder
 
@@ -113,8 +121,8 @@ endchoice
 
 choice
 	prompt "Instance count of Encoder"
-	depends on (SUPPORT_TCC_JPU || ARCH_TCC893X || ARCH_TCC896X || ARCH_TCC898X || ARCH_TCC803X)
-	default VENC_MAX_CNT_1
+	depends on (SUPPORT_TCC_JPU || ARCH_TCC893X || ARCH_TCC896X || ARCH_TCC898X || ARCH_TCC803X || ARCH_TCC805X)
+	default VENC_MAX_CNT_4
 	help
 	  max instance count for encoder
 
@@ -142,7 +150,7 @@ endchoice
 
 config VENC_BUFFER_SIZE
     int "Encoder's buffer size (1 => 1MB, ex> 15MB(720p)/30MB(1080p))"
-    depends on (SUPPORT_TCC_JPU || ARCH_TCC893X || ARCH_TCC896X || ARCH_TCC898X || ARCH_TCC803X)
+    depends on (SUPPORT_TCC_JPU || ARCH_TCC893X || ARCH_TCC896X || ARCH_TCC898X || ARCH_TCC803X || ARCH_TCC805X)
 	default 30
 	help
 	   Select buffer size of Encoder.

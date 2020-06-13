@@ -82,8 +82,10 @@ typedef enum {
  * Functions for managing the processes recorded...
  */
 PVRSRV_ERROR PVRSRVStatsInitialise(void);
-
 void PVRSRVStatsDestroy(void);
+
+PVRSRV_ERROR PVRSRVStatsInitialiseDI(void);
+void PVRSRVStatsDestroyDI(void);
 
 PVRSRV_ERROR PVRSRVStatsRegisterProcess(IMG_HANDLE* phProcessStats);
 

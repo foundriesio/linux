@@ -10,3 +10,7 @@ config VIDEO_VIDEOSOURCE
 	bool "Video Source"
 	default n
 
+config MIPI_CSI_2
+	bool "Support MIPI CSI-2"
+	depends on ARCH_TCC803X || ARCH_TCC805X
+	default y

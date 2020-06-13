@@ -350,7 +350,7 @@ RGX_FW_STRUCT_SIZE_ASSERT(RGX_HWPERF_V2_PACKET_HDR);
 /*! Macro which takes the number of bytes written in the data payload of a
  * packet for a variable size payload packet, rounded up to 8 bytes to
  * align packets for 64 bit architectures. */
-#define RGX_HWPERF_MAKE_SIZE_VARIABLE(_size)      ((IMG_UINT32)(RGX_HWPERF_SIZE_MASK&(sizeof(RGX_HWPERF_V2_PACKET_HDR)+PVR_ALIGN(_size, PVRSRVTL_PACKET_ALIGNMENT))))
+#define RGX_HWPERF_MAKE_SIZE_VARIABLE(_size)      ((IMG_UINT32)(RGX_HWPERF_SIZE_MASK&(sizeof(RGX_HWPERF_V2_PACKET_HDR)+PVR_ALIGN((_size), PVRSRVTL_PACKET_ALIGNMENT))))
 
 /*! Macro to obtain the size of the packet */
 #define RGX_HWPERF_GET_SIZE(_packet_addr)         ((IMG_UINT16)(((_packet_addr)->ui32Size) & RGX_HWPERF_SIZE_MASK))
@@ -416,8 +416,8 @@ static_assert(((IMG_UINT32)RGX_HWPERF_STREAM_ID_LAST - 1U) < (RGX_HWPERF_TYPEID_
 
 /*! Macros to obtain a typed pointer to a packet or data structure given a packet address */
 #define RGX_HWPERF_GET_PACKET(_buffer_addr)            ((RGX_HWPERF_V2_PACKET_HDR *)(void *)  (_buffer_addr))
-#define RGX_HWPERF_GET_PACKET_DATA_BYTES(_packet_addr) (IMG_OFFSET_ADDR(_packet_addr, sizeof(RGX_HWPERF_V2_PACKET_HDR)))
-#define RGX_HWPERF_GET_NEXT_PACKET(_packet_addr)       ((RGX_HWPERF_V2_PACKET_HDR *)  (IMG_OFFSET_ADDR(_packet_addr, RGX_HWPERF_SIZE_MASK&(_packet_addr->ui32Size))))
+#define RGX_HWPERF_GET_PACKET_DATA_BYTES(_packet_addr) (IMG_OFFSET_ADDR((_packet_addr), sizeof(RGX_HWPERF_V2_PACKET_HDR)))
+#define RGX_HWPERF_GET_NEXT_PACKET(_packet_addr)       ((RGX_HWPERF_V2_PACKET_HDR *)  (IMG_OFFSET_ADDR((_packet_addr), RGX_HWPERF_SIZE_MASK&((_packet_addr)->ui32Size))))
 
 /*! Obtains a typed pointer to a packet header given the packed data address */
 #define RGX_HWPERF_GET_PACKET_HEADER(_packet_addr)     ((RGX_HWPERF_V2_PACKET_HDR *)  (IMG_OFFSET_ADDR((_packet_addr), -sizeof(RGX_HWPERF_V2_PACKET_HDR))))
@@ -454,11 +454,11 @@ static_assert(((IMG_UINT32)RGX_HWPERF_STREAM_ID_LAST - 1U) < (RGX_HWPERF_TYPEID_
 #define RGX_HWPERF_GET_BLKCOUNT(_blkinfo)            (((_blkinfo) & RGX_HWPERF_BLKINFO_BLKCOUNT_MASK) >> RGX_HWPERF_BLKINFO_BLKCOUNT_SHIFT)
 
 /*! Obtains the offset of the counter block stream in the packet */
-#define RGX_HWPERF_GET_BLKOFFSET(_blkinfo)           ((_blkinfo & RGX_HWPERF_BLKINFO_BLKOFFSET_MASK) >> RGX_HWPERF_BLKINFO_BLKOFFSET_SHIFT)
+#define RGX_HWPERF_GET_BLKOFFSET(_blkinfo)           (((_blkinfo) & RGX_HWPERF_BLKINFO_BLKOFFSET_MASK) >> RGX_HWPERF_BLKINFO_BLKOFFSET_SHIFT)
 
 /* This macro gets the number of blocks depending on the packet version */
 #define RGX_HWPERF_GET_NUMBLKS(_sig, _packet_data, _numblocks) \
-	if (HWPERF_PACKET_V2B_SIG == _sig) \
+	if (HWPERF_PACKET_V2B_SIG == (_sig)) \
 	{ \
 		(_numblocks) = RGX_HWPERF_GET_BLKCOUNT((_packet_data)->ui32BlkInfo); \
 	} \
@@ -471,13 +471,13 @@ static_assert(((IMG_UINT32)RGX_HWPERF_STREAM_ID_LAST - 1U) < (RGX_HWPERF_TYPEID_
 /* This macro gets the counter stream pointer depending on the packet version */
 #define RGX_HWPERF_GET_CNTSTRM(_sig, _hw_packet_data, _cntstream_ptr) \
 { \
-	if (HWPERF_PACKET_V2B_SIG == _sig) \
+	if (HWPERF_PACKET_V2B_SIG == (_sig)) \
 	{ \
-		(_cntstream_ptr) = (IMG_UINT32 *)(IMG_OFFSET_ADDR(_hw_packet_data, RGX_HWPERF_GET_BLKOFFSET((_hw_packet_data)->ui32BlkInfo))); \
+		(_cntstream_ptr) = (IMG_UINT32 *)(IMG_OFFSET_ADDR((_hw_packet_data), RGX_HWPERF_GET_BLKOFFSET((_hw_packet_data)->ui32BlkInfo))); \
 	} \
 	else \
 	{ \
-		IMG_UINT32 ui32BlkStreamOffsetInWords = ((_sig == HWPERF_PACKET_V2_SIG) ? 6 : 8); \
+		IMG_UINT32 ui32BlkStreamOffsetInWords = (((_sig) == HWPERF_PACKET_V2_SIG) ? 6 : 8); \
 		(_cntstream_ptr) = (IMG_UINT32 *)(IMG_OFFSET_ADDR((_hw_packet_data), ui32BlkStreamOffsetInWords)); \
 	} \
 }
@@ -500,11 +500,11 @@ static_assert(((IMG_UINT32)RGX_HWPERF_STREAM_ID_LAST - 1U) < (RGX_HWPERF_TYPEID_
 
 /*! Macro used to obtain UFO count*/
 #define RGX_HWPERF_GET_UFO_STREAMSIZE(_streaminfo) \
-        ((_streaminfo & RGX_HWPERF_UFO_STREAMSIZE_MASK) >> RGX_HWPERF_UFO_STREAMSIZE_SHIFT)
+        (((_streaminfo) & RGX_HWPERF_UFO_STREAMSIZE_MASK) >> RGX_HWPERF_UFO_STREAMSIZE_SHIFT)
 
 /*! Obtains the offset of the UFO stream in the packet */
 #define RGX_HWPERF_GET_UFO_STREAMOFFSET(_streaminfo) \
-        ((_streaminfo & RGX_HWPERF_UFO_STREAMOFFSET_MASK) >> RGX_HWPERF_UFO_STREAMOFFSET_SHIFT)
+        (((_streaminfo) & RGX_HWPERF_UFO_STREAMOFFSET_MASK) >> RGX_HWPERF_UFO_STREAMOFFSET_SHIFT)
 
 
 
@@ -1539,7 +1539,7 @@ typedef IMG_UINT32 RGX_HWPERF_CNTBLK_COUNTER_ID;
 
 
 /* sets all the bits from bit _b1 to _b2, in a IMG_UINT64 type */
-#define MASK_RANGE_IMPL(b1, b2)	((IMG_UINT64)((IMG_UINT64_C(1) << ((IMG_UINT32)(b2)-(IMG_UINT32)(b1) + 1U)) - 1U) << (IMG_UINT32)b1)
+#define MASK_RANGE_IMPL(b1, b2)	((IMG_UINT64)((IMG_UINT64_C(1) << ((IMG_UINT32)(b2)-(IMG_UINT32)(b1) + 1U)) - 1U) << (IMG_UINT32)(b1))
 #define MASK_RANGE(R)			MASK_RANGE_IMPL(R##_FIRST_TYPE, R##_LAST_TYPE)
 #define RGX_HWPERF_HOST_EVENT_MASK_VALUE(e) (IMG_UINT32_C(1) << (e))
 

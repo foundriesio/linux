@@ -144,7 +144,7 @@ static void pvr_shutdown(struct platform_device *pdev)
 
 	DRM_DEBUG_DRIVER("device %p\n", &pdev->dev);
 
-	PVRSRVCommonDeviceShutdown(priv->dev_node);
+	PVRSRVDeviceShutdown(priv->dev_node);
 }
 
 static const struct of_device_id mtk_powervr_of_match[] = {
@@ -179,7 +179,7 @@ static int __init pvr_init(void)
 	pvr_drm_platform_driver.set_busid = drm_platform_set_busid;
 #endif
 
-	err = PVRSRVCommonDriverInit();
+	err = PVRSRVDriverInit();
 	if (err)
 		return err;
 
@@ -192,7 +192,7 @@ static void __exit pvr_exit(void)
 
 	platform_driver_unregister(&pvr_platform_driver);
 
-	PVRSRVCommonDriverDeinit();
+	PVRSRVDriverDeinit();
 
 	DRM_DEBUG_DRIVER("done\n");
 }

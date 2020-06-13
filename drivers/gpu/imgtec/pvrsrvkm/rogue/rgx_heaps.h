@@ -89,23 +89,22 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 /*
   Identify heaps by their names
 */
-#define RGX_GENERAL_SVM_HEAP_IDENT		"General SVM"			/*!< RGX General SVM (shared virtual memory) Heap Identifier */
-#define RGX_GENERAL_HEAP_IDENT			"General"               /*!< RGX General Heap Identifier */
-#define RGX_VK_CAPT_REPLAY_BUF_HEAP_IDENT "Vulkan capture replay buffer" /*!< RGX vulkan capture replay buffer Heap Identifier */
-#define RGX_GENERAL_NON4K_HEAP_IDENT	"General NON-4K"        /*!< RGX General non-4K Heap Identifier */
-#define RGX_RGNHDR_BRN_63142_HEAP_IDENT "RgnHdr BRN63142"       /*!< RGX RgnHdr BRN63142 Heap Identifier */
-#define RGX_MMU_INIA_BRN_65273_HEAP_IDENT "MMU INIA BRN65273"   /*!< MMU BRN65273 Heap A Identifier */
-#define RGX_MMU_INIB_BRN_65273_HEAP_IDENT "MMU INIB BRN65273"   /*!< MMU BRN65273 Heap B Identifier */
-#define RGX_PDSCODEDATA_HEAP_IDENT		"PDS Code and Data"     /*!< RGX PDS Code/Data Heap Identifier */
-#define RGX_USCCODE_HEAP_IDENT			"USC Code"              /*!< RGX USC Code Heap Identifier */
-#define RGX_TQ3DPARAMETERS_HEAP_IDENT	"TQ3DParameters"        /*!< RGX TQ 3D Parameters Heap Identifier */
-#define RGX_SIGNALS_HEAP_IDENT	        "Signals"		        /*!< Signals Heap Identifier */
-#define RGX_VISTEST_HEAP_IDENT			"VisTest"				/*!< VisTest heap */
-#define RGX_TDM_TPU_YUV_COEFFS_HEAP_IDENT "TDM TPU YUV Coeffs"
-#define RGX_FIRMWARE_MAIN_HEAP_IDENT		"Firmware Main"
-#define RGX_FIRMWARE_CONFIG_HEAP_IDENT		"Firmware Config"
-#define RGX_FIRMWARE_GUEST_RAW_HEAP_IDENT	"Firmware Raw Guest %d"
-
+#define RGX_GENERAL_SVM_HEAP_IDENT				"General SVM"					/*!< RGX General SVM (shared virtual memory) Heap Identifier */
+#define RGX_GENERAL_HEAP_IDENT					"General"						/*!< RGX General Heap Identifier */
+#define RGX_VK_CAPT_REPLAY_BUF_HEAP_IDENT		"Vulkan capture replay buffer"	/*!< RGX vulkan capture replay buffer Heap Identifier */
+#define RGX_GENERAL_NON4K_HEAP_IDENT			"General NON-4K"				/*!< RGX General non-4K Heap Identifier */
+#define RGX_RGNHDR_BRN_63142_HEAP_IDENT			"RgnHdr BRN63142"				/*!< RGX RgnHdr BRN63142 Heap Identifier */
+#define RGX_MMU_INIA_BRN_65273_HEAP_IDENT		"MMU INIA BRN65273"				/*!< MMU BRN65273 Heap A Identifier */
+#define RGX_MMU_INIB_BRN_65273_HEAP_IDENT		"MMU INIB BRN65273"				/*!< MMU BRN65273 Heap B Identifier */
+#define RGX_PDSCODEDATA_HEAP_IDENT				"PDS Code and Data"				/*!< RGX PDS Code/Data Heap Identifier */
+#define RGX_USCCODE_HEAP_IDENT					"USC Code"						/*!< RGX USC Code Heap Identifier */
+#define RGX_TQ3DPARAMETERS_HEAP_IDENT			"TQ3DParameters"				/*!< RGX TQ 3D Parameters Heap Identifier */
+#define RGX_SIGNALS_HEAP_IDENT					"Signals"						/*!< Signals Heap Identifier */
+#define RGX_VISTEST_HEAP_IDENT					"VisTest"						/*!< VisTest heap */
+#define RGX_TDM_TPU_YUV_COEFFS_HEAP_IDENT		"TDM TPU YUV Coeffs"
+#define RGX_FIRMWARE_MAIN_HEAP_IDENT			"FwMain"						/*!< RGX Main Firmware Heap identifier */
+#define RGX_FIRMWARE_CONFIG_HEAP_IDENT			"FwConfig"						/*!< RGX Config firmware Heap identifier */
+#define RGX_FIRMWARE_GUEST_RAW_HEAP_IDENT		"FwRawOSID%d"					/*!< RGX Raw Firmware Heap identifier */
 /*
  *  Supported log2 page size values for RGX_GENERAL_NON_4K_HEAP_ID
  */

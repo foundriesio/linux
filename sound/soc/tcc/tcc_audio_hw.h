@@ -75,7 +75,7 @@
 #define TCC_ADMA_INTSTATUS_OFFSET			(0x007C)
 #define TCC_ADMA_GINTREQ_OFFSET				(0x0080)
 #define TCC_ADMA_GINTSTATUS_OFFSET			(0x0084)
-#if !defined(CONFIG_ARCH_TCC802X) && !defined(CONFIG_ARCH_TCC898X)
+#if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X) || defined(CONFIG_ARCH_TCC806X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC901X)
 	#define TCC_ADMA_TXDAADRCNT_OFFSET		(0x0088)
 	#define TCC_ADMA_RXDAADRCNT_OFFSET		(0x008C)
 	#define TCC_ADMA_TXSPADRCNT_OFFSET		(0x0090)
@@ -132,7 +132,7 @@
 #define TCC_DAI_MCCR0_OFFSET				(0x0048)
 #define TCC_DAI_MCCR1_OFFSET				(0x004C)
 #define TCC_DAI_DRMR_OFFSET					(0x0050)
-#if !defined(CONFIG_ARCH_TCC802X) && !defined(CONFIG_ARCH_TCC898X)
+#if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X) || defined(CONFIG_ARCH_TCC806X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC901X)
 	#define TCC_DAI_DCLKDIV_OFFSET				(0x0054)
 #endif
 
@@ -182,7 +182,7 @@
 	#define IOBUS_CFG_CDIF1_CHMUX			(0x0068)
 	#define IOBUS_CFG_SPDIF0_CHMUX			(0x006C)
 	#define IOBUS_CFG_SPDIF1_CHMUX			(0x0070)
-#elif defined(CONFIG_ARCH_TCC803X)
+#elif defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X) || defined(CONFIG_ARCH_TCC806X)
 	/****** Port Configuration Register Offset (IOBUS Cfg Base + offset) ******/
 	#define IOBUS_CFG_DAI_71CH_CHMUX		(0x005C)
 	#define IOBUS_CFG_DAI_SRCH_CHMUX		(0x0060)
@@ -207,7 +207,7 @@
 #define ADMA_COUNTER_START_COUNT_Msk		(0xffffffffU << ADMA_COUNTER_START_COUNT_Pos)
 
 /****** ADMA Tx/Rx Address Counter, Offset:0x88, 0x8C, 0x90, 0x94 ******/
-#if !defined(CONFIG_ARCH_TCC802X) && !defined(CONFIG_ARCH_TCC898X)
+#if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X) || defined(CONFIG_ARCH_TCC806X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC901X)
 	#define ADMA_ADRCNT_MODE_Pos			(31)
 	#define ADMA_ADRCNT_MODE_Msk			((uint32_t)1U << ADMA_ADRCNT_MODE_Pos)
 	#define ADMA_ADRCNT_MODE_SMASK			((uint32_t)0U << ADMA_ADRCNT_MODE_Pos)
@@ -574,7 +574,7 @@
 #define ADMA_RESET_DMA_RX_RESET			((uint32_t)1U << ADMA_RESET_DMA_RX_Pos)
 #define ADMA_RESET_DMA_RX_RELEASE		((uint32_t)0U << ADMA_RESET_DMA_RX_Pos)
 
-#if defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC901X)
+#if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC901X)
 	#define ADMA_RESET_DMA_DAI_TX_Pos			(2)
 	#define ADMA_RESET_DMA_DAI_TX_Msk			((uint32_t)1U << ADMA_RESET_DMA_DAI_TX_Pos)
 	#define ADMA_RESET_DMA_DAI_TX_RESET			((uint32_t)1U << ADMA_RESET_DMA_DAI_TX_Pos)
@@ -631,6 +631,13 @@
 	#define DAMR_DAI_BIT_CLK_DIV_6			((uint32_t)1U << DAMR_DAI_BIT_CLK_DIV_Pos)	///< 384fs->64fs
 	#define DAMR_DAI_BIT_CLK_DIV_8			((uint32_t)2U << DAMR_DAI_BIT_CLK_DIV_Pos)	///< 512fs->64fs, 384fs->48fs, 256fs->32fs
 	#define DAMR_DAI_BIT_CLK_DIV_16			((uint32_t)3U << DAMR_DAI_BIT_CLK_DIV_Pos)	///< 1024fs->64fs, 512fs->32fs
+#endif
+
+#if defined(CONFIG_ARCH_TCC805X) || defined(CONFIG_ARCH_TCC806X)
+#define DAMR_AUDIO_DATA_FILTER_MODE_Pos		(7)
+#define DAMR_AUDIO_DATA_FILTER_MODE_Msk		((uint32_t)1U << DAMR_AUDIO_DATA_FILTER_MODE_Pos)
+#define DAMR_AUDIO_DATA_FILTER_DISABLE		((uint32_t)0U << DAMR_AUDIO_DATA_FILTER_MODE_Pos)
+#define DAMR_AUDIO_DATA_FILTER_ENABLE		((uint32_t)1U << DAMR_AUDIO_DATA_FILTER_MODE_Pos)
 #endif
 
 #define DAMR_CDIF_CLK_MASTER_Pos		(8)
@@ -889,13 +896,16 @@
 #define DRMR_TX_FIFO_CLEAR				((uint32_t)1U << DRMR_TX_FIFO_CLEAR_Pos)
 
 /****** DAI Clock Divider Register (DRMR), Offset:0x1050 ******/
-#if !defined(CONFIG_ARCH_TCC802X) && !defined(CONFIG_ARCH_TCC898X)
+#if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X) || defined(CONFIG_ARCH_TCC806X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC901X)
 	#define DCLKDIV_DAI_FRAME_CLK_DIV_Pos	(0)
 	#define DCLKDIV_DAI_FRAME_CLK_DIV_Msk	((uint32_t)3U << DCLKDIV_DAI_FRAME_CLK_DIV_Pos)
 	#define DCLKDIV_DAI_FRAME_CLK_DIV_32	((uint32_t)0U << DCLKDIV_DAI_FRAME_CLK_DIV_Pos)	///< 32fs->fs
 	#define DCLKDIV_DAI_FRAME_CLK_DIV_48	((uint32_t)1U << DCLKDIV_DAI_FRAME_CLK_DIV_Pos)	///< 48fs->fs
 	#define DCLKDIV_DAI_FRAME_CLK_DIV_64	((uint32_t)2U << DCLKDIV_DAI_FRAME_CLK_DIV_Pos)	///< 64fs->fs
 	#define DCLKDIV_DAI_FRAME_CLK_DIV_X		((uint32_t)3U << DCLKDIV_DAI_FRAME_CLK_DIV_Pos)	///< xfs->fs
+#if defined(CONFIG_ARCH_TCC805X) || defined(CONFIG_ARCH_TCC806X)
+	#define DCLKDIV_DAI_FRAME_CLK_DIV_512	((uint32_t)4U << DCLKDIV_DAI_FRAME_CLK_DIV_Pos)	///< 512fs->fs (only for DP)
+#endif
 
 	#define DCLKDIV_DAI_BIT_CLK_DIV_Pos		(8)
 	#define DCLKDIV_DAI_BIT_CLK_DIV_Msk		((uint32_t)7U << DCLKDIV_DAI_BIT_CLK_DIV_Pos)
@@ -1387,7 +1397,20 @@
 #elif defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC901X)
 	#define IOBUS_CFG_CHMUX_SEL_Pos						(0)
 	#define IOBUS_CFG_CHMUX_SEL_Msk						((uint32_t)7 << IOBUS_CFG_CHMUX_SEL_Pos)
-#elif defined(CONFIG_ARCH_TCC803X)
+#elif defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X) || defined(CONFIG_ARCH_TCC806X)
+#if defined(CONFIG_ARCH_TCC805X) || defined(CONFIG_ARCH_TCC806X)
+	#define IOBUS_CFG_DAI_CHMUX_71CH_0_SEL_Pos			(0)
+	#define IOBUS_CFG_DAI_CHMUX_71CH_0_SEL_Msk			((uint32_t)0x1FU << IOBUS_CFG_DAI_CHMUX_71CH_0_SEL_Pos)
+
+	#define IOBUS_CFG_DAI_CHMUX_71CH_1_SEL_Pos			(8)
+	#define IOBUS_CFG_DAI_CHMUX_71CH_1_SEL_Msk			((uint32_t)0x1FU << IOBUS_CFG_DAI_CHMUX_71CH_1_SEL_Pos)
+
+	#define IOBUS_CFG_DAI_CHMUX_71CH_2_SEL_Pos			(16)
+	#define IOBUS_CFG_DAI_CHMUX_71CH_2_SEL_Msk			((uint32_t)0x1FU << IOBUS_CFG_DAI_CHMUX_71CH_2_SEL_Pos)
+
+	#define IOBUS_CFG_DAI_CHMUX_71CH_3_SEL_Pos			(24)
+	#define IOBUS_CFG_DAI_CHMUX_71CH_3_SEL_Msk			((uint32_t)0x1FU << IOBUS_CFG_DAI_CHMUX_71CH_3_SEL_Pos)
+#else
 	#define IOBUS_CFG_DAI_CHMUX_71CH_0_SEL_Pos			(0)
 	#define IOBUS_CFG_DAI_CHMUX_71CH_0_SEL_Msk			((uint32_t)0xFU << IOBUS_CFG_DAI_CHMUX_71CH_0_SEL_Pos)
 
@@ -1396,6 +1419,7 @@
 
 	#define IOBUS_CFG_DAI_CHMUX_71CH_2_SEL_Pos			(16)
 	#define IOBUS_CFG_DAI_CHMUX_71CH_2_SEL_Msk			((uint32_t)0xFU << IOBUS_CFG_DAI_CHMUX_71CH_2_SEL_Pos)
+#endif
 
 	#define IOBUS_CFG_DAI_CHMUX_SRCH_0_SEL_Pos			(0)
 	#define IOBUS_CFG_DAI_CHMUX_SRCH_0_SEL_Msk			((uint32_t)0x3FU << IOBUS_CFG_DAI_CHMUX_SRCH_0_SEL_Pos)

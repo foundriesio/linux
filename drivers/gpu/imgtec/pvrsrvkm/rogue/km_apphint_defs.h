@@ -90,7 +90,6 @@ X(HWPerfDisableCustomCounterFilter, BOOL,           VALIDATION,  PVRSRV_APPHINT_
 ******************************************************************************/
 #define APPHINT_LIST_DEBUGFS_DEVICE \
 /* name,                            type,           class,       default,                                         helper,         */ \
-X(DustRequestInject,                BOOL,           VALIDATION,  PVRSRV_APPHINT_DUSTREQUESTINJECT,                NO_PARAM_TABLE   ) \
 
 /*
 *******************************************************************************

@@ -98,7 +98,7 @@ int tcc_cdif_set_bclk_ratio(struct snd_soc_dai *dai, unsigned int ratio)
 			break;
 	}
 
-bclk_ratio_end:
+//bclk_ratio_end:
 	spin_unlock(&cdif->lock);
 
 	return ret;
@@ -214,7 +214,7 @@ static int tcc_cdif_trigger(struct snd_pcm_substream *substream, int cmd, struct
 			ret = -EINVAL;
 			break;
 	}
-trigger_end:
+//trigger_end:
 	spin_unlock(&cdif->lock);
 
 	return ret;

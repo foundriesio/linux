@@ -1324,6 +1324,7 @@ static int tcc_gpsb_tsif_release(struct inode *inode, struct file *filp)
 #ifdef CONFIG_OF
 static struct of_device_id tcc_gpsb_tsif_of_match[] = {
 	{ .compatible = "telechips,tcc89xx-tsif" },
+	{ .compatible = "telechips,tcc805x-tsif" },
 	{ .compatible = "telechips,tcc803x-tsif" },
 	{ .compatible = "telechips,tcc897x-tsif" },
 	{ .compatible = "telechips,tcc899x-tsif" },

@@ -70,17 +70,6 @@ PVRSRV_ERROR DeinitSRVCOREBridge(void);
 PVRSRV_ERROR InitSYNCBridge(void);
 PVRSRV_ERROR DeinitSYNCBridge(void);
 
-#if defined(SUPPORT_SERVER_SYNC)
-#if defined(SUPPORT_INSECURE_EXPORT)
-PVRSRV_ERROR InitSYNCEXPORTBridge(void);
-PVRSRV_ERROR DeinitSYNCEXPORTBridge(void);
-#endif
-#if defined(SUPPORT_SECURE_EXPORT)
-PVRSRV_ERROR InitSYNCSEXPORTBridge(void);
-PVRSRV_ERROR DeinitSYNCSEXPORTBridge(void);
-#endif
-#endif /* defined(SUPPORT_SERVER_SYNC) */
-
 #if defined(SUPPORT_RGX)
 PVRSRV_ERROR InitRGXTA3DBridge(void);
 PVRSRV_ERROR DeinitRGXTA3DBridge(void);
@@ -159,17 +148,6 @@ ServerBridgeInit(void)
 
 	eError = InitSYNCBridge();
 	PVR_LOG_IF_ERROR(eError, "InitSYNCBridge");
-
-#if defined(SUPPORT_SERVER_SYNC)
-#if defined(SUPPORT_INSECURE_EXPORT)
-	eError = InitSYNCEXPORTBridge();
-	PVR_LOG_IF_ERROR(eError, "InitSYNCEXPORTBridge");
-#endif
-#if defined(SUPPORT_SECURE_EXPORT)
-	eError = InitSYNCSEXPORTBridge();
-	PVR_LOG_IF_ERROR(eError, "InitSYNCSEXPORTBridge");
-#endif
-#endif /* defined(SUPPORT_SERVER_SYNC) */
 
 #if defined(PDUMP)
 	eError = InitPDUMPCTRLBridge();
@@ -309,18 +287,6 @@ ServerBridgeDeInit(void)
 
 	eError = DeinitSYNCBridge();
 	PVR_LOG_RETURN_IF_ERROR(eError, "DeinitSYNCBridge");
-
-#if defined(SUPPORT_SERVER_SYNC)
-#if defined(SUPPORT_INSECURE_EXPORT)
-	eError = DeinitSYNCEXPORTBridge();
-	PVR_LOG_RETURN_IF_ERROR(eError, "DeinitSYNCEXPORTBridge");
-#endif
-
-#if defined(SUPPORT_SECURE_EXPORT)
-	eError = DeinitSYNCSEXPORTBridge();
-	PVR_LOG_RETURN_IF_ERROR(eError, "DeinitSYNCSEXPORTBridge");
-#endif
-#endif /* defined(SUPPORT_SERVER_SYNC) */
 
 #if defined(PDUMP)
 	eError = DeinitPDUMPCTRLBridge();

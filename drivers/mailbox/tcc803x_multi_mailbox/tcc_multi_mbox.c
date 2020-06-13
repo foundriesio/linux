@@ -26,8 +26,8 @@
 #include <linux/time.h>
 #include <linux/kthread.h>
 #include <linux/slab.h>
-#include <linux/mailbox/tcc_multi_mbox.h>
-#include <dt-bindings/mailbox/tcc_mbox_ch.h>
+#include <linux/mailbox/tcc803x_multi_mailbox/tcc803x_multi_mbox.h>
+#include <dt-bindings/mailbox/tcc803x_multi_mailbox/tcc_mbox_ch.h>
 #include <linux/types.h>
 
 #define Hw37		(1LL << 37)
@@ -859,5 +859,3 @@ module_exit(tcc_multich_mbox_exit);
 MODULE_LICENSE("GPL v2");
 MODULE_DESCRIPTION("Telechips Multi Channel Mailbox Driver");
 MODULE_AUTHOR("jun@telechips.com");
-
-

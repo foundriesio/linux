@@ -178,7 +178,7 @@ static void tcc_adc_power_ctrl(struct tcc_adc *adc, int pwr_on)
 	}
 }
 
-static void tcc803x_adc_power_ctrl(struct tcc_adc *adc, int clk_on)
+static void tcc_micom_adc_power_ctrl(struct tcc_adc *adc, int clk_on)
 {
 	unsigned reg_values;
 
@@ -195,7 +195,7 @@ static void tcc803x_adc_power_ctrl(struct tcc_adc *adc, int clk_on)
 	}
 }
 
-static unsigned long tcc803x_adc_read(struct iio_dev *iio_dev, int ch)
+static unsigned long tcc_micom_adc_read(struct iio_dev *iio_dev, int ch)
 {
 	struct tcc_adc *adc = iio_priv(iio_dev);
 	unsigned long data = 0;
@@ -381,7 +381,7 @@ static int tcc_adc_parsing_dt(struct tcc_adc *adc)
 	return 0;
 }
 
-static int tcc803x_adc_parsing_dt(struct tcc_adc *adc)
+static int tcc_micom_adc_parsing_dt(struct tcc_adc *adc)
 {
 	struct device_node *np = adc->dev->of_node;
 
@@ -415,17 +415,19 @@ static const struct tcc_adc_soc_data tcc_soc_data = {
 	.adc_read = tcc_adc_read,
 };
 
-static const struct tcc_adc_soc_data tcc803x_soc_data = {
-	.adc_power_ctrl = tcc803x_adc_power_ctrl,
-	.parsing_dt = tcc803x_adc_parsing_dt,
-	.adc_read = tcc803x_adc_read,
+static const struct tcc_adc_soc_data tcc_micom_soc_data = {
+	.adc_power_ctrl = tcc_micom_adc_power_ctrl,
+	.parsing_dt = tcc_micom_adc_parsing_dt,
+	.adc_read = tcc_micom_adc_read,
 };
 
 static const struct of_device_id tcc_adc_dt_ids[] = {
 	{.compatible = "telechips,adc",
 		.data = &tcc_soc_data, },
 	{.compatible = "telechips,tcc803x-adc",
-		.data = &tcc803x_soc_data, },
+		.data = &tcc_micom_soc_data, },
+	{.compatible = "telechips,tcc805x-adc",
+		.data = &tcc_micom_soc_data, },
 	{}
 };
 MODULE_DEVICE_TABLE(of, tcc_adc_dt_ids);

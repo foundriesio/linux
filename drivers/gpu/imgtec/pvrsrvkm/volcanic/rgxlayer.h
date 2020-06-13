@@ -62,11 +62,13 @@ extern "C" {
 
 #include "img_defs.h"
 #include "img_types.h"
+#include "img_elf.h"
 #include "pvrsrv_error.h" /* includes pvrsrv_errors.h */
 #include "rgx_bvnc_defs_km.h"
 #include "rgx_fw_info.h"
 #include "rgx_fwif_shared.h" /* includes rgx_common.h and mem_types.h */
 #include "rgx_meta.h"
+#include "rgx_riscv.h"
 
 #include "rgxdefs_km.h"
 /* includes:
@@ -162,7 +164,7 @@ void RGXErrorLog(const void *hPrivate,
 /* This is used to check if a specific feature with value is enabled.
  * Should be used instead of calling RGXDeviceGetFeatureValue.  */
 #define RGX_DEVICE_HAS_FEATURE_VALUE(hPrivate, Feature) \
-			(RGXDeviceGetFeatureValue(hPrivate, RGX_FEATURE_##Feature##_IDX) > 0)
+			(RGXDeviceGetFeatureValue(hPrivate, RGX_FEATURE_##Feature##_IDX) >= 0)
 
 /* This is used to get the value of a specific feature from hPrivate.
  * Should be used instead of calling RGXDeviceGetFeatureValue.  */
@@ -178,10 +180,10 @@ void RGXErrorLog(const void *hPrivate,
  @Input          hPrivate     : Implementation specific data
  @Input          ui64Feature  : Feature with values to check
 
- @Return         IMG_TRUE if the given feature is available, IMG_FALSE otherwise
+ @Return         Value >= 0 if the given feature is available, -1 otherwise
 
 ******************************************************************************/
-IMG_UINT32 RGXDeviceGetFeatureValue(const void *hPrivate, IMG_UINT64 ui64Feature);
+IMG_INT32 RGXDeviceGetFeatureValue(const void *hPrivate, IMG_UINT64 ui64Feature);
 
 /*!
 *******************************************************************************
@@ -455,6 +457,36 @@ IMG_UINT32 RGXGetDeviceSLCSize(const void *hPrivate);
 
 ******************************************************************************/
 IMG_UINT32 RGXGetDeviceCacheLineSize(const void *hPrivate);
+
+/*!
+*******************************************************************************
+
+ @Function        RGXAcquireBootCodeAddr
+
+ @Description     Acquire the device virtual address of the RISCV boot code
+
+ @Input           hPrivate         : Implementation specific data
+ @Output          psBootCodeAddr   : Boot code base address
+
+ @Return          void
+
+******************************************************************************/
+void RGXAcquireBootCodeAddr(const void *hPrivate, IMG_DEV_VIRTADDR *psBootCodeAddr);
+
+/*!
+*******************************************************************************
+
+ @Function        RGXAcquireBootDataAddr
+
+ @Description     Acquire the device virtual address of the RISCV boot data
+
+ @Input           hPrivate         : Implementation specific data
+ @Output          psBootDataAddr   : Boot data base address
+
+ @Return          void
+
+******************************************************************************/
+void RGXAcquireBootDataAddr(const void *hPrivate, IMG_DEV_VIRTADDR *psBootDataAddr);
 
 #if defined(__cplusplus)
 }

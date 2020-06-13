@@ -44,21 +44,21 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define _HTB_DEBUG_H_
 
 /**************************************************************************/ /*!
- @Function     HTB_CreateFSEntry
+ @Function     HTB_CreateDIEntry
 
  @Description  Create the debugFS entry-point for the host-trace-buffer
 
  @Returns      eError          internal error code, PVRSRV_OK on success
 
  */ /**************************************************************************/
-PVRSRV_ERROR HTB_CreateFSEntry(void);
+PVRSRV_ERROR HTB_CreateDIEntry(void);
 
 /**************************************************************************/ /*!
  @Function     HTB_DestroyFSEntry
 
  @Description  Destroy the debugFS entry-point created by earlier
-               HTB_CreateFSEntry() call.
+               HTB_CreateDIEntry() call.
 */ /**************************************************************************/
-void HTB_DestroyFSEntry(void);
+void HTB_DestroyDIEntry(void);
 
 #endif /* _HTB_DEBUG_H_ */

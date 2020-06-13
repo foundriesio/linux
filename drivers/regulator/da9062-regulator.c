@@ -1073,6 +1073,8 @@ static int da9062_regulator_probe(struct platform_device *pdev)
 		n++;
 	}
 
+#if 0
+	//It's not used now
 	/* LDOs overcurrent event support */
 	irq = platform_get_irq_byname(pdev, "LDO_LIM");
 	if (irq < 0) {
@@ -1090,7 +1092,7 @@ static int da9062_regulator_probe(struct platform_device *pdev)
 			 "Failed to request LDO_LIM IRQ.\n");
 		regulators->irq_ldo_lim = -ENXIO;
 	}
-
+#endif
 	return 0;
 }
 

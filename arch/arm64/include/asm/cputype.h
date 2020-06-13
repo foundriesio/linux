@@ -20,7 +20,11 @@
 
 #define MPIDR_UP_BITMASK	(0x1 << 30)
 #define MPIDR_MT_BITMASK	(0x1 << 24)
+#ifdef CONFIG_ARCH_TCC805X
+#define MPIDR_HWID_BITMASK	0xff00fff0ff
+#else
 #define MPIDR_HWID_BITMASK	0xff00ffffff
+#endif
 
 #define MPIDR_LEVEL_BITS_SHIFT	3
 #define MPIDR_LEVEL_BITS	(1 << MPIDR_LEVEL_BITS_SHIFT)

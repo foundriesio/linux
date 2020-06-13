@@ -110,10 +110,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define RGX_TEXTURE_STATE_HEAP_IDENT			"Texture State"					/*!< Texture State Heap Identifier */
 #define RGX_TDM_TPU_YUV_COEFFS_HEAP_IDENT		"TDM TPU YUV Coeffs"
 #define RGX_VISIBILITY_TEST_HEAP_IDENT			"Visibility Test"
-#define RGX_FIRMWARE_MAIN_HEAP_IDENT			"Firmware Main"					/*!< RGX Main Firmware Heap identifier */
-#define RGX_FIRMWARE_CONFIG_HEAP_IDENT			"Firmware Config"				/*!< RGX Config firmware Heap identifier */
-#define RGX_FIRMWARE_GUEST_RAW_HEAP_IDENT		"Firmware Raw Guest %d"			/*!< Combined Heap from which a Guest OS'
-																					 Main and Config heaps are allocated */
+#define RGX_FIRMWARE_MAIN_HEAP_IDENT			"FwMain"						/*!< RGX Main Firmware Heap identifier */
+#define RGX_FIRMWARE_CONFIG_HEAP_IDENT			"FwConfig"						/*!< RGX Config firmware Heap identifier */
+#define RGX_FIRMWARE_GUEST_RAW_HEAP_IDENT		"FwRawOSID%d"					/*!< RGX Raw Firmware Heap identifier */
 #define RGX_VK_CAPT_REPLAY_BUF_HEAP_IDENT		"Vulkan capture replay buffer"	/*!< RGX vulkan capture replay buffer Heap Identifier */
 
 /*

@@ -245,14 +245,18 @@ static DEVICE_ATTR(vbus, S_IRUGO | S_IWUSR, dwc3_tcc_vbus_show, dwc3_tcc_vbus_st
 static ssize_t dwc3_tcc_phy_show(struct device *dev, struct device_attribute *attr, char *buf)
 {
 	struct dwc3_tcc	*tcc =	platform_get_drvdata(to_platform_device(dev));
-	#if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X)
-	if(system_rev==0)
-	#endif
+
+#if defined(CONFIG_ARCH_TCC803X)
+	if (system_rev == 0) {
 		tcc->dwc3_phy->read_u30phy_reg_all(tcc->dwc3_phy);
-	#if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X)
-	else 
+	} else {
 		tcc->dwc3_phy->read_ss_u30phy_reg_all(tcc->dwc3_phy);
-	#endif
+	}
+#elif defined(CONFIG_ARCH_TCC805X)
+	tcc->dwc3_phy->read_ss_u30phy_reg_all(tcc->dwc3_phy);
+#else
+	tcc->dwc3_phy->read_u30phy_reg_all(tcc->dwc3_phy);
+#endif
 
 	return 0;
 }
@@ -261,14 +265,19 @@ static ssize_t dwc3_tcc_phy_store(struct device *dev, struct device_attribute *a
 	const char *buf, size_t count)
 {
 	struct dwc3_tcc	*tcc =	platform_get_drvdata(to_platform_device(dev));
-	#if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X)
-	if(system_rev==0)
-	#endif
+
+#if defined(CONFIG_ARCH_TCC803X)
+	if (system_rev == 0) {
 		tcc->dwc3_phy->read_u30phy_reg_all(tcc->dwc3_phy);
-	#if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X)
-	else 
+	} else {
 		tcc->dwc3_phy->read_ss_u30phy_reg_all(tcc->dwc3_phy);
-	#endif
+	}
+#elif defined(CONFIG_ARCH_TCC805X)
+	tcc->dwc3_phy->read_ss_u30phy_reg_all(tcc->dwc3_phy);
+#else
+	tcc->dwc3_phy->read_u30phy_reg_all(tcc->dwc3_phy);
+#endif
+
 	return count;
 }
 
@@ -709,22 +718,25 @@ static ssize_t dwc3_eyep_show(struct device *dev,
     uint32_t reg;
     char str[256]={0};
 
-	#if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X)
-	if(system_rev == 0)
-	#endif
-	{
-    	PUSBPHYCFG pUSBPHYCFG = (PUSBPHYCFG)(tcc->dwc3_phy->get_base(tcc->dwc3_phy));
-    	reg = readl(&pUSBPHYCFG->U30_PCFG2);
-    	val = (ISSET(reg, TXVRT_MASK)) >> TXVRT_SHIFT;
+#if defined(CONFIG_ARCH_TCC803X)
+	if (system_rev == 0) {
+		PUSBPHYCFG pUSBPHYCFG = (PUSBPHYCFG)(tcc->dwc3_phy->get_base(tcc->dwc3_phy));
+		reg = readl(&pUSBPHYCFG->U30_PCFG2);
+		val = (ISSET(reg, TXVRT_MASK)) >> TXVRT_SHIFT;
+	} else {
+		PUSBSSPHYCFG pUSBPHYCFG = (PUSBSSPHYCFG)(tcc->dwc3_phy->get_base(tcc->dwc3_phy));
+		reg = readl(&pUSBPHYCFG->FPHY_PCFG1);
+		val = reg & 0xF;
 	}
-	#if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X)
-	else
-	{
-    	PUSBSSPHYCFG pUSBPHYCFG = (PUSBSSPHYCFG)(tcc->dwc3_phy->get_base(tcc->dwc3_phy));
-    	reg = readl(&pUSBPHYCFG->FPHY_PCFG1);
-    	val = reg & 0xF;
-	}
-	#endif
+#elif defined(CONFIG_ARCH_TCC805X)
+	PUSBSSPHYCFG pUSBPHYCFG = (PUSBSSPHYCFG)(tcc->dwc3_phy->get_base(tcc->dwc3_phy));
+	reg = readl(&pUSBPHYCFG->FPHY_PCFG1);
+	val = reg & 0xF;
+#else
+	PUSBPHYCFG pUSBPHYCFG = (PUSBPHYCFG)(tcc->dwc3_phy->get_base(tcc->dwc3_phy));
+	reg = readl(&pUSBPHYCFG->U30_PCFG2);
+	val = (ISSET(reg, TXVRT_MASK)) >> TXVRT_SHIFT;
+#endif
 
     if( 0x0 <= val && val <= 0xF) {
         sprintf(str, "%ld%ld%ld%ld",
@@ -734,20 +746,17 @@ static ssize_t dwc3_eyep_show(struct device *dev,
                 ISSET(val, 0x1) >> 0);
     }
 
-	#if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X)
-	if(system_rev == 0)
-	#endif
-	{
-		return sprintf(buf,
-			"U30_PCFG2 = 0x%08X\nTXVREFTUNE = %s\n", reg, str);
+#if defined(CONFIG_ARCH_TCC803X)
+	if (system_rev == 0) {
+		return sprintf(buf, "U30_PCFG2 = 0x%08X\nTXVREFTUNE = %s\n", reg, str);
+	} else {
+		return sprintf(buf, "U30_FPCFG1 = 0x%08X\nTXVRT = %s\n", reg, str);
 	}
-	#if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X)
-	else
-	{
-		return sprintf(buf,
-			"U30_FPCFG1 = 0x%08X\nTXVRT = %s\n", reg, str);
-	}
-	#endif
+#elif defined(CONFIG_ARCH_TCC805X)
+	return sprintf(buf, "U30_FPCFG1 = 0x%08X\nTXVRT = %s\n", reg, str);
+#else
+	return sprintf(buf, "U30_PCFG2 = 0x%08X\nTXVREFTUNE = %s\n", reg, str);
+#endif
 }
 
 /**
@@ -761,20 +770,21 @@ static ssize_t dwc3_eyep_store(struct device *dev,
     uint32_t val = simple_strtoul(buf, NULL, 2);
     uint32_t reg = 0;
 
-	#if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X)
-	if(system_rev == 0)
-	#endif
-	{
-    	PUSBPHYCFG pUSBPHYCFG = (PUSBPHYCFG)(tcc->dwc3_phy->get_base(tcc->dwc3_phy));
+#if defined(CONFIG_ARCH_TCC803X)
+	if (system_rev == 0) {
+		PUSBPHYCFG pUSBPHYCFG = (PUSBPHYCFG)(tcc->dwc3_phy->get_base(tcc->dwc3_phy));
 		reg = readl(&pUSBPHYCFG->U30_PCFG2);
+	} else {
+		PUSBSSPHYCFG pUSBPHYCFG = (PUSBSSPHYCFG)(tcc->dwc3_phy->get_base(tcc->dwc3_phy));
+		reg = readl(&pUSBPHYCFG->FPHY_PCFG1);
 	}
-	#if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X)
-	else
-	{
-    	PUSBSSPHYCFG pUSBPHYCFG = (PUSBSSPHYCFG)(tcc->dwc3_phy->get_base(tcc->dwc3_phy));
-    	reg = readl(&pUSBPHYCFG->FPHY_PCFG1);
-	}
-	#endif
+#elif defined(CONFIG_ARCH_TCC805X)
+	PUSBSSPHYCFG pUSBPHYCFG = (PUSBSSPHYCFG)(tcc->dwc3_phy->get_base(tcc->dwc3_phy));
+	reg = readl(&pUSBPHYCFG->FPHY_PCFG1);
+#else
+	PUSBPHYCFG pUSBPHYCFG = (PUSBPHYCFG)(tcc->dwc3_phy->get_base(tcc->dwc3_phy));
+	reg = readl(&pUSBPHYCFG->U30_PCFG2);
+#endif
 
     if(count - 1 < 4 || 4 < count - 1 ) {
         printk("[INFO][USB] \nThis argument length is \x1b[1;33mnot 4\x1b[0m\n\n");
@@ -793,22 +803,21 @@ static ssize_t dwc3_eyep_store(struct device *dev,
         return count;
     }
 
-	#if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X)
-	if(system_rev == 0)
-	#endif
-	{
-		PUSBPHYCFG pUSBPHYCFG = (PUSBPHYCFG)(tcc->dwc3_phy->get_base(tcc->dwc3_phy));
-    	BITCSET(reg, TXVRT_MASK, val << TXVRT_SHIFT); // val range is 0x0 ~ 0xF
-    	writel(reg, &pUSBPHYCFG->U30_PCFG2);
-	}
-	#if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X)
-	else
-	{
-		PUSBSSPHYCFG pUSBPHYCFG = (PUSBSSPHYCFG)(tcc->dwc3_phy->get_base(tcc->dwc3_phy));
-    	BITCSET(reg, 0xF, val); // val range is 0x0 ~ 0xF
+#if defined(CONFIG_ARCH_TCC803X)
+	if (system_rev == 0) {
+		BITCSET(reg, TXVRT_MASK, val << TXVRT_SHIFT); // val range is 0x0 ~ 0xF
+		writel(reg, &pUSBPHYCFG->U30_PCFG2);
+	} else {
+		BITCSET(reg, 0xF, val); // val range is 0x0 ~ 0xF
 		writel(reg, &pUSBPHYCFG->FPHY_PCFG1);
 	}
-	#endif
+#elif defined(CONFIG_ARCH_TCC805X)
+	BITCSET(reg, 0xF, val); // val range is 0x0 ~ 0xF
+	writel(reg, &pUSBPHYCFG->FPHY_PCFG1);
+#else
+	BITCSET(reg, TXVRT_MASK, val << TXVRT_SHIFT); // val range is 0x0 ~ 0xF
+	writel(reg, &pUSBPHYCFG->U30_PCFG2);
+#endif
 
     return count;
 }

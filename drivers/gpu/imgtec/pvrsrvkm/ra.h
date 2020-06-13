@@ -208,19 +208,6 @@ RA_Alloc_Range (RA_ARENA *pArena,
 		  RA_LENGTH_T *pActualSize);
 
 /**
- *  @Function    RA_IsAllocationValid
- *
- *  @Description    Checks if the resource is a live allocation in this arena.
- *
- *  @Input  pArena - the arena the resource segment should be checked in.
- *  @Input  base - the base of the resource span to check.
- *
- *  @Return IMG_TRUE If the resource is a valid allocation in this arena
- */
-IMG_BOOL
-RA_IsAllocationValid(const RA_ARENA *pArena, RA_BASE_T base);
-
-/**
  *  @Function   RA_Free
  *
  *  @Description    To free a resource segment.

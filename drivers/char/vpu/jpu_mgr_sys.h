@@ -46,7 +46,10 @@ extern void jmgr_restore_clock(int vbus_no_ctrl, int opened_cnt);
 
 extern void jmgr_get_reset(struct device_node *node);
 extern void jmgr_put_reset(void);
-extern void jmgr_hw_reset(int reset);
+extern int jmgr_get_reset_register(void);
+extern void jmgr_hw_assert(void);
+extern void jmgr_hw_deassert(void);
+extern void jmgr_hw_reset(void);
 
 extern void jmgr_enable_irq(unsigned int irq);
 extern void jmgr_disable_irq(unsigned int irq);

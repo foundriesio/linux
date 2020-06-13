@@ -23,6 +23,13 @@ case $TCC_TARGET in
 		;;
 	TCC897X|TCC570X) BASE_ADDR="0x80000000"
 		;;
+	TCC805X)
+		if [ -z `grep CONFIG_TCC805X_CA53Q=y .config` ]; then
+			BASE_ADDR="0x20000000"
+		else
+			BASE_ADDR="0x40000000"
+		fi
+		;;
 	*)
 		echo Unknown architecture!
 		exit 1

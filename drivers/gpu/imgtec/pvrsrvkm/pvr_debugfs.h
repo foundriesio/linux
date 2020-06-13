@@ -1,6 +1,6 @@
 /*************************************************************************/ /*!
 @File
-@Title          Functions for creating debugfs directories and entries.
+@Title          DebugFS implementation of Debug Info interface.
 @Copyright      Copyright (c) Imagination Technologies Ltd. All Rights Reserved
 @License        Dual MIT/GPLv2
 
@@ -43,51 +43,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef PVR_DEBUGFS_H
 #define PVR_DEBUGFS_H
 
-#include <linux/debugfs.h>
-#include <linux/seq_file.h>
+#include "pvrsrv_error.h"
 
-#include "img_types.h"
-#include "img_defs.h"
-#include "osfunc.h"
-
-typedef ssize_t (PVRSRV_ENTRY_WRITE_FUNC)(const char __user *pszBuffer,
-					  size_t uiCount,
-					  loff_t *puiPosition,
-					  void *pvData);
-
-typedef IMG_UINT32 (PVRSRV_INC_PVDATA_REFCNT_FN)(void *pvData);
-typedef IMG_UINT32 (PVRSRV_DEC_PVDATA_REFCNT_FN)(void *pvData);
-
-typedef struct _PVR_DEBUGFS_DIR_ *PPVR_DEBUGFS_DIR_DATA;
-typedef struct _PVR_DEBUGFS_FILE_ *PPVR_DEBUGFS_ENTRY_DATA;
-typedef struct _PVR_DEBUGFS_RND_FILE_ *PPVR_DEBUGFS_RND_ENTRY_DATA;
-
-int PVRDebugFSInit(void);
-void PVRDebugFSDeInit(void);
-
-int PVRDebugFSCreateEntryDir(const char *pszName,
-			PPVR_DEBUGFS_DIR_DATA psParentDir,
-			PPVR_DEBUGFS_DIR_DATA *ppsNewDir);
-
-void PVRDebugFSRemoveEntryDir(PPVR_DEBUGFS_DIR_DATA *ppsDir);
-
-int PVRDebugFSCreateFile(const char *pszName,
-			 PPVR_DEBUGFS_DIR_DATA psParentDir,
-			 const struct seq_operations *psReadOps,
-			 PVRSRV_ENTRY_WRITE_FUNC *pfnWrite,
-			 OS_STATS_PRINT_FUNC *pfnStatsPrint,
-			 void *pvData,
-			 PPVR_DEBUGFS_ENTRY_DATA *ppsNewFile);
-
-
-void PVRDebugFSRemoveFile(PPVR_DEBUGFS_ENTRY_DATA *ppsDebugFSEntry);
-
-int PVRDebugFSCreateFileRnd(const char *pszName,
-							PPVR_DEBUGFS_DIR_DATA psParentDir,
-							struct file_operations *psfOps,
-							void *pvData,
-							PPVR_DEBUGFS_RND_ENTRY_DATA *ppsNewFile);
-
-void PVRDebugFSRemoveFileRnd(PPVR_DEBUGFS_RND_ENTRY_DATA *ppsDebugFSRndFile);
+PVRSRV_ERROR PVRDebugFsRegister(void);
 
 #endif /* PVR_DEBUGFS_H */

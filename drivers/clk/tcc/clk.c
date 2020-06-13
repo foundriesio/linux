@@ -1,8 +1,8 @@
-// SPDX-License-Identifier: GPL-2.0+
+// SPDX-License-Identifier: (GPL-2.0+ OR MIT)
 /*
  * Common clock driver for Telechips SoCs
  *
- * Copyright (C) 2014-2019 Telechips Inc.
+ * Copyright (C) 2020 Telechips Inc.
  */
 
 #define pr_fmt(fmt)	"[tcc_clk] " fmt
@@ -204,7 +204,7 @@ err:
 void tcc_ckc_set_ops(struct tcc_ckc_ops *ops)
 {
 #if !defined(CONFIG_TCC803X_CA7S)
-	#if defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC901X)
+	#if defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC901X) || defined(CONFIG_ARCH_TCC805X)
 	ckc_ops = NULL;
 	#else
 	ckc_ops = ops;
