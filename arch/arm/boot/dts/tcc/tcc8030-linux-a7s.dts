@@ -267,7 +267,7 @@
 		interrupts = <GIC_SPI 35 IRQ_TYPE_LEVEL_HIGH>;
 		#address-cells = <1>;
 		#size-cells = <0>;
-		clocks = <&clk_peri PERI_I2C0 &clk_io IOBUS_I2C_M0>;
+		clocks = <&clk_peri PERI_I2C0 &clk_io IOBUS_I2C_M0 &clk_fbus FBUS_IO>;
 		clock-frequency = <4000000>;
 		scl-clock-frequency = <400000>;
 		interrupt_mode = <0>;
@@ -308,7 +308,7 @@
 		interrupts = <GIC_SPI 35 IRQ_TYPE_LEVEL_HIGH>;
 		#address-cells = <1>;
 		#size-cells = <0>;
-		clocks = <&clk_peri PERI_I2C1 &clk_io IOBUS_I2C_M1>;
+		clocks = <&clk_peri PERI_I2C1 &clk_io IOBUS_I2C_M1 &clk_fbus FBUS_IO>;
 		clock-frequency = <4000000>;
 		scl-clock-frequency = <400000>;
 		interrupt_mode = <0>;
@@ -325,7 +325,7 @@
 		interrupts = <GIC_SPI 36 IRQ_TYPE_LEVEL_HIGH>;
 		#address-cells = <1>;
 		#size-cells = <0>;
-		clocks = <&clk_peri PERI_I2C2 &clk_io IOBUS_I2C_M2>;
+		clocks = <&clk_peri PERI_I2C2 &clk_io IOBUS_I2C_M2 &clk_fbus FBUS_IO>;
 		clock-frequency = <4000000>;
 		scl-clock-frequency = <400000>;
 		port-mux = <0xFF>;      /* default value */
@@ -339,7 +339,7 @@
 		interrupts = <GIC_SPI 36 IRQ_TYPE_LEVEL_HIGH>;
 		#address-cells = <1>;
 		#size-cells = <0>;
-		clocks = <&clk_peri PERI_I2C3 &clk_io IOBUS_I2C_M3>;
+		clocks = <&clk_peri PERI_I2C3 &clk_io IOBUS_I2C_M3 &clk_fbus FBUS_IO>;
 		clock-frequency = <4000000>;
 		/*Set CP I2C frequency to 100Khz*/
 		scl-clock-frequency = <100000>;
@@ -354,7 +354,7 @@
 		interrupts = <GIC_SPI 35 IRQ_TYPE_LEVEL_HIGH>;
 		#address-cells = <1>;
 		#size-cells = <0>;
-		clocks = <&clk_peri PERI_I2C0 &clk_io IOBUS_I2C_M4>;
+		clocks = <&clk_peri PERI_I2C0 &clk_io IOBUS_I2C_M4 &clk_fbus FBUS_IO>;
 		clock-frequency = <4000000>;
 		/*Set CP I2C frequency to 100Khz*/
 		scl-clock-frequency = <400000>;
@@ -369,7 +369,7 @@
 		interrupts = <GIC_SPI 35 IRQ_TYPE_LEVEL_HIGH>;
 		#address-cells = <1>;
 		#size-cells = <0>;
-		clocks = <&clk_peri PERI_I2C1 &clk_io IOBUS_I2C_M5>;
+		clocks = <&clk_peri PERI_I2C1 &clk_io IOBUS_I2C_M5 &clk_fbus FBUS_IO>;
 		clock-frequency = <4000000>;
 		/*Set CP I2C frequency to 100Khz*/
 		scl-clock-frequency = <100000>;
@@ -384,7 +384,7 @@
 		interrupts = <GIC_SPI 36 IRQ_TYPE_LEVEL_HIGH>;
 		#address-cells = <1>;
 		#size-cells = <0>;
-		clocks = <&clk_peri PERI_I2C2 &clk_io IOBUS_I2C_M6>;
+		clocks = <&clk_peri PERI_I2C2 &clk_io IOBUS_I2C_M6 &clk_fbus FBUS_IO>;
 		clock-frequency = <4000000>;
 		/*Set CP I2C frequency to 100Khz*/
 		scl-clock-frequency = <100000>;
@@ -399,7 +399,7 @@
 		interrupts = <GIC_SPI 36 IRQ_TYPE_LEVEL_HIGH>;
 		#address-cells = <1>;
 		#size-cells = <0>;
-		clocks = <&clk_peri PERI_I2C3 &clk_io IOBUS_I2C_M7>;
+		clocks = <&clk_peri PERI_I2C3 &clk_io IOBUS_I2C_M7 &clk_fbus FBUS_IO>;
 		clock-frequency = <4000000>;
 		/*Set CP I2C frequency to 100Khz*/
 		scl-clock-frequency = <100000>;
