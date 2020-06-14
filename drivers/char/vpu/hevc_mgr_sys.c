@@ -233,7 +233,7 @@ int hmgr_get_reset_register(void)
 void hmgr_hw_assert(void)
 {
 #if defined( VIDEO_IP_DIRECT_RESET_CTRL)
-    _DBG(DEBUG_RSTCLK, "enter");
+    V_DBG(DEBUG_RSTCLK, "enter");
 
 
     if(vbus_hevc_bus_reset) {
@@ -244,14 +244,14 @@ void hmgr_hw_assert(void)
         reset_control_assert(vbus_hevc_core_reset);
     }
 
-    _DBG(DEBUG_RSTCLK, "out!! (rsr:0x%x)", hmgr_get_reset_register());
+    V_DBG(DEBUG_RSTCLK, "out!! (rsr:0x%x)", hmgr_get_reset_register());
 #endif
 }
 
 void hmgr_hw_deassert(void)
 {
 #if defined( VIDEO_IP_DIRECT_RESET_CTRL)
-    _DBG(DEBUG_RSTCLK, "enter");
+    V_DBG(DEBUG_RSTCLK, "enter");
 
 
     if(vbus_hevc_bus_reset)
@@ -264,7 +264,7 @@ void hmgr_hw_deassert(void)
         reset_control_deassert(vbus_hevc_core_reset);
     }
 
-    _DBG(DEBUG_RSTCLK, "out!! (rsr:0x%x)", hmgr_get_reset_register());
+    V_DBG(DEBUG_RSTCLK, "out!! (rsr:0x%x)", hmgr_get_reset_register());
 #endif
 }
 

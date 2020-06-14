@@ -56,6 +56,8 @@
 		i2s5 = &i2s5;
 		i2s6 = &i2s6;
 		i2s7 = &i2s7;
+		videosource0 = &videosource0;
+		videosource1 = &videosource1;
 		videoinput0 = &videoinput0;
 		videoinput1 = &videoinput1;
 		videoinput2 = &videoinput2;
@@ -1176,19 +1178,18 @@
 		};
 	};
 
-/*
-	gpu0: gpu@0x10200000 {
-                compatible = "arm,mali-midgard";
+	/*
+	 * Graphic Bus Block
+	 */
+	gpu:gpu@0x10100000 {
+		compatible = "imagination,powerVR-9XTP";
 		status = "okay";
-                reg = <0x10200000 0x4000>;
-                interrupts = <GIC_SPI 93 IRQ_TYPE_LEVEL_HIGH>,
-                             <GIC_SPI 93 IRQ_TYPE_LEVEL_HIGH>,
-                             <GIC_SPI 93 IRQ_TYPE_LEVEL_HIGH>;
-                interrupt-names = "JOB", "MMU", "GPU";
-                clocks = <&clk_fbus FBUS_GPU>;
-                clock-names = "mali_clk";
-        };
-*/
+		reg = <0x0 0x10100000 0x0 0x10000>;
+		interrupts = <GIC_SPI 123 IRQ_TYPE_LEVEL_HIGH>;
+		interrupt-names = "GPU";
+		clocks = <&clk_fbus FBUS_GPU>;
+		clock-names = "9XTP_clk";
+	};
 
 	fb0 {
 		compatible = "telechips,fb";
@@ -3042,6 +3043,31 @@
 	port-mux = <28>; /* [0]SCL [1]SDA */
 	pinctrl-names = "default";
 	pinctrl-0 = <&i2c28_bus>;
+
+	videosource0: videodecoder_adv7182 {
+		compatible	= "analogdevices,adv7182";
+		pinctrl-names	= "idle", "active";
+		cifport		= <0>;
+		pinctrl-0	= <&cam0_8bit_idle>;
+		pinctrl-1	= <&cam0_clk &cam0_data_8bit>;
+		rst-gpios	= <&gpb 14 1>;
+		reg		= <0x21>;	// 0x42 >> 1
+	};
+
+	videosource1: deserializer_max9286 {
+		compatible	= "maxim,max9286";
+		// refer to CIFPORT0(0x12380008) of datasheet
+		cifport		= <9>;
+		pwd-gpios	= <&gpg 5 1>;
+		intb-gpios	= <&gph 11 1>;
+		reg		= <0x48>;	// 0x90 >> 1
+	};
+
+//	videosource2: deserializer_ds90ub964 {
+//		compatible	= "ti,ds90ub964";
+//		cifport		= <9>;
+//		reg		= <0x30>;	// 0x60 >> 1
+//	};
 };
 
 &gpsb0 {

@@ -73,7 +73,7 @@ inline void vbus_matrix(void)
 
 void vmgr_4k_d2_enable_clock(int vbus_no_ctrl, int only_clk_ctrl)
 {
-    _DBG(DEBUG_RSTCLK, "enter");
+    V_DBG(DEBUG_RSTCLK, "enter");
     if (fbus_vbus_clk && !vbus_no_ctrl)
         clk_prepare_enable(fbus_vbus_clk);
     if (fbus_chevc_clk)
@@ -107,7 +107,7 @@ void vmgr_4k_d2_enable_clock(int vbus_no_ctrl, int only_clk_ctrl)
 
 void vmgr_4k_d2_disable_clock(int vbus_no_ctrl, int only_clk_ctrl)
 {
-    _DBG(DEBUG_RSTCLK, "enter");
+    V_DBG(DEBUG_RSTCLK, "enter");
 
     if (vbus_hevc_bus_clk)
         clk_disable_unprepare(vbus_hevc_bus_clk);
@@ -290,7 +290,7 @@ int vmgr_4k_d2_get_reset_register(void)
 void vmgr_4k_d2_hw_assert(void)
 {
 #if defined( VIDEO_IP_DIRECT_RESET_CTRL)
-    _DBG(DEBUG_RSTCLK, "enter");
+    V_DBG(DEBUG_RSTCLK, "enter");
 
     if (vbus_hevc_bus_reset)
     {
@@ -302,14 +302,14 @@ void vmgr_4k_d2_hw_assert(void)
         reset_control_assert(vbus_hevc_core_reset);
     }
 
-    _DBG(DEBUG_RSTCLK, "out!! (rsr:0x%x)", vmgr_4k_d2_get_reset_register());
+    V_DBG(DEBUG_RSTCLK, "out!! (rsr:0x%x)", vmgr_4k_d2_get_reset_register());
 #endif
 }
 
 void vmgr_4k_d2_hw_deassert(void)
 {
 #if defined( VIDEO_IP_DIRECT_RESET_CTRL)
-    _DBG(DEBUG_RSTCLK, "enter");
+    V_DBG(DEBUG_RSTCLK, "enter");
 
     if (vbus_hevc_bus_reset) {
         reset_control_deassert(vbus_hevc_bus_reset);
@@ -319,14 +319,14 @@ void vmgr_4k_d2_hw_deassert(void)
         reset_control_deassert(vbus_hevc_core_reset);
     }
 
-    _DBG(DEBUG_RSTCLK, "out!! (rsr:0x%x)", vmgr_4k_d2_get_reset_register());
+    V_DBG(DEBUG_RSTCLK, "out!! (rsr:0x%x)", vmgr_4k_d2_get_reset_register());
 #endif
 }
 
 void vmgr_4k_d2_hw_reset(void)
 {
 #if defined( VIDEO_IP_DIRECT_RESET_CTRL)
-    _DBG(DEBUG_RSTCLK, "enter");
+    V_DBG(DEBUG_RSTCLK, "enter");
 
     udelay(1000); //1ms
 
@@ -338,7 +338,7 @@ void vmgr_4k_d2_hw_reset(void)
 
     udelay(1000); //1ms
 
-    _DBG(DEBUG_RSTCLK, "out (rsr:0x%x)", vmgr_4k_d2_get_reset_register());
+    V_DBG(DEBUG_RSTCLK, "out (rsr:0x%x)", vmgr_4k_d2_get_reset_register());
 #endif
 }
 

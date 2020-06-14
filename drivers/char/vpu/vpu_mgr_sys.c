@@ -171,7 +171,7 @@ int vmgr_get_reset_register(void)
 void vmgr_hw_assert(void)
 {
 #if defined( VIDEO_IP_DIRECT_RESET_CTRL)
-    _DBG(DEBUG_RSTCLK, "enter");
+    V_DBG(DEBUG_RSTCLK, "enter");
 
     if (vbus_xoda_reset)
     {
@@ -183,14 +183,14 @@ void vmgr_hw_assert(void)
         reset_control_assert(vbus_core_reset);
     }
 
-    _DBG(DEBUG_RSTCLK, "out!! (rsr:0x%x)", vmgr_get_reset_register());
+    V_DBG(DEBUG_RSTCLK, "out!! (rsr:0x%x)", vmgr_get_reset_register());
 #endif
 }
 
 void vmgr_hw_deassert(void)
 {
 #if defined( VIDEO_IP_DIRECT_RESET_CTRL)
-    _DBG(DEBUG_RSTCLK, "enter");
+    V_DBG(DEBUG_RSTCLK, "enter");
 
     if (vbus_xoda_reset) {
         reset_control_deassert(vbus_xoda_reset);
@@ -200,7 +200,7 @@ void vmgr_hw_deassert(void)
         reset_control_deassert(vbus_core_reset);
     }
 
-    _DBG(DEBUG_RSTCLK, "out!! (rsr:0x%x)", vmgr_get_reset_register());
+    V_DBG(DEBUG_RSTCLK, "out!! (rsr:0x%x)", vmgr_get_reset_register());
 #endif
 }
 
