@@ -699,26 +699,6 @@ void VIOC_RDMA_SetImageScale(volatile void __iomem *reg, unsigned int scaleX, un
 EXPORT_SYMBOL(VIOC_RDMA_SetImageScale);
 #endif
 
-#if defined(CONFIG_ARCH_TCC803X)
-void VIOC_RDMA_SetIssue(volatile void __iomem *reg, unsigned int burst_length, unsigned int issue_cnt)
-{
-	unsigned long val;
-	val = (__raw_readl(reg + RDMASCALE) & ~(RDMASCALE_ISSUE_MASK));
-	val |= ((burst_length << 8) | issue_cnt) << RDMASCALE_ISSUE_SHIFT;
-	__raw_writel(val, reg + RDMASCALE);
-}
-
-void VIOC_RDMA_SetImageScale(volatile void __iomem *reg, unsigned int scaleX, unsigned int scaleY)
-{
-	unsigned long val;
-	val = (__raw_readl(reg + RDMASCALE)) &
-		~(RDMASCALE_XSCALE_MASK | RDMASCALE_YSCALE_MASK);
-	val |= ((scaleX << RDMASCALE_XSCALE_SHIFT) |
-		(scaleY << RDMASCALE_YSCALE_SHIFT));
-	__raw_writel(val, reg + RDMASCALE);
-}
-#endif
-
 #if defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC901X)
 void VIOC_RDMA_SetDataFormat(volatile void __iomem *reg, unsigned int fmt_type,
 			     unsigned int fill_mode)

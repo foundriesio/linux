@@ -60,7 +60,7 @@ extern void hmgr_put_reset(void);
 extern int hmgr_get_reset_register(void);
 extern void hmgr_hw_assert(void);
 extern void hmgr_hw_deassert(void);
-extern void hmgr_hw_reset(int reset);
+extern void hmgr_hw_reset(void);
 
 extern void hmgr_enable_irq(unsigned int irq);
 extern void hmgr_disable_irq(unsigned int irq);

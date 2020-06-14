@@ -256,9 +256,11 @@ static int tcc_wdt_set_timeout(struct watchdog_device *wdd, unsigned int timeout
 #endif
 	wdd->timeout = timeout;
 
-//	tcc_wdt_set_pretimeout(wdd,wdd->pretimeout);
-
+#if defined(CONFIG_ARCH_TCC805X)
 	tcc_wdt_set_kicktime(wdd, wdd->pretimeout);
+#else
+	tcc_wdt_set_pretimeout(wdd,wdd->pretimeout);
+#endif
 
 	pr_info("[%s][%s][%s] Setting watchdog timeout to %dsec\n", TCC_WDT_INFO, TCC_WATCHDOG_MODULE, TCC_SUBCATEGORY, wdd->timeout);
 

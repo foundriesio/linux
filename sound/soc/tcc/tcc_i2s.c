@@ -148,17 +148,6 @@ static inline uint32_t calc_dsp_tdm_mclk(struct tcc_i2s_t *i2s, int32_t sample_r
 	return (uint32_t)ret;
 }
 
-static inline uint32_t calc_dsp_pcm_mclk(struct tcc_i2s_t *i2s, unsigned int sample_rate)
-{
-	int32_t ret;
-	sample_rate = (sample_rate == 44100) ? 44100 :
-				  (sample_rate == 22000) ? 22050 :
-				  (sample_rate == 11000) ? 11025 : sample_rate;
-
-	ret = sample_rate * i2s->mclk_div * 2 * i2s->tdm_slot_width;
-	return (uint32_t)ret;
-}
-
 static int tcc_i2s_tx_rx_check(struct tcc_i2s_t *i2s, char *set_change)
 {
 	uint32_t tx_en=0, rx_en=0;
@@ -184,6 +173,16 @@ tx_rx_check_end:
 	return ret;
 }
 
+static inline uint32_t calc_dsp_pcm_mclk(struct tcc_i2s_t *i2s, unsigned int sample_rate)
+{
+	int32_t ret;
+	sample_rate = (sample_rate == 44100) ? 44100 :
+				  (sample_rate == 22000) ? 22050 :
+				  (sample_rate == 11000) ? 11025 : sample_rate;
+
+	ret = sample_rate * i2s->mclk_div * 2 * i2s->tdm_slot_width;
+	return (uint32_t)ret;
+}
 
 static int tcc_i2s_set_dai_fmt(struct snd_soc_dai *dai, unsigned int fmt)
 {
@@ -744,8 +743,6 @@ static int tcc_i2s_hw_params(struct snd_pcm_substream *substream,
 	}
 
 	if (i2s->tdm_mode == TRUE) {
-		tcc_dai_set_multiport_mode(i2s->dai_reg, FALSE);
-	if (i2s->tdm_mode == TRUE) {
 	/* D-Audio tcc803x support */
 		if(pcm_mode == true)
 			tcc_dai_set_multiport_mode(i2s->dai_reg, TRUE);
@@ -1242,6 +1239,9 @@ static int set_tdm_late_mode(struct snd_kcontrol *kcontrol, struct snd_ctl_elem_
 	} else {
 		i2s->tdm_late_mode = (bool)ucontrol->value.integer.value[0];
 	}
+
+	return 0;
+}
 
 static int get_tdm_pcm_mode(struct snd_kcontrol *kcontrol, struct snd_ctl_elem_value *ucontrol)
 {

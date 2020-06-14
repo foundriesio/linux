@@ -154,6 +154,17 @@ enum vioc_wdma_intr_src {
 #define VIOC_WDMA_INT_MASK	((1<<VIOC_WDMA_INTR_MAX)-1)
 
 #define VIOC_INTR_WD_OFFSET (VIOC_INTR_WD9 - (VIOC_INTR_WD8 + 1))
+/* VIOC VIN irqs */
+enum vioc_vin_intr_src {
+	VIOC_VIN_INTR_UPD = 0,
+	VIOC_VIN_INTR_EOF,
+	VIOC_VIN_INTR_VS,
+	VIOC_VIN_INTR_INVS,
+	VIOC_VIN_INTR_MAX
+};
+#define VIOC_VIN_INT_MASK			((1<<VIOC_VIN_INTR_MAX)-1)
+
+#define VIOC_INTR_VIN_OFFSET		(VIOC_INTR_VIN4 - (VIOC_INTR_VIN3 + 1))
 
 #if defined(CONFIG_VIOC_DOLBY_VISION_EDR)
 /* VIOC V_DV irqs */

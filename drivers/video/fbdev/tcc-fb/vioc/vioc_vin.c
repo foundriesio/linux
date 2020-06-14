@@ -267,6 +267,7 @@ void VIOC_VIN_SetFlushBufferEnable(volatile void __iomem *reg, unsigned int fvs)
 }
 #endif
 
+#if defined(CONFIG_ARCH_TCC805X)
 void VIOC_VIN_SetIreqMask(volatile void __iomem *reg, unsigned int mask, unsigned int set)
 {
 	/*
@@ -330,6 +331,7 @@ unsigned int VIOC_VIN_GetVSyncCounter(volatile void __iomem *reg)
 {
 	return __raw_readl(reg + VIN_MON_VSCNT);
 }
+#endif
 
 volatile void __iomem *VIOC_VIN_GetAddress(unsigned int Num)
 {

@@ -62,12 +62,6 @@
 /* (0x128 - (ch * 0x50) + (ch * 0x8)) */
 #define TCC_SDHC_TAPDLY_OFFSET(ch)		(0x12C - (ch * 0x2C))
 
-#define TCC_SDHC_TX_CLKDLY_OFFSET(ch)		(0x10C - (ch * 0x50) + ((ch/2) * 0x4))
-#define TCC_SDHC_RX_CLKDLY_VAL_OFFSET(ch)	(0x128 - (ch * 0x48))
->>>>>>> origin/kernel-v4.14-tcc805x-rebase
-/* (0x128 - (ch * 0x50) + (ch * 0x8)) */
-#define TCC_SDHC_TAPDLY_OFFSET(ch)		(0x12C - (ch * 0x2C))
-
 #define TCC_SDHC_CMDDLY(ch)			TCC_SDHC_TAPDLY_OFFSET(ch)
 #define TCC_SDHC_DATADLY(ch, x)		TCC_SDHC_TAPDLY_OFFSET(ch) + (0x4 + (x * 0x4))
 

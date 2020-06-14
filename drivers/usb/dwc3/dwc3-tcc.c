@@ -767,15 +767,17 @@ static ssize_t dwc3_eyep_store(struct device *dev,
         const char *buf, size_t count)
 {
 	struct dwc3_tcc *tcc =  platform_get_drvdata(to_platform_device(dev));
-    uint32_t val = simple_strtoul(buf, NULL, 2);
-    uint32_t reg = 0;
+	uint32_t val = simple_strtoul(buf, NULL, 2);
+	uint32_t reg = 0;
 
 #if defined(CONFIG_ARCH_TCC803X)
+	void __iomem *pvUSBPHYCFG = tcc->dwc3_phy->get_base(tcc->dwc3_phy);
+
 	if (system_rev == 0) {
-		PUSBPHYCFG pUSBPHYCFG = (PUSBPHYCFG)(tcc->dwc3_phy->get_base(tcc->dwc3_phy));
+		PUSBPHYCFG pUSBPHYCFG = (PUSBPHYCFG)pvUSBPHYCFG;
 		reg = readl(&pUSBPHYCFG->U30_PCFG2);
 	} else {
-		PUSBSSPHYCFG pUSBPHYCFG = (PUSBSSPHYCFG)(tcc->dwc3_phy->get_base(tcc->dwc3_phy));
+		PUSBSSPHYCFG pUSBPHYCFG = (PUSBSSPHYCFG)pvUSBPHYCFG;
 		reg = readl(&pUSBPHYCFG->FPHY_PCFG1);
 	}
 #elif defined(CONFIG_ARCH_TCC805X)
@@ -805,9 +807,11 @@ static ssize_t dwc3_eyep_store(struct device *dev,
 
 #if defined(CONFIG_ARCH_TCC803X)
 	if (system_rev == 0) {
+		PUSBPHYCFG pUSBPHYCFG = (PUSBPHYCFG)pvUSBPHYCFG;
 		BITCSET(reg, TXVRT_MASK, val << TXVRT_SHIFT); // val range is 0x0 ~ 0xF
 		writel(reg, &pUSBPHYCFG->U30_PCFG2);
 	} else {
+		PUSBSSPHYCFG pUSBPHYCFG = (PUSBSSPHYCFG)pvUSBPHYCFG;
 		BITCSET(reg, 0xF, val); // val range is 0x0 ~ 0xF
 		writel(reg, &pUSBPHYCFG->FPHY_PCFG1);
 	}

@@ -302,10 +302,10 @@ static unsigned int lut_get_real_lut_table_number(unsigned int input_lut_number)
  * This api plugin RDMA/WDMA/VIN to LUT
  */
 static int lut_drv_set_plugin(struct lut_drv_type *lut, unsigned int lut_number, int plugin, int plug_in_ch)
+#if defined(CONFIG_ARCH_TCC805X)
 {
 	int ret = -1;
 	int is_dev = -1;
-	unsigned int plugComp;
 	do {
 		if(lut == NULL) {
 			break;
@@ -314,7 +314,7 @@ static int lut_drv_set_plugin(struct lut_drv_type *lut, unsigned int lut_number,
 		if(!plugin) {
 			lut_get_address(lut_number, &is_dev);
 			if(is_dev != 0){
-				printk(KERN_ERR "[ERR]\x1b[1;38m[LUT]\x1b[0m %s lut number %d is out of range\r\n",
+				pr_err("[ERR][LUT] %s lut number %d is out of range\r\n",
 							__func__, lut_number);
 				break;
 			}
@@ -324,6 +324,50 @@ static int lut_drv_set_plugin(struct lut_drv_type *lut, unsigned int lut_number,
 			#endif
 		}
 		else	{
+			if(tcc_set_lut_plugin(VIOC_LUT + lut_number, VIOC_RDMA + plug_in_ch) < 0){
+				pr_err("[ERR][LUT] %s lut number %d is out of range\r\n",
+							__func__, lut_number);
+				break;
+			}
+			tcc_set_lut_enable(VIOC_LUT + lut_number, 1);
+			#if TCC_LUT_DEBUG
+			printk(KERN_INFO "[INF]\x1b[1;38m[LUT]\x1b[0m %s enable lut_number(%d)\r\n", __func__, VIOC_LUT + lut_number);
+			#endif
+		}
+		ret = 0;
+	}while(0);
+	return ret;
+}
+#else
+{
+	int ret = -1;
+	unsigned int plugComp;
+	do {
+		if(lut == NULL) {
+			break;
+		}
+		if(lut_number <= lut->dev_max) {
+			printk(KERN_ERR "[ERR]\x1b[1;38m[LUT]\x1b[0m %s lut number %d is out of range\r\n",
+							__func__, lut_number);
+			break;
+		}
+
+		if(lut_number > lut->vioc_max) {
+			printk(KERN_ERR "[ERR]\x1b[1;38m[LUT]\x1b[0m %s lut number %d is out of range\r\n",
+							__func__, lut_number);
+			break;
+		}
+
+		if(!plugin) {
+			#if TCC_LUT_DEBUG
+			printk(KERN_INFO "[INF]\x1b[1;38m[LUT]\x1b[0m %s disable lut_number(%d)\r\n", __func__, VIOC_LUT + lut_number);
+			#endif
+			tcc_set_lut_enable(VIOC_LUT + lut_number, 0);
+		}
+		else	{
+			#if TCC_LUT_DEBUG
+			printk(KERN_INFO "[INF]\x1b[1;38m[LUT]\x1b[0m %s enable lut_number(%d)\r\n", __func__, VIOC_LUT + lut_number);
+			#endif
 
 			if(plug_in_ch >= EM_MAPPING_INDEX_MAX) {
 				printk(KERN_INFO "[INF]\x1b[1;38m[LUT]\x1b[0m %s (%d) is out of range on LUT\r\n", __func__, plug_in_ch);
@@ -342,14 +386,12 @@ static int lut_drv_set_plugin(struct lut_drv_type *lut, unsigned int lut_number,
 				break;
 			}
 			tcc_set_lut_enable(VIOC_LUT + lut_number, 1);
-			#if TCC_LUT_DEBUG
-			printk(KERN_INFO "[INF]\x1b[1;38m[LUT]\x1b[0m %s enable lut_number(%d)\r\n", __func__, VIOC_LUT + lut_number);
-			#endif
 		}
 		ret = 0;
 	}while(0);
 	return ret;
 }
+#endif
 
 static int lut_drv_set_onoff(struct lut_drv_type *lut, unsigned int lut_number, int onoff)
 {

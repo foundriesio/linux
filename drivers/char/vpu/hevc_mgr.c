@@ -939,8 +939,7 @@ static long _hmgr_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
             break;
 
         case VPU_HW_RESET:
-			hmgr_hw_reset(1);
-			hmgr_hw_reset(0);
+			hmgr_hw_reset();
         break;
 
         case VPU_SET_MEM_ALLOC_MODE:

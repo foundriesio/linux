@@ -1484,6 +1484,9 @@ void vmgr_waitlist_init_pending(int type, int force_clear)
                 wait_entry_info.type,
                 type,
                 force_clear?"RETCODE_CODEC_EXIT":"VPU_DEC_CLOSE"
+            );
+        }
+    }
 }
 #endif
 

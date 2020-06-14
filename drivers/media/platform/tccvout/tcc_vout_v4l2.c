@@ -514,7 +514,7 @@ static int tcc_deintl_buffer_set(struct tcc_vout_device *vout)
 	struct tcc_v4l2_buffer *b;
 	unsigned int total_offset, y_offset = 0;
 	unsigned int i;
-	int actual_bufs;
+	unsigned int actual_bufs;
 	unsigned int width, height;
 
 	/*
@@ -525,7 +525,7 @@ static int tcc_deintl_buffer_set(struct tcc_vout_device *vout)
 	 * Size of display image can't be bigger than panel size
 	 */
 	if(vout->deintl_buf_size)
-		actual_bufs = vout->deintl_pmap.size / vout->deintl_buf_size;
+		actual_bufs = ((unsigned int)vout->deintl_pmap.size) / vout->deintl_buf_size;
 	else
 		actual_bufs = MIN_DEINTLBUF_NUM;
 
