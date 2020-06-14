@@ -186,8 +186,7 @@
 		reg = <0x17301000 0x1000>,
 		      <0x17302000 0x1000>,
 		      <0x17304000 0x2000>,
-		      <0x17306000 0x2000>,
-		      <0x14100000 0x260>;
+		      <0x17306000 0x2000>;
 	};
 
 	timer {
@@ -1243,10 +1242,15 @@
 		};
 	};
 
-	vpic@14100000 {
-		compatible = "telechips,vpic";
-		reg = <0x14100000 0x0300
-		       0x14600000 0x0020>;
+	tcc_pic: pic@14100000 {
+		compatible = "telechips,tcc803x-pic";
+		reg = <0x0 0x141000E0 0x0 0x0018>,  /* pol_0_base */
+		      <0x0 0x1460015C 0x0 0x0004>,  /* pol_1_base */
+		      <0x0 0x0 0x0 0x0>,            /* cmb_cm4_base */
+		      <0x0 0x0 0x0 0x0>,            /* strgb_cm4_base */
+		      <0x0 0x14600008 0x0 0x001C>;  /* ca7_irqo_en_base */
+		demarcation = <192>;
+		max_irq = <196>;
 	};
 
 	/*tcc_micom {
