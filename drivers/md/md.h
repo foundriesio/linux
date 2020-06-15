@@ -512,6 +512,7 @@ struct mddev {
 					  */
 	struct work_struct flush_work;
 	mempool_t *serial_info_pool;
+	unsigned int			noio_flag; /* for memalloc scope API */
 	bool	fail_last_dev:1;
 #endif
 };
