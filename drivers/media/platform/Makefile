@@ -40,8 +40,10 @@ obj-$(CONFIG_VIDEO_SAMSUNG_S5P_G2D)	+= s5p-g2d/
 obj-$(CONFIG_VIDEO_SAMSUNG_S5P_CEC)	+= s5p-cec/
 obj-$(CONFIG_VIDEO_SAMSUNG_EXYNOS_GSC)	+= exynos-gsc/
 
-obj-$(CONFIG_VIDEO_VIDEOSOURCE) += videosource/
-obj-$(CONFIG_VIDEO_TCCVIN)      += tccvin/
+obj-$(CONFIG_VIDEO_VIDEOSOURCE)		+= videosource/
+obj-$(CONFIG_VIDEO_VIDEOSOURCE2)	+= videosource2/
+obj-$(CONFIG_VIDEO_TCCVIN)		+= tccvin/
+obj-$(CONFIG_VIDEO_TCCVIN2)		+= tccvin2/
 obj-$(CONFIG_VIDEO_TCC_VOUT)    += tccvout/
 
 obj-$(CONFIG_VIDEO_STI_BDISP)		+= sti/bdisp/

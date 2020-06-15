@@ -167,9 +167,11 @@ config VIDEO_TI_CAL
 
 # Telechips Video Source Driver Configuration
 source "drivers/media/platform/videosource/Kconfig"
+source "drivers/media/platform/videosource2/Kconfig"
 
 # Telechips Video-Input Driver Configuration
 source "drivers/media/platform/tccvin/Kconfig"
+source "drivers/media/platform/tccvin2/Kconfig"
 source "drivers/media/platform/tcc-hdmirx/Kconfig"
 
 #

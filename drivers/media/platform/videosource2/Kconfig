@@ -1,0 +1,12 @@
+# drivers/media/platform/videosource/Kconfig
+#
+# Copyright (c) 2010 Telechips Co., Ltd.
+#	http://www.telechips.com/
+# Jay <B150095@telechips.com>
+#
+# Licensed under GPL
+
+config VIDEO_VIDEOSOURCE2
+	bool "Video Source V2"
+	default n
+

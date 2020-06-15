@@ -1,0 +1,15 @@
+# drivers/media/platform/tccvin/Kconfig
+#
+# Copyright (c) 2020-2020 Telechips Co., Ltd.
+#	http://www.telechips.com/
+# Jay <B150095@telechips.com>
+#
+# Licensed under GPL
+
+config VIDEO_TCCVIN2
+	bool "Telechips Video-Input Path Driver V2"
+	default n
+        depends on VIDEO_V4L2
+        select VIDEOBUF2_VMALLOC
+	---help---
+	  Support for V4L2 Standard Capture Driver
