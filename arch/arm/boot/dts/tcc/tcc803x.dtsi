@@ -92,7 +92,6 @@
 		vout-drv0 = &vout_drv0;
 		vout-drv1 = &vout_drv1;
 		wdma-drv0 = &wdma_drv0;
-#ifdef CONFIG_VIDEO_TCCVIN
 		videoinput0 = &videoinput0;
 		videoinput1 = &videoinput1;
 		videoinput2 = &videoinput2;
@@ -100,7 +99,6 @@
 		videoinput4 = &videoinput4;
 		videoinput5 = &videoinput5;
 		videoinput6 = &videoinput6;
-#endif
 		fb0 = &fb0;
 		fb1 = &fb1;
 		fb2 = &fb2;
@@ -478,7 +476,6 @@
 			no-map;
 		};
 
-#ifdef CONFIG_VIDEO_TCCVIN
 		/*-----------------------------------------------------------
 		 * Early/RearCamera Area
 		 *-----------------------------------------------------------
@@ -506,7 +503,6 @@
 			size = <PMAP_PARKING_GUI_SIZE>;
 			no-map;
 		};
-#endif
 
 		/*-----------------------------------------------------------
 		 * Default Reserved Memory
@@ -3214,7 +3210,6 @@
 		status = "disabled";
 	};
 
-#ifdef CONFIG_VIDEO_TCCVIN
 	videoinput0: videoinput@0 {
 		compatible	= "telechips,video-input";
 		clocks		= <&clk_ddi DDIBUS_VIOC>;
@@ -3298,7 +3293,6 @@
 		wdma		= <&vioc_wdma		VIOC_WDMA11>;
 		status		= "disabled";
 	};
-#endif
 
 	/*
 	 * Misc. Devices

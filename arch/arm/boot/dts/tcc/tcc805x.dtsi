@@ -484,7 +484,6 @@
 			no-map;
 		};
 
-#ifdef CONFIG_VIDEO_TCCVIN
 		/*-----------------------------------------------------------
 		 * Early/RearCamera Area
 		 *-----------------------------------------------------------
@@ -512,7 +511,6 @@
 			size = <0x0 PMAP_PARKING_GUI_SIZE>;
 			no-map;
 		};
-#endif
 
 		/*-----------------------------------------------------------
 		 * Default Reserved Memory
@@ -3338,7 +3336,7 @@
 		wmixer		= <&vioc_wmix		VIOC_WMIX3>;
 		wdma		= <&vioc_wdma		VIOC_WDMA03>;
 		fifo		= <&vioc_fifo		VIOC_FIFO0>;
-		status		= "okay";
+		status		= "disabled";
 	};
 
 	videoinput3: videoinput@3 {
@@ -3353,7 +3351,7 @@
 		wmixer		= <&vioc_wmix		VIOC_WMIX4>;
 		wdma		= <&vioc_wdma		VIOC_WDMA04>;
 		fifo		= <&vioc_fifo		VIOC_FIFO0>;
-		status		= "okay";
+		status		= "disabled";
 	};
 
 	videoinput4: videoinput@4 {
@@ -3362,7 +3360,7 @@
 		vin		= <&vioc_vin		VIOC_VIN40>;
 		wdma		= <&vioc_wdma		VIOC_WDMA09>;
 		fifo		= <&vioc_fifo		VIOC_FIFO0>;
-		status		= "okay";
+		status		= "disabled";
 	};
 
 	videoinput5: videoinput@5 {
@@ -3371,7 +3369,7 @@
 		vin		= <&vioc_vin		VIOC_VIN50>;
 		wdma		= <&vioc_wdma		VIOC_WDMA10>;
 		fifo		= <&vioc_fifo		VIOC_FIFO0>;
-		status		= "okay";
+		status		= "disabled";
 	};
 
 	videoinput6: videoinput@6 {
@@ -3380,7 +3378,7 @@
 		vin		= <&vioc_vin		VIOC_VIN60>;
 		wdma		= <&vioc_wdma		VIOC_WDMA11>;
 		fifo		= <&vioc_fifo		VIOC_FIFO0>;
-		status		= "okay";
+		status		= "disabled";
 	};
 
 	videoinput7: videoinput@7 {
@@ -3389,7 +3387,7 @@
 		vin		= <&vioc_vin		VIOC_VIN70>;
 		wdma		= <&vioc_wdma		VIOC_WDMA12>;
 		fifo		= <&vioc_fifo		VIOC_FIFO0>;
-		status		= "okay";
+		status		= "disabled";
 	};
 
 	/*
