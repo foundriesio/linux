@@ -349,4 +349,6 @@ void cpu_startup_entry(enum cpuhp_state state)
 	cpuhp_online_idle(state);
 	while (1)
 		do_idle();
+
+	prevent_tail_call_optimization();
 }
