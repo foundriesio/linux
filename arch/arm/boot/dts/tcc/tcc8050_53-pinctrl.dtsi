@@ -189,7 +189,6 @@
 		telechips,pin-function = <0>;
 		telechips,no-pull;
 		telechips,output-low;
-		telechips,no-pull;
 	};
 
 	sd1_bus8: sd1_bus8 {
