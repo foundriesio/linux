@@ -323,8 +323,8 @@ int tccvin_core_probe(struct platform_device * pdev) {
 	memset(vdev, 0x00, sizeof(tccvin_dev_t));
 
 	if(pdev->dev.of_node) {
-		vdev->plt_dev = pdev;
-		vdev->plt_dev->dev.platform_data = vdev;
+		vdev->dev_plt = &pdev->dev;
+		vdev->dev_plt->platform_data = vdev;
 
 		memset(&vdev->cif, 0x00, sizeof(tccvin_cif_t));
 		memset(&vdev->v4l2, 0x00, sizeof(tccvin_v4l2_t));

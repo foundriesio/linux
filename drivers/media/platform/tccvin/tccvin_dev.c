@@ -147,7 +147,7 @@ static DEVICE_ATTR(tccvin_attr_diagnostics, S_IRUGO|S_IWUSR|S_IWGRP, tccvin_attr
 int tccvin_create_attr_diagnostics(tccvin_dev_t * vdev) {
 	int		ret = 0;
 
-	ret = device_create_file(&vdev->plt_dev->dev, &dev_attr_tccvin_attr_diagnostics);
+	ret = device_create_file(vdev->dev_plt, &dev_attr_tccvin_attr_diagnostics);
 	if(ret < 0)
 		log("failed create sysfs: tccvin_attr_diagnostics\n");
 
