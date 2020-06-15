@@ -1,3 +1,8 @@
+// SPDX-License-Identifier: GPL-2.0-or-later
+/*
+ * Copyright (C) Telechips Inc.
+ */
+
 #ifndef __MIPI_CFG_REG_H__
 #define __MIPI_CFG_REG_H__
 

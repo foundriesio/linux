@@ -294,26 +294,26 @@ int videosource_request_gpio(videosource_t * vdev) {
 	FUNCTION_IN
 
 	if(0 < vdev->gpio.pwr_port) {
-		log("pwr: port = %3d, curr val = %d, set val = %d\n",	\
+		logd("pwr: port = %3d, curr val = %d, set val = %d\n",	\
 			vdev->gpio.pwr_port, gpio_get_value(vdev->gpio.pwr_port), vdev->gpio.pwr_value);
 		gpio_request(vdev->gpio.pwr_port, "camera power");
 		gpio_direction_output(vdev->gpio.pwr_port, vdev->gpio.pwr_value);
 	}
 	if(0 < vdev->gpio.pwd_port) {
-		log("pwd: port = %3d, curr val = %d, set val = %d\n",	\
+		logd("pwd: port = %3d, curr val = %d, set val = %d\n",	\
 			vdev->gpio.pwd_port, gpio_get_value(vdev->gpio.pwd_port), vdev->gpio.pwd_value);
 		gpio_request(vdev->gpio.pwd_port, "camera power down");
 		gpio_direction_output(vdev->gpio.pwd_port, vdev->gpio.pwd_value);
 	}
 	if(0 < vdev->gpio.rst_port) {
-		log("rst: port = %3d, curr val = %d, set val = %d\n",	\
+		logd("rst: port = %3d, curr val = %d, set val = %d\n",	\
 			vdev->gpio.rst_port, gpio_get_value(vdev->gpio.rst_port), vdev->gpio.rst_value);
 		gpio_request(vdev->gpio.rst_port, "camera reset");
 		gpio_direction_output(vdev->gpio.rst_port, vdev->gpio.rst_value);
 	}
 #ifdef CONFIG_MIPI_CSI_2
 	if(0 < vdev->gpio.intb_port) {
-		log("intb: port = %3d, curr val = %d \n",	\
+		logd("intb: port = %3d, curr val = %d \n",	\
 			vdev->gpio.intb_port, gpio_get_value(vdev->gpio.intb_port));
 		gpio_request(vdev->gpio.intb_port, "camera interrupt");
 		gpio_direction_input(vdev->gpio.intb_port);
@@ -385,7 +385,7 @@ int videosource_if_init_mipi_csi2_interface(videosource_t * vdev, videosource_fo
 		/*
 		 * Set D-PHY Common control
 		 */
-		log("hssettle value : 0x%x \n", format->des_info.hssettle);
+		logd("hssettle value : 0x%x \n", format->des_info.hssettle);
 		MIPI_CSIS_Set_DPHY_Common_Control(format->des_info.hssettle, \
 											format->des_info.clksettlectl, \
 											ON, \

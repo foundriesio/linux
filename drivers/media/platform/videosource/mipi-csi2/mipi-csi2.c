@@ -441,7 +441,18 @@ static int __init mipi_csi2_init(void)
 	}
 	else {
 		mipi_csi2_base = (volatile void __iomem *)of_iomap(mipi_csi2_np, 0);
-		log("addr :%p \n", mipi_csi2_base);
+		logd("mipi_csi2 addr: %p\n", mipi_csi2_base);
+
+#ifdef CONFIG_ARCH_TCC805X
+		mipi_ckc_base = (volatile void __iomem *)of_iomap(mipi_csi2_np, 2);
+		logd("mipi_ckc addr :%p\n", mipi_ckc_base);
+
+		mipi_cfg_base = (volatile void __iomem *)of_iomap(mipi_csi2_np, 3);
+		logd("mipi_cfg addr :%p\n", mipi_cfg_base);
+
+		if (!(MIPI_WRAP_Set_CKC()))
+			loge("FAIL - MIPI WRAP CKC \n");
+#endif
 	}
 
 #if 0
