@@ -1317,7 +1317,12 @@ static struct tcc_spi_pl_data *tcc_spi_parse_dt(struct device *dev)
 	if(of_property_read_bool(np, "ctf-mode-disable")){
 		pd->ctf = false;
 	}
-	dev_info(dev, "[INFO][SPI] GPSB ctf mode: %d\n", pd->ctf);
+	pd->is_slave = of_property_read_bool(np, "spi-slave");
+	if(pd->is_slave != 0){
+		dev_info(dev, "[INFO][SPI] GPSB Slave ctf mode: %d\n", pd->ctf);
+	}else{
+		dev_info(dev, "[INFO][SPI] GPSB Master ctf mode: %d\n", pd->ctf);
+	}
 
 	/*
 	 * TCC GPSB CH 3-5 don't have dedicated dma
