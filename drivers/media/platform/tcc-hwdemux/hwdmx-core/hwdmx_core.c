@@ -387,7 +387,7 @@ static int hwdmx_remove(struct platform_device *pdev)
 	}
 	class_destroy(class);
 	unregister_chrdev(majornum, HWDMX_DEV_NAME);
-#if defined(USE_HW_FW
+#if defined(USE_HW_FW)
 	hwdmx_unload_fw();
 #endif
 	tcc_hwdmx_tsif_rx_deinit(&pdev->dev);
