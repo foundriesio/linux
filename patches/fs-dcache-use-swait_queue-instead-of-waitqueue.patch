@@ -14,12 +14,12 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  fs/namei.c              |    4 ++--
  fs/nfs/dir.c            |    4 ++--
  fs/nfs/unlink.c         |    4 ++--
- fs/proc/base.c          |    2 +-
+ fs/proc/base.c          |    3 ++-
  fs/proc/proc_sysctl.c   |    2 +-
  include/linux/dcache.h  |    4 ++--
  include/linux/nfs_xdr.h |    2 +-
  kernel/sched/swait.c    |    1 +
- 12 files changed, 30 insertions(+), 26 deletions(-)
+ 12 files changed, 31 insertions(+), 26 deletions(-)
 
 --- a/fs/afs/dir_silly.c
 +++ b/fs/afs/dir_silly.c
@@ -45,7 +45,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
 --- a/fs/dcache.c
 +++ b/fs/dcache.c
-@@ -2501,21 +2501,24 @@ static inline void end_dir_add(struct in
+@@ -2499,21 +2499,24 @@ static inline void end_dir_add(struct in
  
  static void d_wait_lookup(struct dentry *dentry)
  {
@@ -81,7 +81,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  {
  	unsigned int hash = name->hash;
  	struct hlist_bl_head *b = in_lookup_hash(parent, hash);
-@@ -2630,7 +2633,7 @@ void __d_lookup_done(struct dentry *dent
+@@ -2628,7 +2631,7 @@ void __d_lookup_done(struct dentry *dent
  	hlist_bl_lock(b);
  	dentry->d_flags &= ~DCACHE_PAR_LOOKUP;
  	__hlist_bl_del(&dentry->d_u.d_in_lookup_hash);
@@ -152,7 +152,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  #include <linux/namei.h>
  #include <linux/fsnotify.h>
  
-@@ -203,7 +203,7 @@ nfs_async_unlink(struct dentry *dentry,
+@@ -180,7 +180,7 @@ nfs_async_unlink(struct dentry *dentry,
  
  	data->cred = get_current_cred();
  	data->res.dir_attr = &data->dir_attr;
@@ -163,7 +163,15 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	spin_lock(&dentry->d_lock);
 --- a/fs/proc/base.c
 +++ b/fs/proc/base.c
-@@ -1995,7 +1995,7 @@ bool proc_fill_cache(struct file *file,
+@@ -96,6 +96,7 @@
+ #include <linux/posix-timers.h>
+ #include <linux/time_namespace.h>
+ #include <linux/resctrl.h>
++#include <linux/swait.h>
+ #include <trace/events/oom.h>
+ #include "internal.h"
+ #include "fd.h"
+@@ -1994,7 +1995,7 @@ bool proc_fill_cache(struct file *file,
  
  	child = d_hash_and_lookup(dir, &qname);
  	if (!child) {

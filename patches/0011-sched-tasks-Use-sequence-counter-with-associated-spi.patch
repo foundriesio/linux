@@ -1,0 +1,60 @@
+From: "Ahmed S. Darwish" <a.darwish@linutronix.de>
+Date: Wed, 10 Jun 2020 12:53:09 +0200
+Subject: [PATCH 11/24] sched: tasks: Use sequence counter with associated
+ spinlock
+
+A sequence counter write side critical section must be protected by some
+form of locking to serialize writers. A plain seqcount_t does not
+contain the information of which lock must be held when entering a write
+side critical section.
+
+Use the new seqcount_spinlock_t data type, which allows to associate a
+spinlock with the sequence counter. This enables lockdep to verify that
+the spinlock used for writer serialization is held when the write side
+critical section is entered.
+
+If lockdep is disabled this lock association is compiled out and has
+neither storage size nor runtime overhead.
+
+Signed-off-by: Ahmed S. Darwish <a.darwish@linutronix.de>
+Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
+---
+ include/linux/sched.h |    2 +-
+ init/init_task.c      |    3 ++-
+ kernel/fork.c         |    2 +-
+ 3 files changed, 4 insertions(+), 3 deletions(-)
+
+--- a/include/linux/sched.h
++++ b/include/linux/sched.h
+@@ -1038,7 +1038,7 @@ struct task_struct {
+ 	/* Protected by ->alloc_lock: */
+ 	nodemask_t			mems_allowed;
+ 	/* Seqence number to catch updates: */
+-	seqcount_t			mems_allowed_seq;
++	seqcount_spinlock_t		mems_allowed_seq;
+ 	int				cpuset_mem_spread_rotor;
+ 	int				cpuset_slab_spread_rotor;
+ #endif
+--- a/init/init_task.c
++++ b/init/init_task.c
+@@ -141,7 +141,8 @@ struct task_struct init_task
+ 	.rcu_tasks_idle_cpu = -1,
+ #endif
+ #ifdef CONFIG_CPUSETS
+-	.mems_allowed_seq = SEQCNT_ZERO(init_task.mems_allowed_seq),
++	.mems_allowed_seq = SEQCNT_SPINLOCK_ZERO(init_task.mems_allowed_seq,
++						 &init_task.alloc_lock),
+ #endif
+ #ifdef CONFIG_RT_MUTEXES
+ 	.pi_waiters	= RB_ROOT_CACHED,
+--- a/kernel/fork.c
++++ b/kernel/fork.c
+@@ -2015,7 +2015,7 @@ static __latent_entropy struct task_stru
+ #ifdef CONFIG_CPUSETS
+ 	p->cpuset_mem_spread_rotor = NUMA_NO_NODE;
+ 	p->cpuset_slab_spread_rotor = NUMA_NO_NODE;
+-	seqcount_init(&p->mems_allowed_seq);
++	seqcount_spinlock_init(&p->mems_allowed_seq, &p->alloc_lock);
+ #endif
+ #ifdef CONFIG_TRACE_IRQFLAGS
+ 	p->irq_events = 0;

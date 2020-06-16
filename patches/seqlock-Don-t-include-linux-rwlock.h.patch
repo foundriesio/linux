@@ -1,0 +1,19 @@
+From: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
+Date: Wed, 10 Jun 2020 17:57:04 +0200
+Subject: [PATCH] seqlock: Don't include linux/rwlock.h
+
+Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
+---
+ include/linux/seqlock_types_internal.h |    1 -
+ 1 file changed, 1 deletion(-)
+
+--- a/include/linux/seqlock_types_internal.h
++++ b/include/linux/seqlock_types_internal.h
+@@ -13,7 +13,6 @@
+ #endif
+ 
+ #include <linux/mutex.h>
+-#include <linux/rwlock.h>
+ #include <linux/spinlock.h>
+ #include <linux/ww_mutex.h>
+ 

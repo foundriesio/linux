@@ -45,7 +45,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  }
  
  static void d_wait_lookup(struct dentry *dentry)
-@@ -2527,7 +2529,7 @@ struct dentry *d_alloc_parallel(struct d
+@@ -2530,7 +2532,7 @@ struct dentry *d_alloc_parallel(struct d
  
  retry:
  	rcu_read_lock();
@@ -54,7 +54,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	r_seq = read_seqbegin(&rename_lock);
  	dentry = __d_lookup_rcu(parent, name, &d_seq);
  	if (unlikely(dentry)) {
-@@ -2555,7 +2557,7 @@ struct dentry *d_alloc_parallel(struct d
+@@ -2558,7 +2560,7 @@ struct dentry *d_alloc_parallel(struct d
  	}
  
  	hlist_bl_lock(b);

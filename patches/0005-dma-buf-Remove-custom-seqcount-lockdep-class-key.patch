@@ -1,0 +1,67 @@
+From: "Ahmed S. Darwish" <a.darwish@linutronix.de>
+Subject: [PATCH 6/6] dma-buf: Remove custom seqcount lockdep class key
+Date: Wed,  3 Jun 2020 16:49:49 +0200
+
+Commit 3c3b177a9369 ("reservation: add support for read-only access
+using rcu") introduced a sequence counter to manage updates to
+reservations. Back then, the reservation object initializer
+reservation_object_init() was always inlined.
+
+Having the sequence counter initialization inlined meant that each of
+the call sites would have a different lockdep class key, which would've
+broken lockdep's deadlock detection. The aforementioned commit thus
+introduced, and exported, a custom seqcount lockdep class key and name.
+
+The commit 8735f16803f00 ("dma-buf: cleanup reservation_object_init...")
+transformed the reservation object initializer to a normal non-inlined C
+function. seqcount_init(), which automatically defines the seqcount
+lockdep class key and must be called non-inlined, can now be safely used.
+
+Remove the seqcount custom lockdep class key, name, and export. Use
+seqcount_init() inside the dma reservation object initializer.
+
+Signed-off-by: Ahmed S. Darwish <a.darwish@linutronix.de>
+Reviewed-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
+Sigend-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
+---
+ drivers/dma-buf/dma-resv.c |    9 +--------
+ include/linux/dma-resv.h   |    2 --
+ 2 files changed, 1 insertion(+), 10 deletions(-)
+
+--- a/drivers/dma-buf/dma-resv.c
++++ b/drivers/dma-buf/dma-resv.c
+@@ -50,12 +50,6 @@
+ DEFINE_WD_CLASS(reservation_ww_class);
+ EXPORT_SYMBOL(reservation_ww_class);
+ 
+-struct lock_class_key reservation_seqcount_class;
+-EXPORT_SYMBOL(reservation_seqcount_class);
+-
+-const char reservation_seqcount_string[] = "reservation_seqcount";
+-EXPORT_SYMBOL(reservation_seqcount_string);
+-
+ /**
+  * dma_resv_list_alloc - allocate fence list
+  * @shared_max: number of fences we need space for
+@@ -134,9 +128,8 @@ subsys_initcall(dma_resv_lockdep);
+ void dma_resv_init(struct dma_resv *obj)
+ {
+ 	ww_mutex_init(&obj->lock, &reservation_ww_class);
++	seqcount_init(&obj->seq);
+ 
+-	__seqcount_init(&obj->seq, reservation_seqcount_string,
+-			&reservation_seqcount_class);
+ 	RCU_INIT_POINTER(obj->fence, NULL);
+ 	RCU_INIT_POINTER(obj->fence_excl, NULL);
+ }
+--- a/include/linux/dma-resv.h
++++ b/include/linux/dma-resv.h
+@@ -46,8 +46,6 @@
+ #include <linux/rcupdate.h>
+ 
+ extern struct ww_class reservation_ww_class;
+-extern struct lock_class_key reservation_seqcount_class;
+-extern const char reservation_seqcount_string[];
+ 
+ /**
+  * struct dma_resv_list - a list of shared fences

@@ -1,0 +1,44 @@
+From: "Ahmed S. Darwish" <a.darwish@linutronix.de>
+Date: Wed, 10 Jun 2020 12:53:11 +0200
+Subject: [PATCH 13/24] netfilter: nft_set_rbtree: Use sequence counter with
+ associated rwlock
+
+A sequence counter write side critical section must be protected by some
+form of locking to serialize writers. A plain seqcount_t does not
+contain the information of which lock must be held when entering a write
+side critical section.
+
+Use the new seqcount_rwlock_t data type, which allows to associate a
+rwlock with the sequence counter. This enables lockdep to verify that
+the rwlock used for writer serialization is held when the write side
+critical section is entered.
+
+If lockdep is disabled this lock association is compiled out and has
+neither storage size nor runtime overhead.
+
+Signed-off-by: Ahmed S. Darwish <a.darwish@linutronix.de>
+Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
+---
+ net/netfilter/nft_set_rbtree.c |    4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+--- a/net/netfilter/nft_set_rbtree.c
++++ b/net/netfilter/nft_set_rbtree.c
+@@ -18,7 +18,7 @@
+ struct nft_rbtree {
+ 	struct rb_root		root;
+ 	rwlock_t		lock;
+-	seqcount_t		count;
++	seqcount_rwlock_t	count;
+ 	struct delayed_work	gc_work;
+ };
+ 
+@@ -516,7 +516,7 @@ static int nft_rbtree_init(const struct
+ 	struct nft_rbtree *priv = nft_set_priv(set);
+ 
+ 	rwlock_init(&priv->lock);
+-	seqcount_init(&priv->count);
++	seqcount_rwlock_init(&priv->count, &priv->lock);
+ 	priv->root = RB_ROOT;
+ 
+ 	INIT_DEFERRABLE_WORK(&priv->gc_work, nft_rbtree_gc);

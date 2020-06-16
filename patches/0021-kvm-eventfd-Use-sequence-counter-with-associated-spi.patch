@@ -1,0 +1,48 @@
+From: "Ahmed S. Darwish" <a.darwish@linutronix.de>
+Date: Wed, 10 Jun 2020 12:53:19 +0200
+Subject: [PATCH 21/24] kvm/eventfd: Use sequence counter with associated
+ spinlock
+
+A sequence counter write side critical section must be protected by some
+form of locking to serialize writers. A plain seqcount_t does not
+contain the information of which lock must be held when entering a write
+side critical section.
+
+Use the new seqcount_spinlock_t data type, which allows to associate a
+spinlock with the sequence counter. This enables lockdep to verify that
+the spinlock used for writer serialization is held when the write side
+critical section is entered.
+
+If lockdep is disabled this lock association is compiled out and has
+neither storage size nor runtime overhead.
+
+Signed-off-by: Ahmed S. Darwish <a.darwish@linutronix.de>
+Acked-by: Paolo Bonzini <pbonzini@redhat.com>
+Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
+---
+ include/linux/kvm_irqfd.h |    2 +-
+ virt/kvm/eventfd.c        |    2 +-
+ 2 files changed, 2 insertions(+), 2 deletions(-)
+
+--- a/include/linux/kvm_irqfd.h
++++ b/include/linux/kvm_irqfd.h
+@@ -42,7 +42,7 @@ struct kvm_kernel_irqfd {
+ 	wait_queue_entry_t wait;
+ 	/* Update side is protected by irqfds.lock */
+ 	struct kvm_kernel_irq_routing_entry irq_entry;
+-	seqcount_t irq_entry_sc;
++	seqcount_spinlock_t irq_entry_sc;
+ 	/* Used for level IRQ fast-path */
+ 	int gsi;
+ 	struct work_struct inject;
+--- a/virt/kvm/eventfd.c
++++ b/virt/kvm/eventfd.c
+@@ -303,7 +303,7 @@ kvm_irqfd_assign(struct kvm *kvm, struct
+ 	INIT_LIST_HEAD(&irqfd->list);
+ 	INIT_WORK(&irqfd->inject, irqfd_inject);
+ 	INIT_WORK(&irqfd->shutdown, irqfd_shutdown);
+-	seqcount_init(&irqfd->irq_entry_sc);
++	seqcount_spinlock_init(&irqfd->irq_entry_sc, &kvm->irqfds.lock);
+ 
+ 	f = fdget(args->fd);
+ 	if (!f.file) {

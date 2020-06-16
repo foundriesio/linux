@@ -99,6 +99,14 @@ sched-Provide-cant_migrate.patch
 0021-bpf-lpm-Make-locking-RT-friendly.patch
 0022-bpf-stackmap-Dont-trylock-mmap_sem-with-PREEMPT_RT-a.patch
 
+# 2020-06-03 16:49 Ahmed S. Darwis [PATCH v2 0/6] seqlock: seqcount_t call sites bugfixes
+# 20200603144949.1122421-1-a.darwish@linutronix.de
+0001-net-core-device_rename-Use-rwsem-instead-of-a-seqcou.patch
+0002-net-phy-fixed_phy-Remove-unused-seqcount.patch
+0003-net-mdiobus-Disable-preemption-upon-u64_stats-update.patch
+0004-block-nr_sects_write-disable-preemption-on-seqcount-.patch
+0005-dma-buf-Remove-custom-seqcount-lockdep-class-key.patch
+
 ############################################################
 # POSTED
 ############################################################
@@ -173,29 +181,55 @@ signal-revert-ptrace-preempt-magic.patch
 preempt-nort-rt-variants.patch
 mm-make-vmstat-rt-aware.patch
 
-# SEQCOUNT related
-# XXX, rework
-dma-buf-Use-seqlock_t-instread-disabling-preemption.patch
-seqlock-prevent-rt-starvation.patch
-NFSv4-replace-seqcount_t-with-a-seqlock_t.patch
-net-Qdisc-use-a-seqlock-instead-seqcount.patch
-net-make-devnet_rename_seq-a-mutex.patch
-userfaultfd-Use-a-seqlock-instead-of-seqcount.patch
+## # SEQCOUNT related
+## # XXX, rework
+## dma-buf-Use-seqlock_t-instread-disabling-preemption.patch
+## seqlock-prevent-rt-starvation.patch
+## NFSv4-replace-seqcount_t-with-a-seqlock_t.patch
+## net-make-devnet_rename_seq-a-mutex.patch
+## userfaultfd-Use-a-seqlock-instead-of-seqcount.patch
+##
+## # Revisit and add to the other NFS crap
+## fs-nfs-turn-rmdir_sem-into-a-semaphore.patch
+##
+## # Revisit
+##
+## # Revisit - check HCH reply. Check all use cases
+## list_bl.h-make-list-head-locking-RT-safe.patch
+## # Check .... (these are needed due to the previous list_bl change)
+## fscache-initialize-cookie-hash-table-raw-spinlocks.patch
+## fs-dcache-bring-back-explicit-INIT_HLIST_BL_HEAD-in.patch
+## ############################################################
 
-# Revisit and add to the other NFS crap
-fs-nfs-turn-rmdir_sem-into-a-semaphore.patch
+# 2020-06-08 02:57 Ahmed S. Darwis ( 106) [PATCH v2 00/18] seqlock: Extend seqcount API with associated locks
+# 20200608005729.1874024-1-a.darwish@linutronix.de
+0005-Documentation-locking-Describe-seqlock-design-and-us.patch
+0006-seqlock-Properly-format-kernel-doc-code-samples.patch
+0007-seqlock-Add-missing-kernel-doc-annotations.patch
+0008-seqlock-Extend-seqcount-API-with-associated-locks.patch
+0010-dma-buf-Use-sequence-counter-with-associated-wound-w.patch
+0011-sched-tasks-Use-sequence-counter-with-associated-spi.patch
+0012-netfilter-conntrack-Use-sequence-counter-with-associ.patch
+0013-netfilter-nft_set_rbtree-Use-sequence-counter-with-a.patch
+0014-xfrm-policy-Use-sequence-counters-with-associated-lo.patch
+0015-timekeeping-Use-sequence-counter-with-associated-raw.patch
+0016-vfs-Use-sequence-counter-with-associated-spinlock.patch
+0017-raid5-Use-sequence-counter-with-associated-spinlock.patch
+0018-iocost-Use-sequence-counter-with-associated-spinlock.patch
+0019-NFSv4-Use-sequence-counter-with-associated-spinlock.patch
+0020-userfaultfd-Use-sequence-counter-with-associated-spi.patch
+0021-kvm-eventfd-Use-sequence-counter-with-associated-spi.patch
+0022-hrtimer-Use-sequence-counter-with-associated-raw-spi.patch
 
-# Revisit
-fs-dcache-disable-preemption-on-i_dir_seq-s-write-si.patch
+##
+0023-seqlock-PREEMPT_RT-Do-not-starve-writers.patch
+0024-xfrm-Use-sequence-counter-with-associated-spinlock.patch
+seqlock-Don-t-include-linux-rwlock.h.patch
 
-# Revisit - check HCH reply. Check all use cases
-list_bl.h-make-list-head-locking-RT-safe.patch
-# Check .... (these are needed due to the previous list_bl change)
-fscache-initialize-cookie-hash-table-raw-spinlocks.patch
-fs-dcache-bring-back-explicit-INIT_HLIST_BL_HEAD-in.patch
-fs-dcache-Include-swait.h-header.patch
 fs-dcache-use-swait_queue-instead-of-waitqueue.patch
-############################################################
+fs-dcache-disable-preemption-on-i_dir_seq-s-write-si.patch
+net-Qdisc-use-a-seqlock-instead-seqcount.patch
+#####
 
 # split changelog
 kconfig-disable-a-few-options-rt.patch
@@ -211,9 +245,6 @@ sched-disable-rt-group-sched-on-rt.patch
 
 # Post
 net_disable_NET_RX_BUSY_POLL.patch
-
-# proper changelog
-md-disable-bcache.patch
 
 # proper changelog
 efi-Disable-runtime-services-on-RT.patch
@@ -330,6 +361,7 @@ rtmutex-add-mutex-implementation-based-on-rtmutex.patch
 rtmutex-add-rwsem-implementation-based-on-rtmutex.patch
 rtmutex-add-rwlock-implementation-based-on-rtmutex.patch
 rtmutex-wire-up-RT-s-locking.patch
+rwsem-Provide-down_read_non_owner-and-up_read_non_ow.patch
 rtmutex-add-ww_mutex-addon-for-mutex-rt.patch
 # Allow to enable RT-FULL after sleeping spinlocks are wired up
 # XXX move flush_plug to slowpath's schedule()

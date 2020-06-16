@@ -1,0 +1,42 @@
+From: "Ahmed S. Darwish" <a.darwish@linutronix.de>
+Date: Wed, 10 Jun 2020 12:53:01 +0200
+Subject: [PATCH 03/24] net: mdiobus: Disable preemption upon u64_stats update
+
+The u64_stats mechanism uses sequence counters to protect against 64-bit
+values tearing on 32-bit architectures. Updating u64_stats is thus a
+sequence counter write side critical section where preemption must be
+disabled.
+
+For mdiobus_stats_acct(), disable preemption upon the u64_stats update.
+It is called from process context through mdiobus_read() and
+mdiobus_write().
+
+Reported-by: kernel test robot <lkp@intel.com>
+Signed-off-by: Ahmed S. Darwish <a.darwish@linutronix.de>
+Reviewed-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
+Signed-off-by: David S. Miller <davem@davemloft.net>
+(cherry picked from v5.8-rc1 commit c7e261d81783387a0502878cd229327e7c54322e)
+Signed-off-by: Ahmed S. Darwish <a.darwish@linutronix.de>
+Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
+---
+ drivers/net/phy/mdio_bus.c |    2 ++
+ 1 file changed, 2 insertions(+)
+
+--- a/drivers/net/phy/mdio_bus.c
++++ b/drivers/net/phy/mdio_bus.c
+@@ -740,6 +740,7 @@ EXPORT_SYMBOL(mdiobus_scan);
+ 
+ static void mdiobus_stats_acct(struct mdio_bus_stats *stats, bool op, int ret)
+ {
++	preempt_disable();
+ 	u64_stats_update_begin(&stats->syncp);
+ 
+ 	u64_stats_inc(&stats->transfers);
+@@ -754,6 +755,7 @@ static void mdiobus_stats_acct(struct md
+ 		u64_stats_inc(&stats->writes);
+ out:
+ 	u64_stats_update_end(&stats->syncp);
++	preempt_enable();
+ }
+ 
+ /**
