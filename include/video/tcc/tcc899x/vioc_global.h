@@ -145,6 +145,7 @@
 #define VIOC_LUT_COMP0			(0x0B03)
 #define VIOC_LUT_COMP1			(0x0B05)
 #define VIOC_LUT_MAX			(VIOC_LUT_COMP1)
+#define VIOC_LUT_COMP_MAX			VIOC_LUT_MAX
 
 /* LUT TABLE : 0x0CXX */
 #define VIOC_LUT_TABLE			(0x0C00)

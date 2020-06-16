@@ -64,6 +64,15 @@
 #define	VIOC_LUT_WDMA_08		(28)
 */
 
+#define VIOC_LUT_DEV0_OFFSET            0x04
+#define VIOC_LUT_DEV1_OFFSET            0x08
+#define VIOC_LUT_DEV2_OFFSET            0x0C
+
+#define VIOC_LUT_COMP0_OFFSET           0x10
+#define VIOC_LUT_COMP1_OFFSET           0x14
+#define VIOC_LUT_COMP2_OFFSET           0x18
+#define VIOC_LUT_COMP3_OFFSET           0x1C
+
 #define LUT_TABLE_OFFSET			1
 #define LUT_COLOR_DEPTH				10
 #define LUT_TABLE_SIZE				(1 << LUT_COLOR_DEPTH)
@@ -77,5 +86,6 @@ extern void tcc_set_lut_enable(unsigned int lut_n, unsigned int enable);
 extern int tcc_get_lut_enable(unsigned int lut_n);
 void tcc_set_lut_csc_coeff(unsigned int lut_csc_11_12, unsigned int lut_csc_13_21, unsigned int lut_csc_22_23, unsigned int lut_csc_31_32, unsigned int lut_csc_32);
 void tcc_set_default_lut_csc_coeff(void);
+extern void __iomem* lut_get_address(int lut_n, int * is_dev);
 
 #endif

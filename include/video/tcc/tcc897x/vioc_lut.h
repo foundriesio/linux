@@ -57,6 +57,16 @@
 #define	VIOC_LUT_WDMA_07		(27)
 #define	VIOC_LUT_WDMA_08		(28)
 */
+
+#define VIOC_LUT_DEV0_OFFSET            0x04
+#define VIOC_LUT_DEV1_OFFSET            0x08
+#define VIOC_LUT_DEV2_OFFSET            0x0C
+
+#define VIOC_LUT_COMP0_OFFSET           0x10
+#define VIOC_LUT_COMP1_OFFSET           0x14
+#define VIOC_LUT_COMP2_OFFSET           0x18
+#define VIOC_LUT_COMP3_OFFSET           0x1C
+
 #define LUT_TABLE_OFFSET			1
 #define LUT_COLOR_DEPTH				8
 #define LUT_TABLE_SIZE				(1 << LUT_COLOR_DEPTH)
@@ -68,4 +78,5 @@ extern int tcc_get_lut_plugin (unsigned int lut_n);
 extern void tcc_set_lut_enable(unsigned int lut_n, unsigned int enable);
 extern int tcc_get_lut_enable(unsigned int lut_n);
 extern volatile void __iomem* VIOC_LUT_GetAddress(void);
+extern void __iomem* lut_get_address(int lut_n, int * is_dev);
 #endif
