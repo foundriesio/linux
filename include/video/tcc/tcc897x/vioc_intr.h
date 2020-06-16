@@ -135,6 +135,16 @@ enum vioc_wdma_intr_src {
 };
 #define VIOC_WDMA_INT_MASK	((1<<VIOC_WDMA_INTR_MAX)-1)
 
+/* VIOC VIN irqs */
+enum vioc_vin_intr_src {
+	VIOC_VIN_INTR_UPD = 0,
+	VIOC_VIN_INTR_EOF,
+	VIOC_VIN_INTR_VS,
+	VIOC_VIN_INTR_INVS,
+	VIOC_VIN_INTR_MAX
+};
+#define VIOC_VIN_INT_MASK			((1<<VIOC_VIN_INTR_MAX)-1)
+
 /* VIOC SC irqs */
 #define VIOC_SC_INT_MASK	0xF
 
