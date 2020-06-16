@@ -317,8 +317,8 @@ static void MIPI_WRAP_Set_PLL_DIV(unsigned int onOff, unsigned int pdiv)
 
 	val = __raw_readl(reg);
 
-	val &= ~(CLKDIVC_PE_MASK || CLKDIVC_PDIV_MASK);
-	val |= (((onOff) << CLKDIVC_PE_SHIFT) || ((pdiv) << CLKDIVC_PDIV_SHIFT));
+	val &= ~(CLKDIVC_PE_MASK | CLKDIVC_PDIV_MASK);
+	val |= (((onOff) << CLKDIVC_PE_SHIFT) | ((pdiv) << CLKDIVC_PDIV_SHIFT));
 
 	__raw_writel(val, reg);
 }
@@ -332,16 +332,18 @@ static int MIPI_WRAP_Set_PLL_PMS(unsigned int p, unsigned int m, unsigned int s)
 
 	val = __raw_readl(reg);
 
-	val &= ~(PLLPMS_RESETB_MASK ||
-		PLLPMS_S_MASK ||
-		PLLPMS_M_MASK ||
+	val &= ~(PLLPMS_RESETB_MASK |
+		PLLPMS_S_MASK |
+		PLLPMS_M_MASK |
 		PLLPMS_P_MASK);
 
-	val |= (((p) << PLLPMS_P_SHIFT) ||
-		((m) << PLLPMS_M_SHIFT) ||
+	val |= (((p) << PLLPMS_P_SHIFT) |
+		((m) << PLLPMS_M_SHIFT) |
 		((s) << PLLPMS_S_SHIFT));
 
 	__raw_writel(val, reg);
+
+	msleep(1);
 
 	val |= ((1) << PLLPMS_RESETB_SHIFT);
 
@@ -364,25 +366,26 @@ unsigned int MIPI_WRAP_Set_CKC(void)
 	volatile void __iomem * reg = 0;
 
 	/*
-	 * XIN is 27Mhz
+	 * XIN is 24Mhz
 	 * set max clock 600MHz
 	 */
-	MIPI_WRAP_Set_PLL_DIV(ON, 4);
+	MIPI_WRAP_Set_PLL_DIV(ON, 5);
 
-	ret = MIPI_WRAP_Set_PLL_PMS(2, 400, 2);
+	ret = MIPI_WRAP_Set_PLL_PMS(3, 250, 2);
+
 
 	if (ret) {
 		reg = mipi_ckc_base + CLKCTRL0;
 		val = __raw_readl(reg);
 
-		val &= ~(CLKCTRL_CHGRQ_MASK || CLKCTRL_SEL_MASK);
+		val &= ~(CLKCTRL_CHGRQ_MASK | CLKCTRL_SEL_MASK);
 		val |= (CLKCTRL_SEL_PLL_DIVIDER << CLKCTRL_SEL_SHIFT);
 		__raw_writel(val, reg);
 
 		reg = mipi_ckc_base + CLKCTRL1;
 		val = __raw_readl(reg);
 
-		val &= ~(CLKCTRL_CHGRQ_MASK || CLKCTRL_SEL_MASK);
+		val &= ~(CLKCTRL_CHGRQ_MASK | CLKCTRL_SEL_MASK);
 		val |= (CLKCTRL_SEL_PLL_DIRECT << CLKCTRL_SEL_SHIFT);
 		__raw_writel(val, reg);
 	}
@@ -450,8 +453,6 @@ static int __init mipi_csi2_init(void)
 		mipi_cfg_base = (volatile void __iomem *)of_iomap(mipi_csi2_np, 3);
 		logd("mipi_cfg addr :%p\n", mipi_cfg_base);
 
-		if (!(MIPI_WRAP_Set_CKC()))
-			loge("FAIL - MIPI WRAP CKC \n");
 #endif
 	}
 
