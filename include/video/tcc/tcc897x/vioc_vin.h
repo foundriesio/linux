@@ -75,7 +75,7 @@
 #define	VIN_CROP_OFFS		(0x020)
 //#define	VIN_LUT_CTRL	(0x05C)
 #define	VIN_INT				(0x060)
-//#define	VIN_LUT_C		(0x400)
+#define	VIN_LUT_C			(0x1000)
 #define	VIN_LUT_C0			(0x1000)
 #define	VIN_LUT_C1			(0x1100)
 #define	VIN_LUT_C2			(0x1200)
