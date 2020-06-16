@@ -26,11 +26,7 @@
 #define ISP_PX1X_DIV		(0X208)
 #define ISP_BYPASS		(0X20C)
 #define ISP_X2X_CFG		(0X210)
-/*
- * TODO
- * check ISP_X2X_CFG and ISP_FMT_CFG address
- */
-#define ISP_FMT_CFG		(0X210)
+#define ISP_FMT_CFG		(0X214)
 
 /*
  * CSI_CFG
@@ -218,11 +214,8 @@
 #define ISP_FMT_CFG_ISP1_FMT_MASK	((0X7) << ISP_FMT_CFG_ISP1_FMT_SHIFT)
 #define ISP_FMT_CFG_ISP0_FMT_MASK	((0X7) << ISP_FMT_CFG_ISP0_FMT_SHIFT)
 
-#define ISP_FMT_RAW_RGB_8	(0)
-#define ISP_FMT_RAW_RGB_10	(1)
-#define ISP_FMT_RAW_RGB_12	(2)
-#define ISP_FMT_RAW_RGB_14	(3)
-#define ISP_FMT_RAW_RGB_7	(4)
-#define ISP_FMT_RAW_RGB_6	(5)
+#define ISP_FMT_RAW_RGB_8_TO_10_USING_UPPER_2BIT	(0)
+#define ISP_FMT_RAW_RGB_8_TO_10_USING_ZERO		(1)
+#define ISP_FMT_RAW_RGB_10_OR_MORE			(2)
 
 #endif
