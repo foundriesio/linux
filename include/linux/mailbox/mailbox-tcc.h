@@ -37,6 +37,14 @@ struct tcc_mbox_msg
 	uint8_t message[TCC_MBOX_MAX_MSG];
 };
 
+struct tcc_sc_mbox_msg {
+	u32 cmd_len;
+	u32 *cmd;
+	u32 data_len;
+	u32 *data_buf;
+};
+
+
 #define MBOX_CMD(dev, cmd) ((1 << 31) | ((dev & 0xff) << 24) | (cmd & 0xffff))
 
 #define MBOX_DEV_COMMON (0)
