@@ -141,7 +141,7 @@
 	};
 
 	gic: interrupt-controller@17C01000 {
-		compatible = "arm,gic-400", "telechips,tcc805x-pic";
+		compatible = "arm,gic-400";
 		#interrupt-cells = <3>;
 		#address-cells = <0>;
 		interrupt-controller;

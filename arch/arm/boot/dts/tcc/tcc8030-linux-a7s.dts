@@ -79,15 +79,14 @@
 	};
 
 	gic: interrupt-controller@17301000 {
-		compatible = "arm,gic-400", "telechips,tcc803x-vpic";
+		compatible = "arm,gic-400";
 		#interrupt-cells = <3>;
 		#address-cells = <0>;
 		interrupt-controller;
 		reg = <0x17F01000 0x1000>,
 		      <0x17F02000 0x1000>,
 		      <0x17F04000 0x2000>,
-		      <0x17F06000 0x2000>,
-		      <0x14100000 0x260>;
+		      <0x17F06000 0x2000>;
 	};
 
 	timer {

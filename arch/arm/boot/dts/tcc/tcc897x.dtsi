@@ -123,14 +123,12 @@
 	};
 
 	gic:interrupt-controller@77101000 {
-		compatible = "arm,cortex-a7-gic", "telechips,tcc897x-vpic";
+		compatible = "arm,cortex-a7-gic";
 		#interrupt-cells = <3>;
 		#address-cells = <0>;
 		interrupt-controller;
 		reg = <0x77101000 0x1000>,
-		      <0x77102000 0x1000>,
-		      <0x74100000 0x260>,
-		      <0x7460000c 0x8>;
+		      <0x77102000 0x1000>;
 	};
 
 	timer {
@@ -1017,6 +1015,17 @@
 		compatible = "telechips,restart";
 		reg = <0x74400000 0x1a0>;
 		status = "okay";
+	};
+
+	tcc_pic: pic@14100000 {
+		compatible = "telechips,tcc897x-pic";
+		reg = <0x74100038 0x0008>,  /* pol_0_base */
+		      <0x74100038 0x0008>,  /* pol_1_base */
+		      <0x0 0x0>,            /* cmb_cm4_base */
+		      <0x0 0x0>,            /* strgb_cm4_base */
+		      <0x0 0x0>;            /* ca7_irqo_en_base */
+		demarcation = <64>;
+		max_irq = <64>;
 	};
 
 	pinctrl: pinctrl@74200000 {
