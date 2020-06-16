@@ -37,7 +37,15 @@
 
 static volatile void __iomem *pVIN_reg[VIOC_VIN_MAX] = {0};
 
-/* VIN polarity Setting */
+/* VIN polarity Setting
+ *	- VIN_CTRL
+ *		. [13] = gen_field_en
+ *		. [12] = de_active_low
+ *		. [11] = field_bfield_low
+ *		. [10] = vs_active_low
+ *		. [ 9] = hs_active_low
+ *		. [ 8] = pxclk_pol
+ */
 void VIOC_VIN_SetSyncPolarity(volatile void __iomem *reg,
 			      unsigned int hs_active_low,
 			      unsigned int vs_active_low,
@@ -58,7 +66,14 @@ void VIOC_VIN_SetSyncPolarity(volatile void __iomem *reg,
 	__raw_writel(val, reg + VIN_CTRL);
 }
 
-/* VIN Configuration 1 */
+/* VIN Configuration 1
+ *	- VIN_CTRL
+ *		. [22:20] = data_order
+ *		. [19:16] = fmt
+ *		. [ 6] = vs_mask
+ *		. [ 4] = hsde_connect_en
+ *		. [ 1] = conv_en
+ */
 void VIOC_VIN_SetCtrl(volatile void __iomem *reg, unsigned int conv_en,
 		      unsigned int hsde_connect_en, unsigned int vs_mask,
 		      unsigned int fmt, unsigned int data_order)
@@ -75,7 +90,11 @@ void VIOC_VIN_SetCtrl(volatile void __iomem *reg, unsigned int conv_en,
 	__raw_writel(val, reg + VIN_CTRL);
 }
 
-/* Interlace mode setting */
+/* Interlace mode setting
+ *	- VIN_CTRL
+ *		. [ 3] = intpl_en
+ *		. [ 2] = intl_en
+ */
 void VIOC_VIN_SetInterlaceMode(volatile void __iomem *reg, unsigned int intl_en,
 			       unsigned int intpl_en)
 {
@@ -87,7 +106,10 @@ void VIOC_VIN_SetInterlaceMode(volatile void __iomem *reg, unsigned int intl_en,
 	__raw_writel(val, reg);
 }
 
-/* VIN Capture mode Enable */
+/* VIN Capture mode Enable
+ *	- VIN_CTRL
+ *		. [31] = cap_en
+ */
 void VIOC_VIN_SetCaptureModeEnable(volatile void __iomem *reg,
 				   unsigned int cap_en)
 {
@@ -97,7 +119,10 @@ void VIOC_VIN_SetCaptureModeEnable(volatile void __iomem *reg,
 	__raw_writel(val, reg + VIN_CTRL);
 }
 
-/* VIN Skip Frame Number */
+/* VIN Skip Frame Number
+ *	- VIN_CTRL
+ *		. [24] = skip
+ */
 void VIOC_VIN_SetFrameSkipNumber(volatile void __iomem *reg, unsigned int skip)
 {
 	unsigned long val;
@@ -106,7 +131,10 @@ void VIOC_VIN_SetFrameSkipNumber(volatile void __iomem *reg, unsigned int skip)
 	__raw_writel(val, reg + VIN_CTRL);
 }
 
-/* VIN Enable/Disable */
+/* VIN Enable/Disable
+ *	- VIN_CTRL
+ *		. [ 0] = vin_en
+ */
 void VIOC_VIN_SetEnable(volatile void __iomem *reg, unsigned int vin_en)
 {
 	unsigned long val;
@@ -115,13 +143,21 @@ void VIOC_VIN_SetEnable(volatile void __iomem *reg, unsigned int vin_en)
 	__raw_writel(val, reg + VIN_CTRL);
 }
 
+/* VIN Is Enabled/Disabled
+ *	- VIN_CTRL
+ *		. return [ 0]
+ */
 unsigned int VIOC_VIN_IsEnable(volatile void __iomem *reg)
 {
 	return ((__raw_readl(reg + VIN_CTRL) & (VIN_CTRL_EN_MASK)) >>
 		VIN_CTRL_EN_SHIFT);
 }
 
-/* Image size setting */
+/* Image size setting
+ *	- VIN_SIZE
+ *		. [31:16] = height
+ *		. [15: 0] = width
+ */
 void VIOC_VIN_SetImageSize(volatile void __iomem *reg, unsigned int width,
 			   unsigned int height)
 {
@@ -131,7 +167,13 @@ void VIOC_VIN_SetImageSize(volatile void __iomem *reg, unsigned int width,
 	__raw_writel(val, reg + VIN_SIZE);
 }
 
-/* Image offset setting */
+/* Image offset setting
+ *	- VIN_OFFS
+ *		. [31:16] = offs_height
+ *		. [15: 0] = offs_width
+ *	- VIN_OFFS_INTL
+ *		. [31:16] = offs_height_intl
+ */
 void VIOC_VIN_SetImageOffset(volatile void __iomem *reg,
 			     unsigned int offs_width, unsigned int offs_height,
 			     unsigned int offs_height_intl)
@@ -145,6 +187,11 @@ void VIOC_VIN_SetImageOffset(volatile void __iomem *reg,
 	__raw_writel(val, reg + VIN_OFFS_INTL);
 }
 
+/* Image crop size setting
+ *	- VIN_CROP_SIZE
+ *		. [31:16] = height
+ *		. [15: 0] = width
+ */
 void VIOC_VIN_SetImageCropSize(volatile void __iomem *reg, unsigned int width,
 			       unsigned int height)
 {
@@ -154,6 +201,11 @@ void VIOC_VIN_SetImageCropSize(volatile void __iomem *reg, unsigned int width,
 	__raw_writel(val, reg + VIN_CROP_SIZE);
 }
 
+/* Image crop offset(starting porint) setting
+ *	- VIN_CROP_OFFS
+ *		. [31:16] = offs_height
+ *		. [15: 0] = offs_width
+ */
 void VIOC_VIN_SetImageCropOffset(volatile void __iomem *reg,
 				 unsigned int offs_width,
 				 unsigned int offs_height)
@@ -164,7 +216,10 @@ void VIOC_VIN_SetImageCropOffset(volatile void __iomem *reg,
 	__raw_writel(val, reg + VIN_CROP_OFFS);
 }
 
-/* Y2R conversion mode setting */
+/* Y2R conversion mode setting
+ *	- VIN_MISC
+ *		. [ 7: 5] = y2r_mode
+ */
 void VIOC_VIN_SetY2RMode(volatile void __iomem *reg, unsigned int y2r_mode)
 {
 	unsigned long val;
@@ -173,7 +228,10 @@ void VIOC_VIN_SetY2RMode(volatile void __iomem *reg, unsigned int y2r_mode)
 	__raw_writel(val, reg + VIN_MISC);
 }
 
-/* Y2R conversion Enable/Disable */
+/* Y2R conversion Enable/Disable
+ *	- VIN_MISC
+ *		. [ 4] = y2r_en
+ */
 void VIOC_VIN_SetY2REnable(volatile void __iomem *reg, unsigned int y2r_en)
 {
 	unsigned long val;
@@ -182,7 +240,16 @@ void VIOC_VIN_SetY2REnable(volatile void __iomem *reg, unsigned int y2r_en)
 	__raw_writel(val, reg + VIN_MISC);
 }
 
-/* initialize LUT, for example, LUT values are set to inverse function. */
+/* initialize LUT, for example, LUT values are set to inverse function.
+ *	- VIN_MISC
+ *		. [ 3] is controlled in this function automatically
+ *	- VIN_LUT_C0
+ *		. [31: 0] = (pLUT + 0Byte) ~ +256Byte
+ *	- VIN_LUT_C1
+ *		. [31: 0] = (pLUT + 256Byte) ~ +256Byte
+ *	- VIN_LUT_C2
+ *		. [31: 0] = (pLUT + 512Byte) ~ +256Byte
+ */
 void VIOC_VIN_SetLUT(volatile void __iomem *reg, unsigned int *pLUT)
 {
 	unsigned int *pLUT0, *pLUT1, *pLUT2, uiCount;
@@ -206,7 +273,12 @@ void VIOC_VIN_SetLUT(volatile void __iomem *reg, unsigned int *pLUT)
 		reg + VIN_MISC); /* Access Look-Up Table Using Vin Module */
 }
 
-/* LUT Enable/Disable */
+/* LUT Enable/Disable
+ *	- VIN_MISC
+ *		. [ 2] = lut2_en
+ *		. [ 1] = lut1_en
+ *		. [ 0] = lut0_en
+ */
 void VIOC_VIN_SetLUTEnable(volatile void __iomem *reg, unsigned int lut0_en,
 			   unsigned int lut1_en, unsigned int lut2_en)
 {
@@ -218,6 +290,7 @@ void VIOC_VIN_SetLUTEnable(volatile void __iomem *reg, unsigned int lut0_en,
 	__raw_writel(val, reg + VIN_MISC);
 }
 
+/* Not Used (will be deleted) */
 void VIOC_VIN_SetDemuxPort(volatile void __iomem *reg, unsigned int p0,
 			   unsigned int p1, unsigned int p2, unsigned int p3)
 {
@@ -232,6 +305,7 @@ void VIOC_VIN_SetDemuxPort(volatile void __iomem *reg, unsigned int p0,
 	__raw_writel(val, reg + VD_CTRL);
 }
 
+/* Not Used (will be deleted) */
 void VIOC_VIN_SetDemuxClock(volatile void __iomem *reg, unsigned int mode)
 {
 	unsigned long val;
@@ -240,6 +314,7 @@ void VIOC_VIN_SetDemuxClock(volatile void __iomem *reg, unsigned int mode)
 	__raw_writel(val, reg + VD_CTRL);
 }
 
+/* Not Used (will be deleted) */
 void VIOC_VIN_SetDemuxEnable(volatile void __iomem *reg, unsigned int enable)
 {
 	unsigned long val;
@@ -248,6 +323,10 @@ void VIOC_VIN_SetDemuxEnable(volatile void __iomem *reg, unsigned int enable)
 	__raw_writel(val, reg + VD_CTRL);
 }
 
+/* VIN Set SE (for mipi input)
+ *	- VIN_CTRL
+ *		. [14] = se
+ */
 void VIOC_VIN_SetSEEnable(volatile void __iomem *reg, unsigned int se)
 {
 	unsigned long val;
@@ -257,6 +336,10 @@ void VIOC_VIN_SetSEEnable(volatile void __iomem *reg, unsigned int se)
 	__raw_writel(val, reg + VIN_CTRL);
 }
 
+/* VIN Flush buffer (for mipi input)
+ *	- VIN_MISC
+ *		. [16] = fvs
+ */
 #if defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X)
 void VIOC_VIN_SetFlushBufferEnable(volatile void __iomem *reg, unsigned int fvs)
 {
@@ -268,6 +351,11 @@ void VIOC_VIN_SetFlushBufferEnable(volatile void __iomem *reg, unsigned int fvs)
 #endif
 
 #if defined(CONFIG_ARCH_TCC805X)
+/* VIN Interrupt Mask
+ *	- VIN_INT
+ *		. [19:16] = mask and set
+ *	Not Used, Please use the alternative functions in vioc_intr.c
+ */
 void VIOC_VIN_SetIreqMask(volatile void __iomem *reg, unsigned int mask, unsigned int set)
 {
 	/*
@@ -282,57 +370,110 @@ void VIOC_VIN_SetIreqMask(volatile void __iomem *reg, unsigned int mask, unsigne
 	__raw_writel(value, reg + VIN_INT);
 }
 
+/* VIN Get Interrupt Status
+ *	- VIN_INT
+ *		. return [ 3: 2]
+ *	Not Used, Please use the alternative functions in vioc_intr.c
+ */
 void VIOC_VIN_GetStatus(volatile void __iomem *reg, unsigned int *status)
 {
 	*status = __raw_readl(reg + VIN_INT) & VIOC_VIN_INT_MASK;
 }
 
+/* VIN Clear All Monitoring Registers
+ *	- VIN_MON_CLR
+ *		. [ 0] = 1
+ *	* The monitoring registers are used for debugging only.
+ */
 void VIOC_VIN_ClearAllMonitorCounters(volatile void __iomem *reg)
 {
 	__raw_writel(1, reg + VIN_MON_CLR);
 }
 
+/* VIN Get HSync Max Count
+ *	- VIN_MON_HS
+ *		. return [31: 0]
+ *	* The monitoring registers are used for debugging only.
+ */
 unsigned int VIOC_VIN_GetHSyncMax(volatile void __iomem *reg)
 {
 	return (__raw_readl(reg + VIN_MON_HS) & VIN_MON_HS_MAX_MASK) >> VIN_MON_HS_MAX_SHIFT;
 }
 
+/* VIN Get HSync Current Count
+ *	- VIN_MON_HS
+ *		. return [31: 0]
+ *	* The monitoring registers are used for debugging only.
+ */
 unsigned int VIOC_VIN_GetHSyncCounter(volatile void __iomem *reg)
 {
 	return (__raw_readl(reg + VIN_MON_HS) & VIN_MON_HS_CNT_MASK) >> VIN_MON_HS_CNT_SHIFT;
 }
 
+/* VIN Get DataEnable Max Count
+ *	- VIN_MON_DE
+ *		. return [31:16]
+ *	* The monitoring registers are used for debugging only.
+ */
 unsigned int VIOC_VIN_GetDataEnableMax(volatile void __iomem *reg)
 {
 	return (__raw_readl(reg + VIN_MON_DE) & VIN_MON_DE_MAX_MASK) >> VIN_MON_DE_MAX_SHIFT;
 }
 
+/* VIN Get DataEnable Current Count
+ *	- VIN_MON_DE
+ *		. return [31: 0]
+ *	* The monitoring registers are used for debugging only.
+ */
 unsigned int VIOC_VIN_GetDataEnableCounter(volatile void __iomem *reg)
 {
 	return (__raw_readl(reg + VIN_MON_DE) & VIN_MON_DE_CNT_MASK) >> VIN_MON_DE_CNT_SHIFT;
 }
 
+/* VIN Get LineCounter Max Count
+ *	- VIN_MON_LCNT
+ *		. return [31:16]
+ *	* The monitoring registers are used for debugging only.
+ */
 unsigned int VIOC_VIN_GetLineCountMax(volatile void __iomem *reg)
 {
 	return (__raw_readl(reg + VIN_MON_LCNT) & VIN_MON_LCNT_MAX_MASK) >> VIN_MON_LCNT_MAX_SHIFT;
 }
 
+/* VIN Get LineCounter Max Count
+ *	- VIN_MON_LCNT
+ *		. return [31: 0]
+ *	* The monitoring registers are used for debugging only.
+ */
 unsigned int VIOC_VIN_GetLineCountCounter(volatile void __iomem *reg)
 {
 	return (__raw_readl(reg + VIN_MON_LCNT) & VIN_MON_LCNT_CNT_MASK) >> VIN_MON_LCNT_CNT_SHIFT;
 }
 
+/* VIN Get VSync Max Count
+ *	- VIN_MON_VSMAX
+ *		. return [31: 0]
+ *	* The monitoring registers are used for debugging only.
+ */
 unsigned int VIOC_VIN_GetVSyncMax(volatile void __iomem *reg)
 {
 	return __raw_readl(reg + VIN_MON_VSMAX);
 }
 
+/* VIN Get VSync Current Count
+ *	- VIN_MON_VSCNT
+ *		. return [31: 0]
+ *	* The monitoring registers are used for debugging only.
+ */
 unsigned int VIOC_VIN_GetVSyncCounter(volatile void __iomem *reg)
 {
 	return __raw_readl(reg + VIN_MON_VSCNT);
 }
 #endif
 
+/* VIN Get Register Address
+ *	- return VINn_BASE_ADDR
+ */
 volatile void __iomem *VIOC_VIN_GetAddress(unsigned int Num)
 {
 	Num = get_vioc_index(Num);
@@ -349,6 +490,9 @@ err:
 	return NULL;
 }
 
+/* VIN Init vin structure
+ *	- parse the device tree and init vin structure
+ */
 static int __init vioc_vin_init(void)
 {
 	int i;
