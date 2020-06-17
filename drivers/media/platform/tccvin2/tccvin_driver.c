@@ -315,6 +315,31 @@ static int tccvin_register_video(struct tccvin_device *dev,
 		return ret;
 	}
 
+	/* Register the device with V4L. */
+
+	/* We already hold a reference to dev->udev. The video device will be
+	 * unregistered before the reference is released, so we don't need to
+	 * get another one.
+	 */
+	vdev->v4l2_dev = &dev->vdev;
+	vdev->fops = &tccvin_fops;
+	vdev->ioctl_ops = &tccvin_ioctl_ops;
+	vdev->minor = dev->pdev->id;
+	vdev->release = tccvin_release;
+	strlcpy(vdev->name, dev->name, sizeof vdev->name);
+
+	/* Set the driver data before calling video_register_device, otherwise
+	 * tccvin_v4l2_open might race us.
+	 */
+	video_set_drvdata(vdev, stream);
+
+	ret = video_register_device(vdev, VFL_TYPE_GRABBER, vdev->minor);
+	if (ret < 0) {
+		loge("Failed to register video device (%d).\n",
+			   ret);
+		return ret;
+	}
+
 	/* Initialize the streaming interface with default streaming
 	 * parameters.
 	 */
@@ -325,55 +350,46 @@ static int tccvin_register_video(struct tccvin_device *dev,
 		return ret;
 	}
 
-	/* Register the device with V4L. */
-
-	/* We already hold a reference to dev->udev. The video device will be
-	 * unregistered before the reference is released, so we don't need to
-	 * get another one.
-	 */
-	vdev->v4l2_dev = &dev->vdev;
-	vdev->fops = &tccvin_fops;
-	vdev->ioctl_ops = &tccvin_ioctl_ops;
-	vdev->release = tccvin_release;
-	strlcpy(vdev->name, dev->name, sizeof vdev->name);
-
-	/* Set the driver data before calling video_register_device, otherwise
-	 * tccvin_v4l2_open might race us.
-	 */
-	video_set_drvdata(vdev, stream);
-
-	ret = video_register_device(vdev, VFL_TYPE_GRABBER, -1);
-	if (ret < 0) {
-		loge("Failed to register video device (%d).\n",
-			   ret);
-		return ret;
-	}
-
 	kref_get(&dev->ref);
 	FUNCTION_OUT
 	return 0;
 }
 
+int subdevs_list_initialized;
+struct tccvin_subdev {
+	struct v4l2_subdev	*subdev;
+	struct list_head	subdev_list;
+};
+
+struct tccvin_subdev tccvin_subdev_list;
+
 int tccvin_async_bound(struct v4l2_async_notifier *notifier, struct v4l2_subdev *subdev, struct v4l2_async_subdev *asd) {
 	struct tccvin_device * dev = NULL;
 	videosource_t * vs = NULL;
 	int	enable = 1;
+	struct tccvin_subdev * new_subdev;
 	int	ret = 0;
 
-	printk("The callback function is invoked from found node: %s\n",
-	       asd->match.device_name.name);
-
-	printk("Subdevice name: %s\n", subdev->name);
+	logd("The callback function is invoked from found node: %s\n", asd->match.device_name.name);
 
 	dev = container_of(notifier, struct tccvin_device, notifier);
 
 	// register subdevice here
 	dev->subdevs[dev->num_registered_subdev++] = subdev;
 
+	new_subdev = kmalloc(sizeof(struct tccvin_subdev), GFP_KERNEL);
+
+	new_subdev->subdev = subdev;
+	INIT_LIST_HEAD(&new_subdev->subdev_list);
+	list_add_tail(&new_subdev->subdev_list, &tccvin_subdev_list.subdev_list);
+	
+	subdevs_list_initialized = 1;
+
 	// get videosource format
 	vs = container_of(subdev, struct videosource, sd);
 	dev->stream->cif.videosource_info		= &vs->format;
-	dev->stream->cif.cif_port				= vs->format.cif_port;
+	if(dev->stream->cif.cif_port == -1)
+		dev->stream->cif.cif_port			= vs->format.cif_port;
 
 	// power-up sequence & initial i2c setting
 	ret = v4l2_subdev_call(subdev, core, s_power, enable);
@@ -385,7 +401,7 @@ int tccvin_async_bound(struct v4l2_async_notifier *notifier, struct v4l2_subdev 
 void tccvin_async_unbind(struct v4l2_async_notifier *notifier,
 			struct v4l2_subdev *subdev,
 			struct v4l2_async_subdev *asd) {
-	printk("%s is invoked !! \n", __func__);
+	logd("%s is invoked !! \n", __func__);
 }
 
 int tccvin_async_complete(struct v4l2_async_notifier *notifier) {
@@ -394,26 +410,38 @@ int tccvin_async_complete(struct v4l2_async_notifier *notifier) {
 	return 0;
 }
 
-static bool match_devname(struct v4l2_subdev *sd,
-			  struct v4l2_async_subdev *asd)
-{
-	return !strcmp(asd->match.device_name.name, dev_name(sd->dev));
-}
-
-bool tccvin_subdev_match_custom(struct device *dev, struct v4l2_async_subdev *sd) {
-	logn("dev_name: %s\n", dev_name(dev));
-	logn("dev->of_node->name: %s\n", dev->of_node->name);
-
-	return strcmp(dev_name(dev), sd->match.custom.priv);
-}
-
 int tccvin_init_subdevices(struct tccvin_device *vdev) {
-	struct v4l2_async_notifier *notifier = &(vdev->notifier);
+	struct v4l2_async_notifier *notifier = &vdev->notifier;
 	struct v4l2_async_subdev *asd = NULL;
+	char *subdev_name = "7-0048";
 	int idxSubDev = 0;
 	int	ret = 0;
 
 	vdev->num_registered_subdev = 0;
+
+	if(subdevs_list_initialized == 0) {
+		INIT_LIST_HEAD(&tccvin_subdev_list.subdev_list);
+	} else {
+		struct list_head	* list	= NULL;
+		struct tccvin_subdev * p = NULL;
+		videosource_t * vs = NULL;
+
+		list_for_each(list, &tccvin_subdev_list.subdev_list) {
+			p = list_entry(list, struct tccvin_subdev, subdev_list);
+			logd("subdev name: %s\n", dev_name(p->subdev->dev));
+			if(!strcmp(subdev_name, dev_name(p->subdev->dev))) {
+				vdev->subdevs[vdev->num_registered_subdev++] = p->subdev;
+	
+				// get videosource format
+				vs = container_of(p->subdev, struct videosource, sd);
+				vdev->stream->cif.videosource_info		= &vs->format;
+				if(vdev->stream->cif.cif_port == -1)
+					vdev->stream->cif.cif_port			= vs->format.cif_port;
+
+				return ret;
+			}
+		}
+	}
 
 	/* Set the number of all sub-devices to 1 temporarily. This
 	 * should be changed according to the working environment */
@@ -430,17 +458,10 @@ int tccvin_init_subdevices(struct tccvin_device *vdev) {
 		asd = vdev->asd[idxSubDev];
 
 		/* For match type, it could be device name and i2c like; V4L2_ASYNC_MATCH_I2C */
-#if 0
 		asd->match_type = V4L2_ASYNC_MATCH_DEVNAME;
-//		asd->match.device_name.name = "0-0044";
-		asd->match.device_name.name = "7-0021";
+		asd->match.device_name.name = "7-0048";
 
-		printk("v4l2 sub device - slave address: %s\n", asd->match.device_name.name);
-#else
-		asd->match_type = V4L2_ASYNC_MATCH_CUSTOM;
-		asd->match.custom.match = tccvin_subdev_match_custom;
-		asd->match.custom.priv = "deserializer_max9286";//"videodecoder_adv7182";
-#endif
+		logd("v4l2 sub device - slave address: %s\n", asd->match.device_name.name);
 	}
 
 	notifier->bound = tccvin_async_bound;
@@ -448,11 +469,11 @@ int tccvin_init_subdevices(struct tccvin_device *vdev) {
 	notifier->unbind = tccvin_async_unbind;
 	ret = v4l2_async_notifier_register(vdev->stream->vdev.v4l2_dev, notifier);
 	if (ret < 0) {
-		printk(KERN_ERR "Error registering async notifier for tccvin\n");
+		loge("Error registering async notifier for tccvin\n");
 		v4l2_device_unregister(vdev->stream->vdev.v4l2_dev);
 		ret = -EINVAL;
 	} else {
-		printk(KERN_ERR "Succeed to register async notifier for tccvin\n");
+		logd("Succeed to register async notifier for tccvin\n");
 	}
 
 	return ret;
@@ -465,6 +486,10 @@ int tccvin_init_subdevices(struct tccvin_device *vdev) {
 static int tccvin_core_probe(struct platform_device * pdev) {
 	struct tccvin_device *dev;
 	FUNCTION_IN
+
+	// Get the index from its alias
+	pdev->id = of_alias_get_id(pdev->dev.of_node, "videoinput");
+	logd("Platform Device index: %d, name: %s\n", pdev->id, pdev->name);
 
 	/* Allocate memory for the device and initialize it. */
 	if ((dev = kzalloc(sizeof *dev, GFP_KERNEL)) == NULL)

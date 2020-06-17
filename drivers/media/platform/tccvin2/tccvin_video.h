@@ -110,6 +110,7 @@ typedef struct tccvin_cif {
 
 	// framebuffer
 	buf_addr_t					* preview_buf_addr;
+	void __iomem				* vir;
 
 	unsigned int				skip_frame;
 
@@ -262,6 +263,7 @@ struct tccvin_device {
 	int num_registered_subdev;
 	int current_subdev_idx;
 
+	char	subdev_name[1024];
 	struct v4l2_async_subdev* asd[TCCVIN_MAX_VIDEOSOURCE];
 	struct v4l2_subdev* subdevs[TCCVIN_MAX_VIDEOSOURCE];
 	struct v4l2_async_notifier notifier;
@@ -299,7 +301,7 @@ extern unsigned int tccvin_timeout_param;
 #define logw(fmt, ...)			logl(KERN_WARNING,	fmt, ##__VA_ARGS__)
 #define logn(fmt, ...)			logl(KERN_NOTICE,	fmt, ##__VA_ARGS__)
 #define logd(fmt, ...)			logl(KERN_DEBUG,	fmt, ##__VA_ARGS__)
-#define dlog(fmt, ...)			logl(KERN_DEBUG,	fmt, ##__VA_ARGS__)
+#define dlog(fmt, ...)			//logl(KERN_DEBUG,	fmt, ##__VA_ARGS__)
 
 #define FUNCTION_IN				//logd("IN\n");
 #define FUNCTION_OUT			//logd("OUT\n");

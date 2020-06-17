@@ -35,8 +35,6 @@
 
 #include "tccvin_video.h"
 
-void __iomem *vir = NULL;
-
 /* ------------------------------------------------------------------------
  * Video formats
  */
@@ -200,7 +198,7 @@ static int tccvin_parse_device_tree(struct tccvin_streaming * vdev) {
 		}
 	} else {
 		loge("The CIF port node is NULL\n");
-		return -ENODEV;
+//		return -ENODEV;
 	}
 
 #ifdef CONFIG_OVERLAY_PGL
@@ -571,7 +569,7 @@ static int tccvin_set_vin(struct tccvin_streaming * vdev) {
 #if defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X)
 	unsigned int	se					= vs_info->se;
 	unsigned int	fvs 				= vs_info->fvs;
-#endif//defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X)
+#endif//defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X)
 
 	FUNCTION_IN
 	logd("VIN: 0x%p, Source Size - width: %d, height: %d\n", pVIN, width, height);
@@ -588,7 +586,7 @@ static int tccvin_set_vin(struct tccvin_streaming * vdev) {
 #if defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X)
 	VIOC_VIN_SetSEEnable(pVIN, se);
 	VIOC_VIN_SetFlushBufferEnable(pVIN, fvs);
-#endif//defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X)
+#endif//defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X)
 
 	logd("vdev->cif.videosource_format.data_format: 0x%08x, FMT_YUV422_16BIT: 0x%08x, FMT_YUV422_8BIT: 0x%08x\n", vdev->cif.videosource_info->data_format, FMT_YUV422_16BIT, FMT_YUV422_8BIT);
 	logd("vdev->cur_format->fcc: 0x%08x, V4L2_PIX_FMT_RGB24: 0x%08x, V4L2_PIX_FMT_RGB32: 0x%08x\n", vdev->cur_format->fcc, V4L2_PIX_FMT_RGB24, V4L2_PIX_FMT_RGB32);
@@ -901,8 +899,8 @@ static void tccvin_work_thread(struct work_struct * data) {
 	buf->buf.field = V4L2_FIELD_NONE;
 	buf->buf.sequence = stream->sequence++;
 	buf->state = TCCVIN_BUF_STATE_READY;
-	logd("buf->length: 0x%08x\n", buf->length);
-	memcpy(buf->mem, vir, buf->length);
+	logd("VIN[%d] buf->length: 0x%08x\n", stream->vdev.num, buf->length);
+	memcpy(buf->mem, cif->vir, buf->length);
 	buf->bytesused = buf->length;
 
 	/*
@@ -941,15 +939,24 @@ static irqreturn_t tccvin_wdma_isr(int irq, void * client_data) {
 }
 
 static int tccvin_allocate_essential_buffers(struct tccvin_streaming * vdev) {
+	char				pmap_preview_name[1024];
 	int					ret = 0;
 
-	strcpy(vdev->cif.pmap_preview.name, "rearcamera");
+	if(0 < vdev->vdev.num) {
+		sprintf(pmap_preview_name, "rearcamera%d", vdev->vdev.num);
+	} else {
+		sprintf(pmap_preview_name, "rearcamera");
+	}
+	strcpy(vdev->cif.pmap_preview.name, pmap_preview_name);
 	ret = pmap_get_info(vdev->cif.pmap_preview.name, &vdev->cif.pmap_preview);
 	if(ret == 1) {
-		logd("name: %20s, base: 0x%08x, size: 0x%08x\n",
+		logn("name: %20s, base: 0x%08x, size: 0x%08x\n",
 			vdev->cif.pmap_preview.name, \
 			vdev->cif.pmap_preview.base, \
 			vdev->cif.pmap_preview.size);
+		vdev->cif.vir = ioremap_nocache(vdev->cif.pmap_preview.base, PAGE_ALIGN(vdev->cif.pmap_preview.size));
+		logd("name: %20s, phy base: 0x%08x, vir base: 0x%08x\n", \
+			vdev->cif.pmap_preview.name, vdev->cif.pmap_preview.base, vdev->cif.vir);
     } else {
 		loge("get \"rearcamera\" pmap information.\n");
 		return -1;
@@ -1108,14 +1115,14 @@ static int tccvin_request_irq(struct tccvin_streaming * vdev) {
 		vdev->cif.vioc_intr.id   = -1;
 		vdev->cif.vioc_intr.bits = -1;
 
-#ifdef CONFIG_ARCH_TCC803X
+#if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X)
 		if(vdev->cif.vioc_path.wdma < VIOC_WDMA09)
 			vdev->cif.vioc_intr.id		= VIOC_INTR_WD0 + get_vioc_index(vdev->cif.vioc_path.wdma);
 		else
 			vdev->cif.vioc_intr.id		= VIOC_INTR_WD9 + (get_vioc_index(vdev->cif.vioc_path.wdma) - get_vioc_index(VIOC_WDMA09));
 #else
 		vdev->cif.vioc_intr.id		= VIOC_INTR_WD0 + get_vioc_index(vdev->cif.vioc_path.wdma);
-#endif
+#endif//defined(CONFIG_ARCH_TCC805X) || defined(CONFIG_ARCH_TCC805X)
 		vdev->cif.vioc_intr.bits	= VIOC_WDMA_IREQ_EOFR_MASK;
 
 		if(vdev->cif.vioc_irq_reg == 0) {
@@ -1213,10 +1220,6 @@ static void tccvin_disable_clock(struct tccvin_streaming * vdev) {
 	FUNCTION_OUT
 }
 
-#if 0//def CONFIG_VIDEO_VIDEOSOURCE
-extern int videosource_if_initialize(void);
-#endif//CONFIG_VIDEO_VIDEOSOURCE
-
 int tccvin_video_init(struct tccvin_streaming *stream) {
 	struct tccvin_format *format = NULL;
 	struct tccvin_frame *frame = NULL;
@@ -1296,20 +1299,6 @@ int tccvin_video_init(struct tccvin_streaming *stream) {
 	stream->def_format = format;
 	stream->cur_format = format;
 	stream->cur_frame = frame;
-
-	if(vir == NULL) {
-		pmap_t		pmap;
-		if(pmap_get_info("rearcamera", &pmap) == 1) {
-			logi("[PMAP] %s: 0x%08x ~ 0x%08x (0x%08x)\n",
-				pmap.name, \
-				pmap.base, \
-				pmap.base + pmap.size, \
-				pmap.size);
-		}
-
-		vir = ioremap_nocache(pmap.base, PAGE_ALIGN(pmap.size));
-		logi("phy base: 0x%08x, vir base: 0x%p\n", pmap.base, vir);
-	}
 
 	FUNCTION_OUT
 	return ret;

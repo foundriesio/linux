@@ -259,7 +259,7 @@
 	};
 
 	i2c@16370000 {
-		status = "disabled";
+		status = "okay";
 		port-mux = <28>;
 		pinctrl-names = "default";
 		pinctrl-0 = <&i2c28_bus>;
@@ -276,7 +276,7 @@
 
 		videosource1: deserializer_max9286 {
 			compatible	= "maxim,max9286";
-			/* refer to CIFPORT0(0x12380008) of datasheet */
+			// refer to CIFPORT0(0x12380008) of datasheet
 			cifport		= <9>;
 			pwd-gpios	= <&gpg 5 1>;
 			intb-gpios	= <&gph 11 1>;
@@ -288,6 +288,18 @@
 //			cifport		= <9>;
 //			reg		= <0x30>;	// 0x60 >> 1
 //		};
+	};
+
+	videoinput0 {
+		videosource	= <&videosource0>;
+	};
+
+	videoinput4 {
+		videosource	= <&videosource1>;
+	};
+
+	videoinput5 {
+		videosource	= <&videosource1>;
 	};
 
 	gpsb1@16910000 {

@@ -488,7 +488,7 @@
 		 * Early/RearCamera Area
 		 *-----------------------------------------------------------
 		 */
-		rearcamera_viqe: rearcamera_viqe {
+		pmap_rearcamera_viqe: rearcamera_viqe {
 			compatible = "telechips,pmap";
 			telechips,pmap-name = "rearcamera_viqe";
 			alloc-ranges = <0x0 EARLY_REARCAM_BASE 0x0 EARLY_REARCAM_SIZE>;
@@ -496,7 +496,7 @@
 			no-map;
 		};
 
-		rearcamera: rearcamera {
+		pmap_rearcamera: rearcamera {
 			compatible = "telechips,pmap";
 			telechips,pmap-name = "rearcamera";
 			alloc-ranges = <0x0 EARLY_REARCAM_BASE 0x0 EARLY_REARCAM_SIZE>;
@@ -504,7 +504,23 @@
 			no-map;
 		};
 
-		parking_gui: parking_gui {
+		pmap_rearcamera4: rearcamera4 {
+			compatible = "telechips,pmap";
+			telechips,pmap-name = "rearcamera4";
+			alloc-ranges = <0x0 EARLY_REARCAM_BASE 0x0 EARLY_REARCAM_SIZE>;
+			size = <0x0 PMAP_REARCAMERA4_SIZE>;
+			no-map;
+		};
+
+		pmap_rearcamera5: rearcamera5 {
+			compatible = "telechips,pmap";
+			telechips,pmap-name = "rearcamera5";
+			alloc-ranges = <0x0 EARLY_REARCAM_BASE 0x0 EARLY_REARCAM_SIZE>;
+			size = <0x0 PMAP_REARCAMERA5_SIZE>;
+			no-map;
+		};
+
+		pmap_parking_gui: parking_gui {
 			compatible = "telechips,pmap";
 			telechips,pmap-name = "parking_gui";
 			alloc-ranges = <0x0 EARLY_REARCAM_BASE 0x0 EARLY_REARCAM_SIZE>;
@@ -3297,6 +3313,7 @@
 	videoinput0: videoinput@0 {
 		compatible	= "telechips,video-input";
 		clocks		= <&clk_ddi DDIBUS_VIOC>;
+		cifport		= <&cifport		0>;
 		rdma		= <&vioc_rdma		VIOC_RDMA16>;
 		vin		= <&vioc_vin		VIOC_VIN00>;
 		viqe		= <&vioc_viqe		VIOC_VIQE1>;
@@ -3312,6 +3329,7 @@
 	videoinput1: videoinput@1 {
 		compatible	= "telechips,video-input";
 		clocks		= <&clk_ddi DDIBUS_VIOC>;
+		cifport		= <&cifport		1>;
 		rdma		= <&vioc_rdma		VIOC_RDMA17>;
 		vin		= <&vioc_vin		VIOC_VIN10>;
 		viqe		= <&vioc_viqe		VIOC_VIQE1>;
@@ -3321,12 +3339,13 @@
 		wmixer		= <&vioc_wmix		VIOC_WMIX6>;
 		wdma		= <&vioc_wdma		VIOC_WDMA07>;
 		fifo		= <&vioc_fifo		VIOC_FIFO0>;
-		status		= "okay";
+		status		= "disabled";
 	};
 
 	videoinput2: videoinput@2 {
 		compatible	= "telechips,video-input";
 		clocks		= <&clk_ddi DDIBUS_VIOC>;
+		cifport		= <&cifport		2>;
 		rdma		= <&vioc_rdma		VIOC_RDMA13>;
 		vin		= <&vioc_vin		VIOC_VIN20>;
 		viqe		= <&vioc_viqe		VIOC_VIQE1>;
@@ -3342,6 +3361,7 @@
 	videoinput3: videoinput@3 {
 		compatible	= "telechips,video-input";
 		clocks		= <&clk_ddi DDIBUS_VIOC>;
+		cifport		= <&cifport		3>;
 		rdma		= <&vioc_rdma		VIOC_RDMA15>;
 		vin		= <&vioc_vin		VIOC_VIN30>;
 		viqe		= <&vioc_viqe		VIOC_VIQE1>;
@@ -3357,24 +3377,27 @@
 	videoinput4: videoinput@4 {
 		compatible	= "telechips,video-input";
 		clocks		= <&clk_ddi DDIBUS_VIOC>;
+		cifport		= <&cifport		9>;
 		vin		= <&vioc_vin		VIOC_VIN40>;
 		wdma		= <&vioc_wdma		VIOC_WDMA09>;
 		fifo		= <&vioc_fifo		VIOC_FIFO0>;
-		status		= "disabled";
+		status		= "okay";
 	};
 
 	videoinput5: videoinput@5 {
 		compatible	= "telechips,video-input";
 		clocks		= <&clk_ddi DDIBUS_VIOC>;
+		cifport		= <&cifport		10>;
 		vin		= <&vioc_vin		VIOC_VIN50>;
 		wdma		= <&vioc_wdma		VIOC_WDMA10>;
 		fifo		= <&vioc_fifo		VIOC_FIFO0>;
-		status		= "disabled";
+		status		= "okay";
 	};
 
 	videoinput6: videoinput@6 {
 		compatible	= "telechips,video-input";
 		clocks		= <&clk_ddi DDIBUS_VIOC>;
+		cifport		= <&cifport		11>;
 		vin		= <&vioc_vin		VIOC_VIN60>;
 		wdma		= <&vioc_wdma		VIOC_WDMA11>;
 		fifo		= <&vioc_fifo		VIOC_FIFO0>;
@@ -3384,6 +3407,7 @@
 	videoinput7: videoinput@7 {
 		compatible	= "telechips,video-input";
 		clocks		= <&clk_ddi DDIBUS_VIOC>;
+		cifport		= <&cifport		12>;
 		vin		= <&vioc_vin		VIOC_VIN70>;
 		wdma		= <&vioc_wdma		VIOC_WDMA12>;
 		fifo		= <&vioc_fifo		VIOC_FIFO0>;

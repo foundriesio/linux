@@ -390,7 +390,7 @@ struct tccvin_buffer *tccvin_queue_next_buffer(struct tccvin_video_queue *queue,
 	if (!list_empty(&queue->irqqueue)) {
 		nextbuf = list_first_entry(&queue->irqqueue, struct tccvin_buffer,
 					   queue);
-		logd("nextbuf - index: %d, type: 0x%08x, memory: 0x%08x\n", \
+		dlog("nextbuf - index: %d, type: 0x%08x, memory: 0x%08x\n", \
 			nextbuf->buf.vb2_buf.index, nextbuf->buf.vb2_buf.type, nextbuf->buf.vb2_buf.memory);
 	} else {
 		nextbuf = NULL;
