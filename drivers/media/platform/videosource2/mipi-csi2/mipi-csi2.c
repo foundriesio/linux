@@ -22,10 +22,18 @@
 #include <linux/clk.h>
 #include <linux/delay.h>
 
+#include "../videosource_common.h"
 #include "mipi-csi2.h"
+#include "mipi-cfg-reg.h"
+#include "mipi-ckc-reg.h"
 
 static struct device_node * 	mipi_csi2_np;
 static volatile void __iomem *	mipi_csi2_base;
+
+#ifdef CONFIG_ARCH_TCC805X
+static volatile void __iomem *	mipi_ckc_base;
+static volatile void __iomem *	mipi_cfg_base;
+#endif
 
 #ifndef pr_err
 #define pr_err	printk
@@ -193,10 +201,10 @@ void MIPI_CSIS_Set_CSIS_Reset(unsigned int reset)
 
 	while(__raw_readl(reg) & CCTRL_SW_RESET_MASK) {
 		if(count > 50) {
-			pr_err("%s: fail reset \n", __func__);
+			loge("fail reset \n");
 			break;
 		}
-		mdelay(1);
+		msleep(1);
 		count++;
 	}
 }
@@ -312,16 +320,152 @@ unsigned int MIPI_CSIS_Get_CSIS_Interrupt_Src(unsigned int page)
 	return val;
 }
 
+#if defined(CONFIG_ARCH_TCC805X)
+static void MIPI_WRAP_Set_PLL_DIV(unsigned int onOff, unsigned int pdiv)
+{
+	unsigned int val = 0;
+	volatile void __iomem * reg = 0;
+
+	reg = mipi_ckc_base + CLKDIVC;
+
+	val = __raw_readl(reg);
+
+	val &= ~(CLKDIVC_PE_MASK | CLKDIVC_PDIV_MASK);
+	val |= (((onOff) << CLKDIVC_PE_SHIFT) | ((pdiv) << CLKDIVC_PDIV_SHIFT));
+
+	__raw_writel(val, reg);
+}
+
+static int MIPI_WRAP_Set_PLL_PMS(unsigned int p, unsigned int m, unsigned int s)
+{
+	unsigned int val = 0;
+	volatile void __iomem * reg = 0;
+
+	reg = mipi_ckc_base + PLLPMS;
+
+	val = __raw_readl(reg);
+
+	val &= ~(PLLPMS_RESETB_MASK |
+		PLLPMS_S_MASK |
+		PLLPMS_M_MASK |
+		PLLPMS_P_MASK);
+
+	val |= (((p) << PLLPMS_P_SHIFT) |
+		((m) << PLLPMS_M_SHIFT) |
+		((s) << PLLPMS_S_SHIFT));
+
+	__raw_writel(val, reg);
+
+	msleep(1);
+
+	val |= ((1) << PLLPMS_RESETB_SHIFT);
+
+	__raw_writel(val, reg);
+
+	msleep(1);
+
+	val = __raw_readl(reg);
+
+	if (val & PLLPMS_LOCK_MASK)
+		return 1;
+	else
+		return 0;
+}
+
+unsigned int MIPI_WRAP_Set_CKC(void)
+{
+	unsigned int ret = 0;
+	unsigned int val = 0;
+	volatile void __iomem * reg = 0;
+
+	/*
+	 * XIN is 24Mhz
+	 * set max clock 600MHz
+	 */
+	MIPI_WRAP_Set_PLL_DIV(ON, 5);
+
+	ret = MIPI_WRAP_Set_PLL_PMS(3, 250, 2);
+
+
+	if (ret) {
+		reg = mipi_ckc_base + CLKCTRL0;
+		val = __raw_readl(reg);
+
+		val &= ~(CLKCTRL_CHGRQ_MASK | CLKCTRL_SEL_MASK);
+		val |= (CLKCTRL_SEL_PLL_DIVIDER << CLKCTRL_SEL_SHIFT);
+		__raw_writel(val, reg);
+
+		reg = mipi_ckc_base + CLKCTRL1;
+		val = __raw_readl(reg);
+
+		val &= ~(CLKCTRL_CHGRQ_MASK | CLKCTRL_SEL_MASK);
+		val |= (CLKCTRL_SEL_PLL_DIRECT << CLKCTRL_SEL_SHIFT);
+		__raw_writel(val, reg);
+	}
+
+	return ret;
+}
+
+void MIPI_WRAP_Set_Reset_DPHY(unsigned int csi, unsigned int reset)
+{
+	unsigned int val;
+	volatile void __iomem * reg = 0;
+
+	reg = mipi_cfg_base + CSI0_CFG + csi * 0x4;
+
+	val = (__raw_readl(reg) & ~(CSI_CFG_S_RESETN_MASK));
+
+	// 0x1 : release, 0x0 : reset
+	if (!reset)
+		val |= (0x1 << CSI_CFG_S_RESETN_SHIFT);
+	__raw_writel(val, reg);
+}
+
+void MIPI_WRAP_Set_Reset_GEN(unsigned int csi, unsigned int reset)
+{
+	unsigned int val;
+	volatile void __iomem * reg = 0;
+
+	reg = mipi_cfg_base + CSI0_CFG + csi * 0x4;
+
+	val = (__raw_readl(reg) & ~(CSI_CFG_GEN_PX_RST_MASK | CSI_CFG_GEN_APB_RST_MASK));
+	if (reset)
+		val |= ((0x1 << CSI_CFG_GEN_PX_RST_SHIFT) | (0x1 << CSI_CFG_GEN_APB_RST_SHIFT));
+	__raw_writel(val, reg);
+}
+
+void MIPI_WRAP_Set_Output_Mux(unsigned int csi, unsigned int mux, unsigned int sel)
+{
+	unsigned int val;
+	volatile void __iomem * reg = 0;
+
+	reg = mipi_cfg_base + CSI0_CFG + csi * 0x4;
+
+	val = (__raw_readl(reg) & ~(CSI_CFG_MIPI_CHMUX_0_MASK << mux));
+	val |= (sel << CSI_CFG_MIPI_CHMUX_0_SHIFT + mux);
+	__raw_writel(val, reg);
+}
+#endif
+
 static int __init mipi_csi2_init(void)
 {
 	// Find mipi_csi2 node
 	mipi_csi2_np = of_find_compatible_node(NULL, NULL, "telechips,mipi_csi2");
 	if (mipi_csi2_np == NULL) {
-		pr_err("cann't find mipi csi2 node \n");
+		loge("cann't find mipi csi2 node \n");
 	}
 	else {
 		mipi_csi2_base = (volatile void __iomem *)of_iomap(mipi_csi2_np, 0);
-		printk("%s addr :%p \n", __func__, mipi_csi2_base);
+		logd("mipi_csi2 addr: %p\n", mipi_csi2_base);
+
+#ifdef CONFIG_ARCH_TCC805X
+		mipi_ckc_base = (volatile void __iomem *)of_iomap(mipi_csi2_np, 2);
+		logd("mipi_ckc addr :%p\n", mipi_ckc_base);
+
+		mipi_cfg_base = (volatile void __iomem *)of_iomap(mipi_csi2_np, 3);
+		logd("mipi_cfg addr :%p\n", mipi_cfg_base);
+
+#endif
 	}
 
 #if 0

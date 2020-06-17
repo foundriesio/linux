@@ -568,6 +568,10 @@ static int tccvin_set_vin(struct tccvin_streaming * vdev) {
 	unsigned int	interlaced			= !!(vs_info->interlaced & V4L2_DV_INTERLACED);
 	unsigned int	width				= vs_info->width;
 	unsigned int	height				= vs_info->height >> interlaced;
+#if defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X)
+	unsigned int	se					= vs_info->se;
+	unsigned int	fvs 				= vs_info->fvs;
+#endif//defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X)
 
 	FUNCTION_IN
 	logd("VIN: 0x%p, Source Size - width: %d, height: %d\n", pVIN, width, height);
@@ -581,6 +585,10 @@ static int tccvin_set_vin(struct tccvin_streaming * vdev) {
 	VIOC_VIN_SetImageCropOffset(pVIN, 0, 0);
 	VIOC_VIN_SetY2RMode(pVIN, 2);
 
+#if defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X)
+	VIOC_VIN_SetSEEnable(pVIN, se);
+	VIOC_VIN_SetFlushBufferEnable(pVIN, fvs);
+#endif//defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X)
 
 	logd("vdev->cif.videosource_format.data_format: 0x%08x, FMT_YUV422_16BIT: 0x%08x, FMT_YUV422_8BIT: 0x%08x\n", vdev->cif.videosource_info->data_format, FMT_YUV422_16BIT, FMT_YUV422_8BIT);
 	logd("vdev->cur_format->fcc: 0x%08x, V4L2_PIX_FMT_RGB24: 0x%08x, V4L2_PIX_FMT_RGB32: 0x%08x\n", vdev->cur_format->fcc, V4L2_PIX_FMT_RGB24, V4L2_PIX_FMT_RGB32);

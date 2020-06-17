@@ -15,12 +15,18 @@
  * Suite 330, Boston, MA 02111-1307 USA
  ****************************************************************************/
 
-#ifndef VIDEODECODER_H
-#define VIDEODECODER_H
+#ifndef MAX9286_H
+#define MAX9286_H
 
-#include "adv7182.h"
-//#include "dm5886.h"
-#include "isl79988.h"
+#include "../videosource_types.h"
 
-#endif//VIDEODECODER_H
+extern struct videosource videosource_max9286;
 
+// MAX9286 Standard Selection Register Bits
+#define VIDEO_STD_NTSC_M_BIT	0x0
+#define VIDEO_STD_NTSC_443_BIT	0x3
+
+#define MAX9286_STATUS_1		0x03
+#define MAX9286_STD_SELECTION	0x1C
+
+#endif//MAX9286_H

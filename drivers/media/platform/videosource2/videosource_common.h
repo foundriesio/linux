@@ -20,18 +20,21 @@
 
 #include "videosource_types.h"
 
-extern int					videosource_loglevel;
+extern int						videosource_loglevel;
 
-#define LOG_MODULE_NAME "VSRC"
-#define LOGLEVEL			LOGLEVEL_DEBUG
-#define logl(level, fmt, ...) printk(level "[%s][%s] %s - " pr_fmt(fmt), #level + 5, LOG_MODULE_NAME, __FUNCTION__, ##__VA_ARGS__)
-#define log(fmt, ...) logl(KERN_INFO, fmt, ##__VA_ARGS__)
-#define loge(fmt, ...) logl(KERN_ERR, fmt, ##__VA_ARGS__)
-#define logw(fmt, ...) logl(KERN_WARNING, fmt, ##__VA_ARGS__)
-#define logd(fmt, ...) logl(KERN_DEBUG,	fmt, ##__VA_ARGS__)
-#define dlog(fmt, ...) do { if(videosource_loglevel) { logl(KERN_DEBUG, fmt, ##__VA_ARGS__); } } while(0)
-#define FUNCTION_IN			dlog("IN\n");
-#define FUNCTION_OUT		dlog("OUT\n");
+#define LOGLEVEL				LOGLEVEL_DEBUG
+#define LOG_MODULE_NAME			"VSRC"
+
+#define logl(level, fmt, ...)	printk(level "[%s][%s] %s - " pr_fmt(fmt), #level + 5, LOG_MODULE_NAME, __FUNCTION__, ##__VA_ARGS__)
+#define log(fmt, ...)			logl(KERN_INFO,		fmt, ##__VA_ARGS__)
+#define loge(fmt, ...)			logl(KERN_ERR,		fmt, ##__VA_ARGS__)
+#define logw(fmt, ...)			logl(KERN_WARNING,	fmt, ##__VA_ARGS__)
+#define logn(fmt, ...)			logl(KERN_NOTICE,	fmt, ##__VA_ARGS__)
+#define logd(fmt, ...)			logl(KERN_DEBUG,	fmt, ##__VA_ARGS__)
+#define dlog(fmt, ...)			do { if(videosource_loglevel) { logl(KERN_ERR, fmt, ##__VA_ARGS__); } } while(0)
+
+#define FUNCTION_IN				dlog("IN\n");
+#define FUNCTION_OUT			dlog("OUT\n");
 
 extern void	sensor_port_enable(int port);
 extern void	sensor_port_disable(int port);

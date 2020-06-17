@@ -372,9 +372,11 @@ extern void MIPI_CSIS_Set_CSIS_Interrupt_Mask(unsigned int page, unsigned int ma
 extern unsigned int MIPI_CSIS_Get_CSIS_Interrupt_Mask(unsigned int page);
 extern void MIPI_CSIS_Set_CSIS_Interrupt_Src(unsigned int page, unsigned int mask);
 extern unsigned int MIPI_CSIS_Get_CSIS_Interrupt_Src(unsigned int page);
+#if defined(CONFIG_ARCH_TCC805X)
 extern unsigned int MIPI_WRAP_Set_CKC(void);
 extern void MIPI_WRAP_Set_Reset_DPHY(unsigned int csi, unsigned int reset);
 extern void MIPI_WRAP_Set_Reset_GEN(unsigned int csi, unsigned int reset);
 extern void MIPI_WRAP_Set_Output_Mux(unsigned int csi, unsigned int mux, unsigned int sel);
+#endif//defined(CONFIG_ARCH_TCC805X)
 #endif
 

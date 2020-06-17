@@ -297,6 +297,7 @@ extern unsigned int tccvin_timeout_param;
 #define logi(fmt, ...)			logl(KERN_INFO,		fmt, ##__VA_ARGS__)
 #define loge(fmt, ...)			logl(KERN_ERR,		fmt, ##__VA_ARGS__)
 #define logw(fmt, ...)			logl(KERN_WARNING,	fmt, ##__VA_ARGS__)
+#define logn(fmt, ...)			logl(KERN_NOTICE,	fmt, ##__VA_ARGS__)
 #define logd(fmt, ...)			logl(KERN_DEBUG,	fmt, ##__VA_ARGS__)
 #define dlog(fmt, ...)			logl(KERN_DEBUG,	fmt, ##__VA_ARGS__)
 

@@ -6,6 +6,6 @@
 #
 # Licensed under GPL
 
-# obj-y	+= adv7182.o
+obj-y	+= adv7182.o
 # obj-y	+= dm5886.o
 obj-y	+= isl79988.o

@@ -15,12 +15,18 @@
  * Suite 330, Boston, MA 02111-1307 USA
  ****************************************************************************/
 
-#ifndef VIDEODECODER_H
-#define VIDEODECODER_H
+#ifndef ADV7182_H
+#define ADV7182_H
 
-#include "adv7182.h"
-//#include "dm5886.h"
-#include "isl79988.h"
+#include "../videosource_types.h"
 
-#endif//VIDEODECODER_H
+extern struct videosource videosource_adv7182;
 
+// ADV7182 Standard Selection Register Bits
+#define VIDEO_STD_NTSC_M_BIT	0x0
+#define VIDEO_STD_NTSC_443_BIT	0x3
+
+#define ADV7182_STATUS_1		0x03
+#define ADV7182_STD_SELECTION	0x1C
+
+#endif//ADV7182_H

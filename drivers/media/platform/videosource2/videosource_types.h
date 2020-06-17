@@ -85,10 +85,10 @@ typedef struct videosource_driver {
 	int (*close)(videosource_gpio_t *gpio);
 	int (*change_mode)(struct i2c_client *client, int mode);
 	int (*check_status)(struct i2c_client *client);
+	int (*set_irq_handler)(videosource_gpio_t *gpio, unsigned int enable);
 	int (*subdev_init)(void);
 
 	// setter
-	int (*set_irq_handler)(unsigned int enable);
 	int (*set_i2c_client)(struct i2c_client *client);
 
 	// getter

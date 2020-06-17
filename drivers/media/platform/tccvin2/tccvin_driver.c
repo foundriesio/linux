@@ -138,7 +138,7 @@ static int tccvin_parse_format(struct tccvin_device *dev,
 		frame->bmCapabilities				= 0x00000000;
 		frame->wWidth						= framesize_list[idxFrame].width;
 		frame->wHeight						= framesize_list[idxFrame].height;
-		frame->dwMaxVideoFrameBufferSize	= frame->wWidth * frame->wHeight * format->bpp / 8;;
+		frame->dwMaxVideoFrameBufferSize	= frame->wWidth * frame->wHeight * format->bpp / 8;
 		frame->dwDefaultFrameInterval		= 333333;
 		frame->bFrameIntervalType			= 2;
 		frame->dwFrameInterval				= *intervals;
@@ -373,12 +373,13 @@ int tccvin_async_bound(struct v4l2_async_notifier *notifier, struct v4l2_subdev 
 	// get videosource format
 	vs = container_of(subdev, struct videosource, sd);
 	dev->stream->cif.videosource_info		= &vs->format;
+	dev->stream->cif.cif_port				= vs->format.cif_port;
 
 	// power-up sequence & initial i2c setting
 	ret = v4l2_subdev_call(subdev, core, s_power, enable);
 	ret = v4l2_subdev_call(subdev, video, s_stream, enable);
 
-	return 0;
+	return ret;
 }
 
 void tccvin_async_unbind(struct v4l2_async_notifier *notifier,
@@ -393,50 +394,68 @@ int tccvin_async_complete(struct v4l2_async_notifier *notifier) {
 	return 0;
 }
 
+static bool match_devname(struct v4l2_subdev *sd,
+			  struct v4l2_async_subdev *asd)
+{
+	return !strcmp(asd->match.device_name.name, dev_name(sd->dev));
+}
+
+bool tccvin_subdev_match_custom(struct device *dev, struct v4l2_async_subdev *sd) {
+	logn("dev_name: %s\n", dev_name(dev));
+	logn("dev->of_node->name: %s\n", dev->of_node->name);
+
+	return strcmp(dev_name(dev), sd->match.custom.priv);
+}
+
 int tccvin_init_subdevices(struct tccvin_device *vdev) {
 	struct v4l2_async_notifier *notifier = &(vdev->notifier);
-	struct v4l2_async_subdev *asd;
-//	const char* dname = "isl79988";
-
-	int err, i;
+	struct v4l2_async_subdev *asd = NULL;
+	int idxSubDev = 0;
+	int	ret = 0;
 
 	vdev->num_registered_subdev = 0;
 
 	/* Set the number of all sub-devices to 1 temporarily. This
 	 * should be changed according to the working environment */
 	notifier->subdevs = vdev->asd;
-	notifier->num_subdevs = 1;
+	notifier->num_subdevs = 1;	//V4L2_MAX_SUBDEVS
 
-	for (i = 0; i < notifier->num_subdevs; i++) {
-		vdev->asd[i] = kmalloc(sizeof(struct v4l2_async_subdev), GFP_KERNEL);
+	for (idxSubDev = 0; idxSubDev < notifier->num_subdevs; idxSubDev++) {
+		vdev->asd[idxSubDev] = kmalloc(sizeof(struct v4l2_async_subdev), GFP_KERNEL);
 	}
 
 	/* after allocation, set asd */
-	for (i = 0; i < notifier->num_subdevs; i++) {
-		asd = vdev->asd[i];
+	// check include/media/v4l2-async.h
+	for (idxSubDev = 0; idxSubDev < notifier->num_subdevs; idxSubDev++) {
+		asd = vdev->asd[idxSubDev];
 
 		/* For match type, it could be device name and i2c like; V4L2_ASYNC_MATCH_I2C */
+#if 0
 		asd->match_type = V4L2_ASYNC_MATCH_DEVNAME;
-		asd->match.device_name.name = "0-0044";
+//		asd->match.device_name.name = "0-0044";
+		asd->match.device_name.name = "7-0021";
 
-		// check include/media/v4l2-async.h
+		printk("v4l2 sub device - slave address: %s\n", asd->match.device_name.name);
+#else
+		asd->match_type = V4L2_ASYNC_MATCH_CUSTOM;
+		asd->match.custom.match = tccvin_subdev_match_custom;
+		asd->match.custom.priv = "deserializer_max9286";//"videodecoder_adv7182";
+#endif
 	}
-
-	printk("isl79988 should be %s\n", asd->match.device_name.name);
 
 	notifier->bound = tccvin_async_bound;
 	notifier->complete = tccvin_async_complete;
 	notifier->unbind = tccvin_async_unbind;
-	err = v4l2_async_notifier_register(vdev->stream->vdev.v4l2_dev, notifier);
-
-	if (err < 0) {
+	ret = v4l2_async_notifier_register(vdev->stream->vdev.v4l2_dev, notifier);
+	if (ret < 0) {
 		printk(KERN_ERR "Error registering async notifier for tccvin\n");
 		v4l2_device_unregister(vdev->stream->vdev.v4l2_dev);
-		return -EINVAL;
+		ret = -EINVAL;
 	} else {
 		printk(KERN_ERR "Succeed to register async notifier for tccvin\n");
 	}
-	return 0;
+
+	return ret;
 }
 
 /* ------------------------------------------------------------------------

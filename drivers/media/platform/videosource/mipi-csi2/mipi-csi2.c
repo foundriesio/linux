@@ -308,6 +308,7 @@ unsigned int MIPI_CSIS_Get_CSIS_Interrupt_Src(unsigned int page)
 	return val;
 }
 
+#if defined(CONFIG_ARCH_TCC805X)
 static void MIPI_WRAP_Set_PLL_DIV(unsigned int onOff, unsigned int pdiv)
 {
 	unsigned int val = 0;
@@ -393,7 +394,6 @@ unsigned int MIPI_WRAP_Set_CKC(void)
 	return ret;
 }
 
-#if defined(CONFIG_ARCH_TCC805X)
 void MIPI_WRAP_Set_Reset_DPHY(unsigned int csi, unsigned int reset)
 {
 	unsigned int val;
