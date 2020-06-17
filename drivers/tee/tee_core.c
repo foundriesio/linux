@@ -93,7 +93,18 @@ void teedev_ctx_put(struct tee_context *ctx)
 static void teedev_close_context(struct tee_context *ctx)
 {
 	tee_device_put(ctx->teedev);
-	teedev_ctx_put(ctx);
+#ifdef CONFIG_ARCH_TCC
+	// Telechips B160041 added 'while (kref_read(&ctx->refcount))' code.
+	// Put all kref count.
+	// This can not be a problem because teedev_close_context() is
+	// always called when release optee context.
+	// The reason why added this code is due to allocated shared memory is not freed,
+	// when CA is closed accidently by segmentation falut or something like that while TA is running.
+	while (kref_read(&ctx->refcount))
+#endif
+	{
+		teedev_ctx_put(ctx);
+	}
 }
 
 static int tee_open(struct inode *inode, struct file *filp)
@@ -744,24 +755,22 @@ static int tee_ioctl_user_version(unsigned int cmd, struct tee_context *ctx,
 	return 0;
 }
 
-static int tee_ioctl_get_trace_log(struct tee_context *ctx,
-				struct tee_ioctl_trace_log __user *ulog)
+static int tee_ioctl_register_trace_shm(struct tee_context *ctx,
+				struct tee_ioctl_trace_shm __user *uconf)
 {
-	struct tee_ioctl_trace_log log;
-	int wsize;
+	struct tee_ioctl_trace_shm data;
+	struct tee_shm *shm;
+	int id;
 
-	if (copy_from_user(&log, ulog, sizeof(log)))
+	if (copy_from_user(&data, uconf, sizeof(data)))
 		return -EFAULT;
 
-	wsize = tee_trace_get_log(log.addr, log.size);
+	id = data.id;
+	shm = tee_shm_get_from_id(ctx, id);
+	if (IS_ERR(shm))
+		return PTR_ERR(shm);
 
-	if (wsize < 0)
-		return wsize;
-
-	log.size = wsize;
-
-	if (copy_to_user(ulog, &log, sizeof(log)))
-		return -EFAULT;
+	tee_trace_set_shm(shm);
 
 	return 0;
 }
@@ -802,8 +811,8 @@ static long tee_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 	case TEE_IOC_CLIENT_VERSION:
 	case TEE_IOC_CALIB_VERSION:
 		return tee_ioctl_user_version(cmd, ctx, uarg);
-	case TEE_IOC_GET_TRACE_LOG:
-		return tee_ioctl_get_trace_log(ctx, uarg);
+	case TEE_IOC_REGISTER_TRACE_SHM:
+		return tee_ioctl_register_trace_shm(ctx, uarg);
 #endif
 	default:
 		return -EINVAL;

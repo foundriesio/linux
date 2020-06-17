@@ -4,22 +4,27 @@
  */
 
 
-/**
- * tee_trace_config
- *
- * @base: [in] Shared memory base address for trace log.
- * @size: [in] Shared memory size for trace log.
- */
-void tee_trace_config(char *base, uint32_t size);
+#include <linux/tee_drv.h>
+#include "tee_private.h"
 
 /**
- * tee_trace_get_log
+ * tee_trace_set_shm
  *
- * @addr: [out]user memory address for get trace log
- * @size: [in]user memory size for get trace log
+ * @shm: [in] Shared memory for trace log.
+ */
+void tee_trace_set_shm(struct tee_shm *shm);
+
+/**
+ * tee_trace_get_shm
  *
  * @result:
- *    result > 0: copied buffer size
- *    result < 0: error
+ *    result == ERR_PTR: invalid state
+ *    result == !ERR_PTR: shared memory pointer
  */
-int tee_trace_get_log(uint64_t __user addr, uint64_t size);
+struct tee_shm *tee_trace_get_shm(void);
+
+/**
+ * tee_trace_reset_shm
+ */
+void tee_trace_reset_shm(void);
+

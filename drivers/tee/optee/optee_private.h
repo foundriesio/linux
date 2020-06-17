@@ -180,6 +180,12 @@ void optee_fill_pages_list(u64 *dst, struct page **pages, int num_pages,
 
 int optee_enumerate_devices(void);
 
+#ifdef CONFIG_ARCH_TCC
+void tee_trace_set_shm(struct tee_shm *shm);
+struct tee_shm *tee_trace_get_shm(void);
+void tee_trace_reset_shm(void);
+#endif
+
 /*
  * Small helpers
  */

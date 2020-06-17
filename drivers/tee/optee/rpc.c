@@ -204,30 +204,6 @@ static struct tee_shm *cmd_alloc_suppl(struct tee_context *ctx, size_t sz)
 	return shm;
 }
 
-static struct tee_shm *cmd_alloc_suppl_print_buf(struct tee_context *ctx, size_t sz)
-{
-	u32 ret;
-	struct tee_param param;
-	struct optee *optee = tee_get_drvdata(ctx->teedev);
-	struct tee_shm *shm;
-
-	param.attr = TEE_IOCTL_PARAM_ATTR_TYPE_VALUE_INOUT;
-	param.u.value.a = OPTEE_MSG_RPC_SHM_TYPE_APPL_PRINT_BUF;
-	param.u.value.b = sz;
-	param.u.value.c = 0;
-
-	ret = optee_supp_thrd_req(ctx, OPTEE_MSG_RPC_CMD_ALLOC_PRINT_BUFFER, 1, &param);
-	if (ret)
-		return ERR_PTR(-ENOMEM);
-
-	mutex_lock(&optee->supp.mutex);
-
-	/* Increases count as secure world doesn't have a reference */
-	shm = tee_shm_get_from_id(optee->supp.ctx, param.u.value.c);
-	mutex_unlock(&optee->supp.mutex);
-	return shm;
-}
-
 static void handle_rpc_func_cmd_shm_alloc(struct tee_context *ctx,
 					  struct optee_msg_arg *arg,
 					  struct optee_call_ctx *call_ctx)
@@ -257,11 +233,11 @@ static void handle_rpc_func_cmd_shm_alloc(struct tee_context *ctx,
 	case OPTEE_MSG_RPC_SHM_TYPE_APPL:
 		shm = cmd_alloc_suppl(ctx, sz);
 		break;
-	case OPTEE_MSG_RPC_SHM_TYPE_APPL_PRINT_BUF:
-		shm = cmd_alloc_suppl_print_buf(ctx, sz);
+#ifdef CONFIG_ARCH_TCC
+	case OPTEE_MSG_RPC_SHM_TYPE_TRACE_BUF:
+		shm = tee_trace_get_shm();
 		break;
 	case OPTEE_MSG_RPC_SHM_TYPE_KERNEL:
-#ifndef CONFIG_ARCH_TCC
 		shm = tee_shm_alloc(ctx, sz, TEE_SHM_MAPPED);
 		break;
 #endif
@@ -373,10 +349,14 @@ static void handle_rpc_func_cmd_shm_free(struct tee_context *ctx,
 	shm = (struct tee_shm *)(unsigned long)arg->params[0].u.value.b;
 	switch (arg->params[0].u.value.a) {
 	case OPTEE_MSG_RPC_SHM_TYPE_APPL:
-	case OPTEE_MSG_RPC_SHM_TYPE_APPL_PRINT_BUF:
 		cmd_free_suppl(ctx, shm);
 		break;
+#ifdef CONFIG_ARCH_TCC
+	case OPTEE_MSG_RPC_SHM_TYPE_TRACE_BUF:
+		tee_trace_reset_shm();
+		break;
 	case OPTEE_MSG_RPC_SHM_TYPE_KERNEL:
+#endif
 	case OPTEE_MSG_RPC_SHM_TYPE_GLOBAL:
 		tee_shm_free(shm);
 		break;
@@ -445,27 +425,6 @@ bad:
 	arg->ret = TEEC_ERROR_BAD_PARAMETERS;
 }
 
-#ifdef CONFIG_ARCH_TCC
-static void handle_rpc_func_cmd_print(struct optee_msg_arg *arg)
-{
-	struct tee_shm *shm = NULL;
-
-	if (arg->num_params != 1)
-		goto bad;
-
-	shm = (struct tee_shm *)arg->params[0].u.tmem.shm_ref;
-	if (!shm)
-		goto bad;
-
-	tee_trace_config((char *)shm->kaddr, arg->params[0].u.tmem.size);
-
-	arg->ret = TEEC_SUCCESS;
-	return;
-bad:
-	arg->ret = TEEC_ERROR_BAD_PARAMETERS;
-}
-#endif
-
 static void handle_rpc_func_cmd(struct tee_context *ctx, struct optee *optee,
 				struct tee_shm *shm,
 				struct optee_call_ctx *call_ctx)
@@ -497,11 +456,6 @@ static void handle_rpc_func_cmd(struct tee_context *ctx, struct optee *optee,
 		break;
 	case OPTEE_MSG_RPC_CMD_BENCH_REG:
 		handle_rpc_func_cmd_bm_reg(arg);
-		break;
-#ifdef CONFIG_ARCH_TCC
-	case OPTEE_MSG_RPC_CMD_PRINT:
-		handle_rpc_func_cmd_print(arg);
-#endif
 		break;
 	default:
 		handle_rpc_supp_cmd(ctx, arg);

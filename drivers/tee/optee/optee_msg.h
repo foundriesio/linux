@@ -327,6 +327,9 @@ struct optee_msg_arg {
 #define OPTEE_MSG_CMD_CANCEL		3
 #define OPTEE_MSG_CMD_REGISTER_SHM	4
 #define OPTEE_MSG_CMD_UNREGISTER_SHM	5
+#ifdef CONFIG_ARCH_TCC
+#define OPTEE_MSG_CMD_REGISTER_TRACE_SHM	16 //(0x10)
+#endif
 #define OPTEE_MSG_FUNCID_CALL_WITH_ARG	0x0004
 
 /*****************************************************************************
@@ -426,8 +429,10 @@ struct optee_msg_arg {
 #define OPTEE_MSG_RPC_SHM_TYPE_KERNEL	1
 /* Memory shared with non-secure kernel, but exported to userspace */
 #define OPTEE_MSG_RPC_SHM_TYPE_GLOBAL	2
+#ifdef CONFIG_ARCH_TCC
 /* Memory for shared trace buffer between tee supplicant and TEE */
-#define OPTEE_MSG_RPC_SHM_TYPE_APPL_PRINT_BUF  3
+#define OPTEE_MSG_RPC_SHM_TYPE_TRACE_BUF  3
+#endif
 
 /*
  * Free shared memory previously allocated with OPTEE_MSG_RPC_CMD_SHM_ALLOC
