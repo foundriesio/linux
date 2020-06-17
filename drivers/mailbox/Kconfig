@@ -228,5 +228,12 @@ config TCC_MAILBOX_SUSPEND
 	help
 		Mailbox implementation for the Telechips suspend communication.
 
+config TCC_SC_MAILBOX
+	tristate "Telechips Mailbox for Storage Core"
+	depends on OF
+	depends on ARCH_TCC805X
+	help
+	  Mailbox implementation for communication with Storage Core
+
 endif
 
