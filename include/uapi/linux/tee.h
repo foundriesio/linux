@@ -445,20 +445,18 @@ struct tee_ioctl_version_tcc {
 				     struct tee_ioctl_version_tcc)
 
 /**
- * struct tee_ioctl_trace_log
- * @addr:	[in] dumpped trace base
- * @size:	[in] dumpped trace size
+ * struct tee_ioctl_trace_conf - send trace buf size config to kernel
+ * @id:		[in] Shared memory id
  */
-struct tee_ioctl_trace_log {
-	__u64 addr;
-	__u64 size;
+struct tee_ioctl_trace_shm {
+	__s32 id;
 };
 
 /**
- * TEE_IOC_GET_TRACE_LOG
+ * TEE_IOC_REGISTER_TRACE_SHM - register trace buffer shared memory to TEE
  */
-#define TEE_IOC_GET_TRACE_LOG	_IOWR(TEE_IOC_MAGIC, TEE_IOC_BASE + 25, \
-				     struct tee_ioctl_trace_log)
+#define TEE_IOC_REGISTER_TRACE_SHM	_IOWR(TEE_IOC_MAGIC, TEE_IOC_BASE + 25, \
+				     struct tee_ioctl_trace_shm)
 
 /*
  * Five syscalls are used when communicating with the TEE driver.

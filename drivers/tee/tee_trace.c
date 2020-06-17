@@ -2,102 +2,31 @@
 /*
  * Copyright (c) 2019-2020, Telechips Inc
  */
- 
-#include <linux/module.h>
-#include <linux/vmalloc.h>
-#include <linux/slab.h>
-#include <linux/uaccess.h>
-#include "tee_trace.h"
 
-#define LOG_MAX_SIZE	(4*1024 - 8)
+#include <linux/tee_drv.h>
+#include "tee_private.h"
 
-struct log_queue {
-	uint32_t head;
-	uint32_t tail;
-};
+#ifdef CONFIG_ARCH_TCC
+static struct tee_shm *trace_shm;
 
-struct tee_trace_data {
-	struct log_queue *log;
-	char *base;
-	uint32_t size;
-};
-
-static struct tee_trace_data *trace;
-
-void tee_trace_config(char *base, uint32_t size)
+void tee_trace_set_shm(struct tee_shm *shm)
 {
-	if (!trace || !base || !size)
-		return;
+	trace_shm = shm;
 
-	if (!trace->base) {
-		trace->base = base;
-		trace->size = size - 8;
-		trace->log = (struct log_queue *)&base[size-8];
-	}
+	return;
 }
 
-int tee_trace_get_log(uint64_t __user addr, uint64_t size)
+struct tee_shm *tee_trace_get_shm(void)
 {
-	uint32_t head;
-	int wsize = 0;
+	if (!trace_shm)
+		return ERR_PTR(-EINVAL);
 
-	if (!trace)
-		return -ENOMEM;
-
-	if (!trace->base || !trace->size)
-		return -ENOMEM;
-
-	head = trace->log->head;
-	if (head >= LOG_MAX_SIZE) {
-		pr_err("[ERROR][OPTEE] %s: trace log head overflowed. head:0x%x\n", \
-			__func__, head);
-		return -EFAULT;
-	}
-
-	if (head > trace->log->tail) {
-		wsize = head - trace->log->tail;
-		if (wsize > size)
-			wsize = size;
-		if (copy_to_user(addr, &trace->base[trace->log->tail], wsize))
-			return -EFAULT;
-	}
-	else if (trace->log->tail > head) {
-		wsize = LOG_MAX_SIZE - trace->log->tail;
-		if (wsize > size)
-			wsize = size;
-		if (copy_to_user(addr, &trace->base[trace->log->tail], wsize))
-			return -EFAULT;
-	}
-	trace->log->tail = trace->log->tail + wsize;
-
-	if (trace->log->tail >= LOG_MAX_SIZE)
-		trace->log->tail = 0;
-
-	return wsize;
+	return trace_shm;
 }
 
-static int __init tee_trace_init(void)
+void tee_trace_reset_shm(void)
 {
-	static struct tee_trace_data *data;
-	if (trace)
-		return 0;
-	
-	data = kmalloc(sizeof(struct tee_trace_data), GFP_KERNEL);
-	if (!data)
-		return -ENOMEM;
-
-	memset(data, 0x0, sizeof(struct tee_trace_data));
-	trace = data;
-	return 0;
+	trace_shm = NULL;
 }
+#endif
 
-static void __exit tee_trace_exit(void)
-{
-	if (trace) {
-		kfree(trace);
-		trace = NULL;
-	}
-}
-
-module_init(tee_trace_init);
-module_exit(tee_trace_exit);
