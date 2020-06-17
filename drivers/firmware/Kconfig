@@ -230,6 +230,13 @@ config TI_SCI_PROTOCOL
 	  This protocol library is used by client drivers to use the features
 	  provided by the system controller.
 
+config TCC_SC_FW_PROTOCOL
+	tristate "Telechip Storage Core Interface Protocol"
+	depends on ARCH_TCC805X
+	depends on TCC_SC_MAILBOX
+	help
+	  Storage Core Interface Protocol is used to communicate with Storage Core.
+
 config HAVE_ARM_SMCCC
 	bool
 
