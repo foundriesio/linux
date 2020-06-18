@@ -104,7 +104,7 @@ static int ext_enable_vblank(struct tcc_drm_crtc *crtc)
 	if (ctx->suspended)
 		return -EPERM;
 
-	if (!test_and_set_bit(EXT_FLAGS_IRQ_BIT, &ctx->lcd_flags))
+	if (!test_and_set_bit(EXT_FLAGS_IRQ_BIT, &ctx->ext_flags))
 		vioc_intr_enable(ctx->irq_num, ctx->ddc_id, VIOC_DISP_INTR_DISPLAY);
 
 	return 0;
@@ -117,7 +117,7 @@ static void ext_disable_vblank(struct tcc_drm_crtc *crtc)
 	if (ctx->suspended)
 		return;
 
-	if (test_and_clear_bit(EXT_FLAGS_IRQ_BIT, &ctx->lcd_flags))
+	if (test_and_clear_bit(EXT_FLAGS_IRQ_BIT, &ctx->ext_flags))
 		vioc_intr_disable(ctx->irq_num, ctx->ddc_id, VIOC_DISP_INTR_DISPLAY);
 }
 
@@ -318,7 +318,7 @@ static void ext_enable(struct tcc_drm_crtc *crtc)
 
 	pm_runtime_get_sync(ctx->dev);
 
-	if (!test_and_set_bit(LCD_FLAGS_CLK_BIT, &ctx->lcd_flags)) {
+	if (!test_and_set_bit(EXT_FLAGS_CLK_BIT, &ctx->ext_flags)) {
 		ret = clk_prepare_enable(ctx->bus_clk);
 		if (ret < 0) {
 			DRM_ERROR("Failed to prepare_enable the bus clk [%d]\n", ret);
@@ -332,7 +332,7 @@ static void ext_enable(struct tcc_drm_crtc *crtc)
 		}
 	}
 	/* if vblank was enabled status, enable it again. */
-	if (test_and_clear_bit(EXT_FLAGS_IRQ_BIT, &ctx->lcd_flags))
+	if (test_and_clear_bit(EXT_FLAGS_IRQ_BIT, &ctx->ext_flags))
 		ext_enable_vblank(ctx->crtc);
 
 	ext_commit(ctx->crtc);
@@ -359,7 +359,7 @@ static void ext_disable(struct tcc_drm_crtc *crtc)
 	ext_wait_for_vblank(crtc);
 	ext_disable_vblank(crtc);
 
-	if (test_and_clear_bit(LCD_FLAGS_CLK_BIT, &ctx->lcd_flags)) {
+	if (test_and_clear_bit(EXT_FLAGS_CLK_BIT, &ctx->ext_flags)) {
 		clk_disable_unprepare(ctx->ext_clk);
 		clk_disable_unprepare(ctx->bus_clk);
 	}
@@ -395,7 +395,7 @@ static void ext_te_handler(struct tcc_drm_crtc *crtc)
 		wake_up(&ctx->wait_vsync_queue);
 	}
 
-	if (test_bit(EXT_FLAGS_IRQ_BIT, &ctx->lcd_flags))
+	if (test_bit(EXT_FLAGS_IRQ_BIT, &ctx->ext_flags))
 		drm_crtc_handle_vblank(&ctx->crtc->base);
 }
 
@@ -624,7 +624,7 @@ static int tcc_ext_suspend(struct device *dev)
 {
 	#if !defined(CONFIG_DRM_TCC_CRTC_TO_BE_ALWAYS_ALIVE)
 	struct ext_context *ctx = dev_get_drvdata(dev);
-	if (test_and_clear_bit(LCD_FLAGS_CLK_BIT, &ctx->lcd_flags)) {
+	if (test_and_clear_bit(EXT_FLAGS_CLK_BIT, &ctx->ext_flags)) {
 		clk_disable_unprepare(ctx->ext_clk);
 		clk_disable_unprepare(ctx->bus_clk);
 	}
@@ -636,7 +636,7 @@ static int tcc_ext_resume(struct device *dev)
 {
 	struct ext_context *ctx = dev_get_drvdata(dev);
 	int ret;
-	if (!test_and_set_bit(LCD_FLAGS_CLK_BIT, &ctx->lcd_flags)) {
+	if (!test_and_set_bit(EXT_FLAGS_CLK_BIT, &ctx->ext_flags)) {
 		ret = clk_prepare_enable(ctx->bus_clk);
 		if (ret < 0) {
 			DRM_ERROR("Failed to prepare_enable the bus clk [%d]\n", ret);

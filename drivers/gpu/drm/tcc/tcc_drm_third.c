@@ -104,7 +104,7 @@ static int third_enable_vblank(struct tcc_drm_crtc *crtc)
 	if (ctx->suspended)
 		return -EPERM;
 
-	if (!test_and_set_bit(THIRD_FLAGS_IRQ_BIT, &ctx->lcd_flags))
+	if (!test_and_set_bit(THIRD_FLAGS_IRQ_BIT, &ctx->third_flags))
 		vioc_intr_enable(ctx->irq_num, ctx->ddc_id, VIOC_DISP_INTR_DISPLAY);
 
 	return 0;
@@ -117,7 +117,7 @@ static void third_disable_vblank(struct tcc_drm_crtc *crtc)
 	if (ctx->suspended)
 		return;
 
-	if (test_and_clear_bit(THIRD_FLAGS_IRQ_BIT, &ctx->lcd_flags))
+	if (test_and_clear_bit(THIRD_FLAGS_IRQ_BIT, &ctx->third_flags))
 		vioc_intr_disable(ctx->irq_num, ctx->ddc_id, VIOC_DISP_INTR_DISPLAY);
 }
 
@@ -317,7 +317,7 @@ static void third_enable(struct tcc_drm_crtc *crtc)
 
 	pm_runtime_get_sync(ctx->dev);
 
-	if (!test_and_set_bit(THIRD_FLAGS_CLK_BIT, &ctx->lcd_flags)) {
+	if (!test_and_set_bit(THIRD_FLAGS_CLK_BIT, &ctx->third_flags)) {
 		ret = clk_prepare_enable(ctx->bus_clk);
 		if (ret < 0) {
 			DRM_ERROR("Failed to prepare_enable the bus clk [%d]\n", ret);
@@ -331,7 +331,7 @@ static void third_enable(struct tcc_drm_crtc *crtc)
 		}
 	}
 	/* if vblank was enabled status, enable it again. */
-	if (test_and_clear_bit(THIRD_FLAGS_IRQ_BIT, &ctx->lcd_flags))
+	if (test_and_clear_bit(THIRD_FLAGS_IRQ_BIT, &ctx->third_flags))
 		third_enable_vblank(ctx->crtc);
 
 	third_commit(ctx->crtc);
@@ -358,7 +358,7 @@ static void third_disable(struct tcc_drm_crtc *crtc)
 	third_wait_for_vblank(crtc);
 	third_disable_vblank(crtc);
 
-	if (test_and_clear_bit(THIRD_FLAGS_CLK_BIT, &ctx->lcd_flags)) {
+	if (test_and_clear_bit(THIRD_FLAGS_CLK_BIT, &ctx->third_flags)) {
 		clk_disable_unprepare(ctx->third_clk);
 		clk_disable_unprepare(ctx->bus_clk);
 	}
@@ -624,7 +624,7 @@ static int tcc_third_suspend(struct device *dev)
 	#if !defined(CONFIG_DRM_TCC_CRTC_TO_BE_ALWAYS_ALIVE)
 
 	struct third_context *ctx = dev_get_drvdata(dev);
-	if (test_and_clear_bit(THIRD_FLAGS_CLK_BIT, &ctx->lcd_flags)) {
+	if (test_and_clear_bit(THIRD_FLAGS_CLK_BIT, &ctx->third_flags)) {
 		clk_disable_unprepare(ctx->third_clk);
 		clk_disable_unprepare(ctx->bus_clk);
 	}
@@ -636,7 +636,7 @@ static int tcc_third_resume(struct device *dev)
 {
 	struct third_context *ctx = dev_get_drvdata(dev);
 	int ret;
-	if (!test_and_set_bit(THIRD_FLAGS_CLK_BIT, &ctx->lcd_flags)) {
+	if (!test_and_set_bit(THIRD_FLAGS_CLK_BIT, &ctx->third_flags)) {
 		ret = clk_prepare_enable(ctx->bus_clk);
 		if (ret < 0) {
 			DRM_ERROR("Failed to prepare_enable the bus clk [%d]\n", ret);
