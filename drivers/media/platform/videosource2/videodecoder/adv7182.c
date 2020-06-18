@@ -782,7 +782,7 @@ struct videosource videosource_adv7182 = {
 
 	    .capture_zoom_offset_x = 0,
 	    .capture_zoom_offset_y = 0,
-	    .cam_capchg_width = 720,
+	    .cam_capchg_width = WIDTH,
 	    .framerate = 15,
 	    .capture_skip_frame = 0,
 	    .sensor_sizes = sensor_sizes,

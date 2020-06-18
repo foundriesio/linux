@@ -290,15 +290,15 @@
 //		};
 	};
 
-	videoinput0 {
+	videoinput@0 {
 		videosource	= <&videosource0>;
 	};
 
-	videoinput4 {
+	videoinput@4 {
 		videosource	= <&videosource1>;
 	};
 
-	videoinput5 {
+	videoinput@5 {
 		videosource	= <&videosource1>;
 	};
 

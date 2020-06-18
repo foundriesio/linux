@@ -413,7 +413,7 @@ int tccvin_async_complete(struct v4l2_async_notifier *notifier) {
 int tccvin_init_subdevices(struct tccvin_device *vdev) {
 	struct v4l2_async_notifier *notifier = &vdev->notifier;
 	struct v4l2_async_subdev *asd = NULL;
-	char *subdev_name = "7-0048";
+	char *subdev_name = vdev->subdev_name;
 	int idxSubDev = 0;
 	int	ret = 0;
 
@@ -459,7 +459,7 @@ int tccvin_init_subdevices(struct tccvin_device *vdev) {
 
 		/* For match type, it could be device name and i2c like; V4L2_ASYNC_MATCH_I2C */
 		asd->match_type = V4L2_ASYNC_MATCH_DEVNAME;
-		asd->match.device_name.name = "7-0048";
+		asd->match.device_name.name = subdev_name;
 
 		logd("v4l2 sub device - slave address: %s\n", asd->match.device_name.name);
 	}

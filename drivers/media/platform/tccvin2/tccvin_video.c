@@ -164,6 +164,7 @@ struct tccvin_format_desc *tccvin_format_by_fcc(const __u32 fcc)
  */
 static int tccvin_parse_device_tree(struct tccvin_streaming * vdev) {
 	struct device_node		* main_node	= vdev->dev->pdev->dev.of_node;
+	struct device_node		* vsrc_node = NULL;
 	struct device_node		* vioc_node	= NULL;
 	struct device_node		* np_fb = NULL, * np_fb_1st = NULL;
 	volatile void __iomem	* address	= NULL;
@@ -171,6 +172,31 @@ static int tccvin_parse_device_tree(struct tccvin_streaming * vdev) {
 	if(main_node == NULL) {
 		logd("tcc_camera device node is not found.\n");
 		return -ENODEV;
+	}
+
+	vsrc_node = of_parse_phandle(main_node, "videosource", 0);
+	if(vsrc_node != NULL) {
+		struct device_node *i2c_node = of_get_parent(vsrc_node);
+		int addr;
+		struct property *pp = NULL;
+		char *strtoken = "i2c";
+
+		if(i2c_node) {
+			of_property_read_u32(vsrc_node, "reg", &addr);
+			for_each_property_of_node(of_aliases, pp) {
+				if(strcmp(pp->value, i2c_node->full_name) == 0) {
+					sprintf(vdev->dev->subdev_name, "%s-%04x", strstr(pp->name, strtoken) + strlen(strtoken), addr);
+					logd("subdev name: %s", vdev->dev->subdev_name);
+				}
+			}
+		} else {
+			loge("Failed to i2c node\n");
+		}
+
+		logd("save videosource i2c value(%s) to tccvindev\n", vdev->dev->subdev_name);
+	} else {
+		loge("\"videosource\" node is not found.\n");
+//		return -ENODEV;
 	}
 
 	// VIN
@@ -899,7 +925,7 @@ static void tccvin_work_thread(struct work_struct * data) {
 	buf->buf.field = V4L2_FIELD_NONE;
 	buf->buf.sequence = stream->sequence++;
 	buf->state = TCCVIN_BUF_STATE_READY;
-	logd("VIN[%d] buf->length: 0x%08x\n", stream->vdev.num, buf->length);
+	dlog("VIN[%d] buf->length: 0x%08x\n", stream->vdev.num, buf->length);
 	memcpy(buf->mem, cif->vir, buf->length);
 	buf->bytesused = buf->length;
 
