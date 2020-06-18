@@ -38,7 +38,8 @@ IPC_INT32 ipc_mailbox_send(struct ipc_device *ipc_dev, struct tcc_mbox_data * ip
 	{
 		IpcHandler *ipc_handle = &ipc_dev->ipc_handler;
 		IPC_INT32 i;
-		dprintk(ipc_dev->dev,"ipc_msg(0x%p)\n",(void *)ipc_msg);
+		dprintk(ipc_dev->dev,"ipc_msg(0x%px)\n",(void *)ipc_msg);
+
 		for(i=0; i<(MBOX_CMD_FIFO_SIZE);i++)
 		{
 			dprintk(ipc_dev->dev,"cmd[%d]: (0x%08x)\n", i, ipc_msg->cmd[i]);
@@ -52,8 +53,9 @@ IPC_INT32 ipc_mailbox_send(struct ipc_device *ipc_dev, struct tcc_mbox_data * ip
 		ret = IPC_SUCCESS;
 #else
 		ret = mbox_send_message(ipc_dev->mbox_ch, ipc_msg);
-		if(ret <= 0 )
+		if(ret < 0 )
 		{
+			dprintk(ipc_dev->dev,"mbox send error(%d)\n",ret);
 			ret = IPC_ERR_TIMEOUT;
 		}
 		else
@@ -88,16 +90,15 @@ struct mbox_chan *ipc_request_channel(struct platform_device *pdev, const IPC_CH
 		{
 			client->dev = &pdev->dev;
 			client->rx_callback = handler;
-			client->tx_done = &tcc_msg_sent;
+			client->tx_done = NULL;
 			client->knows_txdone = (bool)false;
 #ifdef CONFIG_ARCH_TCC803X
 			client->tx_block = (bool)false;
-			client->tx_tout = 10;
 #else
 			client->tx_block = (bool)true;
-			/* Set smaller than the tx timeout value of the client.*/
-			client->tx_tout = (MBOX_TX_TIMEOUT - 1);
 #endif
+			/* Set smaller than the tx timeout value of the client.*/
+			client->tx_tout = 100;
 
 			channel = mbox_request_channel_byname(client, name);
 			if (IS_ERR(channel)) {

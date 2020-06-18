@@ -81,6 +81,10 @@ struct mbox_test_device
 	struct mbox_test_receiveQueue receiveQueue[RECEIVE_QUEUE_MAX];
 	struct mutex mboxMutex;		/* mbox mutex */
 	struct tcc_mbox_data send_msg;
+
+	struct timeval send_time;
+	struct timeval txd_time;
+	struct timeval ack_time;
  };
 
 typedef void (*mbox_receive_cb)(struct mbox_client *, void * );
@@ -130,10 +134,10 @@ static struct mbox_chan *request_channel(struct platform_device *pdev, const cha
 		 {
 			 client->dev = &pdev->dev;
 			 client->rx_callback = handler;
-			 client->tx_done = &tcc_msg_sent;
+			 client->tx_done = NULL;
 			 client->tx_block = (bool)true;
 			 client->knows_txdone = (bool)false;
-			 client->tx_tout = 500;
+			 client->tx_tout = 50;
 
 			 channel = mbox_request_channel_byname(client, name);
 			 if (IS_ERR(channel)) {
@@ -293,11 +297,11 @@ static void mbox_test_receive_test_cmd(void *device_info, struct tcc_mbox_data  
 		ret = mbox_test_send_message(mbox_test_dev, pMsg);
 		if(ret < 0)
 		{
-			eprintk(mbox_test_dev->dev,"send error in(0x%p)\n",(void *)pMsg);
+			eprintk(mbox_test_dev->dev,"send error in(0x%px)\n",(void *)pMsg);
 		}
 		else
 		{
-			dprintk(mbox_test_dev->dev,"msg send(0x%p)\n",(void *)pMsg);
+			dprintk(mbox_test_dev->dev,"msg send(0x%px)\n",(void *)pMsg);
 		}
 	}
 }
@@ -306,11 +310,36 @@ static void mbox_test_receive_ack_cmd(void *device_info, struct tcc_mbox_data  *
 {
 	int ret =-1;
 	struct mbox_test_device *mbox_test_dev = (struct mbox_test_device *)device_info;
+	unsigned long send_usec, ack_usec;
 
 	if((pMsg != NULL)&&(mbox_test_dev != NULL))
 	{
 		int i;
 		ret = 0;
+
+		do_gettimeofday(&mbox_test_dev->ack_time);
+
+		if(mbox_test_dev->txd_time.tv_usec >= mbox_test_dev->send_time.tv_usec)
+		{
+			send_usec = ((unsigned long)mbox_test_dev->txd_time.tv_usec - (unsigned long)mbox_test_dev->send_time.tv_usec);
+		}
+		else
+		{
+			send_usec = ((1000000U - (unsigned long)mbox_test_dev->send_time.tv_usec)+(unsigned long)mbox_test_dev->txd_time.tv_usec);
+		}
+
+		if(mbox_test_dev->ack_time.tv_usec >= mbox_test_dev->send_time.tv_usec)
+		{
+			ack_usec = ((unsigned long)mbox_test_dev->ack_time.tv_usec - (unsigned long)mbox_test_dev->send_time.tv_usec);
+		}
+		else
+		{
+			ack_usec = ((1000000U - (unsigned long)mbox_test_dev->send_time.tv_usec)+(unsigned long)mbox_test_dev->ack_time.tv_usec);
+		}
+
+		dprintk(mbox_test_dev->dev,"mbox send time(%ld), ack time(%ld)\n", send_usec, ack_usec);
+
+
 		for(i=1; i< (MBOX_CMD_FIFO_SIZE); i++)
 		{
 			if(mbox_test_dev->send_msg.cmd[i] != pMsg->cmd[i])
@@ -507,7 +536,9 @@ static int mbox_test_send_message(struct mbox_test_device *mbox_test_dev, struct
 
 		mutex_lock(&mbox_test_dev->mboxMutex);
 
+		do_gettimeofday(&mbox_test_dev->send_time);
 		ret = mbox_send_message(mbox_test_dev->mbox_ch, msg);
+		do_gettimeofday(&mbox_test_dev->txd_time);
 		if(ret >= 0)
 		{
 			ret = 0;
@@ -518,6 +549,7 @@ static int mbox_test_send_message(struct mbox_test_device *mbox_test_dev, struct
 		}
 
 		mutex_unlock(&mbox_test_dev->mboxMutex);
+
 	}
 	else
 	{

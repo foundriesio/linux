@@ -713,6 +713,7 @@ IPC_INT32 ipc_ping_test(struct ipc_device *ipc_dev,tcc_ipc_ping_info * pingInfo)
 	if((ipc_dev != NULL)&&(pingInfo != NULL))
 	{
 		IpcHandler *pIPCHandler = &ipc_dev->ipc_handler;
+		pingInfo->pingResult = IPC_PING_ERR_INIT;
 
 		ret = IPC_SUCCESS;
 		/* Check IPC */
@@ -720,6 +721,8 @@ IPC_INT32 ipc_ping_test(struct ipc_device *ipc_dev,tcc_ipc_ping_info * pingInfo)
 		{
 			pingInfo->pingResult = IPC_PING_ERR_INIT;
 			ret = IPC_ERR_COMMON;
+			eprintk(ipc_dev->dev, "ipc not init\n");
+
 		}
 
 		if(ret == IPC_SUCCESS)
@@ -729,6 +732,7 @@ IPC_INT32 ipc_ping_test(struct ipc_device *ipc_dev,tcc_ipc_ping_info * pingInfo)
 				ipc_try_connection(ipc_dev);
 				pingInfo->pingResult = IPC_PING_ERR_NOT_READY;
 				ret = IPC_ERR_NOTREADY;
+				eprintk(ipc_dev->dev, "ipc not ready\n");
 			}
 			else
 			{
@@ -742,9 +746,12 @@ IPC_INT32 ipc_ping_test(struct ipc_device *ipc_dev,tcc_ipc_ping_info * pingInfo)
 			IPC_INT32 end_usec;
 			IPC_INT32 start_sec;
 			IPC_INT32 end_sec;
+			struct timeval ts;
 
-			start_sec = ipc_get_sec();
-			start_usec = ipc_get_usec();
+			do_gettimeofday(&ts);
+
+			start_sec = (IPC_INT32)ts.tv_sec;
+			start_usec = (IPC_INT32)ts.tv_usec;
 
 			ret = ipc_send_ping(ipc_dev);
 			if(ret == IPC_SUCCESS)
@@ -776,8 +783,10 @@ IPC_INT32 ipc_ping_test(struct ipc_device *ipc_dev,tcc_ipc_ping_info * pingInfo)
 				ret = IPC_ERR_NOTREADY;
 			}
 
-			end_usec =  ipc_get_usec();
-			end_sec = ipc_get_sec();
+			do_gettimeofday(&ts);
+
+			end_sec = (IPC_INT32)ts.tv_sec;
+			end_usec = (IPC_INT32)ts.tv_usec;
 
 			if(end_usec >=  start_usec)
 			{
