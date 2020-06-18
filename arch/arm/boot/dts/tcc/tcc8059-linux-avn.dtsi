@@ -121,6 +121,130 @@
 		status ="okay";
 	};
 
+	tcckey@0 {
+	    compatible = "telechips,tcckey";
+		io-channels = <&adc 0>;
+		io-channel-names = "buttons";
+	    status = "okay";
+		button-enter{
+			label = "enter";
+			linux,code = <KEY_ENTER>;
+			voltage-range = <0x00 0x83>;
+		};
+		button-scan{
+			label = "scan";
+			linux,code = <KEY_SCAN>;
+			voltage-range = <0x266 0x2EE>;
+		};
+		button-setup{
+			label = "setup";
+			linux,code = <KEY_SETUP>;
+			voltage-range = <0x732 0x8CC>;
+		};
+		button-menu{
+			label = "menu";
+			linux,code = <KEY_MENU>;
+			voltage-range = <0x9E5 0xC18>;
+		};
+		button-disp{
+			label = "disp";
+			linux,code = <KEY_DISP>;
+			voltage-range = <0xD4A 0xFA0>;
+		};
+	};
+
+	tcckey@1 {
+	    compatible = "telechips,tcckey";
+		io-channels = <&adc 1>;
+		io-channel-names = "buttons";
+	    status = "okay";
+		button-trackdown{
+			label = "trackdown";
+			linux,code = <KEY_TRACKDOWN>;
+			voltage-range = <0x6B 0x83>;
+		};
+		button-trackup{
+			label = "trackup";
+			linux,code = <KEY_TRACKUP>;
+			voltage-range = <0x732 0x8CC>;
+		};
+		button-folderdown{
+			label = "folerdown";
+			linux,code = <KEY_FOLDERDOWN>;
+			voltage-range = <0x9E5 0xC18>;
+		};
+		button-folderup{
+			label = "folderup";
+			linux,code = <KEY_FOLDERUP>;
+			voltage-range = <0xD4A 0xFA0>;
+		};
+	};
+
+	tcckey@2 {
+	    compatible = "telechips,tcckey";
+		io-channels = <&adc 2>;
+		io-channel-names = "buttons";
+	    status = "okay";
+		button-power{
+			label = "power";
+			linux,code = <KEY_POWER>;
+			voltage-range = <0x00 0x83>;
+		};
+		button-radio{
+			label = "radio";
+			linux,code = <KEY_RADIO>;
+			voltage-range = <0x732 0x8CC>;
+		};
+		button-media{
+			label = "media";
+			linux,code = <KEY_MEDIA>;
+			voltage-range = <0x9E5 0xC18>;
+		};
+		button-phone{
+			label = "phone";
+			linux,code = <KEY_PHONE>;
+			voltage-range = <0xD4A 0xFA0>;
+		};
+	};
+
+	tcckey@3 {
+	    compatible = "telechips,tcckey";
+		io-channels = <&adc 10>;
+		io-channel-names = "buttons";
+	    status = "okay";
+		button-key1{
+			label = "key1";
+			linux,code = <KEY_1>;
+			voltage-range = <0x6B 0x83>;
+		};
+		button-key2{
+			label = "key2";
+			linux,code = <KEY_2>;
+			voltage-range = <0x266 0x2EE>;
+		};
+		button-key3{
+			label = "key3";
+			linux,code = <KEY_3>;
+			voltage-range = <0x52B 0x651>;
+		};
+		button-key4{
+			label = "key4";
+			linux,code = <KEY_4>;
+			voltage-range = <0x732 0x8CC>;
+		};
+		button-key5{
+			label = "key5";
+			linux,code = <KEY_5>;
+			voltage-range = <0x9E5 0xC18>;
+		};
+		button-key6{
+			label = "key6";
+			linux,code = <KEY_6>;
+			voltage-range = <0xD4A 0xFA0>;
+		};
+	};
+
+
 	i2c@16300000 {
 		status = "okay";
 		port-mux = <12>;
