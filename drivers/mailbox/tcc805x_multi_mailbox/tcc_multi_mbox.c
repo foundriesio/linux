@@ -247,9 +247,6 @@ struct tcc_channel {
 	struct tcc_mbox_device	*mdev;
 	unsigned int			channel;
 
-	struct mbox_transmit_list tx_list;
-
-	struct mbox_tx_done_list tx_done_list;
 	struct mbox_txDoneQueue txDoneQueue;
 
 	struct tcc_mbox_data *msg;
@@ -277,10 +274,6 @@ static void mbox_pump_tx_messages(struct kthread_work *work);
 static int mbox_transmit_queue_init(struct mbox_transmitQueue *mbox_queue, mbox_transmit_queue_t handler, void *handler_pdata, const char *name);
 static int deregister_transmit_queue(struct mbox_transmitQueue *mbox_queue);
 static int mbox_add_tx_queue_and_work(struct mbox_transmitQueue *mbox_queue, struct mbox_transmit_list *mbox_list);
-static void mbox_pump_tx_done_messages(struct kthread_work *work);
-static int mbox_tx_done_queue_init(struct mbox_txDoneQueue *mbox_queue, mbox_tx_done_queue_t handler, void *handler_pdata, const char *name);
-static int deregister_tx_done_queue(struct mbox_txDoneQueue *mbox_queue);
-static int mbox_add_tx_done_queue_and_work(struct mbox_txDoneQueue *mbox_queue, struct mbox_tx_done_list *mbox_list);
 static void tcc_mbox_event_create(struct tcc_mbox_device * mdev);
 static void tcc_mbox_event_delete(struct tcc_mbox_device * mdev);
 static int tcc_mbox_wait_event_timeout(struct tcc_mbox_device * mdev,unsigned int timeOut);
@@ -416,25 +409,26 @@ static int mbox_add_rx_queue_and_work(struct mbox_receiveQueue *mbox_queue, stru
 static void mbox_pump_tx_messages(struct kthread_work *work)
 {
 	struct mbox_transmitQueue *mbox_queue;
-	struct mbox_transmit_list *mbox_list;
-	struct mbox_transmit_list *mbox_list_tmp;
+	struct mbox_transmit_list *tx_list;
+	struct mbox_transmit_list *tx_list_tmp;
 	unsigned long flags;
 
 	mbox_queue = container_of(work, struct mbox_transmitQueue, pump_messages);
 
 	spin_lock_irqsave(&mbox_queue->tx_queue_lock, flags);
 
-	list_for_each_entry_safe(mbox_list, mbox_list_tmp, &mbox_queue->tx_queue, queue) {
+	list_for_each_entry_safe(tx_list, tx_list_tmp, &mbox_queue->tx_queue, queue) {
 		if (mbox_queue->handler != NULL) {
 			spin_unlock_irqrestore(&mbox_queue->tx_queue_lock, flags);
-			if(mbox_list != NULL)
+			if(tx_list != NULL)
 			{
-				mbox_queue->handler(mbox_list->chan,mbox_list->msg);
+				mbox_queue->handler(tx_list->chan,tx_list->msg);
 			}
 			spin_lock_irqsave(&mbox_queue->tx_queue_lock, flags);
 		}
 
-		list_del(&mbox_list->queue);
+		list_del(&tx_list->queue);
+		kfree(tx_list);
 	}
 	spin_unlock_irqrestore(&mbox_queue->tx_queue_lock, flags);
 }
@@ -507,100 +501,6 @@ static int mbox_add_tx_queue_and_work(struct mbox_transmitQueue *mbox_queue, str
 	return 0;
 }
 
-static void mbox_pump_tx_done_messages(struct kthread_work *work)
-{
-	struct mbox_txDoneQueue *mbox_queue;
-	struct mbox_tx_done_list *mbox_list;
-	struct mbox_tx_done_list *mbox_list_tmp;
-	unsigned long flags;
-
-	mbox_queue = container_of(work, struct mbox_txDoneQueue, pump_messages);
-
-	spin_lock_irqsave(&mbox_queue->queue_lock, flags);
-
-	list_for_each_entry_safe(mbox_list, mbox_list_tmp, &mbox_queue->queue, queue) {
-		if (mbox_queue->handler != NULL) {
-			spin_unlock_irqrestore(&mbox_queue->queue_lock, flags);
-			if(mbox_list != NULL)
-			{
-				mbox_queue->handler(mbox_list->chan,mbox_list->error); //call IPC handler
-			}
-			spin_lock_irqsave(&mbox_queue->queue_lock, flags);
-		}
-
-		list_del(&mbox_list->queue);
-	}
-	spin_unlock_irqrestore(&mbox_queue->queue_lock, flags);
-}
-
-static int mbox_tx_done_queue_init(struct mbox_txDoneQueue *mbox_queue, mbox_tx_done_queue_t handler, void *handler_pdata, const char *name)
-{
-	int ret;
-
-	if(mbox_queue != NULL)
-	{
-
-		INIT_LIST_HEAD(&mbox_queue->queue);
-		spin_lock_init(&mbox_queue->queue_lock);
-
-		mbox_queue->handler = handler;
-		mbox_queue->handler_pdata = handler_pdata;
-
-		kthread_init_worker(&mbox_queue->kworker);
-		mbox_queue->kworker_task = kthread_run(kthread_worker_fn,
-				&mbox_queue->kworker,
-				name);
-
-		if (IS_ERR(mbox_queue->kworker_task)) {
-			printk(KERN_ERR "[ERROR][%s]%s : failed to create rx done pump task\n", LOG_TAG, __func__);
-			ret = -ENOMEM;
-		}
-		else
-		{
-			kthread_init_work(&mbox_queue->pump_messages, mbox_pump_tx_done_messages);
-			ret = 0;
-		}
-	}
-	else
-	{
-		ret = -EINVAL;
-	}
-
-	return ret;
-}
-
-static int deregister_tx_done_queue(struct mbox_txDoneQueue *mbox_queue)
-{
-	int ret;
-	if (!mbox_queue) {
-		ret = -EINVAL;
-	}
-	else
-	{
-		kthread_flush_worker(&mbox_queue->kworker);
-		kthread_stop(mbox_queue->kworker_task);
-		ret = 0;
-	}
-
-	return ret;
-}
-
-static int mbox_add_tx_done_queue_and_work(struct mbox_txDoneQueue *mbox_queue, struct mbox_tx_done_list *mbox_list)
-{
-	unsigned long flags;
-
-	spin_lock_irqsave(&mbox_queue->queue_lock, flags);
-
-	if (mbox_list != NULL) {
-		list_add_tail(&mbox_list->queue, &mbox_queue->queue);
-	}
-	spin_unlock_irqrestore(&mbox_queue->queue_lock, flags);
-
-	kthread_queue_work(&mbox_queue->kworker, &mbox_queue->pump_messages);
-
-	return 0;
-}
-
 static void tcc_mbox_event_create(struct tcc_mbox_device * mdev)
 {
 	if(mdev != NULL)
@@ -660,7 +560,8 @@ static int tcc_mbox_send_message(struct mbox_chan *chan, struct tcc_mbox_data * 
 		int32_t idx;
 		int32_t i;
 
-		dprintk(mdev->mbox.dev,"msg(0x%p)\n", (void *)msg);
+		dprintk(mdev->mbox.dev,"msg(0x%px)\n", (void *)msg);
+
 		dprintk(mdev->mbox.dev,"cmd[0]: (0x%08x)\n", chan_info->header0.cmd);
 		for(i=0; i<(MBOX_CMD_FIFO_SIZE);i++)
 		{
@@ -709,8 +610,6 @@ static int tcc_mbox_send_message(struct mbox_chan *chan, struct tcc_mbox_data * 
 				/* disable data output. */
 				writel_relaxed(~OEN_BIT, mdev->base + MBOXCTR_CLR);
 
-				mdev->waitQueue._condition = 1;
-
 				/* write data fifo */
 				if(msg->data_len > 0)
 				{
@@ -734,6 +633,7 @@ static int tcc_mbox_send_message(struct mbox_chan *chan, struct tcc_mbox_data * 
 				writel_relaxed(TXD_IEN_BIT, mdev->base + MBOXCTR_SET);
 
 				/* enable data output. */
+				mdev->waitQueue._condition = 1;
 				writel_relaxed(OEN_BIT, mdev->base + MBOXCTR_SET);
 
 				ret = tcc_mbox_wait_event_timeout(mdev, MBOX_TX_TIMEOUT);
@@ -771,10 +671,7 @@ static void tcc_multich_mbox_send_worker(struct mbox_chan *chan, struct tcc_mbox
 		}
 		dprintk(mdev->mbox.dev,"tx result : %d\n",ret);
 
-		INIT_LIST_HEAD(&chan_info->tx_done_list.queue);
-		chan_info->tx_done_list.chan = chan;
-		chan_info->tx_done_list.error = ret;
-		mbox_add_tx_done_queue_and_work(&chan_info->txDoneQueue, &chan_info->tx_done_list);
+		tcc_txdone(chan, ret);
 
 		mutex_unlock(&mdev->sendLock);
 	}
@@ -790,13 +687,21 @@ static int tcc_multich_mbox_submit(struct mbox_chan *chan, void *mbox_msg)
 	if((chan != NULL)&&(mbox_msg != NULL))
 	{
 		struct tcc_mbox_device *mdev = dev_get_drvdata(chan->mbox->dev);
-		struct tcc_channel *chan_info = chan->con_priv;
 
-		INIT_LIST_HEAD(&chan_info->tx_list.queue);
-		chan_info->tx_list.chan = chan;
-		chan_info->tx_list.msg = (struct tcc_mbox_data *)mbox_msg;
+		struct mbox_transmit_list *tx_list = kzalloc(sizeof(struct mbox_transmit_list), GFP_ATOMIC);;
 
-		mbox_add_tx_queue_and_work(&mdev->transmitQueue, &chan_info->tx_list);
+		if(tx_list != NULL)
+		{
+			INIT_LIST_HEAD(&tx_list->queue);
+			tx_list->chan = chan;
+			tx_list->msg = (struct tcc_mbox_data *)mbox_msg;
+
+			mbox_add_tx_queue_and_work(&mdev->transmitQueue, tx_list);
+		}
+		else
+		{
+			eprintk(mdev->mbox.dev,"Allocate fail\n");
+		}
 	}
 	else
 	{
@@ -902,10 +807,6 @@ static int tcc_multich_mbox_startup(struct mbox_chan *chan)
 					else
 					{
 						ret = mbox_receive_queue_init(&chan_info->receiveQueue, tcc_received_msg, NULL, cl->dev->kobj.name);
-						if(ret == 0)
-						{
-							ret = mbox_tx_done_queue_init(&chan_info->txDoneQueue, tcc_txdone, NULL, cl->dev->kobj.name);
-						}
 					}
 				}
 				mutex_unlock(&mdev->lock);
@@ -938,7 +839,6 @@ static void tcc_multich_mbox_shutdown(struct mbox_chan *chan)
 			list_del(&chan_info->proc_list);
 
 			deregister_receive_queue(&chan_info->receiveQueue);
-			deregister_tx_done_queue(&chan_info->txDoneQueue);
 
 			mutex_unlock(&mdev->lock);
 			dprintk(mdev->mbox.dev,"out\n");
@@ -1129,7 +1029,6 @@ static irqreturn_t tcc_multich_mbox_txd_irq(int irq, void *dev_id)
 	struct tcc_mbox_device *mdev = (struct tcc_mbox_device *)dev_id;
 	irqreturn_t ret;
 
-	dprintk(mdev->mbox.dev,"\n");
 	if((irq != mdev->txd_irq)||(dev_id == NULL))
 	{
 		ret =  IRQ_NONE;

@@ -134,6 +134,10 @@ IPC_INT32 ipc_send_ping(struct ipc_device *ipc_dev)
 			wprintk(ipc_dev->dev,"cmd ack timeout\n");
 		}
 	}
+	else
+	{
+			wprintk(ipc_dev->dev,"cmd send error: %d\n", ret);
+	}
 
 	return ret;
 }
