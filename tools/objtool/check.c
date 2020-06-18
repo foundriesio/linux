@@ -822,6 +822,12 @@ static int add_special_section_alts(struct objtool_file *file)
 		}
 
 		if (special_alt->group) {
+			if (!special_alt->orig_len) {
+				WARN_FUNC("empty alternative entry",
+					  orig_insn->sec, orig_insn->offset);
+				continue;
+			}
+
 			ret = handle_group_alt(file, special_alt, orig_insn,
 					       &new_insn);
 			if (ret)
@@ -2108,13 +2114,6 @@ static int validate_functions(struct objtool_file *file)
 	struct insn_state state;
 	int ret, warnings = 0;
 
-	clear_insn_state(&state);
-
-	state.cfa = initial_func_cfi.cfa;
-	memcpy(&state.regs, &initial_func_cfi.regs,
-	       CFI_NUM_REGS * sizeof(struct cfi_reg));
-	state.stack_size = initial_func_cfi.cfa.offset;
-
 	for_each_sec(file, sec) {
 		list_for_each_entry(func, &sec->symbol_list, list) {
 			if (func->type != STT_FUNC || func->pfunc != func)
@@ -2123,6 +2122,12 @@ static int validate_functions(struct objtool_file *file)
 			insn = find_insn(file, sec, func->offset);
 			if (!insn || insn->ignore)
 				continue;
+
+			clear_insn_state(&state);
+			state.cfa = initial_func_cfi.cfa;
+			memcpy(&state.regs, &initial_func_cfi.regs,
+			       CFI_NUM_REGS * sizeof(struct cfi_reg));
+			state.stack_size = initial_func_cfi.cfa.offset;
 
 			ret = validate_branch(file, insn, state);
 			warnings += ret;
