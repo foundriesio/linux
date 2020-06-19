@@ -1777,36 +1777,42 @@
 		telechips,pins = "gpa-0";
 		telechips,pin-function = <3>;
 		telechips,drive-strength = <3>;
+		telechips,input_buffer_enable;
 	};
 
 	cam0_hsync: cam0_hsync {
 		telechips,pins = "gpa-1";
 		telechips,pin-function = <3>;
 		telechips,drive-strength = <3>;
+		telechips,input_buffer_enable;
 	};
 
 	cam0_vsync: cam0_vsync {
 		telechips,pins = "gpa-2";
 		telechips,pin-function = <3>;
 		telechips,drive-strength = <3>;
+		telechips,input_buffer_enable;
 	};
 
 	cam0_fld: cam0_fld {
 		telechips,pins = "gpa-11";
 		telechips,pin-function = <3>;
 		telechips,drive-strength = <3>;
+		telechips,input_buffer_enable;
 	};
 
 	cam0_de: cam0_de {
 		telechips,pins = "gpa-12";
 		telechips,pin-function = <3>;
 		telechips,drive-strength = <3>;
+		telechips,input_buffer_enable;
 	};
 
 	cam0_data_8bit: cam0_data_8bit {
 		telechips,pins = "gpa-3",  "gpa-4",  "gpa-5",  "gpa-6",  "gpa-7",  "gpa-8",  "gpa-9",  "gpa-10";
 		telechips,pin-function = <3>;
 		telechips,drive-strength = <3>;
+		telechips,input_buffer_enable;
 	};
 
 	cam0_data_16bit: cam0_data_16bit {
@@ -1814,6 +1820,7 @@
 				 "gpa-13", "gpa-14", "gpa-15", "gpa-16", "gpa-17", "gpa-18", "gpa-19", "gpa-20";
 		telechips,pin-function = <3>;
 		telechips,drive-strength = <3>;
+		telechips,input_buffer_enable;
 	};
 
 	i2c0_bus: i2c0_bus {

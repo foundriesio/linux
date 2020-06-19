@@ -18,7 +18,7 @@
 &aliases {
 	videosource0 = &videosource0;
 	videosource1 = &videosource1;
-	videosource2 = &videosource2;
+//	videosource2 = &videosource2;
 };
 
 &pcie {
@@ -85,7 +85,7 @@
 
 &switch_reverse {
 	compatible = "telechips,switch_reverse";
-	status = "disabled";
+	status = "okay";
 
 	pinctrl-names = "default";
 	pinctrl-0 = <&switch_reverse_mb23>;
@@ -196,30 +196,6 @@
 		};
 	};
 */ /* pmic da9062 */
-
-	videosource0: videodecoder_isl79988 {
-		compatible	= "intersil,isl79988";
-		pinctrl-names	= "idle", "active";
-		cifport		= <0>;
-		pinctrl-0	= <&cam0_8bit_idle>;
-		pinctrl-1	= <&cam0_clk &cam0_data_8bit>;
-		rst-gpios	= <&gpb 14 1>;
-		reg		= <0x44>;	// 0x88 >> 1
-	};
-
-	videosource1: deserializer_max9286 {
-		compatible	= "maxim,max9286";
-		cifport		= <5>;
-		pwd-gpios	= <&gpg 5 1>;
-		intb-gpios	= <&gph 11 1>;
-		reg		= <0x48>;	// 0x90 >> 1
-	};
-
-	videosource2: deserializer_ds90ub964 {
-		compatible	= "ti,ds90ub964";
-		cifport		= <5>;
-		reg		= <0x30>;	// 0x60 >> 1
-	};
 };
 
 &i2c1 {
@@ -281,6 +257,38 @@
 		irq-gpios = <&gpa 21 0x0>;
 		reset-gpios = <&gpmd 8 0x0>;
 	};
+};
+
+&i2c7 {
+	status = "okay";
+	port-mux = <12>; /* [0]SCL [1]SDA */
+	pinctrl-names = "default";
+	pinctrl-0 = <&i2c12_bus>;
+
+	videosource0: videodecoder_adv7182 {
+		compatible	= "analogdevices,adv7182";
+		pinctrl-names	= "idle", "active";
+		cifport		= <0>;
+		pinctrl-0	= <&cam0_8bit_idle>;
+		pinctrl-1	= <&cam0_clk &cam0_data_8bit>;
+		rst-gpios	= <&gpb 14 1>;
+		reg		= <0x21>;	// 0x42 >> 1
+	};
+
+	videosource1: deserializer_max9286 {
+		compatible	= "maxim,max9286";
+		// refer to CIFPORT0(0x12380008) of datasheet
+		cifport		= <9>;
+		pwd-gpios	= <&gpg 5 1>;
+		intb-gpios	= <&gph 11 1>;
+		reg		= <0x48>;	// 0x90 >> 1
+	};
+
+//	videosource2: deserializer_ds90ub964 {
+//		compatible	= "ti,ds90ub964";
+//		cifport		= <9>;
+//		reg		= <0x30>;	// 0x60 >> 1
+//	};
 };
 
 &gpsb1 {

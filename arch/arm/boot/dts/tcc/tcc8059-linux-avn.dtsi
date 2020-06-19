@@ -76,7 +76,7 @@
 
 	switch_reverse {
 		compatible = "telechips,switch_reverse";
-		status = "disabled";
+		status = "okay";
 
 		pinctrl-names = "default";
 		pinctrl-0 = <&switch_reverse_ma15>;
