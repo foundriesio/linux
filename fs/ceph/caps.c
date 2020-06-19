@@ -1950,6 +1950,8 @@ retry_locked:
 	}
 
 	for (p = rb_first(&ci->i_caps); p; p = rb_next(p)) {
+		bool sync = false;
+
 		cap = rb_entry(p, struct ceph_cap, ci_node);
 
 		/* avoid looping forever */
@@ -2085,6 +2087,9 @@ ack:
 			flushing = __mark_caps_flushing(inode, session, false,
 							&flush_tid,
 							&oldest_flush_tid);
+			if (flags & CHECK_CAPS_FLUSH &&
+			    list_empty(&session->s_cap_dirty))
+				sync = true;
 		} else {
 			flushing = 0;
 			flush_tid = 0;
@@ -2097,7 +2102,7 @@ ack:
 		sent++;
 
 		/* __send_cap drops i_ceph_lock */
-		delayed += __send_cap(mdsc, cap, CEPH_CAP_OP_UPDATE, false,
+		delayed += __send_cap(mdsc, cap, CEPH_CAP_OP_UPDATE, sync,
 				cap_used, want, retain, flushing,
 				flush_tid, oldest_flush_tid);
 		goto retry; /* retake i_ceph_lock and restart our cap scan. */
