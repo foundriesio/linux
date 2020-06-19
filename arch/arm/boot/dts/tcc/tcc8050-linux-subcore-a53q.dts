@@ -48,6 +48,16 @@
 		gpsb0 = &gpsb0;
 		gpsb1 = &gpsb1;
 		gpsb2 = &gpsb2;
+		videosource0 = &videosource0;
+		videosource1 = &videosource1;
+		videoinput0 = &videoinput0;
+		videoinput1 = &videoinput1;
+		videoinput2 = &videoinput2;
+		videoinput3 = &videoinput3;
+		videoinput4 = &videoinput4;
+		videoinput5 = &videoinput5;
+		videoinput6 = &videoinput6;
+		videoinput7 = &videoinput7;
 	};
 
 	cpus {
@@ -148,6 +158,46 @@
 		#address-cells = <1>;
 		#size-cells = <1>;
 		ranges;
+
+		/*-----------------------------------------------------------
+		 * Secure Area 1 (CPU R/W, VPU X, GPU R/W, VIOC R)
+		 *-----------------------------------------------------------
+		 */
+		pmap_fb_video: fb_video {
+			compatible = "telechips,pmap";
+			telechips,pmap-name = "fb_video";
+			alloc-ranges = <RESERVED_MEM_BASE RESERVED_MEM_SIZE>;
+			size = <PMAP_SIZE_FB_VIDEO>;
+			no-map;
+		};
+
+		/*-----------------------------------------------------------
+		 * RearCamera Memory (synchronized with bootloader)
+		 *-----------------------------------------------------------
+		 */
+		rearcamera_viqe: rearcamera_viqe {
+			compatible = "telechips,pmap";
+			telechips,pmap-name = "rearcamera_viqe";
+			alloc-ranges = <REARCAMERA_MEM_BASE REARCAMERA_MEM_SIZE>;
+			size = <PMAP_SIZE_REARCAMERA_VIQE>;
+			no-map;
+		};
+
+		rearcamera: rearcamera {
+			compatible = "telechips,pmap";
+			telechips,pmap-name = "rearcamera";
+			alloc-ranges = <REARCAMERA_MEM_BASE REARCAMERA_MEM_SIZE>;
+			size = <PMAP_SIZE_REARCAMERA>;
+			no-map;
+		};
+
+		parking_gui: parking_gui {
+			compatible = "telechips,pmap";
+			telechips,pmap-name = "parking_gui";
+			alloc-ranges = <REARCAMERA_MEM_BASE REARCAMERA_MEM_SIZE>;
+			size = <PMAP_SIZE_PARKING_GUI>;
+			no-map;
+		};
 	};
 
 	clocks {
@@ -879,6 +929,330 @@
 		//access-control3 = <0x00000000 0x00000000>;
 	};
 
+	cifport: cifport@12380008 {
+		compatible = "telechips,cif-port";
+		reg = <0x12380008 0x4>;
+		statue = "okay";
+	};
+
+	vioc_config: vioc_config@1200a000 {
+		compatible = "telechips,vioc_config";
+		reg = <0x1200a000 0x1000>;
+	};
+
+	vioc_intr: vioc_intr@1200a400 {
+		compatible = "telechips,vioc_intr";
+		reg = <0x1200a400 0x100>;
+		interrupts = <GIC_SPI VIOC0_IRQI IRQ_TYPE_LEVEL_HIGH>;
+	};
+
+	ddi_config: ddi_config@12380000 {
+		compatible = "telechips,ddi_config";
+		reg = <0x12380000 0x70>;
+	};
+
+	vioc_disp: vioc_disp@12000000 {
+		compatible = "telechips,vioc_disp";
+		reg = <0x12000000 0x100 0x12000100 0x100 0x12000200 0x100>;
+		interrupts = <GIC_SPI VIOC0_IRQI IRQ_TYPE_LEVEL_HIGH>, <GIC_SPI VIOC0_IRQI IRQ_TYPE_LEVEL_HIGH>, <GIC_SPI VIOC0_IRQI IRQ_TYPE_LEVEL_HIGH>;
+		clocks = <&clk_ddi DDIBUS_VIOC>, <&clk_peri PERI_LCD0>, <&clk_peri PERI_LCD1>, <&clk_peri PERI_LCD2>;
+		clock-names = "ddi-clk", "disp0-clk", "disp1-clk", "disp2-clk";
+	};
+
+	vioc_rdma: vioc_rdma@12000400{
+		compatible = "telechips,vioc_rdma";
+		reg = <0x12000400 0x100 0x12000500 0x100 0x12000600 0x100 0x12000700 0x100
+				0x12000800 0x100 0x12000900 0x100 0x12000a00 0x100  0x12000b00 0x100
+				0x12000c00 0x100 0x12000d00 0x100 0x12000e00 0x100  0x12000f00 0x100
+				0x12001000 0x100 0x12001100 0x100 0x12001200 0x100  0x12001300 0x100
+				0x12001400 0x100  0x12001500 0x100>;
+		interrupts = <GIC_SPI VIOC0_IRQI IRQ_TYPE_LEVEL_HIGH>,
+			     <GIC_SPI VIOC0_IRQI IRQ_TYPE_LEVEL_HIGH>,
+			     <GIC_SPI VIOC0_IRQI IRQ_TYPE_LEVEL_HIGH>,
+			     <GIC_SPI VIOC0_IRQI IRQ_TYPE_LEVEL_HIGH>,
+			     <GIC_SPI VIOC0_IRQI IRQ_TYPE_LEVEL_HIGH>,
+			     <GIC_SPI VIOC0_IRQI IRQ_TYPE_LEVEL_HIGH>,
+			     <GIC_SPI VIOC0_IRQI IRQ_TYPE_LEVEL_HIGH>,
+			     <GIC_SPI VIOC0_IRQI IRQ_TYPE_LEVEL_HIGH>,
+			     <GIC_SPI VIOC0_IRQI IRQ_TYPE_LEVEL_HIGH>,
+			     <GIC_SPI VIOC0_IRQI IRQ_TYPE_LEVEL_HIGH>,
+			     <GIC_SPI VIOC0_IRQI IRQ_TYPE_LEVEL_HIGH>,
+			     <GIC_SPI VIOC0_IRQI IRQ_TYPE_LEVEL_HIGH>,
+			     <GIC_SPI VIOC0_IRQI IRQ_TYPE_LEVEL_HIGH>,
+			     <GIC_SPI VIOC0_IRQI IRQ_TYPE_LEVEL_HIGH>,
+			     <GIC_SPI VIOC0_IRQI IRQ_TYPE_LEVEL_HIGH>,
+			     <GIC_SPI VIOC0_IRQI IRQ_TYPE_LEVEL_HIGH>,
+			     <GIC_SPI VIOC0_IRQI IRQ_TYPE_LEVEL_HIGH>,
+			     <GIC_SPI VIOC0_IRQI IRQ_TYPE_LEVEL_HIGH>;
+	};
+
+	vioc_wmix: vioc_wmix@12001800{
+		compatible = "telechips,vioc_wmix";
+		reg = <0x12001800 0x100 0x12001900 0x100 0x12001a00 0x100 0x12001b00 0x100
+				0x12001c00 0x100 0x12001d00 0x100 0x12001e00 0x100>;
+		interrupts = <GIC_SPI VIOC0_IRQI IRQ_TYPE_LEVEL_HIGH>,
+			     <GIC_SPI VIOC0_IRQI IRQ_TYPE_LEVEL_HIGH>,
+			     <GIC_SPI VIOC0_IRQI IRQ_TYPE_LEVEL_HIGH>,
+			     <GIC_SPI VIOC0_IRQI IRQ_TYPE_LEVEL_HIGH>,
+			     <GIC_SPI VIOC0_IRQI IRQ_TYPE_LEVEL_HIGH>,
+			     <GIC_SPI VIOC0_IRQI IRQ_TYPE_LEVEL_HIGH>,
+			     <GIC_SPI VIOC0_IRQI IRQ_TYPE_LEVEL_HIGH>;
+	};
+
+	vioc_scaler:vioc_scaler@12002000{
+		compatible = "telechips,scaler";
+		reg = <0x12002000 0x100 0x12002100 0x100 0x12002200 0x100>;
+		status = "disabled";
+	};
+
+	vioc_wdma:vioc_wdma@12002800{
+		compatible = "telechips,vioc_wdma";
+		reg = <0x12002800 0x100 0x12002900 0x100 0x12002a00 0x100 0x12002b00 0x100
+				0x12002c00 0x100 0x12002d00 0x100 0x12002e00 0x100  0x12002f00 0x100
+				0x12003000 0x100 0x12014000 0x100 0x12014100 0x100 0x12014200 0x100
+				0x12014300 0x100 0x12014400 0x100>;
+		interrupts = <GIC_SPI VIOC0_IRQI IRQ_TYPE_LEVEL_HIGH>,
+			     <GIC_SPI VIOC0_IRQI IRQ_TYPE_LEVEL_HIGH>,
+			     <GIC_SPI VIOC0_IRQI IRQ_TYPE_LEVEL_HIGH>,
+			     <GIC_SPI VIOC0_IRQI IRQ_TYPE_LEVEL_HIGH>,
+			     <GIC_SPI VIOC0_IRQI IRQ_TYPE_LEVEL_HIGH>,
+			     <GIC_SPI VIOC0_IRQI IRQ_TYPE_LEVEL_HIGH>,
+			     <GIC_SPI VIOC0_IRQI IRQ_TYPE_LEVEL_HIGH>,
+			     <GIC_SPI VIOC0_IRQI IRQ_TYPE_LEVEL_HIGH>,
+			     <GIC_SPI VIOC0_IRQI IRQ_TYPE_LEVEL_HIGH>,
+			     <GIC_SPI VIOC0_IRQI IRQ_TYPE_LEVEL_HIGH>,
+			     <GIC_SPI VIOC0_IRQI IRQ_TYPE_LEVEL_HIGH>,
+			     <GIC_SPI VIOC0_IRQI IRQ_TYPE_LEVEL_HIGH>,
+			     <GIC_SPI VIOC0_IRQI IRQ_TYPE_LEVEL_HIGH>,
+			     <GIC_SPI VIOC0_IRQI IRQ_TYPE_LEVEL_HIGH>;
+	};
+
+	vioc_vin:vioc_vin@12004000{
+		compatible = "telechips,vioc_vin";
+		reg = <	0x12004000 0x400 0x12004400 0x600
+			0x12005000 0x400 0x12005400 0x600
+			0x12006000 0x400 0x12006400 0x600
+			0x12007000 0x400 0x12007400 0x600
+			0x12018000 0x400 0x12018400 0x600
+			0x12019000 0x400 0x12019400 0x600
+			0x1201a000 0x400 0x1201a400 0x600
+			0x1201b000 0x400 0x1201b400 0x600>;
+		interrupts = <GIC_SPI VIOC0_IRQI IRQ_TYPE_LEVEL_HIGH>,
+			     <GIC_SPI VIOC0_IRQI IRQ_TYPE_LEVEL_HIGH>,
+			     <GIC_SPI VIOC0_IRQI IRQ_TYPE_LEVEL_HIGH>,
+			     <GIC_SPI VIOC0_IRQI IRQ_TYPE_LEVEL_HIGH>,
+			     <GIC_SPI VIOC0_IRQI IRQ_TYPE_LEVEL_HIGH>,
+			     <GIC_SPI VIOC0_IRQI IRQ_TYPE_LEVEL_HIGH>,
+			     <GIC_SPI VIOC0_IRQI IRQ_TYPE_LEVEL_HIGH>,
+			     <GIC_SPI VIOC0_IRQI IRQ_TYPE_LEVEL_HIGH>,
+			     <GIC_SPI VIOC0_IRQI IRQ_TYPE_LEVEL_HIGH>,
+			     <GIC_SPI VIOC0_IRQI IRQ_TYPE_LEVEL_HIGH>,
+			     <GIC_SPI VIOC0_IRQI IRQ_TYPE_LEVEL_HIGH>,
+			     <GIC_SPI VIOC0_IRQI IRQ_TYPE_LEVEL_HIGH>,
+			     <GIC_SPI VIOC0_IRQI IRQ_TYPE_LEVEL_HIGH>,
+			     <GIC_SPI VIOC0_IRQI IRQ_TYPE_LEVEL_HIGH>,
+			     <GIC_SPI VIOC0_IRQI IRQ_TYPE_LEVEL_HIGH>,
+			     <GIC_SPI VIOC0_IRQI IRQ_TYPE_LEVEL_HIGH>;
+	};
+
+	vioc_viqe:vioc_viqe@1200d000{
+		compatible = "telechips,vioc_viqe";
+		reg = <0x1200d000 0x1000 0x12010000 0x1000>;
+	};
+
+	viqe_hidden:viqe_hidden{
+		reg = <0x1200d100 0x4 0x1200d10c 0x4>;
+	};
+
+	vioc_deintls:vioc_deintls@12003800{
+		compatible = "telechips,vioc_deintls";
+		reg = <0x12003800 0x100>;
+		status = "disabled";
+	};
+
+	vioc_fifo:vioc_fifo@12003b00{
+		compatible = "telechips,vioc_fifo";
+		reg = <0x12003b00 0x100>;
+		status = "disabled";
+	};
+
+	vioc_rdma_arbitor:vioc_rdma_arbitor@12003f00{
+		reg = <0x12003f00 0x20 0x12003f20 0x20 0x12003f40 0x20 0x12003f60 0x20>;
+		arbitor_num = <4>;
+	};
+
+	mipi_csi2:mipi_csi@123c0000 {
+		compatible = "telechips,mipi_csi2";
+		reg = <0x1bc00800 0x120>,	/* csi0_base */
+		      <0x1bc00a00 0x05c>,	/* gdb0_base */
+		      <0x1bc00000 0x014>,	/* ckc_base */
+		      <0x1bc00400 0x120>;	/* cfg_base */
+		interrupts = <GIC_SPI 158 IRQ_TYPE_LEVEL_HIGH>,		// MIPI0 interrupt
+			     <GIC_SPI 159 IRQ_TYPE_LEVEL_HIGH>;		// MIPI1 interrupt
+	 };
+/*
+	mipi_generic_data_buffer:mipi_generic_data_buffer@123c0200 {
+		compatible = "telechips,mipi_generic_data_buffer";
+		reg = <0x123c0200 0x5c>;
+		clocks = <&clk_peri PERI_MIPI_CSI>;
+	};
+*/
+
+	fbdisplay: fbdisplay@12000000 {
+		compatible = "telechips,vioc-fb";
+		reg = <0x12000000 0x10000>;
+		telechips,fbdisplay_num = <0>;
+		telechips,rdma_arbitor=<&vioc_rdma_arbitor>;
+		memory-region = <&pmap_fb_video>;
+
+		fbdisplay0:fbdisplay0@12000000{
+			telechips,disp = <&vioc_disp VIOC_DISP0>;
+			telechips,wmixer = <&vioc_wmix VIOC_WMIX0>;
+			telechips,rdma = <&vioc_rdma VIOC_RDMA00 VIOC_RDMA01 VIOC_RDMA02 VIOC_RDMA03>;
+			telechips,wdma = <&vioc_wdma VIOC_WDMA00>;
+		};
+	};
+
+	fb0: fb@0 {
+		compatible = "telechips,fb";
+		status = "okay";
+		memory-region = <&pmap_fb_video>;
+		xres = <1920>;
+		yres = <720>;
+		bpp = <32>;
+		mode = <FBX_TRIPLE>;
+		update-type = <FBX_OVERLAY_UPDATE>;
+		device-priority = <FBX_DEVICE_LVDS>;
+		telechips,disp = <&vioc_disp VIOC_DISP0 VIOC_DISP1>;
+		telechips,wmixer = <&vioc_wmix VIOC_WMIX0 VIOC_WMIX1>;
+		telechips,rdma = <&vioc_rdma VIOC_RDMA01 VIOC_RDMA04>;
+
+		//to use the option below, set CONFIG_FB_NEW_HALFDISPLAY_SUPPORT on menuconfig
+		telechips,scaler = <&vioc_scaler VIOC_SCALER0>;
+		fbx_region {
+			x = <0>;
+			y = <0>;
+			width = <960>;
+			height = <720>;
+		};
+	};
+
+	tcc_overlay_drv {
+		compatible = "telechips,tcc_overlay";
+		fbdisplay-overlay = <&fbdisplay>;
+		rdmas = <&vioc_rdma VIOC_RDMA00 VIOC_RDMA01 VIOC_RDMA02 VIOC_RDMA03 VIOC_RDMA04 VIOC_RDMA05 VIOC_RDMA06 VIOC_RDMA07>;
+		wmixs = <&vioc_wmix VIOC_WMIX0 VIOC_WMIX1>;
+		rdma_init_layer = <1>;
+		status = "okay";
+	};
+
+	switch_reverse {
+		compatible = "telechips,switch_reverse";
+		status = "okay";
+
+		pinctrl-names = "default";
+		pinctrl-0 = <&switch_reverse_mb23>;
+
+		switch-gpios = <&gpmb 23 1>;
+		switch-active = <0>;
+	};
+
+	videoinput0: videoinput@0 {
+		compatible	= "telechips,video-input";
+		clocks		= <&clk_ddi DDIBUS_VIOC>;
+		rdma		= <&vioc_rdma		VIOC_RDMA16>;
+		vin		= <&vioc_vin		VIOC_VIN00>;
+		viqe		= <&vioc_viqe		VIOC_VIQE1>;
+		viqe_set	= <&viqe_hidden>;
+		deintls		= <&vioc_deintls	VIOC_DEINTLS0>;
+		scaler		= <&vioc_scaler		VIOC_SCALER2>;
+		wmixer		= <&vioc_wmix		VIOC_WMIX5>;
+		wdma		= <&vioc_wdma		VIOC_WDMA05>;
+		fifo		= <&vioc_fifo		VIOC_FIFO0>;
+		status		= "okay";
+	};
+
+	videoinput1: videoinput@1 {
+		compatible	= "telechips,video-input";
+		clocks		= <&clk_ddi DDIBUS_VIOC>;
+		rdma		= <&vioc_rdma		VIOC_RDMA17>;
+		vin		= <&vioc_vin		VIOC_VIN10>;
+		viqe		= <&vioc_viqe		VIOC_VIQE1>;
+		viqe_set	= <&viqe_hidden>;
+		deintls		= <&vioc_deintls	VIOC_DEINTLS0>;
+		scaler		= <&vioc_scaler		VIOC_SCALER2>;
+		wmixer		= <&vioc_wmix		VIOC_WMIX6>;
+		wdma		= <&vioc_wdma		VIOC_WDMA07>;
+		fifo		= <&vioc_fifo		VIOC_FIFO0>;
+		status		= "okay";
+	};
+
+	videoinput2: videoinput@2 {
+		compatible	= "telechips,video-input";
+		clocks		= <&clk_ddi DDIBUS_VIOC>;
+		rdma		= <&vioc_rdma		VIOC_RDMA13>;
+		vin		= <&vioc_vin		VIOC_VIN20>;
+		viqe		= <&vioc_viqe		VIOC_VIQE1>;
+		viqe_set	= <&viqe_hidden>;
+		deintls		= <&vioc_deintls	VIOC_DEINTLS0>;
+		scaler		= <&vioc_scaler		VIOC_SCALER2>;
+		wmixer		= <&vioc_wmix		VIOC_WMIX3>;
+		wdma		= <&vioc_wdma		VIOC_WDMA03>;
+		fifo		= <&vioc_fifo		VIOC_FIFO0>;
+		status		= "okay";
+	};
+
+	videoinput3: videoinput@3 {
+		compatible	= "telechips,video-input";
+		clocks		= <&clk_ddi DDIBUS_VIOC>;
+		rdma		= <&vioc_rdma		VIOC_RDMA15>;
+		vin		= <&vioc_vin		VIOC_VIN30>;
+		viqe		= <&vioc_viqe		VIOC_VIQE1>;
+		viqe_set	= <&viqe_hidden>;
+		deintls		= <&vioc_deintls	VIOC_DEINTLS0>;
+		scaler		= <&vioc_scaler		VIOC_SCALER2>;
+		wmixer		= <&vioc_wmix		VIOC_WMIX4>;
+		wdma		= <&vioc_wdma		VIOC_WDMA04>;
+		fifo		= <&vioc_fifo		VIOC_FIFO0>;
+		status		= "okay";
+	};
+
+	videoinput4: videoinput@4 {
+		compatible	= "telechips,video-input";
+		clocks		= <&clk_ddi DDIBUS_VIOC>;
+		vin		= <&vioc_vin		VIOC_VIN40>;
+		wdma		= <&vioc_wdma		VIOC_WDMA09>;
+		fifo		= <&vioc_fifo		VIOC_FIFO0>;
+		status		= "okay";
+	};
+
+	videoinput5: videoinput@5 {
+		compatible	= "telechips,video-input";
+		clocks		= <&clk_ddi DDIBUS_VIOC>;
+		vin		= <&vioc_vin		VIOC_VIN50>;
+		wdma		= <&vioc_wdma		VIOC_WDMA10>;
+		fifo		= <&vioc_fifo		VIOC_FIFO0>;
+		status		= "okay";
+	};
+
+	videoinput6: videoinput@6 {
+		compatible	= "telechips,video-input";
+		clocks		= <&clk_ddi DDIBUS_VIOC>;
+		vin		= <&vioc_vin		VIOC_VIN60>;
+		wdma		= <&vioc_wdma		VIOC_WDMA11>;
+		fifo		= <&vioc_fifo		VIOC_FIFO0>;
+		status		= "okay";
+	};
+
+	videoinput7: videoinput@7 {
+		compatible	= "telechips,video-input";
+		clocks		= <&clk_ddi DDIBUS_VIOC>;
+		vin		= <&vioc_vin		VIOC_VIN70>;
+		wdma		= <&vioc_wdma		VIOC_WDMA12>;
+		fifo		= <&vioc_fifo		VIOC_FIFO0>;
+		status		= "okay";
+	};
+
 	/* A53 <-> R5 */
 	micom_mbox: mbox@0x1BA30000 {
 		compatible = "telechips,multichannel-mailbox";
@@ -1020,6 +1394,78 @@
 	uart9_data: uart9_data {
 		telechips,pins = "gpa-24", "gpa-25";
 		telechips,pin-function = <7>;
+	};
+
+	switch_reverse_mb23: switch_reverse_mb23 {
+		telechips,pins = "gpmb-23";
+		telechips,pin-function = <0>;
+		telechips,input-enable;
+		telechips,no-pull;
+	};
+
+	cam0_8bit_idle: cam0_8bit_idle {
+		telechips,pins = "gpa-0",  "gpa-1",  "gpa-2",  "gpa-11",  "gpa-12",
+				 "gpa-3",  "gpa-4",  "gpa-5",  "gpa-6",  "gpa-7",  "gpa-8",  "gpa-9",  "gpa-10";
+		telechips,pin-function = <0>;
+		telechips,output-low;
+	};
+
+	cam0_16bit_idle: cam0_16bit_idle {
+		telechips,pins = "gpa-0",
+				 "gpa-3",  "gpa-4",  "gpa-5",  "gpa-6",  "gpa-7",  "gpa-8",  "gpa-9",  "gpa-10",
+				 "gpa-13", "gpa-14", "gpa-15", "gpa-16", "gpa-17", "gpa-18", "gpa-19", "gpa-20";
+		telechips,pin-function = <0>;
+		telechips,output-low;
+	};
+
+	cam0_clk: cam0_clk {
+		telechips,pins = "gpa-0";
+		telechips,pin-function = <3>;
+		telechips,drive-strength = <3>;
+		telechips,input_buffer_enable;
+	};
+
+	cam0_hsync: cam0_hsync {
+		telechips,pins = "gpa-1";
+		telechips,pin-function = <3>;
+		telechips,drive-strength = <3>;
+		telechips,input_buffer_enable;
+	};
+
+	cam0_vsync: cam0_vsync {
+		telechips,pins = "gpa-2";
+		telechips,pin-function = <3>;
+		telechips,drive-strength = <3>;
+		telechips,input_buffer_enable;
+	};
+
+	cam0_fld: cam0_fld {
+		telechips,pins = "gpa-11";
+		telechips,pin-function = <3>;
+		telechips,drive-strength = <3>;
+		telechips,input_buffer_enable;
+	};
+
+	cam0_de: cam0_de {
+		telechips,pins = "gpa-12";
+		telechips,pin-function = <3>;
+		telechips,drive-strength = <3>;
+		telechips,input_buffer_enable;
+	};
+
+	cam0_data_8bit: cam0_data_8bit {
+		telechips,pins = "gpa-3",  "gpa-4",  "gpa-5",  "gpa-6",  "gpa-7",  "gpa-8",  "gpa-9",  "gpa-10";
+		telechips,pin-function = <3>;
+		telechips,drive-strength = <3>;
+		telechips,input_buffer_enable;
+	};
+
+	cam0_data_16bit: cam0_data_16bit {
+		telechips,pins = "gpa-3",  "gpa-4",  "gpa-5",  "gpa-6",  "gpa-7",  "gpa-8",  "gpa-9",  "gpa-10",
+				 "gpa-13", "gpa-14", "gpa-15", "gpa-16", "gpa-17", "gpa-18", "gpa-19", "gpa-20";
+		telechips,pin-function = <3>;
+		telechips,drive-strength = <3>;
+		telechips,input_buffer_enable;
 	};
 
 	i2c0_bus: i2c0_bus {
@@ -1675,6 +2121,30 @@
 	pinctrl-names = "default";
 	pinctrl-0 = <&i2c12_bus>;
 
+	videosource0: videodecoder_adv7182 {
+		compatible	= "analogdevices,adv7182";
+		pinctrl-names	= "idle", "active";
+		cifport		= <0>;
+		pinctrl-0	= <&cam0_8bit_idle>;
+		pinctrl-1	= <&cam0_clk &cam0_data_8bit>;
+		rst-gpios	= <&gpb 14 1>;
+		reg		= <0x21>;	// 0x42 >> 1
+	};
+
+	videosource1: deserializer_max9286 {
+		compatible	= "maxim,max9286";
+		// refer to CIFPORT0(0x12380008) of datasheet
+		cifport		= <9>;
+		pwd-gpios	= <&gpg 5 1>;
+		intb-gpios	= <&gph 11 1>;
+		reg		= <0x48>;	// 0x90 >> 1
+	};
+
+//	videosource2: deserializer_ds90ub964 {
+//		compatible	= "ti,ds90ub964";
+//		cifport		= <9>;
+//		reg		= <0x30>;	// 0x60 >> 1
+//	};
 };
 
 &gpsb0 {
