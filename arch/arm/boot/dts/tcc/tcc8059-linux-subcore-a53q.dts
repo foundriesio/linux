@@ -66,6 +66,10 @@
 		videoinput5 = &videoinput5;
 		videoinput6 = &videoinput6;
 		videoinput7 = &videoinput7;
+		fb0 = &fb0;
+	#if defined(CONFIG_OVERLAY_DPGL)
+		fb1 = &fb1;
+	#endif
 		wmixer-drv1 = &wmixer_drv1;
 //		tcc-overlay-drv1 = &tcc_overlay_drv1;
 	};
@@ -1184,14 +1188,49 @@
 	gpu:gpu@0x10100000 {
 		compatible = "imagination,powerVR-9XTP";
 		status = "okay";
-		reg = <0x0 0x10100000 0x0 0x10000>;
+		reg = <0x10100000 0x10000>;
 		interrupts = <GIC_SPI 123 IRQ_TYPE_LEVEL_HIGH>;
 		interrupt-names = "GPU";
 		clocks = <&clk_fbus FBUS_GPU>;
 		clock-names = "9XTP_clk";
 	};
 
-	fb0 {
+#if 0
+	tcc-drm-lcd {
+	        compatible = "telechips,tcc-drm-lcd";
+	        display-port-num = <0>;
+	        reg = <0x12000000 0x100>,
+		      <0x12000400 0x100>,
+		      <0x12001800 0x100>,
+		/* VIOC_REMAP */
+		      <0x12000000 0x100>,
+		      <0x12004000 0x100>,
+		      <0x12018000 0x100>;
+
+	        reg-names = "ddc", "rdma", "wmix";
+	        interrupts = <GIC_SPI VIOC1_IRQI IRQ_TYPE_LEVEL_HIGH>;
+	        interrupt-names = "vsync";
+	        clock-names = "ddibus_vioc", "peri_lcd";
+	        clocks = <&clk_ddi DDIBUS_VIOC>, <&clk_peri PERI_LCD0>;
+	        status = "okay";
+		display-timings {
+			native-mode = <&timing0>;
+			timing0: timing {
+				clock-frequency = <88200000>;
+				hactive = <1920>;
+				vactive = <720>;
+				hfront-porch = <28>;
+				hback-porch = <28>;
+				hsync-len = <8>;
+				vback-porch = <10>;
+				vfront-porch = <10>;
+				vsync-len = <2>;
+			};
+		};
+	};
+#endif
+
+	fb0: fb@0 {
 		compatible = "telechips,fb";
 		status = "okay";
 		memory-region = <&pmap_fb_video>;
@@ -1216,7 +1255,7 @@
 	};
 
 	#if defined(CONFIG_OVERLAY_DPGL)
-	fb1 {
+	fb1: fb@1 {
 		compatible = "telechips,fb";
 		status = "okay";
 		memory-region = <&pmap_fb1_video>;
@@ -3160,3 +3199,4 @@
 	pinctrl-1 = <&m0dai1_bclk_idle &m0dai1_lrck_idle &m0dai1_dai0_idle>;
 	status = "okay";
 };
+
