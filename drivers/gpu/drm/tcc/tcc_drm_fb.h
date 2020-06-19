@@ -17,12 +17,6 @@
 
 #include "tcc_drm_gem.h"
 
-struct drm_framebuffer *
-tcc_drm_framebuffer_init(struct drm_device *dev,
-			    const struct drm_mode_fb_cmd2 *mode_cmd,
-			    struct tcc_drm_gem **tcc_gem,
-			    int count);
-
 dma_addr_t tcc_drm_fb_dma_addr(struct drm_framebuffer *fb, int index);
 
 void tcc_drm_mode_config_init(struct drm_device *dev);

@@ -281,6 +281,10 @@ static void lcd_update_plane(struct tcc_drm_crtc *crtc,
 	offset = state->src.x * cpp;
 	offset += state->src.y * pitch;
 
+	dma_addr = tcc_drm_fb_dma_addr(fb, 0) + offset;
+	if(dma_addr == NULL) {		
+		return;
+	}
 	VIOC_WMIX_SetPosition(pWMIX, win, state->crtc.x, state->crtc.y);
 
 	/* Using the pixel alpha */
@@ -288,7 +292,6 @@ static void lcd_update_plane(struct tcc_drm_crtc *crtc,
 	VIOC_RDMA_SetImageAlphaEnable(pRDMA, 1);
 
 	/* buffer start address */
-	dma_addr = tcc_drm_fb_dma_addr(fb, 0) + offset;
 	val = (unsigned long)dma_addr;
 	VIOC_RDMA_SetImageBase(pRDMA, val, 0, 0);
 	VIOC_RDMA_SetImageSize(pRDMA, state->src.w, state->src.h);
@@ -445,12 +448,10 @@ static irqreturn_t lcd_irq_handler(int irq, void *dev_id)
 
 		/* check the crtc is detached already from encoder */
 		if (ctx->drm_dev == NULL) {
-			printk(KERN_ERR "[ERR][DRM] %s drm_dev is not binded\r\n", __func__);
+			printk(KERN_ERR "[ERR][DRMLCD] %s drm_dev is not binded\r\n", __func__);
 			goto out;
 		}
-
-		drm_crtc_handle_vblank(&ctx->crtc->base);
-
+			
 		/* set wait vsync event to zero and wake up queue. */
 		if (atomic_read(&ctx->wait_vsync_event)) {
 			atomic_set(&ctx->wait_vsync_event, 0);
@@ -465,6 +466,8 @@ static irqreturn_t lcd_irq_handler(int irq, void *dev_id)
 			pr_crit(" FIFO UNDERRUN status(0x%x) %s\n",
 					dispblock_status, __func__);
 		}
+
+		tcc_drm_crtc_vblank_handler(&ctx->crtc->base);
 	}
 
 	if (dispblock_status & (1 << VIOC_DISP_INTR_DD))

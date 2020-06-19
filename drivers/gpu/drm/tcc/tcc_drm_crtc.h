@@ -41,7 +41,7 @@ int tcc_drm_set_possible_crtcs(struct drm_encoder *encoder,
  * signal.
  */
 void tcc_drm_crtc_te_handler(struct drm_crtc *crtc);
-
+void tcc_drm_crtc_vblank_handler(struct drm_crtc *crtc);
 void tcc_crtc_handle_event(struct tcc_drm_crtc *tcc_crtc);
 
 #endif

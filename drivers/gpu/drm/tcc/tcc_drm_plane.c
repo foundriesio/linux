@@ -15,6 +15,7 @@
 #include <drm/drm_atomic.h>
 #include <drm/drm_atomic_helper.h>
 #include <drm/drm_plane_helper.h>
+#include <drm/drm_gem_framebuffer_helper.h>
 #include <drm/tcc_drm.h>
 #include "tcc_drm_drv.h"
 #include "tcc_drm_crtc.h"
@@ -279,6 +280,7 @@ static void tcc_plane_atomic_disable(struct drm_plane *plane,
 }
 
 static const struct drm_plane_helper_funcs plane_helper_funcs = {
+        .prepare_fb =  drm_gem_fb_prepare_fb,
 	.atomic_check = tcc_plane_atomic_check,
 	.atomic_update = tcc_plane_atomic_update,
 	.atomic_disable = tcc_plane_atomic_disable,

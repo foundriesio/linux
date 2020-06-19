@@ -23,6 +23,26 @@
 #include "tcc_drm_drv.h"
 #include "tcc_drm_plane.h"
 
+enum tcc_drm_crtc_flip_status {
+	TCC_DRM_CRTC_FLIP_STATUS_NONE = 0,
+	TCC_DRM_CRTC_FLIP_STATUS_PENDING,
+	TCC_DRM_CRTC_FLIP_STATUS_DONE,
+};
+
+static void tcc_drm_crtc_dump_event(struct drm_pending_vblank_event *vblank_event)
+{
+	if(vblank_event != NULL) {
+		switch(vblank_event->event.base.type) {
+			case DRM_EVENT_VBLANK:
+				printk(KERN_INFO "[INF][DRMCRTC] %s line(%d) DRM_EVENT_VBLANK\r\n",  __func__, __LINE__);
+				break;
+			case DRM_EVENT_FLIP_COMPLETE:
+				printk(KERN_INFO "[INF][DRMCRTC] line(%d) DRM_EVENT_FLIP_COMPLETE\r\n",  __func__, __LINE__);
+				break;
+		}
+	}
+}
+
 static void tcc_drm_crtc_atomic_enable(struct drm_crtc *crtc,
 					  struct drm_crtc_state *old_state)
 {
@@ -32,6 +52,20 @@ static void tcc_drm_crtc_atomic_enable(struct drm_crtc *crtc,
 		tcc_crtc->ops->enable(tcc_crtc);
 
 	drm_crtc_vblank_on(crtc);
+
+	if (crtc->state->event) {
+		unsigned long flags;
+
+		WARN_ON(drm_crtc_vblank_get(crtc) != 0);
+		
+		spin_lock_irqsave(&crtc->dev->event_lock, flags);
+		tcc_crtc->flip_event = crtc->state->event;
+		crtc->state->event = NULL;
+		//tcc_drm_crtc_dump_event(tcc_crtc->flip_event);
+
+		atomic_set(&tcc_crtc->flip_status, TCC_DRM_CRTC_FLIP_STATUS_DONE);
+		spin_unlock_irqrestore(&crtc->dev->event_lock, flags);
+	}
 }
 
 static void tcc_drm_crtc_atomic_disable(struct drm_crtc *crtc,
@@ -105,21 +139,46 @@ static const struct drm_crtc_helper_funcs tcc_crtc_helper_funcs = {
 	.atomic_disable	= tcc_drm_crtc_atomic_disable,
 };
 
+static void tcc_drm_crtc_flip_complete(struct drm_crtc *crtc)
+{
+	struct tcc_drm_crtc *tcc_crtc = to_tcc_crtc(crtc);
+    	unsigned long flags;
+ 
+    	spin_lock_irqsave(&crtc->dev->event_lock, flags);
+
+	atomic_set(&tcc_crtc->flip_status, TCC_DRM_CRTC_FLIP_STATUS_NONE);
+	tcc_crtc->flip_async = false;
+
+	if (tcc_crtc->flip_event) {
+		drm_crtc_send_vblank_event(crtc, tcc_crtc->flip_event);
+		tcc_crtc->flip_event = NULL;
+	}
+
+	spin_unlock_irqrestore(&crtc->dev->event_lock, flags);
+}
+
 void tcc_crtc_handle_event(struct tcc_drm_crtc *tcc_crtc)
 {
 	struct drm_crtc *crtc = &tcc_crtc->base;
+	struct drm_crtc_state *new_crtc_state = crtc->state;
 	struct drm_pending_vblank_event *event = crtc->state->event;
 	unsigned long flags;
 
 	if (!event)
 		return;
-	crtc->state->event = NULL;
+	tcc_crtc->flip_async = !!(new_crtc_state->pageflip_flags
+					  & DRM_MODE_PAGE_FLIP_ASYNC);
 
-	WARN_ON(drm_crtc_vblank_get(crtc) != 0);
+	if (tcc_crtc->flip_async)
+        	WARN_ON(drm_crtc_vblank_get(crtc) != 0);
 
 	spin_lock_irqsave(&crtc->dev->event_lock, flags);
-	drm_crtc_arm_vblank_event(crtc, event);
+	tcc_crtc->flip_event = crtc->state->event;
+	crtc->state->event = NULL;
+	atomic_set(&tcc_crtc->flip_status, TCC_DRM_CRTC_FLIP_STATUS_DONE);
 	spin_unlock_irqrestore(&crtc->dev->event_lock, flags);
+	if (tcc_crtc->flip_async)
+		tcc_drm_crtc_flip_complete(crtc);
 }
 
 static void tcc_drm_crtc_destroy(struct drm_crtc *crtc)
@@ -179,6 +238,8 @@ struct tcc_drm_crtc *tcc_drm_crtc_create(struct drm_device *drm_dev,
 
 	crtc = &tcc_crtc->base;
 
+	atomic_set(&tcc_crtc->flip_status, TCC_DRM_CRTC_FLIP_STATUS_NONE);
+
 	ret = drm_crtc_init_with_planes(drm_dev, crtc, plane, NULL,
 					&tcc_crtc_funcs, NULL);
 	if (ret < 0)
@@ -226,4 +287,19 @@ void tcc_drm_crtc_te_handler(struct drm_crtc *crtc)
 
 	if (tcc_crtc->ops->te_handler)
 		tcc_crtc->ops->te_handler(tcc_crtc);
+}
+
+void tcc_drm_crtc_vblank_handler(struct drm_crtc *crtc)
+{
+	struct tcc_drm_crtc *tcc_crtc = to_tcc_crtc(crtc);
+	enum tcc_drm_crtc_flip_status status;
+
+	drm_handle_vblank(crtc->dev, drm_crtc_index(crtc));
+
+	status = atomic_read(&tcc_crtc->flip_status);
+	if (status == TCC_DRM_CRTC_FLIP_STATUS_DONE) {
+		if (!tcc_crtc->flip_async) {
+			tcc_drm_crtc_flip_complete(crtc);
+		}
+	}
 }

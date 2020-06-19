@@ -21,6 +21,169 @@
 #include "tcc_drm_drv.h"
 #include "tcc_drm_gem.h"
 
+static int tcc_drm_gem_prime_attach(struct dma_buf *dma_buf,
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(4, 19, 0))
+				struct device *dev,
+#endif
+				struct dma_buf_attachment *attach)
+{
+	struct drm_gem_object *obj = dma_buf->priv;
+
+	/* Restrict access to Rogue */
+	if (WARN_ON(!obj->dev->dev->parent) ||
+	    obj->dev->dev->parent != attach->dev->parent)
+		return -EPERM;
+
+	return 0;
+}
+
+static struct sg_table *
+tcc_drm_gem_prime_map_dma_buf(struct dma_buf_attachment *attach,
+			  enum dma_data_direction dir)
+{
+	struct drm_gem_object *obj = attach->dmabuf->priv;
+	struct tcc_drm_gem *tcc_gem = to_tcc_gem(obj);
+	struct sg_table *sgt;
+
+	sgt = kmalloc(sizeof(*sgt), GFP_KERNEL);
+	if (!sgt)
+		return NULL;
+
+	if (sg_alloc_table(sgt, 1, GFP_KERNEL))
+		goto err_free_sgt;
+
+	sg_dma_address(sgt->sgl) = tcc_gem->dma_addr;
+	sg_dma_len(sgt->sgl) = obj->size;
+
+	return sgt;
+
+err_free_sgt:
+	kfree(sgt);
+	return NULL;
+}
+
+static void tcc_drm_gem_prime_unmap_dma_buf(struct dma_buf_attachment *attach,
+					struct sg_table *sgt,
+					enum dma_data_direction dir)
+{
+	sg_free_table(sgt);
+	kfree(sgt);
+}
+
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(4, 19, 0))
+static void *tcc_drm_gem_prime_kmap_atomic(struct dma_buf *dma_buf,
+				       unsigned long page_num)
+{
+	return NULL;
+}
+#endif
+
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(5, 6, 0))
+static void *tcc_drm_gem_prime_kmap(struct dma_buf *dma_buf,
+				unsigned long page_num)
+{
+	return NULL;
+}
+#endif
+
+static const struct dma_buf_ops tcc_drm_gem_prime_dmabuf_ops = {
+	.attach		= tcc_drm_gem_prime_attach,
+	.map_dma_buf	= tcc_drm_gem_prime_map_dma_buf,
+	.unmap_dma_buf	= tcc_drm_gem_prime_unmap_dma_buf,
+	.release	= drm_gem_dmabuf_release,
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 12, 0))
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(4, 19, 0))
+	.map_atomic	= tcc_drm_gem_prime_kmap_atomic,
+#endif
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(5, 6, 0))
+	.map		= tcc_drm_gem_prime_kmap,
+#endif
+#else
+	.kmap_atomic	= tcc_drm_gem_prime_kmap_atomic,
+	.kmap		= tcc_drm_gem_prime_kmap,
+#endif
+	.mmap		= tcc_drm_gem_prime_mmap,
+};
+
+static int tcc_drm_gem_lookup_object(struct drm_file *file, u32 handle,
+			  struct drm_gem_object **objp)
+{
+	struct drm_gem_object *obj;
+
+	obj = drm_gem_object_lookup(file, handle);
+	if (!obj)
+		return -ENOENT;
+
+	if (obj->import_attach) {
+		/*
+		 * The dmabuf associated with the object is not one of ours.
+		 * Our own buffers are handled differently on import.
+		 */
+		drm_gem_object_put_unlocked(obj);
+		return -EINVAL;
+	}
+
+	*objp = obj;
+	return 0;
+}
+
+struct dma_buf *tcc_drm_gem_prime_export(
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(5, 4, 0))
+				     struct drm_device *dev,
+#endif
+				     struct drm_gem_object *obj,
+				     int flags)
+{
+	struct tcc_drm_gem *tcc_gem = to_tcc_gem(obj);
+
+	#if (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 1, 0))
+	DEFINE_DMA_BUF_EXPORT_INFO(export_info);
+
+	export_info.ops = &tcc_drm_gem_prime_dmabuf_ops;
+	export_info.size = obj->size;
+	export_info.flags = flags;
+	export_info.resv = tcc_gem->resv;
+	export_info.priv = obj;
+
+	#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 4, 0))
+	return drm_gem_dmabuf_export(obj->dev, &export_info);
+	#else
+	#if (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 9, 0))
+	return drm_gem_dmabuf_export(dev, &export_info);
+	#else
+	return dma_buf_export(&export_info);
+	#endif
+	#endif
+	#else
+	return dma_buf_export(obj, &tcc_drm_gem_prime_dmabuf_ops, obj->size,
+			      flags, tcc_gem->resv);
+	#endif
+}
+
+struct drm_gem_object *tcc_drm_gem_prime_import(struct drm_device *dev, struct dma_buf *dma_buf)
+{
+	struct drm_gem_object *obj = dma_buf->priv;
+
+	if (obj->dev == dev) {
+		BUG_ON(dma_buf->ops != &tcc_drm_gem_prime_dmabuf_ops);
+
+		/*
+		 * The dmabuf is one of ours, so return the associated
+		 * TCC GEM object, rather than create a new one.
+		 */
+		drm_gem_object_get(obj);
+		return obj;
+	}
+
+	return drm_gem_prime_import(dev, dma_buf);
+}
+struct dma_resv *tcc_gem_prime_res_obj(struct drm_gem_object *obj)
+{
+	struct tcc_drm_gem *tcc_gem = to_tcc_gem(obj);
+
+        return tcc_gem->resv;
+}
+
 static int tcc_drm_alloc_buf(struct tcc_drm_gem *tcc_gem)
 {
 	struct drm_device *dev = tcc_gem->base.dev;
@@ -153,6 +316,10 @@ void tcc_drm_gem_destroy(struct tcc_drm_gem *tcc_gem)
 	struct drm_gem_object *obj = &tcc_gem->base;
 
 	DRM_DEBUG_KMS("handle count = %d\n", obj->handle_count);
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(5, 2, 0))
+        if (&tcc_gem->_resv == tcc_gem->resv)
+                dma_resv_fini(&tcc_gem->_resv);
+#endif
 
 	/*
 	 * do not release memory region from exporter.
@@ -191,7 +358,7 @@ unsigned long tcc_drm_gem_get_size(struct drm_device *dev,
 	return tcc_gem->size;
 }
 
-static struct tcc_drm_gem *tcc_drm_gem_init(struct drm_device *dev,
+static struct tcc_drm_gem *tcc_drm_gem_init(struct drm_device *dev, struct dma_resv *resv,
 						  unsigned long size)
 {
 	struct tcc_drm_gem *tcc_gem;
@@ -205,6 +372,14 @@ static struct tcc_drm_gem *tcc_drm_gem_init(struct drm_device *dev,
 	tcc_gem->size = size;
 	obj = &tcc_gem->base;
 
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(5, 2, 0))
+	if (!resv)
+		dma_resv_init(&tcc_gem->_resv);
+	tcc_gem->resv = &tcc_gem->_resv;
+#else
+	tcc_gem->resv = tcc_gem->base.resv = resv;
+#endif
+
 	ret = drm_gem_object_init(dev, obj, size);
 	if (ret < 0) {
 		DRM_ERROR("failed to initialize gem object\n");
@@ -214,6 +389,11 @@ static struct tcc_drm_gem *tcc_drm_gem_init(struct drm_device *dev,
 
 	ret = drm_gem_create_mmap_offset(obj);
 	if (ret < 0) {
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(5, 2, 0))
+        if (&tcc_gem->_resv == tcc_gem->resv)
+                dma_resv_fini(&tcc_gem->_resv);
+#endif
+		
 		drm_gem_object_release(obj);
 		kfree(tcc_gem);
 		return ERR_PTR(ret);
@@ -243,7 +423,7 @@ struct tcc_drm_gem *tcc_drm_gem_create(struct drm_device *dev,
 
 	size = roundup(size, PAGE_SIZE);
 
-	tcc_gem = tcc_drm_gem_init(dev, size);
+	tcc_gem = tcc_drm_gem_init(dev, NULL, size);
 	if (IS_ERR(tcc_gem))
 		return tcc_gem;
 
@@ -388,6 +568,92 @@ int tcc_drm_gem_get_ioctl(struct drm_device *dev, void *data,
 	return 0;
 }
 
+int tcc_gem_cpu_prep_ioctl(struct drm_device *dev, void *data,
+		struct drm_file *file)
+{
+        struct drm_tcc_gem_cpu_prep *args = (struct drm_tcc_gem_cpu_prep *)data;
+        struct drm_gem_object *obj;
+	 struct tcc_drm_gem *tcc_gem;
+        bool write = !!(args->flags & TCC_GEM_CPU_PREP_WRITE);
+        bool wait = !(args->flags & TCC_GEM_CPU_PREP_NOWAIT);
+        int err = 0;
+
+        if (args->flags & ~TCC_GEM_CPU_PREP_FLAGS) {
+                DRM_ERROR("invalid flags: %#08x\n", args->flags);
+                return -EINVAL;
+        }
+
+        mutex_lock(&dev->struct_mutex);
+        err = tcc_drm_gem_lookup_object(file, args->handle, &obj);
+        if (err){
+                goto exit_unlock;
+        }
+	
+	tcc_gem = to_tcc_gem(obj);
+
+        if (tcc_gem->cpu_prep) {
+                err = -EBUSY;
+                goto exit_unref;
+        }
+
+        if (wait) {
+                long lerr;
+
+                lerr = dma_resv_wait_timeout_rcu(tcc_gem->resv,
+                                                 write,
+                                                 true,
+                                                 30 * HZ);
+                if (!lerr)
+                        err = -EBUSY;
+                else if (lerr < 0)
+                        err = lerr;
+        } else {
+                if (!dma_resv_test_signaled_rcu(tcc_gem->resv,
+                                                write))
+                        err = -EBUSY;
+        }
+
+        if (!err)
+                tcc_gem->cpu_prep = true;
+
+exit_unref:
+        drm_gem_object_put_unlocked(obj);
+exit_unlock:
+        mutex_unlock(&dev->struct_mutex);
+        return err;
+}
+
+int tcc_gem_cpu_fini_ioctl(struct drm_device *dev, void *data,
+		struct drm_file *file)
+{
+        struct drm_tcc_gem_cpu_prep *args = (struct drm_tcc_gem_cpu_prep *)data;
+        struct drm_gem_object *obj;
+	 struct tcc_drm_gem *tcc_gem;
+        int err = 0;
+
+        mutex_lock(&dev->struct_mutex);
+        err = tcc_drm_gem_lookup_object(file, args->handle, &obj);
+        if (err){
+                goto exit_unlock;
+        }
+
+	tcc_gem = to_tcc_gem(obj);
+
+        if (!tcc_gem->cpu_prep) {
+                err = -EINVAL;
+                goto exit_unref;
+        }
+
+        tcc_gem->cpu_prep = false;
+
+exit_unref:
+        drm_gem_object_put_unlocked(obj);
+exit_unlock:
+        mutex_unlock(&dev->struct_mutex);
+        return err;
+}
+
+
 void tcc_drm_gem_free_object(struct drm_gem_object *obj)
 {
 	tcc_drm_gem_destroy(to_tcc_gem(obj));
@@ -495,7 +761,8 @@ err_close_vm:
 	return ret;
 }
 
-int tcc_drm_gem_mmap(struct file *filp, struct vm_area_struct *vma)
+int tcc_drm_gem_mmap(struct file *filp,
+			struct vm_area_struct *vma)
 {
 	struct drm_gem_object *obj;
 	int ret;
@@ -513,6 +780,24 @@ int tcc_drm_gem_mmap(struct file *filp, struct vm_area_struct *vma)
 		return dma_buf_mmap(obj->dma_buf, vma, 0);
 
 	return tcc_drm_gem_mmap_obj(obj, vma);
+}
+
+int tcc_drm_gem_prime_mmap(struct dma_buf *dma_buf,
+			      struct vm_area_struct *vma)
+{
+	struct drm_gem_object *obj = dma_buf->priv;
+	int err;
+
+	mutex_lock(&obj->dev->struct_mutex);
+	err = drm_gem_mmap_obj(obj, obj->size, vma);
+	if(err < 0) {
+		goto exit_unlock;
+	}
+	err = tcc_drm_gem_mmap_obj(obj, vma);
+	
+exit_unlock:
+	mutex_unlock(&obj->dev->struct_mutex);
+	return err;
 }
 
 /* low-level interface prime helpers */
@@ -535,10 +820,18 @@ tcc_drm_gem_prime_import_sg_table(struct drm_device *dev,
 	int npages;
 	int ret;
 
-	tcc_gem = tcc_drm_gem_init(dev, attach->dmabuf->size);
+	tcc_gem = tcc_drm_gem_init(dev, attach->dmabuf->resv, attach->dmabuf->size);
 	if (IS_ERR(tcc_gem)) {
-		ret = PTR_ERR(tcc_gem);
+		ret = -1;
 		return ERR_PTR(ret);
+	}
+	
+	tcc_gem->sgt = sgt;
+	if (tcc_gem->sgt->nents != 1) {
+		ret = -EINVAL;
+		printk(KERN_ERR "[ERR][DRMCRTC] %s line(%d) nents is %d - Not continuous memory!!\r\n", 
+			__func__, __LINE__, tcc_gem->sgt->nents);
+		goto err;
 	}
 
 	tcc_gem->dma_addr = sg_dma_address(sgt->sgl);
@@ -590,14 +883,3 @@ void tcc_drm_gem_prime_vunmap(struct drm_gem_object *obj, void *vaddr)
 	/* Nothing to do */
 }
 
-int tcc_drm_gem_prime_mmap(struct drm_gem_object *obj,
-			      struct vm_area_struct *vma)
-{
-	int ret;
-
-	ret = drm_gem_mmap_obj(obj, obj->size, vma);
-	if (ret < 0)
-		return ret;
-
-	return tcc_drm_gem_mmap_obj(obj, vma);
-}

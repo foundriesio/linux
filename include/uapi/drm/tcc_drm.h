@@ -10,6 +10,7 @@
  * under  the terms of  the GNU General  Public License as published by the
  * Free Software Foundation;  either version 2 of the  License, or (at your
  * option) any later version.
+ * @note Tab size is 8.
  */
 
 #ifndef _UAPI_TCC_DRM_H_
@@ -59,6 +60,21 @@ struct drm_tcc_vidi_connection {
 	unsigned int connection;
 	unsigned int extensions;
 	uint64_t edid;
+};
+
+#define TCC_GEM_CPU_PREP_READ        (1 << 0)
+#define TCC_GEM_CPU_PREP_WRITE       (1 << 1)
+#define TCC_GEM_CPU_PREP_NOWAIT      (1 << 2)
+
+#define TCC_GEM_CPU_PREP_FLAGS       (TCC_GEM_CPU_PREP_READ | TCC_GEM_CPU_PREP_WRITE | TCC_GEM_CPU_PREP_NOWAIT)
+
+struct drm_tcc_gem_cpu_prep {
+        __u32 handle;         	/* in */
+        __u32 flags;           	/* in, mask of TCC_GEM_CPU_PREP_x */
+};
+
+struct drm_tcc_gem_cpu_fini {
+        __u32 handle;         	/* in */
 };
 
 /* memory type definitions. */
@@ -298,9 +314,12 @@ struct drm_tcc_ipp_cmd_ctrl {
 
 #define DRM_TCC_GEM_CREATE		0x00
 /* Reserved 0x03 ~ 0x05 for tcc specific gem ioctl */
-#define DRM_TCC_GEM_MAP		0x01
-#define DRM_TCC_GEM_GET		0x04
-#define DRM_TCC_VIDI_CONNECTION	0x07
+#define DRM_TCC_GEM_MAP			0x01
+#define DRM_TCC_GEM_CPU_PREP            0x02
+#define DRM_TCC_GEM_CPU_FINI            0x03
+
+#define DRM_TCC_GEM_GET			0x04
+#define DRM_TCC_VIDI_CONNECTION		0x07
 
 /* G2D */
 #define DRM_TCC_G2D_GET_VER		0x20
@@ -313,7 +332,7 @@ struct drm_tcc_ipp_cmd_ctrl {
 #define DRM_TCC_IPP_QUEUE_BUF	0x32
 #define DRM_TCC_IPP_CMD_CTRL	0x33
 
-#define DRM_IOCTL_TCC_GEM_CREATE		DRM_IOWR(DRM_COMMAND_BASE + \
+#define DRM_IOCTL_TCC_GEM_CREATE	DRM_IOWR(DRM_COMMAND_BASE + \
 		DRM_TCC_GEM_CREATE, struct drm_tcc_gem_create)
 
 #define DRM_IOCTL_TCC_GEM_MAP		DRM_IOWR(DRM_COMMAND_BASE + \
@@ -324,6 +343,12 @@ struct drm_tcc_ipp_cmd_ctrl {
 
 #define DRM_IOCTL_TCC_VIDI_CONNECTION	DRM_IOWR(DRM_COMMAND_BASE + \
 		DRM_TCC_VIDI_CONNECTION, struct drm_tcc_vidi_connection)
+
+#define DRM_IOCTL_TCC_GEM_CPU_PREP   	DRM_IOWR(DRM_COMMAND_BASE + \
+                DRM_TCC_GEM_CPU_PREP, struct drm_tcc_gem_cpu_prep)
+
+#define DRM_IOCTL_TCC_GEM_CPU_FINI   	DRM_IOWR(DRM_COMMAND_BASE + \
+                DRM_TCC_GEM_CPU_FINI, struct drm_tcc_gem_cpu_fini)
 
 #define DRM_IOCTL_TCC_IPP_GET_PROPERTY	DRM_IOWR(DRM_COMMAND_BASE + \
 		DRM_TCC_IPP_GET_PROPERTY, struct drm_tcc_ipp_prop_list)

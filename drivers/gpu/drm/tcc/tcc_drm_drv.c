@@ -143,6 +143,10 @@ static const struct drm_ioctl_desc tcc_ioctls[] = {
 			DRM_RENDER_ALLOW),
 	DRM_IOCTL_DEF_DRV(TCC_VIDI_CONNECTION, vidi_connection_ioctl,
 			DRM_AUTH),
+	DRM_IOCTL_DEF_DRV(TCC_GEM_CPU_PREP, tcc_gem_cpu_prep_ioctl,
+			DRM_AUTH | DRM_RENDER_ALLOW),
+	DRM_IOCTL_DEF_DRV(TCC_GEM_CPU_FINI, tcc_gem_cpu_fini_ioctl,
+			DRM_AUTH | DRM_RENDER_ALLOW),			
 };
 
 static const struct file_operations tcc_drm_driver_fops = {
@@ -167,13 +171,13 @@ static struct drm_driver tcc_drm_driver = {
 	.dumb_create		= tcc_drm_gem_dumb_create,
 	.prime_handle_to_fd	= drm_gem_prime_handle_to_fd,
 	.prime_fd_to_handle	= drm_gem_prime_fd_to_handle,
-	.gem_prime_export	= drm_gem_prime_export,
-	.gem_prime_import	= drm_gem_prime_import,
+	.gem_prime_export	= tcc_drm_gem_prime_export,
+	.gem_prime_import	= tcc_drm_gem_prime_import,
+	.gem_prime_res_obj  	= tcc_gem_prime_res_obj,
 	.gem_prime_get_sg_table	= tcc_drm_gem_prime_get_sg_table,
 	.gem_prime_import_sg_table	= tcc_drm_gem_prime_import_sg_table,
 	.gem_prime_vmap		= tcc_drm_gem_prime_vmap,
 	.gem_prime_vunmap	= tcc_drm_gem_prime_vunmap,
-	.gem_prime_mmap		= tcc_drm_gem_prime_mmap,
 	.ioctls			= tcc_ioctls,
 	.num_ioctls		= ARRAY_SIZE(tcc_ioctls),
 	.fops			= &tcc_drm_driver_fops,
@@ -335,8 +339,6 @@ static int tcc_drm_bind(struct device *dev)
 	}
 	DRM_INFO("TCC DRM: using %s device for DMA mapping operations\n",
 		 dev_name(private->dma_dev));
-
-	drm_mode_config_init(drm);
 
 	tcc_drm_mode_config_init(drm);
 

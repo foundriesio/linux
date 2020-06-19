@@ -173,6 +173,11 @@ struct tcc_drm_crtc {
 	const struct tcc_drm_crtc_ops	*ops;
 	void				*ctx;
 	struct tcc_drm_clk		*pipe_clk;
+
+	/* support to fence */
+	atomic_t 			flip_status;
+        struct drm_pending_vblank_event *flip_event;
+        bool 				flip_async;
 };
 
 static inline void tcc_drm_pipe_clk_enable(struct tcc_drm_crtc *crtc,
@@ -200,6 +205,7 @@ struct drm_tcc_file_private {
  */
 struct tcc_drm_private {
 	struct drm_fb_helper *fb_helper;
+	struct tcc_drm_fbdev *fbdev;
 	struct drm_atomic_state *suspend_state;
 
 	struct device *dma_dev;

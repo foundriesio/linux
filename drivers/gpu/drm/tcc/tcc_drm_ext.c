@@ -429,11 +429,11 @@ static irqreturn_t ext_irq_handler(int irq, void *dev_id)
 		vioc_intr_clear(ctx->ddc_id, (1 << VIOC_DISP_INTR_RU));
 
 		/* check the crtc is detached already from encoder */
-		if (!ctx->drm_dev)
+		if (ctx->drm_dev == NULL) {
+			printk(KERN_ERR "[ERR][DRMEXT] %s drm_dev is not binded\r\n", __func__);
 			goto out;
-
-		drm_crtc_handle_vblank(&ctx->crtc->base);
-
+		}
+			
 		/* set wait vsync event to zero and wake up queue. */
 		if (atomic_read(&ctx->wait_vsync_event)) {
 			atomic_set(&ctx->wait_vsync_event, 0);
@@ -448,6 +448,8 @@ static irqreturn_t ext_irq_handler(int irq, void *dev_id)
 			pr_crit(" FIFO UNDERRUN status(0x%x) %s\n",
 					dispblock_status, __func__);
 		}
+
+		tcc_drm_crtc_vblank_handler(&ctx->crtc->base);
 	}
 
 	if (dispblock_status & (1 << VIOC_DISP_INTR_DD))

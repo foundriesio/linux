@@ -17,6 +17,7 @@
 #include <drm/drm_crtc.h>
 #include <drm/drm_fb_helper.h>
 #include <drm/drm_crtc_helper.h>
+#include <drm/drm_gem_framebuffer_helper.h>
 #include <drm/tcc_drm.h>
 
 #include <linux/console.h>
@@ -33,7 +34,9 @@
 
 struct tcc_drm_fbdev {
 	struct drm_fb_helper	drm_fb_helper;
+	struct drm_framebuffer 	fb;
 	struct tcc_drm_gem	*tcc_gem;
+	struct tcc_drm_private 	*private
 };
 
 static int tcc_drm_fb_mmap(struct fb_info *info,
@@ -114,7 +117,12 @@ static int tcc_drm_fbdev_update(struct drm_fb_helper *helper,
 	return 0;
 }
 
-static int tcc_drm_fbdev_create(struct drm_fb_helper *helper,
+static const struct drm_framebuffer_funcs tcc_drm_fb_funcs = {
+	.destroy	= drm_gem_fb_destroy,
+	.create_handle	= drm_gem_fb_create_handle,
+};
+
+static int tcc_drm_fbdev_probe(struct drm_fb_helper *helper,
 				    struct drm_fb_helper_surface_size *sizes)
 {
 	struct tcc_drm_fbdev *tcc_fbdev = to_tcc_fbdev(helper);
@@ -135,7 +143,7 @@ static int tcc_drm_fbdev_create(struct drm_fb_helper *helper,
 							  sizes->surface_depth);
 
 	size = mode_cmd.pitches[0] * mode_cmd.height;
-
+	
 	tcc_gem = tcc_drm_gem_create(dev, TCC_BO_CONTIG, size);
 
 	if (IS_ERR(tcc_gem))
@@ -143,18 +151,21 @@ static int tcc_drm_fbdev_create(struct drm_fb_helper *helper,
 
 	tcc_fbdev->tcc_gem = tcc_gem;
 
-	helper->fb =
-		tcc_drm_framebuffer_init(dev, &mode_cmd, &tcc_gem, 1);
+	helper->fb = &tcc_fbdev->fb;
 	if (IS_ERR(helper->fb)) {
 		DRM_ERROR("failed to create drm framebuffer.\n");
 		ret = PTR_ERR(helper->fb);
 		goto err_destroy_gem;
 	}
 
+	tcc_fbdev->fb.obj[0] = &tcc_gem->base;
+
+	drm_helper_mode_fill_fb_struct(dev, &tcc_fbdev->fb, &mode_cmd);
+	drm_framebuffer_init(dev, &tcc_fbdev->fb, &tcc_drm_fb_funcs);
+
 	ret = tcc_drm_fbdev_update(helper, sizes, tcc_gem);
 	if (ret < 0)
 		goto err_destroy_framebuffer;
-
 	return ret;
 
 err_destroy_framebuffer:
@@ -172,14 +183,13 @@ err_destroy_gem:
 }
 
 static const struct drm_fb_helper_funcs tcc_drm_fb_helper_funcs = {
-	.fb_probe =	tcc_drm_fbdev_create,
+	.fb_probe =	tcc_drm_fbdev_probe,
 };
 
 int tcc_drm_fbdev_init(struct drm_device *dev)
 {
 	struct tcc_drm_fbdev *fbdev;
 	struct tcc_drm_private *private = dev->dev_private;
-	struct drm_fb_helper *helper;
 	int ret;
 
 	if (!dev->mode_config.num_crtc || !dev->mode_config.num_connector)
@@ -189,24 +199,26 @@ int tcc_drm_fbdev_init(struct drm_device *dev)
 	if (!fbdev)
 		return -ENOMEM;
 
-	private->fb_helper = helper = &fbdev->drm_fb_helper;
+	fbdev->private = private;
+	private->fb_helper = &fbdev->drm_fb_helper;
+	private->fbdev = fbdev;
 
-	drm_fb_helper_prepare(dev, helper, &tcc_drm_fb_helper_funcs);
+	drm_fb_helper_prepare(dev, &fbdev->drm_fb_helper, &tcc_drm_fb_helper_funcs);
 
-	ret = drm_fb_helper_init(dev, helper, MAX_CONNECTOR);
+	ret = drm_fb_helper_init(dev, &fbdev->drm_fb_helper, MAX_CONNECTOR);
 	if (ret < 0) {
 		DRM_ERROR("failed to initialize drm fb helper.\n");
 		goto err_init;
 	}
 
-	ret = drm_fb_helper_single_add_all_connectors(helper);
+	ret = drm_fb_helper_single_add_all_connectors(&fbdev->drm_fb_helper);
 	if (ret < 0) {
 		DRM_ERROR("failed to register drm_fb_helper_connector.\n");
 		goto err_setup;
 
 	}
 
-	ret = drm_fb_helper_initial_config(helper, PREFERRED_BPP);
+	ret = drm_fb_helper_initial_config(private->fb_helper, PREFERRED_BPP);
 	if (ret < 0) {
 		DRM_ERROR("failed to set up hw configuration.\n");
 		goto err_setup;
@@ -215,7 +227,7 @@ int tcc_drm_fbdev_init(struct drm_device *dev)
 	return 0;
 
 err_setup:
-	drm_fb_helper_fini(helper);
+	drm_fb_helper_fini(private->fb_helper);
 
 err_init:
 	private->fb_helper = NULL;
