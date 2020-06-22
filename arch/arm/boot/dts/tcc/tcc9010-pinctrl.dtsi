@@ -471,41 +471,36 @@
 		telechips,pins = "gpa-7";
 		telechips,pin-function = <1>;
 		telechips,drive-strength = <3>;
-		telechips,no-pull;
 	};
 
 	sd1_1_cmd: sd1_1_cmd {
 		telechips,pins = "gpa-8";
 		telechips,pin-function = <1>;
 		telechips,drive-strength = <3>;
-		telechips,no-pull;
 	};
 
 	sd1_1_bus1: sd1_1_bus1 {
 		telechips,pins = "gpa-9";
 		telechips,pin-function = <1>;
 		telechips,drive-strength = <3>;
-		telechips,no-pull;
 	};
 
 	sd1_1_bus4: sd1_1_bus4 {
 		telechips,pins = "gpa-9", "gpa-10", "gpa-11", "gpa-12";
 		telechips,pin-function = <1>;
 		telechips,drive-strength = <3>;
-		telechips,no-pull;
 	};
 
 	sd1_1_bus8: sd1_1_bus8 {
 		telechips,pins = "gpa-9", "gpa-10", "gpa-11", "gpa-12", "gpa-13", "gpa-14", "gpa-15", "gpa-16";
 		telechips,pin-function = <1>;
 		telechips,drive-strength = <3>;
-		telechips,no-pull;
 	};
 
 	sd1_1_idle: sd1_1_idle {
 		telechips,pins = "gpa-7", "gpa-8", "gpa-9", "gpa-10", "gpa-11", "gpa-12", "gpa-13", "gpa-14", "gpa-15", "gpa-16";
 		telechips,pin-function = <0>;
-		telechips,no-pull;
+		telechips,pull-disable;
 		telechips,output-low;
 	};
 
@@ -513,6 +508,7 @@
 		telechips,pins = "gpsd0-0";
 		telechips,pin-function = <1>;
 		telechips,drive-strength = <3>;
+		telechips,pull-disable;
 		telechips,output-low;
 	};
 
@@ -520,6 +516,7 @@
 		telechips,pins ="gpsd0-1";
 		telechips,pin-function = <1>;
 		telechips,drive-strength = <3>;
+		telechips,pull-disable;
 		telechips,output-low;
 	};
 
@@ -527,6 +524,7 @@
 		telechips,pins = "gpsd0-2";
 		telechips,pin-function = <1>;
 		telechips,drive-strength = <2>;
+		telechips,pull-disable;
 		telechips,output-low;
 	};
 
@@ -534,18 +532,21 @@
 		telechips,pins = "gpsd0-2", "gpsd0-3", "gpsd0-4", "gpsd0-5";
 		telechips,pin-function = <1>;
 		telechips,drive-strength = <2>;
+		telechips,pull-disable;
 		telechips,output-low;
 	};
 
 	sd2_1_4_idle: sd2_1_4_idle {
 		telechips,pins = "gpsd0-0", "gpsd0-1", "gpsd0-2", "gpsd0-3", "gpsd0-4", "gpsd0-5";
 		telechips,pin-function = <0>;
+		telechips,pull-disable;
 		telechips,output-low;
 	};
 
 	sd2_1_idle: sd2_1_idle {
 		telechips,pins = "gpsd0-0", "gpsd0-1", "gpsd0-2", "gpsd0-3", "gpsd0-4", "gpsd0-5";
 		telechips,pin-function = <0>;
+		telechips,pull-disable;
 		telechips,output-low;
 	};
 

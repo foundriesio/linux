@@ -214,69 +214,74 @@
 		telechips,pins = "gpsd-0";
 		telechips,pin-function = <1>;
 		telechips,drive-strength = <3>;
-		telechips,no-pull;
+		telechips,pull-disable;
+		telechips,output-low;
 	};
 
 	sd0_cmd: sd0_cmd {
 		telechips,pins = "gpsd-1";
 		telechips,pin-function = <1>;
 		telechips,drive-strength = <3>;
-		telechips,no-pull;
+		telechips,pull-disable;
+		telechips,output-low;
 	};
 
 	sd0_bus1: sd0_bus1 {
 		telechips,pins = "gpsd-2";
 		telechips,pin-function = <1>;
 		telechips,drive-strength = <2>;
-		telechips,no-pull;
+		telechips,pull-disable;
+		telechips,output-low;
 	};
 
 	sd0_bus4: sd0_bus4 {
 		telechips,pins = "gpsd-2", "gpsd-3", "gpsd-4", "gpsd-5";
 		telechips,pin-function = <1>;
 		telechips,drive-strength = <3>;
-		telechips,no-pull;
+		telechips,pull-disable;
+		telechips,output-low;
 	};
 
 	sd0_bus8: sd0_bus8 {
 		telechips,pins = "gpsd-2", "gpsd-3", "gpsd-4", "gpsd-5", "gpsd-6", "gpsd-7", "gpsd-8", "gpsd-9";
 		telechips,pin-function = <1>;
 		telechips,drive-strength = <3>;
-		telechips,no-pull;
+		telechips,pull-disable;
+		telechips,output-low;
 	};
 
 	sd0_clk_idle: sd0_clk_idle {
 		telechips,pins = "gpsd-0";
 		telechips,pin-function = <0>;
-		telechips,no-pull;
+		telechips,pull-disable;
 		telechips,output-low;
 	};
 
 	sd0_cmd_idle: sd0_cmd_idle {
 		telechips,pins = "gpsd-1";
 		telechips,pin-function = <0>;
-		telechips,no-pull;
+		telechips,pull-disable;
 		telechips,output-low;
 	};
 
 	sd0_bus1_idle: sd0_bus1_idle {
 		telechips,pins = "gpsd-2";
 		telechips,pin-function = <0>;
-		telechips,no-pull;
+		telechips,pull-disable;
 		telechips,output-low;
 	};
 
 	sd0_bus4_idle: sd0_bus4_idle {
 		telechips,pins = "gpsd-2", "gpsd-3", "gpsd-4", "gpsd-5";
 		telechips,pin-function = <0>;
-		telechips,no-pull;
+		telechips,pull-disable;
 		telechips,output-low;
 	};
 
 	sd0_bus8_idle: sd0_bus8_idle {
 		telechips,pins = "gpsd-2", "gpsd-3", "gpsd-4", "gpsd-5", "gpsd-6", "gpsd-7", "gpsd-8", "gpsd-9";
 		telechips,pin-function = <0>;
-		telechips,no-pull;
+		telechips,pull-disable;
 		telechips,output-low;
 	};
 
@@ -284,69 +289,64 @@
 		telechips,pins = "gpa-7";
 		telechips,pin-function = <2>;
 		telechips,drive-strength = <3>;
-		telechips,no-pull;
 	};
 
 	sd1_cmd: sd1_cmd {
 		telechips,pins = "gpa-8";
 		telechips,pin-function = <2>;
 		telechips,drive-strength = <3>;
-		telechips,no-pull;
 	};
 
 	sd1_bus1: sd1_bus1 {
 		telechips,pins = "gpa-9";
 		telechips,pin-function = <2>;
 		telechips,drive-strength = <2>;
-		telechips,no-pull;
 	};
 
 	sd1_bus4: sd1_bus4 {
 		telechips,pins = "gpa-9", "gpa-10", "gpa-11", "gpa-12";
 		telechips,pin-function = <2>;
 		telechips,drive-strength = <2>;
-		telechips,no-pull;
 	};
 
 	sd1_bus8: sd1_bus8 {
 		telechips,pins = "gpa-9", "gpa-10", "gpa-11", "gpa-12", "gpa-13", "gpa-14", "gpa-15", "gpa-16";
 		telechips,pin-function = <2>;
 		telechips,drive-strength = <2>;
-		telechips,no-pull;
 	};
 
 	sd1_clk_idle: sd1_clk_idle {
 		telechips,pins = "gpa-7";
 		telechips,pin-function = <0>;
-		telechips,no-pull;
+		telechips,pull-disable;
 		telechips,output-low;
 	};
 
 	sd1_cmd_idle: sd1_cmd_idle {
 		telechips,pins = "gpa-8";
 		telechips,pin-function = <0>;
-		telechips,no-pull;
+		telechips,pull-disable;
 		telechips,output-low;
 	};
 
 	sd1_bus1_idle: sd1_bus1_idle {
 		telechips,pins = "gpa-9";
 		telechips,pin-function = <0>;
-		telechips,no-pull;
+		telechips,pull-disable;
 		telechips,output-low;
 	};
 
 	sd1_bus4_idle: sd1_bus4_idle {
 		telechips,pins = "gpa-9", "gpa-10", "gpa-11", "gpa-12";
 		telechips,pin-function = <0>;
-		telechips,no-pull;
+		telechips,pull-disable;
 		telechips,output-low;
 	};
 
 	sd1_bus8_idle: sd1_bus8_idle {
 		telechips,pins = "gpa-9", "gpa-10", "gpa-11", "gpa-12", "gpa-13", "gpa-14", "gpa-15", "gpa-16";
 		telechips,pin-function = <0>;
-		telechips,no-pull;
+		telechips,pull-disable;
 		telechips,output-low;
 	};
 
@@ -383,30 +383,35 @@
 	sd2_clk_idle: sd2_clk_idle {
 		telechips,pins = "gpb-28";
 		telechips,pin-function = <0>;
+		telechips,pull-disable;
 		telechips,output-low;
 	};
 
 	sd2_cmd_idle: sd2_cmd_idle {
 		telechips,pins = "gpb-19";
 		telechips,pin-function = <0>;
+		telechips,pull-disable;
 		telechips,output-low;
 	};
 
 	sd2_bus1_idle: sd2_bus1_idle {
 		telechips,pins = "gpb-27";
 		telechips,pin-function = <0>;
+		telechips,pull-disable;
 		telechips,output-low;
 	};
 
 	sd2_bus4_idle: sd2_bus4_idle {
 		telechips,pins = "gpb-27", "gpb-26", "gpb-25", "gpb-24";
 		telechips,pin-function = <0>;
+		telechips,pull-disable;
 		telechips,output-low;
 	};
 
 	sd2_bus8_idle: sd2_bus8_idle {
 		telechips,pins = "gpb-27", "gpb-26", "gpb-25", "gpb-24", "gpb-23", "gpb-22", "gpb-21", "gpb-20";
 		telechips,pin-function = <0>;
+		telechips,pull-disable;
 		telechips,output-low;
 	};
 
@@ -443,30 +448,35 @@
 	sd3_clk_idle: sd3_clk_idle {
 		telechips,pins = "gpa-7";
 		telechips,pin-function = <0>;
+		telechips,pull-disable;
 		telechips,output-low;
 	};
 
 	sd3_cmd_idle: sd3_cmd_idle {
 		telechips,pins = "gpa-8";
 		telechips,pin-function = <0>;
+		telechips,pull-disable;
 		telechips,output-low;
 	};
 
 	sd3_bus1_idle: sd3_bus1_idle {
 		telechips,pins = "gpa-9";
 		telechips,pin-function = <0>;
+		telechips,pull-disable;
 		telechips,output-low;
 	};
 
 	sd3_bus4_idle: sd3_bus4_idle {
 		telechips,pins = "gpa-9", "gpa-10", "gpa-11", "gpa-12";
 		telechips,pin-function = <0>;
+		telechips,pull-disable;
 		telechips,output-low;
 	};
 
 	sd3_bus8_idle: sd3_bus8_idle {
 		telechips,pins = "gpa-9", "gpa-10", "gpa-11", "gpa-12", "gpa-13", "gpa-14", "gpa-15", "gpa-16";
 		telechips,pin-function = <0>;
+		telechips,pull-disable;
 		telechips,output-low;
 	};
 
@@ -503,30 +513,35 @@
 	sd4_clk_idle: sd4_clk_idle {
 		telechips,pins = "gpb-0";
 		telechips,pin-function = <0>;
+		telechips,pull-disable;
 		telechips,output-low;
 	};
 
 	sd4_cmd_idle: sd4_cmd_idle {
 		telechips,pins = "gpb-1";
 		telechips,pin-function = <0>;
+		telechips,pull-disable;
 		telechips,output-low;
 	};
 
 	sd4_bus1_idle: sd4_bus1_idle {
 		telechips,pins = "gpb-2";
 		telechips,pin-function = <0>;
+		telechips,pull-disable;
 		telechips,output-low;
 	};
 
 	sd4_bus4_idle: sd4_bus4_idle {
 		telechips,pins = "gpb-2", "gpb-3", "gpb-4", "gpb-5";
 		telechips,pin-function = <0>;
+		telechips,pull-disable;
 		telechips,output-low;
 	};
 
 	sd4_bus8_idle: sd4_bus8_idle {
 		telechips,pins = "gpb-2", "gpb-3", "gpb-4", "gpb-5", "gpb-6", "gpb-7", "gpb-8", "gpb-9";
 		telechips,pin-function = <0>;
+		telechips,pull-disable;
 		telechips,output-low;
 	};
 
@@ -534,69 +549,64 @@
 		telechips,pins = "gpd-20";
 		telechips,pin-function = <2>;
 		telechips,drive-strength = <3>;
-		telechips,no-pull;
 	};
 
 	sd5_cmd: sd5_cmd {
 		telechips,pins = "gpd-19";
 		telechips,pin-function = <2>;
 		telechips,drive-strength = <3>;
-		telechips,no-pull;
 	};
 
 	sd5_bus1: sd5_bus1 {
 		telechips,pins = "gpd-18";
 		telechips,pin-function = <2>;
 		telechips,drive-strength = <2>;
-		telechips,no-pull;
 	};
 
 	sd5_bus4: sd5_bus4 {
 		telechips,pins = "gpd-18", "gpd-17", "gpd-16", "gpd-15";
 		telechips,pin-function = <2>;
 		telechips,drive-strength = <2>;
-		telechips,no-pull;
 	};
 
 	sd5_bus8: sd5_bus8 {
 		telechips,pins = "gpd-18", "gpd-17", "gpd-16", "gpd-15", "gpd-14", "gpd-13", "gpd-12", "gpd-11";
 		telechips,pin-function = <2>;
 		telechips,drive-strength = <2>;
-		telechips,no-pull;
 	};
 
 	sd5_clk_idle: sd5_clk_idle {
 		telechips,pins = "gpd-20";
 		telechips,pin-function = <0>;
+		telechips,pull-disable;
 		telechips,output-low;
-		telechips,no-pull;
 	};
 
 	sd5_cmd_idle: sd5_cmd_idle {
 		telechips,pins = "gpd-19";
 		telechips,pin-function = <0>;
+		telechips,pull-disable;
 		telechips,output-low;
-		telechips,no-pull;
 	};
 
 	sd5_bus1_idle: sd5_bus1_idle {
 		telechips,pins = "gpd-18";
 		telechips,pin-function = <0>;
-		telechips,no-pull;
+		telechips,pull-disable;
 		telechips,output-low;
 	};
 
 	sd5_bus4_idle: sd5_bus4_idle {
 		telechips,pins = "gpd-18", "gpd-17", "gpd-16", "gpd-15";
 		telechips,pin-function = <0>;
-		telechips,no-pull;
+		telechips,pull-disable;
 		telechips,output-low;
 	};
 
 	sd5_bus8_idle: sd5_bus8_idle {
 		telechips,pins = "gpd-18", "gpd-17", "gpd-16", "gpd-15", "gpd-14", "gpd-13", "gpd-12", "gpd-11";
 		telechips,pin-function = <0>;
-		telechips,no-pull;
+		telechips,pull-disable;
 		telechips,output-low;
 	};
 
@@ -633,12 +643,14 @@
 	sd6_clk_idle: sd6_clk_idle {
 		telechips,pins = "gpc-0";
 		telechips,pin-function = <0>;
+		telechips,pull-disable;
 		telechips,output-low;
 	};
 
 	sd6_cmd_idle: sd6_cmd_idle {
 		telechips,pins = "gpc-1";
 		telechips,pin-function = <0>;
+		telechips,pull-disable;
 		telechips,output-low;
 	};
 
@@ -647,18 +659,21 @@
 		telechips,pin-function = <3>;
 		telechips,drive-strength = <2>;
 		telechips,pin-function = <0>;
+		telechips,pull-disable;
 		telechips,output-low;
 	};
 
 	sd6_bus4_idle: sd6_bus4_idle {
 		telechips,pins = "gpc-2", "gpc-3", "gpc-4", "gpc-5";
 		telechips,pin-function = <0>;
+		telechips,pull-disable;
 		telechips,output-low;
 	};
 
 	sd6_bus8_idle: sd6_bus8_idle {
 		telechips,pins = "gpc-2", "gpc-3", "gpc-4", "gpc-6", "gpc-7", "gpc-8", "gpc-9";
 		telechips,pin-function = <0>;
+		telechips,pull-disable;
 		telechips,output-low;
 	};
 
@@ -695,30 +710,35 @@
 	sd7_clk_idle: sd7_clk_idle {
 		telechips,pins = "gpe-25";
 		telechips,pin-function = <0>;
+		telechips,pull-disable;
 		telechips,output-low;
 	};
 
 	sd7_cmd_idle: sd7_cmd_idle{
 		telechips,pins = "gpe-24";
 		telechips,pin-function = <0>;
+		telechips,pull-disable;
 		telechips,output-low;
 	};
 
 	sd7_bus1_idle: sd7_bus1_idle {
 		telechips,pins = "gpe-23";
 		telechips,pin-function = <0>;
+		telechips,pull-disable;
 		telechips,output-low;
 	};
 
 	sd7_bus4_idle: sd7_bus4_idle {
 		telechips,pins = "gpe-23", "gpe-22", "gpe-21", "gpe-29";
 		telechips,pin-function = <0>;
+		telechips,pull-disable;
 		telechips,output-low;
 	};
 
 	sd7_bus8_idle: sd7_bus8_idle {
 		telechips,pins = "gpe-23", "gpe-22", "gpe-21", "gpe-20", "gpe-19", "gpe-18", "gpe-17", "gpe-16";
 		telechips,pin-function = <0>;
+		telechips,pull-disable;
 		telechips,output-low;
 	};
 
@@ -755,30 +775,35 @@
 	sd8_clk_idle: sd8_clk_idle {
 		telechips,pins = "gpf-16";
 		telechips,pin-function = <0>;
+		telechips,pull-disable;
 		telechips,output-low;
 	};
 
 	sd8_cmd_idle: sd8_cmd_idle_{
 		telechips,pins = "gpf-17";
 		telechips,pin-function = <0>;
+		telechips,pull-disable;
 		telechips,output-low;
 	};
 
 	sd8_bus1_idle: sd8_bus1_idle {
 		telechips,pins = "gpf-18";
 		telechips,pin-function = <0>;
+		telechips,pull-disable;
 		telechips,output-low;
 	};
 
 	sd8_bus4_idle: sd8_bus4_idle {
 		telechips,pins = "gpf-18", "gpf-19", "gpf-20", "gpf-21";
 		telechips,pin-function = <0>;
+		telechips,pull-disable;
 		telechips,output-low;
 	};
 
 	sd8_bus8_idle: sd8_bus8_idle {
 		telechips,pins = "gpf-18", "gpf-19", "gpf-20", "gpf-21", "gpf-22", "gpf-23", "gpf-24", "gpf-25";
 		telechips,pin-function = <0>;
+		telechips,pull-disable;
 		telechips,output-low;
 	};
 
@@ -815,33 +840,35 @@
 	sd9_clk_idle: sd9_clk_idle {
 		telechips,pins = "gpg-6";
 		telechips,pin-function = <0>;
-		telechips,no-pull;
+		telechips,pull-disable;
 		telechips,output-low;
 	};
 
 	sd9_cmd_idle: sd9_cmd_idle {
 		telechips,pins = "gpg-7";
 		telechips,pin-function = <0>;
+		telechips,pull-disable;
 		telechips,output-low;
 	};
 
 	sd9_bus1_idle: sd9_bus1_idle {
 		telechips,pins = "gpg-8";
 		telechips,pin-function = <0>;
+		telechips,pull-disable;
 		telechips,output-low;
 	};
 
 	sd9_bus4_idle: sd9_bus4_idle {
 		telechips,pins = "gpg-8", "gpg-9", "gpg-10", "gpg-11";
 		telechips,pin-function = <0>;
-		telechips,no-pull;
+		telechips,pull-disable;
 		telechips,output-low;
 	};
 
 	sd9_bus8_idle: sd9_bus8_idle {
 		telechips,pins = "gpg-8", "gpg-9", "gpg-10", "gpg-11", "gpg-12", "gpg-13", "gpg-14", "gpg-15";
 		telechips,pin-function = <0>;
-		telechips,no-pull;
+		telechips,pull-disable;
 		telechips,output-low;
 	};
 
