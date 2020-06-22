@@ -954,9 +954,9 @@
 	vioc_disp: vioc_disp@12000000 {
 		compatible = "telechips,vioc_disp";
 		reg = <0x12000000 0x100 0x12000100 0x100 0x12000200 0x100>;
-		interrupts = <GIC_SPI VIOC0_IRQI IRQ_TYPE_LEVEL_HIGH>, <GIC_SPI VIOC0_IRQI IRQ_TYPE_LEVEL_HIGH>, <GIC_SPI VIOC0_IRQI IRQ_TYPE_LEVEL_HIGH>;
-		clocks = <&clk_ddi DDIBUS_VIOC>, <&clk_peri PERI_LCD0>, <&clk_peri PERI_LCD1>, <&clk_peri PERI_LCD2>;
-		clock-names = "ddi-clk", "disp0-clk", "disp1-clk", "disp2-clk";
+		interrupts = <GIC_SPI VIOC0_IRQI IRQ_TYPE_LEVEL_HIGH>, <GIC_SPI VIOC0_IRQI IRQ_TYPE_LEVEL_HIGH>, <GIC_SPI VIOC0_IRQI IRQ_TYPE_LEVEL_HIGH>, <GIC_SPI VIOC0_IRQI IRQ_TYPE_LEVEL_HIGH>;
+		clocks = <&clk_ddi DDIBUS_VIOC>, <&clk_peri PERI_LCD0>, <&clk_peri PERI_LCD1>, <&clk_peri PERI_LCD2>, <&clk_peri PERI_LCD3>;
+		clock-names = "ddi-clk", "disp0-clk", "disp1-clk", "disp2-clk", "disp3-clk";
 	};
 
 	vioc_rdma: vioc_rdma@12000400{
