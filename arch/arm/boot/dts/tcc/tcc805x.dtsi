@@ -2454,7 +2454,8 @@
 
 	i2s7: i2s@16401000 {
 		compatible = "telechips,i2s";
-		reg = <0x16401000 0x50 0x16400080 0x8>;
+		reg = <0x0 0x16401000 0x0 0x50>,
+			  <0x0 0x16400080 0x0 0x8>;
 		clocks = <&clk_peri PERI_MDAI3 &clk_io IOBUS_DAI7 &clk_peri PERI_MFLT3_DAI>;
 		clock-frequency = <11289600>;	// 44100*256
 		interrupts = <GIC_SPI 116 IRQ_TYPE_LEVEL_HIGH>;
