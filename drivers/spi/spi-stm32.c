@@ -595,6 +595,7 @@ static int stm32_spi_prepare_msg(struct spi_master *master,
 	struct device_node *np = spi_dev->dev.of_node;
 	unsigned long flags;
 	u32 cfg2_clrb = 0, cfg2_setb = 0;
+	int ret;
 
 	/* SPI slave device may need time between data frames */
 	spi->cur_midi = 0;
@@ -621,6 +622,16 @@ static int stm32_spi_prepare_msg(struct spi_master *master,
 		spi_dev->mode & SPI_CPHA,
 		spi_dev->mode & SPI_LSB_FIRST,
 		spi_dev->mode & SPI_CS_HIGH);
+
+	/*
+	 * On STM32H7, messages should not exceed a maximum size
+	 * In order to ensure that, split large messages into several messages
+	 */
+	ret = spi_split_transfers_maxsize(master, msg,
+					  SPI_TSIZE_MAX,
+					  GFP_KERNEL | GFP_DMA);
+	if (ret)
+		return ret;
 
 	spin_lock_irqsave(&spi->lock, flags);
 
