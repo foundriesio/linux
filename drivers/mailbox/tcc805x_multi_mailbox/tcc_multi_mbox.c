@@ -127,6 +127,9 @@
 #define MBOX_ID1_LEN 		2U
 #define MBOX_ID_MAX_LEN		(MBOX_ID0_LEN+MBOX_ID1_LEN)
 
+#define SSS_MBOX_STATUS_ADDR 0x1E020000
+#define SSS_MBOX_DATA_ADDR 0x1E022000
+
 #define LOG_TAG	("MULTI_CH_MBOX_DRV")
 
 static int32_t mbox_verbose_mode = 0;
@@ -629,12 +632,28 @@ static int tcc_mbox_send_message(struct mbox_chan *chan, struct tcc_mbox_data * 
 				writel_relaxed(msg->cmd[5], mdev->base + MBOXTXD(6));
 				writel_relaxed(chan_info->header1.cmd, mdev->base + MBOXTXD(0));
 
+				/* Wait until SSS mbox busy is 0 in case of HSM */
+				if (!memcmp(chan_info->mbox_id, "HSM", 3)) {
+					uint8_t *sss_status_vaddr = NULL;
+					sss_status_vaddr = ioremap_nocache(SSS_MBOX_STATUS_ADDR, 64);
+					while (readl_relaxed(sss_status_vaddr) & 0x01)
+						;
+					iounmap(sss_status_vaddr);
+				}
 				/* enable tx done irq. */
 				writel_relaxed(TXD_IEN_BIT, mdev->base + MBOXCTR_SET);
 
 				/* enable data output. */
 				mdev->waitQueue._condition = 1;
 				writel_relaxed(OEN_BIT, mdev->base + MBOXCTR_SET);
+
+				/*Set funcID(0x02) to SSS mailbox in case of HSM */
+				if (!memcmp(chan_info->mbox_id, "HSM", 3)) {
+					uint8_t *sss_data_vaddr = NULL;
+					sss_data_vaddr = ioremap_nocache(SSS_MBOX_DATA_ADDR, 64);
+					writel_relaxed(0x02, sss_data_vaddr);
+					iounmap(sss_data_vaddr);
+				}
 
 				ret = tcc_mbox_wait_event_timeout(mdev, MBOX_TX_TIMEOUT);
 
