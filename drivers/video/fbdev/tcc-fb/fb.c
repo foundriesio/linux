@@ -1041,7 +1041,7 @@ static int fb_dt_parse_data(struct fb_info *info)
 	int property_idx = 1;
 
 	#ifdef CONFIG_FB_NEW_DISP1
-	if(!strcmp("/fb0",of_node_full_name(info->dev->of_node))){
+	if(!strcmp("/fb@0",of_node_full_name(info->dev->of_node))){
 		printk("%s fb0 disp1 support\n",__func__);
 		property_idx = 2;
 	}
