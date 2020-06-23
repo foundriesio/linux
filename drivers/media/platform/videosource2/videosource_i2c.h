@@ -28,10 +28,8 @@ struct videosource_reg {
 	unsigned short val;
 };
 
-extern int DDI_I2C_Write(struct i2c_client * client, unsigned char * data, unsigned short reg_bytes, unsigned short data_bytes);
-extern int DDI_I2C_Read(struct i2c_client * client, unsigned short reg, unsigned char reg_bytes, unsigned char * val, unsigned short val_bytes);
-extern int DDI_I2C_Write_Remote(struct i2c_client * client, unsigned short remote_addr, unsigned char* data, unsigned short reg_bytes, unsigned short data_bytes);
-extern int DDI_I2C_Read_Remote(struct i2c_client * client, unsigned short remote_addr, unsigned short reg, unsigned char reg_bytes, unsigned char * val, unsigned short val_bytes);
+extern int DDI_I2C_Write(struct i2c_client * client, char * buf, int reg_bytes, int val_bytes);
+extern int DDI_I2C_Read(struct i2c_client * client, char * reg, int reg_bytes, char * val, int val_bytes);
 
 #endif//VIDEOSOURCE_I2C_H
 

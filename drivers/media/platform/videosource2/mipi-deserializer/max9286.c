@@ -19,6 +19,7 @@
 #include "max9286.h"
 #include "../videosource_common.h"
 #include "../videosource_i2c.h"
+#include "../videosource_if.h"
 #include "../mipi-csi2/mipi-csi2.h"
 
 #include <linux/delay.h>
@@ -97,18 +98,21 @@ static const struct vsrc_std_info max9286_std_list[] = {
 
 static int change_mode(struct i2c_client *client, int mode);
 
-static inline int max9286_read(struct v4l2_subdev *sd, unsigned char reg)
+static inline int max9286_read(struct v4l2_subdev *sd, unsigned short reg)
 {
 	struct i2c_client *client = v4l2_get_subdevdata(sd);
-	int ret, read;
+	char reg_buf[1], val_buf[1];
+	int ret = 0;
+
+	reg_buf[0]= (char)(reg & 0xff);
 
 	/* return i2c_smbus_read_byte_data(client, reg); */
-	if ((ret = DDI_I2C_Read(client, reg, &read, 1, 1)) < 0) {
-		printk("Failed to read i2c value from 0x%08x\n", reg);
-		read = -EIO;
+	ret = DDI_I2C_Read(client, reg_buf, 1, val_buf, 1);
+	if (ret < 0) {
+		loge("Failed to read i2c value from 0x%08x\n", reg);
 	}
 
-	return read;
+	return ret;
 }
 
 static inline int max9286_write(struct v4l2_subdev *sd, unsigned char reg,
@@ -121,6 +125,7 @@ static inline int max9286_write(struct v4l2_subdev *sd, unsigned char reg,
 static inline int max9286_write_regs(struct i2c_client *client,
 				      struct videosource_reg *list, unsigned int mode)
 {
+	unsigned short addr = 0;
 	unsigned char data[4];
 	unsigned char bytes;
 	int ret, err_cnt = 0;
@@ -134,10 +139,18 @@ static inline int max9286_write_regs(struct i2c_client *client,
 			data[bytes++]= (unsigned char)list->reg&0xff;
 			data[bytes++]= (unsigned char)list->val&0xff;
 
+			// save the slave address
 			if(mode == MODE_SERDES_REMOTE_SER) {
-				ret = DDI_I2C_Write_Remote(client, SER_ADDR, data, 1, 1);
-			} else {
-				ret = DDI_I2C_Write(client, data, 1, 1);
+				addr = client->addr;
+				client->addr = SER_ADDR;
+			}
+
+			// i2c write
+			ret = DDI_I2C_Write(client, data, 1, 1);
+
+			// restore the slave address
+			if(mode == MODE_SERDES_REMOTE_SER) {
+				client->addr = addr;
 			}
 
 			if(ret) {
@@ -511,9 +524,6 @@ static int max9286_g_input_status(struct v4l2_subdev *sd, u32 *status)
 	return 0;
 }
 
-extern int videosource_if_init_mipi_csi2_interface(videosource_t * vdev, videosource_format_t * format, unsigned int onOff);
-extern int videosource_if_set_mipi_csi2_interrupt(videosource_t * vdev, videosource_format_t * format, unsigned int onOff);
-
 static int max9286_s_stream(struct v4l2_subdev *sd, int enable)
 {
 	struct videosource *vsrc = NULL;
@@ -620,41 +630,6 @@ static const struct v4l2_subdev_ops max9286_ops = {
     .video = &max9286_video_ops,
 };
 
-static int open(videosource_gpio_t *gpio)
-{
-	printk("%s invoked\n", __func__);
-
-	int ret = 0;
-
-	FUNCTION_IN;
-
-	sensor_port_disable(gpio->pwd_port);
-	mdelay(20);
-
-	sensor_port_enable(gpio->pwd_port);
-	mdelay(20);
-
-	FUNCTION_OUT;
-
-	return ret;
-}
-
-static int close(videosource_gpio_t *gpio)
-{
-	printk("%s invoked\n", __func__);
-
-	FUNCTION_IN
-
-	sensor_port_disable(gpio->rst_port);
-	sensor_port_disable(gpio->pwr_port);
-	sensor_port_disable(gpio->pwd_port);
-
-	mdelay(5);
-
-	FUNCTION_OUT
-	return 0;
-}
-
 static int change_mode(struct i2c_client *client, int mode)
 {
 	int entry = sizeof(videosource_reg_table_list) /
@@ -760,7 +735,6 @@ static struct i2c_client *get_i2c_client(struct videosource *vsrc)
 	return (struct i2c_client *)v4l2_get_subdevdata(&(vsrc->sd));
 }
 
-#if 1
 static int subdev_init(void)
 {
 	int ret = 0, err;
@@ -792,56 +766,6 @@ static int subdev_init(void)
 
 	return ret;
 }
-#else
-void v4l2_devname_subdev_init(struct v4l2_subdev *sd, struct i2c_client *client,
-		const struct v4l2_subdev_ops *ops)
-{
-	v4l2_subdev_init(sd, ops);
-	sd->flags |= V4L2_SUBDEV_FL_HAS_DEVNODE;
-	/* the owner is the same as the i2c_client's driver owner */
-	sd->owner = client->dev.driver->owner;
-	sd->dev = &client->dev;
-	/* i2c_client and v4l2_subdev point to one another */
-	v4l2_set_subdevdata(sd, client);
-	i2c_set_clientdata(client, sd);
-	/* initialize name */
-	snprintf(sd->name, sizeof(sd->name), "%s %d-%04x",
-		client->dev.driver->name, i2c_adapter_id(client->adapter),
-		client->addr);
-}
-
-static int subdev_init(void)
-{
-	int ret = 0, err;
-
-	struct videosource *vsrc = &videosource_max9286;
-	struct v4l2_subdev *sd = &(vsrc->sd);
-
-	// check i2c_client is initialized properly
-	struct i2c_client *client = v4l2_get_subdevdata(sd);
-
-	if (!client) {
-		printk(KERN_ERR
-		       "%s - i2c_client is not initialized yet. Failed to "
-		       "register the device as a sub-device\n", __func__);
-		ret = -1;
-	} else {
-		// Register with V4L2 layer as a slave device
-		v4l2_devname_subdev_init(sd, client, &max9286_ops);
-		/* v4l2_device_register(sd->dev, sd->v4l2_dev); */
-		err = v4l2_async_register_subdev(sd);
-		if (err) {
-			printk(KERN_ERR "Failed to register subdevice max9286\n");
-		} else {
-			printk(KERN_INFO
-			       "%s - max9286 is initialized within v4l standard: %s.\n",
-			       __func__, sd->name);
-		}
-	}
-
-	return ret;
-}
-#endif
 
 struct videosource videosource_max9286 = {
     .type = VIDEOSOURCE_TYPE_MIPI,
@@ -898,8 +822,6 @@ struct videosource videosource_max9286 = {
     .driver =
 	{
 	    .name = "max9286",
-	    .open = open,
-	    .close = close,
 	    .change_mode = change_mode,
 		.set_irq_handler = set_irq_handler,
 	    .check_status = check_status,

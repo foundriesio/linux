@@ -20,6 +20,8 @@
 
 #include "videosource_types.h"
 
+extern int videosource_if_init_mipi_csi2_interface(videosource_t * vdev, videosource_format_t * format, unsigned int onOff);
+extern int videosource_if_set_mipi_csi2_interrupt(videosource_t * vdev, videosource_format_t * format, unsigned int onOff);
 extern int videosource_if_probe(videosource_t * vdev);
 extern int videosource_if_remove(videosource_t * vdev);
 

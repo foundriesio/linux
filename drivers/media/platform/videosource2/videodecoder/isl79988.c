@@ -84,18 +84,21 @@ static const struct vsrc_std_info isl79988_std_list[] = {
 
 static int change_mode(struct i2c_client *client, int mode);
 
-static inline int isl79988_read(struct v4l2_subdev *sd, unsigned char reg)
+static inline int isl79988_read(struct v4l2_subdev *sd, unsigned short reg)
 {
 	struct i2c_client *client = v4l2_get_subdevdata(sd);
-	int ret, read;
+	char reg_buf[1], val_buf[1];
+	int ret = 0;
+
+	reg_buf[0]= (char)(reg & 0xff);
 
 	/* return i2c_smbus_read_byte_data(client, reg); */
-	if ((ret = DDI_I2C_Read(client, reg, &read, 1, 1)) < 0) {
-		printk("Failed to read i2c value from 0x%08x\n", reg);
-		read = -EIO;
+	ret = DDI_I2C_Read(client, reg_buf, 1, val_buf, 1);
+	if (ret < 0) {
+		loge("Failed to read i2c value from 0x%08x\n", reg);
 	}
 
-	return read;
+	return ret;
 }
 
 static inline int isl79988_write(struct v4l2_subdev *sd, unsigned char reg,
@@ -174,10 +177,11 @@ static struct videosource_reg sensor_camera_status[] = {{0x1B, 0x00},
 	{0x1D, 0x00},
 	{0x1E, 0x00},
 #endif
-							{REG_TERM, VAL_TERM}};
+	{REG_TERM, VAL_TERM}
+};
 
 static struct videosource_reg *videosource_reg_table_list[] = {
-    sensor_camera_ntsc,
+	sensor_camera_ntsc,
 };
 
 /*
@@ -543,41 +547,6 @@ static const struct v4l2_subdev_ops isl79988_ops = {
     .video = &isl79988_video_ops,
 };
 
-static int open(videosource_gpio_t *gpio)
-{
-	printk("%s invoked\n", __func__);
-
-	int ret = 0;
-
-	FUNCTION_IN;
-
-	sensor_port_disable(gpio->rst_port);
-	mdelay(60);
-
-	sensor_port_enable(gpio->rst_port);
-	mdelay(10);
-
-	FUNCTION_OUT;
-
-	return ret;
-}
-
-static int close(videosource_gpio_t *gpio)
-{
-	printk("%s invoked\n", __func__);
-
-	FUNCTION_IN
-
-	sensor_port_disable(gpio->rst_port);
-	sensor_port_disable(gpio->pwr_port);
-	sensor_port_disable(gpio->pwd_port);
-
-	mdelay(5);
-
-	FUNCTION_OUT
-	return 0;
-}
-
 static int change_mode(struct i2c_client *client, int mode)
 {
 	int entry = sizeof(videosource_reg_table_list) /
@@ -737,7 +706,7 @@ struct videosource videosource_isl79988 = {
 
 	    .capture_zoom_offset_x = 0,
 	    .capture_zoom_offset_y = 0,
-	    .cam_capchg_width = 720,
+	    .cam_capchg_width = WIDTH,
 	    .framerate = 15,
 	    .capture_skip_frame = 0,
 	    .sensor_sizes = sensor_sizes,
@@ -745,8 +714,6 @@ struct videosource videosource_isl79988 = {
     .driver =
 	{
 	    .name = "isl79988",
-	    .open = open,
-	    .close = close,
 	    .change_mode = change_mode,
 	    .check_status = check_status,
 	    .set_i2c_client = set_i2c_client,

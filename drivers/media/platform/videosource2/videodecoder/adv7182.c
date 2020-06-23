@@ -84,18 +84,21 @@ static const struct vsrc_std_info adv7182_std_list[] = {
 
 static int change_mode(struct i2c_client *client, int mode);
 
-static inline int adv7182_read(struct v4l2_subdev *sd, unsigned char reg)
+static inline int adv7182_read(struct v4l2_subdev *sd, unsigned short reg)
 {
 	struct i2c_client *client = v4l2_get_subdevdata(sd);
-	int ret, read;
+	char reg_buf[1], val_buf[1];
+	int ret = 0;
+
+	reg_buf[0]= (char)(reg & 0xff);
 
 	/* return i2c_smbus_read_byte_data(client, reg); */
-	if ((ret = DDI_I2C_Read(client, reg, &read, 1, 1)) < 0) {
-		printk("Failed to read i2c value from 0x%08x\n", reg);
-		read = -EIO;
+	ret = DDI_I2C_Read(client, reg_buf, 1, val_buf, 1);
+	if (ret < 0) {
+		loge("Failed to read i2c value from 0x%08x\n", reg);
 	}
 
-	return read;
+	return ret;
 }
 
 static inline int adv7182_write(struct v4l2_subdev *sd, unsigned char reg,
@@ -254,7 +257,7 @@ static int adv7182_set_power(struct v4l2_subdev *sd, int on)
 
 		sensor_port_disable(gpio->rst_port);
 		msleep(20);
-	
+
 		sensor_port_enable(gpio->rst_port);
 		msleep(20);
 	} else {
@@ -537,41 +540,6 @@ static const struct v4l2_subdev_ops adv7182_ops = {
     .video = &adv7182_video_ops,
 };
 
-static int open(videosource_gpio_t *gpio)
-{
-	printk("%s invoked\n", __func__);
-
-	int ret = 0;
-
-	FUNCTION_IN;
-
-	sensor_port_disable(gpio->rst_port);
-	mdelay(20);
-
-	sensor_port_enable(gpio->rst_port);
-	mdelay(20);
-
-	FUNCTION_OUT;
-
-	return ret;
-}
-
-static int close(videosource_gpio_t *gpio)
-{
-	printk("%s invoked\n", __func__);
-
-	FUNCTION_IN
-
-	sensor_port_disable(gpio->rst_port);
-	sensor_port_disable(gpio->pwr_port);
-	sensor_port_disable(gpio->pwd_port);
-
-	mdelay(5);
-
-	FUNCTION_OUT
-	return 0;
-}
-
 static int change_mode(struct i2c_client *client, int mode)
 {
 	int entry = sizeof(videosource_reg_table_list) /
@@ -665,7 +633,6 @@ static struct i2c_client *get_i2c_client(struct videosource *vsrc)
 	return (struct i2c_client *)v4l2_get_subdevdata(&(vsrc->sd));
 }
 
-#if 1
 static int subdev_init(void)
 {
 	int ret = 0, err;
@@ -697,56 +664,6 @@ static int subdev_init(void)
 
 	return ret;
 }
-#else
-void v4l2_devname_subdev_init(struct v4l2_subdev *sd, struct i2c_client *client,
-		const struct v4l2_subdev_ops *ops)
-{
-	v4l2_subdev_init(sd, ops);
-	sd->flags |= V4L2_SUBDEV_FL_HAS_DEVNODE;
-	/* the owner is the same as the i2c_client's driver owner */
-	sd->owner = client->dev.driver->owner;
-	sd->dev = &client->dev;
-	/* i2c_client and v4l2_subdev point to one another */
-	v4l2_set_subdevdata(sd, client);
-	i2c_set_clientdata(client, sd);
-	/* initialize name */
-	snprintf(sd->name, sizeof(sd->name), "%s %d-%04x",
-		client->dev.driver->name, i2c_adapter_id(client->adapter),
-		client->addr);
-}
-
-static int subdev_init(void)
-{
-	int ret = 0, err;
-
-	struct videosource *vsrc = &videosource_adv7182;
-	struct v4l2_subdev *sd = &(vsrc->sd);
-
-	// check i2c_client is initialized properly
-	struct i2c_client *client = v4l2_get_subdevdata(sd);
-
-	if (!client) {
-		printk(KERN_ERR
-		       "%s - i2c_client is not initialized yet. Failed to "
-		       "register the device as a sub-device\n", __func__);
-		ret = -1;
-	} else {
-		// Register with V4L2 layer as a slave device
-		v4l2_devname_subdev_init(sd, client, &adv7182_ops);
-		/* v4l2_device_register(sd->dev, sd->v4l2_dev); */
-		err = v4l2_async_register_subdev(sd);
-		if (err) {
-			printk(KERN_ERR "Failed to register subdevice adv7182\n");
-		} else {
-			printk(KERN_INFO
-			       "%s - adv7182 is initialized within v4l standard: %s.\n",
-			       __func__, sd->name);
-		}
-	}
-
-	return ret;
-}
-#endif
 
 struct videosource videosource_adv7182 = {
     .type = VIDEOSOURCE_TYPE_VIDEODECODER,
@@ -790,8 +707,6 @@ struct videosource videosource_adv7182 = {
     .driver =
 	{
 	    .name = "adv7182",
-	    .open = open,
-	    .close = close,
 	    .change_mode = change_mode,
 	    .check_status = check_status,
 	    .set_i2c_client = set_i2c_client,

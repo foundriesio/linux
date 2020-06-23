@@ -25,93 +25,27 @@
 #include "videodecoder/videodecoder.h"
 #include "mipi-deserializer/mipi-deserializer.h"
 
-int DDI_I2C_Write(struct i2c_client * client, unsigned char * data, unsigned short reg_bytes, unsigned short data_bytes) {
-	unsigned short bytes = reg_bytes + data_bytes;
+int DDI_I2C_Write(struct i2c_client * client, char * buf, int reg_bytes, int val_bytes) {
+	int count = reg_bytes + val_bytes;
 
-	if(i2c_master_send(client, data, bytes) != bytes) {
-		loge("addr = 0x%x, write error!!!! \n", client->addr);
+	if(i2c_master_send((const struct i2c_client *)client, (const char *)buf, count) != count) {
+		loge("name: %s, addr: 0x%x, write error!!!!\n", client->name, client->addr);
 		return -EIO;
 	}
 
 	return 0;
 }
 
-int DDI_I2C_Write_Remote(struct i2c_client * client, unsigned short remote_addr, unsigned char* data, unsigned short reg_bytes, unsigned short data_bytes) {
-	unsigned short bytes = reg_bytes + data_bytes;
-	unsigned short source_addr;
-	static int try = 0;
-
-	source_addr = client->addr;
-
-	client->addr = remote_addr;
-
-	if(i2c_master_send(client, data, bytes) != bytes) {
-		loge("write error!!!! \n");
-		log("addr = 0x%x\n", client->addr);
-		try = (try + 1) % 4;
-		client->addr = 0x60 + (0x01 * try);
-
-		client->addr = source_addr;
-
-		return -EIO;
-	}
-
-	client->addr = source_addr;
-
-	return 0;
-}
-
-int DDI_I2C_Read(struct i2c_client * client, unsigned short reg, unsigned char reg_bytes, unsigned char * val, unsigned short val_bytes) {
-	unsigned char data[2];
-
-	if(reg_bytes == 2) {
-		data[0]= reg>>8;
-		data[1]= (u8)reg&0xff;
-	} else {
-		data[0]= (u8)reg&0xff;
-	}
-
-	if(i2c_master_send(client, data, reg_bytes) != reg_bytes) {
-		loge("write error for read!!!! \n");
+int DDI_I2C_Read(struct i2c_client * client, char * reg, int reg_bytes, char * val, int val_bytes) {
+	if(i2c_master_send(client, reg, reg_bytes) != reg_bytes) {
+		loge("name: %s, addr: 0x%x, write error!!!!\n", client->name, client->addr);
 		return -EIO;
 	}
 
 	if(i2c_master_recv(client, val, val_bytes) != val_bytes) {
-		loge("read error!!!! \n");
+		loge("name: %s, addr: 0x%x, read error!!!!\n", client->name, client->addr);
 		return -EIO;
 	}
-
-	return 0;
-}
-
-int DDI_I2C_Read_Remote(struct i2c_client * client, unsigned short remote_addr, unsigned short reg, unsigned char reg_bytes, unsigned char * val, unsigned short val_bytes) {
-	unsigned char data[2];
-	unsigned short source_addr;
-
-	if(reg_bytes == 2) {
-		data[0]= reg>>8;
-		data[1]= (u8)reg&0xff;
-	} else {
-		data[0]= (u8)reg&0xff;
-	}
-
-	source_addr = client->addr;
-
-	client->addr = remote_addr;
-
-	if(i2c_master_send(client, data, reg_bytes) != reg_bytes) {
-		loge("write error for read!!!! \n");
-		client->addr = source_addr;
-		return -EIO;
-	}
-
-	if(i2c_master_recv(client, val, val_bytes) != val_bytes) {
-		loge("read error!!!! \n");
-		client->addr = source_addr;
-		return -EIO;
-	}
-
-	client->addr = source_addr;
 
 	return 0;
 }

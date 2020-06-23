@@ -240,8 +240,8 @@ static int tccvin_parse_device_tree(struct tccvin_streaming * vdev) {
 				logd("%10s[%2d]: 0x%p\n", "RDMA(PGL)", get_vioc_index(vdev->cif.vioc_path.pgl), address);
 			}
 		} else {
-			loge("\"rdma\" node is not found.\n");
-			return -ENODEV;
+			logw("\"rdma\" node is not found.\n");
+//			return -ENODEV;
 		}
 	}
 #endif//CONFIG_OVERLAY_PGL
@@ -257,7 +257,7 @@ static int tccvin_parse_device_tree(struct tccvin_streaming * vdev) {
 			logd("%10s[%2d]: 0x%p\n", "VIQE", get_vioc_index(vdev->cif.vioc_path.viqe), address);
 		}
 	} else {
-		loge("\"viqe\" node is not found.\n");
+		logw("\"viqe\" node is not found.\n");
 
 		// DEINTL_S
 		vioc_node = of_parse_phandle(main_node, "deintls", 0);
@@ -268,7 +268,7 @@ static int tccvin_parse_device_tree(struct tccvin_streaming * vdev) {
 				logd("%10s[%2d]: 0x%p\n", "DEINTL_S", get_vioc_index(vdev->cif.vioc_path.deintl_s), address);
 			}
 		} else {
-			loge("\"deintls\" node is not found.\n");
+			logw("\"deintls\" node is not found.\n");
 		}
 	}
 
@@ -282,7 +282,7 @@ static int tccvin_parse_device_tree(struct tccvin_streaming * vdev) {
 			logd("%10s[%2d]: 0x%p\n", "SCALER", get_vioc_index(vdev->cif.vioc_path.scaler), address);
 		}
 	} else {
-		loge("\"scaler\" node is not found.\n");
+		logw("\"scaler\" node is not found.\n");
 	}
 
 	// WMIXER
@@ -295,7 +295,7 @@ static int tccvin_parse_device_tree(struct tccvin_streaming * vdev) {
 			logd("%10s[%2d]: 0x%p\n", "WMIXER", get_vioc_index(vdev->cif.vioc_path.wmixer), address);
 		}
 	} else {
-		loge("\"wmixer\" node is not found.\n");
+		logw("\"wmixer\" node is not found.\n");
 	}
 
 	// WDMA
@@ -327,7 +327,7 @@ static int tccvin_parse_device_tree(struct tccvin_streaming * vdev) {
 			logd("%10s[%2d]: 0x%p\n", "FIFO", get_vioc_index(vdev->cif.vioc_path.fifo), address);
 		}
 	} else {
-		loge("\"fifo\" node is not found.\n");
+		logw("\"fifo\" node is not found.\n");
 	}
 
 	/* get the information of vioc-fb device node */
@@ -879,17 +879,17 @@ static int tccvin_set_wdma(struct tccvin_streaming * vdev) {
 }
 
 static void tccvin_work_thread(struct work_struct * data) {
-	tccvin_cif_t			* cif		= container_of(data, tccvin_cif_t, wdma_work);
-	struct tccvin_streaming	* stream	= container_of(cif, struct tccvin_streaming, cif);
+	tccvin_cif_t				* cif		= container_of(data, tccvin_cif_t, wdma_work);
+	struct tccvin_streaming		* stream	= container_of(cif, struct tccvin_streaming, cif);
 	struct tccvin_video_queue	* queue		= &stream->queue;
 	struct tccvin_buffer		* buf		= NULL;
-	unsigned long			flags;
-	struct timespec			ts;
+	unsigned long				flags;
+	struct timespec				ts			= { 0, };
 
-	volatile void __iomem	* pWDMABase	= VIOC_WDMA_GetAddress(stream->cif.vioc_path.wdma);
-	unsigned int			addr0		= 0;
-	unsigned int			addr1		= 0;
-	unsigned int			addr2		= 0;
+	volatile void __iomem		* pWDMABase	= VIOC_WDMA_GetAddress(stream->cif.vioc_path.wdma);
+	unsigned int				addr0		= 0;
+	unsigned int				addr1		= 0;
+	unsigned int				addr2		= 0;
 
 	if(stream == NULL) {
 		loge("stream is NULL\n");
@@ -936,8 +936,10 @@ static void tccvin_work_thread(struct work_struct * data) {
 	buf = tccvin_queue_next_buffer(&stream->queue, buf);	// get a next buffer
 
 	mutex_lock(&cif->lock);
-	VIOC_WDMA_SetImageBase(pWDMABase, /*addr0*/stream->cif.pmap_preview.base, /*addr1*/0, /*addr2*/0);
-//	VIOC_WDMA_SetImageBase(pWDMABase, /*addr0*/queue->queue.mem_ops->get_dmabuf(), /*addr1*/0, /*addr2*/0);
+	addr0 = stream->cif.pmap_preview.base;//queue->queue.mem_ops->get_dmabuf()
+	addr1 = 0;
+	addr2 = 0;
+	VIOC_WDMA_SetImageBase(pWDMABase, addr0, addr1, addr2);
 	VIOC_WDMA_SetImageEnable(pWDMABase, OFF);
 	mutex_unlock(&cif->lock);
 }
@@ -976,12 +978,12 @@ static int tccvin_allocate_essential_buffers(struct tccvin_streaming * vdev) {
 	strcpy(vdev->cif.pmap_preview.name, pmap_preview_name);
 	ret = pmap_get_info(vdev->cif.pmap_preview.name, &vdev->cif.pmap_preview);
 	if(ret == 1) {
-		logn("name: %20s, base: 0x%08x, size: 0x%08x\n",
+		logn("name: %20s, base: 0x%08llx, size: 0x%08llx\n",
 			vdev->cif.pmap_preview.name, \
 			vdev->cif.pmap_preview.base, \
 			vdev->cif.pmap_preview.size);
 		vdev->cif.vir = ioremap_nocache(vdev->cif.pmap_preview.base, PAGE_ALIGN(vdev->cif.pmap_preview.size));
-		logd("name: %20s, phy base: 0x%08x, vir base: 0x%08x\n", \
+		logd("name: %20s, phy base: 0x%08x, vir base: 0x%p\n", \
 			vdev->cif.pmap_preview.name, vdev->cif.pmap_preview.base, vdev->cif.vir);
     } else {
 		loge("get \"rearcamera\" pmap information.\n");
@@ -990,7 +992,7 @@ static int tccvin_allocate_essential_buffers(struct tccvin_streaming * vdev) {
 
 	strcpy(vdev->cif.pmap_viqe.name, "rearcamera_viqe");
 	if(pmap_get_info(vdev->cif.pmap_viqe.name, &(vdev->cif.pmap_viqe)) == 1) {
-		logd("[PMAP] %s: 0x%08x ~ 0x%08x (0x%08x)\n",
+		logd("[PMAP] %s: 0x%08x ~ 0x%08llx (0x%08llx)\n",
 			vdev->cif.pmap_viqe.name, \
 			vdev->cif.pmap_viqe.base, \
 			vdev->cif.pmap_viqe.base + vdev->cif.pmap_viqe.size, \
@@ -1003,7 +1005,7 @@ static int tccvin_allocate_essential_buffers(struct tccvin_streaming * vdev) {
 #if defined(CONFIG_OVERLAY_PGL) && !defined(CONFIG_OVERLAY_DPGL)
 	strcpy(vdev->cif.pmap_pgl.name, "parking_gui");
 	if(pmap_get_info(vdev->cif.pmap_pgl.name, &(vdev->cif.pmap_pgl)) == 1) {
-		logd("[PMAP] %s: 0x%08x ~ 0x%08x (0x%08x)\n",
+		logd("[PMAP] %s: 0x%08x ~ 0x%08llx (0x%08llx)\n",
 			vdev->cif.pmap_pgl.name, \
 			vdev->cif.pmap_pgl.base, \
 			vdev->cif.pmap_pgl.base + vdev->cif.pmap_pgl.size, \
