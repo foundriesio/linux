@@ -1606,35 +1606,37 @@ static int stm32_fmc2_setup_interface(struct nand_chip *chip, int chipnr,
 /* DMA configuration */
 static int stm32_fmc2_dma_setup(struct stm32_fmc2_nfc *fmc2)
 {
-	struct dma_chan *rx, *tx, *ecc;
 	int ret = 0;
 
-	tx = dma_request_chan(fmc2->dev, "tx");
-	rx = dma_request_chan(fmc2->dev, "rx");
-	ecc = dma_request_chan(fmc2->dev, "ecc");
-
-	/* DMAs are not mandatory but at least wait for them to be probeb */
-	if (PTR_ERR(tx) == -EPROBE_DEFER || PTR_ERR(rx) == -EPROBE_DEFER ||
-	    PTR_ERR(ecc) == -EPROBE_DEFER)
-		ret = -EPROBE_DEFER;
-
-	if (IS_ERR(tx) || IS_ERR(rx) || IS_ERR(ecc)) {
-		if (!IS_ERR(tx))
-			dma_release_channel(tx);
-		if (!IS_ERR(rx))
-			dma_release_channel(rx);
-		if (!IS_ERR(ecc))
-			dma_release_channel(ecc);
-
-		if (ret != -EPROBE_DEFER)
-			dev_warn(fmc2->dev, "DMAs missing, use polling mode\n");
-
-		return ret;
+	fmc2->dma_tx_ch = dma_request_chan(fmc2->dev, "tx");
+	if (IS_ERR(fmc2->dma_tx_ch)) {
+		ret = PTR_ERR(fmc2->dma_tx_ch);
+		if (ret != -ENODEV)
+			dev_err(fmc2->dev,
+				"failed to request tx DMA channel: %d\n", ret);
+		fmc2->dma_tx_ch = NULL;
+		goto err_dma;
 	}
 
-	fmc2->dma_tx_ch = tx;
-	fmc2->dma_rx_ch = rx;
-	fmc2->dma_ecc_ch = ecc;
+	fmc2->dma_rx_ch = dma_request_chan(fmc2->dev, "rx");
+	if (IS_ERR(fmc2->dma_rx_ch)) {
+		ret = PTR_ERR(fmc2->dma_rx_ch);
+		if (ret != -ENODEV)
+			dev_err(fmc2->dev,
+				"failed to request rx DMA channel: %d\n", ret);
+		fmc2->dma_rx_ch = NULL;
+		goto err_dma;
+	}
+
+	fmc2->dma_ecc_ch = dma_request_chan(fmc2->dev, "ecc");
+	if (IS_ERR(fmc2->dma_ecc_ch)) {
+		ret = PTR_ERR(fmc2->dma_ecc_ch);
+		if (ret != -ENODEV)
+			dev_err(fmc2->dev,
+				"failed to request ecc DMA channel: %d\n", ret);
+		fmc2->dma_ecc_ch = NULL;
+		goto err_dma;
+	}
 
 	ret = sg_alloc_table(&fmc2->dma_ecc_sg, FMC2_MAX_SG, GFP_KERNEL);
 	if (ret)
@@ -1654,6 +1656,15 @@ static int stm32_fmc2_dma_setup(struct stm32_fmc2_nfc *fmc2)
 	init_completion(&fmc2->dma_ecc_complete);
 
 	return 0;
+
+err_dma:
+	if (ret == -ENODEV) {
+		dev_warn(fmc2->dev,
+			 "DMAs not defined in the DT, polling mode is used\n");
+		ret = 0;
+	}
+
+	return ret;
 }
 
 /* NAND callbacks setup */
@@ -1933,11 +1944,8 @@ static int stm32_fmc2_probe(struct platform_device *pdev)
 	}
 
 	irq = platform_get_irq(pdev, 0);
-	if (irq < 0) {
-		if (irq != -EPROBE_DEFER)
-			dev_err(dev, "IRQ error missing or invalid\n");
+	if (irq < 0)
 		return irq;
-	}
 
 	ret = devm_request_irq(dev, irq, stm32_fmc2_irq, 0,
 			       dev_name(dev), fmc2);
@@ -1971,7 +1979,7 @@ static int stm32_fmc2_probe(struct platform_device *pdev)
 	/* DMA setup */
 	ret = stm32_fmc2_dma_setup(fmc2);
 	if (ret)
-		goto err_dma_setup;
+		goto err_release_dma;
 
 	/* FMC2 init routine */
 	stm32_fmc2_init(fmc2);
@@ -1993,20 +2001,20 @@ static int stm32_fmc2_probe(struct platform_device *pdev)
 	/* Scan to find existence of the device */
 	ret = nand_scan(chip, nand->ncs);
 	if (ret)
-		goto err_dma_setup;
+		goto err_release_dma;
 
 	ret = mtd_device_register(mtd, NULL, 0);
 	if (ret)
-		goto err_device_register;
+		goto err_nand_cleanup;
 
 	platform_set_drvdata(pdev, fmc2);
 
 	return 0;
 
-err_device_register:
+err_nand_cleanup:
 	nand_cleanup(chip);
 
-err_dma_setup:
+err_release_dma:
 	if (fmc2->dma_ecc_ch)
 		dma_release_channel(fmc2->dma_ecc_ch);
 	if (fmc2->dma_tx_ch)
