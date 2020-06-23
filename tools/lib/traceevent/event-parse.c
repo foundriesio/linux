@@ -154,25 +154,6 @@ static int cmdline_cmp(const void *a, const void *b)
 	return 0;
 }
 
-/* Looking for where to place the key */
-static int cmdline_slot_cmp(const void *a, const void *b)
-{
-	const struct tep_cmdline *ca = a;
-	const struct tep_cmdline *cb = b;
-	const struct tep_cmdline *cb1 = cb + 1;
-
-	if (ca->pid < cb->pid)
-		return -1;
-
-	if (ca->pid > cb->pid) {
-		if (ca->pid <= cb1->pid)
-			return 0;
-		return 1;
-	}
-
-	return 0;
-}
-
 struct cmdline_list {
 	struct cmdline_list	*next;
 	char			*comm;
@@ -268,7 +249,6 @@ static int add_new_comm(struct pevent *pevent, const char *comm, int pid)
 	struct cmdline *cmdlines = pevent->cmdlines;
 	const struct cmdline *cmdline;
 	struct cmdline key;
-	int cnt;
 
 	if (!pid)
 		return 0;
@@ -290,41 +270,18 @@ static int add_new_comm(struct pevent *pevent, const char *comm, int pid)
 	}
 	pevent->cmdlines = cmdlines;
 
-	key.comm = strdup(comm);
-	if (!key.comm) {
+	cmdlines[pevent->cmdline_count].comm = strdup(comm);
+	if (!cmdlines[pevent->cmdline_count].comm) {
 		errno = ENOMEM;
 		return -1;
 	}
 
-	if (!tep->cmdline_count) {
-		/* no entries yet */
-		tep->cmdlines[0] = key;
+	cmdlines[pevent->cmdline_count].pid = pid;
+		
+	if (cmdlines[pevent->cmdline_count].comm)
 		pevent->cmdline_count++;
-		return 0;
-	}
 
-	/* Now find where we want to store the new cmdline */
-	cmdline = bsearch(&key, tep->cmdlines, tep->cmdline_count - 1,
-			sizeof(*tep->cmdlines), cmdline_slot_cmp);
-
-	cnt = tep->cmdline_count;
-	if (cmdline) {
-		/* cmdline points to the one before the spot we want */
-		cmdline++;
-		cnt -= cmdline - tep->cmdlines;
-
-	} else {
-		/* The new entry is either before or after the list */
-		if (key.pid > tep->cmdlines[tep->cmdline_count - 1].pid) {
-			tep->cmdlines[tep->cmdline_count++] = key;
-			return 0;
-		}
-		cmdline = &tep->cmdlines[0];
-	}
-	memmove(cmdline + 1, cmdline, (cnt * sizeof(*cmdline)));
-	*cmdline = key;
-
-	tep->cmdline_count++;
+	qsort(cmdlines, pevent->cmdline_count, sizeof(*cmdlines), cmdline_cmp);
 
 	return 0;
 }

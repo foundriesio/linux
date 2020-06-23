@@ -1516,23 +1516,23 @@ static void nfs_clear_open_stateid(struct nfs4_state *state,
 static void nfs_set_open_stateid_locked(struct nfs4_state *state,
 		const nfs4_stateid *stateid, nfs4_stateid *freeme)
 {
+	DEFINE_WAIT(wait);
 	struct wait_queue_head *wq_head = bit_waitqueue(&state->flags,
 							NFS_STATE_CHANGE_WAIT);
-	DEFINE_WAIT_BIT(wbq_entry, &state->flags, NFS_STATE_CHANGE_WAIT);
 	int status = 0;
 	for (;;) {
 
 		if (!nfs_need_update_open_stateid(state, stateid))
 			return;
+		if (!test_bit(NFS_STATE_CHANGE_WAIT, &state->flags))
+			break;
 		if (status)
 			break;
 		/* Rely on seqids for serialisation with NFSv4.0 */
 		if (!nfs4_has_session(NFS_SERVER(state->inode)->nfs_client))
 			break;
 
-		prepare_to_wait(wq_head, &wbq_entry.wq_entry, TASK_KILLABLE);
-		if (!test_bit(NFS_STATE_CHANGE_WAIT, &state->flags))
-			break;
+		prepare_to_wait(wq_head, &wait, TASK_KILLABLE);
 		/*
 		 * Ensure we process the state changes in the same order
 		 * in which the server processed them by delaying the
@@ -1548,12 +1548,11 @@ static void nfs_set_open_stateid_locked(struct nfs4_state *state,
 				status = 0;
 		} else
 			status = -EINTR;
-		finish_wait(wq_head, &wbq_entry.wq_entry);
+		finish_wait(wq_head, &wait);
 		rcu_read_lock();
 		spin_lock(&state->owner->so_lock);
 		write_seqlock(&state->seqlock);
 	}
-	finish_wait(wq_head, &wbq_entry.wq_entry);
 
 	if (!nfs4_stateid_match_other(stateid, &state->open_stateid)) {
 		nfs4_stateid_copy(freeme, &state->open_stateid);
@@ -3210,13 +3209,21 @@ static void nfs4_close_done(struct rpc_task *task, void *data)
 
 			}
 			break;
+		case -NFS4ERR_OLD_STATEID:
+			/* Did we race with OPEN? */
+			if (nfs4_refresh_open_stateid(&calldata->arg.stateid,
+						state)) {
+				task->tk_status = 0;
+				rpc_restart_call_prepare(task);
+			}
+			goto out_release;
 		case -NFS4ERR_ADMIN_REVOKED:
 		case -NFS4ERR_STALE_STATEID:
 		case -NFS4ERR_EXPIRED:
 			nfs4_free_revoked_stateid(server,
 					&calldata->arg.stateid,
 					task->tk_msg.rpc_cred);
-		case -NFS4ERR_OLD_STATEID:
+			/* Fallthrough */
 		case -NFS4ERR_BAD_STATEID:
 			if (!nfs4_stateid_match(&calldata->arg.stateid,
 						&state->open_stateid)) {
@@ -3225,6 +3232,7 @@ static void nfs4_close_done(struct rpc_task *task, void *data)
 			}
 			if (calldata->arg.fmode == 0)
 				break;
+			/* Fallthrough */
 		default:
 			if (nfs4_async_handle_error(task, server, state, NULL) == -EAGAIN) {
 				rpc_restart_call_prepare(task);
@@ -5794,9 +5802,17 @@ static void nfs4_delegreturn_done(struct rpc_task *task, void *calldata)
 		nfs4_free_revoked_stateid(data->res.server,
 				data->args.stateid,
 				task->tk_msg.rpc_cred);
+		/* Fallthrough */
 	case -NFS4ERR_BAD_STATEID:
-	case -NFS4ERR_OLD_STATEID:
 	case -NFS4ERR_STALE_STATEID:
+		task->tk_status = 0;
+		break;
+	case -NFS4ERR_OLD_STATEID:
+		if (nfs4_refresh_delegation_stateid(&data->stateid, data->inode)) {
+			task->tk_status = 0;
+			rpc_restart_call_prepare(task);
+			return;
+		}
 		task->tk_status = 0;
 		break;
 	case -NFS4ERR_ACCESS:

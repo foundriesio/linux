@@ -505,9 +505,9 @@ struct mddev {
 	unsigned int			good_device_nr;	/* good device num within cluster raid */
 
 	bool	has_superblocks:1;
-
 #ifndef __GENKSYMS__
 	mempool_t *serial_info_pool;
+	unsigned int                    noio_flag; /* for memalloc scope API */
 	bool	fail_last_dev:1;
 #endif
 };
@@ -753,6 +753,7 @@ extern void mddev_suspend(struct mddev *mddev);
 extern void mddev_resume(struct mddev *mddev);
 extern struct bio *bio_alloc_mddev(gfp_t gfp_mask, int nr_iovecs,
 				   struct mddev *mddev);
+extern void md_io_acct(struct mddev *mddev, int rw, unsigned int sectors);
 
 extern void md_reload_sb(struct mddev *mddev, int raid_disk);
 extern void md_update_sb(struct mddev *mddev, int force);

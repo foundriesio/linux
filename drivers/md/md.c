@@ -377,12 +377,26 @@ check_suspended:
 }
 EXPORT_SYMBOL(md_handle_request);
 
+/*
+ * This is generic_start_io_acct without the inflight tracking.  Since
+ * we can't reliably call generic_end_io_acct, the inflight counter
+ * would also be unreliable and it's better to keep it at 0.
+ */
+void md_io_acct(struct mddev *mddev, int rw, unsigned int sectors)
+{
+	int cpu = part_stat_lock();
+	part_stat_inc(cpu, &mddev->gendisk->part0, ios[rw]);
+	part_stat_add(cpu, &mddev->gendisk->part0, sectors[rw], sectors);
+	part_stat_unlock();
+
+}
+EXPORT_SYMBOL_GPL(md_io_acct);
+
 static blk_qc_t md_make_request(struct request_queue *q, struct bio *bio)
 {
 	const int rw = bio_data_dir(bio);
 	struct mddev *mddev = q->queuedata;
 	unsigned int sectors;
-	int cpu;
 
 	if (unlikely(test_bit(MD_BROKEN, &mddev->flags)) && (rw == WRITE)) {
 		bio_io_error(bio);
@@ -412,11 +426,6 @@ static blk_qc_t md_make_request(struct request_queue *q, struct bio *bio)
 
 	md_handle_request(mddev, bio);
 
-	cpu = part_stat_lock();
-	part_stat_inc(cpu, &mddev->gendisk->part0, ios[rw]);
-	part_stat_add(cpu, &mddev->gendisk->part0, sectors[rw], sectors);
-	part_stat_unlock();
-
 	return BLK_QC_T_NONE;
 }
 
@@ -442,11 +451,15 @@ void mddev_suspend(struct mddev *mddev)
 	wait_event(mddev->sb_wait, !test_bit(MD_UPDATING_SB, &mddev->flags));
 
 	del_timer_sync(&mddev->safemode_timer);
+	/* restrict memory reclaim I/O during raid array is suspend */
+	mddev->noio_flag = memalloc_noio_save();
 }
 EXPORT_SYMBOL_GPL(mddev_suspend);
 
 void mddev_resume(struct mddev *mddev)
 {
+	/* entred the memalloc scope from mddev_suspend() */
+	memalloc_noio_restore(mddev->noio_flag);
 	lockdep_assert_held(&mddev->reconfig_mutex);
 	if (--mddev->suspended)
 		return;
