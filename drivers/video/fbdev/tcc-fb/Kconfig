@@ -48,6 +48,18 @@ config FB_NEW
 	help
 		Choose this option if you want to use new fb driver.
 
+choice
+	depends on FB_NEW
+	prompt "FB0 DISP path selection"
+
+	config FB_NEW_DISP0
+	bool "DISP0"
+	default y if FB_NEW
+	config FB_NEW_DISP1
+	bool "DISP1"
+endchoice
+
+
 config FB1_MEMORY_SIZE
        int "FB1 memory size"
        default 20
