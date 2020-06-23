@@ -13,7 +13,7 @@
  * Suite 330, Boston, MA 02111-1307 USA
  */
 
-#define NDEBUG
+//#define NDEBUG
 #define TLOG_LEVEL TLOG_DEBUG
 #include "tcc_sec_ipc_log.h"
 
@@ -63,6 +63,7 @@
 
 static const struct of_device_id sec_ipc_dt_id[] = {
 	{.compatible = "telechips,sec-ipc-m4"},
+	{.compatible = "telechips,sec-ipc-hsm"},
 	{.compatible = "telechips,sec-ipc-a7"},
 	{.compatible = "telechips,sec-ipc-a53"},
 	{.compatible = "telechips,sec-ipc-a72"},
@@ -119,8 +120,10 @@ static int sec_set_device(int device_id, struct sec_device *sec_dev)
 		sec_device[MBOX_DEV_A53] = sec_dev;
 	} else if (device_id == MBOX_DEV_A72) {
 		sec_device[MBOX_DEV_A72] = sec_dev;
-	} else if (device_id == MBOX_DEV_R5) {
+	}  else if (device_id == MBOX_DEV_R5) {
 		sec_device[MBOX_DEV_R5] = sec_dev;
+	} else if (device_id == MBOX_DEV_HSM) {
+		sec_device[MBOX_DEV_HSM] = sec_dev;
 	} else {
 		return -EINVAL;
 	}
@@ -140,6 +143,8 @@ static struct sec_device *sec_get_device(int device_id)
 		return sec_device[MBOX_DEV_A72];
 	} else if (device_id == MBOX_DEV_R5) {
 		return sec_device[MBOX_DEV_R5];
+	} else if (device_id == MBOX_DEV_HSM) {
+		return sec_device[MBOX_DEV_HSM];
 	} else {
 		return NULL;
 	}
@@ -157,6 +162,8 @@ static int sec_get_device_id(const char *dev_name)
 		return MBOX_DEV_A72;
 	} else if (!strcmp(dev_name, "sec-ipc-r5")) {
 		return MBOX_DEV_R5;
+	}  else if (!strcmp(dev_name, "sec-ipc-hsm")) {
+		return MBOX_DEV_HSM;
 	} else {
 		return -EINVAL;
 	}
@@ -613,8 +620,8 @@ static struct mbox_chan *sec_request_channel(struct platform_device *pdev, const
 
 	client->dev = &pdev->dev;
 	client->rx_callback = sec_msg_received;
-	client->tx_done = sec_msg_sent;
-	client->tx_block = false;
+	client->tx_done = NULL;
+	client->tx_block = true;
 	client->knows_txdone = false;
 	client->dev->init_name = name;
 	client->tx_tout = 500;
