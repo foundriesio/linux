@@ -183,13 +183,13 @@
 				 regulator-boot-on;
 			 };
 
-			 DA9062_LDO2: ldo2 {
-				 regulator-name = "mem_1p8";
-				 regulator-min-microvolt = <1700000>;
-				 regulator-max-microvolt = <1800000>;
-				 regulator-always-on;
-				 regulator-boot-on;
-			 };
+			 // DA9062_LDO2: ldo2 {
+				 // regulator-name = "mem_1p8";
+				 // regulator-min-microvolt = <1700000>;
+				 // regulator-max-microvolt = <1800000>;
+				 // regulator-always-on;
+				 // regulator-boot-on;
+			 // };
 
 			 DA9062_LDO3: ldo3 {
 				 regulator-name = "mipi_1p2";
