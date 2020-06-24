@@ -257,6 +257,18 @@
 	vqmmc-supply = <&vqmmc_emmc>;
 };
 
+&sd0_clk {
+	telechips,no-pull;
+};
+
+&sd0_cmd {
+	telechips,no-pull;
+};
+
+&sd0_bus8 {
+	telechips,no-pull;
+};
+
 /* SD slot */
 &sdhc1 {
 #ifdef CONFIG_MMC_SDHCI_TCC_MODULE_ONLY
@@ -282,6 +294,18 @@
 
 };
 
+&sd1_clk {
+	telechips,no-pull;
+};
+
+&sd1_cmd {
+	telechips,no-pull;
+};
+
+&sd1_bus4 {
+	telechips,no-pull;
+};
+
 /* SDIO */
 &sdhc2 {
 	status = "okay";
@@ -302,4 +326,16 @@
 		//wifi_pwr_1p8v-gpio = <&gpsd1 6 0>;
 		//wifi_pwr_3p3v-gpio = <&gpsd1 7 0>;
 	};
+};
+
+&sd2_clk {
+	telechips,no-pull;
+};
+
+&sd2_cmd {
+	telechips,no-pull;
+};
+
+&sd1_bus4 {
+	telechips,no-pull;
 };

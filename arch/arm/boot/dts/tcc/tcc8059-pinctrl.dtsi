@@ -106,7 +106,7 @@
 		telechips,pins = "gpsd0-10";
 		telechips,pin-function = <1>;
 		telechips,drive-strength = <3>;
-		telechips,no-pull;
+		telechips,pull-down;
 	};
 
 	sd0_bus1: sd0_bus1 {
@@ -121,27 +121,11 @@
 		telechips,drive-strength = <3>;
 	};
 
-	sd0_bus4_idle: sd0_bus4_idle {
-		telechips,pins = "gpsd0-0", "gpsd0-1", "gpsd0-2", "gpsd0-3",
-				"gpsd0-4", "gpsd0-5";
-		telechips,pin-function = <0>;
-		telechips,no-pull;
-		telechips,output-low;
-	};
-
 	sd0_bus8: sd0_bus8 {
-		telechips,pins =  "gpsd0-2", "gpsd0-3",	"gpsd0-4", "gpsd0-5",
-				"gpsd0-6", "gpsd0-7", "gpsd0-8", "gpsd0-9";
+		telechips,pins = "gpsd0-2", "gpsd0-3", "gpsd0-4", "gpsd0-5",
+		                 "gpsd0-6", "gpsd0-7", "gpsd0-8", "gpsd0-9";
 		telechips,pin-function = <1>;
 		telechips,drive-strength = <3>;
-	};
-
-	sd0_bus8_idle: sd0_bus8_idle {
-		telechips,pins =  "gpsd0-2", "gpsd0-3",	"gpsd0-4", "gpsd0-5",
-				"gpsd0-6", "gpsd0-7", "gpsd0-8", "gpsd0-9";
-		telechips,pin-function = <0>;
-		telechips,no-pull;
-		telechips,output-low;
 	};
 
 	/* GPIO SD1 */
@@ -171,15 +155,8 @@
 
 	sd1_bus4_wp_cd: sd1_bus4_wp_cd {
 		telechips,pins = "gpsd1-6", "gpsd1-7";
-		telechips,pull-up;
-	};
-
-	sd1_bus4_idle: sd1_bus4_idle {
-		telechips,pins = "gpsd1-0", "gpsd1-1", "gpsd1-2", "gpsd1-3",
-		                 "gpsd1-4", "gpsd1-5";
 		telechips,pin-function = <0>;
-		telechips,no-pull;
-		telechips,output-low;
+		telechips,pull-up;
 	};
 
 	sd1_bus8: sd1_bus8 {
@@ -187,14 +164,6 @@
 		                 "gpsd1-6", "gpsd1-7", "gpsd1-8", "gpsd1-9";
 		telechips,pin-function = <1>;
 		telechips,drive-strength = <3>;
-	};
-
-	sd1_bus8_idle: sd1_bus8_idle {
-		telechips,pins = "gpsd1-2", "gpsd1-3", "gpsd1-4", "gpsd1-5",
-		                 "gpsd1-6", "gpsd1-7", "gpsd1-8", "gpsd1-9";
-		telechips,pin-function = <0>;
-		telechips,no-pull;
-		telechips,output-low;
 	};
 
 	/* GPIO SD2 */
@@ -210,47 +179,25 @@
 		telechips,pins = "gpsd2-1";
 		telechips,pin-function = <1>;
 		telechips,drive-strength = <3>;
-		telechips,pull-up;
-		telechips,output-low;
 	};
 
 	sd2_bus1: sd2_bus1 {
 		telechips,pins = "gpsd2-2";
 		telechips,pin-function = <1>;
 		telechips,drive-strength = <3>;
-		telechips,pull-up;
-		telechips,output-low;
 	};
 
 	sd2_bus4: sd2_bus4 {
 		telechips,pins = "gpsd2-2", "gpsd2-3", "gpsd2-4", "gpsd2-5";
 		telechips,pin-function = <1>;
 		telechips,drive-strength = <3>;
-		telechips,pull-up;
-		telechips,output-low;
-	};
-
-	sd2_bus4_idle: sd2_bus4_idle {
-		telechips,pins = "gpsd2-0", "gpsd2-1", "gpsd2-2", "gpsd2-3",
-				"gpsd2-4", "gpsd2-5";
-		telechips,pin-function = <0>;
-		telechips,pull-up;
-		telechips,output-low;
 	};
 
 	sd2_bus8: sd2_bus8 {
-		telechips,pins =  "gpsd2-2", "gpsd2-3",	"gpsd2-4", "gpsd2-5",
-				"gpsd2-6", "gpsd2-7", "gpsd2-8", "gpsd2-9";
+		telechips,pins = "gpsd2-2", "gpsd2-3", "gpsd2-4", "gpsd2-5",
+		                 "gpsd2-6", "gpsd2-7", "gpsd2-8", "gpsd2-9";
 		telechips,pin-function = <1>;
 		telechips,drive-strength = <3>;
-	};
-
-	sd2_bus8_idle: sd2_bus8_idle {
-		telechips,pins =  "gpsd2-2", "gpsd2-3",	"gpsd2-4", "gpsd2-5",
-				"gpsd2-6", "gpsd2-7", "gpsd2-8", "gpsd2-9";
-		telechips,pin-function = <0>;
-		telechips,no-pull;
-		telechips,output-low;
 	};
 
 	out0_clk: out0_clk {

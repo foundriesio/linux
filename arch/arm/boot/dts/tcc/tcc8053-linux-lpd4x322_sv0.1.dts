@@ -61,6 +61,18 @@
 	vqmmc-supply = <&vqmmc_emmc>;
 };
 
+&sd0_clk {
+	telechips,no-pull;
+};
+
+&sd0_cmd {
+	telechips,no-pull;
+};
+
+&sd0_bus8 {
+	telechips,no-pull;
+};
+
 /* SDIO */
 &sdhc1 {
 	status = "okay";
@@ -81,6 +93,18 @@
 		//wifi_pwr_1p8v-gpio = <&gpsd1 6 0>;
 		//wifi_pwr_3p3v-gpio = <&gpsd1 7 0>;
 	};
+};
+
+&sd1_clk {
+	telechips,pull-up;
+};
+
+&sd1_cmd {
+	telechips,pull-up;
+};
+
+&sd1_bus4 {
+	telechips,pull-up;
 };
 
 /* SD slot */
@@ -105,4 +129,16 @@
 
 	mmc-pwrseq = <&sdhc2_pwrseq>;
 	vqmmc-supply = <&vqmmc_sdslot>;
+};
+
+&sd2_clk {
+	telechips,no-pull;
+};
+
+&sd2_cmd {
+	telechips,no-pull;
+};
+
+&sd2_bus4 {
+	telechips,no-pull;
 };
