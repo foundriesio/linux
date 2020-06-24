@@ -126,6 +126,20 @@ enum iommu_attr {
 	DOMAIN_ATTR_NESTING,	/* two stages of translation */
 	DOMAIN_ATTR_MAX,
 };
+#ifdef CONFIG_ION_4_9
+/* metadata for iommu mapping */
+struct iommu_map_format {
+	unsigned long iova_start;
+	unsigned long iova_size;
+	unsigned long iommu_ptb_base;
+	unsigned long iommu_iova_base;
+	unsigned long header_size;
+	unsigned long phys_page_line;
+	unsigned long virt_page_line;
+	unsigned long is_tile;
+	unsigned long prot;
+};
+#endif
 
 /* These are the possible reserved region types */
 enum iommu_resv_type {

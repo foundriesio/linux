@@ -23,8 +23,21 @@ config ANDROID_VSOC
 	  a 'cuttlefish' Android image inside QEmu. The driver interacts with
 	  a QEmu ivshmem device. If built as a module, it will be called vsoc.
 
-source "drivers/staging/android/ion/Kconfig"
+config ION_4_9
+	bool "Use ion driver of kernel 4.9"
+	default y if ARCH_TCC805X && ANDROID
 
+config ION_4_14
+	bool "Use ion driver of kernel 4.14"
+	default y if !ION_4_9
+
+if ION_4_9
+source "drivers/staging/android/ion_4.9/Kconfig"
+endif
+
+if ION_4_14
+source "drivers/staging/android/ion/Kconfig"
+endif
 source "drivers/staging/android/fiq_debugger/Kconfig"
 
 endif # if ANDROID
@@ -35,8 +48,13 @@ config LINUX_ANDROID
           Enable support for various drivers of the Android platform needed on the Linux platform
 
 if LINUX_ANDROID
+config ION_4_14
+	bool "Use ion driver of kernel 4.14"
+	default y
 
+if ION_4_14
 source "drivers/staging/android/ion/Kconfig"
+endif
 
 endif # if LINUX_ANDROID
 
