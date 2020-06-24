@@ -920,3 +920,29 @@
 	dma-names = "tx", "rx";
 	status = "okay";
 };
+
+/* eMMC */
+&sd0_clk {
+		telechips,no-pull;
+};
+
+&sd0_cmd {
+		telechips,no-pull;
+};
+
+&sd0_bus8 {
+		telechips,no-pull;
+};
+
+/* SD slot */
+&sd1_clk {
+		telechips,no-pull;
+};
+
+&sd1_cmd {
+		telechips,no-pull;
+};
+
+&sd1_bus4 {
+		telechips,no-pull;
+};
