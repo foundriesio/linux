@@ -1363,11 +1363,12 @@
 				   <GIC_SPI 31 0>;
 	};
 
-	/* A72 <-> M4, A53, R5 */
+	/* A72 <-> M4 */
 	sec_ipc: mbox@19000000 {
 		compatible = "telechips,multichannel-mailbox";
 		reg = <0x0 0x19000000 0x0 0x100>;
-		interrupts = <GIC_SPI 42 IRQ_TYPE_LEVEL_LOW>;
+		interrupts = <GIC_SPI 375 IRQ_TYPE_LEVEL_HIGH>,
+					<GIC_SPI 347 IRQ_TYPE_LEVEL_HIGH>;
 		#mbox-cells = <1>;
 		max-channel = <1>;
 	};
@@ -1376,18 +1377,38 @@
 		compatible = "telechips,sec-ipc-m4";
 		mbox-names = "sec-ipc-m4";
 		mboxes = <&sec_ipc 0>;
+		mbox-id = TCC_MBOX_HSM_ID;
+	};
+
+	/* A72 <-> HSM core */
+	hsm_mbox: mbox@0x1E100000 {
+		compatible = "telechips,multichannel-mailbox";
+		reg = <0x0 0x1E100000 0x0 0x100>;
+		interrupts = <GIC_SPI 307 IRQ_TYPE_LEVEL_HIGH>,
+					<GIC_SPI 335 IRQ_TYPE_LEVEL_HIGH>;
+		#mbox-cells = <1>;
+		max-channel = <TCC_HSM_MBOX0_MAX>;
+	};
+
+	sec-ipc-hsm {
+		compatible = "telechips,sec-ipc-hsm";
+		mbox-names = "sec-ipc-hsm";
+		mboxes = <&hsm_mbox TCC_HSM_MBOX0>;
+		mbox-id = TCC_MBOX_HSM_ID;
 	};
 
 	sec-ipc-a53 {
 		compatible = "telechips,sec-ipc-a53";
 		mbox-names = "sec-ipc-a53";
 		mboxes = <&cb_mbox TCC_CB_MBOX_HSM>;
+		mbox-id = TCC_MBOX_HSM_ID;
 	};
 
 	sec-ipc-r5 {
 		compatible = "telechips,sec-ipc-r5";
 		mbox-names = "sec-ipc-r5";
 		mboxes = <&micom_mbox TCC_MICOM_MBOX0_HSM>;
+		mbox-id = TCC_MBOX_HSM_ID;
 	};
 
 	/* A72 <-> R5 */
