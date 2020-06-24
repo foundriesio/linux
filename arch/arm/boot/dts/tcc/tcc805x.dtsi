@@ -1695,7 +1695,7 @@
 		compatible = "telechips,tcc-ion";
 		#address-cells = <1>;
 		#size-cells = <0>;
-/*
+#ifdef CONFIG_ION_4_9
 		ion-heap@0 {
 			reg = <0>;
 			telechips,ion-heap-name = "ion_noncontig_heap";
@@ -1705,16 +1705,23 @@
 			reg = <1>;
 			telechips,ion-heap-name = "ion_contig_heap";
 		};
-*/
+#endif
 		ion-heap@2 {
 			reg = <2>;
 			telechips,ion-heap-name = "ion_carveout_heap";
 		};
-
+#ifdef CONFIG_ION_4_14
                 ion-heap@3 {
                          reg = <3>;
                          telechips,ion-heap-name = "ion_carveout_cam_heap";
                 };
+#endif		
+#ifdef CONFIG_ION_4_9
+                ion-heap@3 {
+                         reg = <4>;
+                         telechips,ion-heap-name = "ion_cma_heap";
+                };
+#endif
 	};
 
 	overlaymixer: overlaymixer@1A100000 {};

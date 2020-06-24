@@ -32,7 +32,7 @@ config ION_CARVEOUT_HEAP
 config ION_CARVEOUT_CAM_HEAP
         bool "Ion carveout camera heap support"
         depends on ION
-	default y if ARCH_TCC897X || ARCH_TCC803X
+	default y if ARCH_TCC897X || ARCH_TCC803X || ARCH_TCC805X
         help
           Choose this option to enable carveout camera heaps with Ion.
 
@@ -48,6 +48,7 @@ config ION_CHUNK_HEAP
 config ION_CMA_HEAP
 	bool "Ion CMA heap support"
 	depends on ION && DMA_CMA
+	default y if ARCH_TCC805X
 	help
 	  Choose this option to enable CMA heaps with Ion. This heap is backed
 	  by the Contiguous Memory Allocator (CMA). If your system has these
