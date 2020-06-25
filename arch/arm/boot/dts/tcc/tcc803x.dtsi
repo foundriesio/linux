@@ -1483,8 +1483,8 @@
 	/* vioc_mgr for A53 */
 	vioc_mgr0: vioc_mgr@0 {
 		compatible = "telechips,vioc_mgr";
-		device-name ="vioc_mgr_a53";
-		mbox-names ="a53-vioc";
+		device-name ="vioc_mgr_main";
+		mbox-names ="main-vioc";
 		mboxes = <&mbox1 TCC_MBOX1_CH_VIOC>;
 		status = "disabled";
 	};

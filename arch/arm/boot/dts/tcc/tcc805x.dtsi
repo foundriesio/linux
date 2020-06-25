@@ -1467,6 +1467,16 @@
 		 mbox-id = TCC_MBOX_IPC_ID;
 	 };
 
+	/* vioc_mgr for A72 */
+	vioc_mgr0: vioc_mgr@0 {
+		compatible = "telechips,vioc_mgr";
+		device-name ="vioc_mgr_main";
+		mbox-names ="main-vioc";
+		mboxes = <&cb_mbox TCC_CB_MBOX_VIOC>;
+		mbox-id = TCC_MBOX_VIOC_ID;
+		status = "disable";
+	};
+
 	i2c0: i2c@16300000 {
 		compatible = "telechips,tcc805x-i2c";
 		reg = <0x0 0x16300000 0x0 0x28>,

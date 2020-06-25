@@ -147,6 +147,10 @@
 		regulator-always-on;
 	};
 
+        vioc_mgr@0 {
+                status = "okay";
+        };
+
 	tcc_vsync {
 		compatible = "telechips,tcc_vsync";
 		display-vioc0 = <&vioc_disp VIOC_DISP0>;

@@ -1467,6 +1467,16 @@
 		 mbox-id = TCC_MBOX_IPC_ID;
 	 };
 
+	/* vioc_mgr for A53 */
+	vioc_mgr0: vioc_mgr@0 {
+		compatible = "telechips,vioc_mgr";
+		device-name ="vioc_mgr_sub";
+		mbox-names ="sub-vioc";
+		mboxes = <&cb_mbox TCC_CB_MBOX_VIOC>;
+		mbox-id = TCC_MBOX_VIOC_ID;
+		status = "okay";
+	};
+
 	adma0: adma@16100000 {
 		compatible = "telechips,adma";
 		reg = <0x16100000 0x200>;

@@ -6,7 +6,8 @@
 #define TCC_CB_MBOX_TEST			(1)
 #define TCC_CB_MBOX_IPC				(2)
 #define TCC_CB_MBOX_HSM				(3)
-#define TCC_CB_MBOX_MAX				(4)
+#define TCC_CB_MBOX_VIOC			(4)
+#define TCC_CB_MBOX_MAX				(5)
 
 /* MICOM MBOX0 : A72 <-> R5 */
 #define TCC_MICOM_MBOX0_RESERVED	(0)
@@ -38,4 +39,5 @@
 #define TCC_MBOX_IPC_ID			"IPC"		/* client driver for user applicaiton ipc*/
 #define TCC_MBOX_HSM_ID			"HSM"		/* for HSM(Hardware Security Module) */
 #define TCC_MBOX_FWUG_ID		"FWUG"		/* for snor firmware upate */
+#define TCC_MBOX_VIOC_ID		"VIOC"		/* for vioc manager */
 #endif

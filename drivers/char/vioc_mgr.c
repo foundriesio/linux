@@ -77,6 +77,9 @@ struct vioc_mgr_device
 	dev_t devt;
 	const char *name;
 	const char *mbox_name;
+#if defined(CONFIG_ARCH_TCC805X)
+	const char *mbox_id;
+#endif
 	struct mbox_chan *mbox_ch;
 	struct mbox_client cl;
 
@@ -168,7 +171,18 @@ static void vioc_mgr_send_message(struct vioc_mgr_device *vioc_mgr, struct tcc_m
 	if(vioc_mgr) {
 		int ret;
 		ret = mbox_send_message(vioc_mgr->mbox_ch, mssg);
+#if defined(CONFIG_ARCH_TCC805X)
+		if(ret < 0 )
+		{
+			printk("vioc manager mbox send error(%d)\n",ret);
+		}
+		else
+		{
+			printk("vioc manager mbox send success(%d)\n",ret);
+		}
+#else
 		mbox_client_txdone(vioc_mgr->mbox_ch, ret);
+#endif
 	}
 }
 
@@ -359,8 +373,13 @@ static struct mbox_chan *vioc_mgr_request_channel(struct vioc_mgr_device *vioc_m
 	vioc_mgr->cl.dev = &vioc_mgr->pdev->dev;
 	vioc_mgr->cl.rx_callback = vioc_mgr_receive_message;
 	vioc_mgr->cl.tx_done = NULL;
+#if defined(CONFIG_ARCH_TCC805X)
+	vioc_mgr->cl.tx_block = true;
+	vioc_mgr->cl.tx_tout = 500;
+#else
 	vioc_mgr->cl.tx_block = false;
 	vioc_mgr->cl.tx_tout = 0; /*  doesn't matter here*/
+#endif
 	vioc_mgr->cl.knows_txdone = false;
 	channel = mbox_request_channel_byname(&vioc_mgr->cl, name);
 	if(IS_ERR(channel)) {
@@ -416,6 +435,9 @@ static int vioc_mgr_probe(struct platform_device *pdev)
 
 	of_property_read_string(pdev->dev.of_node, "device-name", &vioc_mgr->name);
 	of_property_read_string(pdev->dev.of_node, "mbox-names", &vioc_mgr->mbox_name);
+#if defined(CONFIG_ARCH_TCC805X)
+	of_property_read_string(pdev->dev.of_node, "mbox-id", &vioc_mgr->mbox_id);
+#endif
 
 	ret = alloc_chrdev_region(&vioc_mgr->devt, VIOC_MGR_DEV_MINOR,
 			1, vioc_mgr->name);

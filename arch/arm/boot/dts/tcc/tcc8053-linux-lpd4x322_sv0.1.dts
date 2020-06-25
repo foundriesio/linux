@@ -40,6 +40,10 @@
 		regulator-max-microvolt = <1800000>;
 		regulator-always-on;
 	};
+
+        vioc_mgr@0 {
+                status = "okay";
+        };
 };
 
 /* eMMC */
