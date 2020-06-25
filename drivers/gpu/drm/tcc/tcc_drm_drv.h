@@ -210,6 +210,14 @@ struct tcc_drm_private {
 
 	struct device *dma_dev;
 	void *mapping;
+	/*
+         * This is needed for devices that don't already have their own dma
+         * parameters structure, e.g. platform devices, and, if necessary, will
+         * be assigned to the 'struct device' during device initialisation. It
+         * should therefore never be accessed directly via this structure as
+         * this may not be the version of dma parameters in use.
+         */
+	struct device_dma_parameters dma_parms;
 
 	/* for atomic commit */
 	u32			pending;

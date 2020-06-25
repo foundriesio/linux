@@ -48,6 +48,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "img_types.h"
 #include "pvrsrv_error.h"
 #include "vmm_pvz_common.h"
+#include "vmm_impl.h"
 
 /*!
 *******************************************************************************
@@ -57,10 +58,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  @Return        PVRSRV_OK on success. Otherwise, a PVRSRV error code
 ******************************************************************************/
 PVRSRV_ERROR
-PvzClientMapDevPhysHeap(PVRSRV_DEVICE_CONFIG *psDevConfig,
-						IMG_UINT32 ui32DevID,
-						IMG_DEV_PHYADDR sDevPAddr,
-						IMG_UINT64 ui64DevPSize);
+PvzClientMapDevPhysHeap(PVRSRV_DEVICE_CONFIG *psDevConfig);
 
 /*!
 *******************************************************************************
@@ -70,8 +68,7 @@ PvzClientMapDevPhysHeap(PVRSRV_DEVICE_CONFIG *psDevConfig,
  @Return        PVRSRV_OK on success. Otherwise, a PVRSRV error code
 ******************************************************************************/
 PVRSRV_ERROR
-PvzClientUnmapDevPhysHeap(PVRSRV_DEVICE_CONFIG *psDevConfig,
-						  IMG_UINT32 ui32DevID);
+PvzClientUnmapDevPhysHeap(PVRSRV_DEVICE_CONFIG *psDevConfig);
 
 #endif /* VMM_PVZ_CLIENT_H */
 

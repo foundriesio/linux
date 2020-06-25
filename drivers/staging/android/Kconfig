@@ -25,7 +25,7 @@ config ANDROID_VSOC
 
 config ION_4_9
 	bool "Use ion driver of kernel 4.9"
-	default y if ARCH_TCC805X && ANDROID
+	default n # if ARCH_TCC805X && ANDROID
 
 config ION_4_14
 	bool "Use ion driver of kernel 4.14"

@@ -271,18 +271,8 @@ static struct sg_table *ion_map_dma_buf(struct dma_buf_attachment *attachment,
 {
 	struct ion_dma_buf_attachment *a = attachment->priv;
 	struct sg_table *table;
-#if defined(CONFIG_ARCH_TCC805X) && defined(CONFIG_ANDROID)
-	struct ion_buffer *buffer = attachment->dmabuf;
-#endif
 
 	table = a->table;
-#if defined(CONFIG_ARCH_TCC805X) && defined(CONFIG_ANDROID)
-        if (!(buffer->flags & ION_FLAG_CACHED))
-        {
-                printk("%s %d\n", __func__, __LINE__);
-                return table;
-        }
-#endif
 
 	if (!dma_map_sg(attachment->dev, table->sgl, table->nents,
 			direction))
@@ -295,9 +285,6 @@ static void ion_unmap_dma_buf(struct dma_buf_attachment *attachment,
 			      struct sg_table *table,
 			      enum dma_data_direction direction)
 {
-#if defined(CONFIG_ARCH_TCC805X) && defined(CONFIG_ANDROID)
-	return;
-#endif
 	dma_unmap_sg(attachment->dev, table->sgl, table->nents, direction);
 }
 

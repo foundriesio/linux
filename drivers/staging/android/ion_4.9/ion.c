@@ -1507,8 +1507,10 @@ static long ion_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 	case ION_IOC_ALLOC:
 	{
 		struct ion_handle *handle;
+#if defined(CONFIG_ARCH_TCC805X)
 		data.allocation.heap_id_mask = 0x4;
 		pr_info("%s forced to Carveout_Heap: heap_id_mask:%d\n", __func__, data.allocation.heap_id_mask);
+#endif
 		handle = ion_alloc(client, data.allocation.len,
 						data.allocation.align,
 						data.allocation.heap_id_mask,

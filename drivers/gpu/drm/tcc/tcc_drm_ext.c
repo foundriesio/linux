@@ -472,6 +472,11 @@ static int ext_bind(struct device *dev, struct device *master, void *data)
 
 	ctx->drm_dev = drm_dev;
 
+	if(!drm_dev->dev->dma_parms){
+		pr_err("%s line(%d) alloc dma_parms\r\n", __func__, __LINE__);
+		drm_dev->dev->dma_parms = kzalloc(sizeof(*drm_dev->dev->dma_parms), GFP_KERNEL);
+	}
+
 	for (i = 0; i < WINDOWS_NR; i++) {
 		ctx->configs[i].pixel_formats = ext_formats;
 		ctx->configs[i].num_pixel_formats = ARRAY_SIZE(ext_formats);
@@ -504,6 +509,12 @@ static void ext_unbind(struct device *dev, struct device *master,
 
 	if (ctx->encoder)
 		tcc_dpi_remove(ctx->encoder);
+
+	if(ctx->drm_dev->dev->dma_parms != NULL){
+		pr_err("%s line(%d) free dma_parms\r\n", __func__, __LINE__);
+		kfree(ctx->drm_dev->dev->dma_parms);
+		ctx->drm_dev->dev->dma_parms = NULL;
+	}
 }
 
 static const struct component_ops ext_component_ops = {

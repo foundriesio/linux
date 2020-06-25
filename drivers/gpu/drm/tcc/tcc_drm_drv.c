@@ -329,6 +329,9 @@ static int tcc_drm_bind(struct device *dev)
 
 	dev_set_drvdata(dev, drm);
 	drm->dev_private = (void *)private;
+	if (drm->dev->dma_parms == NULL) {
+                drm->dev->dma_parms = &private->dma_parms;
+	}
 
 	/* the first real CRTC device is used for all dma mapping operations */
 	private->dma_dev = tcc_drm_get_dma_device();
@@ -337,6 +340,12 @@ static int tcc_drm_bind(struct device *dev)
 		ret = -ENODEV;
 		goto err_free_private;
 	}
+
+#if defined(CONFIG_ARCH_TCC805X)
+	//dma_set_mask(private->dma_dev, DMA_BIT_MASK(40));
+	dma_set_mask_and_coherent(private->dma_dev, DMA_BIT_MASK(64));
+#endif
+
 	DRM_INFO("TCC DRM: using %s device for DMA mapping operations\n",
 		 dev_name(private->dma_dev));
 
@@ -445,7 +454,7 @@ static int tcc_drm_platform_probe(struct platform_device *pdev)
 {
 	struct component_match *match;
 
-	pdev->dev.coherent_dma_mask = DMA_BIT_MASK(32);
+	//pdev->dev.coherent_dma_mask = DMA_BIT_MASK(32);
 
 	match = tcc_drm_match_add(&pdev->dev);
 	if (IS_ERR(match))

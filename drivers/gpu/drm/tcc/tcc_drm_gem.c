@@ -175,7 +175,7 @@ struct drm_gem_object *tcc_drm_gem_prime_import(struct drm_device *dev, struct d
 		return obj;
 	}
 
-	return drm_gem_prime_import(dev, dma_buf);
+	return drm_gem_prime_import_dev(dev, dma_buf, to_dma_dev(dev));
 }
 struct dma_resv *tcc_gem_prime_res_obj(struct drm_gem_object *obj)
 {
