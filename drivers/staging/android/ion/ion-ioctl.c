@@ -86,9 +86,11 @@ long ion_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 	case ION_IOC_ALLOC:
 	{
 		int fd;
-#if defined(CONFIG_ARCH_TCC805X)
-		data.allocation.heap_id_mask = 0x10;   //CMA_HEAP
-		pr_info("%s forced to CMA_Heap: heap_id_mask:%d\n", __func__, data.allocation.heap_id_mask);
+#if defined(CONFIG_ARCH_TCC805X) && defined(CONFIG_ANDROID)
+		data.allocation.heap_id_mask = 0x1;   //CARVEOUT_HEAP
+
+//		data.allocation.heap_id_mask = 0x10;   //CMA_HEAP
+//		pr_info("%s forced to CMA_Heap: heap_id_mask:%d\n", __func__, data.allocation.heap_id_mask);
 #endif
 		fd = ion_alloc(data.allocation.len,
 			       data.allocation.heap_id_mask,
