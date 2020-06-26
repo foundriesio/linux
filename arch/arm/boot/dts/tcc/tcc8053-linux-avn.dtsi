@@ -288,6 +288,18 @@
 //		};
 	};
 
+	videoinput@0 {
+		videosource	= <&videosource0>;
+	};
+
+	videoinput@4 {
+		videosource	= <&videosource1>;
+	};
+
+	videoinput@5 {
+		videosource	= <&videosource1>;
+	};
+
 	gpsb1@16910000 {
 		status = "okay";
 		gpsb-port = <15>;
