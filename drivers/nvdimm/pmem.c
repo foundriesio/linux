@@ -495,8 +495,8 @@ static int pmem_attach_disk(struct device *dev,
 
 static int nd_pmem_probe(struct device *dev)
 {
-	struct nd_namespace_common *ndns;
 	int ret;
+	struct nd_namespace_common *ndns;
 
 	ndns = nvdimm_namespace_common_probe(dev);
 	if (IS_ERR(ndns))
@@ -512,15 +512,36 @@ static int nd_pmem_probe(struct device *dev)
 	if (ret)
 		return ret;
 
-	/* if we find a valid info-block we'll come back as that personality */
-	if (nd_btt_probe(dev, ndns) == 0 || nd_pfn_probe(dev, ndns) == 0
-			|| nd_dax_probe(dev, ndns) == 0)
+	ret = nd_btt_probe(dev, ndns);
+	if (ret == 0)
 		return -ENXIO;
+
+	/*
+	 * We have two failure conditions here, there is no
+	 * info reserver block or we found a valid info reserve block
+	 * but failed to initialize the pfn superblock.
+	 *
+	 * For the first case consider namespace as a raw pmem namespace
+	 * and attach a disk.
+	 *
+	 * For the latter, consider this a success and advance the namespace
+	 * seed.
+	 */
+	ret = nd_pfn_probe(dev, ndns);
+	if (ret == 0)
+		return -ENXIO;
+	else if (ret == -EOPNOTSUPP)
+		return ret;
+
+	ret = nd_dax_probe(dev, ndns);
+	if (ret == 0)
+		return -ENXIO;
+	else if (ret == -EOPNOTSUPP)
+		return ret;
 
 	/* probe complete, attach handles namespace enabling */
 	devm_namespace_disable(dev, ndns);
 
-	/* ...otherwise we're just a raw pmem device */
 	return pmem_attach_disk(dev, ndns);
 }
 
@@ -532,8 +553,8 @@ static int nd_pmem_remove(struct device *dev)
 		nvdimm_namespace_detach_btt(to_nd_btt(dev));
 	else {
 		/*
-		 * Note, this assumes device_lock() context to not race
-		 * nd_pmem_notify()
+		 * Note, this assumes nd_device_lock() context to not
+		 * race nd_pmem_notify()
 		 */
 		sysfs_put(pmem->bb_state);
 		pmem->bb_state = NULL;
