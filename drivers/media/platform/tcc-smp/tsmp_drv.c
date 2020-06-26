@@ -33,12 +33,13 @@
 #define MAX_NUM_OF_BUFFER_INFO 10
 #define USE_SECURE 1
 #define USE_PHY_ADDR_MAPPING
-#define CM4_TA_UUID { 0x66fd12d1, 0xd28b, 0x495d,  \
+#define SMP_TA_UUID { 0x66fd12d1, 0xd28b, 0x495d,  \
                     { 0x95, 0x18, 0x77, 0x09, 0xb6, 0xa6, 0xa0, 0xea } }
 
 #define CMD_CREATE_FILTER	 0xF0000001
 #define CMD_COLLECT_DATA	 0xF0000002
 #define CMD_ASSEMBLE_DATA	 0xF0000003
+
 
 /**
  * @defgroup tsmp Telechips Secure Media Path Driver
@@ -69,13 +70,6 @@ struct smp_input_context
 	uint32_t type;
 	uint32_t secure_buffer;
 	uint32_t secure_buffer_size;
-};
-
-struct smp_output_context
-{
-	uint32_t size;
-	uint32_t pts;
-	uint32_t data_remain;
 };
 
 static dev_t dev_num;
@@ -138,14 +132,20 @@ static int tsmp_depack_stream_ioctl(struct file *filp, struct tsmp_depack_stream
 	params.params[0].type = TEE_CLIENT_PARAM_VALUE_IN;
 
 	// in : secure address and size 
-	// out : found size
+	// out : number of frames, total founded frames size
 	params.params[1].tee_client_value.a = (long)depack->pBuffer;
 	params.params[1].tee_client_value.b = depack->nLength;
 	params.params[1].type = TEE_CLIENT_PARAM_VALUE_INOUT;
 
-	// out : PTS
-	params.params[2].type = TEE_CLIENT_PARAM_VALUE_OUT;
+	// out : array of PTS and size structure
+	struct depack_frame_info info[MAX_DEPACK_FRAMES];
+	memset(info, 0, sizeof(struct depack_frame_info)*MAX_DEPACK_FRAMES);
+	params.params[2].tee_client_memref.buffer = info;
+	params.params[2].tee_client_memref.size = sizeof(struct depack_frame_info)*MAX_DEPACK_FRAMES;
+	params.params[2].type = TEE_CLIENT_PARAM_BUF_OUT;
 
+	// out : remaining size
+	params.params[3].type = TEE_CLIENT_PARAM_VALUE_OUT;
 
 	int rc;
 	rc = tee_client_execute_command(dev->context, &params, CMD_ASSEMBLE_DATA);
@@ -154,9 +154,12 @@ static int tsmp_depack_stream_ioctl(struct file *filp, struct tsmp_depack_stream
 		return 0;
 	}
 
+	depack->nFrames = params.params[1].tee_client_value.a;
 	depack->nLength = params.params[1].tee_client_value.b;
-	depack->nTimestampMs = params.params[2].tee_client_value.a;
-	data_remain = params.params[2].tee_client_value.b;
+	depack->nTimestampMs = info[0].pts;
+	memcpy(depack->info, info, sizeof(struct depack_frame_info)*depack->nFrames);
+	ELOG("nFrames %d, nLength %d\n", depack->nFrames, depack->nLength);
+	data_remain = params.params[3].tee_client_value.a;
 
 	ret = copy_to_user(p_depack_stream, &dev->depack_out, sizeof(struct tsmp_depack_stream));
 	if (unlikely(ret != 0)) {
@@ -379,7 +382,7 @@ static int tsmp_open(struct inode *inode, struct file *file)
 
 	/* This is where TA Open Session is called */
 	dev->context = NULL;
-	struct tee_client_uuid uuid = CM4_TA_UUID;
+	struct tee_client_uuid uuid = SMP_TA_UUID;
 	int rc;
 
 	struct tee_client_params params;

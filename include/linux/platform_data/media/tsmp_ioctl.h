@@ -22,6 +22,8 @@
  * @file tsmp_ioctl.h
  */
 
+#define MAX_DEPACK_FRAMES 10
+
 /**
  * This structure contains ring buffer information. To give buffer information
  * off1 and off1_size are normally enough. However, when data resides across
@@ -53,11 +55,19 @@ struct tsmp_pid_info
 	uint16_t pid;
 };
 
+struct depack_frame_info
+{
+	uint32_t size; // size of a frame
+	uint64_t pts; // timestamp of a frame
+};
+
 struct tsmp_depack_stream
 {
-	uintptr_t pBuffer;
-	int32_t nLength;
-	int64_t nTimestampMs;
+	uintptr_t pBuffer; // secure output buffer address
+	int32_t nLength; // total size of frames
+	int32_t nFrames; // # of frames
+	int64_t nTimestampMs; // deprecated
+	struct depack_frame_info info[MAX_DEPACK_FRAMES]; // list of information for frames
 
 	struct tsmp_pid_info pid_info;
 };
