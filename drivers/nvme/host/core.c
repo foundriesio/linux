@@ -1526,7 +1526,7 @@ static void __nvme_revalidate_disk(struct gendisk *disk, struct nvme_id_ns *id)
 		nvme_set_chunk_size(ns);
 	nvme_update_disk_info(disk, ns, id);
 #ifdef CONFIG_NVME_MULTIPATH
-	if (ns->head->disk) {
+	if (ns->head->disk && ns->ctrl->state == NVME_CTRL_LIVE) {
 		nvme_update_disk_info(ns->head->disk, ns, id);
 		blk_queue_stack_limits(ns->head->disk->queue, ns->queue);
 		revalidate_disk(ns->head->disk);
