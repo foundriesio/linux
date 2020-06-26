@@ -174,11 +174,7 @@ static void vioc_mgr_send_message(struct vioc_mgr_device *vioc_mgr, struct tcc_m
 #if defined(CONFIG_ARCH_TCC805X)
 		if(ret < 0 )
 		{
-			printk("vioc manager mbox send error(%d)\n",ret);
-		}
-		else
-		{
-			printk("vioc manager mbox send success(%d)\n",ret);
+			loge("vioc manager mbox send error(%d)\n",ret);
 		}
 #else
 		mbox_client_txdone(vioc_mgr->mbox_ch, ret);
