@@ -206,38 +206,45 @@ static int tcc_clk_show(struct seq_file *m, void *v)
 	rate = res.a0;
 	arm_smccc_smc(SIP_CLK_IS_CLKCTRL, FBUS_CPU0, 0, 0, 0, 0, 0, 0, &res);
 	enabled = res.a0;
-	seq_printf(m, "cpu(a53_mp) : %10lu Hz %s\n", rate, enabled == 1?"":"(disabled)");
+	seq_printf(m, "cpu(CA72) : %10lu Hz %s\n", rate, enabled == 1?"":"(disabled)");
+
+	arm_smccc_smc(SIP_CLK_GET_CLKCTRL, FBUS_CPU1, 0, 0, 0, 0, 0, 0, &res);
+	rate = res.a0;
+	arm_smccc_smc(SIP_CLK_IS_CLKCTRL, FBUS_CPU1, 0, 0, 0, 0, 0, 0, &res);
+	enabled = res.a0;
+	seq_printf(m, "cpu(CA53) : %10lu Hz %s\n", rate, enabled == 1?"":"(disabled)");
 
 	arm_smccc_smc(SIP_CLK_GET_CLKCTRL, FBUS_CMBUS, 0, 0, 0, 0, 0, 0, &res);
 	rate = res.a0;
 	arm_smccc_smc(SIP_CLK_IS_CLKCTRL, FBUS_CMBUS, 0, 0, 0, 0, 0, 0, &res);
 	enabled = res.a0;
-	seq_printf(m, "cpu(m4)     : %10lu Hz %s\n", rate, enabled == 1?"":"(disabled)");
+	seq_printf(m, "CM BUS     : %10lu Hz %s\n", rate, enabled == 1?"":"(disabled)");
 
 	arm_smccc_smc(SIP_CLK_GET_CLKCTRL, FBUS_CBUS, 0, 0, 0, 0, 0, 0, &res);
 	rate = res.a0;
 	arm_smccc_smc(SIP_CLK_IS_CLKCTRL, FBUS_CBUS, 0, 0, 0, 0, 0, 0, &res);
 	enabled = res.a0;
-	seq_printf(m, "cpu bus     : %10lu Hz %s\n", rate, enabled == 1?"":"(disabled)");
+	seq_printf(m, "CPU BUS     : %10lu Hz %s\n", rate, enabled == 1?"":"(disabled)");
 
 	arm_smccc_smc(SIP_CLK_GET_CLKCTRL, FBUS_MEM, 0, 0, 0, 0, 0, 0, &res);
 	rate = res.a0;
 	arm_smccc_smc(SIP_CLK_IS_CLKCTRL, FBUS_MEM, 0, 0, 0, 0, 0, 0, &res);
 	enabled = res.a0;
-	seq_printf(m, "memory bus  : %10lu Hz %s\n", rate, enabled == 1?"":"(disabled)");
+	seq_printf(m, "MEM BUS  : %10lu Hz %s\n", rate, enabled == 1?"":"(disabled)");
 
+	/*
 	arm_smccc_smc(SIP_CLK_GET_CLKCTRL, FBUS_MEM_SUB, 0, 0, 0, 0, 0, 0, &res);
 	rate = res.a0;
 	arm_smccc_smc(SIP_CLK_IS_CLKCTRL, FBUS_MEM_SUB, 0, 0, 0, 0, 0, 0, &res);
 	enabled = res.a0;
-	seq_printf(m, "mem sub system  : %10lu Hz %s\n", rate, enabled == 1?"":"(disabled)");
+	seq_printf(m, "MEM Sub System  : %10lu Hz %s\n", rate, enabled == 1?"":"(disabled)");
 
 	arm_smccc_smc(SIP_CLK_GET_CLKCTRL, FBUS_MEM_PHY_USER, 0, 0, 0, 0, 0, 0, &res);
 	// 2 divide cause memory phy using divide clock.
 	rate = res.a0 / 2;
 	arm_smccc_smc(SIP_CLK_IS_CLKCTRL, FBUS_MEM_PHY_USER, 0, 0, 0, 0, 0, 0, &res);
 	enabled = res.a0;
-	seq_printf(m, "mem phy user  : %10lu Hz %s\n", rate, enabled == 1?"":"(disabled)");
+	seq_printf(m, "MEM PHY User  : %10lu Hz %s\n", rate, enabled == 1?"":"(disabled)");
 
 	arm_smccc_smc(SIP_CLK_GET_CLKCTRL, FBUS_MEM_PHY_PERI, 0, 0, 0, 0, 0, 0, &res);
 	// 2 divide cause memory phy using divide clock.
@@ -245,48 +252,49 @@ static int tcc_clk_show(struct seq_file *m, void *v)
 	arm_smccc_smc(SIP_CLK_IS_CLKCTRL, FBUS_MEM_PHY_PERI, 0, 0, 0, 0, 0, 0, &res);
 	enabled = res.a0;
 	seq_printf(m, "mem phy peri  : %10lu Hz %s\n", rate, enabled == 1?"":"(disabled)");
+	*/
 
 	arm_smccc_smc(SIP_CLK_GET_CLKCTRL, FBUS_SMU, 0, 0, 0, 0, 0, 0, &res);
 	rate = res.a0;
 	arm_smccc_smc(SIP_CLK_IS_CLKCTRL, FBUS_SMU, 0, 0, 0, 0, 0, 0, &res);
 	enabled = res.a0;
-	seq_printf(m, "smu bus     : %10lu Hz %s\n", rate, enabled == 1?"":"(disabled)");
+	seq_printf(m, "SMU BUS     : %10lu Hz %s\n", rate, enabled == 1?"":"(disabled)");
 
 	arm_smccc_smc(SIP_CLK_GET_CLKCTRL, FBUS_IO, 0, 0, 0, 0, 0, 0, &res);
 	rate = res.a0;
 	arm_smccc_smc(SIP_CLK_IS_CLKCTRL, FBUS_IO, 0, 0, 0, 0, 0, 0, &res);
 	enabled = res.a0;
-	seq_printf(m, "i/o bus     : %10lu Hz %s\n", rate, enabled == 1?"":"(disabled)");
+	seq_printf(m, "IO BUS     : %10lu Hz %s\n", rate, enabled == 1?"":"(disabled)");
 
 	arm_smccc_smc(SIP_CLK_GET_CLKCTRL, FBUS_HSIO, 0, 0, 0, 0, 0, 0, &res);
 	rate = res.a0;
 	arm_smccc_smc(SIP_CLK_IS_CLKCTRL, FBUS_HSIO, 0, 0, 0, 0, 0, 0, &res);
 	enabled = res.a0;
-	seq_printf(m, "hsio bus    : %10lu Hz %s\n", rate, enabled == 1?"":"(disabled)");
+	seq_printf(m, "HSIO BUS    : %10lu Hz %s\n", rate, enabled == 1?"":"(disabled)");
 
 	arm_smccc_smc(SIP_CLK_GET_CLKCTRL, FBUS_DDI, 0, 0, 0, 0, 0, 0, &res);
 	rate = res.a0;
 	arm_smccc_smc(SIP_CLK_IS_CLKCTRL, FBUS_DDI, 0, 0, 0, 0, 0, 0, &res);
 	enabled = res.a0;
-	seq_printf(m, "display bus : %10lu Hz %s\n", rate, enabled == 1?"":"(disabled)");
+	seq_printf(m, "DISPLAY BUS(DDIBUS) : %10lu Hz %s\n", rate, enabled == 1?"":"(disabled)");
 
 	arm_smccc_smc(SIP_CLK_GET_CLKCTRL, FBUS_GPU, 0, 0, 0, 0, 0, 0, &res);
 	rate = res.a0;
 	arm_smccc_smc(SIP_CLK_IS_CLKCTRL, FBUS_GPU, 0, 0, 0, 0, 0, 0, &res);
 	enabled = res.a0;
-	seq_printf(m, "graphic 3d  : %10lu Hz %s\n", rate, enabled == 1?"":"(disabled)");
+	seq_printf(m, "Graphic 3D BUS : %10lu Hz %s\n", rate, enabled == 1?"":"(disabled)");
 
 	arm_smccc_smc(SIP_CLK_GET_CLKCTRL, FBUS_G2D, 0, 0, 0, 0, 0, 0, &res);
 	rate = res.a0;
 	arm_smccc_smc(SIP_CLK_IS_CLKCTRL, FBUS_G2D, 0, 0, 0, 0, 0, 0, &res);
 	enabled = res.a0;
-	seq_printf(m, "graphic 2d  : %10lu Hz %s\n", rate, enabled == 1?"":"(disabled)");
+	seq_printf(m, "Graphic 2D BUS : %10lu Hz %s\n", rate, enabled == 1?"":"(disabled)");
 
 	arm_smccc_smc(SIP_CLK_GET_CLKCTRL, FBUS_VBUS, 0, 0, 0, 0, 0, 0, &res);
 	rate = res.a0;
 	arm_smccc_smc(SIP_CLK_IS_CLKCTRL, FBUS_VBUS, 0, 0, 0, 0, 0, 0, &res);
 	enabled = res.a0;
-	seq_printf(m, "video bus   : %10lu Hz %s\n", rate, enabled == 1?"":"(disabled)");
+	seq_printf(m, "Video BUS   : %10lu Hz %s\n", rate, enabled == 1?"":"(disabled)");
 
 	arm_smccc_smc(SIP_CLK_GET_CLKCTRL, FBUS_CODA, 0, 0, 0, 0, 0, 0, &res);
 	rate = res.a0;
