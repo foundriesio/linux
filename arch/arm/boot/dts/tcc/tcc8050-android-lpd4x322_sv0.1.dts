@@ -13,6 +13,120 @@
 
 / {
 	/* Describe here after remove this statement if you have something to be override. */
+	tm123xdhp90 {
+		compatible = "telechips,lvds-tm123xdhp90";
+		status = "okay";
+		lvds0 = <&lvds_phy>;
+		power-on-gpios = <&gpmc 19 0>;   // LCD_ON
+		reset-gpios = <&gpmc 20 0>;    // LCD_RST
+		/*
+			 display-on-gpios = ;    // LCD_DISP
+			 lvds-stby-gpios = ;   // LCD_DE = LVDS_STBY in LVDS
+			 lvds-power-gpios = ;    // LVDS_EN
+			 lvds-power-gpios1 = ;   // V_5V0_EN
+		 */
+		mode = <1>;   /* 0: single 1: dual */
+		ports = <2 3>;
+		mux-select = <0>;
+	};
+
+	tcc-drm-lcd {
+	        compatible = "telechips,tcc-drm-lcd";
+	        display-port-num = <0>;
+	        reg = <0x0 0x12000000 0x0 0x100>,
+		      <0x0 0x12000400 0x0 0x100>,
+		      <0x0 0x12001800 0x0 0x100>,
+		/* VIOC_REMAP */
+		      <0x0 0x12000000 0x0 0x100>,
+		      <0x0 0x12004000 0x0 0x100>,
+		      <0x0 0x12018000 0x0 0x100>;
+
+	        reg-names = "ddc", "rdma", "wmix";
+	        interrupts = <GIC_SPI VIOC1_IRQI IRQ_TYPE_LEVEL_HIGH>;
+	        interrupt-names = "vsync";
+	        clock-names = "ddibus_vioc", "peri_lcd";
+	        clocks = <&clk_ddi DDIBUS_VIOC>, <&clk_peri PERI_LCD0>;
+	        status = "okay";
+		display-timings {
+			native-mode = <&timing0>;
+			timing0: timing {
+				clock-frequency = <88200000>;
+				hactive = <1920>;
+				vactive = <720>;
+				hfront-porch = <28>;
+				hback-porch = <28>;
+				hsync-len = <8>;
+				vback-porch = <10>;
+				vfront-porch = <10>;
+				vsync-len = <2>;
+			};
+		};
+	};
+
+	tcc-drm-ext {
+	        compatible = "telechips,tcc-drm-ext";
+	        display-port-num = <1>;
+		reg = <0x0 0x12000100 0x0 0x100>,
+		      <0x0 0x12000800 0x0 0x100>,
+		      <0x0 0x12001900 0x0 0x100>,
+		/* VIOC_REMAP */
+		      <0x0 0x12001000 0x0 0x100>,
+		      <0x0 0x12008000 0x0 0x100>,
+		      <0x0 0x12019000 0x0 0x100>;
+	        reg-names = "ddc", "rdma", "wmix";
+	        interrupts = <GIC_SPI VIOC1_IRQI IRQ_TYPE_LEVEL_HIGH>;
+	        interrupt-names = "vsync";
+	        clock-names = "ddibus_vioc", "peri_lcd";
+	        clocks = <&clk_ddi DDIBUS_VIOC>, <&clk_peri PERI_LCD1>;
+	        status = "okay";
+		display-timings {
+			native-mode = <&timing1>;
+			timing1: timing {
+				clock-frequency = <88200000>;
+				hactive = <1920>;
+				vactive = <720>;
+				hfront-porch = <28>;
+				hback-porch = <28>;
+				hsync-len = <8>;
+				vback-porch = <10>;
+				vfront-porch = <10>;
+				vsync-len = <2>;
+			};
+		};
+	};
+
+	tcc-drm-third {
+	        compatible = "telechips,tcc-drm-third";
+	        display-port-num = <2>;
+		reg = <0x0 0x12000200 0x0 0x100>,
+		      <0x0 0x12000C00 0x0 0x100>,
+		      <0x0 0x12001A00 0x0 0x100>,
+		/* VIOC_REMAP */
+		      <0x0 0x12002000 0x0 0x100>,
+		      <0x0 0x1200C000 0x0 0x100>,
+		      <0x0 0x1201A000 0x0 0x100>;
+	        reg-names = "ddc", "rdma", "wmix";
+	        interrupts = <GIC_SPI VIOC1_IRQI IRQ_TYPE_LEVEL_HIGH>;
+	        interrupt-names = "vsync";
+	        clock-names = "ddibus_vioc", "peri_lcd";
+	        clocks = <&clk_ddi DDIBUS_VIOC>, <&clk_peri PERI_LCD2>;
+	        status = "okay";
+		display-timings {
+			native-mode = <&timing2>;
+			timing2: timing {
+				clock-frequency = <51200000>;
+				hactive = <1024>;
+				vactive = <600>;
+				hfront-porch = <147>;
+				hback-porch = <147>;
+				hsync-len = <19>;
+				vback-porch = <10>;
+				vfront-porch = <25>;
+				vsync-len = <2>;
+			};
+		};
+	};
+
 	vqmmc_emmc: vqmmc_emmc {
 		compatible = "regulator-fixed";
 		regulator-name = "vqmmc_emmc";
