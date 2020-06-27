@@ -337,9 +337,9 @@
 };
 
 &sd2_cmd {
-	telechips,no-pull;
+	telechips,pull-up;
 };
 
-&sd1_bus4 {
-	telechips,no-pull;
+&sd2_bus4 {
+	telechips,pull-up;
 };
