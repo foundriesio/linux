@@ -58,6 +58,12 @@
 		videoinput5 = &videoinput5;
 		videoinput6 = &videoinput6;
 		videoinput7 = &videoinput7;
+		fb0 = &fb0;
+	#if defined(CONFIG_OVERLAY_DPGL)
+		fb1 = &fb1;
+	#endif
+		wmixer-drv1 = &wmixer_drv1;
+//		tcc-overlay-drv1 = &tcc_overlay_drv1;
 	};
 
 	cpus {
@@ -169,6 +175,25 @@
 			alloc-ranges = <RESERVED_MEM_BASE RESERVED_MEM_SIZE>;
 			size = <PMAP_SIZE_FB_VIDEO>;
 			no-map;
+		};
+
+		pmap_overlay_rot: overlay_rot {
+			compatible = "telechips,pmap";
+			telechips,pmap-name = "overlay_rot";
+			alloc-ranges = <RESERVED_MEM_BASE RESERVED_MEM_SIZE>;
+			size = <PMAP_SIZE_OVERLAY_ROT>; // Max-Displayed-Output(w*h*2) for device-rotation.
+			no-map;
+		};
+
+		/*-----------------------------------------------------------
+		 * Secure Area 4 (CPU X, VPU X, GPU R/W, VIOC R/W)
+		 *-----------------------------------------------------------
+		 */
+		pmap_ump_reserved: ump_reserved {
+			compatible = "telechips,pmap";
+			telechips,pmap-name = "ump_reserved";
+			alloc-ranges = <RESERVED_MEM_BASE RESERVED_MEM_SIZE>;
+			size = <PMAP_SIZE_UMP_RESERVED>; // Max-Video-Resolution(Aligned_256KB(w*h*3/2)) * 12 + 1MB
 		};
 
 		/*-----------------------------------------------------------
@@ -929,6 +954,35 @@
 		//access-control3 = <0x00000000 0x00000000>;
 	};
 
+	telechips,ion {
+		compatible = "telechips,tcc-ion";
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		ion-heap@0 {
+			reg = <0>;
+			telechips,ion-heap-name = "ion_noncontig_heap";
+		};
+
+		ion-heap@1 {
+			reg = <1>;
+			telechips,ion-heap-name = "ion_contig_heap";
+		};
+
+		ion-heap@2 {
+			reg = <2>;
+			telechips,ion-heap-name = "ion_carveout_heap";
+		};
+	};
+
+	graphic2d:graphic2d@1A400000 {
+		compatible = "telechips,graphic.2d";
+		reg = <0x1A400000 0x1000>;
+		interrupts = <GIC_SPI 133 IRQ_TYPE_LEVEL_HIGH>;
+		clocks =<&clk_fbus FBUS_G2D>;
+		status ="okay";
+	};
+
 	cifport: cifport@12380008 {
 		compatible = "telechips,cif-port";
 		reg = <0x12380008 0x4>;
@@ -1113,6 +1167,54 @@
 		};
 	};
 
+	/*
+	 * Graphic Bus Block
+	 */
+	gpu:gpu@0x10100000 {
+		compatible = "imagination,powerVR-9XTP";
+		status = "okay";
+		reg = <0x10100000 0x10000>;
+		interrupts = <GIC_SPI 123 IRQ_TYPE_LEVEL_HIGH>;
+		interrupt-names = "GPU";
+		clocks = <&clk_fbus FBUS_GPU>;
+		clock-names = "9XTP_clk";
+	};
+
+#if 0
+	tcc-drm-lcd {
+	        compatible = "telechips,tcc-drm-lcd";
+	        display-port-num = <0>;
+	        reg = <0x12000000 0x100>,
+		      <0x12000400 0x100>,
+		      <0x12001800 0x100>,
+		/* VIOC_REMAP */
+		      <0x12000000 0x100>,
+		      <0x12004000 0x100>,
+		      <0x12018000 0x100>;
+
+	        reg-names = "ddc", "rdma", "wmix";
+	        interrupts = <GIC_SPI VIOC1_IRQI IRQ_TYPE_LEVEL_HIGH>;
+	        interrupt-names = "vsync";
+	        clock-names = "ddibus_vioc", "peri_lcd";
+	        clocks = <&clk_ddi DDIBUS_VIOC>, <&clk_peri PERI_LCD0>;
+	        status = "okay";
+		display-timings {
+			native-mode = <&timing0>;
+			timing0: timing {
+				clock-frequency = <88200000>;
+				hactive = <1920>;
+				vactive = <720>;
+				hfront-porch = <28>;
+				hback-porch = <28>;
+				hsync-len = <8>;
+				vback-porch = <10>;
+				vfront-porch = <10>;
+				vsync-len = <2>;
+			};
+		};
+	};
+#endif
+
 	fb0: fb@0 {
 		compatible = "telechips,fb";
 		status = "okay";
@@ -1137,12 +1239,53 @@
 		};
 	};
 
+	#if defined(CONFIG_OVERLAY_DPGL)
+	fb1: fb@1 {
+		compatible = "telechips,fb";
+		status = "okay";
+		memory-region = <&pmap_fb1_video>;
+		xres = <1920>;
+		yres = <720>;
+		bpp = <32>;
+		mode = <FBX_TRIPLE>;
+		update-type = <FBX_NOWAIT_UPDATE>;
+		device-priority = <FBX_DEVICE_NONE>;
+		telechips,wdma = <&vioc_wdma  VIOC_WDMA05>;
+		telechips,wmixer = <&vioc_wmix VIOC_WMIX5>;
+		telechips,rdma = <&vioc_rdma VIOC_RDMA16>;
+
+		clocks = <&clk_ddi DDIBUS_VIOC>;
+		clock-names = "ddi-clk";
+	};
+	#endif
+
 	tcc_overlay_drv {
 		compatible = "telechips,tcc_overlay";
 		fbdisplay-overlay = <&fbdisplay>;
 		rdmas = <&vioc_rdma VIOC_RDMA00 VIOC_RDMA01 VIOC_RDMA02 VIOC_RDMA03 VIOC_RDMA04 VIOC_RDMA05 VIOC_RDMA06 VIOC_RDMA07>;
 		wmixs = <&vioc_wmix VIOC_WMIX0 VIOC_WMIX1>;
 		rdma_init_layer = <1>;
+		status = "okay";
+	};
+
+/*
+	tcc_overlay_drv1: tcc_overlay_drv@1 {
+		compatible = "telechips,tcc_overlay";
+		fbdisplay-overlay = <1>;
+		rdmas = <&vioc_rdma VIOC_RDMA00 VIOC_RDMA01 VIOC_RDMA02 VIOC_RDMA03 VIOC_RDMA04 VIOC_RDMA05 VIOC_RDMA06 VIOC_RDMA07>;
+		wmixs = <&vioc_wmix VIOC_WMIX0 VIOC_WMIX1>;
+		status = "okay";
+	};
+*/
+
+	wmixer_drv1: wmixer_drv@1 {
+		compatible = "telechips,wmixer_drv";
+		reg = <0x1 0x0>;	/* Dummy regs. */
+		clocks = <&clk_ddi DDIBUS_VIOC>;
+		rdmas = <&vioc_rdma VIOC_RDMA12 VIOC_RDMA13>;
+		scalers = <&vioc_scaler VIOC_SCALER0>;	/* id:0, path:15 */
+		wmixs = <&vioc_wmix VIOC_WMIX3>;	/* id:3, path:- TODO: WMIX_MAX occurs error*/
+		wdmas = <&vioc_wdma VIOC_WDMA03>;
 		status = "okay";
 	};
 
