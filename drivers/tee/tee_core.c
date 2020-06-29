@@ -100,7 +100,7 @@ static void teedev_close_context(struct tee_context *ctx)
 	// always called when release optee context.
 	// The reason why added this code is due to allocated shared memory is not freed,
 	// when CA is closed accidently by segmentation falut or something like that while TA is running.
-	while (kref_read(&ctx->refcount))
+	//while (kref_read(&ctx->refcount))
 #endif
 	{
 		teedev_ctx_put(ctx);
