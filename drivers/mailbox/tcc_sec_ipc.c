@@ -230,7 +230,9 @@ int sec_sendrecv_cmd(unsigned int device_id, int cmd, void *data, int size, void
 	// Init condition to wait
 	sec_dev->mbox_received = 0;
 	mbox_result = mbox_send_message(sec_dev->mbox_ch, &(mbox_data));
+#if defined(CONFIG_ARCH_TCC803X)
 	mbox_client_txdone(sec_dev->mbox_ch, 0);
+#endif
 	if (mbox_result < 0) {
 		ELOG("Failed to send message via mailbox\n");
 		result = -EINVAL;
@@ -620,11 +622,17 @@ static struct mbox_chan *sec_request_channel(struct platform_device *pdev, const
 
 	client->dev = &pdev->dev;
 	client->rx_callback = sec_msg_received;
-	client->tx_done = NULL;
-	client->tx_block = true;
 	client->knows_txdone = false;
 	client->dev->init_name = name;
+#if defined(CONFIG_ARCH_TCC803X)
+	client->tx_done = sec_msg_sent;
+	client->tx_block = false;
+	client->tx_tout = 10;
+#else
+	client->tx_done = NULL;
+	client->tx_block = true;
 	client->tx_tout = 500;
+#endif
 
 	channel = mbox_request_channel_byname(client, name);
 	if (IS_ERR(channel)) {
