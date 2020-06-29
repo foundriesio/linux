@@ -143,3 +143,7 @@
 &sd2_bus4 {
 	telechips,no-pull;
 };
+
+&vioc_mgr0 {
+        status = "okay";
+};
