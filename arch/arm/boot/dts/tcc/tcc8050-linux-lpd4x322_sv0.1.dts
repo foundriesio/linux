@@ -16,8 +16,8 @@
 		compatible = "telechips,lvds-tm123xdhp90";
 		status = "okay";
 		lvds0 = <&lvds_phy>;
-		power-on-gpios = <&gpb 17>;   // LCD_ON
-		reset-gpios = <&gpb 18 0>;    // LCD_RST
+		power-on-gpios = <&gpc 8 0>;   // LCD_ON
+		reset-gpios = <&gpc 9 0>;    // LCD_RST
 		/*
 			 display-on-gpios = ;    // LCD_DISP
 			 lvds-stby-gpios = ;   // LCD_DE = LVDS_STBY in LVDS
@@ -25,8 +25,8 @@
 			 lvds-power-gpios1 = ;   // V_5V0_EN
 		 */
 		mode = <1>;   /* 0: single 1: dual */
-		ports = <2 3 4>;
-		mux_select = <0>; /*lcdc mux select */
+		ports = <2 3>;
+		mux_select = <2>; /*lcdc mux select */
 	};
 
 	tcc-drm-lcd {
