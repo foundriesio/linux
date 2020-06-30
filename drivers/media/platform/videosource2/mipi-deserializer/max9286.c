@@ -275,10 +275,6 @@ static inline struct videosource *sd_to_vsrc(struct v4l2_subdev *sd)
  */
 static int max9286_s_ctrl(struct v4l2_ctrl *ctrl)
 {
-	struct v4l2_subdev *sd = ctrl_to_sd(ctrl);
-	int val = ctrl->val;
-
-	// TODO Implement a function to control max9286
 	switch (ctrl->id) {
 	case V4L2_CID_BRIGHTNESS:
 		break;
@@ -294,11 +290,11 @@ static int max9286_s_ctrl(struct v4l2_ctrl *ctrl)
 		return -EINVAL;
 	}
 
-	printk(KERN_INFO "max9286 set control has been called. The feature is "
-			 "not implemented yet.\n");
+	log("the s_control operation has been called. The feature is not implemented yet.\n");
 
 	return 0;
 }
+
 static const struct v4l2_ctrl_ops max9286_ctrl_ops = {
     .s_ctrl = max9286_s_ctrl,
 };
@@ -313,30 +309,24 @@ static int max9286_log_status(struct v4l2_subdev *sd)
 
 	/* TODO: look into registers used to see status of the
 	 * decoder */
-	v4l2_info(sd, "max9286: sub-device module is ready.\n");
+	v4l2_info(sd, "sub-device module is ready.\n");
 	v4l2_ctrl_handler_log_status(&(decoder->hdl), sd->name);
+
 	return 0;
 }
 
 static int max9286_set_power(struct v4l2_subdev *sd, int on)
 {
-	printk("%s invoked\n", __func__);
-
 	struct videosource *decoder = sd_to_vsrc(sd);
 	struct videosource_gpio *gpio = &(decoder->gpio);
 
-	// Using reset gpio pin, control power
 	if (on) {
-		printk("%s - ON!", __func__);
-
 		sensor_port_disable(gpio->pwd_port);
 		msleep(20);
 
 		sensor_port_enable(gpio->pwd_port);
 		msleep(20);
 	} else {
-		printk("%s - OFF!", __func__);
-
 		sensor_port_disable(gpio->rst_port);
 		sensor_port_disable(gpio->pwr_port);
 		sensor_port_disable(gpio->pwd_port);
@@ -346,6 +336,7 @@ static int max9286_set_power(struct v4l2_subdev *sd, int on)
 	return 0;
 }
 
+#ifdef CONFIG_VIDEO_ADV_DEBUG
 static int max9286_g_register(struct v4l2_subdev *sd,
 			       struct v4l2_dbg_register *reg)
 {
@@ -360,6 +351,7 @@ static int max9286_s_register(struct v4l2_subdev *sd,
 	max9286_write(sd, reg->reg & 0xff, reg->val & 0xff);
 	return 0;
 }
+#endif//CONFIG_VIDEO_ADV_DEBUG
 
 static const struct v4l2_subdev_core_ops max9286_core_ops = {
     .log_status = max9286_log_status,
@@ -367,7 +359,7 @@ static const struct v4l2_subdev_core_ops max9286_core_ops = {
 #ifdef CONFIG_VIDEO_ADV_DEBUG
     .g_register = max9286_g_register,
     .s_register = max9286_s_register,
-#endif
+#endif//CONFIG_VIDEO_ADV_DEBUG
 };
 
 /*
@@ -394,7 +386,7 @@ static int max9286_s_std(struct v4l2_subdev *sd, v4l2_std_id std)
 {
 	struct videosource *vsrc = sd_to_vsrc(sd);
 	struct i2c_client *client = vsrc->driver.get_i2c_client(vsrc);
-	int reg, idx;
+	int idx = 0;
 
 	struct videosource_reg std_regs[] = {
 	    {0xff, 0x01},
@@ -414,8 +406,7 @@ static int max9286_s_std(struct v4l2_subdev *sd, v4l2_std_id std)
 	case V4L2_STD_NTSC:
 	case V4L2_STD_SECAM:
 	default:
-		printk(KERN_ERR "%s - Not supported standard: %ld\n", __func__,
-		       std);
+		loge("Not supported standard: %lld\n", std);
 		return -EINVAL;
 	}
 
@@ -427,9 +418,7 @@ static int max9286_s_std(struct v4l2_subdev *sd, v4l2_std_id std)
 		}
 
 		if (idx == vsrc->num_stds - 1) {
-			printk(KERN_ERR "%s - Failed to find a object "
-					"containing current video standard\n",
-			       __func__);
+			loge("Failed to find a object containing current video standard\n");
 			return -EAGAIN;
 		}
 	}
@@ -474,14 +463,14 @@ static int max9286_querystd(struct v4l2_subdev *sd, v4l2_std_id *std)
 }
 
 /**
- * @brief get all standards supported by the video CAPTURE device. For max9286
+ * @brief get all standards supported by the video CAPTURE device. For
  * subdevice, only NTSC format would be supported by the device code.
  *
  * @param sd v4l2 subdevice object
  * @param std v4l2 standard object
  * @return always 0
  */
-static const int max9286_g_tvnorms(struct v4l2_subdev *sd, v4l2_std_id *std)
+static int max9286_g_tvnorms(struct v4l2_subdev *sd, v4l2_std_id *std)
 {
 	struct videosource *vsrc = sd_to_vsrc(sd);
 	int idx;
@@ -506,8 +495,6 @@ static const int max9286_g_tvnorms(struct v4l2_subdev *sd, v4l2_std_id *std)
  */
 static int max9286_g_input_status(struct v4l2_subdev *sd, u32 *status)
 {
-	printk("%s invoked\n", __func__);
-
 	int reg;
 
 	*status = V4L2_IN_ST_NO_SIGNAL;
@@ -565,45 +552,6 @@ static int max9286_s_stream(struct v4l2_subdev *sd, int enable)
 	return 0;
 }
 
-static int max9286_cropcap(struct v4l2_subdev *sd, struct v4l2_cropcap *cc)
-{
-	struct videosource *vsrc = sd_to_vsrc(sd);
-
-	cc->type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
-	cc->bounds.left = vsrc->format.crop_x;
-	cc->bounds.top = vsrc->format.crop_y;
-	cc->bounds.width = vsrc->format.crop_w;
-	cc->bounds.height = vsrc->format.crop_h;
-	cc->pixelaspect.denominator = 1;
-	cc->pixelaspect.numerator = 1;
-	cc->defrect = cc->bounds;
-
-	return 0;
-}
-
-static int max9286_g_crop(struct v4l2_subdev *sd, struct v4l2_crop *crop)
-{
-	struct videosource *vsrc = sd_to_vsrc(sd);
-
-	crop->type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
-	crop->c.left = vsrc->format.crop_x;
-	crop->c.top = vsrc->format.crop_y;
-	crop->c.width = vsrc->format.crop_w;
-	crop->c.height = vsrc->format.crop_h;
-
-	return 0;
-}
-
-static int max9286_s_crop(struct v4l2_subdev *sd, const struct v4l2_crop *crop)
-{
-	struct videosource *vsrc = sd_to_vsrc(sd);
-
-	vsrc->format.crop_x = crop->c.left;
-	vsrc->format.crop_y = crop->c.top;
-	vsrc->format.crop_w = crop->c.width;
-	vsrc->format.crop_h = crop->c.height;
-}
-
 static int
 max9286_g_frame_interval(struct v4l2_subdev *sd,
 			  struct v4l2_subdev_frame_interval *interval)
@@ -613,16 +561,13 @@ max9286_g_frame_interval(struct v4l2_subdev *sd,
 }
 
 static const struct v4l2_subdev_video_ops max9286_video_ops = {
-    .g_std = max9286_g_std,
-    .s_std = max9286_s_std,
-    .querystd = max9286_querystd,
-    /* .g_tvnorms = max9286_g_tvnorms, */
-    /* .g_input_status = max9286_g_input_status, */
-    .s_stream = max9286_s_stream,
-    /* .cropcap = max9286_cropcap, */
-    /* .g_crop = max9286_g_crop, */
-    /* .s_crop = max9286_s_crop, */
-    /* .g_frame_interval = max9286_g_frame_interval, */
+	.g_std = max9286_g_std,
+	.s_std = max9286_s_std,
+	.querystd = max9286_querystd,
+	.g_tvnorms = max9286_g_tvnorms,
+	.g_input_status = max9286_g_input_status,
+	.s_stream = max9286_s_stream,
+	.g_frame_interval = max9286_g_frame_interval,
 };
 
 static const struct v4l2_subdev_ops max9286_ops = {
@@ -654,7 +599,7 @@ static int change_mode(struct i2c_client *client, int mode)
  * return: 0: device is not connected, 1: connected
  */
 static int check_status(struct i2c_client * client) {
-	unsigned short reg = 0x1e;
+	unsigned char reg[1] = { 0x1e };
 	unsigned char val = 0;
 	int ret = 0;
 
@@ -681,12 +626,12 @@ static int set_irq_handler(videosource_gpio_t * gpio, unsigned int enable) {
 		if(0 < gpio->intb_port) {
 			des_irq_num = gpio_to_irq(gpio->intb_port);
 
-			printk("des_irq_num : %d \n", des_irq_num);
+			logd("des_irq_num : %d \n", des_irq_num);
 
 //			if(request_irq(des_irq_num, irq_handler, IRQF_SHARED | IRQF_TRIGGER_LOW, "max9286", "max9286"))
 //			if(request_threaded_irq(des_irq_num, irq_handler, irq_thread_handler, IRQF_SHARED | IRQF_TRIGGER_FALLING, "max9286", "max9286")) {
 			if(request_threaded_irq(des_irq_num, irq_handler, irq_thread_handler, IRQF_TRIGGER_FALLING, "max9286", NULL)) {
-				printk("fail request irq(%d) \n", des_irq_num);
+				loge("fail request irq(%d) \n", des_irq_num);
 
 				return -1;
 			}
@@ -701,24 +646,18 @@ static int set_irq_handler(videosource_gpio_t * gpio, unsigned int enable) {
 
 static int set_i2c_client(struct i2c_client *client)
 {
-	printk("%s invoked\n", __func__);
-
 	int ret = 0;
 
 	struct videosource *vsrc = &videosource_max9286;
 	struct v4l2_subdev *sd;
 	if (!vsrc) {
-		printk(KERN_ERR "%s - Failed to get max9286 videosource. \
-		Something wrong with a timing of initialization.\n",
-		       __func__);
+		loge("Failed to get max9286 videosource. Something wrong with a timing of initialization.\n");
 		ret = -1;
 	}
 
 	sd = &(vsrc->sd);
 	if (!sd) {
-		printk(KERN_ERR
-		       "%s - Failed to get sub-device object of max9286.\n",
-		       __func__);
+		loge("Failed to get sub-device object of max9286.\n");
 		ret = -1;
 	}
 
@@ -756,11 +695,9 @@ static int subdev_init(void)
 		/* v4l2_device_register(sd->dev, sd->v4l2_dev); */
 		err = v4l2_async_register_subdev(sd);
 		if (err) {
-			printk(KERN_ERR "Failed to register subdevice max9286\n");
+			loge("Failed to register subdevice\n");
 		} else {
-			printk(KERN_INFO
-			       "%s - max9286 is initialized within v4l standard: %s.\n",
-			       __func__, sd->name);
+			loge("sub-device is initialized within v4l standard: %s.\n", sd->name);
 		}
 	}
 

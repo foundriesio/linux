@@ -15,6 +15,7 @@
  * Suite 330, Boston, MA 02111-1307 USA
  ****************************************************************************/
 
+#include <linux/platform_device.h>
 #include <linux/clk.h>
 #include <linux/gpio.h>
 #include <linux/of_address.h>

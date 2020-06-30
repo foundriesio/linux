@@ -983,7 +983,7 @@ static int tccvin_allocate_essential_buffers(struct tccvin_streaming * vdev) {
 			vdev->cif.pmap_preview.base, \
 			vdev->cif.pmap_preview.size);
 		vdev->cif.vir = ioremap_nocache(vdev->cif.pmap_preview.base, PAGE_ALIGN(vdev->cif.pmap_preview.size));
-		logd("name: %20s, phy base: 0x%08x, vir base: 0x%p\n", \
+		logd("name: %20s, phy base: 0x%08llx, vir base: 0x%p\n", \
 			vdev->cif.pmap_preview.name, vdev->cif.pmap_preview.base, vdev->cif.vir);
     } else {
 		loge("get \"rearcamera\" pmap information.\n");
@@ -992,7 +992,7 @@ static int tccvin_allocate_essential_buffers(struct tccvin_streaming * vdev) {
 
 	strcpy(vdev->cif.pmap_viqe.name, "rearcamera_viqe");
 	if(pmap_get_info(vdev->cif.pmap_viqe.name, &(vdev->cif.pmap_viqe)) == 1) {
-		logd("[PMAP] %s: 0x%08x ~ 0x%08llx (0x%08llx)\n",
+		logd("[PMAP] %s: 0x%08llx ~ 0x%08llx (0x%08llx)\n",
 			vdev->cif.pmap_viqe.name, \
 			vdev->cif.pmap_viqe.base, \
 			vdev->cif.pmap_viqe.base + vdev->cif.pmap_viqe.size, \
@@ -1005,7 +1005,7 @@ static int tccvin_allocate_essential_buffers(struct tccvin_streaming * vdev) {
 #if defined(CONFIG_OVERLAY_PGL) && !defined(CONFIG_OVERLAY_DPGL)
 	strcpy(vdev->cif.pmap_pgl.name, "parking_gui");
 	if(pmap_get_info(vdev->cif.pmap_pgl.name, &(vdev->cif.pmap_pgl)) == 1) {
-		logd("[PMAP] %s: 0x%08x ~ 0x%08llx (0x%08llx)\n",
+		logd("[PMAP] %s: 0x%08llx ~ 0x%08llx (0x%08llx)\n",
 			vdev->cif.pmap_pgl.name, \
 			vdev->cif.pmap_pgl.base, \
 			vdev->cif.pmap_pgl.base + vdev->cif.pmap_pgl.size, \

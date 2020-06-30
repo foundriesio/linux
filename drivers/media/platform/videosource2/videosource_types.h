@@ -111,7 +111,7 @@ typedef struct videosource {
 	const struct v4l2_fmtdesc *fmt_list;
 
 	// video standards
-	struct v4l2_standard *current_std;
+	const struct v4l2_standard *current_std;
 	int num_stds;
 	const struct vsrc_std_info *std_list;
 

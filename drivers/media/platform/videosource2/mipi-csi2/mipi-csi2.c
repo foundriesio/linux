@@ -441,8 +441,8 @@ void MIPI_WRAP_Set_Output_Mux(unsigned int csi, unsigned int mux, unsigned int s
 
 	reg = mipi_cfg_base + CSI0_CFG + csi * 0x4;
 
-	val = (__raw_readl(reg) & ~(CSI_CFG_MIPI_CHMUX_0_MASK << mux));
-	val |= (sel << CSI_CFG_MIPI_CHMUX_0_SHIFT + mux);
+	val = (__raw_readl(reg) & ~(1 << (CSI_CFG_MIPI_CHMUX_0_SHIFT + mux)));
+	val |= (sel << (CSI_CFG_MIPI_CHMUX_0_SHIFT + mux));
 	__raw_writel(val, reg);
 }
 #endif

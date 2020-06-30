@@ -208,10 +208,6 @@ static inline struct videosource *sd_to_vsrc(struct v4l2_subdev *sd)
  */
 static int isl79988_s_ctrl(struct v4l2_ctrl *ctrl)
 {
-	struct v4l2_subdev *sd = ctrl_to_sd(ctrl);
-	int val = ctrl->val;
-
-	// TODO Implement a function to control isl79988
 	switch (ctrl->id) {
 	case V4L2_CID_BRIGHTNESS:
 		break;
@@ -227,11 +223,11 @@ static int isl79988_s_ctrl(struct v4l2_ctrl *ctrl)
 		return -EINVAL;
 	}
 
-	printk(KERN_INFO "isl79988 set control has been called. The feature is "
-			 "not implemented yet.\n");
+	log("the s_control operation has been called. The feature is not implemented yet.\n");
 
 	return 0;
 }
+
 static const struct v4l2_ctrl_ops isl79988_ctrl_ops = {
     .s_ctrl = isl79988_s_ctrl,
 };
@@ -246,30 +242,24 @@ static int isl79988_log_status(struct v4l2_subdev *sd)
 
 	/* TODO: look into registers used to see status of the
 	 * decoder */
-	v4l2_info(sd, "isl79988: sub-device module is ready.\n");
+	v4l2_info(sd, "sub-device module is ready.\n");
 	v4l2_ctrl_handler_log_status(&(decoder->hdl), sd->name);
+
 	return 0;
 }
 
 static int isl79988_set_power(struct v4l2_subdev *sd, int on)
 {
-	printk("%s invoked\n", __func__);
-
 	struct videosource *decoder = sd_to_vsrc(sd);
 	struct videosource_gpio *gpio = &(decoder->gpio);
 
-	// Using reset gpio pin, control power
 	if (on) {
-		printk("%s - ON!", __func__);
-
 		sensor_port_disable(gpio->rst_port);
 		msleep(20);
-	
+
 		sensor_port_enable(gpio->rst_port);
 		msleep(20);
 	} else {
-		printk("%s - OFF!", __func__);
-
 		sensor_port_disable(gpio->rst_port);
 		sensor_port_disable(gpio->pwr_port);
 		sensor_port_disable(gpio->pwd_port);
@@ -279,6 +269,7 @@ static int isl79988_set_power(struct v4l2_subdev *sd, int on)
 	return 0;
 }
 
+#ifdef CONFIG_VIDEO_ADV_DEBUG
 static int isl79988_g_register(struct v4l2_subdev *sd,
 			       struct v4l2_dbg_register *reg)
 {
@@ -293,6 +284,7 @@ static int isl79988_s_register(struct v4l2_subdev *sd,
 	isl79988_write(sd, reg->reg & 0xff, reg->val & 0xff);
 	return 0;
 }
+#endif//CONFIG_VIDEO_ADV_DEBUG
 
 static const struct v4l2_subdev_core_ops isl79988_core_ops = {
     .log_status = isl79988_log_status,
@@ -300,7 +292,7 @@ static const struct v4l2_subdev_core_ops isl79988_core_ops = {
 #ifdef CONFIG_VIDEO_ADV_DEBUG
     .g_register = isl79988_g_register,
     .s_register = isl79988_s_register,
-#endif
+#endif//CONFIG_VIDEO_ADV_DEBUG
 };
 
 /*
@@ -327,7 +319,7 @@ static int isl79988_s_std(struct v4l2_subdev *sd, v4l2_std_id std)
 {
 	struct videosource *vsrc = sd_to_vsrc(sd);
 	struct i2c_client *client = vsrc->driver.get_i2c_client(vsrc);
-	int reg, idx;
+	int idx = 0;
 
 	struct videosource_reg std_regs[] = {
 	    {0xff, 0x01},
@@ -347,8 +339,7 @@ static int isl79988_s_std(struct v4l2_subdev *sd, v4l2_std_id std)
 	case V4L2_STD_NTSC:
 	case V4L2_STD_SECAM:
 	default:
-		printk(KERN_ERR "%s - Not supported standard: %ld\n", __func__,
-		       std);
+		loge("Not supported standard: %lld\n", std);
 		return -EINVAL;
 	}
 
@@ -360,9 +351,7 @@ static int isl79988_s_std(struct v4l2_subdev *sd, v4l2_std_id std)
 		}
 
 		if (idx == vsrc->num_stds - 1) {
-			printk(KERN_ERR "%s - Failed to find a object "
-					"containing current video standard\n",
-			       __func__);
+			loge("Failed to find a object containing current video standard\n");
 			return -EAGAIN;
 		}
 	}
@@ -407,14 +396,14 @@ static int isl79988_querystd(struct v4l2_subdev *sd, v4l2_std_id *std)
 }
 
 /**
- * @brief get all standards supported by the video CAPTURE device. For ISL79988
+ * @brief get all standards supported by the video CAPTURE device. For
  * subdevice, only NTSC format would be supported by the device code.
  *
  * @param sd v4l2 subdevice object
  * @param std v4l2 standard object
  * @return always 0
  */
-static const int isl79988_g_tvnorms(struct v4l2_subdev *sd, v4l2_std_id *std)
+static int isl79988_g_tvnorms(struct v4l2_subdev *sd, v4l2_std_id *std)
 {
 	struct videosource *vsrc = sd_to_vsrc(sd);
 	int idx;
@@ -439,8 +428,6 @@ static const int isl79988_g_tvnorms(struct v4l2_subdev *sd, v4l2_std_id *std)
  */
 static int isl79988_g_input_status(struct v4l2_subdev *sd, u32 *status)
 {
-	printk("%s invoked\n", __func__);
-
 	int reg;
 
 	*status = V4L2_IN_ST_NO_SIGNAL;
@@ -482,45 +469,6 @@ static int isl79988_s_stream(struct v4l2_subdev *sd, int enable)
 	return 0;
 }
 
-static int isl79988_cropcap(struct v4l2_subdev *sd, struct v4l2_cropcap *cc)
-{
-	struct videosource *vsrc = sd_to_vsrc(sd);
-
-	cc->type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
-	cc->bounds.left = vsrc->format.crop_x;
-	cc->bounds.top = vsrc->format.crop_y;
-	cc->bounds.width = vsrc->format.crop_w;
-	cc->bounds.height = vsrc->format.crop_h;
-	cc->pixelaspect.denominator = 1;
-	cc->pixelaspect.numerator = 1;
-	cc->defrect = cc->bounds;
-
-	return 0;
-}
-
-static int isl79988_g_crop(struct v4l2_subdev *sd, struct v4l2_crop *crop)
-{
-	struct videosource *vsrc = sd_to_vsrc(sd);
-
-	crop->type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
-	crop->c.left = vsrc->format.crop_x;
-	crop->c.top = vsrc->format.crop_y;
-	crop->c.width = vsrc->format.crop_w;
-	crop->c.height = vsrc->format.crop_h;
-
-	return 0;
-}
-
-static int isl79988_s_crop(struct v4l2_subdev *sd, const struct v4l2_crop *crop)
-{
-	struct videosource *vsrc = sd_to_vsrc(sd);
-
-	vsrc->format.crop_x = crop->c.left;
-	vsrc->format.crop_y = crop->c.top;
-	vsrc->format.crop_w = crop->c.width;
-	vsrc->format.crop_h = crop->c.height;
-}
-
 static int
 isl79988_g_frame_interval(struct v4l2_subdev *sd,
 			  struct v4l2_subdev_frame_interval *interval)
@@ -533,13 +481,10 @@ static const struct v4l2_subdev_video_ops isl79988_video_ops = {
     .g_std = isl79988_g_std,
     .s_std = isl79988_s_std,
     .querystd = isl79988_querystd,
-    /* .g_tvnorms = isl79988_g_tvnorms, */
-    /* .g_input_status = isl79988_g_input_status, */
+	.g_tvnorms = isl79988_g_tvnorms,
+	.g_input_status = isl79988_g_input_status,
     .s_stream = isl79988_s_stream,
-    /* .cropcap = isl79988_cropcap, */
-    /* .g_crop = isl79988_g_crop, */
-    /* .s_crop = isl79988_s_crop, */
-    /* .g_frame_interval = isl79988_g_frame_interval, */
+	.g_frame_interval = isl79988_g_frame_interval,
 };
 
 static const struct v4l2_subdev_ops isl79988_ops = {
@@ -569,7 +514,7 @@ static int check_status(struct i2c_client *client)
 {
 	const struct videosource_reg *list = sensor_camera_status;
 	unsigned char data[4];
-	unsigned short reg;
+	unsigned char reg[1];
 	unsigned char val;
 	int ret, err_cnt = 0;
 
@@ -581,7 +526,7 @@ static int check_status(struct i2c_client *client)
 		return -1;
 	} else {
 		while (!((list->reg == REG_TERM) && (list->val == VAL_TERM))) {
-			reg = (unsigned char)list->reg & 0xff;
+			reg[0] = (unsigned char)list->reg & 0xff;
 
 			ret = DDI_I2C_Read(client, reg, 1, &val, 1);
 			if (ret) {
@@ -591,7 +536,7 @@ static int check_status(struct i2c_client *client)
 				}
 			} else {
 				if ((val & 0x0F) != 0x03) {
-					printk("reg: 0x%04x, val: 0x%02x\n", reg,
+					printk("reg: 0x%04x, val: 0x%02x\n", reg[0],
 					     val);
 					return 0;
 				}
@@ -606,24 +551,18 @@ static int check_status(struct i2c_client *client)
 
 static int set_i2c_client(struct i2c_client *client)
 {
-	printk("%s invoked\n", __func__);
-
 	int ret = 0;
 
 	struct videosource *vsrc = &videosource_isl79988;
 	struct v4l2_subdev *sd;
 	if (!vsrc) {
-		printk(KERN_ERR "%s - Failed to get isl79988 videosource. \
-		Something wrong with a timing of initialization.\n",
-		       __func__);
+		loge("Failed to get max9286 videosource. Something wrong with a timing of initialization.\n");
 		ret = -1;
 	}
 
 	sd = &(vsrc->sd);
 	if (!sd) {
-		printk(KERN_ERR
-		       "%s - Failed to get sub-device object of isl79988.\n",
-		       __func__);
+		loge("Failed to get sub-device object of max9286.\n");
 		ret = -1;
 	}
 
@@ -661,11 +600,9 @@ static int subdev_init(void)
 		/* v4l2_device_register(sd->dev, sd->v4l2_dev); */
 		err = v4l2_async_register_subdev(sd);
 		if (err) {
-			printk(KERN_ERR "Failed to register subdevice isl79988\n");
+			loge("Failed to register subdevice\n");
 		} else {
-			printk(KERN_INFO
-			       "%s - isl79988 is initialized within v4l standard: %s.\n",
-			       __func__, sd->name);
+			loge("sub-device is initialized within v4l standard: %s.\n", sd->name);
 		}
 	}
 
