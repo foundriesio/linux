@@ -34,11 +34,6 @@
 			reg = <0xda000000 0x4000000>;
 			no-map;
 		};
-
-		optee_memory: optee@0xde000000 {
-			reg = <0xde000000 0x02000000>;
-			no-map;
-		};
 	};
 
 	wifi_pwrseq: wifi-pwrseq {
@@ -173,12 +168,4 @@
 		vbat-supply = <&v3v3>;
 		vddio-supply = <&v3v3>;
 	};
-};
-
-&optee_memory {
-	status = "okay";
-};
-
-&optee {
-	status = "okay";
 };
