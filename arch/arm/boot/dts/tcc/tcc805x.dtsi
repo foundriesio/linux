@@ -1477,6 +1477,15 @@
 		status = "disable";
 	};
 
+	/* sdr_ipc for A53 */
+	sdr_ipc {
+		compatible = "telechips,sdr_ipc";
+		device-name = "tcc_sdr_ipc";
+		mbox-names ="sdr-ipc";
+		mboxes = <&cb_mbox TCC_CB_MBOX_SDR>;
+		mbox-id = TCC_MBOX_SDR_ID;
+	};
+
 	i2c0: i2c@16300000 {
 		compatible = "telechips,tcc805x-i2c";
 		reg = <0x0 0x16300000 0x0 0x28>,

@@ -678,6 +678,7 @@ config TCC_DRAM_TOOL
 
 
 source "drivers/char/tcc_ipc/Kconfig"
+source "drivers/char/tcc_sdr_ipc/Kconfig"
 
 config TCC_RADIO_GPIO_CTRL
     tristate "Telechips Radio GPIO controller"

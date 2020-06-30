@@ -1483,6 +1483,15 @@
 		status = "okay";
 	};
 
+	/* sdr_ipc for A72 */
+	sdr_ipc {
+		compatible = "telechips,sdr_ipc";
+		device-name = "tcc_sdr_ipc";
+		mbox-names ="sdr-ipc";
+		mboxes = <&cb_mbox TCC_CB_MBOX_SDR>;
+		mbox-id = TCC_MBOX_SDR_ID;
+	};
+
 	adma0: adma@16100000 {
 		compatible = "telechips,adma";
 		reg = <0x16100000 0x200>;
