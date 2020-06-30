@@ -533,6 +533,7 @@ static int tccvin_map_cif_port(struct tccvin_streaming * vdev) {
 	return 0;
 }
 
+#if 0
 /*
  * tccvin_check_cif_port_mapping
  *
@@ -559,6 +560,7 @@ static int tccvin_check_cif_port_mapping(struct tccvin_streaming * vdev) {
 
 	return ret;
 }
+#endif
 
 /*
  * tccvin_set_vin
