@@ -498,6 +498,9 @@ static int tcc_i2s_set_bclk_ratio(struct snd_soc_dai *dai, unsigned int ratio)
 		case TCC_DAI_BCLK_RATIO_32:
 		case TCC_DAI_BCLK_RATIO_48:
 		case TCC_DAI_BCLK_RATIO_64:
+#if defined(CONFIG_ARCH_TCC805X) || defined(CONFIG_ARCH_TCC806X)
+		case TCC_DAI_BCLK_RATIO_512:
+#endif
 			i2s->bclk_ratio = (int32_t)ratio;
 			break;
 		default:
@@ -792,12 +795,24 @@ static int tcc_i2s_hw_params(struct snd_pcm_substream *substream,
 	}
 
 	(void) printk(KERN_DEBUG "[DEBUG][I2S-%d] %s - mclk : %d\n", i2s->blk_no, __func__, mclk);
-	if (mclk > (uint32_t)TCC_DAI_MAX_FREQ) {
-		(void) printk(KERN_ERR "[ERROR][I2S] %s - DAI peri max frequency is %dHz. but you try %dHz\n", __func__, TCC_DAI_MAX_FREQ, mclk);
-		ret = -ENOTSUPP;
-		goto hw_params_end;
-	}
+#if defined(CONFIG_ARCH_TCC805X) || defined(CONFIG_ARCH_TCC806X)
+	if(i2s->bclk_ratio == TCC_DAI_BCLK_RATIO_512) {
+		if (mclk > (uint32_t)TCC_DAI_DP_LINK_MAX_FREQ) {
+			(void) printk(KERN_ERR "[ERROR][I2S] %s - DAI peri for DP Link max frequency is %dHz. but you try %dHz\n", __func__, TCC_DAI_DP_LINK_MAX_FREQ, mclk);
+			ret = -ENOTSUPP;
+			goto hw_params_end;
+		}
 
+	} else {
+#endif
+		if (mclk > (uint32_t)TCC_DAI_MAX_FREQ) {
+			(void) printk(KERN_ERR "[ERROR][I2S] %s - DAI peri max frequency is %dHz. but you try %dHz\n", __func__, TCC_DAI_MAX_FREQ, mclk);
+			ret = -ENOTSUPP;
+			goto hw_params_end;
+		}
+#if defined(CONFIG_ARCH_TCC805X) || defined(CONFIG_ARCH_TCC806X)
+	}
+#endif
 	if (i2s->clk_rate != mclk) {
 		uint32_t cur_rate = 0;
 		if (i2s->clk_continuous == TRUE) {
