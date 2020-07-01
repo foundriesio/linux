@@ -521,6 +521,7 @@ static int sdripc_close(struct inode *inode, struct file *filp)
 	{
 		iounmap((void *)sdripc_dev->receive_vaddr);
 		sdripc_dev->receive_vaddr = NULL;
+		sdripc_dev->receive_paddr = NULL;
 	}
 
 	dprintk(dev, "return %d\n", ret);
