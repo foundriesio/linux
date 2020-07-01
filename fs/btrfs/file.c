@@ -2055,8 +2055,6 @@ int btrfs_sync_file(struct file *file, loff_t start, loff_t end, int datasync)
 	struct btrfs_trans_handle *trans;
 	struct btrfs_log_ctx ctx;
 	int ret = 0, err;
-	bool full_sync = 0;
-	u64 len;
 
 	trace_btrfs_sync_file(file, datasync);
 
@@ -2082,13 +2080,13 @@ int btrfs_sync_file(struct file *file, loff_t start, loff_t end, int datasync)
 	down_write(&BTRFS_I(inode)->dio_sem);
 
 	atomic_inc(&root->log_batch);
-	full_sync = test_bit(BTRFS_INODE_NEEDS_FULL_SYNC,
-			     &BTRFS_I(inode)->runtime_flags);
+
 	/*
 	 * If the inode needs a full sync, make sure we use a full range to
 	 * avoid log tree corruption, due to hole detection racing with ordered
 	 * extent completion for adjacent ranges, and assertion failures during
-	 * hole detection.
+	 * hole detection. Do this while holding the inode lock, to avoid races
+	 * with other tasks.
 	 */
 	if (test_bit(BTRFS_INODE_NEEDS_FULL_SYNC,
 		     &BTRFS_I(inode)->runtime_flags)) {
@@ -2097,16 +2095,13 @@ int btrfs_sync_file(struct file *file, loff_t start, loff_t end, int datasync)
 	}
 
 	/*
-	 * The range length can be represented by u64, we have to do the typecasts
-	 * to avoid signed overflow if it's [0, LLONG_MAX] eg. from fsync()
-	 */
-	len = (u64)end - (u64)start + 1;
-
-	/*
 	 * We have to do this here to avoid the priority inversion of waiting on
 	 * IO of a lower priority task while holding a transaciton open.
+	 *
+	 * Also, the range length can be represented by u64, we have to do the
+	 * typecasts to avoid signed overflow if it's [0, LLONG_MAX].
 	 */
-	ret = btrfs_wait_ordered_range(inode, start, len);
+	ret = btrfs_wait_ordered_range(inode, start, (u64)end - (u64)start + 1);
 	if (ret) {
 		up_write(&BTRFS_I(inode)->dio_sem);
 		inode_unlock(inode);
@@ -2114,41 +2109,9 @@ int btrfs_sync_file(struct file *file, loff_t start, loff_t end, int datasync)
 	}
 	atomic_inc(&root->log_batch);
 
-	/*
-	 * If the last transaction that changed this file was before the current
-	 * transaction and we have the full sync flag set in our inode, we can
-	 * bail out now without any syncing.
-	 *
-	 * Note that we can't bail out if the full sync flag isn't set. This is
-	 * because when the full sync flag is set we start all ordered extents
-	 * and wait for them to fully complete - when they complete they update
-	 * the inode's last_trans field through:
-	 *
-	 *     btrfs_finish_ordered_io() ->
-	 *         btrfs_update_inode_fallback() ->
-	 *             btrfs_update_inode() ->
-	 *                 btrfs_set_inode_last_trans()
-	 *
-	 * So we are sure that last_trans is up to date and can do this check to
-	 * bail out safely. For the fast path, when the full sync flag is not
-	 * set in our inode, we can not do it because we start only our ordered
-	 * extents and don't wait for them to complete (that is when
-	 * btrfs_finish_ordered_io runs), so here at this point their last_trans
-	 * value might be less than or equals to fs_info->last_trans_committed,
-	 * and setting a speculative last_trans for an inode when a buffered
-	 * write is made (such as fs_info->generation + 1 for example) would not
-	 * be reliable since after setting the value and before fsync is called
-	 * any number of transactions can start and commit (transaction kthread
-	 * commits the current transaction periodically), and a transaction
-	 * commit does not start nor waits for ordered extents to complete.
-	 */
 	smp_mb();
 	if (btrfs_inode_in_log(BTRFS_I(inode), fs_info->generation) ||
-	    (full_sync && BTRFS_I(inode)->last_trans <=
-	     fs_info->last_trans_committed) ||
-	    (!btrfs_have_ordered_extents_in_range(inode, start, len) &&
-	     BTRFS_I(inode)->last_trans
-	     <= fs_info->last_trans_committed)) {
+	    BTRFS_I(inode)->last_trans <= fs_info->last_trans_committed) {
 		/*
 		 * We've had everything committed since the last time we were
 		 * modified so clear this flag in case it was set for whatever
