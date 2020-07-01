@@ -4363,7 +4363,6 @@ static int log_one_extent(struct btrfs_trans_handle *trans,
 			  struct btrfs_inode *inode, struct btrfs_root *root,
 			  const struct extent_map *em,
 			  struct btrfs_path *path,
-			  const struct list_head *logged_list,
 			  struct btrfs_log_ctx *ctx)
 {
 	struct btrfs_root *log = root->log_root;
@@ -4375,16 +4374,10 @@ static int log_one_extent(struct btrfs_trans_handle *trans,
 	u64 block_len;
 	int ret;
 	int extent_inserted = 0;
-	bool ordered_io_err = false;
 
 	ret = log_extent_csums(trans, inode, root, em);
 	if (ret)
 		return ret;
-
-	if (ordered_io_err) {
-		ctx->io_err = -EIO;
-		return ctx->io_err;
-	}
 
 	btrfs_init_map_token(&token);
 
@@ -4597,7 +4590,6 @@ static int btrfs_log_changed_extents(struct btrfs_trans_handle *trans,
 				     struct btrfs_root *root,
 				     struct btrfs_inode *inode,
 				     struct btrfs_path *path,
-				     struct list_head *logged_list,
 				     struct btrfs_log_ctx *ctx,
 				     const u64 start,
 				     const u64 end)
@@ -4652,20 +4644,6 @@ static int btrfs_log_changed_extents(struct btrfs_trans_handle *trans,
 	}
 
 	list_sort(NULL, &extents, extent_cmp);
-	btrfs_get_logged_extents(inode, logged_list, logged_start, logged_end);
-	/*
-	 * Some ordered extents started by fsync might have completed
-	 * before we could collect them into the list logged_list, which
-	 * means they're gone, not in our logged_list nor in the inode's
-	 * ordered tree. We want the application/user space to know an
-	 * error happened while attempting to persist file data so that
-	 * it can take proper action. If such error happened, we leave
-	 * without writing to the log tree and the fsync must report the
-	 * file data write error and not commit the current transaction.
-	 */
-	ret = filemap_check_errors(inode->vfs_inode.i_mapping);
-	if (ret)
-		ctx->io_err = ret;
 process:
 	while (!list_empty(&extents)) {
 		em = list_entry(extents.next, struct extent_map, list);
@@ -4684,8 +4662,7 @@ process:
 
 		write_unlock(&tree->lock);
 
-		ret = log_one_extent(trans, inode, root, em, path, logged_list,
-				     ctx);
+		ret = log_one_extent(trans, inode, root, em, path, ctx);
 		write_lock(&tree->lock);
 		clear_em_logging(tree, em);
 		free_extent_map(em);
@@ -5262,7 +5239,6 @@ static int btrfs_log_inode(struct btrfs_trans_handle *trans,
 	struct btrfs_key max_key;
 	struct btrfs_root *log = root->log_root;
 	struct extent_buffer *src = NULL;
-	LIST_HEAD(logged_list);
 	u64 last_extent = 0;
 	int err = 0;
 	int ret;
@@ -5573,7 +5549,7 @@ log_extents:
 	}
 	if (fast_search) {
 		ret = btrfs_log_changed_extents(trans, root, inode, dst_path,
-						&logged_list, ctx, start, end);
+						ctx, start, end);
 		if (ret) {
 			err = ret;
 			goto out_unlock;
@@ -5634,10 +5610,6 @@ log_extents:
 		inode->last_log_commit = inode->last_sub_trans;
 	spin_unlock(&inode->lock);
 out_unlock:
-	if (unlikely(err))
-		btrfs_put_logged_extents(&logged_list);
-	else
-		btrfs_submit_logged_extents(&logged_list, log);
 	mutex_unlock(&inode->log_mutex);
 
 	btrfs_free_path(path);
