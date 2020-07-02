@@ -29,19 +29,20 @@ enum tcc_drm_crtc_flip_status {
 	TCC_DRM_CRTC_FLIP_STATUS_DONE,
 };
 
-static void tcc_drm_crtc_dump_event(struct drm_pending_vblank_event *vblank_event)
-{
-	if(vblank_event != NULL) {
-		switch(vblank_event->event.base.type) {
-			case DRM_EVENT_VBLANK:
-				printk(KERN_INFO "[INF][DRMCRTC] %s line(%d) DRM_EVENT_VBLANK\r\n",  __func__, __LINE__);
-				break;
-			case DRM_EVENT_FLIP_COMPLETE:
-				printk(KERN_INFO "[INF][DRMCRTC] line(%d) DRM_EVENT_FLIP_COMPLETE\r\n",  __func__, __LINE__);
-				break;
-		}
-	}
-}
+#define tcc_drm_crtc_dump_event(in_event) \
+do { 									\
+	struct drm_pending_vblank_event *vblank_event = (in_event); 	\
+	if(vblank_event != NULL) {					\
+		switch(vblank_event->event.base.type) {			\
+			case DRM_EVENT_VBLANK:				\
+				printk(KERN_INFO "[INF][DRMCRTC] %s line(%d) DRM_EVENT_VBLANK\r\n",  __func__, __LINE__);	\
+				break;					\
+			case DRM_EVENT_FLIP_COMPLETE:			\
+				printk(KERN_INFO "[INF][DRMCRTC] %s line(%d) DRM_EVENT_FLIP_COMPLETE\r\n",  __func__, __LINE__);\
+				break;					\
+		}							\
+	}								\
+} while(0)								\
 
 static void tcc_drm_crtc_atomic_enable(struct drm_crtc *crtc,
 					  struct drm_crtc_state *old_state)
@@ -73,16 +74,17 @@ static void tcc_drm_crtc_atomic_disable(struct drm_crtc *crtc,
 {
 	struct tcc_drm_crtc *tcc_crtc = to_tcc_crtc(crtc);
 
-	drm_crtc_vblank_off(crtc);
 
 	if (tcc_crtc->ops->disable)
 		tcc_crtc->ops->disable(tcc_crtc);
 
-	if (crtc->state->event && !crtc->state->active) {
-		spin_lock_irq(&crtc->dev->event_lock);
-		drm_crtc_send_vblank_event(crtc, crtc->state->event);
-		spin_unlock_irq(&crtc->dev->event_lock);
+	drm_crtc_vblank_off(crtc);
 
+	if (crtc->state->event) {
+		unsigned long flags;
+		spin_lock_irqsave(&crtc->dev->event_lock, flags);
+		drm_crtc_send_vblank_event(crtc, crtc->state->event);
+		spin_unlock_irqrestore(&crtc->dev->event_lock, flags);
 		crtc->state->event = NULL;
 	}
 }
@@ -114,6 +116,11 @@ static void tcc_crtc_atomic_flush(struct drm_crtc *crtc,
 				     struct drm_crtc_state *old_crtc_state)
 {
 	struct tcc_drm_crtc *tcc_crtc = to_tcc_crtc(crtc);
+
+	if(!old_crtc_state->active) {
+		//printk(KERN_WARNING "[WARN][DRMCRTC] %s old crtc status is not active\r\n", __func__);
+		return;
+	}
 
 	if (tcc_crtc->ops->atomic_flush)
 		tcc_crtc->ops->atomic_flush(tcc_crtc);
@@ -159,13 +166,21 @@ static void tcc_drm_crtc_flip_complete(struct drm_crtc *crtc)
 
 void tcc_crtc_handle_event(struct tcc_drm_crtc *tcc_crtc)
 {
+	unsigned long flags;
 	struct drm_crtc *crtc = &tcc_crtc->base;
 	struct drm_crtc_state *new_crtc_state = crtc->state;
-	struct drm_pending_vblank_event *event = crtc->state->event;
-	unsigned long flags;
-
-	if (!event)
+	struct drm_pending_vblank_event *event = new_crtc_state->event;
+	
+	if (!new_crtc_state->active) {
+		printk(KERN_WARNING "[WARN][DRMCRTC] %s new crtc state is not active\r\n", __func__);
 		return;
+	}
+
+	if (event == NULL) {
+		printk(KERN_ERR "[ERR][DRMCRTC] %s event is NULL\r\n", __func__);
+		return;
+	}
+
 	tcc_crtc->flip_async = !!(new_crtc_state->pageflip_flags
 					  & DRM_MODE_PAGE_FLIP_ASYNC);
 

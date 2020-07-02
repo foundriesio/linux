@@ -329,16 +329,16 @@ static int tcc_drm_bind(struct device *dev)
 
 	dev_set_drvdata(dev, drm);
 	drm->dev_private = (void *)private;
-	if (drm->dev->dma_parms == NULL) {
-                drm->dev->dma_parms = &private->dma_parms;
-	}
 
 	/* the first real CRTC device is used for all dma mapping operations */
 	private->dma_dev = tcc_drm_get_dma_device();
-	if (!private->dma_dev) {
+	if (private->dma_dev == NULL) {
 		DRM_ERROR("no device found for DMA mapping operations.\n");
 		ret = -ENODEV;
 		goto err_free_private;
+	}
+	if (private->dma_dev->dma_parms == NULL) {
+                private->dma_dev->dma_parms = &private->dma_parms;
 	}
 
 #if defined(CONFIG_ARCH_TCC805X)

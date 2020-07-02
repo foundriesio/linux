@@ -133,10 +133,8 @@ static void tcc_drm_plane_reset(struct drm_plane *plane)
 
 	if (plane->state) {
 		tcc_state = to_tcc_plane_state(plane->state);
-		if (tcc_state->base.fb)
-			drm_framebuffer_unreference(tcc_state->base.fb);
+		__drm_atomic_helper_plane_destroy_state(plane->state);
 		kfree(tcc_state);
-		plane->state = NULL;
 	}
 
 	tcc_state = kzalloc(sizeof(*tcc_state), GFP_KERNEL);
@@ -150,16 +148,14 @@ static void tcc_drm_plane_reset(struct drm_plane *plane)
 static struct drm_plane_state *
 tcc_drm_plane_duplicate_state(struct drm_plane *plane)
 {
-	struct tcc_drm_plane_state *tcc_state;
-	struct tcc_drm_plane_state *copy;
+	struct tcc_drm_plane_state *duplicate_state;
 
-	tcc_state = to_tcc_plane_state(plane->state);
-	copy = kzalloc(sizeof(*tcc_state), GFP_KERNEL);
-	if (!copy)
+	duplicate_state = kzalloc(sizeof(struct tcc_drm_plane_state), GFP_KERNEL);
+	if (!duplicate_state)
 		return NULL;
 
-	__drm_atomic_helper_plane_duplicate_state(plane, &copy->base);
-	return &copy->base;
+	__drm_atomic_helper_plane_duplicate_state(plane, &duplicate_state->base);
+	return &duplicate_state->base;
 }
 
 static void tcc_drm_plane_destroy_state(struct drm_plane *plane,
