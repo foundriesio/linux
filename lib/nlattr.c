@@ -27,13 +27,25 @@ static const u8 nla_attr_minlen[NLA_TYPE_MAX+1] = {
 	[NLA_S64]	= sizeof(s64),
 };
 
+#ifdef __GENKSYMS__
+static int validate_nla_bitfield32(const struct nlattr *nla,
+				   u32 *valid_flags_allowed)
+#else
 static int validate_nla_bitfield32(const struct nlattr *nla,
 				   const u32 *valid_flags_mask)
+#endif
 {
 	const struct nla_bitfield32 *bf = nla_data(nla);
 
+#ifdef __GENKSYMS__
+	u32 *valid_flags_mask = valid_flags_allowed;
+
+	if (!valid_flags_allowed)
+		return -EINVAL;
+#else
 	if (!valid_flags_mask)
 		return -EINVAL;
+#endif
 
 	/*disallow invalid bit selector */
 	if (bf->selector & ~*valid_flags_mask)
