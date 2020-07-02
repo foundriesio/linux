@@ -301,25 +301,6 @@ static int sdripc_mbox_send_message(struct ipctest_device *ipc_dev, struct tcc_m
 }
 #endif
 
-static void sdripc_mbox_msg_sent(struct mbox_client *client, void *message, int r)
-{
-	struct device *dev = client->dev;
-
-	if(client != NULL)
-	{
-		if (r != 0)
-		{
-			dprintk(dev, "Message could not be sent: %d\n", r);
-		}
-		else
-		{
-			//dprintk(dev, "Message sent\n");
-		}
-
-		//(void)message;
-	}
-}
-
 struct mbox_chan *sdripc_mbox_request_channel(struct platform_device *pdev, const char *channel_name)
 {
 	struct device *dev = &pdev->dev;
@@ -336,11 +317,10 @@ struct mbox_chan *sdripc_mbox_request_channel(struct platform_device *pdev, cons
 
 		client->dev = dev;
 		client->rx_callback = sdripc_mbox_receive_message;
-		client->tx_done = sdripc_mbox_msg_sent;
-		client->knows_txdone = false;
+		client->tx_done = NULL;
+		client->knows_txdone = (bool)false;
 		client->tx_block = (bool)true;
-		/* Set smaller than the tx timeout value of the client.*/
-		client->tx_tout = (MBOX_TX_TIMEOUT - 1);
+		client->tx_tout = 500;
 
 		channel = mbox_request_channel_byname(client, channel_name);
 		if (IS_ERR(channel))
@@ -414,7 +394,7 @@ static ssize_t sdripc_write(struct file *filp, const char __user *buf, size_t co
 		ret = 0;
 	}
 
-	return 0;
+	return ret;
 }
 
 static ssize_t sdripc_read(struct file *filp, char __user *buf, size_t count, loff_t *f_pos)
@@ -521,7 +501,7 @@ static int sdripc_close(struct inode *inode, struct file *filp)
 	{
 		iounmap((void *)sdripc_dev->receive_vaddr);
 		sdripc_dev->receive_vaddr = NULL;
-		sdripc_dev->receive_paddr = NULL;
+		sdripc_dev->receive_paddr = (dma_addr_t)NULL;
 	}
 
 	dprintk(dev, "return %d\n", ret);
