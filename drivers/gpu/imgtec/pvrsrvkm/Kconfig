@@ -29,3 +29,11 @@ config POWERVR_ROGUE_DEVICEMEM_HISTORY
 	  Provides a debugfs file containing a list of recent memory
 	  allocations for debugging purposes. Requires a compatible
 	  userspace driver.
+
+config POWERVR_ROGUE_TEMPORAL_PATCH_FOR_ANDROID_10
+	bool "Solve ION issue on Android10 temporarily "
+	default n
+	depends on POWERVR_ROGUE
+	help
+	  This path solves ION issue temporalily. 
+	  It is NOT final solution. 
