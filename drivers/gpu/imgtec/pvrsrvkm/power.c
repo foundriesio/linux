@@ -749,13 +749,24 @@ PVRSRV_ERROR PVRSRVRegisterPowerDevice(PPVRSRV_DEVICE_NODE psDeviceNode,
 	psPowerDevice->pfnSystemPostPower = pfnSystemPostPower;
 	psPowerDevice->pfnPreClockSpeedChange = pfnPreClockSpeedChange;
 	psPowerDevice->pfnPostClockSpeedChange = pfnPostClockSpeedChange;
-	psPowerDevice->pfnForcedIdleRequest = pfnForcedIdleRequest;
-	psPowerDevice->pfnForcedIdleCancelRequest = pfnForcedIdleCancelRequest;
 	psPowerDevice->pfnGPUUnitsPowerChange = pfnGPUUnitsPowerChange;
 	psPowerDevice->hSysData = psDeviceNode->psDevConfig->hSysData;
 	psPowerDevice->hDevCookie = hDevCookie;
 	OSAtomicWrite(&psPowerDevice->eCurrentPowerState, eCurrentPowerState);
 	psPowerDevice->eDefaultPowerState = eDefaultPowerState;
+
+#if defined(SUPPORT_AUTOVZ)
+	if (!PVRSRV_VZ_MODE_IS(NATIVE))
+	{
+		psPowerDevice->pfnForcedIdleRequest = NULL;
+		psPowerDevice->pfnForcedIdleCancelRequest = NULL;
+	}
+	else
+#endif
+	{
+		psPowerDevice->pfnForcedIdleRequest = pfnForcedIdleRequest;
+		psPowerDevice->pfnForcedIdleCancelRequest = pfnForcedIdleCancelRequest;
+	}
 
 	psDeviceNode->psPowerDev = psPowerDevice;
 

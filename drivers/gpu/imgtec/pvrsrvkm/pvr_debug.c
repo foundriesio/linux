@@ -272,11 +272,11 @@ void PVRSRVReleasePrintf(const IMG_CHAR *pszFormat, ...)
 
 	if (VBAppend(pszBuf, ui32BufSiz, pszFormat, vaArgs))
 	{
-		printk(KERN_ERR "%s (truncated)\n", pszBuf);
+		printk(KERN_INFO "%s (truncated)\n", pszBuf);
 	}
 	else
 	{
-		printk(KERN_ERR "%s\n", pszBuf);
+		printk(KERN_INFO "%s\n", pszBuf);
 	}
 
 	spin_unlock_irqrestore(&gsDebugLock, ulLockFlags);
@@ -507,8 +507,6 @@ static void *_VersionStartOp(OSDI_IMPL_ENTRY *psEntry, IMG_UINT64 *pui64Pos)
 {
 	PVRSRV_DATA *psPVRSRVData = DIGetPrivData(psEntry);
 	IMG_UINT64 uiCurrentPosition = 1;
-
-	PVR_UNREFERENCED_PARAMETER(psEntry);
 
 	if (psPVRSRVData == NULL) {
 		PVR_DPF((PVR_DBG_ERROR, "psPVRSRVData = NULL"));
@@ -873,8 +871,8 @@ static IMG_INT64 PowerDataSet(const IMG_CHAR __user *pcBuffer,
 
 	PVR_RETURN_IF_FALSE(pcBuffer != NULL, -EIO);
 	PVR_RETURN_IF_FALSE(pui64Pos != NULL && *pui64Pos == 0, -EIO);
-	PVR_RETURN_IF_FALSE(ui64Count == 2, -EINVAL);
-	PVR_RETURN_IF_FALSE(pcBuffer[ui64Count - 1] == '\n', -EINVAL);
+	PVR_RETURN_IF_FALSE(ui64Count >= 1, -EINVAL);
+	PVR_RETURN_IF_FALSE(pcBuffer[ui64Count - 1] == '\0', -EINVAL);
 
 	if (List_PVRSRV_DEVICE_NODE_Any(psPVRSRVData->psDeviceNodeList,
 	                                _IsDevNodeNotInitialised))
@@ -1122,9 +1120,9 @@ static IMG_INT64 DebugStatusSet(const IMG_CHAR *pcBuffer, IMG_UINT64 ui64Count,
 
 	PVR_RETURN_IF_FALSE(pcBuffer != NULL, -EIO);
 	PVR_RETURN_IF_FALSE(pui64Pos != NULL && *pui64Pos == 0, -EIO);
-	PVR_RETURN_IF_FALSE(ui64Count == 2, -EINVAL);
+	PVR_RETURN_IF_FALSE(ui64Count >= 1, -EINVAL);
 	PVR_RETURN_IF_FALSE(pcBuffer[0] == 'k' || pcBuffer[0] == 'K', -EINVAL);
-	PVR_RETURN_IF_FALSE(pcBuffer[ui64Count - 1] == '\n', -EINVAL);
+	PVR_RETURN_IF_FALSE(pcBuffer[ui64Count - 1] == '\0', -EINVAL);
 
 	psPVRSRVData->eServicesState = PVRSRV_SERVICES_STATE_BAD;
 
@@ -1508,6 +1506,9 @@ static IMG_INT64 _RgxRegsWrite(const IMG_CHAR *pcBuffer, IMG_UINT64 ui64Count,
 	PVRSRV_DATA *psPVRSRVData = pvData;
 	PVRSRV_RGXDEV_INFO *psDevInfo;
 
+	/* ignore the '\0' character */
+	ui64Count -= 1;
+
 	PVR_LOG_RETURN_IF_FALSE(psPVRSRVData != NULL,
 	                        "psPVRSRVData == NULL", -ENXIO);
 	PVR_LOG_RETURN_IF_FALSE(ui64Count == 4 || ui64Count == 8,
@@ -1588,7 +1589,7 @@ static IMG_INT64 DebugLevelSet(const IMG_CHAR *pcBuffer, IMG_UINT64 ui64Count,
 	PVR_RETURN_IF_FALSE(pcBuffer != NULL, -EIO);
 	PVR_RETURN_IF_FALSE(pui64Pos != NULL && *pui64Pos == 0, -EIO);
 	PVR_RETURN_IF_FALSE(ui64Count > 0 && ui64Count < uiMaxBufferSize, -EINVAL);
-	PVR_RETURN_IF_FALSE(pcBuffer[ui64Count - 1] == '\n', -EINVAL);
+	PVR_RETURN_IF_FALSE(pcBuffer[ui64Count - 1] == '\0', -EINVAL);
 
 	if (sscanf(pcBuffer, "%u", &gPVRDebugLevel) == 0)
 	{

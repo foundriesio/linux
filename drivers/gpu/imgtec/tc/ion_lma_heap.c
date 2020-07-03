@@ -57,6 +57,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define	ion_phys_addr_t phys_addr_t
 #endif
 
+#if defined(ANDROID) && (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 3, 0))
+#define ION_HAS_HEAP_DMA_BUF_OPS
+#endif
+
 /* Ion heap for LMA allocations. This heap is identical to CARVEOUT except
  * that it does not do any CPU cache maintenance nor does it zero the memory
  * using the CPU (this is handled with PVR_ANDROID_DEFER_CLEAR in userspace).
@@ -252,6 +256,90 @@ static void ion_lma_heap_unmap_kernel(struct ion_heap *heap,
 	iounmap(buffer->vaddr);
 }
 
+#if defined(ION_HAS_HEAP_DMA_BUF_OPS)
+static int ion_lma_dma_buf_mmap(struct dma_buf *dmabuf,
+				struct vm_area_struct *vma)
+{
+	struct ion_buffer *buffer = dmabuf->priv;
+	int err;
+
+	mutex_lock(&buffer->lock);
+	if (!(buffer->flags & ION_FLAG_CACHED))
+		vma->vm_page_prot = pgprot_writecombine(vma->vm_page_prot);
+
+	err = ion_lma_heap_map_user(buffer->heap, buffer, vma);
+	if (err)
+		pr_err("%s: Failed to map buffer to userspace\n", __func__);
+	mutex_unlock(&buffer->lock);
+
+	return err;
+}
+
+static int ion_lma_dma_buf_begin_cpu_access(struct dma_buf *dmabuf,
+					    enum dma_data_direction direction)
+{
+	struct ion_buffer *buffer = dmabuf->priv;
+	struct dma_buf_attachment *attach;
+	struct sg_table *table;
+	void *vaddr;
+	int err;
+
+	table = buffer->sg_table;
+
+	mutex_lock(&buffer->lock);
+	if (buffer->kmap_cnt) {
+		buffer->kmap_cnt++;
+		err = 0;
+		goto unlock;
+	}
+
+	vaddr = ion_lma_heap_map_kernel(buffer->heap, buffer);
+	if (IS_ERR(vaddr)) {
+		err = PTR_ERR(vaddr);
+		pr_err("%s: Failed to map buffer to kernel space\n", __func__);
+		goto unlock;
+	}
+
+	buffer->vaddr = vaddr;
+	buffer->kmap_cnt++;
+
+	list_for_each_entry(attach, &dmabuf->attachments, node) {
+		dma_sync_sg_for_cpu(attach->dev, table->sgl, table->nents,
+				direction);
+	}
+	err = 0;
+
+unlock:
+	mutex_unlock(&buffer->lock);
+	return err;
+}
+
+static int ion_lma_dma_buf_end_cpu_access(struct dma_buf *dmabuf,
+					  enum dma_data_direction direction)
+{
+	struct ion_buffer *buffer = dmabuf->priv;
+	struct dma_buf_attachment *attach;
+	struct sg_table *table;
+
+	table = buffer->sg_table;
+
+	mutex_lock(&buffer->lock);
+	buffer->kmap_cnt--;
+
+	if (!buffer->kmap_cnt) {
+		ion_lma_heap_unmap_kernel(buffer->heap, buffer);
+		list_for_each_entry(attach, &dmabuf->attachments, node) {
+			dma_sync_sg_for_device(attach->dev, table->sgl,
+					table->nents, direction);
+		}
+		buffer->vaddr = NULL;
+	}
+	mutex_unlock(&buffer->lock);
+
+	return 0;
+}
+#endif /* defined(ION_HAS_HEAP_DMA_BUF_OPS) */
+
 static struct ion_heap_ops lma_heap_ops = {
 	.allocate = ion_lma_heap_allocate,
 	.free = ion_lma_heap_free,
@@ -262,10 +350,21 @@ static struct ion_heap_ops lma_heap_ops = {
 	.map_dma = ion_lma_heap_map_dma,
 	.unmap_dma = ion_lma_heap_unmap_dma,
 #endif
+#if !defined(ION_HAS_HEAP_DMA_BUF_OPS)
 	.map_user = ion_lma_heap_map_user,
 	.map_kernel = ion_lma_heap_map_kernel,
 	.unmap_kernel = ion_lma_heap_unmap_kernel,
+#endif /* !defined(ION_HAS_HEAP_DMA_BUF_OPS) */
+
 };
+
+#if defined(ION_HAS_HEAP_DMA_BUF_OPS)
+static struct dma_buf_ops lma_heap_dma_buf_ops = {
+	.mmap = ion_lma_dma_buf_mmap,
+	.begin_cpu_access = ion_lma_dma_buf_begin_cpu_access,
+	.end_cpu_access =  ion_lma_dma_buf_end_cpu_access,
+};
+#endif /* defined(ION_HAS_HEAP_DMA_BUF_OPS) */
 
 struct ion_heap *ion_lma_heap_create(struct ion_platform_heap *heap_data,
 				     bool allow_cpu_map)
@@ -312,6 +411,9 @@ struct ion_heap *ion_lma_heap_create(struct ion_platform_heap *heap_data,
 	lma_heap->heap.flags = ION_HEAP_FLAG_DEFER_FREE;
 
 	lma_heap->allow_cpu_map = allow_cpu_map;
+#if defined(ION_HAS_HEAP_DMA_BUF_OPS)
+	lma_heap->heap.buf_ops = lma_heap_dma_buf_ops;
+#endif /* defined(ION_HAS_HEAP_DMA_BUF_OPS) */
 
 	return &lma_heap->heap;
 }

@@ -215,14 +215,25 @@ static int _Open(struct inode *psINode, struct file *psFile)
 	}
 	else
 	{
-		iRes = single_open(psFile, _Show, &psDFSFile->sEntry);
+		/* private data is NULL as it's going to be set below */
+		iRes = single_open(psFile, _Show, NULL);
 	}
 
 	if (iRes == 0)
 	{
 		struct seq_file *psSeqFile = psFile->private_data;
-		psSeqFile->private = &psDFSFile->sEntry;
-		psDFSFile->sEntry.sImplEntry.pvNative = psSeqFile;
+
+		DFS_ENTRY *psEntry = OSAllocMem(sizeof(*psEntry));
+		if (psEntry == NULL)
+		{
+			PVR_DPF((PVR_DBG_ERROR, "%s: OSAllocMem() failed", __func__));
+			iRes = -ENOMEM;
+			goto return_;
+		}
+
+		*psEntry = psDFSFile->sEntry;
+		psSeqFile->private = psEntry;
+		psEntry->sImplEntry.pvNative = psSeqFile;
 	}
 	else
 	{
@@ -230,6 +241,7 @@ static int _Open(struct inode *psINode, struct file *psFile)
 		        __func__, iRes));
 	}
 
+return_:
 	_DRIVER_THREAD_EXIT();
 
 	return iRes;
@@ -238,12 +250,16 @@ static int _Open(struct inode *psINode, struct file *psFile)
 static int _Close(struct inode *psINode, struct file *psFile)
 {
 	DFS_FILE *psDFSFile = psINode->i_private;
+	DFS_ENTRY *psEntry;
 	int iRes;
 
 	PVR_LOG_RETURN_IF_FALSE(psDFSFile != NULL, "psDFSFile is NULL",
 	                        -EIO);
 
 	_DRIVER_THREAD_ENTER();
+
+	/* save pointer to DFS_ENTRY */
+	psEntry = ((struct seq_file *) psFile->private_data)->private;
 
 	if (psDFSFile->sEntry.sIterCb.pfnStart != NULL)
 	{
@@ -254,6 +270,11 @@ static int _Close(struct inode *psINode, struct file *psFile)
 		iRes = single_release(psINode, psFile);
 	}
 
+	/* free DFS_ENTRY allocated in _Open */
+	OSFreeMem(psEntry);
+
+	/* Sanity check as seq_release (and single_release which calls it)
+	 * never fail */
 	if (iRes != 0)
 	{
 		PVR_DPF((PVR_DBG_ERROR, "%s: Failed to release psFile, returning %d",
@@ -278,7 +299,7 @@ static ssize_t _Read(struct file *psFile, char __user *pcBuffer,
 		iRes = seq_read(psFile, pcBuffer, uiCount, puiPos);
 		if (iRes < 0)
 		{
-			PVR_DPF((PVR_DBG_ERROR, "%s: filed to read from file pfnRead() "
+			PVR_DPF((PVR_DBG_ERROR, "%s: failed to read from file, pfnRead() "
 			        "returned %zd", __func__, iRes));
 			goto return_;
 		}
@@ -295,7 +316,7 @@ static ssize_t _Read(struct file *psFile, char __user *pcBuffer,
 		                                psEntry->sImplEntry.pvPrivData);
 		if (iRes < 0)
 		{
-			PVR_DPF((PVR_DBG_ERROR, "%s: filed to read from file pfnRead() "
+			PVR_DPF((PVR_DBG_ERROR, "%s: failed to read from file, pfnRead() "
 			        "returned %zd", __func__, iRes));
 			OSFreeMem(pcLocalBuffer);
 			goto return_;
@@ -329,8 +350,8 @@ static loff_t _LSeek(struct file *psFile, loff_t iOffset, int iOrigin)
 		iRes = seq_lseek(psFile, iOffset, iOrigin);
 		if (iRes < 0)
 		{
-			PVR_DPF((PVR_DBG_ERROR, "%s: filed to set file position to "
-			        "offset %lld, pfnSeek() returned %lld", __func__,
+			PVR_DPF((PVR_DBG_ERROR, "%s: failed to set file position to offset "
+			        "%lld, pfnSeek() returned %lld", __func__,
 			        iOffset, iRes));
 			goto return_;
 		}
@@ -362,8 +383,8 @@ static loff_t _LSeek(struct file *psFile, loff_t iOffset, int iOrigin)
 		                                psEntry->sImplEntry.pvPrivData);
 		if (iRes < 0)
 		{
-			PVR_DPF((PVR_DBG_ERROR, "%s: filed to set file position to "
-			        "offset %lld, pfnSeek() returned %lld", __func__,
+			PVR_DPF((PVR_DBG_ERROR, "%s: failed to set file position to offset "
+			        "%lld, pfnSeek() returned %lld", __func__,
 			        iOffset, iRes));
 			goto return_;
 		}
@@ -384,7 +405,7 @@ static ssize_t _Write(struct file *psFile, const char __user *pszBuffer,
 	DFS_FILE *psDFSFile = psINode->i_private;
 	DI_ITERATOR_CB *psIter = &psDFSFile->sEntry.sIterCb;
 	IMG_CHAR *pcLocalBuffer;
-	IMG_UINT64 ui64Count = uiCount, ui64Pos = *puiPos;
+	IMG_UINT64 ui64Count = uiCount + 1, ui64Pos = *puiPos;
 	IMG_INT64 i64Res = -EIO;
 
 	PVR_LOG_RETURN_IF_FALSE(psDFSFile != NULL, "psDFSFile is NULL",
@@ -394,13 +415,17 @@ static ssize_t _Write(struct file *psFile, const char __user *pszBuffer,
 
 	_DRIVER_THREAD_ENTER();
 
-	pcLocalBuffer = OSAllocMem(uiCount);
+	/* allocate buffer with one additional byte fore NUL character */
+	pcLocalBuffer = OSAllocMem(ui64Count);
 	PVR_LOG_GOTO_IF_FALSE(pcLocalBuffer != NULL, "OSAllocMem() failed",
 	                      return_);
 
 	i64Res = pvr_copy_from_user(pcLocalBuffer, pszBuffer, uiCount);
 	PVR_LOG_GOTO_IF_FALSE(i64Res == 0, "pvr_copy_from_user() failed",
 	                      free_local_buffer_);
+
+	/* ensure that the framework user gets a NUL terminated buffer */
+	pcLocalBuffer[ui64Count - 1] = '\0';
 
 	i64Res = psIter->pfnWrite(pcLocalBuffer, ui64Count, &ui64Pos,
 	                          psDFSFile->sEntry.sImplEntry.pvPrivData);
@@ -433,7 +458,7 @@ static const struct file_operations _g_psFileOpsRndAcc = {
 	.write = _Write,
 };
 
-/* ----- DI implementation interface --------------------------------------- */
+/* ----- DI implementation interface ---------------------------------------- */
 
 static PVRSRV_ERROR _Init(void)
 {

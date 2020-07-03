@@ -446,10 +446,10 @@ struct tcc_context *RgxTccInit(PVRSRV_DEVICE_CONFIG* psDevConfig)
 		PVR_DPF((PVR_DBG_ERROR, "RgxTccInit: devm_regulator_get_optional failed."));
 		goto fail5;
 	}
-#endif
 	ret = clk_set_rate(platform->gpu_clk, TCC_9XTP_DEFAULT_CLOCK * ONE_MHZ);
 	if (ret)
 		PVR_DPF((PVR_DBG_ERROR, "failed to set gpu_clk rate: %d", ret));
+#endif
 
 	if (psRGXData && psRGXData->psRGXTimingInfo)
 	{

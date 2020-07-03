@@ -7,12 +7,22 @@ ifeq ($(CONFIG_ANDROID),y)
         ccflags-y += -include $(srctree)/drivers/gpu/imgtec/config_kernel_android32.h
     endif
 else
-    ifeq ($(CONFIG_ARM64),y)
-        include $(srctree)/drivers/gpu/imgtec/config_kernel_linux64.mk
-        ccflags-y += -include $(srctree)/drivers/gpu/imgtec/config_kernel_linux64.h
+    ifeq ($(CONFIG_FB_NEW),y)
+        ifeq ($(CONFIG_ARM64),y)
+            include $(srctree)/drivers/gpu/imgtec/config_kernel_linux64_fb.mk
+            ccflags-y += -include $(srctree)/drivers/gpu/imgtec/config_kernel_linux64_fb.h
+        else
+            include $(srctree)/drivers/gpu/imgtec/config_kernel_linux32_fb.mk
+            ccflags-y += -include $(srctree)/drivers/gpu/imgtec/config_kernel_linux32_fb.h
+	endif
     else
-        include $(srctree)/drivers/gpu/imgtec/config_kernel_linux32.mk
-        ccflags-y += -include $(srctree)/drivers/gpu/imgtec/config_kernel_linux32.h
+        ifeq ($(CONFIG_ARM64),y)
+            include $(srctree)/drivers/gpu/imgtec/config_kernel_linux64_drm.mk
+            ccflags-y += -include $(srctree)/drivers/gpu/imgtec/config_kernel_linux64_drm.h
+        else
+            include $(srctree)/drivers/gpu/imgtec/config_kernel_linux32_drm.mk
+            ccflags-y += -include $(srctree)/drivers/gpu/imgtec/config_kernel_linux32_drm.h
+	endif    
     endif
 endif
 
@@ -47,7 +57,13 @@ pvrsrvkm-y += devicemem_utils.o
 pvrsrvkm-y += event.o
 pvrsrvkm-y += fwload.o
 pvrsrvkm-y += handle.o
+ifeq ($(PVR_HANDLE_BACKEND),generic)
+pvrsrvkm-y += handle_generic.o
+else
+ifeq ($(PVR_HANDLE_BACKEND),idr)
 pvrsrvkm-y += handle_idr.o
+endif
+endif
 pvrsrvkm-y += di_server.o
 pvrsrvkm-y += hash.o
 pvrsrvkm-y += htbserver.o
@@ -73,7 +89,6 @@ pvrsrvkm-y += power.o
 pvrsrvkm-y += process_stats.o
 pvrsrvkm-y += pvr_bridge_k.o
 pvrsrvkm-y += pvr_debug.o
-pvrsrvkm-y += pvr_debugfs.o
 pvrsrvkm-y += pvr_notifier.o
 pvrsrvkm-y += pvrsrv.o
 pvrsrvkm-y += pvrsrv_bridge_init.o
@@ -166,6 +181,10 @@ endif
 # Event tracing
 pvrsrvkm-$(CONFIG_EVENT_TRACING) += trace_events.o
 
+# Debug info interface
+pvrsrvkm-$(CONFIG_DEBUG_FS) += pvr_debugfs.o
+pvrsrvkm-$(CONFIG_PROC_FS) += pvr_procfs.o
+
 # arch-specific wrapper functions
 pvrsrvkm-$(CONFIG_X86) += osfunc_x86.o
 pvrsrvkm-$(CONFIG_ARM) += osfunc_arm.o
@@ -195,7 +214,7 @@ pvrsrvkm-y += \
 endif
 
 
-# Linux synchronisation
+# Linux synchronisation  ????
 ifeq ($(SUPPORT_BUFFER_SYNC),1)
  pvrsrvkm-y += \
   ../pvr_buffer_sync.o \
@@ -203,7 +222,7 @@ ifeq ($(SUPPORT_BUFFER_SYNC),1)
 endif
 
 # Android native synchronisation
-ifeq ($(SUPPORT_NATIVE_FENCE_SYNC),1)
+ifeq ($(SUPPORT_NATIVE_FENCE_SYNC),1)                                                                                                   
 ifeq ($(SUPPORT_DMA_FENCE),1)
  pvrsrvkm-y += \
   ../pvr_sync_file.o \
@@ -267,7 +286,6 @@ ifeq ($(PVR_ARCH),rogue)
 pvrsrvkm-y += $(PVR_ARCH)/generated/rgxtq_bridge/server_rgxtq_bridge.o
 pvrsrvkm-y += $(PVR_ARCH)/generated/rgxbreakpoint_bridge/server_rgxbreakpoint_bridge.o
 endif
-
 ifeq ($(SUPPORT_DISPLAY_CLASS),1)
 pvrsrvkm-y += $(PVR_ARCH)/generated/dc_bridge/server_dc_bridge.o
 endif

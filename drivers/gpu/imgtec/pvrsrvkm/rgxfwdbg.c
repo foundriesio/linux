@@ -114,7 +114,7 @@ PVRSRVRGXFWDebugSetFWLogKM(
 	/* Allocate firmware trace buffer resource(s) if not already done */
 	if (RGXTraceBufferIsInitRequired(psDevInfo))
 	{
-		eError = RGXTraceBufferInitOnDemandResources(psDevInfo);
+		eError = RGXTraceBufferInitOnDemandResources(psDevInfo, RGX_FWSHAREDMEM_CPU_RO_ALLOCFLAGS);
 	}
 #if defined(SUPPORT_TBI_INTERFACE)
 	/* Check if LogType is TBI then allocate resource on demand and copy

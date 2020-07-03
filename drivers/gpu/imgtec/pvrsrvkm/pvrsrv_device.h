@@ -47,6 +47,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "pvrsrv_error.h"
 #include "rgx_fwif_km.h"
 #include "servicesext.h"
+#include "cache_ops.h"
 
 #if defined(SUPPORT_LINUX_DVFS) || defined(SUPPORT_PDVFS)
 #include "pvr_dvfs.h"
@@ -134,6 +135,14 @@ typedef PVRSRV_ERROR
 									IMG_UINT64 ui64MemSize);
 
 typedef void (*PFN_SYS_DEV_FEAT_DEP_INIT)(PVRSRV_DEVICE_CONFIG *, IMG_UINT64);
+
+typedef void
+(*PFN_SYS_DEV_HOST_CACHE_MAINTENANCE)(IMG_HANDLE hSysData,
+									PVRSRV_CACHE_OP eRequestType,
+									void *pvVirtStart,
+									void *pvVirtEnd,
+									IMG_CPU_PHYADDR sCPUPhysStart,
+									IMG_CPU_PHYADDR sCPUPhysEnd);
 
 typedef enum _PVRSRV_TD_FW_MEM_REGION_
 {
@@ -297,6 +306,13 @@ struct _PVRSRV_DEVICE_CONFIG_
 	 *! over a certain size (optional).
 	 */
 	PFN_SYS_DEV_CHECK_MEM_ALLOC_SIZE pfnCheckMemAllocSize;
+
+	/*!
+	 *! Callback to perform host CPU cache maintenance. Might be needed for
+	 *! architectures which allow extensions such as RISC-V (optional).
+	 */
+	PFN_SYS_DEV_HOST_CACHE_MAINTENANCE pfnHostCacheMaintenance;
+	IMG_BOOL bHasPhysicalCacheMaintenance;
 
 #if defined(SUPPORT_TRUSTED_DEVICE)
 	/*!

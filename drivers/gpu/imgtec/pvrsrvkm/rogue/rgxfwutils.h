@@ -491,6 +491,9 @@ static INLINE IMG_UINT64 RGXReadHWTimerReg(PVRSRV_RGXDEV_INFO *psDevInfo)
 #define RGX_FWSHAREDMEM_GPU_RO_ALLOCFLAGS	(RGX_FWSHAREDMEM_ALLOCFLAGS & (~PVRSRV_MEMALLOCFLAG_GPU_WRITEABLE))
 #define RGX_FWSHAREDMEM_CPU_RO_ALLOCFLAGS	(RGX_FWSHAREDMEM_ALLOCFLAGS & (~PVRSRV_MEMALLOCFLAG_CPU_WRITEABLE))
 
+/* data content being kept from previous boot cycles from physical memory must not be cleared during allocation */
+#define RGX_AUTOVZ_KEEP_FW_DATA_MASK(bKeepMem) ((bKeepMem) ? (~PVRSRV_MEMALLOCFLAG_ZERO_ON_ALLOC) : (~0U))
+
 /******************************************************************************
  * RGXSetFirmwareAddress Flags
  *****************************************************************************/
@@ -499,7 +502,7 @@ static INLINE IMG_UINT64 RGXReadHWTimerReg(PVRSRV_RGXDEV_INFO *psDevInfo)
 												  otherwise RGXUnsetFirmwareAddress() must be call when finished. */
 
 IMG_BOOL RGXTraceBufferIsInitRequired(PVRSRV_RGXDEV_INFO *psDevInfo);
-PVRSRV_ERROR RGXTraceBufferInitOnDemandResources(PVRSRV_RGXDEV_INFO *psDevInfo);
+PVRSRV_ERROR RGXTraceBufferInitOnDemandResources(PVRSRV_RGXDEV_INFO* psDevInfo, DEVMEM_FLAGS_T uiAllocFlags);
 
 #if defined(SUPPORT_TBI_INTERFACE)
 IMG_BOOL RGXTBIBufferIsInitRequired(PVRSRV_RGXDEV_INFO *psDevInfo);
@@ -535,7 +538,7 @@ void RGXFreeFirmware(PVRSRV_RGXDEV_INFO *psDevInfo);
 @Description    Sets a pointer in a firmware data structure.
 
 @Input          psDevInfo       Device Info struct
-@Input          ui32AllocFlags  Flags determining type of memory allocation
+@Input          uiAllocFlags    Flags determining type of memory allocation
 @Input          ui32Size        Size of memory allocation
 @Input          pszName         Allocation label
 @Input          psFwPtr         Address of the firmware pointer to set
@@ -545,7 +548,7 @@ void RGXFreeFirmware(PVRSRV_RGXDEV_INFO *psDevInfo);
 @Return         PVRSRV_ERROR
 */ /**************************************************************************/
 PVRSRV_ERROR RGXSetupFwAllocation(PVRSRV_RGXDEV_INFO   *psDevInfo,
-								  IMG_UINT32           ui32AllocFlags,
+								  DEVMEM_FLAGS_T       uiAllocFlags,
 								  IMG_UINT32           ui32Size,
 								  const IMG_CHAR       *pszName,
 								  DEVMEM_MEMDESC       **ppsMemDesc,
@@ -1240,11 +1243,11 @@ void RGXFwRawHeapUnmapFree(PVRSRV_DEVICE_NODE *psDeviceNode,
 						   IMG_UINT32 ui32OSID);
 
 #if defined(SUPPORT_AUTOVZ_HW_REGS) && !defined(SUPPORT_AUTOVZ)
-#error "VZ build configuration error: use of OS scratch registers supported only in Auto-VZ drivers."
+#error "VZ build configuration error: use of OS scratch registers supported only in AutoVz drivers."
 #endif
 
 #if defined(SUPPORT_AUTOVZ_HW_REGS)
-/* auto-vz with hw support */
+/* AutoVz with hw support */
 #define KM_GET_FW_CONNECTION(psDevInfo)				OSReadHWReg32(psDevInfo->pvRegsBaseKM, RGX_CR_OS0_SCRATCH3)
 #define KM_GET_OS_CONNECTION(psDevInfo)				OSReadHWReg32(psDevInfo->pvRegsBaseKM, RGX_CR_OS0_SCRATCH2)
 #define KM_SET_OS_CONNECTION(val, psDevInfo)		OSWriteHWReg32(psDevInfo->pvRegsBaseKM, RGX_CR_OS0_SCRATCH2, RGXFW_CONNECTION_OS_##val)
@@ -1262,7 +1265,7 @@ void RGXFwRawHeapUnmapFree(PVRSRV_DEVICE_NODE *psDeviceNode,
 #endif /* defined(SUPPORT_AUTOVZ) */
 
 #if !defined(NO_HARDWARE) && (defined(RGX_VZ_STATIC_CARVEOUT_FW_HEAPS) || (defined(RGX_NUM_OS_SUPPORTED) && (RGX_NUM_OS_SUPPORTED == 1)))
-/* native, static-vz and auto-vz using shared memory */
+/* native, static-vz and AutoVz using shared memory */
 #define KM_GET_FW_CONNECTION(psDevInfo)			(psDevInfo->psRGXFWIfConnectionCtl->eConnectionFwState)
 #define KM_GET_OS_CONNECTION(psDevInfo)			(psDevInfo->psRGXFWIfConnectionCtl->eConnectionOsState)
 #define KM_SET_OS_CONNECTION(val, psDevInfo)		(psDevInfo->psRGXFWIfConnectionCtl->eConnectionOsState = RGXFW_CONNECTION_OS_##val)

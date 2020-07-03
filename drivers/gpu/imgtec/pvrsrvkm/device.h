@@ -51,7 +51,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "sync_checkpoint.h"
 #include "srvkm.h"
 #include "physheap.h"
-#include <powervr/sync_external.h>
+#include "sync_internal.h"
 #include "sysinfo.h"
 #include "dllist.h"
 
@@ -152,6 +152,8 @@ typedef struct _PG_HANDLE_
 #define MMU_BAD_PHYS_ADDR (0xbadbad00badULL)
 #define DUMMY_PAGE	("DUMMY_PAGE")
 #define DEV_ZERO_PAGE	("DEV_ZERO_PAGE")
+#define PVR_DUMMY_PAGE_INIT_VALUE	(0x0)
+#define PVR_ZERO_PAGE_INIT_VALUE	(0x0)
 
 typedef struct __DEFAULT_PAGE__
 {
@@ -416,9 +418,13 @@ typedef struct _PVRSRV_DEVICE_NODE_
 	RA_ARENA				*psDedicatedFWMemArena;
 #endif
 
-#if defined(SUPPORT_AUTOVZ)
+	/* RA reserved for storing the MMU mappings of firmware.
+	 * The memory backing up this RA must persist between driver or OS reboots */
 	RA_ARENA				*psFwMMUReservedMemArena;
-#endif
+
+	/* Flag indicating if the firmware has been initialised during the
+	 * 1st boot of the Host driver according to the AutoVz life-cycle. */
+	IMG_BOOL				bAutoVzFwIsUp;
 
 	struct _PVRSRV_DEVICE_NODE_	*psNext;
 	struct _PVRSRV_DEVICE_NODE_	**ppsThis;

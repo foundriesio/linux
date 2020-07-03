@@ -2,15 +2,29 @@ obj-$(CONFIG_POWERVR_ADF_FBDEV) += powervr_adf_fbdev.o
 powervr_adf_fbdev-y += adf_common.o adf_fbdev.o
 ifeq ($(CONFIG_ANDROID),y)
     ifeq ($(CONFIG_ARM64),y)
+        include $(srctree)/drivers/gpu/imgtec/config_kernel_android64.mk
         ccflags-y += -include $(srctree)/drivers/gpu/imgtec/config_kernel_android64.h
     else
+        include $(srctree)/drivers/gpu/imgtec/config_kernel_android32.mk
         ccflags-y += -include $(srctree)/drivers/gpu/imgtec/config_kernel_android32.h
     endif
 else
-    ifeq ($(CONFIG_ARM64),y)
-        ccflags-y += -include $(srctree)/drivers/gpu/imgtec/config_kernel_linux64.h
+    ifeq ($(CONFIG_FB_NEW),y)
+        ifeq ($(CONFIG_ARM64),y)
+            include $(srctree)/drivers/gpu/imgtec/config_kernel_linux64_fb.mk
+            ccflags-y += -include $(srctree)/drivers/gpu/imgtec/config_kernel_linux64_fb.h
+        else
+            include $(srctree)/drivers/gpu/imgtec/config_kernel_linux32_fb.mk
+            ccflags-y += -include $(srctree)/drivers/gpu/imgtec/config_kernel_linux32_fb.h
+	endif
     else
-        ccflags-y += -include $(srctree)/drivers/gpu/imgtec/config_kernel_linux32.h
+        ifeq ($(CONFIG_ARM64),y)
+            include $(srctree)/drivers/gpu/imgtec/config_kernel_linux64_drm.mk
+            ccflags-y += -include $(srctree)/drivers/gpu/imgtec/config_kernel_linux64_drm.h
+        else
+            include $(srctree)/drivers/gpu/imgtec/config_kernel_linux32_drm.mk
+            ccflags-y += -include $(srctree)/drivers/gpu/imgtec/config_kernel_linux32_drm.h
+	endif    
     endif
 endif
 

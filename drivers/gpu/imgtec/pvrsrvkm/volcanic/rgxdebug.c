@@ -2201,9 +2201,9 @@ void RGXDumpRGXDebugSummary(DUMPDEBUG_PRINTF_FUNC *pfnDumpDebugPrintf,
 #if defined(RGX_VZ_STATIC_CARVEOUT_FW_HEAPS)
 #if defined(SUPPORT_AUTOVZ)
 #if defined(SUPPORT_AUTOVZ_HW_REGS)
-		PVR_DUMPDEBUG_LOG("RGX Virtualisation type: Auto-VZ with HW register support");
+		PVR_DUMPDEBUG_LOG("RGX Virtualisation type: AutoVz with HW register support");
 #else
-		PVR_DUMPDEBUG_LOG("RGX Virtualisation type: Auto-VZ with shared memory");
+		PVR_DUMPDEBUG_LOG("RGX Virtualisation type: AutoVz with shared memory");
 #endif /* defined(SUPPORT_AUTOVZ_HW_REGS) */
 #else
 		PVR_DUMPDEBUG_LOG("RGX Virtualisation type: Hypervisor-assisted with static Fw heap allocation");

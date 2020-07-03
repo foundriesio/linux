@@ -964,19 +964,22 @@ static PVRSRV_ERROR InitFirmware(PVRSRV_DEVICE_NODE *psDeviceNode,
 	 * while the code segments will be loaded to secure memory
 	 * by the trusted device.
 	 */
-	eError = RGXProcessFWImage(&sLayerParams,
-							   pbRGXFirmware,
-							   pvFWCodeHostAddr,
-							   pvFWDataHostAddr,
-							   pvFWCorememCodeHostAddr,
-							   pvFWCorememDataHostAddr,
-							   &uFWParams);
-	if (eError != PVRSRV_OK)
+	if (!psDeviceNode->bAutoVzFwIsUp)
 	{
-		PVR_DPF((PVR_DBG_ERROR,
-				 "%s: RGXProcessFWImage failed (%d)",
-				 __func__, eError));
-		goto release_fw_allocations;
+		eError = RGXProcessFWImage(&sLayerParams,
+								   pbRGXFirmware,
+								   pvFWCodeHostAddr,
+								   pvFWDataHostAddr,
+								   pvFWCorememCodeHostAddr,
+								   pvFWCorememDataHostAddr,
+								   &uFWParams);
+		if (eError != PVRSRV_OK)
+		{
+			PVR_DPF((PVR_DBG_ERROR,
+					 "%s: RGXProcessFWImage failed (%d)",
+					 __func__, eError));
+			goto release_fw_allocations;
+		}
 	}
 
 #if defined(SUPPORT_TRUSTED_DEVICE) && !defined(NO_HARDWARE) && !defined(SUPPORT_SECURITY_VALIDATION)
@@ -1311,6 +1314,30 @@ PVRSRV_ERROR RGXInit(PVRSRV_DEVICE_NODE *psDeviceNode)
 	IMG_UINT32 ui32DeviceFlags;
 
 	PVRSRV_RGXDEV_INFO *psDevInfo = (PVRSRV_RGXDEV_INFO *)psDeviceNode->pvDevice;
+
+#if defined(SUPPORT_AUTOVZ)
+	if (PVRSRV_VZ_MODE_IS(HOST))
+	{
+		const IMG_UINT32 ui32MtsDm0IntEnableReg = 0xB58;
+
+		/* The RGX_CR_MTS_DM0_INTERRUPT_ENABLE register is always set by the firmware during initialisation
+		 * and it provides a good method of determining if the firmware has been booted previously */
+		psDeviceNode->bAutoVzFwIsUp = (OSReadHWReg32(psDevInfo->pvRegsBaseKM, ui32MtsDm0IntEnableReg) != 0);
+
+		PVR_LOG(("AutoVz startup check: firmware is %s;",
+				(psDeviceNode->bAutoVzFwIsUp) ? "already running" : "powered down"));
+	}
+	else if (PVRSRV_VZ_MODE_IS(GUEST))
+	{
+		/* Guest assumes the firmware is always available */
+		psDeviceNode->bAutoVzFwIsUp = IMG_TRUE;
+	}
+	else
+#endif
+	{
+		/* Firmware does not follow the AutoVz life-cycle */
+		psDeviceNode->bAutoVzFwIsUp = IMG_FALSE;
+	}
 
 	/* Services initialisation parameters */
 	_ParseHTBAppHints(psDeviceNode);

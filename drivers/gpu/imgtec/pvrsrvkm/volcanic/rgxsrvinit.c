@@ -373,7 +373,6 @@ static INLINE void GetApphints(PVRSRV_RGXDEV_INFO *psDevInfo, RGX_SRVINIT_APPHIN
 	SrvInitParamGetUINT32(pvParamState, HWRDebugDumpLimit, ui32ParamTemp);
 	psHints->ui32HWRDebugDumpLimit = MIN(ui32ParamTemp, RGXFWIF_HWR_DEBUG_DUMP_ALL);
 	SrvInitParamGetUINT32(pvParamState, JonesDisableMask, ui32ParamTemp);
-	/*                                        FIXME: RGX_CR_JONES_FIX_DISABLE_CLRMSK */
 	psHints->ui32JonesDisableMask = ui32ParamTemp & ~0XFFFF0000U;
 
 	SrvInitParamGetBOOL(pvParamState, NewFilteringMode, psHints->bFilteringMode);
@@ -862,20 +861,23 @@ static PVRSRV_ERROR InitFirmware(PVRSRV_DEVICE_NODE *psDeviceNode,
 	 * while the code segments will be loaded to secure memory
 	 * by the trusted device.
 	 */
-	eError = RGXProcessFWImage(&sLayerParams,
-							   pbRGXFirmware,
-							   pvFWCodeHostAddr,
-							   pvFWDataHostAddr,
-							   pvFWCorememCodeHostAddr,
-							   pvFWCorememDataHostAddr,
-							   &uFWParams);
-	if (eError != PVRSRV_OK)
+	if (!psDeviceNode->bAutoVzFwIsUp)
 	{
-		PVR_DPF((PVR_DBG_ERROR,
-		         "%s: RGXProcessFWImage failed (%d)",
-		         __func__,
-		         eError));
-		goto release_corememdata;
+		eError = RGXProcessFWImage(&sLayerParams,
+								   pbRGXFirmware,
+								   pvFWCodeHostAddr,
+								   pvFWDataHostAddr,
+								   pvFWCorememCodeHostAddr,
+								   pvFWCorememDataHostAddr,
+								   &uFWParams);
+		if (eError != PVRSRV_OK)
+		{
+			PVR_DPF((PVR_DBG_ERROR,
+			         "%s: RGXProcessFWImage failed (%d)",
+			         __func__,
+			         eError));
+			goto release_corememdata;
+		}
 	}
 
 #if defined(SUPPORT_TRUSTED_DEVICE) && !defined(NO_HARDWARE) && !defined(SUPPORT_SECURITY_VALIDATION)
@@ -1308,6 +1310,30 @@ PVRSRV_ERROR RGXInit(PVRSRV_DEVICE_NODE *psDeviceNode)
 
 	/* Size of the RGXFWIF_HWPERF_CTL_BLK structure - varies by BVNC */
 	IMG_UINT32 ui32HWPerfBlkSize;
+
+#if defined(SUPPORT_AUTOVZ)
+	if (PVRSRV_VZ_MODE_IS(HOST))
+	{
+		const IMG_UINT32 ui32MtsDm0IntEnableReg = 0xB58;
+
+		/* The RGX_CR_MTS_DM0_INTERRUPT_ENABLE register is always set by the firmware during initialisation
+		 * and it provides a good method of determining if the firmware has been booted previously */
+		psDeviceNode->bAutoVzFwIsUp = (OSReadHWReg32(psDevInfo->pvRegsBaseKM, ui32MtsDm0IntEnableReg) != 0);
+
+		PVR_LOG(("AutoVz startup check: firmware is %s;",
+				(psDeviceNode->bAutoVzFwIsUp) ? "already running" : "powered down"));
+	}
+	else if (PVRSRV_VZ_MODE_IS(GUEST))
+	{
+		/* Guest assumes the firmware is always available */
+		psDeviceNode->bAutoVzFwIsUp = IMG_TRUE;
+	}
+	else
+#endif
+	{
+		/* Firmware does not follow the AutoVz life-cycle */
+		psDeviceNode->bAutoVzFwIsUp = IMG_FALSE;
+	}
 
 #if defined(PDUMP)
 	PDUMPCOMMENTWITHFLAGS(PDUMP_FLAGS_CONTINUOUS, "Register defs revision: %d", RGX_CR_DEFS_KM_REVISION);

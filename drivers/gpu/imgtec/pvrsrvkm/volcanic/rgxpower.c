@@ -156,13 +156,16 @@ PVRSRV_ERROR RGXPrePowerState(IMG_HANDLE				hDevHandle,
                               IMG_BOOL					bForced)
 {
 	PVRSRV_ERROR eError = PVRSRV_OK;
+	PVRSRV_DEVICE_NODE    *psDeviceNode = hDevHandle;
 
-	PVRSRV_VZ_RET_IF_MODE(GUEST, PVRSRV_OK);
+	if (PVRSRV_VZ_MODE_IS(GUEST) || (psDeviceNode->bAutoVzFwIsUp))
+	{
+		return PVRSRV_OK;
+	}
 
 	if ((eNewPowerState != eCurrentPowerState) &&
 	    (eNewPowerState != PVRSRV_DEV_POWER_STATE_ON))
 	{
-		PVRSRV_DEVICE_NODE    *psDeviceNode = hDevHandle;
 		PVRSRV_RGXDEV_INFO    *psDevInfo = psDeviceNode->pvDevice;
 		RGXFWIF_KCCB_CMD      sPowCmd;
 		IMG_UINT32            ui32CmdKCCBSlot;
@@ -436,7 +439,7 @@ PVRSRV_ERROR RGXPostPowerState(IMG_HANDLE				hDevHandle,
 		IMG_UINT32			 ui32ConfigFlags;
 #endif
 
-		if (PVRSRV_VZ_MODE_IS(GUEST))
+		if (PVRSRV_VZ_MODE_IS(GUEST) || (psDeviceNode->bAutoVzFwIsUp))
 		{
 			psDevInfo->bRGXPowered = IMG_TRUE;
 			return PVRSRV_OK;

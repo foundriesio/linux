@@ -332,13 +332,11 @@ DeviceMemChangeSparse(DEVMEM_MEMDESC *psMemDesc,
 		goto e0;
 	}
 
-#if !defined(FIX_HW_BRN_65273)
 	if ((uiSparseFlags & SPARSE_RESIZE_BOTH) && (0 == sDevVAddr.uiAddr))
 	{
 		PVR_DPF((PVR_DBG_ERROR, "%s: Invalid Device Virtual Map", __func__));
 		goto e0;
 	}
-#endif
 
 	if ((uiSparseFlags & SPARSE_MAP_CPU_ADDR) && (NULL == pvCpuVAddr))
 	{
@@ -395,6 +393,11 @@ DeviceMemChangeSparse(DEVMEM_MEMDESC *psMemDesc,
 			(IMG_UINT64)((uintptr_t)pvCpuVAddr));
 
 	OSLockRelease(hLock);
+
+	if (eError != PVRSRV_OK)
+	{
+		goto e0;
+	}
 
 	if (GetInfoPageDebugFlags(psMemDesc->psImport->hDevConnection) & DEBUG_FEATURE_PAGE_FAULT_DEBUG_ENABLED)
 	{

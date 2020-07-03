@@ -1889,13 +1889,11 @@ void PVRSRVPhysMemHeapsDeinit(PVRSRV_DEVICE_NODE *psDeviceNode)
 	IMG_UINT32 i;
 	IMG_UINT32 ui32RegionIdx;
 
-#if defined(SUPPORT_AUTOVZ)
 	if (psDeviceNode->psFwMMUReservedMemArena)
 	{
 		RA_Delete(psDeviceNode->psFwMMUReservedMemArena);
 		psDeviceNode->psFwMMUReservedMemArena = NULL;
 	}
-#endif
 
 	if (psDeviceNode->psKernelFwConfigMemArena)
 	{
@@ -2997,11 +2995,15 @@ PVRSRV_ERROR IMG_CALLCONV PVRSRVDeviceFinalise(PVRSRV_DEVICE_NODE *psDeviceNode,
 
 		if (PVRSRV_VZ_MODE_IS(GUEST))
 		{
-
 #if defined(SUPPORT_AUTOVZ)
+			/* AutoVz Guest drivers expect the firmware to have set its end of the
+			 * connection to Ready state by now. Poll indefinitely otherwise. */
+			if (!KM_FW_CONNECTION_IS(READY, psDevInfo))
+			{
+				PVR_DPF((PVR_DBG_WARNING, "%s: Firmware Connection is not in Ready state. Waiting for Firmware ...", __func__));
+			}
 			while (!KM_FW_CONNECTION_IS(READY, psDevInfo))
 			{
-				PVR_DPF((PVR_DBG_MESSAGE, "%s: Firmware is not in Ready state yet ...", __func__));
 				OSWaitus(PVR_AUTOVZ_WDG_PERIOD_MS * 1000);
 			}
 			PVR_DPF((PVR_DBG_MESSAGE, "%s: Firmware Connection is Ready. Initialisation proceeding.", __func__));
@@ -3032,6 +3034,14 @@ PVRSRV_ERROR IMG_CALLCONV PVRSRVDeviceFinalise(PVRSRV_DEVICE_NODE *psDeviceNode,
 			if (KM_FW_CONNECTION_IS(ACTIVE, psDevInfo))
 			{
 				KM_SET_OS_CONNECTION(ACTIVE, psDevInfo);
+#if defined(SUPPORT_AUTOVZ)
+				if (PVRSRV_VZ_MODE_IS(HOST))
+				{
+					/* During first-time boot the flag is set here, while subsequent reboots will already
+					 * have set it earlier in RGXInit. Set to true from this point onwards in any case. */
+					psDeviceNode->bAutoVzFwIsUp = IMG_TRUE;
+				}
+#endif
 			}
 			else
 			{

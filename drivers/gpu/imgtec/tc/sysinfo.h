@@ -45,7 +45,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define __SYSINFO_H__
 
 /*!< System specific poll/timeout details */
-#if defined(VIRTUAL_PLATFORM)
+#if defined(VIRTUAL_PLATFORM) || defined(FPGA)
 #define MAX_HW_TIME_US                           (240000000)
 #define DEVICES_WATCHDOG_POWER_ON_SLEEP_TIMEOUT  (120000)
 #else

@@ -9,9 +9,6 @@ config POWERVR_ADF_FBDEV
 	  no native ADF driver. This driver will wrap the fbdev driver
 	  to provide minimal compatibility with ADF.
 
-config POWERVR_DC_FBDEV
-	tristate "DC driver for fbdev-only systems"
-        depends on FB
 
 source "drivers/gpu/imgtec/pvrsrvkm/Kconfig"
 

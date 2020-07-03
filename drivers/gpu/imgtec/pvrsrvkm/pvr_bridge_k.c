@@ -207,9 +207,9 @@ static IMG_INT64 BridgeStatsWrite(const IMG_CHAR *pcBuffer,
 
 	PVR_RETURN_IF_FALSE(pcBuffer != NULL, -EIO);
 	PVR_RETURN_IF_FALSE(pui64Pos != NULL && *pui64Pos == 0, -EIO);
-	PVR_RETURN_IF_FALSE(ui64Count == 2, -EINVAL);
+	PVR_RETURN_IF_FALSE(ui64Count >= 1, -EINVAL);
 	PVR_RETURN_IF_FALSE(pcBuffer[0] == '0', -EINVAL);
-	PVR_RETURN_IF_FALSE(pcBuffer[ui64Count - 1] == '\n', -EINVAL);
+	PVR_RETURN_IF_FALSE(pcBuffer[ui64Count - 1] == '\0', -EINVAL);
 
 	/* Reset stats. */
 

@@ -3925,9 +3925,9 @@ void RGXDumpRGXDebugSummary(DUMPDEBUG_PRINTF_FUNC *pfnDumpDebugPrintf,
 #if defined(RGX_VZ_STATIC_CARVEOUT_FW_HEAPS)
 #if defined(SUPPORT_AUTOVZ)
 #if defined(SUPPORT_AUTOVZ_HW_REGS)
-		PVR_DUMPDEBUG_LOG("RGX Virtualisation type: Auto-VZ with HW register support");
+		PVR_DUMPDEBUG_LOG("RGX Virtualisation type: AutoVz with HW register support");
 #else
-		PVR_DUMPDEBUG_LOG("RGX Virtualisation type: Auto-VZ with shared memory");
+		PVR_DUMPDEBUG_LOG("RGX Virtualisation type: AutoVz with shared memory");
 #endif /* defined(SUPPORT_AUTOVZ_HW_REGS) */
 #else
 		PVR_DUMPDEBUG_LOG("RGX Virtualisation type: Hypervisor-assisted with static Fw heap allocation");
@@ -5197,16 +5197,15 @@ void RGXDebugRequestProcess(DUMPDEBUG_PRINTF_FUNC *pfnDumpDebugPrintf,
 
 				get_irq_cnt_val(ui32IrqCnt, ui32idx, psDevInfo);
 				if (ui32IrqCnt)
-					if (ui32IrqCnt)
-					{
-						PVR_DUMPDEBUG_LOG(MSG_IRQ_CNT_TYPE "%u: FW IRQ count = %u", ui32idx, ui32IrqCnt);
+				{
+					PVR_DUMPDEBUG_LOG(MSG_IRQ_CNT_TYPE "%u: FW IRQ count = %u", ui32idx, ui32IrqCnt);
 #if defined(RGX_FW_IRQ_OS_COUNTERS)
-						if (ui32idx == RGXFW_HOST_OS)
+					if (ui32idx == RGXFW_HOST_OS)
 #endif
-						{
-							PVR_DUMPDEBUG_LOG("Last sampled IRQ count in LISR = %u", psDevInfo->aui32SampleIRQCount[ui32idx]);
-						}
+					{
+						PVR_DUMPDEBUG_LOG("Last sampled IRQ count in LISR = %u", psDevInfo->aui32SampleIRQCount[ui32idx]);
 					}
+				}
 			}
 		}
 	}

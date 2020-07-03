@@ -389,20 +389,20 @@ void DIDestroyEntry(DI_ENTRY *psEntry)
 	PVR_LOG_RETURN_VOID_IF_FALSE(psEntry != NULL,
 	                             "psEntry invalid in DIDestroyEntry()");
 
-	/* Iterate through all of the native entries of the DI entry and removed
-	 * them from the list and then destroy them. After that destroy the
+	/* Iterate through all of the native entries of the DI entry, remove
+	 * them from the list and then destroy them. After that, destroy the
 	 * DI entry itself. */
 	dllist_foreach_node(&psEntry->sNativeHandleList, psThis, psNext)
 	{
 		DI_NATIVE_HANDLE *psNative = IMG_CONTAINER_OF(psThis, DI_NATIVE_HANDLE,
 		                                              sListNode);
 
-		/* The implementation must ensure that entry is not remove is any
+		/* The implementation must ensure that entry is not removed if any
 		 * operations are being executed on the entry. If this is the case
 		 * the implementation should block until all of them are finished
 		 * and prevent any further operations.
 		 * This will guarantee proper synchronisation between the DI framework
-		 * and underlying implementations and prevent entries destruction/access
+		 * and underlying implementations and prevent destruction/access
 		 * races. */
 		psNative->psDiImpl->sCb.pfnDestroyEntry(psNative->pvHandle);
 		dllist_remove_node(&psNative->sListNode);
@@ -510,7 +510,7 @@ void DIDestroyGroup(DI_GROUP *psGroup)
 	PVR_LOG_RETURN_VOID_IF_FALSE(psGroup != NULL,
 	                             "psGroup invalid in DIDestroyGroup()");
 
-	/* Iterate through all of the native groups of the DI group and removed
+	/* Iterate through all of the native groups of the DI group, remove
 	 * them from the list and then destroy them. After that destroy the
 	 * DI group itself. */
 	dllist_foreach_node(&psGroup->sNativeHandleList, psThis, psNext)
@@ -518,7 +518,7 @@ void DIDestroyGroup(DI_GROUP *psGroup)
 		DI_NATIVE_HANDLE *psNative = IMG_CONTAINER_OF(psThis, DI_NATIVE_HANDLE,
 		                                              sListNode);
 
-		psNative->psDiImpl->sCb.pfnDestroyEntry(psNative->pvHandle);
+		psNative->psDiImpl->sCb.pfnDestroyGroup(psNative->pvHandle);
 		dllist_remove_node(&psNative->sListNode);
 		OSFreeMem(psNative);
 	}

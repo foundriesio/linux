@@ -106,104 +106,107 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define	RGX_FEATURE_GS_RTA_SUPPORT_POS                              	(14U)
 #define	RGX_FEATURE_GS_RTA_SUPPORT_BIT_MASK                         	(IMG_UINT64_C(0x0000000000004000))
 
-#define	RGX_FEATURE_META_DMA_POS                                    	(15U)
-#define	RGX_FEATURE_META_DMA_BIT_MASK                               	(IMG_UINT64_C(0x0000000000008000))
+#define	RGX_FEATURE_IRQ_PER_OS_POS                                  	(15U)
+#define	RGX_FEATURE_IRQ_PER_OS_BIT_MASK                             	(IMG_UINT64_C(0x0000000000008000))
 
-#define	RGX_FEATURE_MIPS_POS                                        	(16U)
-#define	RGX_FEATURE_MIPS_BIT_MASK                                   	(IMG_UINT64_C(0x0000000000010000))
+#define	RGX_FEATURE_META_DMA_POS                                    	(16U)
+#define	RGX_FEATURE_META_DMA_BIT_MASK                               	(IMG_UINT64_C(0x0000000000010000))
 
-#define	RGX_FEATURE_PBE2_IN_XE_POS                                  	(17U)
-#define	RGX_FEATURE_PBE2_IN_XE_BIT_MASK                             	(IMG_UINT64_C(0x0000000000020000))
+#define	RGX_FEATURE_MIPS_POS                                        	(17U)
+#define	RGX_FEATURE_MIPS_BIT_MASK                                   	(IMG_UINT64_C(0x0000000000020000))
 
-#define	RGX_FEATURE_PBVNC_COREID_REG_POS                            	(18U)
-#define	RGX_FEATURE_PBVNC_COREID_REG_BIT_MASK                       	(IMG_UINT64_C(0x0000000000040000))
+#define	RGX_FEATURE_PBE2_IN_XE_POS                                  	(18U)
+#define	RGX_FEATURE_PBE2_IN_XE_BIT_MASK                             	(IMG_UINT64_C(0x0000000000040000))
 
-#define	RGX_FEATURE_PDS_PER_DUST_POS                                	(19U)
-#define	RGX_FEATURE_PDS_PER_DUST_BIT_MASK                           	(IMG_UINT64_C(0x0000000000080000))
+#define	RGX_FEATURE_PBVNC_COREID_REG_POS                            	(19U)
+#define	RGX_FEATURE_PBVNC_COREID_REG_BIT_MASK                       	(IMG_UINT64_C(0x0000000000080000))
 
-#define	RGX_FEATURE_PDS_TEMPSIZE8_POS                               	(20U)
-#define	RGX_FEATURE_PDS_TEMPSIZE8_BIT_MASK                          	(IMG_UINT64_C(0x0000000000100000))
+#define	RGX_FEATURE_PDS_PER_DUST_POS                                	(20U)
+#define	RGX_FEATURE_PDS_PER_DUST_BIT_MASK                           	(IMG_UINT64_C(0x0000000000100000))
 
-#define	RGX_FEATURE_PERFBUS_POS                                     	(21U)
-#define	RGX_FEATURE_PERFBUS_BIT_MASK                                	(IMG_UINT64_C(0x0000000000200000))
+#define	RGX_FEATURE_PDS_TEMPSIZE8_POS                               	(21U)
+#define	RGX_FEATURE_PDS_TEMPSIZE8_BIT_MASK                          	(IMG_UINT64_C(0x0000000000200000))
 
-#define	RGX_FEATURE_PERF_COUNTER_BATCH_POS                          	(22U)
-#define	RGX_FEATURE_PERF_COUNTER_BATCH_BIT_MASK                     	(IMG_UINT64_C(0x0000000000400000))
+#define	RGX_FEATURE_PERFBUS_POS                                     	(22U)
+#define	RGX_FEATURE_PERFBUS_BIT_MASK                                	(IMG_UINT64_C(0x0000000000400000))
 
-#define	RGX_FEATURE_RAY_TRACING_DEPRECATED_POS                      	(23U)
-#define	RGX_FEATURE_RAY_TRACING_DEPRECATED_BIT_MASK                 	(IMG_UINT64_C(0x0000000000800000))
+#define	RGX_FEATURE_PERF_COUNTER_BATCH_POS                          	(23U)
+#define	RGX_FEATURE_PERF_COUNTER_BATCH_BIT_MASK                     	(IMG_UINT64_C(0x0000000000800000))
 
-#define	RGX_FEATURE_RISCV_FW_PROCESSOR_POS                          	(24U)
-#define	RGX_FEATURE_RISCV_FW_PROCESSOR_BIT_MASK                     	(IMG_UINT64_C(0x0000000001000000))
+#define	RGX_FEATURE_RAY_TRACING_DEPRECATED_POS                      	(24U)
+#define	RGX_FEATURE_RAY_TRACING_DEPRECATED_BIT_MASK                 	(IMG_UINT64_C(0x0000000001000000))
 
-#define	RGX_FEATURE_ROGUEXE_POS                                     	(25U)
-#define	RGX_FEATURE_ROGUEXE_BIT_MASK                                	(IMG_UINT64_C(0x0000000002000000))
+#define	RGX_FEATURE_RISCV_FW_PROCESSOR_POS                          	(25U)
+#define	RGX_FEATURE_RISCV_FW_PROCESSOR_BIT_MASK                     	(IMG_UINT64_C(0x0000000002000000))
 
-#define	RGX_FEATURE_S7_CACHE_HIERARCHY_POS                          	(26U)
-#define	RGX_FEATURE_S7_CACHE_HIERARCHY_BIT_MASK                     	(IMG_UINT64_C(0x0000000004000000))
+#define	RGX_FEATURE_ROGUEXE_POS                                     	(26U)
+#define	RGX_FEATURE_ROGUEXE_BIT_MASK                                	(IMG_UINT64_C(0x0000000004000000))
 
-#define	RGX_FEATURE_S7_TOP_INFRASTRUCTURE_POS                       	(27U)
-#define	RGX_FEATURE_S7_TOP_INFRASTRUCTURE_BIT_MASK                  	(IMG_UINT64_C(0x0000000008000000))
+#define	RGX_FEATURE_S7_CACHE_HIERARCHY_POS                          	(27U)
+#define	RGX_FEATURE_S7_CACHE_HIERARCHY_BIT_MASK                     	(IMG_UINT64_C(0x0000000008000000))
 
-#define	RGX_FEATURE_SCALABLE_VDM_GPP_POS                            	(28U)
-#define	RGX_FEATURE_SCALABLE_VDM_GPP_BIT_MASK                       	(IMG_UINT64_C(0x0000000010000000))
+#define	RGX_FEATURE_S7_TOP_INFRASTRUCTURE_POS                       	(28U)
+#define	RGX_FEATURE_S7_TOP_INFRASTRUCTURE_BIT_MASK                  	(IMG_UINT64_C(0x0000000010000000))
 
-#define	RGX_FEATURE_SIGNAL_SNOOPING_POS                             	(29U)
-#define	RGX_FEATURE_SIGNAL_SNOOPING_BIT_MASK                        	(IMG_UINT64_C(0x0000000020000000))
+#define	RGX_FEATURE_SCALABLE_VDM_GPP_POS                            	(29U)
+#define	RGX_FEATURE_SCALABLE_VDM_GPP_BIT_MASK                       	(IMG_UINT64_C(0x0000000020000000))
 
-#define	RGX_FEATURE_SIMPLE_INTERNAL_PARAMETER_FORMAT_POS            	(30U)
-#define	RGX_FEATURE_SIMPLE_INTERNAL_PARAMETER_FORMAT_BIT_MASK       	(IMG_UINT64_C(0x0000000040000000))
+#define	RGX_FEATURE_SIGNAL_SNOOPING_POS                             	(30U)
+#define	RGX_FEATURE_SIGNAL_SNOOPING_BIT_MASK                        	(IMG_UINT64_C(0x0000000040000000))
 
-#define	RGX_FEATURE_SIMPLE_INTERNAL_PARAMETER_FORMAT_V1_POS         	(31U)
-#define	RGX_FEATURE_SIMPLE_INTERNAL_PARAMETER_FORMAT_V1_BIT_MASK    	(IMG_UINT64_C(0x0000000080000000))
+#define	RGX_FEATURE_SIMPLE_INTERNAL_PARAMETER_FORMAT_POS            	(31U)
+#define	RGX_FEATURE_SIMPLE_INTERNAL_PARAMETER_FORMAT_BIT_MASK       	(IMG_UINT64_C(0x0000000080000000))
 
-#define	RGX_FEATURE_SIMPLE_INTERNAL_PARAMETER_FORMAT_V2_POS         	(32U)
-#define	RGX_FEATURE_SIMPLE_INTERNAL_PARAMETER_FORMAT_V2_BIT_MASK    	(IMG_UINT64_C(0x0000000100000000))
+#define	RGX_FEATURE_SIMPLE_INTERNAL_PARAMETER_FORMAT_V1_POS         	(32U)
+#define	RGX_FEATURE_SIMPLE_INTERNAL_PARAMETER_FORMAT_V1_BIT_MASK    	(IMG_UINT64_C(0x0000000100000000))
 
-#define	RGX_FEATURE_SINGLE_BIF_POS                                  	(33U)
-#define	RGX_FEATURE_SINGLE_BIF_BIT_MASK                             	(IMG_UINT64_C(0x0000000200000000))
+#define	RGX_FEATURE_SIMPLE_INTERNAL_PARAMETER_FORMAT_V2_POS         	(33U)
+#define	RGX_FEATURE_SIMPLE_INTERNAL_PARAMETER_FORMAT_V2_BIT_MASK    	(IMG_UINT64_C(0x0000000200000000))
 
-#define	RGX_FEATURE_SLCSIZE8_POS                                    	(34U)
-#define	RGX_FEATURE_SLCSIZE8_BIT_MASK                               	(IMG_UINT64_C(0x0000000400000000))
+#define	RGX_FEATURE_SINGLE_BIF_POS                                  	(34U)
+#define	RGX_FEATURE_SINGLE_BIF_BIT_MASK                             	(IMG_UINT64_C(0x0000000400000000))
 
-#define	RGX_FEATURE_SLC_HYBRID_CACHELINE_64_128_POS                 	(35U)
-#define	RGX_FEATURE_SLC_HYBRID_CACHELINE_64_128_BIT_MASK            	(IMG_UINT64_C(0x0000000800000000))
+#define	RGX_FEATURE_SLCSIZE8_POS                                    	(35U)
+#define	RGX_FEATURE_SLCSIZE8_BIT_MASK                               	(IMG_UINT64_C(0x0000000800000000))
 
-#define	RGX_FEATURE_SLC_VIVT_POS                                    	(36U)
-#define	RGX_FEATURE_SLC_VIVT_BIT_MASK                               	(IMG_UINT64_C(0x0000001000000000))
+#define	RGX_FEATURE_SLC_HYBRID_CACHELINE_64_128_POS                 	(36U)
+#define	RGX_FEATURE_SLC_HYBRID_CACHELINE_64_128_BIT_MASK            	(IMG_UINT64_C(0x0000001000000000))
 
-#define	RGX_FEATURE_SYS_BUS_SECURE_RESET_POS                        	(37U)
-#define	RGX_FEATURE_SYS_BUS_SECURE_RESET_BIT_MASK                   	(IMG_UINT64_C(0x0000002000000000))
+#define	RGX_FEATURE_SLC_VIVT_POS                                    	(37U)
+#define	RGX_FEATURE_SLC_VIVT_BIT_MASK                               	(IMG_UINT64_C(0x0000002000000000))
 
-#define	RGX_FEATURE_TDM_PDS_CHECKSUM_POS                            	(38U)
-#define	RGX_FEATURE_TDM_PDS_CHECKSUM_BIT_MASK                       	(IMG_UINT64_C(0x0000004000000000))
+#define	RGX_FEATURE_SYS_BUS_SECURE_RESET_POS                        	(38U)
+#define	RGX_FEATURE_SYS_BUS_SECURE_RESET_BIT_MASK                   	(IMG_UINT64_C(0x0000004000000000))
 
-#define	RGX_FEATURE_TESSELLATION_POS                                	(39U)
-#define	RGX_FEATURE_TESSELLATION_BIT_MASK                           	(IMG_UINT64_C(0x0000008000000000))
+#define	RGX_FEATURE_TDM_PDS_CHECKSUM_POS                            	(39U)
+#define	RGX_FEATURE_TDM_PDS_CHECKSUM_BIT_MASK                       	(IMG_UINT64_C(0x0000008000000000))
 
-#define	RGX_FEATURE_TLA_POS                                         	(40U)
-#define	RGX_FEATURE_TLA_BIT_MASK                                    	(IMG_UINT64_C(0x0000010000000000))
+#define	RGX_FEATURE_TESSELLATION_POS                                	(40U)
+#define	RGX_FEATURE_TESSELLATION_BIT_MASK                           	(IMG_UINT64_C(0x0000010000000000))
 
-#define	RGX_FEATURE_TPU_CEM_DATAMASTER_GLOBAL_REGISTERS_POS         	(41U)
-#define	RGX_FEATURE_TPU_CEM_DATAMASTER_GLOBAL_REGISTERS_BIT_MASK    	(IMG_UINT64_C(0x0000020000000000))
+#define	RGX_FEATURE_TLA_POS                                         	(41U)
+#define	RGX_FEATURE_TLA_BIT_MASK                                    	(IMG_UINT64_C(0x0000020000000000))
 
-#define	RGX_FEATURE_TPU_DM_GLOBAL_REGISTERS_POS                     	(42U)
-#define	RGX_FEATURE_TPU_DM_GLOBAL_REGISTERS_BIT_MASK                	(IMG_UINT64_C(0x0000040000000000))
+#define	RGX_FEATURE_TPU_CEM_DATAMASTER_GLOBAL_REGISTERS_POS         	(42U)
+#define	RGX_FEATURE_TPU_CEM_DATAMASTER_GLOBAL_REGISTERS_BIT_MASK    	(IMG_UINT64_C(0x0000040000000000))
 
-#define	RGX_FEATURE_TPU_FILTERING_MODE_CONTROL_POS                  	(43U)
-#define	RGX_FEATURE_TPU_FILTERING_MODE_CONTROL_BIT_MASK             	(IMG_UINT64_C(0x0000080000000000))
+#define	RGX_FEATURE_TPU_DM_GLOBAL_REGISTERS_POS                     	(43U)
+#define	RGX_FEATURE_TPU_DM_GLOBAL_REGISTERS_BIT_MASK                	(IMG_UINT64_C(0x0000080000000000))
 
-#define	RGX_FEATURE_VDM_DRAWINDIRECT_POS                            	(44U)
-#define	RGX_FEATURE_VDM_DRAWINDIRECT_BIT_MASK                       	(IMG_UINT64_C(0x0000100000000000))
+#define	RGX_FEATURE_TPU_FILTERING_MODE_CONTROL_POS                  	(44U)
+#define	RGX_FEATURE_TPU_FILTERING_MODE_CONTROL_BIT_MASK             	(IMG_UINT64_C(0x0000100000000000))
 
-#define	RGX_FEATURE_VDM_OBJECT_LEVEL_LLS_POS                        	(45U)
-#define	RGX_FEATURE_VDM_OBJECT_LEVEL_LLS_BIT_MASK                   	(IMG_UINT64_C(0x0000200000000000))
+#define	RGX_FEATURE_VDM_DRAWINDIRECT_POS                            	(45U)
+#define	RGX_FEATURE_VDM_DRAWINDIRECT_BIT_MASK                       	(IMG_UINT64_C(0x0000200000000000))
 
-#define	RGX_FEATURE_XE_MEMORY_HIERARCHY_POS                         	(46U)
-#define	RGX_FEATURE_XE_MEMORY_HIERARCHY_BIT_MASK                    	(IMG_UINT64_C(0x0000400000000000))
+#define	RGX_FEATURE_VDM_OBJECT_LEVEL_LLS_POS                        	(46U)
+#define	RGX_FEATURE_VDM_OBJECT_LEVEL_LLS_BIT_MASK                   	(IMG_UINT64_C(0x0000400000000000))
 
-#define	RGX_FEATURE_XT_TOP_INFRASTRUCTURE_POS                       	(47U)
-#define	RGX_FEATURE_XT_TOP_INFRASTRUCTURE_BIT_MASK                  	(IMG_UINT64_C(0x0000800000000000))
+#define	RGX_FEATURE_XE_MEMORY_HIERARCHY_POS                         	(47U)
+#define	RGX_FEATURE_XE_MEMORY_HIERARCHY_BIT_MASK                    	(IMG_UINT64_C(0x0000800000000000))
+
+#define	RGX_FEATURE_XT_TOP_INFRASTRUCTURE_POS                       	(48U)
+#define	RGX_FEATURE_XT_TOP_INFRASTRUCTURE_BIT_MASK                  	(IMG_UINT64_C(0x0001000000000000))
 
 
 /******************************************************************************

@@ -868,7 +868,7 @@ static int apphint_di_show(OSDI_IMPL_ENTRY *s, void *v)
 ******************************************************************************/
 
 /**
- * apphint_set - Handle a debugfs value update
+ * apphint_set - Handle a DI value update
  */
 static IMG_INT64 apphint_set(const IMG_CHAR *buffer, IMG_UINT64 count,
                              IMG_UINT64 *ppos, void *data)
@@ -891,6 +891,9 @@ static IMG_INT64 apphint_set(const IMG_CHAR *buffer, IMG_UINT64 count,
 
 	/* apphint_read() modifies the buffer so we need to copy it */
 	memcpy(km_buffer, buffer, count);
+	/* count is larger than real buffer by 1 because DI framework appends
+	 * a '\0' character at the end, but here we're ignoring this */
+	count -= 1;
 	km_buffer[count] = '\0';
 
 	get_apphint_id_from_action_addr(action, &id);
@@ -918,8 +921,8 @@ static int apphint_debugfs_init(const char *sub_dir,
 	unsigned i;
 	int device_value_offset = device_num * APPHINT_DEBUGFS_DEVICE_ID_MAX;
 	const DI_ITERATOR_CB iterator = {
-		.pfnStart = apphint_di_start, .pfnStop  = apphint_di_stop,
-		.pfnNext  = apphint_di_next, .pfnShow  = apphint_di_show,
+		.pfnStart = apphint_di_start, .pfnStop = apphint_di_stop,
+		.pfnNext  = apphint_di_next,  .pfnShow = apphint_di_show,
 		.pfnWrite = apphint_set
 	};
 

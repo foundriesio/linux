@@ -1,11 +1,11 @@
 config POWERVR_ROGUE
-	tristate "PowerVR Rogue"
+	tristate "PowerVR GPU"
 	default n
 	depends on DRM
 	help
-	  Driver for PowerVR Rogue graphics hardware.
+	  Driver for PowerVR graphics processor hardware.
 
-	  Say Y here if your SoC contains a PowerVR Rogue GPU. For more
+	  Say Y here if your SoC contains a PowerVR GPU. For more
 	  information, see <http://www.imgtec.com/powervr/>.
 
 config POWERVR_ROGUE_PDUMP
@@ -31,9 +31,10 @@ config POWERVR_ROGUE_DEVICEMEM_HISTORY
 	  userspace driver.
 
 config POWERVR_ROGUE_TEMPORAL_PATCH_FOR_ANDROID_10
-	bool "Solve ION issue on Android10 temporarily "
-	default n
-	depends on POWERVR_ROGUE
-	help
-	  This path solves ION issue temporalily. 
-	  It is NOT final solution. 
+        bool "Solve ION issue on Android10 temporarily "
+        default n
+        depends on POWERVR_ROGUE
+        help
+          This path solves ION issue temporalily.
+          It is NOT final solution.
+

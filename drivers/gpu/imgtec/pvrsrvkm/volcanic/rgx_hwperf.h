@@ -779,7 +779,8 @@ typedef struct
 	IMG_CHAR aszBvncString[RGX_HWPERF_MAX_BVNC_LEN]; /*! BVNC string */
 	IMG_UINT32 ui32BvncKmFeatureFlags;               /*! See RGX_HWPERF_FEATURE_FLAGS */
 	IMG_UINT16 ui16BvncBlocks;                       /*! Number of blocks described in aBvncBlocks */
-	RGX_HWPERF_BVNC_BLOCK aBvncBlocks[RGX_HWPERF_MAX_BVNC_BLOCK_LEN];
+	IMG_UINT16 ui16Reserved1;                        /*! Align to 32bit */
+	RGX_HWPERF_BVNC_BLOCK aBvncBlocks[RGX_HWPERF_MAX_BVNC_BLOCK_LEN];   /*! Supported Performance Blocks for BVNC */
 } RGX_HWPERF_BVNC;
 
 RGX_FW_STRUCT_SIZE_ASSERT(RGX_HWPERF_BVNC);
