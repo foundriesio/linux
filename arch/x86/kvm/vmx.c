@@ -2500,14 +2500,12 @@ static void decache_tsc_multiplier(struct vcpu_vmx *vmx)
 	vmcs_write64(TSC_MULTIPLIER, vmx->current_tsc_ratio);
 }
 
-/*
- * Switches to specified vcpu, until a matching vcpu_put(), but assumes
- * vcpu mutex is already taken.
- */
-static void vmx_vcpu_load(struct kvm_vcpu *vcpu, int cpu)
+void vmx_vcpu_load_vmcs(struct kvm_vcpu *vcpu, int cpu,
+			struct loaded_vmcs *buddy)
 {
 	struct vcpu_vmx *vmx = to_vmx(vcpu);
 	bool already_loaded = vmx->loaded_vmcs->cpu == cpu;
+	struct vmcs *prev;
 
 	if (!already_loaded) {
 		loaded_vmcs_clear(vmx->loaded_vmcs);
@@ -2527,10 +2525,18 @@ static void vmx_vcpu_load(struct kvm_vcpu *vcpu, int cpu)
 		local_irq_enable();
 	}
 
-	if (per_cpu(current_vmcs, cpu) != vmx->loaded_vmcs->vmcs) {
+	prev = per_cpu(current_vmcs, cpu);
+	if (prev != vmx->loaded_vmcs->vmcs) {
 		per_cpu(current_vmcs, cpu) = vmx->loaded_vmcs->vmcs;
 		vmcs_load(vmx->loaded_vmcs->vmcs);
-		indirect_branch_prediction_barrier();
+
+		/*
+		 * No indirect branch prediction barrier needed when switching
+		 * the active VMCS within a guest, e.g. on nested VM-Enter.
+		 * The L1 VMM can protect itself with retpolines, IBPB or IBRS.
+		 */
+		if (!buddy || WARN_ON_ONCE(buddy->vmcs != prev))
+			indirect_branch_prediction_barrier();
 	}
 
 	if (!already_loaded) {
@@ -2565,8 +2571,20 @@ static void vmx_vcpu_load(struct kvm_vcpu *vcpu, int cpu)
 	if (kvm_has_tsc_control &&
 	    vmx->current_tsc_ratio != vcpu->arch.tsc_scaling_ratio)
 		decache_tsc_multiplier(vmx);
+}
+
+/*
+ * Switches to specified vcpu, until a matching vcpu_put(), but assumes
+ * vcpu mutex is already taken.
+ */
+void vmx_vcpu_load(struct kvm_vcpu *vcpu, int cpu)
+{
+	struct vcpu_vmx *vmx = to_vmx(vcpu);
+
+	vmx_vcpu_load_vmcs(vcpu, cpu, NULL);
 
 	vmx_vcpu_pi_load(vcpu, cpu);
+
 	vmx->host_pkru = read_pkru();
 }
 
@@ -10048,15 +10066,16 @@ static void vmx_vm_free(struct kvm *kvm)
 static void vmx_switch_vmcs(struct kvm_vcpu *vcpu, struct loaded_vmcs *vmcs)
 {
 	struct vcpu_vmx *vmx = to_vmx(vcpu);
+	struct loaded_vmcs *prev;
 	int cpu;
 
 	if (vmx->loaded_vmcs == vmcs)
 		return;
 
 	cpu = get_cpu();
-	vmx_vcpu_put(vcpu);
+	prev = vmx->loaded_vmcs;
 	vmx->loaded_vmcs = vmcs;
-	vmx_vcpu_load(vcpu, cpu);
+	vmx_vcpu_load_vmcs(vcpu, cpu, prev);
 	put_cpu();
 }
 
