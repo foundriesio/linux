@@ -376,10 +376,8 @@ static int dw_mipi_dsi_host_detach(struct mipi_dsi_host *host,
 			return ret;
 	}
 
-	drm_of_panel_bridge_remove(host->dev->of_node, 1, 0);
-
 	drm_bridge_remove(&dsi->bridge);
-
+	drm_panel_bridge_remove(dsi->panel_bridge);
 	return 0;
 }
 
