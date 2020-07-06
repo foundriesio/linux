@@ -1734,7 +1734,7 @@
                          reg = <3>;
                          telechips,ion-heap-name = "ion_carveout_cam_heap";
                 };
-#endif		
+#endif
 #ifdef CONFIG_ION_4_9
                 ion-heap@3 {
                          reg = <4>;
@@ -2710,6 +2710,8 @@
 
 	trng@11DB0100 {
 		compatible = "telechips,tcc-rng";
+		reg = <0x0 0x11DB0100 0x0 0x100>;
+		clocks = <&clk_hsio HSIOBUS_TRNG>;
 		status = "okay";
 	};
 
