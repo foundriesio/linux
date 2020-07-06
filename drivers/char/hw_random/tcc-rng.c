@@ -4,7 +4,11 @@
 #include <linux/platform_device.h>
 #include <linux/clk.h>
 
-#if defined(CONFIG_ARCH_TCC897X)
+#if defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X)
+#define TRNG_IN_TEE
+#endif
+
+#if !defined(TRNG_IN_TEE)
 
 #define MAX_ENR_CNT (6)
 
@@ -157,7 +161,7 @@ static int tcc_rng_probe(struct platform_device *pdev)
 	struct device *dev = &pdev->dev;
 	int err;
 
-#if defined(CONFIG_ARCH_TCC897X)
+#if !defined(TRNG_IN_TEE)
 	struct resource *regs;
 
 	regs = platform_get_resource(pdev, IORESOURCE_MEM, 0);
@@ -196,7 +200,7 @@ static int tcc_rng_remove(struct platform_device *pdev)
 {
 	hwrng_unregister(&tcc_rng_ops);
 
-#if defined(CONFIG_ARCH_TCC897X)
+#if !defined(TRNG_IN_TEE)
 	if (trng_clk) {
 		clk_disable_unprepare(trng_clk);
 		trng_clk = NULL;
