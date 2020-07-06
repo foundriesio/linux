@@ -259,6 +259,10 @@
 	telechips,pull-up;
 };
 
+&sd2_bus4 {
+	telechips,pull-up;
+};
+
 &sd2_bus8 {
 	telechips,pull-up;
 };
