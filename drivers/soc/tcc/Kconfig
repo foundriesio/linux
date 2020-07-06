@@ -69,4 +69,19 @@ config TCC_CORE_RESET
 	help
 	  Select this option to enable core reset feature on TCC803x platform.
 
+config TCC_BOOTSTAGE
+	bool "Telechips bootstage helper driver"
+	depends on ARCH_TCC805X
+	default n
+	help
+	  Select this option to enable Telechips bootstage helper driver.
+	  Telehips bootstage helper driver creates and manages the `bootstage`
+	  procfs which provides the interface for printing out the timestamps
+	  for each bootstage.
+
+	  To use this option, CONFIG_BOOTSTAGE && CONFIG_BOOTSTAGE_FDT must
+	  be enabled for U-Boot bootloader.
+
+	  If unsure, say N.
+
 endif # SOC_TCC
