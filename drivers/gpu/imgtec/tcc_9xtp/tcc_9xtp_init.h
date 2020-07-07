@@ -47,6 +47,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "pvrsrv_error.h"
 #include "pvrsrv_device.h"
 #include "servicesext.h"
+#include "syscommon.h"
 #include <linux/version.h>
 
 #define OPEN_GPU_PD				1
@@ -55,7 +56,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define ONE_MHZ					1000000
 #define HZ_TO_MHZ(m)				((m) / ONE_MHZ)
 
-struct tcc_context {
+typedef struct tcc_context {
 	PVRSRV_DEVICE_CONFIG	*dev_config;
 #if OPEN_GPU_PD
 	IMG_BOOL			bEnablePd;
@@ -65,7 +66,10 @@ struct tcc_context {
 
 	/* To calculate utilization for x sec */
 	IMG_BOOL			gpu_active;
-};
+	IMG_HANDLE hSysLISRData;
+	PFN_LISR pfnDeviceLISR;
+	void *pvDeviceLISRData;	
+} tcc_context;
 
 #if defined(CONFIG_DEVFREQ_THERMAL) && defined(SUPPORT_LINUX_DVFS)
 int tcc_power_model_simple_init(struct device *dev);
