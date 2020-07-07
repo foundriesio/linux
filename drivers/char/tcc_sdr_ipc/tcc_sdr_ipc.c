@@ -58,7 +58,7 @@ struct sdripc_device
 	struct list_head rx_queue;
 	//wait_queue_head_t event_waitq;
 	int recv_event;
-
+	struct mutex mboxMutex;		/* mbox mutex */
 	struct file *filp;
 };
 
@@ -383,16 +383,18 @@ static ssize_t sdripc_write(struct file *filp, const char __user *buf, size_t co
 	/* physical address of shared memory */
 	memcpy(&mbox_data.cmd[4], (char*)&sdripc_dev->paddr, sizeof(dma_addr_t));
 
+	mutex_lock(&sdripc_dev->mboxMutex);
 	mbox_result = mbox_send_message(sdripc_dev->mbox_channel, &mbox_data);
 	if(mbox_result < 0 )
 	{
-		eprintk(dev, "mbox_send_message failed: %d\n", mbox_result);
+		//eprintk(dev, "mbox_send_message failed: %d\n", mbox_result);
 		ret = (-ETIMEDOUT);
 	}
 	else
 	{
 		ret = 0;
 	}
+	mutex_unlock(&sdripc_dev->mboxMutex);
 
 	return ret;
 }
@@ -478,6 +480,7 @@ static int sdripc_open(struct inode *inode, struct file *filp)
 
 	//init_waitqueue_head(&sdripc_dev->event_waitq);
 	sdripc_dev->recv_event = 0;
+	mutex_init(&sdripc_dev->mboxMutex);
 
 	/* register ipc client */
 	sdripc_dev->filp = filp;
@@ -496,6 +499,8 @@ static int sdripc_close(struct inode *inode, struct file *filp)
 	/* unregister ipc client */
 	sdripc_dev->filp = NULL;
 	sdripc_rxqueue_deinit(sdripc_dev);
+
+	mutex_destroy(&sdripc_dev->mboxMutex);
 
 	if(sdripc_dev->receive_vaddr != NULL)
 	{
