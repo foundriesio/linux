@@ -293,6 +293,14 @@ config ARM_TCC_MP_CPUFREQ
 	help
 	  If you say yes here you get support for MP thermal policy. 
 
+config TCC_THERMAL_IRQ
+       bool "Telechips Thermal driver IRQ check."
+       depends on TCC_THERMAL
+       default n
+       help
+         If you say yes here you get support for Thermal driver IRQ handler.
+
+
 config DOVE_THERMAL
 	tristate "Temperature sensor on Marvell Dove SoCs"
 	depends on ARCH_DOVE || MACH_DOVE || COMPILE_TEST
