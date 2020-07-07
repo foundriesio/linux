@@ -779,11 +779,6 @@ struct journal_s
 	int			j_errno;
 
 	/**
-	 * @j_abort_mutex: Lock the whole aborting procedure.
-	 */
-	struct mutex		j_abort_mutex;
-
-	/**
 	 * @j_sb_buffer: The first part of the superblock buffer.
 	 */
 	struct buffer_head	*j_sb_buffer;
@@ -1174,6 +1169,12 @@ struct journal_s
 	 * require transaction commit to finish.
 	 */
 	struct lockdep_map	j_trans_commit_map;
+#endif
+#ifndef __GENKSYMS__
+	/**
+	 * @j_abort_mutex: Lock the whole aborting procedure.
+	 */
+	struct mutex		j_abort_mutex;
 #endif
 };
 
