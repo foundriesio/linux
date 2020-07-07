@@ -90,9 +90,9 @@
 		status = "okay";
 
 		pinctrl-names = "default";
-		pinctrl-0 = <&aux_detect_ma14>;
+		pinctrl-0 = <&aux_detect_md13>;
 
-		aux-gpios = <&gpma 14 1>;
+		aux-gpios = <&gpmd 13 1>;
 		aux-active = <1>;
 	};
 

@@ -1114,7 +1114,7 @@
 		telechips,pin-function = <1>;
 	};
 
-	aux_detect_ma14: aux_detect_ma14{
+	aux_detect_md13: aux_detect_md13{
 		 telechips,pins = "gpmd-13";
 		 telechips,pin-function = <0>;
 		 telechips,input-enable;
