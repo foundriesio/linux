@@ -485,6 +485,13 @@ choice
 		  Say Y here if you want kernel low-level debugging support
 		  on i.MX7D.
 
+	config DEBUG_IMX7ULP_UART
+		bool "i.MX7ULP Debug UART"
+		depends on SOC_IMX7ULP
+		help
+		  Say Y here if you want kernel low-level debugging support
+		  on i.MX7ULP.
+
 	config DEBUG_INTEGRATOR
 		bool "Kernel low-level debugging messages via ARM Integrator UART"
 		depends on ARCH_INTEGRATOR
@@ -1482,7 +1489,8 @@ config DEBUG_IMX_UART_PORT
 		   DEBUG_IMX6SL_UART || \
 		   DEBUG_IMX6SX_UART || \
 		   DEBUG_IMX6UL_UART || \
-		   DEBUG_IMX7D_UART
+		   DEBUG_IMX7D_UART || \
+		   DEBUG_IMX7ULP_UART
 	default 1
 	help
 	  Choose UART port on which kernel low-level debug messages
@@ -1539,7 +1547,8 @@ config DEBUG_LL_INCLUDE
 				 DEBUG_IMX6SL_UART || \
 				 DEBUG_IMX6SX_UART || \
 				 DEBUG_IMX6UL_UART || \
-				 DEBUG_IMX7D_UART
+				 DEBUG_IMX7D_UART || \
+				 DEBUG_IMX7ULP_UART
 	default "debug/msm.S" if DEBUG_QCOM_UARTDM
 	default "debug/omap2plus.S" if DEBUG_OMAP2PLUS_UART
 	default "debug/renesas-scif.S" if DEBUG_R7S72100_SCIF2
