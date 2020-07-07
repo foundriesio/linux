@@ -367,7 +367,7 @@ static struct mbox_chan *vioc_mgr_request_channel(struct vioc_mgr_device *vioc_m
 	struct mbox_chan *channel;
 
 	vioc_mgr->cl.dev = &vioc_mgr->pdev->dev;
-	vioc_mgr->cl.rx_callback = vioc_mgr_receive_message;
+	vioc_mgr->cl.rx_callback = NULL;
 	vioc_mgr->cl.tx_done = NULL;
 #if defined(CONFIG_ARCH_TCC805X)
 	vioc_mgr->cl.tx_block = true;
