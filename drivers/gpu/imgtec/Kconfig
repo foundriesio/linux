@@ -8,12 +8,10 @@ config POWERVR_ADF_FBDEV
 	  Say Y here if your SoC has a pre-existing fbdev driver, but
 	  no native ADF driver. This driver will wrap the fbdev driver
 	  to provide minimal compatibility with ADF.
-
+	  
 config POWERVR_DC_FBDEV
-	bool "DC_FBDEV driver for Telechips Linux fbdev"
-	default y
-	depends on TCC805X_CA53Q
-	
+        bool "DC_FBDEV driver for Telechips Linux fbdev"
+        default n
 
 source "drivers/gpu/imgtec/pvrsrvkm/Kconfig"
 

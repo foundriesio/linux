@@ -44,7 +44,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <linux/fb.h>
 
 #include "kerneldisplay.h"
-#include "powervr/imgpixfmts.h"
+#include "imgpixfmts.h"
 #include "pvrmodule.h" /* for MODULE_LICENSE() */
 
 #if !defined(CONFIG_FB)
@@ -765,7 +765,7 @@ static int __init DC_FBDEV_init(void)
 	struct fb_info *psLINFBInfo;
 	IMG_PIXFMT ePixFormat;
 	int err = -ENODEV;
-
+printk("%s TESTTESTTESTTEST\n", __func__);
 	if (gui32fb_devminor >= FB_MAX)
 	{
 		pr_err("Invalid Linux framebuffer device minor number!\n"

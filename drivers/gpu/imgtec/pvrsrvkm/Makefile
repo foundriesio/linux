@@ -7,7 +7,7 @@ ifeq ($(CONFIG_ANDROID),y)
         ccflags-y += -include $(srctree)/drivers/gpu/imgtec/config_kernel_android32.h
     endif
 else
-    ifeq ($(CONFIG_FB_NEW),y)
+    ifeq ($(CONFIG_POWERVR_DC_FBDEV),y)
         ifeq ($(CONFIG_ARM64),y)
             include $(srctree)/drivers/gpu/imgtec/config_kernel_linux64_fb.mk
             ccflags-y += -include $(srctree)/drivers/gpu/imgtec/config_kernel_linux64_fb.h
@@ -42,6 +42,11 @@ ccflags-$(CONFIG_POWERVR_RK3368) += -I$(srctree)/drivers/gpu/imgtec/rk3368
 ccflags-$(CONFIG_POWERVR_MT8173) += -I$(srctree)/drivers/gpu/imgtec/mt8173
 ccflags-$(CONFIG_POWERVR_SUNXI) += -I$(srctree)/drivers/gpu/imgtec/sunxi
 ccflags-$(CONFIG_POWERVR_TCC9XTP) += -I$(srctree)/drivers/gpu/imgtec/tcc_9xtp
+
+ifeq ($(DISPLAY_CONTROLLER), dc_fbdev)
+obj-$(CONFIG_POWERVR_DC_FBDEV) += dc_fbdev.o
+dc_fbdev-y += dc_fbdev_tcc.o
+endif
 
 obj-$(CONFIG_POWERVR_ROGUE) += pvrsrvkm.o
 
