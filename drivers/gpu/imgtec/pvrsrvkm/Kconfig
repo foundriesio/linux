@@ -38,3 +38,7 @@ config POWERVR_ROGUE_TEMPORAL_PATCH_FOR_ANDROID_10
           This path solves ION issue temporalily.
           It is NOT final solution.
 
+config POWERVR_VZ
+        bool "PowerVR Virtualisation"
+        default n
+        depends on POWERVR_ROGUE

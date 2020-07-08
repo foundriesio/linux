@@ -26,7 +26,11 @@ override DEBUGLINK := 1
 override SUPPORT_PHYSMEM_TEST := 1
 override COMPRESS_DEBUG_SECTIONS := 1
 override RGX_BNC := 27.V.254.2
+ifeq ($(CONFIG_POWERVR_VZ),y)
+override RGX_NUM_OS_SUPPORTED := 2
+else
 override RGX_NUM_OS_SUPPORTED := 1
+endif
 override VMM_TYPE := stub
 override SUPPORT_POWMON_COMPONENT := 1
 override OPTIM := -O2
