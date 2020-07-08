@@ -36,9 +36,10 @@
 #define SMP_TA_UUID { 0x66fd12d1, 0xd28b, 0x495d,  \
                     { 0x95, 0x18, 0x77, 0x09, 0xb6, 0xa6, 0xa0, 0xea } }
 
-#define CMD_CREATE_FILTER	 0xF0000001
-#define CMD_COLLECT_DATA	 0xF0000002
-#define CMD_ASSEMBLE_DATA	 0xF0000003
+#define CMD_CREATE_FILTER			0xF0000001
+#define CMD_COLLECT_DATA			0xF0000002
+#define CMD_ASSEMBLE_DATA			0xF0000003
+#define CMD_SET_MAX_NUMBER_FRAMES	0xF0000004
 
 
 /**
@@ -271,6 +272,40 @@ static int tsmp_set_pid_info_ioctl(struct file *filp, struct tsmp_pid_info *arg)
 	return ret;
 }
 
+static int tsmp_set_max_number_frames(struct file *filp, uint32_t *arg)
+{
+	int ret = -1;
+	uint32_t frames;
+	struct tsmp_dev *dev = filp->private_data;
+
+	if (IS_ERR(arg)) {
+		return PTR_ERR(arg);
+	}
+
+	ret = copy_from_user(&frames, arg, sizeof(uint32_t));
+	if (unlikely(ret != 0)) {
+		ELOG("copy_from_user failed: %d\n", ret);
+		return ret;
+	}
+
+	struct tee_client_params params;
+	memset(&params, 0, sizeof(params));
+
+	params.params[0].tee_client_value.a = frames;
+	params.params[0].type = TEE_CLIENT_PARAM_VALUE_IN;
+
+	int rc;
+	rc = tee_client_execute_command(dev->context, &params, CMD_SET_MAX_NUMBER_FRAMES);
+	if (rc) {
+		ELOG("fail to execute TA command rc %x\n", rc);
+		return -1;
+	}
+
+	ret = 0;
+	TRACE;
+	return ret;
+}
+
 static long tsmp_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 {
 	int ret = -ENOTTY;
@@ -286,6 +321,10 @@ static long tsmp_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 
 	case TSMP_DEPACK_STREAM:
 		ret = tsmp_depack_stream_ioctl(filp, (struct tsmp_depack_stream *)arg);
+		break;
+
+	case TSMP_SET_MAX_NUMBER_FRAMES:
+		ret = tsmp_set_max_number_frames(filp, (uint32_t*)arg);
 		break;
 
 	default:

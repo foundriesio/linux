@@ -74,7 +74,7 @@ struct tsmp_depack_stream
 
 /* clang-format off */
 /** Event flag to notify */
-#define TSMP_EVENT		(0x00000001U)
+#define TSMP_EVENT			(0x00000001U)
 
 #define TSMP_IOCTL_MAGIC 'T'
 
@@ -83,6 +83,7 @@ struct tsmp_depack_stream
 #define TSMP_SET_PID_INFO       _IOW(TSMP_IOCTL_MAGIC, 2, struct tsmp_pid_info)
 
 #define TSMP_DEPACK_STREAM      _IOWR(TSMP_IOCTL_MAGIC, 3, struct tsmp_depack_stream)
+#define TSMP_SET_MAX_NUMBER_FRAMES      _IOWR(TSMP_IOCTL_MAGIC, 4, uint32_t)
 
 /* clang-format on */
 
