@@ -1662,6 +1662,11 @@ static int __maybe_unused stm32_usart_serial_en_wakeup(struct uart_port *port,
 			dmaengine_terminate_async(stm32_port->rx_ch);
 			spin_unlock_irqrestore(&port->lock, flags);
 		}
+
+		spin_lock_irqsave(&port->lock, flags);
+		/* Poll data from RX FIFO if any */
+		stm32_usart_receive_chars(port, false);
+		spin_unlock_irqrestore(&port->lock, flags);
 	} else {
 		if (stm32_port->rx_ch) {
 			ret = stm32_usart_start_rx_dma_cyclic(port);
