@@ -1271,18 +1271,17 @@ VpuList_t* jmgr_list_manager(VpuList_t* args, unsigned int cmd)
 
         switch (cmd) {
             case LIST_ADD:
-	            if(!args)
-	            {
-	            err("ADD :: data is null \n");
-	            goto Error;
-	            }
+                if(!args)
+                {
+                err("ADD :: data is null \n");
+                goto Error;
+                }
 
-	            data = (VpuList_t*)args;
-	            *(data->vpu_result) |= RET1;
-	            list_add_tail(&data->list, &jmgr_data.comm_data.main_list);
-				jmgr_data.cmd_queued++;
-	            jmgr_data.comm_data.thread_intr++;
-	            wake_up_interruptible(&(jmgr_data.comm_data.thread_wq));
+                data = (VpuList_t*)args;
+                *(data->vpu_result) |= RET1;
+                list_add_tail(&data->list, &jmgr_data.comm_data.main_list);
+                jmgr_data.cmd_queued++;
+                jmgr_data.comm_data.thread_intr++;
                 break;
 
             case LIST_DEL:
@@ -1293,13 +1292,13 @@ VpuList_t* jmgr_list_manager(VpuList_t* args, unsigned int cmd)
                 }
                 data = (VpuList_t*)args;
                 list_del(&data->list);
-				jmgr_data.cmd_queued--;
+                jmgr_data.cmd_queued--;
                 break;
 
             case LIST_IS_EMPTY:
                 if(list_empty(&jmgr_data.comm_data.main_list)) {
                     ret =(VpuList_t*)0x1234;
-				}
+                }
                 break;
 
             case LIST_GET_ENTRY:
@@ -1310,6 +1309,10 @@ VpuList_t* jmgr_list_manager(VpuList_t* args, unsigned int cmd)
 
 Error:
     mutex_unlock(&jmgr_data.comm_data.list_mutex);
+    if(cmd == LIST_ADD)
+    {
+        wake_up_interruptible(&(jmgr_data.comm_data.thread_wq));
+    }
 
     return ret;
 }
