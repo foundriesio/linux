@@ -13,6 +13,15 @@
 / {
 	model = "Telechips TCC8059 Evaluation Board for AVN";
 	compatible = "telechips,tcc8059", "telechips,tcc805x";
+
+	aux_detect {
+		compatible = "telechips,aux_detect";
+		status = "okay";
+		pinctrl-names = "default";
+		pinctrl-0 = <&aux_detect_ma14>;
+		aux-gpios = <&gpma 14 1>;
+		aux-active = <1>;
+	};
 };
 
 &aliases {
