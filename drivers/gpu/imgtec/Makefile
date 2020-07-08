@@ -9,7 +9,7 @@ ifeq ($(CONFIG_ANDROID),y)
         ccflags-y += -include $(srctree)/drivers/gpu/imgtec/config_kernel_android32.h
     endif
 else
-    ifeq ($(CONFIG_FB_NEW),y)
+    ifeq ($(CONFIG_POWERVR_DC_FBDEV),y)
         ifeq ($(CONFIG_ARM64),y)
             include $(srctree)/drivers/gpu/imgtec/config_kernel_linux64_fb.mk
             ccflags-y += -include $(srctree)/drivers/gpu/imgtec/config_kernel_linux64_fb.h
@@ -28,10 +28,6 @@ else
     endif
 endif
 
-ifeq ($(DISPLAY_CONTROLLER), dc_fbdev)
-obj-$(CONFIG_POWERVR_DC_FBDEV) += dc_fbdev.o
-dc_fbdev-y += dc_fbdev.o
-endif
 ccflags-y += \
 	-I$(srctree)/$(src) \
 	-I$(srctree)/drivers/staging/android
