@@ -1619,14 +1619,16 @@ static struct uart_driver stm32_usart_driver = {
 	.cons		= STM32_SERIAL_CONSOLE,
 };
 
-static void __maybe_unused stm32_usart_serial_en_wakeup(struct uart_port *port,
-							bool enable)
+static int __maybe_unused stm32_usart_serial_en_wakeup(struct uart_port *port,
+						       bool enable)
 {
 	struct stm32_port *stm32_port = to_stm32_port(port);
 	struct stm32_usart_offsets *ofs = &stm32_port->info->ofs;
+	struct tty_port *tport = &port->state->port;
+	int ret;
 
-	if (!stm32_port->wakeup_src)
-		return;
+	if (!stm32_port->wakeup_src || !tty_port_initialized(tport))
+		return 0;
 
 	/*
 	 * Enable low-power wake-up and wake-up irq if argument is set to
@@ -1635,32 +1637,41 @@ static void __maybe_unused stm32_usart_serial_en_wakeup(struct uart_port *port,
 	if (enable) {
 		stm32_usart_set_bits(port, ofs->cr1, USART_CR1_UESM);
 		stm32_usart_set_bits(port, ofs->cr3, USART_CR3_WUFIE);
+
+		/*
+		 * When DMA is used for reception, it must be disabled before
+		 * entering low-power mode and re-enabled when exiting from
+		 * low-power mode.
+		 */
+		if (stm32_port->rx_ch) {
+			stm32_usart_clr_bits(port, ofs->cr3, USART_CR3_DMAR);
+			dmaengine_terminate_sync(stm32_port->rx_ch);
+		}
 	} else {
+		if (stm32_port->rx_ch) {
+			ret = stm32_usart_start_rx_dma_cyclic(port);
+			if (ret)
+				return ret;
+		}
+
 		stm32_usart_clr_bits(port, ofs->cr1, USART_CR1_UESM);
 		stm32_usart_clr_bits(port, ofs->cr3, USART_CR3_WUFIE);
 	}
+
+	return 0;
 }
 
 static int __maybe_unused stm32_usart_serial_suspend(struct device *dev)
 {
 	struct uart_port *port = dev_get_drvdata(dev);
-	struct stm32_port *stm32_port = to_stm32_port(port);
-	struct stm32_usart_offsets *ofs = &stm32_port->info->ofs;
-	struct tty_port *tport = &port->state->port;
+	int ret;
 
 	uart_suspend_port(&stm32_usart_driver, port);
 
 	if (device_may_wakeup(dev) || device_wakeup_path(dev)) {
-		stm32_usart_serial_en_wakeup(port, true);
-		/*
-		 * DMA can't suspend while DMA channels are still active.
-		 * Terminate DMA transfer at suspend, and then restart a new
-		 * DMA transfer at resume.
-		 */
-		if (stm32_port->rx_ch && tty_port_initialized(tport)) {
-			stm32_usart_clr_bits(port, ofs->cr3, USART_CR3_DMAR);
-			dmaengine_terminate_sync(stm32_port->rx_ch);
-		}
+		ret = stm32_usart_serial_en_wakeup(port, true);
+		if (ret)
+			return ret;
 	}
 
 	/*
@@ -1682,20 +1693,14 @@ static int __maybe_unused stm32_usart_serial_suspend(struct device *dev)
 static int __maybe_unused stm32_usart_serial_resume(struct device *dev)
 {
 	struct uart_port *port = dev_get_drvdata(dev);
-	struct stm32_port *stm32_port = to_stm32_port(port);
-	struct tty_port *tport = &port->state->port;
 	int ret;
 
 	pinctrl_pm_select_default_state(dev);
 
 	if (device_may_wakeup(dev) || device_wakeup_path(dev)) {
-		stm32_usart_serial_en_wakeup(port, false);
-
-		if (stm32_port->rx_ch && tty_port_initialized(tport)) {
-			ret = stm32_usart_start_rx_dma_cyclic(port);
-			if (ret)
-				return ret;
-		}
+		ret = stm32_usart_serial_en_wakeup(port, false);
+		if (ret)
+			return ret;
 	}
 
 	return uart_resume_port(&stm32_usart_driver, port);
