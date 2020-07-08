@@ -607,7 +607,14 @@
 #endif
 #endif
 
-#define EARLY_REARCAM_BASE	(PMAP_BASE)
+#if defined(CONFIG_POWERVR_VZ)
+#define PVR_VZ_SIZE		(0x410000)
+#else
+#define PVR_VZ_SIZE             (0)
+#endif
+
+#define PVR_VZ_BASE             (PMAP_BASE)
+#define EARLY_REARCAM_BASE	(PVR_VZ_BASE + PVR_VZ_SIZE)
 
 #ifdef CONFIG_PLATFORM_AVN
 #if defined(CONFIG_PMAP_SUBCORE) && defined(CONFIG_ARCH_TCC803X)

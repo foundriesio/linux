@@ -524,6 +524,18 @@
 			no-map;
 		};
 
+                /*-----------------------------------------------------------
+                 * Memory for PowerVR Virtualization
+                 *-----------------------------------------------------------
+                 */
+                pmap_pvr_vz: pvr_vz {
+                        compatible = "telechips,pmap";
+                        telechips,pmap-name = "pvr_vz";
+                        alloc-ranges = <0x0 PVR_VZ_BASE 0x0 PVR_VZ_SIZE>;
+                        size = <0x0 PVR_VZ_SIZE>;
+                        no-map;
+                };
+		
 		/*-----------------------------------------------------------
 		 * Default Reserved Memory
 		 *-----------------------------------------------------------
