@@ -1376,7 +1376,7 @@ VpuList_t* vmgr_list_manager(VpuList_t* args, unsigned int cmd)
         switch (cmd) {
             case LIST_ADD:
                 if (!args)
-				{
+                {
                     err("ADD :: data is null \n");
                     goto Error;
                 }
@@ -1386,7 +1386,6 @@ VpuList_t* vmgr_list_manager(VpuList_t* args, unsigned int cmd)
                 list_add_tail(&data->list, &vmgr_data.comm_data.main_list);
                 vmgr_data.cmd_queued++;
                 vmgr_data.comm_data.thread_intr++;
-                wake_up_interruptible(&(vmgr_data.comm_data.thread_wq));
                 break;
 
             case LIST_DEL:
@@ -1414,6 +1413,10 @@ VpuList_t* vmgr_list_manager(VpuList_t* args, unsigned int cmd)
 
 Error:
     mutex_unlock(&vmgr_data.comm_data.list_mutex);
+    if(cmd == LIST_ADD)
+    {
+        wake_up_interruptible(&(vmgr_data.comm_data.thread_wq));
+    }
 
     return ret;
 }

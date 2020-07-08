@@ -62,7 +62,6 @@ VpuList_t* vmgr_hevc_enc_list_manager(VpuList_t* args, unsigned int cmd)
 		list_add_tail(&data->list, &vmgr_hevc_enc_data.comm_data.main_list);
 		vmgr_hevc_enc_data.cmd_queued++;
 		vmgr_hevc_enc_data.comm_data.thread_intr++;
-		wake_up_interruptible(&(vmgr_hevc_enc_data.comm_data.thread_wq));
 		break;
 
 	case LIST_DEL:
@@ -84,6 +83,10 @@ VpuList_t* vmgr_hevc_enc_list_manager(VpuList_t* args, unsigned int cmd)
 
 Error:
 	mutex_unlock(&vmgr_hevc_enc_data.comm_data.list_mutex);
+	if(cmd == LIST_ADD)
+	{
+		wake_up_interruptible(&(vmgr_hevc_enc_data.comm_data.thread_wq));
+	}
 
 	return ret;
 }

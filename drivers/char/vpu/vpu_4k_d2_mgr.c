@@ -1493,18 +1493,17 @@ VpuList_t* vmgr_4k_d2_list_manager(VpuList_t* args, unsigned int cmd)
 
         switch (cmd) {
             case LIST_ADD:
-	            if(!args)
-	            {
+                if(!args)
+                {
                     err("ADD :: data is null \n");
                     goto Error;
-	            }
+                }
 
-	            data = (VpuList_t*)args;
-	            *(data->vpu_result) |= RET1;
-	            list_add_tail(&data->list, &vmgr_4k_d2_data.comm_data.main_list);
-				vmgr_4k_d2_data.cmd_queued++;
-	            vmgr_4k_d2_data.comm_data.thread_intr++;
-	            wake_up_interruptible(&(vmgr_4k_d2_data.comm_data.thread_wq));
+                data = (VpuList_t*)args;
+                *(data->vpu_result) |= RET1;
+                list_add_tail(&data->list, &vmgr_4k_d2_data.comm_data.main_list);
+                vmgr_4k_d2_data.cmd_queued++;
+                vmgr_4k_d2_data.comm_data.thread_intr++;
                 break;
 
             case LIST_DEL:
@@ -1515,13 +1514,13 @@ VpuList_t* vmgr_4k_d2_list_manager(VpuList_t* args, unsigned int cmd)
                 }
                 data = (VpuList_t*)args;
                 list_del(&data->list);
-				vmgr_4k_d2_data.cmd_queued--;
+                vmgr_4k_d2_data.cmd_queued--;
                 break;
 
             case LIST_IS_EMPTY:
                 if(list_empty(&vmgr_4k_d2_data.comm_data.main_list)) {
                     ret =(VpuList_t*)0x1234;
-				}
+                }
                 break;
 
             case LIST_GET_ENTRY:
@@ -1532,6 +1531,10 @@ VpuList_t* vmgr_4k_d2_list_manager(VpuList_t* args, unsigned int cmd)
 
 Error:
     mutex_unlock(&vmgr_4k_d2_data.comm_data.list_mutex);
+    if(cmd == LIST_ADD)
+    {
+        wake_up_interruptible(&(vmgr_4k_d2_data.comm_data.thread_wq));
+    }
 
     return ret;
 }
