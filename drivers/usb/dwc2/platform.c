@@ -1087,15 +1087,6 @@ static int dwc2_driver_probe(struct platform_device *dev)
 	dev_info(hsotg->dev, "[INFO][USB] registering common handler for irq%d\n",
 		hsotg->irq);
 
-	retval = dwc2_lowlevel_hw_disable(hsotg);
-	if (retval)
-		return retval;
-
-	retval = devm_request_irq(hsotg->dev, hsotg->irq,
-				  dwc2_handle_common_intr, IRQF_SHARED,
-				  dev_name(hsotg->dev), hsotg);
-	if (retval)
-		return retval;
 #ifdef CONFIG_USB_DWC2_TCC_MUX
 	hsotg->ehci_irq = platform_get_irq(dev, 1);
 	if (hsotg->irq < 0) {
@@ -1137,6 +1128,13 @@ static int dwc2_driver_probe(struct platform_device *dev)
 		goto error;
 
 	dwc2_force_dr_mode(hsotg);
+
+	retval = devm_request_irq(hsotg->dev, hsotg->irq,
+				  dwc2_handle_common_intr, IRQF_SHARED,
+				  dev_name(hsotg->dev), hsotg);
+
+	if (retval)
+		return retval;
 
 	retval = dwc2_init_params(hsotg);
 	if (retval)
