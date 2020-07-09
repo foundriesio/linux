@@ -454,12 +454,12 @@ static int dwc2_driver_probe(struct platform_device *dev)
 		retval = PTR_ERR(hsotg->vbus_supply);
 		hsotg->vbus_supply = NULL;
 		if (retval != -ENODEV)
-			return retval;
+			goto error_wakeirq;
 	}
 
 	retval = dwc2_lowlevel_hw_enable(hsotg);
 	if (retval)
-		return retval;
+		goto error_wakeirq;
 
 	hsotg->needs_byte_swap = dwc2_check_core_endianness(hsotg);
 
@@ -568,10 +568,11 @@ error_init:
 	if (hsotg->params.activate_stm_id_vb_detection)
 		regulator_disable(hsotg->usb33d);
 error:
+	dwc2_lowlevel_hw_disable(hsotg);
+error_wakeirq:
 	if (hsotg->wakeirq > 0)
 		dev_pm_clear_wake_irq(&dev->dev);
 
-	dwc2_lowlevel_hw_disable(hsotg);
 	return retval;
 }
 
