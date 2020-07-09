@@ -12,7 +12,7 @@
 		#address-cells = <1>;
 		#size-cells = <0>;
 
-		cpu@0 {
+		A72_0: cpu@0 {
 			device_type = "cpu";
 			compatible = "arm,cortex-a72";
 			reg = <0x0>;
@@ -32,19 +32,22 @@
 			clock-names = "cpu0";
 			clock-latency = <300000>;
 		};
-		cpu@1 {
+
+		A72_1: cpu@1 {
 			device_type = "cpu";
 			compatible = "arm,cortex-a72";
 			reg = <0x1>;
 			enable-method = "psci";
 		};
-		cpu@2 {
+
+		A72_2: cpu@2 {
 			device_type = "cpu";
 			compatible = "arm,cortex-a72";
 			reg = <0x2>;
 			enable-method = "psci";
 		};
-		cpu@3 {
+
+		A72_3: cpu@3 {
 			device_type = "cpu";
 			compatible = "arm,cortex-a72";
 			reg = <0x3>;
@@ -63,6 +66,18 @@
 				min-residency-us = <950>;
 			};
 		};
+	};
+
+	pmu_a72 {
+		compatible = "arm,cortex-a72-pmu";
+		interrupts = <GIC_SPI 165 IRQ_TYPE_LEVEL_LOW>,
+			     <GIC_SPI 166 IRQ_TYPE_LEVEL_LOW>,
+			     <GIC_SPI 167 IRQ_TYPE_LEVEL_LOW>,
+			     <GIC_SPI 168 IRQ_TYPE_LEVEL_LOW>;
+		interrupt-affinity = <&A72_0>,
+				     <&A72_1>,
+				     <&A72_2>,
+				     <&A72_3>;
 	};
 
 	gic: interrupt-controller@17301000 {

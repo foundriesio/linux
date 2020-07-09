@@ -77,6 +77,18 @@
 		};
 	};
 
+	pmu_a72 {
+		compatible = "arm,cortex-a72-pmu";
+		interrupts = <GIC_SPI 165 IRQ_TYPE_LEVEL_LOW>,
+			     <GIC_SPI 166 IRQ_TYPE_LEVEL_LOW>,
+			     <GIC_SPI 167 IRQ_TYPE_LEVEL_LOW>,
+			     <GIC_SPI 168 IRQ_TYPE_LEVEL_LOW>;
+		interrupt-affinity = <&A72_0>,
+				     <&A72_1>,
+				     <&A72_2>,
+				     <&A72_3>;
+	};
+
 	gic: interrupt-controller@17301000 {
 		compatible = "arm,gic-400";
 		#interrupt-cells = <3>;
