@@ -113,6 +113,8 @@ void __iomem* lut_get_address(int lut_n, int * is_dev)
 				reg = NULL;
 				break;
 		}
+
+		return reg;
 }
 
 int lut_get_pluginComponent_index(unsigned int tvc_n)
