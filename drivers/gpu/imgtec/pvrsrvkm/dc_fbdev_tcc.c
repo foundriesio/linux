@@ -765,7 +765,8 @@ static int __init DC_FBDEV_init(void)
 	struct fb_info *psLINFBInfo;
 	IMG_PIXFMT ePixFormat;
 	int err = -ENODEV;
-printk("%s TESTTESTTESTTEST\n", __func__);
+
+	pr_info("%s\n", __func__);
 	if (gui32fb_devminor >= FB_MAX)
 	{
 		pr_err("Invalid Linux framebuffer device minor number!\n"
@@ -938,5 +939,6 @@ static void __exit DC_FBDEV_exit(void)
 	kfree(psDeviceData);
 }
 
-module_init(DC_FBDEV_init);
-module_exit(DC_FBDEV_exit);
+//module_init(DC_FBDEV_init);
+//module_exit(DC_FBDEV_exit);
+late_initcall(DC_FBDEV_init);
