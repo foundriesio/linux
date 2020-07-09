@@ -282,7 +282,7 @@ static void lcd_update_plane(struct tcc_drm_crtc *crtc,
 	offset += state->src.y * pitch;
 
 	dma_addr = tcc_drm_fb_dma_addr(fb, 0) + offset;
-	if(dma_addr == NULL) {		
+	if(dma_addr == (dma_addr_t)0) {		
 		return;
 	}
 	VIOC_WMIX_SetPosition(pWMIX, win, state->crtc.x, state->crtc.y);
