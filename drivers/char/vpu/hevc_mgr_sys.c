@@ -81,7 +81,8 @@ inline void vbus_matrix(void)
 
 void hmgr_enable_clock(int vbus_no_ctrl)
 {
-    if (fbus_vbus_clk && !vbus_no_ctrl)
+	// [202090707] BCLK > CCLK > ACLK
+	if (fbus_vbus_clk && !vbus_no_ctrl)
 		clk_prepare_enable(fbus_vbus_clk);
 	if (fbus_chevc_clk)
 		clk_prepare_enable(fbus_chevc_clk);
@@ -97,7 +98,6 @@ void hmgr_enable_clock(int vbus_no_ctrl)
 #endif
 	if (vbus_hevc_bus_clk)
 		clk_prepare_enable(vbus_hevc_bus_clk);
-		
 #ifdef VBUS_QOS_MATRIX_CTL
 	vbus_matrix();
 #endif
@@ -105,6 +105,7 @@ void hmgr_enable_clock(int vbus_no_ctrl)
 
 void hmgr_disable_clock(int vbus_no_ctrl)
 {
+	// [20200707] - ACLK > CCLK > BCLK
 	if (vbus_hevc_bus_clk)
 		clk_disable_unprepare(vbus_hevc_bus_clk);
 #if defined(VBUS_CODA_CORE_CLK_CTRL)
@@ -233,17 +234,14 @@ int hmgr_get_reset_register(void)
 void hmgr_hw_assert(void)
 {
 #if defined( VIDEO_IP_DIRECT_RESET_CTRL)
+    // [20200707] - ACLK > CCLK > BCLK
     V_DBG(DEBUG_RSTCLK, "enter");
-
-
     if(vbus_hevc_bus_reset) {
         reset_control_assert(vbus_hevc_bus_reset);
     }
-
     if(vbus_hevc_core_reset) {
         reset_control_assert(vbus_hevc_core_reset);
     }
-
     V_DBG(DEBUG_RSTCLK, "out!! (rsr:0x%x)", hmgr_get_reset_register());
 #endif
 }
@@ -251,19 +249,16 @@ void hmgr_hw_assert(void)
 void hmgr_hw_deassert(void)
 {
 #if defined( VIDEO_IP_DIRECT_RESET_CTRL)
+    // [202090707] BCLK > CCLK > ACLK
     V_DBG(DEBUG_RSTCLK, "enter");
-
-
-    if(vbus_hevc_bus_reset)
-    {
-        reset_control_deassert(vbus_hevc_bus_reset);
-    }
-
     if(vbus_hevc_core_reset)
     {
         reset_control_deassert(vbus_hevc_core_reset);
     }
-
+    if(vbus_hevc_bus_reset)
+    {
+        reset_control_deassert(vbus_hevc_bus_reset);
+    }
     V_DBG(DEBUG_RSTCLK, "out!! (rsr:0x%x)", hmgr_get_reset_register());
 #endif
 }

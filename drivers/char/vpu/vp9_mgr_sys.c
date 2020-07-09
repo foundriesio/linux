@@ -87,41 +87,13 @@ void vp9mgr_put_clock(void)
 	}
 }
 
-void vp9mgr_restore_clock(int vbus_no_ctrl, int opened_cnt)
-{
-#if 1
-	int opened_count = opened_cnt;
-
-    vp9mgr_hw_reset(1);
-    while(opened_count)
-    {
-        vp9mgr_disable_clock(vbus_no_ctrl);
-        if(opened_count > 0)
-            opened_count--;
-    }
-
-    //msleep(1);
-    opened_count = opened_cnt;
-    while(opened_count)
-    {
-        vp9mgr_enable_clock(vbus_no_ctrl);
-        if(opened_count > 0)
-            opened_count--;
-    }
-    vp9mgr_hw_reset(0);
-#else
-    vp9mgr_hw_reset(1);
-	vp9mgr_hw_reset(0);
-#endif
-}
-
 void vp9mgr_get_reset(struct device_node *node)
 {
 #if defined( VIDEO_IP_DIRECT_RESET_CTRL)
     if(node == NULL) {
         printk("device node is null\n");
     }
-	printk("############# hmgr_get_reset\n");
+    printk("############# hmgr_get_reset\n");
     vbus_vp9_reset = of_reset_control_get(node, "vp9_bus");
     BUG_ON(IS_ERR(vbus_vp9_reset));
 #endif
@@ -137,20 +109,75 @@ void vp9mgr_put_reset(void)
 #endif
 }
 
-void vp9mgr_hw_reset(int reset)
+int vp9mgr_get_reset_register(void)
+{
+    return 0;
+}
+
+void vp9mgr_hw_assert(void)
 {
 #if defined( VIDEO_IP_DIRECT_RESET_CTRL)
-	if(vbus_vp9_reset) {
-		if(rest) {
-			udelay(1000);
-			reset_control_assert(vbus_vp9_reset);
-		}
-		else {
-			udelay(1000);
-			reset_control_deassert(vbus_vp9_reset);
-			udelay(1000);
-		}
-	}
+    V_DBG(DEBUG_RSTCLK, "enter");
+    if (vbus_vp9_reset)
+    {
+        reset_control_assert(vbus_vp9_reset);
+    }
+    V_DBG(DEBUG_RSTCLK, "out!! (rsr:0x%x)", vp9mgr_get_reset_register());
+#endif
+}
+
+void vp9mgr_hw_deassert(void)
+{
+#if defined( VIDEO_IP_DIRECT_RESET_CTRL)
+    V_DBG(DEBUG_RSTCLK, "enter");
+    if (vbus_vp9_reset)
+    {
+        reset_control_deassert(vbus_vp9_reset);
+    }
+    V_DBG(DEBUG_RSTCLK, "out!! (rsr:0x%x)", vp9mgr_get_reset_register());
+#endif
+}
+
+void vp9mgr_hw_reset()
+{
+#if defined( VIDEO_IP_DIRECT_RESET_CTRL)
+    udelay(1000);
+
+    vp9mgr_hw_assert();
+
+    udelay(1000);
+
+    vp9mgr_hw_deassert();
+
+    udelay(1000);
+#endif
+}
+
+void vp9mgr_restore_clock(int vbus_no_ctrl, int opened_cnt)
+{
+#if 1
+    int opened_count = opened_cnt;
+
+    vp9mgr_hw_assert();
+    while(opened_count)
+    {
+        vp9mgr_disable_clock(vbus_no_ctrl);
+        if(opened_count > 0)
+            opened_count--;
+    }
+
+    udelay(1000); //1ms
+
+    opened_count = opened_cnt;
+    while(opened_count)
+    {
+        vp9mgr_enable_clock(vbus_no_ctrl);
+        if(opened_count > 0)
+            opened_count--;
+    }
+    vp9mgr_hw_deassert();
+#else
+    vp9mgr_hw_reset();
 #endif
 }
 
