@@ -59,13 +59,8 @@
 #include "vpu_hevc_enc_mgr.h"
 #endif
 
-static struct mutex add_mutex;
 static void _venc_inter_add_list(vpu_encoder_data *vdata, int cmd, void* args)
 {
-	unsigned char local_idx;
-
-	mutex_lock(&add_mutex);
-	local_idx = vdata->list_idx;
 	vdata->venc_list[vdata->list_idx].type          = vdata->gsEncType;
 	vdata->venc_list[vdata->list_idx].cmd_type      = cmd;
 #ifdef CONFIG_SUPPORT_TCC_JPU
@@ -84,20 +79,19 @@ static void _venc_inter_add_list(vpu_encoder_data *vdata, int cmd, void* args)
 	vdata->gsCommEncResult = RET0;
 	vdata->venc_list[vdata->list_idx].vpu_result    = &vdata->gsCommEncResult;
 
-	vdata->list_idx = (vdata->list_idx+1)%LIST_MAX;
-	mutex_unlock(&add_mutex);
-
 #ifdef CONFIG_SUPPORT_TCC_JPU
 	if(vdata->gsCodecType == STD_MJPG)
-		jmgr_list_manager(&vdata->venc_list[local_idx], LIST_ADD);
+		jmgr_list_manager(&vdata->venc_list[vdata->list_idx], LIST_ADD);
 	else
 #endif
 #ifdef CONFIG_SUPPORT_TCC_WAVE420L_VPU_HEVC_ENC
 	if(vdata->gsCodecType == STD_HEVC_ENC)
-		vmgr_hevc_enc_list_manager(&vdata->venc_list[local_idx], LIST_ADD);
+		vmgr_hevc_enc_list_manager(&vdata->venc_list[vdata->list_idx], LIST_ADD);
 	else
 #endif
-		vmgr_list_manager(&vdata->venc_list[local_idx], LIST_ADD);
+		vmgr_list_manager(&vdata->venc_list[vdata->list_idx], LIST_ADD);
+
+	vdata->list_idx = (vdata->list_idx+1)%LIST_MAX;
 }
 
 static void _venc_init_list(vpu_encoder_data *vdata)
@@ -838,9 +832,6 @@ int venc_probe(struct platform_device *pdev)
 	memset(&vdata->vComm_data, 0, sizeof(vpu_comm_data_t));
 	spin_lock_init(&(vdata->vComm_data.lock));
 	init_waitqueue_head(&(vdata->vComm_data.wq));
-
-	if(pdev->id == 0)
-		mutex_init(&add_mutex);
 
 	if (misc_register(vdata->misc))
 	{

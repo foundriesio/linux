@@ -68,13 +68,8 @@
 #define detailk(msg...) //printk( "TCC_VPU_DEC: " msg);
 #define err(msg...) printk("TCC_VPU_DEC[Err]: "msg);
 
-static struct mutex add_mutex;
 static void _vdec_inter_add_list(vpu_decoder_data *vdata, int cmd, void* args)
 {
-    unsigned char local_idx;
-
-    mutex_lock(&add_mutex);
-    local_idx = vdata->list_idx;
     vdata->vdec_list[vdata->list_idx].type          = vdata->gsDecType;
     vdata->vdec_list[vdata->list_idx].cmd_type      = cmd;
 #ifdef CONFIG_SUPPORT_TCC_JPU
@@ -103,30 +98,29 @@ static void _vdec_inter_add_list(vpu_decoder_data *vdata, int cmd, void* args)
     vdata->gsCommDecResult = RET0;
     vdata->vdec_list[vdata->list_idx].vpu_result    = &vdata->gsCommDecResult;
 
-    vdata->list_idx = (vdata->list_idx + 1) == LIST_MAX ? (0) : (vdata->list_idx + 1);
-    mutex_unlock(&add_mutex);
-
 #ifdef CONFIG_SUPPORT_TCC_JPU
     if(vdata->gsCodecType == STD_MJPG)
-        jmgr_list_manager(&vdata->vdec_list[local_idx], LIST_ADD);
+        jmgr_list_manager(&vdata->vdec_list[vdata->list_idx], LIST_ADD);
     else
 #endif
 #ifdef CONFIG_SUPPORT_TCC_WAVE512_4K_D2 // HEVC/VP9
     if(vdata->gsCodecType == STD_HEVC || vdata->gsCodecType == STD_VP9)
-        vmgr_4k_d2_list_manager(&vdata->vdec_list[local_idx], LIST_ADD);
+        vmgr_4k_d2_list_manager(&vdata->vdec_list[vdata->list_idx], LIST_ADD);
     else
 #endif
 #ifdef CONFIG_SUPPORT_TCC_WAVE410_HEVC
     if(vdata->gsCodecType == STD_HEVC)
-        hmgr_list_manager(&vdata->vdec_list[local_idx], LIST_ADD);
+        hmgr_list_manager(&vdata->vdec_list[vdata->list_idx], LIST_ADD);
     else
 #endif
 #ifdef CONFIG_SUPPORT_TCC_G2V2_VP9
     if(vdata->gsCodecType == STD_VP9)
-        vp9mgr_list_manager(&vdata->vdec_list[local_idx], LIST_ADD);
+        vp9mgr_list_manager(&vdata->vdec_list[vdata->list_idx], LIST_ADD);
     else
 #endif
-        vmgr_list_manager(&vdata->vdec_list[local_idx], LIST_ADD);
+        vmgr_list_manager(&vdata->vdec_list[vdata->list_idx], LIST_ADD);
+
+    vdata->list_idx = (vdata->list_idx + 1) == LIST_MAX ? (0) : (vdata->list_idx + 1);
 }
 
 static void _vdec_init_list(vpu_decoder_data *vdata )
@@ -2690,9 +2684,6 @@ int vdec_probe(struct platform_device *pdev)
     memset(&vdata->vComm_data, 0, sizeof(vpu_comm_data_t));
     spin_lock_init(&(vdata->vComm_data.lock));
     init_waitqueue_head(&(vdata->vComm_data.wq));
-
-	if(pdev->id == 0)
-    	mutex_init(&add_mutex);
 
     if (misc_register(vdata->misc))
     {
