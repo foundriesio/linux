@@ -1160,7 +1160,7 @@ loop_set_status(struct loop_device *lo, const struct loop_info64 *info)
 	    ((lo->lo_flags & LO_FLAGS_BLOCKSIZE) &&
 	     lo->lo_logical_blocksize != LO_INFO_BLOCKSIZE(info))) {
 		sync_blockdev(lo->lo_device);
-		kill_bdev(lo->lo_device);
+		invalidate_bdev(lo->lo_device);
 	}
 
 	/* I/O need to be drained during transfer transition */
@@ -1219,7 +1219,7 @@ loop_set_status(struct loop_device *lo, const struct loop_info64 *info)
 	    lo->lo_flags != lo_flags ||
 	    ((lo->lo_flags & LO_FLAGS_BLOCKSIZE) &&
 	     lo->lo_logical_blocksize != LO_INFO_BLOCKSIZE(info))) {
-		/* kill_bdev should have truncated all the pages */
+		/* invalidate_bdev should have truncated all the pages */
 		if (lo->lo_device->bd_inode->i_mapping->nrpages) {
 			err = -EAGAIN;
 			pr_warn("%s: loop%d (%s) has still dirty pages (nrpages=%lu)\n",
