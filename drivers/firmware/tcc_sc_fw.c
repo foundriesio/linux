@@ -248,6 +248,10 @@ static int tcc_sc_fw_cmd_request_mmc_cmd(const struct tcc_sc_fw_handle *handle,
 			cmd->resp[2] = res_cmd.args[2];
 			cmd->resp[3] = res_cmd.args[3];
 			cmd->error = (int)res_cmd.args[4];
+
+			if(data != NULL) {
+				data->error = (int)res_cmd.args[5];
+			}
 		}
 	}
 

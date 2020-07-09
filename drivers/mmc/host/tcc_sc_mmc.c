@@ -339,8 +339,7 @@ static void tcc_sc_mmc_request(struct mmc_host *mmc, struct mmc_request *mrq)
 		mrq->cmd->error = cmd.error;
 
 		if(mrq->cmd->data) {
-			mrq->cmd->data->error = cmd.error;
-
+			mrq->cmd->data->error = data.error;
 			if(mrq->cmd->data->error == 0) {
 				mrq->cmd->data->bytes_xfered = data.blksz * data.blocks;
 			}
