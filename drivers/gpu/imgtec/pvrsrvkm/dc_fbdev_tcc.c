@@ -423,25 +423,7 @@ void DC_FBDEV_ContextConfigure(IMG_HANDLE hDisplayContext,
 
 	sVar.yoffset = 0;
 
-	if (ui32PipeCount == 0)
-	{
-		if (psDeviceContext->hLastConfigData)
-			DCDisplayConfigurationRetired(psDeviceContext->hLastConfigData);
-
-		/* If the pipe count is zero, we're tearing down. Don't record
-		 * any new configurations, but still allow the display to pan
-		 * back to buffer 0.
-		 */
-		psDeviceContext->hLastConfigData = NULL;
-
-		/*
-			We still need to "retire" this NULL flip as that signals back to
-			the DC core that we've finished doing what we need to do
-			and it can destroy the display context
-		*/
-		DCDisplayConfigurationRetired(hConfigData);
-	}
-	else
+	if (ui32PipeCount != 0)
 	{
 		BUG_ON(ahBuffers == NULL);
 
@@ -492,15 +474,26 @@ void DC_FBDEV_ContextConfigure(IMG_HANDLE hDisplayContext,
 	}
 
 	if (psDeviceContext->hLastConfigData)
-		DCDisplayConfigurationRetired(psDeviceContext->hLastConfigData);
-
-	if (ui32PipeCount == 0)
 	{
-		psDeviceContext->hLastConfigData = NULL;
+		DCDisplayConfigurationRetired(psDeviceContext->hLastConfigData);
+	}
+
+	if (ui32PipeCount != 0)
+	{
+		psDeviceContext->hLastConfigData = hConfigData;
 	}
 	else
 	{
-		psDeviceContext->hLastConfigData = hConfigData;
+		/* If the pipe count is zero, we're tearing down. Don't record
+		 * any new configurations.
+		 */
+		psDeviceContext->hLastConfigData = NULL;
+
+		/* We still need to "retire" this NULL flip as that signals back to
+		 * the DC core that we've finished doing what we need to do and it
+		 * can destroy the display context
+		 */
+		DCDisplayConfigurationRetired(hConfigData);
 	}
 }
 
