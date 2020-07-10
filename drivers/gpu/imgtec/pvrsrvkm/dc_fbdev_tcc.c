@@ -423,25 +423,7 @@ void DC_FBDEV_ContextConfigure(IMG_HANDLE hDisplayContext,
 
 	sVar.yoffset = 0;
 
-	if (ui32PipeCount == 0)
-	{
-		if (psDeviceContext->hLastConfigData)
-			DCDisplayConfigurationRetired(psDeviceContext->hLastConfigData);
-
-		/* If the pipe count is zero, we're tearing down. Don't record
-		 * any new configurations, but still allow the display to pan
-		 * back to buffer 0.
-		 */
-		psDeviceContext->hLastConfigData = NULL;
-
-		/*
-			We still need to "retire" this NULL flip as that signals back to
-			the DC core that we've finished doing what we need to do
-			and it can destroy the display context
-		*/
-		DCDisplayConfigurationRetired(hConfigData);
-	}
-	else
+	if (ui32PipeCount != 0)
 	{
 		BUG_ON(ahBuffers == NULL);
 
@@ -492,15 +474,26 @@ void DC_FBDEV_ContextConfigure(IMG_HANDLE hDisplayContext,
 	}
 
 	if (psDeviceContext->hLastConfigData)
-		DCDisplayConfigurationRetired(psDeviceContext->hLastConfigData);
-
-	if (ui32PipeCount == 0)
 	{
-		psDeviceContext->hLastConfigData = NULL;
+		DCDisplayConfigurationRetired(psDeviceContext->hLastConfigData);
+	}
+
+	if (ui32PipeCount != 0)
+	{
+		psDeviceContext->hLastConfigData = hConfigData;
 	}
 	else
 	{
-		psDeviceContext->hLastConfigData = hConfigData;
+		/* If the pipe count is zero, we're tearing down. Don't record
+		 * any new configurations.
+		 */
+		psDeviceContext->hLastConfigData = NULL;
+
+		/* We still need to "retire" this NULL flip as that signals back to
+		 * the DC core that we've finished doing what we need to do and it
+		 * can destroy the display context
+		 */
+		DCDisplayConfigurationRetired(hConfigData);
 	}
 }
 
@@ -765,7 +758,8 @@ static int __init DC_FBDEV_init(void)
 	struct fb_info *psLINFBInfo;
 	IMG_PIXFMT ePixFormat;
 	int err = -ENODEV;
-printk("%s TESTTESTTESTTEST\n", __func__);
+
+	pr_info("%s\n", __func__);
 	if (gui32fb_devminor >= FB_MAX)
 	{
 		pr_err("Invalid Linux framebuffer device minor number!\n"
@@ -938,5 +932,6 @@ static void __exit DC_FBDEV_exit(void)
 	kfree(psDeviceData);
 }
 
-module_init(DC_FBDEV_init);
-module_exit(DC_FBDEV_exit);
+//module_init(DC_FBDEV_init);
+//module_exit(DC_FBDEV_exit);
+late_initcall(DC_FBDEV_init);
