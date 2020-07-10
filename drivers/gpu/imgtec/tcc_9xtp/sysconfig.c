@@ -47,10 +47,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "sysconfig.h"
 #include "physheap.h"
 #include "tcc_9xtp_init.h"
-#include <soc/tcc/pmap.h>
 #include "pvrsrv.h"
 
-static pmap_t pmap_pvr_vz;
 
 typedef enum _PHYS_HEAP_IDX_
 {
@@ -206,20 +204,14 @@ PVRSRV_ERROR SysDevInit(void *pvOSDevice, PVRSRV_DEVICE_CONFIG **ppsDevConfig)
 		gsPhysHeapConfig[PHYS_HEAP_IDX_CARVEOUT].eType = PHYS_HEAP_TYPE_UMA;	
 	else
 	{
-		if(0 > pmap_get_info("pvr_vz", &pmap_pvr_vz)){
-			printk("%s-%d : pvr_vz allocation is failed.\n", __func__, __LINE__);
-			return PVRSRV_ERROR_OUT_OF_MEMORY;
-		}
-		printk("@@@@@@@@@@@@@@@@@@@@ %s - 0x%x - 0x%x - %d - %d - %d\n",
-					pmap_pvr_vz.name, pmap_pvr_vz.base, pmap_pvr_vz.size,
-					pmap_pvr_vz.groups, pmap_pvr_vz.rc, pmap_pvr_vz.flags);
 		gsPhysHeapConfig[PHYS_HEAP_IDX_CARVEOUT].eType = PHYS_HEAP_TYPE_LMA;	
 
 		gsPhysHeapConfig[PHYS_HEAP_IDX_CARVEOUT].ui32NumOfRegions = 1;	
 		gsPhysHeapConfig[PHYS_HEAP_IDX_CARVEOUT].pasRegions = OSAllocMem(sizeof(PHYS_HEAP_REGION));	
 		gsPhysHeapConfig[PHYS_HEAP_IDX_CARVEOUT].pasRegions->uiSize = RGX_NUM_OS_SUPPORTED * RGX_FIRMWARE_RAW_HEAP_SIZE + PVRSRV_1M_PAGE_SIZE;	
-		gsPhysHeapConfig[PHYS_HEAP_IDX_CARVEOUT].pasRegions->sStartAddr.uiAddr = pmap_pvr_vz.base;	
-		gsPhysHeapConfig[PHYS_HEAP_IDX_CARVEOUT].pasRegions->sCardBase.uiAddr = pmap_pvr_vz.base;
+		/* Set FW_CARVEOUT_IPA_BASE Address */
+		gsPhysHeapConfig[PHYS_HEAP_IDX_CARVEOUT].pasRegions->sStartAddr.uiAddr = IMG_UINT64_C(0x80000000); // pmap_pvr_vz.base;	
+		gsPhysHeapConfig[PHYS_HEAP_IDX_CARVEOUT].pasRegions->sCardBase.uiAddr = IMG_UINT64_C(0x80000000); // pmap_pvr_vz.base;	
 	}
 	/* Device's physical heaps */
 	gsDevCfg.pasPhysHeaps             = gsPhysHeapConfig;
