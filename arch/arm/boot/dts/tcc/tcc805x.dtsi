@@ -3326,7 +3326,7 @@
 		compatible = "telechips,vpu_hevc_enc_dev_mgr";
 		reg = <0x0 0x15300000 0x0 0xA000>;
 		interrupts = <GIC_SPI 137 IRQ_TYPE_LEVEL_HIGH>;
-		clocks = <&clk_fbus FBUS_VBUS &clk_fbus FBUS_CHEVCENC &clk_fbus FBUS_BHEVCENC>;
+		clocks = <&clk_fbus FBUS_VBUS &clk_fbus FBUS_CHEVCENC &clk_fbus FBUS_BHEVCENC &clk_vpu VIDEOBUS_HEVC_ENCODER>;
 		resets = <&vpubus_rst VIDEOBUS_HEVC_ENCODER>;
 		reset-names = "hevc_encoder";
 	};

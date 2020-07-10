@@ -16,6 +16,7 @@
 static struct clk *fbus_vbus_clk = NULL;
 static struct clk *fbus_chevcenc_clk = NULL;
 static struct clk *fbus_bhevcenc_clk = NULL;
+static struct clk *vbus_hevc_encoder_clk = NULL;
 
 #if defined( VIDEO_IP_DIRECT_RESET_CTRL)
 #include <linux/reset.h>
@@ -32,30 +33,36 @@ void vmgr_hevc_enc_enable_clock(int vbus_no_ctrl)
 {
 	V_DBG(DEBUG_RSTCLK, "@@ vmgr_hevc_enc_enable_clock");
 
+	if (fbus_vbus_clk && !vbus_no_ctrl)
+		clk_prepare_enable(fbus_vbus_clk);
+
 	if (fbus_bhevcenc_clk)
 		clk_prepare_enable(fbus_bhevcenc_clk);
 
 	if (fbus_chevcenc_clk)
 		clk_prepare_enable(fbus_chevcenc_clk);
 
-	if (fbus_vbus_clk && !vbus_no_ctrl)
-		clk_prepare_enable(fbus_vbus_clk);
+	if (vbus_hevc_encoder_clk)
+		clk_prepare_enable(vbus_hevc_encoder_clk);
 }
 
 void vmgr_hevc_enc_disable_clock(int vbus_no_ctrl)
 {
 	V_DBG(DEBUG_RSTCLK, "@@ vmgr_hevc_enc_disable_clock");
 
-#if !defined(VBUS_CLK_ALWAYS_ON)
-	if(fbus_vbus_clk && !vbus_no_ctrl)
-		clk_disable_unprepare(fbus_vbus_clk);
-#endif
+	if (vbus_hevc_encoder_clk)
+		clk_disable_unprepare(vbus_hevc_encoder_clk);
 
 	if(fbus_chevcenc_clk)
 		clk_disable_unprepare(fbus_chevcenc_clk);
 
 	if(fbus_bhevcenc_clk)
 		clk_disable_unprepare(fbus_bhevcenc_clk);
+
+#if !defined(VBUS_CLK_ALWAYS_ON)
+	if(fbus_vbus_clk && !vbus_no_ctrl)
+		clk_disable_unprepare(fbus_vbus_clk);
+#endif
 }
 
 void vmgr_hevc_enc_get_clock(struct device_node *node)
@@ -73,6 +80,9 @@ void vmgr_hevc_enc_get_clock(struct device_node *node)
 
 	fbus_bhevcenc_clk = of_clk_get(node, 2);
 	BUG_ON(IS_ERR(fbus_bhevcenc_clk));
+
+	vbus_hevc_encoder_clk = of_clk_get(node, 3);
+	BUG_ON(IS_ERR(vbus_hevc_encoder_clk));
 }
 
 void vmgr_hevc_enc_put_clock(void)
@@ -87,6 +97,12 @@ void vmgr_hevc_enc_put_clock(void)
 	{
 		clk_put(fbus_bhevcenc_clk);
 		fbus_bhevcenc_clk = NULL;
+	}
+
+	if (vbus_hevc_encoder_clk)
+	{
+		clk_put(vbus_hevc_encoder_clk);
+		vbus_hevc_encoder_clk = NULL;
 	}
 
 	if (fbus_vbus_clk)
