@@ -44,6 +44,8 @@ static int cache_droped = 0;
 //////////////////////////////////////////////////////////////////////////////
 void vmgr_enable_clock(int vbus_no_ctrl, int only_clk_ctrl)
 {
+    // [202090707] BCLK > CCLK > ACLK
+    V_DBG(DEBUG_RSTCLK, "enter");
     if (fbus_vbus_clk && !vbus_no_ctrl)
         clk_prepare_enable(fbus_vbus_clk);
     if (fbus_xoda_clk)
@@ -73,12 +75,14 @@ void vmgr_enable_clock(int vbus_no_ctrl, int only_clk_ctrl)
 
 void vmgr_disable_clock(int vbus_no_ctrl, int only_clk_ctrl)
 {
+    // [20200707] - ACLK > CCLK > BCLK
+    V_DBG(DEBUG_RSTCLK, "enter");
+    if (vbus_xoda_clk)
+        clk_disable_unprepare(vbus_xoda_clk);
 #if defined(VBUS_CODA_CORE_CLK_CTRL)
     if (vbus_core_clk)
         clk_disable_unprepare(vbus_core_clk);
 #endif
-    if (vbus_xoda_clk)
-        clk_disable_unprepare(vbus_xoda_clk);
     if (fbus_xoda_clk)
         clk_disable_unprepare(fbus_xoda_clk);
 #if !defined(VBUS_CLK_ALWAYS_ON)
@@ -171,18 +175,16 @@ int vmgr_get_reset_register(void)
 void vmgr_hw_assert(void)
 {
 #if defined( VIDEO_IP_DIRECT_RESET_CTRL)
+    // [20200707] - ACLK > CCLK > BCLK
     V_DBG(DEBUG_RSTCLK, "enter");
-
     if (vbus_xoda_reset)
     {
         reset_control_assert(vbus_xoda_reset);
     }
-
     if (vbus_core_reset)
     {
         reset_control_assert(vbus_core_reset);
     }
-
     V_DBG(DEBUG_RSTCLK, "out!! (rsr:0x%x)", vmgr_get_reset_register());
 #endif
 }
@@ -190,16 +192,14 @@ void vmgr_hw_assert(void)
 void vmgr_hw_deassert(void)
 {
 #if defined( VIDEO_IP_DIRECT_RESET_CTRL)
+    // [202090707] BCLK > CCLK > ACLK
     V_DBG(DEBUG_RSTCLK, "enter");
-
-    if (vbus_xoda_reset) {
-        reset_control_deassert(vbus_xoda_reset);
-    }
-
     if (vbus_core_reset) {
         reset_control_deassert(vbus_core_reset);
     }
-
+    if (vbus_xoda_reset) {
+        reset_control_deassert(vbus_xoda_reset);
+    }
     V_DBG(DEBUG_RSTCLK, "out!! (rsr:0x%x)", vmgr_get_reset_register());
 #endif
 }
@@ -207,7 +207,6 @@ void vmgr_hw_deassert(void)
 void vmgr_hw_reset(void)
 {
 #if defined( VIDEO_IP_DIRECT_RESET_CTRL)
-
     udelay(1000); //1ms
 
     vmgr_hw_assert();
@@ -217,7 +216,6 @@ void vmgr_hw_reset(void)
     vmgr_hw_deassert();
 
     udelay(1000); //1ms
-
 #endif
 }
 

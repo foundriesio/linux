@@ -597,7 +597,7 @@ static int _vp9mgr_external_all_close(int wait_ms)
 
 static int _vp9mgr_cmd_open(char *str)
 {
-	int ret = 0;
+    int ret = 0;
 
     dprintk("======> _vp9mgr_%s_open In!! %d'th \n", str, atomic_read(&vp9mgr_data.dev_opened));
 
@@ -616,7 +616,7 @@ static int _vp9mgr_cmd_open(char *str)
         vp9mgr_data.clk_limitation = 1;
         vp9mgr_data.cmd_processing = 0;
 
-		vp9mgr_hw_reset(0);
+        vp9mgr_hw_reset();
         vp9mgr_enable_irq(vp9mgr_data.irq);
         if(1)
         {
@@ -628,16 +628,16 @@ static int _vp9mgr_cmd_open(char *str)
         }
         vetc_reg_init(vp9mgr_data.base_addr);
         if(0 > vmem_init())
-	    {
-	        err("failed to allocate memory for VP9!! %d \n", ret);
-	        //return -ENOMEM;
-	    }
+        {
+            err("failed to allocate memory for VP9!! %d \n", ret);
+            //return -ENOMEM;
+        }
     }
     atomic_inc(&vp9mgr_data.dev_opened);
 
-	dprintk("======> _vp9mgr_%s_open Out!! %d'th \n", str, atomic_read(&vp9mgr_data.dev_opened));
-	
-	return 0;
+    dprintk("======> _vp9mgr_%s_open Out!! %d'th \n", str, atomic_read(&vp9mgr_data.dev_opened));
+
+    return 0;
 }
 
 static int _vp9mgr_cmd_release(char *str)
@@ -646,7 +646,7 @@ static int _vp9mgr_cmd_release(char *str)
 
     if(atomic_read(&vp9mgr_data.dev_opened) > 0) {
         atomic_dec(&vp9mgr_data.dev_opened);
-	}
+    }
 
     if(atomic_read(&vp9mgr_data.dev_opened) == 0)
     {
@@ -654,14 +654,14 @@ static int _vp9mgr_cmd_release(char *str)
         int type = 0, alive_cnt = 0;
 
 #if 1 // To close whole vp9 instance when being killed process opened this.
-		if(!vp9mgr_data.bVpu_already_proc_force_closed)
-		{
-	        vp9mgr_data.external_proc = 1;
-	        _vp9mgr_external_all_close(200);
-	        vp9mgr_data.external_proc = 0;
-	        _vp9mgr_wait_process(200);
-		}
-		vp9mgr_data.bVpu_already_proc_force_closed = false;
+        if(!vp9mgr_data.bVpu_already_proc_force_closed)
+        {
+            vp9mgr_data.external_proc = 1;
+            _vp9mgr_external_all_close(200);
+            vp9mgr_data.external_proc = 0;
+            _vp9mgr_wait_process(200);
+        }
+        vp9mgr_data.bVpu_already_proc_force_closed = false;
 #endif
 
         for(type=0; type<VP9_MAX; type++) {
@@ -687,9 +687,10 @@ static int _vp9mgr_cmd_release(char *str)
         vp9mgr_disable_irq(vp9mgr_data.irq);
         vp9mgr_BusPrioritySetting(BUS_FOR_NORMAL, 0);
 
-		vmem_deinit();
+        vmem_deinit();
 
-		vp9mgr_hw_reset(1);
+        vp9mgr_hw_assert();
+        udelay(1000); //1ms
     }
 
     vp9mgr_disable_clock(0);
@@ -699,7 +700,7 @@ static int _vp9mgr_cmd_release(char *str)
     printk("======> _vp9mgr_%s_release Out!! %d'th, total = %d  - DEC(%d/%d/%d/%d/%d) \n", str, atomic_read(&vp9mgr_data.dev_opened), vp9mgr_data.nOpened_Count,
                     vp9mgr_get_close(VPU_DEC), vp9mgr_get_close(VPU_DEC_EXT), vp9mgr_get_close(VPU_DEC_EXT2), vp9mgr_get_close(VPU_DEC_EXT3), vp9mgr_get_close(VPU_DEC_EXT4));
 
-	return 0;
+    return 0;
 }
 static long _vp9mgr_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 {
@@ -751,8 +752,7 @@ static long _vp9mgr_ioctl(struct file *file, unsigned int cmd, unsigned long arg
             break;
 
         case VPU_HW_RESET:
-			vp9mgr_hw_reset(1);
-			vp9mgr_hw_reset(0);
+            vp9mgr_hw_reset();
         break;
 
         case VPU_SET_MEM_ALLOC_MODE:
