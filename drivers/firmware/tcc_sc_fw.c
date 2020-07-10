@@ -186,7 +186,6 @@ static int tcc_sc_fw_cmd_request_mmc_cmd(const struct tcc_sc_fw_handle *handle,
 	struct scatterlist *sg;
 	dma_addr_t addr;
 	int ret, i, len;
-	unsigned int part_num = 0;
 
 	if(handle == NULL)
 		return -EINVAL;
@@ -209,7 +208,7 @@ static int tcc_sc_fw_cmd_request_mmc_cmd(const struct tcc_sc_fw_handle *handle,
 	req_cmd.args[0] = cmd->opcode;
 	req_cmd.args[1] = cmd->arg;
 	req_cmd.args[2] = cmd->flags;
-	req_cmd.args[3] = part_num;
+	req_cmd.args[3] = cmd->part_num;
 	req_cmd.args[4] = 0;
 	req_cmd.args[5] = 0;
 
