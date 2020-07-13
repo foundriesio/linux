@@ -547,15 +547,6 @@ PhysmemCreateNewDmaBufBackedPMR(PVRSRV_DEVICE_NODE *psDevNode,
 		goto errFreePrivData;
 	}
 
-#if defined(CONFIG_POWERVR_ROGUE_TEMPORAL_PATCH_FOR_ANDROID_10)
-        table = dma_buf_map_attachment(psAttachment, DMA_BIDIRECTIONAL);
-        if (IS_ERR_OR_NULL(table))
-        {
-                eError = PVRSRV_ERROR_INVALID_PARAMS;
-                goto errFreePhysAddr;
-        }
-#endif
-
 	if (bZeroOnAlloc || bPoisonOnAlloc)
 	{
 		void *pvKernAddr;
@@ -634,14 +625,12 @@ PhysmemCreateNewDmaBufBackedPMR(PVRSRV_DEVICE_NODE *psDevNode,
 		} while (err == -EAGAIN || err == -EINTR);
 	}
 
-#if !defined(CONFIG_POWERVR_ROGUE_TEMPORAL_PATCH_FOR_ANDROID_10)
 	table = dma_buf_map_attachment(psAttachment, DMA_BIDIRECTIONAL);
 	if (IS_ERR_OR_NULL(table))
 	{
 		eError = PVRSRV_ERROR_INVALID_PARAMS;
 		goto errFreePhysAddr;
 	}
-#endif
 
 	/*
 	 * We do a two pass process: first work out how many pages there
