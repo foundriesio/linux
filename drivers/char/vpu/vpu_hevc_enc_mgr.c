@@ -21,11 +21,13 @@
 #include "vpu_devices.h"
 #include "vpu_buffer.h"
 #include <soc/tcc/pmap.h>
+#include <linux/of_address.h>
 
 #include "vpu_hevc_enc_mgr_sys.h"
 
 
 static unsigned int cntInt_vpu_he = 0;
+static volatile void __iomem *vidsys_conf_reg;
 
 /////////////////////////////////////////////////////////////////////////////
 // Control only once!!
@@ -486,7 +488,7 @@ static int _vmgr_hevc_enc_process(vputype type, int cmd, long pHandle, void* arg
 				arg->encInit.m_reg_write	= (void (*)(void *, unsigned int, unsigned int)) vetc_reg_write;
 				arg->encInit.m_Usleep		= (void (*)(unsigned int, unsigned int))usleep_range;
 
-				V_DBG(DEBUG_ENC_SEQUENCE, "@@ Enc :: Init In =>Memcpy(0x%px),Memset(0x%px),Interrupt(0x%px),remap(0x%px),unmap(0x%px),read(0x%px),write((0x%px))sleep(0x%px)|| workbuff 0x%px/0x%px, Reg: 0x%px/0x%px, format : %d, Stream(0x%px/0x%px, %d)\n",
+				V_DBG(DEBUG_ENC_SEQUENCE, "@@ Enc :: Init In =>Memcpy(0x%px),Memset(0x%px),Interrupt(0x%px),remap(0x%px),unmap(0x%px),read(0x%px),write((0x%px))sleep(0x%px)|| workbuff 0x%px/0x%px, Reg: 0x%px/0x%px, format : %d, Stream(0x%px/0x%px, %d), Reg(0x%px):Sec. AXI (0x%x)",
 					arg->encInit.m_Memcpy,
 					arg->encInit.m_Memset,
 					arg->encInit.m_Interrupt,
@@ -502,7 +504,9 @@ static int _vmgr_hevc_enc_process(vputype type, int cmd, long pHandle, void* arg
 					arg->encInit.m_iBitstreamFormat,
 					arg->encInit.m_BitstreamBufferAddr[PA],
 					arg->encInit.m_BitstreamBufferAddr[VA],
-					arg->encInit.m_iBitstreamBufferSize
+					arg->encInit.m_iBitstreamBufferSize,
+					vidsys_conf_reg,
+					vetc_reg_read(vidsys_conf_reg, 0x84)
 					);
 
 				ret = tcc_vpu_hevc_enc(cmd, (void*)(&arg->handle), (void*)(&arg->encInit), (void*)(&arg->encInitialInfo));
@@ -1304,6 +1308,17 @@ int vmgr_hevc_enc_probe(struct platform_device *pdev)
 	vmgr_hevc_enc_data.base_addr = devm_ioremap(&pdev->dev, res->start, res->end-res->start);
 	V_DBG(DEBUG_ENC_PROBE, "VPU-HEVC-ENC base address [0x%x -> 0x%px], resource size [%d], irq num [%d]",
 		res->start, vmgr_hevc_enc_data.base_addr, res->end-res->start, vmgr_hevc_enc_data.irq-32);
+
+	vidsys_conf_reg = (volatile void __iomem *)of_iomap(pdev->dev.of_node, 1);
+	if (vidsys_conf_reg == NULL)
+	{
+		V_DBG(DEBUG_ENC_PROBE, "vidsys_conf_reg: NULL");
+	}
+	else
+	{
+		vetc_reg_write((void*)vidsys_conf_reg, 0x84, 0x9c9a3000);
+		V_DBG(DEBUG_ENC_PROBE, "Video sub-system cfg reg (0x%px) : Sec. AXI (0x%x)", vidsys_conf_reg, vetc_reg_read(vidsys_conf_reg, 0x84));
+	}
 
 	vmgr_hevc_enc_get_clock(pdev->dev.of_node);
 	vmgr_hevc_enc_get_reset(pdev->dev.of_node);
