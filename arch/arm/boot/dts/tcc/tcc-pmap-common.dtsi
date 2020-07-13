@@ -608,7 +608,7 @@
 #endif
 
 #if defined(CONFIG_POWERVR_VZ)
-#define PVR_VZ_SIZE		(0x410000)
+#define PVR_VZ_SIZE		(0x4100000)
 #else
 #define PVR_VZ_SIZE             (0)
 #endif

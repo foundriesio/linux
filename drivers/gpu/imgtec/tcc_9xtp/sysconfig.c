@@ -210,8 +210,13 @@ PVRSRV_ERROR SysDevInit(void *pvOSDevice, PVRSRV_DEVICE_CONFIG **ppsDevConfig)
 		gsPhysHeapConfig[PHYS_HEAP_IDX_CARVEOUT].pasRegions = OSAllocMem(sizeof(PHYS_HEAP_REGION));	
 		gsPhysHeapConfig[PHYS_HEAP_IDX_CARVEOUT].pasRegions->uiSize = RGX_NUM_OS_SUPPORTED * RGX_FIRMWARE_RAW_HEAP_SIZE + PVRSRV_1M_PAGE_SIZE;	
 		/* Set FW_CARVEOUT_IPA_BASE Address */
+		#if defined(CONFIG_TCC805X_CA53Q)
 		gsPhysHeapConfig[PHYS_HEAP_IDX_CARVEOUT].pasRegions->sStartAddr.uiAddr = IMG_UINT64_C(0x80000000); // pmap_pvr_vz.base;	
 		gsPhysHeapConfig[PHYS_HEAP_IDX_CARVEOUT].pasRegions->sCardBase.uiAddr = IMG_UINT64_C(0x80000000); // pmap_pvr_vz.base;	
+		#else
+                gsPhysHeapConfig[PHYS_HEAP_IDX_CARVEOUT].pasRegions->sStartAddr.uiAddr = IMG_UINT64_C(0x80000000)+RGX_FIRMWARE_RAW_HEAP_SIZE;
+                gsPhysHeapConfig[PHYS_HEAP_IDX_CARVEOUT].pasRegions->sCardBase.uiAddr = IMG_UINT64_C(0x80000000)+RGX_FIRMWARE_RAW_HEAP_SIZE;
+		#endif
 	}
 	/* Device's physical heaps */
 	gsDevCfg.pasPhysHeaps             = gsPhysHeapConfig;
