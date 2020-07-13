@@ -111,11 +111,12 @@ static bool fanotify_should_send_event(struct fsnotify_mark *inode_mark,
 	 * If the event is on dir and this mark doesn't care about
 	 * events on dir, don't send it!
 	 */
-	if (inode_mark &&
-	    (!(event_mask & FS_EVENT_ON_CHILD) ||
-	     (inode_mark->mask & FS_EVENT_ON_CHILD)) &&
-	    (!(event_mask & FS_ISDIR) || inode_mark->mask & FS_ISDIR)) {
-		marks_mask |= inode_mark->mask;
+	if (inode_mark) {
+		if ((!(event_mask & FS_EVENT_ON_CHILD) ||
+		     (inode_mark->mask & FS_EVENT_ON_CHILD)) &&
+		    (!(event_mask & FS_ISDIR) || inode_mark->mask & FS_ISDIR))
+			marks_mask |= inode_mark->mask;
+		/* Apply ignore mask regardless of ISDIR and ON_CHILD flags */
 		marks_ignored_mask |= inode_mark->ignored_mask;
 	}
 
@@ -125,9 +126,11 @@ static bool fanotify_should_send_event(struct fsnotify_mark *inode_mark,
 	 * If the event is on dir and this mark doesn't care about
 	 * events on dir, don't send it!
 	 */
-	if (vfsmnt_mark && !(event_mask & FS_EVENT_ON_CHILD) &&
-	    (!(event_mask & FS_ISDIR) || vfsmnt_mark->mask & FS_ISDIR)) {
-		marks_mask |= vfsmnt_mark->mask;
+	if (vfsmnt_mark) {
+		if (!(event_mask & FS_EVENT_ON_CHILD) &&
+		    (!(event_mask & FS_ISDIR) || vfsmnt_mark->mask & FS_ISDIR))
+			marks_mask |= vfsmnt_mark->mask;
+		/* Apply ignore mask regardless of ISDIR and ON_CHILD flags */
 		marks_ignored_mask |= vfsmnt_mark->ignored_mask;
 	}
 
