@@ -526,7 +526,7 @@ config MMC_SDHCI_TCC_MODULE_ONLY
 	  If unsure, say N.
 
 config MMC_TCC_SC
-	tristate "Telechips Storage Core MMC Proxy Driver (experimental)"
+	tristate "Telechips Storage Core MMC Proxy Driver"
 	depends on ARCH_TCC
 	depends on TCC_SC_FW_PROTOCOL
 	help

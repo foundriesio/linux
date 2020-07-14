@@ -3,6 +3,8 @@
 # Makefile for MMC/SD host controller drivers
 #
 
+obj-$(CONFIG_MMC_TCC_SC)	+= tcc_sc_mmc.o
+
 obj-$(CONFIG_MMC_ARMMMCI) += armmmci.o
 armmmci-y := mmci.o
 armmmci-$(CONFIG_MMC_QCOM_DML) += mmci_qcom_dml.o
@@ -96,8 +98,6 @@ ifeq ($(CONFIG_MMC_SDHCI_TCC_MODULE_ONLY),y)
 	obj-m	+= sdhci-tcc-mod.o
 endif
 obj-$(CONFIG_MMC_TCC_SDHC)	+= tcc_sdhc.o
-
-obj-$(CONFIG_MMC_TCC_SC)	+= tcc_sc_mmc.o
 
 ifeq ($(CONFIG_CB710_DEBUG),y)
 	CFLAGS-cb710-mmc	+= -DDEBUG

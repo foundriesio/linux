@@ -1435,6 +1435,26 @@
 		max-channel = <TCC_CB_MBOX_MAX>;
 	};
 
+	/* A72 <-> SC */
+	a72_sc_mbox: mbox@0x1D200000 {
+		status = "disabled";
+		compatible = "telechips,tcc805x-mailbox-sc";
+		reg = <0x0 0x1D200000 0x0 0x80>;
+		interrupts = <GIC_SPI 319 IRQ_TYPE_LEVEL_HIGH>,
+				   <GIC_SPI 329 IRQ_TYPE_LEVEL_HIGH>;
+		#mbox-cells = <1>;
+	};
+
+	/* A53 <-> SC */
+	a53_sc_mbox: mbox@0x1D210000 {
+		status = "disabled";
+		compatible = "telechips,tcc805x-mailbox-sc";
+		reg = <0x0 0x1D210000 0x0 0x80>;
+		interrupts = <GIC_SPI 320 IRQ_TYPE_LEVEL_HIGH>,
+				   <GIC_SPI 330 IRQ_TYPE_LEVEL_HIGH>;
+		#mbox-cells = <1>;
+	};
+
 	/* micom_mbox test */
 	mbox_test0: mbox_test@0 {
 		 compatible = "telechips,mbox_test";
@@ -1488,6 +1508,10 @@
 		mbox-names ="sdr-ipc";
 		mboxes = <&cb_mbox TCC_CB_MBOX_SDR>;
 		mbox-id = TCC_MBOX_SDR_ID;
+	};
+
+	tcc_sc_fw: tcc_sc_fw {
+		compatible = "telechips,tcc805x-sc-fw";
 	};
 
 	i2c0: i2c@16300000 {

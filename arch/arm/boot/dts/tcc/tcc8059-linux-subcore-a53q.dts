@@ -1437,6 +1437,27 @@
 		max-channel = <TCC_CB_MBOX_MAX>;
 	};
 
+	/* A72 <-> SC */
+	a72_sc_mbox: mbox@0x1D200000 {
+		status = "disabled";
+		compatible = "telechips,tcc805x-mailbox-sc";
+		reg = <0x1D200000 0x80>;
+		interrupts = <GIC_SPI 319 IRQ_TYPE_LEVEL_HIGH>,
+				   <GIC_SPI 329 IRQ_TYPE_LEVEL_HIGH>;
+		#mbox-cells = <1>;
+	};
+
+	/* A53 <-> SC */
+	a53_sc_mbox: mbox@0x1D210000 {
+		status = "disabled";
+		compatible = "telechips,tcc805x-mailbox-sc";
+		reg = <0x1D210000 0x80>;
+		interrupts = <GIC_SPI 320 IRQ_TYPE_LEVEL_HIGH>,
+				   <GIC_SPI 330 IRQ_TYPE_LEVEL_HIGH>;
+		#mbox-cells = <1>;
+	};
+
+
 	/* micom_mbox test */
 	mbox_test0: mbox_test@0 {
 		 compatible = "telechips,mbox_test";
@@ -1490,6 +1511,10 @@
 		mbox-names ="sdr-ipc";
 		mboxes = <&cb_mbox TCC_CB_MBOX_SDR>;
 		mbox-id = TCC_MBOX_SDR_ID;
+	};
+
+	tcc_sc_fw: tcc_sc_fw {
+		compatible = "telechips,tcc805x-sc-fw";
 	};
 
 	adma0: adma@16100000 {
@@ -1684,6 +1709,42 @@
 		status = "disabled";
 	};
 
+	/* storage core mmc driver (experimental) */
+	vqmmc_emmc: vqmmc_emmc {
+		compatible = "regulator-fixed";
+		regulator-name = "vqmmc_emmc";
+		regulator-min-microvolt = <1800000>;
+		regulator-max-microvolt = <1800000>;
+		regulator-always-on;
+	};
+
+	tcc_sc_mmc: tcc_sc_mmc {
+		compatible = "telechips,tcc805x-sc-mmc";
+		status = "okay";
+
+		max-frequency = <200000000>;
+		bus-width = <8>;
+
+		sc-firmware = <&tcc_sc_fw>;
+
+		no-sdio;
+		no-sd;
+		non-removable;
+		keep-power-in-suspend;
+		disable-wp;
+
+		mmc-hs400-1_8v;
+		vqmmc-supply = <&vqmmc_emmc>;
+	};
+};
+
+&a53_sc_mbox {
+	status = "okay";
+};
+
+&tcc_sc_fw {
+	status = "okay";
+	mboxes = <&a53_sc_mbox 0>;
 };
 
 &pinctrl {
