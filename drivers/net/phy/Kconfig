@@ -398,6 +398,11 @@ config XILINX_GMII2RGMII
 	  the Reduced Gigabit Media Independent Interface(RGMII) between
 	  Ethernet physical media devices and the Gigabit Ethernet controller.
 
+config TCC_MARVELL_PHY
+        tristate "Drivers for Marvell PHYs Telechips support"
+	---help---
+	Supports the Marvell PHYs for telechips evaluation board.
+
 config TCC_RTL9000_PHY
        tristate "Drivers for RTL9000 PHYs Telechips support"
        ---help---

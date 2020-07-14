@@ -84,3 +84,4 @@ obj-$(CONFIG_TCC_REALTEK_PHY)		+= tcc_realtek.o
 obj-$(CONFIG_TCC_BROADCOM_PHY_89811)	+= tcc_broadcom89811.o
 obj-$(CONFIG_TCC_BROADCOM_PHY)		+= tcc_broadcom.o
 obj-$(CONFIG_TCC_RTL9000_PHY) 	+= tcc_rtl9000.o
+obj-$(CONFIG_TCC_MARVELL_PHY)		+= tcc_marvell.o
