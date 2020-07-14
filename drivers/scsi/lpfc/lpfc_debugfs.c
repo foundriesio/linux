@@ -2166,10 +2166,6 @@ lpfc_debugfs_lockstat_write(struct file *file, const char __user *buf,
 	char *pbuf;
 	int i;
 
-	/* Protect copy from user */
-	if (!access_ok(VERIFY_READ, buf, nbytes))
-		return -EFAULT;
-
 	memset(mybuf, 0, sizeof(mybuf));
 
 	if (copy_from_user(mybuf, buf, nbytes))
@@ -2787,10 +2783,6 @@ lpfc_debugfs_scsistat_write(struct file *file, const char __user *buf,
 	struct lpfc_hba *phba = vport->phba;
 	char mybuf[6] = {0};
 	int i;
-
-	/* Protect copy from user */
-	if (!access_ok(VERIFY_READ, buf, nbytes))
-		return -EFAULT;
 
 	if (copy_from_user(mybuf, buf, (nbytes >= sizeof(mybuf)) ?
 				       (sizeof(mybuf) - 1) : nbytes))
