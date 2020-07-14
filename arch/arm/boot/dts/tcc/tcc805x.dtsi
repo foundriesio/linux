@@ -1491,6 +1491,14 @@
 		 mbox-id = TCC_MBOX_IPC_ID;
 	 };
 
+	/* snor updater driver*/
+	snor_updater: snor_updater {
+		 compatible = "telechips,snor_updater";
+		 mbox-names ="snor-update-mbox";
+		 mboxes = <&micom_mbox TCC_MICOM_MBOX0_FWUG>;
+		 mbox-id = TCC_MBOX_FWUG_ID;
+	};
+
 	/* vioc_mgr for A72 */
 	vioc_mgr0: vioc_mgr@0 {
 		compatible = "telechips,vioc_mgr";

@@ -41,10 +41,22 @@ int snor_updater_mailbox_send(struct snor_updater_device *updater_dev, struct tc
 			dprintk(updater_dev->dev,"cmd[%d]: (0x%02x)\n", i, ipc_msg->cmd[i]);
 		}
 		dprintk(updater_dev->dev,"data size(%d)\n", ipc_msg->data_len);
-
+#ifdef CONFIG_ARCH_TCC803X
 		(void)mbox_send_message(updater_dev->mbox_ch, ipc_msg);
 		mbox_client_txdone(updater_dev->mbox_ch,0);
 		ret = SNOR_UPDATER_SUCCESS;
+#else
+		ret = mbox_send_message(updater_dev->mbox_ch, ipc_msg);
+		if(ret < 0 )
+		{
+			eprintk(updater_dev->dev,"mbox send error(%d)\n",ret);
+			ret = SNOR_UPDATER_ERR_TIMEOUT;
+		}
+		else
+		{
+			ret = SNOR_UPDATER_SUCCESS;
+		}
+#endif
 	}
 	else
 	{
@@ -69,10 +81,14 @@ struct mbox_chan *snor_updater_request_channel(struct platform_device *pdev, con
 	{
 		client->dev = &pdev->dev;
 		client->rx_callback = handler;
-		client->tx_done = mbox_msg_sent;
+		client->tx_done = NULL;
+#ifdef CONFIG_ARCH_TCC803X
 		client->tx_block = false;
+#else
+		client->tx_block = true;
+#endif
 		client->knows_txdone = false;
-		client->tx_tout = 10;
+		client->tx_tout = 100;
 
 		channel = mbox_request_channel_byname(client, name);
 		if (IS_ERR(channel)) {
