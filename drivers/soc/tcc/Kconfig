@@ -72,7 +72,7 @@ config TCC_CORE_RESET
 config TCC_BOOTSTAGE
 	bool "Telechips bootstage helper driver"
 	depends on ARCH_TCC805X
-	default n
+	default y
 	help
 	  Select this option to enable Telechips bootstage helper driver.
 	  Telehips bootstage helper driver creates and manages the `bootstage`
