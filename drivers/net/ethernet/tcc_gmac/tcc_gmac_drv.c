@@ -1220,9 +1220,10 @@ static void tcc_gmac_adjust_link(struct net_device *dev)
 
 #ifdef CONFIG_TCC_RTL9000_PHY
 		netif_carrier_on(dev);
+#elif CONFIG_TCC_MARVELL_PHY
+		netif_carrier_on(dev);
 #endif
 		u32 ctrl = readl(ioaddr + MAC_CTRL_REG);
-
 
 
 		/* Now we make sure that we can be in full duplex mode.

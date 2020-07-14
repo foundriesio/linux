@@ -161,6 +161,10 @@ int tca_gmac_init(struct device_node *np, struct gmac_dt_info_t *dt_info)
 	dt_info->rxclk_i_inv = 1;
 	dt_info->rxdv_dly = 31;
 #endif
+#elif defined(CONFIG_ARCH_TCC805X)
+#if defined(CONFIG_TCC_MARVELL_PHY)
+	dt_info->rxclk_i_dly = 9;
+#endif
 #endif
 	printk(KERN_INFO "[INFO][GMAC] txc_dly : %d , txc_inv : %d\n", dt_info->txclk_o_dly, dt_info->txclk_o_inv);
 	printk(KERN_INFO "[INFO][GMAC] rxc_dly : %d , rxc_inv : %d\n", dt_info->rxclk_i_dly, dt_info->rxclk_i_inv);
