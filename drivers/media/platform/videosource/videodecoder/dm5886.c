@@ -101,30 +101,49 @@ static struct videosource_reg * videosource_reg_table_list[] = {
 	sensor_camera_ntsc,
 };
 
+static int write_reg(struct i2c_client * client, unsigned int addr, int addr_bytes, unsigned int data, int data_bytes) {
+	unsigned char	reg_buf[8]	= {0,};
+	unsigned char	*p_reg_buf	= NULL;
+	int				idxBuf		= 0;
+	int				ret			= 0;
+
+	dlog("addr: 0x%08x, data: 0x%08x\n", addr, data);
+
+	// convert addr to i2c byte stream
+	p_reg_buf = reg_buf;
+	for(idxBuf=0; idxBuf<addr_bytes; idxBuf++)
+		*p_reg_buf++ = (unsigned char)((addr >> (addr_bytes - 1 - idxBuf)) & 0xFF);
+	// convert data to i2c byte stream
+	for(idxBuf=0; idxBuf<data_bytes; idxBuf++)
+		*p_reg_buf++ = (unsigned char)((data >> (data_bytes - 1 - idxBuf)) & 0xFF);
+
+	ret = videosource_i2c_write(client, reg_buf, addr_bytes + data_bytes);
+	if(ret != 0) {
+		loge("i2c device name: %s, slave addr: 0x%x, addr: 0x%08x, write error!!!!\n", client->name, client->addr, addr);
+		return -1;
+	}
+
+	return ret;
+}
+
 static int write_regs(struct i2c_client * client, const struct videosource_reg * list) {
-	unsigned char data[4];
-	unsigned char bytes;
-	int ret, err_cnt = 0;
+	int				addr_bytes	= 0;
+	int				data_bytes	= 0;
+	int				ret			= 0;
 
+	addr_bytes	= 1;
+	data_bytes	= 1;
 	while (!((list->reg == REG_TERM) && (list->val == VAL_TERM))) {
-		bytes = 0;
-		data[bytes++]= (unsigned char)list->reg&0xff;
-		data[bytes++]= (unsigned char)list->val&0xff;
-
-		ret = DDI_I2C_Write(client, data, 1, 1);
-		if(ret) {
-			if(4 <= ++err_cnt) {
-				loge("Sensor I2C !!!! \n");
-				return ret;
-			}
+		if((unsigned int)list->reg == (unsigned int)0x90) {
+			msleep(1);
 		} else {
-			if((unsigned int)list->reg == (unsigned int)0x90) {
-//				logd("delay(1)\n");
-				msleep(1);
+			ret = write_reg(client, list->reg, addr_bytes, list->val, data_bytes);
+			if(ret) {
+				loge("i2c device name: %s, slave addr: 0x%x, write error!!!!\n", client->name, client->addr);
+				break;
 			}
-			err_cnt = 0;
-			list++;
 		}
+		list++;
 	}
 
 	return 0;
@@ -174,7 +193,7 @@ static int change_mode(struct i2c_client * client, int mode) {
 }
 
 videosource_t videosource_dm5886 = {
-	.type							= VIDEOSOURCE_TYPE_VIDEODECODER,
+	.interface						= VIDEOSOURCE_INTERFACE_CIF,
 
 	.format = {
 		.width						= WIDTH,
@@ -199,11 +218,11 @@ videosource_t videosource_dm5886 = {
 		.fvs						= OFF,
 
 		.capture_w					= WIDTH,
-		.capture_h					= (HEIGHT / 2) - 1,
+		.capture_h					= HEIGHT,
 
 		.capture_zoom_offset_x		= 0,
 		.capture_zoom_offset_y		= 0,
-		.cam_capchg_width			= 720,
+		.cam_capchg_width			= WIDTH,
 		.framerate					= 15,
 		.capture_skip_frame 		= 0,
 		.sensor_sizes				= sensor_sizes,

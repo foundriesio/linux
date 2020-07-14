@@ -232,7 +232,7 @@ int videosource_parse_gpio_dt_data(videosource_t * vdev, struct device_node * vi
 		vdev->gpio.rst_port = of_get_named_gpio_flags(videosource_node, "rst-gpios", 0, &vdev->gpio.rst_value);
 
 #ifdef CONFIG_MIPI_CSI_2
-		if(vdev->type == VIDEOSOURCE_TYPE_MIPI) {
+		if(vdev->interface == VIDEOSOURCE_INTERFACE_MIPI) {
 			// interrupt pin
 			vdev->gpio.intb_port = of_get_named_gpio_flags(videosource_node, "intb-gpios", 0, &vdev->gpio.intb_value);
 
@@ -488,7 +488,7 @@ int videosource_set_port(videosource_t * vdev, int enable) {
 	FUNCTION_IN
 
 #ifdef CONFIG_MIPI_CSI_2
-	if(vdev->type != VIDEOSOURCE_TYPE_MIPI)
+	if(vdev->interface != VIDEOSOURCE_INTERFACE_MIPI)
 #endif//CONFIG_ARCH_TCC803X
 	{
 		// pinctrl
@@ -640,7 +640,7 @@ int videosource_if_initialize(videosource_t * vdev) {
 		videosource_if_change_mode(vdev, MODE_INIT);
 
 #ifdef CONFIG_MIPI_CSI_2
-		if(vdev->type == VIDEOSOURCE_TYPE_MIPI) {
+		if(vdev->interface == VIDEOSOURCE_INTERFACE_MIPI) {
 			// init remote serializer
 			videosource_if_change_mode(vdev, MODE_SERDES_REMOTE_SER);
 
@@ -660,12 +660,11 @@ int videosource_if_initialize(videosource_t * vdev) {
 
 			// enable mipi-csi2 interrupt
 			videosource_if_set_mipi_csi2_interrupt(vdev, &vdev->format, ON);
-		} else {
-#endif//CONFIG_ARCH_TCC803X
-			videosource_if_check_status(vdev);
-#ifdef CONFIG_MIPI_CSI_2
 		}
-#endif//CONFIG_ARCH_TCC803X
+#endif//CONFIG_MIPI_CSI_2
+
+		// check videosource status
+//		ret = videosource_if_check_status(vdev);
 	} else {
 		ret = -1;
 	}
@@ -681,7 +680,7 @@ int videosource_if_deinitialize(videosource_t * vdev) {
 
 	if(vdev->enabled == ENABLE) {
 #ifdef CONFIG_MIPI_CSI_2
-		if(vdev->type == VIDEOSOURCE_TYPE_MIPI) {
+		if(vdev->interface == VIDEOSOURCE_INTERFACE_MIPI) {
 			videosource_if_init_mipi_csi2_interface(vdev, &vdev->format, OFF);
 
 			// disable mipi-csi2 interrupt
@@ -871,7 +870,7 @@ int videosource_if_remove(videosource_t * vdev) {
 	unregister_chrdev_region(vdev->cdev_region, 1);
 
 #ifdef CONFIG_MIPI_CSI_2
-	if(vdev->type == VIDEOSOURCE_TYPE_MIPI) {
+	if(vdev->interface == VIDEOSOURCE_INTERFACE_MIPI) {
 		clk_disable(mipi_csi2_clk);
 	}
 #endif//CONFIG_ARCH_TCC803X

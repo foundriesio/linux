@@ -15,10 +15,12 @@
  * Suite 330, Boston, MA 02111-1307 USA
  ****************************************************************************/
 
-#ifndef MIPI_DESERIALIZER_H
-#define MIPI_DESERIALIZER_H
+#ifndef MAX9276_H
+#define MAX9276_H
 
-#include "ds90ub964.h"
-#include "max9286.h"
+#include "../videosource_types.h"
 
-#endif//MIPI_DESERIALIZER_H
+extern videosource_t videosource_max9276;
+
+#endif//MAX9276_H
+

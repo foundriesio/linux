@@ -1,6 +1,6 @@
 /****************************************************************************
  *
- * Copyright (C) 2013 Telechips Inc.
+ * Copyright (C) 2018 Telechips Inc.
  *
  * This program is free software; you can redistribute it and/or modify it under the terms
  * of the GNU General Public License as published by the Free Software Foundation;
@@ -15,21 +15,11 @@
  * Suite 330, Boston, MA 02111-1307 USA
  ****************************************************************************/
 
-#ifndef VIDEOSOURCE_I2C_H
-#define VIDEOSOURCE_I2C_H
+#ifndef MIPI_DESERIALIZER_H
+#define MIPI_DESERIALIZER_H
 
-#include <linux/i2c.h>
+#include "ds90ub964.h"
+#include "max9286.h"
+#include "max9276.h"
 
-#define REG_TERM 0xFF
-#define VAL_TERM 0xFF
-
-struct videosource_reg {
-	unsigned short reg;
-	unsigned short val;
-};
-
-extern int videosource_i2c_read(struct i2c_client * client, char * addr_buf, int addr_bytes, char * data_buf, int data_bytes);
-extern int videosource_i2c_write(struct i2c_client * client, char * reg_buf, int reg_bytes);
-
-#endif//VIDEOSOURCE_I2C_H
-
+#endif//MIPI_DESERIALIZER_H
