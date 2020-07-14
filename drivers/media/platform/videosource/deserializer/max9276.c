@@ -17,67 +17,68 @@
 
 #include <linux/delay.h>
 #include <linux/gpio.h>
+#include <linux/interrupt.h>
 
 #include "../videosource_common.h"
 #include "../videosource_i2c.h"
+#include "../mipi-csi2/mipi-csi2.h"
 
-#define WIDTH			720
-#define HEIGHT			480
+#define WIDTH	1920
+#define HEIGHT	(1080 - 1)
 
 static struct capture_size sensor_sizes[] = {
 	{WIDTH, HEIGHT},
 	{WIDTH, HEIGHT}
 };
 
-static struct videosource_reg sensor_camera_ntsc[] = {
-// ISL_79888 init
-	{0xff,0x00},		   // page 0
-	{0x02,0x00},		   //
-	{0x03,0x00},		   // Disable Tri-state
-#if 1
-	{0x04,0x0A},		   // Invert Clock
-#else
-	{0x04,0x08},		   // Invert Clock
-#endif
+#define ISP_ADDR	(0x30 >> 1)
+#define SER_ADDR	(0x80 >> 1)
 
-	{0xff,0x01},		   // page 1
-	{0x1C,0x07},		   // auto dection
-						   // single ended
-	{0x37,0x06},		   //
-	{0x39,0x18},		   //
-	{0x33,0x85},		   // Free-run 60Hz
-	{0x2f,0xe6},		   // auto blue screen
+#define DATA_TERM	(0xFFFFFFFF)
 
-	{0xff,0x00},		   // page 0
-	{0x07,0x00},		   // 1 ch mode
-	{0x09,0x4f},		   // PLL=27MHz
-	{0x0B,0x42},		   // PLL=27MHz
-
-	{0xff,0x05},		   // page 5
-	{0x05,0x42},		   // byte interleave
-	{0x06,0x61},		   // byte interleave
-	{0x0E,0x00},		   //
-	{0x11,0xa0},		   // Packet cnt = 1440 (EVB only)
-	{0x13,0x1B},		   //
-	{0x33,0x40},		   //
-	{0x34,0x18},		   // PLL normal
-	{0x00,0x02},		   // MIPI on
-
-	{REG_TERM, VAL_TERM}
+typedef struct videosource_i2c_reg {
+	unsigned int saddr;
+	unsigned int delay;
+	unsigned int addr;
+	unsigned int data[];
 };
 
-static struct videosource_reg sensor_camera_status[] = {
-	{0x1B, 0x00},
-#if 0
-	{0x1C, 0x00},
-	{0x1D, 0x00},
-	{0x1E, 0x00},
-#endif
-	{REG_TERM, VAL_TERM}
+static struct videosource_i2c_reg videosource_i2c_reg_list_des_enable_local_ack = {
+	.addr	= 0x1C,
+	.data	= { 0xB6, DATA_TERM },
 };
 
-static struct videosource_reg * videosource_reg_table_list[] = {
-	sensor_camera_ntsc,
+static struct videosource_i2c_reg videosource_i2c_reg_list_ser_config_mode = {
+	.saddr	= SER_ADDR,
+	.delay	= 20,
+	.addr	= 0x04,
+	.data	= { 0x43, DATA_TERM },
+};
+
+static struct videosource_i2c_reg videosource_i2c_reg_list_isp_init = {
+	.saddr	= ISP_ADDR,
+	.addr	= 0x0A,
+	.data	= { 0x01, 0x07, 0x02, 0x01, 0x00, 0x00, 0x30, 0x80, 0xC5, DATA_TERM },
+};
+
+static struct videosource_i2c_reg videosource_i2c_reg_list_ser_stream_mode = {
+	.saddr	= SER_ADDR,
+	.delay	= 20,
+	.addr	= 0x04,
+	.data	= { 0x83, DATA_TERM },
+};
+
+static struct videosource_i2c_reg videosource_i2c_reg_list_des_disable_local_ack = {
+	.addr	= 0x1C,
+	.data	= { 0x36, DATA_TERM },
+};
+
+static struct videosource_i2c_reg * videosource_i2c_reg_list[] = {
+	&videosource_i2c_reg_list_des_enable_local_ack,
+	&videosource_i2c_reg_list_ser_config_mode,
+	&videosource_i2c_reg_list_isp_init,
+	&videosource_i2c_reg_list_ser_stream_mode,
+	&videosource_i2c_reg_list_des_disable_local_ack,
 };
 
 static int read_reg(struct i2c_client * client, unsigned int addr, int addr_bytes, unsigned int * data, int data_bytes) {
@@ -105,29 +106,6 @@ static int read_reg(struct i2c_client * client, unsigned int addr, int addr_byte
 	return ret;
 }
 
-static int read_regs(struct i2c_client * client, const struct videosource_reg * list) {
-	int				addr_bytes	= 1;
-	unsigned int	data		= 0;
-	int				data_bytes	= 1;
-	int						ret = 0;
-
-	while (!((list->reg == REG_TERM) && (list->val == VAL_TERM))) {
-		if(list->reg != 0x00) {
-			addr_bytes	= 1;
-			data		= 0;
-			data_bytes	= 1;
-			ret = read_reg(client, list->reg, addr_bytes, &data, data_bytes);
-			if(ret) {
-				loge("i2c device name: %s, slave addr: 0x%x, write error!!!!\n", client->name, client->addr);
-				return ret;
-			}
-		}
-		list++;
-	}
-
-	return 0;
-}
-
 static int write_reg(struct i2c_client * client, unsigned int addr, int addr_bytes, unsigned int data, int data_bytes) {
 	unsigned char	reg_buf[8]	= {0,};
 	unsigned char	*p_reg_buf	= NULL;
@@ -153,21 +131,44 @@ static int write_reg(struct i2c_client * client, unsigned int addr, int addr_byt
 	return ret;
 }
 
-static int write_regs(struct i2c_client * client, const struct videosource_reg * list) {
-	int				addr_bytes	= 0;
-	int				data_bytes	= 0;
+static int write_regs(struct i2c_client * client, const struct videosource_i2c_reg * list) {
+	unsigned short	client_addr	= 0x00;
+	unsigned char	buf[1024]	= {0,};
+	int				buf_bytes	= 0;
 	int				ret			= 0;
 
-	addr_bytes	= 1;
-	data_bytes	= 1;
-	while (!((list->reg == REG_TERM) && (list->val == VAL_TERM))) {
-		ret = write_reg(client, list->reg, addr_bytes, list->val, data_bytes);
-		if(ret) {
-			loge("i2c device name: %s, slave addr: 0x%x, write error!!!!\n", client->name, client->addr);
-			break;
-		}
-		list++;
+	// backup
+	client_addr	= client->addr;
+
+	// assign an i2c slave address
+	if((list->saddr != 0) && (list->saddr != client->addr))
+		client->addr		= list->saddr;
+
+	// convert to a i2c config buffer
+	buf_bytes			= 0;
+	while(list->data[buf_bytes] != DATA_TERM) {
+		buf[buf_bytes]	= list->data[buf_bytes];
+		buf_bytes++;
 	}
+
+	// remove stop signal if needed
+	if(2 <= buf_bytes)
+		client->flags	|= I2C_M_NO_STOP;
+
+	// i2c send
+	ret = videosource_i2c_write(client, buf, buf_bytes);
+	if(ret != 0) {
+		loge("i2c device name: %s, slave addr: 0x%x, write error!!!!\n", client->name, client->addr);
+		goto end;
+	}
+
+	// delay for applying
+	if(list->delay != 0)
+		msleep(list->delay);
+
+end:
+	// restore
+	client->addr = client_addr;
 
 	return 0;
 }
@@ -177,9 +178,13 @@ static int open(videosource_gpio_t * gpio) {
 
 	FUNCTION_IN
 
+	// reset
 	sensor_port_disable(gpio->rst_port);
-	msleep(60);
+	msleep(10);
 
+	// power-up sequence
+	sensor_port_enable(gpio->intb_port);
+	msleep(10);
 	sensor_port_enable(gpio->rst_port);
 	msleep(10);
 
@@ -193,7 +198,7 @@ static int close(videosource_gpio_t * gpio) {
 	sensor_port_disable(gpio->rst_port);
 	sensor_port_disable(gpio->pwr_port);
 	sensor_port_disable(gpio->pwd_port);
-
+	sensor_port_disable(gpio->intb_port);
 	msleep(5);
 
 	FUNCTION_OUT
@@ -201,7 +206,8 @@ static int close(videosource_gpio_t * gpio) {
 }
 
 static int change_mode(struct i2c_client * client, int mode) {
-	int	entry	= sizeof(videosource_reg_table_list) / sizeof(videosource_reg_table_list[0]);
+	int	entry	= sizeof(videosource_i2c_reg_list) / sizeof(videosource_i2c_reg_list[0]);
+	int	idxList	= 0;
 	int	ret		= 0;
 
 	if((entry <= 0) || (mode < 0) || (entry <= mode)) {
@@ -209,69 +215,78 @@ static int change_mode(struct i2c_client * client, int mode) {
 		return -1;
 	}
 
-	ret = write_regs(client, videosource_reg_table_list[mode]);
-	ret = read_regs(client, videosource_reg_table_list[mode]);
-	msleep(600);
+	switch(mode) {
+	case MODE_INIT:
+		for(idxList = 0; idxList < entry; idxList++)
+			ret = write_regs(client, videosource_i2c_reg_list[mode]);
+		break;
+	default:
+		loge("mode(%d) is WRONG\n", mode);
+		break;
+	}
 
 	return ret;
 }
 
 static int check_status(struct i2c_client * client) {
-	const struct videosource_reg * list = sensor_camera_status;
-	unsigned int reg = 0;
-	unsigned int val = 0;
-	int ret, err_cnt = 0;
+	unsigned int	ser_addr	= 0x00;
+	unsigned int	des_addr	= 0x01;
+	unsigned int	ser_id		= 0x80;
+	unsigned int	des_id		= 0x90;
 
-	ret = write_reg(client, 0xFF, 1, 0x00, 1);	// page 0
-	if(ret) {
-		loge("videosource is not working\n");
-		return -1;
+	unsigned int	addr		= 0;
+	int				addr_bytes	= 1;
+	unsigned int	data		= 0;
+	int				data_bytes	= 1;
+	int				ret			= 0;
+
+	// set ser'd addr
+	addr = ser_addr;
+	data = 0;
+	ret = read_reg(client, addr, addr_bytes, &data, data_bytes);
+	if(ret != 0) {
+		loge("Sensor I2C !!!! \n");
 	} else {
-		while (!((list->reg == REG_TERM) && (list->val == VAL_TERM))) {
-			reg = (unsigned char)list->reg & 0xff;
-
-			ret = read_reg(client, reg, 1, &val, 1);
-			if(ret) {
-				if(3 <= ++err_cnt) {
-					loge("Sensor I2C !!!! \n");
-					return -1;
-				}
-			} else {
-				if((val & 0x0F) != 0x03) {
-					logd("reg: 0x%04x, val: 0x%02x\n", reg, val);
-					return 0;
-				}
-				err_cnt = 0;
-				list++;
-			}
-		}
+		logd("read addr: 0x%x, data: 0x%x\n", addr, data);
+		ret = ((data == ser_id) ? 1 : 0);	// 0: device is not connected, 1: connected
 	}
 
-	return 1;	// 0: Not Working, 1: Working
+	// set des'd addr
+	addr = des_addr;
+	data = 0;
+	ret = read_reg(client, addr, addr_bytes, &data, data_bytes);
+	if(ret != 0) {
+		loge("Sensor I2C !!!! \n");
+	} else {
+		logd("read addr: 0x%x, data: 0x%x\n", addr, data);
+		ret = ((data == des_id) ? 1 : 0);	// 0: device is not connected, 1: connected
+	}
+
+	return ret;
 }
 
-videosource_t videosource_isl79988 = {
+videosource_t videosource_max9276 = {
 	.interface						= VIDEOSOURCE_INTERFACE_CIF,
 
 	.format = {
 		.width						= WIDTH,
 		.height						= HEIGHT,// - 1,
-		.crop_x 					= 30,
-		.crop_y 					= 5,
-		.crop_w 					= 30,
-		.crop_h 					= 5,
-		.interlaced					= V4L2_DV_INTERLACED,	// V4L2_DV_PROGRESSIVE
+		.crop_x 					= 0,
+		.crop_y 					= 0,
+		.crop_w 					= 0,
+		.crop_h 					= 0,
+		.interlaced					= V4L2_DV_PROGRESSIVE,	//V4L2_DV_INTERLACED,
 		.polarities					= 0,					// V4L2_DV_VSYNC_POS_POL | V4L2_DV_HSYNC_POS_POL | V4L2_DV_PCLK_POS_POL,
 		.data_order					= ORDER_RGB,
-		.data_format				= FMT_YUV422_8BIT,		// data format
+		.data_format				= FMT_YUV422_16BIT,		// data format
 		.bit_per_pixel				= 8,					// bit per pixel
 		.gen_field_en				= OFF,
 		.de_active_low				= ACT_LOW,
 		.field_bfield_low			= OFF,
 		.vs_mask					= OFF,
-		.hsde_connect_en			= OFF,
+		.hsde_connect_en			= ON,
 		.intpl_en					= OFF,
-		.conv_en					= ON,					// OFF: BT.601 / ON: BT.656
+		.conv_en					= OFF,					// OFF: BT.601 / ON: BT.656
 		.se 						= OFF,
 		.fvs						= OFF,
 
@@ -281,7 +296,7 @@ videosource_t videosource_isl79988 = {
 		.capture_zoom_offset_x		= 0,
 		.capture_zoom_offset_y		= 0,
 		.cam_capchg_width			= WIDTH,
-		.framerate					= 60,
+		.framerate					= 30,
 		.capture_skip_frame 		= 0,
 		.sensor_sizes				= sensor_sizes,
 	},

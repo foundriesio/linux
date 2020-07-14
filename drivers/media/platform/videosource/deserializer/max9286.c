@@ -120,17 +120,6 @@ static struct videosource_reg sensor_camera_enable_serializer[] = {
 	{REG_TERM, VAL_TERM}
 };
 
-/* refer below camera_mode type and make up videosource_reg_table_list
-
- enum camera_mode {
-	 MODE_INIT		   = 0,
-	 MODE_SERDES_FSYNC,
-	 MODE_SERDES_INTERRUPT,
-	 MODE_SERDES_REMOTE_SER,
- };
-
-*/
-
 static struct videosource_reg * videosource_reg_table_list[] = {
 	sensor_camera_yuv422_8bit_4ch,
 	sensor_camera_enable_frame_sync,
@@ -138,63 +127,122 @@ static struct videosource_reg * videosource_reg_table_list[] = {
 	sensor_camera_enable_serializer,
 };
 
-static int write_regs(struct i2c_client * client, const struct videosource_reg * list, unsigned int mode) {
-	unsigned char data[4];
-	unsigned char bytes;
-	int ret, err_cnt = 0;
+static int read_reg(struct i2c_client * client, unsigned int addr, int addr_bytes, unsigned int * data, int data_bytes) {
+	unsigned char	addr_buf[4]	= {0,};
+	unsigned char	data_buf[4]	= {0,};
+	int				idxBuf		= 0;
+	int				ret			= 0;
 
-	while (!((list->reg == REG_TERM) && (list->val == VAL_TERM))) {
-#if 1
-		if(list->reg == 0xFF && list->val != 0xFF) {
-			msleep(list->val);
-			list++;
-		}
-		else {
-#endif
-			bytes = 0;
-			data[bytes++]= (unsigned char)list->reg&0xff;
-			data[bytes++]= (unsigned char)list->val&0xff;
+	// convert addr to i2c byte stream
+	for(idxBuf=0; idxBuf<addr_bytes; idxBuf++)
+		addr_buf[idxBuf] = (unsigned char)((addr >> (addr_bytes - 1 - idxBuf)) & 0xFF);
 
-			if(mode == MODE_SERDES_REMOTE_SER) {
-				ret = DDI_I2C_Write_Remote(client, SER_ADDR, data, 1, 1);
-			}
-			else {
-				ret = DDI_I2C_Write(client, data, 1, 1);
-			}
-
-			if(ret) {
-				if(4 <= ++err_cnt) {
-					loge("Sensor I2C !!!! \n");
-					return ret;
-				}
-			} else {
-#if 0			// for debug
-				unsigned char value = 0;
-
-				if(mode == MODE_SERDES_REMOTE_SER) {
-					DDI_I2C_Read(client, SER_ADDR, list->reg, 1, &value, 1);
-				}
-				else {
-					DDI_I2C_Read(client, list->reg, 1, &value, 1);
-				}
-
-				if(list->val != value)
-					logd("ERROR : addr(0x%x) write(0x%x) read(0x%x) \n", list->reg, list->val, value);
-				else
-					logd("OK : addr(0x%x) write(0x%x) read(0x%x) \n", list->reg, list->val, value);
-#endif
-
-#if 0
-				if((unsigned int)list->reg == (unsigned int)0x90) {
-	//				logd("delay(1)\n");
-					msleep(1);
-				}
-#endif
-				err_cnt = 0;
-				list++;
-			}
-		}
+	ret = videosource_i2c_read(client, addr_buf, addr_bytes, data_buf, data_bytes);
+	if(ret != 0) {
+		loge("i2c device name: %s, slave addr: 0x%x, addr: 0x%08x, read error!!!!\n", client->name, client->addr, addr);
+		ret = -1;
 	}
+	
+	// convert data to big / little endia
+	* data = 0;
+	for(idxBuf=0; idxBuf<data_bytes; idxBuf++)
+		*data |= (data_buf[idxBuf] << (data_bytes - 1 - idxBuf));
+
+	dlog("addr: 0x%08x, data: 0x%08x\n", addr, *data);
+	return ret;
+}
+
+static int read_regs(struct i2c_client * client, const struct videosource_reg * list, int mode) {
+	unsigned short	client_addr	= 0x00;
+	int				addr_bytes	= 0;
+	unsigned int	data		= 0;
+	int				data_bytes	= 0;
+	int				ret			= 0;
+
+	// backup
+	client_addr	= client->addr;
+	switch(mode) {
+	case MODE_SERDES_REMOTE_SER:\
+		client->addr	= SER_ADDR;
+		break;
+	}
+
+	addr_bytes	= 1;
+	data_bytes	= 1;
+	while (!((list->reg == REG_TERM) && (list->val == VAL_TERM))) {
+		if(list->reg != 0x00) {
+			data		= 0;
+			ret = read_reg(client, list->reg, addr_bytes, &data, data_bytes);
+			if(ret != 0) {
+				loge("Sensor I2C !!!! \n");
+				break;
+			}
+		}
+		list++;
+	}
+
+	// restore
+	client->addr = client_addr;
+
+	return ret;
+}
+
+static int write_reg(struct i2c_client * client, unsigned int addr, int addr_bytes, unsigned int data, int data_bytes) {
+	unsigned char	reg_buf[8]	= {0,};
+	unsigned char	*p_reg_buf	= NULL;
+	int				idxBuf		= 0;
+	int				ret			= 0;
+
+	dlog("addr: 0x%08x, data: 0x%08x\n", addr, data);
+
+	// convert addr to i2c byte stream
+	p_reg_buf = reg_buf;
+	for(idxBuf=0; idxBuf<addr_bytes; idxBuf++)
+		*p_reg_buf++ = (unsigned char)((addr >> (addr_bytes - 1 - idxBuf)) & 0xFF);
+	// convert data to i2c byte stream
+	for(idxBuf=0; idxBuf<data_bytes; idxBuf++)
+		*p_reg_buf++ = (unsigned char)((data >> (data_bytes - 1 - idxBuf)) & 0xFF);
+
+	ret = videosource_i2c_write(client, reg_buf, addr_bytes + data_bytes);
+	if(ret != 0) {
+		loge("i2c device name: %s, slave addr: 0x%x, addr: 0x%08x, write error!!!!\n", client->name, client->addr, addr);
+		return -1;
+	}
+
+	return ret;
+}
+
+static int write_regs(struct i2c_client * client, const struct videosource_reg * list, int mode) {
+	unsigned short	client_addr	= 0x00;
+	int				addr_bytes	= 0;
+	int				data_bytes	= 0;
+	int				ret			= 0;
+
+	// backup
+	client_addr	= client->addr;
+	switch(mode) {
+	case MODE_SERDES_REMOTE_SER:
+		client->addr	= SER_ADDR;
+		break;
+	}
+
+	addr_bytes	= 1;
+	data_bytes	= 1;
+	while (!((list->reg == REG_TERM) && (list->val == VAL_TERM))) {
+		if(list->reg == 0x00) {
+			msleep(list->val);
+		} else {
+			ret = write_reg(client, list->reg, addr_bytes, list->val, data_bytes);
+			if(ret) {
+				loge("Sensor I2C !!!! \n");
+				break;
+			}
+		}
+		list++;
+	}
+
+	// restore
+	client->addr = client_addr;
 
 	return 0;
 }
@@ -269,8 +317,7 @@ static int change_mode(struct i2c_client * client, int mode) {
 	}
 
 	ret = write_regs(client, videosource_reg_table_list[mode], mode);
-
-//	msleep(10);
+	ret = read_regs(client, videosource_reg_table_list[mode], mode);
 
 	return ret;
 }
@@ -282,21 +329,25 @@ static int change_mode(struct i2c_client * client, int mode) {
  * return: 0: device is not connected, 1: connected
  */
 static int check_status(struct i2c_client * client) {
-	unsigned short reg = 0x1e;
-	unsigned char val = 0;
-	int ret = 0;
+	unsigned int	addr		= 0;
+	int				addr_bytes	= 0;
+	unsigned int	data		= 0;
+	int				data_bytes	= 0;
+	int				ret			= 0;
 
-	ret = DDI_I2C_Read(client, reg, 1, &val, 1);
-	if(ret) {
+	addr	= 0x1E;
+	data	= 0;
+	ret = read_reg(client, addr, addr_bytes, &data, data_bytes);
+	if(ret != 0) {
 		loge("Sensor I2C !!!! \n");
 		return -1;
 	}
 
-	return ((val == 0x40) ? 1 : 0);	// 0: device is not connected, 1: connected
+	return ((data == 0x40) ? 1 : 0);	// 0: device is not connected, 1: connected
 }
 
 videosource_t videosource_max9286 = {
-	.type							= VIDEOSOURCE_TYPE_MIPI,
+	.interface						= VIDEOSOURCE_INTERFACE_MIPI,
 
 	.format = {
 		.width						= WIDTH,
@@ -321,7 +372,7 @@ videosource_t videosource_max9286 = {
 		.fvs						= ON,
 
 		.capture_w					= WIDTH,
-		.capture_h					= HEIGHT,// - 1,
+		.capture_h					= HEIGHT,
 
 		.capture_zoom_offset_x		= 0,
 		.capture_zoom_offset_y		= 0,

@@ -236,83 +236,107 @@ static struct videosource_reg * videosource_reg_table_list[] = {
 	sensor_camera_enable_serializer,
 };
 
-static int write_regs(struct i2c_client * client, const struct videosource_reg * list, unsigned int mode) {
-	unsigned char data[4];
-	unsigned char bytes;
-	int ret, err_cnt = 0;
+static int read_reg(struct i2c_client * client, unsigned int addr, int addr_bytes, unsigned int * data, int data_bytes) {
+	unsigned char	addr_buf[4]	= {0,};
+	unsigned char	data_buf[4]	= {0,};
+	int				idxBuf		= 0;
+	int				ret			= 0;
 
-	while (!((list->reg == REG_TERM) && (list->val == VAL_TERM))) {
-#if 1
-		if(list->reg == 0xFF && list->val != 0xFF) {
-			msleep(list->val);
-			list++;
-		}
-		else {
-#endif
-			bytes = 0;
-			data[bytes++]= (unsigned char)list->reg&0xff;
-			data[bytes++]= (unsigned char)list->val&0xff;
+	// convert addr to i2c byte stream
+	for(idxBuf=0; idxBuf<addr_bytes; idxBuf++)
+		addr_buf[idxBuf] = (unsigned char)((addr >> (addr_bytes - 1 - idxBuf)) & 0xFF);
 
-			if(mode == MODE_SERDES_REMOTE_SER) {
-				ret = DDI_I2C_Write_Remote(client, SER_ADDR, data, 1, 1);
-			}
-			else {
-				ret = DDI_I2C_Write(client, data, 1, 1);
-			}
-
-			if(ret) {
-				if(4 <= ++err_cnt) {
-					loge("Sensor I2C !!!! \n");
-					return ret;
-				}
-			} else {
-#if 0			// for debug
-				unsigned char value = 0;
-
-				if(mode == MODE_SERDES_REMOTE_SER) {
-					DDI_I2C_Read(client, SER_ADDR, list->reg, 1, &value, 1);
-				}
-				else {
-					DDI_I2C_Read(client, list->reg, 1, &value, 1);
-				}
-
-				if(list->val != value)
-					logd("ERROR :addr(0x%x) write(0x%x) read(0x%x) \n", list->reg, list->val, value);
-				else
-					logd("OK : addr(0x%x) write(0x%x) read(0x%x) \n", list->reg, list->val, value);
-#endif
-
-#if 0
-				if((unsigned int)list->reg == (unsigned int)0x90) {
-	//				logd("delay(1)\n");
-					msleep(1);
-				}
-#endif
-				err_cnt = 0;
-				list++;
-			}
-		}
+	ret = videosource_i2c_read(client, addr_buf, addr_bytes, data_buf, data_bytes);
+	if(ret != 0) {
+		loge("i2c device name: %s, slave addr: 0x%x, addr: 0x%08x, read error!!!!\n", client->name, client->addr, addr);
+		ret = -1;
 	}
+	
+	// convert data to big / little endia
+	* data = 0;
+	for(idxBuf=0; idxBuf<data_bytes; idxBuf++)
+		*data |= (data_buf[idxBuf] << (data_bytes - 1 - idxBuf));
+
+	dlog("addr: 0x%08x, data: 0x%08x\n", addr, *data);
+	return ret;
+}
+
+static int write_reg(struct i2c_client * client, unsigned int addr, int addr_bytes, unsigned int data, int data_bytes) {
+	unsigned char	reg_buf[8]	= {0,};
+	unsigned char	*p_reg_buf	= NULL;
+	int				idxBuf		= 0;
+	int				ret			= 0;
+
+	dlog("addr: 0x%08x, data: 0x%08x\n", addr, data);
+
+	// convert addr to i2c byte stream
+	p_reg_buf = reg_buf;
+	for(idxBuf=0; idxBuf<addr_bytes; idxBuf++)
+		*p_reg_buf++ = (unsigned char)((addr >> (addr_bytes - 1 - idxBuf)) & 0xFF);
+	// convert data to i2c byte stream
+	for(idxBuf=0; idxBuf<data_bytes; idxBuf++)
+		*p_reg_buf++ = (unsigned char)((data >> (data_bytes - 1 - idxBuf)) & 0xFF);
+
+	ret = videosource_i2c_write(client, reg_buf, addr_bytes + data_bytes);
+	if(ret != 0) {
+		loge("i2c device name: %s, slave addr: 0x%x, addr: 0x%08x, write error!!!!\n", client->name, client->addr, addr);
+		return -1;
+	}
+
+	return ret;
+}
+
+static int write_regs(struct i2c_client * client, const struct videosource_reg * list, int mode) {
+	unsigned short	client_addr	= 0x00;
+	int				addr_bytes	= 0;
+	int				data_bytes	= 0;
+	int				ret			= 0;
+
+	// backup
+	client_addr	= client->addr;
+	switch(mode) {
+	case MODE_SERDES_REMOTE_SER:
+		client->addr	= SER_ADDR;
+		break;
+	}
+
+	addr_bytes	= 1;
+	data_bytes	= 1;
+	while (!((list->reg == REG_TERM) && (list->val == VAL_TERM))) {
+		if(list->reg == 0x00) {
+			msleep(list->val);
+		} else {
+			ret = write_reg(client, list->reg, addr_bytes, list->val, data_bytes);
+			if(ret) {
+				loge("Sensor I2C !!!! \n");
+				break;
+			}
+		}
+		list++;
+	}
+
+	// restore
+	client->addr = client_addr;
 
 	return 0;
 }
 
 static void check_interrupt_status(struct i2c_client * client)
 {
-	unsigned char RX_PORT_STS1 = 0, RX_PORT_STS2 = 0, LINE_COUNT_1 = 0, LINE_COUNT_0 = 0, LINE_LEN_1 = 0, LINE_LEN_0 = 0;
+	unsigned int RX_PORT_STS1 = 0, RX_PORT_STS2 = 0, LINE_COUNT_1 = 0, LINE_COUNT_0 = 0, LINE_LEN_1 = 0, LINE_LEN_0 = 0;
 	unsigned int val = 0;
 
 	/*
 	 *	LINE_LEN_1 = ReadI2C(0x75)
 	 */
-	DDI_I2C_Read(client, 0x75, 1, &LINE_LEN_1, 1);
+	read_reg(client, 0x75, 1, &LINE_LEN_1, 1);
 	val = LINE_LEN_1;
 	val <<= 8;
 
 	/*
 	 *	LINE_LEN_0 = ReadI2C(0x76)
 	 */
-	DDI_I2C_Read(client, 0x76, 1, &LINE_LEN_0, 1);
+	read_reg(client, 0x76, 1, &LINE_LEN_0, 1);
 	val |= LINE_LEN_0;
 
 //	logd("line length high : 0x%x , line length low : 0x%x (%d) \n", LINE_LEN_1, LINE_LEN_0, val);
@@ -321,14 +345,14 @@ static void check_interrupt_status(struct i2c_client * client)
 	/*
 	 *	LINE_COUNT_1 = ReadI2C(0x73)
 	 */
-	DDI_I2C_Read(client, 0x73, 1, &LINE_COUNT_1, 1);
+	read_reg(client, 0x73, 1, &LINE_COUNT_1, 1);
 	val = LINE_COUNT_1;
 	val <<= 8;
 
 	/*
 	 *	LINE_COUNT_1 = ReadI2C(0x74)
 	 */
-	DDI_I2C_Read(client, 0x74, 1, &LINE_COUNT_0, 1);
+	read_reg(client, 0x74, 1, &LINE_COUNT_0, 1);
 	val |= LINE_COUNT_0;
 
 //	logd("line count high : 0x%x , line count low : 0x%x (%d) \n", LINE_COUNT_1, LINE_COUNT_0, val);
@@ -338,7 +362,7 @@ static void check_interrupt_status(struct i2c_client * client)
 	/*
 	 *	PORT_ISR_LO = ReadI2C(0xDB)
 	 */
-	DDI_I2C_Read(client, 0xDB, 1, &PORT_ISR_LO, 1);
+	read_reg(client, 0xDB, 1, &PORT_ISR_LO, 1);
 
 #if 1
 //	  logd("0xDB PORT_ISR_LO : 0x%x \n", PORT_ISR_LO); //# readout; cleared by RX_PORT_STS2
@@ -362,7 +386,7 @@ static void check_interrupt_status(struct i2c_client * client)
 	/*
 	 *	PORT_ISR_HI = ReadI2C(0xDA)
 	 */
-	DDI_I2C_Read(client, 0xDA, 1, &PORT_ISR_HI, 1);
+	read_reg(client, 0xDA, 1, &PORT_ISR_HI, 1);
 
 #if 0
 //	  logd("0xDA PORT_ISR_HI : 0x%x \n", PORT_ISR_HI); //# readout; cleared by RX_PORT_STS2
@@ -379,7 +403,7 @@ static void check_interrupt_status(struct i2c_client * client)
 	/*
 	 *	RX_PORT_STS1 = ReadI2C(0x4D)
 	 */
-	DDI_I2C_Read(client, 0x4D, 1, &RX_PORT_STS1, 1);
+	read_reg(client, 0x4D, 1, &RX_PORT_STS1, 1);
 
 //	logd("0x4D RX_PORT_STS1 : 0x%x \n", RX_PORT_STS1);
 
@@ -410,7 +434,7 @@ static void check_interrupt_status(struct i2c_client * client)
 	/*
 	 *	RX_PORT_STS2 = ReadI2C(0x4E)
 	 */
-	DDI_I2C_Read(client, 0x4E, 1, &RX_PORT_STS2, 1);
+	read_reg(client, 0x4E, 1, &RX_PORT_STS2, 1);
 
 //	logd("0x4E RX_PORT_STS2 : 0x%x \n", RX_PORT_STS2);
 
@@ -422,14 +446,14 @@ static void check_interrupt_status(struct i2c_client * client)
 		/*
 		 *	LINE_LEN_1 = ReadI2C(0x75)
 		 */
-		DDI_I2C_Read(client, 0x75, 1, &LINE_LEN_1, 1);
+		read_reg(client, 0x75, 1, &LINE_LEN_1, 1);
 		val = LINE_LEN_1;
 		val <<= 8;
 
 		/*
 		 *	LINE_LEN_0 = ReadI2C(0x76)
 		 */
-		DDI_I2C_Read(client, 0x76, 1, &LINE_LEN_0, 1);
+		read_reg(client, 0x76, 1, &LINE_LEN_0, 1);
 		val |= LINE_LEN_0;
 
 	//	logd("line length high : 0x%x , line length low : 0x%x (%d) \n", LINE_LEN_1, LINE_LEN_0, val);
@@ -451,14 +475,14 @@ static void check_interrupt_status(struct i2c_client * client)
 		/*
 		 *	LINE_COUNT_1 = ReadI2C(0x73)
 		 */
-		DDI_I2C_Read(client, 0x73, 1, &LINE_COUNT_1, 1);
+		read_reg(client, 0x73, 1, &LINE_COUNT_1, 1);
 		val = LINE_COUNT_1;
 		val <<= 8;
 
 		/*
 		 *	LINE_COUNT_1 = ReadI2C(0x74)
 		 */
-		DDI_I2C_Read(client, 0x74, 1, &LINE_COUNT_0, 1);
+		read_reg(client, 0x74, 1, &LINE_COUNT_0, 1);
 		val |= LINE_COUNT_0;
 
 	//	logd("line count high : 0x%x , line count low : 0x%x (%d) \n", LINE_COUNT_1, LINE_COUNT_0, val);
@@ -469,12 +493,11 @@ static void check_interrupt_status(struct i2c_client * client)
 }
 
 static void process_interrupt(struct i2c_client * client) {
-	unsigned char interrupt_sts = 0;
-	unsigned char data[2] = {0, };
-	unsigned char retVal = 0;
+	unsigned int interrupt_sts = 0;
+	unsigned int retVal = 0;
 	FUNCTION_IN
 
-	if(DDI_I2C_Read(client, 0x24 , 1, &interrupt_sts, 1)) {
+	if(read_reg(client, 0x24 , 1, &interrupt_sts, 1)) {
 	   logd("ERROR: Sensor I2C !!!! \n");
 	   return /*IRQ_HANDLED*/;
 	}
@@ -493,12 +516,9 @@ static void process_interrupt(struct i2c_client * client) {
 	if ((interrupt_sts & 0x10) >> 4) {
 		logd("# ====== IS_CSI_TX0 DETECTED \n");
 
-		data[0] = 0x32;
-		data[1] = 0x01;
+		write_reg(client, 0x32, 1, 0x01, 1);
 
-		DDI_I2C_Write(client, data, 1, 1);
-
-		DDI_I2C_Read(client, 0x37, 1, &retVal, 1);
+		read_reg(client, 0x37, 1, &retVal, 1);
 
 		logd("CSI_TX_ISR(0x37) : 0x%x \n", retVal);
 
@@ -511,28 +531,21 @@ static void process_interrupt(struct i2c_client * client) {
 	if ((interrupt_sts & 0x08) >> 3) {
 		logd("# ====== IS_RX3 DETECTED \n");
 
-		data[0] = 0x4c;
-		data[1] = 0x38;
-
-		DDI_I2C_Write(client, data, 1, 1);
+		write_reg(client, 0x4c, 1, 0x38, 1);
 
 		check_interrupt_status(client);
 	}
 	if ((interrupt_sts & 0x04) >> 2) {
 		logd("# ====== IS_RX2 DETECTED \n");
 
-		data[0] = 0x4c;
-		data[1] = 0x24;
-		DDI_I2C_Write(client, data, 1, 1);
+		write_reg(client, 0x4c, 1, 0x24, 1);
 
 		check_interrupt_status(client);
 	}
 	if ((interrupt_sts & 0x02) >> 1) {
 		logd("# ====== IS_RX1 DETECTED \n");
 
-		data[0] = 0x4c;
-		data[1] = 0x12;
-		DDI_I2C_Write(client, data, 1, 1);
+		write_reg(client, 0x4c, 1, 0x12, 1);
 
 		check_interrupt_status(client);
 
@@ -540,9 +553,7 @@ static void process_interrupt(struct i2c_client * client) {
 	if ((interrupt_sts & 0x01) ) {
 		logd("# ====== IS_RX0 DETECTED \n");
 
-		data[0] = 0x4c;
-		data[1] = 0x01;
-		DDI_I2C_Write(client, data, 1, 1);
+		write_reg(client, 0x4c, 1, 0x01, 1);
 
 		check_interrupt_status(client);
 	}
@@ -564,7 +575,7 @@ static int set_irq_handler(videosource_gpio_t * gpio, unsigned int enable) {
 		if(0 < gpio->intb_port) {
 			des_irq_num = gpio_to_irq(gpio->intb_port);
 
-			log("des_irq_num : %d \n", des_irq_num);
+			logd("des_irq_num : %d \n", des_irq_num);
 
 //			if(request_irq(des_irq_num, irq_handler, IRQF_TRIGGER_FALLING, "ds90ub964", NULL)) {
 //			if(request_threaded_irq(des_irq_num, irq_handler, irq_thread_handler, IRQF_SHARED | IRQF_TRIGGER_FALLING, "ds90ub964", "ds90ub964")) {
@@ -622,16 +633,15 @@ static int change_mode(struct i2c_client * client, int mode) {
 	ret = write_regs(client, videosource_reg_table_list[mode], mode);
 
 //	msleep(10);
-#if 1
+
 	if(mode == MODE_SERDES_INTERRUPT)
 		process_interrupt(client);
-#endif
 
 	return ret;
 }
 
 videosource_t videosource_ds90ub964 = {
-	.type							= VIDEOSOURCE_TYPE_MIPI,
+	.interface						= VIDEOSOURCE_INTERFACE_MIPI,
 
 	.format = {
 		.width						= WIDTH,
@@ -656,7 +666,7 @@ videosource_t videosource_ds90ub964 = {
 		.fvs						= ON,
 
 		.capture_w					= WIDTH,
-		.capture_h					= HEIGHT,// - 1,
+		.capture_h					= HEIGHT,
 
 		.capture_zoom_offset_x		= 0,
 		.capture_zoom_offset_y		= 0,

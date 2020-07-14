@@ -26,9 +26,9 @@
 #include <video/tcc/vioc_vin.h>
 #include <video/tcc/videosource_ioctl.h>
 
-enum type {
-	VIDEOSOURCE_TYPE_VIDEODECODER,
-	VIDEOSOURCE_TYPE_MIPI,
+enum videosource_interface {
+	VIDEOSOURCE_INTERFACE_CIF,
+	VIDEOSOURCE_INTERFACE_MIPI,
 };
 
 /* Define Pixel Clock Polarity
@@ -69,7 +69,7 @@ typedef struct videosource {
 	struct class				* cdev_class;
 	struct cdev					cdev;
 
-	int							type;
+	int							interface;
 	videosource_gpio_t			gpio;
 	videosource_format_t		format;
 	videosource_driver_t		driver;

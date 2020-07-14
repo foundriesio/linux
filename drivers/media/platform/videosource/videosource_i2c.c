@@ -23,97 +23,32 @@
 #include "videosource_common.h"
 #include "videosource_if.h"
 #include "videodecoder/videodecoder.h"
-#include "mipi-deserializer/mipi-deserializer.h"
+#include "deserializer/deserializer.h"
 
 #define MODULE_NAME		"videosource"
 
-int DDI_I2C_Write(struct i2c_client * client, unsigned char * data, unsigned short reg_bytes, unsigned short data_bytes) {
-	unsigned short bytes = reg_bytes + data_bytes;
-
-	if(i2c_master_send(client, data, bytes) != bytes) {
-		loge("addr = 0x%x, write error!!!! \n", client->addr);
+int videosource_i2c_write(struct i2c_client * client, char * reg_buf, int reg_bytes) {
+	// send addr and data to write
+	if(i2c_master_send((const struct i2c_client *)client, (const char *)reg_buf, reg_bytes) != reg_bytes) {
+		loge("i2c device name: %s, slave addr: 0x%x, write error!!!!\n", client->name, client->addr);
 		return -EIO;
 	}
 
 	return 0;
 }
 
-int DDI_I2C_Write_Remote(struct i2c_client * client, unsigned short remote_addr, unsigned char* data, unsigned short reg_bytes, unsigned short data_bytes) {
-	unsigned short bytes = reg_bytes + data_bytes;
-	unsigned short source_addr;
-	static int try = 0;
-
-	source_addr = client->addr;
-
-	client->addr = remote_addr;
-
-	if(i2c_master_send(client, data, bytes) != bytes) {
-		loge("write error!!!! \n");
-		log("addr = 0x%x\n", client->addr);
-		try = (try + 1) % 4;
-		client->addr = 0x60 + (0x01 * try);
-
-		client->addr = source_addr;
-
+int videosource_i2c_read(struct i2c_client * client, char * addr_buf, int addr_bytes, char * data_buf, int data_bytes) {
+	// send addr to read
+	if(i2c_master_send((const struct i2c_client *)client, (const char *)addr_buf, addr_bytes) != addr_bytes) {
+		loge("i2c device name: %s, slave addr: 0x%x, write error!!!!\n", client->name, client->addr);
 		return -EIO;
 	}
 
-	client->addr = source_addr;
-
-	return 0;
-}
-
-int DDI_I2C_Read(struct i2c_client * client, unsigned short reg, unsigned char reg_bytes, unsigned char * val, unsigned short val_bytes) {
-	unsigned char data[2];
-
-	if(reg_bytes == 2) {
-		data[0]= reg>>8;
-		data[1]= (u8)reg&0xff;
-	} else {
-		data[0]= (u8)reg&0xff;
-	}
-
-	if(i2c_master_send(client, data, reg_bytes) != reg_bytes) {
-		loge("write error for read!!!! \n");
+	// recv data of addr
+	if(i2c_master_recv((const struct i2c_client *)client, data_buf, data_bytes) != data_bytes) {
+		loge("i2c device name: %s, slave addr: 0x%x, read error!!!!\n", client->name, client->addr);
 		return -EIO;
 	}
-
-	if(i2c_master_recv(client, val, val_bytes) != val_bytes) {
-		loge("read error!!!! \n");
-		return -EIO;
-	}
-
-	return 0;
-}
-
-int DDI_I2C_Read_Remote(struct i2c_client * client, unsigned short remote_addr, unsigned short reg, unsigned char reg_bytes, unsigned char * val, unsigned short val_bytes) {
-	unsigned char data[2];
-	unsigned short source_addr;
-
-	if(reg_bytes == 2) {
-		data[0]= reg>>8;
-		data[1]= (u8)reg&0xff;
-	} else {
-		data[0]= (u8)reg&0xff;
-	}
-
-	source_addr = client->addr;
-
-	client->addr = remote_addr;
-
-	if(i2c_master_send(client, data, reg_bytes) != reg_bytes) {
-		loge("write error for read!!!! \n");
-		client->addr = source_addr;
-		return -EIO;
-	}
-
-	if(i2c_master_recv(client, val, val_bytes) != val_bytes) {
-		loge("read error!!!! \n");
-		client->addr = source_addr;
-		return -EIO;
-	}
-
-	client->addr = source_addr;
 
 	return 0;
 }
@@ -140,12 +75,14 @@ static struct of_device_id videosource_of_match[] = {
 		.compatible	= "maxim,max9286",
 		.data		= &videosource_max9286,
 	},
-#if 0
 	{
-		.compatible	= "ti,ds90ub964"
+		.compatible	= "ti,ds90ub964",
 		.data		= &videosource_ds90ub964,
 	},
-#endif
+	{
+		.compatible	= "maxim,max9276",
+		.data		= &videosource_max9276,
+	},
 	{}
 };
 MODULE_DEVICE_TABLE(of, videosource_of_match);
@@ -179,8 +116,8 @@ int videosource_i2c_probe(struct i2c_client * client, const struct i2c_device_id
 	// set the i2c device
 	vdev->client = client;
 
-	log("videosource[%d] name: %s, type: %d, addr: 0x%x, client: 0x%p\n", \
-		index, client->name, vdev->type, (client->addr)<<1, client);
+	log("videosource[%d] name: %s, interface: %d, addr: 0x%x, client: 0x%p\n", \
+		index, client->name, vdev->interface, (client->addr)<<1, client);
 
 	// register videosource_if
 	videosource_if_probe(vdev);
