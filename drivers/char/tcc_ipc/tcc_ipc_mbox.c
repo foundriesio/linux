@@ -28,8 +28,6 @@
 #include "tcc_ipc_os.h"
 #include "tcc_ipc_mbox.h"
 
-static void tcc_msg_sent(struct mbox_client *client, void *message, int r);
-
 IPC_INT32 ipc_mailbox_send(struct ipc_device *ipc_dev, struct tcc_mbox_data * ipc_msg)
 {
 	IPC_INT32 ret;
@@ -38,13 +36,13 @@ IPC_INT32 ipc_mailbox_send(struct ipc_device *ipc_dev, struct tcc_mbox_data * ip
 	{
 		IpcHandler *ipc_handle = &ipc_dev->ipc_handler;
 		IPC_INT32 i;
-		dprintk(ipc_dev->dev,"ipc_msg(0x%px)\n",(void *)ipc_msg);
+		d2printk(ipc_dev,ipc_dev->dev,"ipc_msg(0x%px)\n",(void *)ipc_msg);
 
 		for(i=0; i<(MBOX_CMD_FIFO_SIZE);i++)
 		{
-			dprintk(ipc_dev->dev,"cmd[%d]: (0x%08x)\n", i, ipc_msg->cmd[i]);
+			d2printk(ipc_dev,ipc_dev->dev,"cmd[%d]: (0x%08x)\n", i, ipc_msg->cmd[i]);
 		}
-		dprintk(ipc_dev->dev,"data size(%d)\n", ipc_msg->data_len);
+		d2printk(ipc_dev,ipc_dev->dev,"data size(%d)\n", ipc_msg->data_len);
 
 		mutex_lock(&ipc_handle->mboxMutex);
 #ifdef CONFIG_ARCH_TCC803X
@@ -55,7 +53,7 @@ IPC_INT32 ipc_mailbox_send(struct ipc_device *ipc_dev, struct tcc_mbox_data * ip
 		ret = mbox_send_message(ipc_dev->mbox_ch, ipc_msg);
 		if(ret < 0 )
 		{
-			dprintk(ipc_dev->dev,"mbox send error(%d)\n",ret);
+			d2printk(ipc_dev,ipc_dev->dev,"mbox send error(%d)\n",ret);
 			ret = IPC_ERR_TIMEOUT;
 		}
 		else
@@ -111,16 +109,3 @@ struct mbox_chan *ipc_request_channel(struct platform_device *pdev, const IPC_CH
 	return channel;
 }
 
-static void tcc_msg_sent(struct mbox_client *client, void *message, int r)
-{
-	if(client != NULL)
-	{
-		if (r != 0)
-			eprintk(client->dev, "Message could not be sent: %d\n", r);
-		else {
-			dprintk(client->dev, "Message sent\n");
-		}
-
-		(void)message;
-	}
-}

@@ -174,10 +174,10 @@ void receive_message(struct mbox_client *client, void *message)
 		IPC_INT32 i;
 		for(i=0;i<7;i++)
 		{
-			dprintk(ipc_dev->dev,"cmd[%d] = [0x%02x]\n", i, msg->cmd[i]);
+			d2printk(ipc_dev,ipc_dev->dev,"cmd[%d] = [0x%02x]\n", i, msg->cmd[i]);
 		}
 
-		dprintk(ipc_dev->dev,"data size (%d)\n",msg->data_len);
+		d2printk(ipc_dev,ipc_dev->dev,"data size (%d)\n",msg->data_len);
 
 		cmdType = (IpcCmdType)((msg->cmd[1] & CMD_TYPE_MASK ) >> (IPC_UINT32)16);
 		cmdID = (IpcCmdID)(msg->cmd[1] & (IPC_UINT32)CMD_ID_MASK);
@@ -375,7 +375,7 @@ static void ipc_receive_writecmd(void *device_info, struct tcc_mbox_data  * pMsg
 					IPC_UINT32 i;
 
 					readSize = pMsg->cmd[2];
-					dprintk(ipc_dev->dev,"ipc recevie size(%d)\n", readSize);
+					d2printk(ipc_dev,ipc_dev->dev,"ipc recevie size(%d)\n", readSize);
 					if(readSize > (IPC_UINT32)0)
 					{
 						IPC_UINT32 freeSpace;
@@ -384,11 +384,11 @@ static void ipc_receive_writecmd(void *device_info, struct tcc_mbox_data  * pMsg
 
 						ipc_handle->readBuffer.status = IPC_BUF_BUSY;
 						freeSpace = (IPC_UINT32)ipc_buffer_free_space(&ipc_handle->readRingBuffer);
-						dprintk(ipc_dev->dev,"ipc freeSpace size(%d)\n", freeSpace);
+						d2printk(ipc_dev,ipc_dev->dev,"ipc freeSpace size(%d)\n", freeSpace);
 
 						for(i=0;i<readSize; i++)
 						{
-							dprintk(ipc_dev->dev,"ipc data[%d] : [0x%x]\n", i, pMsg->data[i]);
+							d2printk(ipc_dev,ipc_dev->dev,"ipc data[%d] : [0x%x]\n", i, pMsg->data[i]);
 						}
 						
 						if(freeSpace > readSize)
@@ -573,7 +573,7 @@ IPC_INT32 ipc_write(struct ipc_device *ipc_dev, IPC_UCHAR *buff, IPC_UINT32 size
 		if(ipc_handle->ipcStatus < IPC_READY)
 		{
 			ipc_try_connection(ipc_dev);
-			iprintk(ipc_dev->dev, "IPC Not Ready\n");
+			d1printk(ipc_dev,ipc_dev->dev, "IPC Not Ready\n");
 		}
 		else
 		{
@@ -587,7 +587,7 @@ static IPC_INT32 ipc_read_data(struct ipc_device *ipc_dev,IPC_UCHAR *buff, IPC_U
 {
 	IPC_INT32 ret = 0;	//return read size
 
-	dprintk(ipc_dev->dev, "\n");
+	d2printk(ipc_dev,ipc_dev->dev, "\n");
 	if((ipc_dev != NULL)&&(buff != NULL)&&(size > (IPC_UINT32)0))
 	{
 		IpcHandler *ipc_handle = &ipc_dev->ipc_handler;
@@ -696,7 +696,7 @@ IPC_INT32 ipc_read(struct ipc_device *ipc_dev,IPC_UCHAR *buff, IPC_UINT32 size, 
 		if((ipc_handle->ipcStatus < IPC_READY)||(ipc_handle->readBuffer.status<IPC_BUF_READY))
 		{
 			ipc_try_connection(ipc_dev);
-			iprintk(ipc_dev->dev, "IPC Not Ready : ipc status(%d), Buffer status(%d)\n",
+			d1printk(ipc_dev,ipc_dev->dev, "IPC Not Ready : ipc status(%d), Buffer status(%d)\n",
 				ipc_handle->ipcStatus,ipc_handle->readBuffer.status);
 		}
 

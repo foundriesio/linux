@@ -139,7 +139,8 @@ typedef char	MBOX_CHAR;
 #define eprintk(dev, msg, ...)	((void)dev_err(dev, "[ERROR][%s]%s: " pr_fmt(msg), (const MBOX_CHAR *)LOG_TAG,__FUNCTION__, ##__VA_ARGS__))
 #define wprintk(dev, msg, ...)	((void)dev_warn(dev, "[WARN][%s]%s: " pr_fmt(msg), (const MBOX_CHAR *)LOG_TAG,__FUNCTION__, ##__VA_ARGS__))
 #define iprintk(dev, msg, ...)	((void)dev_info(dev, "[INFO][%s]%s: " pr_fmt(msg), (const MBOX_CHAR *)LOG_TAG,__FUNCTION__, ##__VA_ARGS__))
-#define dprintk(dev, msg, ...)	{ if(mbox_verbose_mode == 1) { (void)dev_info(dev, "[INFO][%s]%s: " pr_fmt(msg), (const MBOX_CHAR *)LOG_TAG,__FUNCTION__, ##__VA_ARGS__); }}
+#define d1printk(mdev, dev, msg, ...)	{ if(mdev->debug_level > (int)0)  { (void)dev_info(dev, "[DEBUG][%s]%s: " pr_fmt(msg), (const MBOX_CHAR *)LOG_TAG,__FUNCTION__, ##__VA_ARGS__); }}
+#define d2printk(mdev, dev, msg, ...)	{ if(mdev->debug_level > (int)1)  { (void)dev_info(dev, "[DEBUG][%s]%s: " pr_fmt(msg), (const MBOX_CHAR *)LOG_TAG,__FUNCTION__, ##__VA_ARGS__); }}
 
 struct mbox_header0{
 	union{
@@ -236,6 +237,7 @@ struct tcc_mbox_device
 	struct mutex sendLock;
 	struct mbox_transmitQueue transmitQueue;
 	struct mbox_wait_queue waitQueue;
+	int debug_level;
 };
 
 /**
@@ -295,6 +297,46 @@ static irqreturn_t tcc_multich_mbox_txd_irq(int irq, void *dev_id);
 static struct mbox_chan *tcc_multich_mbox_xlate(struct mbox_controller *mbox,
 					const struct of_phandle_args *spec);
 
+static ssize_t debug_level_show(struct device * dev, struct device_attribute * attr, char * buf);
+static ssize_t debug_level_store(struct device * dev, struct device_attribute * attr, const char * buf, size_t count);
+
+
+static ssize_t debug_level_show(struct device * dev, struct device_attribute * attr, char * buf) {
+
+	ssize_t count = 0;
+	if((dev != NULL)&&(attr != NULL)&&(buf != NULL))
+	{
+		struct tcc_mbox_device *mdev = dev_get_drvdata(dev);
+		count = (ssize_t)sprintf(buf, "%d\n", mdev->debug_level);
+		(void)dev;
+		(void)attr;
+	}
+	return count;
+}
+
+static ssize_t debug_level_store(struct device * dev, struct device_attribute * attr, const char * buf, size_t count) {
+
+	if((dev != NULL)&&(attr != NULL)&&(buf != NULL))
+	{
+		unsigned long data;
+		struct tcc_mbox_device *mdev = dev_get_drvdata(dev);
+		int error = kstrtoul(buf, 10, &data);
+		if(error == 0)
+		{
+			mdev->debug_level = data;
+		}
+		else
+		{
+			eprintk(mdev->mbox.dev, "store fail (%s)\n",buf);
+		}
+		(void)dev;
+		(void)attr;
+	}
+
+	return count;
+}
+
+static DEVICE_ATTR(debug_level, S_IRUGO|S_IWUSR|S_IWGRP, debug_level_show, debug_level_store);
 
 int show_mbox_channel_info(struct seq_file *p, void *v)
 {
@@ -563,24 +605,24 @@ static int tcc_mbox_send_message(struct mbox_chan *chan, struct tcc_mbox_data * 
 		int32_t idx;
 		int32_t i;
 
-		dprintk(mdev->mbox.dev,"msg(0x%px)\n", (void *)msg);
-
-		dprintk(mdev->mbox.dev,"cmd[0]: (0x%08x)\n", chan_info->header0.cmd);
+		d2printk(mdev, mdev->mbox.dev,"msg(0x%px)\n", (void *)msg);
+#if 0
+		d2printk(mdev, mdev->mbox.dev,"cmd[0]: (0x%08x)\n", chan_info->header0.cmd);
 		for(i=0; i<(MBOX_CMD_FIFO_SIZE);i++)
 		{
-			dprintk(mdev->mbox.dev,"cmd[%d]: (0x%08x)\n", i+1, msg->cmd[i]);
+			d2printk(mdev, mdev->mbox.dev,"cmd[%d]: (0x%08x)\n", i+1, msg->cmd[i]);
 		}
-		dprintk(mdev->mbox.dev,"cmd[7]: (0x%08x)\n", chan_info->header1.cmd);
+		d2printk(mdev, mdev->mbox.dev,"cmd[7]: (0x%08x)\n", chan_info->header1.cmd);
 
-		dprintk(mdev->mbox.dev,"data size(%d)\n", msg->data_len);
-
+		d2printk(mdev, mdev->mbox.dev,"data size(%d)\n", msg->data_len);
+#endif
 		if (msg->data_len > (int)MBOX_DATA_FIFO_SIZE)
 		{
 			eprintk(mdev->mbox.dev,"mbox data fifo is too big. Data fifo size(%d), input size(%d)\n", MBOX_DATA_FIFO_SIZE,msg->data_len);
 			eprintk(mdev->mbox.dev,"cmd[0]: (0x%08x)\n", chan_info->header0.cmd);
 			for(i=0; i<(MBOX_CMD_FIFO_SIZE);i++)
 			{
-				eprintk(mdev->mbox.dev,"cmd[%d]: (0x%02x)\n", i+1, msg->cmd[i]);
+				d1printk(mdev, mdev->mbox.dev,"cmd[%d]: (0x%08x)\n", i+1, msg->cmd[i]);
 			}
 			eprintk(mdev->mbox.dev,"cmd[7]: (0x%08x)\n", chan_info->header1.cmd);
 			ret = -EINVAL;
@@ -589,17 +631,17 @@ static int tcc_mbox_send_message(struct mbox_chan *chan, struct tcc_mbox_data * 
 		{
 			if((readl_relaxed(mdev->base + TRM_STS) & OPP_TMN_STS_BIT) == 0)
 			{
-				wprintk(mdev->mbox.dev,"Opposite MBOX is not ready\n");
+				d1printk(mdev, mdev->mbox.dev,"Opposite MBOX is not ready\n");
 				ret = -ECOMM;
 			}
 			else if((readl_relaxed(mdev->base + MBOXSTR) & MEMP_MASK) == 0)	/* check fifo */
 			{
-				wprintk(mdev->mbox.dev,"MBOX is not empty\n");
+				d1printk(mdev, mdev->mbox.dev,"MBOX is not empty\n");
 				ret = -EBUSY;
 			}
 			else
 			{
-				dprintk(mdev->mbox.dev,"push mbox msg to mbox fifo\n");
+				d2printk(mdev, mdev->mbox.dev,"push mbox msg to mbox fifo\n");
 				/* check data fifo */
 				if ((readl_relaxed(mdev->base + MBOX_DT_STR) & DATA_MEMP_MASK) == 0)
 				{
@@ -678,7 +720,7 @@ static void tcc_multich_mbox_send_worker(struct mbox_chan *chan, struct tcc_mbox
 
 	if((chan != NULL)&&(msg !=NULL)&&(mdev != NULL)&&(chan_info!=NULL))
 	{
-		dprintk(mdev->mbox.dev,"In, %s ch(%d)\n", chan_info->mbox_id ,chan_info->channel);
+		d2printk(mdev,mdev->mbox.dev,"In, %s ch(%d)\n", chan_info->mbox_id ,chan_info->channel);
 
 		mutex_lock(&mdev->sendLock);
 
@@ -688,7 +730,7 @@ static void tcc_multich_mbox_send_worker(struct mbox_chan *chan, struct tcc_mbox
 		{
 			chan_info->tx_fail_count++;
 		}
-		dprintk(mdev->mbox.dev,"tx result : %d\n",ret);
+		d2printk(mdev,mdev->mbox.dev,"tx result : %d\n",ret);
 
 		tcc_txdone(chan, ret);
 
@@ -751,7 +793,7 @@ static int tcc_multich_mbox_startup(struct mbox_chan *chan)
 
 			if(of_property_read_string(cl->dev->of_node,"mbox-id", &mbox_id_ptr) == 0)
 			{
-				dprintk(mdev->mbox.dev,"mbox id is %s\n", mbox_id_ptr);
+				d1printk(mdev,mdev->mbox.dev,"mbox id is %s\n", mbox_id_ptr);
 				mbox_id_len = strlen(mbox_id_ptr);
 				if(mbox_id_len > (MBOX_ID_MAX_LEN))
 				{
@@ -851,7 +893,7 @@ static void tcc_multich_mbox_shutdown(struct mbox_chan *chan)
 
 		if((mdev != NULL)&&(chan_info != NULL))
 		{
-			dprintk(mdev->mbox.dev,"In\n");
+			d1printk(mdev,mdev->mbox.dev,"In\n");
 			/* enable channel*/
 			mutex_lock(&mdev->lock);
 
@@ -860,7 +902,7 @@ static void tcc_multich_mbox_shutdown(struct mbox_chan *chan)
 			deregister_receive_queue(&chan_info->receiveQueue);
 
 			mutex_unlock(&mdev->lock);
-			dprintk(mdev->mbox.dev,"out\n");
+			d1printk(mdev,mdev->mbox.dev,"out\n");
 
 			chan->con_priv = NULL;
 		}
@@ -874,7 +916,7 @@ static bool tcc_multich_mbox_last_tx_done(struct mbox_chan *chan)
 	{
 		struct tcc_mbox_device *mdev = dev_get_drvdata(chan->mbox->dev);
 
-		dprintk(mdev->mbox.dev,"In\n");
+		d1printk(mdev,mdev->mbox.dev,"In\n");
 
 		mutex_lock(&mdev->lock);
 
@@ -916,7 +958,7 @@ static void tcc_received_msg(void *dev_id, unsigned int ch, struct tcc_mbox_data
 		struct mbox_controller *mbox;
 		struct mbox_chan *chan;
 
-		dprintk(mdev->mbox.dev,"In, ch(%d)\n",ch);
+		d2printk(mdev,mdev->mbox.dev,"In, ch(%d)\n",ch);
 
 		mbox = &mdev->mbox;
 		if(mbox != NULL)
@@ -925,7 +967,7 @@ static void tcc_received_msg(void *dev_id, unsigned int ch, struct tcc_mbox_data
 			if(chan != NULL)
 			{
 				mbox_chan_received_data(chan, msg);
-				dprintk(mdev->mbox.dev,"out, ch(%d)\n", ch);
+				d2printk(mdev,mdev->mbox.dev,"out, ch(%d)\n", ch);
 			}
 			else
 			{
@@ -983,14 +1025,14 @@ static irqreturn_t tcc_multich_mbox_rx_irq(int irq, void *dev_id)
 				mbox_list->msg.cmd[5] = readl_relaxed(mdev->base + MBOXRXD(6));
 				mbox_list->header1.cmd = readl_relaxed(mdev->base + MBOXRXD(7));
 #if 0
-				dprintk(mdev->mbox.dev, "cmd [0] = (0x%08x)\n",mbox_list->header0.cmd);
-				dprintk(mdev->mbox.dev, "cmd [1] = (0x%08x)\n",mbox_list->msg.cmd[0]);
-				dprintk(mdev->mbox.dev, "cmd [2] = (0x%08x)\n",mbox_list->msg.cmd[1]);
-				dprintk(mdev->mbox.dev, "cmd [3] = (0x%08x)\n",mbox_list->msg.cmd[2]);
-				dprintk(mdev->mbox.dev, "cmd [4] = (0x%08x)\n",mbox_list->msg.cmd[3]);
-				dprintk(mdev->mbox.dev, "cmd [5] = (0x%08x)\n",mbox_list->msg.cmd[4]);
-				dprintk(mdev->mbox.dev, "cmd [6] = (0x%08x)\n",mbox_list->msg.cmd[5]);
-				dprintk(mdev->mbox.dev, "cmd [7] = (0x%08x)\n",mbox_list->header1.cmd);
+				d2printk(mdev,mdev->mbox.dev, "cmd [0] = (0x%08x)\n",mbox_list->header0.cmd);
+				d2printk(mdev,mdev->mbox.dev, "cmd [1] = (0x%08x)\n",mbox_list->msg.cmd[0]);
+				d2printk(mdev,mdev->mbox.dev, "cmd [2] = (0x%08x)\n",mbox_list->msg.cmd[1]);
+				d2printk(mdev,mdev->mbox.dev, "cmd [3] = (0x%08x)\n",mbox_list->msg.cmd[2]);
+				d2printk(mdev,mdev->mbox.dev, "cmd [4] = (0x%08x)\n",mbox_list->msg.cmd[3]);
+				d2printk(mdev,mdev->mbox.dev, "cmd [5] = (0x%08x)\n",mbox_list->msg.cmd[4]);
+				d2printk(mdev,mdev->mbox.dev, "cmd [6] = (0x%08x)\n",mbox_list->msg.cmd[5]);
+				d2printk(mdev,mdev->mbox.dev, "cmd [7] = (0x%08x)\n",mbox_list->header1.cmd);
 #endif
 				for(i=0; i<mdev->mbox.num_chans; i++)
 				{
@@ -1028,7 +1070,7 @@ static irqreturn_t tcc_multich_mbox_rx_irq(int irq, void *dev_id)
 					}
 					mbox_id[MBOX_ID0_LEN] = mbox_list->header0.idName[0];
 					mbox_id[MBOX_ID0_LEN+1] = mbox_list->header0.idName[1];
-					iprintk(mdev->mbox.dev, "mbox ch(%d) is not registered : id(%s)\n", mbox_list->ch, mbox_id);
+					d1printk(mdev,mdev->mbox.dev, "mbox ch(%d) is not registered : id(%s)\n", mbox_list->ch, mbox_id);
 					kfree(mbox_list);
 				}
 			}
@@ -1074,7 +1116,7 @@ static struct mbox_chan *tcc_multich_mbox_xlate(struct mbox_controller *mbox,
 		uint32_t channel   = spec->args[0];
 		struct tcc_channel *chan_info;
 
-		dprintk(mdev->mbox.dev,"In, channel (%d)\n", channel);
+		d1printk(mdev,mdev->mbox.dev,"In, channel (%d)\n", channel);
 
 		if(mbox->num_chans<= (int)channel)
 		{
@@ -1105,7 +1147,7 @@ static struct mbox_chan *tcc_multich_mbox_xlate(struct mbox_controller *mbox,
 
 					chan->con_priv = chan_info;
 
-					dprintk(mbox->dev, "Mbox: Created channel: channel: %d\n", channel);
+					d1printk(mdev,mbox->dev, "Mbox: Created channel: channel: %d\n", channel);
 				}
 			}
 		}
@@ -1164,8 +1206,8 @@ static int tcc_multich_mbox_probe(struct platform_device *pdev)
 			}
 			else
 			{
-				dprintk(&pdev->dev,"Max channel: %d\n",max_channel);
-				dprintk(&pdev->dev,"RX irq (%d), tx done irq (%d)\n", rx_irq, txd_irq);
+				iprintk(&pdev->dev,"Max channel: %d\n",max_channel);
+				iprintk(&pdev->dev,"RX irq (%d), tx done irq (%d)\n", rx_irq, txd_irq);
 			}
 		}
 	}
@@ -1173,7 +1215,6 @@ static int tcc_multich_mbox_probe(struct platform_device *pdev)
 	/* set tcc_mbox_device */
 	if(ret == 0)
 	{
-		dprintk(&pdev->dev,"alloc device\n");
 		mdev = devm_kzalloc(&pdev->dev, sizeof(struct tcc_mbox_device), GFP_KERNEL);
 		if (!mdev)
 		{
@@ -1181,9 +1222,10 @@ static int tcc_multich_mbox_probe(struct platform_device *pdev)
 		}
 		else
 		{
-			dprintk(&pdev->dev,"set drvdata\n");
+			d1printk(mdev,&pdev->dev,"set drvdata\n");
 			platform_set_drvdata(pdev, mdev);
 
+			mdev->debug_level = mbox_verbose_mode;
 			mdev->rx_irq = rx_irq;
 			mdev->txd_irq = txd_irq;
 
@@ -1202,7 +1244,7 @@ static int tcc_multich_mbox_probe(struct platform_device *pdev)
 			else
 			{
 				/* Allocated channel */
-				dprintk(&pdev->dev,"Allocated channel \n");
+				d1printk(mdev,&pdev->dev,"Allocated channel \n");
 				mdev->mbox.chans = devm_kzalloc(&pdev->dev, sizeof(struct mbox_chan)*mdev->mbox.num_chans, GFP_KERNEL);
 				if (!mdev->mbox.chans)
 				{
@@ -1219,7 +1261,7 @@ static int tcc_multich_mbox_probe(struct platform_device *pdev)
 	/* mbox rx irq init */
 	if(ret ==0)
 	{
-		dprintk(&pdev->dev,"mbox rx irq init \n");
+		d1printk(mdev,&pdev->dev,"mbox rx irq init \n");
 		ret = devm_request_irq(&pdev->dev, mdev->rx_irq,
 									tcc_multich_mbox_rx_irq,
 									IRQF_ONESHOT,
@@ -1245,7 +1287,7 @@ static int tcc_multich_mbox_probe(struct platform_device *pdev)
 	/* mbox tx done irq init */
 	if(ret == 0)
 	{
-		dprintk(&pdev->dev,"mbox tx done init \n");
+		d1printk(mdev,&pdev->dev,"mbox tx done init \n");
 
 		ret = devm_request_irq(&pdev->dev, mdev->txd_irq,
 									tcc_multich_mbox_txd_irq,
@@ -1269,13 +1311,27 @@ static int tcc_multich_mbox_probe(struct platform_device *pdev)
 		}
 	}
 
+	/* Create the mbox_debug_level sysfs */
+	if( ret ==0 )
+	{
+		ret = device_create_file(&pdev->dev, &dev_attr_debug_level);
+		if(ret < 0)
+		{
+			eprintk(&pdev->dev,"failed create sysfs, aux_detect_status\n");
+		}
+		else
+		{
+			ret = 0;
+		}
+	}
+
 	if(ret == 0)
 	{
-		dprintk(&pdev->dev,"mbox mutex init \n");
+		d1printk(mdev,&pdev->dev,"mbox mutex init \n");
 		mutex_init(&mdev->lock);
 		mutex_init(&mdev->sendLock);
 
-		dprintk(&pdev->dev,"mbox queue init \n");
+		d1printk(mdev,&pdev->dev,"mbox queue init \n");
 		ret = mbox_transmit_queue_init(&mdev->transmitQueue, tcc_multich_mbox_send_worker, NULL, pdev->dev.kobj.name);
 		if(ret == 0)
 		{
@@ -1304,7 +1360,7 @@ static int tcc_multich_mbox_remove(struct platform_device *pdev)
 	int ret;
 	struct tcc_mbox_device *mdev = platform_get_drvdata(pdev);
 
-	dprintk(mdev->mbox.dev,"In\n");
+	d1printk(mdev,mdev->mbox.dev,"In\n");
 	if (!mdev)
 	{
 		ret = -EINVAL;
@@ -1319,6 +1375,7 @@ static int tcc_multich_mbox_remove(struct platform_device *pdev)
 
 		tcc_mbox_event_delete(mdev);
 
+		device_remove_file(&pdev->dev, &dev_attr_debug_level);
 		ret = 0;
 	}
 

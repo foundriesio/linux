@@ -67,6 +67,48 @@
 
 IPC_INT32 ipc_verbose_mode = 0;
 
+static ssize_t debug_level_show(struct device * dev, struct device_attribute * attr, char * buf);
+static ssize_t debug_level_store(struct device * dev, struct device_attribute * attr, const char * buf, size_t count);
+
+static ssize_t debug_level_show(struct device * dev, struct device_attribute * attr, char * buf) {
+
+	ssize_t count = 0;
+	if((dev != NULL)&&(attr != NULL)&&(buf != NULL))
+	{
+		struct ipc_device *ipc_dev = dev_get_drvdata(dev);
+		count = (ssize_t)sprintf(buf, "%d\n", ipc_dev->debug_level);
+		(void)dev;
+		(void)attr;
+	}
+	return count;
+}
+
+static ssize_t debug_level_store(struct device * dev, struct device_attribute * attr, const char * buf, size_t count) {
+
+	if((dev != NULL)&&(attr != NULL)&&(buf != NULL))
+	{
+		unsigned long data;
+
+		struct ipc_device *ipc_dev = dev_get_drvdata(dev);
+
+		int error = kstrtoul(buf, 10, &data);
+		if(error == 0)
+		{
+			ipc_dev->debug_level = data;
+		}
+		else
+		{
+			eprintk(ipc_dev->dev, "store fail (%s)\n",buf);
+		}
+		(void)dev;
+		(void)attr;
+	}
+
+	return count;
+}
+
+static DEVICE_ATTR(debug_level, S_IRUGO|S_IWUSR|S_IWGRP, debug_level_show, debug_level_store);
+
 static ssize_t tcc_ipc_read(struct file *filp, char __user *buf, size_t count, loff_t *f_pos)
 {
 	ssize_t  ret = -EINVAL;
@@ -83,7 +125,7 @@ static ssize_t tcc_ipc_read(struct file *filp, char __user *buf, size_t count, l
 		else
 		{
 			struct ipc_device *ipc_dev = (struct ipc_device *)filp->private_data;
-			dprintk(ipc_dev->dev, "In\n");
+			d2printk(ipc_dev,ipc_dev->dev, "In\n");
 
 			if(!(filp->f_flags & (IPC_UINT32)O_NONBLOCK))
 			{
@@ -128,7 +170,7 @@ static ssize_t tcc_ipc_write(struct file *filp, const char __user *buf, size_t c
 			IPC_UCHAR *tempWbuf = ipc_dev->ipc_handler.tempWbuf;
 			unsigned int	size=0;
 
-			dprintk(ipc_dev->dev, "In, data size(%d)\n",(int)count);
+			d2printk(ipc_dev,ipc_dev->dev, "In, data size(%d)\n",(int)count);
 
 			if(tempWbuf != NULL)
 			{
@@ -356,7 +398,7 @@ static long tcc_ipc_ioctl(struct file * filp, unsigned int cmd, unsigned long ar
 					}
 					break;
 				default:
-					dprintk(ipc_dev->dev,"ipc error: unrecognized ioctl (0x%x)\n",cmd);
+					wprintk(ipc_dev->dev,"ipc error: unrecognized ioctl (0x%x)\n",cmd);
 					ret = -EINVAL;
 				break;
 			}
@@ -384,12 +426,12 @@ static unsigned int tcc_ipc_poll( struct file *filp, poll_table *wait)
 
 		if(ipc_dev != NULL)
 		{
-			dprintk(ipc_dev->dev, "In\n");
+			d2printk(ipc_dev,ipc_dev->dev, "In\n");
 
 			if((ipc_dev->ipc_handler.ipcStatus < IPC_READY)||(ipc_dev->ipc_handler.readBuffer.status<IPC_BUF_READY))
 			{
 				ipc_try_connection(ipc_dev);
-				dprintk(ipc_dev->dev, "IPC Not Ready : ipc status(%d), Buffer status(%d)\n",
+				d2printk(ipc_dev,ipc_dev->dev, "IPC Not Ready : ipc status(%d), Buffer status(%d)\n",
 					ipc_dev->ipc_handler.ipcStatus,ipc_dev->ipc_handler.readBuffer.status);
 			}
 
@@ -414,7 +456,7 @@ static unsigned int tcc_ipc_poll( struct file *filp, poll_table *wait)
 				mask |= POLLIN | POLLRDNORM;
 			}
 		}
-		dprintk(ipc_dev->dev, "Out(%d)\n",mask);
+		d2printk(ipc_dev,ipc_dev->dev, "Out(%d)\n",mask);
 	}
 	else
 	{
@@ -455,6 +497,7 @@ static int tcc_ipc_probe(struct platform_device *pdev) {
 
 			of_property_read_string(pdev->dev.of_node,"device-name", &ipc_dev->name);
 			of_property_read_string(pdev->dev.of_node,"mbox-names", &ipc_dev->mbox_name);
+			ipc_dev->debug_level = ipc_verbose_mode;
 			iprintk(&pdev->dev, "device name(%s), mbox-names(%s)\n",ipc_dev->name, ipc_dev->mbox_name);
 
 			result = alloc_chrdev_region(&ipc_dev->devnum, IPC_DEV_MINOR, 1, ipc_dev->name);
@@ -487,7 +530,16 @@ static int tcc_ipc_probe(struct platform_device *pdev) {
 						}
 						else
 						{
-							result = 0;
+							/* Create the ipc debug_level sysfs */
+							result = device_create_file(&pdev->dev, &dev_attr_debug_level);
+							if(result < 0)
+							{
+								eprintk(&pdev->dev,"failed create sysfs, debug_level\n");
+							}
+							else
+							{
+								result = 0;
+							}
 						}
 					}
 
@@ -527,6 +579,7 @@ static int tcc_ipc_remove(struct platform_device * pdev)
 
 	if(ipc_dev != NULL)
 	{
+		device_remove_file(&pdev->dev, &dev_attr_debug_level);
 		device_destroy(ipc_dev->class, ipc_dev->devnum);
 		class_destroy(ipc_dev->class);
 		cdev_del(&ipc_dev->cdev);

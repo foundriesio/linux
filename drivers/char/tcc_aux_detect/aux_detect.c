@@ -308,6 +308,8 @@ static int aux_detect_probe(struct platform_device * pdev) {
 static int aux_detect_remove(struct platform_device * pdev) {
 	FUNCTION_IN;
 
+	device_remove_file(&pdev->dev, &dev_attr_aux_detect_status);
+
 	cdev_del(&aux_detect_cdev);
 
 	device_destroy(aux_detect_class, aux_detect_dev_region);
