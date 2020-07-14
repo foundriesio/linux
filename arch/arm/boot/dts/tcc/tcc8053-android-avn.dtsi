@@ -84,11 +84,11 @@
 */
 
 &switch_reverse {
-	compatible = "telechips,switch_reverse";
+	compatible = "telechips,switch";
 	status = "okay";
 
 	pinctrl-names = "default";
-	pinctrl-0 = <&switch_reverse_mb23>;
+	pinctrl-0 = <&switch_mb23>;
 
 	switch-gpios = <&gpmb 23 1>;
 	switch-active = <0>;

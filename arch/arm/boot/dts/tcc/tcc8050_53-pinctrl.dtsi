@@ -2417,7 +2417,7 @@
 		telechips,pin-function = <1>;
 	};
 
-	switch_reverse_mb23: switch_reverse_mb23 {
+	switch_mb23: switch_mb23 {
 		telechips,pins = "gpmb-23";
 		telechips,pin-function = <0>;
 		telechips,input-enable;

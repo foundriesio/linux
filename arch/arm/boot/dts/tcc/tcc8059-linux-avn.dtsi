@@ -75,11 +75,11 @@
 	};
 
 	switch_reverse {
-		compatible = "telechips,switch_reverse";
+		compatible = "telechips,switch";
 		status = "okay";
 
 		pinctrl-names = "default";
-		pinctrl-0 = <&switch_reverse_ma15>;
+		pinctrl-0 = <&switch_ma15>;
 
 		switch-gpios = <&gpma 15 1>;
 		switch-active = <0>;

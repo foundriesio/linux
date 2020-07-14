@@ -2305,7 +2305,7 @@
 		telechips,drive-strength = <1>;
 	};
 
-	switch_reverse_ma15: switch_reverse_ma15 {
+	switch_ma15: switch_ma15 {
 		telechips,pins = "gpma-15";
 		telechips,pin-function = <0>;
 		telechips,input-enable;

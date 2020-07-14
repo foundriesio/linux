@@ -48,6 +48,10 @@
 		gpsb0 = &gpsb0;
 		gpsb1 = &gpsb1;
 		gpsb2 = &gpsb2;
+		switch0 = &switch0;
+		switch1 = &switch1;
+		switch2 = &switch2;
+		switch3 = &switch3;
 		videosource0 = &videosource0;
 		videosource1 = &videosource1;
 		videosource2 = &videosource2;
@@ -1296,15 +1300,30 @@
 		status = "okay";
 	};
 
-	switch_reverse {
-		compatible = "telechips,switch_reverse";
+	switch0:switch0 {
+		compatible = "telechips,switch";
 		status = "okay";
 
 		pinctrl-names = "default";
-		pinctrl-0 = <&switch_reverse_mb23>;
+		pinctrl-0 = <&switch_mb23>;
 
 		switch-gpios = <&gpmb 23 1>;
 		switch-active = <0>;
+	};
+
+	switch1:switch1 {
+		compatible = "telechips,switch";
+		status = "okay";
+	};
+
+	switch2:switch2 {
+		compatible = "telechips,switch";
+		status = "okay";
+	};
+
+	switch3:switch3 {
+		compatible = "telechips,switch";
+		status = "okay";
 	};
 
 	videoinput0: videoinput@0 {
@@ -1618,7 +1637,7 @@
 		telechips,pin-function = <7>;
 	};
 
-	switch_reverse_mb23: switch_reverse_mb23 {
+	switch_mb23: switch_mb23 {
 		telechips,pins = "gpmb-23";
 		telechips,pin-function = <0>;
 		telechips,input-enable;

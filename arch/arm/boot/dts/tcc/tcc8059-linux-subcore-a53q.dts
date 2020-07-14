@@ -56,6 +56,10 @@
 		i2s5 = &i2s5;
 		i2s6 = &i2s6;
 		i2s7 = &i2s7;
+		switch0 = &switch0;
+		switch1 = &switch1;
+		switch2 = &switch2;
+		switch3 = &switch3;
 		videosource0 = &videosource0;
 		videosource1 = &videosource1;
 		videosource2 = &videosource2;
@@ -1311,15 +1315,30 @@
 		status = "okay";
 	};
 
-	switch_reverse {
-		compatible = "telechips,switch_reverse";
+	switch0:switch0 {
+		compatible = "telechips,switch";
 		status = "okay";
 
 		pinctrl-names = "default";
-		pinctrl-0 = <&switch_reverse_ma15>;
+		pinctrl-0 = <&switch_ma15>;
 
 		switch-gpios = <&gpma 15 1>;
 		switch-active = <0>;
+	};
+
+	switch1:switch1 {
+		compatible = "telechips,switch";
+		status = "okay";
+	};
+
+	switch2:switch2 {
+		compatible = "telechips,switch";
+		status = "okay";
+	};
+
+	switch3:switch3 {
+		compatible = "telechips,switch";
+		status = "okay";
 	};
 
 	videoinput0: videoinput@0 {
@@ -1838,7 +1857,7 @@
 		telechips,pin-function = <7>;
 	};
 
-	switch_reverse_ma15: switch_reverse_ma15 {
+	switch_ma15: switch_ma15 {
 		telechips,pins = "gpma-15";
 		telechips,pin-function = <0>;
 		telechips,input-enable;
