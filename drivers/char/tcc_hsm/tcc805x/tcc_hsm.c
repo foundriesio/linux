@@ -92,7 +92,7 @@ DEFINITION OF LOCAL FUNCTIONS
 ****************************************************************************/
 static long tcc_hsm_ioctl_set_key(unsigned int cmd, unsigned long arg)
 {
-	struct tcc_hsm_ioctl_set_key_param param;
+	struct tcc_hsm_ioctl_set_key_param param = {0};
 	uint32_t req = 0;
 	int32_t ret = -EFAULT;
 
@@ -149,10 +149,13 @@ static long tcc_hsm_ioctl_run_aes(unsigned int cmd, unsigned long arg)
 			(uint32_t)dma_buf->srcPhy, param.src_size, (uint32_t)dma_buf->dstPhy, param.dst_size);
 
 		dma_sync_single_for_cpu(dma_buf->dev, dma_buf->dstPhy, param.dst_size, DMA_FROM_DEVICE);
-
-		if (copy_to_user((void *)param.dst, (void *)dma_buf->dstVir, param.dst_size)) {
-			ELOG("copy_to_user failed\n");
-			return ret;
+		if (ret != 0) {
+			ELOG("tcc_hsm_cmd_run_aes fail(%d)\n", ret);
+		} else {
+			if (copy_to_user((void *)param.dst, (void *)dma_buf->dstVir, param.dst_size)) {
+				ELOG("copy_to_user failed\n");
+				return ret;
+			}
 		}
 	}
 
@@ -161,7 +164,7 @@ static long tcc_hsm_ioctl_run_aes(unsigned int cmd, unsigned long arg)
 
 static long tcc_hsm_ioctl_run_aes_by_kt(unsigned int cmd, unsigned long arg)
 {
-	struct tcc_hsm_ioctl_aes_by_kt_param param;
+	struct tcc_hsm_ioctl_aes_by_kt_param param = {0};
 	uint32_t req = 0;
 	int32_t ret = -EFAULT;
 
@@ -194,10 +197,13 @@ static long tcc_hsm_ioctl_run_aes_by_kt(unsigned int cmd, unsigned long arg)
 			dma_buf->srcPhy, param.src_size, dma_buf->dstPhy, param.dst_size);
 
 		dma_sync_single_for_cpu(dma_buf->dev, dma_buf->dstPhy, param.dst_size, DMA_FROM_DEVICE);
-
-		if (copy_to_user((void *)param.dst, (void *)dma_buf->dstVir, param.dst_size)) {
-			ELOG("copy_to_user failed\n");
-			return ret;
+		if (ret != 0) {
+			ELOG("tcc_hsm_ioctl_run_aes_by_kt fail(%d)\n", ret);
+		} else {
+			if (copy_to_user((void *)param.dst, (void *)dma_buf->dstVir, param.dst_size)) {
+				ELOG("copy_to_user failed\n");
+				return ret;
+			}
 		}
 	}
 
@@ -206,7 +212,7 @@ static long tcc_hsm_ioctl_run_aes_by_kt(unsigned int cmd, unsigned long arg)
 
 static long tcc_hsm_ioctl_gen_mac(unsigned int cmd, unsigned long arg)
 {
-	struct tcc_hsm_ioctl_mac_param param;
+	struct tcc_hsm_ioctl_mac_param param = {0};
 	uint32_t req = 0;
 	int32_t ret = -EFAULT;
 
@@ -231,7 +237,7 @@ static long tcc_hsm_ioctl_gen_mac(unsigned int cmd, unsigned long arg)
 	if (param.dma) {
 		ret = tcc_hsm_cmd_gen_mac(
 			MBOX_DEV_HSM, req, param.obj_id, param.key, param.key_size, param.src, param.src_size,
-			dma_buf->dstPhy, param.msg_size);
+			(uint8_t *)dma_buf->dstPhy, param.mac_size);
 	} else {
 		if (copy_from_user(dma_buf->srcVir, (const uint8_t *)param.src, param.src_size)) {
 			ELOG("copy_from_user failed\n");
@@ -240,13 +246,18 @@ static long tcc_hsm_ioctl_gen_mac(unsigned int cmd, unsigned long arg)
 
 		ret = tcc_hsm_cmd_gen_mac(
 			MBOX_DEV_HSM, req, param.obj_id, param.key, param.key_size, dma_buf->srcPhy,
-			param.src_size, dma_buf->dstPhy, param.msg_size);
+			param.src_size, param.mac, param.mac_size);
 	}
 
-	dma_sync_single_for_cpu(dma_buf->dev, dma_buf->dstPhy, param.msg_size, DMA_FROM_DEVICE);
+	dma_sync_single_for_cpu(dma_buf->dev, dma_buf->dstPhy, param.mac_size, DMA_FROM_DEVICE);
 
-	if (copy_to_user((void *)param.msg, (void *)dma_buf->dstVir, param.msg_size)) {
-		ELOG("copy_to_user failed\n");
+	if (ret != 0) {
+		ELOG("tcc_hsm_ioctl_gen_mac fail(%d)\n", ret);
+	} else {
+		if (copy_to_user((void *)arg, (void *)&param, sizeof(param))) {
+			ELOG("copy_to_user failed\n");
+			return ret;
+		}
 	}
 
 	return ret;
@@ -254,7 +265,7 @@ static long tcc_hsm_ioctl_gen_mac(unsigned int cmd, unsigned long arg)
 
 static long tcc_hsm_ioctl_gen_mac_by_kt(unsigned int cmd, unsigned long arg)
 {
-	struct tcc_hsm_ioctl_mac_by_kt_param param;
+	struct tcc_hsm_ioctl_mac_by_kt_param param = {0};
 	uint32_t req = 0;
 	int32_t ret = -EFAULT;
 
@@ -279,7 +290,7 @@ static long tcc_hsm_ioctl_gen_mac_by_kt(unsigned int cmd, unsigned long arg)
 	if (param.dma) {
 		ret = tcc_hsm_cmd_gen_mac_by_kt(
 			MBOX_DEV_HSM, req, param.obj_id, param.key_index, param.src, param.src_size,
-			dma_buf->dstPhy, param.msg_size);
+			(uint8_t *)dma_buf->dstPhy, param.mac_size);
 	} else {
 		if (copy_from_user(dma_buf->srcVir, (const uint8_t *)param.src, param.src_size)) {
 			ELOG("copy_from_user failed\n");
@@ -287,14 +298,18 @@ static long tcc_hsm_ioctl_gen_mac_by_kt(unsigned int cmd, unsigned long arg)
 		}
 
 		ret = tcc_hsm_cmd_gen_mac_by_kt(
-			MBOX_DEV_HSM, req, param.obj_id, param.key_index, dma_buf->srcPhy, param.src_size,
-			dma_buf->dstPhy, param.msg_size);
+			MBOX_DEV_HSM, req, param.obj_id, param.key_index, (uint32_t)dma_buf->srcPhy,
+			param.src_size, param.mac, param.mac_size);
 	}
 
-	dma_sync_single_for_cpu(dma_buf->dev, dma_buf->dstPhy, param.msg_size, DMA_FROM_DEVICE);
-
-	if (copy_to_user((void *)param.msg, (void *)dma_buf->dstVir, param.msg_size)) {
-		ELOG("copy_to_user failed\n");
+	dma_sync_single_for_cpu(dma_buf->dev, dma_buf->dstPhy, param.mac_size, DMA_FROM_DEVICE);
+	if (ret != 0) {
+		ELOG("tcc_hsm_ioctl_gen_mac fail(%d)\n", ret);
+	} else {
+		if (copy_to_user((void *)arg, (void *)&param, sizeof(param))) {
+			ELOG("copy_to_user failed\n");
+			return ret;
+		}
 	}
 
 	return ret;
@@ -302,7 +317,7 @@ static long tcc_hsm_ioctl_gen_mac_by_kt(unsigned int cmd, unsigned long arg)
 
 static long tcc_hsm_ioctl_gen_hash(unsigned int cmd, unsigned long arg)
 {
-	struct tcc_hsm_ioctl_hash_param param;
+	struct tcc_hsm_ioctl_hash_param param = {0};
 	uint32_t req = 0;
 	int32_t ret = -EFAULT;
 
@@ -336,9 +351,13 @@ static long tcc_hsm_ioctl_gen_hash(unsigned int cmd, unsigned long arg)
 	}
 
 	dma_sync_single_for_cpu(dma_buf->dev, dma_buf->dstPhy, param.digest_size, DMA_FROM_DEVICE);
-
-	if (copy_to_user((void *)arg, (void *)&param, sizeof(param))) {
-		ELOG("copy_to_user failed\n");
+	if (ret != 0) {
+		ELOG("tcc_hsm_cmd_run_aes fail(%d)\n", ret);
+	} else {
+		if (copy_to_user((void *)arg, (void *)&param, sizeof(param))) {
+			ELOG("copy_to_user failed\n");
+			return ret;
+		}
 	}
 
 	return ret;
@@ -346,7 +365,7 @@ static long tcc_hsm_ioctl_gen_hash(unsigned int cmd, unsigned long arg)
 
 static long tcc_hsm_ioctl_run_ecdsa(unsigned int cmd, unsigned long arg)
 {
-	struct tcc_hsm_ioctl_ecdsa_param param;
+	struct tcc_hsm_ioctl_ecdsa_param param = {0};
 	uint32_t req = 0;
 	int32_t ret = -EFAULT;
 
@@ -361,10 +380,15 @@ static long tcc_hsm_ioctl_run_ecdsa(unsigned int cmd, unsigned long arg)
 		ret = tcc_hsm_cmd_run_ecdsa(
 			MBOX_DEV_HSM, req, param.obj_id, param.key, param.key_size, param.digest,
 			param.digest_size, param.sig, param.sig_size);
-		if (copy_to_user((void *)arg, (void *)&param, sizeof(param))) {
-			ELOG("copy_to_user failed\n");
-			return -EFAULT;
+		if (ret != 0) {
+			ELOG("tcc_hsm_cmd_run_aes fail(%d)\n", ret);
+		} else {
+			if (copy_to_user((void *)arg, (void *)&param, sizeof(param))) {
+				ELOG("copy_to_user failed\n");
+				return -EFAULT;
+			}
 		}
+
 		break;
 
 	case TCCHSM_IOCTL_RUN_ECDSA_VERIFY:
@@ -389,7 +413,7 @@ static long tcc_hsm_ioctl_run_ecdsa(unsigned int cmd, unsigned long arg)
 
 static long tcc_hsm_ioctl_run_rsa(unsigned int cmd, unsigned long arg)
 {
-	struct tcc_hsm_ioctl_rsa_param param;
+	struct tcc_hsm_ioctl_rsassa_param param = {0};
 	uint32_t req = 0;
 	int32_t ret = -EFAULT;
 
@@ -406,7 +430,7 @@ static long tcc_hsm_ioctl_run_rsa(unsigned int cmd, unsigned long arg)
 		return ret;
 	}
 
-	if (copy_from_user(&param, (const struct tcc_hsm_ioctl_rsa_param *)arg, sizeof(param))) {
+	if (copy_from_user(&param, (const struct tcc_hsm_ioctl_rsassa_param *)arg, sizeof(param))) {
 		ELOG("copy_from_user failed\n");
 		return ret;
 	}
@@ -416,15 +440,18 @@ static long tcc_hsm_ioctl_run_rsa(unsigned int cmd, unsigned long arg)
 		ELOG("copy_from_user failed\n");
 		return ret;
 	}
-
 	ret = tcc_hsm_cmd_run_rsa(
 		MBOX_DEV_HSM, req, param.obj_id, param.modN, param.modN_size, dma_buf->srcPhy,
 		param.key_size, (uint8_t *)param.digest, param.digest_size, (uint8_t *)param.sign,
 		param.sign_size);
 
-	if (ret) {
-		ELOG("tcc_hsm_cmd_run_ecdsa Err(%d)\n", ret);
-		return ret;
+	if (ret != 0) {
+		ELOG("tcc_hsm_cmd_run_rsa fail(%d)\n", ret);
+	} else {
+		if (copy_to_user((void *)arg, (void *)&param, sizeof(param))) {
+			ELOG("copy_to_user failed\n");
+			return -EFAULT;
+		}
 	}
 
 	return ret;

@@ -70,7 +70,7 @@ int32_t tcc_hsm_cmd_set_key(
 
 	result = rdata;
 	if (result != 0) {
-		ELOG("Error: %d\n", result);
+		ELOG("Error: 0x%x\n", result);
 		return result;
 	}
 
@@ -88,16 +88,17 @@ int32_t tcc_hsm_cmd_run_aes(
 	int32_t result = -1;
 
 	data[index++] = obj_id;
+	data[index++] = HSM_DMA;
 	data[index++] = key_size;
 	if (key != NULL && key_size > 0) {
 		memcpy(&data[index], (uint32_t *)key, key_size);
-		index += (key_size + 3) / sizeof(u32);
+		index += (key_size + 3) / sizeof(uint32_t);
 	}
 
 	data[index++] = iv_size;
 	if (iv != NULL && iv_size > 0) {
 		memcpy(&data[index], (uint32_t *)iv, iv_size);
-		index += (iv_size + 3) / sizeof(u32);
+		index += (iv_size + 3) / sizeof(uint32_t);
 	}
 
 	if (req == REQ_HSM_RUN_AES) {
@@ -119,7 +120,7 @@ int32_t tcc_hsm_cmd_run_aes(
 
 	result = rdata;
 	if (result != 0) {
-		ELOG("Error: %d\n", result);
+		ELOG("Error: 0x%x\n", result);
 		return result;
 	}
 
@@ -137,13 +138,14 @@ int32_t tcc_hsm_cmd_run_aes_by_kt(
 	int32_t result = -1;
 
 	data[index++] = obj_id;
+	data[index++] = HSM_DMA;
 	data[index++] = key_index;
 
 	data[index++] = iv_size;
 	if (iv != NULL && iv_size > 0) {
 		memcpy(&data[index], iv, iv_size);
 	}
-	index += (iv_size + 3) / sizeof(u32);
+	index += (iv_size + 3) / sizeof(uint32_t);
 
 	data[index++] = 0; // tag size, Not used
 	data[index++] = 0; // add size, Not used
@@ -163,7 +165,7 @@ int32_t tcc_hsm_cmd_run_aes_by_kt(
 
 	result = rdata;
 	if (result != 0) {
-		ELOG("Error: %d\n", result);
+		ELOG("Error: 0x%x\n", result);
 		return result;
 	}
 
@@ -172,42 +174,48 @@ int32_t tcc_hsm_cmd_run_aes_by_kt(
 
 int32_t tcc_hsm_cmd_gen_mac(
 	uint32_t device_id, uint32_t req, uint32_t obj_id, uint8_t *key, uint32_t key_size,
-	uint32_t src, uint32_t src_size, uint32_t dst, uint32_t dst_size)
+	uint32_t src, uint32_t src_size, uint8_t *mac, uint32_t mac_size)
 {
 	uint32_t data[128] = {0};
 	uint32_t index = 0;
-	int32_t rdata = 0;
+	int32_t rdata[128] = {0};
 	int32_t data_size = 0, rdata_size = 0;
 	int32_t result = 0;
 
 	if ((req == REQ_HSM_GEN_HMAC) || (req == REQ_HSM_GEN_SM3_HMAC)) {
 		data[index++] = obj_id;
 	}
-
+	data[index++] = HSM_DMA;
 	data[index++] = key_size;
 	if (key != NULL && key_size > 0) {
 		memcpy(&data[index], key, key_size);
 	}
-	index += (key_size + 3) / sizeof(u32);
+	index += (key_size + 3) / sizeof(uint32_t);
 
-	data[index++] = src;
 	data[index++] = src_size;
-	data[index++] = dst;
-	data[index++] = dst_size;
+	data[index++] = src;
+	data[index++] = mac_size;
 
 	data_size = (sizeof(uint32_t) * index);
 
 	rdata_size = sec_sendrecv_cmd(
-		device_id, (req | MBOX_LOCATION_DATA), data, data_size, &rdata, DMA_MAX_RSIZE);
+		device_id, (req | MBOX_LOCATION_DATA), data, data_size, rdata, DMA_MAX_RSIZE);
 	if (rdata_size < 0) {
 		ELOG("sec_sendrecv_cmd error(%d)\n", rdata_size);
 		return -EBADR;
 	}
 
-	result = rdata;
+	result = rdata[0];
 	if (result != 0) {
-		ELOG("Error: %d\n", result);
+		ELOG("Error: 0x%x\n", result);
 		return result;
+	}
+
+	if (rdata[1] == mac_size) {
+		memcpy(mac, (uint8_t *)&rdata[2], mac_size);
+	} else {
+		ELOG("wrong mac_size(%d)\n", rdata[1]);
+		return -EBADR;
 	}
 
 	return result;
@@ -215,23 +223,22 @@ int32_t tcc_hsm_cmd_gen_mac(
 
 int32_t tcc_hsm_cmd_gen_mac_by_kt(
 	uint32_t device_id, uint32_t req, uint32_t obj_id, uint32_t key_index, uint32_t src,
-	uint32_t src_size, uint32_t dst, uint32_t dst_size)
+	uint32_t src_size, uint8_t *mac, uint32_t mac_size)
 {
 	uint32_t data[128] = {0};
 	uint32_t index = 0;
-	int32_t rdata = 0;
+	int32_t rdata[128] = {0};
 	int32_t data_size = 0, rdata_size = 0;
 	int32_t result = 0;
 
 	if ((req == REQ_HSM_GEN_HMAC) || (req == REQ_HSM_GEN_SM3_HMAC)) {
 		data[index++] = obj_id;
 	}
-
+	data[index++] = HSM_DMA;
 	data[index++] = key_index;
-	data[index++] = src;
 	data[index++] = src_size;
-	data[index++] = dst;
-	data[index++] = dst_size;
+	data[index++] = src;
+	data[index++] = mac_size;
 
 	data_size = (sizeof(uint32_t) * index);
 
@@ -242,12 +249,17 @@ int32_t tcc_hsm_cmd_gen_mac_by_kt(
 		return -EBADR;
 	}
 
-	result = rdata;
+	result = rdata[0];
 	if (result != 0) {
-		ELOG("Error: %d\n", result);
+		ELOG("Error: 0x%x\n", result);
 		return result;
 	}
-
+	if (rdata[1] == mac_size) {
+		memcpy(mac, (uint8_t *)&rdata[2], mac_size);
+	} else {
+		ELOG("wrong mac_size(%d)\n", rdata[1]);
+		return -EBADR;
+	}
 	return result;
 }
 
@@ -262,8 +274,9 @@ int32_t tcc_hsm_cmd_gen_hash(
 	int32_t result = 0;
 
 	data[index++] = obj_id;
-	data[index++] = src;
+	data[index++] = HSM_DMA;
 	data[index++] = src_size;
+	data[index++] = src;
 	data[index++] = dig_size;
 
 	data_size = (sizeof(uint32_t) * index);
@@ -275,8 +288,9 @@ int32_t tcc_hsm_cmd_gen_hash(
 		return -EBADR;
 	}
 
-	if (rdata[0]) {
-		ELOG("Error: %d\n", result);
+	result = rdata[0];
+	if (result) {
+		ELOG("Error: 0x%x\n", result);
 		return result;
 	}
 
@@ -304,22 +318,19 @@ int32_t tcc_hsm_cmd_run_ecdsa(
 	data[index++] = key_size;
 	if (key != NULL && key_size > 0) {
 		memcpy(&data[index], key, key_size);
-		index += (key_size + 3) / sizeof(u32);
+		index += (key_size + 3) / sizeof(uint32_t);
 	}
 	data[index++] = digest_size;
 	memcpy(&data[index], digest, digest_size);
-	index += (digest_size + 3) / sizeof(u32);
+	index += (digest_size + 3) / sizeof(uint32_t);
 
 	data[index++] = sig_size;
 	if (req == REQ_HSM_RUN_ECDSA_VERIFY) {
 		memcpy(&data[index], sig, sig_size);
-		index += (sig_size + 3) / sizeof(u32);
+		index += (sig_size + 3) / sizeof(uint32_t);
 	}
 
 	data_size = (sizeof(uint32_t) * index);
-	DLOG(
-		"data_size=%d key_size=%d digest_size=%d sig_size=%d\n", data_size, key_size, digest_size,
-		sig_size);
 
 	rdata_size = sec_sendrecv_cmd(
 		device_id, (req | MBOX_LOCATION_DATA), data, data_size, rdata, DMA_MAX_RSIZE);
@@ -330,7 +341,7 @@ int32_t tcc_hsm_cmd_run_ecdsa(
 
 	result = rdata[0];
 	if (result) {
-		ELOG("Error: %d\n", result);
+		ELOG("Error: 0x%x\n", result);
 		return result;
 	}
 	if (req == REQ_HSM_RUN_ECDSA_VERIFY) {
@@ -359,24 +370,25 @@ int32_t tcc_hsm_cmd_run_rsa(
 	int32_t result = 0;
 
 	data[index++] = obj_id;
+	data[index++] = HSM_DMA;
 	data[index++] = modN_size;
 	memcpy(&data[index], modN, modN_size);
-	index += (modN_size + 3) / sizeof(u32);
+	index += (modN_size + 3) / sizeof(uint32_t);
 
 	data[index++] = key_size;
 	data[index++] = key;
 
 	data[index++] = digest_size;
 	memcpy(&data[index], digest, digest_size);
-	index += (digest_size + 3) / sizeof(u32);
+	index += (digest_size + 3) / sizeof(uint32_t);
 
 	data[index++] = sig_size;
-	if (req == REQ_HSM_RUN_ECDSA_VERIFY) {
+	if ((req == REQ_HSM_RUN_RSASSA_PKCS_VERIFY) || (req == REQ_HSM_RUN_RSASSA_PSS_VERIFY)) {
 		memcpy(&data[index], sig, sig_size);
-		index += (sig_size + 3) / sizeof(u32);
+		index += (sig_size + 3) / sizeof(uint32_t);
 	}
 	data_size = (sizeof(uint32_t) * index);
-
+	// ELOG("data_size=%d %d %d %d\n", data_size, modN_size, digest_size, sig_size);
 	rdata_size = sec_sendrecv_cmd(
 		device_id, (req | MBOX_LOCATION_DATA), data, data_size, rdata, DMA_MAX_RSIZE);
 	if (rdata_size < 0) {
@@ -386,12 +398,12 @@ int32_t tcc_hsm_cmd_run_rsa(
 
 	result = rdata[0];
 	if (result) {
-		ELOG("Error: %d\n", result);
+		ELOG("Error: 0x%x\n", result);
 		return result;
 	}
-	if (req == REQ_HSM_RUN_ECDSA_VERIFY) {
+	if ((req == REQ_HSM_RUN_RSASSA_PKCS_VERIFY) || (req == REQ_HSM_RUN_RSASSA_PSS_VERIFY)) {
 		return result;
-	} else if (req == REQ_HSM_RUN_ECDSA_SIGN) {
+	} else if ((req == REQ_HSM_RUN_RSASSA_PKCS_SIGN) || (req == REQ_HSM_RUN_RSASSA_PSS_SIGN)) {
 		if (rdata[1] == sig_size) {
 			memcpy(sig, (uint8_t *)&rdata[2], sig_size);
 		} else {
@@ -411,6 +423,7 @@ int32_t tcc_hsm_cmd_get_rand(uint32_t device_id, uint32_t req, uint32_t rng, int
 	int32_t data_size = 0, rdata_size = 0;
 	int32_t result = 0;
 
+	data[index++] = HSM_DMA;
 	data[index++] = rng_size;
 	data[index++] = rng;
 
@@ -425,7 +438,7 @@ int32_t tcc_hsm_cmd_get_rand(uint32_t device_id, uint32_t req, uint32_t rng, int
 
 	result = rdata;
 	if (result != 0) {
-		ELOG("Error: %d\n", result);
+		ELOG("Error: 0x%x\n", result);
 		return result;
 	}
 
@@ -456,7 +469,7 @@ int32_t tcc_hsm_cmd_write_otp(
 
 	result = rdata;
 	if (result != 0) {
-		ELOG("Error: %d\n", result);
+		ELOG("Error: 0x%x\n", result);
 		return result;
 	}
 
@@ -492,7 +505,7 @@ tcc_hsm_cmd_get_version(uint32_t device_id, uint32_t req, uint32_t *x, uint32_t 
 
 	result = rdata[0];
 	if (result) {
-		ELOG("Error: %d\n", result);
+		ELOG("Error: 0x%x\n", result);
 		return result;
 	}
 	if (rdata[1] == sizeof(uint32_t) * 3) {
