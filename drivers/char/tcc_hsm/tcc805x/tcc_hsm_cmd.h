@@ -51,6 +51,12 @@
 #define REQ_HSM_WRITE_SNOR                  0x10710001
 
 #define REQ_HSM_GET_VER                     0x20010000
+
+typedef enum _dma_type {
+	HSM_NONE_DMA = 0,
+	HSM_DMA
+} dma_type;
+
 // clang-format on
 
 int32_t tcc_hsm_cmd_set_key(
@@ -65,10 +71,10 @@ int32_t tcc_hsm_cmd_run_aes_by_kt(
 
 int32_t tcc_hsm_cmd_gen_mac(
 	uint32_t device_id, uint32_t req, uint32_t obj_id, uint8_t *key, uint32_t key_size,
-	uint32_t src, uint32_t src_size, uint32_t dst, uint32_t dst_size);
+	uint32_t src, uint32_t src_size, uint8_t *mac, uint32_t mac_size);
 int32_t tcc_hsm_cmd_gen_mac_by_kt(
 	uint32_t device_id, uint32_t req, uint32_t obj_id, uint32_t key_index, uint32_t src,
-	uint32_t src_size, uint32_t dst, uint32_t dst_size);
+	uint32_t src_size, uint8_t *mac, uint32_t mac_size);
 
 int32_t tcc_hsm_cmd_gen_hash(
 	uint32_t device_id, uint32_t req, uint32_t obj_id, uint32_t src, uint32_t src_size,
