@@ -1122,6 +1122,11 @@ static int __init intel_idle_probe(void)
 		return -ENODEV;
 	}
 
+	if (!boot_cpu_has(X86_FEATURE_MWAIT)) {
+		pr_debug("Please enable MWAIT in BIOS SETUP\n");
+		return -ENODEV;
+	}
+
 	if (boot_cpu_data.cpuid_level < CPUID_MWAIT_LEAF)
 		return -ENODEV;
 
