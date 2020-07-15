@@ -124,7 +124,7 @@ int switch_get_status(switch_t * vdev) {
 		break;
 	}
 
-	logd("switch status: %d\n", status);
+	dlog("switch status: %d\n", status);
 
 	return status;
 }
@@ -149,7 +149,7 @@ void switch_set_status(switch_t * vdev, int status) {
 		break;
 	}
 
-	logd("switch status: %d\n", status);
+	dlog("switch status: %d\n", status);
 }
 
 ssize_t switch_status_show(struct device * dev, struct device_attribute * attr, char * buf) {
