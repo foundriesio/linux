@@ -224,6 +224,7 @@ struct ipc_device
 	struct mbox_chan *mbox_ch;
 	IpcHandler 	ipc_handler;
 	IPC_INT32 ipc_available;
+	IPC_INT32	debug_level;
  };
 
 extern IPC_INT32 ipc_verbose_mode;
@@ -231,7 +232,9 @@ extern IPC_INT32 ipc_verbose_mode;
 #define eprintk(dev, msg, ...)	((void)dev_err(dev, "[ERROR][%s]%s: " pr_fmt(msg), (const IPC_CHAR *)LOG_TAG,__FUNCTION__, ##__VA_ARGS__))
 #define wprintk(dev, msg, ...)	((void)dev_warn(dev, "[WARN][%s]%s: " pr_fmt(msg), (const IPC_CHAR *)LOG_TAG,__FUNCTION__, ##__VA_ARGS__))
 #define iprintk(dev, msg, ...)	((void)dev_info(dev, "[INFO][%s]%s: " pr_fmt(msg), (const IPC_CHAR *)LOG_TAG,__FUNCTION__, ##__VA_ARGS__))
-#define dprintk(dev, msg, ...)	{ if(ipc_verbose_mode == (IPC_INT32)1) { (void)dev_info(dev, "[INFO][%s]%s: " pr_fmt(msg), (const IPC_CHAR *)LOG_TAG,__FUNCTION__, ##__VA_ARGS__); } }
+#define d1printk(ipc_dev, dev, msg, ...)	{ if(ipc_dev->debug_level > (IPC_INT32)0) { (void)dev_info(dev, "[DEBUG][%s]%s: " pr_fmt(msg), (const IPC_CHAR *)LOG_TAG,__FUNCTION__, ##__VA_ARGS__); } }
+#define d2printk(ipc_dev, dev, msg, ...)	{ if(ipc_dev->debug_level > (IPC_INT32)1) { (void)dev_info(dev, "[DEBUG][%s]%s: " pr_fmt(msg), (const IPC_CHAR *)LOG_TAG,__FUNCTION__, ##__VA_ARGS__); } }
+
 
 
 #endif /* __TCC_IPC_TYPE_DEF_H__ */
