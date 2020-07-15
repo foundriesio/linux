@@ -50,7 +50,7 @@ static struct videosource_i2c_reg videosource_i2c_reg_list_des_enable_local_ack 
 
 static struct videosource_i2c_reg videosource_i2c_reg_list_ser_config_mode = {
 	.saddr	= SER_ADDR,
-	.delay	= 20,
+	.delay	= 0x7F,
 	.addr	= 0x04,
 	.data	= { 0x43, DATA_TERM },
 };
@@ -63,7 +63,7 @@ static struct videosource_i2c_reg videosource_i2c_reg_list_isp_init = {
 
 static struct videosource_i2c_reg videosource_i2c_reg_list_ser_stream_mode = {
 	.saddr	= SER_ADDR,
-	.delay	= 20,
+	.delay	= 0x7F,
 	.addr	= 0x04,
 	.data	= { 0x83, DATA_TERM },
 };
@@ -133,6 +133,7 @@ static int write_reg(struct i2c_client * client, unsigned int addr, int addr_byt
 
 static int write_regs(struct i2c_client * client, const struct videosource_i2c_reg * list) {
 	unsigned short	client_addr	= 0x00;
+	int				idxData		= 0;
 	unsigned char	buf[1024]	= {0,};
 	int				buf_bytes	= 0;
 	int				ret			= 0;
@@ -145,10 +146,13 @@ static int write_regs(struct i2c_client * client, const struct videosource_i2c_r
 		client->addr		= list->saddr;
 
 	// convert to a i2c config buffer
+	idxData				= 0;
 	buf_bytes			= 0;
-	while(list->data[buf_bytes] != DATA_TERM) {
-		buf[buf_bytes]	= list->data[buf_bytes];
-		buf_bytes++;
+	// add address
+	buf[buf_bytes++]	= list->addr;
+	// add data
+	while(list->data[idxData] != DATA_TERM) {
+		buf[buf_bytes++]	= list->data[idxData++];
 	}
 
 	// remove stop signal if needed
@@ -183,8 +187,6 @@ static int open(videosource_gpio_t * gpio) {
 	msleep(10);
 
 	// power-up sequence
-	sensor_port_enable(gpio->intb_port);
-	msleep(10);
 	sensor_port_enable(gpio->rst_port);
 	msleep(10);
 
@@ -195,10 +197,8 @@ static int open(videosource_gpio_t * gpio) {
 static int close(videosource_gpio_t * gpio) {
 	FUNCTION_IN
 
+	// power-down sequence
 	sensor_port_disable(gpio->rst_port);
-	sensor_port_disable(gpio->pwr_port);
-	sensor_port_disable(gpio->pwd_port);
-	sensor_port_disable(gpio->intb_port);
 	msleep(5);
 
 	FUNCTION_OUT
@@ -218,7 +218,7 @@ static int change_mode(struct i2c_client * client, int mode) {
 	switch(mode) {
 	case MODE_INIT:
 		for(idxList = 0; idxList < entry; idxList++)
-			ret = write_regs(client, videosource_i2c_reg_list[mode]);
+			ret = write_regs(client, videosource_i2c_reg_list[idxList]);
 		break;
 	default:
 		loge("mode(%d) is WRONG\n", mode);
@@ -270,7 +270,7 @@ videosource_t videosource_max9276 = {
 
 	.format = {
 		.width						= WIDTH,
-		.height						= HEIGHT,// - 1,
+		.height						= HEIGHT,
 		.crop_x 					= 0,
 		.crop_y 					= 0,
 		.crop_w 					= 0,
