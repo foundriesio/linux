@@ -1892,7 +1892,7 @@
 	udma0_ac: access_control@16689020 {
 		reg = <0x0 0x16689020 0x0 0x20>;
 		access-control0 = <0x20000000 0xC0000000>; /* DRAM */
-		access-control1 = <0x00000000 0x00000000>;
+		access-control1 = <0x16600000 0x16600400>;
 		access-control2 = <0x00000000 0x00000000>;
 		access-control3 = <0x00000000 0x00000000>;
 	};
@@ -1900,7 +1900,7 @@
 	udma1_ac: access_control@16689040 {
 		reg = <0x0 0x16689040 0x0 0x20>;
 		access-control0 = <0x20000000 0xC0000000>; /* DRAM */
-		access-control1 = <0x00000000 0x00000000>;
+		access-control1 = <0x16610000 0x16610400>;
 		access-control2 = <0x00000000 0x00000000>;
 		access-control3 = <0x00000000 0x00000000>;
 	};
@@ -1908,7 +1908,7 @@
 	udma2_ac: access_control@16689060 {
 		reg = <0x0 0x16689060 0x0 0x20>;
 		access-control0 = <0x20000000 0xC0000000>; /* DRAM */
-		access-control1 = <0x00000000 0x00000000>;
+		access-control1 = <0x16620000 0x16620400>;
 		access-control2 = <0x00000000 0x00000000>;
 		access-control3 = <0x00000000 0x00000000>;
 	};
@@ -1916,7 +1916,7 @@
 	udma3_ac: access_control@16689080 {
 		reg = <0x0 0x16689080 0x0 0x20>;
 		access-control0 = <0x20000000 0xC0000000>; /* DRAM */
-		access-control1 = <0x00000000 0x00000000>;
+		access-control1 = <0x16630000 0x16630400>;
 		access-control2 = <0x00000000 0x00000000>;
 		access-control3 = <0x00000000 0x00000000>;
 	};
@@ -1924,7 +1924,7 @@
         udma4_ac: access_control@166890A0 {
                 reg = <0x0 0x166890A0 0x0 0x20>;
                 access-control0 = <0x20000000 0xC0000000>; /* DRAM */
-                access-control1 = <0x00000000 0x00000000>;
+                access-control1 = <0x16640000 0x16640400>;
                 access-control2 = <0x00000000 0x00000000>;
                 access-control3 = <0x00000000 0x00000000>;
         };
@@ -1932,7 +1932,7 @@
         udma5_ac: access_control@166890C0 {
                 reg = <0x0 0x166890C0 0x0 0x20>;
                 access-control0 = <0x20000000 0xC0000000>; /* DRAM */
-                access-control1 = <0x00000000 0x00000000>;
+                access-control1 = <0x16650000 0x16650400>;
                 access-control2 = <0x00000000 0x00000000>;
                 access-control3 = <0x00000000 0x00000000>;
         };
@@ -1940,7 +1940,7 @@
         udma6_ac: access_control@166890E0 {
                 reg = <0x0 0x166890E0 0x0 0x20>;
                 access-control0 = <0x20000000 0xC0000000>; /* DRAM */
-                access-control1 = <0x00000000 0x00000000>;
+                access-control1 = <0x16660000 0x16660400>;
                 access-control2 = <0x00000000 0x00000000>;
                 access-control3 = <0x00000000 0x00000000>;
         };
@@ -1948,7 +1948,7 @@
         udma7_ac: access_control@16689100 {
                 reg = <0x0 0x16689100 0x0 0x20>;
                 access-control0 = <0x20000000 0xC0000000>; /* DRAM */
-                access-control1 = <0x00000000 0x00000000>;
+                access-control1 = <0x16670000 0x16670400>;
                 access-control2 = <0x00000000 0x00000000>;
                 access-control3 = <0x00000000 0x00000000>;
         };
