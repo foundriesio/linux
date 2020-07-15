@@ -3829,6 +3829,8 @@
 		};
 	};
 
+	switch_reverse: switch_reverse {};
+
 	pvlbjt020: pvlbjt020 {};
 
 	ictc: ictc {
