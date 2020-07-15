@@ -128,12 +128,13 @@ static int tcc_drm_address_dt_parse_v1_0(struct platform_device *pdev, struct tc
 			ret = -ENODEV;
 			break;
 		}
+
 		of_property_read_u32_index(np, "display_device", 1, &index);
 		hw_data->display_device.virt_addr = VIOC_DISP_GetAddress(index);
 		hw_data->display_device.blk_num = index;
-		//hw_data->DispNum = get_vioc_index(hw_data->display_device.blk_num);
 		hw_data->display_device.irq_num =
 			irq_of_parse_and_map(current_node, get_vioc_index(index));
+		printk(KERN_INFO "[INF][DRM_ADR] display device id is %d, irq_num = %d\r\n", index,  hw_data->display_device.irq_num);
 
 		hw_data->vioc_clock = of_clk_get_by_name(current_node, "ddi-clk");
 		if(hw_data->vioc_clock == NULL) {
@@ -150,12 +151,16 @@ static int tcc_drm_address_dt_parse_v1_0(struct platform_device *pdev, struct tc
 			case VIOC_DISP1:
 				hw_data->ddc_clock = of_clk_get_by_name(current_node, "disp1-clk");
 				break;
+			#if defined(VIOC_DISP2)
 			case VIOC_DISP2:
 				hw_data->ddc_clock = of_clk_get_by_name(current_node, "disp2-clk");
 				break;
+			#endif
+			#if defined(VIOC_DISP3)
 			case VIOC_DISP3:
 				hw_data->ddc_clock = of_clk_get_by_name(current_node, "disp3-clk");
 				break;
+			#endif
 			default:
 				hw_data->ddc_clock = NULL;
 				break;
@@ -193,12 +198,15 @@ static int tcc_drm_address_dt_parse_v1_0(struct platform_device *pdev, struct tc
 		}
 	
 		for (i = 0; i < RDMA_MAX_NUM; i++) {
-			of_property_read_u32_index(np, "rdma", i + 1, &index);
-			hw_data->rdma[i].virt_addr =
-				VIOC_RDMA_GetAddress(index);
-			hw_data->rdma[i].irq_num = irq_of_parse_and_map(
-				current_node, get_vioc_index(index));
-			hw_data->rdma[i].blk_num = index;
+			if(of_property_read_u32_index(np, "rdma", i + 1, &index) < 0) {
+				hw_data->rdma[i].virt_addr = NULL;
+			} else {
+				hw_data->rdma[i].virt_addr =
+					VIOC_RDMA_GetAddress(index);
+				hw_data->rdma[i].irq_num = irq_of_parse_and_map(
+					current_node, get_vioc_index(index));
+				hw_data->rdma[i].blk_num = index;
+			}
 		}
 
 		/* parse planes */
@@ -259,13 +267,14 @@ int tcc_drm_address_dt_parse(struct platform_device *pdev, struct tcc_hw_device 
 	unsigned long version;
 
 	int (*parse_api)(struct platform_device *, struct tcc_hw_device *);
-
 	version = (unsigned long)of_device_get_match_data(&pdev->dev);
 	switch(version) {
 		case TCC_DRM_DT_VERSION_OLD:
+			printk(KERN_INFO "[INF][DRM_ADR] device tree is old\r\n");
 			parse_api = tcc_drm_address_dt_parse_old;
 			break;
 		case TCC_DRM_DT_VERSION_1_0:
+			printk(KERN_INFO "[INF][DRM_ADR] device tree is v1.0\r\n");
 			parse_api = tcc_drm_address_dt_parse_v1_0;
 			break;
 		default:
@@ -274,6 +283,7 @@ int tcc_drm_address_dt_parse(struct platform_device *pdev, struct tcc_hw_device 
 	}
 	
 	if(parse_api != NULL) {
+		hw_data->version = version;
 		ret = parse_api(pdev, hw_data);
 	}
 	return ret;

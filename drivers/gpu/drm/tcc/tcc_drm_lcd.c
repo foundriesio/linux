@@ -27,6 +27,7 @@
 #include <video/of_videomode.h>
 #include <drm/tcc_drm.h>
 
+#include <video/tcc/vioc_global.h>
 #include <video/tcc/vioc_rdma.h>
 #include <video/tcc/vioc_wmix.h>
 #include <video/tcc/vioc_disp.h>
@@ -34,6 +35,7 @@
 #include <video/tcc/vioc_intr.h>
 #include <video/tcc/vioc_ddicfg.h>
 
+#include "tcc_drm_address.h"
 #include "tcc_drm_drv.h"
 #include "tcc_drm_fb.h"
 #include "tcc_drm_crtc.h"
@@ -58,13 +60,7 @@ struct lcd_context {
 	struct tcc_drm_crtc		*crtc;
 	struct tcc_drm_plane		planes[WINDOWS_NR];
 	struct tcc_drm_plane_config	configs[WINDOWS_NR];
-	struct clk			*bus_clk;
-	struct clk			*lcd_clk;
-	void __iomem			*ddc_reg;	/* TCC DDC register address */
-	void __iomem			*vioc_reg;	/* TCC vioc config register address */
-	unsigned int			ddc_id;		/* TCC display path number */
-	void __iomem			*virt_addr;	/* TCC wmixer node address */
-	int				irq_num;	/* TCC interrupt number */
+
 	unsigned long			lcd_flags;
 	bool				suspended;
 	wait_queue_head_t		wait_vsync_queue;
@@ -83,10 +79,18 @@ struct lcd_context {
 	 * when it is binded. In other words, If so any Logo image was displayed on screen at booting time,
 	 * it will is keep dislayed on screen until the DRM application is executed. */
 	int 				keep_logo;
+	
+	struct tcc_hw_device 		hw_data;
 };
 
 static const struct of_device_id lcd_driver_dt_match[] = {
-	{ .compatible = "telechips,tcc-drm-lcd" },
+	{ 
+		.compatible = "telechips,tcc-drm-lcd",
+		.data = (const void*)TCC_DRM_DT_VERSION_OLD,
+	}, { 
+		.compatible = "telechips,tcc-drm-lcd-v1.0",
+		.data = (const void*)TCC_DRM_DT_VERSION_1_0,
+	},
 	{},
 };
 MODULE_DEVICE_TABLE(of, lcd_driver_dt_match);
@@ -111,10 +115,8 @@ static int lcd_enable_vblank(struct tcc_drm_crtc *crtc)
 	if (ctx->suspended)
 		return -EPERM;
 
-	if (!test_and_set_bit(LCD_FLAGS_IRQ_BIT, &ctx->lcd_flags)) {
-		DRM_DEBUG("%s-vioc_intr_enable\r\n", __func__);
-		vioc_intr_enable(ctx->irq_num, ctx->ddc_id, VIOC_DISP_INTR_DISPLAY);
-	}
+	if (!test_and_set_bit(LCD_FLAGS_IRQ_BIT, &ctx->lcd_flags)) 
+		vioc_intr_enable(ctx->hw_data.display_device.irq_num, get_vioc_index(ctx->hw_data.display_device.blk_num), VIOC_DISP_INTR_DISPLAY);
 
 	return 0;
 }
@@ -126,10 +128,8 @@ static void lcd_disable_vblank(struct tcc_drm_crtc *crtc)
 	if (ctx->suspended)
 		return;
 
-	if (test_and_clear_bit(LCD_FLAGS_IRQ_BIT, &ctx->lcd_flags)) {
-		DRM_DEBUG("%s-vioc_intr_enable\r\n", __func__);
-		vioc_intr_disable(ctx->irq_num, ctx->ddc_id, VIOC_DISP_INTR_DISPLAY);
-}
+	if (test_and_clear_bit(LCD_FLAGS_IRQ_BIT, &ctx->lcd_flags))
+		vioc_intr_disable(ctx->hw_data.display_device.irq_num, get_vioc_index(ctx->hw_data.display_device.blk_num), VIOC_DISP_INTR_DISPLAY);
 }
 
 static void lcd_wait_for_vblank(struct tcc_drm_crtc *crtc)
@@ -166,30 +166,40 @@ static int lcd_atomic_check(struct tcc_drm_crtc *crtc,
 	struct drm_display_mode *mode = &state->adjusted_mode;
 	struct lcd_context *ctx = crtc->ctx;
 	unsigned long ideal_clk, lcd_rate;
+	volatile void __iomem *ddi_config;
+	int pixel_clock_from_hdmi = 0;
 	u32 clkdiv;
 
+	ddi_config = VIOC_DDICONFIG_GetAddress();
+	if(VIOC_DDICONFIG_GetPeriClock(ddi_config, get_vioc_index(ctx->hw_data.display_device.blk_num))) {
+		pixel_clock_from_hdmi = 1;
+		//printk(KERN_INFO "[INF][DRMEXT] %s pixel clock was from hdmi phy\r\n", __func__);
+	}
+	
 	if (mode->clock == 0) {
 		DRM_INFO("Mode has zero clock value.\n");
 		return -EINVAL;
 	}
 
-	ideal_clk = mode->clock * 1000;
+	if(!pixel_clock_from_hdmi) {
+		ideal_clk = mode->clock * 1000;
 
-	lcd_rate = clk_get_rate(ctx->lcd_clk);
-	if (2 * lcd_rate < ideal_clk) {
-		DRM_INFO("sclk_lcd clock too low(%lu) for requested pixel clock(%lu)\n",
-			 lcd_rate, ideal_clk);
-		return -EINVAL;
+		lcd_rate = clk_get_rate(ctx->hw_data.ddc_clock);
+		if (2 * lcd_rate < ideal_clk) {
+			DRM_INFO("sclk_lcd clock too low(%lu) for requested pixel clock(%lu)\n",
+				 lcd_rate, ideal_clk);
+			return -EINVAL;
+		}
+
+		/* Find the clock divider value that gets us closest to ideal_clk */
+		clkdiv = DIV_ROUND_CLOSEST(lcd_rate, ideal_clk);
+		if (clkdiv >= 0x200) {
+			DRM_INFO("requested pixel clock(%lu) too low\n", ideal_clk);
+			return -EINVAL;
+		}
+
+		ctx->clkdiv = (clkdiv < 0x100) ? clkdiv : 0xff;
 	}
-
-	/* Find the clock divider value that gets us closest to ideal_clk */
-	clkdiv = DIV_ROUND_CLOSEST(lcd_rate, ideal_clk);
-	if (clkdiv >= 0x200) {
-		DRM_INFO("requested pixel clock(%lu) too low\n", ideal_clk);
-		return -EINVAL;
-	}
-
-	ctx->clkdiv = (clkdiv < 0x100) ? clkdiv : 0xff;
 
 	return 0;
 }
@@ -212,7 +222,7 @@ static void lcd_commit(struct tcc_drm_crtc *crtc)
 static void lcd_win_set_pixfmt(struct lcd_context *ctx, unsigned int win,
 				uint32_t pixel_format, uint32_t width)
 {
-	void __iomem *pRDMA = ctx->configs[win].virt_addr;
+	volatile void __iomem *pRDMA = ctx->configs[win].virt_addr;
 
 	switch (pixel_format) {
 	case DRM_FORMAT_RGB565:
@@ -264,8 +274,8 @@ static void lcd_update_plane(struct tcc_drm_crtc *crtc,
 	unsigned int pitch = fb->pitches[0];
 
 	/* TCC specific structure */
-	void __iomem *pWMIX;
-	void __iomem *pRDMA;
+	volatile void __iomem *pWMIX;
+	volatile void __iomem *pRDMA;
 
 	if(ctx->keep_logo) {
 		ctx->keep_logo = 0;
@@ -275,7 +285,7 @@ static void lcd_update_plane(struct tcc_drm_crtc *crtc,
 	if (ctx->suspended)
 		return;
 
-	pWMIX = ctx->virt_addr;
+	pWMIX = ctx->hw_data.wmixer.virt_addr;
 	pRDMA = ctx->configs[win].virt_addr;
 
 	offset = state->src.x * cpp;
@@ -337,13 +347,13 @@ static void lcd_enable(struct tcc_drm_crtc *crtc)
 	pm_runtime_get_sync(ctx->dev);
 
 	if (!test_and_set_bit(LCD_FLAGS_CLK_BIT, &ctx->lcd_flags)) {
-	ret = clk_prepare_enable(ctx->bus_clk);
+	ret = clk_prepare_enable(ctx->hw_data.vioc_clock);
 	if (ret < 0) {
 		DRM_ERROR("Failed to prepare_enable the bus clk [%d]\n", ret);
 		return;
 	}
 
-	ret = clk_prepare_enable(ctx->lcd_clk);
+	ret = clk_prepare_enable(ctx->hw_data.ddc_clock);
 	if  (ret < 0) {
 		DRM_ERROR("Failed to prepare_enable the lcd clk [%d]\n", ret);
 		return;
@@ -378,8 +388,8 @@ static void lcd_disable(struct tcc_drm_crtc *crtc)
 	lcd_disable_vblank(crtc);
 
 	if (test_and_clear_bit(LCD_FLAGS_CLK_BIT, &ctx->lcd_flags)) {
-	clk_disable_unprepare(ctx->lcd_clk);
-	clk_disable_unprepare(ctx->bus_clk);
+	clk_disable_unprepare(ctx->hw_data.ddc_clock);
+	clk_disable_unprepare(ctx->hw_data.vioc_clock);
 	}
 	#endif
 
@@ -432,6 +442,8 @@ static const struct tcc_drm_crtc_ops lcd_crtc_ops = {
 
 static irqreturn_t lcd_irq_handler(int irq, void *dev_id)
 {
+	unsigned int display_device_blk_num;
+
 	struct lcd_context *ctx = (struct lcd_context *)dev_id;
 	u32 dispblock_status = 0;
 
@@ -440,11 +452,13 @@ static irqreturn_t lcd_irq_handler(int irq, void *dev_id)
 		return IRQ_HANDLED;
 	}
 
+	display_device_blk_num = get_vioc_index(ctx->hw_data.display_device.blk_num);
+
 	/* Get TCC VIOC block status register */
-	dispblock_status = vioc_intr_get_status(ctx->ddc_id);
+	dispblock_status = vioc_intr_get_status(display_device_blk_num);
 
 	if (dispblock_status & (1 << VIOC_DISP_INTR_RU)) {
-		vioc_intr_clear(ctx->ddc_id, (1 << VIOC_DISP_INTR_RU));
+		vioc_intr_clear(display_device_blk_num, (1 << VIOC_DISP_INTR_RU));
 
 		/* check the crtc is detached already from encoder */
 		if (ctx->drm_dev == NULL) {
@@ -460,9 +474,9 @@ static irqreturn_t lcd_irq_handler(int irq, void *dev_id)
 
 		/* Check FIFO underrun. */
 		if (dispblock_status & (1 << VIOC_DISP_INTR_FU)) {
-			vioc_intr_disable(irq, ctx->ddc_id,
+			vioc_intr_disable(irq, display_device_blk_num,
 					  (1 << VIOC_DISP_INTR_FU));
-			vioc_intr_clear(ctx->ddc_id, (1 << VIOC_DISP_INTR_FU));
+			vioc_intr_clear(display_device_blk_num, (1 << VIOC_DISP_INTR_FU));
 			pr_crit(" FIFO UNDERRUN status(0x%x) %s\n",
 					dispblock_status, __func__);
 		}
@@ -471,10 +485,10 @@ static irqreturn_t lcd_irq_handler(int irq, void *dev_id)
 	}
 
 	if (dispblock_status & (1 << VIOC_DISP_INTR_DD))
-		vioc_intr_clear(ctx->ddc_id, (1 << VIOC_DISP_INTR_DD));
+		vioc_intr_clear(display_device_blk_num, (1 << VIOC_DISP_INTR_DD));
 
 	if (dispblock_status & (1 << VIOC_DISP_INTR_SREQ))
-		vioc_intr_clear(ctx->ddc_id, (1 << VIOC_DISP_INTR_SREQ));
+		vioc_intr_clear(display_device_blk_num, (1 << VIOC_DISP_INTR_SREQ));
 
 out:
 	return IRQ_HANDLED;
@@ -486,7 +500,7 @@ static int lcd_bind(struct device *dev, struct device *master, void *data)
 	struct drm_device *drm_dev = data;
 	struct tcc_drm_plane *tcc_plane;
 	unsigned int i;
-	int ret;
+	int ret = 0;
 
 	ctx->drm_dev = drm_dev;
 
@@ -533,9 +547,7 @@ static int lcd_probe(struct platform_device *pdev)
 {
 	struct device *dev = &pdev->dev;
 	struct lcd_context *ctx;
-	struct resource *res;
-	struct resource *res_ddc, *res_rdma, *res_wmix;
-	int ret;
+	int ret = 0;
 
 	if (!dev->of_node) {
 		dev_err(dev, "failed to get the device node\n");
@@ -550,69 +562,32 @@ static int lcd_probe(struct platform_device *pdev)
 	ctx->suspended = true;
 	ctx->driver_data = of_device_get_match_data(dev);
 
-	if (of_property_read_u32(dev->of_node,
-				 "display-port-num", &ctx->ddc_id)) {
-		dev_err(dev, "failed to get display port number\n");
-		return -ENODEV;
+	if(tcc_drm_address_dt_parse(pdev, &ctx->hw_data) < 0) {
+		dev_err(dev, "failed to parse device tree.\n");
+		return ret;
 	}
 
-	ctx->bus_clk = devm_clk_get(dev, "ddibus_vioc");
-	if (IS_ERR(ctx->bus_clk)) {
-		dev_err(dev, "failed to get bus clock\n");
-		return PTR_ERR(ctx->bus_clk);
+	ctx->configs[0].virt_addr = ctx->hw_data.rdma[0].virt_addr;
+
+	if(ctx->hw_data.version != TCC_DRM_DT_VERSION_OLD) {
+		#if defined(CONFIG_DRM_TCC_LCD_VIC)
+		ctx->hw_data.vic = CONFIG_DRM_TCC_LCD_VIC;
+		#endif
 	}
 
-	ctx->lcd_clk = devm_clk_get(dev, "peri_lcd");
-	if (IS_ERR(ctx->lcd_clk)) {
-		dev_err(dev, "failed to get lcd clock\n");
-		return PTR_ERR(ctx->lcd_clk);
-	}
-
-	if (!is_VIOC_REMAP) {
-		res_ddc = platform_get_resource(pdev, IORESOURCE_MEM, 0);
-		res_rdma = platform_get_resource(pdev, IORESOURCE_MEM, 1);
-		res_wmix = platform_get_resource(pdev, IORESOURCE_MEM, 2);
-	} else {
-		res_ddc = platform_get_resource(pdev, IORESOURCE_MEM, 3);
-		res_rdma = platform_get_resource(pdev, IORESOURCE_MEM, 4);
-		res_wmix = platform_get_resource(pdev, IORESOURCE_MEM, 5);
-	}
-
-	ctx->ddc_reg = devm_ioremap_resource(dev, res_ddc);
-	if (IS_ERR(ctx->ddc_reg))
-		return PTR_ERR(ctx->ddc_reg);
-
-	ctx->configs[0].virt_addr = devm_ioremap_resource(dev, res_rdma);
-	if (IS_ERR(ctx->configs[0].virt_addr))
-		return PTR_ERR(ctx->configs[0].virt_addr);
-
-	ctx->virt_addr = devm_ioremap_resource(dev, res_wmix);
-	if (IS_ERR(ctx->virt_addr))
-		return PTR_ERR(ctx->virt_addr);
-
-	res = platform_get_resource_byname(pdev, IORESOURCE_IRQ,
-					   "vsync");
-	if (!res) {
-		dev_err(dev, "irq request failed.\n");
-		return -ENXIO;
-	}
-
-	ctx->irq_num = res->start;
-	ret = devm_request_irq(dev, ctx->irq_num, lcd_irq_handler,
-					IRQF_SHARED, "drm_lcd", ctx);
+	ret = devm_request_irq(dev, ctx->hw_data.display_device.irq_num, 
+		lcd_irq_handler, IRQF_SHARED, "drm_lcd", ctx);
 	if (ret) {
 		dev_err(dev, "irq request failed.\n");
 		return ret;
 	}
-
-	DRM_DEBUG_KMS("DispNum:%d, virt_addr:0x%p\n", ctx->ddc_id, ctx->ddc_reg);
 
 	init_waitqueue_head(&ctx->wait_vsync_queue);
 	atomic_set(&ctx->wait_vsync_event, 0);
 
 	platform_set_drvdata(pdev, ctx);
 
-	ctx->encoder = tcc_dpi_probe(dev);
+	ctx->encoder = tcc_dpi_probe(dev, &ctx->hw_data);
 	if (IS_ERR(ctx->encoder))
 		return PTR_ERR(ctx->encoder);
 
@@ -649,8 +624,8 @@ static int tcc_lcd_suspend(struct device *dev)
 	#if !defined(CONFIG_DRM_TCC_CRTC_TO_BE_ALWAYS_ALIVE)
 	struct lcd_context *ctx = dev_get_drvdata(dev);
 	if (test_and_clear_bit(LCD_FLAGS_CLK_BIT, &ctx->lcd_flags)) {
-	clk_disable_unprepare(ctx->lcd_clk);
-	clk_disable_unprepare(ctx->bus_clk);
+	clk_disable_unprepare(ctx->hw_data.ddc_clock);
+	clk_disable_unprepare(ctx->hw_data.vioc_clock);
 	}
 	#endif
 	return 0;
@@ -661,13 +636,13 @@ static int tcc_lcd_resume(struct device *dev)
 	struct lcd_context *ctx = dev_get_drvdata(dev);
 	int ret;
 	if (!test_and_set_bit(LCD_FLAGS_CLK_BIT, &ctx->lcd_flags)) {
-	ret = clk_prepare_enable(ctx->bus_clk);
+	ret = clk_prepare_enable(ctx->hw_data.vioc_clock);
 	if (ret < 0) {
 		DRM_ERROR("Failed to prepare_enable the bus clk [%d]\n", ret);
 		return ret;
 	}
 
-	ret = clk_prepare_enable(ctx->lcd_clk);
+	ret = clk_prepare_enable(ctx->hw_data.ddc_clock);
 	if  (ret < 0) {
 		DRM_ERROR("Failed to prepare_enable the lcd clk [%d]\n", ret);
 		return ret;
@@ -689,6 +664,6 @@ struct platform_driver lcd_driver = {
 		.name	= "tcc-drm-lcd",
 		.owner	= THIS_MODULE,
 		.pm	= &tcc_lcd_pm_ops,
-		.of_match_table = lcd_driver_dt_match,
+		.of_match_table = of_match_ptr(lcd_driver_dt_match),
 	},
 };

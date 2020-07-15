@@ -17,6 +17,18 @@ config DRM_TCC_LCD
 	help
 	  Choose this option if you want to use LCD/LVDS I/F for DRM.
 
+config DRM_TCC_VIC_MAX
+  int "Maximum Video Identification Code supported by TCC DRM"
+  default 1025
+
+config DRM_TCC_LCD_VIC
+	int "Video Identification Code for LCD"
+  depends on DRM_TCC_LCD
+  default 1024
+  range 1 DRM_TCC_VIC_MAX
+	help
+	  Video Identification Code for First-Display
+
 config DRM_TCC_KEEP_LOGO
         bool "DRM TCC KEEP LOGO"
         default n
@@ -30,11 +42,27 @@ config DRM_TCC_EXT
         help
           Choose this option if you want to use Extended LCD for DRM.
 
+config DRM_TCC_EXT_VIC
+	int "Video Identification Code for EXT"
+  depends on DRM_TCC_EXT
+  default 1024
+  range 1 DRM_TCC_VIC_MAX
+	help
+	  Video Identification Code for Ext-Display
+
 config DRM_TCC_THIRD
         bool "TCC third display type"
         depends on DRM_TCC_EXT
         help
           Choose this option if you want to use third display for DRM.
+
+config DRM_TCC_THIRD_VIC
+	int "Video Identification Code for THIRD"
+  depends on DRM_TCC_THIRD
+  default 1025
+  range 1 DRM_TCC_VIC_MAX
+	help
+	  Video Identification Code for Third-Display
 
 config DRM_TCC_VIDI
 	bool "Virtual Display"

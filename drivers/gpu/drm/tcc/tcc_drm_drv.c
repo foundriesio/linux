@@ -22,6 +22,7 @@
 
 #include <drm/tcc_drm.h>
 
+#include "tcc_drm_address.h"
 #include "tcc_drm_drv.h"
 #include "tcc_drm_fbdev.h"
 #include "tcc_drm_fb.h"
@@ -343,7 +344,7 @@ static int tcc_drm_bind(struct device *dev)
 
 #if defined(CONFIG_ARCH_TCC805X)
 	//dma_set_mask(private->dma_dev, DMA_BIT_MASK(40));
-	dma_set_mask_and_coherent(private->dma_dev, DMA_BIT_MASK(64));
+	dma_set_mask_and_coherent(private->dma_dev, DMA_BIT_MASK(32));
 #endif
 
 	DRM_INFO("TCC DRM: using %s device for DMA mapping operations\n",

@@ -21,19 +21,117 @@
 
 #include <video/of_videomode.h>
 #include <video/videomode.h>
-
+#include "tcc_drm_address.h"
 #include "tcc_drm_crtc.h"
+
+struct drm_detailed_timing_t {
+        unsigned int vic;
+        unsigned int pixelrepetions;
+        unsigned int pixelclock;
+        unsigned int interlaced;
+        unsigned int hactive;
+        unsigned int hblanking;
+        unsigned int hsyncoffset;
+        unsigned int hsyncwidth;
+        unsigned int hsyncpolarity;
+        unsigned int vactive;
+        unsigned int vblanking;
+        unsigned int vsyncoffset;
+        unsigned int vsyncwidth;
+        unsigned int vsyncpolarity;
+};
 
 struct tcc_dpi {
 	struct drm_encoder encoder;
 	struct device *dev;
-	struct device_node *panel_node;
 
 	struct drm_panel *panel;
 	struct drm_connector connector;
 
 	struct videomode *vm;
+	
+	struct tcc_hw_device *hw_device;
 };
+static const struct drm_detailed_timing_t drm_detailed_timing[] = {
+        /*  vic pixelrepetion  hactive     hsyncoffset  vactive    vsyncoffset
+            |   |   pixelclock(KHz)  hblanking  hsyncwidth    vblanking     vsyncpolarity
+	    |   |   |       interlaced     |    |     hsyncpolarity|    vsyncwidth
+	    |   |   |       |  |     |     |    |     | |      |   |    |   |              */
+	/* CEA-861 VIC 4 1280x720@60p */
+        {    4,  0,  74250, 0, 1280,  370,  110,  40, 1,  720,  30,  5,  5, 1},
+	/* CEA-861 VIC16 1920x1080@60p */
+	{   16,  0, 148500, 0, 1920,  280,   88,  44, 1, 1080,  45,  4,  5, 1},
+
+	/* CUSTOM TM123XDHP90 1920x720@60p */
+	{ 1024,  0,  88200, 0, 1920,   64,   28,   8, 0,  720,  22, 10,  2, 0},
+	/* CUSTOM AV080WSM-NW2 1024x600@60p */
+	{ 1025,  0,  51200, 0, 1024,  313,  147,  19, 0,  600,  37, 25,  2, 0},
+	{    0,  0,      0, 0,    0,    0,    0,   0, 0,    0,   0,  0,  0, 0},
+};
+
+static int drm_detailed_timing_find_index(int vic)
+{
+	int i;
+	int table_index_max = sizeof(drm_detailed_timing) / sizeof(struct drm_detailed_timing_t);
+	for(i = 0; i < table_index_max; i++) {
+		if(vic == drm_detailed_timing[i].vic) {
+			break;
+		}
+	}
+
+	if(i == table_index_max) {
+		i = -1;
+	}
+
+	return i;
+}
+
+static int drm_detailed_timing_convert_to_drm_mode(
+			struct drm_detailed_timing_t* in, struct drm_display_mode *out)
+{
+	int ret = 0;
+
+	do {
+		if(in == NULL) {
+			ret = -1;
+			break;
+		}
+		if(out == NULL) {
+			ret = -2;
+			break;
+		}
+		out->hdisplay = in->hactive;
+		out->hsync_start = out->hdisplay + in->hsyncoffset;
+		out->hsync_end = out->hsync_start + in->hsyncwidth;
+		out->htotal = out->hsync_end + (in->hblanking - (in->hsyncoffset + in->hsyncwidth));
+
+		out->vdisplay = in->vactive;
+		out->vsync_start = out->vdisplay + in->vsyncoffset;
+		out->vsync_end = out->vsync_start + in->vsyncwidth;
+		out->vtotal = out->vsync_end + (in->vblanking - (in->vsyncoffset + in->vsyncwidth));
+		out->clock = in->pixelclock ;
+
+		out->flags = 0;
+		if (in->hsyncpolarity) {
+			out->flags |= DRM_MODE_FLAG_PHSYNC;
+		} else {
+			out->flags |= DRM_MODE_FLAG_NHSYNC;
+		}
+		if (in->vsyncpolarity) {
+			out->flags |= DRM_MODE_FLAG_PVSYNC;
+		} else {
+			out->flags |= DRM_MODE_FLAG_NVSYNC;
+		}
+		if (in->interlaced) {
+			out->flags |= DRM_MODE_FLAG_INTERLACE;
+		}
+		if (in->pixelrepetions) {
+			out->flags |= DRM_MODE_FLAG_DBLCLK;
+		}
+		drm_mode_set_name(out);
+	} while(0);
+	return ret;
+}
 
 #define connector_to_dpi(c) container_of(c, struct tcc_dpi, connector)
 
@@ -68,29 +166,63 @@ static const struct drm_connector_funcs tcc_dpi_connector_funcs = {
 	.atomic_destroy_state = drm_atomic_helper_connector_destroy_state,
 };
 
+/* 
+ * This function called in drm_helper_probe_single_connector_modes 
+ * return is count 
+ */
 static int tcc_dpi_get_modes(struct drm_connector *connector)
 {
-	struct tcc_dpi *ctx = connector_to_dpi(connector);
+	int count = 0;
+	int table_index;
+	struct tcc_dpi *ctx;
+	struct drm_display_mode *mode;
+	struct drm_detailed_timing_t *dtd;
 
-	/* lcd timings gets precedence over panel modes */
-	if (ctx->vm) {
-		struct drm_display_mode *mode;
+	do {
+		if(connector == NULL) {
+			printk(KERN_ERR "[ERR][DRM_DPI] %s connector is NULL\r\n", __func__);
+			break;
+		}
+		ctx = connector_to_dpi(connector);
+		if(ctx == NULL) {
+			printk(KERN_ERR "[ERR][DRM_DPI] %s ctx is NULL\r\n", __func__);
+			break;
+		}
 
 		mode = drm_mode_create(connector->dev);
-		if (!mode) {
-			DRM_ERROR("failed to create a new display mode\n");
-			return 0;
+		if (mode == NULL) {
+			printk(KERN_ERR "[ERR][DRM_DPI] %s failed to create drm_mode\r\n", __func__);
+			break;
 		}
-		drm_display_mode_from_videomode(ctx->vm, mode);
+		
+		if(ctx->hw_device != NULL) {
+			if(ctx->hw_device->vic > 0) {
+				//printk(KERN_INFO "[INF][DRM_DPI] vic is %d\r\n", ctx->hw_device->vic);
+				table_index = drm_detailed_timing_find_index(ctx->hw_device->vic);
+				if(table_index < 0) {
+					printk(KERN_ERR "[ERR][DRM_DPI] %s failed to get detailed timing table index\r\n", __func__);
+					break;
+				}
+
+				dtd = (struct drm_detailed_timing_t*)&drm_detailed_timing[table_index];
+				drm_detailed_timing_convert_to_drm_mode(dtd, mode);
+				count = 1;
+				break;
+			}
+		}
+			
+		if (ctx->vm != NULL) {
+			drm_display_mode_from_videomode(ctx->vm, mode);
+			count = 1;
+		}
+	} while(0);
+
+	if(count) {
 		mode->type = DRM_MODE_TYPE_DRIVER | DRM_MODE_TYPE_PREFERRED;
 		drm_mode_probed_add(connector, mode);
-		return 1;
 	}
 
-	if (ctx->panel)
-		return ctx->panel->funcs->get_modes(ctx->panel);
-
-	return 0;
+	return count;
 }
 
 static const struct drm_connector_helper_funcs tcc_dpi_connector_helper_funcs = {
@@ -225,27 +357,25 @@ int tcc_dpi_bind(struct drm_device *dev, struct drm_encoder *encoder)
 	return 0;
 }
 
-struct drm_encoder *tcc_dpi_probe(struct device *dev)
+struct drm_encoder *tcc_dpi_probe(struct device *dev, struct tcc_hw_device *hw_device)
 {
 	struct tcc_dpi *ctx;
 	int ret;
 
 	ctx = devm_kzalloc(dev, sizeof(*ctx), GFP_KERNEL);
-	if (!ctx)
+	if (ctx == NULL)
 		return ERR_PTR(-ENOMEM);
-
+	
+	ctx->vm = NULL;
 	ctx->dev = dev;
+	ctx->hw_device = hw_device;
 
-	ret = tcc_dpi_parse_dt(ctx);
-	if (ret < 0) {
-		devm_kfree(dev, ctx);
-		return NULL;
-	}
-
-	if (ctx->panel_node) {
-		ctx->panel = of_drm_find_panel(ctx->panel_node);
-		if (!ctx->panel)
-			return ERR_PTR(-EPROBE_DEFER);
+	if(hw_device->version == TCC_DRM_DT_VERSION_OLD) {
+		ret = tcc_dpi_parse_dt(ctx);
+		if (ret < 0) {
+			devm_kfree(dev, ctx);
+			return ERR_PTR(-ENOMEM);;
+		}	
 	}
 
 	return &ctx->encoder;

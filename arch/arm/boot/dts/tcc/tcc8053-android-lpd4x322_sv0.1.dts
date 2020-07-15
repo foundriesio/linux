@@ -13,6 +13,50 @@
 
 / {
 	/* Describe here after remove this statement if you have something to be override. */
+	tm123xdhp90 {
+		compatible = "telechips,lvds-tm123xdhp90";
+		status = "okay";
+		lvds0 = <&lvds_phy>;
+		power-on-gpios = <&gpc 8 0>;   // LCD_ON
+		reset-gpios = <&gpc 9 0>;    // LCD_RST
+		/*
+			 display-on-gpios = ;    // LCD_DISP
+			 lvds-stby-gpios = ;   // LCD_DE = LVDS_STBY in LVDS
+			 lvds-power-gpios = ;    // LVDS_EN
+			 lvds-power-gpios1 = ;   // V_5V0_EN
+		 */
+		mode = <1>;   /* 0: single 1: dual */
+		ports = <2 3>;
+		mux-select = <2>;
+	};
+
+	tcc-drm-lcd {
+	        compatible = "telechips,tcc-drm-lcd-v1.0";
+		display_device = <&vioc_disp VIOC_DISP0>;
+  		wmixer = <&vioc_wmix VIOC_WMIX0>;
+            	rdma = <&vioc_rdma VIOC_RDMA00 VIOC_RDMA01 VIOC_RDMA02 VIOC_RDMA03>;
+            	planes = "primary","cursor","overlay","overlay";
+            	status = "okay";
+	};
+
+	tcc-drm-ext {
+	        compatible = "telechips,tcc-drm-ext-v1.0";
+		display_device = <&vioc_disp VIOC_DISP1>;
+  		wmixer = <&vioc_wmix VIOC_WMIX1>;
+            	rdma = <&vioc_rdma VIOC_RDMA04>;
+            	planes = "primary";
+            	status = "okay";
+	};
+
+	tcc-drm-third {
+	        compatible = "telechips,tcc-drm-third-v1.0";
+		display_device = <&vioc_disp VIOC_DISP2>;
+  		wmixer = <&vioc_wmix VIOC_WMIX2>;
+            	rdma = <&vioc_rdma VIOC_RDMA08>;
+            	planes = "primary";
+            	status = "okay";
+	};
+
 	vqmmc_emmc: vqmmc_emmc {
 		compatible = "regulator-fixed";
 		regulator-name = "vqmmc_emmc";

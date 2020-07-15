@@ -12,4 +12,4 @@ tccdrm-$(CONFIG_DRM_TCC_THIRD)	+= tcc_drm_third.o
 tccdrm-$(CONFIG_DRM_TCC_DPI)	+= tcc_drm_dpi.o
 tccdrm-$(CONFIG_DRM_TCC_VIDI)	+= tcc_drm_vidi.o
 
-obj-$(CONFIG_DRM_TCC)		+= tccdrm.o
+obj-$(CONFIG_DRM_TCC)		+= tccdrm.o tcc_drm_address.o
