@@ -30,101 +30,32 @@
 		mux-select = <2>;
 	};
 
-	tcc-drm-lcd {
-	        compatible = "telechips,tcc-drm-lcd";
-	        display-port-num = <0>;
-	        reg = <0x0 0x12000000 0x0 0x100>,
-		      <0x0 0x12000400 0x0 0x100>,
-		      <0x0 0x12001800 0x0 0x100>,
-		/* VIOC_REMAP */
-		      <0x0 0x12000000 0x0 0x100>,
-		      <0x0 0x12004000 0x0 0x100>,
-		      <0x0 0x12018000 0x0 0x100>;
 
-	        reg-names = "ddc", "rdma", "wmix";
-	        interrupts = <GIC_SPI VIOC1_IRQI IRQ_TYPE_LEVEL_HIGH>;
-	        interrupt-names = "vsync";
-	        clock-names = "ddibus_vioc", "peri_lcd";
-	        clocks = <&clk_ddi DDIBUS_VIOC>, <&clk_peri PERI_LCD0>;
-	        status = "okay";
-		display-timings {
-			native-mode = <&timing0>;
-			timing0: timing {
-				clock-frequency = <88200000>;
-				hactive = <1920>;
-				vactive = <720>;
-				hfront-porch = <28>;
-				hback-porch = <28>;
-				hsync-len = <8>;
-				vback-porch = <10>;
-				vfront-porch = <10>;
-				vsync-len = <2>;
-			};
-		};
+	tcc-drm-lcd {
+	        compatible = "telechips,tcc-drm-lcd-v1.0";
+		display_device = <&vioc_disp VIOC_DISP0>;
+  		wmixer = <&vioc_wmix VIOC_WMIX0>;
+            	rdma = <&vioc_rdma VIOC_RDMA00 VIOC_RDMA01 VIOC_RDMA02 VIOC_RDMA03>;
+            	planes = "primary","cursor","overlay","overlay";
+            	status = "okay";
 	};
 
 	tcc-drm-ext {
-	        compatible = "telechips,tcc-drm-ext";
-	        display-port-num = <1>;
-		reg = <0x0 0x12000100 0x0 0x100>,
-		      <0x0 0x12000800 0x0 0x100>,
-		      <0x0 0x12001900 0x0 0x100>,
-		/* VIOC_REMAP */
-		      <0x0 0x12001000 0x0 0x100>,
-		      <0x0 0x12008000 0x0 0x100>,
-		      <0x0 0x12019000 0x0 0x100>;
-	        reg-names = "ddc", "rdma", "wmix";
-	        interrupts = <GIC_SPI VIOC1_IRQI IRQ_TYPE_LEVEL_HIGH>;
-	        interrupt-names = "vsync";
-	        clock-names = "ddibus_vioc", "peri_lcd";
-	        clocks = <&clk_ddi DDIBUS_VIOC>, <&clk_peri PERI_LCD1>;
-	        status = "okay";
-		display-timings {
-			native-mode = <&timing1>;
-			timing1: timing {
-				clock-frequency = <88200000>;
-				hactive = <1920>;
-				vactive = <720>;
-				hfront-porch = <28>;
-				hback-porch = <28>;
-				hsync-len = <8>;
-				vback-porch = <10>;
-				vfront-porch = <10>;
-				vsync-len = <2>;
-			};
-		};
+	        compatible = "telechips,tcc-drm-ext-v1.0";
+		display_device = <&vioc_disp VIOC_DISP1>;
+  		wmixer = <&vioc_wmix VIOC_WMIX1>;
+            	rdma = <&vioc_rdma VIOC_RDMA04>;
+            	planes = "primary";
+            	status = "okay";
 	};
 
 	tcc-drm-third {
-	        compatible = "telechips,tcc-drm-third";
-	        display-port-num = <2>;
-		reg = <0x0 0x12000200 0x0 0x100>,
-		      <0x0 0x12000C00 0x0 0x100>,
-		      <0x0 0x12001A00 0x0 0x100>,
-		/* VIOC_REMAP */
-		      <0x0 0x12002000 0x0 0x100>,
-		      <0x0 0x1200C000 0x0 0x100>,
-		      <0x0 0x1201A000 0x0 0x100>;
-	        reg-names = "ddc", "rdma", "wmix";
-	        interrupts = <GIC_SPI VIOC1_IRQI IRQ_TYPE_LEVEL_HIGH>;
-	        interrupt-names = "vsync";
-	        clock-names = "ddibus_vioc", "peri_lcd";
-	        clocks = <&clk_ddi DDIBUS_VIOC>, <&clk_peri PERI_LCD2>;
-	        status = "okay";
-		display-timings {
-			native-mode = <&timing2>;
-			timing2: timing {
-				clock-frequency = <51200000>;
-				hactive = <1024>;
-				vactive = <600>;
-				hfront-porch = <147>;
-				hback-porch = <147>;
-				hsync-len = <19>;
-				vback-porch = <10>;
-				vfront-porch = <25>;
-				vsync-len = <2>;
-			};
-		};
+	        compatible = "telechips,tcc-drm-third-v1.0";
+		display_device = <&vioc_disp VIOC_DISP2>;
+  		wmixer = <&vioc_wmix VIOC_WMIX2>;
+            	rdma = <&vioc_rdma VIOC_RDMA08>;
+            	planes = "primary";
+            	status = "okay";
 	};
 
 	vqmmc_emmc: vqmmc_emmc {

@@ -17,7 +17,7 @@ struct tcc_hw_block{
 };
 
 struct tcc_hw_device {
-        //unsigned int DispNum;
+        unsigned long version;
         struct clk *vioc_clock;
         struct clk *ddc_clock;
         struct tcc_hw_block display_device;
@@ -25,8 +25,10 @@ struct tcc_hw_device {
         struct tcc_hw_block wdma;
         struct tcc_hw_block rdma[RDMA_MAX_NUM];
 	int rdma_plane_type[RDMA_MAX_NUM];
-};
 
+        /* video identification code */
+        int vic;
+};
 
 extern int tcc_drm_address_dt_parse(struct platform_device *pdev, 
                                         struct tcc_hw_device *hw_data);

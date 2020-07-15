@@ -115,7 +115,7 @@ struct tcc_drm_plane_config {
 	const uint32_t *pixel_formats;
 	unsigned int num_pixel_formats;
 	unsigned int capabilities;
-	void __iomem *virt_addr;
+	volatile void __iomem *virt_addr;
 };
 
 /*
@@ -271,12 +271,12 @@ int tcc_drm_subdrv_open(struct drm_device *dev, struct drm_file *file);
 void tcc_drm_subdrv_close(struct drm_device *dev, struct drm_file *file);
 
 #ifdef CONFIG_DRM_TCC_DPI
-struct drm_encoder *tcc_dpi_probe(struct device *dev);
+struct drm_encoder *tcc_dpi_probe(struct device *dev, struct tcc_hw_device *hw_device);
 int tcc_dpi_remove(struct drm_encoder *encoder);
 int tcc_dpi_bind(struct drm_device *dev, struct drm_encoder *encoder);
 #else
 static inline struct drm_encoder *
-tcc_dpi_probe(struct device *dev) { return NULL; }
+tcc_dpi_probe(struct device *dev, struct tcc_hw_device *hw_device) { return NULL; }
 static inline int tcc_dpi_remove(struct drm_encoder *encoder)
 {
 	return 0;
