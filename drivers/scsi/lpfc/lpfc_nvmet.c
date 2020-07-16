@@ -458,7 +458,7 @@ lpfc_nvmet_ctxbuf_post(struct lpfc_hba *phba, struct lpfc_nvmet_ctxbuf *ctx_buf)
 
 		if (!queue_work(phba->wq, &ctx_buf->defer_work)) {
 			atomic_inc(&tgtp->rcv_fcp_cmd_drop);
-			lpfc_printf_log(phba, KERN_ERR, LOG_NVME,
+			lpfc_printf_log(phba, KERN_ERR, LOG_TRACE_EVENT,
 					"6181 Unable to queue deferred work "
 					"for oxid x%x. "
 					"FCP Drop IO [x%x x%x x%x]\n",
@@ -973,7 +973,7 @@ lpfc_nvmet_xmt_fcp_op(struct nvmet_fc_target_port *tgtport,
 	nvmewqeq = lpfc_nvmet_prep_fcp_wqe(phba, ctxp);
 	if (nvmewqeq == NULL) {
 		atomic_inc(&lpfc_nvmep->xmt_fcp_drop);
-		lpfc_printf_log(phba, KERN_ERR, LOG_NVME_IOERR,
+		lpfc_printf_log(phba, KERN_ERR, LOG_TRACE_EVENT,
 				"6152 FCP Drop IO x%x: Prep\n",
 				ctxp->oxid);
 		rc = -ENXIO;
@@ -1021,7 +1021,7 @@ lpfc_nvmet_xmt_fcp_op(struct nvmet_fc_target_port *tgtport,
 
 	/* Give back resources */
 	atomic_inc(&lpfc_nvmep->xmt_fcp_drop);
-	lpfc_printf_log(phba, KERN_ERR, LOG_NVME_IOERR,
+	lpfc_printf_log(phba, KERN_ERR, LOG_TRACE_EVENT,
 			"6153 FCP Drop IO x%x: Issue: %d\n",
 			ctxp->oxid, rc);
 
@@ -1267,7 +1267,7 @@ lpfc_nvmet_setup_io_context(struct lpfc_hba *phba)
 		phba->sli4_hba.num_possible_cpu * phba->cfg_nvmet_mrq,
 		sizeof(struct lpfc_nvmet_ctx_info), GFP_KERNEL);
 	if (!phba->sli4_hba.nvmet_ctx_info) {
-		lpfc_printf_log(phba, KERN_ERR, LOG_INIT,
+		lpfc_printf_log(phba, KERN_ERR, LOG_TRACE_EVENT,
 				"6419 Failed allocate memory for "
 				"nvmet context lists\n");
 		return -ENOMEM;
@@ -1325,7 +1325,7 @@ lpfc_nvmet_setup_io_context(struct lpfc_hba *phba)
 	for (i = 0; i < phba->sli4_hba.nvmet_xri_cnt; i++) {
 		ctx_buf = kzalloc(sizeof(*ctx_buf), GFP_KERNEL);
 		if (!ctx_buf) {
-			lpfc_printf_log(phba, KERN_ERR, LOG_NVME,
+			lpfc_printf_log(phba, KERN_ERR, LOG_TRACE_EVENT,
 					"6404 Ran out of memory for NVMET\n");
 			return -ENOMEM;
 		}
@@ -1334,7 +1334,7 @@ lpfc_nvmet_setup_io_context(struct lpfc_hba *phba)
 					   GFP_KERNEL);
 		if (!ctx_buf->context) {
 			kfree(ctx_buf);
-			lpfc_printf_log(phba, KERN_ERR, LOG_NVME,
+			lpfc_printf_log(phba, KERN_ERR, LOG_TRACE_EVENT,
 					"6405 Ran out of NVMET "
 					"context memory\n");
 			return -ENOMEM;
@@ -1346,7 +1346,7 @@ lpfc_nvmet_setup_io_context(struct lpfc_hba *phba)
 		if (!ctx_buf->iocbq) {
 			kfree(ctx_buf->context);
 			kfree(ctx_buf);
-			lpfc_printf_log(phba, KERN_ERR, LOG_NVME,
+			lpfc_printf_log(phba, KERN_ERR, LOG_TRACE_EVENT,
 					"6406 Ran out of NVMET iocb/WQEs\n");
 			return -ENOMEM;
 		}
@@ -1365,7 +1365,7 @@ lpfc_nvmet_setup_io_context(struct lpfc_hba *phba)
 			lpfc_sli_release_iocbq(phba, ctx_buf->iocbq);
 			kfree(ctx_buf->context);
 			kfree(ctx_buf);
-			lpfc_printf_log(phba, KERN_ERR, LOG_NVME,
+			lpfc_printf_log(phba, KERN_ERR, LOG_TRACE_EVENT,
 					"6407 Ran out of NVMET XRIs\n");
 			return -ENOMEM;
 		}
@@ -1444,7 +1444,7 @@ lpfc_nvmet_create_targetport(struct lpfc_hba *phba)
 	error = -ENOENT;
 #endif
 	if (error) {
-		lpfc_printf_log(phba, KERN_ERR, LOG_NVME_DISC,
+		lpfc_printf_log(phba, KERN_ERR, LOG_TRACE_EVENT,
 				"6025 Cannot register NVME targetport x%x: "
 				"portnm %llx nodenm %llx segs %d qs %d\n",
 				error,
@@ -2014,7 +2014,7 @@ lpfc_nvmet_process_rcv_fcp_req(struct lpfc_nvmet_ctxbuf *ctx_buf)
 	unsigned long iflags;
 
 	if (!nvmebuf) {
-		lpfc_printf_log(phba, KERN_ERR, LOG_NVME_IOERR,
+		lpfc_printf_log(phba, KERN_ERR, LOG_TRACE_EVENT,
 			"6159 process_rcv_fcp_req, nvmebuf is NULL, "
 			"oxid: x%x flg: x%x state: x%x\n",
 			ctxp->oxid, ctxp->flag, ctxp->state);
@@ -2210,7 +2210,7 @@ lpfc_nvmet_unsol_fcp_buffer(struct lpfc_hba *phba,
 
 	ctx_buf = NULL;
 	if (!nvmebuf || !phba->targetport) {
-		lpfc_printf_log(phba, KERN_ERR, LOG_NVME_IOERR,
+		lpfc_printf_log(phba, KERN_ERR, LOG_TRACE_EVENT,
 				"6157 NVMET FCP Drop IO\n");
 		if (nvmebuf)
 			lpfc_rq_buf_free(phba, &nvmebuf->hbuf);
@@ -2325,7 +2325,7 @@ lpfc_nvmet_unsol_fcp_buffer(struct lpfc_hba *phba,
 
 	if (!queue_work(phba->wq, &ctx_buf->defer_work)) {
 		atomic_inc(&tgtp->rcv_fcp_cmd_drop);
-		lpfc_printf_log(phba, KERN_ERR, LOG_NVME,
+		lpfc_printf_log(phba, KERN_ERR, LOG_TRACE_EVENT,
 				"6325 Unable to queue work for oxid x%x. "
 				"FCP Drop IO [x%x x%x x%x]\n",
 				ctxp->oxid,
@@ -2396,7 +2396,7 @@ lpfc_nvmet_unsol_fcp_event(struct lpfc_hba *phba,
 			   uint8_t cqflag)
 {
 	if (!nvmebuf) {
-		lpfc_printf_log(phba, KERN_ERR, LOG_NVME_IOERR,
+		lpfc_printf_log(phba, KERN_ERR, LOG_TRACE_EVENT,
 				"3167 NVMET FCP Drop IO\n");
 		return;
 	}
@@ -2442,7 +2442,7 @@ lpfc_nvmet_prep_ls_wqe(struct lpfc_hba *phba,
 	union lpfc_wqe128 *wqe;
 
 	if (!lpfc_is_link_up(phba)) {
-		lpfc_printf_log(phba, KERN_ERR, LOG_NVME_DISC,
+		lpfc_printf_log(phba, KERN_ERR, LOG_TRACE_EVENT,
 				"6104 NVMET prep LS wqe: link err: "
 				"NPORT x%x oxid:x%x ste %d\n",
 				ctxp->sid, ctxp->oxid, ctxp->state);
@@ -2452,7 +2452,7 @@ lpfc_nvmet_prep_ls_wqe(struct lpfc_hba *phba,
 	/* Allocate buffer for  command wqe */
 	nvmewqe = lpfc_sli_get_iocbq(phba);
 	if (nvmewqe == NULL) {
-		lpfc_printf_log(phba, KERN_ERR, LOG_NVME_DISC,
+		lpfc_printf_log(phba, KERN_ERR, LOG_TRACE_EVENT,
 				"6105 NVMET prep LS wqe: No WQE: "
 				"NPORT x%x oxid x%x ste %d\n",
 				ctxp->sid, ctxp->oxid, ctxp->state);
@@ -2463,7 +2463,7 @@ lpfc_nvmet_prep_ls_wqe(struct lpfc_hba *phba,
 	if (!ndlp || !NLP_CHK_NODE_ACT(ndlp) ||
 	    ((ndlp->nlp_state != NLP_STE_UNMAPPED_NODE) &&
 	    (ndlp->nlp_state != NLP_STE_MAPPED_NODE))) {
-		lpfc_printf_log(phba, KERN_ERR, LOG_NVME_DISC,
+		lpfc_printf_log(phba, KERN_ERR, LOG_TRACE_EVENT,
 				"6106 NVMET prep LS wqe: No ndlp: "
 				"NPORT x%x oxid x%x ste %d\n",
 				ctxp->sid, ctxp->oxid, ctxp->state);
@@ -2572,7 +2572,7 @@ lpfc_nvmet_prep_fcp_wqe(struct lpfc_hba *phba,
 	int xc = 1;
 
 	if (!lpfc_is_link_up(phba)) {
-		lpfc_printf_log(phba, KERN_ERR, LOG_NVME_IOERR,
+		lpfc_printf_log(phba, KERN_ERR, LOG_TRACE_EVENT,
 				"6107 NVMET prep FCP wqe: link err:"
 				"NPORT x%x oxid x%x ste %d\n",
 				ctxp->sid, ctxp->oxid, ctxp->state);
@@ -2583,7 +2583,7 @@ lpfc_nvmet_prep_fcp_wqe(struct lpfc_hba *phba,
 	if (!ndlp || !NLP_CHK_NODE_ACT(ndlp) ||
 	    ((ndlp->nlp_state != NLP_STE_UNMAPPED_NODE) &&
 	     (ndlp->nlp_state != NLP_STE_MAPPED_NODE))) {
-		lpfc_printf_log(phba, KERN_ERR, LOG_NVME_IOERR,
+		lpfc_printf_log(phba, KERN_ERR, LOG_TRACE_EVENT,
 				"6108 NVMET prep FCP wqe: no ndlp: "
 				"NPORT x%x oxid x%x ste %d\n",
 				ctxp->sid, ctxp->oxid, ctxp->state);
@@ -2591,7 +2591,7 @@ lpfc_nvmet_prep_fcp_wqe(struct lpfc_hba *phba,
 	}
 
 	if (rsp->sg_cnt > lpfc_tgttemplate.max_sgl_segments) {
-		lpfc_printf_log(phba, KERN_ERR, LOG_NVME_IOERR,
+		lpfc_printf_log(phba, KERN_ERR, LOG_TRACE_EVENT,
 				"6109 NVMET prep FCP wqe: seg cnt err: "
 				"NPORT x%x oxid x%x ste %d cnt %d\n",
 				ctxp->sid, ctxp->oxid, ctxp->state,
@@ -2606,7 +2606,7 @@ lpfc_nvmet_prep_fcp_wqe(struct lpfc_hba *phba,
 		/* Allocate buffer for  command wqe */
 		nvmewqe = ctxp->ctxbuf->iocbq;
 		if (nvmewqe == NULL) {
-			lpfc_printf_log(phba, KERN_ERR, LOG_NVME_IOERR,
+			lpfc_printf_log(phba, KERN_ERR, LOG_TRACE_EVENT,
 					"6110 NVMET prep FCP wqe: No "
 					"WQE: NPORT x%x oxid x%x ste %d\n",
 					ctxp->sid, ctxp->oxid, ctxp->state);
@@ -3069,7 +3069,7 @@ lpfc_nvmet_xmt_ls_abort_cmp(struct lpfc_hba *phba, struct lpfc_iocbq *cmdwqe,
 			result, wcqe->word3);
 
 	if (!ctxp) {
-		lpfc_printf_log(phba, KERN_ERR, LOG_NVME_ABTS,
+		lpfc_printf_log(phba, KERN_ERR, LOG_TRACE_EVENT,
 				"6415 NVMET LS Abort No ctx: WCQE: "
 				 "%08x %08x %08x %08x\n",
 				wcqe->word0, wcqe->total_data_placed,
@@ -3210,7 +3210,7 @@ lpfc_nvmet_sol_fcp_issue_abort(struct lpfc_hba *phba,
 	    ((ndlp->nlp_state != NLP_STE_UNMAPPED_NODE) &&
 	    (ndlp->nlp_state != NLP_STE_MAPPED_NODE))) {
 		atomic_inc(&tgtp->xmt_abort_rsp_error);
-		lpfc_printf_log(phba, KERN_ERR, LOG_NVME_ABTS,
+		lpfc_printf_log(phba, KERN_ERR, LOG_TRACE_EVENT,
 				"6160 Drop ABORT - wrong NDLP state x%x.\n",
 				(ndlp) ? ndlp->nlp_state : NLP_STE_MAX_STATE);
 
@@ -3226,7 +3226,7 @@ lpfc_nvmet_sol_fcp_issue_abort(struct lpfc_hba *phba,
 	spin_lock_irqsave(&ctxp->ctxlock, flags);
 	if (!ctxp->abort_wqeq) {
 		atomic_inc(&tgtp->xmt_abort_rsp_error);
-		lpfc_printf_log(phba, KERN_ERR, LOG_NVME_ABTS,
+		lpfc_printf_log(phba, KERN_ERR, LOG_TRACE_EVENT,
 				"6161 ABORT failed: No wqeqs: "
 				"xri: x%x\n", ctxp->oxid);
 		/* No failure to an ABTS request. */
@@ -3253,7 +3253,7 @@ lpfc_nvmet_sol_fcp_issue_abort(struct lpfc_hba *phba,
 	if (phba->hba_flag & HBA_IOQ_FLUSH) {
 		spin_unlock_irqrestore(&phba->hbalock, flags);
 		atomic_inc(&tgtp->xmt_abort_rsp_error);
-		lpfc_printf_log(phba, KERN_ERR, LOG_NVME,
+		lpfc_printf_log(phba, KERN_ERR, LOG_TRACE_EVENT,
 				"6163 Driver in reset cleanup - flushing "
 				"NVME Req now. hba_flag x%x oxid x%x\n",
 				phba->hba_flag, ctxp->oxid);
@@ -3268,7 +3268,7 @@ lpfc_nvmet_sol_fcp_issue_abort(struct lpfc_hba *phba,
 	if (abts_wqeq->iocb_flag & LPFC_DRIVER_ABORTED) {
 		spin_unlock_irqrestore(&phba->hbalock, flags);
 		atomic_inc(&tgtp->xmt_abort_rsp_error);
-		lpfc_printf_log(phba, KERN_ERR, LOG_NVME,
+		lpfc_printf_log(phba, KERN_ERR, LOG_TRACE_EVENT,
 				"6164 Outstanding NVME I/O Abort Request "
 				"still pending on oxid x%x\n",
 				ctxp->oxid);
@@ -3369,7 +3369,7 @@ aerr:
 	spin_unlock_irqrestore(&ctxp->ctxlock, flags);
 
 	atomic_inc(&tgtp->xmt_abort_rsp_error);
-	lpfc_printf_log(phba, KERN_ERR, LOG_NVME_ABTS,
+	lpfc_printf_log(phba, KERN_ERR, LOG_TRACE_EVENT,
 			"6135 Failed to Issue ABTS for oxid x%x. Status x%x "
 			"(%x)\n",
 			ctxp->oxid, rc, released);
@@ -3405,7 +3405,7 @@ lpfc_nvmet_unsol_ls_issue_abort(struct lpfc_hba *phba,
 		/* Issue ABTS for this WQE based on iotag */
 		ctxp->wqeq = lpfc_sli_get_iocbq(phba);
 		if (!ctxp->wqeq) {
-			lpfc_printf_log(phba, KERN_ERR, LOG_NVME_ABTS,
+			lpfc_printf_log(phba, KERN_ERR, LOG_TRACE_EVENT,
 					"6068 Abort failed: No wqeqs: "
 					"xri: x%x\n", xri);
 			/* No failure to an ABTS request. */
