@@ -5,7 +5,11 @@
 ifeq ($(CONFIG_ARCH_TCC897X),y)
 #none
 else
+ifeq ($(CONFIG_ARCH_TCC805X),y)
+obj-y	+= chip_info.o
+else
 obj-y	+= suspend.o chip_info.o
+endif
 endif
 
 obj-y	+= timer.o irq-pic.o
