@@ -128,6 +128,7 @@ struct tccvin_format_desc {
 	char *name;
 	__u32 guid;
 	__u32 fcc;
+	__u8 bpp;
 };
 
 /* The term 'entity' refers to both TCCVIN units and TCCVIN terminals.
@@ -333,6 +334,7 @@ extern const struct v4l2_ioctl_ops tccvin_ioctl_ops;
 extern const struct v4l2_file_operations tccvin_fops;
 
 /* Video */
+extern struct tccvin_format_desc tccvin_fmts[];
 extern struct tccvin_format_desc *tccvin_format_by_guid(const __u32 guid);
 extern int tccvin_video_init(struct tccvin_streaming *stream);
 extern int tccvin_video_deinit(struct tccvin_streaming *stream);

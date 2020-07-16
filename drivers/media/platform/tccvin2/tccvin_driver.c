@@ -105,51 +105,47 @@ static int tccvin_parse_format(struct tccvin_device *dev,
 	__u32 **intervals)
 {
 	struct tccvin_format_desc *fmtdesc;
+	struct tccvin_format *streamimg_format;
 	struct tccvin_frame *frame;
-	__u32 guid;
-	int idxFrame;
+	int idxFormat, idxFrame;
 	int ret = 0;
 
-	format->index		= 1;
-	format->bpp			= 16;
-	format->colorspace	= 0;
-	format->flags		= 0;
+	for(idxFormat=0; idxFormat<streaming->nformats; idxFormat++) {
+		fmtdesc = &tccvin_fmts[idxFormat];
 
-	/* Find the format descriptor from its GUID. */
-	guid = VIOC_IMG_FMT_YUYV;
-	fmtdesc = tccvin_format_by_guid(guid);
+		streamimg_format = &streaming->format[idxFormat];
+		streamimg_format->index = idxFormat;
+		strlcpy(streamimg_format->name, fmtdesc->name, sizeof streamimg_format->name);
+		streamimg_format->fcc = fmtdesc->fcc;
+		streamimg_format->bpp = fmtdesc->bpp;
+		streamimg_format->colorspace = 0;
+		streamimg_format->flags = 0;
+		streamimg_format->nframes = format->nframes;
+		streamimg_format->frame = format->frame;
 
-	if (fmtdesc != NULL) {
-		strlcpy(format->name, fmtdesc->name,
-			sizeof format->name);
-		format->fcc = fmtdesc->fcc;
-	} else {
-		logi("Unknown video format\n");
-		snprintf(format->name, sizeof(format->name), "%s\n", "Unknown");
-		format->fcc = 0;
-	}
+		logd("index: %d, bpp: %d, colorspace: 0x%08x, fcc: 0x%08x, flags: 0x%08x, name: %s, nframes: %d\n", \
+			 streamimg_format->index, streamimg_format->bpp, streamimg_format->colorspace, \
+			streamimg_format->fcc, streamimg_format->flags, streamimg_format->name, streamimg_format->nframes);
 
-	logd("index: %d, bpp: %d, colorspace: 0x%08x, fcc: 0x%08x, flags: 0x%08x, name: %s, nframes: %d\n", \
-		format->index, format->bpp, format->colorspace, format->fcc, format->flags, format->name, format->nframes);
-
-	for(idxFrame=0; idxFrame<format->nframes; idxFrame++) {
-		frame = &format->frame[idxFrame];
-		frame->bFrameIndex					= idxFrame;
-		frame->bmCapabilities				= 0x00000000;
-		frame->wWidth						= framesize_list[idxFrame].width;
-		frame->wHeight						= framesize_list[idxFrame].height;
-		frame->dwMaxVideoFrameBufferSize	= frame->wWidth * frame->wHeight * format->bpp / 8;
-		frame->dwDefaultFrameInterval		= 333333;
-		frame->bFrameIntervalType			= 2;
-		frame->dwFrameInterval				= *intervals;
-		frame->dwFrameInterval[0]			= 333333;
-		frame->dwFrameInterval[1]			= 666667;
-		frame->dwDefaultFrameInterval =
-			min(frame->dwFrameInterval[1],
-			    max(frame->dwFrameInterval[0],
-				frame->dwDefaultFrameInterval));
-		logd("format->nframes: %d, bFrameIndex: %d, bmCapabilities: 0x%08x, wWidth: %d, wHeight: %d, dwMaxVideoFrameBufferSize: %d, dwDefaultFrameInterval: %d, bFrameIntervalType: %d, dwFrameInterval: %d", \
-			format->nframes, frame->bFrameIndex, frame->bmCapabilities, frame->wWidth, frame->wHeight, frame->dwMaxVideoFrameBufferSize, frame->dwDefaultFrameInterval, frame->bFrameIntervalType, *frame->dwFrameInterval);
+		for(idxFrame=0; idxFrame<format->nframes; idxFrame++) {
+			frame = &format[idxFormat].frame[idxFrame];
+			frame->bFrameIndex					= idxFrame;
+			frame->bmCapabilities				= 0x00000000;
+			frame->wWidth						= framesize_list[idxFrame].width;
+			frame->wHeight						= framesize_list[idxFrame].height;
+			frame->dwMaxVideoFrameBufferSize	= frame->wWidth * frame->wHeight *  format->bpp / 8;
+			frame->dwDefaultFrameInterval		= 333333;
+			frame->bFrameIntervalType			= 2;
+			frame->dwFrameInterval				= *intervals;
+			frame->dwFrameInterval[0]			= 333333;
+			frame->dwFrameInterval[1]			= 666667;
+			frame->dwDefaultFrameInterval =
+				min(frame->dwFrameInterval[1],
+				    max(frame->dwFrameInterval[0],
+					frame->dwDefaultFrameInterval));
+			logd("bFrameIndex: %d, bmCapabilities: 0x%08x, wWidth: %d, wHeight: %d, dwMaxVideoFrameBufferSize: %d, dwDefaultFrameInterval: %d, bFrameIntervalType: %d, dwFrameInterval: %d", \
+				frame->bFrameIndex, frame->bmCapabilities, frame->wWidth, frame->wHeight, frame->dwMaxVideoFrameBufferSize, frame->dwDefaultFrameInterval, frame->bFrameIntervalType, *frame->dwFrameInterval);
+		}
 	}
 
 	return ret;
@@ -177,7 +173,10 @@ static int tccvin_parse_streaming(struct tccvin_device *dev)
 	streaming->type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
 
 	/* Count the format and frame descriptors. */
-	nformats = 1;
+	while(tccvin_fmts[nformats+1].name != NULL) {
+		nformats++;
+		//logd("nformats count: %d", nformats);
+	}
 	nframes = sizeof(framesize_list) / sizeof(framesize_list[0]);
 	nintervals = 2;
 

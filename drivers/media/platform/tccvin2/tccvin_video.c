@@ -39,17 +39,20 @@
  * Video formats
  */
 
-static struct tccvin_format_desc tccvin_fmts[] = {
+//static struct tccvin_format_desc tccvin_fmts[] = {
+struct tccvin_format_desc tccvin_fmts[] = {
 	/* RGB */
 	{
 		.name		= "RGB 8:8:8 (RGB3)",
 		.guid		= VIOC_IMG_FMT_RGB888,		// B1[31:24] R[23:16] G[15:8] B0[7:0]
 		.fcc		= V4L2_PIX_FMT_RGB24,		// 'RBG3' 24 RGB-8-8-8
+		.bpp		= 24,
 	},
 	{
 		.name		= "ARGB 8:8:8:8 (RGB4)",
 		.guid		= VIOC_IMG_FMT_ARGB8888,	// A[31:24] R[23:16] G[15:8] B[7:0]
 		.fcc		= V4L2_PIX_FMT_RGB32,		// 'RGB4' 32 RGB-8-8-8-8
+		.bpp		= 32,
 	},
 
 	/* sequential (YUV packed) */
@@ -57,21 +60,25 @@ static struct tccvin_format_desc tccvin_fmts[] = {
 		.name		= "YUV 4:2:2 (UYVY)",
 		.guid		= VIOC_IMG_FMT_UYVY,		// LSB [Y/U/Y/V] MSB : YCbCr 4:2:2 sequential
 		.fcc		= V4L2_PIX_FMT_UYVY,		// 'UYVY' 16 YUV 4:2:2
+		.bpp		= 16,
 	},
 	{
 		.name		= "YUV 4:2:2 (VYUY)",
 		.guid		= VIOC_IMG_FMT_VYUY,		// LSB [Y/V/Y/U] MSB : YCbCr 4:2:2 sequential
 		.fcc		= V4L2_PIX_FMT_VYUY,		// 'VYUY' 16 YUV 4:2:2
+		.bpp		= 16,
 	},
 	{
 		.name		= "YUV 4:2:2 (YUYV)",
 		.guid		= VIOC_IMG_FMT_YUYV,		// LSB [Y/U/Y/V] MSB : YCbCr 4:2:2 sequential
 		.fcc		= V4L2_PIX_FMT_YUYV,		// 'YUYV' 16 YUV 4:2:2
+		.bpp		= 16,
 	},
 	{
 		.name		= "YUV 4:2:2 (YVYU)",
 		.guid		= VIOC_IMG_FMT_YVYU,		// LSB [Y/V/Y/U] MSB : YCbCr 4:2:2 sequential
 		.fcc		= V4L2_PIX_FMT_YVYU,		// 'YVYU' 16 YVU 4:2:2
+		.bpp		= 16,
 	},
 
 	/* sepatated (Y, U, V planar) */
@@ -79,16 +86,19 @@ static struct tccvin_format_desc tccvin_fmts[] = {
 		.name		= "YVU 4:2:0 (YV12)",
 		.guid		= VIOC_IMG_FMT_YUV420SEP,	// YCbCr 4:2:0 separated
 		.fcc		= V4L2_PIX_FMT_YVU420,		// 'YV12' 12 YVU 4:2:0
+		.bpp		= 12,
 	},
 	{
 		.name		= "YUV 4:2:0 (YU12)",
 		.guid		= VIOC_IMG_FMT_YUV420SEP,	// YCbCr 4:2:0 separated
 		.fcc		= V4L2_PIX_FMT_YUV420,		// 'YU12' 12 YUV 4:2:0
+		.bpp		= 12,
 	},
 	{
 		.name		= "YUV 4:2:2 (422P)",
 		.guid		= VIOC_IMG_FMT_YUV422SEP,	// YCbCr 4:2:2 separated
 		.fcc		= V4L2_PIX_FMT_YUV422P,		// '422P' 16 YVU422 Planar
+		.bpp		= 16,
 	},
 
 	/* interleaved (Y palnar, UV planar) */
@@ -96,21 +106,25 @@ static struct tccvin_format_desc tccvin_fmts[] = {
 		.name		= "YUV 4:2:0 (NV12)",
 		.guid		= VIOC_IMG_FMT_YUV420IL0,	// YCbCr 4:2:0 interleaved type0
 		.fcc		= V4L2_PIX_FMT_NV12,		// 'NV12' 12 Y/CbCr 4:2:0
+		.bpp		= 12,
 	},
 	{
 		.name		= "YUV 4:2:0 (NV21)",
 		.guid		= VIOC_IMG_FMT_YUV420IL1,	// YCbCr 4:2:0 interleaved type1
 		.fcc		= V4L2_PIX_FMT_NV21,		// 'NV21' 12 Y/CrCb 4:2:0
+		.bpp		= 12,
 	},
 	{
 		.name		= "YUV 4:2:0 (NV16)",
 		.guid		= VIOC_IMG_FMT_YUV422IL0,	// YCbCr 4:2:2 interleaved type0
 		.fcc		= V4L2_PIX_FMT_NV16,		// 'NV16' 16 Y/CbCr 4:2:2
+		.bpp		= 12,
 	},
 	{
 		.name		= "YUV 4:2:0 (NV61)",
 		.guid		= VIOC_IMG_FMT_YUV422IL1,	// YCbCr 4:2:2 interleaved type1
 		.fcc		= V4L2_PIX_FMT_NV61,		// 'NV61' 16 Y/CrCb 4:2:2
+		.bpp		= 12,
 	},
 };
 
