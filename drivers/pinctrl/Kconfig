@@ -31,6 +31,12 @@ config DEBUG_PINCTRL
 	help
 	  Say Y here to add some extra checks and diagnostics to PINCTRL calls.
 
+config PINCTRL_TCC_SCFW
+	bool "Telechips pin control driver via scfw"
+	depends on ARCH_TCC805X && TCC_SC_MAILBOX && TCC_SC_FW_PROTOCOL
+	help
+	  This option provides pin control via scfw.
+
 config PINCTRL_ADI2
 	bool "ADI pin controller driver"
 	depends on (BF54x || BF60x)

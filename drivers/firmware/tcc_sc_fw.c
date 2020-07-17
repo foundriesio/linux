@@ -47,6 +47,7 @@
  #define TCC_SC_CMD_REQ_STOR_IO_READ	0x1U
  #define TCC_SC_CMD_REQ_STOR_IO_WRITE	0x0U
 #define TCC_SC_CMD_REQ_MMC_REQ		0x00000005U
+#define TCC_SC_CMD_REQ_GPIO_CONFIG  0x00000010U
 
 #define TCC_SC_MAX_CMD_LENGTH		8
 #define TCC_SC_MAX_DATA_LENGTH	128
@@ -344,6 +345,59 @@ static int tcc_sc_fw_cmd_get_revision(struct tcc_sc_fw_info *info)
 	return ret;
 }
 
+static int tcc_sc_fw_cmd_request_gpio_cmd(const struct tcc_sc_fw_handle *handle,
+			uint32_t address, uint32_t bit_number, uint32_t width, uint32_t value)
+{
+	struct tcc_sc_fw_info *info;
+	struct device *dev;
+	struct tcc_sc_fw_xfer *xfer;
+	struct tcc_sc_fw_cmd req_cmd = {0, }, res_cmd = {0, };
+	int ret;
+
+	if(handle == NULL)
+		return -EINVAL;
+
+	info = handle_to_tcc_sc_fw_info(handle);
+
+	if(info == NULL)
+		return -EINVAL;
+
+	dev = info->dev;
+	xfer = info->xfer;
+
+	req_cmd.bsid = info->bsid;
+	req_cmd.cid = info->cid;
+	req_cmd.uid = info->uid;
+	req_cmd.cmd = TCC_SC_CMD_REQ_GPIO_CONFIG;
+	req_cmd.args[0] = address + 0x60000000;
+	req_cmd.args[1] = bit_number;
+	req_cmd.args[2] = width;
+	req_cmd.args[3] = value;
+	req_cmd.args[4] = 0;
+	req_cmd.args[5] = 0;
+
+	memcpy(xfer->tx_mssg.cmd, &req_cmd, sizeof(struct tcc_sc_fw_cmd));
+	xfer->tx_mssg.cmd_len = sizeof(struct tcc_sc_fw_cmd) / sizeof(u32);
+	memset(xfer->rx_mssg.cmd, 0, xfer->rx_cmd_buf_len);
+
+	ret = tcc_sc_fw_do_xfer(info, xfer);
+
+	if (ret) {
+		dev_err(dev, "[ERROR][TCC_SC_FW] Failed to send mbox (GPIO Command) (%d)\n", ret);
+	} else {
+		memcpy(&res_cmd, xfer->rx_mssg.cmd, sizeof(struct tcc_sc_fw_cmd));
+		if((res_cmd.bsid != info->bsid) ||
+			(res_cmd.cid != TCC_SC_CID_SC)) {
+			dev_err(dev, "[ERROR][TCC_SC_FW] Receive NAK for CMD 0x%x (BSID 0x%x CID 0x%x)\n",
+				req_cmd.cmd, res_cmd.bsid, res_cmd.cid);
+			ret = -ENODEV;
+		}
+	}
+
+	return ret;
+}
+
+
 static const struct of_device_id tcc_sc_fw_of_match[] = {
 	{.compatible = "telechips,tcc805x-sc-fw"},
 	{},
@@ -353,6 +407,10 @@ MODULE_DEVICE_TABLE(of, tcc_sc_fw_of_match);
 static struct tcc_sc_fw_mmc_ops sc_fw_mmc_ops = {
 	.request_command = tcc_sc_fw_cmd_request_mmc_cmd,
 	.prot_info = tcc_sc_fw_cmd_get_mmc_prot_info,
+};
+
+struct tcc_sc_fw_gpio_ops sc_fw_gpio_ops = {
+	.request_gpio = tcc_sc_fw_cmd_request_gpio_cmd,
 };
 
 static int tcc_sc_fw_probe(struct platform_device *pdev)
@@ -420,6 +478,7 @@ static int tcc_sc_fw_probe(struct platform_device *pdev)
 	}
 
 	info->handle.ops.mmc_ops = &sc_fw_mmc_ops;
+	info->handle.ops.gpio_ops = &sc_fw_gpio_ops;
 
 	init_completion(&info->xfer->done);
 
@@ -466,7 +525,7 @@ static int __init tcc_sc_fw_init(void)
 {
      return platform_driver_register(&tcc_sc_fw_driver);
 }
-subsys_initcall_sync(tcc_sc_fw_init);
+core_initcall(tcc_sc_fw_init);
 
 static void __exit tcc_sc_fw_exit(void)
 {

@@ -22,6 +22,7 @@
 #include <linux/of_address.h>
 #include <asm/io.h>
 #include "pinctrl-tcc.h"
+#include <linux/soc/telechips/tcc_sc_protocol.h>
 
 /* Register Offset */
 #define GPA		0x000
@@ -137,6 +138,43 @@ static struct extintr_ extintr [] = {
 };
 
 static struct tcc_pinctrl_soc_data tcc805x_pinctrl_soc_data;
+static struct tcc_sc_fw_handle *sc_fw_handle_for_gpio;
+
+#if defined(CONFIG_PINCTRL_TCC_SCFW)
+int request_gpio_to_sc(uint32_t address, uint32_t bit_number, uint32_t width, uint32_t value)
+{
+	int ret = -1;
+
+	if(sc_fw_handle_for_gpio != NULL) {
+		ret = sc_fw_handle_for_gpio->ops.gpio_ops->request_gpio(sc_fw_handle_for_gpio, address, bit_number, width, value);
+	}
+
+	if(ret != 0) {
+		uint32_t reg_data = readl(address + base_offset);
+
+		printk(KERN_WARNING "[WARNING][TCC_PINCTRL] SCFW is not working, It can be a problem when setting the same GPIO group on multiple cores at the same time.\n");
+		printk(KERN_WARNING "[WARNING][TCC_PINCTRL] Since SCFW does not work, the kernel is setting the GPIO register directly.\n");
+
+		if(width == 0UL) {
+			return -1;
+		} else if(width == 1UL) {
+			uint32_t bit = (1UL << bit_number);
+			if(value == 1UL) {
+				reg_data |= bit;
+			} else {
+				reg_data &= (~bit);
+			}
+		} else {
+			uint32_t mask = (1UL << width) - 1UL;
+			reg_data &= ~(mask << bit_number);
+			reg_data |= (mask & value) << bit_number;
+		}
+		writel(reg_data, address + base_offset);
+	}
+
+	return ret;
+}
+#endif
 
 inline static int tcc805x_set_eint(void __iomem *base, unsigned bit, int extint)
 {
@@ -163,12 +201,20 @@ inline static int tcc805x_set_eint(void __iomem *base, unsigned bit, int extint)
 	match[extint].port_num = bit;
 
 	shift = 8*(extint%4);
+
+#if defined(CONFIG_PINCTRL_TCC_SCFW)
+	if(sc_fw_handle_for_gpio != NULL) {
+		request_gpio_to_sc(reg - base_offset, shift, 8, idx);
+	}
+#else
 	mask = 0x7F << shift;
 
 	data = readl(reg);
 	data = (data & ~mask) | (idx << shift);
 	writel(data, reg);
 	data = readl(reg);
+#endif
+
 	return 0;
 }
 
@@ -186,16 +232,22 @@ static void tcc805x_gpio_set(void __iomem *base, unsigned offset, int value)
 		writel(1<<offset, base + GPIO_DATA_BIC);
 }
 
-static void tcc805x_gpio_pinconf_extra(void __iomem *base, unsigned offset, int value, unsigned base_offset)
+static void tcc805x_gpio_pinconf_extra(void __iomem *base, unsigned offset, int value, unsigned addr_offset)
 {
-	void __iomem *reg = base + base_offset;
+	void __iomem *reg = base + addr_offset;
 	unsigned int data;
 
+#if defined(CONFIG_PINCTRL_TCC_SCFW)
+	if(sc_fw_handle_for_gpio != NULL) {
+		request_gpio_to_sc(reg - base_offset, offset, 1, value);
+	}
+#else
 	data = readl(reg);
 	data &= ~(1 << offset);
 	if (value)
 		data |= 1 << offset;
 	writel(data, reg);
+#endif
 }
 
 static void tcc805x_gpio_input_buffer_set(void __iomem *base, unsigned offset, int value)
@@ -212,11 +264,17 @@ static int tcc805x_gpio_set_direction(void __iomem *base, unsigned offset,
 	void __iomem *reg = base + GPIO_OUTPUT_ENABLE;
 	unsigned int data;
 
+#if defined(CONFIG_PINCTRL_TCC_SCFW)
+	if(sc_fw_handle_for_gpio != NULL) {
+		request_gpio_to_sc(reg - base_offset, offset, 1, 1-input);
+	}
+#else
 	data = readl(reg);
 	data &= ~(1 << offset);
 	if (!input)
 		data |= 1 << offset;
 	writel(data, reg);
+#endif
 	return 0;
 }
 
@@ -238,9 +296,22 @@ static int tcc805x_gpio_set_function(void __iomem *base, unsigned offset,
 		shift = 4 * (offset % 8);
 		mask = 0xf << shift;
 	}
+
+#if defined(CONFIG_PINCTRL_TCC_SCFW)
+	if(sc_fw_handle_for_gpio != NULL) {
+		uint32_t width = 1;
+		if((mask >> shift) == 0xf) {
+			width = 4;
+		}
+
+		request_gpio_to_sc(reg - base_offset, shift, width, func);
+	}
+#else
 	data = readl(reg) & ~mask;
 	data |= func << shift;
 	writel(data, reg);
+#endif
+
 	return 0;
 }
 
@@ -274,10 +345,17 @@ static int tcc805x_gpio_set_drive_strength(void __iomem *base, unsigned offset,
 	else
 		reg = base + GPIO_DRIVE_STRENGTH + (offset/16)*4;
 
+#if defined(CONFIG_PINCTRL_TCC_SCFW)
+	if(sc_fw_handle_for_gpio != NULL) {
+		request_gpio_to_sc(reg - base_offset, 2 * (offset % 16), 2, value);
+	}
+#else
 	data = readl(reg);
 	data &= ~(0x3 << (2 * (offset % 16)));
 	data |= value << (2 * (offset % 16));
 	writel(data, reg);
+#endif
+
 	return 0;
 }
 
@@ -326,10 +404,16 @@ static int tcc805x_gpio_set_eclk_sel(void __iomem *base, unsigned offset,
 	if (idx >= ARRAY_SIZE(extintr))
 		return -1;
 
+#if defined(CONFIG_PINCTRL_TCC_SCFW)
+	if(sc_fw_handle_for_gpio != NULL) {
+		request_gpio_to_sc(reg - base_offset, (value * 8), 8, value);
+	}
+#else
 	data = readl(reg);
 	data &= ~(0xFF<<(value * 8));
 	data |= ((0xFF & idx) << (value * 8));
 	writel(data, reg);
+#endif
 	return 0;
 }
 
@@ -480,6 +564,7 @@ static struct tcc_pinctrl_ops tcc805x_ops = {
 static int tcc805x_pinctrl_probe(struct platform_device *pdev)
 {
 	struct resource *cfg_res;
+	struct device_node *fw_np;
 
 	tcc805x_pinctrl_soc_data.pin_configs = tcc805x_pin_configs;
 	tcc805x_pinctrl_soc_data.nconfigs = ARRAY_SIZE(tcc805x_pin_configs);
@@ -490,6 +575,16 @@ static int tcc805x_pinctrl_probe(struct platform_device *pdev)
 	pmgpio_base = of_iomap(pdev->dev.of_node, 1);
 	cfg_res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	base_offset = (unsigned long)gpio_base - (unsigned long)cfg_res->start;
+
+	fw_np = of_parse_phandle(pdev->dev.of_node, "sc-firmware", 0);
+	if(fw_np == NULL) {
+		printk(KERN_ERR "\033[31m[ERROR][PINCTRL] fw_np == NULL\033[0m\n");
+	}
+
+	sc_fw_handle_for_gpio = tcc_sc_fw_get_handle(fw_np);
+	if(sc_fw_handle_for_gpio == NULL) {
+		printk(KERN_ERR "\033[31m[ERROR][PINCTRL] sc_fw_handle == NULL\033[0m\n");
+	}
 
 	return tcc_pinctrl_probe(pdev, &tcc805x_pinctrl_soc_data, gpio_base, pmgpio_base);
 }

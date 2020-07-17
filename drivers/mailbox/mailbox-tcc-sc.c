@@ -612,7 +612,7 @@ static int __init tcc_sc_mbox_init(void)
 {
 	return platform_driver_register(&tcc_sc_mbox_driver);
 }
-subsys_initcall(tcc_sc_mbox_init);
+core_initcall(tcc_sc_mbox_init);
 
 static void __exit tcc_sc_mbox_exit(void)
 {
@@ -623,4 +623,3 @@ module_exit(tcc_sc_mbox_exit);
 MODULE_LICENSE("GPL v2");
 MODULE_DESCRIPTION("Telechips Storage Core Mailbox Driver");
 MODULE_AUTHOR("ted.jeong@telechips.com");
-

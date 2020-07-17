@@ -172,9 +172,15 @@ static void tcc_pinctrl_gpio_set(struct gpio_chip *chip, unsigned offset,
 	if (!ops->gpio_set)
 		return;
 
+#if defined(CONFIG_PINCTRL_TCC_SCFW)
+	//Since SCFW is used, spin_lock is not required
+	//And if spin_lock is present, a kernel panic occurs.
+	ops->gpio_set(pctl->base + bank->reg_base, offset, value);
+#else
 	spin_lock_irqsave(&bank->lock, flags);
 	ops->gpio_set(pctl->base + bank->reg_base, offset, value);
 	spin_unlock_irqrestore(&bank->lock, flags);
+#endif
 }
 
 static int tcc_pinctrl_gpio_direction_input(struct gpio_chip *chip,
@@ -202,9 +208,16 @@ static int tcc_pinctrl_gpio_to_irq(struct gpio_chip *chip,
 	if (!ops->to_irq)
 		return -ENXIO;
 
+#if defined(CONFIG_PINCTRL_TCC_SCFW)
+	//Since SCFW is used, spin_lock is not required
+	//And if spin_lock is present, a kernel panic occurs.
+	ret = ops->to_irq(pctl->base + bank->reg_base, offset);
+#else
 	spin_lock_irqsave(&bank->lock, flags);
 	ret = ops->to_irq(pctl->base + bank->reg_base, offset);
 	spin_unlock_irqrestore(&bank->lock, flags);
+#endif
+
 	return ret;
 }
 
