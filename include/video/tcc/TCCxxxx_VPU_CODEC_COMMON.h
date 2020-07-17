@@ -85,6 +85,18 @@
 #define RETCODE_WRAP_AROUND                 (-10)
 #endif
 
+//------------------------------------------------------------------------------
+// VPU deivce driver's notification on the library side with video IP HW
+//
+// Contents: defines the integer variable, which
+// is set by system calls and some library functions in the event of a state or
+// an error to indicate what went wrong.
+//
+//------------------------------------------------------------------------------
+
+// Interrupt Status
+#define RETCODE_INTR_DETECTION_NOT_ENABLED    512
+
 
 #ifndef INC_DEVICE_TREE_PMAP
 

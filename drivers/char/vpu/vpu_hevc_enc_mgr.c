@@ -115,7 +115,7 @@ static irqreturn_t _vmgr_hevc_enc_isr_handler(int irq, void *dev_id)
 {
 	cntInt_vpu_he++;
 
-	V_DBG(DEBUG_ENC_INTERRUPT, "HEVC ENC interrupt happens %d times", cntInt_vpu_he);
+	//V_DBG(DEBUG_ENC_INTERRUPT, "HEVC ENC interrupt happens %d times", cntInt_vpu_he);
 
 	atomic_inc(&vmgr_hevc_enc_data.oper_intr);
 
@@ -384,14 +384,23 @@ static int _vmgr_hevc_enc_release(struct inode *inode, struct file *filp)
 
 static int _vmgr_hevc_enc_internal_handler(void)
 {
-	int ret, ret_code = RETCODE_SUCCESS;
+	int ret = RETCODE_INTR_DETECTION_NOT_ENABLED;
+	int ret_code = RETCODE_INTR_DETECTION_NOT_ENABLED;
 	int timeout = 200;
+
+	V_DBG(DEBUG_ENC_INTERRUPT, "enter (Interrupt option=%d, isr cnt:oper_intr=%d:%d, event=%s, ret_code=%d)",
+		vmgr_hevc_enc_data.check_interrupt_detection,
+		cntInt_vpu_he,
+		vmgr_hevc_enc_data.oper_intr,
+		ret==RETCODE_INTR_DETECTION_NOT_ENABLED?"not-evented":"evented", 
+		ret_code
+		);
 
 	if(vmgr_hevc_enc_data.check_interrupt_detection)
 	{
 		if(atomic_read(&vmgr_hevc_enc_data.oper_intr) > 0)
 		{
-			V_DBG(DEBUG_ENC_INTERRUPT, "Success-1: vpu hevc enc operation!!");
+			V_DBG(DEBUG_ENC_INTERRUPT, "Success-1: vpu hevc enc operation!! (isr cnt:%d)", cntInt_vpu_he);
 			ret_code = RETCODE_SUCCESS;
 		}
 		else
@@ -407,7 +416,7 @@ static int _vmgr_hevc_enc_internal_handler(void)
 			}
 			else if(atomic_read(&vmgr_hevc_enc_data.oper_intr) > 0)
 			{
-				V_DBG(DEBUG_ENC_INTERRUPT, "Success 2: vpu hevc enc operation!!");
+				V_DBG(DEBUG_ENC_INTERRUPT, "Success-2: vpu hevc enc operation!! (isr cnt:%d)", cntInt_vpu_he);
 			#if defined(FORCED_ERROR)
 				if (forced_error_count-- <= 0)
 				{
@@ -417,28 +426,37 @@ static int _vmgr_hevc_enc_internal_handler(void)
 				}
 				else
 			#endif
-				ret_code = RETCODE_SUCCESS;
+					ret_code = RETCODE_SUCCESS;
 			}
 			else
 			{
-				V_DBG(DEBUG_VPU_ERROR, "[CMD 0x%x][%d]: vpu timed_out(ref %d msec) => oper_intr[%d]!! [%d]th frame len %d",
+				V_DBG(DEBUG_VPU_ERROR, "[CMD 0x%x][ret:%d]: vpu timed_out(ref %d msec) => oper_intr[%d], isr cnt:%d!! [%d]th frame len %d",
 					vmgr_hevc_enc_data.current_cmd,
 					ret,
 					timeout,
 					atomic_read(&vmgr_hevc_enc_data.oper_intr),
+					cntInt_vpu_he,
 					vmgr_hevc_enc_data.nDecode_Cmd,
 					vmgr_hevc_enc_data.szFrame_Len
 					);
 
-                vetc_dump_reg_all(vmgr_hevc_enc_data.base_addr, "_vmgr_internal_handler timed_out");
-                ret_code = RETCODE_CODEC_EXIT;
-            }
-        }
-        atomic_set(&vmgr_hevc_enc_data.oper_intr, 0);
-        vmgr_hevc_enc_status_clear(vmgr_hevc_enc_data.base_addr);
-    }
+				vetc_dump_reg_all(vmgr_hevc_enc_data.base_addr, "_vmgr_internal_handler timed_out");
+				ret_code = RETCODE_CODEC_EXIT;
+			}
+		}
+		atomic_set(&vmgr_hevc_enc_data.oper_intr, 0);
+		vmgr_hevc_enc_status_clear(vmgr_hevc_enc_data.base_addr);
+	}
 
-    return ret_code;
+	V_DBG(DEBUG_ENC_INTERRUPT, "out (Interrupt option=%d, isr cnt:oper_intr=%d:%d, event=%s, ret_code=%d)",
+		vmgr_hevc_enc_data.check_interrupt_detection,
+		cntInt_vpu_he,
+		vmgr_hevc_enc_data.oper_intr,
+		ret==RETCODE_INTR_DETECTION_NOT_ENABLED?"not-evented":"evented", 
+		ret_code
+		);
+
+	return ret_code;
 }
 
 static int _vmgr_hevc_enc_process(vputype type, int cmd, long pHandle, void* args)
@@ -475,6 +493,9 @@ static int _vmgr_hevc_enc_process(vputype type, int cmd, long pHandle, void* arg
 			case VPU_ENC_INIT:
 			{
 				VENC_HEVC_INIT_t* arg = (VENC_HEVC_INIT_t *) args;
+
+				vmgr_hevc_enc_data.check_interrupt_detection = 1;
+
 				vmgr_hevc_enc_data.handle[type] = 0x00;
 				vmgr_hevc_enc_data.szFrame_Len = arg->encInit.m_iPicWidth * arg->encInit.m_iPicHeight *3 / 2;
 
@@ -488,7 +509,7 @@ static int _vmgr_hevc_enc_process(vputype type, int cmd, long pHandle, void* arg
 				arg->encInit.m_reg_write	= (void (*)(void *, unsigned int, unsigned int)) vetc_reg_write;
 				arg->encInit.m_Usleep		= (void (*)(unsigned int, unsigned int))usleep_range;
 
-				V_DBG(DEBUG_ENC_SEQUENCE, "@@ Enc :: Init In =>Memcpy(0x%px),Memset(0x%px),Interrupt(0x%px),remap(0x%px),unmap(0x%px),read(0x%px),write((0x%px))sleep(0x%px)|| workbuff 0x%px/0x%px, Reg: 0x%px/0x%px, format : %d, Stream(0x%px/0x%px, %d), Reg(0x%px):Sec. AXI (0x%x)",
+				V_DBG(DEBUG_ENC_SEQUENCE, "@@ Enc :: Init In =>Memcpy(0x%px),Memset(0x%px),Interrupt(0x%px),remap(0x%px),unmap(0x%px),read(0x%px),write(0x%px),sleep(0x%px)||workbuff(0x%px/0x%px),Reg(0x%px/0x%px),format(%d),W:H(%d:%d),Fps(%d),Bps(%d),Keyi(%d),Stream(0x%px/0x%px, %d),Reg(0x%px):Sec. AXI (0x%x)",
 					arg->encInit.m_Memcpy,
 					arg->encInit.m_Memset,
 					arg->encInit.m_Interrupt,
@@ -502,6 +523,11 @@ static int _vmgr_hevc_enc_process(vputype type, int cmd, long pHandle, void* arg
 					vmgr_hevc_enc_data.base_addr,
 					arg->encInit.m_RegBaseAddr[VA],
 					arg->encInit.m_iBitstreamFormat,
+					arg->encInit.m_iPicWidth,
+					arg->encInit.m_iPicHeight,
+					arg->encInit.m_iFrameRate,
+					arg->encInit.m_iTargetKbps,
+					arg->encInit.m_iKeyInterval,
 					arg->encInit.m_BitstreamBufferAddr[PA],
 					arg->encInit.m_BitstreamBufferAddr[VA],
 					arg->encInit.m_iBitstreamBufferSize,

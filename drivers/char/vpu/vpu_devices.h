@@ -12,7 +12,6 @@
  */
 
 
- 
 #define MGR_NAME		"vpu_dev_mgr"
 #define HMGR_NAME		"hevc_dev_mgr"
 #define JMGR_NAME		"jpu_dev_mgr"
@@ -32,8 +31,3 @@
 #define ENC_EXT_NAME	"vpu_vencext"
 #define ENC_EXT2_NAME	"vpu_vencext2"
 #define ENC_EXT3_NAME	"vpu_vencext3"
-
-#define VPU_HEVC_ENC_NAME		"vpu_hevc_enc"
-#define VPU_HEVC_ENC_EXT_NAME	"vpu_hevc_encext"
-#define VPU_HEVC_ENC_EXT2_NAME	"vpu_hevc_encext2"
-#define VPU_HEVC_ENC_EXT3_NAME	"vpu_hevc_encext3"

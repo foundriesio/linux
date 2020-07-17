@@ -29,7 +29,7 @@
 #include "vpu_structure.h"
 #include "vpu_etc.h"
 
-#if defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC901X) || defined(CONFIG_ARCH_TCC805X)
+#if defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC901X)
 #include "smp_driver.h"
 #endif
 
