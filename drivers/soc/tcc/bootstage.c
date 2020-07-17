@@ -54,7 +54,7 @@ static inline const char *u32_to_str_in_format(u32 num)
 	return &format[idx];
 }
 
-static int proc_bootstage_show(struct seq_file *m, void *v)
+static int bootstage_report_show(struct seq_file *m, void *v)
 {
 	/*
 	 * CAUTION. This function is **NOT THREAD SAFE** !!!
@@ -88,17 +88,59 @@ static int proc_bootstage_show(struct seq_file *m, void *v)
 	return 0;
 }
 
-static int proc_bootstage_open(struct inode *inode, struct file *file)
+static int bootstage_report_open(struct inode *inode, struct file *file)
 {
-	return single_open(file, proc_bootstage_show, PDE_DATA(inode));
+	return single_open(file, bootstage_report_show, PDE_DATA(inode));
 }
 
-static const struct file_operations proc_bootstage_fops = {
-	.open		= proc_bootstage_open,
+static const struct file_operations bootstage_report_fops = {
+	.open		= bootstage_report_open,
 	.read		= seq_read,
 	.llseek		= seq_lseek,
 	.release	= seq_release,
 };
+
+static int bootstage_data_show(struct seq_file *m, void *v)
+{
+	stage_t *stage;
+
+	list_for_each_entry(stage, &bootstage_list_head, list) {
+		seq_printf(m, "%s,%u\n", stage->name, stage->stamp);
+	}
+
+	return 0;
+}
+
+static int bootstage_data_open(struct inode *inode, struct file *file)
+{
+	return single_open(file, bootstage_data_show, PDE_DATA(inode));
+}
+
+static const struct file_operations bootstage_data_fops = {
+	.open		= bootstage_data_open,
+	.read		= seq_read,
+	.llseek		= seq_lseek,
+	.release	= seq_release,
+};
+
+static int bootstage_procfs_init(void)
+{
+	struct proc_dir_entry *pdir = proc_mkdir("bootstage", NULL);
+	struct proc_dir_entry *ret;
+
+	ret = proc_create("report", S_IRUGO, pdir, &bootstage_report_fops);
+	if (ret == NULL) {
+		return -ENOMEM;
+	}
+
+	ret = proc_create("data", S_IRUGO, pdir, &bootstage_data_fops);
+	if (ret == NULL) {
+		return -ENOMEM;
+	}
+
+	return 0;
+}
+
 #endif
 
 static void __init parse_one_bootstage(struct device_node *node)
@@ -140,16 +182,15 @@ static int __init cmp_stages(void *p, struct list_head *a, struct list_head *b)
 	return (sa->stamp <= sb->stamp) ? -1 : 1;
 }
 
-static int __init tcc_bootstage_init(void)
+static int __init bootstage_init(void)
 {
 	struct device_node *node, *sub;
 
 #if defined(CONFIG_PROC_FS)
-	struct proc_dir_entry *pdir;
+	int ret = bootstage_procfs_init();
 
-	pdir = proc_create("bootstage", S_IRUGO, NULL, &proc_bootstage_fops);
-	if (pdir == NULL) {
-		return -ENOMEM;
+	if (ret < 0) {
+		return ret;
 	}
 #endif
 
@@ -172,7 +213,7 @@ static int __init tcc_bootstage_init(void)
 
 	return 0;
 }
-late_initcall(tcc_bootstage_init);
+late_initcall(bootstage_init);
 
 MODULE_AUTHOR("Jigi Kim <jigi.kim@telechips.com>");
 MODULE_DESCRIPTION("Telechips bootstage driver");
