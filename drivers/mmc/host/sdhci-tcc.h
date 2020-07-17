@@ -143,6 +143,9 @@
 
 #define TCC_SDHC_FORCE_DETECT_DELAY            0
 
+#define SDHCI_TCC_VENDOR_REGISTER	(0x78)
+	#define VENDOR_ENHANCED_STROBE		(1 << 0)
+
 struct sdhci_tcc_soc_data {
 	const struct sdhci_pltfm_data *pdata;
 	int (*parse_channel_configs)(struct platform_device *, struct sdhci_host *);

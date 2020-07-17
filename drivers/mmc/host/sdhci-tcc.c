@@ -401,7 +401,7 @@ static int sdhci_tcc_parse_configs(struct platform_device *pdev, struct sdhci_ho
 			ret = 0;
 			pr_info("[INFO][SDHC] %s: no hw-reset pin, not support hw reset\n", mmc_hostname(host->mmc));
 		}
-	}
+}
 
 	/* Enable Output SDCLK gating */
 	if (of_property_read_bool(np, "tcc-clk-gating")) {
@@ -1510,6 +1510,23 @@ static int sdhci_tcc_select_drive_strength(struct mmc_card *card,
 	return drive_strength;
 }
 
+static void sdhci_tcc_hs400_enhanced_strobe(struct mmc_host *mmc, struct mmc_ios *ios)
+{
+
+	u32 vendor;
+	struct sdhci_host *host = mmc_priv(mmc);
+	pr_info("[SDHC] %s\n",  __func__);
+
+	vendor = sdhci_readl(host, SDHCI_TCC_VENDOR_REGISTER);
+	if (ios->enhanced_strobe)
+		vendor |= VENDOR_ENHANCED_STROBE;
+	else
+		vendor &= ~VENDOR_ENHANCED_STROBE;
+
+	sdhci_writel(host, vendor, SDHCI_TCC_VENDOR_REGISTER);
+}
+
+
 static int sdhci_tcc_probe(struct platform_device *pdev)
 {
 	int ret;
@@ -1623,6 +1640,10 @@ static int sdhci_tcc_probe(struct platform_device *pdev)
 		tcc->soc_data->set_channel_configs(host);
 
 	host->mmc_host_ops.select_drive_strength = sdhci_tcc_select_drive_strength;
+
+	if(host->mmc->caps2 & MMC_CAP2_HS400_ES) {
+		host->mmc_host_ops.hs400_enhanced_strobe = sdhci_tcc_hs400_enhanced_strobe;
+	}
 
 	ret = sdhci_add_host(host);
 	if (ret) {

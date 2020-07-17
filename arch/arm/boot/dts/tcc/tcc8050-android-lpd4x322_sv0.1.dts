@@ -124,6 +124,12 @@
 	tcc-mmc-hs400-pos-tap = <0x6>;
 	tcc-mmc-hs400-neg-tap = <0xB>;
 
+	mmc-hs400-1_8v;
+	mmc-hs400-enhanced-strobe;
+	tcc-mmc-taps = <0xF 0xF 0xF 0xF>;
+	tcc-mmc-hs400-pos-tap = <0x6>;
+	tcc-mmc-hs400-neg-tap = <0xB>;
+
 	tcc-mmc-reset = <&gpsd0 14 0>;
 
 	vqmmc-supply = <&vqmmc_emmc>;
