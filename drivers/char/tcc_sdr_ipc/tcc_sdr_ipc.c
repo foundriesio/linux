@@ -192,6 +192,7 @@ static int shared_buffer_copy_from_user(struct sdripc_device *sdripc_dev, const 
 	unsigned long result;
 	unsigned char *shared_buf_vaddr;
 	int start_pos;
+	int next_start_pos;
 
 	if( (sdripc_dev->shared_head_pos+(int)size)>SHARED_MEM_SIZE )
 	{
@@ -209,7 +210,10 @@ static int shared_buffer_copy_from_user(struct sdripc_device *sdripc_dev, const 
 		return (-1);
 	}
 
-	sdripc_dev->shared_head_pos += (int)size;
+	/* Align address to 8 byte */
+	next_start_pos=start_pos+size;
+	sdripc_dev->shared_head_pos = (next_start_pos+(8-1))&~(8-1);
+
 	return start_pos;
 }
 
@@ -353,7 +357,7 @@ static ssize_t sdripc_write(struct file *filp, const char __user *buf, size_t co
 {
 	ssize_t ret=0;
 	struct sdripc_device *sdripc_dev = (struct sdripc_device *)filp->private_data;
-	struct device *dev = sdripc_dev->dev;
+	//warn//struct device *dev = sdripc_dev->dev;
 	int mbox_result = 0;
 	struct tcc_mbox_data mbox_data;
 	int shared_start_pos;
@@ -369,6 +373,7 @@ static ssize_t sdripc_write(struct file *filp, const char __user *buf, size_t co
 		return 0;
 	}
 
+	mutex_lock(&sdripc_dev->mboxMutex);
 	/* copy data to share_queue_buffer */
 	shared_start_pos = shared_buffer_copy_from_user(sdripc_dev, buf, (int)count);
 
@@ -383,7 +388,6 @@ static ssize_t sdripc_write(struct file *filp, const char __user *buf, size_t co
 	/* physical address of shared memory */
 	memcpy(&mbox_data.cmd[4], (char*)&sdripc_dev->paddr, sizeof(dma_addr_t));
 
-	mutex_lock(&sdripc_dev->mboxMutex);
 	mbox_result = mbox_send_message(sdripc_dev->mbox_channel, &mbox_data);
 	if(mbox_result < 0 )
 	{
@@ -439,7 +443,6 @@ static ssize_t sdripc_read(struct file *filp, char __user *buf, size_t count, lo
 			type = mbox_data.cmd[0];
 			start_pos = mbox_data.cmd[1];
 			size = mbox_data.cmd[2];
-
 			//if(count<(total_size+size))
 			//{
 			//	break;
