@@ -158,7 +158,7 @@
 #define PERI_HSMB		CKC_REG_OFFSET(PERI_HSMB_BASE_OFFSET)
 
 // need to fix : used on 'clock_test()'
-#define	PERI_MAX		114
+#define	PERI_MAX		(PERI_HSMB + 1)
 
 /* I/O Bus pwdn/swreset */
 #define	IOBUS_IC_TC		0

@@ -9,6 +9,7 @@
 //#include <linux/clk-provider.h>
 //#include <linux/irqflags.h>
 #include <linux/slab.h>
+#include <linux/syscore_ops.h>
 #if !defined(CONFIG_ARM64_TCC_BUILD)
 #include <mach/smc.h>
 #include <asm/system_info.h>
@@ -108,10 +109,11 @@ void tcc_ckc_restore(void)
 	struct arm_smccc_res res;
 	int i, j;
 
+	arm_smccc_smc(SIP_CLK_INIT, 0, 0, 0, 0, 0, 0, 0, &res);
+
 	arm_smccc_smc(SIP_CLK_SET_CLKCTRL, FBUS_IO, 1, XIN_CLK_RATE/2, 0, 0, 0, 0, &res);
 	arm_smccc_smc(SIP_CLK_SET_CLKCTRL, FBUS_SMU, 1, XIN_CLK_RATE/2, 0, 0, 0, 0, &res);
 	arm_smccc_smc(SIP_CLK_SET_CLKCTRL, FBUS_HSIO, 1, XIN_CLK_RATE/2, 0, 0, 0, 0, &res);
-	arm_smccc_smc(SIP_CLK_SET_CLKCTRL, FBUS_CMBUS, 1, XIN_CLK_RATE/2, 0, 0, 0, 0, &res);
 
 	for (i = 0; i < MAX_TCC_PLL; i++) {
 		if (i == MEMBUS_PLL)
@@ -349,9 +351,24 @@ static const struct file_operations proc_tcc_clk_operations = {
 	.release	= seq_release,
 };
 
+static int tcc_clk_suspend(void) {
+	tcc_ckc_save(0);
+	return 0;
+}
+
+static void tcc_clk_resume(void) {
+	tcc_ckc_restore();
+}
+
+static struct syscore_ops tcc_clk_syscore_ops = {
+	.suspend	= tcc_clk_suspend,
+	.resume		= tcc_clk_resume,
+};
+
 static int __init tcc_clk_proc_init(void)
 {
 	proc_create("clocks", 0, NULL, &proc_tcc_clk_operations);
+	register_syscore_ops(&tcc_clk_syscore_ops);
 	return 0;
 }
 
