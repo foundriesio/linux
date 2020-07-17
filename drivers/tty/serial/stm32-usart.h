@@ -268,6 +268,7 @@ struct stm32_port {
 	int txftcfg;		/* TX FIFO threshold CFG      */
 	bool wakeup_src;
 	int rdr_mask;		/* receive data register mask */
+	struct mctrl_gpios *gpios; /* modem control gpios */
 	struct dma_tx_state state;
 	enum dma_status status;
 };
