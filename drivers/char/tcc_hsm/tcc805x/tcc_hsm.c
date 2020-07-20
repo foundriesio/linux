@@ -96,9 +96,9 @@ static long tcc_hsm_ioctl_set_key(unsigned int cmd, unsigned long arg)
 	uint32_t req = 0;
 	int32_t ret = -EFAULT;
 
-	if (cmd == TCCHSM_IOCTL_SET_KEY_FROM_OTP) {
+	if (cmd == HSM_SET_KEY_FROM_OTP_CMD) {
 		req = REQ_HSM_SET_KEY_FROM_OTP;
-	} else if (cmd == TCCHSM_IOCTL_SET_KEY_FROM_SNOR) {
+	} else if (cmd == HSM_SET_KEY_FROM_SNOR_CMD) {
 		req = REQ_HSM_SET_KEY_FROM_SNOR;
 	} else {
 		ELOG("cmd is invalid\n");
@@ -121,9 +121,9 @@ static long tcc_hsm_ioctl_run_aes(unsigned int cmd, unsigned long arg)
 	uint32_t req = 0;
 	int32_t ret = -EFAULT;
 
-	if (cmd == TCCHSM_IOCTL_RUN_AES) {
+	if (cmd == HSM_RUN_AES_CMD) {
 		req = REQ_HSM_RUN_AES;
-	} else if (cmd == TCCHSM_IOCTL_RUN_SM4) {
+	} else if (cmd == HSM_RUN_SM4_CMD) {
 		req = REQ_HSM_RUN_SM4;
 	} else {
 		ELOG("cmd is invalid\n");
@@ -168,9 +168,9 @@ static long tcc_hsm_ioctl_run_aes_by_kt(unsigned int cmd, unsigned long arg)
 	uint32_t req = 0;
 	int32_t ret = -EFAULT;
 
-	if (cmd == TCCHSM_IOCTL_RUN_AES_BY_KT) {
+	if (cmd == HSM_RUN_AES_BY_KT_CMD) {
 		req = REQ_HSM_RUN_AES_BY_KT;
-	} else if (cmd == TCCHSM_IOCTL_RUN_SM4_BY_KT) {
+	} else if (cmd == HSM_RUN_SM4_BY_KT_CMD) {
 		req = REQ_HSM_RUN_SM4_BY_KT;
 	} else {
 		ELOG("cmd is invalid\n");
@@ -216,13 +216,13 @@ static long tcc_hsm_ioctl_gen_mac(unsigned int cmd, unsigned long arg)
 	uint32_t req = 0;
 	int32_t ret = -EFAULT;
 
-	if (cmd == TCCHSM_IOCTL_GEN_CMAC) {
+	if (cmd == HSM_GEN_CMAC_CMD) {
 		req = REQ_HSM_GEN_CMAC;
-	} else if (cmd == TCCHSM_IOCTL_GEN_GMAC) {
+	} else if (cmd == HSM_GEN_GMAC_CMD) {
 		req = REQ_HSM_GEN_GMAC;
-	} else if (cmd == TCCHSM_IOCTL_GEN_HMAC) {
+	} else if (cmd == HSM_GEN_HMAC_CMD) {
 		req = REQ_HSM_GEN_HMAC;
-	} else if (cmd == TCCHSM_IOCTL_GEN_SM3_HMAC) {
+	} else if (cmd == HSM_GEN_SM3_HMAC_CMD) {
 		req = REQ_HSM_GEN_SM3_HMAC;
 	} else {
 		ELOG("cmd is invalid\n");
@@ -269,13 +269,13 @@ static long tcc_hsm_ioctl_gen_mac_by_kt(unsigned int cmd, unsigned long arg)
 	uint32_t req = 0;
 	int32_t ret = -EFAULT;
 
-	if (cmd == TCCHSM_IOCTL_GEN_CMAC_BY_KT) {
+	if (cmd == HSM_GEN_CMAC_BY_KT_CMD) {
 		req = REQ_HSM_GEN_CMAC_BY_KT;
-	} else if (cmd == TCCHSM_IOCTL_GEN_GMAC_BY_KT) {
+	} else if (cmd == HSM_GEN_GMAC_BY_KT_CMD) {
 		req = REQ_HSM_GEN_GMAC_BY_KT;
-	} else if (cmd == TCCHSM_IOCTL_GEN_HMAC_BY_KT) {
+	} else if (cmd == HSM_GEN_HMAC_BY_KT_CMD) {
 		req = REQ_HSM_GEN_HMAC_BY_KT;
-	} else if (cmd == TCCHSM_IOCTL_GEN_SM3_HMAC_BY_KT) {
+	} else if (cmd == HSM_GEN_SM3_HMAC_BY_KT_CMD) {
 		req = REQ_HSM_GEN_SM3_HMAC_BY_KT;
 	} else {
 		ELOG("cmd is invalid\n");
@@ -321,9 +321,9 @@ static long tcc_hsm_ioctl_gen_hash(unsigned int cmd, unsigned long arg)
 	uint32_t req = 0;
 	int32_t ret = -EFAULT;
 
-	if (cmd == TCCHSM_IOCTL_GEN_SHA) {
+	if (cmd == HSM_GEN_SHA_CMD) {
 		req = REQ_HSM_GEN_SHA;
-	} else if (cmd == TCCHSM_IOCTL_GEN_SM3) {
+	} else if (cmd == HSM_GEN_SM3_CMD) {
 		req = REQ_HSM_GEN_SM3;
 	} else {
 		ELOG("cmd is invalid\n");
@@ -375,13 +375,13 @@ static long tcc_hsm_ioctl_run_ecdsa(unsigned int cmd, unsigned long arg)
 	}
 
 	switch (cmd) {
-	case TCCHSM_IOCTL_RUN_ECDSA_SIGN:
+	case HSM_RUN_ECDSA_SIGN_CMD:
 		req = REQ_HSM_RUN_ECDSA_SIGN;
 		ret = tcc_hsm_cmd_run_ecdsa(
 			MBOX_DEV_HSM, req, param.obj_id, param.key, param.key_size, param.digest,
 			param.digest_size, param.sig, param.sig_size);
 		if (ret != 0) {
-			ELOG("tcc_hsm_cmd_run_aes fail(%d)\n", ret);
+			ELOG("tcc_hsm_cmd_run_ecdsa fail(%d)\n", ret);
 		} else {
 			if (copy_to_user((void *)arg, (void *)&param, sizeof(param))) {
 				ELOG("copy_to_user failed\n");
@@ -391,7 +391,7 @@ static long tcc_hsm_ioctl_run_ecdsa(unsigned int cmd, unsigned long arg)
 
 		break;
 
-	case TCCHSM_IOCTL_RUN_ECDSA_VERIFY:
+	case HSM_RUN_ECDSA_VERIFY_CMD:
 		req = REQ_HSM_RUN_ECDSA_VERIFY;
 		ret = tcc_hsm_cmd_run_ecdsa(
 			MBOX_DEV_HSM, req, param.obj_id, param.key, param.key_size, param.digest,
@@ -404,7 +404,7 @@ static long tcc_hsm_ioctl_run_ecdsa(unsigned int cmd, unsigned long arg)
 	}
 
 	if (ret) {
-		ELOG("tcc_hsm_cmd_run_ecdsa Err(%d)\n", ret);
+		ELOG("tcc_hsm_cmd_run_ecdsa Err(0x%x)\n", ret);
 		return ret;
 	}
 
@@ -417,13 +417,13 @@ static long tcc_hsm_ioctl_run_rsa(unsigned int cmd, unsigned long arg)
 	uint32_t req = 0;
 	int32_t ret = -EFAULT;
 
-	if (cmd == TCCHSM_IOCTL_RUN_RSASSA_PKCS_SIGN) {
+	if (cmd == HSM_RUN_RSASSA_PKCS_SIGN_CMD) {
 		req = REQ_HSM_RUN_RSASSA_PKCS_SIGN;
-	} else if (cmd == TCCHSM_IOCTL_RUN_RSASSA_PKCS_VERIFY) {
+	} else if (cmd == HSM_RUN_RSASSA_PKCS_VERIFY_CMD) {
 		req = REQ_HSM_RUN_RSASSA_PKCS_VERIFY;
-	} else if (cmd == TCCHSM_IOCTL_RUN_RSASSA_PSS_SIGN) {
+	} else if (cmd == HSM_RUN_RSASSA_PSS_SIGN_CMD) {
 		req = REQ_HSM_RUN_RSASSA_PSS_SIGN;
-	} else if (cmd == TCCHSM_IOCTL_RUN_RSASSA_PSS_VERIFY) {
+	} else if (cmd == HSM_RUN_RSASSA_PSS_VERIFY_CMD) {
 		req = REQ_HSM_RUN_RSASSA_PSS_VERIFY;
 	} else {
 		ELOG("cmd is invalid\n");
@@ -522,72 +522,72 @@ static long tcc_hsm_ioctl(struct file *file, unsigned int cmd, unsigned long arg
 {
 	int32_t ret = -EFAULT;
 
-	DLOG("cmd=%d\n", cmd);
+	DLOG("cmd=0x%x\n", cmd);
 
 	mutex_lock(&tcc_hsm_mutex);
 
 	switch (cmd) {
-	case TCCHSM_IOCTL_SET_KEY_FROM_OTP:
-	case TCCHSM_IOCTL_SET_KEY_FROM_SNOR:
+	case HSM_SET_KEY_FROM_OTP_CMD:
+	case HSM_SET_KEY_FROM_SNOR_CMD:
 		ret = tcc_hsm_ioctl_set_key(cmd, arg);
 		break;
 
-	case TCCHSM_IOCTL_RUN_AES:
-	case TCCHSM_IOCTL_RUN_SM4:
+	case HSM_RUN_AES_CMD:
+	case HSM_RUN_SM4_CMD:
 		ret = tcc_hsm_ioctl_run_aes(cmd, arg);
 		break;
 
-	case TCCHSM_IOCTL_RUN_AES_BY_KT:
-	case TCCHSM_IOCTL_RUN_SM4_BY_KT:
+	case HSM_RUN_AES_BY_KT_CMD:
+	case HSM_RUN_SM4_BY_KT_CMD:
 		ret = tcc_hsm_ioctl_run_aes_by_kt(cmd, arg);
 		break;
 
-	case TCCHSM_IOCTL_GEN_CMAC:
-	case TCCHSM_IOCTL_GEN_GMAC:
-	case TCCHSM_IOCTL_GEN_HMAC:
-	case TCCHSM_IOCTL_GEN_SM3_HMAC:
+	case HSM_GEN_CMAC_CMD:
+	case HSM_GEN_GMAC_CMD:
+	case HSM_GEN_HMAC_CMD:
+	case HSM_GEN_SM3_HMAC_CMD:
 		ret = tcc_hsm_ioctl_gen_mac(cmd, arg);
 		break;
 
-	case TCCHSM_IOCTL_GEN_CMAC_BY_KT:
-	case TCCHSM_IOCTL_GEN_GMAC_BY_KT:
-	case TCCHSM_IOCTL_GEN_HMAC_BY_KT:
-	case TCCHSM_IOCTL_GEN_SM3_HMAC_BY_KT:
+	case HSM_GEN_CMAC_BY_KT_CMD:
+	case HSM_GEN_GMAC_BY_KT_CMD:
+	case HSM_GEN_HMAC_BY_KT_CMD:
+	case HSM_GEN_SM3_HMAC_BY_KT_CMD:
 		ret = tcc_hsm_ioctl_gen_mac_by_kt(cmd, arg);
 		break;
 
-	case TCCHSM_IOCTL_GEN_SHA:
-	case TCCHSM_IOCTL_GEN_SM3:
+	case HSM_GEN_SHA_CMD:
+	case HSM_GEN_SM3_CMD:
 		ret = tcc_hsm_ioctl_gen_hash(cmd, arg);
 		break;
 
-	case TCCHSM_IOCTL_RUN_ECDSA_SIGN:
-	case TCCHSM_IOCTL_RUN_ECDSA_VERIFY:
+	case HSM_RUN_ECDSA_SIGN_CMD:
+	case HSM_RUN_ECDSA_VERIFY_CMD:
 		ret = tcc_hsm_ioctl_run_ecdsa(cmd, arg);
 		break;
 
-	case TCCHSM_IOCTL_RUN_RSASSA_PKCS_SIGN:
-	case TCCHSM_IOCTL_RUN_RSASSA_PKCS_VERIFY:
-	case TCCHSM_IOCTL_RUN_RSASSA_PSS_SIGN:
-	case TCCHSM_IOCTL_RUN_RSASSA_PSS_VERIFY:
+	case HSM_RUN_RSASSA_PKCS_SIGN_CMD:
+	case HSM_RUN_RSASSA_PKCS_VERIFY_CMD:
+	case HSM_RUN_RSASSA_PSS_SIGN_CMD:
+	case HSM_RUN_RSASSA_PSS_VERIFY_CMD:
 		ret = tcc_hsm_ioctl_run_rsa(cmd, arg);
 		break;
 
-	case TCCHSM_IOCTL_WRITE_OTP:
+	case HSM_WRITE_OTP_CMD:
 		ret = tcc_hsm_ioctl_write_otp(cmd, arg);
 		break;
 
-	case TCCHSM_IOCTL_GET_RNG:
+	case HSM_GET_RNG_CMD:
 		ret = tcc_hsm_ioctl_get_rng(cmd, arg);
 		break;
 
-	case TCCHSM_IOCTL_GET_VER:
+	case HSM_GET_VER_CMD:
 		ret = tcc_hsm_ioctl_get_version(cmd, arg);
 		break;
 
-	case TCCHSM_IOCTL_WRITE_SNOR:
+	case HSM_WRITE_SNOR_CMD:
 	default:
-		ELOG("unknown command(%d)\n", cmd);
+		ELOG("unknown command(0x%x)\n", cmd);
 		break;
 	}
 
