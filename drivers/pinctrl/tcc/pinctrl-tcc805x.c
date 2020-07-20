@@ -138,7 +138,10 @@ static struct extintr_ extintr [] = {
 };
 
 static struct tcc_pinctrl_soc_data tcc805x_pinctrl_soc_data;
+
+#if defined(CONFIG_PINCTRL_TCC_SCFW)
 static struct tcc_sc_fw_handle *sc_fw_handle_for_gpio;
+#endif
 
 #if defined(CONFIG_PINCTRL_TCC_SCFW)
 int request_gpio_to_sc(uint32_t address, uint32_t bit_number, uint32_t width, uint32_t value)
@@ -576,6 +579,7 @@ static int tcc805x_pinctrl_probe(struct platform_device *pdev)
 	cfg_res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	base_offset = (unsigned long)gpio_base - (unsigned long)cfg_res->start;
 
+#if defined(CONFIG_PINCTRL_TCC_SCFW)
 	fw_np = of_parse_phandle(pdev->dev.of_node, "sc-firmware", 0);
 	if(fw_np == NULL) {
 		printk(KERN_ERR "\033[31m[ERROR][PINCTRL] fw_np == NULL\033[0m\n");
@@ -585,6 +589,7 @@ static int tcc805x_pinctrl_probe(struct platform_device *pdev)
 	if(sc_fw_handle_for_gpio == NULL) {
 		printk(KERN_ERR "\033[31m[ERROR][PINCTRL] sc_fw_handle == NULL\033[0m\n");
 	}
+#endif
 
 	return tcc_pinctrl_probe(pdev, &tcc805x_pinctrl_soc_data, gpio_base, pmgpio_base);
 }
