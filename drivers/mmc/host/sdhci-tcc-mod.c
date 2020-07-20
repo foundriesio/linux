@@ -146,6 +146,25 @@ static unsigned int sdhci_tcc_get_ro(struct sdhci_host *host)
 	return mmc_gpio_get_ro(host->mmc);
 }
 
+static void sdhci_tcc_adma_write_desc(struct sdhci_host *host,
+		void **desc, dma_addr_t addr, int len, unsigned int cmd)
+{
+	if (cpu_to_le32((u64)addr >> 32) != 0) {
+		/*
+		 * Telechips SDHC ADMA supports only 32-bit address.
+		 * If you want to use 64-bit address, use SDMA not ADMA.
+		 * You can use sdma as following:
+		 * .quirks = SDHCI_QUIRK_CAP_CLOCK_BASE_BROKEN |
+		 *           SDHCI_QUIRK_BROKEN_ADMA,
+		 */
+		pr_warn("[WARN] %s: Access 64-bit address!!\n",
+				mmc_hostname(host->mmc));
+		WARN_ON(1);
+	}
+
+	return sdhci_adma_write_desc(host, desc, addr, len, cmd);
+}
+
 static void sdhci_tcc_reset(struct sdhci_host *host, u8 mask)
 {
 	struct sdhci_tcc *tcc = to_tcc(host);
@@ -1146,6 +1165,7 @@ static const struct sdhci_ops sdhci_tcc_ops = {
 	.get_max_clock = sdhci_pltfm_clk_get_max_clock,
 	.set_clock = sdhci_tcc_set_clock,
 	.set_bus_width = sdhci_set_bus_width,
+	.adma_write_desc = sdhci_tcc_adma_write_desc,
 	.reset = sdhci_tcc_reset,
 	.hw_reset = sdhci_tcc_hw_reset,
 	.set_uhs_signaling = sdhci_set_uhs_signaling,
@@ -1163,6 +1183,7 @@ static const struct sdhci_ops sdhci_tcc803x_ops = {
 	.get_max_clock = sdhci_tcc803x_clk_get_max_clock,
 	.set_clock = sdhci_tcc_set_clock,
 	.set_bus_width = sdhci_set_bus_width,
+	.adma_write_desc = sdhci_tcc_adma_write_desc,
 	.reset = sdhci_tcc_reset,
 	.hw_reset = sdhci_tcc_hw_reset,
 	.set_uhs_signaling = sdhci_set_uhs_signaling,
@@ -1180,6 +1201,7 @@ static const struct sdhci_ops sdhci_tcc805x_ops = {
 	.get_max_clock = sdhci_tcc805x_clk_get_max_clock,
 	.set_clock = sdhci_tcc_set_clock,
 	.set_bus_width = sdhci_set_bus_width,
+	.adma_write_desc = sdhci_tcc_adma_write_desc,
 	.reset = sdhci_tcc_reset,
 	.hw_reset = sdhci_tcc_hw_reset,
 	.set_uhs_signaling = sdhci_set_uhs_signaling,
