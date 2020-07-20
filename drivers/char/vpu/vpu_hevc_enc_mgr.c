@@ -384,17 +384,8 @@ static int _vmgr_hevc_enc_release(struct inode *inode, struct file *filp)
 
 static int _vmgr_hevc_enc_internal_handler(void)
 {
-	int ret = RETCODE_INTR_DETECTION_NOT_ENABLED;
-	int ret_code = RETCODE_INTR_DETECTION_NOT_ENABLED;
+	int ret, ret_code = RETCODE_INTR_DETECTION_NOT_ENABLED;
 	int timeout = 200;
-
-	V_DBG(DEBUG_ENC_INTERRUPT, "enter (Interrupt option=%d, isr cnt:oper_intr=%d:%d, event=%s, ret_code=%d)",
-		vmgr_hevc_enc_data.check_interrupt_detection,
-		cntInt_vpu_he,
-		vmgr_hevc_enc_data.oper_intr,
-		ret==RETCODE_INTR_DETECTION_NOT_ENABLED?"not-evented":"evented", 
-		ret_code
-		);
 
 	if(vmgr_hevc_enc_data.check_interrupt_detection)
 	{
@@ -448,12 +439,10 @@ static int _vmgr_hevc_enc_internal_handler(void)
 		vmgr_hevc_enc_status_clear(vmgr_hevc_enc_data.base_addr);
 	}
 
-	V_DBG(DEBUG_ENC_INTERRUPT, "out (Interrupt option=%d, isr cnt:oper_intr=%d:%d, event=%s, ret_code=%d)",
+	V_DBG(DEBUG_ENC_INTERRUPT, "out (Interrupt option=%d, isr cnt=%d, ev(ret_code)=%s)",
 		vmgr_hevc_enc_data.check_interrupt_detection,
 		cntInt_vpu_he,
-		vmgr_hevc_enc_data.oper_intr,
-		ret==RETCODE_INTR_DETECTION_NOT_ENABLED?"not-evented":"evented", 
-		ret_code
+		ret_code==RETCODE_INTR_DETECTION_NOT_ENABLED?"not-evented":"evented"
 		);
 
 	return ret_code;

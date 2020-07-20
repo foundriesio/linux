@@ -132,7 +132,7 @@ int vp9mgr_process_ex(VpuList_t *cmd_list, vputype type, int Op, int *result)
 
 static int _vp9mgr_internal_handler(void)
 {
-    int ret, ret_code = RETCODE_SUCCESS;
+    int ret, ret_code = RETCODE_INTR_DETECTION_NOT_ENABLED;
     int timeout = 200;
 
     if(vp9mgr_data.check_interrupt_detection)
@@ -174,6 +174,11 @@ static int _vp9mgr_internal_handler(void)
         atomic_set(&vp9mgr_data.oper_intr, 0);
         vp9mgr_status_clear(vp9mgr_data.base_addr);
     }
+
+    V_DBG(DEBUG_ENC_INTERRUPT, "out (Interrupt option=%d, ev(ret_code)=%s)",
+        vp9mgr_data.check_interrupt_detection,
+        ret_code==RETCODE_INTR_DETECTION_NOT_ENABLED?"not-evented":"evented"
+        );
 
     return ret_code;
 }

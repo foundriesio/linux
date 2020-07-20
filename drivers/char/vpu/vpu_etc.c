@@ -38,7 +38,8 @@ unsigned int debug_mask = DEBUG_ENC_SEQUENCE |
 					DEBUG_ENC_CLOSE |
 					DEBUG_RSTCLK;
 #else
-unsigned int debug_mask = DEBUG_VPU_ERROR;
+// Jun 20200713
+unsigned int debug_mask = DEBUG_VPU_ERROR | DEBUG_ENC_INTERRUPT | DEBUG_ENC_SEQUENCE;
 #endif
 #endif
 
