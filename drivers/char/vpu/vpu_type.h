@@ -34,9 +34,7 @@
 #define JPU_C6
 
 #if !defined(CONFIG_ARCH_TCC897X)
-#if !defined(CONFIG_ANDROID)
-  #define VIDEO_IP_DIRECT_RESET_CTRL
-#endif
+#define VIDEO_IP_DIRECT_RESET_CTRL
 #endif
 //#define VBUS_CLK_ALWAYS_ON
 #define VBUS_CODA_CORE_CLK_CTRL

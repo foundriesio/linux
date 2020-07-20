@@ -189,7 +189,7 @@ int vmgr_process_ex(VpuList_t *cmd_list, vputype type, int Op, int *result)
 
 static int _vmgr_internal_handler(void)
 {
-    int ret, ret_code = RETCODE_SUCCESS;
+    int ret, ret_code = RETCODE_INTR_DETECTION_NOT_ENABLED;
     int timeout = 200;
 
     if (vmgr_data.check_interrupt_detection) {
@@ -233,6 +233,12 @@ static int _vmgr_internal_handler(void)
         atomic_set(&vmgr_data.oper_intr, 0);
         vmgr_status_clear(vmgr_data.base_addr);
     }
+
+    V_DBG(DEBUG_ENC_INTERRUPT, "out (Interrupt option=%d, isr cnt=%d, ev(ret_code)=%s)",
+        vmgr_data.check_interrupt_detection,
+        cntInt_vpu,
+        ret_code==RETCODE_INTR_DETECTION_NOT_ENABLED?"not-evented":"evented"
+        );
 
     return ret_code;
 }

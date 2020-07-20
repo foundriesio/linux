@@ -556,7 +556,7 @@ int vmgr_4k_d2_process_ex(VpuList_t *cmd_list, vputype type, int Op, int *result
 
 static int _vmgr_4k_d2_internal_handler(unsigned int reason)
 {
-    int ret, ret_code = RETCODE_SUCCESS;
+    int ret, ret_code = RETCODE_INTR_DETECTION_NOT_ENABLED;
     unsigned long flags;
     unsigned int vint_reason = 0;
 	int oper_inst = 0, cnt = 0;
@@ -637,6 +637,12 @@ static int _vmgr_4k_d2_internal_handler(unsigned int reason)
     dprintk("[_vmgr_4k_d2_internal_handler] : ret_code (%d), cntInt_4kd2 (%d), cntwk_4kd2 (%d), vmgr_4k_d2_data.oper_intr (%d) \n",
          ret_code, cntInt_4kd2, cntwk_4kd2, vmgr_4k_d2_data.oper_intr);
     #endif
+
+	V_DBG(DEBUG_ENC_INTERRUPT, "out (Interrupt option=%d, isr cnt=%d, ev(ret_code)=%s)",
+		vmgr_4k_d2_data.check_interrupt_detection,
+		cntInt_4kd2,
+		ret_code==RETCODE_INTR_DETECTION_NOT_ENABLED?"not-evented":"evented"
+		);
 
     return ret_code;
 }
