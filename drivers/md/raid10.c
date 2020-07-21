@@ -1253,7 +1253,7 @@ static void raid10_read_request(struct mddev *mddev, struct bio *bio,
 	}
 	slot = r10_bio->read_slot;
 
-	md_io_acct(mddev, bio_op(bio), bio_sectors(bio));
+	md_io_acct(mddev, bio_data_dir(bio), bio_sectors(bio));
 
 	read_bio = bio_clone_fast(bio, gfp, mddev->bio_set);
 
@@ -1538,7 +1538,7 @@ retry_write:
 		r10_bio->master_bio = bio;
 	}
 
-	md_io_acct(mddev, bio_op(bio), bio_sectors(bio));
+	md_io_acct(mddev, bio_data_dir(bio), bio_sectors(bio));
 	atomic_set(&r10_bio->remaining, 1);
 	md_bitmap_startwrite(mddev->bitmap, r10_bio->sector, r10_bio->sectors, 0);
 
