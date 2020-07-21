@@ -58,6 +58,11 @@ config ANDROID_DYNAMIC_PARTITION
       If enabled, supports Android dynamic partition feature. This
       doesn't allows devicetree early mount for system and vendor partition.
 
+config ANDROID_SYSTEM_AS_ROOT
+    bool "Support for Android System-As-Root"
+    default n
+    ---help---
+      Enables support for Android System-As-Root.
 endif # if ANDROID
 
 endmenu
