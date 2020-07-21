@@ -4184,14 +4184,12 @@ static int bnxt_hwrm_do_send_msg(struct bnxt *bp, void *msg, u32 msg_len,
 	int i, intr_process, rc, tmo_count;
 	struct input *req = msg;
 	u32 *data = msg;
-	__le32 *resp_len;
 	u8 *valid;
 	u16 cp_ring_id, len = 0;
 	struct hwrm_err_output *resp = bp->hwrm_cmd_resp_addr;
 	u16 max_req_len = BNXT_HWRM_MAX_REQ_LEN;
 	struct hwrm_short_input short_input = {0};
 	u32 doorbell_offset = BNXT_GRCPF_REG_CHIMP_COMM_TRIGGER;
-	u8 *resp_addr = (u8 *)bp->hwrm_cmd_resp_addr;
 	u32 bar_offset = BNXT_GRCPF_REG_CHIMP_COMM;
 	u16 dst = BNXT_HWRM_CHNL_CHIMP;
 
@@ -4209,7 +4207,6 @@ static int bnxt_hwrm_do_send_msg(struct bnxt *bp, void *msg, u32 msg_len,
 		bar_offset = BNXT_GRCPF_REG_KONG_COMM;
 		doorbell_offset = BNXT_GRCPF_REG_KONG_COMM_TRIGGER;
 		resp = bp->hwrm_cmd_kong_resp_addr;
-		resp_addr = (u8 *)bp->hwrm_cmd_kong_resp_addr;
 	}
 
 	memset(resp, 0, PAGE_SIZE);
@@ -4278,7 +4275,6 @@ static int bnxt_hwrm_do_send_msg(struct bnxt *bp, void *msg, u32 msg_len,
 	tmo_count = HWRM_SHORT_TIMEOUT_COUNTER;
 	timeout = timeout - HWRM_SHORT_MIN_TIMEOUT * HWRM_SHORT_TIMEOUT_COUNTER;
 	tmo_count += DIV_ROUND_UP(timeout, HWRM_MIN_TIMEOUT);
-	resp_len = (__le32 *)(resp_addr + HWRM_RESP_LEN_OFFSET);
 
 	if (intr_process) {
 		u16 seq_id = bp->hwrm_intr_seq_id;
@@ -4306,9 +4302,8 @@ static int bnxt_hwrm_do_send_msg(struct bnxt *bp, void *msg, u32 msg_len,
 					   le16_to_cpu(req->req_type));
 			return -EBUSY;
 		}
-		len = (le32_to_cpu(*resp_len) & HWRM_RESP_LEN_MASK) >>
-		      HWRM_RESP_LEN_SFT;
-		valid = resp_addr + len - 1;
+		len = le16_to_cpu(resp->resp_len);
+		valid = ((u8 *)resp) + len - 1;
 	} else {
 		int j;
 
@@ -4319,8 +4314,7 @@ static int bnxt_hwrm_do_send_msg(struct bnxt *bp, void *msg, u32 msg_len,
 			 */
 			if (test_bit(BNXT_STATE_FW_FATAL_COND, &bp->state))
 				return -EBUSY;
-			len = (le32_to_cpu(*resp_len) & HWRM_RESP_LEN_MASK) >>
-			      HWRM_RESP_LEN_SFT;
+			len = le16_to_cpu(resp->resp_len);
 			if (len)
 				break;
 			/* on first few passes, just barely sleep */
@@ -4342,7 +4336,7 @@ static int bnxt_hwrm_do_send_msg(struct bnxt *bp, void *msg, u32 msg_len,
 		}
 
 		/* Last byte of resp contains valid bit */
-		valid = resp_addr + len - 1;
+		valid = ((u8 *)resp) + len - 1;
 		for (j = 0; j < HWRM_VALID_BIT_DELAY_USEC; j++) {
 			/* make sure we read from updated DMA memory */
 			dma_rmb();
@@ -6776,6 +6770,7 @@ static int bnxt_alloc_ctx_mem(struct bnxt *bp)
 	struct bnxt_ctx_pg_info *ctx_pg;
 	struct bnxt_ctx_mem_info *ctx;
 	u32 mem_size, ena, entries;
+	u32 entries_sp, min;
 	u32 num_mr, num_ah;
 	u32 extra_srqs = 0;
 	u32 extra_qps = 0;
@@ -6865,14 +6860,17 @@ static int bnxt_alloc_ctx_mem(struct bnxt *bp)
 	ena |= FUNC_BACKING_STORE_CFG_REQ_ENABLES_TIM;
 
 skip_rdma:
-	entries = ctx->qp_max_l2_entries + extra_qps;
+	min = ctx->tqm_min_entries_per_ring;
+	entries_sp = ctx->vnic_max_vnic_entries + ctx->qp_max_l2_entries +
+		     2 * (extra_qps + ctx->qp_min_qp1_entries) + min;
+	entries_sp = roundup(entries_sp, ctx->tqm_entries_multiple);
+	entries = ctx->qp_max_l2_entries + extra_qps + ctx->qp_min_qp1_entries;
 	entries = roundup(entries, ctx->tqm_entries_multiple);
-	entries = clamp_t(u32, entries, ctx->tqm_min_entries_per_ring,
-			  ctx->tqm_max_entries_per_ring);
+	entries = clamp_t(u32, entries, min, ctx->tqm_max_entries_per_ring);
 	for (i = 0; i < bp->max_q + 1; i++) {
 		ctx_pg = ctx->tqm_mem[i];
-		ctx_pg->entries = entries;
-		mem_size = ctx->tqm_entry_size * entries;
+		ctx_pg->entries = i ? entries : entries_sp;
+		mem_size = ctx->tqm_entry_size * ctx_pg->entries;
 		rc = bnxt_alloc_ctx_pg_tbls(bp, ctx_pg, mem_size, 1, false);
 		if (rc)
 			return rc;
@@ -10034,7 +10032,7 @@ static void bnxt_timer(struct timer_list *t)
 	struct bnxt *bp = from_timer(bp, t, timer);
 	struct net_device *dev = bp->dev;
 
-	if (!netif_running(dev))
+	if (!netif_running(dev) || !test_bit(BNXT_STATE_OPEN, &bp->state))
 		return;
 
 	if (atomic_read(&bp->intr_sem) != 0)
@@ -12064,19 +12062,9 @@ static int bnxt_resume(struct device *device)
 		goto resume_exit;
 	}
 
-	if (bnxt_hwrm_queue_qportcfg(bp)) {
-		rc = -ENODEV;
+	rc = bnxt_hwrm_func_qcaps(bp);
+	if (rc)
 		goto resume_exit;
-	}
-
-	if (bp->hwrm_spec_code >= 0x10803) {
-		if (bnxt_alloc_ctx_mem(bp)) {
-			rc = -ENODEV;
-			goto resume_exit;
-		}
-	}
-	if (BNXT_NEW_RM(bp))
-		bnxt_hwrm_func_resc_qcaps(bp, false);
 
 	if (bnxt_hwrm_func_drv_rgtr(bp, NULL, 0, false)) {
 		rc = -ENODEV;
@@ -12092,6 +12080,8 @@ static int bnxt_resume(struct device *device)
 
 resume_exit:
 	bnxt_ulp_start(bp, rc);
+	if (!rc)
+		bnxt_reenable_sriov(bp);
 	rtnl_unlock();
 	return rc;
 }
@@ -12135,6 +12125,9 @@ static pci_ers_result_t bnxt_io_error_detected(struct pci_dev *pdev,
 		bnxt_close(netdev);
 
 	pci_disable_device(pdev);
+	bnxt_free_ctx_mem(bp);
+	kfree(bp->ctx);
+	bp->ctx = NULL;
 	rtnl_unlock();
 
 	/* Request a slot slot reset. */
@@ -12168,12 +12161,16 @@ static pci_ers_result_t bnxt_io_slot_reset(struct pci_dev *pdev)
 		pci_set_master(pdev);
 
 		err = bnxt_hwrm_func_reset(bp);
-		if (!err && netif_running(netdev))
-			err = bnxt_open(netdev);
-
-		if (!err)
-			result = PCI_ERS_RESULT_RECOVERED;
+		if (!err) {
+			err = bnxt_hwrm_func_qcaps(bp);
+			if (!err && netif_running(netdev))
+				err = bnxt_open(netdev);
+		}
 		bnxt_ulp_start(bp, err);
+		if (!err) {
+			bnxt_reenable_sriov(bp);
+			result = PCI_ERS_RESULT_RECOVERED;
+		}
 	}
 
 	if (result != PCI_ERS_RESULT_RECOVERED) {

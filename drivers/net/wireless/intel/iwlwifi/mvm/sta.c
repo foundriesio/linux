@@ -730,6 +730,11 @@ static int iwl_mvm_find_free_queue(struct iwl_mvm *mvm, u8 sta_id,
 
 	lockdep_assert_held(&mvm->mutex);
 
+	if (WARN(maxq >= mvm->trans->cfg->base_params->num_of_queues,
+		 "max queue %d >= num_of_queues (%d)", maxq,
+		 mvm->trans->cfg->base_params->num_of_queues))
+		maxq = mvm->trans->cfg->base_params->num_of_queues - 1;
+
 	/* This should not be hit with new TX path */
 	if (WARN_ON(iwl_mvm_has_new_tx_api(mvm)))
 		return -ENOSPC;
@@ -2066,16 +2071,24 @@ int iwl_mvm_rm_snif_sta(struct iwl_mvm *mvm, struct ieee80211_vif *vif)
 	return ret;
 }
 
+int iwl_mvm_rm_aux_sta(struct iwl_mvm *mvm)
+{
+	int ret;
+
+	lockdep_assert_held(&mvm->mutex);
+
+	iwl_mvm_disable_txq(mvm, NULL, mvm->aux_queue, IWL_MAX_TID_COUNT, 0);
+	ret = iwl_mvm_rm_sta_common(mvm, mvm->aux_sta.sta_id);
+	if (ret)
+		IWL_WARN(mvm, "Failed sending remove station\n");
+	iwl_mvm_dealloc_int_sta(mvm, &mvm->aux_sta);
+
+	return ret;
+}
+
 void iwl_mvm_dealloc_snif_sta(struct iwl_mvm *mvm)
 {
 	iwl_mvm_dealloc_int_sta(mvm, &mvm->snif_sta);
-}
-
-void iwl_mvm_del_aux_sta(struct iwl_mvm *mvm)
-{
-	lockdep_assert_held(&mvm->mutex);
-
-	iwl_mvm_dealloc_int_sta(mvm, &mvm->aux_sta);
 }
 
 /*
