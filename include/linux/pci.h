@@ -402,8 +402,6 @@ struct pci_dev {
 	unsigned int	reset_fn:1;
 	unsigned int    is_hotplug_bridge:1;
 	unsigned int	is_thunderbolt:1; /* Thunderbolt controller */
-	unsigned int    __aer_firmware_first_valid:1;
-	unsigned int	__aer_firmware_first:1;
 	unsigned int	broken_intx_masking:1;
 	unsigned int	io_window_1k:1;	/* Intel P2P bridge 1K I/O windows */
 	unsigned int	irq_managed:1;

@@ -246,7 +246,7 @@ static int dpc_probe(struct pcie_device *dev)
 	int status;
 	u16 ctl, cap;
 
-	if (pcie_aer_get_firmware_first(pdev))
+	if (!pcie_aer_is_native(pdev))
 		return -ENOTSUPP;
 
 	dpc = devm_kzalloc(device, sizeof(*dpc), GFP_KERNEL);
