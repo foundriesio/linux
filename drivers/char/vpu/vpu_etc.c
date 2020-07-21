@@ -29,20 +29,6 @@
 #define vpu_writel writel
 #define vpu_readl readl
 
-#ifdef VPU_DEBUG
-#if 0
-unsigned int debug_mask = DEBUG_ENC_SEQUENCE |
-					DEBUG_ENC_PROBE |
-					DEBUG_VPU_ERROR |
-					DEBUG_ENC_INSTANCE |
-					DEBUG_ENC_CLOSE |
-					DEBUG_RSTCLK;
-#else
-// Jun 20200713
-unsigned int debug_mask = DEBUG_VPU_ERROR | DEBUG_ENC_INTERRUPT | DEBUG_ENC_SEQUENCE;
-#endif
-#endif
-
 extern int _vmem_is_cma_allocated_virt_region(unsigned int start_virtaddr, unsigned int length);
 
 #ifdef CONFIG_VPU_TIME_MEASUREMENT

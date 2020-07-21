@@ -46,9 +46,21 @@
 #define DEBUG_ENC_DETAIL		(1<<8)
 
 #ifdef VPU_DEBUG
-extern unsigned int debug_mask;
+#if 0
+#define DEBUG_MASK ( DEBUG_ENC_SEQUENCE	|
+					DEBUG_ENC_PROBE 	|
+					DEBUG_VPU_ERROR		|
+					DEBUG_ENC_INSTANCE	|
+					DEBUG_ENC_CLOSE		|
+					DEBUG_RSTCLK )
+#else
+#define DEBUG_MASK DEBUG_VPU_ERROR
+#endif
+#endif
+
+#ifdef VPU_DEBUG
 #define V_DBG(x, fmt, args...) \
-	do { if (debug_mask & x) printk("[%s:%d] " fmt "\n", \
+	do { if (DEBUG_MASK & x) printk(KERN_ERR "[%s:%d] " fmt "\n", \
 							__func__, __LINE__, ##args); } while(0)
 #else
 #define V_DBG(x, fmt, args...) do { } while(0)
