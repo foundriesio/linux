@@ -272,8 +272,8 @@ void sdripc_mbox_receive_message(struct mbox_client *client, void *message)
 	}
 
 	ret = sdripc_rxqueue_push(sdripc_dev, mbox_data);
+	sdripc_dev->recv_event++;
 
-	sdripc_dev->recv_event = 1;
 	wake_up(&event_waitq);
 
 	#if 0
@@ -348,7 +348,6 @@ static unsigned int sdripc_poll( struct file *filp, poll_table *wait)
 	if(sdripc_dev->recv_event)
 	{
 		mask |= POLLIN | POLLRDNORM;
-		sdripc_dev->recv_event = 0;
 	}
 	return mask;
 }
@@ -463,6 +462,7 @@ static ssize_t sdripc_read(struct file *filp, char __user *buf, size_t count, lo
 			#endif
 			total_size += size;
 
+			sdripc_dev->recv_event--;
 			ret = sdripc_rxqueue_pop(sdripc_dev);
 		}
 	//}while(ret==0 && (count>total_size));
