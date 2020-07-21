@@ -94,9 +94,11 @@ struct padata_parallel_queue {
        struct padata_list    reorder;
        struct parallel_data *pd;
        struct work_struct    work;
-       struct work_struct    reorder_work;
        atomic_t              num_obj;
        int                   cpu_index;
+#ifndef __GENKSYMS__
+       struct work_struct    reorder_work;
+#endif
 };
 
 /**
