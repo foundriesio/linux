@@ -70,6 +70,8 @@ struct tcc_sc_mmc_host {
 	struct mmc_host_ops mmc_host_ops;	/* MMC host ops */
 	u64 dma_mask;		/* custom DMA mask */
 
+	struct workqueue_struct *mmc_tcc_wq;
+	struct work_struct request_work;
 	struct tasklet_struct finish_tasklet;	/* Tasklet structures */
 	struct timer_list timer;	/* Timer for timeouts */
 
@@ -230,12 +232,6 @@ static int tcc_sc_mmc_pre_dma_transfer(struct tcc_sc_mmc_host *host,
 static void tcc_sc_mmc_request(struct mmc_host *mmc, struct mmc_request *mrq)
 {
 	struct tcc_sc_mmc_host *host;
-	const struct tcc_sc_fw_handle *handle;
-	struct tcc_sc_fw_mmc_cmd cmd;
-	struct tcc_sc_fw_mmc_data data;
-	int ret;
-	unsigned long timeout;
-	struct scatterlist sg;
 
 	if(!mmc) {
 		printk("[ERROR][TCC_SC_MMC] mmc is null\n");
@@ -245,13 +241,6 @@ static void tcc_sc_mmc_request(struct mmc_host *mmc, struct mmc_request *mrq)
 	host = mmc_priv(mmc);
 	if(!host) {
 		printk("%s: [ERROR][TCC_SC_MMC] host is null\n",
-		       mmc_hostname(mmc));
-		return;
-	}
-
-	handle = host->handle;
-	if(!handle) {
-		printk("%s: [ERROR][TCC_SC_MMC] handle is null\n",
 		       mmc_hostname(mmc));
 		return;
 	}
@@ -269,6 +258,48 @@ static void tcc_sc_mmc_request(struct mmc_host *mmc, struct mmc_request *mrq)
 	}
 
 	host->mrq = mrq;
+
+	/* queue work */
+	queue_work(host->mmc_tcc_wq, &host->request_work);
+}
+
+static void tcc_sc_mmc_request_work(struct work_struct *work)
+{
+	struct tcc_sc_mmc_host *host = container_of(work, struct tcc_sc_mmc_host,
+			request_work);
+	struct mmc_host *mmc;
+	const struct tcc_sc_fw_handle *handle;
+	struct tcc_sc_fw_mmc_cmd cmd;
+	struct tcc_sc_fw_mmc_data data;
+	struct mmc_request *mrq;
+	unsigned long timeout;
+	struct scatterlist sg;
+	int ret;
+
+	if(!host) {
+		printk("[ERROR][TCC_SC_MMC] host is null\n");
+		return;
+	}
+
+	mmc = host->mmc;
+	if(!mmc) {
+		printk("[ERROR][TCC_SC_MMC] mmc is null\n");
+		return;
+	}
+
+	handle = host->handle;
+	if(!handle) {
+		printk("%s: [ERROR][TCC_SC_MMC] handle is null\n",
+		       mmc_hostname(host->mmc));
+		return;
+	}
+
+	mrq = host->mrq;
+	if(!mrq) {
+		printk("%s: [ERROR][TCC_SC_MMC] mrq is null\n",
+		       mmc_hostname(host->mmc));
+		return;
+	}
 
 	/* Request to send command */
 	cmd.opcode = mrq->cmd->opcode;
@@ -508,6 +539,16 @@ static int tcc_sc_mmc_probe(struct platform_device *pdev)
 	tasklet_init(&host->finish_tasklet,
 		tcc_sc_mmc_tasklet_finish, (unsigned long)host);
 
+	/*
+	 * Init workqueue.
+	 */
+	INIT_WORK(&host->request_work, tcc_sc_mmc_request_work);
+	host->mmc_tcc_wq = alloc_workqueue("mmc_tcc_sc", 0, 0);
+	if(!host->mmc_tcc_wq) {
+		dev_err(&pdev->dev, "[ERROR][TCC_SC_MMC] mmc: failed to allocate wq\n");
+		return -ENOMEM;
+	}
+
 	setup_timer(&host->timer, tcc_sc_mmc_timeout_timer, (unsigned long)host);
 
 	mmc->ops = &tcc_sc_mmc_ops;
@@ -516,7 +557,7 @@ static int tcc_sc_mmc_probe(struct platform_device *pdev)
 	mmc->max_segs = host->mmc_prot_info.max_segs;
 	mmc->max_seg_size = host->mmc_prot_info.max_seg_len;
 	mmc->max_blk_size = host->mmc_prot_info.blk_size;
-	mmc->max_req_size = mmc->max_segs * mmc->max_seg_size;
+	mmc->max_req_size = 0x80000;
 	mmc->max_blk_count = 65535;
 	
 	/* Allocate bounce buffer */
