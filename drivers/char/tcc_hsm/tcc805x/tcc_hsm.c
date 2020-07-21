@@ -139,7 +139,7 @@ static long tcc_hsm_ioctl_run_aes(unsigned int cmd, unsigned long arg)
 			MBOX_DEV_HSM, req, param.obj_id, param.key, param.key_size, param.iv, param.iv_size,
 			param.src, param.src_size, param.dst, param.dst_size);
 	} else {
-		if (copy_from_user(dma_buf->srcVir, (const uint8_t *)param.src, param.src_size)) {
+		if (copy_from_user((void *)dma_buf->srcVir, (void *)param.src, param.src_size)) {
 			ELOG("copy_from_user failed(%d)\n", ret);
 			return ret;
 		}

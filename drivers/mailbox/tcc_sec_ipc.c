@@ -59,7 +59,7 @@
  * */
 #define IS_THSM_EVENT(cmd) (5 == (((cmd)&0xF000) >> 12))
 #define HSM_EVENT_FLAG(cmd) (1 << cmd)
-#define DEBUG_TIME_MEASUREMENT 1
+//#define DEBUG_TIME_MEASUREMENT 1
 
 static const struct of_device_id sec_ipc_dt_id[] = {
 	{.compatible = "telechips,sec-ipc-m4"},
@@ -72,7 +72,7 @@ static const struct of_device_id sec_ipc_dt_id[] = {
 };
 MODULE_DEVICE_TABLE(of, sec_ipc_dt_id);
 
-static struct sec_device
+struct sec_device
 {
 	struct tcc_mbox_msg mbox_rmsg;
 	struct device *device;
@@ -355,16 +355,16 @@ static int sec_send_cmd_ioctl(unsigned long arg)
 	}
 	data_size = segment.size;
 	mbox_data.cmd[0] = 0; // To be handled by a normal command
-	mbox_data.cmd[1] = (unsigned int *)sec_dev->paddr;
+	mbox_data.cmd[1] = (unsigned int)sec_dev->paddr;
 	mbox_data.cmd[3] = data_size;
 	mbox_data.data_len = ((data_size + 3) / sizeof(unsigned int));
 	// size 0 is included on purpose to send a command without data
 	if (data_size <= TCC_MBOX_MAX_MSG) {
-		memcpy(mbox_data.data, segment.data_addr, data_size);
+		memcpy(mbox_data.data, (unsigned int *)segment.data_addr, data_size);
 		mbox_data.cmd[2] = DATA_MBOX;
 		DLOG("cmd=0x%X, data size=0x%x\n", segment.cmd, data_size);
 	} else if (TCC_MBOX_MAX_MSG < data_size) {
-		memcpy(sec_dev->vaddr, segment.data_addr, data_size);
+		memcpy(sec_dev->vaddr, (unsigned int *)segment.data_addr, data_size);
 		mbox_data.cmd[2] = DMA;
 	}
 	DLOG(
@@ -399,7 +399,6 @@ static int sec_get_evt_ioctl(unsigned long arg)
 static int sec_get_evt_info_ioctl(unsigned long arg)
 {
 	int result = 0;
-	uint32_t event, idx;
 	struct sec_segment segment_user;
 	struct sec_device *sec_dev = NULL;
 
@@ -485,6 +484,7 @@ static unsigned int sec_poll(struct file *filp, poll_table *wait)
 	}
 }
 
+#if 0 // Test code
 static int sec_send_cmd(int cmd, void *data, int size, int device_id)
 {
 	struct tcc_mbox_data mbox_data = {
@@ -509,7 +509,7 @@ static int sec_send_cmd(int cmd, void *data, int size, int device_id)
 	}
 
 	mbox_data.cmd[0] = cmd;
-	mbox_data.cmd[1] = (unsigned int *)sec_dev->paddr;
+	mbox_data.cmd[1] = (unsigned int)sec_dev->paddr;
 	mbox_data.cmd[3] = size;
 	mbox_data.data_len = ((size + 3) / sizeof(unsigned int));
 	data_size = size;
@@ -548,6 +548,8 @@ static void test_send_mbox(int cmd)
 	cmd = cmd & 0xFFFF;
 	sec_send_cmd(cmd, buffer, sizeof(buffer), device_id);
 }
+
+#endif
 
 /**
  * This function is atomic.
@@ -603,14 +605,14 @@ static void sec_msg_received(struct mbox_client *client, void *message)
 
 	mutex_unlock(&mutex_recv);
 }
-
+#if defined(CONFIG_ARCH_TCC803X)
 static void sec_msg_sent(struct mbox_client *client, void *message, int r)
 {
 	if (r) {
 		ELOG("Message could not be sent: %d\n", r);
 	}
 }
-
+#endif
 static struct mbox_chan *sec_request_channel(struct platform_device *pdev, const char *name)
 {
 	struct mbox_client *client;

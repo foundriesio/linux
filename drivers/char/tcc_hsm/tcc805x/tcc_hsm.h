@@ -116,9 +116,9 @@ struct tcc_hsm_ioctl_aes_param
 	uint32_t key_size;
 	uint8_t iv[TCC_HSM_AES_IV_SIZE];
 	uint32_t iv_size;
-	uint32_t src;
+	uint64_t src;
 	uint32_t src_size;
-	uint32_t dst;
+	uint64_t dst;
 	uint32_t dst_size;
 	uint32_t dma;
 };
@@ -129,9 +129,9 @@ struct tcc_hsm_ioctl_aes_by_kt_param
 	uint32_t key_index;
 	uint8_t iv[TCC_HSM_AES_IV_SIZE];
 	uint32_t iv_size;
-	uint32_t src;
+	uint64_t src;
 	uint32_t src_size;
-	uint32_t dst;
+	uint64_t dst;
 	uint32_t dst_size;
 	uint32_t dma;
 };
@@ -141,7 +141,7 @@ struct tcc_hsm_ioctl_mac_param
 	uint32_t obj_id;
 	uint8_t key[TCC_HSM_MAC_KEY_SIZE];
 	uint32_t key_size;
-	uint32_t src;
+	uint64_t src;
 	uint32_t src_size;
 	uint8_t mac[TCC_HSM_MAC_MSG_SIZE];
 	uint32_t mac_size;
@@ -152,7 +152,7 @@ struct tcc_hsm_ioctl_mac_by_kt_param
 {
 	uint32_t obj_id;
 	uint32_t key_index;
-	uint32_t src;
+	uint64_t src;
 	uint32_t src_size;
 	uint8_t mac[TCC_HSM_MAC_MSG_SIZE];
 	uint32_t mac_size;
@@ -162,7 +162,7 @@ struct tcc_hsm_ioctl_mac_by_kt_param
 struct tcc_hsm_ioctl_hash_param
 {
 	uint32_t obj_id;
-	uint32_t src;
+	uint64_t src;
 	uint32_t src_size;
 	uint8_t digest[TCC_HSM_HASH_DIGEST_SIZE];
 	uint32_t digest_size;
@@ -185,7 +185,7 @@ struct tcc_hsm_ioctl_rsassa_param
 	uint32_t obj_id;
 	uint8_t modN[TCC_HSM_MODE_N_SIZE];
 	uint32_t modN_size;
-	uint32_t key;
+	uint64_t key;
 	uint32_t key_size;
 	uint8_t digest[TCC_HSM_RSA_DIG_SIZE];
 	uint32_t digest_size;
@@ -202,7 +202,7 @@ struct tcc_hsm_ioctl_otp_param
 
 struct tcc_hsm_ioctl_rng_param
 {
-	uint32_t rng;
+	uint64_t rng;
 	uint32_t rng_size;
 };
 
