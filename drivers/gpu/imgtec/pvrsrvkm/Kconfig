@@ -34,3 +34,14 @@ config POWERVR_VZ
         bool "PowerVR Virtualisation"
         default n
         depends on POWERVR_ROGUE
+
+config POWERVR_DEBUG
+	bool "Debug mode"
+	default n
+	depends on POWERVR_ROGUE
+
+config POWERVR_DEBUG_LEVEL
+        int "debug_level"
+        default 7
+        depends on POWERVR_DEBUG
+
