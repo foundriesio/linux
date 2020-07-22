@@ -371,8 +371,10 @@ void PVRSRVDebugPrintf(IMG_UINT32 ui32DebugLevel,
 	{
 		return;
 	}
-	
+
+#if defined(CONFIG_POWERVR_DEBUG_LEVEL)	
 	gPVRDebugLevel = CONFIG_POWERVR_DEBUG_LEVEL;
+#endif
 	va_start(vaArgs, pszFormat);
 
 	spin_lock_irqsave(&gsDebugLock, ulLockFlags);
