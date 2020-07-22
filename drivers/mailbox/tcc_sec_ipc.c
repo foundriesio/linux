@@ -556,17 +556,19 @@ static void test_send_mbox(int cmd)
  */
 static void sec_msg_received(struct mbox_client *client, void *message)
 {
-	mutex_lock(&mutex_recv);
-
-	struct tcc_mbox_data *mbox_data = (struct tcc_mbox_data *)message;
+	struct tcc_mbox_data *mbox_data = NULL;
 	struct sec_device *sec_dev = NULL;
 	int msg_len = -1, cmd = -1, trans_type = -1, dma_addr = -1;
 	int device_id = -1;
 
+	mutex_lock(&mutex_recv);
+
+	mbox_data = (struct tcc_mbox_data *)message;
 	device_id = sec_get_device_id(client->dev->init_name);
 	sec_dev = sec_get_device(device_id);
 	if (sec_dev == NULL) {
 		ELOG("Can't find device\n");
+		mutex_unlock(&mutex_recv);
 		return;
 	}
 
