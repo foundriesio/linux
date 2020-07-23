@@ -48,21 +48,22 @@
 #define MBOX_LOCATION_CMD 0x0000
 
 int32_t tcc_hsm_cmd_set_key(
-	uint32_t device_id, uint32_t req, uint32_t otp_addr, uint32_t otp_size, uint32_t key_index)
+	uint32_t device_id, uint32_t req, uint32_t addr, uint32_t key_size, uint32_t key_index)
 {
 	uint32_t data[128] = {0};
+	uint32_t index = 0;
 	int32_t rdata = 0;
 	int32_t data_size = 0, rdata_size = 0;
 	int32_t result = -1;
 
-	data[0] = otp_addr;
-	data[1] = otp_size;
-	data[2] = key_index;
+	data[index++] = addr;
+	data[index++] = key_size;
+	data[index++] = key_index;
 
-	data_size = (sizeof(uint32_t) * 3);
+	data_size = (sizeof(uint32_t) * index);
 
 	rdata_size = sec_sendrecv_cmd(
-		device_id, (req | MBOX_LOCATION_DATA), data, data_size, &rdata, sizeof(rdata));
+		device_id, (req | MBOX_LOCATION_DATA), data, data_size, &rdata, DMA_MAX_RSIZE);
 	if (rdata_size < 0) {
 		ELOG("sec_sendrecv_cmd error(%d)\n", rdata_size);
 		return -EBADR;
@@ -86,6 +87,7 @@ int32_t tcc_hsm_cmd_run_aes(
 	int32_t rdata = 0;
 	int32_t data_size = 0, rdata_size = 0;
 	int32_t result = -1;
+int i;
 
 	data[index++] = obj_id;
 	data[index++] = HSM_DMA;
@@ -111,6 +113,10 @@ int32_t tcc_hsm_cmd_run_aes(
 	data[index++] = dst;
 
 	data_size = (sizeof(uint32_t) * index);
+
+for(i=0; i<index; i++) 
+    ELOG("data(%d, %x)\n", i, data[i]); 
+       
 	rdata_size = sec_sendrecv_cmd(
 		device_id, (req | MBOX_LOCATION_DATA), data, data_size, &rdata, DMA_MAX_RSIZE);
 	if (rdata_size < 0) {
@@ -147,8 +153,10 @@ int32_t tcc_hsm_cmd_run_aes_by_kt(
 	}
 	index += (iv_size + 3) / sizeof(uint32_t);
 
-	data[index++] = 0; // tag size, Not used
-	data[index++] = 0; // add size, Not used
+	if (req == REQ_HSM_RUN_AES_BY_KT) {
+	    data[index++] = 0; // tag size
+    	data[index++] = 0; // add size
+    }
 	data[index++] = src_size;
 	data[index++] = src;
 	data[index++] = dst_size;
@@ -231,7 +239,7 @@ int32_t tcc_hsm_cmd_gen_mac_by_kt(
 	int32_t data_size = 0, rdata_size = 0;
 	int32_t result = 0;
 
-	if ((req == REQ_HSM_GEN_HMAC) || (req == REQ_HSM_GEN_SM3_HMAC)) {
+	if ((req == REQ_HSM_GEN_HMAC_BY_KT) || (req == REQ_HSM_GEN_SM3_HMAC_BY_KT)) {
 		data[index++] = obj_id;
 	}
 	data[index++] = HSM_DMA;
@@ -445,8 +453,8 @@ int32_t tcc_hsm_cmd_get_rand(uint32_t device_id, uint32_t req, uint32_t rng, int
 	return result;
 }
 
-int32_t tcc_hsm_cmd_write_otp(
-	uint32_t device_id, uint32_t req, uint32_t otp_addr, uint32_t otpBuf, uint32_t otp_size)
+int32_t tcc_hsm_cmd_write(
+	uint32_t device_id, uint32_t req, uint32_t addr, uint8_t *buf, uint32_t buf_size)
 {
 	uint32_t data[128] = {0};
 	uint32_t index = 0;
@@ -454,9 +462,14 @@ int32_t tcc_hsm_cmd_write_otp(
 	int32_t data_size = 0, rdata_size = 0;
 	int32_t result = 0;
 
-	data[index++] = otp_addr;
-	data[index++] = otp_size;
-	data[index++] = otpBuf;
+	data[index++] = addr;
+	data[index++] = buf_size;
+
+	if (buf != NULL && buf_size > 0) {
+		ELOG("ljh1(%d)\n", buf_size);
+		memcpy((uint8_t *)&data[index], buf, buf_size);
+		index += (buf_size + 3) / sizeof(uint32_t);
+	}
 
 	data_size = (sizeof(uint32_t) * index);
 
@@ -477,7 +490,7 @@ int32_t tcc_hsm_cmd_write_otp(
 }
 
 int32_t tcc_hsm_cmd_write_snor(
-	uint32_t device_id, uint32_t req, uint32_t snorAddr, uint8_t *snorBuf, uint32_t snorSize)
+	uint32_t device_id, uint32_t req, uint32_t snor_addr, uint8_t *buf, uint32_t buf_Size)
 {
 	int32_t result = -1;
 	//	req |= MBOX_LOCATION_DATA;
