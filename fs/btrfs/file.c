@@ -1551,7 +1551,6 @@ static noinline int check_can_nocow(struct btrfs_inode *inode, loff_t pos,
 {
 	struct btrfs_fs_info *fs_info = btrfs_sb(inode->vfs_inode.i_sb);
 	struct btrfs_root *root = inode->root;
-	struct btrfs_ordered_extent *ordered;
 	u64 lockstart, lockend;
 	u64 num_bytes;
 	int ret;
@@ -1564,17 +1563,8 @@ static noinline int check_can_nocow(struct btrfs_inode *inode, loff_t pos,
 	lockend = round_up(pos + *write_bytes,
 			   fs_info->sectorsize) - 1;
 
-	while (1) {
-		lock_extent(&inode->io_tree, lockstart, lockend);
-		ordered = btrfs_lookup_ordered_range(inode, lockstart,
-						     lockend - lockstart + 1);
-		if (!ordered) {
-			break;
-		}
-		unlock_extent(&inode->io_tree, lockstart, lockend);
-		btrfs_start_ordered_extent(&inode->vfs_inode, ordered, 1);
-		btrfs_put_ordered_extent(ordered);
-	}
+	btrfs_lock_and_flush_ordered_range(&inode->io_tree, inode, lockstart,
+					   lockend, NULL);
 
 	num_bytes = lockend - lockstart + 1;
 	ret = can_nocow_extent(&inode->vfs_inode, lockstart, &num_bytes,
