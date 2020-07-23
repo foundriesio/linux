@@ -1143,8 +1143,6 @@ static void dwc3_prepare_trbs(struct dwc3_ep *dep)
 	}
 }
 
-static void dwc3_gadget_ep_cleanup_cancelled_requests(struct dwc3_ep *dep);
-
 static int __dwc3_gadget_kick_transfer(struct dwc3_ep *dep, u16 cmd_param)
 {
 	struct dwc3_gadget_ep_cmd_params params;
@@ -1176,20 +1174,15 @@ static int __dwc3_gadget_kick_transfer(struct dwc3_ep *dep, u16 cmd_param)
 
 	ret = dwc3_send_gadget_ep_cmd(dep, cmd, &params);
 	if (ret < 0) {
-		struct dwc3_request *tmp;
-
-		if (ret == -EAGAIN)
-			return ret;
-
-		dwc3_stop_active_transfer(dep, true, true);
-
-		list_for_each_entry_safe(req, tmp, &dep->started_list, list)
-			dwc3_gadget_move_cancelled_request(req);
-
-		/* If ep isn't started, then there's no end transfer pending */
-		if (!(dep->flags & DWC3_EP_END_TRANSFER_PENDING))
-			dwc3_gadget_ep_cleanup_cancelled_requests(dep);
-
+		/*
+		 * FIXME we need to iterate over the list of requests
+		 * here and stop, unmap, free and del each of the linked
+		 * requests instead of what we do now.
+		 */
+		if (req->trb)
+			memset(req->trb, 0, sizeof(struct dwc3_trb));
+		dep->queued_requests--;
+		dwc3_gadget_del_and_unmap_request(dep, req, ret);
 		return ret;
 	}
 
@@ -2114,6 +2107,7 @@ static int dwc3_gadget_init_endpoints(struct dwc3 *dwc, u8 num)
 
 		INIT_LIST_HEAD(&dep->pending_list);
 		INIT_LIST_HEAD(&dep->started_list);
+		INIT_LIST_HEAD(&dep->cancelled_list);
 	}
 
 	return 0;

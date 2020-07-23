@@ -587,7 +587,9 @@ mlxsw_sp_acl_tcam_chunk_assoc(struct mlxsw_sp *mlxsw_sp,
 			      struct mlxsw_afk_element_usage *elusage,
 			      struct mlxsw_sp_acl_tcam_chunk *chunk)
 {
+	struct mlxsw_sp_acl_tcam_chunk *chunk2;
 	struct mlxsw_sp_acl_tcam_region *region;
+	struct list_head *pos;
 	bool region_created = false;
 	bool need_split;
 	int err;
@@ -616,7 +618,14 @@ mlxsw_sp_acl_tcam_chunk_assoc(struct mlxsw_sp *mlxsw_sp,
 	}
 
 	chunk->region = region;
-	list_add_tail(&chunk->list, &region->chunk_list);
+
+	/* Position the chunk inside the list according to priority */
+	list_for_each(pos, &region->chunk_list) {
+		chunk2 = list_entry(pos, typeof(*chunk2), list);
+		if (chunk2->priority > priority)
+			break;
+	}
+	list_add_tail(&chunk->list, pos);
 
 	if (!region_created)
 		return 0;
