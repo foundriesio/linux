@@ -131,13 +131,13 @@ PVRSRV_ERROR SysDevInit(void *pvOSDevice, PVRSRV_DEVICE_CONFIG **ppsDevConfig)
 	psDevMemRes = platform_get_resource(psDev, IORESOURCE_MEM, 0);
 	if (psDevMemRes)
 	{
-		gsDevCfg.sRegsCpuPBase.uiAddr = psDevMemRes->start;
+		gsDevCfg.sRegsCpuPBase.uiAddr = psDevMemRes->start + (PVRSRV_VZ_MODE_IS(GUEST) ? RGX_VIRTUALISATION_REG_SIZE_PER_OS : 0); /* NB: address offset required only if 2nd stage MMU translation is disabled */;
 		gsDevCfg.ui32RegsSize         = resource_size(psDevMemRes);
 	}
 	else
 	{
 		PVR_DPF((PVR_DBG_WARNING, "%s: platform_get_resource failed", __func__));
-		gsDevCfg.sRegsCpuPBase.uiAddr = TCC_PowerVR_9XTP_PBASE;
+		gsDevCfg.sRegsCpuPBase.uiAddr = TCC_PowerVR_9XTP_PBASE + (PVRSRV_VZ_MODE_IS(GUEST) ? RGX_VIRTUALISATION_REG_SIZE_PER_OS : 0); /* NB: address offset required only if 2nd stage MMU translation is disabled */;
 		gsDevCfg.ui32RegsSize         = TCC_PowerVR_9XTP_SIZE;
 	}
 
