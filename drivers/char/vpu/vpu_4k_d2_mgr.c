@@ -507,7 +507,7 @@ int vmgr_4k_d2_get_alive(void)
 int vmgr_4k_d2_set_close(vputype type, int value, int bfreemem)
 {
     if( vmgr_4k_d2_get_close(type) == value ){
-        dprintk(" %d was already set into %d. \n", type, value);
+        printk(" %d was already set into %d. \n", type, value);
         return -1;
     }
 
@@ -638,10 +638,10 @@ static int _vmgr_4k_d2_internal_handler(unsigned int reason)
          ret_code, cntInt_4kd2, cntwk_4kd2, vmgr_4k_d2_data.oper_intr);
     #endif
 
-	V_DBG(DEBUG_ENC_INTERRUPT, "out (Interrupt option=%d, isr cnt=%d, ev(ret_code)=%s)",
+	V_DBG(DEBUG_ENC_INTERRUPT, "out (Interrupt option=%d, isr cnt=%d, ev=%d)",
 		vmgr_4k_d2_data.check_interrupt_detection,
 		cntInt_4kd2,
-		ret_code==RETCODE_INTR_DETECTION_NOT_ENABLED?"not-evented":"evented"
+		ret_code
 		);
 
     return ret_code;
@@ -1000,7 +1000,8 @@ static int _vmgr_4k_d2_process(vputype type, int cmd, long pHandle, void* args)
             break;
         }
     }
-#if defined(CONFIG_VENC_CNT_1) || defined(CONFIG_VENC_CNT_2) || defined(CONFIG_VENC_CNT_3) || defined(CONFIG_VENC_CNT_4)
+#if defined(CONFIG_VENC_CNT_1) || defined(CONFIG_VENC_CNT_2) || defined(CONFIG_VENC_CNT_3) \
+    || defined(CONFIG_VENC_CNT_4) || defined(CONFIG_VENC_CNT_5)
     else
     {
         err("@@ Enc[%d]: Encoder for VPU-4K-D2 VP9/HEVC do not support. command(0x%x) \n", type, cmd);
@@ -1118,7 +1119,8 @@ static int _vmgr_4k_d2_cmd_open(char *str)
 #ifdef FORCED_ERROR
         forced_error_count = FORCED_ERR_CNT;
 #endif
-#if defined(CONFIG_VENC_CNT_1) || defined(CONFIG_VENC_CNT_2) || defined(CONFIG_VENC_CNT_3) || defined(CONFIG_VENC_CNT_4)
+#if defined(CONFIG_VENC_CNT_1) || defined(CONFIG_VENC_CNT_2) || defined(CONFIG_VENC_CNT_3) \
+    || defined(CONFIG_VENC_CNT_4) || defined(CONFIG_VENC_CNT_5)
         vmgr_4k_d2_data.only_decmode = 0;
 #else
         vmgr_4k_d2_data.only_decmode = 1;

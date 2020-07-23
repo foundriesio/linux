@@ -683,6 +683,14 @@
 			no-map;
 		};
 
+		pmap_enc_ext4: enc_ext4 {
+			compatible = "telechips,pmap";
+			telechips,pmap-name = "enc_ext4";
+			alloc-ranges = <0x0 RESERVED_MEM_BASE 0x0 RESERVED_MEM_SIZE>;
+			size = <0x0 PMAP_SIZE_ENC_EXT4>;
+			no-map;
+		};
+
 		/*
 		pmap_svm: pmap_svm {
 			compatible = "telechips,pmap";

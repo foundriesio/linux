@@ -59,7 +59,8 @@ static struct task_struct *kidle_task = NULL;
 extern void do_gettimeofday(struct timeval *tv);
 #endif
 extern int tcc_jpu_dec( int Op, codec_handle_t* pHandle, void* pParam1, void* pParam2 );
-#if defined(CONFIG_VENC_CNT_1) || defined(CONFIG_VENC_CNT_2) || defined(CONFIG_VENC_CNT_3) || defined(CONFIG_VENC_CNT_4)
+#if defined(CONFIG_VENC_CNT_1) || defined(CONFIG_VENC_CNT_2) || defined(CONFIG_VENC_CNT_3) \
+    || defined(CONFIG_VENC_CNT_4)  || defined(CONFIG_VENC_CNT_5)
 extern int tcc_jpu_enc( int Op, codec_handle_t* pHandle, void* pParam1, void* pParam2 );
 #endif
 
@@ -391,9 +392,9 @@ static int _jmgr_internal_handler(void)
         jmgr_status_clear(jmgr_data.base_addr);
     }
 
-    V_DBG(DEBUG_ENC_INTERRUPT, "out (Interrupt option=%d, ev(ret_code)=%s)",
+    V_DBG(DEBUG_ENC_INTERRUPT, "out (Interrupt option=%d, ev=%d)",
         jmgr_data.check_interrupt_detection,
-        ret_code==RETCODE_INTR_DETECTION_NOT_ENABLED?"not-evented":"evented"
+        ret_code
         );
 
     return ret_code;
@@ -676,7 +677,8 @@ static int _jmgr_process(vputype type, int cmd, long pHandle, void* args)
                 break;
         }
     }
-#if defined(CONFIG_VENC_CNT_1) || defined(CONFIG_VENC_CNT_2) || defined(CONFIG_VENC_CNT_3) || defined(CONFIG_VENC_CNT_4)
+#if defined(CONFIG_VENC_CNT_1) || defined(CONFIG_VENC_CNT_2) || defined(CONFIG_VENC_CNT_3) \
+    || defined(CONFIG_VENC_CNT_4) || defined(CONFIG_VENC_CNT_5)
     else
     {
         switch(cmd)
@@ -916,7 +918,8 @@ static int _jmgr_cmd_open(char *str)
 #ifdef FORCED_ERROR
         forced_error_count = FORCED_ERR_CNT;
 #endif
-#if defined(CONFIG_VENC_CNT_1) || defined(CONFIG_VENC_CNT_2) || defined(CONFIG_VENC_CNT_3) || defined(CONFIG_VENC_CNT_4)
+#if defined(CONFIG_VENC_CNT_1) || defined(CONFIG_VENC_CNT_2) || defined(CONFIG_VENC_CNT_3) \
+    || defined(CONFIG_VENC_CNT_4) || defined(CONFIG_VENC_CNT_5)
         jmgr_data.only_decmode = 0;
 #else
         jmgr_data.only_decmode = 1;
@@ -928,16 +931,16 @@ static int _jmgr_cmd_open(char *str)
         jmgr_enable_irq(jmgr_data.irq);
         vetc_reg_init(jmgr_data.base_addr);
         if(0 > (ret = vmem_init()))
-	    {
-	        err("failed to allocate memory for JPU!! %d \n", ret);
-	        //return -ENOMEM;
-	    }
+        {
+            err("failed to allocate memory for JPU!! %d \n", ret);
+            //return -ENOMEM;
+        }
     }
     atomic_inc(&jmgr_data.dev_opened);
 
-	dprintk("======> _jmgr_%s_open Out!! %d'th\n", str, atomic_read(&jmgr_data.dev_opened));
+    dprintk("======> _jmgr_%s_open Out!! %d'th\n", str, atomic_read(&jmgr_data.dev_opened));
 
-	return 0;
+    return 0;
 }
 
 static int _jmgr_cmd_release(char *str)
@@ -1603,9 +1606,9 @@ int jmgr_suspend(struct platform_device *pdev, pm_message_t state)
 
     if(atomic_read(&jmgr_data.dev_opened) != 0)
     {
-        printk("\n jpu: suspend In DEC(%d/%d/%d/%d/%d), ENC(%d/%d/%d/%d) \n",
+        printk("\n jpu: suspend In DEC(%d/%d/%d/%d/%d), ENC(%d/%d/%d/%d/%d) \n",
 				jmgr_get_close(VPU_DEC), jmgr_get_close(VPU_DEC_EXT), jmgr_get_close(VPU_DEC_EXT2), jmgr_get_close(VPU_DEC_EXT3), jmgr_get_close(VPU_DEC_EXT4),
-                jmgr_get_close(VPU_ENC), jmgr_get_close(VPU_ENC_EXT), jmgr_get_close(VPU_ENC_EXT2), jmgr_get_close(VPU_ENC_EXT3));
+                jmgr_get_close(VPU_ENC), jmgr_get_close(VPU_ENC_EXT), jmgr_get_close(VPU_ENC_EXT2), jmgr_get_close(VPU_ENC_EXT3), jmgr_get_close(VPU_ENC_EXT4));
 
         _jmgr_external_all_close(200);
 
@@ -1614,9 +1617,9 @@ int jmgr_suspend(struct platform_device *pdev, pm_message_t state)
         for(i=0; i<open_count; i++) {
             jmgr_disable_clock(0, 0);
         }
-        printk("jpu: suspend Out DEC(%d/%d/%d/%d/%d), ENC(%d/%d/%d/%d) \n\n",
+        printk("jpu: suspend Out DEC(%d/%d/%d/%d/%d), ENC(%d/%d/%d/%d/%d) \n\n",
 				jmgr_get_close(VPU_DEC), jmgr_get_close(VPU_DEC_EXT), jmgr_get_close(VPU_DEC_EXT2), jmgr_get_close(VPU_DEC_EXT3), jmgr_get_close(VPU_DEC_EXT4),
-                jmgr_get_close(VPU_ENC), jmgr_get_close(VPU_ENC_EXT), jmgr_get_close(VPU_ENC_EXT2), jmgr_get_close(VPU_ENC_EXT3));
+                jmgr_get_close(VPU_ENC), jmgr_get_close(VPU_ENC_EXT), jmgr_get_close(VPU_ENC_EXT2), jmgr_get_close(VPU_ENC_EXT3), jmgr_get_close(VPU_ENC_EXT4));
     }
 
     return 0;

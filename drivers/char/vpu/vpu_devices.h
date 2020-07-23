@@ -28,6 +28,8 @@
 #define DEC_EXT4_NAME	"vpu_vdec_ext4"
 
 #define ENC_NAME		"vpu_venc"
-#define ENC_EXT_NAME	"vpu_vencext"
-#define ENC_EXT2_NAME	"vpu_vencext2"
-#define ENC_EXT3_NAME	"vpu_vencext3"
+#define ENC_EXT_NAME	"vpu_venc_ext"
+#define ENC_EXT2_NAME	"vpu_venc_ext2"
+#define ENC_EXT3_NAME	"vpu_venc_ext3"
+#define ENC_EXT4_NAME	"vpu_venc_ext4"
+
