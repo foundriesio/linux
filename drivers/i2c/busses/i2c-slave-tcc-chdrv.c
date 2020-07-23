@@ -1240,13 +1240,21 @@ static int tcc_i2c_slave_resume(struct device *dev)
 	struct tcc_i2c_slave *i2c = dev_get_drvdata(dev);
 
 	spin_lock(&i2c->lock);
-
+	/* Enable Clock */
 	if(i2c->hclk) {
 		if(clk_prepare_enable(i2c->hclk) != 0) {
 			dev_err(i2c->dev, "[ERROR][I2C] can't do i2c slave hclk clock enable\n");
 			return -ENXIO;
 		}
 	}
+	/* Config Pinctrl */
+	i2c->pinctrl = devm_pinctrl_get_select(dev, "default");
+	if(IS_ERR(i2c->pinctrl)) {
+		dev_err(i2c->dev,
+				"[ERROR][I2C] Failed to get pinctrl (default state)\n");
+		return -ENODEV;
+	}
+	/* Initialize I2C Slave */
 	ret = tcc_i2c_slave_hwinit(i2c);
 	if (ret != 0) {
 		dev_err(i2c->dev, "[ERROR][I2C] failed to set clock and port configurations err %d\n",
