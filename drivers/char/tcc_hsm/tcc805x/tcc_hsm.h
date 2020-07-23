@@ -104,8 +104,8 @@ enum tcc_hsm_ioctl_obj_id_ecc
 
 struct tcc_hsm_ioctl_set_key_param
 {
-	uint32_t otp_addr;
-	uint32_t otp_size;
+	uint32_t addr;
+	uint32_t data_size;
 	uint32_t key_index;
 };
 
@@ -193,9 +193,9 @@ struct tcc_hsm_ioctl_rsassa_param
 	uint32_t sign_size;
 };
 
-struct tcc_hsm_ioctl_otp_param
+struct tcc_hsm_ioctl_write_param
 {
-	uint32_t otp_addr;
+	uint32_t addr;
 	uint64_t data;
 	uint32_t data_size;
 };

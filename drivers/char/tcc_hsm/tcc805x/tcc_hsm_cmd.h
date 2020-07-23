@@ -17,22 +17,19 @@
 #define _TCC_HSM_CMD_H_
 
 // clang-format off
-#define REQ_HSM_SET_KEY_FROM_OTP            0x10000001
-#define REQ_HSM_SET_KEY_FROM_SNOR           0x10000002
-
 #define REQ_HSM_RUN_AES                     0x10010000
-#define REQ_HSM_RUN_AES_BY_KT               0x10010001
-#define REQ_HSM_RUN_SM4                     0x10020000
-#define REQ_HSM_RUN_SM4_BY_KT               0x10020002
+#define REQ_HSM_RUN_AES_BY_KT               0x10020000
+#define REQ_HSM_RUN_SM4                     0x10030000
+#define REQ_HSM_RUN_SM4_BY_KT               0x10040000
 
 #define REQ_HSM_GEN_CMAC                    0x10110000
-#define REQ_HSM_GEN_CMAC_BY_KT              0x10110001
-#define REQ_HSM_GEN_GMAC                    0x10120000
-#define REQ_HSM_GEN_GMAC_BY_KT              0x10120001
-#define REQ_HSM_GEN_HMAC                    0x10130000
-#define REQ_HSM_GEN_HMAC_BY_KT              0x10130001
-#define REQ_HSM_GEN_SM3_HMAC                0x10140000
-#define REQ_HSM_GEN_SM3_HMAC_BY_KT          0x10140001
+#define REQ_HSM_GEN_CMAC_BY_KT              0x10120000
+#define REQ_HSM_GEN_GMAC                    0x10130000
+#define REQ_HSM_GEN_GMAC_BY_KT              0x10140000
+#define REQ_HSM_GEN_HMAC                    0x10150000
+#define REQ_HSM_GEN_HMAC_BY_KT              0x10160000
+#define REQ_HSM_GEN_SM3_HMAC                0x10170000
+#define REQ_HSM_GEN_SM3_HMAC_BY_KT          0x10180000
 
 #define REQ_HSM_GEN_SHA                     0x10210000
 #define REQ_HSM_GEN_SM3                     0x10220000
@@ -48,7 +45,10 @@
 #define REQ_HSM_GET_RNG                     0x10610000
 
 #define REQ_HSM_WRITE_OTP                   0x10710000
-#define REQ_HSM_WRITE_SNOR                  0x10710001
+#define REQ_HSM_WRITE_SNOR                  0x10720000
+
+#define REQ_HSM_SET_KEY_FROM_OTP            0x10810000
+#define REQ_HSM_SET_KEY_FROM_SNOR           0x10820000
 
 #define REQ_HSM_GET_VER                     0x20010000
 
@@ -60,7 +60,7 @@ typedef enum _dma_type {
 // clang-format on
 
 int32_t tcc_hsm_cmd_set_key(
-	uint32_t device_id, uint32_t req, uint32_t otpAddr, uint32_t otpSize, uint32_t keyIndex);
+	uint32_t device_id, uint32_t req, uint32_t addr, uint32_t key_size, uint32_t key_index);
 
 int32_t tcc_hsm_cmd_run_aes(
 	uint32_t device_id, uint32_t req, uint32_t objID, uint8_t *key, uint32_t keySize, uint8_t *iv,
@@ -91,10 +91,8 @@ int32_t tcc_hsm_cmd_run_rsa(
 
 int32_t tcc_hsm_cmd_get_rand(uint32_t device_id, uint32_t req, uint32_t rng, int32_t rng_size);
 
-int32_t tcc_hsm_cmd_write_otp(
-	uint32_t device_id, uint32_t req, uint32_t otp_addr, uint32_t otpBuf, uint32_t otp_size);
-int32_t tcc_hsm_cmd_write_snor(
-	uint32_t device_id, uint32_t req, uint32_t snorAddr, uint8_t *snorBuf, uint32_t snorSize);
+int32_t tcc_hsm_cmd_write(
+	uint32_t device_id, uint32_t req, uint32_t addr, uint8_t *buf, uint32_t buf_size);
 
 int32_t
 tcc_hsm_cmd_get_version(uint32_t device_id, uint32_t req, uint32_t *x, uint32_t *y, uint32_t *z);
