@@ -25,7 +25,9 @@
 
 #define VPU_INST_MAX 5
 
-#if defined(CONFIG_VENC_CNT_4)
+#if defined(CONFIG_VENC_CNT_5)
+#define VPU_ENC_MAX_CNT 5
+#elif defined(CONFIG_VENC_CNT_4)
 #define VPU_ENC_MAX_CNT 4
 #elif defined(CONFIG_VENC_CNT_3)
 #define VPU_ENC_MAX_CNT 3
@@ -97,7 +99,8 @@
 #define VPU_HEVC_ENC_WORK_BUF_SIZE	0
 #endif
 
-#if defined(CONFIG_VENC_CNT_1) || defined(CONFIG_VENC_CNT_2) || defined(CONFIG_VENC_CNT_3) || defined(CONFIG_VENC_CNT_4)
+#if defined(CONFIG_VENC_CNT_1) || defined(CONFIG_VENC_CNT_2) || defined(CONFIG_VENC_CNT_3) \
+	|| defined(CONFIG_VENC_CNT_4) || defined(CONFIG_VENC_CNT_5)
 #if defined(CONFIG_SUPPORT_TCC_WAVE420L_VPU_HEVC_ENC)
 #define ENC_HEADER_BUF_SIZE (PAGE_ALIGN(VPU_HEVC_ENC_HEADER_BUF_SIZE))
 #else
