@@ -1514,6 +1514,11 @@
 		mbox-id = TCC_MBOX_SDR_ID;
 	};
 
+	trng: trng {
+		compatible = "telechips,tcc-rng";
+		status = "okay";
+	};
+
 	tcc_sc_fw: tcc_sc_fw {
 		compatible = "telechips,tcc805x-sc-fw";
 	};

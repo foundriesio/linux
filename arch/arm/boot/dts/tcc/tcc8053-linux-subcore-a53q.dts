@@ -1497,6 +1497,11 @@
 		mbox-id = TCC_MBOX_VIOC_ID;
 		status = "okay";
 	};
+
+	trng: trng {
+		compatible = "telechips,tcc-rng";
+		status = "okay";
+	};
 };
 
 &pinctrl {
