@@ -214,6 +214,9 @@ void btrfs_submit_logged_extents(struct list_head *logged_list,
 void btrfs_wait_logged_extents(struct btrfs_trans_handle *trans,
 			       struct btrfs_root *log, u64 transid);
 void btrfs_free_logged_extents(struct btrfs_root *log, u64 transid);
+void btrfs_lock_and_flush_ordered_range(struct btrfs_inode *inode, u64 start,
+					u64 end,
+					struct extent_state **cached_state);
 int __init ordered_data_init(void);
 void ordered_data_exit(void);
 #endif
