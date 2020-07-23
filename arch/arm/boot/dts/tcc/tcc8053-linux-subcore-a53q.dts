@@ -64,9 +64,12 @@
 		videoinput6 = &videoinput6;
 		videoinput7 = &videoinput7;
 		fb0 = &fb0;
-	#if defined(CONFIG_OVERLAY_DPGL)
+#if defined(CONFIG_FB_NEW_FB1)
 		fb1 = &fb1;
-	#endif
+#endif
+#if defined(CONFIG_FB_NEW_FB2)
+		fb2 = &fb2;
+#endif
 		wmixer-drv1 = &wmixer_drv1;
 //		tcc-overlay-drv1 = &tcc_overlay_drv1;
 	};
@@ -181,6 +184,26 @@
 			size = <PMAP_SIZE_FB_VIDEO>;
 			no-map;
 		};
+
+#if defined(CONFIG_FB_NEW_FB1)
+		pmap_fb1_video: fb1_video {
+			compatible = "telechips,pmap";
+			telechips,pmap-name = "fb1_video";
+			alloc-ranges = <RESERVED_MEM_BASE RESERVED_MEM_SIZE>;
+			size = <PMAP_SIZE_FB1_VIDEO>;
+			no-map;
+		};
+#endif
+
+#if defined(CONFIG_FB_NEW_FB2)
+		pmap_fb2_video: fb2_video {
+			compatible = "telechips,pmap";
+			telechips,pmap-name = "fb2_video";
+			alloc-ranges = <RESERVED_MEM_BASE RESERVED_MEM_SIZE>;
+			size = <PMAP_SIZE_FB2_VIDEO>;
+			no-map;
+		};
+#endif
 
 		pmap_overlay_rot: overlay_rot {
 			compatible = "telechips,pmap";
@@ -1220,7 +1243,8 @@
 	};
 #endif
 
-	fb0: fb@0 {
+#if defined(CONFIG_FB_NEW_FB0)
+	fb0: fb@0 { //Cluster
 		compatible = "telechips,fb";
 		status = "okay";
 		memory-region = <&pmap_fb_video>;
@@ -1230,22 +1254,14 @@
 		mode = <FBX_TRIPLE>;
 		update-type = <FBX_OVERLAY_UPDATE>;
 		device-priority = <FBX_DEVICE_LVDS>;
-		telechips,disp = <&vioc_disp VIOC_DISP0 VIOC_DISP1>;
-		telechips,wmixer = <&vioc_wmix VIOC_WMIX0 VIOC_WMIX1>;
-		telechips,rdma = <&vioc_rdma VIOC_RDMA01 VIOC_RDMA04>;
-
-		//to use the option below, set CONFIG_FB_NEW_HALFDISPLAY_SUPPORT on menuconfig
-		telechips,scaler = <&vioc_scaler VIOC_SCALER0>;
-		fbx_region {
-			x = <0>;
-			y = <0>;
-			width = <960>;
-			height = <720>;
-		};
+		telechips,disp = <&vioc_disp VIOC_DISP2>;
+		telechips,wmixer = <&vioc_wmix VIOC_WMIX2>;
+		telechips,rdma = <&vioc_rdma VIOC_RDMA08>;
 	};
+#endif
 
-	#if defined(CONFIG_OVERLAY_DPGL)
-	fb1: fb@1 {
+#if defined(CONFIG_FB_NEW_FB1)
+	fb1: fb@1 { //SVM
 		compatible = "telechips,fb";
 		status = "okay";
 		memory-region = <&pmap_fb1_video>;
@@ -1253,16 +1269,30 @@
 		yres = <720>;
 		bpp = <32>;
 		mode = <FBX_TRIPLE>;
-		update-type = <FBX_NOWAIT_UPDATE>;
-		device-priority = <FBX_DEVICE_NONE>;
-		telechips,wdma = <&vioc_wdma  VIOC_WDMA05>;
-		telechips,wmixer = <&vioc_wmix VIOC_WMIX5>;
-		telechips,rdma = <&vioc_rdma VIOC_RDMA16>;
-
-		clocks = <&clk_ddi DDIBUS_VIOC>;
-		clock-names = "ddi-clk";
+		update-type = <FBX_OVERLAY_UPDATE>;
+		device-priority = <FBX_DEVICE_LVDS>;
+		telechips,disp = <&vioc_disp VIOC_DISP1>;
+		telechips,wmixer = <&vioc_wmix VIOC_WMIX1>;
+		telechips,rdma = <&vioc_rdma VIOC_RDMA05>;
 	};
-	#endif
+#endif
+
+#if defined(CONFIG_FB_NEW_FB2)
+	fb2: fb@2 { //BVM
+		compatible = "telechips,fb";
+		status = "okay";
+		memory-region = <&pmap_fb2_video>;
+		xres = <1920>;
+		yres = <720>;
+		bpp = <32>;
+		mode = <FBX_TRIPLE>;
+		update-type = <FBX_OVERLAY_UPDATE>;
+		device-priority = <FBX_DEVICE_LVDS>;
+		telechips,disp = <&vioc_disp VIOC_DISP2>;
+		telechips,wmixer = <&vioc_wmix VIOC_WMIX2>;
+		telechips,rdma = <&vioc_rdma VIOC_RDMA09>;
+	};
+#endif
 
 	tcc_overlay_drv {
 		compatible = "telechips,tcc_overlay";
