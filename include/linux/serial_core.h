@@ -253,6 +253,10 @@ struct uart_port {
 	const struct attribute_group **tty_groups;	/* all attributes (serial core use only) */
 	struct serial_rs485     rs485;
 	void			*private_data;		/* generic platform data pointer */
+#if defined(CONFIG_PM_SLEEP)&&defined(CONFIG_ARCH_TCC805X)
+        void __iomem            *config_reg;
+#endif
+
 };
 
 static inline int serial_port_in(struct uart_port *up, int offset)
