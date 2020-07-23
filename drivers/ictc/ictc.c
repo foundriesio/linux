@@ -107,6 +107,13 @@
 #define DMA_SEL(x)		(x<<12)
 #define F_IN_SEL(x)		(x<<0)
 
+struct ictc_data {
+
+	struct device_node *np;
+	unsigned int irq;
+	struct clk *pPClk;
+};
+
 //TCC803x GPIOs
 static int gpio_f_in[] = {
 	0x1,     //GPIO_A
@@ -207,6 +214,7 @@ struct ictc_property_bool {
 	int nf_ed_cnt_full_int;
 	int time_stamp_cnt;
 };
+
 static struct ictc_property_bool ictc_prop_b;
 
 static void ictc_clear_interrupt(void);
@@ -248,11 +256,10 @@ static irqreturn_t ictc_interrupt_handler(int irq, void *dev_id)
 
 }
 
-static int ictc_parse_dt(struct platform_device *pdev)
+static int ictc_parse_dt(struct device_node *np)
 {
 
 	int ret = 0, count = 0, node_num=0;
-	struct device_node *np = pdev->dev.of_node;
 
 	count = sizeof(ictc_prop_v_l)/(sizeof(ictc_prop_v_l[0]));
 
@@ -439,10 +446,16 @@ static int gpio_to_f_in(int gpio_num)
 
 static int ictc_probe(struct platform_device *pdev)
 {
+	struct ictc_data *ictc_dat;
 	struct device_node *np = pdev->dev.of_node;
 	unsigned int irq = platform_get_irq(pdev, 0);
 	struct clk *pPClk = of_clk_get(pdev->dev.of_node, 0);
 	int ret = 0;
+
+	ictc_dat = devm_kzalloc(&pdev->dev, sizeof(struct ictc_data), GFP_KERNEL);
+	ictc_dat->np = np;
+	ictc_dat->irq = irq;
+	ictc_dat->pPClk = pPClk;
 
 	if(!np){
 		err_ictc("device does not exist!\n");
@@ -468,7 +481,7 @@ static int ictc_probe(struct platform_device *pdev)
 
 	}
 
-	ret = ictc_parse_dt(pdev);
+	ret = ictc_parse_dt(np);
 	if(ret){
 		err_ictc("device node does not exist!\n");
 		return ret;
@@ -482,11 +495,65 @@ static int ictc_probe(struct platform_device *pdev)
 
 	ictc_enable();
 
+	platform_set_drvdata(pdev, ictc_dat);
 
 	return ret;
 
 }
 
+#if defined(CONFIG_PM_SLEEP) && defined(CONFIG_ARCH_TCC805X)
+
+static int ictc_resume(struct device *dev)
+{
+	struct ictc_data *ictc_dat = dev_get_drvdata(dev);
+	int ret = 0;
+
+        if(!ictc_dat->np){
+                err_ictc("device does not exist!\n");
+                return -EINVAL;
+        }
+
+        clk_prepare_enable(ictc_dat->pPClk);
+
+        ret = request_irq(ictc_dat->irq, ictc_interrupt_handler, IRQF_SHARED, "ICTC", dev);
+        if(ret){
+                err_ictc("Interrupt request fail ret : %d irq : %x\n", ret, irq);
+                return ret;
+        }
+
+        ictc_base = of_iomap(ictc_dat->np, 0);
+
+        f_in_rtc_wkup = of_property_read_bool(ictc_dat->np, "f-in-rtc-wkup");
+        if(!f_in_rtc_wkup)
+        {
+
+                f_in_gpio = of_get_named_gpio(ictc_dat->np, "f-in-gpio", 0);
+                f_in_source = gpio_to_f_in(f_in_gpio);
+
+        }
+
+        ret = ictc_parse_dt(ictc_dat->np);
+        if(ret){
+                err_ictc("device node does not exist!\n");
+                return ret;
+        }
+
+        ictc_configure();
+
+        ictc_enable_interrupt();
+
+        ictc_enable_counter();
+
+        ictc_enable();
+
+	return ret;
+
+
+}
+
+static SIMPLE_DEV_PM_OPS(ictc_pm_ops, NULL, ictc_resume);
+
+#endif
 
 static const struct of_device_id ictc_match_table[] = {
 	{ .compatible = "telechips,ictc" },
@@ -498,6 +565,9 @@ static struct platform_driver ictc_driver = {
 	.probe		= ictc_probe,
 	.driver		= {
 		.name	= "tcc-ictc",
+#if defined(CONFIG_PM_SLEEP) && defined(CONFIG_ARCH_TCC805X)
+		.pm	= &ictc_pm_ops,
+#endif
 		.of_match_table = ictc_match_table,
 	},
 };
