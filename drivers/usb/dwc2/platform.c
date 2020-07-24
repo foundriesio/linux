@@ -506,7 +506,7 @@ static int dwc2_driver_probe(struct platform_device *dev)
 	if (hsotg->dr_mode != USB_DR_MODE_HOST) {
 		retval = dwc2_gadget_init(hsotg);
 		if (retval)
-			goto error_init;
+			goto error_drd;
 		hsotg->gadget_enabled = 1;
 	}
 
@@ -532,7 +532,7 @@ static int dwc2_driver_probe(struct platform_device *dev)
 		if (retval) {
 			if (hsotg->gadget_enabled)
 				dwc2_hsotg_remove(hsotg);
-			goto error_init;
+			goto error_drd;
 		}
 		hsotg->hcd_enabled = 1;
 	}
@@ -559,6 +559,8 @@ static int dwc2_driver_probe(struct platform_device *dev)
 #endif /* CONFIG_USB_DWC2_PERIPHERAL || CONFIG_USB_DWC2_DUAL_ROLE */
 	return 0;
 
+error_drd:
+	dwc2_drd_exit(hsotg);
 error_init:
 	if (hsotg->params.activate_stm_id_vb_detection)
 		regulator_disable(hsotg->usb33d);
