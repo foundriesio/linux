@@ -39,7 +39,9 @@
 #define TCC_GET_HDMI_INFO                   0x30
 #define TCC_SET_HDMI_OUT_TYPE				0x31
 
+#ifdef CONFIG_ANDROID
 #define USE_UMP_RESERVED_SW_PMAP
+#endif
 #ifdef USE_UMP_RESERVED_SW_PMAP
 #define TCC_REGISTER_UMP_SW_INFO            0x40
 #define TCC_REGISTER_UMP_SW_INFO_KERNEL     0x41

@@ -630,7 +630,8 @@ long tmem_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 #endif
 
         default:
-            ump_printk_err("Unsupported cmd(0x%x) for tmem_ioctl. \n", cmd);
+            //ump_printk_err("Unsupported cmd(0x%x) for tmem_ioctl. \n", cmd);
+            printk("Unsupported cmd(0x%x) for tmem_ioctl. \n", cmd);
             ret = -EFAULT;
             break;
     }
