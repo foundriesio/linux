@@ -728,46 +728,6 @@
 		};
 	};
 
-	pinctrl: pinctrl@14200000 {
-		compatible = "telechips,tcc805x-pinctrl";
-		reg = <0x14200000 0x7C0 0x1B937000 0xA30>;	/* gpio, pmgpio */
-		gpio-controller;
-		#address-cells = <1>;
-		#size-cells = <0>;
-		#gpio-cells = <3>;
-		interrupts = <GIC_SPI 0 0>,
-			     <GIC_SPI 1 0>,
-			     <GIC_SPI 2 0>,
-			     <GIC_SPI 3 0>,
-			     <GIC_SPI 4 0>,
-			     <GIC_SPI 5 0>,
-			     <GIC_SPI 6 0>,
-			     <GIC_SPI 7 0>,
-			     <GIC_SPI 8 0>,
-			     <GIC_SPI 9 0>,
-			     <GIC_SPI 10 0>,
-			     <GIC_SPI 11 0>,
-			     <GIC_SPI 12 0>,
-			     <GIC_SPI 13 0>,
-			     <GIC_SPI 14 0>,
-			     <GIC_SPI 15 0>,
-			     <GIC_SPI 16 0>,
-			     <GIC_SPI 17 0>,
-			     <GIC_SPI 18 0>,
-			     <GIC_SPI 19 0>,
-			     <GIC_SPI 20 0>,
-			     <GIC_SPI 21 0>,
-			     <GIC_SPI 22 0>,
-			     <GIC_SPI 23 0>,
-			     <GIC_SPI 24 0>,
-			     <GIC_SPI 25 0>,
-			     <GIC_SPI 26 0>,
-			     <GIC_SPI 27 0>,
-			     <GIC_SPI 28 0>,
-			     <GIC_SPI 29 0>,
-			     <GIC_SPI 30 0>,
-			     <GIC_SPI 31 0>;
-	};
 
         tcc_pic: pic@14100000 {
                 compatible = "telechips,tcc805x-pic";
@@ -1028,7 +988,13 @@
 
 	vioc_intr: vioc_intr@1200a400 {
 		compatible = "telechips,vioc_intr";
-		reg = <0x1200a400 0x100>;
+		reg = <0x1200a400 0x100>,
+			/* VIOC_REMAP */
+			<0x12046400 0x100>,
+			/* For FB Core Reset, backup register (TIMER) */
+			<0x1200c014 0xc>,
+			/* For FB Core Reset  VIOC_REMAP */
+			<0x1204A014 0xc>;
 		interrupts = <GIC_SPI VIOC0_IRQI IRQ_TYPE_LEVEL_HIGH>;
 	};
 
@@ -1490,6 +1456,27 @@
 		#mbox-cells = <1>;
 		max-channel = <TCC_CB_MBOX_MAX>;
 	};
+
+	/* A72 <-> SC */
+	a72_sc_mbox: mbox@0x1D200000 {
+		status = "disabled";
+		compatible = "telechips,tcc805x-mailbox-sc";
+		reg = <0x1D200000 0x80>;
+		interrupts = <GIC_SPI 319 IRQ_TYPE_LEVEL_HIGH>,
+				   <GIC_SPI 329 IRQ_TYPE_LEVEL_HIGH>;
+		#mbox-cells = <1>;
+	};
+
+	/* A53 <-> SC */
+	a53_sc_mbox: mbox@0x1D210000 {
+		status = "disabled";
+		compatible = "telechips,tcc805x-mailbox-sc";
+		reg = <0x1D210000 0x80>;
+		interrupts = <GIC_SPI 320 IRQ_TYPE_LEVEL_HIGH>,
+				   <GIC_SPI 330 IRQ_TYPE_LEVEL_HIGH>;
+		#mbox-cells = <1>;
+	};
+
 	/* micom_mbox test */
 	mbox_test0: mbox_test@0 {
 		 compatible = "telechips,mbox_test";
@@ -1514,6 +1501,7 @@
 		 mboxes = <&micom_mbox TCC_MICOM_MBOX0_IPC>;
 		 mbox-id = TCC_MBOX_IPC_ID;
 	 };
+
 	/* ipc for A72 */
 	ipc1: tcc_ipc@1 {
 		 compatible = "telechips,tcc_ipc";
@@ -1522,6 +1510,7 @@
 		 mboxes = <&cb_mbox TCC_CB_MBOX_IPC>;
 		 mbox-id = TCC_MBOX_IPC_ID;
 	 };
+
 	/* vioc_mgr for A53 */
 	vioc_mgr0: vioc_mgr@0 {
 		compatible = "telechips,vioc_mgr";
@@ -1536,6 +1525,117 @@
 		compatible = "telechips,tcc-rng";
 		status = "okay";
 	};
+
+	tcc_sc_fw: tcc_sc_fw {
+		compatible = "telechips,tcc805x-sc-fw";
+	};
+
+	pinctrl: pinctrl@14200000 {
+		compatible = "telechips,tcc805x-pinctrl";
+		reg = <0x14200000 0x7C0 0x1B937000 0xA30>;	/* gpio, pmgpio */
+		gpio-controller;
+		#address-cells = <1>;
+		#size-cells = <0>;
+		#gpio-cells = <3>;
+		sc-firmware = <&tcc_sc_fw>;
+		interrupts = <GIC_SPI 0 0>,
+			     <GIC_SPI 1 0>,
+			     <GIC_SPI 2 0>,
+			     <GIC_SPI 3 0>,
+			     <GIC_SPI 4 0>,
+			     <GIC_SPI 5 0>,
+			     <GIC_SPI 6 0>,
+			     <GIC_SPI 7 0>,
+			     <GIC_SPI 8 0>,
+			     <GIC_SPI 9 0>,
+			     <GIC_SPI 10 0>,
+			     <GIC_SPI 11 0>,
+			     <GIC_SPI 12 0>,
+			     <GIC_SPI 13 0>,
+			     <GIC_SPI 14 0>,
+			     <GIC_SPI 15 0>,
+			     <GIC_SPI 16 0>,
+			     <GIC_SPI 17 0>,
+			     <GIC_SPI 18 0>,
+			     <GIC_SPI 19 0>,
+			     <GIC_SPI 20 0>,
+			     <GIC_SPI 21 0>,
+			     <GIC_SPI 22 0>,
+			     <GIC_SPI 23 0>,
+			     <GIC_SPI 24 0>,
+			     <GIC_SPI 25 0>,
+			     <GIC_SPI 26 0>,
+			     <GIC_SPI 27 0>,
+			     <GIC_SPI 28 0>,
+			     <GIC_SPI 29 0>,
+			     <GIC_SPI 30 0>,
+			     <GIC_SPI 31 0>;
+	};
+
+
+	/* storage core mmc driver (experimental) */
+	vqmmc_emmc: vqmmc_emmc {
+		compatible = "regulator-fixed";
+		regulator-name = "vqmmc_emmc";
+		regulator-min-microvolt = <1800000>;
+		regulator-max-microvolt = <1800000>;
+		regulator-always-on;
+	};
+
+	tcc_sc_mmc: tcc_sc_mmc {
+		compatible = "telechips,tcc805x-sc-mmc";
+		status = "okay";
+
+		max-frequency = <200000000>;
+		bus-width = <8>;
+
+		sc-firmware = <&tcc_sc_fw>;
+
+		no-sdio;
+		no-sd;
+		non-removable;
+		keep-power-in-suspend;
+		disable-wp;
+
+		mmc-hs400-1_8v;
+		vqmmc-supply = <&vqmmc_emmc>;
+	};
+
+	ehci_phy: ehci_phy@11DA0010 {
+		compatible = "telechips,tcc_ehci_phy";
+		reg = <0x11DA0010 0x30>;
+		interrupts = <GIC_SPI 143 IRQ_TYPE_LEVEL_HIGH>;
+		clocks = <&clk_hsio HSIOBUS_USB20H /*&clk_isoip_top ISOIP_TOP_U20H*/>;
+		status = "disabled";
+	};
+
+	ehci: ehci@11A00000 {
+		compatible = "telechips,tcc-ehci";
+		reg = <0x11A00000 0x108>,
+		      <0x11DA0010 0x54>;
+		interrupts = <GIC_SPI 142 IRQ_TYPE_LEVEL_HIGH>;
+		clocks = <&clk_hsio HSIOBUS_USB20H /*&clk_isoip_top ISOIP_TOP_U20H*/>;
+		telechips,ehci_phy = <&ehci_phy>;
+		status = "disabled";
+	};
+
+	ohci: ohci@11A80000 {
+		compatible = "telechips,tcc-ohci";
+		reg = <0x11A80000 0x60>,
+		      <0x11DA0010 0x54>;
+		interrupts = <GIC_SPI 142 IRQ_TYPE_LEVEL_HIGH>;
+		clocks = <&clk_hsio HSIOBUS_USB20H /*&clk_isoip_top ISOIP_TOP_U20H*/>;
+		status = "disabled";
+	};
+};
+
+&a53_sc_mbox {
+	status = "okay";
+};
+
+&tcc_sc_fw {
+	status = "okay";
+	mboxes = <&a53_sc_mbox 0>;
 };
 
 &pinctrl {
@@ -2414,3 +2514,24 @@
 		spi-max-frequency = <20000000>;
 	};
 };
+
+/* USB 2.0 Host */
+&ehci_phy {
+	status = "okay";
+	vbus-ctrl-able;
+	vbus-gpio = <&gpmc 7 0>; /* 0 : GPIO_ACTIVE_HIGH, 1 : GPIO_ACTIVE_LOW */
+};
+
+&ehci {
+	status = "okay";
+	hcd_id = <0>;
+	phy-type = <1>;	    //pico phy = 1, nano phy = 0
+	TXVRT = <0xB>;
+	TXRISET = <0x3>;
+	TXAT = <0x1>;
+};
+
+&ohci {
+	status = "okay";
+};
+

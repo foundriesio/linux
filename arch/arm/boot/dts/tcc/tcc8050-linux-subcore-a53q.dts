@@ -1600,6 +1600,33 @@
 		mmc-hs400-1_8v;
 		vqmmc-supply = <&vqmmc_emmc>;
 	};
+
+	ehci_phy: ehci_phy@11DA0010 {
+		compatible = "telechips,tcc_ehci_phy";
+		reg = <0x11DA0010 0x30>;
+		interrupts = <GIC_SPI 143 IRQ_TYPE_LEVEL_HIGH>;
+		clocks = <&clk_hsio HSIOBUS_USB20H /*&clk_isoip_top ISOIP_TOP_U20H*/>;
+		status = "disabled";
+	};
+
+	ehci: ehci@11A00000 {
+		compatible = "telechips,tcc-ehci";
+		reg = <0x11A00000 0x108>,
+		      <0x11DA0010 0x54>;
+		interrupts = <GIC_SPI 142 IRQ_TYPE_LEVEL_HIGH>;
+		clocks = <&clk_hsio HSIOBUS_USB20H /*&clk_isoip_top ISOIP_TOP_U20H*/>;
+		telechips,ehci_phy = <&ehci_phy>;
+		status = "disabled";
+	};
+
+	ohci: ohci@11A80000 {
+		compatible = "telechips,tcc-ohci";
+		reg = <0x11A80000 0x60>,
+		      <0x11DA0010 0x54>;
+		interrupts = <GIC_SPI 142 IRQ_TYPE_LEVEL_HIGH>;
+		clocks = <&clk_hsio HSIOBUS_USB20H /*&clk_isoip_top ISOIP_TOP_U20H*/>;
+		status = "disabled";
+	};
 };
 
 &a53_sc_mbox {
@@ -2486,5 +2513,25 @@
 		reg = <1>;
 		spi-max-frequency = <20000000>;
 	};
+};
+
+/* USB 2.0 Host */
+&ehci_phy {
+	status = "okay";
+	vbus-ctrl-able;
+	vbus-gpio = <&gpmc 7 0>; /* 0 : GPIO_ACTIVE_HIGH, 1 : GPIO_ACTIVE_LOW */
+};
+
+&ehci {
+	status = "okay";
+	hcd_id = <0>;
+	phy-type = <1>;	    //pico phy = 1, nano phy = 0
+	TXVRT = <0xB>;
+	TXRISET = <0x3>;
+	TXAT = <0x1>;
+};
+
+&ohci {
+	status = "okay";
 };
 

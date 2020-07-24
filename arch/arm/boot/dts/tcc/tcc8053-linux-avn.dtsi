@@ -29,13 +29,13 @@
 
 	/* USB 2.0 Host */
 	ehci_phy@11DA0010 {
-		status = "okay";
+		status = "disabled";
 		vbus-ctrl-able;
-		vbus-gpio = <&gpa 28 0>; /* 0 : GPIO_ACTIVE_HIGH, 1 : GPIO_ACTIVE_LOW */
+		vbus-gpio = <&gpmc 7 0>; /* 0 : GPIO_ACTIVE_HIGH, 1 : GPIO_ACTIVE_LOW */
 	};
 
 	ehci@11A00000 {
-		status = "okay";
+		status = "disabled";
 		hcd_id = <0>;
 		phy-type = <1>;	    //pico phy = 1, nano phy = 0
 		TXVRT = <0xB>;
@@ -44,14 +44,14 @@
 	};
 
 	ohci@11A80000 {
-		status = "okay";
+		status = "disabled";
 	};
 
 	/* USB 2.0 DRD */
 	dwc_otg_phy@11DA0100 {
 		status = "okay";
 		vbus-ctrl-able;
-		vbus-gpio = <&gpa 27 0>; /* 0 : GPIO_ACTIVE_HIGH, 1 : GPIO_ACTIVE_LOW */
+		vbus-gpio = <&gpmc 6 0>; /* 0 : GPIO_ACTIVE_HIGH, 1 : GPIO_ACTIVE_LOW */
 	};
 
 	mux_host_phy@11DA00DC {
@@ -67,7 +67,7 @@
 	dwc3_phy@11D90000 {
 		status = "okay";
 		vbus-ctrl-able;
-		vbus-gpio = <&gpa 29 0>; /* 0 : GPIO_ACTIVE_HIGH, 1 : GPIO_ACTIVE_LOW */
+		vbus-gpio = <&gpmc 8 0>; /* 0 : GPIO_ACTIVE_HIGH, 1 : GPIO_ACTIVE_LOW */
 	};
 
 	dwc3_platform {
@@ -123,7 +123,7 @@
 		pinctrl-names = "default";
 		pinctrl-0 = <&i2c22_bus>;
 /*
-         pmic@58 {
+		pmic@58 {
              compatible = "dlg,da9062";
              reg = <0x58>;
              rst-gpios = <&gpma 12 0>;
@@ -174,7 +174,6 @@
                      regulator-always-on;
                      regulator-boot-on;
                  };
-
                  DA9062_LDO3: ldo3 {
                      regulator-name = "mipi_1p2";
                      regulator-min-microvolt = <1145000>;
@@ -209,9 +208,9 @@
 		pinctrl-0 = <&i2c30_bus>;
 		ak4601: ak4601@10 {
 			compatible = "akm,ak4601";
-			ak4601,pdn-gpio = <&gpe 14 0>;
-			mute-gpios = <&gpe 15 0>;     //CODEC_MUTE    0: active high, 1: active low
-			//mute-gpios = <&gpma 1 1>;       //AMP_MUTE      0: active high, 1: active low
+			ak4601,pdn-gpio = <&gpmb 29 0>;
+			cmute-gpios = <&gpmc 5 1>;     //CODEC_MUTE    0: active high, 1: active low
+			//amute-gpios = <&gpma 1 1>;       //AMP_MUTE      0: active high, 1: active low
 			//stanby-gpios = <&gpma 2 0>;     //AMP_STBY      0: active high, 1: active low
 			reg = <0x10>;
 		};
@@ -238,6 +237,7 @@
 			irq-gpios = <&gpsd1 9 0x0>;
 			reset-gpios = <&gpb 16 0x0>;
 		};
+
 	};
 
 	i2c@16350000 {
@@ -254,6 +254,7 @@
 			irq-gpios = <&gpa 21 0x0>;
 			reset-gpios = <&gpmd 8 0x0>;
 		};
+
 	};
 
 	i2c@16370000 {
@@ -400,7 +401,7 @@
 	audio_chmux@16051000{
 		compatible = "telechips,audio-chmux-805x";
 		dai = <1 0 3 0 1 99 99 99>;	// i2s0(x) i2s1(x) i2s2(x) i2s3(x) i2s4(x) i2s5(x) i2s6(x) i2s7(x)
-		spdif = <99 99 2 3 99 99 99>;	// spdif0(x) spdif1(x) spdif2(x) spdif3(x) spdif4(x) spdif5(x) spdif6(x)
+		spdif = <99 99 4 5 99 99 99>;	// spdif0(x) spdif1(x) spdif2(x) spdif3(x) spdif4(x) spdif5(x) spdif6(x)
 		status = "okay";
 	};
 
@@ -443,15 +444,15 @@
 
 	spdif@16802000 {
 		pinctrl-names = "default", "idle";
-		pinctrl-0 = <&spdif2_tx>;
-		pinctrl-1 = <&spdif2_tx_idle>;
+		pinctrl-0 = <&spdif4_tx>;
+		pinctrl-1 = <&spdif4_tx_idle>;
 		status = "okay";
 	};
 
 	spdif@16202000 {
 		pinctrl-names = "default", "idle";
-		pinctrl-0 = <&spdif3_rx>;
-		pinctrl-1 = <&spdif3_rx_idle>;
+		pinctrl-0 = <&spdif5_rx>;
+		pinctrl-1 = <&spdif5_rx_idle>;
 		status = "okay";
 	};
 
@@ -643,8 +644,8 @@
 	/* bluetooth */
 	tcc_bluetooth {
 		compatible = "telechips, tcc_bluetooth";
-		bt_power-gpio = <&gpsd2 6 0>; /* BTWIFI_VBAT_EN */
-		bt_reg_on-gpio = <&gpc 12 0>;
+		bt_power-gpio = <&gpmd 10 0>; /* BTWIFI_VBAT_EN */
+		bt_reg_on-gpio = <&gpmd 9 0>;
 		status = "okay";
 	};
 
