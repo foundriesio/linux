@@ -44,6 +44,7 @@
 #include <linux/spinlock.h>
 #include <linux/types.h>
 #include <linux/wait.h>
+#include <linux/netdevice.h>
 
 #include "ena_common_defs.h"
 #include "ena_admin_defs.h"
@@ -92,8 +93,8 @@
 #define ENA_INTR_HIGHEST_PKTS           (128)
 #define ENA_INTR_HIGHEST_BYTES          (192 * 1024)
 
-#define ENA_INTR_INITIAL_TX_INTERVAL_USECS		196
-#define ENA_INTR_INITIAL_RX_INTERVAL_USECS		4
+#define ENA_INTR_INITIAL_TX_INTERVAL_USECS		64
+#define ENA_INTR_INITIAL_RX_INTERVAL_USECS		0
 #define ENA_INTR_DELAY_OLD_VALUE_WEIGHT			6
 #define ENA_INTR_DELAY_NEW_VALUE_WEIGHT			4
 #define ENA_INTR_MODER_LEVEL_STRIDE			2
@@ -376,7 +377,13 @@ struct ena_com_dev {
 	struct ena_host_attribute host_attr;
 	bool adaptive_coalescing;
 	u16 intr_delay_resolution;
+
+	/* interrupt moderation intervals are in usec divided by
+	 * intr_delay_resolution, which is supplied by the device.
+	 */
 	u32 intr_moder_tx_interval;
+	u32 intr_moder_rx_interval;
+
 	struct ena_intr_moder_entry *intr_moder_tbl;
 
 	struct ena_com_llq_info llq_info;
@@ -686,6 +693,14 @@ int ena_com_rss_init(struct ena_com_dev *ena_dev, u16 log_size);
  * Free all the RSS/RFS resources.
  */
 void ena_com_rss_destroy(struct ena_com_dev *ena_dev);
+
+/* ena_com_get_current_hash_function - Get RSS hash function
+ * @ena_dev: ENA communication layer struct
+ *
+ * Return the current hash function.
+ * @return: 0 or one of the ena_admin_hash_functions values.
+ */
+int ena_com_get_current_hash_function(struct ena_com_dev *ena_dev);
 
 /* ena_com_fill_hash_function - Fill RSS hash function
  * @ena_dev: ENA communication layer struct

@@ -2531,9 +2531,6 @@ int btrfs_run_qgroups(struct btrfs_trans_handle *trans,
 	int ret = 0;
 	int start_rescan_worker = 0;
 
-	if (!quota_root)
-		goto out;
-
 	if (!test_bit(BTRFS_FS_QUOTA_ENABLED, &fs_info->flags) &&
 	    test_bit(BTRFS_FS_QUOTA_ENABLING, &fs_info->flags))
 		start_rescan_worker = 1;
@@ -2542,6 +2539,9 @@ int btrfs_run_qgroups(struct btrfs_trans_handle *trans,
 		set_bit(BTRFS_FS_QUOTA_ENABLED, &fs_info->flags);
 	if (test_and_clear_bit(BTRFS_FS_QUOTA_DISABLING, &fs_info->flags))
 		clear_bit(BTRFS_FS_QUOTA_ENABLED, &fs_info->flags);
+
+	if (!quota_root)
+		goto out;
 
 	spin_lock(&fs_info->qgroup_lock);
 	while (!list_empty(&fs_info->dirty_qgroups)) {
