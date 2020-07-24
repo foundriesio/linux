@@ -76,11 +76,14 @@ static int dwc2_drd_role_sw_set(struct device *dev, enum usb_role role)
 	    (role == USB_ROLE_HOST && hsotg->dr_mode == USB_DR_MODE_PERIPHERAL))
 		return -EINVAL;
 
+#if IS_ENABLED(CONFIG_USB_DWC2_PERIPHERAL) || \
+	IS_ENABLED(CONFIG_USB_DWC2_DUAL_ROLE)
 	/* Skip session if core is in test mode */
 	if (role == USB_ROLE_NONE && hsotg->test_mode) {
 		dev_dbg(hsotg->dev, "Core is in test mode\n");
 		return -EBUSY;
 	}
+#endif
 
 	spin_lock_irqsave(&hsotg->lock, flags);
 
