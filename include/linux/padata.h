@@ -85,6 +85,7 @@ struct padata_serial_queue {
  * @swork: work struct for serialization.
  * @pd: Backpointer to the internal control structure.
  * @work: work struct for parallelization.
+ * @reorder_work: work struct for reordering.
  * @num_obj: Number of objects that are processed by this cpu.
  * @cpu_index: Index of the cpu.
  */
@@ -95,6 +96,9 @@ struct padata_parallel_queue {
        struct work_struct    work;
        atomic_t              num_obj;
        int                   cpu_index;
+#ifndef __GENKSYMS__
+       struct work_struct    reorder_work;
+#endif
 };
 
 /**
