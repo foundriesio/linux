@@ -1236,6 +1236,91 @@ exit:
 	return status;
 }
 
+static int tcc_spi_init(struct tcc_spi *tccspi)
+{
+	int ret, status;
+	unsigned int ac_val[2] = {0,};
+	struct device_node *np = tccspi->dev->of_node;
+
+	/* Check CONTM support */
+	TCC_GPSB_BITSET(tccspi->base + TCC_GPSB_EVTCTRL, TCC_GPSB_EVTCTRL_CONTM(0x3));
+	ret = tcc_spi_readl(tccspi->base + TCC_GPSB_EVTCTRL) & TCC_GPSB_EVTCTRL_CONTM(0x3);
+	tccspi->pd->contm_support = !!ret;
+
+	/* access control */
+	if (!IS_ERR(tccspi->ac)) {
+		if (!of_property_read_u32_array(np,
+					"access-control0", ac_val, 2)) {
+			dev_dbg(tccspi->dev,
+					"[DEBUG][SPI] access-control0 start:0x%x limit:0x%x\n",
+					ac_val[0], ac_val[1]);
+			writel(ac_val[0], tccspi->ac + TCC_GPSB_AC0_START);
+			writel(ac_val[1], tccspi->ac + TCC_GPSB_AC0_LIMIT);
+		}
+		if (!of_property_read_u32_array(np,
+					"access-control1", ac_val, 2)) {
+			dev_dbg(tccspi->dev,
+					"[DEBUG][SPI] access-control1 start:0x%x limit:0x%x\n",
+					ac_val[0], ac_val[1]);
+			writel(ac_val[0], tccspi->ac + TCC_GPSB_AC1_START);
+			writel(ac_val[1], tccspi->ac + TCC_GPSB_AC1_LIMIT);
+		}
+		if (!of_property_read_u32_array(np,
+					"access-control2", ac_val, 2)) {
+			dev_dbg(tccspi->dev,
+					"[DEBUG][SPI] access-control2 start:0x%x limit:0x%x\n",
+					ac_val[0], ac_val[1]);
+			writel(ac_val[0], tccspi->ac + TCC_GPSB_AC2_START);
+			writel(ac_val[1], tccspi->ac + TCC_GPSB_AC2_LIMIT);
+		}
+		if (!of_property_read_u32_array(np,
+					"access-control3", ac_val, 2)) {
+			dev_dbg(tccspi->dev,
+					"[DEBUG][SPI] access-control3 start:0x%x limit:0x%x\n",
+					ac_val[0], ac_val[1]);
+			writel(ac_val[0], tccspi->ac + TCC_GPSB_AC3_START);
+			writel(ac_val[1], tccspi->ac + TCC_GPSB_AC3_LIMIT);
+		}
+	}
+
+	/* Get pin control (active state)*/
+	tccspi->pinctrl = devm_pinctrl_get_select(tccspi->dev, "active");
+	if(IS_ERR(tccspi->pinctrl)) {
+		dev_err(tccspi->dev,
+				"[ERROR][SPI] Failed to get pinctrl (active state)\n");
+		return -ENXIO;
+	}
+
+	/* Initialize GPSB registers */
+	tcc_spi_clear_fifo(tccspi);
+	tcc_spi_clear_packet_cnt(tccspi);
+	tcc_spi_stop_dma(tccspi);
+	tcc_spi_hwinit(tccspi);
+
+	/* Set port configuration */
+	tcc_spi_set_port(tccspi);
+
+	/* Enable clock */
+	if(tccspi->pd->hclk)  {
+		status = clk_prepare_enable(tccspi->pd->hclk);
+		if(status < 0) {
+			dev_err(tccspi->dev, "[ERROR][SPI] Failed to enable hclk\n");
+			clk_disable_unprepare(tccspi->pd->hclk);
+		}
+		return status;
+	}
+	if(tccspi->pd->pclk)  {
+		status = clk_prepare_enable(tccspi->pd->pclk);
+		if(status < 0) {
+			dev_err(tccspi->dev, "[ERROR][SPI] Failed to enable pclk\n");
+			clk_disable_unprepare(tccspi->pd->pclk);
+		}
+		return status;
+	}
+
+	return 0;
+}
+
 #ifdef CONFIG_OF
 static int tcc_spi_get_gpsb_ch(struct tcc_spi_pl_data *pd)
 {
@@ -1364,7 +1449,6 @@ static int tcc_spi_probe(struct platform_device *pdev)
 	struct spi_master *master;
 	struct tcc_spi		*tccspi;
 	struct tcc_spi_pl_data *pd;
-	unsigned int ac_val[2] = {0};
 
 	if(!pdev->dev.of_node)
 		return -EINVAL;
@@ -1449,48 +1533,14 @@ static int tcc_spi_probe(struct platform_device *pdev)
 	}
 
 	tccspi->pcfg = of_iomap(pdev->dev.of_node, 1); //devm_ioremap_resource(dev,regs);
+	tccspi->ac = of_iomap(pdev->dev.of_node, 2);  /* Configure the AHB Access Filter */
 
-	/* Configure the AHB Access Filter */
-	tccspi->ac = of_iomap(pdev->dev.of_node, 2);
-	if (!IS_ERR(tccspi->ac)) {
-		if (!of_property_read_u32_array(pdev->dev.of_node,
-					"access-control0", ac_val, 2)) {
-			dev_dbg(&pdev->dev,
-				"[DEBUG][SPI] access-control0 start:0x%x limit:0x%x\n",
-				ac_val[0], ac_val[1]);
-			writel(ac_val[0], tccspi->ac + TCC_GPSB_AC0_START);
-			writel(ac_val[1], tccspi->ac + TCC_GPSB_AC0_LIMIT);
-		}
-		if (!of_property_read_u32_array(pdev->dev.of_node,
-					"access-control1", ac_val, 2)) {
-			dev_dbg(&pdev->dev,
-				"[DEBUG][SPI] access-control1 start:0x%x limit:0x%x\n",
-				ac_val[0], ac_val[1]);
-			writel(ac_val[0], tccspi->ac + TCC_GPSB_AC1_START);
-			writel(ac_val[1], tccspi->ac + TCC_GPSB_AC1_LIMIT);
-		}
-		if (!of_property_read_u32_array(pdev->dev.of_node,
-					"access-control2", ac_val, 2)) {
-			dev_dbg(&pdev->dev,
-				"[DEBUG][SPI] access-control2 start:0x%x limit:0x%x\n",
-				ac_val[0], ac_val[1]);
-			writel(ac_val[0], tccspi->ac + TCC_GPSB_AC2_START);
-			writel(ac_val[1], tccspi->ac + TCC_GPSB_AC2_LIMIT);
-		}
-		if (!of_property_read_u32_array(pdev->dev.of_node,
-					"access-control3", ac_val, 2)) {
-			dev_dbg(&pdev->dev,
-				"[DEBUG][SPI] access-control3 start:0x%x limit:0x%x\n",
-				ac_val[0], ac_val[1]);
-			writel(ac_val[0], tccspi->ac + TCC_GPSB_AC3_START);
-			writel(ac_val[1], tccspi->ac + TCC_GPSB_AC3_LIMIT);
-		}
+	/* initialize GPSB */
+	ret = tcc_spi_init(tccspi);
+	if(ret < 0){
+		dev_err(dev, "[ERROR][SPI] %s: failed to initialize spi\n");
+		goto exit_free_master;
 	}
-
-	/* Check CONTM support */
-	TCC_GPSB_BITSET(tccspi->base + TCC_GPSB_EVTCTRL, TCC_GPSB_EVTCTRL_CONTM(0x3));
-	ret = tcc_spi_readl(tccspi->base + TCC_GPSB_EVTCTRL) & TCC_GPSB_EVTCTRL_CONTM(0x3);
-	tccspi->pd->contm_support = !!ret;
 
 	/* Get TCC GPSB IRQ number */
 	tccspi->irq = -1;
@@ -1499,7 +1549,7 @@ static int tcc_spi_probe(struct platform_device *pdev)
 		dev_err(dev,
 			"[ERROR][SPI] No SPI IRQ Number.\n");
 		ret = -ENXIO;
-		goto exit_free_master;
+		goto exit_unprepare_clk;
 	}
 
 	/* Get GDMA data */
@@ -1507,8 +1557,8 @@ static int tcc_spi_probe(struct platform_device *pdev)
 		ret = tcc_spi_dma_engine_probe(pdev, tccspi);
 		if(ret < 0) {
 			dev_err(dev,
-				"[ERROR][SPI] Failed to get dma-engine\n");
-			goto exit_free_master;
+					"[ERROR][SPI] Failed to get dma-engine\n");
+			goto exit_unprepare_clk;
 		}
 	} else {
 		ret = devm_request_irq(dev, tccspi->irq, tcc_spi_dma_irq,
@@ -1517,17 +1567,8 @@ static int tcc_spi_probe(struct platform_device *pdev)
 			dev_err(dev,
 				"[ERROR][SPI] Failed to enter irq handler\n");
 			ret = -ENXIO;
-			goto exit_free_master;
+			goto exit_unprepare_clk;
 		}
-	}
-
-	/* Get pin control (active state)*/
-	tccspi->pinctrl = devm_pinctrl_get_select(dev, "active");
-	if(IS_ERR(tccspi->pinctrl)) {
-		dev_err(dev,
-			"[ERROR][SPI] Failed to get pinctrl (active state)\n");
-		ret = -ENXIO;
-		goto exit_free_master;
 	}
 
 	/* Allocate SPI master dma buffer (rx) */
@@ -1536,7 +1577,7 @@ static int tcc_spi_probe(struct platform_device *pdev)
 	if(ret < 0) {
 		dev_err(dev,
 			"[ERROR][SPI] Failed to allocate rx dma buffer\n");
-		goto exit_free_master;
+		goto exit_unprepare_clk;
 	}
 
 	/* Allocate SPI master dma buffer (tx) */
@@ -1551,28 +1592,6 @@ static int tcc_spi_probe(struct platform_device *pdev)
 	init_completion(&tccspi->xfer_complete);
 
 	platform_set_drvdata(pdev, master);
-
-	/* Enable clock */
-	ret = clk_prepare_enable(pd->hclk);
-	if(ret) {
-		dev_err(dev, "[ERROR][SPI] Failed to enable hclk\n");
-		goto exit_tx_dma_free;
-	}
-
-	ret = clk_prepare_enable(pd->pclk);
-	if(ret) {
-		dev_err(dev, "[ERROR][SPI] Failed to enable pclk\n");
-		goto exit_unprepare_clk;
-	}
-
-	/* Initialize GPSB registers */
-	tcc_spi_clear_fifo(tccspi);
-	tcc_spi_clear_packet_cnt(tccspi);
-	tcc_spi_stop_dma(tccspi);
-	tcc_spi_hwinit(tccspi);
-
-	/* Set port configuration */
-	tcc_spi_set_port(tccspi);
 
 	ret = devm_spi_register_master(dev, master);
 	if(ret) {
@@ -1607,12 +1626,13 @@ static int tcc_spi_probe(struct platform_device *pdev)
 
 	return ret;
 
-exit_unprepare_clk:
-	clk_disable_unprepare(pd->hclk);
 exit_tx_dma_free:
 	tcc_spi_deinit_dma_buf(tccspi, 0);
 exit_rx_dma_free:
 	tcc_spi_deinit_dma_buf(tccspi, 1);
+exit_unprepare_clk:
+	clk_disable_unprepare(pd->pclk);
+	clk_disable_unprepare(pd->hclk);
 exit_free_master:
 	spi_master_put(master);
 	return ret;
@@ -1675,12 +1695,13 @@ static int tcc_spi_suspend(struct device *dev)
 		printk(KERN_ERR "[ERROR][SPI] [%s] tccspi is null!!\n", __func__);
 		return -EINVAL;
 	}
-
 	pd = tcc_spi_get_pl_data(tccspi);
 
+	/* disable DMA, GPSB */
 	TCC_GPSB_BITCLR(tccspi->base + TCC_GPSB_MODE, TCC_GPSB_MODE_EN);
 	tcc_spi_stop_dma(tccspi);
 
+	/* disable Clock */
 	spin_lock_irqsave(&(tccspi->lock), flags);
 	if(pd->pclk)
 		clk_disable_unprepare(pd->pclk);
@@ -1695,7 +1716,6 @@ static int tcc_spi_resume(struct device *dev)
 {
 	struct spi_master *master = dev_get_drvdata(dev);
 	struct tcc_spi *tccspi = spi_master_get_devdata(master);
-	struct tcc_spi_pl_data *pd = NULL;
 	unsigned long flags;
 	int status;
 
@@ -1704,34 +1724,15 @@ static int tcc_spi_resume(struct device *dev)
 		return -EINVAL;
 	}
 
-	pd = tcc_spi_get_pl_data(tccspi);
-
+	/* Initialize GPSB */
 	spin_lock_irqsave(&(tccspi->lock), flags);
-	/* Enable clock */
-	if(pd->hclk)  {
-		status = clk_prepare_enable(pd->hclk);
-		if(status) {
-			dev_err(tccspi->dev, "[ERROR][SPI] Failed to enable hclk\n");
-			return status;
-		}
-	}
-	if(pd->pclk)  {
-		status = clk_prepare_enable(pd->pclk);
-		if(status) {
-			dev_err(tccspi->dev, "[ERROR][SPI] Failed to enable pclk\n");
-			return status;
-		}
-	}
+	status = tcc_spi_init(tccspi);
 	spin_unlock_irqrestore(&(tccspi->lock), flags);
 
-	/* Initialize GPSB registers */
-	tcc_spi_clear_fifo(tccspi);
-	tcc_spi_clear_packet_cnt(tccspi);
-	tcc_spi_stop_dma(tccspi);
-	tcc_spi_hwinit(tccspi);
-
-	/* Set port configuration */
-	tcc_spi_set_port(tccspi);
+	if(status < 0){
+		dev_err(dev, "[ERROR][SPI] %s: failed to init GPSB\n", __func__);
+		return status;
+	}
 
 	return spi_master_resume(master);
 }
