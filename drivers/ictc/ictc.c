@@ -37,6 +37,7 @@
 #define err_ictc(msg...)
 #endif
 
+#define SUCCESS			0
 
 #define ictc_readl		__raw_readl
 #define ictc_writel		__raw_writel
@@ -107,8 +108,7 @@
 #define DMA_SEL(x)		(x<<12)
 #define F_IN_SEL(x)		(x<<0)
 
-struct ictc_data {
-
+struct ictc_dev {
 	struct device_node *np;
 	unsigned int irq;
 	struct clk *pPClk;
@@ -150,11 +150,11 @@ static int gpio_num_group[] = {
 #define RTC_WKUP	0xa5
 
 static void __iomem *ictc_base;
-static int f_in_gpio = (int)NULL;
-static int f_in_source = (int)NULL;
-static int f_in_rtc_wkup = (int)NULL;
+static int f_in_gpio;
+static int f_in_source;
+static int f_in_rtc_wkup;
 
-static int irq_setting = (int)NULL;
+static int irq_setting;
 
 static char ictc_prop_v_l[][50] =
 {
@@ -446,56 +446,89 @@ static int gpio_to_f_in(int gpio_num)
 
 static int ictc_probe(struct platform_device *pdev)
 {
-	struct ictc_data *ictc_dat;
+	struct ictc_dev *idev;
 	struct device_node *np = pdev->dev.of_node;
 	unsigned int irq = platform_get_irq(pdev, 0);
 	struct clk *pPClk = of_clk_get(pdev->dev.of_node, 0);
 	int ret = 0;
 
-	ictc_dat = devm_kzalloc(&pdev->dev, sizeof(struct ictc_data), GFP_KERNEL);
-	ictc_dat->np = np;
-	ictc_dat->irq = irq;
-	ictc_dat->pPClk = pPClk;
+	//initialize global variables
+	f_in_gpio = 0;
+	f_in_source = 0;
+	f_in_rtc_wkup = 0;
+	irq_setting = 0;
 
 	if(!np){
 		err_ictc("device does not exist!\n");
-		return -EINVAL;
+		ret = -EINVAL;
+	} else {
+
+		idev = devm_kzalloc(&pdev->dev, sizeof(struct ictc_dev), GFP_KERNEL);
+
+		if(idev == NULL){
+			ret = -ENXIO;
+		} else {
+
+			ret = clk_prepare_enable(pPClk);
+
+			if(ret == SUCCESS){
+				ret = request_irq(irq, ictc_interrupt_handler, IRQF_SHARED, "ICTC", idev);
+
+				if(ret != SUCCESS){
+					err_ictc("Interrupt request fail ret : %d irq : %x\n", ret, irq);
+				} else {
+
+					ictc_base = of_iomap(np, 0);
+
+					f_in_rtc_wkup = of_property_read_bool(np, "f-in-rtc-wkup");
+
+					if(!f_in_rtc_wkup)
+					{
+
+						f_in_gpio = of_get_named_gpio(np, "f-in-gpio", 0);
+						f_in_source = gpio_to_f_in(f_in_gpio);
+
+					}
+
+					ret = ictc_parse_dt(np);
+
+					if(ret != SUCCESS){
+						err_ictc("device node does not exist!\n");
+					} else {
+
+						ictc_configure();
+
+						ictc_enable_interrupt();
+
+						ictc_enable_counter();
+
+						ictc_enable();
+
+					}
+				}
+
+				if(ret != SUCCESS){
+					clk_disable_unprepare(pPClk);
+				}
+
+			}
+
+			if(ret != SUCCESS){
+
+				devm_kfree(idev);
+
+			} else {
+
+				idev->np = np;
+				idev->irq = irq;
+				idev->pPClk = pPClk;
+				platform_set_drvdata(pdev, idev);
+
+			}
+
+		}
+
 	}
-
-	clk_prepare_enable(pPClk);
-
-	ret = request_irq(irq, ictc_interrupt_handler, IRQF_SHARED, "ICTC", pdev);
-	if(ret){
-		err_ictc("Interrupt request fail ret : %d irq : %x\n", ret, irq);
-		return ret;
-	}
-
-	ictc_base = of_iomap(np, 0);
-
-	f_in_rtc_wkup = of_property_read_bool(np, "f-in-rtc-wkup");
-	if(!f_in_rtc_wkup)
-	{
-
-		f_in_gpio = of_get_named_gpio(np, "f-in-gpio", 0);
-		f_in_source = gpio_to_f_in(f_in_gpio);
-
-	}
-
-	ret = ictc_parse_dt(np);
-	if(ret){
-		err_ictc("device node does not exist!\n");
-		return ret;
-	}
-
-	ictc_configure();
-
-	ictc_enable_interrupt();
-
-	ictc_enable_counter();
-
-	ictc_enable();
-
-	platform_set_drvdata(pdev, ictc_dat);
 
 	return ret;
 
@@ -503,55 +536,66 @@ static int ictc_probe(struct platform_device *pdev)
 
 #if defined(CONFIG_PM_SLEEP) && defined(CONFIG_ARCH_TCC805X)
 
-static int ictc_resume(struct device *dev)
+static int ictc_suspend(struct device *dev)
 {
-	struct ictc_data *ictc_dat = dev_get_drvdata(dev);
+	struct ictc_dev *idev = dev_get_drvdata(dev);
 	int ret = 0;
 
-        if(!ictc_dat->np){
-                err_ictc("device does not exist!\n");
-                return -EINVAL;
-        }
+	if(idev == NULL) {
+		ret = -EINVAL;
+        } else {
+		free_irq(idev->irq, idev);
+		clk_disable_unprepare(idev->pPClk);
+	}
 
-        clk_prepare_enable(ictc_dat->pPClk);
+	return ret;
 
-        ret = request_irq(ictc_dat->irq, ictc_interrupt_handler, IRQF_SHARED, "ICTC", dev);
-        if(ret){
-                err_ictc("Interrupt request fail ret : %d irq : %x\n", ret, irq);
-                return ret;
-        }
+}
 
-        ictc_base = of_iomap(ictc_dat->np, 0);
+static int ictc_resume(struct device *dev)
+{
+	struct ictc_dev *idev = dev_get_drvdata(dev);
+	int ret = 0;
 
-        f_in_rtc_wkup = of_property_read_bool(ictc_dat->np, "f-in-rtc-wkup");
-        if(!f_in_rtc_wkup)
-        {
+	if(idev == NULL){
+		ret = -EINVAL;
+        } else {
+		ret = clk_prepare_enable(idev->pPClk);
 
-                f_in_gpio = of_get_named_gpio(ictc_dat->np, "f-in-gpio", 0);
-                f_in_source = gpio_to_f_in(f_in_gpio);
+		if(ret == SUCCESS){
 
-        }
+			ret = request_irq(idev->irq, ictc_interrupt_handler, IRQF_SHARED, "ICTC", idev);
 
-        ret = ictc_parse_dt(ictc_dat->np);
-        if(ret){
-                err_ictc("device node does not exist!\n");
-                return ret;
-        }
+			if(ret != SUCCESS){
 
-        ictc_configure();
+				clk_disable_unprepare(idev->pPClk);
+				err_ictc("Interrupt request fail ret : %d irq : %x\n", ret, idev->irq);
 
-        ictc_enable_interrupt();
+			} else {
 
-        ictc_enable_counter();
+				ictc_configure();
 
-        ictc_enable();
+				ictc_enable_interrupt();
+
+				ictc_enable_counter();
+
+				ictc_enable();
+
+			}
+
+		}
+
+		if(ret != SUCCESS) {
+			devm_kfree(idev);
+                }
+	}
 
 	return ret;
 
 
 }
 
-static SIMPLE_DEV_PM_OPS(ictc_pm_ops, NULL, ictc_resume);
+static SIMPLE_DEV_PM_OPS(ictc_pm_ops, ictc_suspend, ictc_resume);
 
 #endif
 
