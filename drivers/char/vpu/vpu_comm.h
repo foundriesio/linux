@@ -183,10 +183,11 @@ typedef struct _mgr_data_t {
 #ifdef CONFIG_VPU_TIME_MEASUREMENT
     TimeInfo_t iTime[VPU_MAX];
 #endif
-	bool bVpu_already_proc_force_closed;
+    bool bVpu_already_proc_force_closed;
 } mgr_data_t;
 
-#if defined(CONFIG_VDEC_CNT_1) || defined(CONFIG_VDEC_CNT_2) || defined(CONFIG_VDEC_CNT_3) || defined(CONFIG_VDEC_CNT_4) || defined(CONFIG_VDEC_CNT_5)
+#if defined(CONFIG_VDEC_CNT_1) || defined(CONFIG_VDEC_CNT_2) || defined(CONFIG_VDEC_CNT_3) \
+    || defined(CONFIG_VDEC_CNT_4) || defined(CONFIG_VDEC_CNT_5)
 typedef struct _vpu_decoder_data{
     struct miscdevice *misc;
     vpu_comm_data_t vComm_data;
@@ -257,8 +258,10 @@ typedef struct _vpu_decoder_data{
 } vpu_decoder_data;
 #endif
 
-#if defined(CONFIG_VENC_CNT_1) || defined(CONFIG_VENC_CNT_2) || defined(CONFIG_VENC_CNT_3) || defined(CONFIG_VENC_CNT_4)
-typedef struct _vpu_encoder_data{
+#if defined(CONFIG_VENC_CNT_1) || defined(CONFIG_VENC_CNT_2) || defined(CONFIG_VENC_CNT_3) \
+    || defined(CONFIG_VENC_CNT_4) || defined(CONFIG_VENC_CNT_5)
+typedef struct _vpu_encoder_data
+{
     struct miscdevice *misc;
     vpu_comm_data_t vComm_data;
     int gsEncType;

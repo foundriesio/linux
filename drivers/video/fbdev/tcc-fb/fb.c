@@ -1040,12 +1040,14 @@ static int fb_dt_parse_data(struct fb_info *info)
 	struct device_node *np = NULL;
 	int property_idx = 1;
 
+#ifdef CONFIG_ARCH_TCC803X
 	#ifdef CONFIG_FB_NEW_DISP1
 	if(!strcmp("/fb@0",of_node_full_name(info->dev->of_node))){
 		printk("%s fb0 disp1 support\n",__func__);
 		property_idx = 2;
 	}
 	#endif
+#endif
 
 	if(info->dev->of_node != NULL) {
 		if(of_property_read_u32(info->dev->of_node, "xres", &info->var.xres)) {
@@ -1146,6 +1148,12 @@ static int fb_dt_parse_data(struct fb_info *info)
 			break;
 		case VIOC_DISP2 :
 			par->pdata.ddc_clock = of_clk_get_by_name(np, "disp2-clk");
+			break;
+	#ifdef CONFIG_ARCH_TCC805X
+		case VIOC_DISP3 :
+			par->pdata.ddc_clock = of_clk_get_by_name(np, "disp3-clk");
+			break;
+	#endif
 		default:
 			pr_err("[ERR][FBX] error in %s: can not get ddc clock \n", __func__);
 			par->pdata.ddc_clock = NULL;
@@ -1193,7 +1201,7 @@ static int fb_dt_parse_data(struct fb_info *info)
 
 		np = of_find_node_by_name(info->dev->of_node, "fbx_region");
 		if(!np)
-			pr_warn("[WAN][FBX] error in %s: can not find fbx_region \n", __func__);
+			pr_warn("[WAN][FBX] warning in %s: can not find fbx_region \n", __func__);
 
 		if(np) {
 			if(of_property_read_u32(np, "x", &par->pdata.region.x)) {

@@ -111,7 +111,8 @@ static struct platform_driver vmem_driver = {
 };
 
 
-#if defined(CONFIG_VDEC_CNT_1) || defined(CONFIG_VDEC_CNT_2) || defined(CONFIG_VDEC_CNT_3) || defined(CONFIG_VDEC_CNT_4) || defined(CONFIG_VDEC_CNT_5)
+#if defined(CONFIG_VDEC_CNT_1) || defined(CONFIG_VDEC_CNT_2) || defined(CONFIG_VDEC_CNT_3) \
+    || defined(CONFIG_VDEC_CNT_4) || defined(CONFIG_VDEC_CNT_5)
 extern int vdec_probe(struct platform_device *pdev);
 extern int vdec_remove(struct platform_device *pdev);
 
@@ -143,7 +144,8 @@ static struct platform_driver vdec_driver = {
 #endif
 
 
-#if defined(CONFIG_VDEC_CNT_2) || defined(CONFIG_VDEC_CNT_3) || defined(CONFIG_VDEC_CNT_4) || defined(CONFIG_VDEC_CNT_5)
+#if defined(CONFIG_VDEC_CNT_2) || defined(CONFIG_VDEC_CNT_3) || defined(CONFIG_VDEC_CNT_4) \
+    || defined(CONFIG_VDEC_CNT_5)
 static struct platform_device vdec_ext_device = {
     .name   = DEC_EXT_NAME,
     .dev    = {},
@@ -257,7 +259,8 @@ static struct platform_driver vdec_ext4_driver = {
 };
 #endif
 
-#if defined(CONFIG_VENC_CNT_1) || defined(CONFIG_VENC_CNT_2) || defined(CONFIG_VENC_CNT_3) || defined(CONFIG_VENC_CNT_4)
+#if defined(CONFIG_VENC_CNT_1) || defined(CONFIG_VENC_CNT_2) || defined(CONFIG_VENC_CNT_3) \
+    || defined(CONFIG_VENC_CNT_4) || defined(CONFIG_VENC_CNT_5)
 extern int venc_probe(struct platform_device *pdev);
 extern int venc_remove(struct platform_device *pdev);
 
@@ -289,7 +292,8 @@ static struct platform_driver venc_driver = {
 #endif
 
 
-#if defined(CONFIG_VENC_CNT_2) || defined(CONFIG_VENC_CNT_3) || defined(CONFIG_VENC_CNT_4)
+#if defined(CONFIG_VENC_CNT_2) || defined(CONFIG_VENC_CNT_3) || defined(CONFIG_VENC_CNT_4) \
+    || defined(CONFIG_VENC_CNT_5)
 static struct platform_device venc_ext_device = {
     .name   = ENC_EXT_NAME,
     .dev    = {},
@@ -318,7 +322,7 @@ static struct platform_driver venc_ext_driver = {
 #endif
 
 
-#if defined(CONFIG_VENC_CNT_3) || defined(CONFIG_VENC_CNT_4)
+#if defined(CONFIG_VENC_CNT_3) || defined(CONFIG_VENC_CNT_4) || defined(CONFIG_VENC_CNT_5)
 static struct platform_device venc_ext2_device = {
     .name   = ENC_EXT2_NAME,
     .dev    = {},
@@ -347,7 +351,7 @@ static struct platform_driver venc_ext2_driver = {
 #endif
 
 
-#if defined(CONFIG_VENC_CNT_4)
+#if defined(CONFIG_VENC_CNT_4) || defined(CONFIG_VENC_CNT_5)
 static struct platform_device venc_ext3_device = {
     .name   = ENC_EXT3_NAME,
     .dev    = {},
@@ -375,22 +379,56 @@ static struct platform_driver venc_ext3_driver = {
 };
 #endif
 
+#if defined(CONFIG_VENC_CNT_5)
+static struct platform_device venc_ext4_device = {
+    .name   = ENC_EXT4_NAME,
+    .dev    = {},
+    .id     = VPU_ENC_EXT4,
+};
+
+#ifdef CONFIG_OF
+static struct of_device_id vpu_venc_ext4_of_match[] = {
+        { .compatible = "telechips,vpu_venc_ext4" },
+        {}
+};
+MODULE_DEVICE_TABLE(of, vpu_venc_ext4_of_match);
+#endif
+
+static struct platform_driver venc_ext4_driver = {
+    .probe          = venc_probe,
+    .remove         = venc_remove,
+    .driver         = {
+    .name           = ENC_EXT4_NAME,
+    .owner          = THIS_MODULE,
+#ifdef CONFIG_OF
+    .of_match_table = of_match_ptr(vpu_venc_ext4_of_match),
+#endif
+    },
+};
+#endif
+
 static void __exit vdev_cleanup(void)
 {
-#if defined(CONFIG_VENC_CNT_4)
+#if defined(CONFIG_VENC_CNT_5)
+    platform_driver_unregister(&venc_ext4_driver);
+    platform_device_unregister(&venc_ext4_device);
+#endif
+#if defined(CONFIG_VENC_CNT_4) || defined(CONFIG_VENC_CNT_5)
     platform_driver_unregister(&venc_ext3_driver);
     platform_device_unregister(&venc_ext3_device);
 #endif
-#if defined(CONFIG_VENC_CNT_3) || defined(CONFIG_VENC_CNT_4)
+#if defined(CONFIG_VENC_CNT_3) || defined(CONFIG_VENC_CNT_4) || defined(CONFIG_VENC_CNT_5)
     platform_driver_unregister(&venc_ext2_driver);
     platform_device_unregister(&venc_ext2_device);
 #endif
-#if defined(CONFIG_VENC_CNT_2) || defined(CONFIG_VENC_CNT_3) || defined(CONFIG_VENC_CNT_4)
+#if defined(CONFIG_VENC_CNT_2) || defined(CONFIG_VENC_CNT_3) || defined(CONFIG_VENC_CNT_4) \
+    || defined(CONFIG_VENC_CNT_5)
     platform_driver_unregister(&venc_ext_driver);
     platform_device_unregister(&venc_ext_device);
 #endif
 
-#if defined(CONFIG_VENC_CNT_1) || defined(CONFIG_VENC_CNT_2) || defined(CONFIG_VENC_CNT_3) || defined(CONFIG_VENC_CNT_4)
+#if defined(CONFIG_VENC_CNT_1) || defined(CONFIG_VENC_CNT_2) || defined(CONFIG_VENC_CNT_3) \
+    || defined(CONFIG_VENC_CNT_4) || defined(CONFIG_VENC_CNT_5)
     platform_driver_unregister(&venc_driver);
     platform_device_unregister(&venc_device);
 #endif
@@ -410,12 +448,14 @@ static void __exit vdev_cleanup(void)
     platform_device_unregister(&vdec_ext2_device);
 #endif
 
-#if defined(CONFIG_VDEC_CNT_2) || defined(CONFIG_VDEC_CNT_3) || defined(CONFIG_VDEC_CNT_4) || defined(CONFIG_VDEC_CNT_5)
+#if defined(CONFIG_VDEC_CNT_2) || defined(CONFIG_VDEC_CNT_3) || defined(CONFIG_VDEC_CNT_4) \
+    || defined(CONFIG_VDEC_CNT_5)
     platform_driver_unregister(&vdec_ext_driver);
     platform_device_unregister(&vdec_ext_device);
 #endif
 
-#if defined(CONFIG_VDEC_CNT_1) || defined(CONFIG_VDEC_CNT_2) || defined(CONFIG_VDEC_CNT_3) || defined(CONFIG_VDEC_CNT_4) || defined(CONFIG_VDEC_CNT_5)
+#if defined(CONFIG_VDEC_CNT_1) || defined(CONFIG_VDEC_CNT_2) || defined(CONFIG_VDEC_CNT_3) \
+    || defined(CONFIG_VDEC_CNT_4) || defined(CONFIG_VDEC_CNT_5)
     platform_driver_unregister(&vdec_driver);
     platform_device_unregister(&vdec_device);
 #endif
@@ -442,13 +482,15 @@ static int vdev_init(void)
     platform_device_register(&vmem_device);
     platform_driver_register(&vmem_driver);
 
-#if defined(CONFIG_VDEC_CNT_1) || defined(CONFIG_VDEC_CNT_2) || defined(CONFIG_VDEC_CNT_3) || defined(CONFIG_VDEC_CNT_4) || defined(CONFIG_VDEC_CNT_5)
+#if defined(CONFIG_VDEC_CNT_1) || defined(CONFIG_VDEC_CNT_2) || defined(CONFIG_VDEC_CNT_3) \
+    || defined(CONFIG_VDEC_CNT_4) || defined(CONFIG_VDEC_CNT_5)
 // register decoder driver...
     platform_device_register(&vdec_device);
     platform_driver_register(&vdec_driver);
 #endif
 
-#if defined(CONFIG_VDEC_CNT_2) || defined(CONFIG_VDEC_CNT_3) || defined(CONFIG_VDEC_CNT_4) || defined(CONFIG_VDEC_CNT_5)
+#if defined(CONFIG_VDEC_CNT_2) || defined(CONFIG_VDEC_CNT_3) || defined(CONFIG_VDEC_CNT_4) \
+    || defined(CONFIG_VDEC_CNT_5)
 // register decoder_ext driver...
     platform_device_register(&vdec_ext_device);
     platform_driver_register(&vdec_ext_driver);
@@ -472,26 +514,34 @@ static int vdev_init(void)
     platform_driver_register(&vdec_ext4_driver);
 #endif
 
-#if defined(CONFIG_VENC_CNT_1) || defined(CONFIG_VENC_CNT_2) || defined(CONFIG_VENC_CNT_3) || defined(CONFIG_VENC_CNT_4)
+#if defined(CONFIG_VENC_CNT_1) || defined(CONFIG_VENC_CNT_2) || defined(CONFIG_VENC_CNT_3) \
+    || defined(CONFIG_VENC_CNT_4) || defined(CONFIG_VENC_CNT_5)
 // register encoder driver...
     platform_device_register(&venc_device);
     platform_driver_register(&venc_driver);
 #endif
 
-#if defined(CONFIG_VENC_CNT_2) || defined(CONFIG_VENC_CNT_3) || defined(CONFIG_VENC_CNT_4)
+#if defined(CONFIG_VENC_CNT_2) || defined(CONFIG_VENC_CNT_3) || defined(CONFIG_VENC_CNT_4) \
+    || defined(CONFIG_VENC_CNT_5)
 // register encoder_ext driver...
     platform_device_register(&venc_ext_device);
     platform_driver_register(&venc_ext_driver);
 #endif
-#if defined(CONFIG_VENC_CNT_3) || defined(CONFIG_VENC_CNT_4)
+#if defined(CONFIG_VENC_CNT_3) || defined(CONFIG_VENC_CNT_4) || defined(CONFIG_VENC_CNT_5)
 // register encoder_ext2 driver...
     platform_device_register(&venc_ext2_device);
     platform_driver_register(&venc_ext2_driver);
 #endif
-#if defined(CONFIG_VENC_CNT_4)
+#if defined(CONFIG_VENC_CNT_4) || defined(CONFIG_VENC_CNT_5)
 // register encoder_ext3 driver...
     platform_device_register(&venc_ext3_device);
     platform_driver_register(&venc_ext3_driver);
+#endif
+
+#if defined(CONFIG_VENC_CNT_5)
+// register encoder_ext4 driver...
+    platform_device_register(&venc_ext4_device);
+    platform_driver_register(&venc_ext4_driver);
 #endif
 
     printk("Done!! \n");

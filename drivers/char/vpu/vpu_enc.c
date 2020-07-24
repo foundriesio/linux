@@ -23,7 +23,8 @@
  *
  */
 
-#if defined(CONFIG_VENC_CNT_1) || defined(CONFIG_VENC_CNT_2) || defined(CONFIG_VENC_CNT_3) || defined(CONFIG_VENC_CNT_4)
+#if defined(CONFIG_VENC_CNT_1) || defined(CONFIG_VENC_CNT_2) || defined(CONFIG_VENC_CNT_3) \
+	|| defined(CONFIG_VENC_CNT_4) || defined(CONFIG_VENC_CNT_5)
 
 #include <linux/moduleparam.h>
 #include <linux/device.h>
@@ -841,7 +842,7 @@ int venc_probe(struct platform_device *pdev)
 	}
 
 	platform_set_drvdata(pdev, vdata);
-	pr_info("VPU %s Driver(id:%d) Initialized.\n", pdev->name, pdev->id);
+	pr_info("[VPU] %s Driver(id:%d) Initialized.\n", pdev->name, pdev->id);
 
 	return 0;
 

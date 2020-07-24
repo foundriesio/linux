@@ -1294,7 +1294,6 @@ _ParseHTBAppHints(PVRSRV_DEVICE_NODE *psDeviceNode)
 ******************************************************************************/
 PVRSRV_ERROR RGXInit(PVRSRV_DEVICE_NODE *psDeviceNode)
 {
-	IMG_INT32 i32DriverMode;
 	PVRSRV_ERROR eError;
 
 	/* Services initialisation parameters */
@@ -1364,18 +1363,7 @@ PVRSRV_ERROR RGXInit(PVRSRV_DEVICE_NODE *psDeviceNode)
 		goto cleanup;
 	}
 
-
-	sApphints.ui32DriverMode = PVRSRVGetPVRSRVData()->eDriverMode;
-
-	/* The driver execution mode AppHint can be either an override or non-override
-	   32-bit value. An override value has the MSB bit set & the non-override value
-	   has this bit cleared. Excluding this MSB bit & treating the remaining 31-bit
-	   value as a signed integer the mode values are -1 native mode, 0 host mode &
-	   +1 guest mode respectively */
-	i32DriverMode = sApphints.ui32DriverMode & 0x7FFFFFFF;
-	i32DriverMode |= (sApphints.ui32DriverMode & (1<<30)) ? (1<<31) : 0;
-
-	if (i32DriverMode <= (IMG_INT32)DRIVER_MODE_HOST)
+	if (!PVRSRV_VZ_MODE_IS(GUEST))
 	{
 		eError = InitFirmware(psDeviceNode, &sApphints);
 		if (eError != PVRSRV_OK)
@@ -1387,7 +1375,6 @@ PVRSRV_ERROR RGXInit(PVRSRV_DEVICE_NODE *psDeviceNode)
 			goto cleanup;
 		}
 	}
-
 
 	/*
 	 * Setup Firmware initialisation data
@@ -1438,14 +1425,17 @@ PVRSRV_ERROR RGXInit(PVRSRV_DEVICE_NODE *psDeviceNode)
 		goto cleanup;
 	}
 
-	eError = InitialiseAllCounters(psDeviceNode);
-	if (eError != PVRSRV_OK)
+	if (!PVRSRV_VZ_MODE_IS(GUEST))
 	{
-		PVR_DPF((PVR_DBG_ERROR,
-		        "%s: InitialiseAllCounters failed (%d)",
-		        __func__,
-		        eError));
-		goto cleanup;
+		eError = InitialiseAllCounters(psDeviceNode);
+		if (eError != PVRSRV_OK)
+		{
+			PVR_DPF((PVR_DBG_ERROR,
+			        "%s: InitialiseAllCounters failed (%d)",
+			        __func__,
+			        eError));
+			goto cleanup;
+		}
 	}
 
 	/*

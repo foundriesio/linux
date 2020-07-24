@@ -84,6 +84,7 @@ typedef enum {
     VPU_ENC_EXT,
     VPU_ENC_EXT2,
     VPU_ENC_EXT3,
+    VPU_ENC_EXT4,
     VPU_MAX
 } vputype, E_VPU_TYPE;
 

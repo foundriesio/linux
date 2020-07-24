@@ -124,13 +124,14 @@ struct tcc_i2c_slave_buf {
 };
 
 struct tcc_i2c_slave {
-	unsigned int			id;				/* slave channel */
-	void __iomem			*regs;			/* base address */
-	void __iomem			*port_cfg;		/* port config address */
+	unsigned int			id;         /* slave channel */
+	void __iomem			*regs;      /* base address */
+	void __iomem			*port_cfg;  /* port config address */
 
 	unsigned int			phy_regs;
 
-	struct clk				*hclk;			/* iobus clock */
+	struct clk				*hclk;      /* iobus clock */
+	struct pinctrl          *pinctrl;   /* pin control */
 	struct device			*dev;
 
 	struct bin_attribute	bin;
@@ -143,8 +144,8 @@ struct tcc_i2c_slave {
 #endif
 	int						irq;
 
-	unsigned char			addr;			/* slave address */
-	
+	unsigned char			addr;       /* slave address */
+
 	unsigned int			is_suspended;
 	spinlock_t				lock;
 
@@ -201,7 +202,7 @@ static int tcc_i2c_slave_push_one_byte(struct tcc_i2c_slave *i2c, char data, int
 
 	spin_unlock_irqrestore(lock, flags);
 
-	return 0;	
+	return 0;
 }
 
 static int tcc_i2c_slave_pop_one_byte(struct tcc_i2c_slave *i2c, char *data, int rx)

@@ -110,7 +110,7 @@ static long tcc_hsm_ioctl_set_key(unsigned int cmd, unsigned long arg)
 		return ret;
 	}
 
-	ret = tcc_hsm_cmd_set_key(MBOX_DEV_HSM, req, param.otp_addr, param.otp_size, param.key_index);
+	ret = tcc_hsm_cmd_set_key(MBOX_DEV_HSM, req, param.addr, param.data_size, param.key_index);
 
 	return ret;
 }
@@ -304,7 +304,7 @@ static long tcc_hsm_ioctl_gen_mac_by_kt(unsigned int cmd, unsigned long arg)
 
 	dma_sync_single_for_cpu(dma_buf->dev, dma_buf->dstPhy, param.mac_size, DMA_FROM_DEVICE);
 	if (ret != 0) {
-		ELOG("tcc_hsm_ioctl_gen_mac fail(%d)\n", ret);
+		ELOG("tcc_hsm_ioctl_gen_mac_by_kt fail(%d)\n", ret);
 	} else {
 		if (copy_to_user((void *)arg, (void *)&param, sizeof(param))) {
 			ELOG("copy_to_user failed\n");
@@ -477,13 +477,22 @@ static long tcc_hsm_ioctl_get_rng(unsigned int cmd, unsigned long arg)
 	return ret;
 }
 
-static long tcc_hsm_ioctl_write_otp(unsigned int cmd, unsigned long arg)
+static long tcc_hsm_ioctl_write(unsigned int cmd, unsigned long arg)
 {
-	struct tcc_hsm_ioctl_otp_param param;
+	struct tcc_hsm_ioctl_write_param param;
 	uint32_t req = REQ_HSM_WRITE_OTP;
 	int32_t ret = -EFAULT;
 
-	if (copy_from_user(&param, (const struct tcc_hsm_ioctl_otp_param *)arg, sizeof(param))) {
+	if (cmd == HSM_WRITE_OTP_CMD) {
+		req = REQ_HSM_WRITE_OTP;
+	} else if (cmd == HSM_WRITE_SNOR_CMD) {
+		req = REQ_HSM_WRITE_SNOR;
+	} else {
+		ELOG("cmd is invalid\n");
+		return ret;
+	}
+
+	if (copy_from_user(&param, (const struct tcc_hsm_ioctl_write_param *)arg, sizeof(param))) {
 		ELOG("copy_from_user failed\n");
 		return ret;
 	}
@@ -494,7 +503,7 @@ static long tcc_hsm_ioctl_write_otp(unsigned int cmd, unsigned long arg)
 	}
 
 	ret =
-		tcc_hsm_cmd_write_otp(MBOX_DEV_HSM, req, param.otp_addr, dma_buf->srcPhy, param.data_size);
+		tcc_hsm_cmd_write(MBOX_DEV_HSM, req, param.addr, dma_buf->srcVir, param.data_size);
 
 	return ret;
 }
@@ -574,7 +583,8 @@ static long tcc_hsm_ioctl(struct file *file, unsigned int cmd, unsigned long arg
 		break;
 
 	case HSM_WRITE_OTP_CMD:
-		ret = tcc_hsm_ioctl_write_otp(cmd, arg);
+	case HSM_WRITE_SNOR_CMD:
+		ret = tcc_hsm_ioctl_write(cmd, arg);
 		break;
 
 	case HSM_GET_RNG_CMD:
@@ -585,7 +595,6 @@ static long tcc_hsm_ioctl(struct file *file, unsigned int cmd, unsigned long arg
 		ret = tcc_hsm_ioctl_get_version(cmd, arg);
 		break;
 
-	case HSM_WRITE_SNOR_CMD:
 	default:
 		ELOG("unknown command(0x%x)\n", cmd);
 		break;

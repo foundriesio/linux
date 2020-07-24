@@ -72,9 +72,12 @@
 		videoinput6 = &videoinput6;
 		videoinput7 = &videoinput7;
 		fb0 = &fb0;
-	#if defined(CONFIG_OVERLAY_DPGL)
+#if defined(CONFIG_FB_NEW_FB1)
 		fb1 = &fb1;
-	#endif
+#endif
+#if defined(CONFIG_FB_NEW_FB2)
+		fb2 = &fb2;
+#endif
 		wmixer-drv1 = &wmixer_drv1;
 //		tcc-overlay-drv1 = &tcc_overlay_drv1;
 	};
@@ -189,6 +192,26 @@
 			size = <PMAP_SIZE_FB_VIDEO>;
 			no-map;
 		};
+
+#if defined(CONFIG_FB_NEW_FB1)
+		pmap_fb1_video: fb1_video {
+			compatible = "telechips,pmap";
+			telechips,pmap-name = "fb1_video";
+			alloc-ranges = <RESERVED_MEM_BASE RESERVED_MEM_SIZE>;
+			size = <PMAP_SIZE_FB1_VIDEO>;
+			no-map;
+		};
+#endif
+
+#if defined(CONFIG_FB_NEW_FB2)
+		pmap_fb2_video: fb2_video {
+			compatible = "telechips,pmap";
+			telechips,pmap-name = "fb2_video";
+			alloc-ranges = <RESERVED_MEM_BASE RESERVED_MEM_SIZE>;
+			size = <PMAP_SIZE_FB2_VIDEO>;
+			no-map;
+		};
+#endif
 
 		pmap_overlay_rot: overlay_rot {
 			compatible = "telechips,pmap";
@@ -726,7 +749,8 @@
 
 	uart0: serial@16640000 {
 		compatible = "arm,pl011", "arm,primecell";
-		reg = <0x16640000 0x1000>;
+		reg = <0x16640000 0x1000>,
+		      <0x16689000 0x4>;
 		arm,primecell-periphid = <0x001feff7>;
 		interrupts = <GIC_SPI 69 IRQ_TYPE_LEVEL_HIGH>;
 		clocks = <&clk_peri PERI_UART4>, <&clk_io IOBUS_UART4>;
@@ -736,7 +760,8 @@
 
         uart1: serial@16650000 {
                 compatible = "arm,pl011", "arm,primecell";
-                reg = <0x16650000 0x1000>;
+                reg = <0x16650000 0x1000>,
+		      <0x16689000 0x4>;
                 arm,primecell-periphid = <0x001feff7>;
                 interrupts = <GIC_SPI 111 IRQ_TYPE_LEVEL_HIGH>;
                 clocks = <&clk_peri PERI_UART5>, <&clk_io IOBUS_UART5>;
@@ -746,7 +771,8 @@
 
         uart2: serial@16660000 {
                 compatible = "arm,pl011", "arm,primecell";
-                reg = <0x16660000 0x1000>;
+                reg = <0x16660000 0x1000>,
+		      <0x16689000 0x4>;
                 arm,primecell-periphid = <0x001feff7>;
                 interrupts = <GIC_SPI 112 IRQ_TYPE_LEVEL_HIGH>;
                 clocks = <&clk_peri PERI_UART6>, <&clk_io IOBUS_UART6>;
@@ -756,7 +782,8 @@
 
         uart3: serial@16670000 {
                 compatible = "arm,pl011", "arm,primecell";
-                reg = <0x16670000 0x1000>;
+                reg = <0x16670000 0x1000>,
+		      <0x16689000 0x4>;
                 arm,primecell-periphid = <0x001feff7>;
                 interrupts = <GIC_SPI 113 IRQ_TYPE_LEVEL_HIGH>;
                 clocks = <&clk_peri PERI_UART7>, <&clk_io IOBUS_UART7>;
@@ -1200,7 +1227,8 @@
 	};
 #endif
 
-	fb0: fb@0 {
+#if defined(CONFIG_FB_NEW_FB0)
+	fb0: fb@0 { //Cluster
 		compatible = "telechips,fb";
 		status = "okay";
 		memory-region = <&pmap_fb_video>;
@@ -1210,22 +1238,14 @@
 		mode = <FBX_TRIPLE>;
 		update-type = <FBX_OVERLAY_UPDATE>;
 		device-priority = <FBX_DEVICE_LVDS>;
-		telechips,disp = <&vioc_disp VIOC_DISP0 VIOC_DISP1>;
-		telechips,wmixer = <&vioc_wmix VIOC_WMIX0 VIOC_WMIX1>;
-		telechips,rdma = <&vioc_rdma VIOC_RDMA01 VIOC_RDMA04>;
-
-		//to use the option below, set CONFIG_FB_NEW_HALFDISPLAY_SUPPORT on menuconfig
-		telechips,scaler = <&vioc_scaler VIOC_SCALER0>;
-		fbx_region {
-			x = <0>;
-			y = <0>;
-			width = <960>;
-			height = <720>;
-		};
+		telechips,disp = <&vioc_disp VIOC_DISP2>;
+		telechips,wmixer = <&vioc_wmix VIOC_WMIX2>;
+		telechips,rdma = <&vioc_rdma VIOC_RDMA08>;
 	};
+#endif
 
-	#if defined(CONFIG_OVERLAY_DPGL)
-	fb1: fb@1 {
+#if defined(CONFIG_FB_NEW_FB1)
+	fb1: fb@1 { //SVM
 		compatible = "telechips,fb";
 		status = "okay";
 		memory-region = <&pmap_fb1_video>;
@@ -1233,16 +1253,30 @@
 		yres = <720>;
 		bpp = <32>;
 		mode = <FBX_TRIPLE>;
-		update-type = <FBX_NOWAIT_UPDATE>;
-		device-priority = <FBX_DEVICE_NONE>;
-		telechips,wdma = <&vioc_wdma  VIOC_WDMA05>;
-		telechips,wmixer = <&vioc_wmix VIOC_WMIX5>;
-		telechips,rdma = <&vioc_rdma VIOC_RDMA16>;
-
-		clocks = <&clk_ddi DDIBUS_VIOC>;
-		clock-names = "ddi-clk";
+		update-type = <FBX_OVERLAY_UPDATE>;
+		device-priority = <FBX_DEVICE_LVDS>;
+		telechips,disp = <&vioc_disp VIOC_DISP1>;
+		telechips,wmixer = <&vioc_wmix VIOC_WMIX1>;
+		telechips,rdma = <&vioc_rdma VIOC_RDMA05>;
 	};
-	#endif
+#endif
+
+#if defined(CONFIG_FB_NEW_FB2)
+	fb2: fb@2 { //BVM
+		compatible = "telechips,fb";
+		status = "okay";
+		memory-region = <&pmap_fb2_video>;
+		xres = <1920>;
+		yres = <720>;
+		bpp = <32>;
+		mode = <FBX_TRIPLE>;
+		update-type = <FBX_OVERLAY_UPDATE>;
+		device-priority = <FBX_DEVICE_LVDS>;
+		telechips,disp = <&vioc_disp VIOC_DISP2>;
+		telechips,wmixer = <&vioc_wmix VIOC_WMIX2>;
+		telechips,rdma = <&vioc_rdma VIOC_RDMA09>;
+	};
+#endif
 
 	tcc_overlay_drv {
 		compatible = "telechips,tcc_overlay";
@@ -1514,6 +1548,11 @@
 		mbox-id = TCC_MBOX_SDR_ID;
 	};
 
+	trng: trng {
+		compatible = "telechips,tcc-rng";
+		status = "okay";
+	};
+
 	tcc_sc_fw: tcc_sc_fw {
 		compatible = "telechips,tcc805x-sc-fw";
 	};
@@ -1778,6 +1817,33 @@
 
 		mmc-hs400-1_8v;
 		vqmmc-supply = <&vqmmc_emmc>;
+	};
+	
+	ehci_phy: ehci_phy@11DA0010 {
+		compatible = "telechips,tcc_ehci_phy";
+		reg = <0x11DA0010 0x30>;
+		interrupts = <GIC_SPI 143 IRQ_TYPE_LEVEL_HIGH>;
+		clocks = <&clk_hsio HSIOBUS_USB20H /*&clk_isoip_top ISOIP_TOP_U20H*/>;
+		status = "disabled";
+	};
+
+	ehci: ehci@11A00000 {
+		compatible = "telechips,tcc-ehci";
+		reg = <0x11A00000 0x108>,
+		      <0x11DA0010 0x54>;
+		interrupts = <GIC_SPI 142 IRQ_TYPE_LEVEL_HIGH>;
+		clocks = <&clk_hsio HSIOBUS_USB20H /*&clk_isoip_top ISOIP_TOP_U20H*/>;
+		telechips,ehci_phy = <&ehci_phy>;
+		status = "disabled";
+	};
+
+	ohci: ohci@11A80000 {
+		compatible = "telechips,tcc-ohci";
+		reg = <0x11A80000 0x60>,
+		      <0x11DA0010 0x54>;
+		interrupts = <GIC_SPI 142 IRQ_TYPE_LEVEL_HIGH>;
+		clocks = <&clk_hsio HSIOBUS_USB20H /*&clk_isoip_top ISOIP_TOP_U20H*/>;
+		status = "disabled";
 	};
 };
 
@@ -3345,6 +3411,26 @@
 	pinctrl-names = "default", "idle";
 	pinctrl-0 = <&m0dai1_bclk &m0dai1_lrck &m0dai1_dai0>;
 	pinctrl-1 = <&m0dai1_bclk_idle &m0dai1_lrck_idle &m0dai1_dai0_idle>;
+	status = "okay";
+};
+
+/* USB 2.0 Host */
+&ehci_phy {
+	status = "okay";
+	vbus-ctrl-able;
+	vbus-gpio = <&gpa 28 0>; /* 0 : GPIO_ACTIVE_HIGH, 1 : GPIO_ACTIVE_LOW */
+};
+
+&ehci {
+	status = "okay";
+	hcd_id = <0>;
+	phy-type = <1>;	    //pico phy = 1, nano phy = 0
+	TXVRT = <0xB>;
+	TXRISET = <0x3>;
+	TXAT = <0x1>;
+};
+
+&ohci {
 	status = "okay";
 };
 

@@ -3007,7 +3007,11 @@ PVRSRV_ERROR IMG_CALLCONV PVRSRVDeviceFinalise(PVRSRV_DEVICE_NODE *psDeviceNode,
 				OSWaitus(PVR_AUTOVZ_WDG_PERIOD_MS * 1000);
 			}
 			PVR_DPF((PVR_DBG_MESSAGE, "%s: Firmware Connection is Ready. Initialisation proceeding.", __func__));
-#endif
+
+#if defined(SUPPORT_AUTOVZ_HW_REGS)
+			KM_SET_OS_CONNECTION(READY, psDevInfo);
+#endif /* defined(SUPPORT_AUTOVZ_HW_REGS) */
+#endif /* defined(SUPPORT_AUTOVZ) */
 
 			/* Kick an initial dummy command to make the firmware initialise all
 			 * its internal guest OS data structures and compatibility information */

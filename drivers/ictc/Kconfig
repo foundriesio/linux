@@ -1,4 +1,4 @@
 config ICTC
 	bool "ICTC driver"
-	depends on ARCH_TCC803X=y
+	depends on ARCH_TCC803X=y || ARCH_TCC805X=y
 	default n

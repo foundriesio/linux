@@ -174,7 +174,7 @@ int vmgr_hevc_enc_set_close(vputype type, int value, int bfreemem)
 {
 	if(vmgr_hevc_enc_get_close(type) == value)
 	{
-		V_DBG(DEBUG_VPU_ERROR, " %d was already set to %d or the unkown type.", type, value);
+		V_DBG(DEBUG_VPU_ERROR, " %d was already set to %d.", type, value);
 		return -1;
 	}
 
@@ -192,18 +192,22 @@ int vmgr_hevc_enc_set_close(vputype type, int value, int bfreemem)
 
 static void _vmgr_hevc_enc_close_all(int bfreemem)
 {
-#if defined(CONFIG_VENC_CNT_1) || defined(CONFIG_VENC_CNT_2) || \
-	defined(CONFIG_VENC_CNT_3) || defined(CONFIG_VENC_CNT_4)
+#if defined(CONFIG_VENC_CNT_1) || defined(CONFIG_VENC_CNT_2) || defined(CONFIG_VENC_CNT_3) \
+	|| defined(CONFIG_VENC_CNT_4) || defined(CONFIG_VENC_CNT_5)
 	vmgr_hevc_enc_set_close(VPU_ENC, 1, bfreemem);
 #endif
-#if defined(CONFIG_VENC_CNT_2) || defined(CONFIG_VENC_CNT_3) || defined(CONFIG_VENC_CNT_4)
+#if defined(CONFIG_VENC_CNT_2) || defined(CONFIG_VENC_CNT_3) || defined(CONFIG_VENC_CNT_4) \
+	|| defined(CONFIG_VENC_CNT_5)
 	vmgr_hevc_enc_set_close(VPU_ENC_EXT, 1, bfreemem);
 #endif
-#if defined(CONFIG_VENC_CNT_3) || defined(CONFIG_VENC_CNT_4)
+#if defined(CONFIG_VENC_CNT_3) || defined(CONFIG_VENC_CNT_4) || defined(CONFIG_VENC_CNT_5)
 	vmgr_hevc_enc_set_close(VPU_ENC_EXT2, 1, bfreemem);
 #endif
-#if defined(CONFIG_VENC_CNT_4)
+#if defined(CONFIG_VENC_CNT_4) || defined(CONFIG_VENC_CNT_5)
 	vmgr_hevc_enc_set_close(VPU_ENC_EXT3, 1, bfreemem);
+#endif
+#if defined(CONFIG_VENC_CNT_5)
+	vmgr_hevc_enc_set_close(VPU_ENC_EXT4, 1, bfreemem);
 #endif
 }
 
@@ -327,14 +331,15 @@ static int _vmgr_hevc_enc_cmd_release(char *str)
 
 	vmgr_hevc_enc_data.nOpened_Count++;
 
-	V_DBG(DEBUG_ENC_CLOSE, "======> _vmgr_hevc_enc_%s_release Out!! %d'th, total = %d  - DEC(%d/%d/%d/%d)",
+	V_DBG(DEBUG_ENC_CLOSE, "======> _vmgr_hevc_enc_%s_release Out!! %d'th, total = %d  - DEC(%d/%d/%d/%d/%d)",
 		str,
 		atomic_read(&vmgr_hevc_enc_data.dev_opened),
 		vmgr_hevc_enc_data.nOpened_Count,
 		vmgr_hevc_enc_get_close(VPU_ENC),
 		vmgr_hevc_enc_get_close(VPU_ENC_EXT),
 		vmgr_hevc_enc_get_close(VPU_ENC_EXT2),
-		vmgr_hevc_enc_get_close(VPU_ENC_EXT3)
+		vmgr_hevc_enc_get_close(VPU_ENC_EXT3),
+		vmgr_hevc_enc_get_close(VPU_ENC_EXT4)
 		);
 
 	return 0;
@@ -439,10 +444,10 @@ static int _vmgr_hevc_enc_internal_handler(void)
 		vmgr_hevc_enc_status_clear(vmgr_hevc_enc_data.base_addr);
 	}
 
-	V_DBG(DEBUG_ENC_INTERRUPT, "out (Interrupt option=%d, isr cnt=%d, ev(ret_code)=%s)",
+	V_DBG(DEBUG_ENC_INTERRUPT, "out (Interrupt option=%d, isr cnt=%d, ev=%d)",
 		vmgr_hevc_enc_data.check_interrupt_detection,
 		cntInt_vpu_he,
-		ret_code==RETCODE_INTR_DETECTION_NOT_ENABLED?"not-evented":"evented"
+		ret_code
 		);
 
 	return ret_code;
@@ -459,8 +464,8 @@ static int _vmgr_hevc_enc_process(vputype type, int cmd, long pHandle, void* arg
 	vmgr_hevc_enc_data.check_interrupt_detection = 0;
 	vmgr_hevc_enc_data.current_cmd = cmd;
 
-#if defined(CONFIG_VENC_CNT_1) || defined(CONFIG_VENC_CNT_2) || \
-	defined(CONFIG_VENC_CNT_3) || defined(CONFIG_VENC_CNT_4)
+#if defined(CONFIG_VENC_CNT_1) || defined(CONFIG_VENC_CNT_2) || defined(CONFIG_VENC_CNT_3) \
+	|| defined(CONFIG_VENC_CNT_4) || defined(CONFIG_VENC_CNT_5)
 
 	if (type <= VPU_HEVC_ENC_MAX)
 	{
@@ -498,30 +503,17 @@ static int _vmgr_hevc_enc_process(vputype type, int cmd, long pHandle, void* arg
 				arg->encInit.m_reg_write	= (void (*)(void *, unsigned int, unsigned int)) vetc_reg_write;
 				arg->encInit.m_Usleep		= (void (*)(unsigned int, unsigned int))usleep_range;
 
-				V_DBG(DEBUG_ENC_SEQUENCE, "@@ Enc :: Init In =>Memcpy(0x%px),Memset(0x%px),Interrupt(0x%px),remap(0x%px),unmap(0x%px),read(0x%px),write(0x%px),sleep(0x%px)||workbuff(0x%px/0x%px),Reg(0x%px/0x%px),format(%d),W:H(%d:%d),Fps(%d),Bps(%d),Keyi(%d),Stream(0x%px/0x%px, %d),Reg(0x%px):Sec. AXI (0x%x)",
-					arg->encInit.m_Memcpy,
-					arg->encInit.m_Memset,
-					arg->encInit.m_Interrupt,
-					arg->encInit.m_Ioremap,
-					arg->encInit.m_Iounmap,
-					arg->encInit.m_reg_read,
-					arg->encInit.m_reg_write,
-					arg->encInit.m_Usleep,
-					arg->encInit.m_BitWorkAddr[PA],
-					arg->encInit.m_BitWorkAddr[VA],
-					vmgr_hevc_enc_data.base_addr,
-					arg->encInit.m_RegBaseAddr[VA],
-					arg->encInit.m_iBitstreamFormat,
-					arg->encInit.m_iPicWidth,
-					arg->encInit.m_iPicHeight,
-					arg->encInit.m_iFrameRate,
-					arg->encInit.m_iTargetKbps,
-					arg->encInit.m_iKeyInterval,
-					arg->encInit.m_BitstreamBufferAddr[PA],
-					arg->encInit.m_BitstreamBufferAddr[VA],
-					arg->encInit.m_iBitstreamBufferSize,
-					vidsys_conf_reg,
-					vetc_reg_read(vidsys_conf_reg, 0x84)
+				V_DBG(DEBUG_ENC_SEQUENCE, "@@ Enc :: Init In =>Memcpy(0x%px),Memset(0x%px),Interrupt(0x%px),"
+					"remap(0x%px),unmap(0x%px),read(0x%px),write(0x%px),sleep(0x%px)||workbuff(0x%px/0x%px),Reg(0x%px/0x%px),"
+					"format(%d),W:H(%d:%d),Fps(%d),Bps(%d),Keyi(%d),Stream(0x%px/0x%px, %d),Reg(0x%px):Sec. AXI (0x%x)",
+					arg->encInit.m_Memcpy, arg->encInit.m_Memset, arg->encInit.m_Interrupt,
+					arg->encInit.m_Ioremap, arg->encInit.m_Iounmap, arg->encInit.m_reg_read,
+					arg->encInit.m_reg_write, arg->encInit.m_Usleep, arg->encInit.m_BitWorkAddr[PA],
+					arg->encInit.m_BitWorkAddr[VA], vmgr_hevc_enc_data.base_addr, arg->encInit.m_RegBaseAddr[VA],
+					arg->encInit.m_iBitstreamFormat, arg->encInit.m_iPicWidth, arg->encInit.m_iPicHeight,
+					arg->encInit.m_iFrameRate, arg->encInit.m_iTargetKbps, arg->encInit.m_iKeyInterval,
+					arg->encInit.m_BitstreamBufferAddr[PA], arg->encInit.m_BitstreamBufferAddr[VA],
+					arg->encInit.m_iBitstreamBufferSize, vidsys_conf_reg, vetc_reg_read(vidsys_conf_reg, 0x84)
 					);
 
 				ret = tcc_vpu_hevc_enc(cmd, (void*)(&arg->handle), (void*)(&arg->encInit), (void*)(&arg->encInitialInfo));
@@ -678,7 +670,7 @@ static int _vmgr_hevc_enc_process(vputype type, int cmd, long pHandle, void* arg
 		vmgr_hevc_enc_data.iTime[type].accumulated_proc_time += time_gap_ms;
 		if (vmgr_hevc_enc_data.iTime[type].proc_base_cnt != 0 && vmgr_hevc_enc_data.iTime[type].proc_base_cnt % 29 == 0)
 		{
-			printk("VHEVC[%d] Enc[%4d] time %2d.%2d / %2d.%2d ms: "
+			printk("VHEVC[%d] Henc[%4d] time %2d.%2d / %2d.%2d ms: "
 				"%2d, %2d, %2d, %2d, %2d, %2d, %2d, %2d, %2d, %2d, %2d, %2d, %2d, %2d, %2d, "
 				"%2d, %2d, %2d, %2d, %2d, %2d, %2d, %2d, %2d, %2d, %2d, %2d, %2d, %2d, %2d \n",
 				type,
@@ -1327,7 +1319,7 @@ int vmgr_hevc_enc_probe(struct platform_device *pdev)
 	vidsys_conf_reg = (volatile void __iomem *)of_iomap(pdev->dev.of_node, 1);
 	if (vidsys_conf_reg == NULL)
 	{
-		V_DBG(DEBUG_ENC_PROBE, "vidsys_conf_reg: NULL");
+		V_DBG(DEBUG_VPU_ERROR, "vidsys_conf_reg: NULL");
 	}
 	else
 	{
@@ -1429,11 +1421,12 @@ int vmgr_hevc_enc_suspend(struct platform_device *pdev, pm_message_t state)
 
 	if(atomic_read(&vmgr_hevc_enc_data.dev_opened) != 0)
 	{
-		printk("\n vpu hevc enc: suspend enter for ENC(%d/%d/%d/%d)\n",
+		printk("\n vpu hevc enc: suspend enter for ENC(%d/%d/%d/%d/%d)\n",
 			vmgr_hevc_enc_get_close(VPU_ENC),
 			vmgr_hevc_enc_get_close(VPU_ENC_EXT),
 			vmgr_hevc_enc_get_close(VPU_ENC_EXT2),
-			vmgr_hevc_enc_get_close(VPU_ENC_EXT3)
+			vmgr_hevc_enc_get_close(VPU_ENC_EXT3),
+			vmgr_hevc_enc_get_close(VPU_ENC_EXT4)
 			);
 
 		_vmgr_hevc_enc_external_all_close(200);
@@ -1446,11 +1439,12 @@ int vmgr_hevc_enc_suspend(struct platform_device *pdev, pm_message_t state)
 		{
 			vmgr_hevc_enc_disable_clock(0);
 		}
-		printk("vpu hevc enc: suspend out for ENC(%d/%d/%d/%d)\n",
+		printk("vpu hevc enc: suspend out for ENC(%d/%d/%d/%d/%d)\n",
 			vmgr_hevc_enc_get_close(VPU_ENC),
 			vmgr_hevc_enc_get_close(VPU_ENC_EXT),
 			vmgr_hevc_enc_get_close(VPU_ENC_EXT2),
-			vmgr_hevc_enc_get_close(VPU_ENC_EXT3)
+			vmgr_hevc_enc_get_close(VPU_ENC_EXT3),
+			vmgr_hevc_enc_get_close(VPU_ENC_EXT4)
 			);
 	}
 
@@ -1483,7 +1477,7 @@ EXPORT_SYMBOL(vmgr_hevc_enc_resume);
 #endif
 
 MODULE_AUTHOR("Telechips.");
-MODULE_DESCRIPTION("TCC vpu hevc enc device driver");
+MODULE_DESCRIPTION("TCC vpu hevc enc manager");
 MODULE_LICENSE("GPL");
 
 #endif

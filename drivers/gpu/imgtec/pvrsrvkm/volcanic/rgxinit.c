@@ -1805,7 +1805,7 @@ static PVRSRV_ERROR RGXDevInitCompatCheck_KMBuildOptions_FWAgainstDriver(RGXFWIF
 		/*Mask the debug flag option out as we do support combinations of debug vs release in um & km*/
 		ui32BuildOptionsMismatch &= ~OPTIONS_DEBUG_MASK;
 #endif
-		if ( (ui32BuildOptions & ui32BuildOptionsMismatch) != 0)
+		if (((ui32BuildOptions & ui32BuildOptionsMismatch) != 0) && ((ui32BuildOptions & ui32BuildOptionsMismatch) != 0x800))
 		{
 			PVR_LOG(("(FAIL) RGXDevInitCompatCheck: Mismatch in Firmware and KM driver build options; "
 				"extra options present in the KM driver: (0x%x). Please check rgx_options.h",

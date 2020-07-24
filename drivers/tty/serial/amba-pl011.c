@@ -65,6 +65,10 @@
 #include <linux/pm_runtime.h>
 #endif
 
+#if defined(CONFIG_PM_SLEEP)&&defined(CONFIG_ARCH_TCC805X)
+#include <linux/of_address.h>
+#endif
+
 #include "amba-pl011.h"
 
 #define UART_NR			14
@@ -2731,6 +2735,9 @@ static int pl011_setup_port(struct device *dev, struct uart_amba_port *uap,
 	uap->port.fifosize = uap->fifosize;
 	uap->port.flags = UPF_BOOT_AUTOCONF;
 	uap->port.line = index;
+#if defined(CONFIG_PM_SLEEP)&&defined(CONFIG_ARCH_TCC805X)
+	uap->port.config_reg = of_iomap(dev->of_node, 1);
+#endif
 
 	amba_ports[index] = uap;
 
@@ -2821,6 +2828,42 @@ static int pl011_suspend(struct device *dev)
 static int pl011_resume(struct device *dev)
 {
 	struct uart_amba_port *uap = dev_get_drvdata(dev);
+
+#if defined(CONFIG_ARCH_TCC805X)
+        struct device_node *np;
+        int cfg_num_len, i, offset_reg;
+        char *pinctrl_name = 0, *string_temp = 0;
+        volatile char cfg_id_string[3];
+        unsigned long cfg_id, reg_val;
+        u32 phandle;
+
+        of_property_read_u32_array(dev->of_node, "pinctrl-0", &phandle, 1);
+        np = of_find_node_by_phandle(phandle);
+        pinctrl_name = (char*)of_node_full_name(np);
+        pinctrl_name+=22;
+        string_temp = strstr(pinctrl_name, "_");
+        cfg_num_len = string_temp - pinctrl_name;
+
+        for(i=0; i<cfg_num_len; i++){
+                cfg_id_string[i] = *(pinctrl_name+i);
+        }
+        cfg_id_string[cfg_num_len]='\0';
+        cfg_id = simple_strtoul((const char*)cfg_id_string, NULL, 10);
+
+#if defined(CONFIG_TCC805X_CA53Q)
+	offset_reg = 0x4;
+#else
+	offset_reg = (uap->port.line/4)*0x4;
+#endif
+
+	reg_val = readl_relaxed(uap->port.config_reg+offset_reg);
+
+	reg_val = reg_val&~(0xF<<((uap->port.line%4)*8));
+
+	reg_val = reg_val|(cfg_id<<((uap->port.line%4)*8));
+
+	writel_relaxed(reg_val, uap->port.config_reg+offset_reg);
+#endif
 
 	if (!uap)
 		return -EINVAL;

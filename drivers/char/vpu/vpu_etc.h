@@ -44,17 +44,18 @@
 #define DEBUG_ENC_INSTANCE		(1<<6)
 #define DEBUG_ENC_CLOSE			(1<<7)
 #define DEBUG_ENC_DETAIL		(1<<8)
+#define DEBUG_ENC_MEMORY		(1<<9)
 
 #ifdef VPU_DEBUG
 #if 0
-#define DEBUG_MASK ( DEBUG_ENC_SEQUENCE	|
-					DEBUG_ENC_PROBE 	|
-					DEBUG_VPU_ERROR		|
-					DEBUG_ENC_INSTANCE	|
-					DEBUG_ENC_CLOSE		|
+#define DEBUG_MASK ( DEBUG_ENC_SEQUENCE	| \
+					DEBUG_ENC_PROBE 	| \
+					DEBUG_VPU_ERROR		| \
+					DEBUG_ENC_INSTANCE	| \
+					DEBUG_ENC_CLOSE		| \
 					DEBUG_RSTCLK )
 #else
-#define DEBUG_MASK DEBUG_VPU_ERROR
+#define DEBUG_MASK (DEBUG_VPU_ERROR)
 #endif
 #endif
 

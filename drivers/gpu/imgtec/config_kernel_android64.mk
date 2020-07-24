@@ -17,12 +17,20 @@ override PVRSRV_MODNAME := pvrsrvkm
 override PVRHMMU_MODNAME :=
 override PVRSYNC_MODNAME := pvr_sync
 override PVR_BUILD_DIR := arm64_android
+ifeq ($(CONFIG_POWERVR_DEBUG),y)
+override PVR_BUILD_TYPE := debug
+else
 override PVR_BUILD_TYPE := release
+endif
 override SUPPORT_RGX := 1
 override PVR_SYSTEM := tcc_9xtp
 override PVR_LOADER :=
+ifeq ($(CONFIG_POWERVR_DEBUG),y)
+override BUILD := debug
+else
 override BUILD := release
 override DEBUGLINK := 1
+endif
 override SUPPORT_PHYSMEM_TEST := 1
 override COMPRESS_DEBUG_SECTIONS := 1
 override RGX_BNC := 27.V.254.2

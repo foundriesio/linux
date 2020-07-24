@@ -175,9 +175,9 @@ static int _vp9mgr_internal_handler(void)
         vp9mgr_status_clear(vp9mgr_data.base_addr);
     }
 
-    V_DBG(DEBUG_ENC_INTERRUPT, "out (Interrupt option=%d, ev(ret_code)=%s)",
+    V_DBG(DEBUG_ENC_INTERRUPT, "out (Interrupt option=%d, ev=%d)",
         vp9mgr_data.check_interrupt_detection,
-        ret_code==RETCODE_INTR_DETECTION_NOT_ENABLED?"not-evented":"evented"
+        ret_code
         );
 
     return ret_code;
@@ -494,7 +494,8 @@ static int _vp9mgr_process(vputype type, int cmd, int pHandle, void* args)
                 break;
         }
     }
-#if defined(CONFIG_VENC_CNT_1) || defined(CONFIG_VENC_CNT_2) || defined(CONFIG_VENC_CNT_3) || defined(CONFIG_VENC_CNT_4)
+#if defined(CONFIG_VENC_CNT_1) || defined(CONFIG_VENC_CNT_2) || defined(CONFIG_VENC_CNT_3) \
+    || defined(CONFIG_VENC_CNT_4) || defined(CONFIG_VENC_CNT_5)
     else
     {
         err("@@ Enc :: Encoder for VP9 do not support. command(0x%x) \n", cmd);
@@ -613,7 +614,8 @@ static int _vp9mgr_cmd_open(char *str)
 #ifdef FORCED_ERROR
         forced_error_count = FORCED_ERR_CNT;
 #endif
-#if defined(CONFIG_VENC_CNT_1) || defined(CONFIG_VENC_CNT_2) || defined(CONFIG_VENC_CNT_3) || defined(CONFIG_VENC_CNT_4)
+#if defined(CONFIG_VENC_CNT_1) || defined(CONFIG_VENC_CNT_2) || defined(CONFIG_VENC_CNT_3) \
+    || defined(CONFIG_VENC_CNT_4) || defined(CONFIG_VENC_CNT_5)
         vp9mgr_data.only_decmode = 0;
 #else
         vp9mgr_data.only_decmode = 1;

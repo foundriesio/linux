@@ -762,7 +762,18 @@ static struct platform_driver secdriver = {
 };
 // clang-format on
 
-module_platform_driver(secdriver);
+static int __init sec_init(void)
+{
+	return platform_driver_register(&secdriver);
+}
+fs_initcall(sec_init)
+
+static void __exit sec_exit(void)
+{
+	platform_driver_unregister(&secdriver);
+}
+module_exit(sec_exit);
+
 MODULE_DESCRIPTION("Telechips SEC IPC interface");
 MODULE_AUTHOR("Telechips co.");
 MODULE_LICENSE("GPL");

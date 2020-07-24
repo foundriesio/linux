@@ -75,6 +75,7 @@ struct tcc_i2c {
 	struct clk              *pclk; /* I2C Peri */
 	struct clk              *hclk; /* I2C IO config*/
 	struct clk              *fclk; /* FBUS_IO */
+	struct pinctrl          *pinctrl; /* Pin-control */
 	struct i2c_msg          *msg;
 	unsigned int            msg_num;
 	unsigned int            msg_idx;
@@ -562,6 +563,14 @@ static int tcc_i2c_init(struct tcc_i2c *i2c)
 	}
 
 	clk_set_rate(i2c->pclk, i2c->core_clk_rate);
+
+	/* set pinctrl default state */
+	i2c->pinctrl = devm_pinctrl_get_select(i2c->dev, "default");
+	if(IS_ERR(i2c->pinctrl)) {
+		dev_err(i2c->dev,
+			"[ERROR][I2C] Failed to get pinctrl (default state)\n");
+		return -ENODEV;
+	}
 
 	/* get permission of i2c 7 */
 	if(i2c->core == 7){
