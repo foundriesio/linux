@@ -120,10 +120,10 @@
 		A53_3: cpu@3 {
 			device_type = "cpu";
 			compatible = "arm,cortex-a53";
-			reg = <0x3>;
-			enable-method = "psci";
-			next-level-cache = <&A53_L2>;
-		};
+   		reg = <0x3>;
+   		enable-method = "psci";
+   		next-level-cache = <&A53_L2>;
+   	};
 
 		A53_L2: l2-cache {
 			compatible = "cache";
@@ -223,6 +223,14 @@
 			alloc-ranges = <RESERVED_MEM_BASE RESERVED_MEM_SIZE>;
 			size = <PMAP_SIZE_UMP_RESERVED>; // Max-Video-Resolution(Aligned_256KB(w*h*3/2)) * 12 + 1MB
 		};
+
+		pmap_ion_carveout_cam: ion_carveout_cam {
+ 			compatible = "telechips,pmap";
+			telechips,pmap-name = "ion_carveout_cam";
+			alloc-ranges = <ION_CARVEOUT_CAM_MEM_BASE ION_CARVEOUT_CAM_MEM_SIZE>;
+			size = <PMAP_SIZE_ION_CARVEOUT_CAM>; // 32MB
+			telechips,pmap-secured = <4>;
+ 		};
 
 		/*-----------------------------------------------------------
 		 * RearCamera Memory (synchronized with bootloader)
@@ -951,19 +959,13 @@
 		#address-cells = <1>;
 		#size-cells = <0>;
 
-		ion-heap@0 {
-			reg = <0>;
-			telechips,ion-heap-name = "ion_noncontig_heap";
-		};
-
-		ion-heap@1 {
-			reg = <1>;
-			telechips,ion-heap-name = "ion_contig_heap";
-		};
-
 		ion-heap@2 {
 			reg = <2>;
 			telechips,ion-heap-name = "ion_carveout_heap";
+		};
+		ion-heap@3 {
+			reg = <3>;
+			telechips,ion-heap-name = "ion_carveout_cam_heap";
 		};
 	};
 
