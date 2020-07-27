@@ -29,7 +29,7 @@
 #include <linux/tee_drv.h>
 #include "demux.h"
 
-#define DATA_BUFFER_SIZE 6 * 128 * 1024
+#define DATA_BUFFER_SIZE 2 * 1024 * 1024
 #define MAX_NUM_OF_BUFFER_INFO 10
 #define USE_SECURE 1
 #define USE_PHY_ADDR_MAPPING
@@ -61,16 +61,10 @@ struct tsmp_dev
 	struct tsmp_depack_stream depack_out;
 	uint16_t video_pid;
 	uint16_t audio_pid;
-	uintptr_t data;
+	uintptr_t acc_buffer;
+	uint32_t acc_buffer_length;
+	uintptr_t ta_input_buffer;
 	tee_client_context context;
-};
-
-struct smp_input_context
-{
-	uint16_t pid;
-	uint32_t type;
-	uint32_t secure_buffer;
-	uint32_t secure_buffer_size;
 };
 
 static dev_t dev_num;
@@ -80,6 +74,7 @@ static struct class *class;
 static void tsmp_callback(int dmxch, uintptr_t off1, int off1_size, uintptr_t off2, int off2_size)
 {
 	mutex_lock(&tsmp_dev[dmxch].mutex);
+#if 0 // this scheme will be used soon
 	if (tsmp_dev[dmxch].num_buf_info < MAX_NUM_OF_BUFFER_INFO) {
 		tsmp_dev[dmxch].buf_info[tsmp_dev[dmxch].num_buf_info].off1 = off1;
 		tsmp_dev[dmxch].buf_info[tsmp_dev[dmxch].num_buf_info].off1_size = off1_size;
@@ -88,6 +83,15 @@ static void tsmp_callback(int dmxch, uintptr_t off1, int off1_size, uintptr_t of
 		tsmp_dev[dmxch].num_buf_info++;
 	} else {
 		ELOG("overflow buffer info list\n");
+	}
+#endif
+	if (tsmp_dev[dmxch].acc_buffer_length + off1_size <= DATA_BUFFER_SIZE) {
+		memcpy(tsmp_dev[dmxch].acc_buffer+tsmp_dev[dmxch].acc_buffer_length, off1, off1_size);
+		tsmp_dev[dmxch].acc_buffer_length += off1_size;
+	}
+	if (tsmp_dev[dmxch].acc_buffer_length + off2_size <= DATA_BUFFER_SIZE) {
+		memcpy(tsmp_dev[dmxch].acc_buffer+tsmp_dev[dmxch].acc_buffer_length, off2, off2_size);
+		tsmp_dev[dmxch].acc_buffer_length += off2_size;
 	}
 	tsmp_dev[dmxch].revent_mask |= TSMP_EVENT;
 	ILOG("callback in dmx ch %d buf1 %x size %d = %x, buf2 %x size %d = %x\n", dmxch, off1, off1_size, off1+off1_size, off2, off2_size, off2+off2_size);
@@ -169,8 +173,8 @@ static int tsmp_depack_stream_ioctl(struct file *filp, struct tsmp_depack_stream
 	}
 
 	if (data_remain) {
-		DLOG("data remained\n");
-		dev->revent_mask = TSMP_EVENT + 1;
+		ILOG("data remained\n");
+		dev->revent_mask = 0; //TSMP_EVENT + 1;
 	} else {
 		dev->revent_mask = 0;
 	}
@@ -339,7 +343,7 @@ static unsigned int tsmp_poll(struct file *filp, poll_table *wait)
 	int ret = -1;
 	struct tsmp_dev *dev = filp->private_data;
 
-	if (dev->revent_mask == TSMP_EVENT+1) {
+	if (0 /*dev->revent_mask == TSMP_EVENT+1*/) {
 		ILOG("depack EVENT type %d\n", dev->revent_mask);
 		ret = POLLPRI | POLLIN;
 	} else {
@@ -362,6 +366,8 @@ static unsigned int tsmp_poll(struct file *filp, poll_table *wait)
 				params.params[1].type = TEE_CLIENT_PARAM_BUF_IN;
 			}
 #else
+			mutex_lock(&dev->mutex);
+#if 0 // will be used soon
 			int i;
 			int offset = 0;
 			for (i = 0 ; i < dev->num_buf_info ; i++) {
@@ -380,13 +386,14 @@ static unsigned int tsmp_poll(struct file *filp, poll_table *wait)
 			}
 			// reset accumulated buffer count
 			dev->num_buf_info = 0;
-
-			params.params[0].tee_client_memref.buffer = dev->data;
-			params.params[0].tee_client_memref.size = offset;
-			params.params[0].type = TEE_CLIENT_PARAM_BUF_IN;
-
-			DLOG("total size %d\n", offset); 
 #endif
+			memcpy(dev->ta_input_buffer, dev->acc_buffer, dev->acc_buffer_length);
+
+			params.params[0].tee_client_memref.buffer = dev->ta_input_buffer;
+			params.params[0].tee_client_memref.size = dev->acc_buffer_length;
+			params.params[0].type = TEE_CLIENT_PARAM_BUF_IN;
+			dev->acc_buffer_length = 0;
+			mutex_unlock(&dev->mutex);
 
 			int rc;
 			rc = tee_client_execute_command(dev->context, &params, CMD_COLLECT_DATA);
@@ -394,6 +401,8 @@ static unsigned int tsmp_poll(struct file *filp, poll_table *wait)
 				ELOG("fail to execute TA command rc %x\n", rc);
 				return -1;
 			}
+
+#endif
 
 			/*******************************************/
 			ILOG("data in EVENT type %d\n", dev->revent_mask);
@@ -464,8 +473,11 @@ static int tsmp_release(struct inode *inode, struct file *file)
 
 	tcc_dmx_unset_smpcb(iminor(inode));
 	dev->open = 0;
-	if (dev->data)
-		kfree(dev->data);
+	if (dev->acc_buffer)
+		kfree(dev->acc_buffer);
+
+	if (dev->ta_input_buffer)
+		kfree(dev->ta_input_buffer);
 
 	ret = 0;
 	TRACE;
@@ -508,8 +520,14 @@ static int __init tsmp_init(void)
 		mutex_init(&tsmp_dev[i].mutex);
 		tsmp_dev[i].revent_mask = 0;
 		tsmp_dev[i].open = 0;
-		tsmp_dev[i].data = kmalloc(DATA_BUFFER_SIZE, GFP_KERNEL);
-		if (tsmp_dev[i].data == NULL) {
+		tsmp_dev[i].acc_buffer = kmalloc(DATA_BUFFER_SIZE, GFP_KERNEL);
+		if (tsmp_dev[i].acc_buffer == NULL) {
+			ELOG("buffer alloc failed\N");
+			return -ENOMEM;
+		}
+		tsmp_dev[i].acc_buffer_length = 0;
+		tsmp_dev[i].ta_input_buffer = kmalloc(DATA_BUFFER_SIZE, GFP_KERNEL);
+		if (tsmp_dev[i].ta_input_buffer == NULL) {
 			ELOG("buffer alloc failed\N");
 			return -ENOMEM;
 		}
