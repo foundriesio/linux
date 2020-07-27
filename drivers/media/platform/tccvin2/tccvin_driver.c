@@ -134,7 +134,7 @@ static int tccvin_parse_format(struct tccvin_device *dev,
 			frame->bmCapabilities				= 0x00000000;
 			frame->wWidth						= framesize_list[idxFrame].width;
 			frame->wHeight						= framesize_list[idxFrame].height;
-			frame->dwMaxVideoFrameBufferSize	= frame->wWidth * frame->wHeight *  format->bpp / 8;
+			//frame->dwMaxVideoFrameBufferSize	= frame->wWidth * frame->wHeight *  streamimg_format->bpp / 8;
 			frame->dwDefaultFrameInterval		= 333333;
 			frame->bFrameIntervalType			= 2;
 			frame->dwFrameInterval				= *intervals;

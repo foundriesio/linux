@@ -163,6 +163,7 @@ static int tccvin_v4l2_try_format(struct tccvin_streaming *stream,
 	fmt->fmt.pix.height = frame->wHeight;
 	fmt->fmt.pix.field = V4L2_FIELD_NONE;
 	fmt->fmt.pix.bytesperline = tccvin_v4l2_get_bytesperline(format, frame);
+	frame->dwMaxVideoFrameBufferSize = frame->wWidth * frame->wHeight *  format->bpp / 8;
 	fmt->fmt.pix.sizeimage = frame->dwMaxVideoFrameBufferSize;
 	fmt->fmt.pix.colorspace = format->colorspace;
 	fmt->fmt.pix.priv = 0;
