@@ -203,11 +203,14 @@ static const struct vb2_ops tccvin_queue_qops = {
 int tccvin_queue_init(struct tccvin_video_queue *queue, enum v4l2_buf_type type,
 		    int drop_corrupted)
 {
+	struct tccvin_streaming *stream = tccvin_queue_to_stream(queue);
 	int ret;
 	FUNCTION_IN
 
 	queue->queue.type = type;
 	queue->queue.io_modes = VB2_MMAP | VB2_USERPTR | VB2_DMABUF;
+	queue->queue.bidirectional = 0;
+	queue->queue.is_output = DMA_TO_DEVICE;
 	queue->queue.drv_priv = queue;
 	queue->queue.buf_struct_size = sizeof(struct tccvin_buffer);
 	queue->queue.ops = &tccvin_queue_qops;
@@ -215,6 +218,7 @@ int tccvin_queue_init(struct tccvin_video_queue *queue, enum v4l2_buf_type type,
 	queue->queue.timestamp_flags = V4L2_BUF_FLAG_TIMESTAMP_MONOTONIC
 		| V4L2_BUF_FLAG_TSTAMP_SRC_SOE;
 	queue->queue.lock = &queue->mutex;
+	queue->queue.dev = &stream->dev->pdev->dev;
 	ret = vb2_queue_init(&queue->queue);
 	if (ret)
 		return ret;
@@ -372,7 +376,7 @@ int tccvin_queue_is_allocated(struct tccvin_video_queue *queue)
 }
 
 struct tccvin_buffer *tccvin_queue_next_buffer(struct tccvin_video_queue *queue,
-		struct tccvin_buffer *buf)
+					       struct tccvin_buffer *buf)
 {
 	struct tccvin_buffer *nextbuf;
 	unsigned long flags;
