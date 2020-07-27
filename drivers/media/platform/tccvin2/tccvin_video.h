@@ -82,9 +82,9 @@ typedef struct vioc_path {
 } vioc_path_t;
 
 typedef struct buf_addr {
-	unsigned int	addr0;
-	unsigned int	addr1;
-	unsigned int	addr2;
+	unsigned long	addr0;
+	unsigned long	addr1;
+	unsigned long	addr2;
 } buf_addr_t;
 
 typedef struct tccvin_cif {

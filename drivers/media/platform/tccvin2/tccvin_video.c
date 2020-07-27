@@ -132,7 +132,7 @@ struct tccvin_format_desc tccvin_fmts[] = {
  * Utility functions
  */
 
-//static 
+//static
 struct tccvin_format_desc *tccvin_format_by_guid(const __u32 guid)
 {
 	unsigned int len = ARRAY_SIZE(tccvin_fmts);
@@ -632,11 +632,13 @@ static int tccvin_set_vin(struct tccvin_streaming * vdev) {
 
 	logd("vdev->cif.videosource_format.data_format: 0x%08x, FMT_YUV422_16BIT: 0x%08x, FMT_YUV422_8BIT: 0x%08x\n", vdev->cif.videosource_info->data_format, FMT_YUV422_16BIT, FMT_YUV422_8BIT);
 	logd("vdev->cur_format->fcc: 0x%08x, V4L2_PIX_FMT_RGB24: 0x%08x, V4L2_PIX_FMT_RGB32: 0x%08x\n", vdev->cur_format->fcc, V4L2_PIX_FMT_RGB24, V4L2_PIX_FMT_RGB32);
-	if(((vdev->cif.videosource_info->data_format == FMT_YUV422_16BIT) || \
-		(vdev->cif.videosource_info->data_format == FMT_YUV422_8BIT)) && \
-		((vdev->cur_format->fcc == V4L2_PIX_FMT_RGB24) ||	\
-		(vdev->cur_format->fcc == V4L2_PIX_FMT_RGB32))) {
 
+	if( ((vdev->cif.videosource_info->data_format == FMT_YUV422_16BIT) ||
+	    (vdev->cif.videosource_info->data_format == FMT_YUV422_8BIT) ||
+	    (vdev->cif.videosource_info->data_format == FMT_YUVK4444_16BIT) ||
+	    (vdev->cif.videosource_info->data_format == FMT_YUVK4224_24BIT) ) && \
+		((vdev->cur_format->fcc == V4L2_PIX_FMT_RGB24) ||	\
+		 (vdev->cur_format->fcc == V4L2_PIX_FMT_RGB32))) {
 		logi("vdev->cif.videosource_format.interlaced: 0x%08x\n", vdev->cif.videosource_info->interlaced);
 		if(!((vdev->cif.videosource_info->interlaced & V4L2_DV_INTERLACED) && (vdev->cif.vioc_path.viqe != -1)))
 			VIOC_VIN_SetY2REnable(pVIN, ON);
@@ -711,10 +713,12 @@ static int tccvin_set_deinterlacer(struct tccvin_streaming * vdev) {
 		if(vdev->cif.vioc_path.vin <= VIOC_VIN30) {
 			VIOC_CONFIG_PlugIn(vdev->cif.vioc_path.viqe, vdev->cif.vioc_path.vin);
 
-			if(((vdev->cif.videosource_info->data_format == FMT_YUV422_16BIT) || \
-				(vdev->cif.videosource_info->data_format == FMT_YUV422_8BIT)) && \
-			   ((vdev->cur_format->fcc == V4L2_PIX_FMT_RGB24) ||	\
-				(vdev->cur_format->fcc == V4L2_PIX_FMT_RGB32))) {
+			if( ((vdev->cif.videosource_info->data_format == FMT_YUV422_16BIT) ||
+			    (vdev->cif.videosource_info->data_format == FMT_YUV422_8BIT) ||
+			    (vdev->cif.videosource_info->data_format == FMT_YUVK4444_16BIT) ||
+			    (vdev->cif.videosource_info->data_format == FMT_YUVK4224_24BIT) ) && \
+				((vdev->cur_format->fcc == V4L2_PIX_FMT_RGB24) ||	\
+				 (vdev->cur_format->fcc == V4L2_PIX_FMT_RGB32))) {
 				VIOC_VIQE_SetImageY2RMode(pVIQE, 2);
 				VIOC_VIQE_SetImageY2REnable(pVIQE, ON);
 			}
@@ -846,9 +850,9 @@ static int tccvin_set_wdma(struct tccvin_streaming * vdev) {
 	unsigned int	height	= vdev->cur_frame->wHeight;
 	struct tccvin_format_desc *format_desc = tccvin_format_by_fcc(vdev->cur_format->fcc);
 	unsigned int	format	= format_desc->guid;
-	unsigned int	addr0	= 0;
-	unsigned int	addr1	= 0;
-	unsigned int	addr2	= 0;
+	unsigned long	addr0	= 0;
+	unsigned long	addr1	= 0;
+	unsigned long	addr2	= 0;
 
 	FUNCTION_IN
 	logd("WDMA: 0x%p, size[%d x %d], format[%d]. \n", pWDMA, width, height, format);
@@ -895,17 +899,17 @@ static int tccvin_set_wdma(struct tccvin_streaming * vdev) {
 }
 
 static void tccvin_work_thread(struct work_struct * data) {
-	tccvin_cif_t				* cif		= container_of(data, tccvin_cif_t, wdma_work);
+	tccvin_cif_t			* cif		= container_of(data, tccvin_cif_t, wdma_work);
 	struct tccvin_streaming		* stream	= container_of(cif, struct tccvin_streaming, cif);
 	struct tccvin_video_queue	* queue		= &stream->queue;
 	struct tccvin_buffer		* buf		= NULL;
-	unsigned long				flags;
-	struct timespec				ts			= { 0, };
+	unsigned long			flags;
+	struct timespec			ts		= { 0, };
 
 	volatile void __iomem		* pWDMABase	= VIOC_WDMA_GetAddress(stream->cif.vioc_path.wdma);
-	unsigned int				addr0		= 0;
-	unsigned int				addr1		= 0;
-	unsigned int				addr2		= 0;
+	unsigned long			addr0		= 0;
+	unsigned long			addr1		= 0;
+	unsigned long			addr2		= 0;
 
 	if(stream == NULL) {
 		loge("stream is NULL\n");
@@ -923,10 +927,11 @@ static void tccvin_work_thread(struct work_struct * data) {
 	}
 
 	spin_lock_irqsave(&queue->irqlock, flags);
-	if (!list_empty(&queue->irqqueue))
+	if (!list_empty(&queue->irqqueue)) {
 		buf = list_first_entry(&queue->irqqueue, struct tccvin_buffer, queue);
-	else
+	} else {
 		loge("There is no entry of the incoming buffer list\n");
+	}
 	spin_unlock_irqrestore(&queue->irqlock, flags);
 
 	/* Store the payload FID bit and return immediately when the buffer is
@@ -941,20 +946,35 @@ static void tccvin_work_thread(struct work_struct * data) {
 	buf->buf.field = V4L2_FIELD_NONE;
 	buf->buf.sequence = stream->sequence++;
 	buf->state = TCCVIN_BUF_STATE_READY;
-	dlog("VIN[%d] buf->length: 0x%08x\n", stream->vdev.num, buf->length);
-	memcpy(buf->mem, cif->vir, buf->length);
 	buf->bytesused = buf->length;
 
-	/*
-	 *	queue the current buffer to the outgoing list
-	 *	and get a next buffer from the incoming list to write
-	 */
+	dlog("VIN[%d] buf->length: 0x%08x\n", stream->vdev.num, buf->length);
+	if(buf->buf.vb2_buf.memory != VB2_MEMORY_MMAP &&
+	   buf->buf.vb2_buf.memory != VB2_MEMORY_USERPTR) {
+		memcpy(buf->mem, cif->vir, buf->length);
+	}
+
 	buf = tccvin_queue_next_buffer(&stream->queue, buf);	// get a next buffer
 
 	mutex_lock(&cif->lock);
-	addr0 = stream->cif.pmap_preview.base;//queue->queue.mem_ops->get_dmabuf()
+
+	if (buf != NULL) {
+		if (buf->buf.vb2_buf.memory == VB2_MEMORY_MMAP) {
+			addr0 = buf->buf.vb2_buf.planes[0].m.offset;
+		} else if (buf->buf.vb2_buf.memory == VB2_MEMORY_USERPTR) {
+			addr0 = virt_to_phys(buf->buf.vb2_buf.planes[0].m.userptr);
+		} else {
+			addr0 = stream->cif.pmap_preview.base;
+		}
+	} else {
+		dlog("Buffer is not initialized successfully.\n");
+	}
+
 	addr1 = 0;
 	addr2 = 0;
+
+	logd("ADDR0: 0x%08x, ADDR1: 0x%08x, ADDR2: 0x%08x\n", addr0, addr1, addr2);
+
 	VIOC_WDMA_SetImageBase(pWDMABase, addr0, addr1, addr2);
 	VIOC_WDMA_SetImageEnable(pWDMABase, OFF);
 	mutex_unlock(&cif->lock);
@@ -1426,4 +1446,3 @@ int tccvin_video_streamoff(struct tccvin_streaming *stream, int is_handover_need
 	FUNCTION_OUT
 	return ret;
 }
-

@@ -523,6 +523,21 @@ static int tccvin_ioctl_querybuf(struct file *file, void *fh,
 	logd("index: %d, type: 0x%08x, bytesused: 0x%08x, flags: 0x%08x, field: 0x%08x, memory: 0x%08x, m.offset: 0x%08x, lengh: 0x%08x\n", \
 		buf->index, buf->type, buf->bytesused, buf->flags, buf->field, buf->memory, buf->m.offset, buf->length);
 
+	if (buf->memory == V4L2_MEMORY_MMAP) {
+		struct vb2_queue* q = &stream->queue.queue;
+		q->bufs[buf->index]->planes[0].m.offset = stream->cif.pmap_preview.base + buf->m.offset;
+		buf->m.offset = stream->cif.pmap_preview.base + buf->m.offset;
+	} else {
+		/*
+		 * TODO: Need to implement to handle other memory
+		 * types. Because of the limit of memory address
+		 * between virtual addresses and physical address in
+		 * 64-bit environment, we need to use IOMMU to handle
+		 * this issue.
+		 */
+		logd("%s - Need to be implemented\n", __func__);
+	}
+
 	FUNCTION_OUT
 	return ret;
 }
@@ -534,13 +549,18 @@ static int tccvin_ioctl_qbuf(struct file *file, void *fh, struct v4l2_buffer *bu
 	int ret;
 //	FUNCTION_IN
 
-	if (!tccvin_has_privileges(handle))
+	if (!tccvin_has_privileges(handle)) {
+		loge("!tccvin_has_privileges\n");
 		return -EBUSY;
+	}
 
 	if(buf != NULL)
 		dlog("&stream->queue: %p, buf[%d].flags: 0x%08x\n", &stream->queue, buf->index, buf->flags);
 
 	ret = tccvin_queue_buffer(&stream->queue, buf);
+	if(ret < 0) {
+		loge("tccvin_queue_buffer, ret: %d\n", ret);
+	}
 
 //	FUNCTION_OUT
 	return ret;

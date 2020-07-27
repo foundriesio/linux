@@ -36,6 +36,7 @@ struct framesize framesize_list[] = {
 	{	 320,	 240	},
 	{	 640,	 480	},
 	{	1280,	 720	},
+	{	1920,	 720	},
 	{	1920,	1080	},
 };
 
@@ -567,4 +568,3 @@ MODULE_AUTHOR("Telechips.Co.Ltd");
 MODULE_DESCRIPTION("Telechips Video-Input Path(V4L2-Capture) Driver");
 MODULE_LICENSE("GPL");
 MODULE_VERSION(DRIVER_VERSION);
-
