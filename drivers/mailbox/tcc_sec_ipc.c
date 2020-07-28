@@ -93,7 +93,6 @@ static DECLARE_WAIT_QUEUE_HEAD(waitq);
 static DECLARE_WAIT_QUEUE_HEAD(event_waitq);
 
 static DEFINE_MUTEX(mutex);
-static DEFINE_MUTEX(mutex_recv);
 static uint32_t recv_event;
 
 /**
@@ -561,14 +560,11 @@ static void sec_msg_received(struct mbox_client *client, void *message)
 	int msg_len = -1, cmd = -1, trans_type = -1, dma_addr = -1;
 	int device_id = -1;
 
-	mutex_lock(&mutex_recv);
-
 	mbox_data = (struct tcc_mbox_data *)message;
 	device_id = sec_get_device_id(client->dev->init_name);
 	sec_dev = sec_get_device(device_id);
 	if (sec_dev == NULL) {
 		ELOG("Can't find device\n");
-		mutex_unlock(&mutex_recv);
 		return;
 	}
 
@@ -604,8 +600,6 @@ static void sec_msg_received(struct mbox_client *client, void *message)
 		sec_dev->mbox_received = 1;
 		wake_up(&waitq);
 	}
-
-	mutex_unlock(&mutex_recv);
 }
 #if defined(CONFIG_ARCH_TCC803X)
 static void sec_msg_sent(struct mbox_client *client, void *message, int r)
