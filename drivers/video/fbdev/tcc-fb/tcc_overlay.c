@@ -96,6 +96,7 @@ struct overlay_drv_type {
 #endif
 
 	//extend infomation
+	unsigned int id;
 	unsigned int fb_dd_num;
 	unsigned int open_cnt;
 
@@ -559,11 +560,18 @@ static int tcc_overlay_probe(struct platform_device *pdev)
 	if(!overlay_drv->misc)
 		goto err_overlay_drv_misc;
 
+	overlay_drv->fb_dd_num = -1;
 	vioc_node = of_parse_phandle(pdev->dev.of_node,"fbdisplay-overlay", 0);
-	if(vioc_node)
+	if(vioc_node){
 		of_property_read_u32(vioc_node, "telechips,fbdisplay_num", &overlay_drv->fb_dd_num);
-	else
+	}else{
+		of_property_read_u32_index(pdev->dev.of_node, "display_num", 0 , &overlay_drv->fb_dd_num);
+		pr_info("[INF][OVERLAY] display_num = %d\n", overlay_drv->fb_dd_num);
+	}
+
+	if(overlay_drv->fb_dd_num < 0 || overlay_drv->fb_dd_num > 1){
 		goto err_overlay_drv_init;
+	}
 
 	overlay_drv->clk = of_clk_get(pdev->dev.of_node, 0);
 	if (IS_ERR((void*)overlay_drv->clk))
@@ -571,9 +579,14 @@ static int tcc_overlay_probe(struct platform_device *pdev)
 
 
  	/* register scaler discdevice */
+	overlay_drv->id = of_alias_get_id(pdev->dev.of_node,"tcc-overlay-drv");
 	overlay_drv->misc->minor = MISC_DYNAMIC_MINOR;
 	overlay_drv->misc->fops = &tcc_overlay_fops;
-	overlay_drv->misc->name =  kasprintf(GFP_KERNEL,"overlay");;
+	if((overlay_drv->id == 0) || (overlay_drv->id == -ENODEV)){
+		overlay_drv->misc->name =  kasprintf(GFP_KERNEL,"overlay");
+	}else{
+		overlay_drv->misc->name =  kasprintf(GFP_KERNEL,"overlay%d", overlay_drv->id);
+	}
 	overlay_drv->misc->parent = &pdev->dev;
 	ret = misc_register(overlay_drv->misc);
 	if (ret)
