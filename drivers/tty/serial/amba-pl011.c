@@ -69,6 +69,8 @@
 #include <linux/of_address.h>
 #endif
 
+#include <linux/soc/telechips/tcc_sc_protocol.h>
+
 #include "amba-pl011.h"
 
 #define UART_NR			14
@@ -2721,6 +2723,9 @@ static int pl011_setup_port(struct device *dev, struct uart_amba_port *uap,
 			    struct resource *mmiobase, int index)
 {
 	void __iomem *base;
+#if defined(CONFIG_PM_SLEEP)&&defined(CONFIG_ARCH_TCC805X)
+	int ret;
+#endif
 
 	base = devm_ioremap_resource(dev, mmiobase);
 	if (IS_ERR(base))
@@ -2736,9 +2741,29 @@ static int pl011_setup_port(struct device *dev, struct uart_amba_port *uap,
 	uap->port.flags = UPF_BOOT_AUTOCONF;
 	uap->port.line = index;
 #if defined(CONFIG_PM_SLEEP)&&defined(CONFIG_ARCH_TCC805X)
-	uap->port.config_reg = of_iomap(dev->of_node, 1);
-#endif
+	ret = of_property_read_u32_index(dev->of_node, "config-reg", 0, &uap->port.phy_config_reg);
+	if (ret){
+		printk(KERN_ERR "[ERROR][PL011] no configuration address \n");
+		return ret;
+        }
 
+	ret = of_property_read_u32_index(dev->of_node, "config-reg", 1, &uap->port.phy_config_reg_size);
+	if (ret){
+		printk(KERN_ERR "[ERROR][PL011] no configuration address size \n");
+		return ret;
+        }
+
+	uap->port.config_reg = ioremap(uap->port.phy_config_reg, uap->port.phy_config_reg_size);
+	if(uap->port.config_reg == NULL)
+		return -ENOMEM;
+
+#if defined(CONFIG_PINCTRL_TCC_SCFW)
+        uap->port.sc_np = of_parse_phandle(pdev->dev.of_node, "sc-firmware", 0);
+        if(uap->port.sc_np == NULL) {
+                printk(KERN_ERR "[ERROR][PL011] no SC node\n");
+        }
+#endif
+#endif
 	amba_ports[index] = uap;
 
 	return 0;
@@ -2825,6 +2850,7 @@ static int pl011_suspend(struct device *dev)
 	return uart_suspend_port(&amba_reg, &uap->port);
 }
 
+
 static int pl011_resume(struct device *dev)
 {
 	struct uart_amba_port *uap = dev_get_drvdata(dev);
@@ -2836,9 +2862,11 @@ static int pl011_resume(struct device *dev)
         volatile char cfg_id_string[3];
         unsigned long cfg_id, reg_val;
         u32 phandle;
+#if defined(CONFIG_PINCTRL_TCC_SCFW)
+	struct tcc_sc_fw_handle *sc_fw_handle;
+#endif
 
-        of_property_read_u32_array(dev->of_node, "pinctrl-0", &phandle, 1);
-        np = of_find_node_by_phandle(phandle);
+	np = of_parse_phandle(dev->of_node, "pinctrl-0", 0);
         pinctrl_name = (char*)of_node_full_name(np);
         pinctrl_name+=22;
         string_temp = strstr(pinctrl_name, "_");
@@ -2850,19 +2878,37 @@ static int pl011_resume(struct device *dev)
         cfg_id_string[cfg_num_len]='\0';
         cfg_id = simple_strtoul((const char*)cfg_id_string, NULL, 10);
 
-#if defined(CONFIG_TCC805X_CA53Q)
-	offset_reg = 0x4;
-#else
 	offset_reg = (uap->port.line/4)*0x4;
-#endif
+
+#if defined(CONFIG_PINCTRL_TCC_SCFW)
+
+        sc_fw_handle = tcc_sc_fw_get_handle(uap->port.sc_np);
+
+        if(sc_fw_handle == NULL) {
+
+                printk(KERN_ERR "[ERROR][PL011] no SC firmware handle\n");
+
+	        reg_val = readl_relaxed(uap->port.config_reg+offset_reg);
+        	reg_val = reg_val&~(0xF<<((uap->port.line%4)*8));
+       	 	reg_val = reg_val|(cfg_id<<((uap->port.line%4)*8));
+
+        	writel_relaxed(reg_val, uap->port.config_reg+offset_reg);
+
+        } else {
+
+		sc_fw_handle->ops.gpio_ops->request_gpio(sc_fw_handle, uap->port.phy_config_reg+offset_reg, ((uap->port.line%4)*8), 8, cfg_id);
+
+	}
+
+#else
 
 	reg_val = readl_relaxed(uap->port.config_reg+offset_reg);
-
 	reg_val = reg_val&~(0xF<<((uap->port.line%4)*8));
-
 	reg_val = reg_val|(cfg_id<<((uap->port.line%4)*8));
 
 	writel_relaxed(reg_val, uap->port.config_reg+offset_reg);
+
+#endif
 #endif
 
 	if (!uap)

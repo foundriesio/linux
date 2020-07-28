@@ -254,8 +254,14 @@ struct uart_port {
 	struct serial_rs485     rs485;
 	void			*private_data;		/* generic platform data pointer */
 #if defined(CONFIG_PM_SLEEP)&&defined(CONFIG_ARCH_TCC805X)
+	unsigned int		phy_config_reg;
+	unsigned int		phy_config_reg_size;
         void __iomem            *config_reg;
+#if defined(CONFIG_PINCTRL_TCC_SCFW)
+	struct device_node	*sc_np;
 #endif
+#endif
+
 
 };
 
