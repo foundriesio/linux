@@ -2758,7 +2758,7 @@ static int pl011_setup_port(struct device *dev, struct uart_amba_port *uap,
 		return -ENOMEM;
 
 #if defined(CONFIG_PINCTRL_TCC_SCFW)
-        uap->port.sc_np = of_parse_phandle(pdev->dev.of_node, "sc-firmware", 0);
+        uap->port.sc_np = of_parse_phandle(dev->of_node, "sc-firmware", 0);
         if(uap->port.sc_np == NULL) {
                 printk(KERN_ERR "[ERROR][PL011] no SC node\n");
         }
@@ -2861,9 +2861,8 @@ static int pl011_resume(struct device *dev)
         char *pinctrl_name = 0, *string_temp = 0;
         volatile char cfg_id_string[3];
         unsigned long cfg_id, reg_val;
-        u32 phandle;
 #if defined(CONFIG_PINCTRL_TCC_SCFW)
-	struct tcc_sc_fw_handle *sc_fw_handle;
+	const struct tcc_sc_fw_handle *sc_fw_handle;
 #endif
 
 	np = of_parse_phandle(dev->of_node, "pinctrl-0", 0);
