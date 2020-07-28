@@ -384,7 +384,11 @@ EXPORT_SYMBOL(md_handle_request);
  */
 void md_io_acct(struct mddev *mddev, int rw, unsigned int sectors)
 {
-	int cpu = part_stat_lock();
+	int cpu;
+
+	if (!mddev->gendisk)
+		return;
+	cpu = part_stat_lock();
 	part_stat_inc(cpu, &mddev->gendisk->part0, ios[rw]);
 	part_stat_add(cpu, &mddev->gendisk->part0, sectors[rw], sectors);
 	part_stat_unlock();
