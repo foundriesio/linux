@@ -189,6 +189,12 @@ config FB_TCC_OVERLAY
 	help
 	  This is the Overlay device driver
 
+config OVERLAY1
+	bool "/dev/overlay1 device support"
+	depends on FB_TCC_OVERLAY
+	help
+	  /dev/overlay1 device support
+
 choice
 	prompt "Display Kernel Logo"
 	depends on TCC_OUTPUT_ATTACH
