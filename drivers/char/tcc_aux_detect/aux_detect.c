@@ -322,6 +322,21 @@ static int aux_detect_remove(struct platform_device * pdev) {
 	return 0;
 }
 
+#if defined(CONFIG_PM)
+static int aux_detect_suspend(struct platform_device *pdev, pm_message_t state){
+
+	return 0;
+}
+
+static int aux_detect_resume(struct platform_device *pdev) {
+
+	return 0;
+}
+
+
+#endif
+
+
 #ifdef CONFIG_OF
 const struct of_device_id aux_detect_of_match[] = {
         { .compatible = "telechips,aux_detect", },
@@ -333,6 +348,10 @@ MODULE_DEVICE_TABLE(of, aux_detect_of_match);
 struct platform_driver aux_detect_driver = {
 	.probe		= aux_detect_probe,
 	.remove		= aux_detect_remove,
+#if defined(CONFIG_PM)
+	.suspend = aux_detect_suspend,
+	.resume = aux_detect_resume,
+#endif
 	.driver		= {
 		.name			= MODULE_NAME,
 		.owner			= THIS_MODULE,
