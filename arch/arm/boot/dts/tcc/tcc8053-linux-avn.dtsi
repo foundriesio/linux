@@ -233,7 +233,7 @@
 			compatible = "atmel,maxtouch";
 			reg = <0x4a>;
 			pinctrl-names = "default";
-			pinctrl-0 = <&tsc_default>;
+			pinctrl-0 = <&tsc0_default>;
 			irq-gpios = <&gpsd1 9 0x0>;
 			reset-gpios = <&gpb 16 0x0>;
 		};
@@ -250,7 +250,7 @@
 			compatible = "atmel,maxtouch";
 			reg = <0x4a>;
 			pinctrl-names = "default";
-			pinctrl-0 = <&tsc_default>;
+			pinctrl-0 = <&tsc1_default>;
 			irq-gpios = <&gpa 21 0x0>;
 			reset-gpios = <&gpmd 8 0x0>;
 		};
