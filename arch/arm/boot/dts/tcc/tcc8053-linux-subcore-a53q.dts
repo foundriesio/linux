@@ -759,7 +759,8 @@
                 max_irq = <480>;
         };
 
-        uart0: serial@16600000 {
+        //uart0: serial@16600000 {
+	uart4: serial@16600000 {
                 compatible = "arm,pl011", "arm,primecell";
                 reg = <0x16600000 0x1000>;
                 config-reg = <0x16689000 0x8>;
@@ -807,7 +808,8 @@
                 status = "disabled";
         };
 
-	uart4: serial@16640000 {
+	//uart4: serial@16640000 {
+	uart0: serial@16640000 {
 		compatible = "arm,pl011", "arm,primecell";
 		reg = <0x16640000 0x1000>;
 		config-reg = <0x16689000 0x8>;
@@ -2499,7 +2501,7 @@
 	};
 };
 
-&uart4 {
+&uart0 {
 	pinctrl-names = "default";
 	pinctrl-0 = <&uart9_data>;
 	status = "okay";
