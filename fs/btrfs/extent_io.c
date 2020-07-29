@@ -2978,6 +2978,8 @@ static int __do_readpage(struct extent_io_tree *tree,
 	size_t blocksize = inode->i_sb->s_blocksize;
 	unsigned long this_bio_flag = 0;
 
+	ASSERT(tree == &BTRFS_I(inode)->io_tree);
+
 	set_page_extent_mapped(page);
 
 	end = page_end;
@@ -3172,21 +3174,12 @@ static inline void __do_contiguous_readpages(struct extent_io_tree *tree,
 					     unsigned long *bio_flags,
 					     u64 *prev_em_start)
 {
-	struct inode *inode;
-	struct btrfs_ordered_extent *ordered;
+	struct btrfs_inode *inode = BTRFS_I(pages[0]->mapping->host);
 	int index;
 
-	inode = pages[0]->mapping->host;
-	while (1) {
-		lock_extent(tree, start, end);
-		ordered = btrfs_lookup_ordered_range(BTRFS_I(inode), start,
-						     end - start + 1);
-		if (!ordered)
-			break;
-		unlock_extent(tree, start, end);
-		btrfs_start_ordered_extent(inode, ordered, 1);
-		btrfs_put_ordered_extent(ordered);
-	}
+	ASSERT(tree == &inode->io_tree);
+
+	btrfs_lock_and_flush_ordered_range(inode, start, end, NULL);
 
 	for (index = 0; index < nr_pages; index++) {
 		__do_readpage(tree, pages[index], get_extent, em_cached, bio,
@@ -3241,22 +3234,14 @@ static int __extent_read_full_page(struct extent_io_tree *tree,
 				   struct bio **bio, int mirror_num,
 				   unsigned long *bio_flags, int read_flags)
 {
-	struct inode *inode = page->mapping->host;
-	struct btrfs_ordered_extent *ordered;
+	struct btrfs_inode *inode = BTRFS_I(page->mapping->host);
 	u64 start = page_offset(page);
 	u64 end = start + PAGE_SIZE - 1;
 	int ret;
 
-	while (1) {
-		lock_extent(tree, start, end);
-		ordered = btrfs_lookup_ordered_range(BTRFS_I(inode), start,
-						PAGE_SIZE);
-		if (!ordered)
-			break;
-		unlock_extent(tree, start, end);
-		btrfs_start_ordered_extent(inode, ordered, 1);
-		btrfs_put_ordered_extent(ordered);
-	}
+	ASSERT(tree == &inode->io_tree);
+
+	btrfs_lock_and_flush_ordered_range(inode, start, end, NULL);
 
 	ret = __do_readpage(tree, page, get_extent, NULL, bio, mirror_num,
 			    bio_flags, read_flags, NULL);
@@ -3269,6 +3254,8 @@ int extent_read_full_page(struct extent_io_tree *tree, struct page *page,
 	struct bio *bio = NULL;
 	unsigned long bio_flags = 0;
 	int ret;
+
+	ASSERT(tree == &BTRFS_I(page->mapping->host)->io_tree);
 
 	ret = __extent_read_full_page(tree, page, get_extent, &bio, mirror_num,
 				      &bio_flags, 0);
@@ -5402,6 +5389,8 @@ int read_extent_buffer_pages(struct extent_io_tree *tree,
 
 	if (test_bit(EXTENT_BUFFER_UPTODATE, &eb->bflags))
 		return 0;
+
+	ASSERT(tree == &BTRFS_I(eb->pages[0]->mapping->host)->io_tree);
 
 	num_pages = num_extent_pages(eb->start, eb->len);
 	for (i = 0; i < num_pages; i++) {
