@@ -1799,6 +1799,8 @@ static int sdhci_tcc_runtime_resume(struct device *dev)
 	if(tcc->soc_data->set_channel_configs)
 		tcc->soc_data->set_channel_configs(host);
 
+	pinctrl_pm_select_default_state(dev);
+
 	return sdhci_runtime_resume_host(host);
 }
 

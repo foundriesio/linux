@@ -166,6 +166,12 @@
 		telechips,drive-strength = <3>;
 	};
 
+	sd1_pwr: sd1_pwr {
+		telechips,pins = "gpsd1-8";
+		telechips,pin-function = <0>;
+		telechips,output-low;
+	};
+
 	/* GPIO SD2 */
 	sd2_clk: sd2_clk {
 		telechips,pins = "gpsd2-0";
