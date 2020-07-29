@@ -122,7 +122,8 @@
 		port-mux = <22>;
 		pinctrl-names = "default";
 		pinctrl-0 = <&i2c22_bus>;
-/*
+
+ /* pmic da9062 */
 		pmic@58 {
              compatible = "dlg,da9062";
              reg = <0x58>;
@@ -191,7 +192,7 @@
                  };
              };
          };
-*/ /* pmic da9062 */
+ /* pmic da9062 */
 	};
 
 	i2c@16310000 {
