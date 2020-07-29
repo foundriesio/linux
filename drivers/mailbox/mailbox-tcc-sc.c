@@ -505,6 +505,17 @@ static int tcc_sc_mbox_probe(struct platform_device *pdev)
 
 	spin_lock_init(&mdev->lock);
 
+	/* Disable output */
+	tcc_sc_mbox_clr_ctrl(mdev, (0x1 << MBOX_CTRL_OEN));
+
+	/* Disable rx interrupt */
+	tcc_sc_mbox_clr_ctrl(mdev,
+		(0x1 << MBOX_CTRL_IEN_READ) | (MBOX_ILEVEL_NEMP << MBOX_CTRL_ILEVEL));
+
+	/* Clear and disable tx interrupt */
+	tcc_sc_mbox_set_ctrl(mdev, (0x1 << MBOX_CTRL_ICLR_WRITE));
+	tcc_sc_mbox_clr_ctrl(mdev, (0x1 << MBOX_CTRL_IEN_WRITE));
+
 	/* Register interrupt handler */
 	ret = devm_request_threaded_irq(
 		&pdev->dev, mdev->rx_irq,
@@ -554,6 +565,10 @@ static int tcc_sc_mbox_remove(struct platform_device *pdev)
 	tcc_sc_mbox_clr_ctrl(mdev,
 		(0x1 << MBOX_CTRL_IEN_READ) | (MBOX_ILEVEL_NEMP << MBOX_CTRL_ILEVEL));
 
+	/* Clear and disable tx interrupt */
+	tcc_sc_mbox_set_ctrl(mdev, (0x1 << MBOX_CTRL_ICLR_WRITE));
+	tcc_sc_mbox_clr_ctrl(mdev, (0x1 << MBOX_CTRL_IEN_WRITE));
+
 	/* Set terminal status register */
 	tcc_sc_mbox_writel(mdev, 0x0, MBOX_OPPOSITE_STS);
 
@@ -562,7 +577,21 @@ static int tcc_sc_mbox_remove(struct platform_device *pdev)
 
 int tcc_sc_mbox_suspend(struct device *dev)
 {
-	/* Do nothing */
+	struct tcc_sc_mbox_device *mdev = dev_get_drvdata(dev);
+
+	/* Disable output */
+	tcc_sc_mbox_clr_ctrl(mdev, (0x1 << MBOX_CTRL_OEN));
+
+	/* Disable rx interrupt */
+	tcc_sc_mbox_clr_ctrl(mdev,
+		(0x1 << MBOX_CTRL_IEN_READ) | (MBOX_ILEVEL_NEMP << MBOX_CTRL_ILEVEL));
+
+	/* Clear and disable tx interrupt */
+	tcc_sc_mbox_set_ctrl(mdev, (0x1 << MBOX_CTRL_ICLR_WRITE));
+	tcc_sc_mbox_clr_ctrl(mdev, (0x1 << MBOX_CTRL_IEN_WRITE));
+
+	/* Set terminal status register */
+	tcc_sc_mbox_writel(mdev, 0x0, MBOX_OPPOSITE_STS);
 
 	return 0;
 }
