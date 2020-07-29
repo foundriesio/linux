@@ -1709,11 +1709,13 @@
 		//dma-names = "tx", "rx";
 	};
 
-	rtc {
+	rtc: rtc@0x16480000 {
 		compatible = "telechips,rtc";
 		reg = <0x0 0x16480000 0x0 0x50>;
 		clocks = <&clk_io IOBUS_RTC>;
 		interrupts = <GIC_SPI 73 0>;
+		/* rtc_clock, 1: XTAL, 2: OSC */
+		rtc_clock = <1>;
 	};
 
 	/*

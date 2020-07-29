@@ -91,7 +91,6 @@ static atomic_t irq_flag = ATOMIC_INIT(0);
 #define rtc_writel	__raw_writel
 #define rtc_reg(x) (*(unsigned int *)(tcc_rtc->regs + x))
 
-
 struct tcc_rtc_data {
 	void __iomem	*regs;
 	struct clk	*hclk;
@@ -268,6 +267,7 @@ static int tcc_rtc_getalarm(struct device *dev, struct rtc_wkalrm *alrm)
 	return 0;
 }
 
+#ifdef RTC_PMWKUP_TEST
 static struct rtc_time rtctime_to_rtc_time(rtctime pTime)
 {
 	struct rtc_time tm;
@@ -326,12 +326,12 @@ static int check_time(rtctime now_time, rtctime new_time)
 
 	return -1;
 }
+#endif
 
 static int tcc_rtc_setalarm(struct device *dev, struct rtc_wkalrm *alrm)
 {
 	struct tcc_rtc_data *tcc_rtc = dev_get_drvdata(dev);
 	rtctime pTime;
-	rtctime now_time, new_time;
 
 	struct rtc_time *tm = &alrm->time;
 
@@ -650,14 +650,36 @@ static int tcc_alarm_test(void *arg)
 }
 #endif	// RTC_PMWKUP_TEST
 
+static void tcc_rtc_setclock(struct tcc_rtc_data *tcc_rtc, unsigned int rtc_clock)
+{
+	int restore = 0;
+
+	BITSET(rtc_reg(RTCCON), Hw1);                   // RTC write enable
+	BITSET(rtc_reg(RTCCON), Hw0);                   // RTC start bit - Halt
+	BITSET(rtc_reg(INTCON), Hw0);                   // Interrupt Block Write Enable
+
+	if ((rtc_reg(INTCON) & Hw15) == Hw15) {
+		BITCLR(rtc_reg(INTCON), Hw15);          // Interrupt Block Write Disable
+		restore = 1;
+	}
+	BITSET(rtc_reg(INTCON), (rtc_clock&0x3)<<12U);  // INTCON[13:12] XDRV, set clock source for rtc
+	if (restore == 1) {
+		BITSET(rtc_reg(INTCON), Hw15);          // Interrupt Block Write Enable
+	}
+
+	BITCLR(rtc_reg(INTCON), Hw0);                   // Interrupt Block Write Disable
+	BITCLR(rtc_reg(RTCCON), Hw0);                   // RTC start bit - Run
+	BITCLR(rtc_reg(RTCCON), Hw1);                   // RTC write disable
+}
+
+
 static const struct of_device_id tcc_rtc_of_match[];
 
 static int tcc_rtc_probe(struct platform_device *pdev)
 {
 	struct tcc_rtc_data *tcc_rtc;
 	int ret;
-	unsigned int ulINTCON;
-	int iLoop = 1000;
+	unsigned int rtc_clock;
 
 	tcc_rtc = devm_kzalloc(&pdev->dev, sizeof(struct tcc_rtc_data), GFP_KERNEL);
 	if (!tcc_rtc) {
@@ -723,6 +745,10 @@ static int tcc_rtc_probe(struct platform_device *pdev)
 		BITCLR(rtc_reg(INTCON), Hw0);			// Interrupt Write Disable
 	}
 
+	ret = of_property_read_u32(pdev->dev.of_node, "rtc_clock", &rtc_clock);
+	if (ret == 0) {
+		tcc_rtc_setclock(tcc_rtc, rtc_clock);
+	}
 
 	// Check Valid Time
 	if(tca_rtc_checkvalidtime(tcc_rtc->regs))
