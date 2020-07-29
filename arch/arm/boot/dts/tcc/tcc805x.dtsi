@@ -723,14 +723,6 @@
 		status = "disabled";
 	};
 
-	tcc_pm {
-		compatible = "telechips,pm";
-		reg = <0x0 0x16600000 0x0 0x000050>,  /* uart0*/
-		      <0x0 0x16689000 0x0 0x000010>,  /* uart config*/
-		      <0x0 0x14200000 0x0 0x000700>;  /* gpio*/
-		suspend_mode = <0>;	/* 0:sleep, 1:shutdown, 2:wfi */
-	};
-
 	pmu_rst: reset-controller@140000b4 {
 		compatible = "telechips,reset";
 		#reset-cells = <1>;
@@ -1487,6 +1479,15 @@
 
 	tcc_sc_fw: tcc_sc_fw {
 		compatible = "telechips,tcc805x-sc-fw";
+	};
+
+	tcc_pm_fw {
+		compatible = "telechips,pm-fw";
+		mbox-names ="power-mbox";
+		mboxes = <&micom_mbox TCC_MICOM_MBOX0_POWER>;
+		mbox-id = TCC_MBOX_POWER_ID;
+
+		boot-reason = <0x14400178 0xF 0x8>;
 	};
 
 	pinctrl: pinctrl@14200000 {
