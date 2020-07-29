@@ -200,7 +200,7 @@
 #endif
 	status = "okay";
 	pinctrl-names = "default";
-	pinctrl-0 = <&sd2_clk &sd2_cmd &sd2_bus4 &sd1_bus4_wp_cd>;
+	pinctrl-0 = <&sd2_clk &sd2_cmd &sd2_bus4 &sd1_bus4_wp_cd &sd1_pwr>;
 
 	broken-cd;
 	cd-inverted;
