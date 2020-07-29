@@ -56,6 +56,7 @@ struct tcc_chip {
 	void __iomem		*io_pwm_port_base;
 	unsigned int gfb_port[4];
 #endif
+	u32 freq;
 };
 
 #define to_tcc_chip(chip)	container_of(chip, struct tcc_chip, chip)
@@ -68,7 +69,7 @@ static int tcc_pwm_enable(struct pwm_chip *chip, struct pwm_device *pwm)
 
 	regs = pwm_readl(tcc->pwm_base + PWMEN);
 
-	dprintk("%s npwn:%d hwpwm:%d  regs:0x%x : 0x%x   \n", __func__, chip->npwm, pwm->hwpwm, (unsigned int)(tcc->pwm_base + PWMEN), regs);
+	dprintk("%s npwn:%d hwpwm:%d  regs:0x%p : 0x%x   \n", __func__, chip->npwm, pwm->hwpwm, tcc->pwm_base + PWMEN, regs);
 
 	local_irq_save(flags);
 
@@ -210,7 +211,7 @@ static int tcc_pwm_config(struct pwm_chip *chip, struct pwm_device *pwm,
 	low_cnt = total_cnt - hi_cnt;
 	
 
-pwm_result:
+//pwm_result:
 	dprintk("k: %d clk_p: %llu cnt : total :%llu, hi:%d , low:%d \n", k , clk_period_ns, total_cnt, hi_cnt, low_cnt);
 
 	local_irq_save(flags);
@@ -280,7 +281,7 @@ static int tcc_pwm_probe(struct platform_device *pdev)
 	u32 freq;
 	int ret;
 
-	printk(" %s  \n", __func__);
+	printk(KERN_INFO " %s  \n", __func__);
 
 	tcc = devm_kzalloc(&pdev->dev, sizeof(*tcc), GFP_KERNEL);
 	if (tcc == NULL) {
@@ -312,6 +313,7 @@ static int tcc_pwm_probe(struct platform_device *pdev)
 		pr_info("pwm default clock :%d init", freq);
 	}
 	
+	tcc->freq = freq;
 	tcc->pwm_ioclk = of_clk_get(pdev->dev.of_node, 1);
 	if (IS_ERR(tcc->pwm_ioclk)) {
 		dev_err(&pdev->dev, "Unable to get pwm io clock.\n");
@@ -356,11 +358,12 @@ static int tcc_pwm_probe(struct platform_device *pdev)
 	clk_prepare_enable(tcc->pwm_ioclk);
 	clk_prepare_enable(tcc->pwm_pclk);
 	clk_set_rate(tcc->pwm_pclk, freq);
-	printk("pwm peri clock set :%d return :%ld \n", freq, clk_get_rate(tcc->pwm_pclk));
+	dprintk("pwm peri clock set :%d return :%ld \n", freq, clk_get_rate(tcc->pwm_pclk));
 	platform_set_drvdata(pdev, tcc);
-	//Make to  disable
+	//Make to disable
 	if((pwm_readl(tcc->pwm_base) & 0xF) == 0)
-	pwm_writel(0 , tcc->pwm_base + PWMEN);
+	    pwm_writel(0 , tcc->pwm_base + PWMEN);
+
 	return 0;
 }
 
@@ -375,22 +378,60 @@ static int tcc_pwm_remove(struct platform_device *pdev)
 
 	return pwmchip_remove(&tcc->chip);
 }
-static int tcc_pwm_suspend(struct platform_device *pdev, pm_message_t state)
+
+#ifdef CONFIG_PM_SLEEP
+static int tcc_pwm_suspend(struct device *dev)
 {
-//	struct tcc_chip *tcc = platform_get_drvdata(pdev);
-	printk("%s \n", __func__);
+//	struct tcc_chip *tcc = platform_get_drvdata(dev);
+	dprintk("%s \n", __func__);
 	return 0;
 }
 
-static int tcc_pwm_resume(struct platform_device *pdev)
+static int tcc_pwm_resume(struct device *dev)
 {
-	struct tcc_chip *tcc = platform_get_drvdata(pdev);
-	printk("%s \n", __func__);
+	struct tcc_chip *tcc = dev_get_drvdata(dev);
+	struct pwm_device *pwm;
+	struct pwm_state state;
+	unsigned int i;
 
-	pwm_writel(0xF0000, tcc->pwm_base + PWMEN);
+	dprintk("### [%s] %d ###\n", __func__, __LINE__);
+
+	pinctrl_pm_select_default_state(dev);
+
+	clk_prepare_enable(tcc->pwm_ioclk);
+	clk_prepare_enable(tcc->pwm_pclk);
+
+	clk_set_rate(tcc->pwm_pclk, tcc->freq);
+
+
+	dprintk("pwm peri clock set :%d return :%ld \n", tcc->freq, clk_get_rate(tcc->pwm_pclk));
+
+	//Make to disable
+	if((pwm_readl(tcc->pwm_base) & 0xF) == 0)
+	    pwm_writel(0 , tcc->pwm_base + PWMEN);
+
+	for (i = 0; i < tcc->chip.npwm; i++) {
+	    pwm = &tcc->chip.pwms[i];
+	    dprintk("pwms[%d]->hwpwm=%d,pwm=%d,flags=%lu,label=%s \n",
+		    i, pwm->hwpwm, pwm->pwm, pwm->flags, pwm->label);
+
+	    pwm_get_state(pwm, &state);
+	    dprintk(" state: %s", state.enabled ? "enabled" : "disabled");
+	    dprintk(" period: %u ns", state.period);
+	    dprintk(" duty: %u ns", state.duty_cycle);
+		dprintk(" polarity: %s", state.polarity ? "inverse" : "normal");
+
+		if (state.enabled) {
+			tcc_pwm_config(&tcc->chip, pwm, state.duty_cycle, state.period);
+			tcc_pwm_enable(&tcc->chip, pwm);
+		}
+	}
 
 	return 0;
 }
+
+static SIMPLE_DEV_PM_OPS(tcc_pwm_pm_ops, tcc_pwm_suspend, tcc_pwm_resume);
+#endif
 
 static const struct of_device_id tcc_pwm_of_match[] = {
 	{ .compatible = "telechips,pwm" },
@@ -399,15 +440,19 @@ static const struct of_device_id tcc_pwm_of_match[] = {
 
 MODULE_DEVICE_TABLE(of, tcc_pwm_of_match);
 
+
 static struct platform_driver tcc_pwm_driver = {
 	.driver		= {
 		.name	= "tcc-pwm",
+#ifdef CONFIG_PM_SLEEP
+		.pm	= &tcc_pwm_pm_ops,
+#endif
 		.of_match_table = tcc_pwm_of_match,
 	},
 	.probe		= tcc_pwm_probe,
 	.remove		= tcc_pwm_remove,
-	.suspend 		= tcc_pwm_suspend,
-	.resume 		= tcc_pwm_resume,
+//	.suspend 	= tcc_pwm_suspend,
+//	.resume 	= tcc_pwm_resume,
 
 
 };
