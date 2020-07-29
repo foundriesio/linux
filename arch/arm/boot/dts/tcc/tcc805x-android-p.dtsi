@@ -13,7 +13,11 @@
 			dev = "/dev/block/platform/tcc_sc_mmc/by-name/vendor";
 			type = "ext4";
 			mnt_flags = "ro,barrier=1";
+#if !defined(CONFIG_ANDROID_AB_UPDATE)
 			fsmgr_flags = "wait";
+#else
+            fsmgr_flags = "wait,slotselect";
+#endif
 		};
 	};
 };
