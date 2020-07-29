@@ -22,11 +22,12 @@
 //Pixel unit
 
 // luminance
-#define L_STRIDE_ALIGN 16
-#define L_REGION_ALIGN 64
+#define L_STRIDE_ALIGN 64 // Arm: 16, Pvr: 64
+#define L_REGION_ALIGN 64 // Arm: 64, Pvr: 64
 
 // Chrominance
-#define C_STRIDE_ALIGN 16
-#define C_REGION_ALIGN 64
+#define C_STRIDE_ALIGN 32 // Arm: 16, Pvr: 32?
+#define C_REGION_ALIGN 64 // Arm: 64, Pvr: 64
+
 
 #endif
