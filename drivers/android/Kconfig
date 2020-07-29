@@ -44,7 +44,7 @@ config ANDROID_BINDER_IPC_SELFTEST
 
 config ANDROID_AB_UPDATE
     bool "Android A/B Update"
-    depends on ARCH_TCC803X
+    depends on ARCH_TCC803X || ARCH_TCC805X
     default n
     ---help---
       If enabled, supports Android A/B update feature. This
