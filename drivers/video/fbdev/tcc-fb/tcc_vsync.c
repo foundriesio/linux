@@ -4251,10 +4251,6 @@ static long tcc_vsync_do_ioctl(unsigned int cmd, unsigned long arg, VSYNC_CH_TYP
 						}
 					}
 
-					if (input_image->reset_sync_time) {
-						tcc_vsync_reset_syncTime(p, 0, type);
-					}
-
 					if(p->isVsyncRunning != EM_VSYNC_RUNNING){
 						printk(KERN_DEBUG "[DBG][VSYNC]  vsync is not started");
 						ret = 0;
