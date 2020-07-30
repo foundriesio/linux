@@ -297,8 +297,6 @@ struct tcc_lcdc_image_update
     unsigned int codec_id;
     int bSize_Changed; // just usage for kernel itself.
     TCC_PLATFORM_PRIVATE_PMEM_INFO private_data;
-
-	int reset_sync_time;       // 1 is reset sync time
 };
 
 struct tcc_lcdc_get_image_info
