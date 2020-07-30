@@ -231,11 +231,18 @@ config TI_SCI_PROTOCOL
 	  provided by the system controller.
 
 config TCC_SC_FW_PROTOCOL
-	tristate "Telechip Storage Core Interface Protocol"
+	tristate "Telechips Storage Core Interface Protocol"
 	depends on ARCH_TCC805X
 	depends on TCC_SC_MAILBOX
 	help
 	  Storage Core Interface Protocol is used to communicate with Storage Core.
+
+config TCC_PM_FIRMWARE
+	bool "Telechips power management firmware driver"
+	depends on PM && TCC_MULTI_MAILBOX
+	help
+	  Telechips power management firmware driver is used to communcate with
+	  MICOM for handling power management event sent from MICOM F/W.
 
 config HAVE_ARM_SMCCC
 	bool
