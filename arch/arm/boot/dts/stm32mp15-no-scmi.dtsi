@@ -153,5 +153,4 @@
 
 &usart1 {
 	clocks = <&rcc USART1_K>;
-	resets = <&rcc USART1_R>;
 };
