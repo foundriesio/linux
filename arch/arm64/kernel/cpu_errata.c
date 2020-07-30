@@ -708,7 +708,6 @@ const struct arm64_cpu_capabilities arm64_errata[] = {
 #ifdef CONFIG_HARDEN_BRANCH_PREDICTOR
 	{
 		.capability = ARM64_HARDEN_BRANCH_PREDICTOR,
-		.type = ARM64_CPUCAP_LOCAL_CPU_ERRATUM,
 		.cpu_enable = enable_smccc_arch_workaround_1,
 		ERRATA_MIDR_RANGE_LIST(arm64_bp_harden_smccc_cpus),
 	},
