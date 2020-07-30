@@ -87,7 +87,6 @@ int32_t tcc_hsm_cmd_run_aes(
 	int32_t rdata = 0;
 	int32_t data_size = 0, rdata_size = 0;
 	int32_t result = -1;
-int i;
 
 	data[index++] = obj_id;
 	data[index++] = HSM_DMA;
@@ -113,9 +112,6 @@ int i;
 	data[index++] = dst;
 
 	data_size = (sizeof(uint32_t) * index);
-
-for(i=0; i<index; i++) 
-    ELOG("data(%d, %x)\n", i, data[i]); 
        
 	rdata_size = sec_sendrecv_cmd(
 		device_id, (req | MBOX_LOCATION_DATA), data, data_size, &rdata, DMA_MAX_RSIZE);
@@ -466,7 +462,6 @@ int32_t tcc_hsm_cmd_write(
 	data[index++] = buf_size;
 
 	if (buf != NULL && buf_size > 0) {
-		ELOG("ljh1(%d)\n", buf_size);
 		memcpy((uint8_t *)&data[index], buf, buf_size);
 		index += (buf_size + 3) / sizeof(uint32_t);
 	}
