@@ -45,6 +45,8 @@
 #define TCC_TIMER_MAX	6
 #define MAX_TCKSEL		6
 
+#define TREF_LPO_REF	0x5B    /* based on using 12MHz TCLK */
+
 static void __iomem	*timer_base = NULL;
 static unsigned long	clk_rate;
 static int		timer_initialized = 0;
@@ -304,8 +306,12 @@ static void tcc_timer_parse_dt(struct device_node *np)
 	of_property_for_each_u32(np, "tcc-timer-reserved", prop, i, res)
 	{
 		if (res < TCC_TIMER_MAX && res >= 0) {
-			pr_info("tcc_timer: reserved channel - %d\n", res);
+			pr_info("tcc_timer: reserved channel-%d for LPO clock\n", res);
 			timer_res[res].reserved = 1;
+			/* Enable Timer with TCKSEL=0 */
+			timer_writel(1, timer_base+(res*0x10)+TCC_TCFG);
+			/* Set TREF to generate 32.768KHz approximately */
+			timer_writel(TREF_LPO_REF, timer_base+(res*0x10)+TCC_TREF);
 		}
 	}
 }
