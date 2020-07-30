@@ -34,8 +34,9 @@ static int rk_handle_req(struct rk_crypto_info *dev,
 	dev->total = req->nbytes;
 	dev->sg_src = req->src;
 	dev->first = req->src;
-	dev->nents = sg_nents(req->src);
+	dev->src_nents = sg_nents(req->src);
 	dev->sg_dst = req->dst;
+	dev->dst_nents = sg_nents(req->dst);
 	dev->aligned = 1;
 	dev->ablk_req = req;
 
@@ -301,7 +302,7 @@ static int rk_ablk_rx(struct rk_crypto_info *dev)
 
 	dev->unload_data(dev);
 	if (!dev->aligned) {
-		if (!sg_pcopy_from_buffer(dev->ablk_req->dst, dev->nents,
+		if (!sg_pcopy_from_buffer(dev->ablk_req->dst, dev->dst_nents,
 					  dev->addr_vir, dev->count,
 					  dev->total - dev->left_bytes -
 					  dev->count)) {
