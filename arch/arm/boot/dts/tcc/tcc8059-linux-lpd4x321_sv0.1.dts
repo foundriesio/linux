@@ -10,7 +10,7 @@
 
 #include "tcc8059-linux-avn.dtsi"
 
-/ {	//ttest
+/ {
 	/* Describe here after remove this statement if you have something to be override. */
 	tm123xdhp90 {
 		compatible = "telechips,lvds-tm123xdhp90";
@@ -184,6 +184,13 @@
 		mmc-hs400-1_8v;
 		vqmmc-supply = <&vqmmc_emmc>;
 	};
+
+        tcc-gpio-sample {
+                compatible = "gpio-sample";
+                leble = "TCC GPIO";
+                gpios = <&gpb 17 0>;
+        };
+
 };
 
 /* eMMC */
