@@ -1,6 +1,8 @@
 /****************************************************************************
  * Copyright (C) 2018 Telechips Inc.
  *
+ * Author: Jaeyoung Park <dwayne.park@telechips.com>
+ *
  * This program is free software; you can redistribute it and/or modify it under the terms
  * of the GNU General Public License as published by the Free Software Foundation;
  * either version 2 of the License, or (at your option) any later version.
@@ -39,7 +41,17 @@
 
 //global
 
-extern int tcc_irq_get_reverse(int irq);
+//#define DEBUG_GPIO
+
+#ifdef DEBUG_GPIO
+#define debug_gpio(msg...) printk(KERN_DEBUG "[DEBUG][GPIO SAMPLE DRIVER]" msg);
+#define err_gpio(msg...) printk(KERN_ERR "[ERROR][GPPIO SAMPLE DRIVER]" msg);
+#else
+#define debug_gpio(msg...)
+#define err_gpio(msg...)
+#endif
+
+
 extern int tcc_gpio_config(unsigned, unsigned);
 
 struct gpio_data {
@@ -48,7 +60,6 @@ struct gpio_data {
 	int value;
 	int irq_enable;
 	int irq;
-	int irq_rev;
 };
 
 struct gpio_sample_platform_data {
@@ -69,7 +80,6 @@ static ssize_t gpio_dir_show(struct device *dev, struct device_attribute *attr, 
 	if(!gpio_is_valid(pdata->gdata->gpio)) {
 		return -ENODEV;
 	}
-
 
 	return sprintf(buf,"direction out : 1, direction in : 0\n");
 }
@@ -259,12 +269,11 @@ gpio_sample_get_devtree_pdata(struct device *dev)
 
 //isr function
 
-static irqreturn_t gpio_sample_isr(int irq, void *dev_id)
+static irqreturn_t gpio_sample_isr(int irq, void *dev)
 {
-        struct gpio_button_data *pdata = dev_id;
+        struct gpio_button_data *pdata = dev_get_platdata(dev);
 
-
-//	printk("gpio sample interrupt");
+	debug_gpio("gpio sample interrupt");
 
         return IRQ_HANDLED;
 }
@@ -280,7 +289,7 @@ static int gpio_sample_probe(struct platform_device *pdev)
 	//struct gpio_struct *gpio_desc;
 	unsigned long irqflags;
 	irq_handler_t isr;
-	int irq, irq_rev;
+	int irq;
 	int error;
 
 	if(!pdata) {
@@ -294,8 +303,6 @@ static int gpio_sample_probe(struct platform_device *pdev)
 			error = -EINVAL;
 			goto err_remove_group;
 		}
-
-
 	}
 
 	pdata->gdata->irq_enable=0;
@@ -309,35 +316,18 @@ static int gpio_sample_probe(struct platform_device *pdev)
 //set irq
 
 	isr = gpio_sample_isr;
-	irq = gpio_to_irq(pdata->gdata->gpio); // get irq number -> for rising edge interrupt
-	printk("############################################irq : %d##################################################", irq);
+	irq = gpio_to_irq(pdata->gdata->gpio); // get irq number
+	debug_gpio("############################################irq : %d##################################################", irq);
 	if(irq < 0)
 		goto err_remove_group;
 
-	irq_rev = tcc_irq_get_reverse(irq); // get reverse irq number(irq+16) -> for falling edge interrupt
-	printk("############################################irq_rev : %d##################################################", irq_rev);
-	if(irq_rev < 0)
-		goto err_remove_group;
+	pdata->gdata->irq=irq;
 
-/* two interrupt signals are used for each rising and falling edge. */
-/* Since GIC only detect rising edge signal, one of two signal to GIC from same port should be converted from low to high to detect falling edge */
+	//irqflags = IRQ_TYPE_EDGE_RISING; // rising edge
+	//irqflags = IRQ_TYPE_EDGE_FALLING; // falling edge
+	irqflags = IRQ_TYPE_EDGE_BOTH; // both edge
 
-	pdata->gdata->irq=irq; // for rising edge
-	pdata->gdata->irq_rev=irq_rev; // for falling edge
-
-	irqflags = IRQ_TYPE_EDGE_RISING; // falling and rising edge use same IRQ_TYPE_EDGE_RISING type
-
-	error = request_any_context_irq(irq, isr, irqflags, "sample_gpio_interrupt", pdata); // 1st : irq number, 2nd : interrupt service routine, 3rd : irq type(falling, rising etc), 4th : name, 5th : parameter to isr
-
-        if (error) {
-                dev_err(dev, "Unable requests irq, error: %d\n",
-                                error);
-                goto err_remove_group;
-        }
-
-	irqflags = IRQ_TYPE_EDGE_FALLING;
-
-        error = request_any_context_irq(irq_rev, isr, irqflags, "sample_gpio_interrupt", pdata);
+	error = request_any_context_irq(irq, isr, irqflags, "sample_gpio_interrupt", dev); // 1st : irq number, 2nd : interrupt service routine, 3rd : irq type(falling, rising and both), 4th : name, 5th : parameter to isr
 
         if (error) {
                 dev_err(dev, "Unable requests irq, error: %d\n",
