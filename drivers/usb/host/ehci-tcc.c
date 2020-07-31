@@ -488,7 +488,7 @@ static int tcc_ehci_resume(struct device *dev)
 	tcc_ehci_phy_ctrl(tcc_ehci, ON);
 	tcc_ehci_vbus_ctrl(tcc_ehci, ON);
 	tcc_ehci_clk_ctrl(tcc_ehci, ON);
-	//tcc_ehci_phy_init(tcc_ehci);
+	tcc_ehci_phy_init(tcc_ehci);
 	#else
 	tcc_ehci_power_ctrl(tcc_ehci, ON);
 	#if !defined(CONFIG_USB_OHCI_HCD) && !defined(CONFIG_USB_OHCI_HCD_MODULE)
