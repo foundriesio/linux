@@ -916,6 +916,13 @@
 			gpios = <&gpa 3 0>;
 		};
 	};
+
+        tcc-gpio-sample {
+                compatible = "gpio-sample";
+                leble = "TCC GPIO";
+                gpios = <&gpb 17 0>;
+        };
+
 };
 
 /* console */
