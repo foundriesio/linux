@@ -377,7 +377,7 @@ bool tcc_is_exti(int irq){
 
         hwirq -= 32;
 
-        if(hwirq<31)
+        if(hwirq>31)
                 ret = false;
         else
                 ret = true;
