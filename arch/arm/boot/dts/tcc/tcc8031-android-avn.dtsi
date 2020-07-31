@@ -219,6 +219,13 @@
 	product_description = "TCC8031_avn";
 };
 
+&videoinput0 {
+	status = "okay";
+};
+
+&videoinput1 {
+	status = "okay";
+};
 
 &i2c0 {
 	status = "okay";

@@ -13,6 +13,7 @@
 #include <dt-bindings/gpio/gpio.h>
 #include <dt-bindings/mailbox/tcc803x_multi_mailbox/tcc_mbox_ch.h>
 #include <dt-bindings/input/input.h>
+#include <dt-bindings/video/tcc803x-tccvin.h>
 #include "tcc-pmap-common.dtsi"
 
 / {
@@ -3234,7 +3235,7 @@
 		wmixer		= <&vioc_wmix		VIOC_WMIX5>;
 		wdma		= <&vioc_wdma		VIOC_WDMA05>;
 		fifo		= <&vioc_fifo		VIOC_FIFO0>;
-		status		= "okay";
+		status		= "disabled";
 	};
 
 	videoinput1: videoinput@1 {
@@ -3249,7 +3250,7 @@
 		wmixer		= <&vioc_wmix		VIOC_WMIX6>;
 		wdma		= <&vioc_wdma		VIOC_WDMA07>;
 		fifo		= <&vioc_fifo		VIOC_FIFO0>;
-		status		= "okay";
+		status		= "disabled";
 	};
 
 	videoinput2: videoinput@2 {
@@ -3550,9 +3551,7 @@
 
 	thermal: thermal@14700000 {};
 
-#ifdef CONFIG_VIDEO_VIDEOSOURCE
 	videosource: videosource {};
-#endif
 
 	switch_reverse: switch_reverse {};
 
