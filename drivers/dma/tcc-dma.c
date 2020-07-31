@@ -109,6 +109,7 @@ struct tcc_dma {
 	void __iomem		*req_reg;
 	void __iomem		*ac_reg;
 	struct clk		*clk;
+	u32			ac_val[4][2];
 
 	struct tcc_dma_chan	chan[0];
 };
@@ -738,20 +739,20 @@ static struct dma_async_tx_descriptor *tcc_dma_prep_dma_cyclic(
 static int tcc_dma_terminate_all(struct dma_chan *chan)
 {
 	struct tcc_dma_chan *tdmac = to_tcc_dma_chan(chan);
-       unsigned long flags;
-       LIST_HEAD(head);
+	unsigned long flags;
+	LIST_HEAD(head);
 
-       spin_lock_irqsave(&tdmac->lock, flags);
+	spin_lock_irqsave(&tdmac->lock, flags);
 
-       /* Disable DMA channel */
-       channel_writel(tdmac, DMA_CHCTRL, 0);
+	/* Disable DMA channel */
+	channel_writel(tdmac, DMA_CHCTRL, 0);
 
-       tcc_dma_get_all_descriptors(tdmac, &head);
-       spin_unlock_irqrestore(&tdmac->lock, flags);
-       tcc_dma_desc_free_list(tdmac, &head);
-       tcc_dma_clean_completed_descriptors(tdmac);
+	tcc_dma_get_all_descriptors(tdmac, &head);
+	spin_unlock_irqrestore(&tdmac->lock, flags);
+	tcc_dma_desc_free_list(tdmac, &head);
+	tcc_dma_clean_completed_descriptors(tdmac);
 
-       return 0;
+	return 0;
 }
 
 static int tcc_dma_slave_config(struct dma_chan *chan,
@@ -824,6 +825,23 @@ static struct tcc_dma_platform_data *tcc_dma_parse_dt(
 }
 #endif
 
+static void tcc_dma_set_access_control(struct tcc_dma *tdma)
+{
+	if (tdma->ac_reg == NULL)
+		return;
+
+	writel(tdma->ac_val[0][0], tdma->ac_reg + DMA_AC0_START);
+	writel(tdma->ac_val[0][1], tdma->ac_reg + DMA_AC0_LIMIT);
+	writel(tdma->ac_val[1][0], tdma->ac_reg + DMA_AC1_START);
+	writel(tdma->ac_val[1][1], tdma->ac_reg + DMA_AC1_LIMIT);
+	writel(tdma->ac_val[2][0], tdma->ac_reg + DMA_AC2_START);
+	writel(tdma->ac_val[2][1], tdma->ac_reg + DMA_AC2_LIMIT);
+	writel(tdma->ac_val[3][0], tdma->ac_reg + DMA_AC3_START);
+	writel(tdma->ac_val[3][1], tdma->ac_reg + DMA_AC3_LIMIT);
+
+	return;
+}
+
 static int __init tcc_dma_probe(struct platform_device *pdev)
 {
 	struct tcc_dma_platform_data *pdata;
@@ -893,28 +911,31 @@ static int __init tcc_dma_probe(struct platform_device *pdev)
 		if (!of_property_read_u32_array(ac_np, "access-control0", ac_val, 2)) {
 			dev_vdbg(&pdev->dev, "[DEBUG][GDMA] access-control0 start:0x%08x limit:0x%08x\n",
 					ac_val[0], ac_val[1]);
-			writel(ac_val[0], tdma->ac_reg + DMA_AC0_START);
-			writel(ac_val[1], tdma->ac_reg + DMA_AC0_LIMIT);
+			tdma->ac_val[0][0] = ac_val[0];
+			tdma->ac_val[0][1] = ac_val[1];
 		}
 		if (!of_property_read_u32_array(ac_np, "access-control1", ac_val, 2)) {
 			dev_vdbg(&pdev->dev, "[DEBUG][GDMA] access-control1 start:0x%08x limit:0x%08x\n",
 					ac_val[0], ac_val[1]);
-			writel(ac_val[0], tdma->ac_reg + DMA_AC1_START);
-			writel(ac_val[1], tdma->ac_reg + DMA_AC1_LIMIT);
+			tdma->ac_val[1][0] = ac_val[0];
+			tdma->ac_val[1][1] = ac_val[1];
 		}
 		if (!of_property_read_u32_array(ac_np, "access-control2", ac_val, 2)) {
 			dev_vdbg(&pdev->dev, "[DEBUG][GDMA] access-control2 start:0x%08x limit:0x%08x\n",
 					ac_val[0], ac_val[1]);
-			writel(ac_val[0], tdma->ac_reg + DMA_AC2_START);
-			writel(ac_val[1], tdma->ac_reg + DMA_AC2_LIMIT);
+			tdma->ac_val[2][0] = ac_val[0];
+			tdma->ac_val[2][1] = ac_val[1];
 		}
 		if (!of_property_read_u32_array(ac_np, "access-control3", ac_val, 2)) {
 			dev_vdbg(&pdev->dev, "[DEBUG][GDMA] access-control3 start:0x%08x limit:0x%08x\n",
 					ac_val[0], ac_val[1]);
-			writel(ac_val[0], tdma->ac_reg + DMA_AC3_START);
-			writel(ac_val[1], tdma->ac_reg + DMA_AC3_LIMIT);
+			tdma->ac_val[3][0] = ac_val[0];
+			tdma->ac_val[3][1] = ac_val[1];
 		}
+	} else {
+		tdma->ac_reg = NULL;
 	}
+	tcc_dma_set_access_control(tdma);
 
 	INIT_LIST_HEAD(&tdma->dma.channels);
 	for (i = 0; i < pdata->nr_channels; i++) {
@@ -990,6 +1011,37 @@ static int tcc_dma_remove(struct platform_device *pdev)
 	return 0;
 }
 
+#ifdef CONFIG_PM_SLEEP
+static int tcc_dma_suspend(struct device *dev)
+{
+	struct tcc_dma *tdma = dev_get_drvdata(dev);
+
+	clk_disable_unprepare(tdma->clk);
+
+	return 0;
+}
+
+static int tcc_dma_resume(struct device *dev)
+{
+	struct tcc_dma *tdma = dev_get_drvdata(dev);
+	int ret;
+
+	ret = clk_prepare_enable(tdma->clk);
+	if (ret) {
+		dev_err(dev, "[ERROR][DMA] Failed to enable DMA HCLK\n");
+		return ret;
+	}
+
+	tcc_dma_set_access_control(tdma);
+
+	return 0;
+}
+
+static const struct dev_pm_ops tcc_dma_pm_ops = {
+	SET_SYSTEM_SLEEP_PM_OPS(tcc_dma_suspend, tcc_dma_resume)
+};
+#endif
+
 #ifdef CONFIG_OF
 static const struct of_device_id tcc_dma_of_id_table[] = {
 	{ .compatible = "telechips,tcc896x-dma", },
@@ -1009,6 +1061,9 @@ static struct platform_driver tcc_dma_driver = {
 	.driver	= {
 		.name	= "tcc-dma",
 		.owner	= THIS_MODULE,
+#ifdef CONFIG_PM_SLEEP
+		.pm = &tcc_dma_pm_ops,
+#endif
 		.of_match_table	= of_match_ptr(tcc_dma_of_id_table),
 	},
 	.probe		= tcc_dma_probe,
