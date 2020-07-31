@@ -204,11 +204,5 @@
                 pinctrl-0 = <&tco_out_sample>;
         };
 
-        tcc-gpio-sample {
-                compatible = "gpio-sample";
-                leble = "TCC GPIO";
-                gpios = <&gpb 17 0>;
-        };
-
 
 };
