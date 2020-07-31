@@ -757,18 +757,19 @@ static int _vmgr_process(vputype type, int cmd, long pHandle, void* args)
 #endif
 
 #ifdef CONFIG_VPU_TIME_MEASUREMENT
-    time_gap_ms = vetc_GetTimediff_ms(t1, t2);
+    if (cmd == VPU_DEC_DECODE || cmd == VPU_ENC_ENCODE)
+    {
+        time_gap_ms = vetc_GetTimediff_ms(t1, t2);
 
-    if (cmd == VPU_DEC_DECODE || cmd == VPU_ENC_ENCODE) {
         vmgr_data.iTime[type].accumulated_frame_cnt++;
         vmgr_data.iTime[type].proc_time[vmgr_data.iTime[type].proc_base_cnt] = time_gap_ms;
         vmgr_data.iTime[type].proc_time_30frames += time_gap_ms;
         vmgr_data.iTime[type].accumulated_proc_time += time_gap_ms;
         if (vmgr_data.iTime[type].proc_base_cnt != 0 && vmgr_data.iTime[type].proc_base_cnt % 29 == 0)
         {
-            printk("VPU[%d] %s[%4d] time %2d.%2d / %2d.%2d ms: "
-                   "%2d, %2d, %2d, %2d, %2d, %2d, %2d, %2d, %2d, %2d, %2d, %2d, %2d, %2d, %2d, "
-                   "%2d, %2d, %2d, %2d, %2d, %2d, %2d, %2d, %2d, %2d, %2d, %2d, %2d, %2d, %2d \n",
+            printk("VPU[%u] %s[%4u] time %2u.%2u / %2u.%2u ms: "
+                   "%2u, %2u, %2u, %2u, %2u, %2u, %2u, %2u, %2u, %2u, %2u, %2u, %2u, %2u, %2u, "
+                   "%2u, %2u, %2u, %2u, %2u, %2u, %2u, %2u, %2u, %2u, %2u, %2u, %2u, %2u, %2u \n",
                     type,
                     cmd==VPU_DEC_DECODE?"DEC":"ENC",
                     vmgr_data.iTime[type].print_out_index,

@@ -174,7 +174,7 @@ int vmgr_hevc_enc_set_close(vputype type, int value, int bfreemem)
 {
 	if(vmgr_hevc_enc_get_close(type) == value)
 	{
-		V_DBG(DEBUG_VPU_ERROR, " %d was already set to %d.", type, value);
+		V_DBG(DEBUG_ENC_DETAIL, " %d was already set to %d.", type, value);
 		return -1;
 	}
 
@@ -660,19 +660,18 @@ static int _vmgr_hevc_enc_process(vputype type, int cmd, long pHandle, void* arg
 	}
 
 #ifdef CONFIG_VPU_TIME_MEASUREMENT
-	time_gap_ms = vetc_GetTimediff_ms(t1, t2);
-
 	if (cmd == VPU_ENC_ENCODE)
 	{
+		time_gap_ms = vetc_GetTimediff_ms(t1, t2);
 		vmgr_hevc_enc_data.iTime[type].accumulated_frame_cnt++;
 		vmgr_hevc_enc_data.iTime[type].proc_time[vmgr_hevc_enc_data.iTime[type].proc_base_cnt] = time_gap_ms;
 		vmgr_hevc_enc_data.iTime[type].proc_time_30frames += time_gap_ms;
 		vmgr_hevc_enc_data.iTime[type].accumulated_proc_time += time_gap_ms;
 		if (vmgr_hevc_enc_data.iTime[type].proc_base_cnt != 0 && vmgr_hevc_enc_data.iTime[type].proc_base_cnt % 29 == 0)
 		{
-			printk("VHEVC[%d] Henc[%4d] time %2d.%2d / %2d.%2d ms: "
-				"%2d, %2d, %2d, %2d, %2d, %2d, %2d, %2d, %2d, %2d, %2d, %2d, %2d, %2d, %2d, "
-				"%2d, %2d, %2d, %2d, %2d, %2d, %2d, %2d, %2d, %2d, %2d, %2d, %2d, %2d, %2d \n",
+			printk("VHEVC[%u] Henc[%4u] time %2u.%2u / %2u.%2u ms: "
+				"%2u, %2u, %2u, %2u, %2u, %2u, %2u, %2u, %2u, %2u, %2u, %2u, %2u, %2u, %2u, "
+				"%2u, %2u, %2u, %2u, %2u, %2u, %2u, %2u, %2u, %2u, %2u, %2u, %2u, %2u, %2u \n",
 				type,
 				vmgr_hevc_enc_data.iTime[type].print_out_index,
 				vmgr_hevc_enc_data.iTime[type].proc_time_30frames / 30,

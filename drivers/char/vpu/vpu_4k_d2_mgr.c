@@ -507,7 +507,7 @@ int vmgr_4k_d2_get_alive(void)
 int vmgr_4k_d2_set_close(vputype type, int value, int bfreemem)
 {
     if( vmgr_4k_d2_get_close(type) == value ){
-        printk(" %d was already set into %d. \n", type, value);
+        dprintk(" %d was already set into %d. \n", type, value);
         return -1;
     }
 
