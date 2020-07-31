@@ -303,14 +303,17 @@
 	};
 
 	videoinput@0 {
+		status = "okay";
 		videosource	= <&videosource0>;
 	};
 
 	videoinput@4 {
+		status = "okay";
 		videosource	= <&videosource1>;
 	};
 
 	videoinput@5 {
+		status = "okay";
 		videosource	= <&videosource1>;
 	};
 
