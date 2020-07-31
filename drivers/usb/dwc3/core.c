@@ -786,6 +786,9 @@ static int dwc3_core_init(struct dwc3 *dwc)
 	u32			reg;
 	int			ret;
 
+	usb_phy_init(dwc->usb2_phy);
+	usb_phy_init(dwc->usb3_phy);
+
 	if (!dwc3_core_is_valid(dwc)) {
 		dev_err(dwc->dev, "[ERROR][USB] this is not a DesignWare USB3 DRD Core\n");
 		ret = -ENODEV;
