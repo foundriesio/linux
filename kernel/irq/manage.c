@@ -3,9 +3,27 @@
  *
  * Copyright (C) 1992, 1998-2006 Linus Torvalds, Ingo Molnar
  * Copyright (C) 2005-2006 Thomas Gleixner
+ * Copyright (C) Telechips Inc.
  *
  * This file contains driver APIs to the irq subsystem.
- */
+*******************************************************************************
+
+
+*   Modified by Telechips Inc.
+
+
+*   Modified date : 31/07/2020
+
+
+*   Description : For user convenience of setting external interrupt on Telech-
+ips platform, some codes are added featured CONFIG_ARCH_TCC. Requesting irq is
+simpler than before by putting tcc_is_exti() and tcc_irq_get_reverse() into
+request_threaded_irq(). Now it is possible that rising, faling or both edge ex-
+ternal interrupt mode can be enabled with the flag without calling tcc_irq_get-
+_reverse() or request_threaded_irq() several times.
+
+
+*******************************************************************************/
 
 #define pr_fmt(fmt) "genirq: " fmt
 
@@ -22,6 +40,11 @@
 #include <linux/task_work.h>
 
 #include "internals.h"
+
+#ifdef CONFIG_ARCH_TCC
+extern bool tcc_is_exti(int irq);
+extern int tcc_irq_get_reverse(int irq);
+#endif
 
 #ifdef CONFIG_IRQ_FORCED_THREADING
 __read_mostly bool force_irqthreads;
@@ -1746,6 +1769,25 @@ int request_threaded_irq(unsigned int irq, irq_handler_t handler,
 	struct irqaction *action;
 	struct irq_desc *desc;
 	int retval;
+#ifdef CONFIG_ARCH_TCC
+	if(tcc_is_exti(irq)){
+
+		if(irqflags == IRQ_TYPE_EDGE_FALLING)
+		{
+			irq = tcc_irq_get_reverse(irq);
+			irqflags = IRQ_TYPE_EDGE_RISING;
+		}
+
+		if(irqflags == IRQ_TYPE_EDGE_BOTH){
+			retval = request_threaded_irq(irq, handler, thread_fn, IRQ_TYPE_EDGE_RISING, devname, dev_id);
+			if(retval)
+				return retval;
+
+			irq = tcc_irq_get_reverse(irq);
+			irqflags = IRQ_TYPE_EDGE_RISING;
+		}
+	}
+#endif
 
 	if (irq == IRQ_NOTCONNECTED)
 		return -ENOTCONN;

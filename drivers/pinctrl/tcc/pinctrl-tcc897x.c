@@ -20,6 +20,7 @@
 #include <linux/of.h>
 #include <linux/of_device.h>
 #include <linux/of_address.h>
+#include <linux/irq.h>
 #include <asm/io.h>
 
 #include "pinctrl-tcc.h"
@@ -146,7 +147,7 @@ inline static int tcc897x_set_eint(void __iomem *base, unsigned bit, int extint)
 	if (!gpio_base)
 		return -1;
 
-	if (extint >= irq_size)
+	if (extint >= irq_size/2)
 		return -1;
 
 	for (idx = 0 ; idx < ARRAY_SIZE(extintr) ; idx++)
@@ -287,15 +288,19 @@ static int tcc897x_gpio_to_irq(void __iomem *base, unsigned offset)
 	struct extintr_match_ *match = (struct extintr_match_ *)tcc897x_pinctrl_soc_data.irq->data;
 	int irq_size = tcc897x_pinctrl_soc_data.irq->size;
 
+	//irq_size is sum of normal and reverse external interrupt.
+	//however, normal and reverse external interrupts are actually single external interrupt.
+	//external interrupt size is half of irq_size.
+
 	/* checking exist */
-	for (i = 0; i < irq_size; i++) {
+	for (i = 0; i < irq_size/2; i++) {
 		if (match[i].used && (match[i].port_base == base)
 			&& (match[i].port_num == offset))
 			goto set_gpio_to_irq_finish;
 	}
 
 	/* checking unused external interrupt */
-	for (i = 0;  i< irq_size; i++) {
+	for (i = 0;  i< irq_size/2; i++) {
 		if (!match[i].used) {
 			if (tcc897x_set_eint(base, offset, i) == 0)
 				goto set_gpio_to_irq_finish;
@@ -312,11 +317,36 @@ set_gpio_to_irq_finish:
 	return match[i].irq;
 }
 
+bool tcc_is_exti(int irq){
+
+	struct irq_data *d = irq_get_irq_data(irq);
+	irq_hw_number_t hwirq = irqd_to_hwirq(d);
+	int ret = 0;
+
+	hwirq -= 32;
+
+	if((hwirq<3)||(hwirq<72&&hwirq>14)||(hwirq>75&&hwirq<80)||(hwirq>95))
+		ret = false;
+	else
+		ret = true;
+
+	return ret;
+}
+
 int tcc_irq_get_reverse(int irq)
 {
-	if (irq < 32+3 || irq >= (32+15))
-		BUG_ON(1);
-	return irq+80-3;
+        struct irq_data *d = irq_get_irq_data(irq);
+	irq_hw_number_t hwirq = irqd_to_hwirq(d);
+	int ret = 0;
+
+	hwirq -= 32;
+
+	if((hwirq<3)||(hwirq<72&&hwirq>14)||(hwirq>75))
+		ret = -EINVAL;
+	else
+		ret = irq+16;
+
+	return ret;
 }
 
 static int tcc897x_pinconf_get(void __iomem *base, unsigned offset, int param)
