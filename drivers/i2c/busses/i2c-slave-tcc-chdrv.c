@@ -431,7 +431,7 @@ static int tcc_i2c_slave_set_port(struct tcc_i2c_slave *i2c)
 #endif
 
 /* Initialize i2c slave */
-static int tcc_i2c_slave_hwinit(struct tcc_i2c_slave *i2c)
+static void tcc_i2c_slave_hwinit(struct tcc_i2c_slave *i2c)
 {
 	/*
 	 * Enable i2c, i2c spec. protocol and FIFO access
@@ -442,7 +442,6 @@ static int tcc_i2c_slave_hwinit(struct tcc_i2c_slave *i2c)
 
 	/* Enable data buffer interrupt */
 	i2c_slave_writel((BIT(8) | BIT(9)), i2c->regs + I2C_INT);
-	return 0;
 }
 
 static int tcc_i2c_slave_open(struct inode *inode, struct file *filp)
@@ -799,13 +798,7 @@ static long tcc_i2c_slave_ioctl(struct file *filp, unsigned int cmd, unsigned lo
 		/* set address */
 		i2c->addr = addr;
 
-		ret = tcc_i2c_slave_hwinit(i2c);
-		if (ret != 0) {
-			dev_err(i2c->dev, "[ERROR][I2C] failed to enable i2c slave core err %d\n",
-				ret);
-			ret = -EFAULT;
-			break;
-		}
+		tcc_i2c_slave_hwinit(i2c);
 
 		ret = i2c_slave_readl(i2c->regs + I2C_ADDR);
 		ret = (ret >> 1) & 0x7F;
@@ -1244,6 +1237,7 @@ static int tcc_i2c_slave_resume(struct device *dev)
 	if(i2c->hclk) {
 		if(clk_prepare_enable(i2c->hclk) != 0) {
 			dev_err(i2c->dev, "[ERROR][I2C] can't do i2c slave hclk clock enable\n");
+			spin_unlock(&i2c->lock);
 			return -ENXIO;
 		}
 	}
@@ -1252,16 +1246,12 @@ static int tcc_i2c_slave_resume(struct device *dev)
 	if(IS_ERR(i2c->pinctrl)) {
 		dev_err(i2c->dev,
 				"[ERROR][I2C] Failed to get pinctrl (default state)\n");
+		clk_disable_unprepare(i2c->hclk);
+		spin_unlock(&i2c->lock);
 		return -ENODEV;
 	}
 	/* Initialize I2C Slave */
-	ret = tcc_i2c_slave_hwinit(i2c);
-	if (ret != 0) {
-		dev_err(i2c->dev, "[ERROR][I2C] failed to set clock and port configurations err %d\n",
-			ret);
-		clk_disable_unprepare(i2c->hclk);
-		return ret;
-	}
+	tcc_i2c_slave_hwinit(i2c);
 	i2c->is_suspended = false;
 
 	spin_unlock(&i2c->lock);

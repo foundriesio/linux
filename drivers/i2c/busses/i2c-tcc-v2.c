@@ -137,8 +137,8 @@ static int tcc_i2c_set_noise_filter(struct tcc_i2c *i2c)
 	fbus_ioclk_Mhz = (clk_get_rate(i2c->fclk) / 1000000);
 	if(fbus_ioclk_Mhz <= 0){
 		dev_err(i2c->dev, "[ERROR][I2C] %s: FBUS_IO is lower than 1MHz, not enough!\n", __func__);
-		return -1;
-        }
+		return -EIO;
+	}
 	fc_val = ((i2c->noise_filter * fbus_ioclk_Mhz) / 1000) + 2;
 
 	tr0_reg = i2c_readl(i2c->regs + I2C_TR0);
@@ -528,11 +528,11 @@ static int tcc_i2c_set_port(struct tcc_i2c *i2c)
 		else
 		{
 			BUG();
-			return -1;
+			return -EINVAL;
 		}
 		return 0;
 	}
-	return -1;
+	return -EINVAL;
 }
 
 /* tcc_i2c_init
@@ -553,13 +553,16 @@ static int tcc_i2c_init(struct tcc_i2c *i2c)
 	if (i2c->pclk == NULL)
 		i2c->pclk = of_clk_get(np, 0);
 
-	if(clk_prepare_enable(i2c->hclk) != 0) {
+	ret = clk_prepare_enable(i2c->hclk);
+	if(ret < 0) {
 		dev_err(i2c->dev, "[ERROR][I2C] can't do i2c_hclk clock enable\n");
-		return -1;
+		return ret;
 	}
-	if(clk_prepare_enable(i2c->pclk) != 0) {
+	ret = clk_prepare_enable(i2c->pclk);
+	if(ret < 0) {
 		dev_err(i2c->dev, "[ERROR][I2C] can't do i2c_pclk clock enable\n");
-		return -1;
+		clk_disable_unprepare(i2c->hclk);
+		return ret;
 	}
 
 	clk_set_rate(i2c->pclk, i2c->core_clk_rate);
@@ -569,14 +572,16 @@ static int tcc_i2c_init(struct tcc_i2c *i2c)
 	if(IS_ERR(i2c->pinctrl)) {
 		dev_err(i2c->dev,
 			"[ERROR][I2C] Failed to get pinctrl (default state)\n");
-		return -ENODEV;
+		error_status = -ENODEV;
+		goto err;
 	}
 
 	/* get permission of i2c 7 */
 	if(i2c->core == 7){
 		ret = tcc_i2c_access_arbitration(i2c, 1);
 		if(ret < 0){
-			return ret;
+			error_status = ret;
+			goto err;
 		}
 	}
 
@@ -584,7 +589,7 @@ static int tcc_i2c_init(struct tcc_i2c *i2c)
 	peri_clk = clk_get_rate(i2c->pclk);
 	if(fbus_ioclk < (peri_clk * 4)) {
 		dev_err(i2c->dev, "[ERROR][I2C] fbus io clk(%ldHz) is not enough.\n", fbus_ioclk);
-		error_status = -1;
+		error_status = -EIO;
 		goto err;
 	}
 
@@ -609,7 +614,7 @@ static int tcc_i2c_init(struct tcc_i2c *i2c)
 
 	ret = tcc_i2c_set_noise_filter(i2c);
 	if(ret < 0){
-		error_status = -1;
+		error_status = ret;
 		goto err;
 	}
 
@@ -620,18 +625,30 @@ static int tcc_i2c_init(struct tcc_i2c *i2c)
 	i2c_writel(i2c_readl(i2c->regs+I2C_CMD) | 1, i2c->regs+I2C_CMD);
 
 	/* set port mux */
-	tcc_i2c_set_port(i2c);
+	ret = tcc_i2c_set_port(i2c);
+	if(ret < 0){
+		dev_err(i2c->dev,
+			"[ERROR][I2C] %s: failed to set port configuration\n", __func__);
+		error_status = ret;
+		goto err;
+	}
 
 err:
 	/* release permission of i2c 7 */
 	if(i2c->core == 7){
 		ret = tcc_i2c_access_arbitration(i2c, 0);
 		if(ret < 0){
-			return ret;
+			error_status = ret;
 		}
 	}
 
-	return (error_status < 0)? error_status : 0;
+	if(error_status < 0){
+		clk_disable_unprepare(i2c->pclk);
+		clk_disable_unprepare(i2c->hclk);
+		return error_status;
+	}
+
+	return 0;
 }
 
 
@@ -829,11 +846,17 @@ static int tcc_i2c_suspend(struct device *dev)
 static int tcc_i2c_resume(struct device *dev)
 {
 	struct tcc_i2c *i2c = dev_get_drvdata(dev);
+	int ret;
+
 	i2c_lock_adapter(&i2c->adap);
-	tcc_i2c_init(i2c);
+	ret = tcc_i2c_init(i2c);
 	i2c->is_suspended = false;
 	i2c_unlock_adapter(&i2c->adap);
-	return 0;
+
+	if(ret < 0){
+		kfree(i2c);
+	}
+	return ret;
 }
 static SIMPLE_DEV_PM_OPS(tcc_i2c_pm, tcc_i2c_suspend, tcc_i2c_resume);
 #define TCC_I2C_PM (&tcc_i2c_pm)
