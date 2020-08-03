@@ -123,6 +123,7 @@ epson	Seiko Epson Corp.
 est	ESTeem Wireless Modems
 ettus	NI Ettus Research
 eukrea  Eukréa Electromatique
+evatronix Evatronix SA
 everest	Everest Semiconductor Co. Ltd.
 everspin	Everspin Technologies, Inc.
 exar	Exar Corporation

@@ -1,0 +1,28 @@
+Evatronix NANDFLASH-CTRL NAND flash controller
+
+Required properties:
+- compatible : "evatronix,nandflash-ctrl"
+- reg : specify bus address and register area size.
+- interrupts : controller interrupt number and irq type.
+- nand-ecc-mode : See nand.txt. Supported values "hw", "soft_bch".
+- nand-ecc-strength : See nand.txt. Supported values: 4, 8, 16, 24, 32.
+- nand-ecc-step-size : See nand.txt. Supported values: 256, 512, 1024.
+
+Optional properties:
+- nand-on-flash-bbt: See nand.txt.
+
+Example:
+
+nand: nand@40102000 {
+	compatible = "evatronix,nandflash-ctrl";
+	reg = <0x40102000 0x2000>;
+	interrupts = <GIC_SPI 58 IRQ_TYPE_LEVEL_HIGH>;
+	clocks = <&hclk_nand>, <&clk_nand>;
+	clock-names = "clka", "clkb";
+	#address-cells		= <1>;
+	#size-cells		= <1>;
+	nand-ecc-mode = "hw";
+	nand-on-flash-bbt;
+	nand-ecc-strength = <8>;
+	nand-ecc-step-size = <512>;
+};
