@@ -321,11 +321,37 @@ set_gpio_to_irq_finish:
 	return match[i].irq;
 }
 
+bool tcc_is_exti(int irq){
+
+        struct irq_data *d = irq_get_irq_data(irq);
+        irq_hw_number_t hwirq = irqd_to_hwirq(d);
+        int ret = 0;
+
+        hwirq -= 32;
+
+        if(hwirq>31)
+                ret = false;
+        else
+                ret = true;
+
+        return ret;
+}
+
+
 int tcc_irq_get_reverse(int irq)
 {
-	//if (irq < 32 || irq >= (32+16))
-		//BUG_ON(1);
-	return irq+16;
+        struct irq_data *d = irq_get_irq_data(irq);
+        irq_hw_number_t hwirq = irqd_to_hwirq(d);
+        int ret = 0;
+
+        hwirq -= 32;
+
+        if(hwirq>15)
+                ret = -EINVAL;
+        else
+                ret = irq+16;
+
+        return ret;
 }
 
 static int tcc901x_pinconf_get(void __iomem *base, unsigned offset, int param)
