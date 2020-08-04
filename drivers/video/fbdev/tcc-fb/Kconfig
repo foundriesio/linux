@@ -73,7 +73,6 @@ choice
 
 	config FB_NEW_DISP0
 	bool "DISP0"
-	default y if FB_NEW
 	config FB_NEW_DISP1
 	bool "DISP1"
 endchoice
