@@ -634,12 +634,36 @@ static const struct of_device_id tcc805x_pinctrl_of_match[] = {
 	{ },
 };
 
+static int __maybe_unused tcc805x_pinctrl_suspend(struct device *dev)
+{
+	return 0;
+}
+
+static int __maybe_unused tcc805x_pinctrl_resume(struct device *dev)
+{
+	struct extintr_match_ *match = (struct extintr_match_ *)tcc805x_pinctrl_soc_data.irq->data;
+	int irq_size = tcc805x_pinctrl_soc_data.irq->size;
+	int i;
+
+	for(i = 0; i < irq_size/2; i++) {
+		if(match[i].used) {
+			tcc805x_set_eint(match[i].port_base, match[i].port_num, i);
+		}
+	}
+
+	return 0;
+}
+
+static SIMPLE_DEV_PM_OPS(tcc805x_pinctrl_pm_ops,
+			 tcc805x_pinctrl_suspend, tcc805x_pinctrl_resume);
+
 static struct platform_driver tcc805x_pinctrl_driver = {
 	.probe		= tcc805x_pinctrl_probe,
 	.driver		= {
 		.name	= "tcc805x-pinctrl",
 		.owner	= THIS_MODULE,
 		.of_match_table = of_match_ptr(tcc805x_pinctrl_of_match),
+		.pm	= &tcc805x_pinctrl_pm_ops,
 	},
 };
 
