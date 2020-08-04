@@ -311,7 +311,6 @@ __virtio_crypto_ablkcipher_do_req(struct virtio_crypto_request *vc_req,
 	int err;
 	unsigned long flags;
 	struct scatterlist outhdr, iv_sg, status_sg, **sgs;
-	int i;
 	u64 dst_len;
 	unsigned int num_out = 0, num_in = 0;
 	int sg_total;
@@ -319,8 +318,11 @@ __virtio_crypto_ablkcipher_do_req(struct virtio_crypto_request *vc_req,
 	struct scatterlist *sg;
 
 	src_nents = sg_nents_for_len(req->src, req->nbytes);
-	if (src_nents < 0)
+	if (src_nents < 0) {
+		pr_err("Invalid number of src SG.\n");
 		return src_nents;
+	}
+
 	dst_nents = sg_nents(req->dst);
 
 	pr_debug("virtio_crypto: Number of sgs (src_nents: %d, dst_nents: %d)\n",
