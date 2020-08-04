@@ -3874,4 +3874,8 @@
 		clocks = <&clk_peri PERI_IC_TC>;
 		status = "disabled";
 	};
+
+	rotary_encoder: rotary_encoder {
+		status = "disable";
+	};
 };

@@ -2479,5 +2479,13 @@
 		telechips,input-enable;
 	};
 
+	rotary_pin: rotary_pin {
+		//telechips,pins = "gpb-27", "gpb-28";//Set gpio to match device
+		telechips,pin-function = <0>;
+		telechips,input-enable;
+		telechips,input_buffer_enable;
+		telechips,pull-up;
+	};
+
 /***************************************************************/
 };

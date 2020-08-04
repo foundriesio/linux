@@ -309,3 +309,13 @@
 	status = "okay";
 	mboxes = <&a72_sc_mbox 0>;
 };
+
+&rotary_encoder {
+	compatible = "rotary-encoder";
+	//status = "okay";                  //Uncomment if you want to use rotary_encoder
+	pinctrl-names = "default";
+	//pinctrl-0 = <&rotary_pin>;        //Set gpio to match device
+	//gpios = <&gpb 27 1>, <&gpb 28 1>; //Set gpio to match device
+	linux,axis = <0>;
+	rotary-encoder,relative-axis;
+};
