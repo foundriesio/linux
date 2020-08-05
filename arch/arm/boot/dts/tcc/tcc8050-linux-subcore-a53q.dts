@@ -1702,6 +1702,10 @@
 		clocks = <&clk_hsio HSIOBUS_USB20H /*&clk_isoip_top ISOIP_TOP_U20H*/>;
 		status = "disabled";
 	};
+
+	rotary_encoder: rotary_encoder {
+		status = "disable";
+	};
 };
 
 &a53_sc_mbox {
