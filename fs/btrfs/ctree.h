@@ -994,6 +994,8 @@ struct btrfs_subvolume_writers {
 #define BTRFS_ROOT_DEAD_RELOC_TREE	10
 /* Mark dead root stored on device whose cleanup needs to be resumed */
 #define BTRFS_ROOT_DEAD_TREE		11
+/* Qgroup flushing is in progress */
+#define BTRFS_ROOT_QGROUP_FLUSHING	12
 
 /*
  * Record swapped tree blocks of a subvolume tree for delayed subtree trace
@@ -1152,6 +1154,7 @@ struct btrfs_root {
 	spinlock_t qgroup_meta_rsv_lock;
 	u64 qgroup_meta_rsv_pertrans;
 	u64 qgroup_meta_rsv_prealloc;
+	wait_queue_head_t qgroup_flush_wait;
 };
 
 struct btrfs_file_private {
