@@ -2493,7 +2493,7 @@
 };
 
 &gpsb0 {
-	status = "okay";
+	status = "disabled";
 	gpsb-port = <22>;
 	pinctrl-names = "idle", "active";
 	pinctrl-0 = <&gpsb22_bus_idle>;
