@@ -292,17 +292,12 @@ static int rotary_encoder_probe(struct platform_device *pdev)
 	for (i = 0; i < encoder->gpios->ndescs; ++i) {
 		encoder->irq[i] = gpiod_to_irq(encoder->gpios->desc[i]);
 
-#if defined(CONFIG_ARCH_TCC)
-		err = request_irq(encoder->irq[i],handler,
-				IRQF_TRIGGER_RISING | IRQF_TRIGGER_FALLING,
-				DRV_NAME, encoder);
-#else
 		err = devm_request_threaded_irq(dev, encoder->irq[i],
 				NULL, handler,
 				IRQF_TRIGGER_RISING | IRQF_TRIGGER_FALLING |
 				IRQF_ONESHOT,
 				DRV_NAME, encoder);
-#endif
+
 		if (err) {
 			dev_err(dev, "unable to request IRQ %d (gpio#%d)\n",
 				encoder->irq[i], i);
