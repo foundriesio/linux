@@ -3786,6 +3786,8 @@
 
 	smartcard: smartcard {};
 
+	tcc_dxb_ctrl: tcc_dxb_ctrl {};
+
 	tcc_bluetooth: tcc_bluetooth {};
 
 	tcc_bt_dev: tcc_bt_dev {};
