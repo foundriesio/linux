@@ -1770,21 +1770,31 @@ int request_threaded_irq(unsigned int irq, irq_handler_t handler,
 	struct irq_desc *desc;
 	int retval;
 #ifdef CONFIG_ARCH_TCC
+	bool flag_detect;
+
+
 	if(tcc_is_exti(irq)){
 
-		if(irqflags == IRQ_TYPE_EDGE_FALLING)
+		//falling edge flag is detected if only irqflags includes IRQ_TYPE_EDGE_FALLING
+		//but IRQ_TYPE_EDGE_RISING.
+		flag_detect = (!!(irqflags & IRQ_TYPE_EDGE_FALLING)&&!!!(irqflags & IRQ_TYPE_EDGE_RISING));
+		if(flag_detect)
 		{
+			irqflags = (irqflags & ~IRQ_TYPE_EDGE_FALLING)|IRQ_TYPE_EDGE_RISING;
 			irq = tcc_irq_get_reverse(irq);
-			irqflags = IRQ_TYPE_EDGE_RISING;
 		}
 
-		if(irqflags == IRQ_TYPE_EDGE_BOTH){
-			retval = request_threaded_irq(irq, handler, thread_fn, IRQ_TYPE_EDGE_RISING, devname, dev_id);
+		//both edge flag is detected if only irqflags includes both IRQ_TYPE_EDGE_FALLING
+		//and IRQ_TYPE_EDGE_RISING.
+		flag_detect = (!!(irqflags & IRQ_TYPE_EDGE_FALLING)&&!!(irqflags & IRQ_TYPE_EDGE_RISING));
+		if(flag_detect){
+
+			irqflags = (irqflags & ~IRQ_TYPE_EDGE_BOTH)|IRQ_TYPE_EDGE_RISING;
+			retval = request_threaded_irq(irq, handler, thread_fn, irqflags, devname, dev_id);
 			if(retval)
 				return retval;
 
 			irq = tcc_irq_get_reverse(irq);
-			irqflags = IRQ_TYPE_EDGE_RISING;
 		}
 	}
 #endif
