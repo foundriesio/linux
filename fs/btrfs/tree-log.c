@@ -4347,7 +4347,7 @@ static int wait_ordered_extents(struct btrfs_trans_handle *trans,
 		if (!mod_len)
 			break;
 
-		if (ordered->file_offset + ordered->len <= mod_start ||
+		if (ordered->file_offset + ordered->num_bytes <= mod_start ||
 		    mod_start + mod_len <= ordered->file_offset)
 			continue;
 
@@ -4355,7 +4355,7 @@ static int wait_ordered_extents(struct btrfs_trans_handle *trans,
 		    !test_bit(BTRFS_ORDERED_IOERR, &ordered->flags) &&
 		    !test_bit(BTRFS_ORDERED_DIRECT, &ordered->flags)) {
 			const u64 start = ordered->file_offset;
-			const u64 end = ordered->file_offset + ordered->len - 1;
+			const u64 end = ordered->file_offset + ordered->num_bytes - 1;
 
 			WARN_ON(ordered->inode != inode);
 			filemap_fdatawrite_range(inode->i_mapping, start, end);
@@ -4381,7 +4381,7 @@ static int wait_ordered_extents(struct btrfs_trans_handle *trans,
 		 * ordered extent has already been logged.
 		 */
 		if (ordered->file_offset > mod_start) {
-			if (ordered->file_offset + ordered->len >=
+			if (ordered->file_offset + ordered->num_bytes >=
 			    mod_start + mod_len)
 				mod_len = ordered->file_offset - mod_start;
 			/*
@@ -4395,12 +4395,12 @@ static int wait_ordered_extents(struct btrfs_trans_handle *trans,
 			 * will be ok.
 			 */
 		} else {
-			if (ordered->file_offset + ordered->len <
+			if (ordered->file_offset + ordered->num_bytes <
 			    mod_start + mod_len) {
 				mod_len = (mod_start + mod_len) -
-					(ordered->file_offset + ordered->len);
+					(ordered->file_offset + ordered->num_bytes);
 				mod_start = ordered->file_offset +
-					ordered->len;
+					ordered->num_bytes;
 			} else {
 				mod_len = 0;
 			}
