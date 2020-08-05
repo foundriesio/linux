@@ -426,6 +426,9 @@ static int tcc805x_gpio_to_irq(void __iomem *base, unsigned offset)
 	int i;
 	struct extintr_match_ *match = (struct extintr_match_ *)tcc805x_pinctrl_soc_data.irq->data;
 	int irq_size = tcc805x_pinctrl_soc_data.irq->size;
+	unsigned int eint_sel_value = 0UL;
+	void __iomem *reg;
+	unsigned int shift = 0UL;
 
         //irq_size is sum of normal and reverse external interrupt.
         //however, normal and reverse external interrupts are actually single external interrupt.
@@ -440,7 +443,10 @@ static int tcc805x_gpio_to_irq(void __iomem *base, unsigned offset)
 
 	/* checking unused external interrupt */
 	for (i=0; i < irq_size/2; i++) {
-		if (!match[i].used) {
+		reg = (void __iomem *)(gpio_base + EINTSEL + 4*(i/4));
+		shift = 8UL*((unsigned)i%4UL);
+		eint_sel_value = readl(reg) & (0xfUL << shift);
+		if ((!match[i].used) && eint_sel_value == 0UL) {
 			if (tcc805x_set_eint(base, offset, i) == 0)
 				goto set_gpio_to_irq_finish;
 			else
