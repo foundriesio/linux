@@ -1913,10 +1913,13 @@
 		status = "disabled";
 	};
 
-	rotary_encoder: rotary_encoder {
+	rotary_encoder0: rotary_encoder@0 {
 		status = "disable";
 	};
 
+	rotary_encoder1: rotary_encoder@1 {
+		status = "disable";
+	};
 };
 
 &a53_sc_mbox {
@@ -3343,6 +3346,20 @@
         telechips,pin-function = <0>;
 		telechips,output-low = <0>;
     };
+
+	mc_vol: mc_vol {
+		telechips,pins = "gpma-5", "gpma-6";
+		telechips,pin-function = <0>;
+		telechips,input-enable;
+		telechips,input_buffer_enable;
+	};
+
+	mc_ctr: mc_ctr {
+		telechips,pins = "gpma-7", "gpma-8";
+		telechips,pin-function = <0>;
+		telechips,input-enable;
+		telechips,input_buffer_enable;
+	};
 };
 
 &uart0 {
@@ -3393,6 +3410,8 @@
 		intb-gpios	= <&gpma 19 1>;
 		reg		= <0x4A>;	// 0x94 >> 1
 	};
+
+
 };
 
 &gpsb0 {
@@ -3506,12 +3525,22 @@
 	status = "okay";
 };
 
-&rotary_encoder {
+&rotary_encoder0 {
 	compatible = "rotary-encoder";
-	//status = "okay";                  //Uncomment if you want to use rotary_encoder
+	status = "disable";                  //To use it, change the status from disable to okay
 	pinctrl-names = "default";
-	//pinctrl-0 = <&rotary_pin>;        //Set gpio to match device
-	//gpios = <&gpb 27 1>, <&gpb 28 1>; //Set gpio to match device
+	pinctrl-0 = <&mc_vol>;
+	gpios = <&gpma 5 1>, <&gpma 6 1>;
+	linux,axis = <0>;
+	rotary-encoder,relative-axis;
+};
+
+&rotary_encoder1 {
+	compatible = "rotary-encoder";
+	status = "disable";                 //To use it, change the status from disable to okay
+	pinctrl-names = "default";
+	pinctrl-0 = <&mc_ctr>;
+	gpios = <&gpma 7 1>, <&gpma 8 1>;
 	linux,axis = <0>;
 	rotary-encoder,relative-axis;
 };

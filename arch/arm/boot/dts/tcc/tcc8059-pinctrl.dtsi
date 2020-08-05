@@ -2479,12 +2479,18 @@
 		telechips,input-enable;
 	};
 
-	rotary_pin: rotary_pin {
-		//telechips,pins = "gpb-27", "gpb-28";//Set gpio to match device
+	mc_vol: mc_vol {
+		telechips,pins = "gpma-5", "gpma-6";
 		telechips,pin-function = <0>;
 		telechips,input-enable;
 		telechips,input_buffer_enable;
-		telechips,pull-up;
+	};
+
+	mc_ctr: mc_ctr {
+		telechips,pins = "gpma-7", "gpma-8";
+		telechips,pin-function = <0>;
+		telechips,input-enable;
+		telechips,input_buffer_enable;
 	};
 
 /***************************************************************/
