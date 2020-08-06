@@ -68,7 +68,7 @@
 	gpmd: gpmd {
 		gpio-controller;
 		#gpio-cells = <2>;
-		reg = <0x780 0 16>;
+		reg = <0x780 0 18>;
 	};
 
 	gpsd0: gpsd0 {
