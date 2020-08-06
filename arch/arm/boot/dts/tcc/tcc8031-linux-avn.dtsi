@@ -228,13 +228,7 @@
 		product_description = "TCC8031_avn";
 	};
 
-	&videoinput0 {
-		status = "okay";
-	};
 
-	&videoinput1 {
-		status = "okay";
-	};
 
 	i2c@16300000 {
 		status = "okay";
@@ -954,4 +948,12 @@
 
 &sd1_bus4 {
 		telechips,no-pull;
+};
+
+&videoinput0 {
+	status = "okay";
+};
+
+&videoinput1 {
+	status = "okay";
 };
