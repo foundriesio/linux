@@ -85,7 +85,7 @@ static void gic_check_cpu_features(void)
 #endif
 
 #ifdef CONFIG_ARCH_TCC
-extern bool tcc_is_exti(int irq);
+extern bool tcc_is_exti(unsigned int irq);
 #endif
 
 union gic_base {

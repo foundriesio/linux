@@ -21,6 +21,7 @@
 #include <linux/of_device.h>
 #include <linux/of_address.h>
 #include <linux/irq.h>
+#include <linux/interrupt.h>
 #include <asm/io.h>
 #include "pinctrl-tcc.h"
 #include <linux/soc/telechips/tcc_sc_protocol.h>
@@ -462,35 +463,46 @@ set_gpio_to_irq_finish:
 	return match[i].irq;
 }
 
-bool tcc_is_exti(int irq){
-
-        struct irq_data *d = irq_get_irq_data(irq);
-        irq_hw_number_t hwirq = irqd_to_hwirq(d);
-        int ret = 0;
-
-        hwirq -= 32;
-
-        if(hwirq>31)
-                ret = false;
-        else
-                ret = true;
-
-        return ret;
-}
-
-
-int tcc_irq_get_reverse(int irq)
+bool tcc_is_exti(unsigned int irq)
 {
 	struct irq_data *d = irq_get_irq_data(irq);
-	irq_hw_number_t hwirq = irqd_to_hwirq(d);
-	int ret = 0;
+	irq_hw_number_t hwirq;
+	bool ret = false;
 
+	if(d == NULL) {
+		return false;
+	}
+
+	hwirq = irqd_to_hwirq(d);
 	hwirq -= 32;
-	if(hwirq>15)
-		ret = -EINVAL;
-	else
-		ret = irq+16;
 
+	if(hwirq > 31) {
+		ret = false;
+	} else {
+		ret = true;
+	}
+
+	return ret;
+}
+
+unsigned int tcc_irq_get_reverse(unsigned int irq)
+{
+	struct irq_data *d = irq_get_irq_data(irq);
+	irq_hw_number_t hwirq;
+	unsigned int ret = 0;
+
+	if(d == NULL) {
+		return IRQ_NOTCONNECTED;
+	}
+
+	hwirq = irqd_to_hwirq(d);
+	hwirq -= 32;
+
+	if(hwirq > 15) {
+		ret = IRQ_NOTCONNECTED;
+	} else {
+		ret = irq + 16;
+	}
 
 	return ret;
 }

@@ -42,8 +42,8 @@ _reverse() or request_threaded_irq() several times.
 #include "internals.h"
 
 #ifdef CONFIG_ARCH_TCC
-extern bool tcc_is_exti(int irq);
-extern int tcc_irq_get_reverse(int irq);
+extern bool tcc_is_exti(unsigned int irq);
+extern unsigned int tcc_irq_get_reverse(unsigned int irq);
 #endif
 
 #ifdef CONFIG_IRQ_FORCED_THREADING
