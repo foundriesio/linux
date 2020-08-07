@@ -1548,6 +1548,30 @@ static struct irqaction *__free_irq(unsigned int irq, void *dev_id)
 	struct irq_desc *desc = irq_to_desc(irq);
 	struct irqaction *action, **action_ptr;
 	unsigned long flags;
+#ifdef CONFIG_ARCH_TCC
+        struct irqaction *ret;
+
+        if(tcc_is_exti(irq)){
+                if(tcc_irq_get_reverse(irq)!=IRQ_NOTCONNECTED){
+                        desc = irq_to_desc(tcc_irq_get_reverse(irq));
+                        action_ptr = &desc->action;
+                        action = *action_ptr;
+                        if(action){
+                                ret = __free_irq(tcc_irq_get_reverse(irq), dev_id);
+
+                                desc = irq_to_desc(irq);
+                                action_ptr = &desc->action;
+                                action = *action_ptr;
+
+                                if(!action){
+                                        return ret;
+                                }
+                        }
+                        desc = irq_to_desc(irq);
+
+                }
+        }
+#endif
 
 	WARN(in_interrupt(), "Trying to free IRQ %d from IRQ context!\n", irq);
 
