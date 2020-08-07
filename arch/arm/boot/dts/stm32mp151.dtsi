@@ -106,12 +106,6 @@
 				#clock-cells = <1>;
 			};
 		};
-
-		optee: optee {
-			compatible = "linaro,optee-tz";
-			method = "smc";
-			status = "disabled";
-		};
 	};
 
 	psci {
