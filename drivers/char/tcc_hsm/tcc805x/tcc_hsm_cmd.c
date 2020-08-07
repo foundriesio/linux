@@ -80,11 +80,12 @@ int32_t tcc_hsm_cmd_set_key(
 
 int32_t tcc_hsm_cmd_run_aes(
 	uint32_t device_id, uint32_t req, uint32_t obj_id, uint8_t *key, uint32_t key_size, uint8_t *iv,
-	uint32_t iv_size, uint32_t src, uint32_t src_size, uint32_t dst, uint32_t dst_size)
+	uint32_t iv_size, uint8_t *tag, uint32_t tag_size, uint8_t *aad, uint32_t aad_size,
+	uint32_t src, uint32_t src_size, uint32_t dst, uint32_t dst_size)
 {
 	uint32_t data[128] = {0};
 	uint32_t index = 0;
-	int32_t rdata = 0;
+	int32_t rdata[12] = {0};
 	int32_t data_size = 0, rdata_size = 0;
 	int32_t result = -1;
 
@@ -103,8 +104,10 @@ int32_t tcc_hsm_cmd_run_aes(
 	}
 
 	if (req == REQ_HSM_RUN_AES) {
-		data[index++] = 0; // tag size
-		data[index++] = 0; // add size
+		data[index++] = tag_size;
+		data[index++] = aad_size;
+		memcpy(&data[index], (uint32_t *)aad, aad_size);
+		index += (aad_size + 3) / sizeof(uint32_t);
 	}
 	data[index++] = src_size;
 	data[index++] = (uint32_t)src;
@@ -112,18 +115,27 @@ int32_t tcc_hsm_cmd_run_aes(
 	data[index++] = dst;
 
 	data_size = (sizeof(uint32_t) * index);
-       
+
 	rdata_size = sec_sendrecv_cmd(
-		device_id, (req | MBOX_LOCATION_DATA), data, data_size, &rdata, DMA_MAX_RSIZE);
+		device_id, (req | MBOX_LOCATION_DATA), data, data_size, rdata, DMA_MAX_RSIZE);
 	if (rdata_size < 0) {
 		ELOG("sec_sendrecv_cmd error(%d)\n", rdata_size);
 		return -EBADR;
 	}
 
-	result = rdata;
+	result = rdata[0];
 	if (result != 0) {
 		ELOG("Error: 0x%x\n", result);
 		return result;
+	}
+
+	if ((req == REQ_HSM_RUN_AES) && (tag_size > 0)) {
+		if (rdata[1] == tag_size) {
+			memcpy(tag, (uint8_t *)&rdata[2], tag_size);
+		} else {
+			ELOG("wrong tag_size(%d)\n", rdata[1]);
+			return -EBADR;
+		}
 	}
 
 	return result;
@@ -131,11 +143,12 @@ int32_t tcc_hsm_cmd_run_aes(
 
 int32_t tcc_hsm_cmd_run_aes_by_kt(
 	uint32_t device_id, uint32_t req, uint32_t obj_id, uint32_t key_index, uint8_t *iv,
-	uint32_t iv_size, uint32_t src, uint32_t src_size, uint32_t dst, uint32_t dst_size)
+	uint32_t iv_size, uint8_t *tag, uint32_t tag_size, uint8_t *aad, uint32_t aad_size,
+	uint32_t src, uint32_t src_size, uint32_t dst, uint32_t dst_size)
 {
 	uint32_t data[128] = {0};
 	uint32_t index = 0;
-	int32_t rdata = 0;
+	int32_t rdata[12] = {0};
 	int32_t data_size = 0, rdata_size = 0;
 	int32_t result = -1;
 
@@ -150,9 +163,11 @@ int32_t tcc_hsm_cmd_run_aes_by_kt(
 	index += (iv_size + 3) / sizeof(uint32_t);
 
 	if (req == REQ_HSM_RUN_AES_BY_KT) {
-	    data[index++] = 0; // tag size
-    	data[index++] = 0; // add size
-    }
+		data[index++] = tag_size;
+		data[index++] = aad_size;
+		memcpy(&data[index], (uint32_t *)aad, aad_size);
+		index += (aad_size + 3) / sizeof(uint32_t);
+	}
 	data[index++] = src_size;
 	data[index++] = src;
 	data[index++] = dst_size;
@@ -161,16 +176,24 @@ int32_t tcc_hsm_cmd_run_aes_by_kt(
 	data_size = (sizeof(uint32_t) * index);
 
 	rdata_size = sec_sendrecv_cmd(
-		device_id, (req | MBOX_LOCATION_DATA), data, data_size, &rdata, DMA_MAX_RSIZE);
+		device_id, (req | MBOX_LOCATION_DATA), data, data_size, rdata, DMA_MAX_RSIZE);
 	if (rdata_size < 0) {
 		ELOG("sec_sendrecv_cmd error(%d)\n", rdata_size);
 		return -EBADR;
 	}
 
-	result = rdata;
+	result = rdata[0];
 	if (result != 0) {
 		ELOG("Error: 0x%x\n", result);
 		return result;
+	}
+	if ((req == REQ_HSM_RUN_AES_BY_KT) && (tag_size > 0)) {
+		if (rdata[1] == tag_size) {
+			memcpy(tag, (uint8_t *)&rdata[2], tag_size);
+		} else {
+			ELOG("wrong tag_size(%d)\n", rdata[1]);
+			return -EBADR;
+		}
 	}
 
 	return result;
@@ -199,9 +222,12 @@ int32_t tcc_hsm_cmd_gen_mac(
 	data[index++] = src_size;
 	data[index++] = src;
 	data[index++] = mac_size;
+	if (req == REQ_HSM_VERIFY_CMAC) {
+		memcpy(&data[index], mac, mac_size);
+		index += (mac_size + 3) / sizeof(uint32_t);
+	}
 
 	data_size = (sizeof(uint32_t) * index);
-
 	rdata_size = sec_sendrecv_cmd(
 		device_id, (req | MBOX_LOCATION_DATA), data, data_size, rdata, DMA_MAX_RSIZE);
 	if (rdata_size < 0) {
@@ -214,12 +240,13 @@ int32_t tcc_hsm_cmd_gen_mac(
 		ELOG("Error: 0x%x\n", result);
 		return result;
 	}
-
-	if (rdata[1] == mac_size) {
-		memcpy(mac, (uint8_t *)&rdata[2], mac_size);
-	} else {
-		ELOG("wrong mac_size(%d)\n", rdata[1]);
-		return -EBADR;
+	if (req != REQ_HSM_VERIFY_CMAC) {
+		if (rdata[1] == mac_size) {
+			memcpy(mac, (uint8_t *)&rdata[2], mac_size);
+		} else {
+			ELOG("wrong mac_size(%d)\n", rdata[1]);
+			return -EBADR;
+		}
 	}
 
 	return result;
@@ -243,11 +270,14 @@ int32_t tcc_hsm_cmd_gen_mac_by_kt(
 	data[index++] = src_size;
 	data[index++] = src;
 	data[index++] = mac_size;
+	if (req == REQ_HSM_VERIFY_CMAC_BY_KT) {
+		memcpy(&data[index], mac, mac_size);
+		index += (mac_size + 3) / sizeof(uint32_t);
+	}
 
 	data_size = (sizeof(uint32_t) * index);
-
 	rdata_size = sec_sendrecv_cmd(
-		device_id, (req | MBOX_LOCATION_DATA), data, data_size, &rdata, DMA_MAX_RSIZE);
+		device_id, (req | MBOX_LOCATION_DATA), data, data_size, rdata, DMA_MAX_RSIZE);
 	if (rdata_size < 0) {
 		ELOG("sec_sendrecv_cmd error(%d)\n", rdata_size);
 		return -EBADR;
@@ -258,12 +288,16 @@ int32_t tcc_hsm_cmd_gen_mac_by_kt(
 		ELOG("Error: 0x%x\n", result);
 		return result;
 	}
-	if (rdata[1] == mac_size) {
-		memcpy(mac, (uint8_t *)&rdata[2], mac_size);
-	} else {
-		ELOG("wrong mac_size(%d)\n", rdata[1]);
-		return -EBADR;
+
+	if (req != REQ_HSM_VERIFY_CMAC_BY_KT) {
+		if (rdata[1] == mac_size) {
+			memcpy(mac, (uint8_t *)&rdata[2], mac_size);
+		} else {
+			ELOG("wrong mac_size(%d)\n", rdata[1]);
+			return -EBADR;
+		}
 	}
+
 	return result;
 }
 

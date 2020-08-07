@@ -137,7 +137,16 @@ static long tcc_hsm_ioctl_run_aes(unsigned int cmd, unsigned long arg)
 	if (param.dma) {
 		ret = tcc_hsm_cmd_run_aes(
 			MBOX_DEV_HSM, req, param.obj_id, param.key, param.key_size, param.iv, param.iv_size,
-			param.src, param.src_size, param.dst, param.dst_size);
+			param.tag, param.tag_size, param.aad, param.aad_size, param.src, param.src_size,
+			param.dst, param.dst_size);
+		if (ret != 0) {
+			ELOG("tcc_hsm_cmd_run_aes fail(%d)\n", ret);
+		} else {
+			if (copy_to_user((void *)arg, (void *)&param, sizeof(param))) {
+				ELOG("copy_to_user failed\n");
+				return -EFAULT;
+			}
+		}
 	} else {
 		if (copy_from_user((void *)dma_buf->srcVir, (void *)param.src, param.src_size)) {
 			ELOG("copy_from_user failed(%d)\n", ret);
@@ -146,12 +155,17 @@ static long tcc_hsm_ioctl_run_aes(unsigned int cmd, unsigned long arg)
 
 		ret = tcc_hsm_cmd_run_aes(
 			MBOX_DEV_HSM, req, param.obj_id, param.key, param.key_size, param.iv, param.iv_size,
-			(uint32_t)dma_buf->srcPhy, param.src_size, (uint32_t)dma_buf->dstPhy, param.dst_size);
+			param.tag, param.tag_size, param.aad, param.aad_size, (uint32_t)dma_buf->srcPhy,
+			param.src_size, (uint32_t)dma_buf->dstPhy, param.dst_size);
 
 		dma_sync_single_for_cpu(dma_buf->dev, dma_buf->dstPhy, param.dst_size, DMA_FROM_DEVICE);
 		if (ret != 0) {
 			ELOG("tcc_hsm_cmd_run_aes fail(%d)\n", ret);
 		} else {
+			if (copy_to_user((void *)arg, (void *)&param, sizeof(param))) {
+				ELOG("copy_to_user failed\n");
+				return -EFAULT;
+			}
 			if (copy_to_user((void *)param.dst, (void *)dma_buf->dstVir, param.dst_size)) {
 				ELOG("copy_to_user failed\n");
 				return ret;
@@ -184,8 +198,17 @@ static long tcc_hsm_ioctl_run_aes_by_kt(unsigned int cmd, unsigned long arg)
 
 	if (param.dma) {
 		ret = tcc_hsm_cmd_run_aes_by_kt(
-			MBOX_DEV_HSM, req, param.obj_id, param.key_index, param.iv, param.iv_size, param.src,
-			param.src_size, param.dst, param.dst_size);
+			MBOX_DEV_HSM, req, param.obj_id, param.key_index, param.iv, param.iv_size, param.tag,
+			param.tag_size, param.aad, param.aad_size, param.src, param.src_size, param.dst,
+			param.dst_size);
+		if (ret != 0) {
+			ELOG("tcc_hsm_cmd_run_ecdsa fail(%d)\n", ret);
+		} else {
+			if (copy_to_user((void *)arg, (void *)&param, sizeof(param))) {
+				ELOG("copy_to_user failed\n");
+				return -EFAULT;
+			}
+		}
 	} else {
 		if (copy_from_user(dma_buf->srcVir, (const uint8_t *)param.src, param.src_size)) {
 			ELOG("copy_from_user failed\n");
@@ -193,8 +216,9 @@ static long tcc_hsm_ioctl_run_aes_by_kt(unsigned int cmd, unsigned long arg)
 		}
 
 		ret = tcc_hsm_cmd_run_aes_by_kt(
-			MBOX_DEV_HSM, req, param.obj_id, param.key_index, param.iv, param.iv_size,
-			dma_buf->srcPhy, param.src_size, dma_buf->dstPhy, param.dst_size);
+			MBOX_DEV_HSM, req, param.obj_id, param.key_index, param.iv, param.iv_size, param.tag,
+			param.tag_size, param.aad, param.aad_size, dma_buf->srcPhy, param.src_size,
+			dma_buf->dstPhy, param.dst_size);
 
 		dma_sync_single_for_cpu(dma_buf->dev, dma_buf->dstPhy, param.dst_size, DMA_FROM_DEVICE);
 		if (ret != 0) {
@@ -203,6 +227,10 @@ static long tcc_hsm_ioctl_run_aes_by_kt(unsigned int cmd, unsigned long arg)
 			if (copy_to_user((void *)param.dst, (void *)dma_buf->dstVir, param.dst_size)) {
 				ELOG("copy_to_user failed\n");
 				return ret;
+			}
+			if (copy_to_user((void *)arg, (void *)&param, sizeof(param))) {
+				ELOG("copy_to_user failed\n");
+				return -EFAULT;
 			}
 		}
 	}
@@ -216,8 +244,8 @@ static long tcc_hsm_ioctl_gen_mac(unsigned int cmd, unsigned long arg)
 	uint32_t req = 0;
 	int32_t ret = -EFAULT;
 
-	if (cmd == HSM_GEN_CMAC_CMD) {
-		req = REQ_HSM_GEN_CMAC;
+	if (cmd == HSM_GEN_CMAC_VERIFY_CMD) {
+		req = REQ_HSM_VERIFY_CMAC;
 	} else if (cmd == HSM_GEN_GMAC_CMD) {
 		req = REQ_HSM_GEN_GMAC;
 	} else if (cmd == HSM_GEN_HMAC_CMD) {
@@ -237,7 +265,7 @@ static long tcc_hsm_ioctl_gen_mac(unsigned int cmd, unsigned long arg)
 	if (param.dma) {
 		ret = tcc_hsm_cmd_gen_mac(
 			MBOX_DEV_HSM, req, param.obj_id, param.key, param.key_size, param.src, param.src_size,
-			(uint8_t *)dma_buf->dstPhy, param.mac_size);
+			param.mac, param.mac_size);
 	} else {
 		if (copy_from_user(dma_buf->srcVir, (const uint8_t *)param.src, param.src_size)) {
 			ELOG("copy_from_user failed\n");
@@ -269,8 +297,8 @@ static long tcc_hsm_ioctl_gen_mac_by_kt(unsigned int cmd, unsigned long arg)
 	uint32_t req = 0;
 	int32_t ret = -EFAULT;
 
-	if (cmd == HSM_GEN_CMAC_BY_KT_CMD) {
-		req = REQ_HSM_GEN_CMAC_BY_KT;
+	if (cmd == HSM_GEN_CMAC_VERIFY_BY_KT_CMD) {
+		req = REQ_HSM_VERIFY_CMAC_BY_KT;
 	} else if (cmd == HSM_GEN_GMAC_BY_KT_CMD) {
 		req = REQ_HSM_GEN_GMAC_BY_KT;
 	} else if (cmd == HSM_GEN_HMAC_BY_KT_CMD) {
@@ -289,8 +317,8 @@ static long tcc_hsm_ioctl_gen_mac_by_kt(unsigned int cmd, unsigned long arg)
 
 	if (param.dma) {
 		ret = tcc_hsm_cmd_gen_mac_by_kt(
-			MBOX_DEV_HSM, req, param.obj_id, param.key_index, param.src, param.src_size,
-			(uint8_t *)dma_buf->dstPhy, param.mac_size);
+			MBOX_DEV_HSM, req, param.obj_id, param.key_index, param.src, param.src_size, param.mac,
+			param.mac_size);
 	} else {
 		if (copy_from_user(dma_buf->srcVir, (const uint8_t *)param.src, param.src_size)) {
 			ELOG("copy_from_user failed\n");
@@ -551,14 +579,14 @@ static long tcc_hsm_ioctl(struct file *file, unsigned int cmd, unsigned long arg
 		ret = tcc_hsm_ioctl_run_aes_by_kt(cmd, arg);
 		break;
 
-	case HSM_GEN_CMAC_CMD:
+	case HSM_GEN_CMAC_VERIFY_CMD:
 	case HSM_GEN_GMAC_CMD:
 	case HSM_GEN_HMAC_CMD:
 	case HSM_GEN_SM3_HMAC_CMD:
 		ret = tcc_hsm_ioctl_gen_mac(cmd, arg);
 		break;
 
-	case HSM_GEN_CMAC_BY_KT_CMD:
+	case HSM_GEN_CMAC_VERIFY_BY_KT_CMD:
 	case HSM_GEN_GMAC_BY_KT_CMD:
 	case HSM_GEN_HMAC_BY_KT_CMD:
 	case HSM_GEN_SM3_HMAC_BY_KT_CMD:

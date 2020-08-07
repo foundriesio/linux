@@ -22,8 +22,8 @@
 #define REQ_HSM_RUN_SM4                     0x10030000
 #define REQ_HSM_RUN_SM4_BY_KT               0x10040000
 
-#define REQ_HSM_GEN_CMAC                    0x10110000
-#define REQ_HSM_GEN_CMAC_BY_KT              0x10120000
+#define REQ_HSM_VERIFY_CMAC                 0x10110000
+#define REQ_HSM_VERIFY_CMAC_BY_KT           0x10120000
 #define REQ_HSM_GEN_GMAC                    0x10130000
 #define REQ_HSM_GEN_GMAC_BY_KT              0x10140000
 #define REQ_HSM_GEN_HMAC                    0x10150000
@@ -64,10 +64,12 @@ int32_t tcc_hsm_cmd_set_key(
 
 int32_t tcc_hsm_cmd_run_aes(
 	uint32_t device_id, uint32_t req, uint32_t objID, uint8_t *key, uint32_t keySize, uint8_t *iv,
-	uint32_t ivSize, uint32_t src, uint32_t srcSize, uint32_t dst, uint32_t dstSize);
+	uint32_t ivSize, uint8_t *tag, uint32_t tag_size, uint8_t *aad, uint32_t aad_size, uint32_t src,
+	uint32_t srcSize, uint32_t dst, uint32_t dstSize);
 int32_t tcc_hsm_cmd_run_aes_by_kt(
 	uint32_t device_id, uint32_t req, uint32_t obj_id, uint32_t key_index, uint8_t *iv,
-	uint32_t iv_size, uint32_t src, uint32_t src_size, uint32_t dst, uint32_t dst_size);
+	uint32_t iv_size, uint8_t *tag, uint32_t tag_size, uint8_t *aad, uint32_t aad_size,
+	uint32_t src, uint32_t src_size, uint32_t dst, uint32_t dst_size);
 
 int32_t tcc_hsm_cmd_gen_mac(
 	uint32_t device_id, uint32_t req, uint32_t obj_id, uint8_t *key, uint32_t key_size,

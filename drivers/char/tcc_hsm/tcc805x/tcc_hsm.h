@@ -20,6 +20,8 @@
 
 #define TCC_HSM_AES_KEY_SIZE 32
 #define TCC_HSM_AES_IV_SIZE 32
+#define TCC_HSM_AES_TAG_SIZE 32
+#define TCC_HSM_AES_AAD_SIZE 32
 
 #define TCC_HSM_MAC_KEY_SIZE 32
 #define TCC_HSM_MAC_MSG_SIZE 32
@@ -116,6 +118,10 @@ struct tcc_hsm_ioctl_aes_param
 	uint32_t key_size;
 	uint8_t iv[TCC_HSM_AES_IV_SIZE];
 	uint32_t iv_size;
+	uint8_t tag[TCC_HSM_AES_TAG_SIZE];
+	uint32_t tag_size;
+	uint8_t aad[TCC_HSM_AES_AAD_SIZE];
+	uint32_t aad_size;
 	uint64_t src;
 	uint32_t src_size;
 	uint64_t dst;
@@ -129,6 +135,10 @@ struct tcc_hsm_ioctl_aes_by_kt_param
 	uint32_t key_index;
 	uint8_t iv[TCC_HSM_AES_IV_SIZE];
 	uint32_t iv_size;
+	uint8_t tag[TCC_HSM_AES_TAG_SIZE];
+	uint32_t tag_size;
+	uint8_t aad[TCC_HSM_AES_AAD_SIZE];
+	uint32_t aad_size;
 	uint64_t src;
 	uint32_t src_size;
 	uint64_t dst;
@@ -221,8 +231,8 @@ struct tcc_hsm_ioctl_version_param
 #define	HSM_RUN_AES_BY_KT_CMD			_IOWR(HSM_IOCTL_MAGIC, 3, unsigned int)
 #define	HSM_RUN_SM4_CMD					_IOWR(HSM_IOCTL_MAGIC, 4, unsigned int)
 #define	HSM_RUN_SM4_BY_KT_CMD			_IOWR(HSM_IOCTL_MAGIC, 5, unsigned int)
-#define	HSM_GEN_CMAC_CMD				_IOWR(HSM_IOCTL_MAGIC, 6, unsigned int)
-#define	HSM_GEN_CMAC_BY_KT_CMD			_IOWR(HSM_IOCTL_MAGIC, 7, unsigned int)
+#define	HSM_GEN_CMAC_VERIFY_CMD			_IOWR(HSM_IOCTL_MAGIC, 6, unsigned int)
+#define	HSM_GEN_CMAC_VERIFY_BY_KT_CMD	_IOWR(HSM_IOCTL_MAGIC, 7, unsigned int)
 #define	HSM_GEN_GMAC_CMD				_IOWR(HSM_IOCTL_MAGIC, 8, unsigned int)
 #define	HSM_GEN_GMAC_BY_KT_CMD			_IOWR(HSM_IOCTL_MAGIC, 9, unsigned int)
 #define	HSM_GEN_HMAC_CMD				_IOWR(HSM_IOCTL_MAGIC, 10, unsigned int)
