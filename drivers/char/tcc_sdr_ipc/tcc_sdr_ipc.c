@@ -887,6 +887,50 @@ static int sdripc_remove(struct platform_device *pdev)
 	return ret;
 }
 
+#if defined(CONFIG_PM)
+static int sdripc_suspend(struct platform_device *pdev, pm_message_t state)
+{
+	int ret = 0;
+	struct sdripc_device *sdripc_dev;
+	struct device *dev;
+
+	sdripc_dev = (struct sdripc_device *)platform_get_drvdata(pdev);
+	dev = &pdev->dev;
+
+	dprintk(dev,"[%s]\n",__func__);
+
+	/* unregister mailbox client */
+	if(sdripc_dev->mbox_channel != NULL)
+	{
+		mbox_free_channel(sdripc_dev->mbox_channel);
+		sdripc_dev->mbox_channel = NULL;
+	}
+
+	return ret;
+}
+
+static int sdripc_resume(struct platform_device *pdev)
+{
+	int ret = 0;
+	struct sdripc_device *sdripc_dev;
+	struct device *dev;
+
+	sdripc_dev = (struct sdripc_device *)platform_get_drvdata(pdev);
+	dev = &pdev->dev;
+	dprintk(dev,"[%s]\n",__func__);
+
+	/* register mailbox client */
+	sdripc_dev->mbox_channel = sdripc_mbox_request_channel(pdev, sdripc_dev->mbox_name);
+	if (sdripc_dev->mbox_channel == NULL)
+	{
+		eprintk(dev, "mbox_request_channel fail\n");
+		ret = -EPROBE_DEFER;
+	}
+
+	return ret;
+}
+#endif
+
 #ifdef CONFIG_OF
 static const struct of_device_id sdripc_match[] = {
 	{ .compatible = "telechips,sdr_ipc" },
@@ -904,6 +948,10 @@ static struct platform_driver sdripc_driver = {
 	},
 	.probe  = sdripc_probe,
 	.remove = sdripc_remove,
+#if defined(CONFIG_PM)
+	.suspend = sdripc_suspend,
+	.resume = sdripc_resume,
+#endif
 };
 module_platform_driver(sdripc_driver);
 
