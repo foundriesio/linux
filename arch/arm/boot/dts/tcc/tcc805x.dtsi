@@ -236,8 +236,7 @@
 		pmap_a53_avm: a53_avm {
 			compatible = "telechips,pmap";
 			telechips,pmap-name = "subcore kernel";
-			alloc-ranges = <0x0 0x40000000 0x0 0x20000000>;
-			size = <0x0 0x20000000>;
+			reg = <0x0 0x40000000 0x0 0x20000000>;
 			no-map;
 		};
 #endif
@@ -524,11 +523,10 @@
                 pmap_pvr_vz: pvr_vz {
                         compatible = "telechips,pmap";
                         telechips,pmap-name = "pvr_vz";
-                        alloc-ranges = <0x0 PVR_VZ_BASE 0x0 PVR_VZ_SIZE>;
-                        size = <0x0 PVR_VZ_SIZE>;
+                        reg = <0x0 PVR_VZ_BASE 0x0 PVR_VZ_SIZE>;
                         no-map;
                 };
-		
+
 		/*-----------------------------------------------------------
 		 * Default Reserved Memory
 		 *-----------------------------------------------------------
