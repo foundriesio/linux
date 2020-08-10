@@ -209,47 +209,50 @@
 		#size-cells = <1>;
 		ranges;
 
-#if defined(CONFIG_TCC_CORE_RESET) && !defined(CONFIG_TCC803X_CA7S)
+		/*
+		 * Below four reserved-memory ndoes will be enabled by U-Boot
+		 * according to U-Boot's configuration set. So **DO NOT EDIT**
+		 * the status property for each.
+		 *
+		 * For detail, refer to the `ft_board_setup()` function defined
+		 * in `board/telechips/tcc8030_evb/board.c` @ U-Boot.
+		 */
 		u_boot {
 			compatible = "telechips,pmap";
 			telechips,pmap-name = "u-boot";
-			alloc-ranges = <0x30000000 0x200000>;
-			size = <0x200000>; /* CONFIG_TCC_U_BOOT_LEN in U-Boot */
+			reg = <0x30000000 0x200000 /* CONFIG_TCC_U_BOOT_LEN */>;
 			no-map;
+			status = "disabled";
 		};
 
 		save_dram_size {
 			compatible = "telechips,pmap";
 			telechips,pmap-name = "save_dram_size";
-			alloc-ranges = <0x30f80000 0x1000>;
-			size = <0x1000>;
+			reg = <0x30f80000 0x1000>;
 			no-map;
+			status = "disabled";
 		};
-#endif
+
+		pmap_a7s_avm: a7s_avm {
+			compatible = "telechips,pmap";
+			telechips,pmap-name = "a7s_avm";
+			reg = <0x80000000 0x20000000>;
+			no-map;
+			status = "disabled";
+		};
+
+		a7s_avm_backup {
+			compatible = "telechips,pmap";
+			telechips,pmap-name = "a7s_avm_backup";
+			reg = <0xA0000000 0x10000000>;
+			no-map;
+			status = "disabled";
+		};
 
 		/*-----------------------------------------------------------
 		 * Secure Area 1 (CPU R/W, VPU X, GPU R/W, VIOC R)
 		 *-----------------------------------------------------------
 		 */
-#if defined(CONFIG_PMAP_SUBCORE)
-		pmap_a7s_avm: a7s_avm {
-			compatible = "telechips,pmap";
-			telechips,pmap-name = "a7s_avm";
-			alloc-ranges = <0x80000000 0x20000000>;
-			size = <0x20000000>;
-			no-map;
-		};
-
-#if defined(CONFIG_TCC_CORE_RESET)
-		a7s_avm_backup {
-			compatible = "telechips,pmap";
-			telechips,pmap-name = "a7s_avm_backup";
-			alloc-ranges = <0xA0000000 0x10000000>;
-			size = <0x10000000>;
-			no-map;
-		};
-#endif
-#endif
 		pmap_fb_video: fb_video {
 			compatible = "telechips,pmap";
 			telechips,pmap-name = "fb_video";
