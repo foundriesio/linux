@@ -157,9 +157,6 @@ int request_gpio_to_sc(uint32_t address, uint32_t bit_number, uint32_t width, ui
 	if(ret != 0) {
 		uint32_t reg_data = readl(address + base_offset);
 
-		printk(KERN_WARNING "[WARNING][TCC_PINCTRL] SCFW is not working, It can be a problem when setting the same GPIO group on multiple cores at the same time.\n");
-		printk(KERN_WARNING "[WARNING][TCC_PINCTRL] Since SCFW does not work, the kernel is setting the GPIO register directly.\n");
-
 		if(width == 0UL) {
 			return -1;
 		} else if(width == 1UL) {
@@ -208,9 +205,7 @@ inline static int tcc805x_set_eint(void __iomem *base, unsigned bit, int extint)
 	shift = 8*(extint%4);
 
 #if defined(CONFIG_PINCTRL_TCC_SCFW)
-	if(sc_fw_handle_for_gpio != NULL) {
-		request_gpio_to_sc(reg - base_offset, shift, 8, idx);
-	}
+	request_gpio_to_sc(reg - base_offset, shift, 8, idx);
 #else
 	mask = 0x7F << shift;
 
@@ -243,9 +238,7 @@ static void tcc805x_gpio_pinconf_extra(void __iomem *base, unsigned offset, int 
 	unsigned int data;
 
 #if defined(CONFIG_PINCTRL_TCC_SCFW)
-	if(sc_fw_handle_for_gpio != NULL) {
-		request_gpio_to_sc(reg - base_offset, offset, 1, value);
-	}
+	request_gpio_to_sc(reg - base_offset, offset, 1, value);
 #else
 	data = readl(reg);
 	data &= ~(1 << offset);
@@ -270,9 +263,7 @@ static int tcc805x_gpio_set_direction(void __iomem *base, unsigned offset,
 	unsigned int data;
 
 #if defined(CONFIG_PINCTRL_TCC_SCFW)
-	if(sc_fw_handle_for_gpio != NULL) {
-		request_gpio_to_sc(reg - base_offset, offset, 1, 1-input);
-	}
+	request_gpio_to_sc(reg - base_offset, offset, 1, 1-input);
 #else
 	data = readl(reg);
 	data &= ~(1 << offset);
@@ -288,6 +279,9 @@ static int tcc805x_gpio_set_function(void __iomem *base, unsigned offset,
 {
 	void __iomem *reg = base + GPIO_FUNC + 4*(offset / 8);
 	unsigned int data, mask, shift;
+#if defined(CONFIG_PINCTRL_TCC_SCFW)
+	uint32_t width = 1;
+#endif
 
 	if(IS_GPSD(func))
 	{
@@ -303,14 +297,11 @@ static int tcc805x_gpio_set_function(void __iomem *base, unsigned offset,
 	}
 
 #if defined(CONFIG_PINCTRL_TCC_SCFW)
-	if(sc_fw_handle_for_gpio != NULL) {
-		uint32_t width = 1;
-		if((mask >> shift) == 0xf) {
-			width = 4;
-		}
-
-		request_gpio_to_sc(reg - base_offset, shift, width, func);
+	if((mask >> shift) == 0xf) {
+		width = 4;
 	}
+
+	request_gpio_to_sc(reg - base_offset, shift, width, func);
 #else
 	data = readl(reg) & ~mask;
 	data |= func << shift;
@@ -351,9 +342,7 @@ static int tcc805x_gpio_set_drive_strength(void __iomem *base, unsigned offset,
 		reg = base + GPIO_DRIVE_STRENGTH + (offset/16)*4;
 
 #if defined(CONFIG_PINCTRL_TCC_SCFW)
-	if(sc_fw_handle_for_gpio != NULL) {
-		request_gpio_to_sc(reg - base_offset, 2 * (offset % 16), 2, value);
-	}
+	request_gpio_to_sc(reg - base_offset, 2 * (offset % 16), 2, value);
 #else
 	data = readl(reg);
 	data &= ~(0x3 << (2 * (offset % 16)));
@@ -410,9 +399,7 @@ static int tcc805x_gpio_set_eclk_sel(void __iomem *base, unsigned offset,
 		return -1;
 
 #if defined(CONFIG_PINCTRL_TCC_SCFW)
-	if(sc_fw_handle_for_gpio != NULL) {
-		request_gpio_to_sc(reg - base_offset, (value * 8), 8, value);
-	}
+	request_gpio_to_sc(reg - base_offset, (value * 8), 8, value);
 #else
 	data = readl(reg);
 	data &= ~(0xFF<<(value * 8));
@@ -633,12 +620,23 @@ static int tcc805x_pinctrl_probe(struct platform_device *pdev)
 #if defined(CONFIG_PINCTRL_TCC_SCFW)
 	fw_np = of_parse_phandle(pdev->dev.of_node, "sc-firmware", 0);
 	if(fw_np == NULL) {
-		printk(KERN_ERR "\033[31m[ERROR][PINCTRL] fw_np == NULL\033[0m\n");
+		printk(KERN_ERR "[ERROR][PINCTRL] fw_np == NULL\n");
 	}
 
 	sc_fw_handle_for_gpio = tcc_sc_fw_get_handle(fw_np);
 	if(sc_fw_handle_for_gpio == NULL) {
-		printk(KERN_ERR "\033[31m[ERROR][PINCTRL] sc_fw_handle == NULL\033[0m\n");
+		printk(KERN_ERR "[ERROR][PINCTRL] sc_fw_handle == NULL\n");
+	}
+	if(sc_fw_handle_for_gpio != NULL
+			&& sc_fw_handle_for_gpio->version.major == 0
+			&& sc_fw_handle_for_gpio->version.minor == 0
+			&& sc_fw_handle_for_gpio->version.patch < 7) {
+		printk(KERN_WARNING "The version of SCFW is low. Since gpio cannot be set through SCFW, registers are set directly from kernel\n");
+		printk(KERN_WARNING "SCFW Version : %d.%d.%d\n",
+				sc_fw_handle_for_gpio->version.major,
+				sc_fw_handle_for_gpio->version.minor,
+				sc_fw_handle_for_gpio->version.patch);
+		sc_fw_handle_for_gpio = NULL;
 	}
 #endif
 
