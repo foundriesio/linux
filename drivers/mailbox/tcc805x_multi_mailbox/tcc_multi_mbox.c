@@ -1387,6 +1387,8 @@ static int tcc_multich_mbox_suspend(struct platform_device *pdev, pm_message_t s
 {
 	struct tcc_mbox_device *mdev = platform_get_drvdata(pdev);
 
+	writel_relaxed(readl_relaxed(mdev->base + TRM_STS) & ~OWN_TMN_STS_BIT, mdev->base + TRM_STS);
+
 	/* Flush RX buffer */
 	writel_relaxed(CF_FLUSH_BIT|DF_FLUSH_BIT, mdev->base + MBOXCTR);
 
@@ -1402,6 +1404,8 @@ static int tcc_multich_mbox_resume(struct platform_device *pdev)
 
 	/*Enable interrupt*/
 	writel_relaxed(IEN_BIT |LEVEL0_BIT| LEVEL1_BIT, mdev->base + MBOXCTR_SET);
+
+	writel_relaxed(readl_relaxed(mdev->base + TRM_STS) | OWN_TMN_STS_BIT, mdev->base + TRM_STS);
 
 	return 0;
 }
