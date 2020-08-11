@@ -1165,6 +1165,21 @@ static int stm32_pconf_set(struct pinctrl_dev *pctldev, unsigned int pin,
 	return 0;
 }
 
+static struct stm32_desc_pin *
+stm32_pconf_get_pin_desc_by_pin_number(struct stm32_pinctrl *pctl,
+				       unsigned int pin_number)
+{
+	struct stm32_desc_pin *pins = pctl->pins;
+	int i;
+
+	for (i = 0; i < pctl->npins; i++) {
+		if (pins->pin.number == pin_number)
+			return pins;
+		pins++;
+	}
+	return NULL;
+}
+
 static void stm32_pconf_dbg_show(struct pinctrl_dev *pctldev,
 				 struct seq_file *s,
 				 unsigned int pin)
@@ -1220,7 +1235,10 @@ static void stm32_pconf_dbg_show(struct pinctrl_dev *pctldev,
 	case 2:
 		drive = stm32_pconf_get_driving(bank, offset);
 		speed = stm32_pconf_get_speed(bank, offset);
-		pin_desc = pctl->pins + (pin - pctl->pin_base_shift);
+		pin_desc = stm32_pconf_get_pin_desc_by_pin_number(pctl, pin);
+		if (!pin_desc)
+			return;
+
 		seq_printf(s, "%d (%s) - %s - %s - %s %s", alt,
 			   pin_desc->functions[alt + 1].name,
 			   drive ? "open drain" : "push pull",
