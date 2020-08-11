@@ -309,6 +309,24 @@ unsigned int MIPI_CSIS_Get_CSIS_Interrupt_Src(unsigned int page)
 }
 
 #if defined(CONFIG_ARCH_TCC805X)
+static void MIPI_WRAP_Set_PLL_Reset(unsigned int onOff)
+{
+	unsigned int val = 0;
+	volatile void __iomem * reg = 0;
+
+	reg = mipi_ckc_base + PLLPMS;
+
+	val = __raw_readl(reg);
+
+	if (onOff) {
+		val &= ~(PLLPMS_RESETB_MASK);
+	} else {
+		val |= PLLPMS_RESETB_MASK;
+	}
+
+	__raw_writel(val, reg);
+}
+
 static void MIPI_WRAP_Set_PLL_DIV(unsigned int onOff, unsigned int pdiv)
 {
 	unsigned int val = 0;
@@ -357,7 +375,7 @@ static int MIPI_WRAP_Set_PLL_PMS(unsigned int p, unsigned int m, unsigned int s)
 	if (val & PLLPMS_LOCK_MASK)
 		return 1;
 	else
-		return 0;
+		return -1;
 }
 
 unsigned int MIPI_WRAP_Set_CKC(void)
@@ -367,30 +385,57 @@ unsigned int MIPI_WRAP_Set_CKC(void)
 	volatile void __iomem * reg = 0;
 
 	/*
-	 * XIN is 24Mhz
-	 * set max clock 600MHz
+	 * set source clock to XIN
+	 * (for core reset case(SD805XA1-365))
 	 */
+	reg = mipi_ckc_base + CLKCTRL0;
+	val = __raw_readl(reg);
+
+	val &= ~(CLKCTRL_SEL_MASK);
+	val |= (CLKCTRL_SEL_XIN << CLKCTRL_SEL_SHIFT);
+	__raw_writel(val, reg);
+
+	val = 0;
+	reg = mipi_ckc_base + CLKCTRL1;
+	val = __raw_readl(reg);
+
+	val &= ~(CLKCTRL_SEL_MASK);
+	val |= (CLKCTRL_SEL_XIN << CLKCTRL_SEL_SHIFT);
+	__raw_writel(val, reg);
+
+	/*
+	 * XIN is 24Mhz
+	 * set pixel clock 600MHz
+	 * set bus clock 100MHz
+	 */
+	MIPI_WRAP_Set_PLL_Reset(1);
+
 	MIPI_WRAP_Set_PLL_DIV(ON, 5);
+	ret = MIPI_WRAP_Set_PLL_PMS(2, 200, 2);
 
-	ret = MIPI_WRAP_Set_PLL_PMS(3, 250, 2);
-
-
-	if (ret) {
-		reg = mipi_ckc_base + CLKCTRL0;
-		val = __raw_readl(reg);
-
-		val &= ~(CLKCTRL_CHGRQ_MASK | CLKCTRL_SEL_MASK);
-		val |= (CLKCTRL_SEL_PLL_DIVIDER << CLKCTRL_SEL_SHIFT);
-		__raw_writel(val, reg);
-
-		reg = mipi_ckc_base + CLKCTRL1;
-		val = __raw_readl(reg);
-
-		val &= ~(CLKCTRL_CHGRQ_MASK | CLKCTRL_SEL_MASK);
-		val |= (CLKCTRL_SEL_PLL_DIRECT << CLKCTRL_SEL_SHIFT);
-		__raw_writel(val, reg);
+	if (ret < 0) {
+		loge("FAIL - MIPI WRAP PLL SETTING \n");
+		goto ERR;
 	}
 
+	/*
+	 * set source clock to PLL
+	 */
+	reg = mipi_ckc_base + CLKCTRL0;
+	val = __raw_readl(reg);
+
+	val &= ~(CLKCTRL_CHGRQ_MASK | CLKCTRL_SEL_MASK);
+	val |= (CLKCTRL_SEL_PLL_DIVIDER << CLKCTRL_SEL_SHIFT);
+	__raw_writel(val, reg);
+
+	reg = mipi_ckc_base + CLKCTRL1;
+	val = __raw_readl(reg);
+
+	val &= ~(CLKCTRL_CHGRQ_MASK | CLKCTRL_SEL_MASK);
+	val |= (CLKCTRL_SEL_PLL_DIRECT << CLKCTRL_SEL_SHIFT);
+	__raw_writel(val, reg);
+
+ERR:
 	return ret;
 }
 
