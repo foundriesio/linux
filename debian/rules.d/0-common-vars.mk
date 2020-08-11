@@ -157,7 +157,7 @@ do_doc_package=true
 else
 do_doc_package=false
 endif
-do_doc_package_content=true
+do_doc_package_content=false
 ifeq ($(full_build),false)
 do_doc_package_content=false
 endif
