@@ -1155,6 +1155,9 @@ struct btrfs_root {
 	u64 qgroup_meta_rsv_pertrans;
 	u64 qgroup_meta_rsv_prealloc;
 	wait_queue_head_t qgroup_flush_wait;
+
+	/* Used only by log trees, when logging csum items */
+	struct extent_io_tree log_csum_range;
 };
 
 struct btrfs_file_private {
