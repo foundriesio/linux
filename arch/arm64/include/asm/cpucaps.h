@@ -42,7 +42,7 @@
 #define ARM64_SVE				21
 #define ARM64_UNMAP_KERNEL_AT_EL0		22
 #define ARM64_HARDEN_BRANCH_PREDICTOR		23
-#define ARM64_HARDEN_BP_POST_GUEST_EXIT		24
+/* #define Free					24 */
 #define ARM64_HAS_RAS_EXTN			25
 #define ARM64_HW_DBM				26
 #define ARM64_SSBD				27
