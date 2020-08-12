@@ -221,13 +221,12 @@ int sec_sendrecv_cmd(unsigned int device_id, int cmd, void *data, int size, void
 		mbox_data.cmd[2] = DATA_MBOX;
 		DLOG("cmd %X, size %d\n", cmd, size);
 		// print_hex_dump_bytes("Sending message: ", DUMP_PREFIX_ADDRESS, mbox_msg.message, size);
-	} else if (TCC_MBOX_MAX_MSG < size) {
+	} else {
 		memcpy(sec_dev->vaddr, data, size);
 		mbox_data.cmd[2] = DMA;
 	}
 
 	// Init condition to wait
-	sec_dev->mbox_received = 0;
 	mbox_result = mbox_send_message(sec_dev->mbox_ch, &(mbox_data));
 #if defined(CONFIG_ARCH_TCC803X)
 	mbox_client_txdone(sec_dev->mbox_ch, 0);
@@ -275,6 +274,7 @@ int sec_sendrecv_cmd(unsigned int device_id, int cmd, void *data, int size, void
 	}
 	result = sec_dev->mbox_rmsg.msg_len;
 out:
+	sec_dev->mbox_received = 0;
 	DLOG("End result=%d\n", result);
 	mutex_unlock(&mutex);
 	return result;
@@ -362,7 +362,7 @@ static int sec_send_cmd_ioctl(unsigned long arg)
 		memcpy(mbox_data.data, (unsigned int *)segment.data_addr, data_size);
 		mbox_data.cmd[2] = DATA_MBOX;
 		DLOG("cmd=0x%X, data size=0x%x\n", segment.cmd, data_size);
-	} else if (TCC_MBOX_MAX_MSG < data_size) {
+	} else {
 		memcpy(sec_dev->vaddr, (unsigned int *)segment.data_addr, data_size);
 		mbox_data.cmd[2] = DMA;
 	}
@@ -616,7 +616,7 @@ static struct mbox_chan *sec_request_channel(struct platform_device *pdev, const
 
 	client = devm_kzalloc(&pdev->dev, sizeof(*client), GFP_KERNEL);
 	if (!client)
-		return ERR_PTR(-ENOMEM);
+		return NULL;
 
 	client->dev = &pdev->dev;
 	client->rx_callback = sec_msg_received;
