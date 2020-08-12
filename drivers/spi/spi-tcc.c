@@ -1283,14 +1283,6 @@ static int tcc_spi_init(struct tcc_spi *tccspi)
 		}
 	}
 
-	/* Get pin control (active state)*/
-	tccspi->pinctrl = devm_pinctrl_get_select(tccspi->dev, "active");
-	if(IS_ERR(tccspi->pinctrl)) {
-		dev_err(tccspi->dev,
-				"[ERROR][SPI] Failed to get pinctrl (active state)\n");
-		return -ENXIO;
-	}
-
 	/* Initialize GPSB registers */
 	tcc_spi_clear_fifo(tccspi);
 	tcc_spi_clear_packet_cnt(tccspi);
@@ -1542,6 +1534,14 @@ static int tcc_spi_probe(struct platform_device *pdev)
 		goto exit_free_master;
 	}
 
+	/* Get pin control (active state)*/
+	tccspi->pinctrl = devm_pinctrl_get_select(tccspi->dev, "active");
+	if(IS_ERR(tccspi->pinctrl)) {
+		dev_err(tccspi->dev,
+				"[ERROR][SPI] Failed to get pinctrl (active state)\n");
+		goto exit_unprepare_clk;
+	}
+
 	/* Get TCC GPSB IRQ number */
 	tccspi->irq = -1;
 	tccspi->irq = platform_get_irq(pdev, 0);
@@ -1732,6 +1732,14 @@ static int tcc_spi_resume(struct device *dev)
 	if(status < 0){
 		dev_err(dev, "[ERROR][SPI] %s: failed to init GPSB\n", __func__);
 		return status;
+	}
+
+	/* Get pin control (active state)*/
+	tccspi->pinctrl = devm_pinctrl_get_select(tccspi->dev, "active");
+	if(IS_ERR(tccspi->pinctrl)) {
+		dev_err(tccspi->dev,
+				"[ERROR][SPI] Failed to get pinctrl (active state)\n");
+		return -ENXIO;
 	}
 
 	return spi_master_resume(master);
