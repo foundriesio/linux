@@ -1030,7 +1030,31 @@ int btrfs_remove_block_group(struct btrfs_trans_handle *trans,
 
 	spin_unlock(&block_group->space_info->lock);
 
+	/*
+	 * Remove the free space for the block group from the free space tree
+	 * and the block group's item from the extent tree before marking the
+	 * block group as removed. This is to prevent races with tasks that
+	 * freeze and unfreeze a block group, this task and another task
+	 * allocating a new block group - the unfreeze task ends up removing
+	 * the block group's extent map before the task calling this function
+	 * deletes the block group item from the extent tree, allowing for
+	 * another task to attempt to create another block group with the same
+	 * item key (and failing with -EEXIST and a transaction abort).
+	 */
+	ret = remove_block_group_free_space(trans, fs_info, block_group);
+	if (ret)
+		goto out;
+
 	memcpy(&key, &block_group->key, sizeof(key));
+	ret = btrfs_search_slot(trans, root, &key, path, -1, 1);
+	if (ret > 0)
+		ret = -EIO;
+	if (ret < 0)
+		goto out;
+
+	ret = btrfs_del_item(trans, root, path);
+	if (ret)
+		goto out;
 
 	mutex_lock(&fs_info->chunk_mutex);
 	if (!list_empty(&em->list)) {
@@ -1080,20 +1104,6 @@ int btrfs_remove_block_group(struct btrfs_trans_handle *trans,
 	spin_unlock(&block_group->lock);
 
 	mutex_unlock(&fs_info->chunk_mutex);
-
-	ret = remove_block_group_free_space(trans, fs_info, block_group);
-	if (ret)
-		goto out;
-
-	ret = btrfs_search_slot(trans, root, &key, path, -1, 1);
-	if (ret > 0)
-		ret = -EIO;
-	if (ret < 0)
-		goto out;
-
-	ret = btrfs_del_item(trans, root, path);
-	if (ret)
-		goto out;
 
 	if (remove_em) {
 		struct extent_map_tree *em_tree;
