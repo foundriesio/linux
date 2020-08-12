@@ -157,8 +157,33 @@
 			     <0 250 IRQ_TYPE_LEVEL_HIGH>,
 			     <0 251 IRQ_TYPE_LEVEL_HIGH>,
 			     <0 252 IRQ_TYPE_LEVEL_HIGH>,
-			     <0 253 IRQ_TYPE_LEVEL_HIGH>;
-		#iommu-cells = <0>;
+			     <0 253 IRQ_TYPE_LEVEL_HIGH>,
+			/* unused */
+			     <0 241 IRQ_TYPE_LEVEL_HIGH>,
+			     <0 241 IRQ_TYPE_LEVEL_HIGH>,
+			     <0 241 IRQ_TYPE_LEVEL_HIGH>,
+			     <0 241 IRQ_TYPE_LEVEL_HIGH>,
+			     <0 241 IRQ_TYPE_LEVEL_HIGH>,
+			     <0 241 IRQ_TYPE_LEVEL_HIGH>,
+			     <0 241 IRQ_TYPE_LEVEL_HIGH>,
+			     <0 253 IRQ_TYPE_LEVEL_HIGH>,
+			     <0 253 IRQ_TYPE_LEVEL_HIGH>,
+			     <0 253 IRQ_TYPE_LEVEL_HIGH>,
+			     <0 253 IRQ_TYPE_LEVEL_HIGH>,
+			     <0 253 IRQ_TYPE_LEVEL_HIGH>,
+			     <0 253 IRQ_TYPE_LEVEL_HIGH>,
+			     <0 241 IRQ_TYPE_LEVEL_HIGH>,
+			     <0 241 IRQ_TYPE_LEVEL_HIGH>,
+			     <0 241 IRQ_TYPE_LEVEL_HIGH>,
+			     <0 241 IRQ_TYPE_LEVEL_HIGH>,
+			     <0 241 IRQ_TYPE_LEVEL_HIGH>,
+			     <0 241 IRQ_TYPE_LEVEL_HIGH>,
+			     <0 241 IRQ_TYPE_LEVEL_HIGH>,
+			     <0 241 IRQ_TYPE_LEVEL_HIGH>,
+			     <0 241 IRQ_TYPE_LEVEL_HIGH>,
+			     <0 241 IRQ_TYPE_LEVEL_HIGH>,
+			     <0 241 IRQ_TYPE_LEVEL_HIGH>;
+		#iommu-cells = <2>;
 	};
 
 	smmu_vbus: smmu@13700000 {
@@ -181,7 +206,7 @@
 			     <0 265 IRQ_TYPE_LEVEL_HIGH>,
 			     <0 266 IRQ_TYPE_LEVEL_HIGH>,
 			     <0 267 IRQ_TYPE_LEVEL_HIGH>;
-		#iommu-cells = <1>;
+		#iommu-cells = <2>;
 	};
 
 	smmu_dbus: smmu@13800000 {
@@ -203,8 +228,33 @@
 			     <0 278 IRQ_TYPE_LEVEL_HIGH>,
 			     <0 279 IRQ_TYPE_LEVEL_HIGH>,
 			     <0 280 IRQ_TYPE_LEVEL_HIGH>,
-			     <0 281 IRQ_TYPE_LEVEL_HIGH>;
-		#iommu-cells = <1>;
+			     <0 281 IRQ_TYPE_LEVEL_HIGH>,
+			/* unsused */
+			     <0 269 IRQ_TYPE_LEVEL_HIGH>,
+			     <0 269 IRQ_TYPE_LEVEL_HIGH>,
+			     <0 269 IRQ_TYPE_LEVEL_HIGH>,
+			     <0 269 IRQ_TYPE_LEVEL_HIGH>,
+			     <0 269 IRQ_TYPE_LEVEL_HIGH>,
+			     <0 269 IRQ_TYPE_LEVEL_HIGH>,
+			     <0 269 IRQ_TYPE_LEVEL_HIGH>,
+			     <0 269 IRQ_TYPE_LEVEL_HIGH>,
+			     <0 269 IRQ_TYPE_LEVEL_HIGH>,
+			     <0 269 IRQ_TYPE_LEVEL_HIGH>,
+			     <0 269 IRQ_TYPE_LEVEL_HIGH>,
+			     <0 269 IRQ_TYPE_LEVEL_HIGH>,
+			     <0 269 IRQ_TYPE_LEVEL_HIGH>,
+			     <0 269 IRQ_TYPE_LEVEL_HIGH>,
+			     <0 269 IRQ_TYPE_LEVEL_HIGH>,
+			     <0 269 IRQ_TYPE_LEVEL_HIGH>,
+			     <0 269 IRQ_TYPE_LEVEL_HIGH>,
+			     <0 269 IRQ_TYPE_LEVEL_HIGH>,
+			     <0 269 IRQ_TYPE_LEVEL_HIGH>,
+			     <0 269 IRQ_TYPE_LEVEL_HIGH>,
+			     <0 269 IRQ_TYPE_LEVEL_HIGH>,
+			     <0 269 IRQ_TYPE_LEVEL_HIGH>,
+			     <0 269 IRQ_TYPE_LEVEL_HIGH>,
+			     <0 269 IRQ_TYPE_LEVEL_HIGH>;
+		#iommu-cells = <2>;
 	};
 
 	smmu_pcie: smmu@13900000 {
@@ -223,8 +273,11 @@
 			     <0 289 IRQ_TYPE_LEVEL_HIGH>,
 			     <0 290 IRQ_TYPE_LEVEL_HIGH>,
 			     <0 291 IRQ_TYPE_LEVEL_HIGH>,
-			     <0 292 IRQ_TYPE_LEVEL_HIGH>;
-		#iommu-cells = <0>;
+			     <0 292 IRQ_TYPE_LEVEL_HIGH>,
+			/* unused */
+			     <0 283 IRQ_TYPE_LEVEL_HIGH>,
+			     <0 283 IRQ_TYPE_LEVEL_HIGH>;
+		#iommu-cells = <2>;
 	};
 
 	reserved-memory {
