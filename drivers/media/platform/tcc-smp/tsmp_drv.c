@@ -13,7 +13,6 @@
  * Suite 330, Boston, MA 02111-1307 USA
  */
 
-#define NDEBUG
 //#define TLOG_LEVEL TLOG_DEBUG
 #include "tsmp_log.h"
 
@@ -33,14 +32,18 @@
 #define MAX_NUM_OF_BUFFER_INFO 10
 #define USE_SECURE 1
 #define USE_PHY_ADDR_MAPPING
-#define SMP_TA_UUID { 0x66fd12d1, 0xd28b, 0x495d,  \
-                    { 0x95, 0x18, 0x77, 0x09, 0xb6, 0xa6, 0xa0, 0xea } }
+#define SMP_TA_UUID                                        \
+	{                                                      \
+		0x66fd12d1, 0xd28b, 0x495d,                        \
+		{                                                  \
+			0x95, 0x18, 0x77, 0x09, 0xb6, 0xa6, 0xa0, 0xea \
+		}                                                  \
+	}
 
-#define CMD_CREATE_FILTER			0xF0000001
-#define CMD_COLLECT_DATA			0xF0000002
-#define CMD_ASSEMBLE_DATA			0xF0000003
-#define CMD_SET_MAX_NUMBER_FRAMES	0xF0000004
-
+#define CMD_CREATE_FILTER 0xF0000001
+#define CMD_COLLECT_DATA 0xF0000002
+#define CMD_ASSEMBLE_DATA 0xF0000003
+#define CMD_SET_MAX_NUMBER_FRAMES 0xF0000004
 
 /**
  * @defgroup tsmp Telechips Secure Media Path Driver
@@ -49,8 +52,7 @@
  * @file tsmp_drv.c
  */
 
-struct tsmp_dev
-{
+struct tsmp_dev {
 	struct cdev cdev;
 	wait_queue_head_t wait_queue;
 	struct mutex mutex;
@@ -86,15 +88,22 @@ static void tsmp_callback(int dmxch, uintptr_t off1, int off1_size, uintptr_t of
 	}
 #endif
 	if (tsmp_dev[dmxch].acc_buffer_length + off1_size <= DATA_BUFFER_SIZE) {
-		memcpy(tsmp_dev[dmxch].acc_buffer+tsmp_dev[dmxch].acc_buffer_length, off1, off1_size);
+		memcpy(
+			(void *)(tsmp_dev[dmxch].acc_buffer + tsmp_dev[dmxch].acc_buffer_length), (void *)off1,
+			off1_size);
 		tsmp_dev[dmxch].acc_buffer_length += off1_size;
 	}
 	if (tsmp_dev[dmxch].acc_buffer_length + off2_size <= DATA_BUFFER_SIZE) {
-		memcpy(tsmp_dev[dmxch].acc_buffer+tsmp_dev[dmxch].acc_buffer_length, off2, off2_size);
+		memcpy(
+			(void *)(tsmp_dev[dmxch].acc_buffer + tsmp_dev[dmxch].acc_buffer_length), (void *)off2,
+			off2_size);
 		tsmp_dev[dmxch].acc_buffer_length += off2_size;
 	}
 	tsmp_dev[dmxch].revent_mask |= TSMP_EVENT;
-	ILOG("callback in dmx ch %d buf1 %x size %d = %x, buf2 %x size %d = %x\n", dmxch, off1, off1_size, off1+off1_size, off2, off2_size, off2+off2_size);
+	ILOG(
+		"callback in dmx ch %d buf1 %x size %d = %x, buf2 %x size %d = %x\n", dmxch, (uint32_t)off1,
+		off1_size, (uint32_t)(off1 + off1_size), (uint32_t)off2, off2_size,
+		(uint32_t)(off2 + off2_size));
 	wake_up_interruptible(&tsmp_dev[dmxch].wait_queue);
 	mutex_unlock(&tsmp_dev[dmxch].mutex);
 }
@@ -106,7 +115,11 @@ static int tsmp_depack_stream_ioctl(struct file *filp, struct tsmp_depack_stream
 {
 	int ret = -1;
 	int data_remain;
+	int rc;
 	struct tsmp_dev *dev = filp->private_data;
+	struct tsmp_depack_stream *depack;
+	struct tee_client_params params;
+	struct depack_frame_info info[MAX_DEPACK_FRAMES];
 
 	if (IS_ERR(p_depack_stream)) {
 		return PTR_ERR(p_depack_stream);
@@ -124,11 +137,9 @@ static int tsmp_depack_stream_ioctl(struct file *filp, struct tsmp_depack_stream
 		return ret;
 	}
 
-	struct tsmp_depack_stream *depack;
 	depack = &dev->depack_out;
 
 	// [TODO] IMPLEMENT HERE !!
-	struct tee_client_params params;
 	memset(&params, 0, sizeof(params));
 
 	// in : pid and type
@@ -136,23 +147,21 @@ static int tsmp_depack_stream_ioctl(struct file *filp, struct tsmp_depack_stream
 	params.params[0].tee_client_value.b = (long)depack->pid_info.type;
 	params.params[0].type = TEE_CLIENT_PARAM_VALUE_IN;
 
-	// in : secure address and size 
+	// in : secure address and size
 	// out : number of frames, total founded frames size
 	params.params[1].tee_client_value.a = (long)depack->pBuffer;
 	params.params[1].tee_client_value.b = depack->nLength;
 	params.params[1].type = TEE_CLIENT_PARAM_VALUE_INOUT;
 
 	// out : array of PTS and size structure
-	struct depack_frame_info info[MAX_DEPACK_FRAMES];
-	memset(info, 0, sizeof(struct depack_frame_info)*MAX_DEPACK_FRAMES);
+	memset(info, 0, sizeof(struct depack_frame_info) * MAX_DEPACK_FRAMES);
 	params.params[2].tee_client_memref.buffer = info;
-	params.params[2].tee_client_memref.size = sizeof(struct depack_frame_info)*MAX_DEPACK_FRAMES;
+	params.params[2].tee_client_memref.size = sizeof(struct depack_frame_info) * MAX_DEPACK_FRAMES;
 	params.params[2].type = TEE_CLIENT_PARAM_BUF_OUT;
 
 	// out : remaining size
 	params.params[3].type = TEE_CLIENT_PARAM_VALUE_OUT;
 
-	int rc;
 	rc = tee_client_execute_command(dev->context, &params, CMD_ASSEMBLE_DATA);
 	if (rc) {
 		ELOG("fail to execute TA command rc %x\n", rc);
@@ -162,7 +171,7 @@ static int tsmp_depack_stream_ioctl(struct file *filp, struct tsmp_depack_stream
 	depack->nFrames = params.params[1].tee_client_value.a;
 	depack->nLength = params.params[1].tee_client_value.b;
 	depack->nTimestampMs = info[0].pts;
-	memcpy(depack->info, info, sizeof(struct depack_frame_info)*depack->nFrames);
+	memcpy(depack->info, info, sizeof(struct depack_frame_info) * depack->nFrames);
 	ELOG("nFrames %d, nLength %d\n", depack->nFrames, depack->nLength);
 	data_remain = params.params[3].tee_client_value.a;
 
@@ -174,12 +183,12 @@ static int tsmp_depack_stream_ioctl(struct file *filp, struct tsmp_depack_stream
 
 	if (data_remain) {
 		ILOG("data remained\n");
-		dev->revent_mask = 0; //TSMP_EVENT + 1;
+		dev->revent_mask = 0; // TSMP_EVENT + 1;
 	} else {
 		dev->revent_mask = 0;
 	}
 
-	ILOG("depack stream size %d done remain size %d\n", depack->nLength, data_remain );
+	ILOG("depack stream size %d done remain size %d\n", depack->nLength, data_remain);
 
 	ret = 0;
 	TRACE;
@@ -204,8 +213,12 @@ static int tsmp_get_buf_info_ioctl(struct file *filp, struct tsmp_ringbuf_info *
 		return ret;
 	}
 
-	ILOG("off1: %u, off1_size: %d\n", (unsigned int)dev->buf_info[0].off1, dev->buf_info[0].off1_size);
-	ILOG("off2: %u, off2_size: %d\n", (unsigned int)dev->buf_info[0].off2, dev->buf_info[0].off2_size);
+	ILOG(
+		"off1: %u, off1_size: %d\n", (unsigned int)dev->buf_info[0].off1,
+		dev->buf_info[0].off1_size);
+	ILOG(
+		"off2: %u, off2_size: %d\n", (unsigned int)dev->buf_info[0].off2,
+		dev->buf_info[0].off2_size);
 	ret = copy_to_user(buf_info, &dev->buf_info[0], sizeof(struct tsmp_ringbuf_info));
 	if (unlikely(ret != 0)) {
 		ELOG("copy_to_user failed: %d\n", ret);
@@ -223,13 +236,14 @@ err_copy_to_user:
 static int create_filter(struct tsmp_dev *dev, uint16_t pid, uint32_t type)
 {
 	struct tee_client_params params;
+	int rc;
+
 	memset(&params, 0, sizeof(params));
 
 	params.params[0].tee_client_value.a = pid;
 	params.params[0].tee_client_value.b = type;
 	params.params[0].type = TEE_CLIENT_PARAM_VALUE_IN;
 
-	int rc;
 	rc = tee_client_execute_command(dev->context, &params, CMD_CREATE_FILTER);
 	if (rc) {
 		ELOG("fail to execute TA command rc %x\n", rc);
@@ -258,16 +272,22 @@ static int tsmp_set_pid_info_ioctl(struct file *filp, struct tsmp_pid_info *arg)
 	switch (pid_info.type) {
 	case TSMP_AUDIO_TYPE:
 		dev->audio_pid = pid_info.pid;
-		ret = create_filter(dev, pid_info.pid, pid_info.type); 
+		ret = create_filter(dev, pid_info.pid, pid_info.type);
 		if (ret != 0)
 			return ret;
 		break;
 
 	case TSMP_VIDEO_TYPE:
 		dev->video_pid = pid_info.pid;
-		ret = create_filter(dev, pid_info.pid, pid_info.type); 
+		ret = create_filter(dev, pid_info.pid, pid_info.type);
 		if (ret != 0)
 			return ret;
+		break;
+
+	case TSMP_PES_TYPE:
+	case TSMP_SECTION_TYPE:
+	case TSMP_TYPE_MAX:
+	default:
 		break;
 	}
 
@@ -281,6 +301,8 @@ static int tsmp_set_max_number_frames(struct file *filp, uint32_t *arg)
 	int ret = -1;
 	uint32_t frames;
 	struct tsmp_dev *dev = filp->private_data;
+	struct tee_client_params params;
+	int rc;
 
 	if (IS_ERR(arg)) {
 		return PTR_ERR(arg);
@@ -292,13 +314,11 @@ static int tsmp_set_max_number_frames(struct file *filp, uint32_t *arg)
 		return ret;
 	}
 
-	struct tee_client_params params;
 	memset(&params, 0, sizeof(params));
 
 	params.params[0].tee_client_value.a = frames;
 	params.params[0].type = TEE_CLIENT_PARAM_VALUE_IN;
 
-	int rc;
 	rc = tee_client_execute_command(dev->context, &params, CMD_SET_MAX_NUMBER_FRAMES);
 	if (rc) {
 		ELOG("fail to execute TA command rc %x\n", rc);
@@ -328,7 +348,7 @@ static long tsmp_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 		break;
 
 	case TSMP_SET_MAX_NUMBER_FRAMES:
-		ret = tsmp_set_max_number_frames(filp, (uint32_t*)arg);
+		ret = tsmp_set_max_number_frames(filp, (uint32_t *)arg);
 		break;
 
 	default:
@@ -387,21 +407,23 @@ static unsigned int tsmp_poll(struct file *filp, poll_table *wait)
 			// reset accumulated buffer count
 			dev->num_buf_info = 0;
 #endif
-			memcpy(dev->ta_input_buffer, dev->acc_buffer, dev->acc_buffer_length);
+			ILOG("acc buffer length %d\n", dev->acc_buffer_length);
+			memcpy((void *)dev->ta_input_buffer, (void *)dev->acc_buffer, dev->acc_buffer_length);
 
-			params.params[0].tee_client_memref.buffer = dev->ta_input_buffer;
+			params.params[0].tee_client_memref.buffer = (void *)dev->ta_input_buffer;
 			params.params[0].tee_client_memref.size = dev->acc_buffer_length;
 			params.params[0].type = TEE_CLIENT_PARAM_BUF_IN;
 			dev->acc_buffer_length = 0;
 			mutex_unlock(&dev->mutex);
 
-			int rc;
-			rc = tee_client_execute_command(dev->context, &params, CMD_COLLECT_DATA);
-			if (rc) {
-				ELOG("fail to execute TA command rc %x\n", rc);
-				return -1;
+			if (params.params[0].tee_client_memref.size > 0) {
+				int rc;
+				rc = tee_client_execute_command(dev->context, &params, CMD_COLLECT_DATA);
+				if (rc) {
+					ELOG("fail to execute TA command rc %x\n", rc);
+					return -1;
+				}
 			}
-
 #endif
 
 			/*******************************************/
@@ -418,6 +440,9 @@ static int tsmp_open(struct inode *inode, struct file *file)
 {
 	int ret = -1;
 	struct tsmp_dev *dev;
+	struct tee_client_uuid uuid = SMP_TA_UUID;
+	struct tee_client_params params;
+	int rc;
 
 	dev = container_of(inode->i_cdev, struct tsmp_dev, cdev);
 	file->private_data = dev;
@@ -430,10 +455,7 @@ static int tsmp_open(struct inode *inode, struct file *file)
 
 	/* This is where TA Open Session is called */
 	dev->context = NULL;
-	struct tee_client_uuid uuid = SMP_TA_UUID;
-	int rc;
 
-	struct tee_client_params params;
 	memset(&params, 0, sizeof(params));
 	params.params[0].tee_client_value.a = 0; // pid
 	params.params[0].type = TEE_CLIENT_PARAM_VALUE_IN;
@@ -445,7 +467,7 @@ static int tsmp_open(struct inode *inode, struct file *file)
 		return -EPERM;
 	}
 
-	//dmxdevfilter->secure_session_opened = 1;
+	// dmxdevfilter->secure_session_opened = 1;
 
 	/*******************************************/
 
@@ -467,17 +489,17 @@ static int tsmp_release(struct inode *inode, struct file *file)
 	/* This is where TA Close Session is called */
 	tee_client_close_ta(dev->context);
 	dev->context = NULL;
-	//dmxdevfilter->secure_session_opened = 0;
+	// dmxdevfilter->secure_session_opened = 0;
 
 	/*******************************************/
 
 	tcc_dmx_unset_smpcb(iminor(inode));
 	dev->open = 0;
 	if (dev->acc_buffer)
-		kfree(dev->acc_buffer);
+		kfree((void *)dev->acc_buffer);
 
 	if (dev->ta_input_buffer)
-		kfree(dev->ta_input_buffer);
+		kfree((void *)dev->ta_input_buffer);
 
 	ret = 0;
 	TRACE;
@@ -520,15 +542,15 @@ static int __init tsmp_init(void)
 		mutex_init(&tsmp_dev[i].mutex);
 		tsmp_dev[i].revent_mask = 0;
 		tsmp_dev[i].open = 0;
-		tsmp_dev[i].acc_buffer = kmalloc(DATA_BUFFER_SIZE, GFP_KERNEL);
-		if (tsmp_dev[i].acc_buffer == NULL) {
-			ELOG("buffer alloc failed\N");
+		tsmp_dev[i].acc_buffer = (uintptr_t)kmalloc(DATA_BUFFER_SIZE, GFP_KERNEL);
+		if (tsmp_dev[i].acc_buffer == 0) {
+			ELOG("buffer alloc failed\n");
 			return -ENOMEM;
 		}
 		tsmp_dev[i].acc_buffer_length = 0;
-		tsmp_dev[i].ta_input_buffer = kmalloc(DATA_BUFFER_SIZE, GFP_KERNEL);
-		if (tsmp_dev[i].ta_input_buffer == NULL) {
-			ELOG("buffer alloc failed\N");
+		tsmp_dev[i].ta_input_buffer = (uintptr_t)kmalloc(DATA_BUFFER_SIZE, GFP_KERNEL);
+		if (tsmp_dev[i].ta_input_buffer == 0) {
+			ELOG("buffer alloc failed\n");
 			return -ENOMEM;
 		}
 		tsmp_dev[i].num_buf_info = 0;

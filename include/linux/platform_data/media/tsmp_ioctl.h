@@ -30,16 +30,14 @@
  * the start/end point of the ring buffer, off2 and off2_size are provided
  * as well as off1 and off1_size.
  */
-struct tsmp_ringbuf_info
-{
+struct tsmp_ringbuf_info {
 	uintptr_t off1; /**< Pointer to a ring buffer offset1 */
 	uintptr_t off2; /**< Pointer to a ring buffer offset2 */
 	int off1_size;
 	int off2_size;
 };
 
-enum tsmp_pid_type
-{
+enum tsmp_pid_type {
 	TSMP_AUDIO_TYPE = 0,
 	TSMP_VIDEO_TYPE,
 	TSMP_SECTION_TYPE,
@@ -49,32 +47,38 @@ enum tsmp_pid_type
 	TSMP_UNKNOWN_TYPE = TSMP_TYPE_MAX,
 };
 
-struct tsmp_pid_info
-{
+enum tsmp_pes_status {
+	TSMP_PES_OK = 0,
+	TSMP_PES_PACKET_DISCONTINUITY,
+	TSMP_PES_STATUS_MAX,
+};
+
+struct tsmp_pid_info {
 	enum tsmp_pid_type type;
 	uint16_t pid;
 };
 
-struct depack_frame_info
-{
+struct depack_frame_info {
+	// enum tsmp_pes_status status;
 	uint32_t size; // size of a frame
-	uint64_t pts; // timestamp of a frame
+	uint64_t pts;  // timestamp of a frame
 };
 
-struct tsmp_depack_stream
-{
-	uintptr_t pBuffer; // secure output buffer address
-	int32_t nLength; // total size of frames
-	int32_t nFrames; // # of frames
-	int64_t nTimestampMs; // deprecated
+struct tsmp_depack_stream {
+	uintptr_t pBuffer;                                // secure output buffer address
+	int32_t nLength;                                  // total size of frames
+	int32_t nFrames;                                  // # of frames
+	int64_t nTimestampMs;                             // deprecated
 	struct depack_frame_info info[MAX_DEPACK_FRAMES]; // list of information for frames
 
 	struct tsmp_pid_info pid_info;
 };
 
+typedef struct tsmp_depack_stream tsmp_outstreams;
+
 /* clang-format off */
 /** Event flag to notify */
-#define TSMP_EVENT			(0x00000001U)
+#define TSMP_EVENT		(0x00000001U)
 
 #define TSMP_IOCTL_MAGIC 'T'
 
