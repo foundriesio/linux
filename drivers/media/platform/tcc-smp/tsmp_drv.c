@@ -45,6 +45,10 @@
 #define CMD_ASSEMBLE_DATA 0xF0000003
 #define CMD_SET_MAX_NUMBER_FRAMES 0xF0000004
 
+#define TSIF_PHYSICAL_ADDRESS		0x6E844000
+#define TSIF_PHYSICAL_SIZE			1572808
+#define TSIF_VIRTUAL_ADDRESS		0xE5E80000 // exact?
+
 /**
  * @defgroup tsmp Telechips Secure Media Path Driver
  * @addtogroup tsmp
@@ -66,6 +70,10 @@ struct tsmp_dev {
 	uintptr_t acc_buffer;
 	uint32_t acc_buffer_length;
 	uintptr_t ta_input_buffer;
+	uint32_t ptr1;
+	uint32_t ptr1_size;
+	uint32_t ptr2;
+	uint32_t ptr2_size;
 	tee_client_context context;
 };
 
@@ -76,30 +84,29 @@ static struct class *class;
 static void tsmp_callback(int dmxch, uintptr_t off1, int off1_size, uintptr_t off2, int off2_size)
 {
 	mutex_lock(&tsmp_dev[dmxch].mutex);
-#if 0 // this scheme will be used soon
-	if (tsmp_dev[dmxch].num_buf_info < MAX_NUM_OF_BUFFER_INFO) {
-		tsmp_dev[dmxch].buf_info[tsmp_dev[dmxch].num_buf_info].off1 = off1;
-		tsmp_dev[dmxch].buf_info[tsmp_dev[dmxch].num_buf_info].off1_size = off1_size;
-		tsmp_dev[dmxch].buf_info[tsmp_dev[dmxch].num_buf_info].off2 = off2;
-		tsmp_dev[dmxch].buf_info[tsmp_dev[dmxch].num_buf_info].off2_size = off2_size;
-		tsmp_dev[dmxch].num_buf_info++;
+#if 1
+	struct tee_client_params params;
+	memset(&params, 0, sizeof(params));
+
+	params.params[0].tee_client_value.a = TSIF_PHYSICAL_ADDRESS + /*(TSIF_PHYSICAL_SIZE >> 1) +*/ (off1 - TSIF_VIRTUAL_ADDRESS) ;
+	params.params[0].tee_client_value.b = off1_size;
+	params.params[0].type = TEE_CLIENT_PARAM_VALUE_IN;
+
+	if (off2_size > 0) {
+		params.params[1].tee_client_value.a = TSIF_PHYSICAL_ADDRESS + /*(TSIF_PHYSICAL_SIZE >> 1)*/ + (off2 - TSIF_VIRTUAL_ADDRESS);
+		params.params[1].tee_client_value.b = off2_size;
+		params.params[1].type = TEE_CLIENT_PARAM_VALUE_IN;
+	}
+
+	int rc;
+	rc = tee_client_execute_command(tsmp_dev[dmxch].context, &params, CMD_COLLECT_DATA);
+	if (rc) {
+		ELOG("fail to execute TA command rc %x\n", rc);
 	} else {
-		ELOG("overflow buffer info list\n");
-	}
+		tsmp_dev[dmxch].revent_mask |= TSMP_EVENT;
+ 	}
 #endif
-	if (tsmp_dev[dmxch].acc_buffer_length + off1_size <= DATA_BUFFER_SIZE) {
-		memcpy(
-			(void *)(tsmp_dev[dmxch].acc_buffer + tsmp_dev[dmxch].acc_buffer_length), (void *)off1,
-			off1_size);
-		tsmp_dev[dmxch].acc_buffer_length += off1_size;
-	}
-	if (tsmp_dev[dmxch].acc_buffer_length + off2_size <= DATA_BUFFER_SIZE) {
-		memcpy(
-			(void *)(tsmp_dev[dmxch].acc_buffer + tsmp_dev[dmxch].acc_buffer_length), (void *)off2,
-			off2_size);
-		tsmp_dev[dmxch].acc_buffer_length += off2_size;
-	}
-	tsmp_dev[dmxch].revent_mask |= TSMP_EVENT;
+
 	ILOG(
 		"callback in dmx ch %d buf1 %x size %d = %x, buf2 %x size %d = %x\n", dmxch, (uint32_t)off1,
 		off1_size, (uint32_t)(off1 + off1_size), (uint32_t)off2, off2_size,
@@ -108,9 +115,6 @@ static void tsmp_callback(int dmxch, uintptr_t off1, int off1_size, uintptr_t of
 	mutex_unlock(&tsmp_dev[dmxch].mutex);
 }
 
-#define SECURE_INBUF_ADDR 0x4b102000
-#define TOTAL_SECURE_INBUF_SIZE 0xc00000
-#define SECURE_INBUF_SIZE 0x300000
 static int tsmp_depack_stream_ioctl(struct file *filp, struct tsmp_depack_stream *p_depack_stream)
 {
 	int ret = -1;
@@ -172,7 +176,7 @@ static int tsmp_depack_stream_ioctl(struct file *filp, struct tsmp_depack_stream
 	depack->nLength = params.params[1].tee_client_value.b;
 	depack->nTimestampMs = info[0].pts;
 	memcpy(depack->info, info, sizeof(struct depack_frame_info) * depack->nFrames);
-	ELOG("nFrames %d, nLength %d\n", depack->nFrames, depack->nLength);
+	ILOG("nFrames %d, nLength %d\n", depack->nFrames, depack->nLength);
 	data_remain = params.params[3].tee_client_value.a;
 
 	ret = copy_to_user(p_depack_stream, &dev->depack_out, sizeof(struct tsmp_depack_stream));
@@ -372,6 +376,7 @@ static unsigned int tsmp_poll(struct file *filp, poll_table *wait)
 			ret = 0;
 		} else {
 			/* This is where TA Invoke Command is called */
+#if 0
 			struct tee_client_params params;
 			memset(&params, 0, sizeof(params));
 
@@ -424,6 +429,7 @@ static unsigned int tsmp_poll(struct file *filp, poll_table *wait)
 					return -1;
 				}
 			}
+#endif
 #endif
 
 			/*******************************************/
