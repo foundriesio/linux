@@ -265,6 +265,7 @@ typedef struct extent_map *(get_extent_t)(struct btrfs_inode *inode,
 
 void extent_io_tree_init(struct extent_io_tree *tree,
 			 struct address_space *mapping);
+void extent_io_tree_release(struct extent_io_tree *tree);
 int try_release_extent_mapping(struct extent_map_tree *map,
 			       struct extent_io_tree *tree, struct page *page,
 			       gfp_t mask);
