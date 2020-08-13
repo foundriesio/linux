@@ -2501,6 +2501,12 @@
 		telechips,no-pull;
 	};
 
+	tsc2_default: tsc2_default {
+		telechips,pins = "gpc-13", "gpc-12";
+		telechips,pin-function = <0>;
+		telechips,no-pull;
+	};
+
 	pmic_irq: pmic_irq {
 		telechips,pins = "gpmc-4";
 		telechips,pin-function = <0>;

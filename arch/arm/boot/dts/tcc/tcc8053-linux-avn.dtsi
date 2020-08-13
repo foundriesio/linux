@@ -229,9 +229,10 @@
 		pinctrl-names = "default";
 		pinctrl-0 = <&i2c6_bus>;
 
-		mxt_touch@4a {
+		mxt_touch@4b {
 			compatible = "atmel,maxtouch";
-			reg = <0x4a>;
+			status = "okay";
+			reg = <0x4b>;
 			pinctrl-names = "default";
 			pinctrl-0 = <&tsc0_default>;
 			irq-gpios = <&gpsd1 9 0x0>;
@@ -246,15 +247,25 @@
 		pinctrl-names = "default";
 		pinctrl-0 = <&i2c33_bus>;
 
-		mxt_touch@4a {
+		mxt_touch@4d {
 			compatible = "atmel,maxtouch";
-			reg = <0x4a>;
+			status = "disabled";
+			reg = <0x4d>;
 			pinctrl-names = "default";
 			pinctrl-0 = <&tsc1_default>;
 			irq-gpios = <&gpa 21 0x0>;
 			reset-gpios = <&gpmd 8 0x0>;
 		};
 
+		mxt_touch@4f {
+			compatible = "atmel,maxtouch";
+			status = "disabled";
+			reg = <0x4f>;
+			pinctrl-names = "default";
+			pinctrl-0 = <&tsc2_default>;
+			irq-gpios = <&gpc 13 0x0>;
+			reset-gpios = <&gpc 12 0x0>;
+		};
 	};
 
 	i2c@16370000 {

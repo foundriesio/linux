@@ -2377,11 +2377,18 @@
 		telechips,input_buffer_enable;
 	};
 
-	tsc_default: tsc_default {
+	tsc0_default: tsc0_default {
 		telechips,pins = "gpsd1-9", "gpb-16";
 		telechips,pin-function = <0>;
 		telechips,no-pull;
 	};
+
+	tsc1_default: tsc1_default {
+		telechips,pins = "gpe-19";
+		telechips,pin-function = <0>;
+		telechips,no-pull;
+	};
+
 	pmic_irq: pmic_irq {
 		telechips,pins = "gpb-22";
 		telechips,pin-function = <0>;
