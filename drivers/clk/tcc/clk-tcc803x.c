@@ -1,9 +1,7 @@
-/****************************************************************************
- *
- * clk-tcc803x.h
- * Copyright (C) 2018 Telechips Inc.
- *
- ****************************************************************************/
+// SPDX-License-Identifier: GPL-2.0-or-later
+/*
+ * Copyright (C) Telechips Inc.
+ */
 
 #include <linux/clocksource.h>
 //#include <linux/of_address.h>

@@ -1,3 +1,8 @@
+// SPDX-License-Identifier: GPL-2.0-or-later
+/*
+ * Copyright (C) Telechips Inc.
+ */
+
 #ifndef __TCC_POWER_SILABS_H__
 #define __TCC_POWER_SILABS_H__
 

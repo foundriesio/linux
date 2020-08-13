@@ -1,3 +1,8 @@
+// SPDX-License-Identifier: GPL-2.0-or-later
+/*
+ * Copyright (C) Telechips Inc.
+ */
+
 #if defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X)
 #define TEE_TRNG
 #elif defined(CONFIG_ARCH_TCC805X)

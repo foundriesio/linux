@@ -1,3 +1,7 @@
+// SPDX-License-Identifier: GPL-2.0-or-later
+/*
+ * Copyright (C) Telechips Inc.
+ */
 
 #ifndef	_DEV_MIPI_DSI_H_
 #define	_DEV_MIPI_DSI_H_

@@ -1,3 +1,8 @@
+// SPDX-License-Identifier: GPL-2.0-or-later
+/*
+ * Copyright (C) Telechips Inc.
+ */
+
 #ifndef _TCC_EP9553T_CEC_IOCTL_H_
 #define _TCC_EP9553T_CEC_IOCTL_H_
 

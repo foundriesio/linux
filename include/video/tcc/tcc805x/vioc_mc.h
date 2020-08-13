@@ -1,3 +1,8 @@
+// SPDX-License-Identifier: GPL-2.0-or-later
+/*
+ * Copyright (C) Telechips Inc.
+ */
+
 #ifndef __VIOC_MC_H__
 #define	__VIOC_MC_H__
 

@@ -1,13 +1,7 @@
-/****************************************************************************
-*   FileName    : bsp.h
-*   Description : 
-****************************************************************************
-*
-*   TCC Version : 1.0
-*   Copyright (c) Telechips, Inc.
-*   ALL RIGHTS RESERVED
-*
-****************************************************************************/
+// SPDX-License-Identifier: GPL-2.0-or-later
+/*
+ * Copyright (C) Telechips Inc.
+ */
 
 #ifndef __BSP_H__
 #define __BSP_H__

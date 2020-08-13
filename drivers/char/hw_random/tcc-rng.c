@@ -1,3 +1,8 @@
+// SPDX-License-Identifier: GPL-2.0-or-later
+/*
+ * Copyright (C) Telechips Inc.
+ */
+
 #include <linux/hw_random.h>
 #include <linux/module.h>
 #include <linux/platform_device.h>

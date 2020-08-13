@@ -1,3 +1,8 @@
+// SPDX-License-Identifier: GPL-2.0-or-later
+/*
+ * Copyright (C) Telechips Inc.
+ */
+
 #ifndef HWDEMUX_BIN_H
 #define HWDEMUX_BIN_H
 unsigned char HWDemux_bin[] = {

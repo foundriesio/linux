@@ -1,13 +1,7 @@
-/****************************************************************************
- *   FileName    : micom_devices.c
- *   Description :
- ****************************************************************************
- *
- *   Copyright (c) 2016 Telechips Inc.
- *
- *   Author : SangWon Lee <leesw@telechips.com>
- *
- *****************************************************************************/
+// SPDX-License-Identifier: GPL-2.0-or-later
+/*
+ * Copyright (C) Telechips Inc.
+ */
 
 #include <linux/module.h>
 #include <linux/platform_device.h>

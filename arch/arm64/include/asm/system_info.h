@@ -1,3 +1,8 @@
+// SPDX-License-Identifier: GPL-2.0-or-later
+/*
+ * Copyright (C) Telechips Inc.
+ */
+
 #ifndef __ASM_ARM_SYSTEM_INFO_H
 #define __ASM_ARM_SYSTEM_INFO_H
 #ifndef __ASSEMBLY__

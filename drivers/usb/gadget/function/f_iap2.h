@@ -1,3 +1,8 @@
+// SPDX-License-Identifier: GPL-2.0-or-later
+/*
+ * Copyright (C) Telechips Inc.
+ */
+
 #ifndef F_IAP2_H		/* 016.11.14 */
 #define F_IAP2_H
 

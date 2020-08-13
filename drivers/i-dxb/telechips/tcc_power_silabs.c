@@ -1,3 +1,8 @@
+// SPDX-License-Identifier: GPL-2.0-or-later
+/*
+ * Copyright (C) Telechips Inc.
+ */
+
 #include <linux/delay.h>
 #include <linux/of_gpio.h>
 #include <linux/slab.h>

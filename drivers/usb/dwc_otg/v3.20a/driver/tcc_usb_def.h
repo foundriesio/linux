@@ -1,6 +1,8 @@
+// SPDX-License-Identifier: GPL-2.0-or-later
 /*
- *
+ * Copyright (C) Telechips Inc.
  */
+
 #ifndef __TCC_USB_DEF_H__
 #define __TCC_USB_DEF_H__
 

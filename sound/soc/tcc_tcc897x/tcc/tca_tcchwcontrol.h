@@ -1,3 +1,8 @@
+// SPDX-License-Identifier: GPL-2.0-or-later
+/*
+ * Copyright (C) Telechips Inc.
+ */
+
 /****************************************************************************
  *   FileName    : tca_tcchwcontrol.h
  *   Description : 

@@ -1,3 +1,7 @@
+// SPDX-License-Identifier: GPL-2.0-or-later
+/*
+ * Copyright (C) Telechips Inc.
+ */
 
 #ifndef _PL08X_H_
 #define _PL08X_H_

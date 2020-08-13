@@ -1,9 +1,7 @@
-/****************************************************************************
- *
- * clk-tcc901x.c
- * Copyright (C) 2019 Telechips Inc.
- *
- ****************************************************************************/
+// SPDX-License-Identifier: GPL-2.0-or-later
+/*
+ * Copyright (C) Telechips Inc.
+ */
 
 #include <linux/clocksource.h>
 //#include <linux/of_address.h>

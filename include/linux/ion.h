@@ -1,3 +1,8 @@
+// SPDX-License-Identifier: GPL-2.0-or-later
+/*
+ * Copyright (C) Telechips Inc.
+ */
+
 #ifndef _INCLUDE_LINUX_ION_H_
 #define _INCLUDE_LINUX_ION_H_
 #include "../../drivers/staging/android/uapi/ion_4.9.h"

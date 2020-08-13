@@ -1,9 +1,7 @@
-/****************************************************************************
- *
- * clk-tcc899x.h
- * Copyright (C) 2018 Telechips Inc.
- *
- ****************************************************************************/
+// SPDX-License-Identifier: GPL-2.0-or-later
+/*
+ * Copyright (C) Telechips Inc.
+ */
 
 #ifndef __CLK_TCC899X__H__
 #define __CLK_TCC899X__H__

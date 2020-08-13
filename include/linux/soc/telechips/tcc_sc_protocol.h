@@ -1,3 +1,8 @@
+// SPDX-License-Identifier: GPL-2.0-or-later
+/*
+ * Copyright (C) Telechips Inc.
+ */
+
 #ifndef __TCC_SC_PROTOCOL__
 #define __TCC_SC_PROTOCOL__
 

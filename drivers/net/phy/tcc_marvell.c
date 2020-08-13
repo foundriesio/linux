@@ -1,5 +1,6 @@
+// SPDX-License-Identifier: GPL-2.0-or-later
 /*
- *	drivers/net/phy/tcc_marvell_q2110.c
+ * Copyright (C) Telechips Inc.
  */
 
 #include <linux/module.h>
