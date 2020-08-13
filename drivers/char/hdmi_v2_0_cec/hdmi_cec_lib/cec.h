@@ -1,10 +1,8 @@
-/****************************************************************************
-hdmi_cec
+// SPDX-License-Identifier: GPL-2.0-or-later
+/*
+ * Copyright (C) Telechips Inc.
+ */
 
-Copyright (C) 2018 Telechips Inc.
-
-NOTE: Tab size is 8
-****************************************************************************/
 #ifndef __HDMI_CEC_H__
 #define __HDMI_CEC_H__
 

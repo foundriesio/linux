@@ -1,4 +1,9 @@
-﻿#ifndef USB_VENDOR_ID_ILITEK
+﻿// SPDX-License-Identifier: GPL-2.0-or-later
+/*
+ * Copyright (C) Telechips Inc.
+ */
+
+#ifndef USB_VENDOR_ID_ILITEK
 	#define USB_VENDOR_ID_ILITEK	0x222A
 #endif
 #ifndef USB_DEVICE_ID_ILITEK_MT

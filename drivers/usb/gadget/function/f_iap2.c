@@ -1,9 +1,10 @@
+// SPDX-License-Identifier: GPL-2.0-or-later
 /*
- * Gadget Function Driver for Apple IAP2 
- *
- * Copyright (C) 2013 Telechips, Inc.
- * Author: jmlee <jmlee@telechips.com>
- *
+ * Copyright (C) Telechips Inc.
+ */
+
+/*
+ * Gadget Function Driver for Apple IAP2
  */
 
 /* #define DEBUG */

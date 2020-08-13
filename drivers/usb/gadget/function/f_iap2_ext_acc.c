@@ -1,10 +1,11 @@
+// SPDX-License-Identifier: GPL-2.0-or-later
+/*
+ * Copyright (C) Telechips Inc.
+ */
+
 /*
  * Gadget Function Driver for
  * Apple iAP2 External Accessory Protocol Native Transfer
- *
- * Copyright (C) 2016 Telechips, Inc.
- * Author: thjeong <thjeong@telechips.com>
- *
  */
 
 #include <linux/module.h>

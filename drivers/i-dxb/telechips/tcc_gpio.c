@@ -1,3 +1,8 @@
+// SPDX-License-Identifier: GPL-2.0-or-later
+/*
+ * Copyright (C) Telechips Inc.
+ */
+
 #include "tcc_gpio.h"
 
 void tcc_gpio_init(int i_pin, gpio_direction_e e_direction)

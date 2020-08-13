@@ -1,9 +1,7 @@
-/****************************************************************************
- *
- *  Copyright (C) 2016 Telechips, Inc.
- *  All Rights Reserved
- *
- ****************************************************************************/
+// SPDX-License-Identifier: GPL-2.0-or-later
+/*
+ * Copyright (C) Telechips Inc.
+ */
 
 #ifndef __TCC_HCD_H__
 #define __TCC_HCD_H__

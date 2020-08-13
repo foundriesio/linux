@@ -1,12 +1,7 @@
-/****************************************************************************
- *  FileName    : globals.h
- *  Description :
- ****************************************************************************
- *
- *  Copyright (C) 2014 Telechips, Inc.
- *  All Rights Reserved
- *
- ****************************************************************************/
+// SPDX-License-Identifier: GPL-2.0-or-later
+/*
+ * Copyright (C) Telechips Inc.
+ */
 
 #ifndef __GLOBALS_H__
 #define __GLOBALS_H__

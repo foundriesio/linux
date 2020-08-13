@@ -1,20 +1,13 @@
+// SPDX-License-Identifier: GPL-2.0-or-later
+/*
+ * Copyright (C) Telechips Inc.
+ */
+
 /*
  * drivers/gpu/vivante/bare_metal/2d_rotation_drv.c
  *
  * Vivante 2D Rotation driver with Bare-Metal case
- *
- * Copyright (C) 2009 Telechips, Inc.
- *
- * This software is licensed under the terms of the GNU General Public
- * License version 2, as published by the Free Software Foundation, and
- * may be copied, distributed, and modified under those terms.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
  */
-
 
 #include <linux/module.h>
 #include <linux/platform_device.h>

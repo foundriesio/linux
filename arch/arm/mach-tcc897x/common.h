@@ -1,3 +1,8 @@
+// SPDX-License-Identifier: GPL-2.0-or-later
+/*
+ * Copyright (C) Telechips Inc.
+ */
+
 #ifndef __MACH_TCC897X_COMMON_H
 #define __MACH_TCC897X_COMMON_H
 

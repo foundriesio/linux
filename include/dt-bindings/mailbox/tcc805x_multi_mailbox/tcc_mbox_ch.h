@@ -1,3 +1,8 @@
+// SPDX-License-Identifier: GPL-2.0-or-later
+/*
+ * Copyright (C) Telechips Inc.
+ */
+
 #ifndef DT_TCC_MBOX_CH_H
 #define DT_TCC_MBOX_CH_H
 

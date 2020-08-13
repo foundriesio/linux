@@ -1,13 +1,8 @@
-/****************************************************************************
- *   FileName    : tca_nsk_sc.h
- *   Description :
- ****************************************************************************
- *
- *   TCC Version 1.0
- *   Copyright (c) Telechips, Inc.
- *   ALL RIGHTS RESERVED
- *
- ****************************************************************************/
+// SPDX-License-Identifier: GPL-2.0-or-later
+/*
+ * Copyright (C) Telechips Inc.
+ */
+
 #ifndef _TCA_NSK_SC_H_
 #define _TCA_NSK_SC_H_
 

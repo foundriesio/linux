@@ -1,7 +1,8 @@
+// SPDX-License-Identifier: GPL-2.0-or-later
 /*
- * linux/sound/soc/tcc/tcc-i2s-dsp.c
- *
+ * Copyright (C) Telechips Inc.
  */
+
 #include <linux/module.h>
 #include <linux/platform_device.h>
 #include <linux/miscdevice.h>

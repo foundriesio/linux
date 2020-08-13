@@ -1,5 +1,7 @@
-
-/* SPDX-License-Identifier: GPL-2.0 */
+// SPDX-License-Identifier: GPL-2.0-or-later
+/*
+ * Copyright (C) Telechips Inc.
+ */
 
 #ifndef _TCCVIN_VIDEO_H_
 #define _TCCVIN_VIDEO_H_

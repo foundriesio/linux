@@ -1,4 +1,8 @@
-// SPDX-License-Identifier: GPL-2.0
+// SPDX-License-Identifier: GPL-2.0-or-later
+/*
+ * Copyright (C) Telechips Inc.
+ */
+
 #include <linux/fs.h>
 #include <linux/init.h>
 #include <linux/proc_fs.h>
