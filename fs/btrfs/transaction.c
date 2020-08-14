@@ -99,35 +99,6 @@ void btrfs_put_transaction(struct btrfs_transaction *transaction)
 	}
 }
 
-static void clear_btree_io_tree(struct extent_io_tree *tree)
-{
-	spin_lock(&tree->lock);
-	/*
-	 * Do a single barrier for the waitqueue_active check here, the state
-	 * of the waitqueue should not change once clear_btree_io_tree is
-	 * called.
-	 */
-	smp_mb();
-	while (!RB_EMPTY_ROOT(&tree->state)) {
-		struct rb_node *node;
-		struct extent_state *state;
-
-		node = rb_first(&tree->state);
-		state = rb_entry(node, struct extent_state, rb_node);
-		rb_erase(&state->rb_node, &tree->state);
-		RB_CLEAR_NODE(&state->rb_node);
-		/*
-		 * btree io trees aren't supposed to have tasks waiting for
-		 * changes in the flags of extent states ever.
-		 */
-		ASSERT(!waitqueue_active(&state->wq));
-		free_extent_state(state);
-
-		cond_resched_lock(&tree->lock);
-	}
-	spin_unlock(&tree->lock);
-}
-
 static noinline void switch_commit_roots(struct btrfs_transaction *trans,
 					 struct btrfs_fs_info *fs_info)
 {
@@ -141,7 +112,7 @@ static noinline void switch_commit_roots(struct btrfs_transaction *trans,
 		root->commit_root = btrfs_root_node(root);
 		if (is_fstree(root->objectid))
 			btrfs_unpin_free_ino(root);
-		clear_btree_io_tree(&root->dirty_log_pages);
+		extent_io_tree_release(&root->dirty_log_pages);
 		btrfs_qgroup_clean_swapped_blocks(root);
 	}
 
@@ -957,7 +928,7 @@ int btrfs_write_marked_extents(struct btrfs_fs_info *fs_info,
 		 * superblock that points to btree nodes/leafs for which
 		 * writeback hasn't finished yet (and without errors).
 		 * We cleanup any entries left in the io tree when committing
-		 * the transaction (through clear_btree_io_tree()).
+		 * the transaction (through extent_io_tree_release()).
 		 */
 		if (err == -ENOMEM) {
 			err = 0;
@@ -1002,7 +973,7 @@ static int __btrfs_wait_marked_extents(struct btrfs_fs_info *fs_info,
 		 * left in the io tree. For a log commit, we don't remove them
 		 * after committing the log because the tree can be accessed
 		 * concurrently - we do it only at transaction commit time when
-		 * it's safe to do it (through clear_btree_io_tree()).
+		 * it's safe to do it (through extent_io_tree_release()).
 		 */
 		err = clear_extent_bit(dirty_pages, start, end,
 				       EXTENT_NEED_WAIT,
@@ -1062,40 +1033,33 @@ int btrfs_wait_tree_log_extents(struct btrfs_root *log_root, int mark)
 }
 
 /*
- * when btree blocks are allocated, they have some corresponding bits set for
- * them in one of two extent_io trees.  This is used to make sure all of
- * those extents are on disk for transaction or log commit
+ * When btree blocks are allocated the corresponding extents are marked dirty.
+ * This function ensures such extents are persisted on disk for transaction or
+ * log commit.
+ *
+ * @trans: transaction whose dirty pages we'd like to write
  */
-static int btrfs_write_and_wait_marked_extents(struct btrfs_fs_info *fs_info,
-				struct extent_io_tree *dirty_pages, int mark)
-{
-	int ret;
-	int ret2;
-	struct blk_plug plug;
-
-	blk_start_plug(&plug);
-	ret = btrfs_write_marked_extents(fs_info, dirty_pages, mark);
-	blk_finish_plug(&plug);
-	ret2 = btrfs_wait_extents(fs_info, dirty_pages);
-
-	if (ret)
-		return ret;
-	if (ret2)
-		return ret2;
-	return 0;
-}
-
 static int btrfs_write_and_wait_transaction(struct btrfs_trans_handle *trans,
 					    struct btrfs_fs_info *fs_info)
 {
 	int ret;
+	int ret2;
+	struct extent_io_tree *dirty_pages = &trans->transaction->dirty_pages;
+	struct blk_plug plug;
 
-	ret = btrfs_write_and_wait_marked_extents(fs_info,
-					   &trans->transaction->dirty_pages,
-					   EXTENT_DIRTY);
-	clear_btree_io_tree(&trans->transaction->dirty_pages);
+	blk_start_plug(&plug);
+	ret = btrfs_write_marked_extents(fs_info, dirty_pages, EXTENT_DIRTY);
+	blk_finish_plug(&plug);
+	ret2 = btrfs_wait_extents(fs_info, dirty_pages);
 
-	return ret;
+	extent_io_tree_release(&trans->transaction->dirty_pages);
+
+	if (ret)
+		return ret;
+	else if (ret2)
+		return ret2;
+	else
+		return 0;
 }
 
 /*
