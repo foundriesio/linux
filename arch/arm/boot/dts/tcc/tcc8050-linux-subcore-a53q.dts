@@ -1483,7 +1483,7 @@
 		 compatible = "telechips,mbox_test";
 		 device-name = "micom_mbox_test";
 		 mbox-names ="mbox_test";
-		 mboxes = <&micom_mbox TCC_MICOM_MBOX0_TEST>;
+		 mboxes = <&micom_mbox TCC_MICOM_MBOX1_TEST>;
 		 mbox-id = TCC_MBOX_TEST_ID;
 	 };
 	/* cb_mbox test */
@@ -1499,7 +1499,7 @@
 		 compatible = "telechips,tcc_ipc";
 		 device-name = "tcc_ipc_micom";
 		 mbox-names ="micom-ipc";
-		 mboxes = <&micom_mbox TCC_MICOM_MBOX0_IPC>;
+		 mboxes = <&micom_mbox TCC_MICOM_MBOX1_IPC>;
 		 mbox-id = TCC_MBOX_IPC_ID;
 	 };
 
