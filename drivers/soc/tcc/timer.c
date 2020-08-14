@@ -314,6 +314,14 @@ static void tcc_timer_parse_dt(struct device_node *np)
 			timer_writel(TREF_LPO_REF, timer_base+(res*0x10)+TCC_TREF);
 		}
 	}
+
+	of_property_for_each_u32(np, "tcc-timer-reserved-for-wdt", prop, i, res)
+	{
+		if (res < TCC_TIMER_MAX && res >= 0) {
+			pr_info("tcc_timer: reserved channel-%d for watchdog reset timer\n", res);
+			timer_res[res].reserved = 1;
+		}
+	}
 }
 
 /* This function only set the clock of timer-t. */
