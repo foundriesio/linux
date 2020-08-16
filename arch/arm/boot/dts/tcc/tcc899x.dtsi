@@ -686,17 +686,10 @@
 			no-map;
 		};
 
-		reserved_secure_tsa: secure_tsa {
+		reserved_secure_tsif: secure_tsif {
 			compatible = "telechips,pmap";
-			telechips,pmap-name = "secure_tsa";
-			reg = <PMAP_BASE_SECURE_TSA PMAP_SIZE_SECURE_TSA>;
-			no-map;
-		};
-
-		reserved_secure_tsv: secure_tsv {
-			compatible = "telechips,pmap";
-			telechips,pmap-name = "secure_tsv";
-			reg = <PMAP_BASE_SECURE_TSV PMAP_SIZE_SECURE_TSV>;
+			telechips,pmap-name = "secure_tsif";
+			reg = <PMAP_BASE_SECURE_TSIF PMAP_SIZE_SECURE_TSIF>;
 			no-map;
 		};
 	};
@@ -2796,7 +2789,7 @@
 		reg = <0x19080000 0x10000 0x19100000 0x32>;
 		mbox-names = "sp-mbox";
 		mboxes = <&cmbox 0>;
-		memory-region = <&reserved_secure_tsv>;
+		memory-region = <&reserved_secure_tsif>;
 	};
 
 	tcc-mbox-audio {

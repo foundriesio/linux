@@ -23,6 +23,8 @@
 
 #define FILTER_TYPE_SECTION 0
 #define FILTER_TYPE_TS 1
+#define FILTER_TYPE_PES 2
+#define FILTER_TYPE_PCR 3
 
 struct tcc_tsif_filter
 {

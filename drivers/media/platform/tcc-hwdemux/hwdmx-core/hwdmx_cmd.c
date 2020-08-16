@@ -53,10 +53,12 @@
 #define HWDMX_SET_KLDATA_CMD			SP_CMD(MAGIC_NUM, 0x010)
 #define HWDMX_GET_KLNRESP_CMD			SP_CMD(MAGIC_NUM, 0x011)
 #define HWDMX_SET_MODE_ADDPID_CMD		SP_CMD(MAGIC_NUM, 0x012)
+#define HWDMX_SET_SMP_CMD               SP_CMD(MAGIC_NUM, 0x013)
 /* Up to 16 of events can be assigned. */
 #define HWDMX_WBUF_UPDATED_EVT			SP_EVENT(MAGIC_NUM, 1)
 #define HWDMX_STC_RECV_EVT				SP_EVENT(MAGIC_NUM, 2)
 #define HWDMX_RBUF_EMPTY_EVT			SP_EVENT(MAGIC_NUM, 3)
+#define HWDMX_PROT_BUF_UPDATED_EVT      SP_EVENT(MAGIC_NUM, 4)
 /* ... */
 #define HWDMX_DEBUG_DATA_EVT			SP_EVENT(MAGIC_NUM, 16)
 // clang-format on
@@ -81,15 +83,6 @@ enum
 	INTERNAL         // for uiTSIFInterface - Demuxer ID should be 1
 };
 
-// FILTER TYPE
-enum
-{
-	SECTION = 0,
-	TS,
-	PES,
-	PCR,
-};
-
 enum
 {
 	even=2,
@@ -110,6 +103,7 @@ static int hwdmx_evt_handler(int cmd, void *rdata, int size)
 	int dmxid = ((int *)rdata)[0];
 
 	switch (cmd) {
+	case HWDMX_PROT_BUF_UPDATED_EVT:
 	case HWDMX_WBUF_UPDATED_EVT: {
 		int filter_type, filter_id, value1, value2, err_crc;
 
@@ -131,11 +125,11 @@ static int hwdmx_evt_handler(int cmd, void *rdata, int size)
 		err_crc = ((int *)rdata)[5];
 
 		switch (filter_type) {
-		case TS:
+		case FILTER_TYPE_TS:
 			value1++;
 			break;
 
-		case SECTION:
+		case FILTER_TYPE_SECTION:
 			break;
 
 		default:
@@ -151,7 +145,7 @@ static int hwdmx_evt_handler(int cmd, void *rdata, int size)
 
 	case HWDMX_STC_RECV_EVT: {
 		int stc_base, stc_ext;
-		int filter_type = PCR, fid = 0;
+		int filter_type = FILTER_TYPE_PCR, fid = 0;
 
 		if (size != sizeof(int) * 4) {
 			return -1;
@@ -251,7 +245,7 @@ int hwdmx_start_cmd(struct tcc_tsif_handle *h)
 {
 	int result = 0, rsize;
 	int tsif;
-	int mbox_data[12], mbox_result;
+	int mbox_data[14], mbox_result;
 
 	pr_info(
 		"\n[INFO][HWDMX]%s:%d:0x%08x:0x%p:0x%08X port:%u\n", __func__, __LINE__,
@@ -290,6 +284,8 @@ int hwdmx_start_cmd(struct tcc_tsif_handle *h)
 	mbox_data[9] = h->port_cfg.tsif_port;
 	mbox_data[10] = 0x2; // HW1
 	mbox_data[11] = 0;
+	mbox_data[12] = h->dma_buffer->secure_dma_addr;
+	mbox_data[13] = h->dma_buffer->buf_size;
 	rsize = sp_sendrecv_cmd(
 		HWDMX_START_CMD, mbox_data, sizeof(mbox_data), &mbox_result, sizeof(mbox_result));
 	if (rsize < 0) {
@@ -298,14 +294,24 @@ int hwdmx_start_cmd(struct tcc_tsif_handle *h)
 		goto out;
 	}
 
+	/* For lower compatibility of SP firmware */
+	if (mbox_result == -EINVAL) {
+		rsize = sp_sendrecv_cmd(
+			HWDMX_START_CMD, mbox_data, 12 * sizeof(int), &mbox_result, sizeof(mbox_result));
+		if (rsize < 0) {
+			pr_err("[ERROR][HWDMX] [%s:%d] sp_sendrecv_cmd error\n", __func__, __LINE__);
+			result = -EBADR;
+			goto out;
+		}
+	}
+
 	result = mbox_result;
-	if (result == 0) {
-		session_cnt++;
-	} else {
+	if (result != 0) {
 		pr_err("[ERROR][HWDMX] [%s:%d] SP returned an error: %d\n", __func__, __LINE__, result);
 		goto out;
 	}
 
+	session_cnt++;
 out:
 	return result;
 }
@@ -408,7 +414,7 @@ int hwdmx_add_filter_cmd(struct tcc_tsif_handle *h, struct tcc_tsif_filter *feed
 	mbox_data[1] = feed->f_type;
 	mbox_data[2] = feed->f_pid;
 	switch (feed->f_type) {
-	case SECTION:
+	case FILTER_TYPE_SECTION:
 		if (feed->f_size > 16) {
 			pr_err("[ERROR][HWDMX] !!! filter size is over 16 then it sets to 16.\n");
 			feed->f_size = 16; // HWDMX can support less than 16 bytes filter size.
@@ -440,8 +446,8 @@ int hwdmx_add_filter_cmd(struct tcc_tsif_handle *h, struct tcc_tsif_filter *feed
 			HWDMX_ADD_FILTER_CMD, mbox_data, 20 + feed->f_size * 3, &mbox_result, sizeof(mbox_result));
 		break;
 
-	case TS:
-	case PES:
+	case FILTER_TYPE_TS:
+	case FILTER_TYPE_PES:
 		rsize = sp_sendrecv_cmd(
 			HWDMX_ADD_FILTER_CMD, mbox_data, sizeof(int) * 3, &mbox_result, sizeof(mbox_result));
 		break;
@@ -481,7 +487,7 @@ int hwdmx_remove_filter_cmd(struct tcc_tsif_handle *h, struct tcc_tsif_filter *f
 		"[INFO][HWDMX][DEMUX #%d]hwdmx_remove_filter(type=%d, pid=%d)\n", h->dmx_id, feed->f_type,
 		feed->f_pid);
 
-	fid = (feed->f_type == SECTION) ? feed->f_id : 0;
+	fid = (feed->f_type == FILTER_TYPE_SECTION) ? feed->f_id : 0;
 	mbox_data[0] = h->dmx_id;
 	mbox_data[1] = fid;
 	mbox_data[2] = feed->f_type;
@@ -563,7 +569,7 @@ int hwdmx_set_cipher_dec_pid_cmd(struct tcc_tsif_handle *h,
 	mbox_data[2] = delete_option;
 	if(numOfPids>0)
 		memcpy(mbox_data + 3, (unsigned char *)pids, numOfPids*2);
-	
+
 	rsize = sp_sendrecv_cmd(
 			HWDMX_SET_MODE_ADDPID_CMD, mbox_data, sizeof(mbox_data), &mbox_result, sizeof(mbox_result));
 	if (rsize < 0) {

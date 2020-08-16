@@ -267,7 +267,7 @@ int tcc_tsif_start(unsigned int devid)
 			spin_lock_init(&pTask->ts_packet_list.lock);
 			tasklet_init(&pTask->tsif_tasklet, tcc_tsif_running_feed, (type << 16) | devid);
 		}
-#endif        
+#endif
 		hwdmx_set_external_tsdemux(&pHandle->demux, tcc_tsif_parse_packet);
 	}
 
@@ -422,7 +422,7 @@ int tcc_tsif_set_pid(struct dvb_demux_feed *feed, unsigned int devid)
 				pHandle->ts_table.iPID[i] = feed->pid;
 				pHandle->ts_table.iUsers[i] = filterNum;
 
-				param.f_type = 1; // HW_DEMUX_TS
+				param.f_type = FILTER_TYPE_TS;
 				param.f_id = 0;
 				param.f_pid = feed->pid;
 				param.f_size = 0;
@@ -449,7 +449,7 @@ int tcc_tsif_set_pid(struct dvb_demux_feed *feed, unsigned int devid)
 			pHandle->sec_table.iUseSW[demux->filter[i].index] = useSW;
 
 			if (useSW == 0) {
-				param.f_type = 0; // HW_DEMUX_SECTION
+				param.f_type = FILTER_TYPE_SECTION;
 				param.f_id = demux->filter[i].index;
 				param.f_pid = feed->pid;
 				param.f_comp = demux->filter[i].filter.filter_value;

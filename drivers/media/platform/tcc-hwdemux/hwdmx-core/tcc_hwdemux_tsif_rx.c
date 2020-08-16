@@ -62,6 +62,7 @@
 
 static DEFINE_SPINLOCK(timer_lock);
 static int hwdmx_tsif_num;
+static rx_smpcb g_smpcb[HWDMX_NUM];
 
 #if defined(DEMUX_SYSFS)
 struct tcc_tsif_stat
@@ -84,6 +85,8 @@ struct tcc_tsif_pri_handle
 #if defined(USE_REV_MEMORY)
 	pmap_t pmap_tsif;
 	void *mem_base;
+	pmap_t pmap_secure_tsif;
+	void *virt_secure_tsif;
 #endif
 	struct tea_dma_buf *static_dma_buffer[HWDMX_NUM];
 	struct tca_tsif_port_config port_cfg[HWDMX_NUM];
@@ -365,7 +368,7 @@ static int __maybe_unused rx_dma_buffer_free(int devid, struct tea_dma_buf *dma)
 static int rx_dma_alloc_buffer(int devid)
 {
 	int __maybe_unused i, __maybe_unused os;
-	int size;
+	int size, ret;
 
 	tsif_ex_pri.static_dma_buffer[devid] = kmalloc(sizeof(struct tea_dma_buf), GFP_KERNEL);
 	if (tsif_ex_pri.static_dma_buffer[devid] == NULL) {
@@ -376,8 +379,9 @@ static int rx_dma_alloc_buffer(int devid)
 	}
 
 #ifdef USE_REV_MEMORY
-	if (tsif_ex_pri.mem_base == NULL) {
-		return -ENOMEM;
+	if (tsif_ex_pri.mem_base == NULL || tsif_ex_pri.virt_secure_tsif == NULL) {
+		ret = -ENOMEM;
+		goto err;
 	}
 
 	os = SECTION_DMA_SIZE;
@@ -391,13 +395,17 @@ static int rx_dma_alloc_buffer(int devid)
 		dev_err(
 			tsif_ex_pri.dev[devid], "[ERROR][HWDMX] %s:%d dma buffer is not enough\n", __FUNCTION__,
 			__LINE__);
-		return -ENOMEM;
+		ret = -ENOMEM;
+		goto err;
 	}
 
 	/* ts buffer */
-	tsif_ex_pri.static_dma_buffer[devid]->buf_size = (size / 188)*188;
+	tsif_ex_pri.static_dma_buffer[devid]->buf_size = (size / 188) * 188;
 	tsif_ex_pri.static_dma_buffer[devid]->v_addr = tsif_ex_pri.mem_base + os;
 	tsif_ex_pri.static_dma_buffer[devid]->dma_addr = tsif_ex_pri.pmap_tsif.base + os;
+	/* Secure ts buffer */
+	tsif_ex_pri.static_dma_buffer[devid]->v_secure_addr = tsif_ex_pri.virt_secure_tsif + os;
+	tsif_ex_pri.static_dma_buffer[devid]->secure_dma_addr = tsif_ex_pri.pmap_secure_tsif.base + os;
 
 	/* sec buffer: all demux share one buffer */
 	tsif_ex_pri.static_dma_buffer[devid]->buf_sec_size = SECTION_DMA_SIZE;
@@ -407,13 +415,17 @@ static int rx_dma_alloc_buffer(int devid)
 	if (rx_dma_buffer_alloc(devid, tsif_ex_pri.static_dma_buffer[devid]) != 0) {
 		dev_err(
 			tsif_ex_pri.dev[devid], "%s:%d dma alloc(%d) failed\n", __FUNCTION__, __LINE__, devid);
-		kfree(tsif_ex_pri.static_dma_buffer[devid]);
-		tsif_ex_pri.static_dma_buffer[devid] = NULL;
-		return -ENOMEM;
+		ret = -ENOMEM;
+		goto err;
 	}
 #endif /* USE_REV_MEMORY */
 
-	return 0;
+	ret = 0;
+	return ret;
+err:
+	kfree(tsif_ex_pri.static_dma_buffer[devid]);
+	tsif_ex_pri.static_dma_buffer[devid] = NULL;
+	return ret;
 }
 
 static int rx_dma_free_buffer(int devid)
@@ -453,6 +465,18 @@ rx_update_stc(struct tcc_hwdmx_tsif_rx_handle *demux, char *p1, int p1_size, cha
 	}
 	return 0;
 }
+
+void rx_set_smpcb(int devid, rx_smpcb cb)
+{
+	g_smpcb[devid] = cb;
+}
+EXPORT_SYMBOL(rx_set_smpcb);
+
+void rx_unset_smpcb(int devid)
+{
+	g_smpcb[devid] = NULL;
+}
+EXPORT_SYMBOL(rx_unset_smpcb);
 
 static int rx_parse_packet(
 	struct tcc_hwdmx_tsif_rx_handle *demux, char *pBuffer, int updated_buff_offset,
@@ -506,6 +530,66 @@ static int rx_parse_packet(
 	return ret;
 }
 
+static int rx_parse_secure_packet(
+	struct tcc_hwdmx_tsif_rx_handle *demux, char *v_addr, dma_addr_t p_addr,
+	int updated_buff_offset, int end_buff_offset)
+{
+	int ret = 0;
+	int dmx_id = demux->tsif_ex_handle.dmx_id;
+	char *v_addr1 = NULL, *v_addr2 = NULL;
+	dma_addr_t p_addr1 = 0, p_addr2 = 0;
+	int size1 = 0, size2 = 0;
+	int packet_th = demux->ts_demux_feed_handle.call_decoder_index;
+
+	if (++demux->ts_demux_feed_handle.index >= packet_th) {
+		if (updated_buff_offset > demux->write_buff_offset) {
+			v_addr1 = (char *)(v_addr + demux->write_buff_offset);
+			p_addr1 = p_addr + demux->write_buff_offset;
+			size1 = updated_buff_offset - demux->write_buff_offset;
+		} else if (end_buff_offset == demux->write_buff_offset) {
+			v_addr1 = (char *)v_addr;
+			p_addr1 = p_addr;
+			size1 = updated_buff_offset;
+		} else {
+			v_addr1 = (char *)(v_addr + demux->write_buff_offset);
+			p_addr1 = p_addr + demux->write_buff_offset;
+			size1 = end_buff_offset - demux->write_buff_offset;
+
+			v_addr2 = (char *)v_addr;
+			p_addr2 = p_addr;
+			size2 = updated_buff_offset;
+		}
+
+		if (v_addr1 == NULL || size1 < 188)
+			return 0;
+
+		rx_update_stc(demux, v_addr1, size1, v_addr2, size2);
+
+		if (g_smpcb[dmx_id] != NULL) {
+			if (g_smpcb[dmx_id](dmx_id, (uintptr_t)p_addr1, size1, (uintptr_t)p_addr2, size2)
+				== 0) {
+				demux->write_buff_offset = updated_buff_offset;
+				demux->ts_demux_feed_handle.index = 0;
+			}
+		}
+
+		if (tcc_hwdmx_tsif_rx_get_debug_mode()) {
+			int i;
+			if (v_addr1 && size1) {
+				for (i = 0; i < size1; i += 188)
+					itv_ts_cc_check(v_addr1 + i);
+			}
+
+			if (v_addr2 && size2) {
+				for (i = 0; i < size2; i += 188)
+					itv_ts_cc_check(v_addr2 + i);
+			}
+		}
+	}
+
+	return ret;
+}
+
 static int rx_updated_callback(
 	unsigned int dmxid, unsigned int ftype, unsigned int fid, unsigned int value1,
 	unsigned int value2, unsigned int bErrCRC)
@@ -515,8 +599,7 @@ static int rx_updated_callback(
 	int ret = 0;
 
 	switch (ftype) {
-	case 0: // HW_DEMUX_SECTION
-	{
+	case FILTER_TYPE_SECTION: {
 #if defined(DEMUX_SYSFS)
 		tsif_ex_pri.stat[dmxid].secevt++;
 #endif
@@ -529,13 +612,22 @@ static int rx_updated_callback(
 		}
 		break;
 	}
-	case 1: // HW_DEMUX_TS
-	{
+	case FILTER_TYPE_TS: {
 #if defined(DEMUX_SYSFS)
 		tsif_ex_pri.stat[dmxid].tsevt++;
 #endif
 		if (demux->ts_demux_feed_handle.is_active != 0) {
-			ret = rx_parse_packet(demux, demux->tsif_ex_handle.dma_buffer->v_addr, value1, value2);
+			switch (fid) {
+			case 0:
+				ret = rx_parse_packet(
+					demux, demux->tsif_ex_handle.dma_buffer->v_addr, value1, value2);
+				break;
+			case 1:
+				ret = rx_parse_secure_packet(
+					demux, demux->tsif_ex_handle.dma_buffer->v_secure_addr,
+					demux->tsif_ex_handle.dma_buffer->secure_dma_addr, value1, value2);
+				break;
+			}
 		}
 		break;
 	}
@@ -648,6 +740,10 @@ struct tcc_hwdmx_tsif_rx_handle *tcc_hwdmx_tsif_rx_start(unsigned int devid)
 	pr_info(
 		"[INFO][HWDMX] [TSIF-%d] dma ts buffer alloc @0x%X(Phy=0x%X), size:%d\n", devid,
 		(unsigned int)dma_buffer->v_addr, (unsigned int)dma_buffer->dma_addr, dma_buffer->buf_size);
+	pr_info(
+		"[INFO][HWDMX] [TSIF-%d] dma secure ts buffer alloc @0x%X(Phy=0x%X), size:%d\n", devid,
+		(unsigned int)dma_buffer->v_secure_addr, (unsigned int)dma_buffer->secure_dma_addr,
+		dma_buffer->buf_size);
 	pr_info(
 		"[INFO][HWDMX] [TSIF-%d] dma sec buffer alloc @0x%X(Phy=0x%X), size:%d\n", devid,
 		(unsigned int)dma_buffer->v_sec_addr, (unsigned int)dma_buffer->dma_sec_addr,
@@ -971,6 +1067,24 @@ int tcc_hwdmx_tsif_rx_init(struct device *dev)
 	pr_info(
 		"[INFO][HWDMX] tsif_ex: pmap(PA: 0x%08x, VA: 0x%p, SIZE: 0x%x)\n",
 		tsif_ex_pri.pmap_tsif.base, tsif_ex_pri.mem_base, tsif_ex_pri.pmap_tsif.size);
+
+	/* This function returns 1 on success, and 0 on failure. Weird function design. */
+	if (pmap_get_info("secure_tsif", &tsif_ex_pri.pmap_secure_tsif) != 1) {
+		ret = -EFAULT;
+		goto out;
+	}
+
+	tsif_ex_pri.virt_secure_tsif =
+		ioremap_nocache(tsif_ex_pri.pmap_secure_tsif.base, tsif_ex_pri.pmap_secure_tsif.size);
+	if (tsif_ex_pri.virt_secure_tsif == NULL) {
+		ret = -EFAULT;
+		goto out;
+	}
+	pr_info(
+		"[INFO][HWDMX] secure tsif: pmap(PA: 0x%08x, VA: 0x%p, SIZE: 0x%x)\n",
+		tsif_ex_pri.pmap_secure_tsif.base, tsif_ex_pri.virt_secure_tsif,
+		tsif_ex_pri.pmap_secure_tsif.size);
+
 #endif /* USE_REV_MEMORY */
 
 #if defined(DEMUX_SYSFS)
@@ -994,6 +1108,10 @@ int tcc_hwdmx_tsif_rx_deinit(struct device *dev)
 		ret = -EFAULT;
 	}
 	iounmap(tsif_ex_pri.mem_base);
+	if (tsif_ex_pri.virt_secure_tsif == NULL) {
+		ret = -EFAULT;
+	}
+	iounmap(tsif_ex_pri.virt_secure_tsif);
 #endif /* USE_REV_MEMORY */
 
 	mutex_destroy(&(tsif_ex_pri.mutex));

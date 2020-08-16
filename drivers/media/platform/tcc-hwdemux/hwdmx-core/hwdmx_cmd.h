@@ -27,6 +27,8 @@ struct tea_dma_buf
 {
 	void *v_addr;
 	dma_addr_t dma_addr;
+	void *v_secure_addr;
+	dma_addr_t secure_dma_addr;
 	int buf_size; // total size of DMA
 	void *v_sec_addr;
 	dma_addr_t dma_sec_addr;

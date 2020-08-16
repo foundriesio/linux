@@ -512,10 +512,8 @@
  * compatible = "telechips,pmap";	secure_xxx : 0x2c00_0000~ (12MiB)
  *-----------------------------------------------------------
  */
-#define PMAP_BASE_SECURE_TSV			0x2c000000
-#define PMAP_SIZE_SECURE_TSV			0x00300000
-#define PMAP_BASE_SECURE_TSA			0x2c300000
-#define PMAP_SIZE_SECURE_TSA			0x00100000
+#define PMAP_BASE_SECURE_TSIF			0x2c000000
+#define PMAP_SIZE_SECURE_TSIF			0x00400000
 #define PMAP_BASE_SECURE_SAP			0x2c400000
 #define PMAP_SIZE_SECURE_SAP			0x00800000
 
