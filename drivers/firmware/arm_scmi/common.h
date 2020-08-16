@@ -143,6 +143,8 @@ struct scmi_xfer {
 
 void scmi_xfer_put(const struct scmi_handle *h, struct scmi_xfer *xfer);
 int scmi_do_xfer(const struct scmi_handle *h, struct scmi_xfer *xfer);
+int scmi_do_xfer_again(const struct scmi_handle *handle,
+		       struct scmi_xfer *xfer);
 int scmi_do_xfer_with_response(const struct scmi_handle *h,
 			       struct scmi_xfer *xfer);
 int scmi_xfer_get_init(const struct scmi_handle *h, u8 msg_id, u8 prot_id,

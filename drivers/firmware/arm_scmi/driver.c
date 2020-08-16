@@ -410,6 +410,16 @@ void scmi_reset_rx_to_maxsz(const struct scmi_handle *handle,
 	xfer->rx.len = info->desc->max_msg_size;
 }
 
+int scmi_do_xfer_again(const struct scmi_handle *handle, struct scmi_xfer *xfer)
+{
+	struct scmi_info *info = handle_to_scmi_info(handle);
+
+	xfer->rx.len = info->desc->max_msg_size;
+	xfer->hdr.poll_completion = false;
+
+	return scmi_do_xfer(handle, xfer);
+}
+
 #define SCMI_MAX_RESPONSE_TIMEOUT	(2 * MSEC_PER_SEC)
 
 /**

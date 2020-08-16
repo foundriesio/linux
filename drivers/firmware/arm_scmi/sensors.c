@@ -134,7 +134,7 @@ static int scmi_sensor_description_get(const struct scmi_handle *handle,
 		/* Set the number of sensors to be skipped/already read */
 		put_unaligned_le32(desc_index, t->tx.buf);
 
-		ret = scmi_do_xfer(handle, t);
+		ret = scmi_do_xfer_again(handle, t);
 		if (ret)
 			break;
 
