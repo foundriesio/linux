@@ -245,7 +245,7 @@ struct flash_info;
  * @mtd:		point to a mtd_info structure
  * @lock:		the lock for the read/write/erase/lock/unlock operations
  * @dev:		point to a spi device, or a spi nor controller device.
- * @info:		spi-nor part JDEC MFR id and other info
+ * @info:		SPI NOR part JEDEC MFR ID and other info
  * @page_size:		the page size of the SPI NOR
  * @addr_width:		number of address bytes
  * @erase_opcode:	the opcode for erasing a sector
