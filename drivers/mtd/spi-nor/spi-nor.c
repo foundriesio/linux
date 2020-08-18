@@ -1794,7 +1794,7 @@ static int spi_nor_read_sfdp(struct spi_nor *nor, u32 addr,
 			     size_t len, void *buf)
 {
 	u8 addr_width, read_opcode, read_dummy;
-	int ret;
+	ssize_t ret;
 
 	read_opcode = nor->read_opcode;
 	addr_width = nor->addr_width;
