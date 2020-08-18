@@ -34,6 +34,7 @@
 #include <video/tcc/tccfb_ioctrl.h>
 #include <video/tcc/vioc_intr.h>
 #include <video/tcc/vioc_ddicfg.h>
+#include <video/tcc/vioc_config.h>
 
 #include "tcc_drm_address.h"
 #include "tcc_drm_drv.h"
@@ -51,17 +52,14 @@
 /* LCD has totally four hardware windows. */
 #define WINDOWS_NR	1
 
-#define THIRD_FLAGS_IRQ_BIT	0
-#define THIRD_FLAGS_CLK_BIT	1
-
 struct third_context {
 	struct device			*dev;
 	struct drm_device		*drm_dev;
 	struct tcc_drm_crtc		*crtc;
 	struct tcc_drm_plane		planes[WINDOWS_NR];
 	struct tcc_drm_plane_config	configs[WINDOWS_NR];
-	unsigned long			third_flags;
-	bool				suspended;
+
+	unsigned long			crtc_flags;
 	wait_queue_head_t		wait_vsync_queue;
 	atomic_t			wait_vsync_event;
 	atomic_t			win_updated;
@@ -75,10 +73,10 @@ struct third_context {
 };
 
 static const struct of_device_id third_driver_dt_match[] = {
-	{ 
+	{
 		.compatible = "telechips,tcc-drm-third",
 		.data = (const void*)TCC_DRM_DT_VERSION_OLD,
-	}, { 
+	}, {
 		.compatible = "telechips,tcc-drm-third-v1.0",
 		.data = (const void*)TCC_DRM_DT_VERSION_1_0,
 	},
@@ -103,10 +101,7 @@ static int third_enable_vblank(struct tcc_drm_crtc *crtc)
 {
 	struct third_context *ctx = crtc->ctx;
 
-	if (ctx->suspended)
-		return -EPERM;
-
-	if (!test_and_set_bit(THIRD_FLAGS_IRQ_BIT, &ctx->third_flags))
+	if (!test_and_set_bit(CRTC_FLAGS_IRQ_BIT, &ctx->crtc_flags))
 		vioc_intr_enable(ctx->hw_data.display_device.irq_num, get_vioc_index(ctx->hw_data.display_device.blk_num), VIOC_DISP_INTR_DISPLAY);
 
 	return 0;
@@ -115,11 +110,7 @@ static int third_enable_vblank(struct tcc_drm_crtc *crtc)
 static void third_disable_vblank(struct tcc_drm_crtc *crtc)
 {
 	struct third_context *ctx = crtc->ctx;
-
-	if (ctx->suspended)
-		return;
-
-	if (test_and_clear_bit(THIRD_FLAGS_IRQ_BIT, &ctx->third_flags))
+	if (test_and_clear_bit(CRTC_FLAGS_IRQ_BIT, &ctx->crtc_flags))
 		vioc_intr_disable(ctx->hw_data.display_device.irq_num, get_vioc_index(ctx->hw_data.display_device.blk_num), VIOC_DISP_INTR_DISPLAY);
 }
 
@@ -127,28 +118,35 @@ static void third_wait_for_vblank(struct tcc_drm_crtc *crtc)
 {
 	struct third_context *ctx = crtc->ctx;
 
-	if (ctx->suspended)
-		return;
-
 	atomic_set(&ctx->wait_vsync_event, 1);
 
 	/*
 	 * wait for LCD to signal VSYNC interrupt or return after
 	 * timeout which is set to 50ms (refresh rate of 20).
 	 */
-	if (!wait_event_timeout(ctx->wait_vsync_queue,
-				!atomic_read(&ctx->wait_vsync_event),
-				HZ/20))
-		DRM_DEBUG_KMS("vblank wait timed out.\n");
+	if (test_bit(CRTC_FLAGS_IRQ_BIT, &ctx->crtc_flags)) {
+		if (!wait_event_timeout(ctx->wait_vsync_queue,
+					!atomic_read(&ctx->wait_vsync_event),
+					msecs_to_jiffies(50)))
+			DRM_DEBUG_KMS("vblank wait timed out.\n");
+	}
 }
 
 static void third_enable_video_output(struct third_context *ctx, unsigned int win,
 					bool enable)
 {
-	if (enable)
-		VIOC_RDMA_SetImageEnable(ctx->configs[win].virt_addr);
-	else
-		VIOC_RDMA_SetImageDisable(ctx->configs[win].virt_addr);
+	if(ctx->configs[win].virt_addr != NULL) {
+		if (enable) {
+			VIOC_RDMA_SetImageEnable(ctx->configs[win].virt_addr);
+		} else {
+			VIOC_RDMA_SetImageDisable(ctx->configs[win].virt_addr);
+
+			if(get_vioc_type(ctx->hw_data.rdma[win].blk_num) == get_vioc_type(VIOC_RDMA)) {
+				VIOC_CONFIG_SWReset(ctx->hw_data.rdma[win].blk_num, VIOC_CONFIG_RESET);
+				VIOC_CONFIG_SWReset(ctx->hw_data.rdma[win].blk_num, VIOC_CONFIG_CLEAR);
+			}
+		}
+	}
 }
 
 static int third_atomic_check(struct tcc_drm_crtc *crtc,
@@ -166,7 +164,7 @@ static int third_atomic_check(struct tcc_drm_crtc *crtc,
 		pixel_clock_from_hdmi = 1;
 		//printk(KERN_INFO "[INF][DRMEXT] %s pixel clock was from hdmi phy\r\n", __func__);
 	}
-	
+
 	if (mode->clock == 0) {
 		DRM_INFO("Mode has zero clock value.\n");
 		return -EINVAL;
@@ -197,17 +195,7 @@ static int third_atomic_check(struct tcc_drm_crtc *crtc,
 
 static void third_commit(struct tcc_drm_crtc *crtc)
 {
-	struct third_context *ctx = crtc->ctx;
-	struct drm_display_mode *mode = &crtc->base.state->adjusted_mode;
-
-	if (ctx->suspended)
-		return;
-
-	/* nothing to do if we haven't set the mode yet */
-	if (mode->htotal == 0 || mode->vtotal == 0)
-		return;
-
-	/* TODO : Display Device Register. timing values */
+	/* Nothing to do */
 }
 
 static void third_win_set_pixfmt(struct third_context *ctx, unsigned int win,
@@ -236,17 +224,11 @@ static void third_win_set_pixfmt(struct third_context *ctx, unsigned int win,
 static void third_atomic_begin(struct tcc_drm_crtc *crtc)
 {
 	struct third_context *ctx = crtc->ctx;
-
-	if (ctx->suspended)
-		return;
 }
 
 static void third_atomic_flush(struct tcc_drm_crtc *crtc)
 {
 	struct third_context *ctx = crtc->ctx;
-
-	if (ctx->suspended)
-		return;
 
 	tcc_crtc_handle_event(crtc);
 }
@@ -268,9 +250,6 @@ static void third_update_plane(struct tcc_drm_crtc *crtc,
 	volatile void __iomem *pWMIX;
 	volatile void __iomem *pRDMA;
 
-	if (ctx->suspended)
-		return;
-
 	pWMIX = ctx->hw_data.wmixer.virt_addr;
 	pRDMA = ctx->configs[win].virt_addr;
 
@@ -278,7 +257,7 @@ static void third_update_plane(struct tcc_drm_crtc *crtc,
 	offset += state->src.y * pitch;
 
 	dma_addr = tcc_drm_fb_dma_addr(fb, 0) + offset;
-	if(dma_addr == (dma_addr_t)0) {		
+	if(dma_addr == (dma_addr_t)0) {
 		return;
 	}
 	VIOC_WMIX_SetPosition(pWMIX, win, state->crtc.x, state->crtc.y);
@@ -314,9 +293,6 @@ static void third_disable_plane(struct tcc_drm_crtc *crtc,
 	struct third_context *ctx = crtc->ctx;
 	unsigned int win = plane->index;
 
-	if (ctx->suspended)
-		return;
-
 	third_enable_video_output(ctx, win, false);
 }
 
@@ -324,32 +300,12 @@ static void third_enable(struct tcc_drm_crtc *crtc)
 {
 	struct third_context *ctx = crtc->ctx;
 	int ret;
+	if(!crtc->enabled) {
+		pm_runtime_get_sync(ctx->dev);
+		crtc->enabled = 1;
 
-	if (!ctx->suspended)
-		return;
-
-	ctx->suspended = false;
-
-	pm_runtime_get_sync(ctx->dev);
-
-	if (!test_and_set_bit(THIRD_FLAGS_CLK_BIT, &ctx->third_flags)) {
-		ret = clk_prepare_enable(ctx->hw_data.vioc_clock);
-		if (ret < 0) {
-			DRM_ERROR("Failed to prepare_enable the bus clk [%d]\n", ret);
-			return;
-		}
-
-		ret = clk_prepare_enable(ctx->hw_data.ddc_clock);
-		if  (ret < 0) {
-			DRM_ERROR("Failed to prepare_enable the third clk [%d]\n", ret);
-			return;
-		}
+		VIOC_DISP_TurnOn(ctx->hw_data.display_device.virt_addr);
 	}
-	/* if vblank was enabled status, enable it again. */
-	if (test_and_clear_bit(THIRD_FLAGS_IRQ_BIT, &ctx->third_flags))
-		third_enable_vblank(ctx->crtc);
-
-	third_commit(ctx->crtc);
 }
 
 static void third_disable(struct tcc_drm_crtc *crtc)
@@ -357,30 +313,12 @@ static void third_disable(struct tcc_drm_crtc *crtc)
 	struct third_context *ctx = crtc->ctx;
 	int i;
 
-	if (ctx->suspended)
-		return;
-
-	#if !defined(CONFIG_DRM_TCC_CRTC_TO_BE_ALWAYS_ALIVE)
-	/*
-	 * We need to make sure that all windows are disabled before we
-	 * suspend that connector. Otherwise we might try to scan from
-	 * a destroyed buffer later.
-	 */
-	for (i = 0; i < WINDOWS_NR; i++)
-		third_disable_plane(crtc, &ctx->planes[i]);
-
-	third_enable_vblank(crtc);
-	third_wait_for_vblank(crtc);
-	third_disable_vblank(crtc);
-
-	if (test_and_clear_bit(THIRD_FLAGS_CLK_BIT, &ctx->third_flags)) {
-		clk_disable_unprepare(ctx->hw_data.ddc_clock);
-		clk_disable_unprepare(ctx->hw_data.vioc_clock);
+	if(crtc->enabled) {
+		if(VIOC_DISP_Get_TurnOnOff(ctx->hw_data.display_device.virt_addr))
+			VIOC_DISP_TurnOff(ctx->hw_data.display_device.virt_addr);
+		pm_runtime_put_sync(ctx->dev);
+		crtc->enabled = 0;
 	}
-	#endif
-
-	pm_runtime_put_sync(ctx->dev);
-	ctx->suspended = true;
 }
 
 static void third_trigger(struct device *dev)
@@ -409,13 +347,13 @@ static void third_te_handler(struct tcc_drm_crtc *crtc)
 		wake_up(&ctx->wait_vsync_queue);
 	}
 
-	if (test_bit(THIRD_FLAGS_IRQ_BIT, &ctx->third_flags))
+	if (test_bit(CRTC_FLAGS_IRQ_BIT, &ctx->crtc_flags))
 		drm_crtc_handle_vblank(&ctx->crtc->base);
 }
 
 static const struct tcc_drm_crtc_ops third_crtc_ops = {
-	.enable = third_enable,
-	.disable = third_disable,
+	.enable = third_enable,		/* drm_crtc_helper_funcs->atomic_enable */
+	.disable = third_disable,	/* drm_crtc_helper_funcs->atomic_disable */
 	.enable_vblank = third_enable_vblank,
 	.disable_vblank = third_disable_vblank,
 	.atomic_begin = third_atomic_begin,
@@ -429,6 +367,7 @@ static const struct tcc_drm_crtc_ops third_crtc_ops = {
 static irqreturn_t third_irq_handler(int irq, void *dev_id)
 {
 	unsigned int display_device_blk_num;
+
 	struct third_context *ctx = (struct third_context *)dev_id;
 	u32 dispblock_status = 0;
 
@@ -447,10 +386,10 @@ static irqreturn_t third_irq_handler(int irq, void *dev_id)
 
 		/* check the crtc is detached already from encoder */
 		if (ctx->drm_dev == NULL) {
-			printk(KERN_ERR "[ERR][DRMLCD] %s drm_dev is not binded\r\n", __func__);
+			printk(KERN_ERR "[ERR][DRMTHIRD] %s drm_dev is not binded\r\n", __func__);
 			goto out;
 		}
-			
+
 		/* set wait vsync event to zero and wake up queue. */
 		if (atomic_read(&ctx->wait_vsync_event)) {
 			atomic_set(&ctx->wait_vsync_event, 0);
@@ -488,7 +427,20 @@ static int third_bind(struct device *dev, struct device *master, void *data)
 	int ret = 0;
 
 	ctx->drm_dev = drm_dev;
+	/* Activate CRTC clocks */
+	if (!test_and_set_bit(CRTC_FLAGS_CLK_BIT, &ctx->crtc_flags)) {
+		ret = clk_prepare_enable(ctx->hw_data.vioc_clock);
+		if (ret < 0) {
+			DRM_ERROR("Failed to prepare_enable the bus clk [%d]\n", ret);
+			return;
+		}
 
+		ret = clk_prepare_enable(ctx->hw_data.ddc_clock);
+		if  (ret < 0) {
+			DRM_ERROR("Failed to prepare_enable the lcd clk [%d]\n", ret);
+			return;
+		}
+	}
 	for (i = 0; i < WINDOWS_NR; i++) {
 		ctx->configs[i].pixel_formats = third_formats;
 		ctx->configs[i].num_pixel_formats = ARRAY_SIZE(third_formats);
@@ -517,10 +469,14 @@ static void third_unbind(struct device *dev, struct device *master,
 {
 	struct third_context *ctx = dev_get_drvdata(dev);
 
-	third_disable(ctx->crtc);
-
 	if (ctx->encoder)
 		tcc_dpi_remove(ctx->encoder);
+
+	/* Deactivate CRTC clock */
+	if (test_and_clear_bit(CRTC_FLAGS_CLK_BIT, &ctx->crtc_flags)) {
+		clk_disable_unprepare(ctx->hw_data.ddc_clock);
+		clk_disable_unprepare(ctx->hw_data.vioc_clock);
+	}
 }
 
 static const struct component_ops third_component_ops = {
@@ -544,7 +500,6 @@ static int third_probe(struct platform_device *pdev)
 		return -ENOMEM;
 
 	ctx->dev = dev;
-	ctx->suspended = true;
 	ctx->driver_data = of_device_get_match_data(dev);
 
 	if(tcc_drm_address_dt_parse(pdev, &ctx->hw_data) < 0) {
@@ -602,34 +557,13 @@ static int third_remove(struct platform_device *pdev)
 #ifdef CONFIG_PM
 static int tcc_third_suspend(struct device *dev)
 {
-	#if !defined(CONFIG_DRM_TCC_CRTC_TO_BE_ALWAYS_ALIVE)
-
-	struct third_context *ctx = dev_get_drvdata(dev);
-	if (test_and_clear_bit(THIRD_FLAGS_CLK_BIT, &ctx->third_flags)) {
-		clk_disable_unprepare(ctx->hw_data.ddc_clock);
-		clk_disable_unprepare(ctx->hw_data.vioc_clock);
-	}
-	#endif
+	//struct third_context *ctx = dev_get_drvdata(dev);
 	return 0;
 }
 
 static int tcc_third_resume(struct device *dev)
 {
-	struct third_context *ctx = dev_get_drvdata(dev);
-	int ret;
-	if (!test_and_set_bit(THIRD_FLAGS_CLK_BIT, &ctx->third_flags)) {
-		ret = clk_prepare_enable(ctx->hw_data.vioc_clock);
-		if (ret < 0) {
-			DRM_ERROR("Failed to prepare_enable the bus clk [%d]\n", ret);
-			return ret;
-		}
-
-		ret = clk_prepare_enable(ctx->hw_data.ddc_clock);
-		if  (ret < 0) {
-			DRM_ERROR("Failed to prepare_enable the third clk [%d]\n", ret);
-			return ret;
-		}
-	}
+	//struct third_context *ctx = dev_get_drvdata(dev);
 	return 0;
 }
 #endif

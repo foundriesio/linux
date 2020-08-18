@@ -19,6 +19,9 @@
 
 #include "tcc_drm_drv.h"
 
+#define CRTC_FLAGS_IRQ_BIT	0
+#define CRTC_FLAGS_CLK_BIT	1
+
 struct tcc_drm_crtc *tcc_drm_crtc_create(struct drm_device *drm_dev,
 					struct drm_plane *plane,
 					enum tcc_drm_output_type out_type,

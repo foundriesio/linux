@@ -38,8 +38,8 @@
 #define DRIVER_DESC	"Telechips SoC DRM"
 #define DRIVER_DATE	"20160107"
 #define DRIVER_MAJOR	1
-#define DRIVER_MINOR	0
-#define DRIVER_BUILD 	1
+#define DRIVER_MINOR	1
+#define DRIVER_BUILD 	0
 
 static struct device *tcc_drm_get_dma_device(void);
 

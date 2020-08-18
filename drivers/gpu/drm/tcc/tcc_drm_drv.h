@@ -18,6 +18,7 @@
 
 #include <drm/drmP.h>
 #include <linux/module.h>
+#include "tcc_drm_address.h"
 
 #define MAX_CRTC	3
 #define MAX_PLANE	4
@@ -172,20 +173,14 @@ struct tcc_drm_crtc {
 	enum tcc_drm_output_type	type;
 	const struct tcc_drm_crtc_ops	*ops;
 	void				*ctx;
-	struct tcc_drm_clk		*pipe_clk;
 
 	/* support to fence */
 	atomic_t 			flip_status;
         struct drm_pending_vblank_event *flip_event;
         bool 				flip_async;
+	/* Whether the CRTC enabled - 0 disabled, 1 enabled */
+	int 				enabled;
 };
-
-static inline void tcc_drm_pipe_clk_enable(struct tcc_drm_crtc *crtc,
-					      bool enable)
-{
-	if (crtc->pipe_clk)
-		crtc->pipe_clk->enable(crtc->pipe_clk, enable);
-}
 
 struct drm_tcc_file_private {
 	struct device			*ipp_dev;
