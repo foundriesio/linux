@@ -21,6 +21,7 @@
 #include <drm/tcc_drm.h>
 
 #include <linux/console.h>
+#include <linux/ioctl.h>
 
 #include "tcc_drm_drv.h"
 #include "tcc_drm_fb.h"
@@ -31,6 +32,9 @@
 
 #define to_tcc_fbdev(x)	container_of(x, struct tcc_drm_fbdev,\
 				drm_fb_helper)
+
+#define DRMFBIO_CHECK_CRTC _IOR('D', 0x01, unsigned int)
+
 
 struct tcc_drm_fbdev {
 	struct drm_fb_helper	drm_fb_helper;
@@ -66,6 +70,50 @@ static int tcc_drm_fb_mmap(struct fb_info *info,
 	return 0;
 }
 
+
+
+static struct drm_crtc * tcc_drm_check_crtc_id(struct drm_fb_helper *fb_helper, unsigned int req_crtc_id)
+{
+	int i;
+	struct drm_crtc *crtc = NULL;
+
+	for (i = 0; i < fb_helper->crtc_count; i++) {
+                if (fb_helper->crtc_info[i].mode_set.crtc->base.id == req_crtc_id) {
+			crtc = fb_helper->crtc_info[i].mode_set.crtc;
+			break;
+		}
+	}
+	return crtc;
+}
+
+
+int tcc_drm_fb_helper_ioctl(struct fb_info *info, unsigned int cmd,
+                        unsigned long arg)
+{
+        struct drm_fb_helper *fb_helper = info->par;
+        int ret = -EFAULT;
+
+        mutex_lock(&fb_helper->lock);
+
+        switch (cmd) {
+	case DRMFBIO_CHECK_CRTC:
+		{
+			struct drm_crtc *crtc;
+			unsigned int req_crtc_id;
+			if (get_user(req_crtc_id, (unsigned int __user *)arg) < 0) {
+				break;
+			}
+			crtc = tcc_drm_check_crtc_id(fb_helper, req_crtc_id);
+			if(crtc != NULL)
+				ret = 0;
+			break;
+		}
+	}
+
+        mutex_unlock(&fb_helper->lock);
+        return ret;
+}
+
 static struct fb_ops tcc_drm_fb_ops = {
 	.owner		= THIS_MODULE,
 	DRM_FB_HELPER_DEFAULT_OPS,
@@ -73,6 +121,7 @@ static struct fb_ops tcc_drm_fb_ops = {
 	.fb_fillrect	= drm_fb_helper_cfb_fillrect,
 	.fb_copyarea	= drm_fb_helper_cfb_copyarea,
 	.fb_imageblit	= drm_fb_helper_cfb_imageblit,
+	.fb_ioctl       = tcc_drm_fb_helper_ioctl,
 };
 
 static int tcc_drm_fbdev_update(struct drm_fb_helper *helper,
