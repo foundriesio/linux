@@ -1806,12 +1806,12 @@ static int spi_nor_read_sfdp(struct spi_nor *nor, u32 addr,
 
 	while (len) {
 		ret = nor->read(nor, addr, len, (u8 *)buf);
+		if (ret < 0)
+			goto read_err;
 		if (!ret || ret > len) {
 			ret = -EIO;
 			goto read_err;
 		}
-		if (ret < 0)
-			goto read_err;
 
 		buf += ret;
 		addr += ret;
