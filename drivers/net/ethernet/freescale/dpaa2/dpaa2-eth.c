@@ -1472,7 +1472,7 @@ close:
 free:
 	fsl_mc_object_free(dpcon);
 
-	return NULL;
+	return ERR_PTR(err);
 }
 
 static void free_dpcon(struct dpaa2_eth_priv *priv,
@@ -1496,7 +1496,7 @@ alloc_channel(struct dpaa2_eth_priv *priv)
 		return NULL;
 
 	channel->dpcon = setup_dpcon(priv);
-	if (IS_ERR_OR_NULL(channel->dpcon)) {
+	if (IS_ERR(channel->dpcon)) {
 		err = PTR_ERR(channel->dpcon);
 		goto err_setup;
 	}
