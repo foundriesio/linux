@@ -523,7 +523,8 @@ static int tcc_adc_suspend(struct device *dev)
 	struct iio_dev *iio_dev = dev_get_drvdata(dev);
 	struct tcc_adc *adc = iio_priv(iio_dev);
 
-	adc->soc_data->adc_power_ctrl(adc, 0);
+	if(adc->soc_data)
+		adc->soc_data->adc_power_ctrl(adc, 0);
 	return 0;
 }
 
@@ -532,7 +533,8 @@ static int tcc_adc_resume(struct device *dev)
 	struct iio_dev *iio_dev = dev_get_drvdata(dev);
 	struct tcc_adc *adc = iio_priv(iio_dev);
 
-	adc->soc_data->adc_power_ctrl(adc, 0);
+	if(adc->soc_data)
+		adc->soc_data->adc_power_ctrl(adc, 1);
 	return 0;
 }
 
