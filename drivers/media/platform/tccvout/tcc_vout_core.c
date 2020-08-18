@@ -1,18 +1,18 @@
 /*
  * tcc_vout_core.c
  *
- * Copyright (C) 2013 Telechips, Inc. 
+ * Copyright (C) 2013 Telechips, Inc.
  *
  * Video-for-Linux (Version 2) video output driver for Telechips SoC.
- * 
- * This package is free software; you can redistribute it and/or modify 
+ *
+ * This package is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
- * published by the Free Software Foundation. 
- * 
- * THIS PACKAGE IS PROVIDED ``AS IS'' AND WITHOUT ANY EXPRESS OR 
- * IMPLIED WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED 
- * WARRANTIES OF MERCHANTIBILITY AND FITNESS FOR A PARTICULAR PURPOSE. 
- * 
+ * published by the Free Software Foundation.
+ *
+ * THIS PACKAGE IS PROVIDED ``AS IS'' AND WITHOUT ANY EXPRESS OR
+ * IMPLIED WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED
+ * WARRANTIES OF MERCHANTIBILITY AND FITNESS FOR A PARTICULAR PURPOSE.
+ *
  */
 #include <asm/io.h>
 #include <linux/clk.h>
@@ -319,7 +319,12 @@ int vout_set_m2m_path(int deintl_default, struct tcc_vout_device *vout)
 
 	if (deintl_default) {
 		/* default 4 buffers */
+		#if defined(CONFIG_TCC_DUAL_DISPLAY)
 		vout->deintl_nr_bufs = 4;
+		vout->m2m_dual_nr_bufs = 4;
+		#else
+		vout->deintl_nr_bufs = 4;
+		#endif
 
 		/* bottom-field first */
 		vioc->m2m_rdma.bf = 1;
@@ -497,6 +502,191 @@ int vout_set_m2m_path(int deintl_default, struct tcc_vout_device *vout)
 
 	return 0;
 }
+#if defined(CONFIG_TCC_DUAL_DISPLAY)
+int vout_set_m2m_dual_path(struct tcc_vout_device *vout)
+{
+	struct device_node *dev_np;
+	struct tcc_vout_vioc *vioc = vout->vioc;
+	int i;
+
+	/* get pmap for m2m_dual_bufs */
+	memcpy(&vout->m2m_dual_pmap.name, kasprintf(GFP_KERNEL, "dual_display"), sizeof(VOUT_DUAL_PATH_PMAP_NAME));
+	if (vout_get_pmap(&vout->m2m_dual_pmap)) {
+		pr_err("[ERR][VOUT] vout_get_pmap(%s)\n", vout->m2m_dual_pmap.name);
+		return -1;
+	}
+
+	for(i = M2M_DUAL_0; i < M2M_DUAL_MAX; i++)
+	{
+		/* bottom-field first */
+		vioc->m2m_dual_rdma[i].bf = 1;
+
+		// set m2m rdma
+		dev_np = of_parse_phandle(vout->v4l2_np, "m2m_dual_rdma", 0);
+		if(dev_np) {
+			/* swreser bit */
+			of_property_read_u32_index(vout->v4l2_np, "m2m_dual_rdma", i+1, &vioc->m2m_dual_rdma[i].id);
+			vioc->m2m_dual_rdma[i].addr = VIOC_RDMA_GetAddress(get_vioc_index(vioc->m2m_dual_rdma[i].id));
+			dprintk("[EXT] RDMA < vir_addr = 0x%p , id = %d , \n", vioc->m2m_dual_rdma[i].addr, get_vioc_index(vioc->m2m_dual_rdma[i].id));
+		} else {
+			dprintk("[EXT] could not find rdma node of vout driver. \n");
+		}
+
+		// set scaler
+		dev_np = of_parse_phandle(vout->v4l2_np, "m2m_dual_scaler", 0);
+		if(dev_np) {
+			/* swreser bit */
+			of_property_read_u32_index(vout->v4l2_np, "m2m_dual_scaler", i+1, &vioc->m2m_dual_sc[i].id);
+			vioc->m2m_dual_sc[i].addr = VIOC_SC_GetAddress(get_vioc_index(vioc->m2m_dual_sc[i].id));
+			dprintk("[M2M] ext_scaler < vir_addr = 0x%p , id = %d \n", vioc->m2m_dual_sc[i].addr, get_vioc_index(vioc->m2m_dual_sc[i].id));
+		} else {
+			dprintk("[M2M] could not find ext_scaler node of vout driver. \n");
+		}
+
+		switch (vioc->m2m_dual_rdma[i].id) {
+		case VIOC_RDMA07:
+			vioc->m2m_dual_wmix[i].pos = 3;				// rdma pos 3 is VRDMA
+			vioc->m2m_subplane_wmix.pos = 1;			// rdma pos 1 is GRDMA
+			vioc->m2m_dual_wmix[i].ovp = vioc->m2m_subplane_wmix.ovp = 24;		// ovp 24: 0-1-2-3
+			break;
+		case VIOC_RDMA11:
+			vioc->m2m_dual_wmix[i].pos = 3;				// rdma pos 3 is VRDMA
+			vioc->m2m_subplane_wmix.pos = 2;			// rdma pos 0/1/2 is GRDMA8/9/10
+			vioc->m2m_dual_wmix[i].ovp = vioc->m2m_subplane_wmix.ovp = 24;		// ovp 24: 0-1-2-3
+			break;
+		case VIOC_RDMA12:
+			vioc->m2m_dual_wmix[i].pos = 0;				// rdma pos 0 is VRDMA
+			vioc->m2m_subplane_wmix.pos = 1;			// rdma pos 1 is GRDMA
+			vioc->m2m_dual_wmix[i].ovp = vioc->m2m_subplane_wmix.ovp = 5;			// ovp 5: 3-2-1-0
+			break;
+		case VIOC_RDMA13:
+			vioc->m2m_dual_wmix[i].pos = 1;				// rdma pos 1 is VRDMA
+			vioc->m2m_subplane_wmix.pos = 0;			// rdma pos 0 is GRDMA
+			vioc->m2m_dual_wmix[i].ovp = vioc->m2m_subplane_wmix.ovp = 24;		// ovp 24: 0-1-2-3
+		#ifdef CONFIG_ARCH_TCC803X
+		case VIOC_RDMA14:
+			vioc->m2m_dual_wmix[i].pos = 0;
+			vioc->m2m_subplane_wmix.pos = 1;
+			vioc->m2m_dual_wmix[i].ovp = vioc->m2m_subplane_wmix.ovp = 24;
+			break;
+		case VIOC_RDMA15:
+			vioc->m2m_dual_wmix[i].pos = 1;
+			vioc->m2m_subplane_wmix.pos = 0;
+			vioc->m2m_dual_wmix[i].ovp = vioc->m2m_subplane_wmix.ovp = 24;
+			break;
+		#endif
+		case VIOC_RDMA16:
+			vioc->m2m_dual_wmix[i].pos = 1;
+			vioc->m2m_subplane_wmix.pos = 0;
+			vioc->m2m_dual_wmix[i].ovp = vioc->m2m_subplane_wmix.ovp = 24;
+			break;
+		default:
+			pr_err("[ERR][VOUT] invalid m2m_dual_rdma[i](%d) index\n", vioc->m2m_dual_rdma[i].id);
+			return -1;
+		}
+
+		// set m2m wmix
+		dev_np = of_parse_phandle(vout->v4l2_np, "m2m_dual_wmix", 0);
+		if(dev_np) {
+			/* swreser bit */
+			of_property_read_u32_index(vout->v4l2_np, "m2m_dual_wmix", i+1, &vioc->m2m_dual_wmix[i].id);
+			vioc->m2m_dual_wmix[i].addr = VIOC_WMIX_GetAddress(get_vioc_index(vioc->m2m_dual_wmix[i].id));
+			dprintk("[EXT] WMIX < vir_addr = 0x%p , id = %d \n", vioc->m2m_dual_wmix[i].addr, get_vioc_index(vioc->m2m_dual_wmix[i].id));
+		} else {
+			dprintk("[EXT] could not find wmix node of vout driver. \n");
+		}
+
+		// set m2m wdma
+		dev_np = of_parse_phandle(vout->v4l2_np, "m2m_dual_wdma", 0);
+		if(dev_np) {
+			/* swreser bit */
+			of_property_read_u32_index(vout->v4l2_np, "m2m_dual_wdma", i+1, &vioc->m2m_dual_wdma[i].id);
+			vioc->m2m_dual_wdma[i].addr = VIOC_WDMA_GetAddress(get_vioc_index(vioc->m2m_dual_wdma[i].id));
+			vioc->m2m_dual_wdma[i].irq = irq_of_parse_and_map(dev_np, get_vioc_index(vioc->m2m_dual_wdma[i].id));
+
+			vioc->m2m_dual_wdma[i].vioc_intr = kzalloc(sizeof(struct vioc_intr_type), GFP_KERNEL);
+			if(vioc->m2m_dual_wdma[i].vioc_intr == 0) {
+				pr_err("[ERR][VOUT] memory allocation faiil (vioc->m2m_dual_wdma[i])\n");
+				return -ENOMEM;
+			}
+			vioc->m2m_dual_wdma[i].vioc_intr->id = VIOC_INTR_WD0 + get_vioc_index(vioc->m2m_dual_wdma[i].id);
+			vioc->m2m_dual_wdma[i].vioc_intr->bits = VIOC_WDMA_IREQ_EOFR_MASK;
+			dprintk("[M2M] WDMA < vir_addr = 0x%p , id = %d, irq = %d \n", vioc->m2m_dual_wdma[i].addr, get_vioc_index(vioc->m2m_dual_wdma[i].id), vioc->m2m_dual_wdma[i].irq);
+		} else {
+			dprintk("[M2M] could not find wdma node of vout driver. \n");
+		}
+
+		dprintk("RDMA%d%s - WMIX%d - SC%d - WDMA%d\n", get_vioc_index(vioc->m2m_dual_rdma[i].id),
+			vout->deinterlace == VOUT_DEINTL_VIQE_3D ? " - VIQE" : vout->deinterlace == VOUT_DEINTL_S ? " - DEINTL" : "",
+			get_vioc_index(vioc->m2m_dual_wmix[i].id), get_vioc_index(vioc->m2m_dual_sc[i].id), get_vioc_index(vioc->m2m_dual_wdma[i].id));
+	}
+
+	return 0;
+}
+
+int vout_set_vout_dual_path(struct tcc_vout_device *vout)
+{
+	struct device_node *dev_np;
+	struct tcc_vout_vioc *vioc = vout->vioc;
+
+	// set display rdma
+	dev_np = of_parse_phandle(vout->v4l2_np, "rdma", 0);
+	if(dev_np) {
+		/* swreser bit */
+		of_property_read_u32_index(vout->v4l2_np, "rdma", 2, &vioc->rdma_dual.id);
+		vioc->rdma_dual.addr = VIOC_RDMA_GetAddress(get_vioc_index(vioc->rdma_dual.id));
+		dprintk("[DISP] RDMA_dual < vir_addr = 0x%p , id = %d \n", vioc->rdma_dual.addr, get_vioc_index(vioc->rdma_dual.id));
+	} else {
+		dprintk("[DISP] could not find rdma_dual node of vout driver. \n");
+	}
+
+	// set display wmix
+	dev_np = of_parse_phandle(vout->v4l2_np, "wmix", 0);
+	if(dev_np) {
+		/* swreser bit */
+		of_property_read_u32_index(vout->v4l2_np, "wmix", 2, &vioc->wmix_dual.id);
+		vioc->wmix_dual.addr = VIOC_WMIX_GetAddress(get_vioc_index(vioc->wmix_dual.id));
+		dprintk("[DISP] WMIX_dual < vir_addr = 0x%p , id = %d \n", vioc->wmix_dual.addr, get_vioc_index(vioc->wmix_dual.id));
+	} else {
+		dprintk("[DISP] could not find wmix_dual node of vout driver. \n");
+	}
+
+	switch (vioc->rdma_dual.id) {
+	case VIOC_RDMA01:
+	case VIOC_RDMA02:
+	case VIOC_RDMA03:
+	case VIOC_RDMA05:
+#if !defined(CONFIG_ARCH_TCC899X)
+	case VIOC_RDMA06:
+#endif
+	case VIOC_RDMA07:
+	case VIOC_RDMA09:
+	case VIOC_RDMA10:
+	case VIOC_RDMA11:
+		if(get_vioc_index(vioc->wmix_dual.id))
+			vioc->wmix_dual.pos = get_vioc_index(vioc->rdma_dual.id) - (0x4 * get_vioc_index(vioc->wmix_dual.id));
+		else
+			vioc->wmix_dual.pos = get_vioc_index(vioc->rdma_dual.id);
+		break;
+	default:
+		pr_err("[ERR][VOUT] invalid rdma(%d) index\n", get_vioc_index(vioc->rdma_dual.id));
+		return -1;
+	}
+
+	dev_np = of_parse_phandle(vout->v4l2_np, "disp", 0);
+	if(dev_np) {
+		of_property_read_u32_index(vout->v4l2_np, "disp", 2, &vioc->disp_dual.id);
+		vioc->disp_dual.addr = VIOC_DISP_GetAddress(get_vioc_index(vioc->disp_dual.id));
+
+		dprintk("[DISP] DISP < vir_addr = 0x%p , id = %d \n", vioc->disp_dual.addr, get_vioc_index(vioc->disp_dual.id));
+	} else {
+		dprintk("[DISP_dual] could not find disp_dual node of vout driver. \n");
+	}
+
+	dprintk("RDMA%d - WMIX%d - DISP%d\n", get_vioc_index(vioc->rdma_dual.id), get_vioc_index(vioc->wmix_dual.id), get_vioc_index(vioc->disp_dual.id));
+	return 0;
+}
+#endif
 
 int vout_set_vout_path(struct tcc_vout_device *vout)
 {
@@ -546,41 +736,6 @@ int vout_set_vout_path(struct tcc_vout_device *vout)
 		pr_err("[ERR][VOUT] invalid rdma(%d) index\n", get_vioc_index(vioc->rdma.id));
 		return -1;
 	}
-
-	#ifdef CONFIG_VOUT_USE_SUB_PLANE
-	dev_np = of_parse_phandle(vout->v4l2_np, "subplane_rdma", 0);
-	if(dev_np) {
-		/* swreser bit */
-		of_property_read_u32_index(vout->v4l2_np, "subplane_rdma", 1, &vioc->subplane_rdma.id);
-		vioc->subplane_rdma.addr = VIOC_RDMA_GetAddress(get_vioc_index(vioc->subplane_rdma.id));
-		dprintk("[DISP] SUB_RDMA < vir_addr = 0x%p , id = %d \n", vioc->subplane_rdma.addr, get_vioc_index(vioc->subplane_rdma.id));
-	} else {
-		dprintk("[DISP] could not find sub rdma node of vout driver. \n");
-	}
-
-	switch (vioc->subplane_rdma.id) {
-	case VIOC_RDMA01:
-	case VIOC_RDMA02:
-	case VIOC_RDMA05:
-#if !defined(CONFIG_ARCH_TCC899X)
-	case VIOC_RDMA06:
-#endif
-	case VIOC_RDMA09:
-	case VIOC_RDMA10:
-		if(get_vioc_index(vioc->wmix.id))
-			vioc->subplane_wmix.pos = get_vioc_index(vioc->subplane_rdma.id) - (0x4 * get_vioc_index(vioc->wmix.id));
-		else
-			vioc->subplane_wmix.pos = get_vioc_index(vioc->subplane_rdma.id);
-		break;
-	default:
-		pr_err("[ERR][VOUT] invalid subplane_rdma(%d) index\n", vioc->subplane_rdma.id);
-		return -1;
-	}
-
-	// set onthefly wmixer
-	vioc->subplane_wmix.id = vioc->wmix.id;
-	vioc->subplane_wmix.addr =  vioc->wmix.addr;
-	#endif
 
 	dev_np = of_parse_phandle(vout->v4l2_np, "disp", 0);
 	if(dev_np) {
@@ -639,9 +794,17 @@ int vout_vioc_set_default(struct tcc_vout_device *vout)
 
 	/* get pmap for disp_bufs (only V4L2_MEMORY_MMAP) */
 	memcpy(&vout->pmap.name, VOUT_DISP_PATH_PMAP_NAME, sizeof(VOUT_DISP_PATH_PMAP_NAME));
-	ret = vout_set_vout_path(vout);
 
+#if defined(CONFIG_TCC_DUAL_DISPLAY)
+	ret = vout_set_vout_path(vout);
+	ret |= vout_set_vout_dual_path(vout);
+
+	ret |= vout_set_m2m_path(1, vout);	//m2m path
+	ret |= vout_set_m2m_dual_path(vout);	//m2m dual path
+#else
+	ret = vout_set_vout_path(vout);
 	ret |= vout_set_m2m_path(1, vout);
+#endif
 
 	#ifdef CONFIG_VOUT_USE_VSYNC_INT
 	if(vout->vout_timer == NULL) {
@@ -663,6 +826,13 @@ void vout_disp_ctrl(struct tcc_vout_vioc *vioc, int enable)
 	else
 		VIOC_RDMA_SetImageDisable(vioc->rdma.addr);
 	dprintk("%d\n", enable);
+
+#if defined(CONFIG_TCC_DUAL_DISPLAY)
+	if (enable)
+		VIOC_RDMA_SetImageEnable(vioc->rdma_dual.addr);
+	else
+		VIOC_RDMA_SetImageDisable(vioc->rdma_dual.addr);
+#endif
 }
 
 void vout_rdma_setup(struct tcc_vout_device *vout)
@@ -678,6 +848,14 @@ void vout_rdma_setup(struct tcc_vout_device *vout)
 	VIOC_RDMA_SetImageY2REnable(disp_rdma->addr, disp_rdma->y2r);
 	VIOC_RDMA_SetImageY2RMode(disp_rdma->addr, disp_rdma->y2rmd);
 	VIOC_RDMA_SetImageDisable(disp_rdma->addr);
+
+#if defined(CONFIG_TCC_DUAL_DISPLAY)
+	VIOC_RDMA_SetImageBfield(vioc->rdma_dual.addr, disp_rdma->bf);
+	VIOC_RDMA_SetImageIntl(vioc->rdma_dual.addr, disp_rdma->intl);
+	VIOC_RDMA_SetImageFormat(vioc->rdma_dual.addr, disp_rdma->fmt);
+	VIOC_RDMA_SetImageY2REnable(vioc->rdma_dual.addr, disp_rdma->y2r);
+	VIOC_RDMA_SetImageDisable(vioc->rdma_dual.addr);
+#endif
 }
 
 void vout_wmix_setup(struct tcc_vout_device *vout)
@@ -709,6 +887,23 @@ void vout_path_reset(struct tcc_vout_vioc *vioc)
 	VIOC_CONFIG_SWReset(vioc->rdma.id, VIOC_CONFIG_RESET);
 	VIOC_CONFIG_SWReset(vioc->rdma.id, VIOC_CONFIG_CLEAR);
 }
+
+#if defined(CONFIG_TCC_DUAL_DISPLAY)
+void m2m_dual_path_reset(struct tcc_vout_vioc *vioc, int m2m_dual_index)
+{
+	/* reset state */
+	VIOC_CONFIG_SWReset(vioc->m2m_dual_wdma[m2m_dual_index].id, VIOC_CONFIG_RESET);
+	VIOC_CONFIG_SWReset(vioc->m2m_dual_sc[m2m_dual_index].id, VIOC_CONFIG_RESET);
+	VIOC_CONFIG_SWReset(vioc->m2m_dual_wmix[m2m_dual_index].id, VIOC_CONFIG_RESET);
+	VIOC_CONFIG_SWReset(vioc->m2m_dual_rdma[m2m_dual_index].id, VIOC_CONFIG_RESET);
+
+	/* normal state */
+	VIOC_CONFIG_SWReset(vioc->m2m_dual_rdma[m2m_dual_index].id, VIOC_CONFIG_CLEAR);
+	VIOC_CONFIG_SWReset(vioc->m2m_dual_wmix[m2m_dual_index].id, VIOC_CONFIG_CLEAR);
+	VIOC_CONFIG_SWReset(vioc->m2m_dual_sc[m2m_dual_index].id, VIOC_CONFIG_CLEAR);
+	VIOC_CONFIG_SWReset(vioc->m2m_dual_wdma[m2m_dual_index].id, VIOC_CONFIG_CLEAR);
+}
+#endif
 
 void m2m_path_reset(struct tcc_vout_vioc *vioc)
 {
@@ -760,6 +955,39 @@ static void m2m_wmix_setup(struct vioc_wmix *wmix)
 	VIOC_WMIX_SetUpdate(wmix->addr);
 }
 
+#if defined(CONFIG_TCC_DUAL_DISPLAY)
+static void m2m_scaler_setup(struct tcc_vout_device *vout, int m2m_dual_index)
+{
+	struct tcc_vout_vioc *vioc = vout->vioc;
+	unsigned int sw, sh;	// src image size in rdma
+	unsigned int dw, dh;	// destination size in scaler
+	int i, bypass = 0;
+
+	sw = vioc->m2m_wdma.width;
+	sh = vioc->m2m_wdma.height;
+	dw = vout->disp_rect.width;
+	dh = vout->disp_rect.height;
+
+	if (dw == sw && dh == sh) {
+		dprintk("Bypass scaler (same size)\n");
+		bypass = 1;
+	}
+
+	VIOC_SC_SetBypass(vioc->m2m_dual_sc[m2m_dual_index].addr, bypass);
+	VIOC_SC_SetDstSize(vioc->m2m_dual_sc[m2m_dual_index].addr,
+		vout->disp_rect.left < 0 ? dw + abs(vout->disp_rect.left) : dw,
+		vout->disp_rect.top < 0 ? dh + abs(vout->disp_rect.top) : dh);		// set destination size
+	VIOC_SC_SetOutPosition(vioc->sc.addr,
+		vout->disp_rect.left < 0 ? abs(vout->disp_rect.left) : 0,
+		vout->disp_rect.top < 0 ? abs(vout->disp_rect.top) : 0);			// set output position
+	VIOC_SC_SetOutSize(vioc->m2m_dual_sc[m2m_dual_index].addr, dw, dh);								// set output size in scaler
+
+	VIOC_CONFIG_PlugIn(vioc->m2m_dual_sc[m2m_dual_index].id, vioc->m2m_dual_rdma[m2m_dual_index].id);	// plugin position in scaler
+
+	dprintk("%dx%d->[scaler]->%dx%d\n", sw, sh, dw, dh);
+}
+#endif
+
 static void scaler_setup(struct tcc_vout_device *vout)
 {
 	struct tcc_vout_vioc *vioc = vout->vioc;
@@ -778,7 +1006,7 @@ static void scaler_setup(struct tcc_vout_device *vout)
 	}
 
 	VIOC_SC_SetBypass(vioc->sc.addr, bypass);
-	VIOC_SC_SetDstSize(vioc->sc.addr, 
+	VIOC_SC_SetDstSize(vioc->sc.addr,
 		vout->disp_rect.left < 0 ? dw + abs(vout->disp_rect.left) : dw,
 		vout->disp_rect.top < 0 ? dh + abs(vout->disp_rect.top) : dh);		// set destination size
 	VIOC_SC_SetOutPosition(vioc->sc.addr,
@@ -1115,7 +1343,7 @@ void vout_edr_certification_display(struct tcc_vout_device *vout, struct v4l2_bu
 	struct tcc_dp_device *pdp_data = tca_get_displayType(TCC_OUTPUT_HDMI);
 
 	unsigned long current_time = ((buf->timestamp.tv_sec*1000)+(buf->timestamp.tv_usec/1000));
-			
+
 	//dvprintk("############# Output_SelectMode(%d), Real(%d) \n", Output_SelectMode, TCC_OUTPUT_HDMI);
 	{
 		vout_onthefly_convert_video_info(vout, buf, &ImageInfo);
@@ -1160,7 +1388,7 @@ void vout_edr_certification_display(struct tcc_vout_device *vout, struct v4l2_bu
 				ImageInfo.private_data.offset[0],
 				ImageInfo.private_data.optional_info[VID_OPT_FRAME_WIDTH], ImageInfo.private_data.optional_info[VID_OPT_FRAME_HEIGHT],
 				ImageInfo.private_data.optional_info[VID_OPT_BUFFER_WIDTH], ImageInfo.private_data.optional_info[VID_OPT_BUFFER_HEIGHT], ImageInfo.private_data.format,
-				ImageInfo.private_data.dolbyVision_info.el_offset[0],				
+				ImageInfo.private_data.dolbyVision_info.el_offset[0],
 				ImageInfo.private_data.dolbyVision_info.el_frame_width, ImageInfo.private_data.dolbyVision_info.el_frame_height,
 				ImageInfo.private_data.dolbyVision_info.el_buffer_width, ImageInfo.private_data.dolbyVision_info.el_buffer_height,
 				ImageInfo.private_data.dolbyVision_info.osd_addr[0], ImageInfo.private_data.dolbyVision_info.osd_addr[1],
@@ -1247,7 +1475,7 @@ void vout_onthefly_display_update(struct tcc_vout_device *vout, struct v4l2_buff
 
 	#ifdef CONFIG_VIOC_DOLBY_VISION_EDR
 	if(buf->m.planes[MPLANE_VID].reserved[VID_DOLBY_EN] != 0)
-	{		
+	{
 		//dvprintk("@@@@ Dolby Vision %d[0x%08x 0x%08x]\n", buf->m.planes[MPLANE_VID].reserved[VID_DOLBY_EN], buf->m.planes[MPLANE_VID].reserved[VID_DOLBY_REG_ADDR], buf->m.planes[MPLANE_VID].reserved[VID_DOLBY_MD_HDMI_ADDR]);
 		if(!bStep_Check) {
 			nFrame++;
@@ -2022,7 +2250,9 @@ void vout_m2m_display_update(struct tcc_vout_device *vout, struct v4l2_buffer *b
 		} else {
 			vioc->m2m_rdma.height = vout->crop_src.height;
 		}
+		vioc->m2m_rdma.y_stride = buf->m.planes[MPLANE_VID].bytesused ? buf->m.planes[MPLANE_VID].bytesused : vout->src_pix.bytesperline && 0x0000FFFF;
 		VIOC_RDMA_SetImageSize(vioc->m2m_rdma.addr, vioc->m2m_rdma.width, vioc->m2m_rdma.height);
+		VIOC_RDMA_SetImageOffset(vioc->m2m_rdma.addr, vioc->m2m_rdma.fmt, vioc->m2m_rdma.y_stride);
 
 		vioc->m2m_wmix.width = vioc->m2m_rdma.width;
 		vioc->m2m_wmix.height = vioc->m2m_rdma.height;
@@ -2060,6 +2290,14 @@ void vout_m2m_display_update(struct tcc_vout_device *vout, struct v4l2_buffer *b
 			VIOC_SC_SetOutSize(vioc->sc.addr, vioc->m2m_wdma.width, vioc->m2m_wdma.height);	// set output size in scaler
 			VIOC_SC_SetUpdate(vioc->sc.addr);
 		}
+
+#if defined(CONFIG_TCC_DUAL_DISPLAY)
+		vioc->m2m_wdma.width = vioc->m2m_rdma.width;
+		vioc->m2m_wdma.height = vioc->m2m_rdma.height;
+		VIOC_WDMA_SetImageSize(vioc->m2m_wdma.addr, vioc->m2m_wdma.width, vioc->m2m_wdma.height);
+		VIOC_WDMA_SetImageOffset(vioc->m2m_wdma.addr, vioc->m2m_wdma.fmt, vioc->m2m_wdma.width);
+		VIOC_WDMA_SetImageUpdate(vioc->m2m_wdma.addr);
+#endif
 	}
 
 	/* rdma stride */
@@ -2126,6 +2364,15 @@ void vout_m2m_display_update(struct tcc_vout_device *vout, struct v4l2_buffer *b
 	vioc->m2m_wdma.img.base1 = vout->deintl_bufs[index].img_base1;
 	vioc->m2m_wdma.img.base2 = vout->deintl_bufs[index].img_base2;
 
+#if defined(CONFIG_TCC_DUAL_DISPLAY)
+	/* m2m wdma base address */
+	vioc->m2m_dual_wdma[M2M_DUAL_0].img.base0 = vout->m2m_dual_bufs[index].img_base0;
+	vioc->m2m_dual_wdma[M2M_DUAL_0].img.base1 = vout->m2m_dual_bufs[index].img_base1;
+	vioc->m2m_dual_wdma[M2M_DUAL_0].img.base2 = vout->m2m_dual_bufs[index].img_base2;
+	vioc->m2m_dual_wdma[M2M_DUAL_1].img.base0 = vout->m2m_dual_bufs_hdmi[index].img_base0;
+	vioc->m2m_dual_wdma[M2M_DUAL_1].img.base1 = vout->m2m_dual_bufs_hdmi[index].img_base1;
+	vioc->m2m_dual_wdma[M2M_DUAL_1].img.base2 = vout->m2m_dual_bufs_hdmi[index].img_base2;
+#endif
 	if(buf->m.planes[MPLANE_VID].reserved[VID_CONVERTER_EN] == 1) {
 		#ifdef CONFIG_VIOC_MAP_DECOMP
 		VIOC_RDMA_SetImageDisable(vioc->m2m_rdma.addr);
@@ -2466,7 +2713,7 @@ void vout_m2m_display_update(struct tcc_vout_device *vout, struct v4l2_buffer *b
 
 	vout->last_cleared_buffer = buf;
 
-	#ifndef CONFIG_VOUT_USE_VSYNC_INT	
+	#ifndef CONFIG_VOUT_USE_VSYNC_INT
 	if (V4L2_FIELD_INTERLACED_TB == vout->src_pix.field
 				|| V4L2_FIELD_INTERLACED_BT == vout->src_pix.field
 				|| V4L2_FIELD_INTERLACED == vout->src_pix.field)
@@ -2509,6 +2756,41 @@ next_field:
 		}
 		vout->wakeup_int = 0;
 	}
+
+#if defined(CONFIG_TCC_DUAL_DISPLAY)
+	VIOC_WDMA_SetImageBase(vioc->m2m_dual_wdma[M2M_DUAL_1].addr,
+		vioc->m2m_dual_wdma[M2M_DUAL_1].img.base0, vioc->m2m_dual_wdma[M2M_DUAL_1].img.base1, vioc->m2m_dual_wdma[M2M_DUAL_1].img.base2);
+
+	VIOC_WDMA_SetImageFormat(vioc->m2m_dual_wdma[M2M_DUAL_1].addr, vioc->m2m_wdma.fmt);
+	VIOC_WDMA_SetImageOffset(vioc->m2m_dual_wdma[M2M_DUAL_1].addr, vioc->m2m_wdma.fmt, vioc->m2m_dual_wmix[M2M_DUAL_1].width);
+
+	VIOC_WDMA_SetImageSize(vioc->m2m_dual_wdma[M2M_DUAL_1].addr, vioc->m2m_dual_wmix[M2M_DUAL_1].width, vioc->m2m_dual_wmix[M2M_DUAL_1].height);
+	vout_m2m_dual_ctrl(vioc, 1, M2M_DUAL_1);
+
+	if (wait_event_interruptible_timeout(vout->hdmi_frame_wait, vout->hdmi_wakeup_int == 1, msecs_to_jiffies(200)) <= 0) {
+		pr_err("[ERR][VOUT] [hdmi] handler timeout\n");
+		if(!vout->firstFieldFlag)
+			atomic_inc(&vout->displayed_buff_count);
+	}
+	vout->hdmi_wakeup_int = 0;
+
+	VIOC_WDMA_SetImageBase(vioc->m2m_dual_wdma[M2M_DUAL_0].addr,
+		vioc->m2m_dual_wdma[M2M_DUAL_0].img.base0, vioc->m2m_dual_wdma[M2M_DUAL_0].img.base1, vioc->m2m_dual_wdma[M2M_DUAL_0].img.base2);
+
+	VIOC_WDMA_SetImageFormat(vioc->m2m_dual_wdma[M2M_DUAL_0].addr, vioc->m2m_wdma.fmt);
+	VIOC_WDMA_SetImageOffset(vioc->m2m_dual_wdma[M2M_DUAL_0].addr, vioc->m2m_wdma.fmt, vioc->m2m_dual_wmix[M2M_DUAL_0].width);
+
+	VIOC_WDMA_SetImageSize(vioc->m2m_dual_wdma[M2M_DUAL_0].addr, vioc->m2m_dual_wmix[M2M_DUAL_0].width, vioc->m2m_dual_wmix[M2M_DUAL_0].height);
+	vout_m2m_dual_ctrl(vioc, 1, M2M_DUAL_0);
+
+	if (wait_event_interruptible_timeout(vout->ext_frame_wait, vout->ext_wakeup_int == 1, msecs_to_jiffies(200)) <= 0) {
+		pr_err("[ERR][VOUT] [ext] handler timeout\n");
+		if(!vout->firstFieldFlag)
+			atomic_inc(&vout->displayed_buff_count);
+	}
+	vout->ext_wakeup_int = 0;
+#endif
+
 	#endif
 
 	#ifdef CONFIG_TCC_VIOCMG
@@ -2734,7 +3016,7 @@ static irqreturn_t vsync_irq_handler(int irq, void *client_data)
 		unsigned int status = 0;
 
 		VIOC_V_DV_GetInterruptPending(pDV_Cfg, &status);
-		
+
 		if(status & INT_PEND_F_TX_VS_MASK)
 			VIOC_V_DV_ClearInterrupt(pDV_Cfg, INT_CLR_F_TX_VS_MASK);
 		else
@@ -2758,6 +3040,98 @@ static irqreturn_t vsync_irq_handler(int irq, void *client_data)
 }
 #endif
 
+#if defined(CONFIG_TCC_DUAL_DISPLAY)
+static irqreturn_t hdmi_wdma_irq_handler(int irq, void *client_data)
+{
+	struct tcc_vout_device *vout = (struct tcc_vout_device *)client_data;
+	struct tcc_vout_vioc *vioc = vout->vioc;
+	unsigned int status;
+
+	if (!is_vioc_intr_activatied(vioc->m2m_dual_wdma[M2M_DUAL_1].vioc_intr->id, vioc->m2m_dual_wdma[M2M_DUAL_1].vioc_intr->bits))
+	{
+		return IRQ_NONE;
+	}
+
+	VIOC_WDMA_GetStatus(vioc->m2m_dual_wdma[M2M_DUAL_1].addr, &status);
+	if (status & VIOC_WDMA_IREQ_EOFR_MASK) {
+		vioc_intr_clear(vioc->m2m_dual_wdma[M2M_DUAL_1].vioc_intr->id, vioc->m2m_dual_wdma[M2M_DUAL_1].vioc_intr->bits);
+		if(VIOC_DISP_Get_TurnOnOff(vioc->disp_dual.addr)) {
+			VIOC_WMIX_SetPosition(vioc->wmix_dual.addr, vioc->wmix_dual.pos, vout->dual_disp_rect.left, vout->dual_disp_rect.top);
+			VIOC_WMIX_SetUpdate(vioc->wmix_dual.addr);
+
+			VIOC_RDMA_SetImageSize(vioc->rdma_dual.addr, vioc->m2m_dual_wmix[M2M_DUAL_1].width, vioc->m2m_dual_wmix[M2M_DUAL_1].height);
+			VIOC_RDMA_SetImageOffset(vioc->rdma_dual.addr, vioc->m2m_wdma.fmt, vioc->m2m_dual_wmix[M2M_DUAL_1].width);
+			VIOC_RDMA_SetImageBase(vioc->rdma_dual.addr, vioc->m2m_dual_wdma[M2M_DUAL_1].img.base0, vioc->m2m_dual_wdma[M2M_DUAL_1].img.base1, vioc->m2m_dual_wdma[M2M_DUAL_1].img.base2);
+
+			if(vout->clearFrameMode == OFF) {
+				if(vout->disp_mode == 0 || vout->disp_mode == 2)
+					VIOC_RDMA_SetImageEnable(vioc->rdma_dual.addr);
+				else if(vout->disp_mode == 1 || vout->disp_mode == 3)
+					VIOC_RDMA_SetImageDisable(vioc->rdma_dual.addr);
+			}
+		}
+
+		if (V4L2_FIELD_INTERLACED_TB == vout->src_pix.field
+			|| V4L2_FIELD_INTERLACED_BT == vout->src_pix.field
+			|| V4L2_FIELD_INTERLACED == vout->src_pix.field)
+		{
+			vout->hdmi_wakeup_int = 1;
+			wake_up_interruptible(&vout->hdmi_frame_wait);
+		} else {
+			vout->hdmi_wakeup_int = 1;
+			wake_up_interruptible(&vout->hdmi_frame_wait);
+		}
+	}
+	return IRQ_HANDLED;
+}
+
+static irqreturn_t ext_wdma_irq_handler(int irq, void *client_data)
+{
+	struct tcc_vout_device *vout = (struct tcc_vout_device *)client_data;
+	struct tcc_vout_vioc *vioc = vout->vioc;
+	unsigned int status;
+
+
+	if (!is_vioc_intr_activatied(vioc->m2m_dual_wdma[M2M_DUAL_0].vioc_intr->id, vioc->m2m_dual_wdma[M2M_DUAL_0].vioc_intr->bits))
+	{
+		return IRQ_NONE;
+	}
+
+	VIOC_WDMA_GetStatus(vioc->m2m_dual_wdma[M2M_DUAL_0].addr, &status);
+	if (status & VIOC_WDMA_IREQ_EOFR_MASK) {
+		vioc_intr_clear(vioc->m2m_dual_wdma[M2M_DUAL_0].vioc_intr->id, vioc->m2m_dual_wdma[M2M_DUAL_0].vioc_intr->bits);
+
+		if(VIOC_DISP_Get_TurnOnOff(vioc->disp.addr)) {
+			VIOC_WMIX_SetPosition(vioc->wmix.addr, vioc->wmix.pos, vioc->wmix.left, vioc->wmix.top);
+			VIOC_WMIX_SetUpdate(vioc->wmix.addr);
+
+			VIOC_RDMA_SetImageSize(vioc->rdma.addr, vioc->m2m_dual_wmix[M2M_DUAL_0].width, vioc->m2m_dual_wmix[M2M_DUAL_0].height);
+			VIOC_RDMA_SetImageOffset(vioc->rdma.addr, vioc->m2m_wdma.fmt, vioc->m2m_dual_wmix[M2M_DUAL_0].width);
+			VIOC_RDMA_SetImageBase(vioc->rdma.addr, vioc->m2m_dual_wdma[M2M_DUAL_0].img.base0, vioc->m2m_dual_wdma[M2M_DUAL_0].img.base1, vioc->m2m_dual_wdma[M2M_DUAL_0].img.base2);
+
+			if(vout->clearFrameMode == OFF) {
+				if(vout->disp_mode == 0 || vout->disp_mode == 1)
+					VIOC_RDMA_SetImageEnable(vioc->rdma.addr);
+				else if(vout->disp_mode == 2 || vout->disp_mode == 3)
+					VIOC_RDMA_SetImageDisable(vioc->rdma.addr);
+			}
+		}
+
+		if (V4L2_FIELD_INTERLACED_TB == vout->src_pix.field
+			|| V4L2_FIELD_INTERLACED_BT == vout->src_pix.field
+			|| V4L2_FIELD_INTERLACED == vout->src_pix.field)
+		{
+			vout->ext_wakeup_int = 1;
+			wake_up_interruptible(&vout->ext_frame_wait);
+		} else {
+			vout->ext_wakeup_int = 1;
+			wake_up_interruptible(&vout->ext_frame_wait);
+		}
+	}
+	return IRQ_HANDLED;
+}
+#endif
+
 static irqreturn_t wdma_irq_handler(int irq, void *client_data)
 {
 	struct tcc_vout_device *vout = (struct tcc_vout_device *)client_data;
@@ -2772,6 +3146,27 @@ static irqreturn_t wdma_irq_handler(int irq, void *client_data)
 		/* clear wdma interrupt status */
 		vioc_intr_clear(vioc->m2m_wdma.vioc_intr->id, vioc->m2m_wdma.vioc_intr->bits);
 
+	#if defined(CONFIG_TCC_DUAL_DISPLAY)
+		if(VIOC_DISP_Get_TurnOnOff(vioc->disp.addr)) {
+			VIOC_WMIX_SetPosition(vioc->m2m_dual_wmix[M2M_DUAL_0].addr, vioc->m2m_dual_wmix[M2M_DUAL_0].pos, vioc->m2m_dual_wmix[M2M_DUAL_0].left, vioc->m2m_dual_wmix[M2M_DUAL_0].top);
+			VIOC_WMIX_SetUpdate(vioc->m2m_dual_wmix[M2M_DUAL_0].addr);
+
+			VIOC_RDMA_SetImageSize(vioc->m2m_dual_rdma[M2M_DUAL_0].addr, vioc->m2m_wdma.width, vioc->m2m_wdma.height);
+			VIOC_RDMA_SetImageOffset(vioc->m2m_dual_rdma[M2M_DUAL_0].addr, vioc->m2m_wdma.fmt, vioc->m2m_wdma.width);
+			VIOC_RDMA_SetImageBase(vioc->m2m_dual_rdma[M2M_DUAL_0].addr, vioc->m2m_wdma.img.base0, vioc->m2m_wdma.img.base1, vioc->m2m_wdma.img.base2);
+			if(vout->clearFrameMode == OFF)
+				VIOC_RDMA_SetImageEnable(vioc->m2m_dual_rdma[M2M_DUAL_0].addr);
+
+			VIOC_WMIX_SetPosition(vioc->m2m_dual_wmix[M2M_DUAL_1].addr, vioc->m2m_dual_wmix[M2M_DUAL_0].pos, vioc->m2m_dual_wmix[M2M_DUAL_0].left, vioc->m2m_dual_wmix[M2M_DUAL_0].top);
+			VIOC_WMIX_SetUpdate(vioc->m2m_dual_wmix[M2M_DUAL_1].addr);
+
+			VIOC_RDMA_SetImageSize(vioc->m2m_dual_rdma[M2M_DUAL_1].addr, vioc->m2m_wdma.width, vioc->m2m_wdma.height);
+			VIOC_RDMA_SetImageOffset(vioc->m2m_dual_rdma[M2M_DUAL_1].addr, vioc->m2m_wdma.fmt, vioc->m2m_wdma.width);
+			VIOC_RDMA_SetImageBase(vioc->m2m_dual_rdma[M2M_DUAL_1].addr, vioc->m2m_wdma.img.base0, vioc->m2m_wdma.img.base1, vioc->m2m_wdma.img.base2);
+			if(vout->clearFrameMode == OFF)
+				VIOC_RDMA_SetImageEnable(vioc->m2m_dual_rdma[M2M_DUAL_1].addr);
+		}
+	#else
 		if(VIOC_DISP_Get_TurnOnOff(vioc->disp.addr)) {
 			VIOC_WMIX_SetPosition(vioc->wmix.addr, vioc->wmix.pos, vioc->wmix.left, vioc->wmix.top);
 			VIOC_WMIX_SetUpdate(vioc->wmix.addr);
@@ -2782,6 +3177,7 @@ static irqreturn_t wdma_irq_handler(int irq, void *client_data)
 			if(vout->clearFrameMode == OFF)
 				VIOC_RDMA_SetImageEnable(vioc->rdma.addr);
 		}
+	#endif
 
 		if (V4L2_FIELD_INTERLACED_TB == vout->src_pix.field
 			|| V4L2_FIELD_INTERLACED_BT == vout->src_pix.field
@@ -2967,6 +3363,18 @@ void vout_video_set_output_mode(struct tcc_vout_device *vout, int mode)
 }
 #endif
 
+#if defined(CONFIG_TCC_DUAL_DISPLAY)
+void vout_m2m_dual_ctrl(struct tcc_vout_vioc *vioc, int enable, int m2m_dual_index)
+{
+	if (enable){
+		VIOC_SC_SetUpdate(vioc->m2m_dual_sc[m2m_dual_index].addr);
+		VIOC_WDMA_SetImageEnable(vioc->m2m_dual_wdma[m2m_dual_index].addr, vioc->m2m_dual_wdma[m2m_dual_index].cont);
+	}
+	else
+		VIOC_WDMA_SetImageDisable(vioc->m2m_dual_wdma[m2m_dual_index].addr);
+}
+#endif
+
 void vout_m2m_ctrl(struct tcc_vout_vioc *vioc, int enable)
 {
 	if (enable){
@@ -2998,11 +3406,11 @@ void vout_video_overlay(struct tcc_vout_device *vout)
 	VIOC_SC_SetBypass(vioc->sc.addr, bypass);
 
 	if(vout->onthefly_mode) {	// onthefly_mode
-		VIOC_SC_SetDstSize(vioc->sc.addr, 
+		VIOC_SC_SetDstSize(vioc->sc.addr,
 			vout->disp_rect.left < 0 ? vout->disp_rect.width + abs(vout->disp_rect.left) : dw,
 			vout->disp_rect.top < 0 ? vout->disp_rect.height + abs(vout->disp_rect.top) : dh);	// set destination size in scaler
 		VIOC_SC_SetOutPosition(vioc->sc.addr,
-			vout->disp_rect.left < 0 ? abs(vout->disp_rect.left) : 0, 
+			vout->disp_rect.left < 0 ? abs(vout->disp_rect.left) : 0,
 			vout->disp_rect.top < 0 ? abs(vout->disp_rect.top) : 0);
 		VIOC_SC_SetOutSize(vioc->sc.addr, dw, dh);	// set output size in scaler
 		VIOC_SC_SetUpdate(vioc->sc.addr);
@@ -3013,11 +3421,66 @@ void vout_video_overlay(struct tcc_vout_device *vout)
 		VIOC_WMIX_SetPosition(vioc->wmix.addr, vioc->wmix.pos, vioc->wmix.left, vioc->wmix.top);
 		VIOC_WMIX_SetUpdate(vioc->wmix.addr);
 	} else {	// m2m
-		VIOC_SC_SetDstSize(vioc->sc.addr, 
+	#if defined(CONFIG_TCC_DUAL_DISPLAY)
+		VIOC_SC_SetDstSize(vioc->m2m_dual_sc[M2M_DUAL_0].addr,
+			vout->disp_rect.left < 0 ? vout->disp_rect.width + abs(vout->disp_rect.left) : dw,
+			vout->disp_rect.top < 0 ? vout->disp_rect.height + abs(vout->disp_rect.top) : dh);	// set destination size in scaler
+		VIOC_SC_SetOutPosition(vioc->m2m_dual_sc[M2M_DUAL_0].addr,
+			vout->disp_rect.left < 0 ? abs(vout->disp_rect.left) : 0,
+			vout->disp_rect.top < 0 ? abs(vout->disp_rect.top) : 0);
+		VIOC_SC_SetOutSize(vioc->m2m_dual_sc[M2M_DUAL_0].addr, dw, dh);	// set output size in scaler
+		VIOC_SC_SetUpdate(vioc->m2m_dual_sc[M2M_DUAL_0].addr);
+
+		// wdma
+		vioc->m2m_dual_wmix[M2M_DUAL_0].width = dw;
+		vioc->m2m_dual_wmix[M2M_DUAL_0].height = dh;
+		vioc->m2m_dual_wdma[M2M_DUAL_0].width = dw;
+		vioc->m2m_dual_wdma[M2M_DUAL_0].height = dh;
+
+		VIOC_WDMA_SetImageSize(vioc->m2m_dual_wdma[M2M_DUAL_0].addr, vioc->m2m_dual_wdma[M2M_DUAL_0].width, vioc->m2m_dual_wdma[M2M_DUAL_0].height);
+		VIOC_WDMA_SetImageOffset(vioc->m2m_dual_wdma[M2M_DUAL_0].addr, vioc->m2m_dual_wdma[M2M_DUAL_0].fmt, vioc->m2m_dual_wdma[M2M_DUAL_0].width);
+		VIOC_WDMA_SetImageUpdate(vioc->m2m_dual_wdma[M2M_DUAL_0].addr);
+
+		dw = vout->dual_disp_rect.width;
+		dh = vout->dual_disp_rect.height;
+
+		vioc->m2m_dual_wmix[M2M_DUAL_1].width = dw;
+		vioc->m2m_dual_wmix[M2M_DUAL_1].height = dh;
+		vioc->m2m_dual_wdma[M2M_DUAL_1].width = dw;
+		vioc->m2m_dual_wdma[M2M_DUAL_1].height = dh;
+
+		VIOC_SC_SetDstSize(vioc->m2m_dual_sc[M2M_DUAL_1].addr,
+			vout->disp_rect.left < 0 ? vout->disp_rect.width + abs(vout->disp_rect.left) : dw,
+			vout->disp_rect.top < 0 ? vout->disp_rect.height + abs(vout->disp_rect.top) : dh);	// set destination size in scaler
+		VIOC_SC_SetOutPosition(vioc->m2m_dual_sc[M2M_DUAL_1].addr,
+			vout->disp_rect.left < 0 ? abs(vout->disp_rect.left) : 0,
+			vout->disp_rect.top < 0 ? abs(vout->disp_rect.top) : 0);
+		VIOC_SC_SetOutSize(vioc->m2m_dual_sc[M2M_DUAL_1].addr, dw, dh);	// set output size in scaler
+		VIOC_SC_SetUpdate(vioc->m2m_dual_sc[M2M_DUAL_1].addr);
+
+		VIOC_WDMA_SetImageSize(vioc->m2m_dual_wdma[M2M_DUAL_1].addr, vioc->m2m_dual_wdma[M2M_DUAL_1].width, vioc->m2m_dual_wdma[M2M_DUAL_1].height);
+		VIOC_WDMA_SetImageOffset(vioc->m2m_dual_wdma[M2M_DUAL_1].addr, vioc->m2m_dual_wdma[M2M_DUAL_1].fmt, vioc->m2m_dual_wdma[M2M_DUAL_1].width);
+		VIOC_WDMA_SetImageUpdate(vioc->m2m_dual_wdma[M2M_DUAL_1].addr);
+
+		// rdma
+		vioc->rdma.width = vout->disp_rect.width;
+		vioc->rdma.height = vout->disp_rect.height;
+
+		vioc->rdma_dual.width = vout->dual_disp_rect.width;
+		vioc->rdma_dual.height = vout->dual_disp_rect.height;
+
+		// wmix
+		vioc->wmix.left = vout->disp_rect.left < 0 ? 0 : vout->disp_rect.left;
+		vioc->wmix.top = vout->disp_rect.top < 0 ? 0 : vout->disp_rect.top;
+
+		vioc->wmix_dual.left = vout->disp_rect.left < 0 ? 0 : vout->disp_rect.left;
+		vioc->wmix_dual.top = vout->disp_rect.top < 0 ? 0 : vout->disp_rect.top;
+	#else
+		VIOC_SC_SetDstSize(vioc->sc.addr,
 			vout->disp_rect.left < 0 ? vout->disp_rect.width + abs(vout->disp_rect.left) : dw,
 			vout->disp_rect.top < 0 ? vout->disp_rect.height + abs(vout->disp_rect.top) : dh);	// set destination size in scaler
 		VIOC_SC_SetOutPosition(vioc->sc.addr,
-			vout->disp_rect.left < 0 ? abs(vout->disp_rect.left) : 0, 
+			vout->disp_rect.left < 0 ? abs(vout->disp_rect.left) : 0,
 			vout->disp_rect.top < 0 ? abs(vout->disp_rect.top) : 0);
 		VIOC_SC_SetOutSize(vioc->sc.addr, dw, dh);	// set output size in scaler
 		VIOC_SC_SetUpdate(vioc->sc.addr);
@@ -3036,6 +3499,7 @@ void vout_video_overlay(struct tcc_vout_device *vout)
 		// wmix
 		vioc->wmix.left = vout->disp_rect.left < 0 ? 0 : vout->disp_rect.left;
 		vioc->wmix.top = vout->disp_rect.top < 0 ? 0 : vout->disp_rect.top;
+	#endif
 	}
 }
 
@@ -3108,7 +3572,83 @@ int vout_otf_init(struct tcc_vout_device *vout)
 
 	return ret;
 }
+#if defined(CONFIG_TCC_DUAL_DISPLAY)
+int vout_m2m_dual_init(struct tcc_vout_device *vout)
+{
+	struct tcc_vout_vioc *vioc = vout->vioc;
+	struct vioc_rdma *rdma;
+	struct vioc_wdma *wdma;
 
+	int i, ret = 0;
+
+	vout->ext_wakeup_int = 0;
+	vout->frame_count = 0;
+
+	for(i = M2M_DUAL_0; i < M2M_DUAL_MAX; i++)
+	{
+		rdma = &vioc->m2m_dual_rdma[i];
+		wdma = &vioc->m2m_dual_wdma[i];
+
+		/* 0. reset deintl_path */
+		m2m_dual_path_reset(vioc, i);
+
+		/* 1. rdma */
+		rdma->intl = 0;
+		rdma->bf = 0;
+		rdma->fmt = VIOC_IMG_FMT_YUV420IL0;
+		rdma->y2r = 1;
+		rdma->img.base0 = 0;
+		rdma->img.base1 = 0;
+		rdma->img.base2 = 0;
+		rdma->width = vout->src_pix.width;
+
+		rdma->y_stride = vout->src_pix.bytesperline & 0x0000ffff;
+		dprintk("Y-stride(%d) UV-stride(%d)\n", rdma->y_stride,
+				(vout->src_pix.bytesperline & 0xffff0000) >> 16);
+
+		m2m_rdma_setup(rdma);
+
+		/* 3. wmixer */
+		vioc->m2m_dual_wmix[i].left = 0;		// default: to assume sub-plane size same video size
+		vioc->m2m_dual_wmix[i].top = 0;
+
+		vioc->m2m_dual_wmix[i].width = vout->disp_rect.width;
+		vioc->m2m_dual_wmix[i].height = vout->disp_rect.height;
+
+		VIOC_CONFIG_WMIXPath(vioc->m2m_dual_rdma[i].id, 1);
+		m2m_wmix_setup(&vioc->m2m_dual_wmix[i]);
+
+		/* 4. scaler */
+		m2m_scaler_setup(vout, i);
+
+		/* 5. wdma */
+		wdma->width = vout->disp_rect.width;	// depend on scaled image
+		wdma->height = vout->disp_rect.height;
+		wdma->cont = 0;							// 0: frame-by-frame mode
+		m2m_wdma_setup(wdma);
+
+		/* wdma interrupt */
+		VIOC_CONFIG_StopRequest(0);
+		if (vioc->m2m_dual_wdma[i].irq_enable == 0) {
+			vioc->m2m_dual_wdma[i].irq_enable++;		// set interrupt flag
+			synchronize_irq(vioc->m2m_dual_wdma[i].irq);
+			vioc_intr_clear(vioc->m2m_dual_wdma[i].vioc_intr->id, vioc->m2m_dual_wdma[i].vioc_intr->bits);
+
+			if(i == M2M_DUAL_0)
+				request_irq(vioc->m2m_dual_wdma[i].irq, ext_wdma_irq_handler, IRQF_SHARED,"ext_wdma_interrupt", vout);
+			else if(i == M2M_DUAL_1)
+				request_irq(vioc->m2m_dual_wdma[i].irq, hdmi_wdma_irq_handler, IRQF_SHARED,"hdmi_wdma_interrupt", vout);
+
+			if(ret)
+				pr_err("[ERR][VOUT] wdma_irq_handler failed(%d)\n", ret);
+			vioc_intr_enable(vioc->m2m_dual_wdma[i].irq, vioc->m2m_dual_wdma[i].vioc_intr->id, vioc->m2m_dual_wdma[i].vioc_intr->bits);
+		}
+	}
+
+	print_vioc_deintl_path(vout, "vout_m2m_dual_init");
+	return ret;
+}
+#endif
 int vout_m2m_init(struct tcc_vout_device *vout)
 {
 	struct tcc_vout_vioc *vioc = vout->vioc;
@@ -3177,11 +3717,20 @@ int vout_m2m_init(struct tcc_vout_device *vout)
 	m2m_wmix_setup(&vioc->m2m_wmix);
 
 	/* 4. scaler */
+#if defined(CONFIG_TCC_DUAL_DISPLAY)
+	// scaler_setup(vout);
+#else
 	scaler_setup(vout);
+#endif
 
 	/* 5. wdma */
+#if defined(CONFIG_TCC_DUAL_DISPLAY)
+	wdma->width = rdma->width;	// depend on scaled image
+	wdma->height = rdma->height;
+#else
 	wdma->width = vout->disp_rect.width;	// depend on scaled image
 	wdma->height = vout->disp_rect.height;
+#endif
 	wdma->cont = 0;							// 0: frame-by-frame mode
 	m2m_wdma_setup(wdma);
 
@@ -3219,11 +3768,11 @@ void vout_otf_deinit(struct tcc_vout_device *vout)
 				nCopy_ImageInfo[nFrame].private_data.offset[0],
 				nCopy_ImageInfo[nFrame].private_data.optional_info[VID_OPT_FRAME_WIDTH], nCopy_ImageInfo[nFrame].private_data.optional_info[VID_OPT_FRAME_HEIGHT],
 				nCopy_ImageInfo[nFrame].private_data.optional_info[VID_OPT_BUFFER_WIDTH], nCopy_ImageInfo[nFrame].private_data.optional_info[VID_OPT_BUFFER_HEIGHT], nCopy_ImageInfo[nFrame].private_data.format,
-				nCopy_ImageInfo[nFrame].private_data.dolbyVision_info.el_offset[0],				
+				nCopy_ImageInfo[nFrame].private_data.dolbyVision_info.el_offset[0],
 				nCopy_ImageInfo[nFrame].private_data.dolbyVision_info.el_frame_width, nCopy_ImageInfo[nFrame].private_data.dolbyVision_info.el_frame_height,
 				nCopy_ImageInfo[nFrame].private_data.dolbyVision_info.el_buffer_width, nCopy_ImageInfo[nFrame].private_data.dolbyVision_info.el_buffer_height,
 				nCopy_ImageInfo[nFrame].private_data.dolbyVision_info.osd_addr[0], nCopy_ImageInfo[nFrame].private_data.dolbyVision_info.osd_addr[1],
-				nCopy_ImageInfo[nFrame].private_data.dolbyVision_info.reg_addr, nCopy_ImageInfo[nFrame].private_data.dolbyVision_info.md_hdmi_addr);	
+				nCopy_ImageInfo[nFrame].private_data.dolbyVision_info.reg_addr, nCopy_ImageInfo[nFrame].private_data.dolbyVision_info.md_hdmi_addr);
 	}
 	nIdx_copy = 0;
 	nTS_Prev = 0x999;
@@ -3279,7 +3828,7 @@ void vout_otf_deinit(struct tcc_vout_device *vout)
 				break;
 			#endif
 			default:
-				break;				
+				break;
 		}
 	} else {
 		#ifdef CONFIG_ARCH_TCC803X
@@ -3321,6 +3870,34 @@ void vout_otf_deinit(struct tcc_vout_device *vout)
 #endif
 }
 
+#if defined(CONFIG_TCC_DUAL_DISPLAY)
+void vout_m2m_dual_deinit(struct tcc_vout_device *vout)
+{
+	struct tcc_vout_vioc *vioc = vout->vioc;
+
+	vout_m2m_dual_ctrl(vioc, 0, M2M_DUAL_0);
+	vout_m2m_dual_ctrl(vioc, 0, M2M_DUAL_1);
+
+	VIOC_CONFIG_PlugOut(vioc->m2m_dual_sc[M2M_DUAL_0].id);
+	VIOC_CONFIG_PlugOut(vioc->m2m_dual_sc[M2M_DUAL_1].id);
+
+	if (vioc->m2m_dual_wdma[M2M_DUAL_0].irq_enable) {
+		vioc->m2m_dual_wdma[M2M_DUAL_0].irq_enable--;
+		vioc_intr_disable(vioc->m2m_dual_wdma[M2M_DUAL_0].irq, vioc->m2m_dual_wdma[M2M_DUAL_0].vioc_intr->id, vioc->m2m_dual_wdma[M2M_DUAL_0].vioc_intr->bits);
+		free_irq(vioc->m2m_dual_wdma[M2M_DUAL_0].irq, vout);
+	} else {
+		dprintk("wdma%d interrupt has already been disabled \n", get_vioc_index(vioc->m2m_dual_wdma[M2M_DUAL_0].id));	//for debugging
+	}
+
+	if (vioc->m2m_dual_wdma[M2M_DUAL_1].irq_enable) {
+		vioc->m2m_dual_wdma[M2M_DUAL_1].irq_enable--;
+		vioc_intr_disable(vioc->m2m_dual_wdma[M2M_DUAL_1].irq, vioc->m2m_dual_wdma[M2M_DUAL_1].vioc_intr->id, vioc->m2m_dual_wdma[M2M_DUAL_1].vioc_intr->bits);
+		free_irq(vioc->m2m_dual_wdma[M2M_DUAL_1].irq, vout);
+	} else {
+		dprintk("wdma%d interrupt has already been disabled \n", get_vioc_index(vioc->m2m_dual_wdma[M2M_DUAL_1].id));
+	}
+}
+#endif
 void vout_m2m_deinit(struct tcc_vout_device *vout)
 {
 	struct tcc_vout_vioc *vioc = vout->vioc;
@@ -3366,7 +3943,9 @@ void vout_m2m_deinit(struct tcc_vout_device *vout)
 	}
 	#endif
 
+	#if !defined(CONFIG_TCC_DUAL_DISPLAY)
 	VIOC_CONFIG_PlugOut(vioc->sc.id);
+	#endif
 
 	switch (vout->deinterlace) {
 	case VOUT_DEINTL_VIQE_2D:
@@ -3618,9 +4197,9 @@ int vout_subplane_onthefly_qbuf(struct tcc_vout_device * vout)
 	/* check buf changing */
 	if (vioc->subplane_buf_index == vioc->subplane_alpha.buf_index)
 		return 2;
-	
+
 	vioc->subplane_buf_index = vioc->subplane_alpha.buf_index;
-	
+
 	/* check subtitle size */
 	if ((vioc->subplane_rdma.width != vioc->subplane_alpha.width) || (vioc->subplane_rdma.height != vioc->subplane_alpha.height)) {
 		vioc->subplane_rdma.width = vioc->subplane_alpha.width;
@@ -3630,7 +4209,7 @@ int vout_subplane_onthefly_qbuf(struct tcc_vout_device * vout)
 		VIOC_RDMA_SetImageSize(vioc->subplane_rdma.addr, ((vioc->subplane_rdma.width >> 1) << 1), vioc->subplane_rdma.height);
 		VIOC_RDMA_SetImageOffset(vioc->subplane_rdma.addr, vioc->subplane_rdma.fmt, vioc->subplane_rdma.width);
 	}
-	
+
 	VIOC_RDMA_SetImageBase(vioc->subplane_rdma.addr, vioc->subplane_rdma.img.base0, vioc->subplane_rdma.img.base1, vioc->subplane_rdma.img.base2);
 
 	/* check subtitle start position (x,y) */
@@ -3899,6 +4478,10 @@ void vout_deinit(struct tcc_vout_device *vout)
 
 	VIOC_RDMA_SetImageSize(vioc->rdma.addr, 0, 0);
 	VIOC_RDMA_SetImageDisable(vioc->rdma.addr);
+	#if defined(CONFIG_TCC_DUAL_DISPLAY)
+	VIOC_RDMA_SetImageSize(vioc->rdma_dual.addr, 0, 0);
+	VIOC_RDMA_SetImageDisable(vioc->rdma_dual.addr);
+	#endif
 	#ifdef CONFIG_VOUT_USE_VSYNC_INT
 	if(vout->ktimer_enable) {
 		vout->ktimer_enable = OFF;

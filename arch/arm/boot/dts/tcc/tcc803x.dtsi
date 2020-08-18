@@ -61,7 +61,7 @@
 		i2s3 = &i2s3;
 		i2s4 = &i2s4;
 		i2s5 = &i2s5;
-		i2s6 = &i2s6;				
+		i2s6 = &i2s6;
 		spdif0 = &spdif0;
 		spdif1 = &spdif1;
 		spdif2 = &spdif2;
@@ -75,7 +75,7 @@
 		adma3  = &adma3;
 		adma4  = &adma4;
 		adma5  = &adma5;
-		adma6  = &adma6;		
+		adma6  = &adma6;
 		dma0 = &dma0;
 		dma1 = &dma1;
 		dma2 = &dma2;
@@ -370,6 +370,15 @@
 			telechips,pmap-name = "video_dual";
 			alloc-ranges = <SECURE_AREA_2_BASE SECURE_AREA_2_SIZE>;
 			size = <PMAP_SIZE_VIDEO_DUAL>;
+			telechips,pmap-secured = <2>;
+			no-map;
+		};
+
+		pmap_dual_display: dual_display {
+			compatible = "telechips,pmap";
+			telechips,pmap-name = "dual_display";
+			alloc-ranges = <SECURE_AREA_2_BASE SECURE_AREA_2_SIZE>;
+			size = <PMAP_SIZE_DUAL_DISPLAY>;
 			telechips,pmap-secured = <2>;
 			no-map;
 		};
@@ -2300,7 +2309,7 @@
 		have-hopcnt-clear = <1>;
 		adrcnt-mode = <1>;
 	};
-	
+
 	adma4: adma@16A00000 {
 		compatible = "telechips,adma";
 		reg = <0x16A00000 0x200>;
@@ -2309,7 +2318,7 @@
 		have-hopcnt-clear = <1>;
 		adrcnt-mode = <1>;
 	};
-	
+
 	adma5: adma@16B00000 {
 		compatible = "telechips,adma";
 		reg = <0x16B00000 0x200>;
@@ -2318,7 +2327,7 @@
 		have-hopcnt-clear = <1>;
 		adrcnt-mode = <1>;
 	};
-	
+
 	adma6: adma@16C00000 {
 		compatible = "telechips,adma";
 		reg = <0x16C00000 0x200>;
@@ -2374,8 +2383,8 @@
 		block-type = <0>; // 0: Stereo 1: 7.1CH
 		adma = <&adma3>;
 		status = "disabled";
-	};	
-	
+	};
+
 	i2s4: i2s@16A01000 {
 		compatible = "telechips,i2s";
 		reg = <0x16A01000 0x50 0x16A00080 0x8>;
@@ -2387,7 +2396,7 @@
 		adma = <&adma4>;
 		status = "disabled";
 	};
-	
+
 	i2s5: i2s@16B01000 {
 		compatible = "telechips,i2s";
 		reg = <0x16B01000 0x50 0x16B00080 0x8>;
@@ -2399,7 +2408,7 @@
 		adma = <&adma5>;
 		status = "disabled";
 	};
-	
+
 	i2s6: i2s@16C01000 {
 		compatible = "telechips,i2s";
 		reg = <0x16C01000 0x50 0x16C00080 0x8>;
@@ -2428,7 +2437,7 @@
 		clock-frequency = <44100>;
 		adma = <&adma1>;
 		status = "disabled";
-	};	
+	};
 
 
 	spdif2: spdif@16802000 {
@@ -2448,7 +2457,7 @@
 		adma = <&adma3>;
 		status = "disabled";
 	};
-	
+
 	spdif4: spdif@16A02000 {
 		compatible = "telechips,spdif";
 		reg = <0x16A02000 0x1000>;
@@ -2457,7 +2466,7 @@
 		adma = <&adma4>;
 		status = "disabled";
 	};
-	
+
 	spdif5: spdif@16B02000 {
 		compatible = "telechips,spdif";
 		reg = <0x16B02000 0x1000>;
@@ -2466,8 +2475,8 @@
 		adma = <&adma5>;
 		status = "disabled";
 	};
-	
-	
+
+
 	spdif6: spdif@16C02000 {
 		compatible = "telechips,spdif";
 		reg = <0x16C02000 0x1000>;
@@ -2507,8 +2516,8 @@
 		mbox-names ="audio-mbox-a53";
 		mboxes = <&mbox1 TCC_MBOX1_CH_SND>;
 		status = "disabled";
-	};	
-	
+	};
+
 	/* audio_mailbox (TSND) for R5. */
 	audio_mbox1: audio_mbox@1 {
 		compatible = "telechips,mailbox-audio-r5";
@@ -3097,15 +3106,22 @@
 	    reg = <0x0 0x0>;						/* Dummy regs. */
 	    clocks = <&clk_ddi DDIBUS_VIOC>;
 
-	    rdma = <&vioc_rdma VIOC_RDMA03>;
-	    wmix = <&vioc_wmix VIOC_WMIX0>;
-	    disp = <&vioc_disp VIOC_DISP0>;
+	    rdma = <&vioc_rdma VIOC_RDMA03 VIOC_RDMA07>;
+	    wmix = <&vioc_wmix VIOC_WMIX0 VIOC_WMIX1>;
+	    disp = <&vioc_disp VIOC_DISP0 VIOC_DISP1>;
 
 	    subplane_rdma = <&vioc_rdma VIOC_RDMA02>;
 	    m2m_subplane_rdma = <&vioc_rdma VIOC_RDMA13>;
 	    m2m_rdma = <&vioc_rdma VIOC_RDMA12>;
 	    m2m_wmix	= <&vioc_wmix VIOC_WMIX3>;
 	    m2m_wdma = <&vioc_wdma VIOC_WDMA03>;
+
+#if defined(CONFIG_TCC_DUAL_DISPLAY)
+		m2m_dual_rdma = <&vioc_rdma VIOC_RDMA15 VIOC_RDMA16>;
+	    m2m_dual_wmix	= <&vioc_wmix VIOC_WMIX4 VIOC_WMIX5>;
+	    m2m_dual_wdma = <&vioc_wdma VIOC_WDMA04 VIOC_WDMA06>;
+	    m2m_dual_scaler = <&vioc_scaler VIOC_SCALER6 VIOC_SCALER4>;
+#endif
 
 	    deintl_block = <&vioc_viqe VIOC_VIQE0>;
 	    scaler = <&vioc_scaler VIOC_SCALER1>;
@@ -3409,22 +3425,22 @@
 				<GIC_SPI 127 IRQ_TYPE_LEVEL_HIGH>;
 		interrupt-names = "hdmi_link", "hdcp_2.2", "hdmi_cec";
 		/* Clocks */
-		clocks = <&clk_peri PERI_HDMI_CORE>, 
-				<&clk_peri PERI_HDMI_AUDIO>, 
-				<&clk_peri PERI_HDMI_PCLK>, 
-				<&clk_peri PERI_HDMI_CEC>, 
-			 	<&clk_peri PERI_HDMI_HDCP14>, 
-			 	<&clk_peri PERI_HDMI_HDCP22>, 
-			 	<&clk_ddi DDIBUS_HDMI>, 
+		clocks = <&clk_peri PERI_HDMI_CORE>,
+				<&clk_peri PERI_HDMI_AUDIO>,
+				<&clk_peri PERI_HDMI_PCLK>,
+				<&clk_peri PERI_HDMI_CEC>,
+			 	<&clk_peri PERI_HDMI_HDCP14>,
+			 	<&clk_peri PERI_HDMI_HDCP22>,
+			 	<&clk_ddi DDIBUS_HDMI>,
 			 	<&clk_isoip_ddi ISOIP_DDB_HDMI>,
 				<&clk_ddi DDIBUS_VIOC>;
-		clock-names = "hdmi_ref_clk", 
-				"hdmi_spdif_clk", 
-				"hdmi_apb_clk", 
-				"hdmi_cec", 
-				"hdmi_hdcp14", 
-				"hdmi_hdcp22", 
-				"hdmi_ddibus", 
+		clock-names = "hdmi_ref_clk",
+				"hdmi_spdif_clk",
+				"hdmi_apb_clk",
+				"hdmi_cec",
+				"hdmi_hdcp14",
+				"hdmi_hdcp22",
+				"hdmi_ddibus",
 				"hdmi_isoip_ddibus",
 				"ddi_bus";
 		clock-frequency = <50000000>;
@@ -3432,7 +3448,7 @@
 		pinctrl-names = "default";
 		pinctrl-0 = <&hdmi_hpd>;
 		gpios = <&gpc 14 0>;
-		
+
 		/* DDC */
 		hdmi_i2c_port_disable = <1>;
 		hdmi_i2c_port_mapping = <0xc 0xff 0x1d>; /* offset mask value */
@@ -3441,13 +3457,13 @@
 		vendor_name = "TCC";
 		product_description = "TCC8031";
 		source_information = <1>; /* Digital STB */
-		
+
 		audio_if_selection_ofst = <0x58>;
 		audio_rx_tx_chmux = <0x98>;
 
 		/* fixed video identification code 4: 1280x720p 60Hz */
 		fixd_video_id_code = <4>;
-		
+
 		verbose = <0>; // 0 disable, 1 basic, 2 io
 		status = "okay";
 	};

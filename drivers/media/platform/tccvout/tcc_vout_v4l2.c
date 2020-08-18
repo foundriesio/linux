@@ -1,20 +1,20 @@
 /*
  * tcc_vout_v4l2.c
  *
- * Copyright (C) 2013 Telechips, Inc. 
+ * Copyright (C) 2013 Telechips, Inc.
  *
  * Video-for-Linux (Version 2) video output driver for Telechips SoC.
- * 
- * This package is free software; you can redistribute it and/or modify 
+ *
+ * This package is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
- * published by the Free Software Foundation. 
- * 
- * THIS PACKAGE IS PROVIDED ``AS IS'' AND WITHOUT ANY EXPRESS OR 
- * IMPLIED WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED 
- * WARRANTIES OF MERCHANTIBILITY AND FITNESS FOR A PARTICULAR PURPOSE. 
+ * published by the Free Software Foundation.
+ *
+ * THIS PACKAGE IS PROVIDED ``AS IS'' AND WITHOUT ANY EXPRESS OR
+ * IMPLIED WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED
+ * WARRANTIES OF MERCHANTIBILITY AND FITNESS FOR A PARTICULAR PURPOSE.
  *
  * ChangeLog:
- *   
+ *
  */
 #include <asm/io.h>
 #include <linux/kernel.h>
@@ -547,7 +547,12 @@ static int tcc_deintl_buffer_set(struct tcc_vout_device *vout)
 	height = vout->disp_rect.height;
 	#else
 	if(vout->id == VOUT_MAIN) {
-		vout_wmix_getsize(vout, &width, &height);
+		#if defined(CONFIG_TCC_DUAL_DISPLAY)
+			width = DEINTL_WIDTH;
+			height = DEINTL_HEIGHT;
+		#else
+			vout_wmix_getsize(vout, &width, &height);
+		#endif
 	} else {
 		width = vout->disp_rect.width;
 		height = vout->disp_rect.height;
@@ -578,6 +583,86 @@ static int tcc_deintl_buffer_set(struct tcc_vout_device *vout)
 	print_v4l2_reqbufs_format(vout->pfmt, vout->src_pix.pixelformat, "tcc_v4l2_buffer_set");
 	return 0;
 }
+
+#if defined(CONFIG_TCC_DUAL_DISPLAY)
+static int tcc_m2m_dual_buffer_set(struct tcc_vout_device *vout)
+{
+	struct tcc_v4l2_buffer *b, *bd;
+	unsigned int total_offset, y_offset = 0;
+	unsigned int i;
+	unsigned int actual_bufs;
+	unsigned int width, height;
+
+	/* calculate buf count
+	 * Size of display image can't be bigger than panel size
+	 */
+	if(vout->m2m_dual_buf_size)
+		actual_bufs = ((unsigned int)vout->m2m_dual_pmap.size) / vout->m2m_dual_buf_size;
+	else
+		actual_bufs = MIN_DEINTLBUF_NUM;
+
+	if (2 > actual_bufs) {
+		pr_err("[ERR][VOUT] m2m_dual_nr_bufs is not enough (%d).\n", actual_bufs);
+		return -ENOMEM;
+	}
+
+	dprintk("request m2m_dual_nr_bufs(%d), actual buf(%d)\n", vout->m2m_dual_nr_bufs, actual_bufs);
+	if ((vout->m2m_dual_nr_bufs > actual_bufs) || (vout->m2m_dual_nr_bufs <= 0))
+		vout->m2m_dual_nr_bufs = actual_bufs;
+
+	vout->m2m_dual_bufs = kzalloc(sizeof(struct tcc_v4l2_buffer) * vout->m2m_dual_nr_bufs, GFP_KERNEL);
+	if (!vout->m2m_dual_bufs)
+		return -ENOMEM;
+	b = vout->m2m_dual_bufs;
+
+	vout->m2m_dual_bufs_hdmi = kzalloc(sizeof(struct tcc_v4l2_buffer) * vout->m2m_dual_nr_bufs, GFP_KERNEL);
+	if (!vout->m2m_dual_bufs_hdmi)
+		return -ENOMEM;
+	bd = vout->m2m_dual_bufs_hdmi;
+
+	if(vout->id == VOUT_MAIN) {
+		width = DEINTL_WIDTH;
+		height = DEINTL_HEIGHT;
+	} else {
+		width = vout->disp_rect.width;
+		height = vout->disp_rect.height;
+	}
+
+	y_offset = width * height;
+	if(vout->vioc->m2m_wdma.fmt == VIOC_IMG_FMT_YUV420IL0)
+		total_offset = PAGE_ALIGN(y_offset * 3 / 2);
+	else
+		total_offset = PAGE_ALIGN(y_offset * 2);
+
+	/* set base address each buffers
+	 */
+	dprintk("  alloc_buf    img_base0   img_base1   img_base2\n");
+	for (i = 0; i < vout->m2m_dual_nr_bufs; i++) {
+		b[i].index = i;
+		bd[i].index = i;
+		b[i].img_base0 = vout->m2m_dual_pmap.base + (total_offset * i);
+		bd[i].img_base0 = vout->m2m_dual_pmap.base + (total_offset * (i+vout->m2m_dual_nr_bufs));
+
+		if(vout->vioc->m2m_wdma.fmt == VIOC_IMG_FMT_YUV420IL0) {
+			b[i].img_base1 = b[i].img_base0 + y_offset;
+			bd[i].img_base1 = bd[i].img_base0 + y_offset;
+		}
+		else {
+			b[i].img_base1 = 0;
+			bd[i].img_base1 = 0;
+		}
+		b[i].img_base2 = 0;
+		bd[i].img_base2 = 0;
+
+		dprintk("   [%02d]     0x%08x  0x%08x  0x%08x\n", i, b[i].img_base0, b[i].img_base1, b[i].img_base2);
+		dprintk("   [%02d]     0x%08x  0x%08x  0x%08x\n", i, bd[i].img_base0, bd[i].img_base1, bd[i].img_base2);
+	}
+	dprintk("-----------------------------------------------------\n");
+
+	print_v4l2_reqbufs_format(vout->pfmt, vout->src_pix.pixelformat, "tcc_m2m_dual_buffer_set");
+	return 0;
+}
+#endif
 
 /*
  * V4L2 ioctls
@@ -969,6 +1054,19 @@ static int vidioc_s_fmt_vid_out(struct file *file, void *fh, struct v4l2_format 
 		vioc->m2m_wdma.r2ymd = 2;	// 2 = Studio Color
 		vioc->rdma.y2r = 1;
 		vioc->rdma.y2rmd = 2;			// 2 = Studio Color
+
+	#if defined(CONFIG_TCC_DUAL_DISPLAY)
+		vioc->m2m_dual_rdma[M2M_DUAL_0].y2r = 0;
+		vioc->m2m_dual_rdma[M2M_DUAL_0].y2rmd = 2;    // 2 = Studio Color
+		vioc->m2m_dual_wdma[M2M_DUAL_0].r2y = 1;
+		vioc->m2m_dual_wdma[M2M_DUAL_0].r2ymd = 2;	// 2 = Studio Color
+
+		vioc->m2m_dual_rdma[M2M_DUAL_1].y2r = 0;
+		vioc->m2m_dual_rdma[M2M_DUAL_1].y2rmd = 2;    // 2 = Studio Color
+		vioc->m2m_dual_wdma[M2M_DUAL_1].r2y = 1;
+		vioc->m2m_dual_wdma[M2M_DUAL_1].r2ymd = 2;	// 2 = Studio Color
+	#endif
+
 		if ((vout->deinterlace == VOUT_DEINTL_S) || (vout->deinterlace == VOUT_DEINTL_NONE))
 			vioc->m2m_rdma.y2r = 1;
 
@@ -987,7 +1085,13 @@ static int vidioc_s_fmt_vid_out(struct file *file, void *fh, struct v4l2_format 
 			vout->deintl_buf_size = PAGE_ALIGN(vout->disp_rect.width * vout->disp_rect.height * 3 / 2);
 			#else
 			vout_wmix_getsize(vout, &panel_width, &panel_height);
+
+		#if defined(CONFIG_TCC_DUAL_DISPLAY)
+			vout->deintl_buf_size = PAGE_ALIGN(vout->disp_rect.width * vout->disp_rect.height * 3 / 2);
+			vout->m2m_dual_buf_size = PAGE_ALIGN(vout->disp_rect.width * vout->disp_rect.height * 3 / 2);
+		#else
 			vout->deintl_buf_size = PAGE_ALIGN(panel_width * panel_height * 3 / 2);
+		#endif
 			#endif
 			vioc->m2m_wdma.fmt = VIOC_IMG_FMT_YUV420IL0;
 		} else {
@@ -997,6 +1101,11 @@ static int vidioc_s_fmt_vid_out(struct file *file, void *fh, struct v4l2_format 
 
 		vout->first_frame = 1;
 		ret = vout_m2m_init(vout);
+
+	#if defined(CONFIG_TCC_DUAL_DISPLAY)
+		ret |= vout_m2m_dual_init(vout);
+	#endif
+
 		if (ret) {
 			pr_err("[ERR][VOUT] deinterlace setup\n");
 			goto out_exit;
@@ -1049,6 +1158,14 @@ static int vidioc_s_fmt_vid_out_overlay(struct file *file, void *fh, struct v4l2
 	}
 
 	memcpy(&vout->disp_rect, &f->fmt.win.w, sizeof(struct v4l2_rect));
+
+	#if defined(CONFIG_TCC_DUAL_DISPLAY)
+	vout->disp_mode = f->fmt.raw_data[100];
+	if(f->fmt.raw_data[109]==0 && f->fmt.raw_data[110]==0)	//width 0
+		memcpy(&f->fmt.raw_data[101], &f->fmt.win.w, sizeof(struct v4l2_rect));
+	memcpy(&vout->dual_disp_rect, &f->fmt.raw_data[101], sizeof(struct v4l2_rect));
+	#endif
+
 	vout_wmix_getsize(vout, &width, &height);
 	if((width == 0) || (height == 0)) {
 		pr_err("[ERR][VOUT] output device size (%dx%d) \n", width, height);
@@ -1246,6 +1363,14 @@ static int vidioc_reqbufs(struct file *file, void *fh, struct v4l2_requestbuffer
 			pr_err("[ERR][VOUT] tcc_deintl_buffer_set(%d)\n", ret);
 			goto reqbufs_deintl_err;
 		}
+
+	#if defined(CONFIG_TCC_DUAL_DISPLAY)
+		ret = tcc_m2m_dual_buffer_set(vout);
+		if (ret < 0) {
+			pr_err("[ERR][VOUT] tcc_m2m_dual_buffer_set(%d)\n", ret);
+			goto reqbufs_deintl_err;
+		}
+	#endif
 
 		mutex_unlock(&vout->lock);
 
@@ -1499,6 +1624,12 @@ static int vidioc_streamon(struct file *file, void *fh, enum v4l2_buf_type i)
 	if (vout->status == TCC_VOUT_STOP) {
 		vout_disp_ctrl(vioc, 1);		// enable disp_path
 		vout_m2m_ctrl(vioc, 1);		// enable deintl_path
+
+		#if defined(CONFIG_TCC_DUAL_DISPLAY)
+		vout_m2m_dual_ctrl(vioc, 1, M2M_DUAL_1);
+		vout_m2m_dual_ctrl(vioc, 1, M2M_DUAL_0);
+		#endif
+
 		#ifdef CONFIG_VOUT_USE_SUB_PLANE
 		vout_subplane_ctrl(vout, 1);	// enable subplane_path
 		#endif
@@ -1526,8 +1657,13 @@ static int vidioc_streamoff(struct file *file, void *fh, enum v4l2_buf_type i)
 	vout->status = TCC_VOUT_STOP;
 
 	vout_disp_ctrl(vioc, 0);		// disable disp_path
-	if(!vout->onthefly_mode)
+	if(!vout->onthefly_mode) {
+		#if defined(CONFIG_TCC_DUAL_DISPLAY)
+		vout_m2m_dual_ctrl(vioc, 0, M2M_DUAL_1);
+		vout_m2m_dual_ctrl(vioc, 0, M2M_DUAL_0);
+		#endif
 		vout_m2m_ctrl(vioc, 0);		// disable deintl_path
+	}
 
 	#ifdef CONFIG_VOUT_USE_SUB_PLANE
 	vout_subplane_ctrl(vout, 0);	// disalbe subplane_path
@@ -1587,7 +1723,7 @@ static long vout_param_handler(struct file *file, void *fh, bool valid_prio, uns
 	return ret;
 }
 
-/* 
+/*
  * File operations
  */
 extern int range_is_allowed(unsigned long pfn, unsigned long size);
@@ -1648,6 +1784,9 @@ static int tcc_vout_open(struct file *file)
 	vioc = vout->vioc;
 	vout->qbufs = NULL;
 	vout->deintl_bufs = NULL;
+	#if defined(CONFIG_TCC_DUAL_DISPLAY)
+	vout->m2m_dual_bufs = NULL;
+	#endif
 
 	file->private_data = vout;
 	clk_prepare_enable(vioc->vout_clk);
@@ -1668,6 +1807,13 @@ static int tcc_vout_open(struct file *file)
 	init_waitqueue_head(&vout->frame_wait);
 	vioc->m2m_wdma.irq_enable = 0;
 
+#if defined(CONFIG_TCC_DUAL_DISPLAY)
+	vout->disp_mode = 0;
+	init_waitqueue_head(&vout->ext_frame_wait);
+	init_waitqueue_head(&vout->hdmi_frame_wait);
+	vioc->m2m_dual_wdma[M2M_DUAL_0].irq_enable = 0;
+	vioc->m2m_dual_wdma[M2M_DUAL_1].irq_enable = 0;
+#endif
 	vout->status = TCC_VOUT_INITIALISING;
 
 	vout->opened++;
@@ -1685,8 +1831,12 @@ static int tcc_vout_release(struct file *file)
 	vout_deinit(vout);				// deinit disp_path
 	if(vout->onthefly_mode)
 		vout_otf_deinit(vout);
-	else
+	else {
+		#if defined(CONFIG_TCC_DUAL_DISPLAY)
+		vout_m2m_dual_deinit(vout);
+		#endif
 		vout_m2m_deinit(vout);		// deinit deintl_path
+	}
 
 	#ifdef CONFIG_VOUT_USE_SUB_PLANE
 	vout_subplane_deinit(vout);		// deinit subplane_path
@@ -1710,6 +1860,9 @@ static int tcc_vout_release(struct file *file)
 	}
 
 	kfree(vout->deintl_bufs);
+	#if defined(CONFIG_TCC_DUAL_DISPLAY)
+	kfree(vout->m2m_dual_bufs);
+	#endif
 	kfree(vioc->m2m_wdma.vioc_intr);
 	#ifdef CONFIG_VOUT_USE_VSYNC_INT
 	kfree(vioc->disp.vioc_intr);
@@ -1798,7 +1951,7 @@ static const struct v4l2_file_operations tcc_vout_fops = {
 	.mmap			= tcc_vout_mmap,
 };
 
-/* 
+/*
  * platfome driver functions
  */
 static int tcc_vout_v4l2_probe(struct platform_device *pdev)
@@ -1806,7 +1959,7 @@ static int tcc_vout_v4l2_probe(struct platform_device *pdev)
 	struct video_device *vdev = NULL;
 	struct tcc_vout_device *vout = NULL;
 	struct tcc_vout_vioc *vioc = NULL;
-	
+
 	int ret;
 
 	vout = kzalloc(sizeof(struct tcc_vout_device), GFP_KERNEL);
@@ -1851,7 +2004,7 @@ static int tcc_vout_v4l2_probe(struct platform_device *pdev)
 	vdev->v4l2_dev = &vout->v4l2_dev;
 	vdev->vfl_dir = VFL_DIR_TX;
 	mutex_init(&vout->lock);
-	
+
 	//vdev->minor = -1;
 	vdev->minor = 10 + vout->id;
 
@@ -1885,7 +2038,7 @@ static int tcc_vout_v4l2_probe(struct platform_device *pdev)
 	}
 	video_set_drvdata(vdev, vout);
 
-	/* get vout clock 
+	/* get vout clock
 	 */
 	vioc->vout_clk = of_clk_get(vout->v4l2_np, 0);
 

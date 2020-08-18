@@ -124,7 +124,7 @@ config TCC_VIOC_DISP_PATH_INTERNAL_CS_YUV
 	help
 		Use YUV Color Space in VIOC_DISP_PATH.
 		There is no YUV-to-RGB conversion to enhance signal quality of video data.
-		
+
 config TCC_OUTPUT_COLOR_SPACE_YUV
 	bool "Change Color Space to YUV for Display Output"
 	depends on TCC_VIOC_DISP_PATH_INTERNAL_CS_YUV
@@ -163,13 +163,13 @@ choice
 config USING_LAST_FRAMEBUFFER
 	bool "using last framebuffer"
 	help
-		support for Quick boot, say Y here if you 
-		You can use an image in framebuffer just before making a snapshot boot image 
+		support for Quick boot, say Y here if you
+		You can use an image in framebuffer just before making a snapshot boot image
 
 config USING_IMAGE_WHAT_YOU_WANT
 	bool "using an image what you want"
-	help	
-		support for Quick boot, say Y here if you 
+	help
+		support for Quick boot, say Y here if you
 		You can choose any image for agree image
 
 endchoice
@@ -177,7 +177,7 @@ endchoice
 config QUICK_BOOT_PROGRESS_BAR
 	bool "Display the progress of making snapshot image"
 	depends on FB_TCC && HIBERNATION
-	default y 
+	default y
 	help
 		Supprot for Quick boot.
 		During making snapshot image for quickboot, display progress of making snapshot image
@@ -207,7 +207,7 @@ endchoice
 
 config TCC_VIDEO_DISPLAY_BY_VSYNC_INT
     bool "Displaying video frame by hw vsync interrupt"
-	depends on FB  
+	depends on FB
 	default n
 	help
 	  Video frame is displayed by hw vsync interrupt.
@@ -235,11 +235,11 @@ config TCC_VSYNC_DRV_CONTROL_LUT
 
 config TCC_VSYNC_DRV_CONTROL_PIXEL_MAPPER
     bool "VSYNC driver controls pixel mapper to supports function to control colors"
-	depends on TCC_VIDEO_DISPLAY_BY_VSYNC_INT && TCC_PM_LUT_DRV 
+	depends on TCC_VIDEO_DISPLAY_BY_VSYNC_INT && TCC_PM_LUT_DRV
 	default n
 	help
 	  VSYNC driver can controls colors of video using pixel mapper
-	  
+
 config VSYNC_DRV_ALWAYS_ACCEPT_START_VSYNC
     bool "VSYNC driver always accept TCC_LCDC_VIDEO_START_VSYNC"
 	depends on TCC_VIDEO_DISPLAY_BY_VSYNC_INT
@@ -264,14 +264,14 @@ config TCC_FB_HIGH_CLOCK
 config VIOC_FIFO_UNDER_RUN_COMPENSATION
 		bool "VIOC FIFO-Under-Run Compensation"
 		depends on (FB && TCC_VIOC_CONTROLLER)
-    help 
+    help
     	VIOC display block check the fifo under run problem.
 
 config VIOC_RESET_FOR_UNDERRUN
 	bool "VIOC RESET IN FIFO UNDER RUN"
 	depends on (VIOC_FIFO_UNDER_RUN_COMPENSATION)
 	default n
-    help 
+    help
     	Reset VIOC display block to compensation the fifo under run problem.
 
 config HDMI_DISPLAY_LASTFRAME
@@ -337,7 +337,7 @@ config USE_SUB_MULTI_FRAME
 	default n
 	help
 		Choose this option if you want to use 4/5ch-video
-	
+
 menu "Support for LCD panels"
 
 config LCD_HDMI1280X720
@@ -355,7 +355,7 @@ config LCD_HDMI1920X720
 config LCD_HDMI1920X720_ADV7613
 	bool "HDMI 1920X720 LCD with ADV7613"
 	depends on FB_TCC && TCC_HDMI_DRIVER_V2_0 && ARCH_TCC803X
-	
+
 config LCD_HDMI4K
 	bool "HDMI 4K (3840X2160) LCD support"
 	depends on FB_TCC
@@ -423,14 +423,14 @@ config HDMI_FB_ROTATE_270
 
 endchoice
 
-choice 
+choice
 	prompt "HDMI Clock select"
 	depends on (TCC_HDMI_DRIVER_V1_3 || TCC_HDMI_DRIVER_V1_4)
 	default HDMI_CLK_USE_XIN_24MHZ
-	
+
 config HDMI_CLK_USE_INTERNAL_PLL
 	bool 'HDMI CLK USE INTERNAL PLL'
-	
+
 config HDMI_CLK_USE_XIN_24MHZ
 	bool 'HDMI CLK USE XIN 24MHZ'
 
@@ -496,7 +496,7 @@ config TCC_M2M_USE_INTERLACE_OUTPUT
         default n
         help
           This is the using of M2M for Interlace output.
-	  
+
 config TCC_OUTPUT_STARTER
 	bool "Use Output Starter to Show Logo Image through External Output"
 	default n
@@ -537,9 +537,28 @@ config TCC_DISPLAY_HDMI_LVDS
 	default n
 	help
 	This is support HDMI LVS display
-	
 
-endmenu	
+config TCC_DUAL_DISPLAY
+	bool"support HDMI LVDS dual display"
+	depends on (FB && ARCH_TCC803X)
+	default n
+	help
+		This is support HDMI LVDS dual display
+
+choice
+	depends on TCC_DUAL_DISPLAY
+	prompt "Dual display resolution setting"
+
+	config DUAL_DISPLAY_HD
+	bool " HD (1280 x 720)"
+	config DUAL_DISPLAY_FHD
+	default y
+	bool "FHD (1920 x 1080)"
+	config DUAL_DISPLAY_UHD
+	bool "UHD (3840 x 2160)"
+endchoice
+
+endmenu
 
 config LOGO_PRESERVE_WITHOUT_FB_INIT
        bool "Preserve boot logo from bootloader"
@@ -558,5 +577,5 @@ config TCC_VIDEO_S_FEATURE
 	default n
 	help
 	Enable Telechips 'S' feature for VIDEO
-	
+
 

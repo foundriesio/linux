@@ -1,17 +1,17 @@
 /*
  * tcc_vout.h
  *
- * Copyright (C) 2013 Telechips, Inc. 
+ * Copyright (C) 2013 Telechips, Inc.
  *
  * Video-for-Linux (Version 2) video output driver for Telechips SoC.
  *
- * This package is free software; you can redistribute it and/or modify 
+ * This package is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
- * published by the Free Software Foundation. 
+ * published by the Free Software Foundation.
  *
- * THIS PACKAGE IS PROVIDED ``AS IS'' AND WITHOUT ANY EXPRESS OR 
- * IMPLIED WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED 
- * WARRANTIES OF MERCHANTIBILITY AND FITNESS FOR A PARTICULAR PURPOSE. 
+ * THIS PACKAGE IS PROVIDED ``AS IS'' AND WITHOUT ANY EXPRESS OR
+ * IMPLIED WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED
+ * WARRANTIES OF MERCHANTIBILITY AND FITNESS FOR A PARTICULAR PURPOSE.
  *
  */
 #ifndef __TCC_VOUT_H__
@@ -52,6 +52,7 @@
 #define VOUT_VERSION	KERNEL_VERSION(0, 1, 0)
 #define VOUT_CLK_SRC	"lcdc1"
 #define VOUT_MEM_PATH_PMAP_NAME	"v4l2_vout0"
+#define VOUT_DUAL_PATH_PMAP_NAME	"dual_display"
 #define VOUT_DISP_PATH_PMAP_NAME	"video"		/* using vpu pmap */
 
 #ifdef CONFIG_VOUT_USE_VSYNC_INT
@@ -91,6 +92,23 @@
 /* rdma alpha */
 #define RDMA_ALPHA_ASEL_GLOBAL	0
 #define RDMA_ALPHA_ASEL_PIXEL	1
+
+#if defined(CONFIG_DUAL_DISPLAY_HD)
+	#define DEINTL_WIDTH            (1280)
+	#define DEINTL_HEIGHT           (720)
+#elif defined(CONFIG_DUAL_DISPLAY_FHD)
+	#define DEINTL_WIDTH            (1920)
+	#define DEINTL_HEIGHT           (1088)
+#elif defined(CONFIG_DUAL_DISPLAY_UHD)
+	#define DEINTL_WIDTH            (3840)
+	#define DEINTL_HEIGHT           (2160)
+#endif
+
+enum M2M_DUAL_DISP {
+	M2M_DUAL_0,
+	M2M_DUAL_1,
+	M2M_DUAL_MAX,
+};
 
 /* mplane */
 #define MPLANE_NUM	2
@@ -376,6 +394,20 @@ struct tcc_vout_vioc {
 	struct vioc_viqe viqe;
 	struct vioc_deintls deintl_s;
 
+#if defined(CONFIG_TCC_DUAL_DISPLAY)
+	/* display dual path */
+	struct vioc_disp disp_dual;
+	struct vioc_rdma rdma_dual;
+	struct vioc_wmix wmix_dual;
+	struct vioc_sc sc_dual;
+
+	/* m2m dual path */
+	struct vioc_rdma m2m_dual_rdma[M2M_DUAL_MAX];
+	struct vioc_wmix m2m_dual_wmix[M2M_DUAL_MAX];
+	struct vioc_wdma m2m_dual_wdma[M2M_DUAL_MAX];
+	struct vioc_sc 	m2m_dual_sc[M2M_DUAL_MAX];
+#endif
+
 	/* subtitle path */
 	struct vioc_rdma m2m_subplane_rdma;
 	struct vioc_wmix m2m_subplane_wmix;
@@ -416,6 +448,12 @@ struct tcc_vout_device {
 
 	struct v4l2_pix_format src_pix;		// src image format
 	struct v4l2_rect disp_rect;			// display output area
+
+#if defined(CONFIG_TCC_DUAL_DISPLAY)
+	int disp_mode;
+	struct v4l2_rect dual_disp_rect;			// dual-display output area
+#endif
+
 	struct v4l2_rect crop_src;			// to crop source video (deintl_rdma crop)
 
 	/* vout */
@@ -438,6 +476,21 @@ struct tcc_vout_device {
 	struct tcc_v4l2_buffer *deintl_bufs;
 	wait_queue_head_t frame_wait;
 	int wakeup_int;
+
+#if defined(CONFIG_TCC_DUAL_DISPLAY)
+	int ext_wakeup_int;
+	int hdmi_wakeup_int;
+
+	wait_queue_head_t ext_frame_wait;
+	wait_queue_head_t hdmi_frame_wait;
+
+	pmap_t m2m_dual_pmap;
+	struct tcc_v4l2_buffer *m2m_dual_bufs;
+	struct tcc_v4l2_buffer *m2m_dual_bufs_hdmi;
+	unsigned int m2m_dual_nr_bufs;		// full size of deintl_buf, it is depended on panel size.
+	unsigned int m2m_dual_buf_size;
+#endif
+
 	int frame_count;
 	int deintl_force;					// 0: depend on stream info 1: depend on 'deinterlace'
 	int first_frame;
