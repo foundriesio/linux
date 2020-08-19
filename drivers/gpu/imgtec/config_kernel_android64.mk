@@ -57,4 +57,5 @@ override SUPPORT_NATIVE_FENCE_SYNC := 1
 override SUPPORT_DMA_FENCE := 1
 override SUPPORT_ANDROID_PLATFORM := 1
 override SUPPORT_ION := 1
+override PVRSRV_ENABLE_PVR_ION_STATS := 1
 override RK_INIT_V2 := 1
