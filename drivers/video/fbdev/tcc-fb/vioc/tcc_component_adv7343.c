@@ -53,6 +53,16 @@ static const struct i2c_device_id adv7343_i2c_id[] = {
 	},
 	{}};
 
+//#define ADV7343_REGMAP
+#ifdef ADV7343_REGMAP
+#include <linux/regmap.h>
+static struct regmap *adv7343_i2c_regmap = NULL;
+static const struct regmap_config adv7343_regmap_config = {
+	.reg_bits = 8,
+	.val_bits = 8,
+};
+#endif
+
 
 // static struct adv7343_std_info adv7343_test_pattern[] =
 //{	/* Test pattern generation */
@@ -167,6 +177,14 @@ static int adv7343_i2c_probe(struct i2c_client *client,
 	if (adv7343_i2c_client == NULL)
 		return -ENODEV;
 
+#ifdef ADV7343_REGMAP
+	adv7343_i2c_regmap = devm_regmap_init_i2c(client, &adv7343_regmap_config);
+	if (IS_ERR(adv7343_i2c_regmap)) {
+        pr_err("[ERR][ADV7343] regmap: %d\n", __func__, PTR_ERR(adv7343_i2c_regmap));
+        return -ENODEV;
+    }
+#endif
+
 	return 0;
 }
 
@@ -174,14 +192,21 @@ static int adv7343_i2c_remove(struct i2c_client *client)
 {
 	dprintk("\n");
 	adv7343_i2c_client = NULL;
+
+#ifdef ADV7343_REGMAP
+	regmap_exit(&adv7343_regmap_config);
+#endif
+
 	return 0;
 }
 
 static int adv7343_i2c_write(unsigned char reg, unsigned char val)
 {
+	int ret;
+
+#ifndef ADV7343_REGMAP
 	unsigned char bytes;
 	unsigned char data[2];
-	int ret;
 
 	bytes = 2;
 	data[0] = reg;
@@ -193,6 +218,16 @@ static int adv7343_i2c_write(unsigned char reg, unsigned char val)
 		       adv7343_i2c_client == NULL ? "-ENODEV" : "");
 		return -EIO;
 	}
+
+#else
+
+	ret = regmap_write(adv7343_i2c_regmap, reg, val);
+	if (ret != 0) {
+		pr_err("[ERR][ADV7343] regmap_write failed(%d)\n", ret);
+		return -EIO;
+	}
+#endif
+
 	dprintk("reg=0x%02x, val=0x%02x, addr=0x%02x\n", reg, val,
 		adv7343_i2c_client->addr);
 
@@ -201,6 +236,7 @@ static int adv7343_i2c_write(unsigned char reg, unsigned char val)
 
 int adv7343_i2c_read(unsigned char reg, unsigned char *val)
 {
+#ifndef ADV7343_REGMAP
 	unsigned char bytes;
 
 	if (adv7343_i2c_client == NULL)
@@ -217,6 +253,17 @@ int adv7343_i2c_read(unsigned char reg, unsigned char *val)
 		pr_err("[ERR][ADV7343] %s: read(r) failed.\n", __func__);
 		return -EIO;
 	}
+#else
+
+	int ret;
+
+	ret = regmap_read(adv7343_i2c_regmap, reg, val);
+	if (ret != 0) {
+		pr_err("[ERR][ADV7343] regmap_read failed(%d)\n", ret);
+		return -EIO;
+	}
+
+#endif
 
 	return 0;
 }
