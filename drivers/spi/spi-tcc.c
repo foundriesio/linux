@@ -445,14 +445,14 @@ static void tcc_spi_stop_dma(struct tcc_spi *tccspi)
 
 	if(!tcc_spi_is_use_gdma(tccspi)) {
 		dev_dbg(tccspi->dev, "[DEBUG][SPI] [%s] - dedicated dma\n", __func__);
-		/* Disable DMA Tx and Rx request */
-		TCC_GPSB_BITCLR(tccspi->base + TCC_GPSB_DMACTR, TCC_GPSB_DMACTR_DTE | TCC_GPSB_DMACTR_DRE);
-
 		/* Clear DMA done and packet interrupt status */
 		TCC_GPSB_BITSET(tccspi->base + TCC_GPSB_DMAICR, TCC_GPSB_DMAICR_ISD | TCC_GPSB_DMAICR_ISP);
 
 		/* Disable GPSB DMA operation */
 		TCC_GPSB_BITCLR(tccspi->base + TCC_GPSB_DMACTR, TCC_GPSB_DMACTR_EN);
+
+		/* Disable DMA Tx and Rx request */
+		TCC_GPSB_BITCLR(tccspi->base + TCC_GPSB_DMACTR, TCC_GPSB_DMACTR_DTE | TCC_GPSB_DMACTR_DRE);
 	}
 }
 
