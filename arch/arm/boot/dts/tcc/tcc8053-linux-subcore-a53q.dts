@@ -1590,6 +1590,16 @@
 		status = "okay";
 	};
 
+	/* trvc_mgr for A53 */
+	cam_ipc_mgr0: cam_ipc_mgr@0 {
+		compatible = "telechips,cam_ipc_mgr";
+		device-name ="cam_ipc_mgr_sub";
+		mbox-names ="sub-cam-ipc";
+		mboxes = <&micom_mbox TCC_MICOM_MBOX1_CAMIPC>;
+		mbox-id = TCC_MBOX_CAMIPC_ID;
+		status = "okay";
+	};
+
 	trng: trng {
 		compatible = "telechips,tcc-rng";
 		status = "okay";
