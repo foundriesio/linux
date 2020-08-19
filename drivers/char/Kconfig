@@ -687,11 +687,18 @@ config TCC_RADIO_GPIO_CTRL
         This is controller for Radio GPIO
 
 config VIOC_MGR
-    tristate "VIOC Manager Driver for TCC803x"
+    tristate "VIOC Manager Driver"
     default n
     depends on TCC_MULTI_MAILBOX
     help
         Choose this option if you want to use vioc manager driver
+
+config CAM_IPC_MGR
+    tristate "CAM IPC Manager Driver"
+    default n
+    depends on TCC_MULTI_MAILBOX
+    help
+        Choose this option if you want to use cam ipc manager driver
 
 config TCC_SCREEN_SHARE
 	tristate "Telechips Screen Share Driver for TCC803x"
