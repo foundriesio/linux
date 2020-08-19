@@ -290,7 +290,7 @@
 
 &rotary_encoder0 {
 	compatible = "rotary-encoder";
-	status = "disable";                  //To use it, change the status from disable to okay
+	status = "okay";                  //To use it, change the status from disable to okay
 	pinctrl-names = "default";
 	pinctrl-0 = <&mc_vol>;
 	gpios = <&gpma 5 1>, <&gpma 6 1>;
@@ -300,7 +300,7 @@
 
 &rotary_encoder1 {
 	compatible = "rotary-encoder";
-	status = "disable";                  //To use it, change the status from disable to okay
+	status = "okay";                  //To use it, change the status from disable to okay
 	pinctrl-names = "default";
 	pinctrl-0 = <&mc_ctr>;
 	gpios = <&gpma 7 1>, <&gpma 8 1>;
