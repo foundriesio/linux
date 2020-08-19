@@ -250,6 +250,10 @@ ifeq ($(SUPPORT_LINUX_DVFS),1)
  pvrsrvkm-y += pvr_dvfs_device.o
 endif
 
+ifeq ($(PVRSRV_ENABLE_PVR_ION_STATS),1)
+ pvrsrvkm-y += pvr_ion_stats.o
+endif
+
 # Generated bridge code
 pvrsrvkm-y += $(PVR_ARCH)/generated/devicememhistory_bridge/client_devicememhistory_direct_bridge.o
 pvrsrvkm-y += $(PVR_ARCH)/generated/devicememhistory_bridge/server_devicememhistory_bridge.o

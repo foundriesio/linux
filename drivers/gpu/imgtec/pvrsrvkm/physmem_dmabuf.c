@@ -67,6 +67,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "hash.h"
 #include "private_data.h"
 #include "module_common.h"
+#if defined(PVRSRV_ENABLE_PVR_ION_STATS)
+#include "pvr_ion_stats.h"
+#endif
 
 #if defined(PVRSRV_ENABLE_GPU_MEMORY_INFO)
 #include "ri_server.h"
@@ -218,6 +221,9 @@ static PVRSRV_ERROR PMRFinalizeDmaBuf(PMR_IMPL_PRIVDATA pvPriv)
 					eError = PVRSRV_ERROR_PMR_STILL_REFERENCED;
 				}
 			}
+		#if defined(PVRSRV_ENABLE_PVR_ION_STATS)	
+			PVRSRVIonRemoveMemAllocRecord(psDmaBuf);
+		#endif
 		}
 	}else
 	{
@@ -1101,6 +1107,10 @@ err:
 	g_ui32HashRefCount++;
 
 	mutex_unlock(&g_HashLock);
+
+#if defined(PVRSRV_ENABLE_PVR_ION_STATS)
+	PVRSRVIonAddMemAllocRecord(psDmaBuf);
+#endif
 
 	*ppsPMRPtr = psPMR;
 	*puiSize = ui32NumVirtChunks * uiChunkSize;
