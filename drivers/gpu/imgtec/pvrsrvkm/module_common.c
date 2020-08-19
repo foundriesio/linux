@@ -74,6 +74,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "km_apphint.h"
 #include "srvinit.h"
+#if defined(PVRSRV_ENABLE_PVR_ION_STATS)
+#include "pvr_ion_stats.h"
+#endif
 
 #if defined(SUPPORT_DISPLAY_CLASS)
 /* Display class interface */
@@ -210,6 +213,14 @@ int PVRSRVDriverInit(void)
 		return -ENODEV;
 	}
 
+#if defined(PVRSRV_ENABLE_PVR_ION_STATS)
+	error = PVRSRVIonStatsInitialise();
+	if (error != PVRSRV_OK)
+	{
+		return -ENODEV;
+	}
+#endif
+
 #if defined(SUPPORT_RGX)
 	/* calling here because we need to handle input from the file even
 	 * before the devices are initialised
@@ -228,6 +239,10 @@ int PVRSRVDriverInit(void)
 */ /***************************************************************************/
 void PVRSRVDriverDeinit(void)
 {
+#if defined(PVRSRV_ENABLE_PVR_ION_STATS)
+	PVRSRVIonStatsDestroy();
+#endif
+
 	PVRSRVCommonDriverDeInit();
 
 #if defined(SUPPORT_RGX)
