@@ -33,8 +33,8 @@
 	        compatible = "telechips,tcc-drm-lcd-v1.0";
 		display_device = <&vioc_disp VIOC_DISP0>;
   		wmixer = <&vioc_wmix VIOC_WMIX0>;
-            	rdma = <&vioc_rdma VIOC_RDMA00 VIOC_RDMA01 VIOC_RDMA02 VIOC_RDMA03>;
-            	planes = "primary","cursor","overlay","overlay";
+            	rdma = <&vioc_rdma VIOC_RDMA00>;
+            	planes = "primary";
             	status = "okay";
 	};
 
