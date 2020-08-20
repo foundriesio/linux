@@ -988,6 +988,7 @@ static int netvsc_attach(struct net_device *ndev,
 	}
 
 	/* In any case device is now ready */
+	nvdev->tx_disable = false;
 	netif_device_attach(ndev);
 
 	/* Note: enable and attach happen when sub-channels setup */
@@ -996,7 +997,7 @@ static int netvsc_attach(struct net_device *ndev,
 	if (netif_running(ndev)) {
 		ret = rndis_filter_open(nvdev);
 		if (ret)
-			return ret;
+			goto err;
 
 		rdev = nvdev->extension;
 		if (!rdev->link_state)
@@ -1004,6 +1005,13 @@ static int netvsc_attach(struct net_device *ndev,
 	}
 
 	return 0;
+
+err:
+	netif_device_detach(ndev);
+
+	rndis_filter_device_remove(hdev, nvdev);
+
+	return ret;
 }
 
 static int netvsc_set_channels(struct net_device *net,
@@ -2323,6 +2331,8 @@ static int netvsc_probe(struct hv_device *dev,
 		net->max_mtu = NETVSC_MTU - ETH_HLEN;
 	else
 		net->max_mtu = ETH_DATA_LEN;
+
+	nvdev->tx_disable = false;
 
 	ret = register_netdevice(net);
 	if (ret != 0) {
