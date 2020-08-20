@@ -1,5 +1,5 @@
+// SPDX-License-Identifier: GPL-2.0-or-later
 /*
- * tcc_serial.h
  * Copyright (C) Telechips Inc.
  */
 
