@@ -78,6 +78,7 @@ config DRM_TCC_CRTC_TO_BE_ALWAYS_ALIVE
 		Otherwise, Display Device becomes unstable status.
 		You should set CONFIG_DRM_TCC_CRTC_TO_BE_ALWAYS_ALIVE to prevent
 		Display Device becomes unstable status if there is no other solution.
+		- It will be deprecated.
 
 comment "Encoders and Bridges"
 

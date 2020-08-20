@@ -87,15 +87,20 @@ static int tcc_drm_address_dt_parse_old(struct platform_device *pdev, struct tcc
 
 	hw_data->display_device.virt_addr = devm_ioremap_resource(dev, res_ddc);
 	if (hw_data->display_device.virt_addr == NULL)
-		return -ENOMEM;;
+		return -ENOMEM;
 
 	hw_data->rdma[0].virt_addr = devm_ioremap_resource(dev, res_rdma);
 	if (hw_data->rdma[0].virt_addr == NULL)
-		return -ENOMEM;;
+		return -ENOMEM;
+
+	/* update rdma valid counts */
+	hw_data->rdma_counts = 1;
+
+	hw_data->rdma_plane_type[0] = DRM_PLANE_TYPE_PRIMARY;
 
 	hw_data->wmixer.virt_addr = devm_ioremap_resource(dev, res_wmix);
 	if (hw_data->wmixer.virt_addr == NULL)
-		return -ENOMEM;;
+		return -ENOMEM;
 
 	res = platform_get_resource_byname(pdev, IORESOURCE_IRQ, "vsync");
 	if (!res) {
@@ -196,7 +201,7 @@ static int tcc_drm_address_dt_parse_v1_0(struct platform_device *pdev, struct tc
 			ret = -ENODEV;
 			break;
 		}
-	
+
 		for (i = 0; i < RDMA_MAX_NUM; i++) {
 			if(of_property_read_u32_index(np, "rdma", i + 1, &index) < 0) {
 				hw_data->rdma[i].virt_addr = NULL;
@@ -217,12 +222,14 @@ static int tcc_drm_address_dt_parse_v1_0(struct platform_device *pdev, struct tc
 			}
 			if(!strcmp(planes_type, "primary")) {
 				hw_data->rdma_plane_type[i] = DRM_PLANE_TYPE_PRIMARY;
+			} else if(!strcmp(planes_type, "primary_transparent")) {
+				hw_data->rdma_plane_type[i] = DRM_PLANE_TYPE_PRIMARY | DRM_PLANE_FLAG_TRANSPARENT;
 			} else if(!strcmp(planes_type, "cursor")) {
 				hw_data->rdma_plane_type[i] = DRM_PLANE_TYPE_CURSOR;
 			} else if(!strcmp(planes_type, "overlay")) {
 				hw_data->rdma_plane_type[i] = DRM_PLANE_TYPE_OVERLAY;
 			} else {
-				hw_data->rdma_plane_type[i] = -1;
+				hw_data->rdma_plane_type[i] = DRM_PLANE_FLAG_NOT_DEFINED;
 			}
 		}
 
@@ -231,27 +238,30 @@ static int tcc_drm_address_dt_parse_v1_0(struct platform_device *pdev, struct tc
 			if(hw_data->rdma[i].virt_addr == NULL) {
 				break;
 			}
-			if(hw_data->rdma_plane_type[i] < 0) {
+			if(DRM_PLANE_FLAG(hw_data->rdma_plane_type[i])
+				== DRM_PLANE_FLAG(DRM_PLANE_FLAG_NOT_DEFINED)) {
 				hw_data->rdma[i].virt_addr = NULL;
 				break;
 			}
 		}
+		/* update rdma valid counts */
+		hw_data->rdma_counts = i;
 
 		for (; i < RDMA_MAX_NUM; i++) {
 			hw_data->rdma[i].virt_addr = NULL;
-			hw_data->rdma_plane_type[i]  = -1;
+			hw_data->rdma_plane_type[i]  = DRM_PLANE_FLAG_NOT_DEFINED;
 		}
 
-		printk(KERN_INFO "[INF][DRM_ADR] display_device:%d, wmixer:%d\r\n",
+		pr_info("[INF][DRM_ADR] display_device:%d, wmixer:%d\r\n",
 			get_vioc_index(hw_data->display_device.blk_num),
 			get_vioc_index(hw_data->wmixer.blk_num));
 
 		for (i = 0; i < RDMA_MAX_NUM; i++) {
 			if(hw_data->rdma[i].virt_addr != NULL) {
-				printk(KERN_INFO "              rdma:%d - %s\r\n",
+				pr_info("              rdma:%d - %s\r\n",
 				get_vioc_index(hw_data->rdma[i].blk_num),
-				(hw_data->rdma_plane_type[i] == DRM_PLANE_TYPE_CURSOR)?"cursor":
-				(hw_data->rdma_plane_type[i] == DRM_PLANE_TYPE_PRIMARY)?"primary":"overlay");
+				(DRM_PLANE_TYPE(hw_data->rdma_plane_type[i]) == DRM_PLANE_TYPE_CURSOR)?"cursor":
+				(DRM_PLANE_TYPE(hw_data->rdma_plane_type[i]) == DRM_PLANE_TYPE_PRIMARY)?"primary":"overlay");
 			}
 		}
 
@@ -281,7 +291,7 @@ int tcc_drm_address_dt_parse(struct platform_device *pdev, struct tcc_hw_device 
 			parse_api = NULL;
 			break;
 	}
-	
+
 	if(parse_api != NULL) {
 		hw_data->version = version;
 		ret = parse_api(pdev, hw_data);

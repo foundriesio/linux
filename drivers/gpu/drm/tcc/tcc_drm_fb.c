@@ -53,7 +53,7 @@ tcc_user_fb_create(struct drm_device *dev, struct drm_file *file_priv,
 		      const struct drm_mode_fb_cmd2 *mode_cmd)
 {
 	struct drm_framebuffer *fb;
-	int err;
+	//int err;
 
 	// Should implements it..!!
 	//err = drm_mode_fb_cmd2_validate(mode_cmd);
@@ -87,7 +87,7 @@ static const struct drm_mode_config_funcs tcc_drm_mode_config_funcs = {
 void tcc_drm_mode_config_init(struct drm_device *dev)
 {
 	drm_mode_config_init(dev);
-	
+
 	dev->mode_config.min_width = 0;
 	dev->mode_config.min_height = 0;
 

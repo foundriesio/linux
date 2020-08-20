@@ -9,6 +9,17 @@
 
 #define RDMA_MAX_NUM 4
 
+#define DRM_PLAME_TYPE_MASK     0xFFFF
+#define DRM_PLAME_TYPE_SHIFT    0
+#define DRM_PLAME_FLAG_MASK     0x0FFF
+#define DRM_PLAME_FLAG_SHIFT    16
+
+#define DRM_PLANE_TYPE(x) (((x) >> DRM_PLAME_TYPE_SHIFT) & DRM_PLAME_TYPE_MASK)
+#define DRM_PLANE_FLAG(x) (((x) >> DRM_PLAME_FLAG_SHIFT) & DRM_PLAME_FLAG_MASK)
+
+#define DRM_PLANE_FLAG_NONE             ( 0x00 <<  DRM_PLAME_FLAG_SHIFT)
+#define DRM_PLANE_FLAG_TRANSPARENT      ( 0x01 <<  DRM_PLAME_FLAG_SHIFT)
+#define DRM_PLANE_FLAG_NOT_DEFINED      ( 0x800 <<  DRM_PLAME_FLAG_SHIFT)
 
 enum {
         TCC_DRM_DT_VERSION_OLD = 0,
@@ -33,6 +44,9 @@ struct tcc_hw_device {
 
         /* video identification code */
         int vic;
+
+        /* rdma valid counts */
+        int rdma_counts;
 };
 
 extern int tcc_drm_address_dt_parse(struct platform_device *pdev, 

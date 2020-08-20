@@ -91,7 +91,7 @@ to_tcc_plane_state(struct drm_plane_state *state)
 struct tcc_drm_plane {
 	struct drm_plane base;
 	const struct tcc_drm_plane_config *config;
-	unsigned int index;
+	unsigned int win;
 };
 
 #define TCC_DRM_PLANE_CAP_DOUBLE	(1 << 0)

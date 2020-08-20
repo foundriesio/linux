@@ -22,11 +22,15 @@
 #define CRTC_FLAGS_IRQ_BIT	0
 #define CRTC_FLAGS_CLK_BIT	1
 
+/* Display has totally four hardware windows. */
+#define CRTC_WIN_NR_MAX		4
+
 struct tcc_drm_crtc *tcc_drm_crtc_create(struct drm_device *drm_dev,
-					struct drm_plane *plane,
-					enum tcc_drm_output_type out_type,
+					struct drm_plane *primary,
+					struct drm_plane *cursor,
+					enum tcc_drm_output_type type,
 					const struct tcc_drm_crtc_ops *ops,
-					void *context);
+					void *ctx);
 void tcc_drm_crtc_wait_pending_update(struct tcc_drm_crtc *tcc_crtc);
 void tcc_drm_crtc_finish_update(struct tcc_drm_crtc *tcc_crtc,
 				   struct tcc_drm_plane *tcc_plane);

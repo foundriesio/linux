@@ -11,5 +11,8 @@
  */
 
 int tcc_plane_init(struct drm_device *dev,
-		      struct tcc_drm_plane *tcc_plane, unsigned int index,
-		      const struct tcc_drm_plane_config *config);
+		struct drm_plane *drm_plane,
+		enum drm_plane_type plane_type,
+		const uint32_t *pixel_formats,
+		unsigned int num_pixel_formats);
+

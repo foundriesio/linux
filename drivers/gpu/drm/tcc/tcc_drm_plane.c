@@ -128,7 +128,6 @@ static void tcc_plane_mode_set(struct tcc_drm_plane_state *tcc_state)
 
 static void tcc_drm_plane_reset(struct drm_plane *plane)
 {
-	struct tcc_drm_plane *tcc_plane = to_tcc_plane(plane);
 	struct tcc_drm_plane_state *tcc_state;
 
 	if (plane->state) {
@@ -141,7 +140,6 @@ static void tcc_drm_plane_reset(struct drm_plane *plane)
 	if (tcc_state) {
 		plane->state = &tcc_state->base;
 		plane->state->plane = plane;
-		plane->state->zpos = tcc_plane->config->zpos;
 	}
 }
 
@@ -177,8 +175,7 @@ static struct drm_plane_funcs tcc_plane_funcs = {
 };
 
 static int
-tcc_drm_plane_check_format(const struct tcc_drm_plane_config *config,
-			      struct tcc_drm_plane_state *state)
+tcc_drm_plane_check_format(struct tcc_drm_plane_state *state)
 {
 	struct drm_framebuffer *fb = state->base.fb;
 
@@ -195,26 +192,14 @@ tcc_drm_plane_check_format(const struct tcc_drm_plane_config *config,
 }
 
 static int
-tcc_drm_plane_check_size(const struct tcc_drm_plane_config *config,
-			    struct tcc_drm_plane_state *state)
+tcc_drm_plane_check_size(struct tcc_drm_plane_state *state)
 {
 	bool width_ok = false, height_ok = false;
-
-	if (config->capabilities & TCC_DRM_PLANE_CAP_SCALE)
-		return 0;
 
 	if (state->src.w == state->crtc.w)
 		width_ok = true;
 
 	if (state->src.h == state->crtc.h)
-		height_ok = true;
-
-	if ((config->capabilities & TCC_DRM_PLANE_CAP_DOUBLE) &&
-	    state->h_ratio == (1 << 15))
-		width_ok = true;
-
-	if ((config->capabilities & TCC_DRM_PLANE_CAP_DOUBLE) &&
-	    state->v_ratio == (1 << 15))
 		height_ok = true;
 
 	if (width_ok && height_ok)
@@ -227,9 +212,8 @@ tcc_drm_plane_check_size(const struct tcc_drm_plane_config *config,
 static int tcc_plane_atomic_check(struct drm_plane *plane,
 				     struct drm_plane_state *state)
 {
-	struct tcc_drm_plane *tcc_plane = to_tcc_plane(plane);
 	struct tcc_drm_plane_state *tcc_state =
-						to_tcc_plane_state(state);
+				to_tcc_plane_state(state);
 	int ret = 0;
 
 	if (!state->crtc || !state->fb)
@@ -238,11 +222,11 @@ static int tcc_plane_atomic_check(struct drm_plane *plane,
 	/* translate state into tcc_state */
 	tcc_plane_mode_set(tcc_state);
 
-	ret = tcc_drm_plane_check_format(tcc_plane->config, tcc_state);
+	ret = tcc_drm_plane_check_format(tcc_state);
 	if (ret)
 		return ret;
 
-	ret = tcc_drm_plane_check_size(tcc_plane->config, tcc_state);
+	ret = tcc_drm_plane_check_size(tcc_state);
 	return ret;
 }
 
@@ -282,40 +266,25 @@ static const struct drm_plane_helper_funcs plane_helper_funcs = {
 	.atomic_disable = tcc_plane_atomic_disable,
 };
 
-static void tcc_plane_attach_zpos_property(struct drm_plane *plane,
-					      bool immutable)
-{
-	/* FIXME */
-	if (immutable)
-		drm_plane_create_zpos_immutable_property(plane, 0);
-	else
-		drm_plane_create_zpos_property(plane, 0, 0, MAX_PLANE - 1);
-}
-
 int tcc_plane_init(struct drm_device *dev,
-		      struct tcc_drm_plane *tcc_plane, unsigned int index,
-		      const struct tcc_drm_plane_config *config)
+			struct drm_plane *drm_plane,
+			enum drm_plane_type plane_type,
+			const uint32_t *pixel_formats,
+			unsigned int num_pixel_formats)
 {
 	int err;
 
-	err = drm_universal_plane_init(dev, &tcc_plane->base,
+	err = drm_universal_plane_init(dev, drm_plane,
 				       1 << dev->mode_config.num_crtc,
 				       &tcc_plane_funcs,
-				       config->pixel_formats,
-				       config->num_pixel_formats,
-				       NULL, config->type, NULL);
+				       pixel_formats,
+				       num_pixel_formats,
+				       NULL, plane_type, NULL);
 	if (err) {
 		DRM_ERROR("failed to initialize plane\n");
 		return err;
 	}
 
-	drm_plane_helper_add(&tcc_plane->base, &plane_helper_funcs);
-
-	tcc_plane->index = index;
-	tcc_plane->config = config;
-
-	tcc_plane_attach_zpos_property(&tcc_plane->base,
-			   !(config->capabilities & TCC_DRM_PLANE_CAP_ZPOS));
-
+	drm_plane_helper_add(drm_plane, &plane_helper_funcs);
 	return 0;
 }

@@ -58,7 +58,7 @@ static void tcc_drm_crtc_atomic_enable(struct drm_crtc *crtc,
 		unsigned long flags;
 
 		WARN_ON(drm_crtc_vblank_get(crtc) != 0);
-		
+
 		spin_lock_irqsave(&crtc->dev->event_lock, flags);
 		tcc_crtc->flip_event = crtc->state->event;
 		crtc->state->event = NULL;
@@ -150,7 +150,7 @@ static void tcc_drm_crtc_flip_complete(struct drm_crtc *crtc)
 {
 	struct tcc_drm_crtc *tcc_crtc = to_tcc_crtc(crtc);
     	unsigned long flags;
- 
+
     	spin_lock_irqsave(&crtc->dev->event_lock, flags);
 
 	atomic_set(&tcc_crtc->flip_status, TCC_DRM_CRTC_FLIP_STATUS_NONE);
@@ -170,14 +170,14 @@ void tcc_crtc_handle_event(struct tcc_drm_crtc *tcc_crtc)
 	struct drm_crtc *crtc = &tcc_crtc->base;
 	struct drm_crtc_state *new_crtc_state = crtc->state;
 	struct drm_pending_vblank_event *event = new_crtc_state->event;
-	
+
 	if (!new_crtc_state->active) {
 		printk(KERN_WARNING "[WARN][DRMCRTC] %s new crtc state is not active\r\n", __func__);
 		return;
 	}
 
 	if (event == NULL) {
-		printk(KERN_ERR "[ERR][DRMCRTC] %s event is NULL\r\n", __func__);
+		DRM_DEBUG_KMS("[DBG][DRMCRTC] %s event is NULL\r\n", __func__);
 		return;
 	}
 
@@ -234,7 +234,8 @@ static const struct drm_crtc_funcs tcc_crtc_funcs = {
 };
 
 struct tcc_drm_crtc *tcc_drm_crtc_create(struct drm_device *drm_dev,
-					struct drm_plane *plane,
+					struct drm_plane *primary,
+					struct drm_plane *cursor,
 					enum tcc_drm_output_type type,
 					const struct tcc_drm_crtc_ops *ops,
 					void *ctx)
@@ -242,7 +243,6 @@ struct tcc_drm_crtc *tcc_drm_crtc_create(struct drm_device *drm_dev,
 	struct tcc_drm_crtc *tcc_crtc;
 	struct drm_crtc *crtc;
 	int ret;
-
 	tcc_crtc = kzalloc(sizeof(*tcc_crtc), GFP_KERNEL);
 	if (!tcc_crtc)
 		return ERR_PTR(-ENOMEM);
@@ -255,7 +255,7 @@ struct tcc_drm_crtc *tcc_drm_crtc_create(struct drm_device *drm_dev,
 
 	atomic_set(&tcc_crtc->flip_status, TCC_DRM_CRTC_FLIP_STATUS_NONE);
 
-	ret = drm_crtc_init_with_planes(drm_dev, crtc, plane, NULL,
+	ret = drm_crtc_init_with_planes(drm_dev, crtc, primary, cursor,
 					&tcc_crtc_funcs, NULL);
 	if (ret < 0)
 		goto err_crtc;
@@ -265,10 +265,14 @@ struct tcc_drm_crtc *tcc_drm_crtc_create(struct drm_device *drm_dev,
 	return tcc_crtc;
 
 err_crtc:
-	plane->funcs->destroy(plane);
+	if(primary != NULL && primary->funcs->destroy != NULL)
+		primary->funcs->destroy(primary);
+	if(cursor != NULL && cursor->funcs->destroy != NULL)
+		cursor->funcs->destroy(cursor);
 	kfree(tcc_crtc);
 	return ERR_PTR(ret);
 }
+
 
 struct tcc_drm_crtc *tcc_drm_crtc_get_by_type(struct drm_device *drm_dev,
 				       enum tcc_drm_output_type out_type)
