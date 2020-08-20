@@ -85,6 +85,7 @@ static const uint32_t third_formats[] = {
 	DRM_FORMAT_RGB565,
 	DRM_FORMAT_XRGB8888,
 	DRM_FORMAT_ARGB8888,
+	DRM_FORMAT_ABGR8888
 };
 
 static int third_enable_vblank(struct tcc_drm_crtc *crtc)
@@ -217,11 +218,15 @@ static void third_win_set_pixfmt(struct third_context *ctx, unsigned int win,
 		}
 
 		pRDMA = ctx->hw_data.rdma[win].virt_addr;
+		/* Default RGB SWAP */
+		VIOC_RDMA_SetImageRGBSwapMode(pRDMA, 0); /* R-G-B */
 		switch (pixel_format) {
 		case DRM_FORMAT_RGB565:
 			VIOC_RDMA_SetImageOffset(pRDMA, TCC_LCDC_IMG_FMT_RGB565, width);
 			VIOC_RDMA_SetImageFormat(pRDMA, TCC_LCDC_IMG_FMT_RGB565);
 			break;
+		case DRM_FORMAT_ABGR8888:
+			VIOC_RDMA_SetImageRGBSwapMode(pRDMA, 5); /* B-G-R */
 		case DRM_FORMAT_XRGB8888:
 		case DRM_FORMAT_ARGB8888:
 			VIOC_RDMA_SetImageOffset(pRDMA, TCC_LCDC_IMG_FMT_RGB888, width);
