@@ -262,13 +262,12 @@
 
 	i2c0: i2c@16300000 {
 		compatible = "telechips,tcc803x-i2c";
-		reg = <0x16300000 0x1c 0x163c0000 0x010>;
+		reg = <0x16300000 0x1c 0x163c0000 0x10 0x16340004 0x04>;
 		interrupts = <GIC_SPI 35 IRQ_TYPE_LEVEL_HIGH>;
 		#address-cells = <1>;
 		#size-cells = <0>;
 		clocks = <&clk_peri PERI_I2C0 &clk_io IOBUS_I2C_M0 &clk_fbus FBUS_IO>;
-		clock-frequency = <4000000>;
-		scl-clock-frequency = <400000>;
+		clock-frequency = <400000>;
 		interrupt_mode = <0>;
 
 		status = "okay";
@@ -303,13 +302,12 @@
 
 	i2c1: i2c@16310000 {
 		compatible = "telechips,tcc803x-i2c";
-		reg = <0x16310000 0x1c 0x163c0000 0x10>;
+		reg = <0x16310000 0x1c 0x163c0000 0x10 0x16350004 0x04>;
 		interrupts = <GIC_SPI 35 IRQ_TYPE_LEVEL_HIGH>;
 		#address-cells = <1>;
 		#size-cells = <0>;
 		clocks = <&clk_peri PERI_I2C1 &clk_io IOBUS_I2C_M1 &clk_fbus FBUS_IO>;
-		clock-frequency = <4000000>;
-		scl-clock-frequency = <400000>;
+		clock-frequency = <400000>;
 		interrupt_mode = <0>;
 
 		status = "okay";
@@ -320,13 +318,12 @@
 
 	i2c2: i2c@16320000 {
 		compatible = "telechips,tcc803x-i2c";
-		reg = <0x16320000 0x1c 0x163c0000 0x10>;
+		reg = <0x16320000 0x1c 0x163c0000 0x10 0x16360004 0x04>;
 		interrupts = <GIC_SPI 36 IRQ_TYPE_LEVEL_HIGH>;
 		#address-cells = <1>;
 		#size-cells = <0>;
 		clocks = <&clk_peri PERI_I2C2 &clk_io IOBUS_I2C_M2 &clk_fbus FBUS_IO>;
-		clock-frequency = <4000000>;
-		scl-clock-frequency = <400000>;
+		clock-frequency = <400000>;
 		port-mux = <0xFF>;      /* default value */
 		status = "disabled";
 		interrupt_mode = <0>;
@@ -334,14 +331,13 @@
 
 	i2c3: i2c@16330000 {
 		compatible = "telechips,tcc803x-i2c";
-		reg = <0x16330000 0x1c 0x163c0000 0x10>;
+		reg = <0x16330000 0x1c 0x163c0000 0x10 0x16370004 0x04>;
 		interrupts = <GIC_SPI 36 IRQ_TYPE_LEVEL_HIGH>;
 		#address-cells = <1>;
 		#size-cells = <0>;
 		clocks = <&clk_peri PERI_I2C3 &clk_io IOBUS_I2C_M3 &clk_fbus FBUS_IO>;
-		clock-frequency = <4000000>;
 		/*Set CP I2C frequency to 100Khz*/
-		scl-clock-frequency = <100000>;
+		clock-frequency = <100000>;
 		port-mux = <0xFF>;      /* default value */
 		status = "disabled";
 		interrupt_mode = <0>;
@@ -349,14 +345,13 @@
 
 	i2c4: i2c@16340000 {
 		compatible = "telechips,tcc803x-i2c";
-		reg = <0x16340000 0x1c 0x163c0000 0x10>;
+		reg = <0x16340000 0x1c 0x163c0000 0x10 0x16300004 0x04>;
 		interrupts = <GIC_SPI 35 IRQ_TYPE_LEVEL_HIGH>;
 		#address-cells = <1>;
 		#size-cells = <0>;
 		clocks = <&clk_peri PERI_I2C0 &clk_io IOBUS_I2C_M4 &clk_fbus FBUS_IO>;
-		clock-frequency = <4000000>;
+		clock-frequency = <100000>;
 		/*Set CP I2C frequency to 100Khz*/
-		scl-clock-frequency = <400000>;
 		port-mux = <0xFF>;      /* default value */
 		status = "disabled";
 		interrupt_mode = <0>;
@@ -364,14 +359,13 @@
 
 	i2c5: i2c@16350000 {
 		compatible = "telechips,tcc803x-i2c";
-		reg = <0x16350000 0x1c 0x163c0000 0x10>;
+		reg = <0x16350000 0x1c 0x163c0000 0x10 0x16310004 0x04>;
 		interrupts = <GIC_SPI 35 IRQ_TYPE_LEVEL_HIGH>;
 		#address-cells = <1>;
 		#size-cells = <0>;
 		clocks = <&clk_peri PERI_I2C1 &clk_io IOBUS_I2C_M5 &clk_fbus FBUS_IO>;
-		clock-frequency = <4000000>;
+		clock-frequency = <100000>;
 		/*Set CP I2C frequency to 100Khz*/
-		scl-clock-frequency = <100000>;
 		port-mux = <0xFF>;      /* default value */
 		status = "disabled";
 		interrupt_mode = <0>;
@@ -379,14 +373,13 @@
 
 	i2c6: i2c@16360000 {
 		compatible = "telechips,tcc803x-i2c";
-		reg = <0x16360000 0x1c 0x163c0000 0x10>;
+		reg = <0x16360000 0x1c 0x163c0000 0x10 0x16320004 0x04>;
 		interrupts = <GIC_SPI 36 IRQ_TYPE_LEVEL_HIGH>;
 		#address-cells = <1>;
 		#size-cells = <0>;
 		clocks = <&clk_peri PERI_I2C2 &clk_io IOBUS_I2C_M6 &clk_fbus FBUS_IO>;
-		clock-frequency = <4000000>;
+		clock-frequency = <100000>;
 		/*Set CP I2C frequency to 100Khz*/
-		scl-clock-frequency = <100000>;
 		port-mux = <0xFF>;      /* default value */
 		status = "disabled";
 		interrupt_mode = <0>;
@@ -394,14 +387,13 @@
 
 	i2c7: i2c@16370000 {
 		compatible = "telechips,tcc803x-i2c";
-		reg = <0x16370000 0x1c 0x163c0000 0x10>;
+		reg = <0x16370000 0x1c 0x163c0000 0x10 0x16330004 0x04>;
 		interrupts = <GIC_SPI 36 IRQ_TYPE_LEVEL_HIGH>;
 		#address-cells = <1>;
 		#size-cells = <0>;
 		clocks = <&clk_peri PERI_I2C3 &clk_io IOBUS_I2C_M7 &clk_fbus FBUS_IO>;
-		clock-frequency = <4000000>;
+		clock-frequency = <100000>;
 		/*Set CP I2C frequency to 100Khz*/
-		scl-clock-frequency = <100000>;
 		port-mux = <0xFF>;      /* default value */
 		status = "disabled";
 		interrupt_mode = <0>;

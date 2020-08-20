@@ -866,7 +866,8 @@
 	i2c0: i2c@16300000 {
 		compatible = "telechips,tcc805x-i2c";
 		reg = <0x16300000 0x28>,
-		      <0x163c0000 0x14>;
+		      <0x163c0000 0x14>,
+		      <0x16340000 0x04>;
 		interrupts = <GIC_SPI 61 IRQ_TYPE_LEVEL_HIGH>;
 		#address-cells = <1>;
 		#size-cells = <0>;
@@ -880,7 +881,8 @@
 	i2c1: i2c@16310000 {
 		compatible = "telechips,tcc805x-i2c";
 		reg = <0x16310000 0x28>,
-		      <0x163c0000 0x14>;
+		      <0x163c0000 0x14>,
+		      <0x16350000 0x04>;
 		interrupts = <GIC_SPI 62 IRQ_TYPE_LEVEL_HIGH>;
 		#address-cells = <1>;
 		#size-cells = <0>;
@@ -894,7 +896,8 @@
 	i2c2: i2c@16320000 {
 		compatible = "telechips,tcc805x-i2c";
 		reg = <0x16320000 0x28>,
-		      <0x163c0000 0x14>;
+		      <0x163c0000 0x14>,
+		      <0x16360000 0x04>;
 		interrupts = <GIC_SPI 63 IRQ_TYPE_LEVEL_HIGH>;
 		#address-cells = <1>;
 		#size-cells = <0>;
@@ -908,7 +911,8 @@
 	i2c3: i2c@16330000 {
 		compatible = "telechips,tcc805x-i2c";
 		reg = <0x16330000 0x28>,
-		      <0x163c0000 0x14>;
+		      <0x163c0000 0x14>,
+		      <0x16370000 0x100>;
 		interrupts = <GIC_SPI 64 IRQ_TYPE_LEVEL_HIGH>;
 		#address-cells = <1>;
 		#size-cells = <0>;
@@ -922,7 +926,8 @@
 	i2c4: i2c@16340000 {
 		compatible = "telechips,tcc805x-i2c";
 		reg = <0x16340000 0x28>,
-		      <0x163c0000 0x14>;
+		      <0x163c0000 0x14>,
+		      <0x16300000 0x04>;
 		interrupts = <GIC_SPI 61 IRQ_TYPE_LEVEL_HIGH>;
 		#address-cells = <1>;
 		#size-cells = <0>;
@@ -936,7 +941,8 @@
 	i2c5: i2c@16350000 {
 		compatible = "telechips,tcc805x-i2c";
 		reg = <0x16350000 0x28>,
-		      <0x163c0000 0x14>;
+		      <0x163c0000 0x14>,
+		      <0x16310000 0x04>;
 		interrupts = <GIC_SPI 62 IRQ_TYPE_LEVEL_HIGH>;
 		#address-cells = <1>;
 		#size-cells = <0>;
@@ -950,7 +956,8 @@
 	i2c6: i2c@16360000 {
 		compatible = "telechips,tcc805x-i2c";
 		reg = <0x16360000 0x28>,
-		      <0x163c0000 0x14>;
+		      <0x163c0000 0x14>,
+		      <0x16320000 0x04>;
 		interrupts = <GIC_SPI 63 IRQ_TYPE_LEVEL_HIGH>;
 		#address-cells = <1>;
 		#size-cells = <0>;
@@ -964,7 +971,8 @@
 	i2c7: i2c@16370000 {
 		compatible = "telechips,tcc805x-i2c";
 		reg = <0x16370000 0x100>,
-		      <0x163c0000 0x14>;
+		      <0x163c0000 0x14>,
+		      <0x16330000 0x04>;
 		interrupts = <GIC_SPI 64 IRQ_TYPE_LEVEL_HIGH>;
 		#address-cells = <1>;
 		#size-cells = <0>;

@@ -89,6 +89,7 @@ struct tcc_i2c {
 	wait_queue_head_t       wait;
 	void __iomem            *regs;
 	void __iomem            *port_cfg;
+	void __iomem            *share_core;
 
 	int                     core;
 	unsigned int            i2c_clk_rate;
@@ -178,6 +179,21 @@ static inline void tcc_i2c_disable_irq(struct tcc_i2c *i2c)
 	i2c_writel(i2c_readl(i2c->regs+I2C_CTRL) & ~(1<<6), i2c->regs+I2C_CTRL);
 	i2c_writel(i2c_readl(i2c->regs+I2C_CMD) | (1<<0), i2c->regs+I2C_CMD);
 }
+/* Before disable clock, TCC803x have to check corresponding i2c core.
+ * Because peripheral clock of i2c controller 0 ~ 3 is connected with 4 ~ 7.
+ */
+static int tcc_i2c_check_share_core(struct tcc_i2c *i2c)
+{
+	int ret;
+	if(i2c->share_core != NULL){
+		ret = ((i2c_readl(i2c->share_core) >> 7) & 0x1);
+	}else{
+		ret = 0;
+	}
+	dev_dbg(i2c->dev, "[DEBUG][I2C] %s: return %d\n", __func__, ret);
+	return ret;
+}
+
 
 static int tcc_i2c_set_noise_filter(struct tcc_i2c *i2c)
 {
@@ -938,6 +954,7 @@ static int tcc_i2c_probe(struct platform_device *pdev)
 
 	/* get i2c port config register */
 	i2c->port_cfg = of_iomap(pdev->dev.of_node, 1);
+	i2c->share_core = of_iomap(pdev->dev.of_node, 2);
 
 	i2c->irq = platform_get_irq(pdev, 0);
 	if (i2c->irq < 0) {
@@ -1018,18 +1035,23 @@ err_clk:
 	}
 #endif
 
-	if(i2c->pclk) {
-		clk_disable(i2c->pclk);
-		clk_put(i2c->pclk);
-		i2c->pclk = NULL;
-	}
-	if(i2c->hclk) {
-		clk_disable(i2c->hclk);
-		clk_put(i2c->hclk);
-		i2c->hclk = NULL;
+	ret = tcc_i2c_check_share_core(i2c);
+	if(ret == 0){
+		if(i2c->pclk != NULL){
+			clk_disable(i2c->pclk);
+			clk_put(i2c->pclk);
+			i2c->pclk = NULL;
+		}
+		if(i2c->hclk != NULL) {
+			clk_disable(i2c->hclk);
+			clk_put(i2c->hclk);
+			i2c->hclk = NULL;
+		}
 	}
 
 err_io:
+	/* Disable I2C Core */
+	i2c_writel(i2c_readl(i2c->regs+I2C_CTRL) & ~(1<<7), i2c->regs+I2C_CTRL);
 	kfree(i2c);
 	return ret;
 }
@@ -1037,21 +1059,28 @@ err_io:
 static int tcc_i2c_remove(struct platform_device *pdev)
 {
 	struct tcc_i2c *i2c = platform_get_drvdata(pdev);
+	int ret;
+
 	platform_set_drvdata(pdev, NULL);
 	device_remove_file(&pdev->dev, &dev_attr_tcci2c);
 
+	/* Disable I2C Core */
+	i2c_writel(i2c_readl(i2c->regs+I2C_CTRL) & ~(1<<7), i2c->regs+I2C_CTRL);
 	/* I2C clock Disable */
 	i2c_del_adapter(&(i2c->adap));
 	/* I2C bus & clock disable */
-	if (i2c->pclk) {
-		clk_disable(i2c->pclk);
-		clk_put(i2c->pclk);
-		i2c->pclk = NULL;
-	}
-	if (i2c->hclk) {
-		clk_disable(i2c->hclk);
-		clk_put(i2c->hclk);
-		i2c->hclk = NULL;
+	ret = tcc_i2c_check_share_core(i2c);
+	if(ret == 0){
+		if (i2c->pclk != NULL) {
+			clk_disable(i2c->pclk);
+			clk_put(i2c->pclk);
+			i2c->pclk = NULL;
+		}
+		if (i2c->hclk != NULL) {
+			clk_disable(i2c->hclk);
+			clk_put(i2c->hclk);
+			i2c->hclk = NULL;
+		}
 	}
 
 	kfree(i2c);
@@ -1062,12 +1091,20 @@ static int tcc_i2c_remove(struct platform_device *pdev)
 static int tcc_i2c_suspend(struct device *dev)
 {
 	struct tcc_i2c *i2c = dev_get_drvdata(dev);
+	int ret;
 	i2c_lock_adapter(&i2c->adap);
-	if(i2c->pclk)
-		clk_disable_unprepare(i2c->pclk);
-	if(i2c->hclk)
-		clk_disable_unprepare(i2c->hclk);
+
+	/* Disable I2C Core */
+	i2c_writel(i2c_readl(i2c->regs+I2C_CTRL) & ~(1<<7), i2c->regs+I2C_CTRL);
+	ret = tcc_i2c_check_share_core(i2c);
+	if(ret == 0){
+		if(i2c->pclk != NULL)
+			clk_disable_unprepare(i2c->pclk);
+		if(i2c->hclk != NULL)
+			clk_disable_unprepare(i2c->hclk);
+	}
 	i2c->is_suspended = true;
+
 	i2c_unlock_adapter(&i2c->adap);
 	return 0;
 }
