@@ -747,7 +747,7 @@ static int tcc_hsm_resume(struct platform_device *pdev)
 #endif
 
 #ifdef CONFIG_OF
-static struct of_device_id hsm_of_match[] = {
+static struct of_device_id hsm_of_match[2] = {
 	{.compatible = "telechips,tcc-hsm"},
 	{"", "", "", NULL},
 };
