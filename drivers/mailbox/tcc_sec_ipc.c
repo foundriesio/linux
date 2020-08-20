@@ -61,7 +61,7 @@
 #define HSM_EVENT_FLAG(cmd) (1 << cmd)
 //#define DEBUG_TIME_MEASUREMENT 1
 
-static const struct of_device_id sec_ipc_dt_id[] = {
+static const struct of_device_id sec_ipc_dt_id[7] = {
 	{.compatible = "telechips,sec-ipc-m4"},
 	{.compatible = "telechips,sec-ipc-hsm"},
 	{.compatible = "telechips,sec-ipc-a7"},
