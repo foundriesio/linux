@@ -8,6 +8,7 @@
 workqueue-Use-rcuwait-for-wq_manager_wait.patch
 workqueue-Convert-the-pool-lock-and-wq_mayday_lock-t.patch
 Bluetooth-Acquire-sk_lock.slock-without-disabling-in.patch
+dev-Defer-free-of-skbs-in-flush_backlog.patch
 
 ############################################################
 # POSTED by others
@@ -57,6 +58,7 @@ printk-hack-out-emergency-loglevel-usage.patch
 printk-Force-a-line-break-on-pr_cont-n.patch
 serial-8250-only-atomic-lock-for-console.patch
 serial-8250-fsl-ingenic-mtk-fix-atomic-console.patch
+printk-fix-ifnullfree.cocci-warnings.patch
 
 # 2020-01-31 16:07 Peter Zijlstra [PATCH -v2 0/7] locking: Percpu-rwsem rewrite
 # https://lkml.kernel.org/r/20200131150703.194229898@infradead.org
@@ -129,6 +131,9 @@ mm-compaction-Disable-compact_unevictable_allowed-on.patch
 
 # 20191015191821.11479-1-bigeasy@linutronix.de
 Use-CONFIG_PREEMPTION.patch
+
+# 20200819194443.eabkhlkocvkgifyh@linutronix.de
+io_wq-Make-io_wqe-lock-a-raw_spinlock_t.patch
 
 ############################################################
 # Ready for posting
