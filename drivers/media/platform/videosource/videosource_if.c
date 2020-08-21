@@ -340,7 +340,9 @@ int videosource_free_gpio(videosource_t * vdev) {
 }
 
 #ifdef CONFIG_MIPI_CSI_2
-int videosource_if_init_mipi_csi2_interface(videosource_t * vdev, videosource_format_t * format, unsigned int onOff) {
+int videosource_if_init_mipi_csi2_interface(videosource_t * vdev, \
+		videosource_format_t * format, unsigned int onOff)
+{
 	unsigned int idx = 0;
 
 	if(onOff) {
@@ -387,36 +389,36 @@ int videosource_if_init_mipi_csi2_interface(videosource_t * vdev, videosource_fo
 		 */
 		logd("hssettle value : 0x%x \n", format->des_info.hssettle);
 		MIPI_CSIS_Set_DPHY_Common_Control(format->des_info.hssettle, \
-											format->des_info.clksettlectl, \
-											ON, \
-											OFF, \
-											OFF, \
-											format->des_info.data_lane_num, \
-											ON);
+			format->des_info.clksettlectl, \
+			ON, \
+			OFF, \
+			OFF, \
+			format->des_info.data_lane_num, \
+			ON);
 
 
 		for(idx = 0; idx < format->des_info.input_ch_num ; idx++) {
 			MIPI_CSIS_Set_ISP_Configuration(idx, \
-											format->des_info.pixel_mode, \
-											OFF, \
-											OFF, \
-											format->des_info.data_format, \
-											idx);
-			MIPI_CSIS_Set_ISP_Resolution(idx, format->width , format->height);
+				format->des_info.pixel_mode, \
+				OFF, \
+				OFF, \
+				format->des_info.data_format, \
+				idx);
+			MIPI_CSIS_Set_ISP_Resolution(idx, \
+				format->width, format->height);
 		}
 
 		MIPI_CSIS_Set_CSIS_Clock_Control(0x0, 0xf);
 
 		MIPI_CSIS_Set_CSIS_Common_Control(format->des_info.input_ch_num, \
-											0x0, \
-											ON, \
-											format->des_info.interleave_mode, \
-											format->des_info.data_lane_num, \
-											OFF, \
-											OFF, \
-											ON);
-	}
-	else {
+			0x0, \
+			ON, \
+			format->des_info.interleave_mode, \
+			format->des_info.data_lane_num, \
+			OFF, \
+			OFF, \
+			ON);
+	} else {
 		MIPI_CSIS_Set_Enable(OFF);
 
 		// S/W reset CSI2
@@ -436,40 +438,39 @@ int videosource_if_init_mipi_csi2_interface(videosource_t * vdev, videosource_fo
 	return 0;
 }
 
-int videosource_if_set_mipi_csi2_interrupt(videosource_t * vdev, videosource_format_t * format, unsigned int onOff) {
+int videosource_if_set_mipi_csi2_interrupt(videosource_t * vdev, \
+		videosource_format_t * format, unsigned int onOff)
+{
 	if(onOff) {
 		// clear interrupt
 		MIPI_CSIS_Set_CSIS_Interrupt_Src(0, \
-						CIM_MSK_FrameStart_MASK | CIM_MSK_FrameEnd_MASK | \
-						CIM_MSK_ERR_SOT_HS_MASK | CIM_MSK_ERR_LOST_FS_MASK | \
-						CIM_MSK_ERR_LOST_FE_MASK | CIM_MSK_ERR_OVER_MASK | \
-						CIM_MSK_ERR_WRONG_CFG_MASK | CIM_MSK_ERR_ECC_MASK | \
-						CIM_MSK_ERR_CRC_MASK | CIM_MSK_ERR_ID_MASK);
+			CIM_MSK_FrameStart_MASK | CIM_MSK_FrameEnd_MASK | \
+			CIM_MSK_ERR_SOT_HS_MASK | CIM_MSK_ERR_LOST_FS_MASK | \
+			CIM_MSK_ERR_LOST_FE_MASK | CIM_MSK_ERR_OVER_MASK | \
+			CIM_MSK_ERR_WRONG_CFG_MASK | CIM_MSK_ERR_ECC_MASK | \
+			CIM_MSK_ERR_CRC_MASK | CIM_MSK_ERR_ID_MASK);
 
 		MIPI_CSIS_Set_CSIS_Interrupt_Src(1, \
-						CIM_MSK_LINE_END_MASK);
+			CIM_MSK_LINE_END_MASK);
 
 //		  if(request_threaded_irq(vdev->format.des_info.csi2_irq, videosource_if_mipi_csi2_isr, ds90ub964_irq_thread_handler, 0, "mipi_csi2", NULL)) {
 //		  if(request_irq(vdev->format.des_info.csi2_irq, videosource_if_mipi_csi2_isr, IRQF_SHARED, "mipi_csi2", "mipi_csi2")) {
 		if(request_irq(vdev->format.des_info.csi2_irq, \
-						videosource_if_mipi_csi2_isr, \
-						0, \
-						"mipi_csi2", \
-						NULL)) {
+			videosource_if_mipi_csi2_isr, \
+			0, "mipi_csi2", NULL)) {
 			loge("fail request irq(%d) \n", vdev->format.des_info.csi2_irq);
-		}
-		else {
+		} else {
 			// unmask interrupt
 			MIPI_CSIS_Set_CSIS_Interrupt_Mask(0, \
-						CIM_MSK_ERR_SOT_HS_MASK | CIM_MSK_ERR_LOST_FS_MASK | \
-						CIM_MSK_ERR_LOST_FE_MASK | CIM_MSK_ERR_OVER_MASK | \
-						CIM_MSK_ERR_WRONG_CFG_MASK | CIM_MSK_ERR_ECC_MASK | \
-						CIM_MSK_ERR_CRC_MASK | CIM_MSK_ERR_ID_MASK, \
-						0);
+				CIM_MSK_ERR_SOT_HS_MASK | CIM_MSK_ERR_LOST_FS_MASK | \
+				CIM_MSK_ERR_LOST_FE_MASK | CIM_MSK_ERR_OVER_MASK | \
+				CIM_MSK_ERR_WRONG_CFG_MASK | CIM_MSK_ERR_ECC_MASK | \
+				CIM_MSK_ERR_CRC_MASK | CIM_MSK_ERR_ID_MASK, \
+				0);
 
 			MIPI_CSIS_Set_CSIS_Interrupt_Mask(1, \
-						CIM_MSK_LINE_END_MASK, \
-						0);
+				CIM_MSK_LINE_END_MASK, \
+				0);
 		}
 	}
 	else {
@@ -478,7 +479,7 @@ int videosource_if_set_mipi_csi2_interrupt(videosource_t * vdev, videosource_for
 	}
 
 	return 0;
-}
+	}
 #endif//CONFIG_ARCH_TCC803X
 
 int videosource_set_port(videosource_t * vdev, int enable) {

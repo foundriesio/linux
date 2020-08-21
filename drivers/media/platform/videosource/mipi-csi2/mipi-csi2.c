@@ -64,12 +64,12 @@ void MIPI_CSIS_Set_DPHY_S_Control(unsigned int high_part, unsigned int low_part)
 }
 
 void MIPI_CSIS_Set_DPHY_Common_Control(unsigned int HSsettle, \
-										unsigned int S_ClkSettleCtl, \
-										unsigned int S_BYTE_CLK_enable, \
-										unsigned int S_DpDn_Swap_Clk, \
-										unsigned int S_DpDn_Swap_Dat, \
-										unsigned int Enable_dat, \
-										unsigned int Enable_clk)
+		unsigned int S_ClkSettleCtl, \
+		unsigned int S_BYTE_CLK_enable, \
+		unsigned int S_DpDn_Swap_Clk, \
+		unsigned int S_DpDn_Swap_Dat, \
+		unsigned int Enable_dat, \
+		unsigned int Enable_clk)
 {
 	unsigned int val = 0;
 	volatile void __iomem * reg = mipi_csi2_base + DPHY_CMN_CTRL;
@@ -77,30 +77,30 @@ void MIPI_CSIS_Set_DPHY_Common_Control(unsigned int HSsettle, \
 	val = __raw_readl(reg);
 
 	val &= ~(DCCTRL_HSSETTLE_MASK | \
-				DCCTRL_S_CLKSETTLECTL_MASK | \
-				DCCTRL_S_BYTE_CLK_ENABLE_MASK | \
-				DCCTRL_S_DPDN_SWAP_CLK_MASK | \
-				DCCTRL_S_DPDN_SWAP_DAT_MASK | \
-				DCCTRL_ENABLE_DAT_MASK | \
-				DCCTRL_ENABLE_CLK_MASK);
+		DCCTRL_S_CLKSETTLECTL_MASK | \
+		DCCTRL_S_BYTE_CLK_ENABLE_MASK | \
+		DCCTRL_S_DPDN_SWAP_CLK_MASK | \
+		DCCTRL_S_DPDN_SWAP_DAT_MASK | \
+		DCCTRL_ENABLE_DAT_MASK | \
+		DCCTRL_ENABLE_CLK_MASK);
 
 	val |= (HSsettle << DCCTRL_HSSETTLE_SHIFT | \
-				S_ClkSettleCtl << DCCTRL_S_CLKSETTLECTL_SHIFT | \
-				S_BYTE_CLK_enable << DCCTRL_S_BYTE_CLK_ENABLE_SHIFT | \
-				S_DpDn_Swap_Clk << DCCTRL_S_DPDN_SWAP_CLK_SHIFT | \
-				S_DpDn_Swap_Dat << DCCTRL_S_DPDN_SWAP_DAT_SHIFT | \
-				((1 << Enable_dat) - 1) << DCCTRL_ENABLE_DAT_SHIFT | \
-				Enable_clk << DCCTRL_ENABLE_CLK_SHIFT);
+		S_ClkSettleCtl << DCCTRL_S_CLKSETTLECTL_SHIFT | \
+		S_BYTE_CLK_enable << DCCTRL_S_BYTE_CLK_ENABLE_SHIFT | \
+		S_DpDn_Swap_Clk << DCCTRL_S_DPDN_SWAP_CLK_SHIFT | \
+		S_DpDn_Swap_Dat << DCCTRL_S_DPDN_SWAP_DAT_SHIFT | \
+		((1 << Enable_dat) - 1) << DCCTRL_ENABLE_DAT_SHIFT | \
+		Enable_clk << DCCTRL_ENABLE_CLK_SHIFT);
 
 	__raw_writel(val, reg);
 }
 
 void MIPI_CSIS_Set_ISP_Configuration(unsigned int ch, \
-										unsigned int Pixel_mode, \
-										unsigned int Parallel, \
-										unsigned int RGB_SWAP, \
-										unsigned int DataFormat, \
-										unsigned int Virtual_channel)
+		unsigned int Pixel_mode, \
+		unsigned int Parallel, \
+		unsigned int RGB_SWAP, \
+		unsigned int DataFormat, \
+		unsigned int Virtual_channel)
 {
 	unsigned int val = 0;
 	volatile void __iomem * reg = mipi_csi2_base + ISP_CONFIG_CH0;
@@ -109,16 +109,16 @@ void MIPI_CSIS_Set_ISP_Configuration(unsigned int ch, \
 	val = __raw_readl(reg);
 
 	val &= ~(ICON_PIXEL_MODE_MASK | \
-				ICON_PARALLEL_MASK | \
-				ICON_RGB_SWAP_MASK | \
-				ICON_DATAFORMAT_MASK | \
-				ICON_VIRTUAL_CHANNEL_MASK);
+		ICON_PARALLEL_MASK | \
+		ICON_RGB_SWAP_MASK | \
+		ICON_DATAFORMAT_MASK | \
+		ICON_VIRTUAL_CHANNEL_MASK);
 
 	val |= (Pixel_mode << ICON_PIXEL_MODE_SHIFT | \
-				Parallel << ICON_PARALLEL_SHIFT | \
-				RGB_SWAP << ICON_RGB_SWAP_SHIFT | \
-				DataFormat << ICON_DATAFORMAT_SHIFT | \
-				Virtual_channel << ICON_VIRTUAL_CHANNEL_SHIFT);
+		Parallel << ICON_PARALLEL_SHIFT | \
+		RGB_SWAP << ICON_RGB_SWAP_SHIFT | \
+		DataFormat << ICON_DATAFORMAT_SHIFT | \
+		Virtual_channel << ICON_VIRTUAL_CHANNEL_SHIFT);
 
 	__raw_writel(val, (reg + (reg_offset * ch)));
 }
@@ -139,13 +139,13 @@ void MIPI_CSIS_Set_ISP_Resolution(unsigned int ch, unsigned int width, unsigned 
 }
 
 void MIPI_CSIS_Set_CSIS_Common_Control(unsigned int Update_shadow, \
-										unsigned int Deskew_level, \
-										unsigned int Deskew_enable, \
-										unsigned int Interleave_mode, \
-										unsigned int Lane_number, \
-										unsigned int Update_shadow_ctrl, \
-										unsigned int Sw_reset, \
-										unsigned int Csi_en)
+		unsigned int Deskew_level, \
+		unsigned int Deskew_enable, \
+		unsigned int Interleave_mode, \
+		unsigned int Lane_number, \
+		unsigned int Update_shadow_ctrl, \
+		unsigned int Sw_reset, \
+		unsigned int Csi_en)
 {
 	unsigned int val = 0;
 	volatile void __iomem * reg = mipi_csi2_base + CSIS_CMN_CTRL;
@@ -153,22 +153,22 @@ void MIPI_CSIS_Set_CSIS_Common_Control(unsigned int Update_shadow, \
 	val = __raw_readl(reg);
 
 	val &= ~(CCTRL_UPDATE_SHADOW_MASK | \
-				CCTRL_DESKEW_LEVEL_MASK | \
-				CCTRL_DESKEW_ENABLE_MASK | \
-				CCTRL_INTERLEAVE_MODE_MASK | \
-				CCTRL_LANE_NUMBER_MASK | \
-				CCTRL_UPDATE_SHADOW_CTRL_MASK | \
-				CCTRL_SW_RESET_MASK | \
-				CCTRL_CSI_EN_MASK);
+		CCTRL_DESKEW_LEVEL_MASK | \
+		CCTRL_DESKEW_ENABLE_MASK | \
+		CCTRL_INTERLEAVE_MODE_MASK | \
+		CCTRL_LANE_NUMBER_MASK | \
+		CCTRL_UPDATE_SHADOW_CTRL_MASK | \
+		CCTRL_SW_RESET_MASK | \
+		CCTRL_CSI_EN_MASK);
 
 	val |= (((1 << Update_shadow) - 1) << CCTRL_UPDATE_SHADOW_SHIFT | \
-				Deskew_level << CCTRL_DESKEW_LEVEL_SHIFT | \
-				Deskew_enable << CCTRL_DESKEW_ENABLE_SHIFT | \
-				Interleave_mode << CCTRL_INTERLEAVE_MODE_SHIFT | \
-				(Lane_number - 1) << CCTRL_LANE_NUMBER_SHIFT | \
-				Update_shadow_ctrl << CCTRL_UPDATE_SHADOW_CTRL_SHIFT | \
-				Sw_reset << CCTRL_SW_RESET_SHIFT | \
-				Csi_en << CCTRL_CSI_EN_SHIFT);
+		Deskew_level << CCTRL_DESKEW_LEVEL_SHIFT | \
+		Deskew_enable << CCTRL_DESKEW_ENABLE_SHIFT | \
+		Interleave_mode << CCTRL_INTERLEAVE_MODE_SHIFT | \
+		(Lane_number - 1) << CCTRL_LANE_NUMBER_SHIFT | \
+		Update_shadow_ctrl << CCTRL_UPDATE_SHADOW_CTRL_SHIFT | \
+		Sw_reset << CCTRL_SW_RESET_SHIFT | \
+		Csi_en << CCTRL_CSI_EN_SHIFT);
 
 	__raw_writel(val, reg);
 }
@@ -220,10 +220,10 @@ void MIPI_CSIS_Set_CSIS_Clock_Control(unsigned int Clkgate_trail, unsigned int C
 	val = __raw_readl(reg);
 
 	val &= ~(CCTRL_CLKGATE_TRAIL_MASK | \
-				CCTRL_CLKGATE_EN_MASK);
+		CCTRL_CLKGATE_EN_MASK);
 
 	val |= (Clkgate_trail << CCTRL_CLKGATE_TRAIL_SHIFT | \
-				Clkgate_en << CCTRL_CLKGATE_EN_SHIFT);
+		Clkgate_en << CCTRL_CLKGATE_EN_SHIFT);
 
 	__raw_writel(val, reg);
 }
@@ -461,9 +461,13 @@ void MIPI_WRAP_Set_Reset_GEN(unsigned int csi, unsigned int reset)
 
 	reg = mipi_cfg_base + CSI0_CFG + csi * 0x4;
 
-	val = (__raw_readl(reg) & ~(CSI_CFG_GEN_PX_RST_MASK | CSI_CFG_GEN_APB_RST_MASK));
-	if (reset)
-		val |= ((0x1 << CSI_CFG_GEN_PX_RST_SHIFT) | (0x1 << CSI_CFG_GEN_APB_RST_SHIFT));
+	val = (__raw_readl(reg) & \
+		~(CSI_CFG_GEN_PX_RST_MASK | CSI_CFG_GEN_APB_RST_MASK));
+	if (reset) {
+		val |= ((0x1 << CSI_CFG_GEN_PX_RST_SHIFT) | \
+			(0x1 << CSI_CFG_GEN_APB_RST_SHIFT));
+	}
+
 	__raw_writel(val, reg);
 }
 
@@ -488,14 +492,17 @@ static int __init mipi_csi2_init(void)
 		loge("cann't find mipi csi2 node \n");
 	}
 	else {
-		mipi_csi2_base = (volatile void __iomem *)of_iomap(mipi_csi2_np, 0);
+		mipi_csi2_base = \
+			(volatile void __iomem *)of_iomap(mipi_csi2_np, 0);
 		logd("mipi_csi2 addr: %p\n", mipi_csi2_base);
 
 #ifdef CONFIG_ARCH_TCC805X
-		mipi_ckc_base = (volatile void __iomem *)of_iomap(mipi_csi2_np, 2);
+		mipi_ckc_base = \
+			(volatile void __iomem *)of_iomap(mipi_csi2_np, 2);
 		logd("mipi_ckc addr :%p\n", mipi_ckc_base);
 
-		mipi_cfg_base = (volatile void __iomem *)of_iomap(mipi_csi2_np, 3);
+		mipi_cfg_base = \
+			(volatile void __iomem *)of_iomap(mipi_csi2_np, 3);
 		logd("mipi_cfg addr :%p\n", mipi_cfg_base);
 
 #endif
@@ -509,7 +516,10 @@ static int __init mipi_csi2_init(void)
 		pr_err("failed to get mipi_csi2_clk\n");
 	}
 	else {
-		of_property_read_u32(mipi_csi2_np, "clock-frequency", &mipi_csi2_frequency);
+		of_property_read_u32(mipi_csi2_np, \
+			"clock-frequency", \
+			&mipi_csi2_frequency);
+
 		if(mipi_csi2_frequency == 0) {
 			pr_err("failed to get mipi_csi2_frequency\n");
 		}
@@ -517,7 +527,8 @@ static int __init mipi_csi2_init(void)
 			clk_prepare_enable(mipi_csi2_clk);
 			clk_set_rate(mipi_csi2_clk, mipi_csi2_frequency);
 
-			printk("%s set clock : %d Hz\n", __func__, mipi_csi2_frequency);
+			printk("%s set clock : %d Hz\n", \
+				__func__, mipi_csi2_frequency);
 		}
 	}
 #endif
