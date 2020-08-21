@@ -130,6 +130,9 @@
 #define SSS_MBOX_STATUS_ADDR 0x1E020000
 #define SSS_MBOX_DATA_ADDR 0x1E022000
 
+#define TCC_MBOX_CH_DISALBE (0)
+#define TCC_MBOX_CH_ENALBE  (1)
+
 #define LOG_TAG	("MULTI_CH_MBOX_DRV")
 
 static int32_t mbox_verbose_mode = 0;
@@ -260,6 +263,7 @@ struct tcc_channel {
 	struct mbox_header0 header0;
 	struct mbox_header1 header1;
 	char mbox_id[MBOX_ID_MAX_LEN+1];
+	int32_t ch_enable;
 
 	uint32_t rx_count;
 	uint32_t tx_count;
@@ -868,6 +872,10 @@ static int tcc_multich_mbox_startup(struct mbox_chan *chan)
 					else
 					{
 						ret = mbox_receive_queue_init(&chan_info->receiveQueue, tcc_received_msg, NULL, cl->dev->kobj.name);
+						if(ret == 0)
+						{
+							chan_info->ch_enable = TCC_MBOX_CH_ENALBE;
+						}
 					}
 				}
 				mutex_unlock(&mdev->lock);
@@ -894,7 +902,8 @@ static void tcc_multich_mbox_shutdown(struct mbox_chan *chan)
 		if((mdev != NULL)&&(chan_info != NULL))
 		{
 			d1printk(mdev,mdev->mbox.dev,"In\n");
-			/* enable channel*/
+
+			chan_info->ch_enable = TCC_MBOX_CH_DISALBE;
 			mutex_lock(&mdev->lock);
 
 			list_del(&chan_info->proc_list);
@@ -1042,7 +1051,7 @@ static irqreturn_t tcc_multich_mbox_rx_irq(int irq, void *dev_id)
 						struct tcc_channel *chan_info = NULL;
 
 						chan_info = (struct tcc_channel *)chan->con_priv;
-						if(chan_info != NULL)
+						if((chan_info != NULL)&&(chan_info->ch_enable == TCC_MBOX_CH_ENALBE))
 						{
 							if(chan_info->header1.cmd == mbox_list->header1.cmd)
 							{
