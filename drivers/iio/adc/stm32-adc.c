@@ -154,6 +154,7 @@ struct stm32_adc;
  * @start_conv:		routine to start conversions
  * @stop_conv:		routine to stop conversions
  * @unprepare:		optional unprepare routine (disable, power-down)
+ * @irq_clear:		routine to clear irqs
  * @smp_cycles:		programmable sampling time (ADC clock cycles)
  */
 struct stm32_adc_cfg {
@@ -166,6 +167,7 @@ struct stm32_adc_cfg {
 	void (*start_conv)(struct stm32_adc *, bool dma);
 	void (*stop_conv)(struct stm32_adc *);
 	void (*unprepare)(struct stm32_adc *);
+	void (*irq_clear)(struct stm32_adc *adc, u32 msk);
 	const unsigned int *smp_cycles;
 };
 
@@ -615,6 +617,11 @@ static void stm32f4_adc_stop_conv(struct stm32_adc *adc)
 			   STM32F4_ADON | STM32F4_DMA | STM32F4_DDS);
 }
 
+static void stm32f4_adc_irq_clear(struct stm32_adc *adc, u32 msk)
+{
+	stm32_adc_clr_bits(adc, adc->cfg->regs->isr_eoc.reg, msk);
+}
+
 static void stm32h7_adc_start_conv(struct stm32_adc *adc, bool dma)
 {
 	enum stm32h7_adc_dmngt dmngt;
@@ -650,6 +657,12 @@ static void stm32h7_adc_stop_conv(struct stm32_adc *adc)
 		dev_warn(&indio_dev->dev, "stop failed\n");
 
 	stm32_adc_clr_bits(adc, STM32H7_ADC_CFGR, STM32H7_DMNGT_MASK);
+}
+
+static void stm32h7_adc_irq_clear(struct stm32_adc *adc, u32 msk)
+{
+	/* On STM32H7 IRQs are cleared by writing 1 into ISR register */
+	stm32_adc_set_bits(adc, adc->cfg->regs->isr_eoc.reg, msk);
 }
 
 static int stm32h7_adc_exit_pwr_down(struct stm32_adc *adc)
@@ -1226,17 +1239,38 @@ static int stm32_adc_read_raw(struct iio_dev *indio_dev,
 	}
 }
 
+static void stm32_adc_irq_clear(struct stm32_adc *adc, u32 msk)
+{
+	adc->cfg->irq_clear(adc, msk);
+}
+
 static irqreturn_t stm32_adc_threaded_isr(int irq, void *data)
 {
 	struct stm32_adc *adc = data;
 	struct iio_dev *indio_dev = iio_priv_to_dev(adc);
 	const struct stm32_adc_regspec *regs = adc->cfg->regs;
 	u32 status = stm32_adc_readl(adc, regs->isr_eoc.reg);
+	u32 mask = stm32_adc_readl(adc, regs->ier_eoc.reg);
 
-	if (status & regs->isr_ovr.mask)
+	/* Check ovr status right now, as ovr mask should be already disabled */
+	if (status & regs->isr_ovr.mask) {
+		/*
+		 * Clear ovr bit to avoid subsequent calls to IRQ handler.
+		 * This requires to stop ADC first. OVR bit state in ISR,
+		 * is propaged to CSR register by hardware.
+		 */
+		adc->cfg->stop_conv(adc);
+		stm32_adc_irq_clear(adc, regs->isr_ovr.mask);
 		dev_err(&indio_dev->dev, "Overrun, stopping: restart needed\n");
+		return IRQ_HANDLED;
+	}
 
-	return IRQ_HANDLED;
+	if (!(status & mask))
+		dev_err_ratelimited(&indio_dev->dev,
+				    "Unexpected IRQ: IER=0x%08x, ISR=0x%08x\n",
+				    mask, status);
+
+	return IRQ_NONE;
 }
 
 static irqreturn_t stm32_adc_isr(int irq, void *data)
@@ -1245,6 +1279,10 @@ static irqreturn_t stm32_adc_isr(int irq, void *data)
 	struct iio_dev *indio_dev = iio_priv_to_dev(adc);
 	const struct stm32_adc_regspec *regs = adc->cfg->regs;
 	u32 status = stm32_adc_readl(adc, regs->isr_eoc.reg);
+	u32 mask = stm32_adc_readl(adc, regs->ier_eoc.reg);
+
+	if (!(status & mask))
+		return IRQ_WAKE_THREAD;
 
 	if (status & regs->isr_ovr.mask) {
 		/*
@@ -2058,6 +2096,7 @@ static const struct stm32_adc_cfg stm32f4_adc_cfg = {
 	.start_conv = stm32f4_adc_start_conv,
 	.stop_conv = stm32f4_adc_stop_conv,
 	.smp_cycles = stm32f4_adc_smp_cycles,
+	.irq_clear = stm32f4_adc_irq_clear,
 };
 
 static const struct stm32_adc_cfg stm32h7_adc_cfg = {
@@ -2069,6 +2108,7 @@ static const struct stm32_adc_cfg stm32h7_adc_cfg = {
 	.prepare = stm32h7_adc_prepare,
 	.unprepare = stm32h7_adc_unprepare,
 	.smp_cycles = stm32h7_adc_smp_cycles,
+	.irq_clear = stm32h7_adc_irq_clear,
 };
 
 static const struct stm32_adc_cfg stm32mp1_adc_cfg = {
@@ -2081,6 +2121,7 @@ static const struct stm32_adc_cfg stm32mp1_adc_cfg = {
 	.prepare = stm32h7_adc_prepare,
 	.unprepare = stm32h7_adc_unprepare,
 	.smp_cycles = stm32h7_adc_smp_cycles,
+	.irq_clear = stm32h7_adc_irq_clear,
 };
 
 static const struct of_device_id stm32_adc_of_match[] = {
