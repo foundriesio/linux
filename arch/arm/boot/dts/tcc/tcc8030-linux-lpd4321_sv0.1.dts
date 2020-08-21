@@ -115,6 +115,11 @@
 
 	};
 
+	hdmi640x480tu {
+		compatible = "telechips,hdmi640x480tu";
+		status = "okay";
+	};
+
 	tcc-drm-lcd {
 	        compatible = "telechips,tcc-drm-lcd";
 	        display-port-num = <0>;

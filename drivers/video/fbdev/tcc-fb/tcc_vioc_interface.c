@@ -229,6 +229,7 @@ extern void set_hdmi_drm(HDMI_DRM_MODE mode, struct tcc_lcdc_image_update *pImag
 
 #ifdef CONFIG_FB_VIOC
 extern unsigned int fb_chromakey_control_enabled;
+extern struct lcd_panel *tccfb_get_hdmi_ext_panel(void);
 #endif
 
 int tccxxx_grp_ioctl(struct file *file, unsigned int cmd, unsigned long arg);
@@ -1477,7 +1478,10 @@ void tca_vioc_displayblock_timing_set(unsigned int outDevice, struct tcc_dp_devi
 	stLCDCTR stCtrlParam;
 	stLTIMING stTimingParam;
 	unsigned int rdma_en = 0;
-
+	#if defined(CONFIG_LCD_HDMI640X480TU)
+	int lcd_hdmi640x480tu = 0;
+	struct lcd_panel *ext_panel = NULL;
+	#endif
 	#if defined(CONFIG_VIOC_AFBCDEC)
 	afbc_dec_1st_cfg = 0;
 	#endif
@@ -1485,6 +1489,16 @@ void tca_vioc_displayblock_timing_set(unsigned int outDevice, struct tcc_dp_devi
         #if defined(CONFIG_TCC_HDMI_DRIVER_V2_0)
         tca_vioc_displayblock_clock_select(pDisplayInfo, 0);
         #endif
+
+	/* Check 640x480TU panel */
+	#if defined(CONFIG_LCD_HDMI640X480TU)
+	ext_panel = tccfb_get_hdmi_ext_panel();
+	if(ext_panel != NULL && pDisplayInfo->DispOrder == DD_SUB) {
+		if(!strncmp("HDMI_480TU", ext_panel->name, 10)) {
+			lcd_hdmi640x480tu = 1;
+		}
+	}
+	#endif
 
         #ifdef CONFIG_VIOC_DOLBY_VISION_EDR
 	dv_reg_phyaddr = dv_md_phyaddr = 0x00;
@@ -1646,6 +1660,9 @@ void tca_vioc_displayblock_timing_set(unsigned int outDevice, struct tcc_dp_devi
 		VIOC_WMIX_SetOverlayPriority(pWMIX, 24);
 	}
 #if defined(CONFIG_PLATFORM_AVN) && !defined(CONFIG_ANDROID)
+	#if defined(CONFIG_LCD_HDMI640X480TU)
+	if(!lcd_hdmi640x480tu)
+	#endif
 	if(pDisplayInfo->wmixer_info.blk_num == VIOC_WMIX1)
 		VIOC_CONFIG_WMIXPath(VIOC_RDMA04, 0);
 #endif
@@ -1717,6 +1734,12 @@ void tca_vioc_displayblock_timing_set(unsigned int outDevice, struct tcc_dp_devi
 		memset(&divide_data, 0, sizeof(divide_data));
 	}
 
+	/* Check 640x480TU panel */
+	#if defined(CONFIG_LCD_HDMI640X480TU)
+	if(lcd_hdmi640x480tu)
+		pDisplayInfo->FbUpdateType = FB_RDMA_TRANSPARENT;
+	#endif
+
 // patch for stb presentation window.
 	if(pDisplayInfo->FbUpdateType == FB_SC_RDMA_UPDATE) {
 		pDisplayInfo->sc_num0 = AnD_FB_SC;
@@ -1724,12 +1747,16 @@ void tca_vioc_displayblock_timing_set(unsigned int outDevice, struct tcc_dp_devi
 	else if(pDisplayInfo->FbUpdateType == FB_MVC_UPDATE || pDisplayInfo->FbUpdateType == FB_DIVIDE_UPDATE) {
 		pDisplayInfo->sc_num0 = AnD_FB_SC;
 		pDisplayInfo->sc_num1 = DIV_FB_SC;
+	} else {
+		pDisplayInfo->sc_num0 = VIOC_SCALER_MAX;
 	}
 
-
-	VIOC_CONFIG_PlugOut(pDisplayInfo->sc_num0);
-	VIOC_CONFIG_SWReset(pDisplayInfo->sc_num0, VIOC_CONFIG_RESET);
-	VIOC_CONFIG_SWReset(pDisplayInfo->sc_num0, VIOC_CONFIG_CLEAR);
+	/* This code used to prevent kernel panic when FbUpdateType is FB_RDMA_UPDATE */
+	if(pDisplayInfo->sc_num0 < VIOC_SCALER_MAX) {
+		VIOC_CONFIG_PlugOut(pDisplayInfo->sc_num0);
+		VIOC_CONFIG_SWReset(pDisplayInfo->sc_num0, VIOC_CONFIG_RESET);
+		VIOC_CONFIG_SWReset(pDisplayInfo->sc_num0, VIOC_CONFIG_CLEAR);
+	}
 	VIOC_CONFIG_SWReset(pDisplayInfo->rdma_info[RDMA_FB].blk_num, VIOC_CONFIG_RESET);
 	VIOC_CONFIG_SWReset(pDisplayInfo->rdma_info[RDMA_FB].blk_num, VIOC_CONFIG_CLEAR);
 
@@ -2382,6 +2409,120 @@ void tca_fb_rdma_active_var(unsigned int base_addr, struct fb_var_screeninfo *va
 //temp pjj because fifo under have to enable rdma before display device on.
 //	if(pdp_data->DispOrder == DD_MAIN)
 //		VIOC_DISP_TurnOn(pdp_data->ddc_info.virt_addr);
+}
+
+void tca_fb_rdma_transparent_active_var(unsigned int base_addr, struct fb_var_screeninfo *var_original, struct tcc_dp_device *pdp_data)
+{
+	unsigned int  fmt = 0;
+	unsigned int lcd_width, lcd_height, img_width, img_height;
+
+	unsigned int alpha_type = 0, alpha_blending_en = 0;
+	unsigned int chromaR, chromaG, chromaB, chroma_en = 1;
+	unsigned int lcd_pos_x = 0, lcd_pos_y = 0, lcd_layer = RDMA_FB;
+	unsigned int blk_num=pdp_data->rdma_info[RDMA_FB].blk_num;
+
+	volatile void __iomem *pRDMA = pdp_data->rdma_info[RDMA_FB].virt_addr;
+	volatile void __iomem *pWMIX = pdp_data->wmixer_info.virt_addr;
+	#if defined(CONFIG_VIOC_AFBCDEC)
+	volatile void __iomem *pWDMA = pdp_data->wdma_info.virt_addr;
+	#endif
+
+	#if defined(CONFIG_LCD_HDMI640X480TU)
+	struct lcd_panel *ext_panel = NULL;
+	#endif
+
+	struct fb_var_screeninfo var;
+
+	memcpy(&var, var_original, sizeof(struct fb_var_screeninfo));
+
+	/* Check 640x480TU panel */
+	#if defined(CONFIG_LCD_HDMI640X480TU)
+	ext_panel = tccfb_get_hdmi_ext_panel();
+	if(ext_panel != NULL && pdp_data->DispOrder == DD_SUB) {
+		if(!strncmp("HDMI_480TU", ext_panel->name, 10)) {
+			var.xres = 640;
+			var.yres = 480;
+			var.xres_virtual = var.xres;
+		}
+	}
+	#endif
+
+	if(var.bits_per_pixel == 32) 	{
+		alpha_type = 1;
+		alpha_blending_en = 1;
+		fmt = TCC_LCDC_IMG_FMT_RGB888;
+	}
+	else if(var.bits_per_pixel == 16)	{
+		alpha_type = 0;
+		alpha_blending_en = 0;
+		fmt = TCC_LCDC_IMG_FMT_RGB565;
+	}
+	else	{
+		pr_err("[ERR][VIOC_I] %s: bits_per_pixel : %d Not Supported BPP!\n", __FUNCTION__, var.bits_per_pixel);
+	}
+
+	chromaR = chromaG = chromaB = 0;
+
+	VIOC_DISP_GetSize(pdp_data->ddc_info.virt_addr, &lcd_width, &lcd_height);
+
+	//pr_info("[INF][VIOC_I] %s: %d base_addr:0x%x w:%d h:%d offset:%d lcd:%d - %d \n", __FUNCTION__, pdp_data->ddc_info.blk_num, base_addr, var.xres, var.yres, var.yoffset, lcd_width, lcd_height);
+
+	img_width = var.xres;
+	img_height = var.yres;
+
+	if(img_width > lcd_width)
+		img_width = lcd_width;
+
+	if(img_height > lcd_height)
+		img_height = lcd_height;
+
+	// default framebuffer
+	VIOC_WMIX_SetPosition(pWMIX, lcd_layer, lcd_pos_x, lcd_pos_y);
+	//overlay setting
+	#ifdef CONFIG_FB_VIOC
+	if(fb_chromakey_control_enabled == 0)
+	#endif
+	{
+		#if defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC901X)
+		VIOC_WMIX_SetChromaKey(pWMIX, lcd_layer, 1, chromaR, chromaG, chromaB, 0, 0, 0);
+		#else
+		VIOC_WMIX_SetChromaKey(pWMIX, lcd_layer, 1, chromaR, chromaG, chromaB, 0, 0, 0);
+		#if defined(CONFIG_TCC_VIOC_DISP_PATH_INTERNAL_CS_YUV)
+		VIOC_WMIX_SetChromaKey(pWMIX, lcd_layer, 1, chromaY, chromaU, chromaV, 0, 0, 0);
+		#endif
+		#endif//
+	}
+
+	VIOC_RDMA_SetImageFormat(pRDMA, fmt);					//fmt
+	VIOC_RDMA_SetImageOffset(pRDMA, fmt, var.xres_virtual);		//offset
+	VIOC_RDMA_SetImageSize(pRDMA, img_width, img_height);	//size
+	VIOC_RDMA_SetImageBase(pRDMA, base_addr, 0, 0);
+
+	VIOC_RDMA_SetImageAlphaSelect(pRDMA, alpha_type);
+	VIOC_RDMA_SetImageAlphaEnable(pRDMA, alpha_blending_en);
+
+	#if defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC901X)
+	VIOC_RDMA_SetImage3DMode(pRDMA, 0);
+	VIOC_RDMA_SetImageRBase(pRDMA, 0, 0, 0);
+	#endif
+
+	VIOC_WMIX_SetUpdate(pWMIX);
+	#if defined(CONFIG_TCC_VIOC_DISP_PATH_INTERNAL_CS_YUV)
+	VIOC_RDMA_SetImageY2REnable(pRDMA, 0);
+	VIOC_RDMA_SetImageR2YEnable(pRDMA, 1);
+	#endif
+
+	#if defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC901X)
+	{
+		VIOC_RDMA_SetIssue(pRDMA, 15, 16);
+	}
+	#else
+	{
+		//TODO: other SoC code?
+	}
+	#endif
+
+	VIOC_RDMA_SetImageEnable(pRDMA);
 }
 
 #if defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC901X)
@@ -5742,7 +5883,9 @@ void tca_fb_activate_var(unsigned int dma_addr,  struct fb_var_screeninfo *var, 
 		case FB_MVC_UPDATE:
 			tca_fb_mvc_active_var(dma_addr, var, pdp_data);
 			break;
-
+		case FB_RDMA_TRANSPARENT:
+			tca_fb_rdma_transparent_active_var(dma_addr, var, pdp_data);
+			break;
 		default:
 			break;
 	}

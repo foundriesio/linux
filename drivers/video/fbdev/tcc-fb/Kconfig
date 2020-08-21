@@ -361,6 +361,14 @@ config LCD_HDMI4K
 	depends on FB_TCC
 	depends on ARCH_TCC898X || ARCH_TCC899X || ARCH_TCC901X
 
+config LCD_HDMI640X480TU
+	bool "HDMI 640X480 panel support"
+	depends on FB_TCC && TCC_VIOC_CONTROLLER && TCC_HDMI_DRIVER_V2_0 && ARCH_TCC803X
+	default n
+	help
+		This panel should only used as extended panel
+		The UI of this panel will be transparent
+
 config LCD_FLD0800
 	bool "FLD080 1024 * 600 LVDS interface LCD support"
 	depends on FB_TCC

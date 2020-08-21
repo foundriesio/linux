@@ -1128,7 +1128,14 @@ static int tccfb_ioctl(struct fb_info *info, unsigned int cmd,unsigned long arg)
         					#endif /* CONFIG_VIOC_DOLBY_VISION_EDR */
                                                 #if defined(CONFIG_DRM)
                                                 skip_activate = 1;
-                                                if(pdp_data->FbPowerState){
+						#if defined(CONFIG_LCD_HDMI640X480TU)
+						if(display_ext_panel != NULL && pdp_data->DispOrder == DD_SUB) {
+							if(!strncmp("HDMI_480TU", display_ext_panel->name, 10)) {
+								skip_activate = 0;
+							}
+						}
+						#endif
+                                                if(skip_activate && pdp_data->FbPowerState){
                                         		VIOC_DISP_TurnOn(pdp_data->ddc_info.virt_addr);
                                         	}
                                                 #endif /*CONFIG_DRM */

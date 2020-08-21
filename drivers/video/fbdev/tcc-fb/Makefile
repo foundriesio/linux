@@ -10,7 +10,8 @@ ifdef CONFIG_ANDROID
 EXTRA_CFLAGS += -Idrivers/staging/android
 obj-$(CONFIG_TCC_VIOC_CONTROLLER)	 += tcc_displayblock.o
 endif
-obj-$(CONFIG_LCD_HDMI1920X720_ADV7613)	+= hdmi_1920x720_adv7613.o 
+obj-$(CONFIG_LCD_HDMI1920X720_ADV7613)	+= hdmi_1920x720_adv7613.o
+obj-$(CONFIG_LCD_HDMI640X480TU)	+= hdmi_640x480tu.o
 obj-$(CONFIG_TCC_VIDEO_DISPLAY_BY_VSYNC_INT) += tcc_vsync.o
 obj-$(CONFIG_VIOC_CORERESET_SUPPORT) += tcc_fb_cr.o
 obj-$(CONFIG_FB_VIOC) += tcc_vioc_fb.o
