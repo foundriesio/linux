@@ -72,6 +72,7 @@
 #define DMA_CHCTRL_CONT		(1 << 15)	/* continuous transfer */
 
 #define DMA_CHCONFIG_IS(x, n)	((x >> (20 + (n))) & 1)
+#define DMA_CHCONFIG_MIS(x, n)	((x >> (16 + (n))) & 1)
 
 struct tcc_dma_desc {
 	struct list_head node;
@@ -266,6 +267,20 @@ static void tcc_dma_do_single_block(struct tcc_dma_chan *tdmac,
 		 __func__, tdmac->chan.chan_id, desc->src_addr,
 		 desc->dst_addr, desc->len);
 
+	/* Re-setting current count address
+	 * In this time, dma read 1 data from source address but doesn't write
+	 * data to destination address.
+	 * So, source address must be memory address not peripheral register.
+	 */
+	channel_writel(tdmac, DMA_CHCTRL, 0);
+	if (tdmac->direction == DMA_DEV_TO_MEM)
+		channel_writel(tdmac, DMA_ST_SADR, desc->dst_addr);
+	else
+		channel_writel(tdmac, DMA_ST_SADR, desc->src_addr);
+	channel_writel(tdmac, DMA_HCOUNT, 0);
+	channel_writel(tdmac, DMA_CHCTRL, 0x201);
+	channel_writel(tdmac, DMA_CHCTRL, DMA_CHCTRL_FLAG);
+
 	chctrl = DMA_CHCTRL_IEN | DMA_CHCTRL_WSIZE(0) | DMA_CHCTRL_BSIZE(0)
 			| DMA_CHCTRL_FLAG | DMA_CHCTRL_TYPE(2) | DMA_CHCTRL_EN;
 
@@ -357,7 +372,7 @@ static irqreturn_t tcc_dma_interrupt(int irq, void *data)
 		u32 chconfig;
 
 		chconfig = readl(tdma->regs + DMA_CHCONFIG);
-		if (DMA_CHCONFIG_IS(chconfig, chan_id)) {
+		if (DMA_CHCONFIG_MIS(chconfig, chan_id)) {
 			channel_writel(tdmac, DMA_CHCTRL,DMA_CHCTRL_FLAG);
 			tasklet_schedule(&tdmac->tasklet);
 		}
@@ -769,15 +784,6 @@ static int tcc_dma_slave_config(struct dma_chan *chan,
 	slave_id = tdmac->slave_config.slave_id;
 	memcpy(&tdmac->slave_config, cfg, sizeof(struct dma_slave_config));
 	tdmac->slave_config.slave_id = slave_id;
-
-	//re-setting current count address
-	channel_writel(tdmac, DMA_HCOUNT, 0);
-
-	channel_writel(tdmac, DMA_CHCTRL, 0x201);
-	mb();
-	channel_writel(tdmac, DMA_CHCTRL, DMA_CHCTRL_FLAG);
-	mb();
-	channel_writel(tdmac, DMA_CHCTRL, 0x0);
 
 	return 0;
 }
