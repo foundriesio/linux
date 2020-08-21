@@ -259,6 +259,10 @@ static struct ocfs2_lock_res_ops ocfs2_nfs_sync_lops = {
 	.flags		= 0,
 };
 
+static struct ocfs2_lock_res_ops ocfs2_trim_fs_lops = {
+	.flags		= LOCK_TYPE_REQUIRES_REFRESH|LOCK_TYPE_USES_LVB,
+};
+
 static struct ocfs2_lock_res_ops ocfs2_orphan_scan_lops = {
 	.flags		= LOCK_TYPE_REQUIRES_REFRESH|LOCK_TYPE_USES_LVB,
 };
@@ -701,6 +705,29 @@ static void ocfs2_nfs_sync_lock_init(struct ocfs2_super *osb)
 {
 	ocfs2_nfs_sync_lock_res_init(&osb->osb_nfs_sync_lockres, osb);
 	init_rwsem(&osb->nfs_sync_rwlock);
+}
+
+void ocfs2_trim_fs_lock_res_init(struct ocfs2_super *osb)
+{
+	struct ocfs2_lock_res *lockres = &osb->osb_trim_fs_lockres;
+
+	/* Only one trimfs thread are allowed to work at the same time. */
+	mutex_lock(&osb->obs_trim_fs_mutex);
+
+	ocfs2_lock_res_init_once(lockres);
+	ocfs2_build_lock_name(OCFS2_LOCK_TYPE_TRIM_FS, 0, 0, lockres->l_name);
+	ocfs2_lock_res_init_common(osb, lockres, OCFS2_LOCK_TYPE_TRIM_FS,
+				   &ocfs2_trim_fs_lops, osb);
+}
+
+void ocfs2_trim_fs_lock_res_uninit(struct ocfs2_super *osb)
+{
+	struct ocfs2_lock_res *lockres = &osb->osb_trim_fs_lockres;
+
+	ocfs2_simple_drop_lockres(osb, lockres);
+	ocfs2_lock_res_free(lockres);
+
+	mutex_unlock(&osb->obs_trim_fs_mutex);
 }
 
 static void ocfs2_orphan_scan_lock_res_init(struct ocfs2_lock_res *res,
@@ -2791,6 +2818,70 @@ void ocfs2_nfs_sync_unlock(struct ocfs2_super *osb, int ex)
 		up_write(&osb->nfs_sync_rwlock);
 	else
 		up_read(&osb->nfs_sync_rwlock);
+}
+
+int ocfs2_trim_fs_lock(struct ocfs2_super *osb,
+		       struct ocfs2_trim_fs_info *info, int trylock)
+{
+	int status;
+	struct ocfs2_trim_fs_lvb *lvb;
+	struct ocfs2_lock_res *lockres = &osb->osb_trim_fs_lockres;
+
+	if (info)
+		info->tf_valid = 0;
+
+	if (ocfs2_is_hard_readonly(osb))
+		return -EROFS;
+
+	if (ocfs2_mount_local(osb))
+		return 0;
+
+	status = ocfs2_cluster_lock(osb, lockres, DLM_LOCK_EX,
+				    trylock ? DLM_LKF_NOQUEUE : 0, 0);
+	if (status < 0) {
+		if (status != -EAGAIN)
+			mlog_errno(status);
+		return status;
+	}
+
+	if (info) {
+		lvb = ocfs2_dlm_lvb(&lockres->l_lksb);
+		if (ocfs2_dlm_lvb_valid(&lockres->l_lksb) &&
+		    lvb->lvb_version == OCFS2_TRIMFS_LVB_VERSION) {
+			info->tf_valid = 1;
+			info->tf_success = lvb->lvb_success;
+			info->tf_nodenum = be32_to_cpu(lvb->lvb_nodenum);
+			info->tf_start = be64_to_cpu(lvb->lvb_start);
+			info->tf_len = be64_to_cpu(lvb->lvb_len);
+			info->tf_minlen = be64_to_cpu(lvb->lvb_minlen);
+			info->tf_trimlen = be64_to_cpu(lvb->lvb_trimlen);
+		}
+	}
+
+	return status;
+}
+
+void ocfs2_trim_fs_unlock(struct ocfs2_super *osb,
+			  struct ocfs2_trim_fs_info *info)
+{
+	struct ocfs2_trim_fs_lvb *lvb;
+	struct ocfs2_lock_res *lockres = &osb->osb_trim_fs_lockres;
+
+	if (ocfs2_mount_local(osb))
+		return;
+
+	if (info) {
+		lvb = ocfs2_dlm_lvb(&lockres->l_lksb);
+		lvb->lvb_version = OCFS2_TRIMFS_LVB_VERSION;
+		lvb->lvb_success = info->tf_success;
+		lvb->lvb_nodenum = cpu_to_be32(info->tf_nodenum);
+		lvb->lvb_start = cpu_to_be64(info->tf_start);
+		lvb->lvb_len = cpu_to_be64(info->tf_len);
+		lvb->lvb_minlen = cpu_to_be64(info->tf_minlen);
+		lvb->lvb_trimlen = cpu_to_be64(info->tf_trimlen);
+	}
+
+	ocfs2_cluster_unlock(osb, lockres, DLM_LOCK_EX);
 }
 
 int ocfs2_dentry_lock(struct dentry *dentry, int ex)
