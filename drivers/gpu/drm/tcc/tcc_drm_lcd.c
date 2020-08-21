@@ -487,7 +487,7 @@ static int lcd_bind(struct device *dev, struct device *master, void *data)
 	for (i = 0; i < ctx->hw_data.rdma_counts; i++) {
 		ret = tcc_plane_init(drm_dev,
 					&ctx->planes[i].base,
-					ctx->hw_data.rdma_plane_type[i],
+					DRM_PLANE_TYPE(ctx->hw_data.rdma_plane_type[i]),
 					lcd_formats,
 					ARRAY_SIZE(lcd_formats));
 		if(ret) {
