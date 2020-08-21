@@ -83,6 +83,12 @@ static struct of_device_id videosource_of_match[] = {
 		.compatible	= "maxim,max9276",
 		.data		= &videosource_max9276,
 	},
+#if 1
+	{
+		.compatible	= "maxim,max96712",
+		.data		= &videosource_max96712,
+	},
+#endif
 	{}
 };
 MODULE_DEVICE_TABLE(of, videosource_of_match);

@@ -627,6 +627,15 @@ int videosource_if_initialize(videosource_t * vdev) {
 	FUNCTION_IN
 
 	if(vdev->enabled == ENABLE) {
+#ifdef CONFIG_MIPI_CSI_2
+		if(vdev->interface == VIDEOSOURCE_INTERFACE_MIPI) {
+			// set mipi-csi2 interface
+			videosource_if_init_mipi_csi2_interface(vdev, &vdev->format, ON);
+
+			// enable mipi-csi2 interrupt
+			videosource_if_set_mipi_csi2_interrupt(vdev, &vdev->format, ON);
+		}
+#endif
 		// open port
 		videosource_set_port(vdev, ENABLE);
 
@@ -654,12 +663,6 @@ int videosource_if_initialize(videosource_t * vdev) {
 			// enable deserializer interrupt
 			videosource_if_change_mode(vdev, MODE_SERDES_INTERRUPT);
 #endif
-
-			// set mipi-csi2 interface
-			videosource_if_init_mipi_csi2_interface(vdev, &vdev->format, ON);
-
-			// enable mipi-csi2 interrupt
-			videosource_if_set_mipi_csi2_interrupt(vdev, &vdev->format, ON);
 		}
 #endif//CONFIG_MIPI_CSI_2
 

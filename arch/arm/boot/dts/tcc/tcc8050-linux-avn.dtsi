@@ -294,7 +294,17 @@
 			intb-gpios	= <&gph 11 1>;
 			reg		= <0x48>;	// 0x90 >> 1
 		};
-#else
+#endif
+#if 0
+		videosource1: deserializer_max96712 {
+			compatible	= "maxim,max96712";
+			cifport		= <9>;
+			pwd-gpios	= <&gpg 5 1>;
+			intb-gpios	= <&gph 11 1>;
+			reg		= <0x29>;	// 0x52 >> 1
+		};
+#endif
+#if 0
 		videosource1: deserializer_ds90ub964 {
 			compatible	= "ti,ds90ub964";
 			cifport		= <9>;
