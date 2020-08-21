@@ -352,10 +352,9 @@ void kerneltimer_registertimer(struct timer_list* ptimer,
 		unsigned long timeover,struct uart_port *port)
 {
 	init_timer( ptimer );
-	ptimer->expires  = get_jiffies_64() + timeover;
 	ptimer->data     = (unsigned long)port;
 	ptimer->function = (void *)kerneltimer_timeover;
-	add_timer( ptimer);
+	mod_timer(ptimer, jiffies+msecs_to_jiffies(timeover));
 }
 
 static int tcc_run_rx_dma(struct uart_port *port);
@@ -370,59 +369,31 @@ static void tcc_dma_rx_timeout(void *arg)
 	unsigned int ch, i;
 	unsigned int last;
 	unsigned uerstat = 0, flag = 0;
+	unsigned long flags;
 	char *buf;
 
-	spin_lock(&tp->rx_lock);
+	spin_lock_irqsave(&tp->rx_lock, flags);
 	chan->device->device_tx_status(chan, tp->rx_cookie, &state);
 	buf = (char *)tp->rx_dma_buffer.addr;
 
-	if(tp->rx_residue < state.residue) {
-		last = state.residue;
-		if(last > SERIAL_RX_DMA_BUF_SIZE) {
-			last = SERIAL_RX_DMA_BUF_SIZE;
-		}
+	last = state.residue;
 
-		/*if(state.residue < tp->rx_residue)
-		  last = SERIAL_RX_DMA_BUF_SIZE;*/
+	for(i = tp->rx_residue; i < last; i++) {
+		ch = buf[i];
 
-		for(i = tp->rx_residue; i < last; i++) {
-			ch = buf[i];
-
-			/*if (uart_handle_sysrq_char(port, ch)) {
-			  spin_unlock(&tp->rx_lock);
-			  return;
-			  }*/
-			//[> put the received char into UART buffer <]
-			uart_insert_char(port, uerstat, UART_LSR_OE, ch, flag);
-			tty_flip_buffer_push(&port->state->port);
-			port->icount.rx++;
-		}
-
-		tp->rx_residue = last;
-		//spin_unlock(&tp->rx_lock);
+		/*if (uart_handle_sysrq_char(port, ch)) {
+		  spin_unlock(&tp->rx_lock);
+		  return;
+		  }*/
+		//[> put the received char into UART buffer <]
+		uart_insert_char(port, uerstat, UART_LSR_OE, ch, flag);
+		tty_flip_buffer_push(&port->state->port);
+		port->icount.rx++;
 	}
-	else if(tp->rx_residue > state.residue)
-	{
-		last = SERIAL_RX_DMA_BUF_SIZE;
 
-		if(tp->rx_residue != SERIAL_RX_DMA_BUF_SIZE) {
-			for(i = tp->rx_residue; i < last; i++) {
-				ch = buf[i];
-				uart_insert_char(port, uerstat, UART_LSR_OE, ch, flag);
-				tty_flip_buffer_push(&port->state->port);
-				port->icount.rx++;
-			}
-		}
-		last = state.residue;
-		for(i = 0; i < last; i++) {
-			ch = buf[i];
-			uart_insert_char(port, uerstat, UART_LSR_OE, ch, flag);
-			tty_flip_buffer_push(&port->state->port);
-			port->icount.rx++;
-		}
-		tp->rx_residue = state.residue;
-	}
-	spin_unlock(&tp->rx_lock);
+	tp->rx_residue = last;
+
+	spin_unlock_irqrestore(&tp->rx_lock, flags);
 }
 
 void *kerneltimer_timeover(void *arg)
@@ -434,7 +405,7 @@ void *kerneltimer_timeover(void *arg)
 	tcc_dma_rx_timeout(arg);
 
 	if (tp->timer_state == 1) {
-		kerneltimer_registertimer( tp->dma_timer, TIME_STEP,arg );
+		kerneltimer_registertimer( tp->dma_timer, 10, arg );
 	}
 
 	return 0;
@@ -580,7 +551,6 @@ static void tcc_serial_stop_tx(struct uart_port *port)
 		count = tp->tx_residue - state.residue;
 		xmit->tail = (xmit->tail + count) & (UART_XMIT_SIZE - 1);
 		tp->tx_dma_working = false;
-		tp->chan_tx = NULL;
 	}
 
 	if(tx_enabled(port)) {
@@ -630,7 +600,7 @@ static irqreturn_t tcc_serial_interrupt(int irq, void *id)
 	lsr_data = rd_regl(port, OFFSET_LSR);
 
 	if (iir_data == IIR_RDA || iir_data == IIR_CTI) {
-		if(!tp->rx_dma_probed) {
+		if((!tp->rx_dma_probed)||(!tp->rx_dma_working)) {
 			tcc_serial_rx(port, lsr_data);
 			tty_flip_buffer_push(&port->state->port);
 		}
@@ -707,6 +677,7 @@ static void tcc_serial_dma_shutdown(struct uart_port *port)
 		dmaengine_terminate_all(tp->chan_rx);
 		tp->rx_dma_probed = false;
 		dma_release_channel(tp->chan_rx);
+		tp->chan_rx=NULL;
 		tcc_free_dma_buf(&(tp->rx_dma_buffer));
 		wr_regl(port, OFFSET_UCR, rd_regl(port, OFFSET_UCR) & ~Hw1);
 	}
@@ -717,6 +688,7 @@ static void tcc_serial_dma_shutdown(struct uart_port *port)
 		tp->tx_dma_working = false;
 		tp->tx_dma_using = false;
 		dma_release_channel(tp->chan_tx);
+		tp->chan_tx = NULL;
 		tcc_free_dma_buf(&(tp->tx_dma_buffer));
 	}
 }
@@ -868,14 +840,37 @@ static int tcc_serial_tx_dma_probe(struct uart_port *port)
 static void tcc_dma_rx_callback(void *data)
 {
 	struct uart_port *port = data;
+	struct tcc_uart_port *tp =
+		container_of(port, struct tcc_uart_port, port);
+	struct dma_chan *chan = tp->chan_rx;
+	struct dma_tx_state state;
+	unsigned int ch, i;
+	unsigned int last;
+	unsigned uerstat = 0, flag = 0;
+	char *buf;
+	unsigned long flags;
 
-	// RTS High
-	wr_regl(port, OFFSET_MCR, rd_regl(port, OFFSET_MCR) & ~Hw1);
+	spin_lock_irqsave(&tp->rx_lock, flags);
 
+	chan->device->device_tx_status(chan, tp->rx_cookie, &state); // get information of DMA channel for residue
+
+	dmaengine_terminate_all(chan); // residue is known
+	tp->rx_dma_working = false;
 	tcc_run_rx_dma(port);
 
-	// RTS Low
-	wr_regl(port, OFFSET_MCR, rd_regl(port, OFFSET_MCR) | Hw1);
+	buf = (char *)tp->rx_dma_buffer.addr;
+
+	last = SERIAL_RX_DMA_BUF_SIZE;
+
+	for(i = tp->rx_residue; i < last; i++) {
+		ch = buf[i];
+		uart_insert_char(port, uerstat, UART_LSR_OE, ch, flag);
+		tty_flip_buffer_push(&port->state->port);
+		port->icount.rx++;
+	}
+	tp->rx_residue = state.residue;
+
+	spin_unlock_irqrestore(&tp->rx_lock,flags);
 }
 
 static int tcc_run_rx_dma(struct uart_port *port)
@@ -894,6 +889,8 @@ static int tcc_run_rx_dma(struct uart_port *port)
 	dma_async_issue_pending(tp->chan_rx);
 
 	wr_regl(port, OFFSET_UCR, rd_regl(port, OFFSET_UCR) | UCR_RxDE);
+
+	tp->rx_dma_working = true;
 
 	return 0;
 }
@@ -942,6 +939,7 @@ static int tcc_serial_rx_dma_probe(struct uart_port *port)
 	tp->timer_state = 1;
 
 	tp->rx_dma_probed = true;
+	tp->rx_dma_working = true;
 
 	kerneltimer_init(port);
 
@@ -1329,11 +1327,13 @@ static int tcc_serial_remove(struct platform_device *dev)
 	if (tp->tx_dma_probed){
 		tcc_free_dma_buf(&(tp->tx_dma_buffer));
 		dma_release_channel(tp->chan_tx);
+		tp->chan_tx=NULL;
 	}
 
 	if (tp->rx_dma_probed) {
 		tcc_free_dma_buf(&(tp->rx_dma_buffer));
 		dma_release_channel(tp->chan_rx);
+		tp->chan_rx=NULL;
 		wr_regl(port, OFFSET_UCR, rd_regl(port, OFFSET_UCR) & ~Hw1);
 
 		// DMA channel is disabled.
@@ -1547,11 +1547,12 @@ static int tcc_serial_probe(struct platform_device *dev)
 		else
 		{
 			dbg_err("dma %s exist!\n", str_dma);
-			if(str_dma!=NULL)
-			if(!strcmp(str_dma, "tx"))
-				tp->dma_use_tx=1;
-			else
-				tp->dma_use_rx=1;
+			if(str_dma!=NULL){
+				if(!strcmp(str_dma, "tx"))
+					tp->dma_use_tx=1;
+				else
+					tp->dma_use_rx=1;
+			}
 		}
 	}
 

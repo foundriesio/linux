@@ -93,6 +93,7 @@ struct tcc_uart_port {
 	int rx_dma_probed;
 	bool tx_dma_working;
 	bool tx_dma_using;
+	bool rx_dma_working;
 
 	unsigned long dma_start_value;
 	unsigned long rx_dma_tail; 
