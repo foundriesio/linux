@@ -91,10 +91,7 @@ typedef struct
 }
 DC_FBDEV_BUFFER;
 
-static IMG_UINT32 gui32fb_devminor = 0;
-module_param_named(fb_devminor, gui32fb_devminor, uint, S_IRUGO | S_IWUSR);
-
-static DC_FBDEV_DEVICE *gpsDeviceData;
+static DC_FBDEV_DEVICE *gpsDeviceData[FB_MAX];
 
 #if defined(DC_FBDEV_FORCE_CONTEXT_CLEAN)
 static
@@ -118,7 +115,7 @@ void DC_FBDEV_Clean(IMG_HANDLE hDisplayContext, IMG_HANDLE *ahBuffers)
 
 	/* lookup display context data, buffer and kernel device handle */
 	psDeviceData = ((DC_FBDEV_CONTEXT *)hDisplayContext)->psDeviceData;
-	pvOSDevice = gpsDeviceData->psLINFBInfo->dev;
+	pvOSDevice = psDeviceData->psLINFBInfo->dev;
 	PVR_UNREFERENCED_PARAMETER(pvOSDevice);
 	psBuffer = ahBuffers[0];
 
@@ -757,148 +754,154 @@ static int __init DC_FBDEV_init(void)
 
 	struct fb_info *psLINFBInfo;
 	IMG_PIXFMT ePixFormat;
+    IMG_UINT32 ui32fb_devminor;
+	IMG_UINT32 i;
 	int err = -ENODEV;
 
-	pr_info("%s\n", __func__);
-	if (gui32fb_devminor >= FB_MAX)
-	{
-		pr_err("Invalid Linux framebuffer device minor number!\n"
-			   "fb_devminor (%u) >= FB_MAX (%u)",
-				gui32fb_devminor,
-				FB_MAX);
-		goto err_out;
-	}
 
-	psLINFBInfo = registered_fb[gui32fb_devminor];
-	if (!psLINFBInfo)
-	{
-		pr_err("No Linux framebuffer (/dev/fbdev%u) device is registered!\n"
-			   "Check you have a framebuffer driver compiled into your "
-			   "kernel\nand that it is enabled on the cmdline.\n",
-			   gui32fb_devminor);
-		goto err_out;
-	}
+    for (ui32fb_devminor = 0; ui32fb_devminor < num_registered_fb; ui32fb_devminor++)
+    {
+		pr_info("DC_FBDEV_init, ui32fb_devminor=%u\n", ui32fb_devminor);
 
-	if (!lock_fb_info(psLINFBInfo))
-		goto err_out;
-
-	console_lock();
-
-	/* Filter out broken FB devices */
-	if (!psLINFBInfo->fix.smem_len || !psLINFBInfo->fix.line_length)
-	{
-		pr_err("The fbdev device detected had a zero smem_len or "
-			   "line_length,\nwhich suggests it is a broken driver.\n");
-		goto err_unlock;
-	}
-
-	if (psLINFBInfo->fix.type != FB_TYPE_PACKED_PIXELS ||
-		psLINFBInfo->fix.visual != FB_VISUAL_TRUECOLOR)
-	{
-		pr_err("The fbdev device detected is not truecolor with packed "
-			   "pixels.\n");
-		goto err_unlock;
-	}
-
-	if (psLINFBInfo->var.bits_per_pixel == 32)
-	{
-		if (psLINFBInfo->var.red.length   != 8  ||
-			psLINFBInfo->var.green.length != 8  ||
-			psLINFBInfo->var.blue.length  != 8  ||
-			psLINFBInfo->var.red.offset   != 16 ||
-			psLINFBInfo->var.green.offset != 8  ||
-			psLINFBInfo->var.blue.offset  != 0)
+		psLINFBInfo = registered_fb[ui32fb_devminor];
+		if (!psLINFBInfo)
 		{
-			pr_err("The fbdev device detected uses an unrecognized "
-				   "32bit pixel format (%u/%u/%u, %u/%u/%u)\n",
-				   psLINFBInfo->var.red.length,
-				   psLINFBInfo->var.green.length,
-				   psLINFBInfo->var.blue.length,
-				   psLINFBInfo->var.red.offset,
-				   psLINFBInfo->var.green.offset,
-				   psLINFBInfo->var.blue.offset);
+			pr_err("No Linux framebuffer (/dev/fbdev%u) device is registered!\n"
+				"Check you have a framebuffer driver compiled into your "
+				"kernel\nand that it is enabled on the cmdline.\n",
+				ui32fb_devminor);
+			goto err_out;
+		}
+
+		if (!lock_fb_info(psLINFBInfo))
+			goto err_out;
+
+		console_lock();
+
+		/* Filter out broken FB devices */
+		if (!psLINFBInfo->fix.smem_len || !psLINFBInfo->fix.line_length)
+		{
+			pr_err("The fbdev device detected had a zero smem_len or "
+				"line_length,\nwhich suggests it is a broken driver.\n");
 			goto err_unlock;
 		}
-#if defined(DC_FBDEV_FORCE_XRGB8888)
-		ePixFormat = IMG_PIXFMT_B8G8R8X8_UNORM;
-#else
-		ePixFormat = IMG_PIXFMT_B8G8R8A8_UNORM;
-#endif
-	}
-	else if (psLINFBInfo->var.bits_per_pixel == 16)
-	{
-		if (psLINFBInfo->var.red.length   != 5  ||
-			psLINFBInfo->var.green.length != 6  ||
-			psLINFBInfo->var.blue.length  != 5  ||
-			psLINFBInfo->var.red.offset   != 11 ||
-			psLINFBInfo->var.green.offset != 5  ||
-			psLINFBInfo->var.blue.offset  != 0)
+
+		if (psLINFBInfo->fix.type != FB_TYPE_PACKED_PIXELS ||
+			psLINFBInfo->fix.visual != FB_VISUAL_TRUECOLOR)
 		{
-			pr_err("The fbdev device detected uses an unrecognized "
-				   "16bit pixel format (%u/%u/%u, %u/%u/%u)\n",
-				   psLINFBInfo->var.red.length,
-				   psLINFBInfo->var.green.length,
-				   psLINFBInfo->var.blue.length,
-				   psLINFBInfo->var.red.offset,
-				   psLINFBInfo->var.green.offset,
-				   psLINFBInfo->var.blue.offset);
+			pr_err("The fbdev device detected is not truecolor with packed "
+				"pixels.\n");
 			goto err_unlock;
 		}
-		ePixFormat = IMG_PIXFMT_B5G6R5_UNORM;
+
+		if (psLINFBInfo->var.bits_per_pixel == 32)
+		{
+			if (psLINFBInfo->var.red.length   != 8  ||
+				psLINFBInfo->var.green.length != 8  ||
+				psLINFBInfo->var.blue.length  != 8  ||
+				psLINFBInfo->var.red.offset   != 16 ||
+				psLINFBInfo->var.green.offset != 8  ||
+				psLINFBInfo->var.blue.offset  != 0)
+			{
+				pr_err("The fbdev device detected uses an unrecognized "
+					"32bit pixel format (%u/%u/%u, %u/%u/%u)\n",
+					psLINFBInfo->var.red.length,
+					psLINFBInfo->var.green.length,
+					psLINFBInfo->var.blue.length,
+					psLINFBInfo->var.red.offset,
+					psLINFBInfo->var.green.offset,
+					psLINFBInfo->var.blue.offset);
+				goto err_unlock;
+			}
+	#if defined(DC_FBDEV_FORCE_XRGB8888)
+			ePixFormat = IMG_PIXFMT_B8G8R8X8_UNORM;
+	#else
+			ePixFormat = IMG_PIXFMT_B8G8R8A8_UNORM;
+	#endif
+		}
+		else if (psLINFBInfo->var.bits_per_pixel == 16)
+		{
+			if (psLINFBInfo->var.red.length   != 5  ||
+				psLINFBInfo->var.green.length != 6  ||
+				psLINFBInfo->var.blue.length  != 5  ||
+				psLINFBInfo->var.red.offset   != 11 ||
+				psLINFBInfo->var.green.offset != 5  ||
+				psLINFBInfo->var.blue.offset  != 0)
+			{
+				pr_err("The fbdev device detected uses an unrecognized "
+					"16bit pixel format (%u/%u/%u, %u/%u/%u)\n",
+					psLINFBInfo->var.red.length,
+					psLINFBInfo->var.green.length,
+					psLINFBInfo->var.blue.length,
+					psLINFBInfo->var.red.offset,
+					psLINFBInfo->var.green.offset,
+					psLINFBInfo->var.blue.offset);
+				goto err_unlock;
+			}
+			ePixFormat = IMG_PIXFMT_B5G6R5_UNORM;
+		}
+		else
+		{
+			pr_err("The fbdev device detected uses an unsupported "
+				"bpp (%u).\n", psLINFBInfo->var.bits_per_pixel);
+			goto err_unlock;
+		}
+
+		if (!try_module_get(psLINFBInfo->fbops->owner))
+		{
+			pr_err("try_module_get() failed");
+			goto err_unlock;
+		}
+
+		if (psLINFBInfo->fbops->fb_open &&
+			psLINFBInfo->fbops->fb_open(psLINFBInfo, 0) != 0)
+		{
+			pr_err("fb_open() failed");
+			goto err_module_put;
+		}
+
+		gpsDeviceData[ui32fb_devminor] = kmalloc(sizeof(DC_FBDEV_DEVICE), GFP_KERNEL);
+		if (!gpsDeviceData[ui32fb_devminor])
+			goto err_module_put;
+
+		gpsDeviceData[ui32fb_devminor]->psLINFBInfo = psLINFBInfo;
+		gpsDeviceData[ui32fb_devminor]->ePixFormat = ePixFormat;
+
+		if (DCRegisterDevice(&sDCFunctions,
+							MAX_COMMANDS_IN_FLIGHT,
+							gpsDeviceData[ui32fb_devminor],
+							&gpsDeviceData[ui32fb_devminor]->hSrvHandle) != PVRSRV_OK)
+		{
+			pr_err("DC register device fail\n");
+			goto err_kfree;
+		}
+
+		gpsDeviceData[ui32fb_devminor]->bCanFlip = DC_FBDEV_FlipPossible(psLINFBInfo);
+
+		pr_info("Found usable fbdev device (%s):\n"
+	#if defined(DC_FBDEV_USE_SCREEN_BASE)
+				"range (virtual)  = 0x%lx-0x%lx\n"
+	#else
+				"range (physical) = 0x%lx-0x%lx\n"
+	#endif
+				"size (bytes)     = 0x%x\n"
+				"xres x yres      = %ux%u\n"
+				"xres x yres (v)  = %ux%u\n"
+				"img pix fmt      = %u\n"
+				"flipping?        = %d\n"
+				"ui32fb_devminor  = %u\n",
+				psLINFBInfo->fix.id,
+				psLINFBInfo->fix.smem_start,
+				psLINFBInfo->fix.smem_start + psLINFBInfo->fix.smem_len,
+				psLINFBInfo->fix.smem_len,
+				psLINFBInfo->var.xres, psLINFBInfo->var.yres,
+				psLINFBInfo->var.xres_virtual, psLINFBInfo->var.yres_virtual,
+				ePixFormat, gpsDeviceData[ui32fb_devminor]->bCanFlip,
+				ui32fb_devminor);
+
+	console_unlock();
+	unlock_fb_info(psLINFBInfo);
 	}
-	else
-	{
-		pr_err("The fbdev device detected uses an unsupported "
-			   "bpp (%u).\n", psLINFBInfo->var.bits_per_pixel);
-		goto err_unlock;
-	}
-
-	if (!try_module_get(psLINFBInfo->fbops->owner))
-	{
-		pr_err("try_module_get() failed");
-		goto err_unlock;
-	}
-
-	if (psLINFBInfo->fbops->fb_open &&
-		psLINFBInfo->fbops->fb_open(psLINFBInfo, 0) != 0)
-	{
-		pr_err("fb_open() failed");
-		goto err_module_put;
-	}
-
-	gpsDeviceData = kmalloc(sizeof(DC_FBDEV_DEVICE), GFP_KERNEL);
-	if (!gpsDeviceData)
-		goto err_module_put;
-
-	gpsDeviceData->psLINFBInfo = psLINFBInfo;
-	gpsDeviceData->ePixFormat = ePixFormat;
-
-	if (DCRegisterDevice(&sDCFunctions,
-						 MAX_COMMANDS_IN_FLIGHT,
-						 gpsDeviceData,
-						 &gpsDeviceData->hSrvHandle) != PVRSRV_OK)
-		goto err_kfree;
-
-	gpsDeviceData->bCanFlip = DC_FBDEV_FlipPossible(psLINFBInfo);
-
-	pr_info("Found usable fbdev device (%s):\n"
-#if defined(DC_FBDEV_USE_SCREEN_BASE)
-			"range (virtual)  = 0x%lx-0x%lx\n"
-#else
-			"range (physical) = 0x%lx-0x%lx\n"
-#endif
-			"size (bytes)     = 0x%x\n"
-			"xres x yres      = %ux%u\n"
-			"xres x yres (v)  = %ux%u\n"
-			"img pix fmt      = %u\n"
-			"flipping?        = %d\n",
-			psLINFBInfo->fix.id,
-			psLINFBInfo->fix.smem_start,
-			psLINFBInfo->fix.smem_start + psLINFBInfo->fix.smem_len,
-			psLINFBInfo->fix.smem_len,
-			psLINFBInfo->var.xres, psLINFBInfo->var.yres,
-			psLINFBInfo->var.xres_virtual, psLINFBInfo->var.yres_virtual,
-			ePixFormat, gpsDeviceData->bCanFlip);
 	err = 0;
 err_unlock:
 	console_unlock();
@@ -906,7 +909,8 @@ err_unlock:
 err_out:
 	return err;
 err_kfree:
-	kfree(gpsDeviceData);
+	for (i = 0; i <= ui32fb_devminor; i++)
+		kfree(gpsDeviceData[i]);
 err_module_put:
 	module_put(psLINFBInfo->fbops->owner);
 	goto err_unlock;
@@ -914,22 +918,29 @@ err_module_put:
 
 static void __exit DC_FBDEV_exit(void)
 {
-	DC_FBDEV_DEVICE *psDeviceData = gpsDeviceData;
-	struct fb_info *psLINFBInfo = psDeviceData->psLINFBInfo;
+	DC_FBDEV_DEVICE *psDeviceData;
+	struct fb_info *psLINFBInfo;
+	IMG_UINT32 ui32fb_devminor;
 
-	lock_fb_info(psLINFBInfo);
-	console_lock();
+    for (ui32fb_devminor = 0; ui32fb_devminor < num_registered_fb; ui32fb_devminor++)
+    {
+		psDeviceData = gpsDeviceData[ui32fb_devminor];
+		psLINFBInfo = psDeviceData->psLINFBInfo;
 
-	if (psLINFBInfo->fbops->fb_release)
-	   psLINFBInfo->fbops->fb_release(psLINFBInfo, 0);
+		lock_fb_info(psLINFBInfo);
+		console_lock();
 
-	module_put(psLINFBInfo->fbops->owner);
+		if (psLINFBInfo->fbops->fb_release)
+		psLINFBInfo->fbops->fb_release(psLINFBInfo, 0);
 
-	console_unlock();
-	unlock_fb_info(psLINFBInfo);
+		module_put(psLINFBInfo->fbops->owner);
 
-	DCUnregisterDevice(psDeviceData->hSrvHandle);
-	kfree(psDeviceData);
+		console_unlock();
+		unlock_fb_info(psLINFBInfo);
+
+		DCUnregisterDevice(psDeviceData->hSrvHandle);
+		kfree(psDeviceData);
+	}
 }
 
 //module_init(DC_FBDEV_init);
