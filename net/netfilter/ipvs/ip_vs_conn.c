@@ -473,7 +473,7 @@ void ip_vs_conn_put(struct ip_vs_conn *cp)
 	    (refcount_read(&cp->refcnt) == 1) &&
 	    !timer_pending(&cp->timer))
 		/* expire connection immediately */
-		ip_vs_conn_expire(&cp->timer);
+		ip_vs_conn_expire((unsigned long)cp);
 	else
 		__ip_vs_conn_put_timer(cp);
 }
