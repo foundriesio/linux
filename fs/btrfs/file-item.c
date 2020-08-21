@@ -480,8 +480,8 @@ blk_status_t btrfs_csum_one_bio(struct inode *inode, struct bio *bio,
 						 - 1);
 
 		for (i = 0; i < nr_sectors; i++) {
-			if (offset >= ordered->file_offset + ordered->len ||
-				offset < ordered->file_offset) {
+			if (offset >= ordered->file_offset + ordered->num_bytes ||
+			    offset < ordered->file_offset) {
 				unsigned long bytes_left;
 
 				kunmap_atomic(data);

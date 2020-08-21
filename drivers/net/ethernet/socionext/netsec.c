@@ -673,7 +673,8 @@ static void netsec_process_tx(struct netsec_priv *priv)
 }
 
 static void *netsec_alloc_rx_data(struct netsec_priv *priv,
-				  dma_addr_t *dma_handle, u16 *desc_len)
+				  dma_addr_t *dma_handle, u16 *desc_len,
+				  bool napi)
 {
 	size_t total_len = SKB_DATA_ALIGN(sizeof(struct skb_shared_info));
 	size_t payload_len = NETSEC_RX_BUF_SZ;
@@ -682,7 +683,7 @@ static void *netsec_alloc_rx_data(struct netsec_priv *priv,
 
 	total_len += SKB_DATA_ALIGN(payload_len + NETSEC_SKB_PAD);
 
-	buf = napi_alloc_frag(total_len);
+	buf = napi ? napi_alloc_frag(total_len) : netdev_alloc_frag(total_len);
 	if (!buf)
 		return NULL;
 
@@ -765,7 +766,8 @@ static int netsec_process_rx(struct netsec_priv *priv, int budget)
 		/* allocate a fresh buffer and map it to the hardware.
 		 * This will eventually replace the old buffer in the hardware
 		 */
-		buf_addr = netsec_alloc_rx_data(priv, &dma_handle, &desc_len);
+		buf_addr = netsec_alloc_rx_data(priv, &dma_handle, &desc_len,
+						true);
 		if (unlikely(!buf_addr))
 			break;
 
@@ -1027,7 +1029,6 @@ static void netsec_free_dring(struct netsec_priv *priv, int id)
 static int netsec_alloc_dring(struct netsec_priv *priv, enum ring_id id)
 {
 	struct netsec_desc_ring *dring = &priv->desc_ring[id];
-	int i;
 
 	dring->vaddr = dma_zalloc_coherent(priv->dev, DESC_SZ * DESC_NUM,
 					   &dring->desc_dma, GFP_KERNEL);
@@ -1038,24 +1039,28 @@ static int netsec_alloc_dring(struct netsec_priv *priv, enum ring_id id)
 	if (!dring->desc)
 		goto err;
 
-	if (id == NETSEC_RING_TX) {
-		for (i = 0; i < DESC_NUM; i++) {
-			struct netsec_de *de;
-
-			de = dring->vaddr + (DESC_SZ * i);
-			/* de->attr is not going to be accessed by the NIC
-			 * until netsec_set_tx_de() is called.
-			 * No need for a dma_wmb() here
-			 */
-			de->attr = 1U << NETSEC_TX_SHIFT_OWN_FIELD;
-		}
-	}
-
 	return 0;
 err:
 	netsec_free_dring(priv, id);
 
 	return -ENOMEM;
+}
+
+static void netsec_setup_tx_dring(struct netsec_priv *priv)
+{
+	struct netsec_desc_ring *dring = &priv->desc_ring[NETSEC_RING_TX];
+	int i;
+
+	for (i = 0; i < DESC_NUM; i++) {
+		struct netsec_de *de;
+
+		de = dring->vaddr + (DESC_SZ * i);
+		/* de->attr is not going to be accessed by the NIC
+		 * until netsec_set_tx_de() is called.
+		 * No need for a dma_wmb() here
+		 */
+		de->attr = 1U << NETSEC_TX_SHIFT_OWN_FIELD;
+	}
 }
 
 static int netsec_setup_rx_dring(struct netsec_priv *priv)
@@ -1069,7 +1074,8 @@ static int netsec_setup_rx_dring(struct netsec_priv *priv)
 		void *buf;
 		u16 len;
 
-		buf = netsec_alloc_rx_data(priv, &dma_handle, &len);
+		buf = netsec_alloc_rx_data(priv, &dma_handle, &len,
+					   false);
 		if (!buf) {
 			netsec_uninit_pkt_dring(priv, NETSEC_RING_RX);
 			goto err_out;
@@ -1358,6 +1364,7 @@ static int netsec_netdev_open(struct net_device *ndev)
 
 	pm_runtime_get_sync(priv->dev);
 
+	netsec_setup_tx_dring(priv);
 	ret = netsec_setup_rx_dring(priv);
 	if (ret) {
 		netif_err(priv, probe, priv->ndev,
@@ -1673,7 +1680,7 @@ static int netsec_probe(struct platform_device *pdev)
 			   NETIF_MSG_LINK | NETIF_MSG_PROBE;
 
 	priv->phy_interface = device_get_phy_mode(&pdev->dev);
-	if (priv->phy_interface < 0) {
+	if ((int)priv->phy_interface < 0) {
 		dev_err(&pdev->dev, "missing required property 'phy-mode'\n");
 		ret = -ENODEV;
 		goto free_ndev;

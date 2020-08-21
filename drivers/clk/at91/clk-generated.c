@@ -148,8 +148,8 @@ static int clk_generated_determine_rate(struct clk_hw *hw,
 		 __clk_get_name((req->best_parent_hw)->clk),
 		 req->best_parent_rate);
 
-	if (best_rate < 0)
-		return best_rate;
+	if (best_rate < 0 || (gck->range.max && best_rate > gck->range.max))
+		return -EINVAL;
 
 	req->rate = best_rate;
 	return 0;

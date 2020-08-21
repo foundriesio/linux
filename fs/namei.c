@@ -1588,14 +1588,26 @@ static int lookup_fast(struct nameidata *nd,
 	int err;
 
 	/*
-	 * Rename seqlock is not required here because in the off chance
-	 * of a false negative due to a concurrent rename, the caller is
-	 * going to fall back to non-racy lookup.
+	 * Rename seqlock is used to work-around a problem with DMAPI.
+	 * The filesystem can call the DMAPI server while holding i_mutex
+	 * on a directory, and will ask it to examine a file in the directory.
+	 * If we then take i_mutex in lookup_slow(), we will deadlock.
+	 * The name *will* be in the cache, but renames elsewhere in
+	 * any filesystem can perturb the hash table and cause __d_lookup_rcu()
+	 * to fail.  Use of the seqlock means we will retry when that might
+	 * have happened.
 	 */
 	if (nd->flags & LOOKUP_RCU) {
-		unsigned seq;
+		unsigned seq, rename_seq;
 		bool negative;
-		dentry = __d_lookup_rcu(parent, &nd->last, &seq);
+
+		do {
+			rename_seq = read_seqbegin(&rename_lock);
+			dentry = __d_lookup_rcu(parent, &nd->last, &seq);
+			if (dentry)
+				break;
+		} while (read_seqretry(&rename_lock, rename_seq));
+
 		if (unlikely(!dentry)) {
 			if (unlazy_walk(nd))
 				return -ECHILD;

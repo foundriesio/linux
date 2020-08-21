@@ -323,7 +323,7 @@ enum {
 
 enum {
 	RK808_ID = 0x0000,
-	RK818_ID = 0x8181,
+	RK818_ID = 0x8180,
 };
 
 struct rk808 {

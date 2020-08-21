@@ -77,14 +77,13 @@ struct btrfs_ordered_extent {
 	/* logical offset in the file */
 	u64 file_offset;
 
-	/* disk byte number */
-	u64 start;
-
-	/* ram length of the extent in bytes */
-	u64 len;
-
-	/* extent length on disk */
-	u64 disk_len;
+	/*
+	 * These fields directly correspond to the same fields in
+	 * btrfs_file_extent_item.
+	 */
+	u64 disk_bytenr;
+	u64 num_bytes;
+	u64 disk_num_bytes;
 
 	/* number of bytes that still need writing */
 	u64 bytes_left;
@@ -107,6 +106,9 @@ struct btrfs_ordered_extent {
 
 	/* compression algorithm */
 	int compress_type;
+
+	/* Qgroup reserved space */
+	int qgroup_rsv;
 
 	/* reference count */
 	refcount_t refs;
@@ -169,12 +171,15 @@ int btrfs_dec_test_first_ordered_pending(struct inode *inode,
 				   u64 *file_offset, u64 io_size,
 				   int uptodate);
 int btrfs_add_ordered_extent(struct inode *inode, u64 file_offset,
-			     u64 start, u64 len, u64 disk_len, int type);
+			     u64 disk_bytenr, u64 num_bytes, u64 disk_num_bytes,
+			     int type);
 int btrfs_add_ordered_extent_dio(struct inode *inode, u64 file_offset,
-				 u64 start, u64 len, u64 disk_len, int type);
+				 u64 disk_bytenr, u64 num_bytes,
+				 u64 disk_num_bytes, int type);
 int btrfs_add_ordered_extent_compress(struct inode *inode, u64 file_offset,
-				      u64 start, u64 len, u64 disk_len,
-				      int type, int compress_type);
+				      u64 disk_bytenr, u64 num_bytes,
+				      u64 disk_num_bytes, int type,
+				      int compress_type);
 void btrfs_add_ordered_sum(struct inode *inode,
 			   struct btrfs_ordered_extent *entry,
 			   struct btrfs_ordered_sum *sum);
@@ -197,6 +202,9 @@ u64 btrfs_wait_ordered_extents(struct btrfs_root *root, u64 nr,
 			       const u64 range_start, const u64 range_len);
 void btrfs_wait_ordered_roots(struct btrfs_fs_info *fs_info, u64 nr,
 			      const u64 range_start, const u64 range_len);
+void btrfs_lock_and_flush_ordered_range(struct btrfs_inode *inode, u64 start,
+				       u64 end,
+				       struct extent_state **cached_state);
 int __init ordered_data_init(void);
 void ordered_data_exit(void);
 #endif

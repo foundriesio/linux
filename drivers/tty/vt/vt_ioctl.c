@@ -354,21 +354,12 @@ int vt_ioctl(struct tty_struct *tty,
 {
 	struct vc_data *vc = tty->driver_data;
 	struct console_font_op op;	/* used in multiple places here */
-	unsigned int console;
+	unsigned int console = vc->vc_num;
 	unsigned char ucval;
 	unsigned int uival;
 	void __user *up = (void __user *)arg;
 	int i, perm;
 	int ret = 0;
-
-	console = vc->vc_num;
-
-
-	if (!vc_cons_allocated(console)) { 	/* impossible? */
-		ret = -ENOIOCTLCMD;
-		goto out;
-	}
-
 
 	/*
 	 * To have permissions to do most of the vt ioctls, we either have
@@ -1220,17 +1211,8 @@ long vt_compat_ioctl(struct tty_struct *tty,
 {
 	struct vc_data *vc = tty->driver_data;
 	struct console_font_op op;	/* used in multiple places here */
-	unsigned int console;
-	void __user *up = (void __user *)arg;
+	void __user *up = compat_ptr(arg);
 	int perm;
-	int ret = 0;
-
-	console = vc->vc_num;
-
-	if (!vc_cons_allocated(console)) { 	/* impossible? */
-		ret = -ENOIOCTLCMD;
-		goto out;
-	}
 
 	/*
 	 * To have permissions to do most of the vt ioctls, we either have
@@ -1246,17 +1228,14 @@ long vt_compat_ioctl(struct tty_struct *tty,
 	 */
 	case PIO_FONTX:
 	case GIO_FONTX:
-		ret = compat_fontx_ioctl(cmd, up, perm, &op);
-		break;
+		return compat_fontx_ioctl(cmd, up, perm, &op);
 
 	case KDFONTOP:
-		ret = compat_kdfontop_ioctl(up, perm, &op, vc);
-		break;
+		return compat_kdfontop_ioctl(up, perm, &op, vc);
 
 	case PIO_UNIMAP:
 	case GIO_UNIMAP:
-		ret = compat_unimap_ioctl(cmd, up, perm, vc);
-		break;
+		return compat_unimap_ioctl(cmd, up, perm, vc);
 
 	/*
 	 * all these treat 'arg' as an integer
@@ -1281,21 +1260,15 @@ long vt_compat_ioctl(struct tty_struct *tty,
 	case VT_DISALLOCATE:
 	case VT_RESIZE:
 	case VT_RESIZEX:
-		goto fallback;
+		return vt_ioctl(tty, cmd, arg);
 
 	/*
 	 * the rest has a compatible data structure behind arg,
 	 * but we have to convert it to a proper 64 bit pointer.
 	 */
 	default:
-		arg = (unsigned long)compat_ptr(arg);
-		goto fallback;
+		return vt_ioctl(tty, cmd, (unsigned long)up);
 	}
-out:
-	return ret;
-
-fallback:
-	return vt_ioctl(tty, cmd, arg);
 }
 
 
