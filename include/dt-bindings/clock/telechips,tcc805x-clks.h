@@ -37,6 +37,7 @@
 
 #define CKC_REG_OFFSET(A)	((A)/4)
 
+#define PLL_VIDEO_BASE_ID		12	// Video PLL ID(VPLL 0) for TF-A
 
 /* Peripheral Clocks */
 /* PCLK***CTRL register : starts from 0x14000000 + 0x400*/
