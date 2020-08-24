@@ -62,7 +62,8 @@ dtbo-y += \
 	overlay-tcc8030-android-lpd4321_sv0.1-hdmi-ext-panel.dtbo
 
 dtb-y += \
-	tcc8050-soc.dtb
+	tcc8050-soc.dtb \
+	tcc8059-soc.dtb
 
 dtbo-y += \
 	overlay-tcc8050-android-lpd4x322_sv0.1.dtbo \
