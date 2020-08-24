@@ -17,7 +17,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/include/linux/console.h
 +++ b/include/linux/console.h
-@@ -153,6 +153,7 @@ struct console {
+@@ -151,6 +151,7 @@ struct console {
  	short	index;
  	int	cflag;
  	unsigned long printk_seq;
@@ -27,7 +27,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  };
 --- a/kernel/printk/printk.c
 +++ b/kernel/printk/printk.c
-@@ -1560,6 +1560,77 @@ static void format_text(struct printk_lo
+@@ -1568,6 +1568,77 @@ static void format_text(struct printk_lo
  	}
  }
  
@@ -105,7 +105,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  /*
   * Call the console drivers, asking them to write out
   * log_buf[start] to log_buf[end - 1].
-@@ -1578,6 +1649,10 @@ static void call_console_drivers(u64 seq
+@@ -1583,6 +1654,10 @@ static void call_console_drivers(u64 seq
  	for_each_console(con) {
  		if (!(con->flags & CON_ENABLED))
  			continue;

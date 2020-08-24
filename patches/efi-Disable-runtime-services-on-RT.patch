@@ -28,7 +28,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/drivers/firmware/efi/efi.c
 +++ b/drivers/firmware/efi/efi.c
-@@ -68,7 +68,7 @@ struct mm_struct efi_mm = {
+@@ -62,7 +62,7 @@ struct mm_struct efi_mm = {
  
  struct workqueue_struct *efi_rts_wq;
  

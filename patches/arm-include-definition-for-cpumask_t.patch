@@ -4,7 +4,7 @@ Subject: [PATCH] arm: include definition for cpumask_t
 
 This definition gets pulled in by other files. With the (later) split of
 RCU and spinlock.h it won't compile anymore.
-The split is done in ("rbtree: don't include the rcu header").
+The split is done in ("locking: split out the rbtree definition").
 
 Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 ---

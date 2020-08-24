@@ -5,10 +5,6 @@
 ############################################################
 # UPSTREAM merged
 ############################################################
-workqueue-Use-rcuwait-for-wq_manager_wait.patch
-workqueue-Convert-the-pool-lock-and-wq_mayday_lock-t.patch
-Bluetooth-Acquire-sk_lock.slock-without-disabling-in.patch
-dev-Defer-free-of-skbs-in-flush_backlog.patch
 
 ############################################################
 # POSTED by others
@@ -60,77 +56,17 @@ serial-8250-only-atomic-lock-for-console.patch
 serial-8250-fsl-ingenic-mtk-fix-atomic-console.patch
 printk-fix-ifnullfree.cocci-warnings.patch
 
-# 2020-01-31 16:07 Peter Zijlstra [PATCH -v2 0/7] locking: Percpu-rwsem rewrite
-# https://lkml.kernel.org/r/20200131150703.194229898@infradead.org
-0001-locking-percpu-rwsem-lockdep-Make-percpu-rwsem-use-i.patch
-0002-locking-percpu-rwsem-Convert-to-bool.patch
-0003-locking-percpu-rwsem-Move-__this_cpu_inc-into-the-sl.patch
-0004-locking-percpu-rwsem-Extract-__percpu_down_read_tryl.patch
-0005-locking-percpu-rwsem-Remove-the-embedded-rwsem.patch
-0006-locking-percpu-rwsem-Fold-__percpu_up_read.patch
-0007-locking-percpu-rwsem-Add-might_sleep-for-writer-lock.patch
-
-# TIP, 66630058e56b26b3a9cf2625e250a8c592dd0207
-sched-rt-Provide-migrate_disable-enable-inlines.patch
-# TIP, 4e139c7711633365ebb52fbb63905395522a8413
-sched-Provide-cant_migrate.patch
-
-# 2020-02-24 15:01 Thomas Gleixner [PATCH V3 00/22] bpf: Make BPF and PREEMPT_RT co-exist
-# https://lkml.kernel.org/r/20200224140131.461979697@linutronix.de
-0001-bpf-Tighten-the-requirements-for-preallocated-hash-m.patch
-0002-bpf-Enforce-preallocation-for-instrumentation-progra.patch
-0003-bpf-Update-locking-comment-in-hashtab-code.patch
-0004-bpf-tracing-Remove-redundant-preempt_disable-in-__bp.patch
-0005-bpf-trace-Remove-EXPORT-from-trace_call_bpf.patch
-0005.5-bpf-disable-preemption-for-bpf-progs-attached-to-upr.patch
-0006-bpf-trace-Remove-redundant-preempt_disable-from-trac.patch
-0007-perf-bpf-Remove-preempt-disable-around-BPF-invocatio.patch
-0008-bpf-Remove-recursion-prevention-from-rcu-free-callba.patch
-0009-bpf-Dont-iterate-over-possible-CPUs-with-interrupts-.patch
-0010-bpf-Provide-bpf_prog_run_pin_on_cpu-helper.patch
-0011-bpf-Replace-cant_sleep-with-cant_migrate.patch
-0012-bpf-Use-bpf_prog_run_pin_on_cpu-at-simple-call-sites.patch
-0013-bpf-tests-Use-migrate-disable-instead-of-preempt-dis.patch
-0014-bpf-Use-migrate_disable-enabe-in-trampoline-code.patch
-0015-bpf-Use-migrate_disable-enable-in-array-macros-and-c.patch
-0016-bpf-Provide-recursion-prevention-helpers.patch
-0017-bpf-Use-recursion-prevention-helpers-in-hashtab-code.patch
-0018-bpf-Replace-open-coded-recursion-prevention-in-sys_b.patch
-0019-bpf-Factor-out-hashtab-bucket-lock-operations.patch
-0020-bpf-Prepare-hashtab-locking-for-PREEMPT_RT.patch
-0021-bpf-lpm-Make-locking-RT-friendly.patch
-0022-bpf-stackmap-Dont-trylock-mmap_sem-with-PREEMPT_RT-a.patch
-
-# 2020-06-03 16:49 Ahmed S. Darwis [PATCH v2 0/6] seqlock: seqcount_t call sites bugfixes
-# 20200603144949.1122421-1-a.darwish@linutronix.de
-0001-net-core-device_rename-Use-rwsem-instead-of-a-seqcou.patch
-0002-net-phy-fixed_phy-Remove-unused-seqcount.patch
-0003-net-mdiobus-Disable-preemption-upon-u64_stats-update.patch
-0004-block-nr_sects_write-disable-preemption-on-seqcount-.patch
-0005-dma-buf-Remove-custom-seqcount-lockdep-class-key.patch
-
 ############################################################
 # POSTED
 ############################################################
-# https://lkml.kernel.org/r/20190820170818.oldsdoumzashhcgh@linutronix.de
-# 20191118132824.rclhrbujqh4b4g4d@linutronix.de
-fs-buffer-Make-BH_Uptodate_Lock-bit_spin_lock-a-regu.patch
-
-# 20191008110021.2j44ayunal7fkb7i@linutronix.de
-# Ping => 20191107091108.6ctsai6bdomalmqj@linutronix.de
-thermal-x86_pkg_temp-make-pkg_temp_lock-a-raw-spinlo.patch
-
-# 20200224140726.1550689-1-bigeasy@linutronix.de
-0001-drm-vmwgfx-Drop-preempt_disable-in-vmw_fifo_ping_hos.patch
-0002-drm-vmwgfx-Remove-a-few-unused-functions.patch
-
-# 20200303202054.gsosv7fsx2ma3cic@linutronix.de
-mm-compaction-Really-limit-compact_unevictable_allow.patch
-# 20200319165536.ovi75tsr2seared4@linutronix.de
-mm-compaction-Disable-compact_unevictable_allowed-on.patch
-
 # 20191015191821.11479-1-bigeasy@linutronix.de
 Use-CONFIG_PREEMPTION.patch
+
+#20200629201529.1017485-1-bigeasy@linutronix.de
+lockdep-Do-no-validate-wait-context-for-novalidate-c.patch
+
+# 20200701083553.fuy42cllxvx3bkzp@linutronix.de
+x86-entry-Use-should_resched-in-idtentry_exit_cond_r.patch
 
 # 20200819194443.eabkhlkocvkgifyh@linutronix.de
 io_wq-Make-io_wqe-lock-a-raw_spinlock_t.patch
@@ -138,8 +74,6 @@ io_wq-Make-io_wqe-lock-a-raw_spinlock_t.patch
 ############################################################
 # Ready for posting
 ############################################################
-
-sched-__set_cpus_allowed_ptr-Check-cpus_mask-not-cpu.patch
 
 ############################################################
 # Needs to address review feedback
@@ -164,14 +98,11 @@ tpm-remove-tpm_dev_wq_lock.patch
 ############################################################
 # Almost ready, needs final polishing
 ############################################################
-rcu-Use-a-raw_spinlock_t-for-kfree-batching.patch
+shmem-Use-raw_spinlock_t-for-stat_lock.patch
 
 ###############################################################
 # Stuff broken upstream and upstream wants something different
 ###############################################################
-
-# Timekeeping split jiffies lock or introduce RAW_SEQLOCK
-timekeeping-split-jiffies-lock.patch
 
 # PTRACE/SIGNAL crap
 # https://lore.kernel.org/lkml/CADkTA4PBT374CY+UNb85WjQEaNCDodMZu=MgpG8aMYbAu2eOGA@mail.gmail.com/
@@ -206,30 +137,15 @@ mm-make-vmstat-rt-aware.patch
 ## fs-dcache-bring-back-explicit-INIT_HLIST_BL_HEAD-in.patch
 ## ############################################################
 
-# 2020-06-08 02:57 Ahmed S. Darwis ( 106) [PATCH v2 00/18] seqlock: Extend seqcount API with associated locks
-# 20200608005729.1874024-1-a.darwish@linutronix.de
-0005-Documentation-locking-Describe-seqlock-design-and-us.patch
-0006-seqlock-Properly-format-kernel-doc-code-samples.patch
-0007-seqlock-Add-missing-kernel-doc-annotations.patch
-0008-seqlock-Extend-seqcount-API-with-associated-locks.patch
-0010-dma-buf-Use-sequence-counter-with-associated-wound-w.patch
-0011-sched-tasks-Use-sequence-counter-with-associated-spi.patch
-0012-netfilter-conntrack-Use-sequence-counter-with-associ.patch
-0013-netfilter-nft_set_rbtree-Use-sequence-counter-with-a.patch
-0014-xfrm-policy-Use-sequence-counters-with-associated-lo.patch
-0015-timekeeping-Use-sequence-counter-with-associated-raw.patch
-0016-vfs-Use-sequence-counter-with-associated-spinlock.patch
-0017-raid5-Use-sequence-counter-with-associated-spinlock.patch
-0018-iocost-Use-sequence-counter-with-associated-spinlock.patch
-0019-NFSv4-Use-sequence-counter-with-associated-spinlock.patch
-0020-userfaultfd-Use-sequence-counter-with-associated-spi.patch
-0021-kvm-eventfd-Use-sequence-counter-with-associated-spi.patch
-0022-hrtimer-Use-sequence-counter-with-associated-raw-spi.patch
-
+# seqcount
+0001-seqlock-seqcount_LOCKTYPE_t-Standardize-naming-conve.patch
+0002-seqlock-Use-unique-prefix-for-seqcount_t-property-ac.patch
+0003-seqlock-seqcount_t-Implement-all-read-APIs-as-statem.patch
+0004-seqlock-seqcount_LOCKTYPE_t-Introduce-PREEMPT_RT-sup.patch
+0005-seqlock-PREEMPT_RT-Do-not-starve-seqlock_t-writers.patch
 ##
-0023-seqlock-PREEMPT_RT-Do-not-starve-writers.patch
 0024-xfrm-Use-sequence-counter-with-associated-spinlock.patch
-seqlock-Don-t-include-linux-rwlock.h.patch
+u64_stats-Disable-preemption-on-32bit-UP-SMP-with-RT.patch
 
 fs-dcache-use-swait_queue-instead-of-waitqueue.patch
 fs-dcache-disable-preemption-on-i_dir_seq-s-write-si.patch
@@ -255,15 +171,13 @@ net_disable_NET_RX_BUSY_POLL.patch
 efi-Disable-runtime-services-on-RT.patch
 efi-Allow-efi-runtime.patch
 
-# Fix with something like get_locked_pte_irqsafe ...
-x86-Disable-HAVE_ARCH_JUMP_LABEL.patch
-
 # local locks & migrate disable
 # Rework, write proper changelog and argument
 rt-local-irq-lock.patch
 
 # Move post local lock
 softirq-Add-preemptible-softirq.patch
+softirq-Move-the-per-CPU-hardirq-definition.patch
 
 # Sigh
 # Check proper again. Crap....
@@ -276,27 +190,21 @@ oleg-signal-rt-fix.patch
 0003-mm-SLxB-change-list_lock-to-raw_spinlock_t.patch
 0004-mm-SLUB-delay-giving-back-empty-slubs-to-IRQ-enabled.patch
 mm-slub-Always-flush-the-delayed-empty-slubs-in-flus.patch
+mm-page_alloc-Use-migrate_disable-in-drain_local_pag.patch
 mm-page_alloc-rt-friendly-per-cpu-pages.patch
 
-# MM SWAP
-mm-convert-swap-to-percpu-locked.patch
-
 # MM SLxB
-mm-enable-slub.patch
+mm-slub-Make-object_map_lock-a-raw_spinlock_t.patch
 slub-enable-irqs-for-no-wait.patch
 slub-disable-SLUB_CPU_PARTIAL.patch
-mm-Warn-on-memory-allocation-in-non-preemptible-cont.patch
-mm-Don-t-warn-about-atomic-memory-allocations-during.patch
 
 # MM
+mm-memcontrol-Provide-a-local_lock-for-per-CPU-memcg.patch
 mm-memcontrol-Don-t-call-schedule_work_on-in-preempt.patch
 mm-memcontrol-do_not_disable_irq.patch
+# XXX
 mm_zsmalloc_copy_with_get_cpu_var_and_locking.patch
 mm-zswap-Use-local-lock-to-protect-per-CPU-data.patch
-
-# RADIX TREE
-# Local lock use case ....
-radix-tree-use-local-locks.patch
 
 # KVM require constant freq TSC (smp function call -> cpufreq)
 # proper changelog
@@ -304,17 +212,11 @@ x86-kvm-require-const-tsc-for-rt.patch
 
 # SIMPLE WAITQUEUE
 # Revisit
-pci-switchtec-Don-t-use-completion-s-wait-queue.patch
 wait.h-include-atomic.h.patch
-completion-use-simple-wait-queues.patch
 
 # HRTIMERS
 # Check whether schedule_hrtimeout() could be hard always
 hrtimer-Allow-raw-wakeups-during-boot.patch
-
-# POSIX-CPU-TIMERS
-posix-timers-thread-posix-cpu-timers-on-rt.patch
-posix-timers-expiry-lock.patch
 
 # SCHEDULER
 # PUSH IPI?
@@ -355,7 +257,7 @@ rtmutex-lock-killable.patch
 rtmutex-Make-lock_killable-work.patch
 spinlock-types-separate-raw.patch
 rtmutex-avoid-include-hell.patch
-rtmutex_dont_include_rcu.patch
+locking-split-out-the-rbtree-definition.patch
 rtmutex-Provide-rt_mutex_slowlock_locked.patch
 rtmutex-export-lockdep-less-version-of-rt_mutex-s-lo.patch
 rtmutex-add-sleeping-lock-implementation.patch
@@ -368,6 +270,8 @@ rtmutex-add-rwlock-implementation-based-on-rtmutex.patch
 rtmutex-wire-up-RT-s-locking.patch
 rwsem-Provide-down_read_non_owner-and-up_read_non_ow.patch
 rtmutex-add-ww_mutex-addon-for-mutex-rt.patch
+mutex-Move-the-ww_mutext-definition-back-to-ww_mutex.patch
+
 # Allow to enable RT-FULL after sleeping spinlocks are wired up
 # XXX move flush_plug to slowpath's schedule()
 locking-rt-mutex-fix-deadlock-in-device-mapper-block.patch
@@ -388,20 +292,12 @@ locking-don-t-check-for-__LINUX_SPINLOCK_TYPES_H-on-.patch
 # Talk to Paul, Local locks
 locking-Make-spinlock_t-and-rwlock_t-a-RCU-section-o.patch
 rcu-Use-rcuc-threads-on-PREEMPT_RT-as-we-did.patch
-srcu-replace-local_irqsave-with-a-locallock.patch
 rcu-enable-rcu_normal_after_boot-by-default-for-RT.patch
 rcutorture-Avoid-problematic-critical-section-nestin.patch
 
-# Drop
-rt-serial-warn-fix.patch
-Revert-rt-Improve-the-serial-console-PASS_LIMIT.patch
-
 # CPU get light
-# akpm
-fs-epoll-make-nesting-accounting-safe-for-rt-kernel.patch
 mm-vmalloc-use-get-cpu-light.patch
 block-mq-drop-preempt-disable.patch
-block-mq-don-t-complete-requests-via-IPI.patch
 md-raid5-percpu-handling-rt-aware.patch
 scsi-fcoe-rt-aware.patch
 sunrpc-make-svc_xprt_do_enqueue-use-get_cpu_light.patch
@@ -409,13 +305,8 @@ sunrpc-make-svc_xprt_do_enqueue-use-get_cpu_light.patch
 # CPU CHILL
 rt-introduce-cpu-chill.patch
 
-# BLOCK LIVELOCK PREVENTION
-block-use-cpu-chill.patch
-
 # FS LIVELOCK PREVENTION
 fs-namespace-use-cpu-chill-in-trylock-loops.patch
-# Revisit
-net-use-cpu-chill.patch
 
 # DEBUGOBJECTS
 # Post
@@ -429,7 +320,6 @@ net-dev-always-take-qdisc-s-busylock-in-__dev_xmit_s.patch
 # irqwork
 # Revisit
 irqwork-push_most_work_into_softirq_context.patch
-time-Properly-initialize-nohz_full_kick_work.patch
 
 # crypto drivers
 # Revisit
@@ -454,6 +344,7 @@ upstream-net-rt-remove-preemption-disabling-in-netif_rx.patch
 lockdep-no-softirq-accounting-on-rt.patch
 lockdep-selftest-only-do-hardirq-context-test-for-raw-spinlock.patch
 lockdep-selftest-fix-warnings-due-to-missing-PREEMPT.patch
+lockdep-Reduce-header-files-in-debug_locks.h.patch
 # Fix lockdep selftest - talk to Peter - including lockdep branch
 lockdep-disable-self-test.patch
 
@@ -463,7 +354,7 @@ drmradeoni915_Use_preempt_disableenable_rt()_where_recommended.patch
 drmi915_Use_local_lockunlock_irq()_in_intel_pipe_update_startend().patch
 drm-i915-disable-tracing-on-RT.patch
 drm-i915-skip-DRM_I915_LOW_LEVEL_TRACEPOINTS-with-NO.patch
-drm-i915-gt-use-a-LOCAL_IRQ_LOCK-in-__timeline_mark_.patch
+drm-i915-gt-Only-disable-interrupts-for-the-timeline.patch
 
 # CGROUPS
 # Revisit and Post
@@ -502,15 +393,16 @@ drivers-tty-fix-omap-lock-crap.patch
 drivers-tty-pl011-irq-disable-madness.patch
 
 # misc ARM
-arm-include-definition-for-cpumask_t.patch
+# arm-include-definition-for-cpumask_t.patch
 ARM-enable-irq-in-translation-section-permission-fau.patch
 genirq-update-irq_set_irqchip_state-documentation.patch
 KVM-arm-arm64-downgrade-preempt_disable-d-region-to-.patch
 arm64-fpsimd-use-preemp_disable-in-addition-to-local.patch
 
 # Those two should vanish soon (not use PIT during bootup)
-at91_dont_enable_disable_clock.patch
-clocksource-tclib-allow-higher-clockrates.patch
+# XXX check if needed, looks like not required.
+# at91_dont_enable_disable_clock.patch
+# clocksource-tclib-allow-higher-clockrates.patch
 
 # Other architectures
 x86-Enable-RT-also-on-32bit.patch
@@ -529,12 +421,8 @@ mips-disable-highmem-on-rt.patch
 
 # DRIVERS
 # Postpone, disable
-connector-cn_proc-Protect-send_msg-with-a-local-lock.patch
-
-# Postpone, disable
 drivers-block-zram-Replace-bit-spinlocks-with-rtmute.patch
 drivers-zram-Don-t-disable-preemption-in-zcomp_strea.patch
-squashfs-make-use-of-local-lock-in-multi_cpu-decompr.patch
 
 # Generic iowriteN_buffer() function ....
 tpm_tis-fix-stall-after-iowrite-s.patch

@@ -13,7 +13,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/include/linux/ratelimit.h
 +++ b/include/linux/ratelimit.h
-@@ -59,7 +59,7 @@ static inline void ratelimit_state_exit(
+@@ -28,7 +28,7 @@ static inline void ratelimit_state_exit(
  		return;
  
  	if (rs->missed) {

@@ -8,11 +8,11 @@ spinlocks.
 
 Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 ---
- include/linux/rwlock_types.h        |    4 ++
- include/linux/spinlock_types.h      |   71 +-----------------------------------
- include/linux/spinlock_types_nort.h |   33 ++++++++++++++++
- include/linux/spinlock_types_raw.h  |   55 +++++++++++++++++++++++++++
- 4 files changed, 94 insertions(+), 69 deletions(-)
+ include/linux/rwlock_types.h        |    4 +
+ include/linux/spinlock_types.h      |   87 ------------------------------------
+ include/linux/spinlock_types_nort.h |   39 ++++++++++++++++
+ include/linux/spinlock_types_raw.h  |   65 ++++++++++++++++++++++++++
+ 4 files changed, 110 insertions(+), 85 deletions(-)
 
 --- a/include/linux/rwlock_types.h
 +++ b/include/linux/rwlock_types.h
@@ -29,7 +29,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
   *				  and initializers
 --- a/include/linux/spinlock_types.h
 +++ b/include/linux/spinlock_types.h
-@@ -9,76 +9,9 @@
+@@ -9,92 +9,9 @@
   * Released under the General Public License (GPL).
   */
  
@@ -40,7 +40,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 -#endif
 +#include <linux/spinlock_types_raw.h>
  
--#include <linux/lockdep.h>
+-#include <linux/lockdep_types.h>
 -
 -typedef struct raw_spinlock {
 -	arch_spinlock_t raw_lock;
@@ -58,8 +58,18 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 -#define SPINLOCK_OWNER_INIT	((void *)-1L)
 -
 -#ifdef CONFIG_DEBUG_LOCK_ALLOC
--# define SPIN_DEP_MAP_INIT(lockname)	.dep_map = { .name = #lockname }
+-# define RAW_SPIN_DEP_MAP_INIT(lockname)		\
+-	.dep_map = {					\
+-		.name = #lockname,			\
+-		.wait_type_inner = LD_WAIT_SPIN,	\
+-	}
+-# define SPIN_DEP_MAP_INIT(lockname)			\
+-	.dep_map = {					\
+-		.name = #lockname,			\
+-		.wait_type_inner = LD_WAIT_CONFIG,	\
+-	}
 -#else
+-# define RAW_SPIN_DEP_MAP_INIT(lockname)
 -# define SPIN_DEP_MAP_INIT(lockname)
 -#endif
 -
@@ -76,7 +86,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 -	{					\
 -	.raw_lock = __ARCH_SPIN_LOCK_UNLOCKED,	\
 -	SPIN_DEBUG_INIT(lockname)		\
--	SPIN_DEP_MAP_INIT(lockname) }
+-	RAW_SPIN_DEP_MAP_INIT(lockname) }
 -
 -#define __RAW_SPIN_LOCK_UNLOCKED(lockname)	\
 -	(raw_spinlock_t) __RAW_SPIN_LOCK_INITIALIZER(lockname)
@@ -97,11 +107,17 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 -	};
 -} spinlock_t;
 -
+-#define ___SPIN_LOCK_INITIALIZER(lockname)	\
+-	{					\
+-	.raw_lock = __ARCH_SPIN_LOCK_UNLOCKED,	\
+-	SPIN_DEBUG_INIT(lockname)		\
+-	SPIN_DEP_MAP_INIT(lockname) }
+-
 -#define __SPIN_LOCK_INITIALIZER(lockname) \
--	{ { .rlock = __RAW_SPIN_LOCK_INITIALIZER(lockname) } }
+-	{ { .rlock = ___SPIN_LOCK_INITIALIZER(lockname) } }
 -
 -#define __SPIN_LOCK_UNLOCKED(lockname) \
--	(spinlock_t ) __SPIN_LOCK_INITIALIZER(lockname)
+-	(spinlock_t) __SPIN_LOCK_INITIALIZER(lockname)
 -
 -#define DEFINE_SPINLOCK(x)	spinlock_t x = __SPIN_LOCK_UNLOCKED(x)
 +#include <linux/spinlock_types_nort.h>
@@ -110,7 +126,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  
 --- /dev/null
 +++ b/include/linux/spinlock_types_nort.h
-@@ -0,0 +1,33 @@
+@@ -0,0 +1,39 @@
 +#ifndef __LINUX_SPINLOCK_TYPES_NORT_H
 +#define __LINUX_SPINLOCK_TYPES_NORT_H
 +
@@ -135,18 +151,24 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 +	};
 +} spinlock_t;
 +
++#define ___SPIN_LOCK_INITIALIZER(lockname)	\
++{						\
++	.raw_lock = __ARCH_SPIN_LOCK_UNLOCKED,	\
++	SPIN_DEBUG_INIT(lockname)		\
++	SPIN_DEP_MAP_INIT(lockname) }
++
 +#define __SPIN_LOCK_INITIALIZER(lockname) \
-+	{ { .rlock = __RAW_SPIN_LOCK_INITIALIZER(lockname) } }
++	{ { .rlock = ___SPIN_LOCK_INITIALIZER(lockname) } }
 +
 +#define __SPIN_LOCK_UNLOCKED(lockname) \
-+	(spinlock_t ) __SPIN_LOCK_INITIALIZER(lockname)
++	(spinlock_t) __SPIN_LOCK_INITIALIZER(lockname)
 +
 +#define DEFINE_SPINLOCK(x)	spinlock_t x = __SPIN_LOCK_UNLOCKED(x)
 +
 +#endif
 --- /dev/null
 +++ b/include/linux/spinlock_types_raw.h
-@@ -0,0 +1,55 @@
+@@ -0,0 +1,65 @@
 +#ifndef __LINUX_SPINLOCK_TYPES_RAW_H
 +#define __LINUX_SPINLOCK_TYPES_RAW_H
 +
@@ -158,7 +180,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 +# include <linux/spinlock_types_up.h>
 +#endif
 +
-+#include <linux/lockdep.h>
++#include <linux/lockdep_types.h>
 +
 +typedef struct raw_spinlock {
 +	arch_spinlock_t raw_lock;
@@ -176,8 +198,18 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 +#define SPINLOCK_OWNER_INIT	((void *)-1L)
 +
 +#ifdef CONFIG_DEBUG_LOCK_ALLOC
-+# define SPIN_DEP_MAP_INIT(lockname)	.dep_map = { .name = #lockname }
++# define RAW_SPIN_DEP_MAP_INIT(lockname)		\
++	.dep_map = {					\
++		.name = #lockname,			\
++		.wait_type_inner = LD_WAIT_SPIN,	\
++	}
++# define SPIN_DEP_MAP_INIT(lockname)			\
++	.dep_map = {					\
++		.name = #lockname,			\
++		.wait_type_inner = LD_WAIT_CONFIG,	\
++	}
 +#else
++# define RAW_SPIN_DEP_MAP_INIT(lockname)
 +# define SPIN_DEP_MAP_INIT(lockname)
 +#endif
 +
@@ -191,14 +223,14 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 +#endif
 +
 +#define __RAW_SPIN_LOCK_INITIALIZER(lockname)	\
-+	{					\
++{						\
 +	.raw_lock = __ARCH_SPIN_LOCK_UNLOCKED,	\
 +	SPIN_DEBUG_INIT(lockname)		\
-+	SPIN_DEP_MAP_INIT(lockname) }
++	RAW_SPIN_DEP_MAP_INIT(lockname) }
 +
 +#define __RAW_SPIN_LOCK_UNLOCKED(lockname)	\
 +	(raw_spinlock_t) __RAW_SPIN_LOCK_INITIALIZER(lockname)
 +
-+#define DEFINE_RAW_SPINLOCK(x)	raw_spinlock_t x = __RAW_SPIN_LOCK_UNLOCKED(x)
++#define DEFINE_RAW_SPINLOCK(x)  raw_spinlock_t x = __RAW_SPIN_LOCK_UNLOCKED(x)
 +
 +#endif

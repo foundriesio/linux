@@ -34,7 +34,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/kernel/printk/printk.c
 +++ b/kernel/printk/printk.c
-@@ -3059,6 +3059,7 @@ static int printk_kthread_func(void *dat
+@@ -3101,6 +3101,7 @@ static int printk_kthread_func(void *dat
  			    &len, printk_time);
  
  		console_lock();

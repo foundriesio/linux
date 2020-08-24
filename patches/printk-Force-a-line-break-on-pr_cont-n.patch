@@ -23,7 +23,7 @@ Acked-by: John Ogness <john.ogness@linutronix.de>
 
 --- a/kernel/printk/printk.c
 +++ b/kernel/printk/printk.c
-@@ -1871,6 +1871,7 @@ static void cont_add(int ctx, int cpu, u
+@@ -1876,6 +1876,7 @@ static void cont_add(int ctx, int cpu, u
  	// but later continuations can add a newline.
  	if (flags & LOG_NEWLINE) {
  		c->flags |= LOG_NEWLINE;

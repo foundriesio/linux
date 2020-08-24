@@ -24,7 +24,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  static __always_inline void boot_init_stack_canary(void)
  {
 -	u64 canary;
-+	u64 uninitialized_var(canary);
++	u64 canary = 0;
  	u64 tsc;
  
  #ifdef CONFIG_X86_64

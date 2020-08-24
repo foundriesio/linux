@@ -8,30 +8,12 @@ It seems to be enough to replace it with get_cpu_light() and migrate_disable().
 
 Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 ---
- block/blk-mq.c |   10 +++++-----
- 1 file changed, 5 insertions(+), 5 deletions(-)
+ block/blk-mq.c |    6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
 
 --- a/block/blk-mq.c
 +++ b/block/blk-mq.c
-@@ -589,7 +589,7 @@ static void __blk_mq_complete_request(st
- 		return;
- 	}
- 
--	cpu = get_cpu();
-+	cpu = get_cpu_light();
- 	if (!test_bit(QUEUE_FLAG_SAME_FORCE, &q->queue_flags))
- 		shared = cpus_share_cache(cpu, ctx->cpu);
- 
-@@ -601,7 +601,7 @@ static void __blk_mq_complete_request(st
- 	} else {
- 		q->mq_ops->complete(rq);
- 	}
--	put_cpu();
-+	put_cpu_light();
- }
- 
- static void hctx_unlock(struct blk_mq_hw_ctx *hctx, int srcu_idx)
-@@ -1456,14 +1456,14 @@ static void __blk_mq_delay_run_hw_queue(
+@@ -1599,14 +1599,14 @@ static void __blk_mq_delay_run_hw_queue(
  		return;
  
  	if (!async && !(hctx->flags & BLK_MQ_F_BLOCKING)) {

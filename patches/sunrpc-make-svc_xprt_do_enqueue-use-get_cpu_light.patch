@@ -33,7 +33,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/net/sunrpc/svc_xprt.c
 +++ b/net/sunrpc/svc_xprt.c
-@@ -411,7 +411,7 @@ void svc_xprt_do_enqueue(struct svc_xprt
+@@ -422,7 +422,7 @@ void svc_xprt_do_enqueue(struct svc_xprt
  	if (test_and_set_bit(XPT_BUSY, &xprt->xpt_flags))
  		return;
  
@@ -42,7 +42,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	pool = svc_pool_for_cpu(xprt->xpt_server, cpu);
  
  	atomic_long_inc(&pool->sp_stats.packets);
-@@ -435,7 +435,7 @@ void svc_xprt_do_enqueue(struct svc_xprt
+@@ -446,7 +446,7 @@ void svc_xprt_do_enqueue(struct svc_xprt
  	rqstp = NULL;
  out_unlock:
  	rcu_read_unlock();

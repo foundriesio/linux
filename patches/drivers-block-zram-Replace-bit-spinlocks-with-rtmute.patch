@@ -15,7 +15,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/drivers/block/zram/zram_drv.c
 +++ b/drivers/block/zram/zram_drv.c
-@@ -55,6 +55,40 @@ static void zram_free_page(struct zram *
+@@ -56,6 +56,40 @@ static void zram_free_page(struct zram *
  static int zram_bvec_read(struct zram *zram, struct bio_vec *bvec,
  				u32 index, int offset, struct bio *bio);
  
@@ -56,7 +56,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  static int zram_slot_trylock(struct zram *zram, u32 index)
  {
-@@ -70,6 +104,7 @@ static void zram_slot_unlock(struct zram
+@@ -71,6 +105,7 @@ static void zram_slot_unlock(struct zram
  {
  	bit_spin_unlock(ZRAM_LOCK, &zram->table[index].flags);
  }
@@ -64,7 +64,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  static inline bool init_done(struct zram *zram)
  {
-@@ -1157,6 +1192,7 @@ static bool zram_meta_alloc(struct zram
+@@ -1158,6 +1193,7 @@ static bool zram_meta_alloc(struct zram
  
  	if (!huge_class_size)
  		huge_class_size = zs_huge_class_size(zram->mem_pool);

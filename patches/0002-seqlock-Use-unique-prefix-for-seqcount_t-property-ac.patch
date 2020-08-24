@@ -1,0 +1,72 @@
+From: "Ahmed S. Darwish" <a.darwish@linutronix.de>
+Date: Wed, 19 Aug 2020 11:36:56 +0200
+Subject: [PATCH 2/5] seqlock: Use unique prefix for seqcount_t property
+ accessors
+
+At seqlock.h, the following set of functions:
+
+    - __seqcount_ptr()
+    - __seqcount_preemptible()
+    - __seqcount_assert()
+
+act as plain seqcount_t "property" accessors. Meanwhile, the following
+macros:
+
+    - __seqcount_ptr()
+    - __seqcount_lock_preemptible()
+    - __seqcount_assert_lock_held()
+
+act as the equivalent set, but in the generic form, taking either
+seqcount_t or any of the seqcount_LOCKTYPE_t variants.
+
+This is quite confusing, especially the first member where it is called
+exactly the same in both groups.
+
+Differentiate the first group by using "__seqcount_t_" as prefix for all
+of its members. This also conforms with the rest of seqlock.h naming
+conventions.
+
+References: 55f3560df975 ("seqlock: Extend seqcount API with associated locks")
+Signed-off-by: Ahmed S. Darwish <a.darwish@linutronix.de>
+Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
+---
+ include/linux/seqlock.h |    9 ++++-----
+ 1 file changed, 4 insertions(+), 5 deletions(-)
+
+--- a/include/linux/seqlock.h
++++ b/include/linux/seqlock.h
+@@ -198,17 +198,17 @@ static __always_inline void						\
+  * __seqprop() for seqcount_t
+  */
+ 
+-static inline seqcount_t *__seqcount_ptr(seqcount_t *s)
++static inline seqcount_t *__seqcount_t_ptr(seqcount_t *s)
+ {
+ 	return s;
+ }
+ 
+-static inline bool __seqcount_preemptible(seqcount_t *s)
++static inline bool __seqcount_t_preemptible(seqcount_t *s)
+ {
+ 	return false;
+ }
+ 
+-static inline void __seqcount_assert(seqcount_t *s)
++static inline void __seqcount_t_assert(seqcount_t *s)
+ {
+ 	lockdep_assert_preemption_disabled();
+ }
+@@ -236,12 +236,11 @@ SEQCOUNT_LOCKTYPE(ww_mutex,	struct ww_mu
+ #define SEQCNT_MUTEX_ZERO(name, lock)		SEQCOUNT_LOCKTYPE_ZERO(name, lock)
+ #define SEQCNT_WW_MUTEX_ZERO(name, lock) 	SEQCOUNT_LOCKTYPE_ZERO(name, lock)
+ 
+-
+ #define __seqprop_case(s, locktype, prop)				\
+ 	seqcount_##locktype##_t: __seqcount_##locktype##_##prop((void *)(s))
+ 
+ #define __seqprop(s, prop) _Generic(*(s),				\
+-	seqcount_t:		__seqcount_##prop((void *)(s)),		\
++	seqcount_t:		__seqcount_t_##prop((void *)(s)),	\
+ 	__seqprop_case((s),	raw_spinlock,	prop),			\
+ 	__seqprop_case((s),	spinlock,	prop),			\
+ 	__seqprop_case((s),	rwlock,		prop),			\

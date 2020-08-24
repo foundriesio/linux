@@ -51,7 +51,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  }
  
  static ssize_t msg_print_ext_body(char *buf, size_t size,
-@@ -1142,6 +1144,11 @@ static inline void boot_delay_msec(int l
+@@ -1150,6 +1152,11 @@ static inline void boot_delay_msec(int l
  static bool printk_time = IS_ENABLED(CONFIG_PRINTK_TIME);
  module_param_named(time, printk_time, bool, S_IRUGO | S_IWUSR);
  
@@ -63,7 +63,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  static size_t print_syslog(unsigned int level, char *buf)
  {
  	return sprintf(buf, "<%u>", level);
-@@ -1185,6 +1192,7 @@ static size_t print_prefix(const struct
+@@ -1193,6 +1200,7 @@ static size_t print_prefix(const struct
  		buf[len++] = ' ';
  		buf[len] = '\0';
  	}
@@ -71,7 +71,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  	return len;
  }
-@@ -1760,6 +1768,7 @@ asmlinkage int vprintk_emit(int facility
+@@ -1765,6 +1773,7 @@ asmlinkage int vprintk_emit(int facility
  	u64 ts_nsec;
  	char *text;
  	char *rbuf;
@@ -79,7 +79,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  	ts_nsec = local_clock();
  
-@@ -1769,6 +1778,8 @@ asmlinkage int vprintk_emit(int facility
+@@ -1774,6 +1783,8 @@ asmlinkage int vprintk_emit(int facility
  		return printed_len;
  	}
  
@@ -88,7 +88,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	text = rbuf;
  	text_len = vscnprintf(text, PRINTK_SPRINT_MAX, fmt, args);
  
-@@ -1803,7 +1814,7 @@ asmlinkage int vprintk_emit(int facility
+@@ -1808,7 +1819,7 @@ asmlinkage int vprintk_emit(int facility
  	if (dict)
  		lflags |= LOG_NEWLINE;
  

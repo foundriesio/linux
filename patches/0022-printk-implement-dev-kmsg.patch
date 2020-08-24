@@ -35,7 +35,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	return 0;
 --- a/include/linux/printk.h
 +++ b/include/linux/printk.h
-@@ -192,6 +192,7 @@ void __init setup_log_buf(int early);
+@@ -193,6 +193,7 @@ void __init setup_log_buf(int early);
  void dump_stack_print_info(const char *log_lvl);
  void show_regs_print_info(const char *log_lvl);
  extern asmlinkage void dump_stack(void) __cold;
@@ -165,7 +165,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  out:
  	mutex_unlock(&user->lock);
  	return ret;
-@@ -824,19 +842,21 @@ static ssize_t devkmsg_read(struct file
+@@ -832,19 +850,21 @@ static ssize_t devkmsg_read(struct file
  static loff_t devkmsg_llseek(struct file *file, loff_t offset, int whence)
  {
  	struct devkmsg_user *user = file->private_data;
@@ -191,7 +191,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  		break;
  	case SEEK_DATA:
  		/*
-@@ -844,40 +864,83 @@ static loff_t devkmsg_llseek(struct file
+@@ -852,40 +872,83 @@ static loff_t devkmsg_llseek(struct file
  		 * like issued by 'dmesg -c'. Reading /dev/kmsg itself
  		 * changes no global state, and does not clear anything.
  		 */
@@ -211,7 +211,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 +				 * seek to the beginning of the list.
 +				 */
 +				prb_iter_init(&user->iter, &printk_rb,
-+						&user->seq);
++					      &user->seq);
 +				break;
 +			}
 +			/* iterator invalid, start over */
@@ -277,7 +277,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 +	prb_iter_copy(&iter, &user->iter);
 +
 +	rbret = prb_iter_next(&iter, &user->msgbuf[0],
-+				sizeof(user->msgbuf), &seq);
++			      sizeof(user->msgbuf), &seq);
 +	if (rbret == 0)
 +		goto out;
 +
@@ -290,7 +290,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  	return ret;
  }
-@@ -907,10 +970,7 @@ static int devkmsg_open(struct inode *in
+@@ -915,10 +978,7 @@ static int devkmsg_open(struct inode *in
  
  	mutex_init(&user->lock);
  

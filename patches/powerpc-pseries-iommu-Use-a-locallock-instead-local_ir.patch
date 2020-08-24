@@ -21,7 +21,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  #include <linux/of.h>
  #include <linux/iommu.h>
  #include <linux/rculist.h>
-+#include <linux/locallock.h>
++#include <linux/local_lock.h>
  #include <asm/io.h>
  #include <asm/prom.h>
  #include <asm/rtas.h>

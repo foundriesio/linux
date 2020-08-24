@@ -19,7 +19,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/kernel/rcu/update.c
 +++ b/kernel/rcu/update.c
-@@ -54,8 +54,10 @@
+@@ -69,8 +69,10 @@
  #ifndef CONFIG_TINY_RCU
  module_param(rcu_expedited, int, 0);
  module_param(rcu_normal, int, 0);

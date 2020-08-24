@@ -22,7 +22,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  #define TRACE_EVENT_TYPE_MAX						\
 --- a/kernel/trace/trace.c
 +++ b/kernel/trace/trace.c
-@@ -2450,6 +2450,8 @@ tracing_generic_entry_update(struct trac
+@@ -2457,6 +2457,8 @@ tracing_generic_entry_update(struct trac
  		((pc & SOFTIRQ_OFFSET) ? TRACE_FLAG_SOFTIRQ : 0) |
  		(tif_need_resched() ? TRACE_FLAG_NEED_RESCHED : 0) |
  		(test_preempt_need_resched() ? TRACE_FLAG_PREEMPT_RESCHED : 0);
@@ -31,7 +31,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  }
  EXPORT_SYMBOL_GPL(tracing_generic_entry_update);
  
-@@ -3695,9 +3697,10 @@ static void print_lat_help_header(struct
+@@ -3787,9 +3789,10 @@ static void print_lat_help_header(struct
  		    "#                | / _----=> need-resched    \n"
  		    "#                || / _---=> hardirq/softirq \n"
  		    "#                ||| / _--=> preempt-depth   \n"

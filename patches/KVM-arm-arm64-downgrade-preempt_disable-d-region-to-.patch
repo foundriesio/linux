@@ -17,12 +17,12 @@ Reported-by: Manish Jaggi <Manish.Jaggi@caviumnetworks.com>
 Signed-off-by: Josh Cartwright <joshc@ni.com>
 Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 ---
- virt/kvm/arm/arm.c |    6 +++---
+ arch/arm64/kvm/arm.c |    6 +++---
  1 file changed, 3 insertions(+), 3 deletions(-)
 
---- a/virt/kvm/arm/arm.c
-+++ b/virt/kvm/arm/arm.c
-@@ -700,7 +700,7 @@ int kvm_arch_vcpu_ioctl_run(struct kvm_v
+--- a/arch/arm64/kvm/arm.c
++++ b/arch/arm64/kvm/arm.c
+@@ -678,7 +678,7 @@ int kvm_arch_vcpu_ioctl_run(struct kvm_v
  		 * involves poking the GIC, which must be done in a
  		 * non-preemptible context.
  		 */
@@ -31,8 +31,8 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  		kvm_pmu_flush_hwstate(vcpu);
  
-@@ -749,7 +749,7 @@ int kvm_arch_vcpu_ioctl_run(struct kvm_v
- 				kvm_timer_sync_hwstate(vcpu);
+@@ -727,7 +727,7 @@ int kvm_arch_vcpu_ioctl_run(struct kvm_v
+ 				kvm_timer_sync_user(vcpu);
  			kvm_vgic_sync_hwstate(vcpu);
  			local_irq_enable();
 -			preempt_enable();
@@ -40,12 +40,12 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  			continue;
  		}
  
-@@ -825,7 +825,7 @@ int kvm_arch_vcpu_ioctl_run(struct kvm_v
+@@ -799,7 +799,7 @@ int kvm_arch_vcpu_ioctl_run(struct kvm_v
  		/* Exit types that need handling before we can be preempted */
- 		handle_exit_early(vcpu, run, ret);
+ 		handle_exit_early(vcpu, ret);
  
 -		preempt_enable();
 +		migrate_enable();
  
- 		ret = handle_exit(vcpu, run, ret);
+ 		ret = handle_exit(vcpu, ret);
  	}
