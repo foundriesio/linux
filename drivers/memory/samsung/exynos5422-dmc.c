@@ -119,6 +119,7 @@ struct exynos5_dmc {
 	void __iomem *base_drexi0;
 	void __iomem *base_drexi1;
 	struct regmap *clk_regmap;
+	/* Protects curr_rate and frequency/voltage setting section */
 	struct mutex lock;
 	unsigned long curr_rate;
 	unsigned long curr_volt;
@@ -908,7 +909,10 @@ static int exynos5_dmc_get_status(struct device *dev,
 	int ret;
 
 	if (dmc->in_irq_mode) {
+		mutex_lock(&dmc->lock);
 		stat->current_frequency = dmc->curr_rate;
+		mutex_unlock(&dmc->lock);
+
 		stat->busy_time = dmc->load;
 		stat->total_time = dmc->total;
 	} else {
