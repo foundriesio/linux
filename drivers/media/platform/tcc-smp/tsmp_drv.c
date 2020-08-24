@@ -26,7 +26,7 @@
 #include <linux/device.h>
 #include <linux/wait.h>
 #include <linux/tee_drv.h>
-#include "demux.h"
+#include "tcc_hwdemux_tsif_rx.h"
 
 #define DATA_BUFFER_SIZE 2 * 1024 * 1024
 #define MAX_NUM_OF_BUFFER_INFO 10
@@ -45,9 +45,9 @@
 #define CMD_ASSEMBLE_DATA 0xF0000003
 #define CMD_SET_MAX_NUMBER_FRAMES 0xF0000004
 
-#define TSIF_PHYSICAL_ADDRESS		0x6E844000
-#define TSIF_PHYSICAL_SIZE			1572808
-#define TSIF_VIRTUAL_ADDRESS		0xE5E80000 // exact?
+#define TSIF_PHYSICAL_ADDRESS 0x6E844000
+#define TSIF_PHYSICAL_SIZE 1572808
+#define TSIF_VIRTUAL_ADDRESS 0xE5E80000 // exact?
 
 /**
  * @defgroup tsmp Telechips Secure Media Path Driver
@@ -81,30 +81,33 @@ static dev_t dev_num;
 static struct tsmp_dev tsmp_dev[DEVICE_INSTANCES];
 static struct class *class;
 
-static void tsmp_callback(int dmxch, uintptr_t off1, int off1_size, uintptr_t off2, int off2_size)
+static int tsmp_callback(int dmxch, uintptr_t off1, int off1_size, uintptr_t off2, int off2_size)
 {
+	struct tee_client_params params;
+	int rc;
+
 	mutex_lock(&tsmp_dev[dmxch].mutex);
 #if 1
-	struct tee_client_params params;
 	memset(&params, 0, sizeof(params));
 
-	params.params[0].tee_client_value.a = TSIF_PHYSICAL_ADDRESS + /*(TSIF_PHYSICAL_SIZE >> 1) +*/ (off1 - TSIF_VIRTUAL_ADDRESS) ;
+	params.params[0].tee_client_value.a =
+		TSIF_PHYSICAL_ADDRESS + /*(TSIF_PHYSICAL_SIZE >> 1) +*/ (off1 - TSIF_VIRTUAL_ADDRESS);
 	params.params[0].tee_client_value.b = off1_size;
 	params.params[0].type = TEE_CLIENT_PARAM_VALUE_IN;
 
 	if (off2_size > 0) {
-		params.params[1].tee_client_value.a = TSIF_PHYSICAL_ADDRESS + /*(TSIF_PHYSICAL_SIZE >> 1)*/ + (off2 - TSIF_VIRTUAL_ADDRESS);
+		params.params[1].tee_client_value.a =
+			TSIF_PHYSICAL_ADDRESS + /*(TSIF_PHYSICAL_SIZE >> 1)*/ +(off2 - TSIF_VIRTUAL_ADDRESS);
 		params.params[1].tee_client_value.b = off2_size;
 		params.params[1].type = TEE_CLIENT_PARAM_VALUE_IN;
 	}
 
-	int rc;
 	rc = tee_client_execute_command(tsmp_dev[dmxch].context, &params, CMD_COLLECT_DATA);
 	if (rc) {
 		ELOG("fail to execute TA command rc %x\n", rc);
 	} else {
 		tsmp_dev[dmxch].revent_mask |= TSMP_EVENT;
- 	}
+	}
 #endif
 
 	ILOG(
@@ -113,6 +116,8 @@ static void tsmp_callback(int dmxch, uintptr_t off1, int off1_size, uintptr_t of
 		(uint32_t)(off2 + off2_size));
 	wake_up_interruptible(&tsmp_dev[dmxch].wait_queue);
 	mutex_unlock(&tsmp_dev[dmxch].mutex);
+
+	return 0;
 }
 
 static int tsmp_depack_stream_ioctl(struct file *filp, struct tsmp_depack_stream *p_depack_stream)
@@ -375,7 +380,7 @@ static unsigned int tsmp_poll(struct file *filp, poll_table *wait)
 		if (dev->revent_mask == 0) {
 			ret = 0;
 		} else {
-			/* This is where TA Invoke Command is called */
+		/* This is where TA Invoke Command is called */
 #if 0
 			struct tee_client_params params;
 			memset(&params, 0, sizeof(params));
@@ -477,7 +482,7 @@ static int tsmp_open(struct inode *inode, struct file *file)
 
 	/*******************************************/
 
-	tcc_dmx_set_smpcb(iminor(inode), tsmp_callback);
+	rx_set_smpcb(iminor(inode), tsmp_callback);
 	dev->audio_pid = 0x1FFF;
 	dev->video_pid = 0x1FFF;
 	dev->open = 1;
@@ -499,7 +504,7 @@ static int tsmp_release(struct inode *inode, struct file *file)
 
 	/*******************************************/
 
-	tcc_dmx_unset_smpcb(iminor(inode));
+	rx_unset_smpcb(iminor(inode));
 	dev->open = 0;
 	if (dev->acc_buffer)
 		kfree((void *)dev->acc_buffer);

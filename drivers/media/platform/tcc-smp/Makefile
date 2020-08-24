@@ -5,6 +5,5 @@ CFLAGS_tsmp_drv.o :=            \
     -DDEVICE_INSTANCES=2
 
 EXTRA_CFLAGS := \
-	-Idrivers/media/platform/tcc-hwdemux/hwdmx-drv/ \
-	-Idrivers/media/dvb-core
+	-Idrivers/media/platform/tcc-hwdemux/hwdmx-core/ \
 

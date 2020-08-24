@@ -563,26 +563,13 @@ static int rx_parse_secure_packet(
 		if (v_addr1 == NULL || size1 < 188)
 			return 0;
 
-		rx_update_stc(demux, v_addr1, size1, v_addr2, size2);
+		// rx_update_stc(demux, v_addr1, size1, v_addr2, size2);
 
 		if (g_smpcb[dmx_id] != NULL) {
 			if (g_smpcb[dmx_id](dmx_id, (uintptr_t)p_addr1, size1, (uintptr_t)p_addr2, size2)
 				== 0) {
 				demux->write_buff_offset = updated_buff_offset;
 				demux->ts_demux_feed_handle.index = 0;
-			}
-		}
-
-		if (tcc_hwdmx_tsif_rx_get_debug_mode()) {
-			int i;
-			if (v_addr1 && size1) {
-				for (i = 0; i < size1; i += 188)
-					itv_ts_cc_check(v_addr1 + i);
-			}
-
-			if (v_addr2 && size2) {
-				for (i = 0; i < size2; i += 188)
-					itv_ts_cc_check(v_addr2 + i);
 			}
 		}
 	}

@@ -660,7 +660,7 @@ config HWDEMUX_ADAPTOR
 
 config TCC_SMP
 	tristate "Telechips Secure Media Path Driver"
-	depends on (ARCH_TCC899X || ARCH_TCC901X) && HWDEMUX_ADAPTOR
+	depends on (ARCH_TCC899X || ARCH_TCC901X) && PLATFORM_HWDEMUX
 	default y
 	help
 	  Say Y here if you want Telechips secure media path drivers.
