@@ -368,6 +368,30 @@ static inline unsigned int kvm_get_vmid_bits(void)
 	return (cpuid_feature_extract_unsigned_field(reg, ID_AA64MMFR1_VMIDBITS_SHIFT) == 2) ? 16 : 8;
 }
 
+#ifdef CONFIG_ARM64_SSBD
+DECLARE_PER_CPU_READ_MOSTLY(u64, arm64_ssbd_callback_required);
+
+static inline int hyp_map_aux_data(void)
+{
+	int cpu, err;
+
+	for_each_possible_cpu(cpu) {
+		u64 *ptr;
+
+		ptr = per_cpu_ptr(&arm64_ssbd_callback_required, cpu);
+		err = create_hyp_mappings(ptr, ptr + 1, PAGE_HYP);
+		if (err)
+			return err;
+	}
+	return 0;
+}
+#else
+static inline int hyp_map_aux_data(void)
+{
+	return 0;
+}
+#endif
+
 #define kvm_phys_to_vttbr(addr)		phys_to_ttbr(addr)
 
 static inline bool kvm_cpu_has_cnp(void)

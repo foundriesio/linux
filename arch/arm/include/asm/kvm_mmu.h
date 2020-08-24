@@ -302,6 +302,11 @@ static inline unsigned int kvm_get_vmid_bits(void)
 	return 8;
 }
 
+static inline int hyp_map_aux_data(void)
+{
+	return 0;
+}
+
 #define kvm_phys_to_vttbr(addr)		(addr)
 
 static inline bool kvm_cpu_has_cnp(void)
