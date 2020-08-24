@@ -50,7 +50,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "syscommon.h"
 #include <linux/version.h>
 
-#define OPEN_GPU_PD				1
 #define TCC_9XTP_DEFAULT_CLOCK	400
 #define ONE_KHZ					1000
 #define ONE_MHZ					1000000
@@ -58,9 +57,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 typedef struct tcc_context {
 	PVRSRV_DEVICE_CONFIG	*dev_config;
-#if OPEN_GPU_PD
 	IMG_BOOL			bEnablePd;
-#endif
 	struct clk			*gpu_clk;
 	struct regulator		*gpu_reg;
 
