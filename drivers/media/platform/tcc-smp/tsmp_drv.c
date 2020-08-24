@@ -90,14 +90,12 @@ static int tsmp_callback(int dmxch, uintptr_t off1, int off1_size, uintptr_t off
 #if 1
 	memset(&params, 0, sizeof(params));
 
-	params.params[0].tee_client_value.a =
-		TSIF_PHYSICAL_ADDRESS + /*(TSIF_PHYSICAL_SIZE >> 1) +*/ (off1 - TSIF_VIRTUAL_ADDRESS);
+	params.params[0].tee_client_value.a = off1;
 	params.params[0].tee_client_value.b = off1_size;
 	params.params[0].type = TEE_CLIENT_PARAM_VALUE_IN;
 
 	if (off2_size > 0) {
-		params.params[1].tee_client_value.a =
-			TSIF_PHYSICAL_ADDRESS + /*(TSIF_PHYSICAL_SIZE >> 1)*/ +(off2 - TSIF_VIRTUAL_ADDRESS);
+		params.params[1].tee_client_value.a = off2;
 		params.params[1].tee_client_value.b = off2_size;
 		params.params[1].type = TEE_CLIENT_PARAM_VALUE_IN;
 	}
@@ -120,7 +118,8 @@ static int tsmp_callback(int dmxch, uintptr_t off1, int off1_size, uintptr_t off
 	return 0;
 }
 
-static int tsmp_depack_stream_ioctl(struct file *filp, struct tsmp_depack_stream *p_depack_stream)
+static int
+tsmp_depack_stream_ioctl(struct file *filp, struct tsmp_depack_stream __user *p_depack_stream)
 {
 	int ret = -1;
 	int data_remain;
@@ -207,7 +206,7 @@ err_copy_to_user:
 	return ret;
 }
 
-static int tsmp_get_buf_info_ioctl(struct file *filp, struct tsmp_ringbuf_info *buf_info)
+static int tsmp_get_buf_info_ioctl(struct file *filp, struct tsmp_ringbuf_info __user *buf_info)
 {
 	int ret = -1;
 	struct tsmp_dev *dev = filp->private_data;
@@ -305,7 +304,7 @@ static int tsmp_set_pid_info_ioctl(struct file *filp, struct tsmp_pid_info *arg)
 	return ret;
 }
 
-static int tsmp_set_max_number_frames(struct file *filp, uint32_t *arg)
+static int tsmp_set_max_number_frames(struct file *filp, uint32_t __user *arg)
 {
 	int ret = -1;
 	uint32_t frames;
