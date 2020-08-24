@@ -156,6 +156,10 @@ public:
 
 		return ret;
 	}
+	void setBackground(colIdx idx, const QBrush& brush)
+	{
+		Parent::setBackground(idx, brush);
+	}
 	// TODO: Implement paintCell
 
 	ConfigItem* nextItem;
