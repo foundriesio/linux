@@ -1,15 +1,1 @@
-// SPDX-License-Identifier: GPL-2.0-or-later
-/*
- * Copyright (C) Telechips Inc.
- */
-
-enum
-{
-	HWDMX_EXT_SERIAL = 0,
-	HWDMX_EXT_PARALLEL,
-	HWDMX_INTERNAL,
-};
-
-/* HWDEMUX IOCTL */
-#define IOCTL_HWDMX_SET_INTERFACE 0
-#define IOCTL_HWDMX_SET_DEBUG_MODE 1
+../../../../../include/linux/platform_data/media/hwdmx_ioctl.h
