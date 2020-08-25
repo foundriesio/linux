@@ -426,15 +426,18 @@ struct optee_msg_arg {
  * [in]  param[0].u.value.b		i2c adapter
  * [in]  param[0].u.value.c		i2c chip
  *
- * [io]  param[1].u.tmem.buf_ptr	physical address
- * [io]  param[1].u.tmem.size		transfer size in bytes
- * [io]  param[1].u.tmem.shm_ref	shared memory reference
+ * [in]  param[1].u.value.a		i2c control flags
  *
- * [out]  param[0].u.value.a		bytes transferred
+ * [in/out] memref[2]			buffer to exchange the transfer data
+ *					with the secure world
  *
+ * [out]  param[3].u.value.a		bytes transferred by the driver
  */
-#define OPTEE_MSG_RPC_CMD_I2C_TRANSFER 8
+#define OPTEE_MSG_RPC_CMD_I2C_TRANSFER 21
+/* I2C master transfer modes */
 #define OPTEE_MSG_RPC_CMD_I2C_TRANSFER_RD 0
 #define OPTEE_MSG_RPC_CMD_I2C_TRANSFER_WR 1
+/* I2C master control flags */
+#define OPTEE_MSG_RPC_CMD_I2C_FLAGS_TEN_BIT  BIT(0)
 
 #endif /* _OPTEE_MSG_H */
