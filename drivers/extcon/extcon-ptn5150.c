@@ -5,6 +5,7 @@
 // Based on extcon-sm5502.c driver
 // Copyright (c) 2018-2019 by Vijai Kumar K
 // Author: Vijai Kumar K <vijaikumar.kanagarajan@gmail.com>
+// Copyright (c) 2020 Krzysztof Kozlowski <krzk@kernel.org>
 
 #include <linux/err.h>
 #include <linux/i2c.h>
@@ -83,25 +84,55 @@ static const struct regmap_config ptn5150_regmap_config = {
 	.max_register	= PTN5150_REG_END,
 };
 
+static void ptn5150_check_state(struct ptn5150_info *info)
+{
+	unsigned int port_status, reg_data, vbus;
+	int ret;
+
+	ret = regmap_read(info->regmap, PTN5150_REG_CC_STATUS, &reg_data);
+	if (ret) {
+		dev_err(info->dev, "failed to read CC STATUS %d\n", ret);
+		return;
+	}
+
+	port_status = ((reg_data &
+			PTN5150_REG_CC_PORT_ATTACHMENT_MASK) >>
+			PTN5150_REG_CC_PORT_ATTACHMENT_SHIFT);
+
+	switch (port_status) {
+	case PTN5150_DFP_ATTACHED:
+		extcon_set_state_sync(info->edev, EXTCON_USB_HOST, false);
+		gpiod_set_value_cansleep(info->vbus_gpiod, 0);
+		extcon_set_state_sync(info->edev, EXTCON_USB, true);
+		break;
+	case PTN5150_UFP_ATTACHED:
+		extcon_set_state_sync(info->edev, EXTCON_USB, false);
+		vbus = ((reg_data & PTN5150_REG_CC_VBUS_DETECTION_MASK) >>
+			PTN5150_REG_CC_VBUS_DETECTION_SHIFT);
+		if (vbus)
+			gpiod_set_value_cansleep(info->vbus_gpiod, 0);
+		else
+			gpiod_set_value_cansleep(info->vbus_gpiod, 1);
+
+		extcon_set_state_sync(info->edev, EXTCON_USB_HOST, true);
+		break;
+	default:
+		dev_err(info->dev, "Unknown Port status : %x\n", port_status);
+		break;
+	}
+}
+
 static void ptn5150_irq_work(struct work_struct *work)
 {
 	struct ptn5150_info *info = container_of(work,
 			struct ptn5150_info, irq_work);
 	int ret = 0;
-	unsigned int reg_data;
 	unsigned int int_status;
 
 	if (!info->edev)
 		return;
 
 	mutex_lock(&info->mutex);
-
-	ret = regmap_read(info->regmap, PTN5150_REG_CC_STATUS, &reg_data);
-	if (ret) {
-		dev_err(info->dev, "failed to read CC STATUS %d\n", ret);
-		mutex_unlock(&info->mutex);
-		return;
-	}
 
 	/* Clear interrupt. Read would clear the register */
 	ret = regmap_read(info->regmap, PTN5150_REG_INT_STATUS, &int_status);
@@ -116,47 +147,13 @@ static void ptn5150_irq_work(struct work_struct *work)
 
 		cable_attach = int_status & PTN5150_REG_INT_CABLE_ATTACH_MASK;
 		if (cable_attach) {
-			unsigned int port_status;
-			unsigned int vbus;
-
-			port_status = ((reg_data &
-					PTN5150_REG_CC_PORT_ATTACHMENT_MASK) >>
-					PTN5150_REG_CC_PORT_ATTACHMENT_SHIFT);
-
-			switch (port_status) {
-			case PTN5150_DFP_ATTACHED:
-				extcon_set_state_sync(info->edev,
-						EXTCON_USB_HOST, false);
-				gpiod_set_value(info->vbus_gpiod, 0);
-				extcon_set_state_sync(info->edev, EXTCON_USB,
-						true);
-				break;
-			case PTN5150_UFP_ATTACHED:
-				extcon_set_state_sync(info->edev, EXTCON_USB,
-						false);
-				vbus = ((reg_data &
-					PTN5150_REG_CC_VBUS_DETECTION_MASK) >>
-					PTN5150_REG_CC_VBUS_DETECTION_SHIFT);
-				if (vbus)
-					gpiod_set_value(info->vbus_gpiod, 0);
-				else
-					gpiod_set_value(info->vbus_gpiod, 1);
-
-				extcon_set_state_sync(info->edev,
-						EXTCON_USB_HOST, true);
-				break;
-			default:
-				dev_err(info->dev,
-					"Unknown Port status : %x\n",
-					port_status);
-				break;
-			}
+			ptn5150_check_state(info);
 		} else {
 			extcon_set_state_sync(info->edev,
 					EXTCON_USB_HOST, false);
 			extcon_set_state_sync(info->edev,
 					EXTCON_USB, false);
-			gpiod_set_value(info->vbus_gpiod, 0);
+			gpiod_set_value_cansleep(info->vbus_gpiod, 0);
 		}
 	}
 
@@ -199,8 +196,8 @@ static int ptn5150_init_dev_type(struct ptn5150_info *info)
 	version_id = ((reg_data & PTN5150_REG_DEVICE_ID_VERSION_MASK) >>
 				PTN5150_REG_DEVICE_ID_VERSION_SHIFT);
 
-	dev_info(info->dev, "Device type: version: 0x%x, vendor: 0x%x\n",
-			    version_id, vendor_id);
+	dev_dbg(info->dev, "Device type: version: 0x%x, vendor: 0x%x\n",
+		version_id, vendor_id);
 
 	/* Clear any existing interrupts */
 	ret = regmap_read(info->regmap, PTN5150_REG_INT_STATUS, &reg_data);
@@ -221,8 +218,7 @@ static int ptn5150_init_dev_type(struct ptn5150_info *info)
 	return 0;
 }
 
-static int ptn5150_i2c_probe(struct i2c_client *i2c,
-				 const struct i2c_device_id *id)
+static int ptn5150_i2c_probe(struct i2c_client *i2c)
 {
 	struct device *dev = &i2c->dev;
 	struct device_node *np = i2c->dev.of_node;
@@ -239,20 +235,16 @@ static int ptn5150_i2c_probe(struct i2c_client *i2c,
 
 	info->dev = &i2c->dev;
 	info->i2c = i2c;
-	info->int_gpiod = devm_gpiod_get(&i2c->dev, "int", GPIOD_IN);
-	if (IS_ERR(info->int_gpiod)) {
-		dev_err(dev, "failed to get INT GPIO\n");
-		return PTR_ERR(info->int_gpiod);
-	}
-	info->vbus_gpiod = devm_gpiod_get(&i2c->dev, "vbus", GPIOD_IN);
+	info->vbus_gpiod = devm_gpiod_get(&i2c->dev, "vbus", GPIOD_OUT_LOW);
 	if (IS_ERR(info->vbus_gpiod)) {
-		dev_err(dev, "failed to get VBUS GPIO\n");
-		return PTR_ERR(info->vbus_gpiod);
-	}
-	ret = gpiod_direction_output(info->vbus_gpiod, 0);
-	if (ret) {
-		dev_err(dev, "failed to set VBUS GPIO direction\n");
-		return -EINVAL;
+		ret = PTR_ERR(info->vbus_gpiod);
+		if (ret == -ENOENT) {
+			dev_info(dev, "No VBUS GPIO, ignoring VBUS control\n");
+			info->vbus_gpiod = NULL;
+		} else {
+			dev_err_probe(dev, ret, "failed to get VBUS GPIO\n");
+			return ret;
+		}
 	}
 
 	mutex_init(&info->mutex);
@@ -262,27 +254,36 @@ static int ptn5150_i2c_probe(struct i2c_client *i2c,
 	info->regmap = devm_regmap_init_i2c(i2c, &ptn5150_regmap_config);
 	if (IS_ERR(info->regmap)) {
 		ret = PTR_ERR(info->regmap);
-		dev_err(info->dev, "failed to allocate register map: %d\n",
-				   ret);
+		dev_err_probe(info->dev, ret, "failed to allocate register map: %d\n",
+			      ret);
 		return ret;
 	}
 
-	if (info->int_gpiod) {
+	if (i2c->irq > 0) {
+		info->irq = i2c->irq;
+	} else {
+		info->int_gpiod = devm_gpiod_get(&i2c->dev, "int", GPIOD_IN);
+		if (IS_ERR(info->int_gpiod)) {
+			ret = PTR_ERR(info->int_gpiod);
+			dev_err_probe(dev, ret, "failed to get INT GPIO\n");
+			return ret;
+		}
+
 		info->irq = gpiod_to_irq(info->int_gpiod);
 		if (info->irq < 0) {
 			dev_err(dev, "failed to get INTB IRQ\n");
 			return info->irq;
 		}
+	}
 
-		ret = devm_request_threaded_irq(dev, info->irq, NULL,
-						ptn5150_irq_handler,
-						IRQF_TRIGGER_FALLING |
-						IRQF_ONESHOT,
-						i2c->name, info);
-		if (ret < 0) {
-			dev_err(dev, "failed to request handler for INTB IRQ\n");
-			return ret;
-		}
+	ret = devm_request_threaded_irq(dev, info->irq, NULL,
+					ptn5150_irq_handler,
+					IRQF_TRIGGER_FALLING |
+					IRQF_ONESHOT,
+					i2c->name, info);
+	if (ret < 0) {
+		dev_err(dev, "failed to request handler for INTB IRQ\n");
+		return ret;
 	}
 
 	/* Allocate extcon device */
@@ -304,6 +305,14 @@ static int ptn5150_i2c_probe(struct i2c_client *i2c,
 	if (ret)
 		return -EINVAL;
 
+	/*
+	 * Update current extcon state if for example OTG connection was there
+	 * before the probe
+	 */
+	mutex_lock(&info->mutex);
+	ptn5150_check_state(info);
+	mutex_unlock(&info->mutex);
+
 	return 0;
 }
 
@@ -324,16 +333,12 @@ static struct i2c_driver ptn5150_i2c_driver = {
 		.name	= "ptn5150",
 		.of_match_table = ptn5150_dt_match,
 	},
-	.probe	= ptn5150_i2c_probe,
+	.probe_new	= ptn5150_i2c_probe,
 	.id_table = ptn5150_i2c_id,
 };
-
-static int __init ptn5150_i2c_init(void)
-{
-	return i2c_add_driver(&ptn5150_i2c_driver);
-}
-subsys_initcall(ptn5150_i2c_init);
+module_i2c_driver(ptn5150_i2c_driver);
 
 MODULE_DESCRIPTION("NXP PTN5150 CC logic Extcon driver");
 MODULE_AUTHOR("Vijai Kumar K <vijaikumar.kanagarajan@gmail.com>");
+MODULE_AUTHOR("Krzysztof Kozlowski <krzk@kernel.org>");
 MODULE_LICENSE("GPL v2");
