@@ -289,7 +289,7 @@ define dump_record
 end
 document dump_record
 	Dump a single record. The first parameter is the descriptor
-	sequence number, the the second is optional and specifies the
+	sequence number, the second is optional and specifies the
 	previous record's flags, used for properly formatting
 	continued lines.
 end
