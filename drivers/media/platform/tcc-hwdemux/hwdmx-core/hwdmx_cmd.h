@@ -41,6 +41,12 @@ struct tca_tsif_port_config
 	unsigned tsif_id;
 };
 
+enum {
+	HWDMX_EXT_SERIAL = 0,
+	HWDMX_EXT_PARALLEL,
+	HWDMX_INTERNAL,
+};
+
 struct tcc_tsif_filter;
 
 typedef int (*dma_alloc_f)(struct tea_dma_buf *tdma, unsigned int size);
@@ -82,5 +88,6 @@ int hwdmx_set_iv_cmd(struct tcc_tsif_handle *h, int ividx, int size, void *iv);
 int hwdmx_run_cipher_cmd(int dmxid, int encmode, int cwsel, int klidx, int keymode);
 int hwdmx_set_data_cmd(
 	unsigned int dmxid, unsigned char *srcaddr, unsigned char *destaddr, unsigned int srclen);
+int hwdmx_set_smp(int dmxch, int enabled);
 
 #endif /*__TCC_TSIF_MODULE_HWSET_H__*/

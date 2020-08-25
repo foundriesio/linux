@@ -18,6 +18,10 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
 
+// #define TLOG_LEVEL TLOG_DEBUG
+#include "hwdmx_log.h"
+#include "hwdmx_core.h"
+
 #include <linux/module.h>
 #include <linux/platform_device.h>
 #include <linux/dma-mapping.h>
@@ -25,8 +29,7 @@
 #include <linux/io.h>
 #include <linux/of_address.h>
 #include <linux/of_device.h>
-#include "hwdmx.h"
-#include "hwdmx_core.h"
+#include <linux/platform_data/media/hwdmx_ioctl.h>
 #include "tcc_hwdemux_tsif_rx.h"
 #include "HWDemux_bin.h"
 #if defined(CONFIG_ARCH_TCC805X)
@@ -217,21 +220,43 @@ out:
 	return result;
 }
 
+static int hwdmx_set_smp_ioctl(struct file *filp, struct tsmp_info __user *arg)
+{
+	int ret;
+	struct tsmp_info info;
+
+	if (IS_ERR(arg)) {
+		ELOG("Invalid argument");
+		return PTR_ERR(arg);
+	}
+
+	ret = copy_from_user(&info, arg, sizeof(struct tsmp_info));
+	if (unlikely(ret != 0)) {
+		ELOG("copy_from_user failed: %d", ret);
+		return ret;
+	}
+
+	return hwdmx_set_smp(info.dmxch, info.enabled);
+}
+
 static long hwdmx_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 {
 	int devid = (int)filp->private_data;
 
 	switch (cmd) {
-		case IOCTL_HWDMX_SET_INTERFACE:
-			hwdmx_set_interface_cmd(devid, arg);
-		break;
-		
-		case IOCTL_HWDMX_SET_DEBUG_MODE:
-			tcc_hwdmx_tsif_rx_set_debug_mode(arg);
+	case IOCTL_HWDMX_SET_INTERFACE:
+		hwdmx_set_interface_cmd(devid, arg);
 		break;
 
-		default:
-			return -1;
+	case IOCTL_HWDMX_SET_DEBUG_MODE:
+		tcc_hwdmx_tsif_rx_set_debug_mode(arg);
+		break;
+
+	case IOCTL_HWDMX_SET_SMP:
+		return hwdmx_set_smp_ioctl(filp, (struct tsmp_info *)arg);
+
+	default:
+		return -1;
 	}
 
 	return 0;
@@ -242,6 +267,7 @@ static struct file_operations fops = {
 	.open = hwdmx_open,
 	.write = hwdmx_write,
 	.unlocked_ioctl = hwdmx_ioctl,
+	.compat_ioctl = hwdmx_ioctl,
 };
 
 #if defined(USE_HW_FW)

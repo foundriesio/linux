@@ -1052,7 +1052,7 @@ int tcc_hwdmx_tsif_rx_init(struct device *dev)
 		goto out;
 	}
 	pr_info(
-		"[INFO][HWDMX] tsif_ex: pmap(PA: 0x%08x, VA: 0x%p, SIZE: 0x%x)\n",
+		"[INFO][HWDMX] tsif_ex: pmap(PA: 0x%08x, VA: 0x%px, SIZE: %d)\n",
 		tsif_ex_pri.pmap_tsif.base, tsif_ex_pri.mem_base, tsif_ex_pri.pmap_tsif.size);
 
 	/* This function returns 1 on success, and 0 on failure. Weird function design. */
@@ -1068,7 +1068,7 @@ int tcc_hwdmx_tsif_rx_init(struct device *dev)
 		goto out;
 	}
 	pr_info(
-		"[INFO][HWDMX] secure tsif: pmap(PA: 0x%08x, VA: 0x%p, SIZE: 0x%x)\n",
+		"[INFO][HWDMX] secure tsif: pmap(PA: 0x%08x, VA: 0x%px, SIZE: %d)\n",
 		tsif_ex_pri.pmap_secure_tsif.base, tsif_ex_pri.virt_secure_tsif,
 		tsif_ex_pri.pmap_secure_tsif.size);
 

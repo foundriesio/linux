@@ -18,7 +18,9 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
+#include "hwdmx_log.h"
 #include "hwdmx_cmd.h"
+
 #include <linux/clk.h>
 #include <linux/delay.h>
 #include <linux/mailbox/tcc_sp_ipc.h>
@@ -30,7 +32,6 @@
 #include <asm/bitops.h>
 
 #include "tca_hwdemux_param.h"
-#include "hwdmx.h"
 
 // clang-format off
 /* HWDMX command range: 0x000 ~ 0xFFF*/
@@ -752,3 +753,29 @@ out:
 	return result;
 }
 EXPORT_SYMBOL(hwdmx_run_cipher_cmd);
+
+int hwdmx_set_smp(int dmxch, int enabled)
+{
+	int result, mbox_result = 0;
+	uint8_t mbox_data[2];
+
+	TRACE;
+
+	mbox_data[0] = dmxch;
+	mbox_data[1] = enabled;
+	result = sp_sendrecv_cmd(
+		HWDMX_SET_SMP_CMD, mbox_data, sizeof(mbox_data), &mbox_result, sizeof(mbox_result));
+	if (result < 0) {
+		ELOG("sp_sendrecv_cmd error: %d\n", result);
+		result = -EBADR;
+		goto out;
+	}
+	if (mbox_result < 0) {
+		ELOG("SP returned an error: %d\n", mbox_result);
+		result = -EPERM;
+		goto out;
+	}
+
+out:
+	return result;
+}
