@@ -899,7 +899,11 @@
 /****** DAI Clock Divider Register (DRMR), Offset:0x1050 ******/
 #if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X) || defined(CONFIG_ARCH_TCC806X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC901X)
 	#define DCLKDIV_DAI_FRAME_CLK_DIV_Pos	(0)
+#if defined(CONFIG_ARCH_TCC805X) || defined(CONFIG_ARCH_TCC806X)
+	#define DCLKDIV_DAI_FRAME_CLK_DIV_Msk	((uint32_t)7U << DCLKDIV_DAI_FRAME_CLK_DIV_Pos)
+#else
 	#define DCLKDIV_DAI_FRAME_CLK_DIV_Msk	((uint32_t)3U << DCLKDIV_DAI_FRAME_CLK_DIV_Pos)
+#endif
 	#define DCLKDIV_DAI_FRAME_CLK_DIV_32	((uint32_t)0U << DCLKDIV_DAI_FRAME_CLK_DIV_Pos)	///< 32fs->fs
 	#define DCLKDIV_DAI_FRAME_CLK_DIV_48	((uint32_t)1U << DCLKDIV_DAI_FRAME_CLK_DIV_Pos)	///< 48fs->fs
 	#define DCLKDIV_DAI_FRAME_CLK_DIV_64	((uint32_t)2U << DCLKDIV_DAI_FRAME_CLK_DIV_Pos)	///< 64fs->fs
