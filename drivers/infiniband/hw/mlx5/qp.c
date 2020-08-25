@@ -3088,20 +3088,44 @@ enum {
 	MLX5_PATH_FLAG_COUNTER	= 1 << 2,
 };
 
+static int ib_to_mlx5_rate_map(u8 rate)
+{
+	switch (rate) {
+	case IB_RATE_PORT_CURRENT:
+		return 0;
+	case IB_RATE_56_GBPS:
+		return 1;
+	case IB_RATE_25_GBPS:
+		return 2;
+	case IB_RATE_100_GBPS:
+		return 3;
+	case IB_RATE_200_GBPS:
+		return 4;
+	case IB_RATE_50_GBPS:
+		return 5;
+	default:
+		return rate + MLX5_STAT_RATE_OFFSET;
+	};
+
+	return 0;
+}
+
 static int ib_rate_to_mlx5(struct mlx5_ib_dev *dev, u8 rate)
 {
+	u32 stat_rate_support;
+
 	if (rate == IB_RATE_PORT_CURRENT)
 		return 0;
 
 	if (rate < IB_RATE_2_5_GBPS || rate > IB_RATE_600_GBPS)
 		return -EINVAL;
 
+	stat_rate_support = MLX5_CAP_GEN(dev->mdev, stat_rate_support);
 	while (rate != IB_RATE_PORT_CURRENT &&
-	       !(1 << (rate + MLX5_STAT_RATE_OFFSET) &
-		 MLX5_CAP_GEN(dev->mdev, stat_rate_support)))
+	       !(1 << ib_to_mlx5_rate_map(rate) & stat_rate_support))
 		--rate;
 
-	return rate ? rate + MLX5_STAT_RATE_OFFSET : rate;
+	return ib_to_mlx5_rate_map(rate);
 }
 
 static int modify_raw_packet_eth_prio(struct mlx5_core_dev *dev,
@@ -4921,8 +4945,8 @@ static int prepare_user_rq(struct ib_pd *pd,
 	int err;
 	size_t required_cmd_sz;
 
-	required_cmd_sz = offsetof(typeof(ucmd), single_stride_log_num_of_bytes)
-		+ sizeof(ucmd.single_stride_log_num_of_bytes);
+	required_cmd_sz = offsetofend(struct mlx5_ib_create_wq,
+				      single_stride_log_num_of_bytes);
 	if (udata->inlen < required_cmd_sz) {
 		mlx5_ib_dbg(dev, "invalid inlen\n");
 		return -EINVAL;
@@ -5006,7 +5030,7 @@ struct ib_wq *mlx5_ib_create_wq(struct ib_pd *pd,
 	if (!udata)
 		return ERR_PTR(-ENOSYS);
 
-	min_resp_len = offsetof(typeof(resp), reserved) + sizeof(resp.reserved);
+	min_resp_len = offsetofend(struct mlx5_ib_create_wq_resp, reserved);
 	if (udata->outlen && udata->outlen < min_resp_len)
 		return ERR_PTR(-EINVAL);
 
@@ -5036,8 +5060,8 @@ struct ib_wq *mlx5_ib_create_wq(struct ib_pd *pd,
 	rwq->ibwq.wq_num = rwq->core_qp.qpn;
 	rwq->ibwq.state = IB_WQS_RESET;
 	if (udata->outlen) {
-		resp.response_length = offsetof(typeof(resp), response_length) +
-				sizeof(resp.response_length);
+		resp.response_length = offsetofend(
+			struct mlx5_ib_create_wq_resp, response_length);
 		err = ib_copy_to_udata(udata, &resp, resp.response_length);
 		if (err)
 			goto err_copy;
@@ -5094,7 +5118,8 @@ struct ib_rwq_ind_table *mlx5_ib_create_rwq_ind_table(struct ib_device *device,
 		return ERR_PTR(-EINVAL);
 	}
 
-	min_resp_len = offsetof(typeof(resp), reserved) + sizeof(resp.reserved);
+	min_resp_len =
+		offsetofend(struct mlx5_ib_create_rwq_ind_tbl_resp, reserved);
 	if (udata->outlen && udata->outlen < min_resp_len)
 		return ERR_PTR(-EINVAL);
 
@@ -5128,8 +5153,9 @@ struct ib_rwq_ind_table *mlx5_ib_create_rwq_ind_table(struct ib_device *device,
 
 	rwq_ind_tbl->ib_rwq_ind_tbl.ind_tbl_num = rwq_ind_tbl->rqtn;
 	if (udata->outlen) {
-		resp.response_length = offsetof(typeof(resp), response_length) +
-					sizeof(resp.response_length);
+		resp.response_length =
+			offsetofend(struct mlx5_ib_create_rwq_ind_tbl_resp,
+				    response_length);
 		err = ib_copy_to_udata(udata, &resp, resp.response_length);
 		if (err)
 			goto err_copy;
@@ -5169,7 +5195,7 @@ int mlx5_ib_modify_wq(struct ib_wq *wq, struct ib_wq_attr *wq_attr,
 	void *rqc;
 	void *in;
 
-	required_cmd_sz = offsetof(typeof(ucmd), reserved) + sizeof(ucmd.reserved);
+	required_cmd_sz = offsetofend(struct mlx5_ib_modify_wq, reserved);
 	if (udata->inlen < required_cmd_sz)
 		return -EINVAL;
 
