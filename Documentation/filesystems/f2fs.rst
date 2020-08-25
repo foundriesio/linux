@@ -266,6 +266,8 @@ inlinecrypt		 When possible, encrypt/decrypt the contents of encrypted
 			 inline encryption hardware. The on-disk format is
 			 unaffected. For more details, see
 			 Documentation/block/inline-encryption.rst.
+atgc			 Enable age-threshold garbage collection, it provides high
+			 effectiveness and efficiency on background GC.
 ======================== ============================================================
 
 Debugfs Entries
@@ -772,3 +774,18 @@ Compress metadata layout::
 	+-------------+-------------+----------+----------------------------+
 	| data length | data chksum | reserved |      compressed data       |
 	+-------------+-------------+----------+----------------------------+
+
+NVMe Zoned Namespace devices
+----------------------------
+
+- ZNS defines a per-zone capacity which can be equal or less than the
+  zone-size. Zone-capacity is the number of usable blocks in the zone.
+  F2fs checks if zone-capacity is less than zone-size, if it is, then any
+  segment which starts after the zone-capacity is marked as not-free in
+  the free segment bitmap at initial mount time. These segments are marked
+  as permanently used so they are not allocated for writes and
+  consequently are not needed to be garbage collected. In case the
+  zone-capacity is not aligned to default segment size(2MB), then a segment
+  can start before the zone-capacity and span across zone-capacity boundary.
+  Such spanning segments are also considered as usable segments. All blocks
+  past the zone-capacity are considered unusable in these segments.
