@@ -3,16 +3,8 @@
  * Copyright (C) Telechips Inc.
  */
 
-#ifndef __MIPI_CSIS_H__
-#define __MIPI_CSIS_H__
-
-#ifndef ON
-#define ON		1
-#endif
-
-#ifndef OFF
-#define OFF		0
-#endif
+#ifndef __TCC_MIPI_CSI2_REG_H__
+#define __TCC_MIPI_CSI2_REG_H_
 
 #define QUAD_PIXEL_MODE 	0x10
 #define DUAL_PIXEL_MODE 	0x01
@@ -339,51 +331,4 @@ enum DATA_FORMAT {
 
 #define LINE_INTR_MASK			(0xffffffff << LINE_INTR_SHIFT)
 
-
-extern unsigned int MIPI_CSIS_Get_Version(void);
-extern void MIPI_CSIS_Set_DPHY_B_Control(unsigned int high_part, \
-		unsigned int low_part);
-extern void MIPI_CSIS_Set_DPHY_S_Control(unsigned int high_part, \
-		unsigned int low_part);
-extern void MIPI_CSIS_Set_DPHY_Common_Control(unsigned int HSsettle, \
-		unsigned int S_ClkSettleCtl, \
-		unsigned int S_BYTE_CLK_enable, \
-		unsigned int S_DpDn_Swap_Clk, \
-		unsigned int S_DpDn_Swap_Dat, \
-		unsigned int Enable_dat, \
-		unsigned int Enable_clk);
-extern void MIPI_CSIS_Set_ISP_Configuration(unsigned int ch, \
-		unsigned int Pixel_mode, \
-		unsigned int Parallel, \
-		unsigned int RGB_SWAP, \
-		unsigned int DataFormat, \
-		unsigned int Virtual_channel);
-extern void MIPI_CSIS_Set_ISP_Resolution(unsigned int ch, \
-		unsigned int width, unsigned int height);
-extern void MIPI_CSIS_Set_CSIS_Common_Control(unsigned int Update_shadow, \
-		unsigned int Deskew_level, \
-		unsigned int Deskew_enable, \
-		unsigned int Interleave_mode, \
-		unsigned int Lane_number, \
-		unsigned int Update_shadow_ctrl, \
-		unsigned int Sw_reset, \
-		unsigned int Csi_en);
-extern void MIPI_CSIS_Set_CSIS_Reset(unsigned int reset);
-extern void MIPI_CSIS_Set_Enable(unsigned int enable);
-extern void MIPI_CSIS_Set_CSIS_Clock_Control(unsigned int Clkgate_trail, \
-		unsigned int Clkgate_en);
-extern void MIPI_CSIS_Set_CSIS_Interrupt_Mask(unsigned int page, \
-		unsigned int mask, unsigned int set);
-extern unsigned int MIPI_CSIS_Get_CSIS_Interrupt_Mask(unsigned int page);
-extern void MIPI_CSIS_Set_CSIS_Interrupt_Src(unsigned int page, \
-		unsigned int mask);
-extern unsigned int MIPI_CSIS_Get_CSIS_Interrupt_Src(unsigned int page);
-#if defined(CONFIG_ARCH_TCC805X)
-extern unsigned int MIPI_WRAP_Set_CKC(void);
-extern void MIPI_WRAP_Set_Reset_DPHY(unsigned int csi, unsigned int reset);
-extern void MIPI_WRAP_Set_Reset_GEN(unsigned int csi, unsigned int reset);
-extern void MIPI_WRAP_Set_Output_Mux(unsigned int csi, \
-		unsigned int mux, unsigned int sel);
-#endif//defined(CONFIG_ARCH_TCC805X)
 #endif
-

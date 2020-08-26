@@ -71,6 +71,7 @@
 		videosource0 = &videosource0;
 		videosource1 = &videosource1;
 		videosource2 = &videosource2;
+		mipi-csi2-0 = &mipi_csi2_0;
 		videoinput0 = &videoinput0;
 		videoinput1 = &videoinput1;
 		videoinput2 = &videoinput2;
@@ -1221,22 +1222,49 @@
 		arbitor_num = <4>;
 	};
 
-	mipi_csi2:mipi_csi@123c0000 {
-		compatible = "telechips,mipi_csi2";
-		reg = <0x1bc00800 0x120>,	/* csi0_base */
-		      <0x1bc00a00 0x05c>,	/* gdb0_base */
-		      <0x1bc00000 0x014>,	/* ckc_base */
-		      <0x1bc00400 0x120>;	/* cfg_base */
-		interrupts = <GIC_SPI 158 IRQ_TYPE_LEVEL_HIGH>,		// MIPI0 interrupt
-			     <GIC_SPI 159 IRQ_TYPE_LEVEL_HIGH>;		// MIPI1 interrupt
-	 };
-/*
-	mipi_generic_data_buffer:mipi_generic_data_buffer@123c0200 {
-		compatible = "telechips,mipi_generic_data_buffer";
-		reg = <0x123c0200 0x5c>;
-		clocks = <&clk_peri PERI_MIPI_CSI>;
+	mipi_csi2_0:mipi_csi@1bc00800 {
+		compatible = "telechips,tcc805x-mipi-csi2";
+		status = "okay";
+		reg = 	<0x1bc00800 0x120>,	/* csi0_base */
+		      	<0x1bc00a00 0x05c>,	/* gdb0_base */
+		      	<0x1bc00000 0x014>,	/* ckc_base */
+			<0x1bc00400 0x120>,	/* cfg_base */
+			<0x1bc80000 0x10000>,	/* ISP0 */
+			<0x1bc90000 0x10000>,	/* ISP0 memory */
+			<0x1bca0000 0x10000>,	/* ISP1 */
+			<0x1bcb0000 0x10000>,	/* ISP1 memory */
+			<0x1bcc0000 0x10000>,	/* ISP2 */
+			<0x1bcd0000 0x10000>,	/* ISP2 memory */
+			<0x1bce0000 0x10000>,	/* ISP3 */
+			<0x1bcf0000 0x10000>;	/* ISP3 memory */
+		reg-names = "csi", "gdb", "ckc", "cfg";
+
+		clock-frequency = <600000000>;
+
+		interrupts =	<GIC_SPI 158 IRQ_TYPE_LEVEL_HIGH>,// MIPI0 CSIS
+				<GIC_SPI 159 IRQ_TYPE_LEVEL_HIGH>;// MIPI0 Generic
+		/*
+		 * 0: select output of MIPI0
+		 * 1: select output of MIPI1
+		 */
+		mipi-chmux-0 = <0>;
+		mipi-chmux-1 = <0>;
+		mipi-chmux-2 = <0>;
+		mipi-chmux-3 = <0>;
+		/*
+		 * 0: select output of MIPI1
+		 * 1: select output of MIPI0
+		 */
+		mipi-chmux-4 = <0>;
+		mipi-chmux-5 = <0>;
+		mipi-chmux-6 = <0>;
+		mipi-chmux-7 = <0>;
+
+		isp0-bypass = <1>;
+		isp1-bypass = <1>;
+		isp2-bypass = <1>;
+		isp3-bypass = <1>;
 	};
-*/
 
 	fbdisplay: fbdisplay@12000000 {
 		compatible = "telechips,vioc-fb";
@@ -3402,21 +3430,14 @@
 		reg		= <0x21>;	// 0x42 >> 1
 	};
 
-#if 1
 	videosource1: deserializer_max9286 {
 		compatible	= "maxim,max9286";
-		cifport		= <9>;
+		cifport		= <5>;
 		pwd-gpios	= <&gpg 5 1>;
 		intb-gpios	= <&gph 11 1>;
 		reg		= <0x48>;	// 0x90 >> 1
+		mipi-csi2-idx   = <0>;
 	};
-#else
-	videosource1: deserializer_ds90ub964 {
-		compatible	= "ti,ds90ub964";
-		cifport		= <9>;
-		reg		= <0x30>;	// 0x60 >> 1
-	};
-#endif
 
 	videosource2: deserializer_max9276 {
 		compatible	= "maxim,max9276";

@@ -542,11 +542,10 @@ static int check_status(struct i2c_client *client)
 	return 1; // 0: Not Working, 1: Working
 }
 
-static int set_i2c_client(struct i2c_client *client)
+static int set_i2c_client(struct videosource *vsrc, struct i2c_client *client)
 {
 	int ret = 0;
 
-	struct videosource *vsrc = &videosource_adv7182;
 	struct v4l2_subdev *sd;
 	if (!vsrc) {
 		loge("Failed to get max9286 videosource. Something wrong with a timing of initialization.\n");
@@ -572,11 +571,10 @@ static struct i2c_client *get_i2c_client(struct videosource *vsrc)
 	return (struct i2c_client *)v4l2_get_subdevdata(&(vsrc->sd));
 }
 
-static int subdev_init(void)
+static int subdev_init(struct videosource *vsrc)
 {
 	int ret = 0, err;
 
-	struct videosource *vsrc = &videosource_adv7182;
 	struct v4l2_subdev *sd = &(vsrc->sd);
 
 	// check i2c_client is initialized properly

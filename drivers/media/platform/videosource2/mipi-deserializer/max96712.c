@@ -16,7 +16,7 @@
  *Place, Suite 330, Boston, MA 02111-1307 USA
  ****************************************************************************/
 
-#include "max9286.h"
+#include "max96712.h"
 #include "../videosource_common.h"
 #include "../videosource_i2c.h"
 #include "../videosource_if.h"
@@ -35,27 +35,33 @@
 #include <media/v4l2-mediabus.h>
 // #include <media/v4l2-of.h>
 
-//#define CONFIG_MIPI_1_CH_CAMERA
-//#define CONFIG_MIPI_OUTPUT_TYPE_LINE_CONCAT
-#define CONFIG_INTERNAL_FSYNC
-
-#if defined (CONFIG_MIPI_1_CH_CAMERA) || !defined(CONFIG_MIPI_OUTPUT_TYPE_LINE_CONCAT)
-#define NTSC_NUM_ACTIVE_PIXELS (1280)
-#else
-#define NTSC_NUM_ACTIVE_PIXELS (5120)
-#endif
-#define NTSC_NUM_ACTIVE_LINES (720)
+#define NTSC_NUM_ACTIVE_PIXELS (1920)
+#define NTSC_NUM_ACTIVE_LINES (1080)
 
 #define WIDTH NTSC_NUM_ACTIVE_PIXELS
 #define HEIGHT NTSC_NUM_ACTIVE_LINES
 
+#define ISP_ADDR	(0x30 >> 1)
 #define SER_ADDR	(0x80 >> 1)
 
-extern volatile void __iomem *	ddicfg_base;
+#define TEST_2_INPUT_PORTS
+
+union reg_values{
+	struct videosource_reg * list;
+	unsigned char * reg_values;
+};
+
+struct videosource_i2c_info {
+	unsigned int slave_addr;
+	unsigned int reg_addr_len;
+	unsigned int reg_value_len;
+	union reg_values values;
+};
+
 static unsigned int des_irq_num;
 
 static struct capture_size sensor_sizes[] = {{WIDTH, HEIGHT}, {WIDTH, HEIGHT}};
-static const struct v4l2_fmtdesc max9286_fmt_list[] = {
+static const struct v4l2_fmtdesc max96712_fmt_list[] = {
     [FMT_YUV420] =
 	{
 	    .index = 0,
@@ -74,7 +80,7 @@ static const struct v4l2_fmtdesc max9286_fmt_list[] = {
 	},
 };
 
-static const struct vsrc_std_info max9286_std_list[] = {
+static const struct vsrc_std_info max96712_std_list[] = {
     [STD_NTSC_M] = {.width = NTSC_NUM_ACTIVE_PIXELS,
 		    .height = NTSC_NUM_ACTIVE_LINES,
 		    .video_std = VIDEO_STD_NTSC_M_BIT,
@@ -98,16 +104,17 @@ static const struct vsrc_std_info max9286_std_list[] = {
 
 static int change_mode(struct i2c_client *client, int mode);
 
-static inline int max9286_read(struct v4l2_subdev *sd, unsigned short reg)
+static inline int max96712_read(struct v4l2_subdev *sd, __u64 reg)
 {
 	struct i2c_client *client = v4l2_get_subdevdata(sd);
-	char reg_buf[1], val_buf[1];
+	char reg_buf[2], val_buf[1];
 	int ret = 0;
 
-	reg_buf[0]= (char)(reg & 0xff);
+	reg_buf[0]= (char)(reg >> 8);
+	reg_buf[1]= (char)(reg && 0xff);
 
 	/* return i2c_smbus_read_byte_data(client, reg); */
-	ret = DDI_I2C_Read(client, reg_buf, 1, val_buf, 1);
+	ret = DDI_I2C_Read(client, reg_buf, 2, val_buf, 1);
 	if (ret < 0) {
 		loge("Failed to read i2c value from 0x%08x\n", reg);
 	}
@@ -115,140 +122,287 @@ static inline int max9286_read(struct v4l2_subdev *sd, unsigned short reg)
 	return ret;
 }
 
-static inline int max9286_write(struct v4l2_subdev *sd, unsigned char reg,
+static inline int max96712_write(struct v4l2_subdev *sd, unsigned char reg,
 				 unsigned char value)
 {
 	struct i2c_client *client = v4l2_get_subdevdata(sd);
 	return DDI_I2C_Write(client, &value, 1, 1);
 }
 
-static inline int max9286_write_regs(struct i2c_client *client,
-				      struct videosource_reg *list, unsigned int mode)
+static inline int max96712_write_regs(struct i2c_client *client, \
+						const struct videosource_i2c_info * info, \
+						unsigned int mode)
 {
-	unsigned short addr = 0;
+	unsigned short	client_addr = 0x00;
+	struct videosource_reg * list = info->values.list;
 	unsigned char data[4];
 	unsigned char bytes;
 	int ret, err_cnt = 0;
+
+	// backup
+	client_addr = client->addr;
+
+	if (info->slave_addr) {
+		client->addr = info->slave_addr;
+	}
+
+	if (info->reg_value_len > 2) {
+		ret = DDI_I2C_Write(client, \
+				info->values.reg_values, \
+				info->reg_value_len, \
+				0);
+		mdelay(50);
+		goto end;
+
+	}
 
 	while (!((list->reg == REG_TERM) && (list->val == VAL_TERM))) {
 		if(list->reg == 0xFF && list->val != 0xFF) {
 			mdelay(list->val);
 			list++;
+			continue;
+		}
+
+		bytes = 0;
+
+		if (info->reg_addr_len == 2) {
+			data[bytes++] = \
+				(char)((list->reg >> 8) & 0xff);
+		}
+		data[bytes++] = (char)(list->reg & 0xff);
+
+		if (info->reg_value_len == 2) {
+			data[bytes++] = \
+				(char)((list->val >> 8) & 0xff);
+		}
+		data[bytes++] = (char)(list->val & 0xff);
+		ret = DDI_I2C_Write(client, \
+			data, \
+			info->reg_addr_len, \
+			info->reg_value_len);
+
+		if(ret) {
+			if(4 <= ++err_cnt) {
+				printk("Sensor I2C !!!! \n");
+				goto end;
+			}
 		} else {
-			bytes = 0;
-			data[bytes++]= (unsigned char)list->reg&0xff;
-			data[bytes++]= (unsigned char)list->val&0xff;
-
-			// save the slave address
-			if(mode == MODE_SERDES_REMOTE_SER) {
-				addr = client->addr;
-				client->addr = SER_ADDR;
-			}
-
-			// i2c write
-			ret = DDI_I2C_Write(client, data, 1, 1);
-
-			// restore the slave address
-			if(mode == MODE_SERDES_REMOTE_SER) {
-				client->addr = addr;
-			}
-
-			if(ret) {
-				if(4 <= ++err_cnt) {
-					printk("Sensor I2C !!!! \n");
-					return ret;
-				}
-			} else {
-				err_cnt = 0;
-				list++;
-			}
+			err_cnt = 0;
+			list++;
 		}
 	}
 
-	return 0;
+end:
+	client->addr = client_addr;
+
+	return ret;
 }
 
-static struct videosource_reg sensor_camera_yuv422_8bit_4ch[] = {
-// init
-// enable 4ch
-	{0X0A, 0X0F},	 //    Write   Disable all Forward control channel
-	{0X34, 0X35},	 //    Write   Disable auto acknowledge
-	{0X15, 0X83},	 //    Write   Select the combined camera line format for CSI2 output
-	{0X12, 0XF3},	 //    Write   MIPI Output setting
-	{0xff, 5},		 //    Write   5mS
-	{0X63, 0X00},	 //    Write   Widows off
-	{0X64, 0X00},	 //    Write   Widows off
-	{0X62, 0X1F},	 //    Write   FRSYNC Diff off
+static struct videosource_reg des_init_reg[] = {
+	/* 
+	 * MAX96712 (0x52) powers up in GMSL1 mode,
+	 * HIM enabled
+	 *
+	 * 2 MAX9275 power up with I2C address (0x80)
+	 * BWS=0, HIBW=1, DRS=0
+	 */
+	{0x0B05, 0x79},
+	{0x0C05, 0x79},
+	{0x0D05, 0x79},
+	{0x0E05, 0x79},
 
-#if 1
-	{0x01, 0xc0},	 //    Write   manual mode
-	{0X08, 0X25},	 //    Write   FSYNC-period-High
-	{0X07, 0XC3},	 //    Write   FSYNC-period-Mid
-	{0X06, 0XF8},	 //    Write   FSYNC-period-Low
+	/*
+	 * choose HVD source
+	 */
+	{0x0B06, 0xE8},
+	{0x0C06, 0xE8},
+	{0x0D06, 0xE8},
+	{0x0E06, 0xE8},
+	// {0x0330,0x04}, Default = 0x04
+	
+	/*
+	 * set output lanes, port A 4 lanes
+	 */
+	//{0x090A, 0x00},
+	{0x094A, 0xC0},
+	{0x098A, 0xC0},
+	//{0x04CA, 0x00},
+
+	/*
+	 * Phy1 set pll (x 100Mbps)
+	 */
+	{0x0418, 0xEA}, // overide
+	{0x041B, 0x2A},
+
+	/*
+	 * invert VSYNC for pipe X Y Z U
+	 */
+	//{0x01D9, 0x59},
+	//{0x01F9, 0x59},
+	//{0x0219, 0x59},
+	//{0x0239, 0x59},
+
+	/*
+	 * enable GMSL1 link A B C D
+	 */
+#ifndef TEST_2_INPUT_PORTS
+	{0x0006, 0x01},
 #endif
-	{0X00, 0XEF},	 //    Write   Port 0~3 used
-//	  {0x0c, 0x91},
-	{0xff, 5},		 //    Write   5mS
-#if defined(CONFIG_MIPI_OUTPUT_TYPE_LINE_CONCAT)
-	{0X15, 0X0B},	 //    Write   Enable MIPI output (line concatenation)
-#else
-	{0X15, 0X9B},	 //    Write   Enable MIPI output (line interleave)
+	/*
+	 * lane ping for 4-lane port A and B
+	 */
+	{0x08A3, 0xE4},
+	{0x08A4, 0xE4},
+	{0x01DA, 0x18},
+#ifdef TEST_2_INPUT_PORTS
+	{0x01FA, 0x18},
 #endif
-	{0X69, 0XF0},	 //    Write   Auto mask & comabck enable
-	{0x01, 0x00},
-	{0X0A, 0XFF},	 //    Write   All forward channel enable
+	/* 
+	 * Set DT(0x1E), VC, BPP(0x10)
+	 * FOR PIPE X Y Z U setting for RGB888 
+	 */
+	{0x0411, 0x90}, // 100 1_0000
+	{0x0412, 0x40}, // 0 100_00 00
+	{0x040B, 0x82}, // 1000_0 010
+	{0x040E, 0x5E}, // 01 01_1110
+	{0x040F, 0x7E}, // 0111 1110
+	{0x0410, 0x7A}, // 0111_10 10
+	{0x0415, 0xEF}, // override VC_DT_BPP
 
+	/*
+	 * 3 data map en fot pipe x
+	 */
+	{0x090B, 0x07},
+	{0x092D, 0x15},
+	{0x090D, 0x1E},
+	{0x090E, 0x1E},
+	{0x090F, 0x00},
+	{0x0910, 0x00},
+	{0x0911, 0x01},
+	{0x0912, 0x01},
+
+	/*
+	 * 3 data map en fot pipe y
+	 */
+	{0x094B, 0x07},
+	{0x096D, 0x15},
+	{0x094D, 0x1E},
+	{0x094E, 0x5E},
+	{0x094F, 0x00},
+	{0x0950, 0x40},
+	{0x0951, 0x01},
+	{0x0952, 0x41},
+
+	/*
+	 * HIBW=1
+	 */
+	{0x0B07, 0x08},
+	{0x0C07, 0x08},
+	{0x0D07, 0x08},
+	{0x0E07, 0x08},
+
+	/*
+	 * Enable GMSL1 to GMSL2 color mapping (D1) and
+	 * set mapping type (D[7:3]) stored below
+	 */
+	{0x0B96, 0x9B}, //1001 1011
+	{0x0C96, 0x9B},
+	{0x0D96, 0x9B},
+	{0x0E96, 0x9B},
+	
+	/*
+	 * Shift GMSL1 HVD
+	 */
+	{0x0BA7, 0x45},
+	{0x0CA7, 0x45},
+	{0x0DA7, 0x45},
+	{0x0EA7, 0x45},
+
+	/*
+	 * set HS/VS output on MFP pins for debug
+	 */
+
+	/*
+	 * enable processing HS and DE signals
+	 */
+	{0x0B0F, 0x09},
+	{0x0C0F, 0x09},
+	{0x0D0F, 0x09},
+	{0x0E0F, 0x09},
+
+	/*
+	 * set local ack
+	 */
+	{0x0B0D, 0x80},
+	{0x0C0D, 0x80},
+	{0x0D0D, 0x80},
+	{0x0E0D, 0x80},
+#ifdef TEST_2_INPUT_PORTS
+	{0x0006, 0x03},
+#endif
+	{0xFF,  50}, //delay
 	{REG_TERM, VAL_TERM}
 };
 
-static struct videosource_reg sensor_camera_enable_frame_sync[] = {
+static struct videosource_reg ser_init_reg[] = {
+	{0x04, 0x43},
+	{0xFF,  50}, //delay
 	{REG_TERM, VAL_TERM}
 };
 
-static struct videosource_reg sensor_camera_enable_interrupt[] = {
+static char isp_init_reg[] = {
+	0x0A, 0x01, 0x07, 0x02,	0x01, \
+	0x00, 0x00, 0x30, 0x80, 0xC5
+};
+
+static struct videosource_reg ser_start_stream_reg[] = {
+	{0x04, 0x83},
+	{0xFF,  50}, //delay
 	{REG_TERM, VAL_TERM}
 };
 
-static struct videosource_reg sensor_camera_enable_serializer[] = {
-					// Sensor Data Dout7 -> DIN0
-	{0x20, 0x07},
-	{0x21, 0x06},
-	{0x22, 0x05},
-	{0x23, 0x04},
-	{0x24, 0x03},
-	{0x25, 0x02},
-	{0x26, 0x01},
-	{0x27, 0x00},
-	{0x30, 0x17},
-	{0x31, 0x16},
-	{0x32, 0x15},
-	{0x33, 0x14},
-	{0x34, 0x13},
-	{0x35, 0x12},
-	{0x36, 0x11},
-	{0x37, 0x10},
-
-
-	{0x43, 0x01},
-	{0x44, 0x00},
-	{0x45, 0x33},
-	{0x46, 0x90},
-	{0x47, 0x00},
-	{0x48, 0x0C},
-	{0x49, 0xE4},
-	{0x4A, 0x25},
-	{0x4B, 0x83},
-	{0x4C, 0x84},
-	{0x43, 0x21},
-	{0xff, 0xff},
+static struct videosource_reg des_start_stream_reg[] = {
+	{0x0B0D, 0x00},
+	{0x0C0D, 0x00},
+	{0x0D0D, 0x00},
+	{0x0E0D, 0x00},
+	{0xFF,    50}, //delay
 	{REG_TERM, VAL_TERM}
 };
 
-static struct videosource_reg *videosource_reg_table_list[] = {
-	sensor_camera_yuv422_8bit_4ch,
-	sensor_camera_enable_frame_sync,
-	sensor_camera_enable_interrupt,
-	sensor_camera_enable_serializer,
+struct videosource_i2c_info videosource_init_table_list[] = {
+	{
+		.reg_addr_len = 2,
+		.reg_value_len = 1,
+		.values.list = des_init_reg
+	}, {
+		.slave_addr = SER_ADDR,
+		.reg_addr_len = 1,
+		.reg_value_len = 1,
+		.values.list = ser_init_reg
+	}, {
+		.slave_addr = ISP_ADDR,
+		.reg_addr_len = 1,
+		.reg_value_len = sizeof(isp_init_reg) / sizeof(isp_init_reg[0]),
+		.values.reg_values = isp_init_reg
+	}, {
+		.slave_addr = SER_ADDR,
+		.reg_addr_len = 1,
+		.reg_value_len = 1,
+		.values.list = ser_start_stream_reg
+	}, {
+		.reg_addr_len = 2,
+		.reg_value_len = 1,
+		.values.list = des_start_stream_reg
+	}, {
+		.reg_addr_len = 0,
+		.reg_value_len = 0,
+		.values.list = NULL
+	}
+};
+
+static struct videosource_i2c_info * videosource_reg_table_list[] = {
+	videosource_init_table_list,
 };
 
 /*
@@ -273,8 +427,12 @@ static inline struct videosource *sd_to_vsrc(struct v4l2_subdev *sd)
 /*
  * v4l2_ctrl_ops implementation
  */
-static int max9286_s_ctrl(struct v4l2_ctrl *ctrl)
+static int max96712_s_ctrl(struct v4l2_ctrl *ctrl)
 {
+	struct v4l2_subdev *sd = ctrl_to_sd(ctrl);
+	int val = ctrl->val;
+
+	// TODO Implement a function to control max96712
 	switch (ctrl->id) {
 	case V4L2_CID_BRIGHTNESS:
 		break;
@@ -290,43 +448,49 @@ static int max9286_s_ctrl(struct v4l2_ctrl *ctrl)
 		return -EINVAL;
 	}
 
-	log("the s_control operation has been called. The feature is not implemented yet.\n");
+	printk(KERN_INFO "max96712 set control has been called. The feature is "
+			 "not implemented yet.\n");
 
 	return 0;
 }
-
-static const struct v4l2_ctrl_ops max9286_ctrl_ops = {
-    .s_ctrl = max9286_s_ctrl,
+static const struct v4l2_ctrl_ops max96712_ctrl_ops = {
+    .s_ctrl = max96712_s_ctrl,
 };
 
 /*
  * v4l2_subdev_core_ops implementation
  */
 
-static int max9286_log_status(struct v4l2_subdev *sd)
+static int max96712_log_status(struct v4l2_subdev *sd)
 {
 	struct videosource *decoder = sd_to_vsrc(sd);
 
 	/* TODO: look into registers used to see status of the
 	 * decoder */
-	v4l2_info(sd, "sub-device module is ready.\n");
+	v4l2_info(sd, "max96712: sub-device module is ready.\n");
 	v4l2_ctrl_handler_log_status(&(decoder->hdl), sd->name);
-
 	return 0;
 }
 
-static int max9286_set_power(struct v4l2_subdev *sd, int on)
+static int max96712_set_power(struct v4l2_subdev *sd, int on)
 {
+	printk("%s invoked\n", __func__);
+
 	struct videosource *decoder = sd_to_vsrc(sd);
 	struct videosource_gpio *gpio = &(decoder->gpio);
 
+	// Using reset gpio pin, control power
 	if (on) {
+		printk("%s - ON!", __func__);
+
 		sensor_port_disable(gpio->pwd_port);
 		msleep(20);
 
 		sensor_port_enable(gpio->pwd_port);
 		msleep(20);
 	} else {
+		printk("%s - OFF!", __func__);
+
 		sensor_port_disable(gpio->rst_port);
 		sensor_port_disable(gpio->pwr_port);
 		sensor_port_disable(gpio->pwd_port);
@@ -336,30 +500,31 @@ static int max9286_set_power(struct v4l2_subdev *sd, int on)
 	return 0;
 }
 
-#ifdef CONFIG_VIDEO_ADV_DEBUG
-static int max9286_g_register(struct v4l2_subdev *sd,
+static int max96712_g_register(struct v4l2_subdev *sd,
 			       struct v4l2_dbg_register *reg)
 {
-	reg->val = max9286_read(sd, reg->reg & 0xff);
+	reg->val = max96712_read(sd, reg->reg);
 	reg->size = 1;
 	return 0;
 }
 
-static int max9286_s_register(struct v4l2_subdev *sd,
+static int max96712_s_register(struct v4l2_subdev *sd,
 			       const struct v4l2_dbg_register *reg)
 {
-	max9286_write(sd, reg->reg & 0xff, reg->val & 0xff);
+	/*
+	 * TODO
+	 */
+	//max96712_write(sd, reg->reg & 0xff, reg->val & 0xff);
 	return 0;
 }
-#endif//CONFIG_VIDEO_ADV_DEBUG
 
-static const struct v4l2_subdev_core_ops max9286_core_ops = {
-    .log_status = max9286_log_status,
-    .s_power = max9286_set_power,
+static const struct v4l2_subdev_core_ops max96712_core_ops = {
+    .log_status = max96712_log_status,
+    .s_power = max96712_set_power,
 #ifdef CONFIG_VIDEO_ADV_DEBUG
-    .g_register = max9286_g_register,
-    .s_register = max9286_s_register,
-#endif//CONFIG_VIDEO_ADV_DEBUG
+    .g_register = max96712_g_register,
+    .s_register = max96712_s_register,
+#endif
 };
 
 /*
@@ -369,7 +534,7 @@ static const struct v4l2_subdev_core_ops max9286_core_ops = {
 /**
  * return current video standard
  */
-static int max9286_g_std(struct v4l2_subdev *sd, v4l2_std_id *std)
+static int max96712_g_std(struct v4l2_subdev *sd, v4l2_std_id *std)
 {
 	const struct videosource *vsrc = sd_to_vsrc(sd);
 
@@ -382,22 +547,17 @@ static int max9286_g_std(struct v4l2_subdev *sd, v4l2_std_id *std)
 	return 0;
 }
 
-static int max9286_s_std(struct v4l2_subdev *sd, v4l2_std_id std)
+static int max96712_s_std(struct v4l2_subdev *sd, v4l2_std_id std)
 {
 	struct videosource *vsrc = sd_to_vsrc(sd);
 	struct i2c_client *client = vsrc->driver.get_i2c_client(vsrc);
-	int idx = 0;
+	int reg, idx;
 
-	struct videosource_reg std_regs[] = {
-	    {0xff, 0x01},
-	    {0x1c, 0x07},
-	    {REG_TERM, VAL_TERM},
-	};
-
+	/*
+	 * TODO
+	 */
 	switch (std) {
 	case V4L2_STD_NTSC_443:
-		max9286_write_regs(client, std_regs, -1);
-		break;
 	case V4L2_STD_PAL_60:
 	case V4L2_STD_PAL_N:
 	case V4L2_STD_PAL_M:
@@ -406,7 +566,8 @@ static int max9286_s_std(struct v4l2_subdev *sd, v4l2_std_id std)
 	case V4L2_STD_NTSC:
 	case V4L2_STD_SECAM:
 	default:
-		loge("Not supported standard: %lld\n", std);
+		printk(KERN_ERR "%s - Not supported standard: %ld\n", __func__,
+		       std);
 		return -EINVAL;
 	}
 
@@ -418,7 +579,9 @@ static int max9286_s_std(struct v4l2_subdev *sd, v4l2_std_id std)
 		}
 
 		if (idx == vsrc->num_stds - 1) {
-			loge("Failed to find a object containing current video standard\n");
+			printk(KERN_ERR "%s - Failed to find a object "
+					"containing current video standard\n",
+			       __func__);
 			return -EAGAIN;
 		}
 	}
@@ -433,29 +596,14 @@ static int max9286_s_std(struct v4l2_subdev *sd, v4l2_std_id std)
  * @param std v4l2 standard id
  * @return 0 on supported, -EINVAL on not supported
  */
-static int max9286_querystd(struct v4l2_subdev *sd, v4l2_std_id *std)
+static int max96712_querystd(struct v4l2_subdev *sd, v4l2_std_id *std)
 {
 	struct videosource *vsrc = sd_to_vsrc(sd);
 	int reg, ret;
-
-	max9286_write(sd, 0xff, 0x01); // set to use page 1
-	reg = max9286_read(sd, MAX9286_STD_SELECTION);
-
-	// Except for STD_NTSC*, driver does not support other formats now
-	switch ((reg >> 4) & 0x7) {
-	case STD_NTSC_M:
-	case STD_NTSC_443:
-		ret = 0;
-		break;
-	case STD_PAL_BDGHI:
-	case STD_SECAM:
-	case STD_PAL_M:
-	case STD_PAL_CN:
-	case STD_PAL_60:
-	case STD_INVALID:
-		ret = -EINVAL;
-		break;
-	}
+	
+	/*
+	 * TODO
+	 */
 
 	v4l2_dbg(1, 1, sd, "Current STD: %s\n", vsrc->current_std->name);
 
@@ -463,14 +611,14 @@ static int max9286_querystd(struct v4l2_subdev *sd, v4l2_std_id *std)
 }
 
 /**
- * @brief get all standards supported by the video CAPTURE device. For
+ * @brief get all standards supported by the video CAPTURE device. For max96712
  * subdevice, only NTSC format would be supported by the device code.
  *
  * @param sd v4l2 subdevice object
  * @param std v4l2 standard object
  * @return always 0
  */
-static int max9286_g_tvnorms(struct v4l2_subdev *sd, v4l2_std_id *std)
+static const int max96712_g_tvnorms(struct v4l2_subdev *sd, v4l2_std_id *std)
 {
 	struct videosource *vsrc = sd_to_vsrc(sd);
 	int idx;
@@ -493,27 +641,24 @@ static int max9286_g_tvnorms(struct v4l2_subdev *sd, v4l2_std_id *std)
  * @param status 0: "video not present", 1: "video detected"
  * @return -1 on error, 0 on otherwise
  */
-static int max9286_g_input_status(struct v4l2_subdev *sd, u32 *status)
+static int max96712_g_input_status(struct v4l2_subdev *sd, u32 *status)
 {
+	printk("%s invoked\n", __func__);
+
 	int reg;
 
-	*status = V4L2_IN_ST_NO_SIGNAL;
-	reg = max9286_read(sd, MAX9286_STATUS_1);
-	if (reg < 0) {
-		return reg;
-	}
-	if ((reg >> 7) & 0x1) {
-		*status = 0; // video not present
-	} else {
-		*status = 1; // video detected
-	}
+	/*
+	 * TODO
+	 */
+
+	*status = 1; // video detected
 
 	return 0;
 }
 
 extern int tcc_mipi_csi2_enable(unsigned int idx, videosource_format_t * format, unsigned int enable);
 
-static int max9286_s_stream(struct v4l2_subdev *sd, int enable)
+static int max96712_s_stream(struct v4l2_subdev *sd, int enable)
 {
 	struct videosource *vsrc = NULL;
 	struct i2c_client *client = NULL;
@@ -530,47 +675,94 @@ static int max9286_s_stream(struct v4l2_subdev *sd, int enable)
 	}
 
 	client = v4l2_get_subdevdata(sd);
-//	printk(KERN_DEBUG "name: %s, addr: 0x%x, client: 0x%p\n", client->name, (client->addr)<<1, client);
-	ret = change_mode(client, MODE_INIT);
+
+	pr_info("%s - name: %s, addr: 0x%x, client: 0x%xp\n", \
+		__func__, \
+		client->name, (client->addr)<<1, \
+		client);
 
 	if(vsrc->type == VIDEOSOURCE_TYPE_MIPI) {
+		pr_info("%s - mipi_csi2_port is %d \n", \
+			__func__, \
+			vsrc->mipi_csi2_port);
+
 		tcc_mipi_csi2_enable(vsrc->mipi_csi2_port,\
 			&vsrc->format, \
 			1);
-
-		// init remote serializer
-		change_mode(client, MODE_SERDES_REMOTE_SER);
-
-		// enable deserializer frame sync
-		change_mode(client, MODE_SERDES_FSYNC);
 	}
 
+	ret = change_mode(client, MODE_INIT);
+
+
 	vsrc->enabled = enable;
+
+	pr_info("%s - out \n", __func__);
+	return 0;
+}
+
+static int max96712_cropcap(struct v4l2_subdev *sd, struct v4l2_cropcap *cc)
+{
+	struct videosource *vsrc = sd_to_vsrc(sd);
+
+	cc->type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+	cc->bounds.left = vsrc->format.crop_x;
+	cc->bounds.top = vsrc->format.crop_y;
+	cc->bounds.width = vsrc->format.crop_w;
+	cc->bounds.height = vsrc->format.crop_h;
+	cc->pixelaspect.denominator = 1;
+	cc->pixelaspect.numerator = 1;
+	cc->defrect = cc->bounds;
 
 	return 0;
 }
 
+static int max96712_g_crop(struct v4l2_subdev *sd, struct v4l2_crop *crop)
+{
+	struct videosource *vsrc = sd_to_vsrc(sd);
+
+	crop->type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+	crop->c.left = vsrc->format.crop_x;
+	crop->c.top = vsrc->format.crop_y;
+	crop->c.width = vsrc->format.crop_w;
+	crop->c.height = vsrc->format.crop_h;
+
+	return 0;
+}
+
+static int max96712_s_crop(struct v4l2_subdev *sd, const struct v4l2_crop *crop)
+{
+	struct videosource *vsrc = sd_to_vsrc(sd);
+
+	vsrc->format.crop_x = crop->c.left;
+	vsrc->format.crop_y = crop->c.top;
+	vsrc->format.crop_w = crop->c.width;
+	vsrc->format.crop_h = crop->c.height;
+}
+
 static int
-max9286_g_frame_interval(struct v4l2_subdev *sd,
+max96712_g_frame_interval(struct v4l2_subdev *sd,
 			  struct v4l2_subdev_frame_interval *interval)
 {
 	struct videosource *vsrc = sd_to_vsrc(sd);
 	return vsrc->format.framerate;
 }
 
-static const struct v4l2_subdev_video_ops max9286_video_ops = {
-	.g_std = max9286_g_std,
-	.s_std = max9286_s_std,
-	.querystd = max9286_querystd,
-	.g_tvnorms = max9286_g_tvnorms,
-	.g_input_status = max9286_g_input_status,
-	.s_stream = max9286_s_stream,
-	.g_frame_interval = max9286_g_frame_interval,
+static const struct v4l2_subdev_video_ops max96712_video_ops = {
+    .g_std = max96712_g_std,
+    .s_std = max96712_s_std,
+    .querystd = max96712_querystd,
+    /* .g_tvnorms = max96712_g_tvnorms, */
+    /* .g_input_status = max96712_g_input_status, */
+    .s_stream = max96712_s_stream,
+    /* .cropcap = max96712_cropcap, */
+    /* .g_crop = max96712_g_crop, */
+    /* .s_crop = max96712_s_crop, */
+    /* .g_frame_interval = max96712_g_frame_interval, */
 };
 
-static const struct v4l2_subdev_ops max9286_ops = {
-    .core = &max9286_core_ops,
-    .video = &max9286_video_ops,
+static const struct v4l2_subdev_ops max96712_ops = {
+    .core = &max96712_core_ops,
+    .video = &max96712_video_ops,
 };
 
 static int change_mode(struct i2c_client *client, int mode)
@@ -585,29 +777,28 @@ static int change_mode(struct i2c_client *client, int mode)
 		return -1;
 	}
 
-	ret = max9286_write_regs(client, videosource_reg_table_list[mode], mode);
+	//ret = max96712_write_regs(client, videosource_reg_table_list[mode], mode);
 
+	{
+		int i = 0;
+
+		for (i = 0 ; i < 5; i++) {
+			ret = max96712_write_regs(client, &videosource_init_table_list[i], mode);
+		}
+	}
 	return ret;
 }
 
 /*
+ * TODO
  * check whether i2c device is connected
- * 0x1e: ID register
- * max9286 device identifier: 0x40
+ * read device id
  * return: 0: device is not connected, 1: connected
  */
 static int check_status(struct i2c_client * client) {
-	unsigned char reg[1] = { 0x1e };
-	unsigned char val = 0;
 	int ret = 0;
 
-	ret = DDI_I2C_Read(client, reg, 1, &val, 1);
-	if(ret) {
-		printk("ERROR: Sensor I2C !!!! \n");
-		return -1;
-	}
-
-	return ((val == 0x40) ? 1 : 0);	// 0: device is not connected, 1: connected
+	return 1;
 }
 
 static irqreturn_t irq_handler(int irq, void * client_data) {
@@ -621,22 +812,25 @@ static irqreturn_t irq_thread_handler(int irq, void * client_data) {
 
 static int set_irq_handler(videosource_gpio_t * gpio, unsigned int enable) {
 	if(enable) {
-		if(0 < gpio->intb_port) {
-			des_irq_num = gpio_to_irq(gpio->intb_port);
-
-			logd("des_irq_num : %d \n", des_irq_num);
-
-//			if(request_irq(des_irq_num, irq_handler, IRQF_SHARED | IRQF_TRIGGER_LOW, "max9286", "max9286"))
-//			if(request_threaded_irq(des_irq_num, irq_handler, irq_thread_handler, IRQF_SHARED | IRQF_TRIGGER_FALLING, "max9286", "max9286")) {
-			if(request_threaded_irq(des_irq_num, irq_handler, irq_thread_handler, IRQF_TRIGGER_FALLING, "max9286", NULL)) {
-				loge("fail request irq(%d) \n", des_irq_num);
-
-				return -1;
-			}
+		if(0 > gpio->intb_port) {
+			return -1;
 		}
-	}
-	else {
-		free_irq(des_irq_num, /*"max9286"*/NULL);
+
+		des_irq_num = gpio_to_irq(gpio->intb_port);
+
+		printk("des_irq_num : %d \n", des_irq_num);
+
+		if(request_threaded_irq(des_irq_num, \
+					irq_handler, \
+					irq_thread_handler, \
+					IRQF_TRIGGER_FALLING, \
+					"max96712", \
+					NULL)) {
+			printk("fail request irq(%d) \n", des_irq_num);
+			return -1;
+		}
+	} else {
+		free_irq(des_irq_num, /*"max96712"*/NULL);
 	}
 
 	return 0;
@@ -644,17 +838,23 @@ static int set_irq_handler(videosource_gpio_t * gpio, unsigned int enable) {
 
 static int set_i2c_client(struct videosource *vsrc, struct i2c_client *client)
 {
+	printk("%s invoked\n", __func__);
+
 	int ret = 0;
 
 	struct v4l2_subdev *sd;
 	if (!vsrc) {
-		loge("Failed to get max9286 videosource. Something wrong with a timing of initialization.\n");
+		printk(KERN_ERR "%s - Failed to get max96712 videosource. \
+		Something wrong with a timing of initialization.\n",
+		       __func__);
 		ret = -1;
 	}
 
 	sd = &(vsrc->sd);
 	if (!sd) {
-		loge("Failed to get sub-device object of max9286.\n");
+		printk(KERN_ERR
+		       "%s - Failed to get sub-device object of max96712.\n",
+		       __func__);
 		ret = -1;
 	}
 
@@ -687,26 +887,28 @@ static int subdev_init(struct videosource *vsrc)
 		ret = -1;
 	} else {
 		// Register with V4L2 layer as a slave device
-		v4l2_i2c_subdev_init(sd, client, &max9286_ops);
+		v4l2_i2c_subdev_init(sd, client, &max96712_ops);
 		/* v4l2_device_register(sd->dev, sd->v4l2_dev); */
 		err = v4l2_async_register_subdev(sd);
 		if (err) {
-			loge("Failed to register subdevice\n");
+			printk(KERN_ERR "Failed to register subdevice max96712\n");
 		} else {
-			loge("sub-device is initialized within v4l standard: %s.\n", sd->name);
+			printk(KERN_INFO
+			       "%s - max96712 is initialized within v4l standard: %s.\n",
+			       __func__, sd->name);
 		}
 	}
 
 	return ret;
 }
 
-struct videosource videosource_max9286 = {
+struct videosource videosource_max96712 = {
     .type = VIDEOSOURCE_TYPE_MIPI,
     .format =
 	{
 	    // deprecated
 	    .width = WIDTH,
-	    .height = HEIGHT,		      // - 1,
+	    .height = HEIGHT - 1,
 	    .interlaced = V4L2_DV_PROGRESSIVE,	// V4L2_DV_INTERLACED
 	    .data_format = FMT_YUV422_8BIT,   // data format
 	    .gen_field_en = OFF,
@@ -739,22 +941,18 @@ struct videosource videosource_max9286 = {
 	    .capture_skip_frame = 0,
 	    .sensor_sizes = sensor_sizes,
 
-#ifdef CONFIG_MIPI_1_CH_CAMERA
-		.des_info.input_ch_num		= 1,
-#else
-		.des_info.input_ch_num		= 4,
-#endif
+	    .des_info.input_ch_num	= 2,
 
-		.des_info.pixel_mode		= PIXEL_MODE_SINGLE,
-		.des_info.interleave_mode	= INTERLEAVE_MODE_VC_DT,
-		.des_info.data_lane_num 	= 4,
-		.des_info.data_format		= DATA_FORMAT_YUV422_8BIT,
-		.des_info.hssettle			= 0x11,
-		.des_info.clksettlectl		= 0x00,
+	    .des_info.pixel_mode	= PIXEL_MODE_SINGLE,
+	    .des_info.interleave_mode	= INTERLEAVE_MODE_VC_DT,
+	    .des_info.data_lane_num 	= 4,
+	    .des_info.data_format	= DATA_FORMAT_YUV422_8BIT,
+	    .des_info.hssettle		= 23,
+	    .des_info.clksettlectl	= 0x00,
 	},
     .driver =
 	{
-	    .name = "max9286",
+	    .name = "max96712",
 	    .change_mode = change_mode,
 		.set_irq_handler = set_irq_handler,
 	    .check_status = check_status,
@@ -762,8 +960,8 @@ struct videosource videosource_max9286 = {
 	    .get_i2c_client = get_i2c_client,
 	    .subdev_init = subdev_init,
 	},
-    .fmt_list = max9286_fmt_list,
-    .num_fmts = ARRAY_SIZE(max9286_fmt_list),
+    .fmt_list = max96712_fmt_list,
+    .num_fmts = ARRAY_SIZE(max96712_fmt_list),
     .pix =
 	{
 	    .width = NTSC_NUM_ACTIVE_PIXELS,
@@ -775,6 +973,6 @@ struct videosource videosource_max9286 = {
 	    .colorspace = V4L2_COLORSPACE_SMPTE170M,
 	},
     .current_std = STD_NTSC_M,
-    .std_list = max9286_std_list,
-    .num_stds = ARRAY_SIZE(max9286_std_list),
+    .std_list = max96712_std_list,
+    .num_stds = ARRAY_SIZE(max96712_std_list),
 };

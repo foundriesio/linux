@@ -165,6 +165,9 @@ config VIDEO_TI_CAL
 	  In TI Technical Reference Manual this module is referred as
 	  Camera Interface Subsystem (CAMSS).
 
+# Telechips MIPI CSI-2 driver configuration
+source "drivers/media/platform/tcc-mipi-csi2/Kconfig"
+
 # Telechips Video Source Driver Configuration
 source "drivers/media/platform/videosource/Kconfig"
 source "drivers/media/platform/videosource2/Kconfig"

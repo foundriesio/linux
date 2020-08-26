@@ -21,7 +21,6 @@
 
 #include "../videosource_common.h"
 #include "../videosource_i2c.h"
-#include "../mipi-csi2/mipi-csi2.h"
 
 #define WIDTH	1920
 #define HEIGHT	(1080 - 1)

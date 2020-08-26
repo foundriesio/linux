@@ -75,6 +75,7 @@ typedef struct videosource {
 	videosource_driver_t		driver;
 
 	int							enabled;
+	int							mipi_csi2_port
 } videosource_t;
 
 enum camera_mode {

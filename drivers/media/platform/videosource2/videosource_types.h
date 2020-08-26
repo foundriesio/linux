@@ -86,10 +86,10 @@ typedef struct videosource_driver {
 	int (*change_mode)(struct i2c_client *client, int mode);
 	int (*check_status)(struct i2c_client *client);
 	int (*set_irq_handler)(videosource_gpio_t *gpio, unsigned int enable);
-	int (*subdev_init)(void);
+	int (*subdev_init)(struct videosource *vsrc);
 
 	// setter
-	int (*set_i2c_client)(struct i2c_client *client);
+	int (*set_i2c_client)(struct videosource *vsrc, struct i2c_client *client);
 
 	// getter
 	struct i2c_client* (*get_i2c_client)(struct videosource *vsrc);
@@ -125,6 +125,7 @@ typedef struct videosource {
 	videosource_driver_t driver;
 
 	int enabled;
+	int mipi_csi2_port
 } videosource_t;
 
 struct vsrc_std_info {

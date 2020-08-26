@@ -3,8 +3,8 @@
  * Copyright (C) Telechips Inc.
  */
 
-#ifndef __MIPI_CKC_REG_H__
-#define __MIPI_CKC_REG_H__
+#ifndef __TCC_MIPI_CKC_REG_H__
+#define __TCC_MIPI_CKC_REG_H__
 
 /*
  * MIPI CKC REG BASE
@@ -33,15 +33,15 @@
 /*
  * PLLPMS
  */
-#define PLLPMS_RESETB_SHIFT		(31)
-#define PLLPMS_RSEL_SHIFT		(27)
-#define PLLPMS_LOCK_EN_SHIFT		(26)
-#define PLLPMS_ICP_SHIFT		(24)
-#define PLLPMS_LOCK_SHIFT		(23)
-#define PLLPMS_BYPASS_SHIFT		(21)
-#define PLLPMS_S_SHIFT			(16)
-#define PLLPMS_M_SHIFT			(6)
-#define PLLPMS_P_SHIFT			(0)
+#define PLLPMS_RESETB_SHIFT	(31)
+#define PLLPMS_RSEL_SHIFT	(27)
+#define PLLPMS_LOCK_EN_SHIFT	(26)
+#define PLLPMS_ICP_SHIFT	(24)
+#define PLLPMS_LOCK_SHIFT	(23)
+#define PLLPMS_BYPASS_SHIFT	(21)
+#define PLLPMS_S_SHIFT		(16)
+#define PLLPMS_M_SHIFT		(6)
+#define PLLPMS_P_SHIFT		(0)
 
 #define PLLPMS_RESETB_MASK	((0x1) << PLLPMS_RESETB_SHIFT)
 #define PLLPMS_RSEL_MASK	((0xF) << PLLPMS_RSEL_SHIFT)

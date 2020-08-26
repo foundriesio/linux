@@ -1,0 +1,13 @@
+# drivers/media/platform/tcc-mipi-csi2/Kconfig
+#
+# Copyright (c) 2020-2020 Telechips Co., Ltd.
+#	http://www.telechips.com/
+#
+# Licensed under GPL
+
+config TCC_MIPI_CSI2
+	bool "Telechips MIPI CSI-2 driver"
+	default y
+        depends on ARCH_TCC803X || ARCH_TCC805X
+	---help---
+	  Support for MIPI CSI-2

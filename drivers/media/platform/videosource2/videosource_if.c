@@ -31,14 +31,13 @@
 
 #include "videosource_common.h"
 #include "videosource_if.h"
-#if defined(CONFIG_MIPI_CSI_2)
-#include "mipi-csi2/mipi-csi2.h"
-#endif//defined(CONFIG_MIPI_CSI_2)
 
 #include "../../../pinctrl/core.h"
 #include "../../../pinctrl/tcc/pinctrl-tcc.h"
 
 #define NUM_OVERLAY_FORMATS 2
+
+extern int tcc_mipi_csi2_enable(unsigned int idx, videosource_format_t * format, unsigned int enable);
 
 struct tcc_pinctrl {
 	struct device *dev;
@@ -66,12 +65,6 @@ struct tcc_pinctrl {
 	struct tcc_pinmux_function *functions;
 	unsigned int nfunctions;
 };
-
-#if defined(CONFIG_MIPI_CSI_2)
-volatile void __iomem *  ddicfg_base;
-struct clk * 	 mipi_csi2_clk;
-unsigned int 	 mipi_csi2_frequency;
-#endif//defined(CONFIG_MIPI_CSI_2)
 
 //extern irqreturn_t ds90ub964_irq_thread_handler(int irq, void * client_data);
 
@@ -107,86 +100,6 @@ const static struct v4l2_fmtdesc videosource_format[] = {
 	}
 };
 #define NUM_CAPTURE_FORMATS ARRAY_SIZE(videosource_format)
-
-#if defined(CONFIG_MIPI_CSI_2)
-static irqreturn_t videosource_if_mipi_csi2_isr(int irq, void * client_data) {
-	unsigned int intr_status0 = 0, intr_status1 = 0, intr_mask0 = 0, intr_mask1 = 0;
-	unsigned int idx = 0;
-
-	intr_status0 = MIPI_CSIS_Get_CSIS_Interrupt_Src(0);
-	intr_status1 = MIPI_CSIS_Get_CSIS_Interrupt_Src(1);
-
-	intr_mask0 = MIPI_CSIS_Get_CSIS_Interrupt_Mask(0);
-	intr_mask1 = MIPI_CSIS_Get_CSIS_Interrupt_Mask(1);
-
-	log("interrupt status 0x%x / 0x%x \n", intr_status0, intr_status1);
-
-	intr_status0 &= intr_mask0;
-	intr_status1 &= intr_mask1;
-
-	/* interruptsource register 0 */
-	if(intr_status0 & CIM_MSK_FrameStart_MASK) {
-		for(idx = 0; idx<4; idx++) {
-			if(intr_status0 & ((1 << idx) << CIM_MSK_FrameStart_SHIFT))
-				log("[CH%d] FrameStart packet is received \n", idx);
-		}
-	}
-	if(intr_status0 & CIM_MSK_FrameEnd_MASK) {
-		for(idx = 0; idx<4; idx++) {
-			if(intr_status0 & ((1 << idx) << CIM_MSK_FrameEnd_SHIFT))
-				log("[CH%d] FrameEnd packet is received \n", idx);
-		}
-	}
-	if(intr_status0 & CIM_MSK_ERR_SOT_HS_MASK) {
-		for(idx = 0; idx<4; idx++) {
-			if(intr_status0 & ((1 << idx) << CIM_MSK_ERR_SOT_HS_SHIFT) )
-				log("[Lane%d] Start of transmission error \n", idx);
-		}
-	}
-	if(intr_status0 & CIM_MSK_ERR_LOST_FS_MASK) {
-		for(idx = 0; idx<4; idx++) {
-			if(intr_status0 & ((1 << idx) << CIM_MSK_ERR_LOST_FS_SHIFT))
-				log("[CH%d] Lost of Frame Start packet \n", idx);
-		}
-	}
-	if(intr_status0 & CIM_MSK_ERR_LOST_FE_MASK) {
-		for(idx = 0; idx<4; idx++) {
-			if(intr_status0 & ((1 << idx) << CIM_MSK_ERR_LOST_FE_SHIFT))
-				log("[CH%d] Lost of Frame End packet \n", idx);
-		}
-	}
-	if(intr_status0 & CIM_MSK_ERR_OVER_MASK) {
-		loge("Image FIFO overflow interrupt \n");
-	}
-	if(intr_status0 & CIM_MSK_ERR_WRONG_CFG_MASK) {
-		loge("Wrong configuration \n");
-	}
-	if(intr_status0 & CIM_MSK_ERR_ECC_MASK) {
-		loge("ECC error \n");
-	}
-	if(intr_status0 & CIM_MSK_ERR_CRC_MASK) {
-		loge("CRC error \n");
-	}
-	if(intr_status0 & CIM_MSK_ERR_ID_MASK) {
-		loge("Unknown ID error \n");
-	}
-
-	/* interruptsource register 1 */
-	if(intr_status1 & CIM_MSK_LINE_END_MASK) {
-		for(idx = 0; idx<4; idx++) {
-			if(intr_status1 & ((1 << idx) << CIM_MSK_LINE_END_SHIFT))
-				log("[CH%d] End of specific line \n", idx);
-		}
-	}
-
-	// clear interrupt
-	MIPI_CSIS_Set_CSIS_Interrupt_Src(0, intr_status0);
-	MIPI_CSIS_Set_CSIS_Interrupt_Src(1, intr_status1);
-
-	return IRQ_HANDLED;
-//	  return IRQ_WAKE_THREAD;
-}
-#endif//defined(CONFIG_MIPI_CSI_2)
 
 int videosource_if_enum_pixformat(struct v4l2_fmtdesc * fmt) {
 	int					index	= fmt->index;
@@ -230,57 +143,25 @@ int videosource_parse_gpio_dt_data(videosource_t * vdev, struct device_node * vi
 		vdev->gpio.pwd_port = of_get_named_gpio_flags(videosource_node, "pwd-gpios", 0, &vdev->gpio.pwd_value);
 		vdev->gpio.rst_port = of_get_named_gpio_flags(videosource_node, "rst-gpios", 0, &vdev->gpio.rst_value);
 
-#if defined(CONFIG_MIPI_CSI_2)
-		if(vdev->type == VIDEOSOURCE_TYPE_MIPI) {
-			// interrupt pin
-			vdev->gpio.intb_port = of_get_named_gpio_flags(videosource_node, "intb-gpios", 0, &vdev->gpio.intb_value);
+	} else {
+		loge("could not find sensor module node!! \n");
+		return -ENODEV;
+	}
 
-			// mipi-csi2
-			node = of_find_compatible_node(NULL, NULL, "telechips,mipi_csi2");
-			if(node) {
-#ifdef CONFIG_ARCH_TCC803X
-				// Configure the MIPI clock
-				mipi_csi2_clk = of_clk_get(node, 0);
-				if(IS_ERR(mipi_csi2_clk)) {
-					loge("failed to get mipi_csi2_clk\n");
-					return -ENODEV;
-				} else {
-					of_property_read_u32(node, "clock-frequency", &mipi_csi2_frequency);
-					if(mipi_csi2_frequency == 0) {
-						loge("failed to get mipi_csi2_frequency\n");
-						return -ENODEV;
-					} else {
-						clk_set_rate(mipi_csi2_clk, mipi_csi2_frequency);
-						clk_prepare_enable(mipi_csi2_clk);
-					}
-				}
-				logd("mipi clock: %d Hz\n", mipi_csi2_frequency);
-#elif defined CONFIG_ARCH_TCC805X
-				if (!(MIPI_WRAP_Set_CKC())) {
-					loge("fail  mipi wrap clock setting \n");
-				}
-#endif
-				vdev->format.des_info.csi2_irq = irq_of_parse_and_map(node, 0);
-				vdev->format.des_info.gdb_irq = irq_of_parse_and_map(node, 1);
+	return ret;
+}
 
-				log("csi2 irq num : %d, Generic data buffer irq num : %d\n", \
-					vdev->format.des_info.csi2_irq, vdev->format.des_info.gdb_irq);
-			} else {
-				loge("Fail mipi_csi2_node\n");
-				return -ENODEV;
-			}
+int videosource_parse_mipi_csi2_port_data(
+		videosource_t * vdev, struct device_node * videosource_node)
+{
+	struct device_node * node = NULL;
+	int ret = 0;
 
-			// ddi config
-			node = of_find_compatible_node(NULL, NULL, "telechips,ddi_config");
-			if (node == NULL) {
-				loge("cann't find DDI Config node \n");
-				return -ENODEV;
-			} else {
-				ddicfg_base = (volatile void __iomem *)of_iomap(node, 0);
-				log("ddicfg addr: %p\n", ddicfg_base);
-			}
-		}
-#endif//defined(CONFIG_MIPI_CSI_2)
+	if(videosource_node) {
+		// get cif port
+		of_property_read_u32_index(videosource_node, \
+			"mipi-csi2-idx", 0, &vdev->mipi_csi2_port);
+		log("mipi-csi2-idx: %d\n", vdev->mipi_csi2_port);
 	} else {
 		loge("could not find sensor module node!! \n");
 		return -ENODEV;
@@ -310,14 +191,12 @@ int videosource_request_gpio(videosource_t * vdev) {
 		gpio_request(vdev->gpio.rst_port, "camera reset");
 		gpio_direction_output(vdev->gpio.rst_port, vdev->gpio.rst_value);
 	}
-#if defined(CONFIG_MIPI_CSI_2)
 	if(0 < vdev->gpio.intb_port) {
 		logd("intb: port = %3d, curr val = %d \n",	\
 			vdev->gpio.intb_port, gpio_get_value(vdev->gpio.intb_port));
 		gpio_request(vdev->gpio.intb_port, "camera interrupt");
 		gpio_direction_input(vdev->gpio.intb_port);
 	}
-#endif//defined(CONFIG_MIPI_CSI_2)
 
 	FUNCTION_OUT
 	return 0;
@@ -327,9 +206,7 @@ int videosource_free_gpio(videosource_t * vdev) {
 	FUNCTION_IN
 
 	// free port gpios
-#if defined(CONFIG_MIPI_CSI_2)
 	if(0 < vdev->gpio.intb_port)	gpio_free(vdev->gpio.intb_port);
-#endif//defined(CONFIG_MIPI_CSI_2)
 	if(0 < vdev->gpio.pwr_port)		gpio_free(vdev->gpio.pwr_port);
 	if(0 < vdev->gpio.pwd_port)		gpio_free(vdev->gpio.pwd_port);
 	if(0 < vdev->gpio.rst_port)		gpio_free(vdev->gpio.rst_port);
@@ -337,148 +214,6 @@ int videosource_free_gpio(videosource_t * vdev) {
 	FUNCTION_OUT
 	return 0;
 }
-
-#ifdef CONFIG_MIPI_CSI_2
-int videosource_if_init_mipi_csi2_interface(videosource_t * vdev, videosource_format_t * format, unsigned int onOff) {
-	unsigned int idx = 0;
-
-	if(onOff) {
-#if defined(CONFIG_ARCH_TCC803X)
-		// S/W reset D-PHY
-		VIOC_DDICONFIG_MIPI_Reset_DPHY(ddicfg_base, 0);
-
-		// S/W reset Generic buffer interface
-		VIOC_DDICONFIG_MIPI_Reset_GEN(ddicfg_base, 0);
-#elif defined(CONFIG_ARCH_TCC805X)
-		MIPI_WRAP_Set_Reset_DPHY(0, 0);
-		MIPI_WRAP_Set_Reset_GEN(0, 0);
-
-		MIPI_WRAP_Set_Output_Mux(0, 0, 1);
-		MIPI_WRAP_Set_Output_Mux(0, 1, 1);
-		MIPI_WRAP_Set_Output_Mux(0, 2, 1);
-		MIPI_WRAP_Set_Output_Mux(0, 3, 1);
-
-
-		MIPI_WRAP_Set_Output_Mux(1, 0, 1);
-		MIPI_WRAP_Set_Output_Mux(1, 1, 1);
-		MIPI_WRAP_Set_Output_Mux(1, 2, 1);
-		MIPI_WRAP_Set_Output_Mux(1, 3, 1);
-#endif
-		// S/W reset CSI2
-		MIPI_CSIS_Set_CSIS_Reset(1);
-
-		/*
-		 * Set D-PHY control(Master, Slave)
-		 * Refer to 7.2.3(B_DPHYCTL) in D-PHY datasheet
-		 * 500 means ULPS EXIT counter value.
-		 */
-		MIPI_CSIS_Set_DPHY_B_Control(0x00000000, 0x000001f4);
-
-		/*
-		 * Set D-PHY control(Slave)
-		 * Refer to 7.2.5(S_DPHYCTL) in D-PHY datasheet
-		 */
-		MIPI_CSIS_Set_DPHY_S_Control(0x00000000, 0xfd008000);
-
-		/*
-		 * Set D-PHY Common control
-		 */
-		logd("hssettle value : 0x%x \n", format->des_info.hssettle);
-		MIPI_CSIS_Set_DPHY_Common_Control(format->des_info.hssettle, \
-											format->des_info.clksettlectl, \
-											ON, \
-											OFF, \
-											OFF, \
-											format->des_info.data_lane_num, \
-											ON);
-
-
-		for(idx = 0; idx < format->des_info.input_ch_num ; idx++) {
-			MIPI_CSIS_Set_ISP_Configuration(idx, \
-											format->des_info.pixel_mode, \
-											OFF, \
-											OFF, \
-											format->des_info.data_format, \
-											idx);
-			MIPI_CSIS_Set_ISP_Resolution(idx, format->width , format->height);
-		}
-
-		MIPI_CSIS_Set_CSIS_Clock_Control(0x0, 0xf);
-
-		MIPI_CSIS_Set_CSIS_Common_Control(format->des_info.input_ch_num, \
-											0x0, \
-											ON, \
-											format->des_info.interleave_mode, \
-											format->des_info.data_lane_num, \
-											OFF, \
-											OFF, \
-											ON);
-	}
-	else {
-		MIPI_CSIS_Set_Enable(OFF);
-
-		// S/W reset CSI2
-		MIPI_CSIS_Set_CSIS_Reset(1);
-
-#if defined(CONFIG_ARCH_TCC803X)
-		// S/W reset D-PHY
-		VIOC_DDICONFIG_MIPI_Reset_DPHY(ddicfg_base, 1);
-
-		// S/W reset Generic buffer interface
-		VIOC_DDICONFIG_MIPI_Reset_GEN(ddicfg_base, 1);
-#elif defined(CONFIG_ARCH_TCC805X)
-		MIPI_WRAP_Set_Reset_DPHY(0, 1);
-		MIPI_WRAP_Set_Reset_GEN(0, 1);
-#endif
-	}
-
-	return 0;
-}
-
-int videosource_if_set_mipi_csi2_interrupt(videosource_t * vdev, videosource_format_t * format, unsigned int onOff) {
-	if(onOff) {
-		// clear interrupt
-		MIPI_CSIS_Set_CSIS_Interrupt_Src(0, \
-						CIM_MSK_FrameStart_MASK | CIM_MSK_FrameEnd_MASK | \
-						CIM_MSK_ERR_SOT_HS_MASK | CIM_MSK_ERR_LOST_FS_MASK | \
-						CIM_MSK_ERR_LOST_FE_MASK | CIM_MSK_ERR_OVER_MASK | \
-						CIM_MSK_ERR_WRONG_CFG_MASK | CIM_MSK_ERR_ECC_MASK | \
-						CIM_MSK_ERR_CRC_MASK | CIM_MSK_ERR_ID_MASK);
-
-		MIPI_CSIS_Set_CSIS_Interrupt_Src(1, \
-						CIM_MSK_LINE_END_MASK);
-
-//		  if(request_threaded_irq(vdev->format.des_info.csi2_irq, videosource_if_mipi_csi2_isr, ds90ub964_irq_thread_handler, 0, "mipi_csi2", NULL)) {
-//		  if(request_irq(vdev->format.des_info.csi2_irq, videosource_if_mipi_csi2_isr, IRQF_SHARED, "mipi_csi2", "mipi_csi2")) {
-		if(request_irq(vdev->format.des_info.csi2_irq, \
-						videosource_if_mipi_csi2_isr, \
-						0, \
-						"mipi_csi2", \
-						NULL)) {
-			loge("fail request irq(%d) \n", vdev->format.des_info.csi2_irq);
-		}
-		else {
-			// unmask interrupt
-			MIPI_CSIS_Set_CSIS_Interrupt_Mask(0, \
-						CIM_MSK_ERR_SOT_HS_MASK | CIM_MSK_ERR_LOST_FS_MASK | \
-						CIM_MSK_ERR_LOST_FE_MASK | CIM_MSK_ERR_OVER_MASK | \
-						CIM_MSK_ERR_WRONG_CFG_MASK | CIM_MSK_ERR_ECC_MASK | \
-						CIM_MSK_ERR_CRC_MASK | CIM_MSK_ERR_ID_MASK, \
-						0);
-
-			MIPI_CSIS_Set_CSIS_Interrupt_Mask(1, \
-						CIM_MSK_LINE_END_MASK, \
-						0);
-		}
-	}
-	else {
-//		  free_irq(vdev->format.des_info.csi2_irq, "mipi_csi2");
-		free_irq(vdev->format.des_info.csi2_irq, NULL);
-	}
-
-	return 0;
-}
-#endif//defined(CONFIG_MIPI_CSI_2)
 
 int videosource_set_port(videosource_t * vdev, int enable) {
 	struct pinctrl		* pinctrl	= NULL;
@@ -488,9 +223,7 @@ int videosource_set_port(videosource_t * vdev, int enable) {
 
 	FUNCTION_IN
 
-#if defined(CONFIG_MIPI_CSI_2)
 	if(vdev->type != VIDEOSOURCE_TYPE_MIPI)
-#endif//defined(CONFIG_MIPI_CSI_2)
 	{
 		// pinctrl
 		client = vdev->driver.get_i2c_client(vdev);
@@ -632,6 +365,14 @@ int videosource_if_initialize(videosource_t * vdev) {
 
 	FUNCTION_IN
 
+#ifdef CONFIG_TCC_MIPI_CSI2
+	if(vdev->type == VIDEOSOURCE_TYPE_MIPI) {
+		tcc_mipi_csi2_enable(vdev->mipi_csi2_port,\
+			&vdev->format, \
+			1);
+	}
+#endif
+
 	if(vdev->enabled == ENABLE) {
 		// open port
 		videosource_set_port(vdev, ENABLE);
@@ -645,7 +386,6 @@ int videosource_if_initialize(videosource_t * vdev) {
 		// set videosource in init mode
 		videosource_if_change_mode(vdev, MODE_INIT);
 
-#if defined(CONFIG_MIPI_CSI_2)
 		if(vdev->type == VIDEOSOURCE_TYPE_MIPI) {
 			// init remote serializer
 			videosource_if_change_mode(vdev, MODE_SERDES_REMOTE_SER);
@@ -660,18 +400,9 @@ int videosource_if_initialize(videosource_t * vdev) {
 			// enable deserializer interrupt
 			videosource_if_change_mode(vdev, MODE_SERDES_INTERRUPT);
 #endif
-
-			// set mipi-csi2 interface
-			videosource_if_init_mipi_csi2_interface(vdev, &vdev->format, ON);
-
-			// enable mipi-csi2 interrupt
-			videosource_if_set_mipi_csi2_interrupt(vdev, &vdev->format, ON);
 		} else {
-#endif//defined(CONFIG_MIPI_CSI_2)
 			videosource_if_check_status(vdev);
-#if defined(CONFIG_MIPI_CSI_2)
 		}
-#endif//defined(CONFIG_MIPI_CSI_2)
 	} else {
 		ret = -1;
 	}
@@ -686,19 +417,18 @@ int videosource_if_deinitialize(videosource_t * vdev) {
 	FUNCTION_IN
 
 	if(vdev->enabled == ENABLE) {
-#if defined(CONFIG_MIPI_CSI_2)
 		if(vdev->type == VIDEOSOURCE_TYPE_MIPI) {
-			videosource_if_init_mipi_csi2_interface(vdev, &vdev->format, OFF);
-
-			// disable mipi-csi2 interrupt
-			videosource_if_set_mipi_csi2_interrupt(vdev, &vdev->format, OFF);
+#ifdef CONFIG_TCC_MIPI_CSI2
+			tcc_mipi_csi2_enable(vdev->mipi_csi2_port,\
+				&vdev->format, \
+				0);
+#endif
 
 #if 0
 			// disable deserializer interrupt
 			vdev->driver.set_irq_handler(&vdev->gpio, OFF);
 #endif
 		}
-#endif//defined(CONFIG_MIPI_CSI_2)
 
 		// power-down sequence
 		vdev->driver.close(&vdev->gpio);
@@ -807,6 +537,11 @@ int videosource_if_probe(videosource_t * vdev) {
 		return ret;
 	}
 
+	if((ret = videosource_parse_mipi_csi2_port_data(vdev, client->dev.of_node)) < 0) {
+		loge("cannot find mipi csi2 output port\n");
+		return ret;
+	}
+
 	// get the videosource's index from its alias
 	index = of_alias_get_id(client->dev.of_node, MODULE_NAME);
 
@@ -883,14 +618,6 @@ int videosource_if_remove(videosource_t * vdev) {
 
 	// unregister the charactor device region
 	unregister_chrdev_region(vdev->cdev_region, 1);
-
-#if defined(CONFIG_MIPI_CSI_2)
-	if(vdev->type == VIDEOSOURCE_TYPE_MIPI) {
-#if defined(CONFIG_ARCH_TCC803X)
-		clk_disable(mipi_csi2_clk);
-#endif//defined(CONFIG_ARCH_TCC803X)
-	}
-#endif//defined(CONFIG_MIPI_CSI_2)
 
 	FUNCTION_OUT
 	return ret;

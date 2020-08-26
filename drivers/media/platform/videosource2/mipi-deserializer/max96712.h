@@ -1,6 +1,6 @@
 /****************************************************************************
  *
- * Copyright (C) 2013 Telechips Inc.
+ * Copyright (C) 2018 Telechips Inc.
  *
  * This program is free software; you can redistribute it and/or modify it under the terms
  * of the GNU General Public License as published by the Free Software Foundation;
@@ -15,13 +15,15 @@
  * Suite 330, Boston, MA 02111-1307 USA
  ****************************************************************************/
 
-#ifndef VIDEOSOURCE_IF_H
-#define VIDEOSOURCE_IF_H
+#ifndef MAX96712_H
+#define MAX96712_H
 
-#include "videosource_types.h"
+#include "../videosource_types.h"
 
-extern int videosource_if_probe(videosource_t * vdev);
-extern int videosource_if_remove(videosource_t * vdev);
+extern struct videosource videosource_max96712;
 
-#endif//VIDEOSOURCE_IF_H
+// MAX96712 Standard Selection Register Bits
+#define VIDEO_STD_NTSC_M_BIT	0x0
+#define VIDEO_STD_NTSC_443_BIT	0x3
 
+#endif//MAX96712_H
