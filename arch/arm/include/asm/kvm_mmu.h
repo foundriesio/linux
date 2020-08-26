@@ -28,6 +28,13 @@
  */
 #define kern_hyp_va(kva)	(kva)
 
+/* Contrary to arm64, there is no need to generate a PC-relative address */
+#define hyp_symbol_addr(s)						\
+	({								\
+		typeof(s) *addr = &(s);					\
+		addr;							\
+	})
+
 /*
  * KVM_MMU_CACHE_MIN_PAGES is the number of stage2 page table translation levels.
  */
@@ -293,6 +300,11 @@ static inline void __kvm_extend_hypmap(pgd_t *boot_hyp_pgd,
 static inline unsigned int kvm_get_vmid_bits(void)
 {
 	return 8;
+}
+
+static inline int hyp_map_aux_data(void)
+{
+	return 0;
 }
 
 #define kvm_phys_to_vttbr(addr)		(addr)

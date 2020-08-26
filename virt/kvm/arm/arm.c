@@ -374,10 +374,12 @@ void kvm_arch_vcpu_load(struct kvm_vcpu *vcpu, int cpu)
 	kvm_arm_set_running_vcpu(vcpu);
 	kvm_vgic_load(vcpu);
 	kvm_timer_vcpu_load(vcpu);
+	kvm_vcpu_load_sysregs(vcpu);
 }
 
 void kvm_arch_vcpu_put(struct kvm_vcpu *vcpu)
 {
+	kvm_vcpu_put_sysregs(vcpu);
 	kvm_timer_vcpu_put(vcpu);
 	kvm_vgic_put(vcpu);
 
@@ -1450,6 +1452,10 @@ static int init_hyp_mode(void)
 			goto out_err;
 		}
 	}
+
+	err = hyp_map_aux_data();
+	if (err)
+		kvm_err("Cannot map host auxilary data: %d\n", err);
 
 	return 0;
 
