@@ -197,8 +197,8 @@ int tcc_drm_fb_helper_ioctl(struct fb_info *info, unsigned int cmd,
 				&chromakey.chromakey_value, &chromakey.chromakey_mask);
 		}
 		break;
-	}
 	#endif
+	}
         mutex_unlock(&fb_helper->lock);
         return ret;
 }
