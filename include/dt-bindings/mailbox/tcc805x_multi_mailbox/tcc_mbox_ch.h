@@ -13,7 +13,8 @@
 #define TCC_CB_MBOX_HSM			(3)
 #define TCC_CB_MBOX_VIOC		(4)
 #define TCC_CB_MBOX_SDR			(5)
-#define TCC_CB_MBOX_MAX			(6)
+#define TCC_CB_MBOX_SCRSHARE    (6)
+#define TCC_CB_MBOX_MAX			(7)
 
 /* MICOM MBOX0 : A72 <-> R5 */
 #define TCC_MICOM_MBOX0_RESERVED	(0)
@@ -52,4 +53,5 @@
 #define TCC_MBOX_SDR_ID			"SDR"		/* for SDR middleware ipc */
 #define TCC_MBOX_POWER_ID		"POWER0"	/* for power event handling */
 #define TCC_MBOX_CAMIPC_ID		"CAMIPC"	/* for RVC status check for T-RVC */
+#define TCC_MBOX_SCRSHARE_ID    "SCRSHR"    /* for screen share */
 #endif

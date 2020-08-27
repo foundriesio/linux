@@ -68,6 +68,9 @@ struct tcc_scrshare_device
 	dev_t devt;
 	const char *name;
 	const char *mbox_name;
+#if defined(CONFIG_ARCH_TCC805X)
+	const char *mbox_id;
+#endif
 	struct mbox_chan *mbox_ch;
 	struct mbox_client cl;
 
@@ -158,7 +161,14 @@ static void tcc_scrshare_send_message(struct tcc_scrshare_device *tcc_scrshare, 
 	if(tcc_scrshare) {
 		int ret;
 		ret = mbox_send_message(tcc_scrshare->mbox_ch, mssg);
+#if defined(CONFIG_ARCH_TCC805X)
+		if(ret < 0 )
+		{
+			pr_err("screen share mbox send error(%d)\n",ret);
+		}
+#else
 		mbox_client_txdone(tcc_scrshare->mbox_ch, ret);
+#endif
 	}
 }
 
@@ -282,8 +292,8 @@ static long tcc_scrshare_ioctl(struct file *filp, unsigned int cmd, unsigned lon
 	struct tcc_scrshare_device *tcc_scrshare = filp->private_data;
 	struct tcc_mbox_data data;
 	long ret = 0;
-
-	if(atomic_read(&tcc_scrshare->status) != SCRSHARE_STS_READY) {
+	
+	if((cmd!=IOCTL_TCC_SCRSHARE_SET_DSTINFO) && (atomic_read(&tcc_scrshare->status) != SCRSHARE_STS_READY)) {
 		pr_err("[ERR][SCREEN SHARE] %s: Not ready to send message status:%d\n", __func__, atomic_read(&tcc_scrshare->status));
 		ret = -100;
 		return ret;
@@ -442,8 +452,13 @@ static struct mbox_chan *tcc_scrshare_request_channel(struct tcc_scrshare_device
 	tcc_scrshare->cl.dev = &tcc_scrshare->pdev->dev;
 	tcc_scrshare->cl.rx_callback = tcc_scrshare_receive_message;
 	tcc_scrshare->cl.tx_done = NULL;
+#if defined(CONFIG_ARCH_TCC805X)
+	tcc_scrshare->cl.tx_block = true;
+	tcc_scrshare->cl.tx_tout = 500;
+#else
 	tcc_scrshare->cl.tx_block = false;
 	tcc_scrshare->cl.tx_tout = 0; /*  doesn't matter here*/
+#endif
 	tcc_scrshare->cl.knows_txdone = false;
 	channel = mbox_request_channel_byname(&tcc_scrshare->cl, name);
 	if(IS_ERR(channel)) {
@@ -499,6 +514,9 @@ static int tcc_scrshare_probe(struct platform_device *pdev)
 
 	of_property_read_string(pdev->dev.of_node, "device-name", &tcc_scrshare->name);
 	of_property_read_string(pdev->dev.of_node, "mbox-names", &tcc_scrshare->mbox_name);
+#if defined(CONFIG_ARCH_TCC805X)
+	of_property_read_string(pdev->dev.of_node, "mbox-id", &tcc_scrshare->mbox_id);
+#endif
 
 	ret = alloc_chrdev_region(&tcc_scrshare->devt, TCC_SCRSHARE_DEV_MINOR,
 			1, tcc_scrshare->name);

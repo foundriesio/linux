@@ -220,6 +220,11 @@
 	status = "okay";
 	mboxes = <&a72_sc_mbox 0>;
 };
+
+&tcc_scrshare0{
+        status = "okay";
+};
+
 &vioc_mgr0 {
         status = "okay";
 };

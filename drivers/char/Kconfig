@@ -701,7 +701,7 @@ config CAM_IPC_MGR
         Choose this option if you want to use cam ipc manager driver
 
 config TCC_SCREEN_SHARE
-	tristate "Telechips Screen Share Driver for TCC803x"
+	tristate "Telechips Screen Share Driver"
 	default n
 	depends on TCC_MULTI_MAILBOX
 	help

@@ -1516,6 +1516,16 @@
 		 mbox-id = TCC_MBOX_FWUG_ID;
 	};
 
+        /* tcc_scrshare for Main */
+        tcc_scrshare0: tcc_scrshare@0 {
+                compatible = "telechips,tcc_scrshare";
+                device-name ="tcc_scrshare_main";
+                mbox-names ="main-scrshare";
+                mboxes = <&cb_mbox TCC_CB_MBOX_SCRSHARE>;
+		mbox-id = TCC_MBOX_SCRSHARE_ID;		
+                status = "disabled";
+        };
+
 	/* vioc_mgr for A72 */
 	vioc_mgr0: vioc_mgr@0 {
 		compatible = "telechips,vioc_mgr";
