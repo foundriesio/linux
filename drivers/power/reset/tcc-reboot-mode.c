@@ -29,7 +29,6 @@ static int tcc_reboot_mode_write(struct reboot_mode_driver *reboot,
 
 	dev_dbg(reboot->dev, "magic=%x\n", magic);
 
-	printk("%s %d @@@@@@@@@@@@ magic = %x \n",__func__,__LINE__,magic);
 #if defined(CONFIG_ARM_PSCI) || defined(CONFIG_ARM64)
 	arm_smccc_smc(TCC_SIP_SET_RESET_REASON, magic, 0, 0,
 			0, 0, 0, 0, &res);
@@ -46,7 +45,9 @@ struct reboot_mode_driver tcc_reboot_mode = {
 
 static int tcc_reboot_mode_probe(struct platform_device *pdev)
 {
+#if !defined(CONFIG_ARM_PSCI) && !defined(CONFIG_ARM64)
 	struct device_node *np = pdev->dev.of_node;
+#endif
 	int ret;
 
 #if !defined(CONFIG_ARM_PSCI) && !defined(CONFIG_ARM64)
@@ -83,4 +84,4 @@ module_platform_driver(tcc_reboot_mode_driver);
 
 MODULE_DESCRIPTION("Telechips reboot mode driver");
 MODULE_AUTHOR("Albert Kim <kimys@telechips.com>");
-MODULE_LICENSE("GPV v2");
+MODULE_LICENSE("GPL v2");
