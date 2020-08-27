@@ -21,7 +21,7 @@
 
 #include "../videosource_common.h"
 #include "../videosource_i2c.h"
-#include "../mipi-csi2/mipi-csi2.h"
+#include "../../tcc-mipi-csi2/tcc-mipi-csi2-reg.h"
 
 //#define CONFIG_MIPI_1_CH_CAMERA
 #define CONFIG_MIPI_OUTPUT_TYPE_LINE_CONCAT

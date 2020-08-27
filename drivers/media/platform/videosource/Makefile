@@ -11,5 +11,4 @@ obj-y += videosource_i2c.o
 obj-y += videosource_if.o
 obj-y += videodecoder/
 obj-y += deserializer/
-obj-y += mipi-csi2/
 

@@ -93,6 +93,7 @@
 		vout-drv0 = &vout_drv0;
 		vout-drv1 = &vout_drv1;
 		wdma-drv0 = &wdma_drv0;
+		mipi-csi2-0 = &mipi_csi2_0;
 		videoinput0 = &videoinput0;
 		videoinput1 = &videoinput1;
 		videoinput2 = &videoinput2;
@@ -2913,23 +2914,18 @@
 			  <0x12050000 0x100 0x12051000 0x100>;
 	};
 
-	mipi_csi2:mipi_csi@123c0000{
-		compatible = "telechips,mipi_csi2";
-
-		reg = <0x123c0000 0x120 0x123c0200 0x5c>;
+	mipi_csi2_0:mipi_csi@123c0000{
+		compatible = "telechips,tcc803x-mipi-csi2";
+		status = "disabled";
+		reg =	<0x123c0000 0x120>,
+			<0x123c0200 0x5c>;
+		reg-names = "csi", "gdb";
 		clocks = <&clk_peri PERI_MIPI_CSI>;
 		clock-frequency = <300000000>;
-		interrupts = <GIC_SPI 124 IRQ_TYPE_LEVEL_HIGH>, 	/* MIPI0 interrupt */
-				   <GIC_SPI 125 IRQ_TYPE_LEVEL_HIGH>;	/* MIPI1 interrupt */
-	 };
 
-/*
-	mipi_generic_data_buffer:mipi_generic_data_buffer@123c0200{
-		compatible = "telechips,mipi_generic_data_buffer";
-		reg = <0x123c0200 0x5c>;
-		clocks = <&clk_peri PERI_MIPI_CSI>;
-	};
-*/
+		interrupts =	<GIC_SPI 124 IRQ_TYPE_LEVEL_HIGH>,// MIPI0 CSIS
+				<GIC_SPI 125 IRQ_TYPE_LEVEL_HIGH>;// MIPI0 Generic
+	 };
 
 	fb_cr: fb_cr@12000000{
 		compatible = "telechips,fb_cr";

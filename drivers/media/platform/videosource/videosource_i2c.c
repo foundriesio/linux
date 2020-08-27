@@ -83,12 +83,10 @@ static struct of_device_id videosource_of_match[] = {
 		.compatible	= "maxim,max9276",
 		.data		= &videosource_max9276,
 	},
-#if 1
 	{
 		.compatible	= "maxim,max96712",
 		.data		= &videosource_max96712,
 	},
-#endif
 	{}
 };
 MODULE_DEVICE_TABLE(of, videosource_of_match);
@@ -117,7 +115,7 @@ int videosource_i2c_probe(struct i2c_client * client, const struct i2c_device_id
 	index = of_alias_get_id(client->dev.of_node, MODULE_NAME);
 
 	// set the specific videosource information
-	vdev = (videosource_t *)of_id->data;
+	memcpy(vdev, (const void *)of_id->data, sizeof(*vdev));
 
 	// set the i2c device
 	vdev->client = client;
