@@ -39,7 +39,7 @@
 #define DRIVER_DATE	"20160107"
 #define DRIVER_MAJOR	1
 #define DRIVER_MINOR	1
-#define DRIVER_BUILD 	0
+#define DRIVER_PATCH 	2
 
 static struct device *tcc_drm_get_dma_device(void);
 
@@ -147,7 +147,7 @@ static const struct drm_ioctl_desc tcc_ioctls[] = {
 	DRM_IOCTL_DEF_DRV(TCC_GEM_CPU_PREP, tcc_gem_cpu_prep_ioctl,
 			DRM_AUTH | DRM_RENDER_ALLOW),
 	DRM_IOCTL_DEF_DRV(TCC_GEM_CPU_FINI, tcc_gem_cpu_fini_ioctl,
-			DRM_AUTH | DRM_RENDER_ALLOW),			
+			DRM_AUTH | DRM_RENDER_ALLOW),
 };
 
 static const struct file_operations tcc_drm_driver_fops = {
@@ -187,7 +187,7 @@ static struct drm_driver tcc_drm_driver = {
 	.date	= DRIVER_DATE,
 	.major	= DRIVER_MAJOR,
 	.minor	= DRIVER_MINOR,
-	.patchlevel = DRIVER_BUILD,
+	.patchlevel = DRIVER_PATCH,
 };
 
 #ifdef CONFIG_PM_SLEEP

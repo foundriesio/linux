@@ -75,6 +75,10 @@ struct lcd_context {
 	int 				keep_logo;
 
 	struct tcc_hw_device 		hw_data;
+
+	#if defined(CONFIG_DRM_TCC_CTRL_CHROMAKEY)
+	struct mutex chromakey_mutex;
+	#endif
 };
 
 static const struct of_device_id lcd_driver_dt_match[] = {
@@ -114,6 +118,7 @@ static void lcd_disable_vblank(struct tcc_drm_crtc *crtc)
 		vioc_intr_disable(ctx->hw_data.display_device.irq_num, get_vioc_index(ctx->hw_data.display_device.blk_num), VIOC_DISP_INTR_DISPLAY);
 }
 
+#if defined(CONFIG_TCCDRM_USES_WAIT_VBLANK)
 static void lcd_wait_for_vblank(struct tcc_drm_crtc *crtc)
 {
 	struct lcd_context *ctx = crtc->ctx;
@@ -131,6 +136,7 @@ static void lcd_wait_for_vblank(struct tcc_drm_crtc *crtc)
 			DRM_DEBUG_KMS("vblank wait timed out.\n");
 	}
 }
+#endif
 
 static void lcd_enable_video_output(struct lcd_context *ctx, unsigned int win,
 					bool enable)
@@ -201,11 +207,6 @@ static int lcd_atomic_check(struct tcc_drm_crtc *crtc,
 	}
 
 	return 0;
-}
-
-static void lcd_commit(struct tcc_drm_crtc *crtc)
-{
-	/* Nothing to do */
 }
 
 static void lcd_win_set_pixfmt(struct lcd_context *ctx, unsigned int win,
@@ -309,8 +310,6 @@ static void lcd_update_plane(struct tcc_drm_crtc *crtc,
 				__func__, __LINE__, win);
 			break;
 		}
-		VIOC_WMIX_SetPosition(pWMIX, win, state->crtc.x, state->crtc.y);
-
 		/* Using the pixel alpha */
 		VIOC_RDMA_SetImageAlphaSelect(pRDMA, 1);
 		VIOC_RDMA_SetImageAlphaEnable(pRDMA, 1);
@@ -332,8 +331,14 @@ static void lcd_update_plane(struct tcc_drm_crtc *crtc,
 		lcd_win_set_pixfmt(ctx, win, fb->format->format, state->src.w);
 
 		lcd_enable_video_output(ctx, win, true);
-
+		#if defined(CONFIG_DRM_TCC_CTRL_CHROMAKEY)
+		mutex_lock(&ctx->chromakey_mutex);
+		#endif
+		VIOC_WMIX_SetPosition(pWMIX, win, state->crtc.x, state->crtc.y);
 		VIOC_WMIX_SetUpdate(pWMIX);
+		#if defined(CONFIG_DRM_TCC_CTRL_CHROMAKEY)
+		mutex_unlock(&ctx->chromakey_mutex);
+		#endif
 	} while(0);
 }
 
@@ -397,6 +402,46 @@ static void lcd_te_handler(struct tcc_drm_crtc *crtc)
 		drm_crtc_handle_vblank(&ctx->crtc->base);
 }
 
+#if defined(CONFIG_DRM_TCC_CTRL_CHROMAKEY)
+int lcd_set_chromakey(struct tcc_drm_crtc *crtc,
+	unsigned int chromakey_layer,
+	unsigned int chromakey_enable,
+	struct drm_chromakey_t *value, struct drm_chromakey_t *mask)
+{
+	struct lcd_context *ctx = crtc->ctx;
+	mutex_lock(&ctx->chromakey_mutex);
+	if(crtc->enabled) {
+		VIOC_WMIX_SetChromaKey(ctx->hw_data.wmixer.virt_addr, chromakey_layer,
+			chromakey_enable,
+			value->red, value->green, value->blue,
+			mask->red, mask->green, mask->blue);
+		VIOC_WMIX_SetUpdate(ctx->hw_data.wmixer.virt_addr);
+	}
+	mutex_unlock(&ctx->chromakey_mutex);
+	return 0;
+}
+
+int lcd_get_chromakey(struct tcc_drm_crtc *crtc,
+	unsigned int chromakey_layer,
+	unsigned int *chromakey_enable,
+	struct drm_chromakey_t *value, struct drm_chromakey_t *mask)
+{
+	int ret = -1;
+	struct lcd_context *ctx = crtc->ctx;
+	mutex_lock(&ctx->chromakey_mutex);
+	if(crtc->enabled) {
+		VIOC_WMIX_GetChromaKey(ctx->hw_data.wmixer.virt_addr, chromakey_layer,
+			chromakey_enable, &value->red,
+			&value->green, &value->blue,
+			&mask->red, &mask->green,
+			&mask->blue);
+		ret = 0;
+	}
+	mutex_unlock(&ctx->chromakey_mutex);
+	return ret;
+}
+#endif
+
 static const struct tcc_drm_crtc_ops lcd_crtc_ops = {
 	.enable = lcd_enable, 	/* drm_crtc_helper_funcs->atomic_enable */
 	.disable = lcd_disable, /* drm_crtc_helper_funcs->atomic_disable */
@@ -408,6 +453,10 @@ static const struct tcc_drm_crtc_ops lcd_crtc_ops = {
 	.atomic_flush = lcd_atomic_flush,
 	.atomic_check = lcd_atomic_check,
 	.te_handler = lcd_te_handler,
+	#if defined(CONFIG_DRM_TCC_CTRL_CHROMAKEY)
+	.set_chromakey = lcd_set_chromakey,
+	.get_chromakey = lcd_get_chromakey,
+	#endif
 };
 
 static irqreturn_t lcd_irq_handler(int irq, void *dev_id)
@@ -588,6 +637,10 @@ static int lcd_probe(struct platform_device *pdev)
 
 	#if defined(CONFIG_DRM_TCC_KEEP_LOGO)
 	ctx->keep_logo = 1;
+	#endif
+
+	#if defined(CONFIG_DRM_TCC_CTRL_CHROMAKEY)
+	mutex_init(&ctx->chromakey_mutex);
 	#endif
 
 	return ret;

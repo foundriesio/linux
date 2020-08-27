@@ -9,6 +9,13 @@ config DRM_TCC
 
 if DRM_TCC
 
+config DRM_TCC_CTRL_CHROMAKEY
+  bool "DRM controls chromakey on planes"
+  depends on ARCH_TCC805X
+  default n
+  help
+    If this config is select then TCCDRM can controls chroma-key of WMIX.
+
 comment "CRTCs"
 
 config DRM_TCC_LCD

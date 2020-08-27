@@ -119,6 +119,23 @@ struct tcc_drm_plane_config {
 	volatile void __iomem *virt_addr;
 };
 
+
+#if defined(CONFIG_DRM_TCC_CTRL_CHROMAKEY)
+struct drm_chromakey_t {
+	unsigned int red;
+	unsigned int green;
+	unsigned int blue;
+};
+
+struct drm_ioctl_chromakey_t {
+	unsigned int crtc_index;
+	unsigned int chromakey_layer;
+	unsigned int chromakey_enable;
+	struct drm_chromakey_t chromakey_value;
+	struct drm_chromakey_t chromakey_mask;
+};
+#endif
+
 /*
  * TCC drm crtc ops
  *
@@ -153,6 +170,18 @@ struct tcc_drm_crtc_ops {
 			      struct tcc_drm_plane *plane);
 	void (*atomic_flush)(struct tcc_drm_crtc *crtc);
 	void (*te_handler)(struct tcc_drm_crtc *crtc);
+	#if defined(CONFIG_DRM_TCC_CTRL_CHROMAKEY)
+	int (*get_chromakey)(struct tcc_drm_crtc *crtc,
+		unsigned int layer,
+		unsigned int *enable,
+		struct drm_chromakey_t *value,
+		struct drm_chromakey_t *mask);
+	int (*set_chromakey)(struct tcc_drm_crtc *crtc,
+		unsigned int layer,
+		unsigned int enable,
+		struct drm_chromakey_t *value,
+		struct drm_chromakey_t *mask);
+	#endif
 };
 
 struct tcc_drm_clk {
