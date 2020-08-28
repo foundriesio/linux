@@ -551,19 +551,27 @@
 			no-map;
 		};
 
-		pmap_rearcamera4: rearcamera4 {
+		pmap_rearcamera1: rearcamera1 {
 			compatible = "telechips,pmap";
-			telechips,pmap-name = "rearcamera4";
+			telechips,pmap-name = "rearcamera1";
 			alloc-ranges = <0x0 EARLY_REARCAM_BASE 0x0 EARLY_REARCAM_SIZE>;
-			size = <0x0 PMAP_REARCAMERA4_SIZE>;
+			size = <0x0 PMAP_REARCAMERA1_SIZE>;
 			no-map;
 		};
 
-		pmap_rearcamera5: rearcamera5 {
+		pmap_rearcamera2: rearcamera2 {
 			compatible = "telechips,pmap";
-			telechips,pmap-name = "rearcamera5";
+			telechips,pmap-name = "rearcamera2";
 			alloc-ranges = <0x0 EARLY_REARCAM_BASE 0x0 EARLY_REARCAM_SIZE>;
-			size = <0x0 PMAP_REARCAMERA5_SIZE>;
+			size = <0x0 PMAP_REARCAMERA2_SIZE>;
+			no-map;
+		};
+
+		pmap_rearcamera3: rearcamera3 {
+			compatible = "telechips,pmap";
+			telechips,pmap-name = "rearcamera3";
+			alloc-ranges = <0x0 EARLY_REARCAM_BASE 0x0 EARLY_REARCAM_SIZE>;
+			size = <0x0 PMAP_REARCAMERA3_SIZE>;
 			no-map;
 		};
 

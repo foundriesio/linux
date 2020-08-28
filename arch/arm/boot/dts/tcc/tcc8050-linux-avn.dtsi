@@ -21,6 +21,7 @@
 		videosource1 = &videosource1; /* max9286 */
 		videosource2 = &videosource2; /* max9276 */
 		//videosource3 = &videosource3; /* max96712 */
+		//videosource4 = &videosource4; /* max96712 */
 	};
 
 	pcie@11800000 {
@@ -270,6 +271,23 @@
 		};
 
 	};
+#if 0
+	i2c@16360000 {
+		status = "okay";
+		port-mux = <13>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&i2c13_bus>;
+
+		videosource4: deserializer_max96712 {
+			compatible	= "maxim,max96712";
+			cifport		= <9>;
+			pwd-gpios	= <&gpmb 21 1>;
+			intb-gpios	= <&gpg 6 1>;
+			reg		= <0x29>;	// 0x52 >> 1
+			mipi-csi2-idx	= <1>;
+		};
+	};
+#endif
 
 	i2c@16370000 {
 		status = "okay";
@@ -376,16 +394,27 @@
 
 	videoinput@0 {
 		status = "okay";
-		videosource	= <&videosource0>;
-	};
-
-	videoinput@4 {
-		status = "okay";
+		cifport		= <&cifport		5>;
 		videosource	= <&videosource1>;
 	};
 
-	videoinput@5 {
+	videoinput@1 {
 		status = "okay";
+		cifport		= <&cifport		6>;
+		videosource	= <&videosource1>;
+	};
+
+	videoinput@2 {
+		status = "okay";
+		cifport		= <&cifport		7>;
+//		cifport		= <&cifport		9>;
+		videosource	= <&videosource1>;
+	};
+
+	videoinput@3 {
+		status = "okay";
+		cifport		= <&cifport		8>;
+//		cifport		= <&cifport		10>;
 		videosource	= <&videosource1>;
 	};
 
