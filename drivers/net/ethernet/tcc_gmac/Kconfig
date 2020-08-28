@@ -31,6 +31,14 @@ config TCC_GMAC_PTP
     depends on TCC_GMAC
     default n
 
+config TCC_GMAC_JUMBO_PACKET
+    bool "Support Jumbo Packet"
+	help
+	Support Jumbo Packet. MTU is 9000 byte and max frame length is 9018 byte.
+    depends on TCC_GMAC
+    default n
+   
+
 config TCC8990_MPW2_SOCKET
 	bool "USE TCC8990 MPW2 SOCKET TYPE BOARD."
     depends on TCC_GMAC

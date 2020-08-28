@@ -1155,7 +1155,11 @@ static int tcc_gmac_get_rx_frame_len(struct dma_desc *p)
 static void tcc_gmac_core_init(void __iomem *ioaddr)
 {
 	u32 value = readl(ioaddr + GMAC_CONTROL);
+#ifdef CONFIG_TCC_GMAC_JUMBO_PACKET
+	value |= (GMAC_CORE_INIT | GMAC_CONTROL_JE);
+#else
 	value |= GMAC_CORE_INIT;
+#endif
 	writel(value, ioaddr + GMAC_CONTROL);
 
 	/* Freeze MMC counters */
