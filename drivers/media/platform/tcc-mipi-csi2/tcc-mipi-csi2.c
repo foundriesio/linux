@@ -690,8 +690,8 @@ static int tcc_mipi_csi2_set_interrupt(struct tcc_mipi_csi2_state * state,
 		 * unmask interrupt
 		 */
 		MIPI_CSIS_Set_CSIS_Interrupt_Mask(state, 0, \
-			CIM_MSK_ERR_SOT_HS_MASK | /*CIM_MSK_ERR_LOST_FS_MASK | \
-			CIM_MSK_ERR_LOST_FE_MASK |*/ CIM_MSK_ERR_OVER_MASK | \
+			CIM_MSK_ERR_SOT_HS_MASK | CIM_MSK_ERR_LOST_FS_MASK | \
+			CIM_MSK_ERR_LOST_FE_MASK | CIM_MSK_ERR_OVER_MASK | \
 			CIM_MSK_ERR_WRONG_CFG_MASK | CIM_MSK_ERR_ECC_MASK | \
 			CIM_MSK_ERR_CRC_MASK | CIM_MSK_ERR_ID_MASK, \
 			0);
