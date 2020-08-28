@@ -1799,15 +1799,6 @@ int request_threaded_irq(unsigned int irq, irq_handler_t handler,
 
 	if(tcc_is_exti(irq)){
 
-		//falling edge flag is detected if only irqflags includes IRQ_TYPE_EDGE_FALLING
-		//but IRQ_TYPE_EDGE_RISING.
-		flag_detect = (!!(irqflags & IRQ_TYPE_EDGE_FALLING)&&!!!(irqflags & IRQ_TYPE_EDGE_RISING));
-		if(flag_detect)
-		{
-			irqflags = (irqflags & ~IRQ_TYPE_EDGE_FALLING)|IRQ_TYPE_EDGE_RISING;
-			irq = tcc_irq_get_reverse(irq);
-		}
-
 		//both edge flag is detected if only irqflags includes both IRQ_TYPE_EDGE_FALLING
 		//and IRQ_TYPE_EDGE_RISING.
 		flag_detect = (!!(irqflags & IRQ_TYPE_EDGE_FALLING)&&!!(irqflags & IRQ_TYPE_EDGE_RISING));

@@ -325,7 +325,7 @@ static int gic_set_type(struct irq_data *d, unsigned int type)
 		return -EINVAL;
 
 #ifdef CONFIG_ARCH_TCC
-	if(!tcc_is_exti(d->irq)){
+	if(!tcc_is_exti(d->irq)||!(type == IRQ_TYPE_EDGE_RISING)){
 		if (d->hwirq >= 32) {
 			if (tcc_irq_set_polarity(d, type) != 0)
 				return -EINVAL;
