@@ -41,6 +41,12 @@
 
 //global
 
+#define GPIO_INT_EDGE_RISING	0
+#define GPIO_INT_EDGE_FALLING	1
+#define GPIO_INT_EDGE_BOTH	2
+#define GPIO_INT_LEVEL_HIGH	3
+#define GPIO_INT_LEVEL_LOW	4
+
 //#define DEBUG_GPIO
 
 #ifdef DEBUG_GPIO
@@ -52,6 +58,7 @@
 #endif
 
 
+extern int tcc_irq_get_reverse(int irq);
 extern int tcc_gpio_config(unsigned, unsigned);
 
 struct gpio_data {
@@ -60,6 +67,7 @@ struct gpio_data {
 	int value;
 	int irq_enable;
 	int irq;
+	unsigned int irq_type;
 };
 
 struct gpio_sample_platform_data {
@@ -244,6 +252,7 @@ gpio_sample_get_devtree_pdata(struct device *dev)
 
 
 	gdata->desc = of_get_property(node, "label", NULL); //get label from device tree
+	gdata->irq_type =  be32_to_cpup(of_get_property(node, "irq-type", NULL));
 
 	return pdata;
 }
@@ -289,7 +298,8 @@ static int gpio_sample_probe(struct platform_device *pdev)
 	//struct gpio_struct *gpio_desc;
 	unsigned long irqflags;
 	irq_handler_t isr;
-	int irq;
+	int irq=0, rev_irq=0;
+	int irq_type=0;
 	int error;
 
 	if(!pdata) {
@@ -306,6 +316,9 @@ static int gpio_sample_probe(struct platform_device *pdev)
 	}
 
 	pdata->gdata->irq_enable=0;
+	irq_type = pdata->gdata->irq_type;
+
+	debug_gpio("irq type : %d\n", irq_type);
 
 	error = gpio_request(pdata->gdata->gpio, "sample_gpio"); 
 
@@ -321,17 +334,81 @@ static int gpio_sample_probe(struct platform_device *pdev)
 	if(irq < 0)
 		goto err_remove_group;
 
-	pdata->gdata->irq=irq;
+	if(irq_type == GPIO_INT_EDGE_RISING)
+	{
+		irq_set_status_flags(irq, IRQ_NOAUTOEN);
 
-	//irqflags = IRQ_TYPE_EDGE_RISING; // rising edge
-	//irqflags = IRQ_TYPE_EDGE_FALLING; // falling edge
-	irqflags = IRQ_TYPE_EDGE_BOTH; // both edge
+		pdata->gdata->irq=irq;
 
-	error = request_any_context_irq(irq, isr, irqflags, "sample_gpio_interrupt", dev); // 1st : irq number, 2nd : interrupt service routine, 3rd : irq type(falling, rising and both), 4th : name, 5th : parameter to isr
+		irqflags = IRQ_TYPE_EDGE_RISING; // rising edge
+
+		error = request_any_context_irq(irq, isr, irqflags, "sample_gpio_interrupt", dev); // 1st : irq number, 2nd : interrupt service routine, 3rd : irq type(falling, rising and both), 4th : name, 5th : parameter to isr
+
+		enable_irq(irq);
+	}
+	else if(irq_type == GPIO_INT_EDGE_FALLING)
+	{
+		irq_set_status_flags(irq, IRQ_NOAUTOEN);
+
+		pdata->gdata->irq=irq;
+
+		irqflags = IRQ_TYPE_EDGE_FALLING; // falling edge
+
+		error = request_any_context_irq(irq, isr, irqflags, "sample_gpio_interrupt", dev); // 1st : irq number, 2nd : interrupt service routine, 3rd : irq type(falling, rising and both), 4th : name, 5th : parameter to isr
+
+		enable_irq(irq);
+	}
+	else if(irq_type == GPIO_INT_EDGE_BOTH)
+	{
+		rev_irq = tcc_irq_get_reverse(irq);
+
+		irq_set_status_flags(irq, IRQ_NOAUTOEN);
+		irq_set_status_flags(rev_irq, IRQ_NOAUTOEN);
+
+		pdata->gdata->irq=irq;
+
+		irqflags = IRQ_TYPE_EDGE_BOTH; // both edge
+
+		error = request_any_context_irq(irq, isr, irqflags, "sample_gpio_interrupt", dev); // 1st : irq number, 2nd : interrupt service routine, 3rd : irq type(falling, rising and both), 4th : name, 5th : parameter to isr
+
+
+		enable_irq(irq);
+		enable_irq(rev_irq);
+	}
+	else if(irq_type == GPIO_INT_LEVEL_HIGH)
+	{
+		irq_set_status_flags(irq, IRQ_NOAUTOEN);
+
+		pdata->gdata->irq=irq;
+
+		irqflags = IRQ_TYPE_LEVEL_HIGH; // level high
+
+		error = devm_request_irq(dev, irq, isr, irqflags, "sample_gpio_interrupt", dev);
+
+		enable_irq(irq);
+	}
+	else if(irq_type == GPIO_INT_LEVEL_LOW)
+	{
+		irq_set_status_flags(irq, IRQ_NOAUTOEN);
+
+		pdata->gdata->irq=irq;
+
+		irqflags = IRQ_TYPE_LEVEL_LOW; // level low
+
+		error = devm_request_irq(dev, irq, isr, irqflags, "sample_gpio_interrupt", dev);
+
+		enable_irq(irq);
+	}
+	else
+	{
+		dev_err(dev, "interrupt type is not defined\n");
+		return -EINVAL;
+	}
 
         if (error) {
                 dev_err(dev, "Unable requests irq, error: %d\n",
                                 error);
+		free_irq(irq, dev);
                 goto err_remove_group;
         }
 

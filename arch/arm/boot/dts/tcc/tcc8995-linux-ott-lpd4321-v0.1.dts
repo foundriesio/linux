@@ -146,7 +146,11 @@
         tcc-gpio-sample {
                 compatible = "gpio-sample";
                 leble = "TCC GPIO";
-                gpios = <&gpb 17 0>;
+                /*EDGE_RISING : 0, EDGE_FALLING : 1, EDGE_BOTH : 2,
+                LEVEL_HIGH : 3, LEVEL_LOW : 4*/
+                irq-type = <2>;
+                gpios = <&gpa 1 0>;
         };
+
 
 };
