@@ -3245,10 +3245,8 @@ static int tccfb_probe(struct platform_device *pdev)
         }
 
 	tca_fb_init(info);
-
-#if !defined(CONFIG_DRM_TCC)
 	tca_main_interrupt_reg(true, info);
-#endif
+
 #ifdef CONFIG_ANDROID
 	#ifdef CONFIG_PLATFORM_STB
 	#if !defined(CONFIG_LOGO_PRESERVE_WITHOUT_FB_INIT)

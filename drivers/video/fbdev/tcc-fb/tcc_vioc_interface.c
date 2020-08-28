@@ -873,6 +873,7 @@ irqreturn_t tca_main_display_handler(int irq, void *dev_id)
 
 static void _tca_vioc_intr_onoff(char on, int irq, char lcdc_num)
 {
+#if defined(CONFIG_FB_TCC_USE_VSYNC_INTERRUPT)
 #if defined(CONFIG_VIOC_DOLBY_VISION_EDR)
 	if(VIOC_CONFIG_DV_GET_EDR_PATH() && lcdc_num == 0)
 	{
@@ -889,13 +890,14 @@ static void _tca_vioc_intr_onoff(char on, int irq, char lcdc_num)
 		else
 			vioc_intr_disable(irq, lcdc_num, VIOC_DISP_INTR_DISPLAY);
 	}
+#endif
 }
 
 int tca_main_interrupt_reg(char SetClear, struct tccfb_info *info)
 {
 	int ret = 0;
 //	pr_info("[INF][VIOC_I] %s SetClear:%d lcdc_num:%d %d  INT_VIOC_DEV1:%d \n",__func__, SetClear, info->pdata.lcdc_number, info->pdata.Mdp_data.ddc_info.irq_num, INT_VIOC_DEV1);
-
+	#if defined(CONFIG_FB_TCC_USE_VSYNC_INTERRUPT)
 	if(SetClear)	{
 		vioc_intr_clear(info->pdata.lcdc_number, 0x39);
 
@@ -918,6 +920,7 @@ int tca_main_interrupt_reg(char SetClear, struct tccfb_info *info)
 
 		free_irq( info->pdata.Mdp_data.ddc_info.irq_num, info);
 	}
+	#endif
 
 	return ret;
 }

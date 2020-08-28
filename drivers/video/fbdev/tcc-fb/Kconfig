@@ -134,7 +134,7 @@ config TCC_OUTPUT_COLOR_SPACE_YUV
 
 config FB_TCC_USE_VSYNC_INTERRUPT
 	bool "Use VSYNC interrupt"
-	depends on FB_TCC && FB_TCC
+	depends on FB_TCC && FB_TCC && !DRM_TCC
 
 config HWCOMPOSER_OVER_1_1_FOR_MID
 	bool "Support External display device over HWC v1.1 on MID"
