@@ -701,6 +701,8 @@ restart:
 		if (error)
 			gfs2_io_error(sdp);
 	}
+	WARN_ON(gfs2_withdrawing(sdp));
+
 	/*  At this point, we're through modifying the disk  */
 
 	/*  Release stuff  */
