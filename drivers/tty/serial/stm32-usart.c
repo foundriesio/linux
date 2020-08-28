@@ -324,6 +324,8 @@ static void stm32_usart_push_buffer_dma(struct uart_port *port,
 	dma_start = stm32_port->rx_buf + (RX_BUF_L - stm32_port->last_res);
 	dma_count = tty_insert_flip_string(ttyport, dma_start, dma_size);
 	port->icount.rx += dma_count;
+	if (dma_count != dma_size)
+		port->icount.buf_overrun++;
 	stm32_port->last_res -= dma_count;
 	if (stm32_port->last_res == 0)
 		stm32_port->last_res = RX_BUF_L;
