@@ -605,7 +605,12 @@ static void tcc_gmac_dma_operation_mode(struct tcc_gmac_priv *priv, unsigned int
 		priv->tx_coe = HW_CSUM;
 	} else {
 		/* Checksum computation is performed in software. */
+#ifdef CONFIG_TCC_GMAC_JUMBO_PACKET
+		/* Store and Forward mode disabled for Jumbo Packet.*/
+		priv->hw->dma[ch]->dma_mode((void __iomem*)priv->dev->base_addr, tc, tc);
+#else
 		priv->hw->dma[ch]->dma_mode((void __iomem*)priv->dev->base_addr, tc, SF_DMA_MODE);
+#endif
 		priv->tx_coe = NO_HW_CSUM;
 	}
 	tx_coe = priv->tx_coe;
@@ -2614,6 +2619,10 @@ static int tcc_gmac_probe(struct platform_device *pdev)
 		pr_err("%s: ERROR %i registering the device\n", __func__, ret);
 		return -ENODEV;
 	}
+
+#ifdef CONFIG_TCC_GMAC_JUMBO_PACKET
+	dev->max_mtu = JUMBO_LEN;
+#endif
 
 #if 0
 	err = get_board_mac(mac_addr);
