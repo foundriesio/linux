@@ -996,7 +996,8 @@ PVRSRV_ERROR DCDevicesEnumerate(CONNECTION_DATA *psConnection,
 	{
 		if (psTmp->psDevNode == psDevNode)
 		{
-			paui32DeviceIndex[ui32DeviceCount++] = psTmp->ui32Index;
+			paui32DeviceIndex[ui32DeviceArraySize-1-ui32DeviceCount] = psTmp->ui32Index;
+			ui32DeviceCount++;
 		}
 	}
 
