@@ -607,6 +607,39 @@ static int tcc_scrshare_remove(struct platform_device *pdev)
 	return 0;
 }
 
+#ifdef CONFIG_PM
+static int tcc_scrshare_suspend(struct platform_device *pdev, pm_message_t state)
+{
+    int ret = 0;
+	struct tcc_scrshare_device *tcc_scrshare = platform_get_drvdata(pdev);
+
+    /* unregister mailbox client */
+    if(tcc_scrshare->mbox_ch != NULL)
+    {
+    	mbox_free_channel(tcc_scrshare->mbox_ch);
+        tcc_scrshare->mbox_ch = NULL;
+	}
+
+    return ret;
+}
+
+static int tcc_scrshare_resume(struct platform_device *pdev)
+{
+	int ret = 0;
+	struct tcc_scrshare_device *tcc_scrshare = platform_get_drvdata(pdev);
+
+    /* register mailbox client */
+    tcc_scrshare->mbox_ch = tcc_scrshare_request_channel(tcc_scrshare, tcc_scrshare->mbox_name);
+
+    if(IS_ERR(tcc_scrshare->mbox_ch)) {
+    	ret = PTR_ERR(tcc_scrshare->mbox_ch);
+        pr_err("[ERR][SCREEN SHARE] %s: Fail tcc_scrshare_request_channel (%d)\n", __func__, ret);
+    }
+
+    return ret;
+}
+#endif
+
 #ifdef CONFIG_OF
 static const struct of_device_id tcc_scrshare_of_match[] = {
 	{.compatible = "telechips,tcc_scrshare", },
@@ -625,6 +658,10 @@ static struct platform_driver tcc_scrshare = {
 		.of_match_table = tcc_scrshare_of_match,
 #endif
 	},
+#ifdef CONFIG_PM
+	.suspend = tcc_scrshare_suspend,
+	.resume = tcc_scrshare_resume,
+#endif
 };
 
 static int __init tcc_scrshare_init(void)
