@@ -1463,9 +1463,11 @@ static int tccfb_ioctl(struct fb_info *info, unsigned int cmd,unsigned long arg)
 				return -EFAULT;
 			}
 
+			#if !defined(CONFIG_BUILTIN_2ND_DISPLAY_ON_1ST_DISPLAY)
 			if(!pdp_data->FbPowerState) {
 				return 0;
 			}
+			#endif
 
 			memset(&var, 0, sizeof(struct fb_var_screeninfo));
 			var.xres = sc_info.width;
@@ -2992,6 +2994,16 @@ static int tcc_dp_dt_parse_data(struct tccfb_info *info)
 
 		// Sub displayblock
 		tcc_vioc_display_dt_parse(extend_np, &info->pdata.Sdp_data);
+
+		#if defined(CONFIG_BUILTIN_2ND_DISPLAY_ON_1ST_DISPLAY)
+		memcpy(&info->pdata.Sdp_data.ddc_info,
+			&info->pdata.Mdp_data.ddc_info, sizeof(info->pdata.Mdp_data.ddc_info));
+		info->pdata.Sdp_data.FbPowerState = 0;
+		memcpy(&info->pdata.Sdp_data.wmixer_info,
+			&info->pdata.Mdp_data.wmixer_info, sizeof(info->pdata.Mdp_data.wmixer_info));
+		memcpy(&info->pdata.Sdp_data.rdma_info[RDMA_FB],
+			&info->pdata.Mdp_data.rdma_info[1], sizeof(info->pdata.Mdp_data.rdma_info[0]));
+		#endif
 
 		// Set rdma arbitor resgister and disable disp emergency flag according to SOC guide for TCC896x
 		rdma_arbitor_np = of_parse_phandle(info->dev->of_node, "telechips,rdma_arbitor",0);

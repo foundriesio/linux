@@ -38,6 +38,22 @@ config FB1_SUPPORT
 	---help---
 		Framebuffer 1 driver for Telechips TCC series.
 
+config BUILTIN_2ND_DISPLAY_ON_1ST_DISPLAY
+	bool "Support demo that shows built-in 2nd display output on to 1st display output"
+	default n
+	depends on FB_VIOC && (ARCH_TCC803X) && ANDROID && PLATFORM_AVN
+	help
+		If this config is selected then FB driver can supports demo
+		that shows built-in 2nd display output on to 1st display
+		output. If this config is selected the FB driver copys
+		rdma_info[RDMA_FB+1] on 1st display to rdma_info[RDMA_FB]
+		on 2nd display.
+		Therefore, The FB driver shows 2nd display image
+		to rdma_info[RDMA_FB+1] of 1st display when the
+		XXX_FBIOPUT_VSCREENINFO except the TCC_LCD_FBIOPUT_VSCREENINFO
+		is called.
+		NOTE: This should only be used in certain demos.
+
 config FB_NEW
 	bool "Telechips New Frame buffer support"
 	depends on FB && ARCH_TCC
