@@ -2735,9 +2735,7 @@ out_free1:
 			r = PTR_ERR(kvm_regs);
 			goto out;
 		}
-		vcpu_load(vcpu);
 		r = kvm_arch_vcpu_ioctl_set_regs(vcpu, kvm_regs);
-		vcpu_put(vcpu);
 		kfree(kvm_regs);
 		break;
 	}
@@ -2746,9 +2744,7 @@ out_free1:
 		r = -ENOMEM;
 		if (!kvm_sregs)
 			goto out;
-		vcpu_load(vcpu);
 		r = kvm_arch_vcpu_ioctl_get_sregs(vcpu, kvm_sregs);
-		vcpu_put(vcpu);
 		if (r)
 			goto out;
 		r = -EFAULT;
