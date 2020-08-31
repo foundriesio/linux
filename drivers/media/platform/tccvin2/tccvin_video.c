@@ -934,6 +934,14 @@ static void tccvin_work_thread(struct work_struct * data) {
 	}
 	spin_unlock_irqrestore(&queue->irqlock, flags);
 
+	/*
+	 * check whether the driver has only one buffer or not
+	 */
+	if (list_is_last(&(buf->queue), &queue->irqqueue)) {
+		dlog("driver has only one buffer!! \n");
+		goto update_wdma;
+	}
+
 	/* Store the payload FID bit and return immediately when the buffer is
 	 * NULL.
 	 */
@@ -956,6 +964,7 @@ static void tccvin_work_thread(struct work_struct * data) {
 
 	buf = tccvin_queue_next_buffer(&stream->queue, buf);	// get a next buffer
 
+update_wdma:
 	mutex_lock(&cif->lock);
 
 	if (buf != NULL) {
