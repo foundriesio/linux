@@ -120,7 +120,7 @@ static void tcc_pm_fw_event_listener(struct mbox_client *client, void *message)
 {
 	struct tcc_mbox_data *msg = (struct tcc_mbox_data *) message;
 	unsigned int message_type = 0;
-	char env[16]; /* "PM_MSG_TYPE=___\0", where ___ is decimal in 0 ~ 255 */
+	char env[13]; /* "PM_EVENT=___\0", where ___ is decimal in 0 ~ 255 */
 	char *envp[2] = {env, NULL};
 	int ret;
 
@@ -128,7 +128,7 @@ static void tcc_pm_fw_event_listener(struct mbox_client *client, void *message)
 		return;
 	}
 
-	message_type = (msg->cmd[0] >> 24U) & 0xFFU;
+	message_type = msg->cmd[0] & 0xFFU;
 
 	sprintf(env, "PM_EVENT=%u", message_type);
 
