@@ -12,9 +12,9 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 
 --- a/include/linux/irqflags.h
 +++ b/include/linux/irqflags.h
-@@ -70,14 +70,6 @@ do {						\
+@@ -71,14 +71,6 @@ do {						\
  do {						\
- 	this_cpu_dec(hardirq_context);		\
+ 	__this_cpu_dec(hardirq_context);	\
  } while (0)
 -# define lockdep_softirq_enter()		\
 -do {						\
@@ -27,7 +27,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  
  # define lockdep_hrtimer_enter(__hrtimer)		\
  ({							\
-@@ -139,6 +131,21 @@ do {						\
+@@ -140,6 +132,21 @@ do {						\
  # define lockdep_irq_work_exit(__work)		do { } while (0)
  #endif
  

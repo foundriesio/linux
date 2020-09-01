@@ -208,7 +208,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  	if ((work_flags & IO_WQ_WORK_CONCURRENT) ||
  	    !atomic_read(&acct->nr_running))
-@@ -933,14 +933,14 @@ static void io_wqe_cancel_pending_work(s
+@@ -951,13 +951,13 @@ static void io_wqe_cancel_pending_work(s
  	unsigned long flags;
  
  retry:
@@ -218,14 +218,13 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  		work = container_of(node, struct io_wq_work, list);
  		if (!match->fn(work, match->data))
  			continue;
- 
- 		wq_list_del(&wqe->work_list, node, prev);
+ 		io_wqe_remove_pending(wqe, work, prev);
 -		spin_unlock_irqrestore(&wqe->lock, flags);
 +		raw_spin_unlock_irqrestore(&wqe->lock, flags);
  		io_run_cancel(work, wqe);
  		match->nr_pending++;
  		if (!match->cancel_all)
-@@ -949,7 +949,7 @@ static void io_wqe_cancel_pending_work(s
+@@ -966,7 +966,7 @@ static void io_wqe_cancel_pending_work(s
  		/* not safe to continue after unlock */
  		goto retry;
  	}
@@ -234,7 +233,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  }
  
  static void io_wqe_cancel_running_work(struct io_wqe *wqe,
-@@ -1057,7 +1057,7 @@ struct io_wq *io_wq_create(unsigned boun
+@@ -1074,7 +1074,7 @@ struct io_wq *io_wq_create(unsigned boun
  		}
  		atomic_set(&wqe->acct[IO_WQ_ACCT_UNBOUND].nr_running, 0);
  		wqe->wq = wq;
