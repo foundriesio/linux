@@ -18,18 +18,17 @@
 #ifndef TCCVIN_COMMON_H
 #define TCCVIN_COMMON_H
 
-extern int						tccvin_loglevel;
+extern int				tccvin_loglevel;
 
-#define LOGLEVEL				LOGLEVEL_DEBUG
-#define LOG_MODULE_NAME			"VIN"
+#define LOGLEVEL			LOGLEVEL_DEBUG
+#define LOG_TAG			"VIN"
 
-#define logl(level, fmt, ...)	printk(level "[%s][%s] %s - " pr_fmt(fmt), #level + 5, LOG_MODULE_NAME, __FUNCTION__, ##__VA_ARGS__)
-#define log(fmt, ...)			logl(KERN_INFO,		fmt, ##__VA_ARGS__)
-#define loge(fmt, ...)			logl(KERN_ERR,		fmt, ##__VA_ARGS__)
-#define logw(fmt, ...)			logl(KERN_WARNING,	fmt, ##__VA_ARGS__)
-#define logn(fmt, ...)			logl(KERN_NOTICE,	fmt, ##__VA_ARGS__)
-#define logd(fmt, ...)			logl(KERN_DEBUG,	fmt, ##__VA_ARGS__)
-#define dlog(fmt, ...)			do { if(tccvin_loglevel) { logl(KERN_ERR, fmt, ##__VA_ARGS__); } } while(0)
+#define loge(fmt, ...)			pr_err("[ERROR][%s] %s - "	fmt, LOG_TAG, __FUNCTION__, ##__VA_ARGS__)
+#define logw(fmt, ...)			pr_warn("[WARN][%s] %s - "	fmt, LOG_TAG, __FUNCTION__, ##__VA_ARGS__)
+#define logd(fmt, ...)			pr_debug("[DEBUG][%s] %s - "	fmt, LOG_TAG, __FUNCTION__, ##__VA_ARGS__)
+#define logi(fmt, ...)			pr_info("[INFO][%s] %s - "	fmt, LOG_TAG, __FUNCTION__, ##__VA_ARGS__)
+#define log				logi
+#define dlog(fmt, ...)			do { if(tccvin_loglevel) { logd(fmt, ##__VA_ARGS__); } } while(0)
 
 #define FUNCTION_IN				dlog("IN\n");
 #define FUNCTION_OUT			dlog("OUT\n");

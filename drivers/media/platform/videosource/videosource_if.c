@@ -32,7 +32,6 @@
 #include "videosource_if.h"
 
 #include "../../../pinctrl/core.h"
-#include "../../../pinctrl/tcc/pinctrl-tcc.h"
 
 #define MODULE_NAME		"videosource"
 
@@ -131,7 +130,6 @@ int videosource_if_enum_pixformat(struct v4l2_fmtdesc * fmt) {
 }
 
 int videosource_parse_gpio_dt_data(videosource_t * vdev, struct device_node * videosource_node) {
-	struct device_node	* node	= NULL;
 	int					ret		= 0;
 
 	vdev->format.cif_port = -1;
@@ -155,7 +153,6 @@ int videosource_parse_gpio_dt_data(videosource_t * vdev, struct device_node * vi
 int videosource_parse_mipi_csi2_port_data(
 		videosource_t * vdev, struct device_node * videosource_node)
 {
-	struct device_node * node = NULL;
 	int ret = 0;
 
 	if(videosource_node) {
@@ -234,94 +231,6 @@ int videosource_set_port(videosource_t * vdev, int enable) {
 	}
 
 	FUNCTION_OUT
-	return ret;
-}
-
-#define GPIO_FUNC					0x30
-
-static void tcc_pin_to_reg(struct tcc_pinctrl *pctl, unsigned pin,
-		       void __iomem **reg, unsigned *offset)
-{
-	struct tcc_pin_bank *bank = pctl->pin_banks;
-
-	while (pin >= bank->base && (bank->base + bank->npins - 1) < pin)
-		++bank;
-
-	*reg = pctl->base + bank->reg_base;
-	*offset = pin - bank->base;
-}
-
-int videosource_if_check_cif_port(struct device * dev, int enable) {
-	struct pinctrl			* pinctrl	= NULL;
-	struct pinctrl_state	* state		= NULL;
-	struct pinctrl_setting	* setting	= NULL;
-	char					name[1024];
-	int						ret			= 0;
-
-	// get pinctrl
-	pinctrl = pinctrl_get(dev);
-	if(IS_ERR(pinctrl)) {
-		loge("ERROR: pinctrl_get returned %p\n", pinctrl);
-		return -1;//p;
-	}
-
-	// get state of pinctrl
-	sprintf(name, "%s", (enable == ENABLE) ? "active" : "idle");
-	state = pinctrl_lookup_state(pinctrl, name);
-	if(IS_ERR(state)) {
-		loge("ERROR: pinctrl_lookup_state returned %p\n", state);
-		pinctrl_put(pinctrl);
-		return -1;//ERR_CAST(state);
-	}
-
-	// check if the current port configuration is the same as the expected one
-	list_for_each_entry(setting, &state->settings, node) {
-		if(setting->type == PIN_MAP_TYPE_CONFIGS_GROUP) {
-			struct pinctrl_dev			* pctldev	= setting->pctldev;
-			const struct pinctrl_ops	* pctlops	= pctldev->desc->pctlops;
-
-			struct tcc_pinctrl			* pctl		= pinctrl_dev_get_drvdata(pctldev);
-	
-			if(pctlops->get_group_pins) {
-				const unsigned		* pins			= NULL;
-				unsigned			num_pins		= 0;
-				int					idxPin			= 0;
-				unsigned long		expected_func	= 0;
-				unsigned long		current_func	= 0;
-
-				// get the original pinctrl configuration information
-				ret = pctlops->get_group_pins(pctldev, setting->data.mux.group, &pins, &num_pins);
-				expected_func = tcc_pinconf_unpack_value(*setting->data.configs.configs);
-
-				// get the current pinctrl configuration information
-				for(idxPin = 0; idxPin < num_pins; idxPin++) {
-					unsigned		group	= setting->data.mux.group;
-					void __iomem	* reg	= NULL;
-					unsigned int	offset;
-					unsigned int	shift;
-
-					// get an offset of the pin
-					tcc_pin_to_reg(pctl, pctl->groups[group].pins[idxPin], &reg, &offset);
-
-					// get the register address
-					reg += GPIO_FUNC + 4 * (offset / 8);
-
-					// get the shift for the pin
-					shift = 4 * (offset % 8);
-
-					// get the function of the pin
-					current_func = (readl(reg) >> shift) & 0xF;
-
-					// check if the current function is the same as the expected function value
-					if(expected_func != current_func) {
-						log("%s [%02d] - expected_func: %lu, current_func: %lu\n", pctl->pins->name, pins[idxPin], expected_func, current_func);
-						ret = -1;
-					}
-				}
-			}
-		}
-	}
-
 	return ret;
 }
 

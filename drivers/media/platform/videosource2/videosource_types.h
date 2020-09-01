@@ -125,7 +125,7 @@ typedef struct videosource {
 	videosource_driver_t driver;
 
 	int enabled;
-	int mipi_csi2_port
+	int mipi_csi2_port;
 } videosource_t;
 
 struct vsrc_std_info {

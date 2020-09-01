@@ -116,7 +116,7 @@ static inline int max96712_read(struct v4l2_subdev *sd, __u64 reg)
 	/* return i2c_smbus_read_byte_data(client, reg); */
 	ret = DDI_I2C_Read(client, reg_buf, 2, val_buf, 1);
 	if (ret < 0) {
-		loge("Failed to read i2c value from 0x%08x\n", reg);
+		loge("Failed to read i2c value from 0x%08x\n", (unsigned int) reg);
 	}
 
 	return ret;
@@ -137,7 +137,7 @@ static inline int max96712_write_regs(struct i2c_client *client, \
 	struct videosource_reg * list = info->values.list;
 	unsigned char data[4];
 	unsigned char bytes;
-	int ret, err_cnt = 0;
+	int ret = 0, err_cnt = 0;
 
 	// backup
 	client_addr = client->addr;
@@ -429,9 +429,6 @@ static inline struct videosource *sd_to_vsrc(struct v4l2_subdev *sd)
  */
 static int max96712_s_ctrl(struct v4l2_ctrl *ctrl)
 {
-	struct v4l2_subdev *sd = ctrl_to_sd(ctrl);
-	int val = ctrl->val;
-
 	// TODO Implement a function to control max96712
 	switch (ctrl->id) {
 	case V4L2_CID_BRIGHTNESS:
@@ -474,10 +471,10 @@ static int max96712_log_status(struct v4l2_subdev *sd)
 
 static int max96712_set_power(struct v4l2_subdev *sd, int on)
 {
-	printk("%s invoked\n", __func__);
-
 	struct videosource *decoder = sd_to_vsrc(sd);
 	struct videosource_gpio *gpio = &(decoder->gpio);
+
+	printk("%s invoked\n", __func__);
 
 	// Using reset gpio pin, control power
 	if (on) {
@@ -497,24 +494,6 @@ static int max96712_set_power(struct v4l2_subdev *sd, int on)
 		msleep(5);
 	}
 
-	return 0;
-}
-
-static int max96712_g_register(struct v4l2_subdev *sd,
-			       struct v4l2_dbg_register *reg)
-{
-	reg->val = max96712_read(sd, reg->reg);
-	reg->size = 1;
-	return 0;
-}
-
-static int max96712_s_register(struct v4l2_subdev *sd,
-			       const struct v4l2_dbg_register *reg)
-{
-	/*
-	 * TODO
-	 */
-	//max96712_write(sd, reg->reg & 0xff, reg->val & 0xff);
 	return 0;
 }
 
@@ -550,8 +529,7 @@ static int max96712_g_std(struct v4l2_subdev *sd, v4l2_std_id *std)
 static int max96712_s_std(struct v4l2_subdev *sd, v4l2_std_id std)
 {
 	struct videosource *vsrc = sd_to_vsrc(sd);
-	struct i2c_client *client = vsrc->driver.get_i2c_client(vsrc);
-	int reg, idx;
+	int idx;
 
 	/*
 	 * TODO
@@ -567,7 +545,7 @@ static int max96712_s_std(struct v4l2_subdev *sd, v4l2_std_id std)
 	case V4L2_STD_SECAM:
 	default:
 		printk(KERN_ERR "%s - Not supported standard: %ld\n", __func__,
-		       std);
+		       (long int) std);
 		return -EINVAL;
 	}
 
@@ -599,7 +577,7 @@ static int max96712_s_std(struct v4l2_subdev *sd, v4l2_std_id std)
 static int max96712_querystd(struct v4l2_subdev *sd, v4l2_std_id *std)
 {
 	struct videosource *vsrc = sd_to_vsrc(sd);
-	int reg, ret;
+	int ret = 0;
 	
 	/*
 	 * TODO
@@ -607,53 +585,9 @@ static int max96712_querystd(struct v4l2_subdev *sd, v4l2_std_id *std)
 
 	v4l2_dbg(1, 1, sd, "Current STD: %s\n", vsrc->current_std->name);
 
+	ret = 0;
+
 	return ret;
-}
-
-/**
- * @brief get all standards supported by the video CAPTURE device. For max96712
- * subdevice, only NTSC format would be supported by the device code.
- *
- * @param sd v4l2 subdevice object
- * @param std v4l2 standard object
- * @return always 0
- */
-static const int max96712_g_tvnorms(struct v4l2_subdev *sd, v4l2_std_id *std)
-{
-	struct videosource *vsrc = sd_to_vsrc(sd);
-	int idx;
-
-	// TODO An array of v4l2_std_id passed by arguments would be just a
-	// pointer now, assume that fixed-size of arrays used for the argument.
-	// This would be checked later.
-
-	for (idx = 0; idx < vsrc->num_stds; idx++) {
-		std[idx] = vsrc->std_list[idx].standard.id;
-	}
-
-	return 0;
-}
-
-/**
- * @brief get decoder status (using status-1 register)
- *
- * @param sd v4l2 subdevice object
- * @param status 0: "video not present", 1: "video detected"
- * @return -1 on error, 0 on otherwise
- */
-static int max96712_g_input_status(struct v4l2_subdev *sd, u32 *status)
-{
-	printk("%s invoked\n", __func__);
-
-	int reg;
-
-	/*
-	 * TODO
-	 */
-
-	*status = 1; // video detected
-
-	return 0;
 }
 
 extern int tcc_mipi_csi2_enable(unsigned int idx, videosource_format_t * format, unsigned int enable);
@@ -676,7 +610,7 @@ static int max96712_s_stream(struct v4l2_subdev *sd, int enable)
 
 	client = v4l2_get_subdevdata(sd);
 
-	pr_info("%s - name: %s, addr: 0x%x, client: 0x%xp\n", \
+	pr_info("%s - name: %s, addr: 0x%x, client: 0x%p\n", \
 		__func__, \
 		client->name, (client->addr)<<1, \
 		client);
@@ -693,60 +627,11 @@ static int max96712_s_stream(struct v4l2_subdev *sd, int enable)
 
 	ret = change_mode(client, MODE_INIT);
 
-
 	vsrc->enabled = enable;
 
 	pr_info("%s - out \n", __func__);
 	return 0;
 }
-
-static int max96712_cropcap(struct v4l2_subdev *sd, struct v4l2_cropcap *cc)
-{
-	struct videosource *vsrc = sd_to_vsrc(sd);
-
-	cc->type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
-	cc->bounds.left = vsrc->format.crop_x;
-	cc->bounds.top = vsrc->format.crop_y;
-	cc->bounds.width = vsrc->format.crop_w;
-	cc->bounds.height = vsrc->format.crop_h;
-	cc->pixelaspect.denominator = 1;
-	cc->pixelaspect.numerator = 1;
-	cc->defrect = cc->bounds;
-
-	return 0;
-}
-
-static int max96712_g_crop(struct v4l2_subdev *sd, struct v4l2_crop *crop)
-{
-	struct videosource *vsrc = sd_to_vsrc(sd);
-
-	crop->type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
-	crop->c.left = vsrc->format.crop_x;
-	crop->c.top = vsrc->format.crop_y;
-	crop->c.width = vsrc->format.crop_w;
-	crop->c.height = vsrc->format.crop_h;
-
-	return 0;
-}
-
-static int max96712_s_crop(struct v4l2_subdev *sd, const struct v4l2_crop *crop)
-{
-	struct videosource *vsrc = sd_to_vsrc(sd);
-
-	vsrc->format.crop_x = crop->c.left;
-	vsrc->format.crop_y = crop->c.top;
-	vsrc->format.crop_w = crop->c.width;
-	vsrc->format.crop_h = crop->c.height;
-}
-
-static int
-max96712_g_frame_interval(struct v4l2_subdev *sd,
-			  struct v4l2_subdev_frame_interval *interval)
-{
-	struct videosource *vsrc = sd_to_vsrc(sd);
-	return vsrc->format.framerate;
-}
-
 static const struct v4l2_subdev_video_ops max96712_video_ops = {
     .g_std = max96712_g_std,
     .s_std = max96712_s_std,
@@ -796,9 +681,11 @@ static int change_mode(struct i2c_client *client, int mode)
  * return: 0: device is not connected, 1: connected
  */
 static int check_status(struct i2c_client * client) {
-	int ret = 0;
+	int ret;
 
-	return 1;
+	ret = 1;
+
+	return ret;
 }
 
 static irqreturn_t irq_handler(int irq, void * client_data) {
@@ -838,11 +725,11 @@ static int set_irq_handler(videosource_gpio_t * gpio, unsigned int enable) {
 
 static int set_i2c_client(struct videosource *vsrc, struct i2c_client *client)
 {
+	int ret = 0;
+	struct v4l2_subdev *sd;
+
 	printk("%s invoked\n", __func__);
 
-	int ret = 0;
-
-	struct v4l2_subdev *sd;
 	if (!vsrc) {
 		printk(KERN_ERR "%s - Failed to get max96712 videosource. \
 		Something wrong with a timing of initialization.\n",

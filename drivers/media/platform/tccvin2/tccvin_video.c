@@ -971,7 +971,7 @@ update_wdma:
 		if (buf->buf.vb2_buf.memory == VB2_MEMORY_MMAP) {
 			addr0 = buf->buf.vb2_buf.planes[0].m.offset;
 		} else if (buf->buf.vb2_buf.memory == VB2_MEMORY_USERPTR) {
-			addr0 = virt_to_phys(buf->buf.vb2_buf.planes[0].m.userptr);
+			addr0 = virt_to_phys((volatile void *) buf->buf.vb2_buf.planes[0].m.userptr);
 		} else {
 			addr0 = stream->cif.pmap_preview.base;
 		}
@@ -1023,7 +1023,7 @@ static int tccvin_allocate_essential_buffers(struct tccvin_streaming * vdev) {
 	strcpy(vdev->cif.pmap_preview.name, pmap_preview_name);
 	ret = pmap_get_info(vdev->cif.pmap_preview.name, &vdev->cif.pmap_preview);
 	if(ret == 1) {
-		logn("name: %20s, base: 0x%08llx, size: 0x%08llx\n",
+		logi("name: %20s, base: 0x%08llx, size: 0x%08llx\n",
 			vdev->cif.pmap_preview.name, \
 			vdev->cif.pmap_preview.base, \
 			vdev->cif.pmap_preview.size);

@@ -39,8 +39,8 @@ typedef struct videosource_i2c_reg {
 	unsigned int saddr;
 	unsigned int delay;
 	unsigned int addr;
-	unsigned int data[];
-};
+	unsigned int data[255];
+} videosource_i2c_reg;
 
 static struct videosource_i2c_reg videosource_i2c_reg_list_des_enable_local_ack = {
 	.addr	= 0x1C,
@@ -102,31 +102,6 @@ static int read_reg(struct i2c_client * client, unsigned int addr, int addr_byte
 		*data |= (data_buf[idxBuf] << (data_bytes - 1 - idxBuf));
 
 	dlog("addr: 0x%08x, data: 0x%08x\n", addr, *data);
-	return ret;
-}
-
-static int write_reg(struct i2c_client * client, unsigned int addr, int addr_bytes, unsigned int data, int data_bytes) {
-	unsigned char	reg_buf[8]	= {0,};
-	unsigned char	*p_reg_buf	= NULL;
-	int				idxBuf		= 0;
-	int				ret			= 0;
-
-	dlog("addr: 0x%08x, data: 0x%08x\n", addr, data);
-
-	// convert addr to i2c byte stream
-	p_reg_buf = reg_buf;
-	for(idxBuf=0; idxBuf<addr_bytes; idxBuf++)
-		*p_reg_buf++ = (unsigned char)((addr >> (addr_bytes - 1 - idxBuf)) & 0xFF);
-	// convert data to i2c byte stream
-	for(idxBuf=0; idxBuf<data_bytes; idxBuf++)
-		*p_reg_buf++ = (unsigned char)((data >> (data_bytes - 1 - idxBuf)) & 0xFF);
-
-	ret = videosource_i2c_write(client, reg_buf, addr_bytes + data_bytes);
-	if(ret != 0) {
-		loge("i2c device name: %s, slave addr: 0x%x, addr: 0x%08x, write error!!!!\n", client->name, client->addr, addr);
-		return -1;
-	}
-
 	return ret;
 }
 
