@@ -755,6 +755,12 @@ static void stm32_usart_stop_rx(struct uart_port *port)
 	struct stm32_port *stm32_port = to_stm32_port(port);
 	struct stm32_usart_offsets *ofs = &stm32_port->info->ofs;
 
+	/* Disable DMA request line and RX DMA. */
+	if (stm32_port->rx_ch) {
+		stm32_usart_clr_bits(port, ofs->cr3, USART_CR3_DMAR);
+		dmaengine_terminate_sync(stm32_port->rx_ch);
+	}
+
 	stm32_usart_clr_bits(port, ofs->cr1, stm32_port->cr1_irq);
 	if (stm32_port->cr3_irq)
 		stm32_usart_clr_bits(port, ofs->cr3, stm32_port->cr3_irq);
@@ -852,11 +858,6 @@ static void stm32_usart_shutdown(struct uart_port *port)
 		dev_err(port->dev, "transmission complete not set\n");
 
 	stm32_usart_clr_bits(port, ofs->cr1, val);
-
-	if (stm32_port->rx_ch) {
-		stm32_usart_clr_bits(port, ofs->cr3, USART_CR3_DMAR);
-		dmaengine_terminate_sync(stm32_port->rx_ch);
-	}
 
 	free_irq(port->irq, port);
 }
