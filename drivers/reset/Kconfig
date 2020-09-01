@@ -180,9 +180,13 @@ config RESET_SIMPLE
 	   - Allwinner SoCs
 	   - ZTE's zx2967 family
 
+config RESET_STM32
+	bool
+
 config RESET_STM32MP157
 	bool "STM32MP157 Reset Driver" if COMPILE_TEST
 	default MACH_STM32MP157
+	select RESET_STM32
 	help
 	  This enables the RCC reset controller driver for STM32 MPUs.
 
