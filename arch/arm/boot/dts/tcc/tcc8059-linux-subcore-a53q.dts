@@ -10,7 +10,7 @@
 #include <dt-bindings/clock/telechips,tcc805x-clks.h>
 #include <dt-bindings/reset/telechips,tcc805x-reset.h>
 #include <dt-bindings/display/tcc805x-vioc.h>
-#include <dt-bindings/power/telechips,boot-mode.h>
+#include <dt-bindings/power/tcc805x,boot-mode.h>
 #include <dt-bindings/gpio/gpio.h>
 #include <dt-bindings/mailbox/tcc805x_multi_mailbox/tcc_mbox_ch.h>
 #include <dt-bindings/input/input.h>
@@ -1975,6 +1975,13 @@
 
 	rotary_encoder1: rotary_encoder@1 {
 		status = "disable";
+	};
+
+	reboot-mode {
+		compatible = "telechips,reboot-mode";
+		mode-normal = <BOOT_NORMAL>;
+		mode-bootloader = <BOOT_FASTBOOT>;
+		mode-recovery = <BOOT_RECOVERY>;
 	};
 };
 
