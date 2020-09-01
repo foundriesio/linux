@@ -134,8 +134,17 @@ static int eafnosupport_ipv6_dst_lookup(struct net *net, struct sock *u1,
 	return -EAFNOSUPPORT;
 }
 
+static struct dst_entry *eafnosupport_ipv6_dst_lookup_flow(struct net *net,
+							   const struct sock *sk,
+							   struct flowi6 *fl6,
+							   const struct in6_addr *final_dst)
+{
+	return ERR_PTR(-EAFNOSUPPORT);
+}
+
 const struct ipv6_stub *ipv6_stub __read_mostly = &(struct ipv6_stub) {
 	.ipv6_dst_lookup = eafnosupport_ipv6_dst_lookup,
+	.ipv6_dst_lookup_flow = eafnosupport_ipv6_dst_lookup_flow,
 };
 EXPORT_SYMBOL_GPL(ipv6_stub);
 
