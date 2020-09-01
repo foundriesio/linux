@@ -130,7 +130,6 @@ int videosource_if_enum_pixformat(struct v4l2_fmtdesc * fmt) {
 }
 
 int videosource_parse_gpio_dt_data(videosource_t * vdev, struct device_node * videosource_node) {
-	struct device_node	* node	= NULL;
 	int					ret		= 0;
 
 	vdev->format.cif_port = -1;
@@ -154,7 +153,6 @@ int videosource_parse_gpio_dt_data(videosource_t * vdev, struct device_node * vi
 int videosource_parse_mipi_csi2_port_data(
 		videosource_t * vdev, struct device_node * videosource_node)
 {
-	struct device_node * node = NULL;
 	int ret = 0;
 
 	if(videosource_node) {

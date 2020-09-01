@@ -43,21 +43,12 @@ struct tcc_mipi_csi2_state {
 
 struct tcc_mipi_csi2_state * arr_state[3];
 
+#if 0 //Block build warning.
 static struct tcc_mipi_csi2_state *pdev_to_state(struct platform_device **pdev)
 {
 	return container_of(pdev, struct tcc_mipi_csi2_state, pdev);
 }
-
-static unsigned int MIPI_CSIS_Get_Version(struct tcc_mipi_csi2_state * state)
-{
-	unsigned int version = 0;
-	volatile void __iomem *reg = state->csi_base + CSIS_VERSION;
-
-	version = \
-		((__raw_readl(reg) | CSIS_VERSION_MASK) >> CSIS_VERSION_SHIFT);
-
-	return version;
-}
+#endif
 
 static void MIPI_CSIS_Set_DPHY_B_Control(struct tcc_mipi_csi2_state * state, 
 		unsigned int high_part, 
@@ -208,7 +199,6 @@ static void MIPI_CSIS_Set_CSIS_Reset(struct tcc_mipi_csi2_state * state,
 {
 	unsigned int val = 0, count = 0;
 	volatile void __iomem *reg = state->csi_base + CSIS_CMN_CTRL;
-	struct device *dev = &state->pdev->dev;
 
 	val = __raw_readl(reg);
 
@@ -547,7 +537,7 @@ static void MIPI_WRAP_Set_Output_Mux(struct tcc_mipi_csi2_state * state,
 	reg = state->cfg_base + CSI0_CFG + (csi * 0x4);
 
 	val = (__raw_readl(reg) & ~(CSI_CFG_MIPI_CHMUX_0_MASK << mux));
-	val |= (sel << CSI_CFG_MIPI_CHMUX_0_SHIFT + mux);
+	val |= (sel << (CSI_CFG_MIPI_CHMUX_0_SHIFT + mux));
 	__raw_writel(val, reg);
 }
 
@@ -572,7 +562,6 @@ static int tcc_mipi_csi2_set_interface(struct tcc_mipi_csi2_state * state,
 		unsigned int onOff) 
 {
 	unsigned int idx = 0, index = 0;
-	struct device *dev = &state->pdev->dev;
 
 	if(onOff) {
 #if defined(CONFIG_ARCH_TCC803X)
@@ -726,7 +715,6 @@ static irqreturn_t tcc_mipi_csi2_irq_handler(int irq, void * client_data)
 	unsigned int intr_status0 = 0, intr_status1 = 0, 
 		     intr_mask0 = 0, intr_mask1 = 0;
 	unsigned int idx = 0;
-	struct device *dev = &state->pdev->dev;
 
 	intr_status0 = MIPI_CSIS_Get_CSIS_Interrupt_Src(state, 0);
 	intr_status1 = MIPI_CSIS_Get_CSIS_Interrupt_Src(state, 1);
@@ -812,7 +800,9 @@ static int tcc_mipi_csi2_parse_dt(struct platform_device *pdev,
 		struct tcc_mipi_csi2_state *state)
 {
 	struct device_node *node = pdev->dev.of_node;
+#if defined(CONFIG_ARCH_TCC803X)
 	struct device_node *ddicfg_node;
+#endif
 	struct device *dev = &pdev->dev;
 	struct resource *mem_res;
 	char prop_name[32] = {0, };
@@ -823,8 +813,8 @@ static int tcc_mipi_csi2_parse_dt(struct platform_device *pdev,
 	 */
 	mem_res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "csi");
 	state->csi_base = devm_ioremap_resource(dev, mem_res);
-	if (IS_ERR(state->csi_base))
-		return PTR_ERR(state->csi_base);
+	if (IS_ERR((const void *)state->csi_base))
+		return PTR_ERR((const void *)state->csi_base);
 
 	pr_info("[INFO][MIPI-CSI2] csi base addr is %px \n", state->csi_base);
 
@@ -833,8 +823,8 @@ static int tcc_mipi_csi2_parse_dt(struct platform_device *pdev,
 	 * Get CKC base address
 	 */
 	state->ckc_base = (volatile void __iomem *)of_iomap(node, 2);
-	if (IS_ERR(state->ckc_base))
-		return PTR_ERR(state->ckc_base);
+	if (IS_ERR((const void *)state->ckc_base))
+		return PTR_ERR((const void *)state->ckc_base);
 
 	pr_info("[INFO][MIPI-CSI2] ckc base addr is %px \n", state->ckc_base);
 
@@ -842,8 +832,8 @@ static int tcc_mipi_csi2_parse_dt(struct platform_device *pdev,
 	 * Get CFG base address
 	 */
 	state->cfg_base = (volatile void __iomem *)of_iomap(node, 3);
-	if (IS_ERR(state->cfg_base))
-		return PTR_ERR(state->cfg_base);
+	if (IS_ERR((const void *)state->cfg_base))
+		return PTR_ERR((const void *)state->cfg_base);
 
 	pr_info("[INFO][MIPI-CSI2] cfg base addr is %px \n", state->cfg_base);
 
@@ -873,7 +863,7 @@ static int tcc_mipi_csi2_parse_dt(struct platform_device *pdev,
 	state->irq = platform_get_irq(pdev, 0);
 	if (state->irq < 0) {
 		pr_err("[ERR][MIPI-CSI2] fail - get irq \n");
-		ret -ENODEV;
+		ret = -ENODEV;
 		goto err;
 	}
 
@@ -901,6 +891,7 @@ err:
 	return ret;
 }
 
+#if defined(CONFIG_ARCH_TCC803X)
 static void tcc_mipi_csi2_clk_put(struct tcc_mipi_csi2_state *state)
 {
 	if (!IS_ERR(state->clock)) {
@@ -914,13 +905,14 @@ static int tcc_mipi_csi2_clk_get(struct tcc_mipi_csi2_state *state)
 {
 	int ret;
 	struct device *dev = &state->pdev->dev;
-#if defined(CONFIG_ARCH_TCC803X)
+
 	struct device_node *node = dev->of_node;
 
 	if (of_property_read_u32(node, \
 		"clock-frequency", 
 		&state->clk_frequency)) {
 		state->clk_frequency = DEFAULT_CSIS_FREQ;
+		goto err;
 	}
 
 	state->clock = clk_get(dev, "csi");
@@ -935,20 +927,20 @@ static int tcc_mipi_csi2_clk_get(struct tcc_mipi_csi2_state *state)
 		state->clock = ERR_PTR(-EINVAL);
 		goto err;
 	}
-#endif
+
 	return ret;
 
 err:
 	pr_err("[ERR][MIPI-CSI2] fail - get clock \n");
 	return ret;
 }
+#endif
 
 int tcc_mipi_csi2_enable(
 		unsigned int idx, 
 		videosource_format_t * format, unsigned int enable)
 {
 	struct tcc_mipi_csi2_state * state = arr_state[idx];
-	struct device *dev = &state->pdev->dev;
 	int ret = 0;
 
 	pr_debug("[DEBUG][MIPI-CSI2] %s in \n", __func__);
@@ -970,22 +962,6 @@ err:
 	return ret;
 }
 
-static void tcc_mipi_csi2_start_stream(struct tcc_mipi_csi2_state * state,
-		videosource_format_t * format, 
-		unsigned int enable)
-{
-	tcc_mipi_csi2_set_interface(state, format, enable);
-	tcc_mipi_csi2_set_interrupt(state, enable);
-}
-
-static void tcc_mipi_csi2_stop_stream(struct tcc_mipi_csi2_state * state,
-		videosource_format_t * format, 
-		unsigned int enable)
-{
-	tcc_mipi_csi2_set_interrupt(state, enable);
-	tcc_mipi_csi2_set_interface(state, format, enable);
-}
-
 static const struct of_device_id tcc_mipi_csi2_of_match[] = {
 	{
 		.compatible = "telechips,tcc803x-mipi-csi2",
@@ -1002,7 +978,7 @@ MODULE_DEVICE_TABLE(of, tcc_mipi_csi2_of_match);
 static int tcc_mipi_csi2_probe(struct platform_device *pdev)
 {
 	struct tcc_mipi_csi2_state * state;
-	struct of_device_id * of_id;
+	const struct of_device_id * of_id;
 	struct device *dev = &pdev->dev;
 	int ret = 0;
 
@@ -1075,9 +1051,7 @@ static int tcc_mipi_csi2_probe(struct platform_device *pdev)
 e_clkdis:
 #if defined(CONFIG_ARCH_TCC803X)
 	clk_disable(state->clock);
-#endif
 e_clkput:
-#if defined(CONFIG_ARCH_TCC803X)
 	tcc_mipi_csi2_clk_put(state);
 #endif
 err:
@@ -1089,8 +1063,10 @@ end:
 
 static int tcc_mipi_csi2_remove(struct platform_device *pdev)
 {
-	struct device *dev = &pdev->dev;
+
+#if defined(CONFIG_ARCH_TCC803X)
 	struct tcc_mipi_csi2_state *state = pdev_to_state(&pdev);
+#endif
 	int ret = 0;
 
 	pr_debug("[DEBUG][MIPI-CSI2] %s in \n", __func__);

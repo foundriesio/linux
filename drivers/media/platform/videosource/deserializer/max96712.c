@@ -256,70 +256,6 @@ static struct videosource_i2c_info * videosource_reg_table_list[] = {
 	videosource_init_table_list,
 };
 
-static int read_reg(struct i2c_client * client, \
-		unsigned int addr, int addr_bytes, \
-		unsigned int * data, int data_bytes) {
-	unsigned char	addr_buf[4]	= {0,};
-	unsigned char	data_buf[4]	= {0,};
-	int		idxBuf		= 0;
-	int		ret		= 0;
-
-	// convert addr to i2c byte stream
-	for(idxBuf=0; idxBuf<addr_bytes; idxBuf++)
-		addr_buf[idxBuf] = (unsigned char)((addr >> (addr_bytes - 1 - idxBuf)) & 0xFF);
-
-	ret = videosource_i2c_read(client, addr_buf, addr_bytes, data_buf, data_bytes);
-	if(ret != 0) {
-		loge("i2c device name: %s, slave addr: 0x%x, addr: 0x%08x, read error!!!!\n", \
-			client->name, client->addr, addr);
-		ret = -1;
-	}
-	
-	// convert data to big / little endia
-	* data = 0;
-	for(idxBuf=0; idxBuf<data_bytes; idxBuf++)
-		*data |= (data_buf[idxBuf] << (data_bytes - 1 - idxBuf));
-
-	dlog("addr: 0x%08x, data: 0x%08x\n", addr, *data);
-	return ret;
-}
-
-static int read_regs(struct i2c_client * client, \
-		const struct videosource_reg * list, int mode) {
-	unsigned short	client_addr	= 0x00;
-	int		addr_bytes	= 0;
-	unsigned int	data		= 0;
-	int		data_bytes	= 0;
-	int		ret		= 0;
-
-	// backup
-	client_addr = client->addr;
-	switch(mode) {
-	case MODE_SERDES_REMOTE_SER:
-		client->addr = SER_ADDR;
-		break;
-	}
-
-	addr_bytes = 1;
-	data_bytes = 1;
-	while (!((list->reg == REG_TERM) && (list->val == VAL_TERM))) {
-		if(list->reg != 0x00) {
-			data = 0;
-			ret = read_reg(client, list->reg, addr_bytes, &data, data_bytes);
-			if(ret != 0) {
-				loge("Sensor I2C !!!! \n");
-				break;
-			}
-		}
-		list++;
-	}
-
-	// restore
-	client->addr = client_addr;
-
-	return ret;
-}
-
 static int write_regs(struct i2c_client * client, \
 			const struct videosource_i2c_info * info, \
 			unsigned int mode) 
@@ -476,9 +412,11 @@ static int change_mode(struct i2c_client * client, int mode) {
 }
 
 static int check_status(struct i2c_client * client) {
-	int ret = 0;
+	int ret;
 
-	return 1;
+	ret = 1;
+
+	return ret;
 }
 
 videosource_t videosource_max96712 = {

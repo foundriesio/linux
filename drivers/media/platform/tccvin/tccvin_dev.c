@@ -1485,12 +1485,13 @@ int tccvin_check_wdma_counter(tccvin_dev_t * vdev) {
 	return -1;
 }
 
-void tccvin_dump_register(unsigned int * addr, unsigned int word) {
+void tccvin_dump_register(unsigned long * addr, unsigned int word) {
 	unsigned int	idxReg, nReg = word;
 
 	for(idxReg=0; idxReg<nReg; idxReg++) {
 		if((idxReg % 4) == 0)
-			dlog("%08x: ", (unsigned int)(addr + idxReg));
+			dlog("%p: ", (addr + idxReg));
+
 		dlog("%08x ", *(addr + idxReg));
 		if(((idxReg + 1) % 4) == 0)
 			dlog("\n");
@@ -1506,7 +1507,7 @@ int tccvin_diagnostics_cif_port_mapping(tccvin_dev_t * vdev) {
 	ret = tccvin_check_cif_port_mapping(vdev);
 	log("CIF Port Mapping is %s\n", (ret == 0) ? "OKAY" : "WRONG");
 	if(ret < 0) {
-		tccvin_dump_register((unsigned int *)vdev->cif.cifport_addr, 1);
+		tccvin_dump_register((unsigned long *)vdev->cif.cifport_addr, 1);
 	}
 	
 	return ret;
@@ -1534,7 +1535,7 @@ int tccvin_diagnostics_videoinput_path(tccvin_dev_t * vdev) {
 	dlog("Diagnostics of video-input path\n");
 
 	for(idxList=0; idxList<nList; idxList++) {
-		tccvin_dump_register(list[idxList].addr, list[idxList].count);
+		tccvin_dump_register((unsigned long *)list[idxList].addr, list[idxList].count);
 	}
 	dlog("\n\n");
 

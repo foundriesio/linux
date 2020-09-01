@@ -16,6 +16,7 @@
  ****************************************************************************/
 
 #include <linux/module.h>
+#include <linux/device.h>
 #include <linux/init.h>
 #include <linux/interrupt.h>
 #include <linux/platform_device.h>
@@ -31,16 +32,18 @@
 #include <linux/fs.h>
 #include <uapi/misc/switch.h>
 
-static int debug = 0;
+static int	debug			= 0;
 
-#define MODULE_NAME				"switch_gpio_reverse"
+#define MODULE_NAME			"switch_gpio_reverse"
 
-#define logl(level, fmt, ...)	printk(level "[%s][%s] %s - " pr_fmt(fmt), #level + 5, MODULE_NAME, __FUNCTION__, ##__VA_ARGS__)
-#define log(fmt, ...)			logl(KERN_INFO, fmt, ##__VA_ARGS__)
-#define loge(fmt, ...)			logl(KERN_ERR, fmt, ##__VA_ARGS__)
-#define logw(fmt, ...)			logl(KERN_WARNING, fmt, ##__VA_ARGS__)
-#define logd(fmt, ...)			logl(KERN_DEBUG, fmt, ##__VA_ARGS__)
-#define dlog(fmt, ...)			do { if(debug) { logl(KERN_DEBUG, fmt, ##__VA_ARGS__); } } while(0)
+#define LOG_TAG			"SWITCH"
+
+#define loge(fmt, ...)			pr_err("[ERROR][%s] %s - "	fmt, LOG_TAG, __FUNCTION__, ##__VA_ARGS__)
+#define logw(fmt, ...)			pr_warn("[WARN][%s] %s - "	fmt, LOG_TAG, __FUNCTION__, ##__VA_ARGS__)
+#define logd(fmt, ...)			pr_debug("[DEBUG][%s] %s - "	fmt, LOG_TAG, __FUNCTION__, ##__VA_ARGS__)
+#define logi(fmt, ...)			pr_info("[INFO][%s] %s - "	fmt, LOG_TAG, __FUNCTION__, ##__VA_ARGS__)
+#define log				logi
+#define dlog(fmt, ...)			do { if(debug) { logd(fmt, ##__VA_ARGS__); } } while(0)
 
 typedef struct switch_t {
 	struct device	* dev_plt;
@@ -112,7 +115,7 @@ int switch_get_status(switch_t * vdev) {
 				status = gpio_value;
 			else
 				status = (gpio_value == gpio_active);
-			dlog("gpio: %d, value: %d, active: %d, status: %d\n", gpio, gpio_value, gpio_active, status);
+			logd("gpio: %d, value: %d, active: %d, status: %d\n", gpio, gpio_value, gpio_active, status);
 		} else {
 			loge("HW Switch is not supported, gpio: %d\n", gpio);
 			status = atomic_read(&vdev->status);
@@ -124,7 +127,7 @@ int switch_get_status(switch_t * vdev) {
 		break;
 	}
 
-	dlog("switch status: %d\n", status);
+	logd("switch status: %d\n", status);
 
 	return status;
 }
@@ -149,7 +152,7 @@ void switch_set_status(switch_t * vdev, int status) {
 		break;
 	}
 
-	dlog("switch status: %d\n", status);
+	logd("switch status: %d\n", status);
 }
 
 ssize_t switch_status_show(struct device * dev, struct device_attribute * attr, char * buf) {
@@ -205,17 +208,17 @@ long switch_ioctl(struct file * filp, unsigned int cmd, long unsigned int arg) {
 	switch(cmd) {
 	case SWITCH_IOCTL_CMD_ENABLE:
 		vdev->enabled		= 1;
-		dlog("enabled: %d\n", vdev->enabled);
+		logd("enabled: %d\n", vdev->enabled);
 		break;
 
 	case SWITCH_IOCTL_CMD_DISABLE:
 		vdev->enabled		= 0;
-		dlog("enabled: %d\n", vdev->enabled);
+		logd("enabled: %d\n", vdev->enabled);
 		break;
 
 	case SWITCH_IOCTL_CMD_GET_STATE:
 		status = switch_get_status(vdev);
-		dlog("status: %d\n", status);
+		logd("status: %d\n", status);
 
 		if((ret = copy_to_user((void *)arg, (const void *)&status, sizeof(status))) < 0) {
 			loge("FAILED: copy_to_user\n");
