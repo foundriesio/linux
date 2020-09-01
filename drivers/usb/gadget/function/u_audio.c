@@ -359,7 +359,10 @@ static void u_audio_iso_complete(struct usb_ep *ep, struct usb_request *req)
 	/* Pack USB load in ALSA ring buffer */
 	pending = runtime->dma_bytes - hw_ptr;
 
-
+    if (req->actual < 0 || req->actual > req->length) {
+        snd_pcm_stream_unlock_irqrestore(substream, flags2);
+        goto exit;
+    }
 
 	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) {
 		if (unlikely(pending < req->actual)) {
