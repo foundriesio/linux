@@ -425,7 +425,6 @@ static int tccvin_parse_device_tree(struct tccvin_streaming * vdev) {
  *	-1:		The vioc manager device is not found.
  */
 static int tccvin_reset_vioc_path(struct tccvin_streaming * vdev) {
-#if 0
 	vioc_path_t				* vioc	= &vdev->cif.vioc_path;
 	int						vioc_component[] = {
 #ifdef CONFIG_OVERLAY_PGL
@@ -443,8 +442,8 @@ static int tccvin_reset_vioc_path(struct tccvin_streaming * vdev) {
 	struct file				* file		= NULL;
 	char					name[1024];
 	struct tcc_mbox_data	data;
-	int						ret = 0;
 #endif
+	int						ret = 0;
 
 	FUNCTION_IN
 
@@ -518,8 +517,7 @@ end:
 #endif//defined(CONFIG_TCC803X_CA7S) && defined(CONFIG_VIOC_MGR)
 
 	FUNCTION_OUT
-#endif
-	return 0;
+	return ret;
 }
 
 /*
@@ -938,7 +936,7 @@ static void tccvin_work_thread(struct work_struct * data) {
 	 * check whether the driver has only one buffer or not
 	 */
 	if (list_is_last(&(buf->queue), &queue->irqqueue)) {
-		dlog("driver has only one buffer!! \n");
+		logw("driver has only one buffer!! \n");
 		goto update_wdma;
 	}
 
