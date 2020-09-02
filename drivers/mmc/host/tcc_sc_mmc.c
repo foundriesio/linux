@@ -399,11 +399,31 @@ void tcc_sc_mmc_set_ios(struct mmc_host *mmc, struct mmc_ios *ios)
 	/* do nothing */
 }
 
+static int tcc_sc_mmc_card_busy(struct mmc_host *mmc)
+{
+	struct tcc_sc_mmc_host *host = mmc_priv(mmc);
+	const struct tcc_sc_fw_handle *handle;
+	struct tcc_sc_fw_mmc_cmd cmd = {0, };
+	int ret;
+
+	handle = host->handle;
+	BUG_ON(handle == NULL);
+
+	cmd.opcode = (1 << 7);
+	ret = handle->ops.mmc_ops->request_command(handle, &cmd, NULL);
+	if(ret) {
+		return 0;
+	} else {
+		return cmd.resp[0];
+	}
+}
+
 static const struct mmc_host_ops tcc_sc_mmc_ops = {
 	.request	= tcc_sc_mmc_request,
 	.pre_req	= tcc_sc_mmc_pre_req,
 	.post_req	= tcc_sc_mmc_post_req,
 	.set_ios	= tcc_sc_mmc_set_ios,
+	.card_busy	= tcc_sc_mmc_card_busy,
 };
 
 static const struct of_device_id tcc_sc_mmc_of_match_table[] = {
