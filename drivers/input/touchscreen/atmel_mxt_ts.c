@@ -14,6 +14,10 @@
  * option) any later version.
  *
  */
+/*
+ * Modified by Telechips Inc.
+ * Modified date : 2020-09-02
+ */
 
 #include <linux/acpi.h>
 #include <linux/dmi.h>
@@ -30,6 +34,7 @@
 #include <linux/of_gpio.h>
 #include <linux/slab.h>
 #include <linux/gpio/consumer.h>
+#include <linux/regmap.h>
 #include <asm/unaligned.h>
 #include <media/v4l2-device.h>
 #include <media/v4l2-ioctl.h>
@@ -326,11 +331,19 @@ struct mxt_data {
 
 	/* for config update handling */
 	struct completion crc_completion;
+
+	/* for config i2c */
+	struct regmap *regmap;
 };
 
 struct mxt_vb2_buffer {
 	struct vb2_buffer	vb;
 	struct list_head	list;
+};
+
+static const struct regmap_config mxt_regmap_config = {
+	.reg_bits = 16,
+	.val_bits = 8,
 };
 
 static size_t mxt_obj_size(const struct mxt_object *obj)
@@ -609,6 +622,27 @@ static int mxt_send_bootloader_cmd(struct mxt_data *data, bool unlock)
 	return 0;
 }
 
+#ifdef CONFIG_ARCH_TCC
+static int __mxt_read_reg(struct i2c_client *client,
+			       u16 reg, u16 len, void *val)
+{
+	struct mxt_data *data = i2c_get_clientdata(client);
+	u16 mxt_reg;
+	u16 buf[2];
+	int ret;
+
+	buf[0] = reg & 0xff;
+	buf[1] = (reg >> 8) & 0xff;
+	mxt_reg = (buf[0] << 8) | (buf[1]);
+
+	ret = regmap_bulk_read(data->regmap, mxt_reg, val, len);
+	if(ret < 0){
+		dev_err(&client->dev, "%s: i2c transfer failed (%d)\n",
+			__func__, ret);
+	}
+	return ret;
+}
+#else
 static int __mxt_read_reg(struct i2c_client *client,
 			       u16 reg, u16 len, void *val)
 {
@@ -643,7 +677,29 @@ static int __mxt_read_reg(struct i2c_client *client,
 
 	return ret;
 }
+#endif
 
+#ifdef CONFIG_ARCH_TCC
+static int __mxt_write_reg(struct i2c_client *client, u16 reg, u16 len,
+			   const void *val)
+{
+	struct mxt_data *data = i2c_get_clientdata(client);
+	u16 mxt_reg;
+	u16 buf[2];
+	int ret;
+
+	buf[0] = reg & 0xff;
+	buf[1] = (reg >> 8) & 0xff;
+	mxt_reg = (buf[0] << 8) | (buf[1]);
+
+	ret = regmap_bulk_write(data->regmap, mxt_reg, val, len);
+	if(ret < 0){
+		dev_err(&client->dev, "%s: i2c send failed (%d)\n",
+			__func__, ret);
+	}
+	return ret;
+}
+#else
 static int __mxt_write_reg(struct i2c_client *client, u16 reg, u16 len,
 			   const void *val)
 {
@@ -673,6 +729,7 @@ static int __mxt_write_reg(struct i2c_client *client, u16 reg, u16 len,
 	kfree(buf);
 	return ret;
 }
+#endif
 
 static int mxt_write_reg(struct i2c_client *client, u16 reg, u8 val)
 {
@@ -3208,6 +3265,13 @@ static int mxt_probe(struct i2c_client *client, const struct i2c_device_id *id)
 		return error;
 	}
 
+	data->regmap = devm_regmap_init_i2c(client, &mxt_regmap_config);
+	if (IS_ERR(data->regmap)) {
+		error = PTR_ERR(data->regmap);
+		dev_err(&client->dev, "failed to initialize regmap: %d\n", error);
+		return error;
+	}
+
 	if (data->reset_gpio) {
 		data->in_bootloader = true;
 		msleep(MXT_RESET_TIME);
@@ -3246,6 +3310,7 @@ static int mxt_remove(struct i2c_client *client)
 	struct mxt_data *data = i2c_get_clientdata(client);
 
 	disable_irq(data->irq);
+	regmap_exit(data->regmap);
 	sysfs_remove_group(&client->dev.kobj, &mxt_attr_group);
 	mxt_free_input_device(data);
 	mxt_free_object_table(data);
