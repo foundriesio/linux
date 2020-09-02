@@ -4,7 +4,10 @@ This document defines the binding for the remoteproc component that loads and
 boots firmwares on the ST32MP family chipset.
 
 Required properties:
-- compatible:	Must be "st,stm32mp1-m4"
+- compatible:	Should be one of the following,
+	"st,stm32mp1-m4":  for non-authenticated remote processor firmware.
+	"st,stm32mp1-m4_optee": for OP-TEE authenticated remote processor
+				firmware.
 - reg:		Address ranges of the RETRAM and MCU SRAM memories used by the
 		remote processor.
 - resets:	Reference to resets asserting:
