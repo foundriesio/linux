@@ -910,8 +910,8 @@ static int tcc_spi_dma_engine_submit(struct tcc_spi *tccspi, u32 flen)
 	}
 
 	// Issue pendings
-	dma_async_issue_pending(txchan);
 	dma_async_issue_pending(rxchan);
+	dma_async_issue_pending(txchan);
 
 	return 0;
 err_dma:
