@@ -26,6 +26,10 @@ sed -i 's/# CONFIG_TUNE_Z13 is not set/CONFIG_TUNE_Z13=y/' ${DEBIAN}/config/conf
 sed -i 's/CONFIG_TUNE_Z15=y/# CONFIG_TUNE_Z15 is not set/' ${DEBIAN}/config/config.common.ubuntu
 sed -i 's/CONFIG_MARCH_Z15_TUNE=y/CONFIG_MARCH_Z13_TUNE=y/' ${DEBIAN}/config/config.common.ubuntu
 
+# Do not enforce DMESG_RESTRICT in focal
+sed -i '3a=CONFIG_SECURITY_DMESG_RESTRICT=y\n# CONFIG_SECURITY_DMESG_RESTRICT is not set' ${DEBIAN}/config/config.common.ubuntu
+sed -i "s/CONFIG_SECURITY_DMESG_RESTRICT                  policy<{'amd64': 'y', 'arm64': 'y', 'armhf': 'y', 'ppc64el': 'y', 's390x': 'y'}>/CONFIG_SECURITY_DMESG_RESTRICT                  policy<{'amd64': 'n', 'arm64': 'n', 'armhf': 'n', 'ppc64el': 'n', 's390x': 'n'}>/" ${DEBIAN}/config/annotations
+
 # And adjust annotations accordingly
 sed -i "s/CONFIG_KERNEL_LZ4                               policy<{'amd64': 'y', 'armhf': 'n', 's390x': 'y'}>/CONFIG_KERNEL_LZ4                               policy<{'amd64': 'n', 'armhf': 'n', 's390x': 'n'}>/" ${DEBIAN}/config/annotations
 sed -i "s/CONFIG_KERNEL_GZIP                              policy<{'amd64': 'n', 'armhf': 'y', 'ppc64el': 'y', 's390x': 'n'}>/CONFIG_KERNEL_GZIP                              policy<{'amd64': 'y', 'armhf': 'y', 'i386': 'y', 'ppc64el': 'y', 's390x': 'n'}>/" ${DEBIAN}/config/annotations
