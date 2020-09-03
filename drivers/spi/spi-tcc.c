@@ -51,7 +51,7 @@
 static struct tcc_spi_pl_data *tcc_spi_get_pl_data(struct tcc_spi *tccspi)
 {
 	if(!tccspi) {
-		printk(KERN_ERR "[ERROR][SPI] [%s] tcc_spi is null!\n", __func__);
+		pr_err("[ERROR][SPI] [%s] tcc_spi is null!\n", __func__);
 		return NULL;
 	}
 
@@ -509,9 +509,9 @@ static int tcc_spi_init_dma_buf(struct tcc_spi *tccspi, int dma_to_mem)
 		tccspi->tx_buf.size = tccspi->dma_buf_size;
 	}
 
-	dev_dbg(tccspi->dev, "[DEBUG][SPI] [%s] dma_to_mem: %d v_addr: 0x%08X dma_addr: 0x%08X size: %d\n",
+	dev_dbg(tccspi->dev, "[DEBUG][SPI] [%s] dma_to_mem: %d v_addr: %#lX dma_addr: 0x%08X size: %d\n",
 		__func__, dma_to_mem,
-		(unsigned int)v_addr, (unsigned int)dma_addr, tccspi->dma_buf_size);
+		(unsigned long)v_addr, (unsigned int)dma_addr, tccspi->dma_buf_size);
 
 	return 0;
 }
@@ -536,9 +536,9 @@ static void tcc_spi_deinit_dma_buf(struct tcc_spi *tccspi, int dma_to_mem)
 	dma_free_writecombine(tccspi->dev, tccspi->dma_buf_size, v_addr, dma_addr);
 	//dma_free_coherent(tccspi->dev, tccspi->dma_buf_size, v_addr, dma_addr);
 
-	dev_dbg(tccspi->dev, "[DEBUG][SPI] [%s] dma_to_mem: %d v_addr: 0x%08X dma_addr: 0x%08X size: %d\n",
+	dev_dbg(tccspi->dev, "[DEBUG][SPI] [%s] dma_to_mem: %d v_addr: %#lX dma_addr: 0x%08X size: %d\n",
 		__func__, dma_to_mem,
-		(unsigned int)v_addr, (unsigned int)dma_addr, tccspi->dma_buf_size);
+		(unsigned long)v_addr, (unsigned int)dma_addr, tccspi->dma_buf_size);
 
 }
 
@@ -557,8 +557,8 @@ static void tcc_spi_txbuf_copy_client_to_spi(struct tcc_spi *tccspi, struct spi_
 	//dma_sync_single_for_device(tccspi->dev, tccspi->tx_buf.dma_addr,
 	//			tccspi->tx_buf.size, DMA_TO_DEVICE);
 
-	dev_dbg(tccspi->dev, "[DEBUG][SPI] [%s] tx - client_buf: 0x%X offset: 0x%X spi_buf: 0x%08X\n",
-		__func__, (unsigned int)xfer->tx_buf, tccspi->cur_tx_pos, (unsigned int)tccspi->tx_buf.v_addr);
+	dev_dbg(tccspi->dev, "[DEBUG][SPI] [%s] tx - client_buf: %#lX offset: %#X spi_buf: %#lX\n",
+		__func__, (unsigned long)xfer->tx_buf, tccspi->cur_tx_pos, (unsigned long)tccspi->tx_buf.v_addr);
 }
 
 /* Copy client buf to spi bux (rx) */
@@ -576,8 +576,8 @@ static void tcc_spi_rxbuf_copy_client_to_spi(struct tcc_spi *tccspi, struct spi_
 	//dma_sync_single_for_device(tccspi->dev, tccspi->rx_buf.dma_addr,
 	//			tccspi->rx_buf.size, DMA_FROM_DEVICE);
 
-	dev_dbg(tccspi->dev, "[DEBUG][SPI] [%s] rx - client_buf: 0x%X offset: 0x%X spi_buf: 0x%08X\n",
-		__func__, (unsigned int)xfer->rx_buf, tccspi->cur_rx_pos, (unsigned int)tccspi->rx_buf.v_addr);
+	dev_dbg(tccspi->dev, "[DEBUG][SPI] [%s] rx - client_buf: %#lX offset: %#X spi_buf: %#lX\n",
+		__func__, (unsigned long)xfer->rx_buf, tccspi->cur_rx_pos, (unsigned long)tccspi->rx_buf.v_addr);
 }
 
 /* Check channel DMA IRQ status */
@@ -617,7 +617,7 @@ static irqreturn_t tcc_spi_dma_irq(int irq, void *data)
 	unsigned int dmaicr, status;
 
 	if(!tccspi) {
-		printk(KERN_ERR "[ERROR][SPI] [%s] tccspi is null ! (irq: %d)\n", __func__, irq);
+		pr_err("[ERROR][SPI] [%s] tccspi is null ! (irq: %d)\n", __func__, irq);
 		return IRQ_NONE;
 	}
 
@@ -678,7 +678,7 @@ static bool tcc_spi_dma_engine_filter(struct dma_chan *chan, void *pdata)
 
 	if(!tccdma)
 	{
-		printk(KERN_ERR "[ERROR][SPI] [%s] tcc_spi_gdma is NULL!!\n", __func__);
+		pr_err("[ERROR][SPI] [%s] tcc_spi_gdma is NULL!!\n", __func__);
 		return -EINVAL;
 	}
 
@@ -711,7 +711,7 @@ static void tcc_dma_engine_tx_callback(void *data)
 
 	if(!tccspi)
 	{
-		printk(KERN_ERR "[ERROR][SPI] [%s] tcc_spi is NULL!!\n", __func__);
+		pr_err("[ERROR][SPI] [%s] tcc_spi is NULL!!\n", __func__);
 		return;
 	}
 
@@ -727,7 +727,7 @@ static void tcc_dma_engine_rx_callback(void *data)
 
 	if(!tccspi)
 	{
-		printk(KERN_ERR "[ERROR][SPI] [%s] tcc_spi is NULL!!\n", __func__);
+		pr_err("[ERROR][SPI] [%s] tcc_spi is NULL!!\n", __func__);
 		return;
 	}
 
@@ -991,7 +991,7 @@ static int tcc_spi_setup(struct spi_device *spi)
 	unsigned int bits;
 
 	if(!tccspi) {
-		printk(KERN_ERR "[ERROR][SPI] tcc_spi data is not exist\n");
+		pr_err("[ERROR][SPI] tcc_spi data is not exist\n");
 		return -ENXIO;
 	}
 	dev_dbg(tccspi->dev, "[DEBUG][SPI] [%s]\n", __func__);
@@ -1046,7 +1046,7 @@ static void tcc_spi_cleanup(struct spi_device *spi)
 		return;
 
 	if(!tccspi) {
-		printk(KERN_ERR "[ERROR][SPI] [%s] tcc_spi is null\n", __func__);
+		pr_err("[ERROR][SPI] [%s] tcc_spi is null\n", __func__);
 		return;
 	}
 	dev_dbg(tccspi->dev, "[DEBUG][SPI] [%s]\n", __func__);
@@ -1096,7 +1096,7 @@ static int tcc_spi_transfer_one(struct spi_master *master, struct spi_device *sp
 	int status, timeout_ms, is_slave;
 
 	if(!tccspi) {
-		printk(KERN_ERR "[ERROR][SPI] [%s] tccspi is null!!\n", __func__);
+		pr_err("[ERROR][SPI] [%s] tccspi is null!!\n", __func__);
 		return -EINVAL;
 	}
 
@@ -1530,7 +1530,7 @@ static int tcc_spi_probe(struct platform_device *pdev)
 	/* initialize GPSB */
 	ret = tcc_spi_init(tccspi);
 	if(ret < 0){
-		dev_err(dev, "[ERROR][SPI] %s: failed to initialize spi\n");
+		dev_err(dev, "[ERROR][SPI] %s: failed to initialize spi\n", __func__);
 		goto exit_free_master;
 	}
 
@@ -1601,22 +1601,22 @@ static int tcc_spi_probe(struct platform_device *pdev)
 	}
 
 #ifdef TCC_USE_GFB_PORT
-	dev_info(dev, "[INFO][SPI] TCC SPI [%s] Id: %d [ch:%d @%X][port: %d %d %d %d][irq: %d][CONTM: %d][gdma: %d][cs_num: %d]\n",
+	dev_info(dev, "[INFO][SPI] TCC SPI [%s] Id: %d [ch:%d %#lX][port: %d %d %d %d][irq: %d][CONTM: %d][gdma: %d][cs_num: %d]\n",
 		pd->name,
 		master->bus_num,
 		pd->gpsb_channel,
-		(unsigned int)tccspi->base,
+		(unsigned long)tccspi->base,
 		pd->port[0],pd->port[1],pd->port[2],pd->port[3],
 		tccspi->irq,
 		tccspi->pd->contm_support,
 		tcc_spi_is_use_gdma(tccspi),
 		master->num_chipselect);
 #else
-	dev_info(dev, "[INFO][SPI] TCC SPI [%s] Id: %d [ch:%d @%X][port: %d][irq: %d][CONTM: %d][gdma: %d][cs_num: %d]\n",
+	dev_info(dev, "[INFO][SPI] TCC SPI [%s] Id: %d [ch:%d %#lX][port: %d][irq: %d][CONTM: %d][gdma: %d][cs_num: %d]\n",
 		pd->name,
 		master->bus_num,
 		pd->gpsb_channel,
-		(unsigned int)tccspi->base,
+		(unsigned long)tccspi->base,
 		pd->port,
 		tccspi->irq,
 		tccspi->pd->contm_support,
@@ -1646,7 +1646,7 @@ static int tcc_spi_remove(struct platform_device *pdev)
 	unsigned long flags;
 
 	if(!tccspi) {
-		printk(KERN_ERR "[ERROR][SPI] [%s] tccspi is null!!\n", __func__);
+		pr_err("[ERROR][SPI] [%s] tccspi is null!!\n", __func__);
 		return -EINVAL;
 	}
 
@@ -1692,7 +1692,7 @@ static int tcc_spi_suspend(struct device *dev)
 	unsigned long flags;
 
 	if(!tccspi) {
-		printk(KERN_ERR "[ERROR][SPI] [%s] tccspi is null!!\n", __func__);
+		pr_err("[ERROR][SPI] [%s] tccspi is null!!\n", __func__);
 		return -EINVAL;
 	}
 	pd = tcc_spi_get_pl_data(tccspi);
@@ -1720,7 +1720,7 @@ static int tcc_spi_resume(struct device *dev)
 	int status;
 
 	if(!tccspi) {
-		printk(KERN_ERR "[ERROR][SPI] [%s] tccspi is null!!\n", __func__);
+		pr_err("[ERROR][SPI] [%s] tccspi is null!!\n", __func__);
 		return -EINVAL;
 	}
 
