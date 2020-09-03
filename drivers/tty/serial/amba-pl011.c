@@ -2768,67 +2768,8 @@ static int pl011_register_port(struct uart_amba_port *uap)
 	return ret;
 }
 
-static int pl011_probe(struct amba_device *dev, const struct amba_id *id)
+static void tcc_set_uart_port_cfg( struct uart_amba_port *uap, struct device *dev)
 {
-	struct uart_amba_port *uap;
-	struct vendor_data *vendor = id->data;
-	int portnr, ret;
-
-	portnr = pl011_find_free_port();
-	if (portnr < 0)
-		return portnr;
-
-	uap = devm_kzalloc(&dev->dev, sizeof(struct uart_amba_port),
-			   GFP_KERNEL);
-	if (!uap)
-		return -ENOMEM;
-
-	uap->clk = devm_clk_get(&dev->dev, NULL);
-	if (IS_ERR(uap->clk))
-		return PTR_ERR(uap->clk);
-
-	uap->reg_offset = vendor->reg_offset;
-	uap->vendor = vendor;
-	uap->fifosize = vendor->get_fifosize(dev);
-	uap->port.iotype = vendor->access_32b ? UPIO_MEM32 : UPIO_MEM;
-	uap->port.irq = dev->irq[0];
-	uap->port.ops = &amba_pl011_pops;
-
-	snprintf(uap->type, sizeof(uap->type), "PL011 rev%u", amba_rev(dev));
-
-	ret = pl011_setup_port(&dev->dev, uap, &dev->res, portnr);
-	if (ret)
-		return ret;
-
-	amba_set_drvdata(dev, uap);
-
-	return pl011_register_port(uap);
-}
-
-static int pl011_remove(struct amba_device *dev)
-{
-	struct uart_amba_port *uap = amba_get_drvdata(dev);
-
-	uart_remove_one_port(&amba_reg, &uap->port);
-	pl011_unregister_port(uap);
-	return 0;
-}
-
-#ifdef CONFIG_PM_SLEEP
-static int pl011_suspend(struct device *dev)
-{
-	struct uart_amba_port *uap = dev_get_drvdata(dev);
-
-	if (!uap)
-		return -EINVAL;
-
-	return uart_suspend_port(&amba_reg, &uap->port);
-}
-
-static int pl011_resume(struct device *dev)
-{
-	struct uart_amba_port *uap = dev_get_drvdata(dev);
-
 #if defined(CONFIG_ARCH_TCC805X)
         struct device_node *np;
         int cfg_num_len, i, offset_reg;
@@ -2864,6 +2805,71 @@ static int pl011_resume(struct device *dev)
 
 	writel_relaxed(reg_val, uap->port.config_reg+offset_reg);
 #endif
+}
+
+static int pl011_probe(struct amba_device *dev, const struct amba_id *id)
+{
+	struct uart_amba_port *uap;
+	struct vendor_data *vendor = id->data;
+	int portnr, ret;
+
+	portnr = pl011_find_free_port();
+	if (portnr < 0)
+		return portnr;
+
+	uap = devm_kzalloc(&dev->dev, sizeof(struct uart_amba_port),
+			   GFP_KERNEL);
+	if (!uap)
+		return -ENOMEM;
+
+	uap->clk = devm_clk_get(&dev->dev, NULL);
+	if (IS_ERR(uap->clk))
+		return PTR_ERR(uap->clk);
+
+	uap->reg_offset = vendor->reg_offset;
+	uap->vendor = vendor;
+	uap->fifosize = vendor->get_fifosize(dev);
+	uap->port.iotype = vendor->access_32b ? UPIO_MEM32 : UPIO_MEM;
+	uap->port.irq = dev->irq[0];
+	uap->port.ops = &amba_pl011_pops;
+
+	snprintf(uap->type, sizeof(uap->type), "PL011 rev%u", amba_rev(dev));
+
+	ret = pl011_setup_port(&dev->dev, uap, &dev->res, portnr);
+	if (ret)
+		return ret;
+
+	amba_set_drvdata(dev, uap);
+	tcc_set_uart_port_cfg(uap, &(dev->dev));
+
+	return pl011_register_port(uap);
+}
+
+static int pl011_remove(struct amba_device *dev)
+{
+	struct uart_amba_port *uap = amba_get_drvdata(dev);
+
+	uart_remove_one_port(&amba_reg, &uap->port);
+	pl011_unregister_port(uap);
+	return 0;
+}
+
+#ifdef CONFIG_PM_SLEEP
+static int pl011_suspend(struct device *dev)
+{
+	struct uart_amba_port *uap = dev_get_drvdata(dev);
+
+	if (!uap)
+		return -EINVAL;
+
+	return uart_suspend_port(&amba_reg, &uap->port);
+}
+
+static int pl011_resume(struct device *dev)
+{
+	struct uart_amba_port *uap = dev_get_drvdata(dev);
+
+	tcc_set_uart_port_cfg(uap, dev);
 
 	if (!uap)
 		return -EINVAL;
