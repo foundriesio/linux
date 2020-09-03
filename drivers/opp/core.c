@@ -985,7 +985,10 @@ static struct opp_table *_allocate_opp_table(struct device *dev, int index)
 				ret);
 		}
 		else {
+			mutex_lock(&opp_table->lock);
+			_remove_opp_dev(opp_dev, opp_table);
 			kfree(opp_table);
+			mutex_unlock(&opp_table->lock);
 			return ERR_PTR(-EPROBE_DEFER);
 		}
 	}
