@@ -2793,6 +2793,68 @@ static int pl011_register_port(struct uart_amba_port *uap)
 	return ret;
 }
 
+static void tcc_set_uart_port_cfg( struct uart_amba_port *uap, struct device *dev)
+{
+#if defined(CONFIG_ARCH_TCC805X)
+	struct device_node *np;
+	int cfg_num_len, i, offset_reg;
+	char *pinctrl_name = 0, *string_temp = 0;
+	volatile char cfg_id_string[3];
+	unsigned long cfg_id, reg_val;
+#if defined(CONFIG_PINCTRL_TCC_SCFW)
+	const struct tcc_sc_fw_handle *sc_fw_handle;
+#endif
+
+	np = of_parse_phandle(dev->of_node, "pinctrl-0", 0);
+	pinctrl_name = (char*)of_node_full_name(np);
+	pinctrl_name+=22;
+	string_temp = strstr(pinctrl_name, "_");
+	cfg_num_len = string_temp - pinctrl_name;
+
+	for(i=0; i<cfg_num_len; i++){
+		cfg_id_string[i] = *(pinctrl_name+i);
+	}
+	cfg_id_string[cfg_num_len]='\0';
+	cfg_id = simple_strtoul((const char*)cfg_id_string, NULL, 10);
+#if !defined(CONFIG_TCC805X_CA53Q)
+	offset_reg = (uap->port.line/4)*0x4;
+#else
+	offset_reg = 0x4;
+#endif
+
+#if defined(CONFIG_PINCTRL_TCC_SCFW)
+
+	sc_fw_handle = tcc_sc_fw_get_handle(uap->port.sc_np);
+
+	if(sc_fw_handle == NULL) {
+
+		printk(KERN_ERR "[ERROR][PL011] no SC firmware handle\n");
+
+		reg_val = readl_relaxed(uap->port.config_reg+offset_reg);
+		reg_val = reg_val&~(0xF<<((uap->port.line%4)*8));
+		reg_val = reg_val|(cfg_id<<((uap->port.line%4)*8));
+
+		writel_relaxed(reg_val, uap->port.config_reg+offset_reg);
+
+	} else {
+
+		sc_fw_handle->ops.gpio_ops->request_gpio(sc_fw_handle, uap->port.phy_config_reg+offset_reg, ((uap->port.line%4)*8), 8, cfg_id);
+
+	}
+
+#else
+
+	reg_val = readl_relaxed(uap->port.config_reg+offset_reg);
+	reg_val = reg_val&~(0xF<<((uap->port.line%4)*8));
+	reg_val = reg_val|(cfg_id<<((uap->port.line%4)*8));
+
+	writel_relaxed(reg_val, uap->port.config_reg+offset_reg);
+
+#endif
+#endif
+
+}
+
 static int pl011_probe(struct amba_device *dev, const struct amba_id *id)
 {
 	struct uart_amba_port *uap;
@@ -2826,6 +2888,7 @@ static int pl011_probe(struct amba_device *dev, const struct amba_id *id)
 		return ret;
 
 	amba_set_drvdata(dev, uap);
+	tcc_set_uart_port_cfg(uap, &(dev->dev));
 
 	return pl011_register_port(uap);
 }
@@ -2855,63 +2918,7 @@ static int pl011_resume(struct device *dev)
 {
 	struct uart_amba_port *uap = dev_get_drvdata(dev);
 
-#if defined(CONFIG_ARCH_TCC805X)
-        struct device_node *np;
-        int cfg_num_len, i, offset_reg;
-        char *pinctrl_name = 0, *string_temp = 0;
-        volatile char cfg_id_string[3];
-        unsigned long cfg_id, reg_val;
-#if defined(CONFIG_PINCTRL_TCC_SCFW)
-	const struct tcc_sc_fw_handle *sc_fw_handle;
-#endif
-
-	np = of_parse_phandle(dev->of_node, "pinctrl-0", 0);
-        pinctrl_name = (char*)of_node_full_name(np);
-        pinctrl_name+=22;
-        string_temp = strstr(pinctrl_name, "_");
-        cfg_num_len = string_temp - pinctrl_name;
-
-        for(i=0; i<cfg_num_len; i++){
-                cfg_id_string[i] = *(pinctrl_name+i);
-        }
-        cfg_id_string[cfg_num_len]='\0';
-        cfg_id = simple_strtoul((const char*)cfg_id_string, NULL, 10);
-#if !defined(CONFIG_TCC805X_CA53Q)
-	offset_reg = (uap->port.line/4)*0x4;
-#else
-	offset_reg = 0x4;
-#endif
-
-#if defined(CONFIG_PINCTRL_TCC_SCFW)
-
-        sc_fw_handle = tcc_sc_fw_get_handle(uap->port.sc_np);
-
-        if(sc_fw_handle == NULL) {
-
-                printk(KERN_ERR "[ERROR][PL011] no SC firmware handle\n");
-
-	        reg_val = readl_relaxed(uap->port.config_reg+offset_reg);
-        	reg_val = reg_val&~(0xF<<((uap->port.line%4)*8));
-       	 	reg_val = reg_val|(cfg_id<<((uap->port.line%4)*8));
-
-        	writel_relaxed(reg_val, uap->port.config_reg+offset_reg);
-
-        } else {
-
-		sc_fw_handle->ops.gpio_ops->request_gpio(sc_fw_handle, uap->port.phy_config_reg+offset_reg, ((uap->port.line%4)*8), 8, cfg_id);
-
-	}
-
-#else
-
-	reg_val = readl_relaxed(uap->port.config_reg+offset_reg);
-	reg_val = reg_val&~(0xF<<((uap->port.line%4)*8));
-	reg_val = reg_val|(cfg_id<<((uap->port.line%4)*8));
-
-	writel_relaxed(reg_val, uap->port.config_reg+offset_reg);
-
-#endif
-#endif
+	tcc_set_uart_port_cfg(uap, dev);
 
 	if (!uap)
 		return -EINVAL;
