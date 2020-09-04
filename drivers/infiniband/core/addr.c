@@ -519,7 +519,7 @@ static int addr_resolve(struct sockaddr *src_in,
 			u32 seq)
 {
 	struct net_device *ndev;
-	struct dst_entry *dst;
+	struct dst_entry *dst = NULL;
 	int ret;
 
 	if (!addr->net) {
