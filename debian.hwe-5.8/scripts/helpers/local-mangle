@@ -30,6 +30,10 @@ sed -i 's/CONFIG_MARCH_Z15_TUNE=y/CONFIG_MARCH_Z13_TUNE=y/' ${DEBIAN}/config/con
 sed -i '3a=CONFIG_SECURITY_DMESG_RESTRICT=y\n# CONFIG_SECURITY_DMESG_RESTRICT is not set' ${DEBIAN}/config/config.common.ubuntu
 sed -i "s/CONFIG_SECURITY_DMESG_RESTRICT                  policy<{'amd64': 'y', 'arm64': 'y', 'armhf': 'y', 'ppc64el': 'y', 's390x': 'y'}>/CONFIG_SECURITY_DMESG_RESTRICT                  policy<{'amd64': 'n', 'arm64': 'n', 'armhf': 'n', 'ppc64el': 'n', 's390x': 'n'}>/" ${DEBIAN}/config/annotations
 
+# Disable DEBUG_INFO_BTF (pahole version is too old in focal)
+sed -i '3a=CONFIG_DEBUG_INFO_BTF=y\n# CONFIG_DEBUG_INFO_BTF is not set' ${DEBIAN}/config/config.common.ubuntu
+sed -i "s/CONFIG_DEBUG_INFO_BTF                           policy<{'amd64': 'y', 'arm64': 'y', 'armhf': 'y', 'ppc64el': 'y', 's390x': 'y'}>/CONFIG_DEBUG_INFO_BTF                           policy<{'amd64': 'y', 'arm64': 'y', 'armhf': 'y', 'ppc64el': 'y', 's390x': 'y'}>/" ${DEBIAN}/config/annotations
+
 # And adjust annotations accordingly
 sed -i "s/CONFIG_KERNEL_LZ4                               policy<{'amd64': 'y', 'armhf': 'n', 's390x': 'y'}>/CONFIG_KERNEL_LZ4                               policy<{'amd64': 'n', 'armhf': 'n', 's390x': 'n'}>/" ${DEBIAN}/config/annotations
 sed -i "s/CONFIG_KERNEL_GZIP                              policy<{'amd64': 'n', 'armhf': 'y', 'ppc64el': 'y', 's390x': 'n'}>/CONFIG_KERNEL_GZIP                              policy<{'amd64': 'y', 'armhf': 'y', 'i386': 'y', 'ppc64el': 'y', 's390x': 'n'}>/" ${DEBIAN}/config/annotations
