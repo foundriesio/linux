@@ -1780,7 +1780,8 @@ static struct page **sev_pin_memory(struct kvm *kvm, unsigned long uaddr,
 				    int write)
 {
 	struct kvm_sev_info *sev = &kvm->arch.sev_info;
-	unsigned long npages, npinned, size;
+	unsigned long npages, size;
+	int npinned;
 	unsigned long locked, lock_limit;
 	struct page **pages;
 	int first, last;
@@ -1796,6 +1797,9 @@ static struct page **sev_pin_memory(struct kvm *kvm, unsigned long uaddr,
 		pr_err("SEV: %lu locked pages exceed the lock limit of %lu.\n", locked, lock_limit);
 		return NULL;
 	}
+
+	if (WARN_ON_ONCE(npages > INT_MAX))
+		return NULL;
 
 	/* Avoid using vmalloc for smaller buffers. */
 	size = npages * sizeof(struct page *);
