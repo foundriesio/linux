@@ -1,5 +1,5 @@
 /*************************************************************************/ /*!
-@Title          RGX Config BVNC 30.V.816.1
+@Title          RGX Core BVNC 29.19.52.202
 @Copyright      Copyright (c) Imagination Technologies Ltd. All Rights Reserved
 @License        Dual MIT/GPLv2
 
@@ -39,61 +39,40 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */ /**************************************************************************/
 
-#ifndef RGXCONFIG_KM_30_V_816_1_H
-#define RGXCONFIG_KM_30_V_816_1_H
+#ifndef RGXCORE_KM_29_19_52_202_H
+#define RGXCORE_KM_29_19_52_202_H
 
-/***** Automatically generated file. Do not edit manually ********************/
-/***** 30.V.816.1 ************************************************************/
-
-#define RGX_BNC_KM_B 30
-#define RGX_BNC_KM_N 816
-#define RGX_BNC_KM_C 1
+/* Automatically generated file (11/02/2020 09:01:23): Do not edit manually */
+/* CS: @5372505 */
 
 /******************************************************************************
- * DDK Defines
+ * BVNC = 29.19.52.202
  *****************************************************************************/
-#define RGX_FEATURE_ALBIORIX_TOP_INFRASTRUCTURE
-#define RGX_FEATURE_AXI_ACE
-#define RGX_FEATURE_CONTEXT_SWITCH_3D_LEVEL (4U)
-#define RGX_FEATURE_ECC_RAMS (0U)
-#define RGX_FEATURE_FBCDC (4U)
-#define RGX_FEATURE_FBCDC_ARCHITECTURE (6U)
-#define RGX_FEATURE_GPU_VIRTUALISATION
-#define RGX_FEATURE_MAX_TPU_PER_SPU (2U)
-#define RGX_FEATURE_META (MTP219)
-#define RGX_FEATURE_META_COREMEM_BANKS (8U)
-#define RGX_FEATURE_META_COREMEM_SIZE (96U)
-#define RGX_FEATURE_META_DMA
-#define RGX_FEATURE_META_DMA_CHANNEL_COUNT (4U)
-#define RGX_FEATURE_META_REGISTER_UNPACKED_ACCESSES
-#define RGX_FEATURE_MMU_VERSION (4U)
-#define RGX_FEATURE_NUM_CLUSTERS (2U)
-#define RGX_FEATURE_NUM_ISP_IPP_PIPES (8U)
-#define RGX_FEATURE_NUM_ISP_PER_SPU (2U)
-#define RGX_FEATURE_NUM_MEMBUS (1U)
-#define RGX_FEATURE_NUM_OSIDS (8U)
-#define RGX_FEATURE_NUM_SPU (1U)
-#define RGX_FEATURE_PBE_CHECKSUM_2D
-#define RGX_FEATURE_PBE_PER_SPU (1U)
-#define RGX_FEATURE_PERFBUS
-#define RGX_FEATURE_PHYS_BUS_WIDTH (40U)
-#define RGX_FEATURE_PM_BYTE_ALIGNED_BASE_ADDRESSES
-#define RGX_FEATURE_POWER_ISLAND_VERSION (1U)
-#define RGX_FEATURE_SCALABLE_TE_ARCH (1U)
-#define RGX_FEATURE_SCALABLE_VCE (1U)
-#define RGX_FEATURE_SIGNAL_SNOOPING
-#define RGX_FEATURE_SLC_BANKS (2U)
-#define RGX_FEATURE_SLC_CACHE_LINE_SIZE_BITS (1024U)
-#define RGX_FEATURE_SLC_SIZE_IN_KILOBYTES (256U)
-#define RGX_FEATURE_SLC_VIVT
-#define RGX_FEATURE_SYS_BUS_SECURE_RESET
-#define RGX_FEATURE_TDM_PDS_CHECKSUM
-#define RGX_FEATURE_TESSELLATION
-#define RGX_FEATURE_TILE_SIZE_X (32U)
-#define RGX_FEATURE_TILE_SIZE_Y (32U)
-#define RGX_FEATURE_VIRTUAL_ADDRESS_SPACE_BITS (40U)
-#define RGX_FEATURE_ZLS_CHECKSUM
+#define RGX_BVNC_KM_B 29
+#define RGX_BVNC_KM_V 19
+#define RGX_BVNC_KM_N 52
+#define RGX_BVNC_KM_C 202
+
+/******************************************************************************
+ * Errata
+ *****************************************************************************/
+
+#define FIX_HW_BRN_43276
+#define FIX_HW_BRN_44871
+#define FIX_HW_BRN_63553
+#define FIX_HW_BRN_68186
 
 
-#endif /* RGXCONFIG_KM_30_V_816_1_H */
 
+/******************************************************************************
+ * Enhancements
+ *****************************************************************************/
+#define HW_ERN_42290
+#define HW_ERN_42606
+#define HW_ERN_47025
+#define HW_ERN_57596
+#define HW_ERN_66622
+
+
+
+#endif /* RGXCORE_KM_29_19_52_202_H */

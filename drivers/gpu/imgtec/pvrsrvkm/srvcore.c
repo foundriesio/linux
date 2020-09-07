@@ -398,7 +398,7 @@ PVRSRVConnectKM(CONNECTION_DATA *psConnection,
  * and don't want to compile the code below (RGX_FEATURE_AXI_ACELITE_BIT_MASK is not
  * defined for volcanic cores).
  */
-#if !defined(RGX_FEATURE_AXI_ACE)
+#if defined(RGX_FEATURE_AXI_ACELITE_BIT_MASK)
 	if (((PVRSRV_RGXDEV_INFO *)psDeviceNode->pvDevice)->sDevFeatureCfg.ui64Features & RGX_FEATURE_AXI_ACELITE_BIT_MASK)
 	{
 		IMG_UINT32 ui32OSidAxiProtReg = 0, ui32OSidAxiProtTD = 0;
@@ -419,8 +419,8 @@ PVRSRVConnectKM(CONNECTION_DATA *psConnection,
 
 		SetAxiProtOSid(ui32OSidReg, ui32OSidAxiProtTD);
 	}
-#endif /* !defined(RGX_FEATURE_AXI_ACE)*/
-#endif	/* defined(EMULATOR) */
+#endif /* defined(RGX_FEATURE_AXI_ACELITE_BIT_MASK)*/
+#endif /* defined(EMULATOR) */
 
 	/* We now know the OSid, OSidReg and bOSidAxiProtReg setting for this
 	 * connection. We can access these from wherever we have a connection
@@ -882,10 +882,10 @@ PVRSRV_ERROR PVRSRVGetMultiCoreInfoKM(CONNECTION_DATA *psConnection,
 	PVR_UNREFERENCED_PARAMETER(psConnection);
 
 	if (psDeviceNode->pfnGetMultiCoreInfo != NULL)
-    {
-        eError = psDeviceNode->pfnGetMultiCoreInfo(psDeviceNode, ui32CapsSize, pui32NumCores, pui64Caps);
-    }
-    return eError;
+	{
+		eError = psDeviceNode->pfnGetMultiCoreInfo(psDeviceNode, ui32CapsSize, pui32NumCores, pui64Caps);
+	}
+	return eError;
 }
 
 

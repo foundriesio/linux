@@ -148,7 +148,7 @@ PVRSRVTQLoadShaders(PVRSRV_DEVICE_NODE * psDeviceNode)
 			PVR_DPF((PVR_DBG_ERROR, "%s: Failed to load shader binary file %s",
 					 __func__,
 					 aszShaderpFilenameStr));
-			eError = PVRSRV_ERROR_UNABLE_TO_FIND_RESOURCE ;
+			eError = PVRSRV_ERROR_UNABLE_TO_FIND_RESOURCE;
 			goto failed_init;
 		}
 	}
@@ -161,8 +161,8 @@ PVRSRVTQLoadShaders(PVRSRV_DEVICE_NODE * psDeviceNode)
 
 	eError = PhysmemNewRamBackedPMR(NULL,
 									psDeviceNode,
-									ui32NumPages * RGX_BIF_PM_PHYSICAL_PAGE_SIZE,
-									ui32NumPages * RGX_BIF_PM_PHYSICAL_PAGE_SIZE,
+									(IMG_DEVMEM_SIZE_T)ui32NumPages * RGX_BIF_PM_PHYSICAL_PAGE_SIZE,
+									(IMG_DEVMEM_SIZE_T)ui32NumPages * RGX_BIF_PM_PHYSICAL_PAGE_SIZE,
 									1,
 									1,
 									&ui32MappingTable,
@@ -209,8 +209,8 @@ PVRSRVTQLoadShaders(PVRSRV_DEVICE_NODE * psDeviceNode)
 
 	eError = PhysmemNewRamBackedPMR(NULL,
 									psDeviceNode,
-									ui32NumPages * RGX_BIF_PM_PHYSICAL_PAGE_SIZE,
-									ui32NumPages * RGX_BIF_PM_PHYSICAL_PAGE_SIZE,
+									(IMG_DEVMEM_SIZE_T)ui32NumPages * RGX_BIF_PM_PHYSICAL_PAGE_SIZE,
+									(IMG_DEVMEM_SIZE_T)ui32NumPages * RGX_BIF_PM_PHYSICAL_PAGE_SIZE,
 									1,
 									1,
 									&ui32MappingTable,

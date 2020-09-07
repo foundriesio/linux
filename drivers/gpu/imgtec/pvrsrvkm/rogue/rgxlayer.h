@@ -778,6 +778,21 @@ void RGXAcquireBootCodeAddr(const void *hPrivate, IMG_DEV_VIRTADDR *psBootCodeAd
 ******************************************************************************/
 void RGXAcquireBootDataAddr(const void *hPrivate, IMG_DEV_VIRTADDR *psBootDataAddr);
 
+/*!
+ *******************************************************************************
+
+ @Function      RGXDeviceIrqEventRx
+
+ @Description   Checks the implementation specific IRQ status register,
+                clearing it if necessary and returning the IRQ status.
+
+ @Input          hPrivate    : Implementation specific data
+
+ @Return:       IRQ status
+
+ ******************************************************************************/
+IMG_BOOL RGXDeviceIrqEventRx(const void *hPrivate);
+
 #if defined(__cplusplus)
 }
 #endif

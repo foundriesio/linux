@@ -527,14 +527,14 @@ RGX_FW_STRUCT_SIZE_ASSERT(RGX_HWPERF_HW_DATA);
 /*! Obtains the counter block ID from the supplied RGX_HWPERF_HW_DATA address
  * and stream index. May be used in decoding the counter block stream words of
  * a RGX_HWPERF_HW_DATA structure. */
-#define RGX_HWPERF_GET_CNTBLK_ID(_data_addr, _idx) ((IMG_UINT16)(((_data_addr)->aui32CountBlksStream[(_idx)]&RGX_HWPERF_CNTBLK_ID_MASK)>>RGX_HWPERF_CNTBLK_ID_SHIFT))
 #define RGX_HWPERF_GET_CNTBLK_IDW(_word)           ((IMG_UINT16)(((_word)&RGX_HWPERF_CNTBLK_ID_MASK)>>RGX_HWPERF_CNTBLK_ID_SHIFT))
+#define RGX_HWPERF_GET_CNTBLK_ID(_data_addr, _idx) RGX_HWPERF_GET_CNTBLK_IDW((_data_addr)->aui32CountBlksStream[(_idx)])
 
 /*! Obtains the counter mask from the supplied RGX_HWPERF_HW_DATA address
  * and stream index. May be used in decoding the counter block stream words
  * of a RGX_HWPERF_HW_DATA structure. */
-#define RGX_HWPERF_GET_CNT_MASK(_data_addr, _idx) ((IMG_UINT16)((_data_addr)->aui32CountBlksStream[(_idx)]&~RGX_HWPERF_CNTBLK_ID_MASK))
-#define RGX_HWPERF_GET_CNT_MASKW(_word)           ((IMG_UINT16)((_word)&(RGX_CNTBLK_COUNTERS_MAX-1)))
+#define RGX_HWPERF_GET_CNT_MASKW(_word)           ((IMG_UINT16)((_word)&(~RGX_HWPERF_CNTBLK_ID_MASK)))
+#define RGX_HWPERF_GET_CNT_MASK(_data_addr, _idx) RGX_HWPERF_GET_CNT_MASKW((_data_addr)->aui32CountBlksStream[(_idx)])
 
 
 typedef struct

@@ -58,6 +58,9 @@ bool IsVmOnline(IMG_UINT32 ui32OSID)
 
 PVRSRV_ERROR PvzOnVmOnline(IMG_UINT32 ui32OSid, IMG_UINT32 ui32Priority)
 {
+#if defined(RGX_NUM_OS_SUPPORTED) && (RGX_NUM_OS_SUPPORTED == 1)
+	PVRSRV_ERROR       eError          = PVRSRV_ERROR_INVALID_PARAMS;
+#else
 	PVRSRV_ERROR       eError          = PVRSRV_OK;
 	PVRSRV_DATA        *psPVRSRVData   = PVRSRVGetPVRSRVData();
 	PVRSRV_DEVICE_NODE *psDevNode;
@@ -69,7 +72,8 @@ PVRSRV_ERROR PvzOnVmOnline(IMG_UINT32 ui32OSid, IMG_UINT32 ui32Priority)
 				 "%s: invalid OSID (%d)",
 				 __func__, ui32OSid));
 
-		return PVRSRV_ERROR_INVALID_PARAMS;
+		eError = PVRSRV_ERROR_INVALID_PARAMS;
+		goto e0;
 	}
 
 	if (psPVRSRVData->abVmOnline[ui32OSid])
@@ -77,7 +81,8 @@ PVRSRV_ERROR PvzOnVmOnline(IMG_UINT32 ui32OSid, IMG_UINT32 ui32Priority)
 		PVR_DPF((PVR_DBG_ERROR,
 				 "%s: OSID %d is already enabled.",
 				 __func__, ui32OSid));
-		return PVRSRV_ERROR_INVALID_PARAMS;
+		eError = PVRSRV_ERROR_INVALID_PARAMS;
+		goto e0;
 	}
 
 	/* For now, limit support to single device setups */
@@ -108,11 +113,15 @@ PVRSRV_ERROR PvzOnVmOnline(IMG_UINT32 ui32OSid, IMG_UINT32 ui32Priority)
 	psPVRSRVData->abVmOnline[ui32OSid] = IMG_TRUE;
 
 e0:
+#endif
 	return eError;
 }
 
 PVRSRV_ERROR PvzOnVmOffline(IMG_UINT32 ui32OSid)
 {
+#if defined(RGX_NUM_OS_SUPPORTED) && (RGX_NUM_OS_SUPPORTED == 1)
+	PVRSRV_ERROR       eError          = PVRSRV_ERROR_INVALID_PARAMS;
+#else
 	PVRSRV_ERROR      eError          = PVRSRV_OK;
 	PVRSRV_DATA       *psPVRSRVData   = PVRSRVGetPVRSRVData();
 	PVRSRV_DEVICE_NODE *psDevNode;
@@ -123,8 +132,8 @@ PVRSRV_ERROR PvzOnVmOffline(IMG_UINT32 ui32OSid)
 		PVR_DPF((PVR_DBG_ERROR,
 				 "%s: invalid OSID (%d)",
 				 __func__, ui32OSid));
-
-		return PVRSRV_ERROR_INVALID_PARAMS;
+		eError = PVRSRV_ERROR_INVALID_PARAMS;
+		goto e0;
 	}
 
 	if (!psPVRSRVData->abVmOnline[ui32OSid])
@@ -132,7 +141,8 @@ PVRSRV_ERROR PvzOnVmOffline(IMG_UINT32 ui32OSid)
 		PVR_DPF((PVR_DBG_ERROR,
 				 "%s: OSID %d is already disabled.",
 				 __func__, ui32OSid));
-		return PVRSRV_ERROR_INVALID_PARAMS;
+		eError = PVRSRV_ERROR_INVALID_PARAMS;
+		goto e0;
 	}
 
 	/* For now, limit support to single device setups */
@@ -145,6 +155,8 @@ PVRSRV_ERROR PvzOnVmOffline(IMG_UINT32 ui32OSid)
 		psPVRSRVData->abVmOnline[ui32OSid] = IMG_FALSE;
 	}
 
+e0:
+#endif
 	return eError;
 }
 

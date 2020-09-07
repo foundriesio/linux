@@ -194,6 +194,31 @@ static LISR_EXECUTION_INFO g_sLISRExecutionInfo;
 
 #endif
 
+IMG_BOOL RGXFwIrqEventRx(PVRSRV_RGXDEV_INFO *psDevInfo)
+{
+	IMG_BOOL bIrqRx = IMG_TRUE;
+	IMG_UINT32 ui32IRQStatus, ui32IRQThreadMask;
+
+	/* virtualisation note:
+	 * status & clearing registers are available on both Host and Guests.
+	 * Due to the remappings done by the 2nd stage device MMU, all drivers
+	 * assume they are accessing register bank 0  */
+	ui32IRQStatus = OSReadHWReg32(psDevInfo->pvRegsBaseKM, RGX_CR_IRQ_OS0_EVENT_STATUS);
+	ui32IRQThreadMask = (ui32IRQStatus & ~RGX_CR_IRQ_OS0_EVENT_STATUS_SOURCE_CLRMSK);
+	if (ui32IRQThreadMask != 0)
+	{
+		/* acknowledge and clear the interrupt */
+		OSWriteHWReg32(psDevInfo->pvRegsBaseKM, RGX_CR_IRQ_OS0_EVENT_CLEAR, ui32IRQThreadMask);
+	}
+	else
+	{
+		/* spurious interrupt */
+		bIrqRx = IMG_FALSE;
+	}
+
+	return bIrqRx;
+}
+
 #if !defined(NO_HARDWARE)
 /*************************************************************************/ /*!
 @Function       SampleIRQCount
@@ -292,30 +317,6 @@ void RGX_WaitForInterruptsTimeout(PVRSRV_RGXDEV_INFO *psDevInfo)
 	}
 }
 
-static IMG_BOOL RGXFwIrqEventRx(PVRSRV_RGXDEV_INFO *psDevInfo)
-{
-	IMG_BOOL bIrqRx = IMG_TRUE;
-	IMG_UINT32 ui32IRQStatus, ui32IRQThreadMask;
-
-	/* virtualisation note:
-	 * status & clearing registers are available on both Host and Guests.
-	 * Due to the remappings done by the 2nd stage device MMU, all drivers
-	 * assume they are accessing register bank 0  */
-	ui32IRQStatus = OSReadHWReg32(psDevInfo->pvRegsBaseKM, RGX_CR_IRQ_OS0_EVENT_STATUS);
-	ui32IRQThreadMask = (ui32IRQStatus & ~RGX_CR_IRQ_OS0_EVENT_STATUS_SOURCE_CLRMSK);
-	if (ui32IRQThreadMask != 0)
-	{
-		/* acknowledge and clear the interrupt */
-		OSWriteHWReg32(psDevInfo->pvRegsBaseKM, RGX_CR_IRQ_OS0_EVENT_CLEAR, ui32IRQThreadMask);
-	}
-	else
-	{
-		/* spurious interrupt */
-		bIrqRx = IMG_FALSE;
-	}
-
-	return bIrqRx;
-}
 /*
 	RGX LISR Handler
 */
@@ -883,7 +884,7 @@ PVRSRV_ERROR RGXSystemGetFabricCoherency(IMG_CPU_PHYADDR sRegsCpuPBase,
 		*peDevFabricType = PVRSRV_DEVICE_FABRIC_NONE;
 		break;
 	}
-#else
+#else /* !defined(NO_HARDWARE) */
 #if defined(RGX_FEATURE_GPU_CPU_COHERENCY)
 	*peDevFabricType = PVRSRV_DEVICE_FABRIC_FULLACE;
 	eDeviceCacheSnoopingMode = PVRSRV_DEVICE_SNOOP_CROSS;
@@ -893,7 +894,7 @@ PVRSRV_ERROR RGXSystemGetFabricCoherency(IMG_CPU_PHYADDR sRegsCpuPBase,
 	eDeviceCacheSnoopingMode = PVRSRV_DEVICE_SNOOP_CPU_ONLY;
 	ui32DeviceFabricCoherency = RGX_CR_SOC_AXI_COHERENCY_SUPPORT_ACE_LITE_COHERENCY;
 #endif
-#endif
+#endif /* !defined(NO_HARDWARE) */
 
 	OSCreateKMAppHintState(&pvAppHintState);
 	ui32AppHintDefault = RGX_CR_SOC_AXI_COHERENCY_SUPPORT_FULL_ACE_COHERENCY;
@@ -1328,11 +1329,18 @@ PVRSRV_ERROR RGXInitDevPart2 (PVRSRV_DEVICE_NODE	*psDeviceNode,
 
 #if defined(PDUMP)
 /* We need to wrap the check for S7_CACHE_HIERARCHY being supported inside
- * #if defined(RGX_FEATURE_S7_CACHE_HIERARCHY)...#endif, as the RGX_IS_FEATURE_SUPPORTED
- * macro references a bitmask define derived from its last parameter which will not exist
- * on architectures which do not have this feature.
+ * #if defined(RGX_FEATURE_S7_CACHE_HIERARCHY_BIT_MASK)...#endif, as the
+ * RGX_IS_FEATURE_SUPPORTED macro references a bitmask define derived from its
+ * last parameter which will not exist on architectures which do not have this
+ * feature.
+ * Note we check for RGX_FEATURE_S7_CACHE_HIERARCHY_BIT_MASK rather than for
+ * RGX_FEATURE_S7_CACHE_HIERARCHY (which might seem a better choice) as this
+ * means we can build the kernel driver without having to worry about the BVNC
+ * (the BIT_MASK is defined in rgx_bvnc_defs_km.h for all BVNCs for a given
+ *  architecture, whereas the FEATURE is only defined for those BVNCs that
+ *  support it).
  */
-#if defined(RGX_FEATURE_S7_CACHE_HIERARCHY)
+#if defined(RGX_FEATURE_S7_CACHE_HIERARCHY_BIT_MASK)
 	if (!(RGX_IS_FEATURE_SUPPORTED(psDevInfo, S7_CACHE_HIERARCHY)))
 #endif
 	{
@@ -3479,7 +3487,7 @@ static INLINE DEVMEM_HEAP_BLUEPRINT _blueprint_init(IMG_CHAR *name,
 	if ((b.uiHeapLength == 0) || (b.uiHeapLength & (ui32OSPageSize - 1)))
 	{
 		PVR_DPF((PVR_DBG_ERROR,
-			     "%s: Invalid Heap \"%s\" Size: %llu (0x%llx)",
+			     "%s: Invalid Heap \"%s\" Size: %" IMG_UINT64_FMTSPEC " (0x%" IMG_UINT64_FMTSPECx ")",
 			     __func__,
 			     b.pszName, b.uiHeapLength, b.uiHeapLength));
 		PVR_DPF((PVR_DBG_ERROR,

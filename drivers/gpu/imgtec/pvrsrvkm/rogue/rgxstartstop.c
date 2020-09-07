@@ -971,22 +971,7 @@ PVRSRV_ERROR RGXStop(const void *hPrivate)
 	psParams = (RGX_LAYER_PARAMS*)hPrivate;
 	psDevInfo = psParams->psDevInfo;
 
-	if (bMetaFW)
-	{
-		RGXWriteReg32(hPrivate,
-		              RGX_CR_META_SP_MSLVIRQSTATUS,
-		              RGX_CR_META_SP_MSLVIRQSTATUS_TRIGVECT2_CLRMSK);
-	}
-	else if (bMipsFW)
-	{
-		RGXWriteReg32(hPrivate,
-		              RGX_CR_MIPS_WRAPPER_IRQ_CLEAR,
-		              RGX_CR_MIPS_WRAPPER_IRQ_CLEAR_EVENT_EN);
-	}
-	else
-	{
-		/* Do nothing */
-	}
+	RGXDeviceIrqEventRx(hPrivate);
 
 	/* Wait for Sidekick/Jones to signal IDLE except for the Garten Wrapper */
 	if (!RGX_DEVICE_HAS_FEATURE(hPrivate, S7_TOP_INFRASTRUCTURE))

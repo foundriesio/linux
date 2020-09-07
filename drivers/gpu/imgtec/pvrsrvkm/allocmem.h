@@ -51,10 +51,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 extern "C" {
 #endif
 
-#if !defined(PVRSRV_DEBUG_LINUX_MEMORY_STATS) || !defined(DEBUG) || !defined(PVRSRV_ENABLE_PROCESS_STATS) || !defined(PVRSRV_ENABLE_MEMORY_STATS)
-
-void *OSAllocMem(IMG_UINT32 ui32Size);
-void *OSAllocZMem(IMG_UINT32 ui32Size);
+#if !defined(PVRSRV_DEBUG_LINUX_MEMORY_STATS) || !defined(DEBUG) || !defined(PVRSRV_ENABLE_PROCESS_STATS) || !defined(PVRSRV_ENABLE_MEMORY_STATS) || defined(DOXYGEN)
 
 /**************************************************************************/ /*!
 @Function       OSAllocMem
@@ -65,6 +62,7 @@ void *OSAllocZMem(IMG_UINT32 ui32Size);
 @Return         Pointer to allocated memory on success.
                 Otherwise NULL.
  */ /**************************************************************************/
+void *OSAllocMem(IMG_UINT32 ui32Size);
 #define OSAllocMem(_size) (OSAllocMem)((_size))
 /**************************************************************************/ /*!
 @Function       OSAllocZMem
@@ -75,6 +73,7 @@ void *OSAllocZMem(IMG_UINT32 ui32Size);
 @Return         Pointer to allocated memory on success.
                 Otherwise NULL.
  */ /**************************************************************************/
+void *OSAllocZMem(IMG_UINT32 ui32Size);
 #define OSAllocZMem(_size) (OSAllocZMem)((_size))
 
 #else

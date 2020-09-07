@@ -1352,9 +1352,16 @@ PVRSRV_ERROR SyncFbFenceMerge(PVRSRV_FENCE_SERVER *psInFence1,
 	}
 	else
 	{
-		OSStringLCopy(psNewFence->pszName,
-		              pszFenceName,
-		              SYNC_FB_FENCE_MAX_LENGTH);
+		if (pszFenceName)
+		{
+			OSStringLCopy(psNewFence->pszName,
+						  pszFenceName,
+						  SYNC_FB_FENCE_MAX_LENGTH);
+		}
+		else
+		{
+			psNewFence->pszName[0] = '\0';
+		}
 	}
 
 	/* Add sync pts from input fence 1 & 2
@@ -1603,9 +1610,16 @@ static PVRSRV_ERROR _SyncFbTimelineCreate(PFN_SYNC_PT_HAS_SIGNALLED pfnHasPtSign
 	}
 	else
 	{
-		OSStringLCopy((IMG_CHAR*) psNewTl->pszName,
-		              pszTimelineName,
-		              SYNC_FB_TIMELINE_MAX_LENGTH);
+		if (pszTimelineName)
+		{
+			OSStringLCopy((IMG_CHAR*) psNewTl->pszName,
+			              pszTimelineName,
+			              SYNC_FB_TIMELINE_MAX_LENGTH);
+		}
+		else
+		{
+			psNewTl->pszName[0] = '\0';
+		}
 	}
 
 	dllist_init(&psNewTl->sSyncList);
@@ -2443,10 +2457,17 @@ static PVRSRV_ERROR _SyncFbSWTimelineFenceCreate(PVRSRV_TIMELINE_SERVER *psTl,
 
 	OSLockRelease(psTl->hTlLock);
 
-	/* Init Fence */
-	OSStringLCopy(psNewFence->pszName,
-	              pszFenceName,
-				  SYNC_FB_FENCE_MAX_LENGTH);
+	if (pszFenceName)
+	{
+		/* Init Fence */
+		OSStringLCopy(psNewFence->pszName,
+		              pszFenceName,
+		              SYNC_FB_FENCE_MAX_LENGTH);
+	}
+	else
+	{
+		psNewFence->pszName[0] = '\0';
+	}
 
 	psNewFence->apsFenceSyncList[0] = psNewSyncPt;
 	psNewFence->uiNumSyncs = 1;

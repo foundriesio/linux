@@ -2088,7 +2088,11 @@ _PMR_PDumpSymbolicAddrPhysical(const PMR *psPMR,
 	           psPMR->uiSerialNum,
 	           uiPhysicalOffset >> PMR_GetLog2Contiguity(psPMR),
 	           psPMR->szAnnotation);
-	PDumpMakeStringValid(pszSymbolicAddr, OSStringLength(pszSymbolicAddr));
+
+	if (pszSymbolicAddr)
+	{
+		PDumpMakeStringValid(pszSymbolicAddr, OSStringLength(pszSymbolicAddr));
+	}
 
 
 	*puiNewOffset = uiPhysicalOffset & ((1 << PMR_GetLog2Contiguity(psPMR))-1);

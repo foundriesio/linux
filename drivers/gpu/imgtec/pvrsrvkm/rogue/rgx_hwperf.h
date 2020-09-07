@@ -64,13 +64,13 @@ extern "C" {
 #include "pvrsrv_sync_km.h"
 
 
-#if defined(RGX_BVNC_CORE_KM_HEADER) && defined(RGX_BNC_CONFIG_KM_HEADER)
-/* HWPerf interface assumption checks */
-static_assert(RGX_FEATURE_NUM_CLUSTERS <= 16U, "Cluster count too large for HWPerf protocol definition");
-
-
 #if !defined(__KERNEL__)
 /* User-mode and Firmware definitions only */
+
+#if defined(RGX_BVNC_CORE_KM_HEADER) && defined(RGX_BNC_CONFIG_KM_HEADER)
+
+/* HWPerf interface assumption checks */
+static_assert(RGX_FEATURE_NUM_CLUSTERS <= 16U, "Cluster count too large for HWPerf protocol definition");
 
 /*! The number of indirectly addressable TPU_MSC blocks in the GPU */
 # define RGX_HWPERF_PHANTOM_INDIRECT_BY_DUST MAX(((IMG_UINT32)RGX_FEATURE_NUM_CLUSTERS >> 1), 1U)
@@ -121,6 +121,7 @@ static_assert(RGX_FEATURE_NUM_CLUSTERS <= 16U, "Cluster count too large for HWPe
   #define RGX_HWPERF_CNTRS_IN_BLK 4
 #endif
 
+#endif /* #if defined(RGX_BVNC_CORE_KM_HEADER) && defined(RGX_BNC_CONFIG_KM_HEADER) */
 #else /* defined(__KERNEL__) */
 /* Kernel/server definitions - not used, hence invalid definitions */
 
@@ -137,7 +138,6 @@ static_assert(RGX_FEATURE_NUM_CLUSTERS <= 16U, "Cluster count too large for HWPe
 
 # define RGX_HWPERF_DOPPLER_BX_TU_BLKS       0U
 
-#endif
 #endif
 
 /*! The number of custom non-mux counter blocks supported */
@@ -585,14 +585,14 @@ RGX_FW_STRUCT_SIZE_ASSERT(RGX_HWPERF_HW_DATA);
 /*! Obtains the counter block ID from the supplied RGX_HWPERF_HW_DATA address
  * and stream index. May be used in decoding the counter block stream words of
  * a RGX_HWPERF_HW_DATA structure. */
-#define RGX_HWPERF_GET_CNTBLK_ID(_data_addr, _idx) ((IMG_UINT16)(((_data_addr)->aui32CountBlksStream[(_idx)]&RGX_HWPERF_CNTBLK_ID_MASK)>>RGX_HWPERF_CNTBLK_ID_SHIFT))
 #define RGX_HWPERF_GET_CNTBLK_IDW(_word)           ((IMG_UINT16)(((_word)&RGX_HWPERF_CNTBLK_ID_MASK)>>RGX_HWPERF_CNTBLK_ID_SHIFT))
+#define RGX_HWPERF_GET_CNTBLK_ID(_data_addr, _idx) RGX_HWPERF_GET_CNTBLK_IDW((_data_addr)->aui32CountBlksStream[(_idx)])
 
 /*! Obtains the counter mask from the supplied RGX_HWPERF_HW_DATA address
  * and stream index. May be used in decoding the counter block stream words
  * of a RGX_HWPERF_HW_DATA structure. */
-#define RGX_HWPERF_GET_CNT_MASK(_data_addr, _idx) ((IMG_UINT16)((_data_addr)->aui32CountBlksStream[(_idx)]&((1<<RGX_CNTBLK_COUNTERS_MAX)-1)))
-#define RGX_HWPERF_GET_CNT_MASKW(_word)           ((IMG_UINT16)((_word)&((1<<RGX_CNTBLK_COUNTERS_MAX)-1)))
+#define RGX_HWPERF_GET_CNT_MASKW(_word)           ((IMG_UINT16)((_word)&~RGX_HWPERF_CNTBLK_ID_MASK))
+#define RGX_HWPERF_GET_CNT_MASK(_data_addr, _idx) RGX_HWPERF_GET_CNT_MASKW((_data_addr)->aui32CountBlksStream[(_idx)])
 
 
 typedef struct

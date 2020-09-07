@@ -1000,6 +1000,10 @@ failReserve:
 				uiAllocatedAddr);
 	}
 failVMRAAlloc:
+	if ((ui64OptionalMapAddress) && PVRSRV_CHECK_SVM_ALLOC(psImport->uiFlags))
+	{
+		DevmemImportStructDevUnmapSVM(psHeap, psImport);
+	}
 	bDestroyed = DevmemImportStructRelease(psImport);
 	OSAtomicDecrement(&psHeap->hImportCount);
 failParams:
@@ -1162,6 +1166,9 @@ void DevmemImportStructCPUUnmap(DEVMEM_IMPORT *psImport)
 				psCPUImport->hOSMMapData,
 				psCPUImport->pvCPUVAddr,
 				(size_t)psImport->uiSize);
+
+		psCPUImport->hOSMMapData = NULL;
+		psCPUImport->pvCPUVAddr = NULL;
 
 		OSLockRelease(psCPUImport->hLock);
 

@@ -2991,13 +2991,13 @@ MemStatsPrintElements(OSDI_IMPL_ENTRY *psEntry,
 			}
 
 #if defined(PVRSRV_DEBUG_LINUX_MEMORY_STATS_ON)
-			DIPrintf(psEntry, "  %u", psRecord->uiBytes);
+			DIPrintf(psEntry, "  " IMG_SIZE_FMTSPEC, psRecord->uiBytes);
 
-			DIPrintf(psEntry, "  %s", (IMG_CHAR*)psRecord->pvAllocdFromFile);
+			DIPrintf(psEntry, "  %s", (IMG_CHAR*) psRecord->pvAllocdFromFile);
 
 			DIPrintf(psEntry, "  %d\n", psRecord->ui32AllocdFromLine);
 #else
-			DIPrintf(psEntry, "  %zu\n", psRecord->uiBytes);
+			DIPrintf(psEntry, "  " IMG_SIZE_FMTSPEC "\n", psRecord->uiBytes);
 #endif
 		}
 		/* Move to next record... */

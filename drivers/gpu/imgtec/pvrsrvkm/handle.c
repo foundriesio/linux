@@ -247,7 +247,24 @@ static const IMG_CHAR *HandleTypeToString(PVRSRV_HANDLE_TYPE eType)
 			return "INVALID";
 	}
 }
-#endif /* PVRSRV_NEED_PVR_DPF */
+
+static const IMG_CHAR *HandleBaseTypeToString(PVRSRV_HANDLE_BASE_TYPE eType)
+{
+	#define HANDLEBASETYPE(x) \
+			case PVRSRV_HANDLE_BASE_TYPE_##x: \
+				return #x;
+	switch (eType)
+	{
+		HANDLEBASETYPE(CONNECTION);
+		HANDLEBASETYPE(PROCESS);
+		HANDLEBASETYPE(GLOBAL);
+		#undef HANDLEBASETYPE
+
+		default:
+			return "INVALID";
+	}
+}
+#endif
 
 /*!
 *******************************************************************************
@@ -1307,11 +1324,13 @@ PVRSRV_ERROR PVRSRVLookupHandleUnlocked(PVRSRV_HANDLE_BASE *psBase,
 	if (unlikely(eError != PVRSRV_OK))
 	{
 		PVR_DPF((PVR_DBG_ERROR,
-			 "%s: Error looking up handle (%s). Handle %p, type %u",
+			 "%s: Error looking up handle (%s) for base %p of type %s. Handle %p, type %s",
 			 __func__,
 			 PVRSRVGetErrorString(eError),
+			 psBase,
+			 HandleBaseTypeToString(psBase->eType),
 			 (void*) hHandle,
-			 eType));
+			 HandleTypeToString(eType)));
 #if defined(DEBUG) || defined(PVRSRV_NEED_PVR_DPF)
 		OSDumpStack();
 #endif

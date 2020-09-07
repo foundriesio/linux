@@ -84,10 +84,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define FW_STREAM_BUFFER_SIZE (0x80000)
 #define HOST_STREAM_BUFFER_SIZE (0x20000)
 
-/* HWPerf interface assumption checks */
-static_assert(RGX_FEATURE_NUM_CLUSTERS <= 16U,
-			  "Cluster count too large for HWPerf protocol definition");
-
 /* Must be at least as large as two tl packets of maximum size */
 static_assert(HOST_STREAM_BUFFER_SIZE >= (PVRSRVTL_MAX_PACKET_SIZE<<1),
               "HOST_STREAM_BUFFER_SIZE is less than (PVRSRVTL_MAX_PACKET_SIZE<<1)");
@@ -1487,10 +1483,10 @@ PVRSRV_ERROR PVRSRVRGXControlHWPerfBlocksKM(
 
 	PVR_DPF_ENTERED;
 
+	PVR_LOG_RETURN_IF_INVALID_PARAM(psBlockIDs != NULL, "psBlockIDs");
 	PVR_ASSERT(psDeviceNode);
 	PVR_ASSERT(ui32ArrayLen>0);
 	PVR_ASSERT(ui32ArrayLen<=RGXFWIF_HWPERF_CTRL_BLKS_MAX);
-	PVR_ASSERT(psBlockIDs);
 
 	/* Fill in the command structure with the parameters needed
 	 */

@@ -248,7 +248,7 @@ void *(OSAllocMem)(IMG_UINT32 ui32Size DEBUG_MEMSTATS_PARAMS)
 
 	if (pvRet != NULL)
 	{
-		_pvr_alloc_stats_add(pvRet, ui32Size DEBUG_MEMSTATS_VALUES);
+		_pvr_alloc_stats_add(pvRet, ui32Size DEBUG_MEMSTATS_ALLOC_RECORD_VALUES);
 	}
 
 	return pvRet;
@@ -278,7 +278,7 @@ void *(OSAllocZMem)(IMG_UINT32 ui32Size DEBUG_MEMSTATS_PARAMS)
 
 	if (pvRet != NULL)
 	{
-		_pvr_alloc_stats_add(pvRet, ui32Size DEBUG_MEMSTATS_VALUES);
+		_pvr_alloc_stats_add(pvRet, ui32Size DEBUG_MEMSTATS_ALLOC_RECORD_VALUES);
 	}
 
 	return pvRet;
