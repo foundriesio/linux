@@ -217,7 +217,7 @@ PVRSRV_ERROR RGXPrePowerState(IMG_HANDLE				hDevHandle,
 										          (IMG_UINT32 __iomem *)&psDevInfo->aui32SampleIRQCount[ui32TID],
 										          psFwSysData->aui32InterruptCount[ui32TID],
 										          0xffffffff,
-										          IMG_FALSE);
+										          POLL_FLAG_LOG_ERROR);
 
 					if (eError != PVRSRV_OK)
 					{
@@ -395,7 +395,7 @@ static PVRSRV_ERROR RGXVirtualisationPowerupSidebandTest(PVRSRV_DEVICE_NODE	 *ps
 								 (IMG_UINT32 *)&psFwSysInit->ui32OSKickTest,
 								 0,
 								 RGXFWIF_KICK_TEST_ENABLED_BIT,
-								 IMG_TRUE) != PVRSRV_OK)
+								 POLL_FLAG_LOG_ERROR | POLL_FLAG_DEBUG_DUMP) != PVRSRV_OK)
 		{
 			PVR_DPF((PVR_DBG_ERROR, "Testing OS %u kick register failed: firmware did not clear test location (contents: 0x%X)",
 					 ui32OSid,
@@ -469,7 +469,7 @@ PVRSRV_ERROR RGXPostPowerState(IMG_HANDLE				hDevHandle,
 			                         (IMG_UINT32 __iomem *)&psDevInfo->psRGXFWIfSysInit->bFirmwareStarted,
 			                         IMG_TRUE,
 			                         0xFFFFFFFF,
-			                         IMG_TRUE) != PVRSRV_OK)
+			                         POLL_FLAG_LOG_ERROR | POLL_FLAG_DEBUG_DUMP) != PVRSRV_OK)
 			{
 				PVR_DPF((PVR_DBG_ERROR, "RGXPostPowerState: Polling for 'FW started' flag failed."));
 				eError = PVRSRV_ERROR_TIMEOUT;

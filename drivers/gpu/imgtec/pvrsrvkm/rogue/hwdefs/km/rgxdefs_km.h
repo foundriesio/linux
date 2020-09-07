@@ -56,24 +56,21 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "rgx_heap_firmware.h"
 
-/* The following Macros are picked up through BVNC headers for PDUMP and
- * no hardware operations to be compatible with old build infrastructure.
+/* The following Macros are picked up through BVNC headers for no hardware
+ * operations to be compatible with old build infrastructure.
  */
-#if defined(PDUMP) || defined(NO_HARDWARE) || !defined(SUPPORT_MULTIBVNC_RUNTIME_BVNC_ACQUISITION)
+#if defined(NO_HARDWARE)
 /******************************************************************************
  * Check for valid B.X.N.C
  *****************************************************************************/
 #if !defined(RGX_BVNC_KM_B) || !defined(RGX_BVNC_KM_V) || !defined(RGX_BVNC_KM_N) || !defined(RGX_BVNC_KM_C)
 #error "Need to specify BVNC (RGX_BVNC_KM_B, RGX_BVNC_KM_V, RGX_BVNC_KM_N and RGX_BVNC_C)"
 #endif
-#endif
 
-#if defined(PDUMP) || defined(NO_HARDWARE)
 /* Check core/config compatibility */
 #if (RGX_BVNC_KM_B != RGX_BNC_KM_B) || (RGX_BVNC_KM_N != RGX_BNC_KM_N) || (RGX_BVNC_KM_C != RGX_BNC_KM_C)
 #error "BVNC headers are mismatching (KM core/config)"
 #endif
-
 #endif
 
 /******************************************************************************
@@ -143,7 +140,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define RGX_META_COREMEM_128K     (128*1024)
 #define RGX_META_COREMEM_256K     (256*1024)
 
-#if !defined(SUPPORT_MULTIBVNC)
+#if !defined(__KERNEL__)
 #if (!defined(SUPPORT_TRUSTED_DEVICE) || defined(RGX_FEATURE_META_DMA)) && \
     (defined(RGX_FEATURE_META_COREMEM_SIZE) && RGX_FEATURE_META_COREMEM_SIZE != 0)
 #define RGX_META_COREMEM_SIZE     (RGX_FEATURE_META_COREMEM_SIZE*1024U)
@@ -221,7 +218,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define RGX_REQ_NUM_BERNADOS(CLUSTERS) (((CLUSTERS) + 3U) / 4U)
 #define RGX_REQ_NUM_BLACKPEARLS(CLUSTERS) (((CLUSTERS) + 3U) / 4U)
 
-#if !defined(SUPPORT_MULTIBVNC)
+#if !defined(__KERNEL__)
 # define RGX_NUM_PHANTOMS (RGX_REQ_NUM_PHANTOMS(RGX_FEATURE_NUM_CLUSTERS))
 #endif
 
@@ -267,7 +264,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define RGX_CR_JONES_IDLE_MASKFULL                        (IMG_UINT64_C(0x0000000000003FFF))
 #endif
 
-#if !defined(SUPPORT_MULTIBVNC)
+#if !defined(__KERNEL__)
 #if !defined(RGX_FEATURE_SLC_SIZE_IN_BYTES)
 #if defined(RGX_FEATURE_SLC_SIZE_IN_KILOBYTES)
 #define RGX_FEATURE_SLC_SIZE_IN_BYTES (RGX_FEATURE_SLC_SIZE_IN_KILOBYTES * 1024)
@@ -277,7 +274,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #endif
 #endif
 
-#if !defined(SUPPORT_MULTIBVNC)
+#if !defined(__KERNEL__)
 
 #if defined(RGX_FEATURE_ROGUEXE)
 #define RGX_NUM_RASTERISATION_MODULES	RGX_FEATURE_NUM_CLUSTERS
@@ -285,7 +282,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define RGX_NUM_RASTERISATION_MODULES	RGX_NUM_PHANTOMS
 #endif
 
-#endif /* defined(SUPPORT_MULTIBVNC) */
+#endif /* defined(__KERNEL__) */
 
 /* GPU CR timer tick in GPU cycles */
 #define RGX_CRTIME_TICK_IN_CYCLES (256U)

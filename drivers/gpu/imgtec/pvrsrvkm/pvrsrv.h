@@ -84,6 +84,13 @@ typedef enum _FIRMWARE_ALLOC_TYPE_
 	FW_ALLOC_RAW          = PVRSRV_FW_ALLOC_TYPE(PVRSRV_MEMALLOCFLAG_FW_ALLOC_RAW)
 } FIRMWARE_ALLOC_TYPE;
 
+typedef enum _POLL_FLAGS_
+{
+	POLL_FLAG_NONE = 0, /* No message or dump is printed on poll timeout */
+	POLL_FLAG_LOG_ERROR = 1, /* Log error on poll timeout */
+	POLL_FLAG_DEBUG_DUMP = 2 /* Print debug dump on poll timeout */
+} POLL_FLAGS;
+
 typedef struct _BUILD_INFO_
 {
 	IMG_UINT32	ui32BuildOptions;
@@ -256,7 +263,7 @@ PVRSRV_ERROR IMG_CALLCONV PVRSRVPollForValueKM(PVRSRV_DEVICE_NODE *psDevNode,
 		volatile IMG_UINT32 __iomem *pui32LinMemAddr,
 		IMG_UINT32                   ui32Value,
 		IMG_UINT32                   ui32Mask,
-		IMG_BOOL                     bDebugDumpOnFailure);
+		POLL_FLAGS                   ePollFlags);
 
 /*!
 ******************************************************************************

@@ -939,10 +939,10 @@ static INLINE PVRSRV_ERROR _MMU_ConvertDevMemFlags(IMG_BOOL bInvalidate,
 		{
 			*uiMMUProtFlags |= MMU_PROTFLAGS_CACHE_COHERENT;
 		}
- /* Only compile if RGX_FEATURE_MIPS is defined to avoid compilation
+ /* Only compile if RGX_FEATURE_MIPS_BIT_MASK is defined to avoid compilation
   * errors on volcanic cores.
   */
- #if defined(SUPPORT_RGX) && defined(RGX_FEATURE_MIPS)
+ #if defined(SUPPORT_RGX) && defined(RGX_FEATURE_MIPS_BIT_MASK)
 		if ((psDevNode->pfnCheckDeviceFeature) &&
 			 PVRSRV_IS_FEATURE_SUPPORTED(psDevNode, MIPS))
 		{
@@ -2833,10 +2833,11 @@ MMU_MapPages(MMU_CONTEXT *psMMUContext,
 			/* Obtain non-coherent protection flags as we cannot have multiple coherent
 			   virtual pages pointing to the same physical page so all dummy page
 			   mappings have to be non-coherent even in a coherent allocation */
-			_MMU_ConvertDevMemFlags(IMG_FALSE,
+			eError = _MMU_ConvertDevMemFlags(IMG_FALSE,
 									uiMappingFlags & ~PVRSRV_MEMALLOCFLAG_GPU_CACHE_COHERENT,
 									&uiMMUProtFlags,
 									psMMUContext);
+			PVR_GOTO_IF_ERROR(eError, e2);
 
 			/* Callback to get device specific protection flags */
 			if (psConfig->uiBytesPerEntry == 8)

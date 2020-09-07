@@ -152,6 +152,7 @@ typedef	enum tag_img_bool
 typedef IMG_CHAR const* IMG_PCCHAR;
 #endif
 
+/* Format specifiers for 'size_t' type */
 #if defined(_MSC_VER) || defined(__MINGW32__)
 #define IMG_SIZE_FMTSPEC  "%Iu"
 #define IMG_SIZE_FMTSPECX "%Ix"

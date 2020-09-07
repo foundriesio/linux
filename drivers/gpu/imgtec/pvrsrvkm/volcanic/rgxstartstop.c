@@ -564,21 +564,12 @@ PVRSRV_ERROR RGXStart(const void *hPrivate)
 	return eError;
 }
 
-static INLINE void ClearIRQStatusRegister(const void *hPrivate)
-{
-	IMG_UINT32 ui32IRQStatus;
-
-	ui32IRQStatus = RGXReadReg32(hPrivate, RGX_CR_IRQ_OS0_EVENT_STATUS);
-	ui32IRQStatus &= ~RGX_CR_IRQ_OS0_EVENT_STATUS_SOURCE_CLRMSK;
-	RGXWriteReg32(hPrivate, RGX_CR_IRQ_OS0_EVENT_CLEAR, ui32IRQStatus);
-}
-
 PVRSRV_ERROR RGXStop(const void *hPrivate)
 {
 	PVRSRV_ERROR eError = PVRSRV_OK;
 	IMG_BOOL bMetaFW = RGX_DEVICE_HAS_FEATURE_VALUE(hPrivate, META);
 
-	ClearIRQStatusRegister(hPrivate);
+	RGXDeviceIrqEventRx(hPrivate);
 
 #if defined(SUPPORT_VALIDATION) && !defined(TC_MEMORY_CONFIG)
 #if !defined(RGX_CR_POWER_EVENT)

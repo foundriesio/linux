@@ -411,8 +411,8 @@ pvr_buffer_sync_resolve_and_create_fences(struct pvr_buffer_sync_context *ctx,
 		return -ENOMEM;
 
 	data->ctx = ctx;
-	data->pmrs = (struct _PMR_ **)((char *)data + data_size);
-	data->pmr_flags = (u32 *)((char *)data->pmrs + pmrs_size);
+	data->pmrs = (struct _PMR_ **)(void *)(data + 1);
+	data->pmr_flags = (u32 *)(void *)(data->pmrs + nr_pmrs);
 
 	/*
 	 * It's expected that user space will provide a set of unique PMRs
@@ -496,7 +496,7 @@ pvr_buffer_sync_resolve_and_create_fences(struct pvr_buffer_sync_context *ctx,
 	*update_checkpoints_out = pvr_fence_get_checkpoint(data->update_fence);
 	*data_out = data;
 
-	return err;
+	return 0;
 
 err_free_fence_checkpoints:
 	kfree(fence_checkpoints);

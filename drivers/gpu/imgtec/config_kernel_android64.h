@@ -1,9 +1,8 @@
 #define PVRSRV_ENABLE_CCCB_GROW
 #define RGX_FW_FILENAME "rgx.fw"
 #define RGX_SH_FILENAME "rgx.sh"
-#define SUPPORT_MULTIBVNC
 #define LINUX
-#define PVR_BUILD_DIR "arm64_android"
+#define PVR_BUILD_DIR "tcc64_android"
 #if defined(CONFIG_POWERVR_DEBUG)
 #define PVR_BUILD_TYPE "debug"
 #else
@@ -21,7 +20,6 @@
 #define SUPPORT_PHYSMEM_TEST
 #define RGX_BVNC_CORE_KM_HEADER "cores/rgxcore_km_27.5.254.2.h"
 #define RGX_BNC_CONFIG_KM_HEADER "configs/rgxconfig_km_27.V.254.2.h"
-#define SUPPORT_MULTIBVNC_RUNTIME_BVNC_ACQUISITION
 #define SUPPORT_DBGDRV_EVENT_OBJECTS
 #define PVRSRV_NEED_PVR_DPF
 #define PVRSRV_NEED_PVR_STACKTRACE_NATIVE

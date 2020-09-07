@@ -463,6 +463,13 @@ static INLINE void GetApphints(PVRSRV_RGXDEV_INFO *psDevInfo, RGX_SRVINIT_APPHIN
 		SrvInitParamGetSTRING(pvParamState, OSidRegion1Max, pszOSidRegionBuffer, GPUVIRT_VALIDATION_MAX_STRING_LENGTH);
 		_ParseOSidRegionString(pszOSidRegionBuffer, psHints->aui32OSidMax[1]);
 	}
+#else
+#if !defined(LINUX)
+	SrvInitParamUnreferenced(OSidRegion0Min);
+	SrvInitParamUnreferenced(OSidRegion0Max);
+	SrvInitParamUnreferenced(OSidRegion1Min);
+	SrvInitParamUnreferenced(OSidRegion1Max);
+#endif /* !defined(LINUX) */
 #endif /* defined(SUPPORT_GPUVIRT_VALIDATION) */
 	SrvInitParamGetBOOL(pvParamState, EnableTrustedDeviceAceConfig, psHints->bEnableTrustedDeviceAceConfig);
 

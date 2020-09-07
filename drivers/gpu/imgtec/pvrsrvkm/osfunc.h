@@ -803,7 +803,7 @@ PVRSRV_ERROR OSStringToUINT32(const IMG_CHAR *pStr, IMG_UINT32 ui32Base,
 @Return         Returns 0 if buffer is not sufficient to hold the number string,
                 else returns length of number string
 */ /**************************************************************************/
-IMG_UINT32 OSStringUINT32ToStr(IMG_CHAR *pzBuf, size_t uSize, IMG_UINT32 ui32Num);
+IMG_UINT32 OSStringUINT32ToStr(IMG_CHAR *pszBuf, size_t uSize, IMG_UINT32 ui32Num);
 
 /*************************************************************************/ /*!
 @Function       OSEventObjectCreate
@@ -1009,7 +1009,12 @@ void OSReleaseThreadQuanta(void);
 	#define OSReadHWReg8(addr, off)  (0x4eU)
 	#define OSReadHWReg16(addr, off) (0x3a4eU)
 	#define OSReadHWReg32(addr, off) (0x30f73a4eU)
+#if defined(__QNXNTO__) && __SIZEOF_LONG__ == 8
+	/* This is needed for 64-bit QNX builds where the size of a long is 64 bits */
+	#define OSReadHWReg64(addr, off) (0x5b376c9d30f73a4eUL)
+#else
 	#define OSReadHWReg64(addr, off) (0x5b376c9d30f73a4eULL)
+#endif
 
 	#define OSWriteHWReg8(addr, off, val)
 	#define OSWriteHWReg16(addr, off, val)
@@ -1320,7 +1325,7 @@ PVRSRV_ERROR OSPlatformBridgeDeInit(void);
 */ /**************************************************************************/
 void OSWriteMemoryBarrier(void);
 /*************************************************************************/ /*!
-@def            OSReadMemoryBarrier
+@Function       OSReadMemoryBarrier
 @Description    Insert a read memory barrier.
                 The read memory barrier guarantees that all load (read)
                 operations specified before the barrier will appear to happen

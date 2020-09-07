@@ -376,7 +376,7 @@ PVRSRV_ERROR RGXBvncInitialiseConfiguration(PVRSRV_DEVICE_NODE *psDeviceNode)
 		OSFreeKMAppHintState(pvAppHintState);
 	}
 
-#if !defined(NO_HARDWARE) && defined(SUPPORT_MULTIBVNC_RUNTIME_BVNC_ACQUISITION)
+#if !defined(NO_HARDWARE)
 
 	/* Try to detect the RGX BVNC from the HW device */
 	if ((NULL == pui64Cfg) && !psDevInfo->bIgnoreHWReportedBVNC)
@@ -435,8 +435,11 @@ PVRSRV_ERROR RGXBvncInitialiseConfiguration(PVRSRV_DEVICE_NODE *psDeviceNode)
 
 		if (!PVRSRV_VZ_MODE_IS(GUEST))
 		{
-			/* Read the number of cores in the system in a multicore implementation*/
-			ui32Cores = OSReadHWReg32(psDevInfo->pvRegsBaseKM, RGX_CR_MULTICORE_SYSTEM);
+			/* Read the number of cores in the system for newer BVNC (Branch ID > 20) */
+			if (B > 20)
+			{
+				ui32Cores = OSReadHWReg32(psDevInfo->pvRegsBaseKM, RGX_CR_MULTICORE_SYSTEM);
+			}
 		}
 
 		/* Power-down the device */
@@ -472,6 +475,7 @@ PVRSRV_ERROR RGXBvncInitialiseConfiguration(PVRSRV_DEVICE_NODE *psDeviceNode)
 	}
 #endif
 
+#if defined(RGX_BVNC_KM_B) && defined(RGX_BVNC_KM_N) && defined(RGX_BVNC_KM_C)
 	if (NULL == pui64Cfg)
 	{
 		/* We reach here if the HW is not present,
@@ -501,6 +505,7 @@ PVRSRV_ERROR RGXBvncInitialiseConfiguration(PVRSRV_DEVICE_NODE *psDeviceNode)
 		pui64Cfg = RGX_SEARCH_BVNC_TABLE(gaFeatures, ui64BVNC);
 		PVR_LOG_IF_FALSE((pui64Cfg != NULL), "Compile time BVNC configuration not found!");
 	}
+#endif /* defined(RGX_BVNC) */
 
 	/* Have we failed to identify the BVNC to use? */
 	if (NULL == pui64Cfg)
