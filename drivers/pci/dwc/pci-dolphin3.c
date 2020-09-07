@@ -33,12 +33,14 @@ struct tcc_pcie {
 	void __iomem		*cfg_base;
 	void __iomem		*clk_base;
 	int			reset_gpio;
+	int			ep_pwr_gpio;
 	struct clk		*clk_aux;
 	struct clk		*clk_apb;
 	struct clk		*clk_pcs;
 	struct clk		*clk_pci;
 	struct clk		*clk_phy;
 	struct reset_control	*rst;
+	unsigned int		pci_gen;
 	unsigned int		using_ext_ref_clk;
 	unsigned int		for_si_test;
 	unsigned 		*suspend_regs;
@@ -176,6 +178,7 @@ static void tcc_pcie_dev_sel(struct tcc_pcie *tp, u32 device_type)
 		dev_err(pci->dev, "Device Type Selection Error!\n");
 
 	val = readl(tp->cfg_base + PCIE_CFG89);
+	val &= (~(0xF<<6));
 	val |= (device_type<<6);
 	writel(val, tp->cfg_base + PCIE_CFG89);
 }
@@ -219,11 +222,38 @@ static void tcc_pcie_assert_reset(struct tcc_pcie *tp)
 	return;
 }
 
+void tcc_pcie_layer_set(struct tcc_pcie *tp)
+{
+	u32 val;
+	struct dw_pcie *pci = tp->pci;
+
+	if(tp->pci_gen >= 2)
+	{
+		val = readl(pci->dbi_base + 0x80C);
+		val |= (1<<17);
+		writel(val, pci->dbi_base + 0x80C);
+	}
+
+	if(tp->pci_gen >=3)
+	{
+		val = readl(pci->dbi_base + 0x890);
+		val |= (1<<11);
+		writel(val, pci->dbi_base + 0x890);
+	}
+}
+
 static int tcc_pcie_establish_link(struct tcc_pcie *tp)
 {
 	struct dw_pcie *pci = tp->pci;
 	struct pcie_port *pp = &pci->pp;
 	int count = 0;
+
+	/* EP power control , example : wifi_reg_on */
+	if(tp->ep_pwr_gpio >= 0){
+		devm_gpio_request_one(pci->dev, tp->ep_pwr_gpio, GPIOF_OUT_INIT_LOW, "EP_PWR");
+		mdelay(1);
+		gpio_direction_output(tp->ep_pwr_gpio, 1);
+	}
 
 	tcc_pcie_dev_sel(tp, PCIE_DEVICE_RC);
 	if(tp->using_ext_ref_clk)
@@ -243,7 +273,12 @@ static int tcc_pcie_establish_link(struct tcc_pcie *tp)
 	writel(readl(pci->dbi_base + 0x8bc)|0x1, pci->dbi_base + 0x8bc);
 
 	// set target speed GEN4
-	writel((readl(pci->dbi_base + 0x30)&~(0xF))|0x4, pci->dbi_base + 0x30);
+	if(tp->pci_gen > 4)
+		writel((readl(pci->dbi_base + 0xA0)&~(0xF))|3, pci->dbi_base + 0xA0);
+	else
+		writel((readl(pci->dbi_base + 0xA0)&~(0xF))|tp->pci_gen, pci->dbi_base + 0xA0);
+	
+	tcc_pcie_layer_set(tp);
 
 	// wait clock
 
@@ -342,36 +377,6 @@ static void tcc_pcie_writel_rc(struct dw_pcie *pci, void __iomem *base, u32 reg,
 
 	ret = dw_pcie_write(base + reg, size, val);
 }
-
-#if 0
-static int tcc_pcie_cfg_read(void __iomem *addr, int where, int size, u32 *val)
-{
-	*val = readl(addr);
-
-	if (size == 1)
-		*val = (*val >> (8 * (where & 3))) & 0xff;
-	else if (size == 2)
-		*val = (*val >> (8 * (where & 3))) & 0xffff;
-	else if (size != 4)
-		return PCIBIOS_BAD_REGISTER_NUMBER;
-
-	return PCIBIOS_SUCCESSFUL;
-}
-
-static int tcc_pcie_cfg_write(void __iomem *addr, int where, int size, u32 val)
-{
-	if (size == 4)
-		writel(val, addr);
-	else if (size == 2)
-		writew(val, addr + (where & 2));
-	else if (size == 1)
-		writeb(val, addr + (where & 3));
-	else
-		return PCIBIOS_BAD_REGISTER_NUMBER;
-
-	return PCIBIOS_SUCCESSFUL;
-}
-#endif
 
 static int tcc_pcie_link_up(struct dw_pcie *pci)
 {
@@ -500,9 +505,10 @@ static int tcc_pcie_probe(struct platform_device *pdev)
 	}
 
 	tp->reset_gpio = of_get_named_gpio(pdev->dev.of_node, "reset-gpio", 0);
+	tp->ep_pwr_gpio = of_get_named_gpio(pdev->dev.of_node, "ep_pwr-gpio", 0);
 
+	ret = of_property_read_u32(pdev->dev.of_node, "pci_gen", &tp->pci_gen);
 	ret = of_property_read_u32(pdev->dev.of_node, "using_ext_ref_clk", &tp->using_ext_ref_clk);
-
 	ret = of_property_read_u32(pdev->dev.of_node, "for_si_test", &tp->for_si_test);
 
 	tp->clk_pci = devm_clk_get(&pdev->dev, "fbus_pci0");

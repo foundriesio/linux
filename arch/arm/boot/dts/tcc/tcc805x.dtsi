@@ -2329,6 +2329,7 @@
                 interrupt-map = <0 0 0 0 &gic GIC_SPI 138 IRQ_TYPE_LEVEL_HIGH>;
                 num-lanes = <1>;
                 num-viewport = <4>;
+		pci_gen = <3>;
                 using_ext_ref_clk = <0>;
                 for_si_test = <0>;
 		ref_clk_pms = <0x0504C80C>;
