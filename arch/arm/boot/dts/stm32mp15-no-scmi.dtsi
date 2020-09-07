@@ -69,7 +69,7 @@
 
 	mlahb {
 		m4_rproc: m4@10000000 {
-			resets = <&rcc MCU_R>;
+			resets = <&rcc MCU_R>, <&rcc MCU_HOLD_BOOT_R>;
 
 			m4_system_resources {
 				m4_cec: cec@40016000 {
