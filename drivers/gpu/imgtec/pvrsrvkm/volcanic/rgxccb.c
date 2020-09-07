@@ -902,11 +902,24 @@ static PVRSRV_ERROR _RGXCCBMemChangeSparse(RGX_CLIENT_CCB *psClientCCB,
 									psClientCCB->pui32MappingTable,
 									0,
 									NULL,
-									SPARSE_RESIZE_ALLOC | SPARSE_MAP_CPU_ADDR);
+#if !defined(PVRSRV_UNMAP_ON_SPARSE_CHANGE)
+									SPARSE_MAP_CPU_ADDR |
+#endif
+									SPARSE_RESIZE_ALLOC);
 	if (eError != PVRSRV_OK)
 	{
 		PVR_DPF((PVR_DBG_ERROR, "RGXAcquireCCB: Failed to grow RGX client CCB (%s)",
 				PVRSRVGetErrorString(eError)));
+
+#ifdef PVRSRV_UNMAP_ON_SPARSE_CHANGE
+		if (DevmemAcquireCpuVirtAddr(psClientCCB->psClientCCBMemDesc,
+									&psClientCCB->pvClientCCB) != PVRSRV_OK)
+		{
+			PVR_DPF((PVR_DBG_ERROR, "RGXAcquireCCB: Failed to reacquire CCB mapping"));
+			psClientCCB->pvClientCCB = NULL;
+		}
+#endif
+
 		return eError;
 	}
 
@@ -2056,6 +2069,11 @@ PVRSRV_ERROR RGXCmdHelperAcquireCmdCCB(IMG_UINT32 ui32CmdCount,
 		if (psCmdHelperData->ui32UnfencedUpdateCmdSize != 0)
 		{
 			RGXFWIF_CCB_CMD_HEADER * const psHeader = IMG_OFFSET_ADDR(psCmdHelperData->pui8ServerUpdateStart, psCmdHelperData->ui32UpdateCmdSize);
+			/* header should not be zero but check for code analysis */
+			if (unlikely(psHeader == NULL))
+			{
+				return PVRSRV_ERROR_MEMORY_ACCESS;
+			}
 			/* set up the header for unfenced updates */
 			PVR_ASSERT(psHeader); /* Could be zero if ui32UpdateCmdSize is 0 which is never expected */
 			psHeader->eCmdType = RGXFWIF_CCB_CMD_TYPE_UNFENCED_UPDATE;
@@ -2327,7 +2345,7 @@ PVRSRV_ERROR CheckForStalledCCB(PVRSRV_DEVICE_NODE *psDevNode, RGX_CLIENT_CCB *p
 				 */
 				if (psCommandHeader->eCmdType == RGXFWIF_CCB_CMD_TYPE_PADDING)
 				{
-					psCommandHeader = (RGXFWIF_CCB_CMD_HEADER *)(pvClientCCBBuff +
+					psCommandHeader = IMG_OFFSET_ADDR(pvClientCCBBuff,
 					                                             ((ui32SampledRdOff +
 					                                               psCommandHeader->ui32CmdSize +
 					                                               sizeof(RGXFWIF_CCB_CMD_HEADER))
@@ -2690,6 +2708,7 @@ void DumpStalledContextInfo(PVRSRV_RGXDEV_INFO *psDevInfo)
 					RGXFWIF_KCCB_CMD sSignalFencesCmd;
 
 					sSignalFencesCmd.eCmdType = RGXFWIF_KCCB_CMD_FORCE_UPDATE;
+					sSignalFencesCmd.ui32KCCBFlags = 0;
 					sSignalFencesCmd.uCmdData.sForceUpdateData.psContext = FWCommonContextGetFWAddress(psStalledClientCCB->psServerCommonContext);
 					sSignalFencesCmd.uCmdData.sForceUpdateData.ui32CCBFenceOffset = ui32SampledDepOffset;
 

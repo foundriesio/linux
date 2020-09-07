@@ -3,7 +3,42 @@
 @Title          PVR ION memory stats
 @Copyright      Copyright (c) Imagination Technologies Ltd. All Rights Reserved
 @Description    Implementation of ION memory stats.
-@License        Strictly Confidential.
+@License        Dual MIT/GPLv2
+
+The contents of this file are subject to the MIT license as set out below.
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+Alternatively, the contents of this file may be used under the terms of
+the GNU General Public License Version 2 ("GPL") in which case the provisions
+of GPL are applicable instead of those above.
+
+If you wish to allow use of your version of this file only under the terms of
+GPL, and not to allow others to use your version of this file under the terms
+of the MIT license, indicate your decision by deleting the provisions above
+and replace them with the notice and other provisions required by GPL as set
+out in the file called "GPL-COPYING" included in this distribution. If you do
+not delete the provisions above, a recipient may use your version of this file
+under the terms of either the MIT license or GPL.
+
+This License is also included in this distribution in the file called
+"MIT-COPYING".
+
+EXCEPT AS OTHERWISE STATED IN A NEGOTIATED AGREEMENT: (A) THE SOFTWARE IS
+PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING
+BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR
+PURPOSE AND NONINFRINGEMENT; AND (B) IN NO EVENT SHALL THE AUTHORS OR
+COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */ /**************************************************************************/
 
 #include <linux/log2.h>
@@ -118,7 +153,7 @@ static IMG_UINT32 pvr_ion_stats_query_heaps(PVR_ION_STATS_HEAP *heaps,
 		HashKeypfn pfnHashKey)
 {
 	/* The heap id is good to be a hash key as it's unique. From Linux 4.12,
-	 * ION id mask has been depreciated. Getting heap ids is only supported
+	 * ION id mask has been deprecated. Getting heap ids is only supported
 	 * to query ION driver from userspace. It's not possible to get correct
 	 * heap ids in kernel space and we're pretty sure ION_HEAP_NAME definitions
 	 * are robust here as device won't boot if the name is incorrect. Thus,
@@ -216,14 +251,13 @@ static int pvr_ion_stats_show(OSDI_IMPL_ENTRY *s, void *v)
 
 		if (entry->psTask) {
 			get_task_comm(task_comm, entry->psTask);
-            DIPrintf(s, "%16s %8u 0x%016lx %10zu\n", task_comm,
-                            task_pid_nr(entry->psTask), entry->addr,
-
+			DIPrintf(s, "%16s %8u 0x%016lx %10zu\n", task_comm,
+					task_pid_nr(entry->psTask), entry->addr,
 					entry->uiBytes);
 		}
 		else {
-            DIPrintf(s, "%16s %8u 0x%016lx %10zu\n", "kernel", entry->uiPID,
-                            entry->addr, entry->uiBytes);
+			DIPrintf(s, "%16s %8u 0x%016lx %10zu\n", "kernel", entry->uiPID,
+					entry->addr, entry->uiBytes);
 		}
 		total_size += entry->uiBytes;
 	}

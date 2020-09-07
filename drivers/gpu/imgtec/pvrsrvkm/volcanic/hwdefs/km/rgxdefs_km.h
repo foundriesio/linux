@@ -56,18 +56,21 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "rgx_heap_firmware.h"
 
-#if !defined(SUPPORT_MULTIBVNC_RUNTIME_BVNC_ACQUISITION)
+/* The following Macros are picked up through BVNC headers for no hardware
+ * operations to be compatible with old build infrastructure.
+ */
+#if defined(NO_HARDWARE)
 /******************************************************************************
  * Check for valid B.X.N.C
  *****************************************************************************/
 #if !defined(RGX_BVNC_KM_B) || !defined(RGX_BVNC_KM_V) || !defined(RGX_BVNC_KM_N) || !defined(RGX_BVNC_KM_C)
 #error "Need to specify BVNC (RGX_BVNC_KM_B, RGX_BVNC_KM_V, RGX_BVNC_KM_N and RGX_BVNC_C)"
 #endif
-#endif
 
 /* Check core/config compatibility */
 #if (RGX_BVNC_KM_B != RGX_BNC_KM_B) || (RGX_BVNC_KM_N != RGX_BNC_KM_N) || (RGX_BVNC_KM_C != RGX_BNC_KM_C)
 #error "BVNC headers are mismatching (KM core/config)"
+#endif
 #endif
 
 /******************************************************************************
@@ -144,7 +147,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define RGX_META_COREMEM_128K     (128*1024)
 #define RGX_META_COREMEM_256K     (256*1024)
 
-#if !defined(SUPPORT_MULTIBVNC)
+#if !defined(__KERNEL__)
 #if defined(SUPPORT_TRUSTED_DEVICE) && !defined(RGX_FEATURE_META_DMA)
 #undef SUPPORT_META_COREMEM
 #undef RGX_FEATURE_META_COREMEM_SIZE
@@ -274,7 +277,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define RGX_REQ_NUM_BERNADOS(CLUSTERS) ((CLUSTERS + 3U) / 4U)
 #define RGX_REQ_NUM_BLACKPEARLS(CLUSTERS) ((CLUSTERS + 3U) / 4U)
 
-#if !defined(SUPPORT_MULTIBVNC)
+#if !defined(__KERNEL__)
 # define RGX_NUM_PHANTOMS (RGX_REQ_NUM_PHANTOMS(RGX_FEATURE_NUM_CLUSTERS))
 #endif
 

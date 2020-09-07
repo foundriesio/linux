@@ -477,11 +477,10 @@ static PVRSRV_ERROR _ValidateFWImageForMIPS(DUMPDEBUG_PRINTF_FUNC *pfnDumpDebugP
 {
 #if !defined(SUPPORT_TRUSTED_DEVICE)
 	PVRSRV_ERROR eError;
-	IMG_PUINT32 *pui32HostFWCode = NULL;
+	IMG_UINT32 *pui32HostFWCode = NULL;
 	OS_FW_IMAGE *psRGXFW = NULL;
 	const IMG_BYTE *pbRGXFirmware = NULL;
 	IMG_UINT32 *pui32CodeMemoryPointer;
-	IMG_UINT32 ui32MaxLenInBytes = psDevInfo->ui32FWCodeSizeInBytes;
 	RGX_LAYER_PARAMS sLayerParams;
 	sLayerParams.psDevInfo = psDevInfo;
 
@@ -522,15 +521,25 @@ static PVRSRV_ERROR _ValidateFWImageForMIPS(DUMPDEBUG_PRINTF_FUNC *pfnDumpDebugP
 		goto cleanup_initfw;
 	}
 
-	ui32MaxLenInBytes /= sizeof(IMG_UINT32); /* Byte -> 32 bit words */
-
-	if (OSMemCmp(pui32HostFWCode, pui32CodeMemoryPointer, ui32MaxLenInBytes) == 0)
+	if (OSMemCmp(pui32HostFWCode, pui32CodeMemoryPointer, psDevInfo->ui32FWCodeSizeInBytes) == 0)
 	{
-		PVR_DUMPDEBUG_LOG("%s Match between Host and MIPS views of the FW code", pszFormat);
+		PVR_DUMPDEBUG_LOG("%sMatch between Host and MIPS views of the FW code", pszFormat);
 	}
 	else
 	{
-		PVR_DUMPDEBUG_LOG("%s Mismatch between Host and MIPS views of the FW code", pszFormat);
+		IMG_UINT32 ui32Count = 10; /* Show only the first 10 mismatches */
+		IMG_UINT32 ui32Offset;
+
+		PVR_DUMPDEBUG_LOG("%sMismatch between Host and MIPS views of the FW code", pszFormat);
+		for (ui32Offset = 0; (ui32Offset*4 < psDevInfo->ui32FWCodeSizeInBytes) || (ui32Count == 0); ui32Offset++)
+		{
+			if (pui32HostFWCode[ui32Offset] != pui32CodeMemoryPointer[ui32Offset])
+			{
+				PVR_DUMPDEBUG_LOG("%s   At %d bytes, code should be 0x%x but it is instead 0x%x",
+				   pszFormat, ui32Offset*4, pui32HostFWCode[ui32Offset], pui32CodeMemoryPointer[ui32Offset]);
+				ui32Count--;
+			}
+		}
 	}
 
 	DevmemReleaseCpuVirtAddr(psDevInfo->psRGXFWCodeMemDesc);
@@ -2946,17 +2955,6 @@ static void _RGXMipsDumpDebugDecode(PVRSRV_RGXDEV_INFO *psDevInfo,
 		PVR_DUMPDEBUG_LOG(INDENT "Debug exception: %s", pszDException);
 	}
 
-	/* Check FW code corruption in case of known errors */
-	if (_IsFWCodeException(RGXMIPSFW_C0_DEBUG_EXCCODE(ui32Debug)))
-	{
-		PVRSRV_ERROR eError;
-		eError = _ValidateFWImageForMIPS(pfnDumpDebugPrintf, pvDumpDebugFile, psDevInfo, INDENT);
-		if (eError != PVRSRV_OK)
-		{
-			PVR_DUMPDEBUG_LOG(INDENT "Failed to validate any FW code corruption");
-		}
-	}
-
 	for (i = 0; i < ARRAY_SIZE(sMIPS_C0_DebugTable); ++i)
 	{
 		const RGXMIPSFW_C0_DEBUG_TBL_ENTRY * const psDebugEntry = &sMIPS_C0_DebugTable[i];
@@ -4969,6 +4967,17 @@ PVRSRV_ERROR RGXDumpRGXRegisters(DUMPDEBUG_PRINTF_FUNC *pfnDumpDebugPrintf,
 							PVR_DUMPDEBUG_LOG("Remap unmapped address => 0x%08X",
 									  sMIPSState.ui32UnmappedAddress);
 						}
+					}
+				}
+
+				/* Check FW code corruption in case of known errors */
+				if (_IsFWCodeException(RGXMIPSFW_C0_CAUSE_EXCCODE(sMIPSState.ui32CauseRegister)))
+				{
+					PVRSRV_ERROR eError;
+					eError = _ValidateFWImageForMIPS(pfnDumpDebugPrintf, pvDumpDebugFile, psDevInfo, "");
+					if (eError != PVRSRV_OK)
+					{
+						PVR_DUMPDEBUG_LOG("Failed to validate any FW code corruption");
 					}
 				}
 			}

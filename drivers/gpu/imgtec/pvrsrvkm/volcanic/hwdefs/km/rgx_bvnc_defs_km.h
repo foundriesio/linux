@@ -128,6 +128,14 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define	RGX_FEATURE_ZLS_CHECKSUM_BIT_MASK                           	(IMG_UINT64_C(0x0000000000200000))
 
 
+#if 0
+/* Defines for RGX_FEATURE_FASTRENDER_DM_* needed to allow building of kbuild volcanic target
+ * without needing to specify RGX_BVNC.
+ */
+#define	RGX_FEATURE_FASTRENDER_DM_POS                               	(0U)
+#define	RGX_FEATURE_FASTRENDER_DM_BIT_MASK                          	(IMG_UINT64_C(0x0))
+#endif
+
 /******************************************************************************
  * Features with values indexes
  *****************************************************************************/

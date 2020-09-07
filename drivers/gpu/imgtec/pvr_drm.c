@@ -126,7 +126,7 @@ int pvr_drm_load(struct drm_device *ddev, unsigned long flags)
 		deviceId = ddev->primary->index;
 #endif
 
-	priv = kmalloc(sizeof(*priv), GFP_KERNEL);
+	priv = kzalloc(sizeof(*priv), GFP_KERNEL);
 	if (!priv) {
 		err = -ENOMEM;
 		goto err_exit;

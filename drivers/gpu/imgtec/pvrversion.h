@@ -49,26 +49,26 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #define PVRVERSION_FAMILY           "rogueddk"
 #define PVRVERSION_BRANCHNAME       "1.13"
-#define PVRVERSION_BUILD             5720833
+#define PVRVERSION_BUILD             5776728
 #if defined(CONFIG_ANDROID)
 #define PVRVERSION_BSCONTROL        "Rogue_DDK_Android"
-#define PVRVERSION_STRING           "Rogue_DDK_Android rogueddk 1.13@5720833"
+#define PVRVERSION_STRING           "Rogue_DDK_Android rogueddk 1.13@5776728"
 #else
 #if defined(CONFIG_FB_NEW)
 #define PVRVERSION_BSCONTROL        "Rogue_DDK_Linux"
-#define PVRVERSION_STRING           "Rogue_DDK_Linux rogueddk 1.13@5720833"
+#define PVRVERSION_STRING           "Rogue_DDK_Linux rogueddk 1.13@5776728"
 #else
 #define PVRVERSION_BSCONTROL        "Rogue_DDK_Linux_WS"
-#define PVRVERSION_STRING           "Rogue_DDK_Linux_WS rogueddk 1.13@5720833"
+#define PVRVERSION_STRING           "Rogue_DDK_Linux_WS rogueddk 1.13@5776728"
 #endif
 #endif
-#define PVRVERSION_STRING_SHORT     "1.13@5720833"
+#define PVRVERSION_STRING_SHORT     "1.13@5776728"
 
 #define COPYRIGHT_TXT               "Copyright (c) Imagination Technologies Ltd. All Rights Reserved."
 
-#define PVRVERSION_BUILD_HI          572
-#define PVRVERSION_BUILD_LO          833
-#define PVRVERSION_STRING_NUMERIC   "1.13.572.833"
+#define PVRVERSION_BUILD_HI          577
+#define PVRVERSION_BUILD_LO          6728
+#define PVRVERSION_STRING_NUMERIC   "1.13.577.6728"
 
 #define PVRVERSION_PACK(MAJOR,MINOR) (((IMG_UINT32)((IMG_UINT32)(MAJOR) & 0xFFFFU) << 16U) | (((MINOR) & 0xFFFFU) << 0U))
 #define PVRVERSION_UNPACK_MAJ(VERSION) (((VERSION) >> 16U) & 0xFFFFU)

@@ -84,6 +84,19 @@ PvzClientMapDevPhysHeap(PVRSRV_DEVICE_CONFIG *psDevConfig)
 	PHYS_HEAP *psFwPhysHeap = psDevConfig->psDevNode->apsPhysHeap[PVRSRV_DEVICE_PHYS_HEAP_FW_LOCAL];
 
 	eError = PhysHeapRegionGetDevPAddr(psFwPhysHeap, 0, &sDevPAddr);
+
+#if defined(PVR_PMR_TRANSLATE_UMA_ADDRESSES)
+{
+	/* Host expects PA rather than IPA address, so on the platforms where
+	 * IPA<->PA translation is not done by h/w, we ensure it is done by s/w */
+
+	IMG_DEV_PHYADDR sDevPAddrTranslated;
+
+	PhysHeapCpuPAddrToDevPAddr(psFwPhysHeap, 1, &sDevPAddrTranslated, (IMG_CPU_PHYADDR *)&sDevPAddr);
+	sDevPAddr.uiAddr = sDevPAddrTranslated.uiAddr;
+}
+#endif
+
 	PVR_LOG_RETURN_IF_ERROR(eError, "PhysHeapRegionGetDevPAddr");
 	PVR_LOG_RETURN_IF_FALSE((sDevPAddr.uiAddr != 0), "PhysHeapRegionGetDevPAddr", PVRSRV_ERROR_INVALID_PARAMS);
 

@@ -196,6 +196,76 @@ static LISR_EXECUTION_INFO g_sLISRExecutionInfo;
 
 #endif
 
+IMG_BOOL RGXFwIrqEventRx(PVRSRV_RGXDEV_INFO *psDevInfo)
+{
+	IMG_BOOL bIrqRx = IMG_TRUE;
+
+#if defined(RGX_IRQ_HYPERV_HANDLER)
+	 /* The hypervisor reads and clears the fw status register.
+	 * Then it injects an irq only in the recipient OS.
+	 * The KM driver should only execute the handler.*/
+	PVR_UNREFERENCED_PARAMETER(psDevInfo);
+#else
+
+	IMG_UINT32 ui32IRQStatus, ui32IRQStatusReg, ui32IRQStatusEventMsk, ui32IRQClearReg, ui32IRQClearMask;
+
+	if ((RGX_IS_FEATURE_SUPPORTED(psDevInfo, IRQ_PER_OS)) && (!PVRSRV_VZ_MODE_IS(NATIVE)))
+	{
+		/* status & clearing registers are available on both Host and Guests
+		 * and are agnostic of the Fw CPU type. Due to the remappings done
+		 * by the 2nd stage device MMU, all drivers assume they are accessing
+		 * register bank 0  */
+		ui32IRQStatusReg = RGX_CR_IRQ_OS0_EVENT_STATUS;
+		ui32IRQStatusEventMsk = RGX_CR_IRQ_OS0_EVENT_STATUS_SOURCE_EN;
+		ui32IRQClearReg = RGX_CR_IRQ_OS0_EVENT_CLEAR;
+		ui32IRQClearMask = RGX_CR_IRQ_OS0_EVENT_CLEAR_SOURCE_EN;
+	}
+	else if (PVRSRV_VZ_MODE_IS(GUEST))
+	{
+		/* Guest drivers on cores sharing a single interrupt don't need to
+		 * clear it, as the Host driver or Hypervisor is responsible for it. */
+		return bIrqRx;
+	}
+	else if (RGX_IS_FEATURE_SUPPORTED(psDevInfo, MIPS))
+	{
+		ui32IRQStatusReg = RGX_CR_MIPS_WRAPPER_IRQ_STATUS;
+		ui32IRQStatusEventMsk = RGX_CR_MIPS_WRAPPER_IRQ_STATUS_EVENT_EN;
+		ui32IRQClearReg = RGX_CR_MIPS_WRAPPER_IRQ_CLEAR;
+		ui32IRQClearMask = RGX_CR_MIPS_WRAPPER_IRQ_CLEAR_EVENT_EN;
+	}
+	else if (RGX_IS_FEATURE_VALUE_SUPPORTED(psDevInfo, META))
+	{
+		ui32IRQStatusReg = RGX_CR_META_SP_MSLVIRQSTATUS;
+		ui32IRQStatusEventMsk = RGX_CR_META_SP_MSLVIRQSTATUS_TRIGVECT2_EN;
+		ui32IRQClearReg = RGX_CR_META_SP_MSLVIRQSTATUS;
+		ui32IRQClearMask = RGX_CR_META_SP_MSLVIRQSTATUS_TRIGVECT2_CLRMSK;
+	}
+	else
+	{
+		/* unhandled case */
+		PVR_DPF((PVR_DBG_ERROR, "%s: GPU IRQ clearing mechanism not implemented "
+								"for the this architecture.", __func__));
+		PVR_ASSERT(IMG_FALSE);
+		return IMG_FALSE;
+	}
+
+	ui32IRQStatus = OSReadHWReg32(psDevInfo->pvRegsBaseKM, ui32IRQStatusReg);
+
+	if (ui32IRQStatus & ui32IRQStatusEventMsk)
+	{
+		/* acknowledge and clear the interrupt */
+		OSWriteHWReg32(psDevInfo->pvRegsBaseKM, ui32IRQClearReg, ui32IRQClearMask);
+	}
+	else
+	{
+		/* spurious interrupt */
+		bIrqRx = IMG_FALSE;
+	}
+#endif
+
+	return bIrqRx;
+}
+
 #if !defined(NO_HARDWARE)
 /*************************************************************************/ /*!
 @Function       SampleIRQCount
@@ -237,7 +307,7 @@ static INLINE IMG_BOOL SampleIRQCount(PVRSRV_RGXDEV_INFO *psDevInfo)
 			bReturnVal = IMG_TRUE;
 		}
 	}
-#endif
+#endif /* defined(RGX_FW_IRQ_OS_COUNTERS) */
 
 	return bReturnVal;
 }
@@ -298,76 +368,6 @@ void RGX_WaitForInterruptsTimeout(PVRSRV_RGXDEV_INFO *psDevInfo)
 			OSScheduleMISR(psDevInfo->pvAPMISRData);
 		}
 	}
-}
-
-static IMG_BOOL RGXFwIrqEventRx(PVRSRV_RGXDEV_INFO *psDevInfo)
-{
-	IMG_BOOL bIrqRx = IMG_TRUE;
-
-#if defined(RGX_IRQ_HYPERV_HANDLER)
-	 /* The hypervisor reads and clears the fw status register.
-	 * Then it injects an irq only in the recipient OS.
-	 * The KM driver should only execute the handler.*/
-	PVR_UNREFERENCED_PARAMETER(psDevInfo);
-#else
-
-	IMG_UINT32 ui32IRQStatus, ui32IRQStatusReg, ui32IRQStatusEventMsk, ui32IRQClearReg, ui32IRQClearMask;
-
-	if ((RGX_IS_FEATURE_SUPPORTED(psDevInfo, IRQ_PER_OS)) && (!PVRSRV_VZ_MODE_IS(NATIVE)))
-	{
-		/* status & clearing registers are available on both Host and Guests
-		 * and are agnostic of the Fw CPU type. Due to the remappings done
-		 * by the 2nd stage device MMU, all drivers assume they are accessing
-		 * register bank 0  */
-		ui32IRQStatusReg = RGX_CR_IRQ_OS0_EVENT_STATUS;
-		ui32IRQStatusEventMsk = RGX_CR_IRQ_OS0_EVENT_STATUS_SOURCE_EN;
-		ui32IRQClearReg = RGX_CR_IRQ_OS0_EVENT_CLEAR;
-		ui32IRQClearMask = RGX_CR_IRQ_OS0_EVENT_CLEAR_SOURCE_EN;
-	}
-	else if (PVRSRV_VZ_MODE_IS(GUEST))
-	{
-		/* Guest drivers on cores sharing a single interrupt don't need to
-		 * clear it, as the Host driver or Hypervisor is responsible for it. */
-		return bIrqRx;
-	}
-	else if (RGX_IS_FEATURE_SUPPORTED(psDevInfo, MIPS))
-	{
-		ui32IRQStatusReg = RGX_CR_MIPS_WRAPPER_IRQ_STATUS;
-		ui32IRQStatusEventMsk = RGX_CR_MIPS_WRAPPER_IRQ_STATUS_EVENT_EN;
-		ui32IRQClearReg = RGX_CR_MIPS_WRAPPER_IRQ_CLEAR;
-		ui32IRQClearMask = RGX_CR_MIPS_WRAPPER_IRQ_CLEAR_EVENT_EN;
-	}
-	else if (RGX_IS_FEATURE_VALUE_SUPPORTED(psDevInfo, META))
-	{
-		ui32IRQStatusReg = RGX_CR_META_SP_MSLVIRQSTATUS;
-		ui32IRQStatusEventMsk = RGX_CR_META_SP_MSLVIRQSTATUS_TRIGVECT2_EN;
-		ui32IRQClearReg = RGX_CR_META_SP_MSLVIRQSTATUS;
-		ui32IRQClearMask = RGX_CR_META_SP_MSLVIRQSTATUS_TRIGVECT2_CLRMSK;
-	}
-	else
-	{
-		/* unhandled case */
-		PVR_DPF((PVR_DBG_ERROR, "%s: GPU IRQ clearing mechanism not implemented"
-								"for the this architecture.", __func__));
-		PVR_ASSERT(IMG_FALSE);
-		return IMG_FALSE;
-	}
-
-	ui32IRQStatus = OSReadHWReg32(psDevInfo->pvRegsBaseKM, ui32IRQStatusReg);
-
-	if (ui32IRQStatus & ui32IRQStatusEventMsk)
-	{
-		/* acknowledge and clear the interrupt */
-		OSWriteHWReg32(psDevInfo->pvRegsBaseKM, ui32IRQClearReg, ui32IRQClearMask);
-	}
-	else
-	{
-		/* spurious interrupt */
-		bIrqRx = IMG_FALSE;
-	}
-#endif
-
-	return bIrqRx;
 }
 
 /*
@@ -1482,11 +1482,18 @@ PVRSRV_ERROR RGXInitDevPart2(PVRSRV_DEVICE_NODE	*psDeviceNode,
 
 #if defined(PDUMP)
 /* We need to wrap the check for S7_CACHE_HIERARCHY being supported inside
- * #if defined(RGX_FEATURE_S7_CACHE_HIERARCHY)...#endif, as the RGX_IS_FEATURE_SUPPORTED
- * macro references a bitmask define derived from its last parameter which will not exist
- * on architectures which do not have this feature.
+ * #if defined(RGX_FEATURE_S7_CACHE_HIERARCHY_BIT_MASK)...#endif, as the
+ * RGX_IS_FEATURE_SUPPORTED macro references a bitmask define derived from its
+ * last parameter which will not exist on architectures which do not have this
+ * feature.
+ * Note we check for RGX_FEATURE_S7_CACHE_HIERARCHY_BIT_MASK rather than for
+ * RGX_FEATURE_S7_CACHE_HIERARCHY (which might seem a better choice) as this
+ * means we can build the kernel driver without having to worry about the BVNC
+ * (the BIT_MASK is defined in rgx_bvnc_defs_km.h for all BVNCs for a given
+ *  architecture, whereas the FEATURE is only defined for those BVNCs that
+ *  support it).
  */
-#if defined(RGX_FEATURE_S7_CACHE_HIERARCHY)
+#if defined(RGX_FEATURE_S7_CACHE_HIERARCHY_BIT_MASK)
 	if (!(RGX_IS_FEATURE_SUPPORTED(psDevInfo, S7_CACHE_HIERARCHY)))
 #endif
 	{

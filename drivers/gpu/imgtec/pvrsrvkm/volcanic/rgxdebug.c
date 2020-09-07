@@ -1394,7 +1394,7 @@ static void _RGXDumpRGXMMUFaultStatus(DUMPDEBUG_PRINTF_FUNC *pfnDumpDebugPrintf,
 		}
 
 		PVR_DUMPDEBUG_LOG("%sMMU (%s) - FAULT:", pszIndent, pszMetaOrCore);
-		PVR_DUMPDEBUG_LOG("%s  * MMU status (0x%016llX | 0x%08llX): PC = %d, %s 0x%010llX, %s(%s)%s%s%s%s.",
+		PVR_DUMPDEBUG_LOG("%s  * MMU status (0x%016" IMG_UINT64_FMTSPECX " | 0x%08" IMG_UINT64_FMTSPECX "): PC = %d, %s 0x%010" IMG_UINT64_FMTSPECX ", %s(%s)%s%s%s%s.",
 						  pszIndent,
 						  aui64MMUStatus[0],
 						  aui64MMUStatus[1],
@@ -1899,7 +1899,7 @@ static void _RGXDumpFWHWRInfo(DUMPDEBUG_PRINTF_FUNC *pfnDumpDebugPrintf,
 				{
 					if (psHWRInfo->ui64CRTimeFreelistReady != 0)
 					{
-						PVR_DUMPDEBUG_LOG("  %s PreResetTimeInCycles = %lld, HWResetTimeInCycles = %lld, FreelistReconTimeInCycles = %lld, TotalRecoveryTimeInCycles = %lld",
+							PVR_DUMPDEBUG_LOG("  %s PreResetTimeInCycles = %" IMG_INT64_FMTSPECd ", HWResetTimeInCycles = %" IMG_INT64_FMTSPECd ", FreelistReconTimeInCycles = %" IMG_INT64_FMTSPECd ", TotalRecoveryTimeInCycles = %" IMG_INT64_FMTSPECd,
 										   aui8RecoveryNum,
 										   (psHWRInfo->ui64CRTimeHWResetStart-psHWRInfo->ui64CRTimer)*256,
 										   (psHWRInfo->ui64CRTimeHWResetFinish-psHWRInfo->ui64CRTimeHWResetStart)*256,
@@ -1908,7 +1908,7 @@ static void _RGXDumpFWHWRInfo(DUMPDEBUG_PRINTF_FUNC *pfnDumpDebugPrintf,
 					}
 					else
 					{
-						PVR_DUMPDEBUG_LOG("  %s PreResetTimeInCycles = %lld, HWResetTimeInCycles = %lld, TotalRecoveryTimeInCycles = %lld",
+						PVR_DUMPDEBUG_LOG("  %s PreResetTimeInCycles = %" IMG_INT64_FMTSPECd ", HWResetTimeInCycles = %" IMG_INT64_FMTSPECd ", TotalRecoveryTimeInCycles = %" IMG_INT64_FMTSPECd "",
 										   aui8RecoveryNum,
 										   (psHWRInfo->ui64CRTimeHWResetStart-psHWRInfo->ui64CRTimer)*256,
 										   (psHWRInfo->ui64CRTimeHWResetFinish-psHWRInfo->ui64CRTimeHWResetStart)*256,
@@ -3128,7 +3128,11 @@ void RGXDebugRequestProcess(DUMPDEBUG_PRINTF_FUNC *pfnDumpDebugPrintf,
 	bRGXPoweredON = (ePowerState == PVRSRV_DEV_POWER_STATE_ON);
 
 	PVR_DUMPDEBUG_LOG("------[ RGX Info ]------");
-	PVR_DUMPDEBUG_LOG("RGX BVNC: %s (%s)", RGX_BVNC_KM, PVR_ARCH_NAME);
+	PVR_DUMPDEBUG_LOG("RGX BVNC: %d.%d.%d.%d (%s)", psDevInfo->sDevFeatureCfg.ui32B,
+											   psDevInfo->sDevFeatureCfg.ui32V,
+											   psDevInfo->sDevFeatureCfg.ui32N,
+											   psDevInfo->sDevFeatureCfg.ui32C,
+											   PVR_ARCH_NAME);
 	PVR_DUMPDEBUG_LOG("RGX Device State: %s", _RGXGetDebugDevStateString(psDeviceNode->eDevState));
 	PVR_DUMPDEBUG_LOG("RGX Power State: %s", _RGXGetDebugDevPowerStateString(ePowerState));
 
@@ -3503,7 +3507,7 @@ PVRSRV_ERROR RGXDebugInit(PVRSRV_RGXDEV_INFO *psDevInfo)
 	return PVRSRVRegisterDbgRequestNotify(&psDevInfo->hDbgReqNotify,
 		                                   psDevInfo->psDeviceNode,
 		                                   RGXDebugRequestNotify,
-										   DEBUG_REQUEST_SYS,
+		                                   DEBUG_REQUEST_SYS,
 		                                   psDevInfo);
 }
 

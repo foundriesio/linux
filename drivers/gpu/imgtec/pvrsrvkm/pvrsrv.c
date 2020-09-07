@@ -1863,6 +1863,16 @@ PVRSRV_ERROR PVRSRVPhysMemHeapsInit(PVRSRV_DEVICE_NODE *psDeviceNode, PVRSRV_DEV
 #endif
 	}
 
+	if (PVRSRV_VZ_MODE_IS(HOST))
+	{
+		/* All firmware heap allocations the Host does on behalf of Guest drivers must be handled as LMA memory.
+		 * Host receives the physical base address and size of the Guest heaps and allocates them using the LMA PMR factories.
+		 * When the Host has its firmware heap configured as UMA, we need to create a separate FW_GUEST pseudo-heap with the
+		 * same properties as the FW_LOCAL heap, but using the LMA factory function pointer for obtaining physical memory. */
+		psDeviceNode->pfnCreateRamBackedPMR[PVRSRV_DEVICE_PHYS_HEAP_FW_GUEST] = PhysmemNewLocalRamBackedPMR;
+		psDeviceNode->apsPhysHeap[PVRSRV_DEVICE_PHYS_HEAP_FW_GUEST] = psDeviceNode->apsPhysHeap[PVRSRV_DEVICE_PHYS_HEAP_FW_LOCAL];
+	}
+
 	if (PhysHeapGetType(psDeviceNode->apsPhysHeap[PVRSRV_DEVICE_PHYS_HEAP_CPU_LOCAL]) == PHYS_HEAP_TYPE_LMA)
 	{
 		PVR_DPF((PVR_DBG_MESSAGE, "%s: CPU physical heap uses local memory managed by the driver (LMA)", __func__));
@@ -1888,6 +1898,8 @@ void PVRSRVPhysMemHeapsDeinit(PVRSRV_DEVICE_NODE *psDeviceNode)
 	PVRSRV_DEVICE_PHYS_HEAP ePhysHeapIdx;
 	IMG_UINT32 i;
 	IMG_UINT32 ui32RegionIdx;
+
+	psDeviceNode->apsPhysHeap[PVRSRV_DEVICE_PHYS_HEAP_FW_GUEST] = NULL;
 
 	if (psDeviceNode->psFwMMUReservedMemArena)
 	{
@@ -2581,7 +2593,7 @@ static PVRSRV_ERROR _LMA_DoPhyContigPagesAlloc(RA_ARENA *pArena,
                                                PG_HANDLE *psMemHandle,
                                                IMG_DEV_PHYADDR *psDevPAddr)
 {
-	RA_BASE_T uiCardAddr;
+	RA_BASE_T uiCardAddr = 0;
 	RA_LENGTH_T uiActualSize;
 	PVRSRV_ERROR eError;
 #if defined(DEBUG)
@@ -3004,11 +3016,11 @@ PVRSRV_ERROR IMG_CALLCONV PVRSRVDeviceFinalise(PVRSRV_DEVICE_NODE *psDeviceNode,
 			}
 			while (!KM_FW_CONNECTION_IS(READY, psDevInfo))
 			{
-				OSWaitus(PVR_AUTOVZ_WDG_PERIOD_MS * 1000);
+				OSWaitus(1000000);
 			}
 			PVR_DPF((PVR_DBG_MESSAGE, "%s: Firmware Connection is Ready. Initialisation proceeding.", __func__));
-
 #if defined(SUPPORT_AUTOVZ_HW_REGS)
+			/* Guest can only access the register holding the connection states, after the GPU is confirmed to be powered up */
 			KM_SET_OS_CONNECTION(READY, psDevInfo);
 #endif /* defined(SUPPORT_AUTOVZ_HW_REGS) */
 #endif /* defined(SUPPORT_AUTOVZ) */
@@ -3098,7 +3110,7 @@ PVRSRV_ERROR IMG_CALLCONV PollForValueKM (volatile IMG_UINT32 __iomem *	pui32Lin
 										  IMG_UINT32			ui32Mask,
 										  IMG_UINT32			ui32Timeoutus,
 										  IMG_UINT32			ui32PollPeriodus,
-										  IMG_BOOL				bAllowPreemption)
+										  POLL_FLAGS            ePollFlags)
 {
 #if defined(NO_HARDWARE)
 	PVR_UNREFERENCED_PARAMETER(pui32LinMemAddr);
@@ -3106,15 +3118,10 @@ PVRSRV_ERROR IMG_CALLCONV PollForValueKM (volatile IMG_UINT32 __iomem *	pui32Lin
 	PVR_UNREFERENCED_PARAMETER(ui32Mask);
 	PVR_UNREFERENCED_PARAMETER(ui32Timeoutus);
 	PVR_UNREFERENCED_PARAMETER(ui32PollPeriodus);
-	PVR_UNREFERENCED_PARAMETER(bAllowPreemption);
+	PVR_UNREFERENCED_PARAMETER(ePollFlags);
 	return PVRSRV_OK;
 #else
 	IMG_UINT32 ui32ActualValue = 0xFFFFFFFFU; /* Initialiser only required to prevent incorrect warning */
-
-	if (bAllowPreemption)
-	{
-		PVR_ASSERT(ui32PollPeriodus >= 1000);
-	}
 
 	LOOP_UNTIL_TIMEOUT(ui32Timeoutus)
 	{
@@ -3130,19 +3137,15 @@ PVRSRV_ERROR IMG_CALLCONV PollForValueKM (volatile IMG_UINT32 __iomem *	pui32Lin
 			return PVRSRV_ERROR_TIMEOUT;
 		}
 
-		if (bAllowPreemption)
-		{
-			OSSleepms(ui32PollPeriodus / 1000);
-		}
-		else
-		{
-			OSWaitus(ui32PollPeriodus);
-		}
+		OSWaitus(ui32PollPeriodus);
 	} END_LOOP_UNTIL_TIMEOUT();
 
-	PVR_DPF((PVR_DBG_ERROR,
-	         "PollForValueKM: Timeout. Expected 0x%x but found 0x%x (mask 0x%x).",
-	         ui32Value, ui32ActualValue, ui32Mask));
+	if (BITMASK_HAS(ePollFlags, POLL_FLAG_LOG_ERROR))
+	{
+		PVR_DPF((PVR_DBG_ERROR,
+		         "PollForValueKM: Timeout. Expected 0x%x but found 0x%x (mask 0x%x).",
+		         ui32Value, ui32ActualValue, ui32Mask));
+	}
 
 	return PVRSRV_ERROR_TIMEOUT;
 #endif /* NO_HARDWARE */
@@ -3156,15 +3159,15 @@ PVRSRV_ERROR IMG_CALLCONV PVRSRVPollForValueKM (PVRSRV_DEVICE_NODE  *psDevNode,
 												volatile IMG_UINT32	__iomem *pui32LinMemAddr,
 												IMG_UINT32			ui32Value,
 												IMG_UINT32			ui32Mask,
-												IMG_BOOL            bDebugDumpOnFailure)
+												POLL_FLAGS          ePollFlags)
 {
 	PVRSRV_ERROR eError;
 
 	eError = PollForValueKM(pui32LinMemAddr, ui32Value, ui32Mask,
 						  MAX_HW_TIME_US,
 						  MAX_HW_TIME_US/WAIT_TRY_COUNT,
-						  IMG_FALSE);
-	if (eError != PVRSRV_OK && bDebugDumpOnFailure)
+						  ePollFlags);
+	if (eError != PVRSRV_OK && BITMASK_HAS(ePollFlags, POLL_FLAG_DEBUG_DUMP))
 	{
 		PVR_DPF((PVR_DBG_ERROR, "%s: Failed! Error(%s) CPU linear address(%p) Expected value(%u)",
 		                        __func__, PVRSRVGetErrorString(eError),

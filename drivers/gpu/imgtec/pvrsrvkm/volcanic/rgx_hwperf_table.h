@@ -224,6 +224,7 @@ static inline IMG_BOOL rgx_hwperf_blk_present(const RGXFW_HWPERF_CNTBLK_TYPE_MOD
 	PVRSRV_RGXDEV_INFO *psDevInfo = (PVRSRV_RGXDEV_INFO *)pvDev_km;
 	PVRSRV_DEVICE_NODE *psNode;
 	IMG_UINT32	ui32MaxTPUPerSPU;
+	IMG_UINT32	ui32NumMemBus;
 
 	DBG_ASSERT(psDevInfo != NULL);
 	DBG_ASSERT(psBlkTypeDesc != NULL);
@@ -245,6 +246,9 @@ static inline IMG_BOOL rgx_hwperf_blk_present(const RGXFW_HWPERF_CNTBLK_TYPE_MOD
 	ui32MaxTPUPerSPU =
 		PVRSRV_GET_DEVICE_FEATURE_VALUE(psNode, MAX_TPU_PER_SPU);
 
+	ui32NumMemBus =
+		PVRSRV_GET_DEVICE_FEATURE_VALUE(psNode, NUM_MEMBUS);
+
 	switch (psBlkTypeDesc->uiCntBlkIdBase)
 	{
 		case RGX_CNTBLK_ID_JONES:
@@ -257,7 +261,7 @@ static inline IMG_BOOL rgx_hwperf_blk_present(const RGXFW_HWPERF_CNTBLK_TYPE_MOD
 			break;
 
 		case RGX_CNTBLK_ID_SLC1:
-			if (RGX_FEATURE_NUM_MEMBUS >= 2)
+			if (ui32NumMemBus >= 2)
 			{
 				psRtInfo->uiNumUnits = 1;
 			}
@@ -269,7 +273,7 @@ static inline IMG_BOOL rgx_hwperf_blk_present(const RGXFW_HWPERF_CNTBLK_TYPE_MOD
 
 		case RGX_CNTBLK_ID_SLC2:
 		case RGX_CNTBLK_ID_SLC3:
-			if (RGX_FEATURE_NUM_MEMBUS > 2)
+			if (ui32NumMemBus > 2)
 			{
 				psRtInfo->uiNumUnits = 1;
 			}
