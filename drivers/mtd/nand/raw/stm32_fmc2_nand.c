@@ -1925,7 +1925,7 @@ static int stm32_fmc2_probe(struct platform_device *pdev)
 	chip->ecc.strength = FMC2_ECC_BCH8;
 
 	/* Scan to find existence of the device */
-	ret = nand_scan(mtd, nand->ncs);
+	ret = nand_scan(chip, nand->ncs);
 	if (ret)
 		goto err_scan;
 
@@ -1961,7 +1961,7 @@ static int stm32_fmc2_remove(struct platform_device *pdev)
 	struct stm32_fmc2_nfc *fmc2 = platform_get_drvdata(pdev);
 	struct stm32_fmc2_nand *nand = &fmc2->nand;
 
-	nand_release(nand_to_mtd(&nand->chip));
+	nand_release(&nand->chip);
 
 	if (fmc2->dma_ecc_ch)
 		dma_release_channel(fmc2->dma_ecc_ch);
