@@ -16,11 +16,6 @@ Required properties:
 - reset-names:	Name of the MCU reset
 	- must be "mcu_rst" for the remote processor reset
 	- must be "hold_boot" for the remote processor hold boot
-- st,syscfg-tz: Reference to the system configuration which holds the RCC trust
-		zone mode
-	1st cell: phandle to syscon block
-	2nd cell: register offset containing the RCC trust zone mode setting
-	3rd cell: register bitmask for the RCC trust zone mode bit
 
 Optional properties:
 - interrupts:	Should contain the watchdog interrupt
@@ -76,5 +71,4 @@ Example:
 		resets = <&scmi0_reset RST_SCMI0_MCU>,
 			 <&scmi0_reset RST_SCMI0_MCU_HOLD_BOOT>;
 		reset-names = "mcu_rst", "hold_boot";
-		st,syscfg-tz = <&rcc 0x000 0x1>;
 	};
