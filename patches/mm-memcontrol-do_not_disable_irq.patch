@@ -75,10 +75,10 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	memcg_check_events(ug->memcg, ug->dummy_page);
 -	local_irq_restore(flags);
 +	local_unlock_irqrestore(&event_lock.l, flags);
- }
  
- static void uncharge_page(struct page *page, struct uncharge_gather *ug)
-@@ -6922,10 +6930,10 @@ void mem_cgroup_migrate(struct page *old
+ 	/* drop reference from uncharge_page */
+ 	css_put(&ug->memcg->css);
+@@ -6928,10 +6936,10 @@ void mem_cgroup_migrate(struct page *old
  	css_get(&memcg->css);
  	commit_charge(newpage, memcg);
  
@@ -91,7 +91,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  }
  
  DEFINE_STATIC_KEY_FALSE(memcg_sockets_enabled_key);
-@@ -7100,6 +7108,7 @@ void mem_cgroup_swapout(struct page *pag
+@@ -7106,6 +7114,7 @@ void mem_cgroup_swapout(struct page *pag
  	struct mem_cgroup *memcg, *swap_memcg;
  	unsigned int nr_entries;
  	unsigned short oldid;
@@ -99,7 +99,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  	VM_BUG_ON_PAGE(PageLRU(page), page);
  	VM_BUG_ON_PAGE(page_count(page), page);
-@@ -7145,9 +7154,13 @@ void mem_cgroup_swapout(struct page *pag
+@@ -7151,9 +7160,13 @@ void mem_cgroup_swapout(struct page *pag
  	 * important here to have the interrupts disabled because it is the
  	 * only synchronisation we have for updating the per-CPU variables.
  	 */
