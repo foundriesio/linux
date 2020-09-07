@@ -373,6 +373,7 @@
 
 &usbphyc_port0 {
 	st,phy-tuning = <&usb_phy_tuning>;
+	vbus-supply = <&vbus_sw>;
 };
 
 &usbphyc_port1 {
