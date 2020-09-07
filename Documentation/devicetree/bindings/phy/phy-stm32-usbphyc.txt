@@ -48,6 +48,7 @@ Required properties:
 
 Optional properties:
 - st,phy-tuning : phandle to the usb phy tuning node, see Phy tuning node below
+- vbus-supply: phandle to the regulator providing 5V vbus to the USB connector
 
 Phy tuning node
 ===============
