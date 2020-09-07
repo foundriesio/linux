@@ -1154,17 +1154,29 @@ static int vidioc_s_fmt_vid_out_overlay(struct file *file, void *fh, struct v4l2
 		vout->disp_rect.width == f->fmt.win.w.width &&
 		vout->disp_rect.height == f->fmt.win.w.height) {
 		dprintk("Nothing to do because setting the same size\n");
+	#if !defined(CONFIG_TCC_DUAL_DISPLAY)
 		goto overlay_exit;
+	#endif
 	}
 
 	memcpy(&vout->disp_rect, &f->fmt.win.w, sizeof(struct v4l2_rect));
 
-	#if defined(CONFIG_TCC_DUAL_DISPLAY)
-	vout->disp_mode = f->fmt.raw_data[100];
-	if(f->fmt.raw_data[109]==0 && f->fmt.raw_data[110]==0)	//width 0
-		memcpy(&f->fmt.raw_data[101], &f->fmt.win.w, sizeof(struct v4l2_rect));
-	memcpy(&vout->dual_disp_rect, &f->fmt.raw_data[101], sizeof(struct v4l2_rect));
-	#endif
+#if defined(CONFIG_TCC_DUAL_DISPLAY)
+	if(f->fmt.win.clipcount>3)
+		vout->disp_mode = 0;
+	else
+		vout->disp_mode = f->fmt.win.clipcount;
+
+	if(f->fmt.win.bitmap == NULL)
+		memcpy(&vout->dual_disp_rect, &f->fmt.win.w, sizeof(struct v4l2_rect));
+	else
+		memcpy(&vout->dual_disp_rect, f->fmt.win.bitmap, sizeof(struct v4l2_rect));
+
+		if(!vout->dual_disp_rect.width)
+			vout->dual_disp_rect.width = f->fmt.win.w.width;
+		if(!vout->dual_disp_rect.height)
+			vout->dual_disp_rect.height = f->fmt.win.w.height;
+#endif
 
 	vout_wmix_getsize(vout, &width, &height);
 	if((width == 0) || (height == 0)) {
@@ -1199,10 +1211,46 @@ static int vidioc_s_fmt_vid_out_overlay(struct file *file, void *fh, struct v4l2
 
 	vout->disp_rect.width = ROUND_DOWN_2(vout->disp_rect.width);
 	vout->disp_rect.height = ROUND_DOWN_2(vout->disp_rect.height);
+
+#if defined(CONFIG_TCC_DUAL_DISPLAY)
+	if (vout->dual_disp_rect.left < 0) {
+		vout->dual_disp_rect.width = vout->dual_disp_rect.width + vout->dual_disp_rect.left;
+		if (width < vout->dual_disp_rect.width) {
+			vout->dual_disp_rect.left = 0;
+			vout->dual_disp_rect.width = width;
+		}
+	} else {
+		if (width < vout->dual_disp_rect.left + vout->dual_disp_rect.width)
+			vout->dual_disp_rect.width = width - vout->dual_disp_rect.left;
+	}
+
+	if (vout->dual_disp_rect.top < 0) {
+		vout->dual_disp_rect.height = vout->dual_disp_rect.height + vout->dual_disp_rect.top;
+		if(height < vout->dual_disp_rect.height) {
+			vout->dual_disp_rect.top = 0;
+			vout->dual_disp_rect.height = height;
+		}
+	} else {
+		if (height < vout->dual_disp_rect.top + vout->dual_disp_rect.height)
+			vout->dual_disp_rect.height = height - vout->dual_disp_rect.top;
+	}
+
+	vout->dual_disp_rect.width = ROUND_DOWN_2(vout->dual_disp_rect.width);
+	vout->dual_disp_rect.height = ROUND_DOWN_2(vout->dual_disp_rect.height);
+#endif
+
 	if (vout->disp_rect.width <= 0 || vout->disp_rect.height <= 0) {
 		vout->status = TCC_VOUT_STOP;
 		goto overlay_exit;
-	} else {
+	}
+#if defined(CONFIG_TCC_DUAL_DISPLAY)
+	else if(vout->dual_disp_rect.width <= 0 || vout->dual_disp_rect.height <= 0)
+	{
+		vout->status = TCC_VOUT_STOP;
+		goto overlay_exit;
+	}
+#endif
+	else {
 		vout->status = TCC_VOUT_RUNNING;
 	}
 	vout_video_overlay(vout);
