@@ -314,9 +314,7 @@ static int dw_mipi_dsi_host_attach(struct mipi_dsi_host *host,
 {
 	struct dw_mipi_dsi *dsi = host_to_dsi(host);
 	const struct dw_mipi_dsi_plat_data *pdata = dsi->plat_data;
-	struct drm_bridge *bridge;
-	struct drm_panel *panel;
-	int ret;
+	int ret = -ENODEV;
 
 	if (device->lanes > dsi->plat_data->max_data_lanes) {
 		dev_err(dsi->dev, "the number of data lanes(%u) is too many\n",
@@ -328,22 +326,6 @@ static int dw_mipi_dsi_host_attach(struct mipi_dsi_host *host,
 	dsi->channel = device->channel;
 	dsi->format = device->format;
 	dsi->mode_flags = device->mode_flags;
-
-	ret = drm_of_find_panel_or_bridge(host->dev->of_node, 1, 0,
-					  &panel, &bridge);
-	if (ret)
-		return ret;
-
-	if (panel) {
-		bridge = drm_panel_bridge_add_typed(panel,
-						    DRM_MODE_CONNECTOR_DSI);
-		if (IS_ERR(bridge))
-			return PTR_ERR(bridge);
-	}
-
-	dsi->panel_bridge = bridge;
-
-	drm_bridge_add(&dsi->bridge);
 
 	if (pdata->host_ops && pdata->host_ops->attach) {
 		ret = pdata->host_ops->attach(pdata->priv_data, device);
@@ -366,10 +348,6 @@ static int dw_mipi_dsi_host_detach(struct mipi_dsi_host *host,
 		if (ret < 0)
 			return ret;
 	}
-
-	drm_of_panel_bridge_remove(host->dev->of_node, 1, 0);
-
-	drm_bridge_remove(&dsi->bridge);
 
 	return 0;
 }
@@ -1105,6 +1083,9 @@ __dw_mipi_dsi_probe(struct platform_device *pdev,
 	struct device *dev = &pdev->dev;
 	struct reset_control *apb_rst;
 	struct dw_mipi_dsi *dsi;
+	struct drm_bridge *bridge;
+	struct drm_panel *panel;
+	int i, nb_endpoints;
 	int ret;
 
 	dsi = devm_kzalloc(dev, sizeof(*dsi), GFP_KERNEL);
@@ -1172,8 +1153,7 @@ __dw_mipi_dsi_probe(struct platform_device *pdev,
 	ret = mipi_dsi_host_register(&dsi->dsi_host);
 	if (ret) {
 		dev_err(dev, "Failed to register MIPI host: %d\n", ret);
-		dw_mipi_dsi_debugfs_remove(dsi);
-		return ERR_PTR(ret);
+		goto err_pmr_enable;
 	}
 
 	dsi->bridge.driver_private = dsi;
@@ -1182,11 +1162,54 @@ __dw_mipi_dsi_probe(struct platform_device *pdev,
 	dsi->bridge.of_node = pdev->dev.of_node;
 #endif
 
+	/* Get number of endpoints */
+	nb_endpoints = of_graph_get_endpoint_count(pdev->dev.of_node);
+	if (!nb_endpoints) {
+		ret = -ENODEV;
+		goto err_host_reg;
+	}
+
+	for (i = 1; i < nb_endpoints; i++) {
+		ret = drm_of_find_panel_or_bridge(pdev->dev.of_node, i, 0,
+						  &panel, &bridge);
+		if (!ret)
+			break;
+		else if (ret == -EPROBE_DEFER)
+			goto err_host_reg;
+	}
+
+	/* check if an error is returned >> no panel or bridge detected */
+	if (ret)
+		goto err_host_reg;
+
+	if (panel) {
+		bridge = drm_panel_bridge_add_typed(panel, DRM_MODE_CONNECTOR_DSI);
+		if (IS_ERR(bridge)) {
+			ret = PTR_ERR(bridge);
+			goto err_host_reg;
+		}
+	}
+
+	dsi->panel_bridge = bridge;
+
+	drm_bridge_add(&dsi->bridge);
+
 	return dsi;
+
+err_host_reg:
+	mipi_dsi_host_unregister(&dsi->dsi_host);
+
+err_pmr_enable:
+	pm_runtime_disable(dev);
+	dw_mipi_dsi_debugfs_remove(dsi);
+
+	return ERR_PTR(ret);
 }
 
 static void __dw_mipi_dsi_remove(struct dw_mipi_dsi *dsi)
 {
+	drm_bridge_remove(&dsi->bridge);
+	drm_panel_bridge_remove(dsi->panel_bridge);
 	mipi_dsi_host_unregister(&dsi->dsi_host);
 
 	pm_runtime_disable(dsi->dev);
