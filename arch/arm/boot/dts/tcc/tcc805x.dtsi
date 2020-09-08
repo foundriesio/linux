@@ -1530,7 +1530,7 @@
                 device-name ="tcc_scrshare_main";
                 mbox-names ="main-scrshare";
                 mboxes = <&cb_mbox TCC_CB_MBOX_SCRSHARE>;
-		mbox-id = TCC_MBOX_SCRSHARE_ID;
+		mbox-id = TCC_MBOX_SCRSHARE_ID;		
                 status = "disabled";
         };
 
@@ -3442,7 +3442,7 @@ tcc_overlay_drv1: tcc_overlay_drv@1 { //for DVRS
 	    deintl_block = <&vioc_deintls VIOC_DEINTLS0>;
 	    scaler = <&vioc_scaler VIOC_SCALER3>;
 
-	    status = "okay";
+	    status = "disabled";
 	};
 
 	composite {
