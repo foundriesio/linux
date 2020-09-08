@@ -1,21 +1,23 @@
 From: "Ahmed S. Darwish" <a.darwish@linutronix.de>
-Date: Wed, 19 Aug 2020 11:36:59 +0200
-Subject: [PATCH 5/5] seqlock: PREEMPT_RT: Do not starve seqlock_t writers
+Date: Fri, 4 Sep 2020 17:32:31 +0200
+Subject: [PATCH 13/13] seqlock: PREEMPT_RT: Do not starve seqlock_t writers
 
 On PREEMPT_RT, seqlock_t is transformed to a sleeping lock that do not
-disable preemption. A seqlock_t reader can thus preempt the write side
+disable preemption. A seqlock_t reader can thus preempt its write side
 section and spin for the enter scheduler tick. If that reader belongs to
 a real-time scheduling class, it can spin forever and the kernel will
 livelock.
 
-To break the possible livelock on RT, implement seqlock_t in terms of
-"seqcount_spinlock_t" instead of plain "seqcount_t".
+To break this livelock possibility on PREEMPT_RT, implement seqlock_t in
+terms of "seqcount_spinlock_t" instead of plain "seqcount_t".
 
-Beside the pure annotational value, for RT this automatically leverages
-the existing seqcount_LOCKTYPE_T anti-livelock mechanisms -- without
-adding any extra code.
+Beside its pure annotational value, this will leverage the existing
+seqcount_LOCKNAME_T PREEMPT_RT anti-livelock mechanisms, without adding
+any extra code.
 
 Signed-off-by: Ahmed S. Darwish <a.darwish@linutronix.de>
+Signed-off-by: Peter Zijlstra (Intel) <peterz@infradead.org>
+Link: https://lkml.kernel.org/r/20200904153231.11994-6-a.darwish@linutronix.de
 Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 ---
  include/linux/seqlock.h |   32 +++++++++++++++++++++-----------
@@ -23,7 +25,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/include/linux/seqlock.h
 +++ b/include/linux/seqlock.h
-@@ -761,13 +761,17 @@ static inline void raw_write_seqcount_t_
+@@ -790,13 +790,17 @@ static inline void raw_write_seqcount_la
   *    - Documentation/locking/seqlock.rst
   */
  typedef struct {
@@ -43,7 +45,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  		.lock =	__SPIN_LOCK_UNLOCKED(lockname)			\
  	}
  
-@@ -777,8 +781,8 @@ typedef struct {
+@@ -806,8 +810,8 @@ typedef struct {
   */
  #define seqlock_init(sl)						\
  	do {								\
@@ -53,7 +55,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	} while (0)
  
  /**
-@@ -825,6 +829,12 @@ static inline unsigned read_seqretry(con
+@@ -854,6 +858,12 @@ static inline unsigned read_seqretry(con
  	return read_seqcount_retry(&sl->seqcount, start);
  }
  
@@ -66,7 +68,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  /**
   * write_seqlock() - start a seqlock_t write side critical section
   * @sl: Pointer to seqlock_t
-@@ -841,7 +851,7 @@ static inline unsigned read_seqretry(con
+@@ -870,7 +880,7 @@ static inline unsigned read_seqretry(con
  static inline void write_seqlock(seqlock_t *sl)
  {
  	spin_lock(&sl->lock);
@@ -75,7 +77,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  }
  
  /**
-@@ -853,7 +863,7 @@ static inline void write_seqlock(seqlock
+@@ -882,7 +892,7 @@ static inline void write_seqlock(seqlock
   */
  static inline void write_sequnlock(seqlock_t *sl)
  {
@@ -84,7 +86,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	spin_unlock(&sl->lock);
  }
  
-@@ -867,7 +877,7 @@ static inline void write_sequnlock(seqlo
+@@ -896,7 +906,7 @@ static inline void write_sequnlock(seqlo
  static inline void write_seqlock_bh(seqlock_t *sl)
  {
  	spin_lock_bh(&sl->lock);
@@ -93,7 +95,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  }
  
  /**
-@@ -880,7 +890,7 @@ static inline void write_seqlock_bh(seql
+@@ -909,7 +919,7 @@ static inline void write_seqlock_bh(seql
   */
  static inline void write_sequnlock_bh(seqlock_t *sl)
  {
@@ -102,7 +104,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	spin_unlock_bh(&sl->lock);
  }
  
-@@ -894,7 +904,7 @@ static inline void write_sequnlock_bh(se
+@@ -923,7 +933,7 @@ static inline void write_sequnlock_bh(se
  static inline void write_seqlock_irq(seqlock_t *sl)
  {
  	spin_lock_irq(&sl->lock);
@@ -111,7 +113,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  }
  
  /**
-@@ -906,7 +916,7 @@ static inline void write_seqlock_irq(seq
+@@ -935,7 +945,7 @@ static inline void write_seqlock_irq(seq
   */
  static inline void write_sequnlock_irq(seqlock_t *sl)
  {
@@ -120,7 +122,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	spin_unlock_irq(&sl->lock);
  }
  
-@@ -915,7 +925,7 @@ static inline unsigned long __write_seql
+@@ -944,7 +954,7 @@ static inline unsigned long __write_seql
  	unsigned long flags;
  
  	spin_lock_irqsave(&sl->lock, flags);
@@ -129,7 +131,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	return flags;
  }
  
-@@ -944,7 +954,7 @@ static inline unsigned long __write_seql
+@@ -973,7 +983,7 @@ static inline unsigned long __write_seql
  static inline void
  write_sequnlock_irqrestore(seqlock_t *sl, unsigned long flags)
  {

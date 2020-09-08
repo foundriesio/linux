@@ -1,57 +1,60 @@
 From: "Ahmed S. Darwish" <a.darwish@linutronix.de>
-Date: Wed, 19 Aug 2020 11:36:57 +0200
-Subject: [PATCH 3/5] seqlock: seqcount_t: Implement all read APIs as statement
- expressions
+Date: Fri, 4 Sep 2020 17:32:29 +0200
+Subject: [PATCH 11/13] seqlock: seqcount_t: Implement all read APIs as
+ statement expressions
 
-Current implementation of sequence counters implement read APIs as
-macros, so it can take both seqcount_t and any of the
-seqcount_LOCKTYPE_t types as parameters. These macros directly transform
-the call to internal C functions that only take seqcount_t.
+The sequence counters read APIs are implemented as CPP macros, so they
+can take either seqcount_t or any of the seqcount_LOCKNAME_t variants.
+Such macros then get *directly* transformed to internal C functions that
+only take plain seqcount_t.
 
-Further commits need access to seqcount_LOCKTYPE_t inside all of the
-read APIs. Thus transform the read APIs to pure GCC statement
-expressions instead.
+Further commits need access to seqcount_LOCKNAME_t inside of the actual
+read APIs code. Thus transform all of the seqcount read APIs to pure GCC
+statement expressions instead.
 
-This will not break type safety, as all the calls resolve to a
-_Generic() that does not have a default case and explicitly states all
-of the supported seqcount_t/seqcount_LOCKTYPE_t types. The previously
-added kernel-doc, above each exported function, also makes the API
-expectations clear for call-site developers.
+This will not break type-safety: all of the transformed APIs resolve to
+a _Generic() selection that does not have a "default" case.
+
+This will also not affect the transformed APIs readability: previously
+added kernel-doc above all of seqlock.h functions makes the expectations
+quite clear for call-site developers.
 
 Signed-off-by: Ahmed S. Darwish <a.darwish@linutronix.de>
+Signed-off-by: Peter Zijlstra (Intel) <peterz@infradead.org>
+Link: https://lkml.kernel.org/r/20200904153231.11994-4-a.darwish@linutronix.de
 Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 ---
- include/linux/seqlock.h |   98 ++++++++++++++++++++++++------------------------
- 1 file changed, 49 insertions(+), 49 deletions(-)
+ include/linux/seqlock.h |   94 ++++++++++++++++++++++--------------------------
+ 1 file changed, 45 insertions(+), 49 deletions(-)
 
 --- a/include/linux/seqlock.h
 +++ b/include/linux/seqlock.h
-@@ -182,6 +182,12 @@ static __always_inline seqcount_t *
+@@ -184,6 +184,12 @@ static __always_inline seqcount_t *
  	return &s->seqcount;						\
  }									\
  									\
 +static __always_inline unsigned						\
-+__seqcount_##locktype##_sequence(const seqcount_##locktype##_t *s)	\
++__seqprop_##lockname##_sequence(const seqcount_##lockname##_t *s)	\
 +{									\
 +	return READ_ONCE(s->seqcount.sequence);				\
 +}									\
 +									\
  static __always_inline bool						\
- __seqcount_##locktype##_preemptible(seqcount_##locktype##_t *s)		\
+ __seqprop_##lockname##_preemptible(const seqcount_##lockname##_t *s)	\
  {									\
-@@ -203,6 +209,11 @@ static inline seqcount_t *__seqcount_t_p
+@@ -205,6 +211,11 @@ static inline seqcount_t *__seqprop_ptr(
  	return s;
  }
  
-+static inline unsigned __seqcount_t_sequence(seqcount_t *s)
++static inline unsigned __seqprop_sequence(const seqcount_t *s)
 +{
 +	return READ_ONCE(s->sequence);
 +}
 +
- static inline bool __seqcount_t_preemptible(seqcount_t *s)
+ static inline bool __seqprop_preemptible(const seqcount_t *s)
  {
  	return false;
-@@ -248,6 +259,7 @@ SEQCOUNT_LOCKTYPE(ww_mutex,	struct ww_mu
+@@ -250,6 +261,7 @@ SEQCOUNT_LOCKNAME(ww_mutex,	struct ww_mu
  	__seqprop_case((s),	ww_mutex,	prop))
  
  #define __seqcount_ptr(s)		__seqprop(s, ptr)
@@ -59,7 +62,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  #define __seqcount_lock_preemptible(s)	__seqprop(s, preemptible)
  #define __seqcount_assert_lock_held(s)	__seqprop(s, assert)
  
-@@ -266,21 +278,19 @@ SEQCOUNT_LOCKTYPE(ww_mutex,	struct ww_mu
+@@ -268,21 +280,15 @@ SEQCOUNT_LOCKNAME(ww_mutex,	struct ww_mu
   * Return: count to be passed to read_seqcount_retry()
   */
  #define __read_seqcount_begin(s)					\
@@ -79,22 +82,18 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 -	return ret;
 -}
 +({									\
-+	unsigned ret;							\
++	unsigned seq;							\
 +									\
-+	while (true) {							\
-+		ret = __seqcount_sequence(s);				\
-+		if (likely(! (ret & 1)))				\
-+			break;						\
++	while ((seq = __seqcount_sequence(s)) & 1)			\
 +		cpu_relax();						\
-+	}								\
 +									\
 +	kcsan_atomic_next(KCSAN_SEQLOCK_REGION_MAX);			\
-+	ret;								\
++	seq;								\
 +})
  
  /**
   * raw_read_seqcount_begin() - begin a seqcount_t read section w/o lockdep
-@@ -289,14 +299,12 @@ static inline unsigned __read_seqcount_t
+@@ -291,14 +297,12 @@ static inline unsigned __read_seqcount_t
   * Return: count to be passed to read_seqcount_retry()
   */
  #define raw_read_seqcount_begin(s)					\
@@ -107,15 +106,15 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 -	return ret;
 -}
 +({									\
-+	unsigned ret = __read_seqcount_begin(s);			\
++	unsigned seq = __read_seqcount_begin(s);			\
 +									\
 +	smp_rmb();							\
-+	ret;								\
++	seq;								\
 +})
  
  /**
   * read_seqcount_begin() - begin a seqcount_t read critical section
-@@ -305,13 +313,10 @@ static inline unsigned raw_read_seqcount
+@@ -307,13 +311,10 @@ static inline unsigned raw_read_seqcount
   * Return: count to be passed to read_seqcount_retry()
   */
  #define read_seqcount_begin(s)						\
@@ -133,7 +132,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  /**
   * raw_read_seqcount() - read the raw seqcount_t counter value
-@@ -325,15 +330,13 @@ static inline unsigned read_seqcount_t_b
+@@ -327,15 +328,13 @@ static inline unsigned read_seqcount_t_b
   * Return: count to be passed to read_seqcount_retry()
   */
  #define raw_read_seqcount(s)						\
@@ -147,16 +146,16 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 -	return ret;
 -}
 +({									\
-+	unsigned ret = __seqcount_sequence(s);				\
++	unsigned seq = __seqcount_sequence(s);				\
 +									\
 +	smp_rmb();							\
 +	kcsan_atomic_next(KCSAN_SEQLOCK_REGION_MAX);			\
-+	ret;								\
++	seq;								\
 +})
  
  /**
   * raw_seqcount_begin() - begin a seqcount_t read critical section w/o
-@@ -353,16 +356,13 @@ static inline unsigned raw_read_seqcount
+@@ -355,16 +354,13 @@ static inline unsigned raw_read_seqcount
   * Return: count to be passed to read_seqcount_retry()
   */
  #define raw_seqcount_begin(s)						\
