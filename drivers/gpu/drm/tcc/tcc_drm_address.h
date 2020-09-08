@@ -44,7 +44,7 @@ struct tcc_hw_device {
 
         /* video identification code */
         int vic;
-
+        int connector_type;
         /* rdma valid counts */
         int rdma_counts;
 };

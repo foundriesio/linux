@@ -118,6 +118,7 @@ static int tcc_drm_address_dt_parse_v1_0(struct platform_device *pdev, struct tc
 	int planles;
 	char *planes_type;
         unsigned int index = 0, i = 0;
+	const char * connector_type;
 	struct device_node *np, *current_node;
 
 	np = pdev->dev.of_node;
@@ -212,6 +213,21 @@ static int tcc_drm_address_dt_parse_v1_0(struct platform_device *pdev, struct tc
 					current_node, get_vioc_index(index));
 				hw_data->rdma[i].blk_num = index;
 			}
+		}
+		if(of_property_read_string(np, "connector_type", &connector_type)){
+			hw_data->connector_type = DRM_MODE_CONNECTOR_LVDS;
+			pr_info("[%s][%d][DRM] can't parse connector type. default LVDS is setted\n", __FUNCTION__, __LINE__ );
+		}else{
+			if(!strcmp(connector_type, "DP")){
+				hw_data->connector_type = DRM_MODE_CONNECTOR_DisplayPort;
+			}else if(!strcmp(connector_type, "HDMI-A")){
+				hw_data->connector_type = DRM_MODE_CONNECTOR_HDMIA;
+			}else if(!strcmp(connector_type, "HDMI-B")){
+				hw_data->connector_type = DRM_MODE_CONNECTOR_HDMIB;
+			}else{
+				hw_data->connector_type = DRM_MODE_CONNECTOR_LVDS;
+			}
+			pr_info("[%s][%d][DRM] connector type from Device tree is %s\n", __FUNCTION__, __LINE__, connector_type);
 		}
 
 		/* parse planes */

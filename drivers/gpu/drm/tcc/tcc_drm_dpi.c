@@ -229,17 +229,21 @@ static const struct drm_connector_helper_funcs tcc_dpi_connector_helper_funcs = 
 	.get_modes = tcc_dpi_get_modes,
 };
 
-static int tcc_dpi_create_connector(struct drm_encoder *encoder)
+static int tcc_dpi_create_connector(struct drm_encoder *encoder, struct tcc_hw_device *hw_data)
 {
 	struct tcc_dpi *ctx = encoder_to_dpi(encoder);
 	struct drm_connector *connector = &ctx->connector;
 	int ret;
-
 	connector->polled = DRM_CONNECTOR_POLL_HPD;
 
+	if(!hw_data->version){
+		hw_data->connector_type = DRM_MODE_CONNECTOR_LVDS;
+	}
+	pr_info("[%s][%d][DRM] connector type is %d\n", __FUNCTION__, __LINE__, hw_data->connector_type);
 	ret = drm_connector_init(encoder->dev, connector,
-				 &tcc_dpi_connector_funcs,
-				 DRM_MODE_CONNECTOR_LVDS);
+				&tcc_dpi_connector_funcs,
+				hw_data->connector_type);
+
 	if (ret) {
 		DRM_ERROR("failed to initialize connector with drm\n");
 		return ret;
@@ -324,12 +328,20 @@ static int tcc_dpi_parse_dt(struct tcc_dpi *ctx)
 	return 0;
 }
 
-int tcc_dpi_bind(struct drm_device *dev, struct drm_encoder *encoder)
+int tcc_dpi_bind(struct drm_device *dev, struct drm_encoder *encoder, struct tcc_hw_device *hw_data)
 {
 	int ret;
+	int encoder_type;
 
-	drm_encoder_init(dev, encoder, &tcc_dpi_encoder_funcs,
-			 DRM_MODE_ENCODER_TMDS, NULL);
+	if(hw_data->connector_type == DRM_MODE_CONNECTOR_DisplayPort || hw_data->connector_type == DRM_MODE_CONNECTOR_HDMIA ||
+		hw_data->connector_type == DRM_MODE_CONNECTOR_HDMIB){
+		encoder_type = DRM_MODE_ENCODER_TMDS;
+	}else{
+		encoder_type = DRM_MODE_ENCODER_LVDS;
+	}
+	pr_info("[%s][%d][DRM] encoder type is %d\n", __FUNCTION__, __LINE__, encoder_type);
+
+	drm_encoder_init(dev, encoder, &tcc_dpi_encoder_funcs, encoder_type, NULL);
 
 	drm_encoder_helper_add(encoder, &tcc_dpi_encoder_helper_funcs);
 
@@ -347,7 +359,7 @@ int tcc_dpi_bind(struct drm_device *dev, struct drm_encoder *encoder)
 
 	DRM_DEBUG_KMS("possible_crtcs = 0x%x\n", encoder->possible_crtcs);
 
-	ret = tcc_dpi_create_connector(encoder);
+	ret = tcc_dpi_create_connector(encoder, hw_data);
 	if (ret) {
 		DRM_ERROR("failed to create connector ret = %d\n", ret);
 		drm_encoder_cleanup(encoder);

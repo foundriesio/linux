@@ -297,7 +297,7 @@ void tcc_drm_subdrv_close(struct drm_device *dev, struct drm_file *file);
 #ifdef CONFIG_DRM_TCC_DPI
 struct drm_encoder *tcc_dpi_probe(struct device *dev, struct tcc_hw_device *hw_device);
 int tcc_dpi_remove(struct drm_encoder *encoder);
-int tcc_dpi_bind(struct drm_device *dev, struct drm_encoder *encoder);
+int tcc_dpi_bind(struct drm_device *dev, struct drm_encoder *encoder, struct tcc_hw_device *hw_data);
 #else
 static inline struct drm_encoder *
 tcc_dpi_probe(struct device *dev, struct tcc_hw_device *hw_device) { return NULL; }
@@ -306,7 +306,7 @@ static inline int tcc_dpi_remove(struct drm_encoder *encoder)
 	return 0;
 }
 static inline int tcc_dpi_bind(struct drm_device *dev,
-				  struct drm_encoder *encoder)
+				  struct drm_encoder *encoder, struct tcc_hw_device *hw_data)
 {
 	return 0;
 }

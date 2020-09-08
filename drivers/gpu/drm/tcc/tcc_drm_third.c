@@ -549,7 +549,7 @@ static int third_bind(struct device *dev, struct device *master, void *data)
 		return PTR_ERR(ctx->crtc);
 
 	if (ctx->encoder)
-		tcc_dpi_bind(drm_dev, ctx->encoder);
+		tcc_dpi_bind(drm_dev, ctx->encoder, &ctx->hw_data);
 
 	return ret;
 }
