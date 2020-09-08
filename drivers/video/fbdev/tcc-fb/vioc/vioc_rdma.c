@@ -204,7 +204,7 @@ void VIOC_RDMA_SetImageDisable(volatile void __iomem *reg)
 		if(pRDMA_reg[i] == reg){
 			vioc_id = i;
 			break;
-		}	
+		}
 	}
 	if(vioc_id >= 0)
 		vioc_id |= VIOC_RDMA;
@@ -213,18 +213,25 @@ void VIOC_RDMA_SetImageDisable(volatile void __iomem *reg)
 	scaler_blknum = VIOC_CONFIG_GetScaler_PluginToRDMA(vioc_id);
 	if(scaler_blknum >= VIOC_SCALER0){
 		volatile void __iomem *pSC = VIOC_SC_GetAddress(scaler_blknum);
-		VIOC_SC_SetDstSize (pSC, 0, 0);			
-		VIOC_SC_SetOutSize (pSC, 0, 0);			
+		VIOC_SC_SetDstSize (pSC, 0, 0);
+		VIOC_SC_SetOutSize (pSC, 0, 0);
 	}
 
 	val = (__raw_readl(reg + RDMASTAT) & ~(RDMASTAT_EOFR_MASK));
 	val |= (0x1 << RDMASTAT_EOFR_SHIFT);
 	__raw_writel(val, reg + RDMASTAT);
-	__raw_writel(0x00000000, reg + RDMASIZE);
 
 	val = (__raw_readl(reg + RDMACTRL) &
 	       ~(RDMACTRL_IEN_MASK | RDMACTRL_UPD_MASK));
 	val |= (0x1 << RDMACTRL_UPD_SHIFT);
+	__raw_writel(val, reg + RDMACTRL);
+
+	/* This code prevents fifo underrun in the example below:
+	 * 1) PATH - R(1920x1080) - S(720x480) - W(720x480) - D(720x480)
+	 * 2) Disable RDMA.
+	 * 3) Unplug Scaler then fifo underrun is occurred Immediately.
+	 * - Because the WMIX read size from RDMA even if RDMA was disabled */
+	__raw_writel(0x00000000, reg + RDMASIZE);
 	__raw_writel(val, reg + RDMACTRL);
 
 	/*
