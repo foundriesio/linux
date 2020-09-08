@@ -60,7 +60,7 @@
 	};
 
 	pcie@11800000 {
-		reset-gpio = <&gpc 30 0>;
+		reset-gpio = <&gpsd0 11 0>;
 		//status = "okay";
 	};
 /*

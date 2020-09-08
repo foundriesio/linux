@@ -32,6 +32,7 @@ struct tcc_pcie {
 	void __iomem		*phy_base;
 	void __iomem		*cfg_base;
 	int			reset_gpio;
+	int			ep_pwr_gpio;
 	struct clk		*clk_aux;
 	struct clk		*clk_apb;
 	struct clk		*clk_pcs;
@@ -119,9 +120,9 @@ struct tcc_pcie {
 
 #define PCIE_PHY_TRSVRST		0x108
 
-#define LINK_INTR_EN_MASK		0xFFFFE080
-#define LINK_INTR_EN_VAL		0xFFFFC080	/* disable [13]INT_DISABLE */
-#define PCIE_CFG_MSI_INT_MASK		(1<<31|1<<29|1<<21|1<<5)
+#define LINK_INTR_EN_MASK              0xFFFFD080
+#define LINK_INTR_EN_VAL               0xFFFFD080      /* disable [13]INT_DISABLE */
+#define PCIE_CFG_MSI_INT_MASK          (1<<31|1<<30|1<<29|1<<21|1<<5|1<<0)
 #define PCIE_CFG_INTX_MASK		(0xF<<12|0xF<<8)
 
 
@@ -225,6 +226,14 @@ static int tcc_pcie_establish_link(struct tcc_pcie *tp)
 	struct pcie_port *pp = &pci->pp;
 	int count = 0;
 
+	/* EP power control, example : wifi_reg_on */
+	if(tp->ep_pwr_gpio >= 0){
+               devm_gpio_request_one(pci->dev, tp->ep_pwr_gpio, GPIOF_OUT_INIT_LOW, "EP_PWR");
+               mdelay(1);
+               gpio_direction_output(tp->ep_pwr_gpio, 1);
+	}
+
+
 	if(tp->using_ext_ref_clk){
 		tcc_cfg_write(tp, 0<<8, PCIE_CFG08, 1<<8);
 		/* Enable bit for PHY reference clock from CKC (1: Propagates clock from CKC to PHY) */
@@ -275,7 +284,7 @@ static int tcc_pcie_establish_link(struct tcc_pcie *tp)
 	writel(readl(pci->dbi_base + 0x80c)|0x20000,pci->dbi_base + 0x80c); // Set GEN2
 
 	if(tp->for_si_test){
-		printk("PHY: REG21:0x%08x, REG22:0x%08x\n", tcc_phy_readl(tp, 0x21*4), tcc_phy_readl(tp, 0x22*4));
+		dev_err(pci->dev, "######## PCI SI TEST MODE ########\n");
 		while (1) {
 	               wfi();
 		}
@@ -289,13 +298,13 @@ static int tcc_pcie_establish_link(struct tcc_pcie *tp)
 			unsigned int val;
 			val = tcc_cfg_read(tp, PCIE_CFG08,
 				PCIE_CFG08_PHY_PLL_LOCKED) ? 1 : 0;
-			printk("PLL Locked: 0x%x\n", val);
-			printk("PCIe Link Fail\n");
+			dev_err(pci->dev,"PLL Locked: 0x%x\n", val);
+			dev_err(pci->dev,"PCIe Link Fail\n");
 			return -EINVAL;
 		}
 	}
 
-	printk("Link up\n");
+	dev_err(pci->dev, "Link up\n");
 	clk_disable_unprepare(tp->clk_aux);
 
 	return 0;
@@ -491,8 +500,6 @@ static int tcc_pcie_probe(struct platform_device *pdev)
 	struct tcc_pcie *tp;
 	int ret=0;
 
-	printk("[][][][] %s [][][][]\n", __func__);
-
 	tp = devm_kzalloc(dev, sizeof(*tp), GFP_KERNEL);
 	if (!tp)
 		return -ENOMEM;
@@ -524,6 +531,7 @@ static int tcc_pcie_probe(struct platform_device *pdev)
 	}
 
 	tp->reset_gpio = of_get_named_gpio(pdev->dev.of_node, "reset-gpio", 0);
+	tp->ep_pwr_gpio = of_get_named_gpio(pdev->dev.of_node, "ep_pwr-gpio", 0);
 
 	ret = of_property_read_u32(pdev->dev.of_node, "using_ext_ref_clk", &tp->using_ext_ref_clk);
 
@@ -609,7 +617,6 @@ static int tcc_pcie_probe(struct platform_device *pdev)
 	if (!tp->suspend_regs)
 		dev_err(&pdev->dev, "failed to allocate pcie reg backup table\n");
 
-	printk("[][][][] %s [][][][] end\n", __func__);	
 	return 0;
 
 fail_clk_hsio:
@@ -655,7 +662,7 @@ static int tcc_pcie_suspend_noirq(struct device *dev)
 
 
 	if (!tp->suspend_regs) {
-		printk("%s: failed to allocate pcie reg backup table\n", __func__);
+		dev_err(dev, "%s: failed to allocate pcie reg backup table\n", __func__);
 		return -1;
 	}
 
