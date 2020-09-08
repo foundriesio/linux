@@ -29,6 +29,7 @@
 #include "tcc_drm_gem.h"
 #include "tcc_drm_plane.h"
 #include "tcc_drm_vidi.h"
+#include "tcc_drm_crtc.h" 
 
 #if defined(CONFIG_ARCH_TCC805X)
 #define DRIVER_NAME	"tccdrm"
@@ -148,6 +149,8 @@ static const struct drm_ioctl_desc tcc_ioctls[] = {
 			DRM_AUTH | DRM_RENDER_ALLOW),
 	DRM_IOCTL_DEF_DRV(TCC_GEM_CPU_FINI, tcc_gem_cpu_fini_ioctl,
 			DRM_AUTH | DRM_RENDER_ALLOW),
+	DRM_IOCTL_DEF_DRV(TCC_GET_EDID, tcc_crtc_parse_edid_ioctl,
+			DRM_AUTH | DRM_RENDER_ALLOW), 
 };
 
 static const struct file_operations tcc_drm_driver_fops = {

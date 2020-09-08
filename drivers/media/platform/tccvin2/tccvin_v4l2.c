@@ -559,9 +559,8 @@ static int tccvin_ioctl_qbuf(struct file *file, void *fh, struct v4l2_buffer *bu
 		dlog("&stream->queue: %p, buf[%d].flags: 0x%08x\n", &stream->queue, buf->index, buf->flags);
 
 	ret = tccvin_queue_buffer(&stream->queue, buf);
-	if(ret < 0) {
-		loge("tccvin_queue_buffer, ret: %d\n", ret);
-	}
+
+	dlog("tccvin_queue_buffer, ret: %d\n", ret);
 
 //	FUNCTION_OUT
 	return ret;
@@ -582,6 +581,8 @@ static int tccvin_ioctl_dqbuf(struct file *file, void *fh, struct v4l2_buffer *b
 
 	if(buf != NULL)
 		dlog("&stream->queue: %p, buf[%d].flags: 0x%08x, file->f_flags: 0x%08x, O_NONBLOCK: 0x%08x, ret: %d\n", &stream->queue, buf->index, buf->flags, file->f_flags, O_NONBLOCK, ret);
+
+	dlog("tccvin_dqueue_buffer, ret: %d\n", ret);
 
 //	FUNCTION_OUT
 	return ret;

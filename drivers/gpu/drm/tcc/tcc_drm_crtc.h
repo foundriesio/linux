@@ -42,6 +42,8 @@ struct tcc_drm_crtc *tcc_drm_crtc_get_by_type(struct drm_device *drm_dev,
 int tcc_drm_set_possible_crtcs(struct drm_encoder *encoder,
 		enum tcc_drm_output_type out_type);
 
+int tcc_crtc_parse_edid_ioctl(struct drm_device *dev, void *data, struct drm_file *file);
+
 /*
  * This function calls the crtc device(manager)'s te_handler() callback
  * to trigger to transfer video image at the tearing effect synchronization

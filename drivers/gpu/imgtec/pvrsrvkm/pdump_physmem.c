@@ -93,18 +93,22 @@ void PDumpMakeStringValid(IMG_CHAR *pszString,
                           IMG_UINT32 ui32StrLen)
 {
 	IMG_UINT32 i;
-	for (i = 0; i < ui32StrLen; i++)
+
+	if (pszString)
 	{
-		if (_IsAllowedSym(pszString[i]))
+		for (i = 0; i < ui32StrLen; i++)
 		{
-			if (_IsLowerCaseSym(pszString[i]))
-				pszString[i] = pszString[i]-32;
+			if (_IsAllowedSym(pszString[i]))
+			{
+				if (_IsLowerCaseSym(pszString[i]))
+					pszString[i] = pszString[i]-32;
+				else
+					pszString[i] = pszString[i];
+			}
 			else
-				pszString[i] = pszString[i];
-		}
-		else
-		{
-			pszString[i] = '_';
+			{
+				pszString[i] = '_';
+			}
 		}
 	}
 }

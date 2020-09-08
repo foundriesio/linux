@@ -8,7 +8,6 @@ override TARGET_ALL_ARCH := target_aarch64
 override TARGET_FORCE_32BIT :=
 override PVR_ARCH := volcanic
 override METAG_VERSION_NEEDED := 2.8.1.0.3
-override KERNELDIR := /home/B090157/Android/pie-4.14/kernel
 override KERNEL_ID := 4.14.137-tcc
 override PVRSRV_MODULE_BASEDIR := /vendor/modules/
 override KERNEL_COMPONENTS := srvkm
@@ -16,17 +15,29 @@ override KERNEL_CROSS_COMPILE := aarch64-linux-android-
 override PVRSRV_MODNAME := pvrsrvkm
 override PVRHMMU_MODNAME :=
 override PVRSYNC_MODNAME := pvr_sync
-override PVR_BUILD_DIR := arm64_android
+override PVR_BUILD_DIR := tcc32_android
+ifeq ($(CONFIG_POWERVR_DEBUG),y)
+override PVR_BUILD_TYPE := debug
+else
 override PVR_BUILD_TYPE := release
+endif
 override SUPPORT_RGX := 1
-override PVR_SYSTEM := car_tcc803x_arm64
+override PVR_SYSTEM := tcc_9xtp
 override PVR_LOADER :=
+ifeq ($(CONFIG_POWERVR_DEBUG),y)
+override BUILD := debug
+else
 override BUILD := release
 override DEBUGLINK := 1
+endif
 override SUPPORT_PHYSMEM_TEST := 1
 override COMPRESS_DEBUG_SECTIONS := 1
 override RGX_BNC := 27.V.254.2
+ifeq ($(CONFIG_POWERVR_VZ),y)
+override RGX_NUM_OS_SUPPORTED := 2
+else
 override RGX_NUM_OS_SUPPORTED := 1
+endif
 override VMM_TYPE := stub
 override SUPPORT_POWMON_COMPONENT := 1
 override OPTIM := -O2
@@ -42,8 +53,8 @@ override PVR_GPIO_MODE := PVR_GPIO_MODE_GENERAL
 override PVR_HANDLE_BACKEND := idr
 override SUPPORT_DMABUF_BRIDGE := 1
 override SUPPORT_NATIVE_FENCE_SYNC := 1
-override PVR_USE_FENCE_SYNC_MODEL := 1
 override SUPPORT_DMA_FENCE := 1
 override SUPPORT_ANDROID_PLATFORM := 1
 override SUPPORT_ION := 1
+override PVRSRV_ENABLE_PVR_ION_STATS := 1
 override RK_INIT_V2 := 1

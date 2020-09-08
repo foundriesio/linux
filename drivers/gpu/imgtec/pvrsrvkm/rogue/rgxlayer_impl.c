@@ -45,6 +45,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "osfunc.h"
 #include "pdump_km.h"
 #include "rgxfwutils.h"
+#include "rgxinit.h"
 #include "rgxfwimageutils.h"
 #include "devicemem.h"
 #include "cache_km.h"
@@ -299,7 +300,7 @@ PVRSRV_ERROR RGXPollReg32(const void *hPrivate,
 				(IMG_UINT32 __iomem *)((IMG_UINT8 __iomem *)pvRegsBase + ui32RegAddr),
 				ui32RegValue,
 				ui32RegMask,
-				IMG_FALSE) != PVRSRV_OK)
+				POLL_FLAG_LOG_ERROR) != PVRSRV_OK)
 		{
 			PVR_DPF((PVR_DBG_ERROR, "RGXPollReg32: Poll for Reg (0x%x) failed", ui32RegAddr));
 			return PVRSRV_ERROR_TIMEOUT;
@@ -344,7 +345,7 @@ PVRSRV_ERROR RGXPollReg64(const void *hPrivate,
 				(IMG_UINT32 __iomem *)((IMG_UINT8 __iomem *)pvRegsBase + ui32RegAddr + 4),
 				ui32UpperValue,
 				ui32UpperMask,
-				IMG_FALSE) != PVRSRV_OK)
+				POLL_FLAG_LOG_ERROR) != PVRSRV_OK)
 		{
 			PVR_DPF((PVR_DBG_ERROR, "RGXPollReg64: Poll for upper part of Reg (0x%x) failed", ui32RegAddr));
 			return PVRSRV_ERROR_TIMEOUT;
@@ -354,7 +355,7 @@ PVRSRV_ERROR RGXPollReg64(const void *hPrivate,
 				(IMG_UINT32 __iomem *)((IMG_UINT8 __iomem *)pvRegsBase + ui32RegAddr),
 				ui32LowerValue,
 				ui32LowerMask,
-				IMG_FALSE) != PVRSRV_OK)
+				POLL_FLAG_LOG_ERROR) != PVRSRV_OK)
 		{
 			PVR_DPF((PVR_DBG_ERROR, "RGXPollReg64: Poll for upper part of Reg (0x%x) failed", ui32RegAddr));
 			return PVRSRV_ERROR_TIMEOUT;
@@ -1249,4 +1250,16 @@ void RGXAcquireBootDataAddr(const void *hPrivate, IMG_DEV_VIRTADDR *psBootDataAd
 	psDevInfo = ((RGX_LAYER_PARAMS*)hPrivate)->psDevInfo;
 
 	*psBootDataAddr = psDevInfo->sFWDataDevVAddrBase;
+}
+
+IMG_BOOL RGXDeviceIrqEventRx(const void *hPrivate)
+{
+	RGX_LAYER_PARAMS *psParams;
+	PVRSRV_RGXDEV_INFO *psDevInfo;
+
+	PVR_ASSERT(hPrivate != NULL);
+	psParams = (RGX_LAYER_PARAMS*)hPrivate;
+	psDevInfo = psParams->psDevInfo;
+
+	return RGXFwIrqEventRx(psDevInfo);
 }

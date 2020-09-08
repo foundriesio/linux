@@ -1164,7 +1164,7 @@ static PVRSRV_ERROR RGXGetPageSizeFromPDE8(IMG_UINT64 ui64PDE, IMG_UINT32 *pui32
 		break;
 	default:
 		PVR_DPF((PVR_DBG_ERROR,
-				"RGXGetPageSizeFromPDE8: Invalid page size bitfield %llx in PDE",
+				"RGXGetPageSizeFromPDE8: Invalid page size bitfield %" IMG_UINT64_FMTSPECx " in PDE",
 				ui64PageSizeBits));
 
 		return PVRSRV_ERROR_MMU_INVALID_PAGE_SIZE_FOR_DEVICE;

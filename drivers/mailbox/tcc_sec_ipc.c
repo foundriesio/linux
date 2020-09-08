@@ -14,7 +14,7 @@
  */
 
 //#define NDEBUG
-#define TLOG_LEVEL TLOG_DEBUG
+#define TLOG_LEVEL TLOG_WARNING
 #include "tcc_sec_ipc_log.h"
 
 #include <linux/mailbox/tcc_sec_ipc.h>

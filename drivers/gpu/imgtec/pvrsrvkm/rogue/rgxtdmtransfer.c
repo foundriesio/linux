@@ -736,7 +736,10 @@ PVRSRV_ERROR PVRSRVRGXTDMSubmitTransferKM(
 				}
 				OSCachedMemSet(pui32IntAllocatedUpdateValues, 0xbb, sizeof(*pui32IntAllocatedUpdateValues) * (ui32IntClientUpdateCount+1));
 				/* Copy the update values into the new memory, then append our timeline update value */
-				OSCachedMemCopy(pui32IntAllocatedUpdateValues, paui32IntUpdateValue, sizeof(*pui32IntAllocatedUpdateValues) * ui32IntClientUpdateCount);
+				if (paui32IntUpdateValue)
+				{
+					OSCachedMemCopy(pui32IntAllocatedUpdateValues, paui32IntUpdateValue, sizeof(*pui32IntAllocatedUpdateValues) * ui32IntClientUpdateCount);
+				}
 				/* Now set the additional update value */
 				pui32TimelineUpdateWp = pui32IntAllocatedUpdateValues + ui32IntClientUpdateCount;
 				*pui32TimelineUpdateWp = ui32FenceTimelineUpdateValue;

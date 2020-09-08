@@ -55,6 +55,8 @@
 #define TCC_SC_TX_TIMEOUT_MS		5000
 #define TCC_SC_RX_TIMEOUT_MS		5000
 
+DEFINE_MUTEX(xfer_mutex);
+
 struct tcc_sc_fw_cmd {
 	u8	bsid;
 	u8	cid;
@@ -196,6 +198,7 @@ static int tcc_sc_fw_cmd_request_mmc_cmd(const struct tcc_sc_fw_handle *handle,
 	if(info == NULL)
 		return -EINVAL;
 
+	mutex_lock(&xfer_mutex);
 	trace_tcc_sc_fw_start_mmc_req(cmd, data);
 
 	xfer = info->xfer;
@@ -256,6 +259,7 @@ static int tcc_sc_fw_cmd_request_mmc_cmd(const struct tcc_sc_fw_handle *handle,
 	}
 
 	trace_tcc_sc_fw_done_mmc_req(cmd, data);
+	mutex_unlock(&xfer_mutex);
 
 	return ret;
 }
@@ -278,6 +282,8 @@ static int tcc_sc_fw_cmd_get_mmc_prot_info(const struct tcc_sc_fw_handle *handle
 
 	if(info == NULL)
 		return -EINVAL;
+
+	mutex_lock(&xfer_mutex);
 
 	dev = info->dev;
 	xfer = info->xfer;
@@ -307,6 +313,8 @@ static int tcc_sc_fw_cmd_get_mmc_prot_info(const struct tcc_sc_fw_handle *handle
 		}
 	}
 
+	mutex_unlock(&xfer_mutex);
+
 	return ret;
 }
 
@@ -317,6 +325,8 @@ static int tcc_sc_fw_cmd_get_revision(struct tcc_sc_fw_info *info)
 	struct tcc_sc_fw_xfer *xfer = info->xfer;
 	struct tcc_sc_fw_cmd req_cmd = {0, }, res_cmd = {0, };
 	int ret;
+
+	mutex_lock(&xfer_mutex);
 
 	req_cmd.bsid = info->bsid;
 	req_cmd.cid = info->cid;
@@ -341,7 +351,9 @@ static int tcc_sc_fw_cmd_get_revision(struct tcc_sc_fw_info *info)
 			memcpy((void *)ver, (void *)res_cmd.args, sizeof(struct tcc_sc_fw_version));
 		}
 	}
- 
+
+	mutex_unlock(&xfer_mutex);
+
 	return ret;
 }
 
@@ -361,6 +373,8 @@ static int tcc_sc_fw_cmd_request_gpio_cmd(const struct tcc_sc_fw_handle *handle,
 
 	if(info == NULL)
 		return -EINVAL;
+
+	mutex_lock(&xfer_mutex);
 
 	dev = info->dev;
 	xfer = info->xfer;
@@ -394,6 +408,7 @@ static int tcc_sc_fw_cmd_request_gpio_cmd(const struct tcc_sc_fw_handle *handle,
 		}
 	}
 
+	mutex_unlock(&xfer_mutex);
 	return ret;
 }
 

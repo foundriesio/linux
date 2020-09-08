@@ -930,14 +930,16 @@ static void tccvin_work_thread(struct work_struct * data) {
 	} else {
 		loge("There is no entry of the incoming buffer list\n");
 	}
-	spin_unlock_irqrestore(&queue->irqlock, flags);
 
 	/*
 	 * check whether the driver has only one buffer or not
 	 */
 	if (list_is_last(&(buf->queue), &queue->irqqueue)) {
 		logw("driver has only one buffer!! \n");
+		spin_unlock_irqrestore(&queue->irqlock, flags);
 		goto update_wdma;
+	} else {
+		spin_unlock_irqrestore(&queue->irqlock, flags);
 	}
 
 	/* Store the payload FID bit and return immediately when the buffer is

@@ -1793,16 +1793,12 @@ int request_threaded_irq(unsigned int irq, irq_handler_t handler,
 	struct irqaction *action;
 	struct irq_desc *desc;
 	int retval;
+
 #ifdef CONFIG_ARCH_TCC
-	bool flag_detect;
-
-
 	if(tcc_is_exti(irq)){
 
-		//both edge flag is detected if only irqflags includes both IRQ_TYPE_EDGE_FALLING
-		//and IRQ_TYPE_EDGE_RISING.
-		flag_detect = (!!(irqflags & IRQ_TYPE_EDGE_FALLING)&&!!(irqflags & IRQ_TYPE_EDGE_RISING));
-		if(flag_detect){
+		/* detecting both-edge flag */
+		if((irqflags & IRQ_TYPE_SENSE_MASK) == IRQ_TYPE_EDGE_BOTH){
 
 			irqflags = (irqflags & ~IRQ_TYPE_EDGE_BOTH)|IRQ_TYPE_EDGE_RISING;
 			retval = request_threaded_irq(irq, handler, thread_fn, irqflags, devname, dev_id);

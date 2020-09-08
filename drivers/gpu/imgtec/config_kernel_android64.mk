@@ -8,7 +8,6 @@ override TARGET_ALL_ARCH := target_aarch64
 override TARGET_FORCE_32BIT :=
 override PVR_ARCH := volcanic
 override METAG_VERSION_NEEDED := 2.8.1.0.3
-override KERNELDIR := /home/B090157/Android/android_pie_tcc805x/kernel
 override KERNEL_ID := 4.14.137-tcc
 override PVRSRV_MODULE_BASEDIR := /vendor/modules/
 override KERNEL_COMPONENTS := srvkm
@@ -16,7 +15,7 @@ override KERNEL_CROSS_COMPILE := aarch64-linux-android-
 override PVRSRV_MODNAME := pvrsrvkm
 override PVRHMMU_MODNAME :=
 override PVRSYNC_MODNAME := pvr_sync
-override PVR_BUILD_DIR := arm64_android
+override PVR_BUILD_DIR := tcc64_android
 ifeq ($(CONFIG_POWERVR_DEBUG),y)
 override PVR_BUILD_TYPE := debug
 else

@@ -8,7 +8,6 @@ override TARGET_ALL_ARCH := target_aarch64
 override TARGET_FORCE_32BIT :=
 override PVR_ARCH := volcanic
 override METAG_VERSION_NEEDED := 2.8.1.0.3
-override KERNELDIR := /home/B090157/Linux/ALS/tcc805x_linux_ivi/build/tcc8059-main/tmp/work-shared/tcc8059-main/kernel-source
 override KERNEL_ID := 4.14.137-tcc
 override PVRSRV_MODULE_BASEDIR := /lib/modules/4.14.137-tcc/extra/
 override KERNEL_COMPONENTS := srvkm dc_fbdev

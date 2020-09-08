@@ -1370,7 +1370,6 @@ PVRSRV_ERROR RGXInit(PVRSRV_DEVICE_NODE *psDeviceNode)
 		}
 	}
 
-
 	/*
 	 * Setup Firmware initialisation data
 	 */
@@ -1411,13 +1410,16 @@ PVRSRV_ERROR RGXInit(PVRSRV_DEVICE_NODE *psDeviceNode)
 	}
 
 #if defined(PDUMP)
-	eError = InitialiseAllCounters(psDeviceNode);
-	if (eError != PVRSRV_OK)
+	if (!PVRSRV_VZ_MODE_IS(GUEST))
 	{
-		PVR_DPF((PVR_DBG_ERROR,
-				 "%s: InitialiseAllCounters failed (%d)",
-				 __func__, eError));
-		goto cleanup;
+		eError = InitialiseAllCounters(psDeviceNode);
+		if (eError != PVRSRV_OK)
+		{
+			PVR_DPF((PVR_DBG_ERROR,
+					 "%s: InitialiseAllCounters failed (%d)",
+					 __func__, eError));
+			goto cleanup;
+		}
 	}
 #endif
 

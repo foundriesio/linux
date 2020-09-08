@@ -77,6 +77,11 @@ struct drm_tcc_gem_cpu_fini {
         __u32 handle;         	/* in */
 };
 
+struct drm_tcc_edid {
+	__u32 crtc_id;         	/* in */
+	__u8 data[512];
+};
+
 /* memory type definitions. */
 enum e_drm_tcc_gem_mem_type {
 	/* Physically Continuous memory and used as default. */
@@ -321,6 +326,8 @@ struct drm_tcc_ipp_cmd_ctrl {
 #define DRM_TCC_GEM_GET			0x04
 #define DRM_TCC_VIDI_CONNECTION		0x07
 
+#define DRM_TCC_GET_EDID		0x10 // Additional crtc ioctl for edid
+
 /* G2D */
 #define DRM_TCC_G2D_GET_VER		0x20
 #define DRM_TCC_G2D_SET_CMDLIST	0x21
@@ -349,6 +356,9 @@ struct drm_tcc_ipp_cmd_ctrl {
 
 #define DRM_IOCTL_TCC_GEM_CPU_FINI   	DRM_IOWR(DRM_COMMAND_BASE + \
                 DRM_TCC_GEM_CPU_FINI, struct drm_tcc_gem_cpu_fini)
+
+#define DRM_IOCTL_TCC_GET_EDID	DRM_IOWR(DRM_COMMAND_BASE + \
+                DRM_TCC_GET_EDID, struct drm_tcc_edid)
 
 #define DRM_IOCTL_TCC_IPP_GET_PROPERTY	DRM_IOWR(DRM_COMMAND_BASE + \
 		DRM_TCC_IPP_GET_PROPERTY, struct drm_tcc_ipp_prop_list)
