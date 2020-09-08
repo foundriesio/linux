@@ -690,7 +690,7 @@ static int stm32_exti_h_domain_alloc(struct irq_domain *dm,
 
 		return irq_domain_alloc_irqs_parent(dm, virq, 1, &p_fwspec);
 	} else {
-		if (desc->irq_parent >= 0) {
+		if (desc->irq_parent) {
 			p_fwspec.fwnode = dm->parent->fwnode;
 			p_fwspec.param_count = 3;
 			p_fwspec.param[0] = GIC_SPI;
