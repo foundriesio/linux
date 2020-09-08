@@ -468,7 +468,7 @@ static void mv88e6xxx_g1_irq_free(struct mv88e6xxx_chip *chip)
 	u16 mask;
 
 	mv88e6xxx_g1_read(chip, GLOBAL_CONTROL, &mask);
-	mask |= GENMASK(chip->g1_irq.nirqs, 0);
+	mask &= ~GENMASK(chip->g1_irq.nirqs, 0);
 	mv88e6xxx_g1_write(chip, GLOBAL_CONTROL, mask);
 
 	free_irq(chip->irq, chip);
@@ -524,7 +524,7 @@ static int mv88e6xxx_g1_irq_setup(struct mv88e6xxx_chip *chip)
 	return 0;
 
 out_disable:
-	mask |= GENMASK(chip->g1_irq.nirqs, 0);
+	mask &= ~GENMASK(chip->g1_irq.nirqs, 0);
 	mv88e6xxx_g1_write(chip, GLOBAL_CONTROL, mask);
 
 out_mapping:
