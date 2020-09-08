@@ -378,7 +378,7 @@ int vout_set_m2m_path(int deintl_default, struct tcc_vout_device *vout)
 		vioc->m2m_wmix.pos = 1;				// rdma pos 1 is VRDMA
 		vioc->m2m_subplane_wmix.pos = 0;			// rdma pos 0 is GRDMA
 		vioc->m2m_wmix.ovp = vioc->m2m_subplane_wmix.ovp = 24;		// ovp 24: 0-1-2-3
-	#if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X)
+	#ifdef CONFIG_ARCH_TCC803X
 	case VIOC_RDMA14:
 		vioc->m2m_wmix.pos = 0;
 		vioc->m2m_subplane_wmix.pos = 1;
