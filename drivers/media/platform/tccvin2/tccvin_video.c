@@ -163,6 +163,49 @@ struct tccvin_format_desc *tccvin_format_by_fcc(const __u32 fcc)
 	return NULL;
 }
 
+int tccvin_convert_to_multi_planes_buffer_addresses(unsigned int width, unsigned int height, unsigned int fcc, unsigned long * addr0, unsigned long * addr1, unsigned long * addr2) {
+	unsigned long	addr0len	= 0;
+	unsigned long	addr1len	= 0;
+	int				ret			= 0;
+
+	switch(fcc) {
+	/* sepatated (Y, U, V planar) */
+	case V4L2_PIX_FMT_YVU420:		// 'YV12' 12 YVU 4:2:0
+#if 0
+		addr0len	= width * height;
+		addr1len	= (width / 2) * (height / 2);
+		*addr2		= *addr0 + addr0len;
+		*addr1		= *addr2 + addr1len;
+		break;
+#endif
+	case V4L2_PIX_FMT_YUV420:		// 'YU12' 12 YUV 4:2:0
+		addr0len	= width * height;
+		addr1len	= (width / 2) * (height / 2);
+		*addr1		= *addr0 + addr0len;
+		*addr2		= *addr1 + addr1len;
+		break;
+	case V4L2_PIX_FMT_YUV422P:		// '422P' 16 YVU422 Planar
+		break;
+
+	/* interleaved (Y palnar, UV planar) */
+	case V4L2_PIX_FMT_NV12:			// 'NV12' 12 Y/CbCr 4:2:0
+	case V4L2_PIX_FMT_NV21:			// 'NV21' 12 Y/CrCb 4:2:0
+	case V4L2_PIX_FMT_NV16:			// 'NV16' 16 Y/CbCr 4:2:2
+	case V4L2_PIX_FMT_NV61:			// 'NV61' 16 Y/CrCb 4:2:2
+		addr0len	= width * height;
+		*addr1		= *addr0 + addr0len;
+		*addr2		= 0;
+		break;
+
+	default:
+		*addr1	= 0;
+		*addr2	= 0;
+		break;
+	}
+
+	return ret;
+}
+
 /*
  * tccvin_parse_device_tree
  *
@@ -842,6 +885,11 @@ static int tccvin_set_wmixer(struct tccvin_streaming * vdev) {
  *	0:		Success
  */
 static int tccvin_set_wdma(struct tccvin_streaming * vdev) {
+	struct tccvin_video_queue	* queue		= &vdev->queue;
+	struct tccvin_cif			* cif		= &vdev->cif;
+	struct tccvin_buffer		* buf		= NULL;
+	unsigned long			flags;
+
 	volatile void __iomem	* pWDMA		= VIOC_WDMA_GetAddress(vdev->cif.vioc_path.wdma);
 
 	unsigned int	width	= vdev->cur_frame->wWidth;
@@ -869,28 +917,43 @@ static int tccvin_set_wdma(struct tccvin_streaming * vdev) {
 		VIOC_WDMA_SetImageOffset(pWDMA, format, width);
 	}
 
-#if 0
 	if(vdev->preview_method == PREVIEW_V4L2) {
-		struct tccvin_buf	* buf	= list_entry(vdev->v4l2.capture_buf_list.next, struct tccvin_buf, buf_list);
-		switch(buf->buf.memory) {
-		case V4L2_MEMORY_MMAP:
-//			addr0	= (unsigned long)vdev->cif.pmap_preview.base + buf->buf.m.offset;
-			addr0	= buf->buf.m.offset;
-			break;
-		case V4L2_MEMORY_USERPTR:
-			addr0	= buf->buf.m.userptr;
-			break;
+		spin_lock_irqsave(&queue->irqlock, flags);
+		if (!list_empty(&queue->irqqueue))
+			buf = list_first_entry(&queue->irqqueue, struct tccvin_buffer, queue);
+		spin_unlock_irqrestore(&queue->irqlock, flags);
+
+		mutex_lock(&cif->lock);
+		if (buf != NULL) {
+			switch(buf->buf.vb2_buf.memory) {
+			case VB2_MEMORY_MMAP:
+				addr0 = buf->buf.vb2_buf.planes[0].m.offset;
+				break;
+			case VB2_MEMORY_USERPTR:
+				addr0 = virt_to_phys((volatile void *) buf->buf.vb2_buf.planes[0].m.userptr);
+				break;
+			default:
+				loge("v4l2 buffer memory type is not supported\n");
+				return;
+			}
+			tccvin_convert_to_multi_planes_buffer_addresses(width, height, vdev->cur_format->fcc, &addr0, &addr1, &addr2);
+			logd("ADDR0: 0x%08x, ADDR1: 0x%08x, ADDR2: 0x%08x\n", addr0, addr1, addr2);
+			VIOC_WDMA_SetImageBase(pWDMA, addr0, addr1, addr2);
+			VIOC_WDMA_SetImageEnable(pWDMA, ON);
+		} else {
+			dlog("Buffer is not initialized successfully.\n");
 		}
-	} else if(vdev->preview_method == PREVIEW_DD) {
-		buf_addr_t			* buf	= &vdev->cif.preview_buf_addr[0];
-		addr0 = buf->addr0;
+
+		mutex_unlock(&cif->lock);
+	} else {
+		addr0 = vdev->cif.pmap_preview.base;
+		addr1 = 0;
+		addr2 = 0;
+
+		logd("ADDR0: 0x%08x, ADDR1: 0x%08x, ADDR2: 0x%08x\n", addr0, addr1, addr2);
+		VIOC_WDMA_SetImageBase(pWDMA, addr0, addr1, addr2);
+		VIOC_WDMA_SetImageEnable(pWDMA, ON);
 	}
-#else
-	addr0 = vdev->cif.pmap_preview.base;
-#endif
-	logd("ADDR0: 0x%08x, ADDR1: 0x%08x, ADDR2: 0x%08x\n", addr0, addr1, addr2);
-	VIOC_WDMA_SetImageBase(pWDMA, addr0, addr1, addr2);
-	VIOC_WDMA_SetImageEnable(pWDMA, ON);
 
 	FUNCTION_OUT
 	return 0;
@@ -968,24 +1031,25 @@ update_wdma:
 	mutex_lock(&cif->lock);
 
 	if (buf != NULL) {
-		if (buf->buf.vb2_buf.memory == VB2_MEMORY_MMAP) {
+		switch(buf->buf.vb2_buf.memory) {
+		case VB2_MEMORY_MMAP:
 			addr0 = buf->buf.vb2_buf.planes[0].m.offset;
-		} else if (buf->buf.vb2_buf.memory == VB2_MEMORY_USERPTR) {
+			break;
+		case VB2_MEMORY_USERPTR:
 			addr0 = virt_to_phys((volatile void *) buf->buf.vb2_buf.planes[0].m.userptr);
-		} else {
-			addr0 = stream->cif.pmap_preview.base;
+			break;
+		default:
+			loge("v4l2 buffer memory type is not supported\n");
+			return;
 		}
+		tccvin_convert_to_multi_planes_buffer_addresses(stream->cur_frame->wWidth, stream->cur_frame->wHeight, stream->cur_format->fcc, &addr0, &addr1, &addr2);
+		logd("ADDR0: 0x%08x, ADDR1: 0x%08x, ADDR2: 0x%08x\n", addr0, addr1, addr2);
+		VIOC_WDMA_SetImageBase(pWDMABase, addr0, addr1, addr2);
+		VIOC_WDMA_SetImageEnable(pWDMABase, OFF);
 	} else {
 		dlog("Buffer is not initialized successfully.\n");
 	}
 
-	addr1 = 0;
-	addr2 = 0;
-
-	logd("ADDR0: 0x%08x, ADDR1: 0x%08x, ADDR2: 0x%08x\n", addr0, addr1, addr2);
-
-	VIOC_WDMA_SetImageBase(pWDMABase, addr0, addr1, addr2);
-	VIOC_WDMA_SetImageEnable(pWDMABase, OFF);
 	mutex_unlock(&cif->lock);
 }
 
