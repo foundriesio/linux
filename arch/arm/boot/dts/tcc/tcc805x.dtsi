@@ -3333,7 +3333,7 @@
 	    deintl_block = <&vioc_deintls VIOC_DEINTLS0>;
 	    scaler = <&vioc_scaler VIOC_SCALER3>;
 
-	    status = "disabled";
+	    status = "okay";
 	};
 
 	composite {
