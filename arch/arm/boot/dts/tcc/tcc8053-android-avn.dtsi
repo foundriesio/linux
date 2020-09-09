@@ -82,6 +82,10 @@
 	status = "okay";
 };
 
+&tcc_ufs {
+	status = "okay";
+};
+
 /*
 &hsic {
 	status = "okay";

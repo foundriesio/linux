@@ -1000,6 +1000,14 @@ typedef enum {RATE_A=1, RATE_B} hs_series_t;
 #define  DBG_PA_OPTION_SUITE                                             0x9564
 #define  DBG_CLK_PERIOD                                                  0x9514
 
+
+//----------------------------------------------------------------------------------------------------------------------------
+// Define Storage Bus Configuration
+//----------------------------------------------------------------------------------------------------------------------------
+#define SBUS_CONFIG_SWRESETN											0x18
+#define SBUS_CONFIG_SWRESETN_UFS_HCI									0x400
+#define SBUS_CONFIG_SWRESETN_UFS_PHY									0x1000
+#define SBUS_TEMP														0x54
 //----------------------------------------------------------------------------------------------------------------------------
 // Define Internal Attributes
 //----------------------------------------------------------------------------------------------------------------------------
@@ -1130,8 +1138,10 @@ typedef enum {RATE_A=1, RATE_B} hs_series_t;
         void __iomem *ufs_sys_ctrl;
         void __iomem *ufs_reg_hci;
         void __iomem *ufs_reg_unipro;
-        void __iomem *ufs_reg_fmp;
         void __iomem *ufs_reg_mphy;
+		void __iomem *ufs_reg_sbus_config;
+        void __iomem *ufs_reg_fmp;
+		void __iomem *ufs_reg_sec;
         struct reset_control    *rst;
         struct reset_control    *assert;
         uint64_t caps;
@@ -1190,4 +1200,27 @@ typedef enum {RATE_A=1, RATE_B} hs_series_t;
        ufs_mphy_writel((host),                                            \
                            ((~(mask)) & (ufs_mphy_readl((host), (reg)))), \
                            (reg))
+
+ #define ufs_sbus_config_writel(host, val, reg)                                    \
+        writel((val), (host)->ufs_reg_sbus_config + (reg))
+ #define ufs_sbus_config_readl(host, reg) readl((host)->ufs_reg_sbus_config + (reg))
+ #define ufs_sbus_config_set_bits(host, mask, reg)                                 \
+        ufs_sbus_config_writel(                                                   \
+                (host), ((mask) | (ufs_sbus_config_readl((host), (reg)))), (reg))
+ #define ufs_sbus_config_clr_bits(host, mask, reg)                                 \
+       ufs_sbus_config_writel((host),                                            \
+                           ((~(mask)) & (ufs_sbus_config_readl((host), (reg)))), \
+                           (reg))
+
+ #define ufs_sec_writel(host, val, reg)                                    \
+        writel((val), (host)->ufs_reg_sec + (reg))
+ #define ufs_sec_readl(host, reg) readl((host)->ufs_reg_sec + (reg))
+ #define ufs_sec_set_bits(host, mask, reg)                                 \
+        ufs_sec_writel(                                                   \
+                (host), ((mask) | (ufs_sec_readl((host), (reg)))), (reg))
+ #define ufs_sec_clr_bits(host, mask, reg)                                 \
+       ufs_sec_writel((host),                                            \
+                           ((~(mask)) & (ufs_sec_readl((host), (reg)))), \
+                           (reg))
+
 #endif /* __UFS_TCC_H_ */
