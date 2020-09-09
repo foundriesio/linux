@@ -33,7 +33,8 @@
 #define	FBUS_MEM_SUB		28	// Memory Bus sub-system clock
 #define	FBUS_MEM_PHY_USER	29	// LPDDR4X User clock
 #define	FBUS_MEM_PHY_PERI	30	// LPDDR4X Peripheral clock
-#define FBUS_MAX		31
+#define FBUS_MEM_LPDDR4		31	// LPDDR4X PLL Clock
+#define FBUS_MAX		32
 
 #define CKC_REG_OFFSET(A)	((A)/4)
 

@@ -343,17 +343,11 @@ static int tcc_clk_show(struct seq_file *m, void *v)
 	enabled = res.a0;
 	seq_printf(m, "%30s : %15lu Hz %s\n", "MEM BUS Sub System Clock", rate, enabled == 1?"":"(disabled)");
 
-	arm_smccc_smc(SIP_CLK_GET_CLKCTRL, FBUS_MEM_PHY_USER, 0, 0, 0, 0, 0, 0, &res);
+	arm_smccc_smc(SIP_CLK_GET_CLKCTRL, FBUS_MEM_LPDDR4, 0, 0, 0, 0, 0, 0, &res);
 	rate = res.a0;
-	arm_smccc_smc(SIP_CLK_IS_CLKCTRL, FBUS_MEM_PHY_USER, 0, 0, 0, 0, 0, 0, &res);
+	arm_smccc_smc(SIP_CLK_IS_CLKCTRL, FBUS_MEM_LPDDR4, 0, 0, 0, 0, 0, 0, &res);
 	enabled = res.a0;
-	seq_printf(m, "%30s : %15lu Hz %s\n", "MEM BUS LPDDR4 PHY User", rate, enabled == 1?"":"(disabled)");
-
-	arm_smccc_smc(SIP_CLK_GET_CLKCTRL, FBUS_MEM_PHY_PERI, 0, 0, 0, 0, 0, 0, &res);
-	rate = res.a0;
-	arm_smccc_smc(SIP_CLK_IS_CLKCTRL, FBUS_MEM_PHY_PERI, 0, 0, 0, 0, 0, 0, &res);
-	enabled = res.a0;
-	seq_printf(m, "%30s : %15lu Hz %s\n", "MEM BUS LPDDR4 PHY Peri", rate, enabled == 1?"":"(disabled)");
+	seq_printf(m, "%30s : %15lu Hz %s\n", "LPDDR4 PHY PLL Clock", rate, enabled == 1?"":"(disabled)");
 
 	arm_smccc_smc(SIP_CLK_GET_CLKCTRL, FBUS_SMU, 0, 0, 0, 0, 0, 0, &res);
 	rate = res.a0;
