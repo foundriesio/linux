@@ -90,6 +90,14 @@ static int meson8b_init_rgmii_tx_clk(struct meson8b_dwmac *dwmac)
 	char clk_name[32];
 	const char *clk_div_parents[1];
 	const char *mux_parent_names[MUX_CLK_NUM_PARENTS];
+	static const struct clk_div_table div_table[] = {
+		{ .div = 2, .val = 2, },
+		{ .div = 3, .val = 3, },
+		{ .div = 4, .val = 4, },
+		{ .div = 5, .val = 5, },
+		{ .div = 6, .val = 6, },
+		{ .div = 7, .val = 7, },
+	};
 
 	/* get the mux parents from DT */
 	for (i = 0; i < MUX_CLK_NUM_PARENTS; i++) {
@@ -140,8 +148,8 @@ static int meson8b_init_rgmii_tx_clk(struct meson8b_dwmac *dwmac)
 	dwmac->m250_div.shift = PRG_ETH0_CLK_M250_DIV_SHIFT;
 	dwmac->m250_div.width = PRG_ETH0_CLK_M250_DIV_WIDTH;
 	dwmac->m250_div.hw.init = &init;
-	dwmac->m250_div.flags = CLK_DIVIDER_ONE_BASED |
-				CLK_DIVIDER_ALLOW_ZERO |
+	dwmac->m250_div.table = div_table;
+	dwmac->m250_div.flags = CLK_DIVIDER_ALLOW_ZERO |
 				CLK_DIVIDER_ROUND_CLOSEST;
 
 	dwmac->m250_div_clk = devm_clk_register(dev, &dwmac->m250_div.hw);
