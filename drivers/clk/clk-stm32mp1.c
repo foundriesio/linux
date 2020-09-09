@@ -309,7 +309,6 @@ struct stm32_mmux {
 	u8 nbr_clk;
 	struct clk_hw *hws[MAX_MUX_CLK];
 	u8 saved_parent;
-	u8 enable_count;
 };
 
 struct stm32_clk_mmux {
@@ -744,6 +743,21 @@ static const struct clk_ops clk_mmux_ops = {
 	.determine_rate	= __clk_mux_determine_rate,
 };
 
+static bool is_all_clk_on_switch_are_off(struct clk_hw *hw)
+{
+	struct clk_composite *composite = to_clk_composite(hw);
+	struct clk_hw *mux_hw = composite->mux_hw;
+	struct clk_mux *mux = to_clk_mux(mux_hw);
+	struct stm32_clk_mmux *clk_mmux = to_clk_mmux(mux);
+	int i = 0;
+
+	for (i = 0; i < clk_mmux->mmux->nbr_clk; i++)
+		if (__clk_is_enabled(clk_mmux->mmux->hws[i]->clk))
+			return false;
+
+	return true;
+}
+
 #define MMUX_SAFE_POSITION 0
 
 static int clk_mmux_set_safe_position(struct clk_hw *hw)
@@ -753,10 +767,8 @@ static int clk_mmux_set_safe_position(struct clk_hw *hw)
 	struct clk_mux *mux = to_clk_mux(mux_hw);
 	struct stm32_clk_mmux *clk_mmux = to_clk_mmux(mux);
 
-	if (--clk_mmux->mmux->enable_count == 0) {
-		clk_mmux->mmux->saved_parent = clk_mmux_get_parent(mux_hw);
-		clk_mux_ops.set_parent(mux_hw, MMUX_SAFE_POSITION);
-	}
+	clk_mmux->mmux->saved_parent = clk_mmux_get_parent(mux_hw);
+	clk_mux_ops.set_parent(mux_hw, MMUX_SAFE_POSITION);
 
 	return 0;
 }
@@ -768,10 +780,7 @@ static int clk_mmux_restore_parent(struct clk_hw *hw)
 	struct clk_mux *mux = to_clk_mux(mux_hw);
 	struct stm32_clk_mmux *clk_mmux = to_clk_mmux(mux);
 
-	if (clk_mmux->mmux->enable_count == 0)
-		clk_mux_ops.set_parent(mux_hw, clk_mmux->mmux->saved_parent);
-
-	clk_mmux->mmux->enable_count++;
+	clk_mux_ops.set_parent(mux_hw, clk_mmux->mmux->saved_parent);
 
 	return 0;
 }
@@ -815,16 +824,12 @@ static int mp1_mgate_clk_enable_safe(struct clk_hw *hw)
 
 static void mp1_mgate_clk_disable_safe(struct clk_hw *hw)
 {
-	struct clk_gate *gate = to_clk_gate(hw);
-	struct stm32_clk_mgate *clk_mgate = to_clk_mgate(gate);
 	struct clk_hw *composite_hw = __clk_get_hw(hw->clk);
 
-	clk_mgate->mgate->flag &= ~clk_mgate->mask;
+	mp1_mgate_clk_disable(hw);
 
-	if (clk_mgate->mgate->flag == 0) {
+	if (is_all_clk_on_switch_are_off(composite_hw))
 		clk_mmux_set_safe_position(composite_hw);
-		mp1_gate_clk_disable(hw);
-	}
 }
 
 static const struct clk_ops mp1_mgate_clk_safe_ops = {
@@ -2104,10 +2109,6 @@ static const struct clock_config stm32mp1_clock_cfg[] = {
 	PCLK(ETHTX, "ethtx", "ck_axi", 0, G_ETHTX),
 	PCLK(ETHRX, "ethrx", "ck_axi", 0, G_ETHRX),
 	PCLK(ETHMAC, "ethmac", "ck_axi", 0, G_ETHMAC),
-	PCLK(FMC, "fmc", "ck_axi", CLK_IGNORE_UNUSED, G_FMC),
-	PCLK(QSPI, "qspi", "ck_axi", CLK_IGNORE_UNUSED, G_QSPI),
-	PCLK(SDMMC1, "sdmmc1", "ck_axi", 0, G_SDMMC1),
-	PCLK(SDMMC2, "sdmmc2", "ck_axi", 0, G_SDMMC2),
 	PCLK(CRC1, "crc1", "ck_axi", 0, G_CRC1),
 	PCLK(USBH, "usbh", "ck_axi", 0, G_USBH),
 	PCLK(ETHSTP, "ethstp", "ck_axi", 0, G_ETHSTP),
