@@ -420,7 +420,7 @@ STORE(__cached_dev)
 				return size;
 		}
 		if (v == -ENOENT)
-			pr_err("Can't attach %s: cache set not found", buf);
+			pr_err("Can't attach %s: cache set not found\n", buf);
 		return v;
 	}
 
@@ -454,7 +454,7 @@ STORE(bch_cached_dev)
 			 */
 			if (dc->writeback_running) {
 				dc->writeback_running = false;
-				pr_err("%s: failed to run non-existent writeback thread",
+				pr_err("%s: failed to run non-existent writeback thread\n",
 						dc->disk.disk->disk_name);
 			}
 		} else
@@ -871,11 +871,11 @@ STORE(__bch_cache_set)
 		if (v) {
 			if (test_and_set_bit(CACHE_SET_IO_DISABLE,
 					     &c->flags))
-				pr_warn("CACHE_SET_IO_DISABLE already set");
+				pr_warn("CACHE_SET_IO_DISABLE already set\n");
 		} else {
 			if (!test_and_clear_bit(CACHE_SET_IO_DISABLE,
 						&c->flags))
-				pr_warn("CACHE_SET_IO_DISABLE already cleared");
+				pr_warn("CACHE_SET_IO_DISABLE already cleared\n");
 		}
 	}
 
