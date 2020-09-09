@@ -80,6 +80,9 @@ enum {
 	REG_UFS_CRYPTOCAP			= 0x104,
 
 	UFSHCI_CRYPTO_REG_SPACE_SIZE		= 0x400,
+	REG_UTRL_NEXUS_TYPE			= 0x1140,
+	REG_UTMRL_NEXUS_TYPE		= 0x1144,
+	HCI_MPHY_REFCLK_SEL			= 0x1208
 };
 
 /* Controller capability masks */

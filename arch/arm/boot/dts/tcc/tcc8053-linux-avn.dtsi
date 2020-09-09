@@ -74,6 +74,10 @@
 		status = "okay";
 	};
 
+	tcc_ufs@1D280000 {
+		status = "okay";
+	};
+
 	switch_reverse {
 		compatible = "telechips,switch";
 		status = "okay";

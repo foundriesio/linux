@@ -2862,6 +2862,19 @@
 		};
 	};
 
+	tcc_ufs: tcc_ufs@1D280000 {
+		compatible = "telechips,tcc-ufs";
+		reg =   <0x0 0x1d280000 0x0 0x2000>,
+				<0x0 0x1d270000 0x0 0x4000>,
+				<0x0 0x1d274000 0x0 0x4000>,
+				<0x0 0x1d2c0000 0x0 0xC0>,
+				<0x0 0x1d290000 0x0 0x400>,
+				<0x0 0x1dff0000 0x0 0x40>;
+		reg-names = "ufs-hci", "ufs-unipro", "ufs-mphy", "ufs-sbus-config", "ufs-fmp", "ufs-sec";
+		interrupts = <GIC_SPI 325 IRQ_TYPE_LEVEL_HIGH>;
+		status = "disabled";
+	};
+
 	trng@11DB0100 {
 		compatible = "telechips,tcc-rng";
 		reg = <0x0 0x11DB0100 0x0 0x100>;
