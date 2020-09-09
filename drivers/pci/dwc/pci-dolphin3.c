@@ -40,6 +40,7 @@ struct tcc_pcie {
 	struct clk		*clk_pci;
 	struct clk		*clk_phy;
 	struct reset_control	*rst;
+	unsigned int		pms;
 	unsigned int		pci_gen;
 	unsigned int		using_ext_ref_clk;
 	unsigned int		for_si_test;
@@ -535,13 +536,12 @@ static int tcc_pcie_probe(struct platform_device *pdev)
 	tp->rst = devm_reset_control_get(&pdev->dev, NULL);
 
 	if(!tp->using_ext_ref_clk){
-		u32 pms = 0;
-		ret = of_property_read_u32(pdev->dev.of_node, "ref_clk_pms", &pms);
+		ret = of_property_read_u32(pdev->dev.of_node, "ref_clk_pms", &tp->pms);
                 if (ret) {
                         dev_err(&pdev->dev, "PCI Ref. Clock PMS Error!.\n");
                         goto fail_get_address;
                 }
-		tcc_pcie_ref_clk_set(tp, pms);
+		tcc_pcie_ref_clk_set(tp, tp->pms);
 	}
 
 	platform_set_drvdata(pdev, tp);
@@ -619,8 +619,12 @@ static int tcc_pcie_resume_noirq(struct device *dev)
 	struct dw_pcie *pci = tp->pci;
 	struct pcie_port *pp = &pci->pp;
 
+	if(!tp->using_ext_ref_clk)
+		tcc_pcie_ref_clk_set(tp, tp->pms);
+	
 	clk_prepare_enable(tp->clk_pci);
 	clk_prepare_enable(tp->clk_phy);
+	tcc_pcie_power_on_phy(tp);
 
 	if (!IS_ERR(tp->rst)) {
 		reset_control_assert(tp->rst);
