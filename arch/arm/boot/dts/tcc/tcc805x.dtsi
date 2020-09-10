@@ -1365,23 +1365,25 @@
 			     <GIC_SPI 38 0>;
 		clocks = <&clk_peri PERI_TCT>;
 		clock-frequency = <12000000>;
+
+		/* timer 0 and 1 are reserved for watchdog (default) */
+		tcc-timer-reserved-for-wdt = <0 1>;
 	};
 
-	watchdog@144000D0 {
-		compatible = "telechips,wdt";
-		reg = <0x0 0x144000D8 0x0 0x4>, /* wdt_ctrl */
-		      <0x0 0x144000DC 0x0 0x4>, /* wdt_cnt */
-		      <0x0 0x144000E4 0x0 0x4>, /* wdt_clear */
-		      <0x0 0x14300070 0x0 0xC>, /* wdt_timer */
-		      <0x0 0x14300060 0x0 0x4>; /* wdt_int_sts */
-		clocks = <&clk_peri PERI_TCX &clk_peri PERI_TCT>;
+	cb_watchdog: cb_watchdog@0x17010000 {
+		compatible = "telechips,tcc-cb-wdt";
+		reg = <0x0 0x17010000 0x0 0x10>,
+			<0x0 0x14300000 0x0 0xC>,
+			<0x0 0x14300060 0x0 0x4>;
+		interrupts = <GIC_SPI 33 0>;
+		clock-names = "clk_wdt", "clk_kick";
+		clocks = <&clk_peri PERI_CB_WDT>, <&clk_peri PERI_TCT>;
 		clock-frequency = <24000000>;
-		interrupts = <GIC_SPI 39 0>;
-		int-offset = <6>;
-		clear-bit = <0>;
+		status = "okay";
 
-		have-rstcnt-reg;        /* indicates separated reset count register later TCC899x */
-		/* status = "disabled"; */
+		kick-timer-id = <0>;
+		pretimeout-sec = <1>;
+		timeout-sec = <5>;
 	};
 
 	reboot-mode {

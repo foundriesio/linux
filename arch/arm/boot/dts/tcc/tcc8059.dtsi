@@ -103,4 +103,13 @@
 
 &tcc_timer {
 	tcc-timer-reserved = <0>;
+	tcc-timer-reserved-for-wdt = <2 1>;
+};
+
+&cb_watchdog {
+    reg = <0x0 0x17010000 0x0 0x10>,
+        <0x0 0x14300020 0x0 0xC>,
+        <0x0 0x14300060 0x0 0x4>;
+	interrupts = <GIC_SPI 35 0>;
+	kick-timer-id = <2>;
 };

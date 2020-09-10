@@ -1533,6 +1533,21 @@
 		status		= "okay";
 	};
 
+	cb_watchdog: cb_watchdog4@0x17050000 {
+		compatible = "telechips,tcc-cb-wdt";
+		reg = <0x17050000 0x10>,
+			<0x14300010 0xC>,
+			<0x14300060 0x4>;
+		interrupts = <GIC_SPI 34 0>;
+		clock-names = "clk_wdt", "clk_kick";
+		clocks = <&clk_peri PERI_CB_WDT>, <&clk_peri PERI_TCT>;
+		clock-frequency = <24000000>;
+
+		kick-timer-id = <1>;
+		pretimeout-sec = <1>;
+		timeout-sec = <5>;
+	};
+
 	/* A53 <-> HSM core */
 	hsm_mbox: mbox@0x1E110000 {
 		compatible = "telechips,multichannel-mailbox";
