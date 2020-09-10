@@ -384,7 +384,6 @@ static void qeth_l2_stop_card(struct qeth_card *card, int recovery_mode)
 	if (card->state == CARD_STATE_HARDSETUP) {
 		qeth_clear_qdio_buffers(card);
 		qeth_clear_working_pool_list(card);
-		cancel_delayed_work_sync(&card->buffer_reclaim_work);
 		card->state = CARD_STATE_DOWN;
 	}
 	if (card->state == CARD_STATE_DOWN) {
@@ -788,6 +787,7 @@ static int qeth_l2_stop(struct net_device *dev)
 	if (card->state == CARD_STATE_UP) {
 		card->state = CARD_STATE_SOFTSETUP;
 		napi_disable(&card->napi);
+		cancel_delayed_work_sync(&card->buffer_reclaim_work);
 	}
 	return 0;
 }
