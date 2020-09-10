@@ -75,7 +75,7 @@
 	};
 
 	tcc_ufs@1D280000 {
-		status = "okay";
+		status = "disabled";
 	};
 
 	switch_reverse {

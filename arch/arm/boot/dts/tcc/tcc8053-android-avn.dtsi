@@ -83,7 +83,7 @@
 };
 
 &tcc_ufs {
-	status = "okay";
+	status = "disabled";
 };
 
 /*
