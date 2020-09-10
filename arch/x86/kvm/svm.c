@@ -410,6 +410,11 @@ struct enc_region {
 	unsigned long size;
 };
 
+static inline bool svm_pause_in_guest(void)
+{
+	return (!pause_filter_count || !pause_filter_thresh);
+}
+
 static inline bool svm_sev_enabled(void)
 {
 	return max_sev_asid;
@@ -1598,7 +1603,7 @@ static void init_vmcb(struct vcpu_svm *svm)
 	svm->nested.vmcb = 0;
 	svm->vcpu.arch.hflags = 0;
 
-	if (pause_filter_count) {
+	if (!svm_pause_in_guest()) {
 		control->pause_filter_count = pause_filter_count;
 		if (pause_filter_thresh)
 			control->pause_filter_thresh = pause_filter_thresh;
@@ -4444,7 +4449,7 @@ static int pause_interception(struct vcpu_svm *svm)
 	struct kvm_vcpu *vcpu = &svm->vcpu;
 	bool in_kernel = (svm_get_cpl(vcpu) == 0);
 
-	if (pause_filter_thresh)
+	if (!svm_pause_in_guest())
 		grow_ple_window(vcpu);
 
 	kvm_vcpu_on_spin(vcpu, in_kernel);
@@ -6140,7 +6145,7 @@ static void svm_handle_external_intr(struct kvm_vcpu *vcpu)
 
 static void svm_sched_in(struct kvm_vcpu *vcpu, int cpu)
 {
-	if (pause_filter_thresh)
+	if (!svm_pause_in_guest())
 		shrink_ple_window(vcpu);
 }
 
