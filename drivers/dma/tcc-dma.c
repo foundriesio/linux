@@ -88,31 +88,31 @@ struct tcc_dma_desc {
 };
 
 struct tcc_dma_chan {
-	struct dma_chan		chan;
-	struct dma_pool		*desc_pool;
-	struct device		*dev;
-	struct tasklet_struct	tasklet;
+	struct dma_chan chan;
+	struct dma_pool *desc_pool;
+	struct device *dev;
+	struct tasklet_struct tasklet;
 
-	struct dma_slave_config	slave_config;
+	struct dma_slave_config slave_config;
 
-	struct list_head	desc_submitted;
-	struct list_head	desc_issued;
-	struct list_head	desc_completed;
+	struct list_head desc_submitted;
+	struct list_head desc_issued;
+	struct list_head desc_completed;
 
-	spinlock_t		lock;
+	spinlock_t lock;
 
 	enum dma_transfer_direction direction;
 };
 
 struct tcc_dma {
-	struct dma_device	dma;
-	void __iomem		*regs;
-	void __iomem		*req_reg;
-	void __iomem		*ac_reg;
-	struct clk		*clk;
-	u32			ac_val[4][2];
+	struct dma_device dma;
+	void __iomem *regs;
+	void __iomem *req_reg;
+	void __iomem *ac_reg;
+	struct clk *clk;
+	u32 ac_val[4][2];
 
-	struct tcc_dma_chan	chan[0];
+	struct tcc_dma_chan chan[0];
 };
 
 struct tcc_dma_of_filter_args {
@@ -132,7 +132,7 @@ static inline struct tcc_dma_chan *to_tcc_dma_chan(struct dma_chan *chan)
 }
 
 static inline struct tcc_dma_desc *to_tcc_dma_desc(
-		struct dma_async_tx_descriptor *txd)
+					struct dma_async_tx_descriptor *txd)
 {
 	return container_of(txd, struct tcc_dma_desc, txd);
 }
@@ -155,10 +155,10 @@ static inline u32 channel_readl(struct tcc_dma_chan *tdmac, u32 off)
 	void __iomem *addr;
 	u32 val;
 
-	addr = tdma->regs + DMA_CHANNEL_REG_OFFSET*chan_id + off;
+	addr = tdma->regs + DMA_CHANNEL_REG_OFFSET * chan_id + off;
 	val = readl(addr);
-	dev_vdbg(chan2dev(chan), "[DEBUG][GDMA] %s: ch=%d: addr=%p, val=%08x\n", __func__,
-		 chan_id, addr, val);
+	dev_vdbg(chan2dev(chan), "[DEBUG][GDMA] %s: ch=%d: addr=%p, val=%08x\n",
+		 __func__, chan_id, addr, val);
 	return val;
 }
 
@@ -169,9 +169,9 @@ static inline void channel_writel(struct tcc_dma_chan *tdmac, u32 off, u32 val)
 	int chan_id = chan->chan_id;
 	void __iomem *addr;
 
-	addr = tdma->regs + DMA_CHANNEL_REG_OFFSET*chan_id + off;
-	dev_vdbg(chan2dev(chan), "[DEBUG][GDMA] %s: ch=%d: addr=%p, val=%08x\n", __func__,
-		 chan_id, addr, val);
+	addr = tdma->regs + DMA_CHANNEL_REG_OFFSET * chan_id + off;
+	dev_vdbg(chan2dev(chan), "[DEBUG][GDMA] %s: ch=%d: addr=%p, val=%08x\n",
+		 __func__, chan_id, addr, val);
 	writel(val, addr);
 }
 
@@ -190,19 +190,20 @@ static struct tcc_dma_desc *tcc_dma_next_desc(struct tcc_dma_chan *tdmac)
  * Obtain all submitted and issued descriptors.
  */
 static void tcc_dma_get_all_descriptors(struct tcc_dma_chan *tdmac,
-		struct list_head *head)
+					struct list_head *head)
 {
 	list_splice_tail_init(&tdmac->desc_submitted, head);
 	list_splice_tail_init(&tdmac->desc_issued, head);
 }
 
 static void tcc_dma_desc_free_list(struct tcc_dma_chan *tdmac,
-		struct list_head *head)
+				   struct list_head *head)
 {
 	struct tcc_dma_desc *desc, *_desc;
 
 	list_for_each_entry_safe(desc, _desc, head, node) {
-		dev_vdbg(tdmac->dev, "[DEBUG][GDMA] freeing descriptor %p\n", desc);
+		dev_vdbg(tdmac->dev, "[DEBUG][GDMA] freeing descriptor %p\n",
+			 desc);
 		list_del(&desc->node);
 		dma_pool_free(tdmac->desc_pool, desc, desc->txd.phys);
 	}
@@ -212,7 +213,7 @@ static void tcc_dma_desc_free_list(struct tcc_dma_chan *tdmac,
  * Obtain all completed descriptors.
  */
 static void tcc_dma_get_completed_descriptors(struct tcc_dma_chan *tdmac,
-		struct list_head *head)
+					      struct list_head *head)
 {
 	list_splice_tail_init(&tdmac->desc_completed, head);
 }
@@ -222,12 +223,12 @@ static void tcc_dma_clean_completed_descriptors(struct tcc_dma_chan *tdmac)
 	LIST_HEAD(head);
 
 	tcc_dma_get_completed_descriptors(tdmac, &head);
-	tcc_dma_desc_free_list(tdmac,&head);
+	tcc_dma_desc_free_list(tdmac, &head);
 }
 
 static int tcc_dma_width(enum dma_slave_buswidth width)
 {
-	switch(width) {
+	switch (width) {
 	case DMA_SLAVE_BUSWIDTH_1_BYTE:
 		return DMA_CHCTRL_WSIZE(0);
 	case DMA_SLAVE_BUSWIDTH_2_BYTES:
@@ -241,7 +242,7 @@ static int tcc_dma_width(enum dma_slave_buswidth width)
 
 static int tcc_dma_burst(int burst)
 {
-	switch(burst) {
+	switch (burst) {
 	case 1:
 		return DMA_CHCTRL_BSIZE(0);
 	case 2:
@@ -282,7 +283,7 @@ static void tcc_dma_do_single_block(struct tcc_dma_chan *tdmac,
 	channel_writel(tdmac, DMA_CHCTRL, DMA_CHCTRL_FLAG);
 
 	chctrl = DMA_CHCTRL_IEN | DMA_CHCTRL_WSIZE(0) | DMA_CHCTRL_BSIZE(0)
-			| DMA_CHCTRL_FLAG | DMA_CHCTRL_TYPE(2) | DMA_CHCTRL_EN;
+	    | DMA_CHCTRL_FLAG | DMA_CHCTRL_TYPE(2) | DMA_CHCTRL_EN;
 
 	channel_writel(tdmac, DMA_ST_SADR, desc->src_addr);
 	channel_writel(tdmac, DMA_SPARAM, DMA_SPARAM_SINC(desc->src_inc));
@@ -293,29 +294,27 @@ static void tcc_dma_do_single_block(struct tcc_dma_chan *tdmac,
 		unsigned int slave_id;
 
 		slave_id = desc->slave_id;
-		if(slave_id > 31)
+		if (slave_id > 31)
 			slave_id = slave_id - 32;
 
 		chctrl |= DMA_CHCTRL_SYNC | DMA_CHCTRL_TYPE(3);
 		channel_writel(tdmac, DMA_EXTREQ, 1 << slave_id);
 	}
 
-	if(tdmac->slave_config.src_addr_width != 0) {
+	if (tdmac->slave_config.src_addr_width != 0) {
 		width = tcc_dma_width(tdmac->slave_config.src_addr_width);
 		burst = tcc_dma_burst(tdmac->slave_config.src_maxburst);
-	}
-	else if(tdmac->slave_config.dst_addr_width != 0) {
+	} else if (tdmac->slave_config.dst_addr_width != 0) {
 		width = tcc_dma_width(tdmac->slave_config.dst_addr_width);
 		burst = tcc_dma_burst(tdmac->slave_config.dst_maxburst);
 	}
-
 	// Set word size
-	if(width != -1) {
+	if (width != -1) {
 		chctrl &= ~(DMA_CHCTRL_WSIZE(0x3));
 		chctrl |= width;
 	}
 	// Set burst size
-	if(burst != -1) {
+	if (burst != -1) {
 		chctrl &= ~(DMA_CHCTRL_BSIZE(0x3));
 		chctrl |= burst;
 	}
@@ -325,7 +324,7 @@ static void tcc_dma_do_single_block(struct tcc_dma_chan *tdmac,
 
 static void tcc_dma_tasklet(unsigned long data)
 {
-	struct tcc_dma_chan *tdmac = (struct tcc_dma_chan *) data;
+	struct tcc_dma_chan *tdmac = (struct tcc_dma_chan *)data;
 	struct tcc_dma_desc *desc;
 	unsigned long flags;
 
@@ -347,7 +346,8 @@ static void tcc_dma_tasklet(unsigned long data)
 
 	spin_unlock_irqrestore(&tdmac->lock, flags);
 
-	desc = list_first_entry(&tdmac->desc_completed, struct tcc_dma_desc, node);
+	desc =
+	    list_first_entry(&tdmac->desc_completed, struct tcc_dma_desc, node);
 	dma_cookie_complete(&desc->txd);
 
 	if (desc->txd.callback)
@@ -363,7 +363,7 @@ static void tcc_dma_tasklet(unsigned long data)
 
 static irqreturn_t tcc_dma_interrupt(int irq, void *data)
 {
-	struct tcc_dma *tdma = (struct tcc_dma *) data;
+	struct tcc_dma *tdma = (struct tcc_dma *)data;
 	int i;
 
 	for (i = 0; i < tdma->dma.chancnt; i++) {
@@ -373,7 +373,7 @@ static irqreturn_t tcc_dma_interrupt(int irq, void *data)
 
 		chconfig = readl(tdma->regs + DMA_CHCONFIG);
 		if (DMA_CHCONFIG_MIS(chconfig, chan_id)) {
-			channel_writel(tdmac, DMA_CHCTRL,DMA_CHCTRL_FLAG);
+			channel_writel(tdmac, DMA_CHCTRL, DMA_CHCTRL_FLAG);
 			tasklet_schedule(&tdmac->tasklet);
 		}
 	}
@@ -397,12 +397,13 @@ static dma_cookie_t tcc_dma_tx_submit(struct dma_async_tx_descriptor *tx)
 	spin_lock_irqsave(&tdmac->lock, flags);
 	cookie = dma_cookie_assign(tx);
 	list_add_tail(&desc->node, &tdmac->desc_submitted);
-	if(desc->tx_list.next != &desc->tx_list) {
+	if (desc->tx_list.next != &desc->tx_list)
 		list_splice_tail(&desc->tx_list, &tdmac->desc_submitted);
-	}
+
 	spin_unlock_irqrestore(&tdmac->lock, flags);
 
-	dev_vdbg(chan2dev(tx->chan), "[DEBUG][GDMA] %s: ch=%d: cookie=%d, tx=%p", __func__,
+	dev_vdbg(chan2dev(tx->chan),
+		 "[DEBUG][GDMA] %s: ch=%d: cookie=%d, tx=%p", __func__,
 		 tx->chan->chan_id, cookie, tx);
 
 	return cookie;
@@ -416,7 +417,8 @@ static struct tcc_dma_desc *tcc_dma_alloc_descriptor(struct dma_chan *chan)
 
 	desc = dma_pool_alloc(tdmac->desc_pool, GFP_ATOMIC, &phys);
 	if (!desc) {
-		dev_err(tdmac->dev, "[ERROR][GDMA] failed to allocate descriptor pool\n");
+		dev_err(tdmac->dev,
+			"[ERROR][GDMA] failed to allocate descriptor pool\n");
 		return ERR_PTR(-ENOMEM);
 	}
 	memset(desc, 0, sizeof(struct tcc_dma_desc));
@@ -440,10 +442,12 @@ static int tcc_dma_alloc_chan_resources(struct dma_chan *chan)
 	dma_cookie_init(chan);
 
 	tdmac->desc_pool = dmam_pool_create(dev_name(chan2dev(chan)),
-			tdmac->dev, sizeof(struct tcc_dma_desc),
-			__alignof(struct tcc_dma_desc), 0);
+					    tdmac->dev,
+					    sizeof(struct tcc_dma_desc),
+					    __alignof(struct tcc_dma_desc), 0);
 	if (!tdmac->desc_pool) {
-		dev_err(tdmac->dev, "[ERROR][GDMA] failed to create descriptor pool\n");
+		dev_err(tdmac->dev,
+			"[ERROR][GDMA] failed to create descriptor pool\n");
 		return -ENOMEM;
 	}
 	return 1;
@@ -489,27 +493,27 @@ static void tcc_dma_set_req(struct of_dma *ofdma, int num)
 	int sel;
 	int sw = 0;
 
-	if(!tdma->req_reg)
+	if (!tdma->req_reg)
 		return;
 
-	if(num > 31) {
+	if (num > 31) {
 		sel = num - 32;
 		sw = 1;
 	} else {
 		sel = num;
 	}
 
-	if(sel > 31) {
+	if (sel > 31) {
 		dev_err(tdma->dma.dev, "[ERROR][GDMA] %s wrong slave id %d\n",
 			__func__, num);
 		return;
 	}
 
 	req = readl(tdma->req_reg);
-	req &= ~(1<<sel);
-	if(sw == 1) {
-		req |= (1<<sel);
-	}
+	req &= ~(1 << sel);
+	if (sw == 1)
+		req |= (1 << sel);
+
 	writel(req, tdma->req_reg);
 }
 
@@ -522,8 +526,8 @@ static struct dma_chan *tcc_dma_of_xlate(struct of_phandle_args *dma_spec,
 	int count = dma_spec->args_count;
 	dma_cap_mask_t cap;
 
-	dev_vdbg(dev, "[DEBUG][GDMA] %s: args_count=%d, args[0]=%d\n", __func__, count,
-		 dma_spec->args[0]);
+	dev_vdbg(dev, "[DEBUG][GDMA] %s: args_count=%d, args[0]=%d\n", __func__,
+		 count, dma_spec->args[0]);
 
 	if (count != 2)
 		return NULL;
@@ -544,7 +548,8 @@ static struct dma_chan *tcc_dma_of_xlate(struct of_phandle_args *dma_spec,
  * Poll for transaction completion
  */
 static enum dma_status tcc_dma_tx_status(struct dma_chan *chan,
-		dma_cookie_t cookie, struct dma_tx_state *txstate)
+					 dma_cookie_t cookie,
+					 struct dma_tx_state *txstate)
 {
 	struct tcc_dma_chan *tdmac = to_tcc_dma_chan(chan);
 	enum dma_status ret;
@@ -552,33 +557,40 @@ static enum dma_status tcc_dma_tx_status(struct dma_chan *chan,
 	unsigned int current_count;
 
 	ret = dma_cookie_status(chan, cookie, txstate);
-	if(ret == DMA_COMPLETE) {
-		dev_vdbg(chan2dev(chan), "[DEBUG][GDMA] %s, DMA complete transaction.\n", dma_chan_name(chan));
+	if (ret == DMA_COMPLETE) {
+		dev_vdbg(chan2dev(chan),
+			 "[DEBUG][GDMA] %s, DMA complete transaction.\n",
+			 dma_chan_name(chan));
 		return ret;
 	}
 	dev_vdbg(chan2dev(chan), "[DEBUG][GDMA] ch=%d, cookie=%d, status=%d\n",
 		 chan->chan_id, cookie, ret);
 
 	ret = dma_cookie_status(chan, cookie, txstate);
-	if(ret != DMA_COMPLETE) {
+	if (ret != DMA_COMPLETE) {
 
-		if(tdmac->direction == DMA_MEM_TO_DEV) {
+		if (tdmac->direction == DMA_MEM_TO_DEV) {
 			current_count = channel_readl(tdmac, 0x20) >> 16;
-			if(current_count != 0) {
-				bytes = (channel_readl(tdmac, 0xc) - channel_readl(tdmac, 0x0)) * tdmac->slave_config.src_addr_width;
+			if (current_count != 0) {
+				bytes =
+				    (channel_readl(tdmac, 0xc) -
+				     channel_readl(tdmac,
+						   0x0)) *
+				    tdmac->slave_config.src_addr_width;
 				dma_set_residue(txstate, bytes);
-			}
-			else
+			} else
 				dma_set_residue(txstate, 0);
 
-		}
-		else if(tdmac->direction == DMA_DEV_TO_MEM) {
+		} else if (tdmac->direction == DMA_DEV_TO_MEM) {
 			current_count = channel_readl(tdmac, 0x20) >> 16;
-			if(current_count != 0) {
-				bytes = (channel_readl(tdmac, 0x1c) - channel_readl(tdmac, 0x10)) * tdmac->slave_config.dst_addr_width;
+			if (current_count != 0) {
+				bytes =
+				    (channel_readl(tdmac, 0x1c) -
+				     channel_readl(tdmac,
+						   0x10)) *
+				    tdmac->slave_config.dst_addr_width;
 				dma_set_residue(txstate, bytes);
-			}
-			else
+			} else
 				dma_set_residue(txstate, 0);
 		}
 	}
@@ -589,8 +601,11 @@ static enum dma_status tcc_dma_tx_status(struct dma_chan *chan,
  * Prepare a memcpy operation
  */
 static struct dma_async_tx_descriptor *tcc_dma_prep_dma_memcpy(
-		struct dma_chan *chan, dma_addr_t dest, dma_addr_t src,
-		size_t len, unsigned long flags)
+						struct dma_chan *chan,
+						dma_addr_t dest,
+						dma_addr_t src,
+						size_t len,
+						unsigned long flags)
 {
 	struct tcc_dma_chan *tdmac = to_tcc_dma_chan(chan);
 	struct device *dev = tdmac->dev;
@@ -601,14 +616,16 @@ static struct dma_async_tx_descriptor *tcc_dma_prep_dma_memcpy(
 
 	dev_vdbg(chan2dev(chan),
 		 "[DEBUG][GDMA] %s: chan=%d, dest=0x%08x, src=0x%08x, len=%d, flags=0x%lx\n",
-		 __func__, chan->chan_id, (unsigned int)dest, (unsigned int)src, (unsigned int)len, flags);
+		 __func__, chan->chan_id, (unsigned int)dest, (unsigned int)src,
+		 (unsigned int)len, flags);
 
 	tdmac->direction = DMA_MEM_TO_MEM;
 
 	do {
 		desc = tcc_dma_alloc_descriptor(chan);
 		if (!desc) {
-			dev_err(dev, "[ERROR][GDMA] failed to allocate descriptor\n");
+			dev_err(dev,
+				"[ERROR][GDMA] failed to allocate descriptor\n");
 			goto fail;
 		}
 		xfer_count = min(len, (size_t) TCC_DMA_MAX_XFER_CNT);
@@ -632,9 +649,8 @@ static struct dma_async_tx_descriptor *tcc_dma_prep_dma_memcpy(
 	return &first->txd;
 
 fail:
-	if (first) {
-		/* TODO: free all descriptors */
-	}
+	/* TODO: free all descriptors */
+
 	return NULL;
 }
 
@@ -642,9 +658,12 @@ fail:
  * Prepare a slave DMA operation
  */
 static struct dma_async_tx_descriptor *tcc_dma_prep_slave_sg(
-		struct dma_chan *chan, struct scatterlist *sgl,
-		unsigned int sg_len, enum dma_transfer_direction direction,
-		unsigned long flags, void *context)
+					struct dma_chan *chan,
+					struct scatterlist *sgl,
+					unsigned int sg_len,
+					enum dma_transfer_direction direction,
+					unsigned long flags,
+					void *context)
 {
 	struct tcc_dma_chan *tdmac = to_tcc_dma_chan(chan);
 	struct device *dev = tdmac->dev;
@@ -655,7 +674,8 @@ static struct dma_async_tx_descriptor *tcc_dma_prep_slave_sg(
 	u32 mem_addr, dev_addr, len;
 	int i;
 
-	dev_vdbg(chan2dev(chan), "[DEBUG][GDMA] %s: chan=%d, direction=%d, flags=0x%lx\n",
+	dev_vdbg(chan2dev(chan),
+		 "[DEBUG][GDMA] %s: chan=%d, direction=%d, flags=0x%lx\n",
 		 __func__, chan->chan_id, direction, flags);
 
 	if (unlikely(!is_slave_direction(direction)))
@@ -675,7 +695,8 @@ static struct dma_async_tx_descriptor *tcc_dma_prep_slave_sg(
 
 			desc = tcc_dma_alloc_descriptor(chan);
 			if (!desc) {
-				dev_err(dev, "[ERROR][GDMA] failed to allocate descriptor\n");
+				dev_err(dev,
+					"[ERROR][GDMA] failed to allocate descriptor\n");
 				goto fail;
 			}
 
@@ -704,7 +725,8 @@ static struct dma_async_tx_descriptor *tcc_dma_prep_slave_sg(
 
 			desc = tcc_dma_alloc_descriptor(chan);
 			if (!desc) {
-				dev_err(dev, "[ERROR][GDMA] failed to allocate descriptor\n");
+				dev_err(dev,
+					"[ERROR][GDMA] failed to allocate descriptor\n");
 				goto fail;
 			}
 
@@ -737,13 +759,17 @@ fail:
  * Prepare a cyclic DMA operation suitable for audio
  */
 static struct dma_async_tx_descriptor *tcc_dma_prep_dma_cyclic(
-		struct dma_chan *chan, dma_addr_t buf_addr, size_t buf_len,
-		size_t period_len, enum dma_transfer_direction direction,
-		unsigned long flags)
+					struct dma_chan *chan,
+					dma_addr_t buf_addr,
+					size_t buf_len,
+					size_t period_len,
+					enum dma_transfer_direction direction,
+					unsigned long flags)
 {
 	struct tcc_dma_chan *tdmac = to_tcc_dma_chan(chan);
 
-	dev_vdbg(chan2dev(chan), "[DEBUG][GDMA] %s: chan=%d, direction=%d\n, flags=0x%lx",
+	dev_vdbg(chan2dev(chan),
+		 "[DEBUG][GDMA] %s: chan=%d, direction=%d\n, flags=0x%lx",
 		 __func__, chan->chan_id, direction, flags);
 
 	tdmac->direction = direction;
@@ -778,8 +804,8 @@ static int tcc_dma_slave_config(struct dma_chan *chan,
 
 	dev_vdbg(chan2dev(chan),
 		 "[DEBUG][GDMA] %s: ch=%d, src_addr=0x%x, dst_addr=0x%x, dir=%d\n",
-		 __func__, chan->chan_id, (unsigned int)cfg->src_addr, (unsigned int)cfg->dst_addr,
-		 cfg->direction);
+		 __func__, chan->chan_id, (unsigned int)cfg->src_addr,
+		 (unsigned int)cfg->dst_addr, cfg->direction);
 
 	slave_id = tdmac->slave_config.slave_id;
 	memcpy(&tdmac->slave_config, cfg, sizeof(struct dma_slave_config));
@@ -796,7 +822,8 @@ static void tcc_dma_issue_pending(struct dma_chan *chan)
 	struct tcc_dma_chan *tdmac = to_tcc_dma_chan(chan);
 	struct tcc_dma_desc *desc;
 
-	dev_vdbg(chan2dev(chan), "[DEBUG][GDMA] %s: chan=%d\n", __func__, chan->chan_id);
+	dev_vdbg(chan2dev(chan), "[DEBUG][GDMA] %s: chan=%d\n", __func__,
+		 chan->chan_id);
 
 	list_splice_init(&tdmac->desc_submitted, &tdmac->desc_issued);
 
@@ -809,12 +836,14 @@ static void tcc_dma_issue_pending(struct dma_chan *chan)
 
 #ifdef CONFIG_OF
 static struct tcc_dma_platform_data *tcc_dma_parse_dt(
-		struct platform_device *pdev)
+						struct platform_device *pdev)
 {
 	struct device_node *np = pdev->dev.of_node;
 	struct tcc_dma_platform_data *pdata;
 
-	pdata = devm_kzalloc(&pdev->dev, sizeof(struct tcc_dma_platform_data), GFP_KERNEL);
+	pdata =
+	    devm_kzalloc(&pdev->dev, sizeof(struct tcc_dma_platform_data),
+			 GFP_KERNEL);
 	if (!pdata)
 		return NULL;
 
@@ -825,7 +854,7 @@ static struct tcc_dma_platform_data *tcc_dma_parse_dt(
 }
 #else
 static struct tcc_dma_platform_data *tcc_dma_parse_dt(
-		struct platform_device *pdev)
+						struct platform_device *pdev)
 {
 	return NULL;
 }
@@ -844,8 +873,6 @@ static void tcc_dma_set_access_control(struct tcc_dma *tdma)
 	writel(tdma->ac_val[2][1], tdma->ac_reg + DMA_AC2_LIMIT);
 	writel(tdma->ac_val[3][0], tdma->ac_reg + DMA_AC3_START);
 	writel(tdma->ac_val[3][1], tdma->ac_reg + DMA_AC3_LIMIT);
-
-	return;
 }
 
 static int __init tcc_dma_probe(struct platform_device *pdev)
@@ -858,13 +885,12 @@ static int __init tcc_dma_probe(struct platform_device *pdev)
 	int ret;
 	int i;
 	struct device_node *ac_np;
-	unsigned int ac_val[2] = {0};
+	unsigned int ac_val[2] = { 0 };
 
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	regs = devm_ioremap_resource(&pdev->dev, res);
-	if (IS_ERR_OR_NULL(regs)) {
+	if (IS_ERR_OR_NULL(regs))
 		return -ENXIO;
-	}
 
 	irq = platform_get_irq(pdev, 0);
 	if (irq < 0)
@@ -883,15 +909,14 @@ static int __init tcc_dma_probe(struct platform_device *pdev)
 		return -EINVAL;
 
 	tdma = devm_kzalloc(&pdev->dev, sizeof(struct tcc_dma) +
-			pdata->nr_channels * sizeof(struct tcc_dma_chan),
-			GFP_KERNEL);
+			    pdata->nr_channels * sizeof(struct tcc_dma_chan),
+			    GFP_KERNEL);
 	if (!tdma)
 		return -ENOMEM;
 
 	tdma->clk = devm_clk_get(&pdev->dev, NULL);
-	if (IS_ERR_OR_NULL(tdma->clk)) {
+	if (IS_ERR_OR_NULL(tdma->clk))
 		return -ENXIO;
-	}
 	clk_prepare_enable(tdma->clk);
 
 	ret = devm_request_irq(&pdev->dev, irq, tcc_dma_interrupt,
@@ -903,38 +928,45 @@ static int __init tcc_dma_probe(struct platform_device *pdev)
 
 	tdma->regs = regs;
 	tdma->req_reg = of_iomap(pdev->dev.of_node, 1);
-	if (IS_ERR(tdma->req_reg)) {
+	if (IS_ERR(tdma->req_reg))
 		return PTR_ERR(tdma->req_reg);
-	}
 
 	/* Get GDMA Access Control base address */
 	ac_np = of_parse_phandle(pdev->dev.of_node, "access-control", 0);
 	if (ac_np != NULL) {
 		tdma->ac_reg = of_iomap(ac_np, 0);
-		if (IS_ERR(tdma->ac_reg)) {
+		if (IS_ERR(tdma->ac_reg))
 			return PTR_ERR(tdma->ac_reg);
-		}
-		if (!of_property_read_u32_array(ac_np, "access-control0", ac_val, 2)) {
-			dev_vdbg(&pdev->dev, "[DEBUG][GDMA] access-control0 start:0x%08x limit:0x%08x\n",
-					ac_val[0], ac_val[1]);
+
+		if (!of_property_read_u32_array
+		    (ac_np, "access-control0", ac_val, 2)) {
+			dev_vdbg(&pdev->dev,
+				 "[DEBUG][GDMA] access-control0 start:0x%08x limit:0x%08x\n",
+				 ac_val[0], ac_val[1]);
 			tdma->ac_val[0][0] = ac_val[0];
 			tdma->ac_val[0][1] = ac_val[1];
 		}
-		if (!of_property_read_u32_array(ac_np, "access-control1", ac_val, 2)) {
-			dev_vdbg(&pdev->dev, "[DEBUG][GDMA] access-control1 start:0x%08x limit:0x%08x\n",
-					ac_val[0], ac_val[1]);
+		if (!of_property_read_u32_array
+		    (ac_np, "access-control1", ac_val, 2)) {
+			dev_vdbg(&pdev->dev,
+				 "[DEBUG][GDMA] access-control1 start:0x%08x limit:0x%08x\n",
+				 ac_val[0], ac_val[1]);
 			tdma->ac_val[1][0] = ac_val[0];
 			tdma->ac_val[1][1] = ac_val[1];
 		}
-		if (!of_property_read_u32_array(ac_np, "access-control2", ac_val, 2)) {
-			dev_vdbg(&pdev->dev, "[DEBUG][GDMA] access-control2 start:0x%08x limit:0x%08x\n",
-					ac_val[0], ac_val[1]);
+		if (!of_property_read_u32_array
+		    (ac_np, "access-control2", ac_val, 2)) {
+			dev_vdbg(&pdev->dev,
+				 "[DEBUG][GDMA] access-control2 start:0x%08x limit:0x%08x\n",
+				 ac_val[0], ac_val[1]);
 			tdma->ac_val[2][0] = ac_val[0];
 			tdma->ac_val[2][1] = ac_val[1];
 		}
-		if (!of_property_read_u32_array(ac_np, "access-control3", ac_val, 2)) {
-			dev_vdbg(&pdev->dev, "[DEBUG][GDMA] access-control3 start:0x%08x limit:0x%08x\n",
-					ac_val[0], ac_val[1]);
+		if (!of_property_read_u32_array
+		    (ac_np, "access-control3", ac_val, 2)) {
+			dev_vdbg(&pdev->dev,
+				 "[DEBUG][GDMA] access-control3 start:0x%08x limit:0x%08x\n",
+				 ac_val[0], ac_val[1]);
 			tdma->ac_val[3][0] = ac_val[0];
 			tdma->ac_val[3][1] = ac_val[1];
 		}
@@ -948,7 +980,7 @@ static int __init tcc_dma_probe(struct platform_device *pdev)
 		struct tcc_dma_chan *tdmac = &tdma->chan[i];
 
 		tasklet_init(&tdmac->tasklet, tcc_dma_tasklet,
-			     (unsigned long) tdmac);
+			     (unsigned long)tdmac);
 
 		tdmac->chan.device = &tdma->dma;
 		tdmac->dev = &pdev->dev;
@@ -983,13 +1015,14 @@ static int __init tcc_dma_probe(struct platform_device *pdev)
 
 	ret = dma_async_device_register(&tdma->dma);
 	if (ret) {
-		dev_err(&pdev->dev, "[ERROR][GDMA] failed to register DMA engine device\n");
+		dev_err(&pdev->dev,
+			"[ERROR][GDMA] failed to register DMA engine device\n");
 		return ret;
 	}
 
 	if (pdev->dev.of_node) {
 		ret = of_dma_controller_register(pdev->dev.of_node,
-				tcc_dma_of_xlate, tdma);
+						 tcc_dma_of_xlate, tdma);
 		if (ret) {
 			dev_err(&pdev->dev,
 				"[ERROR][GDMA] failed to register of_dma_controller\n");
@@ -997,8 +1030,9 @@ static int __init tcc_dma_probe(struct platform_device *pdev)
 		}
 	}
 
-	dev_info(&pdev->dev, "[INFO][GDMA] Telechips DMA controller initialized (irq=%d)\n",
-		       irq);
+	dev_info(&pdev->dev,
+		 "[INFO][GDMA] Telechips DMA controller initialized (irq=%d)\n",
+		 irq);
 
 	return 0;
 }
@@ -1050,42 +1084,45 @@ static const struct dev_pm_ops tcc_dma_pm_ops = {
 
 #ifdef CONFIG_OF
 static const struct of_device_id tcc_dma_of_id_table[] = {
-	{ .compatible = "telechips,tcc896x-dma", },
-	{ .compatible = "telechips,tcc897x-dma", },
-	{ .compatible = "telechips,tcc898x-dma", },
-	{ .compatible = "telechips,tcc899x-dma", },
-	{ .compatible = "telechips,tcc802x-dma", },
-	{ .compatible = "telechips,tcc803x-dma", },
-	{ .compatible = "telechips,tcc805x-dma", },
-	{ .compatible = "telechips,tcc901x-dma", },
+	{.compatible = "telechips,tcc896x-dma",},
+	{.compatible = "telechips,tcc897x-dma",},
+	{.compatible = "telechips,tcc898x-dma",},
+	{.compatible = "telechips,tcc899x-dma",},
+	{.compatible = "telechips,tcc802x-dma",},
+	{.compatible = "telechips,tcc803x-dma",},
+	{.compatible = "telechips,tcc805x-dma",},
+	{.compatible = "telechips,tcc901x-dma",},
 	{}
 };
+
 MODULE_DEVICE_TABLE(of, tcc_dma_of_id_table);
 #endif
 
 static struct platform_driver tcc_dma_driver = {
-	.driver	= {
-		.name	= "tcc-dma",
-		.owner	= THIS_MODULE,
+	.driver = {
+		   .name = "tcc-dma",
+		   .owner = THIS_MODULE,
 #ifdef CONFIG_PM_SLEEP
-		.pm = &tcc_dma_pm_ops,
+		   .pm = &tcc_dma_pm_ops,
 #endif
-		.of_match_table	= of_match_ptr(tcc_dma_of_id_table),
-	},
-	.probe		= tcc_dma_probe,
-	.remove		= tcc_dma_remove,
+		   .of_match_table = of_match_ptr(tcc_dma_of_id_table),
+		   },
+	.probe = tcc_dma_probe,
+	.remove = tcc_dma_remove,
 };
 
 static int tcc_dma_init(void)
 {
 	return platform_driver_register(&tcc_dma_driver);
 }
+
 subsys_initcall(tcc_dma_init);
 
 static void __exit tcc_dma_exit(void)
 {
 	platform_driver_unregister(&tcc_dma_driver);
 }
+
 module_exit(tcc_dma_exit);
 
 MODULE_AUTHOR("Telechips Inc.");
