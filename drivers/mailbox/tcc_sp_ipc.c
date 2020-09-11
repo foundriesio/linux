@@ -13,6 +13,8 @@
  * Suite 330, Boston, MA 02111-1307 USA
  */
 
+// #define TLOG_LEVEL TLOG_DEBUG
+#include "sp_log.h"
 #include <linux/mailbox/tcc_sp_ipc.h>
 #include <linux/kernel.h>
 #include <linux/module.h>
@@ -28,7 +30,7 @@
 #include <linux/dma-mapping.h>
 #include <linux/slab.h>
 
-#define PROTECTED_BUFFER_SUPPORT
+// #define PROTECTED_BUFFER_SUPPORT
 
 /**
  * @addtogroup spdrv
@@ -191,7 +193,7 @@ int sp_sendrecv_cmd(int cmd, void *data, int size, void *rdata, int rsize)
 	}
 
 	mutex_lock(&mutex);
-	pr_debug("[DEBUG][SP] %s:%d Start\n", __func__, __LINE__);
+	DLOG("Start\n");
 
 	mbox_msg.cmd = cmd;
 	mbox_msg.msg_len = size;
@@ -249,7 +251,7 @@ int sp_sendrecv_cmd(int cmd, void *data, int size, void *rdata, int rsize)
 	result = mbox_rmsg.msg_len;
 
 out:
-	pr_debug("[DEBUG][SP] %s:%d End\n", __func__, __LINE__);
+	DLOG("End\n");
 	mutex_unlock(&mutex);
 	return result;
 }
@@ -446,6 +448,7 @@ out:
  */
 static int sp_sendrecv_cmd_ioctl(unsigned long arg)
 {
+	static DEFINE_MUTEX(mtx);
 	struct sp_segment segment_kern, segment_user;
 	int result = 0, readCnt;
 	static uint8_t *long_data = NULL; /* Do not change the initial value */
@@ -486,6 +489,7 @@ static int sp_sendrecv_cmd_ioctl(unsigned long arg)
 		}
 	}
 
+	mutex_lock(&mtx);
 	result = copy_from_user(long_data, (void *)segment_kern.data_addr, segment_kern.size);
 	if (result != 0) {
 		dev_err(
@@ -533,6 +537,7 @@ static int sp_sendrecv_cmd_ioctl(unsigned long arg)
 
 out:
 	// kfree(long_data);
+	mutex_unlock(&mtx);
 	return result;
 }
 
