@@ -125,6 +125,8 @@ static void smc_close_active_abort(struct smc_sock *smc)
 		release_sock(sk);
 		cancel_delayed_work_sync(&smc->conn.tx_work);
 		lock_sock(sk);
+		if (sk->sk_state != SMC_PEERABORTWAIT)
+			break;
 		sk->sk_state = SMC_CLOSED;
 		sock_put(sk); /* passive closing */
 		break;
