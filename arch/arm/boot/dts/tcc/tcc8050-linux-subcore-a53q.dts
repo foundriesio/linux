@@ -99,20 +99,9 @@
 			enable-method = "psci";
 			next-level-cache = <&A53_L2>;
 			cpu-idle-states = <&CPU_SLEEP_0_0>;
-			operating-points = <
-				/* kHz    uV */
-				/*1302000 1200000*/
-				/*1226000 1150000*/
-				/*1150000 1100000*/
-				/*1074000 1050000*/
-				/*998000 1100000*/
-				/*908000 1100000*/
-				950000 900000
-			>;
-
+			operating-points-v2 = <&cpu_opp_table>;
 			clocks = <&clk_fbus FBUS_CPU1>;
-			clock-names = "cpu0";
-			clock-latency = <300000>;
+			clock-names = "cpu1";
 		};
 
 		A53_1: cpu@1 {
@@ -121,6 +110,8 @@
 			reg = <0x1>;
 			enable-method = "psci";
 			next-level-cache = <&A53_L2>;
+			cpu-idle-states = <&CPU_SLEEP_0_0>;
+			operating-points-v2 = <&cpu_opp_table>;
 		};
 
 		A53_2: cpu@2 {
@@ -129,6 +120,8 @@
 			reg = <0x2>;
 			enable-method = "psci";
 			next-level-cache = <&A53_L2>;
+			cpu-idle-states = <&CPU_SLEEP_0_0>;
+			operating-points-v2 = <&cpu_opp_table>;
 		};
 
 		A53_3: cpu@3 {
@@ -137,6 +130,8 @@
 			reg = <0x3>;
 			enable-method = "psci";
 			next-level-cache = <&A53_L2>;
+			cpu-idle-states = <&CPU_SLEEP_0_0>;
+			operating-points-v2 = <&cpu_opp_table>;
 		};
 
 		A53_L2: l2-cache {
@@ -154,6 +149,32 @@
 				entry-latency-us = <250>;
 				exit-latency-us = <500>;
 				min-residency-us = <950>;
+			};
+		};
+
+		cpu_opp_table: cpu_opp_table {
+			compatible = "operating-points-v2";
+			opp-shared;
+
+			opp0 {
+				opp-hz = /bits/ 64 <1450000000>;
+				opp-microvolt = <900000>;
+				clock-latency-ns = <300000>;
+			};
+			opp1 {
+				opp-hz = /bits/ 64 <1400000000>;
+				opp-microvolt = <900000>;
+				clock-latency-ns = <300000>;
+			};
+			opp2 {
+				opp-hz = /bits/ 64 <1100000000>;
+				opp-microvolt = <800000>;
+				clock-latency-ns = <300000>;
+			};
+			opp3 {
+				opp-hz = /bits/ 64 <1000000000>;
+				opp-microvolt = <800000>;
+				clock-latency-ns = <300000>;
 			};
 		};
 	};

@@ -12,6 +12,23 @@
 		#address-cells = <1>;
 		#size-cells = <0>;
 
+		cpu-map {
+			cluster0 {
+				core0 {
+					cpu = <&A72_0>;
+				};
+				core1 {
+					cpu = <&A72_1>;
+				};
+				core2 {
+					cpu = <&A72_2>;
+				};
+				core3 {
+					cpu = <&A72_3>;
+				};
+			};
+		};
+
 		A72_0: cpu@0 {
 			device_type = "cpu";
 			compatible = "arm,cortex-a72";
@@ -19,19 +36,9 @@
 			enable-method = "psci";
 			next-level-cache = <&A72_L2>;
 			cpu-idle-states = <&CPU_SLEEP_0_0>;
-			operating-points = <
-				/* kHz    uV */
-				/*1302000 1200000*/
-				/*1226000 1150000*/
-				1150000 1100000
-				/*1074000 1050000*/
-				998000 1100000
-				908000 1100000
-			>;
-
+			operating-points-v2 = <&cpu_opp_table>;
 			clocks = <&clk_fbus FBUS_CPU0>;
 			clock-names = "cpu0";
-			clock-latency = <300000>;
 		};
 
 		A72_1: cpu@1 {
@@ -40,6 +47,8 @@
 			reg = <0x1>;
 			enable-method = "psci";
 			next-level-cache = <&A72_L2>;
+			cpu-idle-states = <&CPU_SLEEP_0_0>;
+			operating-points-v2 = <&cpu_opp_table>;
 		};
 
 		A72_2: cpu@2 {
@@ -48,6 +57,8 @@
 			reg = <0x2>;
 			enable-method = "psci";
 			next-level-cache = <&A72_L2>;
+			cpu-idle-states = <&CPU_SLEEP_0_0>;
+			operating-points-v2 = <&cpu_opp_table>;
 		};
 
 		A72_3: cpu@3 {
@@ -56,11 +67,39 @@
 			reg = <0x3>;
 			enable-method = "psci";
 			next-level-cache = <&A72_L2>;
+			cpu-idle-states = <&CPU_SLEEP_0_0>;
+			operating-points-v2 = <&cpu_opp_table>;
 		};
 
 		A72_L2: l2-cache {
 			compatible = "cache";
 			cache-level = <2>;
+		};
+
+		cpu_opp_table: cpu_opp_table {
+			compatible = "operating-points-v2";
+			opp-shared;
+
+			opp0 {
+				opp-hz = /bits/ 64 <1300000000>;
+				opp-microvolt = <1000000>;
+				clock-latency-ns = <300000>;
+			};
+			opp1 {
+				opp-hz = /bits/ 64 <1300000000>;
+				opp-microvolt = <900000>;
+				clock-latency-ns = <300000>;
+			};
+			opp2 {
+				opp-hz = /bits/ 64 <950000000>;
+				opp-microvolt = <800000>;
+				clock-latency-ns = <300000>;
+			};
+			opp3 {
+				opp-hz = /bits/ 64 <900000000>;
+				opp-microvolt = <800000>;
+				clock-latency-ns = <300000>;
+			};
 		};
 
 		idle-states {
