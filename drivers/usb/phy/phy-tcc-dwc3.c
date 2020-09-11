@@ -1295,9 +1295,9 @@ static int tcc_dwc3_create_phy(struct device *dev, struct tcc_dwc3_device *phy_d
 //#endif /* CONFIG_DYNAMIC_DC_LEVEL_ADJUSTMENT */
 
 	phy_dev->phy.otg->usb_phy			= &phy_dev->phy;
-
+#if !(defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X))
 	retval = tcc_dwc3_set_vbus_resource(&phy_dev->phy);
-
+#endif
 	return retval;
 }
 
