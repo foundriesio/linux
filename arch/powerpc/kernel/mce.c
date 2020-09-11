@@ -31,6 +31,7 @@
 
 #include <asm/machdep.h>
 #include <asm/mce.h>
+#include <asm/nmi.h>
 
 static DEFINE_PER_CPU(int, mce_nest_count);
 static DEFINE_PER_CPU(struct machine_check_event[MAX_MC_EVT], mce_event);
@@ -458,6 +459,8 @@ EXPORT_SYMBOL(get_mce_fault_addr);
 long machine_check_early(struct pt_regs *regs)
 {
 	long handled = 0;
+
+	hv_nmi_check_nonrecoverable(regs);
 
 	/*
 	 * See if platform is capable of handling machine check.
