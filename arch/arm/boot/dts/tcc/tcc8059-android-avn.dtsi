@@ -39,7 +39,7 @@
 &ehci_phy {
 	status = "okay";
 	vbus-ctrl-able;
-	vbus-gpio = <&gpa 28 0>; /* 0 : GPIO_ACTIVE_HIGH, 1 : GPIO_ACTIVE_LOW */
+	vbus-gpio = <&gpext1 4 0>; /* 0 : GPIO_ACTIVE_HIGH, 1 : GPIO_ACTIVE_LOW */
 };
 
 &ehci {
@@ -59,7 +59,7 @@
 &dwc_otg_phy {
 	status = "okay";
 	vbus-ctrl-able;
-	vbus-gpio = <&gpa 27 0>; /* 0 : GPIO_ACTIVE_HIGH, 1 : GPIO_ACTIVE_LOW */
+	vbus-gpio = <&gpext1 5 0>; /* 0 : GPIO_ACTIVE_HIGH, 1 : GPIO_ACTIVE_LOW */
 };
 
 &mhst_phy {
@@ -75,7 +75,7 @@
 &dwc3_phy {
 	status = "okay";
 	vbus-ctrl-able;
-	vbus-gpio = <&gpa 29 0>; /* 0 : GPIO_ACTIVE_HIGH, 1 : GPIO_ACTIVE_LOW */
+	vbus-gpio = <&gpext1 3 0>; /* 0 : GPIO_ACTIVE_HIGH, 1 : GPIO_ACTIVE_LOW */
 };
 
 &dwc3 {
@@ -255,6 +255,14 @@
 		pinctrl-0 = <&tsc_default>;
 		irq-gpios = <&gpsd1 9 0x0>;
 		reset-gpios = <&gpb 16 0x0>;
+	};
+
+	
+	gpext1: tca9539@74 {
+		compatible = "nxp,pca9539";
+		reg = <0x74>;
+		gpio-controller;
+		#gpio-cells = <2>;
 	};
 };
 
