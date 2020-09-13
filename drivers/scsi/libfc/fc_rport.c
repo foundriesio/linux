@@ -641,6 +641,8 @@ static void fc_rport_error(struct fc_rport_priv *rdata, int err)
 		fc_rport_enter_ready(rdata);
 		break;
 	case RPORT_ST_PRLI:
+		fc_rport_enter_plogi(rdata);
+		break;
 	case RPORT_ST_ADISC:
 		fc_rport_enter_logo(rdata);
 		break;
