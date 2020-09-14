@@ -17,8 +17,13 @@
 
 
 /* Debugging stuff */
-static int debug = 0;
-#define dprintk(msg...)	if (debug) { pr_err( "\x1b[33m pwm-tcc: \x1b[0m" msg); }
+#undef PWM_DEBUG
+#ifdef PWM_DEBUG
+#define dprintk(msg...)	pr_err( "\x1b[33m pwm-tcc: \x1b[0m" msg)
+#else
+#define dprintk(msg...)
+#endif
+
 
 
 #define PWMEN					0x4
@@ -285,7 +290,7 @@ static int tcc_pwm_probe(struct platform_device *pdev)
 	u32 freq;
 	int ret;
 
-	printk(KERN_INFO " %s  \n", __func__);
+	dprintk(KERN_INFO " %s  \n", __func__);
 
 	tcc = devm_kzalloc(&pdev->dev, sizeof(*tcc), GFP_KERNEL);
 	if (tcc == NULL) {
