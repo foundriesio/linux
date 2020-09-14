@@ -301,7 +301,7 @@ lpfc_ct_free_iocb(struct lpfc_hba *phba, struct lpfc_iocbq *ctiocb)
 	return 0;
 }
 
-/**
+/*
  * lpfc_gen_req - Build and issue a GEN_REQUEST command  to the SLI Layer
  * @vport: pointer to a host virtual N_Port data structure.
  * @bmp: Pointer to BPL for SLI command
@@ -395,7 +395,7 @@ lpfc_gen_req(struct lpfc_vport *vport, struct lpfc_dmabuf *bmp,
 	return 0;
 }
 
-/**
+/*
  * lpfc_ct_cmd - Build and issue a CT command
  * @vport: pointer to a host virtual N_Port data structure.
  * @inmp: Pointer to data buffer for response data.
@@ -714,7 +714,8 @@ lpfc_cmpl_ct_cmd_gid_ft(struct lpfc_hba *phba, struct lpfc_iocbq *cmdiocb,
 		/* This is a GID_FT completing so the gidft_inp counter was
 		 * incremented before the GID_FT was issued to the wire.
 		 */
-		vport->gidft_inp--;
+		if (vport->gidft_inp)
+			vport->gidft_inp--;
 
 		/*
 		 * Skip processing the NS response
@@ -742,11 +743,14 @@ lpfc_cmpl_ct_cmd_gid_ft(struct lpfc_hba *phba, struct lpfc_iocbq *cmdiocb,
 				goto out;
 
 			/* CT command is being retried */
-			vport->gidft_inp--;
 			rc = lpfc_ns_cmd(vport, SLI_CTNS_GID_FT,
 					 vport->fc_ns_retry, type);
 			if (rc == 0)
 				goto out;
+			else { /* Unable to send NS cmd */
+				if (vport->gidft_inp)
+					vport->gidft_inp--;
+			}
 		}
 		if (vport->fc_flag & FC_RSCN_MODE)
 			lpfc_els_flush_rscn(vport);
@@ -826,7 +830,8 @@ lpfc_cmpl_ct_cmd_gid_ft(struct lpfc_hba *phba, struct lpfc_iocbq *cmdiocb,
 				(uint32_t) CTrsp->ReasonCode,
 				(uint32_t) CTrsp->Explanation);
 		}
-		vport->gidft_inp--;
+		if (vport->gidft_inp)
+			vport->gidft_inp--;
 	}
 
 	lpfc_printf_vlog(vport, KERN_INFO, LOG_DISCOVERY,
@@ -919,7 +924,8 @@ lpfc_cmpl_ct_cmd_gid_pt(struct lpfc_hba *phba, struct lpfc_iocbq *cmdiocb,
 		/* This is a GID_PT completing so the gidft_inp counter was
 		 * incremented before the GID_PT was issued to the wire.
 		 */
-		vport->gidft_inp--;
+		if (vport->gidft_inp)
+			vport->gidft_inp--;
 
 		/*
 		 * Skip processing the NS response
@@ -943,11 +949,14 @@ lpfc_cmpl_ct_cmd_gid_pt(struct lpfc_hba *phba, struct lpfc_iocbq *cmdiocb,
 				vport->fc_ns_retry++;
 
 			/* CT command is being retried */
-			vport->gidft_inp--;
 			rc = lpfc_ns_cmd(vport, SLI_CTNS_GID_PT,
 					 vport->fc_ns_retry, GID_PT_N_PORT);
 			if (rc == 0)
 				goto out;
+			else { /* Unable to send NS cmd */
+				if (vport->gidft_inp)
+					vport->gidft_inp--;
+			}
 		}
 		if (vport->fc_flag & FC_RSCN_MODE)
 			lpfc_els_flush_rscn(vport);
@@ -1028,7 +1037,8 @@ lpfc_cmpl_ct_cmd_gid_pt(struct lpfc_hba *phba, struct lpfc_iocbq *cmdiocb,
 				(uint32_t)CTrsp->ReasonCode,
 				(uint32_t)CTrsp->Explanation);
 		}
-		vport->gidft_inp--;
+		if (vport->gidft_inp)
+			vport->gidft_inp--;
 	}
 
 	lpfc_printf_vlog(vport, KERN_INFO, LOG_DISCOVERY,
@@ -3020,8 +3030,8 @@ int (*lpfc_fdmi_port_action[])
  * lpfc_fdmi_cmd - Build and send a FDMI cmd to the specified NPort
  * @vport: pointer to a host virtual N_Port data structure.
  * @ndlp: ndlp to send FDMI cmd to (if NULL use FDMI_DID)
- * cmdcode: FDMI command to send
- * mask: Mask of HBA or PORT Attributes to send
+ * @cmdcode: FDMI command to send
+ * @new_mask: Mask of HBA or PORT Attributes to send
  *
  * Builds and sends a FDMI command using the CT subsystem.
  */
@@ -3263,7 +3273,7 @@ fdmi_cmd_exit:
 
 /**
  * lpfc_delayed_disc_tmo - Timeout handler for delayed discovery timer.
- * @ptr - Context object of the timer.
+ * @t: Context object of the timer.
  *
  * This function set the WORKER_DELAYED_DISC_TMO flag and wake up
  * the worker thread.

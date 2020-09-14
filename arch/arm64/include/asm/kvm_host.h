@@ -273,9 +273,6 @@ struct kvm_vcpu_arch {
 	/* IO related fields */
 	struct kvm_decode mmio_decode;
 
-	/* Interrupt related fields */
-	u64 irq_lines;		/* IRQ and FIQ levels */
-
 	/* Cache some mmu pages needed inside spinlock regions */
 	struct kvm_mmu_memory_cache mmu_page_cache;
 
@@ -288,24 +285,31 @@ struct kvm_vcpu_arch {
 
 	/* Virtual SError ESR to restore when HCR_EL2.VSE is set */
 	u64 vsesr_el2;
+
+	/* True when deferrable sysregs are loaded on the physical CPU,
+	 * see kvm_vcpu_load_sysregs and kvm_vcpu_put_sysregs. */
+	bool sysregs_loaded_on_cpu;
 };
 
 #define vcpu_gp_regs(v)		(&(v)->arch.ctxt.gp_regs)
-#define vcpu_sys_reg(v,r)	((v)->arch.ctxt.sys_regs[(r)])
+
+/*
+ * Only use __vcpu_sys_reg if you know you want the memory backed version of a
+ * register, and not the one most recently accessed by a running VCPU.  For
+ * example, for userspace access or for system registers that are never context
+ * switched, but only emulated.
+ */
+#define __vcpu_sys_reg(v,r)	((v)->arch.ctxt.sys_regs[(r)])
+
+u64 vcpu_read_sys_reg(struct kvm_vcpu *vcpu, int reg);
+void vcpu_write_sys_reg(struct kvm_vcpu *vcpu, u64 val, int reg);
+
 /*
  * CP14 and CP15 live in the same array, as they are backed by the
  * same system registers.
  */
 #define vcpu_cp14(v,r)		((v)->arch.ctxt.copro[(r)])
 #define vcpu_cp15(v,r)		((v)->arch.ctxt.copro[(r)])
-
-#ifdef CONFIG_CPU_BIG_ENDIAN
-#define vcpu_cp15_64_high(v,r)	vcpu_cp15((v),(r))
-#define vcpu_cp15_64_low(v,r)	vcpu_cp15((v),(r) + 1)
-#else
-#define vcpu_cp15_64_high(v,r)	vcpu_cp15((v),(r) + 1)
-#define vcpu_cp15_64_low(v,r)	vcpu_cp15((v),(r))
-#endif
 
 struct kvm_vm_stat {
 	ulong remote_tlb_flush;
@@ -449,6 +453,13 @@ static inline void kvm_arm_vhe_guest_enter(void)
 static inline void kvm_arm_vhe_guest_exit(void)
 {
 	local_daif_restore(DAIF_PROCCTX_NOIRQ);
+
+	/*
+	 * When we exit from the guest we change a number of CPU configuration
+	 * parameters, such as traps.  Make sure these changes take effect
+	 * before running the host or additional guests.
+	 */
+	isb();
 }
 
 static inline bool kvm_arm_harden_branch_predictor(void)

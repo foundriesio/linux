@@ -535,7 +535,7 @@ static inline int kvm_vcpu_get_idx(struct kvm_vcpu *vcpu)
 int kvm_vcpu_init(struct kvm_vcpu *vcpu, struct kvm *kvm, unsigned id);
 void kvm_vcpu_uninit(struct kvm_vcpu *vcpu);
 
-int __must_check vcpu_load(struct kvm_vcpu *vcpu);
+void vcpu_load(struct kvm_vcpu *vcpu);
 void vcpu_put(struct kvm_vcpu *vcpu);
 
 #ifdef __KVM_HAVE_IOAPIC
@@ -1277,6 +1277,18 @@ static inline bool vcpu_valid_wakeup(struct kvm_vcpu *vcpu)
 	return true;
 }
 #endif /* CONFIG_HAVE_KVM_INVALID_WAKEUPS */
+
+#ifdef CONFIG_HAVE_KVM_VCPU_ASYNC_IOCTL
+long kvm_arch_vcpu_async_ioctl(struct file *filp,
+			       unsigned int ioctl, unsigned long arg);
+#else
+static inline long kvm_arch_vcpu_async_ioctl(struct file *filp,
+					     unsigned int ioctl,
+					     unsigned long arg)
+{
+	return -ENOIOCTLCMD;
+}
+#endif /* CONFIG_HAVE_KVM_VCPU_ASYNC_IOCTL */
 
 #ifdef CONFIG_HAVE_KVM_NO_POLL
 /* Callback that tells if we must not poll */

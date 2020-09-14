@@ -46,7 +46,9 @@ static DEFINE_PER_CPU(u32, mdcr_el2);
  */
 static void save_guest_debug_regs(struct kvm_vcpu *vcpu)
 {
-	vcpu->arch.guest_debug_preserved.mdscr_el1 = vcpu_sys_reg(vcpu, MDSCR_EL1);
+	u64 val = vcpu_read_sys_reg(vcpu, MDSCR_EL1);
+
+	vcpu->arch.guest_debug_preserved.mdscr_el1 = val;
 
 	trace_kvm_arm_set_dreg32("Saved MDSCR_EL1",
 				vcpu->arch.guest_debug_preserved.mdscr_el1);
@@ -54,10 +56,12 @@ static void save_guest_debug_regs(struct kvm_vcpu *vcpu)
 
 static void restore_guest_debug_regs(struct kvm_vcpu *vcpu)
 {
-	vcpu_sys_reg(vcpu, MDSCR_EL1) = vcpu->arch.guest_debug_preserved.mdscr_el1;
+	u64 val = vcpu->arch.guest_debug_preserved.mdscr_el1;
+
+	vcpu_write_sys_reg(vcpu, val, MDSCR_EL1);
 
 	trace_kvm_arm_set_dreg32("Restored MDSCR_EL1",
-				vcpu_sys_reg(vcpu, MDSCR_EL1));
+				vcpu_read_sys_reg(vcpu, MDSCR_EL1));
 }
 
 /**
@@ -108,6 +112,7 @@ void kvm_arm_reset_debug_ptr(struct kvm_vcpu *vcpu)
 void kvm_arm_setup_debug(struct kvm_vcpu *vcpu)
 {
 	bool trap_debug = !(vcpu->arch.debug_flags & KVM_ARM64_DEBUG_DIRTY);
+	unsigned long mdscr, orig_mdcr_el2 = vcpu->arch.mdcr_el2;
 
 	trace_kvm_arm_setup_debug(vcpu, vcpu->guest_debug);
 
@@ -152,9 +157,13 @@ void kvm_arm_setup_debug(struct kvm_vcpu *vcpu)
 		 */
 		if (vcpu->guest_debug & KVM_GUESTDBG_SINGLESTEP) {
 			*vcpu_cpsr(vcpu) |=  DBG_SPSR_SS;
-			vcpu_sys_reg(vcpu, MDSCR_EL1) |= DBG_MDSCR_SS;
+			mdscr = vcpu_read_sys_reg(vcpu, MDSCR_EL1);
+			mdscr |= DBG_MDSCR_SS;
+			vcpu_write_sys_reg(vcpu, mdscr, MDSCR_EL1);
 		} else {
-			vcpu_sys_reg(vcpu, MDSCR_EL1) &= ~DBG_MDSCR_SS;
+			mdscr = vcpu_read_sys_reg(vcpu, MDSCR_EL1);
+			mdscr &= ~DBG_MDSCR_SS;
+			vcpu_write_sys_reg(vcpu, mdscr, MDSCR_EL1);
 		}
 
 		trace_kvm_arm_set_dreg32("SPSR_EL2", *vcpu_cpsr(vcpu));
@@ -170,7 +179,9 @@ void kvm_arm_setup_debug(struct kvm_vcpu *vcpu)
 		 */
 		if (vcpu->guest_debug & KVM_GUESTDBG_USE_HW) {
 			/* Enable breakpoints/watchpoints */
-			vcpu_sys_reg(vcpu, MDSCR_EL1) |= DBG_MDSCR_MDE;
+			mdscr = vcpu_read_sys_reg(vcpu, MDSCR_EL1);
+			mdscr |= DBG_MDSCR_MDE;
+			vcpu_write_sys_reg(vcpu, mdscr, MDSCR_EL1);
 
 			vcpu->arch.debug_ptr = &vcpu->arch.external_debug_state;
 			vcpu->arch.debug_flags |= KVM_ARM64_DEBUG_DIRTY;
@@ -193,8 +204,16 @@ void kvm_arm_setup_debug(struct kvm_vcpu *vcpu)
 	if (trap_debug)
 		vcpu->arch.mdcr_el2 |= MDCR_EL2_TDA;
 
+	/* If KDE or MDE are set, perform a full save/restore cycle. */
+	if (vcpu_read_sys_reg(vcpu, MDSCR_EL1) & (DBG_MDSCR_KDE | DBG_MDSCR_MDE))
+		vcpu->arch.debug_flags |= KVM_ARM64_DEBUG_DIRTY;
+
+	/* Write mdcr_el2 changes since vcpu_load on VHE systems */
+	if (has_vhe() && orig_mdcr_el2 != vcpu->arch.mdcr_el2)
+		write_sysreg(vcpu->arch.mdcr_el2, mdcr_el2);
+
 	trace_kvm_arm_set_dreg32("MDCR_EL2", vcpu->arch.mdcr_el2);
-	trace_kvm_arm_set_dreg32("MDSCR_EL1", vcpu_sys_reg(vcpu, MDSCR_EL1));
+	trace_kvm_arm_set_dreg32("MDSCR_EL1", vcpu_read_sys_reg(vcpu, MDSCR_EL1));
 }
 
 void kvm_arm_clear_debug(struct kvm_vcpu *vcpu)

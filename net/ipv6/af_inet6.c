@@ -740,7 +740,8 @@ int inet6_sk_rebuild_header(struct sock *sk)
 					 &final);
 		rcu_read_unlock();
 
-		dst = ip6_dst_lookup_flow(sk, &fl6, final_p);
+		dst = ip6_dst_lookup_flow__net(sock_net(sk), sk, &fl6,
+					       final_p);
 		if (IS_ERR(dst)) {
 			sk->sk_route_caps = 0;
 			sk->sk_err_soft = -PTR_ERR(dst);
@@ -902,6 +903,7 @@ static const struct ipv6_stub ipv6_stub_impl = {
 	.udpv6_encap_enable = udpv6_encap_enable,
 	.ndisc_send_na = ndisc_send_na,
 	.nd_tbl	= &nd_tbl,
+	.ipv6_dst_lookup_flow = ip6_dst_lookup_flow__net,
 };
 
 static const struct ipv6_bpf_stub ipv6_bpf_stub_impl = {
