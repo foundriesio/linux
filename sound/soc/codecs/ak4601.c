@@ -5,42 +5,40 @@
  *  Author                Date        Revision
  * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
  *   Tsuyoshi Mutsuro   16/04/12	    1.0
+ *                      17/07/11        2.0  Kernel 3.18/4.4
+ *   Junich Wakasugi    18/05/23        2.1  Kernel 4.9
  * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*
  *
- *  This program is free software; you can redistribute  it and/or modify it
- *  under  the terms of  the GNU General  Public License as published by the
- *  Free Software Foundation;  either version 2 of the  License, or (at your
- *  option) any later version.
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * published by the Free Software Foundation.
  *
  */
-
 
 #include <linux/module.h>
 #include <linux/init.h>
 #include <linux/i2c.h>
+#include <linux/spi/spi.h>
 #include <linux/delay.h>
 #include <linux/slab.h>
 #include <linux/gpio.h>
-#include <sound/pcm.h>
-#include <sound/pcm_params.h>
 #include <sound/soc.h>
 #include <sound/soc-dapm.h>
+#include <sound/pcm.h>
+#include <sound/pcm_params.h>
 #include <sound/initval.h>
 #include <sound/tlv.h>
-#include <linux/ioctl.h>
-#include <linux/fs.h>
-#include <linux/uaccess.h>
-#include <linux/spi/spi.h>
-#include <linux/mutex.h>
-#include <linux/firmware.h>
-#include <linux/vmalloc.h>
-#include <linux/of_gpio.h>		//16/04/11
 
-#include <sound/ak4601_pdata.h>
+#include <linux/of_gpio.h>
+#include <linux/regmap.h> 
 
 #include "ak4601.h"
 
 //#define AK4601_DEBUG			//used at debug mode
+
+//#define KERNEL_3_18_XX
+//#define KERNEL_4_4_XX 
+#define KERNEL_4_9_XX
 
 #define PORT3_LINK	1			//Port Sel(1~2)
 
@@ -67,90 +65,11 @@
 
 #define TCC_CODEC_SAMPLING_FREQ
 
-static const u8 ak4601_backup_reg_list[] = {
-	AK4601_000_SYSTEM_CLOCK_SETTING_1			,
-	AK4601_001_SYSTEM_CLOCK_SETTING_2			,
-	AK4601_002_MIC_BIAS_POWER_MANAGEMENT		,
-	AK4601_003_SYNC_DOMAIN_1_SETTING_1			,
-	AK4601_004_SYNC_DOMAIN_1_SETTING_2			,
-	AK4601_005_SYNC_DOMAIN_2_SETTING_1			,
-	AK4601_006_SYNC_DOMAIN_2_SETTING_2			,
-	AK4601_00F_CLKO_OUTPUT_SETTING				,
-	AK4601_010_PIN_SETTING						,
-	AK4601_011_SYNC_DOMAIN_SELECT_1				,
-	AK4601_013_SYNC_DOMAIN_SELECT_3				,
-	AK4601_014_SYNC_DOMAIN_SELECT_4				,
-	AK4601_016_SYNC_DOMAIN_SELECT_6				,
-	AK4601_017_SYNC_DOMAIN_SELECT_7				,
-	AK4601_018_SYNC_DOMAIN_SELECT_8				,
-	AK4601_019_SYNC_DOMAIN_SELECT_9				,
-	AK4601_01F_SYNC_DOMAIN_SELECT_15			,
-	AK4601_020_SYNC_DOMAIN_SELECT_16			,
-	AK4601_021_SDOUT1_TDM_SLOT1_2_DATA_SELECT	,
-	AK4601_022_SDOUT1_TDM_SLOT3_4_DATA_SELECT	,
-	AK4601_023_SDOUT1_TDM_SLOT5_6_DATA_SELECT	,
-	AK4601_024_SDOUT1_TDM_SLOT7_8_DATA_SELECT	,
-	AK4601_025_SDOUT1_TDM_SLOT9_10_DATA_SELECT	,
-	AK4601_026_SDOUT1_TDM_SLOT11_12_DATA_SELECT	,
-	AK4601_027_SDOUT1_TDM_SLOT13_14_DATA_SELECT	,
-	AK4601_028_SDOUT1_TDM_SLOT15_16_DATA_SELECT	,
-	AK4601_029_SDOUT2_OUTPUT_DATA_SELECT		,
-	AK4601_02A_SDOUT2_OUTPUT_DATA_SELECT		,
-	AK4601_035_DAC1_INPUT_DATA_SELECT			,
-	AK4601_036_DAC2_INPUT_DATA_SELECT			,
-	AK4601_037_DAC3_INPUT_DATA_SELECT			,
-	AK4601_038_VOL1_INPUT_DATA_SELECT			,
-	AK4601_039_VOL2_INPUT_DATA_SELECT			,
-	AK4601_03A_VOL3_INPUT_DATA_SELECT			,
-	AK4601_045_MIXER_A_CH1_INPUT_DATA_SELECT	,
-	AK4601_046_MIXER_A_CH2_INPUT_DATA_SELECT	,
-	AK4601_047_MIXER_B_CH1_INPUT_DATA_SELECT	,
-	AK4601_048_MIXER_B_CH2_INPUT_DATA_SELECT	,
-	AK4601_04C_CLOCK_FORMAT_SETTING_1			,
-	AK4601_050_SDIN1_DIGITAL_INPUT_FORMAT		,
-	AK4601_051_SDIN2_DIGITAL_INPUT_FORMAT		,
-	AK4601_052_SDIN3_DIGITAL_INPUT_FORMAT		,
-	AK4601_055_SDOUT1_DIGITAL_OUTPUT_FORMAT		,
-	AK4601_056_SDOUT2_DIGITAL_OUTPUT_FORMAT		,
-	AK4601_057_SDOUT3_DIGITAL_OUTPUT_FORMAT		,
-	AK4601_05A_SDOUT_PHASE_SETTING				,
-	AK4601_05E_OUTPUT_PORT_ENABLE_SETTING		,
-	AK4601_060_MIXER_A_SETTING					,
-	AK4601_061_MIXER_B_SETTING					,
-	AK4601_062_MIC_AMP_GAIN						,
-	AK4601_063_ANALOG_INPUT_GAIN_CONTROL		,
-	AK4601_064_ADC1LCH_DIGITAL_VOLUME			,
-	AK4601_065_ADC1RCH_DIGITAL_VOLUME			,
-	AK4601_066_ADC2LCH_DIGITAL_VOLUME			,
-	AK4601_067_ADC2RCH_DIGITAL_VOLUME			,
-	AK4601_068_ADCM_DIGITAL_VOLUME				,
-	AK4601_06B_ANALOG_INPUT_SELECT_SETTING		,
-	AK4601_06C_ADC_MUTE_AND_HPF_CONTROL			,
-	AK4601_06D_DAC1LCH_DIGITAL_VOLUME			,
-	AK4601_06E_DAC1RCH_DIGITAL_VOLUME			,
-	AK4601_06F_DAC2LCH_DIGITAL_VOLUME			,
-	AK4601_070_DAC2RCH_DIGITAL_VOLUME			,
-	AK4601_071_DAC3LCH_DIGITAL_VOLUME			,
-	AK4601_072_DAC3RCH_DIGITAL_VOLUME			,
-	AK4601_073_DAC_MUTE_AND_FILTER_SETTING		,
-	AK4601_074_DAC_DEM_SETTING					,
-	AK4601_075_VOL1LCH_DIGITAL_VOLUME			,
-	AK4601_076_VOL1RCH_DIGITAL_VOLUME			,
-	AK4601_077_VOL2LCH_DIGITAL_VOLUME			,
-	AK4601_078_VOL2RCH_DIGITAL_VOLUME			,
-	AK4601_079_VOL3LCH_DIGITAL_VOLUME			,
-	AK4601_07A_VOL3RCH_DIGITAL_VOLUME			,
-	AK4601_07F_VOL_SETTING						,
-	AK4601_083_STO_FLAG_SETTING1				,
-	AK4601_08A_POWER_MANAGEMENT1				,
-	AK4601_08C_RESET_CONTROL					,
-};
-
 /* AK4601 Codec Private Data */
 struct ak4601_priv {
-	struct snd_soc_codec *codec;
 	struct spi_device *spi;
 	struct i2c_client *i2c;
+	struct regmap *regmap;
 	int fs;
 	
 	int pdn_gpio;
@@ -175,8 +94,6 @@ struct ak4601_priv {
 	
 	int DIDL3;
 
-	uint8_t reg_backup[ARRAY_SIZE(ak4601_backup_reg_list)];
-
 #ifdef TCC_USE_MUTE_GPIO
 	int32_t cmute_gpio;			// for CODEC_MUTE
 	int32_t cmute_gpio_flags;
@@ -186,270 +103,269 @@ struct ak4601_priv {
 	int32_t stanby_gpio_flags;
 	int32_t playback_active;
 #endif//TCC_USE_MUTE_GPIO
-
 };
 
 /* ak4601 register cache & default register settings */
-static const u8 ak4601_reg[] = {
-	0x00,	/*	AK4601_000_SYSTEM_CLOCK_SETTING_1			*/
-	0x00,	/*	AK4601_001_SYSTEM_CLOCK_SETTING_2			*/
-	0x00,	/*	AK4601_002_MIC_BIAS_POWER_MANAGEMENT		*/
-	0x00,	/*	AK4601_003_SYNC_DOMAIN_1_SETTING_1			*/
-	0x00,	/*	AK4601_004_SYNC_DOMAIN_1_SETTING_2			*/
-	0x00,	/*	AK4601_005_SYNC_DOMAIN_2_SETTING_1			*/
-	0x00,	/*	AK4601_006_SYNC_DOMAIN_2_SETTING_2			*/
-	0x00,	/*	AK4601_007_RESERVED							*/
-	0x00,	/*	AK4601_008_RESERVED							*/
-	0x00,	/*	AK4601_009_RESERVED							*/
-	0x00,	/*	AK4601_00A_RESERVED							*/
-	0x00,	/*	AK4601_00B_RESERVED							*/
-	0x00,	/*	AK4601_00C_RESERVED							*/
-	0x00,	/*	AK4601_00D_RESERVED							*/
-	0x00,	/*	AK4601_00E_RESERVED							*/
-	0x00,	/*	AK4601_00F_CLKO_OUTPUT_SETTING				*/
-	0x00,	/*	AK4601_010_PIN_SETTING						*/
-	0x00,	/*	AK4601_011_SYNC_DOMAIN_SELECT_1				*/
-	0x00,	/*	AK4601_012_RESERVED							*/
-	0x00,	/*	AK4601_013_SYNC_DOMAIN_SELECT_3				*/
-	0x00,	/*	AK4601_014_SYNC_DOMAIN_SELECT_4				*/
-	0x00,	/*	AK4601_015_RESERVED							*/
-	0x00,	/*	AK4601_016_SYNC_DOMAIN_SELECT_6				*/
-	0x00,	/*	AK4601_017_SYNC_DOMAIN_SELECT_7				*/
-	0x00,	/*	AK4601_018_SYNC_DOMAIN_SELECT_8				*/
-	0x00,	/*	AK4601_019_SYNC_DOMAIN_SELECT_9				*/
-	0x00,	/*	AK4601_01A_RESERVED							*/
-	0x00,	/*	AK4601_01B_RESERVED							*/
-	0x00,	/*	AK4601_01C_RESERVED							*/
-	0x00,	/*	AK4601_01D_RESERVED							*/
-	0x00,	/*	AK4601_01E_RESERVED							*/
-	0x00,	/*	AK4601_01F_SYNC_DOMAIN_SELECT_15			*/
-	0x00,	/*	AK4601_020_SYNC_DOMAIN_SELECT_16			*/
-	0x00,	/*	AK4601_021_SDOUT1_TDM_SLOT1_2_DATA_SELECT	*/
-	0x00,	/*	AK4601_022_SDOUT1_TDM_SLOT3_4_DATA_SELECT	*/
-	0x00,	/*	AK4601_023_SDOUT1_TDM_SLOT5_6_DATA_SELECT	*/
-	0x00,	/*	AK4601_024_SDOUT1_TDM_SLOT7_8_DATA_SELECT	*/
-	0x00,	/*	AK4601_025_SDOUT1_TDM_SLOT9_10_DATA_SELECT	*/
-	0x00,	/*	AK4601_026_SDOUT1_TDM_SLOT11_12_DATA_SELECT	*/
-	0x00,	/*	AK4601_027_SDOUT1_TDM_SLOT13_14_DATA_SELECT	*/
-	0x00,	/*	AK4601_028_SDOUT1_TDM_SLOT15_16_DATA_SELECT	*/
-	0x00,	/*	AK4601_029_SDOUT2_OUTPUT_DATA_SELECT		*/
-	0x00,	/*	AK4601_02A_SDOUT2_OUTPUT_DATA_SELECT		*/
-	0x00,	/*	AK4601_02B_RESERVED							*/
-	0x00,	/*	AK4601_02C_RESERVED							*/
-	0x00,	/*	AK4601_02D_RESERVED							*/
-	0x00,	/*	AK4601_02E_RESERVED							*/
-	0x00,	/*	AK4601_02F_RESERVED							*/
-	0x00,	/*	AK4601_030_RESERVED							*/
-	0x00,	/*	AK4601_031_RESERVED							*/
-	0x00,	/*	AK4601_032_RESERVED							*/
-	0x00,	/*	AK4601_033_RESERVED							*/
-	0x00,	/*	AK4601_034_RESERVED							*/
-	0x00,	/*	AK4601_035_DAC1_INPUT_DATA_SELECT			*/
-	0x00,	/*	AK4601_036_DAC2_INPUT_DATA_SELECT			*/
-	0x00,	/*	AK4601_037_DAC3_INPUT_DATA_SELECT			*/
-	0x00,	/*	AK4601_038_VOL1_INPUT_DATA_SELECT			*/
-	0x00,	/*	AK4601_039_VOL2_INPUT_DATA_SELECT			*/
-	0x00,	/*	AK4601_03A_VOL3_INPUT_DATA_SELECT			*/
-	0x00,	/*	AK4601_03B_RESERVED							*/
-	0x00,	/*	AK4601_03C_RESERVED							*/
-	0x00,	/*	AK4601_03D_RESERVED							*/
-	0x00,	/*	AK4601_03E_RESERVED							*/
-	0x00,	/*	AK4601_03F_RESERVED							*/
-	0x00,	/*	AK4601_040_RESERVED							*/
-	0x00,	/*	AK4601_041_RESERVED							*/
-	0x00,	/*	AK4601_042_RESERVED							*/
-	0x00,	/*	AK4601_043_RESERVED							*/
-	0x00,	/*	AK4601_044_RESERVED							*/
-	0x00,	/*	AK4601_045_MIXER_A_CH1_INPUT_DATA_SELECT	*/
-	0x00,	/*	AK4601_046_MIXER_A_CH2_INPUT_DATA_SELECT	*/
-	0x00,	/*	AK4601_047_MIXER_B_CH1_INPUT_DATA_SELECT	*/
-	0x00,	/*	AK4601_048_MIXER_B_CH2_INPUT_DATA_SELECT	*/
-	0x00,	/*	AK4601_049_RESERVED							*/
-	0x00,	/*	AK4601_04A_RESERVED							*/
-	0x00,	/*	AK4601_04B_RESERVED							*/
-	0x00,	/*	AK4601_04C_CLOCK_FORMAT_SETTING_1			*/
-	0x00,	/*	AK4601_04D_RESERVED							*/
-	0x00,	/*	AK4601_04E_RESERVED							*/
-	0x00,	/*	AK4601_04F_RESERVED							*/
-	0x00,	/*	AK4601_050_SDIN1_DIGITAL_INPUT_FORMAT		*/
-	0x00,	/*	AK4601_051_SDIN2_DIGITAL_INPUT_FORMAT		*/
-	0x00,	/*	AK4601_052_SDIN3_DIGITAL_INPUT_FORMAT		*/
-	0x00,	/*	AK4601_053_RESERVED							*/
-	0x00,	/*	AK4601_054_RESERVED							*/
-	0x00,	/*	AK4601_055_SDOUT1_DIGITAL_OUTPUT_FORMAT		*/
-	0x00,	/*	AK4601_056_SDOUT2_DIGITAL_OUTPUT_FORMAT		*/
-	0x00,	/*	AK4601_057_SDOUT3_DIGITAL_OUTPUT_FORMAT		*/
-	0x00,	/*	AK4601_058_RESERVED							*/
-	0x00,	/*	AK4601_059_RESERVED							*/
-	0x00,	/*	AK4601_05A_SDOUT_PHASE_SETTING				*/
-	0x00,	/*	AK4601_05B_RESERVED							*/
-	0x00,	/*	AK4601_05C_RESERVED							*/
-	0x00,	/*	AK4601_05D_RESERVED							*/
-	0x00,	/*	AK4601_05E_OUTPUT_PORT_ENABLE_SETTING		*/
-	0x00,	/*	AK4601_05F_RESERVED							*/
-	0x00,	/*	AK4601_060_MIXER_A_SETTING					*/
-	0x00,	/*	AK4601_061_MIXER_B_SETTING					*/
-	0x00,	/*	AK4601_062_MIC_AMP_GAIN						*/
-	0x00,	/*	AK4601_063_ANALOG_INPUT_GAIN_CONTROL		*/
-	0x30,	/*	AK4601_064_ADC1LCH_DIGITAL_VOLUME			*/
-	0x30,	/*	AK4601_065_ADC1RCH_DIGITAL_VOLUME			*/
-	0x30,	/*	AK4601_066_ADC2LCH_DIGITAL_VOLUME			*/
-	0x30,	/*	AK4601_067_ADC2RCH_DIGITAL_VOLUME			*/
-	0x30,	/*	AK4601_068_ADCM_DIGITAL_VOLUME				*/
-	0x00,	/*	AK4601_069_RESERVED							*/
-	0x00,	/*	AK4601_06A_RESERVED							*/
-	0x00,	/*	AK4601_06B_ANALOG_INPUT_SELECT_SETTING		*/
-	0x00,	/*	AK4601_06C_ADC_MUTE_AND_HPF_CONTROL			*/
-	0x18,	/*	AK4601_06D_DAC1LCH_DIGITAL_VOLUME			*/
-	0x18,	/*	AK4601_06E_DAC1RCH_DIGITAL_VOLUME			*/
-	0x18,	/*	AK4601_06F_DAC2LCH_DIGITAL_VOLUME			*/
-	0x18,	/*	AK4601_070_DAC2RCH_DIGITAL_VOLUME			*/
-	0x18,	/*	AK4601_071_DAC3LCH_DIGITAL_VOLUME			*/
-	0x18,	/*	AK4601_072_DAC3RCH_DIGITAL_VOLUME			*/
-	0x02,	/*	AK4601_073_DAC_MUTE_AND_FILTER_SETTING		*/
-	0x15,	/*	AK4601_074_DAC_DEM_SETTING					*/
-	0x18,	/*	AK4601_075_VOL1LCH_DIGITAL_VOLUME			*/
-	0x18,	/*	AK4601_076_VOL1RCH_DIGITAL_VOLUME			*/
-	0x18,	/*	AK4601_077_VOL2LCH_DIGITAL_VOLUME			*/
-	0x18,	/*	AK4601_078_VOL2RCH_DIGITAL_VOLUME			*/
-	0x18,	/*	AK4601_079_VOL3LCH_DIGITAL_VOLUME			*/
-	0x18,	/*	AK4601_07A_VOL3RCH_DIGITAL_VOLUME			*/
-	0x18,	/*	AK4601_07B_RESERVED							*/
-	0x18,	/*	AK4601_07C_RESERVED							*/
-	0x18,	/*	AK4601_07D_RESERVED							*/
-	0x18,	/*	AK4601_07E_RESERVED							*/
-	0x00,	/*	AK4601_07F_VOL_SETTING						*/
-	0x00,	/*	AK4601_080_RESERVED							*/
-	0x00,	/*	AK4601_081_RESERVED							*/
-	0x00,	/*	AK4601_082_RESERVED							*/
-	0x00,	/*	AK4601_083_STO_FLAG_SETTING1				*/
-	0x00,	/*	AK4601_084_RESERVED							*/
-	0x00,	/*	AK4601_085_RESERVED							*/
-	0x04,	/*	AK4601_086_RESERVED							*/
-	0x02,	/*	AK4601_087_RESERVED							*/
-	0x00,	/*	AK4601_088_RESERVED							*/
-	0x00,	/*	AK4601_089_RESERVED							*/
-	0x00,	/*	AK4601_08A_POWER_MANAGEMENT1				*/
-	0x00,	/*	AK4601_08B_RESERVED							*/
-	0x20,	/*	AK4601_08C_RESET_CONTROL					*/
-	0x00,	/*	AK4601_08D_RESERVED							*/
-	0x00,	/*	AK4601_08E_RESERVED							*/
-	0x00,	/*	AK4601_08F_RESERVED							*/
-	0x00,	/*	AK4601_090_RESERVED							*/
-	0x00,	/*	AK4601_091_RESERVED							*/
-	0x00,	/*	AK4601_092_RESERVED							*/
-	0x00,	/*	AK4601_093_RESERVED							*/
-	0x00,	/*	AK4601_094_RESERVED							*/
-	0x00,	/*	AK4601_095_RESERVED							*/
-	0x00,	/*	AK4601_096_RESERVED							*/
-	0x00,	/*	AK4601_097_RESERVED							*/
-	0x00,	/*	AK4601_098_RESERVED							*/
-	0x00,	/*	AK4601_099_RESERVED							*/
-	0x00,	/*	AK4601_09A_RESERVED							*/
-	0x00,	/*	AK4601_09B_RESERVED							*/
-	0x00,	/*	AK4601_09C_RESERVED							*/
-	0x00,	/*	AK4601_09D_RESERVED							*/
-	0x00,	/*	AK4601_09E_RESERVED							*/
-	0x00,	/*	AK4601_09F_RESERVED							*/
-	0x00,	/*	AK4601_0A0_RESERVED							*/
-	0x00,	/*	AK4601_0A1_RESERVED							*/
-	0x00,	/*	AK4601_0A2_RESERVED							*/
-	0x00,	/*	AK4601_0A3_RESERVED							*/
-	0x00,	/*	AK4601_0A4_RESERVED							*/
-	0x00,	/*	AK4601_0A5_RESERVED							*/
-	0x00,	/*	AK4601_0A6_RESERVED							*/
-	0x00,	/*	AK4601_0A7_RESERVED							*/
-	0x00,	/*	AK4601_0A8_RESERVED							*/
-	0x00,	/*	AK4601_0A9_RESERVED							*/
-	0x00,	/*	AK4601_0AA_RESERVED							*/
-	0x00,	/*	AK4601_0AB_RESERVED							*/
-	0x00,	/*	AK4601_0AC_RESERVED							*/
-	0x00,	/*	AK4601_0AD_RESERVED							*/
-	0x00,	/*	AK4601_0AE_RESERVED							*/
-	0x00,	/*	AK4601_0AF_RESERVED							*/
-	0x00,	/*	AK4601_0B0_RESERVED							*/
-	0x00,	/*	AK4601_0B1_RESERVED							*/
-	0x00,	/*	AK4601_0B2_RESERVED							*/
-	0x00,	/*	AK4601_0B3_RESERVED							*/
-	0x00,	/*	AK4601_0B4_RESERVED							*/
-	0x00,	/*	AK4601_0B5_RESERVED							*/
-	0x00,	/*	AK4601_0B6_RESERVED							*/
-	0x00,	/*	AK4601_0B7_RESERVED							*/
-	0x00,	/*	AK4601_0B8_RESERVED							*/
-	0x00,	/*	AK4601_0B9_RESERVED							*/
-	0x00,	/*	AK4601_0BA_RESERVED							*/
-	0x00,	/*	AK4601_0BB_RESERVED							*/
-	0x00,	/*	AK4601_0BC_RESERVED							*/
-	0x00,	/*	AK4601_0BD_RESERVED							*/
-	0x00,	/*	AK4601_0BE_RESERVED							*/
-	0x00,	/*	AK4601_0BF_RESERVED							*/
-	0x00,	/*	AK4601_0C0_RESERVED							*/
-	0x00,	/*	AK4601_0C1_RESERVED							*/
-	0x00,	/*	AK4601_0C2_RESERVED							*/
-	0x00,	/*	AK4601_0C3_RESERVED							*/
-	0x00,	/*	AK4601_0C4_RESERVED							*/
-	0x00,	/*	AK4601_0C5_RESERVED							*/
-	0x00,	/*	AK4601_0C6_RESERVED							*/
-	0x00,	/*	AK4601_0C7_RESERVED							*/
-	0x00,	/*	AK4601_0C8_RESERVED							*/
-	0x00,	/*	AK4601_0C9_RESERVED							*/
-	0x00,	/*	AK4601_0CA_RESERVED							*/
-	0x00,	/*	AK4601_0CB_RESERVED							*/
-	0x00,	/*	AK4601_0CC_RESERVED							*/
-	0x00,	/*	AK4601_0CD_RESERVED							*/
-	0x00,	/*	AK4601_0CE_RESERVED							*/
-	0x00,	/*	AK4601_0CF_RESERVED							*/
-	0x00,	/*	AK4601_0D0_RESERVED							*/
-	0x00,	/*	AK4601_0D1_RESERVED							*/
-	0x00,	/*	AK4601_0D2_RESERVED							*/
-	0x00,	/*	AK4601_0D3_RESERVED							*/
-	0x00,	/*	AK4601_0D4_RESERVED							*/
-	0x00,	/*	AK4601_0D5_RESERVED							*/
-	0x00,	/*	AK4601_0D6_RESERVED							*/
-	0x00,	/*	AK4601_0D7_RESERVED							*/
-	0x00,	/*	AK4601_0D8_RESERVED							*/
-	0x00,	/*	AK4601_0D9_RESERVED							*/
-	0x00,	/*	AK4601_0DA_RESERVED							*/
-	0x00,	/*	AK4601_0DB_RESERVED							*/
-	0x00,	/*	AK4601_0DC_RESERVED							*/
-	0x00,	/*	AK4601_0DD_RESERVED							*/
-	0x00,	/*	AK4601_0DE_RESERVED							*/
-	0x00,	/*	AK4601_0DF_RESERVED							*/
-	0x00,	/*	AK4601_0E0_RESERVED							*/
-	0x00,	/*	AK4601_0E1_RESERVED							*/
-	0x00,	/*	AK4601_0E2_RESERVED							*/
-	0x00,	/*	AK4601_0E3_RESERVED							*/
-	0x00,	/*	AK4601_0E4_RESERVED							*/
-	0x00,	/*	AK4601_0E5_RESERVED							*/
-	0x00,	/*	AK4601_0E6_RESERVED							*/
-	0x00,	/*	AK4601_0E7_RESERVED							*/
-	0x00,	/*	AK4601_0E8_RESERVED							*/
-	0x00,	/*	AK4601_0E9_RESERVED							*/
-	0x00,	/*	AK4601_0EA_RESERVED							*/
-	0x00,	/*	AK4601_0EB_RESERVED							*/
-	0x00,	/*	AK4601_0EC_RESERVED							*/
-	0x00,	/*	AK4601_0ED_RESERVED							*/
-	0x00,	/*	AK4601_0EE_RESERVED							*/
-	0x00,	/*	AK4601_0EF_RESERVED							*/
-	0x00,	/*	AK4601_0F0_RESERVED							*/
-	0x00,	/*	AK4601_0F1_RESERVED							*/
-	0x00,	/*	AK4601_0F2_RESERVED							*/
-	0x00,	/*	AK4601_0F3_RESERVED							*/
-	0x00,	/*	AK4601_0F4_RESERVED							*/
-	0x00,	/*	AK4601_0F5_RESERVED							*/
-	0x00,	/*	AK4601_0F6_RESERVED							*/
-	0x00,	/*	AK4601_0F7_RESERVED							*/
-	0x00,	/*	AK4601_0F8_RESERVED							*/
-	0x00,	/*	AK4601_0F9_RESERVED							*/
-	0x00,	/*	AK4601_0FA_RESERVED							*/
-	0x00,	/*	AK4601_0FB_RESERVED							*/
-	0x00,	/*	AK4601_0FC_RESERVED							*/
-	0x00,	/*	AK4601_0FD_RESERVED							*/
-	0x00,	/*	AK4601_0FE_RESERVED							*/
-	0x00,	/*	AK4601_0FF_RESERVED							*/
-	0x00,	/*	AK4601_100_RESERVED							*/
-	0x00,	/*	AK4601_101_RESERVED							*/
-	0x40,	/*	AK4601_102_STATUS_READ_OUT					*/
+static const struct reg_default ak4601_reg[] = {
+  { 0x0, 0x00 },  /*  AK4601_000_SYSTEM_CLOCK_SETTING_1    */
+  { 0x1, 0x00 },  /*  AK4601_001_SYSTEM_CLOCK_SETTING_2    */
+  { 0x2, 0x00 },  /*  AK4601_002_MIC_BIAS_POWER_MANAGEMENT    */
+  { 0x3, 0x00 },  /*  AK4601_003_SYNC_DOMAIN_1_SETTING_1    */
+  { 0x4, 0x00 },  /*  AK4601_004_SYNC_DOMAIN_1_SETTING_2    */
+  { 0x5, 0x00 },  /*  AK4601_005_SYNC_DOMAIN_2_SETTING_1    */
+  { 0x6, 0x00 },  /*  AK4601_006_SYNC_DOMAIN_2_SETTING_2    */
+  { 0x7, 0x00 },  /*  AK4601_007_RESERVED     */
+  { 0x8, 0x00 },  /*  AK4601_008_RESERVED     */
+  { 0x9, 0x00 },  /*  AK4601_009_RESERVED     */
+  { 0xA, 0x00 },  /*  AK4601_00A_RESERVED     */
+  { 0xB, 0x00 },  /*  AK4601_00B_RESERVED     */
+  { 0xC, 0x00 },  /*  AK4601_00C_RESERVED     */
+  { 0xD, 0x00 },  /*  AK4601_00D_RESERVED     */
+  { 0xE, 0x00 },  /*  AK4601_00E_RESERVED     */
+  { 0xF, 0x00 },  /*  AK4601_00F_CLKO_OUTPUT_SETTING    */
+  { 0x10, 0x00 },  /*  AK4601_010_PIN_SETTING    */
+  { 0x11, 0x00 },  /*  AK4601_011_SYNC_DOMAIN_SELECT_1    */
+  { 0x12, 0x00 },  /*  AK4601_012_RESERVED     */
+  { 0x13, 0x00 },  /*  AK4601_013_SYNC_DOMAIN_SELECT_3    */
+  { 0x14, 0x00 },  /*  AK4601_014_SYNC_DOMAIN_SELECT_4    */
+  { 0x15, 0x00 },  /*  AK4601_015_RESERVED     */
+  { 0x16, 0x00 },  /*  AK4601_016_SYNC_DOMAIN_SELECT_6    */
+  { 0x17, 0x00 },  /*  AK4601_017_SYNC_DOMAIN_SELECT_7    */
+  { 0x18, 0x00 },  /*  AK4601_018_SYNC_DOMAIN_SELECT_8    */
+  { 0x19, 0x00 },  /*  AK4601_019_SYNC_DOMAIN_SELECT_9    */
+  { 0x1A, 0x00 },  /*  AK4601_01A_RESERVED     */
+  { 0x1B, 0x00 },  /*  AK4601_01B_RESERVED     */
+  { 0x1C, 0x00 },  /*  AK4601_01C_RESERVED     */
+  { 0x1D, 0x00 },  /*  AK4601_01D_RESERVED     */
+  { 0x1E, 0x00 },  /*  AK4601_01E_RESERVED     */
+  { 0x1F, 0x00 },  /*  AK4601_01F_SYNC_DOMAIN_SELECT_15    */
+  { 0x20, 0x00 },  /*  AK4601_020_SYNC_DOMAIN_SELECT_16    */
+  { 0x21, 0x00 },  /*  AK4601_021_SDOUT1_TDM_SLOT1_2_DATA_SELECT    */
+  { 0x22, 0x00 },  /*  AK4601_022_SDOUT1_TDM_SLOT3_4_DATA_SELECT    */
+  { 0x23, 0x00 },  /*  AK4601_023_SDOUT1_TDM_SLOT5_6_DATA_SELECT    */
+  { 0x24, 0x00 },  /*  AK4601_024_SDOUT1_TDM_SLOT7_8_DATA_SELECT    */
+  { 0x25, 0x00 },  /*  AK4601_025_SDOUT1_TDM_SLOT9_10_DATA_SELECT    */
+  { 0x26, 0x00 },  /*  AK4601_026_SDOUT1_TDM_SLOT11_12_DATA_SELECT    */
+  { 0x27, 0x00 },  /*  AK4601_027_SDOUT1_TDM_SLOT13_14_DATA_SELECT    */
+  { 0x28, 0x00 },  /*  AK4601_028_SDOUT1_TDM_SLOT15_16_DATA_SELECT    */
+  { 0x29, 0x00 },  /*  AK4601_029_SDOUT2_OUTPUT_DATA_SELECT    */
+  { 0x2A, 0x00 },  /*  AK4601_02A_SDOUT2_OUTPUT_DATA_SELECT    */
+  { 0x2B, 0x00 },  /*  AK4601_02B_RESERVED     */
+  { 0x2C, 0x00 },  /*  AK4601_02C_RESERVED     */
+  { 0x2D, 0x00 },  /*  AK4601_02D_RESERVED     */
+  { 0x2E, 0x00 },  /*  AK4601_02E_RESERVED     */
+  { 0x2F, 0x00 },  /*  AK4601_02F_RESERVED     */
+  { 0x30, 0x00 },  /*  AK4601_030_RESERVED     */
+  { 0x31, 0x00 },  /*  AK4601_031_RESERVED     */
+  { 0x32, 0x00 },  /*  AK4601_032_RESERVED     */
+  { 0x33, 0x00 },  /*  AK4601_033_RESERVED     */
+  { 0x34, 0x00 },  /*  AK4601_034_RESERVED     */
+  { 0x35, 0x00 },  /*  AK4601_035_DAC1_INPUT_DATA_SELECT    */
+  { 0x36, 0x00 },  /*  AK4601_036_DAC2_INPUT_DATA_SELECT    */
+  { 0x37, 0x00 },  /*  AK4601_037_DAC3_INPUT_DATA_SELECT    */
+  { 0x38, 0x00 },  /*  AK4601_038_VOL1_INPUT_DATA_SELECT    */
+  { 0x39, 0x00 },  /*  AK4601_039_VOL2_INPUT_DATA_SELECT    */
+  { 0x3A, 0x00 },  /*  AK4601_03A_VOL3_INPUT_DATA_SELECT    */
+  { 0x3B, 0x00 },  /*  AK4601_03B_RESERVED     */
+  { 0x3C, 0x00 },  /*  AK4601_03C_RESERVED     */
+  { 0x3D, 0x00 },  /*  AK4601_03D_RESERVED     */
+  { 0x3E, 0x00 },  /*  AK4601_03E_RESERVED     */
+  { 0x3F, 0x00 },  /*  AK4601_03F_RESERVED     */
+  { 0x40, 0x00 },  /*  AK4601_040_RESERVED     */
+  { 0x41, 0x00 },  /*  AK4601_041_RESERVED     */
+  { 0x42, 0x00 },  /*  AK4601_042_RESERVED     */
+  { 0x43, 0x00 },  /*  AK4601_043_RESERVED     */
+  { 0x44, 0x00 },  /*  AK4601_044_RESERVED     */
+  { 0x45, 0x00 },  /*  AK4601_045_MIXER_A_CH1_INPUT_DATA_SELECT    */
+  { 0x46, 0x00 },  /*  AK4601_046_MIXER_A_CH2_INPUT_DATA_SELECT    */
+  { 0x47, 0x00 },  /*  AK4601_047_MIXER_B_CH1_INPUT_DATA_SELECT    */
+  { 0x48, 0x00 },  /*  AK4601_048_MIXER_B_CH2_INPUT_DATA_SELECT    */
+  { 0x49, 0x00 },  /*  AK4601_049_RESERVED     */
+  { 0x4A, 0x00 },  /*  AK4601_04A_RESERVED     */
+  { 0x4B, 0x00 },  /*  AK4601_04B_RESERVED     */
+  { 0x4C, 0x00 },  /*  AK4601_04C_CLOCK_FORMAT_SETTING_1    */
+  { 0x4D, 0x00 },  /*  AK4601_04D_RESERVED     */
+  { 0x4E, 0x00 },  /*  AK4601_04E_RESERVED     */
+  { 0x4F, 0x00 },  /*  AK4601_04F_RESERVED     */
+  { 0x50, 0x00 },  /*  AK4601_050_SDIN1_DIGITAL_INPUT_FORMAT    */
+  { 0x51, 0x00 },  /*  AK4601_051_SDIN2_DIGITAL_INPUT_FORMAT    */
+  { 0x52, 0x00 },  /*  AK4601_052_SDIN3_DIGITAL_INPUT_FORMAT    */
+  { 0x53, 0x00 },  /*  AK4601_053_RESERVED     */
+  { 0x54, 0x00 },  /*  AK4601_054_RESERVED     */
+  { 0x55, 0x00 },  /*  AK4601_055_SDOUT1_DIGITAL_OUTPUT_FORMAT    */
+  { 0x56, 0x00 },  /*  AK4601_056_SDOUT2_DIGITAL_OUTPUT_FORMAT    */
+  { 0x57, 0x00 },  /*  AK4601_057_SDOUT3_DIGITAL_OUTPUT_FORMAT    */
+  { 0x58, 0x00 },  /*  AK4601_058_RESERVED     */
+  { 0x59, 0x00 },  /*  AK4601_059_RESERVED     */
+  { 0x5A, 0x00 },  /*  AK4601_05A_SDOUT_PHASE_SETTING    */
+  { 0x5B, 0x00 },  /*  AK4601_05B_RESERVED     */
+  { 0x5C, 0x00 },  /*  AK4601_05C_RESERVED     */
+  { 0x5D, 0x00 },  /*  AK4601_05D_RESERVED     */
+  { 0x5E, 0x00 },  /*  AK4601_05E_OUTPUT_PORT_ENABLE_SETTING    */
+  { 0x5F, 0x00 },  /*  AK4601_05F_RESERVED     */
+  { 0x60, 0x00 },  /*  AK4601_060_MIXER_A_SETTING     */
+  { 0x61, 0x00 },  /*  AK4601_061_MIXER_B_SETTING     */
+  { 0x62, 0x00 },  /*  AK4601_062_MIC_AMP_GAIN    */
+  { 0x63, 0x00 },  /*  AK4601_063_ANALOG_INPUT_GAIN_CONTROL    */
+  { 0x64, 0x30 },  /*  AK4601_064_ADC1LCH_DIGITAL_VOLUME    */
+  { 0x65, 0x30 },  /*  AK4601_065_ADC1RCH_DIGITAL_VOLUME    */
+  { 0x66, 0x30 },  /*  AK4601_066_ADC2LCH_DIGITAL_VOLUME    */
+  { 0x67, 0x30 },  /*  AK4601_067_ADC2RCH_DIGITAL_VOLUME    */
+  { 0x68, 0x30 },  /*  AK4601_068_ADCM_DIGITAL_VOLUME    */
+  { 0x69, 0x00 },  /*  AK4601_069_RESERVED     */
+  { 0x6A, 0x00 },  /*  AK4601_06A_RESERVED     */
+  { 0x6B, 0x00 },  /*  AK4601_06B_ANALOG_INPUT_SELECT_SETTING    */
+  { 0x6C, 0x00 },  /*  AK4601_06C_ADC_MUTE_AND_HPF_CONTROL    */
+  { 0x6D, 0x18 },  /*  AK4601_06D_DAC1LCH_DIGITAL_VOLUME    */
+  { 0x6E, 0x18 },  /*  AK4601_06E_DAC1RCH_DIGITAL_VOLUME    */
+  { 0x6F, 0x18 },  /*  AK4601_06F_DAC2LCH_DIGITAL_VOLUME    */
+  { 0x70, 0x18 },  /*  AK4601_070_DAC2RCH_DIGITAL_VOLUME    */
+  { 0x71, 0x18 },  /*  AK4601_071_DAC3LCH_DIGITAL_VOLUME    */
+  { 0x72, 0x18 },  /*  AK4601_072_DAC3RCH_DIGITAL_VOLUME    */
+  { 0x73, 0x02 },  /*  AK4601_073_DAC_MUTE_AND_FILTER_SETTING    */
+  { 0x74, 0x15 },  /*  AK4601_074_DAC_DEM_SETTING     */
+  { 0x75, 0x18 },  /*  AK4601_075_VOL1LCH_DIGITAL_VOLUME    */
+  { 0x76, 0x18 },  /*  AK4601_076_VOL1RCH_DIGITAL_VOLUME    */
+  { 0x77, 0x18 },  /*  AK4601_077_VOL2LCH_DIGITAL_VOLUME    */
+  { 0x78, 0x18 },  /*  AK4601_078_VOL2RCH_DIGITAL_VOLUME    */
+  { 0x79, 0x18 },  /*  AK4601_079_VOL3LCH_DIGITAL_VOLUME    */
+  { 0x7A, 0x18 },  /*  AK4601_07A_VOL3RCH_DIGITAL_VOLUME    */
+  { 0x7B, 0x18 },  /*  AK4601_07B_RESERVED     */
+  { 0x7C, 0x18 },  /*  AK4601_07C_RESERVED     */
+  { 0x7D, 0x18 },  /*  AK4601_07D_RESERVED     */
+  { 0x7E, 0x18 },  /*  AK4601_07E_RESERVED     */
+  { 0x7F, 0x00 },  /*  AK4601_07F_VOL_SETTING    */
+  { 0x80, 0x00 },  /*  AK4601_080_RESERVED     */
+  { 0x81, 0x00 },  /*  AK4601_081_RESERVED     */
+  { 0x82, 0x00 },  /*  AK4601_082_RESERVED     */
+  { 0x83, 0x00 },  /*  AK4601_083_STO_FLAG_SETTING1    */
+  { 0x84, 0x00 },  /*  AK4601_084_RESERVED     */
+  { 0x85, 0x00 },  /*  AK4601_085_RESERVED     */
+  { 0x86, 0x04 },  /*  AK4601_086_RESERVED     */
+  { 0x87, 0x02 },  /*  AK4601_087_RESERVED     */
+  { 0x88, 0x00 },  /*  AK4601_088_RESERVED     */
+  { 0x89, 0x00 },  /*  AK4601_089_RESERVED     */
+  { 0x8A, 0x00 },  /*  AK4601_08A_POWER_MANAGEMENT1    */
+  { 0x8B, 0x00 },  /*  AK4601_08B_RESERVED     */
+  { 0x8C, 0x20 },  /*  AK4601_08C_RESET_CONTROL     */
+  { 0x8D, 0x00 },  /*  AK4601_08D_RESERVED     */
+  { 0x8E, 0x00 },  /*  AK4601_08E_RESERVED     */
+  { 0x8F, 0x00 },  /*  AK4601_08F_RESERVED     */
+  { 0x90, 0x00 },  /*  AK4601_090_RESERVED     */
+  { 0x91, 0x00 },  /*  AK4601_091_RESERVED     */
+  { 0x92, 0x00 },  /*  AK4601_092_RESERVED     */
+  { 0x93, 0x00 },  /*  AK4601_093_RESERVED     */
+  { 0x94, 0x00 },  /*  AK4601_094_RESERVED     */
+  { 0x95, 0x00 },  /*  AK4601_095_RESERVED     */
+  { 0x96, 0x00 },  /*  AK4601_096_RESERVED     */
+  { 0x97, 0x00 },  /*  AK4601_097_RESERVED     */
+  { 0x98, 0x00 },  /*  AK4601_098_RESERVED     */
+  { 0x99, 0x00 },  /*  AK4601_099_RESERVED     */
+  { 0x9A, 0x00 },  /*  AK4601_09A_RESERVED     */
+  { 0x9B, 0x00 },  /*  AK4601_09B_RESERVED     */
+  { 0x9C, 0x00 },  /*  AK4601_09C_RESERVED     */
+  { 0x9D, 0x00 },  /*  AK4601_09D_RESERVED     */
+  { 0x9E, 0x00 },  /*  AK4601_09E_RESERVED     */
+  { 0x9F, 0x00 },  /*  AK4601_09F_RESERVED     */
+  { 0xA0, 0x00 },  /*  AK4601_0A0_RESERVED     */
+  { 0xA1, 0x00 },  /*  AK4601_0A1_RESERVED     */
+  { 0xA2, 0x00 },  /*  AK4601_0A2_RESERVED     */
+  { 0xA3, 0x00 },  /*  AK4601_0A3_RESERVED     */
+  { 0xA4, 0x00 },  /*  AK4601_0A4_RESERVED     */
+  { 0xA5, 0x00 },  /*  AK4601_0A5_RESERVED     */
+  { 0xA6, 0x00 },  /*  AK4601_0A6_RESERVED     */
+  { 0xA7, 0x00 },  /*  AK4601_0A7_RESERVED     */
+  { 0xA8, 0x00 },  /*  AK4601_0A8_RESERVED     */
+  { 0xA9, 0x00 },  /*  AK4601_0A9_RESERVED     */
+  { 0xAA, 0x00 },  /*  AK4601_0AA_RESERVED     */
+  { 0xAB, 0x00 },  /*  AK4601_0AB_RESERVED     */
+  { 0xAC, 0x00 },  /*  AK4601_0AC_RESERVED     */
+  { 0xAD, 0x00 },  /*  AK4601_0AD_RESERVED     */
+  { 0xAE, 0x00 },  /*  AK4601_0AE_RESERVED     */
+  { 0xAF, 0x00 },  /*  AK4601_0AF_RESERVED     */
+  { 0xB0, 0x00 },  /*  AK4601_0B0_RESERVED     */
+  { 0xB1, 0x00 },  /*  AK4601_0B1_RESERVED     */
+  { 0xB2, 0x00 },  /*  AK4601_0B2_RESERVED     */
+  { 0xB3, 0x00 },  /*  AK4601_0B3_RESERVED     */
+  { 0xB4, 0x00 },  /*  AK4601_0B4_RESERVED     */
+  { 0xB5, 0x00 },  /*  AK4601_0B5_RESERVED     */
+  { 0xB6, 0x00 },  /*  AK4601_0B6_RESERVED     */
+  { 0xB7, 0x00 },  /*  AK4601_0B7_RESERVED     */
+  { 0xB8, 0x00 },  /*  AK4601_0B8_RESERVED     */
+  { 0xB9, 0x00 },  /*  AK4601_0B9_RESERVED     */
+  { 0xBA, 0x00 },  /*  AK4601_0BA_RESERVED     */
+  { 0xBB, 0x00 },  /*  AK4601_0BB_RESERVED     */
+  { 0xBC, 0x00 },  /*  AK4601_0BC_RESERVED     */
+  { 0xBD, 0x00 },  /*  AK4601_0BD_RESERVED     */
+  { 0xBE, 0x00 },  /*  AK4601_0BE_RESERVED     */
+  { 0xBF, 0x00 },  /*  AK4601_0BF_RESERVED     */
+  { 0xC0, 0x00 },  /*  AK4601_0C0_RESERVED     */
+  { 0xC1, 0x00 },  /*  AK4601_0C1_RESERVED     */
+  { 0xC2, 0x00 },  /*  AK4601_0C2_RESERVED     */
+  { 0xC3, 0x00 },  /*  AK4601_0C3_RESERVED     */
+  { 0xC4, 0x00 },  /*  AK4601_0C4_RESERVED     */
+  { 0xC5, 0x00 },  /*  AK4601_0C5_RESERVED     */
+  { 0xC6, 0x00 },  /*  AK4601_0C6_RESERVED     */
+  { 0xC7, 0x00 },  /*  AK4601_0C7_RESERVED     */
+  { 0xC8, 0x00 },  /*  AK4601_0C8_RESERVED     */
+  { 0xC9, 0x00 },  /*  AK4601_0C9_RESERVED     */
+  { 0xCA, 0x00 },  /*  AK4601_0CA_RESERVED     */
+  { 0xCB, 0x00 },  /*  AK4601_0CB_RESERVED     */
+  { 0xCC, 0x00 },  /*  AK4601_0CC_RESERVED     */
+  { 0xCD, 0x00 },  /*  AK4601_0CD_RESERVED     */
+  { 0xCE, 0x00 },  /*  AK4601_0CE_RESERVED     */
+  { 0xCF, 0x00 },  /*  AK4601_0CF_RESERVED     */
+  { 0xD0, 0x00 },  /*  AK4601_0D0_RESERVED     */
+  { 0xD1, 0x00 },  /*  AK4601_0D1_RESERVED     */
+  { 0xD2, 0x00 },  /*  AK4601_0D2_RESERVED     */
+  { 0xD3, 0x00 },  /*  AK4601_0D3_RESERVED     */
+  { 0xD4, 0x00 },  /*  AK4601_0D4_RESERVED     */
+  { 0xD5, 0x00 },  /*  AK4601_0D5_RESERVED     */
+  { 0xD6, 0x00 },  /*  AK4601_0D6_RESERVED     */
+  { 0xD7, 0x00 },  /*  AK4601_0D7_RESERVED     */
+  { 0xD8, 0x00 },  /*  AK4601_0D8_RESERVED     */
+  { 0xD9, 0x00 },  /*  AK4601_0D9_RESERVED     */
+  { 0xDA, 0x00 },  /*  AK4601_0DA_RESERVED     */
+  { 0xDB, 0x00 },  /*  AK4601_0DB_RESERVED     */
+  { 0xDC, 0x00 },  /*  AK4601_0DC_RESERVED     */
+  { 0xDD, 0x00 },  /*  AK4601_0DD_RESERVED     */
+  { 0xDE, 0x00 },  /*  AK4601_0DE_RESERVED     */
+  { 0xDF, 0x00 },  /*  AK4601_0DF_RESERVED     */
+  { 0xE0, 0x00 },  /*  AK4601_0E0_RESERVED     */
+  { 0xE1, 0x00 },  /*  AK4601_0E1_RESERVED     */
+  { 0xE2, 0x00 },  /*  AK4601_0E2_RESERVED     */
+  { 0xE3, 0x00 },  /*  AK4601_0E3_RESERVED     */
+  { 0xE4, 0x00 },  /*  AK4601_0E4_RESERVED     */
+  { 0xE5, 0x00 },  /*  AK4601_0E5_RESERVED     */
+  { 0xE6, 0x00 },  /*  AK4601_0E6_RESERVED     */
+  { 0xE7, 0x00 },  /*  AK4601_0E7_RESERVED     */
+  { 0xE8, 0x00 },  /*  AK4601_0E8_RESERVED     */
+  { 0xE9, 0x00 },  /*  AK4601_0E9_RESERVED     */
+  { 0xEA, 0x00 },  /*  AK4601_0EA_RESERVED     */
+  { 0xEB, 0x00 },  /*  AK4601_0EB_RESERVED     */
+  { 0xEC, 0x00 },  /*  AK4601_0EC_RESERVED     */
+  { 0xED, 0x00 },  /*  AK4601_0ED_RESERVED     */
+  { 0xEE, 0x00 },  /*  AK4601_0EE_RESERVED     */
+  { 0xEF, 0x00 },  /*  AK4601_0EF_RESERVED     */
+  { 0xF0, 0x00 },  /*  AK4601_0F0_RESERVED     */
+  { 0xF1, 0x00 },  /*  AK4601_0F1_RESERVED     */
+  { 0xF2, 0x00 },  /*  AK4601_0F2_RESERVED     */
+  { 0xF3, 0x00 },  /*  AK4601_0F3_RESERVED     */
+  { 0xF4, 0x00 },  /*  AK4601_0F4_RESERVED     */
+  { 0xF5, 0x00 },  /*  AK4601_0F5_RESERVED     */
+  { 0xF6, 0x00 },  /*  AK4601_0F6_RESERVED     */
+  { 0xF7, 0x00 },  /*  AK4601_0F7_RESERVED     */
+  { 0xF8, 0x00 },  /*  AK4601_0F8_RESERVED     */
+  { 0xF9, 0x00 },  /*  AK4601_0F9_RESERVED     */
+  { 0xFA, 0x00 },  /*  AK4601_0FA_RESERVED     */
+  { 0xFB, 0x00 },  /*  AK4601_0FB_RESERVED     */
+  { 0xFC, 0x00 },  /*  AK4601_0FC_RESERVED     */
+  { 0xFD, 0x00 },  /*  AK4601_0FD_RESERVED     */
+  { 0xFE, 0x00 },  /*  AK4601_0FE_RESERVED     */
+  { 0xFF, 0x00 },  /*  AK4601_0FF_RESERVED     */
+  { 0x100, 0x00 },  /*  AK4601_100_RESERVED     */
+  { 0x101, 0x00 },  /*  AK4601_101_RESERVED     */
+  { 0x102, 0x40 },  /*  AK4601_102_STATUS_READ_OUT     */
 };
 
 static const struct {
@@ -714,8 +630,9 @@ static const struct {
 	{ 0x00, 0x00 },  // 0x0FF
 	{ 0x00, 0x00 },  // 0x100
 	{ 0x00, 0x00 },  // 0x101
-	{ 0x40, 0x40 },	 // 0x102
+	{ 0x40, 0x00 },	 // 0x102
 };
+
 
 /* MIC Input Volume control:
  * from 0 to 36 dB (quantity of each step is various) */
@@ -1293,8 +1210,8 @@ static int set_sdio3_word_len(struct snd_kcontrol *kcontrol,struct snd_ctl_elem_
 		if ( ak4601->DIDL3 != currMode ) {
 			ak4601->DIDL3 = currMode;
 		}
-		snd_soc_update_bits( ak4601->codec, AK4601_052_SDIN3_DIGITAL_INPUT_FORMAT,  0x03, ak4601->DIDL3);
-		snd_soc_update_bits( ak4601->codec, AK4601_057_SDOUT3_DIGITAL_OUTPUT_FORMAT,0x03, ak4601->DIDL3);
+		snd_soc_update_bits( codec, AK4601_052_SDIN3_DIGITAL_INPUT_FORMAT,  0x03, ak4601->DIDL3);
+		snd_soc_update_bits( codec, AK4601_057_SDOUT3_DIGITAL_OUTPUT_FORMAT,0x03, ak4601->DIDL3);
 	}
 	else {
 		akdbgprt(" [AK4601] %s Invalid Value selected!\n",__FUNCTION__);
@@ -1379,7 +1296,7 @@ static int set_sdin3_slot(struct snd_kcontrol *kcontrol,struct snd_ctl_elem_valu
 		if ( ak4601->DISLbit[2] != currMode ) {
 			ak4601->DISLbit[2] = currMode;
 		}
-		snd_soc_update_bits( ak4601->codec, AK4601_052_SDIN3_DIGITAL_INPUT_FORMAT, 0x30, currMode );
+		snd_soc_update_bits( codec, AK4601_052_SDIN3_DIGITAL_INPUT_FORMAT, 0x30, currMode );
 	}
 	else {
 		akdbgprt(" [AK4601] %s Invalid Value selected!\n",__FUNCTION__);
@@ -1464,7 +1381,7 @@ static int set_sdout3_slot(struct snd_kcontrol *kcontrol,struct snd_ctl_elem_val
 		if ( ak4601->DOSLbit[2] != currMode ) {
 			ak4601->DOSLbit[2] = currMode;
 		}
-		snd_soc_update_bits( ak4601->codec, AK4601_057_SDOUT3_DIGITAL_OUTPUT_FORMAT, 0x30, currMode << 4 );
+		snd_soc_update_bits( codec, AK4601_057_SDOUT3_DIGITAL_OUTPUT_FORMAT, 0x30, currMode << 4 );
 	}
 	else {
 		akdbgprt(" [AK4601] %s Invalid Value selected!\n",__FUNCTION__);
@@ -1566,8 +1483,6 @@ static const struct soc_enum ak4601_adc_input_vol_enum[] ={
 	SOC_ENUM_SINGLE(AK4601_063_ANALOG_INPUT_GAIN_CONTROL, 3, ARRAY_SIZE(adc_input_vol_texts),adc_input_vol_texts),//ADCM
 };
 
-//static int ak4601_reads(struct snd_soc_codec *codec, u8 *, size_t, u8 *, size_t);
-
 #ifdef AK4601_DEBUG
 
 static const char *test_reg_select[]   = 
@@ -1610,7 +1525,7 @@ struct snd_ctl_elem_value  *ucontrol)
 		}
 		for ( i = regs ; i <= rege ; i++ ){
 			value = snd_soc_read(codec, i);
-			printk("[AK4601] Addr,Reg=(%03x, %02x)\n", i, value);
+//			printk("***AK4601 Addr,Reg=(%03x, %02x)\n", i, value);
 		}
 	}
 	else {
@@ -1746,20 +1661,15 @@ static const char *ak4601_micbias1_select_texts[] =
 static const char *ak4601_micbias2_select_texts[] =
 		{"LineIn", "MicBias2"};
 
-static const struct soc_enum ak4601_micbias1_mux_enum =
-	SOC_ENUM_SINGLE(0, 0,
-			ARRAY_SIZE(ak4601_micbias1_select_texts), ak4601_micbias1_select_texts);
+static SOC_ENUM_SINGLE_VIRT_DECL(ak4601_micbias1_mux_enum, ak4601_micbias1_select_texts);
 
 static const struct snd_kcontrol_new ak4601_micbias1_mux_control =
 	SOC_DAPM_ENUM("MicBias1 Select", ak4601_micbias1_mux_enum);
 
-static const struct soc_enum ak4601_micbias2_mux_enum =
-	SOC_ENUM_SINGLE(0, 0,
-			ARRAY_SIZE(ak4601_micbias2_select_texts), ak4601_micbias2_select_texts);
+static SOC_ENUM_SINGLE_VIRT_DECL(ak4601_micbias2_mux_enum, ak4601_micbias2_select_texts);
 
 static const struct snd_kcontrol_new ak4601_micbias2_mux_control =
 	SOC_DAPM_ENUM("MicBias2 Select", ak4601_micbias2_mux_enum);
-
 
 static const char *ak4601_ain1l_select_texts[] =
 		{"IN1P_N", "AIN1L"};
@@ -1880,6 +1790,7 @@ static const struct soc_enum ak4601_sout3_mux_enum =
 static const struct snd_kcontrol_new ak4601_sout3_mux_control =
 	SOC_DAPM_ENUM("SDOUT3 Select", ak4601_sout3_mux_enum);
 
+
 static const struct soc_enum ak4601_mixera1_mux_enum =
 	SOC_VALUE_ENUM_SINGLE(AK4601_045_MIXER_A_CH1_INPUT_DATA_SELECT, 0, 0x3F,
 			ARRAY_SIZE(ak4601_source_select_texts), ak4601_source_select_texts, ak4601_source_select_values);
@@ -1943,7 +1854,12 @@ static const struct snd_kcontrol_new ak4601_vol3_mux_control =
 static int ak4601_ClockReset(struct snd_soc_dapm_widget *w,
 			 struct snd_kcontrol *kcontrol, int event)
 {
+#ifdef KERNEL_3_18_XX
+	struct snd_soc_codec *codec = w->codec;
+#else
 	struct snd_soc_codec *codec = snd_soc_dapm_to_codec(w->dapm);
+#endif
+
 	akdbgprt("\t[AK4601] %s(%d)\n",__FUNCTION__,__LINE__);
 
 	switch (event) {
@@ -1979,7 +1895,12 @@ static int ak4601_MicBias1(struct snd_soc_dapm_widget *w, struct snd_kcontrol *k
 
 static int ak4601_MicBias2(struct snd_soc_dapm_widget *w, struct snd_kcontrol *kcontrol, int event)
 {
+#ifdef KERNEL_3_18_XX
+	struct snd_soc_codec *codec = w->codec;
+#else
 	struct snd_soc_codec *codec = snd_soc_dapm_to_codec(w->dapm);
+#endif
+
 	int MicBias1;
 	akdbgprt("\t[AK4601] %s\n",__FUNCTION__);
 
@@ -2026,11 +1947,11 @@ static const struct snd_soc_dapm_widget ak4601_dapm_widgets[] = {
 
 // Digital Input/Output
 	SND_SOC_DAPM_AIF_IN("SDIN1", "AIF1 Playback", 0, SND_SOC_NOPM, 0, 0),
-	SND_SOC_DAPM_AIF_IN("SDIN2", "AIF1 Playback", 0, SND_SOC_NOPM, 0, 0),
+	SND_SOC_DAPM_AIF_IN("SDIN2", "AIF2 Playback", 0, SND_SOC_NOPM, 0, 0),
 	SND_SOC_DAPM_AIF_IN("SDIN3", SDIO3_LINK" Playback", 0, SND_SOC_NOPM, 0, 0),
 	
 	SND_SOC_DAPM_AIF_OUT("SDOUT1", "AIF1 Capture", 0, SND_SOC_NOPM, 0, 0),
-	SND_SOC_DAPM_AIF_OUT("SDOUT2", "AIF1 Capture", 0, SND_SOC_NOPM, 0, 0),
+	SND_SOC_DAPM_AIF_OUT("SDOUT2", "AIF2 Capture", 0, SND_SOC_NOPM, 0, 0),
 	SND_SOC_DAPM_AIF_OUT("SDOUT3", SDIO3_LINK" Capture", 0, SND_SOC_NOPM, 0, 0),
 
 // Source Selector
@@ -2058,13 +1979,9 @@ static const struct snd_soc_dapm_widget ak4601_dapm_widgets[] = {
 	SND_SOC_DAPM_MUX("VOL3 Source Selector", SND_SOC_NOPM, 0, 0, &ak4601_vol3_mux_control),
 
 // MIC Bias
-	//SND_SOC_DAPM_SUPPLY("MicBias1", AK4601_002_MIC_BIAS_POWER_MANAGEMENT, 1, 0, &ak4601_MicBias1, SND_SOC_DAPM_POST_PMU),
-	//SND_SOC_DAPM_MICBIAS("MicBias1", AK4601_002_MIC_BIAS_POWER_MANAGEMENT, 1, 0),
 	SND_SOC_DAPM_ADC_E("MicBias1", NULL, AK4601_002_MIC_BIAS_POWER_MANAGEMENT, 1, 0, &ak4601_MicBias1, SND_SOC_DAPM_POST_PMU),
 	SND_SOC_DAPM_MUX("MicBias1 MUX", SND_SOC_NOPM, 0, 0, &ak4601_micbias1_mux_control),
 
-	//SND_SOC_DAPM_SUPPLY("MicBias2", AK4601_002_MIC_BIAS_POWER_MANAGEMENT, 0, 0, &ak4601_MicBias2, SND_SOC_DAPM_POST_PMU),
-	//SND_SOC_DAPM_MICBIAS("MicBias2", AK4601_002_MIC_BIAS_POWER_MANAGEMENT, 0, 0),
 	SND_SOC_DAPM_ADC_E("MicBias2", NULL, AK4601_002_MIC_BIAS_POWER_MANAGEMENT, 0, 0, &ak4601_MicBias2, SND_SOC_DAPM_POST_PMU),
 	SND_SOC_DAPM_MUX("MicBias2 MUX", SND_SOC_NOPM, 0, 0, &ak4601_micbias2_mux_control),
 
@@ -2552,6 +2469,7 @@ static int ak4601_hw_params(struct snd_pcm_substream *substream,
 {
 	struct snd_soc_codec *codec = dai->codec;
 	struct ak4601_priv *ak4601 = snd_soc_codec_get_drvdata(codec);
+	
 	int fsno, nmax;
 	int DIODLbit, addr, value, nPortNo;
 
@@ -2618,7 +2536,6 @@ static int ak4601_hw_params(struct snd_pcm_substream *substream,
 	/* set Word length */
 	value = DIODLbit;
 
-#ifdef AK4601_MULTI_CARD_ENABLE
 	/* set SDIN data format */
 	addr = AK4601_050_SDIN1_DIGITAL_INPUT_FORMAT + nPortNo;
 	snd_soc_update_bits(codec, addr, 0x03, value);
@@ -2626,18 +2543,6 @@ static int ak4601_hw_params(struct snd_pcm_substream *substream,
 	/* set SDOUT data format */
 	addr = AK4601_055_SDOUT1_DIGITAL_OUTPUT_FORMAT + nPortNo;
 	snd_soc_update_bits(codec, addr, 0x03, value);
-#else
-	for(nPortNo = 0; nPortNo <= AIF_PORT2; nPortNo++)
-	{
-		/* set SDIN data format */
-		addr = AK4601_050_SDIN1_DIGITAL_INPUT_FORMAT + nPortNo;
-		snd_soc_update_bits(codec, addr, 0x03, value);
-
-		/* set SDOUT data format */
-		addr = AK4601_055_SDOUT1_DIGITAL_OUTPUT_FORMAT + nPortNo;
-		snd_soc_update_bits(codec, addr, 0x03, value);
-	}
-#endif
 
 	return 0;
 }
@@ -2760,16 +2665,55 @@ static int ak4601_set_dai_fmt(struct snd_soc_dai *dai, unsigned int fmt)
 	return 0;
 }
 
-/*
-* Read ak4601 register cache
- */
-static inline u32 ak4601_read_reg_cache(struct snd_soc_codec *codec, u16 reg)
+static bool ak4601_readable(struct device *dev, unsigned int reg)
 {
-    u8 *cache = codec->reg_cache;
-    BUG_ON(reg > ARRAY_SIZE(ak4601_reg));
-    return (u32)cache[reg];
+	bool	ret;
+
+	if ( reg < AK4601_MAX_REGISTERS ) {
+		if ( ak4601_access_masks[reg].readable != 0 ) ret = true;
+		else ret = false;
+	}		
+	else ret = false;
+
+	return ret;
+
 }
 
+
+static bool ak4601_volatile(struct device *dev, unsigned int reg)
+{
+	bool	ret;
+
+#ifdef AK4601_DEBUG
+	if ( reg < AK4601_MAX_REGISTERS ) ret = true;
+	else ret = false;
+#else
+	switch (reg) {
+		case AK4601_102_STATUS_READ_OUT:
+			ret = true;
+			break;
+		default:
+			ret = false;
+			break;
+	}
+#endif
+	return(ret);
+}
+
+static bool ak4601_writeable(struct device *dev, unsigned int reg)
+{
+	bool	ret;
+
+	if ( reg < AK4601_MAX_REGISTERS ) {
+		if ( ak4601_access_masks[reg].writable != 0 ) ret = true;
+		else ret = false;
+	}		
+	else ret = false;
+
+	return ret;
+}
+
+#ifdef AK4601_I2C_IF
 static unsigned int ak4601_i2c_read(
 struct i2c_client *client,
 u8 *reg,
@@ -2801,6 +2745,7 @@ int datalen)
 	else
 		return -EIO;
 }
+#endif
 
 unsigned int ak4601_read_register(struct snd_soc_codec *codec, unsigned int reg)
 {
@@ -2809,6 +2754,24 @@ unsigned int ak4601_read_register(struct snd_soc_codec *codec, unsigned int reg)
 	int	wlen, rlen;
 	int ret;
 	unsigned int rdata;
+
+	if (reg == SND_SOC_NOPM)
+		return 0;
+
+	if (!ak4601_readable(NULL, reg)) return(-EINVAL);
+
+	if (!ak4601_volatile(NULL, reg) && ak4601_readable(NULL, reg)) {
+		ret = regmap_read(ak4601->regmap, reg, &rdata);  
+		akdbgprt("[AK4601] %s (%02x, %02x)\n",__FUNCTION__, reg, rdata);
+		if (ret >= 0) {
+			return rdata;
+		} 
+        else {
+			dev_err(codec->dev, "Cache read from %x failed: %d\n",
+				reg, ret);
+			return 0;
+		}
+	}
 
 	wlen = 3;
 	rlen = 1;
@@ -2829,37 +2792,10 @@ unsigned int ak4601_read_register(struct snd_soc_codec *codec, unsigned int reg)
 	else {
 		rdata = (unsigned int)rx[0];
 	}
-	//akdbgprt("[AK4601] %s (%02x, %02x)\n",__FUNCTION__, reg, rdata);
+	akdbgprt("[AK4601] %s (%02x, %02x)\n",__FUNCTION__, reg, rdata);
 	return rdata;
 }
 
-#if 0
-static int ak4601_reads(struct snd_soc_codec *codec, u8 *tx, size_t wlen, u8 *rx, size_t rlen)
-{
-	struct ak4601_priv *ak4601 = snd_soc_codec_get_drvdata(codec);
-	int ret;
-	
-	akdbgprt("*****[AK4601] %s tx[0]=0x%02x, raddr=0x%02x%02x, wlen=%d, rlen=%d\n",__FUNCTION__, tx[0],tx[1],tx[2],wlen,rlen);
-#ifdef AK4601_I2C_IF
-	ret = ak4601_i2c_read(ak4601->i2c, tx, wlen, rx, rlen);
-#else
-	ret = spi_write_then_read(ak4601->spi, tx, wlen, rx, rlen);
-#endif
-
-	return ret;
-
-}
-#endif
-
-static inline void ak4601_write_reg_cache(
-struct snd_soc_codec *codec, 
-u16 reg,
-u16 value)
-{
-    u8 *cache = codec->reg_cache;
-    BUG_ON(reg > ARRAY_SIZE(ak4601_reg));
-    cache[reg] = (u8)value;
-}
 
 static int ak4601_write_register(struct snd_soc_codec *codec,  unsigned int reg,  unsigned int value)
 {
@@ -2868,6 +2804,11 @@ static int ak4601_write_register(struct snd_soc_codec *codec,  unsigned int reg,
 	int wlen;
 	int rc;
 	unsigned int value2;
+
+	if (reg == SND_SOC_NOPM)
+		return 0;
+
+	if (!ak4601_writeable(NULL, reg)) return(-EINVAL);
 
 	value2 = ( ((unsigned int)(ak4601_access_masks[reg].writable)) & value ); 
 	
@@ -2885,33 +2826,25 @@ static int ak4601_write_register(struct snd_soc_codec *codec,  unsigned int reg,
 	rc = spi_write(ak4601->spi, tx, wlen);
 #endif
 	
-	if ( rc==0 ) ak4601_write_reg_cache(codec, reg, value2);
-
+	if ( rc >= 0 ) {
+		if (!ak4601_volatile(NULL, reg)) {
+			rc = regmap_write(ak4601->regmap, reg, value);
+			if (rc != 0)
+				dev_err(codec->dev, "Cache write to %x failed: %d\n",
+					reg, rc);
+		}
+	}
 	
 	return rc;
+
 }
-
-#if 0
-static int ak4601_writes(struct snd_soc_codec *codec, const u8 *tx, size_t wlen)
-{
-	struct ak4601_priv *ak4601 = snd_soc_codec_get_drvdata(codec);
-	int rc;
-
-	akdbgprt("[AK4601] %s tx[0]=%02x tx[1]=%02x tx[2]=%02x, wlen=%d\n",__FUNCTION__, (int)tx[0], (int)tx[1], (int)tx[2], wlen);
-
-#ifdef AK4601_I2C_IF
-	rc = i2c_master_send(ak4601->i2c, tx, wlen);
-#else
-	rc = spi_write(ak4601->spi, tx, wlen);
-#endif
-
-	return rc;
-}
-#endif
 
 static int ak4601_set_bias_level(struct snd_soc_codec *codec,
 		enum snd_soc_bias_level level)
 {
+#ifndef KERNEL_3_18_XX
+	struct snd_soc_dapm_context *dapm = snd_soc_codec_get_dapm(codec);
+#endif
 #ifdef TCC_USE_MUTE_GPIO
 	struct ak4601_priv *ak4601 = snd_soc_codec_get_drvdata(codec);
 #endif//TCC_USE_MUTE_GPIO
@@ -2958,7 +2891,12 @@ static int ak4601_set_bias_level(struct snd_soc_codec *codec,
 #endif//TCC_USE_MUTE_GPIO		
 		break;
 	}
-	snd_soc_codec_get_dapm(codec)->bias_level = level;
+
+#ifdef KERNEL_3_18_XX
+	codec->dapm.bias_level = level;
+#else
+	dapm->bias_level = level;
+#endif
 
 	return 0;
 }
@@ -2996,9 +2934,9 @@ static int ak4601_set_dai_mute(struct snd_soc_dai *dai, int mute)
 			}
 		}
 #endif//TCC_USE_MUTE_GPIO
-
 		akdbgprt("\t[AK4601] Mute OFF(%d)\n",__LINE__);
 	}
+
 	return 0;
 }
 
@@ -3132,11 +3070,7 @@ static int ak4601_write_spidmy(struct snd_soc_codec *codec)
 	tx[2] = (unsigned char)(0xDA);
 	tx[3] = (unsigned char)(0x7A);
 
-#ifdef AK4601_I2C_IF
-	rd - -EIO;
-#else
 	rd = spi_write(ak4601->spi, tx, wlen);
-#endif
 	
 	return rd;
 }
@@ -3149,12 +3083,13 @@ static int ak4601_init_reg(struct snd_soc_codec *codec)
 	
 	akdbgprt("\t[AK4601] %s\n",__FUNCTION__);
 
-	if ( ak4601->pdn_gpio > 0 ) { 
+	if ( ak4601->pdn_gpio > 0 ) {
 		gpio_set_value(ak4601->pdn_gpio, 0);	
-		msleep(1);
+		mdelay(1);
 		gpio_set_value(ak4601->pdn_gpio, 1);	
-		msleep(1);
+		mdelay(1);
 	}
+
 #ifndef AK4601_I2C_IF
 	ak4601_write_spidmy(codec);
 #endif
@@ -3190,25 +3125,21 @@ static int ak4601_init_reg(struct snd_soc_codec *codec)
 	ak4601->DIDL3 = 0;
 	ak4601->EXBCK[2] = PORT3_LINK;
 
-	snd_soc_update_bits( ak4601->codec, AK4601_016_SYNC_DOMAIN_SELECT_6, 0x77, ((ak4601->EXBCK[0]<<4) + (ak4601->EXBCK[1])));
-	snd_soc_update_bits( ak4601->codec, AK4601_017_SYNC_DOMAIN_SELECT_7, 0x70, ak4601->EXBCK[2]<<4 );
+	snd_soc_update_bits( codec, AK4601_016_SYNC_DOMAIN_SELECT_6, 0x77, ((ak4601->EXBCK[0]<<4) + (ak4601->EXBCK[1])));
+	snd_soc_update_bits( codec, AK4601_017_SYNC_DOMAIN_SELECT_7, 0x70, ak4601->EXBCK[2]<<4 );
 
 
 	akdbgprt("\t[AK4601] %s\n addr=%03X data=%02X",__FUNCTION__, AK4601_05E_OUTPUT_PORT_ENABLE_SETTING, 0x38);
 
-	snd_soc_update_bits( ak4601->codec, AK4601_05E_OUTPUT_PORT_ENABLE_SETTING, 0x38, 0x38 );//SDOUT1~3 OutputEnable=1
-#ifdef AK4601_MULTI_CARD_ENABLE
-	snd_soc_update_bits( ak4601->codec, AK4601_013_SYNC_DOMAIN_SELECT_3, 0x07, 0x01);
-	snd_soc_update_bits( ak4601->codec, AK4601_014_SYNC_DOMAIN_SELECT_4, 0x77, 0x23);
-#else
-	snd_soc_update_bits( ak4601->codec, AK4601_013_SYNC_DOMAIN_SELECT_3, 0x07, 0x01);
-	snd_soc_update_bits( ak4601->codec, AK4601_014_SYNC_DOMAIN_SELECT_4, 0x77, 0x11);
-#endif
+	snd_soc_update_bits( codec, AK4601_05E_OUTPUT_PORT_ENABLE_SETTING, 0x38, 0x38 );//SDOUT1~3 OutputEnable=1
 
-	snd_soc_update_bits( ak4601->codec, AK4601_011_SYNC_DOMAIN_SELECT_1, 0x12, 0x12 );//LR/BICKx Output SDx
+	snd_soc_update_bits( codec, AK4601_013_SYNC_DOMAIN_SELECT_3, 0x07, 0x01);
+	snd_soc_update_bits( codec, AK4601_014_SYNC_DOMAIN_SELECT_4, 0x77, 0x23);
+
+	snd_soc_update_bits( codec, AK4601_011_SYNC_DOMAIN_SELECT_1, 0x12, 0x12 );//LR/BICKx Output SDx
 
 #ifdef TCC_ALWAYS_PMDAC_ON
-	snd_soc_update_bits( ak4601->codec, AK4601_08A_POWER_MANAGEMENT1, 0x07, 0x07 );//DAC1,2,3 On
+	snd_soc_update_bits( codec, AK4601_08A_POWER_MANAGEMENT1, 0x07, 0x07 );//DAC1,2,3 On
 #endif//TCC_ALWAYS_PMDAC_ON
 
 #ifdef TCC_USE_MUTE_GPIO
@@ -3217,8 +3148,8 @@ static int ak4601_init_reg(struct snd_soc_codec *codec)
 	return 0;
 }
 
-#ifdef CONFIG_TCC803X_CA7S	
-static int ak4601_init_reg_for_a7s(struct snd_soc_codec *codec)
+#if defined(CONFIG_TCC803X_CA7S) || defined(CONFIG_SND_SOC_AK4601_SUBCORE)
+static int ak4601_init_reg_for_subcore(struct snd_soc_codec *codec)
 {
 	struct ak4601_priv *ak4601 = snd_soc_codec_get_drvdata(codec);
 	int i;
@@ -3254,57 +3185,56 @@ static int ak4601_init_reg_for_a7s(struct snd_soc_codec *codec)
 	ak4601->DIDL3 = 0;
 	ak4601->EXBCK[2] = PORT3_LINK;
 
-	snd_soc_update_bits( ak4601->codec, AK4601_016_SYNC_DOMAIN_SELECT_6, 0x77, ((ak4601->EXBCK[0]<<4) + (ak4601->EXBCK[1])));
-	snd_soc_update_bits( ak4601->codec, AK4601_017_SYNC_DOMAIN_SELECT_7, 0x70, ak4601->EXBCK[2]<<4 );
+	snd_soc_update_bits( codec, AK4601_016_SYNC_DOMAIN_SELECT_6, 0x77, ((ak4601->EXBCK[0]<<4) + (ak4601->EXBCK[1])));
+	snd_soc_update_bits( codec, AK4601_017_SYNC_DOMAIN_SELECT_7, 0x70, ak4601->EXBCK[2]<<4 );
 	akdbgprt("\t[AK4601] %s\n addr=%03X data=%02X",__FUNCTION__, AK4601_05E_OUTPUT_PORT_ENABLE_SETTING, 0x38);
 
-	snd_soc_update_bits( ak4601->codec, AK4601_05E_OUTPUT_PORT_ENABLE_SETTING, 0x38, 0x38 );//SDOUT1~3 OutputEnable=1
+	snd_soc_update_bits( codec, AK4601_05E_OUTPUT_PORT_ENABLE_SETTING, 0x38, 0x38 );//SDOUT1~3 OutputEnable=1
 	//'CODEC Sync Domain' 'SD1', 'ADC1 Sync Domain' 'SD1'
-	snd_soc_update_bits( ak4601->codec, AK4601_020_SYNC_DOMAIN_SELECT_16, 0x77, 0x11);
+	snd_soc_update_bits( codec, AK4601_020_SYNC_DOMAIN_SELECT_16, 0x77, 0x11);
 	//'MixerB Sync Domain' 'SD1'
-	snd_soc_update_bits( ak4601->codec, AK4601_01F_SYNC_DOMAIN_SELECT_15, 0x07, 0x01);
+	snd_soc_update_bits( codec, AK4601_01F_SYNC_DOMAIN_SELECT_15, 0x07, 0x01);
 	//'LRCK2/SDOUT3 Pin BICK2/SDIN3 Pin Setting' 'SDIN3,SDOUT3 Enable'
-	snd_soc_update_bits( ak4601->codec, AK4601_010_PIN_SETTING, 0x01, 0x01);
+	snd_soc_update_bits( codec, AK4601_010_PIN_SETTING, 0x01, 0x01);
 	//'ADCM MUX' 'AINM'
 	//'AIN1 Lch MUX' 'IN1P_N'
 	//'AIN1 Rch MUX' 'IN2P_N'
-	snd_soc_update_bits( ak4601->codec, AK4601_06B_ANALOG_INPUT_SELECT_SETTING, 0x1C, 0x10);
+	snd_soc_update_bits( codec, AK4601_06B_ANALOG_INPUT_SELECT_SETTING, 0x1C, 0x10);
 	//'MicBias1 MUX' 'MicBias1'
 	//'MicBias2 MUX' 'MicBias2'
-	snd_soc_update_bits( ak4601->codec, AK4601_002_MIC_BIAS_POWER_MANAGEMENT, 0xFF, 0x03);
+	snd_soc_update_bits( codec, AK4601_002_MIC_BIAS_POWER_MANAGEMENT, 0xFF, 0x03);
 	//'ADC1 Digital Volume L' 255
-	snd_soc_update_bits( ak4601->codec, AK4601_064_ADC1LCH_DIGITAL_VOLUME, 0xFF, 0x00);
+	snd_soc_update_bits( codec, AK4601_064_ADC1LCH_DIGITAL_VOLUME, 0xFF, 0x00);
 	//'ADC1 Digital Volume R' 0
-	snd_soc_update_bits( ak4601->codec, AK4601_065_ADC1RCH_DIGITAL_VOLUME, 0xFF, 0xFF);
+	snd_soc_update_bits( codec, AK4601_065_ADC1RCH_DIGITAL_VOLUME, 0xFF, 0xFF);
 	//'MixerB Ch1 Source Selector' 'ADC1'
-	snd_soc_update_bits( ak4601->codec, AK4601_047_MIXER_B_CH1_INPUT_DATA_SELECT, 0x3F, 0x15);
+	snd_soc_update_bits( codec, AK4601_047_MIXER_B_CH1_INPUT_DATA_SELECT, 0x3F, 0x15);
 	//'MixerB Ch2 Source Selector' 'ADCM'
-	snd_soc_update_bits( ak4601->codec, AK4601_048_MIXER_B_CH2_INPUT_DATA_SELECT, 0x3F, 0x17);
+	snd_soc_update_bits( codec, AK4601_048_MIXER_B_CH2_INPUT_DATA_SELECT, 0x3F, 0x17);
 	//'MixerB Input2 Data Change' 'Swap'
-	snd_soc_update_bits( ak4601->codec, AK4601_061_MIXER_B_SETTING, 0x0c, 0x0c);
+	snd_soc_update_bits( codec, AK4601_061_MIXER_B_SETTING, 0x0c, 0x0c);
 	//'SDOUT1 Source Selector' 'MixerB'
-	snd_soc_update_bits( ak4601->codec, AK4601_021_SDOUT1_TDM_SLOT1_2_DATA_SELECT, 0x3F, 0x19);
+	snd_soc_update_bits( codec, AK4601_021_SDOUT1_TDM_SLOT1_2_DATA_SELECT, 0x3F, 0x19);
 	//'SDOUT1 Output Enable' on        
-	snd_soc_update_bits( ak4601->codec, AK4601_05E_OUTPUT_PORT_ENABLE_SETTING, 0x20, 0x20);
+	snd_soc_update_bits( codec, AK4601_05E_OUTPUT_PORT_ENABLE_SETTING, 0x20, 0x20);
 	//'ADC1 Mute' off                  
 	//'ADCM Mute' off                  
-	snd_soc_update_bits( ak4601->codec, AK4601_06C_ADC_MUTE_AND_HPF_CONTROL, 0x50, 0x00);
+	snd_soc_update_bits( codec, AK4601_06C_ADC_MUTE_AND_HPF_CONTROL, 0x50, 0x00);
 	//'DAC1 Source Selector' 'SDIN1'   
 	//'DAC2 Source Selector' 'SDIN2'   
 	//'DAC3 Source Selector' 'SDIN1'  
-	snd_soc_update_bits( ak4601->codec, AK4601_035_DAC1_INPUT_DATA_SELECT, 0x3F, 0x01);
-	snd_soc_update_bits( ak4601->codec, AK4601_036_DAC2_INPUT_DATA_SELECT, 0x3F, 0x09);
-	snd_soc_update_bits( ak4601->codec, AK4601_037_DAC3_INPUT_DATA_SELECT, 0x3F, 0x01);
+	snd_soc_update_bits( codec, AK4601_035_DAC1_INPUT_DATA_SELECT, 0x3F, 0x01);
+	snd_soc_update_bits( codec, AK4601_036_DAC2_INPUT_DATA_SELECT, 0x3F, 0x09);
+	snd_soc_update_bits( codec, AK4601_037_DAC3_INPUT_DATA_SELECT, 0x3F, 0x01);
 	//'DAC1 Mute' off    
 	//'DAC2 Mute' off                  
 	//'DAC3 Mute' off                  
-	snd_soc_update_bits( ak4601->codec, AK4601_073_DAC_MUTE_AND_FILTER_SETTING, 0x70, 0x00);
+	snd_soc_update_bits( codec, AK4601_073_DAC_MUTE_AND_FILTER_SETTING, 0x70, 0x00);
 
 	return 0;
 }
-#endif
+#endif//  defined(CONFIG_TCC803X_CA7S) || defined(CONFIG_SND_SOC_AK4601_SUBCORE)
 
-#ifdef CONFIG_OF	//16/04/11
 static int ak4601_parse_dt(struct ak4601_priv *ak4601)
 {
 	struct device *dev;
@@ -3386,7 +3316,7 @@ static int ak4601_parse_dt(struct ak4601_priv *ak4601)
 	}
 #endif//TCC_USE_MUTE_GPIO
 
-	printk("[AK4601] Read PDN pin from device tree\n");
+	printk("Read PDN pin from device tree\n");
 
 	ak4601->pdn_gpio = of_get_named_gpio(np, "ak4601,pdn-gpio", 0);
 	if(ak4601->pdn_gpio < 0){
@@ -3395,55 +3325,37 @@ static int ak4601_parse_dt(struct ak4601_priv *ak4601)
 	}
 
 	if( !gpio_is_valid(ak4601->pdn_gpio) ){
-		printk(KERN_ERR "[AK4601] pdn pin(%u) is invalid\n", ak4601->pdn_gpio);
+		printk(KERN_ERR "ak4601 pdn pin(%u) is invalid\n", ak4601->pdn_gpio);
 		return -1;
 	}
+
 	return 0;
 }
-#endif
 
 static int ak4601_probe(struct snd_soc_codec *codec)
 {
 	struct ak4601_priv *ak4601 = snd_soc_codec_get_drvdata(codec);
-#ifndef CONFIG_OF
-	struct ak4601_platform_data *pdata = codec->dev->platform_data;
-#endif
 	int ret = 0;
-	printk("[AK4601] probe!!\n");
 
 	akdbgprt("\t[AK4601] %s(%d)\n",__FUNCTION__,__LINE__);
 
-#if 0
-	ret = snd_soc_codec_set_cache_io(codec, 16, 8, ak4601->control_type);
-	akdbgprt("\t[AK4601] %s : ret = %d\n",__FUNCTION__, ret);
-	if (ret != 0) {
-		dev_err(codec->dev, "Failed to set cache I/O: %d\n", ret);
-		return ret;
-	}
-#endif
-
-	ak4601->codec = codec;
-#ifdef CONFIG_OF
 	ret = ak4601_parse_dt(ak4601);
 	if ( ret < 0 ) {
 		ak4601->pdn_gpio = -1;
-		ret=0;
+		ret = 0;
 	}
-#else
-	if ( pdata != NULL ) {
-		ak4601->pdn_gpio = pdata->pdn_gpio;
-	}
-#endif
+
 	if ( ak4601->pdn_gpio > 0 ) { 
 		ret = gpio_request(ak4601->pdn_gpio, "ak4601 pdn");
 		gpio_direction_output(ak4601->pdn_gpio, 0);
 	}
 
 	ak4601_init_reg(codec);
-#ifdef CONFIG_TCC803X_CA7S	
-	ak4601_init_reg_for_a7s(codec);
+#if	defined(CONFIG_TCC803X_CA7S) || defined(CONFIG_SND_SOC_AK4601_SUBCORE)
+	ak4601_init_reg_for_subcore(codec);
 #endif
 	akdbgprt("\t[AK4601] %s return(%d)\n",__FUNCTION__, ret );
+
 	return ret;
 }
 
@@ -3458,55 +3370,36 @@ static int ak4601_remove(struct snd_soc_codec *codec)
 		gpio_set_value(ak4601->pdn_gpio, 0);
 		msleep(1);
 		gpio_free(ak4601->pdn_gpio);
-		msleep(1);
 	}
+
 	return 0;
 }
 
-static void ak4601_backup_regs(struct snd_soc_codec *codec)
-{
-	struct ak4601_priv *ak4601 = snd_soc_codec_get_drvdata(codec);
-	int i;
-
-	for (i=0; i<ARRAY_SIZE(ak4601_backup_reg_list); i++) {
-		ak4601->reg_backup[i] = snd_soc_read(codec, ak4601_backup_reg_list[i]);
-	}
-}
-
-static void ak4601_restore_regs(struct snd_soc_codec *codec)
-{
-	struct ak4601_priv *ak4601 = snd_soc_codec_get_drvdata(codec);
-	int i;
-
-	for (i=0; i<ARRAY_SIZE(ak4601_backup_reg_list); i++) {
-		snd_soc_write(codec, ak4601_backup_reg_list[i], ak4601->reg_backup[i]);
-	}
-}
-
-static int ak4601_suspend(struct snd_soc_codec *codec) //16/04/11
+static int ak4601_suspend(struct snd_soc_codec *codec)
 {
 	struct ak4601_priv *ak4601 = snd_soc_codec_get_drvdata(codec);
 
 	akdbgprt("\t[AK4601] %s(%d)\n",__FUNCTION__,__LINE__);
+
 	ak4601_set_bias_level(codec, SND_SOC_BIAS_OFF);
-
-	ak4601_backup_regs(codec);
-
-	if ( ak4601->pdn_gpio > 0 ) { 
+	if ( ak4601->pdn_gpio > 0 ) {
 		gpio_set_value(ak4601->pdn_gpio, 0);
+		msleep(1);
 	}
+
 	return 0;
 }
 
 static int ak4601_resume(struct snd_soc_codec *codec)
 {
-	struct ak4601_priv *ak4601 = snd_soc_codec_get_drvdata(codec);
+	struct ak4601_priv *ak4601 = snd_soc_codec_get_drvdata(codec);	
+	int i;
 
-//	ak4601_init_reg(codec);
-	if ( ak4601->pdn_gpio > 0 ) { 
-		gpio_set_value(ak4601->pdn_gpio, 1);
-	}	
-	ak4601_restore_regs(codec);
+	for ( i = 0 ; i < ARRAY_SIZE(ak4601_reg) ; i++ ) {
+		regmap_write(ak4601->regmap, ak4601_reg[i].reg, ak4601_reg[i].def);
+	}
+
+	ak4601_init_reg(codec);
 
 	return 0;
 }
@@ -3517,34 +3410,45 @@ struct snd_soc_codec_driver soc_codec_dev_ak4601 = {
 	.suspend =	ak4601_suspend,
 	.resume =	ak4601_resume,
 
-	.component_driver = {
-		.controls = ak4601_snd_controls,
-		.num_controls = ARRAY_SIZE(ak4601_snd_controls),
-		.dapm_widgets = ak4601_dapm_widgets,
-		.num_dapm_widgets = ARRAY_SIZE(ak4601_dapm_widgets),
-		.dapm_routes = ak4601_intercon,
-		.num_dapm_routes = ARRAY_SIZE(ak4601_intercon),
-	},
-
 	.read = ak4601_read_register,
 	.write = ak4601_write_register,
 
-	//.idle_bias_off = true,	//16/04/11
+//	.idle_bias_off = true, 
 	.set_bias_level = ak4601_set_bias_level,
-	.reg_cache_size = ARRAY_SIZE(ak4601_reg),
-	.reg_word_size = sizeof(u8),
-	.reg_cache_default = ak4601_reg,
+
+#ifdef KERNEL_4_9_XX
+	.component_driver = {
+#endif
+	.controls = ak4601_snd_controls,
+	.num_controls = ARRAY_SIZE(ak4601_snd_controls),
+	.dapm_widgets = ak4601_dapm_widgets,
+	.num_dapm_widgets = ARRAY_SIZE(ak4601_dapm_widgets),
+	.dapm_routes = ak4601_intercon,
+	.num_dapm_routes = ARRAY_SIZE(ak4601_intercon),
+#ifdef KERNEL_4_9_XX
+	},
+#endif
 };
 
+static const struct regmap_config ak4601_regmap = {
+	.reg_bits = 16,
+	.val_bits = 8,
 
-EXPORT_SYMBOL_GPL(soc_codec_dev_ak4601);
-#ifdef CONFIG_OF  // 16/04/11
+	.max_register = (AK4601_MAX_REGISTERS - 1),
+	.readable_reg = ak4601_readable,
+	.volatile_reg = ak4601_volatile,
+	.writeable_reg = ak4601_writeable,
+
+	.reg_defaults = ak4601_reg,
+	.num_reg_defaults = ARRAY_SIZE(ak4601_reg),
+	.cache_type = REGCACHE_RBTREE,
+};
+
 static struct of_device_id ak4601_if_dt_ids[] = {
 	{ .compatible = "akm,ak4601"},
     { }
 };
 MODULE_DEVICE_TABLE(of, ak4601_if_dt_ids);
-#endif
 
 #ifdef AK4601_I2C_IF
 
@@ -3556,8 +3460,14 @@ static int ak4601_i2c_probe(struct i2c_client *i2c,
 	
 	akdbgprt("\t[AK4601] %s(%d)\n",__FUNCTION__,__LINE__);
 
-	ak4601 = kzalloc(sizeof(struct ak4601_priv), GFP_KERNEL);
+	ak4601 = devm_kzalloc(&i2c->dev, sizeof(struct ak4601_priv), GFP_KERNEL);
 	if (ak4601 == NULL) return -ENOMEM;
+
+	ak4601->regmap = devm_regmap_init_i2c(i2c, &ak4601_regmap); 
+	if (IS_ERR(ak4601->regmap)) {
+		devm_kfree(&i2c->dev, ak4601);
+		return PTR_ERR(ak4601->regmap);
+	}
 
 	i2c_set_clientdata(i2c, ak4601);
 
@@ -3566,17 +3476,15 @@ static int ak4601_i2c_probe(struct i2c_client *i2c,
 	ret = snd_soc_register_codec(&i2c->dev,
 			&soc_codec_dev_ak4601, &ak4601_dai[0], ARRAY_SIZE(ak4601_dai));
 	if (ret < 0){
-		kfree(ak4601);
+		devm_kfree(&i2c->dev, ak4601);
 		akdbgprt("\t[AK4601 Error!] %s(%d)\n",__FUNCTION__,__LINE__);
-		printk("[AK4601] snd_soc_resister_codec error!!\n");
 	}
 	return ret;
 }
 
-static int ak4601_i2c_remove(struct i2c_client *client)	//16/04/11
+static int ak4601_i2c_remove(struct i2c_client *client)
 {
 	snd_soc_unregister_codec(&client->dev);
-	kfree(i2c_get_clientdata(client));
 	return 0;
 }
 
@@ -3590,46 +3498,53 @@ static struct i2c_driver ak4601_i2c_driver = {
 	.driver = {
 		.name = "ak4601",
 		.owner = THIS_MODULE,
-#ifdef CONFIG_OF
 		.of_match_table = of_match_ptr(ak4601_if_dt_ids),
-#endif
 	},
 	.probe = ak4601_i2c_probe,
-	.remove = ak4601_i2c_remove,	//16/04/11
+	.remove = ak4601_i2c_remove,
 	.id_table = ak4601_i2c_id,
 };
 
 #else
 
-static int ak4601_spi_probe(struct spi_device *spi)	//16/04/11
+static int ak4601_spi_probe(struct spi_device *spi)
 {
 	struct ak4601_priv *ak4601;
 	int	ret;
 
-	akdbgprt("\t[AK4601] %s spi=%x\n",__FUNCTION__, (int)spi);	
+	akdbgprt("\t[AK4601] %s(%d)\n",__FUNCTION__,__LINE__);
 
-	ak4601 = kzalloc(sizeof(struct ak4601_priv), GFP_KERNEL);
-	if (!ak4601)
+	ak4601 = devm_kzalloc(&spi->dev, sizeof(struct ak4601_priv),
+			      GFP_KERNEL);
+	if (ak4601 == NULL)
 		return -ENOMEM;
 
-	ak4601->spi = spi;
+	ak4601->regmap = devm_regmap_init_spi(spi, &ak4601_regmap);
+	if (IS_ERR(ak4601->regmap)) {
+		ret = PTR_ERR(ak4601->regmap);
+		dev_err(&spi->dev, "Failed to allocate register map: %d\n",
+			ret);
+		return ret;
+	}
 
 	spi_set_drvdata(spi, ak4601);
+
+	ak4601->spi = spi;
 
 	ret = snd_soc_register_codec(&spi->dev,
 			&soc_codec_dev_ak4601,  &ak4601_dai[0], ARRAY_SIZE(ak4601_dai));
 	akdbgprt("\t[AK4601] %s ret=%d\n",__FUNCTION__, ret);
 	if (ret < 0) {
-		kfree(ak4601);
+		devm_kfree(&spi->dev, ak4601);
 		akdbgprt("\t[AK4601 Error!] %s(%d)\n",__FUNCTION__,__LINE__);
 	}
 
 	return 0;
 }
 
-static int ak4601_spi_remove(struct spi_device *spi)	// 16/04/11
+static int ak4601_spi_remove(struct spi_device *spi)
 {
-	kfree(spi_get_drvdata(spi));
+	snd_soc_unregister_codec(&spi->dev);
 	return 0;
 }
 
@@ -3637,9 +3552,7 @@ static struct spi_driver ak4601_spi_driver = {
 	.driver = {
 		.name = "ak4601",
 		.owner = THIS_MODULE,
-#ifdef CONFIG_OF
 		.of_match_table = of_match_ptr(ak4601_if_dt_ids),
-#endif
 	},
 	.probe = ak4601_spi_probe,
 	.remove = ak4601_spi_remove,
@@ -3655,17 +3568,13 @@ static int __init ak4601_modinit(void)
 #ifdef AK4601_I2C_IF
 	ret = i2c_add_driver(&ak4601_i2c_driver);
 	if ( ret != 0 ) {
-		printk(KERN_ERR "[AK4601] Failed to register I2C driver: %d\n", ret);
+		printk(KERN_ERR "Failed to register AK4601 I2C driver: %d\n", ret);
 
-	}
-	else
-	{
-		printk("[AK4601] resister ak4601 i2c driver\n");
 	}
 #else
 	ret = spi_register_driver(&ak4601_spi_driver);
 	if ( ret != 0 ) {
-		printk(KERN_ERR "[AK4601] Failed to register SPI driver: %d\n",  ret);
+		printk(KERN_ERR "Failed to register AK4601 SPI driver: %d\n",  ret);
 
 	}
 #endif
@@ -3687,6 +3596,7 @@ static void __exit ak4601_exit(void)
 }
 module_exit(ak4601_exit);
 
-MODULE_DESCRIPTION("ASoC ak4601 codec driver");
-MODULE_LICENSE("GPL");
+MODULE_DESCRIPTION("ak4601 codec driver");
+MODULE_VERSION("2.1");
+MODULE_LICENSE("GPL v2");
 
