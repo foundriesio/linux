@@ -15,12 +15,15 @@
  * Suite 330, Boston, MA 02111-1307 USA
  ****************************************************************************/
 
-#ifndef MIPI_DESERIALIZER_H
-#define MIPI_DESERIALIZER_H
+#ifndef MAX9286_ISP_H
+#define MAX9286_ISP_H
 
-//#include "ds90ub964.h"
-#include "max9286.h"
-#include "max9286_isp.h"
-#include "max96712.h"
+#include "../videosource_types.h"
 
-#endif//MIPI_DESERIALIZER_H
+extern struct videosource videosource_max9286_isp;
+
+// MAX9286_isp Standard Selection Register Bits
+#define VIDEO_STD_NTSC_M_BIT	0x0
+#define VIDEO_STD_NTSC_443_BIT	0x3
+
+#endif//MAX9286_ISP_H

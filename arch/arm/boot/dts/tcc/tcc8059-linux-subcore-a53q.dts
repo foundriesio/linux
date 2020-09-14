@@ -68,11 +68,20 @@
 		switch1 = &switch1;
 		switch2 = &switch2;
 		switch3 = &switch3;
-		videosource0 = &videosource0;
-		videosource1 = &videosource1;
-		videosource2 = &videosource2;
+		videosource0 = &videosource0; /* adv7182 */
+		videosource1 = &videosource1; /* max9286 */
+		videosource2 = &videosource2; /* max9276 */
+		//videosource3 = &videosource3; /* max96712 */
+		//videosource4 = &videosource4; /* max96712 */
+		//videosource5 = &videosource5; /* max9286 for ispless cam */
 		videosource11 = &videosource11;	// max96759
 		mipi-csi2-0 = &mipi_csi2_0;
+#if 0
+		isp0 = &isp0;
+		isp1 = &isp1;
+		isp2 = &isp2;
+		isp3 = &isp3;
+#endif
 		videoinput0 = &videoinput0;
 		videoinput1 = &videoinput1;
 		videoinput2 = &videoinput2;
@@ -1267,15 +1276,7 @@
 		reg = 	<0x1bc00800 0x120>,	/* csi0_base */
 		      	<0x1bc00a00 0x05c>,	/* gdb0_base */
 		      	<0x1bc00000 0x014>,	/* ckc_base */
-			<0x1bc00400 0x120>,	/* cfg_base */
-			<0x1bc80000 0x10000>,	/* ISP0 */
-			<0x1bc90000 0x10000>,	/* ISP0 memory */
-			<0x1bca0000 0x10000>,	/* ISP1 */
-			<0x1bcb0000 0x10000>,	/* ISP1 memory */
-			<0x1bcc0000 0x10000>,	/* ISP2 */
-			<0x1bcd0000 0x10000>,	/* ISP2 memory */
-			<0x1bce0000 0x10000>,	/* ISP3 */
-			<0x1bcf0000 0x10000>;	/* ISP3 memory */
+			<0x1bc00400 0x120>;	/* cfg_base */
 		reg-names = "csi", "gdb", "ckc", "cfg";
 
 		clock-frequency = <600000000>;
@@ -1299,12 +1300,78 @@
 		mipi-chmux-6 = <0>;
 		mipi-chmux-7 = <0>;
 
+		/*
+		 * 1: bypass isp
+		 * 0: use isp
+		 */
 		isp0-bypass = <1>;
 		isp1-bypass = <1>;
 		isp2-bypass = <1>;
 		isp3-bypass = <1>;
+
+		/*
+		 * the number of isp to use
+		 */
+		isp-number = <0>;
 	};
 
+#if 0
+	isp0: isp0@1bc80000 {
+		compatible = "telechips,tcc805x-isp";
+		status = "okay";
+		reg = 	<0x1bc80000 0x10000>,	/* ISP base */
+			<0x1bc90000 0x10000>;	/* ISP memory */
+		reg-names = "isp_base", "mem_base";
+
+		pinctrl-names = "default";
+		pinctrl-0 = <&isp0_uart_tx &isp0_uart_rx>;
+
+		/* only for TCC805X ES (CV8050C-618)*/
+		iommus = <&smmu_dbus 0x90 0x7f00>;
+	};
+
+	isp1: isp1@1bca0000 {
+		compatible = "telechips,tcc805x-isp";
+		status = "okay";
+		reg = 	<0x1bca0000 0x10000>,	/* ISP base */
+			<0x1bcb0000 0x10000>;	/* ISP memory */
+		reg-names = "isp_base", "mem_base";
+
+		pinctrl-names = "default";
+		pinctrl-0 = <&isp1_uart_tx &isp1_uart_rx>;
+
+		/* only for TCC805X ES (CV8050C-618)*/
+		//iommus = <&smmu_dbus 0x90 0x7f00>;
+	};
+
+	isp2: isp2@1bcc0000 {
+		compatible = "telechips,tcc805x-isp";
+		status = "okay";
+		reg = 	<0x1bcc0000 0x10000>,	/* ISP base */
+			<0x1bcd0000 0x10000>;	/* ISP memory */
+		reg-names = "isp_base", "mem_base";
+
+		pinctrl-names = "default";
+		pinctrl-0 = <&isp2_uart_tx &isp2_uart_rx>;
+
+		/* only for TCC805X ES (CV8050C-618)*/
+		//iommus = <&smmu_dbus 0x90 0x7f00>;
+	};
+
+	isp3: isp3@1bce0000 {
+		compatible = "telechips,tcc805x-isp";
+		status = "okay";
+		reg = 	<0x1bce0000 0x10000>,	/* ISP base */
+			<0x1bcf0000 0x10000>;	/* ISP memory */
+		reg-names = "isp_base", "mem_base";
+
+		pinctrl-names = "default";
+		pinctrl-0 = <&isp3_uart_tx &isp3_uart_rx>;
+
+		/* only for TCC805X ES (CV8050C-618)*/
+		//iommus = <&smmu_dbus 0x90 0x7f00>;
+	};
+#endif
 	fbdisplay: fbdisplay@12000000 {
 		compatible = "telechips,vioc-fb";
 		reg = <0x12000000 0x10000>;
@@ -3529,7 +3596,26 @@
 		intb-gpios	= <&gpma 19 1>;
 		reg		= <0x4A>;	// 0x94 >> 1
 	};
+#if 0
+	videosource3: deserializer_max96712 {
+		compatible	= "maxim,max96712";
+		cifport		= <5>;
+		pwd-gpios	= <&gpg 5 1>;
+		intb-gpios	= <&gph 11 1>;
+		reg		= <0x29>;	// 0x52 >> 1
+		mipi-csi2-idx	= <0>;
+	};
 
+	videosource5: deserializer_max9286_isp {
+		compatible	= "maxim,max9286_isp";
+		cifport		= <5>;
+		pwd-gpios	= <&gpg 5 1>;
+		intb-gpios	= <&gph 11 1>;
+		rst-gpios	= <&gpb 15 1>;  /* mcnex module sensor */
+		reg		= <0x48>;	// 0x90 >> 1
+		mipi-csi2-idx	= <0>;
+	};
+#endif
 	videosource11: deserializer_max96759 {
 		compatible	= "maxim,max96759";
 		pinctrl-names	= "idle", "active";

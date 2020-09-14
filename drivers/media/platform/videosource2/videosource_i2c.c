@@ -79,6 +79,11 @@ static struct of_device_id videosource_of_match[] = {
 		.data		= &videosource_max9286,
 	},
 	{
+		.compatible	= "maxim,max9286_isp",
+		.data		= &videosource_max9286_isp,
+	},
+
+	{
 		.compatible	= "maxim,max96712",
 		.data		= &videosource_max96712,
 	},

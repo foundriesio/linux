@@ -126,6 +126,7 @@ typedef struct videosource {
 
 	int enabled;
 	int mipi_csi2_port;
+	int isp_port;
 } videosource_t;
 
 struct vsrc_std_info {
@@ -140,6 +141,8 @@ enum camera_mode {
 	MODE_SERDES_FSYNC,
 	MODE_SERDES_INTERRUPT,
 	MODE_SERDES_REMOTE_SER,
+	MODE_SERDES_SENSOR,
+	MODE_SERDES_REMOTE_SER_SERIALIZATION,
 };
 
 #endif//VIDEOSOURCE_TYPES_H

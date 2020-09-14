@@ -104,6 +104,10 @@
 		wdma-drv0 = &wdma_drv0;
 		mipi-csi2-0 = &mipi_csi2_0;
 		mipi-csi2-1 = &mipi_csi2_1;
+		isp0 = &isp0;
+		isp1 = &isp1;
+		isp2 = &isp2;
+		isp3 = &isp3;
 		videoinput0 = &videoinput0;
 		videoinput1 = &videoinput1;
 		videoinput2 = &videoinput2;
@@ -3197,15 +3201,7 @@
 		reg =	<0x0 0x1bc00800 0x0 0x120>,	/* csi0_base */
 			<0x0 0x1bc00a00 0x0 0x05c>,	/* gdb0_base */
 			<0x0 0x1bc00000 0x0 0x014>,	/* ckc_base */
-			<0x0 0x1bc00400 0x0 0x120>,	/* cfg_base */
-			<0x0 0x1bc80000 0x0 0x10000>,	/* ISP0 */
-			<0x0 0x1bc90000 0x0 0x10000>,	/* ISP0 memory */
-			<0x0 0x1bca0000 0x0 0x10000>,	/* ISP1 */
-			<0x0 0x1bcb0000 0x0 0x10000>,	/* ISP1 memory */
-			<0x0 0x1bcc0000 0x0 0x10000>,	/* ISP2 */
-			<0x0 0x1bcd0000 0x0 0x10000>,	/* ISP2 memory */
-			<0x0 0x1bce0000 0x0 0x10000>,	/* ISP3 */
-			<0x0 0x1bcf0000 0x0 0x10000>;	/* ISP3 memory */
+			<0x0 0x1bc00400 0x0 0x120>;	/* cfg_base */
 		reg-names = "csi", "gdb", "ckc", "cfg";
 
 		clock-frequency = <600000000>;
@@ -3221,21 +3217,57 @@
 		reg =	<0x0 0x1bc00c00 0x0 0x120>,	/* csi0_base */
 			<0x0 0x1bc00e00 0x0 0x05c>,	/* gdb0_base */
 			<0x0 0x1bc00000 0x0 0x014>,	/* ckc_base */
-			<0x0 0x1bc00400 0x0 0x120>,	/* cfg_base */
-			<0x0 0x1bc80000 0x0 0x10000>,	/* ISP0 */
-			<0x0 0x1bc90000 0x0 0x10000>,	/* ISP0 memory */
-			<0x0 0x1bca0000 0x0 0x10000>,	/* ISP1 */
-			<0x0 0x1bcb0000 0x0 0x10000>,	/* ISP1 memory */
-			<0x0 0x1bcc0000 0x0 0x10000>,	/* ISP2 */
-			<0x0 0x1bcd0000 0x0 0x10000>,	/* ISP2 memory */
-			<0x0 0x1bce0000 0x0 0x10000>,	/* ISP3 */
-			<0x0 0x1bcf0000 0x0 0x10000>;	/* ISP3 memory */
+			<0x0 0x1bc00400 0x0 0x120>;	/* cfg_base */
 		reg-names = "csi", "gdb", "ckc", "cfg";
 
 		clock-frequency = <600000000>;
 
 		interrupts =	<GIC_SPI 160 IRQ_TYPE_LEVEL_HIGH>,// MIPI1 CSIS
 				<GIC_SPI 161 IRQ_TYPE_LEVEL_HIGH>;// MIPI1 Generic
+	};
+
+	isp0: isp0@1bc80000 {
+		compatible = "telechips,tcc805x-isp";
+		status = "disabled";
+		reg = 	<0x0 0x1bc80000 0x0 0x10000>,	/* ISP base */
+			<0x0 0x1bc90000 0x0 0x10000>;	/* ISP memory */
+		reg-names = "isp_base", "mem_base";
+
+		/* only for TCC805X ES (CV8050C-618)*/
+		iommus = <&smmu_dbus 0x90 0x7f00>;
+	};
+
+	isp1: isp1@1bca0000 {
+		compatible = "telechips,tcc805x-isp";
+		status = "disabled";
+		reg = 	<0x0 0x1bca0000 0x0 0x10000>,	/* ISP base */
+			<0x0 0x1bcb0000 0x0 0x10000>;	/* ISP memory */
+		reg-names = "isp_base", "mem_base";
+
+		/* only for TCC805X ES (CV8050C-618)*/
+		//iommus = <&smmu_dbus 0x90 0x7f00>;
+	};
+
+	isp2: isp2@1bcc0000 {
+		compatible = "telechips,tcc805x-isp";
+		status = "disabled";
+		reg = 	<0x0 0x1bcc0000 0x0 0x10000>,	/* ISP base */
+			<0x0 0x1bcd0000 0x0 0x10000>;	/* ISP memory */
+		reg-names = "isp_base", "mem_base";
+
+		/* only for TCC805X ES (CV8050C-618)*/
+		//iommus = <&smmu_dbus 0x90 0x7f00>;
+	};
+
+	isp3: isp3@1bce0000 {
+		compatible = "telechips,tcc805x-isp";
+		status = "disabled";
+		reg = 	<0x0 0x1bce0000 0x0 0x10000>,	/* ISP base */
+			<0x0 0x1bcf0000 0x0 0x10000>;	/* ISP memory */
+		reg-names = "isp_base", "mem_base";
+
+		/* only for TCC805X ES (CV8050C-618)*/
+		//iommus = <&smmu_dbus 0x90 0x7f00>;
 	};
 
 	fb_cr: fb_cr@12000000{

@@ -2499,6 +2499,62 @@
 		telechips,input_buffer_enable;
 	};
 
+	isp0_uart_tx: isp0_uart_tx {
+		telechips,pins = "gpmb-0";
+		telechips,pin-function = <5>;
+		telechips,output-high;
+		telechips,input_buffer_disable;
+	};
+
+	isp0_uart_rx: isp0_uart_rx {
+		telechips,pins = "gpmb-1";
+		telechips,pin-function = <5>;
+		telechips,input-enable;
+		telechips,input_buffer_enable;
+	};
+
+	isp1_uart_tx: isp1_uart_tx {
+		telechips,pins = "gpmb-6";
+		telechips,pin-function = <5>;
+		telechips,output-high;
+		telechips,input_buffer_disable;
+	};
+
+	isp1_uart_rx: isp1_uart_rx {
+		telechips,pins = "gpmb-7";
+		telechips,pin-function = <5>;
+		telechips,input-enable;
+		telechips,input_buffer_enable;
+	};
+
+	isp2_uart_tx: isp2_uart_tx {
+		telechips,pins = "gpmb-12";
+		telechips,pin-function = <5>;
+		telechips,output-high;
+		telechips,input_buffer_disable;
+	};
+
+	isp2_uart_rx: isp2_uart_rx {
+		telechips,pins = "gpmb-13";
+		telechips,pin-function = <5>;
+		telechips,input-enable;
+		telechips,input_buffer_enable;
+	};
+
+	isp3_uart_tx: isp3_uart_tx {
+		telechips,pins = "gpmb-24";
+		telechips,pin-function = <5>;
+		telechips,output-high;
+		telechips,input_buffer_disable;
+	};
+
+	isp3_uart_rx: isp3_uart_rx {
+		telechips,pins = "gpmb-25";
+		telechips,pin-function = <5>;
+		telechips,input-enable;
+		telechips,input_buffer_enable;
+	};
+
 	tsc0_default: tsc0_default {
 		telechips,pins = "gpsd1-9", "gpb-16";
 		telechips,pin-function = <0>;

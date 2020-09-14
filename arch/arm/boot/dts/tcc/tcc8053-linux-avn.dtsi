@@ -22,6 +22,7 @@
 		videosource2 = &videosource2; /* max9276 */
 		//videosource3 = &videosource3; /* max96712 */
 		//videosource4 = &videosource4; /* max96712 */
+		//videosource5 = &videosource5; /* max9286 for ispless cam */
 		videosource11 = &videosource11;	// max96759
 	};
 
@@ -337,6 +338,16 @@
 			reg		= <0x29>;	// 0x52 >> 1
 			mipi-csi2-idx	= <0>;
 		};
+
+		videosource5: deserializer_max9286_isp {
+			compatible	= "maxim,max9286_isp";
+			cifport		= <5>;
+			pwd-gpios	= <&gpg 5 1>;
+			intb-gpios	= <&gph 11 1>;
+			rst-gpios	= <&gpb 15 1>;  /* mcnex module sensor */
+			reg		= <0x48>;	// 0x90 >> 1
+			mipi-csi2-idx	= <0>;
+		};
 #endif
 		videosource11: deserializer_max96759 {
 			compatible	= "maxim,max96759";
@@ -361,6 +372,7 @@
 		mipi-chmux-1 = <0>;
 		mipi-chmux-2 = <0>;
 		mipi-chmux-3 = <0>;
+
 		/*
 		 * 0: select output of MIPI1
 		 * 1: select output of MIPI0
@@ -370,10 +382,19 @@
 		mipi-chmux-6 = <0>;
 		mipi-chmux-7 = <0>;
 
+		/*
+		 * 1: bypass isp
+		 * 0: use isp
+		 */
 		isp0-bypass = <1>;
 		isp1-bypass = <1>;
 		isp2-bypass = <1>;
 		isp3-bypass = <1>;
+
+		/*
+		 * the number of isp to use
+		 */
+		isp-number = <0>;
 	};
 
 	/*
@@ -398,10 +419,47 @@
 		mipi-chmux-6 = <0>;
 		mipi-chmux-7 = <0>;
 
+		/*
+		 * 1: bypass isp
+		 * 0: use isp
+		 */
 		isp0-bypass = <1>;
 		isp1-bypass = <1>;
 		isp2-bypass = <1>;
 		isp3-bypass = <1>;
+
+		/*
+		 * the number of isp to use
+		 */
+		isp-number = <0>;
+	};
+
+	isp0@1bc80000 {
+		status = "okay";
+
+		pinctrl-names = "default";
+		pinctrl-0 = <&isp0_uart_tx &isp0_uart_rx>;
+	};
+
+	isp1@1bca0000 {
+		status = "okay";
+
+		pinctrl-names = "default";
+		pinctrl-0 = <&isp1_uart_tx &isp1_uart_rx>;
+	};
+
+	isp2@1bcc0000 {
+		status = "okay";
+
+		pinctrl-names = "default";
+		pinctrl-0 = <&isp2_uart_tx &isp2_uart_rx>;
+	};
+
+	isp3@1bce0000 {
+		status = "okay";
+
+		pinctrl-names = "default";
+		pinctrl-0 = <&isp3_uart_tx &isp3_uart_rx>;
 	};
 
 	videoinput@0 {

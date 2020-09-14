@@ -1,0 +1,14 @@
+# drivers/media/platform/tcc-isp/Kconfig
+#
+# Copyright (c) 2020-2020 Telechips Co., Ltd.
+#	http://www.telechips.com/
+#
+# Licensed under GPL
+
+config TCC_ISP
+	bool "Telechips ISP driver"
+	default y
+        depends on ARCH_TCC805X
+	depends on VIDEO_VIDEOSOURCE || VIDEO_VIDEOSOURCE2
+	---help---
+	  Support for ISP
