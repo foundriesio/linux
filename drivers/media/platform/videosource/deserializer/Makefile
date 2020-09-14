@@ -10,3 +10,4 @@ obj-y	+= ds90ub964.o
 obj-y	+= max9276.o
 obj-y	+= max9286.o
 obj-y	+= max96712.o
+obj-y	+= max96759.o

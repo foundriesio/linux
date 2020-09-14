@@ -63,6 +63,7 @@
 		videosource0 = &videosource0;
 		videosource1 = &videosource1;
 		videosource2 = &videosource2;
+		videosource11 = &videosource11;	// max96759
 		mipi-csi2-0 = &mipi_csi2_0;
 		mipi-csi2-1 = &mipi_csi2_1;
 		videoinput0 = &videoinput0;
@@ -2729,6 +2730,15 @@
 		rst-gpios	= <&gpb 14 1>;
 		intb-gpios	= <&gpma 19 1>;
 		reg		= <0x4A>;	// 0x94 >> 1
+	};
+
+	videosource11: deserializer_max96759 {
+		compatible	= "maxim,max96759";
+		pinctrl-names	= "idle", "active";
+		cifport		= <0>;
+		pinctrl-0	= <&cam0_16bit_idle>;
+		pinctrl-1	= <&cam0_clk &cam0_hsync &cam0_vsync &cam0_fld &cam0_data_16bit>;
+		reg		= <0x49>;	// 0x92 >> 1
 	};
 };
 

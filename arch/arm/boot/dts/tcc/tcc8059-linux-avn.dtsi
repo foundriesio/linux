@@ -21,6 +21,7 @@
 		videosource1 = &videosource1; /* max9286 */
 		videosource2 = &videosource2; /* max9276 */
 		//videosource3 = &videosource3; /* max96712 */
+		videosource11 = &videosource11;	// max96759
 	};
 
 	pcie@11000000 {
@@ -320,6 +321,14 @@
 			mipi-csi2-idx   = <0>;
 		};
 #endif
+		videosource11: deserializer_max96759 {
+			compatible	= "maxim,max96759";
+			pinctrl-names	= "idle", "active";
+			cifport		= <0>;
+			pinctrl-0	= <&cam0_16bit_idle>;
+			pinctrl-1	= <&cam0_clk &cam0_hsync &cam0_vsync &cam0_fld &cam0_data_16bit>;
+			reg		= <0x49>;	// 0x92 >> 1
+		};
 	};
 
 	/*
