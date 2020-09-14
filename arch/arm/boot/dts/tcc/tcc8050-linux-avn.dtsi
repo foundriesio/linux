@@ -23,6 +23,7 @@
 		//videosource3 = &videosource3; /* max96712 */
 		//videosource4 = &videosource4; /* max96712 */
 		//videosource5 = &videosource5; /* max9286 for ispless cam */
+		videosource10 = &videosource10;	// ar0135
 		videosource11 = &videosource11;	// max96759
 	};
 
@@ -350,6 +351,16 @@
 			mipi-csi2-idx	= <0>;
 		};
 #endif
+		videosource10: cis_ar0135 {
+			compatible	= "onsemiconductor,ar0135";
+			pinctrl-names	= "idle", "active";
+			cifport		= <0>;
+			pinctrl-0	= <&cam0_16bit_idle>;
+			pinctrl-1	= <&cam0_clk &cam0_hsync &cam0_vsync &cam0_data_16bit>;
+			rst-gpios	= <&gpb 14 1>;
+			reg		= <0x10>;	// 0x20 >> 1
+		};
+
 		videosource11: deserializer_max96759 {
 			compatible	= "maxim,max96759";
 			pinctrl-names	= "idle", "active";
