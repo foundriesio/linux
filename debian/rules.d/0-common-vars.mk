@@ -41,6 +41,8 @@ family=ubuntu
 # or configs.
 AUTOBUILD=
 
+skipdbg=true
+
 ifneq ($(AUTOBUILD),)
 skipabi		= true
 skipmodule	= true
