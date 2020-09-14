@@ -2306,11 +2306,13 @@
 	gmac1_txd0: gmac1_txd0 {
 		telechips,pins = "gpb-5";
 		telechips,pin-function = <1>;
+		telechips,drive-strength = <3>;
 	};
 
 	gmac1_txd1: gmac1_txd1 {
 		telechips,pins = "gpb-6";
 		telechips,pin-function = <1>;
+		telechips,drive-strength = <3>;
 	};
 
 	gmac1_txen: gmac1_txen {
@@ -2336,11 +2338,13 @@
 	gmac1_txd2: gmac1_txd2{
 		telechips,pins = "gpb-11";
 		telechips,pin-function = <1>;
+		telechips,drive-strength = <3>;
 	};
 
 	gmac1_txd3: gmac1_txd3{
 		telechips,pins = "gpb-12";
 		telechips,pin-function = <1>;
+		telechips,drive-strength = <3>;
 	};
 
 	gmac1_rxclk: gmac1_rxclk {
