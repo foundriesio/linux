@@ -1459,7 +1459,8 @@ PVRSRV_ERROR RGXInitCreateFWKernelMemoryContext(PVRSRV_DEVICE_NODE *psDeviceNode
 	/* set up fw memory contexts */
 	PVRSRV_RGXDEV_INFO   *psDevInfo = psDeviceNode->pvDevice;
 	PVRSRV_DEVICE_CONFIG *psDevConfig = psDeviceNode->psDevConfig;
-	PVRSRV_ERROR eError;
+	PVRSRV_ERROR eError, eError_pwr;
+	IMG_HANDLE hSysData;
 
 #if defined(SUPPORT_AUTOVZ)
 	MMU_PX_SETUP sDefaultPxSetup = psDeviceNode->sDevMMUPxSetup;
@@ -1475,11 +1476,43 @@ PVRSRV_ERROR RGXInitCreateFWKernelMemoryContext(PVRSRV_DEVICE_NODE *psDeviceNode
 	}
 #endif
 
+	hSysData = psDeviceNode->psDevConfig->hSysData;
+
+	/* Power-up the device as required to read the registers */
+	if (psDeviceNode->psDevConfig->pfnPrePowerState)
+	{
+		eError_pwr = psDeviceNode->psDevConfig->pfnPrePowerState(hSysData, PVRSRV_DEV_POWER_STATE_ON,
+				PVRSRV_DEV_POWER_STATE_OFF, IMG_FALSE);
+		PVR_LOG_RETURN_IF_ERROR(eError_pwr, "pfnPrePowerState ON");
+	}
+
+	if (psDeviceNode->psDevConfig->pfnPostPowerState)
+	{
+		eError_pwr = psDeviceNode->psDevConfig->pfnPostPowerState(hSysData, PVRSRV_DEV_POWER_STATE_ON,
+				PVRSRV_DEV_POWER_STATE_OFF, IMG_FALSE);
+		PVR_LOG_RETURN_IF_ERROR(eError_pwr, "pfnPostPowerState ON");
+	}
+
 	/* Set the device fabric coherency before FW context creation */
 	eError = RGXSystemGetFabricCoherency(psDevConfig->sRegsCpuPBase,
 										 psDevConfig->ui32RegsSize,
 										 &psDeviceNode->eDevFabricType,
 										 &psDevConfig->eCacheSnoopingMode);
+	/* Power-down the device */
+	if (psDeviceNode->psDevConfig->pfnPrePowerState)
+	{
+		eError_pwr = psDeviceNode->psDevConfig->pfnPrePowerState(hSysData, PVRSRV_DEV_POWER_STATE_OFF,
+				PVRSRV_DEV_POWER_STATE_ON, IMG_FALSE);
+		PVR_LOG_RETURN_IF_ERROR(eError_pwr, "pfnPrePowerState OFF");
+	}
+
+	if (psDeviceNode->psDevConfig->pfnPostPowerState)
+	{
+		eError_pwr = psDeviceNode->psDevConfig->pfnPostPowerState(hSysData, PVRSRV_DEV_POWER_STATE_OFF,
+				PVRSRV_DEV_POWER_STATE_ON, IMG_FALSE);
+		PVR_LOG_RETURN_IF_ERROR(eError_pwr, "pfnPostPowerState OFF");
+	}
+
 	if (eError != PVRSRV_OK)
 	{
 		PVR_DPF((PVR_DBG_ERROR,

@@ -1815,7 +1815,8 @@
 	gpu:gpu@0x10100000 {
 		compatible = "imagination,powerVR-9XTP";
 //		status = "disabled";
-		reg = <0x0 0x10100000 0x0 0x10000>;
+		reg = <0x0 0x10100000 0x0 0x10000>, 	/* 3D Graphic Engine Configuration and Control */
+		      <0x0 0x10010000 0x0 0x30>; 	/* 3D BUS Configuration and Control */
 #if defined(CONFIG_POWERVR_VZ)
 		interrupts = <GIC_SPI 124 IRQ_TYPE_LEVEL_HIGH>;
 #else
