@@ -39,13 +39,13 @@
 
 /* USB 2.0 Host */
 &ehci_phy {
-	status = "okay";
+	status = "disabled";
 	vbus-ctrl-able;
 	vbus-gpio = <&gpmc 7 0>; /* 0 : GPIO_ACTIVE_HIGH, 1 : GPIO_ACTIVE_LOW */
 };
 
 &ehci {
-	status = "okay";
+	status = "disabled";
 	hcd_id = <0>;
 	phy-type = <1>;	    //pico phy = 1, nano phy = 0
 	TXVRT = <0xB>;
@@ -54,7 +54,7 @@
 };
 
 &ohci {
-	status = "okay";
+	status = "disabled";
 };
 
 /* USB 2.0 DRD */
