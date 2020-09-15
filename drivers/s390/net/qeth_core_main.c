@@ -248,12 +248,17 @@ EXPORT_SYMBOL_GPL(qeth_wait_for_threads);
 void qeth_clear_working_pool_list(struct qeth_card *card)
 {
 	struct qeth_buffer_pool_entry *pool_entry, *tmp;
+	struct qeth_qdio_q *queue = card->qdio.in_q;
+	unsigned int i;
 
 	QETH_CARD_TEXT(card, 5, "clwrklst");
 	list_for_each_entry_safe(pool_entry, tmp,
 			    &card->qdio.in_buf_pool.entry_list, list){
 			list_del(&pool_entry->list);
 	}
+
+	for (i = 0; i < ARRAY_SIZE(queue->bufs); i++)
+		queue->bufs[i].pool_entry = NULL;
 }
 EXPORT_SYMBOL_GPL(qeth_clear_working_pool_list);
 
@@ -2755,7 +2760,7 @@ static struct qeth_buffer_pool_entry *qeth_find_free_buffer_pool_entry(
 static int qeth_init_input_buffer(struct qeth_card *card,
 		struct qeth_qdio_buffer *buf)
 {
-	struct qeth_buffer_pool_entry *pool_entry;
+	struct qeth_buffer_pool_entry *pool_entry = buf->pool_entry;
 	int i;
 
 	if ((card->options.cq == QETH_CQ_ENABLED) && (!buf->rx_skb)) {
@@ -2765,9 +2770,13 @@ static int qeth_init_input_buffer(struct qeth_card *card,
 			return -ENOMEM;
 	}
 
-	pool_entry = qeth_find_free_buffer_pool_entry(card);
-	if (!pool_entry)
-		return -ENOBUFS;
+	if (!pool_entry) {
+		pool_entry = qeth_find_free_buffer_pool_entry(card);
+		if (!pool_entry)
+			return -ENOBUFS;
+
+		buf->pool_entry = pool_entry;
+	}
 
 	/*
 	 * since the buffer is accessed only from the input_tasklet
@@ -2775,8 +2784,6 @@ static int qeth_init_input_buffer(struct qeth_card *card,
 	 * the QETH_IN_BUF_REQUEUE_THRESHOLD we should never run  out off
 	 * buffers
 	 */
-
-	buf->pool_entry = pool_entry;
 	for (i = 0; i < QETH_MAX_BUFFER_ELEMENTS(card); ++i) {
 		buf->buffer->element[i].length = PAGE_SIZE;
 		buf->buffer->element[i].addr =  pool_entry->elements[i];
@@ -3207,20 +3214,15 @@ static int qeth_check_qdio_errors(struct qeth_card *card,
 	return 0;
 }
 
-static void qeth_queue_input_buffer(struct qeth_card *card, int index)
+static unsigned int qeth_rx_refill_queue(struct qeth_card *card,
+					 unsigned int count)
 {
 	struct qeth_qdio_q *queue = card->qdio.in_q;
 	struct list_head *lh;
-	int count;
 	int i;
 	int rc;
 	int newcount = 0;
 
-	count = (index < queue->next_buf_to_init)?
-		card->qdio.in_buf_pool.buf_count -
-		(queue->next_buf_to_init - index) :
-		card->qdio.in_buf_pool.buf_count -
-		(queue->next_buf_to_init + QDIO_MAX_BUFFERS_PER_Q - index);
 	/* only requeue at a certain threshold to avoid SIGAs */
 	if (count >= QETH_IN_BUF_REQUEUE_THRESHOLD(card)) {
 		for (i = queue->next_buf_to_init;
@@ -3248,12 +3250,11 @@ static void qeth_queue_input_buffer(struct qeth_card *card, int index)
 				i++;
 			if (i == card->qdio.in_buf_pool.buf_count) {
 				QETH_CARD_TEXT(card, 2, "qsarbw");
-				card->reclaim_index = index;
 				schedule_delayed_work(
 					&card->buffer_reclaim_work,
 					QETH_RECLAIM_WORK_TIME);
 			}
-			return;
+			return 0;
 		}
 
 		/*
@@ -3279,7 +3280,10 @@ static void qeth_queue_input_buffer(struct qeth_card *card, int index)
 		}
 		queue->next_buf_to_init = (queue->next_buf_to_init + count) %
 					  QDIO_MAX_BUFFERS_PER_Q;
+		return count;
 	}
+
+	return 0;
 }
 
 static void qeth_buffer_reclaim_work(struct work_struct *work)
@@ -3287,8 +3291,10 @@ static void qeth_buffer_reclaim_work(struct work_struct *work)
 	struct qeth_card *card = container_of(work, struct qeth_card,
 		buffer_reclaim_work.work);
 
-	QETH_CARD_TEXT_(card, 2, "brw:%x", card->reclaim_index);
-	qeth_queue_input_buffer(card, card->reclaim_index);
+	local_bh_disable();
+	napi_schedule(&card->napi);
+	/* kick-start the NAPI softirq: */
+	local_bh_enable();
 }
 
 static void qeth_handle_send_error(struct qeth_card *card,
@@ -5379,6 +5385,7 @@ EXPORT_SYMBOL_GPL(qeth_core_get_next_skb);
 int qeth_poll(struct napi_struct *napi, int budget)
 {
 	struct qeth_card *card = container_of(napi, struct qeth_card, napi);
+	struct qeth_rx *ctx = &card->rx;
 	int work_done = 0;
 	struct qeth_qdio_buffer *buffer;
 	int done;
@@ -5421,8 +5428,12 @@ int qeth_poll(struct napi_struct *napi, int budget)
 					card->perf_stats.bufs_rec++;
 				qeth_put_buffer_pool_entry(card,
 					buffer->pool_entry);
-				qeth_queue_input_buffer(card, card->rx.b_index);
+				buffer->pool_entry = NULL;
 				card->rx.b_count--;
+				ctx->bufs_refill++;
+				ctx->bufs_refill -=
+					qeth_rx_refill_queue(card,
+							     ctx->bufs_refill);
 				if (card->rx.b_count) {
 					card->rx.b_index =
 						(card->rx.b_index + 1) %
@@ -5434,6 +5445,10 @@ int qeth_poll(struct napi_struct *napi, int budget)
 					card->rx.e_offset = 0;
 				}
 			}
+
+				if (budget)
+					/* Process any substantial refill backlog: */
+					ctx->bufs_refill -= qeth_rx_refill_queue(card, ctx->bufs_refill);
 
 			if (work_done >= budget)
 				goto out;
