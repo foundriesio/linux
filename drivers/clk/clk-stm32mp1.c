@@ -2146,6 +2146,8 @@ static int stm32_rcc_init(struct device *dev, void __iomem *base,
 				      clk_data);
 }
 
+static int stm32_rcc_init_pwr(struct device *dev, void __iomem *rcc_base);
+
 static int stm32mp1_rcc_init(struct device *dev)
 {
 	void __iomem *rcc_base;
@@ -2158,6 +2160,10 @@ static int stm32mp1_rcc_init(struct device *dev)
 	}
 
 	ret = stm32_rcc_init(dev, rcc_base, stm32mp1_match_data);
+	if (ret)
+		goto out;
+
+	ret = stm32_rcc_init_pwr(dev, rcc_base);
 
 out:
 	if (ret) {
@@ -2169,6 +2175,78 @@ out:
 	}
 
 	return ret;
+}
+
+/*
+ * RCC POWER
+ *
+ */
+
+struct reg {
+	u32 address;
+	u32 val;
+};
+
+/* This table lists the IPs for which CSLEEP is enabled */
+static const struct reg lp_table[] = {
+	{ 0xB04, 0x00000000 }, /* APB1 */
+	{ 0xB0C, 0x00000000 }, /* APB2 */
+	{ 0xB14, 0x00000800 }, /* APB3 */
+	{ 0x304, 0x00000000 }, /* APB4 */
+	{ 0xB1C, 0x00000000 }, /* AHB2 */
+	{ 0xB24, 0x00000000 }, /* AHB3 */
+	{ 0xB2C, 0x00000000 }, /* AHB4 */
+	{ 0x31C, 0x00000000 }, /* AHB6 */
+	{ 0xB34, 0x00000000 }, /* AXIM */
+	{ 0xB3C, 0x00000000 }, /* MLAHB */
+};
+
+#define SMC(class, op, address, val)\
+	({\
+	struct arm_smccc_res res;\
+	arm_smccc_smc(class, op, address, val,\
+			0, 0, 0, 0, &res);\
+	})
+
+#define STM32_SVC_RCC		0x82001000
+#define STM32_WRITE		0x1
+#define RCC_IRQ_FLAGS_MASK	0x110F1F
+
+static irqreturn_t stm32mp1_rcc_irq_handler(int irq, void *sdata)
+{
+	pr_info("RCC generic interrupt received\n");
+
+	/* clear interrupt flag */
+	SMC(STM32_SVC_RCC, STM32_WRITE, RCC_CIFR, RCC_IRQ_FLAGS_MASK);
+
+	return IRQ_HANDLED;
+}
+
+static int stm32_rcc_init_pwr(struct device *dev, void __iomem *rcc_base)
+{
+	int irq;
+	int ret;
+	int i;
+
+	/* register generic irq */
+	irq = of_irq_get(dev_of_node(dev), 0);
+	if (irq <= 0) {
+		pr_err("%s: failed to get RCC generic IRQ\n", __func__);
+		return irq ? irq : -ENXIO;
+	}
+
+	ret = devm_request_irq(dev, irq, stm32mp1_rcc_irq_handler, IRQF_ONESHOT,
+			       "rcc irq", NULL);
+	if (ret) {
+		pr_err("%s: failed to register generic IRQ\n", __func__);
+		return ret;
+	}
+
+	/* Configure LPEN static table */
+	for (i = 0; i < ARRAY_SIZE(lp_table); i++)
+		writel_relaxed(lp_table[i].val, rcc_base + lp_table[i].address);
+
+	return 0;
 }
 
 static int get_clock_deps(struct device *dev)
