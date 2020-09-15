@@ -9,9 +9,6 @@ maintainers:
 
 title: STMicroelectronics STM32 USART bindings
 
-allOf:
-  - $ref: rs485.yaml
-
 properties:
   compatible:
     enum:
@@ -66,13 +63,37 @@ properties:
   linux,rs485-enabled-at-boot-time: true
   rs485-rx-during-tx: true
 
-if:
-  required:
-    - st,hw-flow-ctrl
-then:
-  properties:
-    cts-gpios: false
-    rts-gpios: false
+  st,rx-fifo-threshold-bytes:
+    description: RX FIFO threshold configuration in bytes.
+    $ref: /schemas/types.yaml#/definitions/uint32
+    enum: [1, 2, 4, 8, 12, 14, 16]
+    default: 8
+
+  st,tx-fifo-threshold-bytes:
+    description: TX FIFO threshold configuration in bytes.
+      If value is set to 1, TX FIFO threshold is disabled.
+    $ref: /schemas/types.yaml#/definitions/uint32
+    enum: [1, 2, 4, 8, 12, 14, 16]
+    default: 8
+
+allOf:
+  - $ref: rs485.yaml
+
+  - if:
+      required:
+        - st,hw-flow-ctrl
+    then:
+      properties:
+        cts-gpios: false
+        rts-gpios: false
+
+  - if:
+      required:
+        - st,stm32h7-uart
+    then:
+      properties:
+        st,rx-fifo-threshold-bytes: false
+        st,tx-fifo-threshold-bytes: false
 
 required:
   - compatible
