@@ -1805,7 +1805,7 @@
 	tcc_pm_fw {
 		compatible = "telechips,pm-fw";
 		mbox-names ="power-mbox";
-		mboxes = <&micom_mbox TCC_MICOM_MBOX0_POWER>;
+		mboxes = <&micom_mbox TCC_MICOM_MBOX1_POWER>;
 		mbox-id = TCC_MBOX_POWER_ID;
 
 		boot-reason = <0x14400178 0xF 0x8>;
