@@ -28,11 +28,11 @@ struct tcc_thermal_zone {
     enum thermal_device_mode mode;
     struct thermal_zone_device *therm_dev;
     struct thermal_cooling_device *cool_dev[5];
-    unsigned int cool_dev_size;
+    int cool_dev_size;
     struct platform_device *tcc_dev;
     struct thermal_sensor_conf *sensor_conf;
     bool bind;
-    unsigned int result_of_thermal_read;
+    int result_of_thermal_read;
 };
 
 extern struct tcc_thermal_zone *thermal_zone;

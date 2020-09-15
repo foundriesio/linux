@@ -9,6 +9,7 @@
 #define BOOT_NORMAL	0x51
 #define BOOT_RECOVERY	0x52
 #define BOOT_FASTBOOT	0x50
+#define BOOT_DDR_CHECK	0x54
 #define BOOT_TCUPDATE	0x53
 
 #endif
