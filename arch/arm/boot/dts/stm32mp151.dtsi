@@ -1126,6 +1126,7 @@
 			reg = <0x50000000 0x1000>;
 			#clock-cells = <1>;
 			#reset-cells = <1>;
+			interrupts = <GIC_SPI 5 IRQ_TYPE_LEVEL_HIGH>;
 
 			clock-names = "hse", "hsi", "csi", "lse", "lsi";
 			clocks = <&scmi0_clk CK_SCMI0_HSE>,
