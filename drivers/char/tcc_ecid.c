@@ -54,7 +54,7 @@
 // ECID Code
 // -------- 31 ------------- 15 ----------- 0 --------
 // [0]     |****************|****************|    : '*' is valid
-// [1]     |0000000000000000|****************|    : 
+// [1]     |0000000000000000|****************|    :
 //
 
 
@@ -100,12 +100,13 @@ static void IO_UTIL_ReadECID (struct ecid_platform_data *pdata, int iA)
 	}
 }
 
+#if 0
 static void IO_UTIL_ReadPKG (struct ecid_platform_data *pdata)
 {
-	printk("PMU = %08x\n", readl_relaxed(pdata->PMU));
+	pr_info("PMU = %08x\n", readl_relaxed(pdata->PMU));
 	pdata->gPKG = ((readl_relaxed(pdata->PMU)>>16)&(0x7));
 }
-
+#endif
 static ssize_t cpu_id_read(struct device *dev, struct device_attribute *attr, char *buf)
 {
 	struct ecid_platform_data *pdata = dev_get_drvdata(dev);
@@ -123,7 +124,15 @@ static ssize_t cpu_pkg_read(struct device *dev, struct device_attribute *attr, c
         struct arm_smccc_res res;
 
 	arm_smccc_smc(SIP_CHIP_NAME, 0, 0, 0, 0, 0, 0, 0, &res);
-	return sprintf(buf, "%08X", res.a0);	// chip id
+	return sprintf(buf, "%08X", (unsigned int)res.a0);	// chip id
+}
+
+static ssize_t dram_check_read(struct device *dev, struct device_attribute *attr, char *buf)
+{
+        struct arm_smccc_res res;
+
+	arm_smccc_smc(0x8200600d, 15, 0, 0, 0, 0, 0, 0, &res);
+	return sprintf(buf, "%X", (unsigned int)res.a0);	// chip id
 }
 
 static ssize_t cpu_pkg_write(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
@@ -145,6 +154,7 @@ static ssize_t cpu_rev_write(struct device *dev, struct device_attribute *attr, 
 
 static DEVICE_ATTR(chip_id, 0644, cpu_id_read, cpu_id_write);
 static DEVICE_ATTR(chip_pkg, 0644, cpu_pkg_read, cpu_pkg_write);
+static DEVICE_ATTR(dram_check, 0644, dram_check_read, NULL);
 static DEVICE_ATTR(chip_rev, 0644, cpu_rev_read, cpu_rev_write);
 
 static struct attribute * cpu_rev_sysfs_entries[] = {
@@ -167,6 +177,15 @@ static struct attribute_group cpu_pkg_attr_group = {
 	.attrs	= cpu_pkg_sysfs_entries,
 };
 
+static struct attribute * dram_check_sysfs_entries[] = {
+	&dev_attr_dram_check.attr,
+	NULL,
+};
+
+static struct attribute_group dram_check_attr_group = {
+	.name	= NULL,
+	.attrs	= dram_check_sysfs_entries,
+};
 
 static struct attribute * cpu_id_sysfs_entries[] = {
 	&dev_attr_chip_id.attr,
@@ -211,24 +230,26 @@ static int cpu_id_probe(struct platform_device *pdev)
 	pdata->gECID[1] = 0;
 
 	platform_set_drvdata(pdev, pdata);
-		   
+
 	ret = sysfs_create_group(&pdev->dev.kobj, &cpu_id_attr_group);
 	ret = sysfs_create_group(&pdev->dev.kobj, &cpu_pkg_attr_group);
 	ret = sysfs_create_group(&pdev->dev.kobj, &cpu_rev_attr_group);
+	ret = sysfs_create_group(&pdev->dev.kobj, &dram_check_attr_group);
 
 	if(ret)
 		printk("[CPU_ID] error creating sysfs entries\n");
 
 	printk("[CPU_ID] probe is done\n");
-	
+
 	return 0;
 }
 
 static int cpu_id_remove(struct platform_device *pdev)
 {
 	sysfs_remove_group(&pdev->dev.kobj, &cpu_id_attr_group);
-	sysfs_remove_group(&pdev->dev.kobj, &cpu_pkg_attr_group);	
-	sysfs_remove_group(&pdev->dev.kobj, &cpu_rev_attr_group);	
+	sysfs_remove_group(&pdev->dev.kobj, &cpu_pkg_attr_group);
+	sysfs_remove_group(&pdev->dev.kobj, &cpu_rev_attr_group);
+	sysfs_remove_group(&pdev->dev.kobj, &dram_check_attr_group);
 	return 0;
 }
 
