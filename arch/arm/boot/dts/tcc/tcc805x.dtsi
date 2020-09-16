@@ -2240,6 +2240,8 @@
 		interrupts = <GIC_SPI 89 IRQ_TYPE_LEVEL_HIGH>;
 		clocks = <&clk_peri PERI_UART1>, <&clk_io IOBUS_UART1>;
 		clock-names = "uartclk", "apb_pclk";
+		assigned-clocks = <&clk_peri PERI_UART1>;
+		assigned-clock-rates = <48000000>;
 		status = "disabled";
 	};
 
@@ -2251,6 +2253,8 @@
 		interrupts = <GIC_SPI 90 IRQ_TYPE_LEVEL_HIGH>;
 		clocks = <&clk_peri PERI_UART2>, <&clk_io IOBUS_UART2>;
 		clock-names = "uartclk", "apb_pclk";
+		assigned-clocks = <&clk_peri PERI_UART2>;
+		assigned-clock-rates = <48000000>;
 		status = "disabled";
 	};
 
@@ -2263,6 +2267,8 @@
 		interrupts = <GIC_SPI 91 IRQ_TYPE_LEVEL_HIGH>;
 		clocks = <&clk_peri PERI_UART3>, <&clk_io IOBUS_UART3>;
 		clock-names = "uartclk", "apb_pclk";
+		assigned-clocks = <&clk_peri PERI_UART3>;
+		assigned-clock-rates = <48000000>;
 		status = "disabled";
 	};
 
@@ -2275,44 +2281,52 @@
 		interrupts = <GIC_SPI 69 IRQ_TYPE_LEVEL_HIGH>;
 		clocks = <&clk_peri PERI_UART4>, <&clk_io IOBUS_UART4>;
 		clock-names = "uartclk", "apb_pclk";
+		assigned-clocks = <&clk_peri PERI_UART4>;
+		assigned-clock-rates = <48000000>;
 		status = "disabled";
 	};
 
-        uart5: serial@16650000 {
-                compatible = "arm,pl011", "arm,primecell";
-                reg = <0x0 0x16650000 0x0 0x1000>;
+	uart5: serial@16650000 {
+		compatible = "arm,pl011", "arm,primecell";
+		reg = <0x0 0x16650000 0x0 0x1000>;
 		config-reg = <0x16689000 0x8>;
-                arm,primecell-periphid = <0x001feff7>;
-                sc-firmware = <&tcc_sc_fw>;
-                interrupts = <GIC_SPI 111 IRQ_TYPE_LEVEL_HIGH>;
-                clocks = <&clk_peri PERI_UART5>, <&clk_io IOBUS_UART5>;
-                clock-names = "uartclk", "apb_pclk";
-                status = "disabled";
-        };
+		arm,primecell-periphid = <0x001feff7>;
+		sc-firmware = <&tcc_sc_fw>;
+		interrupts = <GIC_SPI 111 IRQ_TYPE_LEVEL_HIGH>;
+		clocks = <&clk_peri PERI_UART5>, <&clk_io IOBUS_UART5>;
+		clock-names = "uartclk", "apb_pclk";
+		assigned-clocks = <&clk_peri PERI_UART5>;
+		assigned-clock-rates = <48000000>;
+		status = "disabled";
+	};
 
-        uart6: serial@16660000 {
-                compatible = "arm,pl011", "arm,primecell";
-                reg = <0x0 0x16660000 0x0 0x1000>;
+	uart6: serial@16660000 {
+		compatible = "arm,pl011", "arm,primecell";
+		reg = <0x0 0x16660000 0x0 0x1000>;
 		config-reg = <0x16689000 0x8>;
-                arm,primecell-periphid = <0x001feff7>;
-                sc-firmware = <&tcc_sc_fw>;
-                interrupts = <GIC_SPI 112 IRQ_TYPE_LEVEL_HIGH>;
-                clocks = <&clk_peri PERI_UART6>, <&clk_io IOBUS_UART6>;
-                clock-names = "uartclk", "apb_pclk";
-                status = "disabled";
-        };
+		arm,primecell-periphid = <0x001feff7>;
+		sc-firmware = <&tcc_sc_fw>;
+		interrupts = <GIC_SPI 112 IRQ_TYPE_LEVEL_HIGH>;
+		clocks = <&clk_peri PERI_UART6>, <&clk_io IOBUS_UART6>;
+		clock-names = "uartclk", "apb_pclk";
+		assigned-clocks = <&clk_peri PERI_UART6>;
+		assigned-clock-rates = <48000000>;
+		status = "disabled";
+	};
 
-        uart7: serial@16670000 {
-                compatible = "arm,pl011", "arm,primecell";
-                reg = <0x0 0x16670000 0x0 0x1000>;
+	uart7: serial@16670000 {
+		compatible = "arm,pl011", "arm,primecell";
+		reg = <0x0 0x16670000 0x0 0x1000>;
 		config-reg = <0x16689000 0x8>;
-                arm,primecell-periphid = <0x001feff7>;
-                sc-firmware = <&tcc_sc_fw>;
-                interrupts = <GIC_SPI 113 IRQ_TYPE_LEVEL_HIGH>;
-                clocks = <&clk_peri PERI_UART7>, <&clk_io IOBUS_UART7>;
-                clock-names = "uartclk", "apb_pclk";
-                status = "disabled";
-        };
+		arm,primecell-periphid = <0x001feff7>;
+		sc-firmware = <&tcc_sc_fw>;
+		interrupts = <GIC_SPI 113 IRQ_TYPE_LEVEL_HIGH>;
+		clocks = <&clk_peri PERI_UART7>, <&clk_io IOBUS_UART7>;
+		clock-names = "uartclk", "apb_pclk";
+		assigned-clocks = <&clk_peri PERI_UART7>;
+		assigned-clock-rates = <48000000>;
+		status = "disabled";
+	};
 
         pcie: pcie@11000000 {
                 compatible = "telechips,pcie", "snps,dw-pcie";
