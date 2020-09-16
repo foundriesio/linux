@@ -84,7 +84,7 @@
 #define INST_1ST_MAX_FRAMEBUFFERS	(24)	// To support VPU and HEVC    HEVC-4K: 7, Others: 1~24
 #endif
 
-#define INST_2ND_USE				(0)
+#define INST_2ND_USE				(1)
 #define INST_2ND_IS_HEVC_TYPE		(0)		// please check "CONFIG_SUPPORT_TCC_HEVC" Feature in order to enable HEVC
 #define INST_2ND_VIDEO_WIDTH		(1920)	// HEVC: 32x alignment, Other: 16x alignment
 #define INST_2ND_VIDEO_HEIGHT		(1088)	// HEVC: 32x alignment, Other: 16x alignment
