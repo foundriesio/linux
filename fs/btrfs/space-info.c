@@ -182,7 +182,7 @@ static inline u64 calc_global_rsv_need_space(struct btrfs_block_rsv *global)
 	return (global->size << 1);
 }
 
-static int can_overcommit(struct btrfs_root *root,
+int btrfs_can_overcommit(struct btrfs_root *root,
 			  struct btrfs_space_info *space_info, u64 bytes,
 			  enum btrfs_reserve_flush_enum flush)
 {
@@ -253,7 +253,7 @@ again:
 					  list);
 		/* Check and see if our ticket can be satisified now. */
 		if ((used + ticket->bytes <= space_info->total_bytes) ||
-		    can_overcommit(fs_info->extent_root, space_info,
+		    btrfs_can_overcommit(fs_info->extent_root, space_info,
 				   ticket->bytes, flush)) {
 			btrfs_space_info_update_bytes_may_use(fs_info,
 							      space_info,
@@ -666,14 +666,15 @@ btrfs_calc_reclaim_metadata_size(struct btrfs_root *root,
 		return to_reclaim;
 
 	to_reclaim = min_t(u64, num_online_cpus() * SZ_1M, SZ_16M);
-	if (can_overcommit(root, space_info, to_reclaim,
+	if (btrfs_can_overcommit(root, space_info, to_reclaim,
 			   BTRFS_RESERVE_FLUSH_ALL))
 		return 0;
 
 	used = space_info->bytes_used + space_info->bytes_reserved +
 	       space_info->bytes_pinned + space_info->bytes_readonly +
 	       space_info->bytes_may_use;
-	if (can_overcommit(root, space_info, SZ_1M, BTRFS_RESERVE_FLUSH_ALL))
+	if (btrfs_can_overcommit(root, space_info, SZ_1M,
+				 BTRFS_RESERVE_FLUSH_ALL))
 		expected = div_factor_fine(space_info->total_bytes, 95);
 	else
 		expected = div_factor_fine(space_info->total_bytes, 90);
@@ -1098,7 +1099,7 @@ static int __reserve_metadata_bytes(struct btrfs_root *root,
 	 */
 	if (!pending_tickets &&
 	    ((used + orig_bytes <= space_info->total_bytes) ||
-	     can_overcommit(root, space_info, orig_bytes, flush))) {
+	     btrfs_can_overcommit(root, space_info, orig_bytes, flush))) {
 		btrfs_space_info_update_bytes_may_use(fs_info, space_info,
 						      orig_bytes);
 		ret = 0;
