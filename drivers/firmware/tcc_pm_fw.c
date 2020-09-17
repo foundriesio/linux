@@ -38,6 +38,13 @@ inline void tcc_pm_fw_dev_err(struct device *dev, const char *msg, int err)
 	dev_err(dev, "[ERROR][PM_FW] Failed to %s. (err: %d)\n", msg, err);
 }
 
+ssize_t application_ready_show(struct kobject *kobj,
+		struct kobj_attribute *attr, char *buf)
+{
+	struct tcc_pm_fw_drvdata *data = pwrstr_to_tcc_pm_fw_drvdata(kobj);
+	return sprintf(buf, "%d\n", data->application_ready ? 1: 0);
+}
+
 ssize_t application_ready_store(struct kobject *kobj,
 		struct kobj_attribute *attr, const char *buf, size_t count)
 {
@@ -69,8 +76,9 @@ ssize_t application_ready_store(struct kobject *kobj,
 static struct kobj_attribute application_ready_attr = {
 	.attr = {
 		.name = "application_ready",
-		.mode = 0200,
+		.mode = 0600,
 	},
+	.show = application_ready_show,
 	.store = application_ready_store,
 };
 
