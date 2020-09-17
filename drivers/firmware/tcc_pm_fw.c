@@ -14,6 +14,12 @@
 
 #define TCC_PM_FW_DEV_NAME "tcc-pm-fw"
 
+#define tcc_pm_fw_dev_err(dev, msg, err) \
+	dev_err((dev), "[ERROR][pmfw] Failed to %s. (err: %d)\n", (msg), err);
+
+#define tcc_pm_fw_dev_info(dev, msg, ...) \
+	dev_info((dev), "[INFO][pmfw] " msg "\n", ##__VA_ARGS__);
+
 struct bit_field {
 	void __iomem *reg;
 	u32 mask;
@@ -32,11 +38,6 @@ struct tcc_pm_fw_drvdata {
 
 #define pwrstr_to_tcc_pm_fw_drvdata(kobj) \
 	container_of(kobj, struct tcc_pm_fw_drvdata, pwrstr)
-
-inline void tcc_pm_fw_dev_err(struct device *dev, const char *msg, int err)
-{
-	dev_err(dev, "[ERROR][PM_FW] Failed to %s. (err: %d)\n", msg, err);
-}
 
 ssize_t application_ready_show(struct kobject *kobj,
 		struct kobj_attribute *attr, char *buf)
@@ -173,6 +174,7 @@ static void tcc_pm_fw_event_listener(struct mbox_client *client, void *message)
 
 	message_type = msg->cmd[0] & 0xFFU;
 
+	tcc_pm_fw_dev_info(client->dev, "Power event %u raised.", message_type);
 	sprintf(env, "PM_EVENT=%u", message_type);
 
 	ret = kobject_uevent_env(&(client->dev->kobj), KOBJ_CHANGE, envp);
