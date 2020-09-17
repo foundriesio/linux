@@ -1,6 +1,16 @@
-// SPDX-License-Identifier: GPL-2.0-or-later
-/*
- * Copyright (C) Telechips Inc.
+/* Copyright (C) 2018 Telechips Inc.
+ *
+ * This program is free software; you can redistribute it and/or modify it under the terms
+ * of the GNU General Public License as published by the Free Software Foundation;
+ * either version 2 of the License, or (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
+ * PURPOSE. See the GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License along with
+ * this program; if not, write to the Free Software Foundation, Inc., 59 Temple Place,
+ * Suite 330, Boston, MA 02111-1307 USA
  */
 
 #ifndef _T_LOG_H
@@ -12,7 +22,6 @@
 
 #include <linux/printk.h>
 
-#define TLOG_VERBOS 5
 #define TLOG_DEBUG 4
 #define TLOG_INFO 3
 #define TLOG_WARNING 2
@@ -89,7 +98,7 @@
 #endif
 
 /* color tagging */
-#define TRACE _DLOG(NORMAL_COLOR "[%s:%d]\n", TLOG_TAG, __LINE__)
+#define TRACE _DLOG("[%s:%d]\n", TLOG_TAG, __LINE__)
 #define DLOG(fmt, ...) \
 	_DLOG(GREEN_COLOR "[DEBUG][%s][%d]" NORMAL_COLOR " " fmt, TLOG_TAG, __LINE__, ##__VA_ARGS__)
 

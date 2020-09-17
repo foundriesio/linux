@@ -14,7 +14,7 @@
  */
 
 // #define TLOG_LEVEL TLOG_DEBUG
-#include "sp_log.h"
+#include "tcc_ipc_log.h"
 #include <linux/mailbox/tcc_sp_ipc.h>
 #include <linux/kernel.h>
 #include <linux/module.h>
