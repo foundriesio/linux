@@ -223,7 +223,7 @@ int sp_sendrecv_cmd(int cmd, void *data, int size, void *rdata, int rsize)
 	// Awaiting mbox_msg_received to be called.
 	result = wait_event_timeout(waitq, mbox_received == 1, CMD_TIMEOUT);
 	if (result == 0 && (mbox_received != 1)) {
-		ELOG("Cmd: %p Timeout\n", cmd);
+		ELOG("Cmd: %px Timeout\n", (void *)cmd);
 		result = -EINVAL;
 		goto out;
 	}
@@ -537,7 +537,7 @@ static int sp_subscribe_evt_ioctl(unsigned long arg)
 	uint32_t event = (uint32_t)(arg & 0xFFFFFFFF);
 
 	event_mask |= event;
-	ILOG("event_mask: %p, event: %p\n", event_mask, event);
+	ILOG("event_mask: %px, event: %px\n", (void *)event_mask, (void *)event);
 
 	return result;
 }
@@ -548,7 +548,7 @@ static int sp_unsubscribe_evt_ioctl(unsigned long arg)
 	uint32_t event = (uint32_t)(arg & 0xFFFFFFFF);
 
 	event_mask &= ~event;
-	ILOG("event_mask: %p, event: %p\n", event_mask, event);
+	ILOG("event_mask: %px, event: %px\n", (void *)event_mask, (void *)event);
 
 	return result;
 }
@@ -561,7 +561,7 @@ static int sp_get_evt_ioctl(unsigned long arg)
 	if (result != 0) {
 		ELOG("copy_to_user failed: %d\n", result);
 	}
-	DLOG("recv_event: %p\n", recv_event);
+	DLOG("recv_event: %px\n", (void *)recv_event);
 
 	recv_event = 0;
 
@@ -571,7 +571,7 @@ static int sp_get_evt_ioctl(unsigned long arg)
 static int sp_get_evt_info_ioctl(unsigned long arg)
 {
 	int result = 0;
-	uint32_t event, idx;
+	uint32_t idx;
 	struct sp_segment segment_user;
 
 	result = copy_from_user(&segment_user, (void *)arg, sizeof(struct sp_segment));
@@ -582,7 +582,7 @@ static int sp_get_evt_info_ioctl(unsigned long arg)
 
 	idx = sp_event_idx(segment_user.cmd);
 	if (idx == -1) {
-		ELOG("event is wrong: %d\n", event);
+		ELOG("event is wrong: %px\n", (void *)segment_user.cmd);
 		result = -1;
 		return result;
 	}
@@ -637,7 +637,7 @@ static long sp_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 		break;
 
 	default:
-		ELOG("ioctl failed: %p\n", cmd);
+		ELOG("ioctl failed: %px\n", (void *)cmd);
 		result = -EINVAL;
 		break;
 	}
