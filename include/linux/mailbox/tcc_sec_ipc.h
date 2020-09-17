@@ -35,8 +35,8 @@ struct sec_segment
 typedef enum _mbox_dev {
 	MBOX_DEV_M4 = 0,
 	MBOX_DEV_A7,
-	MBOX_DEV_A53,
 	MBOX_DEV_R5,
+	MBOX_DEV_A53,
 	MBOX_DEV_A72,
 	MBOX_DEV_HSM,
 	MBOX_DEV_MAX
