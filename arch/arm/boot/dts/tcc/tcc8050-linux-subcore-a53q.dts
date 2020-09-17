@@ -763,6 +763,8 @@
                 interrupts = <GIC_SPI 88 IRQ_TYPE_LEVEL_HIGH>;
                 clocks = <&clk_peri PERI_UART0>, <&clk_io IOBUS_UART0>;
                 clock-names = "uartclk", "apb_pclk";
+                assigned-clocks = <&clk_peri PERI_UART0>;
+                assigned-clock-rates = <48000000>;
                 status = "disabled";
         };
 
@@ -817,8 +819,6 @@
 		interrupts = <GIC_SPI 69 IRQ_TYPE_LEVEL_HIGH>;
 		clocks = <&clk_peri PERI_UART4>, <&clk_io IOBUS_UART4>;
 		clock-names = "uartclk", "apb_pclk";
-		assigned-clocks = <&clk_peri PERI_UART4>;
-		assigned-clock-rates = <48000000>;
 		status = "disabled";
 	};
 
