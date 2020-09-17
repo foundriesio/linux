@@ -59,6 +59,16 @@
 		status = "okay";
 	};
 
+	usb_phy_tuning: usb-phy-tuning {
+		st,hs-dc-level = <2>;
+		st,fs-rftime-tuning;
+		st,hs-rftime-reduction;
+		st,hs-current-trim = <15>;
+		st,hs-impedance-trim = <1>;
+		st,squelch-level = <3>;
+		st,hs-rx-offset = <2>;
+		st,no-lsfs-sc;
+	};
 };
 
 &cec {
@@ -359,4 +369,12 @@
 
 &usbphyc {
 	status = "okay";
+};
+
+&usbphyc_port0 {
+	st,phy-tuning = <&usb_phy_tuning>;
+};
+
+&usbphyc_port1 {
+	st,phy-tuning = <&usb_phy_tuning>;
 };
