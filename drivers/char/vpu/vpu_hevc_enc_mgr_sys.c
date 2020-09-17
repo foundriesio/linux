@@ -2,36 +2,50 @@
 /*
  * Copyright (C) Telechips Inc.
  */
-/*
- *   drivers/char/vpu/vpu_hevc_enc_mgr_sys.c
- *   Author:  <linux@telechips.com>
- *   Created: Apr 29, 2020
- *   Description: reset, clock and interrupt functions for TCC HEVC ENC
- */
 
 #ifdef CONFIG_SUPPORT_TCC_WAVE420L_VPU_HEVC_ENC
 
+#include <linux/clk.h>
+#include <linux/cpufreq.h>
+#include <linux/delay.h>
+#include <linux/errno.h>
+#include <linux/fs.h>
+#include <linux/interrupt.h>
+#include <linux/init.h>
+#include <linux/irq.h>
+#include <linux/kernel.h>
+#include <linux/kthread.h>
+#include <linux/list.h>
+#include <linux/mm.h>
+#include <linux/module.h>
+#include <linux/of.h>
+#include <linux/platform_device.h>
+#include <linux/string.h>
+#include <linux/uaccess.h>
+
+#include "vpu_comm.h"
 #include "vpu_hevc_enc_mgr_sys.h"
 
-static struct clk *fbus_vbus_clk = NULL;
-static struct clk *fbus_chevcenc_clk = NULL;
-static struct clk *fbus_bhevcenc_clk = NULL;
-static struct clk *vbus_hevc_encoder_clk = NULL;
+static struct clk* fbus_vbus_clk = NULL;
+static struct clk* fbus_chevcenc_clk = NULL;
+static struct clk* fbus_bhevcenc_clk = NULL;
+static struct clk* vbus_hevc_encoder_clk = NULL;
 
-#if defined( VIDEO_IP_DIRECT_RESET_CTRL)
+#if defined(VIDEO_IP_DIRECT_RESET_CTRL)
 #include <linux/reset.h>
-static struct reset_control *vbus_hevc_encoder_rst = NULL;
+static struct reset_control* vbus_hevc_encoder_rst = NULL;
 #endif
 
 extern int tccxxx_sync_player(int sync);
 static int cache_droped = 0;
 
-//#define USE_CLK_DYNAMIC_CTRL
+#if 0
+#define USE_CLK_DYNAMIC_CTRL
+#endif
 
-//////////////////////////////////////////////////////////////////////////////
 void vmgr_hevc_enc_enable_clock(int vbus_no_ctrl)
 {
-	V_DBG(DEBUG_RSTCLK, "@@ vmgr_hevc_enc_enable_clock");
+	V_DBG(DEBUG_RSTCLK, "vmgr_hevc_enc_enable_clock");
 
 	if (fbus_vbus_clk && !vbus_no_ctrl)
 		clk_prepare_enable(fbus_vbus_clk);
@@ -48,26 +62,26 @@ void vmgr_hevc_enc_enable_clock(int vbus_no_ctrl)
 
 void vmgr_hevc_enc_disable_clock(int vbus_no_ctrl)
 {
-	V_DBG(DEBUG_RSTCLK, "@@ vmgr_hevc_enc_disable_clock");
+	V_DBG(DEBUG_RSTCLK, "vmgr_hevc_enc_disable_clock");
 
 	if (vbus_hevc_encoder_clk)
 		clk_disable_unprepare(vbus_hevc_encoder_clk);
 
-	if(fbus_chevcenc_clk)
+	if (fbus_chevcenc_clk)
 		clk_disable_unprepare(fbus_chevcenc_clk);
 
-	if(fbus_bhevcenc_clk)
+	if (fbus_bhevcenc_clk)
 		clk_disable_unprepare(fbus_bhevcenc_clk);
 
 #if !defined(VBUS_CLK_ALWAYS_ON)
-	if(fbus_vbus_clk && !vbus_no_ctrl)
+	if (fbus_vbus_clk && !vbus_no_ctrl)
 		clk_disable_unprepare(fbus_vbus_clk);
 #endif
 }
 
-void vmgr_hevc_enc_get_clock(struct device_node *node)
+void vmgr_hevc_enc_get_clock(struct device_node* node)
 {
-	if(node == NULL)
+	if (node == NULL)
 	{
 		V_DBG(DEBUG_VPU_ERROR, "device node is null");
 	}
@@ -123,41 +137,42 @@ void vmgr_hevc_enc_change_clock(unsigned int width, unsigned int height)
 
 //pll: Based on 1500/800
 // => path to confiture PLL: bootable/bootloader/uboot/board/telechips/tcc8990_stb/clock.c, clock_init_early
-/*
+#if 0 //Remove below lines if not necessary
 	tcc_set_pll(PLL_VIDEO_0, ENABLE, 800000000, 2);
 	tcc_set_pll(PLL_VIDEO_1, ENABLE, 1500000000, 2);
-*/
-	if(prev_resolution == curr_resolution)
+#endif
+
+	if (prev_resolution == curr_resolution)
 		return;
 
 	prev_resolution = curr_resolution;
 
-	if( curr_resolution > 1920*1088 )
+	if (curr_resolution > 1920*1088)
 	{
 		vbus_clk_value = 800000000;
 		bhevc_clk_value = 500000000;
 		chevc_clk_value = 800000000;
 	}
-	else if( curr_resolution > 1280*720 )
+	else if (curr_resolution > 1280*720)
 	{
 		vbus_clk_value = 500000000;
 		bhevc_clk_value = 250000000;
 		chevc_clk_value = 500000000;
 	}
-	else if( curr_resolution > 720*480 )
+	else if (curr_resolution > 720*480)
 	{
 		vbus_clk_value = 300000000;
 		bhevc_clk_value = 200000000;
 		chevc_clk_value = 300000000;
 	}
-	else// if( curr_resolution > 0 )
+	else /*curr_resolution > 0*/
 	{
 		vbus_clk_value = 200000000;
 		bhevc_clk_value = 150000000;
 		chevc_clk_value = 200000000;
 	}
 
-	if(fbus_vbus_clk)
+	if (fbus_vbus_clk)
 	{
 		err = clk_set_rate(fbus_vbus_clk, vbus_clk_value);
 		if (err)
@@ -166,7 +181,7 @@ void vmgr_hevc_enc_change_clock(unsigned int width, unsigned int height)
 			bclk_changed |= 0x1;
 	}
 
-	if(fbus_bhevcenc_clk)
+	if (fbus_bhevcenc_clk)
 	{
 		err = clk_set_rate(fbus_bhevcenc_clk, bhevc_clk_value);
 		if (err)
@@ -175,7 +190,8 @@ void vmgr_hevc_enc_change_clock(unsigned int width, unsigned int height)
 			bclk_changed |= 0x2;
 	}
 
-	if(fbus_chevcenc_clk){
+	if (fbus_chevcenc_clk)
+	{
 		err = clk_set_rate(fbus_chevcenc_clk, chevc_clk_value);
 		if (err)
 			pr_err("cannot change fbus_chevcenc_clk rate to %ld: %d\n", chevc_clk_value, err);
@@ -191,10 +207,11 @@ void vmgr_hevc_enc_change_clock(unsigned int width, unsigned int height)
 #endif
 }
 
-void vmgr_hevc_enc_get_reset(struct device_node *node)
+void vmgr_hevc_enc_get_reset(struct device_node* node)
 {
-#if defined( VIDEO_IP_DIRECT_RESET_CTRL)
-	if(node == NULL) {
+#if defined(VIDEO_IP_DIRECT_RESET_CTRL)
+	if (node == NULL)
+	{
 		printk("device node is null\n");
 	}
 
@@ -205,7 +222,7 @@ void vmgr_hevc_enc_get_reset(struct device_node *node)
 
 void vmgr_hevc_enc_put_reset(void)
 {
-#if defined( VIDEO_IP_DIRECT_RESET_CTRL)
+#if defined(VIDEO_IP_DIRECT_RESET_CTRL)
 	if (vbus_hevc_encoder_rst)
 	{
 		reset_control_put(vbus_hevc_encoder_rst);
@@ -225,10 +242,10 @@ int vmgr_hevc_enc_get_reset_register(void)
 
 void vmgr_hevc_enc_hw_assert(void)
 {
-#if defined( VIDEO_IP_DIRECT_RESET_CTRL)
+#if defined(VIDEO_IP_DIRECT_RESET_CTRL)
 	V_DBG(DEBUG_RSTCLK, "enter");
 
-	if(vbus_hevc_encoder_rst)
+	if (vbus_hevc_encoder_rst)
 	{
 		V_DBG(DEBUG_RSTCLK, "Video bus hevc encoder reset: assert (rsr:0x%x)\n", vmgr_hevc_enc_get_reset_register());
 		reset_control_assert(vbus_hevc_encoder_rst);
@@ -240,10 +257,10 @@ void vmgr_hevc_enc_hw_assert(void)
 
 void vmgr_hevc_enc_hw_deassert(void)
 {
-#if defined( VIDEO_IP_DIRECT_RESET_CTRL)
+#if defined(VIDEO_IP_DIRECT_RESET_CTRL)
 	V_DBG(DEBUG_RSTCLK, "enter");
 
-	if(vbus_hevc_encoder_rst)
+	if (vbus_hevc_encoder_rst)
 	{
 		V_DBG(DEBUG_RSTCLK, "Video bus hevc encoder reset: deassert (rsr:0x%x)\n", vmgr_hevc_enc_get_reset_register());
 		reset_control_deassert(vbus_hevc_encoder_rst);
@@ -255,7 +272,7 @@ void vmgr_hevc_enc_hw_deassert(void)
 
 void vmgr_hevc_enc_hw_reset(void)
 {
-#if defined( VIDEO_IP_DIRECT_RESET_CTRL)
+#if defined(VIDEO_IP_DIRECT_RESET_CTRL)
 	V_DBG(DEBUG_RSTCLK, "enter");
 
 	udelay(1000); //1ms
@@ -283,20 +300,20 @@ void vmgr_hevc_enc_restore_clock(int vbus_no_ctrl, int opened_cnt)
 
 	udelay(1000); //1ms
 
-	while(opened_count)
+	while (opened_count)
 	{
 		vmgr_hevc_enc_disable_clock(vbus_no_ctrl);
-		if(opened_count > 0)
+		if (opened_count > 0)
 			opened_count--;
 	}
 
 	udelay(1000); //1ms
-	
+
 	opened_count = opened_cnt;
-	while(opened_count)
+	while (opened_count)
 	{
 		vmgr_hevc_enc_enable_clock(vbus_no_ctrl);
-		if(opened_count > 0)
+		if (opened_count > 0)
 			opened_count--;
 	}
 
@@ -318,16 +335,17 @@ void vmgr_hevc_enc_disable_irq(unsigned int irq)
 	disable_irq(irq);
 }
 
-void vmgr_hevc_enc_free_irq(unsigned int irq, void * dev_id)
+void vmgr_hevc_enc_free_irq(unsigned int irq, void* dev_id)
 {
 	free_irq(irq, dev_id);
 }
 
-int vmgr_hevc_enc_request_irq(unsigned int irq, irqreturn_t (*handler)(int irq, void *dev_id),
-								unsigned long frags, const char * device, void * dev_id)
+int vmgr_hevc_enc_request_irq(unsigned int irq, irqreturn_t (*handler)(int irq, void* dev_id),
+								unsigned long frags, const char* device, void* dev_id)
 {
 	return request_irq(irq, handler, frags, device, dev_id);
 }
+
 unsigned long vmgr_hevc_enc_get_int_flags(void)
 {
 	return IRQ_INT_TYPE;
@@ -342,7 +360,7 @@ int vmgr_hevc_enc_BusPrioritySetting(int mode, int type)
 	return 0;
 }
 
-void vmgr_hevc_enc_status_clear(unsigned int *base_addr)
+void vmgr_hevc_enc_status_clear(unsigned int* base_addr)
 {
 #if defined(VPU_C5)
 	vetc_reg_write(base_addr, 0x174, 0x00);
@@ -361,7 +379,7 @@ void vmgr_hevc_enc_init_variable(void)
 	cache_droped = 0;
 }
 
-#endif //CONFIG_SUPPORT_TCC_WAVE420L_VPU_HEVC_ENC
+#endif /*CONFIG_SUPPORT_TCC_WAVE420L_VPU_HEVC_ENC*/
 
 MODULE_AUTHOR("Telechips.");
 MODULE_DESCRIPTION("TCC vpu hevc enc device driver");
