@@ -275,12 +275,20 @@ void VIOC_RDMA_SetImageDisableNW(volatile void __iomem *reg)
 {
 	unsigned long val;
 
-	__raw_writel(0x00000000, reg + RDMASIZE);
 	val = (__raw_readl(reg + RDMACTRL) & ~(RDMACTRL_IEN_MASK));
 	if (!(val & RDMACTRL_UPD_MASK)) {
 		val |= (0x1 << RDMACTRL_UPD_SHIFT);
 		__raw_writel(val, reg + RDMACTRL);
 	}
+
+	/* This code prevents fifo underrun in the example below:
+	 * 1) PATH - R(1920x1080) - S(720x480) - W(720x480) - D(720x480)
+	 * 2) Disable RDMA.
+	 * 3) Unplug Scaler then fifo underrun is occurred Immediately.
+	 * - Because the WMIX read size from RDMA even if RDMA was disabled */
+	__raw_writel(0x00000000, reg + RDMASIZE);
+	val |= (0x1 << RDMACTRL_UPD_SHIFT);
+	__raw_writel(val, reg + RDMACTRL);
 
 #if defined(CONFIG_VIOC_DOLBY_VISION_EDR)
 	if (VIOC_CONFIG_DV_GET_EDR_PATH() &&

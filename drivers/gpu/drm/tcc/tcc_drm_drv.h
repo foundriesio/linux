@@ -29,21 +29,6 @@
 #define to_tcc_crtc(x)	container_of(x, struct tcc_drm_crtc, base)
 #define to_tcc_plane(x)	container_of(x, struct tcc_drm_plane, base)
 
-/* this enumerates display type. */
-enum tcc_drm_output_type {
-	TCC_DISPLAY_TYPE_NONE,
-	/* RGB or CPU Interface. */
-	TCC_DISPLAY_TYPE_LCD,
-	/* Second display Interface. */
-	TCC_DISPLAY_TYPE_EXT,
-	/* Third display Interface. */
-	TCC_DISPLAY_TYPE_THIRD,
-	/* HDMI Interface. */
-	TCC_DISPLAY_TYPE_HDMI,
-	/* Virtual Display Interface. */
-	TCC_DISPLAY_TYPE_VIDI,
-};
-
 struct tcc_drm_rect {
 	unsigned int x, y;
 	unsigned int w, h;
@@ -161,6 +146,7 @@ struct tcc_drm_crtc_ops {
 	u32 (*get_vblank_counter)(struct tcc_drm_crtc *crtc);
 	enum drm_mode_status (*mode_valid)(struct tcc_drm_crtc *crtc,
 		const struct drm_display_mode *mode);
+	void (*mode_set_nofb)(struct tcc_drm_crtc *crtc);
 	int (*atomic_check)(struct tcc_drm_crtc *crtc,
 			    struct drm_crtc_state *state);
 	void (*atomic_begin)(struct tcc_drm_crtc *crtc);
@@ -169,7 +155,6 @@ struct tcc_drm_crtc_ops {
 	void (*disable_plane)(struct tcc_drm_crtc *crtc,
 			      struct tcc_drm_plane *plane);
 	void (*atomic_flush)(struct tcc_drm_crtc *crtc);
-	void (*te_handler)(struct tcc_drm_crtc *crtc);
 	#if defined(CONFIG_DRM_TCC_CTRL_CHROMAKEY)
 	int (*get_chromakey)(struct tcc_drm_crtc *crtc,
 		unsigned int layer,
@@ -229,7 +214,6 @@ struct drm_tcc_file_private {
  */
 struct tcc_drm_private {
 	struct drm_fb_helper *fb_helper;
-	struct tcc_drm_fbdev *fbdev;
 	struct drm_atomic_state *suspend_state;
 
 	struct device *dma_dev;
@@ -255,44 +239,6 @@ static inline struct device *to_dma_dev(struct drm_device *dev)
 
 	return priv->dma_dev;
 }
-
-/*
- * TCC drm sub driver structure.
- *
- * @list: sub driver has its own list object to register to tcc drm driver.
- * @dev: pointer to device object for subdrv device driver.
- * @drm_dev: pointer to drm_device and this pointer would be set
- *	when sub driver calls tcc_drm_subdrv_register().
- * @probe: this callback would be called by tcc drm driver after
- *     subdrv is registered to it.
- * @remove: this callback is used to release resources created
- *     by probe callback.
- * @open: this would be called with drm device file open.
- * @close: this would be called with drm device file close.
- */
-struct tcc_drm_subdrv {
-	struct list_head list;
-	struct device *dev;
-	struct drm_device *drm_dev;
-
-	int (*probe)(struct drm_device *drm_dev, struct device *dev);
-	void (*remove)(struct drm_device *drm_dev, struct device *dev);
-	int (*open)(struct drm_device *drm_dev, struct device *dev,
-			struct drm_file *file);
-	void (*close)(struct drm_device *drm_dev, struct device *dev,
-			struct drm_file *file);
-};
-
- /* This function would be called by non kms drivers such as g2d and ipp. */
-int tcc_drm_subdrv_register(struct tcc_drm_subdrv *drm_subdrv);
-
-/* this function removes subdrv list from tcc drm driver */
-int tcc_drm_subdrv_unregister(struct tcc_drm_subdrv *drm_subdrv);
-
-int tcc_drm_device_subdrv_probe(struct drm_device *dev);
-int tcc_drm_device_subdrv_remove(struct drm_device *dev);
-int tcc_drm_subdrv_open(struct drm_device *dev, struct drm_file *file);
-void tcc_drm_subdrv_close(struct drm_device *dev, struct drm_file *file);
 
 #ifdef CONFIG_DRM_TCC_DPI
 struct drm_encoder *tcc_dpi_probe(struct device *dev, struct tcc_hw_device *hw_device);
@@ -320,8 +266,5 @@ int tcc_atomic_check(struct drm_device *dev, struct drm_atomic_state *state);
 extern struct platform_driver lcd_driver;
 extern struct platform_driver ext_driver;
 extern struct platform_driver third_driver;
-extern struct platform_driver mixer_driver;
-extern struct platform_driver hdmi_driver;
-extern struct platform_driver vidi_driver;
-extern struct platform_driver ipp_driver;
+extern struct platform_driver fourth_driver;
 #endif

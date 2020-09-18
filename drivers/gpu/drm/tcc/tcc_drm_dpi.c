@@ -21,8 +21,10 @@
 
 #include <video/of_videomode.h>
 #include <video/videomode.h>
-#include "tcc_drm_address.h"
-#include "tcc_drm_crtc.h"
+#include <video/tcc/vioc_global.h>
+#include <tcc_drm_address.h>
+#include <tcc_drm_crtc.h>
+#define LOG_TAG "DRMDPI"
 
 struct drm_detailed_timing_t {
         unsigned int vic;
@@ -46,10 +48,11 @@ struct tcc_dpi {
 	struct device *dev;
 
 	struct drm_panel *panel;
+	struct device_node *panel_node;
 	struct drm_connector connector;
 
 	struct videomode *vm;
-	
+
 	struct tcc_hw_device *hw_device;
 };
 static const struct drm_detailed_timing_t drm_detailed_timing[] = {
@@ -63,7 +66,7 @@ static const struct drm_detailed_timing_t drm_detailed_timing[] = {
 	{   16,  0, 148500, 0, 1920,  280,   88,  44, 1, 1080,  45,  4,  5, 1},
 
 	/* CUSTOM TM123XDHP90 1920x720@60p */
-	{ 1024,  0,  88200, 0, 1920,   64,   28,   8, 0,  720,  22, 10,  2, 0},
+	{ 1024,  0,  88200, 0, 1920,   64,   30,   4, 0,  720,  21, 10,  2, 0},
 	/* CUSTOM AV080WSM-NW2 1024x600@60p */
 	{ 1025,  0,  51200, 0, 1024,  313,  147,  19, 0,  600,  37, 25,  2, 0},
 	{    0,  0,      0, 0,    0,    0,    0,   0, 0,    0,   0,  0,  0, 0},
@@ -145,7 +148,7 @@ tcc_dpi_detect(struct drm_connector *connector, bool force)
 {
 	struct tcc_dpi *ctx = connector_to_dpi(connector);
 
-	if (ctx->panel && !ctx->panel->connector)
+	if (ctx->panel && ctx->panel->connector == NULL)
 		drm_panel_attach(ctx->panel, &ctx->connector);
 
 	return connector_status_connected;
@@ -166,9 +169,9 @@ static const struct drm_connector_funcs tcc_dpi_connector_funcs = {
 	.atomic_destroy_state = drm_atomic_helper_connector_destroy_state,
 };
 
-/* 
- * This function called in drm_helper_probe_single_connector_modes 
- * return is count 
+/*
+ * This function called in drm_helper_probe_single_connector_modes
+ * return is count
  */
 static int tcc_dpi_get_modes(struct drm_connector *connector)
 {
@@ -194,7 +197,19 @@ static int tcc_dpi_get_modes(struct drm_connector *connector)
 			printk(KERN_ERR "[ERR][DRM_DPI] %s failed to create drm_mode\r\n", __func__);
 			break;
 		}
-		
+
+		if (ctx->panel != NULL) {
+			count = ctx->panel->funcs->get_modes(ctx->panel);
+			if(count)
+				break;
+		}
+
+		if (ctx->vm != NULL) {
+			drm_display_mode_from_videomode(ctx->vm, mode);
+			count = 1;
+			break;
+		}
+
 		if(ctx->hw_device != NULL) {
 			if(ctx->hw_device->vic > 0) {
 				//printk(KERN_INFO "[INF][DRM_DPI] vic is %d\r\n", ctx->hw_device->vic);
@@ -203,17 +218,11 @@ static int tcc_dpi_get_modes(struct drm_connector *connector)
 					printk(KERN_ERR "[ERR][DRM_DPI] %s failed to get detailed timing table index\r\n", __func__);
 					break;
 				}
-
 				dtd = (struct drm_detailed_timing_t*)&drm_detailed_timing[table_index];
 				drm_detailed_timing_convert_to_drm_mode(dtd, mode);
 				count = 1;
 				break;
 			}
-		}
-			
-		if (ctx->vm != NULL) {
-			drm_display_mode_from_videomode(ctx->vm, mode);
-			count = 1;
 		}
 	} while(0);
 
@@ -236,9 +245,6 @@ static int tcc_dpi_create_connector(struct drm_encoder *encoder, struct tcc_hw_d
 	int ret;
 	connector->polled = DRM_CONNECTOR_POLL_HPD;
 
-	if(!hw_data->version){
-		hw_data->connector_type = DRM_MODE_CONNECTOR_LVDS;
-	}
 	pr_info("[%s][%d][DRM] connector type is %d\n", __FUNCTION__, __LINE__, hw_data->connector_type);
 	ret = drm_connector_init(encoder->dev, connector,
 				&tcc_dpi_connector_funcs,
@@ -255,19 +261,28 @@ static int tcc_dpi_create_connector(struct drm_encoder *encoder, struct tcc_hw_d
 	return 0;
 }
 
-static void tcc_dpi_mode_set(struct drm_encoder *encoder,
-				struct drm_display_mode *mode,
-				struct drm_display_mode *adjusted_mode)
+
+static void
+tcc_dpi_atomic_mode_set(struct drm_encoder *encoder,
+                                struct drm_crtc_state *crtc_state,
+                                struct drm_connector_state *connector_state)
 {
+	struct tcc_dpi *ctx = encoder_to_dpi(encoder);
+
+	if (ctx->panel) {
+		drm_panel_prepare(ctx->panel);
+		/*  panel->funcs->prepare(panel) */
+	}
 }
+
 
 static void tcc_dpi_enable(struct drm_encoder *encoder)
 {
 	struct tcc_dpi *ctx = encoder_to_dpi(encoder);
 
 	if (ctx->panel) {
-		drm_panel_prepare(ctx->panel);
 		drm_panel_enable(ctx->panel);
+		/* panel->funcs->enable(panel); */
 	}
 }
 
@@ -275,14 +290,23 @@ static void tcc_dpi_disable(struct drm_encoder *encoder)
 {
 	struct tcc_dpi *ctx = encoder_to_dpi(encoder);
 
-	if (ctx->panel) {
+	dev_dbg(ctx->dev,
+		"[DEBUG][%s] %s disable encoder\r\n",
+					LOG_TAG, __func__);
+	if (ctx->panel != NULL) {
+		dev_dbg(ctx->dev,
+			"[DEBUG][%s] %s disable panel\r\n",
+						LOG_TAG, __func__);
 		drm_panel_disable(ctx->panel);
+		/* panel->funcs->disable(panel); */
+
 		drm_panel_unprepare(ctx->panel);
+		/* panel->funcs->unprepare(panel); */
 	}
 }
 
 static const struct drm_encoder_helper_funcs tcc_dpi_encoder_helper_funcs = {
-	.mode_set = tcc_dpi_mode_set,
+	.atomic_mode_set = tcc_dpi_atomic_mode_set,
 	.enable = tcc_dpi_enable,
 	.disable = tcc_dpi_disable,
 };
@@ -307,22 +331,26 @@ static int tcc_dpi_parse_dt(struct tcc_dpi *ctx)
 		vm = devm_kzalloc(dev, sizeof(*ctx->vm), GFP_KERNEL);
 		if (!vm)
 		{
-			DRM_ERROR("%s vm alloc fail\n", __FILE__);
+			dev_warn(dev,
+				"[WARN][%s] %s line(%d) failed to vm alloc\n",
+								LOG_TAG, __func__, __LINE__);
 			return -ENOMEM;
 		}
 
 		ret = of_get_videomode(dn, vm, 0);
 		if (ret < 0) {
-			DRM_ERROR("%s of_get_videomode\n", __FILE__);
+			dev_warn(dev,
+				"[WARN][%s] %s line(%d) failed to of_get_videomode\n",
+								LOG_TAG, __func__, __LINE__);
 			devm_kfree(dev, vm);
 			return ret;
 		}
 
 		ctx->vm = vm;
-	}
-	else {
-		DRM_ERROR("cannot find display-timings node\n");
-		return -ENODEV;
+	} else {
+		dev_dbg(dev,
+			"[DEBUG][%s] %s line(%d) cannot find display-timings node\n",
+								LOG_TAG, __func__, __LINE__);
 	}
 
 	return 0;
@@ -332,6 +360,7 @@ int tcc_dpi_bind(struct drm_device *dev, struct drm_encoder *encoder, struct tcc
 {
 	int ret;
 	int encoder_type;
+	int i;
 
 	if(hw_data->connector_type == DRM_MODE_CONNECTOR_DisplayPort || hw_data->connector_type == DRM_MODE_CONNECTOR_HDMIA ||
 		hw_data->connector_type == DRM_MODE_CONNECTOR_HDMIB){
@@ -339,13 +368,24 @@ int tcc_dpi_bind(struct drm_device *dev, struct drm_encoder *encoder, struct tcc
 	}else{
 		encoder_type = DRM_MODE_ENCODER_LVDS;
 	}
-	pr_info("[%s][%d][DRM] encoder type is %d\n", __FUNCTION__, __LINE__, encoder_type);
+	dev_dbg(dev->dev, 
+		"[DEBUG][%s] %s encoder type is %d\n", LOG_TAG, __func__, encoder_type);
 
 	drm_encoder_init(dev, encoder, &tcc_dpi_encoder_funcs, encoder_type, NULL);
 
 	drm_encoder_helper_add(encoder, &tcc_dpi_encoder_helper_funcs);
 
-	/* TCC_DRM_THIRD is third panel for drm driver */
+	for(i = TCC_DISPLAY_TYPE_FOURTH; i > TCC_DISPLAY_TYPE_NONE ;i--) {
+		if(tcc_drm_set_possible_crtcs(encoder, (enum tcc_drm_output_type)i) == 0)
+			break;
+	}
+	if(i == TCC_DISPLAY_TYPE_NONE) {
+		dev_err(dev->dev,
+			"[ERROR][%s] %s line(%d) faild to get possible crcts\r\n",
+								LOG_TAG, __func__, __LINE__);
+	}
+	#if 0
+ 	/* TCC_DRM_THIRD is third panel for drm driver */
 	ret = tcc_drm_set_possible_crtcs(encoder, TCC_DISPLAY_TYPE_THIRD);
 	if (ret < 0) {
 		/* TCC_DRM_EXT is second panel for drm driver */
@@ -356,8 +396,15 @@ int tcc_dpi_bind(struct drm_device *dev, struct drm_encoder *encoder, struct tcc
 				return ret;
 		}
 	}
-
-	DRM_DEBUG_KMS("possible_crtcs = 0x%x\n", encoder->possible_crtcs);
+	#endif
+	dev_info(dev->dev, "[INFO][%s] %s %s- possible_crtcs=0x%08x, dev=%d\r\n",
+						LOG_TAG, __func__,
+						i==TCC_DISPLAY_TYPE_FOURTH?"fourth":
+						i==TCC_DISPLAY_TYPE_THIRD?"triple":
+						i==TCC_DISPLAY_TYPE_EXT?"ext":
+						i==TCC_DISPLAY_TYPE_LCD?"lcd":"none",
+						get_vioc_index(hw_data->display_device.blk_num),
+						encoder->possible_crtcs);
 
 	ret = tcc_dpi_create_connector(encoder, hw_data);
 	if (ret) {
@@ -375,22 +422,48 @@ struct drm_encoder *tcc_dpi_probe(struct device *dev, struct tcc_hw_device *hw_d
 	int ret;
 
 	ctx = devm_kzalloc(dev, sizeof(*ctx), GFP_KERNEL);
-	if (ctx == NULL)
-		return ERR_PTR(-ENOMEM);
-	
+	if (ctx == NULL) {
+		dev_err(dev, "[ERROR][%s] %s line(%d) failed to memory alloc\r\n",
+							LOG_TAG, __func__, __LINE__);
+		ret = -ENOMEM;
+		goto err_nomem;
+	}
+
 	ctx->vm = NULL;
+	ctx->panel = NULL;
 	ctx->dev = dev;
 	ctx->hw_device = hw_device;
 
-	if(hw_device->version == TCC_DRM_DT_VERSION_OLD) {
-		ret = tcc_dpi_parse_dt(ctx);
-		if (ret < 0) {
-			devm_kfree(dev, ctx);
-			return ERR_PTR(-ENOMEM);;
-		}	
+	ret = tcc_dpi_parse_dt(ctx);
+	#if defined(CONFIG_ARCH_TCC805X)
+	ctx->panel_node = of_graph_get_remote_node(dev->of_node, 0, -1);
+	if (ctx->panel_node != NULL) {
+		ctx->panel = of_drm_find_panel(ctx->panel_node);
+	}
+	if(ctx->panel != NULL)
+		dev_info(dev, "[INFO][%s] %s has LVDS panel\r\n", LOG_TAG, __func__);
+	#endif
+
+	/* Check resolutions */
+	if (ctx->panel == NULL) {
+		if(ctx->vm == NULL) {
+			if(ctx->hw_device->vic == 0) {
+				dev_err(dev,
+					"[ERROR][%s] %s line(%d) failed to get resolution\r\n",
+									LOG_TAG, __func__, __LINE__);
+				ret = -ENODEV;
+				goto err_resolution;
+			}
+		}
 	}
 
 	return &ctx->encoder;
+
+err_resolution:
+	devm_kfree(dev, ctx);
+
+err_nomem:
+	return ERR_PTR(ret);
 }
 
 int tcc_dpi_remove(struct drm_encoder *encoder)
@@ -402,5 +475,6 @@ int tcc_dpi_remove(struct drm_encoder *encoder)
 	if (ctx->panel)
 		drm_panel_detach(ctx->panel);
 
+	devm_kfree(ctx->dev, ctx);
 	return 0;
 }

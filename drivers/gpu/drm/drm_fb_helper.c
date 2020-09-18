@@ -409,7 +409,7 @@ retry:
 		}
 	}
 
-#ifndef CONFIG_LOGO //TCC - to keep the kernel logo
+#if !defined(CONFIG_ARCH_TCC897X) && !defined(CONFIG_ARCH_TCC803X) //TCC - to keep the kernel logo
 	ret = drm_atomic_commit(state);
 #endif
 
