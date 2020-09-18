@@ -52,7 +52,7 @@ extern int tcc_video_last_frame(void* pVSyncDisp, struct stTcc_last_frame iLastF
 
 long vmem_ioctl(struct file* file, unsigned int cmd, unsigned long arg)
 {
-	int ret;
+	int ret = 0;
 
 	switch (cmd)
 	{

@@ -88,6 +88,8 @@ EXPORT_SYMBOL(vetc_iounmap);
 
 void* vetc_memcpy(void* dest, const void* src, unsigned int count, unsigned int type)
 {
+	void* ret = dest;
+
 	if (_vmem_is_cma_allocated_virt_region(src, count) > 0)
 		type = 0;
 
@@ -96,7 +98,9 @@ void* vetc_memcpy(void* dest, const void* src, unsigned int count, unsigned int 
 	else if (type == 2)
 		memcpy_toio(dest, src, count);
 	else
-		return memcpy(dest, src, count);
+		ret = memcpy(dest, src, count);
+
+	return ret;
 }
 EXPORT_SYMBOL(vetc_memcpy);
 

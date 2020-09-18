@@ -54,6 +54,7 @@ static void _vdec_inter_add_list(vpu_decoder_data* vdata, int cmd, void* args)
 {
 	vdata->vdec_list[vdata->list_idx].type          = vdata->gsDecType;
 	vdata->vdec_list[vdata->list_idx].cmd_type      = cmd;
+
 #ifdef CONFIG_SUPPORT_TCC_JPU
 	if (vdata->gsCodecType == STD_MJPG)
 		vdata->vdec_list[vdata->list_idx].handle    = vdata->gsJpuDecInit_Info.gsJpuDecHandle;
@@ -74,11 +75,13 @@ static void _vdec_inter_add_list(vpu_decoder_data* vdata, int cmd, void* args)
 		vdata->vdec_list[vdata->list_idx].handle    = vdata->gsVp9DecInit_Info.gsVp9DecHandle;
 	else
 #endif
-		vdata->vdec_list[vdata->list_idx].handle    = vdata->gsVpuDecInit_Info.gsVpuDecHandle;
+	vdata->vdec_list[vdata->list_idx].handle        = vdata->gsVpuDecInit_Info.gsVpuDecHandle;
+
 	vdata->vdec_list[vdata->list_idx].args          = args;
 	vdata->vdec_list[vdata->list_idx].comm_data     = &vdata->vComm_data;
-	vdata->gsCommDecResult = RET0;
 	vdata->vdec_list[vdata->list_idx].vpu_result    = &vdata->gsCommDecResult;
+
+	vdata->gsCommDecResult = RET0;
 
 #ifdef CONFIG_SUPPORT_TCC_JPU
 	if (vdata->gsCodecType == STD_MJPG)

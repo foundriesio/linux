@@ -154,7 +154,7 @@ int vmem_alloc_count(int type)
 	return vmem_allocated_count[type];
 }
 
-// page type configuration
+// Page type configuration
 #define PAGE_TYPE_MAX	16
 static int g_iMmapPropCnt = 0;
 static int g_aiProperty[PAGE_TYPE_MAX];
@@ -846,7 +846,7 @@ int _vmem_alloc_dedicated_buffer(void)
 #ifdef CONFIG_SUPPORT_TCC_JPU
 	if (gsJpuWork_memInfo.kernel_remap_addr == 0)
 	{
-	// JPU WORK BUFFER
+		// JPU WORK BUFFER
 		gsJpuWork_memInfo.request_size = JPU_WORK_BUF_SIZE;
 		if (gsJpuWork_memInfo.request_size)
 		{
@@ -873,7 +873,7 @@ int _vmem_alloc_dedicated_buffer(void)
 
 	if (gsVpuWork_memInfo.kernel_remap_addr == 0)
 	{
-	// VPU WORK BUFFER
+		// VPU WORK BUFFER
 		gsVpuWork_memInfo.request_size = VPU_WORK_BUF_SIZE;
 		if (gsVpuWork_memInfo.request_size)
 		{
@@ -902,7 +902,7 @@ int _vmem_alloc_dedicated_buffer(void)
 	{
 		if (gsVpuEncSeqheader_memInfo[type].kernel_remap_addr == 0)
 		{
-		// SEQ-HEADER BUFFER FOR ENCODER
+			// SEQ-HEADER BUFFER FOR ENCODER
 			gsVpuEncSeqheader_memInfo[type].request_size = PAGE_ALIGN(ENC_HEADER_BUF_SIZE);
 			if (gsVpuEncSeqheader_memInfo[type].request_size)
 			{
@@ -931,7 +931,7 @@ int _vmem_alloc_dedicated_buffer(void)
 	{
 		if (gsVpuUserData_memInfo[type].kernel_remap_addr == 0)
 		{
-		// USER DATA
+			// USER DATA
 			gsVpuUserData_memInfo[type].request_size = PAGE_ALIGN(USER_DATA_BUF_SIZE);
 			if (gsVpuUserData_memInfo[type].request_size)
 			{
@@ -1360,7 +1360,7 @@ int _vmem_init_memory_info(void)
 
 	ptr_rear_addr_mem = ptr_front_addr_mem + sz_remained_mem;
 
-#if DEFINED_CONFIG_VENC_CNT_2345
+#if DEFINED_CONFIG_VENC_CNT_12345
 	{
 		if (0 > pmap_get_info("enc_main", &pmap_enc))
 		{
@@ -1399,7 +1399,7 @@ int _vmem_init_memory_info(void)
 	dprintk_mem("%s :: 0x%x / 0x%x / 0x%x !! \n", __func__, ptr_front_addr_mem, ptr_ext_addr_mem, ptr_rear_addr_mem);
 
 #if DEFINED_CONFIG_VDEC_CNT_345
-// Additional decoder :: ext2,3
+	// Additional decoder :: ext2,3
 	if (0 > pmap_get_info("video_ext", &pmap_video_ext))
 	{
 		ret = -13;
@@ -1426,7 +1426,7 @@ int _vmem_init_memory_info(void)
 #endif
 
 #if defined(CONFIG_VDEC_CNT_5)
-// Additional decoder :: ext4
+	// Additional decoder :: ext4
 	if (0 > pmap_get_info("video_ext2", &pmap_video_ext2))
 	{
 		ret = -14;
@@ -1612,52 +1612,52 @@ int _vmem_is_cma_allocated_phy_region(unsigned int start_phyaddr, unsigned int l
 {
 	unsigned int end_phyaddr = start_phyaddr + length -1;
 
-// pmap_video
+	// pmap_video
 	if ((start_phyaddr >= pmap_video.base) && (end_phyaddr <= (pmap_video.base+pmap_video.size-1)))
 		return pmap_is_cma_alloc(&pmap_video);
 
-// pmap_video_sw
+	// pmap_video_sw
 	if ((start_phyaddr >= pmap_video_sw.base) && (end_phyaddr <= (pmap_video_sw.base+pmap_video_sw.size-1)))
 		return pmap_is_cma_alloc(&pmap_video_sw);
 
-// pmap_enc
 #if DEFINED_CONFIG_VENC_CNT_12345
+	// pmap_enc
 	if ((start_phyaddr >= pmap_enc.base) && (end_phyaddr <= (pmap_enc.base+pmap_enc.size-1)))
 		return pmap_is_cma_alloc(&pmap_enc);
 #endif
 
-// pmap_video_ext
 #if DEFINED_CONFIG_VDEC_CNT_345
+	// pmap_video_ext
 	if ((start_phyaddr >= pmap_video_ext.base) && (end_phyaddr <= (pmap_video_ext.base+pmap_video_ext.size-1)))
 		return pmap_is_cma_alloc(&pmap_video_ext);
 #endif
 
-// pmap_video_ext2
 #if defined(CONFIG_VDEC_CNT_5)
+	// pmap_video_ext2
 	if ((start_phyaddr >= pmap_video_ext2.base) && (end_phyaddr <= (pmap_video_ext2.base+pmap_video_ext2.size-1)))
 		return pmap_is_cma_alloc(&pmap_video_ext2);
 #endif
 
-// pmap_enc_ext[0]
 #if DEFINED_CONFIG_VENC_CNT_2345
+	// pmap_enc_ext[0]
 	if ((start_phyaddr >= pmap_enc_ext[0].base) && (end_phyaddr <= (pmap_enc_ext[0].base+pmap_enc_ext[0].size-1)))
 		return pmap_is_cma_alloc(&pmap_enc_ext[0]);
 #endif
 
-//pmap_enc_ext[1]
 #if DEFINED_CONFIG_VENC_CNT_345
+	//pmap_enc_ext[1]
 	if ((start_phyaddr >= pmap_enc_ext[1].base) && (end_phyaddr <= (pmap_enc_ext[1].base+pmap_enc_ext[1].size-1)))
 		return pmap_is_cma_alloc(&pmap_enc_ext[1]);
 #endif
 
-// pmap_enc_ext[2]
 #if DEFINED_CONFIG_VENC_CNT_45
+	// pmap_enc_ext[2]
 	if ((start_phyaddr >= pmap_enc_ext[2].base) && (end_phyaddr <= (pmap_enc_ext[2].base+pmap_enc_ext[2].size-1)))
 		return pmap_is_cma_alloc(&pmap_enc_ext[2]);
 #endif
 
-// pmap_enc_ext[3]
 #if defined(CONFIG_VENC_CNT_5)
+	// pmap_enc_ext[3]
 	if ((start_phyaddr >= pmap_enc_ext[3].base) && (end_phyaddr <= (pmap_enc_ext[3].base+pmap_enc_ext[3].size-1)))
 		return pmap_is_cma_alloc(&pmap_enc_ext[3]);
 #endif
@@ -1948,7 +1948,7 @@ unsigned int vmem_get_freemem_size(vputype type)
 #else
 					0,
 #endif
-#if defined(CONFIG_VDEC_CNT_5)
+#if defined(CONFIG_VDEC_CNT_345)
 					sz_ext2_remained_mem,
 #else
 					0,
