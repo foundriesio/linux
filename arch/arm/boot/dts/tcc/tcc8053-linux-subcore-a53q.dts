@@ -1364,6 +1364,13 @@
 		isp-number = <0>;
 	};
 #if 0
+	/* only for TCC805X ES(TCS CV8050C-618) */
+	isp_iommu: isp_iommu {
+		compatible = "telechips,tcc-isp-iommu";
+		iommus = <&smmu_dbus 0x90 0x7f00>;
+		status = "okay";
+	};
+
 	isp0: isp0@1bc80000 {
 		compatible = "telechips,tcc805x-isp";
 		status = "okay";
@@ -1373,9 +1380,6 @@
 
 		pinctrl-names = "default";
 		pinctrl-0 = <&isp0_uart_tx &isp0_uart_rx>;
-
-		/* only for TCC805X ES (CV8050C-618)*/
-		iommus = <&smmu_dbus 0x90 0x7f00>;
 	};
 
 	isp1: isp1@1bca0000 {
@@ -1387,9 +1391,6 @@
 
 		pinctrl-names = "default";
 		pinctrl-0 = <&isp1_uart_tx &isp1_uart_rx>;
-
-		/* only for TCC805X ES (CV8050C-618)*/
-		//iommus = <&smmu_dbus 0x90 0x7f00>;
 	};
 
 	isp2: isp2@1bcc0000 {
@@ -1401,9 +1402,6 @@
 
 		pinctrl-names = "default";
 		pinctrl-0 = <&isp2_uart_tx &isp2_uart_rx>;
-
-		/* only for TCC805X ES (CV8050C-618)*/
-		//iommus = <&smmu_dbus 0x90 0x7f00>;
 	};
 
 	isp3: isp3@1bce0000 {
@@ -1415,9 +1413,6 @@
 
 		pinctrl-names = "default";
 		pinctrl-0 = <&isp3_uart_tx &isp3_uart_rx>;
-
-		/* only for TCC805X ES (CV8050C-618)*/
-		//iommus = <&smmu_dbus 0x90 0x7f00>;
 	};
 #endif
 	fbdisplay: fbdisplay@12000000 {
