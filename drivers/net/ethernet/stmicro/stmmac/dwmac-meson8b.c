@@ -228,6 +228,7 @@ static int meson8b_init_prg_eth(struct meson8b_dwmac *dwmac)
 		 * a register) based on the line-speed (125MHz for Gbit speeds,
 		 * 25MHz for 100Mbit/s and 2.5MHz for 10Mbit/s).
 		 */
+		ret = clk_set_rate(dwmac->rgmii_tx_en_clk, 125 * 1000 * 1000);
 		if (ret) {
 			dev_err(&dwmac->pdev->dev,
 				"failed to set RGMII TX clock\n");
