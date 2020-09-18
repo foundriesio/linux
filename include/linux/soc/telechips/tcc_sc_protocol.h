@@ -69,6 +69,7 @@ struct tcc_sc_fw_ops {
 struct tcc_sc_fw_handle {
 	struct tcc_sc_fw_version version;
 	struct tcc_sc_fw_ops ops;
+	void *priv;
 };
 
 const struct tcc_sc_fw_handle *tcc_sc_fw_get_handle(struct device_node *np);
