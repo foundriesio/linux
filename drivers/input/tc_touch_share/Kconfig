@@ -1,0 +1,29 @@
+menuconfig TCC_TOUCH_SHARE
+	bool "Telechips Touch Share"
+	default n
+	help
+		The Share Touch between Main-core and Sub-core.
+
+if TCC_TOUCH_SHARE
+
+choice
+	prompt "Telechips Touch Share Driver Select"
+	default TCC_TOUCH_RECEIVE if TCC805X_CA53Q
+	default TCC_TOUCH_BRIDGE
+	help
+	This options touch share driver select.
+
+	TCC Touch Bridge shares touch data to other core.
+	TCC Touch Receive receivs touch data from TCC Touch Bridge and generates touch event.
+
+config TCC_TOUCH_BRIDGE
+	bool "TCC Touch Bridge Driver"
+	depends on TCC_MULTI_MAILBOX
+
+config TCC_TOUCH_RECEIVE
+	bool "TCC Touch Receiver Driver"
+	depends on TCC_MULTI_MAILBOX
+
+endchoice
+
+endif

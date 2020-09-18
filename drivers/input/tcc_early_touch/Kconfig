@@ -1,6 +1,0 @@
-config TCC_TOUCH_BRIDGE
-	tristate "TCC Touch Bridge Driver for TCC803x A53"
-	default n
-	depends on TCC_MULTI_MAILBOX
-	help
-		TCC Touch Bridge only supports TCC803x A53.

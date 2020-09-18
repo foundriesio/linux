@@ -1560,6 +1560,13 @@
 		mbox-id = TCC_MBOX_SDR_ID;
 	};
 
+	tstb:tcc_touch_bridge {
+	    compatible = "telechips,tcc_touch_bridge";
+	    mbox-names ="tb-mbox";
+		mboxes = <&cb_mbox TCC_CB_MBOX_TCHSHARE>;
+		mbox-id = TCC_MBOX_TCHSHARE_ID;
+	};
+
 	tcc_sc_fw: tcc_sc_fw {
 		compatible = "telechips,tcc805x-sc-fw";
 	};
