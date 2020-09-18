@@ -20,7 +20,8 @@
 #include "tcc_drm_drv.h"
 
 #define CRTC_FLAGS_IRQ_BIT	0
-#define CRTC_FLAGS_CLK_BIT	1
+#define CRTC_FLAGS_VCLK_BIT	1 /* Display BUS - pwdn/swreset for VIOC*/
+#define CRTC_FLAGS_PCLK_BIT	2 /* Display BUS - Pixel Clock for LCDn (0-3) */
 
 /* Display has totally four hardware windows. */
 #define CRTC_WIN_NR_MAX		4
@@ -42,15 +43,9 @@ struct tcc_drm_crtc *tcc_drm_crtc_get_by_type(struct drm_device *drm_dev,
 int tcc_drm_set_possible_crtcs(struct drm_encoder *encoder,
 		enum tcc_drm_output_type out_type);
 
-int tcc_crtc_parse_edid_ioctl(struct drm_device *dev, void *data, struct drm_file *file);
-
-/*
- * This function calls the crtc device(manager)'s te_handler() callback
- * to trigger to transfer video image at the tearing effect synchronization
- * signal.
- */
-void tcc_drm_crtc_te_handler(struct drm_crtc *crtc);
 void tcc_drm_crtc_vblank_handler(struct drm_crtc *crtc);
 void tcc_crtc_handle_event(struct tcc_drm_crtc *tcc_crtc);
-
+int tcc_drm_crtc_set_display_timing(struct drm_crtc *crtc,
+				     struct drm_display_mode *mode,
+				     struct tcc_hw_device *hw_data);
 #endif

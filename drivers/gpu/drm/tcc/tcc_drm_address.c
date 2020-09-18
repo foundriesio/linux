@@ -22,6 +22,7 @@
 #include <linux/of_irq.h>
 #include <linux/of_address.h>
 #include <linux/of_device.h>
+#include <linux/of_graph.h>
 #include <linux/of_dma.h>
 #include <linux/regmap.h>
 
@@ -36,6 +37,7 @@
 #include "tcc_drm_drv.h"
 #include "tcc_drm_crtc.h"
 
+#define LOG_TAG "DRMADDR"
 /*
 
 
@@ -49,6 +51,8 @@ Reference device blocb v1.0
 		status = "okay";
 	};
 */
+
+
 static int tcc_drm_address_dt_parse_old(struct platform_device *pdev, struct tcc_hw_device *hw_data)
 {
 	struct device *dev = &pdev->dev;
@@ -61,6 +65,9 @@ static int tcc_drm_address_dt_parse_old(struct platform_device *pdev, struct tcc
 		dev_err(dev, "failed to get display port number\n");
 		return -ENODEV;
 	}
+	/* Set connector type */
+	hw_data->connector_type = DRM_MODE_CONNECTOR_LVDS;
+
 	hw_data->display_device.blk_num |= VIOC_DISP;
 
 	hw_data->vioc_clock = devm_clk_get(dev, "ddibus_vioc");
@@ -130,21 +137,27 @@ static int tcc_drm_address_dt_parse_v1_0(struct platform_device *pdev, struct tc
 
 		current_node = of_parse_phandle(np, "display_device", 0);
 		if (current_node == NULL) {
-			printk(KERN_ERR "[ERR][DRM_ADR] could not find display_device node\n");
+			dev_err(&pdev->dev, "[ERROR][%s] %s line(%d) could not find display_device node\n",
+				LOG_TAG, __func__, __LINE__);
 			ret = -ENODEV;
 			break;
 		}
+
+		/* Set connector type */
+		hw_data->connector_type = DRM_MODE_CONNECTOR_LVDS;
 
 		of_property_read_u32_index(np, "display_device", 1, &index);
 		hw_data->display_device.virt_addr = VIOC_DISP_GetAddress(index);
 		hw_data->display_device.blk_num = index;
 		hw_data->display_device.irq_num =
 			irq_of_parse_and_map(current_node, get_vioc_index(index));
-		printk(KERN_INFO "[INF][DRM_ADR] display device id is %d, irq_num = %d\r\n", index,  hw_data->display_device.irq_num);
+		dev_info(&pdev->dev, "[INFO][%s] display device id is %d, irq_num = %d\r\n",
+				LOG_TAG, get_vioc_index(index),  hw_data->display_device.irq_num);
 
 		hw_data->vioc_clock = of_clk_get_by_name(current_node, "ddi-clk");
 		if(hw_data->vioc_clock == NULL) {
-			printk(KERN_ERR "[ERR][DRM_ADR] could not find bus clk.\r\n");
+			dev_err(&pdev->dev, "[ERROR][%s] %s line(%d) could not find bus clk.\r\n",
+				LOG_TAG, __func__, __LINE__);
 			ret = -ENODEV;
 			break;
 		}
@@ -172,7 +185,8 @@ static int tcc_drm_address_dt_parse_v1_0(struct platform_device *pdev, struct tc
 				break;
 		}
 		if(hw_data->ddc_clock == NULL) {
-			printk(KERN_ERR "[ERR][DRM_ADR] could not find peri clk.\r\n");
+			dev_err(&pdev->dev, "[ERROR][%s] %s line(%d) could not find peri clk.\r\n",
+				LOG_TAG, __func__, __LINE__);
 			ret = -ENODEV;
 			break;
 		}
@@ -181,7 +195,8 @@ static int tcc_drm_address_dt_parse_v1_0(struct platform_device *pdev, struct tc
 		/* parse wmixer */
 		current_node = of_parse_phandle(np, "wmixer", 0);
 		if (current_node == NULL) {
-			printk(KERN_ERR "[ERR][DRM_ADR] could not find wmixer node\n");
+			dev_err(&pdev->dev, "[ERROR][%s] %s line(%d) could not find wmixer node\n",
+				LOG_TAG, __func__, __LINE__);
 			ret = -ENODEV;
 			break;
 		}
@@ -191,14 +206,16 @@ static int tcc_drm_address_dt_parse_v1_0(struct platform_device *pdev, struct tc
 		hw_data->wmixer.irq_num = irq_of_parse_and_map(
 			current_node, get_vioc_index(index));
 		hw_data->wmixer.blk_num = index;
-		pr_info("[INF][DRM_ADR] wmixer %d 0x%p  irq:%d\n", get_vioc_index(index),
-			hw_data->wmixer.virt_addr,
-			hw_data->wmixer.irq_num);
+		dev_info(&pdev->dev, 
+			"[INFO][%s] %s line(%d) wmixer %d 0x%p  irq:%d\n",
+				LOG_TAG, __func__, __LINE__, get_vioc_index(index),
+				hw_data->wmixer.virt_addr, hw_data->wmixer.irq_num);
 
 		/* parse RDMA */
 		current_node = of_parse_phandle(np, "rdma", 0);
 		if (!current_node) {
-			printk(KERN_ERR "[ERR][DRM_ADR] could not find rdma node\n");
+			dev_err(&pdev->dev, "[ERROR][%s] %s line(%d) could not find rdma node\n",
+				LOG_TAG, __func__, __LINE__);
 			ret = -ENODEV;
 			break;
 		}
@@ -216,7 +233,8 @@ static int tcc_drm_address_dt_parse_v1_0(struct platform_device *pdev, struct tc
 		}
 		if(of_property_read_string(np, "connector_type", &connector_type)){
 			hw_data->connector_type = DRM_MODE_CONNECTOR_LVDS;
-			pr_info("[%s][%d][DRM] can't parse connector type. default LVDS is setted\n", __FUNCTION__, __LINE__ );
+			dev_info(&pdev->dev, "[INFO][%s] %s line(%d) can't parse connector type. default LVDS is setted\n",
+				LOG_TAG, __func__, __LINE__ );
 		}else{
 			if(!strcmp(connector_type, "DP")){
 				hw_data->connector_type = DRM_MODE_CONNECTOR_DisplayPort;
@@ -227,7 +245,9 @@ static int tcc_drm_address_dt_parse_v1_0(struct platform_device *pdev, struct tc
 			}else{
 				hw_data->connector_type = DRM_MODE_CONNECTOR_LVDS;
 			}
-			pr_info("[%s][%d][DRM] connector type from Device tree is %s\n", __FUNCTION__, __LINE__, connector_type);
+			dev_info(&pdev->dev,
+				 "[INFO][%s] %s line(%d) connector type from Device tree is %s\n",
+							LOG_TAG, __func__, __LINE__, connector_type);
 		}
 
 		/* parse planes */
@@ -268,50 +288,69 @@ static int tcc_drm_address_dt_parse_v1_0(struct platform_device *pdev, struct tc
 			hw_data->rdma_plane_type[i]  = DRM_PLANE_FLAG_NOT_DEFINED;
 		}
 
-		pr_info("[INF][DRM_ADR] display_device:%d, wmixer:%d\r\n",
+		dev_info(&pdev->dev, "[INFO][%s] %s line(%d) display_device:%d, wmixer:%d\r\n",
+			LOG_TAG, __func__, __LINE__,
 			get_vioc_index(hw_data->display_device.blk_num),
 			get_vioc_index(hw_data->wmixer.blk_num));
 
 		for (i = 0; i < RDMA_MAX_NUM; i++) {
 			if(hw_data->rdma[i].virt_addr != NULL) {
-				pr_info("              rdma:%d - %s\r\n",
+				dev_info(&pdev->dev, "              rdma:%d - %s\r\n",
 				get_vioc_index(hw_data->rdma[i].blk_num),
 				(DRM_PLANE_TYPE(hw_data->rdma_plane_type[i]) == DRM_PLANE_TYPE_CURSOR)?"cursor":
 				(DRM_PLANE_TYPE(hw_data->rdma_plane_type[i]) == DRM_PLANE_TYPE_PRIMARY)?"primary":"overlay");
 			}
 		}
 
+		/* panel */
+		#if defined(CONFIG_ARCH_TCC805X)
+		current_node = of_graph_get_remote_node(np, 0, -1);
+		if (current_node != NULL) {
+			if(of_property_read_u32(current_node,
+				"lcdc-mux-select", &hw_data->lcdc_mux) == 0) {
+					dev_dbg(&pdev->dev, "[DEBUG][%s] %s line(%d) lcdc-mux-select=%d from remote node\r\n",
+						 LOG_TAG, __func__, __LINE__, hw_data->lcdc_mux);
+			}
+		} else {
+			if(of_property_read_u32(np,
+				"lcdc-mux-select", &hw_data->lcdc_mux) == 0) {
+					dev_dbg(&pdev->dev, "[DEBUG][%s] %s line(%d) lcdc-mux-select=%d from local panel\r\n",
+						LOG_TAG, __func__, __LINE__, hw_data->lcdc_mux);
+			} else {
+				dev_err(&pdev->dev, "[ERROR][%s] %s line(%d) can not found lcdc-mux-select\r\n",
+							LOG_TAG, __func__, __LINE__);
+				ret = -ENODEV;
+				break;
+			}
+		}
+		#endif
 	} while(0);
 
         return ret;
 }
 
-
-int tcc_drm_address_dt_parse(struct platform_device *pdev, struct tcc_hw_device *hw_data)
+int tcc_drm_address_dt_parse(struct platform_device *pdev, struct tcc_hw_device *hw_data, unsigned long version)
 {
-	int ret = -ENODEV;
-	unsigned long version;
-
 	int (*parse_api)(struct platform_device *, struct tcc_hw_device *);
-	version = (unsigned long)of_device_get_match_data(&pdev->dev);
+
 	switch(version) {
 		case TCC_DRM_DT_VERSION_OLD:
-			printk(KERN_INFO "[INF][DRM_ADR] device tree is old\r\n");
+			dev_dbg(&pdev->dev, "[DEBUG][%s] device tree is old\r\n", LOG_TAG);
 			parse_api = tcc_drm_address_dt_parse_old;
 			break;
 		case TCC_DRM_DT_VERSION_1_0:
-			printk(KERN_INFO "[INF][DRM_ADR] device tree is v1.0\r\n");
+			dev_dbg(&pdev->dev, "[DEBUG][%s] device tree is v1.0\r\n", LOG_TAG);
 			parse_api = tcc_drm_address_dt_parse_v1_0;
 			break;
 		default:
 			parse_api = NULL;
+			goto err_no_match;
 			break;
 	}
 
-	if(parse_api != NULL) {
-		hw_data->version = version;
-		ret = parse_api(pdev, hw_data);
-	}
-	return ret;
+	return parse_api(pdev, hw_data);
+
+err_no_match:
+	return -ENODEV;
 }
 EXPORT_SYMBOL(tcc_drm_address_dt_parse);

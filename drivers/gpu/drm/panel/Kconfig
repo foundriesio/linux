@@ -117,4 +117,13 @@ config DRM_PANEL_SITRONIX_ST7789V
 	  Say Y here if you want to enable support for the Sitronix
 	  ST7789V controller for 240x320 LCD panels
 
+config DRM_PANEL_LVDS_TCC
+	tristate "LVDS panel driver for Telechips"
+	depends on OF && ARCH_TCC805X
+	default y if ARCH_TCC805X
+	select VIDEOMODE_HELPERS
+	help
+	  This driver supports LVDS panels that don't require device-specific
+	  handling of power supplies or control signals.
+
 endmenu

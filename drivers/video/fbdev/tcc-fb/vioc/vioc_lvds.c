@@ -49,12 +49,23 @@ static unsigned int ref_ratio_arr[5][2] = {
 static volatile void __iomem *pLVDS_reg[LVDS_PHY_PORT_MAX];
 static volatile void __iomem *pLVDS_wrap_reg;
 
+void LVDS_PHY_LaneSwap(unsigned int s_port_en, unsigned int lvds_main, unsigned int lvds_sub, unsigned int *lane_main, unsigned int *lane_sub)
+{
+	int idx;
+	for(idx=0;idx<5;idx++){
+		LVDS_PHY_SetLaneSwap(lvds_main, idx, lane_main[idx]);
+		if(s_port_en) {
+			LVDS_PHY_SetLaneSwap(lvds_sub, idx, lane_sub[idx]);
+		}
+	}
+}
+
 /* LVDS_PHY_GetCalibrationLevel
  * Get setting value for VCM/VSW calibration
  * vcm : typical vcm level of lvds panel
  * vsw : typical vsw level of lvds panel
  */
-static void VIOC_LVDS_PHY_GetCalibrationLevel(unsigned int vcm, unsigned int vsw, unsigned int *vcmcal, unsigned int *swingcal)
+static void LVDS_PHY_GetCalibrationLevel(unsigned int vcm, unsigned int vsw, unsigned int *vcmcal, unsigned int *swingcal)
 {
 	unsigned int swing_max, swing_min;
 	unsigned int index, step;
@@ -107,10 +118,10 @@ static void VIOC_LVDS_PHY_GetCalibrationLevel(unsigned int vcm, unsigned int vsw
  * s_port : the secondary port number of lvds phy
  * freq : lvds pixel clock
  */
-int VIOC_LVDS_PHY_GetUpsampleRatio(unsigned int p_port, unsigned int s_port, unsigned int freq)
+int LVDS_PHY_GetUpsampleRatio(unsigned int p_port, unsigned int s_port, unsigned int freq)
 {
-	volatile void __iomem *p_reg = VIOC_LVDS_PHY_GetAddress(p_port);
-	volatile void __iomem *s_reg = VIOC_LVDS_PHY_GetAddress(s_port);
+	volatile void __iomem *p_reg = LVDS_PHY_GetAddress(p_port);
+	volatile void __iomem *s_reg = LVDS_PHY_GetAddress(s_port);
 	int idx = -1;
 	if(p_reg) {
 		unsigned int pxclk;
@@ -137,7 +148,7 @@ end_func:
 	return idx;
 }
 
-/* VIOC_LVDS_PHY_GetRefCnt
+/* LVDS_PHY_GetRefCnt
  * Get Reference count value for Automatic FCON
  * p_port : the primary port number of lvds phy
  * s_port : the secondary port number of lvds phy
@@ -145,10 +156,10 @@ end_func:
  * upsample_ratio : upsample_ratio
  * Formula : REF_CNT = ((pixel clk * 7 * (2^upsample_ratio))/20)/24*16*16
  */
-unsigned int VIOC_LVDS_PHY_GetRefCnt(unsigned int p_port, unsigned int s_port, unsigned int freq, int upsample_ratio)
+unsigned int LVDS_PHY_GetRefCnt(unsigned int p_port, unsigned int s_port, unsigned int freq, int upsample_ratio)
 {
-	volatile void __iomem *p_reg = VIOC_LVDS_PHY_GetAddress(p_port);
-	volatile void __iomem *s_reg = VIOC_LVDS_PHY_GetAddress(s_port);
+	volatile void __iomem *p_reg = LVDS_PHY_GetAddress(p_port);
+	volatile void __iomem *s_reg = LVDS_PHY_GetAddress(s_port);
 
 	if(p_reg) {
 		unsigned int pxclk;
@@ -171,18 +182,18 @@ unsigned int VIOC_LVDS_PHY_GetRefCnt(unsigned int p_port, unsigned int s_port, u
 	return 0;
 }
 
-/* VIOC_LVDS_PHY_SetFormat
+/* LVDS_PHY_SetFormat
  * Set LVDS phy format information
  * port : the port number of lvds phy
  * balance : balanced mode enable (0-disable, 1-enable)
  * depth : color depth(0-6bit, 1-8bit)
  * format : 0-VESA, 1-JEIDA
  */
-void VIOC_LVDS_PHY_SetFormat(unsigned int port, unsigned int balance,
+void LVDS_PHY_SetFormat(unsigned int port, unsigned int balance,
 			     unsigned int depth, unsigned int format,
 				 unsigned int freq)
 {
-	volatile void __iomem *reg = VIOC_LVDS_PHY_GetAddress(port);
+	volatile void __iomem *reg = LVDS_PHY_GetAddress(port);
 
 	if (reg) {
 		unsigned int value;
@@ -199,17 +210,17 @@ void VIOC_LVDS_PHY_SetFormat(unsigned int port, unsigned int balance,
 	}
 }
 
-/* VIOC_LVDS_PHY_SetUserMode
+/* LVDS_PHY_SetUserMode
  * Control lane skew and p/n swap
  * port : the port number of lvds phy
  * lane : lane type
  * skew : lane skew value
  * swap : lane p/n swap (0-Normal, 1-Swap p/n)
  */
-void VIOC_LVDS_PHY_SetUserMode(unsigned int port, unsigned int lane,
+void LVDS_PHY_SetUserMode(unsigned int port, unsigned int lane,
 			       unsigned int skew, unsigned int swap)
 {
-	volatile void __iomem *reg = VIOC_LVDS_PHY_GetAddress(port);
+	volatile void __iomem *reg = LVDS_PHY_GetAddress(port);
 
 	if (reg) {
 		unsigned int value;
@@ -278,15 +289,15 @@ void VIOC_LVDS_PHY_SetUserMode(unsigned int port, unsigned int lane,
 	}
 }
 
-/* VIOC_LVDS_PHY_SetLaneSwap
+/* LVDS_PHY_SetLaneSwap
  * Swap the data lanes
  * port : the port number of lvds phy
  * lane : the lane number that will be changed
  * select : the lane number that want to swap
  */
-void VIOC_LVDS_PHY_SetLaneSwap(unsigned int port, unsigned int lane, unsigned int select)
+void LVDS_PHY_SetLaneSwap(unsigned int port, unsigned int lane, unsigned int select)
 {
-	volatile void __iomem *reg = VIOC_LVDS_PHY_GetAddress(port);
+	volatile void __iomem *reg = LVDS_PHY_GetAddress(port);
 	unsigned int value;
 	if(reg) {
 		switch(lane) {
@@ -309,14 +320,14 @@ void VIOC_LVDS_PHY_SetLaneSwap(unsigned int port, unsigned int lane, unsigned in
 	}
 }
 
-/* VIOC_LVDS_PHY_SetFifoEnableTiming
+/* LVDS_PHY_SetFifoEnableTiming
  * Select FIFO2 enable timing
  * port : the port number of lvds phy
  * cycle : FIFO enable after n clock cycle (0~3 cycle)
  */
-void VIOC_LVDS_PHY_SetFifoEnableTiming(unsigned int port, unsigned int cycle)
+void LVDS_PHY_SetFifoEnableTiming(unsigned int port, unsigned int cycle)
 {
-	volatile void __iomem *reg = VIOC_LVDS_PHY_GetAddress(port);
+	volatile void __iomem *reg = LVDS_PHY_GetAddress(port);
 
 	if (reg) {
 		unsigned int value;
@@ -330,7 +341,7 @@ void VIOC_LVDS_PHY_SetFifoEnableTiming(unsigned int port, unsigned int cycle)
 	}
 }
 
-/* VIOC_LVDS_PHY_SetPortOption
+/* LVDS_PHY_SetPortOption
  * Selects a port option for dual pixel mode
  * port : the port number of lvds phy
  * port_mode : the mode of this port(0-main port, 1-sub port)
@@ -339,13 +350,13 @@ void VIOC_LVDS_PHY_SetFifoEnableTiming(unsigned int port, unsigned int cycle)
  * lane_en : lane enable (CLK, DATA0~3)
  * sync_transmit_src : sync transmit source (0-normal, 1-other port)
  */
-void VIOC_LVDS_PHY_SetPortOption(unsigned int port, unsigned int port_mode,
+void LVDS_PHY_SetPortOption(unsigned int port, unsigned int port_mode,
 				 unsigned int sync_swap,
 				 unsigned int use_other_port,
 				 unsigned int lane_en,
 				 unsigned int sync_transmit_src)
 {
-	volatile void __iomem *reg = VIOC_LVDS_PHY_GetAddress(port);
+	volatile void __iomem *reg = LVDS_PHY_GetAddress(port);
 
 	if (reg) {
 		unsigned int value;
@@ -373,9 +384,9 @@ void VIOC_LVDS_PHY_SetPortOption(unsigned int port, unsigned int port_mode,
  * Set lvds lane enable/disable
  * port : the port number of lvds phy
  */
-void VIOC_LVDS_PHY_LaneEnable(unsigned int port, unsigned int enable)
+void LVDS_PHY_LaneEnable(unsigned int port, unsigned int enable)
 {
-	volatile void __iomem *reg = VIOC_LVDS_PHY_GetAddress(port);
+	volatile void __iomem *reg = LVDS_PHY_GetAddress(port);
 
 	if (reg) {
 		unsigned int value;
@@ -392,9 +403,9 @@ void VIOC_LVDS_PHY_LaneEnable(unsigned int port, unsigned int enable)
  * Set lvds phy fifo enable
  * port : the port number of lvds phy
  */
-void VIOC_LVDS_PHY_FifoEnable(unsigned int port, unsigned int enable)
+void LVDS_PHY_FifoEnable(unsigned int port, unsigned int enable)
 {
-	volatile void __iomem *reg = VIOC_LVDS_PHY_GetAddress(port);
+	volatile void __iomem *reg = LVDS_PHY_GetAddress(port);
 
 	if (reg) {
 		unsigned int value;
@@ -412,14 +423,14 @@ void VIOC_LVDS_PHY_FifoEnable(unsigned int port, unsigned int enable)
 	}
 }
 
-/* VIOC_LVDS_PHY_FifoReset
+/* LVDS_PHY_FifoReset
  * Reset LVDS PHY Fifo
  * port : the port number of lvds phy
  * reset : 0-release, 1-reset
  */
-void VIOC_LVDS_PHY_FifoReset(unsigned int port, unsigned reset)
+void LVDS_PHY_FifoReset(unsigned int port, unsigned reset)
 {
-	volatile void __iomem *reg = VIOC_LVDS_PHY_GetAddress(port);
+	volatile void __iomem *reg = LVDS_PHY_GetAddress(port);
 	if(reg) {
 		if(reset)
 			__raw_writel(0x0000118F, reg + LVDS_RESETB);
@@ -433,9 +444,9 @@ void VIOC_LVDS_PHY_FifoReset(unsigned int port, unsigned reset)
  * port : the port number of lvds phy
  * reset : 0-release, 1-reset
  */
-void VIOC_LVDS_PHY_SWReset(unsigned int port, unsigned int reset)
+void LVDS_PHY_SWReset(unsigned int port, unsigned int reset)
 {
-	volatile void __iomem *reg = VIOC_LVDS_PHY_GetAddress(port);
+	volatile void __iomem *reg = LVDS_PHY_GetAddress(port);
 
 	if (reg) {
 		if (reset)
@@ -445,14 +456,14 @@ void VIOC_LVDS_PHY_SWReset(unsigned int port, unsigned int reset)
 	}
 }
 
-/* VIOC_LVDS_PHY_ClockEnable
+/* LVDS_PHY_ClockEnable
  * Control lvds phy clock enable
  * port : the port number of lvds phy
  * enable : 0-disable, 1-enable
  */
-void VIOC_LVDS_PHY_ClockEnable(unsigned int port, unsigned int enable)
+void LVDS_PHY_ClockEnable(unsigned int port, unsigned int enable)
 {
-	volatile void __iomem *reg = VIOC_LVDS_PHY_GetAddress(port);
+	volatile void __iomem *reg = LVDS_PHY_GetAddress(port);
 
 	if (reg) {
 		if (enable)
@@ -462,15 +473,15 @@ void VIOC_LVDS_PHY_ClockEnable(unsigned int port, unsigned int enable)
 	}
 }
 
-/* VIOC_LVDS_PHY_SetStrobe
+/* LVDS_PHY_SetStrobe
  * Sets LVDS strobe registers
  * port : the port number of lvds phy
  * mode : 0-Manual, 1- Auto
  * enable : 0-disable, 1-enable
  */
-void VIOC_LVDS_PHY_SetStrobe(unsigned int port, unsigned int mode, unsigned int enable)
+void LVDS_PHY_SetStrobe(unsigned int port, unsigned int mode, unsigned int enable)
 {
-	volatile void __iomem *reg = VIOC_LVDS_PHY_GetAddress(port);
+	volatile void __iomem *reg = LVDS_PHY_GetAddress(port);
 
 	if(reg) {
 		unsigned int value;
@@ -484,16 +495,16 @@ void VIOC_LVDS_PHY_SetStrobe(unsigned int port, unsigned int mode, unsigned int 
 	}
 }
 
-/* VIOC_LVDS_PHY_SetFcon
+/* LVDS_PHY_SetFcon
  * Setup LVDS PHY Manual/Automatic Coarse tunning
  * port : the port number of lvds phy
  * mode : coarse tunning method 0-manual, 1-automatic
  * loop : feedback loop mode 0-closed loop, 1-open loop
  * fcon : frequency control value
  */
-void VIOC_LVDS_PHY_SetFcon(unsigned int port, unsigned int mode, unsigned int loop, unsigned int division, unsigned int fcon)
+void LVDS_PHY_SetFcon(unsigned int port, unsigned int mode, unsigned int loop, unsigned int division, unsigned int fcon)
 {
-	volatile void __iomem *reg = VIOC_LVDS_PHY_GetAddress(port);
+	volatile void __iomem *reg = LVDS_PHY_GetAddress(port);
 	unsigned int value;
 
 	if(reg) {
@@ -547,15 +558,15 @@ void VIOC_LVDS_PHY_SetFcon(unsigned int port, unsigned int mode, unsigned int lo
 	}
 }
 
-/* VIOC_LVDS_PHY_SetCFcon
+/* LVDS_PHY_SetCFcon
  * Check fcon status and setup cfcon value
  * port : the port number of lvds phy
  * mode : fcon control mode 0-Manual, 1-Automatic
  * enable : 0-cfcon disable 1-cfcon enable
  */
-void VIOC_LVDS_PHY_SetCFcon(unsigned int port, unsigned int mode, unsigned int enable)
+void LVDS_PHY_SetCFcon(unsigned int port, unsigned int mode, unsigned int enable)
 {
-	volatile void __iomem *reg = VIOC_LVDS_PHY_GetAddress(port);
+	volatile void __iomem *reg = LVDS_PHY_GetAddress(port);
 	unsigned int value;
 	unsigned int time_out = 0;
 	if(reg) {
@@ -589,10 +600,10 @@ closed_loop:
 	}
 }
 
-void VIOC_LVDS_PHY_CheckPLLStatus(unsigned int p_port, unsigned int s_port)
+void LVDS_PHY_CheckPLLStatus(unsigned int p_port, unsigned int s_port)
 {
-	volatile void __iomem *p_reg = VIOC_LVDS_PHY_GetAddress(p_port);
-	volatile void __iomem *s_reg = VIOC_LVDS_PHY_GetAddress(p_port);
+	volatile void __iomem *p_reg = LVDS_PHY_GetAddress(p_port);
+	volatile void __iomem *s_reg = LVDS_PHY_GetAddress(p_port);
 	unsigned int offset = LVDS_MONITOR_DEBUG1;
 	unsigned int time_out = 0;
 
@@ -618,9 +629,9 @@ void VIOC_LVDS_PHY_CheckPLLStatus(unsigned int p_port, unsigned int s_port)
  * port : the port number of lvds phy
  * enable : 0-disable, 1-enable
  */
-void VIOC_LVDS_PHY_FConEnable(unsigned int port, unsigned int enable)
+void LVDS_PHY_FConEnable(unsigned int port, unsigned int enable)
 {
-	volatile void __iomem *reg = VIOC_LVDS_PHY_GetAddress(port);
+	volatile void __iomem *reg = LVDS_PHY_GetAddress(port);
 	unsigned int value;
 
 	if(reg) {
@@ -649,7 +660,7 @@ void LVDS_PHY_StrobeWrite(volatile void __iomem *reg, unsigned int offset, unsig
 	pr_err("[ERR][LVDS] %s time out\n",__func__);
 }
 
-/* VIOC_LVDS_PHY_Config
+/* LVDS_PHY_Config
  * Setup LVDS PHY Strobe. (Alphachips Guide Value Only)
  * p_port : the primary port number
  * s_port : the secondary port number
@@ -658,24 +669,24 @@ void LVDS_PHY_StrobeWrite(volatile void __iomem *reg, unsigned int offset, unsig
  * vcm : typical vcm level in mV
  * vsw : typical vsw level in mV
  */
-void VIOC_LVDS_PHY_StrobeConfig(unsigned int p_port, unsigned int s_port, unsigned int upsample_ratio, unsigned int step, unsigned int vcm, unsigned int vsw)
+void LVDS_PHY_StrobeConfig(unsigned int p_port, unsigned int s_port, unsigned int upsample_ratio, unsigned int step, unsigned int vcm, unsigned int vsw)
 {
-	volatile void __iomem *p_reg = VIOC_LVDS_PHY_GetAddress(p_port);
-	volatile void __iomem *s_reg = VIOC_LVDS_PHY_GetAddress(s_port);
+	volatile void __iomem *p_reg = LVDS_PHY_GetAddress(p_port);
+	volatile void __iomem *s_reg = LVDS_PHY_GetAddress(s_port);
 	unsigned int vcmcal, swingcal;
 	unsigned int value;
 
 	if(p_reg) {
 		switch(step) {
 		case LVDS_PHY_INIT:
-			VIOC_LVDS_PHY_GetCalibrationLevel(vcm, vsw, &vcmcal, &swingcal);
+			LVDS_PHY_GetCalibrationLevel(vcm, vsw, &vcmcal, &swingcal);
 			value = ((swingcal & 0xF)|((vcmcal & 0x7) << 4));
 
 			LVDS_PHY_StrobeWrite(p_reg, 0x380, 0x000000FF);		// STB_PLL ADDR 0x0
 			LVDS_PHY_StrobeWrite(p_reg, 0x384, 0x0000001F);		// STB_PLL ADDR 0x1
 			LVDS_PHY_StrobeWrite(p_reg, 0x388, 0x00000032);		// STB_PLL ADDR 0x2
 			LVDS_PHY_StrobeWrite(p_reg, 0x38C, 0x0000000F);		// STB_PLL ADDR 0x3
-			LVDS_PHY_StrobeWrite(p_reg, 0x390, 0x00000002);		// STB_PLL ADDR 0x4
+			LVDS_PHY_StrobeWrite(p_reg, 0x390, 0x00000000);		// STB_PLL ADDR 0x4
 			LVDS_PHY_StrobeWrite(p_reg, 0x394, 0x00000013);		// STB_PLL ADDR 0x5
 			LVDS_PHY_StrobeWrite(p_reg, 0x398, 0x00000029);		// STB_PLL ADDR 0x6
 			LVDS_PHY_StrobeWrite(p_reg, 0x39C, 0x00000025);		// STB_PLL ADDR 0x7
@@ -695,7 +706,7 @@ void VIOC_LVDS_PHY_StrobeConfig(unsigned int p_port, unsigned int s_port, unsign
 				LVDS_PHY_StrobeWrite(s_reg, 0x384, 0x0000001F);		// STB_PLL ADDR 0x1
 				LVDS_PHY_StrobeWrite(s_reg, 0x388, 0x00000032);		// STB_PLL ADDR 0x2
 				LVDS_PHY_StrobeWrite(s_reg, 0x38C, 0x0000000F);		// STB_PLL ADDR 0x3
-				LVDS_PHY_StrobeWrite(s_reg, 0x390, 0x00000002);		// STB_PLL ADDR 0x4
+				LVDS_PHY_StrobeWrite(s_reg, 0x390, 0x00000000);		// STB_PLL ADDR 0x4
 				LVDS_PHY_StrobeWrite(s_reg, 0x394, 0x00000013);		// STB_PLL ADDR 0x5
 				LVDS_PHY_StrobeWrite(s_reg, 0x398, 0x00000029);		// STB_PLL ADDR 0x6
 				LVDS_PHY_StrobeWrite(s_reg, 0x39C, 0x00000025);		// STB_PLL ADDR 0x7
@@ -738,9 +749,9 @@ void VIOC_LVDS_PHY_StrobeConfig(unsigned int p_port, unsigned int s_port, unsign
 			break;
 		case LVDS_PHY_START:
 			if(s_reg) {
-				unsigned int value = (VIOC_LVDS_PHY_GetRegValue(p_port, 0x3B4) & ~(0x000000F0));
+				unsigned int value = (LVDS_PHY_GetRegValue(p_port, 0x3B4) & ~(0x000000F0));
 				LVDS_PHY_StrobeWrite(p_reg, 0x3B4, value);		// STB_PLL ADDR 0xD
-				value = (VIOC_LVDS_PHY_GetRegValue(s_port, 0x3B4) & ~(0x000000F0));
+				value = (LVDS_PHY_GetRegValue(s_port, 0x3B4) & ~(0x000000F0));
 				LVDS_PHY_StrobeWrite(s_reg, 0x3B4, value);		// STB_PLL ADDR 0xD
 
 				LVDS_PHY_StrobeWrite(p_reg, 0x3B8, 0x00000000);		// STB_PLL ADDR 0xE
@@ -752,11 +763,11 @@ void VIOC_LVDS_PHY_StrobeConfig(unsigned int p_port, unsigned int s_port, unsign
 				LVDS_PHY_StrobeWrite(p_reg, 0x3B8, 0x00000001);		// STB_PLL ADDR 0xE
 				LVDS_PHY_StrobeWrite(p_reg, 0x3B4, 0x000000D7);		// STB_PLL ADDR 0xD
 			} else {
-				unsigned int value = (VIOC_LVDS_PHY_GetRegValue(p_port, 0x3B4) & ~(0x000000F0));
+				unsigned int value = (LVDS_PHY_GetRegValue(p_port, 0x3B4) & ~(0x000000F0));
 				LVDS_PHY_StrobeWrite(p_reg, 0x3B4, value);		// STB_PLL ADDR 0xD
 				LVDS_PHY_StrobeWrite(p_reg, 0x3B8, 0x00000000);		// STB_PLL ADDR 0xE
 				LVDS_PHY_StrobeWrite(p_reg, 0x3B8, 0x00000001);		// STB_PLL ADDR 0xE
-				value = (VIOC_LVDS_PHY_GetRegValue(p_port, 0x3B4) & ~(0x000000F0));
+				value = (LVDS_PHY_GetRegValue(p_port, 0x3B4) & ~(0x000000F0));
 				value |= (0x1 << 4);
 				LVDS_PHY_StrobeWrite(p_reg, 0x3B4, value);		// STB_PLL ADDR 0xD
 			}
@@ -782,15 +793,15 @@ void VIOC_LVDS_PHY_StrobeConfig(unsigned int p_port, unsigned int s_port, unsign
 	}
 }
 
-/* VIOC_LVDS_PHY_CheckStatus
+/* LVDS_PHY_CheckStatus
  * Check the status of lvds phy
  * p_port : the primary port number of lvds phy
  * s_port : the secondary port number of lvds phy
  */
-unsigned int VIOC_LVDS_PHY_CheckStatus(unsigned int p_port, unsigned int s_port)
+unsigned int LVDS_PHY_CheckStatus(unsigned int p_port, unsigned int s_port)
 {
-	volatile void __iomem *p_reg = VIOC_LVDS_PHY_GetAddress(p_port);
-	volatile void __iomem *s_reg = VIOC_LVDS_PHY_GetAddress(s_port);
+	volatile void __iomem *p_reg = LVDS_PHY_GetAddress(p_port);
+	volatile void __iomem *s_reg = LVDS_PHY_GetAddress(s_port);
 	unsigned int ret = 0, value;
 
 	if(p_reg) {
@@ -811,14 +822,14 @@ unsigned int VIOC_LVDS_PHY_CheckStatus(unsigned int p_port, unsigned int s_port)
 	return ret;
 }
 
-/* VIOC_LVDS_PHY_GetRegValue
+/* LVDS_PHY_GetRegValue
  * Read the register corresponding to 'offset'
  * port : the port number of lvds phy
  * offset : the register offset
  */
-unsigned int VIOC_LVDS_PHY_GetRegValue(unsigned int port, unsigned int offset)
+unsigned int LVDS_PHY_GetRegValue(unsigned int port, unsigned int offset)
 {
-	volatile void __iomem *reg = VIOC_LVDS_PHY_GetAddress(port);
+	volatile void __iomem *reg = LVDS_PHY_GetAddress(port);
 	unsigned int ret;
 	unsigned int time_out = 0;
 	ret = readl(reg+offset);
@@ -834,7 +845,7 @@ unsigned int VIOC_LVDS_PHY_GetRegValue(unsigned int port, unsigned int offset)
 		return ret;
 }
 
-volatile void __iomem *VIOC_LVDS_PHY_GetAddress(unsigned int port)
+volatile void __iomem *LVDS_PHY_GetAddress(unsigned int port)
 {
 	if (port >= LVDS_PHY_PORT_MAX)
 		pr_err("[ERR][LVDS] %s: wrong parameter - %d\n", __func__, port);
@@ -847,13 +858,13 @@ volatile void __iomem *VIOC_LVDS_PHY_GetAddress(unsigned int port)
 
 
 
-/* VIOC_LVDS_WRAP_SetConfigure
+/* LVDS_WRAP_SetConfigure
  * Set Tx splitter configuration
  * lr : tx splitter output mode - 0: even/odd, 1: left/right
  * bypass : tx splitter bypass mode
  * width : tx splitter width - single port: real width, dual port: half width
  */
-void VIOC_LVDS_WRAP_SetConfigure(unsigned int lr,
+void LVDS_WRAP_SetConfigure(unsigned int lr,
 			       unsigned int bypass, unsigned int width)
 {
 	volatile void __iomem *reg = (volatile void __iomem *)pLVDS_wrap_reg;
@@ -868,28 +879,28 @@ void VIOC_LVDS_WRAP_SetConfigure(unsigned int lr,
 	}
 }
 
-void VIOC_LVDS_WRAP_Set(unsigned int lvds_type, unsigned int val, unsigned select, unsigned int sel0[TXOUT_MAX_LINE][TXOUT_DATA_PER_LINE], unsigned int sel1[TXOUT_MAX_LINE][TXOUT_DATA_PER_LINE])
+void LVDS_WRAP_Set(unsigned int lvds_type, unsigned int val, unsigned select, unsigned int sel0[TXOUT_MAX_LINE][TXOUT_DATA_PER_LINE], unsigned int sel1[TXOUT_MAX_LINE][TXOUT_DATA_PER_LINE])
 {
-	VIOC_LVDS_WRAP_SetAccessCode();
+	LVDS_WRAP_SetAccessCode();
 	if(lvds_type) {
 		int idx;
-		VIOC_LVDS_WRAP_SetConfigure(0, 0, val);
+		LVDS_WRAP_SetConfigure(0, 0, val);
 		for(idx=0;idx<TS_SWAP_CH_MAX;idx++){
-			VIOC_LVDS_WRAP_SetDataSwap(idx,idx);
+			LVDS_WRAP_SetDataSwap(idx,idx);
 		}
-		VIOC_LVDS_WRAP_SetMuxOutput(DISP_MUX_TYPE, 0, select, 1);
-		VIOC_LVDS_WRAP_SetMuxOutput(TS_MUX_TYPE, TS_MUX_IDX0, TS_MUX_PATH_CORE, 1);
-		VIOC_LVDS_WRAP_SetDataArray(TS_MUX_IDX0, sel0);
-		VIOC_LVDS_WRAP_SetMuxOutput(TS_MUX_TYPE, TS_MUX_IDX1, TS_MUX_PATH_CORE, 1);
-		VIOC_LVDS_WRAP_SetDataArray(TS_MUX_IDX1, sel1);
+		LVDS_WRAP_SetMuxOutput(DISP_MUX_TYPE, 0, select, 1);
+		LVDS_WRAP_SetMuxOutput(TS_MUX_TYPE, TS_MUX_IDX0, TS_MUX_PATH_CORE, 1);
+		LVDS_WRAP_SetDataArray(TS_MUX_IDX0, sel0);
+		LVDS_WRAP_SetMuxOutput(TS_MUX_TYPE, TS_MUX_IDX1, TS_MUX_PATH_CORE, 1);
+		LVDS_WRAP_SetDataArray(TS_MUX_IDX1, sel1);
 	}
 	else{
-		VIOC_LVDS_WRAP_SetMuxOutput(TS_MUX_TYPE, val, select, 1);
-		VIOC_LVDS_WRAP_SetDataArray(val, sel0);
+		LVDS_WRAP_SetMuxOutput(TS_MUX_TYPE, val, select, 1);
+		LVDS_WRAP_SetDataArray(val, sel0);
 	}
 }
 
-void VIOC_LVDS_WRAP_SetSyncPolarity(unsigned int sync)
+void LVDS_WRAP_SetSyncPolarity(unsigned int sync)
 {
 	volatile void __iomem *reg = (volatile void __iomem *)pLVDS_wrap_reg;
 	unsigned int val;
@@ -907,12 +918,12 @@ void VIOC_LVDS_WRAP_SetSyncPolarity(unsigned int sync)
 	writel(val, reg + SAL_1);
 }
 
-/* VIOC_LVDS_WRAP_SetDataSwap
+/* LVDS_WRAP_SetDataSwap
  * Set Tx splitter output data swap
  * ch : Tx splitter output channel(0, 1, 2, 3)
  * set : Tx splitter data swap mode
  */
-void VIOC_LVDS_WRAP_SetDataSwap(unsigned int ch,
+void LVDS_WRAP_SetDataSwap(unsigned int ch,
 			      unsigned int set)
 {
 	volatile void __iomem *reg = (volatile void __iomem *)pLVDS_wrap_reg;
@@ -953,12 +964,12 @@ void VIOC_LVDS_WRAP_SetDataSwap(unsigned int ch,
 	}
 }
 
-/* VIOC_LVDS_WRAP_SetMuxOutput
+/* LVDS_WRAP_SetMuxOutput
  * Set Tx splitter MUX output selection
  * mux: the type of mux (DISP_MUX_TYPE, TS_MUX_TYPE)
  * select : the select
  */
-void VIOC_LVDS_WRAP_SetMuxOutput(MUX_TYPE mux, unsigned int ch,
+void LVDS_WRAP_SetMuxOutput(MUX_TYPE mux, unsigned int ch,
 			       unsigned int select, unsigned int enable)
 {
 	volatile void __iomem *reg = (volatile void __iomem *)pLVDS_wrap_reg;
@@ -1033,13 +1044,13 @@ error_mux_output:
 	       mux, ch);
 }
 
-/* VIOC_LVDS_WRAP_SetDataPath
+/* LVDS_WRAP_SetDataPath
  * Set Data output format of tx splitter
  * ch : channel number of tx splitter mux
  * path : path number of tx splitter mux
  * set : data output format of tx splitter mux
  */
-void VIOC_LVDS_WRAP_SetDataPath(unsigned int ch, unsigned int path,
+void LVDS_WRAP_SetDataPath(unsigned int ch, unsigned int path,
 			      unsigned int set)
 {
 	volatile void __iomem *reg = (volatile void __iomem *)pLVDS_wrap_reg;
@@ -1074,12 +1085,12 @@ error_data_path:
 	       ch, path);
 }
 
-/* VIOC_LVDS_WRAP_SetDataArray
+/* LVDS_WRAP_SetDataArray
  * Set the data output format of tx splitter mux
  * ch : channel number of tx splitter mux
  * data : the array included the data output format
  */
-void VIOC_LVDS_WRAP_SetDataArray(unsigned int ch, unsigned int data[TXOUT_MAX_LINE][TXOUT_DATA_PER_LINE])
+void LVDS_WRAP_SetDataArray(unsigned int ch, unsigned int data[TXOUT_MAX_LINE][TXOUT_DATA_PER_LINE])
 {
 	volatile void __iomem *reg = (volatile void __iomem *)pLVDS_wrap_reg;
 	unsigned int *lvdsdata = (unsigned int *)data;
@@ -1099,7 +1110,7 @@ void VIOC_LVDS_WRAP_SetDataArray(unsigned int ch, unsigned int data[TXOUT_MAX_LI
 
 			path = idx / 4;
 			value = ((lvdsdata[data3] << 24) | (lvdsdata[data2] << 16)| (lvdsdata[data1] << 8)| (lvdsdata[data0]));
-			VIOC_LVDS_WRAP_SetDataPath(ch, path, value);
+			LVDS_WRAP_SetDataPath(ch, path, value);
 		}
 	}
 	return;
@@ -1108,10 +1119,10 @@ error_data_array:
 			__func__, ch);
 }
 
-/* VIOC_LVDS_WRAP_SetAccessCode
+/* LVDS_WRAP_SetAccessCode
  * Set the access code of LVDS Wrapper
  */
-void VIOC_LVDS_WRAP_SetAccessCode(void)
+void LVDS_WRAP_SetAccessCode(void)
 {
 	volatile void __iomem *reg = (volatile void __iomem*)pLVDS_wrap_reg + 0x1EC;
 	if(__raw_readl(reg) == 0x1ACCE551)
@@ -1121,13 +1132,12 @@ void VIOC_LVDS_WRAP_SetAccessCode(void)
 	__raw_writel(0x1ACCE551, reg);
 }
 
-/* VIOC_LVDS_WRAP_REsetPHY
+/* LVDS_WRAP_REsetPHY
  * software reset for PHY port
  */
-void VIOC_LVDS_WRAP_ResetPHY(unsigned int port, unsigned int reset)
+void LVDS_WRAP_ResetPHY(unsigned int port, unsigned int reset)
 {
 	volatile void __iomem *reg = (volatile void __iomem *)pLVDS_wrap_reg + TS_SWRESET;
-	pr_info("[INF][LVDS] %s called\n", __func__);
 
 	if(reset){
 		switch(port){
@@ -1166,4 +1176,210 @@ static int __init vioc_lvds_init(void)
 	}
 	return 0;
 }
+
+lvds_hw_info_t * lvds_register_hw_info(lvds_hw_info_t* l_hw, unsigned int l_type, unsigned int port1, unsigned int port2,
+		unsigned int p_clk, unsigned int lcdc_select, unsigned int xres)
+{
+	lvds_hw_info_t* lvds_ptr;
+	if(l_hw != NULL && (l_type == PANEL_LVDS_DUAL || l_type == PANEL_LVDS_SINGLE)){
+		l_hw->lvds_type = l_type;
+		l_hw->port_main = port1;
+		l_hw->port_sub = port2;
+		l_hw->p_clk = p_clk;
+		l_hw->lcdc_mux_id = lcdc_select;
+		l_hw->xres = xres;
+		if(l_type == PANEL_LVDS_SINGLE){
+			l_hw->ts_mux_id = (l_hw->port_main + 2) % 4; //lvds 2,3,0 map to ts_mux 0,1,2
+		}else{ //dual
+			l_hw->ts_mux_id = -1; //not used
+		}
+		lvds_ptr = l_hw;
+	}else{
+		lvds_ptr = NULL;
+		pr_err("%s : invalid lvds_ptr.\n",__func__);
+	}
+	/*pr_info("%s : \n lvds_type = %d\n port_main = %d\n port_sub = %d\n p_clk = %d\n lcdc_mux_id = %d\n xres = %d\n ts_mux_id = %d\n"
+			,__func__,l_hw->lvds_type,l_hw->port_main, l_hw->port_sub, l_hw->p_clk, l_hw->lcdc_mux_id, l_hw->xres,l_hw->ts_mux_id);*/
+	return lvds_ptr;
+}
+
+void lvds_splitter_init(lvds_hw_info_t *lvds_hw)
+{
+	lvds_wrap_core_init(lvds_hw->lvds_type, lvds_hw->xres, lvds_hw->ts_mux_id, lvds_hw->lcdc_mux_id, lvds_hw->txout_main, lvds_hw->txout_sub);
+	return;
+}
+
+void lvds_phy_init(lvds_hw_info_t *lvds_hw)
+{
+	unsigned int upsample_ratio = LVDS_PHY_GetUpsampleRatio(
+			lvds_hw->port_main, lvds_hw->port_sub,
+			lvds_hw->p_clk);
+	unsigned int ref_cnt = LVDS_PHY_GetRefCnt(
+			lvds_hw->port_main, lvds_hw->port_sub,
+			lvds_hw->p_clk, upsample_ratio);
+
+	lvds_phy_core_init(lvds_hw->lvds_type, lvds_hw->port_main, lvds_hw->port_sub,
+			upsample_ratio, ref_cnt, lvds_hw->vcm, lvds_hw->vsw, lvds_hw->lane_main, lvds_hw->lane_sub);
+	return;
+}
+
+void lvds_wrap_core_init(unsigned int lvds_type, unsigned int width, unsigned int tx_mux_id, unsigned int lcdc_mux_id,
+		unsigned int (*sel0)[TXOUT_DATA_PER_LINE], unsigned int (*sel1)[TXOUT_DATA_PER_LINE])
+{
+	LVDS_WRAP_SetAccessCode();
+	if(lvds_type == PANEL_LVDS_DUAL) {
+		int idx;
+		LVDS_WRAP_SetConfigure(0, 0, width);
+		for(idx=0;idx<TS_SWAP_CH_MAX;idx++){
+			LVDS_WRAP_SetDataSwap(idx,idx);
+		}
+		LVDS_WRAP_SetMuxOutput(DISP_MUX_TYPE, 0, lcdc_mux_id, 1);
+		LVDS_WRAP_SetMuxOutput(TS_MUX_TYPE, TS_MUX_IDX0, TS_MUX_PATH_CORE, 1);
+		LVDS_WRAP_SetDataArray(TS_MUX_IDX0, sel0);
+		LVDS_WRAP_SetMuxOutput(TS_MUX_TYPE, TS_MUX_IDX1, TS_MUX_PATH_CORE, 1);
+		LVDS_WRAP_SetDataArray(TS_MUX_IDX1, sel1);
+	}
+	else if(lvds_type == PANEL_LVDS_SINGLE){
+		LVDS_WRAP_SetMuxOutput(TS_MUX_TYPE, tx_mux_id, lcdc_mux_id, 1);
+		LVDS_WRAP_SetDataArray(tx_mux_id, sel0);
+	}else{
+		pr_err("%s : unknown lvds type. lvds wrap not initialized.\n",__func__);
+		return;
+	}
+}
+
+void lvds_phy_core_init(unsigned int lvds_type, unsigned int lvds_main, unsigned int lvds_sub, unsigned int upsample_ratio, unsigned int ref_cnt, unsigned int vcm, unsigned int vsw, unsigned int *LVDS_LANE_MAIN, unsigned int *LVDS_LANE_SUB)
+{
+	unsigned int status;
+	int s_port_en = 0;
+	if(lvds_type != PANEL_LVDS_DUAL && lvds_type != PANEL_LVDS_SINGLE){
+		pr_err("%s : unknown lvds type. lvds phy not initialized.\n",__func__);
+		return;
+	}else if(lvds_type == PANEL_LVDS_DUAL){
+		s_port_en = 1;
+	}
+	LVDS_PHY_ClockEnable(lvds_main, 1);
+	if(s_port_en) {
+		LVDS_PHY_ClockEnable(lvds_sub, 1);
+	}
+
+	LVDS_PHY_SWReset(lvds_main, 1);
+	if(s_port_en) {
+		LVDS_PHY_SWReset(lvds_sub, 1);
+	}
+
+	udelay(1000);   // Alphachips Guide
+
+	LVDS_PHY_SWReset(lvds_main, 0);
+	if(s_port_en) {
+		LVDS_PHY_SWReset(lvds_sub, 0);
+	}
+
+	/* LVDS PHY Strobe setup */
+	LVDS_PHY_SetStrobe(lvds_main, 1, 1);
+	if(s_port_en) {
+		LVDS_PHY_SetStrobe(lvds_sub, 1, 1);
+	}
+
+	LVDS_PHY_StrobeConfig(lvds_main, lvds_sub, upsample_ratio,
+			LVDS_PHY_INIT, vcm, vsw);
+
+	LVDS_PHY_LaneEnable(lvds_main, 0);
+	if(s_port_en) {
+		LVDS_PHY_LaneEnable(lvds_sub, 0);
+	}
+
+	LVDS_PHY_SetPortOption(lvds_main, 0, 0, 0, 0x0, 0x0);
+	if(s_port_en) {
+		LVDS_PHY_SetPortOption(lvds_sub, 1, 0, 1, 0x0, 0x7);
+	}
+
+	LVDS_PHY_LaneSwap(s_port_en, lvds_main, lvds_sub, LVDS_LANE_MAIN, LVDS_LANE_SUB);
+
+	LVDS_PHY_StrobeConfig(lvds_main, lvds_sub, upsample_ratio,
+			LVDS_PHY_READY, vcm, vsw);
+
+	LVDS_PHY_SetFcon(lvds_main, LVDS_PHY_FCON_AUTOMATIC, 0, 0, ref_cnt);    // fcon value, for 44.1Mhz
+	if(s_port_en) {
+		LVDS_PHY_SetFcon(lvds_sub, LVDS_PHY_FCON_AUTOMATIC, 0, 0, ref_cnt);     // fcon value, for 44.1Mhz
+	}
+
+	LVDS_PHY_FConEnable(lvds_main, 1);
+	if(s_port_en) {
+		LVDS_PHY_FConEnable(lvds_sub, 1);
+	}
+
+	LVDS_PHY_SetCFcon(lvds_main, LVDS_PHY_FCON_AUTOMATIC, 1);
+	if(s_port_en) {
+		LVDS_PHY_SetCFcon(lvds_sub, LVDS_PHY_FCON_AUTOMATIC, 1);
+	}
+
+	LVDS_PHY_CheckPLLStatus(lvds_main, lvds_sub);
+	mdelay(10);   // fcon waiting time    -- Alphachips Guide
+
+	LVDS_PHY_StrobeConfig(lvds_main, lvds_sub, upsample_ratio,
+			LVDS_PHY_START, vcm, vsw);
+
+	/* LVDS PHY digital setup */
+	LVDS_PHY_SetFormat(lvds_main, 0, 1, 0, upsample_ratio);
+	if(s_port_en) {
+		LVDS_PHY_SetFormat(lvds_sub, 0, 1, 0, upsample_ratio);
+	}
+
+	LVDS_PHY_SetFifoEnableTiming(lvds_main, 0x3);
+	if(s_port_en) {
+		LVDS_PHY_SetFifoEnableTiming(lvds_sub, 0x3);
+	}
+	/* LVDS PHY Main/Sub Lane Disable */
+	LVDS_PHY_LaneEnable(lvds_main, 0);
+	if(s_port_en) {
+		LVDS_PHY_LaneEnable(lvds_sub, 0);
+	}
+
+	/* LVDS PHY Main port FIFO Disable */
+	LVDS_PHY_FifoEnable(lvds_main, 0);
+	if(s_port_en) {
+		LVDS_PHY_FifoEnable(lvds_sub, 0);
+	}
+
+	LVDS_PHY_FifoReset(lvds_main, 1);
+	if(s_port_en) {
+		LVDS_PHY_FifoReset(lvds_sub, 1);
+	}
+
+	udelay(1000);   // Alphachips Guide
+
+	LVDS_PHY_FifoReset(lvds_main, 0);
+	if(s_port_en) {
+		LVDS_PHY_FifoReset(lvds_sub, 0);
+	}
+
+	/* LVDS PHY Main/Sub port FIFO Enable */
+	LVDS_PHY_FifoEnable(lvds_main, 1);
+	if(s_port_en) {
+		LVDS_PHY_FifoEnable(lvds_sub, 1);
+	}
+
+	/* LVDS PHY Main/Sub port Lane Enable */
+	LVDS_PHY_LaneEnable(lvds_main, 1);
+	if(s_port_en) {
+		LVDS_PHY_LaneEnable(lvds_sub, 1);
+	}
+
+	status = LVDS_PHY_CheckStatus(lvds_main, lvds_sub);
+	if(!(status & 0x1)){
+		pr_err("%s: LVDS_PHY Primary port(%d) is in death [error] \n", __func__, lvds_main);
+	}else{
+		pr_info("%s: LVDS_PHY Primary port(%d) is alive \n", __func__, lvds_main);
+	}
+	if(s_port_en){
+		if(!(status & 0x2)){
+			pr_err("%s: LVDS_PHY Secondary port(%d) is in death [error] \n", __func__, lvds_sub);
+		}else{
+			pr_info("%s: LVDS_PHY Secondary port(%d) is alive \n", __func__, lvds_sub);
+		}
+	}
+
+}
+
 arch_initcall(vioc_lvds_init);

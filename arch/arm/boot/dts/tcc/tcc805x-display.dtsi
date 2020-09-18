@@ -1,0 +1,215 @@
+// SPDX-License-Identifier: (GPL-2.0-or-later OR MIT)
+/*
+* Copyright (C) Telechips Inc.
+* Device tree for Telechips TCC8059 AVN board
+*/
+
+#include <dt-bindings/display/tcc805x-lvds.h>
+
+/ {
+	/* Describe here after remove this statement if you have something to be override. */
+	lcd_drm_dummy {
+		compatible = "telechips,lcd_drm_dummy";
+		status = "disabled";
+	};
+
+	drm_tm123xdhp90:drm_tm123xdhp90 {
+		#address-cells = <1>;
+		#size-cells = <0>;
+		compatible = "telechips,drm-lvds-tm123xdhp90";
+		status = "disabled";
+		lvds0 = <&lvds_phy>;
+
+		mode = <LVDS_DUAL>;   /* 0: single 1: dual */
+		phy-ports = <PHY_PORT_D0 PHY_PORT_D1>; /*port main, port sub*/
+		lcdc-mux-select = <2>;
+		data-mapping = "vesa-24";
+		lane-main = <DATA3_LANE CLK_LANE DATA2_LANE DATA1_LANE DATA0_LANE>;
+		lane-sub = <DATA0_LANE DATA1_LANE DATA2_LANE CLK_LANE DATA3_LANE>;
+		vcm = <1200>;
+		vsw = <500>;
+
+		display-timings {
+			native-mode = <&timing_tm123xdhp90>;
+			timing_tm123xdhp90: 1920x720p60 {
+				clock-frequency = <88200000>;
+				hactive = <1920>;
+				vactive = <720>;
+				hfront-porch = <28>;
+				hback-porch = <28>;
+				hsync-len = <8>;
+				hsync-active = <0>;
+				vback-porch = <10>;
+				vfront-porch = <10>;
+				vsync-len = <2>;
+				vsync-active = <0>;
+				de-active = <1>;
+				pixelclk-active = <1>;
+			};
+		};
+		port@0 {
+			reg = <0>;
+			tm123xdhp90_input_0: endpoint {
+				remote-endpoint = <&lcd_display_out>;
+			};
+		};
+		port@1 {
+			reg = <1>;
+			tm123xdhp90_input_1: endpoint {
+				remote-endpoint = <&ext_display_out>;
+			};
+		};
+		port@2 {
+			reg = <2>;
+			tm123xdhp90_input_2: endpoint {
+				remote-endpoint = <&third_display_out>;
+			};
+		};
+		port@3 {
+			reg = <3>;
+			tm123xdhp90_input_3: endpoint {
+				remote-endpoint = <&fourth_display_out>;
+			};
+		};
+	};
+
+	drm_fld0800:drm_fld0800 {
+		#address-cells = <1>;
+		#size-cells = <0>;
+		compatible = "telechips,drm-lvds-fld0800";
+		status = "disabled";
+		lvds0 = <&lvds_phy>;
+
+		mode = <LVDS_SINGLE>;   /* 0: single 1: dual */
+		phy-ports = <PHY_PORT_S0>; /*port main, port sub*/
+		lcdc-mux-select = <3>;
+		data-mapping = "vesa-24";
+		lane-main = <DATA0_LANE DATA1_LANE DATA2_LANE CLK_LANE DATA3_LANE>;
+		vcm = <1200>;
+		vsw = <400>;
+		display-timings {
+			native-mode = <&timing_fld0800>;
+			timing_fld0800: 1024x600p60 {
+				clock-frequency = <51200000>;
+				hactive = <1024>;
+				vactive = <600>;
+				hfront-porch = <147>;
+				hback-porch = <147>;
+				hsync-len = <19>;
+				hsync-active = <0>;
+				vback-porch = <10>;
+				vfront-porch = <25>;
+				vsync-len = <2>;
+				vsync-active = <0>;
+				de-active = <1>;
+				pixelclk-active = <1>;
+			};
+		};
+		port@0 {
+			reg = <0>;
+			fld0800_input_0: endpoint {
+				remote-endpoint = <&lcd_display_out>;
+			};
+		};
+		port@1 {
+			reg = <1>;
+			fld0800_input_1: endpoint {
+				remote-endpoint = <&ext_display_out>;
+			};
+		};
+		port@2 {
+			reg = <2>;
+			fld0800_input_2: endpoint {
+				remote-endpoint = <&third_display_out>;
+			};
+		};
+		port@3 {
+			reg = <3>;
+			fld0800_input_3: endpoint {
+				remote-endpoint = <&fourth_display_out>;
+			};
+		};
+	};
+
+	tcc-drm-lcd {
+		#address-cells = <1>;
+		#size-cells = <0>;
+		compatible = "telechips,tcc-drm-lcd-v1.0";
+		display_device = <&vioc_disp VIOC_DISP0>;
+		lcdc-mux-select = <0>;
+		wmixer = <&vioc_wmix VIOC_WMIX0>;
+		rdma = <&vioc_rdma VIOC_RDMA00>;
+		planes = "primary";
+		status = "disabled";
+
+		port@0 {
+
+			reg = <0>;
+			lcd_display_out: endpoint {
+				//remote-endpoint = <&tm123xdhp90_input_0>;
+				//remote-endpoint = <&fld0800_input_0>;
+			};
+		};
+	};
+
+	tcc-drm-ext {
+		#address-cells = <1>;
+		#size-cells = <0>;
+		compatible = "telechips,tcc-drm-ext-v1.0";
+		display_device = <&vioc_disp VIOC_DISP1>;
+		lcdc-mux-select = <1>;
+		wmixer = <&vioc_wmix VIOC_WMIX1>;
+		rdma = <&vioc_rdma VIOC_RDMA04>;
+		planes = "primary";
+		status = "disabled";
+
+		port@0 {
+			reg = <0>;
+			ext_display_out: endpoint {
+				//remote-endpoint = <&tm123xdhp90_input_1>;
+				//remote-endpoint = <&fld0800_input_1>;
+			};
+		};
+	};
+
+	tcc-drm-third {
+		#address-cells = <1>;
+		#size-cells = <0>;
+		compatible = "telechips,tcc-drm-third-v1.0";
+		display_device = <&vioc_disp VIOC_DISP2>;
+		lcdc-mux-select = <2>;
+		wmixer = <&vioc_wmix VIOC_WMIX2>;
+		rdma = <&vioc_rdma VIOC_RDMA08>;
+		planes = "primary";
+		status = "disabled";
+
+		port@0 {
+			reg = <0>;
+			third_display_out: endpoint {
+				//remote-endpoint = <&tm123xdhp90_input_2>;
+				//remote-endpoint = <&fld0800_input_2>;
+			};
+		};
+	};
+
+	tcc-drm-fourth {
+		#address-cells = <1>;
+		#size-cells = <0>;
+		compatible = "telechips,tcc-drm-fourth-v1.0";
+		display_device = <&vioc_disp VIOC_DISP3>;
+		lcdc-mux-select = <3>;
+		wmixer = <&vioc_wmix VIOC_WMIX3>;
+		rdma = <&vioc_rdma VIOC_RDMA12>;
+		planes = "primary";
+		status = "disabled";
+
+		port@0 {
+			reg = <0>;
+			fourth_display_out: endpoint {
+				//remote-endpoint = <&tm123xdhp90_input_3>;
+				//remote-endpoint = <&fld0800_input_3>;
+			};
+		};
+	};
+};
+

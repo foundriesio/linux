@@ -388,27 +388,29 @@ typedef enum {
 	LVDS_PHY_FCON_MAX
 } LVDS_PHY_FCON_MODE;
 
-extern int VIOC_LVDS_PHY_GetUpsampleRatio(unsigned int p_port, unsigned int s_port, unsigned int freq);
-extern unsigned int VIOC_LVDS_PHY_GetRefCnt(unsigned int p_port, unsigned int s_port, unsigned int freq, int upsample_ratio);
-extern void VIOC_LVDS_PHY_SetFormat(unsigned int port, unsigned int balance, unsigned int depth, unsigned int format, unsigned int freq);
-extern void VIOC_LVDS_PHY_SetFifoEnableTiming(unsigned int port, unsigned int cycle);
-extern void VIOC_LVDS_PHY_SetUserMode(unsigned int port, unsigned int lane, unsigned int skew, unsigned int swap);
-extern void VIOC_LVDS_PHY_SetLaneSwap(unsigned int port, unsigned int lane, unsigned int select);
-extern void VIOC_LVDS_PHY_SetPortOption(unsigned int port, unsigned int port_mode, unsigned int sync_swap, unsigned int use_other_port, unsigned int lane_en, unsigned int sync_transmit_src);
-extern void VIOC_LVDS_PHY_LaneEnable(unsigned int port, unsigned int enable);
-extern void VIOC_LVDS_PHY_FifoEnable(unsigned int port, unsigned int enable);
-extern void VIOC_LVDS_PHY_FifoReset(unsigned int port, unsigned reset);
-extern void VIOC_LVDS_PHY_SWReset(unsigned int port, unsigned int reset);
-extern void VIOC_LVDS_PHY_ClockEnable(unsigned int port, unsigned int enable);
-extern void VIOC_LVDS_PHY_SetStrobe(unsigned int port, unsigned int mode, unsigned int enable);
-extern void VIOC_LVDS_PHY_SetFcon(unsigned int port, unsigned int mode, unsigned int loop, unsigned int division, unsigned int fcon);
-extern void VIOC_LVDS_PHY_FConEnable(unsigned int port, unsigned int enable);
-extern void VIOC_LVDS_PHY_SetCFcon(unsigned int port, unsigned int mode, unsigned int enable);
-extern void VIOC_LVDS_PHY_CheckPLLStatus(unsigned int p_port, unsigned int s_port);
-extern void VIOC_LVDS_PHY_StrobeConfig(unsigned int p_port, unsigned int s_port, unsigned int upsample_ratio, unsigned int step, unsigned int vcm, unsigned int vsw);
-extern unsigned int VIOC_LVDS_PHY_CheckStatus(unsigned int p_port, unsigned int s_port);
-extern unsigned int VIOC_LVDS_PHY_GetRegValue(unsigned int port, unsigned int offset);
-extern volatile void __iomem * VIOC_LVDS_PHY_GetAddress(unsigned int port);
+
+extern int LVDS_PHY_GetUpsampleRatio(unsigned int p_port, unsigned int s_port, unsigned int freq);
+extern unsigned int LVDS_PHY_GetRefCnt(unsigned int p_port, unsigned int s_port, unsigned int freq, int upsample_ratio);
+extern void LVDS_PHY_SetFormat(unsigned int port, unsigned int balance, unsigned int depth, unsigned int format, unsigned int freq);
+extern void LVDS_PHY_SetFifoEnableTiming(unsigned int port, unsigned int cycle);
+extern void LVDS_PHY_SetUserMode(unsigned int port, unsigned int lane, unsigned int skew, unsigned int swap);
+extern void LVDS_PHY_SetLaneSwap(unsigned int port, unsigned int lane, unsigned int select);
+extern void LVDS_PHY_SetPortOption(unsigned int port, unsigned int port_mode, unsigned int sync_swap, unsigned int use_other_port, unsigned int lane_en, unsigned int sync_transmit_src);
+extern void LVDS_PHY_LaneEnable(unsigned int port, unsigned int enable);
+extern void LVDS_PHY_FifoEnable(unsigned int port, unsigned int enable);
+extern void LVDS_PHY_FifoReset(unsigned int port, unsigned reset);
+extern void LVDS_PHY_SWReset(unsigned int port, unsigned int reset);
+extern void LVDS_PHY_ClockEnable(unsigned int port, unsigned int enable);
+extern void LVDS_PHY_SetStrobe(unsigned int port, unsigned int mode, unsigned int enable);
+extern void LVDS_PHY_SetFcon(unsigned int port, unsigned int mode, unsigned int loop, unsigned int division, unsigned int fcon);
+extern void LVDS_PHY_FConEnable(unsigned int port, unsigned int enable);
+extern void LVDS_PHY_SetCFcon(unsigned int port, unsigned int mode, unsigned int enable);
+extern void LVDS_PHY_CheckPLLStatus(unsigned int p_port, unsigned int s_port);
+extern void LVDS_PHY_StrobeConfig(unsigned int p_port, unsigned int s_port, unsigned int upsample_ratio, unsigned int step, unsigned int vcm, unsigned int vsw);
+extern unsigned int LVDS_PHY_CheckStatus(unsigned int p_port, unsigned int s_port);
+extern unsigned int LVDS_PHY_GetRegValue(unsigned int port, unsigned int offset);
+extern volatile void __iomem * LVDS_PHY_GetAddress(unsigned int port);
+extern void LVDS_PHY_LaneSwap(unsigned int s_port_en, unsigned int lvds_main, unsigned int lvds_sub, unsigned int *lane_main, unsigned int *lane_sub);
 #endif
 
 //LVDS_WRAP start
@@ -1115,12 +1117,62 @@ typedef enum {
 #define TXOUT_DATA_PER_LINE		7
 #define TXOUT_GET_DATA(i)	((TXOUT_DATA_PER_LINE -1) -((i) % TXOUT_DATA_PER_LINE) + (TXOUT_DATA_PER_LINE * ((i) /TXOUT_DATA_PER_LINE )))
 
-extern void VIOC_LVDS_WRAP_SetDataArray(unsigned int ch, unsigned int data[TXOUT_MAX_LINE][TXOUT_DATA_PER_LINE]);
-extern void VIOC_LVDS_WRAP_SetConfigure(unsigned int lr, unsigned int bypass, unsigned int width);
-extern void VIOC_LVDS_WRAP_SetDataSwap(unsigned int ch, unsigned int set);
-extern void VIOC_LVDS_WRAP_SetMuxOutput(MUX_TYPE mux, unsigned int ch, unsigned int select,unsigned int enable);
-extern void VIOC_LVDS_WRAP_SetAccessCode(void);
-extern void VIOC_LVDS_WRAP_ResetPHY(unsigned int port, unsigned int reset);
-extern void VIOC_LVDS_WRAP_Set(unsigned int lvds_type, unsigned int val, unsigned select, unsigned int sel0[TXOUT_MAX_LINE][TXOUT_DATA_PER_LINE], unsigned int sel1[TXOUT_MAX_LINE][TXOUT_DATA_PER_LINE]);
-extern void VIOC_LVDS_WRAP_SetSyncPolarity(unsigned int sync);
+extern void LVDS_WRAP_SetDataArray(unsigned int ch, unsigned int data[TXOUT_MAX_LINE][TXOUT_DATA_PER_LINE]);
+extern void LVDS_WRAP_SetConfigure(unsigned int lr, unsigned int bypass, unsigned int width);
+extern void LVDS_WRAP_SetDataSwap(unsigned int ch, unsigned int set);
+extern void LVDS_WRAP_SetMuxOutput(MUX_TYPE mux, unsigned int ch, unsigned int select,unsigned int enable);
+extern void LVDS_WRAP_SetAccessCode(void);
+extern void LVDS_WRAP_ResetPHY(unsigned int port, unsigned int reset);
+extern void LVDS_WRAP_Set(unsigned int lvds_type, unsigned int val, unsigned select, unsigned int sel0[TXOUT_MAX_LINE][TXOUT_DATA_PER_LINE], unsigned int sel1[TXOUT_MAX_LINE][TXOUT_DATA_PER_LINE]);
+extern void LVDS_WRAP_SetSyncPolarity(unsigned int sync);
 #endif
+
+typedef enum {
+	LVDS_WRAP_CMD_INIT = 0,
+	LVDS_WRAP_CMD_RESET_PHY,
+	LVDS_WRAP_CDM_MAX,
+} LVDS_WRAP_CMD;
+
+typedef enum {
+	LVDS_PHY_CMD_INIT = 0,
+	LVDS_PHY_CDM_MAX,
+} LVDS_PHY_CMD;
+
+enum {
+	PANEL_LVDS_DUAL = 0,
+	PANEL_LVDS_SINGLE,
+	PANEL_DEVICE_MAX
+};
+
+
+typedef struct lvds_hw_info{
+	unsigned int lvds_type; //dual or single port lvds
+	unsigned int port_main;
+	unsigned int port_sub;
+	unsigned int ts_mux_id; //ts_mux_id for single lvds
+	unsigned int lcdc_mux_id; //lcdc mux id
+	unsigned int p_clk; //pixel clock of LVDS
+	unsigned int xres;
+	unsigned int vcm;
+	unsigned int vsw;
+	unsigned int lane_main[LVDS_PHY_LANE_MAX];
+	unsigned int lane_sub[LVDS_PHY_LANE_MAX];
+	unsigned int txout_main[TXOUT_MAX_LINE][TXOUT_DATA_PER_LINE];
+	unsigned int txout_sub[TXOUT_MAX_LINE][TXOUT_DATA_PER_LINE];
+}lvds_hw_info_t;
+
+extern lvds_hw_info_t * lvds_register_hw_info(lvds_hw_info_t* l_hw, unsigned int l_type, unsigned int port1, unsigned int port2, unsigned int p_clk, unsigned int lcdc_select, unsigned int xres);
+extern lvds_hw_info_t * lvds_get_hw_info(unsigned int id);
+extern void lvds_splitter_init(lvds_hw_info_t *lvds_hw);
+extern void lvds_phy_init(lvds_hw_info_t *lvds_hw);
+extern void lvds_wrap_core_init(unsigned int lvds_type, unsigned int width, unsigned int tx_mux_id, unsigned int lcdc_mux_id, unsigned int (*sel0)[TXOUT_DATA_PER_LINE], unsigned int (*sel1)[TXOUT_DATA_PER_LINE]);
+extern void lvds_phy_core_init(unsigned int lvds_type, unsigned int lvds_main, unsigned int lvds_sub, unsigned int upsample_ratio, unsigned int ref_cnt, unsigned int vcm, unsigned int vsw, unsigned int *LVDS_LANE_MAIN, unsigned int *LVDS_LANE_SUB);
+
+/* below is for device tree*/
+#define PORT_S0 LVDS_PHY_PORT_S0
+#define PORT_S1 LVDS_PHY_PORT_S1
+#define PORT_D0 LVDS_PHY_PORT_D0
+#define PORT_D1 LVDS_PHY_PORT_D1
+#define PORT_MAX LVDS_PHY_PORT_MAX
+
+#define CLK_LANE

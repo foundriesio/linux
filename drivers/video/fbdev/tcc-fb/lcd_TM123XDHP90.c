@@ -120,10 +120,10 @@ static int tm123xdhp90_set_power(struct lcd_panel *panel, int on, struct tcc_dp_
 
 	if (on) {
 		int idx;
-		unsigned int upsample_ratio = VIOC_LVDS_PHY_GetUpsampleRatio(
+		unsigned int upsample_ratio = LVDS_PHY_GetUpsampleRatio(
 				lvds_tm123xdhp90.main_port, lvds_tm123xdhp90.sub_port,
 				panel->clk_freq);
-		unsigned int ref_cnt = VIOC_LVDS_PHY_GetRefCnt(
+		unsigned int ref_cnt = LVDS_PHY_GetRefCnt(
 				lvds_tm123xdhp90.main_port, lvds_tm123xdhp90.sub_port,
 				panel->clk_freq, upsample_ratio);
 
@@ -142,101 +142,101 @@ static int tm123xdhp90_set_power(struct lcd_panel *panel, int on, struct tcc_dp_
 
 		/*bl_on*/
 
-		VIOC_LVDS_WRAP_ResetPHY(TS_MUX_IDX0,1); //included for LVDS WRAP timing sequence
-		VIOC_LVDS_WRAP_SetAccessCode();
-		VIOC_LVDS_WRAP_SetConfigure(0, 0, tm123xdhp90_panel.xres);
+		LVDS_WRAP_ResetPHY(TS_MUX_IDX0,1); //included for LVDS WRAP timing sequence
+		LVDS_WRAP_SetAccessCode();
+		LVDS_WRAP_SetConfigure(0, 0, tm123xdhp90_panel.xres);
 		for(idx = TS_SWAP_CH0; idx < TS_SWAP_CH_MAX; idx++)
-			VIOC_LVDS_WRAP_SetDataSwap(idx, idx);
-		VIOC_LVDS_WRAP_SetMuxOutput(DISP_MUX_TYPE, 0, lvds_tm123xdhp90.lcdc_select, 1);
-		VIOC_LVDS_WRAP_SetMuxOutput(TS_MUX_TYPE, TS_MUX_IDX0, TS_MUX_PATH_CORE, 1);
-		VIOC_LVDS_WRAP_SetDataArray(TS_MUX_IDX0, txout_sel0);
-		VIOC_LVDS_WRAP_SetMuxOutput(TS_MUX_TYPE, TS_MUX_IDX1, TS_MUX_PATH_CORE, 1);
-		VIOC_LVDS_WRAP_SetDataArray(TS_MUX_IDX1, txout_sel1);
+			LVDS_WRAP_SetDataSwap(idx, idx);
+		LVDS_WRAP_SetMuxOutput(DISP_MUX_TYPE, 0, lvds_tm123xdhp90.lcdc_select, 1);
+		LVDS_WRAP_SetMuxOutput(TS_MUX_TYPE, TS_MUX_IDX0, TS_MUX_PATH_CORE, 1);
+		LVDS_WRAP_SetDataArray(TS_MUX_IDX0, txout_sel0);
+		LVDS_WRAP_SetMuxOutput(TS_MUX_TYPE, TS_MUX_IDX1, TS_MUX_PATH_CORE, 1);
+		LVDS_WRAP_SetDataArray(TS_MUX_IDX1, txout_sel1);
 
 		//lcdc_mux_select : dosen't need to backup and restore in suspend to RAM
 		lcdc_initialize(panel, fb_pdata);
 
 
 		/* LVDS PHY Clock Enable */
-		VIOC_LVDS_PHY_ClockEnable(lvds_tm123xdhp90.main_port, 1);
-		VIOC_LVDS_PHY_ClockEnable(lvds_tm123xdhp90.sub_port, 1);
+		LVDS_PHY_ClockEnable(lvds_tm123xdhp90.main_port, 1);
+		LVDS_PHY_ClockEnable(lvds_tm123xdhp90.sub_port, 1);
 
-		VIOC_LVDS_PHY_SWReset(lvds_tm123xdhp90.main_port, 1);
-		VIOC_LVDS_PHY_SWReset(lvds_tm123xdhp90.sub_port, 1);
+		LVDS_PHY_SWReset(lvds_tm123xdhp90.main_port, 1);
+		LVDS_PHY_SWReset(lvds_tm123xdhp90.sub_port, 1);
 		udelay(1000);		// Alphachips Guide
-		VIOC_LVDS_PHY_SWReset(lvds_tm123xdhp90.main_port, 0);
-		VIOC_LVDS_PHY_SWReset(lvds_tm123xdhp90.sub_port, 0);
+		LVDS_PHY_SWReset(lvds_tm123xdhp90.main_port, 0);
+		LVDS_PHY_SWReset(lvds_tm123xdhp90.sub_port, 0);
 
 		/* LVDS PHY Strobe setup */
-		VIOC_LVDS_PHY_SetStrobe(lvds_tm123xdhp90.main_port, 1, 1);
-		VIOC_LVDS_PHY_SetStrobe(lvds_tm123xdhp90.sub_port, 1, 1);
+		LVDS_PHY_SetStrobe(lvds_tm123xdhp90.main_port, 1, 1);
+		LVDS_PHY_SetStrobe(lvds_tm123xdhp90.sub_port, 1, 1);
 
-		VIOC_LVDS_PHY_StrobeConfig(lvds_tm123xdhp90.main_port, lvds_tm123xdhp90.sub_port, upsample_ratio,
+		LVDS_PHY_StrobeConfig(lvds_tm123xdhp90.main_port, lvds_tm123xdhp90.sub_port, upsample_ratio,
 				LVDS_PHY_INIT, tm123xdhp90_panel.vcm, tm123xdhp90_panel.vsw);
 
-		VIOC_LVDS_PHY_LaneEnable(lvds_tm123xdhp90.main_port, 0);
-		VIOC_LVDS_PHY_LaneEnable(lvds_tm123xdhp90.sub_port, 0);
-		VIOC_LVDS_PHY_SetPortOption(lvds_tm123xdhp90.main_port, 0, 0, 0, 0x0, 0x0);
-		VIOC_LVDS_PHY_SetPortOption(lvds_tm123xdhp90.sub_port, 1, 0, 1, 0x0, 0x7);
+		LVDS_PHY_LaneEnable(lvds_tm123xdhp90.main_port, 0);
+		LVDS_PHY_LaneEnable(lvds_tm123xdhp90.sub_port, 0);
+		LVDS_PHY_SetPortOption(lvds_tm123xdhp90.main_port, 0, 0, 0, 0x0, 0x0);
+		LVDS_PHY_SetPortOption(lvds_tm123xdhp90.sub_port, 1, 0, 1, 0x0, 0x7);
 
-		VIOC_LVDS_PHY_SetLaneSwap(lvds_tm123xdhp90.main_port, LVDS_PHY_CLK_LANE, LVDS_PHY_DATA3_LANE);
-		VIOC_LVDS_PHY_SetLaneSwap(lvds_tm123xdhp90.main_port, LVDS_PHY_DATA0_LANE, LVDS_PHY_CLK_LANE);
-		VIOC_LVDS_PHY_SetLaneSwap(lvds_tm123xdhp90.main_port, LVDS_PHY_DATA1_LANE, LVDS_PHY_DATA2_LANE);
-		VIOC_LVDS_PHY_SetLaneSwap(lvds_tm123xdhp90.main_port, LVDS_PHY_DATA2_LANE, LVDS_PHY_DATA1_LANE);
-		VIOC_LVDS_PHY_SetLaneSwap(lvds_tm123xdhp90.main_port, LVDS_PHY_DATA3_LANE, LVDS_PHY_DATA0_LANE);
+		LVDS_PHY_SetLaneSwap(lvds_tm123xdhp90.main_port, LVDS_PHY_CLK_LANE, LVDS_PHY_DATA3_LANE);
+		LVDS_PHY_SetLaneSwap(lvds_tm123xdhp90.main_port, LVDS_PHY_DATA0_LANE, LVDS_PHY_CLK_LANE);
+		LVDS_PHY_SetLaneSwap(lvds_tm123xdhp90.main_port, LVDS_PHY_DATA1_LANE, LVDS_PHY_DATA2_LANE);
+		LVDS_PHY_SetLaneSwap(lvds_tm123xdhp90.main_port, LVDS_PHY_DATA2_LANE, LVDS_PHY_DATA1_LANE);
+		LVDS_PHY_SetLaneSwap(lvds_tm123xdhp90.main_port, LVDS_PHY_DATA3_LANE, LVDS_PHY_DATA0_LANE);
 
-		VIOC_LVDS_PHY_SetLaneSwap(lvds_tm123xdhp90.sub_port, LVDS_PHY_CLK_LANE, LVDS_PHY_DATA0_LANE);
-		VIOC_LVDS_PHY_SetLaneSwap(lvds_tm123xdhp90.sub_port, LVDS_PHY_DATA0_LANE, LVDS_PHY_DATA1_LANE);
-		VIOC_LVDS_PHY_SetLaneSwap(lvds_tm123xdhp90.sub_port, LVDS_PHY_DATA1_LANE, LVDS_PHY_DATA2_LANE);
-		VIOC_LVDS_PHY_SetLaneSwap(lvds_tm123xdhp90.sub_port, LVDS_PHY_DATA2_LANE, LVDS_PHY_CLK_LANE);
-		VIOC_LVDS_PHY_SetLaneSwap(lvds_tm123xdhp90.sub_port, LVDS_PHY_DATA3_LANE, LVDS_PHY_DATA3_LANE);
+		LVDS_PHY_SetLaneSwap(lvds_tm123xdhp90.sub_port, LVDS_PHY_CLK_LANE, LVDS_PHY_DATA0_LANE);
+		LVDS_PHY_SetLaneSwap(lvds_tm123xdhp90.sub_port, LVDS_PHY_DATA0_LANE, LVDS_PHY_DATA1_LANE);
+		LVDS_PHY_SetLaneSwap(lvds_tm123xdhp90.sub_port, LVDS_PHY_DATA1_LANE, LVDS_PHY_DATA2_LANE);
+		LVDS_PHY_SetLaneSwap(lvds_tm123xdhp90.sub_port, LVDS_PHY_DATA2_LANE, LVDS_PHY_CLK_LANE);
+		LVDS_PHY_SetLaneSwap(lvds_tm123xdhp90.sub_port, LVDS_PHY_DATA3_LANE, LVDS_PHY_DATA3_LANE);
 
-		VIOC_LVDS_PHY_StrobeConfig(lvds_tm123xdhp90.main_port, lvds_tm123xdhp90.sub_port, upsample_ratio,
+		LVDS_PHY_StrobeConfig(lvds_tm123xdhp90.main_port, lvds_tm123xdhp90.sub_port, upsample_ratio,
 				LVDS_PHY_READY, tm123xdhp90_panel.vcm, tm123xdhp90_panel.vsw);
 
-		VIOC_LVDS_PHY_SetFcon(lvds_tm123xdhp90.main_port, LVDS_PHY_FCON_AUTOMATIC, 0, 0, ref_cnt);		// fcon value, for 44.1Mhz
-		VIOC_LVDS_PHY_SetFcon(lvds_tm123xdhp90.sub_port, LVDS_PHY_FCON_AUTOMATIC, 0, 0, ref_cnt);			// fcon value, for 44.1Mhz
-		VIOC_LVDS_PHY_FConEnable(lvds_tm123xdhp90.main_port, 1);
-		VIOC_LVDS_PHY_FConEnable(lvds_tm123xdhp90.sub_port, 1);
-		VIOC_LVDS_PHY_SetCFcon(lvds_tm123xdhp90.main_port, LVDS_PHY_FCON_AUTOMATIC, 1);
-		VIOC_LVDS_PHY_SetCFcon(lvds_tm123xdhp90.sub_port, LVDS_PHY_FCON_AUTOMATIC, 1);
-		VIOC_LVDS_PHY_CheckPLLStatus(lvds_tm123xdhp90.main_port, lvds_tm123xdhp90.sub_port);
+		LVDS_PHY_SetFcon(lvds_tm123xdhp90.main_port, LVDS_PHY_FCON_AUTOMATIC, 0, 0, ref_cnt);		// fcon value, for 44.1Mhz
+		LVDS_PHY_SetFcon(lvds_tm123xdhp90.sub_port, LVDS_PHY_FCON_AUTOMATIC, 0, 0, ref_cnt);			// fcon value, for 44.1Mhz
+		LVDS_PHY_FConEnable(lvds_tm123xdhp90.main_port, 1);
+		LVDS_PHY_FConEnable(lvds_tm123xdhp90.sub_port, 1);
+		LVDS_PHY_SetCFcon(lvds_tm123xdhp90.main_port, LVDS_PHY_FCON_AUTOMATIC, 1);
+		LVDS_PHY_SetCFcon(lvds_tm123xdhp90.sub_port, LVDS_PHY_FCON_AUTOMATIC, 1);
+		LVDS_PHY_CheckPLLStatus(lvds_tm123xdhp90.main_port, lvds_tm123xdhp90.sub_port);
 		mdelay(10);		// fcon waiting time		-- Alphachips Guide
 
-		VIOC_LVDS_PHY_StrobeConfig(lvds_tm123xdhp90.main_port, lvds_tm123xdhp90.sub_port, upsample_ratio,
+		LVDS_PHY_StrobeConfig(lvds_tm123xdhp90.main_port, lvds_tm123xdhp90.sub_port, upsample_ratio,
 				LVDS_PHY_START, tm123xdhp90_panel.vcm, tm123xdhp90_panel.vsw);
 
 		/* LVDS PHY digital setup */
-		VIOC_LVDS_PHY_SetFormat(lvds_tm123xdhp90.main_port, 0, 1, 0, upsample_ratio);
-		VIOC_LVDS_PHY_SetFormat(lvds_tm123xdhp90.sub_port, 0, 1, 0, upsample_ratio);
+		LVDS_PHY_SetFormat(lvds_tm123xdhp90.main_port, 0, 1, 0, upsample_ratio);
+		LVDS_PHY_SetFormat(lvds_tm123xdhp90.sub_port, 0, 1, 0, upsample_ratio);
 
-		VIOC_LVDS_PHY_SetFifoEnableTiming(lvds_tm123xdhp90.main_port, 0x3);
-		VIOC_LVDS_PHY_SetFifoEnableTiming(lvds_tm123xdhp90.sub_port, 0x3);
+		LVDS_PHY_SetFifoEnableTiming(lvds_tm123xdhp90.main_port, 0x3);
+		LVDS_PHY_SetFifoEnableTiming(lvds_tm123xdhp90.sub_port, 0x3);
 
 		/* LVDS PHY Main/Sub Lane Disable */
-		VIOC_LVDS_PHY_LaneEnable(lvds_tm123xdhp90.main_port, 0);
-		VIOC_LVDS_PHY_LaneEnable(lvds_tm123xdhp90.sub_port, 0);
+		LVDS_PHY_LaneEnable(lvds_tm123xdhp90.main_port, 0);
+		LVDS_PHY_LaneEnable(lvds_tm123xdhp90.sub_port, 0);
 
 		/* LVDS PHY Main port FIFO Disable */
-		VIOC_LVDS_PHY_FifoEnable(lvds_tm123xdhp90.main_port, 0);
-		VIOC_LVDS_PHY_FifoEnable(lvds_tm123xdhp90.sub_port, 0);
+		LVDS_PHY_FifoEnable(lvds_tm123xdhp90.main_port, 0);
+		LVDS_PHY_FifoEnable(lvds_tm123xdhp90.sub_port, 0);
 
-		VIOC_LVDS_PHY_FifoReset(lvds_tm123xdhp90.main_port, 1);
-		VIOC_LVDS_PHY_FifoReset(lvds_tm123xdhp90.sub_port, 1);
+		LVDS_PHY_FifoReset(lvds_tm123xdhp90.main_port, 1);
+		LVDS_PHY_FifoReset(lvds_tm123xdhp90.sub_port, 1);
 		udelay(1000);		// Alphachips Guide
-		VIOC_LVDS_PHY_FifoReset(lvds_tm123xdhp90.main_port, 0);
-		VIOC_LVDS_PHY_FifoReset(lvds_tm123xdhp90.sub_port, 0);
+		LVDS_PHY_FifoReset(lvds_tm123xdhp90.main_port, 0);
+		LVDS_PHY_FifoReset(lvds_tm123xdhp90.sub_port, 0);
 
 		/* LVDS PHY Main/Sub port FIFO Enable */
-		VIOC_LVDS_PHY_FifoEnable(lvds_tm123xdhp90.main_port, 1);
-		VIOC_LVDS_PHY_FifoEnable(lvds_tm123xdhp90.sub_port, 1);
+		LVDS_PHY_FifoEnable(lvds_tm123xdhp90.main_port, 1);
+		LVDS_PHY_FifoEnable(lvds_tm123xdhp90.sub_port, 1);
 
 		/* LVDS PHY Main/Sub port Lane Enable */
-		VIOC_LVDS_PHY_LaneEnable(lvds_tm123xdhp90.main_port, 1);
-		VIOC_LVDS_PHY_LaneEnable(lvds_tm123xdhp90.sub_port, 1);
+		LVDS_PHY_LaneEnable(lvds_tm123xdhp90.main_port, 1);
+		LVDS_PHY_LaneEnable(lvds_tm123xdhp90.sub_port, 1);
 	}else{
 		fb_pdata->FbPowerState = panel->state = 0;
-		VIOC_LVDS_WRAP_ResetPHY(TS_MUX_IDX0,1);
+		LVDS_WRAP_ResetPHY(TS_MUX_IDX0,1);
 
 		if(gpio_is_valid(lvds_tm123xdhp90.gpio.stby))
 			gpio_set_value_cansleep(lvds_tm123xdhp90.gpio.stby, 0);
@@ -255,7 +255,7 @@ static int tm123xdhp90_set_power(struct lcd_panel *panel, int on, struct tcc_dp_
 
 	if(on) {
 		unsigned int status;
-		status = VIOC_LVDS_PHY_CheckStatus(lvds_tm123xdhp90.main_port, lvds_tm123xdhp90.sub_port);
+		status = LVDS_PHY_CheckStatus(lvds_tm123xdhp90.main_port, lvds_tm123xdhp90.sub_port);
 		if(!(status & 0x1))
 			pr_info("[INF][LCD] %s: LVDS_PHY Primary port(%d) is in death \n",
 					__func__, lvds_tm123xdhp90.main_port);

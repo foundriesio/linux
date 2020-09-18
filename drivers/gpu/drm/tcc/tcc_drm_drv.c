@@ -13,34 +13,32 @@
  */
 
 #include <linux/pm_runtime.h>
+#include <linux/component.h>
+
 #include <drm/drmP.h>
 #include <drm/drm_atomic.h>
 #include <drm/drm_atomic_helper.h>
 #include <drm/drm_crtc_helper.h>
-
-#include <linux/component.h>
-
 #include <drm/tcc_drm.h>
 
-#include "tcc_drm_address.h"
-#include "tcc_drm_drv.h"
-#include "tcc_drm_fbdev.h"
-#include "tcc_drm_fb.h"
-#include "tcc_drm_gem.h"
-#include "tcc_drm_plane.h"
-#include "tcc_drm_vidi.h"
-#include "tcc_drm_crtc.h" 
+#include <tcc_drm_address.h>
+#include <tcc_drm_drv.h>
+#include <tcc_drm_fbdev.h>
+#include <tcc_drm_fb.h>
+#include <tcc_drm_gem.h>
+#include <tcc_drm_plane.h>
 
+#define LOG_TAG "TCCDRM"
 #if defined(CONFIG_ARCH_TCC805X)
 #define DRIVER_NAME	"tccdrm"
 #else
 #define DRIVER_NAME	"tcc-drm"
 #endif
 #define DRIVER_DESC	"Telechips SoC DRM"
-#define DRIVER_DATE	"20160107"
+#define DRIVER_DATE	"20200911"
 #define DRIVER_MAJOR	1
-#define DRIVER_MINOR	1
-#define DRIVER_PATCH 	2
+#define DRIVER_MINOR	2
+#define DRIVER_PATCH 	0
 
 static struct device *tcc_drm_get_dma_device(void);
 
@@ -98,7 +96,6 @@ int tcc_atomic_check(struct drm_device *dev,
 static int tcc_drm_open(struct drm_device *dev, struct drm_file *file)
 {
 	struct drm_tcc_file_private *file_priv;
-	int ret;
 
 	file_priv = kzalloc(sizeof(*file_priv), GFP_KERNEL);
 	if (!file_priv)
@@ -106,21 +103,11 @@ static int tcc_drm_open(struct drm_device *dev, struct drm_file *file)
 
 	file->driver_priv = file_priv;
 
-	ret = tcc_drm_subdrv_open(dev, file);
-	if (ret)
-		goto err_file_priv_free;
-
-	return ret;
-
-err_file_priv_free:
-	kfree(file_priv);
-	file->driver_priv = NULL;
-	return ret;
+	return 0;
 }
 
 static void tcc_drm_postclose(struct drm_device *dev, struct drm_file *file)
 {
-	tcc_drm_subdrv_close(dev, file);
 	kfree(file->driver_priv);
 	file->driver_priv = NULL;
 }
@@ -143,14 +130,10 @@ static const struct drm_ioctl_desc tcc_ioctls[] = {
 			DRM_AUTH | DRM_RENDER_ALLOW),
 	DRM_IOCTL_DEF_DRV(TCC_GEM_GET, tcc_drm_gem_get_ioctl,
 			DRM_RENDER_ALLOW),
-	DRM_IOCTL_DEF_DRV(TCC_VIDI_CONNECTION, vidi_connection_ioctl,
-			DRM_AUTH),
 	DRM_IOCTL_DEF_DRV(TCC_GEM_CPU_PREP, tcc_gem_cpu_prep_ioctl,
 			DRM_AUTH | DRM_RENDER_ALLOW),
 	DRM_IOCTL_DEF_DRV(TCC_GEM_CPU_FINI, tcc_gem_cpu_fini_ioctl,
 			DRM_AUTH | DRM_RENDER_ALLOW),
-	DRM_IOCTL_DEF_DRV(TCC_GET_EDID, tcc_crtc_parse_edid_ioctl,
-			DRM_AUTH | DRM_RENDER_ALLOW), 
 };
 
 static const struct file_operations tcc_drm_driver_fops = {
@@ -266,14 +249,8 @@ static struct tcc_drm_driver_info tcc_drm_drivers[] = {
 		DRV_PTR(third_driver, CONFIG_DRM_TCC_THIRD),
 		DRM_COMPONENT_DRIVER | DRM_DMA_DEVICE
 	}, {
-		DRV_PTR(hdmi_driver, CONFIG_DRM_TCC_HDMI),
-		DRM_COMPONENT_DRIVER
-	}, {
-		DRV_PTR(vidi_driver, CONFIG_DRM_TCC_VIDI),
-		DRM_COMPONENT_DRIVER | DRM_VIRTUAL_DEVICE
-	}, {
-		DRV_PTR(ipp_driver, CONFIG_DRM_TCC_IPP),
-		DRM_VIRTUAL_DEVICE
+		DRV_PTR(fourth_driver, CONFIG_DRM_TCC_FOURTH),
+		DRM_COMPONENT_DRIVER | DRM_DMA_DEVICE
 	}, {
 		&tcc_drm_platform_driver,
 		DRM_VIRTUAL_DEVICE
@@ -294,13 +271,17 @@ static struct component_match *tcc_drm_match_add(struct device *dev)
 		struct tcc_drm_driver_info *info = &tcc_drm_drivers[i];
 		struct device *p = NULL, *d;
 
-		if (!info->driver || !(info->flags & DRM_COMPONENT_DRIVER))
+		if (info->driver == NULL ||
+			!(info->flags & DRM_COMPONENT_DRIVER))
 			continue;
 
 		while ((d = bus_find_device(&platform_bus_type, p,
 					    &info->driver->driver,
 					    (void *)platform_bus_type.match))) {
 			put_device(p);
+			dev_dbg(dev,
+				"[DEBUG][%s] component_match_add %s \r\n",
+						LOG_TAG, info->driver->driver.name);
 			component_match_add(dev, &match, compare_dev, d);
 			p = d;
 		}
@@ -345,10 +326,9 @@ static int tcc_drm_bind(struct device *dev)
                 private->dma_dev->dma_parms = &private->dma_parms;
 	}
 
-#if defined(CONFIG_ARCH_TCC805X)
-	//dma_set_mask(private->dma_dev, DMA_BIT_MASK(40));
+	#if defined(CONFIG_ARCH_TCC805X)
 	dma_set_mask_and_coherent(private->dma_dev, DMA_BIT_MASK(32));
-#endif
+	#endif
 
 	DRM_INFO("TCC DRM: using %s device for DMA mapping operations\n",
 		 dev_name(private->dma_dev));
@@ -370,11 +350,6 @@ static int tcc_drm_bind(struct device *dev)
 		goto err_mode_config_cleanup;
 
 	ret = drm_vblank_init(drm, drm->mode_config.num_crtc);
-	if (ret)
-		goto err_unbind_all;
-
-	/* Probe non kms sub drivers and virtual display driver. */
-	ret = tcc_drm_device_subdrv_probe(drm);
 	if (ret)
 		goto err_unbind_all;
 
@@ -415,7 +390,6 @@ err_cleanup_fbdev:
 	tcc_drm_fbdev_fini(drm);
 err_cleanup_poll:
 	drm_kms_helper_poll_fini(drm);
-	tcc_drm_device_subdrv_remove(drm);
 err_unbind_all:
 	component_unbind_all(drm->dev, drm);
 err_mode_config_cleanup:
@@ -433,8 +407,6 @@ static void tcc_drm_unbind(struct device *dev)
 	struct drm_device *drm = dev_get_drvdata(dev);
 
 	drm_dev_unregister(drm);
-
-	tcc_drm_device_subdrv_remove(drm);
 
 	tcc_drm_fbdev_fini(drm);
 	drm_kms_helper_poll_fini(drm);
@@ -457,8 +429,6 @@ static const struct component_master_ops tcc_drm_ops = {
 static int tcc_drm_platform_probe(struct platform_device *pdev)
 {
 	struct component_match *match;
-
-	//pdev->dev.coherent_dma_mask = DMA_BIT_MASK(32);
 
 	match = tcc_drm_match_add(&pdev->dev);
 	if (IS_ERR(match))
@@ -512,7 +482,8 @@ static void tcc_drm_unregister_devices(void)
 		struct tcc_drm_driver_info *info = &tcc_drm_drivers[i];
 		struct device *dev;
 
-		if (!info->driver || !(info->flags & DRM_VIRTUAL_DEVICE))
+		if (info->driver == NULL ||
+			!(info->flags & DRM_VIRTUAL_DEVICE))
 			continue;
 
 		while ((dev = bus_find_device(&platform_bus_type, NULL,
@@ -532,13 +503,19 @@ static int tcc_drm_register_devices(void)
 	for (i = 0; i < ARRAY_SIZE(tcc_drm_drivers); ++i) {
 		struct tcc_drm_driver_info *info = &tcc_drm_drivers[i];
 
-		if (!info->driver || !(info->flags & DRM_VIRTUAL_DEVICE))
+		if (info->driver == NULL ||
+			!(info->flags & DRM_VIRTUAL_DEVICE))
 			continue;
 
+		pr_debug("[DEBUG][%s] %s device register for %s \r\n",
+				LOG_TAG, __func__, info->driver->driver.name);
 		pdev = platform_device_register_simple(
 					info->driver->driver.name, -1, NULL, 0);
-		if (IS_ERR(pdev))
+		if (IS_ERR(pdev)) {
+			pr_err("[ERROR][%s] %s failed to register %s \r\n",
+				LOG_TAG, __func__, info->driver->driver.name);
 			goto fail;
+		}
 	}
 
 	return 0;
@@ -568,12 +545,16 @@ static int tcc_drm_register_drivers(void)
 	for (i = 0; i < ARRAY_SIZE(tcc_drm_drivers); ++i) {
 		struct tcc_drm_driver_info *info = &tcc_drm_drivers[i];
 
-		if (!info->driver)
+		if (info->driver == NULL)
 			continue;
-
+		pr_debug("[DEBUG][%s] %s driver register for %s \r\n",
+				LOG_TAG, __func__, info->driver->driver.name);
 		ret = platform_driver_register(info->driver);
-		if (ret)
+		if (ret) {
+			pr_err("[ERROR][%s] %s failed to register %s \r\n",
+				LOG_TAG, __func__, info->driver->driver.name);
 			goto fail;
+		}
 	}
 	return 0;
 fail:

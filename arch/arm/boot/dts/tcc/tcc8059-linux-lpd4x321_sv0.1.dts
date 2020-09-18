@@ -9,6 +9,7 @@
 #endif
 
 #include "tcc8059-linux-avn.dtsi"
+#include "tcc8059-linux-avn-display.dtsi"
 
 / {
 	/* Describe here after remove this statement if you have something to be override. */
@@ -27,33 +28,6 @@
 		mode = <1>;   /* 0: single 1: dual */
 		ports = <2 3>;
 		mux-select = <2>;
-	};
-
-	tcc-drm-lcd {
-	        compatible = "telechips,tcc-drm-lcd-v1.0";
-		display_device = <&vioc_disp VIOC_DISP0>;
-  		wmixer = <&vioc_wmix VIOC_WMIX0>;
-            	rdma = <&vioc_rdma VIOC_RDMA00>;
-            	planes = "primary";
-            	status = "okay";
-	};
-
-	tcc-drm-ext {
-	        compatible = "telechips,tcc-drm-ext-v1.0";
-		display_device = <&vioc_disp VIOC_DISP1>;
-  		wmixer = <&vioc_wmix VIOC_WMIX1>;
-            	rdma = <&vioc_rdma VIOC_RDMA04>;
-            	planes = "primary";
-            	status = "okay";
-	};
-
-	tcc-drm-third {
-	        compatible = "telechips,tcc-drm-third-v1.0";
-		display_device = <&vioc_disp VIOC_DISP2>;
-  		wmixer = <&vioc_wmix VIOC_WMIX2>;
-            	rdma = <&vioc_rdma VIOC_RDMA08>;
-            	planes = "primary";
-            	status = "okay";
 	};
 
 	vqmmc_emmc: vqmmc_emmc {

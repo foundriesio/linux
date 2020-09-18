@@ -36,11 +36,11 @@
 #include <video/tcc/vioc_ddicfg.h>
 #include <video/tcc/vioc_config.h>
 
-#include "tcc_drm_address.h"
-#include "tcc_drm_drv.h"
-#include "tcc_drm_fb.h"
-#include "tcc_drm_crtc.h"
-#include "tcc_drm_plane.h"
+#include <tcc_drm_address.h>
+#include <tcc_drm_drv.h>
+#include <tcc_drm_fb.h>
+#include <tcc_drm_crtc.h>
+#include <tcc_drm_plane.h>
 
 #define LOG_TAG "DRMLCD"
 
@@ -51,6 +51,13 @@
  * CPU Interface.
  */
 
+#if defined(CONFIG_DRM_TCC_CTRL_CHROMAKEY)
+struct lcd_chromakeys {
+	unsigned int chromakey_enable;
+	struct drm_chromakey_t value;
+	struct drm_chromakey_t mask;
+};
+#endif
 
 struct lcd_context {
 	struct device			*dev;
@@ -75,6 +82,7 @@ struct lcd_context {
 
 	#if defined(CONFIG_DRM_TCC_CTRL_CHROMAKEY)
 	struct mutex chromakey_mutex;
+	struct lcd_chromakeys lcd_chromakeys[3];
 	#endif
 
 	/* count for fifo-underrun */
@@ -248,7 +256,11 @@ static void lcd_enable_video_output(struct lcd_context *ctx, unsigned int win,
 		if (enable) {
 			VIOC_RDMA_SetImageEnable(ctx->hw_data.rdma[win].virt_addr);
 		} else {
-			VIOC_RDMA_SetImageDisable(ctx->hw_data.rdma[win].virt_addr);
+			if (test_bit(CRTC_FLAGS_PCLK_BIT, &ctx->crtc_flags)) {
+				VIOC_RDMA_SetImageDisable(ctx->hw_data.rdma[win].virt_addr);
+			} else {
+				VIOC_RDMA_SetImageDisableNW(ctx->hw_data.rdma[win].virt_addr);
+			}
 
 			if(get_vioc_type(ctx->hw_data.rdma[win].blk_num) == get_vioc_type(VIOC_RDMA)) {
 				VIOC_CONFIG_SWReset(ctx->hw_data.rdma[win].blk_num, VIOC_CONFIG_RESET);
@@ -284,15 +296,18 @@ static int lcd_atomic_check(struct tcc_drm_crtc *crtc,
 
 		lcd_rate = clk_get_rate(ctx->hw_data.ddc_clock);
 		if (2 * lcd_rate < ideal_clk) {
-			DRM_INFO("sclk_lcd clock too low(%lu) for requested pixel clock(%lu)\n",
-				 lcd_rate, ideal_clk);
+			dev_err(ctx->dev,
+				"[ERROR][%s] %s line(%d) sclk_lcd clock too low(%lu) for requested pixel clock(%lu)\n",
+				 					LOG_TAG, __func__, __LINE__, lcd_rate, ideal_clk);
 			return -EINVAL;
 		}
 
 		/* Find the clock divider value that gets us closest to ideal_clk */
 		clkdiv = DIV_ROUND_CLOSEST(lcd_rate, ideal_clk);
 		if (clkdiv >= 0x200) {
-			DRM_INFO("requested pixel clock(%lu) too low\n", ideal_clk);
+			dev_err(ctx->dev,
+				"[ERROR][%s] %s line(%d) requested pixel clock(%lu) too low\n",
+				 			LOG_TAG, __func__, __LINE__, ideal_clk);
 			return -EINVAL;
 		}
 	}
@@ -371,7 +386,7 @@ static void lcd_update_plane(struct tcc_drm_crtc *crtc,
 
 	do {
 		if(ctx->keep_logo) {
-			dev_err(ctx->dev, "[INF][%s] %s line(%d) skip logo\r\n",
+			dev_info(ctx->dev, "[INFO][%s] %s line(%d) skip logo\r\n",
 							LOG_TAG, __func__, __LINE__);
 			ctx->keep_logo--;
 			break;
@@ -408,7 +423,7 @@ static void lcd_update_plane(struct tcc_drm_crtc *crtc,
 		VIOC_RDMA_GetImageEnable(ctx->hw_data.rdma[win].virt_addr, &enabled);
 		if(!enabled) {
 			if(get_vioc_type(ctx->hw_data.rdma[win].blk_num) == get_vioc_type(VIOC_RDMA)) {
-				dev_info(ctx->dev, "[INF][%s] %s line(%d) swreset RDMA\r\n",
+				dev_info(ctx->dev, "[INFO][%s] %s line(%d) swreset RDMA\r\n",
 									LOG_TAG, __func__, __LINE__);
 				VIOC_CONFIG_SWReset(ctx->hw_data.rdma[win].blk_num, VIOC_CONFIG_RESET);
 				VIOC_CONFIG_SWReset(ctx->hw_data.rdma[win].blk_num, VIOC_CONFIG_CLEAR);
@@ -462,19 +477,22 @@ static void lcd_enable(struct tcc_drm_crtc *crtc)
 	struct lcd_context *ctx = crtc->ctx;
 
 	if (!test_and_set_bit(CRTC_FLAGS_PCLK_BIT, &ctx->crtc_flags)) {
-		dev_info(ctx->dev,
-			"[INF][%s] %s line(%d) enable pclk %ldHz\r\n",
+		dev_dbg(ctx->dev,
+			"[DEBUG][%s] %s line(%d) enable pclk %ldHz\r\n",
 					LOG_TAG, __func__, __LINE__,
 					clk_get_rate(ctx->hw_data.ddc_clock));
 		ret = clk_prepare_enable(ctx->hw_data.ddc_clock);
 		if  (ret < 0) {
-			DRM_ERROR("Failed to prepare_enable the lcd clk [%d]\n", ret);
+			dev_warn(ctx->dev,
+			"[WARN][%s] %s line(%d) failed to enable the lcd clk\r\n",
+							LOG_TAG, __func__, __LINE__);
 		}
 	}
 
 	if(!crtc->enabled) {
-		dev_info(ctx->dev, "[INF][%s] %s line(%d) turn on display dev\r\n",
-								LOG_TAG, __func__, __LINE__);
+		dev_dbg(ctx->dev,
+			"[DEBUG][%s] %s line(%d) turn on display dev\r\n",
+							LOG_TAG, __func__, __LINE__);
 		#if defined(CONFIG_PM)
 		pm_runtime_get_sync(ctx->dev);
 		#endif
@@ -489,7 +507,7 @@ static void lcd_disable(struct tcc_drm_crtc *crtc)
 {
 	struct lcd_context *ctx = crtc->ctx;
 	if(crtc->enabled) {
-		dev_info(ctx->dev, "[INF][%s] %s line(%d) turn off display dev\r\n",
+		dev_dbg(ctx->dev, "[DEBUG][%s] %s line(%d) turn off display dev\r\n",
 								LOG_TAG, __func__, __LINE__);
 		if(VIOC_DISP_Get_TurnOnOff(ctx->hw_data.display_device.virt_addr))
 			VIOC_DISP_TurnOff(ctx->hw_data.display_device.virt_addr);
@@ -500,19 +518,20 @@ static void lcd_disable(struct tcc_drm_crtc *crtc)
 	}
 
 	if (test_and_clear_bit(CRTC_FLAGS_PCLK_BIT, &ctx->crtc_flags)) {
-		dev_info(ctx->dev, "[INF][%s] %s line(%d) disable pck\r\n",
+		dev_dbg(ctx->dev, "[DEBUG][%s] %s line(%d) disable pck\r\n",
 							LOG_TAG, __func__, __LINE__);
 		clk_disable_unprepare(ctx->hw_data.ddc_clock);
 	}
 }
 
 #if defined(CONFIG_DRM_TCC_CTRL_CHROMAKEY)
-int lcd_set_chromakey(struct tcc_drm_crtc *crtc,
+static int lcd_set_chromakey(struct tcc_drm_crtc *crtc,
 	unsigned int chromakey_layer,
 	unsigned int chromakey_enable,
 	struct drm_chromakey_t *value, struct drm_chromakey_t *mask)
 {
 	struct lcd_context *ctx = crtc->ctx;
+
 	mutex_lock(&ctx->chromakey_mutex);
 	if(crtc->enabled) {
 		VIOC_WMIX_SetChromaKey(ctx->hw_data.wmixer.virt_addr, chromakey_layer,
@@ -521,11 +540,15 @@ int lcd_set_chromakey(struct tcc_drm_crtc *crtc,
 			mask->red, mask->green, mask->blue);
 		VIOC_WMIX_SetUpdate(ctx->hw_data.wmixer.virt_addr);
 	}
+	/* store information */
+	ctx->lcd_chromakeys[chromakey_layer].chromakey_enable = chromakey_enable;
+	memcpy(&ctx->lcd_chromakeys[chromakey_layer].value, value, sizeof(*value));
+	memcpy(&ctx->lcd_chromakeys[chromakey_layer].mask, mask, sizeof(*mask));
 	mutex_unlock(&ctx->chromakey_mutex);
 	return 0;
 }
 
-int lcd_get_chromakey(struct tcc_drm_crtc *crtc,
+static int lcd_get_chromakey(struct tcc_drm_crtc *crtc,
 	unsigned int chromakey_layer,
 	unsigned int *chromakey_enable,
 	struct drm_chromakey_t *value, struct drm_chromakey_t *mask)
@@ -540,6 +563,10 @@ int lcd_get_chromakey(struct tcc_drm_crtc *crtc,
 			&mask->red, &mask->green,
 			&mask->blue);
 		ret = 0;
+	} else {
+		*chromakey_enable = ctx->lcd_chromakeys[chromakey_layer].chromakey_enable;
+		memcpy(value, &ctx->lcd_chromakeys[chromakey_layer].value, sizeof(*value));
+		memcpy(mask, &ctx->lcd_chromakeys[chromakey_layer].mask, sizeof(*mask));
 	}
 	mutex_unlock(&ctx->chromakey_mutex);
 	return ret;
@@ -550,9 +577,28 @@ static void lcd_mode_set_nofb(struct tcc_drm_crtc *crtc)
 {
 	struct lcd_context *ctx = crtc->ctx;
         struct drm_crtc_state *state = crtc->base.state;
-
-	tcc_drm_crtc_set_display_timing(ctx->dev,
+	#if defined(CONFIG_DRM_TCC_CTRL_CHROMAKEY)
+	int i;
+	#endif
+	#if defined(CONFIG_ARCH_TCC805X)
+	tcc_drm_crtc_set_display_timing(&crtc->base,
 			&state->adjusted_mode, &ctx->hw_data);
+	#endif
+	#if defined(CONFIG_DRM_TCC_CTRL_CHROMAKEY)
+	mutex_lock(&ctx->chromakey_mutex);
+	for(i = 0; i < 3; i++) {
+		VIOC_WMIX_SetChromaKey(ctx->hw_data.wmixer.virt_addr, i,
+			ctx->lcd_chromakeys[i].chromakey_enable,
+			ctx->lcd_chromakeys[i].value.red,
+			ctx->lcd_chromakeys[i].value.green,
+			ctx->lcd_chromakeys[i].value.blue,
+			ctx->lcd_chromakeys[i].mask.red,
+			ctx->lcd_chromakeys[i].mask.green,
+			ctx->lcd_chromakeys[i].mask.blue);
+		VIOC_WMIX_SetUpdate(ctx->hw_data.wmixer.virt_addr);
+	}
+	mutex_unlock(&ctx->chromakey_mutex);
+	#endif
 }
 
 static const struct tcc_drm_crtc_ops lcd_crtc_ops = {
@@ -580,7 +626,9 @@ static irqreturn_t lcd_irq_handler(int irq, void *dev_id)
 	u32 dispblock_status = 0;
 
 	if (ctx == NULL) {
-		pr_err("%s irq: %d dev_id:%p \n",__func__, irq, dev_id);
+		dev_warn(ctx->dev,
+				"[WARN][%s] %s line(%d) ctx is NULL\r\n",
+					LOG_TAG, __func__, __LINE__);
 		return IRQ_HANDLED;
 	}
 
@@ -594,8 +642,9 @@ static irqreturn_t lcd_irq_handler(int irq, void *dev_id)
 
 		/* check the crtc is detached already from encoder */
 		if (ctx->drm_dev == NULL) {
-			dev_warn(ctx->dev, "[WARN][%s] %s line(%d) drm_dev is not binded\r\n",
-									LOG_TAG, __func__, __LINE__);
+			dev_warn(ctx->dev,
+				"[WARN][%s] %s line(%d) drm_dev is not binded\r\n",
+					LOG_TAG, __func__, __LINE__);
 			goto out;
 		}
 
@@ -641,7 +690,9 @@ static int lcd_bind(struct device *dev, struct device *master, void *data)
 	if (!test_and_set_bit(CRTC_FLAGS_VCLK_BIT, &ctx->crtc_flags)) {
 		ret = clk_prepare_enable(ctx->hw_data.vioc_clock);
 		if (ret < 0) {
-			DRM_ERROR("Failed to prepare_enable the bus clk [%d]\n", ret);
+			dev_err(dev,
+				"[ERROR][%s] %s line(%d) failed to enable the bus clk\n",
+								LOG_TAG, __func__, __LINE__);
 			return -1;
 		}
 	}
@@ -652,6 +703,9 @@ static int lcd_bind(struct device *dev, struct device *master, void *data)
 					lcd_formats,
 					ARRAY_SIZE(lcd_formats));
 		if(ret) {
+			dev_err(dev,
+				"[ERROR][%s] %s line(%d) failed to initizliaed the planes\n",
+									LOG_TAG, __func__, __LINE__);
 			return ret;
 		}
 
@@ -708,11 +762,21 @@ static int lcd_probe(struct platform_device *pdev)
 		return -ENODEV;
 	}
 	ctx = devm_kzalloc(dev, sizeof(*ctx), GFP_KERNEL);
-	if (!ctx)
+	if (ctx == NULL) {
+		dev_err(dev,
+			"[ERROR][%s] %s line(%d) ctx is NULL\n",
+					LOG_TAG, __func__, __LINE__);
 		return -ENOMEM;
+	}
 
 	ctx->dev = dev;
 	ctx->data = (struct tcc_drm_device_data*)of_device_get_match_data(&pdev->dev);
+	if(ctx->data == NULL) {
+		dev_err(dev,
+			"[ERROR][%s] %s line(%d) failed to get match data\r\n",
+					LOG_TAG, __func__, __LINE__);
+		return -ENOMEM;
+	}
 	if(tcc_drm_address_dt_parse(pdev, &ctx->hw_data, ctx->data->version) < 0) {
 		dev_err(dev,
 			"[ERROR][%s] %s line(%d) failed to parse device tree\n",
@@ -748,7 +812,7 @@ static int lcd_probe(struct platform_device *pdev)
 		return -ENODEV;
 	}
 
-	dev_err(dev, "[DEBUG][%s] %s line(%d) %s start probe with pdev(%p)\r\n",
+	dev_dbg(dev, "[DEBUG][%s] %s line(%d) %s start probe with pdev(%p)\r\n",
 				LOG_TAG, __func__, __LINE__, ctx->data->name, pdev);
 
 	ret = devm_request_irq(dev, ctx->hw_data.display_device.irq_num,
@@ -762,27 +826,19 @@ static int lcd_probe(struct platform_device *pdev)
 
 	init_waitqueue_head(&ctx->wait_vsync_queue);
 	atomic_set(&ctx->wait_vsync_event, 0);
-
 	platform_set_drvdata(pdev, ctx);
-
 	ctx->encoder = tcc_dpi_probe(dev, &ctx->hw_data);
-	if (IS_ERR(ctx->encoder)) {
-		dev_err(dev, "[ERROR][%s] %s line(%d) failed to parse dpi\r\n",
-							LOG_TAG, __func__, __LINE__);
+	if (IS_ERR(ctx->encoder))
 		return PTR_ERR(ctx->encoder);
-	}
-
 	#if defined(CONFIG_PM)
 	pm_runtime_enable(dev);
 	#endif
-
 	ret = component_add(dev, &lcd_component_ops);
 	if (ret) {
 		dev_err(dev, "[ERROR][%s] %s line(%d) failed to component_add\r\n",
 							LOG_TAG, __func__, __LINE__);
 		goto err_disable_pm_runtime;
 	}
-
 	#if defined(CONFIG_DRM_TCC_KEEP_LOGO)
 	#if defined(CONFIG_DRM_FBDEV_EMULATION)
 	/* If fbdev emulation was selected then FB core calls set_par */
@@ -797,10 +853,6 @@ static int lcd_probe(struct platform_device *pdev)
 	#if defined(CONFIG_DRM_TCC_CTRL_CHROMAKEY)
 	mutex_init(&ctx->chromakey_mutex);
 	#endif
-
-	dev_err(dev, "[DEBUG][%s] %s line(%d) %s probed\r\n",
-				LOG_TAG, __func__, __LINE__, ctx->data->name);
-
 	return ret;
 
 err_disable_pm_runtime:
@@ -833,7 +885,7 @@ static int tcc_lcd_suspend(struct device *dev)
 	dev_info(dev, "[ERROR][%s] %s line(%d) \r\n", LOG_TAG, __func__, __LINE__);
 
 	if (test_bit(CRTC_FLAGS_VCLK_BIT, &ctx->crtc_flags)) {
-		dev_info(dev, "[INF][%s] %s line(%d) disable vclk\r\n",
+		dev_info(dev, "[INFO][%s] %s line(%d) disable vclk\r\n",
 						LOG_TAG, __func__, __LINE__);
 		clk_disable_unprepare(ctx->hw_data.vioc_clock);
 	}
@@ -846,7 +898,7 @@ static int tcc_lcd_resume(struct device *dev)
 	struct lcd_context *ctx = dev_get_drvdata(dev);
 	dev_info(dev, "[ERROR][%s] %s line(%d) \r\n", LOG_TAG, __func__, __LINE__);
 	if (test_bit(CRTC_FLAGS_VCLK_BIT, &ctx->crtc_flags)) {
-		dev_info(dev, "[INF][%s] %s line(%d) enable vclk\r\n", LOG_TAG, __func__, __LINE__);
+		dev_info(dev, "[INFO][%s] %s line(%d) enable vclk\r\n", LOG_TAG, __func__, __LINE__);
 		clk_prepare_enable(ctx->hw_data.vioc_clock);
 	}
 	return 0;
@@ -855,58 +907,4 @@ static int tcc_lcd_resume(struct device *dev)
 
 static const struct dev_pm_ops tcc_lcd_pm_ops = {
 	SET_SYSTEM_SLEEP_PM_OPS(tcc_lcd_suspend, tcc_lcd_resume)
-};
-
-struct platform_driver lcd_driver = {
-	.probe		= lcd_probe,
-	.remove		= lcd_remove,
-	.driver		= {
-		.name	= "tcc-drm-lcd",
-		.owner	= THIS_MODULE,
-		.pm	= &tcc_lcd_pm_ops,
-		.of_match_table = of_match_ptr(lcd_driver_dt_match),
-	},
-};
-
-#if 0
-struct platform_driver ext_driver = {
-	.probe		= lcd_probe,
-	.remove		= lcd_remove,
-	.driver		= {
-		.name	= "tcc-drm-ext",
-		.owner	= THIS_MODULE,
-		.pm	= &tcc_lcd_pm_ops,
-		.of_match_table = of_match_ptr(ext_driver_dt_match),
-	},
-};
-#endif
-static int third_probe(struct platform_device *pdev)
-{
-	return lcd_probe(pdev);
-}
-static int third_remove(struct platform_device *pdev)
-{
-	return lcd_remove(pdev);
-}
-
-struct platform_driver third_driver = {
-	.probe		= third_probe,
-	.remove		= third_remove,
-	.driver		= {
-		.name	= "tcc-drm-third",
-		.owner	= THIS_MODULE,
-		.pm	= &tcc_lcd_pm_ops,
-		.of_match_table = of_match_ptr(third_driver_dt_match),
-	},
-};
-
-struct platform_driver fourth_driver = {
-	.probe		= lcd_probe,
-	.remove		= lcd_remove,
-	.driver		= {
-		.name	= "tcc-drm-third",
-		.owner	= THIS_MODULE,
-		.pm	= &tcc_lcd_pm_ops,
-		.of_match_table = of_match_ptr(fourth_driver_dt_match),
-	},
 };
