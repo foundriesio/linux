@@ -3242,15 +3242,19 @@
 				<GIC_SPI 161 IRQ_TYPE_LEVEL_HIGH>;// MIPI1 Generic
 	};
 
+	/* only for TCC805X ES(TCS CV8050C-618) */
+	isp_iommu: isp_iommu {
+		compatible = "telechips,tcc-isp-iommu";
+		iommus = <&smmu_dbus 0x90 0x7f00>;
+		status = "okay";
+	};
+
 	isp0: isp0@1bc80000 {
 		compatible = "telechips,tcc805x-isp";
 		status = "disabled";
 		reg = 	<0x0 0x1bc80000 0x0 0x10000>,	/* ISP base */
 			<0x0 0x1bc90000 0x0 0x10000>;	/* ISP memory */
 		reg-names = "isp_base", "mem_base";
-
-		/* only for TCC805X ES (CV8050C-618)*/
-		iommus = <&smmu_dbus 0x90 0x7f00>;
 	};
 
 	isp1: isp1@1bca0000 {
@@ -3259,9 +3263,6 @@
 		reg = 	<0x0 0x1bca0000 0x0 0x10000>,	/* ISP base */
 			<0x0 0x1bcb0000 0x0 0x10000>;	/* ISP memory */
 		reg-names = "isp_base", "mem_base";
-
-		/* only for TCC805X ES (CV8050C-618)*/
-		//iommus = <&smmu_dbus 0x90 0x7f00>;
 	};
 
 	isp2: isp2@1bcc0000 {
@@ -3270,9 +3271,6 @@
 		reg = 	<0x0 0x1bcc0000 0x0 0x10000>,	/* ISP base */
 			<0x0 0x1bcd0000 0x0 0x10000>;	/* ISP memory */
 		reg-names = "isp_base", "mem_base";
-
-		/* only for TCC805X ES (CV8050C-618)*/
-		//iommus = <&smmu_dbus 0x90 0x7f00>;
 	};
 
 	isp3: isp3@1bce0000 {
@@ -3281,9 +3279,6 @@
 		reg = 	<0x0 0x1bce0000 0x0 0x10000>,	/* ISP base */
 			<0x0 0x1bcf0000 0x0 0x10000>;	/* ISP memory */
 		reg-names = "isp_base", "mem_base";
-
-		/* only for TCC805X ES (CV8050C-618)*/
-		//iommus = <&smmu_dbus 0x90 0x7f00>;
 	};
 
 	fb_cr: fb_cr@12000000{

@@ -12,3 +12,12 @@ config TCC_ISP
 	depends on VIDEO_VIDEOSOURCE || VIDEO_VIDEOSOURCE2
 	---help---
 	  Support for ISP
+
+# only for TCC805X ES(TCS CV8050C-618)
+config TCC_ISP_USE_IOMMU
+	bool "Set IOMMU to access I2C controller 7 from ISP"
+	default y
+	depends on ARCH_TCC805X
+	depends on VIDEO_VIDEOSOURCE || VIDEO_VIDEOSOURCE2
+	---help---
+	  This must be set on the TCC805X ES

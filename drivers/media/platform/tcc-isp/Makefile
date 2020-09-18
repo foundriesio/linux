@@ -5,5 +5,8 @@
 #
 # Licensed under GPL
 
-obj-y 	+= tcc-isp.o
+obj-y	+= tcc-isp.o
+
+# only for TCC805X ES(TCS CV8050C-618)
+obj-$(CONFIG_TCC_ISP_USE_IOMMU) 	+= tcc-isp-iommu.o
 
