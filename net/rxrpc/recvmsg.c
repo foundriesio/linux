@@ -521,7 +521,7 @@ try_again:
 			goto error_unlock_call;
 	}
 
-	if (msg->msg_name && call->peer) {
+	if (msg->msg_name) {
 		size_t len = sizeof(call->conn->params.peer->srx);
 		memcpy(msg->msg_name, &call->conn->params.peer->srx, len);
 		msg->msg_namelen = len;
