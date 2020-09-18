@@ -2015,7 +2015,7 @@ void _vmem_config_zero(void)
 #if DEFINED_CONFIG_VENC_CNT_12345
 	pmap_enc.base = 0;
 #endif
-#if DEFINED_CONFIG_VENC_CNT_345
+#if DEFINED_CONFIG_VDEC_CNT_345
 	pmap_video_ext.base = 0;
 #endif
 #if defined(CONFIG_VDEC_CNT_5)
