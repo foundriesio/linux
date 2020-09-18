@@ -1977,7 +1977,7 @@ static struct mtd_info *nfc_flash_probe(struct platform_device *pdev,
 	mtd->dev.parent = &pdev->dev;
 
 	/* Scan for the device, calling the attachment function */
-	if (nand_scan(mtd, 1))
+	if (nand_scan(&(this->chip), 1))
 		return NULL;
 
 	return mtd;
