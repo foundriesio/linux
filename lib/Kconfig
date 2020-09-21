@@ -658,6 +658,15 @@ config OBJAGG
 config STRING_SELFTEST
 	tristate "Test string functions"
 
+config TEST_COUNTERS
+	tristate "Test Simple Atomic counter functions"
+	help
+	   A test module for Simple Atomic counter functions.
+	   A corresponding selftest can be used to test the
+	   counter functions.
+
+	   Select this if you would like to test counters.
+
 endmenu
 
 config GENERIC_IOREMAP
