@@ -132,6 +132,13 @@ struct tccvin_format_desc tccvin_fmts[] = {
  * Utility functions
  */
 
+int tccvin_format_num(void)
+{
+	unsigned int num = ARRAY_SIZE(tccvin_fmts);
+
+	return num;
+}
+
 //static
 struct tccvin_format_desc *tccvin_format_by_guid(const __u32 guid)
 {

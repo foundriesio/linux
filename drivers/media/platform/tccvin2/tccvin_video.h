@@ -336,6 +336,7 @@ extern const struct v4l2_file_operations tccvin_fops;
 
 /* Video */
 extern struct tccvin_format_desc tccvin_fmts[];
+extern int tccvin_format_num(void);
 extern struct tccvin_format_desc *tccvin_format_by_guid(const __u32 guid);
 extern int tccvin_video_init(struct tccvin_streaming *stream);
 extern int tccvin_video_deinit(struct tccvin_streaming *stream);
