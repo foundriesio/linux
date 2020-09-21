@@ -2816,11 +2816,7 @@ static void tcc_set_uart_port_cfg( struct uart_amba_port *uap, struct device *de
 	}
 	cfg_id_string[cfg_num_len]='\0';
 	cfg_id = simple_strtoul((const char*)cfg_id_string, NULL, 10);
-#if !defined(CONFIG_TCC805X_CA53Q)
 	offset_reg = (uap->port.line/4)*0x4;
-#else
-	offset_reg = 0x4;
-#endif
 
 #if defined(CONFIG_PINCTRL_TCC_SCFW)
 
