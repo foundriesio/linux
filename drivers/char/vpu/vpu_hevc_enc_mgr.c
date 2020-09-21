@@ -721,7 +721,7 @@ static int _vmgr_hevc_enc_operation(void)
 			oper_data->cmd_type,
 			vmgr_hevc_enc_data.cmd_queued);
 
-		if ((oper_data->type >= VPU_ENC && oper_data->type < VPU_HEVC_ENC_MAX) && oper_data != NULL /*&& oper_data->comm_data != NULL*/)
+		if (oper_data != NULL && (oper_data->type >= VPU_ENC && oper_data->type < VPU_HEVC_ENC_MAX))
 		{
 			*(oper_data->vpu_result) |= RET3;
 			*(oper_data->vpu_result) = _vmgr_hevc_enc_process(oper_data->type,

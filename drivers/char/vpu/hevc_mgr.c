@@ -971,7 +971,7 @@ static long _hmgr_ioctl(struct file* file, unsigned int cmd, unsigned long arg)
 						ret = -EFAULT;
 				}
 
-				ret == 0)
+				if (ret == 0)
 				{
 					if (open_info.opened_cnt != 0)
 						vmem_set_only_decode_mode(open_info.type);
@@ -1250,8 +1250,8 @@ static int _hmgr_operation(void)
 			if (*(oper_data->vpu_result) != RETCODE_SUCCESS)
 			{
 				if (*(oper_data->vpu_result) != RETCODE_INSUFFICIENT_BITSTREAM &&
-					 *(oper_data->vpu_result) != RETCODE_INSUFFICIENT_BITSTREAM_BUF)
-					 {
+					*(oper_data->vpu_result) != RETCODE_INSUFFICIENT_BITSTREAM_BUF)
+				{
 					err("hmgr_out[0x%x] :: type = %d, hmgr_data.handle = 0x%x, cmd = 0x%x, frame_len %d \n",
 							*(oper_data->vpu_result), oper_data->type, oper_data->handle, oper_data->cmd_type, hmgr_data.szFrame_Len);
 				}

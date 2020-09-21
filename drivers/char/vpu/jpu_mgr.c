@@ -451,9 +451,7 @@ static int _jmgr_process(vputype type, int cmd, long pHandle, void* args)
 			case VPU_DEC_INIT:
 			case VPU_DEC_INIT_KERNEL:
 			{
-				JDEC_INIT_t* arg;
-
-				arg = (JDEC_INIT_t*)args;
+				JDEC_INIT_t* arg = (JDEC_INIT_t*)args;
 				jmgr_data.handle[type] = 0x00;
 
 				arg->gsJpuDecInit.m_RegBaseVirtualAddr  = (codec_addr_t)jmgr_data.base_addr;
@@ -538,10 +536,9 @@ static int _jmgr_process(vputype type, int cmd, long pHandle, void* args)
 			case VPU_DEC_SEQ_HEADER_KERNEL:
 		#if defined(JPU_C6)
 			{
-				void* arg = args;
 				int iSize;
+				void* arg = args;
 
-				arg = (JDEC_SEQ_HEADER_t*)args;
 				jpu_dec_initial_info_t* gsJpuDecInitialInfo = jmgr_data.bDiminishInputCopy
 					? &((JPU_DECODE_t* )arg)->gsJpuDecInitialInfo
 					: &((JDEC_SEQ_HEADER_t*)arg)->gsJpuDecInitialInfo;
@@ -577,9 +574,8 @@ static int _jmgr_process(vputype type, int cmd, long pHandle, void* args)
 			case VPU_DEC_REG_FRAME_BUFFER:
 			case VPU_DEC_REG_FRAME_BUFFER_KERNEL:
 			{
-				JPU_SET_BUFFER_t* arg;
+				JPU_SET_BUFFER_t* arg = (JPU_SET_BUFFER_t*)args;
 
-				arg = (JPU_SET_BUFFER_t*)args;
 #if defined(JPU_C5)
 				dprintk("Dec :: JPU_DEC_REG_FRAME_BUFFER in :: scale[%d], addr[0x%x/0x%x] \n", arg->gsJpuDecBuffer.m_iJPGScaleRatio,
 							arg->gsJpuDecBuffer.m_FrameBufferStartAddr[PA], arg->gsJpuDecBuffer.m_FrameBufferStartAddr[VA]);
@@ -587,6 +583,7 @@ static int _jmgr_process(vputype type, int cmd, long pHandle, void* args)
 				dprintk("Dec :: JPU_DEC_REG_FRAME_BUFFER in :: count[%d], scale[%d], addr[0x%x/0x%x], Reserved[8] = 0x%x \n", arg->gsJpuDecBuffer.m_iFrameBufferCount, arg->gsJpuDecBuffer.m_iJPGScaleRatio,
 							arg->gsJpuDecBuffer.m_FrameBufferStartAddr[PA], arg->gsJpuDecBuffer.m_FrameBufferStartAddr[VA], arg->gsJpuDecBuffer.m_Reserved[8]);
 #endif
+
 				ret = gs_fpTccJpuDec(JPU_DEC_REG_FRAME_BUFFER, (codec_handle_t*)&pHandle, (void*)(&arg->gsJpuDecBuffer), (void*)NULL);
 				ret = _jmgr_convert_returnType(ret);
 				dprintk("Dec :: JPU_DEC_REG_FRAME_BUFFER out \n");
@@ -596,11 +593,11 @@ static int _jmgr_process(vputype type, int cmd, long pHandle, void* args)
 			case VPU_DEC_DECODE:
 			case VPU_DEC_DECODE_KERNEL:
 			{
-				JPU_DECODE_t* arg;
+				JPU_DECODE_t* arg = (JPU_DECODE_t*)args;
+
 #ifdef CONFIG_VPU_TIME_MEASUREMENT
 				do_gettimeofday(&t1);
 #endif
-				arg = (JPU_DECODE_t*)args;
 
 				jmgr_data.szFrame_Len = arg->gsJpuDecInput.m_iBitstreamDataSize;
 #if defined(JPU_C6)
@@ -649,9 +646,7 @@ static int _jmgr_process(vputype type, int cmd, long pHandle, void* args)
 			case VPU_CODEC_GET_VERSION:
 			case VPU_CODEC_GET_VERSION_KERNEL:
 			{
-				JPU_GET_VERSION_t* arg;
-
-				arg = (JPU_GET_VERSION_t*)args;
+				JPU_GET_VERSION_t* arg = (JPU_GET_VERSION_t*)args;
 				jmgr_data.check_interrupt_detection = 1;
 
 				ret = gs_fpTccJpuDec(JPU_CODEC_GET_VERSION, (codec_handle_t*)&pHandle, arg->pszVersion, arg->pszBuildData);
@@ -675,9 +670,7 @@ static int _jmgr_process(vputype type, int cmd, long pHandle, void* args)
 		{
 			case VPU_ENC_INIT:
 			{
-				JENC_INIT_t* arg;
-
-				arg = (JENC_INIT_t*)args;
+				JENC_INIT_t* arg = (JENC_INIT_t*)args;
 				jmgr_data.handle[type] = 0x00;
 
 				arg->gsJpuEncInit.m_RegBaseVirtualAddr  = (codec_addr_t)jmgr_data.base_addr;
@@ -733,11 +726,11 @@ static int _jmgr_process(vputype type, int cmd, long pHandle, void* args)
 
 			case VPU_ENC_ENCODE:
 			{
-				JPU_ENCODE_t* arg;
+				JPU_ENCODE_t* arg = (JPU_ENCODE_t*)args;
+
 #ifdef CONFIG_VPU_TIME_MEASUREMENT
 				do_gettimeofday(&t1);
 #endif
-				arg = (JPU_ENCODE_t*)args;
 
 				dprintk("Enc :: Enc In => Handle(0x%x), YUV(0x%x - 0x%x - 0x%x) -> BitStream(0x%x - 0x%x / 0x%x) \n", pHandle,
 						arg->gsJpuEncInput.m_PicYAddr, arg->gsJpuEncInput.m_PicCbAddr, arg->gsJpuEncInput.m_PicCrAddr,
@@ -774,9 +767,7 @@ static int _jmgr_process(vputype type, int cmd, long pHandle, void* args)
 
 			case VPU_CODEC_GET_VERSION:
 			{
-				JPU_GET_VERSION_t* arg;
-
-				arg = (JPU_GET_VERSION_t*)args;
+				JPU_GET_VERSION_t* arg = (JPU_GET_VERSION_t*)args;
 				jmgr_data.check_interrupt_detection = 1;
 				ret = tcc_jpu_enc(JPU_CODEC_GET_VERSION, (codec_handle_t*)&pHandle, arg->pszVersion, arg->pszBuildData);
 				ret = _jmgr_convert_returnType(ret);
@@ -1343,7 +1334,7 @@ static int _jmgr_operation(void)
 
 		dprintk("_jmgr_operation [%d] :: cmd = 0x%x, cmd_queued(%d) \n", oper_data->type, oper_data->cmd_type, jmgr_data.cmd_queued);
 
-		if (oper_data->type < JPU_MAX && oper_data != NULL /*&& oper_data->comm_data != NULL*/)
+		if (oper_data != NULL && oper_data->type < JPU_MAX)
 		{
 			*(oper_data->vpu_result) |= RET3;
 

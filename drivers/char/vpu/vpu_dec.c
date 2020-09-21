@@ -75,7 +75,7 @@ static void _vdec_inter_add_list(vpu_decoder_data* vdata, int cmd, void* args)
 		vdata->vdec_list[vdata->list_idx].handle    = vdata->gsVp9DecInit_Info.gsVp9DecHandle;
 	else
 #endif
-	vdata->vdec_list[vdata->list_idx].handle        = vdata->gsVpuDecInit_Info.gsVpuDecHandle;
+		vdata->vdec_list[vdata->list_idx].handle    = vdata->gsVpuDecInit_Info.gsVpuDecHandle;
 
 	vdata->vdec_list[vdata->list_idx].args          = args;
 	vdata->vdec_list[vdata->list_idx].comm_data     = &vdata->vComm_data;
@@ -2481,8 +2481,8 @@ long vdec_poll_2(struct file* filp, int timeout_ms)
 	}
 
 	wait_event_interruptible_timeout(vdata->vComm_data.wq,
-								     vdata->vComm_data.count > 0,
-								     msecs_to_jiffies(timeout_ms));
+									vdata->vComm_data.count > 0,
+									msecs_to_jiffies(timeout_ms));
 
 	if (vdata->vComm_data.count > 0)
 	{
