@@ -140,7 +140,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  /**
 --- a/kernel/entry/common.c
 +++ b/kernel/entry/common.c
-@@ -146,7 +146,7 @@ static unsigned long exit_to_user_mode_l
+@@ -148,7 +148,7 @@ static unsigned long exit_to_user_mode_l
  
  		local_irq_enable_exit_to_user(ti_work);
  

@@ -61,6 +61,9 @@ printk-fix-ifnullfree.cocci-warnings.patch
 # https://lkml.kernel.org/r/20200828100022.1099682-2-npiggin@gmail.com
 mm-fix-exec-activate_mm-vs-TLB-shootdown-and-lazy-tl.patch
 
+# 20200921095035.GC5862@quack2.suse.cz
+dax-Fix-compilation-for-CONFIG_DAX-CONFIG_FS_DAX.patch
+
 ############################################################
 # POSTED
 ############################################################

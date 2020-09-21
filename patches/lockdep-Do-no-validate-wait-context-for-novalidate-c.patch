@@ -20,7 +20,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/kernel/locking/lockdep.c
 +++ b/kernel/locking/lockdep.c
-@@ -4113,7 +4113,7 @@ static int check_wait_context(struct tas
+@@ -4128,7 +4128,7 @@ static int check_wait_context(struct tas
  	 */
  	for (depth = curr->lockdep_depth - 1; depth >= 0; depth--) {
  		struct held_lock *prev = curr->held_locks + depth;
@@ -29,7 +29,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  			break;
  	}
  	depth++;
-@@ -4124,6 +4124,9 @@ static int check_wait_context(struct tas
+@@ -4139,6 +4139,9 @@ static int check_wait_context(struct tas
  		struct held_lock *prev = curr->held_locks + depth;
  		short prev_inner = hlock_class(prev)->wait_type_inner;
  
