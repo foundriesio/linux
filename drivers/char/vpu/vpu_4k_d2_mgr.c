@@ -1576,7 +1576,7 @@ static int _vmgr_4k_d2_operation(void)
 
 		dprintk("_vmgr_4k_d2_operation [%d] :: cmd = 0x%x, vmgr_4k_d2_data.cmd_queued(%d) \n", oper_data->type, oper_data->cmd_type, vmgr_4k_d2_data.cmd_queued);
 
-		if (oper_data->type < VPU_4K_D2_MAX && oper_data != NULL)
+		if (oper_data != NULL && oper_data->type < VPU_4K_D2_MAX)
 		{
 			*(oper_data->vpu_result) |= RET3;
 

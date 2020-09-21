@@ -1568,7 +1568,7 @@ static int _vmgr_operation(void)
 #ifdef USE_WAIT_LIST
 			|| (!vmgr_waitlist_manager(NULL, LIST_IS_EMPTY))
 #endif
-   )
+	)
 	{
 		vmgr_data.cmd_processing = 1;
 		oper_finished = 1;
@@ -1590,6 +1590,11 @@ static int _vmgr_operation(void)
 					}
 
 					oper_data = vmgr_list_manager(NULL, LIST_GET_ENTRY);
+					if (!oper_data)
+					{
+						vmgr_data.cmd_processing = 0;
+						return 0;
+					}
 
 					if (wait_entry_info.type != oper_data->type)
 					{
@@ -1600,14 +1605,9 @@ static int _vmgr_operation(void)
 					else
 					{
 						is_from_wait_list = 0;
-						if (!oper_data)
-						{
-							vmgr_data.cmd_processing = 0;
-							return 0;
-						}
+
 						wprintk("[%d] process command for waiting VPU!! \n", oper_data->type);
 						*(oper_data->vpu_result) |= RET2;
-
 						break;
 					}
 				}
@@ -1651,7 +1651,7 @@ static int _vmgr_operation(void)
 
 		dprintk("_vmgr_operation [%d] :: cmd = 0x%x, cmd_queued(%d) \n", oper_data->type, oper_data->cmd_type, vmgr_data.cmd_queued);
 
-		if (oper_data->type < VPU_MAX && oper_data != NULL)
+		if (oper_data != NULL && oper_data->type < VPU_MAX)
 		{
 			*(oper_data->vpu_result) |= RET3;
 
