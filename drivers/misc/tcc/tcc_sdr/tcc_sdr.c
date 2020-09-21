@@ -48,6 +48,7 @@
 
 #define SDR_MAX_PORT_NUM	(4)
 #define SDR_READ_TIMEOUT 1000
+#define OVERRUN_NOTIFY_INTERVAL 100 //ms
 
 struct tcc_sdr_port_t {
 	void* dma_vaddr;
@@ -101,6 +102,10 @@ struct tcc_sdr_t {
 	bool started;
 
 	struct miscdevice *misc_dev;
+#ifdef OVERRUN_NOTIFY_INTERVAL
+	struct timeval pre_overrun;
+	bool first_overrun;
+#endif
 };
 
 
@@ -301,7 +306,11 @@ void tcc_sdr_rx_isr(struct tcc_sdr_t *sdr)
 	bool mono_mode = ((sdr->radio_mode == 0)&&(sdr->channels == 1))? true : false;
 	uint32_t cur_period_offset;
 	unsigned long flags;
-
+#ifdef OVERRUN_NOTIFY_INTERVAL
+	struct timeval pre, next;
+	u64 overrun_us64 = 0;
+	uint32_t overrun_us = 0;
+#endif
 	spin_lock_irqsave(&sdr->lock, flags);
 
 	for (i=0; i<sdr->ports_num; i++) {
@@ -337,9 +346,23 @@ void tcc_sdr_rx_isr(struct tcc_sdr_t *sdr)
 	for (i=0; i<sdr->ports_num; i++) {
 		if (sdr->port[i].overrun) { // Overrun
 			if (sdr->opened && sdr->started) {
+#ifdef OVERRUN_NOTIFY_INTERVAL
+				do_gettimeofday(&next);
+				pre = sdr->pre_overrun;
+				overrun_us64 = timeval_to_ns(&next) - timeval_to_ns(&pre);
+				do_div(overrun_us64, NSEC_PER_USEC);
+				overrun_us = overrun_us64;
+				if((sdr->first_overrun == false) || (overrun_us >= (OVERRUN_NOTIFY_INTERVAL*1000))) {
+					sdr->first_overrun = true;
+					printk(KERN_WARNING "[WARN][SDR][dev-%d] %s - Overrun(%d), new_read_pos:0x%x, dma_sz:0x%x, valid_sz(%p):0x%x, overrun_interval: %dus\n", 
+							sdr->blk_no,__func__, i, sdr->port[i].read_pos, sdr->port[i].dma_sz, &sdr->port[i].valid_sz, sdr->port[i].valid_sz, overrun_us);
+					sdr->pre_overrun.tv_sec = next.tv_sec; 
+					sdr->pre_overrun.tv_usec = next.tv_usec; 
+				}
+#else
 				printk(KERN_WARNING "[WARN][SDR][dev-%d] %s - Overrun(%d), new_read_pos:0x%x, dma_sz:0x%x, valid_sz(%p):0x%x\n", 
 						sdr->blk_no,__func__, i, sdr->port[i].read_pos, sdr->port[i].dma_sz, &sdr->port[i].valid_sz, sdr->port[i].valid_sz);
-
+#endif
 			}
 		}
 	}
@@ -621,6 +644,9 @@ int tcc_sdr_deinitialize(struct tcc_sdr_t *sdr)
 int tcc_sdr_start(struct tcc_sdr_t *sdr, gfp_t gfp)
 {
 	uint32_t i;
+#ifdef OVERRUN_NOTIFY_INTERVAL
+	struct timeval start;
+#endif
 
 	if (sdr->started) {
 		printk(KERN_DEBUG "[DEBUG][SDR] %s - already started\n", __func__);
@@ -642,6 +668,13 @@ int tcc_sdr_start(struct tcc_sdr_t *sdr, gfp_t gfp)
 
 	tcc_dai_set_rx_mute(sdr->dai_reg, false);	//mute disable
 	
+#ifdef OVERRUN_NOTIFY_INTERVAL
+	sdr->first_overrun = false;
+	do_gettimeofday(&start);
+	sdr->pre_overrun.tv_sec = start.tv_sec;
+	sdr->pre_overrun.tv_usec = start.tv_usec;
+#endif
+
 	if(sdr->radio_mode) {
 		tcc_radio_enable(sdr->dai_reg, true);	//radio enable
 	} else {
