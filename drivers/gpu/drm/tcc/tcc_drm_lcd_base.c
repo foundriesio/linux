@@ -272,8 +272,8 @@ static int lcd_enable_vblank(struct tcc_drm_crtc *crtc)
 		ret = devm_request_irq(ctx->dev, ctx->hw_data.display_device.irq_num,
 				lcd_irq_handler, IRQF_SHARED, ctx->data->name, ctx);
 		if(ret < 0) {
-			dev_err("[ERROR][%s] %s failed to request irq\r\n",
-								LOG_TAG, __func__);
+			dev_err(ctx->dev, "[ERROR][%s] %s failed to request irq\r\n",
+									LOG_TAG, __func__);
 			goto err_irq_request;
 		}
 		vioc_intr_enable(ctx->hw_data.display_device.irq_num,
