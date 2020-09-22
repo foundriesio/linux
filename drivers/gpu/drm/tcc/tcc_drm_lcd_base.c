@@ -293,7 +293,7 @@ static void lcd_disable_vblank(struct tcc_drm_crtc *crtc)
 	if (test_and_clear_bit(CRTC_FLAGS_IRQ_BIT, &ctx->crtc_flags)) {
 		vioc_intr_disable(ctx->hw_data.display_device.irq_num,
 		  get_vioc_index(ctx->hw_data.display_device.blk_num), VIOC_DISP_INTR_DISPLAY);
-		devm_free_irq(ctx->dev, ctx->hw_data.display_device.irq_num, &ctx);
+		devm_free_irq(ctx->dev, ctx->hw_data.display_device.irq_num, ctx);
 	}
 	spin_unlock_irqrestore(&ctx->irq_lock, irqflags);
 }
