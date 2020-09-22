@@ -1457,6 +1457,7 @@ static void esw_apply_vport_conf(struct mlx5_eswitch *esw,
 				 struct mlx5_vport *vport)
 {
 	int vport_num = vport->vport;
+	int flags;
 
 	if (!vport_num)
 		return;
@@ -1467,8 +1468,10 @@ static void esw_apply_vport_conf(struct mlx5_eswitch *esw,
 				      vport->info.link_state);
 	mlx5_modify_nic_vport_mac_address(esw->dev, vport_num, vport->info.mac);
 	mlx5_modify_nic_vport_node_guid(esw->dev, vport_num, vport->info.node_guid);
+	flags = (vport->info.vlan || vport->info.qos) ?
+		SET_VLAN_STRIP | SET_VLAN_INSERT : 0;
 	modify_esw_vport_cvlan(esw->dev, vport_num, vport->info.vlan, vport->info.qos,
-			       (vport->info.vlan || vport->info.qos));
+			       flags);
 
 	/* Only legacy mode needs ACLs */
 	if (esw->mode == SRIOV_LEGACY) {
