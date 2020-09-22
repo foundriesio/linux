@@ -156,6 +156,8 @@ static int tcc_sc_mbox_send_data(struct mbox_chan *chan, void *data)
 		if((msg->data_len != 0U) && (msg->data_buf == NULL)) {
 			dev_err(mdev->dev, "[ERROR][TCC_SC_MBOX] Data buffer is null\n");
 			return -EINVAL;
+		} else {
+			/* do nothing */
 		}
 	}
 	
@@ -255,11 +257,6 @@ static irqreturn_t tcc_sc_mbox_rx_irq_handler(int irq, void *data)
 	struct tcc_sc_mbox_device *mdev = mbox_chan_to_tcc_sc_mbox(data);
 	u32 status = tcc_sc_mbox_readl(mdev, MBOX_CMD_FIFO_STS);
 	irqreturn_t ret = IRQ_NONE;
-
-	if(mdev == NULL) {
-		dev_err(mdev->dev, "[ERROR][TCC_SC_MBOX] Device is null\n");
-		return ret;
-	}
 
 	if(irq == mdev->rx_irq) {
 		if((status & ((u32) 0x1U << MBOX_CMD_RX_FIFO_EMPTY)) == 0U) {
@@ -432,7 +429,7 @@ static const struct mbox_chan_ops tcc_sc_mbox_chan_ops = {
 	.shutdown = tcc_sc_mbox_shutdown,
 };
 
-static const struct of_device_id tcc_sc_mbox_of_match[] = {
+static const struct of_device_id tcc_sc_mbox_of_match[2] = {
 	{.compatible = "telechips,tcc805x-mailbox-sc"},
 	{},
 };
