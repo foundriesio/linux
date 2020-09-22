@@ -126,7 +126,7 @@ static int panel_lvds_disable(struct drm_panel *panel)
 			pinctrl_select_state(lvds->lvds_pins.p, lvds->lvds_pins.blk_off);
 		#endif
 
-		LVDS_WRAP_ResetPHY(lvds->tcc_lvds_hw.port_main,1);
+		LVDS_WRAP_ResetPHY((lvds->tcc_lvds_hw.lvds_type == PANEL_LVDS_DUAL )? TS_MUX_IDX0 : lvds->tcc_lvds_hw.ts_mux_id,1);
 		if(lvds->lvds_pins.pwr_off != NULL)
 			pinctrl_select_state(lvds->lvds_pins.p, lvds->lvds_pins.pwr_off);
 		lvds->enabled = 0;
@@ -156,7 +156,7 @@ static int panel_lvds_prepare(struct drm_panel *panel)
 		if(lvds->lvds_pins.pwr_on_2 != NULL)
 			pinctrl_select_state(lvds->lvds_pins.p, lvds->lvds_pins.pwr_on_2);
 
-		LVDS_WRAP_ResetPHY(lvds->tcc_lvds_hw.port_main,1);
+		LVDS_WRAP_ResetPHY((lvds->tcc_lvds_hw.lvds_type == PANEL_LVDS_DUAL )? TS_MUX_IDX0 : lvds->tcc_lvds_hw.ts_mux_id,1);
 		lvds_splitter_init(&lvds->tcc_lvds_hw);
 	} else {
 		dev_dbg(lvds->dev, "[DEBUG][%s] %s with %s - already enabled \r\n", LOG_TAG, __func__, lvds->data->name);
@@ -347,6 +347,9 @@ static int panel_lvds_parse_dt(struct panel_lvds *lvds)
 	if(lvds_info.lvds_type == PANEL_LVDS_DUAL){
 		memcpy(lvds->tcc_lvds_hw.lane_sub, lvds_info.lane_sub, sizeof(lvds->tcc_lvds_hw.lane_sub));
 	}
+	lvds->tcc_lvds_hw.vcm = lvds_info.vcm;
+	lvds->tcc_lvds_hw.vsw = lvds_info.vsw;
+
 	lvds_ret = lvds_register_hw_info(&lvds->tcc_lvds_hw, lvds_info.lvds_type, lvds_info.port_main, lvds_info.port_sub,
 		lvds->video_mode.pixelclock, lvds_info.lcdc_mux_id, lvds->video_mode.hactive );
 
