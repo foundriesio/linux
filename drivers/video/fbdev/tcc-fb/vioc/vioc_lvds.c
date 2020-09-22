@@ -757,11 +757,12 @@ void LVDS_PHY_StrobeConfig(unsigned int p_port, unsigned int s_port, unsigned in
 				LVDS_PHY_StrobeWrite(p_reg, 0x3B8, 0x00000000);		// STB_PLL ADDR 0xE
 				LVDS_PHY_StrobeWrite(s_reg, 0x3B8, 0x00000000);		// STB_PLL ADDR 0xE
 
-				LVDS_PHY_StrobeWrite(s_reg, 0x3B8, 0x00000001);		// STB_PLL ADDR 0xE
-				LVDS_PHY_StrobeWrite(s_reg, 0x3B4, 0x0000003C);		// STB_PLL ADDR 0xD
+				LVDS_PHY_StrobeWrite(s_reg, 0x3B8, 0x00000001);   // STB_PLL ADDR 0xE
+				LVDS_PHY_StrobeWrite(p_reg, 0x3B8, 0x00000001);   // STB_PLL ADDR 0xE clk_gen
 
-				LVDS_PHY_StrobeWrite(p_reg, 0x3B8, 0x00000001);		// STB_PLL ADDR 0xE
-				LVDS_PHY_StrobeWrite(p_reg, 0x3B4, 0x000000D7);		// STB_PLL ADDR 0xD
+				LVDS_PHY_StrobeWrite(s_reg, 0x3B4, 0x0000003C);   // STB_PLL ADDR 0xD
+				LVDS_PHY_StrobeWrite(p_reg, 0x3B4, 0x00000037);   // STB_PLL ADDR 0xD startup_enable
+
 			} else {
 				unsigned int value = (LVDS_PHY_GetRegValue(p_port, 0x3B4) & ~(0x000000F0));
 				LVDS_PHY_StrobeWrite(p_reg, 0x3B4, value);		// STB_PLL ADDR 0xD
