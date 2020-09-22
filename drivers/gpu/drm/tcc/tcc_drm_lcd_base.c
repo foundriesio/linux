@@ -72,6 +72,8 @@ struct lcd_context {
 	wait_queue_head_t		wait_vsync_queue;
 	atomic_t			wait_vsync_event;
 
+	spinlock_t 			irq_lock;
+
 	/*
 	 * keep_logo
 	 * If this flag is set to 1, DRM driver skips process that fills its plane with block color
@@ -199,24 +201,101 @@ static const uint32_t lcd_formats[] = {
 	DRM_FORMAT_ABGR8888
 };
 
+static irqreturn_t lcd_irq_handler(int irq, void *dev_id)
+{
+	unsigned int display_device_blk_num;
+
+	struct lcd_context *ctx = (struct lcd_context *)dev_id;
+	u32 dispblock_status = 0;
+
+	if (ctx == NULL) {
+		dev_warn(ctx->dev,
+				"[WARN][%s] %s line(%d) ctx is NULL\r\n",
+					LOG_TAG, __func__, __LINE__);
+		return IRQ_HANDLED;
+	}
+
+	display_device_blk_num = get_vioc_index(ctx->hw_data.display_device.blk_num);
+
+	/* Get TCC VIOC block status register */
+	dispblock_status = vioc_intr_get_status(display_device_blk_num);
+
+	if (dispblock_status & (1 << VIOC_DISP_INTR_RU)) {
+		vioc_intr_clear(display_device_blk_num, (1 << VIOC_DISP_INTR_RU));
+
+		/* check the crtc is detached already from encoder */
+		if (ctx->drm_dev == NULL) {
+			dev_warn(ctx->dev,
+				"[WARN][%s] %s line(%d) drm_dev is not binded\r\n",
+					LOG_TAG, __func__, __LINE__);
+			goto out;
+		}
+
+		/* set wait vsync event to zero and wake up queue. */
+		if (atomic_read(&ctx->wait_vsync_event)) {
+			atomic_set(&ctx->wait_vsync_event, 0);
+			wake_up(&ctx->wait_vsync_queue);
+		}
+		tcc_drm_crtc_vblank_handler(&ctx->crtc->base);
+	}
+
+	/* Check FIFO underrun. */
+	if (dispblock_status & (1 << VIOC_DISP_INTR_FU)) {
+		vioc_intr_clear(display_device_blk_num, (1 << VIOC_DISP_INTR_FU));
+		if(VIOC_DISP_Get_TurnOnOff(ctx->hw_data.display_device.virt_addr)) {
+			if((ctx->cnt_underrun++ % 120) == 0) {
+				dev_err(ctx->dev, "[ERROR][%s] FIFO UNDERRUN status(0x%x) %s\n",
+							LOG_TAG, dispblock_status, __func__);
+			}
+		}
+	}
+
+	if (dispblock_status & (1 << VIOC_DISP_INTR_DD))
+		vioc_intr_clear(display_device_blk_num, (1 << VIOC_DISP_INTR_DD));
+
+	if (dispblock_status & (1 << VIOC_DISP_INTR_SREQ))
+		vioc_intr_clear(display_device_blk_num, (1 << VIOC_DISP_INTR_SREQ));
+out:
+	return IRQ_HANDLED;
+}
+
 static int lcd_enable_vblank(struct tcc_drm_crtc *crtc)
 {
 	struct lcd_context *ctx = crtc->ctx;
+	unsigned long irqflags;
+	int ret = 0;
 
-	if (!test_and_set_bit(CRTC_FLAGS_IRQ_BIT, &ctx->crtc_flags))
+	spin_lock_irqsave(&ctx->irq_lock, irqflags);
+	if (!test_and_set_bit(CRTC_FLAGS_IRQ_BIT, &ctx->crtc_flags)) {
+		vioc_intr_clear(ctx->hw_data.display_device.blk_num, VIOC_DISP_INTR_DISPLAY);
+
+		ret = devm_request_irq(ctx->dev, ctx->hw_data.display_device.irq_num,
+				lcd_irq_handler, IRQF_SHARED, ctx->data->name, ctx);
+		if(ret < 0) {
+			dev_err("[ERROR][%s] %s failed to request irq\r\n",
+								LOG_TAG, __func__);
+			goto err_irq_request;
+		}
 		vioc_intr_enable(ctx->hw_data.display_device.irq_num,
 		  get_vioc_index(ctx->hw_data.display_device.blk_num), VIOC_DISP_INTR_DISPLAY);
-
-	return 0;
+	}
+err_irq_request:
+	spin_unlock_irqrestore(&ctx->irq_lock, irqflags);
+	return ret;
 }
+
 
 static void lcd_disable_vblank(struct tcc_drm_crtc *crtc)
 {
 	struct lcd_context *ctx = crtc->ctx;
-
-	if (test_and_clear_bit(CRTC_FLAGS_IRQ_BIT, &ctx->crtc_flags))
+	unsigned long irqflags;
+	spin_lock_irqsave(&ctx->irq_lock, irqflags);
+	if (test_and_clear_bit(CRTC_FLAGS_IRQ_BIT, &ctx->crtc_flags)) {
 		vioc_intr_disable(ctx->hw_data.display_device.irq_num,
 		  get_vioc_index(ctx->hw_data.display_device.blk_num), VIOC_DISP_INTR_DISPLAY);
+		devm_free_irq(ctx->dev, ctx->hw_data.display_device.irq_num, &ctx);
+	}
+	spin_unlock_irqrestore(&ctx->irq_lock, irqflags);
 }
 
 #if defined(CONFIG_TCCDRM_USES_WAIT_VBLANK)
@@ -618,64 +697,7 @@ static const struct tcc_drm_crtc_ops lcd_crtc_ops = {
 	.mode_set_nofb = lcd_mode_set_nofb,
 };
 
-static irqreturn_t lcd_irq_handler(int irq, void *dev_id)
-{
-	unsigned int display_device_blk_num;
 
-	struct lcd_context *ctx = (struct lcd_context *)dev_id;
-	u32 dispblock_status = 0;
-
-	if (ctx == NULL) {
-		dev_warn(ctx->dev,
-				"[WARN][%s] %s line(%d) ctx is NULL\r\n",
-					LOG_TAG, __func__, __LINE__);
-		return IRQ_HANDLED;
-	}
-
-	display_device_blk_num = get_vioc_index(ctx->hw_data.display_device.blk_num);
-
-	/* Get TCC VIOC block status register */
-	dispblock_status = vioc_intr_get_status(display_device_blk_num);
-
-	if (dispblock_status & (1 << VIOC_DISP_INTR_RU)) {
-		vioc_intr_clear(display_device_blk_num, (1 << VIOC_DISP_INTR_RU));
-
-		/* check the crtc is detached already from encoder */
-		if (ctx->drm_dev == NULL) {
-			dev_warn(ctx->dev,
-				"[WARN][%s] %s line(%d) drm_dev is not binded\r\n",
-					LOG_TAG, __func__, __LINE__);
-			goto out;
-		}
-
-		/* set wait vsync event to zero and wake up queue. */
-		if (atomic_read(&ctx->wait_vsync_event)) {
-			atomic_set(&ctx->wait_vsync_event, 0);
-			wake_up(&ctx->wait_vsync_queue);
-		}
-		tcc_drm_crtc_vblank_handler(&ctx->crtc->base);
-	}
-
-	/* Check FIFO underrun. */
-	if (dispblock_status & (1 << VIOC_DISP_INTR_FU)) {
-		vioc_intr_clear(display_device_blk_num, (1 << VIOC_DISP_INTR_FU));
-		if(VIOC_DISP_Get_TurnOnOff(ctx->hw_data.display_device.virt_addr)) {
-			if((ctx->cnt_underrun++ % 120) == 0) {
-				dev_err(ctx->dev, "[ERROR][%s] FIFO UNDERRUN status(0x%x) %s\n",
-							LOG_TAG, dispblock_status, __func__);
-			}
-		}
-	}
-
-	if (dispblock_status & (1 << VIOC_DISP_INTR_DD))
-		vioc_intr_clear(display_device_blk_num, (1 << VIOC_DISP_INTR_DD));
-
-	if (dispblock_status & (1 << VIOC_DISP_INTR_SREQ))
-		vioc_intr_clear(display_device_blk_num, (1 << VIOC_DISP_INTR_SREQ));
-
-out:
-	return IRQ_HANDLED;
-}
 
 static int lcd_bind(struct device *dev, struct device *master, void *data)
 {
@@ -815,14 +837,12 @@ static int lcd_probe(struct platform_device *pdev)
 	dev_dbg(dev, "[DEBUG][%s] %s line(%d) %s start probe with pdev(%p)\r\n",
 				LOG_TAG, __func__, __LINE__, ctx->data->name, pdev);
 
-	ret = devm_request_irq(dev, ctx->hw_data.display_device.irq_num,
-		lcd_irq_handler, IRQF_SHARED, ctx->data->name, ctx);
-	if (ret) {
-		dev_err(dev,
-			"[ERROR][%s] %s line(%d) failed to request irq\n",
-							LOG_TAG, __func__, __LINE__);
-		return ret;
-	}
+	spin_lock_init(&ctx->irq_lock);
+
+	/* Disable & clean interrupt */
+	vioc_intr_disable(ctx->hw_data.display_device.irq_num,
+		  get_vioc_index(ctx->hw_data.display_device.blk_num), VIOC_DISP_INTR_DISPLAY);
+	vioc_intr_clear(ctx->hw_data.display_device.blk_num, VIOC_DISP_INTR_DISPLAY);
 
 	init_waitqueue_head(&ctx->wait_vsync_queue);
 	atomic_set(&ctx->wait_vsync_event, 0);
