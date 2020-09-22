@@ -92,7 +92,8 @@ struct tcc_sc_fw_info {
 	struct tcc_sc_fw_handle *handle;
 };
 
-#define cl_to_tcc_sc_fw_info(c)	container_of(c, const struct tcc_sc_fw_info, cl)
+#define cl_to_tcc_sc_fw_info(c)	((struct tcc_sc_fw_info *) \
+			container_of(c, const struct tcc_sc_fw_info, cl))
 
 static struct tcc_sc_fw_info *handle_to_tcc_sc_fw_info(const struct tcc_sc_fw_handle *handle)
 {
@@ -152,7 +153,7 @@ static inline int tcc_sc_fw_do_xfer(const struct tcc_sc_fw_info *info,
 
 static void tcc_sc_fw_rx_callback(struct mbox_client *cl, void *mssg)
 {
-	const struct tcc_sc_fw_info *info = cl_to_tcc_sc_fw_info((cl));
+	const struct tcc_sc_fw_info *info = cl_to_tcc_sc_fw_info(cl);
 	struct device *dev = info->dev;
 	struct tcc_sc_mbox_msg *mbox_msg = mssg;
 	struct tcc_sc_mbox_msg *rx_mbox_msg = &info->xfer->rx_mssg;
@@ -173,7 +174,7 @@ static void tcc_sc_fw_rx_callback(struct mbox_client *cl, void *mssg)
 	}
 
 	rx_mbox_msg->cmd_len = mbox_msg->cmd_len;
-	memcpy(rx_mbox_msg->cmd, mbox_msg->cmd, (size_t) (rx_mbox_msg->cmd_len * 4UL));
+	memcpy(rx_mbox_msg->cmd, mbox_msg->cmd, (size_t) rx_mbox_msg->cmd_len * 4UL);
 
 	rx_mbox_msg->data_len = mbox_msg->data_len;
 	if(rx_mbox_msg->data_len > 0U)
@@ -194,8 +195,8 @@ static int tcc_sc_fw_cmd_request_mmc_cmd(const struct tcc_sc_fw_handle *handle,
 	struct tcc_sc_fw_cmd res_cmd = {0, };
 	struct scatterlist *sg;
 	dma_addr_t addr;
-	int ret;
-	unsigned int len, i;
+	int ret, i;
+	unsigned int len;
 
 	if(handle == NULL)
 		return -EINVAL;
@@ -234,8 +235,8 @@ static int tcc_sc_fw_cmd_request_mmc_cmd(const struct tcc_sc_fw_handle *handle,
 		for_each_sg((data->sg), (sg), data->sg_count, i) {
 			addr = sg_dma_address(sg);
 			len = sg_dma_len(sg);
-			xfer->tx_mssg.data_buf[4U + (i * 2U)] = (unsigned int) addr;
-			xfer->tx_mssg.data_buf[5U + (i * 2U)] = len;
+			xfer->tx_mssg.data_buf[4U + ((u32) i * 2U)] = (unsigned int) addr;
+			xfer->tx_mssg.data_buf[5U + ((u32) i * 2U)] = len;
 		}
 		xfer->tx_mssg.data_len = (unsigned int) (4U + (i * 2U));
 	} else {
@@ -422,7 +423,7 @@ static int tcc_sc_fw_cmd_request_gpio_cmd(const struct tcc_sc_fw_handle *handle,
 }
 
 
-static const struct of_device_id tcc_sc_fw_of_match[] = {
+static const struct of_device_id tcc_sc_fw_of_match[2] = {
 	{.compatible = "telechips,tcc805x-sc-fw"},
 	{},
 };
