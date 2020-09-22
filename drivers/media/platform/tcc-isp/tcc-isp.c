@@ -29,26 +29,31 @@ static inline volatile void __iomem * ALIGN_32BIT(volatile void __iomem * reg)
 static inline unsigned short read_isp(volatile void __iomem * reg)
 {
 	unsigned int val32;
+	volatile void __iomem * alligned_addr = ALIGN_32BIT(reg);
 
-	val32 = __raw_readl(ALIGN_32BIT(reg));
+	val32 = __raw_readl(alligned_addr);
 	return (short)(val32 >> SHIFT(reg));
 }
 
 static inline void write_isp(volatile void __iomem * reg, unsigned short val16)
 {
 	unsigned int val32;
+	volatile void __iomem * alligned_addr = ALIGN_32BIT(reg);
 
-	val32 = __raw_readl(ALIGN_32BIT(reg));
+	val32 = __raw_readl(alligned_addr);
 	val32 &= ~(0xFFFF << SHIFT(reg));
 	val32 |= (((unsigned int)val16) << SHIFT(reg));
 
-	__raw_writel((val32), ALIGN_32BIT(reg));
+	pr_debug("[DEBUG][tcc-isp] reg: 0x%x, val: 0x%x \n",
+		alligned_addr, val32);
+	__raw_writel(val32, alligned_addr);
 }
 
 static inline void regw(volatile void __iomem * reg, unsigned long val)
 {
-	//printk("reg: 0x%x, val: 0x%x \n", (reg), (val));
-	__raw_writel((val), (reg));
+	pr_debug("[DEBUG][tcc-isp] reg: 0x%x, val: 0x%x \n",
+		reg, val);
+	__raw_writel(val, reg);
 }
 
 static void tcc_isp_load_firmware(
@@ -202,6 +207,13 @@ static inline void tcc_isp_set_wdma(struct tcc_isp_state * state, int onOff)
 	volatile void __iomem * isp_base = state->isp_base;
 
 	write_isp(isp_base + reg_isp_wdma_ctl0, onOff);
+
+	if (onOff) {
+
+	} else {
+		/* CV8050C-810 */
+		write_isp(isp_base + reg_isp_wdma_cfg0, 0x0);
+	}
 }
 
 static inline void tcc_isp_update_register(struct tcc_isp_state * state)
@@ -282,11 +294,16 @@ static inline void tcc_isp_set_output(struct tcc_isp_state * state)
 static inline void tcc_isp_set_decompanding(struct tcc_isp_state * state)
 {
 	volatile void __iomem * isp_base = state->isp_base;
+	const char * str_dcpd_input_bit[] =
+		{"10bit", "12bit"};
+	const char * str_dcpd_output_bit[] =
+		{"10bit", "12bit", "14bit", "15bit",
+		"16bit", "17bit", "20bit"};
 	int i = 0;
 
-	pr_info("[INFO][tcc-isp] dcpd input bit(%d), output bit(%d) \n",
-		state->hdr->decompanding_input_bit,
-		state->hdr->decompanding_output_bit);
+	pr_info("[INFO][tcc-isp] dcpd input %s, output %s \n",
+		str_dcpd_input_bit[state->hdr->decompanding_input_bit],
+		str_dcpd_output_bit[state->hdr->decompanding_output_bit]);
 
 	write_isp(isp_base + reg_dcpd_ctl,
 		((state->hdr->decompanding_curve_maxval << 
@@ -299,9 +316,13 @@ static inline void tcc_isp_set_decompanding(struct tcc_isp_state * state)
 		  DCPD_CTL_DCPD_ON_OFF_SHIFT))
 	);
 
+	pr_info("[INFO][tcc-isp] setting dcpd curve\n");
 	for (i = 0; i < 8; i++) {
 		write_isp(isp_base + reg_dcpd_crv_0 + (i * 2),
 			state->hdr->dcpd_crv[i]);
+	}
+	pr_info("[INFO][tcc-isp] setting dcpd curve axis\n");
+	for (i = 0; i < 8; i++) {
 		write_isp(isp_base + reg_dcpdx_0 + (i * 2),
 			state->hdr->dcpdx[i]);
 	}
