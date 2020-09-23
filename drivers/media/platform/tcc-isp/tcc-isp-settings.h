@@ -12,9 +12,9 @@ struct hdr_state setting_hdr = {
 	.mode				= HDR_MODE_COMPANDING,
 
 	.decompanding			= ON,
-	.decompanding_curve_maxval	= 273,
-	.decompanding_input_bit		= 12,
-	.decompanding_output_bit	= 20,
+	.decompanding_curve_maxval	= 7,
+	.decompanding_input_bit		= DCPD_CTL_INPUT_BIT_12,
+	.decompanding_output_bit	= DCPD_CTL_OUTPUT_BIT_20,
 
 	.dcpd_crv[0]			= 0x0002,
 	.dcpd_crv[1]			= 0x0040,
@@ -255,7 +255,6 @@ struct reg_setting settings[] = {
 
 	// RGB AE gain
 	//{0x1500, 0x00011000},
-	{NULL, NULL}
 };
 
 #endif
