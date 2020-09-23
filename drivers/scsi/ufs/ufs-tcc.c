@@ -42,7 +42,7 @@
 int ufs_check_link_error(void);
 volatile uint  uic_linkup_done;
 #endif
-unsigned int debug;
+static unsigned int debug;
 
 #ifdef USE_POLL                                                                           
 int ufs_check_link_error(struct ufs_tcc_host *host)
@@ -109,7 +109,7 @@ static int ufs_tcc_get_resource(struct ufs_tcc_host *host)
        mem_res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "ufs-unipro");
        host->ufs_reg_unipro = devm_ioremap_resource(dev, mem_res);
 		printk("%s:%d mem_res = %08x\n", __func__, __LINE__, host->ufs_reg_unipro);
-       if (!host->ufs_reg_unipro) {
+       if (host->ufs_reg_unipro == NULL) {
                dev_err(dev, "cannot ioremap for ufs unipro register\n");
                return -ENOMEM;
        }
@@ -117,7 +117,7 @@ static int ufs_tcc_get_resource(struct ufs_tcc_host *host)
        mem_res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "ufs-mphy");
        host->ufs_reg_mphy = devm_ioremap_resource(dev, mem_res);
 		printk("%s:%d mem_res = %08x\n", __func__, __LINE__, host->ufs_reg_mphy);
-       if (!host->ufs_reg_mphy) {
+       if (host->ufs_reg_mphy == NULL) {
                dev_err(dev, "cannot ioremap for ufs mphy register\n");
                return -ENOMEM;
        }
@@ -125,7 +125,7 @@ static int ufs_tcc_get_resource(struct ufs_tcc_host *host)
        mem_res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "ufs-sbus-config");
        host->ufs_reg_sbus_config = devm_ioremap_resource(dev, mem_res);
 		printk("%s:%d mem_res = %08x\n", __func__, __LINE__, host->ufs_reg_sbus_config);
-       if (!host->ufs_reg_sbus_config) {
+       if (host->ufs_reg_sbus_config == NULL) {
                dev_err(dev, "cannot ioremap for ufs sbus config register\n");
                return -ENOMEM;
        }
@@ -133,7 +133,7 @@ static int ufs_tcc_get_resource(struct ufs_tcc_host *host)
        mem_res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "ufs-fmp");
        host->ufs_reg_fmp = devm_ioremap_resource(dev, mem_res);
 		printk("%s:%d mem_Res = %08x\n", __func__, __LINE__, host->ufs_reg_fmp);
-       if (!host->ufs_reg_fmp) {
+       if (host->ufs_reg_fmp == NULL) {
                dev_err(dev, "cannot ioremap for ufs fmp register\n");
                return -ENOMEM;
        }
@@ -141,7 +141,7 @@ static int ufs_tcc_get_resource(struct ufs_tcc_host *host)
        mem_res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "ufs-sec");
        host->ufs_reg_sec = devm_ioremap_resource(dev, mem_res);
 		printk("%s:%d mem_Res = %08x\n", __func__, __LINE__, host->ufs_reg_sec);
-       if (!host->ufs_reg_sec) {
+       if (host->ufs_reg_sec == NULL) {
                dev_err(dev, "cannot ioremap for ufs fmp register\n");
                return -ENOMEM;
        }
@@ -154,48 +154,7 @@ static void ufs_tcc_set_pm_lvl(struct ufs_hba *hba)
        hba->spm_lvl = UFS_PM_LVL_3;
 }
 
-static void ufs_tcc_populate_dt(struct device *dev,
-                                  struct ufs_tcc_host *host)
-{
-       struct device_node *np = dev->of_node;
-       int ret;
-
-       if (!np) {
-               dev_err(dev, "can not find device node\n");
-               return;
-       }
-#if 0
-       if (of_find_property(np, "ufs-tcc-use-rate-B", NULL))
-               host->caps |= USE_RATE_B;
-
-       if (of_find_property(np, "ufs-tcc-broken-fastauto", NULL))
-               host->caps |= BROKEN_FASTAUTO;
-
-       if (of_find_property(np, "ufs-tcc-use-one-line", NULL))
-               host->caps |= USE_ONE_LANE;
-
-       if (of_find_property(np, "ufs-tcc-use-HS-GEAR3", NULL))
-               host->caps |= USE_HS_GEAR3;
-
-       if (of_find_property(np, "ufs-tcc-use-HS-GEAR2", NULL))
-               host->caps |= USE_HS_GEAR2;
-
-       if (of_find_property(np, "ufs-tcc-use-HS-GEAR1", NULL))
-               host->caps |= USE_HS_GEAR1;
-
-       if (of_find_property(np, "ufs-tcc-broken-clk-gate-bypass", NULL))
-               host->caps |= BROKEN_CLK_GATE_BYPASS;
-#endif
-       host->reset_gpio = of_get_named_gpio(np, "reset-gpio", 0);
-       if (gpio_is_valid(host->reset_gpio)) {
-               ret = devm_gpio_request_one(dev, host->reset_gpio,
-                                           GPIOF_DIR_OUT, "tcc_ufs_reset");
-               if (ret < 0)
-                       dev_err(dev, "could not acquire gpio (err=%d)\n", ret);
-       }
-}
-
-void encryption_setting(struct ufs_hba *hba)
+static void encryption_setting(struct ufs_hba *hba)
 {
 	// Step#1: In-Line Encryption Sequence
 	ufshcd_writel(hba, 0x0, HCI_CRYPTOCFG__CFGE_CAPIDX_DUSIZE);
@@ -218,7 +177,7 @@ void encryption_setting(struct ufs_hba *hba)
 	ufshcd_writel(hba, 0xF0000000, HCI_CRYPTOCFG_CRYPTOKEY_F);
 }
 
-int tcc_ufs_smu_setting(struct ufs_hba *hba)
+static int tcc_ufs_smu_setting(struct ufs_hba *hba)
 {
 	unsigned int smu_bypass = 1;
 	unsigned int smu_index  = 0;
@@ -239,27 +198,26 @@ int tcc_ufs_smu_setting(struct ufs_hba *hba)
 	encryption_setting(hba);
 
 	tid   = 0;
-	sw    = (smu_bypass)? 1 : 1;
-	sr    = (smu_bypass)? 1 : 1;
-	nsw   = (smu_bypass)? 1 : 1;
-	nsr   = (smu_bypass)? 1 : 1;
-	ufk   = (smu_bypass)? 1 : 1;
-	enc   = (smu_bypass)? 0 : 1;
-	valid = (smu_bypass)? ((smu_index==0)? 1 : 0) : 1;
+	sw    = 1;
+	sr    = 1;
+	nsw   = 1;
+	nsr   = 1;
+	ufk   = 1;
+	enc   = 0;
+	valid = 1;
 
 	fmp_bsector = 0x0;
 	fmp_esector = 0xFFFFFFFF;
 	fmp_lun     = 0x7;
-	fmp_ctrl = (0x0   << 9) |
-		(tid   << 8) | //tid
-		(sw    << 7) | //sw
-		(sr    << 6) | //sr
-		(nsw   << 5) | //nsw
-		(nsr   << 4) | //nsr
-		(ufk   << 3) | //ufk
-		(0x0   << 2) | //
-		(enc   << 1) | //enc
-		(valid << 0) ; //valid
+	fmp_ctrl = 
+		(tid   << 8U) | //tid
+		(sw    << 7U) | //sw
+		(sr    << 6U) | //sr
+		(nsw   << 5U) | //nsw
+		(nsr   << 4U) | //nsr
+		(ufk   << 3U) | //ufk
+		(enc   << 1U) | //enc
+		(valid << 0U) ; //valid
 
 	ufs_fmp_writel(host, 0x00000001, FMP_FMPDEK0);
 	ufs_fmp_writel(host, 0x00000010, FMP_FMPDEK1);
@@ -369,21 +327,21 @@ int tcc_ufs_smu_setting(struct ufs_hba *hba)
 	nsuser            = 0x1;
 	use_otp_mask      = 0x0;
 
-	fmp_security = (protbytzpc         << 31) |
-		(select_inline_enc  << 30) |
-		(fmp_on             << 29) |
-		(unmap_disable      << 28) |
-		(0x3F               << 22) |
-		(desc_type          << 19) |
-		(0x5                << 16) |
-		(nskeyreg           << 15) |
-		(nssmu              << 14) |
-		(nsuser             << 13) |
-		(use_otp_mask       << 12) |
-		(0x5                <<  9) |
-		(0x5                <<  6) |
-		(0x5                <<  3) |
-		(0x5                <<  0);
+	fmp_security = (protbytzpc         << 31U) |
+		(select_inline_enc  << 30U) |
+		(fmp_on             << 29U) |
+		(unmap_disable      << 28U) |
+		((unsigned int)0x3F	             << 22U) |
+		(desc_type          << 19U) |
+		((unsigned int)0x5                << 16U) |
+		(nskeyreg           << 15U) |
+		(nssmu              << 14U) |
+		(nsuser             << 13U) |
+		(use_otp_mask       << 12U) |
+		((unsigned int)0x5                <<  9U) |
+		((unsigned int)0x5                <<  6U) |
+		((unsigned int)0x5                <<  3U) |
+		((unsigned int)0x5                <<  0U);
 
 
 	ufs_fmp_writel(host, fmp_security, FMP_FMPRSECURITY);
@@ -430,13 +388,13 @@ static void ufs_tcc_post_init(struct ufs_hba *hba)
 
 	printk("%s:%d\n", __func__, __LINE__);
 	data = ufshcd_readl(hba,REG_CONTROLLER_ENABLE);
-	while (data != 0x1)
+	while (data != 0x1U)
 	{
 		data = ufshcd_readl(hba,REG_CONTROLLER_ENABLE);
 	}
 
 	data = ufshcd_readl(hba,REG_CONTROLLER_STATUS);
-	while (reg_rdb(data,3) != 1)
+	while (reg_rdb((data),(3U)) != 1U)
 	{
 		data = ufshcd_readl(hba,REG_CONTROLLER_STATUS);
 	}
@@ -448,42 +406,42 @@ static void ufs_tcc_post_init(struct ufs_hba *hba)
 	ufs_unipro_writel(host, CALCULATED_VALUE, PA_DBG_AUTOMODE_THLD);
 	ufs_unipro_writel(host, 0x2E820183, PA_DBG_OPTION_SUITE);
 
-	ufshcd_dme_set(hba, UIC_ARG_MIB_SEL(PA_Local_TX_LCC_Enable, 0x0), 0x0);
-	ufshcd_dme_set(hba, UIC_ARG_MIB_SEL(N_DeviceID, 0x0), N_DEVICE_ID_VAL);
-	ufshcd_dme_set(hba, UIC_ARG_MIB_SEL(N_DeviceID_valid, 0x0), N_DEVICE_ID_VALID_VAL);
-	ufshcd_dme_set(hba, UIC_ARG_MIB_SEL(T_ConnectionState, 0x0), T_CONNECTION_STATE_OFF_VAL);
-	ufshcd_dme_set(hba, UIC_ARG_MIB_SEL(T_PeerDeviceID, 0x0), T_PEER_DEVICE_ID_VAL);
-	ufshcd_dme_set(hba, UIC_ARG_MIB_SEL(T_ConnectionState, 0x0), T_CONNECTION_STATE_ON_VAL);
+	ufshcd_dme_set(hba, UIC_ARG_MIB_SEL((unsigned int)PA_Local_TX_LCC_Enable, 0x0U), 0x0U);
+	ufshcd_dme_set(hba, UIC_ARG_MIB_SEL((unsigned int)N_DeviceID, 0x0U), N_DEVICE_ID_VAL);
+	ufshcd_dme_set(hba, UIC_ARG_MIB_SEL((unsigned int)N_DeviceID_valid, 0x0U), N_DEVICE_ID_VALID_VAL);
+	ufshcd_dme_set(hba, UIC_ARG_MIB_SEL((unsigned int)T_ConnectionState, 0x0U), T_CONNECTION_STATE_OFF_VAL);
+	ufshcd_dme_set(hba, UIC_ARG_MIB_SEL((unsigned int)T_PeerDeviceID, 0x0U), T_PEER_DEVICE_ID_VAL);
+	ufshcd_dme_set(hba, UIC_ARG_MIB_SEL((unsigned int)T_ConnectionState, 0x0U), T_CONNECTION_STATE_ON_VAL);
 
-	ufshcd_dme_set(hba, UIC_ARG_MIB_SEL(0x0200, 0x0), 0x3f);
-	ufshcd_dme_set(hba, UIC_ARG_MIB_SEL(0x8f, TX_LANE_0), 0x0);
-	ufshcd_dme_set(hba, UIC_ARG_MIB_SEL(0x8f, RX_LANE_1), 0x0);
+	ufshcd_dme_set(hba, UIC_ARG_MIB_SEL((unsigned int)0x0200, 0x0U), 0x3fU);
+	ufshcd_dme_set(hba, UIC_ARG_MIB_SEL((unsigned int)0x8f, TX_LANE_0), 0x0U);
+	ufshcd_dme_set(hba, UIC_ARG_MIB_SEL((unsigned int)0x8f, RX_LANE_1), 0x0U);
 
-	ufshcd_dme_set(hba, UIC_ARG_MIB_SEL(0x0f, RX_LANE_0), 0x0);
-	ufshcd_dme_set(hba, UIC_ARG_MIB_SEL(0x0f, RX_LANE_1), 0x0);
+	ufshcd_dme_set(hba, UIC_ARG_MIB_SEL((unsigned int)0x0f, RX_LANE_0), 0x0U);
+	ufshcd_dme_set(hba, UIC_ARG_MIB_SEL((unsigned int)0x0f, RX_LANE_1), 0x0U);
 
-	ufshcd_dme_set(hba, UIC_ARG_MIB_SEL(0x21, RX_LANE_0), 0x0);
-	ufshcd_dme_set(hba, UIC_ARG_MIB_SEL(0x21, RX_LANE_1), 0x0);
+	ufshcd_dme_set(hba, UIC_ARG_MIB_SEL((unsigned int)0x21, RX_LANE_0), 0x0U);
+	ufshcd_dme_set(hba, UIC_ARG_MIB_SEL((unsigned int)0x21, RX_LANE_1), 0x0U);
 
-	ufshcd_dme_set(hba, UIC_ARG_MIB_SEL(0x22, RX_LANE_0), 0x0);
-	ufshcd_dme_set(hba, UIC_ARG_MIB_SEL(0x22, RX_LANE_1), 0x0);
+	ufshcd_dme_set(hba, UIC_ARG_MIB_SEL((unsigned int)0x22, RX_LANE_0), 0x0U);
+	ufshcd_dme_set(hba, UIC_ARG_MIB_SEL((unsigned int)0x22, RX_LANE_1), 0x0U);
 
-	ufshcd_dme_set(hba, UIC_ARG_MIB_SEL(0x5c, RX_LANE_0), 0x38);
-	ufshcd_dme_set(hba, UIC_ARG_MIB_SEL(0x5c, RX_LANE_1), 0x38);
+	ufshcd_dme_set(hba, UIC_ARG_MIB_SEL((unsigned int)0x5c, RX_LANE_0), 0x38U);
+	ufshcd_dme_set(hba, UIC_ARG_MIB_SEL((unsigned int)0x5c, RX_LANE_1), 0x38U);
 
-	ufshcd_dme_set(hba, UIC_ARG_MIB_SEL(0x62, RX_LANE_0), 0x97);
-	ufshcd_dme_set(hba, UIC_ARG_MIB_SEL(0x62, RX_LANE_1), 0x97);
+	ufshcd_dme_set(hba, UIC_ARG_MIB_SEL((unsigned int)0x62, RX_LANE_0), 0x97U);
+	ufshcd_dme_set(hba, UIC_ARG_MIB_SEL((unsigned int)0x62, RX_LANE_1), 0x97U);
 
-	ufshcd_dme_set(hba, UIC_ARG_MIB_SEL(0x63, RX_LANE_0), 0x70);
-	ufshcd_dme_set(hba, UIC_ARG_MIB_SEL(0x63, RX_LANE_1), 0x70);
+	ufshcd_dme_set(hba, UIC_ARG_MIB_SEL((unsigned int)0x63, RX_LANE_0), 0x70U);
+	ufshcd_dme_set(hba, UIC_ARG_MIB_SEL((unsigned int)0x63, RX_LANE_1), 0x70U);
 
-	ufshcd_dme_set(hba, UIC_ARG_MIB_SEL(0x65, RX_LANE_0), 0x1);
-	ufshcd_dme_set(hba, UIC_ARG_MIB_SEL(0x65, RX_LANE_1), 0x1);
+	ufshcd_dme_set(hba, UIC_ARG_MIB_SEL((unsigned int)0x65, RX_LANE_0), 0x1U);
+	ufshcd_dme_set(hba, UIC_ARG_MIB_SEL((unsigned int)0x65, RX_LANE_1), 0x1U);
 
-	ufshcd_dme_set(hba, UIC_ARG_MIB_SEL(0x69, RX_LANE_0), 0x1);
-	ufshcd_dme_set(hba, UIC_ARG_MIB_SEL(0x69, RX_LANE_1), 0x1);
+	ufshcd_dme_set(hba, UIC_ARG_MIB_SEL((unsigned int)0x69, RX_LANE_0), 0x1U);
+	ufshcd_dme_set(hba, UIC_ARG_MIB_SEL((unsigned int)0x69, RX_LANE_1), 0x1U);
 
-	ufshcd_dme_set(hba, UIC_ARG_MIB_SEL(0x200, 0x0), 0x0);
+	ufshcd_dme_set(hba, UIC_ARG_MIB_SEL((unsigned int)0x200, 0x0U), 0x0U);
 
 	ufshcd_writel(hba, 0xA, HCI_DATA_REORDER);
 	//ufs_fmp_clr_bits(host, 0x80000000, FMP_FMPRSECURITY);
@@ -509,346 +467,6 @@ static int ufs_tcc_hce_enable_notify(struct ufs_hba *hba,
 	return 0;
 }
 
-#if 0
-static int ufs_tcc_link_startup_pre_change(struct ufs_hba *hba)
-{
-	uint32_t  rd_data;
-	uint32_t  cport_log_en = 0;
-	uint32_t  wlu_enable = 0;
-	uint32_t  wlu_burst_len = 3;
-	uint32_t  hci_buffering_enable = 0;
-	uint32_t  axidma_rwdataburstlen = 0;
-	uint32_t  no_of_beat_burst = 7;
-	//uint32_t  otp_data=0;
-	//int  ext_clk_sel = 0; //Internal Clock default
-	int res = 0;
-	struct ufs_tcc_host *host = ufshcd_get_variant(hba);
-	ufs_sbus_config_clr_bits(host, SBUS_CONFIG_SWRESETN_UFS_HCI | SBUS_CONFIG_SWRESETN_UFS_PHY, SBUS_CONFIG_SWRESETN);
-	msleep(10);
-	ufs_sbus_config_set_bits(host, SBUS_CONFIG_SWRESETN_UFS_HCI | SBUS_CONFIG_SWRESETN_UFS_PHY, SBUS_CONFIG_SWRESETN);
-
-	ufshcd_writel(hba, 0x1, HCI_MPHY_REFCLK_SEL);
-	//---------------------------------------------------------------------------------------------------------------------------------------
-	// Release refclk for device
-	//---------------------------------------------------------------------------------------------------------------------------------------
-	//HCI_CLKSTOP_CTRL = 0x0; // Disable
-	//ufs_hci_writel(host, 0x0, HCI_CLKSTOP_CTRL);
-	ufshcd_writel(hba, 0x0, HCI_CLKSTOP_CTRL);
-	//---------------------------------------------------------------------------------------------------------------------------------------
-	// Release Device reset
-	//---------------------------------------------------------------------------------------------------------------------------------------
-	if(debug) printk(KERN_DEBUG "BASIC_LINK_UP::Release device reset");
-	//HCI_GPIO_OUT = 0x1;
-	//ufs_hci_writel(host, 0x1, HCI_GPIO_OUT);
-	ufshcd_writel(hba, 0x1, HCI_GPIO_OUT);
-
-	//---------------------------------------------------------------------------------------------------------------------------------------
-	// AUTO CLOCK GATING DISABLE
-	//---------------------------------------------------------------------------------------------------------------------------------------
-	if(debug) printk(KERN_DEBUG "BASIC_LINK_UP::Disable HWACG Feature of UFS");
-	//HCI_UFS_ACG_DISABLE = 0x1;
-	//ufs_hci_writel(host, 0x1, HCI_UFS_ACG_DISABLE);
-	ufshcd_writel(hba, 0x1, HCI_UFS_ACG_DISABLE);
-	//---------------------------------------------------------------------------------------------------------------------------------------
-	// ENABLE HCI
-	//---------------------------------------------------------------------------------------------------------------------------------------
-	if(debug) printk(KERN_DEBUG "BASIC_LINK_UP::ENABLE HCI");
-	//HCI_HCE = 0x1;
-	//ufs_hci_writel(host, 0x1, HCI_HCE);
-	ufshcd_writel(hba, 0x1, HCI_HCE);
-
-	//---------------------------------------------------------------------------------------------------------------------------------------
-	// Read HCI VERSION
-	//---------------------------------------------------------------------------------------------------------------------------------------
-	if(debug) printk(KERN_DEBUG "BASIC_LINK_UP::HCI VERSION DETAILS");
-	//rd_data = HCI_UFS_LINK_VERSION;
-	//rd_data = ufs_hci_readl(host, HCI_UFS_LINK_VERSION);
-	rd_data = ufshcd_readl(hba, HCI_UFS_LINK_VERSION);
-	if(debug) printk(KERN_DEBUG "BASIC_LINK_UP::UFS_LINK MAJOR VERSION = 0x%x",rd_data);
-
-	//---------------------------------------------------------------------------------------------------------------------------------------
-	// Check if HCI is Enabled
-	//---------------------------------------------------------------------------------------------------------------------------------------
-	//rd_data = HCI_HCE; //Host Controller Enable
-	//rd_data = ufs_hci_readl(host, HCI_HCE);
-	rd_data = ufshcd_readl(hba, HCI_HCE);
-	while(rd_data != 0x1){
-		//rd_data = HCI_HCE;
-		//rd_data = ufs_hci_readl(host, HCI_HCE);
-		rd_data = ufshcd_readl(hba, HCI_HCE);
-	}
-	if (res < 0)
-		goto done;
-
-	if(debug) printk(KERN_DEBUG "BASIC_LINK_UP::HCI_HCE Status = 0x%x",rd_data);
-
-	//---------------------------------------------------------------------------------------------------------------------------------------
-	// Check if UIC is ready to accept Configuration Commands
-	//---------------------------------------------------------------------------------------------------------------------------------------
-	if(debug) {
-		printk(KERN_DEBUG "BASIC_LINK_UP::Check if UIC is ready to accept Configuration Commands");
-		printk(KERN_DEBUG "BASIC_LINK_UP::Reading value of Hcs. UCRDY Should be 1 before proceeding with UIC COMMAND");
-	}
-	//rd_data = HCI_HCS;  //Host Controller Status
-	//rd_data = ufs_hci_readl(host, HCI_HCS);
-	rd_data = ufshcd_readl(hba, HCI_HCS);
-	while(reg_rdb(rd_data,3) != 1){ // Check UIC COMMAND Ready (UCRDY)
-		//rd_data = HCI_HCS;
-		//rd_data = ufs_hci_readl(host, HCI_HCS);
-		rd_data = ufshcd_readl(hba, HCI_HCS);
-		msleep(500);
-	}
-	if (res < 0)
-		goto done;
-
-	if(debug) printk(KERN_DEBUG "BASIC_LINK_UP::HCI_HCS Status = 0x%x",rd_data);
-
-	//---------------------------------------------------------------------------------------------------------------------------------------
-	// ENABLE CPORT LOG FEATURE
-	//---------------------------------------------------------------------------------------------------------------------------------------
-	if(cport_log_en) {
-		//HCI_CPORT_LOG_CTRL = 1;
-		//ufs_hci_writel(host, 0x1, HCI_CPORT_LOG_CTRL);
-		ufshcd_writel(hba, 0x1, HCI_CPORT_LOG_CTRL);
-		//HCI_CPORT_LOG_CFG  = 0;
-		//ufs_hci_writel(host, 0x0, HCI_CPORT_LOG_CTRL);
-		ufshcd_writel(hba, 0x0, HCI_CPORT_LOG_CFG);
-	}
-
-	//HCI_IE = 0x7FFF;
-	//ufs_hci_writel(host, 0x7FFF, HCI_IE);
-	ufshcd_writel(hba, 0x7FFF, HCI_IE);
-
-	//---------------------------------------------------------------------------------------------------------------------------------------
-	// Initial Set of some MPHY registers
-	//---------------------------------------------------------------------------------------------------------------------------------------
-	if(debug) printk(KERN_DEBUG "BASIC_LINK_UP::Initial Set of some MPHY registers");
-	///dme_set_req(DBG_OV_TM, 0x40, 0x0, 0x0); //the DME_SET command to set UIC attributes
-/*
-	ufshcd_dme_set(hba, UIC_ARG_MIB_SEL(DBG_OV_TM, 0x0), 0x40);
-
-	//    dme_set_req(0x9a, 0x0f, RX_LANE_0, 0x0);
-	ufshcd_dme_set(hba, UIC_ARG_MIB_SEL(0x009a, RX_LANE_0), 0xf);
-	//    dme_set_req(0x9a, 0x0f, RX_LANE_1, 0x0);
-	ufshcd_dme_set(hba, UIC_ARG_MIB_SEL(0x009a, RX_LANE_1), 0xf);
-	///dme_set_req(0x93, 0xff, RX_LANE_0, 0x0);
-	ufshcd_dme_set(hba, UIC_ARG_MIB_SEL(0x0093, RX_LANE_0), 0xff);
-	//dme_set_req(0x93, 0xff, RX_LANE_1, 0x0);
-	ufshcd_dme_set(hba, UIC_ARG_MIB_SEL(0x0093, RX_LANE_1), 0xff);
-	//dme_set_req(0x99, 0xff, RX_LANE_0, 0x0);
-	ufshcd_dme_set(hba, UIC_ARG_MIB_SEL(0x0099, RX_LANE_0), 0xff);
-	//dme_set_req(0x99, 0xff, RX_LANE_1, 0x0);
-	ufshcd_dme_set(hba, UIC_ARG_MIB_SEL(0x0099, RX_LANE_1), 0xff);
-	//dme_set_req(0x8F, 0x3A, TX_LANE_0, 0x0);
-	ufshcd_dme_set(hba, UIC_ARG_MIB_SEL(0x008F, TX_LANE_0), 0x3a);
-	//dme_set_req(0x8F, 0x3A, TX_LANE_1, 0x0);
-	ufshcd_dme_set(hba, UIC_ARG_MIB_SEL(0x008F, TX_LANE_1), 0x3a);
-
-	//dme_set_req(TX_LINERESET_PVALUE_LSB, 0x50, TX_LANE_0, 0x0);
-	ufshcd_dme_set(hba, UIC_ARG_MIB_SEL(TX_LINERESET_PVALUE_LSB, TX_LANE_0), 0x50);
-	//dme_set_req(TX_LINERESET_PVALUE_LSB, 0x50, TX_LANE_1, 0x0);
-	ufshcd_dme_set(hba, UIC_ARG_MIB_SEL(TX_LINERESET_PVALUE_LSB, TX_LANE_1), 0x50);
-	//dme_set_req(TX_LINERESET_PVALUE_MSB, 0x0,  TX_LANE_0, 0x0);
-	ufshcd_dme_set(hba, UIC_ARG_MIB_SEL(TX_LINERESET_PVALUE_MSB, TX_LANE_0), 0x0);
-	//dme_set_req(TX_LINERESET_PVALUE_MSB, 0x0,  TX_LANE_1, 0x0);
-	ufshcd_dme_set(hba, UIC_ARG_MIB_SEL(TX_LINERESET_PVALUE_MSB, TX_LANE_1), 0x0);
-	//dme_set_req(RX_LINERESET_VALUE_LSB,  0x50, RX_LANE_0, 0x0);
-	ufshcd_dme_set(hba, UIC_ARG_MIB_SEL(RX_LINERESET_VALUE_LSB, RX_LANE_0), 0x50);
-	//dme_set_req(RX_LINERESET_VALUE_LSB,  0x50, RX_LANE_1, 0x0);
-	ufshcd_dme_set(hba, UIC_ARG_MIB_SEL(RX_LINERESET_VALUE_LSB, RX_LANE_1), 0x50);
-	//dme_set_req(RX_LINERESET_VALUE_MSB,  0x0,  RX_LANE_0, 0x0);
-	ufshcd_dme_set(hba, UIC_ARG_MIB_SEL(RX_LINERESET_VALUE_MSB, RX_LANE_0), 0x0);
-	//dme_set_req(RX_LINERESET_VALUE_MSB,  0x0,  RX_LANE_1, 0x0);
-	ufshcd_dme_set(hba, UIC_ARG_MIB_SEL(RX_LINERESET_VALUE_MSB, RX_LANE_1), 0x0);
-	//dme_set_req(RX_OVERSAMPLING_ENABLE,  0x4,  RX_LANE_0, 0x0); //UFS post-sim error
-	ufshcd_dme_set(hba, UIC_ARG_MIB_SEL(RX_OVERSAMPLING_ENABLE, RX_LANE_0), 0x4);
-	//dme_set_req(RX_OVERSAMPLING_ENABLE,  0x4,  RX_LANE_1, 0x0);
-	ufshcd_dme_set(hba, UIC_ARG_MIB_SEL(RX_OVERSAMPLING_ENABLE, RX_LANE_1), 0x4);
-
-	//dme_set_req(DBG_OV_TM, 0x0, 0x0, 0x0);
-	ufshcd_dme_set(hba, UIC_ARG_MIB_SEL(DBG_OV_TM, 0x0), 0x0);
-*/
-	//---------------------------------------------------------------------------------------------------------------------------------------
-	// Initial Set of some PA MIB registers
-	//---------------------------------------------------------------------------------------------------------------------------------------
-	if(debug) printk(KERN_DEBUG "BASIC_LINK_UP::Initial Set of some PA MIB registers");
-
-	//---------------------------------------------------------------------------------------------------------------------------------------
-	// Initial Set of some DL MIB registers
-	//---------------------------------------------------------------------------------------------------------------------------------------
-	if(debug) printk(KERN_DEBUG "BASIC_LINK_UP::Initial Set of some DL MIB registers");
-
-	//dme_set_req(DL_FC0ProtectionTimeOutVal, DL_FC0_PROTECTION_TIMEOUT_VAL_VALUE, 0x0, 0x0);
-	//ufshcd_dme_set(hba, UIC_ARG_MIB_SEL(DL_FC0ProtectionTimeOutVal, 0x0), DL_FC0_PROTECTION_TIMEOUT_VAL_VALUE);
-	//dme_set_req(DL_FC1ProtectionTimeOutVal, DL_FC1_PROTECTION_TIMEOUT_VAL_VALUE, 0x0, 0x0);
-	//ufshcd_dme_set(hba, UIC_ARG_MIB_SEL(DL_FC1ProtectionTimeOutVal, 0x0), DL_FC1_PROTECTION_TIMEOUT_VAL_VALUE);
-	//---------------------------------------------------------------------------------------------------------------------------------------
-	// Initial Set of
-	//---------------------------------------------------------------------------------------------------------------------------------------
-	// Configuration regarding real time specification
-	//dme_set_req(PA_DBG_CLK_PERIOD, UNIPRO_PCLK_PERIOD_NS, 0x0, 0x0);
-	//ufshcd_dme_set(hba, UIC_ARG_MIB_SEL(PA_DBG_CLK_PERIOD, 0x0), UNIPRO_PCLK_PERIOD_NS);
-	ufs_unipro_writel(host, UNIPRO_PCLK_PERIOD_NS, PA_DBG_CLK_PERIOD);
-	//dme_set_req(PA_DBG_AUTOMODE_THLD, CALCULATED_VALUE, 0x0, 0x0);
-	//ufshcd_dme_set(hba, UIC_ARG_MIB_SEL(PA_DBG_AUTOMODE_THLD, 0x0), CALCULATED_VALUE);
-	ufs_unipro_writel(host, CALCULATED_VALUE, PA_DBG_AUTOMODE_THLD);
-	//dme_set_req(PA_DBG_OPTION_SUITE, 0x2E820183, 0x0, 0x0);
-	//ufshcd_dme_set(hba, UIC_ARG_MIB_SEL(PA_DBG_OPTION_SUITE, 0x0), 0x2E820183);
-	ufs_unipro_writel(host, 0x2E820183, PA_DBG_OPTION_SUITE);
-
-	// Configuration regarding operation mode
-	//dme_set_req(PA_Local_TX_LCC_Enable, 0x0, 0x0, 0x0);
-	ufshcd_dme_set(hba, UIC_ARG_MIB_SEL(PA_Local_TX_LCC_Enable, 0x0), 0x0);
-	//---------------------------------------------------------------------------------------------------------------------------------------
-	// Initial Set of some NL MIB registers
-	//---------------------------------------------------------------------------------------------------------------------------------------
-	if(debug) printk(KERN_DEBUG "BASIC_LINK_UP::Initial Set of some NL MIB registers");
-
-	//dme_set_req(N_DeviceID, N_DEVICE_ID_VAL, 0x0, 0x0);
-	ufshcd_dme_set(hba, UIC_ARG_MIB_SEL(N_DeviceID, 0x0), N_DEVICE_ID_VAL);
-	//dme_set_req(N_DeviceID_valid, N_DEVICE_ID_VALID_VAL, 0x0, 0x0);
-	ufshcd_dme_set(hba, UIC_ARG_MIB_SEL(N_DeviceID_valid, 0x0), N_DEVICE_ID_VALID_VAL);
-
-	//---------------------------------------------------------------------------------------------------------------------------------------
-	// Initial Set of some TL MIB registers
-	//---------------------------------------------------------------------------------------------------------------------------------------
-	if(debug) printk(KERN_DEBUG "BASIC_LINK_UP::Initial Set of some TL MIB registers");
-
-	//dme_set_req(T_ConnectionState, T_CONNECTION_STATE_OFF_VAL, 0x0, 0x0);
-	ufshcd_dme_set(hba, UIC_ARG_MIB_SEL(T_ConnectionState, 0x0), T_CONNECTION_STATE_OFF_VAL);
-	//dme_set_req(T_PeerDeviceID,    T_PEER_DEVICE_ID_VAL, 0x0, 0x0);
-	ufshcd_dme_set(hba, UIC_ARG_MIB_SEL(T_PeerDeviceID, 0x0), T_PEER_DEVICE_ID_VAL);
-	//dme_set_req(T_ConnectionState, T_CONNECTION_STATE_ON_VAL, 0x0, 0x0);
-	ufshcd_dme_set(hba, UIC_ARG_MIB_SEL(T_ConnectionState, 0x0), T_CONNECTION_STATE_ON_VAL);
-
-	ufshcd_dme_set(hba, UIC_ARG_MIB_SEL(0x0200, 0x0), 0x3f);
-
-	ufshcd_dme_set(hba, UIC_ARG_MIB_SEL(0x8f, TX_LANE_0), 0x0);
-	ufshcd_dme_set(hba, UIC_ARG_MIB_SEL(0x8f, RX_LANE_1), 0x0);
-
-	ufshcd_dme_set(hba, UIC_ARG_MIB_SEL(0x0f, RX_LANE_0), 0x0);
-	ufshcd_dme_set(hba, UIC_ARG_MIB_SEL(0x0f, RX_LANE_1), 0x0);
-
-	ufshcd_dme_set(hba, UIC_ARG_MIB_SEL(0x21, RX_LANE_0), 0x0);
-	ufshcd_dme_set(hba, UIC_ARG_MIB_SEL(0x21, RX_LANE_1), 0x0);
-
-	ufshcd_dme_set(hba, UIC_ARG_MIB_SEL(0x22, RX_LANE_0), 0x0);
-	ufshcd_dme_set(hba, UIC_ARG_MIB_SEL(0x22, RX_LANE_1), 0x0);
-
-	ufshcd_dme_set(hba, UIC_ARG_MIB_SEL(0x5c, RX_LANE_0), 0x38);
-	ufshcd_dme_set(hba, UIC_ARG_MIB_SEL(0x5c, RX_LANE_1), 0x38);
-
-	ufshcd_dme_set(hba, UIC_ARG_MIB_SEL(0x62, RX_LANE_0), 0x97);
-	ufshcd_dme_set(hba, UIC_ARG_MIB_SEL(0x62, RX_LANE_1), 0x97);
-
-	ufshcd_dme_set(hba, UIC_ARG_MIB_SEL(0x63, RX_LANE_0), 0x70);
-	ufshcd_dme_set(hba, UIC_ARG_MIB_SEL(0x63, RX_LANE_1), 0x70);
-
-	ufshcd_dme_set(hba, UIC_ARG_MIB_SEL(0x65, RX_LANE_0), 0x1);
-	ufshcd_dme_set(hba, UIC_ARG_MIB_SEL(0x65, RX_LANE_1), 0x1);
-
-	ufshcd_dme_set(hba, UIC_ARG_MIB_SEL(0x69, RX_LANE_0), 0x1);
-	ufshcd_dme_set(hba, UIC_ARG_MIB_SEL(0x69, RX_LANE_1), 0x1);
-
-	ufshcd_dme_set(hba, UIC_ARG_MIB_SEL(0x200, 0x0), 0x0);
-
-	//---------------------------------------------------------------------------------------------------------------------------------------
-	// Set the data byte reordering.CPORT_BYTE_REORDERING must be 1 when connected to Samsung or Toshiba UFS Device
-	//---------------------------------------------------------------------------------------------------------------------------------------
-	if(debug) printk(KERN_DEBUG "BASIC_LINK_UP::Set the data byte reordering.CPORT_BYTE_REORDERING must be 1 when connected to Samsung or Toshiba UFS Device");
-
-	// HCI_DATA_REORDER = 0xA;
-	//ufs_hci_writel(host, 0x0, HCI_DATA_REORDER);
-	ufshcd_writel(hba, 0xA, HCI_DATA_REORDER);
-
-	//---------------------------------------------------------------------------------------------------------------------------------------
-	// Disable  FmpSecurity.21st bit has been initialized zero for LHOTSE project.
-	//---------------------------------------------------------------------------------------------------------------------------------------
-	if(debug) printk(KERN_DEBUG "BASIC_LINK_UP::Disable  FmpSecurity");
-	//FMP_FMPRSECURITY = 0xDFC2E492;
-	//ufs_hci_writel(host, 0xDFC2E492, FMP_FMPRSECURITY);
-	ufshcd_writel(hba, 0xDFC2E492, FMP_FMPRSECURITY);
-
-
-/**********************
-	//---------------------------------------------------------------------------------------------------------------------------------------
-	//  Now Initialize interrupt enable register to report link start up completion and then send link start up cmd
-	//---------------------------------------------------------------------------------------------------------------------------------------
-	if(debug) printk(KERN_DEBUG "BASIC_LINK_UP::Now Initialize interrupt enable register to report link start up completion and then send link start up cmd");
-
-	//HCI_UICCMDR = DME_LINKSTARTUP_REQ;
-	//ufs_hci_writel(host, DME_LINKSTARTUP_REQ, HCI_UICCMDR);
-	ufshcd_writel(hba, DME_LINKSTARTUP_REQ, HCI_UICCMDR);
-printk("%s:%d\n", __func__, __LINE__);
-
-	if(debug) printk(KERN_DEBUG "BASIC_LINK_UP::Dme_Link_StartUpCmd sent");
-	//---------------------------------------------------------------------------------------------------------------------------------------
-	// Link Start Up cmd sent. Now checking proper registers to see if Link start up has been successful
-	//---------------------------------------------------------------------------------------------------------------------------------------
-	if(debug) {
-		printk(KERN_DEBUG "BASIC_LINK_UP::Link Start Up cmd sent. Now checking proper registers to see if Link start up has been successful");
-		printk(KERN_DEBUG "BASIC_LINK_UP::Now waiting for Is.uccs and Hcs.dp bits to go high. This will indicate that Link Start Up has Completed Successfully");
-	}
-
-	//wait_and_clear_uccs();
-
-	//rd_data = HCI_HCS;
-	//rd_data = ufs_hci_readl(host, HCI_HCS);
-	rd_data = ufshcd_readl(hba, HCI_HCS);
-
-	while(reg_rdb(rd_data,0) != 1) {
-		//rd_data = HCI_HCS;
-		//rd_data = ufs_hci_readl(host, HCI_HCS);
-		rd_data = ufshcd_readl(hba, HCI_HCS);
-		msleep(200);
-	}
-printk("%s:%d\n", __func__, __LINE__);
-
-	if (res < 0)
-		goto done;
-
-	if(debug) {
-		printk(KERN_DEBUG "BASIC_LINK_UP::Done waiting for Hcs.dp bits to go high");
-		printk(KERN_DEBUG "BASIC_LINK_UP::Device has been Found during LINKSTARTUP");
-		printk(KERN_DEBUG "BASIC_LINK_UP::linkup_done event emitted..");
-	}
-***************************/
-
-
-
-
-
-
-	//---------------------------------------------------------------------------------------------------------------------------------------
-	// Link Start Up Complete. Now initializing UTP transfer management request list base address.
-	//---------------------------------------------------------------------------------------------------------------------------------------
-
-#ifdef USE_POLL
-	//clearInterrupt (ignore in LinkUp State)
-	//rd_data = HCI_IS;
-	//rd_data = ufs_hci_readl(host, HCI_IS);
-	rd_data = ufshcd_readl(hba, HCI_IS);
-	if(reg_rdb(rd_data,2) == 1)  //Polling status change
-	{
-		//HCI_IS = 1<<2;           // clear UIC Error(ignore in LinkUp State
-		//ufs_hci_writel(host, 1u<<2, HCI_IS);
-		ufshcd_writel(hba, 1u<<2, HCI_IS);
-	}
-	if(reg_rdb(rd_data,10) == 1) //Polling status change
-	{
-		//HCI_IS = 1<<10;          // Clear UIC Command Completion Status
-		//ufs_hci_writel(host, 1u<<10, HCI_IS);
-		ufshcd_writel(hba, 1u<<10, HCI_IS);
-	}
-
-	uic_linkup_done = 1;
-#endif
-done :
-
-	return res;
-}
-#endif
-
 static int ufs_tcc_link_startup_post_change(struct ufs_hba *hba)
 {
 	uint32_t  rd_data;
@@ -864,23 +482,7 @@ static int ufs_tcc_link_startup_post_change(struct ufs_hba *hba)
 	struct ufs_tcc_host *host = ufshcd_get_variant(hba);
 
 	printk("%s:%d\n", __func__, __LINE__);
-#if 0
-	ufshcd_dme_set(hba, UIC_ARG_MIB_SEL(0x200, 0x0), 0x40);
 
-	ufshcd_dme_set(hba, UIC_ARG_MIB_SEL(0x35, RX_LANE_0), 0x05);
-	ufshcd_dme_set(hba, UIC_ARG_MIB_SEL(0x35, RX_LANE_1), 0x05);
-
-	ufshcd_dme_set(hba, UIC_ARG_MIB_SEL(0x41, RX_LANE_0), 0x02);
-	ufshcd_dme_set(hba, UIC_ARG_MIB_SEL(0x41, RX_LANE_1), 0x02);
-
-	ufshcd_dme_set(hba, UIC_ARG_MIB_SEL(0x42, RX_LANE_0), 0xAC);
-	ufshcd_dme_set(hba, UIC_ARG_MIB_SEL(0x42, RX_LANE_1), 0xAC);
-
-	ufshcd_dme_set(hba, UIC_ARG_MIB_SEL(0x73, RX_LANE_0), 0x01);
-	ufshcd_dme_set(hba, UIC_ARG_MIB_SEL(0x73, RX_LANE_1), 0x01);
-
-	ufshcd_dme_set(hba, UIC_ARG_MIB_SEL(0x200, 0x0), 0x0);
-#endif
 
 	ufshcd_writel(hba, UTRIACR_VAL, HCI_UTRIACR);
 	ufshcd_writel(hba, UTMRLBA_LOW_VAL, HCI_UTMRLBA);
@@ -895,25 +497,25 @@ static int ufs_tcc_link_startup_post_change(struct ufs_hba *hba)
 	ufshcd_writel(hba, 0x1, HCI_UTMRLRSR);
 	ufshcd_writel(hba, 0x1, HCI_UTRLRSR);
 
-	if(wlu_enable == 1) {
-		if(debug) printk(KERN_DEBUG "BASIC_LINK_UP::Write Line Unique Feature Enable");
-		axidma_rwdataburstlen = (1u<<31) | (wlu_burst_len<<27) | 0x3;
-	} else {
-		axidma_rwdataburstlen = (0u<<31) | (0u<<27) | no_of_beat_burst;
-	}
+	//if(wlu_enable == 1U) {
+		//if(debug) printk(KERN_DEBUG "BASIC_LINK_UP::Write Line Unique Feature Enable");
+		//axidma_rwdataburstlen = ((unsigned int)1<<31U) | ((unsigned int)wlu_burst_len<<27U) | 0x3U;
+	//} else {
+		axidma_rwdataburstlen = no_of_beat_burst;
+	//}
 
-	if(hci_buffering_enable == 1) {
-		if(debug) printk(KERN_DEBUG "BASIC_LINK_UP::Hci Buffering Feature Enable");
-		axidma_rwdataburstlen = (axidma_rwdataburstlen & 0xFFFFFFF0) | no_of_beat_burst;
-	} else {
-		axidma_rwdataburstlen = (axidma_rwdataburstlen & 0xFFFFFFF0) | 0x0;
-	}
+	//if(hci_buffering_enable == 1) {
+		//if(debug) printk(KERN_DEBUG "BASIC_LINK_UP::Hci Buffering Feature Enable");
+		//axidma_rwdataburstlen = (axidma_rwdataburstlen & 0xFFFFFFF0) | no_of_beat_burst;
+	//} else {
+		axidma_rwdataburstlen = (axidma_rwdataburstlen & 0xFFFFFFF0);
+	//}
 
-	if((hci_buffering_enable == 1) || (wlu_enable == 1)) {
-		ufshcd_writel(hba, axidma_rwdataburstlen, HCI_AXIDMA_RWDATA_BURST_LEN);
-	}
+	//if((hci_buffering_enable == 1) || (wlu_enable == 1)) {
+	//	ufshcd_writel(hba, axidma_rwdataburstlen, HCI_AXIDMA_RWDATA_BURST_LEN);
+	//}
 
-	tcc_ufs_smu_setting(hba); 
+	tcc_ufs_smu_setting(hba);
 
 	return res;
 }
@@ -936,11 +538,6 @@ static int ufs_tcc_link_startup_notify(struct ufs_hba *hba,
 	return err;
 }
 
-//static void ufs_tcc_soc_init(struct ufs_hba *hba)
-//{
-     //  struct ufs_tcc_host *host = ufshcd_get_variant(hba);
-      // u32 reg;
-//}
 
 /**
  * ufs_telechips_init
@@ -953,11 +550,11 @@ static int ufs_tcc_init(struct ufs_hba *hba)
 	struct ufs_tcc_host *host;
 
 	host = devm_kzalloc(dev, sizeof(*host), GFP_KERNEL);
-	if (!host) {
+	if (host == NULL) {
 		dev_err(dev, "%s: no memory for telechips ufs host\n", __func__);
 		return -ENOMEM;
 	}
-	hba->quirks |= UFSHCD_QUIRK_PRDT_BYTE_GRAN;
+	hba->quirks |= 0x00000080U;//<-- is UFSHCD_QUIRK_PRDT_BYTE_GRAN;
 			//UFSHCI_QUIRK_SKIP_INTR_AGGR |
 			//UFSHCD_QUIRK_UNRESET_INTR_AGGR |
 			//UFSHCD_QUIRK_BROKEN_REQ_LIST_CLR |
@@ -972,10 +569,8 @@ static int ufs_tcc_init(struct ufs_hba *hba)
 
 	ufs_tcc_set_pm_lvl(hba);
 
-	ufs_tcc_populate_dt(dev, host);
-
 	err = ufs_tcc_get_resource(host);
-	if (err) {
+	if (err != 0) {
 		ufshcd_set_variant(hba, NULL);
 		return err;
 	}
