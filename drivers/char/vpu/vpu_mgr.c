@@ -291,7 +291,7 @@ static int _vmgr_process(vputype type, int cmd, long pHandle, void* args)
 				arg->gsVpuDecInit.m_Iounmap   = (void  (*) (void*))vetc_iounmap;
 				arg->gsVpuDecInit.m_reg_read  = (unsigned int (*)(void*, unsigned int))vetc_reg_read;
 				arg->gsVpuDecInit.m_reg_write = (void (*)(void*, unsigned int, unsigned int))vetc_reg_write;
-				arg->gsVpuDecInit.m_Usleep    = (void (*)(unsigned int, unsigned int))usleep_range;
+				arg->gsVpuDecInit.m_Usleep    = (void (*)(unsigned int, unsigned int))vetc_usleep;
 
 			#ifdef USE_WAIT_LIST
 				vmgr_set_fileplay_mode(type, arg->gsVpuDecInit.m_iFilePlayEnable);
@@ -627,8 +627,8 @@ static int _vmgr_process(vputype type, int cmd, long pHandle, void* args)
 				arg->gsVpuEncInit.m_Interrupt           = (int  (*) (void))_vmgr_internal_handler;
 				arg->gsVpuEncInit.m_Ioremap             = (void* (*) (phys_addr_t, unsigned int))vetc_ioremap;
 				arg->gsVpuEncInit.m_Iounmap             = (void  (*) (void*))vetc_iounmap;
-				arg->gsVpuEncInit.m_reg_read            = (unsigned int (*)(void*, unsigned int))vetc_reg_read;
-				arg->gsVpuEncInit.m_reg_write           = (void (*)(void*, unsigned int, unsigned int))vetc_reg_write;
+				arg->gsVpuEncInit.m_reg_read            = (unsigned int (*) (void*, unsigned int))vetc_reg_read;
+				arg->gsVpuEncInit.m_reg_write           = (void (*) (void*, unsigned int, unsigned int))vetc_reg_write;
 
 				ret = tcc_vpu_enc(cmd, (void*)(&arg->gsVpuEncHandle), (void*)(&arg->gsVpuEncInit), (void*)(&arg->gsVpuEncInitialInfo));
 
@@ -655,6 +655,7 @@ static int _vmgr_process(vputype type, int cmd, long pHandle, void* args)
 				}
 				dprintk("Enc :: Init Done Handle(0x%x) \n", arg->gsVpuEncHandle);
 				vmgr_data.nDecode_Cmd = 0;
+
 			#ifdef CONFIG_VPU_TIME_MEASUREMENT
 				vmgr_data.iTime[type].print_out_index = vmgr_data.iTime[type].proc_base_cnt = 0;
 				vmgr_data.iTime[type].accumulated_proc_time = vmgr_data.iTime[type].accumulated_frame_cnt = 0;
@@ -1503,7 +1504,8 @@ VpuList_t* vmgr_waitlist_manager(VpuList_t* args, unsigned int cmd)
 
 				data = (VpuList_t*)args;
 				*(data->vpu_result) |= RET4_WAIT;
-				list_add_tail(&data->list, &vmgr_data.comm_data.wait_list);cmd_queued_fot_wait_list++;
+				list_add_tail(&data->list, &vmgr_data.comm_data.wait_list);
+				cmd_queued_fot_wait_list++;
 			}
 			break;
 
@@ -1515,7 +1517,8 @@ VpuList_t* vmgr_waitlist_manager(VpuList_t* args, unsigned int cmd)
 					goto Error;
 				}
 				data = (VpuList_t*)args;
-				list_del(&data->list);cmd_queued_fot_wait_list--;
+				list_del(&data->list);
+				cmd_queued_fot_wait_list--;
 			}
 			break;
 
@@ -1661,7 +1664,7 @@ static int _vmgr_operation(void)
 			{
 				if (*(oper_data->vpu_result) != RETCODE_INSUFFICIENT_BITSTREAM &&
 					*(oper_data->vpu_result) != RETCODE_INSUFFICIENT_BITSTREAM_BUF)
-					{
+				{
 					err("vmgr_out[0x%x] :: type = %d, handle = 0x%x, cmd = 0x%x, frame_len %d \n",
 							*(oper_data->vpu_result), oper_data->type, oper_data->handle, oper_data->cmd_type, vmgr_data.szFrame_Len);
 				}
@@ -1689,7 +1692,7 @@ static int _vmgr_operation(void)
 		{
 			if (oper_data->comm_data != NULL && atomic_read(&vmgr_data.dev_opened) != 0)
 			{
-				oper_data->comm_data->count += 1;
+				oper_data->comm_data->count++;
 				if (oper_data->comm_data->count != 1)
 				{
 					dprintk("poll wakeup count = %d :: type(0x%x) cmd(0x%x) \n",
@@ -1821,7 +1824,7 @@ int vmgr_probe(struct platform_device* pdev)
 	int ret;
 	int type;
 	unsigned long int_flags;
-	struct resource* res = NULL;
+	struct resource* resource = NULL;
 
 	if (pdev->dev.of_node == NULL)
 	{
@@ -1843,16 +1846,16 @@ int vmgr_probe(struct platform_device* pdev)
 
 	vmgr_data.irq = platform_get_irq(pdev, 0);
 	vmgr_data.nOpened_Count = 0;
-	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
-	if (!res)
+	resource = platform_get_resource(pdev, IORESOURCE_MEM, 0);
+	if (!resource)
 	{
 		dev_err(&pdev->dev, "missing phy memory resource\n");
 		return -1;
 	}
-	res->end += 1;
+	resource->end += 1;
 
-	vmgr_data.base_addr = devm_ioremap(&pdev->dev, res->start, res->end-res->start);
-	dprintk("============> VPU base address [0x%x -> 0x%p], irq num [%d] \n", res->start, vmgr_data.base_addr, vmgr_data.irq - 32);
+	vmgr_data.base_addr = devm_ioremap(&pdev->dev, resource->start, (resource->end - resource->start));
+	dprintk("============> VPU base address [0x%x -> 0x%p], irq num [%d] \n", resource->start, vmgr_data.base_addr, (vmgr_data.irq - 32));
 
 	vmgr_get_clock(pdev->dev.of_node);
 	vmgr_get_reset(pdev->dev.of_node);
@@ -1867,7 +1870,8 @@ int vmgr_probe(struct platform_device* pdev)
 	INIT_LIST_HEAD(&vmgr_data.comm_data.main_list);
 	INIT_LIST_HEAD(&vmgr_data.comm_data.wait_list);
 
-	if (0 > (ret = vmem_config()))
+	ret = vmem_config();
+	if (ret < 0)
 	{
 		err("unable to configure memory for VPU!! %d \n", ret);
 		return -ENOMEM;

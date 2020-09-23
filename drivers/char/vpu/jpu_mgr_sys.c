@@ -26,7 +26,6 @@
 #include "vpu_comm.h"
 #include "jpu_mgr_sys.h"
 
-static struct clk* fbus_vbus_clk = NULL;
 static struct clk* vbus_jpeg_clk = NULL; // for pwdn and vBus.
 
 #if defined(VIDEO_IP_DIRECT_RESET_CTRL)
@@ -39,9 +38,6 @@ static int cache_droped = 0;
 
 void jmgr_enable_clock(int vbus_no_ctrl, int only_clk_ctrl)
 {
-	if (fbus_vbus_clk && !vbus_no_ctrl)
-		clk_prepare_enable(fbus_vbus_clk);
-
 	if (vbus_jpeg_clk)
 		clk_prepare_enable(vbus_jpeg_clk);
 
@@ -65,11 +61,6 @@ void jmgr_disable_clock(int vbus_no_ctrl, int only_clk_ctrl)
 {
 	if (vbus_jpeg_clk)
 		clk_disable_unprepare(vbus_jpeg_clk);
-
-#if !defined(VBUS_CLK_ALWAYS_ON)
-	if (fbus_vbus_clk && !vbus_no_ctrl)
-		clk_disable_unprepare(fbus_vbus_clk);
-#endif
 
 #if defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC901X)
 	if (!only_clk_ctrl)
@@ -96,7 +87,6 @@ void jmgr_get_clock(struct device_node* node)
 
 	vbus_jpeg_clk = of_clk_get(node, 1);
 	BUG_ON(IS_ERR(vbus_jpeg_clk));
-
 }
 
 void jmgr_put_clock(void)

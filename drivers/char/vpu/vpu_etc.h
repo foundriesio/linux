@@ -58,5 +58,6 @@ void* vetc_ioremap(phys_addr_t phy_addr, unsigned int size);
 void vetc_iounmap(void* virt_addr);
 void* vetc_memcpy(void* dest, const void* src, unsigned int count, unsigned int type);
 void vetc_memset(void* ptr, int value, unsigned  num, unsigned int type);
+void vetc_usleep(unsigned int min, unsigned int max);
 
 #endif /*VPU_ETC_H*/

@@ -553,7 +553,7 @@ static int _vmgr_4k_d2_internal_handler(unsigned int reason)
 	int ret, ret_code = RETCODE_INTR_DETECTION_NOT_ENABLED;
 	unsigned long flags;
 	unsigned int vint_reason = 0;
-	int oper_inst = 0, cnt = 0;
+	int oper_inst = 0;
 	int timeout = 500;
 
 	if (vmgr_4k_d2_data.check_interrupt_detection)
@@ -566,6 +566,7 @@ static int _vmgr_4k_d2_internal_handler(unsigned int reason)
 		}
 		else
 		{
+			int cnt;
 			for (cnt=0; cnt<timeout; cnt+=5)
 			{
 				ret = wait_event_interruptible_timeout(vmgr_4k_d2_data.oper_wq, (oper_inst & reason), msecs_to_jiffies(5));
@@ -587,9 +588,10 @@ static int _vmgr_4k_d2_internal_handler(unsigned int reason)
 				}
 
 				if (vmgr_4k_d2_is_loadable() > 0)
+				{
 					ret_code = RETCODE_CODEC_EXIT;
-				else
-				if (oper_inst & reason)
+				}
+				else if (oper_inst & reason)
 				{
 					detailk("Success 2: vpu-4k-d2 vp9/hevc operation!! \n");
 				#if defined(FORCED_ERROR)
@@ -679,7 +681,7 @@ static int _vmgr_4k_d2_process(vputype type, int cmd, long pHandle, void* args)
 				arg->gsV4kd2DecInit.m_Iounmap            = (void  (*)(void*))vetc_iounmap;
 				arg->gsV4kd2DecInit.m_reg_read           = (unsigned int (*)(void*, unsigned int))vetc_reg_read;
 				arg->gsV4kd2DecInit.m_reg_write          = (void (*)(void*, unsigned int, unsigned int))vetc_reg_write;
-				arg->gsV4kd2DecInit.m_Usleep             = (void (*)(unsigned int, unsigned int))usleep_range;
+				arg->gsV4kd2DecInit.m_Usleep             = (void (*)(unsigned int, unsigned int))vetc_usleep;
 
 				vmgr_4k_d2_data.check_interrupt_detection = 1;
 
@@ -1078,8 +1080,8 @@ static void _vmgr_4k_d2_wait_process(int wait_ms)
 
 static int _vmgr_4k_d2_external_all_close(int wait_ms)
 {
-	int type = 0;
-	int max_count = 0;
+	int type;
+	int max_count;
 	int ret;
 
 	for (type = 0; type < VPU_4K_D2_MAX; type++)
@@ -1572,6 +1574,7 @@ static int _vmgr_4k_d2_operation(void)
 			vmgr_4k_d2_data.cmd_processing = 0;
 			return 0;
 		}
+
 		*(oper_data->vpu_result) |= RET2;
 
 		dprintk("_vmgr_4k_d2_operation [%d] :: cmd = 0x%x, vmgr_4k_d2_data.cmd_queued(%d) \n", oper_data->type, oper_data->cmd_type, vmgr_4k_d2_data.cmd_queued);
@@ -1610,7 +1613,7 @@ static int _vmgr_4k_d2_operation(void)
 		{
 			if (oper_data->comm_data != NULL && atomic_read(&vmgr_4k_d2_data.dev_opened) != 0)
 			{
-				oper_data->comm_data->count += 1;
+				oper_data->comm_data->count++;
 				if (oper_data->comm_data->count != 1)
 				{
 					dprintk("poll wakeup count = %d :: type(0x%x) cmd(0x%x) \n",
@@ -1723,9 +1726,9 @@ static struct miscdevice _vmgr_4k_d2_misc_device =
 int vmgr_4k_d2_probe(struct platform_device* pdev)
 {
 	int ret;
-	int type = 0;
+	int type;
 	unsigned long int_flags;
-	struct resource* res = NULL;
+	struct resource* resource = NULL;
 
 	if (pdev->dev.of_node == NULL)
 	{
@@ -1747,16 +1750,16 @@ int vmgr_4k_d2_probe(struct platform_device* pdev)
 
 	vmgr_4k_d2_data.irq = platform_get_irq(pdev, 0);
 	vmgr_4k_d2_data.nOpened_Count = 0;
-	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
-	if (!res)
+	resource = platform_get_resource(pdev, IORESOURCE_MEM, 0);
+	if (!resource)
 	{
 		dev_err(&pdev->dev, "missing phy memory resource\n");
 		return -1;
 	}
-	res->end += 1;
+	resource->end += 1;
 
-	vmgr_4k_d2_data.base_addr = devm_ioremap(&pdev->dev, res->start, res->end - res->start);
-	dprintk("============> VPU-4K-D2 VP9/HEVC base address [0x%x -> 0x%p], irq num [%d] \n", res->start, vmgr_4k_d2_data.base_addr, vmgr_4k_d2_data.irq - 32);
+	vmgr_4k_d2_data.base_addr = devm_ioremap(&pdev->dev, resource->start, resource->end - resource->start);
+	dprintk("============> VPU-4K-D2 VP9/HEVC base address [0x%x -> 0x%p], irq num [%d] \n", resource->start, vmgr_4k_d2_data.base_addr, vmgr_4k_d2_data.irq - 32);
 
 	vmgr_4k_d2_get_clock(pdev->dev.of_node);
 	vmgr_4k_d2_get_reset(pdev->dev.of_node);
@@ -1771,7 +1774,8 @@ int vmgr_4k_d2_probe(struct platform_device* pdev)
 	INIT_LIST_HEAD(&vmgr_4k_d2_data.comm_data.main_list);
 	INIT_LIST_HEAD(&vmgr_4k_d2_data.comm_data.wait_list);
 
-	if (0 > (ret = vmem_config()))
+	ret = vmem_config();
+	if (ret < 0)
 	{
 		err("unable to configure memory for VPU!! %d \n", ret);
 		return -ENOMEM;

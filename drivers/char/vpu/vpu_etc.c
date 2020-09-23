@@ -5,6 +5,7 @@
 
 #include "vpu_etc.h"
 #include <asm/io.h>
+#include <linux/delay.h>
 
 #define vpu_writel writel
 #define vpu_readl readl
@@ -36,19 +37,19 @@ void vetc_reg_write(void* base_addr, unsigned int offset, unsigned int data)
 }
 EXPORT_SYMBOL(vetc_reg_write);
 
+#undef DEBUG_DUMP
 void vetc_dump_reg_all(char* base_addr, unsigned char* str)
 {
-	unsigned int j;
-
-return; // disable temporarily
-//mem r 0xF0700000 w 0x200
-	j = 0;
+#ifdef DEBUG_DUMP
+	unsigned int i = 0;
 	printk("%s \n", str);
-	while (j < 0x200)
+	while (i < 0x200)
 	{
-		printk("0x%8p : 0x%8x 0x%8x 0x%8x 0x%8x \n", base_addr + j, vetc_reg_read(base_addr, j), vetc_reg_read(base_addr, j+0x4), vetc_reg_read(base_addr, j+0x8), vetc_reg_read(base_addr, j+0xC));
-		j+=0x10;
+		printk("0x%8p : 0x%8x 0x%8x 0x%8x 0x%8x \n", base_addr + i, vetc_reg_read(base_addr, i), \
+					vetc_reg_read(base_addr, i+0x4), vetc_reg_read(base_addr, i+0x8), vetc_reg_read(base_addr, i+0xC));
+		i+=0x10;
 	}
+#endif
 } EXPORT_SYMBOL(vetc_dump_reg_all);
 
 void vetc_reg_init(char* base_addr)
@@ -64,10 +65,12 @@ void vetc_reg_init(char* base_addr)
 		i += 0x10;
 	}
 
-#if 0 // To confirm if value are initialized!!
+ // To confirm if value are initialized!!
+#ifdef DEBUG_DUMP
 	while (i < 0x200)
 	{
-		printk("0x%8x : 0x%8x 0x%8x 0x%8x 0x%8x \n", base_addr + i, vetc_reg_read(base_addr, i), vetc_reg_read(base_addr, i+0x4), vetc_reg_read(base_addr, i+0x8), vetc_reg_read(base_addr, i+0xC));
+		printk("0x%8x : 0x%8x 0x%8x 0x%8x 0x%8x \n", base_addr + i, vetc_reg_read(base_addr, i), \
+				vetc_reg_read(base_addr, i+0x4), vetc_reg_read(base_addr, i+0x8), vetc_reg_read(base_addr, i+0xC));
 		i+=0x10;
 	}
 #endif
@@ -115,3 +118,9 @@ void vetc_memset(void* ptr, int value, unsigned  num, unsigned int type)
 		memset(ptr, value, num);
 }
 EXPORT_SYMBOL(vetc_memset);
+
+void vetc_usleep(unsigned int min, unsigned int max)
+{
+	usleep_range((unsigned long)min, (unsigned long)max);
+}
+EXPORT_SYMBOL(vetc_usleep);

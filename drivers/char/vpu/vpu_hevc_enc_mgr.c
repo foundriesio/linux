@@ -26,7 +26,7 @@
 #include "vpu_hevc_enc_mgr.h"
 
 static unsigned int cntInt_vpu_he = 0;
-static volatile void __iomem *vidsys_conf_reg;
+static volatile void __iomem* vidsys_conf_reg;
 
 // Control only once!!
 static mgr_data_t vmgr_hevc_enc_data;
@@ -71,9 +71,11 @@ VpuList_t* vmgr_hevc_enc_list_manager(VpuList_t* args, unsigned int cmd)
 		break;
 
 		case LIST_IS_EMPTY:
-		if (list_empty(&vmgr_hevc_enc_data.comm_data.main_list))
 		{
-			ret = (VpuList_t*) 0x1234;
+			if (list_empty(&vmgr_hevc_enc_data.comm_data.main_list))
+			{
+				ret = (VpuList_t*) 0x1234;
+			}
 		}
 		break;
 
@@ -496,7 +498,7 @@ static int _vmgr_hevc_enc_process(vputype type, int cmd, long pHandle, void* arg
 				arg->encInit.m_Iounmap		= (void (*) (void*)) vetc_iounmap;
 				arg->encInit.m_reg_read		= (unsigned int (*)(void*, unsigned int)) vetc_reg_read;
 				arg->encInit.m_reg_write	= (void (*)(void*, unsigned int, unsigned int)) vetc_reg_write;
-				arg->encInit.m_Usleep		= (void (*)(unsigned int, unsigned int))usleep_range;
+				arg->encInit.m_Usleep		= (void (*)(unsigned int, unsigned int))vetc_usleep;
 
 				V_DBG(DEBUG_ENC_SEQUENCE, "Enc :: Init In =>Memcpy(0x%px),Memset(0x%px),Interrupt(0x%px),"
 					"remap(0x%px),unmap(0x%px),read(0x%px),write(0x%px),sleep(0x%px)||workbuff(0x%px/0x%px),Reg(0x%px/0x%px),"
@@ -714,6 +716,7 @@ static int _vmgr_hevc_enc_operation(void)
 			vmgr_hevc_enc_data.cmd_processing = 0;
 			return 0;
 		}
+
 		*(oper_data->vpu_result) |= RET2;
 
 		V_DBG(DEBUG_ENC_THREAD, "[%d] :: cmd = 0x%x, vmgr_hevc_enc_data.cmd_queued (%d)",
@@ -759,7 +762,7 @@ static int _vmgr_hevc_enc_operation(void)
 		{
 			if (oper_data->comm_data != NULL && atomic_read(&vmgr_hevc_enc_data.dev_opened) != 0)
 			{
-				oper_data->comm_data->count += 1;
+				oper_data->comm_data->count++;
 				if (oper_data->comm_data->count != 1)
 				{
 					V_DBG(DEBUG_ENC_THREAD, "polling wakeup count = %d :: type(0x%x) cmd(0x%x)",
@@ -1222,7 +1225,7 @@ int vmgr_hevc_enc_probe(struct platform_device* pdev)
 	int ret;
 	int type = 0;
 	unsigned long int_flags;
-	struct resource* res = NULL;
+	struct resource* resource = NULL;
 
 	if (pdev->dev.of_node == NULL)
 	{
@@ -1244,25 +1247,30 @@ int vmgr_hevc_enc_probe(struct platform_device* pdev)
 	atomic_set(&vmgr_hevc_enc_data.dev_file_opened, 0);
 #endif
 
-	vmgr_hevc_enc_data.irq = platform_get_irq(pdev, 0);
-	if (vmgr_hevc_enc_data.irq < 0)
+	//Fetching IRQ number for device
 	{
-		dev_err(&pdev->dev, "could not get IRQ");
-		return vmgr_hevc_enc_data.irq;
+		int irq = platform_get_irq(pdev, 0);
+		if (irq < 0)
+		{
+			dev_err(&pdev->dev, "could not get IRQ");
+			return irq;
+		}
+
+		vmgr_hevc_enc_data.irq = (unsigned int)irq;
 	}
 
 	vmgr_hevc_enc_data.nOpened_Count = 0;
-	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
-	if (!res)
+	resource = platform_get_resource(pdev, IORESOURCE_MEM, 0);
+	if (!resource)
 	{
 		V_DBG(DEBUG_VPU_ERROR, "failed to get phy memory resourcea");
 		return -1;
 	}
-	res->end += 1;
+	resource->end += 1;
 
-	vmgr_hevc_enc_data.base_addr = devm_ioremap(&pdev->dev, res->start, res->end-res->start);
+	vmgr_hevc_enc_data.base_addr = devm_ioremap(&pdev->dev, resource->start, (resource->end - resource->start));
 	V_DBG(DEBUG_ENC_PROBE, "VPU-HEVC-ENC base address [0x%x -> 0x%px], resource size [%d], irq num [%d]",
-		res->start, vmgr_hevc_enc_data.base_addr, res->end-res->start, vmgr_hevc_enc_data.irq-32);
+		resource->start, vmgr_hevc_enc_data.base_addr, (resource->end - resource->start), (vmgr_hevc_enc_data.irq - 32));
 
 	vidsys_conf_reg = (volatile void __iomem*)of_iomap(pdev->dev.of_node, 1);
 	if (vidsys_conf_reg == NULL)
@@ -1288,7 +1296,8 @@ int vmgr_hevc_enc_probe(struct platform_device* pdev)
 	INIT_LIST_HEAD(&vmgr_hevc_enc_data.comm_data.main_list);
 	INIT_LIST_HEAD(&vmgr_hevc_enc_data.comm_data.wait_list);
 
-	if (0 > (ret = vmem_config()))
+	ret = vmem_config();
+	if (ret < 0)
 	{
 		V_DBG(DEBUG_VPU_ERROR, "unable to configure memory for VPU HEVC ENC!! %d", ret);
 		return -ENOMEM;

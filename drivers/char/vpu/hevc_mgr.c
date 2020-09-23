@@ -372,9 +372,10 @@ static int _hmgr_internal_handler(void)
 			ret = wait_event_interruptible_timeout(hmgr_data.oper_wq, atomic_read(&hmgr_data.oper_intr) > 0, msecs_to_jiffies(timeout));
 
 			if (hmgr_is_loadable() > 0)
+			{
 				ret_code = RETCODE_CODEC_EXIT;
-			else
-			if (atomic_read(&hmgr_data.oper_intr) > 0)
+			}
+			else if (atomic_read(&hmgr_data.oper_intr) > 0)
 			{
 				detailk("Success 2: hevc operation!! \n");
 #if defined(FORCED_ERROR)
@@ -411,6 +412,7 @@ static int _hmgr_internal_handler(void)
 static int _hmgr_process(vputype type, int cmd, long pHandle, void* args)
 {
 	int ret = 0;
+
 #ifdef CONFIG_VPU_TIME_MEASUREMENT
 	struct timeval t1 , t2;
 	int time_gap_ms = 0;
@@ -1275,7 +1277,7 @@ static int _hmgr_operation(void)
 		{
 			if (oper_data->comm_data != NULL && atomic_read(&hmgr_data.dev_opened) != 0)
 			{
-				oper_data->comm_data->count += 1;
+				oper_data->comm_data->count++;
 				if (oper_data->comm_data->count != 1)
 				{
 					dprintk("poll wakeup count = %d :: type(0x%x) cmd(0x%x) \n",
@@ -1389,7 +1391,7 @@ int hmgr_probe(struct platform_device* pdev)
 	int ret;
 	int type = 0;
 	unsigned long int_flags;
-	struct resource* res = NULL;
+	struct resource* resource = NULL;
 
 	if (pdev->dev.of_node == NULL)
 	{
@@ -1411,16 +1413,16 @@ int hmgr_probe(struct platform_device* pdev)
 
 	hmgr_data.irq = platform_get_irq(pdev, 0);
 	hmgr_data.nOpened_Count = 0;
-	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
-	if (!res)
+	resource = platform_get_resource(pdev, IORESOURCE_MEM, 0);
+	if (!resource)
 	{
 		dev_err(&pdev->dev, "missing phy memory resource\n");
 		return -1;
 	}
-	res->end += 1;
+	resource->end += 1;
 
-	hmgr_data.base_addr = devm_ioremap(&pdev->dev, res->start, res->end - res->start);
-	dprintk("============> HEVC base address [0x%x -> 0x%p], irq num [%d] \n", res->start, hmgr_data.base_addr, hmgr_data.irq - 32);
+	hmgr_data.base_addr = devm_ioremap(&pdev->dev, resource->start, (resource->end - resource->start));
+	dprintk("============> HEVC base address [0x%x -> 0x%p], irq num [%d] \n", resource->start, hmgr_data.base_addr, (hmgr_data.irq - 32));
 
 	hmgr_get_clock(pdev->dev.of_node);
 	hmgr_get_reset(pdev->dev.of_node);
@@ -1435,7 +1437,8 @@ int hmgr_probe(struct platform_device* pdev)
 	INIT_LIST_HEAD(&hmgr_data.comm_data.main_list);
 	INIT_LIST_HEAD(&hmgr_data.comm_data.wait_list);
 
-	if (0 > (ret = vmem_config()))
+	ret = vmem_config();
+	if (ret < 0)
 	{
 		err("unable to configure memory for VPU!! %d \n", ret);
 		return -ENOMEM;

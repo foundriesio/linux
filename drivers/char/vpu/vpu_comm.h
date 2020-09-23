@@ -133,8 +133,8 @@ typedef struct VpuList
 	int cmd_type;      //vpu command
 	long handle;
 	void* args;        //vpu argument!!
-	vpu_comm_data_t* comm_data;
 
+	vpu_comm_data_t* comm_data;
 	int* vpu_result;
 } VpuList_t;
 
@@ -163,16 +163,18 @@ typedef struct TimeInfo
 
 typedef struct _mgr_data_t
 {
-//IRQ number and IP base
+	//IRQ number and IP base
 	unsigned int irq;
-	void __iomem *base_addr;
+	void __iomem* base_addr;
 	int check_interrupt_detection;
 	int closed[VPU_MAX];
 	long handle[VPU_MAX];
 	int fileplay_mode[VPU_MAX];
+
 #if defined(CONFIG_PM)
 	VpuList_t vList[VPU_MAX];
 #endif
+
 	Mgr_CommData_t comm_data;
 
 	atomic_t oper_intr;
@@ -180,6 +182,7 @@ typedef struct _mgr_data_t
 
 	MEM_ALLOC_INFO_t work_memInfo;
 	atomic_t dev_opened;
+
 #ifdef USE_DEV_OPEN_CLOSE_IOCTL
 	atomic_t dev_file_opened;
 #endif
@@ -194,7 +197,7 @@ typedef struct _mgr_data_t
 	int current_cmd;
 	unsigned int szFrame_Len;
 	unsigned int nDecode_Cmd;
-	unsigned int nOpened_Count; //To check total aging count!!
+	unsigned int nOpened_Count;
 	unsigned int current_resolution;
 
 	VDEC_RENDERED_BUFFER_t gsRender_fb_info;
@@ -204,6 +207,7 @@ typedef struct _mgr_data_t
 #ifdef CONFIG_VPU_TIME_MEASUREMENT
 	TimeInfo_t iTime[VPU_MAX];
 #endif
+
 	bool bVpu_already_proc_force_closed;
 } mgr_data_t;
 

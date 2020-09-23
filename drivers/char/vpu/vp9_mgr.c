@@ -253,7 +253,6 @@ static int _vp9mgr_process(vputype type, int cmd, int pHandle, void* args)
 				}
 				else
 				{
-					//To free memory!!
 					vp9mgr_set_close(type, 0, 0);
 					vp9mgr_set_close(type, 1, 1);
 				}
@@ -1095,7 +1094,7 @@ static int _vp9mgr_operation(void)
 		{
 			if (oper_data->comm_data != NULL && atomic_read(&vp9mgr_data.dev_opened) != 0)
 			{
-				oper_data->comm_data->count += 1;
+				oper_data->comm_data->count++;
 				if (oper_data->comm_data->count != 1)
 				{
 					dprintk("poll wakeup count = %d :: type(0x%x) cmd(0x%x) \n",
@@ -1210,7 +1209,7 @@ int vp9mgr_probe(struct platform_device* pdev)
 	int ret;
 	int type = 0;
 	unsigned long int_flags;
-	struct resource* res = NULL;
+	struct resource* resource = NULL;
 
 	if (pdev->dev.of_node == NULL)
 	{
@@ -1232,16 +1231,16 @@ int vp9mgr_probe(struct platform_device* pdev)
 
 	vp9mgr_data.irq = platform_get_irq(pdev, 0);
 	vp9mgr_data.nOpened_Count = 0;
-	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
-	if (!res)
+	resource = platform_get_resource(pdev, IORESOURCE_MEM, 0);
+	if (!resource)
 	{
 		dev_err(&pdev->dev, "missing phy memory resource\n");
 		return -1;
 	}
-	res->end += 1;
+	resource->end += 1;
 
-	vp9mgr_data.base_addr = devm_ioremap(&pdev->dev, res->start, res->end-res->start);
-	dprintk("============> VP9 base address [0x%x -> 0x%p], irq num [%d] \n", res->start, vp9mgr_data.base_addr, vp9mgr_data.irq - 32);
+	vp9mgr_data.base_addr = devm_ioremap(&pdev->dev, resource->start, (resource->end - resource->start));
+	dprintk("============> VP9 base address [0x%x -> 0x%p], irq num [%d] \n", resource->start, vp9mgr_data.base_addr, vp9mgr_data.irq - 32);
 
 	vp9mgr_get_clock(pdev->dev.of_node);
 	vp9mgr_get_reset(pdev->dev.of_node);
@@ -1256,7 +1255,8 @@ int vp9mgr_probe(struct platform_device* pdev)
 	INIT_LIST_HEAD(&vp9mgr_data.comm_data.main_list);
 	INIT_LIST_HEAD(&vp9mgr_data.comm_data.wait_list);
 
-	if (0 > (ret = vmem_config()))
+	ret = vmem_config();
+	if (ret < 0)
 	{
 		err("unable to configure memory for VPU!! %d \n", ret);
 		return -ENOMEM;

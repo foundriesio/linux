@@ -79,7 +79,7 @@ static void _venc_inter_add_list(vpu_encoder_data* vdata, int cmd, void* args)
 
 static void _venc_init_list(vpu_encoder_data* vdata)
 {
-	int i = 0;
+	int i;
 
 	for (i=0; i<LIST_MAX; i++)
 	{
@@ -553,7 +553,7 @@ int venc_mmap(struct file* filp, struct vm_area_struct* vma)
 	return 0;
 }
 
-unsigned int venc_poll(struct file* filp, poll_table *wait)
+unsigned int venc_poll(struct file* filp, poll_table* wait)
 {
 	struct miscdevice* misc = (struct miscdevice*)filp->private_data;
 	vpu_encoder_data* vdata = dev_get_drvdata(misc->parent);

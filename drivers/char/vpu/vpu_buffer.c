@@ -1154,7 +1154,7 @@ void _vmem_free_dedicated_buffer(void)
 	}
 #endif
 
-#if DEFINED_CONFIG_VENC_CNT_2345
+#if DEFINED_CONFIG_VENC_CNT_12345
 	for (type = 0; type < VPU_ENC_MAX_CNT; type++)
 	{
 		if (gsVpuEncSeqheader_memInfo[type].kernel_remap_addr != 0)
@@ -1271,7 +1271,7 @@ static phys_addr_t _vmem_request_seqheader_buff_phyaddr(int type, void** remappe
 	dprintk("request seqheader type[%d]-enc_type[%d] \n", type, enc_type);
 	if (enc_type < 0 || enc_type >= VPU_ENC_MAX_CNT)
 		return 0;
-#if DEFINED_CONFIG_VENC_CNT_2345
+#if DEFINED_CONFIG_VENC_CNT_12345
 	*remapped_addr = gsVpuEncSeqheader_memInfo[enc_type].kernel_remap_addr;
 	*request_size = gsVpuEncSeqheader_memInfo[enc_type].request_size;
 
@@ -1580,7 +1580,7 @@ int _vmem_deinit_memory_info(void)
 
 int _vmem_is_cma_allocated_virt_region(unsigned int start_virtaddr, unsigned int length)
 {
-	int type = 0, i = 0;
+	int type;
 	void* cma_virt_address = NULL;
 	unsigned int end_virtaddr = start_virtaddr + length -1;
 
@@ -1588,6 +1588,7 @@ int _vmem_is_cma_allocated_virt_region(unsigned int start_virtaddr, unsigned int
 	{
 		if (vmem_allocated_count[type] > 0)
 		{
+			int i;
 			for (i=vmem_allocated_count[type]; i>0; i--)
 			{
 				if (vmem_alloc_info[type][i-1].kernel_remap_addr != 0)
@@ -1859,7 +1860,7 @@ int vmem_proc_free_memory(vputype type)
 
 unsigned int vmem_get_free_memory(vputype type)
 {
-	unsigned int szFreeMem = 0;
+	unsigned int szFreeMem;
 
 	if (type == VPU_DEC)
 	{
@@ -1943,12 +1944,12 @@ unsigned int vmem_get_freemem_size(vputype type)
 		dprintk("type[%d] mem info for vpu :: remain(0x%x : 0x%x : 0x%x), used mem(0x%x/0x%x, 0x%x : 0x%x/0x%x : 0x%x) \n",
 					type,
 					sz_remained_mem,
-#if CONFIG_VDEC_CNT_5
+#if DEFINED_CONFIG_VDEC_CNT_345
 					sz_ext_remained_mem,
 #else
 					0,
 #endif
-#if defined(CONFIG_VDEC_CNT_345)
+#if defined(CONFIG_VDEC_CNT_5)
 					sz_ext2_remained_mem,
 #else
 					0,
@@ -2083,10 +2084,10 @@ void _vmem_config_zero(void)
 
 int vmem_init(void)
 {
+	int ret = 0;
+
 	mutex_lock(&mem_mutex);
 	{
-		int ret = 0;
-
 		if ((vmgr_opened() == 0)
 #ifdef CONFIG_SUPPORT_TCC_JPU
 			&& (jmgr_opened() == 0)
@@ -2157,16 +2158,13 @@ Success:
 		}
 
 		mutex_unlock(&mem_mutex);
-		return ret;
 	}
 
-	return 0;
+	return ret;
 }
 
 int vmem_config(void)
 {
-	int ret = 0;
-
 	if (gMemConfigDone == 0)
 	{
 		atomic_set(&cntMem_Reference, 0);
@@ -2175,7 +2173,7 @@ int vmem_config(void)
 		gMemConfigDone = 1;
 	}
 
-	return ret;
+	return 0;
 }
 
 void vmem_deinit(void)
@@ -2277,7 +2275,7 @@ void vdec_clear_instance(int nIdx)
 {
 	mutex_lock(&mem_mutex);
 	{
-		if (nIdx >= 0)
+		if (nIdx >= 0 && nIdx < VPU_INST_MAX)
 			vdec_used[nIdx] = 0;
 		else
 			err("failed to clear instance for decoder(%d) \n", nIdx);
@@ -2347,7 +2345,7 @@ void venc_clear_instance(int nIdx)
 	{
 		V_DBG(DEBUG_ENC_INSTANCE, "Instance is cleared #%d", nIdx);
 
-		if (nIdx >= 0)
+		if (nIdx >= 0 && nIdx < VPU_INST_MAX)
 			venc_used[nIdx] = 0;
 		else
 			err("failed to clear instance for encoder(%d) \n", nIdx);

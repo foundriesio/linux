@@ -358,7 +358,9 @@ static int _jmgr_internal_handler(void)
 			ret = wait_event_interruptible_timeout(jmgr_data.oper_wq, atomic_read(&jmgr_data.oper_intr) > 0, msecs_to_jiffies(timeout));
 
 			if (jmgr_is_loadable() > 0)
+			{
 				ret_code = RETCODE_CODEC_EXIT;
+			}
 			else if (atomic_read(&jmgr_data.oper_intr) > 0)
 			{
 				detailk("Success 2: jpu operation!! \n");
@@ -453,6 +455,7 @@ static int _jmgr_process(vputype type, int cmd, long pHandle, void* args)
 			{
 				JDEC_INIT_t* arg = (JDEC_INIT_t*)args;
 				jmgr_data.handle[type] = 0x00;
+				int retDec;
 
 				arg->gsJpuDecInit.m_RegBaseVirtualAddr  = (codec_addr_t)jmgr_data.base_addr;
 				arg->gsJpuDecInit.m_Memcpy              = (void* (*) (void*, const void*, unsigned int, unsigned int))vetc_memcpy;
@@ -466,6 +469,7 @@ static int _jmgr_process(vputype type, int cmd, long pHandle, void* args)
 
 				gs_fpTccJpuDec = (int (*) (int Op, codec_handle_t* pHandle, void* pParam1, void* pParam2))tcc_jpu_dec;
 				dprintk("Dec :: loading JPU ... \n");
+
 			#if defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC901X)
 				if (arg->gsJpuDecInit.m_uiDecOptFlags & (1<<30))
 				{
@@ -489,7 +493,7 @@ static int _jmgr_process(vputype type, int cmd, long pHandle, void* args)
 							arg->gsJpuDecInit.m_iRot_angle, arg->gsJpuDecInit.m_iRot_enalbe,
 							arg->gsJpuDecInit.m_iMirrordir, arg->gsJpuDecInit.m_iMirror_enable, arg->gsJpuDecInit.m_bCbCrInterleaveMode);
 
-				ret = gs_fpTccJpuDec(JPU_DEC_INIT, (void*)(&arg->gsJpuDecHandle), (void*)(&arg->gsJpuDecInit), (void*)(&arg->gsJpuDecInitialInfo));
+				retDec = gs_fpTccJpuDec(JPU_DEC_INIT, (void*)(&arg->gsJpuDecHandle), (void*)(&arg->gsJpuDecInit), (void*)(&arg->gsJpuDecInitialInfo));
 				jmgr_data.current_resolution = arg->gsJpuDecInitialInfo.m_iPicWidth * arg->gsJpuDecInitialInfo.m_iPicHeight;
 			#else
 				dprintk("Dec :: Init In => Handle(0x%x) Reg(0x%x/0x%x), Stream(0x%x/0x%x, 0x%x) Interleave: %d \n", arg->gsJpuDecHandle,
@@ -497,19 +501,19 @@ static int _jmgr_process(vputype type, int cmd, long pHandle, void* args)
 							arg->gsJpuDecInit.m_BitstreamBufAddr[PA], arg->gsJpuDecInit.m_BitstreamBufAddr[VA],
 							arg->gsJpuDecInit.m_iBitstreamBufSize, arg->gsJpuDecInit.m_iCbCrInterleaveMode);
 
-				ret = gs_fpTccJpuDec(JPU_DEC_INIT, (void*)(&arg->gsJpuDecHandle), (void*)(&arg->gsJpuDecInit), (void*)NULL);
+				retDec = gs_fpTccJpuDec(JPU_DEC_INIT, (void*)(&arg->gsJpuDecHandle), (void*)(&arg->gsJpuDecInit), (void*)NULL);
 			#endif
 
-				if (ret != RETCODE_SUCCESS)
+				if (retDec != RETCODE_SUCCESS)
 				{
-					dprintk("Dec :: Init Done with ret(0x%x)\n", ret);
-					if (ret != JPG_RET_CODEC_EXIT)
+					dprintk("Dec :: Init Done with ret(0x%x)\n", retDec);
+					if (retDec != JPG_RET_CODEC_EXIT)
 					{
 						vetc_dump_reg_all(jmgr_data.base_addr, "init failure");
 					}
 				}
 
-				ret = _jmgr_convert_returnType(ret);
+				ret = _jmgr_convert_returnType(retDec);
 				if (ret != RETCODE_CODEC_EXIT && arg->gsJpuDecHandle != 0)
 				{
 					jmgr_data.handle[type] = arg->gsJpuDecHandle;
@@ -518,7 +522,6 @@ static int _jmgr_process(vputype type, int cmd, long pHandle, void* args)
 				}
 				else
 				{
-					//To free memory!!
 					jmgr_set_close(type, 0, 0);
 					jmgr_set_close(type, 1, 1);
 				}
@@ -538,6 +541,7 @@ static int _jmgr_process(vputype type, int cmd, long pHandle, void* args)
 			{
 				int iSize;
 				void* arg = args;
+				int retDec;
 
 				jpu_dec_initial_info_t* gsJpuDecInitialInfo = jmgr_data.bDiminishInputCopy
 					? &((JPU_DECODE_t* )arg)->gsJpuDecInitialInfo
@@ -550,13 +554,13 @@ static int _jmgr_process(vputype type, int cmd, long pHandle, void* args)
 				jmgr_data.check_interrupt_detection = 1;
 				jmgr_data.nDecode_Cmd = 0;
 				dprintk("Dec :: JPU_DEC_SEQ_HEADER in :: Handle(0x%x) size(%d) \n", pHandle, iSize);
-				ret = gs_fpTccJpuDec(JPU_DEC_SEQ_HEADER,
+				retDec = gs_fpTccJpuDec(JPU_DEC_SEQ_HEADER,
 									(codec_handle_t*)&pHandle,
 									(jmgr_data.bDiminishInputCopy
 										? (void*)(&((JPU_DECODE_t*)arg)->gsJpuDecInput) : (void*)iSize),
 									(void*)gsJpuDecInitialInfo);
 
-				ret = _jmgr_convert_returnType(ret);
+				ret = _jmgr_convert_returnType(retDec);
 				dprintk("Dec :: JPU_DEC_SEQ_HEADER out 0x%x :: res info(%d x %d), src_format(%d), Error_reason(%d), minFB(%d) \n",
 						ret, gsJpuDecInitialInfo->m_iPicWidth,
 						gsJpuDecInitialInfo->m_iPicHeight, gsJpuDecInitialInfo->m_iSourceFormat,
@@ -575,6 +579,7 @@ static int _jmgr_process(vputype type, int cmd, long pHandle, void* args)
 			case VPU_DEC_REG_FRAME_BUFFER_KERNEL:
 			{
 				JPU_SET_BUFFER_t* arg = (JPU_SET_BUFFER_t*)args;
+				int retDec;
 
 #if defined(JPU_C5)
 				dprintk("Dec :: JPU_DEC_REG_FRAME_BUFFER in :: scale[%d], addr[0x%x/0x%x] \n", arg->gsJpuDecBuffer.m_iJPGScaleRatio,
@@ -584,8 +589,8 @@ static int _jmgr_process(vputype type, int cmd, long pHandle, void* args)
 							arg->gsJpuDecBuffer.m_FrameBufferStartAddr[PA], arg->gsJpuDecBuffer.m_FrameBufferStartAddr[VA], arg->gsJpuDecBuffer.m_Reserved[8]);
 #endif
 
-				ret = gs_fpTccJpuDec(JPU_DEC_REG_FRAME_BUFFER, (codec_handle_t*)&pHandle, (void*)(&arg->gsJpuDecBuffer), (void*)NULL);
-				ret = _jmgr_convert_returnType(ret);
+				retDec = gs_fpTccJpuDec(JPU_DEC_REG_FRAME_BUFFER, (codec_handle_t*)&pHandle, (void*)(&arg->gsJpuDecBuffer), (void*)NULL);
+				ret = _jmgr_convert_returnType(retDec);
 				dprintk("Dec :: JPU_DEC_REG_FRAME_BUFFER out \n");
 			}
 			break;
@@ -594,6 +599,7 @@ static int _jmgr_process(vputype type, int cmd, long pHandle, void* args)
 			case VPU_DEC_DECODE_KERNEL:
 			{
 				JPU_DECODE_t* arg = (JPU_DECODE_t*)args;
+				int retDec;
 
 #ifdef CONFIG_VPU_TIME_MEASUREMENT
 				do_gettimeofday(&t1);
@@ -608,8 +614,8 @@ static int _jmgr_process(vputype type, int cmd, long pHandle, void* args)
 						arg->gsJpuDecInput.m_iLooptogle);
 #endif
 				jmgr_data.check_interrupt_detection = 1;
-				ret = gs_fpTccJpuDec(JPU_DEC_DECODE, (codec_handle_t*)&pHandle, (void*)(&arg->gsJpuDecInput), (void*)(&arg->gsJpuDecOutput));
-				ret = _jmgr_convert_returnType(ret);
+				retDec = gs_fpTccJpuDec(JPU_DEC_DECODE, (codec_handle_t*)&pHandle, (void*)(&arg->gsJpuDecInput), (void*)(&arg->gsJpuDecOutput));
+				ret = _jmgr_convert_returnType(retDec);
 
 				dprintk("Dec :: Dec Out => %d x %d, status(%d), Consumed(%d), Err(%d) \n", arg->gsJpuDecOutput.m_DecOutInfo.m_iWidth, arg->gsJpuDecOutput.m_DecOutInfo.m_iHeight,
 									arg->gsJpuDecOutput.m_DecOutInfo.m_iDecodingStatus, arg->gsJpuDecOutput.m_DecOutInfo.m_iConsumedBytes,
@@ -634,9 +640,10 @@ static int _jmgr_process(vputype type, int cmd, long pHandle, void* args)
 			case VPU_DEC_CLOSE:
 			case VPU_DEC_CLOSE_KERNEL:
 			{
+				int retDec;
 				jmgr_data.check_interrupt_detection = 1;
-				ret = gs_fpTccJpuDec(JPU_DEC_CLOSE, (codec_handle_t*)&pHandle, (void*)NULL, (void*)NULL);
-				ret = _jmgr_convert_returnType(ret);
+				retDec = gs_fpTccJpuDec(JPU_DEC_CLOSE, (codec_handle_t*)&pHandle, (void*)NULL, (void*)NULL);
+				ret = _jmgr_convert_returnType(retDec);
 				dprintk("Dec :: JPU_DEC_CLOSED !! \n");
 
 				jmgr_set_close(type, 1, 1);
@@ -647,10 +654,11 @@ static int _jmgr_process(vputype type, int cmd, long pHandle, void* args)
 			case VPU_CODEC_GET_VERSION_KERNEL:
 			{
 				JPU_GET_VERSION_t* arg = (JPU_GET_VERSION_t*)args;
+				int retDec;
 				jmgr_data.check_interrupt_detection = 1;
 
-				ret = gs_fpTccJpuDec(JPU_CODEC_GET_VERSION, (codec_handle_t*)&pHandle, arg->pszVersion, arg->pszBuildData);
-				ret = _jmgr_convert_returnType(ret);
+				retDec = gs_fpTccJpuDec(JPU_CODEC_GET_VERSION, (codec_handle_t*)&pHandle, arg->pszVersion, arg->pszBuildData);
+				ret = _jmgr_convert_returnType(retDec);
 				dprintk("Dec :: version : %s, build : %s\n", arg->pszVersion, arg->pszBuildData);
 			}
 			break;
@@ -671,6 +679,7 @@ static int _jmgr_process(vputype type, int cmd, long pHandle, void* args)
 			case VPU_ENC_INIT:
 			{
 				JENC_INIT_t* arg = (JENC_INIT_t*)args;
+				int retEnc;
 				jmgr_data.handle[type] = 0x00;
 
 				arg->gsJpuEncInit.m_RegBaseVirtualAddr  = (codec_addr_t)jmgr_data.base_addr;
@@ -697,17 +706,17 @@ static int _jmgr_process(vputype type, int cmd, long pHandle, void* args)
 				jmgr_data.szFrame_Len = arg->gsJpuEncInit.m_iPicWidth * arg->gsJpuEncInit.m_iPicHeight * 3 / 2;
 				jmgr_data.current_resolution = arg->gsJpuEncInit.m_iPicWidth * arg->gsJpuEncInit.m_iPicHeight;
 
-				ret = tcc_jpu_enc(JPU_ENC_INIT, (void*)(&arg->gsJpuEncHandle), (void*)(&arg->gsJpuEncInit), (void*)NULL);
-				if (ret != RETCODE_SUCCESS)
+				retEnc = tcc_jpu_enc(JPU_ENC_INIT, (void*)(&arg->gsJpuEncHandle), (void*)(&arg->gsJpuEncInit), (void*)NULL);
+				if (retEnc != RETCODE_SUCCESS)
 				{
-					printk("## Enc :: Init Done with ret(0x%x)\n", ret);
-					if (ret != RETCODE_CODEC_EXIT)
+					printk("## Enc :: Init Done with ret(0x%x)\n", retEnc);
+					if (retEnc != RETCODE_CODEC_EXIT)
 					{
 						vetc_dump_reg_all(jmgr_data.base_addr, "init failure");
 					}
 				}
 
-				ret = _jmgr_convert_returnType(ret);
+				ret = _jmgr_convert_returnType(retEnc);
 				if (ret != RETCODE_CODEC_EXIT && arg->gsJpuEncHandle != 0)
 				{
 					jmgr_data.handle[type] = arg->gsJpuEncHandle;
@@ -727,6 +736,7 @@ static int _jmgr_process(vputype type, int cmd, long pHandle, void* args)
 			case VPU_ENC_ENCODE:
 			{
 				JPU_ENCODE_t* arg = (JPU_ENCODE_t*)args;
+				int retEnc;
 
 #ifdef CONFIG_VPU_TIME_MEASUREMENT
 				do_gettimeofday(&t1);
@@ -737,8 +747,8 @@ static int _jmgr_process(vputype type, int cmd, long pHandle, void* args)
 						arg->gsJpuEncInput.m_BitstreamBufferAddr[PA], arg->gsJpuEncInput.m_BitstreamBufferAddr[VA], arg->gsJpuEncInput.m_iBitstreamBufferSize);
 
 				jmgr_data.check_interrupt_detection = 1;
-				ret = tcc_jpu_enc(JPU_ENC_ENCODE, (codec_handle_t*)&pHandle, (void*)(&arg->gsJpuEncInput), (void*)(&arg->gsJpuEncOutput));
-				ret = _jmgr_convert_returnType(ret);
+				retEnc = tcc_jpu_enc(JPU_ENC_ENCODE, (codec_handle_t*)&pHandle, (void*)(&arg->gsJpuEncInput), (void*)(&arg->gsJpuEncOutput));
+				ret = _jmgr_convert_returnType(retEnc);
 
 #if defined(JPU_C5)
 				dprintk("Enc :: Enc Out => (0x%x/0x%x), Size(%d/%d) \n", arg->gsJpuEncOutput.m_BitstreamOut[0], arg->gsJpuEncOutput.m_BitstreamOut[1],
@@ -756,9 +766,10 @@ static int _jmgr_process(vputype type, int cmd, long pHandle, void* args)
 
 			case VPU_ENC_CLOSE:
 			{
+				int retEnc;
 				jmgr_data.check_interrupt_detection = 1;
-				ret = tcc_jpu_enc(JPU_ENC_CLOSE, (codec_handle_t*)&pHandle, (void*)NULL, (void*)NULL);
-				ret = _jmgr_convert_returnType(ret);
+				retEnc = tcc_jpu_enc(JPU_ENC_CLOSE, (codec_handle_t*)&pHandle, (void*)NULL, (void*)NULL);
+				ret = _jmgr_convert_returnType(retEnc);
 				dprintk("Enc :: JPU_ENC_CLOSED !! \n");
 
 				jmgr_set_close(type, 1, 1);
@@ -768,9 +779,10 @@ static int _jmgr_process(vputype type, int cmd, long pHandle, void* args)
 			case VPU_CODEC_GET_VERSION:
 			{
 				JPU_GET_VERSION_t* arg = (JPU_GET_VERSION_t*)args;
+				int retEnc;
 				jmgr_data.check_interrupt_detection = 1;
-				ret = tcc_jpu_enc(JPU_CODEC_GET_VERSION, (codec_handle_t*)&pHandle, arg->pszVersion, arg->pszBuildData);
-				ret = _jmgr_convert_returnType(ret);
+				retEnc = tcc_jpu_enc(JPU_CODEC_GET_VERSION, (codec_handle_t*)&pHandle, arg->pszVersion, arg->pszBuildData);
+				ret = _jmgr_convert_returnType(retEnc);
 				dprintk("Enc :: version : %s, build : %s\n", arg->pszVersion, arg->pszBuildData);
 			}
 			break;
@@ -853,7 +865,7 @@ static void _jmgr_wait_process(int wait_ms)
 {
 	int max_count = wait_ms/20;
 
-	//wait!! in case exceptional processing. ex). sdcard out!!
+	// In case of exceptional processing. ex). sdcard out!!
 	while (jmgr_data.cmd_processing)
 	{
 		max_count--;
@@ -869,8 +881,8 @@ static void _jmgr_wait_process(int wait_ms)
 
 static int _jmgr_external_all_close(int wait_ms)
 {
-	int type = 0;
-	int max_count = 0;
+	int type;
+	int max_count;
 	int ret;
 
 	for (type = 0; type < JPU_MAX; type++)
@@ -1321,16 +1333,14 @@ static int _jmgr_operation(void)
 		oper_finished = 1;
 		dprintk("_jmgr_operation :: not empty jmgr_data.cmd_queued(%d) \n", jmgr_data.cmd_queued);
 
+		oper_data = jmgr_list_manager(NULL, LIST_GET_ENTRY);
+		if (!oper_data)
 		{
-			oper_data = jmgr_list_manager(NULL, LIST_GET_ENTRY);
-			if (!oper_data)
-			{
-				err("data is null \n");
-				jmgr_data.cmd_processing = 0;
-				return 0;
-			}
-			*(oper_data->vpu_result) |= RET2;
+			err("data is null \n");
+			jmgr_data.cmd_processing = 0;
+			return 0;
 		}
+		*(oper_data->vpu_result) |= RET2;
 
 		dprintk("_jmgr_operation [%d] :: cmd = 0x%x, cmd_queued(%d) \n", oper_data->type, oper_data->cmd_type, jmgr_data.cmd_queued);
 
@@ -1368,7 +1378,7 @@ static int _jmgr_operation(void)
 		{
 			if (oper_data->comm_data != NULL && atomic_read(&jmgr_data.dev_opened) != 0)
 			{
-				oper_data->comm_data->count += 1;
+				oper_data->comm_data->count++;
 				if (oper_data->comm_data->count != 1)
 				{
 					dprintk("poll wakeup count = %d :: type(0x%x) cmd(0x%x) \n",
@@ -1387,9 +1397,8 @@ static int _jmgr_operation(void)
 			err("Error: abnormal exception 2!! 0x%p - %d\n", oper_data->comm_data, atomic_read(&jmgr_data.dev_opened));
 		}
 
-		{
-			jmgr_list_manager((void*)oper_data, LIST_DEL);
-		}
+
+		jmgr_list_manager((void*)oper_data, LIST_DEL);
 
 		jmgr_data.cmd_processing = 0;
 	}
@@ -1483,9 +1492,9 @@ static struct miscdevice _jmgr_misc_device =
 int jmgr_probe(struct platform_device* pdev)
 {
 	int ret;
-	int type = 0;
+	int type;
 	unsigned long int_flags;
-	struct resource* res = NULL;
+	struct resource* resource = NULL;
 
 	if (pdev->dev.of_node == NULL)
 	{
@@ -1507,16 +1516,16 @@ int jmgr_probe(struct platform_device* pdev)
 
 	jmgr_data.irq = platform_get_irq(pdev, 0);
 	jmgr_data.nOpened_Count = 0;
-	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
-	if (!res)
+	resource = platform_get_resource(pdev, IORESOURCE_MEM, 0);
+	if (!resource)
 	{
 		dev_err(&pdev->dev, "missing phy memory resource\n");
 		return -1;
 	}
-	res->end += 1;
+	resource->end += 1;
 
-	jmgr_data.base_addr = devm_ioremap(&pdev->dev, res->start, res->end-res->start);
-	dprintk("============> JPU base address [0x%x -> 0x%p], irq num [%d] \n", res->start, jmgr_data.base_addr, jmgr_data.irq - 32);
+	jmgr_data.base_addr = devm_ioremap(&pdev->dev, resource->start, (resource->end - resource->start));
+	dprintk("============> JPU base address [0x%x -> 0x%p], irq num [%d] \n", resource->start, jmgr_data.base_addr, (jmgr_data.irq - 32));
 
 	jmgr_get_clock(pdev->dev.of_node);
 	jmgr_get_reset(pdev->dev.of_node);
@@ -1531,7 +1540,8 @@ int jmgr_probe(struct platform_device* pdev)
 	INIT_LIST_HEAD(&jmgr_data.comm_data.main_list);
 	INIT_LIST_HEAD(&jmgr_data.comm_data.wait_list);
 
-	if (0 > (ret = vmem_config()))
+	ret = vmem_config();
+	if (ret < 0)
 	{
 		err("unable to configure memory for VPU!! %d \n", ret);
 		return -ENOMEM;
