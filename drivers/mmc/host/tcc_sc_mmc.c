@@ -424,7 +424,7 @@ static const struct mmc_host_ops tcc_sc_mmc_ops = {
 	.card_busy	= tcc_sc_mmc_card_busy,
 };
 
-static const struct of_device_id tcc_sc_mmc_of_match_table[] = {
+static const struct of_device_id tcc_sc_mmc_of_match_table[2] = {
 	{ .compatible = "telechips,tcc805x-sc-mmc", .data = NULL},
 	{}
 };
@@ -566,8 +566,6 @@ static int tcc_sc_mmc_probe(struct platform_device *pdev)
 	/* Allocate bounce buffer */
 	if(mmc->max_segs == 1U) {
 		ret = tcc_sc_mmc_allocate_bounce_buffer(host);
-		if (ret != 0)
-			return ret;
 	}
 
 	platform_set_drvdata(pdev, host);
