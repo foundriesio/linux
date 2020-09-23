@@ -1001,6 +1001,15 @@ static void tccvin_work_thread(struct work_struct * data) {
 		loge("There is no entry of the incoming buffer list\n");
 	}
 
+	/* Store the payload FID bit and return immediately when the buffer is
+	 * NULL.
+	 */
+	if (buf == NULL) {
+		loge("buf is NULL\n");
+		spin_unlock_irqrestore(&queue->irqlock, flags);
+		return;
+	}
+
 	/*
 	 * check whether the driver has only one buffer or not
 	 */
@@ -1010,14 +1019,6 @@ static void tccvin_work_thread(struct work_struct * data) {
 		goto update_wdma;
 	} else {
 		spin_unlock_irqrestore(&queue->irqlock, flags);
-	}
-
-	/* Store the payload FID bit and return immediately when the buffer is
-	 * NULL.
-	 */
-	if (buf == NULL) {
-		loge("buf is NULL\n");
-		return;
 	}
 
 	buf->buf.vb2_buf.timestamp = timespec_to_ns(&ts);
