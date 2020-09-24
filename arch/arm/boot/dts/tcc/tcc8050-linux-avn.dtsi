@@ -105,6 +105,11 @@
 		aux-active = <1>;
 	};
 
+	serdes_evb {
+		compatible = "telechips,serdes_evb_type";
+		serdes_evb_type = <1>; /* 0 TCC8059, 1 TCC8050/3 */
+	};
+	
 	fbdisplay: fbdisplay@12000000 {
 		telechips,fbdisplay_num = <0>;
 		//Linuxplatform

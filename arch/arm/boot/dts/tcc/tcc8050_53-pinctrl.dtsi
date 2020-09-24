@@ -490,6 +490,13 @@
 		telechips,no-pull;
 	};
 
+	dp_hpd_gpio: dp_hpd_gpio {
+		telechips,pins = "gpc-14";
+		telechips,pin-function = <1>;
+		telechips,input-enable;
+		telechips,pull-down;
+	};
+
 	gpsb0_bus: gpsb0_bus {
 		telechips,pins = "gpsd0-11", "gpsd0-12", "gpsd0-14", "gpsd0-13";
 		telechips,pin-function = <6>;
