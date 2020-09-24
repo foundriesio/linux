@@ -14,16 +14,16 @@
  *
  */
 
-#ifndef __PINCTRL_TCC_H
-#define __PINCTRL_TCC_H
+#ifndef PINCTRL_TCC_H
+#define PINCTRL_TCC_H
 
 #ifdef CONFIG_TCC_MICOM
-#define EINT_MAX_SIZE		8
+#define EINT_MAX_SIZE		8U
 #else
-#define EINT_MAX_SIZE		32
+#define EINT_MAX_SIZE		32U
 #endif
 
-#define TCC_PINCONF_SHIFT	8
+#define TCC_PINCONF_SHIFT	8U
 
 #if defined(CONFIG_ARCH_TCC803X)
 
@@ -137,40 +137,23 @@ enum tcc_pinconf_param {
 
 #elif defined(CONFIG_ARCH_TCC805X)
 
-enum tcc_pinconf_param {
-        TCC_PINCONF_PARAM_DRIVE_STRENGTH,
-        TCC_PINCONF_PARAM_NO_PULL,
-        TCC_PINCONF_PARAM_PULL_UP,
-        TCC_PINCONF_PARAM_PULL_DOWN,
-        TCC_PINCONF_PARAM_INPUT_ENABLE,
-        TCC_PINCONF_PARAM_OUTPUT_LOW,
-        TCC_PINCONF_PARAM_OUTPUT_HIGH,
-        TCC_PINCONF_PARAM_INPUT_BUFFER_ENABLE,
-        TCC_PINCONF_PARAM_INPUT_BUFFER_DISABLE,
-        TCC_PINCONF_PARAM_SCHMITT_INPUT,
-        TCC_PINCONF_PARAM_CMOS_INPUT,
-        TCC_PINCONF_PARAM_SLOW_SLEW,
-        TCC_PINCONF_PARAM_FAST_SLEW,
-        TCC_PINCONF_PARAM_ECLK_SEL,
-        TCC_PINCONF_PARAM_FUNC,
-};
+#define TCC_PINCONF_DRIVE_STRENGTH		0
+#define TCC_PINCONF_NO_PULL			1
+#define TCC_PINCONF_PULL_UP			2
+#define TCC_PINCONF_PULL_DOWN			3
+#define TCC_PINCONF_INPUT_ENABLE		4
+#define TCC_PINCONF_OUTPUT_LOW			5
+#define TCC_PINCONF_OUTPUT_HIGH			6
+#define TCC_PINCONF_INPUT_BUFFER_ENABLE		7
+#define TCC_PINCONF_INPUT_BUFFER_DISABLE	8
+#define TCC_PINCONF_SCHMITT_INPUT		9
+#define TCC_PINCONF_CMOS_INPUT			10
+#define TCC_PINCONF_SLOW_SLEW			11
+#define TCC_PINCONF_FAST_SLEW			12
+#define TCC_PINCONF_ECLK_SEL			13
+#define TCC_PINCONF_FUNC			14
 
 #endif
-
-static inline int tcc_pinconf_pack(int param, int value)
-{
-	return param << TCC_PINCONF_SHIFT | value;
-}
-
-static inline int tcc_pinconf_unpack_param(int config)
-{
-	return config >> TCC_PINCONF_SHIFT;
-}
-
-static inline int tcc_pinconf_unpack_value(int config)
-{
-	return config & ((1 << TCC_PINCONF_SHIFT) - 1);
-}
 
 struct tcc_pinmux_function {
 	const char *name;
@@ -254,5 +237,8 @@ struct tcc_pinctrl_soc_data {
 
 int tcc_pinctrl_probe(struct platform_device *pdev,
 		      struct tcc_pinctrl_soc_data *soc_data, void __iomem *base, void __iomem *pmgpio_base);
+
+unsigned int tcc_irq_get_reverse(unsigned int irq);
+bool tcc_is_exti(unsigned int irq);
 
 #endif
