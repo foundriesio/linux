@@ -1,0 +1,193 @@
+// SPDX-License-Identifier: GPL-2.0-or-later
+/*
+ * Copyright (C) Telechips Inc.
+ */
+
+#ifndef __DPTX_API_H__
+#define __DPTX_API_H__
+
+#include <linux/compat.h>
+
+#define DPTX_API_RETURN_SUCCESS					false
+#define DPTX_API_RETURN_FAIL					true
+
+enum DPTX_API_STREAM_CAP_STATE
+{
+	DPTX_STREAM_CAP_SST = 0,
+	DPTX_STREAM_CAP_MST = 1,
+	DPTX_STREAM_CAP_MAX	= 2
+};
+
+enum DPTX_API_INPUT_STREAM_INDEX
+{
+	DPTX_INPUT_STREAM_0		= 0,
+	DPTX_INPUT_STREAM_1		= 1,
+	DPTX_INPUT_STREAM_2		= 2,
+	DPTX_INPUT_STREAM_3		= 3,
+	DPTX_INPUT_STREAM_MAX	= 4
+};
+
+enum DPTX_API_LINK_NUM_OF_LANE
+{
+	DPTX_LINK_1_LANE		= 1,
+	DPTX_LINK_2_LANES		= 2,
+	DPTX_LINK_4_LANES		= 4, 
+	DPTX_LINK_LANE_MAX		= 5
+};
+
+enum DPTX_API_LINK_RATE
+{
+	DPTX_LINK_RATE_RBR		= 0,
+	DPTX_LINK_RATE_HBR		= 1,
+	DPTX_LINK_RATE_HBR2		= 2,
+	DPTX_LINK_RATE_HBR3		= 3,
+	DPTX_LINK_RATE_MAX		= 4
+};
+
+enum DPTX_API_VIDEO_COLORIMETRY_TYPE
+{
+	VIDEO_COLORIMETRY_NO_DATA		= 0,
+	VIDEO_COLORIMETRY_ITU601		= 1,
+	VIDEO_COLORIMETRY_ITU709		= 2,
+	VIDEO_COLORIMETRY_MAX			= 3
+};
+
+enum DPTX_API_VIDEO_RGB_STANDARD_TYPE
+{
+	VIDEO_RGB_STANDARD_LEGACY	 	= 0,	/* ITU 601 */
+	VIDEO_RGB_STANDARD_S_RGB		= 1,	/* ITU 709 */	
+	VIDEO_RGB_STANDARD_MAX			= 2
+};
+
+enum DPTX_API_VIDEO_REFRESH_RATE
+{
+	VIDEO_REFRESHRATE_30_00HZ = 30000,
+	VIDEO_REFRESHRATE_49_92HZ = 49920,
+	VIDEO_REFRESHRATE_50_00HZ = 50000,
+	VIDEO_REFRESHRATE_50_08HZ = 50080,
+	VIDEO_REFRESHRATE_59_94HZ = 59940,
+	VIDEO_REFRESHRATE_60_00HZ = 60000,
+	VIDEO_REFRESHRATE_60_54HZ = 60540,
+	VIDEO_REFRESHRATE_MAX		  = 60541 
+};
+
+enum DPTX_API_VIDEO_FORMAT_TYPE
+{
+	VIDEO_FORMAT_TYPE_CEA_861		= 0,	/* CEA-861-F */
+	VIDEO_FORMAT_TYPE_VESA_CVT		= 1,	/* VESA CVT */
+	VIDEO_FORMAT_TYPE_VESA_DMT		= 2,		/* VESA DMT */
+	VIDEO_FORMAT_TYPE_MAX			= 3
+};
+
+enum DPTX_API_VIDEO_PIXEL_ENCODING_TYPE
+{
+	VIDEO_PIXEL_ENCODING_TYPE_RGB			= 0,
+	VIDEO_PIXEL_ENCODING_TYPE_YCBCR422		= 1,
+	VIDEO_PIXEL_ENCODING_TYPE_YCBCR444		= 2,
+	VIDEO_PIXEL_ENCODING_TYPE_MAX			= 3
+};
+
+enum DPTX_AUDIO_INTERFACE_TYPE
+{
+	AUDIO_INTERFACE_I2S = 0,
+	AUDIO_INTERFACE_SPDIF
+};
+
+enum  DPTX_AUDIO_DATA_WIDTH
+{
+	AUDIO_DATA_WIDTH_16 = 0,
+	AUDIO_DATA_WIDTH_17,
+	AUDIO_DATA_WIDTH_18,
+	AUDIO_DATA_WIDTH_19,
+	AUDIO_DATA_WIDTH_20,
+	AUDIO_DATA_WIDTH_21,
+	AUDIO_DATA_WIDTH_22,
+	AUDIO_DATA_WIDTH_23,
+	AUDIO_DATA_WIDTH_24
+};
+
+enum  DPTX_AUDIO_NUM_OF_CHANNELS
+{
+	AUDIO_NUM_OF_CHANNELS_1 = 0,
+	AUDIO_NUM_OF_CHANNELS_2 = 1,
+	AUDIO_NUM_OF_CHANNELS_8 = 7		
+};
+
+enum DPTX_TRAINING_PATTERN_TYPE
+{
+	DPTX_TRAINING_CTRL_TPS_NONE			= 0x00,
+	DPTX_TRAINING_CTRL_TPS_1_D102		= 0x01,
+	DPTX_TRAINING_CTRL_TPS_2			= 0x02,
+	DPTX_TRAINING_CTRL_TPS_3			= 0x03,
+	DPTX_TRAINING_CTRL_TPS_4			= 0x04,
+	DPTX_TRAINING_CTRL_TPS_SYM_ERM	= 0x05,
+	DPTX_TRAINING_CTRL_TPS_PRBS7		= 0x06,
+	DPTX_TRAINING_CTRL_TPS_CUSTOM80= 0x07,
+	DPTX_TRAINING_CTRL_TPS_CP2520_1		= 0x08,
+	DPTX_TRAINING_CTRL_TPS_CP2520_2		= 0x09,
+	DPTX_TRAINING_CTRL_TPS_INVALID		= 0xFF,
+};
+
+
+struct DPTX_API_Core_Params
+{
+	bool							bSSC_On;
+	enum DPTX_API_LINK_NUM_OF_LANE	eMaxNumOfLanes;
+	enum DPTX_API_LINK_RATE			eMaxRate;
+};
+
+struct DPTX_API_AVGEN_Params
+{
+	enum DPTX_API_VIDEO_COLORIMETRY_TYPE		eColorimetry;
+	enum DPTX_API_VIDEO_RGB_STANDARD_TYPE		eRGB_Standard;
+	enum DPTX_API_VIDEO_REFRESH_RATE			eRefresh_Rate;
+	enum DPTX_API_VIDEO_FORMAT_TYPE				eVideo_Format;
+	enum DPTX_API_VIDEO_PIXEL_ENCODING_TYPE		ePixel_Encoding;
+	u32											uiVideo_Code;
+};
+
+typedef struct   DPTX_API_Dtd_Params
+{
+	u8	interlaced;			/* 1 : interlaced, 0 : progressive */
+	u8	h_sync_polarity;
+	u8	v_sync_polarity;
+	u16	pixel_repetition_input;
+	u16	h_active;
+	u16	h_blanking;
+	u16	h_image_size;
+	u16	h_sync_offset;
+	u16	h_sync_pulse_width;
+	u16	v_active;
+	u16	v_blanking;
+	u16	v_image_size;
+	u16	v_sync_offset;
+	u16	v_sync_pulse_width;
+	u32	uiPixel_Clock;
+}DPTX_API_Dtd_Params_t;
+
+
+bool Dpv14_Tx_API_Set_Video_Mute( bool bMute, u8 ucStream_Index );
+bool Dpv14_Tx_API_Get_Video_Mute( bool *pbMute, u8 ucStream_Index );
+bool Dpv14_Tx_API_Set_Core_Params( struct DPTX_API_Core_Params	*pstDpCore_Params );
+bool Dpv14_Tx_API_Get_Core_Params( struct DPTX_API_Core_Params	*pstDpCore_Params );
+bool Dpv14_Tx_API_Set_AVGen_Params( struct DPTX_API_AVGEN_Params	*pstDpAvGen_Params, u8 ucStream_Index );
+bool Dpv14_Tx_API_Get_AVGen_Params( struct DPTX_API_AVGEN_Params	*pstDpAvGen_Params, u8 ucStream_Index );
+
+bool Dpv14_Tx_API_Set_Audio_Mute( bool bMute );
+bool Dpv14_Tx_API_Get_Audio_Mute( bool *pbMute );
+bool Dpv14_Tx_API_Set_Audio_InterfaceType( enum DPTX_AUDIO_INTERFACE_TYPE eAudio_InfType );
+bool Dpv14_Tx_API_Get_Audio_InterfaceType( u8 *pucAudio_InfType );
+bool Dpv14_Tx_API_Set_Audio_DataWidth( enum DPTX_AUDIO_DATA_WIDTH eAudio_DataWidth );
+bool Dpv14_Tx_API_Get_Audio_DataWidth( u8 *pucAudio_DataWidth );
+bool Dpv14_Tx_API_Set_Audio_HBR_Mode( bool bEnable );
+bool Dpv14_Tx_API_Get_Audio_HBR_Mode( bool *pbEnable );
+bool Dpv14_Tx_API_Set_Audio_Max_NumOfCh( enum  DPTX_AUDIO_NUM_OF_CHANNELS eAudio_NumOfCh );
+bool Dpv14_Tx_API_Get_Audio_Max_NumOfCh( u8 *pucAudio_NumOfCh );
+bool Dpv14_Tx_API_Set_Audio_Sel( u32 ucData );
+
+bool Dpv14_Tx_API_Read_Edid( bool bI2C_Over_Aux, u8 ucStream_Index );
+bool Dpv14_Tx_API_Read_Edid_Over_Aux( void );
+bool Dpv14_Tx_API_Get_Configured_Dtd_Infor( DPTX_API_Dtd_Params_t *pstDptx_Dtd_Params, u8 ucStream_Index );
+bool Dpv14_Tx_API_Get_Dtd_Infor_From_VideoCode( u32 uiVideo_Code, DPTX_API_Dtd_Params_t *pstDptx_Dtd_Params,  u32 uiRefreshRate, u8 ucVideoFormat );
+bool Dpv14_Tx_API_Get_Dtd_Infor_From_Edid( DPTX_API_Dtd_Params_t *pstDptx_Dtd_Params, u8 ucStream_Index );
+#endif /* __DPTX_API_H__  */

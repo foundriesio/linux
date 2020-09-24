@@ -532,6 +532,13 @@
 		telechips,no-pull;
 	};
 
+	dp_hpd_gpio: dp_hpd_gpio {
+		telechips,pins = "gpc-14";
+		telechips,pin-function = <1>;
+		telechips,input-enable;
+		telechips,pull-down;
+	};
+	
 	hdmi_cec: hdmi_cec {
 		telechips,pins = "gpc-15";
 		telechips,pin-function = <1>;
