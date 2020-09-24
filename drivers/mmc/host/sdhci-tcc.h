@@ -38,11 +38,11 @@
 #define TCC897X_SDHC_DELAY_CTRL(x)		(((x) & 0x3u) << 12u)
 #define TCC897X_SDHC_FBEN(x)			(((x) & 0x1u) << 15u)
 
-#define TCC897X_SDHC_DELAY_CON_DEF		(TCC897X_SDHC_IPTAP(0u) \
-	| TCC897X_SDHC_IPTAP_EN(0u) \
-	| TCC897X_SDHC_TUNE_CNT(16u) \
-	| TCC897X_SDHC_TUNE_CNT(0u)	\
-	| TCC897X_SDHC_FBEN(0u))
+#define TCC897X_SDHC_DELAY_CON_DEF		(TCC897X_SDHC_IPTAP((u32)0) \
+	| TCC897X_SDHC_IPTAP_EN((u32)0) \
+	| TCC897X_SDHC_TUNE_CNT((u32)16) \
+	| TCC897X_SDHC_TUNE_CNT((u32)0)	\
+	| TCC897X_SDHC_FBEN((u32)0))
 
 /* Telechips SDHC Specific Registers for TCC803x rev. 1*/
 #define TCC_SDHC_CORE_CLK_REG0			(0x100u)
@@ -89,7 +89,7 @@
 
 /* Telechips SDHC Specific Registers for others (such as TCC803x rev. 0, tcc899x, and so on)*/
 /* Specific registers of SDMMC registers */
-#define TCC_SDHC_VENDOR			0x78u
+#define TCC_SDHC_VENDOR			0x78
 /* Specific registers of Channel Control registers */
 #define TCC_SDHC_TAPDLY			0x00u
 #define TCC_SDHC_CAPREG0		0x04u
@@ -107,8 +107,8 @@
 #define TCC_SDHC_TAPDLY_ITAP_SEL_MASK	(TCC_SDHC_TAPDLY_ITAP_SEL(0x1Fu))
 #define TCC_SDHC_TAPDLY_ITAP_EN(x)		(((x) & 0x1u) << 5u)
 #define TCC_SDHC_TAPDLY_ITAP_CHGWIN(x)	(((x) & 0x1u) << 6u)
-#define TCC_SDHC_TAPDLY_OTAP_SEL(x)		(((x) & 0x1Fu) << 8u)
-#define TCC_SDHC_TAPDLY_OTAP_SEL_MASK	(TCC_SDHC_TAPDLY_OTAP_SEL(0x1Fu))
+#define TCC_SDHC_TAPDLY_OTAP_SEL(x)		(((x) & (u32)0x1F) << (u32)8)
+#define TCC_SDHC_TAPDLY_OTAP_SEL_MASK	(TCC_SDHC_TAPDLY_OTAP_SEL ((u32)0x1F))
 #define TCC_SDHC_TAPDLY_OTAP_EN(x)		(((x) & 0x1u) << 13u)
 #define TCC_SDHC_TAPDLY_ASYNCWKUP_EN(x)	(((x) & 0x1u) << 14u)
 
@@ -126,10 +126,10 @@
 #define TCC_SDHC_CMDDLY_DEF_TAP		7
 #define TCC_SDHC_DATADLY_DEF_TAP	7
 
-#define TCC_SDHC_TAPDLY_DEF				(TCC_SDHC_TAPDLY_TUNE_CNT(16u) \
-	| TCC_SDHC_TAPDLY_OTAP_SEL(0x8u) \
-	| TCC_SDHC_TAPDLY_OTAP_EN(1u) \
-	| TCC_SDHC_TAPDLY_ASYNCWKUP_EN(1u) )
+#define TCC_SDHC_TAPDLY_DEF				(TCC_SDHC_TAPDLY_TUNE_CNT((u32)16) \
+	| TCC_SDHC_TAPDLY_OTAP_SEL((u32)0x8) \
+	| TCC_SDHC_TAPDLY_OTAP_EN((u32)1) \
+	| TCC_SDHC_TAPDLY_ASYNCWKUP_EN((u32)1) )
 
 #define TCC_SDHC_MK_CMDDLY(x)			(TCC_SDHC_CMDDLY_IN(x) \
 	| TCC_SDHC_CMDDLY_OUT(x) \

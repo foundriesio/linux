@@ -159,7 +159,7 @@ static void sdhci_tcc_reset(struct sdhci_host *host, u8 mask)
 
 	/* After reset, re-write the value to specific register */
 	if ((tcc->flags & TCC_SDHC_CLK_GATING) != 0u) {
-		sdhci_writel(host, 0x2, TCC_SDHC_VENDOR);
+		sdhci_writel(host, 0x2u, TCC_SDHC_VENDOR);
 	}
 }
 
@@ -170,7 +170,7 @@ static void sdhci_tcc_parse(struct platform_device *pdev, struct sdhci_host *hos
 	struct sdhci_tcc *tcc = to_tcc(host);
 
 	np = pdev->dev.of_node;
-	if(!np) {
+	if(np == NULL) {
 		dev_err(&pdev->dev, "[ERROR][SDHC] node pointer is null\n");
 	}
 
@@ -193,7 +193,7 @@ static int sdhci_tcc_parse_channel_conf(struct platform_device *pdev, struct sdh
 	u32 taps;
 
 	np = pdev->dev.of_node;
-	if(!np) {
+	if(np == NULL) {
 		dev_err(&pdev->dev, "[ERROR][SDHC] node pointer is null\n");
 		return -ENXIO;
 	}
@@ -232,7 +232,7 @@ static int sdhci_tcc_parse_channel_conf_v2(
 		TCC_SDHC_CLK_TXDLY_DEF_TAP_V2 };
 
 	np = pdev->dev.of_node;
-	if(!np) {
+	if(np == NULL) {
 		dev_err(&pdev->dev, "[ERROR][SDHC] node pointer is null\n");
 		return -ENXIO;
 	}
@@ -262,6 +262,7 @@ static int sdhci_tcc_parse_channel_conf_v2(
 			dev_warn(&pdev->dev, "[WARN][SDHC] do not support hs400\n");
 			host->mmc->caps2 &= ~(unsigned int)(MMC_CAP2_HS400);
 		} else {
+			/* do noting  */
 		}
 	}
 
@@ -277,7 +278,7 @@ static int sdhci_tcc805x_parse_channel_configs(struct platform_device *pdev, str
 	int ret = -EPROBE_DEFER;
 
 	np = pdev->dev.of_node;
-	if(!np) {
+	if(np == NULL) {
 		dev_err(&pdev->dev, "[ERROR][SDHC] node pointer is null\n");
 		return -ENXIO;
 	}
@@ -298,7 +299,7 @@ static int sdhci_tcc803x_parse_channel_configs(struct platform_device *pdev, str
 	int ret = -EPROBE_DEFER;
 
 	np = pdev->dev.of_node;
-	if(!np) {
+	if(np == NULL) {
 		dev_err(&pdev->dev, "[ERROR][SDHC] node pointer is null\n");
 		return -ENXIO;
 	}
@@ -325,13 +326,13 @@ static int sdhci_tcc_parse_configs(struct platform_device *pdev, struct sdhci_ho
 	enum of_gpio_flags flags;
 	int ret = 0;
 
-	if(!tcc) {
+	if(tcc == NULL) {
 		dev_err(&pdev->dev, "[ERROR][SDHC] failed to get private data\n");
 		return -ENXIO;
 	}
 
 	np = pdev->dev.of_node;
-	if(!np) {
+	if(np == NULL) {
 		dev_err(&pdev->dev, "[ERROR][SDHC] node pointer is null\n");
 		return -ENXIO;
 	}
@@ -399,7 +400,7 @@ static void sdhci_tcc897x_set_channel_configs(struct sdhci_host *host)
 	u32 ch;
 	u32 vals;
 
-	if(!tcc) {
+	if(tcc == NULL) {
 		pr_err("[ERROR][SDHC] failed to get private data\n");
 		return;
 	}
@@ -456,6 +457,7 @@ static void sdhci_tcc_set_channel_configs_tap_v2(struct sdhci_host *host)
 	struct sdhci_tcc *tcc = to_tcc(host);
 	u32 ch = tcc->controller_id;
 	u32 vals, i;
+	u32 range = 0x1F;
 
 	/* Configure TAPDLY */
 		vals = TCC_SDHC_TAPDLY_DEF;
@@ -481,7 +483,7 @@ static void sdhci_tcc_set_channel_configs_tap_v2(struct sdhci_host *host)
 
 		/* Configure CLK TX TAPDLY */
 	vals = readl(tcc->chctrl_base + TCC_SDHC_TX_CLKDLY_OFFSET(ch));
-	vals &= ~TCC_SDHC_MK_TX_CLKDLY(ch, 0x1Fu);
+	vals &= ~TCC_SDHC_MK_TX_CLKDLY(ch, range);
 	vals |= TCC_SDHC_MK_TX_CLKDLY(ch, tcc->clk_tx_tap);
 	writel(vals, tcc->chctrl_base + TCC_SDHC_TX_CLKDLY_OFFSET(ch));
 		pr_debug("[DEBUG][SDHC] %d: set clk-tx-tap 0x%08x @0x%p\n",
@@ -492,7 +494,7 @@ static void sdhci_tcc_set_channel_configs_tap_v2(struct sdhci_host *host)
 		vals = 0x0001000F;
 		writel(vals, tcc->chctrl_base + TCC_SDHC_SD_DQS_DLY);
 
-		vals = (0x2u << 28u) |
+		vals = ((u32)0x2 << 28u) |
 			TCC_SDHC_DQS_POS_DETECT_DLY(tcc->hs400_pos_tap) |
 			TCC_SDHC_DQS_NEG_DETECT_DLY(tcc->hs400_neg_tap);
 		writel(vals, tcc->chctrl_base + TCC_SDHC_CORE_CLK_REG2);
@@ -506,7 +508,7 @@ static void sdhci_tcc805x_set_channel_configs(struct sdhci_host *host)
 {
 	struct sdhci_tcc *tcc = to_tcc(host);
 
-	if(!tcc) {
+	if(tcc == NULL) {
 		pr_err("[ERROR][SDHC] failed to get private data\n");
 		return;
 	}
@@ -571,7 +573,7 @@ static void sdhci_tcc_set_channel_configs(struct sdhci_host *host)
 	struct sdhci_tcc *tcc = to_tcc(host);
 	u32 vals;
 
-	if(!tcc) {
+	if(tcc == NULL) {
 		pr_err("[ERROR][SDHC] failed to get private data\n");
 		return;
 	}
@@ -726,6 +728,8 @@ static int sdhci_tcc803x_set_core_clock(struct sdhci_host *host)
 		} else {
 			unsigned int peri_clock, core_clock, vals;
 			unsigned int div = 0;
+			unsigned int div_range = 0xFF;
+			unsigned int mask_en = 1;
 
 			peri_clock = pltfm_host->clock;
 			core_clock = host->mmc->f_max;
@@ -771,24 +775,24 @@ static int sdhci_tcc803x_set_core_clock(struct sdhci_host *host)
 
 			/* sdcore clock masking enable */
 			vals = readl(tcc->chctrl_base + TCC_SDHC_CORE_CLK_REG1);
-			vals |= TCC_SDHC_CORE_CLK_MASK_EN(1u);
+			vals |= TCC_SDHC_CORE_CLK_MASK_EN(mask_en);
 			writel(vals, tcc->chctrl_base + TCC_SDHC_CORE_CLK_REG1);
 
 			/* set div */
 			/* select sdcore clock */
 			/* enable div */
 			vals = readl(tcc->chctrl_base + TCC_SDHC_CORE_CLK_REG0);
-			vals &= ~(TCC_SDHC_CORE_CLK_DIV_VAL(0xFFu));
+			vals &= ~(TCC_SDHC_CORE_CLK_DIV_VAL(div_range));
 			vals |= (unsigned int)TCC_SDHC_CORE_CLK_DIV_VAL(div);
-			vals |= TCC_SDHC_CORE_CLK_CLK_SEL(1u);
-			vals |= TCC_SDHC_CORE_CLK_DIV_EN(1u);
+			vals |= TCC_SDHC_CORE_CLK_CLK_SEL(mask_en);
+			vals |= TCC_SDHC_CORE_CLK_DIV_EN(mask_en);
 			writel(vals, tcc->chctrl_base + TCC_SDHC_CORE_CLK_REG0);
 
 			/* disable shifter clk gating */
 			/* disable sdcore clock masking */
 			vals = readl(tcc->chctrl_base + TCC_SDHC_CORE_CLK_REG1);
-			vals |= TCC_SDHC_CORE_CLK_GATE_DIS(1u);
-			vals &= ~(TCC_SDHC_CORE_CLK_MASK_EN(1u));
+			vals |= TCC_SDHC_CORE_CLK_GATE_DIS(mask_en);
+			vals &= ~(TCC_SDHC_CORE_CLK_MASK_EN(mask_en));
 			writel(vals, tcc->chctrl_base + TCC_SDHC_CORE_CLK_REG1);
 
 			/* enable peri clock */
@@ -816,7 +820,7 @@ tcc803x_err_pltfm_free:
 	return ret;
 }
 
-unsigned int sdhci_tcc_clk_get_max_clock(struct sdhci_host *host)
+static unsigned int sdhci_tcc_clk_get_max_clock(struct sdhci_host *host)
 {
 	unsigned int ret;
 
@@ -829,7 +833,7 @@ unsigned int sdhci_tcc_clk_get_max_clock(struct sdhci_host *host)
 	return ret;
 }
 
-unsigned int sdhci_tcc805x_clk_get_max_clock(struct sdhci_host *host)
+static unsigned int sdhci_tcc805x_clk_get_max_clock(struct sdhci_host *host)
 {
 	struct sdhci_tcc *tcc = to_tcc(host);
 	u32 ch = tcc->controller_id;
@@ -844,7 +848,7 @@ unsigned int sdhci_tcc805x_clk_get_max_clock(struct sdhci_host *host)
 	return ret;
 }
 
-unsigned int sdhci_tcc803x_clk_get_max_clock(struct sdhci_host *host)
+static unsigned int sdhci_tcc803x_clk_get_max_clock(struct sdhci_host *host)
 {
 	struct sdhci_tcc *tcc = to_tcc(host);
 
@@ -1124,6 +1128,7 @@ static void sdhci_tcc_hw_reset(struct sdhci_host *host)
 {
 	struct sdhci_tcc *tcc = to_tcc(host);
 	unsigned int hw_reset_gpio = tcc->hw_reset;
+	unsigned long dly_val = 10;
 
 	if (!gpio_is_valid((int)hw_reset_gpio))
 		return;
@@ -1131,7 +1136,7 @@ static void sdhci_tcc_hw_reset(struct sdhci_host *host)
 	pr_debug("[DEBUG][SDHC] %s: %s\n", mmc_hostname(host->mmc), __func__);
 
 	gpio_set_value_cansleep(hw_reset_gpio, 0);
-	udelay(10UL);
+	udelay(dly_val);
 	gpio_set_value_cansleep(hw_reset_gpio, 1);
 	usleep_range(300, 1000);
 }
@@ -1368,6 +1373,7 @@ static ssize_t sdhci_tcc_clk_dly_store(struct file *file,
 	struct sdhci_tcc *tcc = to_tcc(host);
 	char buf[16] = {0, };
 	u32 reg, val, ch, shift;
+	u32 range = 0x1F;
 	ssize_t ret;
 
 	if(copy_from_user(&buf, ubuf, min_t(size_t, sizeof(buf) - 1UL, count)) != 0u)
@@ -1383,7 +1389,7 @@ static ssize_t sdhci_tcc_clk_dly_store(struct file *file,
 		shift = 16;
 
 	reg = readl(tcc->chctrl_base + TCC_SDHC_TX_CLKDLY_OFFSET(ch));
-	reg &= ~(unsigned int)TCC_SDHC_MK_TX_CLKDLY(ch, (unsigned int)0x1F);
+	reg &= ~TCC_SDHC_MK_TX_CLKDLY(ch,range);
 	reg |= (unsigned int)TCC_SDHC_MK_TX_CLKDLY(ch, val);
 	writel(reg, tcc->chctrl_base + TCC_SDHC_TX_CLKDLY_OFFSET(ch));
 
@@ -1471,7 +1477,7 @@ static int sdhci_tcc_select_drive_strength(struct mmc_card *card,
 	struct sdhci_tcc *tcc = to_tcc(host);
 	int drive_strength;
 
-	if (!!(((unsigned int)1 << tcc->drive_strength) & (unsigned int)card_drv)) {
+	if ((((unsigned int)1 << tcc->drive_strength) & (unsigned int)card_drv) != 0u) {
 		drive_strength = (int)tcc->drive_strength;
 	} else {
 		pr_warn("[WARN][SDHC] %s: Not support drive strength Type %d\n",
@@ -1494,7 +1500,7 @@ static int sdhci_tcc_probe(struct platform_device *pdev)
 	struct sdhci_tcc *tcc = NULL;
 
 	match = of_match_device(sdhci_tcc_of_match_table, &pdev->dev);
-	if (!match)
+	if (match == NULL)
 		return -EINVAL;
 	soc_data = match->data;
 
@@ -1529,7 +1535,7 @@ static int sdhci_tcc_probe(struct platform_device *pdev)
 	} else {
 		if(res->start != 0UL) {
 			tcc->channel_mux_base = devm_ioremap_resource(&pdev->dev, res);
-			if(!tcc->channel_mux_base) {
+			if(tcc->channel_mux_base == NULL) {
 				dev_err(&pdev->dev, "[ERROR][SDHC] failed to remap channel mux base address\n");
 				ret = -ENOMEM;
 				goto err_pltfm_free;
@@ -1615,7 +1621,7 @@ static int sdhci_tcc_probe(struct platform_device *pdev)
 	if(of_device_is_compatible(pdev->dev.of_node, "telechips,tcc803x-sdhci") != 0) {
 		tcc->clk_dly_dbgfs = sdhci_tcc_register_debugfs_file(host, "clock_delay", 0644u,
 				&sdhci_tcc_fops_clk_dly);
-		if(!tcc->clk_dly_dbgfs) {
+		if(tcc->clk_dly_dbgfs == NULL) {
 			dev_err(&pdev->dev, "[ERROR][SDHC] failed to create clock_delay debugfs\n");
 		}
 	}
@@ -1736,14 +1742,14 @@ static int sdhci_tcc_runtime_resume(struct device *dev)
 }
 
 #if 0
-const struct dev_pm_ops sdhci_tcc_pmops = {
+static const struct dev_pm_ops sdhci_tcc_pmops = {
 	SET_SYSTEM_SLEEP_PM_OPS(sdhci_pltfm_suspend, sdhci_pltfm_resume)
 	SET_RUNTIME_PM_OPS(sdhci_tcc_runtime_suspend,
 		sdhci_tcc_runtime_resume, NULL)
 };
 #else
-const struct dev_pm_ops sdhci_tcc_pmops = {
-	SET_SYSTEM_SLEEP_PM_OPS(sdhci_tcc_runtime_suspend, sdhci_tcc_runtime_resume)
+static const struct dev_pm_ops sdhci_tcc_pmops = {
+	SET_SYSTEM_SLEEP_PM_OPS((sdhci_tcc_runtime_suspend), (sdhci_tcc_runtime_resume))
 };
 #endif
 
