@@ -233,8 +233,8 @@ enum {
 #define UIC_ARG_MPHY_TX_GEN_SEL_INDEX(lane) (lane)
 #define UIC_ARG_MPHY_RX_GEN_SEL_INDEX(lane) (PA_MAXDATALANES + (lane))
 
-#define UIC_ARG_MIB_SEL(attr, sel)	((((attr) & 0xFFFF) << 16) |\
-					 ((sel) & 0xFFFF))
+#define UIC_ARG_MIB_SEL(attr, sel)	((((attr) & 0xFFFFU) << 16U) |\
+					 ((sel) & 0xFFFFU))
 #define UIC_ARG_MIB(attr)		UIC_ARG_MIB_SEL(attr, 0)
 #define UIC_ARG_ATTR_TYPE(t)		(((t) & 0xFF) << 16)
 #define UIC_GET_ATTR_ID(v)		(((v) >> 16) & 0xFFFF)
