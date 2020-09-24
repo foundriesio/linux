@@ -13,6 +13,7 @@
 #include <linux/clk-provider.h>
 #include <linux/of_gpio.h>
 #include <dt-bindings/gpio/gpio.h>
+#include "../host/tcc-hcd.h"
 //#include <plat/globals.h>
 //#include <linux/err.h>
 //#include <linux/of_device.h>
@@ -58,7 +59,7 @@ struct ehci_phy_reg
 	volatile uint32_t lcfg1;
 };
 
-void __iomem* tcc_ehci_get_base(struct usb_phy *phy)
+static void __iomem* tcc_ehci_get_base(struct usb_phy *phy)
 {
 	struct tcc_ehci_device *phy_dev = container_of(phy, struct tcc_ehci_device, phy);
 
@@ -72,7 +73,7 @@ static int tcc_ehci_phy_isolation(struct usb_phy *phy, int on_off)
 {
 	struct tcc_ehci_device *phy_dev = container_of(phy, struct tcc_ehci_device, phy);
 
-	if (!phy_dev->isol)
+	if (phy_dev->isol == NULL)
 		return -1;
 
 	if(on_off == ON) {
@@ -101,7 +102,7 @@ static int tcc_ehci_vbus_set(struct usb_phy *phy, int on_off)
 	 * Check that the "vbus-ctrl-able" property for the USB PHY driver node
 	 * is declared in the device tree.
 	 */
-	if (!of_find_property(dev->of_node, "vbus-ctrl-able", 0)) {
+	if (of_find_property(dev->of_node, "vbus-ctrl-able", 0) == NULL) {
 		dev_err(dev, "[ERROR][USB] vbus-ctrl-able property is not declared in device tree.\n");
 		return -ENODEV;
 	}
@@ -113,9 +114,9 @@ static int tcc_ehci_vbus_set(struct usb_phy *phy, int on_off)
 	}
 
 	/* Request a single VBus GPIO with initial configuration. */
-	retval = gpio_request_one(phy_dev->vbus_gpio_num, phy_dev->vbus_gpio_flag, "vbus_gpio_phy");
+	retval = gpio_request_one((unsigned)phy_dev->vbus_gpio_num, phy_dev->vbus_gpio_flag, "vbus_gpio_phy");
 
-	if (retval) {
+	if (retval != 0) {
 		dev_err(dev, "[ERROR][USB] VBus GPIO can't be requested, errno %d.\n", retval);
 		return retval;
 	}
@@ -124,14 +125,14 @@ static int tcc_ehci_vbus_set(struct usb_phy *phy, int on_off)
 	 * Set the direction of the VBus GPIO passed through the phy_dev structure
 	 * to output.
 	 */
-	retval = gpiod_direction_output(gpio_to_desc(phy_dev->vbus_gpio_num), on_off);
+	retval = gpiod_direction_output(gpio_to_desc((unsigned)phy_dev->vbus_gpio_num), on_off);
 
-	if (retval) {
+	if (retval != 0) {
 		dev_err(dev, "[ERROR][USB] VBus GPIO direction can't be set to output errno %d.\n", retval);
 		return retval;
 	}
 
-	gpio_free(phy_dev->vbus_gpio_num);
+	gpio_free((unsigned)phy_dev->vbus_gpio_num);
 
 	return retval;
 }
@@ -206,18 +207,18 @@ static irqreturn_t chg_irq(int irq, void *data)
     return IRQ_HANDLED;
 }
 #endif
-#define TCC_MUX_H_SWRST				(1<<4)		/* Host Controller in OTG MUX S/W Reset */
-#define TCC_MUX_H_CLKMSK			(1<<3)		/* Host Controller in OTG MUX Clock Enable */
-#define TCC_MUX_O_SWRST				(1<<2)		/* OTG Controller in OTG MUX S/W Reset */
-#define TCC_MUX_O_CLKMSK			(1<<1)		/* OTG Controller in OTG MUX Clock Enable */
-#define TCC_MUX_OPSEL				(1<<0)		/* OTG MUX Controller Select */
+#define TCC_MUX_H_SWRST     (Hw4)   /* Host Controller in OTG MUX S/W Reset */
+#define TCC_MUX_H_CLKMSK    (Hw3)   /* Host Controller in OTG MUX Clock Enable */
+#define TCC_MUX_O_SWRST     (Hw2)   /* OTG Controller in OTG MUX S/W Reset */
+#define TCC_MUX_O_CLKMSK    (Hw1)   /* OTG Controller in OTG MUX Clock Enable */
+#define TCC_MUX_OPSEL       (Hw0)   /* OTG MUX Controller Select */
 #define TCC_MUX_O_SELECT			(TCC_MUX_O_SWRST|TCC_MUX_O_CLKMSK)
 #define TCC_MUX_H_SELECT			(TCC_MUX_H_SWRST|TCC_MUX_H_CLKMSK)
 
 #define MUX_MODE_HOST		0
 #define MUX_MODE_DEVICE		1
 	
-int tcc_ehci_phy_init(struct usb_phy *phy)
+static int tcc_ehci_phy_init(struct usb_phy *phy)
 {
 	struct tcc_ehci_device *ehci_phy_dev = container_of(phy, struct tcc_ehci_device, phy);
 	struct ehci_phy_reg	*ehci_pcfg = (struct ehci_phy_reg*)ehci_phy_dev->base;
@@ -226,7 +227,7 @@ int tcc_ehci_phy_init(struct usb_phy *phy)
 
 	//printk("%s:ehci_pcfg=%p\n ", __func__, ehci_pcfg);
 
-	if (ehci_phy_dev->mux_port) {
+	if (ehci_phy_dev->mux_port != 0) {
 		mux_cfg_val = readl(phy->otg->mux_cfg_addr); /* get otg control cfg register */
 		BITCSET(mux_cfg_val, TCC_MUX_OPSEL, TCC_MUX_H_SELECT);
 		writel(mux_cfg_val, phy->otg->mux_cfg_addr);
@@ -240,14 +241,14 @@ int tcc_ehci_phy_init(struct usb_phy *phy)
 	// Reset PHY Registers
 	#if defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC901X) || defined(CONFIG_ARCH_TCC805X)
 	writel(0x83000025, &ehci_pcfg->pcfg0);
-	if (ehci_phy_dev->mux_port) {
+	if (ehci_phy_dev->mux_port != 0) {
 		writel(0xE31C243A, &ehci_pcfg->pcfg1);	// EHCI MUX Host PHY Configuration
 	} else {
 		writel(0xE31C243A, &ehci_pcfg->pcfg1);	// EHCI PHY Configuration
 	}
 	#else
 	writel(0x03000115, &ehci_pcfg->pcfg0);
-	if (ehci_phy_dev->mux_port) {
+	if (ehci_phy_dev->mux_port != 0) {
 		writel(0x0334D175, &ehci_pcfg->pcfg1);	// EHCI MUX Host PHY Configuration
 	} else {
 		writel(0x0334D175, &ehci_pcfg->pcfg1);	// EHCI PHY Configuration
@@ -263,13 +264,13 @@ int tcc_ehci_phy_init(struct usb_phy *phy)
 	writel(0x30048020, &ehci_pcfg->lcfg0);
 
 	// Set the POR
-	writel(readl(&ehci_pcfg->pcfg0) | (1<<31), &ehci_pcfg->pcfg0);
+	writel(readl(&ehci_pcfg->pcfg0) | Hw31, &ehci_pcfg->pcfg0);
 	// Set the Core Reset
 	writel(readl(&ehci_pcfg->lcfg0) & 0xCFFFFFFF, &ehci_pcfg->lcfg0);
 
 	#if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X)
 	// Clear SIDDQ
-	writel(readl(&ehci_pcfg->pcfg0) & ~(1<<24), &ehci_pcfg->pcfg0);
+	writel(readl(&ehci_pcfg->pcfg0) & ~Hw24, &ehci_pcfg->pcfg0);
 	#endif
 
 	#if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC901X) || defined(CONFIG_ARCH_TCC805X)
@@ -281,15 +282,15 @@ int tcc_ehci_phy_init(struct usb_phy *phy)
 	#endif
 
 	// Release POR
-	writel(readl(&ehci_pcfg->pcfg0) & ~(1<<31), &ehci_pcfg->pcfg0);
+	writel(readl(&ehci_pcfg->pcfg0) & ~Hw31, &ehci_pcfg->pcfg0);
 	#if !(defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X))
 	// Clear SIDDQ
 	writel(readl(&ehci_pcfg->pcfg0) & ~(1<<24), &ehci_pcfg->pcfg0); //moved it before Release POR for stability
 	#endif
 	// Set Phyvalid en
-	writel(readl(&ehci_pcfg->pcfg4) | (1<<30), &ehci_pcfg->pcfg4);
+	writel(readl(&ehci_pcfg->pcfg4) | Hw30, &ehci_pcfg->pcfg4);
 	// Set DP/DM (pull down)
-	writel(readl(&ehci_pcfg->pcfg4) | 0x1400, &ehci_pcfg->pcfg4);
+	writel(readl(&ehci_pcfg->pcfg4) | 0x1400U, &ehci_pcfg->pcfg4);
 
 	clk_reset(ehci_phy_dev->hclk, 0);
 
@@ -297,17 +298,17 @@ int tcc_ehci_phy_init(struct usb_phy *phy)
 	i = 0;
 	while (i < 10000) {
 	#if defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC901X) || defined(CONFIG_ARCH_TCC805X)
-		if ((readl(&ehci_pcfg->pcfg4) & (1<<27))) break;
+		if ((readl(&ehci_pcfg->pcfg4) & Hw27) != 0U) break;
 	#else
-		if ((readl(&ehci_pcfg->pcfg0) & (1<<21))) break;
+		if ((readl(&ehci_pcfg->pcfg0) & Hw21) != 0U) break;
 	#endif
 		i++;
 		udelay(5);
 	}
-	printk("[INFO][USB] EHCI PHY valid check %s\x1b[0m\n",i>=9999?"fail!":"pass.");
+	printk("[INFO][USB] EHCI PHY valid check %s\x1b\'[0m\n", (i >= 9999) ? "fail!" : "pass.");
 
 	// Release Core Reset
-	writel(readl(&ehci_pcfg->lcfg0) | 0x30000000, &ehci_pcfg->lcfg0);
+	writel(readl(&ehci_pcfg->lcfg0) | 0x30000000U, &ehci_pcfg->lcfg0);
 
 #ifdef CONFIG_USB_HS_DC_VOLTAGE_LEVEL		/* 017.03.03 */
 	phy->set_dc_voltage_level(phy, CONFIG_USB_HS_DC_VOLTAGE_LEVEL);
@@ -330,8 +331,8 @@ int tcc_ehci_phy_init(struct usb_phy *phy)
 	return 0;
 }
 
-#define USB20_PCFG0_PHY_POR		(1<<31)
-#define USB20_PCFG0_PHY_SIDDQ	(1<<24)
+#define USB20_PCFG0_PHY_POR     (Hw31)
+#define USB20_PCFG0_PHY_SIDDQ   (Hw24)
 static void tcc_ehci_phy_shutdown(struct usb_phy *phy)
 {
 	phy->set_phy_state(phy, 0);
@@ -347,7 +348,10 @@ static int tcc_ehci_phy_state_set(struct usb_phy *phy, int on_off)
 	} else if (on_off == OFF) {
 		BITSET(ehci_pcfg->pcfg0, (USB20_PCFG0_PHY_POR | USB20_PCFG0_PHY_SIDDQ));
 		printk("[INFO][USB] EHCI PHY stop\n");
+	} else {
+		/* Nothing to do */
 	}
+
 	printk("[INFO][USB] EHCI PHY pcfg0 : %08X\n", ehci_pcfg->pcfg0);
 	return 0;
 }
@@ -358,9 +362,9 @@ static void tcc_ehci_phy_mux_sel(struct usb_phy *phy, int is_mux)
 	struct ehci_phy_reg *ehci_pcfg = (struct ehci_phy_reg*)ehci_phy_dev->base;
 	uint32_t mux_cfg_val;
 
-	if (ehci_phy_dev->mux_port) {
+	if (ehci_phy_dev->mux_port != 0) {
 		mux_cfg_val = readl(phy->otg->mux_cfg_addr);
-		if (is_mux) {
+		if (is_mux != 0) {
 			BITCSET(mux_cfg_val, TCC_MUX_OPSEL, TCC_MUX_H_SELECT);
 			writel(mux_cfg_val, phy->otg->mux_cfg_addr);
 		} else {
@@ -380,7 +384,7 @@ static int tcc_ehci_phy_set_vbus_resource(struct usb_phy *phy)
 	 * Check that the "vbus-ctrl-able" property for the USB PHY driver node
 	 * is declared in the device tree.
 	 */
-	if (of_find_property(dev->of_node, "vbus-ctrl-able", 0)) {
+	if (of_find_property(dev->of_node, "vbus-ctrl-able", 0) != NULL) {
 		/*
 		 * Get the GPIO pin number and GPIO flag declared in the "vbus-gpio"
 		 * property for the USB PHY driver node.
@@ -410,7 +414,7 @@ static int tcc_ehci_phy_set_vbus_resource(struct usb_phy *phy)
 			 * set_vbus() is a legacy GPIO function using the value defined
 			 * in linux/gpio.h.
 			 */
-			if (gpio_flag == GPIO_ACTIVE_LOW) {
+			if (gpio_flag == (unsigned int)GPIO_ACTIVE_LOW) {
 				phy_dev->vbus_gpio_flag = GPIOF_ACTIVE_LOW;
 			}
 
@@ -432,7 +436,7 @@ static int tcc_ehci_create_phy(struct device *dev, struct tcc_ehci_device *phy_d
 	int retval = 0;
 
 	phy_dev->phy.otg = devm_kzalloc(dev, sizeof(*phy_dev->phy.otg),	GFP_KERNEL);
-	if (!phy_dev->phy.otg)
+	if (phy_dev->phy.otg == NULL)
 		return -ENOMEM;
 
 	phy_dev->mux_port = of_find_property(dev->of_node, "mux_port", 0)?1:0;
@@ -490,7 +494,7 @@ static int tcc_ehci_phy_probe(struct platform_device *pdev)
 	phy_dev = devm_kzalloc(dev, sizeof(*phy_dev), GFP_KERNEL);
 
 	retval = tcc_ehci_create_phy(dev, phy_dev);
-	if (retval)
+	if (retval != 0)
 		return retval;
 
 #if defined (CONFIG_TCC_BC_12)
@@ -511,9 +515,9 @@ static int tcc_ehci_phy_probe(struct platform_device *pdev)
 	}
 #endif
 
-	if (!request_mem_region(pdev->resource[0].start,
+	if (request_mem_region(pdev->resource[0].start,
 				pdev->resource[0].end - pdev->resource[0].start + 1,
-				"ehci_phy")) {
+				"ehci_phy") == NULL) {
 		dev_dbg(&pdev->dev, "[DEBUG][USB] error reserving mapped memory\n");
 		retval = -EFAULT;
 	}
@@ -539,7 +543,7 @@ static int tcc_ehci_phy_probe(struct platform_device *pdev)
 	platform_set_drvdata(pdev, phy_dev);
 
 	retval = usb_add_phy_dev(&phy_dev->phy);
-	if (retval) {
+	if (retval != 0) {
 		dev_err(&pdev->dev, "[ERROR][USB] usb_add_phy failed\n");
 		return retval;
 	}

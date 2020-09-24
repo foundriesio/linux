@@ -32,7 +32,7 @@
 #define ISSET(X, MASK)          	((unsigned long)(X)&((unsigned long)(MASK)))
 #endif
 
-char *maximum_speed = "super";
+static const char *maximum_speed = "super";
 typedef enum {
 	USBPHY_MODE_RESET = 0,
 	USBPHY_MODE_OTG,
@@ -79,7 +79,7 @@ typedef struct _USBPHYCFG
     volatile unsigned int       U30_PCR1;               //   0x34  USB 3.0 PHY Parameter Control Register Set 1
     volatile unsigned int       U30_PCR2;               //   0x38  USB 3.0 PHY Parameter Control Register Set 2
     volatile unsigned int       U30_SWUTMI;             //   0x3C  USB 3.0 UTMI Software Control Register
-} USBPHYCFG, *PUSBPHYCFG;
+} *PUSBPHYCFG;
 
 #if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X)
 typedef struct _USBSSPHYCFG
@@ -124,14 +124,14 @@ typedef struct _USBSSPHYCFG
     volatile unsigned int       FPHY_LCFG1;             // 0xB8  USB 3.0 High-speed LINK Controller Configuration Register1
 } USBSSPHYCFG, *PUSBSSPHYCFG;
 #endif
-void __iomem* dwc3_get_base(struct usb_phy *phy)
+static void __iomem* dwc3_get_base(struct usb_phy *phy)
 {
 	struct tcc_dwc3_device *dwc3_phy_dev = container_of(phy, struct tcc_dwc3_device, phy);
 	
 	return dwc3_phy_dev->base;
 }
 
-void dwc3_bit_set_phy(void __iomem *base, u32 offset, u32 value)
+static void dwc3_bit_set_phy(void __iomem *base, u32 offset, u32 value)
 {
 	unsigned int uTmp;
 
@@ -139,7 +139,7 @@ void dwc3_bit_set_phy(void __iomem *base, u32 offset, u32 value)
 	writel((uTmp|value), base + offset - DWC3_GLOBALS_REGS_START);
 }
 
-void dwc3_bit_clear_phy(void __iomem *base, u32 offset, u32 value)
+static void dwc3_bit_clear_phy(void __iomem *base, u32 offset, u32 value)
 {
 	unsigned int uTmp;
 
@@ -157,7 +157,7 @@ static int tcc_dwc3_vbus_set(struct usb_phy *phy, int on_off)
 	 * Check that the "vbus-ctrl-able" property for the USB PHY driver node
 	 * is declared in the device tree.
 	 */
-	if (!of_find_property(dev->of_node, "vbus-ctrl-able", 0)) {
+	if (of_find_property(dev->of_node, "vbus-ctrl-able", 0) == NULL) {
 		dev_err(dev, "[ERROR][USB] vbus-ctrl-able property is not declared in device tree.\n");
 		return -ENODEV;
 	}
@@ -169,9 +169,9 @@ static int tcc_dwc3_vbus_set(struct usb_phy *phy, int on_off)
 	}
 
 	/* Request a single VBus GPIO with initial configuration. */
-	retval = gpio_request_one(phy_dev->vbus_gpio_num, phy_dev->vbus_gpio_flag, "vbus_gpio_phy");
+	retval = gpio_request_one((unsigned)phy_dev->vbus_gpio_num, phy_dev->vbus_gpio_flag, "vbus_gpio_phy");
 
-	if (retval) {
+	if (retval != 0) {
 		dev_err(dev, "[ERROR][USB] VBus GPIO can't be requested, errno %d.\n", retval);
 		return retval;
 	}
@@ -180,14 +180,14 @@ static int tcc_dwc3_vbus_set(struct usb_phy *phy, int on_off)
 	 * Set the direction of the VBus GPIO passed through the phy_dev structure
 	 * to output.
 	 */
-	retval = gpiod_direction_output(gpio_to_desc(phy_dev->vbus_gpio_num), on_off);
+	retval = gpiod_direction_output(gpio_to_desc((unsigned)phy_dev->vbus_gpio_num), on_off);
 
-	if (retval) {
+	if (retval != 0) {
 		dev_err(dev, "[ERROR][USB] VBus GPIO direction can't be set to output, errno %d.\n", retval);
 		return retval;
 	}
 
-	gpio_free(phy_dev->vbus_gpio_num);
+	gpio_free((unsigned)phy_dev->vbus_gpio_num);
 
 	return retval;	
 }
@@ -597,16 +597,16 @@ unsigned int dwc3_tcc_write_ss_u30phy_reg(struct usb_phy *phy, unsigned int addr
 
 static int is_suspend = 1;
 
-void dwc3_tcc898x_swreset(PUSBPHYCFG USBPHYCFG, int on_off)
+static void dwc3_tcc898x_swreset(PUSBPHYCFG USBPHYCFG, int on_off)
 {
 	if(on_off == ON)
 		BITCLR(USBPHYCFG->U30_SWRESETN, Hw1);
 	else if(on_off == OFF)
 		BITSET(USBPHYCFG->U30_SWRESETN, Hw1);
 	else
-		printk("[INFO][USB] \x1b[1;31m[%s:%d]Wrong request!!\x1b[0m\n", __func__, __LINE__);
+		printk("[INFO][USB] \x1b\'[1;31m[%s:%d]Wrong request!!\x1b\'[0m\n", __func__, __LINE__);
 }
-int dwc3_tcc_phy_ctrl_native(struct usb_phy *phy, int on_off)
+static int dwc3_tcc_phy_ctrl_native(struct usb_phy *phy, int on_off)
 {
 	struct tcc_dwc3_device *dwc3_phy_dev = container_of(phy, struct tcc_dwc3_device, phy);
     PUSBPHYCFG USBPHYCFG = (PUSBPHYCFG)dwc3_phy_dev->base;
@@ -614,8 +614,8 @@ int dwc3_tcc_phy_ctrl_native(struct usb_phy *phy, int on_off)
 	unsigned int uTmp = 0;
 	int tmp_cnt;
 	
-	printk("[INFO][USB] %s %s\n", __func__, (on_off)?"ON":"OFF");
-	if(on_off== ON && is_suspend) {
+	printk("[INFO][USB] %s %s\n", __func__, (on_off != 0) ? "ON" : "OFF");
+	if ((on_off == (int)ON) && (is_suspend != 0)) {
 		//clk_reset(dwc3_phy_dev->hclk, 1);
 		//======================================================
 	    // 1.Power-on Reset
@@ -646,7 +646,7 @@ int dwc3_tcc_phy_ctrl_native(struct usb_phy *phy, int on_off)
 		tmp_cnt = 0;
 		while( tmp_cnt < 10000)
 		{
-			if(readl(&USBPHYCFG->U30_PCFG0) & 0x80000000)
+			if ((readl(&USBPHYCFG->U30_PCFG0) & 0x80000000) != 0U)
 			{
 				break;
 			}
@@ -654,7 +654,7 @@ int dwc3_tcc_phy_ctrl_native(struct usb_phy *phy, int on_off)
 			tmp_cnt++;
 			udelay(5);
 		}
-		printk("[INFO][USB] XHCI PHY valid check %s\x1b[0m\n",tmp_cnt>=9999?"fail!":"pass.");
+		printk("[INFO][USB] XHCI PHY valid check %s\x1b\'[0m\n", (tmp_cnt >= 9999) ? "fail!" : "pass.");
 #endif
 		//======================================================
 		// Initialize all registers
@@ -751,14 +751,14 @@ int dwc3_tcc_phy_ctrl_native(struct usb_phy *phy, int on_off)
 		// Release Reset Link global
 		USBPHYCFG->U30_LCFG |= (Hw31);
 #elif defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC901X) || defined(CONFIG_ARCH_TCC805X)
-		if (!strncmp("high", maximum_speed, 4)) {
+		if (strncmp("high", maximum_speed, 4) == 0) {
 			// USB20 Only Mode
 			writel((readl(&USBPHYCFG->U30_LCFG) | Hw28), &USBPHYCFG->U30_LCFG); // enable usb20mode -> removed in DWC_usb3 2.60a, but use as interrupt
 			uTmp = USBPHYCFG->U30_PCFG0;
 			uTmp |= Hw25; // turn off SS circuits
 			uTmp &= ~(Hw24); // turn on HS circuits
 			writel(uTmp, &USBPHYCFG->U30_PCFG0);
-		} else if (!strncmp("super", maximum_speed, 5)) {
+		} else if (strncmp("super", maximum_speed, 5) == 0) {
 			// USB 3.0
 			writel((readl(&USBPHYCFG->U30_LCFG) & ~(Hw28)), &USBPHYCFG->U30_LCFG); // disable usb20mode -> removed in DWC_usb3 2.60a, but use as interrupt
 			uTmp = USBPHYCFG->U30_PCFG0;
@@ -766,7 +766,10 @@ int dwc3_tcc_phy_ctrl_native(struct usb_phy *phy, int on_off)
 			uTmp &= ~(Hw24); // turn on HS circuits
 			uTmp &= ~(Hw30); // release PHY reset
 			writel(uTmp, &USBPHYCFG->U30_PCFG0);
+		} else {
+			/* Nothing to do */
 		}
+
 		mdelay(1);
 		// Release Reset Link global
 		writel((readl(&USBPHYCFG->U30_PCFG0) | (Hw30)), &USBPHYCFG->U30_PCFG0);
@@ -952,7 +955,7 @@ int dwc3_tcc_phy_ctrl_native(struct usb_phy *phy, int on_off)
                  "[ERROR][USB] can't do xhci phy clk enable\n");
         }
 		is_suspend = 0;
-	} else if (on_off == OFF && !is_suspend) {
+	} else if ((on_off == (int)OFF) && (is_suspend == 0)) {
 		clk_disable_unprepare(dwc3_phy_dev->phy_clk);
 		// USB 3.0 PHY Power down
 		printk("[INFO][USB] dwc3 tcc: PHY power down\n");
@@ -960,7 +963,7 @@ int dwc3_tcc_phy_ctrl_native(struct usb_phy *phy, int on_off)
 		mdelay(10);
 		uTmp = USBPHYCFG->U30_PCFG0;
 		is_suspend = 1;
-	} else if (on_off == PHY_RESUME && is_suspend) {
+	} else if ((on_off == (int)PHY_RESUME) && (is_suspend != 0)) {
 		is_suspend = 0;
 		printk("[INFO][USB] dwc3 tcc: PHY resume\n");
 		USBPHYCFG->U30_PCFG0 &= ~(Hw25|Hw24);
@@ -969,12 +972,15 @@ int dwc3_tcc_phy_ctrl_native(struct usb_phy *phy, int on_off)
 			dev_err(dwc3_phy_dev->dev,
 				"[ERROR][USB] can't do xhci phy clk enable\n");
 		}
+	} else {
+		/* Nothing to do */
 	}
+
 	return 0;
 }
 
 #if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X)
-int dwc3_tcc_ss_phy_ctrl_native(struct usb_phy *phy, int on_off)
+static int dwc3_tcc_ss_phy_ctrl_native(struct usb_phy *phy, int on_off)
 {
 	struct tcc_dwc3_device *dwc3_phy_dev = container_of(phy, struct tcc_dwc3_device, phy);
 	PUSBSSPHYCFG USBPHYCFG = (PUSBSSPHYCFG)dwc3_phy_dev->base;
@@ -983,8 +989,8 @@ int dwc3_tcc_ss_phy_ctrl_native(struct usb_phy *phy, int on_off)
 	unsigned int cal_value = 0;
 	int tmp_cnt;
 
-	printk("[INFO][USB] %s %s\n", __func__, (on_off)?"ON":"OFF");
-	if(on_off== ON && is_suspend) {
+	printk("[INFO][USB] %s %s\n", __func__, (on_off != 0) ? "ON" : "OFF");
+	if ((on_off == (int)ON) && (is_suspend != 0)) {
 		//======================================================
 	    // 1.Power-on Reset
 		//======================================================
@@ -1004,7 +1010,7 @@ int dwc3_tcc_ss_phy_ctrl_native(struct usb_phy *phy, int on_off)
 		//External SRAM Init Done Wait		
 		tmp_data = readl(&USBPHYCFG->U30_PCFG0);
 		tmp_data &= (Hw5);
-		while(tmp_data == 0)
+		while (tmp_data == 0U)
 		{
 			tmp_data = readl(&USBPHYCFG->U30_PCFG0); 
 			tmp_data &= (Hw5);
@@ -1028,7 +1034,7 @@ int dwc3_tcc_ss_phy_ctrl_native(struct usb_phy *phy, int on_off)
 		tmp_cnt = 0;
 		while( tmp_cnt < 10000)
 		{
-			if(readl(&USBPHYCFG->U30_PCFG0) & 0x00000004)
+			if ((readl(&USBPHYCFG->U30_PCFG0) & 0x00000004U) != 0U)
 			{
 				break;
 			}
@@ -1036,7 +1042,7 @@ int dwc3_tcc_ss_phy_ctrl_native(struct usb_phy *phy, int on_off)
 			tmp_cnt++;
 			udelay(5);
 		}
-		printk("[INFO][USB] XHCI PHY valid check %s\x1b[0m\n",tmp_cnt>=9999?"fail!":"pass.");
+		printk("[INFO][USB] XHCI PHY valid check %s\x1b\'[0m\n", (tmp_cnt >= 9999) ? "fail!" : "pass.");
 
 		//======================================================
 		// Initialize all registers
@@ -1051,7 +1057,7 @@ int dwc3_tcc_ss_phy_ctrl_native(struct usb_phy *phy, int on_off)
 			writel(Hw26|Hw25, dwc3_phy_dev->ref_base);
 			uTmp = readl(dwc3_phy_dev->ref_base);
 			printk("[INFO][USB] 2.0H status bus = 0x%08x\n", uTmp);
-			cal_value = 0x0000F000&uTmp;
+			cal_value = 0x0000F000U & uTmp;
 			//printk("Cal_value = 0x%08x\n", cal_value);
 
 			cal_value = cal_value<<4; //set TESTDATAIN
@@ -1082,10 +1088,10 @@ int dwc3_tcc_ss_phy_ctrl_native(struct usb_phy *phy, int on_off)
 			//Read Override Bus
 			writel(Hw29|Hw26|Hw25, &USBPHYCFG->FPHY_PCFG3);
 			uTmp = readl(&USBPHYCFG->FPHY_PCFG3);
-			printk("[INFO][USB] 2.0 REXT = 0x%08x\n", (0x0000F000&uTmp));
+			printk("[INFO][USB] 2.0 REXT = 0x%08x\n", 0x0000F000U & uTmp);
 
 			tmp_cnt ++;
-		} while(((uTmp&0x0000F000) == 0) && (tmp_cnt < 5));
+		} while (((uTmp & 0x0000F000U) == 0U) && (tmp_cnt < 5));
 
 #if defined (CONFIG_TCC_BC_12)
 		writel(readl(&USBPHYCFG->FPHY_PCFG4) | (1<<31), &USBPHYCFG->FPHY_PCFG4);//clear irq
@@ -1104,14 +1110,14 @@ int dwc3_tcc_ss_phy_ctrl_native(struct usb_phy *phy, int on_off)
 		// Link global Reset
 		writel((readl(&USBPHYCFG->U30_LCFG) & ~Hw31), &USBPHYCFG->U30_LCFG); // CoreRSTN (Cold Reset), active low
 
-		if (!strncmp("high", maximum_speed, 4)) {
+		if (strncmp("high", maximum_speed, 4) == 0) {
 			// USB20 Only Mode
-			writel((readl(&USBPHYCFG->U30_LCFG) | Hw28), &USBPHYCFG->U30_LCFG); // enable usb20mode -> removed in DWC_usb3 2.60a, but use as interrupt
+			writel((readl(&USBPHYCFG->U30_LCFG) | (Hw28)), &USBPHYCFG->U30_LCFG); // enable usb20mode -> removed in DWC_usb3 2.60a, but use as interrupt
 			uTmp = USBPHYCFG->U30_PCFG0;
 			uTmp |= Hw25; // turn off SS circuits
 			uTmp &= ~(Hw24); // turn on HS circuits
 			writel(uTmp, &USBPHYCFG->U30_PCFG0);
-		} else if (!strncmp("super", maximum_speed, 5)) {
+		} else if (strncmp("super", maximum_speed, 5) == 0) {
 			// USB 3.0
 			writel((readl(&USBPHYCFG->U30_LCFG) & ~(Hw28)), &USBPHYCFG->U30_LCFG); // disable usb20mode -> removed in DWC_usb3 2.60a, but use as interrupt
 			uTmp = USBPHYCFG->U30_PCFG0;
@@ -1119,7 +1125,10 @@ int dwc3_tcc_ss_phy_ctrl_native(struct usb_phy *phy, int on_off)
 			uTmp &= ~(Hw24); // turn on HS circuits
 			uTmp &= ~(Hw30); // release PHY reset
 			writel(uTmp, &USBPHYCFG->U30_PCFG0);
+		} else {
+			/* Nothing to do */
 		}
+
 		mdelay(1);
 		// Release Reset Link global
 		writel((readl(&USBPHYCFG->U30_PCFG0) | (Hw30)), &USBPHYCFG->U30_PCFG0);
@@ -1141,7 +1150,7 @@ int dwc3_tcc_ss_phy_ctrl_native(struct usb_phy *phy, int on_off)
                  "[ERROR][USB] can't do xhci phy clk enable\n");
         }
 		is_suspend = 0;
-	} else if (on_off == OFF && !is_suspend) {
+	} else if ((on_off == (int)OFF) && (is_suspend == 0)) {
 		clk_disable_unprepare(dwc3_phy_dev->phy_clk);
 		// USB 3.0 PHY Power down
 		dev_info(dwc3_phy_dev->dev,
@@ -1150,7 +1159,7 @@ int dwc3_tcc_ss_phy_ctrl_native(struct usb_phy *phy, int on_off)
 		mdelay(10);
 		uTmp = USBPHYCFG->U30_PCFG0;
 		is_suspend = 1;
-	} else if (on_off == PHY_RESUME && is_suspend) {
+	} else if ((on_off == (int)PHY_RESUME) && (is_suspend != 0)) {
 		USBPHYCFG->U30_PCFG0 &= ~(Hw25|Hw24);
 		dev_info(dwc3_phy_dev->dev,
 				"[INFO][USB] dwc3 tcc: PHY power up\n");
@@ -1159,6 +1168,8 @@ int dwc3_tcc_ss_phy_ctrl_native(struct usb_phy *phy, int on_off)
 				"[ERROR][USB] can't do xhci phy clk enable\n");
 		}
 		is_suspend = 0;
+	} else {
+		/* Nothing to do */
 	}
 
 	return 0;
@@ -1167,7 +1178,7 @@ int dwc3_tcc_ss_phy_ctrl_native(struct usb_phy *phy, int on_off)
 static int tcc_dwc3_init_phy(struct usb_phy *phy)
 {
 #if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X)
-	if(system_rev == 0)
+	if (system_rev == 0U)
 		return dwc3_tcc_phy_ctrl_native(phy, ON);
 	else
 		return dwc3_tcc_ss_phy_ctrl_native(phy, ON);
@@ -1178,7 +1189,7 @@ static int tcc_dwc3_init_phy(struct usb_phy *phy)
 
 static int tcc_dwc3_suspend_phy(struct usb_phy *phy, int suspend)
 {
-	if (!suspend) {
+	if (suspend == 0) {
 		return phy->set_phy_state(phy, PHY_RESUME);
 	}
 	else {
@@ -1201,7 +1212,7 @@ static int tcc_dwc3_set_vbus_resource(struct usb_phy *phy)
 	 * Check that the "vbus-ctrl-able" property for the USB PHY driver node
 	 * is declared in the device tree.
 	 */
-	if (of_find_property(dev->of_node, "vbus-ctrl-able", 0)) {
+	if (of_find_property(dev->of_node, "vbus-ctrl-able", 0) != NULL) {
 		/*
 		 * Get the GPIO pin number and GPIO flag declared in the "vbus-gpio"
 		 * property for the USB PHY driver node.
@@ -1231,12 +1242,12 @@ static int tcc_dwc3_set_vbus_resource(struct usb_phy *phy)
 			 * set_vbus() is a legacy GPIO function using the value defined
 			 * in linux/gpio.h.
 			 */
-			if (gpio_flag == GPIO_ACTIVE_LOW) {
+			if (gpio_flag == (unsigned int)GPIO_ACTIVE_LOW) {
 				phy_dev->vbus_gpio_flag = GPIOF_ACTIVE_LOW;
 			}
 
 			dev_dbg(dev, "[DEBUG][USB] VBus GPIO pin number is %d\n", phy_dev->vbus_gpio_num);
-			dev_dbg(dev, "[DEBUG][USB] VBus GPIO flag is %s\n", (gpio_flag ? "active low(=1)" : "active high(=0)"));
+			dev_dbg(dev, "[DEBUG][USB] VBus GPIO flag is %s\n", (gpio_flag != 0U) ? "active low(=1)" : "active high(=0)");
 		} else {
 			dev_err(dev, "[ERROR][USB] VBus GPIO pin number is not valid number, errno %d.\n", phy_dev->vbus_gpio_num);
 			return phy_dev->vbus_gpio_num;
@@ -1254,7 +1265,7 @@ static int tcc_dwc3_create_phy(struct device *dev, struct tcc_dwc3_device *phy_d
 	int retval = 0;
 
 	phy_dev->phy.otg = devm_kzalloc(dev, sizeof(*phy_dev->phy.otg),	GFP_KERNEL);
-	if (!phy_dev->phy.otg)
+	if (phy_dev->phy.otg == NULL)
 		return -ENOMEM;
 
 	// HCLK
@@ -1289,10 +1300,6 @@ static int tcc_dwc3_create_phy(struct device *dev, struct tcc_dwc3_device *phy_d
 	phy_dev->phy.set_vbus_resource	= tcc_dwc3_set_vbus_resource;
 	phy_dev->phy.set_vbus			= tcc_dwc3_vbus_set;
 	phy_dev->phy.get_base			= dwc3_get_base;
-//#ifdef CONFIG_DYNAMIC_DC_LEVEL_ADJUSTMENT		/* 017.02.24 */
-//	phy_dev->phy.get_dc_voltage_level = tcc_dwc_otg_get_dc_level;
-//	phy_dev->phy.set_dc_voltage_level = tcc_dwc_otg_set_dc_level;
-//#endif /* CONFIG_DYNAMIC_DC_LEVEL_ADJUSTMENT */
 
 	phy_dev->phy.otg->usb_phy			= &phy_dev->phy;
 #if !(defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X))
@@ -1313,7 +1320,7 @@ static int tcc_dwc3_phy_probe(struct platform_device *pdev)
 	phy_dev = devm_kzalloc(dev, sizeof(*phy_dev), GFP_KERNEL);
 
 	retval = tcc_dwc3_create_phy(dev, phy_dev);
-	if (retval) {
+	if (retval != 0) {
 		dev_err(&pdev->dev, "[ERROR][USB] error create phy\n");
 		return retval;
 	}
@@ -1342,9 +1349,9 @@ static int tcc_dwc3_phy_probe(struct platform_device *pdev)
 	//			 pdev->resource[0].end - pdev->resource[0].start+1);
 
 
-	if (!request_mem_region(pdev->resource[0].start,
+	if (request_mem_region(pdev->resource[0].start,
 				pdev->resource[0].end - pdev->resource[0].start + 1,
-				"dwc3_phy")) {
+				"dwc3_phy") == NULL) {
 		dev_err(&pdev->dev, "[ERROR][USB] error reserving mapped memory\n");
 		retval = -EFAULT;
 	}
@@ -1369,7 +1376,7 @@ static int tcc_dwc3_phy_probe(struct platform_device *pdev)
 	platform_set_drvdata(pdev, phy_dev);
 
 	retval = usb_add_phy_dev(&phy_dev->phy);
-	if (retval) {
+	if (retval != 0) {
 		dev_err(&pdev->dev, "[ERROR][USB] usb_add_phy failed\n");
 		return retval;
 	}

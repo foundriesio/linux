@@ -201,14 +201,14 @@ static int dwc3_tcc_parse_dt(struct platform_device *pdev, struct dwc3_tcc *tcc)
 int dwc3_tcc_vbus_ctrl(struct dwc3_tcc *tcc, int on_off);
 void dwc3_tcc_free_dt( struct dwc3_tcc *tcc);
 
-void dwc3_bit_set(void __iomem *base, u32 offset, u32 value)
+static void dwc3_bit_set(void __iomem *base, u32 offset, u32 value)
 {
 	unsigned int uTmp;
 	uTmp = readl(base + offset - DWC3_GLOBALS_REGS_START);
 	writel((uTmp|value), base + offset - DWC3_GLOBALS_REGS_START);
 }
 
-void dwc3_bit_clear(void __iomem *base, u32 offset, u32 value)
+static void dwc3_bit_clear(void __iomem *base, u32 offset, u32 value)
 {
 	unsigned int uTmp;
 	uTmp = readl(base + offset - DWC3_GLOBALS_REGS_START);
@@ -220,7 +220,7 @@ static ssize_t dwc3_tcc_vbus_show(struct device *dev, struct device_attribute *a
 {
 	struct dwc3_tcc *tcc =	platform_get_drvdata(to_platform_device(dev));
 
-	return sprintf(buf, "dwc3 vbus - %s\n",(tcc->vbus_status) ? "on":"off");
+	return sprintf(buf, "dwc3 vbus - %s\n", (tcc->vbus_status != 0) ? "on" : "off");
 }
 
 static ssize_t dwc3_tcc_vbus_store(struct device *dev, struct device_attribute *attr,  
@@ -228,15 +228,15 @@ static ssize_t dwc3_tcc_vbus_store(struct device *dev, struct device_attribute *
 {
 	struct dwc3_tcc *tcc =	platform_get_drvdata(to_platform_device(dev));
 
-	if (!strncmp(buf, "on", 2)) {
+	if (strncmp(buf, "on", 2) == 0) {
 		dwc3_tcc_vbus_ctrl(tcc, ON);
 	}
 
-	if (!strncmp(buf, "off", 3)) {
+	if (strncmp(buf, "off", 3) == 0) {
 		dwc3_tcc_vbus_ctrl(tcc, OFF);
 	}
 
-	return count;
+	return (ssize_t)count;
 }
 
 static DEVICE_ATTR(vbus, S_IRUGO | S_IWUSR, dwc3_tcc_vbus_show, dwc3_tcc_vbus_store);
@@ -698,7 +698,7 @@ void dwc3_tcc_phy_software_reset (void)
 #define SOFFN_SHIFT       3
 #define GET_SOFFN_NUM(x)  ((x >> SOFFN_SHIFT)  & SOFFN_MASK)
 
-int dwc3_tcc_get_soffn(void)
+static int dwc3_tcc_get_soffn(void)
 {
 #if 0		/* 016.02.19 */
 	int uTmp;
@@ -726,19 +726,19 @@ static ssize_t dwc3_eyep_show(struct device *dev,
 	} else {
 		PUSBSSPHYCFG pUSBPHYCFG = (PUSBSSPHYCFG)(tcc->dwc3_phy->get_base(tcc->dwc3_phy));
 		reg = readl(&pUSBPHYCFG->FPHY_PCFG1);
-		val = reg & 0xF;
+		val = reg & 0xFU;
 	}
 #elif defined(CONFIG_ARCH_TCC805X)
 	PUSBSSPHYCFG pUSBPHYCFG = (PUSBSSPHYCFG)(tcc->dwc3_phy->get_base(tcc->dwc3_phy));
 	reg = readl(&pUSBPHYCFG->FPHY_PCFG1);
-	val = reg & 0xF;
+	val = reg & 0xFU;
 #else
 	PUSBPHYCFG pUSBPHYCFG = (PUSBPHYCFG)(tcc->dwc3_phy->get_base(tcc->dwc3_phy));
 	reg = readl(&pUSBPHYCFG->U30_PCFG2);
 	val = (ISSET(reg, TXVRT_MASK)) >> TXVRT_SHIFT;
 #endif
 
-    if( 0x0 <= val && val <= 0xF) {
+    if ((0x0U < val) && (val <= 0xFU)) {
         sprintf(str, "%ld%ld%ld%ld",
                 ISSET(val, 0x8) >> 3,
                 ISSET(val, 0x4) >> 2,
@@ -767,7 +767,7 @@ static ssize_t dwc3_eyep_store(struct device *dev,
         const char *buf, size_t count)
 {
 	struct dwc3_tcc *tcc =  platform_get_drvdata(to_platform_device(dev));
-	uint32_t val = simple_strtoul(buf, NULL, 2);
+	uint32_t val = (uint32_t)simple_strtoul(buf, NULL, 2);
 	uint32_t reg = 0;
 
 #if defined(CONFIG_ARCH_TCC803X)
@@ -788,21 +788,21 @@ static ssize_t dwc3_eyep_store(struct device *dev,
 	reg = readl(&pUSBPHYCFG->U30_PCFG2);
 #endif
 
-    if(count - 1 < 4 || 4 < count - 1 ) {
-        printk("[INFO][USB] \nThis argument length is \x1b[1;33mnot 4\x1b[0m\n\n");
-        printk("[INFO][USB] \tUsage : echo \x1b[1;31mxxxx\x1b[0m > xhci_eyep\n\n");
-        printk("[INFO][USB] \t\t1) length of \x1b[1;32mxxxx\x1b[0m is 4\n");
-        printk("[INFO][USB] \t\t2) \x1b[1;32mx\x1b[0m is binary number(\x1b[1;31m0\x1b[0m or \x1b[1;31m1\x1b[0m)\n\n");
-        return count;
+    if (((count - 1UL) < 4UL) || (4UL < (count - 1UL))) {
+        printk("[INFO][USB] \nThis argument length is \x1b\'[1;33mnot 4\x1b\'[0m\n\n");
+        printk("[INFO][USB] \tUsage : echo \x1b\'[1;31mxxxx\x1b\'[0m > xhci_eyep\n\n");
+        printk("[INFO][USB] \t\t1) length of \x1b\'[1;32mxxxx\x1b\'[0m is 4\n");
+        printk("[INFO][USB] \t\t2) \x1b\'[1;32mx\x1b\'[0m is binary number(\x1b\'[1;31m0\x1b\'[0m or \x1b\'[1;31m1\x1b\'[0m)\n\n");
+        return (ssize_t)count;
     }
     if(((buf[0] != '0') && (buf[0] != '1'))
             || ((buf[1] != '0') && (buf[1] != '1'))
             || ((buf[2] != '0') && (buf[2] != '1'))
             || ((buf[3] != '0') && (buf[3] != '1'))) {
-        printk("[INFO][USB] \necho %c%c%c%c is \x1b[1;33mnot binary value\x1b[0m\n\n", buf[0], buf[1], buf[2], buf[3]);
-        printk("[INFO][USB] \tUsage : echo \x1b[1;31mxxxx\x1b[0m > xhci_eyep\n\n");
-        printk("[INFO][USB] \t\t1) \x1b[1;32mx\x1b[0m is binary number(\x1b[1;31m0\x1b[0m or \x1b[1;31m1\x1b[0m)\n\n");
-        return count;
+        printk("[INFO][USB] \necho %c%c%c%c is \x1b\'[1;33mnot binary value\x1b\'[0m\n\n", buf[0], buf[1], buf[2], buf[3]);
+        printk("[INFO][USB] \tUsage : echo \x1b\'[1;31mxxxx\x1b\'[0m > xhci_eyep\n\n");
+        printk("[INFO][USB] \t\t1) \x1b\'[1;32mx\x1b\'[0m is binary number(\x1b\'[1;31m0\x1b\'[0m or \x1b\'[1;31m1\x1b\'[0m)\n\n");
+        return (ssize_t)count;
     }
 
 #if defined(CONFIG_ARCH_TCC803X)
@@ -823,24 +823,26 @@ static ssize_t dwc3_eyep_store(struct device *dev,
 	writel(reg, &pUSBPHYCFG->U30_PCFG2);
 #endif
 
-    return count;
+    return (ssize_t)count;
 }
 static DEVICE_ATTR(dwc3_eyep, S_IRUGO | S_IWUSR, dwc3_eyep_show, dwc3_eyep_store);
 
-int dwc3_tcc_power_ctrl(struct dwc3_tcc *tcc, int on_off)
+static int dwc3_tcc_power_ctrl(struct dwc3_tcc *tcc, int on_off)
 {
 	int err = 0;
 
-	if ((tcc->vbus_source_ctrl == 1) && (tcc->vbus_source)) {
+	if ((tcc->vbus_source_ctrl == 1) && (tcc->vbus_source != NULL) ) {
 		if(on_off == ON) {
 			err = regulator_enable(tcc->vbus_source);
-			if(err) {
+			if (err != 0) {
 				printk("[INFO][USB] dwc3 tcc: can't enable vbus source\n");
 				return err;
 			}
 			mdelay(1);
 		} else if(on_off == OFF) {
 			regulator_disable(tcc->vbus_source);
+		} else {
+			/* Nothing to do */
 		}
 	}
 	
@@ -860,15 +862,15 @@ int dwc3_tcc_vbus_ctrl(struct dwc3_tcc *tcc, int on_off)
 	int err = 0;
 	struct usb_phy *phy = tcc->dwc3_phy;
 
-	if (!vbus_control_enable) {
+	if (vbus_control_enable == 0U) {
 		printk("[INFO][USB] dwc3 vbus ctrl disable.\n");
 		return -1;
 	}
 
 	if ( tcc->usb3en_ctrl_able == 1) {	
 		// host enable
-		err = gpio_direction_output(tcc->host_en_gpio, 1);
-		if(err) {
+		err = gpio_direction_output((unsigned)tcc->host_en_gpio, 1);
+		if (err != 0) {
 			printk("[INFO][USB] dwc3 tcc: can't enable host\n");
 			return err;
 		}
@@ -887,7 +889,7 @@ int dwc3_tcc_vbus_ctrl(struct dwc3_tcc *tcc, int on_off)
 		tcc->vbus_status = OFF;
 	}
 */
-	if (!phy) {
+	if (phy == NULL) {
 		printk("[INFO][USB] [%s:%d]PHY driver is needed\n", __func__, __LINE__);
 		return -1;
 
@@ -916,7 +918,7 @@ static int dwc3_tcc_register_phys(struct dwc3_tcc *tcc)
     memset(&pdata, 0x00, sizeof(pdata));
 
     pdev = platform_device_alloc("usb_phy_generic", PLATFORM_DEVID_AUTO);
-    if (!pdev)
+    if (pdev == NULL)
         return -ENOMEM;
 
     tcc->usb2_phy = pdev;
@@ -924,11 +926,11 @@ static int dwc3_tcc_register_phys(struct dwc3_tcc *tcc)
     pdata.gpio_reset = -1;
 
     ret = platform_device_add_data(tcc->usb2_phy, &pdata, sizeof(pdata));
-    if (ret)
+    if (ret != 0)
         goto err1;
 
     pdev = platform_device_alloc("usb_phy_generic", PLATFORM_DEVID_AUTO);
-    if (!pdev) {
+    if (pdev == NULL) {
         ret = -ENOMEM;
         goto err1;
     }
@@ -937,15 +939,15 @@ static int dwc3_tcc_register_phys(struct dwc3_tcc *tcc)
     pdata.type = USB_PHY_TYPE_USB3;
 
     ret = platform_device_add_data(tcc->usb3_phy, &pdata, sizeof(pdata));
-    if (ret)
+    if (ret != 0)
         goto err2;
 
     ret = platform_device_add(tcc->usb2_phy);
-    if (ret)
+    if (ret != 0)
         goto err2;
 
     ret = platform_device_add(tcc->usb3_phy);
-    if (ret)
+    if (ret != 0)
         goto err3;
 
     return 0;
@@ -965,7 +967,7 @@ err1:
 static int dwc3_tcc_register_our_phy(struct dwc3_tcc *tcc)
 {
 	int ret = 0;
-	if (of_find_property(tcc->dev->of_node, "telechips,dwc3_phy", 0)) {
+	if (of_find_property(tcc->dev->of_node, "telechips,dwc3_phy", 0) != NULL) {
 		tcc->dwc3_phy = devm_usb_get_phy_by_phandle(tcc->dev, "telechips,dwc3_phy", 0);
 		if (IS_ERR(tcc->dwc3_phy)) {
 			tcc->dwc3_phy = NULL;
@@ -974,7 +976,7 @@ static int dwc3_tcc_register_our_phy(struct dwc3_tcc *tcc)
 		}
 #if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X)
 		ret = tcc->dwc3_phy->set_vbus_resource(tcc->dwc3_phy);
-		if (ret) {
+		if (ret != 0) {
 			return ret;
 		}
 #endif
@@ -1009,7 +1011,7 @@ static int dwc3_tcc_new_probe(struct platform_device *pdev)
 	}
 */
 	tcc = devm_kzalloc(dev, sizeof(*tcc), GFP_KERNEL);
-	if (!tcc)
+	if (tcc == NULL)
 		return -ENOMEM;
 
 	/*
@@ -1044,7 +1046,7 @@ static int dwc3_tcc_new_probe(struct platform_device *pdev)
 		return -EINVAL;
 	}
 	ret = clk_prepare_enable(tcc->hclk);
-	if (ret)
+	if (ret != 0)
 		return ret;
 /*
 	tcc->phy_clk = of_clk_get(pdev->dev.of_node, 1);
@@ -1059,7 +1061,7 @@ static int dwc3_tcc_new_probe(struct platform_device *pdev)
 	//===============================================
 	// Check Host enable pin
 	//===============================================
-	if (of_find_property(pdev->dev.of_node, "usb3en-ctrl-able", 0)) {
+	if (of_find_property(pdev->dev.of_node, "usb3en-ctrl-able", 0) != NULL) {
 		tcc->usb3en_ctrl_able = 1;
 		tcc->host_en_gpio = of_get_named_gpio(pdev->dev.of_node,
 						"usb3en-gpio", 0);
@@ -1069,8 +1071,8 @@ static int dwc3_tcc_new_probe(struct platform_device *pdev)
 			goto gpios_err;
 		}
 	
-		ret = gpio_request(tcc->host_en_gpio, "xhci_en_gpio");
-		if(ret) {
+		ret = gpio_request((unsigned)tcc->host_en_gpio, "xhci_en_gpio");
+		if (ret != 0) {
 			dev_err(&pdev->dev, "[ERROR][USB] can't requeest xhci_en_gpio\n");
 			goto gpios_err;
 		}
@@ -1081,7 +1083,7 @@ static int dwc3_tcc_new_probe(struct platform_device *pdev)
 	//===============================================
 	// Check Host enable pin
 	//===============================================
-	if (of_find_property(pdev->dev.of_node, "vbus-ctrl-able", 0)) {
+	if (of_find_property(pdev->dev.of_node, "vbus-ctrl-able", 0) != NULL) {
 		tcc->vbus_ctrl_able = 1;
 /*
 		tcc->vbus_gpio = of_get_named_gpio(pdev->dev.of_node,
@@ -1106,7 +1108,7 @@ static int dwc3_tcc_new_probe(struct platform_device *pdev)
 	//===============================================
 	// Check VBUS Source enable	
 	//===============================================
-	if (of_find_property(pdev->dev.of_node, "vbus-source-ctrl", 0)) {
+	if (of_find_property(pdev->dev.of_node, "vbus-source-ctrl", 0) != NULL) {
 		tcc->vbus_source_ctrl = 1;
 		tcc->vbus_source = regulator_get(&pdev->dev, "vdd_dwc");
 		if (IS_ERR(tcc->vbus_source)) {
@@ -1136,7 +1138,7 @@ static int dwc3_tcc_new_probe(struct platform_device *pdev)
 
 
 	ret = dwc3_tcc_register_our_phy(tcc);
-	if (ret) {
+	if (ret != 0) {
 		dev_err(dev, "[ERROR][USB] couldn't register out PHY\n");
 		goto populate_err;
 	}
@@ -1147,9 +1149,9 @@ static int dwc3_tcc_new_probe(struct platform_device *pdev)
 #endif
 #endif
 
-	if (node) {
+	if (node != NULL) {
         ret = of_platform_populate(node, NULL, NULL, dev);
-        if (ret) {
+        if (ret != 0) {
             dev_err(dev, "[ERROR][USB] failed to add dwc3 core\n");
             goto populate_err;
         }
@@ -1161,7 +1163,7 @@ static int dwc3_tcc_new_probe(struct platform_device *pdev)
 	
 	ret = device_create_file(&pdev->dev, &dev_attr_vbus);
 	
-	if (ret) {
+	if (ret != 0) {
 		dev_err(&pdev->dev, "[ERROR][USB] failed to create vbus\n");
 		goto err1;
 	}
@@ -1219,7 +1221,7 @@ static int dwc3_tcc_new_probe(struct platform_device *pdev)
 	}
 #endif
 	ret = device_create_file(&pdev->dev, &dev_attr_dwc3_eyep);
-	if (ret) {
+	if (ret != 0) {
 		dev_err(&pdev->dev, "[ERROR][USB] failed to create dwc3_eyep\n");
 		goto err1;
 	}
@@ -1248,14 +1250,14 @@ static int  dwc3_tcc_probe(struct platform_device *pdev)
 	int		   				ret = -ENOMEM;
 
 	ret = dma_coerce_mask_and_coherent(&pdev->dev, DMA_BIT_MASK(32));
-	if (ret)
+	if (ret != 0)
 	{
 		printk("[INFO][USB] %s : failed to mask dma\n", __func__);
 		return ret;
 	}
 
 	tcc = devm_kzalloc(dev, sizeof(*tcc), GFP_KERNEL);
-	if (!tcc) {
+	if (tcc == NULL) {
 		dev_err(dev, "[ERROR][USB] not enough memory\n");
 		goto err0;
 	}
@@ -1265,16 +1267,16 @@ static int  dwc3_tcc_probe(struct platform_device *pdev)
 	 * Since shared usb code relies on it, set it here for now.
 	 * Once we move to full device tree support this will vanish off.
 	 */
-	if (!dev->dma_mask)
+	if (dev->dma_mask == 0)
 		dev->dma_mask = &dev->coherent_dma_mask;
-	if (!dev->coherent_dma_mask)
+	if (dev->coherent_dma_mask == 0ULL)
 		dev->coherent_dma_mask = DMA_BIT_MASK(32);
 
 
 	platform_set_drvdata(pdev, tcc);
 
 	dwc3 = platform_device_alloc("dwc3", PLATFORM_DEVID_AUTO);
-	if (!dwc3) {
+	if (dwc3 == NULL) {
 		dev_err(&pdev->dev, "[ERROR][USB] couldn't allocate dwc3 device\n");
 		goto err0;
 	}
@@ -1282,18 +1284,20 @@ static int  dwc3_tcc_probe(struct platform_device *pdev)
 	memcpy(&dwc3->dev.archdata, &dev->archdata, sizeof(dev->archdata)); //fix issue - failed to alloc dma buffer 
 	dwc3_tcc_parse_dt(pdev, tcc);
 
-	if (tcc->hclk)
+	if (tcc->hclk != NULL)
 		clk_prepare_enable(tcc->hclk);
 	
 	dwc3_tcc_power_ctrl(tcc, ON);
 
-	if (!strncmp("on", vbus, 2)) {
+	if (strncmp("on", vbus, 2) == 0) {
 		dwc3_tcc_vbus_ctrl(tcc, ON);
-	} else if (!strncmp("off", vbus, 3)) {
+	} else if (strncmp("off", vbus, 3) == 0) {
 		dwc3_tcc_vbus_ctrl(tcc, OFF);
+	} else {
+		/* Nothing to do */
 	}
 
-	if (tcc->phy_clk)
+	if (tcc->phy_clk != NULL)
 		clk_prepare_enable(tcc->phy_clk);
 
 	dwc3->dev.parent = &pdev->dev;
@@ -1302,7 +1306,7 @@ static int  dwc3_tcc_probe(struct platform_device *pdev)
 	
 	/* PHY initialization */
 	ret = dwc3_tcc_register_our_phy(tcc);
-	if (ret) {
+	if (ret != 0) {
 		dev_err(dev, "[ERROR][USB] couldn't register out PHY\n");
 		goto err1;
 	}
@@ -1311,20 +1315,20 @@ static int  dwc3_tcc_probe(struct platform_device *pdev)
 #endif /* DWC3_SQ_TEST_MODE */
 	ret = platform_device_add_resources(dwc3, pdev->resource,
 			pdev->num_resources);
-	if (ret) {
+	if (ret != 0) {
 		dev_err(&pdev->dev, "[ERROR][USB] couldn't add resources to dwc3 device\n");
 		goto err1;
 	}
 
 	ret = platform_device_add(dwc3);
-	if (ret) {
+	if (ret != 0) {
 		dev_err(&pdev->dev, "[ERROR][USB] failed to register dwc3 device\n");
 		goto err1;
 	}
 
 	ret = device_create_file(&pdev->dev, &dev_attr_vbus);
 	
-	if (ret) {
+	if (ret != 0) {
 		dev_err(&pdev->dev, "[ERROR][USB] failed to create vbus\n");
 		goto err1;
 	}
@@ -1382,7 +1386,7 @@ static int  dwc3_tcc_probe(struct platform_device *pdev)
 	}
 #endif
 	ret = device_create_file(&pdev->dev, &dev_attr_dwc3_eyep);
-	if (ret) {
+	if (ret != 0) {
 		dev_err(&pdev->dev, "[ERROR][USB] failed to create dwc3_eyep\n");
 		goto err1;
 	}
@@ -1392,7 +1396,7 @@ static int  dwc3_tcc_probe(struct platform_device *pdev)
 
 err1:
 	printk("[INFO][USB] %s:%d \n", __func__, __LINE__);
-	if (pdata && pdata->phy_exit)
+	if ((pdata != NULL) && (pdata->phy_exit != NULL))
 		pdata->phy_exit(pdev, pdata->phy_type);
 err0:
 	printk("[INFO][USB] %s:%d error\n", __func__, __LINE__);
@@ -1451,7 +1455,7 @@ static int dwc3_tcc_remove(struct platform_device *pdev)
 
 	platform_device_unregister(tcc->dwc3);	
 
-	if (pdata && pdata->phy_exit)
+	if ((pdata != NULL) && (pdata->phy_exit != NULL))
 		pdata->phy_exit(pdev, pdata->phy_type);
 
 	platform_set_drvdata(pdev, NULL);
@@ -1472,7 +1476,7 @@ static int dwc3_tcc_suspend(struct device *dev)
 	dwc3_tcc_vbus_ctrl(tcc, OFF);
 	dwc3_tcc_power_ctrl(tcc, OFF);
 
-	if (tcc->hclk)
+	if (tcc->hclk != NULL)
 		clk_disable_unprepare(tcc->hclk);
 
 	return 0;
@@ -1482,7 +1486,7 @@ static int dwc3_tcc_resume(struct device *dev)
 {
 	struct dwc3_tcc	*tcc =	platform_get_drvdata(to_platform_device(dev));
 
-	if (tcc->hclk)
+	if (tcc->hclk != NULL)
 		clk_prepare_enable(tcc->hclk);
 
 	dwc3_tcc_power_ctrl(tcc, ON);
@@ -1521,17 +1525,17 @@ static int dwc3_tcc_parse_dt(struct platform_device *pdev, struct dwc3_tcc *tcc)
 	//tcc->regs = 0xf2900000;
 #endif
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 1);
-	if (!res) {
+	if (res == NULL) {
 		dev_err(&pdev->dev, "[ERROR][USB] missing phy memory resource\n");
 		return -1;
 	}
-	res->end += 1;
+	res->end += 1ULL;
 	tcc->phy_regs = devm_ioremap(&pdev->dev, res->start, res->end-res->start);
 
 	//===============================================
 	// Check Host enable pin
 	//===============================================
-	if (of_find_property(pdev->dev.of_node, "usb3en-ctrl-able", 0)) {
+	if (of_find_property(pdev->dev.of_node, "usb3en-ctrl-able", 0) != NULL) {
 		tcc->usb3en_ctrl_able = 1;
 		tcc->host_en_gpio = of_get_named_gpio(pdev->dev.of_node,
 						"usb3en-gpio", 0);
@@ -1540,8 +1544,8 @@ static int dwc3_tcc_parse_dt(struct platform_device *pdev, struct dwc3_tcc *tcc)
 			return -ENODEV;
 		}
 	
-		err = gpio_request(tcc->host_en_gpio, "xhci_en_gpio");
-		if(err) {
+		err = gpio_request((unsigned)tcc->host_en_gpio, "xhci_en_gpio");
+		if (err != 0) {
 			dev_err(&pdev->dev, "[ERROR][USB] can't requeest xhci_en_gpio\n");
 			return err;
 		}
@@ -1552,7 +1556,7 @@ static int dwc3_tcc_parse_dt(struct platform_device *pdev, struct dwc3_tcc *tcc)
 	//===============================================
 	// Check Host enable pin
 	//===============================================
-	if (of_find_property(pdev->dev.of_node, "vbus-ctrl-able", 0)) {
+	if (of_find_property(pdev->dev.of_node, "vbus-ctrl-able", 0) != NULL) {
 		tcc->vbus_ctrl_able = 1;
 /*
 		tcc->vbus_gpio = of_get_named_gpio(pdev->dev.of_node,
@@ -1576,7 +1580,7 @@ static int dwc3_tcc_parse_dt(struct platform_device *pdev, struct dwc3_tcc *tcc)
 	//===============================================
 	// Check VBUS Source enable	
 	//===============================================
-	if (of_find_property(pdev->dev.of_node, "vbus-source-ctrl", 0)) {
+	if (of_find_property(pdev->dev.of_node, "vbus-source-ctrl", 0) != NULL) {
 		tcc->vbus_source_ctrl = 1;
 		tcc->vbus_source = regulator_get(&pdev->dev, "vdd_dwc");
 		if (IS_ERR(tcc->vbus_source)) {
@@ -1601,9 +1605,9 @@ static int dwc3_tcc_parse_dt(struct platform_device *pdev, struct dwc3_tcc *tcc)
 void dwc3_tcc_free_dt( struct dwc3_tcc *tcc)
 {
 	if ( tcc->vbus_ctrl_able == 1) {
-		gpio_free(tcc->host_en_gpio);
+		gpio_free((unsigned)tcc->host_en_gpio);
 		//gpio_free(tcc->vbus_gpio);
-		if (tcc->vbus_source)
+		if (tcc->vbus_source != NULL)
 			regulator_put(tcc->vbus_source);
 	}
 }

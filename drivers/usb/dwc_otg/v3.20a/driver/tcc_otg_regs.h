@@ -18,38 +18,38 @@
 #define __TCC_OTG_REGS_H__
 
 #ifndef Hw0
-#define	Hw31								0x80000000
-#define	Hw30								0x40000000
-#define	Hw29								0x20000000
-#define	Hw28								0x10000000
-#define	Hw27								0x08000000
-#define	Hw26								0x04000000
-#define	Hw25								0x02000000
-#define	Hw24								0x01000000
-#define	Hw23								0x00800000
-#define	Hw22								0x00400000
-#define	Hw21								0x00200000
-#define	Hw20								0x00100000
-#define	Hw19								0x00080000
-#define	Hw18								0x00040000
-#define	Hw17								0x00020000
-#define	Hw16								0x00010000
-#define	Hw15								0x00008000
-#define	Hw14								0x00004000
-#define	Hw13								0x00002000
-#define	Hw12								0x00001000
-#define	Hw11								0x00000800
-#define	Hw10								0x00000400
-#define	Hw9									0x00000200
-#define	Hw8									0x00000100
-#define	Hw7									0x00000080
-#define	Hw6									0x00000040
-#define	Hw5									0x00000020
-#define	Hw4									0x00000010
-#define	Hw3									0x00000008
-#define	Hw2									0x00000004
-#define	Hw1									0x00000002
-#define	Hw0									0x00000001
+#define	Hw31        0x80000000U
+#define	Hw30        0x40000000U
+#define	Hw29        0x20000000U
+#define	Hw28        0x10000000U
+#define	Hw27        0x08000000U
+#define	Hw26        0x04000000U
+#define	Hw25        0x02000000U
+#define	Hw24        0x01000000U
+#define	Hw23        0x00800000U
+#define	Hw22        0x00400000U
+#define	Hw21        0x00200000U
+#define	Hw20        0x00100000U
+#define	Hw19        0x00080000U
+#define	Hw18        0x00040000U
+#define	Hw17        0x00020000U
+#define	Hw16        0x00010000U
+#define	Hw15        0x00008000U
+#define	Hw14        0x00004000U
+#define	Hw13        0x00002000U
+#define	Hw12        0x00001000U
+#define	Hw11        0x00000800U
+#define	Hw10        0x00000400U
+#define	Hw9         0x00000200U
+#define	Hw8         0x00000100U
+#define	Hw7         0x00000080U
+#define	Hw6         0x00000040U
+#define	Hw5         0x00000020U
+#define	Hw4         0x00000010U
+#define	Hw3         0x00000008U
+#define	Hw2         0x00000004U
+#define	Hw1         0x00000002U
+#define	Hw0         0x00000001U
 #endif
 
 #define OTGCR_OTGAMAP(x)					(x<<2)		// 0~3
