@@ -586,7 +586,8 @@ static int apparmor_sb_pivotroot(const struct path *old_path,
 	return error;
 }
 
-int apparmor_getprocattr(struct task_struct *task, char *name, char **value)
+static int apparmor_getprocattr(struct task_struct *task, char *name,
+				char **value)
 {
 	int error = -ENOENT;
 	/* released below */
@@ -612,7 +613,8 @@ int apparmor_getprocattr(struct task_struct *task, char *name, char **value)
 	return error;
 }
 
-int apparmor_setprocattr(const char *name, void *value, size_t size)
+static int apparmor_setprocattr(const char *name, void *value,
+				size_t size)
 {
 	char *command, *largs = NULL, *args = value;
 	size_t arg_size;
