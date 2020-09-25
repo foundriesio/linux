@@ -18,12 +18,13 @@
 #include <linux/irq.h>
 #include <linux/uaccess.h>
 #include <linux/arm-smccc.h>
+#include <linux/kernel.h>
 
 #define wdt_readl	readl
 #define wdt_writel	writel
 
 /* Kick Timer */
-#define MAX_TCKSEL	6
+#define MAX_TCKSEL	(unsigned int)6
 #define TCC_TCFG	0x00
 #define TCC_TCNT	0x04
 #define TCC_TREF	0x08
@@ -46,7 +47,7 @@ struct tcc_cb_wdt {
 	void __iomem *timer_irq_base;
 
 	unsigned int pretimeout;
-	unsigned int timer_clk_rate;
+	unsigned long timer_clk_rate;
 	unsigned int kick_timer_id;
 	unsigned int kick_irq;
 
@@ -63,7 +64,7 @@ static int tcc_cb_wdt_get_status(struct watchdog_device *wdd);
 static inline
 struct tcc_cb_wdt *tcc_wdt_get_device(struct watchdog_device *wdd)
 {
-	return container_of(wdd, struct tcc_cb_wdt, wdd);
+	return container_of((wdd), struct tcc_cb_wdt, wdd);
 }
 static int tcc_cb_wdt_enable_kick_timer(struct tcc_cb_wdt *cb_wdt)
 {
@@ -76,7 +77,7 @@ static int tcc_cb_wdt_enable_kick_timer(struct tcc_cb_wdt *cb_wdt)
 
 	wdt_writel(0x0, cb_wdt->timer_base + TCC_TCNT);
 	val = wdt_readl(cb_wdt->timer_base + TCC_TCFG);
-	val |= (1 << 3) | (1 << 0);
+	val |= ((unsigned int)1 << (unsigned int)3) | ((unsigned int)1 << (unsigned int)0);
 	wdt_writel(val, cb_wdt->timer_base + TCC_TCFG);
 
 	return 0;
@@ -92,7 +93,7 @@ static int tcc_cb_wdt_disable_kick_timer(struct tcc_cb_wdt *cb_wdt)
 	}
 
 	val = wdt_readl(cb_wdt->timer_base + TCC_TCFG);
-	val &= ~((1 << 3) | (1 << 0));
+	val &= ~(((unsigned int)1 << (unsigned int)3) | ((unsigned int)1 << (unsigned int)0));
 	wdt_writel(val, cb_wdt->timer_base + TCC_TCFG);
 	wdt_writel(0x0, cb_wdt->timer_base + TCC_TCNT);
 
@@ -114,13 +115,13 @@ static irqreturn_t tcc_cb_wdt_kick(int irq, void *dev_id)
 	cb_wdt = (struct tcc_cb_wdt *)dev_get_drvdata(dev);
 	timer_id = cb_wdt->kick_timer_id;
 
-	if((wdt_readl(cb_wdt->timer_irq_base) & (1 << timer_id)) == 0x0) {
+	if((wdt_readl(cb_wdt->timer_irq_base) & ((unsigned int)1 << timer_id)) == (unsigned int)0x0) {
 		return IRQ_NONE;
 	}
 
-	wdt_writel((1<<(timer_id+8))|(1<<timer_id), cb_wdt->timer_irq_base);
+	wdt_writel(((unsigned int)1<<(timer_id+(unsigned int)8))|((unsigned int)1<<timer_id), cb_wdt->timer_irq_base);
 
-	spin_lock_irqsave(&cb_wdt->lock, flags);
+	spin_lock_irqsave((&cb_wdt->lock), (flags));
 	ret = tcc_cb_wdt_ping(&cb_wdt->wdd);
 	spin_unlock_irqrestore(&cb_wdt->lock, flags);
 	if(ret != 0) {
@@ -132,37 +133,38 @@ static irqreturn_t tcc_cb_wdt_kick(int irq, void *dev_id)
 
 static int tcc_cb_wdt_init_kick_timer(struct tcc_cb_wdt *cb_wdt, unsigned int sec)
 {
-	int k;
+	unsigned int k;
 	unsigned int max_ref, tck, req_hz;
-	unsigned int srch_k, srch_err, ref[MAX_TCKSEL+1];
+	unsigned int srch_k, srch_err, ref[MAX_TCKSEL+1UL];
 
-	if(sec < 1)
+	if(sec < (unsigned int)1)
 		return -EINVAL;
 
-	req_hz = 50 / sec;
+	req_hz = (unsigned int)50 / sec;
 
 	/* timer should be 16-bit timer */
 	max_ref = 0xFFFF;
 
 	/* find divide factor */
 	srch_k = 0;
-	srch_err = -1;
-	for (k =0 ; k<=MAX_TCKSEL ; k++) {
+	srch_err = ~(unsigned int)0;
+	for (k = 0; k<=MAX_TCKSEL ; k++) {
 		unsigned int tcksel, cnt, max_cnt, ref_1, ref_2, err1, err2;
-		if (k<5)
-			max_cnt = k+1;
+		if (k<(unsigned int)5)
+			max_cnt = (k+(unsigned int)1);
 		else
-			max_cnt = 2*k;
-		tcksel = 1;
-		for (cnt=0 ; cnt<max_cnt ; cnt++)
-			tcksel *= 2;
+			max_cnt = ((unsigned int)2*k);
 
-		tck = (cb_wdt->timer_clk_rate * 50) / tcksel;
-		ref_1 = tck/req_hz;
-		ref_2 = (tck+req_hz-1)/req_hz;
+		tcksel = (unsigned int)1;
+		for (cnt=(unsigned int)0 ; cnt<max_cnt ; cnt++)
+			tcksel *= (unsigned int)2;
 
-		err1 = req_hz - tck/ref_1;
-		err2 = tck/ref_2 - req_hz;
+		tck = (cb_wdt->timer_clk_rate * (unsigned int)50) / tcksel;
+		ref_1 = (tck/req_hz);
+		ref_2 = (tck+req_hz-(unsigned int)1)/req_hz;
+
+		err1 = (req_hz - (tck/ref_1));
+		err2 = ((tck/ref_2) - req_hz);
 		if (err1 > err2) {
 			ref[k] = ref_2;
 			err1 = err2;
@@ -172,7 +174,7 @@ static int tcc_cb_wdt_init_kick_timer(struct tcc_cb_wdt *cb_wdt, unsigned int se
 
 		if (ref[k] > max_ref) {
 			ref[k] = max_ref;
-			err1 = ((tck/max_ref) > req_hz) ? tck/max_ref - req_hz : req_hz - tck/max_ref;
+			err1 = ((tck/max_ref) > req_hz) ? ((tck/max_ref) - req_hz) : (req_hz - (tck/max_ref));
 		}
 
 		if (err1 < srch_err) {
@@ -180,7 +182,7 @@ static int tcc_cb_wdt_init_kick_timer(struct tcc_cb_wdt *cb_wdt, unsigned int se
 			srch_k = k;
 		}
 
-		if (err1 == 0)
+		if (err1 == (unsigned int)0)
 			break;
 	}
 
@@ -205,7 +207,7 @@ static int tcc_cb_wdt_set_timeout(struct watchdog_device *wdd, unsigned int time
 {
 	struct tcc_cb_wdt *cb_wdt = tcc_wdt_get_device(wdd);
 	int ret;
-	unsigned long reset_cnt = 0; 
+	unsigned int reset_cnt = 0; 
 
 	/* configure kick timer */
 	ret = tcc_cb_wdt_init_kick_timer(cb_wdt, cb_wdt->pretimeout);
@@ -229,7 +231,7 @@ static int tcc_cb_wdt_start(struct watchdog_device *wdd)
 	unsigned long flags;
 	int ret;
 
-	spin_lock_irqsave(&cb_wdt->lock, flags);
+	spin_lock_irqsave((&cb_wdt->lock), (flags));
 
 	ret = tcc_cb_wdt_ping(wdd);
 	if(ret != 0) {
@@ -243,7 +245,7 @@ static int tcc_cb_wdt_start(struct watchdog_device *wdd)
 
 	wdt_writel(0x1, cb_wdt->base + CBUS_WDT_EN);
 	
-	spin_unlock_irqrestore(&cb_wdt->lock, flags);
+	spin_unlock_irqrestore((&cb_wdt->lock), (flags));
 
 	test_and_set_bit(WDOG_ACTIVE, &wdd->status);
 
@@ -289,7 +291,7 @@ static int tcc_cb_wdt_get_status(struct watchdog_device *wdd)
 {
 	struct tcc_cb_wdt *cb_wdt = tcc_wdt_get_device(wdd);
 
-	return wdt_readl(cb_wdt->base+CBUS_WDT_EN);
+	return (int)wdt_readl(cb_wdt->base+CBUS_WDT_EN);
 }
 
 static long tcc_cb_wdt_ioctl(struct watchdog_device *wdd, unsigned int cmd, unsigned long arg)
@@ -303,8 +305,7 @@ static long tcc_cb_wdt_ioctl(struct watchdog_device *wdd, unsigned int cmd, unsi
 	switch (cmd)
 	{
 	case WDIOC_GETSUPPORT:
-		ret = (copy_to_user(argp, wdd->info,
-			sizeof(wdd->info)) ? -EFAULT : 0);
+		ret = (copy_to_user(argp, wdd->info, sizeof(wdd->info)) != 0) ? -EFAULT : 0;
 		break;
 	case WDIOC_GETSTATUS:
 		ret = put_user(tcc_cb_wdt_get_status(wdd), p);
@@ -316,20 +317,20 @@ static long tcc_cb_wdt_ioctl(struct watchdog_device *wdd, unsigned int cmd, unsi
 		ret = tcc_cb_wdt_ping(wdd);
 		break;
 	case WDIOC_SETOPTIONS:
-		if (get_user(options, (int *)arg)) {
+		if (get_user(options, (int *)arg) != 0) {
 			ret = -EFAULT;
 			break;
 		}
 		ret = -EINVAL;
-		if (options & WDIOS_DISABLECARD) {
+		if ((options & WDIOS_DISABLECARD) != 0) {
 			ret = tcc_cb_wdt_stop(wdd);
 		}
-		if (options & WDIOS_ENABLECARD) {
+		if ((options & WDIOS_ENABLECARD) != 0) {
 			ret = tcc_cb_wdt_start(wdd);
 		}
 		break;
 	case WDIOC_SETTIMEOUT:
-		if (get_user(wdd->timeout, p))
+		if (get_user(wdd->timeout, (unsigned int *)p) != 0)
 		{
 			ret = -EFAULT;
 		}
@@ -341,17 +342,17 @@ static long tcc_cb_wdt_ioctl(struct watchdog_device *wdd, unsigned int cmd, unsi
 				if(ret == 0) {
 					ret = tcc_cb_wdt_start(wdd);
 					if(ret == 0) {
-						ret = put_user(wdd->timeout, p);
+						ret = put_user(wdd->timeout, (unsigned int *)p);
 					}
 				}
 			}
 		}
 		break;
 	case WDIOC_GETTIMEOUT:
-		ret = put_user(wdd->timeout, p);
+		ret = put_user(wdd->timeout, (unsigned int *)p);
 		break;
 	case WDIOC_SETPRETIMEOUT:
-		if (get_user(cb_wdt->pretimeout, p))
+		if (get_user(cb_wdt->pretimeout, (unsigned int *)p) != 0)
 		{
 			ret = -EFAULT;
 		}
@@ -363,14 +364,14 @@ static long tcc_cb_wdt_ioctl(struct watchdog_device *wdd, unsigned int cmd, unsi
 				if(ret == 0) {
 					ret = tcc_cb_wdt_start(wdd);
 					if(ret == 0) {
-						ret = put_user(wdd->timeout, p);
+						ret = put_user(wdd->timeout, (unsigned int *)p);
 					}
 				}
 			}
 		}
 		break;
 	case WDIOC_GETPRETIMEOUT:
-		ret = put_user(cb_wdt->pretimeout, p);
+		ret = put_user(cb_wdt->pretimeout, (unsigned int *)p);
 		break;
 	default:
 		ret = -ENOTTY;
@@ -390,7 +391,7 @@ static const struct watchdog_ops tcc_cb_wdt_ops = {
 };
 
 static const struct watchdog_info tcc_cb_wdt_info = {
-	.options = WDIOF_SETTIMEOUT | WDIOF_KEEPALIVEPING,
+	.options = (int)WDIOF_SETTIMEOUT | WDIOF_KEEPALIVEPING,
 	.firmware_version = 0,
 	.identity = "TCC805X CBUS Watchdog",
 };
@@ -404,31 +405,31 @@ static int tcc_cb_wdt_probe(struct platform_device *pdev)
 	struct resource *res;
 
 	cb_wdt = devm_kzalloc(&pdev->dev, sizeof(struct tcc_cb_wdt), GFP_KERNEL);
-	if(!cb_wdt) {
+	if(cb_wdt != NULL) {
 		dev_err(&pdev->dev, "[ERROR][TCC_CB_WDT] failed to allocate memory\n");
 		return -ENOMEM;
 	}
 
 	/* get watchdog base address */
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
-	if(!res) {
+	if(res != NULL) {
 		dev_err(&pdev->dev, "[ERROR][TCC_CB_WDT] failed to get register address\n");
 		return -ENOMEM;
 	}
 
 	cb_wdt->base = devm_ioremap_resource(&pdev->dev, res);
-	if(IS_ERR(cb_wdt->base)) {
+	if(IS_ERR(cb_wdt->base) != (bool)0) {
 		dev_err(&pdev->dev, "[ERROR][TCC_CB_WDT] failed to do ioremap\n");
 		return PTR_ERR(cb_wdt->base);
 	}
 
 	cb_wdt->clk = devm_clk_get(&pdev->dev, "clk_wdt");
-	if(IS_ERR(cb_wdt->clk)) {
+	if(IS_ERR(cb_wdt->clk) != (bool)0) {
 		dev_err(&pdev->dev, "[ERROR][TCC_CB_WDT] failed to get wdt clk\n");
 		return PTR_ERR(cb_wdt->clk);
 	}
 
-	if(of_property_read_u32(np, "clock-frequency", &cb_wdt->clk_rate)){
+	if(of_property_read_u32(np, "clock-frequency", &cb_wdt->clk_rate) != 0){
 		/* default : 24MHz */
 		cb_wdt->clk_rate = 24000000;
 		dev_info(&pdev->dev, "[INFO]{TCC_CB_WDT] set default clk rate %d",
@@ -437,25 +438,25 @@ static int tcc_cb_wdt_probe(struct platform_device *pdev)
 
 	/* get kick timer resource (16bit timer in smu) */
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 1);
-	if(!res) {
+	if(res == 0) {
 		dev_err(&pdev->dev, "[ERROR][TCC_CB_WDT] failed to get kick timer address\n");
 		return -ENOMEM;
 	}
 
 	cb_wdt->timer_base = devm_ioremap_resource(&pdev->dev, res);
-	if(IS_ERR(cb_wdt->timer_base)) {
+	if(IS_ERR(cb_wdt->timer_base) != (bool)0) {
 		dev_err(&pdev->dev, "[ERROR][TCC_CB_WDT] failed to do ioremap kick timer addr\n");
 		return PTR_ERR(cb_wdt->timer_base);
 	}
 
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 2);
-	if(!res) {
+	if(res == 0) {
 		dev_err(&pdev->dev, "[ERROR][TCC_CB_WDT] failed to get kick timer irq address\n");
 		return -ENOMEM;
 	}
 
 	cb_wdt->timer_irq_base = devm_ioremap_resource(&pdev->dev, res);
-	if(IS_ERR(cb_wdt->timer_irq_base)) {
+	if(IS_ERR(cb_wdt->timer_irq_base) != (bool)0) {
 		dev_err(&pdev->dev, "[ERROR][TCC_CB_WDT] failed to do ioremap kick timer irq addr\n");
 		return PTR_ERR(cb_wdt->timer_irq_base);
 	}
@@ -463,7 +464,7 @@ static int tcc_cb_wdt_probe(struct platform_device *pdev)
 	cb_wdt->kick_irq = platform_get_irq(pdev, 0);
 
 	cb_wdt->timer_clk = devm_clk_get(&pdev->dev, "clk_kick");
-	if(IS_ERR(cb_wdt->timer_clk)) {
+	if(IS_ERR(cb_wdt->timer_clk) != 0) {
 		dev_err(&pdev->dev, "[ERROR][TCC_CB_WDT] failed to get timer clk\n");
 		return PTR_ERR(cb_wdt->timer_clk);
 	}
@@ -473,12 +474,12 @@ static int tcc_cb_wdt_probe(struct platform_device *pdev)
 
 	cb_wdt->timer_clk_rate = clk_get_rate(cb_wdt->timer_clk);
 
-	if(of_property_read_u32(np, "kick-timer-id", &cb_wdt->kick_timer_id)){
+	if(of_property_read_u32(np, "kick-timer-id", &cb_wdt->kick_timer_id) != 0){
 		dev_err(&pdev->dev, "[ERROR][TCC_CB_WDT] failed to do ioremap kick timer id\n");
 		return -EINVAL;
 	}
 
-	if(of_property_read_u32(np, "pretimeout-sec", &cb_wdt->pretimeout)){
+	if(of_property_read_u32(np, "pretimeout-sec", &cb_wdt->pretimeout) != 0){
 		/* default : 5sec */
 		cb_wdt->pretimeout = 5U;
 	}
@@ -490,11 +491,11 @@ static int tcc_cb_wdt_probe(struct platform_device *pdev)
 	wdd->max_timeout = 0x10000000U / cb_wdt->clk_rate;
 	wdd->parent = &pdev->dev;
 
-	wdd->timeout = min(wdd->max_timeout, 30U);
+	wdd->timeout = min((wdd->max_timeout), 30U);
 	watchdog_init_timeout(wdd, 0, &pdev->dev);
 
 	ret = watchdog_register_device(wdd);
-	if(ret) {
+	if(ret != 0) {
 		dev_err(&pdev->dev, "[ERROR][TCC_CB_WDT] failed to register wdt device\n");
 		return ret;
 	}
@@ -670,7 +671,7 @@ static int __init tcc_cb_wdt_init_module(void)
 	int ret = 0;
 
 	ret = platform_driver_register(&tcc_cb_wdt_driver);
-	if(ret){
+	if(ret != 0){
 		return ret;
 	}
 
