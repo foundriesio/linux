@@ -37,68 +37,7 @@
 #define UNIPRO_PCLK_PERIOD_NS 6 //145 MHz < PCLK_Freq <= 170 MHz
 #define CALCULATED_VALUE 0x4E20 //UNIPRO_PCLK_PERIOD_NS * 6 = 120,000
 
-//#define USE_POLL
-#ifdef USE_POLL                
-int ufs_check_link_error(void);
-volatile uint  uic_linkup_done;
-#endif
 static unsigned int debug;
-
-#ifdef USE_POLL                                                                           
-int ufs_check_link_error(struct ufs_tcc_host *host)
-{                                                                                         
-    unsigned int rd_data;
-    int res = 0;
-                                                                                          
-    //rd_data = HCI_IS;                                                                     
-	rd_data = ufs_sys_ctrl_readl(host,HCI_IS);
-
-    if((uic_linkup_done == 1) && (reg_rdb(rd_data,2) == 1))                               
-    {                                                                                     
-        printk(KERN_DEBUG "UE: UIC Error");
-        HCI_IS = 1<<2;
-                                                                                          
-        //Check Error register                                                            
-        //rd_data = HCI_UECPA;                                                              
-		rd_data = ufs_sys_ctrl_readl(host, HCI_UECPA);
-        if(reg_rdb(rd_data,31) == 1)                                                      
-        {                                                                                 
-            printk(KERN_DEBUG " UECPA : UIC PHY Adapter Layer Error (0x%x)", (0x1f & rd_data));  
-        }                                                                                 
-                                                                                          
-        //rd_data = HCI_UECDL;
-		rd_data = ufs_sys_ctrl_readl(host, HCI_UECDL);
-        if(reg_rdb(rd_data,31) == 1)                                                      
-        {                                                                                 
-            printk(KERN_DEBUG " UECDL : UIC Data Link Layer Error (0x%x)", (0x7fff & rd_data));  
-        }                                                                                 
-
-        //rd_data = HCI_UECN;                                                               
-		rd_data = ufs_sys_ctrl_readl(host, HCI_UECN);
-        if(reg_rdb(rd_data,31) == 1)
-        {
-            printk(KERN_DEBUG " UECN : UIC network layer error (0x%x)", (0x7 & rd_data));        
-        }
-                                                                                          
-        //rd_data = HCI_UECT;                                                               
-		rd_data = ufs_sys_ctrl_readl(host, HCI_UECT);
-        if(reg_rdb(rd_data,31) == 1)
-        {                                                                                 
-            printk(KERN_DEBUG " UECT : UIC transport layer error (0x%x)", (0x7f & rd_data));     
-        }
-                                                                                          
-        //rd_data = HCI_UECDME;                                                             
-		rd_data = ufs_sys_ctrl_readl(host, HCI_UECDME);
-        if(reg_rdb(rd_data,31) == 1)
-        {                                                                                 
-            printk(KERN_DEBUG " UECDME : UIC DME error (0x%x)", (0x1 & rd_data));                
-        }                                                                                 
-        res = -1;                                                                         
-    }                                                                                     
-                                                                                          
-    return res;                                                                           
-}
-#endif                                                                                    
 
 static int ufs_tcc_get_resource(struct ufs_tcc_host *host)
 {
@@ -108,7 +47,7 @@ static int ufs_tcc_get_resource(struct ufs_tcc_host *host)
 
        mem_res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "ufs-unipro");
        host->ufs_reg_unipro = devm_ioremap_resource(dev, mem_res);
-		printk("%s:%d mem_res = %08x\n", __func__, __LINE__, host->ufs_reg_unipro);
+	   dev_dbg(dev, "%s:%d mem_res = %08x\n", __func__, __LINE__, host->ufs_reg_unipro);
        if (host->ufs_reg_unipro == NULL) {
                dev_err(dev, "cannot ioremap for ufs unipro register\n");
                return -ENOMEM;
@@ -116,7 +55,7 @@ static int ufs_tcc_get_resource(struct ufs_tcc_host *host)
 
        mem_res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "ufs-mphy");
        host->ufs_reg_mphy = devm_ioremap_resource(dev, mem_res);
-		printk("%s:%d mem_res = %08x\n", __func__, __LINE__, host->ufs_reg_mphy);
+	   dev_dbg(dev, "%s:%d mem_res = %08x\n", __func__, __LINE__, host->ufs_reg_mphy);
        if (host->ufs_reg_mphy == NULL) {
                dev_err(dev, "cannot ioremap for ufs mphy register\n");
                return -ENOMEM;
@@ -124,7 +63,7 @@ static int ufs_tcc_get_resource(struct ufs_tcc_host *host)
 
        mem_res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "ufs-sbus-config");
        host->ufs_reg_sbus_config = devm_ioremap_resource(dev, mem_res);
-		printk("%s:%d mem_res = %08x\n", __func__, __LINE__, host->ufs_reg_sbus_config);
+	   dev_dbg(dev, "%s:%d mem_res = %08x\n", __func__, __LINE__, host->ufs_reg_sbus_config);
        if (host->ufs_reg_sbus_config == NULL) {
                dev_err(dev, "cannot ioremap for ufs sbus config register\n");
                return -ENOMEM;
@@ -132,7 +71,7 @@ static int ufs_tcc_get_resource(struct ufs_tcc_host *host)
 
        mem_res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "ufs-fmp");
        host->ufs_reg_fmp = devm_ioremap_resource(dev, mem_res);
-		printk("%s:%d mem_Res = %08x\n", __func__, __LINE__, host->ufs_reg_fmp);
+	   dev_dbg(dev, "%s:%d mem_Res = %08x\n", __func__, __LINE__, host->ufs_reg_fmp);
        if (host->ufs_reg_fmp == NULL) {
                dev_err(dev, "cannot ioremap for ufs fmp register\n");
                return -ENOMEM;
@@ -140,7 +79,7 @@ static int ufs_tcc_get_resource(struct ufs_tcc_host *host)
 
        mem_res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "ufs-sec");
        host->ufs_reg_sec = devm_ioremap_resource(dev, mem_res);
-		printk("%s:%d mem_Res = %08x\n", __func__, __LINE__, host->ufs_reg_sec);
+	   dev_dbg(dev, "%s:%d mem_Res = %08x\n", __func__, __LINE__, host->ufs_reg_sec);
        if (host->ufs_reg_sec == NULL) {
                dev_err(dev, "cannot ioremap for ufs fmp register\n");
                return -ENOMEM;
@@ -366,12 +305,11 @@ static void ufs_tcc_pre_init(struct ufs_hba *hba)
 {
 	struct ufs_tcc_host *host = ufshcd_get_variant(hba);
 
-	printk("%s:%d\n", __func__, __LINE__);
-	//ufs_sbus_config_clr_bits(host, SBUS_CONFIG_SWRESETN_UFS_HCI | SBUS_CONFIG_SWRESETN_UFS_PHY, SBUS_CONFIG_SWRESETN);
-	msleep(10);
-	//ufs_sbus_config_set_bits(host, SBUS_CONFIG_SWRESETN_UFS_HCI | SBUS_CONFIG_SWRESETN_UFS_PHY, SBUS_CONFIG_SWRESETN);
-	ufs_sbus_config_writel(host , 0x1, SBUS_TEMP);
-	msleep(10);
+	ufs_sbus_config_clr_bits(host, SBUS_CONFIG_SWRESETN_UFS_HCI | SBUS_CONFIG_SWRESETN_UFS_PHY, SBUS_CONFIG_SWRESETN);
+	msleep(1);
+	ufs_sbus_config_set_bits(host, SBUS_CONFIG_SWRESETN_UFS_HCI | SBUS_CONFIG_SWRESETN_UFS_PHY, SBUS_CONFIG_SWRESETN);
+	//ufs_sbus_config_writel(host , 0x1, SBUS_TEMP);
+	//msleep(10);
 	ufshcd_writel(hba, 0x1, HCI_MPHY_REFCLK_SEL);
 	ufshcd_writel(hba, 0x0, HCI_CLKSTOP_CTRL);
 	ufshcd_writel(hba, 0x1, HCI_GPIO_OUT);
@@ -386,7 +324,6 @@ static void ufs_tcc_post_init(struct ufs_hba *hba)
 	struct ufs_tcc_host *host = ufshcd_get_variant(hba);
 	unsigned int data = 0;
 
-	printk("%s:%d\n", __func__, __LINE__);
 	data = ufshcd_readl(hba,REG_CONTROLLER_ENABLE);
 	while (data != 0x1U)
 	{
@@ -481,9 +418,6 @@ static int ufs_tcc_link_startup_post_change(struct ufs_hba *hba)
 	int res = 0;
 	struct ufs_tcc_host *host = ufshcd_get_variant(hba);
 
-	printk("%s:%d\n", __func__, __LINE__);
-
-
 	ufshcd_writel(hba, UTRIACR_VAL, HCI_UTRIACR);
 	ufshcd_writel(hba, UTMRLBA_LOW_VAL, HCI_UTMRLBA);
 	ufshcd_writel(hba, UTMRLBA_HIGH_VAL, HCI_UTMRLBAU);
@@ -575,21 +509,46 @@ static int ufs_tcc_init(struct ufs_hba *hba)
 		return err;
 	}
 
-	ufs_tcc_clk_init(hba);
+	//ufs_tcc_clk_init(hba);
 
 	//ufs_tcc_soc_init(hba);
 
 	return 0;
 }
+static int ufs_tcc_suspend(struct ufs_hba *hba, enum ufs_pm_op pm_op)
+{
+    struct ufs_tcc_host *host = ufshcd_get_variant(hba);
+   int ret = 0;
 
+   ufshcd_writel(hba, 0x0, HCI_HCE);
+   if (ufshcd_is_runtime_pm(pm_op))
+       return 0;
+   if (host->in_suspend) {
+       WARN_ON(1);
+       return 0;
+   }
+   host->in_suspend = true;
+   return ret;
+}
+static int ufs_tcc_resume(struct ufs_hba *hba, enum ufs_pm_op pm_op)
+{
+	struct ufs_tcc_host *host = ufshcd_get_variant(hba);
+	int ret = 0;
+	ufs_sbus_config_clr_bits(host, SBUS_CONFIG_SWRESETN_UFS_HCI | SBUS_CONFIG_SWRESETN_UFS_PHY, SBUS_CONFIG_SWRESETN);
+	mdelay(1);
+	ufs_sbus_config_set_bits(host, SBUS_CONFIG_SWRESETN_UFS_HCI | SBUS_CONFIG_SWRESETN_UFS_PHY, SBUS_CONFIG_SWRESETN);
+	ufshcd_writel(hba, 0x1, HCI_MPHY_REFCLK_SEL);
+	host->in_suspend = false;
+	return ret;
+}
 static struct ufs_hba_variant_ops ufs_hba_tcc_vops = {
 	.name = "tcc",
 	.init = ufs_tcc_init,
 	.link_startup_notify = ufs_tcc_link_startup_notify,
 	.hce_enable_notify = ufs_tcc_hce_enable_notify,
 	//.pwr_change_notify = ufs_tcc_pwr_change_notify,
-//	.suspend = ufs_tcc_suspend,
-//	.resume = ufs_tcc_resume,
+	.suspend = ufs_tcc_suspend,
+	.resume = ufs_tcc_resume,
 };
 
 static int ufs_tcc_probe(struct platform_device *pdev)

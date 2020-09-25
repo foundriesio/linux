@@ -7442,7 +7442,18 @@ static int ufshcd_suspend(struct ufs_hba *hba, enum ufs_pm_op pm_op)
 		ufshcd_disable_auto_bkops(hba);
 		ret = ufshcd_set_dev_pwr_mode(hba, req_dev_pwr_mode);
 		if (ret)
+		{
+			if (ret == -ENODEV)
+			{
+				printk(KERN_ERR "%s:%d - scsi is already gone!!\n", __func__, __LINE__);
+				ufshcd_set_link_off(hba);
+				goto disable_clks;
+			}
+			else
+			{
 			goto enable_gating;
+			}
+		}
 	}
 
 	ret = ufshcd_link_state_transition(hba, req_link_state, 1);
@@ -7524,9 +7535,6 @@ static int ufshcd_resume(struct ufs_hba *hba, enum ufs_pm_op pm_op)
 		goto out;
 
 	/* enable the host irq as host controller would be active soon */
-	ret = ufshcd_enable_irq(hba);
-	if (ret)
-		goto disable_irq_and_vops_clks;
 
 	ret = ufshcd_vreg_set_hpm(hba);
 	if (ret)
@@ -7540,6 +7548,18 @@ static int ufshcd_resume(struct ufs_hba *hba, enum ufs_pm_op pm_op)
 	ret = ufshcd_vops_resume(hba, pm_op);
 	if (ret)
 		goto disable_vreg;
+
+	/* enable irq after host controller reset
+	 * to void nobody care irq problem
+	 */
+	ufshcd_writel(hba, ufshcd_readl(hba, REG_INTERRUPT_STATUS),
+		      REG_INTERRUPT_STATUS);
+	ufshcd_writel(hba, 0x7FFF, REG_INTERRUPT_ENABLE);
+	ret = ufshcd_enable_irq(hba);
+	if (ret)
+	{
+		goto disable_irq_and_vops_clks;
+	}
 
 	if (ufshcd_is_link_hibern8(hba)) {
 		ret = ufshcd_uic_hibern8_exit(hba);
