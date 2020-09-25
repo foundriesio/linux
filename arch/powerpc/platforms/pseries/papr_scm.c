@@ -855,7 +855,7 @@ free_stats:
 	kfree(stats);
 	return rc ? rc : seq_buf_used(&s);
 }
-DEVICE_ATTR_RO(perf_stats);
+DEVICE_ATTR_ADMIN_RO(perf_stats);
 
 static ssize_t flags_show(struct device *dev,
 			  struct device_attribute *attr, char *buf)
@@ -1109,6 +1109,7 @@ static int papr_scm_remove(struct platform_device *pdev)
 
 static const struct of_device_id papr_scm_match[] = {
 	{ .compatible = "ibm,pmemory" },
+	{ .compatible = "ibm,pmemory-v2" },
 	{ },
 };
 
