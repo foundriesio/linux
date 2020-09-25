@@ -1770,7 +1770,7 @@ void ufshcd_send_command(struct ufs_hba *hba, unsigned int task_tag)
 		reg = ufshcd_readl(hba, REG_UTP_TRANSFER_REQ_DOOR_BELL);
 	} while(reg == 1);
 
-	mdelay(10);
+	//mdelay(10);
 
 	/* Make sure that doorbell is committed immediately */
 	wmb();
@@ -1845,10 +1845,10 @@ static inline void ufshcd_hba_capabilities(struct ufs_hba *hba)
 	hba->capabilities = ufshcd_readl(hba, REG_CONTROLLER_CAPABILITIES);
 
 	/* nutrs and nutmrs are 0 based values */
-	//hba->nutrs = (hba->capabilities & MASK_TRANSFER_REQUESTS_SLOTS) + 1;
-	hba->nutrs = 1;
-	hba->nutmrs = 1;
-	//((hba->capabilities & MASK_TASK_MANAGEMENT_REQUEST_SLOTS) >> 16) + 1;
+	hba->nutrs = (hba->capabilities & MASK_TRANSFER_REQUESTS_SLOTS) + 1;
+	//hba->nutrs = 1;
+	hba->nutmrs =
+	((hba->capabilities & MASK_TASK_MANAGEMENT_REQUEST_SLOTS) >> 16) + 1;
 }
 
 /**
@@ -1998,11 +1998,13 @@ static int ufshcd_map_sg(struct ufs_hba *hba, struct ufshcd_lrb *lrbp)
 	struct scsi_cmnd *cmd;
 	int sg_segments;
 	int i;
-	void *base_addr;
+	dma_addr_t base_addr;
 	void *base_addr_virt;
 
 	cmd = lrbp->cmd;
+	dma_set_mask_and_coherent(hba->dev, DMA_BIT_MASK(32));
 	sg_segments = scsi_dma_map(cmd);
+	dma_set_mask_and_coherent(hba->dev, DMA_BIT_MASK(64));
 	if (sg_segments < 0)
 		return sg_segments;
 
@@ -2017,31 +2019,33 @@ static int ufshcd_map_sg(struct ufs_hba *hba, struct ufshcd_lrb *lrbp)
 
 		prd_table = (struct ufshcd_sg_entry *)lrbp->ucd_prdt_ptr;
 
-		base_addr = 0x1D300000;
-		base_addr_virt = hba->sbus_sram;
-
 		scsi_for_each_sg(cmd, sg, sg_segments, i) {
+#if 0
 			if (cmd->sc_data_direction == DMA_TO_DEVICE) {
 				memcpy(base_addr_virt, sg_virt(sg), sg_dma_len(sg));
 			}
+#endif
 			prd_table[i].size  =
-				//cpu_to_le32(0xfff);
 				cpu_to_le32(((u32) sg_dma_len(sg))-1);
 			prd_table[i].base_addr =
-				cpu_to_le32(base_addr);
-				//cpu_to_le32(base_addr + (sg_dma_len(sg)*(i)));
-				//cpu_to_le32(lower_32_bits(sg->dma_address));
-				//cpu_to_le32(lower_32_bits(sg_phys(sg)));
+				//cpu_to_le32(lower_32_bits(base_addr));
+				cpu_to_le32(lower_32_bits(sg->dma_address));
 			prd_table[i].upper_addr =
-				cpu_to_le32(0x0);
-				//cpu_to_le32(upper_32_bits(sg->dma_address));
-				//cpu_to_le32(upper_32_bits(sg_phys(sg)));
+				//cpu_to_le32(upper_32_bits(base_addr));
+				cpu_to_le32(upper_32_bits(sg->dma_address));
 			prd_table[i].reserved = 0;
 			base_addr += sg_dma_len(sg);
 			base_addr_virt += sg_dma_len(sg);
-			//printk("%s:%d, base_addr = 0x%08x, sg_dma_len = %d, i = %d\n", __func__,
-			//			__LINE__, base_addr, sg_dma_len(sg));
+			//printk("%s:%d, base_addr = 0x%llx, sg_dma_len = %d\n", __func__,
+			//			__LINE__, (u64)sg->dma_address, sg_dma_len(sg));
 		}
+#if 0
+		/* Switch ownership to the DMA */
+		dma_sync_single_for_device(hba->dev,
+					   hba->bounce_addr,
+					   hba->bounce_buffer_size,
+					   cmd->sc_data_direction);
+#endif
 	} else {
 		lrbp->utr_descriptor_ptr->prd_table_length = 0;
 	}
@@ -3259,6 +3263,46 @@ static inline int ufshcd_read_unit_desc_param(struct ufs_hba *hba,
 				      param_offset, param_read_buf, param_size);
 }
 
+#if 0
+static int ufshcd_allocate_bounce_buffer(struct ufs_hba *hba)
+{
+	unsigned int bounce_size;
+	int ret;
+
+	bounce_size = SG_ALL * 0x1000;
+
+	/*
+	 * When we just support one segment, we can get significant
+	 * speedups by the help of a bounce buffer to group scattered
+	 * reads/writes together.
+	 */
+	hba->bounce_buffer = devm_kmalloc(hba->dev,
+					   bounce_size,
+					   GFP_KERNEL);
+	if (!hba->bounce_buffer) {
+		dev_err(hba->dev, "failed to allocate %u bytes for bounce buffer, falling back to single segments\n",
+		       bounce_size);
+		/*
+		 * Exiting with zero here makes sure we proceed with
+		 * mmc->max_segs == 1.
+		 */
+		return 0;
+	}
+	dma_set_mask_and_coherent(hba->dev, DMA_BIT_MASK(32));
+	hba->bounce_addr = dma_map_single(hba->dev,
+					   hba->bounce_buffer,
+					   bounce_size,
+					   DMA_BIDIRECTIONAL);
+	ret = dma_mapping_error(hba->dev, hba->bounce_addr);
+	dma_set_mask_and_coherent(hba->dev, DMA_BIT_MASK(64));
+	if (ret)
+		return 0;
+	hba->bounce_buffer_size = bounce_size;
+
+	return 0;
+}
+#endif 
+
 /**
  * ufshcd_memory_alloc - allocate memory for host memory space data structures
  * @hba: per adapter instance
@@ -3344,6 +3388,12 @@ static int ufshcd_memory_alloc(struct ufs_hba *hba)
 		dev_err(hba->dev, "LRB Memory allocation failed\n");
 		goto out;
 	}
+
+#if 0
+	if (ufshcd_allocate_bounce_buffer(hba))
+		goto out;
+#endif
+
 	return 0;
 out:
 	return -ENOMEM;
@@ -4705,13 +4755,21 @@ static void __ufshcd_transfer_req_compl(struct ufs_hba *hba,
 			ufshcd_add_command_trace(hba, index, "complete");
 			result = ufshcd_transfer_rsp_status(hba, lrbp);
 			sg_segment = scsi_sg_count(cmd);
-			base_addr = hba->sbus_sram;
-
+			//base_addr = hba->bounce_buffer;
+			//base_addr = hba->sbus_sram;
+#if 0
+#if 1
+			dma_sync_single_for_cpu(
+						hba->dev,
+						hba->bounce_addr,
+						hba->bounce_buffer_size,
+						DMA_FROM_DEVICE);
+#endif
 			scsi_for_each_sg(cmd, sg, sg_segment, i) {
 				memcpy(sg_virt(sg), base_addr, sg_dma_len(sg));
 				base_addr += sg_dma_len(sg);
 			}
-
+#endif
 			scsi_dma_unmap(cmd);
 			cmd->result = result;
 			/* Mark completed command as NULL in LRB */
@@ -6648,7 +6706,7 @@ static struct scsi_host_template ufshcd_driver_template = {
 	.eh_host_reset_handler   = ufshcd_eh_host_reset_handler,
 	.eh_timed_out		= ufshcd_eh_timed_out,
 	.this_id		= -1,
-	.sg_tablesize		= 4,//SG_ALL,
+	.sg_tablesize		= SG_ALL,
 	.cmd_per_lun		= UFSHCD_CMD_PER_LUN,
 	.can_queue		= UFSHCD_CAN_QUEUE,
 	.max_host_blocked	= 1,
