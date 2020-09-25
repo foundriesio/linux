@@ -788,7 +788,7 @@ static int intel_pstate_set_energy_pref_index(struct cpudata *cpu_data,
 			epp = (pref_index - 1) << 2;
 		ret = intel_pstate_set_epb(cpu_data->cpu, epp);
 	}
-return_pref:
+
 	mutex_unlock(&intel_pstate_limits_lock);
 
 	return ret;
