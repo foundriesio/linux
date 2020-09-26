@@ -642,14 +642,13 @@ void dpm_noirq_resume_devices(pm_message_t state)
 				pm_dev_err(dev, state, " noirq", error);
 			}
 #if defined(CONFIG_PM_VERBOSE_DPM_SUSPEND)
-			if(dev->driver) {
-				if((memcmp(dev_name(dev), "tcc-uart", 8) == 0) || 
-                        (memcmp(dev_name(dev), "sbsa-uart", 9) == 0))  {
-					error = device_resume(dev, state, false);
+			if (dev->driver &&
+			    (!(memcmp(dev_name(dev), "tcc-uart", 8)) ||
+			     !(memcmp(dev_name(dev), "sbsa-uart", 9)))) {
+				error = device_resume(dev, state, false);
 
-					if (error)
-						pm_dev_err(dev, state, "", error);
-				}
+				if (error)
+					pm_dev_err(dev, state, "", error);
 			}
 #endif
 		}
@@ -930,7 +929,7 @@ void dpm_resume(pm_message_t state)
 {
 	struct device *dev;
 	ktime_t starttime = ktime_get();
-    
+
 #if defined(CONFIG_PM_VERBOSE_DPM_SUSPEND)
 	printk("%s(%s) : start\n", __func__, pm_verb(state.event));
 #endif
@@ -960,26 +959,26 @@ void dpm_resume(pm_message_t state)
 
 #if defined(CONFIG_PM_VERBOSE_DPM_SUSPEND)
 #if defined(CONFIG_PM_VERBOSE_DPM_SUSPEND_FULL)
-				printk("dpm [:%s:", dev_name(dev));
+			printk("dpm [:%s:", dev_name(dev));
 #else
-				if(dev->driver)
-					printk("dpm [:%s:", dev->driver->name);
+			if(dev->driver)
+				printk("dpm [:%s:", dev->driver->name);
 #endif
 #endif
-            error = device_resume(dev, state, false);
+			error = device_resume(dev, state, false);
 #if defined(CONFIG_PM_VERBOSE_DPM_SUSPEND)
 #if !defined(CONFIG_PM_VERBOSE_DPM_SUSPEND_FULL)
-            if(dev->driver)
+			if(dev->driver)
 #endif
-                printk("]\n");
+				printk("]\n");
 #endif
 
-            if (error) {
-                suspend_stats.failed_resume++;
-                dpm_save_failed_step(SUSPEND_RESUME);
-                dpm_save_failed_dev(dev_name(dev));
-                pm_dev_err(dev, state, "", error);
-            }
+			if (error) {
+				suspend_stats.failed_resume++;
+				dpm_save_failed_step(SUSPEND_RESUME);
+				dpm_save_failed_dev(dev_name(dev));
+				pm_dev_err(dev, state, "", error);
+			}
 			mutex_lock(&dpm_list_mtx);
 		}
 		if (!list_empty(&dev->power.entry))

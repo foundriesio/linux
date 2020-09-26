@@ -15,16 +15,16 @@
 
 #define MAX_STAGES	64U
 
-static unsigned int nr_stages = 0;
+static unsigned int nr_stages;
 
-typedef struct {
+struct bootstage {
 	const char *name;
 	u32 stamp;
 
 	struct list_head list;
-} stage_t;
+};
 
-static stage_t stage_pool[MAX_STAGES];
+static struct bootstage stage_pool[MAX_STAGES];
 
 static LIST_HEAD(bootstage_list_head);
 static LIST_HEAD(bootaccum_list_head);
@@ -60,8 +60,8 @@ static int bootstage_report_show(struct seq_file *m, void *v)
 	 * CAUTION. This function is **NOT THREAD SAFE** !!!
 	 */
 
+	struct bootstage *stage;
 	const char *stamp_s;
-	stage_t *stage;
 	u32 prev = 0U;
 
 	seq_printf(m, "Timer summary in microseconds (%u records):\n",
@@ -79,7 +79,7 @@ static int bootstage_report_show(struct seq_file *m, void *v)
 		seq_printf(m, "  %s\n", stage->name);
 	}
 
-	seq_printf(m, "\nAccumulated time:\n");
+	seq_puts(m, "\nAccumulated time:\n");
 	list_for_each_entry(stage, &bootaccum_list_head, list) {
 		stamp_s = u32_to_str_in_format(stage->stamp);
 		seq_printf(m, "%11s%11s  %s\n", "", stamp_s, stage->name);
@@ -102,7 +102,7 @@ static const struct file_operations bootstage_report_fops = {
 
 static int bootstage_data_show(struct seq_file *m, void *v)
 {
-	stage_t *stage;
+	struct bootstage *stage;
 
 	list_for_each_entry(stage, &bootstage_list_head, list) {
 		seq_printf(m, "%s,%u\n", stage->name, stage->stamp);
@@ -128,12 +128,12 @@ static int bootstage_procfs_init(void)
 	struct proc_dir_entry *pdir = proc_mkdir("bootstage", NULL);
 	struct proc_dir_entry *ret;
 
-	ret = proc_create("report", S_IRUGO, pdir, &bootstage_report_fops);
+	ret = proc_create("report", 0444, pdir, &bootstage_report_fops);
 	if (ret == NULL) {
 		return -ENOMEM;
 	}
 
-	ret = proc_create("data", S_IRUGO, pdir, &bootstage_data_fops);
+	ret = proc_create("data", 0444, pdir, &bootstage_data_fops);
 	if (ret == NULL) {
 		return -ENOMEM;
 	}
@@ -145,8 +145,8 @@ static int bootstage_procfs_init(void)
 
 static void __init parse_one_bootstage(struct device_node *node)
 {
+	struct bootstage *stage = NULL;
 	struct list_head *head = NULL;
-	stage_t *stage = NULL;
 	int ret;
 
 	if (nr_stages >= MAX_STAGES) {
@@ -161,7 +161,8 @@ static void __init parse_one_bootstage(struct device_node *node)
 		if (ret == 0) {
 			head = &bootstage_list_head;
 		} else {
-			ret = of_property_read_u32(node, "accum", &(stage->stamp));
+			ret = of_property_read_u32(node, "accum",
+						   &(stage->stamp));
 			if (ret == 0) {
 				head = &bootaccum_list_head;
 			}
@@ -176,8 +177,8 @@ static void __init parse_one_bootstage(struct device_node *node)
 
 static int __init cmp_stages(void *p, struct list_head *a, struct list_head *b)
 {
-	stage_t *sa = list_entry(a, stage_t, list);
-	stage_t *sb = list_entry(b, stage_t, list);
+	struct bootstage *sa = list_entry(a, struct bootstage, list);
+	struct bootstage *sb = list_entry(b, struct bootstage, list);
 
 	return (sa->stamp <= sb->stamp) ? -1 : 1;
 }
@@ -193,6 +194,8 @@ static int __init bootstage_init(void)
 		return ret;
 	}
 #endif
+
+	nr_stages = 0U;
 
 	node = of_find_node_by_name(NULL, "bootstage");
 

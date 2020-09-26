@@ -1,18 +1,8 @@
-/****************************************************************************
-Copyright (C) 2015 Telechips Inc.
+// SPDX-License-Identifier: GPL-2.0-or-later
+/*
+ * Copyright (C) Telechips Inc.
+ */
 
-This program is free software; you can redistribute it and/or modify it under the terms
-of the GNU General Public License as published by the Free Software Foundation;
-either version 2 of the License, or (at your option) any later version.
-
-This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
-without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
-PURPOSE. See the GNU General Public License for more details.
-
-You should have received a copy of the GNU General Public License along with
-this program; if not, write to the Free Software Foundation, Inc., 59 Temple Place,
-Suite 330, Boston, MA 02111-1307 USA
-****************************************************************************/
 #include <linux/kernel.h>
 #include <linux/errno.h>
 #include <linux/smp.h>
@@ -23,10 +13,6 @@ Suite 330, Boston, MA 02111-1307 USA
 #include <asm/io.h>
 #include <mach/sram_map.h>
 #include <mach/cpu_power.h>
-
-#ifdef CONFIG_ARM_TRUSTZONE
-#include <mach/smc.h>
-#endif
 
 int tcc_cpu_kill(unsigned int cpu)
 {
@@ -129,9 +115,5 @@ void tcc_cpu_die(unsigned int cpu)
 		pr_warn("CPU%u: %u spurious wakeup calls\n", cpu, spurious);
 
 	/* reset secondary valid */
-#ifdef CONFIG_ARM_TRUSTZONE
-	_tz_smc(SMC_CMD_SMP_SECONDARY_CFG, cpu, 0, 0);
-#else
 	writel_relaxed(0, reg + SEC_VALID + (cpu*0x4));
-#endif
 }

@@ -106,7 +106,7 @@ static MEM_ALLOC_INFO_t gsVpuEncSeqheader_memInfo[VPU_ENC_MAX_CNT];
 static MEM_ALLOC_INFO_t gsVpuUserData_memInfo[VPU_INST_MAX];
 
 // Regard only the operation of 2 component!!
-static pmap_t pmap_video, pmap_video_sw;
+static struct pmap pmap_video, pmap_video_sw;
 static phys_addr_t ptr_sw_addr_mem;
 static unsigned int sz_sw_mem;
 static phys_addr_t ptr_front_addr_mem, ptr_rear_addr_mem, ptr_ext_addr_mem;
@@ -114,25 +114,25 @@ static unsigned int sz_front_used_mem, sz_rear_used_mem, sz_ext_used_mem;
 static unsigned int sz_remained_mem, sz_enc_mem;
 
 #if DEFINED_CONFIG_VDEC_CNT_345
-static pmap_t pmap_video_ext;
+static struct pmap pmap_video_ext;
 static phys_addr_t ptr_ext_front_addr_mem, ptr_ext_rear_addr_mem;
 static unsigned int sz_ext_front_used_mem, sz_ext_rear_used_mem;
 static unsigned int sz_ext_remained_mem;
 #endif
 
 #if defined(CONFIG_VDEC_CNT_5)
-static pmap_t pmap_video_ext2;
+static struct pmap pmap_video_ext2;
 static phys_addr_t ptr_ext2_front_addr_mem;
 static unsigned int sz_ext2_front_used_mem;
 static unsigned int sz_ext2_remained_mem;
 #endif
 
 #if DEFINED_CONFIG_VENC_CNT_12345
-static pmap_t pmap_enc;
+static struct pmap pmap_enc;
 #endif
 
 #if DEFINED_CONFIG_VENC_CNT_2345
-static pmap_t pmap_enc_ext[4];
+static struct pmap pmap_enc_ext[4];
 static phys_addr_t ptr_enc_ext_addr_mem[4];
 static unsigned int sz_enc_ext_used_mem[4];
 static unsigned int sz_enc_ext_remained_mem[4];

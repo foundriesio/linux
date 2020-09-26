@@ -41,7 +41,7 @@
 #endif
 
 #ifdef CONFIG_VOUT_DISPLAY_LASTFRAME
-static pmap_t lastframe_pbuf;
+static struct pmap lastframe_pbuf;
 static int enable_LastFrame = 0;
 static WMIXER_ALPHASCALERING_INFO_TYPE fbmixer;
 #endif
@@ -294,7 +294,7 @@ static void vout_clear_buffer(struct tcc_vout_device *vout, struct v4l2_buffer *
 }
 #endif
 
-int vout_get_pmap(pmap_t *pmap)
+int vout_get_pmap(struct pmap *pmap)
 {
     if (pmap_get_info(pmap->name, pmap) == 1) {
 	    dprintk("[PMAP] %s: 0x%08x ~ 0x%08x (0x%08x)\n",
@@ -1055,7 +1055,7 @@ static int deintl_s_setup(struct tcc_vout_device *vout)
 static int deintl_viqe_setup(struct tcc_vout_device *vout, enum deintl_type deinterlace, int plugin)
 {
 	struct tcc_vout_vioc *vioc = vout->vioc;
-	pmap_t pmap_viqe;
+	struct pmap pmap_viqe;
 	unsigned int viqe_deintl_base[4] = {0};
 	unsigned int framebufferWidth, framebufferHeight;
 	int img_size, ret = 0;

@@ -648,7 +648,7 @@ END_PROCESS:
 static int tcc_viocmg_probe(struct platform_device *pdev)
 {
         int result = -1;
-        pmap_t pmem_vioc;
+        struct pmap pmem_vioc;
 
         dev_dbg(&pdev->dev, "<%s>\n", __func__);
 

@@ -23,25 +23,7 @@
 #include <asm/io.h>
 
 #include <mach/bsp.h>
-//#include <mach/tcc_sram.h>
 #include <soc/tcc/pmap.h>
-
-#ifdef CONFIG_ARM_TRUSTZONE
-#include <mach/smc.h>
-#endif
-
-
-#if defined(__TODO__)
-extern void IO_UTIL_ReadECID(void);
-#endif
-//#ifdef CONFIG_OF
-//extern int pmap_early_init(void);
-//#endif
-
-#ifdef CONFIG_SUPPORT_TCC_NSK
-#define NSK_MEMBLOCK_START	0x83800000
-#define NSK_MEMBLOCK_SIZE	0x01800000 //24MB Block For NSK 
-#endif
 
 /*
  * The machine specific code may provide the extra mapping besides the
@@ -54,17 +36,12 @@ static struct map_desc tcc897x_io_desc[] __initdata = {
 		.length		= 0x00010000,	/* 64KB */
 		.type		= MT_MEMORY_TCC
 	},
-
-
-
-
 	{
 		.virtual	= 0xF5000000,
 		.pfn		= __phys_to_pfn(0x74000000), //SMU Bus
 		.length		= 0x01000000,
 		.type		= MT_DEVICE
 	},
-
 	{
 		.virtual	= 0xF7000000,
 		.pfn		= __phys_to_pfn(0x76000000), //IO Bus
@@ -74,25 +51,8 @@ static struct map_desc tcc897x_io_desc[] __initdata = {
 
 };
 
-static void __init tcc_reserve_sdram(void)
-{
-	//pmap_t pmap;
-	//unsigned long start, size;
-
-#ifdef CONFIG_ARM_TRUSTZONE
-	if (memblock_remove(TZ_SECUREOS_BASE, TZ_SECUREOS_SIZE))
-		BUG_ON(1);
-#endif
-
-#ifdef CONFIG_SUPPORT_TCC_NSK
-	if(memblock_remove(NSK_MEMBLOCK_START, NSK_MEMBLOCK_SIZE))
-		BUG_ON(1);
-#endif
-}
-
 void __init tcc_mem_reserve(void)
 {
-	tcc_reserve_sdram();
 }
 
 /*
@@ -108,8 +68,4 @@ void __init tcc_map_common_io(void)
 	 */
 	local_flush_tlb_all();
 	flush_cache_all();
-
-#if defined(__TODO__)
-	//IO_UTIL_ReadECID();
-#endif
 }

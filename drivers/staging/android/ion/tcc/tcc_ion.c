@@ -34,9 +34,9 @@ struct ion_platform_data {
 struct ion_mapper *tcc_user_mapper;
 int num_heaps;
 struct ion_heap **heaps;
-static pmap_t pmap_ump_reserved;
+static struct pmap pmap_ump_reserved;
 #ifdef CONFIG_ION_CARVEOUT_CAM_HEAP
-static pmap_t pmap_ion_carveout_cam;
+static struct pmap pmap_ion_carveout_cam;
 #endif
 
 

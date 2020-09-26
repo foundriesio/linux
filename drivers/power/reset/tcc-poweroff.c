@@ -22,7 +22,7 @@
 
 static void __iomem *pmu_base;
 
-static void reset_cpu(enum reboot_mode mode, const char* cmd)
+static void reset_cpu(enum reboot_mode mode, const char *cmd)
 {
 	u32 reg;
 
@@ -44,13 +44,13 @@ static void do_tcc_poweroff(void)
 
 	do {
 		wfi();
-	} while(1);
+	} while (1);
 }
 
 static int tcc_restart_probe(struct platform_device *pdev)
 {
-	pmu_base = of_iomap(pdev->dev.of_node , 0);
-	if (!pmu_base){
+	pmu_base = of_iomap(pdev->dev.of_node, 0);
+	if (!pmu_base) {
 		WARN(1, "failed to map PMU base address");
 		return -ENODEV;
 	}

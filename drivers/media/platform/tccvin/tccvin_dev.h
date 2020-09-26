@@ -82,9 +82,9 @@ typedef struct tccvin_cif {
 	struct vioc_intr_type		vioc_intr;
 
 	// optional pmap
-	pmap_t						pmap_pgl;
-	pmap_t						pmap_viqe;
-    pmap_t                      pmap_preview;
+	struct pmap					pmap_pgl;
+	struct pmap					pmap_viqe;
+    struct pmap                      pmap_preview;
 
 	// framebuffer
 	buf_addr_t					preview_buf_addr[MAX_BUFFERRS];

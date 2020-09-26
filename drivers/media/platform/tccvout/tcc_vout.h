@@ -458,7 +458,7 @@ struct tcc_vout_device {
 
 	/* vout */
 	unsigned int force_userptr;			// force V4L2_MEMORY_USERPTR
-	pmap_t pmap;						// for only V4L2_MEMORY_MMAP
+	struct pmap pmap;				// for only V4L2_MEMORY_MMAP
 
 	/* reqbuf */
 	struct tcc_v4l2_buffer *qbufs;
@@ -470,7 +470,7 @@ struct tcc_vout_device {
 	/* deinterlce */
 	enum v4l2_field previous_field;		// previous field for deinterlace
 	enum deintl_type deinterlace;		// deinterlacer type
-	pmap_t deintl_pmap;
+	struct pmap deintl_pmap;
 	int deintl_nr_bufs, deintl_nr_bufs_count;
 	unsigned int deintl_buf_size;		// full size of deintl_buf, it is depended on panel size.
 	struct tcc_v4l2_buffer *deintl_bufs;
@@ -484,7 +484,7 @@ struct tcc_vout_device {
 	wait_queue_head_t ext_frame_wait;
 	wait_queue_head_t hdmi_frame_wait;
 
-	pmap_t m2m_dual_pmap;
+	struct pmap m2m_dual_pmap;
 	struct tcc_v4l2_buffer *m2m_dual_bufs;
 	struct tcc_v4l2_buffer *m2m_dual_bufs_hdmi;
 	unsigned int m2m_dual_nr_bufs;		// full size of deintl_buf, it is depended on panel size.

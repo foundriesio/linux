@@ -628,7 +628,7 @@ long tccxxx_wdma_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 		case 0x100:
 			{
 				struct vioc_wdma_frame_info cmd_data;
-				pmap_t pmap_fb_video;
+				struct pmap pmap_fb_video;
 				pmap_get_info("overlay", &pmap_fb_video);
 				cmd_data.buff_addr = pmap_fb_video.base;
 				cmd_data.buff_size = pmap_fb_video.size;

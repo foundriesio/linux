@@ -205,8 +205,8 @@ void tcc_mbox_hlc_message_received(struct mbox_client *client, void *message)
 
 #if 0
 	unsigned int index;
-	pmap_t pmap_a7s;
-	pmap_t pmap_a7s_backup;
+	struct pmap pmap_a7s;
+	struct pmap pmap_a7s_backup;
 	pmap_get_info("a7s_avm", &pmap_a7s);
 	pmap_get_info("a7s_avm_backup", &pmap_a7s_backup);
 

@@ -669,7 +669,7 @@ void hdin_video_irq_free(struct tcc_hdin_device *vdev)
 int hdin_video_open(struct tcc_hdin_device *vdev)
 {
     struct tcc_hdin_device *dev = vdev;
-	pmap_t viqe_area;
+	struct pmap viqe_area;
     int ret = 0;
 
 	if(0 > pmap_get_info("video", &viqe_area)){

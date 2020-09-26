@@ -2138,7 +2138,7 @@ static int tccfb_ioctl(struct fb_info *info, unsigned int cmd,unsigned long arg)
 // 2D Compression PART
 	case GET_2D_COMPRESSION_FB_INFO:
 		{
-			pmap_t pmap_fb_video;
+			struct pmap pmap_fb_video;
 
 			if(info->node == 0)
 				pmap_get_info("fb_video", &pmap_fb_video);
@@ -2801,7 +2801,7 @@ static int __init tccfb_map_video_memory(struct tccfb_info *fbi, int plane)
 	struct resource res;
 	int ret;
 #if 0
-	pmap_t pmap_fb_video;
+	struct pmap pmap_fb_video;
 
 	switch (plane) {
 	case 0:
@@ -2869,7 +2869,7 @@ static int __init tccfb_map_video_memory(struct tccfb_info *fbi, int plane)
 
 		/* prevent initial garbage on screen */
 		#if defined(CONFIG_LOGO_PRESERVE_WITHOUT_FB_INIT)
-		pmap_t pmap;
+		struct pmap pmap;
 		int scnum;
 		volatile void __iomem *pSC = NULL;
 		volatile void __iomem *pWDMA = NULL;

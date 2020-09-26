@@ -201,7 +201,7 @@ static int _v2dTest_set_source(stRot_Info stRotInfo)
 {
 	struct file *file = NULL;
 	int ret = -1;
-	pmap_t fb_pmap;
+	struct pmap fb_pmap;
 	WMIXER_INFO_TYPE WmixerInfo;
 	VIOC_RDMA *pRDMA = VIOC_RDMA_GetAddress(NUM_FB_RDMA);
 
@@ -373,7 +373,7 @@ static long v2d_drv_ioctl(struct file *filp, unsigned int cmd, unsigned long arg
 			int i = 0;
 			int cnt = 0;
 			int max_cnt = 100;
-			pmap_t pmap_rot;
+			struct pmap pmap_rot;
 			unsigned int *gd_buffer = NULL;
 			unsigned char *remap_rot = NULL;
 			unsigned int args_rot[4];
@@ -498,7 +498,7 @@ TEST_LOOP:
 		case 0x1002:
 		{
 			int i = 0;
-			pmap_t pmap_cmd, pmap_src, pmap_dst;
+			struct pmap pmap_cmd, pmap_src, pmap_dst;
 			unsigned int *gd_buffer = NULL;
 			unsigned char *remap_src = NULL, *remap_dst = NULL;
 			unsigned int args_rot[7];

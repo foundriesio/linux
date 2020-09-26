@@ -346,7 +346,7 @@ static void fbX_vsync_activate(struct fb_info *info)
 static int fbX_prepare_m2m(struct fb_info *info)
 {
 	struct fbX_par *par;
-	pmap_t pmap;
+	struct pmap pmap;
 	char *name = NULL;
 	int ret = -ENODEV;
 

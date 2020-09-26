@@ -27,31 +27,10 @@
  *
  */
 
-#ifndef __ASM_ARM_ARCH_IO_H__
-#define __ASM_ARM_ARCH_IO_H__
+#ifndef ASM_ARM_ARCH_IO_H
+#define ASM_ARM_ARCH_IO_H
 
 #define IO_SPACE_LIMIT 0xffffffff
+#define __io(a)		((void __iomem *)(a))
 
-/*
- * We don't actually have real ISA nor PCI buses, but there is so many
- * drivers out there that might just work if we fake them...
- */
-#define __io(a)		((void __iomem *)(PCIO_BASE + (a)))
-#define __mem_pci(a)	(a)
-
-/*
- * ----------------------------------------------------------------------------
- * I/O mapping
- * ----------------------------------------------------------------------------
- */
-#define PCIO_BASE	0
-
-#define __arch_ioremap	tcc_ioremap
-#define __arch_iounmap	tcc_iounmap
-
-#ifndef __ASSEMBLER__
-void __iomem *tcc_ioremap(unsigned long p, size_t size, unsigned int type);
-void tcc_iounmap(volatile void __iomem *addr);
-#endif
-
-#endif	/*__ASM_ARM_ARCH_IO_H__*/
+#endif	/* ASM_ARM_ARCH_IO_H */

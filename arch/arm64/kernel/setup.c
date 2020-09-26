@@ -66,6 +66,7 @@
 
 unsigned int system_rev;
 EXPORT_SYMBOL(system_rev);
+
 phys_addr_t __fdt_pointer __initdata;
 
 /*

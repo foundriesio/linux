@@ -3,8 +3,8 @@
  * Copyright (C) Telechips Inc.
  */
 
-#ifndef __BSP_H__
-#define __BSP_H__
+#ifndef MACH_BSP_H
+#define MACH_BSP_H
 
 #ifdef __cplusplus
 extern "C" {
@@ -15,19 +15,13 @@ extern "C" {
 #endif
 
 #if defined(_LINUX_)
-#ifndef VOLATILE
-#define VOLATILE
-#endif
 #include <mach/irqs.h>
 #include <mach/reg_physical.h>
 #include <plat/globals.h>
 #else
-#ifndef VOLATILE
-#define VOLATILE	volatile
-#endif
 
-//system os header file 
-#include <system_type.h> 
+//system os header file
+#include <system_type.h>
 
 //argument structur and define file
 #include <args.h>
@@ -52,4 +46,4 @@ extern "C" {
 }
 #endif
 
-#endif // __BSP_H__
+#endif /* MACH_BSP_H */

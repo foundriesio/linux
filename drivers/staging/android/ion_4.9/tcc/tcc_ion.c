@@ -71,7 +71,7 @@ static struct ion_platform_data *tcc_ion_parse_dt(struct platform_device *pdev)
 		printk("%s heap id:%d, type : 0x%x\n", __func__, heap->id, heap->type);
 		if(heap->type == ION_HEAP_TYPE_CARVEOUT)
 		{
-			pmap_t pmap_ump_reserved;
+			struct pmap pmap_ump_reserved;
 			pmap_get_info("ump_reserved", &pmap_ump_reserved);
 
 			heap->base = pmap_ump_reserved.base;

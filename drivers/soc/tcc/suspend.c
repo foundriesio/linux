@@ -1,26 +1,14 @@
-/****************************************************************************
- * drivers/soc/tcc/suspend.c
- * Copyright (C) 2016 Telechips Inc.
- *
- * This program is free software; you can redistribute it and/or modify it under the terms
- * of the GNU General Public License as published by the Free Software Foundation;
- * either version 2 of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
- * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
- * PURPOSE. See the GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License along with
- * this program; if not, write to the Free Software Foundation, Inc., 59 Temple Place,
- * Suite 330, Boston, MA 02111-1307 USA
-****************************************************************************/
+// SPDX-License-Identifier: GPL-2.0-or-later
+/*
+ * Copyright (C) Telechips Inc.
+ */
 
 #include <linux/suspend.h>
 #include <linux/psci.h>
 #include <linux/arm-smccc.h>
+#include <linux/io.h>
 #include <asm/cacheflush.h>
 #include <asm/suspend.h>
-#include <asm/io.h>
 #include "sram_map.h"
 #include "suspend.h"
 #include <linux/slab.h>
@@ -31,13 +19,11 @@ typedef void (*FuncPtr1)(unsigned int arg0);
 #define suspend_writel __raw_writel
 #define suspend_readl __raw_readl
 
-extern int get_pm_suspend_mode(void);
-
-static struct tcc_suspend_ops *sub_suspend_ops = NULL;
+static struct tcc_suspend_ops *sub_suspend_ops;
 asmlinkage int __invoke_psci_fn_hvc(u32, u32, u32, u32);
 
 //#ifdef CONFIG_ARM64
-static void tcc_cpu_suspend(unsigned mode)
+static void tcc_cpu_suspend(unsigned long mode)
 {
 	//flush_cache_all();
 	__flush_icache_all();
@@ -48,6 +34,7 @@ static void tcc_cpu_suspend(unsigned mode)
 static int tcc_pm_enter(suspend_state_t state)
 {
 	unsigned int flags;
+	unsigned long arg;
 	int mode = get_pm_suspend_mode();
 	int ret = 0;
 
@@ -66,17 +53,21 @@ static int tcc_pm_enter(suspend_state_t state)
 			goto failed_soc_reg_save;
 	}
 
-	if(mode == 0)	//sleep mode
-		cpu_suspend((0<<24)|(mode<<16)|((unsigned long)mode&0xFFFF), (void *)tcc_cpu_suspend);
-	else if(mode == 1)	//shutdown mode
-		cpu_suspend((0<<24)|(mode<<16)|((unsigned long)mode&0xFFFF), (void *)tcc_cpu_suspend);
-	else if(mode == 2)	//wfi mode
-		cpu_suspend((0<<24)|((unsigned long)mode&0xFFFF), (void *)tcc_cpu_suspend);
-	else
+	if (mode == 0) { //sleep mode
+		arg = (0 << 24) | (mode << 16) | ((unsigned long)mode&0xFFFF);
+	} else if (mode == 1) { //shutdown mode
+		arg = (0 << 24) | (mode << 16) | ((unsigned long)mode&0xFFFF);
+	} else if (mode == 2) { //wfi mode
+		arg = (0 << 24) | ((unsigned long)mode&0xFFFF);
+	} else {
 		return mode;
+	}
 
-	if (sub_suspend_ops->soc_reg_restore)
+	cpu_suspend(arg, (void *)tcc_cpu_suspend);
+
+	if (sub_suspend_ops->soc_reg_restore != NULL) {
 		sub_suspend_ops->soc_reg_restore();
+	}
 
 failed_soc_reg_save:
 	local_irq_restore(flags);
@@ -109,12 +100,12 @@ static void tcc_suspend_end(void)
 }
 #endif
 
-static struct platform_suspend_ops suspend_ops = {
+const static struct platform_suspend_ops suspend_ops = {
 	.valid	= suspend_valid_only_mem,
 	.enter	= tcc_pm_enter,
 #if defined(CONFIG_ARCH_TCC803X)
-	.begin= tcc_suspend_begin,
-	.end= tcc_suspend_end,
+	.begin	= tcc_suspend_begin,
+	.end	= tcc_suspend_end,
 #endif
 };
 
@@ -153,7 +144,8 @@ unsigned int tcc_get_pmu_wakeup(unsigned int ch)
 
 static int __init tcc_suspend_init(void)
 {
+	sub_suspend_ops = NULL;
 	suspend_set_ops(&suspend_ops);
 	return 0;
 }
-__initcall(tcc_suspend_init);
+device_initcall(tcc_suspend_init);

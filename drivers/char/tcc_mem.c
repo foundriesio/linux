@@ -250,7 +250,7 @@ typedef struct {
 }stUmp_sw_buffer;
 
 static unsigned int bInited_ump_reserved_sw = 0;
-static pmap_t pmap_ump_reserved_sw;
+static struct pmap pmap_ump_reserved_sw;
 static void* remap_ump_reserved_sw = NULL;
 static stUmp_sw_buffer ump_sw_buf[UMP_SW_BLOCK_MAX_CNT]; //physical address
 

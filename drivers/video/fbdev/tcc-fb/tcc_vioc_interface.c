@@ -342,7 +342,7 @@ unsigned int tca_fb_get_fifo_underrun_count(void)
 
 void tca_fb_mem_scale_init(void)
 {
-	pmap_t pmap;
+	struct pmap pmap;
 
 	pmap_get_info("fb_scale0", &pmap);
 	fb_scaler_pbuf0 = pmap.base;
@@ -3264,7 +3264,7 @@ void tca_fb_attach_start(struct tccfb_info *info)
 	volatile void __iomem *pSC;
 	unsigned int main_wd, main_ht, attach_wd, attach_ht, scaler_num, ret;
 	unsigned int attach_posx = 0, attach_posy = 0, attach_buffer_len;
-	pmap_t pmap;
+	struct pmap pmap;
 	unsigned int *remap_addr;
 	int i = 0;
 
