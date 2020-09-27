@@ -65,7 +65,6 @@ struct pm_soc_type {
 	unsigned int    uart[PM_UART_MAX];
 #endif
 	unsigned int    uartcfg[2];
-	unsigned int    nfc[PM_NFC_MAX];
 };
 
 static struct pm_soc_type *reg_repo;

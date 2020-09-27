@@ -73,22 +73,11 @@ enum pm_uart {
 	PM_UART_MAX
 };
 
-enum pm_nfc {
-	PM_NFC_CACYC = 0,
-	PM_NFC_WRCYC,
-	PM_NFC_RECYC,
-	PM_NFC_CTRL,
-	PM_NFC_IRQCFG,
-	PM_NFC_RFWBASE,
-	PM_NFC_MAX
-};
-
 struct pm_soc_type {
 #ifdef CONFIG_PM_CONSOLE_NOT_SUSPEND
 	unsigned int    uart[PM_UART_MAX];
 #endif
 	unsigned int    uartcfg[2];
-	unsigned int    nfc[PM_NFC_MAX];
 };
 
 static struct pm_soc_type *reg_repo;

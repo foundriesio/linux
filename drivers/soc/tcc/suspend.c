@@ -9,7 +9,6 @@
 #include <linux/io.h>
 #include <asm/cacheflush.h>
 #include <asm/suspend.h>
-#include "sram_map.h"
 #include "suspend.h"
 #include <linux/slab.h>
 #include <linux/regulator/machine.h>
