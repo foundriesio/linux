@@ -241,4 +241,7 @@ int tcc_pinctrl_probe(struct platform_device *pdev,
 unsigned int tcc_irq_get_reverse(unsigned int irq);
 bool tcc_is_exti(unsigned int irq);
 
+unsigned tcc_pinconf_pack(unsigned param, unsigned value);
+unsigned tcc_pinconf_unpack_param(unsigned config);
+unsigned tcc_pinconf_unpack_value(unsigned config);
 #endif

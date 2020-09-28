@@ -29,6 +29,21 @@
 
 #include "pinctrl-tcc.h"
 
+unsigned tcc_pinconf_pack(unsigned param, unsigned value)
+{
+	return (param << TCC_PINCONF_SHIFT) | value;
+}
+
+unsigned tcc_pinconf_unpack_param(unsigned config)
+{
+	return config >> TCC_PINCONF_SHIFT;
+}
+
+unsigned tcc_pinconf_unpack_value(unsigned config)
+{
+	return config & (((unsigned)1U << TCC_PINCONF_SHIFT) - 1U);
+}
+
 #ifdef CONFIG_ARCH_TCC803X
 
 int tcc_gpio_config(unsigned gpio, unsigned config)
@@ -134,20 +149,6 @@ struct tcc_pinctrl {
 	unsigned int nfunctions;
 };
 
-static inline unsigned tcc_pinconf_pack(unsigned param, unsigned value)
-{
-	return (param << TCC_PINCONF_SHIFT) | value;
-}
-
-static inline unsigned tcc_pinconf_unpack_param(unsigned config)
-{
-	return config >> TCC_PINCONF_SHIFT;
-}
-
-static inline unsigned tcc_pinconf_unpack_value(unsigned config)
-{
-	return config & (((unsigned)1U << TCC_PINCONF_SHIFT) - 1U);
-}
 
 static inline struct tcc_pin_bank *gpiochip_to_pin_bank(struct gpio_chip *gc)
 {
