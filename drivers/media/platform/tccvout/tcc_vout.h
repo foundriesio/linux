@@ -45,7 +45,7 @@
 #include <video/tcc/TCC_VP9DEC.h>
 #endif
 
-#include <soc/tcc/timer.h>
+#include <soc/tcc/timer_api.h>
 #include <video/tcc/tcc_vout_v4l2.h>
 
 #define VOUT_NAME		"tcc-vout-video"

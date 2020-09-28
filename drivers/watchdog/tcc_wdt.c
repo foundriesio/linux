@@ -19,7 +19,7 @@
 #include <linux/uaccess.h>
 #include <linux/arm-smccc.h>
 #include <soc/tcc/tcc-sip.h>
-#include <soc/tcc/timer.h>
+#include <soc/tcc/timer_api.h>
 
 #if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC901X) || defined(CONFIG_ARCH_TCC805X)
 #define WDT_SIP
