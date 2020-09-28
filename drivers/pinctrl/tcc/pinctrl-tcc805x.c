@@ -257,9 +257,10 @@ static void tcc805x_gpio_pinconf_extra(void __iomem *base, unsigned offset, int 
 	request_gpio_to_sc((unsigned)reg, offset, 1U, (unsigned)value);
 #else
 	data = readl(reg);
-	data &= ~(1 << offset);
-	if (value)
-		data |= 1 << offset;
+	data &= ~((unsigned)1U << offset);
+	if (value != 0) {
+		data |= (unsigned)1U << offset;
+	}
 	writel(data, reg);
 #endif
 }
@@ -288,9 +289,10 @@ static int tcc805x_gpio_set_direction(void __iomem *base, unsigned offset,
 
 #else
 	data = readl(reg);
-	data &= ~(1 << offset);
-	if (!input)
-		data |= 1 << offset;
+	data &= ~((unsigned)1U << offset);
+	if (input == 0) {
+		data |= (unsigned)1U << offset;
+	}
 	writel(data, reg);
 #endif
 	return 0;
@@ -302,7 +304,7 @@ static int tcc805x_gpio_set_function(void __iomem *base, unsigned offset,
 	void __iomem *reg = base + GPIO_FUNC + (4U*(offset / 8U));
 	unsigned int data, mask, shift;
 #if defined(CONFIG_PINCTRL_TCC_SCFW)
-	unsigned width = 1;
+	unsigned width = 1U;
 #endif
 	if(func < 0) {
 		return -EINVAL;
@@ -320,14 +322,14 @@ static int tcc805x_gpio_set_function(void __iomem *base, unsigned offset,
 
 #if defined(CONFIG_PINCTRL_TCC_SCFW)
 	if((mask >> shift) == 0xfU) {
-		width = 4;
+		width = 4U;
 	}
 
 	reg = reg - base_offset;
 	request_gpio_to_sc((unsigned)reg, shift, width, (unsigned)func);
 #else
 	data = readl(reg) & ~mask;
-	data |= func << shift;
+	data |= (unsigned)func << shift;
 	writel(data, reg);
 #endif
 
@@ -355,7 +357,7 @@ static int tcc805x_gpio_set_drive_strength(void __iomem *base, unsigned offset,
 					   int value)
 {
 	void __iomem *reg;
-	int data;
+	unsigned data;
 
 	if (value > 3) {
 		return -EINVAL;
@@ -372,8 +374,8 @@ static int tcc805x_gpio_set_drive_strength(void __iomem *base, unsigned offset,
 	request_gpio_to_sc((unsigned)reg, 2U * (offset % 16U), 2U, (unsigned)value);
 #else
 	data = readl(reg);
-	data &= ~(0x3 << (2 * (offset % 16)));
-	data |= value << (2 * (offset % 16));
+	data &= ~((unsigned)0x3U << (2U * (offset % 16U)));
+	data |= (unsigned)value << (2U * (offset % 16U));
 	writel(data, reg);
 #endif
 
@@ -415,8 +417,8 @@ static int tcc805x_gpio_set_eclk_sel(void __iomem *base, unsigned offset,
 {
 	void __iomem *reg = (void __iomem *)(gpio_base + ECLKSEL);
 	unsigned port = (unsigned)base - (unsigned)gpio_base;
-	unsigned int idx;
-	int data;
+	unsigned idx;
+	unsigned data;
 
 	if (value > 3) {
 		return -EINVAL;
@@ -437,8 +439,8 @@ static int tcc805x_gpio_set_eclk_sel(void __iomem *base, unsigned offset,
 	request_gpio_to_sc((unsigned)reg, (unsigned)value * 8U, 8U, (unsigned)value);
 #else
 	data = readl(reg);
-	data &= ~(0xFF<<(value * 8));
-	data |= ((0xFF & idx) << (value * 8));
+	data &= ~((unsigned)0xFFU << ((unsigned)value * 8U));
+	data |= (((unsigned)0xFFU & idx) << ((unsigned)value * 8U));
 	writel(data, reg);
 #endif
 	return 0;
@@ -644,9 +646,10 @@ static int tcc805x_pinctrl_probe(struct platform_device *pdev)
 {
 	struct resource *cfg_res;
 	struct device_node *fw_np;
+	unsigned num_of_pinconf = (unsigned)ARRAY_SIZE(tcc805x_pin_configs);
 
 	tcc805x_pinctrl_soc_data.pin_configs = tcc805x_pin_configs;
-	tcc805x_pinctrl_soc_data.nconfigs = (int)ARRAY_SIZE(tcc805x_pin_configs);
+	tcc805x_pinctrl_soc_data.nconfigs = (int)num_of_pinconf;
 	tcc805x_pinctrl_soc_data.ops = &tcc805x_ops;
 	tcc805x_pinctrl_soc_data.irq = NULL;
 

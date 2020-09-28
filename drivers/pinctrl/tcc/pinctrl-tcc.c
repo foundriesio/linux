@@ -195,7 +195,7 @@ static void tcc_pinctrl_gpio_set(struct gpio_chip *chip, unsigned offset,
 	//And if spin_lock is present, a kernel panic occurs.
 	ops->gpio_set(pctl->base + bank->reg_base, offset, value);
 #else
-	spin_lock_irqsave(&bank->lock, flags);
+	spin_lock_irqsave(&bank->lock, (flags));
 	ops->gpio_set(pctl->base + bank->reg_base, offset, value);
 	spin_unlock_irqrestore(&bank->lock, flags);
 #endif
@@ -232,7 +232,7 @@ static int tcc_pinctrl_gpio_to_irq(struct gpio_chip *chip,
 	//And if spin_lock is present, a kernel panic occurs.
 	ret = ops->to_irq(pctl->base + bank->reg_base, offset);
 #else
-	spin_lock_irqsave(&bank->lock, flags);
+	spin_lock_irqsave(&bank->lock, (flags));
 	ret = ops->to_irq(pctl->base + bank->reg_base, offset);
 	spin_unlock_irqrestore(&bank->lock, flags);
 #endif
