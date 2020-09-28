@@ -155,8 +155,10 @@ static int request_gpio_to_sc(unsigned address, unsigned bit_number, unsigned wi
 	}
 
 	if(ret != 0) {
-		void __iomem * reg_addr = reg_addr + base_offset;
-		unsigned reg_data = readl(reg_addr);
+		unsigned reg_data;
+		void __iomem * reg_addr = NULL;
+		reg_addr = reg_addr + address + base_offset;
+		reg_data = readl(reg_addr);
 
 		if(width == 0UL) {
 			return -1;

@@ -300,10 +300,15 @@ static int tcc_dt_node_to_map(struct pinctrl_dev *pctldev,
 		if (of_find_property(np, pctl->pin_configs[i].prop, NULL) != NULL)
 			++num_configs;
 	}
-	if (num_configs != 0U)
+
+	if (num_configs != 0U) {
 		nmaps = 1;
-	if (of_find_property(np, "telechips,pin-function", NULL) != NULL)
+	}
+
+	if (of_find_property(np, "telechips,pin-function", NULL) != NULL) {
 		++nmaps;
+	}
+
 	if (nmaps == 0U) {
 		printk(KERN_ERR "node %s does not have either config "
 			"or function configurations\n", np->name);
@@ -315,10 +320,10 @@ static int tcc_dt_node_to_map(struct pinctrl_dev *pctldev,
 		printk(KERN_ERR "failed to allocate memory for maps\n");
 		return -ENOMEM;
 	}
-	configs = kzalloc(sizeof(unsigned long) * num_configs, GFP_KERNEL);
+
+	configs = devm_kzalloc(pctl->dev, sizeof(unsigned long) * num_configs, GFP_KERNEL);
 	if (configs == NULL) {
-		printk(KERN_ERR
-			"failed to allocate memory for configs\n");
+		printk(KERN_ERR "failed to allocate memory for configs\n");
 		return -ENOMEM;
 	}
 
@@ -333,8 +338,9 @@ static int tcc_dt_node_to_map(struct pinctrl_dev *pctldev,
 		++(*num_maps);
 	}
 
-	if (num_configs == 0U)
+	if (num_configs == 0U) {
 		goto skip_config;	/* We have only function config */
+	}
 
 	for (i = 0, num_configs = 0U; i < pctl->nconfigs; i++) {
 		struct tcc_pinconf *config = &pctl->pin_configs[i];
@@ -356,6 +362,7 @@ static int tcc_dt_node_to_map(struct pinctrl_dev *pctldev,
 	if((*num_maps) >= nmaps) {
 		return -EINVAL;
 	}
+
 	(*map)[*num_maps].data.configs.group_or_pin = group;
 	(*map)[*num_maps].data.configs.configs = configs;
 	(*map)[*num_maps].data.configs.num_configs = num_configs;
@@ -370,10 +377,11 @@ static void tcc_dt_free_map(struct pinctrl_dev *pctldev,
 		struct pinctrl_map *map, unsigned num_maps)
 {
 	printk(KERN_DEBUG "%s\n", __func__);
+
 	kfree(map);
 }
 
-static const struct pinctrl_ops tcc_pinctrl_ops = {
+static const struct pinctrl_ops tcc_pinctrl_pctlops = {
 	.get_groups_count = tcc_get_groups_count,
 	.get_group_name = tcc_get_group_name,
 	.get_group_pins = tcc_get_group_pins,
@@ -698,7 +706,7 @@ static int tcc_pinctrl_parse_dt(struct platform_device *pdev,
 
 		if (of_find_property(child, "telechips,pin-function", NULL) != NULL) {
 			func->name = kstrdup(child->name, GFP_KERNEL);
-			func->groups = devm_kzalloc(pctl->dev, ((strlen(func->name)+2U+3U)/4U)*4U,
+			func->groups = devm_kzalloc(pctl->dev, ((strnlen(func->name, 100)+2U+3U)/4U)*4U,
 					GFP_KERNEL);
 			func->groups[0] = kstrdup(child->name, GFP_KERNEL);
 			func->ngroups = 1;
@@ -883,7 +891,7 @@ int tcc_pinctrl_probe(struct platform_device *pdev,
 	pctl->pins = pindesc;
 
 	pctl->pinctrl_desc.owner = THIS_MODULE;
-	pctl->pinctrl_desc.pctlops = &tcc_pinctrl_ops;
+	pctl->pinctrl_desc.pctlops = &tcc_pinctrl_pctlops;
 	pctl->pinctrl_desc.pmxops = &tcc_pinmux_ops;
 	pctl->pinctrl_desc.confops = &tcc_pinconf_ops;
 	pctl->pinctrl_desc.name = dev_name(&pdev->dev);
