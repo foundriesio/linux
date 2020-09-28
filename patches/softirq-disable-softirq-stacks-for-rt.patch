@@ -131,7 +131,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 +#ifndef CONFIG_PREEMPT_RT
  void do_softirq_own_stack(void)
  {
- 	run_on_irqstack_cond(__do_softirq, NULL, NULL);
+ 	run_on_irqstack_cond(__do_softirq, NULL);
  }
 +#endif
 --- a/include/linux/interrupt.h
