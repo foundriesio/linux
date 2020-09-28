@@ -4,64 +4,60 @@
  */
 
 #include <linux/module.h>
-#include <linux/init.h>
-#include <linux/err.h>
-#include <linux/spinlock.h>
-#include <linux/interrupt.h>
 #include <linux/irq.h>
-#include <linux/io.h>
 #include <linux/of_address.h>
 #include <linux/platform_device.h>
 #include <linux/syscore_ops.h>
 #include <soc/tcc/irq.h>
 
-#define TCC_PIC_NAME		"tcc_pic"
+#define TCC_PIC_NAME		(const char *)"tcc_pic"
 
 /* index of pic registers */
-#define POL_0                   0
-#define POL_1                   1
-#define CMB_CM4                 2
-#define STRGB_CM4               3
-#define CA7_IRQO_EN             4
-#define PIC_REG_MAX             5
+#define POL_0                   (u32)0
+#define POL_1                   (u32)1
+#define CMB_CM4                 (u32)2
+#define STRGB_CM4               (u32)3
+#define CA7_IRQO_EN             (u32)4
+#define PIC_REG_MAX             (u32)5
 
 struct tcc_pic_ops {
-	int (*set_polarity)(struct irq_data *d, unsigned int type);
-	int (*mask_cm4)(int irq, unsigned int bus);
-	int (*unmask_cm4)(int irq, unsigned int bus);
+	int (*set_polarity)(struct irq_data *d, u32 type);
+	int (*mask_cm4)(u32 irq, u32 bus);
+	int (*unmask_cm4)(u32 irq, u32 bus);
 };
 
 struct tcc_pic {
 	void __iomem *reg[PIC_REG_MAX];
-	unsigned int *reg_save[PIC_REG_MAX];
+	u32 *reg_save[PIC_REG_MAX];
 	u32 reg_size[PIC_REG_MAX];
-	int demarcation;
-	int max_irq;
-	struct tcc_pic_ops *ops;
+	u32 demarcation;
+	u32 max_irq;
+	const struct tcc_pic_ops *ops;
 	spinlock_t lock;
 };
 
 static struct tcc_pic *picinfo;
 
-static int tcc_pic_set_polarity(struct irq_data *irqd, unsigned int type)
+static int tcc_pic_set_polarity(struct irq_data *irqd, u32 type)
 {
 	void __iomem *pol;
 	u32 mask;
 	int ret = 0;
-	int irq;
+	u32 irq;
 	unsigned long flags;
 
-	if ((irqd->hwirq < 32) || (picinfo->reg[POL_0] == NULL)
-			       || (picinfo->reg[POL_1] == NULL)) {
-		pr_err("[ERROR][%s] %s: You have tried the wrong approach:%ld\n",
-		       TCC_PIC_NAME, __func__, irqd->hwirq);
+	if ((irqd->hwirq < (u32)32) || (picinfo->reg[POL_0] == NULL)
+				    || (picinfo->reg[POL_1] == NULL)) {
+		(void)pr_err(
+			     "[ERROR][%s] %s: You have tried the wrong approach:%ld\n",
+			     TCC_PIC_NAME, __func__, irqd->hwirq);
 		return -EFAULT;
 	}
-	irq = irqd->hwirq - 32;
+	irq = (u32)irqd->hwirq - (u32)32;
 
-	if (irq > (picinfo->max_irq - 1)) {
-		pr_err("[ERROR][%s] %s: Wrong IRQ:%d\n", TCC_PIC_NAME,
-		       __func__, irq);
+	if (irq > (picinfo->max_irq - (u32)1)) {
+		(void)pr_err("[ERROR][%s] %s: Wrong IRQ:%d\n",
+			     TCC_PIC_NAME, __func__, irq);
 		return -EFAULT;
 	}
 
@@ -71,13 +67,14 @@ static int tcc_pic_set_polarity(struct irq_data *irqd, unsigned int type)
 		pol = picinfo->reg[POL_1]
 		      + (((irq - picinfo->demarcation) >> 5) << 2);
 	}
-	mask = 1 << (irq & 0x1F);
+	mask = (u32)1 << (irq & (u32)0x1F);
 
 	spin_lock_irqsave(&picinfo->lock, flags);
-	if (type == IRQ_TYPE_LEVEL_HIGH || type == IRQ_TYPE_EDGE_RISING) {
+	if ((type == (u32)IRQ_TYPE_LEVEL_HIGH) ||
+	    (type == (u32)IRQ_TYPE_EDGE_RISING)) {
 		writel_relaxed(readl_relaxed(pol) & ~mask, pol);
-	} else if (type == IRQ_TYPE_LEVEL_LOW
-		|| type == IRQ_TYPE_EDGE_FALLING) {
+	} else if ((type == (u32)IRQ_TYPE_LEVEL_LOW) ||
+		   (type == (u32)IRQ_TYPE_EDGE_FALLING)) {
 		writel_relaxed(readl_relaxed(pol) | mask, pol);
 	} else {
 		ret = -EINVAL;
@@ -87,44 +84,52 @@ static int tcc_pic_set_polarity(struct irq_data *irqd, unsigned int type)
 	return ret;
 }
 
-static int tcc_pic_mask_control(int irq, unsigned int bus, unsigned int enable)
+static int tcc_pic_mask_control(u32 irq, u32 bus, u32 enable)
 {
 	void __iomem *reg = NULL;
 	u32 mask;
 	unsigned long flags;
 
-	if (irq > (picinfo->max_irq - 1)) {
-		pr_err("[ERROR][%s] %s: Wrong IRQ:%d\n", TCC_PIC_NAME,
-		       __func__, irq);
+	if (irq > (picinfo->max_irq - (u32)1)) {
+		(void)pr_err("[ERROR][%s] %s: Wrong IRQ:%d\n",
+			     TCC_PIC_NAME, __func__, irq);
 		return -EFAULT;
 	}
 
 	if (bus == PIC_GATE_CMB) {
 		if (picinfo->reg[CMB_CM4] == NULL) {
-			pr_err("[ERROR][%s] %s: You have tried the wrong approach:%d\n",
-			       TCC_PIC_NAME, __func__, irq);
+			(void)pr_err(
+				     "[ERROR][%s] %s: You have tried the wrong approach:%d\n",
+				     TCC_PIC_NAME, __func__, irq);
 			return -EFAULT;
 		}
 		reg = picinfo->reg[CMB_CM4] + ((irq >> 5) << 2);
 	} else if (bus == PIC_GATE_STRGB) {
 		if (picinfo->reg[STRGB_CM4] == NULL) {
-			pr_err("[ERROR][%s] %s: You have tried the wrong approach:%d\n",
-			       TCC_PIC_NAME, __func__, irq);
+			(void)pr_err(
+				     "[ERROR][%s] %s: You have tried the wrong approach:%d\n",
+				     TCC_PIC_NAME, __func__, irq);
 			return -EFAULT;
 		}
 		reg = picinfo->reg[STRGB_CM4] + ((irq >> 5) << 2);
 	} else if (bus == SMU_GATE_CA7) {
 		if (picinfo->reg[CA7_IRQO_EN] == NULL) {
-			pr_err("[ERROR][%s] %s: You have tried the wrong approach.\n",
-			       TCC_PIC_NAME, __func__);
+			(void)pr_err(
+				     "[ERROR][%s] %s: You have tried the wrong approach.\n",
+				     TCC_PIC_NAME, __func__);
 			return -EFAULT;
 		}
 		reg = picinfo->reg[CA7_IRQO_EN] + ((irq >> 5) << 2);
+	} else {
+		(void)pr_err("[ERROR][%s] %s: bus type(%d) is wrong.\n",
+			     TCC_PIC_NAME, __func__, bus);
+		return -EINVAL;
 	}
-	mask = 1 << (irq & 0x1F);
+
+	mask = (u32)1 << (irq & (u32)0x1F);
 
 	spin_lock_irqsave(&picinfo->lock, flags);
-	if (enable == 0) {
+	if (enable == (u32)0) {
 		/* mask */
 		writel_relaxed(readl_relaxed(reg) & ~mask, reg);
 	} else {
@@ -136,23 +141,24 @@ static int tcc_pic_mask_control(int irq, unsigned int bus, unsigned int enable)
 	return 0;
 }
 
-static int tcc_pic_mask_cm4(int irq, unsigned int bus)
+static int tcc_pic_mask_cm4(u32 irq, u32 bus)
 {
 	return tcc_pic_mask_control(irq, bus, 0);
 }
 
-static int tcc_pic_unmask_cm4(int irq, unsigned int bus)
+static int tcc_pic_unmask_cm4(u32 irq, u32 bus)
 {
 	return tcc_pic_mask_control(irq, bus, 1);
 }
 
-static void tcc_pic_allmask_ca7(void)
+static void __maybe_unused tcc_pic_allmask_ca7(void)
 {
 	unsigned long flags;
 
 	if (picinfo->reg[CA7_IRQO_EN] == NULL) {
-		pr_err("[ERROR][%s] %s: You have tried the wrong approach.\n",
-		       TCC_PIC_NAME, __func__);
+		(void)pr_err(
+			     "[ERROR][%s] %s: You have tried the wrong approach.\n",
+			     TCC_PIC_NAME, __func__);
 		return;
 	}
 
@@ -167,7 +173,7 @@ static void tcc_pic_allmask_ca7(void)
 	spin_unlock_irqrestore(&picinfo->lock, flags);
 }
 
-int tcc_irq_set_polarity_ca7(int irq, unsigned int type)
+int tcc_irq_set_polarity_ca7(u32 irq, u32 type)
 {
 	void __iomem *pol;
 	u32 mask;
@@ -175,14 +181,15 @@ int tcc_irq_set_polarity_ca7(int irq, unsigned int type)
 	unsigned long flags;
 
 	if ((picinfo->reg[POL_0] == NULL) || (picinfo->reg[POL_1] == NULL)) {
-		pr_err("[ERROR][%s] %s: You have tried the wrong approach\n",
-		       TCC_PIC_NAME, __func__);
+		(void)pr_err(
+			     "[ERROR][%s] %s: You have tried the wrong approach\n",
+			     TCC_PIC_NAME, __func__);
 		return -EFAULT;
 	}
 
-	if (irq > (picinfo->max_irq - 1)) {
-		pr_err("[ERROR][%s] %s: Wrong IRQ:%d\n", TCC_PIC_NAME,
-		       __func__, irq);
+	if (irq > (picinfo->max_irq - (u32)1)) {
+		(void)pr_err("[ERROR][%s] %s: Wrong IRQ:%d\n",
+			     TCC_PIC_NAME, __func__, irq);
 		return -EFAULT;
 	}
 
@@ -192,13 +199,14 @@ int tcc_irq_set_polarity_ca7(int irq, unsigned int type)
 		pol = picinfo->reg[POL_1]
 		      + (((irq - picinfo->demarcation) >> 5) << 2);
 	}
-	mask = 1 << (irq & 0x1F);
+	mask = (u32)1 << (irq & (u32)0x1F);
 
 	spin_lock_irqsave(&picinfo->lock, flags);
-	if (type == IRQ_TYPE_LEVEL_HIGH || type == IRQ_TYPE_EDGE_RISING) {
+	if ((type == (u32)IRQ_TYPE_LEVEL_HIGH) ||
+	    (type == (u32)IRQ_TYPE_EDGE_RISING)) {
 		writel_relaxed(readl_relaxed(pol) & ~mask, pol);
-	} else if (type == IRQ_TYPE_LEVEL_LOW
-		|| type == IRQ_TYPE_EDGE_FALLING) {
+	} else if ((type == (u32)IRQ_TYPE_LEVEL_LOW) ||
+		   (type == (u32)IRQ_TYPE_EDGE_FALLING)) {
 		writel_relaxed(readl_relaxed(pol) | mask, pol);
 	} else {
 		ret = -EINVAL;
@@ -208,43 +216,43 @@ int tcc_irq_set_polarity_ca7(int irq, unsigned int type)
 	return ret;
 }
 
-int tcc_irq_mask_ca7(int irq)
+int tcc_irq_mask_ca7(u32 irq)
 {
 	return tcc_pic_mask_control(irq, SMU_GATE_CA7, 0);
 }
 
-int tcc_irq_unmask_ca7(int irq)
+int tcc_irq_unmask_ca7(u32 irq)
 {
 	return tcc_pic_mask_control(irq, SMU_GATE_CA7, 1);
 }
 
-int tcc_irq_set_polarity(struct irq_data *irqd, unsigned int type)
+int tcc_irq_set_polarity(struct irq_data *irqd, u32 type)
 {
 	int ret = 0;
 
-	if (picinfo->ops->set_polarity) {
+	if (picinfo->ops->set_polarity != NULL) {
 		ret = picinfo->ops->set_polarity(irqd, type);
 	}
 
 	return ret;
 }
 
-int tcc_irq_mask_cm4(int irq, unsigned int bus)
+int tcc_irq_mask_cm4(u32 irq, u32 bus)
 {
 	int ret = 0;
 
-	if (picinfo->ops->mask_cm4) {
+	if (picinfo->ops->mask_cm4 != NULL) {
 		ret = picinfo->ops->mask_cm4(irq, bus);
 	}
 
 	return ret;
 }
 
-int tcc_irq_unmask_cm4(int irq, unsigned int bus)
+int tcc_irq_unmask_cm4(u32 irq, u32 bus)
 {
 	int ret = 0;
 
-	if (picinfo->ops->unmask_cm4) {
+	if (picinfo->ops->unmask_cm4 != NULL) {
 		ret = picinfo->ops->unmask_cm4(irq, bus);
 	}
 
@@ -255,10 +263,14 @@ int tcc_irq_unmask_cm4(int irq, unsigned int bus)
 #if defined(CONFIG_ARCH_TCC805X)
 static int tcc_pic_suspend(void)
 {
-	int i, j;
+	u32 i, j;
 
 	/* store all registers of pic */
-	for (i = 0; i < PIC_REG_MAX && picinfo->reg_size[i] > 0; i++) {
+	for (i = 0; i < PIC_REG_MAX; i++) {
+		if (picinfo->reg_size[i] == (u32)0) {
+			continue;
+		}
+
 		picinfo->reg_save[i] =
 		    kzalloc(picinfo->reg_size[i], GFP_KERNEL);
 		if (picinfo->reg_save[i] != NULL) {
@@ -267,8 +279,8 @@ static int tcc_pic_suspend(void)
 				    readl_relaxed(picinfo->reg[i] + (j << 2));
 			}
 		} else {
-			pr_err("[ERROR][%s] %s: can't allocate memory.\n",
-			       TCC_PIC_NAME, __func__);
+			(void)pr_err("[ERROR][%s] %s: can't allocate memory.\n",
+				     TCC_PIC_NAME, __func__);
 			return -ENOMEM;
 		}
 	}
@@ -278,19 +290,23 @@ static int tcc_pic_suspend(void)
 
 static void tcc_pic_resume(void)
 {
-	int i, j;
+	u32 i, j;
 
 	/* restore all registers of pic */
-	for (i = 0; i < PIC_REG_MAX && picinfo->reg_size[i] > 0; i++) {
+	for (i = 0; i < PIC_REG_MAX; i++) {
+		if (picinfo->reg_size[i] == (u32)0) {
+			continue;
+		}
+
 		if (picinfo->reg_save[i] != NULL) {
-			for (j = 0; (j << 2) < picinfo->reg_size[i]; j++) {
+			for (j = 0; (j << (u32)2) < picinfo->reg_size[i]; j++) {
 				writel_relaxed(*(picinfo->reg_save[i] + j),
-					       picinfo->reg[i] + (j << 2));
+					       picinfo->reg[i] + (j << (u32)2));
 			}
 			kfree(picinfo->reg_save[i]);
 		} else {
-			pr_err("[ERROR][%s] %s: can't find memory.\n",
-			       TCC_PIC_NAME, __func__);
+			(void)pr_err("[ERROR][%s] %s: can't find memory.\n",
+				     TCC_PIC_NAME, __func__);
 			return;
 		}
 	}
@@ -339,61 +355,72 @@ static struct tcc_pic_ops tcc897x_pic_ops = {
 	.unmask_cm4 = NULL,
 };
 
+#ifdef CONFIG_OF
+static const struct of_device_id tcc_pic_of_match[7] = {
+	{.compatible = "telechips,tcc805x-pic", .data = &tcc805x_pic_ops},
+	{.compatible = "telechips,tcc803x-pic", .data = &tcc803x_pic_ops},
+	{.compatible = "telechips,tccsub-ca7-pic", .data = &tccsub_ca7_pic_ops},
+	{.compatible = "telechips,tcc901x-pic", .data = &tcc901x_pic_ops},
+	{.compatible = "telechips,tcc899x-pic", .data = &tcc899x_pic_ops},
+	{.compatible = "telechips,tcc897x-pic", .data = &tcc897x_pic_ops},
+	{}
+};
+
 static int tcc_pic_probe(struct platform_device *pdev)
 {
 	struct device *dev = &pdev->dev;
 	struct device_node *np = pdev->dev.of_node;
+	const struct of_device_id *match;
 	struct tcc_pic *pic;
 	struct resource res;
-	int i, ret;
+	u32 i;
+	int ret;
 
 	pic = devm_kzalloc(dev, sizeof(*pic), GFP_KERNEL);
 	if (pic != NULL) {
 		memset(pic, 0, sizeof(*pic));
 		picinfo = pic;
 	} else {
-		pr_err("[ERROR][%s] %s: can't alloccate memory.\n",
-		       TCC_PIC_NAME, __func__);
+		(void)pr_err("[ERROR][%s] %s: can't alloccate memory.\n",
+			     TCC_PIC_NAME, __func__);
 		return -ENOMEM;
+	}
+
+	match = of_match_node(tcc_pic_of_match, np);
+	if (match != NULL) {
+		picinfo->ops = (const struct tcc_pic_ops *)match->data;
+	} else {
+		return -ENODEV;
 	}
 
 	/* It'll be set as NULL if the size of reg node is zero. */
 	for (i = 0; i < PIC_REG_MAX; i++) {
-		picinfo->reg[i] = of_iomap(np, i);
-		if (of_address_to_resource(np, i, &res)) {
+		picinfo->reg[i] = of_iomap(np, (int)i);
+		ret = of_address_to_resource(np, (int)i, &res);
+		if (ret != 0) {
 			picinfo->reg_size[i] = 0;
 		} else {
-			picinfo->reg_size[i] = resource_size(&res);
+			picinfo->reg_size[i] = (u32)resource_size(&res);
 		}
 	}
 
-	ret = of_property_read_s32(np, "demarcation", &picinfo->demarcation);
+	ret = of_property_read_s32(np,
+				   "demarcation",
+				   (s32 *)&picinfo->demarcation);
 	if (ret != 0) {
-		pr_err("[WARN][%s] %s: can't get the demarcation.\n",
-		       TCC_PIC_NAME, __func__);
+		(void)pr_err("[WARN][%s] %s: can't get the demarcation.\n",
+			     TCC_PIC_NAME, __func__);
 	}
-	ret = of_property_read_s32(np, "max_irq", &picinfo->max_irq);
+	ret = of_property_read_s32(np, "max_irq", (s32 *)&picinfo->max_irq);
 	if (ret != 0) {
-		pr_err("[WARN][%s] %s: can't get the max_irq.\n",
-		       TCC_PIC_NAME, __func__);
+		(void)pr_err("[WARN][%s] %s: can't get the max_irq.\n",
+			     TCC_PIC_NAME, __func__);
 	}
 
-	if (of_device_is_compatible(np, "telechips,tcc805x-pic")) {
-		picinfo->ops = &tcc805x_pic_ops;
-	} else if (of_device_is_compatible(np, "telechips,tcc803x-pic")) {
-		picinfo->ops = &tcc803x_pic_ops;
-	} else if (of_device_is_compatible(np, "telechips,tccsub-ca7-pic")) {
-		picinfo->ops = &tccsub_ca7_pic_ops;
+	if (of_device_is_compatible(np, "telechips,tccsub-ca7-pic") != 0) {
 		tcc_pic_allmask_ca7();
-	} else if (of_device_is_compatible(np, "telechips,tcc901x-pic")) {
-		picinfo->ops = &tcc901x_pic_ops;
-	} else if (of_device_is_compatible(np, "telechips,tcc899x-pic")) {
-		picinfo->ops = &tcc899x_pic_ops;
-	} else if (of_device_is_compatible(np, "telechips,tcc897x-pic")) {
-		picinfo->ops = &tcc897x_pic_ops;
 	} else {
-		pr_err("[WARN][%s] %s: unable to support the device.\n",
-		       TCC_PIC_NAME, __func__);
+		/* no operation */
 	}
 
 	spin_lock_init(&picinfo->lock);
@@ -405,17 +432,6 @@ static int tcc_pic_probe(struct platform_device *pdev)
 
 	return ret;
 }
-
-#ifdef CONFIG_OF
-static const struct of_device_id tcc_pic_of_match[] = {
-	{.compatible = "telechips,tcc805x-pic"},
-	{.compatible = "telechips,tcc803x-pic"},
-	{.compatible = "telechips,tccsub-ca7-pic"},
-	{.compatible = "telechips,tcc901x-pic"},
-	{.compatible = "telechips,tcc899x-pic"},
-	{.compatible = "telechips,tcc897x-pic"},
-	{}
-};
 
 MODULE_DEVICE_TABLE(of, tcc_pic_of_match);
 #endif
@@ -437,8 +453,8 @@ static int __init tcc_pic_init(void)
 
 	ret = platform_driver_register(&tcc_pic_driver);
 	if (ret < 0)
-		pr_err("[ERROR][%s] %s: ret=%d\n", TCC_PIC_NAME,
-		       __func__, ret);
+		(void)pr_err("[ERROR][%s] %s: ret=%d\n",
+			     TCC_PIC_NAME, __func__, ret);
 
 	return ret;
 }
