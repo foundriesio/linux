@@ -809,11 +809,13 @@ static void resize_hpt_for_hotplug(unsigned long new_mem_size)
 
 int hash__create_section_mapping(unsigned long start, unsigned long end)
 {
+	int rc;
+
 	resize_hpt_for_hotplug(memblock_phys_mem_size());
 
-	int rc = htab_bolt_mapping(start, end, __pa(start),
-				   pgprot_val(PAGE_KERNEL), mmu_linear_psize,
-				   mmu_kernel_ssize);
+	rc = htab_bolt_mapping(start, end, __pa(start),
+			       pgprot_val(PAGE_KERNEL), mmu_linear_psize,
+			       mmu_kernel_ssize);
 
 	if (rc < 0) {
 		int rc2 = htab_remove_mapping(start, end, mmu_linear_psize,
