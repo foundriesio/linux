@@ -280,7 +280,11 @@ static int stm32_rproc_tee_start(struct rproc *rproc)
 {
 	struct stm32_rproc *ddata = rproc->priv;
 
-	return tee_rproc_start(ddata->trproc);
+	if (!rproc->early_boot) {
+		return tee_rproc_start(ddata->trproc);
+	}
+
+	return 0;
 }
 
 static int stm32_rproc_tee_stop(struct rproc *rproc)
@@ -300,7 +304,14 @@ static int stm32_rproc_tee_stop(struct rproc *rproc)
 		}
 	}
 
-	return tee_rproc_stop(ddata->trproc);
+	err = tee_rproc_stop(ddata->trproc);
+	if (err)
+		return err;
+
+	/* Reset early_boot state as we stop the co-processor */
+	rproc->early_boot = false;
+
+	return 0;
 }
 
 static int stm32_rproc_elf_load_rsc_table(struct rproc *rproc,
@@ -309,13 +320,15 @@ static int stm32_rproc_elf_load_rsc_table(struct rproc *rproc,
 	struct resource_table *table = NULL;
 	struct stm32_rproc *ddata = rproc->priv;
 
+	if (ddata->trproc) {
+		if (rproc_tee_get_rsc_table(ddata->trproc))
+			goto no_rsc_table;
+		return 0;
+	}
+
 	if (!rproc->early_boot) {
-		if (ddata->trproc) {
-			if (rproc_tee_get_rsc_table(ddata->trproc))
-				goto no_rsc_table;
-		} else if (rproc_elf_load_rsc_table(rproc, fw)) {
-				goto no_rsc_table;
-		}
+		if (rproc_elf_load_rsc_table(rproc, fw))
+			goto no_rsc_table;
 
 		return 0;
 	}
@@ -332,11 +345,11 @@ static int stm32_rproc_elf_load_rsc_table(struct rproc *rproc,
 		return 0;
 	}
 
+no_rsc_table:
 	rproc->cached_table = NULL;
 	rproc->table_ptr = NULL;
 	rproc->table_sz = 0;
 
-no_rsc_table:
 	dev_warn(&rproc->dev, "no resource table found for this firmware\n");
 	return 0;
 }
@@ -874,7 +887,7 @@ static int stm32_rproc_probe(struct platform_device *pdev)
 	if (ret)
 		goto free_wkq;
 
-	if (!rproc->early_boot) {
+	if (!rproc->early_boot && !ddata->secured_fw) {
 		ret = stm32_rproc_stop(rproc);
 		if (ret)
 			goto free_wkq;
