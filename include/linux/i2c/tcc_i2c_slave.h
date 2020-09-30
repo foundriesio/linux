@@ -18,8 +18,8 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
 
-#ifndef __TCC_I2C_SLAVE_H__
-#define __TCC_I2C_SLAVE_H__
+#ifndef TCC_I2C_SLAVE_H
+#define TCC_I2C_SLAVE_H
 
 #define TCC_I2C_SLAVE_IOCTL	253
 
