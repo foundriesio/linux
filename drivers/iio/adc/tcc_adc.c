@@ -1,22 +1,7 @@
-/****************************************************************************
- * drivers/iio/adc/tcc_adc.c
- *
- * ADC driver for Telechips chip
- *
- * Copyright (C) 2018 Telechips Inc.
- *
- * This program is free software; you can redistribute it and/or modify it under the terms
- * of the GNU General Public License as published by the Free Software Foundation;
- * either version 2 of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
- * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
- * PURPOSE. See the GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License along with
- * this program; if not, write to the Free Software Foundation, Inc., 59 Temple Place,
- * Suite 330, Boston, MA 02111-1307 USA
- ****************************************************************************/
+// SPDX-License-Identifier: GPL-2.0-or-later
+/*
+ * Copyright (C) Telechips Inc.
+ */
 
 #include <linux/module.h>
 #include <linux/kernel.h>
@@ -36,7 +21,7 @@
 #include <linux/jiffies.h>
 #include <linux/delay.h>
 #include <linux/notifier.h>
-#include <asm/io.h>
+#include <linux/io.h>
 
 #include "tcc_adc.h"
 
@@ -49,7 +34,7 @@ struct tcc_adc {
 	struct clk    *hclk;
 	struct clk    *phyclk;
 
-	u32           is_12bit_res;
+	bool          is_12bit_res;
 	u32           delay;
 	u32           ckin;
 	u32           board_ver;
@@ -59,8 +44,8 @@ struct tcc_adc {
 };
 
 static struct tcc_adc_soc_data {
-	void (*adc_power_ctrl)(struct tcc_adc *adc, int pwr_on);
-	unsigned long (*adc_read)(struct iio_dev *iio_dev, int ch);
+	void (*adc_power_ctrl)(struct tcc_adc *adc, bool pwr_on);
+	unsigned int (*adc_read)(struct iio_dev *iio_dev, int ch);
 	int (*parsing_dt)(struct tcc_adc *adc);
 };
 
@@ -88,9 +73,14 @@ static const struct iio_chan_spec tcc_adc_iio_channels[] = {
 };
 
 /* Device Attribute for Debugging */
-static ssize_t tcc_adc_show(struct device *dev, struct device_attribute *attr, char *buf);
-static ssize_t tcc_adc_store(struct device *dev, struct device_attribute *attr, const char *buf, size_t count);
-IIO_DEVICE_ATTR(tccadc, S_IRUGO | S_IWUSR, tcc_adc_show, tcc_adc_store, 0);
+static ssize_t tcc_adc_show(struct device *dev,
+		struct device_attribute *attr,
+		char *buf);
+static ssize_t tcc_adc_store(struct device *dev,
+		struct device_attribute *attr,
+		const char *buf,
+		size_t count);
+IIO_DEVICE_ATTR(tccadc, 0664, tcc_adc_show, tcc_adc_store, 0);
 
 static struct attribute *tcc_adc_attributes[] = {
 	&iio_dev_attr_tccadc.dev_attr.attr,
@@ -101,22 +91,23 @@ static const struct attribute_group tcc_adc_attribute_group = {
 	.attrs = tcc_adc_attributes,
 };
 
-static void tcc_adc_pmu_power_ctrl(struct tcc_adc *adc, int pwr_on)
+static void tcc_adc_pmu_power_ctrl(struct tcc_adc *adc, bool pwr_on)
 {
-	unsigned reg_values;
-	BUG_ON(!adc);
+	unsigned int reg_values;
+
+	BUG_ON(adc == NULL);
 
 	/* Enable ADC power */
 	reg_values = readl(adc->pmu_regs);
-	reg_values &= ~((1<<PMU_TSADC_PWREN_SHIFT) | (1<<PMU_TSADC_STOP_SHIFT));
+	reg_values &= ~(((u32)1U << PMU_TSADC_PWREN_SHIFT) |
+			((u32)1U << PMU_TSADC_STOP_SHIFT));
 
 	if (pwr_on) {
 		clk_prepare_enable(adc->phyclk);
-		reg_values |= (1<<PMU_TSADC_PWREN_SHIFT) | (0<<PMU_TSADC_STOP_SHIFT);
+		reg_values |= ((u32)1U << PMU_TSADC_PWREN_SHIFT);
 		writel(reg_values, adc->pmu_regs);
-	}
-	else {
-		reg_values |= (0<<PMU_TSADC_PWREN_SHIFT) | (1<<PMU_TSADC_STOP_SHIFT);
+	} else {
+		reg_values |= ((u32)1U << PMU_TSADC_STOP_SHIFT);
 		writel(reg_values, adc->pmu_regs);
 		clk_prepare_enable(adc->phyclk);
 	}
@@ -127,36 +118,38 @@ static void tcc_adc_pmu_power_ctrl(struct tcc_adc *adc, int pwr_on)
 #endif
 }
 
-static void tcc_adc_power_ctrl(struct tcc_adc *adc, int pwr_on)
+static void tcc_adc_power_ctrl(struct tcc_adc *adc, bool pwr_on)
 {
-	unsigned reg_values;
+	unsigned int reg_values;
+	unsigned long clk_rate;
+	unsigned int ps_val;
 
-	if (pwr_on){
-		unsigned long clk_rate;
-		int ps_val;
-
+	if (pwr_on) {
 		/* enable ADC PMU power */
-		tcc_adc_pmu_power_ctrl(adc, 1);
+		tcc_adc_pmu_power_ctrl(adc, (bool)true);
 
 		/* enable IO BUS, perhipheral clock */
 		clk_prepare_enable(adc->fclk);
 		clk_prepare_enable(adc->hclk);
 
 		/* adc delay */
-		reg_values = readl(adc->regs+ADCDLY_REG);
-		reg_values = (reg_values&(~ADCDLY_DELAY_MASK))|ADCDLY_DELAY(adc->delay);
-		writel(reg_values, adc->regs+ADCDLY_REG);
+		reg_values = readl(adc->regs + ADCDLY_REG);
+		reg_values &= ~ADCDLY_DELAY_MASK;
+		reg_values |= ADCDLY_DELAY(adc->delay);
+		writel(reg_values, adc->regs + ADCDLY_REG);
 
 		/* calculate prescale */
 		clk_rate = clk_get_rate(adc->fclk);
-		ps_val = (clk_rate+adc->ckin/2)/adc->ckin - 1;
-		BUG_ON((ps_val < 4) || (ps_val > ADCCON_PS_VAL_MASK));
+		ps_val = (((u32)clk_rate + (adc->ckin / 2U)) / adc->ckin) - 1U;
+		BUG_ON((ps_val < 4U) || (ps_val > ADCCON_PS_VAL_MASK));
 
 		/* enable and set prescale : stand-by mode */
-		reg_values = ADCCON_PS_EN | ADCCON_PS_VAL(ps_val) | ADCCON_STBY;
+		reg_values = ADCCON_PS_EN;
+		reg_values |= ADCCON_PS_VAL(ps_val);
+		reg_values |= ADCCON_STBY;
 
 		/* 12bit resolution */
-		if (adc->is_12bit_res){
+		if (adc->is_12bit_res) {
 			reg_values |= ADCCON_12BIT_RES;
 		}
 		writel(reg_values, adc->regs+ADCCON_REG);
@@ -164,83 +157,87 @@ static void tcc_adc_power_ctrl(struct tcc_adc *adc, int pwr_on)
 #if defined(GENERAL_ADC)
 		/* adctsc control */
 		reg_values = readl(adc->regs+ADCTSC_REG);
-		reg_values = ((reg_values&(~ADCTSC_MASK))| ADCTSC_PUON | ADCTSC_XPEN | ADCTSC_YPEN);
+		reg_values &= ~ADCTSC_MASK;
+		reg_values |= (ADCTSC_PUON | ADCTSC_XPEN | ADCTSC_YPEN);
 		writel(reg_values, adc->regs+ADCTSC_REG);
 #endif //GENERAL_ADC
 
-	}else{
-		if(adc->fclk)
+	} else {
+		if (adc->fclk != NULL)
 			clk_disable_unprepare(adc->fclk);
-		if(adc->hclk)
+		if (adc->hclk != NULL)
 			clk_disable_unprepare(adc->hclk);
 
-		tcc_adc_pmu_power_ctrl(adc, 0);
+		tcc_adc_pmu_power_ctrl(adc, (bool)false);
 	}
 }
 
-static void tcc_micom_adc_power_ctrl(struct tcc_adc *adc, int clk_on)
+static void tcc_micom_adc_power_ctrl(struct tcc_adc *adc, bool clk_on)
 {
-	unsigned reg_values;
+	unsigned int reg_values;
 
-	if(clk_on){
+	if (clk_on) {
 		/* enable clock for micom adc */
 		reg_values = readl(adc->clk_regs);
-		reg_values = reg_values|ADC_CLK_OUT_EN|ADC_CLK_DIV_EN;
+		reg_values |= ADC_CLK_OUT_EN;
+		reg_values |= ADC_CLK_DIV_EN;
 		writel(reg_values, adc->clk_regs);
-	}else{
+	} else {
 		/* disable clock for micom adc */
 		reg_values = readl(adc->clk_regs);
-		reg_values = reg_values&(~(ADC_CLK_OUT_EN|ADC_CLK_DIV_EN));
+		reg_values &= ~(ADC_CLK_OUT_EN | ADC_CLK_DIV_EN);
 		writel(reg_values, adc->clk_regs);
 	}
 }
 
-static unsigned long tcc_micom_adc_read(struct iio_dev *iio_dev, int ch)
+static unsigned int tcc_micom_adc_read(struct iio_dev *iio_dev, int ch)
 {
 	struct tcc_adc *adc = iio_priv(iio_dev);
-	unsigned long data = 0;
-	unsigned reg_values, retry;
-	int max_count = 100;
+	unsigned int data = 0;
+	unsigned int reg_values;
+	int retry, max_count = 100;
 
 	dev_dbg(adc->dev, "[DEBUG][ADC] %s:\n", __func__);
 
-	if ((ch >= ADC_CH0) && (ch <= ADC_CH11))
-	{
-		reg_values = 1<<ch;
+	if ((ch >= ADC_CH0) && (ch <= ADC_CH11)) {
+		reg_values = ADCCMD_SMP_CMD(ch);
 
-		for(retry = 0; retry < 2; retry++){
+		for (retry = 0; retry < 2; retry++) {
 			/* sampling Command */
 			writel(reg_values, adc->regs+ADCCMD);
 
 			/* wait for sampling completion */
-			while(!(readl(adc->regs+ADCCMD) & 0x80000000) && (max_count > 0)){
+			while (((readl(adc->regs+ADCCMD) & ADCCMD_DONE) == 0U)
+					&& (max_count > 0)) {
 				ndelay(5);
 				max_count--;
 			}
-			if(max_count > 0){
+			if (max_count > 0) {
 				/* read the converted value of adc */
-				data = readl(adc->regs+ADCDATA0)&(0xFFF);
+				data = readl(adc->regs+ADCDATA0) & ADCDATA_MASK;
 				dev_dbg(adc->dev, "[DEBUG][ADC] %s: data = %#X\n",
-						__func__, (unsigned int)data);
+						__func__, data);
 				return data;
 			}
 			max_count = 100;
 		}
 
 		/* time out - sampling completion */
-		dev_warn(adc->dev,"[WARN][ADC] %s: ADC CH %d Sampling Command is not completed.\n", __func__, ch);
+		dev_warn(adc->dev, "[WARN][ADC] %s: ADC CH %d Sampling Command is not completed.\n",
+				__func__, ch);
 		return data;
 	}
 
-	dev_err(adc->dev, "[ERROR][ADC] %s: ADC CH %d is not supported.\n", __func__, ch);
+	dev_err(adc->dev, "[ERROR][ADC] %s: ADC CH %d is not supported.\n",
+			__func__, ch);
 	return data;
 }
 
-static unsigned long tcc_adc_read(struct iio_dev *iio_dev, int ch)
+static unsigned int tcc_adc_read(struct iio_dev *iio_dev, int ch)
 {
 	struct tcc_adc *adc = iio_priv(iio_dev);
-	unsigned long data;
-	unsigned reg_values;
+	unsigned int data;
+	unsigned int reg_values;
 
 	/* change operation mode */
 	reg_values = readl(adc->regs+ADCCON_REG);
@@ -248,46 +245,48 @@ static unsigned long tcc_adc_read(struct iio_dev *iio_dev, int ch)
 	writel(reg_values, adc->regs+ADCCON_REG);
 
 #if defined(GENERAL_ADC)
-	if(ch > ADC_CH9){
-		dev_err(adc->dev, "[ERROR][ADC] %s: ADC CH %d is Not supported\n", __func__, ch);
+	if (ch > ADC_CH9) {
+		dev_err(adc->dev, "[ERROR][ADC] %s: ADC CH %d is Not supported\n",
+				__func__, ch);
 		return -EINVAL;
 	}
 #else
 	/* adc ch6-9 for touchscreen. */
-	if(ch >= ADC_TOUCHSCREEN && ch < ADC_CH10){
-		dev_err(adc->dev, "[ERROR][ADC] %s: ADC CH %d is Not supported\n", __func__, ch);
+	if ((ch >= ADC_TOUCHSCREEN) && (ch < ADC_CH10)) {
+		dev_err(adc->dev, "[ERROR][ADC] %s: ADC CH %d is Not supported\n",
+				__func__, ch);
 		return -EINVAL;
 	}
 #endif
 
 	/* clear input channel select */
-	reg_values &= ~(ADCCON_ASEL(15));
+	reg_values &= ~(ADCCON_ASEL(15U));
 	writel(reg_values, adc->regs+ADCCON_REG);
 	ndelay(5);
 
 	/* select input channel, enable conversion */
-	reg_values |= ADCCON_ASEL(ch)|ADCCON_EN_ST;
+	reg_values |= (ADCCON_ASEL(ch) | ADCCON_EN_ST);
 	writel(reg_values, adc->regs+ADCCON_REG);
 
 	/* Wait for Start Bit Cleared */
-	while (readl(adc->regs+ADCCON_REG) & ADCCON_EN_ST){
+	while ((readl(adc->regs+ADCCON_REG) & ADCCON_EN_ST) != 0U) {
 		ndelay(5);
 	}
 
 	/* Wait for ADC Conversion Ended */
-	while (!(readl(adc->regs+ADCCON_REG) & ADCCON_E_FLG)){
+	while (((readl(adc->regs+ADCCON_REG) & ADCCON_E_FLG) == 0U)) {
 		ndelay(5);
 	}
 
 	/* Read Measured data */
-	if (adc->is_12bit_res){
-		data = readl(adc->regs+ADCDAT0_REG)&0xFFF;
-	}else{
-		data = readl(adc->regs+ADCDAT0_REG)&0x3FF;
+	if (adc->is_12bit_res) {
+		data = readl(adc->regs+ADCDAT0_REG) & 0xFFFU;
+	} else {
+		data = readl(adc->regs+ADCDAT0_REG) & 0x3FFU;
 	}
 
 	/* clear input channel select, disable conversion */
-	reg_values &= ~(ADCCON_ASEL(15)|ADCCON_EN_ST);
+	reg_values &= ~(ADCCON_ASEL(15U) | ADCCON_EN_ST);
 	writel(reg_values, adc->regs+ADCCON_REG);
 
 	/* chagne stand-by mode */
@@ -297,27 +296,28 @@ static unsigned long tcc_adc_read(struct iio_dev *iio_dev, int ch)
 	return data;
 }
 
-int tcc_adc_read_raw(struct iio_dev *iio_dev,
+static int tcc_adc_read_raw(struct iio_dev *iio_dev,
 		struct iio_chan_spec const *chan,
 		int *val, int *val2, long info)
 {
 	struct tcc_adc *adc = iio_priv(iio_dev);
-	unsigned long value;
+	unsigned int value;
+	int ret = -EINVAL;
 
-	switch(info){
-		case IIO_CHAN_INFO_RAW:
-			/* Read converted ADC data */
-			mutex_lock(&adc->lock);
-			value = adc->soc_data->adc_read(iio_dev, chan->channel);
-			mutex_unlock(&adc->lock);
-			*val = (int)value;
-			return IIO_VAL_INT;
-
-		default:
-			return -EINVAL;
+	switch (info) {
+	case IIO_CHAN_INFO_RAW:
+		/* Read converted ADC data */
+		mutex_lock(&adc->lock);
+		value = adc->soc_data->adc_read(iio_dev, chan->channel);
+		mutex_unlock(&adc->lock);
+		*val = (int)value;
+		ret = IIO_VAL_INT;
+		break;
+	default:
+		break;
 	}
 
-	return -EINVAL;
+	return ret;
 }
 
 static int tcc_adc_parsing_dt(struct tcc_adc *adc)
@@ -328,31 +328,28 @@ static int tcc_adc_parsing_dt(struct tcc_adc *adc)
 
 	/* get adc base address */
 	adc->regs = of_iomap(np, 0);
-	if (!adc->regs)
-	{
+	if (adc->regs == NULL) {
 		dev_err(adc->dev, "[ERROR][ADC] failed to get adc registers\n");
 		return -ENXIO;
 	}
 
 	/* get adc  pmu address */
 	adc->pmu_regs = of_iomap(np, 1);
-	if (!adc->pmu_regs)
-	{
+	if (adc->pmu_regs == NULL) {
 		dev_err(adc->dev, "[ERROR][ADC] failed to get pmu registers\n");
 		return -ENXIO;
 	}
 
 	/* get adc peri clock */
 	ret = of_property_read_u32(np, "clock-frequency", &clk_rate);
-	if (ret) {
+	if (ret != 0) {
 		dev_err(adc->dev, "[ERROR][ADC] Can not get clock frequency value\n");
 		return -EINVAL;
 	}
 
 	/* get adc ckin */
 	ret = of_property_read_u32(np, "ckin-frequency", &adc->ckin);
-	if (ret)
-	{
+	if (ret != 0) {
 		dev_err(adc->dev, "[ERROR][ADC]Can not get adc ckin value\n");
 		return -EINVAL;
 	}
@@ -365,16 +362,16 @@ static int tcc_adc_parsing_dt(struct tcc_adc *adc)
 	/* board version check */
 	of_property_read_u32(np, "adc-board-ver", &adc->board_ver);
 
-	if(adc->fclk == NULL){
+	if (adc->fclk == NULL) {
 		adc->fclk = of_clk_get(np, 0);
 	}
 	clk_set_rate(adc->fclk, (unsigned long)clk_rate);
 
-	if(adc->hclk == NULL){
+	if (adc->hclk == NULL) {
 		adc->hclk = of_clk_get(np, 1);
 	}
 
-	if(adc->phyclk == NULL){
+	if (adc->phyclk == NULL) {
 		adc->phyclk = of_clk_get(np, 2);
 	}
 
@@ -387,15 +384,14 @@ static int tcc_micom_adc_parsing_dt(struct tcc_adc *adc)
 
 	/* get adc base address */
 	adc->regs = of_iomap(np, 0);
-	if (!adc->regs){
+	if (adc->regs == NULL) {
 		dev_err(adc->dev, "[ERROR][ADC] failed to get adc registers\n");
 		return -ENXIO;
 	}
 
 	/* get adc clock address */
 	adc->clk_regs = of_iomap(np, 1);
-	if (!adc->clk_regs)
-	{
+	if (adc->clk_regs == NULL) {
 		dev_err(adc->dev, "[ERROR][ADC] failed to get adc clk registers\n");
 		return -ENXIO;
 	}
@@ -434,25 +430,25 @@ MODULE_DEVICE_TABLE(of, tcc_adc_dt_ids);
 
 static int tcc_adc_probe(struct platform_device *pdev)
 {
-	struct iio_dev *iio_dev;
+	struct iio_dev *iio_dev = NULL;
 	struct tcc_adc *adc;
 	const struct of_device_id *match;
-	int ret;
+	int error;
 
-	printk(KERN_DEBUG "[DEBUG][ADC] %s:\n", __func__);
+	pr_debug("[DEBUG][ADC] %s:\n", __func__);
 
 	/* allocate IIO device */
-	iio_dev = devm_iio_device_alloc(&pdev->dev, sizeof(*adc));
-	if(!iio_dev){
-		dev_err(&pdev->dev, "[ERROR][ADC] Failed to allocate IIO device\n");
+	iio_dev = devm_iio_device_alloc(&pdev->dev, (int)sizeof(*adc));
+	if (iio_dev == NULL) {
 		return -ENOMEM;
 	}
 
 	/* get soc data according compatible */
 	match = of_match_node(tcc_adc_dt_ids, pdev->dev.of_node);
-	if(match == NULL){
+	if (match == NULL) {
 		dev_err(&pdev->dev, "[ERROR][ADC] failed to get soc data\n");
-		return -EINVAL;
+		error = -EINVAL;
+		goto fail;
 	}
 
 	adc = iio_priv(iio_dev);
@@ -461,10 +457,10 @@ static int tcc_adc_probe(struct platform_device *pdev)
 	platform_set_drvdata(pdev, adc);
 
 	/* parsing device tree */
-	ret = adc->soc_data->parsing_dt(adc);
-	if(ret < 0){
+	error = adc->soc_data->parsing_dt(adc);
+	if (error < 0) {
 		dev_err(&pdev->dev, "[ERROR][ADC] failed to parsing device tree\n");
-		return ret;
+		goto fail;
 	}
 
 	mutex_init(&adc->lock);
@@ -476,24 +472,24 @@ static int tcc_adc_probe(struct platform_device *pdev)
 	iio_dev->num_channels = ARRAY_SIZE(tcc_adc_iio_channels);
 
 	/* ADC power control */
-	adc->soc_data->adc_power_ctrl(adc, 1);
+	adc->soc_data->adc_power_ctrl(adc, (bool)true);
 
-	ret = iio_device_register(iio_dev);
-	if(ret < 0){
+	error = iio_device_register(iio_dev);
+	if (error < 0) {
 		dev_err(&pdev->dev, "[ERROR][ADC] failed to register iio device.\n");
-		adc->soc_data->adc_power_ctrl(adc, 0);
-		return ret;
+		adc->soc_data->adc_power_ctrl(adc, (bool)false);
+		goto fail;
 	}
 
 	dev_info(&pdev->dev, "[INFO][ADC] attached iio driver.\n");
 
-#if _DEBUG	/* Test code */
-	if (0)
-	{
+#ifdef DEBUG
+/* Test code */
+	if (0) {
 		unsigned int i;
 		unsigned long value;
-		for (i = 2; i < 10; i++)
-		{
+
+		for (i = 2; i < 10; i++) {
 			value = adc->soc_data->adc_read(iio_dev, i);
 			dev_dbg(&pdev->dev, "[DEBUG][ADC] channel %d : value = 0x%x\n",
 					i, value);
@@ -503,8 +499,10 @@ static int tcc_adc_probe(struct platform_device *pdev)
 	}
 
 #endif
-
 	return 0;
+fail:
+	iio_device_free(iio_dev);
+	return error;
 }
 
 static int tcc_adc_remove(struct platform_device *pdev)
@@ -512,7 +510,7 @@ static int tcc_adc_remove(struct platform_device *pdev)
 	struct iio_dev *iio_dev = platform_get_drvdata(pdev);
 	struct tcc_adc *adc = iio_priv(iio_dev);
 
-	adc->soc_data->adc_power_ctrl(adc, 0);
+	adc->soc_data->adc_power_ctrl(adc, (bool)false);
 	iio_device_unregister(iio_dev);
 
 	return 0;
@@ -523,8 +521,8 @@ static int tcc_adc_suspend(struct device *dev)
 	struct iio_dev *iio_dev = dev_get_drvdata(dev);
 	struct tcc_adc *adc = iio_priv(iio_dev);
 
-	if(adc->soc_data)
-		adc->soc_data->adc_power_ctrl(adc, 0);
+	if (adc->soc_data != NULL)
+		adc->soc_data->adc_power_ctrl(adc, (bool)false);
 	return 0;
 }
 
@@ -533,8 +531,8 @@ static int tcc_adc_resume(struct device *dev)
 	struct iio_dev *iio_dev = dev_get_drvdata(dev);
 	struct tcc_adc *adc = iio_priv(iio_dev);
 
-	if(adc->soc_data)
-		adc->soc_data->adc_power_ctrl(adc, 1);
+	if (adc->soc_data != NULL)
+		adc->soc_data->adc_power_ctrl(adc, (bool)true);
 	return 0;
 }
 
@@ -552,17 +550,23 @@ static ssize_t tcc_adc_store(struct device *dev,
 {
 	struct iio_dev *iio_dev = dev_get_drvdata(dev);
 	struct tcc_adc *adc = iio_priv(iio_dev);
-	uint32_t ch = simple_strtoul(buf, NULL, 10);
+	int ch, ret;
 	unsigned long data;
+
+	ret = kstrtoint(buf, 10, &ch);
+	if (ret < 0) {
+		pr_err("[ERROR][ADC] failed to get channel.\n");
+		return -EINVAL;
+	}
 
 	mutex_lock(&adc->lock);
 	data = adc->soc_data->adc_read(iio_dev, ch);
 	mutex_unlock(&adc->lock);
 
-	printk(KERN_INFO "[INFO][ADC] Get ADC %d : value = %#X\n",
+	pr_info("[INFO][ADC] Get ADC %d : value = %#X\n",
 			ch, (unsigned int)data);
 
-	return count;
+	return (ssize_t)count;
 }
 
 static struct platform_driver tcc_adc_driver = {

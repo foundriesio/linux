@@ -759,7 +759,7 @@ config KEYBOARD_BCM
 config KEYPAD_TCC_ADC
     tristate "Telechips ADC Keypad support"
     depends on (TCC_MT_ADC0 || TCC_MT_ADC1 || TCC_ADC || ARCH_TCC897X || ARCH_TCC570X) && !TCC_MICOM
-    default y
+	select INPUT_POLLDEV
     help
       Say Y here if you want to use the TCC keypad.
 
