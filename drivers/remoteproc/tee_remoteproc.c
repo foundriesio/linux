@@ -74,11 +74,8 @@ struct tee_rproc_mem {
 
 struct tee_rproc_context {
 	struct list_head sessions;
-
 	struct tee_context *ctx;
 	struct device *dev;
-	struct tee_rproc_mem *rmems;
-	bool secured_soc;
 };
 
 struct tee_rproc_context pvt_data;
