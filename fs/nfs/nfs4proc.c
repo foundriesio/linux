@@ -1516,6 +1516,7 @@ static void nfs_clear_open_stateid(struct nfs4_state *state,
 static void nfs_set_open_stateid_locked(struct nfs4_state *state,
 		const nfs4_stateid *stateid, nfs4_stateid *freeme)
 {
+	unsigned long deadline = jiffies + 5 * HZ;
 	DEFINE_WAIT(wait);
 	struct wait_queue_head *wq_head = bit_waitqueue(&state->flags,
 							NFS_STATE_CHANGE_WAIT);
@@ -1542,7 +1543,8 @@ static void nfs_set_open_stateid_locked(struct nfs4_state *state,
 		spin_unlock(&state->owner->so_lock);
 		rcu_read_unlock();
 		if (!signal_pending(current)) {
-			if (schedule_timeout(5*HZ) == 0)
+			if (schedule_timeout(5*HZ) == 0 ||
+			    time_after(jiffies, deadline))
 				status = -EAGAIN;
 			else
 				status = 0;
