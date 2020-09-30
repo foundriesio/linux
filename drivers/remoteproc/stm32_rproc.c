@@ -91,6 +91,7 @@ struct stm32_rproc {
 	struct stm32_mbox mb[MBOX_NB_MBX];
 	struct workqueue_struct *workqueue;
 	bool secured_fw;
+	bool fw_loaded;
 	struct tee_rproc *trproc;
 	void __iomem *rsc_va;
 };
@@ -251,18 +252,41 @@ static int stm32_rproc_tee_elf_sanity_check(struct rproc *rproc,
 					    const struct firmware *fw)
 {
 	struct stm32_rproc *ddata = rproc->priv;
+	unsigned int ret = 0;
 
-	return tee_rproc_load_fw(ddata->trproc, fw);
+	if (!rproc->early_boot) {
+		ret = tee_rproc_load_fw(ddata->trproc, fw);
+		if (!ret)
+			ddata->fw_loaded = true;
+	}
+
+	return ret;
 }
 
 static int stm32_rproc_tee_elf_load(struct rproc *rproc,
 				    const struct firmware *fw)
 {
+	struct stm32_rproc *ddata = rproc->priv;
+	unsigned int ret;
+
 	/*
-	 * This function has to be declared else default ELF loader will be
-	 * used. Nothing done here as the firmware needs to be preloaded by TEE
-	 * to be able to parse it for the resource table
+	 * This function can be called by remote proc for recovery
+	 * without the sanity check. In this case we need to load the firmware
+	 * else nothing done here as the firmware has been preloaded for the
+	 * sanity check to be able to parse it for the resource table
 	 */
+	if (!ddata->fw_loaded && !rproc->early_boot) {
+		ret =  tee_rproc_load_fw(ddata->trproc, fw);
+		if (ret)
+			return ret;
+		/* update the resource table parameters */
+		if (rproc_tee_get_rsc_table(ddata->trproc)) {
+			/* no resource table: reset the related fields */
+			rproc->cached_table = NULL;
+			rproc->table_ptr = NULL;
+			rproc->table_sz = 0;
+		}
+	}
 
 	return 0;
 }
@@ -307,6 +331,8 @@ static int stm32_rproc_tee_stop(struct rproc *rproc)
 	err = tee_rproc_stop(ddata->trproc);
 	if (err)
 		return err;
+
+	ddata->fw_loaded = false;
 
 	/* Reset early_boot state as we stop the co-processor */
 	rproc->early_boot = false;
