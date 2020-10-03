@@ -17,6 +17,9 @@ arm/soc
 		git://git.kernel.org/pub/scm/linux/kernel/git/geert/renesas-devel tags/renesas-arm-soc-for-v5.10-tag1
 	samsung/soc
 		https://git.kernel.org/pub/scm/linux/kernel/git/krzk/linux tags/samsung-soc-5.10
+	patch
+		ARM: stm32: Replace HTTP links with HTTPS ones
+		ARM: mstar: Select MStar intc
 
 arm/dt
 	omap/dt
@@ -92,6 +95,33 @@ arm/dt
 		https://git.kernel.org/pub/scm/linux/kernel/git/matthias.bgg/linux tags/v5.9-next-dts32
 	tegra/dt
 		git://git.kernel.org/pub/scm/linux/kernel/git/tegra/linux tags/tegra-for-5.10-arm-dt
+	ti/k3-dt2
+		git://git.kernel.org/pub/scm/linux/kernel/git/nmenon/linux tags/ti-k3-dt-for-v5.10-part2
+	amlogic/dt-2
+		https://git.kernel.org/pub/scm/linux/kernel/git/khilman/linux-amlogic tags/amlogic-dt-2
+	sunxi/dt
+		https://git.kernel.org/pub/scm/linux/kernel/git/sunxi/linux tags/sunxi-dt-for-5.10-1
+	actions/dt-bindings
+		git://git.kernel.org/pub/scm/linux/kernel/git/mani/linux-actions tags/actions-bindings-for-v5.10
+	actions/dt
+		git://git.kernel.org/pub/scm/linux/kernel/git/mani/linux-actions tags/actions-arm-dt-for-v5.10
+	actions/dt64
+		git://git.kernel.org/pub/scm/linux/kernel/git/mani/linux-actions tags/actions-arm64-dt-for-v5.10
+	rockchip/dt
+		git://git.kernel.org/pub/scm/linux/kernel/git/mmind/linux-rockchip tags/v5.10-rockchip-dts32-1
+	sunxi/dt2
+		https://git.kernel.org/pub/scm/linux/kernel/git/sunxi/linux tags/sunxi-dt-for-5.10-2
+	xilinx/zynqmp-dt
+		https://github.com/Xilinx/linux-xlnx tags/zynqmp-dt-for-v5.10
+	omap/dt2
+		git://git.kernel.org/pub/scm/linux/kernel/git/tmlind/linux-omap tags/omap-for-v5.10/dt-part2-signed
+	hisi/dt-2
+		git://github.com/hisilicon/linux-hisi tags/hisi-arm32-dt-for-5.10-tag2
+	patch
+		ARM: mstar: Add interrupt controller to base dtsi
+		ARM: mstar: Add interrupt to pm_uart
+		ARM: mstar: Add mstar prefix to all of the dtsi/dts files
+		ARM: mstar: Fix up the fallout from moving the dts/dtsi files
 
 arm/drivers
 	tee/i2c
@@ -133,6 +163,8 @@ arm/defconfig
 		git://git.kernel.org/pub/scm/linux/kernel/git/tegra/linux tags/tegra-for-5.10-arm64-defconfig
 	samsung/defconfig
 		https://git.kernel.org/pub/scm/linux/kernel/git/krzk/linux tags/samsung-defconfig-5.10
+	patch
+		ARM: multi_v7_defconfig: add FMC2 EBI controller support
 
 arm/late
 
@@ -147,4 +179,10 @@ arm/fixes
 		https://git.kernel.org/pub/scm/linux/kernel/git/qcom/linux tags/qcom-arm64-fixes-for-5.9
 	<no branch> (bc38325703ebd0a00fecfb965020c255ffc582fe)
 		git://git.kernel.org/pub/scm/linux/kernel/git/mani/linux-actions tags/actions-drivers-fixes-for-v5.9
+	<no branch> (a6f2f0fdc73aacc6e10ae48ae78634dba26702d4)
+		https://github.com/Xilinx/linux-xlnx tags/zynqmp-soc-for-v5.9-v2
+	<no branch> (08d7a73fffb6769b1cf2278bf697e692daba3abf)
+		git://git.kernel.org/pub/scm/linux/kernel/git/geert/renesas-devel tags/renesas-fixes-for-v5.9-tag1
+	<no branch> (8f04aea048d56f3e39a7e543939450246542a6fc)
+		git://git.kernel.org/pub/scm/linux/kernel/git/tmlind/linux-omap tags/omap-for-v5.9/fixes-rc7
 
