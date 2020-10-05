@@ -81,6 +81,9 @@ typedef struct tccvin_cif {
 	unsigned int				vioc_irq_num;
 	struct vioc_intr_type		vioc_intr;
 
+	// usage status pgl
+	unsigned int				use_pgl;
+
 	// optional pmap
 	struct pmap					pmap_pgl;
 	struct pmap					pmap_viqe;
