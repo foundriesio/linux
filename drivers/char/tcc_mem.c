@@ -740,7 +740,7 @@ static int tmem_mmap(struct file *file, struct vm_area_struct *vma)
         return -EPERM;
     }
 
-    vma->vm_page_prot = phys_mem_access_prot(file, vma->vm_pgoff, size, vma->vm_page_prot);
+    vma->vm_page_prot = pgprot_writecombine(vma->vm_page_prot);
     vma->vm_ops = &tmem_mmap_ops;
 
     if (remap_pfn_range(vma,
