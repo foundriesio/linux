@@ -30,25 +30,25 @@ MODULE_PARM_DESC(slave_0_master_1, "Slave mode : 0 , Master mode : 1");
  * echo 1 > /sys/module/tcc_rtl9000/parameters/slave_0_master_1		: Set Master Mode
  */
 
-static int set_master;
+static unsigned int set_master;
 
 static int tcc_rtl9000a_vc_patch(struct phy_device *phydev)
 {
-	int io_data;
+	unsigned int io_data;
 	int timeout_cnt=0;
 
 	/* PHY_PATCH_REQEUST/LOCK */
 	phy_write(phydev,0x1F,0xA43);
 	phy_write(phydev,0x1B,0xB820);
-	phy_write(phydev,0x1C,(phy_read(phydev, 0x1C) | 0x0010));	// PHY patch request
+	phy_write(phydev,0x1C,(unsigned short)((unsigned short)phy_read(phydev, 0x1C) | (unsigned short)0x0010));	// PHY patch request
 	phy_write(phydev,0x1B,0xB830);
 	phy_write(phydev,0x1C,0x8000);
 	phy_write(phydev,0x1B,0xB800);
-	io_data = phy_read(phydev, 0x1C);
+	io_data = (unsigned)phy_read(phydev, 0x1C);
 
-	while (io_data!=0x0040)	// polling PHY patch ready
+	while ((unsigned)io_data!=(unsigned)0x0040)	// polling PHY patch ready
 	{
-		io_data = (phy_read(phydev, 0x1C) & 0x0040);
+		io_data = (unsigned int)((unsigned int)phy_read(phydev, 0x1C) & (unsigned)0x0040);
 		timeout_cnt++;
 		if(timeout_cnt == 30000)
 		{
@@ -110,22 +110,22 @@ static int tcc_rtl9000a_vc_patch(struct phy_device *phydev)
 	phy_write(phydev,0x1B,0x0000);
 	phy_write(phydev,0x1C,0x0000);
 	phy_write(phydev,0x1B,0xB82E);
-	phy_write(phydev,0x1C,(phy_read(phydev, 0x1C) & 0xFFFE));
+	phy_write(phydev,0x1C,(unsigned short)((unsigned)phy_read(phydev, 0x1C) & (unsigned)0xFFFE));
 	phy_write(phydev,0x1B,0x8020);
 	phy_write(phydev,0x1C,0x0000);
 	phy_write(phydev,0x1B,0xB820);
-	phy_write(phydev,0x1C,(phy_read(phydev, 0x1C) & 0xFFEF));
+	phy_write(phydev,0x1C,(unsigned short)((unsigned)phy_read(phydev, 0x1C) & (unsigned)0xFFEF));
 	phy_write(phydev,0x1B,0xB800);
-	io_data = phy_read(phydev, 0x1C);
+	io_data = (unsigned int)phy_read(phydev, 0x1C);
 
-	while (io_data!=0x0000)	// polling PHY patch ready clear
+	while ((unsigned)io_data!=(unsigned)0x0000)	// polling PHY patch ready clear
 	{
-		io_data = (phy_read(phydev, 0x1C) & 0x0040);
+		io_data = (unsigned int)((unsigned)phy_read(phydev, 0x1C) & (unsigned)0x0040);
 		timeout_cnt++;
-		if(timeout_cnt == 30000)
+		if((unsigned)timeout_cnt == (unsigned)30000)
 		{
 			printk("[%s] occurred timeout to get valid value. line %d \n", __func__, __LINE__);
-			timeout_cnt = 0;
+			timeout_cnt = (int)0;
 			break;
 		}
 	}
@@ -157,8 +157,8 @@ static int tcc_rtl9000a_config_aneg(struct phy_device *phydev)
 
 static int tcc_rtl9000a_config_init(struct phy_device *phydev)
 {
-	int ret;
-	int timeout_cnt = 0;
+	unsigned int ret;
+	unsigned int timeout_cnt = 0;
 
 	// printk("%s\n", __func__);
 #if defined(CONFIG_TCC_RTL9000_SLAVE_MODE)
@@ -166,73 +166,74 @@ static int tcc_rtl9000a_config_init(struct phy_device *phydev)
 #else
 	set_master = 1;
 #endif
-	if(slave_0_master_1 == 0 || slave_0_master_1 == 1)
+	if( ((unsigned)slave_0_master_1 == (unsigned)0) || ((unsigned)slave_0_master_1 == (unsigned)1))
 	{
-		set_master = slave_0_master_1;
+		set_master = (unsigned)slave_0_master_1;
 	}
 
 	// Check MDIO interface is ready
 	do{
-		ret = phy_read(phydev , 0x0);
+		ret = (unsigned int)phy_read(phydev , 0x0);
 
-		if(ret == 0x2100)
+		if((unsigned)ret == (unsigned)0x2100)
 			break;
 
-		timeout_cnt++;
-		if(timeout_cnt == 30000)
+		if((unsigned)timeout_cnt == (unsigned)30000)
 		{
 			printk("[%s] occurred timeout to get valid value. line %d \n", __func__, __LINE__);
-			timeout_cnt = 0;
+			timeout_cnt = (unsigned)0;
 			break;
 		}
-	}while(0);
+		else
+			timeout_cnt++;
+	}while(1);
 
 	// Check hard-reset complete
 	do{
-		ret = phy_read(phydev, 0x10);
+		ret = (unsigned int)phy_read(phydev, 0x10);
 //		ret = phy_read(phydev, 0x16);
 		timeout_cnt++;
 
-		if((ret & 0x0007) == 0x03)
+		if(((unsigned)ret & (unsigned)0x0007) == (unsigned)0x03)
 			break;
 
-		if(timeout_cnt == 30000)
+		if((unsigned)timeout_cnt == (unsigned)30000)
 		{
 			printk("[%s] occurred timeout to get valid value. line %d \n", __func__, __LINE__);
-			timeout_cnt = 0;
+			timeout_cnt = (unsigned)0;
 			break;
 		}
-	}while(0);
+	}while(1);
 
 	tcc_rtl9000a_vc_patch(phydev);
 
-	if (set_master==1)	// Master or Slave mode depends on customer's application.
+	if ((unsigned)set_master==(unsigned)1)	// Master or Slave mode depends on customer's application.
 	{
-		ret = phy_read(phydev, 0x9);
-		phy_write(phydev, 0x9,(ret | 0x0800));	// Set as Master
+		ret = (unsigned int)phy_read(phydev, 0x9);
+		phy_write(phydev, 0x9, (unsigned short)((unsigned)ret | (unsigned)0x0800));	// Set as Master
 		printk("RTL9000A] Set Master Mode \n");
 	}
 	else
 	{
-		ret = phy_read(phydev, 0x9);
-		phy_write(phydev, 0x9,(ret & 0xF7FF));	// Set as Slave
+		ret = (unsigned int)phy_read(phydev, 0x9);
+		phy_write(phydev, 0x9,(unsigned short)((unsigned)ret & (unsigned)0xF7FF));	// Set as Slave
 		printk("RTL9000A] Set Slave Mode \n");
 	}
 
-	phy_write(phydev, 0,0x8000);	// PHY soft-reset
+	phy_write(phydev, 0, (unsigned short)0x8000);	// PHY soft-reset
 
-	while (ret!=0x2100)	// Check soft-reset complete
+	while ((unsigned)ret!=(unsigned)0x2100)	// Check soft-reset complete
 	{
 
 		timeout_cnt++;
-		if(timeout_cnt == 30000)
+		if((unsigned)timeout_cnt == (unsigned)30000)
 		{
 			printk("[%s] occurred timeout to get valid value. line %d \n", __func__, __LINE__);
-			timeout_cnt = 0;
+			timeout_cnt = (unsigned)0;
 			break;
 		}
 
-		ret = phy_read(phydev, 0x0);
+		ret = (unsigned int)phy_read(phydev, 0x0);
 	}
 
 	// Loopback mode
@@ -241,28 +242,28 @@ static int tcc_rtl9000a_config_init(struct phy_device *phydev)
 	// printk("%s. enable phy loopback mode. \n", __func__);
 
 
-	ret = phy_read(phydev, 0xA); // read PHYSR1
+	ret = (unsigned int)phy_read(phydev, 0xA); // read PHYSR1
 	printk("%s. PHYSR1: %08x\n", __func__, ret);
 
 
 	return 0;
 }
 
-int tcc_rtl9000a_update_link(struct phy_device *phydev)
+static int tcc_rtl9000a_update_link(struct phy_device *phydev)
 {
 	int status;
 
 	status = phy_read(phydev, MII_BMSR);
 
-	if (status < 0)
+	if ((int)status < (int)0)
 		return status;
 
-	if ((status & BMSR_LSTATUS) == 0)
-		phydev->link = 0;
+	if (((unsigned)status & (unsigned)BMSR_LSTATUS) == (unsigned)0)
+		phydev->link = (int)0;
 	else
-		phydev->link = 1;
+		phydev->link = (int)1;
 
-	if ((status & BMSR_JCD) == BMSR_JCD)
+	if (((unsigned)status & (unsigned)BMSR_JCD) == (unsigned)BMSR_JCD)
 		printk("%s. ========= phydev jabber detected\n", __func__);
 
 	// printk("%s. BMSR : %08x\n", __func__, status);
@@ -276,33 +277,33 @@ int tcc_rtl9000a_update_link(struct phy_device *phydev)
 }
 
 
-int tcc_rtl9000a_read_status(struct phy_device *phydev)
+static int tcc_rtl9000a_read_status(struct phy_device *phydev)
 {
 	int err, ret;
 
 	err = tcc_rtl9000a_update_link(phydev);
-	if (err)
+	if ((unsigned)err != (unsigned)0 )
 		return err;
 
-	phydev->duplex	= DUPLEX_FULL;
-	phydev->speed	= SPEED_100;
+	phydev->duplex	= (int)DUPLEX_FULL;
+	phydev->speed	= (int)SPEED_100;
 	// phydev->speed	= SPEED_10;
 
 #if 1
-	if(slave_0_master_1 != set_master)
+	if((unsigned)slave_0_master_1 != (unsigned)set_master)
 	{
-		set_master = slave_0_master_1;
+		set_master = (unsigned)slave_0_master_1;
 
-		if(set_master == 1)	// Master or Slave mode depends on customer's application.
+		if((unsigned)set_master == (unsigned)1)	// Master or Slave mode depends on customer's application.
 		{
-			ret = phy_read(phydev, 0x9);
-			phy_write(phydev, 0x9,(ret | 0x0800));	// Set as Master
+			ret = (int)phy_read(phydev, 0x9);
+			phy_write(phydev, 0x9,(unsigned short)((unsigned)ret | (unsigned)0x0800));	// Set as Master
 			printk("RTL9000A] Set Master Mode \n");
 		}
-		else if(set_master == 0)
+		if((unsigned)set_master == (unsigned)0)
 		{
-			ret = phy_read(phydev, 0x9);
-			phy_write(phydev, 0x9,(ret & 0xF7FF));	// Set as Slave
+			ret = (int)phy_read(phydev, 0x9);
+			phy_write(phydev, 0x9,(unsigned short)((unsigned)ret & (unsigned)0xF7FF));	// Set as Slave
 			printk("RTL9000A] Set Slave Mode \n");
 		}
 	}
@@ -313,7 +314,7 @@ int tcc_rtl9000a_read_status(struct phy_device *phydev)
 }
 
 
-static struct phy_driver rtl9000a_driver[] = {
+static struct phy_driver rtl9000a_driver[1] = {
 	{
 		.phy_id		= 0x001ccb00,
 		.name		= "RTL9000A PHY",
@@ -330,28 +331,6 @@ static struct phy_driver rtl9000a_driver[] = {
 };
 
 module_phy_driver(rtl9000a_driver);
-
-/*static int __init tcc_rtl9000a_init(void)
-{
-	int ret;
-
-	printk("[%s] [line:%d]\n", __func__, __LINE__);
-	ret = phy_driver_register(&rtl9000a_driver);
-
-	if(ret)
-		phy_driver_unregister(&rtl9000a_driver);
-
-	return ret;
-}
-
-static void __exit tcc_rtl9000a_exit(void)
-{
-	phy_driver_unregister(&rtl9000a_driver);
-}
-
-module_init(tcc_rtl9000a_init);
-module_exit(tcc_rtl9000a_exit);
-*/
 
 static struct mdio_device_id __maybe_unused tcc_rtl9000a_tbl[] = {
 	{ 0x001ccb00, 0x00ffff00 },

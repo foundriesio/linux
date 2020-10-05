@@ -464,24 +464,24 @@ typedef struct _GMACDLY {
 #define GMAC1_CFG4_OFFSET	(0x0078)
 
 // GMAC CFG0 
-#define CFG0_TR					(1<<31)
+#define CFG0_TR					((unsigned)1<<(unsigned)31)
 #define CFG0_TXDIV_SHIFT		(19)
-#define CFG0_TXDIV_MASK			(0x7f<<CFG0_TXDIV_SHIFT)
+#define CFG0_TXDIV_MASK			((unsigned)0x7f<<(unsigned)CFG0_TXDIV_SHIFT)
 #define CFG0_TXCLK_SEL_SHIFT	(16)
-#define CFG0_TXCLK_SEL_MASK		(0x3<<CFG0_TXCLK_SEL_SHIFT)
-#define CFG0_RR					(1<<15)
+#define CFG0_TXCLK_SEL_MASK		((unsigned)0x3<<(unsigned)CFG0_TXCLK_SEL_SHIFT)
+#define CFG0_RR					((unsigned)1<<(unsigned)15)
 #define CFG0_RXDIV_SHIFT		(4)
-#define CFG0_RXDIV_MASK			(0x3f<<CFG0_RXDIV_SHIFT)
+#define CFG0_RXDIV_MASK			((unsigned)0x3f<<(unsigned)CFG0_RXDIV_SHIFT)
 #define CFG0_RXCLK_SEL_SHIFT	(0)
-#define CFG0_RXCLK_SEL_MASK		(0x3<<CFG0_RXCLK_SEL_SHIFT)
+#define CFG0_RXCLK_SEL_MASK		((unsigned)0x3<<(unsigned)CFG0_RXCLK_SEL_SHIFT)
 
 // GMAC CFG1 
-#define CFG1_CE					(1<<31)
-#define CFG1_CC					(1<<30)
+#define CFG1_CE					((unsigned)1<<(unsigned)31)
+#define CFG1_CC					((unsigned)1<<(unsigned)30)
 #define CFG1_PHY_INFSEL_SHIFT	(18)
-#define CFG1_PHY_INFSEL_MASK	(0x7<<CFG1_PHY_INFSEL_SHIFT)
-#define CFG1_FCTRL				(1<<17)
-#define CFG1_TCO				(1<<16)
+#define CFG1_PHY_INFSEL_MASK	((unsigned int)((unsigned)0x7<<(unsigned)CFG1_PHY_INFSEL_SHIFT))
+#define CFG1_FCTRL				((unsigned)1<<(unsigned)17)
+#define CFG1_TCO				((unsigned)1<<(unsigned)16)
 
 // GMAC CFG2
 #define GPI_SHIFT				(0)
@@ -532,7 +532,7 @@ struct gmac_dt_info_t {
 int tca_gmac_init(struct device_node *np, struct gmac_dt_info_t *dt_info);
 void tca_gmac_clk_enable(struct gmac_dt_info_t *dt_info);
 void tca_gmac_clk_disable(struct gmac_dt_info_t *dt_info);
-unsigned int tca_gmac_get_hsio_clk(struct gmac_dt_info_t *dt_info);
+unsigned long tca_gmac_get_hsio_clk(struct gmac_dt_info_t *dt_info);
 phy_interface_t tca_gmac_get_phy_interface(struct gmac_dt_info_t *dt_info);
 void tca_gmac_phy_pwr_on(struct gmac_dt_info_t *dt_info);
 void tca_gmac_phy_pwr_off(struct gmac_dt_info_t *dt_info);
@@ -540,6 +540,6 @@ void tca_gmac_phy_reset(struct gmac_dt_info_t *dt_info);
 void tca_gmac_tunning_timing(struct gmac_dt_info_t *dt_info, void __iomem *ioaddr);
 void tca_gmac_portinit(struct gmac_dt_info_t *dt_info, void __iomem *ioaddr);
 void IO_UTIL_ReadECID (unsigned ecid[]);
-int tca_get_mac_addr_from_ecid(char *mac_addr);
+int tca_get_mac_addr_from_ecid(unsigned char *mac_addr);
 
 #endif /*_TCA_GMAC_H_*/

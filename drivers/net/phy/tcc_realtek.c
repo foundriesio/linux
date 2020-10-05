@@ -103,14 +103,14 @@ static int rtl8211f_config_init(struct phy_device *phydev)
 		return ret;
 
 	phy_write(phydev, RTL8211F_PAGE_SELECT, 0xd08);
-	reg = phy_read(phydev, 0x11);
+	reg = (unsigned short)phy_read(phydev, 0x11);
 
 	/* enable TX-delay for rgmii-id and rgmii-txid, otherwise disable it */
-	if (phydev->interface == PHY_INTERFACE_MODE_RGMII_ID ||
-	    phydev->interface == PHY_INTERFACE_MODE_RGMII_TXID)
-		reg |= RTL8211F_TX_DELAY;
+	if ( (phydev->interface == PHY_INTERFACE_MODE_RGMII_ID) ||
+	    (phydev->interface == PHY_INTERFACE_MODE_RGMII_TXID) )
+		reg |= (unsigned short)RTL8211F_TX_DELAY;
 	else
-		reg &= ~RTL8211F_TX_DELAY;
+		reg &= (unsigned short)(~(unsigned short)RTL8211F_TX_DELAY);
 
 	phy_write(phydev, 0x11, reg);
 	/* restore to default page 0 */
@@ -119,12 +119,12 @@ static int rtl8211f_config_init(struct phy_device *phydev)
 	return 0;
 }
 
-static struct phy_driver realtek_drvs[] = {
+static struct phy_driver realtek_drvs[5] = {
 	{
 		.phy_id         = 0x00008201,
 		.name           = "RTL8201CP Ethernet",
 		.phy_id_mask    = 0x0000ffff,
-		.features       = PHY_BASIC_FEATURES,
+		.features       = (unsigned int)PHY_BASIC_FEATURES,
 		.flags          = PHY_HAS_INTERRUPT,
 		.config_aneg    = &genphy_config_aneg,
 		.read_status    = &genphy_read_status,
@@ -132,7 +132,7 @@ static struct phy_driver realtek_drvs[] = {
 		.phy_id		= 0x001cc912,
 		.name		= "RTL8211B Gigabit Ethernet",
 		.phy_id_mask	= 0x001fffff,
-		.features	= PHY_GBIT_FEATURES,
+		.features	= (unsigned int)PHY_GBIT_FEATURES,
 		.flags		= PHY_HAS_INTERRUPT,
 		.config_aneg	= &genphy_config_aneg,
 		.read_status	= &genphy_read_status,
@@ -142,7 +142,7 @@ static struct phy_driver realtek_drvs[] = {
 		.phy_id		= 0x001cc914,
 		.name		= "RTL8211DN Gigabit Ethernet",
 		.phy_id_mask	= 0x001fffff,
-		.features	= PHY_GBIT_FEATURES,
+		.features	= (unsigned int)PHY_GBIT_FEATURES,
 		.flags		= PHY_HAS_INTERRUPT,
 		.config_aneg	= genphy_config_aneg,
 		.read_status	= genphy_read_status,
@@ -154,7 +154,7 @@ static struct phy_driver realtek_drvs[] = {
 		.phy_id		= 0x001cc915,
 		.name		= "RTL8211E Gigabit Ethernet",
 		.phy_id_mask	= 0x001fffff,
-		.features	= PHY_GBIT_FEATURES,
+		.features	= (unsigned int)PHY_GBIT_FEATURES,
 		.flags		= PHY_HAS_INTERRUPT,
 		.config_aneg	= &genphy_config_aneg,
 		.read_status	= &genphy_read_status,
@@ -166,7 +166,7 @@ static struct phy_driver realtek_drvs[] = {
 		.phy_id		= 0x001cc916,
 		.name		= "RTL8211F Gigabit Ethernet",
 		.phy_id_mask	= 0x001fffff,
-		.features	= PHY_GBIT_FEATURES,
+		.features	= (unsigned int)PHY_GBIT_FEATURES,
 		.flags		= PHY_HAS_INTERRUPT,
 		.config_aneg	= &genphy_config_aneg,
 		.config_init	= &rtl8211f_config_init,
