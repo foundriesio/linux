@@ -2222,7 +2222,7 @@ static int __init tcc803x_ckc_init(struct device_node *np)
 	return 0;
 }
 
-CLOCKSOURCE_OF_DECLARE(tcc_ckc, "telechips,ckc", tcc803x_ckc_init);
+CLK_OF_DECLARE(tcc_ckc, "telechips,ckc", tcc803x_ckc_init);
 
 #include <linux/proc_fs.h>
 #include <linux/seq_file.h>

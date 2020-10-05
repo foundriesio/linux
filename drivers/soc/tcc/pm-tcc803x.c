@@ -36,6 +36,9 @@ static void __iomem *edi_base;
 static void __iomem *uart_base;
 static void __iomem *uart_cfg_base;
 static void __iomem *gpio_base;
+static void __iomem *pmu_base;
+static void __iomem *gic_base;
+static void __iomem *gic_a7_base;
 
 static unsigned int gpio_regs[GPIO_SIZE];
 
@@ -156,22 +159,39 @@ static int pm_soc_reg_save(int mode)
 
 	tcc_memset(reg_repo, 0x0, sizeof(struct pm_soc_type));
 
+#ifndef CONFIG_TCC803X_CA7S
 	pm_gpio_save();
 	pm_uart_save();
+#endif
 
 	cpu_pm_enter();
 	cpu_cluster_pm_enter();
 
+#ifndef CONFIG_TCC803X_CA7S
 	tcc_timer_save();
+#endif
 
+#ifndef CONFIG_TCC803X_CA7S
 	tcc_ckc_save(1);
+#endif
+
+#ifdef CONFIG_TCC803X_CA7S
+	pm_writel(pm_readl(pmu_base+0x20) | 0x800,pmu_base+0x20);
+
+	pm_writel(pm_readl(gic_base) | 0x1,gic_base);
+	pm_writel(0x0,gic_a7_base);
+
+	__asm__ volatile ("wfi");
+#endif
 
 	return 0;
 }
 
 static void pm_soc_reg_restore(void)
 {
+#ifndef CONFIG_TCC803X_CA7S
 	tcc_ckc_restore();
+#endif
 	tcc_pm_nop_delay(100);
 
 	tcc_timer_restore();
@@ -179,8 +199,10 @@ static void pm_soc_reg_restore(void)
 	cpu_cluster_pm_exit();
 	cpu_pm_exit();
 
+#ifndef CONFIG_TCC803X_CA7S
 	pm_uart_restore();
 	pm_gpio_restore();
+#endif
 
 	kfree(reg_repo);
 	reg_repo = NULL;
@@ -230,6 +252,14 @@ static void suspend_board_config(void)
 	BUG_ON(!uart_cfg_base);
 	gpio_base = of_iomap(np, 4);
 	BUG_ON(!gpio_base);
+	pmu_base = of_iomap(np, 5);
+	BUG_ON(!pmu_base);
+#if 0 //def CONFIG_TCC803X_CA7S
+	gic_base = of_iomap(np, 6);
+	BUG_ON(!gic_base);
+	gic_a7_base = of_iomap(np, 7);
+	BUG_ON(!gic_a7_base);
+#endif
 
 	/* set pmu wakeup source */
 	if (of_property_read_u32_index(np, "wakeup,powerkey", 0, &wakeup_src)) {
@@ -252,10 +282,19 @@ static int __init tcc803x_suspend_init(void)
 	uart_base = NULL;
 	uart_cfg_base = NULL;
 	gpio_base = NULL;
+	pmu_base = NULL;
+	gic_base = NULL;
+	gic_a7_base = NULL;
 	reg_repo = NULL;
 
 	suspend_board_config();
 	tcc_suspend_set_ops(&suspend_ops);
+#if 0 //def CONFIG_TCC803X_CA7S
+	pm_writel(pm_readl(gic_base) | 0x1,gic_base);
+	//pm_writel(pm_readl(gic_a7_base) & ~(0x1),gic_a7_base);
+	pm_writel(0x0,gic_a7_base);
+#endif
+
 	return 0;
 }
 device_initcall(tcc803x_suspend_init);

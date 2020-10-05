@@ -8,7 +8,7 @@
 config TCC_MIPI_CSI2
 	bool "Telechips MIPI CSI-2 driver"
 	default y
-        depends on ARCH_TCC803X || ARCH_TCC805X
+        depends on (ARCH_TCC803X && !TCC803X_CA7S) || ARCH_TCC805X
 	depends on VIDEO_VIDEOSOURCE || VIDEO_VIDEOSOURCE2
 	---help---
 	  Support for MIPI CSI-2
