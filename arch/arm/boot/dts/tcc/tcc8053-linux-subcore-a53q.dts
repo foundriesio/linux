@@ -1596,6 +1596,7 @@
 		wmixer		= <&vioc_wmix		VIOC_WMIX5>;
 		wdma		= <&vioc_wdma		VIOC_WDMA05>;
 		fifo		= <&vioc_fifo		VIOC_FIFO0>;
+		use_pgl		= <0>;
 		status		= "okay";
 	};
 

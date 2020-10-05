@@ -287,6 +287,9 @@ int tccvin_parse_device_tree(tccvin_dev_t * vdev) {
 
 #ifdef CONFIG_OVERLAY_PGL
 	// Parking Guide Line
+	of_property_read_u32_index(main_node, "use_pgl", 0, &vdev->cif.use_pgl);
+	dlog("%10s[%2d]: %d\n", "usage status pgl", vdev->vid_dev.minor, vdev->cif.use_pgl);
+
 	vdev->cif.vioc_path.pgl = -1;
 	// VIDEO_IN04~06 don't have RDMA
 	if(vdev->cif.vioc_path.vin >= VIOC_VIN00 && vdev->cif.vioc_path.vin <= VIOC_VIN30) {
@@ -665,8 +668,12 @@ int tccvin_set_pgl(tccvin_dev_t * vdev) {
 	VIOC_RDMA_SetImageBase(pRDMA, buf_addr, 0, 0);
 //	VIOC_RDMA_SetImageAlphaEnable(pRDMA, ON);
 //	VIOC_RDMA_SetImageAlpha(pRDMA, 0xff, 0xff);
-	VIOC_RDMA_SetImageEnable(pRDMA);
-	VIOC_RDMA_SetImageUpdate(pRDMA);
+	if(vdev->cif.use_pgl == 1) {
+		VIOC_RDMA_SetImageEnable(pRDMA);
+		VIOC_RDMA_SetImageUpdate(pRDMA);
+	} else {
+		VIOC_RDMA_SetImageDisable(pRDMA);
+	}
 
 	return 0;
 }
