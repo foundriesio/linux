@@ -96,7 +96,7 @@ config PCI_IMX6
 
 config PCIE_SPEAR13XX
 	bool "STMicroelectronics SPEAr PCIe controller"
-	depends on ARCH_SPEAR13XX || COMPILE_TEST
+	depends on OF && (ARCH_SPEAR13XX || COMPILE_TEST)
 	depends on PCI_MSI_IRQ_DOMAIN
 	select PCIE_DW_HOST
 	help
@@ -176,7 +176,7 @@ config PCIE_QCOM
 
 config PCIE_ARMADA_8K
 	bool "Marvell Armada-8K PCIe controller"
-	depends on ARCH_MVEBU || COMPILE_TEST
+	depends on OF && (ARCH_MVEBU || COMPILE_TEST)
 	depends on PCI_MSI_IRQ_DOMAIN
 	select PCIE_DW_HOST
 	help
