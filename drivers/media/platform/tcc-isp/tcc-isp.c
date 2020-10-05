@@ -493,6 +493,16 @@ static int tcc_isp_probe(struct platform_device *pdev)
 	state->hdr = &setting_hdr;
 	state->isp = &setting_isp;
 
+	/*
+	 * set axi bus output disable
+	 */
+	/* set register update control */
+	tcc_isp_set_regster_update_mode(state);
+	/* disable wdma */
+	tcc_isp_set_wdma(state, OFF);
+	/* register update */
+	tcc_isp_update_register(state);
+
 	ret = tcc_isp_request_firmware(state, TCC_ISP_FIRMWARE_NAME);
 	if (ret < 0) {
 		pr_err("[ERR][tcc-isp] FAIL - loading firmware(%s) \n", 
