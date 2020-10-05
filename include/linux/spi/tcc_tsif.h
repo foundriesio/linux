@@ -1,7 +1,7 @@
 /*
  * include/linux/tcc_tsif.h
  *
- * Author:  <linux@telechips.com>
+ * Author: Telechips Inc.
  * Created: 1st April, 2009
  * Description: Driver for Telechips TSIF Controllers
  *
@@ -12,13 +12,13 @@
  * published by the Free Software Foundation.
  *
  */
-#ifndef __TCC_TSIF_H__
-#define __TCC_TSIF_H__
+#ifndef TCC_TSIF_H
+#define TCC_TSIF_H
 
 #define TSIF_MAJOR_NUMBER 245
 #define TSIF_MINOR_NUMBER 255
 
-#define TSIF_DEV_IOCTL 252
+#define TSIF_DEV_IOCTL 252UL
 #define TSIF_DEV_NAME "tcc-tsif"
 #define TSIF_DEV_NAMES "tcc-tsif%d"
 
@@ -31,7 +31,7 @@ struct tcc_tsif_param {
 	unsigned int ts_total_packet_cnt;
 	unsigned int ts_intr_packet_cnt;
 	unsigned int mode;
-	unsigned int dma_mode;	// DMACTR[MD]: DMA mode register
+	unsigned int dma_mode;	/* DMACTR[MD]: DMA mode register */
 #define DMA_NORMAL_MODE		0x00
 #define DMA_MPEG2TS_MODE	0x01
 };
@@ -47,22 +47,19 @@ struct tcc_tsif_pcr_param {
 };
 
 #define TSIF_MODE_GPSB 0
-#ifdef SUPPORT_BLOCK_TSIF
-#define TSIF_MODE_BLOCK 1
-#endif
 #define TSIF_MODE_HWDMX 2
 
-#define IOCTL_TSIF_DMA_START        _IO(TSIF_DEV_IOCTL, 1)
-#define IOCTL_TSIF_DMA_STOP         _IO(TSIF_DEV_IOCTL, 2)
-#define IOCTL_TSIF_GET_MAX_DMA_SIZE _IO(TSIF_DEV_IOCTL, 3)
-#define IOCTL_TSIF_SET_PID          _IO(TSIF_DEV_IOCTL, 4)
-#define IOCTL_TSIF_DXB_POWER        _IO(TSIF_DEV_IOCTL, 5)
-#define IOCTL_TSIF_SET_PCRPID       _IO(TSIF_DEV_IOCTL, 6)
-#define IOCTL_TSIF_GET_STC          _IO(TSIF_DEV_IOCTL, 7)
-#define IOCTL_TSIF_RESET            _IO(TSIF_DEV_IOCTL, 8)
-#define IOCTL_TSIF_ADD_PID          _IO(TSIF_DEV_IOCTL, 9)
-#define IOCTL_TSIF_REMOVE_PID       _IO(TSIF_DEV_IOCTL, 10)
-#define IOCTL_TSIF_HWDMX_START      _IO(TSIF_DEV_IOCTL, 11)
-#define IOCTL_TSIF_HWDMX_STOP       _IO(TSIF_DEV_IOCTL, 12)
+#define IOCTL_TSIF_DMA_START        _IO(TSIF_DEV_IOCTL, 1UL)
+#define IOCTL_TSIF_DMA_STOP         _IO(TSIF_DEV_IOCTL, 2UL)
+#define IOCTL_TSIF_GET_MAX_DMA_SIZE _IO(TSIF_DEV_IOCTL, 3UL)
+#define IOCTL_TSIF_SET_PID          _IO(TSIF_DEV_IOCTL, 4UL)
+#define IOCTL_TSIF_DXB_POWER        _IO(TSIF_DEV_IOCTL, 5UL)
+#define IOCTL_TSIF_SET_PCRPID       _IO(TSIF_DEV_IOCTL, 6UL)
+#define IOCTL_TSIF_GET_STC          _IO(TSIF_DEV_IOCTL, 7UL)
+#define IOCTL_TSIF_RESET            _IO(TSIF_DEV_IOCTL, 8UL)
+#define IOCTL_TSIF_ADD_PID          _IO(TSIF_DEV_IOCTL, 9UL)
+#define IOCTL_TSIF_REMOVE_PID       _IO(TSIF_DEV_IOCTL, 10UL)
+#define IOCTL_TSIF_HWDMX_START      _IO(TSIF_DEV_IOCTL, 11UL)
+#define IOCTL_TSIF_HWDMX_STOP       _IO(TSIF_DEV_IOCTL, 12UL)
 
-#endif /*__TCC_TSIF_H__*/
+#endif /* TCC_TSIF_H */
