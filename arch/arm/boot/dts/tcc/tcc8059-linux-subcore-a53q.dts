@@ -72,8 +72,7 @@
 		videosource1 = &videosource1; /* max9286 */
 		videosource2 = &videosource2; /* max9276 */
 		//videosource3 = &videosource3; /* max96712 */
-		//videosource4 = &videosource4; /* max96712 */
-		//videosource5 = &videosource5; /* max9286 for ispless cam */
+		//videosource4 = &videosource4; /* max9286 for ispless cam */
 		videosource10 = &videosource10;	// ar0135
 		videosource11 = &videosource11;	// max96759
 		mipi-csi2-0 = &mipi_csi2_0;
@@ -1344,9 +1343,6 @@
 		reg = 	<0x1bc80000 0x10000>,	/* ISP base */
 			<0x1bc90000 0x10000>;	/* ISP memory */
 		reg-names = "isp_base", "mem_base";
-
-		pinctrl-names = "default";
-		pinctrl-0 = <&isp0_uart_tx &isp0_uart_rx>;
 	};
 
 	isp1: isp1@1bca0000 {
@@ -1355,9 +1351,6 @@
 		reg = 	<0x1bca0000 0x10000>,	/* ISP base */
 			<0x1bcb0000 0x10000>;	/* ISP memory */
 		reg-names = "isp_base", "mem_base";
-
-		pinctrl-names = "default";
-		pinctrl-0 = <&isp1_uart_tx &isp1_uart_rx>;
 	};
 
 	isp2: isp2@1bcc0000 {
@@ -1366,9 +1359,6 @@
 		reg = 	<0x1bcc0000 0x10000>,	/* ISP base */
 			<0x1bcd0000 0x10000>;	/* ISP memory */
 		reg-names = "isp_base", "mem_base";
-
-		pinctrl-names = "default";
-		pinctrl-0 = <&isp2_uart_tx &isp2_uart_rx>;
 	};
 
 	isp3: isp3@1bce0000 {
@@ -1377,9 +1367,6 @@
 		reg = 	<0x1bce0000 0x10000>,	/* ISP base */
 			<0x1bcf0000 0x10000>;	/* ISP memory */
 		reg-names = "isp_base", "mem_base";
-
-		pinctrl-names = "default";
-		pinctrl-0 = <&isp3_uart_tx &isp3_uart_rx>;
 	};
 #endif
 	fbdisplay: fbdisplay@12000000 {
@@ -3617,7 +3604,7 @@
 		mipi-csi2-idx	= <0>;
 	};
 
-	videosource5: deserializer_max9286_isp {
+	videosource4: deserializer_max9286_isp {
 		compatible	= "maxim,max9286_isp";
 		cifport		= <5>;
 		pwd-gpios	= <&gpg 5 1>;
