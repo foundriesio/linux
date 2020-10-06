@@ -171,6 +171,11 @@
 #define XGBE_DMA_SYS_ARCR	0x00303030
 #define XGBE_DMA_SYS_AWCR	0x30303030
 
+/* DMA cache settings - PCI device */
+#define XGBE_DMA_PCI_ARCR	0x00000003
+#define XGBE_DMA_PCI_AWCR	0x13131313
+#define XGBE_DMA_PCI_AWARCR	0x00000313
+
 /* DMA channel interrupt modes */
 #define XGBE_IRQ_MODE_EDGE	0
 #define XGBE_IRQ_MODE_LEVEL	1
@@ -926,6 +931,8 @@ struct xgbe_version_data {
 	unsigned int ecc_support;
 	unsigned int i2c_support;
 	unsigned int irq_reissue_support;
+	unsigned int tx_desc_prefetch;
+	unsigned int rx_desc_prefetch;
 	unsigned int an_cdr_workaround;
 };
 
@@ -1013,6 +1020,7 @@ struct xgbe_prv_data {
 	unsigned int coherent;
 	unsigned int arcr;
 	unsigned int awcr;
+	unsigned int awarcr;
 
 	/* Service routine support */
 	struct workqueue_struct *dev_workqueue;
@@ -1037,6 +1045,9 @@ struct xgbe_prv_data {
 	/* Tx/Rx common settings */
 	unsigned int blen;
 	unsigned int pbl;
+	unsigned int aal;
+	unsigned int rd_osr_limit;
+	unsigned int wr_osr_limit;
 
 	/* Tx settings */
 	unsigned int tx_sf_mode;

@@ -327,8 +327,9 @@ static int xgbe_pci_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 
 	/* Set the DMA coherency values */
 	pdata->coherent = 1;
-	pdata->arcr = XGBE_DMA_OS_ARCR;
-	pdata->awcr = XGBE_DMA_OS_AWCR;
+	pdata->arcr = XGBE_DMA_PCI_ARCR;
+	pdata->awcr = XGBE_DMA_PCI_AWCR;
+	pdata->awarcr = XGBE_DMA_PCI_AWARCR;
 
 	/* Read the port property registers */
 	pdata->pp0 = XP_IOREAD(pdata, XP_PROP_0);
@@ -467,6 +468,8 @@ static const struct xgbe_version_data xgbe_v2a = {
 	.ecc_support			= 1,
 	.i2c_support			= 1,
 	.irq_reissue_support            = 1,
+	.tx_desc_prefetch               = 5,
+	.rx_desc_prefetch               = 5,
 	.an_cdr_workaround              = 1,
 };
 
@@ -480,6 +483,8 @@ static const struct xgbe_version_data xgbe_v2b = {
 	.ecc_support			= 1,
 	.i2c_support			= 1,
 	.irq_reissue_support            = 1,
+	.tx_desc_prefetch               = 5,
+	.rx_desc_prefetch               = 5,
 	.an_cdr_workaround              = 1,
 };
 
