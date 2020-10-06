@@ -1427,10 +1427,8 @@ static void xgbe_stopdev(struct work_struct *work)
 	netdev_alert(pdata->netdev, "device stopped\n");
 }
 
-static void xgbe_restart_dev(struct xgbe_prv_data *pdata)
+void xgbe_restart_dev(struct xgbe_prv_data *pdata)
 {
-	DBGPR("-->xgbe_restart_dev\n");
-
 	/* If not running, "restart" will happen on open */
 	if (!netif_running(pdata->netdev))
 		return;
@@ -1441,8 +1439,6 @@ static void xgbe_restart_dev(struct xgbe_prv_data *pdata)
 	xgbe_free_rx_data(pdata);
 
 	xgbe_start(pdata);
-
-	DBGPR("<--xgbe_restart_dev\n");
 }
 
 static void xgbe_restart(struct work_struct *work)
