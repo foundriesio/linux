@@ -460,9 +460,8 @@ static void get_futex_key_refs(union futex_key *key)
 
 /*
  * Drop a reference to the resource addressed by a key.
- * The hash bucket spinlock must not be held. This is
- * a no-op for private futexes, see comment in the get
- * counterpart.
+ * This is  a no-op for private futexes, see comment in
+ * the get counterpart.
  */
 static void drop_futex_key_refs(union futex_key *key)
 {
@@ -480,7 +479,7 @@ static void drop_futex_key_refs(union futex_key *key)
 		fput(key->shared.filp);
 		break;
 	case FUT_OFF_MMSHARED:
-		mmdrop(key->private.mm);
+		mmdrop_async(key->private.mm);
 		break;
 	}
 }
@@ -1787,6 +1786,8 @@ void requeue_futex(struct futex_q *q, struct futex_hash_bucket *hb1,
 		plist_add(&q->list, &hb2->chain);
 		q->lock_ptr = &hb2->lock;
 	}
+
+	drop_futex_key_refs(&q->key);
 	get_futex_key_refs(key2);
 	q->key = *key2;
 }
@@ -1809,6 +1810,7 @@ static inline
 void requeue_pi_wake_futex(struct futex_q *q, union futex_key *key,
 			   struct futex_hash_bucket *hb)
 {
+	drop_futex_key_refs(&q->key);
 	get_futex_key_refs(key);
 	q->key = *key;
 
@@ -1914,7 +1916,7 @@ static int futex_requeue(u32 __user *uaddr1, unsigned int flags,
 			 u32 *cmpval, int requeue_pi)
 {
 	union futex_key key1 = FUTEX_KEY_INIT, key2 = FUTEX_KEY_INIT;
-	int drop_count = 0, task_count = 0, ret;
+	int task_count = 0, ret;
 	struct futex_pi_state *pi_state = NULL;
 	struct futex_hash_bucket *hb1, *hb2;
 	struct futex_q *this, *next;
@@ -2023,7 +2025,6 @@ retry_private:
 		 */
 		if (ret > 0) {
 			WARN_ON(pi_state);
-			drop_count++;
 			task_count++;
 			/*
 			 * If we acquired the lock, then the user space value
@@ -2135,7 +2136,6 @@ retry_private:
 				 * doing so.
 				 */
 				requeue_pi_wake_futex(this, &key2, hb2);
-				drop_count++;
 				continue;
 			} else if (ret) {
 				/*
@@ -2156,7 +2156,6 @@ retry_private:
 			}
 		}
 		requeue_futex(this, hb1, hb2, &key2);
-		drop_count++;
 	}
 
 	/*
@@ -2170,16 +2169,6 @@ out_unlock:
 	double_unlock_hb(hb1, hb2);
 	wake_up_q(&wake_q);
 	hb_waiters_dec(hb2);
-
-	/*
-	 * drop_futex_key_refs() must be called outside the spinlocks. During
-	 * the requeue we moved futex_q's from the hash bucket at key1 to the
-	 * one at key2 and updated their key pointer.  We no longer need to
-	 * hold the references to key1.
-	 */
-	while (--drop_count >= 0)
-		drop_futex_key_refs(&key1);
-
 out_put_keys:
 	put_futex_key(&key2);
 out_put_key1:
