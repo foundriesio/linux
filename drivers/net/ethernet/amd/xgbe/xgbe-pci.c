@@ -327,9 +327,8 @@ static int xgbe_pci_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 
 	/* Set the DMA coherency values */
 	pdata->coherent = 1;
-	pdata->axdomain = XGBE_DMA_OS_AXDOMAIN;
-	pdata->arcache = XGBE_DMA_OS_ARCACHE;
-	pdata->awcache = XGBE_DMA_OS_AWCACHE;
+	pdata->arcr = XGBE_DMA_OS_ARCR;
+	pdata->awcr = XGBE_DMA_OS_AWCR;
 
 	/* Read the port property registers */
 	pdata->pp0 = XP_IOREAD(pdata, XP_PROP_0);
