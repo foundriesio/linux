@@ -368,6 +368,7 @@
 	dma-names = "rx", "tx";
 
 	cs-gpios = <&gpio2a 31 GPIO_ACTIVE_LOW>;
+	num-cs = <1>;
 
 	/* Ext Board: Serial (SPI) F-RAM device (FM25V10-G) */
 	fram: fm25@0 {
