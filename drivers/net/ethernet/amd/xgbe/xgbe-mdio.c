@@ -586,12 +586,14 @@ static enum xgbe_an xgbe_an73_page_received(struct xgbe_prv_data *pdata)
 
 static enum xgbe_an xgbe_an73_incompat_link(struct xgbe_prv_data *pdata)
 {
+	struct ethtool_link_ksettings *lks = &pdata->phy.lks;
+
 	/* Be sure we aren't looping trying to negotiate */
 	if (xgbe_in_kr_mode(pdata)) {
 		pdata->kr_state = XGBE_RX_ERROR;
 
-		if (!(pdata->phy.advertising & ADVERTISED_1000baseKX_Full) &&
-		    !(pdata->phy.advertising & ADVERTISED_2500baseX_Full))
+		if (!XGBE_ADV(lks, 1000baseKX_Full) &&
+		    !XGBE_ADV(lks, 2500baseX_Full))
 			return XGBE_AN_NO_LINK;
 
 		if (pdata->kx_state != XGBE_RX_BPA)
@@ -599,7 +601,7 @@ static enum xgbe_an xgbe_an73_incompat_link(struct xgbe_prv_data *pdata)
 	} else {
 		pdata->kx_state = XGBE_RX_ERROR;
 
-		if (!(pdata->phy.advertising & ADVERTISED_10000baseKR_Full))
+		if (!XGBE_ADV(lks, 10000baseKR_Full))
 			return XGBE_AN_NO_LINK;
 
 		if (pdata->kr_state != XGBE_RX_BPA)
@@ -921,18 +923,19 @@ static void xgbe_an_state_machine(struct work_struct *work)
 
 static void xgbe_an37_init(struct xgbe_prv_data *pdata)
 {
-	unsigned int advertising, reg;
+	struct ethtool_link_ksettings lks;
+	unsigned int reg;
 
-	advertising = pdata->phy_if.phy_impl.an_advertising(pdata);
+	pdata->phy_if.phy_impl.an_advertising(pdata, &lks);
 
 	/* Set up Advertisement register */
 	reg = XMDIO_READ(pdata, MDIO_MMD_VEND2, MDIO_VEND2_AN_ADVERTISE);
-	if (advertising & ADVERTISED_Pause)
+	if (XGBE_ADV(&lks, Pause))
 		reg |= 0x100;
 	else
 		reg &= ~0x100;
 
-	if (advertising & ADVERTISED_Asym_Pause)
+	if (XGBE_ADV(&lks, Asym_Pause))
 		reg |= 0x80;
 	else
 		reg &= ~0x80;
@@ -969,13 +972,14 @@ static void xgbe_an37_init(struct xgbe_prv_data *pdata)
 
 static void xgbe_an73_init(struct xgbe_prv_data *pdata)
 {
-	unsigned int advertising, reg;
+	struct ethtool_link_ksettings lks;
+	unsigned int reg;
 
-	advertising = pdata->phy_if.phy_impl.an_advertising(pdata);
+	pdata->phy_if.phy_impl.an_advertising(pdata, &lks);
 
 	/* Set up Advertisement register 3 first */
 	reg = XMDIO_READ(pdata, MDIO_MMD_AN, MDIO_AN_ADVERTISE + 2);
-	if (advertising & ADVERTISED_10000baseR_FEC)
+	if (XGBE_ADV(&lks, 10000baseR_FEC))
 		reg |= 0xc000;
 	else
 		reg &= ~0xc000;
@@ -984,13 +988,13 @@ static void xgbe_an73_init(struct xgbe_prv_data *pdata)
 
 	/* Set up Advertisement register 2 next */
 	reg = XMDIO_READ(pdata, MDIO_MMD_AN, MDIO_AN_ADVERTISE + 1);
-	if (advertising & ADVERTISED_10000baseKR_Full)
+	if (XGBE_ADV(&lks, 10000baseKR_Full))
 		reg |= 0x80;
 	else
 		reg &= ~0x80;
 
-	if ((advertising & ADVERTISED_1000baseKX_Full) ||
-	    (advertising & ADVERTISED_2500baseX_Full))
+	if (XGBE_ADV(&lks, 1000baseKX_Full) ||
+	    XGBE_ADV(&lks, 2500baseX_Full))
 		reg |= 0x20;
 	else
 		reg &= ~0x20;
@@ -999,12 +1003,12 @@ static void xgbe_an73_init(struct xgbe_prv_data *pdata)
 
 	/* Set up Advertisement register 1 last */
 	reg = XMDIO_READ(pdata, MDIO_MMD_AN, MDIO_AN_ADVERTISE);
-	if (advertising & ADVERTISED_Pause)
+	if (XGBE_ADV(&lks, Pause))
 		reg |= 0x400;
 	else
 		reg &= ~0x400;
 
-	if (advertising & ADVERTISED_Asym_Pause)
+	if (XGBE_ADV(&lks, Asym_Pause))
 		reg |= 0x800;
 	else
 		reg &= ~0x800;
@@ -1260,9 +1264,10 @@ static enum xgbe_mode xgbe_phy_status_aneg(struct xgbe_prv_data *pdata)
 
 static void xgbe_phy_status_result(struct xgbe_prv_data *pdata)
 {
+	struct ethtool_link_ksettings *lks = &pdata->phy.lks;
 	enum xgbe_mode mode;
 
-	pdata->phy.lp_advertising = 0;
+	XGBE_ZERO_LP_ADV(lks);
 
 	if ((pdata->phy.autoneg != AUTONEG_ENABLE) || pdata->parallel_detect)
 		mode = xgbe_cur_mode(pdata);
@@ -1492,17 +1497,21 @@ static void xgbe_dump_phy_registers(struct xgbe_prv_data *pdata)
 
 static int xgbe_phy_best_advertised_speed(struct xgbe_prv_data *pdata)
 {
-	if (pdata->phy.advertising & ADVERTISED_10000baseKR_Full)
+	struct ethtool_link_ksettings *lks = &pdata->phy.lks;
+
+	if (XGBE_ADV(lks, 10000baseKR_Full))
 		return SPEED_10000;
-	else if (pdata->phy.advertising & ADVERTISED_10000baseT_Full)
+	else if (XGBE_ADV(lks, 10000baseT_Full))
 		return SPEED_10000;
-	else if (pdata->phy.advertising & ADVERTISED_2500baseX_Full)
+	else if (XGBE_ADV(lks, 2500baseX_Full))
 		return SPEED_2500;
-	else if (pdata->phy.advertising & ADVERTISED_1000baseKX_Full)
+	else if (XGBE_ADV(lks, 2500baseT_Full))
+		return SPEED_2500;
+	else if (XGBE_ADV(lks, 1000baseKX_Full))
 		return SPEED_1000;
-	else if (pdata->phy.advertising & ADVERTISED_1000baseT_Full)
+	else if (XGBE_ADV(lks, 1000baseT_Full))
 		return SPEED_1000;
-	else if (pdata->phy.advertising & ADVERTISED_100baseT_Full)
+	else if (XGBE_ADV(lks, 100baseT_Full))
 		return SPEED_100;
 
 	return SPEED_UNKNOWN;
@@ -1515,6 +1524,7 @@ static void xgbe_phy_exit(struct xgbe_prv_data *pdata)
 
 static int xgbe_phy_init(struct xgbe_prv_data *pdata)
 {
+	struct ethtool_link_ksettings *lks = &pdata->phy.lks;
 	int ret;
 
 	mutex_init(&pdata->an_mutex);
@@ -1532,11 +1542,13 @@ static int xgbe_phy_init(struct xgbe_prv_data *pdata)
 	ret = pdata->phy_if.phy_impl.init(pdata);
 	if (ret)
 		return ret;
-	pdata->phy.advertising = pdata->phy.supported;
+
+	/* Copy supported link modes to advertising link modes */
+	XGBE_LM_COPY(lks, advertising, lks, supported);
 
 	pdata->phy.address = 0;
 
-	if (pdata->phy.advertising & ADVERTISED_Autoneg) {
+	if (XGBE_ADV(lks, Autoneg)) {
 		pdata->phy.autoneg = AUTONEG_ENABLE;
 		pdata->phy.speed = SPEED_UNKNOWN;
 		pdata->phy.duplex = DUPLEX_UNKNOWN;
@@ -1553,16 +1565,21 @@ static int xgbe_phy_init(struct xgbe_prv_data *pdata)
 	pdata->phy.rx_pause = pdata->rx_pause;
 
 	/* Fix up Flow Control advertising */
-	pdata->phy.advertising &= ~ADVERTISED_Pause;
-	pdata->phy.advertising &= ~ADVERTISED_Asym_Pause;
+	XGBE_CLR_ADV(lks, Pause);
+	XGBE_CLR_ADV(lks, Asym_Pause);
 
 	if (pdata->rx_pause) {
-		pdata->phy.advertising |= ADVERTISED_Pause;
-		pdata->phy.advertising |= ADVERTISED_Asym_Pause;
+		XGBE_SET_ADV(lks, Pause);
+		XGBE_SET_ADV(lks, Asym_Pause);
 	}
 
-	if (pdata->tx_pause)
-		pdata->phy.advertising ^= ADVERTISED_Asym_Pause;
+	if (pdata->tx_pause) {
+		/* Equivalent to XOR of Asym_Pause */
+		if (XGBE_ADV(lks, Asym_Pause))
+			XGBE_CLR_ADV(lks, Asym_Pause);
+		else
+			XGBE_SET_ADV(lks, Asym_Pause);
+	}
 
 	if (netif_msg_drv(pdata))
 		xgbe_dump_phy_registers(pdata);
