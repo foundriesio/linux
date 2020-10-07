@@ -132,10 +132,8 @@ static int enable_while = 0;
 static void f_uac2_work_reset(struct work_struct *data)
 {
 	struct snd_uac_chip *uac2 = container_of(data, struct snd_uac_chip, work_reset);
-	mutex_lock(uac2->audio_dev->lock_from_uac2);
 	u_audio_stop_capture(uac2->audio_dev);
 	u_audio_start_capture(uac2->audio_dev);
-	mutex_unlock(uac2->audio_dev->lock_from_uac2);
 	pr_info("[INFO][USB] [UAC2] %s : reset!!\n", __func__);
 }
 
@@ -606,11 +604,6 @@ int u_audio_start_capture(struct g_audio *audio_dev)
 	struct uac_params *params = &audio_dev->params;
 	int req_len, i;
 
-	if (audio_dev->capture) {
-		dev_err(dev, "%s:%d Already Captured!\n", __func__, __LINE__);
-		return 0;
-	}
-
 	ep = audio_dev->out_ep;
 	prm = &uac->c_prm;
 	config_ep_by_speed(gadget, &audio_dev->func, ep);
@@ -639,8 +632,6 @@ int u_audio_start_capture(struct g_audio *audio_dev)
 			dev_err(dev, "[ERROR][USB] %s:%d Error!\n", __func__, __LINE__);
 	}
 
-	audio_dev->capture = true;
-
 	return 0;
 }
 EXPORT_SYMBOL_GPL(u_audio_start_capture);
@@ -648,13 +639,8 @@ EXPORT_SYMBOL_GPL(u_audio_start_capture);
 void u_audio_stop_capture(struct g_audio *audio_dev)
 {
 	struct snd_uac_chip *uac = audio_dev->uac;
-	struct device *dev = &audio_dev->gadget->dev;
-	if (!audio_dev->capture) {
-		dev_err(dev, "%s:%d Already freed!\n", __func__, __LINE__);
-		return;
-	}
+
 	free_ep(&uac->c_prm, audio_dev->out_ep);
-	audio_dev->capture = false;
 }
 EXPORT_SYMBOL_GPL(u_audio_stop_capture);
 

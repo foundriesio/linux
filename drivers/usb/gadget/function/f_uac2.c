@@ -66,7 +66,6 @@ struct f_uac2 {
 	struct platform_device pdev;
 	struct platform_driver pdrv;
 #endif
-	struct mutex	lock_for_queue;
 
 };
 #ifdef TCC_UAC2_WQ
@@ -119,18 +118,14 @@ static ssize_t uac20_alt_store(struct device *dev, struct device_attribute *attr
 	struct f_uac2 *uac = container_of(pdev, struct f_uac2, pdev);
     if (!strncmp(buff, "1", 1)) {
         printk("[INFO][USB] [UAC2 debug]alt = 1\n");
-		mutex_lock(&uac->lock_for_queue);
 		u_audio_start_capture(&uac->g_audio);
-		mutex_unlock(&uac->lock_for_queue);
 		uac->alt = 1;
 		schedule_work(&uac->work);
 
     }
     else if (!strncmp(buff, "0", 1)) {
         printk("[INFO][USB] [UAC2 debug]]alt = 0\n");
-		mutex_lock(&uac->lock_for_queue);
 		u_audio_stop_capture(&uac->g_audio);
-		mutex_unlock(&uac->lock_for_queue);
 		uac->alt = 0;
 		schedule_work(&uac->work);
     }
@@ -204,7 +199,6 @@ static int snd_uac2_plat_init(struct f_uac2 *uac)
 	if (err)
 		platform_driver_unregister(&uac->pdrv);
 
-	mutex_init(&uac->lock_for_queue);
 	return err;
 }
 static void snd_uac2_plat_exit(struct f_uac2 *uac)
@@ -776,8 +770,6 @@ afunc_bind(struct usb_configuration *cfg, struct usb_function *fn)
 	agdev->params.c_srate = uac2_opts->c_srate;
 	agdev->params.c_ssize = uac2_opts->c_ssize;
 	agdev->params.req_number = uac2_opts->req_number;
-	agdev->lock_from_uac2 = &uac2->lock_for_queue;
-	agdev->capture = false;
 	ret = g_audio_setup(agdev, "UAC2 PCM", "UAC2_Gadget");
 #ifdef TCC_UAC2_WQ
 	INIT_WORK(&uac2->work, uac2_work);
@@ -823,15 +815,10 @@ afunc_set_alt(struct usb_function *fn, unsigned intf, unsigned alt)
 	if (intf == uac2->as_out_intf) {
 		uac2->as_out_alt = alt;
 		printk("[INFO][USB] [UAC2] %s : ALT=%d\n", __func__, alt);
-		if (alt) {
-			mutex_lock(&uac2->lock_for_queue);
+		if (alt)
 			ret = u_audio_start_capture(&uac2->g_audio);
-			mutex_unlock(&uac2->lock_for_queue);
-		} else {
-			mutex_lock(&uac2->lock_for_queue);
+		else
 			u_audio_stop_capture(&uac2->g_audio);
-			mutex_unlock(&uac2->lock_for_queue);
-		}
 #ifdef TCC_UAC2_WQ
 		uac2->alt = alt;
 		schedule_work(&uac2->work);
@@ -878,10 +865,8 @@ afunc_disable(struct usb_function *fn)
 
 	uac2->as_in_alt = 0;
 	uac2->as_out_alt = 0;
-	mutex_lock(&uac2->lock_for_queue);
 	u_audio_stop_capture(&uac2->g_audio);
 	u_audio_stop_playback(&uac2->g_audio);
-	mutex_unlock(&uac2->lock_for_queue);
 }
 
 static int

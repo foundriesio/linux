@@ -52,8 +52,6 @@ struct g_audio {
 	struct snd_uac_chip *uac;
 
 	struct uac_params params;
-	struct mutex *lock_from_uac2;
-	bool	capture;
 };
 
 static inline struct g_audio *func_to_g_audio(struct usb_function *f)
