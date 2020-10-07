@@ -20,7 +20,7 @@
 
 #define IPC_O_BLOCK 	(0x0001)
 
-#define REQUEST_OPEN_TIMEOUT	(100)	//ms
+#define REQUEST_OPEN_TIMEOUT	(HZ/10)	// 100ms
 #define MAX_READ_TIMEOUT		(50)	//ms
 
 void ipc_flush(struct ipc_device *ipc_dev);
