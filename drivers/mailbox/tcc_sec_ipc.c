@@ -736,7 +736,7 @@ static int sec_remove(struct platform_device *pdev)
 	struct sec_device *sec_dev = NULL;
 	sec_dev = sec_get_device(sec_get_device_id(pdev->name));
 
-	dma_free_writecombine(sec_dev->device, MBOX_DMA_SIZE, sec_dev->vaddr, sec_dev->paddr);
+	dma_free_coherent(&pdev->dev, MBOX_DMA_SIZE, sec_dev->vaddr, sec_dev->paddr);
 	mbox_free_channel(sec_dev->mbox_ch);
 	device_destroy(sec_dev->class, sec_dev->devnum);
 	class_destroy(sec_dev->class);

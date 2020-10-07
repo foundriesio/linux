@@ -881,7 +881,7 @@ static int sp_remove(struct platform_device *pdev)
 		pbuff = NULL;
 	}
 #endif
-	dma_free_writecombine(device, SP_DMA_SIZE, vaddr, paddr);
+	dma_free_coherent(&pdev->dev, SP_DMA_SIZE, vaddr, paddr);
 	mbox_free_channel(mbox_ch);
 	device_destroy(class, devnum);
 	class_destroy(class);
