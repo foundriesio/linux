@@ -672,7 +672,7 @@
 			compatible = "renesas,r9a06g032-spi", "renesas,rzn1-spi", "snps,dw-apb-ssi";
 			reg = <0x50005000 0x400>;
 			interrupts = <GIC_SPI 80 IRQ_TYPE_LEVEL_HIGH>;
-			clock-names = "pclk", "bus";
+			clock-names = "ssi_clk", "bus";
 			clocks = <&clk_spi0>, <&hclk_spi0>;
 			#address-cells = <1>;
 			#size-cells = <0>;
@@ -685,7 +685,7 @@
 			compatible = "renesas,r9a06g032-spi", "renesas,rzn1-spi", "snps,dw-apb-ssi";
 			reg = <0x50006000 0x400>;
 			interrupts = <GIC_SPI 81 IRQ_TYPE_LEVEL_HIGH>;
-			clock-names = "pclk", "bus";
+			clock-names = "ssi_clk", "bus";
 			clocks = <&clk_spi1>, <&hclk_spi1>;
 			#address-cells = <1>;
 			#size-cells = <0>;
@@ -698,7 +698,7 @@
 			compatible = "renesas,r9a06g032-spi", "renesas,rzn1-spi", "snps,dw-apb-ssi";
 			reg = <0x50007000 0x400>;
 			interrupts = <GIC_SPI 82 IRQ_TYPE_LEVEL_HIGH>;
-			clock-names = "pclk", "bus";
+			clock-names = "ssi_clk", "bus";
 			clocks = <&clk_spi2>, <&hclk_spi2>;
 			#address-cells = <1>;
 			#size-cells = <0>;
@@ -711,7 +711,7 @@
 			compatible = "renesas,r9a06g032-spi", "renesas,rzn1-spi", "snps,dw-apb-ssi";
 			reg = <0x50008000 0x400>;
 			interrupts = <GIC_SPI 83 IRQ_TYPE_LEVEL_HIGH>;
-			clock-names = "pclk", "bus";
+			clock-names = "ssi_clk", "bus";
 			clocks = <&clk_spi3>, <&hclk_spi3>;
 			#address-cells = <1>;
 			#size-cells = <0>;
@@ -724,7 +724,7 @@
 			compatible = "renesas,r9a06g032-spi", "renesas,rzn1-spi", "snps,dw-apb-ssi";
 			reg = <0x50009000 0x400>;
 			interrupts = <GIC_SPI 84 IRQ_TYPE_LEVEL_HIGH>;
-			clock-names = "pclk", "bus";
+			clock-names = "ssi_clk", "bus";
 			clocks = <&clk_spi4>, <&hclk_spi4>;
 			#address-cells = <1>;
 			#size-cells = <0>;
@@ -737,7 +737,7 @@
 			compatible = "renesas,r9a06g032-spi", "renesas,rzn1-spi", "snps,dw-apb-ssi";
 			reg = <0x5000a000 0x400>;
 			interrupts = <GIC_SPI 85 IRQ_TYPE_LEVEL_HIGH>;
-			clock-names = "pclk", "bus";
+			clock-names = "ssi_clk", "bus";
 			clocks = <&clk_spi5>, <&hclk_spi5>;
 			#address-cells = <1>;
 			#size-cells = <0>;
