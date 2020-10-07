@@ -619,6 +619,12 @@ static void hisi_sas_bytes_dmaed(struct hisi_hba *hisi_hba, int phy_no)
 	if (!phy->phy_attached)
 		return;
 
+	if (test_bit(HISI_SAS_PM_BIT, &hisi_hba->flags) &&
+	    !sas_phy->suspended) {
+		dev_warn(hisi_hba->dev, "phy%d during suspend filtered out\n", phy_no);
+		return;
+	}
+
 	sas_ha = &hisi_hba->sha;
 	sas_ha->notify_phy_event(sas_phy, PHYE_OOB_DONE);
 
@@ -1545,7 +1551,6 @@ EXPORT_SYMBOL_GPL(hisi_sas_controller_reset_prepare);
 void hisi_sas_controller_reset_done(struct hisi_hba *hisi_hba)
 {
 	struct Scsi_Host *shost = hisi_hba->shost;
-	u32 state;
 
 	/* Init and wait for PHYs to come up and all libsas event finished. */
 	hisi_hba->hw->phys_init(hisi_hba);
@@ -1560,8 +1565,7 @@ void hisi_sas_controller_reset_done(struct hisi_hba *hisi_hba)
 	scsi_unblock_requests(shost);
 	clear_bit(HISI_SAS_RESET_BIT, &hisi_hba->flags);
 
-	state = hisi_hba->hw->get_phys_state(hisi_hba);
-	hisi_sas_rescan_topology(hisi_hba, state);
+	hisi_sas_rescan_topology(hisi_hba, hisi_hba->phy_state);
 }
 EXPORT_SYMBOL_GPL(hisi_sas_controller_reset_done);
 

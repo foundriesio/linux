@@ -903,6 +903,7 @@ static int reset_hw_v3_hw(struct hisi_hba *hisi_hba)
 static int hw_init_v3_hw(struct hisi_hba *hisi_hba)
 {
 	struct device *dev = hisi_hba->dev;
+	struct acpi_device *acpi_dev;
 	union acpi_object *obj;
 	guid_t guid;
 	int rc;
@@ -933,6 +934,9 @@ static int hw_init_v3_hw(struct hisi_hba *hisi_hba)
 	else
 		ACPI_FREE(obj);
 
+	acpi_dev = ACPI_COMPANION(dev);
+	if (!acpi_device_power_manageable(acpi_dev))
+		dev_notice(dev, "neither _PS0 nor _PR0 is defined\n");
 	return 0;
 }
 
@@ -2525,10 +2529,11 @@ static void interrupt_disable_v3_hw(struct hisi_hba *hisi_hba)
 	synchronize_irq(pci_irq_vector(pdev, 1));
 	synchronize_irq(pci_irq_vector(pdev, 2));
 	synchronize_irq(pci_irq_vector(pdev, 11));
-	for (i = 0; i < hisi_hba->queue_count; i++) {
+	for (i = 0; i < hisi_hba->queue_count; i++)
 		hisi_sas_write32(hisi_hba, OQ0_INT_SRC_MSK + 0x4 * i, 0x1);
+
+	for (i = 0; i < hisi_hba->cq_nvecs; i++)
 		synchronize_irq(pci_irq_vector(pdev, i + 16));
-	}
 
 	hisi_sas_write32(hisi_hba, ENT_INT_SRC_MSK1, 0xffffffff);
 	hisi_sas_write32(hisi_hba, ENT_INT_SRC_MSK2, 0xffffffff);
@@ -2752,6 +2757,33 @@ static ssize_t intr_coal_count_v3_hw_store(struct device *dev,
 	return count;
 }
 static DEVICE_ATTR_RW(intr_coal_count_v3_hw);
+
+static int slave_configure_v3_hw(struct scsi_device *sdev)
+{
+	struct Scsi_Host *shost = dev_to_shost(&sdev->sdev_gendev);
+	struct domain_device *ddev = sdev_to_domain_dev(sdev);
+	struct hisi_hba *hisi_hba = shost_priv(shost);
+	struct device *dev = hisi_hba->dev;
+	int ret = sas_slave_configure(sdev);
+
+	if (ret)
+		return ret;
+	if (!dev_is_sata(ddev))
+		sas_change_queue_depth(sdev, 64);
+
+	if (sdev->type == TYPE_ENCLOSURE)
+		return 0;
+
+	if (!device_link_add(&sdev->sdev_gendev, dev,
+			     DL_FLAG_PM_RUNTIME | DL_FLAG_RPM_ACTIVE)) {
+		if (pm_runtime_enabled(dev)) {
+			dev_info(dev, "add device link failed, disable runtime PM for the host\n");
+			pm_runtime_disable(dev);
+		}
+	}
+
+	return 0;
+}
 
 static struct device_attribute *host_attrs_v3_hw[] = {
 	&dev_attr_phy_event_threshold,
@@ -3109,7 +3141,7 @@ static struct scsi_host_template sht_v3_hw = {
 	.queuecommand		= sas_queuecommand,
 	.dma_need_drain		= ata_scsi_dma_need_drain,
 	.target_alloc		= sas_target_alloc,
-	.slave_configure	= hisi_sas_slave_configure,
+	.slave_configure	= slave_configure_v3_hw,
 	.scan_finished		= hisi_sas_scan_finished,
 	.scan_start		= hisi_sas_scan_start,
 	.change_queue_depth	= sas_change_queue_depth,
@@ -3313,6 +3345,17 @@ hisi_sas_v3_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 
 	scsi_scan_host(shost);
 
+	/*
+	 * For the situation that there are ATA disks connected with SAS
+	 * controller, it additionally creates ata_port which will affect the
+	 * child_count of hisi_hba->dev. Even if suspended all the disks,
+	 * ata_port is still and the child_count of hisi_hba->dev is not 0.
+	 * So use pm_suspend_ignore_children() to ignore the effect to
+	 * hisi_hba->dev.
+	 */
+	pm_suspend_ignore_children(dev, true);
+	pm_runtime_put_noidle(&pdev->dev);
+
 	return 0;
 
 err_out_register_ha:
@@ -3352,6 +3395,7 @@ static void hisi_sas_v3_remove(struct pci_dev *pdev)
 	struct hisi_hba *hisi_hba = sha->lldd_ha;
 	struct Scsi_Host *shost = sha->core.shost;
 
+	pm_runtime_get_noresume(dev);
 	if (timer_pending(&hisi_hba->timer))
 		del_timer(&hisi_hba->timer);
 
@@ -3406,8 +3450,9 @@ enum {
 	hip08,
 };
 
-static int hisi_sas_v3_suspend(struct pci_dev *pdev, pm_message_t state)
+static int _suspend_v3_hw(struct device *device)
 {
+	struct pci_dev *pdev = to_pci_dev(device);
 	struct sas_ha_struct *sha = pci_get_drvdata(pdev);
 	struct hisi_hba *hisi_hba = sha->lldd_ha;
 	struct device *dev = hisi_hba->dev;
@@ -3438,7 +3483,7 @@ static int hisi_sas_v3_suspend(struct pci_dev *pdev, pm_message_t state)
 
 	hisi_sas_init_mem(hisi_hba);
 
-	device_state = pci_choose_state(pdev, state);
+	device_state = pci_choose_state(pdev, PMSG_SUSPEND);
 	dev_warn(dev, "entering operating state [D%d]\n",
 			device_state);
 	pci_save_state(pdev);
@@ -3451,8 +3496,9 @@ static int hisi_sas_v3_suspend(struct pci_dev *pdev, pm_message_t state)
 	return 0;
 }
 
-static int hisi_sas_v3_resume(struct pci_dev *pdev)
+static int _resume_v3_hw(struct device *device)
 {
+	struct pci_dev *pdev = to_pci_dev(device);
 	struct sas_ha_struct *sha = pci_get_drvdata(pdev);
 	struct hisi_hba *hisi_hba = sha->lldd_ha;
 	struct Scsi_Host *shost = hisi_hba->shost;
@@ -3489,6 +3535,34 @@ static int hisi_sas_v3_resume(struct pci_dev *pdev)
 	return 0;
 }
 
+static int suspend_v3_hw(struct device *device)
+{
+	struct pci_dev *pdev = to_pci_dev(device);
+	struct sas_ha_struct *sha = pci_get_drvdata(pdev);
+	struct hisi_hba *hisi_hba = sha->lldd_ha;
+	int rc;
+
+	set_bit(HISI_SAS_PM_BIT, &hisi_hba->flags);
+
+	rc = _suspend_v3_hw(device);
+	if (rc)
+		clear_bit(HISI_SAS_PM_BIT, &hisi_hba->flags);
+
+	return rc;
+}
+
+static int resume_v3_hw(struct device *device)
+{
+	struct pci_dev *pdev = to_pci_dev(device);
+	struct sas_ha_struct *sha = pci_get_drvdata(pdev);
+	struct hisi_hba *hisi_hba = sha->lldd_ha;
+	int rc = _resume_v3_hw(device);
+
+	clear_bit(HISI_SAS_PM_BIT, &hisi_hba->flags);
+
+	return rc;
+}
+
 static const struct pci_device_id sas_v3_pci_table[] = {
 	{ PCI_VDEVICE(HUAWEI, 0xa230), hip08 },
 	{}
@@ -3500,14 +3574,29 @@ static const struct pci_error_handlers hisi_sas_err_handler = {
 	.reset_done	= hisi_sas_reset_done_v3_hw,
 };
 
+static int runtime_suspend_v3_hw(struct device *dev)
+{
+	return suspend_v3_hw(dev);
+}
+
+static int runtime_resume_v3_hw(struct device *dev)
+{
+	return resume_v3_hw(dev);
+}
+
+static const struct dev_pm_ops hisi_sas_v3_pm_ops = {
+	SET_SYSTEM_SLEEP_PM_OPS(suspend_v3_hw, resume_v3_hw)
+	SET_RUNTIME_PM_OPS(runtime_suspend_v3_hw,
+			   runtime_resume_v3_hw, NULL)
+};
+
 static struct pci_driver sas_v3_pci_driver = {
 	.name		= DRV_NAME,
 	.id_table	= sas_v3_pci_table,
 	.probe		= hisi_sas_v3_probe,
 	.remove		= hisi_sas_v3_remove,
-	.suspend	= hisi_sas_v3_suspend,
-	.resume		= hisi_sas_v3_resume,
 	.err_handler	= &hisi_sas_err_handler,
+	.driver.pm	= &hisi_sas_v3_pm_ops,
 };
 
 module_pci_driver(sas_v3_pci_driver);
