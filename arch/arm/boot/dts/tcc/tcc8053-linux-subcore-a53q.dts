@@ -110,12 +110,6 @@
 				core1 {
 					cpu = <&A53_1>;
 				};
-				core2 {
-					cpu = <&A53_2>;
-				};
-				core3 {
-					cpu = <&A53_3>;
-				};
 			};
 		};
 
@@ -135,26 +129,6 @@
 			device_type = "cpu";
 			compatible = "arm,cortex-a53";
 			reg = <0x1>;
-			enable-method = "psci";
-			next-level-cache = <&A53_L2>;
-			cpu-idle-states = <&CPU_SLEEP_0_0>;
-			operating-points-v2 = <&cpu_opp_table>;
-		};
-
-		A53_2: cpu@2 {
-			device_type = "cpu";
-			compatible = "arm,cortex-a53";
-			reg = <0x2>;
-			enable-method = "psci";
-			next-level-cache = <&A53_L2>;
-			cpu-idle-states = <&CPU_SLEEP_0_0>;
-			operating-points-v2 = <&cpu_opp_table>;
-		};
-
-		A53_3: cpu@3 {
-			device_type = "cpu";
-			compatible = "arm,cortex-a53";
-			reg = <0x3>;
 			enable-method = "psci";
 			next-level-cache = <&A53_L2>;
 			cpu-idle-states = <&CPU_SLEEP_0_0>;
