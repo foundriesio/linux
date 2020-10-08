@@ -36,7 +36,6 @@ unsigned long vmgr_hevc_enc_get_int_flags(void);
 void vmgr_hevc_enc_init_interrupt(void);
 int vmgr_hevc_enc_BusPrioritySetting(int mode, int type);
 void vmgr_hevc_enc_status_clear(unsigned int* base_addr);
-int vmgr_hevc_enc_is_loadable(void);
 void vmgr_hevc_enc_status_clear(unsigned int* base_addr);
 
 void vmgr_hevc_enc_init_variable(void);

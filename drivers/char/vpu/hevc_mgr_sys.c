@@ -384,12 +384,6 @@ void hmgr_status_clear(unsigned int* base_addr)
 	return;
 }
 
-int hmgr_is_loadable(void)
-{
-	return 0;
-}
-EXPORT_SYMBOL(hmgr_is_loadable);
-
 void hmgr_init_variable(void)
 {
 	cache_droped = 0;

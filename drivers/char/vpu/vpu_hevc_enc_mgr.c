@@ -39,55 +39,59 @@ extern int tcc_vpu_hevc_enc_ext(int Op, codec_handle_t* pHandle, void* pParam1, 
 VpuList_t* vmgr_hevc_enc_list_manager(VpuList_t* args, unsigned int cmd)
 {
 	VpuList_t* ret = NULL;
-	VpuList_t* data = (VpuList_t*) args;
+	VpuList_t* oper_data = (VpuList_t*) args;
+
+	if (!oper_data)
+	{
+		if (cmd == LIST_ADD || cmd == LIST_DEL)
+		{
+			V_DBG(DEBUG_VPU_ERROR, "Data is null, cmd=%d", cmd);
+			return NULL;
+		}
+	}
+	else
+	{
+		*oper_data->vpu_result = RET0;
+	}
 
 	mutex_lock(&vmgr_hevc_enc_data.comm_data.list_mutex);
-
-	if (cmd == LIST_ADD || cmd == LIST_DEL)
 	{
-		if (data == NULL)
+		switch (cmd)
 		{
-			V_DBG(DEBUG_VPU_ERROR, "ADD :: data is null");
-			goto Error;
-		}
-	}
-
-	switch (cmd)
-	{
-		case LIST_ADD:
-		{
-			*(data->vpu_result) |= RET1;
-			list_add_tail(&data->list, &vmgr_hevc_enc_data.comm_data.main_list);
-			vmgr_hevc_enc_data.cmd_queued++;
-			vmgr_hevc_enc_data.comm_data.thread_intr++;
-		}
-		break;
-
-		case LIST_DEL:
-		{
-			list_del(&data->list);
-			vmgr_hevc_enc_data.cmd_queued--;
-		}
-		break;
-
-		case LIST_IS_EMPTY:
-		{
-			if (list_empty(&vmgr_hevc_enc_data.comm_data.main_list))
+			case LIST_ADD:
 			{
-				ret = (VpuList_t*) 0x1234;
+				*oper_data->vpu_result |= RET1;
+				list_add_tail(&oper_data->list, &vmgr_hevc_enc_data.comm_data.main_list);
+				vmgr_hevc_enc_data.cmd_queued++;
+				vmgr_hevc_enc_data.comm_data.thread_intr++;
 			}
-		}
-		break;
+			break;
 
-		case LIST_GET_ENTRY:
-		{
-			ret = list_first_entry(&vmgr_hevc_enc_data.comm_data.main_list, VpuList_t, list);
+			case LIST_DEL:
+			{
+				list_del(&oper_data->list);
+				vmgr_hevc_enc_data.cmd_queued--;
+			}
+			break;
+
+			case LIST_IS_EMPTY:
+			{
+				if (list_empty(&vmgr_hevc_enc_data.comm_data.main_list))
+				{
+					ret = (VpuList_t*) 0x1234;
+				}
+			}
+			break;
+
+			case LIST_GET_ENTRY:
+			{
+				ret = list_first_entry(&vmgr_hevc_enc_data.comm_data.main_list, VpuList_t, list);
+			}
+			break;
 		}
-		break;
 	}
-
-Error:
 	mutex_unlock(&vmgr_hevc_enc_data.comm_data.list_mutex);
+
 	if (cmd == LIST_ADD)
 	{
 		wake_up_interruptible(&vmgr_hevc_enc_data.comm_data.thread_wq);
@@ -404,11 +408,7 @@ static int _vmgr_hevc_enc_internal_handler(void)
 										atomic_read(&vmgr_hevc_enc_data.oper_intr) > 0,
 										msecs_to_jiffies(timeout));
 
-			if (vmgr_hevc_enc_is_loadable() > 0)
-			{
-				ret_code = RETCODE_CODEC_EXIT;
-			}
-			else if (atomic_read(&vmgr_hevc_enc_data.oper_intr) > 0)
+			if (atomic_read(&vmgr_hevc_enc_data.oper_intr) > 0)
 			{
 				V_DBG(DEBUG_ENC_INTERRUPT, "Success-2: vpu hevc enc operation!! (isr cnt:%d)", cntInt_vpu_he);
 			#if defined(FORCED_ERROR)
@@ -717,31 +717,31 @@ static int _vmgr_hevc_enc_operation(void)
 			return 0;
 		}
 
-		*(oper_data->vpu_result) |= RET2;
+		*oper_data->vpu_result |= RET2;
 
 		V_DBG(DEBUG_ENC_THREAD, "[%d] :: cmd = 0x%x, vmgr_hevc_enc_data.cmd_queued (%d)",
 			oper_data->type,
 			oper_data->cmd_type,
 			vmgr_hevc_enc_data.cmd_queued);
 
-		if (oper_data != NULL && (oper_data->type >= VPU_ENC && oper_data->type < VPU_HEVC_ENC_MAX))
+		if (oper_data->type >= VPU_ENC && oper_data->type < VPU_HEVC_ENC_MAX)
 		{
-			*(oper_data->vpu_result) |= RET3;
-			*(oper_data->vpu_result) = _vmgr_hevc_enc_process(oper_data->type,
+			*oper_data->vpu_result |= RET3;
+			*oper_data->vpu_result = _vmgr_hevc_enc_process(oper_data->type,
 													oper_data->cmd_type,
 													oper_data->handle,
 													oper_data->args);
 			oper_finished = 1;
-			if (*(oper_data->vpu_result) != RETCODE_SUCCESS)
+			if (*oper_data->vpu_result != RETCODE_SUCCESS)
 			{
-				if (*(oper_data->vpu_result) != RETCODE_INSUFFICIENT_BITSTREAM &&
-					*(oper_data->vpu_result) != RETCODE_INSUFFICIENT_BITSTREAM_BUF)
+				if ((*oper_data->vpu_result != RETCODE_INSUFFICIENT_BITSTREAM) &&
+					(*oper_data->vpu_result != RETCODE_INSUFFICIENT_BITSTREAM_BUF))
 				{
 					V_DBG(DEBUG_VPU_ERROR, "- out[0x%px] :: type = %u, vmgr_hevc_enc_data.handle = 0x%lx, cmd = %d, frame_len %u",
-							(void*)*(oper_data->vpu_result), oper_data->type, oper_data->handle, oper_data->cmd_type, vmgr_hevc_enc_data.szFrame_Len);
+							(void*)*oper_data->vpu_result, oper_data->type, oper_data->handle, oper_data->cmd_type, vmgr_hevc_enc_data.szFrame_Len);
 				}
 
-				if (*(oper_data->vpu_result) == RETCODE_CODEC_EXIT)
+				if (*oper_data->vpu_result == RETCODE_CODEC_EXIT)
 				{
 					vmgr_hevc_enc_restore_clock(0, atomic_read(&vmgr_hevc_enc_data.dev_opened));
 					_vmgr_hevc_enc_close_all(1);
@@ -754,7 +754,7 @@ static int _vmgr_hevc_enc_operation(void)
 				oper_data->type,
 				oper_data->cmd_type);
 
-			*(oper_data->vpu_result) = RETCODE_FAILURE;
+			*oper_data->vpu_result = RETCODE_FAILURE;
 			oper_finished = 0;
 		}
 
@@ -799,9 +799,10 @@ static int _vmgr_hevc_enc_thread(void* kthread)
 		{
 			vmgr_hevc_enc_data.cmd_processing = 0;
 
-			wait_event_interruptible_timeout(vmgr_hevc_enc_data.comm_data.thread_wq,
-									vmgr_hevc_enc_data.comm_data.thread_intr > 0,
-									msecs_to_jiffies(50));
+			(void)wait_event_interruptible_timeout(vmgr_hevc_enc_data.comm_data.thread_wq,
+												vmgr_hevc_enc_data.comm_data.thread_intr > 0,
+												msecs_to_jiffies(50));
+
 			vmgr_hevc_enc_data.comm_data.thread_intr = 0;
 		}
 		else
@@ -1181,7 +1182,7 @@ static int _vmgr_hevc_enc_mmap(struct file* file, struct vm_area_struct* vma)
 #endif
 
 	vma->vm_page_prot = vmem_get_pgprot(vma->vm_page_prot, vma->vm_pgoff);
-	if (remap_pfn_range(vma,vma->vm_start, vma->vm_pgoff , vma->vm_end - vma->vm_start, vma->vm_page_prot))
+	if (remap_pfn_range(vma,vma->vm_start, vma->vm_pgoff, vma->vm_end - vma->vm_start, vma->vm_page_prot))
 	{
 		V_DBG(DEBUG_VPU_ERROR, "_vmgr_mmap :: remap_pfn_range failed");
 		return -EAGAIN;

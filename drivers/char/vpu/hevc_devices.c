@@ -32,8 +32,6 @@
 #include "vpu_comm.h"
 #include "vpu_devices.h"
 
-extern int hmgr_is_loadable(void);
-
 extern int hmgr_probe(struct platform_device* pdev);
 extern int hmgr_remove(struct platform_device* pdev);
 #if defined(CONFIG_PM)
@@ -44,8 +42,8 @@ extern int hmgr_resume(struct platform_device* pdev);
 #ifdef CONFIG_OF
 static struct of_device_id hmgr_of_match[] =
 {
-		{ .compatible = "telechips,hevc_dev_mgr" },//HMGR_NAME
-		{}
+	{ .compatible = "telechips,hevc_dev_mgr" }, //HMGR_NAME
+	{}
 };
 MODULE_DEVICE_TABLE(of, hmgr_of_match);
 #endif
@@ -74,9 +72,6 @@ static void __exit hmgr_cleanup(void)
 
 static int hmgr_init(void)
 {
-	if (hmgr_is_loadable() > 0)
-		return -1;
-
 	printk("============> HEVC Devices drivers initializing!!  Start ------- ");
 
 	platform_driver_register(&hmgr_driver);

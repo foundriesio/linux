@@ -33,7 +33,6 @@ unsigned long jmgr_get_int_flags(void);
 void jmgr_init_interrupt(void);
 int jmgr_BusPrioritySetting(int mode, int type);
 void jmgr_status_clear(unsigned int* base_addr);
-int jmgr_is_loadable(void);
 
 void jmgr_init_variable(void);
 

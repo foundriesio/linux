@@ -32,8 +32,6 @@
 #include "vpu_comm.h"
 #include "vpu_devices.h"
 
-extern int jmgr_is_loadable(void);
-
 extern int jmgr_probe(struct platform_device* pdev);
 extern int jmgr_remove(struct platform_device* pdev);
 #if defined(CONFIG_PM)
@@ -44,8 +42,8 @@ extern int jmgr_resume(struct platform_device* pdev);
 #ifdef CONFIG_OF
 static struct of_device_id jmgr_of_match[] =
 {
-		{ .compatible = "telechips,jpu_dev_mgr" },//JMGR_NAME
-		{}
+	{ .compatible = "telechips,jpu_dev_mgr" }, //JMGR_NAME
+	{}
 };
 MODULE_DEVICE_TABLE(of, jmgr_of_match);
 #endif
@@ -75,9 +73,6 @@ static void __exit jmgr_cleanup(void)
 
 static int jmgr_init(void)
 {
-	if (jmgr_is_loadable() > 0)
-		return -1;
-
 	printk("============> JPU Devices drivers initializing!!  Start ------- ");
 
 	platform_driver_register(&jmgr_driver);

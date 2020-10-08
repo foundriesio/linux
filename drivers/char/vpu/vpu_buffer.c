@@ -200,7 +200,10 @@ static int _vmem_get_page_type(unsigned long ulPageOffset)
 	while (idx < PAGE_TYPE_MAX)
 	{
 		if (g_aulPageOffset[idx] == ulPageOffset)
+		{
 			break;
+		}
+
 		idx++;
 	}
 
@@ -261,7 +264,7 @@ EXPORT_SYMBOL(vmem_get_pgprot);
 extern int _vmem_is_cma_allocated_phy_region(unsigned int start_phyaddr, unsigned int length);
 static void* _vmem_get_virtaddr(unsigned int start_phyaddr, unsigned int length)
 {
-	void* cma_virt_address = NULL;
+	void* cma_virt_address;
 
 	dprintk_mem("_vmem_get_virtaddr :: phy_region[0x%x - 0x%x], !! \n", start_phyaddr, start_phyaddr + length);
 
@@ -1796,8 +1799,11 @@ int vmem_proc_alloc_memory(int codec_type, MEM_ALLOC_INFO_t* alloc_info, vputype
 #if defined(CONFIG_TEST_VPU_DRAM_INTLV)
 Success:
 #endif
+
 	if (alloc_info->buffer_type == BUFFER_STREAM)
+	{
 		_vmem_set_page_type(alloc_info->phy_addr, 3);
+	}
 
 	mutex_unlock(&mem_mutex);
 	return 0;

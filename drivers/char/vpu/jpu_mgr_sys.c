@@ -236,12 +236,6 @@ void jmgr_status_clear(unsigned int* base_addr)
 	return;
 }
 
-int jmgr_is_loadable(void)
-{
-	return 0;
-}
-EXPORT_SYMBOL(jmgr_is_loadable);
-
 void jmgr_init_variable(void)
 {
 	cache_droped = 0;

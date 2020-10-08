@@ -450,12 +450,6 @@ int vmgr_4k_d2_BusPrioritySetting(int mode, int type)
 	return 0;
 }
 
-int vmgr_4k_d2_is_loadable(void)
-{
-	return 0;
-}
-EXPORT_SYMBOL(vmgr_4k_d2_is_loadable);
-
 void vmgr_4k_d2_init_variable(void)
 {
 	cache_droped = 0;
