@@ -733,6 +733,7 @@ static int iscsi_sw_tcp_conn_get_param(struct iscsi_cls_conn *cls_conn,
 	struct iscsi_tcp_conn *tcp_conn = conn->dd_data;
 	struct iscsi_sw_tcp_conn *tcp_sw_conn = tcp_conn->dd_data;
 	struct sockaddr_in6 addr;
+	struct socket *sock;
 	int rc, len;
 
 	switch(param) {
@@ -744,13 +745,17 @@ static int iscsi_sw_tcp_conn_get_param(struct iscsi_cls_conn *cls_conn,
 			spin_unlock_bh(&conn->session->frwd_lock);
 			return -ENOTCONN;
 		}
+		sock = tcp_sw_conn->sock;
+		sock_hold(sock->sk);
+		spin_unlock_bh(&conn->session->frwd_lock);
+
 		if (param == ISCSI_PARAM_LOCAL_PORT)
-			rc = kernel_getsockname(tcp_sw_conn->sock,
+			rc = kernel_getsockname(sock,
 						(struct sockaddr *)&addr, &len);
 		else
-			rc = kernel_getpeername(tcp_sw_conn->sock,
+			rc = kernel_getpeername(sock,
 						(struct sockaddr *)&addr, &len);
-		spin_unlock_bh(&conn->session->frwd_lock);
+		sock_put(sock->sk);
 		if (rc)
 			return rc;
 
@@ -772,6 +777,7 @@ static int iscsi_sw_tcp_host_get_param(struct Scsi_Host *shost,
 	struct iscsi_tcp_conn *tcp_conn;
 	struct iscsi_sw_tcp_conn *tcp_sw_conn;
 	struct sockaddr_in6 addr;
+	struct socket *sock;
 	int rc, len;
 
 	switch (param) {
@@ -786,16 +792,18 @@ static int iscsi_sw_tcp_host_get_param(struct Scsi_Host *shost,
 			return -ENOTCONN;
 		}
 		tcp_conn = conn->dd_data;
-
 		tcp_sw_conn = tcp_conn->dd_data;
-		if (!tcp_sw_conn->sock) {
+		sock = tcp_sw_conn->sock;
+		if (!sock) {
 			spin_unlock_bh(&session->frwd_lock);
 			return -ENOTCONN;
 		}
-
-		rc = kernel_getsockname(tcp_sw_conn->sock,
-					(struct sockaddr *)&addr, &len);
+		sock_hold(sock->sk);
 		spin_unlock_bh(&session->frwd_lock);
+
+		rc = kernel_getsockname(sock,
+					(struct sockaddr *)&addr, &len);
+		sock_put(sock->sk);
 		if (rc)
 			return rc;
 

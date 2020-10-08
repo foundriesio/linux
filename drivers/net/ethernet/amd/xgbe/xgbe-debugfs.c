@@ -438,7 +438,6 @@ static const struct file_operations xi2c_reg_value_fops = {
 
 void xgbe_debugfs_init(struct xgbe_prv_data *pdata)
 {
-	struct dentry *pfile;
 	char *buf;
 
 	/* Set defaults */
@@ -451,88 +450,48 @@ void xgbe_debugfs_init(struct xgbe_prv_data *pdata)
 		return;
 
 	pdata->xgbe_debugfs = debugfs_create_dir(buf, NULL);
-	if (!pdata->xgbe_debugfs) {
-		netdev_err(pdata->netdev, "debugfs_create_dir failed\n");
-		kfree(buf);
-		return;
-	}
 
-	pfile = debugfs_create_file("xgmac_register", 0600,
-				    pdata->xgbe_debugfs, pdata,
-				    &xgmac_reg_addr_fops);
-	if (!pfile)
-		netdev_err(pdata->netdev, "debugfs_create_file failed\n");
+	debugfs_create_file("xgmac_register", 0600, pdata->xgbe_debugfs, pdata,
+			    &xgmac_reg_addr_fops);
 
-	pfile = debugfs_create_file("xgmac_register_value", 0600,
-				    pdata->xgbe_debugfs, pdata,
-				    &xgmac_reg_value_fops);
-	if (!pfile)
-		netdev_err(pdata->netdev, "debugfs_create_file failed\n");
+	debugfs_create_file("xgmac_register_value", 0600, pdata->xgbe_debugfs,
+			    pdata, &xgmac_reg_value_fops);
 
-	pfile = debugfs_create_file("xpcs_mmd", 0600,
-				    pdata->xgbe_debugfs, pdata,
-				    &xpcs_mmd_fops);
-	if (!pfile)
-		netdev_err(pdata->netdev, "debugfs_create_file failed\n");
+	debugfs_create_file("xpcs_mmd", 0600, pdata->xgbe_debugfs, pdata,
+			    &xpcs_mmd_fops);
 
-	pfile = debugfs_create_file("xpcs_register", 0600,
-				    pdata->xgbe_debugfs, pdata,
-				    &xpcs_reg_addr_fops);
-	if (!pfile)
-		netdev_err(pdata->netdev, "debugfs_create_file failed\n");
+	debugfs_create_file("xpcs_register", 0600, pdata->xgbe_debugfs, pdata,
+			    &xpcs_reg_addr_fops);
 
-	pfile = debugfs_create_file("xpcs_register_value", 0600,
-				    pdata->xgbe_debugfs, pdata,
-				    &xpcs_reg_value_fops);
-	if (!pfile)
-		netdev_err(pdata->netdev, "debugfs_create_file failed\n");
+	debugfs_create_file("xpcs_register_value", 0600, pdata->xgbe_debugfs,
+			    pdata, &xpcs_reg_value_fops);
 
 	if (pdata->xprop_regs) {
-		pfile = debugfs_create_file("xprop_register", 0600,
-					    pdata->xgbe_debugfs, pdata,
-					    &xprop_reg_addr_fops);
-		if (!pfile)
-			netdev_err(pdata->netdev,
-				   "debugfs_create_file failed\n");
+		debugfs_create_file("xprop_register", 0600, pdata->xgbe_debugfs,
+				    pdata, &xprop_reg_addr_fops);
 
-		pfile = debugfs_create_file("xprop_register_value", 0600,
-					    pdata->xgbe_debugfs, pdata,
-					    &xprop_reg_value_fops);
-		if (!pfile)
-			netdev_err(pdata->netdev,
-				   "debugfs_create_file failed\n");
+		debugfs_create_file("xprop_register_value", 0600,
+				    pdata->xgbe_debugfs, pdata,
+				    &xprop_reg_value_fops);
 	}
 
 	if (pdata->xi2c_regs) {
-		pfile = debugfs_create_file("xi2c_register", 0600,
-					    pdata->xgbe_debugfs, pdata,
-					    &xi2c_reg_addr_fops);
-		if (!pfile)
-			netdev_err(pdata->netdev,
-				   "debugfs_create_file failed\n");
+		debugfs_create_file("xi2c_register", 0600, pdata->xgbe_debugfs,
+				    pdata, &xi2c_reg_addr_fops);
 
-		pfile = debugfs_create_file("xi2c_register_value", 0600,
-					    pdata->xgbe_debugfs, pdata,
-					    &xi2c_reg_value_fops);
-		if (!pfile)
-			netdev_err(pdata->netdev,
-				   "debugfs_create_file failed\n");
+		debugfs_create_file("xi2c_register_value", 0600,
+				    pdata->xgbe_debugfs, pdata,
+				    &xi2c_reg_value_fops);
 	}
 
 	if (pdata->vdata->an_cdr_workaround) {
-		pfile = debugfs_create_bool("an_cdr_workaround", 0600,
-					    pdata->xgbe_debugfs,
-					    &pdata->debugfs_an_cdr_workaround);
-		if (!pfile)
-			netdev_err(pdata->netdev,
-				   "debugfs_create_bool failed\n");
+		debugfs_create_bool("an_cdr_workaround", 0600,
+				    pdata->xgbe_debugfs,
+				    &pdata->debugfs_an_cdr_workaround);
 
-		pfile = debugfs_create_bool("an_cdr_track_early", 0600,
-					    pdata->xgbe_debugfs,
-					    &pdata->debugfs_an_cdr_track_early);
-		if (!pfile)
-			netdev_err(pdata->netdev,
-				   "debugfs_create_bool failed\n");
+		debugfs_create_bool("an_cdr_track_early", 0600,
+				    pdata->xgbe_debugfs,
+				    &pdata->debugfs_an_cdr_track_early);
 	}
 
 	kfree(buf);
@@ -542,4 +501,25 @@ void xgbe_debugfs_exit(struct xgbe_prv_data *pdata)
 {
 	debugfs_remove_recursive(pdata->xgbe_debugfs);
 	pdata->xgbe_debugfs = NULL;
+}
+
+void xgbe_debugfs_rename(struct xgbe_prv_data *pdata)
+{
+	char *buf;
+
+	if (!pdata->xgbe_debugfs)
+		return;
+
+	buf = kasprintf(GFP_KERNEL, "amd-xgbe-%s", pdata->netdev->name);
+	if (!buf)
+		return;
+
+	if (!strcmp(pdata->xgbe_debugfs->d_name.name, buf))
+		goto out;
+
+	debugfs_rename(pdata->xgbe_debugfs->d_parent, pdata->xgbe_debugfs,
+		       pdata->xgbe_debugfs->d_parent, buf);
+
+out:
+	kfree(buf);
 }
