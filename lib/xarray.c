@@ -271,8 +271,7 @@ static void xas_destroy(struct xa_state *xas)
 	while (node) {
 		XA_NODE_BUG_ON(node, !list_empty(&node->private_list));
 		next = rcu_dereference_raw(node->parent);
-		/* XXX: need to free children */
-		kmem_cache_free(radix_tree_node_cachep, node);
+		radix_tree_node_rcu_free(&node->rcu_head);
 		xas->xa_alloc = node = next;
 	}
 }
