@@ -119,6 +119,7 @@
 #include <linux/kmod.h>
 #include <linux/mdio.h>
 #include <linux/phy.h>
+#include <linux/ethtool.h>
 
 #include "xgbe.h"
 #include "xgbe-common.h"
@@ -270,6 +271,15 @@ struct xgbe_sfp_eeprom {
 	u8 vendor[32];
 };
 
+#define XGBE_SFP_DIAGS_SUPPORTED(_x)			\
+	((_x)->extd[XGBE_SFP_EXTD_SFF_8472] &&		\
+	 !((_x)->extd[XGBE_SFP_EXTD_DIAG] & XGBE_SFP_EXTD_DIAG_ADDR_CHANGE))
+
+#define XGBE_SFP_EEPROM_BASE_LEN	256
+#define XGBE_SFP_EEPROM_DIAG_LEN	256
+#define XGBE_SFP_EEPROM_MAX		(XGBE_SFP_EEPROM_BASE_LEN +	\
+					 XGBE_SFP_EEPROM_DIAG_LEN)
+
 #define XGBE_BEL_FUSE_VENDOR	"BEL-FUSE        "
 #define XGBE_BEL_FUSE_PARTNO	"1GBT-SFP06      "
 
@@ -327,8 +337,6 @@ struct xgbe_phy_data {
 
 	unsigned int mdio_addr;
 
-	unsigned int comm_owned;
-
 	/* SFP Support */
 	enum xgbe_sfp_comm sfp_comm;
 	unsigned int sfp_mux_address;
@@ -345,7 +353,6 @@ struct xgbe_phy_data {
 	unsigned int sfp_rx_los;
 	unsigned int sfp_tx_fault;
 	unsigned int sfp_mod_absent;
-	unsigned int sfp_diags;
 	unsigned int sfp_changed;
 	unsigned int sfp_phy_avail;
 	unsigned int sfp_cable_len;
@@ -382,12 +389,6 @@ static enum xgbe_an_mode xgbe_phy_an_mode(struct xgbe_prv_data *pdata);
 static int xgbe_phy_i2c_xfer(struct xgbe_prv_data *pdata,
 			     struct xgbe_i2c_op *i2c_op)
 {
-	struct xgbe_phy_data *phy_data = pdata->phy_data;
-
-	/* Be sure we own the bus */
-	if (WARN_ON(!phy_data->comm_owned))
-		return -EIO;
-
 	return pdata->i2c_if.i2c_xfer(pdata, i2c_op);
 }
 
@@ -549,10 +550,6 @@ static int xgbe_phy_sfp_get_mux(struct xgbe_prv_data *pdata)
 
 static void xgbe_phy_put_comm_ownership(struct xgbe_prv_data *pdata)
 {
-	struct xgbe_phy_data *phy_data = pdata->phy_data;
-
-	phy_data->comm_owned = 0;
-
 	mutex_unlock(&xgbe_phy_comm_lock);
 }
 
@@ -561,9 +558,6 @@ static int xgbe_phy_get_comm_ownership(struct xgbe_prv_data *pdata)
 	struct xgbe_phy_data *phy_data = pdata->phy_data;
 	unsigned long timeout;
 	unsigned int mutex_id;
-
-	if (phy_data->comm_owned)
-		return 0;
 
 	/* The I2C and MDIO/GPIO bus is multiplexed between multiple devices,
 	 * the driver needs to take the software mutex and then the hardware
@@ -593,7 +587,6 @@ static int xgbe_phy_get_comm_ownership(struct xgbe_prv_data *pdata)
 		XP_IOWRITE(pdata, XP_I2C_MUTEX, mutex_id);
 		XP_IOWRITE(pdata, XP_MDIO_MUTEX, mutex_id);
 
-		phy_data->comm_owned = 1;
 		return 0;
 	}
 
@@ -726,24 +719,30 @@ static int xgbe_phy_mii_read(struct mii_bus *mii, int addr, int reg)
 
 static void xgbe_phy_sfp_phy_settings(struct xgbe_prv_data *pdata)
 {
+	struct ethtool_link_ksettings *lks = &pdata->phy.lks;
 	struct xgbe_phy_data *phy_data = pdata->phy_data;
+
+	if (!phy_data->sfp_mod_absent && !phy_data->sfp_changed)
+		return;
+
+	XGBE_ZERO_SUP(lks);
 
 	if (phy_data->sfp_mod_absent) {
 		pdata->phy.speed = SPEED_UNKNOWN;
 		pdata->phy.duplex = DUPLEX_UNKNOWN;
 		pdata->phy.autoneg = AUTONEG_ENABLE;
-		pdata->phy.advertising = pdata->phy.supported;
+		pdata->phy.pause_autoneg = AUTONEG_ENABLE;
+
+		XGBE_SET_SUP(lks, Autoneg);
+		XGBE_SET_SUP(lks, Pause);
+		XGBE_SET_SUP(lks, Asym_Pause);
+		XGBE_SET_SUP(lks, TP);
+		XGBE_SET_SUP(lks, FIBRE);
+
+		XGBE_LM_COPY(lks, advertising, lks, supported);
 
 		return;
 	}
-
-	pdata->phy.advertising &= ~ADVERTISED_Autoneg;
-	pdata->phy.advertising &= ~ADVERTISED_TP;
-	pdata->phy.advertising &= ~ADVERTISED_FIBRE;
-	pdata->phy.advertising &= ~ADVERTISED_100baseT_Full;
-	pdata->phy.advertising &= ~ADVERTISED_1000baseT_Full;
-	pdata->phy.advertising &= ~ADVERTISED_10000baseT_Full;
-	pdata->phy.advertising &= ~ADVERTISED_10000baseR_FEC;
 
 	switch (phy_data->sfp_base) {
 	case XGBE_SFP_BASE_1000_T:
@@ -753,17 +752,56 @@ static void xgbe_phy_sfp_phy_settings(struct xgbe_prv_data *pdata)
 		pdata->phy.speed = SPEED_UNKNOWN;
 		pdata->phy.duplex = DUPLEX_UNKNOWN;
 		pdata->phy.autoneg = AUTONEG_ENABLE;
-		pdata->phy.advertising |= ADVERTISED_Autoneg;
+		pdata->phy.pause_autoneg = AUTONEG_ENABLE;
+		XGBE_SET_SUP(lks, Autoneg);
+		XGBE_SET_SUP(lks, Pause);
+		XGBE_SET_SUP(lks, Asym_Pause);
+		if (phy_data->sfp_base == XGBE_SFP_BASE_1000_T) {
+			if (phy_data->port_speeds & XGBE_PHY_PORT_SPEED_100)
+				XGBE_SET_SUP(lks, 100baseT_Full);
+			if (phy_data->port_speeds & XGBE_PHY_PORT_SPEED_1000)
+				XGBE_SET_SUP(lks, 1000baseT_Full);
+		} else {
+			if (phy_data->port_speeds & XGBE_PHY_PORT_SPEED_1000)
+				XGBE_SET_SUP(lks, 1000baseX_Full);
+		}
 		break;
 	case XGBE_SFP_BASE_10000_SR:
 	case XGBE_SFP_BASE_10000_LR:
 	case XGBE_SFP_BASE_10000_LRM:
 	case XGBE_SFP_BASE_10000_ER:
 	case XGBE_SFP_BASE_10000_CR:
-	default:
 		pdata->phy.speed = SPEED_10000;
 		pdata->phy.duplex = DUPLEX_FULL;
 		pdata->phy.autoneg = AUTONEG_DISABLE;
+		pdata->phy.pause_autoneg = AUTONEG_DISABLE;
+		if (phy_data->port_speeds & XGBE_PHY_PORT_SPEED_10000) {
+			switch (phy_data->sfp_base) {
+			case XGBE_SFP_BASE_10000_SR:
+				XGBE_SET_SUP(lks, 10000baseSR_Full);
+				break;
+			case XGBE_SFP_BASE_10000_LR:
+				XGBE_SET_SUP(lks, 10000baseLR_Full);
+				break;
+			case XGBE_SFP_BASE_10000_LRM:
+				XGBE_SET_SUP(lks, 10000baseLRM_Full);
+				break;
+			case XGBE_SFP_BASE_10000_ER:
+				XGBE_SET_SUP(lks, 10000baseER_Full);
+				break;
+			case XGBE_SFP_BASE_10000_CR:
+				XGBE_SET_SUP(lks, 10000baseCR_Full);
+				break;
+			default:
+				break;
+			}
+		}
+		break;
+	default:
+		pdata->phy.speed = SPEED_UNKNOWN;
+		pdata->phy.duplex = DUPLEX_UNKNOWN;
+		pdata->phy.autoneg = AUTONEG_DISABLE;
+		pdata->phy.pause_autoneg = AUTONEG_DISABLE;
 		break;
 	}
 
@@ -771,36 +809,14 @@ static void xgbe_phy_sfp_phy_settings(struct xgbe_prv_data *pdata)
 	case XGBE_SFP_BASE_1000_T:
 	case XGBE_SFP_BASE_1000_CX:
 	case XGBE_SFP_BASE_10000_CR:
-		pdata->phy.advertising |= ADVERTISED_TP;
+		XGBE_SET_SUP(lks, TP);
 		break;
 	default:
-		pdata->phy.advertising |= ADVERTISED_FIBRE;
+		XGBE_SET_SUP(lks, FIBRE);
+		break;
 	}
 
-	switch (phy_data->sfp_speed) {
-	case XGBE_SFP_SPEED_100_1000:
-		if (phy_data->port_speeds & XGBE_PHY_PORT_SPEED_100)
-			pdata->phy.advertising |= ADVERTISED_100baseT_Full;
-		if (phy_data->port_speeds & XGBE_PHY_PORT_SPEED_1000)
-			pdata->phy.advertising |= ADVERTISED_1000baseT_Full;
-		break;
-	case XGBE_SFP_SPEED_1000:
-		if (phy_data->port_speeds & XGBE_PHY_PORT_SPEED_1000)
-			pdata->phy.advertising |= ADVERTISED_1000baseT_Full;
-		break;
-	case XGBE_SFP_SPEED_10000:
-		if (phy_data->port_speeds & XGBE_PHY_PORT_SPEED_10000)
-			pdata->phy.advertising |= ADVERTISED_10000baseT_Full;
-		break;
-	default:
-		/* Choose the fastest supported speed */
-		if (phy_data->port_speeds & XGBE_PHY_PORT_SPEED_10000)
-			pdata->phy.advertising |= ADVERTISED_10000baseT_Full;
-		else if (phy_data->port_speeds & XGBE_PHY_PORT_SPEED_1000)
-			pdata->phy.advertising |= ADVERTISED_1000baseT_Full;
-		else if (phy_data->port_speeds & XGBE_PHY_PORT_SPEED_100)
-			pdata->phy.advertising |= ADVERTISED_100baseT_Full;
-	}
+	XGBE_LM_COPY(lks, advertising, lks, supported);
 }
 
 static bool xgbe_phy_sfp_bit_rate(struct xgbe_sfp_eeprom *sfp_eeprom,
@@ -844,6 +860,9 @@ static bool xgbe_phy_finisar_phy_quirks(struct xgbe_prv_data *pdata)
 	struct xgbe_phy_data *phy_data = pdata->phy_data;
 	unsigned int phy_id = phy_data->phydev->phy_id;
 
+	if (phy_data->port_mode != XGBE_PORT_MODE_SFP)
+		return false;
+
 	if ((phy_id & 0xfffffff0) != 0x01ff0cc0)
 		return false;
 
@@ -869,21 +888,101 @@ static bool xgbe_phy_finisar_phy_quirks(struct xgbe_prv_data *pdata)
 	return true;
 }
 
+static bool xgbe_phy_belfuse_phy_quirks(struct xgbe_prv_data *pdata)
+{
+	struct xgbe_phy_data *phy_data = pdata->phy_data;
+	struct xgbe_sfp_eeprom *sfp_eeprom = &phy_data->sfp_eeprom;
+	unsigned int phy_id = phy_data->phydev->phy_id;
+	int reg;
+
+	if (phy_data->port_mode != XGBE_PORT_MODE_SFP)
+		return false;
+
+	if (memcmp(&sfp_eeprom->base[XGBE_SFP_BASE_VENDOR_NAME],
+		   XGBE_BEL_FUSE_VENDOR, XGBE_SFP_BASE_VENDOR_NAME_LEN))
+		return false;
+
+	/* For Bel-Fuse, use the extra AN flag */
+	pdata->an_again = 1;
+
+	if (memcmp(&sfp_eeprom->base[XGBE_SFP_BASE_VENDOR_PN],
+		   XGBE_BEL_FUSE_PARTNO, XGBE_SFP_BASE_VENDOR_PN_LEN))
+		return false;
+
+	if ((phy_id & 0xfffffff0) != 0x03625d10)
+		return false;
+
+	/* Disable RGMII mode */
+	phy_write(phy_data->phydev, 0x18, 0x7007);
+	reg = phy_read(phy_data->phydev, 0x18);
+	phy_write(phy_data->phydev, 0x18, reg & ~0x0080);
+
+	/* Enable fiber register bank */
+	phy_write(phy_data->phydev, 0x1c, 0x7c00);
+	reg = phy_read(phy_data->phydev, 0x1c);
+	reg &= 0x03ff;
+	reg &= ~0x0001;
+	phy_write(phy_data->phydev, 0x1c, 0x8000 | 0x7c00 | reg | 0x0001);
+
+	/* Power down SerDes */
+	reg = phy_read(phy_data->phydev, 0x00);
+	phy_write(phy_data->phydev, 0x00, reg | 0x00800);
+
+	/* Configure SGMII-to-Copper mode */
+	phy_write(phy_data->phydev, 0x1c, 0x7c00);
+	reg = phy_read(phy_data->phydev, 0x1c);
+	reg &= 0x03ff;
+	reg &= ~0x0006;
+	phy_write(phy_data->phydev, 0x1c, 0x8000 | 0x7c00 | reg | 0x0004);
+
+	/* Power up SerDes */
+	reg = phy_read(phy_data->phydev, 0x00);
+	phy_write(phy_data->phydev, 0x00, reg & ~0x00800);
+
+	/* Enable copper register bank */
+	phy_write(phy_data->phydev, 0x1c, 0x7c00);
+	reg = phy_read(phy_data->phydev, 0x1c);
+	reg &= 0x03ff;
+	reg &= ~0x0001;
+	phy_write(phy_data->phydev, 0x1c, 0x8000 | 0x7c00 | reg);
+
+	/* Power up SerDes */
+	reg = phy_read(phy_data->phydev, 0x00);
+	phy_write(phy_data->phydev, 0x00, reg & ~0x00800);
+
+	phy_data->phydev->supported = PHY_GBIT_FEATURES;
+	phy_data->phydev->supported |= SUPPORTED_Pause | SUPPORTED_Asym_Pause;
+	phy_data->phydev->advertising = phy_data->phydev->supported;
+
+	netif_dbg(pdata, drv, pdata->netdev,
+		  "BelFuse PHY quirk in place\n");
+
+	return true;
+}
+
 static void xgbe_phy_external_phy_quirks(struct xgbe_prv_data *pdata)
 {
+	if (xgbe_phy_belfuse_phy_quirks(pdata))
+		return;
+
 	if (xgbe_phy_finisar_phy_quirks(pdata))
 		return;
 }
 
 static int xgbe_phy_find_phy_device(struct xgbe_prv_data *pdata)
 {
+	struct ethtool_link_ksettings *lks = &pdata->phy.lks;
 	struct xgbe_phy_data *phy_data = pdata->phy_data;
 	struct phy_device *phydev;
+	u32 advertising;
 	int ret;
 
 	/* If we already have a PHY, just return */
 	if (phy_data->phydev)
 		return 0;
+
+	/* Clear the extra AN flag */
+	pdata->an_again = 0;
 
 	/* Check for the use of an external PHY */
 	if (phy_data->phydev_mode == XGBE_MDIO_MODE_NONE)
@@ -934,7 +1033,10 @@ static int xgbe_phy_find_phy_device(struct xgbe_prv_data *pdata)
 	phy_data->phydev = phydev;
 
 	xgbe_phy_external_phy_quirks(pdata);
-	phydev->advertising &= pdata->phy.advertising;
+
+	ethtool_convert_link_mode_to_legacy_u32(&advertising,
+						lks->link_modes.advertising);
+	phydev->advertising &= advertising;
 
 	phy_start_aneg(phy_data->phydev);
 
@@ -1006,37 +1108,6 @@ static bool xgbe_phy_check_sfp_mod_absent(struct xgbe_phy_data *phy_data)
 	return false;
 }
 
-static bool xgbe_phy_belfuse_parse_quirks(struct xgbe_prv_data *pdata)
-{
-	struct xgbe_phy_data *phy_data = pdata->phy_data;
-	struct xgbe_sfp_eeprom *sfp_eeprom = &phy_data->sfp_eeprom;
-
-	if (memcmp(&sfp_eeprom->base[XGBE_SFP_BASE_VENDOR_NAME],
-		   XGBE_BEL_FUSE_VENDOR, XGBE_SFP_BASE_VENDOR_NAME_LEN))
-		return false;
-
-	if (!memcmp(&sfp_eeprom->base[XGBE_SFP_BASE_VENDOR_PN],
-		    XGBE_BEL_FUSE_PARTNO, XGBE_SFP_BASE_VENDOR_PN_LEN)) {
-		phy_data->sfp_base = XGBE_SFP_BASE_1000_SX;
-		phy_data->sfp_cable = XGBE_SFP_CABLE_ACTIVE;
-		phy_data->sfp_speed = XGBE_SFP_SPEED_1000;
-		if (phy_data->sfp_changed)
-			netif_dbg(pdata, drv, pdata->netdev,
-				  "Bel-Fuse SFP quirk in place\n");
-		return true;
-	}
-
-	return false;
-}
-
-static bool xgbe_phy_sfp_parse_quirks(struct xgbe_prv_data *pdata)
-{
-	if (xgbe_phy_belfuse_parse_quirks(pdata))
-		return true;
-
-	return false;
-}
-
 static void xgbe_phy_sfp_parse_eeprom(struct xgbe_prv_data *pdata)
 {
 	struct xgbe_phy_data *phy_data = pdata->phy_data;
@@ -1054,9 +1125,6 @@ static void xgbe_phy_sfp_parse_eeprom(struct xgbe_prv_data *pdata)
 	/* Update transceiver signals (eeprom extd/options) */
 	phy_data->sfp_tx_fault = xgbe_phy_check_sfp_tx_fault(phy_data);
 	phy_data->sfp_rx_los = xgbe_phy_check_sfp_rx_los(phy_data);
-
-	if (xgbe_phy_sfp_parse_quirks(pdata))
-		return;
 
 	/* Assume ACTIVE cable unless told it is PASSIVE */
 	if (sfp_base[XGBE_SFP_BASE_CABLE] & XGBE_SFP_BASE_CABLE_PASSIVE) {
@@ -1147,7 +1215,7 @@ static bool xgbe_phy_sfp_verify_eeprom(u8 cc_in, u8 *buf, unsigned int len)
 	for (cc = 0; len; buf++, len--)
 		cc += *buf;
 
-	return (cc == cc_in) ? true : false;
+	return cc == cc_in;
 }
 
 static int xgbe_phy_sfp_read_eeprom(struct xgbe_prv_data *pdata)
@@ -1159,7 +1227,8 @@ static int xgbe_phy_sfp_read_eeprom(struct xgbe_prv_data *pdata)
 
 	ret = xgbe_phy_sfp_get_mux(pdata);
 	if (ret) {
-		netdev_err(pdata->netdev, "I2C error setting SFP MUX\n");
+		dev_err_once(pdata->dev, "%s: I2C error setting SFP MUX\n",
+			     netdev_name(pdata->netdev));
 		return ret;
 	}
 
@@ -1169,7 +1238,8 @@ static int xgbe_phy_sfp_read_eeprom(struct xgbe_prv_data *pdata)
 				&eeprom_addr, sizeof(eeprom_addr),
 				&sfp_eeprom, sizeof(sfp_eeprom));
 	if (ret) {
-		netdev_err(pdata->netdev, "I2C error reading SFP EEPROM\n");
+		dev_err_once(pdata->dev, "%s: I2C error reading SFP EEPROM\n",
+			     netdev_name(pdata->netdev));
 		goto put;
 	}
 
@@ -1197,13 +1267,6 @@ static int xgbe_phy_sfp_read_eeprom(struct xgbe_prv_data *pdata)
 
 		memcpy(&phy_data->sfp_eeprom, &sfp_eeprom, sizeof(sfp_eeprom));
 
-		if (sfp_eeprom.extd[XGBE_SFP_EXTD_SFF_8472]) {
-			u8 diag_type = sfp_eeprom.extd[XGBE_SFP_EXTD_DIAG];
-
-			if (!(diag_type & XGBE_SFP_EXTD_DIAG_ADDR_CHANGE))
-				phy_data->sfp_diags = 1;
-		}
-
 		xgbe_phy_free_phy_device(pdata);
 	} else {
 		phy_data->sfp_changed = 0;
@@ -1227,7 +1290,8 @@ static void xgbe_phy_sfp_signals(struct xgbe_prv_data *pdata)
 				&gpio_reg, sizeof(gpio_reg),
 				gpio_ports, sizeof(gpio_ports));
 	if (ret) {
-		netdev_err(pdata->netdev, "I2C error reading SFP GPIOs\n");
+		dev_err_once(pdata->dev, "%s: I2C error reading SFP GPIOs\n",
+			     netdev_name(pdata->netdev));
 		return;
 	}
 
@@ -1252,7 +1316,6 @@ static void xgbe_phy_sfp_reset(struct xgbe_phy_data *phy_data)
 	phy_data->sfp_rx_los = 0;
 	phy_data->sfp_tx_fault = 0;
 	phy_data->sfp_mod_absent = 1;
-	phy_data->sfp_diags = 0;
 	phy_data->sfp_base = XGBE_SFP_BASE_UNKNOWN;
 	phy_data->sfp_cable = XGBE_SFP_CABLE_UNKNOWN;
 	phy_data->sfp_speed = XGBE_SFP_SPEED_UNKNOWN;
@@ -1295,8 +1358,133 @@ put:
 	xgbe_phy_put_comm_ownership(pdata);
 }
 
+static int xgbe_phy_module_eeprom(struct xgbe_prv_data *pdata,
+				  struct ethtool_eeprom *eeprom, u8 *data)
+{
+	struct xgbe_phy_data *phy_data = pdata->phy_data;
+	u8 eeprom_addr, eeprom_data[XGBE_SFP_EEPROM_MAX];
+	struct xgbe_sfp_eeprom *sfp_eeprom;
+	unsigned int i, j, rem;
+	int ret;
+
+	rem = eeprom->len;
+
+	if (!eeprom->len) {
+		ret = -EINVAL;
+		goto done;
+	}
+
+	if ((eeprom->offset + eeprom->len) > XGBE_SFP_EEPROM_MAX) {
+		ret = -EINVAL;
+		goto done;
+	}
+
+	if (phy_data->port_mode != XGBE_PORT_MODE_SFP) {
+		ret = -ENXIO;
+		goto done;
+	}
+
+	if (!netif_running(pdata->netdev)) {
+		ret = -EIO;
+		goto done;
+	}
+
+	if (phy_data->sfp_mod_absent) {
+		ret = -EIO;
+		goto done;
+	}
+
+	ret = xgbe_phy_get_comm_ownership(pdata);
+	if (ret) {
+		ret = -EIO;
+		goto done;
+	}
+
+	ret = xgbe_phy_sfp_get_mux(pdata);
+	if (ret) {
+		netdev_err(pdata->netdev, "I2C error setting SFP MUX\n");
+		ret = -EIO;
+		goto put_own;
+	}
+
+	/* Read the SFP serial ID eeprom */
+	eeprom_addr = 0;
+	ret = xgbe_phy_i2c_read(pdata, XGBE_SFP_SERIAL_ID_ADDRESS,
+				&eeprom_addr, sizeof(eeprom_addr),
+				eeprom_data, XGBE_SFP_EEPROM_BASE_LEN);
+	if (ret) {
+		netdev_err(pdata->netdev,
+			   "I2C error reading SFP EEPROM\n");
+		ret = -EIO;
+		goto put_mux;
+	}
+
+	sfp_eeprom = (struct xgbe_sfp_eeprom *)eeprom_data;
+
+	if (XGBE_SFP_DIAGS_SUPPORTED(sfp_eeprom)) {
+		/* Read the SFP diagnostic eeprom */
+		eeprom_addr = 0;
+		ret = xgbe_phy_i2c_read(pdata, XGBE_SFP_DIAG_INFO_ADDRESS,
+					&eeprom_addr, sizeof(eeprom_addr),
+					eeprom_data + XGBE_SFP_EEPROM_BASE_LEN,
+					XGBE_SFP_EEPROM_DIAG_LEN);
+		if (ret) {
+			netdev_err(pdata->netdev,
+				   "I2C error reading SFP DIAGS\n");
+			ret = -EIO;
+			goto put_mux;
+		}
+	}
+
+	for (i = 0, j = eeprom->offset; i < eeprom->len; i++, j++) {
+		if ((j >= XGBE_SFP_EEPROM_BASE_LEN) &&
+		    !XGBE_SFP_DIAGS_SUPPORTED(sfp_eeprom))
+			break;
+
+		data[i] = eeprom_data[j];
+		rem--;
+	}
+
+put_mux:
+	xgbe_phy_sfp_put_mux(pdata);
+
+put_own:
+	xgbe_phy_put_comm_ownership(pdata);
+
+done:
+	eeprom->len -= rem;
+
+	return ret;
+}
+
+static int xgbe_phy_module_info(struct xgbe_prv_data *pdata,
+				struct ethtool_modinfo *modinfo)
+{
+	struct xgbe_phy_data *phy_data = pdata->phy_data;
+
+	if (phy_data->port_mode != XGBE_PORT_MODE_SFP)
+		return -ENXIO;
+
+	if (!netif_running(pdata->netdev))
+		return -EIO;
+
+	if (phy_data->sfp_mod_absent)
+		return -EIO;
+
+	if (XGBE_SFP_DIAGS_SUPPORTED(&phy_data->sfp_eeprom)) {
+		modinfo->type = ETH_MODULE_SFF_8472;
+		modinfo->eeprom_len = ETH_MODULE_SFF_8472_LEN;
+	} else {
+		modinfo->type = ETH_MODULE_SFF_8079;
+		modinfo->eeprom_len = ETH_MODULE_SFF_8079_LEN;
+	}
+
+	return 0;
+}
+
 static void xgbe_phy_phydev_flowctrl(struct xgbe_prv_data *pdata)
 {
+	struct ethtool_link_ksettings *lks = &pdata->phy.lks;
 	struct xgbe_phy_data *phy_data = pdata->phy_data;
 	u16 lcl_adv = 0, rmt_adv = 0;
 	u8 fc;
@@ -1313,11 +1501,11 @@ static void xgbe_phy_phydev_flowctrl(struct xgbe_prv_data *pdata)
 		lcl_adv |= ADVERTISE_PAUSE_ASYM;
 
 	if (phy_data->phydev->pause) {
-		pdata->phy.lp_advertising |= ADVERTISED_Pause;
+		XGBE_SET_LP_ADV(lks, Pause);
 		rmt_adv |= LPA_PAUSE_CAP;
 	}
 	if (phy_data->phydev->asym_pause) {
-		pdata->phy.lp_advertising |= ADVERTISED_Asym_Pause;
+		XGBE_SET_LP_ADV(lks, Asym_Pause);
 		rmt_adv |= LPA_PAUSE_ASYM;
 	}
 
@@ -1330,10 +1518,11 @@ static void xgbe_phy_phydev_flowctrl(struct xgbe_prv_data *pdata)
 
 static enum xgbe_mode xgbe_phy_an37_sgmii_outcome(struct xgbe_prv_data *pdata)
 {
+	struct ethtool_link_ksettings *lks = &pdata->phy.lks;
 	enum xgbe_mode mode;
 
-	pdata->phy.lp_advertising |= ADVERTISED_Autoneg;
-	pdata->phy.lp_advertising |= ADVERTISED_TP;
+	XGBE_SET_LP_ADV(lks, Autoneg);
+	XGBE_SET_LP_ADV(lks, TP);
 
 	/* Use external PHY to determine flow control */
 	if (pdata->phy.pause_autoneg)
@@ -1342,21 +1531,21 @@ static enum xgbe_mode xgbe_phy_an37_sgmii_outcome(struct xgbe_prv_data *pdata)
 	switch (pdata->an_status & XGBE_SGMII_AN_LINK_SPEED) {
 	case XGBE_SGMII_AN_LINK_SPEED_100:
 		if (pdata->an_status & XGBE_SGMII_AN_LINK_DUPLEX) {
-			pdata->phy.lp_advertising |= ADVERTISED_100baseT_Full;
+			XGBE_SET_LP_ADV(lks, 100baseT_Full);
 			mode = XGBE_MODE_SGMII_100;
 		} else {
 			/* Half-duplex not supported */
-			pdata->phy.lp_advertising |= ADVERTISED_100baseT_Half;
+			XGBE_SET_LP_ADV(lks, 100baseT_Half);
 			mode = XGBE_MODE_UNKNOWN;
 		}
 		break;
 	case XGBE_SGMII_AN_LINK_SPEED_1000:
 		if (pdata->an_status & XGBE_SGMII_AN_LINK_DUPLEX) {
-			pdata->phy.lp_advertising |= ADVERTISED_1000baseT_Full;
+			XGBE_SET_LP_ADV(lks, 1000baseT_Full);
 			mode = XGBE_MODE_SGMII_1000;
 		} else {
 			/* Half-duplex not supported */
-			pdata->phy.lp_advertising |= ADVERTISED_1000baseT_Half;
+			XGBE_SET_LP_ADV(lks, 1000baseT_Half);
 			mode = XGBE_MODE_UNKNOWN;
 		}
 		break;
@@ -1369,19 +1558,20 @@ static enum xgbe_mode xgbe_phy_an37_sgmii_outcome(struct xgbe_prv_data *pdata)
 
 static enum xgbe_mode xgbe_phy_an37_outcome(struct xgbe_prv_data *pdata)
 {
+	struct ethtool_link_ksettings *lks = &pdata->phy.lks;
 	enum xgbe_mode mode;
 	unsigned int ad_reg, lp_reg;
 
-	pdata->phy.lp_advertising |= ADVERTISED_Autoneg;
-	pdata->phy.lp_advertising |= ADVERTISED_FIBRE;
+	XGBE_SET_LP_ADV(lks, Autoneg);
+	XGBE_SET_LP_ADV(lks, FIBRE);
 
 	/* Compare Advertisement and Link Partner register */
 	ad_reg = XMDIO_READ(pdata, MDIO_MMD_VEND2, MDIO_VEND2_AN_ADVERTISE);
 	lp_reg = XMDIO_READ(pdata, MDIO_MMD_VEND2, MDIO_VEND2_AN_LP_ABILITY);
 	if (lp_reg & 0x100)
-		pdata->phy.lp_advertising |= ADVERTISED_Pause;
+		XGBE_SET_LP_ADV(lks, Pause);
 	if (lp_reg & 0x80)
-		pdata->phy.lp_advertising |= ADVERTISED_Asym_Pause;
+		XGBE_SET_LP_ADV(lks, Asym_Pause);
 
 	if (pdata->phy.pause_autoneg) {
 		/* Set flow control based on auto-negotiation result */
@@ -1399,10 +1589,8 @@ static enum xgbe_mode xgbe_phy_an37_outcome(struct xgbe_prv_data *pdata)
 		}
 	}
 
-	if (lp_reg & 0x40)
-		pdata->phy.lp_advertising |= ADVERTISED_1000baseT_Half;
 	if (lp_reg & 0x20)
-		pdata->phy.lp_advertising |= ADVERTISED_1000baseT_Full;
+		XGBE_SET_LP_ADV(lks, 1000baseX_Full);
 
 	/* Half duplex is not supported */
 	ad_reg &= lp_reg;
@@ -1413,12 +1601,13 @@ static enum xgbe_mode xgbe_phy_an37_outcome(struct xgbe_prv_data *pdata)
 
 static enum xgbe_mode xgbe_phy_an73_redrv_outcome(struct xgbe_prv_data *pdata)
 {
+	struct ethtool_link_ksettings *lks = &pdata->phy.lks;
 	struct xgbe_phy_data *phy_data = pdata->phy_data;
 	enum xgbe_mode mode;
 	unsigned int ad_reg, lp_reg;
 
-	pdata->phy.lp_advertising |= ADVERTISED_Autoneg;
-	pdata->phy.lp_advertising |= ADVERTISED_Backplane;
+	XGBE_SET_LP_ADV(lks, Autoneg);
+	XGBE_SET_LP_ADV(lks, Backplane);
 
 	/* Use external PHY to determine flow control */
 	if (pdata->phy.pause_autoneg)
@@ -1428,9 +1617,9 @@ static enum xgbe_mode xgbe_phy_an73_redrv_outcome(struct xgbe_prv_data *pdata)
 	ad_reg = XMDIO_READ(pdata, MDIO_MMD_AN, MDIO_AN_ADVERTISE + 1);
 	lp_reg = XMDIO_READ(pdata, MDIO_MMD_AN, MDIO_AN_LPA + 1);
 	if (lp_reg & 0x80)
-		pdata->phy.lp_advertising |= ADVERTISED_10000baseKR_Full;
+		XGBE_SET_LP_ADV(lks, 10000baseKR_Full);
 	if (lp_reg & 0x20)
-		pdata->phy.lp_advertising |= ADVERTISED_1000baseKX_Full;
+		XGBE_SET_LP_ADV(lks, 1000baseKX_Full);
 
 	ad_reg &= lp_reg;
 	if (ad_reg & 0x80) {
@@ -1483,26 +1672,27 @@ static enum xgbe_mode xgbe_phy_an73_redrv_outcome(struct xgbe_prv_data *pdata)
 	ad_reg = XMDIO_READ(pdata, MDIO_MMD_AN, MDIO_AN_ADVERTISE + 2);
 	lp_reg = XMDIO_READ(pdata, MDIO_MMD_AN, MDIO_AN_LPA + 2);
 	if (lp_reg & 0xc000)
-		pdata->phy.lp_advertising |= ADVERTISED_10000baseR_FEC;
+		XGBE_SET_LP_ADV(lks, 10000baseR_FEC);
 
 	return mode;
 }
 
 static enum xgbe_mode xgbe_phy_an73_outcome(struct xgbe_prv_data *pdata)
 {
+	struct ethtool_link_ksettings *lks = &pdata->phy.lks;
 	enum xgbe_mode mode;
 	unsigned int ad_reg, lp_reg;
 
-	pdata->phy.lp_advertising |= ADVERTISED_Autoneg;
-	pdata->phy.lp_advertising |= ADVERTISED_Backplane;
+	XGBE_SET_LP_ADV(lks, Autoneg);
+	XGBE_SET_LP_ADV(lks, Backplane);
 
 	/* Compare Advertisement and Link Partner register 1 */
 	ad_reg = XMDIO_READ(pdata, MDIO_MMD_AN, MDIO_AN_ADVERTISE);
 	lp_reg = XMDIO_READ(pdata, MDIO_MMD_AN, MDIO_AN_LPA);
 	if (lp_reg & 0x400)
-		pdata->phy.lp_advertising |= ADVERTISED_Pause;
+		XGBE_SET_LP_ADV(lks, Pause);
 	if (lp_reg & 0x800)
-		pdata->phy.lp_advertising |= ADVERTISED_Asym_Pause;
+		XGBE_SET_LP_ADV(lks, Asym_Pause);
 
 	if (pdata->phy.pause_autoneg) {
 		/* Set flow control based on auto-negotiation result */
@@ -1524,9 +1714,9 @@ static enum xgbe_mode xgbe_phy_an73_outcome(struct xgbe_prv_data *pdata)
 	ad_reg = XMDIO_READ(pdata, MDIO_MMD_AN, MDIO_AN_ADVERTISE + 1);
 	lp_reg = XMDIO_READ(pdata, MDIO_MMD_AN, MDIO_AN_LPA + 1);
 	if (lp_reg & 0x80)
-		pdata->phy.lp_advertising |= ADVERTISED_10000baseKR_Full;
+		XGBE_SET_LP_ADV(lks, 10000baseKR_Full);
 	if (lp_reg & 0x20)
-		pdata->phy.lp_advertising |= ADVERTISED_1000baseKX_Full;
+		XGBE_SET_LP_ADV(lks, 1000baseKX_Full);
 
 	ad_reg &= lp_reg;
 	if (ad_reg & 0x80)
@@ -1540,7 +1730,7 @@ static enum xgbe_mode xgbe_phy_an73_outcome(struct xgbe_prv_data *pdata)
 	ad_reg = XMDIO_READ(pdata, MDIO_MMD_AN, MDIO_AN_ADVERTISE + 2);
 	lp_reg = XMDIO_READ(pdata, MDIO_MMD_AN, MDIO_AN_LPA + 2);
 	if (lp_reg & 0xc000)
-		pdata->phy.lp_advertising |= ADVERTISED_10000baseR_FEC;
+		XGBE_SET_LP_ADV(lks, 10000baseR_FEC);
 
 	return mode;
 }
@@ -1561,41 +1751,47 @@ static enum xgbe_mode xgbe_phy_an_outcome(struct xgbe_prv_data *pdata)
 	}
 }
 
-static unsigned int xgbe_phy_an_advertising(struct xgbe_prv_data *pdata)
+static void xgbe_phy_an_advertising(struct xgbe_prv_data *pdata,
+				    struct ethtool_link_ksettings *dlks)
 {
+	struct ethtool_link_ksettings *slks = &pdata->phy.lks;
 	struct xgbe_phy_data *phy_data = pdata->phy_data;
-	unsigned int advertising;
+
+	XGBE_LM_COPY(dlks, advertising, slks, advertising);
 
 	/* Without a re-driver, just return current advertising */
 	if (!phy_data->redrv)
-		return pdata->phy.advertising;
+		return;
 
 	/* With the KR re-driver we need to advertise a single speed */
-	advertising = pdata->phy.advertising;
-	advertising &= ~ADVERTISED_1000baseKX_Full;
-	advertising &= ~ADVERTISED_10000baseKR_Full;
+	XGBE_CLR_ADV(dlks, 1000baseKX_Full);
+	XGBE_CLR_ADV(dlks, 10000baseKR_Full);
+
+	/* Advertise FEC support is present */
+	if (pdata->fec_ability & MDIO_PMA_10GBR_FECABLE_ABLE)
+		XGBE_SET_ADV(dlks, 10000baseR_FEC);
 
 	switch (phy_data->port_mode) {
 	case XGBE_PORT_MODE_BACKPLANE:
-		advertising |= ADVERTISED_10000baseKR_Full;
+		XGBE_SET_ADV(dlks, 10000baseKR_Full);
 		break;
 	case XGBE_PORT_MODE_BACKPLANE_2500:
-		advertising |= ADVERTISED_1000baseKX_Full;
+		XGBE_SET_ADV(dlks, 1000baseKX_Full);
 		break;
 	case XGBE_PORT_MODE_1000BASE_T:
 	case XGBE_PORT_MODE_1000BASE_X:
 	case XGBE_PORT_MODE_NBASE_T:
-		advertising |= ADVERTISED_1000baseKX_Full;
+		XGBE_SET_ADV(dlks, 1000baseKX_Full);
 		break;
 	case XGBE_PORT_MODE_10GBASE_T:
 		if (phy_data->phydev &&
 		    (phy_data->phydev->speed == SPEED_10000))
-			advertising |= ADVERTISED_10000baseKR_Full;
+			XGBE_SET_ADV(dlks, 10000baseKR_Full);
 		else
-			advertising |= ADVERTISED_1000baseKX_Full;
+			XGBE_SET_ADV(dlks, 1000baseKX_Full);
 		break;
 	case XGBE_PORT_MODE_10GBASE_R:
-		advertising |= ADVERTISED_10000baseKR_Full;
+		XGBE_SET_ADV(dlks, 10000baseKR_Full);
 		break;
 	case XGBE_PORT_MODE_SFP:
 		switch (phy_data->sfp_base) {
@@ -1603,24 +1799,24 @@ static unsigned int xgbe_phy_an_advertising(struct xgbe_prv_data *pdata)
 		case XGBE_SFP_BASE_1000_SX:
 		case XGBE_SFP_BASE_1000_LX:
 		case XGBE_SFP_BASE_1000_CX:
-			advertising |= ADVERTISED_1000baseKX_Full;
+			XGBE_SET_ADV(dlks, 1000baseKX_Full);
 			break;
 		default:
-			advertising |= ADVERTISED_10000baseKR_Full;
+			XGBE_SET_ADV(dlks, 10000baseKR_Full);
 			break;
 		}
 		break;
 	default:
-		advertising |= ADVERTISED_10000baseKR_Full;
+		XGBE_SET_ADV(dlks, 10000baseKR_Full);
 		break;
 	}
-
-	return advertising;
 }
 
 static int xgbe_phy_an_config(struct xgbe_prv_data *pdata)
 {
+	struct ethtool_link_ksettings *lks = &pdata->phy.lks;
 	struct xgbe_phy_data *phy_data = pdata->phy_data;
+	u32 advertising;
 	int ret;
 
 	ret = xgbe_phy_find_phy_device(pdata);
@@ -1630,9 +1826,12 @@ static int xgbe_phy_an_config(struct xgbe_prv_data *pdata)
 	if (!phy_data->phydev)
 		return 0;
 
+	ethtool_convert_link_mode_to_legacy_u32(&advertising,
+						lks->link_modes.advertising);
+
 	phy_data->phydev->autoneg = pdata->phy.autoneg;
 	phy_data->phydev->advertising = phy_data->phydev->supported &
-					pdata->phy.advertising;
+					advertising;
 
 	if (pdata->phy.autoneg != AUTONEG_ENABLE) {
 		phy_data->phydev->speed = pdata->phy.speed;
@@ -2086,6 +2285,8 @@ static enum xgbe_mode xgbe_phy_get_baset_mode(struct xgbe_phy_data *phy_data,
 		return XGBE_MODE_SGMII_100;
 	case SPEED_1000:
 		return XGBE_MODE_SGMII_1000;
+	case SPEED_2500:
+		return XGBE_MODE_KX_2500;
 	case SPEED_10000:
 		return XGBE_MODE_KR;
 	default:
@@ -2188,11 +2389,10 @@ static void xgbe_phy_set_mode(struct xgbe_prv_data *pdata, enum xgbe_mode mode)
 }
 
 static bool xgbe_phy_check_mode(struct xgbe_prv_data *pdata,
-				enum xgbe_mode mode, u32 advert)
+				enum xgbe_mode mode, bool advert)
 {
 	if (pdata->phy.autoneg == AUTONEG_ENABLE) {
-		if (pdata->phy.advertising & advert)
-			return true;
+		return advert;
 	} else {
 		enum xgbe_mode cur_mode;
 
@@ -2207,13 +2407,15 @@ static bool xgbe_phy_check_mode(struct xgbe_prv_data *pdata,
 static bool xgbe_phy_use_basex_mode(struct xgbe_prv_data *pdata,
 				    enum xgbe_mode mode)
 {
+	struct ethtool_link_ksettings *lks = &pdata->phy.lks;
+
 	switch (mode) {
 	case XGBE_MODE_X:
 		return xgbe_phy_check_mode(pdata, mode,
-					   ADVERTISED_1000baseT_Full);
+					   XGBE_ADV(lks, 1000baseX_Full));
 	case XGBE_MODE_KR:
 		return xgbe_phy_check_mode(pdata, mode,
-					   ADVERTISED_10000baseT_Full);
+					   XGBE_ADV(lks, 10000baseKR_Full));
 	default:
 		return false;
 	}
@@ -2222,16 +2424,21 @@ static bool xgbe_phy_use_basex_mode(struct xgbe_prv_data *pdata,
 static bool xgbe_phy_use_baset_mode(struct xgbe_prv_data *pdata,
 				    enum xgbe_mode mode)
 {
+	struct ethtool_link_ksettings *lks = &pdata->phy.lks;
+
 	switch (mode) {
 	case XGBE_MODE_SGMII_100:
 		return xgbe_phy_check_mode(pdata, mode,
-					   ADVERTISED_100baseT_Full);
+					   XGBE_ADV(lks, 100baseT_Full));
 	case XGBE_MODE_SGMII_1000:
 		return xgbe_phy_check_mode(pdata, mode,
-					   ADVERTISED_1000baseT_Full);
+					   XGBE_ADV(lks, 1000baseT_Full));
+	case XGBE_MODE_KX_2500:
+		return xgbe_phy_check_mode(pdata, mode,
+					   XGBE_ADV(lks, 2500baseT_Full));
 	case XGBE_MODE_KR:
 		return xgbe_phy_check_mode(pdata, mode,
-					   ADVERTISED_10000baseT_Full);
+					   XGBE_ADV(lks, 10000baseT_Full));
 	default:
 		return false;
 	}
@@ -2240,6 +2447,7 @@ static bool xgbe_phy_use_baset_mode(struct xgbe_prv_data *pdata,
 static bool xgbe_phy_use_sfp_mode(struct xgbe_prv_data *pdata,
 				  enum xgbe_mode mode)
 {
+	struct ethtool_link_ksettings *lks = &pdata->phy.lks;
 	struct xgbe_phy_data *phy_data = pdata->phy_data;
 
 	switch (mode) {
@@ -2247,20 +2455,26 @@ static bool xgbe_phy_use_sfp_mode(struct xgbe_prv_data *pdata,
 		if (phy_data->sfp_base == XGBE_SFP_BASE_1000_T)
 			return false;
 		return xgbe_phy_check_mode(pdata, mode,
-					   ADVERTISED_1000baseT_Full);
+					   XGBE_ADV(lks, 1000baseX_Full));
 	case XGBE_MODE_SGMII_100:
 		if (phy_data->sfp_base != XGBE_SFP_BASE_1000_T)
 			return false;
 		return xgbe_phy_check_mode(pdata, mode,
-					   ADVERTISED_100baseT_Full);
+					   XGBE_ADV(lks, 100baseT_Full));
 	case XGBE_MODE_SGMII_1000:
 		if (phy_data->sfp_base != XGBE_SFP_BASE_1000_T)
 			return false;
 		return xgbe_phy_check_mode(pdata, mode,
-					   ADVERTISED_1000baseT_Full);
+					   XGBE_ADV(lks, 1000baseT_Full));
 	case XGBE_MODE_SFI:
+		if (phy_data->sfp_mod_absent)
+			return true;
 		return xgbe_phy_check_mode(pdata, mode,
-					   ADVERTISED_10000baseT_Full);
+					   XGBE_ADV(lks, 10000baseSR_Full)  ||
+					   XGBE_ADV(lks, 10000baseLR_Full)  ||
+					   XGBE_ADV(lks, 10000baseLRM_Full) ||
+					   XGBE_ADV(lks, 10000baseER_Full)  ||
+					   XGBE_ADV(lks, 10000baseCR_Full));
 	default:
 		return false;
 	}
@@ -2269,10 +2483,12 @@ static bool xgbe_phy_use_sfp_mode(struct xgbe_prv_data *pdata,
 static bool xgbe_phy_use_bp_2500_mode(struct xgbe_prv_data *pdata,
 				      enum xgbe_mode mode)
 {
+	struct ethtool_link_ksettings *lks = &pdata->phy.lks;
+
 	switch (mode) {
 	case XGBE_MODE_KX_2500:
 		return xgbe_phy_check_mode(pdata, mode,
-					   ADVERTISED_2500baseX_Full);
+					   XGBE_ADV(lks, 2500baseX_Full));
 	default:
 		return false;
 	}
@@ -2281,13 +2497,15 @@ static bool xgbe_phy_use_bp_2500_mode(struct xgbe_prv_data *pdata,
 static bool xgbe_phy_use_bp_mode(struct xgbe_prv_data *pdata,
 				 enum xgbe_mode mode)
 {
+	struct ethtool_link_ksettings *lks = &pdata->phy.lks;
+
 	switch (mode) {
 	case XGBE_MODE_KX_1000:
 		return xgbe_phy_check_mode(pdata, mode,
-					   ADVERTISED_1000baseKX_Full);
+					   XGBE_ADV(lks, 1000baseKX_Full));
 	case XGBE_MODE_KR:
 		return xgbe_phy_check_mode(pdata, mode,
-					   ADVERTISED_10000baseKR_Full);
+					   XGBE_ADV(lks, 10000baseKR_Full));
 	default:
 		return false;
 	}
@@ -2336,6 +2554,8 @@ static bool xgbe_phy_valid_speed_baset_mode(struct xgbe_phy_data *phy_data,
 	case SPEED_100:
 	case SPEED_1000:
 		return true;
+	case SPEED_2500:
+		return (phy_data->port_mode == XGBE_PORT_MODE_NBASE_T);
 	case SPEED_10000:
 		return (phy_data->port_mode == XGBE_PORT_MODE_10GBASE_T);
 	default:
@@ -2458,22 +2678,21 @@ static int xgbe_phy_link_status(struct xgbe_prv_data *pdata, int *an_restart)
 static void xgbe_phy_sfp_gpio_setup(struct xgbe_prv_data *pdata)
 {
 	struct xgbe_phy_data *phy_data = pdata->phy_data;
-	unsigned int reg;
-
-	reg = XP_IOREAD(pdata, XP_PROP_3);
 
 	phy_data->sfp_gpio_address = XGBE_GPIO_ADDRESS_PCA9555 +
-				     XP_GET_BITS(reg, XP_PROP_3, GPIO_ADDR);
+				     XP_GET_BITS(pdata->pp3, XP_PROP_3,
+						 GPIO_ADDR);
 
-	phy_data->sfp_gpio_mask = XP_GET_BITS(reg, XP_PROP_3, GPIO_MASK);
+	phy_data->sfp_gpio_mask = XP_GET_BITS(pdata->pp3, XP_PROP_3,
+					      GPIO_MASK);
 
-	phy_data->sfp_gpio_rx_los = XP_GET_BITS(reg, XP_PROP_3,
+	phy_data->sfp_gpio_rx_los = XP_GET_BITS(pdata->pp3, XP_PROP_3,
 						GPIO_RX_LOS);
-	phy_data->sfp_gpio_tx_fault = XP_GET_BITS(reg, XP_PROP_3,
+	phy_data->sfp_gpio_tx_fault = XP_GET_BITS(pdata->pp3, XP_PROP_3,
 						  GPIO_TX_FAULT);
-	phy_data->sfp_gpio_mod_absent = XP_GET_BITS(reg, XP_PROP_3,
+	phy_data->sfp_gpio_mod_absent = XP_GET_BITS(pdata->pp3, XP_PROP_3,
 						    GPIO_MOD_ABS);
-	phy_data->sfp_gpio_rate_select = XP_GET_BITS(reg, XP_PROP_3,
+	phy_data->sfp_gpio_rate_select = XP_GET_BITS(pdata->pp3, XP_PROP_3,
 						     GPIO_RATE_SELECT);
 
 	if (netif_msg_probe(pdata)) {
@@ -2495,18 +2714,17 @@ static void xgbe_phy_sfp_gpio_setup(struct xgbe_prv_data *pdata)
 static void xgbe_phy_sfp_comm_setup(struct xgbe_prv_data *pdata)
 {
 	struct xgbe_phy_data *phy_data = pdata->phy_data;
-	unsigned int reg, mux_addr_hi, mux_addr_lo;
+	unsigned int mux_addr_hi, mux_addr_lo;
 
-	reg = XP_IOREAD(pdata, XP_PROP_4);
-
-	mux_addr_hi = XP_GET_BITS(reg, XP_PROP_4, MUX_ADDR_HI);
-	mux_addr_lo = XP_GET_BITS(reg, XP_PROP_4, MUX_ADDR_LO);
+	mux_addr_hi = XP_GET_BITS(pdata->pp4, XP_PROP_4, MUX_ADDR_HI);
+	mux_addr_lo = XP_GET_BITS(pdata->pp4, XP_PROP_4, MUX_ADDR_LO);
 	if (mux_addr_lo == XGBE_SFP_DIRECT)
 		return;
 
 	phy_data->sfp_comm = XGBE_SFP_COMM_PCA9545;
 	phy_data->sfp_mux_address = (mux_addr_hi << 2) + mux_addr_lo;
-	phy_data->sfp_mux_channel = XP_GET_BITS(reg, XP_PROP_4, MUX_CHAN);
+	phy_data->sfp_mux_channel = XP_GET_BITS(pdata->pp4, XP_PROP_4,
+						MUX_CHAN);
 
 	if (netif_msg_probe(pdata)) {
 		dev_dbg(pdata->dev, "SFP: mux_address=%#x\n",
@@ -2629,13 +2847,11 @@ static bool xgbe_phy_redrv_error(struct xgbe_phy_data *phy_data)
 static int xgbe_phy_mdio_reset_setup(struct xgbe_prv_data *pdata)
 {
 	struct xgbe_phy_data *phy_data = pdata->phy_data;
-	unsigned int reg;
 
 	if (phy_data->conn_type != XGBE_CONN_TYPE_MDIO)
 		return 0;
 
-	reg = XP_IOREAD(pdata, XP_PROP_3);
-	phy_data->mdio_reset = XP_GET_BITS(reg, XP_PROP_3, MDIO_RESET);
+	phy_data->mdio_reset = XP_GET_BITS(pdata->pp3, XP_PROP_3, MDIO_RESET);
 	switch (phy_data->mdio_reset) {
 	case XGBE_MDIO_RESET_NONE:
 	case XGBE_MDIO_RESET_I2C_GPIO:
@@ -2649,12 +2865,12 @@ static int xgbe_phy_mdio_reset_setup(struct xgbe_prv_data *pdata)
 
 	if (phy_data->mdio_reset == XGBE_MDIO_RESET_I2C_GPIO) {
 		phy_data->mdio_reset_addr = XGBE_GPIO_ADDRESS_PCA9555 +
-					    XP_GET_BITS(reg, XP_PROP_3,
+					    XP_GET_BITS(pdata->pp3, XP_PROP_3,
 							MDIO_RESET_I2C_ADDR);
-		phy_data->mdio_reset_gpio = XP_GET_BITS(reg, XP_PROP_3,
+		phy_data->mdio_reset_gpio = XP_GET_BITS(pdata->pp3, XP_PROP_3,
 							MDIO_RESET_I2C_GPIO);
 	} else if (phy_data->mdio_reset == XGBE_MDIO_RESET_INT_GPIO) {
-		phy_data->mdio_reset_gpio = XP_GET_BITS(reg, XP_PROP_3,
+		phy_data->mdio_reset_gpio = XP_GET_BITS(pdata->pp3, XP_PROP_3,
 							MDIO_RESET_INT_GPIO);
 	}
 
@@ -2744,12 +2960,9 @@ static bool xgbe_phy_conn_type_mismatch(struct xgbe_prv_data *pdata)
 
 static bool xgbe_phy_port_enabled(struct xgbe_prv_data *pdata)
 {
-	unsigned int reg;
-
-	reg = XP_IOREAD(pdata, XP_PROP_0);
-	if (!XP_GET_BITS(reg, XP_PROP_0, PORT_SPEEDS))
+	if (!XP_GET_BITS(pdata->pp0, XP_PROP_0, PORT_SPEEDS))
 		return false;
-	if (!XP_GET_BITS(reg, XP_PROP_0, CONN_TYPE))
+	if (!XP_GET_BITS(pdata->pp0, XP_PROP_0, CONN_TYPE))
 		return false;
 
 	return true;
@@ -2955,9 +3168,9 @@ static void xgbe_phy_exit(struct xgbe_prv_data *pdata)
 
 static int xgbe_phy_init(struct xgbe_prv_data *pdata)
 {
+	struct ethtool_link_ksettings *lks = &pdata->phy.lks;
 	struct xgbe_phy_data *phy_data;
 	struct mii_bus *mii;
-	unsigned int reg;
 	int ret;
 
 	/* Check if enabled */
@@ -2976,12 +3189,11 @@ static int xgbe_phy_init(struct xgbe_prv_data *pdata)
 		return -ENOMEM;
 	pdata->phy_data = phy_data;
 
-	reg = XP_IOREAD(pdata, XP_PROP_0);
-	phy_data->port_mode = XP_GET_BITS(reg, XP_PROP_0, PORT_MODE);
-	phy_data->port_id = XP_GET_BITS(reg, XP_PROP_0, PORT_ID);
-	phy_data->port_speeds = XP_GET_BITS(reg, XP_PROP_0, PORT_SPEEDS);
-	phy_data->conn_type = XP_GET_BITS(reg, XP_PROP_0, CONN_TYPE);
-	phy_data->mdio_addr = XP_GET_BITS(reg, XP_PROP_0, MDIO_ADDR);
+	phy_data->port_mode = XP_GET_BITS(pdata->pp0, XP_PROP_0, PORT_MODE);
+	phy_data->port_id = XP_GET_BITS(pdata->pp0, XP_PROP_0, PORT_ID);
+	phy_data->port_speeds = XP_GET_BITS(pdata->pp0, XP_PROP_0, PORT_SPEEDS);
+	phy_data->conn_type = XP_GET_BITS(pdata->pp0, XP_PROP_0, CONN_TYPE);
+	phy_data->mdio_addr = XP_GET_BITS(pdata->pp0, XP_PROP_0, MDIO_ADDR);
 	if (netif_msg_probe(pdata)) {
 		dev_dbg(pdata->dev, "port mode=%u\n", phy_data->port_mode);
 		dev_dbg(pdata->dev, "port id=%u\n", phy_data->port_id);
@@ -2990,12 +3202,11 @@ static int xgbe_phy_init(struct xgbe_prv_data *pdata)
 		dev_dbg(pdata->dev, "mdio addr=%u\n", phy_data->mdio_addr);
 	}
 
-	reg = XP_IOREAD(pdata, XP_PROP_4);
-	phy_data->redrv = XP_GET_BITS(reg, XP_PROP_4, REDRV_PRESENT);
-	phy_data->redrv_if = XP_GET_BITS(reg, XP_PROP_4, REDRV_IF);
-	phy_data->redrv_addr = XP_GET_BITS(reg, XP_PROP_4, REDRV_ADDR);
-	phy_data->redrv_lane = XP_GET_BITS(reg, XP_PROP_4, REDRV_LANE);
-	phy_data->redrv_model = XP_GET_BITS(reg, XP_PROP_4, REDRV_MODEL);
+	phy_data->redrv = XP_GET_BITS(pdata->pp4, XP_PROP_4, REDRV_PRESENT);
+	phy_data->redrv_if = XP_GET_BITS(pdata->pp4, XP_PROP_4, REDRV_IF);
+	phy_data->redrv_addr = XP_GET_BITS(pdata->pp4, XP_PROP_4, REDRV_ADDR);
+	phy_data->redrv_lane = XP_GET_BITS(pdata->pp4, XP_PROP_4, REDRV_LANE);
+	phy_data->redrv_model = XP_GET_BITS(pdata->pp4, XP_PROP_4, REDRV_MODEL);
 	if (phy_data->redrv && netif_msg_probe(pdata)) {
 		dev_dbg(pdata->dev, "redrv present\n");
 		dev_dbg(pdata->dev, "redrv i/f=%u\n", phy_data->redrv_if);
@@ -3034,32 +3245,33 @@ static int xgbe_phy_init(struct xgbe_prv_data *pdata)
 	phy_data->cur_mode = XGBE_MODE_UNKNOWN;
 
 	/* Initialize supported features */
-	pdata->phy.supported = 0;
+	XGBE_ZERO_SUP(lks);
 
 	switch (phy_data->port_mode) {
 	/* Backplane support */
 	case XGBE_PORT_MODE_BACKPLANE:
-		pdata->phy.supported |= SUPPORTED_Autoneg;
-		pdata->phy.supported |= SUPPORTED_Pause | SUPPORTED_Asym_Pause;
-		pdata->phy.supported |= SUPPORTED_Backplane;
+		XGBE_SET_SUP(lks, Autoneg);
+		XGBE_SET_SUP(lks, Pause);
+		XGBE_SET_SUP(lks, Asym_Pause);
+		XGBE_SET_SUP(lks, Backplane);
 		if (phy_data->port_speeds & XGBE_PHY_PORT_SPEED_1000) {
-			pdata->phy.supported |= SUPPORTED_1000baseKX_Full;
+			XGBE_SET_SUP(lks, 1000baseKX_Full);
 			phy_data->start_mode = XGBE_MODE_KX_1000;
 		}
 		if (phy_data->port_speeds & XGBE_PHY_PORT_SPEED_10000) {
-			pdata->phy.supported |= SUPPORTED_10000baseKR_Full;
+			XGBE_SET_SUP(lks, 10000baseKR_Full);
 			if (pdata->fec_ability & MDIO_PMA_10GBR_FECABLE_ABLE)
-				pdata->phy.supported |=
-					SUPPORTED_10000baseR_FEC;
+				XGBE_SET_SUP(lks, 10000baseR_FEC);
 			phy_data->start_mode = XGBE_MODE_KR;
 		}
 
 		phy_data->phydev_mode = XGBE_MDIO_MODE_NONE;
 		break;
 	case XGBE_PORT_MODE_BACKPLANE_2500:
-		pdata->phy.supported |= SUPPORTED_Pause | SUPPORTED_Asym_Pause;
-		pdata->phy.supported |= SUPPORTED_Backplane;
-		pdata->phy.supported |= SUPPORTED_2500baseX_Full;
+		XGBE_SET_SUP(lks, Pause);
+		XGBE_SET_SUP(lks, Asym_Pause);
+		XGBE_SET_SUP(lks, Backplane);
+		XGBE_SET_SUP(lks, 2500baseX_Full);
 		phy_data->start_mode = XGBE_MODE_KX_2500;
 
 		phy_data->phydev_mode = XGBE_MDIO_MODE_NONE;
@@ -3067,15 +3279,16 @@ static int xgbe_phy_init(struct xgbe_prv_data *pdata)
 
 	/* MDIO 1GBase-T support */
 	case XGBE_PORT_MODE_1000BASE_T:
-		pdata->phy.supported |= SUPPORTED_Autoneg;
-		pdata->phy.supported |= SUPPORTED_Pause | SUPPORTED_Asym_Pause;
-		pdata->phy.supported |= SUPPORTED_TP;
+		XGBE_SET_SUP(lks, Autoneg);
+		XGBE_SET_SUP(lks, Pause);
+		XGBE_SET_SUP(lks, Asym_Pause);
+		XGBE_SET_SUP(lks, TP);
 		if (phy_data->port_speeds & XGBE_PHY_PORT_SPEED_100) {
-			pdata->phy.supported |= SUPPORTED_100baseT_Full;
+			XGBE_SET_SUP(lks, 100baseT_Full);
 			phy_data->start_mode = XGBE_MODE_SGMII_100;
 		}
 		if (phy_data->port_speeds & XGBE_PHY_PORT_SPEED_1000) {
-			pdata->phy.supported |= SUPPORTED_1000baseT_Full;
+			XGBE_SET_SUP(lks, 1000baseT_Full);
 			phy_data->start_mode = XGBE_MODE_SGMII_1000;
 		}
 
@@ -3084,10 +3297,11 @@ static int xgbe_phy_init(struct xgbe_prv_data *pdata)
 
 	/* MDIO Base-X support */
 	case XGBE_PORT_MODE_1000BASE_X:
-		pdata->phy.supported |= SUPPORTED_Autoneg;
-		pdata->phy.supported |= SUPPORTED_Pause | SUPPORTED_Asym_Pause;
-		pdata->phy.supported |= SUPPORTED_FIBRE;
-		pdata->phy.supported |= SUPPORTED_1000baseT_Full;
+		XGBE_SET_SUP(lks, Autoneg);
+		XGBE_SET_SUP(lks, Pause);
+		XGBE_SET_SUP(lks, Asym_Pause);
+		XGBE_SET_SUP(lks, FIBRE);
+		XGBE_SET_SUP(lks, 1000baseX_Full);
 		phy_data->start_mode = XGBE_MODE_X;
 
 		phy_data->phydev_mode = XGBE_MDIO_MODE_CL22;
@@ -3095,19 +3309,20 @@ static int xgbe_phy_init(struct xgbe_prv_data *pdata)
 
 	/* MDIO NBase-T support */
 	case XGBE_PORT_MODE_NBASE_T:
-		pdata->phy.supported |= SUPPORTED_Autoneg;
-		pdata->phy.supported |= SUPPORTED_Pause | SUPPORTED_Asym_Pause;
-		pdata->phy.supported |= SUPPORTED_TP;
+		XGBE_SET_SUP(lks, Autoneg);
+		XGBE_SET_SUP(lks, Pause);
+		XGBE_SET_SUP(lks, Asym_Pause);
+		XGBE_SET_SUP(lks, TP);
 		if (phy_data->port_speeds & XGBE_PHY_PORT_SPEED_100) {
-			pdata->phy.supported |= SUPPORTED_100baseT_Full;
+			XGBE_SET_SUP(lks, 100baseT_Full);
 			phy_data->start_mode = XGBE_MODE_SGMII_100;
 		}
 		if (phy_data->port_speeds & XGBE_PHY_PORT_SPEED_1000) {
-			pdata->phy.supported |= SUPPORTED_1000baseT_Full;
+			XGBE_SET_SUP(lks, 1000baseT_Full);
 			phy_data->start_mode = XGBE_MODE_SGMII_1000;
 		}
 		if (phy_data->port_speeds & XGBE_PHY_PORT_SPEED_2500) {
-			pdata->phy.supported |= SUPPORTED_2500baseX_Full;
+			XGBE_SET_SUP(lks, 2500baseT_Full);
 			phy_data->start_mode = XGBE_MODE_KX_2500;
 		}
 
@@ -3116,33 +3331,38 @@ static int xgbe_phy_init(struct xgbe_prv_data *pdata)
 
 	/* 10GBase-T support */
 	case XGBE_PORT_MODE_10GBASE_T:
-		pdata->phy.supported |= SUPPORTED_Autoneg;
-		pdata->phy.supported |= SUPPORTED_Pause | SUPPORTED_Asym_Pause;
-		pdata->phy.supported |= SUPPORTED_TP;
+		XGBE_SET_SUP(lks, Autoneg);
+		XGBE_SET_SUP(lks, Pause);
+		XGBE_SET_SUP(lks, Asym_Pause);
+		XGBE_SET_SUP(lks, TP);
 		if (phy_data->port_speeds & XGBE_PHY_PORT_SPEED_100) {
-			pdata->phy.supported |= SUPPORTED_100baseT_Full;
+			XGBE_SET_SUP(lks, 100baseT_Full);
 			phy_data->start_mode = XGBE_MODE_SGMII_100;
 		}
 		if (phy_data->port_speeds & XGBE_PHY_PORT_SPEED_1000) {
-			pdata->phy.supported |= SUPPORTED_1000baseT_Full;
+			XGBE_SET_SUP(lks, 1000baseT_Full);
 			phy_data->start_mode = XGBE_MODE_SGMII_1000;
 		}
 		if (phy_data->port_speeds & XGBE_PHY_PORT_SPEED_10000) {
-			pdata->phy.supported |= SUPPORTED_10000baseT_Full;
+			XGBE_SET_SUP(lks, 10000baseT_Full);
 			phy_data->start_mode = XGBE_MODE_KR;
 		}
 
-		phy_data->phydev_mode = XGBE_MDIO_MODE_NONE;
+		phy_data->phydev_mode = XGBE_MDIO_MODE_CL45;
 		break;
 
 	/* 10GBase-R support */
 	case XGBE_PORT_MODE_10GBASE_R:
-		pdata->phy.supported |= SUPPORTED_Autoneg;
-		pdata->phy.supported |= SUPPORTED_Pause | SUPPORTED_Asym_Pause;
-		pdata->phy.supported |= SUPPORTED_TP;
-		pdata->phy.supported |= SUPPORTED_10000baseT_Full;
+		XGBE_SET_SUP(lks, Autoneg);
+		XGBE_SET_SUP(lks, Pause);
+		XGBE_SET_SUP(lks, Asym_Pause);
+		XGBE_SET_SUP(lks, FIBRE);
+		XGBE_SET_SUP(lks, 10000baseSR_Full);
+		XGBE_SET_SUP(lks, 10000baseLR_Full);
+		XGBE_SET_SUP(lks, 10000baseLRM_Full);
+		XGBE_SET_SUP(lks, 10000baseER_Full);
 		if (pdata->fec_ability & MDIO_PMA_10GBR_FECABLE_ABLE)
-			pdata->phy.supported |= SUPPORTED_10000baseR_FEC;
+			XGBE_SET_SUP(lks, 10000baseR_FEC);
 		phy_data->start_mode = XGBE_MODE_SFI;
 
 		phy_data->phydev_mode = XGBE_MDIO_MODE_NONE;
@@ -3150,25 +3370,17 @@ static int xgbe_phy_init(struct xgbe_prv_data *pdata)
 
 	/* SFP support */
 	case XGBE_PORT_MODE_SFP:
-		pdata->phy.supported |= SUPPORTED_Autoneg;
-		pdata->phy.supported |= SUPPORTED_Pause | SUPPORTED_Asym_Pause;
-		pdata->phy.supported |= SUPPORTED_TP;
-		pdata->phy.supported |= SUPPORTED_FIBRE;
-		if (phy_data->port_speeds & XGBE_PHY_PORT_SPEED_100) {
-			pdata->phy.supported |= SUPPORTED_100baseT_Full;
+		XGBE_SET_SUP(lks, Autoneg);
+		XGBE_SET_SUP(lks, Pause);
+		XGBE_SET_SUP(lks, Asym_Pause);
+		XGBE_SET_SUP(lks, TP);
+		XGBE_SET_SUP(lks, FIBRE);
+		if (phy_data->port_speeds & XGBE_PHY_PORT_SPEED_100)
 			phy_data->start_mode = XGBE_MODE_SGMII_100;
-		}
-		if (phy_data->port_speeds & XGBE_PHY_PORT_SPEED_1000) {
-			pdata->phy.supported |= SUPPORTED_1000baseT_Full;
+		if (phy_data->port_speeds & XGBE_PHY_PORT_SPEED_1000)
 			phy_data->start_mode = XGBE_MODE_SGMII_1000;
-		}
-		if (phy_data->port_speeds & XGBE_PHY_PORT_SPEED_10000) {
-			pdata->phy.supported |= SUPPORTED_10000baseT_Full;
+		if (phy_data->port_speeds & XGBE_PHY_PORT_SPEED_10000)
 			phy_data->start_mode = XGBE_MODE_SFI;
-			if (pdata->fec_ability & MDIO_PMA_10GBR_FECABLE_ABLE)
-				pdata->phy.supported |=
-					SUPPORTED_10000baseR_FEC;
-		}
 
 		phy_data->phydev_mode = XGBE_MDIO_MODE_CL22;
 
@@ -3179,8 +3391,9 @@ static int xgbe_phy_init(struct xgbe_prv_data *pdata)
 	}
 
 	if (netif_msg_probe(pdata))
-		dev_dbg(pdata->dev, "phy supported=%#x\n",
-			pdata->phy.supported);
+		dev_dbg(pdata->dev, "phy supported=0x%*pb\n",
+			__ETHTOOL_LINK_MODE_MASK_NBITS,
+			lks->link_modes.supported);
 
 	if ((phy_data->conn_type & XGBE_CONN_TYPE_MDIO) &&
 	    (phy_data->phydev_mode != XGBE_MDIO_MODE_NONE)) {
@@ -3265,4 +3478,7 @@ void xgbe_init_function_ptrs_phy_v2(struct xgbe_phy_if *phy_if)
 
 	phy_impl->kr_training_pre	= xgbe_phy_kr_training_pre;
 	phy_impl->kr_training_post	= xgbe_phy_kr_training_post;
+
+	phy_impl->module_info		= xgbe_phy_module_info;
+	phy_impl->module_eeprom		= xgbe_phy_module_eeprom;
 }
