@@ -3716,7 +3716,7 @@ static vm_fault_t do_set_pmd(struct vm_fault *vmf, struct page *page)
 		return ret;
 
 	page = compound_head(page);
-	if (page_order(page) != HPAGE_PMD_ORDER)
+	if (compound_order(page) != HPAGE_PMD_ORDER)
 		return ret;
 
 	/*
