@@ -76,7 +76,6 @@
 	status = "okay";
 	vbus-ctrl-able;
 	vbus-gpio = <&gpext1 3 0>; /* 0 : GPIO_ACTIVE_HIGH, 1 : GPIO_ACTIVE_LOW */
-
 };
 
 &dwc3 {
