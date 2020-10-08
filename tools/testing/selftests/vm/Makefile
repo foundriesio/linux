@@ -138,7 +138,7 @@ $(OUTPUT)/hmm-tests: local_config.h
 $(OUTPUT)/hmm-tests: LDLIBS += $(HMM_EXTRA_LIBS)
 
 local_config.mk local_config.h: check_config.sh
-	./check_config.sh $(CC)
+	/bin/sh ./check_config.sh $(CC)
 
 EXTRA_CLEAN += local_config.mk local_config.h
 
