@@ -225,12 +225,6 @@ void vp9mgr_status_clear(unsigned int* base_addr)
 	return;
 }
 
-int vp9mgr_is_loadable(void)
-{
-	return 0;
-}
-EXPORT_SYMBOL(vp9mgr_is_loadable);
-
 void vp9mgr_init_variable(void)
 {
 	cache_droped = 0;

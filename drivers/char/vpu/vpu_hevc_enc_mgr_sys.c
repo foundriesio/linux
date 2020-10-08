@@ -368,12 +368,6 @@ void vmgr_hevc_enc_status_clear(unsigned int* base_addr)
 #endif
 }
 
-int vmgr_hevc_enc_is_loadable(void)
-{
-	return 0;
-}
-EXPORT_SYMBOL(vmgr_hevc_enc_is_loadable);
-
 void vmgr_hevc_enc_init_variable(void)
 {
 	cache_droped = 0;

@@ -43,36 +43,40 @@
 
 static void _venc_inter_add_list(vpu_encoder_data* vdata, int cmd, void* args)
 {
-	vdata->venc_list[vdata->list_idx].type          = vdata->gsEncType;
-	vdata->venc_list[vdata->list_idx].cmd_type      = cmd;
+	VpuList_t* oper_data = &vdata->venc_list[vdata->list_idx];
+
+	oper_data->type          = vdata->gsEncType;
+	oper_data->cmd_type      = cmd;
+
 #ifdef CONFIG_SUPPORT_TCC_JPU
 	if (vdata->gsCodecType == STD_MJPG)
-		vdata->venc_list[vdata->list_idx].handle    = vdata->gsJpuEncInit_Info.gsJpuEncHandle;
+		oper_data->handle    = vdata->gsJpuEncInit_Info.gsJpuEncHandle;
 	else
 #endif
 #ifdef CONFIG_SUPPORT_TCC_WAVE420L_VPU_HEVC_ENC
 	if (vdata->gsCodecType == STD_HEVC_ENC)
-		vdata->venc_list[vdata->list_idx].handle    = vdata->gsVpuHevcEncInit_Info.handle;
+		oper_data->handle    = vdata->gsVpuHevcEncInit_Info.handle;
 	else
 #endif
-		vdata->venc_list[vdata->list_idx].handle    = vdata->gsVpuEncInit_Info.gsVpuEncHandle;
-	vdata->venc_list[vdata->list_idx].args          = args;
-	vdata->venc_list[vdata->list_idx].comm_data     = &vdata->vComm_data;
-	vdata->gsCommEncResult = RET0;
-	vdata->venc_list[vdata->list_idx].vpu_result    = &vdata->gsCommEncResult;
+		oper_data->handle    = vdata->gsVpuEncInit_Info.gsVpuEncHandle;
+
+	oper_data->args          = args;
+	oper_data->comm_data     = &vdata->vComm_data;
+	oper_data->vpu_result    = &vdata->gsCommEncResult;
+	*oper_data->vpu_result   = 0;
 
 #ifdef CONFIG_SUPPORT_TCC_JPU
 	if (vdata->gsCodecType == STD_MJPG)
-		jmgr_list_manager(&vdata->venc_list[vdata->list_idx], LIST_ADD);
+		jmgr_list_manager(oper_data, LIST_ADD);
 	else
 #endif
 
 #ifdef CONFIG_SUPPORT_TCC_WAVE420L_VPU_HEVC_ENC
 	if (vdata->gsCodecType == STD_HEVC_ENC)
-		vmgr_hevc_enc_list_manager(&vdata->venc_list[vdata->list_idx], LIST_ADD);
+		vmgr_hevc_enc_list_manager(oper_data, LIST_ADD);
 	else
 #endif
-		vmgr_list_manager(&vdata->venc_list[vdata->list_idx], LIST_ADD);
+		vmgr_list_manager(oper_data, LIST_ADD);
 
 	vdata->list_idx = (vdata->list_idx+1)%LIST_MAX;
 }
@@ -540,7 +544,7 @@ int venc_mmap(struct file* filp, struct vm_area_struct* vma)
 #endif
 
 	vma->vm_page_prot = vmem_get_pgprot(vma->vm_page_prot, vma->vm_pgoff);
-	if (remap_pfn_range(vma,vma->vm_start, vma->vm_pgoff , vma->vm_end - vma->vm_start, vma->vm_page_prot))
+	if (remap_pfn_range(vma,vma->vm_start, vma->vm_pgoff, vma->vm_end - vma->vm_start, vma->vm_page_prot))
 	{
 		printk("%s :: mmap :: remap_pfn_range failed\n", vdata->misc->name);
 		return -EAGAIN;
@@ -560,16 +564,13 @@ unsigned int venc_poll(struct file* filp, poll_table* wait)
 
 	if (vdata == NULL)
 	{
-		return -EFAULT;
+		return POLLERR | POLLNVAL;
 	}
 
-	if (vdata->vComm_data.count > 0)
+	if (vdata->vComm_data.count == 0)
 	{
-		vdata->vComm_data.count--;
-		return POLLIN;
+		poll_wait(filp, &(vdata->vComm_data.wq), wait);
 	}
-
-	poll_wait(filp, &(vdata->vComm_data.wq), wait);
 
 	if (vdata->vComm_data.count > 0)
 	{

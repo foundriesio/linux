@@ -52,60 +52,61 @@
 
 static void _vdec_inter_add_list(vpu_decoder_data* vdata, int cmd, void* args)
 {
-	vdata->vdec_list[vdata->list_idx].type          = vdata->gsDecType;
-	vdata->vdec_list[vdata->list_idx].cmd_type      = cmd;
+	VpuList_t* oper_data = &vdata->vdec_list[vdata->list_idx];
+
+	oper_data->type          = vdata->gsDecType;
+	oper_data->cmd_type      = cmd;
 
 #ifdef CONFIG_SUPPORT_TCC_JPU
 	if (vdata->gsCodecType == STD_MJPG)
-		vdata->vdec_list[vdata->list_idx].handle    = vdata->gsJpuDecInit_Info.gsJpuDecHandle;
+		oper_data->handle    = vdata->gsJpuDecInit_Info.gsJpuDecHandle;
 	else
 #endif
 #ifdef CONFIG_SUPPORT_TCC_WAVE512_4K_D2
 	if (vdata->gsCodecType == STD_HEVC || vdata->gsCodecType == STD_VP9)
-		vdata->vdec_list[vdata->list_idx].handle    = vdata->gsV4kd2DecInit_Info.gsV4kd2DecHandle;
+		oper_data->handle    = vdata->gsV4kd2DecInit_Info.gsV4kd2DecHandle;
 	else
 #endif
 #ifdef CONFIG_SUPPORT_TCC_WAVE410_HEVC
 	if (vdata->gsCodecType == STD_HEVC)
-		vdata->vdec_list[vdata->list_idx].handle    = vdata->gsHevcDecInit_Info.gsHevcDecHandle;
+		oper_data->handle    = vdata->gsHevcDecInit_Info.gsHevcDecHandle;
 	else
 #endif
 #ifdef CONFIG_SUPPORT_TCC_G2V2_VP9
 	if (vdata->gsCodecType == STD_VP9)
-		vdata->vdec_list[vdata->list_idx].handle    = vdata->gsVp9DecInit_Info.gsVp9DecHandle;
+		oper_data->handle    = vdata->gsVp9DecInit_Info.gsVp9DecHandle;
 	else
 #endif
-		vdata->vdec_list[vdata->list_idx].handle    = vdata->gsVpuDecInit_Info.gsVpuDecHandle;
+		oper_data->handle    = vdata->gsVpuDecInit_Info.gsVpuDecHandle;
 
-	vdata->vdec_list[vdata->list_idx].args          = args;
-	vdata->vdec_list[vdata->list_idx].comm_data     = &vdata->vComm_data;
-	vdata->vdec_list[vdata->list_idx].vpu_result    = &vdata->gsCommDecResult;
-
-	vdata->gsCommDecResult = RET0;
+	oper_data->args          = args;
+	oper_data->comm_data     = &vdata->vComm_data;
+	oper_data->vpu_result    = &vdata->gsCommDecResult;
+	*oper_data->vpu_result   = 0;
 
 #ifdef CONFIG_SUPPORT_TCC_JPU
 	if (vdata->gsCodecType == STD_MJPG)
-		jmgr_list_manager(&vdata->vdec_list[vdata->list_idx], LIST_ADD);
+		jmgr_list_manager(oper_data, LIST_ADD);
 	else
 #endif
 #ifdef CONFIG_SUPPORT_TCC_WAVE512_4K_D2
 	if (vdata->gsCodecType == STD_HEVC || vdata->gsCodecType == STD_VP9)
-		vmgr_4k_d2_list_manager(&vdata->vdec_list[vdata->list_idx], LIST_ADD);
+		vmgr_4k_d2_list_manager(oper_data, LIST_ADD);
 	else
 #endif
 #ifdef CONFIG_SUPPORT_TCC_WAVE410_HEVC
 	if (vdata->gsCodecType == STD_HEVC)
-		hmgr_list_manager(&vdata->vdec_list[vdata->list_idx], LIST_ADD);
+		hmgr_list_manager(oper_data, LIST_ADD);
 	else
 #endif
 #ifdef CONFIG_SUPPORT_TCC_G2V2_VP9
 	if (vdata->gsCodecType == STD_VP9)
-		vp9mgr_list_manager(&vdata->vdec_list[vdata->list_idx], LIST_ADD);
+		vp9mgr_list_manager(oper_data, LIST_ADD);
 	else
 #endif
-		vmgr_list_manager(&vdata->vdec_list[vdata->list_idx], LIST_ADD);
+		vmgr_list_manager(oper_data, LIST_ADD);
 
-	vdata->list_idx = (vdata->list_idx + 1) == LIST_MAX ? (0) : (vdata->list_idx + 1);
+	vdata->list_idx = ((vdata->list_idx+1) == LIST_MAX ? (0) : (vdata->list_idx+1));
 }
 
 static void _vdec_init_list(vpu_decoder_data* vdata)
@@ -981,8 +982,6 @@ static int _vdec_result_seq_header(vpu_decoder_data* vdata, void* arg, bool from
 		case STD_MJPG:
 		{
 		#if defined(JPU_C6)
-			vdata->gsJpuDecSeqHeader_Info.result = vdata->gsCommDecResult;
-
 			src = vdata->gsIsDiminishedCopy ? (void*)&vdata->gsJpuDecInOut_Info : (void*)&vdata->gsJpuDecSeqHeader_Info;
 			copySize = vdata->gsIsDiminishedCopy ? sizeof(JPU_DECODE_t) : sizeof(JDEC_SEQ_HEADER_t);
 
@@ -2430,7 +2429,7 @@ int vdec_mmap(struct file* filp, struct vm_area_struct* vma)
 #endif
 
 	vma->vm_page_prot = vmem_get_pgprot(vma->vm_page_prot, vma->vm_pgoff);
-	if (remap_pfn_range(vma,vma->vm_start, vma->vm_pgoff , vma->vm_end - vma->vm_start, vma->vm_page_prot))
+	if (remap_pfn_range(vma,vma->vm_start, vma->vm_pgoff, vma->vm_end - vma->vm_start, vma->vm_page_prot))
 	{
 		printk("%s :: mmap :: remap_pfn_range failed\n", vdata->misc->name);
 		return -EAGAIN;
@@ -2443,23 +2442,20 @@ int vdec_mmap(struct file* filp, struct vm_area_struct* vma)
 	return 0;
 }
 
-unsigned int vdec_poll(struct file* filp, poll_table *wait)
+unsigned int vdec_poll(struct file* filp, poll_table* wait)
 {
 	struct miscdevice* misc = (struct miscdevice*)filp->private_data;
 	vpu_decoder_data* vdata = dev_get_drvdata(misc->parent);
 
 	if (vdata == NULL)
 	{
-		return -EFAULT;
+		return POLLERR | POLLNVAL;
 	}
 
-	if (vdata->vComm_data.count > 0)
+	if (vdata->vComm_data.count == 0)
 	{
-		vdata->vComm_data.count--;
-		return POLLIN;
+		poll_wait(filp, &(vdata->vComm_data.wq), wait);
 	}
-
-	poll_wait(filp, &(vdata->vComm_data.wq), wait);
 
 	if (vdata->vComm_data.count > 0)
 	{
@@ -2474,13 +2470,14 @@ long vdec_poll_2(struct file* filp, int timeout_ms)
 {
 	struct miscdevice* misc = (struct miscdevice*)filp->private_data;
 	vpu_decoder_data* vdata = dev_get_drvdata(misc->parent);
+	int ret;
 
 	if (vdata == NULL)
 	{
-		return -EFAULT;
+		return POLLERR | POLLNVAL;
 	}
 
-	wait_event_interruptible_timeout(vdata->vComm_data.wq,
+	(void)wait_event_interruptible_timeout(vdata->vComm_data.wq,
 									vdata->vComm_data.count > 0,
 									msecs_to_jiffies(timeout_ms));
 

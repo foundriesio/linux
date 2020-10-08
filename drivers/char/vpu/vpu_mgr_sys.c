@@ -317,12 +317,6 @@ void vmgr_status_clear(unsigned int* base_addr)
 #endif
 }
 
-int vmgr_is_loadable(void)
-{
-	return 0;
-}
-EXPORT_SYMBOL(vmgr_is_loadable);
-
 void vmgr_init_variable(void)
 {
 	cache_droped = 0;
