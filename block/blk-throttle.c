@@ -423,12 +423,13 @@ static void throtl_qnode_add_bio(struct bio *bio, struct throtl_qnode *qn,
  */
 static struct bio *throtl_peek_queued(struct list_head *queued)
 {
-	struct throtl_qnode *qn = list_first_entry(queued, struct throtl_qnode, node);
+	struct throtl_qnode *qn;
 	struct bio *bio;
 
 	if (list_empty(queued))
 		return NULL;
 
+	qn = list_first_entry(queued, struct throtl_qnode, node);
 	bio = bio_list_peek(&qn->bios);
 	WARN_ON_ONCE(!bio);
 	return bio;
@@ -451,12 +452,13 @@ static struct bio *throtl_peek_queued(struct list_head *queued)
 static struct bio *throtl_pop_queued(struct list_head *queued,
 				     struct throtl_grp **tg_to_put)
 {
-	struct throtl_qnode *qn = list_first_entry(queued, struct throtl_qnode, node);
+	struct throtl_qnode *qn;
 	struct bio *bio;
 
 	if (list_empty(queued))
 		return NULL;
 
+	qn = list_first_entry(queued, struct throtl_qnode, node);
 	bio = bio_list_pop(&qn->bios);
 	WARN_ON_ONCE(!bio);
 
@@ -636,9 +638,6 @@ static struct throtl_grp *
 throtl_rb_first(struct throtl_service_queue *parent_sq)
 {
 	struct rb_node *n;
-	/* Service tree is empty */
-	if (!parent_sq->nr_pending)
-		return NULL;
 
 	n = rb_first_cached(&parent_sq->pending_tree);
 	WARN_ON_ONCE(!n);
@@ -692,29 +691,21 @@ static void tg_service_queue_add(struct throtl_grp *tg)
 			       leftmost);
 }
 
-static void __throtl_enqueue_tg(struct throtl_grp *tg)
-{
-	tg_service_queue_add(tg);
-	tg->flags |= THROTL_TG_PENDING;
-	tg->service_queue.parent_sq->nr_pending++;
-}
-
 static void throtl_enqueue_tg(struct throtl_grp *tg)
 {
-	if (!(tg->flags & THROTL_TG_PENDING))
-		__throtl_enqueue_tg(tg);
-}
-
-static void __throtl_dequeue_tg(struct throtl_grp *tg)
-{
-	throtl_rb_erase(&tg->rb_node, tg->service_queue.parent_sq);
-	tg->flags &= ~THROTL_TG_PENDING;
+	if (!(tg->flags & THROTL_TG_PENDING)) {
+		tg_service_queue_add(tg);
+		tg->flags |= THROTL_TG_PENDING;
+		tg->service_queue.parent_sq->nr_pending++;
+	}
 }
 
 static void throtl_dequeue_tg(struct throtl_grp *tg)
 {
-	if (tg->flags & THROTL_TG_PENDING)
-		__throtl_dequeue_tg(tg);
+	if (tg->flags & THROTL_TG_PENDING) {
+		throtl_rb_erase(&tg->rb_node, tg->service_queue.parent_sq);
+		tg->flags &= ~THROTL_TG_PENDING;
+	}
 }
 
 /* Call with queue lock held */
@@ -817,7 +808,7 @@ static inline void throtl_set_slice_end(struct throtl_grp *tg, bool rw,
 static inline void throtl_extend_slice(struct throtl_grp *tg, bool rw,
 				       unsigned long jiffy_end)
 {
-	tg->slice_end[rw] = roundup(jiffy_end, tg->td->throtl_slice);
+	throtl_set_slice_end(tg, rw, jiffy_end);
 	throtl_log(&tg->service_queue,
 		   "[%c] extend slice start=%lu end=%lu jiffies=%lu",
 		   rw == READ ? 'R' : 'W', tg->slice_start[rw],
@@ -1222,9 +1213,13 @@ static int throtl_select_dispatch(struct throtl_service_queue *parent_sq)
 	unsigned int nr_disp = 0;
 
 	while (1) {
-		struct throtl_grp *tg = throtl_rb_first(parent_sq);
+		struct throtl_grp *tg;
 		struct throtl_service_queue *sq;
 
+		if (!parent_sq->nr_pending)
+			break;
+
+		tg = throtl_rb_first(parent_sq);
 		if (!tg)
 			break;
 
@@ -1687,13 +1682,13 @@ static ssize_t tg_set_limit(struct kernfs_open_file *of,
 			goto out_finish;
 
 		ret = -EINVAL;
-		if (!strcmp(tok, "rbps"))
+		if (!strcmp(tok, "rbps") && val > 1)
 			v[0] = val;
-		else if (!strcmp(tok, "wbps"))
+		else if (!strcmp(tok, "wbps") && val > 1)
 			v[1] = val;
-		else if (!strcmp(tok, "riops"))
+		else if (!strcmp(tok, "riops") && val > 1)
 			v[2] = min_t(u64, val, UINT_MAX);
-		else if (!strcmp(tok, "wiops"))
+		else if (!strcmp(tok, "wiops") && val > 1)
 			v[3] = min_t(u64, val, UINT_MAX);
 		else if (off == LIMIT_LOW && !strcmp(tok, "idle"))
 			idle_time = val;
@@ -1970,7 +1965,7 @@ static void throtl_upgrade_state(struct throtl_data *td)
 	queue_work(kthrotld_workqueue, &td->dispatch_work);
 }
 
-static void throtl_downgrade_state(struct throtl_data *td, int new)
+static void throtl_downgrade_state(struct throtl_data *td)
 {
 	td->scale /= 2;
 
@@ -1980,7 +1975,7 @@ static void throtl_downgrade_state(struct throtl_data *td, int new)
 		return;
 	}
 
-	td->limit_index = new;
+	td->limit_index = LIMIT_LOW;
 	td->low_downgrade_time = jiffies;
 }
 
@@ -2067,7 +2062,7 @@ static void throtl_downgrade_check(struct throtl_grp *tg)
 	 * cgroups
 	 */
 	if (throtl_hierarchy_can_downgrade(tg))
-		throtl_downgrade_state(tg->td, LIMIT_LOW);
+		throtl_downgrade_state(tg->td);
 
 	tg->last_bytes_disp[READ] = 0;
 	tg->last_bytes_disp[WRITE] = 0;
@@ -2077,10 +2072,14 @@ static void throtl_downgrade_check(struct throtl_grp *tg)
 
 static void blk_throtl_update_idletime(struct throtl_grp *tg)
 {
-	unsigned long now = ktime_get_ns() >> 10;
+	unsigned long now;
 	unsigned long last_finish_time = tg->last_finish_time;
 
-	if (now <= last_finish_time || last_finish_time == 0 ||
+	if (last_finish_time == 0)
+		return;
+
+	now = ktime_get_ns() >> 10;
+	if (now <= last_finish_time ||
 	    last_finish_time == tg->checked_last_finish_time)
 		return;
 
@@ -2096,7 +2095,7 @@ static void throtl_update_latency_buckets(struct throtl_data *td)
 	unsigned long last_latency[2] = { 0 };
 	unsigned long latency[2];
 
-	if (!blk_queue_nonrot(td->queue))
+	if (!blk_queue_nonrot(td->queue) || !td->limit_valid[LIMIT_LOW])
 		return;
 	if (time_before(jiffies, td->last_calculate_time + HZ))
 		return;
@@ -2334,6 +2333,8 @@ void blk_throtl_bio_endio(struct bio *bio)
 	if (!blkg)
 		return;
 	tg = blkg_to_tg(blkg);
+	if (!tg->td->limit_valid[LIMIT_LOW])
+		return;
 
 	finish_time_ns = ktime_get_ns();
 	tg->last_finish_time = finish_time_ns >> 10;
