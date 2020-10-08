@@ -39,6 +39,21 @@
 static struct device_node *ViocRdma_np;
 static volatile void __iomem *pRDMA_reg[VIOC_RDMA_MAX] = {0};
 
+#if defined(CONFIG_ARCH_TCC805X)
+static int VRDMAS[VIOC_RDMA_MAX] = {
+	[3] = {1},
+	[7] = {1},
+	[10] = {1},
+	[11] = {1},
+	[12] = {1},
+	[13] = {1},
+	[14] = {1},
+	[15] = {1},
+	[16] = {1},
+	[17] = {1},
+};
+#endif
+
 #define NOP __asm("NOP")
 
 #ifdef CONFIG_VIOC_DOLBY_VISION_CERTIFICATION_TEST_UI // No UI-Blending
@@ -822,6 +837,21 @@ err:
 	return NULL;
 }
 EXPORT_SYMBOL(VIOC_RDMA_GetAddress);
+
+int VIOC_RDMA_IsVRDMA(unsigned int vioc_id)
+{
+	#if defined(CONFIG_ARCH_TCC805X)
+	int Num = get_vioc_index(vioc_id);
+
+	if (Num >= VIOC_RDMA_MAX)
+		goto err;
+	return VRDMAS[Num];
+err:
+	pr_err("[ERR][RDMA] %s Num:%d max num:%d \n", __func__, Num, VIOC_RDMA_MAX);
+	#endif
+	return 0;
+}
+EXPORT_SYMBOL(VIOC_RDMA_IsVRDMA);
 
 static int __init vioc_rdma_init(void)
 {

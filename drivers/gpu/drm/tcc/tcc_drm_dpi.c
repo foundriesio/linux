@@ -275,7 +275,6 @@ tcc_dpi_atomic_mode_set(struct drm_encoder *encoder,
 	}
 }
 
-
 static void tcc_dpi_enable(struct drm_encoder *encoder)
 {
 	struct tcc_dpi *ctx = encoder_to_dpi(encoder);

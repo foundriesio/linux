@@ -295,5 +295,6 @@ extern void VIOC_RDMA_SetIreqMask(volatile void __iomem *reg, unsigned int mask,
 extern unsigned int VIOC_RDMA_GetStatus(volatile void __iomem *reg);
 
 extern volatile void __iomem* VIOC_RDMA_GetAddress(unsigned int vioc_id);
+extern int VIOC_RDMA_IsVRDMA(unsigned int vioc_id);
 extern void VIOC_RDMA_DUMP(volatile void __iomem *reg, unsigned int vioc_id);
 #endif

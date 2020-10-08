@@ -22,7 +22,7 @@
 #include "tcc_drm_fb.h"
 #include "tcc_drm_gem.h"
 #include "tcc_drm_plane.h"
-
+#define LOG_TAG "DRMPANEL"
 /*
  * This function is to get X or Y size shown via screen. This needs length and
  * start position of CRTC.
@@ -62,68 +62,60 @@ static int tcc_plane_get_size(int start, unsigned length, unsigned last)
 static void tcc_plane_mode_set(struct tcc_drm_plane_state *tcc_state)
 {
 	struct drm_plane_state *state = &tcc_state->base;
-	struct drm_crtc *crtc = state->crtc;
-	struct drm_crtc_state *crtc_state =
-			drm_atomic_get_existing_crtc_state(state->state, crtc);
-	struct drm_display_mode *mode = &crtc_state->adjusted_mode;
+
 	int crtc_x, crtc_y;
 	unsigned int crtc_w, crtc_h;
-	unsigned int src_x, src_y;
-	unsigned int src_w, src_h;
-	unsigned int actual_w;
-	unsigned int actual_h;
+	unsigned int src_x, src_y, src_w, src_h;
 
 	/*
 	 * The original src/dest coordinates are stored in tcc_state->base,
 	 * but we want to keep another copy internal to our driver that we can
 	 * clip/modify ourselves.
 	 */
-
 	crtc_x = state->crtc_x;
 	crtc_y = state->crtc_y;
 	crtc_w = state->crtc_w;
 	crtc_h = state->crtc_h;
 
+	/* Source parameters given in 16.16 fixed point, ignore fractional. */
 	src_x = state->src_x >> 16;
 	src_y = state->src_y >> 16;
 	src_w = state->src_w >> 16;
 	src_h = state->src_h >> 16;
 
-	/* set ratio */
-	tcc_state->h_ratio = (src_w << 16) / crtc_w;
-	tcc_state->v_ratio = (src_h << 16) / crtc_h;
-
-	/* clip to visible area */
-	actual_w = tcc_plane_get_size(crtc_x, crtc_w, mode->hdisplay);
-	actual_h = tcc_plane_get_size(crtc_y, crtc_h, mode->vdisplay);
+	//pr_info("Before: src: %d, %d, %dx%d dst: %d, %d, %dx%d\r\n",
+	//		src_x, src_y, src_w, src_h,
+	//		crtc_x, crtc_y, crtc_w, crtc_h);
 
 	if (crtc_x < 0) {
-		if (actual_w)
-			src_x += ((-crtc_x) * tcc_state->h_ratio) >> 16;
+		src_x += -crtc_x;
+		crtc_w += crtc_x;
 		crtc_x = 0;
 	}
 
 	if (crtc_y < 0) {
-		if (actual_h)
-			src_y += ((-crtc_y) * tcc_state->v_ratio) >> 16;
+		src_y += -crtc_y;
+		crtc_h += crtc_y;
 		crtc_y = 0;
 	}
 
 	/* set drm framebuffer data. */
 	tcc_state->src.x = src_x;
 	tcc_state->src.y = src_y;
-	tcc_state->src.w = (actual_w * tcc_state->h_ratio) >> 16;
-	tcc_state->src.h = (actual_h * tcc_state->v_ratio) >> 16;
+	tcc_state->src.w = src_w;
+	tcc_state->src.h = src_h;
 
 	/* set plane range to be displayed. */
 	tcc_state->crtc.x = crtc_x;
 	tcc_state->crtc.y = crtc_y;
-	tcc_state->crtc.w = actual_w;
-	tcc_state->crtc.h = actual_h;
+	tcc_state->crtc.w = crtc_w;
+	tcc_state->crtc.h = crtc_h;
 
-	DRM_DEBUG_KMS("plane : offset_x/y(%d,%d), width/height(%d,%d)",
-			tcc_state->crtc.x, tcc_state->crtc.y,
-			tcc_state->crtc.w, tcc_state->crtc.h);
+	//pr_info("Fixed: src: %d, %d, %dx%d dst: %d, %d, %dx%d\r\n",
+	//		tcc_state->src.x, tcc_state->src.y,
+	//		tcc_state->src.w, tcc_state->src.h,
+	//		tcc_state->crtc.x, tcc_state->crtc.y,
+	//		tcc_state->crtc.w, tcc_state->crtc.h);
 }
 
 static void tcc_drm_plane_reset(struct drm_plane *plane)
@@ -174,59 +166,105 @@ static struct drm_plane_funcs tcc_plane_funcs = {
 	.atomic_destroy_state = tcc_drm_plane_destroy_state,
 };
 
-static int
-tcc_drm_plane_check_format(struct tcc_drm_plane_state *state)
-{
-	struct drm_framebuffer *fb = state->base.fb;
-
-	switch (fb->modifier) {
-	case DRM_FORMAT_MOD_LINEAR:
-		break;
-
-	default:
-		DRM_ERROR("unsupported pixel format modifier");
-		return -ENOTSUPP;
-	}
-
-	return 0;
-}
-
-static int
-tcc_drm_plane_check_size(struct tcc_drm_plane_state *state)
-{
-	bool width_ok = false, height_ok = false;
-
-	if (state->src.w == state->crtc.w)
-		width_ok = true;
-
-	if (state->src.h == state->crtc.h)
-		height_ok = true;
-
-	if (width_ok && height_ok)
-		return 0;
-
-	DRM_DEBUG_KMS("scaling mode is not supported");
-	return -ENOTSUPP;
-}
-
 static int tcc_plane_atomic_check(struct drm_plane *plane,
 				     struct drm_plane_state *state)
 {
-	struct tcc_drm_plane_state *tcc_state =
-				to_tcc_plane_state(state);
+	struct tcc_drm_plane_state *tcc_state;
+	struct drm_crtc_state *crtc_state;
+	struct drm_framebuffer *fb;
 	int ret = 0;
 
-	if (!state->crtc || !state->fb)
-		return 0;
+	if(state == NULL) {
+		ret = -EINVAL;
+		dev_warn(plane->dev->dev, "[WARN][%s] %s line(%d) state is NULL with err(%d)\r\n",
+									LOG_TAG, __func__, __LINE__, ret);
+		goto err_null;
+	}
+	tcc_state = to_tcc_plane_state(state);
+	if(tcc_state == NULL) {
+		ret = -EINVAL;
+		dev_warn(plane->dev->dev, "[WARN][%s] %s line(%d) tcc_state is NULL with err(%d)\r\n",
+									LOG_TAG, __func__, __LINE__, ret);
+		goto err_null;
+	}
 
+	if(state->state == NULL) {
+		ret = -EINVAL;
+		dev_warn(plane->dev->dev, "[WARN][%s] %s line(%d) state->state is NULL with err(%d)\r\n",
+									LOG_TAG, __func__, __LINE__, ret);
+		goto err_null;
+	}
+
+	if(state->crtc == NULL || state->fb == NULL) {
+		/* There is no need for further checks if the plane is being disabled */
+		goto err_null;
+	}
+
+	crtc_state = drm_atomic_get_existing_crtc_state(state->state, state->crtc);
+	if(crtc_state == NULL) {
+		ret = -EINVAL;
+		dev_warn(plane->dev->dev, "[WARN][%s] %s line(%d) crtc_state is NULL with err(%d)\r\n",
+									LOG_TAG, __func__, __LINE__, ret);
+		goto err_null;
+	}
+
+	if(state->fb->modifier != DRM_FORMAT_MOD_LINEAR) {
+		dev_warn(plane->dev->dev,
+			"[WARN][%s] %s only support DRM_FORMAT_MOD_LINEAR\r\n", LOG_TAG, __func__);
+		ret = -EINVAL;
+		goto err_null;
+	}
+
+        /* we should have a crtc state if the plane is attached to a crtc */
+        if (WARN_ON(crtc_state == NULL)) {
+		dev_warn(plane->dev->dev,
+			"[WARN][%s] %s line(%d) err(%d)\r\n", LOG_TAG, __func__, __LINE__, ret);
+                ret = -EINVAL;
+		goto err_null;
+	}
+
+	if (!state->crtc || !state->fb) {
+		dev_warn(plane->dev->dev,
+			"[WARN][%s] %s line(%d) err(%d)\r\n", LOG_TAG, __func__, __LINE__, ret);
+		ret = -EINVAL;
+		goto err_null;
+	}
+
+        if (state->crtc_x + state->crtc_w > crtc_state->adjusted_mode.hdisplay) {
+		dev_warn(plane->dev->dev,
+			"[WARN][%s] %s line(%d) err(%d)\r\n", LOG_TAG, __func__, __LINE__, ret);
+                ret = -EINVAL;
+		goto err_null;
+	}
+
+        if (state->crtc_y + state->crtc_h > crtc_state->adjusted_mode.vdisplay) {
+		dev_warn(plane->dev->dev,
+			"[WARN][%s] %s line(%d) err(%d)\r\n", LOG_TAG, __func__, __LINE__, ret);
+                ret = -EINVAL;
+		goto err_null;
+	}
+
+	if ((state->src_w >> 16) != state->crtc_w) {
+		dev_warn(plane->dev->dev,
+			"[WARN][%s] %s line(%d) mismatch %d with %d scaling mode is not supported\r\n",
+						LOG_TAG, __func__, __LINE__, state->src_w >> 16, state->crtc_w);
+		ret = -ENOTSUPP;
+		goto err_null;
+	}
+
+	if ((state->src_h >> 16) != state->crtc_h) {
+		dev_warn(plane->dev->dev,
+			"[WARN][%s] %s line(%d) mismatch %d with %d scaling mode is not supported\r\n",
+						LOG_TAG, __func__, __LINE__, state->src_h >> 16, state->crtc_h);
+		ret = -ENOTSUPP;
+		goto err_null;
+	}
 	/* translate state into tcc_state */
 	tcc_plane_mode_set(tcc_state);
 
-	ret = tcc_drm_plane_check_format(tcc_state);
-	if (ret)
-		return ret;
+	return 0;
 
-	ret = tcc_drm_plane_check_size(tcc_state);
+err_null:
 	return ret;
 }
 
