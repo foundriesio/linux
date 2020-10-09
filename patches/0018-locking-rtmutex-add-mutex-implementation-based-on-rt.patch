@@ -1,19 +1,21 @@
 From: Thomas Gleixner <tglx@linutronix.de>
 Date: Thu, 12 Oct 2017 17:17:03 +0200
-Subject: rtmutex: add mutex implementation based on rtmutex
+Subject: [PATCH 18/23] locking/rtmutex: add mutex implementation based on
+ rtmutex
 
 Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 ---
- include/linux/mutex_rt.h  |  130 ++++++++++++++++++++++++++
- kernel/locking/mutex-rt.c |  223 ++++++++++++++++++++++++++++++++++++++++++++++
+ include/linux/mutex_rt.h  |  131 +++++++++++++++++++++++++++
+ kernel/locking/mutex-rt.c |  222 ++++++++++++++++++++++++++++++++++++++++++++++
  2 files changed, 353 insertions(+)
  create mode 100644 include/linux/mutex_rt.h
  create mode 100644 kernel/locking/mutex-rt.c
 
 --- /dev/null
 +++ b/include/linux/mutex_rt.h
-@@ -0,0 +1,130 @@
+@@ -0,0 +1,131 @@
++// SPDX-License-Identifier: GPL-2.0-only
 +#ifndef __LINUX_MUTEX_RT_H
 +#define __LINUX_MUTEX_RT_H
 +
@@ -146,10 +148,9 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 +#endif
 --- /dev/null
 +++ b/kernel/locking/mutex-rt.c
-@@ -0,0 +1,223 @@
+@@ -0,0 +1,222 @@
++// SPDX-License-Identifier: GPL-2.0-only
 +/*
-+ * kernel/rt.c
-+ *
 + * Real-Time Preemption Support
 + *
 + * started by Ingo Molnar:

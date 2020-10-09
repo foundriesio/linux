@@ -1,11 +1,10 @@
 From: Steven Rostedt <rostedt@goodmis.org>
 Date: Tue, 14 Jul 2015 14:26:34 +0200
-Subject: futex: Fix bug on when a requeued RT task times out
+Subject: [PATCH 06/23] futex: Fix bug on when a requeued RT task times out
 
 Requeue with timeout causes a bug with PREEMPT_RT.
 
 The bug comes from a timed out condition.
-
 
 	TASK 1				TASK 2
 	------				------
@@ -16,12 +15,11 @@ The bug comes from a timed out condition.
 					double_lock_hb();
 
 	raw_spin_lock(pi_lock);
-	if (current->pi_blocked_on) { 
+	if (current->pi_blocked_on) {
 	} else {
 	    current->pi_blocked_on = PI_WAKE_INPROGRESS;
 	    run_spin_unlock(pi_lock);
 	    spin_lock(hb->lock); <-- blocked!
-
 
 					plist_for_each_entry_safe(this) {
 					    rt_mutex_start_proxy_lock();
@@ -45,7 +43,6 @@ Otherwise set it to a new flag PI_REQUEUE_INPROGRESS, which notifies
 the proxy task that it is being requeued, and will handle things
 appropriately.
 
-
 Signed-off-by: Steven Rostedt <rostedt@goodmis.org>
 Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 ---
@@ -65,7 +62,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  }
  
  /*
-@@ -1777,6 +1778,34 @@ int __rt_mutex_start_proxy_lock(struct r
+@@ -1721,6 +1722,34 @@ int __rt_mutex_start_proxy_lock(struct r
  	if (try_to_take_rt_mutex(lock, task, NULL))
  		return 1;
  
@@ -102,7 +99,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  				      RT_MUTEX_FULL_CHAINWALK);
 --- a/kernel/locking/rtmutex_common.h
 +++ b/kernel/locking/rtmutex_common.h
-@@ -131,6 +131,7 @@ enum rtmutex_chainwalk {
+@@ -126,6 +126,7 @@ enum rtmutex_chainwalk {
   * PI-futex support (proxy locking functions, etc.):
   */
  #define PI_WAKEUP_INPROGRESS	((struct rt_mutex_waiter *) 1)

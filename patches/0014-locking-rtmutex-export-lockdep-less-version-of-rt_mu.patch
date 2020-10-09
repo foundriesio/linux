@@ -1,20 +1,20 @@
 From: Thomas Gleixner <tglx@linutronix.de>
 Date: Thu, 12 Oct 2017 16:36:39 +0200
-Subject: rtmutex: export lockdep-less version of rt_mutex's lock,
- trylock and unlock
+Subject: [PATCH 14/23] locking/rtmutex: export lockdep-less version of
+ rt_mutex's lock, trylock and unlock
 
 Required for lock implementation ontop of rtmutex.
 
 Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 ---
- kernel/locking/rtmutex.c        |   59 ++++++++++++++++++++++++++--------------
+ kernel/locking/rtmutex.c        |   58 ++++++++++++++++++++++++++--------------
  kernel/locking/rtmutex_common.h |    3 ++
- 2 files changed, 42 insertions(+), 20 deletions(-)
+ 2 files changed, 42 insertions(+), 19 deletions(-)
 
 --- a/kernel/locking/rtmutex.c
 +++ b/kernel/locking/rtmutex.c
-@@ -1491,12 +1491,33 @@ rt_mutex_fastunlock(struct rt_mutex *loc
+@@ -1469,12 +1469,33 @@ rt_mutex_fastunlock(struct rt_mutex *loc
  		rt_mutex_postunlock(&wake_q);
  }
  
@@ -50,7 +50,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  }
  
  #ifdef CONFIG_DEBUG_LOCK_ALLOC
-@@ -1537,16 +1558,7 @@ EXPORT_SYMBOL_GPL(rt_mutex_lock);
+@@ -1515,16 +1536,7 @@ EXPORT_SYMBOL_GPL(rt_mutex_lock);
   */
  int __sched rt_mutex_lock_interruptible(struct rt_mutex *lock)
  {
@@ -68,11 +68,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  }
  EXPORT_SYMBOL_GPL(rt_mutex_lock_interruptible);
  
-@@ -1572,13 +1584,10 @@ int __sched __rt_mutex_futex_trylock(str
-  * Returns:
-  *  0          on success
-  * -EINTR      when interrupted by a signal
-- * -EDEADLK    when the lock would deadlock (when deadlock detection is on)
+@@ -1552,12 +1564,18 @@ int __sched __rt_mutex_futex_trylock(str
   */
  int __sched rt_mutex_lock_killable(struct rt_mutex *lock)
  {
@@ -82,10 +78,6 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 +	return rt_mutex_lock_state(lock, 0, TASK_KILLABLE);
  }
  EXPORT_SYMBOL_GPL(rt_mutex_lock_killable);
- 
-@@ -1613,6 +1622,14 @@ rt_mutex_timed_lock(struct rt_mutex *loc
- }
- EXPORT_SYMBOL_GPL(rt_mutex_timed_lock);
  
 +int __sched __rt_mutex_trylock(struct rt_mutex *lock)
 +{
@@ -98,7 +90,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  /**
   * rt_mutex_trylock - try to lock a rt_mutex
   *
-@@ -1628,10 +1645,7 @@ int __sched rt_mutex_trylock(struct rt_m
+@@ -1573,10 +1591,7 @@ int __sched rt_mutex_trylock(struct rt_m
  {
  	int ret;
  
@@ -110,7 +102,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	if (ret)
  		mutex_acquire(&lock->dep_map, 0, 1, _RET_IP_);
  
-@@ -1639,6 +1653,11 @@ int __sched rt_mutex_trylock(struct rt_m
+@@ -1584,6 +1599,11 @@ int __sched rt_mutex_trylock(struct rt_m
  }
  EXPORT_SYMBOL_GPL(rt_mutex_trylock);
  
@@ -124,7 +116,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
   *
 --- a/kernel/locking/rtmutex_common.h
 +++ b/kernel/locking/rtmutex_common.h
-@@ -162,6 +162,9 @@ extern bool __rt_mutex_futex_unlock(stru
+@@ -157,6 +157,9 @@ extern bool __rt_mutex_futex_unlock(stru
  extern void rt_mutex_postunlock(struct wake_q_head *wake_q);
  /* RW semaphore special interface */
  

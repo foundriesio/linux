@@ -1,6 +1,7 @@
-Subject: rtmutex: Handle the various new futex race conditions
 From: Thomas Gleixner <tglx@linutronix.de>
 Date: Fri, 10 Jun 2011 11:04:15 +0200
+Subject: [PATCH 05/23] locking/rtmutex: Handle the various new futex race
+ conditions
 
 RT opens a few new interesting race conditions in the rtmutex/futex
 combo due to futex hash bucket lock being a 'sleeping' spinlock and
@@ -170,7 +171,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  		goto out_unlock_pi;
  
  	/*
-@@ -948,6 +954,22 @@ static int task_blocks_on_rt_mutex(struc
+@@ -947,6 +953,22 @@ static int task_blocks_on_rt_mutex(struc
  		return -EDEADLK;
  
  	raw_spin_lock(&task->pi_lock);
@@ -193,7 +194,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  	waiter->task = task;
  	waiter->lock = lock;
  	waiter->prio = task->prio;
-@@ -971,7 +993,7 @@ static int task_blocks_on_rt_mutex(struc
+@@ -970,7 +992,7 @@ static int task_blocks_on_rt_mutex(struc
  		rt_mutex_enqueue_pi(owner, waiter);
  
  		rt_mutex_adjust_prio(owner);
@@ -202,7 +203,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  			chain_walk = 1;
  	} else if (rt_mutex_cond_detect_deadlock(waiter, chwalk)) {
  		chain_walk = 1;
-@@ -1067,7 +1089,7 @@ static void remove_waiter(struct rt_mute
+@@ -1066,7 +1088,7 @@ static void remove_waiter(struct rt_mute
  {
  	bool is_top_waiter = (waiter == rt_mutex_top_waiter(lock));
  	struct task_struct *owner = rt_mutex_owner(lock);
@@ -211,7 +212,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  
  	lockdep_assert_held(&lock->wait_lock);
  
-@@ -1093,7 +1115,8 @@ static void remove_waiter(struct rt_mute
+@@ -1092,7 +1114,8 @@ static void remove_waiter(struct rt_mute
  	rt_mutex_adjust_prio(owner);
  
  	/* Store the lock on which owner is blocked or NULL */
@@ -221,7 +222,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  
  	raw_spin_unlock(&owner->pi_lock);
  
-@@ -1129,7 +1152,8 @@ void rt_mutex_adjust_pi(struct task_stru
+@@ -1128,7 +1151,8 @@ void rt_mutex_adjust_pi(struct task_stru
  	raw_spin_lock_irqsave(&task->pi_lock, flags);
  
  	waiter = task->pi_blocked_on;
@@ -233,7 +234,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  	}
 --- a/kernel/locking/rtmutex_common.h
 +++ b/kernel/locking/rtmutex_common.h
-@@ -130,6 +130,8 @@ enum rtmutex_chainwalk {
+@@ -125,6 +125,8 @@ enum rtmutex_chainwalk {
  /*
   * PI-futex support (proxy locking functions, etc.):
   */

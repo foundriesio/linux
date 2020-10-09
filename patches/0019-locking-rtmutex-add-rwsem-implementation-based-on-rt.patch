@@ -1,6 +1,7 @@
 From: Thomas Gleixner <tglx@linutronix.de>
 Date: Thu, 12 Oct 2017 17:28:34 +0200
-Subject: rtmutex: add rwsem implementation based on rtmutex
+Subject: [PATCH 19/23] locking/rtmutex: add rwsem implementation based on
+ rtmutex
 
 The RT specific R/W semaphore implementation restricts the number of readers
 to one because a writer cannot block on multiple readers and inherit its
@@ -14,7 +15,7 @@ The single reader restricting is painful in various ways:
  - Progress blocker for drivers which are carefully crafted to avoid the
    potential reader/writer deadlock in mainline.
 
-The analysis of the writer code pathes shows, that properly written RT tasks
+The analysis of the writer code paths shows, that properly written RT tasks
 should not take them. Syscalls like mmap(), file access which take mmap sem
 write locked have unbound latencies which are completely unrelated to mmap
 sem. Other R/W sem users like graphics drivers are not suitable for RT tasks
@@ -41,15 +42,16 @@ the approach.
 Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 ---
- include/linux/rwsem-rt.h  |   68 ++++++++++
- kernel/locking/rwsem-rt.c |  293 ++++++++++++++++++++++++++++++++++++++++++++++
+ include/linux/rwsem-rt.h  |   69 ++++++++++
+ kernel/locking/rwsem-rt.c |  292 ++++++++++++++++++++++++++++++++++++++++++++++
  2 files changed, 361 insertions(+)
  create mode 100644 include/linux/rwsem-rt.h
  create mode 100644 kernel/locking/rwsem-rt.c
 
 --- /dev/null
 +++ b/include/linux/rwsem-rt.h
-@@ -0,0 +1,68 @@
+@@ -0,0 +1,69 @@
++// SPDX-License-Identifier: GPL-2.0-only
 +#ifndef _LINUX_RWSEM_RT_H
 +#define _LINUX_RWSEM_RT_H
 +
@@ -120,9 +122,8 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 +#endif
 --- /dev/null
 +++ b/kernel/locking/rwsem-rt.c
-@@ -0,0 +1,293 @@
-+/*
-+ */
+@@ -0,0 +1,292 @@
++// SPDX-License-Identifier: GPL-2.0-only
 +#include <linux/rwsem.h>
 +#include <linux/sched/debug.h>
 +#include <linux/sched/signal.h>

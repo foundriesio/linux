@@ -1,6 +1,6 @@
 From: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 Date: Fri, 14 Aug 2020 16:55:25 +0200
-Subject: [PATCH 2/4] lockdep: Reduce header files in debug_locks.h
+Subject: [PATCH 11/23] lockdep: Reduce header files in debug_locks.h
 
 The inclusion of kernel.h leads to circular dependency if spinlock_t is
 based on rt_mutex.

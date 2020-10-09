@@ -1,6 +1,6 @@
 From: Thomas Gleixner <tglx@linutronix.de>
 Date: Thu, 12 Oct 2017 16:14:22 +0200
-Subject: rtmutex: Provide rt_mutex_slowlock_locked()
+Subject: [PATCH 13/23] locking/rtmutex: Provide rt_mutex_slowlock_locked()
 
 This is the inner-part of rt_mutex_slowlock(), required for rwsem-rt.
 
@@ -13,7 +13,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/kernel/locking/rtmutex.c
 +++ b/kernel/locking/rtmutex.c
-@@ -1241,35 +1241,16 @@ static void rt_mutex_handle_deadlock(int
+@@ -1234,35 +1234,16 @@ static void rt_mutex_handle_deadlock(int
  	}
  }
  
@@ -55,7 +55,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  	set_current_state(state);
  
-@@ -1277,16 +1258,16 @@ rt_mutex_slowlock(struct rt_mutex *lock,
+@@ -1270,16 +1251,16 @@ rt_mutex_slowlock(struct rt_mutex *lock,
  	if (unlikely(timeout))
  		hrtimer_start_expires(&timeout->timer, HRTIMER_MODE_ABS);
  
@@ -76,7 +76,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	}
  
  	/*
-@@ -1294,6 +1275,34 @@ rt_mutex_slowlock(struct rt_mutex *lock,
+@@ -1287,6 +1268,34 @@ rt_mutex_slowlock(struct rt_mutex *lock,
  	 * unconditionally. We might have to fix that up.
  	 */
  	fixup_rt_mutex_waiters(lock);
@@ -121,7 +121,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  /*
   * This is the control structure for tasks blocked on a rt_mutex,
-@@ -159,6 +160,12 @@ extern bool __rt_mutex_futex_unlock(stru
+@@ -154,6 +155,12 @@ extern bool __rt_mutex_futex_unlock(stru
  				 struct wake_q_head *wqh);
  
  extern void rt_mutex_postunlock(struct wake_q_head *wake_q);

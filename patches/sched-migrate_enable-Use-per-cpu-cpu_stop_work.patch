@@ -26,7 +26,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/kernel/sched/core.c
 +++ b/kernel/sched/core.c
-@@ -8632,6 +8632,9 @@ static void migrate_disabled_sched(struc
+@@ -8642,6 +8642,9 @@ static void migrate_disabled_sched(struc
  	p->migrate_disable_scheduled = 1;
  }
  
@@ -36,7 +36,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  void migrate_enable(void)
  {
  	struct task_struct *p = current;
-@@ -8670,22 +8673,25 @@ void migrate_enable(void)
+@@ -8680,22 +8683,25 @@ void migrate_enable(void)
  
  	WARN_ON(smp_processor_id() != cpu);
  	if (!is_cpu_allowed(p, cpu)) {

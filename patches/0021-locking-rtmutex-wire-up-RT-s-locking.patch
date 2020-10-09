@@ -1,6 +1,6 @@
 From: Thomas Gleixner <tglx@linutronix.de>
 Date: Thu, 12 Oct 2017 17:31:14 +0200
-Subject: rtmutex: wire up RT's locking
+Subject: [PATCH 21/23] locking/rtmutex: wire up RT's locking
 
 Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
@@ -11,10 +11,10 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  include/linux/spinlock_api_smp.h |    4 +++-
  include/linux/spinlock_types.h   |   11 ++++++++---
  kernel/locking/Makefile          |   10 +++++++---
- kernel/locking/rwsem.c           |    7 +++++++
+ kernel/locking/rwsem.c           |    6 ++++++
  kernel/locking/spinlock.c        |    7 +++++++
  kernel/locking/spinlock_debug.c  |    5 +++++
- 9 files changed, 76 insertions(+), 18 deletions(-)
+ 9 files changed, 75 insertions(+), 18 deletions(-)
 
 --- a/include/linux/mutex.h
 +++ b/include/linux/mutex.h
@@ -204,15 +204,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  #include "lock_events.h"
  
  /*
-@@ -1332,6 +1333,7 @@ static struct rw_semaphore *rwsem_downgr
- 	return sem;
- }
- 
-+
- /*
-  * lock for reading
-  */
-@@ -1482,6 +1484,7 @@ static inline void __downgrade_write(str
+@@ -1482,6 +1483,7 @@ static inline void __downgrade_write(str
  	if (tmp & RWSEM_FLAG_WAITERS)
  		rwsem_downgrade_wake(sem);
  }
@@ -220,36 +212,26 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  /*
   * lock for reading
-@@ -1613,6 +1616,7 @@ void _down_write_nest_lock(struct rw_sem
- }
- EXPORT_SYMBOL(_down_write_nest_lock);
- 
-+#ifndef CONFIG_PREEMPT_RT
- void down_read_non_owner(struct rw_semaphore *sem)
+@@ -1617,7 +1619,9 @@ void down_read_non_owner(struct rw_semap
  {
  	might_sleep();
-@@ -1620,6 +1624,7 @@ void down_read_non_owner(struct rw_semap
+ 	__down_read(sem);
++#ifndef CONFIG_PREEMPT_RT
  	__rwsem_set_reader_owned(sem, NULL);
++#endif
  }
  EXPORT_SYMBOL(down_read_non_owner);
-+#endif
  
- void down_write_nested(struct rw_semaphore *sem, int subclass)
- {
-@@ -1644,11 +1649,13 @@ int __sched down_write_killable_nested(s
- }
- EXPORT_SYMBOL(down_write_killable_nested);
+@@ -1646,7 +1650,9 @@ EXPORT_SYMBOL(down_write_killable_nested
  
-+#ifndef CONFIG_PREEMPT_RT
  void up_read_non_owner(struct rw_semaphore *sem)
  {
++#ifndef CONFIG_PREEMPT_RT
  	DEBUG_RWSEMS_WARN_ON(!is_rwsem_reader_owned(sem), sem);
++#endif
  	__up_read(sem);
  }
  EXPORT_SYMBOL(up_read_non_owner);
-+#endif
- 
- #endif
 --- a/kernel/locking/spinlock.c
 +++ b/kernel/locking/spinlock.c
 @@ -124,8 +124,11 @@ void __lockfunc __raw_##op##_lock_bh(loc

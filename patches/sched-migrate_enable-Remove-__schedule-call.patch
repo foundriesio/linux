@@ -21,7 +21,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/kernel/sched/core.c
 +++ b/kernel/sched/core.c
-@@ -8691,7 +8691,6 @@ void migrate_enable(void)
+@@ -8701,7 +8701,6 @@ void migrate_enable(void)
  
  		stop_one_cpu_nowait(task_cpu(p), migration_cpu_stop,
  				    arg, work);

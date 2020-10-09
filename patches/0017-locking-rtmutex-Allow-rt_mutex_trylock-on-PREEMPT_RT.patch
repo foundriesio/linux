@@ -1,10 +1,12 @@
 From: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
-Date: Wed 02 Dec 2015 11:34:07 +0100
-Subject: rtmutex: trylock is okay on -RT
+Date: Wed, 2 Dec 2015 11:34:07 +0100
+Subject: [PATCH 17/23] locking/rtmutex: Allow rt_mutex_trylock() on PREEMPT_RT
 
-non-RT kernel could deadlock on rt_mutex_trylock() in softirq context. On
--RT we don't run softirqs in IRQ context but in thread context so it is
-not a issue here.
+Non PREEMPT_RT kernel can deadlock on rt_mutex_trylock() in softirq
+context.
+On PREEMPT_RT the softirq context is handled in thread context. This
+avoids the deadlock in the slow path and PI-boosting will be done on the
+correct thread.
 
 Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 ---
@@ -13,7 +15,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/kernel/locking/rtmutex.c
 +++ b/kernel/locking/rtmutex.c
-@@ -1955,7 +1955,11 @@ EXPORT_SYMBOL_GPL(rt_mutex_timed_lock);
+@@ -1899,7 +1899,11 @@ EXPORT_SYMBOL_GPL(rt_mutex_lock_killable
  
  int __sched __rt_mutex_trylock(struct rt_mutex *lock)
  {

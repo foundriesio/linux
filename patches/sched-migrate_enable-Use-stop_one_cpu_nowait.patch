@@ -13,9 +13,9 @@ Signed-off-by: Scott Wood <swood@redhat.com>
 Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 ---
  include/linux/stop_machine.h |    2 ++
- kernel/sched/core.c          |   27 +++++++++++++++++----------
+ kernel/sched/core.c          |   25 +++++++++++++++++--------
  kernel/stop_machine.c        |    7 +++++--
- 3 files changed, 24 insertions(+), 12 deletions(-)
+ 3 files changed, 24 insertions(+), 10 deletions(-)
 
 --- a/include/linux/stop_machine.h
 +++ b/include/linux/stop_machine.h
@@ -62,7 +62,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	}
  	rq_unlock(rq, &rf);
  	raw_spin_unlock(&p->pi_lock);
-@@ -8664,7 +8670,8 @@ void migrate_enable(void)
+@@ -8674,7 +8680,8 @@ void migrate_enable(void)
  
  	WARN_ON(smp_processor_id() != cpu);
  	if (!is_cpu_allowed(p, cpu)) {
@@ -72,15 +72,13 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  		struct rq_flags rf;
  
  		rq = task_rq_lock(p, &rf);
-@@ -8672,13 +8679,13 @@ void migrate_enable(void)
+@@ -8682,11 +8689,13 @@ void migrate_enable(void)
  		arg.dest_cpu = select_fallback_rq(cpu, p);
  		task_rq_unlock(rq, p, &rf);
  
 -		preempt_enable();
 -
--		sleeping_lock_inc();
 -		stop_one_cpu(task_cpu(p), migration_cpu_stop, &arg);
--		sleeping_lock_dec();
 -		return;
 -
 +		stop_one_cpu_nowait(task_cpu(p), migration_cpu_stop,

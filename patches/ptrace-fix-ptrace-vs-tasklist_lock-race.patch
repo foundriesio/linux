@@ -43,7 +43,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  #ifdef CONFIG_DEBUG_ATOMIC_SLEEP
  
  /*
-@@ -1830,6 +1826,51 @@ static inline int test_tsk_need_resched(
+@@ -1829,6 +1825,51 @@ static inline int test_tsk_need_resched(
  	return unlikely(test_tsk_thread_flag(tsk,TIF_NEED_RESCHED));
  }
  

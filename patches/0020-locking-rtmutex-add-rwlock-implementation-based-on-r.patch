@@ -1,24 +1,26 @@
 From: Thomas Gleixner <tglx@linutronix.de>
 Date: Thu, 12 Oct 2017 17:18:06 +0200
-Subject: rtmutex: add rwlock implementation based on rtmutex
+Subject: [PATCH 20/23] locking/rtmutex: add rwlock implementation based on
+ rtmutex
 
 The implementation is bias-based, similar to the rwsem implementation.
 
 Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 ---
- include/linux/rwlock_rt.h       |  108 +++++++++++++
- include/linux/rwlock_types_rt.h |   55 ++++++
+ include/linux/rwlock_rt.h       |  109 +++++++++++++
+ include/linux/rwlock_types_rt.h |   56 ++++++
  kernel/Kconfig.locks            |    2 
- kernel/locking/rwlock-rt.c      |  331 ++++++++++++++++++++++++++++++++++++++++
- 4 files changed, 495 insertions(+), 1 deletion(-)
+ kernel/locking/rwlock-rt.c      |  328 ++++++++++++++++++++++++++++++++++++++++
+ 4 files changed, 494 insertions(+), 1 deletion(-)
  create mode 100644 include/linux/rwlock_rt.h
  create mode 100644 include/linux/rwlock_types_rt.h
  create mode 100644 kernel/locking/rwlock-rt.c
 
 --- /dev/null
 +++ b/include/linux/rwlock_rt.h
-@@ -0,0 +1,108 @@
+@@ -0,0 +1,109 @@
++// SPDX-License-Identifier: GPL-2.0-only
 +#ifndef __LINUX_RWLOCK_RT_H
 +#define __LINUX_RWLOCK_RT_H
 +
@@ -129,7 +131,8 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 +#endif
 --- /dev/null
 +++ b/include/linux/rwlock_types_rt.h
-@@ -0,0 +1,55 @@
+@@ -0,0 +1,56 @@
++// SPDX-License-Identifier: GPL-2.0-only
 +#ifndef __LINUX_RWLOCK_TYPES_RT_H
 +#define __LINUX_RWLOCK_TYPES_RT_H
 +
@@ -198,9 +201,8 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	bool
 --- /dev/null
 +++ b/kernel/locking/rwlock-rt.c
-@@ -0,0 +1,331 @@
-+/*
-+ */
+@@ -0,0 +1,328 @@
++// SPDX-License-Identifier: GPL-2.0-only
 +#include <linux/sched/debug.h>
 +#include <linux/export.h>
 +
@@ -469,12 +471,11 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 +{
 +	int ret;
 +
-+	migrate_disable();
 +	ret = __read_rt_trylock(rwlock);
-+	if (ret)
++	if (ret) {
 +		rwlock_acquire_read(&rwlock->dep_map, 0, 1, _RET_IP_);
-+	else
-+		migrate_enable();
++		migrate_disable();
++	}
 +	return ret;
 +}
 +EXPORT_SYMBOL(rt_read_trylock);
@@ -483,45 +484,44 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 +{
 +	int ret;
 +
-+	migrate_disable();
 +	ret = __write_rt_trylock(rwlock);
-+	if (ret)
++	if (ret) {
 +		rwlock_acquire(&rwlock->dep_map, 0, 1, _RET_IP_);
-+	else
-+		migrate_enable();
++		migrate_disable();
++	}
 +	return ret;
 +}
 +EXPORT_SYMBOL(rt_write_trylock);
 +
 +void __lockfunc rt_read_lock(rwlock_t *rwlock)
 +{
-+	migrate_disable();
 +	rwlock_acquire_read(&rwlock->dep_map, 0, 0, _RET_IP_);
 +	__read_rt_lock(rwlock);
++	migrate_disable();
 +}
 +EXPORT_SYMBOL(rt_read_lock);
 +
 +void __lockfunc rt_write_lock(rwlock_t *rwlock)
 +{
-+	migrate_disable();
 +	rwlock_acquire(&rwlock->dep_map, 0, 0, _RET_IP_);
 +	__write_rt_lock(rwlock);
++	migrate_disable();
 +}
 +EXPORT_SYMBOL(rt_write_lock);
 +
 +void __lockfunc rt_read_unlock(rwlock_t *rwlock)
 +{
 +	rwlock_release(&rwlock->dep_map, _RET_IP_);
-+	__read_rt_unlock(rwlock);
 +	migrate_enable();
++	__read_rt_unlock(rwlock);
 +}
 +EXPORT_SYMBOL(rt_read_unlock);
 +
 +void __lockfunc rt_write_unlock(rwlock_t *rwlock)
 +{
 +	rwlock_release(&rwlock->dep_map, _RET_IP_);
-+	__write_rt_unlock(rwlock);
 +	migrate_enable();
++	__write_rt_unlock(rwlock);
 +}
 +EXPORT_SYMBOL(rt_write_unlock);
 +
