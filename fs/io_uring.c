@@ -8586,27 +8586,24 @@ static void io_uring_cancel_task_requests(struct io_ring_ctx *ctx,
  */
 static int io_uring_add_task_file(struct file *file)
 {
-	if (unlikely(!current->io_uring)) {
+	struct io_uring_task *tctx = current->io_uring;
+
+	if (unlikely(!tctx)) {
 		int ret;
 
 		ret = io_uring_alloc_task_context(current);
 		if (unlikely(ret))
 			return ret;
+		tctx = current->io_uring;
 	}
-	if (current->io_uring->last != file) {
-		XA_STATE(xas, &current->io_uring->xa, (unsigned long) file);
-		void *old;
+	if (tctx->last != file) {
+		void *old = xa_load(&tctx->xa, (unsigned long)file);
 
-		rcu_read_lock();
-		old = xas_load(&xas);
-		if (old != file) {
+		if (!old) {
 			get_file(file);
-			xas_lock(&xas);
-			xas_store(&xas, file);
-			xas_unlock(&xas);
+			xa_store(&tctx->xa, (unsigned long)file, file, GFP_KERNEL);
 		}
-		rcu_read_unlock();
-		current->io_uring->last = file;
+		tctx->last = file;
 	}
 
 	return 0;
@@ -8618,27 +8615,17 @@ static int io_uring_add_task_file(struct file *file)
 static void io_uring_del_task_file(struct file *file)
 {
 	struct io_uring_task *tctx = current->io_uring;
-	XA_STATE(xas, &tctx->xa, (unsigned long) file);
 
 	if (tctx->last == file)
 		tctx->last = NULL;
-
-	xas_lock(&xas);
-	file = xas_store(&xas, NULL);
-	xas_unlock(&xas);
-
+	file = xa_erase(&tctx->xa, (unsigned long)file);
 	if (file)
 		fput(file);
 }
 
 static void __io_uring_attempt_task_drop(struct file *file)
 {
-	XA_STATE(xas, &current->io_uring->xa, (unsigned long) file);
-	struct file *old;
-
-	rcu_read_lock();
-	old = xas_load(&xas);
-	rcu_read_unlock();
+	struct file *old = xa_load(&current->io_uring->xa, (unsigned long)file);
 
 	if (old == file)
 		io_uring_del_task_file(file);
@@ -8665,28 +8652,19 @@ static void io_uring_attempt_task_drop(struct file *file, bool exiting)
 void __io_uring_files_cancel(struct files_struct *files)
 {
 	struct io_uring_task *tctx = current->io_uring;
-	XA_STATE(xas, &tctx->xa, 0);
+	struct file *file;
+	unsigned long index;
 
 	/* make sure overflow events are dropped */
 	tctx->in_idle = true;
 
-	do {
-		struct io_ring_ctx *ctx;
-		struct file *file;
-
-		xas_lock(&xas);
-		file = xas_next_entry(&xas, ULONG_MAX);
-		xas_unlock(&xas);
-
-		if (!file)
-			break;
-
-		ctx = file->private_data;
+	xa_for_each(&tctx->xa, index, file) {
+		struct io_ring_ctx *ctx = file->private_data;
 
 		io_uring_cancel_task_requests(ctx, files);
 		if (files)
 			io_uring_del_task_file(file);
-	} while (1);
+	}
 }
 
 static inline bool io_uring_task_idle(struct io_uring_task *tctx)
