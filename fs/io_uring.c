@@ -210,7 +210,7 @@ struct fixed_file_data {
 	struct fixed_file_table		*table;
 	struct io_ring_ctx		*ctx;
 
-	struct percpu_ref		*cur_refs;
+	struct fixed_file_ref_node	*node;
 	struct percpu_ref		refs;
 	struct completion		done;
 	struct list_head		ref_list;
@@ -434,11 +434,14 @@ struct io_cancel {
 
 struct io_timeout {
 	struct file			*file;
-	u64				addr;
-	int				flags;
 	u32				off;
 	u32				target_seq;
 	struct list_head		list;
+};
+
+struct io_timeout_rem {
+	struct file			*file;
+	u64				addr;
 };
 
 struct io_rw {
@@ -644,6 +647,7 @@ struct io_kiocb {
 		struct io_sync		sync;
 		struct io_cancel	cancel;
 		struct io_timeout	timeout;
+		struct io_timeout_rem	timeout_rem;
 		struct io_connect	connect;
 		struct io_sr_msg	sr_msg;
 		struct io_open		open;
@@ -967,10 +971,9 @@ static void io_queue_linked_timeout(struct io_kiocb *req);
 static int __io_sqe_files_update(struct io_ring_ctx *ctx,
 				 struct io_uring_files_update *ip,
 				 unsigned nr_args);
-static int io_prep_work_files(struct io_kiocb *req);
 static void __io_clean_op(struct io_kiocb *req);
-static int io_file_get(struct io_submit_state *state, struct io_kiocb *req,
-		       int fd, struct file **out_file, bool fixed);
+static struct file *io_file_get(struct io_submit_state *state,
+				struct io_kiocb *req, int fd, bool fixed);
 static void __io_queue_sqe(struct io_kiocb *req, struct io_comp_state *cs);
 static void io_file_put_work(struct work_struct *work);
 
@@ -1222,15 +1225,27 @@ static bool io_req_clean_work(struct io_kiocb *req)
 static void io_prep_async_work(struct io_kiocb *req)
 {
 	const struct io_op_def *def = &io_op_defs[req->opcode];
+	struct io_ring_ctx *ctx = req->ctx;
 
 	io_req_init_async(req);
 
 	if (req->flags & REQ_F_ISREG) {
-		if (def->hash_reg_file || (req->ctx->flags & IORING_SETUP_IOPOLL))
+		if (def->hash_reg_file || (ctx->flags & IORING_SETUP_IOPOLL))
 			io_wq_hash_work(&req->work, file_inode(req->file));
 	} else {
 		if (def->unbound_nonreg_file)
 			req->work.flags |= IO_WQ_WORK_UNBOUND;
+	}
+	if (!req->work.files && io_op_defs[req->opcode].file_table &&
+	    !(req->flags & REQ_F_NO_FILE_TABLE)) {
+		req->work.files = get_files_struct(current);
+		get_nsproxy(current->nsproxy);
+		req->work.nsproxy = current->nsproxy;
+		req->flags |= REQ_F_INFLIGHT;
+
+		spin_lock_irq(&ctx->inflight_lock);
+		list_add(&req->inflight_entry, &ctx->inflight_list);
+		spin_unlock_irq(&ctx->inflight_lock);
 	}
 	if (!req->work.mm && def->needs_mm) {
 		mmgrab(current->mm);
@@ -2570,7 +2585,6 @@ static struct file *__io_file_get(struct io_submit_state *state, int fd)
 	if (state->file) {
 		if (state->fd == fd) {
 			state->has_refs--;
-			state->ios_left--;
 			return state->file;
 		}
 		__io_state_file_put(state);
@@ -2580,8 +2594,7 @@ static struct file *__io_file_get(struct io_submit_state *state, int fd)
 		return NULL;
 
 	state->fd = fd;
-	state->ios_left--;
-	state->has_refs = state->ios_left;
+	state->has_refs = state->ios_left - 1;
 	return state->file;
 }
 
@@ -3475,7 +3488,6 @@ static int __io_splice_prep(struct io_kiocb *req,
 {
 	struct io_splice* sp = &req->splice;
 	unsigned int valid_flags = SPLICE_F_FD_IN_FIXED | SPLICE_F_ALL;
-	int ret;
 
 	if (unlikely(req->ctx->flags & IORING_SETUP_IOPOLL))
 		return -EINVAL;
@@ -3487,10 +3499,10 @@ static int __io_splice_prep(struct io_kiocb *req,
 	if (unlikely(sp->flags & ~valid_flags))
 		return -EINVAL;
 
-	ret = io_file_get(NULL, req, READ_ONCE(sqe->splice_fd_in), &sp->file_in,
-			  (sp->flags & SPLICE_F_FD_IN_FIXED));
-	if (ret)
-		return ret;
+	sp->file_in = io_file_get(NULL, req, READ_ONCE(sqe->splice_fd_in),
+				  (sp->flags & SPLICE_F_FD_IN_FIXED));
+	if (!sp->file_in)
+		return -EBADF;
 	req->flags |= REQ_F_NEED_CLEANUP;
 
 	if (!S_ISREG(file_inode(sp->file_in)->i_mode)) {
@@ -5289,15 +5301,9 @@ static enum hrtimer_restart io_timeout_fn(struct hrtimer *timer)
 	unsigned long flags;
 
 	spin_lock_irqsave(&ctx->completion_lock, flags);
+	list_del_init(&req->timeout.list);
 	atomic_set(&req->ctx->cq_timeouts,
 		atomic_read(&req->ctx->cq_timeouts) + 1);
-
-	/*
-	 * We could be racing with timeout deletion. If the list is empty,
-	 * then timeout lookup already found it and will be handling it.
-	 */
-	if (!list_empty(&req->timeout.list))
-		list_del_init(&req->timeout.list);
 
 	io_cqring_fill_event(req, -ETIME);
 	io_commit_cqring(ctx);
@@ -5314,11 +5320,10 @@ static int __io_timeout_cancel(struct io_kiocb *req)
 	struct io_timeout_data *io = req->async_data;
 	int ret;
 
-	list_del_init(&req->timeout.list);
-
 	ret = hrtimer_try_to_cancel(&io->timer);
 	if (ret == -1)
 		return -EALREADY;
+	list_del_init(&req->timeout.list);
 
 	req_set_fail_links(req);
 	req->flags |= REQ_F_COMP_LOCKED;
@@ -5352,14 +5357,10 @@ static int io_timeout_remove_prep(struct io_kiocb *req,
 		return -EINVAL;
 	if (unlikely(req->flags & (REQ_F_FIXED_FILE | REQ_F_BUFFER_SELECT)))
 		return -EINVAL;
-	if (sqe->ioprio || sqe->buf_index || sqe->len)
+	if (sqe->ioprio || sqe->buf_index || sqe->len || sqe->timeout_flags)
 		return -EINVAL;
 
-	req->timeout.addr = READ_ONCE(sqe->addr);
-	req->timeout.flags = READ_ONCE(sqe->timeout_flags);
-	if (req->timeout.flags)
-		return -EINVAL;
-
+	req->timeout_rem.addr = READ_ONCE(sqe->addr);
 	return 0;
 }
 
@@ -5372,7 +5373,7 @@ static int io_timeout_remove(struct io_kiocb *req)
 	int ret;
 
 	spin_lock_irq(&ctx->completion_lock);
-	ret = io_timeout_cancel(ctx, req->timeout.addr);
+	ret = io_timeout_cancel(ctx, req->timeout_rem.addr);
 
 	io_cqring_fill_event(req, ret);
 	io_commit_cqring(ctx);
@@ -5662,19 +5663,10 @@ static int io_req_prep(struct io_kiocb *req, const struct io_uring_sqe *sqe)
 static int io_req_defer_prep(struct io_kiocb *req,
 			     const struct io_uring_sqe *sqe)
 {
-	int ret;
-
 	if (!sqe)
 		return 0;
 	if (io_alloc_async_data(req))
 		return -EAGAIN;
-
-	ret = io_prep_work_files(req);
-	if (unlikely(ret))
-		return ret;
-
-	io_prep_async_work(req);
-
 	return io_req_prep(req, sqe);
 }
 
@@ -5839,18 +5831,16 @@ static int io_issue_sqe(struct io_kiocb *req, bool force_nonblock,
 		ret = io_sync_file_range(req, force_nonblock);
 		break;
 	case IORING_OP_SENDMSG:
+		ret = io_sendmsg(req, force_nonblock, cs);
+		break;
 	case IORING_OP_SEND:
-		if (req->opcode == IORING_OP_SENDMSG)
-			ret = io_sendmsg(req, force_nonblock, cs);
-		else
-			ret = io_send(req, force_nonblock, cs);
+		ret = io_send(req, force_nonblock, cs);
 		break;
 	case IORING_OP_RECVMSG:
+		ret = io_recvmsg(req, force_nonblock, cs);
+		break;
 	case IORING_OP_RECV:
-		if (req->opcode == IORING_OP_RECVMSG)
-			ret = io_recvmsg(req, force_nonblock, cs);
-		else
-			ret = io_recv(req, force_nonblock, cs);
+		ret = io_recv(req, force_nonblock, cs);
 		break;
 	case IORING_OP_TIMEOUT:
 		ret = io_timeout(req);
@@ -5978,20 +5968,19 @@ static inline struct file *io_file_from_index(struct io_ring_ctx *ctx,
 	return table->files[index & IORING_FILE_TABLE_MASK];
 }
 
-static int io_file_get(struct io_submit_state *state, struct io_kiocb *req,
-			int fd, struct file **out_file, bool fixed)
+static struct file *io_file_get(struct io_submit_state *state,
+				struct io_kiocb *req, int fd, bool fixed)
 {
 	struct io_ring_ctx *ctx = req->ctx;
 	struct file *file;
 
 	if (fixed) {
-		if (unlikely(!ctx->file_data ||
-		    (unsigned) fd >= ctx->nr_user_files))
-			return -EBADF;
+		if (unlikely((unsigned int)fd >= ctx->nr_user_files))
+			return NULL;
 		fd = array_index_nospec(fd, ctx->nr_user_files);
 		file = io_file_from_index(ctx, fd);
 		if (file) {
-			req->fixed_file_refs = ctx->file_data->cur_refs;
+			req->fixed_file_refs = &ctx->file_data->node->refs;
 			percpu_ref_get(req->fixed_file_refs);
 		}
 	} else {
@@ -5999,11 +5988,7 @@ static int io_file_get(struct io_submit_state *state, struct io_kiocb *req,
 		file = __io_file_get(state, fd);
 	}
 
-	if (file || io_op_defs[req->opcode].needs_file_no_error) {
-		*out_file = file;
-		return 0;
-	}
-	return -EBADF;
+	return file;
 }
 
 static int io_req_set_file(struct io_submit_state *state, struct io_kiocb *req,
@@ -6015,34 +6000,10 @@ static int io_req_set_file(struct io_submit_state *state, struct io_kiocb *req,
 	if (unlikely(!fixed && io_async_submit(req->ctx)))
 		return -EBADF;
 
-	return io_file_get(state, req, fd, &req->file, fixed);
-}
-
-static int io_grab_files(struct io_kiocb *req)
-{
-	struct io_ring_ctx *ctx = req->ctx;
-
-	io_req_init_async(req);
-
-	if (req->work.files || (req->flags & REQ_F_NO_FILE_TABLE))
+	req->file = io_file_get(state, req, fd, fixed);
+	if (req->file || io_op_defs[req->opcode].needs_file_no_error)
 		return 0;
-
-	req->work.files = get_files_struct(current);
-	get_nsproxy(current->nsproxy);
-	req->work.nsproxy = current->nsproxy;
-	req->flags |= REQ_F_INFLIGHT;
-
-	spin_lock_irq(&ctx->inflight_lock);
-	list_add(&req->inflight_entry, &ctx->inflight_list);
-	spin_unlock_irq(&ctx->inflight_lock);
-	return 0;
-}
-
-static inline int io_prep_work_files(struct io_kiocb *req)
-{
-	if (!io_op_defs[req->opcode].file_table)
-		return 0;
-	return io_grab_files(req);
+	return -EBADF;
 }
 
 static enum hrtimer_restart io_link_timeout_fn(struct hrtimer *timer)
@@ -6156,9 +6117,6 @@ again:
 	if (ret == -EAGAIN && !(req->flags & REQ_F_NOWAIT)) {
 		if (!io_arm_poll_handler(req)) {
 punt:
-			ret = io_prep_work_files(req);
-			if (unlikely(ret))
-				goto err;
 			/*
 			 * Queued up for async execution, worker will release
 			 * submit reference when the iocb is actually submitted.
@@ -6172,7 +6130,6 @@ punt:
 	}
 
 	if (unlikely(ret)) {
-err:
 		/* un-prep timeout, so it'll be killed as any other linked */
 		req->flags &= ~REQ_F_LINK_TIMEOUT;
 		req_set_fail_links(req);
@@ -6418,7 +6375,7 @@ static int io_init_req(struct io_ring_ctx *ctx, struct io_kiocb *req,
 		       struct io_submit_state *state)
 {
 	unsigned int sqe_flags;
-	int id;
+	int id, ret;
 
 	req->opcode = READ_ONCE(sqe->opcode);
 	req->user_data = READ_ONCE(sqe->user_data);
@@ -6464,7 +6421,9 @@ static int io_init_req(struct io_ring_ctx *ctx, struct io_kiocb *req,
 	if (!io_op_defs[req->opcode].needs_file)
 		return 0;
 
-	return io_req_set_file(state, req, READ_ONCE(sqe->fd));
+	ret = io_req_set_file(state, req, READ_ONCE(sqe->fd));
+	state->ios_left--;
+	return ret;
 }
 
 static int io_submit_sqes(struct io_ring_ctx *ctx, unsigned int nr)
@@ -6507,12 +6466,11 @@ static int io_submit_sqes(struct io_ring_ctx *ctx, unsigned int nr)
 				submitted = -EAGAIN;
 			break;
 		}
-
-		err = io_init_req(ctx, req, sqe, &state);
 		io_consume_sqe(ctx);
 		/* will complete beyond this point, count as submitted */
 		submitted++;
 
+		err = io_init_req(ctx, req, sqe, &state);
 		if (unlikely(err)) {
 fail_req:
 			io_put_req(req);
@@ -7141,13 +7099,13 @@ static int io_sqe_files_scm(struct io_ring_ctx *ctx)
 }
 #endif
 
-static int io_sqe_alloc_file_tables(struct io_ring_ctx *ctx, unsigned nr_tables,
-				    unsigned nr_files)
+static int io_sqe_alloc_file_tables(struct fixed_file_data *file_data,
+				    unsigned nr_tables, unsigned nr_files)
 {
 	int i;
 
 	for (i = 0; i < nr_tables; i++) {
-		struct fixed_file_table *table = &ctx->file_data->table[i];
+		struct fixed_file_table *table = &file_data->table[i];
 		unsigned this_files;
 
 		this_files = min(nr_files, IORING_MAX_FILES_TABLE);
@@ -7162,7 +7120,7 @@ static int io_sqe_alloc_file_tables(struct io_ring_ctx *ctx, unsigned nr_tables,
 		return 0;
 
 	for (i = 0; i < nr_tables; i++) {
-		struct fixed_file_table *table = &ctx->file_data->table[i];
+		struct fixed_file_table *table = &file_data->table[i];
 		kfree(table->files);
 	}
 	return 1;
@@ -7324,11 +7282,11 @@ static int io_sqe_files_register(struct io_ring_ctx *ctx, void __user *arg,
 				 unsigned nr_args)
 {
 	__s32 __user *fds = (__s32 __user *) arg;
-	unsigned nr_tables;
+	unsigned nr_tables, i;
 	struct file *file;
-	int fd, ret = 0;
-	unsigned i;
+	int fd, ret = -ENOMEM;
 	struct fixed_file_ref_node *ref_node;
+	struct fixed_file_data *file_data;
 
 	if (ctx->file_data)
 		return -EBUSY;
@@ -7337,60 +7295,43 @@ static int io_sqe_files_register(struct io_ring_ctx *ctx, void __user *arg,
 	if (nr_args > IORING_MAX_FIXED_FILES)
 		return -EMFILE;
 
-	ctx->file_data = kzalloc(sizeof(*ctx->file_data), GFP_KERNEL);
-	if (!ctx->file_data)
+	file_data = kzalloc(sizeof(*ctx->file_data), GFP_KERNEL);
+	if (!file_data)
 		return -ENOMEM;
-	ctx->file_data->ctx = ctx;
-	init_completion(&ctx->file_data->done);
-	INIT_LIST_HEAD(&ctx->file_data->ref_list);
-	spin_lock_init(&ctx->file_data->lock);
+	file_data->ctx = ctx;
+	init_completion(&file_data->done);
+	INIT_LIST_HEAD(&file_data->ref_list);
+	spin_lock_init(&file_data->lock);
 
 	nr_tables = DIV_ROUND_UP(nr_args, IORING_MAX_FILES_TABLE);
-	ctx->file_data->table = kcalloc(nr_tables,
-					sizeof(struct fixed_file_table),
-					GFP_KERNEL);
-	if (!ctx->file_data->table) {
-		kfree(ctx->file_data);
-		ctx->file_data = NULL;
-		return -ENOMEM;
-	}
+	file_data->table = kcalloc(nr_tables, sizeof(file_data->table),
+				   GFP_KERNEL);
+	if (!file_data->table)
+		goto out_free;
 
-	if (percpu_ref_init(&ctx->file_data->refs, io_file_ref_kill,
-				PERCPU_REF_ALLOW_REINIT, GFP_KERNEL)) {
-		kfree(ctx->file_data->table);
-		kfree(ctx->file_data);
-		ctx->file_data = NULL;
-		return -ENOMEM;
-	}
+	if (percpu_ref_init(&file_data->refs, io_file_ref_kill,
+				PERCPU_REF_ALLOW_REINIT, GFP_KERNEL))
+		goto out_free;
 
-	if (io_sqe_alloc_file_tables(ctx, nr_tables, nr_args)) {
-		percpu_ref_exit(&ctx->file_data->refs);
-		kfree(ctx->file_data->table);
-		kfree(ctx->file_data);
-		ctx->file_data = NULL;
-		return -ENOMEM;
-	}
+	if (io_sqe_alloc_file_tables(file_data, nr_tables, nr_args))
+		goto out_ref;
 
 	for (i = 0; i < nr_args; i++, ctx->nr_user_files++) {
 		struct fixed_file_table *table;
 		unsigned index;
 
-		ret = -EFAULT;
-		if (copy_from_user(&fd, &fds[i], sizeof(fd)))
-			break;
-		/* allow sparse sets */
-		if (fd == -1) {
-			ret = 0;
-			continue;
+		if (copy_from_user(&fd, &fds[i], sizeof(fd))) {
+			ret = -EFAULT;
+			goto out_fput;
 		}
+		/* allow sparse sets */
+		if (fd == -1)
+			continue;
 
-		table = &ctx->file_data->table[i >> IORING_FILE_TABLE_SHIFT];
-		index = i & IORING_FILE_TABLE_MASK;
 		file = fget(fd);
-
 		ret = -EBADF;
 		if (!file)
-			break;
+			goto out_fput;
 
 		/*
 		 * Don't allow io_uring instances to be registered. If UNIX
@@ -7401,29 +7342,14 @@ static int io_sqe_files_register(struct io_ring_ctx *ctx, void __user *arg,
 		 */
 		if (file->f_op == &io_uring_fops) {
 			fput(file);
-			break;
+			goto out_fput;
 		}
-		ret = 0;
+		table = &file_data->table[i >> IORING_FILE_TABLE_SHIFT];
+		index = i & IORING_FILE_TABLE_MASK;
 		table->files[index] = file;
 	}
 
-	if (ret) {
-		for (i = 0; i < ctx->nr_user_files; i++) {
-			file = io_file_from_index(ctx, i);
-			if (file)
-				fput(file);
-		}
-		for (i = 0; i < nr_tables; i++)
-			kfree(ctx->file_data->table[i].files);
-
-		percpu_ref_exit(&ctx->file_data->refs);
-		kfree(ctx->file_data->table);
-		kfree(ctx->file_data);
-		ctx->file_data = NULL;
-		ctx->nr_user_files = 0;
-		return ret;
-	}
-
+	ctx->file_data = file_data;
 	ret = io_sqe_files_scm(ctx);
 	if (ret) {
 		io_sqe_files_unregister(ctx);
@@ -7436,11 +7362,26 @@ static int io_sqe_files_register(struct io_ring_ctx *ctx, void __user *arg,
 		return PTR_ERR(ref_node);
 	}
 
-	ctx->file_data->cur_refs = &ref_node->refs;
-	spin_lock(&ctx->file_data->lock);
-	list_add(&ref_node->node, &ctx->file_data->ref_list);
-	spin_unlock(&ctx->file_data->lock);
-	percpu_ref_get(&ctx->file_data->refs);
+	file_data->node = ref_node;
+	spin_lock(&file_data->lock);
+	list_add(&ref_node->node, &file_data->ref_list);
+	spin_unlock(&file_data->lock);
+	percpu_ref_get(&file_data->refs);
+	return ret;
+out_fput:
+	for (i = 0; i < ctx->nr_user_files; i++) {
+		file = io_file_from_index(ctx, i);
+		if (file)
+			fput(file);
+	}
+	for (i = 0; i < nr_tables; i++)
+		kfree(file_data->table[i].files);
+	ctx->nr_user_files = 0;
+out_ref:
+	percpu_ref_exit(&file_data->refs);
+out_free:
+	kfree(file_data->table);
+	kfree(file_data);
 	return ret;
 }
 
@@ -7491,14 +7432,12 @@ static int io_queue_file_removal(struct fixed_file_data *data,
 				 struct file *file)
 {
 	struct io_file_put *pfile;
-	struct percpu_ref *refs = data->cur_refs;
-	struct fixed_file_ref_node *ref_node;
+	struct fixed_file_ref_node *ref_node = data->node;
 
 	pfile = kzalloc(sizeof(*pfile), GFP_KERNEL);
 	if (!pfile)
 		return -ENOMEM;
 
-	ref_node = container_of(refs, struct fixed_file_ref_node, refs);
 	pfile->file = file;
 	list_add(&pfile->list, &ref_node->file_list);
 
@@ -7581,10 +7520,10 @@ static int __io_sqe_files_update(struct io_ring_ctx *ctx,
 	}
 
 	if (needs_switch) {
-		percpu_ref_kill(data->cur_refs);
+		percpu_ref_kill(&data->node->refs);
 		spin_lock(&data->lock);
 		list_add(&ref_node->node, &data->ref_list);
-		data->cur_refs = &ref_node->refs;
+		data->node = ref_node;
 		spin_unlock(&data->lock);
 		percpu_ref_get(&ctx->file_data->refs);
 	} else
