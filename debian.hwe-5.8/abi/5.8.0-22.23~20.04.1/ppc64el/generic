@@ -6107,6 +6107,7 @@ EXPORT_SYMBOL	 vmlinux 0x00000000	atomic_dec_and_mutex_lock
 EXPORT_SYMBOL	 vmlinux 0x00000000	audit_log
 EXPORT_SYMBOL	 vmlinux 0x00000000	audit_log_end
 EXPORT_SYMBOL	 vmlinux 0x00000000	audit_log_format
+EXPORT_SYMBOL	 vmlinux 0x00000000	audit_log_object_context
 EXPORT_SYMBOL	 vmlinux 0x00000000	audit_log_start
 EXPORT_SYMBOL	 vmlinux 0x00000000	audit_log_task_context
 EXPORT_SYMBOL	 vmlinux 0x00000000	audit_log_task_info
@@ -10022,6 +10023,7 @@ EXPORT_SYMBOL	 vmlinux 0x00000000	start_tty
 EXPORT_SYMBOL	 vmlinux 0x00000000	stop_tty
 EXPORT_SYMBOL	 vmlinux 0x00000000	store_fp_state
 EXPORT_SYMBOL	 vmlinux 0x00000000	store_vr_state
+EXPORT_SYMBOL	 vmlinux 0x00000000	stpcpy
 EXPORT_SYMBOL	 vmlinux 0x00000000	strcasecmp
 EXPORT_SYMBOL	 vmlinux 0x00000000	strcat
 EXPORT_SYMBOL	 vmlinux 0x00000000	strchr
@@ -17402,6 +17404,7 @@ EXPORT_SYMBOL_GPL	 sound/soc/snd-soc-core 0x00000000	snd_soc_dpcm_fe_can_update
 EXPORT_SYMBOL_GPL	 sound/soc/snd-soc-core 0x00000000	snd_soc_dpcm_get_substream
 EXPORT_SYMBOL_GPL	 sound/soc/snd-soc-core 0x00000000	snd_soc_dpcm_runtime_update
 EXPORT_SYMBOL_GPL	 sound/soc/snd-soc-core 0x00000000	snd_soc_find_dai
+EXPORT_SYMBOL_GPL	 sound/soc/snd-soc-core 0x00000000	snd_soc_find_dai_with_mutex
 EXPORT_SYMBOL_GPL	 sound/soc/snd-soc-core 0x00000000	snd_soc_free_ac97_component
 EXPORT_SYMBOL_GPL	 sound/soc/snd-soc-core 0x00000000	snd_soc_get_dai_id
 EXPORT_SYMBOL_GPL	 sound/soc/snd-soc-core 0x00000000	snd_soc_get_dai_name
@@ -17597,6 +17600,7 @@ EXPORT_SYMBOL_GPL	 vmlinux 0x00000000	__irq_alloc_domain_generic_chips
 EXPORT_SYMBOL_GPL	 vmlinux 0x00000000	__irq_domain_add
 EXPORT_SYMBOL_GPL	 vmlinux 0x00000000	__irq_domain_alloc_fwnode
 EXPORT_SYMBOL_GPL	 vmlinux 0x00000000	__irq_set_handler
+EXPORT_SYMBOL_GPL	 vmlinux 0x00000000	__kernel_write
 EXPORT_SYMBOL_GPL	 vmlinux 0x00000000	__kprobe_event_add_fields
 EXPORT_SYMBOL_GPL	 vmlinux 0x00000000	__kprobe_event_gen_cmd_start
 EXPORT_SYMBOL_GPL	 vmlinux 0x00000000	__kthread_init_worker
@@ -18120,6 +18124,7 @@ EXPORT_SYMBOL_GPL	 vmlinux 0x00000000	blk_queue_max_discard_segments
 EXPORT_SYMBOL_GPL	 vmlinux 0x00000000	blk_queue_max_zone_append_sectors
 EXPORT_SYMBOL_GPL	 vmlinux 0x00000000	blk_queue_required_elevator_features
 EXPORT_SYMBOL_GPL	 vmlinux 0x00000000	blk_queue_rq_timeout
+EXPORT_SYMBOL_GPL	 vmlinux 0x00000000	blk_queue_set_zoned
 EXPORT_SYMBOL_GPL	 vmlinux 0x00000000	blk_queue_write_cache
 EXPORT_SYMBOL_GPL	 vmlinux 0x00000000	blk_register_queue
 EXPORT_SYMBOL_GPL	 vmlinux 0x00000000	blk_req_needs_zone_write_lock
@@ -18695,6 +18700,7 @@ EXPORT_SYMBOL_GPL	 vmlinux 0x00000000	dax_layout_busy_page
 EXPORT_SYMBOL_GPL	 vmlinux 0x00000000	dax_read_lock
 EXPORT_SYMBOL_GPL	 vmlinux 0x00000000	dax_read_unlock
 EXPORT_SYMBOL_GPL	 vmlinux 0x00000000	dax_region_put
+EXPORT_SYMBOL_GPL	 vmlinux 0x00000000	dax_supported
 EXPORT_SYMBOL_GPL	 vmlinux 0x00000000	dax_write_cache
 EXPORT_SYMBOL_GPL	 vmlinux 0x00000000	dax_write_cache_enabled
 EXPORT_SYMBOL_GPL	 vmlinux 0x00000000	dax_writeback_mapping_range

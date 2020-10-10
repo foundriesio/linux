@@ -717,6 +717,7 @@ cdns-pltfrm
 cdns3
 cdns3-pci-wrap
 cec
+cec-gpio
 ceph
 cfag12864b
 cfag12864bfb
@@ -5216,6 +5217,7 @@ uartlite
 uas
 ubi
 ubifs
+ubuntu-host
 ucan
 ucb1400_core
 ucb1400_ts
