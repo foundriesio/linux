@@ -1340,6 +1340,9 @@ int analyse_instr(struct instruction_op *op, const struct pt_regs *regs,
 	switch (opcode) {
 #ifdef __powerpc64__
 	case 1:
+		if (!cpu_has_feature(CPU_FTR_ARCH_31))
+			return -1;
+
 		prefix_r = word & (1ul << 20);
 		ra = (suffix >> 16) & 0x1f;
 		rd = (suffix >> 21) & 0x1f;
@@ -2716,6 +2719,9 @@ int analyse_instr(struct instruction_op *op, const struct pt_regs *regs,
 		}
 		break;
 	case 1: /* Prefixed instructions */
+		if (!cpu_has_feature(CPU_FTR_ARCH_31))
+			return -1;
+
 		prefix_r = word & (1ul << 20);
 		ra = (suffix >> 16) & 0x1f;
 		op->update_reg = ra;
