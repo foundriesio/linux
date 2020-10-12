@@ -1,0 +1,223 @@
+arm/soc
+	samsung/s3c-cleanup
+		https://git.kernel.org/pub/scm/linux/kernel/git/krzk/linux tags/samsung-soc-s3c-5.10
+	versatile/soc
+		git://git.kernel.org/pub/scm/linux/kernel/git/linusw/linux-integrator tags/versatile-soc-v5.10-1
+	omap/soc
+		git://git.kernel.org/pub/scm/linux/kernel/git/tmlind/linux-omap tags/omap-for-v5.10/soc-signed
+	omap/pdata
+		git://git.kernel.org/pub/scm/linux/kernel/git/tmlind/linux-omap tags/omap-for-v5.10/ti-sysc-drop-pdata-signed
+	brcm/maintainers
+		https://github.com/Broadcom/stblinux tags/arm-soc/for-5.10/maintainers
+	brcm/soc
+		https://github.com/Broadcom/stblinux tags/arm-soc/for-5.10/soc
+	at91/soc
+		git://git.kernel.org/pub/scm/linux/kernel/git/at91/linux tags/at91-soc-5.10
+	renesas/soc
+		git://git.kernel.org/pub/scm/linux/kernel/git/geert/renesas-devel tags/renesas-arm-soc-for-v5.10-tag1
+	samsung/soc
+		https://git.kernel.org/pub/scm/linux/kernel/git/krzk/linux tags/samsung-soc-5.10
+	patch
+		ARM: stm32: Replace HTTP links with HTTPS ones
+		ARM: mstar: Select MStar intc
+	davinci/soc
+		git://git.kernel.org/pub/scm/linux/kernel/git/nsekhar/linux-davinci tags/davinci-for-v5.10/soc
+	omap/soc-2
+		git://git.kernel.org/pub/scm/linux/kernel/git/tmlind/linux-omap tags/omap-for-v5.10/soc-part2-v2-signed
+	hisi/soc
+		git://github.com/hisilicon/linux-hisi tags/hisi-arm-soc-for-5.10
+	imx/soc
+		git://git.kernel.org/pub/scm/linux/kernel/git/shawnguo/linux tags/imx-soc-5.10
+
+arm/dt
+	omap/dt
+		git://git.kernel.org/pub/scm/linux/kernel/git/tmlind/linux-omap tags/omap-for-v5.10/dt-signed
+	renesas/dt
+		git://git.kernel.org/pub/scm/linux/kernel/git/geert/renesas-devel tags/renesas-arm-dt-for-v5.10-tag1
+	samsung/dt
+		https://git.kernel.org/pub/scm/linux/kernel/git/krzk/linux tags/samsung-dt-5.10
+	samsung/dt64
+		https://git.kernel.org/pub/scm/linux/kernel/git/krzk/linux tags/samsung-dt64-5.10
+	juno/dt
+		git://git.kernel.org/pub/scm/linux/kernel/git/sudeep.holla/linux tags/juno-updates-5.10
+	aspeed/dt
+		git://git.kernel.org/pub/scm/linux/kernel/git/joel/aspeed tags/aspeed-5.10-devicetree
+	cleanup/alpine-dt
+		https://git.kernel.org/pub/scm/linux/kernel/git/krzk/linux tags/dt64-schema-5.10
+	cleanup/dt
+		https://git.kernel.org/pub/scm/linux/kernel/git/krzk/linux tags/dt-schema-5.10
+	brcm/dt
+		https://github.com/Broadcom/stblinux tags/arm-soc/for-5.10/devicetree
+	brcm/dt64
+		https://github.com/Broadcom/stblinux tags/arm-soc/for-5.10/devicetree-arm64
+	hisi/dt64
+		git://github.com/hisilicon/linux-hisi tags/hisi-arm64-dt-for-5.10
+	hisi/dt
+		git://github.com/hisilicon/linux-hisi tags/hisi-arm32-dt-for-5.10
+	sparx5/dt
+		https://github.com/microchip-ung/linux-upstream tags/sparx5-dt-5.10
+	ux500/dt
+		git://git.kernel.org/pub/scm/linux/kernel/git/linusw/linux-stericsson tags/ux500-dts-for-v5.10
+	socfpga/dt
+		git://git.kernel.org/pub/scm/linux/kernel/git/dinguyen/linux tags/socfpga_dts_update_for_v5.10
+	at91/dt
+		git://git.kernel.org/pub/scm/linux/kernel/git/at91/linux tags/at91-dt-5.10
+	patch
+		ARM: dts: picoxcell: build DTBs with make dtbs
+		ARM: dts: picoxcell: drop unused reg-io-width from DW APB GPIO controller
+		arm64: dts: apm: drop unused reg-io-width from DW APB GPIO controller
+		arm64: dts: apm: add required gpio-cells to DW APB GPIO controller port
+	renesas/dt2
+		git://git.kernel.org/pub/scm/linux/kernel/git/geert/renesas-devel tags/renesas-arm-dt-for-v5.10-tag2
+	renesas/dt-bindings
+		git://git.kernel.org/pub/scm/linux/kernel/git/geert/renesas-devel tags/renesas-dt-bindings-for-v5.10-tag1
+	tegra/dt-bindings
+		git://git.kernel.org/pub/scm/linux/kernel/git/tegra/linux tags/tegra-for-5.10-dt-bindings
+	tegra/dt64
+		git://git.kernel.org/pub/scm/linux/kernel/git/tegra/linux tags/tegra-for-5.10-arm64-dt
+	samsung/dt2
+		https://git.kernel.org/pub/scm/linux/kernel/git/krzk/linux tags/samsung-dt-5.10-2
+	samsung/dt64-2
+		https://git.kernel.org/pub/scm/linux/kernel/git/krzk/linux tags/samsung-dt64-5.10-2
+	ti/k3-dt
+		git://git.kernel.org/pub/scm/linux/kernel/git/nmenon/linux tags/ti-k3-dt-for-v5.10
+	imx/dt-bindings
+		git://git.kernel.org/pub/scm/linux/kernel/git/shawnguo/linux tags/imx-bindings-5.10
+	imx/dt
+		git://git.kernel.org/pub/scm/linux/kernel/git/shawnguo/linux tags/imx-dt-5.10
+	imx/dt64
+		git://git.kernel.org/pub/scm/linux/kernel/git/shawnguo/linux tags/imx-dt64-5.10
+	rockchip/dt64
+		git://git.kernel.org/pub/scm/linux/kernel/git/mmind/linux-rockchip tags/v5.10-rockchip-dts64-1
+	qualcomm/dt64
+		https://git.kernel.org/pub/scm/linux/kernel/git/qcom/linux tags/qcom-arm64-for-5.10
+	stm32/dt
+		git://git.kernel.org/pub/scm/linux/kernel/git/atorgue/stm32 tags/stm32-dt-for-v5.10-1
+	amlogic/dt
+		https://git.kernel.org/pub/scm/linux/kernel/git/khilman/linux-amlogic tags/amlogic-dt
+	amlogic/dt64
+		https://git.kernel.org/pub/scm/linux/kernel/git/khilman/linux-amlogic tags/amlogic-dt64
+	mediatek/dt64
+		https://git.kernel.org/pub/scm/linux/kernel/git/matthias.bgg/linux tags/v5.9-next-dts64
+	mediatek/dt
+		https://git.kernel.org/pub/scm/linux/kernel/git/matthias.bgg/linux tags/v5.9-next-dts32
+	tegra/dt
+		git://git.kernel.org/pub/scm/linux/kernel/git/tegra/linux tags/tegra-for-5.10-arm-dt
+	ti/k3-dt2
+		git://git.kernel.org/pub/scm/linux/kernel/git/nmenon/linux tags/ti-k3-dt-for-v5.10-part2
+	amlogic/dt-2
+		https://git.kernel.org/pub/scm/linux/kernel/git/khilman/linux-amlogic tags/amlogic-dt-2
+	sunxi/dt
+		https://git.kernel.org/pub/scm/linux/kernel/git/sunxi/linux tags/sunxi-dt-for-5.10-1
+	actions/dt-bindings
+		git://git.kernel.org/pub/scm/linux/kernel/git/mani/linux-actions tags/actions-bindings-for-v5.10
+	actions/dt
+		git://git.kernel.org/pub/scm/linux/kernel/git/mani/linux-actions tags/actions-arm-dt-for-v5.10
+	actions/dt64
+		git://git.kernel.org/pub/scm/linux/kernel/git/mani/linux-actions tags/actions-arm64-dt-for-v5.10
+	rockchip/dt
+		git://git.kernel.org/pub/scm/linux/kernel/git/mmind/linux-rockchip tags/v5.10-rockchip-dts32-1
+	sunxi/dt2
+		https://git.kernel.org/pub/scm/linux/kernel/git/sunxi/linux tags/sunxi-dt-for-5.10-2
+	xilinx/zynqmp-dt
+		https://github.com/Xilinx/linux-xlnx tags/zynqmp-dt-for-v5.10
+	omap/dt2
+		git://git.kernel.org/pub/scm/linux/kernel/git/tmlind/linux-omap tags/omap-for-v5.10/dt-part2-signed
+	hisi/dt-2
+		git://github.com/hisilicon/linux-hisi tags/hisi-arm32-dt-for-5.10-tag2
+	patch
+		ARM: mstar: Add interrupt controller to base dtsi
+		ARM: mstar: Add interrupt to pm_uart
+		ARM: mstar: Add mstar prefix to all of the dtsi/dts files
+		ARM: mstar: Fix up the fallout from moving the dts/dtsi files
+		arm64: dts: lg: Fix SP805 clocks
+		arm64: dts: lg: Fix SP804 users
+		ARM: dts: nspire: Fix SP804 users
+	toshiba/dt
+		git://git.kernel.org/pub/scm/linux/kernel/git/iwamatsu/linux-visconti tags/visconti-initial-for-5.10-tag2
+
+arm/drivers
+	tee/i2c
+		git://git.linaro.org/people/jens.wiklander/linux-tee tags/optee-i2c-for-v5.10
+	tee/memref-null
+		git://git.linaro.org/people/jens.wiklander/linux-tee tags/tee-memref-null-for-v5.10
+	tee/get-user-pages
+		git://git.linaro.org/people/jens.wiklander/linux-tee tags/tee-pin-user-pages-for-5.10
+	tee/i2c-fix
+		git://git.linaro.org:/people/jens.wiklander/linux-tee tags/optee-i2c-fix-for-v5.10
+	renesas/drivers
+		git://git.kernel.org/pub/scm/linux/kernel/git/geert/renesas-devel tags/renesas-drivers-for-v5.10-tag1
+	drivers/memory-cleanups
+		https://git.kernel.org/pub/scm/linux/kernel/git/krzk/linux-mem-ctrl tags/memory-controller-drv-5.10
+	brcm/drivers
+		https://github.com/Broadcom/stblinux tags/arm-soc/for-5.10/drivers
+	drivers/scmi-updates
+		git://git.kernel.org/pub/scm/linux/kernel/git/sudeep.holla/linux tags/scmi-updates-5.10
+	renesas/drivers2
+		git://git.kernel.org/pub/scm/linux/kernel/git/geert/renesas-devel tags/renesas-drivers-for-v5.10-tag2
+	tee/cleanup
+		git://git.linaro.org:/people/jens.wiklander/linux-tee tags/tee-dev-cleanup-for-v5.10
+	tegra/soc
+		git://git.kernel.org/pub/scm/linux/kernel/git/tegra/linux tags/tegra-for-5.10-soc
+	tegra/firmware
+		git://git.kernel.org/pub/scm/linux/kernel/git/tegra/linux tags/tegra-for-5.10-firmware
+	ti/drivers
+		git://git.kernel.org/pub/scm/linux/kernel/git/ssantosh/linux-keystone tags/drivers_soc_for_5.10
+	sunxi/drivers
+		https://git.kernel.org/pub/scm/linux/kernel/git/sunxi/linux tags/sunxi-drivers-for-5.10-1
+	imx/drivers
+		git://git.kernel.org/pub/scm/linux/kernel/git/shawnguo/linux tags/imx-drivers-5.10
+	fsl/drivers
+		git://git.kernel.org/pub/scm/linux/kernel/git/leo/linux tags/soc-fsl-next-v5.10
+	qualcomm/drivers
+		https://git.kernel.org/pub/scm/linux/kernel/git/qcom/linux tags/qcom-drivers-for-5.10
+	amlogic/drivers
+		https://git.kernel.org/pub/scm/linux/kernel/git/khilman/linux-amlogic tags/amlogic-drivers
+	drivers/reset
+		git://git.pengutronix.de/pza/linux tags/reset-for-v5.10
+	drivers/memory-2
+		https://git.kernel.org/pub/scm/linux/kernel/git/krzk/linux-mem-ctrl tags/memory-controller-drv-5.10-2
+	mediatek/drivers
+		https://git.kernel.org/pub/scm/linux/kernel/git/matthias.bgg/linux tags/v5.9-next-soc
+
+arm/defconfig
+	patch
+		ARM: configs: Update Versatile defconfig
+		ARM: configs: Update Realview defconfig
+	renesas/defconfig
+		git://git.kernel.org/pub/scm/linux/kernel/git/geert/renesas-devel tags/renesas-arm-defconfig-for-v5.10-tag1
+	aspeed/defconfig
+		git://git.kernel.org/pub/scm/linux/kernel/git/joel/aspeed tags/aspeed-5.10-defconfig
+	tegra/defconfig
+		git://git.kernel.org/pub/scm/linux/kernel/git/tegra/linux tags/tegra-for-5.10-arm64-defconfig
+	samsung/defconfig
+		https://git.kernel.org/pub/scm/linux/kernel/git/krzk/linux tags/samsung-defconfig-5.10
+	patch
+		ARM: multi_v7_defconfig: add FMC2 EBI controller support
+	omap/defconfig
+		git://git.kernel.org/pub/scm/linux/kernel/git/tmlind/linux-omap tags/omap-for-v5.10/defconfig-signed
+	imx/defconfig
+		git://git.kernel.org/pub/scm/linux/kernel/git/shawnguo/linux tags/imx-defconfig-5.10
+	qualcomm/defconfig
+		https://git.kernel.org/pub/scm/linux/kernel/git/qcom/linux tags/qcom-arm64-defconfig-for-5.10
+
+arm/late
+
+arm/fixes
+	<no branch> (c65176fd49f45bd5a5ffaa1790109745d1fa462c)
+		git://git.kernel.org/pub/scm/linux/kernel/git/nmenon/linux tags/ti-k3-dt-fixes-for-v5.9
+	<no branch> (2933bf3528007f834fb7f5eab033f9c5b0683f91)
+		https://git.kernel.org/pub/scm/linux/kernel/git/sunxi/linux tags/sunxi-fixes-for-5.9-1
+	<no branch> (7a366707bb6a93baeb1a9ef46c4b9c875e0132d6)
+		https://git.kernel.org/pub/scm/linux/kernel/git/qcom/linux tags/qcom-drivers-fixes-for-5.9
+	<no branch> (22f5adc75a8d60080e489b0f90f0a55104488464)
+		https://git.kernel.org/pub/scm/linux/kernel/git/qcom/linux tags/qcom-arm64-fixes-for-5.9
+	<no branch> (bc38325703ebd0a00fecfb965020c255ffc582fe)
+		git://git.kernel.org/pub/scm/linux/kernel/git/mani/linux-actions tags/actions-drivers-fixes-for-v5.9
+	<no branch> (a6f2f0fdc73aacc6e10ae48ae78634dba26702d4)
+		https://github.com/Xilinx/linux-xlnx tags/zynqmp-soc-for-v5.9-v2
+	<no branch> (08d7a73fffb6769b1cf2278bf697e692daba3abf)
+		git://git.kernel.org/pub/scm/linux/kernel/git/geert/renesas-devel tags/renesas-fixes-for-v5.9-tag1
+	<no branch> (8f04aea048d56f3e39a7e543939450246542a6fc)
+		git://git.kernel.org/pub/scm/linux/kernel/git/tmlind/linux-omap tags/omap-for-v5.9/fixes-rc7
+
