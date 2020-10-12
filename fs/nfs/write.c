@@ -613,9 +613,9 @@ try_again:
 
 static void nfs_write_error_remove_page(struct nfs_page *req)
 {
-	nfs_set_pageerror(page_file_mapping(req->wb_page));
 	nfs_unlock_request(req);
 	SetPageError(req->wb_page);
+	nfs_set_pageerror(page_file_mapping(req->wb_page));
 	nfs_inode_remove_request(req);
 	nfs_end_page_writeback(req);
 	nfs_release_request(req);
