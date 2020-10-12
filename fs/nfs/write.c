@@ -55,6 +55,7 @@ static const struct rpc_call_ops nfs_commit_ops;
 static const struct nfs_pgio_completion_ops nfs_async_write_completion_ops;
 static const struct nfs_commit_completion_ops nfs_commit_completion_ops;
 static const struct nfs_rw_ops nfs_rw_write_ops;
+static void nfs_inode_remove_request(struct nfs_page *req);
 static void nfs_clear_request_commit(struct nfs_page *req);
 static void nfs_init_cinfo_from_inode(struct nfs_commit_info *cinfo,
 				      struct inode *inode);
@@ -612,8 +613,10 @@ try_again:
 
 static void nfs_write_error_remove_page(struct nfs_page *req)
 {
+	nfs_set_pageerror(page_file_mapping(req->wb_page));
 	nfs_unlock_request(req);
 	SetPageError(req->wb_page);
+	nfs_inode_remove_request(req);
 	nfs_end_page_writeback(req);
 	nfs_release_request(req);
 }
