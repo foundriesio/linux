@@ -878,18 +878,20 @@ struct buffer_head *ext4_bread(handle_t *handle, struct inode *inode,
 			       ext4_lblk_t block, int map_flags)
 {
 	struct buffer_head *bh;
+	int ret;
 
 	bh = ext4_getblk(handle, inode, block, map_flags);
 	if (IS_ERR(bh))
 		return bh;
 	if (!bh || ext4_buffer_uptodate(bh))
 		return bh;
-	ll_rw_block(REQ_OP_READ, REQ_META | REQ_PRIO, 1, &bh);
-	wait_on_buffer(bh);
-	if (buffer_uptodate(bh))
-		return bh;
-	put_bh(bh);
-	return ERR_PTR(-EIO);
+
+	ret = ext4_read_bh_lock(bh, REQ_META | REQ_PRIO, true);
+	if (ret) {
+		put_bh(bh);
+		return ERR_PTR(ret);
+	}
+	return bh;
 }
 
 /* Read a contiguous batch of blocks. */
@@ -910,8 +912,7 @@ int ext4_bread_batch(struct inode *inode, ext4_lblk_t block, int bh_count,
 	for (i = 0; i < bh_count; i++)
 		/* Note that NULL bhs[i] is valid because of holes. */
 		if (bhs[i] && !ext4_buffer_uptodate(bhs[i]))
-			ll_rw_block(REQ_OP_READ, REQ_META | REQ_PRIO, 1,
-				    &bhs[i]);
+			ext4_read_bh_lock(bhs[i], REQ_META | REQ_PRIO, false);
 
 	if (!wait)
 		return 0;
@@ -1081,7 +1082,7 @@ static int ext4_block_write_begin(struct page *page, loff_t pos, unsigned len,
 		if (!buffer_uptodate(bh) && !buffer_delay(bh) &&
 		    !buffer_unwritten(bh) &&
 		    (block_start < from || block_end > to)) {
-			ll_rw_block(REQ_OP_READ, 0, 1, &bh);
+			ext4_read_bh_lock(bh, 0, false);
 			wait[nr_wait++] = bh;
 		}
 	}
@@ -1912,6 +1913,9 @@ static int __ext4_journalled_writepage(struct page *page,
 	}
 	if (ret == 0)
 		ret = err;
+	err = ext4_jbd2_inode_add_write(handle, inode, 0, len);
+	if (ret == 0)
+		ret = err;
 	EXT4_I(inode)->i_datasync_tid = handle->h_transaction->t_tid;
 	err = ext4_journal_stop(handle);
 	if (!ret)
@@ -2254,7 +2258,7 @@ static int mpage_process_page(struct mpage_da_data *mpd, struct page *page,
 					err = PTR_ERR(io_end_vec);
 					goto out;
 				}
-				io_end_vec->offset = mpd->map.m_lblk << blkbits;
+				io_end_vec->offset = (loff_t)mpd->map.m_lblk << blkbits;
 			}
 			*map_bh = true;
 			goto out;
@@ -2785,7 +2789,7 @@ retry:
 		 * ext4_journal_stop() can wait for transaction commit
 		 * to finish which may depend on writeback of pages to
 		 * complete or on page lock to be released.  In that
-		 * case, we have to wait until after after we have
+		 * case, we have to wait until after we have
 		 * submitted all the IO, released page locks we hold,
 		 * and dropped io_end reference (for extent conversion
 		 * to be able to complete) before stopping the handle.
@@ -3436,14 +3440,26 @@ static int ext4_iomap_begin(struct inode *inode, loff_t offset, loff_t length,
 	map.m_len = min_t(loff_t, (offset + length - 1) >> blkbits,
 			  EXT4_MAX_LOGICAL_BLOCK) - map.m_lblk + 1;
 
-	if (flags & IOMAP_WRITE)
+	if (flags & IOMAP_WRITE) {
+		/*
+		 * We check here if the blocks are already allocated, then we
+		 * don't need to start a journal txn and we can directly return
+		 * the mapping information. This could boost performance
+		 * especially in multi-threaded overwrite requests.
+		 */
+		if (offset + length <= i_size_read(inode)) {
+			ret = ext4_map_blocks(NULL, inode, &map, 0);
+			if (ret > 0 && (map.m_flags & EXT4_MAP_MAPPED))
+				goto out;
+		}
 		ret = ext4_iomap_alloc(inode, &map, flags);
-	else
+	} else {
 		ret = ext4_map_blocks(NULL, inode, &map, 0);
+	}
 
 	if (ret < 0)
 		return ret;
-
+out:
 	ext4_set_iomap(inode, iomap, &map, offset, length);
 
 	return 0;
@@ -3601,6 +3617,13 @@ static int ext4_set_page_dirty(struct page *page)
 	return __set_page_dirty_buffers(page);
 }
 
+static int ext4_iomap_swap_activate(struct swap_info_struct *sis,
+				    struct file *file, sector_t *span)
+{
+	return iomap_swapfile_activate(sis, file, span,
+				       &ext4_iomap_report_ops);
+}
+
 static const struct address_space_operations ext4_aops = {
 	.readpage		= ext4_readpage,
 	.readahead		= ext4_readahead,
@@ -3616,6 +3639,7 @@ static const struct address_space_operations ext4_aops = {
 	.migratepage		= buffer_migrate_page,
 	.is_partially_uptodate  = block_is_partially_uptodate,
 	.error_remove_page	= generic_error_remove_page,
+	.swap_activate		= ext4_iomap_swap_activate,
 };
 
 static const struct address_space_operations ext4_journalled_aops = {
@@ -3632,6 +3656,7 @@ static const struct address_space_operations ext4_journalled_aops = {
 	.direct_IO		= noop_direct_IO,
 	.is_partially_uptodate  = block_is_partially_uptodate,
 	.error_remove_page	= generic_error_remove_page,
+	.swap_activate		= ext4_iomap_swap_activate,
 };
 
 static const struct address_space_operations ext4_da_aops = {
@@ -3649,6 +3674,7 @@ static const struct address_space_operations ext4_da_aops = {
 	.migratepage		= buffer_migrate_page,
 	.is_partially_uptodate  = block_is_partially_uptodate,
 	.error_remove_page	= generic_error_remove_page,
+	.swap_activate		= ext4_iomap_swap_activate,
 };
 
 static const struct address_space_operations ext4_dax_aops = {
@@ -3657,6 +3683,7 @@ static const struct address_space_operations ext4_dax_aops = {
 	.set_page_dirty		= noop_set_page_dirty,
 	.bmap			= ext4_bmap,
 	.invalidatepage		= noop_invalidatepage,
+	.swap_activate		= ext4_iomap_swap_activate,
 };
 
 void ext4_set_aops(struct inode *inode)
@@ -3730,11 +3757,8 @@ static int __ext4_block_zero_page_range(handle_t *handle,
 		set_buffer_uptodate(bh);
 
 	if (!buffer_uptodate(bh)) {
-		err = -EIO;
-		ll_rw_block(REQ_OP_READ, 0, 1, &bh);
-		wait_on_buffer(bh);
-		/* Uhhuh. Read error. Complain and punt. */
-		if (!buffer_uptodate(bh))
+		err = ext4_read_bh_lock(bh, 0, true);
+		if (err)
 			goto unlock;
 		if (fscrypt_inode_uses_fs_layer_crypto(inode)) {
 			/* We expect the key to be set. */
@@ -4289,16 +4313,7 @@ static int __ext4_get_inode_loc(struct inode *inode,
 	if (!buffer_uptodate(bh)) {
 		lock_buffer(bh);
 
-		/*
-		 * If the buffer has the write error flag, we have failed
-		 * to write out another inode in the same block.  In this
-		 * case, we don't have to read the block because we may
-		 * read the old inode data successfully.
-		 */
-		if (buffer_write_io_error(bh) && !buffer_uptodate(bh))
-			set_buffer_uptodate(bh);
-
-		if (buffer_uptodate(bh)) {
+		if (ext4_buffer_uptodate(bh)) {
 			/* someone brought it uptodate while we waited */
 			unlock_buffer(bh);
 			goto has_buffer;
@@ -4369,7 +4384,7 @@ make_io:
 			if (end > table)
 				end = table;
 			while (b <= end)
-				sb_breadahead_unmovable(sb, b++);
+				ext4_sb_breadahead_unmovable(sb, b++);
 		}
 
 		/*
@@ -4378,9 +4393,7 @@ make_io:
 		 * Read the block from disk.
 		 */
 		trace_ext4_load_inode(inode);
-		get_bh(bh);
-		bh->b_end_io = end_buffer_read_sync;
-		submit_bh(REQ_OP_READ, REQ_META | REQ_PRIO, bh);
+		ext4_read_bh_nowait(bh, REQ_META | REQ_PRIO, NULL);
 		blk_finish_plug(&plug);
 		wait_on_buffer(bh);
 		if (!buffer_uptodate(bh)) {
@@ -5977,9 +5990,17 @@ vm_fault_t ext4_page_mkwrite(struct vm_fault *vmf)
 	if (err)
 		goto out_ret;
 
+	/*
+	 * On data journalling we skip straight to the transaction handle:
+	 * there's no delalloc; page truncated will be checked later; the
+	 * early return w/ all buffers mapped (calculates size/len) can't
+	 * be used; and there's no dioread_nolock, so only ext4_get_block.
+	 */
+	if (ext4_should_journal_data(inode))
+		goto retry_alloc;
+
 	/* Delalloc case is easy... */
 	if (test_opt(inode->i_sb, DELALLOC) &&
-	    !ext4_should_journal_data(inode) &&
 	    !ext4_nonda_switch(inode->i_sb)) {
 		do {
 			err = block_page_mkwrite(vma, vmf,
@@ -6005,6 +6026,9 @@ vm_fault_t ext4_page_mkwrite(struct vm_fault *vmf)
 	/*
 	 * Return if we have all the buffers mapped. This avoids the need to do
 	 * journal_start/journal_stop which can block and take a long time
+	 *
+	 * This cannot be done for data journalling, as we have to add the
+	 * inode to the transaction's list to writeprotect pages on commit.
 	 */
 	if (page_has_buffers(page)) {
 		if (!ext4_walk_page_buffers(NULL, page_buffers(page),
@@ -6029,16 +6053,42 @@ retry_alloc:
 		ret = VM_FAULT_SIGBUS;
 		goto out;
 	}
-	err = block_page_mkwrite(vma, vmf, get_block);
-	if (!err && ext4_should_journal_data(inode)) {
-		if (ext4_walk_page_buffers(handle, page_buffers(page), 0,
-			  PAGE_SIZE, NULL, do_journal_get_write_access)) {
-			unlock_page(page);
-			ret = VM_FAULT_SIGBUS;
-			ext4_journal_stop(handle);
-			goto out;
+	/*
+	 * Data journalling can't use block_page_mkwrite() because it
+	 * will set_buffer_dirty() before do_journal_get_write_access()
+	 * thus might hit warning messages for dirty metadata buffers.
+	 */
+	if (!ext4_should_journal_data(inode)) {
+		err = block_page_mkwrite(vma, vmf, get_block);
+	} else {
+		lock_page(page);
+		size = i_size_read(inode);
+		/* Page got truncated from under us? */
+		if (page->mapping != mapping || page_offset(page) > size) {
+			ret = VM_FAULT_NOPAGE;
+			goto out_error;
 		}
-		ext4_set_inode_state(inode, EXT4_STATE_JDATA);
+
+		if (page->index == size >> PAGE_SHIFT)
+			len = size & ~PAGE_MASK;
+		else
+			len = PAGE_SIZE;
+
+		err = __block_write_begin(page, 0, len, ext4_get_block);
+		if (!err) {
+			ret = VM_FAULT_SIGBUS;
+			if (ext4_walk_page_buffers(handle, page_buffers(page),
+					0, len, NULL, do_journal_get_write_access))
+				goto out_error;
+			if (ext4_walk_page_buffers(handle, page_buffers(page),
+					0, len, NULL, write_end_fn))
+				goto out_error;
+			if (ext4_jbd2_inode_add_write(handle, inode, 0, len))
+				goto out_error;
+			ext4_set_inode_state(inode, EXT4_STATE_JDATA);
+		} else {
+			unlock_page(page);
+		}
 	}
 	ext4_journal_stop(handle);
 	if (err == -ENOSPC && ext4_should_retry_alloc(inode->i_sb, &retries))
@@ -6049,6 +6099,10 @@ out:
 	up_read(&EXT4_I(inode)->i_mmap_sem);
 	sb_end_pagefault(inode->i_sb);
 	return ret;
+out_error:
+	unlock_page(page);
+	ext4_journal_stop(handle);
+	goto out;
 }
 
 vm_fault_t ext4_filemap_fault(struct vm_fault *vmf)

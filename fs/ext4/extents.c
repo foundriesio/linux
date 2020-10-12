@@ -501,7 +501,7 @@ __read_extent_tree_block(const char *function, unsigned int line,
 
 	if (!bh_uptodate_or_lock(bh)) {
 		trace_ext4_ext_load_extent(inode, pblk, _RET_IP_);
-		err = bh_submit_read(bh);
+		err = ext4_read_bh(bh, 0, NULL);
 		if (err < 0)
 			goto errout;
 	}
@@ -4023,7 +4023,7 @@ static int get_implied_cluster_alloc(struct super_block *sb,
  * down_read(&EXT4_I(inode)->i_data_sem) if not allocating file system block
  * (ie, create is zero). Otherwise down_write(&EXT4_I(inode)->i_data_sem)
  *
- * return > 0, number of of blocks already mapped/allocated
+ * return > 0, number of blocks already mapped/allocated
  *          if create == 0 and these are pre-allocated blocks
  *          	buffer head is unmapped
  *          otherwise blocks are mapped
@@ -4769,7 +4769,7 @@ int ext4_convert_unwritten_extents(handle_t *handle, struct inode *inode,
 
 int ext4_convert_unwritten_io_end_vec(handle_t *handle, ext4_io_end_t *io_end)
 {
-	int ret, err = 0;
+	int ret = 0, err = 0;
 	struct ext4_io_end_vec *io_end_vec;
 
 	/*

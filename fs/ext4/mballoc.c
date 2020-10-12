@@ -124,7 +124,7 @@
  * /sys/fs/ext4/<partition>/mb_group_prealloc. The value is represented in
  * terms of number of blocks. If we have mounted the file system with -O
  * stripe=<value> option the group prealloc request is normalized to the
- * the smallest multiple of the stripe value (sbi->s_stripe) which is
+ * smallest multiple of the stripe value (sbi->s_stripe) which is
  * greater than the default mb_group_prealloc.
  *
  * The regular allocator (using the buddy cache) supports a few tunables.
@@ -619,11 +619,8 @@ static int __mb_check_buddy(struct ext4_buddy *e4b, char *file,
 	void *buddy;
 	void *buddy2;
 
-	{
-		static int mb_check_counter;
-		if (mb_check_counter++ % 100 != 0)
-			return 0;
-	}
+	if (e4b->bd_info->bb_check_counter++ % 10)
+		return 0;
 
 	while (order > 1) {
 		buddy = mb_find_buddy(e4b, order, &max);
@@ -1394,9 +1391,6 @@ void ext4_set_bits(void *bm, int cur, int len)
 	}
 }
 
-/*
- * _________________________________________________________________ */
-
 static inline int mb_buddy_adjust_border(int* bit, void* bitmap, int side)
 {
 	if (mb_test_bit(*bit + side, bitmap)) {
@@ -2019,7 +2013,7 @@ void ext4_mb_complex_scan_group(struct ext4_allocation_context *ac,
 			/*
 			 * IF we have corrupt bitmap, we won't find any
 			 * free blocks even though group info says we
-			 * we have free blocks
+			 * have free blocks
 			 */
 			ext4_grp_locked_error(sb, e4b->bd_group, 0, 0,
 					"%d free clusters as per "
@@ -4160,7 +4154,7 @@ ext4_mb_discard_group_preallocations(struct super_block *sb,
 	struct ext4_buddy e4b;
 	int err;
 	int busy = 0;
-	int free = 0;
+	int free, free_total = 0;
 
 	mb_debug(sb, "discard preallocation for group %u\n", group);
 	if (list_empty(&grp->bb_prealloc_list))
@@ -4188,8 +4182,8 @@ ext4_mb_discard_group_preallocations(struct super_block *sb,
 
 	INIT_LIST_HEAD(&list);
 repeat:
+	free = 0;
 	ext4_lock_group(sb, group);
-	this_cpu_inc(discard_pa_seq);
 	list_for_each_entry_safe(pa, tmp,
 				&grp->bb_prealloc_list, pa_group_list) {
 		spin_lock(&pa->pa_lock);
@@ -4206,6 +4200,9 @@ repeat:
 		/* seems this one can be freed ... */
 		ext4_mb_mark_pa_deleted(sb, pa);
 
+		if (!free)
+			this_cpu_inc(discard_pa_seq);
+
 		/* we can trust pa_free ... */
 		free += pa->pa_free;
 
@@ -4213,22 +4210,6 @@ repeat:
 
 		list_del(&pa->pa_group_list);
 		list_add(&pa->u.pa_tmp_list, &list);
-	}
-
-	/* if we still need more blocks and some PAs were used, try again */
-	if (free < needed && busy) {
-		busy = 0;
-		ext4_unlock_group(sb, group);
-		cond_resched();
-		goto repeat;
-	}
-
-	/* found anything to free? */
-	if (list_empty(&list)) {
-		BUG_ON(free != 0);
-		mb_debug(sb, "Someone else may have freed PA for this group %u\n",
-			 group);
-		goto out;
 	}
 
 	/* now free all selected PAs */
@@ -4248,14 +4229,22 @@ repeat:
 		call_rcu(&(pa)->u.pa_rcu, ext4_mb_pa_callback);
 	}
 
-out:
+	free_total += free;
+
+	/* if we still need more blocks and some PAs were used, try again */
+	if (free_total < needed && busy) {
+		ext4_unlock_group(sb, group);
+		cond_resched();
+		busy = 0;
+		goto repeat;
+	}
 	ext4_unlock_group(sb, group);
 	ext4_mb_unload_buddy(&e4b);
 	put_bh(bitmap_bh);
 out_dbg:
 	mb_debug(sb, "discarded (%d) blocks preallocated for group %u bb_free (%d)\n",
-		 free, group, grp->bb_free);
-	return free;
+		 free_total, group, grp->bb_free);
+	return free_total;
 }
 
 /*

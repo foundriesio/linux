@@ -141,27 +141,115 @@ MODULE_ALIAS_FS("ext3");
 MODULE_ALIAS("ext3");
 #define IS_EXT3_SB(sb) ((sb)->s_bdev->bd_holder == &ext3_fs_type)
 
+
+static inline void __ext4_read_bh(struct buffer_head *bh, int op_flags,
+				  bh_end_io_t *end_io)
+{
+	/*
+	 * buffer's verified bit is no longer valid after reading from
+	 * disk again due to write out error, clear it to make sure we
+	 * recheck the buffer contents.
+	 */
+	clear_buffer_verified(bh);
+
+	bh->b_end_io = end_io ? end_io : end_buffer_read_sync;
+	get_bh(bh);
+	submit_bh(REQ_OP_READ, op_flags, bh);
+}
+
+void ext4_read_bh_nowait(struct buffer_head *bh, int op_flags,
+			 bh_end_io_t *end_io)
+{
+	BUG_ON(!buffer_locked(bh));
+
+	if (ext4_buffer_uptodate(bh)) {
+		unlock_buffer(bh);
+		return;
+	}
+	__ext4_read_bh(bh, op_flags, end_io);
+}
+
+int ext4_read_bh(struct buffer_head *bh, int op_flags, bh_end_io_t *end_io)
+{
+	BUG_ON(!buffer_locked(bh));
+
+	if (ext4_buffer_uptodate(bh)) {
+		unlock_buffer(bh);
+		return 0;
+	}
+
+	__ext4_read_bh(bh, op_flags, end_io);
+
+	wait_on_buffer(bh);
+	if (buffer_uptodate(bh))
+		return 0;
+	return -EIO;
+}
+
+int ext4_read_bh_lock(struct buffer_head *bh, int op_flags, bool wait)
+{
+	if (trylock_buffer(bh)) {
+		if (wait)
+			return ext4_read_bh(bh, op_flags, NULL);
+		ext4_read_bh_nowait(bh, op_flags, NULL);
+		return 0;
+	}
+	if (wait) {
+		wait_on_buffer(bh);
+		if (buffer_uptodate(bh))
+			return 0;
+		return -EIO;
+	}
+	return 0;
+}
+
 /*
- * This works like sb_bread() except it uses ERR_PTR for error
+ * This works like __bread_gfp() except it uses ERR_PTR for error
  * returns.  Currently with sb_bread it's impossible to distinguish
  * between ENOMEM and EIO situations (since both result in a NULL
  * return.
  */
-struct buffer_head *
-ext4_sb_bread(struct super_block *sb, sector_t block, int op_flags)
+static struct buffer_head *__ext4_sb_bread_gfp(struct super_block *sb,
+					       sector_t block, int op_flags,
+					       gfp_t gfp)
 {
-	struct buffer_head *bh = sb_getblk(sb, block);
+	struct buffer_head *bh;
+	int ret;
 
+	bh = sb_getblk_gfp(sb, block, gfp);
 	if (bh == NULL)
 		return ERR_PTR(-ENOMEM);
 	if (ext4_buffer_uptodate(bh))
 		return bh;
-	ll_rw_block(REQ_OP_READ, REQ_META | op_flags, 1, &bh);
-	wait_on_buffer(bh);
-	if (buffer_uptodate(bh))
-		return bh;
-	put_bh(bh);
-	return ERR_PTR(-EIO);
+
+	ret = ext4_read_bh_lock(bh, REQ_META | op_flags, true);
+	if (ret) {
+		put_bh(bh);
+		return ERR_PTR(ret);
+	}
+	return bh;
+}
+
+struct buffer_head *ext4_sb_bread(struct super_block *sb, sector_t block,
+				   int op_flags)
+{
+	return __ext4_sb_bread_gfp(sb, block, op_flags, __GFP_MOVABLE);
+}
+
+struct buffer_head *ext4_sb_bread_unmovable(struct super_block *sb,
+					    sector_t block)
+{
+	return __ext4_sb_bread_gfp(sb, block, 0, 0);
+}
+
+void ext4_sb_breadahead_unmovable(struct super_block *sb, sector_t block)
+{
+	struct buffer_head *bh = sb_getblk_gfp(sb, block, 0);
+
+	if (likely(bh)) {
+		ext4_read_bh_lock(bh, REQ_RAHEAD, false);
+		brelse(bh);
+	}
 }
 
 static int ext4_verify_csum_type(struct super_block *sb,
@@ -201,7 +289,18 @@ void ext4_superblock_csum_set(struct super_block *sb)
 	if (!ext4_has_metadata_csum(sb))
 		return;
 
+	/*
+	 * Locking the superblock prevents the scenario
+	 * where:
+	 *  1) a first thread pauses during checksum calculation.
+	 *  2) a second thread updates the superblock, recalculates
+	 *     the checksum, and updates s_checksum
+	 *  3) the first thread resumes and finishes its checksum calculation
+	 *     and updates s_checksum with a potentially stale or torn value.
+	 */
+	lock_buffer(EXT4_SB(sb)->s_sbh);
 	es->s_checksum = ext4_superblock_csum(sb, es);
+	unlock_buffer(EXT4_SB(sb)->s_sbh);
 }
 
 ext4_fsblk_t ext4_block_bitmap(struct super_block *sb,
@@ -470,6 +569,89 @@ static void ext4_journal_commit_callback(journal_t *journal, transaction_t *txn)
 		spin_lock(&sbi->s_md_lock);
 	}
 	spin_unlock(&sbi->s_md_lock);
+}
+
+/*
+ * This writepage callback for write_cache_pages()
+ * takes care of a few cases after page cleaning.
+ *
+ * write_cache_pages() already checks for dirty pages
+ * and calls clear_page_dirty_for_io(), which we want,
+ * to write protect the pages.
+ *
+ * However, we may have to redirty a page (see below.)
+ */
+static int ext4_journalled_writepage_callback(struct page *page,
+					      struct writeback_control *wbc,
+					      void *data)
+{
+	transaction_t *transaction = (transaction_t *) data;
+	struct buffer_head *bh, *head;
+	struct journal_head *jh;
+
+	bh = head = page_buffers(page);
+	do {
+		/*
+		 * We have to redirty a page in these cases:
+		 * 1) If buffer is dirty, it means the page was dirty because it
+		 * contains a buffer that needs checkpointing. So the dirty bit
+		 * needs to be preserved so that checkpointing writes the buffer
+		 * properly.
+		 * 2) If buffer is not part of the committing transaction
+		 * (we may have just accidentally come across this buffer because
+		 * inode range tracking is not exact) or if the currently running
+		 * transaction already contains this buffer as well, dirty bit
+		 * needs to be preserved so that the buffer gets writeprotected
+		 * properly on running transaction's commit.
+		 */
+		jh = bh2jh(bh);
+		if (buffer_dirty(bh) ||
+		    (jh && (jh->b_transaction != transaction ||
+			    jh->b_next_transaction))) {
+			redirty_page_for_writepage(wbc, page);
+			goto out;
+		}
+	} while ((bh = bh->b_this_page) != head);
+
+out:
+	return AOP_WRITEPAGE_ACTIVATE;
+}
+
+static int ext4_journalled_submit_inode_data_buffers(struct jbd2_inode *jinode)
+{
+	struct address_space *mapping = jinode->i_vfs_inode->i_mapping;
+	struct writeback_control wbc = {
+		.sync_mode =  WB_SYNC_ALL,
+		.nr_to_write = LONG_MAX,
+		.range_start = jinode->i_dirty_start,
+		.range_end = jinode->i_dirty_end,
+        };
+
+	return write_cache_pages(mapping, &wbc,
+				 ext4_journalled_writepage_callback,
+				 jinode->i_transaction);
+}
+
+static int ext4_journal_submit_inode_data_buffers(struct jbd2_inode *jinode)
+{
+	int ret;
+
+	if (ext4_should_journal_data(jinode->i_vfs_inode))
+		ret = ext4_journalled_submit_inode_data_buffers(jinode);
+	else
+		ret = jbd2_journal_submit_inode_data_buffers(jinode);
+
+	return ret;
+}
+
+static int ext4_journal_finish_inode_data_buffers(struct jbd2_inode *jinode)
+{
+	int ret = 0;
+
+	if (!ext4_should_journal_data(jinode->i_vfs_inode))
+		ret = jbd2_journal_finish_inode_data_buffers(jinode);
+
+	return ret;
 }
 
 static bool system_going_down(void)
@@ -939,10 +1121,10 @@ static void ext4_blkdev_put(struct block_device *bdev)
 static void ext4_blkdev_remove(struct ext4_sb_info *sbi)
 {
 	struct block_device *bdev;
-	bdev = sbi->journal_bdev;
+	bdev = sbi->s_journal_bdev;
 	if (bdev) {
 		ext4_blkdev_put(bdev);
-		sbi->journal_bdev = NULL;
+		sbi->s_journal_bdev = NULL;
 	}
 }
 
@@ -1073,14 +1255,14 @@ static void ext4_put_super(struct super_block *sb)
 
 	sync_blockdev(sb->s_bdev);
 	invalidate_bdev(sb->s_bdev);
-	if (sbi->journal_bdev && sbi->journal_bdev != sb->s_bdev) {
+	if (sbi->s_journal_bdev && sbi->s_journal_bdev != sb->s_bdev) {
 		/*
 		 * Invalidate the journal device's buffers.  We don't want them
 		 * floating about in memory - the physical journal device may
 		 * hotswapped, and it breaks the `ro-after' testing code.
 		 */
-		sync_blockdev(sbi->journal_bdev);
-		invalidate_bdev(sbi->journal_bdev);
+		sync_blockdev(sbi->s_journal_bdev);
+		invalidate_bdev(sbi->s_journal_bdev);
 		ext4_blkdev_remove(sbi);
 	}
 
@@ -3754,7 +3936,7 @@ int ext4_calculate_overhead(struct super_block *sb)
 	 * Add the internal journal blocks whether the journal has been
 	 * loaded or not
 	 */
-	if (sbi->s_journal && !sbi->journal_bdev)
+	if (sbi->s_journal && !sbi->s_journal_bdev)
 		overhead += EXT4_NUM_B2C(sbi, sbi->s_journal->j_maxlen);
 	else if (ext4_has_feature_journal(sb) && !sbi->s_journal && j_inum) {
 		/* j_inum for internal journal is non-zero */
@@ -3868,8 +4050,11 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
 		logical_sb_block = sb_block;
 	}
 
-	if (!(bh = sb_bread_unmovable(sb, logical_sb_block))) {
+	bh = ext4_sb_bread_unmovable(sb, logical_sb_block);
+	if (IS_ERR(bh)) {
 		ext4_msg(sb, KERN_ERR, "unable to read superblock");
+		ret = PTR_ERR(bh);
+		bh = NULL;
 		goto out_fail;
 	}
 	/*
@@ -4265,10 +4450,12 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
 		brelse(bh);
 		logical_sb_block = sb_block * EXT4_MIN_BLOCK_SIZE;
 		offset = do_div(logical_sb_block, blocksize);
-		bh = sb_bread_unmovable(sb, logical_sb_block);
-		if (!bh) {
+		bh = ext4_sb_bread_unmovable(sb, logical_sb_block);
+		if (IS_ERR(bh)) {
 			ext4_msg(sb, KERN_ERR,
 			       "Can't read superblock on 2nd try");
+			ret = PTR_ERR(bh);
+			bh = NULL;
 			goto failed_mount;
 		}
 		es = (struct ext4_super_block *)(bh->b_data + offset);
@@ -4480,18 +4667,20 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
 	/* Pre-read the descriptors into the buffer cache */
 	for (i = 0; i < db_count; i++) {
 		block = descriptor_loc(sb, logical_sb_block, i);
-		sb_breadahead_unmovable(sb, block);
+		ext4_sb_breadahead_unmovable(sb, block);
 	}
 
 	for (i = 0; i < db_count; i++) {
 		struct buffer_head *bh;
 
 		block = descriptor_loc(sb, logical_sb_block, i);
-		bh = sb_bread_unmovable(sb, block);
-		if (!bh) {
+		bh = ext4_sb_bread_unmovable(sb, block);
+		if (IS_ERR(bh)) {
 			ext4_msg(sb, KERN_ERR,
 			       "can't read group descriptor %d", i);
 			db_count = i;
+			ret = PTR_ERR(bh);
+			bh = NULL;
 			goto failed_mount2;
 		}
 		rcu_read_lock();
@@ -4646,6 +4835,10 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
 	set_task_ioprio(sbi->s_journal->j_task, journal_ioprio);
 
 	sbi->s_journal->j_commit_callback = ext4_journal_commit_callback;
+	sbi->s_journal->j_submit_inode_data_buffers =
+		ext4_journal_submit_inode_data_buffers;
+	sbi->s_journal->j_finish_inode_data_buffers =
+		ext4_journal_finish_inode_data_buffers;
 
 no_journal:
 	if (!test_opt(sb, NO_MBCACHE)) {
@@ -4814,9 +5007,8 @@ no_journal:
 	 * used to detect the metadata async write error.
 	 */
 	spin_lock_init(&sbi->s_bdev_wb_lock);
-	if (!sb_rdonly(sb))
-		errseq_check_and_advance(&sb->s_bdev->bd_inode->i_mapping->wb_err,
-					 &sbi->s_bdev_wb_err);
+	errseq_check_and_advance(&sb->s_bdev->bd_inode->i_mapping->wb_err,
+				 &sbi->s_bdev_wb_err);
 	sb->s_bdev->bd_super = sb;
 	EXT4_SB(sb)->s_mount_state |= EXT4_ORPHAN_FS;
 	ext4_orphan_cleanup(sb, es);
@@ -4872,6 +5064,7 @@ cantfind_ext4:
 
 failed_mount8:
 	ext4_unregister_sysfs(sb);
+	kobject_put(&sbi->s_kobj);
 failed_mount7:
 	ext4_unregister_li_request(sb);
 failed_mount6:
@@ -5102,9 +5295,7 @@ static journal_t *ext4_get_dev_journal(struct super_block *sb,
 		goto out_bdev;
 	}
 	journal->j_private = sb;
-	ll_rw_block(REQ_OP_READ, REQ_META | REQ_PRIO, 1, &journal->j_sb_buffer);
-	wait_on_buffer(journal->j_sb_buffer);
-	if (!buffer_uptodate(journal->j_sb_buffer)) {
+	if (ext4_read_bh_lock(journal->j_sb_buffer, REQ_META | REQ_PRIO, true)) {
 		ext4_msg(sb, KERN_ERR, "I/O error on journal device");
 		goto out_journal;
 	}
@@ -5114,7 +5305,7 @@ static journal_t *ext4_get_dev_journal(struct super_block *sb,
 			be32_to_cpu(journal->j_superblock->s_nr_users));
 		goto out_journal;
 	}
-	EXT4_SB(sb)->journal_bdev = bdev;
+	EXT4_SB(sb)->s_journal_bdev = bdev;
 	ext4_init_journal_params(sb, journal);
 	return journal;
 
@@ -5708,14 +5899,6 @@ static int ext4_remount(struct super_block *sb, int *flags, char *data)
 			}
 
 			/*
-			 * Update the original bdev mapping's wb_err value
-			 * which could be used to detect the metadata async
-			 * write error.
-			 */
-			errseq_check_and_advance(&sb->s_bdev->bd_inode->i_mapping->wb_err,
-						 &sbi->s_bdev_wb_err);
-
-			/*
 			 * Mounting a RDONLY partition read-write, so reread
 			 * and store the current valid flag.  (It may have
 			 * been changed by e2fsck since we originally mounted
@@ -5760,7 +5943,7 @@ static int ext4_remount(struct super_block *sb, int *flags, char *data)
 	 * Releasing of existing data is done when we are sure remount will
 	 * succeed.
 	 */
-	if (test_opt(sb, BLOCK_VALIDITY) && !sbi->system_blks) {
+	if (test_opt(sb, BLOCK_VALIDITY) && !sbi->s_system_blks) {
 		err = ext4_setup_system_zone(sb);
 		if (err)
 			goto restore_opts;
@@ -5786,7 +5969,7 @@ static int ext4_remount(struct super_block *sb, int *flags, char *data)
 		}
 	}
 #endif
-	if (!test_opt(sb, BLOCK_VALIDITY) && sbi->system_blks)
+	if (!test_opt(sb, BLOCK_VALIDITY) && sbi->s_system_blks)
 		ext4_release_system_zone(sb);
 
 	/*
@@ -5809,7 +5992,7 @@ restore_opts:
 	sbi->s_commit_interval = old_opts.s_commit_interval;
 	sbi->s_min_batch_time = old_opts.s_min_batch_time;
 	sbi->s_max_batch_time = old_opts.s_max_batch_time;
-	if (!test_opt(sb, BLOCK_VALIDITY) && sbi->system_blks)
+	if (!test_opt(sb, BLOCK_VALIDITY) && sbi->s_system_blks)
 		ext4_release_system_zone(sb);
 #ifdef CONFIG_QUOTA
 	sbi->s_jquota_fmt = old_opts.s_jquota_fmt;

@@ -428,6 +428,8 @@ static int do_one_pass(journal_t *journal,
 	__u32			crc32_sum = ~0; /* Transactional Checksums */
 	int			descr_csum_size = 0;
 	int			block_error = 0;
+	bool			need_check_commit_time = false;
+	__u64			last_trans_commit_time = 0;
 
 	/*
 	 * First thing is to establish what we expect to find in the log
@@ -520,12 +522,21 @@ static int do_one_pass(journal_t *journal,
 			if (descr_csum_size > 0 &&
 			    !jbd2_descriptor_block_csum_verify(journal,
 							       bh->b_data)) {
-				printk(KERN_ERR "JBD2: Invalid checksum "
-				       "recovering block %lu in log\n",
-				       next_log_block);
-				err = -EFSBADCRC;
-				brelse(bh);
-				goto failed;
+				/*
+				 * PASS_SCAN can see stale blocks due to lazy
+				 * journal init. Don't error out on those yet.
+				 */
+				if (pass != PASS_SCAN) {
+					pr_err("JBD2: Invalid checksum recovering block %lu in log\n",
+					       next_log_block);
+					err = -EFSBADCRC;
+					brelse(bh);
+					goto failed;
+				}
+				need_check_commit_time = true;
+				jbd_debug(1,
+					"invalid descriptor block found in %lu\n",
+					next_log_block);
 			}
 
 			/* If it is a valid descriptor block, replay it
@@ -535,6 +546,7 @@ static int do_one_pass(journal_t *journal,
 			if (pass != PASS_REPLAY) {
 				if (pass == PASS_SCAN &&
 				    jbd2_has_feature_checksum(journal) &&
+				    !need_check_commit_time &&
 				    !info->end_transaction) {
 					if (calc_chksums(journal, bh,
 							&next_log_block,
@@ -684,22 +696,53 @@ static int do_one_pass(journal_t *journal,
 			 *	 "Interrupted Commit".)
 			 */
 
-			/* Found an expected commit block: if checksums
-			 * are present verify them in PASS_SCAN; else not
+			/*
+			 * Found an expected commit block: if checksums
+			 * are present, verify them in PASS_SCAN; else not
 			 * much to do other than move on to the next sequence
-			 * number. */
+			 * number.
+			 */
 			if (pass == PASS_SCAN &&
 			    jbd2_has_feature_checksum(journal)) {
 				struct commit_header *cbh =
 					(struct commit_header *)bh->b_data;
 				unsigned found_chksum =
 					be32_to_cpu(cbh->h_chksum[0]);
+				__u64 commit_time =
+					be64_to_cpu(cbh->h_commit_sec);
 
 				if (info->end_transaction) {
 					journal->j_failed_commit =
 						info->end_transaction;
 					brelse(bh);
 					break;
+				}
+
+				/*
+				 * If need_check_commit_time is set, it means
+				 * csum verify failed before, if commit_time is
+				 * increasing, it's same journal, otherwise it
+				 * is stale journal block, just end this
+				 * recovery.
+				 */
+				if (need_check_commit_time) {
+					if (commit_time >= last_trans_commit_time) {
+						pr_err("JBD2: Invalid checksum found in transaction %u\n",
+						       next_commit_ID);
+						err = -EFSBADCRC;
+						brelse(bh);
+						goto failed;
+					}
+					/*
+					 * It likely does not belong to same
+					 * journal, just end this recovery with
+					 * success.
+					 */
+					jbd_debug(1, "JBD2: Invalid checksum ignored in transaction %u, likely stale data\n",
+						  next_commit_ID);
+					err = 0;
+					brelse(bh);
+					goto done;
 				}
 
 				/* Neither checksum match nor unused? */
@@ -714,6 +757,7 @@ static int do_one_pass(journal_t *journal,
 					goto chksum_error;
 
 				crc32_sum = ~0;
+				last_trans_commit_time = commit_time;
 			}
 			if (pass == PASS_SCAN &&
 			    !jbd2_commit_block_csum_verify(journal,
@@ -733,6 +777,17 @@ static int do_one_pass(journal_t *journal,
 			continue;
 
 		case JBD2_REVOKE_BLOCK:
+			/*
+			 * Check revoke block crc in pass_scan, if csum verify
+			 * failed, check commit block time later.
+			 */
+			if (pass == PASS_SCAN &&
+			    !jbd2_descriptor_block_csum_verify(journal,
+							       bh->b_data)) {
+				jbd_debug(1, "JBD2: invalid revoke block found in %lu\n",
+					  next_log_block);
+				need_check_commit_time = true;
+			}
 			/* If we aren't in the REVOKE pass, then we can
 			 * just skip over this block. */
 			if (pass != PASS_REVOKE) {
@@ -799,9 +854,6 @@ static int scan_revoke_records(journal_t *journal, struct buffer_head *bh,
 	header = (jbd2_journal_revoke_header_t *) bh->b_data;
 	offset = sizeof(jbd2_journal_revoke_header_t);
 	rcount = be32_to_cpu(header->r_count);
-
-	if (!jbd2_descriptor_block_csum_verify(journal, header))
-		return -EFSBADCRC;
 
 	if (jbd2_journal_has_csum_v2or3(journal))
 		csum_size = sizeof(struct jbd2_journal_block_tail);
