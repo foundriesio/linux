@@ -403,6 +403,7 @@ struct hisi_hba {
 #ifndef __GENKSYMS__
 	int cq_nvecs;
 	unsigned int *reply_map;
+	bool debugfs_snapshot;
 #endif
 };
 
