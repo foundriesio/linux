@@ -54,6 +54,7 @@
 		videoinput1 = &videoinput1;
 		i2s0 = &i2s0;
 		adma0 = &adma0;
+		tcc-overlay-drv1 = &tcc_overlay_drv1;
 	};
 
 	cpus {
@@ -1215,6 +1216,14 @@
 			 VIOC_RDMA04 VIOC_RDMA05 VIOC_RDMA06 VIOC_RDMA07>;
 		wmixs = <&vioc_wmix VIOC_WMIX0 VIOC_WMIX1>;
 		rdma_init_layer = <1>;
+		status = "okay";
+	};
+
+tcc_overlay_drv1: tcc_overlay_drv@1 { //for scrshare
+		compatible = "telechips,tcc_overlay";
+		fbdisplay-overlay = <1>;
+		rdmas = <&vioc_rdma VIOC_RDMA00 VIOC_RDMA01 VIOC_RDMA02 VIOC_RDMA03 VIOC_RDMA04 VIOC_RDMA05 VIOC_RDMA06 VIOC_RDMA07>;
+		wmixs = <&vioc_wmix VIOC_WMIX0 VIOC_WMIX1>;
 		status = "okay";
 	};
 
