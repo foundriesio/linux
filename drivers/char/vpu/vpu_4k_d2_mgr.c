@@ -627,7 +627,7 @@ static int _vmgr_4k_d2_internal_handler(unsigned int reason)
 		 ret_code, cntInt_4kd2, cntwk_4kd2, vmgr_4k_d2_data.oper_intr);
 	#endif
 
-	V_DBG(DEBUG_ENC_INTERRUPT, "out (Interrupt option=%d, isr cnt=%d, ev=%d)",
+	V_DBG(VPU_DBG_INTERRUPT, "out (Interrupt option=%d, isr cnt=%d, ev=%d)",
 		vmgr_4k_d2_data.check_interrupt_detection,
 		cntInt_4kd2,
 		ret_code);
@@ -1494,7 +1494,7 @@ VpuList_t* vmgr_4k_d2_list_manager(VpuList_t* args, unsigned int cmd)
 	{
 		if (cmd == LIST_ADD || cmd == LIST_DEL)
 		{
-			V_DBG(DEBUG_VPU_ERROR, "Data is null, cmd=%d", cmd);
+			V_DBG(VPU_DBG_ERROR, "Data is null, cmd=%d", cmd);
 			return NULL;
 		}
 	}

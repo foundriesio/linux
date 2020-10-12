@@ -232,7 +232,7 @@ static int _vmgr_internal_handler(void)
 		vmgr_status_clear(vmgr_data.base_addr);
 	}
 
-	V_DBG(DEBUG_ENC_INTERRUPT, "out (Interrupt option=%d, isr cnt=%d, ev=%d)",
+	V_DBG(VPU_DBG_INTERRUPT, "out (Interrupt option=%d, isr cnt=%d, ev=%d)",
 		vmgr_data.check_interrupt_detection,
 		cntInt_vpu,
 		ret_code);
@@ -1420,7 +1420,7 @@ VpuList_t* vmgr_list_manager(VpuList_t* args, unsigned int cmd)
 	{
 		if (cmd == LIST_ADD || cmd == LIST_DEL)
 		{
-			V_DBG(DEBUG_VPU_ERROR, "Data is null, cmd=%d", cmd);
+			V_DBG(VPU_DBG_ERROR, "Data is null, cmd=%d", cmd);
 			return NULL;
 		}
 	}

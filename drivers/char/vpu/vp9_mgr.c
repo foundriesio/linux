@@ -166,7 +166,7 @@ static int _vp9mgr_internal_handler(void)
 		vp9mgr_status_clear(vp9mgr_data.base_addr);
 	}
 
-	V_DBG(DEBUG_ENC_INTERRUPT, "out (Interrupt option=%d, ev=%d)",
+	V_DBG(VPU_DBG_INTERRUPT, "out (Interrupt option=%d, ev=%d)",
 		vp9mgr_data.check_interrupt_detection,
 		ret_code);
 
@@ -973,7 +973,7 @@ VpuList_t* vp9mgr_list_manager(VpuList_t* args, unsigned int cmd)
 	{
 		if (cmd == LIST_ADD || cmd == LIST_DEL)
 		{
-			V_DBG(DEBUG_VPU_ERROR, "Data is null, cmd=%d", cmd);
+			V_DBG(VPU_DBG_ERROR, "Data is null, cmd=%d", cmd);
 			return NULL;
 		}
 	}

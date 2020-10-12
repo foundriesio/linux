@@ -347,7 +347,7 @@ static int _vdec_proc_seq_header(vpu_decoder_data* vdata, void* arg, bool fromKe
 		case STD_MJPG:
 			{
 			#if defined(JPU_C6)
-				pArgs = vdata->gsIsDiminishedCopy ? &vdata->gsJpuDecInOut_Info : &vdata->gsJpuDecSeqHeader_Info;
+				pArgs = vdata->gsIsDiminishedCopy ? (void *)&vdata->gsJpuDecInOut_Info : (void *)&vdata->gsJpuDecSeqHeader_Info;
 				copySize = vdata->gsIsDiminishedCopy ? sizeof(JPU_DECODE_t) : sizeof(JDEC_SEQ_HEADER_t);
 			#else
 				err("%s :: jpu not support this !! \n", vdata->misc->name);
@@ -359,7 +359,7 @@ static int _vdec_proc_seq_header(vpu_decoder_data* vdata, void* arg, bool fromKe
 	#ifdef CONFIG_SUPPORT_TCC_WAVE512_4K_D2
 		case STD_HEVC: case STD_VP9:
 			{
-				pArgs = vdata->gsIsDiminishedCopy ? &vdata->gsV4kd2DecInOut_Info : &vdata->gsV4kd2DecSeqHeader_Info;
+				pArgs = vdata->gsIsDiminishedCopy ? (void *)&vdata->gsV4kd2DecInOut_Info : (void *)&vdata->gsV4kd2DecSeqHeader_Info;
 				copySize = vdata->gsIsDiminishedCopy ? sizeof(VPU_4K_D2_DECODE_t) : sizeof(VPU_4K_D2_SEQ_HEADER_t);
 			}
 			break;
@@ -367,7 +367,7 @@ static int _vdec_proc_seq_header(vpu_decoder_data* vdata, void* arg, bool fromKe
 	#ifdef CONFIG_SUPPORT_TCC_WAVE410_HEVC
 		case STD_HEVC:
 			{
-				pArgs = vdata->gsIsDiminishedCopy ? &vdata->gsHevcDecInOut_Info : &vdata->gsHevcDecSeqHeader_Info;
+				pArgs = vdata->gsIsDiminishedCopy ? (void *)&vdata->gsHevcDecInOut_Info : (void *)&vdata->gsHevcDecSeqHeader_Info;
 				copySize = vdata->gsIsDiminishedCopy ? sizeof(HEVC_DECODE_t) : sizeof(HEVC_SEQ_HEADER_t);
 			}
 			break;
@@ -375,7 +375,7 @@ static int _vdec_proc_seq_header(vpu_decoder_data* vdata, void* arg, bool fromKe
 	#ifdef CONFIG_SUPPORT_TCC_G2V2_VP9
 		case STD_VP9:
 			{
-				pArgs = vdata->gsIsDiminishedCopy ? &vdata->gsVp9DecInOut_Info : &vdata->gsVp9DecSeqHeader_Info;
+				pArgs = vdata->gsIsDiminishedCopy ? (void *)&vdata->gsVp9DecInOut_Info : (void *)&vdata->gsVp9DecSeqHeader_Info;
 				copySize = vdata->gsIsDiminishedCopy ? sizeof(VP9_DECODE_t) : sizeof(VP9_SEQ_HEADER_t);
 			}
 			break;
@@ -1578,7 +1578,7 @@ static int _vdec_proc_seq_header_ring(vpu_decoder_data* vdata, void* arg, bool f
 #ifdef CONFIG_SUPPORT_TCC_WAVE512_4K_D2
 		case STD_HEVC: case STD_VP9:
 			{
-				pArgs = vdata->gsIsDiminishedCopy ? &vdata->gsV4kd2DecInOut_Info : &vdata->gsV4kd2DecSeqHeader_Info;
+				pArgs = vdata->gsIsDiminishedCopy ? (void *)&vdata->gsV4kd2DecInOut_Info : (void *)&vdata->gsV4kd2DecSeqHeader_Info;
 				copySize = vdata->gsIsDiminishedCopy ? sizeof(VPU_4K_D2_DECODE_t) : sizeof(VPU_4K_D2_SEQ_HEADER_t);
 				detailk("%s: vpu-4k-d2_proc_buf_fill In !! handle = 0x%x\n", vdata->misc->name, vdata->gsV4kd2DecInit_Info.gsV4kd2DecHandle);
 			}
@@ -1587,7 +1587,7 @@ static int _vdec_proc_seq_header_ring(vpu_decoder_data* vdata, void* arg, bool f
 #ifdef CONFIG_SUPPORT_TCC_WAVE410_HEVC
 		case STD_HEVC:
 			{
-				pArgs = vdata->gsIsDiminishedCopy ? &vdata->gsHevcDecInOut_Info : &vdata->gsHevcDecSeqHeader_Info;
+				pArgs = vdata->gsIsDiminishedCopy ? (void *)&vdata->gsHevcDecInOut_Info : (void *)&vdata->gsHevcDecSeqHeader_Info;
 				copySize = vdata->gsIsDiminishedCopy ? sizeof(HEVC_DECODE_t) : sizeof(HEVC_SEQ_HEADER_t);
 				detailk("%s: hevc_proc_buf_fill In !! handle = 0x%x\n", vdata->misc->name, vdata->gsHevcDecInit_Info.gsHevcDecHandle);
 			}
@@ -1596,7 +1596,7 @@ static int _vdec_proc_seq_header_ring(vpu_decoder_data* vdata, void* arg, bool f
 #ifdef CONFIG_SUPPORT_TCC_G2V2_VP9
 		case STD_VP9:
 			{
-				pArgs = vdata->gsIsDiminishedCopy ? &vdata->gsVp9DecInOut_Info : &vdata->gsVp9DecSeqHeader_Info;
+				pArgs = vdata->gsIsDiminishedCopy ? (void *)&vdata->gsVp9DecInOut_Info : (void *)&vdata->gsVp9DecSeqHeader_Info;
 				copySize = vdata->gsIsDiminishedCopy ? sizeof(VP9_DECODE_t) : sizeof(VP9_SEQ_HEADER_t);
 				detailk("%s ::vp9_proc_buf_fill In !! handle = 0x%x\n", vdata->misc->name, vdata->gsVp9DecInit_Info.gsVp9DecHandle);
 			}
@@ -1604,7 +1604,7 @@ static int _vdec_proc_seq_header_ring(vpu_decoder_data* vdata, void* arg, bool f
 #endif
 		default:
 			{
-				pArgs = vdata->gsIsDiminishedCopy ? &vdata->gsVpuDecInOut_Info : &vdata->gsVpuDecSeqHeader_Info;
+				pArgs = vdata->gsIsDiminishedCopy ? (void *)&vdata->gsVpuDecInOut_Info : (void *)&vdata->gsVpuDecSeqHeader_Info;
 				copySize = vdata->gsIsDiminishedCopy ? sizeof(VDEC_DECODE_t) : sizeof(VDEC_SEQ_HEADER_t);
 				detailk("%s: _vdec_proc_buf_fill In !! handle = 0x%x\n", vdata->misc->name, vdata->gsVpuDecInit_Info.gsVpuDecHandle);
 			}
@@ -2470,7 +2470,6 @@ long vdec_poll_2(struct file* filp, int timeout_ms)
 {
 	struct miscdevice* misc = (struct miscdevice*)filp->private_data;
 	vpu_decoder_data* vdata = dev_get_drvdata(misc->parent);
-	int ret;
 
 	if (vdata == NULL)
 	{

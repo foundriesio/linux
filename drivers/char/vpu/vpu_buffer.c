@@ -483,7 +483,7 @@ static int _vmem_check_allocation_available(char check_type, unsigned int reques
 		case 2: // Check remainning except encoder memory.
 		if ((pmap_video.size - sz_enc_mem - VPU_SW_ACCESS_REGION_SIZE) < (sz_ext_used_mem + sz_front_used_mem + request_size))
 		{
-			err("type[%d] : insufficient memory : total(0x%x) except encoder, allocated(0x%x), request(0x%x) \n", type, (pmap_video.size - sz_enc_mem), (sz_ext_used_mem + sz_front_used_mem), request_size);
+			err("type[%u] : insufficient memory : total(0x%x) except encoder, allocated(0x%x), request(0x%x) \n", type, (pmap_video.size - sz_enc_mem), (sz_ext_used_mem + sz_front_used_mem), request_size);
 			return -1;
 		}
 		break;
@@ -1975,7 +1975,7 @@ unsigned int vmem_get_freemem_size(vputype type)
 	}
 	else if (VPU_ENC <= type && type < VPU_MAX)
 	{
-		V_DBG(DEBUG_ENC_MEMORY, "type[%d] mem info for vpu :: remain(%u : %u : %u : %u : %u), used mem(%u : %u : %u : %u : %u)",
+		V_DBG(VPU_DBG_MEMORY, "type[%d] mem info for vpu :: remain(%u : %u : %u : %u : %u), used mem(%u : %u : %u : %u : %u)",
 					type,
 					sz_enc_mem - sz_rear_used_mem,
 #if defined(CONFIG_VENC_CNT_5)
@@ -2319,7 +2319,7 @@ void venc_get_instance(int* nIdx)
 		else
 			err("failed to get new instance for encoder(%d) \n", nInstance);
 
-		V_DBG(DEBUG_ENC_INSTANCE, "Instance is gotten #%d", nInstance);
+		V_DBG(VPU_DBG_INSTANCE, "Instance is gotten #%d", nInstance);
 
 		*nIdx = nInstance;
 	}
@@ -2349,7 +2349,7 @@ void venc_clear_instance(int nIdx)
 {
 	mutex_lock(&mem_mutex);
 	{
-		V_DBG(DEBUG_ENC_INSTANCE, "Instance is cleared #%d", nIdx);
+		V_DBG(VPU_DBG_INSTANCE, "Instance is cleared #%d", nIdx);
 
 		if (nIdx >= 0 && nIdx < VPU_INST_MAX)
 			venc_used[nIdx] = 0;
