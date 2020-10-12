@@ -139,3 +139,7 @@
 		      <0x0 0x17306000 0x0 0x2000>;
 	};
 };
+
+&tcc_timer {
+        tcc-timer-reserved = <5>;
+};
