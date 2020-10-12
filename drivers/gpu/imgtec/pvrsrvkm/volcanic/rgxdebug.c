@@ -2950,6 +2950,15 @@ PVRSRV_ERROR RGXDumpRGXRegisters(DUMPDEBUG_PRINTF_FUNC *pfnDumpDebugPrintf,
 	DDLOG64(SCRATCH15);
 	DDLOG32(IRQ_OS0_EVENT_STATUS);
 
+
+#define RGX_CR_TDM_CONTEXT_STATE_BASE                     (0x2648U)
+#define RGX_CR_TDM_CB_QUEUE                               (0x2618U)
+#define RGX_CR_TDM_CB_BASE                                (0x2608U)
+
+	DDLOG64(TDM_CONTEXT_STATE_BASE);
+	DDLOG64(TDM_CB_QUEUE);
+	DDLOG64(TDM_CB_BASE);
+
 #if !defined(NO_HARDWARE)
 	if (ui32Meta)
 	{

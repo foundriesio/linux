@@ -234,7 +234,7 @@ PVRSRV_ERROR PDVFSProcessCoreClkChangeNotification(PVRSRV_RGXDEV_INFO *psDevInfo
 	}
 
 	if ((ePowerState != PVRSRV_DEV_POWER_STATE_OFF)
-	    && (psDevInfo->psRGXFWIfFwSysData->ePowState != RGXFWIF_POW_OFF))
+	    && ((psDevInfo->psRGXFWIfFwSysData == NULL) || (psDevInfo->psRGXFWIfFwSysData->ePowState != RGXFWIF_POW_OFF)))
 	{
 		/* Update GPU frequency and timer correlation related data */
 		RGXTimeCorrEnd(psDevInfo->psDeviceNode, RGXTIMECORR_EVENT_DVFS);
