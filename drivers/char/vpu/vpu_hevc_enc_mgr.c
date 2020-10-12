@@ -510,7 +510,7 @@ static int _vmgr_hevc_enc_process(vputype type, int cmd, long pHandle, void* arg
 					arg->encInit.m_iBitstreamFormat, arg->encInit.m_iPicWidth, arg->encInit.m_iPicHeight,
 					arg->encInit.m_iFrameRate, arg->encInit.m_iTargetKbps, arg->encInit.m_iKeyInterval,
 					arg->encInit.m_BitstreamBufferAddr[PA], arg->encInit.m_BitstreamBufferAddr[VA],
-					arg->encInit.m_iBitstreamBufferSize, vidsys_conf_reg, vetc_reg_read(vidsys_conf_reg, 0x84));
+					arg->encInit.m_iBitstreamBufferSize, vidsys_conf_reg, vetc_reg_read((void *) vidsys_conf_reg, 0x84));
 
 				ret = tcc_vpu_hevc_enc(cmd, (void*)(&arg->handle), (void*)(&arg->encInit), (void*)(&arg->encInitialInfo));
 				if (ret != RETCODE_SUCCESS)
@@ -1281,7 +1281,7 @@ int vmgr_hevc_enc_probe(struct platform_device* pdev)
 	else
 	{
 		vetc_reg_write((void*)vidsys_conf_reg, 0x84, 0x9c9a3000);
-		V_DBG(DEBUG_ENC_PROBE, "Video sub-system cfg reg (0x%px) : Sec. AXI (0x%x)", vidsys_conf_reg, vetc_reg_read(vidsys_conf_reg, 0x84));
+		V_DBG(DEBUG_ENC_PROBE, "Video sub-system cfg reg (0x%px) : Sec. AXI (0x%x)", vidsys_conf_reg, vetc_reg_read((void *) vidsys_conf_reg, 0x84));
 	}
 
 	vmgr_hevc_enc_get_clock(pdev->dev.of_node);

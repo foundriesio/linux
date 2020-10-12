@@ -1218,7 +1218,6 @@ void VIOC_CONFIG_WMIXPathReset(unsigned int component_num, unsigned int mode)
 			__raw_writel(value, config_reg + CFG_WMIX_PATH_SWR_OFFSET);
 		}
 	}
-	return 0;
 }
 #endif
 

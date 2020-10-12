@@ -309,7 +309,7 @@ static void tcc_fd_fence_wait(struct fence *fence)
 #elif LINUX_VERSION_CODE < KERNEL_VERSION(4, 10, 0)
 	int err = fence_default_wait(fence, 1, 1000);
 #else
-	int err = dma_fence_default_wait(fence, 1, 1000);
+	int err = dma_fence_default_wait((struct dma_fence *) fence, 1, 1000);
 #endif
  	if (err >= 0)
  		return;
@@ -320,7 +320,7 @@ static void tcc_fd_fence_wait(struct fence *fence)
 #elif LINUX_VERSION_CODE < KERNEL_VERSION(4, 10, 0)
 	       err = fence_default_wait(fence, 1, 10 * MSEC_PER_SEC);
 #else
-	       err = dma_fence_default_wait(fence, 1, 10 * MSEC_PER_SEC);
+	       err = dma_fence_default_wait((struct dma_fence *) fence, 1, 10 * MSEC_PER_SEC);
 #endif
 }
 
@@ -336,7 +336,7 @@ static void tcc_fb_update_regs(struct tccfb_info *tccfb, struct tcc_fenc_reg_dat
 #elif LINUX_VERSION_CODE < KERNEL_VERSION(4, 10, 0)
 		fence_put(regs->fence);
 #else
-		dma_fence_put(regs->fence);
+		dma_fence_put((struct dma_fence *) regs->fence);
 #endif
 	}
 #if defined(CONFIG_VIOC_AFBCDEC)
@@ -913,7 +913,7 @@ static int tccfb_ioctl(struct fb_info *info, unsigned int cmd,unsigned long arg)
 #if LINUX_VERSION_CODE < KERNEL_VERSION(4, 6, 0)
  				regs->fence = sync_fence_fdget(regs->fence_fd);
 #else
-				regs->fence = sync_file_get_fence(regs->fence_fd);
+				regs->fence = (struct fence *) sync_file_get_fence(regs->fence_fd);
 #endif
 				if (!regs->fence ) {
 					pr_warn("[WAR][FB] failed to import fence fd\n");
@@ -2301,7 +2301,7 @@ static int tccfb_ioctl(struct fb_info *info, unsigned int cmd,unsigned long arg)
 			struct tcc_lcdc_image_update *TempImage;
 			struct tcc_dp_device *pdp_data = NULL;
 
-			pr_info("[INF][FB] TCC_LCDC_FB_SWAP_VPU_FRAME idx(%d)\n", arg);
+			pr_info("[INF][FB] TCC_LCDC_FB_SWAP_VPU_FRAME idx(%ld)\n", arg);
 
 			if (ptccfb_info->image_enable == 0) {
 				return 0;
@@ -3051,6 +3051,7 @@ static int tccfb_probe(struct platform_device *pdev)
 	{
 		struct tccfb_info *info_reg;
 		struct fb_info *fbinfo_reg;
+		int err;
 
 		fbinfo_reg = framebuffer_alloc(sizeof(struct tccfb_info), &pdev->dev);
 		info_reg = fbinfo_reg->par;
@@ -3067,7 +3068,11 @@ static int tccfb_probe(struct platform_device *pdev)
 		tcc_dp_dt_parse_data(info_reg);
 
 		/* kobject_rename - change the name of an object */
-		kobject_rename(&pdev->dev.kobj, "tccfb");
+		err = kobject_rename(&pdev->dev.kobj, "tccfb");
+		if (err) {
+			framebuffer_release(fbinfo_reg);
+			return -ENOMEM;
+		}
 
 		strcpy(fbinfo_reg->fix.id, tccfb_driver_name);
 

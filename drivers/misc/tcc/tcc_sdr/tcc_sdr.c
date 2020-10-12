@@ -781,7 +781,7 @@ long tcc_sdr_ioctl(struct file *flip, unsigned int cmd, unsigned long arg)
 				}
 				if(ret<0){
 					param.eReadCount = ret;
-					if(copy_to_user((const void *)arg, &param, sizeof(param)) != 0)
+					if(copy_to_user((void *)arg, &param, sizeof(param)) != 0)
 						printk(KERN_DEBUG "[DEBUG][SDR] HSI2S_RADIO_MODE_RX_DAI Fail!!\n");
 				}
 			}
@@ -797,7 +797,7 @@ long tcc_sdr_ioctl(struct file *flip, unsigned int cmd, unsigned long arg)
 				}
 				if(ret<0){
 					param.eReadCount = ret;
-					if(copy_to_user((const void *)arg, &param, sizeof(param)) != 0)
+					if(copy_to_user((void *)arg, &param, sizeof(param)) != 0)
 						printk(KERN_DEBUG "[DEBUG][SDR] HSI2S_I2S_MODE_RX_DAI Fail!!\n");
 				}
 			}

@@ -792,7 +792,7 @@ static int lcd_bind(struct device *dev, struct device *master, void *data)
 	struct drm_device *drm_dev = data;
 	struct drm_plane *primary = NULL;
 	struct drm_plane *cursor = NULL;
-	uint32_t *formats_list;
+	const uint32_t *formats_list;
 	int formats_list_size;
 	int i, ret = 0;
 
