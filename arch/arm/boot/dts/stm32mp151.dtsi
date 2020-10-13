@@ -535,8 +535,8 @@
 			clocks = <&rcc USART2_K>;
 			wakeup-source;
 			power-domains = <&pd_core>;
-			dmas = <&dmamux1 43 0x400 0x5>,
-			       <&dmamux1 44 0x400 0x1>;
+			dmas = <&dmamux1 43 0x400 0x15>,
+			       <&dmamux1 44 0x400 0x11>;
 			dma-names = "rx", "tx";
 			status = "disabled";
 		};
@@ -548,8 +548,8 @@
 			clocks = <&rcc USART3_K>;
 			wakeup-source;
 			power-domains = <&pd_core>;
-			dmas = <&dmamux1 45 0x400 0x5>,
-			       <&dmamux1 46 0x400 0x1>;
+			dmas = <&dmamux1 45 0x400 0x15>,
+			       <&dmamux1 46 0x400 0x11>;
 			dma-names = "rx", "tx";
 			status = "disabled";
 		};
@@ -561,8 +561,8 @@
 			clocks = <&rcc UART4_K>;
 			wakeup-source;
 			power-domains = <&pd_core>;
-			dmas = <&dmamux1 63 0x400 0x5>,
-			       <&dmamux1 64 0x400 0x1>;
+			dmas = <&dmamux1 63 0x400 0x15>,
+			       <&dmamux1 64 0x400 0x11>;
 			dma-names = "rx", "tx";
 			status = "disabled";
 		};
@@ -574,8 +574,8 @@
 			clocks = <&rcc UART5_K>;
 			wakeup-source;
 			power-domains = <&pd_core>;
-			dmas = <&dmamux1 65 0x400 0x5>,
-			       <&dmamux1 66 0x400 0x1>;
+			dmas = <&dmamux1 65 0x400 0x15>,
+			       <&dmamux1 66 0x400 0x11>;
 			dma-names = "rx", "tx";
 			status = "disabled";
 		};
@@ -696,8 +696,8 @@
 			clocks = <&rcc UART7_K>;
 			wakeup-source;
 			power-domains = <&pd_core>;
-			dmas = <&dmamux1 79 0x400 0x5>,
-			       <&dmamux1 80 0x400 0x1>;
+			dmas = <&dmamux1 79 0x400 0x15>,
+			       <&dmamux1 80 0x400 0x11>;
 			dma-names = "rx", "tx";
 			status = "disabled";
 		};
@@ -709,8 +709,8 @@
 			clocks = <&rcc UART8_K>;
 			wakeup-source;
 			power-domains = <&pd_core>;
-			dmas = <&dmamux1 81 0x400 0x5>,
-			       <&dmamux1 82 0x400 0x1>;
+			dmas = <&dmamux1 81 0x400 0x15>,
+			       <&dmamux1 82 0x400 0x11>;
 			dma-names = "rx", "tx";
 			status = "disabled";
 		};
@@ -794,8 +794,8 @@
 			clocks = <&rcc USART6_K>;
 			wakeup-source;
 			power-domains = <&pd_core>;
-			dmas = <&dmamux1 71 0x400 0x5>,
-			       <&dmamux1 72 0x400 0x1>;
+			dmas = <&dmamux1 71 0x400 0x15>,
+			       <&dmamux1 72 0x400 0x11>;
 			dma-names = "rx", "tx";
 			status = "disabled";
 		};
