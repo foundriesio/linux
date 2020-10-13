@@ -223,11 +223,12 @@
 
 	dfsdm1: filter@1 {
 		compatible = "st,stm32-dfsdm-dmic";
-		st,adc-channels = <1>;
+		st,adc-channels = <0>;
 		st,adc-channel-names = "dmic_u2";
 		st,adc-channel-types = "SPI_F";
 		st,adc-channel-clk-src = "CLKOUT";
 		st,filter-order = <3>;
+		st,adc-alt-channel = <1>;
 		status = "okay";
 
 		asoc_pdm1: dfsdm-dai {
@@ -246,10 +247,11 @@
 
 	dfsdm2: filter@2 {
 		compatible = "st,stm32-dfsdm-dmic";
-		st,adc-channels = <3>;
+		st,adc-channels = <2>;
 		st,adc-channel-names = "dmic_u3";
 		st,adc-channel-types = "SPI_F";
 		st,adc-channel-clk-src = "CLKOUT";
+		st,adc-alt-channel = <1>;
 		st,filter-order = <3>;
 		status = "okay";
 
