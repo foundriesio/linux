@@ -14,11 +14,15 @@
 #include <linux/numa.h>
 #include <linux/nodemask.h>
 #include <linux/topology.h>
+#include <linux/counters.h>
 
 #define TEST_PROBE_DELAY	(5 * 1000)	/* 5 sec */
 #define TEST_PROBE_THRESHOLD	(TEST_PROBE_DELAY / 2)
 
-static atomic_t warnings, errors, timeout, async_completed;
+static struct counter_atomic32 warnings = COUNTER_ATOMIC_INIT(0);
+static struct counter_atomic32 errors = COUNTER_ATOMIC_INIT(0);
+static struct counter_atomic32 timeout = COUNTER_ATOMIC_INIT(0);
+static struct counter_atomic32 async_completed = COUNTER_ATOMIC_INIT(0);
 
 static int test_probe(struct platform_device *pdev)
 {
@@ -29,9 +33,9 @@ static int test_probe(struct platform_device *pdev)
 	 * have then report it as an error, otherwise we wil sleep for the
 	 * required amount of time and then report completion.
 	 */
-	if (atomic_read(&timeout)) {
+	if (counter_atomic32_read(&timeout)) {
 		dev_err(dev, "async probe took too long\n");
-		atomic_inc(&errors);
+		counter_atomic32_inc(&errors);
 	} else {
 		dev_dbg(&pdev->dev, "sleeping for %d msecs in probe\n",
 			 TEST_PROBE_DELAY);
@@ -48,10 +52,10 @@ static int test_probe(struct platform_device *pdev)
 		    dev_to_node(dev) != numa_node_id()) {
 			dev_warn(dev, "NUMA node mismatch %d != %d\n",
 				 dev_to_node(dev), numa_node_id());
-			atomic_inc(&warnings);
+			counter_atomic32_inc(&warnings);
 		}
 
-		atomic_inc(&async_completed);
+		counter_atomic32_inc(&async_completed);
 	}
 
 	return 0;
@@ -244,11 +248,12 @@ static int __init test_async_probe_init(void)
 	 * Otherwise if they completed without errors or warnings then
 	 * report successful completion.
 	 */
-	if (atomic_read(&async_completed) != async_id) {
+	if (counter_atomic32_read(&async_completed) != async_id) {
 		pr_err("async events still pending, forcing timeout\n");
-		atomic_inc(&timeout);
+		counter_atomic32_inc(&timeout);
 		err = -ETIMEDOUT;
-	} else if (!atomic_read(&errors) && !atomic_read(&warnings)) {
+	} else if (!counter_atomic32_read(&errors) &&
+		   !counter_atomic32_read(&warnings)) {
 		pr_info("completed successfully\n");
 		return 0;
 	}
@@ -271,12 +276,13 @@ err_unregister_async_devs:
 	 * errors or warnings being reported by the probe routine.
 	 */
 	if (err)
-		atomic_inc(&errors);
+		counter_atomic32_inc(&errors);
 	else
 		err = -EINVAL;
 
 	pr_err("Test failed with %d errors and %d warnings\n",
-	       atomic_read(&errors), atomic_read(&warnings));
+	       counter_atomic32_read(&errors),
+	       counter_atomic32_read(&warnings));
 
 	return err;
 }

@@ -20,6 +20,7 @@
 #include <linux/smp.h>
 #include <linux/io.h>
 #include <linux/vmalloc.h>
+#include <linux/counters.h>
 
 #include "vmci_datagram.h"
 #include "vmci_doorbell.h"
@@ -68,11 +69,11 @@ struct pci_dev *vmci_pdev;
 static struct vmci_guest_device *vmci_dev_g;
 static DEFINE_SPINLOCK(vmci_dev_spinlock);
 
-static atomic_t vmci_num_guest_devices = ATOMIC_INIT(0);
+static struct counter_atomic32 vmci_num_guest_devices = COUNTER_ATOMIC_INIT(0);
 
 bool vmci_guest_code_active(void)
 {
-	return atomic_read(&vmci_num_guest_devices) != 0;
+	return counter_atomic32_read(&vmci_num_guest_devices) > 0;
 }
 
 u32 vmci_get_vm_context_id(void)
@@ -624,7 +625,7 @@ static int vmci_guest_probe_device(struct pci_dev *pdev,
 
 	dev_dbg(&pdev->dev, "Registered device\n");
 
-	atomic_inc(&vmci_num_guest_devices);
+	counter_atomic32_inc(&vmci_num_guest_devices);
 
 	/* Enable specific interrupt bits. */
 	cmd = VMCI_IMR_DATAGRAM;
@@ -684,7 +685,7 @@ static void vmci_guest_remove_device(struct pci_dev *pdev)
 
 	dev_dbg(&pdev->dev, "Removing device\n");
 
-	atomic_dec(&vmci_num_guest_devices);
+	counter_atomic32_dec(&vmci_num_guest_devices);
 
 	vmci_qp_guest_endpoints_exit();
 
