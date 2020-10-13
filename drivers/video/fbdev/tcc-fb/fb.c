@@ -506,7 +506,7 @@ static void fbX_activate_var(unsigned int dma_addr, struct fb_var_screeninfo *va
 	unsigned int width, height, format, channel;
 
 	if(par->pdata.FbWdmaPath  == 0) {
-	VIOC_DISP_GetSize(par->pdata.ddc_info.virt_addr, &width, &height);
+		VIOC_DISP_GetSize(par->pdata.ddc_info.virt_addr, &width, &height);
 	} else {
 		/* WDMA Path */
 		width = var->xres;
@@ -969,11 +969,10 @@ static int __init fb_map_video_memory(struct fb_info *info)
 		/*
 		 * prevent initial garbage on screen
 		 */
-#ifndef CONFIG_TCC803X_CA7S
+#if !defined(CONFIG_TCC803X_CA7S) && !defined(CONFIG_TCC805X_CA53Q)
 		memset_io(par->map_cpu, 0x00, par->map_size);
 		pr_info("[INF][FBX] %s: clear fb mem\n", __func__);
 #endif
-
 		par->screen_dma		= par->map_dma;
 		info->screen_base	= par->map_cpu;
 		info->fix.smem_start  = par->screen_dma;
@@ -1294,6 +1293,7 @@ static struct attribute_group fbX_dev_attgrp = {
 
 static int __init fbX_probe (struct platform_device *pdev)
 {
+	unsigned int no_kernel_logo = 0;
 	struct fb_info *info;
 	struct fbX_par *par;
 	int retval;
@@ -1312,6 +1312,9 @@ static int __init fbX_probe (struct platform_device *pdev)
 #ifdef CONFIG_OF
 	fb_dt_parse_data(info);
 #endif
+	if(of_property_read_u32(pdev->dev.of_node, "no-kernel-logo", &no_kernel_logo)) {
+		pr_warn("[WARN][FBX] %s There is no no-kernel-logo property\n", __func__);
+	}
 
 	snprintf(fbX_fix.id, sizeof(fbX_fix.id), "telechips,fb%d", of_alias_get_id(info->dev->of_node, "fb"));
 	info->fix = fbX_fix;
@@ -1347,13 +1350,17 @@ static int __init fbX_probe (struct platform_device *pdev)
 		goto err_palette_free;
 	}
 
-	if (fb_prepare_logo(info, FB_ROTATE_UR)) {
-		/* Start display and show logo on boot */
-		pr_info("[INF][FBX] fb_show_logo\n");
-		// So, we use fb_alloc_cmap_gfp function(fb_default_camp(default_16_colors))
-		fb_alloc_cmap_gfp(&info->cmap, 16, 0, GFP_KERNEL);
-		fb_alloc_cmap_gfp(&info->cmap, 16, 0, GFP_KERNEL);
-		fb_show_logo(info, FB_ROTATE_UR);
+	if(no_kernel_logo) {
+		pr_info("[INF][FBX] SKIP fb_show_logo\n");
+	} else {
+		if (fb_prepare_logo(info, FB_ROTATE_UR)) {
+			/* Start display and show logo on boot */
+			pr_info("[INF][FBX] fb_show_logo\n");
+			// So, we use fb_alloc_cmap_gfp function(fb_default_camp(default_16_colors))
+			fb_alloc_cmap_gfp(&info->cmap, 16, 0, GFP_KERNEL);
+			fb_alloc_cmap_gfp(&info->cmap, 16, 0, GFP_KERNEL);
+			fb_show_logo(info, FB_ROTATE_UR);
+		}
 	}
 
 	atomic_set(&fb_waitq[info->node].state, 0);
@@ -1365,7 +1372,7 @@ static int __init fbX_probe (struct platform_device *pdev)
 	if(sysfs_create_group(&pdev->dev.kobj, &fbX_dev_attgrp) != 0)
 		fb_warn(info, "failed to register attributes\n");
 
-#ifndef CONFIG_TCC803X_CA7S
+#if !defined(CONFIG_TCC803X_CA7S) && !defined(CONFIG_TCC805X_CA53Q)
 	fbX_activate_var((par->map_dma + (info->var.xres * info->var.yoffset * info->var.bits_per_pixel/8)), &info->var, info->par);
 #endif
 	fbX_set_par(info);
@@ -1376,7 +1383,7 @@ err_palette_free:
 	devm_kfree(&pdev->dev, info->pseudo_palette);
 
 err_fb_free:
-	framebuffer_release(info);	
+	framebuffer_release(info);
 
 err_fb_probe:
 	return retval;
