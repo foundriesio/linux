@@ -100,6 +100,18 @@ MODULE_FIRMWARE(FIRMWARE_SIENNA_CICHLID_DMUB);
 #define FIRMWARE_NAVY_FLOUNDER_DMUB "amdgpu/navy_flounder_dmcub.bin"
 MODULE_FIRMWARE(FIRMWARE_NAVY_FLOUNDER_DMUB);
 #endif
+#if defined(CONFIG_DRM_AMD_DC_GREEN_SARDINE)
+#define FIRMWARE_GREEN_SARDINE_DMUB "amdgpu/green_sardine_dmcub.bin"
+MODULE_FIRMWARE(FIRMWARE_GREEN_SARDINE_DMUB);
+#endif
+#if defined(CONFIG_DRM_AMD_DC_DCN3_01)
+#define FIRMWARE_VANGOGH_DMUB "amdgpu/vangogh_dmcub.bin"
+MODULE_FIRMWARE(FIRMWARE_VANGOGH_DMUB);
+#endif
+#if defined(CONFIG_DRM_AMD_DC_DCN3_02)
+#define FIRMWARE_DIMGREY_CAVEFISH_DMUB "amdgpu/dimgrey_cavefish_dmcub.bin"
+MODULE_FIRMWARE(FIRMWARE_DIMGREY_CAVEFISH_DMUB);
+#endif
 
 #define FIRMWARE_RAVEN_DMCU		"amdgpu/raven_dmcu.bin"
 MODULE_FIRMWARE(FIRMWARE_RAVEN_DMCU);
@@ -973,6 +985,10 @@ static int amdgpu_dm_init(struct amdgpu_device *adev)
 	case CHIP_RAVEN:
 	case CHIP_RENOIR:
 		init_data.flags.gpu_vm_support = true;
+#if defined(CONFIG_DRM_AMD_DC_GREEN_SARDINE)
+		if (ASICREV_IS_GREEN_SARDINE(adev->external_rev_id))
+			init_data.flags.disable_dmcu = true;
+#endif
 		break;
 	default:
 		break;
@@ -1172,6 +1188,12 @@ static int load_dmcu_fw(struct amdgpu_device *adev)
 	case CHIP_SIENNA_CICHLID:
 	case CHIP_NAVY_FLOUNDER:
 #endif
+#if defined(CONFIG_DRM_AMD_DC_DCN3_02)
+	case CHIP_DIMGREY_CAVEFISH:
+#endif
+#if defined(CONFIG_DRM_AMD_DC_DCN3_01)
+	case CHIP_VANGOGH:
+#endif
 		return 0;
 	case CHIP_NAVI12:
 		fw_name_dmcu = FIRMWARE_NAVI12_DMCU;
@@ -1267,6 +1289,10 @@ static int dm_dmub_sw_init(struct amdgpu_device *adev)
 	case CHIP_RENOIR:
 		dmub_asic = DMUB_ASIC_DCN21;
 		fw_name_dmub = FIRMWARE_RENOIR_DMUB;
+#if defined(CONFIG_DRM_AMD_DC_GREEN_SARDINE)
+		if (ASICREV_IS_GREEN_SARDINE(adev->external_rev_id))
+			fw_name_dmub = FIRMWARE_GREEN_SARDINE_DMUB;
+#endif
 		break;
 #if defined(CONFIG_DRM_AMD_DC_DCN3_0)
 	case CHIP_SIENNA_CICHLID:
@@ -1276,6 +1302,18 @@ static int dm_dmub_sw_init(struct amdgpu_device *adev)
 	case CHIP_NAVY_FLOUNDER:
 		dmub_asic = DMUB_ASIC_DCN30;
 		fw_name_dmub = FIRMWARE_NAVY_FLOUNDER_DMUB;
+		break;
+#endif
+#if defined(CONFIG_DRM_AMD_DC_DCN3_01)
+	case CHIP_VANGOGH:
+		dmub_asic = DMUB_ASIC_DCN301;
+		fw_name_dmub = FIRMWARE_VANGOGH_DMUB;
+		break;
+#endif
+#if defined(CONFIG_DRM_AMD_DC_DCN3_02)
+	case CHIP_DIMGREY_CAVEFISH:
+		dmub_asic = DMUB_ASIC_DCN302;
+		fw_name_dmub = FIRMWARE_DIMGREY_CAVEFISH_DMUB;
 		break;
 #endif
 
@@ -3400,6 +3438,12 @@ static int amdgpu_dm_initialize_drm_device(struct amdgpu_device *adev)
 	case CHIP_SIENNA_CICHLID:
 	case CHIP_NAVY_FLOUNDER:
 #endif
+#if defined(CONFIG_DRM_AMD_DC_DCN3_02)
+	case CHIP_DIMGREY_CAVEFISH:
+#endif
+#if defined(CONFIG_DRM_AMD_DC_DCN3_01)
+	case CHIP_VANGOGH:
+#endif
 		if (dcn10_register_irq_handlers(dm->adev)) {
 			DRM_ERROR("DM: Failed to initialize IRQ\n");
 			goto fail;
@@ -3573,7 +3617,17 @@ static int dm_early_init(void *handle)
 		adev->mode_info.num_hpd = 6;
 		adev->mode_info.num_dig = 6;
 		break;
+#if defined(CONFIG_DRM_AMD_DC_DCN3_01)
+	case CHIP_VANGOGH:
+		adev->mode_info.num_crtc = 4;
+		adev->mode_info.num_hpd = 4;
+		adev->mode_info.num_dig = 4;
+		break;
+#endif
 	case CHIP_NAVI14:
+#if defined(CONFIG_DRM_AMD_DC_DCN3_02)
+	case CHIP_DIMGREY_CAVEFISH:
+#endif
 		adev->mode_info.num_crtc = 5;
 		adev->mode_info.num_hpd = 5;
 		adev->mode_info.num_dig = 5;
@@ -3893,6 +3947,12 @@ fill_plane_buffer_attributes(struct amdgpu_device *adev,
 		adev->asic_type == CHIP_SIENNA_CICHLID ||
 		adev->asic_type == CHIP_NAVY_FLOUNDER ||
 #endif
+#if defined(CONFIG_DRM_AMD_DC_DCN3_02)
+		adev->asic_type == CHIP_DIMGREY_CAVEFISH ||
+#endif
+#if defined(CONFIG_DRM_AMD_DC_DCN3_01)
+		adev->asic_type == CHIP_VANGOGH ||
+#endif
 	    adev->asic_type == CHIP_RENOIR ||
 	    adev->asic_type == CHIP_RAVEN) {
 		/* Fill GFX9 params */
@@ -3914,7 +3974,8 @@ fill_plane_buffer_attributes(struct amdgpu_device *adev,
 
 #ifdef CONFIG_DRM_AMD_DC_DCN3_0
 		if (adev->asic_type == CHIP_SIENNA_CICHLID ||
-		    adev->asic_type == CHIP_NAVY_FLOUNDER)
+		    adev->asic_type == CHIP_NAVY_FLOUNDER ||
+		    adev->asic_type == CHIP_DIMGREY_CAVEFISH)
 			tiling_info->gfx9.num_pkrs = adev->gfx.config.gb_addr_config_fields.num_pkrs;
 #endif
 		ret = fill_plane_dcc_attributes(adev, afb, format, rotation,

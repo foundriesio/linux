@@ -848,7 +848,7 @@ static void disable_vbios_mode_if_required(
 		struct dc *dc,
 		struct dc_state *context)
 {
-	unsigned int i;
+	unsigned int i, j;
 
 	/* check if timing_changed, disable stream*/
 	for (i = 0; i < dc->res_pool->pipe_count; i++) {
@@ -872,10 +872,10 @@ static void disable_vbios_mode_if_required(
 
 			enc_inst = link->link_enc->funcs->get_dig_frontend(link->link_enc);
 			if (enc_inst != ENGINE_ID_UNKNOWN) {
-				for (i = 0; i < dc->res_pool->stream_enc_count; i++) {
-					if (dc->res_pool->stream_enc[i]->id == enc_inst) {
-						tg_inst = dc->res_pool->stream_enc[i]->funcs->dig_source_otg(
-							dc->res_pool->stream_enc[i]);
+				for (j = 0; j < dc->res_pool->stream_enc_count; j++) {
+					if (dc->res_pool->stream_enc[j]->id == enc_inst) {
+						tg_inst = dc->res_pool->stream_enc[j]->funcs->dig_source_otg(
+							dc->res_pool->stream_enc[j]);
 						break;
 					}
 				}
@@ -2383,7 +2383,6 @@ static void commit_planes_for_stream(struct dc *dc,
 		enum surface_update_type update_type,
 		struct dc_state *context)
 {
-	bool mpcc_disconnected = false;
 	int i, j;
 	struct pipe_ctx *top_pipe_to_program = NULL;
 
@@ -2414,14 +2413,8 @@ static void commit_planes_for_stream(struct dc *dc,
 		context_clock_trace(dc, context);
 	}
 
-	if (update_type != UPDATE_TYPE_FAST && dc->hwss.interdependent_update_lock &&
-		dc->hwss.disconnect_pipes && dc->hwss.wait_for_pending_cleared){
-		dc->hwss.interdependent_update_lock(dc, context, true);
-		mpcc_disconnected = dc->hwss.disconnect_pipes(dc, context);
-		dc->hwss.interdependent_update_lock(dc, context, false);
-		if (mpcc_disconnected)
-			dc->hwss.wait_for_pending_cleared(dc, context);
-	}
+	if (update_type != UPDATE_TYPE_FAST && dc->hwss.interdependent_update_lock && dc->hwss.wait_for_pending_cleared)
+		dc->hwss.disconnect_pipes(dc, context);
 
 	for (j = 0; j < dc->res_pool->pipe_count; j++) {
 		struct pipe_ctx *pipe_ctx = &context->res_ctx.pipe_ctx[j];
@@ -3103,5 +3096,12 @@ bool dc_is_plane_eligible_for_idle_optimizaitons(struct dc *dc,
 						 struct dc_plane_state *plane)
 {
 	return false;
+}
+
+/* cleanup on driver unload */
+void dc_hardware_release(struct dc *dc)
+{
+	if (dc->hwss.hardware_release)
+		dc->hwss.hardware_release(dc);
 }
 #endif

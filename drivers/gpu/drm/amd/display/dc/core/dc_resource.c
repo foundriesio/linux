@@ -58,6 +58,12 @@
 #if defined(CONFIG_DRM_AMD_DC_DCN3_0)
 #include "../dcn30/dcn30_resource.h"
 #endif
+#if defined(CONFIG_DRM_AMD_DC_DCN3_01)
+#include "../dcn301/dcn301_resource.h"
+#endif
+#if defined(CONFIG_DRM_AMD_DC_DCN3_02)
+#include "../dcn302/dcn302_resource.h"
+#endif
 
 #define DC_LOGGER_INIT(logger)
 
@@ -120,6 +126,10 @@ enum dce_version resource_parse_asic_id(struct hw_asic_id asic_id)
 			dc_version = DCN_VERSION_1_01;
 		if (ASICREV_IS_RENOIR(asic_id.hw_internal_rev))
 			dc_version = DCN_VERSION_2_1;
+#if defined(CONFIG_DRM_AMD_DC_GREEN_SARDINE)
+		if (ASICREV_IS_GREEN_SARDINE(asic_id.hw_internal_rev))
+			dc_version = DCN_VERSION_2_1;
+#endif
 		break;
 #endif
 
@@ -129,7 +139,17 @@ enum dce_version resource_parse_asic_id(struct hw_asic_id asic_id)
 		if (ASICREV_IS_SIENNA_CICHLID_P(asic_id.hw_internal_rev))
 			dc_version = DCN_VERSION_3_0;
 #endif
+#if defined(CONFIG_DRM_AMD_DC_DCN3_02)
+		if (ASICREV_IS_DIMGREY_CAVEFISH_P(asic_id.hw_internal_rev))
+			dc_version = DCN_VERSION_3_02;
+#endif
 		break;
+
+#if defined(CONFIG_DRM_AMD_DC_DCN3_01)
+	case FAMILY_VGH:
+		dc_version = DCN_VERSION_3_01;
+		break;
+#endif
 	default:
 		dc_version = DCE_VERSION_UNKNOWN;
 		break;
@@ -210,6 +230,17 @@ struct resource_pool *dc_create_resource_pool(struct dc  *dc,
 		break;
 #endif
 
+#if defined(CONFIG_DRM_AMD_DC_DCN3_01)
+	case DCN_VERSION_3_01:
+		res_pool = dcn301_create_resource_pool(init_data, dc);
+		break;
+#endif
+#if defined(CONFIG_DRM_AMD_DC_DCN3_02)
+	case DCN_VERSION_3_02:
+		res_pool = dcn302_create_resource_pool(init_data, dc);
+		break;
+
+#endif
 	default:
 		break;
 	}
