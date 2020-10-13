@@ -41,7 +41,7 @@ struct btrfs_transaction;
 struct btrfs_pending_snapshot;
 struct btrfs_delayed_ref_root;
 struct btrfs_space_info;
-struct btrfs_block_group_cache;
+struct btrfs_block_group;
 extern struct kmem_cache *btrfs_trans_handle_cachep;
 extern struct kmem_cache *btrfs_bit_radix_cachep;
 extern struct kmem_cache *btrfs_path_cachep;
@@ -426,7 +426,7 @@ struct btrfs_free_cluster {
 	/* We did a full search and couldn't create a cluster */
 	bool fragmented;
 
-	struct btrfs_block_group_cache *block_group;
+	struct btrfs_block_group *block_group;
 	/*
 	 * when a cluster is allocated from a block group, we put the
 	 * cluster onto a list in the block group so that it can
@@ -519,8 +519,8 @@ struct btrfs_swapfile_pin {
 	void *ptr;
 	struct inode *inode;
 	/*
-	 * If true, ptr points to a struct btrfs_block_group_cache. Otherwise,
-	 * ptr points to a struct btrfs_device.
+	 * If true, ptr points to a struct btrfs_block_group. Otherwise, ptr
+	 * points to a struct btrfs_device.
 	 */
 	bool is_block_group;
 };
@@ -937,6 +937,10 @@ struct btrfs_fs_info {
 	spinlock_t ref_verify_lock;
 	struct rb_root block_tree;
 #endif
+
+#ifdef CONFIG_BTRFS_DEBUG
+	struct list_head allocated_roots;
+#endif
 };
 
 static inline struct btrfs_fs_info *btrfs_sb(struct super_block *sb)
@@ -1140,6 +1144,10 @@ struct btrfs_root {
 
 #ifdef CONFIG_BTRFS_FS_RUN_SANITY_TESTS
 	u64 alloc_bytenr;
+#endif
+
+#ifdef CONFIG_BTRFS_DEBUG
+	struct list_head leak_list;
 #endif
 };
 
@@ -1563,18 +1571,18 @@ static inline u64 btrfs_stripe_devid_nr(struct extent_buffer *eb,
 }
 
 /* struct btrfs_block_group_item */
-BTRFS_SETGET_STACK_FUNCS(block_group_used, struct btrfs_block_group_item,
+BTRFS_SETGET_STACK_FUNCS(stack_block_group_used, struct btrfs_block_group_item,
 			 used, 64);
-BTRFS_SETGET_FUNCS(disk_block_group_used, struct btrfs_block_group_item,
+BTRFS_SETGET_FUNCS(block_group_used, struct btrfs_block_group_item,
 			 used, 64);
-BTRFS_SETGET_STACK_FUNCS(block_group_chunk_objectid,
+BTRFS_SETGET_STACK_FUNCS(stack_block_group_chunk_objectid,
 			struct btrfs_block_group_item, chunk_objectid, 64);
 
-BTRFS_SETGET_FUNCS(disk_block_group_chunk_objectid,
+BTRFS_SETGET_FUNCS(block_group_chunk_objectid,
 		   struct btrfs_block_group_item, chunk_objectid, 64);
-BTRFS_SETGET_FUNCS(disk_block_group_flags,
+BTRFS_SETGET_FUNCS(block_group_flags,
 		   struct btrfs_block_group_item, flags, 64);
-BTRFS_SETGET_STACK_FUNCS(block_group_flags,
+BTRFS_SETGET_STACK_FUNCS(stack_block_group_flags,
 			struct btrfs_block_group_item, flags, 64);
 
 /* struct btrfs_free_space_info */
@@ -2490,7 +2498,7 @@ static inline u64 btrfs_calc_metadata_size(struct btrfs_fs_info *fs_info,
 
 int btrfs_add_excluded_extent(struct btrfs_fs_info *fs_info,
 			      u64 start, u64 num_bytes);
-void btrfs_free_excluded_extents(struct btrfs_block_group_cache *cache);
+void btrfs_free_excluded_extents(struct btrfs_block_group *cache);
 int btrfs_run_delayed_refs(struct btrfs_trans_handle *trans,
 			   unsigned long count);
 void btrfs_cleanup_ref_head_accounting(struct btrfs_fs_info *fs_info,
@@ -2547,8 +2555,8 @@ int btrfs_inc_extent_ref(struct btrfs_trans_handle *trans,
 
 int btrfs_extent_readonly(struct btrfs_fs_info *fs_info, u64 bytenr);
 int btrfs_can_relocate(struct btrfs_fs_info *fs_info, u64 bytenr);
-void btrfs_get_block_group_trimming(struct btrfs_block_group_cache *cache);
-void btrfs_put_block_group_trimming(struct btrfs_block_group_cache *cache);
+void btrfs_get_block_group_trimming(struct btrfs_block_group *cache);
+void btrfs_put_block_group_trimming(struct btrfs_block_group *cache);
 void btrfs_clear_space_info_full(struct btrfs_fs_info *info);
 
 enum btrfs_reserve_flush_enum {
@@ -2722,9 +2730,8 @@ static inline int btrfs_next_item(struct btrfs_root *root, struct btrfs_path *p)
 	return btrfs_next_old_item(root, p, 0);
 }
 int btrfs_leaf_free_space(struct extent_buffer *leaf);
-int __must_check btrfs_drop_snapshot(struct btrfs_root *root,
-				     struct btrfs_block_rsv *block_rsv,
-				     int update_ref, int for_reloc);
+int __must_check btrfs_drop_snapshot(struct btrfs_root *root, int update_ref,
+				     int for_reloc);
 int btrfs_drop_subtree(struct btrfs_trans_handle *trans,
 			struct btrfs_root *root,
 			struct extent_buffer *node,
@@ -2750,23 +2757,6 @@ static inline int btrfs_fs_closing(struct btrfs_fs_info *fs_info)
 static inline int btrfs_need_cleaner_sleep(struct btrfs_fs_info *fs_info)
 {
 	return fs_info->sb->s_flags & SB_RDONLY || btrfs_fs_closing(fs_info);
-}
-
-static inline void free_fs_info(struct btrfs_fs_info *fs_info)
-{
-	kfree(fs_info->balance_ctl);
-	kfree(fs_info->delayed_root);
-	kfree(fs_info->extent_root);
-	kfree(fs_info->tree_root);
-	kfree(fs_info->chunk_root);
-	kfree(fs_info->dev_root);
-	kfree(fs_info->csum_root);
-	kfree(fs_info->quota_root);
-	kfree(fs_info->uuid_root);
-	kfree(fs_info->free_space_root);
-	kfree(fs_info->super_copy);
-	kfree(fs_info->super_for_commit);
-	kvfree(fs_info);
 }
 
 /* tree mod log functions from ctree.c */
@@ -2984,13 +2974,12 @@ int btrfs_drop_inode(struct inode *inode);
 int __init btrfs_init_cachep(void);
 void __cold btrfs_destroy_cachep(void);
 struct inode *btrfs_iget_path(struct super_block *s, struct btrfs_key *location,
-			      struct btrfs_root *root, int *new,
-			      struct btrfs_path *path);
+			      struct btrfs_root *root, struct btrfs_path *path);
 struct inode *btrfs_iget(struct super_block *s, struct btrfs_key *location,
-			 struct btrfs_root *root, int *was_new);
+			 struct btrfs_root *root);
 struct extent_map *btrfs_get_extent(struct btrfs_inode *inode,
 				    struct page *page, size_t pg_offset,
-				    u64 start, u64 end, int create);
+				    u64 start, u64 end);
 int btrfs_update_inode(struct btrfs_trans_handle *trans,
 			      struct btrfs_root *root,
 			      struct inode *inode);
@@ -3064,9 +3053,6 @@ int btrfs_dirty_pages(struct inode *inode, struct page **pages,
 		      size_t num_pages, loff_t pos, size_t write_bytes,
 		      struct extent_state **cached);
 int btrfs_fdatawrite_range(struct inode *inode, loff_t start, loff_t end);
-loff_t btrfs_remap_file_range(struct file *file_in, loff_t pos_in,
-			      struct file *file_out, loff_t pos_out,
-			      loff_t len, unsigned int remap_flags);
 
 /* tree-defrag.c */
 int btrfs_defrag_leaves(struct btrfs_trans_handle *trans,

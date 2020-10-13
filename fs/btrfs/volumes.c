@@ -2092,7 +2092,7 @@ static struct btrfs_device * btrfs_find_next_active_device(
  * where this function called, there should be always be another device (or
  * this_dev) which is active.
  */
-void btrfs_assign_next_active_device(struct btrfs_device *device,
+void __cold btrfs_assign_next_active_device(struct btrfs_device *device,
 				     struct btrfs_device *this_dev)
 {
 	struct btrfs_fs_info *fs_info = device->fs_info;
@@ -3233,7 +3233,7 @@ error:
 static int btrfs_may_alloc_data_chunk(struct btrfs_fs_info *fs_info,
 				      u64 chunk_offset)
 {
-	struct btrfs_block_group_cache *cache;
+	struct btrfs_block_group *cache;
 	u64 bytes_used;
 	u64 chunk_type;
 
@@ -3441,28 +3441,28 @@ static int chunk_profiles_filter(u64 chunk_type,
 static int chunk_usage_range_filter(struct btrfs_fs_info *fs_info, u64 chunk_offset,
 			      struct btrfs_balance_args *bargs)
 {
-	struct btrfs_block_group_cache *cache;
+	struct btrfs_block_group *cache;
 	u64 chunk_used;
 	u64 user_thresh_min;
 	u64 user_thresh_max;
 	int ret = 1;
 
 	cache = btrfs_lookup_block_group(fs_info, chunk_offset);
-	chunk_used = btrfs_block_group_used(&cache->item);
+	chunk_used = cache->used;
 
 	if (bargs->usage_min == 0)
 		user_thresh_min = 0;
 	else
-		user_thresh_min = div_factor_fine(cache->key.offset,
-					bargs->usage_min);
+		user_thresh_min = div_factor_fine(cache->length,
+						  bargs->usage_min);
 
 	if (bargs->usage_max == 0)
 		user_thresh_max = 1;
 	else if (bargs->usage_max > 100)
-		user_thresh_max = cache->key.offset;
+		user_thresh_max = cache->length;
 	else
-		user_thresh_max = div_factor_fine(cache->key.offset,
-					bargs->usage_max);
+		user_thresh_max = div_factor_fine(cache->length,
+						  bargs->usage_max);
 
 	if (user_thresh_min <= chunk_used && chunk_used < user_thresh_max)
 		ret = 0;
@@ -3474,20 +3474,19 @@ static int chunk_usage_range_filter(struct btrfs_fs_info *fs_info, u64 chunk_off
 static int chunk_usage_filter(struct btrfs_fs_info *fs_info,
 		u64 chunk_offset, struct btrfs_balance_args *bargs)
 {
-	struct btrfs_block_group_cache *cache;
+	struct btrfs_block_group *cache;
 	u64 chunk_used, user_thresh;
 	int ret = 1;
 
 	cache = btrfs_lookup_block_group(fs_info, chunk_offset);
-	chunk_used = btrfs_block_group_used(&cache->item);
+	chunk_used = cache->used;
 
 	if (bargs->usage_min == 0)
 		user_thresh = 1;
 	else if (bargs->usage > 100)
-		user_thresh = cache->key.offset;
+		user_thresh = cache->length;
 	else
-		user_thresh = div_factor_fine(cache->key.offset,
-					      bargs->usage);
+		user_thresh = div_factor_fine(cache->length, bargs->usage);
 
 	if (chunk_used < user_thresh)
 		ret = 0;
@@ -4617,7 +4616,7 @@ static int btrfs_check_uuid_tree_entry(struct btrfs_fs_info *fs_info,
 	key.objectid = subid;
 	key.type = BTRFS_ROOT_ITEM_KEY;
 	key.offset = (u64)-1;
-	subvol_root = btrfs_read_fs_root_no_name(fs_info, &key);
+	subvol_root = btrfs_get_fs_root(fs_info, &key, true);
 	if (IS_ERR(subvol_root)) {
 		ret = PTR_ERR(subvol_root);
 		if (ret == -ENOENT)
@@ -4636,7 +4635,7 @@ static int btrfs_check_uuid_tree_entry(struct btrfs_fs_info *fs_info,
 			ret = 1;
 		break;
 	}
-
+	btrfs_put_root(subvol_root);
 out:
 	return ret;
 }

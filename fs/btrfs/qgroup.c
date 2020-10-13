@@ -1040,7 +1040,7 @@ out_free_root:
 	if (ret) {
 		free_extent_buffer(quota_root->node);
 		free_extent_buffer(quota_root->commit_root);
-		kfree(quota_root);
+		btrfs_put_root(quota_root);
 	}
 out:
 	if (ret) {
@@ -1106,7 +1106,7 @@ int btrfs_quota_disable(struct btrfs_fs_info *fs_info)
 
 	free_extent_buffer(quota_root->node);
 	free_extent_buffer(quota_root->commit_root);
-	kfree(quota_root);
+	btrfs_put_root(quota_root);
 
 end_trans:
 	ret = btrfs_end_transaction(trans);
@@ -3942,7 +3942,7 @@ out:
  */
 int btrfs_qgroup_add_swapped_blocks(struct btrfs_trans_handle *trans,
 		struct btrfs_root *subvol_root,
-		struct btrfs_block_group_cache *bg,
+		struct btrfs_block_group *bg,
 		struct extent_buffer *subvol_parent, int subvol_slot,
 		struct extent_buffer *reloc_parent, int reloc_slot,
 		u64 last_snapshot)

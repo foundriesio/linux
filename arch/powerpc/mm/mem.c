@@ -133,8 +133,6 @@ int __ref arch_add_memory(int nid, u64 start, u64 size,
 	unsigned long nr_pages = size >> PAGE_SHIFT;
 	int rc;
 
-	resize_hpt_for_hotplug(memblock_phys_mem_size());
-
 	start = (unsigned long)__va(start);
 	rc = create_section_mapping(start, start + size, nid);
 	if (rc) {
@@ -142,8 +140,6 @@ int __ref arch_add_memory(int nid, u64 start, u64 size,
 			start, start + size, rc);
 		return -EFAULT;
 	}
-
-	flush_dcache_range_chunked(start, start + size, FLUSH_CHUNK_SIZE);
 
 	return __add_pages(nid, start_pfn, nr_pages, restrictions);
 }
@@ -169,9 +165,6 @@ void __ref arch_remove_memory(int nid, u64 start, u64 size,
 	 * hit that section of memory
 	 */
 	vm_unmap_aliases();
-
-	if (resize_hpt_for_hotplug(memblock_phys_mem_size()) == -ENOSPC)
-		pr_warn("Hash collision while resizing HPT\n");
 }
 #endif
 

@@ -558,7 +558,7 @@ static noinline struct inode *read_one_inode(struct btrfs_root *root,
 	key.objectid = objectid;
 	key.type = BTRFS_INODE_ITEM_KEY;
 	key.offset = 0;
-	inode = btrfs_iget(root->fs_info->sb, &key, root, NULL);
+	inode = btrfs_iget(root->fs_info->sb, &key, root);
 	if (IS_ERR(inode))
 		inode = NULL;
 	return inode;
@@ -3321,7 +3321,7 @@ static void free_log_tree(struct btrfs_trans_handle *trans,
 			  EXTENT_DIRTY | EXTENT_NEW | EXTENT_NEED_WAIT);
 	extent_io_tree_release(&log->log_csum_range);
 	free_extent_buffer(log->node);
-	kfree(log);
+	btrfs_put_root(log);
 }
 
 /*
@@ -4869,7 +4869,7 @@ static int log_conflicting_inodes(struct btrfs_trans_handle *trans,
 		key.objectid = ino;
 		key.type = BTRFS_INODE_ITEM_KEY;
 		key.offset = 0;
-		inode = btrfs_iget(fs_info->sb, &key, root, NULL);
+		inode = btrfs_iget(fs_info->sb, &key, root);
 		/*
 		 * If the other inode that had a conflicting dir entry was
 		 * deleted in the current transaction, we need to log its parent
@@ -4879,8 +4879,7 @@ static int log_conflicting_inodes(struct btrfs_trans_handle *trans,
 			ret = PTR_ERR(inode);
 			if (ret == -ENOENT) {
 				key.objectid = parent;
-				inode = btrfs_iget(fs_info->sb, &key, root,
-						   NULL);
+				inode = btrfs_iget(fs_info->sb, &key, root);
 				if (IS_ERR(inode)) {
 					ret = PTR_ERR(inode);
 				} else {
@@ -5619,7 +5618,7 @@ process_leaf:
 				continue;
 
 			btrfs_release_path(path);
-			di_inode = btrfs_iget(fs_info->sb, &di_key, root, NULL);
+			di_inode = btrfs_iget(fs_info->sb, &di_key, root);
 			if (IS_ERR(di_inode)) {
 				ret = PTR_ERR(di_inode);
 				goto next_dir_inode;
@@ -5745,8 +5744,7 @@ static int btrfs_log_all_parents(struct btrfs_trans_handle *trans,
 				cur_offset = item_size;
 			}
 
-			dir_inode = btrfs_iget(fs_info->sb, &inode_key,
-					       root, NULL);
+			dir_inode = btrfs_iget(fs_info->sb, &inode_key, root);
 			/*
 			 * If the parent inode was deleted, return an error to
 			 * fallback to a transaction commit. This is to prevent
@@ -5820,7 +5818,7 @@ static int log_new_ancestors(struct btrfs_trans_handle *trans,
 		search_key.objectid = found_key.offset;
 		search_key.type = BTRFS_INODE_ITEM_KEY;
 		search_key.offset = 0;
-		inode = btrfs_iget(fs_info->sb, &search_key, root, NULL);
+		inode = btrfs_iget(fs_info->sb, &search_key, root);
 		if (IS_ERR(inode))
 			return PTR_ERR(inode);
 
@@ -6219,7 +6217,7 @@ again:
 		if (found_key.objectid != BTRFS_TREE_LOG_OBJECTID)
 			break;
 
-		log = btrfs_read_fs_root(log_root_tree, &found_key);
+		log = btrfs_read_tree_root(log_root_tree, &found_key);
 		if (IS_ERR(log)) {
 			ret = PTR_ERR(log);
 			btrfs_handle_fs_error(fs_info, ret,
@@ -6231,7 +6229,7 @@ again:
 		tmp_key.type = BTRFS_ROOT_ITEM_KEY;
 		tmp_key.offset = (u64)-1;
 
-		wc.replay_dest = btrfs_read_fs_root_no_name(fs_info, &tmp_key);
+		wc.replay_dest = btrfs_get_fs_root(fs_info, &tmp_key, true);
 		if (IS_ERR(wc.replay_dest)) {
 			ret = PTR_ERR(wc.replay_dest);
 
@@ -6252,7 +6250,7 @@ again:
 							log->node->len);
 			free_extent_buffer(log->node);
 			free_extent_buffer(log->commit_root);
-			kfree(log);
+			btrfs_put_root(log);
 
 			if (!ret)
 				goto next;
@@ -6288,9 +6286,10 @@ again:
 		}
 
 		wc.replay_dest->log_root = NULL;
+		btrfs_put_root(wc.replay_dest);
 		free_extent_buffer(log->node);
 		free_extent_buffer(log->commit_root);
-		kfree(log);
+		btrfs_put_root(log);
 
 		if (ret)
 			goto error;
@@ -6324,7 +6323,7 @@ next:
 	free_extent_buffer(log_root_tree->node);
 	log_root_tree->log_root = NULL;
 	clear_bit(BTRFS_FS_LOG_RECOVERING, &fs_info->flags);
-	kfree(log_root_tree);
+	btrfs_put_root(log_root_tree);
 
 	return 0;
 error:

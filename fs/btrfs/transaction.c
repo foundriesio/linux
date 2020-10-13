@@ -63,10 +63,10 @@ void btrfs_put_transaction(struct btrfs_transaction *transaction)
 		 * discard the physical locations of the block groups.
 		 */
 		while (!list_empty(&transaction->deleted_bgs)) {
-			struct btrfs_block_group_cache *cache;
+			struct btrfs_block_group *cache;
 
 			cache = list_first_entry(&transaction->deleted_bgs,
-						 struct btrfs_block_group_cache,
+						 struct btrfs_block_group,
 						 bg_list);
 			list_del_init(&cache->bg_list);
 			btrfs_put_block_group_trimming(cache);
@@ -1554,7 +1554,7 @@ static noinline int create_pending_snapshot(struct btrfs_trans_handle *trans,
 	}
 
 	key.offset = (u64)-1;
-	pending->snap = btrfs_read_fs_root_no_name(fs_info, &key);
+	pending->snap = btrfs_get_fs_root(fs_info, &key, true);
 	if (IS_ERR(pending->snap)) {
 		ret = PTR_ERR(pending->snap);
 		btrfs_abort_transaction(trans, ret);
@@ -1862,7 +1862,7 @@ static void cleanup_transaction(struct btrfs_trans_handle *trans, int err)
 static void btrfs_cleanup_pending_block_groups(struct btrfs_trans_handle *trans)
 {
        struct btrfs_fs_info *fs_info = trans->fs_info;
-       struct btrfs_block_group_cache *block_group, *tmp;
+       struct btrfs_block_group *block_group, *tmp;
 
        list_for_each_entry_safe(block_group, tmp, &trans->new_bgs, bg_list) {
                btrfs_delayed_refs_rsv_release(fs_info, 1);
@@ -2347,9 +2347,9 @@ int btrfs_clean_one_deleted_snapshot(struct btrfs_root *root)
 
 	if (btrfs_header_backref_rev(root->node) <
 			BTRFS_MIXED_BACKREF_REV)
-		ret = btrfs_drop_snapshot(root, NULL, 0, 0);
+		ret = btrfs_drop_snapshot(root, 0, 0);
 	else
-		ret = btrfs_drop_snapshot(root, NULL, 1, 0);
+		ret = btrfs_drop_snapshot(root, 1, 0);
 
 	return (ret < 0) ? 0 : 1;
 }

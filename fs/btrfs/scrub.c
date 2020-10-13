@@ -389,8 +389,7 @@ static struct full_stripe_lock *search_full_stripe_lock(
  *
  * Caller must ensure @cache is a RAID56 block group.
  */
-static u64 get_full_stripe_logical(struct btrfs_block_group_cache *cache,
-				   u64 bytenr)
+static u64 get_full_stripe_logical(struct btrfs_block_group *cache, u64 bytenr)
 {
 	u64 ret;
 
@@ -404,8 +403,8 @@ static u64 get_full_stripe_logical(struct btrfs_block_group_cache *cache,
 	 * round_down() can only handle power of 2, while RAID56 full
 	 * stripe length can be 64KiB * n, so we need to manually round down.
 	 */
-	ret = div64_u64(bytenr - cache->key.objectid, cache->full_stripe_len) *
-		cache->full_stripe_len + cache->key.objectid;
+	ret = div64_u64(bytenr - cache->start, cache->full_stripe_len) *
+			cache->full_stripe_len + cache->start;
 	return ret;
 }
 
@@ -423,7 +422,7 @@ static u64 get_full_stripe_logical(struct btrfs_block_group_cache *cache,
 static int lock_full_stripe(struct btrfs_fs_info *fs_info, u64 bytenr,
 			    bool *locked_ret)
 {
-	struct btrfs_block_group_cache *bg_cache;
+	struct btrfs_block_group *bg_cache;
 	struct btrfs_full_stripe_locks_tree *locks_root;
 	struct full_stripe_lock *existing;
 	u64 fstripe_start;
@@ -470,7 +469,7 @@ out:
 static int unlock_full_stripe(struct btrfs_fs_info *fs_info, u64 bytenr,
 			      bool locked)
 {
-	struct btrfs_block_group_cache *bg_cache;
+	struct btrfs_block_group *bg_cache;
 	struct btrfs_full_stripe_locks_tree *locks_root;
 	struct full_stripe_lock *fstripe_lock;
 	u64 fstripe_start;
@@ -653,7 +652,7 @@ static int scrub_print_warning_inode(u64 inum, u64 offset, u64 root,
 	root_key.objectid = root;
 	root_key.type = BTRFS_ROOT_ITEM_KEY;
 	root_key.offset = (u64)-1;
-	local_root = btrfs_read_fs_root_no_name(fs_info, &root_key);
+	local_root = btrfs_get_fs_root(fs_info, &root_key, true);
 	if (IS_ERR(local_root)) {
 		ret = PTR_ERR(local_root);
 		goto err;
@@ -668,6 +667,7 @@ static int scrub_print_warning_inode(u64 inum, u64 offset, u64 root,
 
 	ret = btrfs_search_slot(NULL, local_root, &key, swarn->path, 0, 0);
 	if (ret) {
+		btrfs_put_root(local_root);
 		btrfs_release_path(swarn->path);
 		goto err;
 	}
@@ -688,6 +688,7 @@ static int scrub_print_warning_inode(u64 inum, u64 offset, u64 root,
 	ipath = init_ipath(4096, local_root, swarn->path);
 	memalloc_nofs_restore(nofs_flag);
 	if (IS_ERR(ipath)) {
+		btrfs_put_root(local_root);
 		ret = PTR_ERR(ipath);
 		ipath = NULL;
 		goto err;
@@ -711,6 +712,7 @@ static int scrub_print_warning_inode(u64 inum, u64 offset, u64 root,
 				  min(isize - offset, (u64)PAGE_SIZE), nlink,
 				  (char *)(unsigned long)ipath->fspath->val[i]);
 
+	btrfs_put_root(local_root);
 	free_ipath(ipath);
 	return 0;
 
@@ -3420,7 +3422,7 @@ static noinline_for_stack int scrub_chunk(struct scrub_ctx *sctx,
 					  struct btrfs_device *scrub_dev,
 					  u64 chunk_offset, u64 length,
 					  u64 dev_offset,
-					  struct btrfs_block_group_cache *cache)
+					  struct btrfs_block_group *cache)
 {
 	struct btrfs_fs_info *fs_info = sctx->fs_info;
 	struct extent_map_tree *map_tree = &fs_info->mapping_tree;
@@ -3484,7 +3486,7 @@ int scrub_enumerate_chunks(struct scrub_ctx *sctx,
 	struct extent_buffer *l;
 	struct btrfs_key key;
 	struct btrfs_key found_key;
-	struct btrfs_block_group_cache *cache;
+	struct btrfs_block_group *cache;
 	struct btrfs_dev_replace *dev_replace = &fs_info->dev_replace;
 
 	path = btrfs_alloc_path();
@@ -3610,8 +3612,8 @@ int scrub_enumerate_chunks(struct scrub_ctx *sctx,
 		 */
 		if (sctx->is_dev_replace) {
 			btrfs_wait_nocow_writers(cache);
-			btrfs_wait_ordered_roots(fs_info, U64_MAX, cache->key.objectid,
-					cache->key.offset);
+			btrfs_wait_ordered_roots(fs_info, U64_MAX, cache->start,
+					cache->length);
 		}
 
 		scrub_pause_off(fs_info);
@@ -3673,7 +3675,7 @@ int scrub_enumerate_chunks(struct scrub_ctx *sctx,
 		 */
 		spin_lock(&cache->lock);
 		if (!cache->removed && !cache->ro && cache->reserved == 0 &&
-		    btrfs_block_group_used(&cache->item) == 0) {
+		    cache->used == 0) {
 			spin_unlock(&cache->lock);
 			btrfs_mark_bg_unused(cache);
 		} else {
