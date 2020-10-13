@@ -123,6 +123,9 @@ int mpi_mulpowm(MPI res, MPI *basearray, MPI *exparray, MPI mod);
 int mpi_cmp_ui(MPI u, ulong v);
 int mpi_cmp(MPI u, MPI v);
 
+/*-- mpi-sub-ui.c --*/
+int mpi_sub_ui(MPI w, MPI u, unsigned long vval);
+
 /*-- mpi-scan.c --*/
 int mpi_getbyte(MPI a, unsigned idx);
 void mpi_putbyte(MPI a, unsigned idx, int value);
