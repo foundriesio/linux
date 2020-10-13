@@ -65,8 +65,8 @@ static uint32_t tcc_audio_times_of_8_table[MAX_AUDIO_8CLK_LIST] = {
 #define tcc_pll_write(reg,en,p,m,s,src) { \
 	if (en) { \
 		volatile unsigned int i; \
-		ckc_writel(0 \
-			|(1<<PLL_LOCKEN_SHIFT)|(2<<PLL_CHGPUMP_SHIFT) \
+		ckc_writel((ckc_readl(reg) & (PLL_CHGPUMP_MASK<<PLL_CHGPUMP_SHIFT)) \
+			|(1<<PLL_LOCKEN_SHIFT) \
 			|((src&PLL_SRC_MASK)<<PLL_SRC_SHIFT)|((s&PLL_S_MASK)<<PLL_S_SHIFT) \
 			|((m&PLL_M_MASK)<<PLL_M_SHIFT)|((p&PLL_P_MASK)<<PLL_P_SHIFT), reg); \
 		/* need to delay at least 1us. */ \
@@ -81,8 +81,8 @@ static uint32_t tcc_audio_times_of_8_table[MAX_AUDIO_8CLK_LIST] = {
 #define tcc_dckc_pll_write(reg,en,p,m,s) { \
 	if (en) { \
 		volatile unsigned int i; \
-		ckc_writel(0 \
-			|(1<<PLL_LOCKEN_SHIFT)|(2<<PLL_CHGPUMP_SHIFT) \
+		ckc_writel((ckc_readl(reg) & (PLL_CHGPUMP_MASK << PLL_CHGPUMP_SHIFT)) \
+			|(1<<PLL_LOCKEN_SHIFT) \
 			|((s&PLL_S_MASK)<<PLL_S_SHIFT) \
 			|((m&PLL_M_MASK)<<PLL_M_SHIFT)|((p&PLL_P_MASK)<<PLL_P_SHIFT), reg); \
 		/* need to delay at least 1us. */ \
