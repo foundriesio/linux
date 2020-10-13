@@ -159,6 +159,8 @@ required:
   - "#address-cells"
   - "#size-cells"
 
+additionalProperties: true
+
 examples:
   - |
     nand-controller {

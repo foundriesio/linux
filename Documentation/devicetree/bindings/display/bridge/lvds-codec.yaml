@@ -86,6 +86,9 @@ required:
   - compatible
   - ports
 
+additionalProperties: false
+
+
 examples:
   - |
     lvds-encoder {
