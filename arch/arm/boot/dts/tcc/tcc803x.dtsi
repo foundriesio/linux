@@ -723,11 +723,12 @@
 
 	tcc_pm {
 		compatible = "telechips,pm";
-		reg = < 0x16400000 0x000100  /* nfc*/
-			0x16430000 0x000030  /* edi*/
-			0x16600000 0x000050  /* uart0*/
-			0x16684000 0x000010  /* uart config*/
-			0x14200000 0x000700>;  /* gpio*/
+		reg = < 0x16400000 0x000100	/* nfc*/
+			0x16430000 0x000030	/* edi*/
+			0x16600000 0x000050	/* uart0*/
+			0x16684000 0x000010	/* uart config*/
+			0x14200000 0x000700	/* gpio*/
+			0x14400000 0x000180>;	/* pmu*/
 		suspend_mode = <0>;	/* 0:sleep, 1:shutdown, 2:wfi */
 	};
 
