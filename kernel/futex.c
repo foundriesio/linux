@@ -349,6 +349,13 @@ static inline void futex_get_mm(union futex_key *key)
 	smp_mb__after_atomic();
 }
 
+static inline void futex_get_file(union futex_key *key)
+{
+	key->shared.filp = get_file(key->shared.filp);
+	/* see futex_get_mm() */
+	smp_mb__after_atomic();
+}
+
 /*
  * Reflects a new waiter being added to the waitqueue.
  */
@@ -436,7 +443,7 @@ static void get_futex_key_refs(union futex_key *key)
 
 	switch (key->both.offset & (FUT_OFF_INODE|FUT_OFF_MMSHARED)) {
 	case FUT_OFF_INODE:
-		ihold(key->shared.inode); /* implies smp_mb(); (B) */
+		futex_get_file(key); /* implies smp_mb(); (B) */
 		break;
 	case FUT_OFF_MMSHARED:
 		futex_get_mm(key); /* implies smp_mb(); (B) */
@@ -453,9 +460,8 @@ static void get_futex_key_refs(union futex_key *key)
 
 /*
  * Drop a reference to the resource addressed by a key.
- * The hash bucket spinlock must not be held. This is
- * a no-op for private futexes, see comment in the get
- * counterpart.
+ * This is  a no-op for private futexes, see comment in
+ * the get counterpart.
  */
 static void drop_futex_key_refs(union futex_key *key)
 {
@@ -470,10 +476,10 @@ static void drop_futex_key_refs(union futex_key *key)
 
 	switch (key->both.offset & (FUT_OFF_INODE|FUT_OFF_MMSHARED)) {
 	case FUT_OFF_INODE:
-		iput(key->shared.inode);
+		fput(key->shared.filp);
 		break;
 	case FUT_OFF_MMSHARED:
-		mmdrop(key->private.mm);
+		mmdrop_async(key->private.mm);
 		break;
 	}
 }
@@ -635,68 +641,48 @@ again:
 		get_futex_key_refs(key); /* implies smp_mb(); (B) */
 
 	} else {
-		struct inode *inode;
+		struct mm_struct *mm = current->mm;
+		struct vm_area_struct *vma;
 
+		put_page(page); /* undo previous gup_fast() */
+
+		down_read(&mm->mmap_sem);
+
+		err = get_user_pages(address, 1, FOLL_WRITE, &page, &vma);
 		/*
-		 * The associated futex object in this case is the inode and
-		 * the page->mapping must be traversed. Ordinarily this should
-		 * be stabilised under page lock but it's not strictly
-		 * necessary in this case as we just want to pin the inode, not
-		 * update the radix tree or anything like that.
-		 *
-		 * The RCU read lock is taken as the inode is finally freed
-		 * under RCU. If the mapping still matches expectations then the
-		 * mapping->host can be safely accessed as being a valid inode.
+		 * If write access is not required (eg. FUTEX_WAIT), try
+		 * and get read-only access.
 		 */
-		rcu_read_lock();
+		if (err == -EFAULT && rw == VERIFY_READ)
+			err = get_user_pages(address, 1, 0, &page, &vma);
 
-		if (READ_ONCE(page->mapping) != mapping) {
-			rcu_read_unlock();
-			put_page(page);
-
-			goto again;
-		}
-
-		inode = READ_ONCE(mapping->host);
-		if (!inode) {
-			rcu_read_unlock();
-			put_page(page);
-
-			goto again;
+		if (err < 0) {
+			up_read(&mm->mmap_sem);
+			return err;
 		}
 
 		/*
-		 * Take a reference unless it is about to be freed. Previously
-		 * this reference was taken by ihold under the page lock
-		 * pinning the inode in place so i_lock was unnecessary. The
-		 * only way for this check to fail is if the inode was
-		 * truncated in parallel which is almost certainly an
-		 * application bug. In such a case, just retry.
-		 *
-		 * We are not calling into get_futex_key_refs() in file-backed
-		 * cases, therefore a successful atomic_inc return below will
-		 * guarantee that get_futex_key() will still imply smp_mb(); (B).
+		 * Virtual address could have been remapped.
 		 */
-		if (!atomic_inc_not_zero(&inode->i_count)) {
-			rcu_read_unlock();
+		if (!vma->vm_file || PageAnon(page)) {
 			put_page(page);
+			up_read(&mm->mmap_sem);
 
 			goto again;
-		}
-
-		/* Should be impossible but lets be paranoid for now */
-		if (WARN_ON_ONCE(inode->i_mapping != mapping)) {
-			err = -EFAULT;
-			rcu_read_unlock();
-			iput(inode);
-
-			goto out;
 		}
 
 		key->both.offset |= FUT_OFF_INODE; /* inode-based key */
-		key->shared.inode = inode;
-		key->shared.pgoff = basepage_index(tail);
-		rcu_read_unlock();
+		key->shared.inode = vma->vm_file->f_path.dentry->d_inode;
+		key->shared.pgoff = basepage_index(page);
+		/* refcount on the file, not inode */
+		key->shared.filp = vma->vm_file;
+
+		get_futex_key_refs(key); /* implies smp_mb(); (B) */
+
+		put_page(page);
+
+		up_read(&mm->mmap_sem);
+		return 0;
 	}
 
 out:
@@ -1800,6 +1786,8 @@ void requeue_futex(struct futex_q *q, struct futex_hash_bucket *hb1,
 		plist_add(&q->list, &hb2->chain);
 		q->lock_ptr = &hb2->lock;
 	}
+
+	drop_futex_key_refs(&q->key);
 	get_futex_key_refs(key2);
 	q->key = *key2;
 }
@@ -1822,6 +1810,7 @@ static inline
 void requeue_pi_wake_futex(struct futex_q *q, union futex_key *key,
 			   struct futex_hash_bucket *hb)
 {
+	drop_futex_key_refs(&q->key);
 	get_futex_key_refs(key);
 	q->key = *key;
 
@@ -1927,7 +1916,7 @@ static int futex_requeue(u32 __user *uaddr1, unsigned int flags,
 			 u32 *cmpval, int requeue_pi)
 {
 	union futex_key key1 = FUTEX_KEY_INIT, key2 = FUTEX_KEY_INIT;
-	int drop_count = 0, task_count = 0, ret;
+	int task_count = 0, ret;
 	struct futex_pi_state *pi_state = NULL;
 	struct futex_hash_bucket *hb1, *hb2;
 	struct futex_q *this, *next;
@@ -2036,7 +2025,6 @@ retry_private:
 		 */
 		if (ret > 0) {
 			WARN_ON(pi_state);
-			drop_count++;
 			task_count++;
 			/*
 			 * If we acquired the lock, then the user space value
@@ -2148,7 +2136,6 @@ retry_private:
 				 * doing so.
 				 */
 				requeue_pi_wake_futex(this, &key2, hb2);
-				drop_count++;
 				continue;
 			} else if (ret) {
 				/*
@@ -2169,7 +2156,6 @@ retry_private:
 			}
 		}
 		requeue_futex(this, hb1, hb2, &key2);
-		drop_count++;
 	}
 
 	/*
@@ -2183,16 +2169,6 @@ out_unlock:
 	double_unlock_hb(hb1, hb2);
 	wake_up_q(&wake_q);
 	hb_waiters_dec(hb2);
-
-	/*
-	 * drop_futex_key_refs() must be called outside the spinlocks. During
-	 * the requeue we moved futex_q's from the hash bucket at key1 to the
-	 * one at key2 and updated their key pointer.  We no longer need to
-	 * hold the references to key1.
-	 */
-	while (--drop_count >= 0)
-		drop_futex_key_refs(&key1);
-
 out_put_keys:
 	put_futex_key(&key2);
 out_put_key1:

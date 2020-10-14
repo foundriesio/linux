@@ -576,31 +576,6 @@ void radix__mmu_cleanup_all(void)
 	}
 }
 
-void radix__setup_initial_memory_limit(phys_addr_t first_memblock_base,
-				phys_addr_t first_memblock_size)
-{
-	/* We don't currently support the first MEMBLOCK not mapping 0
-	 * physical on those processors
-	 */
-	BUG_ON(first_memblock_base != 0);
-	/*
-	 * We limit the allocation that depend on ppc64_rma_size
-	 * to first_memblock_size. We also clamp it to 1GB to
-	 * avoid some funky things such as RTAS bugs.
-	 *
-	 * On radix config we really don't have a limitation
-	 * on real mode access. But keeping it as above works
-	 * well enough.
-	 */
-	ppc64_rma_size = min_t(u64, first_memblock_size, 0x40000000);
-	/*
-	 * Finally limit subsequent allocations. We really don't want
-	 * to limit the memblock allocations to rma_size. FIXME!! should
-	 * we even limit at all ?
-	 */
-	memblock_set_current_limit(first_memblock_base + first_memblock_size);
-}
-
 #ifdef CONFIG_MEMORY_HOTPLUG
 static void free_pte_table(pte_t *pte_start, pmd_t *pmd)
 {
@@ -891,45 +866,44 @@ pmd_t radix__pmdp_collapse_flush(struct vm_area_struct *vma, unsigned long addre
 void radix__pgtable_trans_huge_deposit(struct mm_struct *mm, pmd_t *pmdp,
 				 pgtable_t pgtable)
 {
-        struct list_head *lh = (struct list_head *) pgtable;
+	struct list_head *lh = (struct list_head *) pgtable;
 
-        assert_spin_locked(pmd_lockptr(mm, pmdp));
+	assert_spin_locked(pmd_lockptr(mm, pmdp));
 
-        /* FIFO */
-        if (!pmd_huge_pte(mm, pmdp))
-                INIT_LIST_HEAD(lh);
-        else
-                list_add(lh, (struct list_head *) pmd_huge_pte(mm, pmdp));
-        pmd_huge_pte(mm, pmdp) = pgtable;
+	/* FIFO */
+	if (!pmd_huge_pte(mm, pmdp))
+		INIT_LIST_HEAD(lh);
+	else
+		list_add(lh, (struct list_head *) pmd_huge_pte(mm, pmdp));
+	pmd_huge_pte(mm, pmdp) = pgtable;
 }
 
 pgtable_t radix__pgtable_trans_huge_withdraw(struct mm_struct *mm, pmd_t *pmdp)
 {
-        pte_t *ptep;
-        pgtable_t pgtable;
-        struct list_head *lh;
+	pte_t *ptep;
+	pgtable_t pgtable;
+	struct list_head *lh;
 
-        assert_spin_locked(pmd_lockptr(mm, pmdp));
+	assert_spin_locked(pmd_lockptr(mm, pmdp));
 
-        /* FIFO */
-        pgtable = pmd_huge_pte(mm, pmdp);
-        lh = (struct list_head *) pgtable;
-        if (list_empty(lh))
-                pmd_huge_pte(mm, pmdp) = NULL;
-        else {
-                pmd_huge_pte(mm, pmdp) = (pgtable_t) lh->next;
-                list_del(lh);
-        }
-        ptep = (pte_t *) pgtable;
-        *ptep = __pte(0);
-        ptep++;
-        *ptep = __pte(0);
-        return pgtable;
+	/* FIFO */
+	pgtable = pmd_huge_pte(mm, pmdp);
+	lh = (struct list_head *) pgtable;
+	if (list_empty(lh))
+		pmd_huge_pte(mm, pmdp) = NULL;
+	else {
+		pmd_huge_pte(mm, pmdp) = (pgtable_t) lh->next;
+		list_del(lh);
+	}
+	ptep = (pte_t *) pgtable;
+	*ptep = __pte(0);
+	ptep++;
+	*ptep = __pte(0);
+	return pgtable;
 }
 
-
 pmd_t radix__pmdp_huge_get_and_clear(struct mm_struct *mm,
-			       unsigned long addr, pmd_t *pmdp)
+				     unsigned long addr, pmd_t *pmdp)
 {
 	pmd_t old_pmd;
 	unsigned long old;

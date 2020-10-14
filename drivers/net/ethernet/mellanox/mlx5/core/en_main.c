@@ -947,7 +947,11 @@ static int mlx5e_open_rq(struct mlx5e_channel *c,
 	if (params->rx_dim_enabled)
 		__set_bit(MLX5E_RQ_STATE_AM, &c->rq.state);
 
-	if (params->pflags & MLX5E_PFLAG_RX_NO_CSUM_COMPLETE)
+	/* We disable csum_complete when XDP is enabled since
+	 * XDP programs might manipulate packets which will render
+	 * skb->checksum incorrect.
+	 */
+	if (MLX5E_GET_PFLAG(params, MLX5E_PFLAG_RX_NO_CSUM_COMPLETE) || c->xdp)
 		__set_bit(MLX5E_RQ_STATE_NO_CSUM_COMPLETE, &c->rq.state);
 
 	return 0;
@@ -2792,7 +2796,6 @@ static void mlx5e_build_inner_indir_tir_ctx(struct mlx5e_priv *priv,
 
 	MLX5_SET(tirc, tirc, disp_type, MLX5_TIRC_DISP_TYPE_INDIRECT);
 	MLX5_SET(tirc, tirc, indirect_table, priv->indir_rqt.rqtn);
-	MLX5_SET(tirc, tirc, tunneled_offload_en, 0x1);
 
 	mlx5e_build_indir_tir_ctx_hash(&priv->channels.params, tt, tirc, true);
 }
@@ -3183,6 +3186,8 @@ static void mlx5e_build_indir_tir_ctx(struct mlx5e_priv *priv,
 				      u32 *tirc)
 {
 	MLX5_SET(tirc, tirc, transport_domain, priv->mdev->mlx5e_res.td.tdn);
+	MLX5_SET(tirc, tirc, tunneled_offload_en,
+		 priv->channels.params.tunneled_offload_en);
 
 	mlx5e_build_tir_ctx_lro(&priv->channels.params, tirc);
 
@@ -3759,6 +3764,12 @@ static netdev_features_t mlx5e_fix_features(struct net_device *netdev,
 		}
 	}
 
+	if (MLX5E_GET_PFLAG(params, MLX5E_PFLAG_RX_CQE_COMPRESS)) {
+		features &= ~NETIF_F_RXHASH;
+		if (netdev->features & NETIF_F_RXHASH)
+			netdev_warn(netdev, "Disabling rxhash, not supported when CQE compress is active\n");
+	}
+
 	mutex_unlock(&priv->state_lock);
 
 	return features;
@@ -3884,6 +3895,9 @@ int mlx5e_hwstamp_set(struct mlx5e_priv *priv, struct ifreq *ifr)
 
 	memcpy(&priv->tstamp, &config, sizeof(config));
 	mutex_unlock(&priv->state_lock);
+
+	/* might need to fix some features */
+	netdev_update_features(priv->netdev);
 
 	return copy_to_user(ifr->ifr_data, &config,
 			    sizeof(config)) ? -EFAULT : 0;
@@ -4602,6 +4616,8 @@ void mlx5e_build_nic_params(struct mlx5_core_dev *mdev,
 
 	/* RSS */
 	mlx5e_build_rss_params(params);
+	params->tunneled_offload_en =
+		mlx5e_tunnel_inner_ft_supported(mdev);
 }
 
 static void mlx5e_set_netdev_dev_addr(struct net_device *netdev)
@@ -4711,6 +4727,10 @@ static void mlx5e_build_nic_netdev(struct net_device *netdev)
 
 	if (!priv->channels.params.scatter_fcs_en)
 		netdev->features  &= ~NETIF_F_RXFCS;
+
+	/* prefere CQE compression over rxhash */
+	if (MLX5E_GET_PFLAG(&priv->channels.params, MLX5E_PFLAG_RX_CQE_COMPRESS))
+		netdev->features &= ~NETIF_F_RXHASH;
 
 #define FT_CAP(f) MLX5_CAP_FLOWTABLE(mdev, flow_table_properties_nic_receive.f)
 	if (FT_CAP(flow_modify_en) &&

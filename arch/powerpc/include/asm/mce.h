@@ -202,6 +202,9 @@ struct mce_error_info {
 #define MCE_EVENT_RELEASE	true
 #define MCE_EVENT_DONTRELEASE	false
 
+struct pt_regs;
+struct notifier_block;
+
 extern void save_mce_event(struct pt_regs *regs, long handled,
 			   struct mce_error_info *mce_err, uint64_t nip,
 			   uint64_t addr);
@@ -214,5 +217,8 @@ extern uint64_t get_mce_fault_addr(struct machine_check_event *evt);
 
 #ifdef CONFIG_PPC_BOOK3S_64
 void flush_and_reload_slb(void);
+long __machine_check_early_realmode_p7(struct pt_regs *regs);
+long __machine_check_early_realmode_p8(struct pt_regs *regs);
+long __machine_check_early_realmode_p9(struct pt_regs *regs);
 #endif /* CONFIG_PPC_BOOK3S_64 */
 #endif /* __ASM_PPC64_MCE_H__ */

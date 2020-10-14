@@ -2596,7 +2596,7 @@ static int mlx5e_create_encap_header_ipv6(struct mlx5e_priv *priv,
 	int max_encap_size = MLX5_CAP_ESW(priv->mdev, max_encap_header_size);
 	int ipv6_encap_size = ETH_HLEN + sizeof(struct ipv6hdr) + VXLAN_HLEN;
 	struct ip_tunnel_key *tun_key = &e->tun_info.key;
-	struct net_device *out_dev;
+	struct net_device *out_dev = NULL;
 	struct neighbour *n = NULL;
 	struct flowi6 fl6 = {};
 	u8 nud_state, tos, ttl;

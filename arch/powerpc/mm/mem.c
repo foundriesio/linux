@@ -120,8 +120,6 @@ int __meminit arch_add_memory(int nid, u64 start, u64 size, struct vmem_altmap *
 	unsigned long nr_pages = size >> PAGE_SHIFT;
 	int rc;
 
-	resize_hpt_for_hotplug(memblock_phys_mem_size());
-
 	start = (unsigned long)__va(start);
 	rc = create_section_mapping(start, start + size);
 	if (rc) {
@@ -162,8 +160,6 @@ int __meminit arch_remove_memory(u64 start, u64 size, struct vmem_altmap *altmap
 	 * hit that section of memory
 	 */
 	vm_unmap_aliases();
-
-	resize_hpt_for_hotplug(memblock_phys_mem_size());
 
 	return ret;
 }

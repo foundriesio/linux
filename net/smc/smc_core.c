@@ -286,7 +286,7 @@ static int smc_lgr_create(struct smc_sock *smc, struct smc_init_info *ini)
 	}
 	smc->conn.lgr = lgr;
 	spin_lock_bh(&smc_lgr_list.lock);
-	list_add(&lgr->list, &smc_lgr_list.list);
+	list_add_tail(&lgr->list, &smc_lgr_list.list);
 	spin_unlock_bh(&smc_lgr_list.lock);
 	return 0;
 
@@ -637,7 +637,7 @@ int smc_conn_create(struct smc_sock *smc, struct smc_init_info *ini)
 		     smcr_lgr_match(lgr, ini->ib_lcl, role, ini->ib_clcqpn)) &&
 		    !lgr->sync_err &&
 		    lgr->vlan_id == ini->vlan_id &&
-		    (role == SMC_CLNT ||
+		    (role == SMC_CLNT || ini->is_smcd ||
 		     lgr->conns_num < SMC_RMBS_PER_LGR_MAX)) {
 			/* link group found */
 			ini->cln_first_contact = SMC_REUSE_CONTACT;
@@ -674,6 +674,8 @@ create:
 	if (ini->is_smcd) {
 		conn->rx_off = sizeof(struct smcd_cdc_msg);
 		smcd_cdc_rx_init(conn); /* init tasklet for this conn */
+	} else {
+		conn->rx_off = 0;
 	}
 #ifndef KERNEL_HAS_ATOMIC64
 	spin_lock_init(&conn->acurs_lock);
@@ -966,8 +968,13 @@ int smc_buf_create(struct smc_sock *smc, bool is_smcd)
 		return rc;
 	/* create rmb */
 	rc = __smc_buf_create(smc, is_smcd, true);
-	if (rc)
+	if (rc) {
+		write_lock_bh(&smc->conn.lgr->sndbufs_lock);
+		list_del(&smc->conn.sndbuf_desc->list);
+		write_unlock_bh(&smc->conn.lgr->sndbufs_lock);
 		smc_buf_free(smc->conn.lgr, false, smc->conn.sndbuf_desc);
+		smc->conn.sndbuf_desc = NULL;
+	}
 	return rc;
 }
 

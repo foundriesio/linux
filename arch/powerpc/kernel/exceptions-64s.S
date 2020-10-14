@@ -66,6 +66,14 @@ OPEN_FIXED_SECTION(real_vectors,        0x0100, 0x1900)
 OPEN_FIXED_SECTION(real_trampolines,    0x1900, 0x4000)
 OPEN_FIXED_SECTION(virt_vectors,        0x4000, 0x5900)
 OPEN_FIXED_SECTION(virt_trampolines,    0x5900, 0x7000)
+
+#ifdef CONFIG_PPC_POWERNV
+	.globl start_real_trampolines
+	.globl end_real_trampolines
+	.globl start_virt_trampolines
+	.globl end_virt_trampolines
+#endif
+
 #if defined(CONFIG_PPC_PSERIES) || defined(CONFIG_PPC_POWERNV)
 /*
  * Data area reserved for FWNMI option.
@@ -1811,6 +1819,7 @@ END_FTR_SECTION_IFSET(CPU_FTR_CFAR)
 1:	addi	r3,r1,STACK_FRAME_OVERHEAD
 	bl	kernel_bad_stack
 	b	1b
+_ASM_NOKPROBE_SYMBOL(bad_stack);
 
 /*
  * When doorbell is triggered from system reset wakeup, the message is
@@ -1866,3 +1875,4 @@ FTR_SECTION_ELSE
 	beq	doorbell_super_common_msgclr
 ALT_FTR_SECTION_END_IFSET(CPU_FTR_HVMODE)
 	blr
+_ASM_NOKPROBE_SYMBOL(__replay_interrupt)

@@ -2987,7 +2987,7 @@ static inline bool tcp_ack_update_rtt(struct sock *sk, const int flag,
 	if (seq_rtt_us < 0 && tp->rx_opt.saw_tstamp && tp->rx_opt.rcv_tsecr &&
 	    flag & FLAG_ACKED) {
 		u32 delta = tcp_time_stamp(tp) - tp->rx_opt.rcv_tsecr;
-		u32 delta_us = delta * (USEC_PER_SEC / TCP_TS_HZ);
+		u32 delta_us = (delta ? : 1) * (USEC_PER_SEC / TCP_TS_HZ);
 
 		seq_rtt_us = ca_rtt_us = delta_us;
 	}
