@@ -341,14 +341,14 @@ static unsigned int stm32_usart_receive_chars_dma(struct uart_port *port)
 	 * DMA buffer is configured in cyclic mode and handles the rollback of
 	 * the buffer.
 	 */
-	if (stm32_port->state.residue > stm32_port->last_res) {
+	if (stm32_port->rx_dma_state.residue > stm32_port->last_res) {
 		/* Conditional first part: from last_res to end of DMA buffer */
 		dma_size = stm32_port->last_res;
 		stm32_usart_push_buffer_dma(port, dma_size);
 		size = dma_size;
 	}
 
-	dma_size = stm32_port->last_res - stm32_port->state.residue;
+	dma_size = stm32_port->last_res - stm32_port->rx_dma_state.residue;
 	stm32_usart_push_buffer_dma(port, dma_size);
 	size += dma_size;
 
@@ -368,7 +368,7 @@ static void stm32_usart_receive_chars(struct uart_port *port,
 	if (stm32_usart_rx_dma_enabled(port) || force_dma_flush) {
 		rx_dma_status = dmaengine_tx_status(stm32_port->rx_ch,
 						    stm32_port->rx_ch->cookie,
-						    &stm32_port->state);
+						    &stm32_port->rx_dma_state);
 		if (rx_dma_status == DMA_IN_PROGRESS) {
 			/* Empty DMA buffer */
 			size = stm32_usart_receive_chars_dma(port);
