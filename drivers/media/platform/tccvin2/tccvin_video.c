@@ -293,6 +293,9 @@ static int tccvin_parse_device_tree(struct tccvin_streaming * vdev) {
 
 #ifdef CONFIG_OVERLAY_PGL
 	// Parking Guide Line
+	of_property_read_u32_index(main_node, "use_pgl", 0, &vdev->cif.use_pgl);
+	dlog("%10s[%2d]: %d\n", "usage status pgl", vdev->vid_dev.minor, vdev->cif.use_pgl);
+
 	vdev->cif.vioc_path.pgl = -1;
 	// VIDEO_IN04~06 don't have RDMA
 	if(vdev->cif.vioc_path.vin >= VIOC_VIN00 && vdev->cif.vioc_path.vin <= VIOC_VIN30) {
@@ -305,7 +308,7 @@ static int tccvin_parse_device_tree(struct tccvin_streaming * vdev) {
 			}
 		} else {
 			logw("\"rdma\" node is not found.\n");
-//			return -ENODEV;
+			return -ENODEV;
 		}
 	}
 #endif//CONFIG_OVERLAY_PGL
@@ -623,6 +626,49 @@ static int tccvin_check_cif_port_mapping(struct tccvin_streaming * vdev) {
 	return ret;
 }
 #endif
+
+#if defined(CONFIG_OVERLAY_PGL) && !defined(CONFIG_OVERLAY_DPGL)
+/*
+ * tccvin_set_pgl
+ *
+ * - DESCRIPTION:
+ *	Set rdma component to read parking guideline image
+ *
+ * - PARAMETERS:
+ *	@vdev:	video-input path device's data
+ *
+ * - RETURNS:
+ *	0:		Success
+ */
+int tccvin_set_pgl(struct tccvin_streaming * vdev) {
+	printk("hj_test\n");
+	volatile void __iomem	* pRDMA		= VIOC_RDMA_GetAddress(vdev->cif.vioc_path.pgl);
+	printk("hj_test_1\n");
+
+	unsigned int	width		= vdev->cur_frame->wWidth;
+	unsigned int	height		= vdev->cur_frame->wHeight;
+	unsigned int	format		= PGL_FORMAT;
+	unsigned int	buf_addr	= vdev->cif.pmap_pgl.base;
+
+	FUNCTION_IN
+	loge("RDMA: 0x%p, size[%d x %d], format[%d]. \n", pRDMA, width, height, format);
+
+	VIOC_RDMA_SetImageFormat(pRDMA, format);
+	VIOC_RDMA_SetImageSize(pRDMA, width, height);
+	VIOC_RDMA_SetImageOffset(pRDMA, format, width);
+	VIOC_RDMA_SetImageBase(pRDMA, buf_addr, 0, 0);
+//	VIOC_RDMA_SetImageAlphaEnable(pRDMA, ON);
+//	VIOC_RDMA_SetImageAlpha(pRDMA, 0xff, 0xff);
+	if(vdev->cif.use_pgl == 1) {
+		VIOC_RDMA_SetImageEnable(pRDMA);
+		VIOC_RDMA_SetImageUpdate(pRDMA);
+	} else {
+		VIOC_RDMA_SetImageDisable(pRDMA);
+	}
+
+	return 0;
+}
+#endif//CONFIG_OVERLAY_PGL
 
 /*
  * tccvin_set_vin
