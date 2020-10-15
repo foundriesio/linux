@@ -39,59 +39,55 @@ extern int tcc_vpu_hevc_enc_ext(int Op, codec_handle_t* pHandle, void* pParam1, 
 VpuList_t* vmgr_hevc_enc_list_manager(VpuList_t* args, unsigned int cmd)
 {
 	VpuList_t* ret = NULL;
-	VpuList_t* oper_data = (VpuList_t*) args;
-
-	if (!oper_data)
-	{
-		if (cmd == LIST_ADD || cmd == LIST_DEL)
-		{
-			V_DBG(VPU_DBG_ERROR, "Data is null, cmd=%d", cmd);
-			return NULL;
-		}
-	}
-	else
-	{
-		*oper_data->vpu_result = RET0;
-	}
+	VpuList_t* data = (VpuList_t*) args;
 
 	mutex_lock(&vmgr_hevc_enc_data.comm_data.list_mutex);
+
+	if (cmd == LIST_ADD || cmd == LIST_DEL)
 	{
-		switch (cmd)
+		if (data == NULL)
 		{
-			case LIST_ADD:
-			{
-				*oper_data->vpu_result |= RET1;
-				list_add_tail(&oper_data->list, &vmgr_hevc_enc_data.comm_data.main_list);
-				vmgr_hevc_enc_data.cmd_queued++;
-				vmgr_hevc_enc_data.comm_data.thread_intr++;
-			}
-			break;
-
-			case LIST_DEL:
-			{
-				list_del(&oper_data->list);
-				vmgr_hevc_enc_data.cmd_queued--;
-			}
-			break;
-
-			case LIST_IS_EMPTY:
-			{
-				if (list_empty(&vmgr_hevc_enc_data.comm_data.main_list))
-				{
-					ret = (VpuList_t*) 0x1234;
-				}
-			}
-			break;
-
-			case LIST_GET_ENTRY:
-			{
-				ret = list_first_entry(&vmgr_hevc_enc_data.comm_data.main_list, VpuList_t, list);
-			}
-			break;
+			V_DBG(VPU_DBG_ERROR, "Data is null, cmd=%d", cmd);
+			goto Error;
 		}
 	}
-	mutex_unlock(&vmgr_hevc_enc_data.comm_data.list_mutex);
 
+	switch (cmd)
+	{
+		case LIST_ADD:
+		{
+			*(data->vpu_result) |= RET1;
+			list_add_tail(&data->list, &vmgr_hevc_enc_data.comm_data.main_list);
+			vmgr_hevc_enc_data.cmd_queued++;
+			vmgr_hevc_enc_data.comm_data.thread_intr++;
+		}
+		break;
+
+		case LIST_DEL:
+		{
+			list_del(&data->list);
+			vmgr_hevc_enc_data.cmd_queued--;
+		}
+		break;
+
+		case LIST_IS_EMPTY:
+		{
+			if (list_empty(&vmgr_hevc_enc_data.comm_data.main_list))
+			{
+				ret = (VpuList_t*) 0x1234;
+			}
+		}
+		break;
+
+		case LIST_GET_ENTRY:
+		{
+			ret = list_first_entry(&vmgr_hevc_enc_data.comm_data.main_list, VpuList_t, list);
+		}
+		break;
+	}
+
+Error:
+	mutex_unlock(&vmgr_hevc_enc_data.comm_data.list_mutex);
 	if (cmd == LIST_ADD)
 	{
 		wake_up_interruptible(&vmgr_hevc_enc_data.comm_data.thread_wq);
