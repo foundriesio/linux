@@ -22,10 +22,10 @@
 #include <linux/pm_runtime.h>
 #include <linux/component.h>
 #include <linux/regmap.h>
-
 #include <video/of_display_timing.h>
 #include <video/of_videomode.h>
 #include <drm/tcc_drm.h>
+#include <drm/drm_crtc_helper.h>
 
 #include <video/tcc/vioc_global.h>
 #include <video/tcc/vioc_rdma.h>
@@ -95,6 +95,7 @@ struct lcd_context {
 
 	/* H/W data */
 	struct tcc_hw_device 		hw_data;
+
 };
 
 #if defined(CONFIG_DRM_TCC_LCD)
@@ -784,8 +785,6 @@ static const struct tcc_drm_crtc_ops lcd_crtc_ops = {
 	.mode_set_nofb = lcd_mode_set_nofb,
 };
 
-
-
 static int lcd_bind(struct device *dev, struct device *master, void *data)
 {
 	struct lcd_context *ctx = dev_get_drvdata(dev);
@@ -866,6 +865,8 @@ static const struct component_ops lcd_component_ops = {
 	.bind	= lcd_bind,
 	.unbind = lcd_unbind,
 };
+
+
 
 static int lcd_probe(struct platform_device *pdev)
 {
@@ -969,6 +970,7 @@ static int lcd_probe(struct platform_device *pdev)
 	#if defined(CONFIG_DRM_TCC_CTRL_CHROMAKEY)
 	mutex_init(&ctx->chromakey_mutex);
 	#endif
+
 	return ret;
 
 err_disable_pm_runtime:

@@ -91,6 +91,13 @@ config DRM_TCC_DPI
 	help
 	  This enables support for TCC parallel output.
 
+config DRM_TCC_DPI_PROC
+	bool "Proc F/S for debug"
+  default n
+	depends on DRM_TCC_DPI
+	help
+	  This provides proc F/S to debug DPI
+
 endif
 
 #

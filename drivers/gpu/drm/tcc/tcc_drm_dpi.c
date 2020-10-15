@@ -18,6 +18,8 @@
 
 #include <linux/of_graph.h>
 #include <linux/regulator/consumer.h>
+#include <linux/fs.h>
+#include <linux/proc_fs.h>
 
 #include <video/of_videomode.h>
 #include <video/videomode.h>
@@ -54,6 +56,13 @@ struct tcc_dpi {
 	struct videomode *vm;
 
 	struct tcc_hw_device *hw_device;
+
+	#if defined(CONFIG_DRM_TCC_DPI_PROC)
+	struct proc_dir_entry *proc_root_dir;
+	struct proc_dir_entry *proc_dir;
+	struct proc_dir_entry *proc_hpd;
+	enum drm_connector_status manual_hpd;
+	#endif
 };
 static const struct drm_detailed_timing_t drm_detailed_timing[] = {
         /*  vic pixelrepetion  hactive     hsyncoffset  vactive    vsyncoffset
@@ -146,12 +155,19 @@ static inline struct tcc_dpi *encoder_to_dpi(struct drm_encoder *e)
 static enum drm_connector_status
 tcc_dpi_detect(struct drm_connector *connector, bool force)
 {
+	enum drm_connector_status connector_status = connector_status_connected;
 	struct tcc_dpi *ctx = connector_to_dpi(connector);
 
 	if (ctx->panel && ctx->panel->connector == NULL)
 		drm_panel_attach(ctx->panel, &ctx->connector);
-
-	return connector_status_connected;
+	#if defined(CONFIG_DRM_TCC_DPI_PROC)
+	if(ctx->manual_hpd != connector_status_unknown)
+		connector_status = ctx->manual_hpd;
+	dev_warn(ctx->dev, "[WARN][%s] %s status = %s\r\n",
+						LOG_TAG, __func__,
+		connector_status == connector_status_connected?"connected":"disconnected");
+	#endif
+	return connector_status;
 }
 
 static void tcc_dpi_connector_destroy(struct drm_connector *connector)
@@ -199,8 +215,8 @@ static int tcc_dpi_get_modes(struct drm_connector *connector)
 		}
 
 		if (ctx->panel != NULL) {
-			count = ctx->panel->funcs->get_modes(ctx->panel);
-			if(count)
+			count = drm_panel_get_modes(ctx->panel);
+			if(count > 0)
 				break;
 		}
 
@@ -367,7 +383,7 @@ int tcc_dpi_bind(struct drm_device *dev, struct drm_encoder *encoder, struct tcc
 	}else{
 		encoder_type = DRM_MODE_ENCODER_LVDS;
 	}
-	dev_dbg(dev->dev, 
+	dev_dbg(dev->dev,
 		"[DEBUG][%s] %s encoder type is %d\n", LOG_TAG, __func__, encoder_type);
 
 	drm_encoder_init(dev, encoder, &tcc_dpi_encoder_funcs, encoder_type, NULL);
@@ -415,10 +431,81 @@ int tcc_dpi_bind(struct drm_device *dev, struct drm_encoder *encoder, struct tcc
 	return 0;
 }
 
+#if defined(CONFIG_DRM_TCC_DPI_PROC)
+static int proc_open(struct inode *inode, struct file *filp)
+{
+	try_module_get(THIS_MODULE);
+
+	return 0;
+}
+
+static int proc_close(struct inode *inode, struct file *filp)
+{
+	module_put(THIS_MODULE);
+
+	return 0;
+}
+
+static ssize_t proc_write_hpd(struct file *filp, const char __user *buffer,
+						size_t cnt, loff_t *off_set)
+{
+        int ret;
+        int hpd = 0;
+	struct tcc_dpi *ctx = PDE_DATA(file_inode(filp));
+        char *hpd_buff = devm_kzalloc(ctx->dev, cnt+1, GFP_KERNEL);
+
+        if (hpd_buff == NULL) {
+                ret =  -ENOMEM;
+		goto err_out;
+	}
+
+        ret = simple_write_to_buffer(hpd_buff, cnt, off_set, buffer, cnt);
+        if (ret != cnt) {
+                devm_kfree(ctx->dev, hpd_buff);
+                return ret >= 0 ? -EIO : ret;
+        }
+
+        hpd_buff[cnt] = '\0';
+        ret = sscanf(hpd_buff, "%d", &hpd);
+        devm_kfree(ctx->dev, hpd_buff);
+        if (ret < 0)
+                goto err_out;
+	switch(hpd) {
+	case -1:
+		ctx->manual_hpd = connector_status_unknown;
+		break;
+	case 0:
+		ctx->manual_hpd = connector_status_disconnected;
+		break;
+	case 1:
+		ctx->manual_hpd = connector_status_connected;
+		break;
+	}
+
+	drm_helper_hpd_irq_event(ctx->encoder.dev);
+        return cnt;
+
+err_out:
+	return ret;
+}
+
+static const struct file_operations proc_fops_hpd = {
+        .owner   = THIS_MODULE,
+        .open    = proc_open,
+        .release = proc_close,
+        .write   = proc_write_hpd,
+};
+#endif
+
 struct drm_encoder *tcc_dpi_probe(struct device *dev, struct tcc_hw_device *hw_device)
 {
 	struct tcc_dpi *ctx;
 	int ret;
+	#if defined(CONFIG_DRM_TCC_DPI_PROC)
+	char proc_name[255];
+	char * drm_name;
+	#endif
+
 
 	ctx = devm_kzalloc(dev, sizeof(*ctx), GFP_KERNEL);
 	if (ctx == NULL) {
@@ -432,7 +519,9 @@ struct drm_encoder *tcc_dpi_probe(struct device *dev, struct tcc_hw_device *hw_d
 	ctx->panel = NULL;
 	ctx->dev = dev;
 	ctx->hw_device = hw_device;
-
+	#if defined(CONFIG_DRM_TCC_DPI_PROC)
+	ctx->manual_hpd = connector_status_unknown;
+	#endif
 	ret = tcc_dpi_parse_dt(ctx);
 	#if defined(CONFIG_ARCH_TCC805X)
 	ctx->panel_node = of_graph_get_remote_node(dev->of_node, 0, -1);
@@ -455,6 +544,29 @@ struct drm_encoder *tcc_dpi_probe(struct device *dev, struct tcc_hw_device *hw_d
 			}
 		}
 	}
+
+	#if defined(CONFIG_DRM_TCC_DPI_PROC)
+	drm_name = strrchr(ctx->dev->driver->name, '-');
+	if(drm_name == NULL)
+		drm_name = ctx->dev->driver->name;
+	else
+		drm_name++;
+	sprintf(proc_name, "dpi_%s", drm_name);
+	ctx->proc_dir = proc_mkdir(proc_name, NULL);
+	if(ctx->proc_dir != NULL) {
+		ctx->proc_hpd = proc_create_data("hpd", S_IFREG | S_IRUGO,
+					ctx->proc_dir, &proc_fops_hpd, ctx);
+		if(ctx->proc_hpd == NULL){
+			dev_warn(ctx->dev,
+				"[WARN][%s] %s: Could not create file system @ /%s/%s/hpd\r\n",
+				LOG_TAG, __func__, proc_name, ctx->dev->driver->name);
+		}
+	} else {
+		dev_warn(ctx->dev,
+		"[WARN][%s] %s: Could not create file system @ %s\r\n",
+		LOG_TAG, __func__, proc_name);
+	}
+	#endif
 
 	return &ctx->encoder;
 
