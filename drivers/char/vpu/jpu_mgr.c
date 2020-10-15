@@ -385,7 +385,7 @@ static int _jmgr_internal_handler(void)
 		jmgr_status_clear(jmgr_data.base_addr);
 	}
 
-	V_DBG(DEBUG_ENC_INTERRUPT, "out (Interrupt option=%d, ev=%d)",
+	V_DBG(VPU_DBG_INTERRUPT, "out (Interrupt option=%d, ev=%d)",
 		jmgr_data.check_interrupt_detection,
 		ret_code);
 
@@ -1259,30 +1259,26 @@ static int _jmgr_release(struct inode* inode, struct file* filp)
 
 VpuList_t* jmgr_list_manager(VpuList_t* args, unsigned int cmd)
 {
-	VpuList_t* ret = NULL;
-	VpuList_t* oper_data = (VpuList_t*) args;
-
-	if (!oper_data)
-	{
-		if (cmd == LIST_ADD || cmd == LIST_DEL)
-		{
-			V_DBG(DEBUG_VPU_ERROR, "Data is null, cmd=%d", cmd);
-			return NULL;
-		}
-	}
-	else
-	{
-		*oper_data->vpu_result = RET0;
-	}
+	VpuList_t* ret;
 
 	mutex_lock(&jmgr_data.comm_data.list_mutex);
 	{
+		VpuList_t* data = NULL;
+		ret = NULL;
+
 		switch (cmd)
 		{
 			case LIST_ADD:
 			{
-				*oper_data->vpu_result |= RET1;
-				list_add_tail(&oper_data->list, &jmgr_data.comm_data.main_list);
+				if (!args)
+				{
+					V_DBG(VPU_DBG_ERROR, "ADD: Data is null");
+					goto Error;
+				}
+
+				data = (VpuList_t*)args;
+				*(data->vpu_result) |= RET1;
+				list_add_tail(&data->list, &jmgr_data.comm_data.main_list);
 				jmgr_data.cmd_queued++;
 				jmgr_data.comm_data.thread_intr++;
 			}
@@ -1290,7 +1286,13 @@ VpuList_t* jmgr_list_manager(VpuList_t* args, unsigned int cmd)
 
 			case LIST_DEL:
 			{
-				list_del(&oper_data->list);
+				if (!args)
+				{
+					V_DBG(VPU_DBG_ERROR, "DEL: Data is null");
+					goto Error;
+				}
+				data = (VpuList_t*)args;
+				list_del(&data->list);
 				jmgr_data.cmd_queued--;
 			}
 			break;
@@ -1311,8 +1313,9 @@ VpuList_t* jmgr_list_manager(VpuList_t* args, unsigned int cmd)
 			break;
 		}
 	}
-	mutex_unlock(&jmgr_data.comm_data.list_mutex);
 
+Error:
+	mutex_unlock(&jmgr_data.comm_data.list_mutex);
 	if (cmd == LIST_ADD)
 	{
 		wake_up_interruptible(&jmgr_data.comm_data.thread_wq);
@@ -1320,6 +1323,7 @@ VpuList_t* jmgr_list_manager(VpuList_t* args, unsigned int cmd)
 
 	return ret;
 }
+
 static int _jmgr_operation(void)
 {
 	int oper_finished;

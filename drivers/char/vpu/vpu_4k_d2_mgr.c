@@ -627,7 +627,7 @@ static int _vmgr_4k_d2_internal_handler(unsigned int reason)
 		 ret_code, cntInt_4kd2, cntwk_4kd2, vmgr_4k_d2_data.oper_intr);
 	#endif
 
-	V_DBG(DEBUG_ENC_INTERRUPT, "out (Interrupt option=%d, isr cnt=%d, ev=%d)",
+	V_DBG(VPU_DBG_INTERRUPT, "out (Interrupt option=%d, isr cnt=%d, ev=%d)",
 		vmgr_4k_d2_data.check_interrupt_detection,
 		cntInt_4kd2,
 		ret_code);
@@ -1487,30 +1487,26 @@ static int _vmgr_4k_d2_release(struct inode* inode, struct file* filp)
 
 VpuList_t* vmgr_4k_d2_list_manager(VpuList_t* args, unsigned int cmd)
 {
-	VpuList_t* ret = NULL;
-	VpuList_t* oper_data = (VpuList_t*) args;
-
-	if (!oper_data)
-	{
-		if (cmd == LIST_ADD || cmd == LIST_DEL)
-		{
-			V_DBG(DEBUG_VPU_ERROR, "Data is null, cmd=%d", cmd);
-			return NULL;
-		}
-	}
-	else
-	{
-		*oper_data->vpu_result = RET0;
-	}
+	VpuList_t* ret;
 
 	mutex_lock(&vmgr_4k_d2_data.comm_data.list_mutex);
 	{
+		VpuList_t* data = NULL;
+		ret = NULL;
+
 		switch (cmd)
 		{
 			case LIST_ADD:
 			{
-				*oper_data->vpu_result |= RET1;
-				list_add_tail(&oper_data->list, &vmgr_4k_d2_data.comm_data.main_list);
+				if (!args)
+				{
+					V_DBG(VPU_DBG_ERROR, "ADD: Data is null");
+					goto Error;
+				}
+
+				data = (VpuList_t*)args;
+				*(data->vpu_result) |= RET1;
+				list_add_tail(&data->list, &vmgr_4k_d2_data.comm_data.main_list);
 				vmgr_4k_d2_data.cmd_queued++;
 				vmgr_4k_d2_data.comm_data.thread_intr++;
 			}
@@ -1518,7 +1514,13 @@ VpuList_t* vmgr_4k_d2_list_manager(VpuList_t* args, unsigned int cmd)
 
 			case LIST_DEL:
 			{
-				list_del(&oper_data->list);
+				if (!args)
+				{
+					V_DBG(VPU_DBG_ERROR, "DEL: Data is null");
+					goto Error;
+				}
+				data = (VpuList_t*)args;
+				list_del(&data->list);
 				vmgr_4k_d2_data.cmd_queued--;
 			}
 			break;
@@ -1539,8 +1541,9 @@ VpuList_t* vmgr_4k_d2_list_manager(VpuList_t* args, unsigned int cmd)
 			break;
 		}
 	}
-	mutex_unlock(&vmgr_4k_d2_data.comm_data.list_mutex);
 
+Error:
+	mutex_unlock(&vmgr_4k_d2_data.comm_data.list_mutex);
 	if (cmd == LIST_ADD)
 	{
 		wake_up_interruptible(&vmgr_4k_d2_data.comm_data.thread_wq);

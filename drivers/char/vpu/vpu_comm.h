@@ -44,6 +44,7 @@
 
 #include "vpu_structure.h"
 #include "vpu_etc.h"
+#include "vpu_dbg.h"
 
 #if defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC901X)
 #include "smp_driver.h"
