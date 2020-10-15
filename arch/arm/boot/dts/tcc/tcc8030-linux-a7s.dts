@@ -1182,9 +1182,9 @@
 		mode = <FBX_TRIPLE>;
 		update-type = <FBX_OVERLAY_UPDATE>;
 		device-priority = <FBX_DEVICE_LVDS>;
-		telechips,disp = <&vioc_disp VIOC_DISP0>;
-		telechips,wmixer = <&vioc_wmix VIOC_WMIX0>;
-		telechips,rdma = <&vioc_rdma VIOC_RDMA01>;
+		telechips,disp = <&vioc_disp VIOC_DISP0 VIOC_DISP1>;
+		telechips,wmixer = <&vioc_wmix VIOC_WMIX0 VIOC_WMIX1>;
+		telechips,rdma = <&vioc_rdma VIOC_RDMA01 VIOC_RDMA04>;
 	};
 
 	fb1: fb@1 {
