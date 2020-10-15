@@ -232,7 +232,7 @@ static int _vmgr_internal_handler(void)
 		vmgr_status_clear(vmgr_data.base_addr);
 	}
 
-	V_DBG(VPU_DBG_INTERRUPT, "out (Interrupt option=%d, isr cnt=%d, ev=%d)",
+	V_DBG(DEBUG_ENC_INTERRUPT, "out (Interrupt option=%d, isr cnt=%d, ev=%d)",
 		vmgr_data.check_interrupt_detection,
 		cntInt_vpu,
 		ret_code);
@@ -1413,26 +1413,30 @@ static int _vmgr_release(struct inode* inode, struct file* filp)
 
 VpuList_t* vmgr_list_manager(VpuList_t* args, unsigned int cmd)
 {
-	VpuList_t* ret;
+	VpuList_t* ret = NULL;
+	VpuList_t* oper_data = (VpuList_t*) args;
+
+	if (!oper_data)
+	{
+		if (cmd == LIST_ADD || cmd == LIST_DEL)
+		{
+			V_DBG(DEBUG_VPU_ERROR, "Data is null, cmd=%d", cmd);
+			return NULL;
+		}
+	}
+	else
+	{
+		*oper_data->vpu_result = RET0;
+	}
 
 	mutex_lock(&vmgr_data.comm_data.list_mutex);
 	{
-		VpuList_t* data = NULL;
-		ret = NULL;
-
 		switch (cmd)
 		{
 			case LIST_ADD:
 			{
-				if (!args)
-				{
-					V_DBG(VPU_DBG_ERROR, "ADD: Data is null");
-					goto Error;
-				}
-
-				data = (VpuList_t*)args;
-				*(data->vpu_result) |= RET1;
-				list_add_tail(&data->list, &vmgr_data.comm_data.main_list);
+				*oper_data->vpu_result |= RET1;
+				list_add_tail(&oper_data->list, &vmgr_data.comm_data.main_list);
 				vmgr_data.cmd_queued++;
 				vmgr_data.comm_data.thread_intr++;
 			}
@@ -1440,13 +1444,7 @@ VpuList_t* vmgr_list_manager(VpuList_t* args, unsigned int cmd)
 
 			case LIST_DEL:
 			{
-				if (!args)
-				{
-					V_DBG(VPU_DBG_ERROR, "DEL: Data is null");
-					goto Error;
-				}
-				data = (VpuList_t*)args;
-				list_del(&data->list);
+				list_del(&oper_data->list);
 				vmgr_data.cmd_queued--;
 			}
 			break;
@@ -1467,9 +1465,8 @@ VpuList_t* vmgr_list_manager(VpuList_t* args, unsigned int cmd)
 			break;
 		}
 	}
-
-Error:
 	mutex_unlock(&vmgr_data.comm_data.list_mutex);
+
 	if (cmd == LIST_ADD)
 	{
 		wake_up_interruptible(&vmgr_data.comm_data.thread_wq);
