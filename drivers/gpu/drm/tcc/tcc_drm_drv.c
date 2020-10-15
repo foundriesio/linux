@@ -27,6 +27,7 @@
 #include <tcc_drm_fb.h>
 #include <tcc_drm_gem.h>
 #include <tcc_drm_plane.h>
+#include <tcc_drm_crtc.h>
 
 #define LOG_TAG "TCCDRM"
 #if defined(CONFIG_ARCH_TCC805X)
@@ -38,7 +39,7 @@
 #define DRIVER_DATE	"20201015"
 #define DRIVER_MAJOR	1
 #define DRIVER_MINOR	2
-#define DRIVER_PATCH 	3
+#define DRIVER_PATCH 	4
 
 static struct device *tcc_drm_get_dma_device(void);
 
@@ -133,6 +134,8 @@ static const struct drm_ioctl_desc tcc_ioctls[] = {
 	DRM_IOCTL_DEF_DRV(TCC_GEM_CPU_PREP, tcc_gem_cpu_prep_ioctl,
 			DRM_AUTH | DRM_RENDER_ALLOW),
 	DRM_IOCTL_DEF_DRV(TCC_GEM_CPU_FINI, tcc_gem_cpu_fini_ioctl,
+			DRM_AUTH | DRM_RENDER_ALLOW),
+	DRM_IOCTL_DEF_DRV(TCC_GET_EDID, tcc_crtc_parse_edid_ioctl,
 			DRM_AUTH | DRM_RENDER_ALLOW),
 };
 

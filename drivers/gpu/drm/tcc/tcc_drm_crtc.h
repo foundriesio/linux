@@ -45,6 +45,7 @@ int tcc_drm_set_possible_crtcs(struct drm_encoder *encoder,
 
 void tcc_drm_crtc_vblank_handler(struct drm_crtc *crtc);
 void tcc_crtc_handle_event(struct tcc_drm_crtc *tcc_crtc);
+int tcc_crtc_parse_edid_ioctl(struct drm_device *dev, void *data, struct drm_file *file);
 int tcc_drm_crtc_set_display_timing(struct drm_crtc *crtc,
 				     struct drm_display_mode *mode,
 				     struct tcc_hw_device *hw_data);
