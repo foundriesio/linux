@@ -63,7 +63,7 @@ static void _venc_inter_add_list(vpu_encoder_data* vdata, int cmd, void* args)
 	oper_data->args          = args;
 	oper_data->comm_data     = &vdata->vComm_data;
 	oper_data->vpu_result    = &vdata->gsCommEncResult;
-	*oper_data->vpu_result   = 0;
+	*oper_data->vpu_result   = RET0;
 
 #ifdef CONFIG_SUPPORT_TCC_JPU
 	if (vdata->gsCodecType == STD_MJPG)
