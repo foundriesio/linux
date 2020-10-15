@@ -1472,16 +1472,17 @@ static int tcc_spi_init(struct tcc_spi *tccspi)
 		if (status < 0) {
 			dev_err(tccspi->dev, "[ERROR][SPI] Failed to enable hclk\n");
 			clk_disable_unprepare(tccspi->pd->hclk);
+			return status;
 		}
-		return status;
 	}
 	if (tccspi->pd->pclk != NULL)  {
 		status = clk_prepare_enable(tccspi->pd->pclk);
 		if (status < 0) {
 			dev_err(tccspi->dev, "[ERROR][SPI] Failed to enable pclk\n");
 			clk_disable_unprepare(tccspi->pd->pclk);
+			clk_disable_unprepare(tccspi->pd->hclk);
+			return status;
 		}
-		return status;
 	}
 
 	return 0;
