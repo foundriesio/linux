@@ -32,6 +32,8 @@
 #include "vpu_comm.h"
 #include "vpu_devices.h"
 
+extern int vp9mgr_is_loadable(void);
+
 extern int vp9mgr_probe(struct platform_device* pdev);
 extern int vp9mgr_remove(struct platform_device* pdev);
 
@@ -43,8 +45,8 @@ extern int vp9mgr_resume(struct platform_device* pdev);
 #ifdef CONFIG_OF
 static struct of_device_id vp9mgr_of_match[] =
 {
-	{ .compatible = "telechips,vp9_dev_mgr" }, //VP9MGR_NAME
-	{}
+		{ .compatible = "telechips,vp9_dev_mgr" }, //VP9MGR_NAME
+		{}
 };
 MODULE_DEVICE_TABLE(of, vp9mgr_of_match);
 #endif
@@ -74,6 +76,9 @@ static void __exit vp9mgr_cleanup(void)
 
 static int vp9mgr_init(void)
 {
+	if (vp9mgr_is_loadable() > 0)
+		return -1;
+
 	printk("============> VP9 Devices drivers initializing!!  Start ------- ");
 
 	platform_driver_register(&vp9mgr_driver);

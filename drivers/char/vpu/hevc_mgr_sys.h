@@ -33,6 +33,7 @@ unsigned long hmgr_get_int_flags(void);
 void hmgr_init_interrupt(void);
 int hmgr_BusPrioritySetting(int mode, int type);
 void hmgr_status_clear(unsigned int* base_addr);
+int hmgr_is_loadable(void);
 
 void hmgr_init_variable(void);
 

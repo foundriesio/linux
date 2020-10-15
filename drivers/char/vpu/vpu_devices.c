@@ -30,6 +30,8 @@
 #include "vpu_comm.h"
 #include "vpu_devices.h"
 
+extern int vmgr_is_loadable(void);
+
 extern int vmgr_probe(struct platform_device* pdev);
 extern int vmgr_remove(struct platform_device* pdev);
 #if defined(CONFIG_PM)
@@ -40,8 +42,8 @@ extern int vmgr_resume(struct platform_device* pdev);
 #ifdef CONFIG_OF
 static struct of_device_id vpu_mgr_of_match[] =
 {
-	{ .compatible = "telechips,vpu_dev_mgr" }, //MGR_NAME
-	{}
+		{ .compatible = "telechips,vpu_dev_mgr" },//MGR_NAME
+		{}
 };
 MODULE_DEVICE_TABLE(of, vpu_mgr_of_match);
 #endif
@@ -77,8 +79,8 @@ static struct platform_device vmem_device =
 #ifdef CONFIG_OF
 static struct of_device_id vpu_vmem_of_match[] =
 {
-	{ .compatible = "telechips,vpu_vmem" },//MEM_NAME
-	{}
+		{ .compatible = "telechips,vpu_vmem" },//MEM_NAME
+		{}
 };
 MODULE_DEVICE_TABLE(of, vpu_vmem_of_match);
 #endif
@@ -111,8 +113,8 @@ static struct platform_device vdec_device =
 #ifdef CONFIG_OF
 static struct of_device_id vpu_vdec_of_match[] =
 {
-	{ .compatible = "telechips,vpu_vdec" },
-	{}
+		{ .compatible = "telechips,vpu_vdec" },
+		{}
 };
 MODULE_DEVICE_TABLE(of, vpu_vdec_of_match);
 #endif
@@ -143,8 +145,8 @@ static struct platform_device vdec_ext_device =
 #ifdef CONFIG_OF
 static struct of_device_id vpu_vdec_ext_of_match[] =
 {
-	{ .compatible = "telechips,vpu_vdec_ext" },
-	{}
+		{ .compatible = "telechips,vpu_vdec_ext" },
+		{}
 };
 MODULE_DEVICE_TABLE(of, vpu_vdec_ext_of_match);
 #endif
@@ -175,8 +177,8 @@ static struct platform_device vdec_ext2_device =
 #ifdef CONFIG_OF
 static struct of_device_id vpu_vdec_ext2_of_match[] =
 {
-	{ .compatible = "telechips,vpu_vdec_ext2" },
-	{}
+		{ .compatible = "telechips,vpu_vdec_ext2" },
+		{}
 };
 MODULE_DEVICE_TABLE(of, vpu_vdec_ext2_of_match);
 #endif
@@ -207,8 +209,8 @@ static struct platform_device vdec_ext3_device =
 #ifdef CONFIG_OF
 static struct of_device_id vpu_vdec_ext3_of_match[] =
 {
-	{ .compatible = "telechips,vpu_vdec_ext3" },
-	{}
+		{ .compatible = "telechips,vpu_vdec_ext3" },
+		{}
 };
 MODULE_DEVICE_TABLE(of, vpu_vdec_ext3_of_match);
 #endif
@@ -239,8 +241,8 @@ static struct platform_device vdec_ext4_device =
 #ifdef CONFIG_OF
 static struct of_device_id vpu_vdec_ext4_of_match[] =
 {
-	{ .compatible = "telechips,vpu_vdec_ext4" },
-	{}
+		{ .compatible = "telechips,vpu_vdec_ext4" },
+		{}
 };
 MODULE_DEVICE_TABLE(of, vpu_vdec_ext4_of_match);
 #endif
@@ -274,8 +276,8 @@ static struct platform_device venc_device =
 #ifdef CONFIG_OF
 static struct of_device_id vpu_venc_of_match[] =
 {
-	{ .compatible = "telechips,vpu_venc" },
-	{}
+		{ .compatible = "telechips,vpu_venc" },
+		{}
 };
 MODULE_DEVICE_TABLE(of, vpu_venc_of_match);
 #endif
@@ -306,8 +308,8 @@ static struct platform_device venc_ext_device =
 #ifdef CONFIG_OF
 static struct of_device_id vpu_venc_ext_of_match[] =
 {
-	{ .compatible = "telechips,vpu_venc_ext" },
-	{}
+		{ .compatible = "telechips,vpu_venc_ext" },
+		{}
 };
 MODULE_DEVICE_TABLE(of, vpu_venc_ext_of_match);
 #endif
@@ -338,8 +340,8 @@ static struct platform_device venc_ext2_device =
 #ifdef CONFIG_OF
 static struct of_device_id vpu_venc_ext2_of_match[] =
 {
-	{ .compatible = "telechips,vpu_venc_ext2" },
-	{}
+		{ .compatible = "telechips,vpu_venc_ext2" },
+		{}
 };
 MODULE_DEVICE_TABLE(of, vpu_venc_ext2_of_match);
 #endif
@@ -370,8 +372,8 @@ static struct platform_device venc_ext3_device =
 #ifdef CONFIG_OF
 static struct of_device_id vpu_venc_ext3_of_match[] =
 {
-	{ .compatible = "telechips,vpu_venc_ext3" },
-	{}
+		{ .compatible = "telechips,vpu_venc_ext3" },
+		{}
 };
 MODULE_DEVICE_TABLE(of, vpu_venc_ext3_of_match);
 #endif
@@ -402,8 +404,8 @@ static struct platform_device venc_ext4_device =
 #ifdef CONFIG_OF
 static struct of_device_id vpu_venc_ext4_of_match[] =
 {
-	{ .compatible = "telechips,vpu_venc_ext4" },
-	{}
+		{ .compatible = "telechips,vpu_venc_ext4" },
+		{}
 };
 MODULE_DEVICE_TABLE(of, vpu_venc_ext4_of_match);
 #endif
@@ -477,6 +479,11 @@ static void __exit vdev_cleanup(void)
 
 static int vdev_init(void)
 {
+	if (vmgr_is_loadable() > 0)
+	{
+		return -1;
+	}
+
 	printk("============> VPU Devices drivers initializing!!  Start -------\n");
 
 	platform_driver_register(&vmgr_driver);

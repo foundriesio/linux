@@ -35,6 +35,7 @@ unsigned long vmgr_4k_d2_get_int_flags(void);
 
 void vmgr_4k_d2_init_interrupt(void);
 int vmgr_4k_d2_BusPrioritySetting(int mode, int type);
+int vmgr_4k_d2_is_loadable(void);
 
 void vmgr_4k_d2_init_variable(void);
 
