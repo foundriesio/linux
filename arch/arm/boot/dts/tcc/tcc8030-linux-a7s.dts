@@ -54,7 +54,9 @@
 		videoinput1 = &videoinput1;
 		i2s0 = &i2s0;
 		adma0 = &adma0;
+#if defined(CONFIG_OVERLAY1)
 		tcc-overlay-drv1 = &tcc_overlay_drv1;
+#endif
 	};
 
 	cpus {
@@ -1211,22 +1213,22 @@
 	tcc_overlay_drv {
 		compatible = "telechips,tcc_overlay";
 		fbdisplay-overlay = <&fbdisplay>;
-		rdmas = <&vioc_rdma
-			 VIOC_RDMA00 VIOC_RDMA01 VIOC_RDMA02 VIOC_RDMA03
-			 VIOC_RDMA04 VIOC_RDMA05 VIOC_RDMA06 VIOC_RDMA07>;
+		rdmas = <&vioc_rdma VIOC_RDMA00 VIOC_RDMA01 VIOC_RDMA02 VIOC_RDMA03 VIOC_RDMA04 VIOC_RDMA05 VIOC_RDMA06 VIOC_RDMA07>;
 		wmixs = <&vioc_wmix VIOC_WMIX0 VIOC_WMIX1>;
 		rdma_init_layer = <1>;
 		status = "okay";
 	};
 
-tcc_overlay_drv1: tcc_overlay_drv@1 { //for scrshare
+#if defined(CONFIG_OVERLAY1)
+	tcc_overlay_drv1: tcc_overlay_drv@1 { //for scrshare
 		compatible = "telechips,tcc_overlay";
-		fbdisplay-overlay = <1>;
+		display_num = <0>;
 		rdmas = <&vioc_rdma VIOC_RDMA00 VIOC_RDMA01 VIOC_RDMA02 VIOC_RDMA03 VIOC_RDMA04 VIOC_RDMA05 VIOC_RDMA06 VIOC_RDMA07>;
 		wmixs = <&vioc_wmix VIOC_WMIX0 VIOC_WMIX1>;
+		rdma_init_layer = <2>;
 		status = "okay";
 	};
-
+#endif
 	switch_reverse {
 		compatible = "telechips,switch_reverse";
 		status = "okay";
