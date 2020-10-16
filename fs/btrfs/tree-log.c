@@ -4174,7 +4174,7 @@ static int log_extent_csums(struct btrfs_trans_handle *trans,
 						   struct btrfs_ordered_sum,
 						   list);
 		if (!ret)
-			ret = log_csums(trans, BTRFS_I(inode), log, sums);
+			ret = log_csums(trans, inode, log, sums);
 		list_del(&sums->list);
 		kfree(sums);
 	}
