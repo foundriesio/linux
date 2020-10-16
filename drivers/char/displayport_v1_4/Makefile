@@ -2,6 +2,9 @@
 # Makefile for the kernel character device drivers.
 #
 EXTRA_CFLAGS += -I$(srctree)/drivers/char/displayport_v1_4
+ifeq ($(CONFIG_DRM_TCC),y)
+EXTRA_CFLAGS += -I$(srctree)/drivers/gpu/drm/tcc
+endif
 
 obj-$(CONFIG_TCC_DP_DRIVER_V1_4) +=\
 	Dptx.o \

@@ -2,6 +2,9 @@
 # Makefile for the drm device driver.  This driver provides support for the
 # Direct Rendering Infrastructure (DRI) in XFree86 4.1.0 and higher.
 EXTRA_CFLAGS += -I$(srctree)/drivers/gpu/drm/tcc
+ifeq ($(CONFIG_TCC_DP_DRIVER_V1_4),y)
+EXTRA_CFLAGS += -I$(srctree)/drivers/char/displayport_v1_4
+endif
 
 tccdrm-y := tcc_drm_drv.o tcc_drm_crtc.o tcc_drm_fb.o \
 	tcc_drm_gem.o tcc_drm_plane.o
