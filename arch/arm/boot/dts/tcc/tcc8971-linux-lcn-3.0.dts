@@ -849,6 +849,8 @@
 		throttle_active_count = <0>;
 		throttle_passive_count = <5>;
 
+		threshold_temp = <85>;
+
 		cal_type = "TYPE_ONE_POINT_TRIMMING";
 		polling-delay-idle = <0>;
 		polling-delay-passive = <0>;
