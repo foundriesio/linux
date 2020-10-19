@@ -111,30 +111,30 @@
 
 // ENCODER on VPU
 #define INST_ENC_1ST_USE                (1)
-#define INST_ENC_1ST_IS_HEVC_TYPE       (1)
+#define INST_ENC_1ST_IS_HEVC_TYPE       (0)
 #define INST_ENC_1ST_VIDEO_WIDTH        (1920)       // 16x alignment
 #define INST_ENC_1ST_VIDEO_HEIGHT       (1088)       // 16x alignment
 #define INST_ENC_1ST_MAX_FRAMEBUFFERS   (8)          // 8 :: fixed value. ask right engineer if you want to change it.
 
-#define INST_ENC_2ND_USE                (1)
-#define INST_ENC_2ND_IS_HEVC_TYPE       (1)
-#define INST_ENC_2ND_VIDEO_WIDTH        (1920)       // 16x alignment
-#define INST_ENC_2ND_VIDEO_HEIGHT       (1088)       // 16x alignment
+#define INST_ENC_2ND_USE                (0)
+#define INST_ENC_2ND_IS_HEVC_TYPE       (0)
+#define INST_ENC_2ND_VIDEO_WIDTH        (1280)       // 16x alignment
+#define INST_ENC_2ND_VIDEO_HEIGHT       (720)        // 16x alignment
 #define INST_ENC_2ND_MAX_FRAMEBUFFERS   (8)          // 8 :: fixed value. ask right engineer if you want to change it.
 
-#define INST_ENC_3RD_USE                (1)
-#define INST_ENC_3RD_IS_HEVC_TYPE       (1)
+#define INST_ENC_3RD_USE                (0)
+#define INST_ENC_3RD_IS_HEVC_TYPE       (0)
 #define INST_ENC_3RD_VIDEO_WIDTH        (1920)       // 16x alignment
 #define INST_ENC_3RD_VIDEO_HEIGHT       (1088)       // 16x alignment
 #define INST_ENC_3RD_MAX_FRAMEBUFFERS   (8)          // 8 :: fixed value. ask right engineer if you want to change it.
 
-#define INST_ENC_4TH_USE                (1)
-#define INST_ENC_4TH_IS_HEVC_TYPE       (1)
+#define INST_ENC_4TH_USE                (0)
+#define INST_ENC_4TH_IS_HEVC_TYPE       (0)
 #define INST_ENC_4TH_VIDEO_WIDTH        (1920)       // 16x alignment
-#define INST_ENC_4TH_VIDEO_HEIGHT       (1088)       // 16x alignment
+#define INST_ENC_4TH_VIDEO_HEIGHT       (1080)       // 16x alignment
 #define INST_ENC_4TH_MAX_FRAMEBUFFERS   (8)          // 8 :: fixed value. ask right engineer if you want to change it.
 
-#define INST_ENC_5TH_USE                (1)
+#define INST_ENC_5TH_USE                (0)
 #define INST_ENC_5TH_IS_HEVC_TYPE       (0)
 #define INST_ENC_5TH_VIDEO_WIDTH        (1920)       // 16x alignment
 #define INST_ENC_5TH_VIDEO_HEIGHT       (1088)       // 16x alignment
