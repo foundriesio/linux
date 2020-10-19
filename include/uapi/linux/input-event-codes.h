@@ -644,19 +644,6 @@
  */
 #define KEY_DATA			0x277
 #define KEY_ONSCREEN_KEYBOARD		0x278
-/*
- * Telechips Key Code
- */
-#define KEY_SCAN		0x280
-#define KEY_DISP		0x281
-#define KEY_TRACKUP		0x282
-#define KEY_TRACKDOWN	0x283
-#define KEY_FOLDERUP	0x284
-#define KEY_FOLDERDOWN	0x285
-#define KEY_SEEKUP		0x286
-#define KEY_SEEKDOWN	0x287
-#define KEY_PHONEON		0x288
-#define KEY_PHONEOFF	0x289
 
 #define BTN_TRIGGER_HAPPY		0x2c0
 #define BTN_TRIGGER_HAPPY1		0x2c0
