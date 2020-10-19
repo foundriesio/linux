@@ -432,7 +432,7 @@ static int pvlbjt_020_01_set_power(struct lcd_panel *panel, int on, struct tcc_d
                         }
                         break;
         }
-        return 0
+        return 0;
 err_out:
         return ret;
 }
