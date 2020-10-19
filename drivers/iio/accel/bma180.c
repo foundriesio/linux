@@ -570,7 +570,7 @@ static const struct iio_enum bma180_power_mode_enum = {
 };
 
 static const struct iio_chan_spec_ext_info bma180_ext_info[] = {
-	IIO_ENUM("power_mode", true, &bma180_power_mode_enum),
+	IIO_ENUM("power_mode", IIO_SHARED_BY_TYPE, &bma180_power_mode_enum),
 	IIO_ENUM_AVAILABLE("power_mode", &bma180_power_mode_enum),
 	{ },
 };
