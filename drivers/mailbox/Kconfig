@@ -222,12 +222,6 @@ config TCC_SEC_IPC
 	  Say Y here if you want Telechips secure ipc,
 	  using ARM series to be accessible as /dev/sec-ipc device.
 
-config TCC_MAILBOX_SUSPEND
-	tristate "Telechips suspend Mailbox"
-	depends on OF
-	help
-		Mailbox implementation for the Telechips suspend communication.
-
 config TCC_SC_MAILBOX
 	tristate "Telechips Mailbox for Storage Core"
 	depends on OF
