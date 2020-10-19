@@ -324,32 +324,37 @@
 		vbus-gpio = <&gphdmi 3 0>;
 	};
 
-	/* SD CARD */
-	vqmmc_sd: vqmmc_sd {
-		compatible = "regulator-fixed";
-		regulator-name = "vqmmc_sd";
-		regulator-min-microvolt = <3300000>;
-		regulator-max-microvolt = <3300000>;
-		regulator-always-on;
-	};
-
+	/* SD Card Slot */
 	sdhc@76020000 {
 		status = "okay";
-		compatible = "telechips,tcc897x-sdhci";
 		controller-id = <0>;
 		bus-width = <4>;
 		max-frequency = <50000000>;
-		pinctrl-names = "default";
-		pinctrl-0 = <&sd5_clk &sd5_cmd &sd5_bus4>;
-
-		broken-cd;
 		cd-inverted;
-		keep-power-in-suspend;
-
-		wp-gpios = <&gpf 20 0>;
+		/*non-removable;*/
 		cd-gpios = <&gpf 21 0>;
+		/*broken-cd;*/
+		/*wp-inverted;*/
+		wp-gpios = <&gpf 20 0>;
+		pinctrl-names = "default", "active";
+		pinctrl-0 = <&sd5_clk_idle &sd5_cmd_idle &sd5_bus4_idle>;
+		pinctrl-1 = <&sd5_clk &sd5_cmd &sd5_bus4>;
+		/*vctrl-gpio = <&gpsd 10 0>;*/
+		/* pwr-gpio = <&gpb 28 0>; */ /* NC */
 
-		vqmmc-supply = <&vqmmc_sd>;
+		cap-sdio-irq;
+		//cd-polling;
+
+		cap2-no-sleep-cmd;
+		cap-bus-width-test;
+
+		/*High-speed SDR*/
+		cap-sd-highspeed;
+		cap-mmc-highspeed;
+
+		/*keep-power-in-suspend;*/
+		/*enable-sdio-wakeup;*/
+		/*cap-power-off-card;*/
 	};
 
 	sdhc@76020400 { // Wi-Fi tcm3840

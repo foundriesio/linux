@@ -1246,7 +1246,7 @@ static const struct sdhci_tcc_soc_data soc_data_tcc897x = {
 	.set_channel_configs = sdhci_tcc897x_set_channel_configs,
 	.set_core_clock = NULL,
 	.set_channel_itap = NULL,
-	.sdhci_tcc_quirks = 0,
+	.tcc_quirks = TCC_QUIRK_NO_AUTO_GATING,
 };
 
 static const struct sdhci_tcc_soc_data soc_data_tcc803x = {
@@ -1259,7 +1259,7 @@ static const struct sdhci_tcc_soc_data soc_data_tcc803x = {
 #else
 	.set_channel_itap = NULL,
 #endif
-	.sdhci_tcc_quirks = 0,
+	.tcc_quirks = 0,
 };
 
 static const struct sdhci_tcc_soc_data soc_data_tcc805x = {
@@ -1272,7 +1272,7 @@ static const struct sdhci_tcc_soc_data soc_data_tcc805x = {
 #else
 	.set_channel_itap = NULL,
 #endif
-	.sdhci_tcc_quirks = 0,
+	.tcc_quirks = 0,
 };
 
 static const struct sdhci_tcc_soc_data soc_data_tcc = {
@@ -1285,7 +1285,7 @@ static const struct sdhci_tcc_soc_data soc_data_tcc = {
 #else
 	.set_channel_itap = NULL,
 #endif
-	.sdhci_tcc_quirks = 0,
+	.tcc_quirks = 0,
 };
 
 static const struct of_device_id sdhci_tcc_of_match_table[7] = {
@@ -1656,11 +1656,12 @@ static int sdhci_tcc_probe(struct platform_device *pdev)
 	}
 
 #if defined(CONFIG_DEBUG_FS)
-
-	tcc->tap_dly_dbgfs = sdhci_tcc_register_debugfs_file(host, "tap_delay", 0644u,
-			&sdhci_tcc_fops_tap_dly);
-	if(tcc->tap_dly_dbgfs == NULL) {
-		dev_err(&pdev->dev, "[ERROR][SDHC] failed to create tap_delay debugfs\n");
+	if(of_device_is_compatible(pdev->dev.of_node, "telechips,tcc897x-sdhci") == 0) {
+		tcc->tap_dly_dbgfs = sdhci_tcc_register_debugfs_file(host, "tap_delay", 0644u,
+				&sdhci_tcc_fops_tap_dly);
+		if(tcc->tap_dly_dbgfs == NULL) {
+			dev_err(&pdev->dev, "[ERROR][SDHC] failed to create tap_delay debugfs\n");
+		}
 	}
 
 	if(of_device_is_compatible(pdev->dev.of_node, "telechips,tcc803x-sdhci") != 0) {
@@ -1684,12 +1685,14 @@ static int sdhci_tcc_probe(struct platform_device *pdev)
 		}
 	}
 
-	tcc->clk_gating_dbgfs = sdhci_tcc_register_debugfs_file(host, "clock_gating", 0444u,
-			&sdhci_tcc_fops_clk_gating);
-	if(tcc->clk_gating_dbgfs == NULL) {
-		dev_err(&pdev->dev, "[ERROR][SDHC] failed to create clock_gating debugfs\n");
-	} else {
-		dev_info(&pdev->dev, "[INFO][SDHC] support auto clock gating accessing\n");
+	if ((tcc->soc_data->tcc_quirks & TCC_QUIRK_NO_AUTO_GATING) == 0U) {
+		tcc->clk_gating_dbgfs = sdhci_tcc_register_debugfs_file(host, "clock_gating", 0444u,
+				&sdhci_tcc_fops_clk_gating);
+		if(tcc->clk_gating_dbgfs == NULL) {
+			dev_err(&pdev->dev, "[ERROR][SDHC] failed to create clock_gating debugfs\n");
+		} else {
+			dev_info(&pdev->dev, "[INFO][SDHC] support auto clock gating accessing\n");
+		}
 	}
 #endif
 

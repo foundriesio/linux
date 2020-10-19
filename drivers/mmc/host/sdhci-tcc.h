@@ -151,13 +151,16 @@
 #define SDHCI_TCC_VENDOR_REGISTER	(0x78)
 	#define VENDOR_ENHANCED_STROBE		(1u << 0u)
 
+/* Teleships Quirks */
+#define TCC_QUIRK_NO_AUTO_GATING (1U << 0)
+
 struct sdhci_tcc_soc_data {
 	const struct sdhci_pltfm_data *pdata;
 	int (*parse_channel_configs)(struct platform_device *, struct sdhci_host *);
 	void (*set_channel_configs)(struct sdhci_host *);
 	void (*set_channel_itap)(struct sdhci_host *, u32 itap);
 	int (*set_core_clock)(struct sdhci_host *);
-	u32 sdhci_tcc_quirks;
+	u32 tcc_quirks;
 };
 
 struct sdhci_tcc {
