@@ -189,7 +189,7 @@ menuconfig VIDEO_TCC_VOUT
     select VIDEOBUF_DMA_SG
     select VIDEOBUF_VMALLOC
     depends on VIDEO_DEV
-    default y
+    default n
     ---help---
       Telechip VOUT (Video OUTput) driver of VIOC (Video Input/Output Controller).
       Also this driver supports v4l2 video capture driver.
