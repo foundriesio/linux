@@ -144,14 +144,12 @@ struct tccvin_format_desc *tccvin_format_by_guid(const __u32 guid)
 {
 	unsigned int len = ARRAY_SIZE(tccvin_fmts);
 	unsigned int i;
-	FUNCTION_IN
 
 	for (i = 0; i < len; ++i) {
 		if (guid == tccvin_fmts[i].guid)
 			return &tccvin_fmts[i];
 	}
 
-	FUNCTION_OUT
 	return NULL;
 }
 
@@ -159,25 +157,23 @@ struct tccvin_format_desc *tccvin_format_by_fcc(const __u32 fcc)
 {
 	unsigned int len = ARRAY_SIZE(tccvin_fmts);
 	unsigned int i;
-	FUNCTION_IN
 
 	for (i = 0; i < len; ++i) {
 		if (fcc == tccvin_fmts[i].fcc)
 			return &tccvin_fmts[i];
 	}
 
-	FUNCTION_OUT
 	return NULL;
 }
 
 int tccvin_convert_to_multi_planes_buffer_addresses(unsigned int width, unsigned int height, unsigned int fcc, unsigned long * addr0, unsigned long * addr1, unsigned long * addr2) {
 	unsigned long	addr0len	= 0;
 	unsigned long	addr1len	= 0;
-	int				ret			= 0;
+	int		ret		= 0;
 
 	switch(fcc) {
 	/* sepatated (Y, U, V planar) */
-	case V4L2_PIX_FMT_YVU420:		// 'YV12' 12 YVU 4:2:0
+	case V4L2_PIX_FMT_YVU420:	// 'YV12' 12 YVU 4:2:0
 #if 0
 		addr0len	= width * height;
 		addr1len	= (width / 2) * (height / 2);
@@ -185,28 +181,28 @@ int tccvin_convert_to_multi_planes_buffer_addresses(unsigned int width, unsigned
 		*addr1		= *addr2 + addr1len;
 		break;
 #endif
-	case V4L2_PIX_FMT_YUV420:		// 'YU12' 12 YUV 4:2:0
+	case V4L2_PIX_FMT_YUV420:	// 'YU12' 12 YUV 4:2:0
 		addr0len	= width * height;
 		addr1len	= (width / 2) * (height / 2);
 		*addr1		= *addr0 + addr0len;
 		*addr2		= *addr1 + addr1len;
 		break;
-	case V4L2_PIX_FMT_YUV422P:		// '422P' 16 YVU422 Planar
+	case V4L2_PIX_FMT_YUV422P:	// '422P' 16 YVU422 Planar
 		break;
 
 	/* interleaved (Y palnar, UV planar) */
-	case V4L2_PIX_FMT_NV12:			// 'NV12' 12 Y/CbCr 4:2:0
-	case V4L2_PIX_FMT_NV21:			// 'NV21' 12 Y/CrCb 4:2:0
-	case V4L2_PIX_FMT_NV16:			// 'NV16' 16 Y/CbCr 4:2:2
-	case V4L2_PIX_FMT_NV61:			// 'NV61' 16 Y/CrCb 4:2:2
+	case V4L2_PIX_FMT_NV12:		// 'NV12' 12 Y/CbCr 4:2:0
+	case V4L2_PIX_FMT_NV21:		// 'NV21' 12 Y/CrCb 4:2:0
+	case V4L2_PIX_FMT_NV16:		// 'NV16' 16 Y/CbCr 4:2:2
+	case V4L2_PIX_FMT_NV61:		// 'NV61' 16 Y/CrCb 4:2:2
 		addr0len	= width * height;
 		*addr1		= *addr0 + addr0len;
 		*addr2		= 0;
 		break;
 
 	default:
-		*addr1	= 0;
-		*addr2	= 0;
+		*addr1		= 0;
+		*addr2		= 0;
 		break;
 	}
 
@@ -227,40 +223,15 @@ int tccvin_convert_to_multi_planes_buffer_addresses(unsigned int width, unsigned
  *	-ENODEV:	a certain device node is not found.
  */
 static int tccvin_parse_device_tree(struct tccvin_streaming * vdev) {
-	struct device_node		* main_node	= vdev->dev->pdev->dev.of_node;
-	struct device_node		* vsrc_node = NULL;
-	struct device_node		* vioc_node	= NULL;
-	struct device_node		* np_fb = NULL, * np_fb_1st = NULL;
+	struct device_node	* main_node	= vdev->dev->pdev->dev.of_node;
+	struct device_node	* vioc_node	= NULL;
+	struct device_node	* np_fb		= NULL;
+	struct device_node	* np_fb_1st	= NULL;
 	volatile void __iomem	* address	= NULL;
 
 	if(main_node == NULL) {
 		logd("tcc_camera device node is not found.\n");
 		return -ENODEV;
-	}
-
-	vsrc_node = of_parse_phandle(main_node, "videosource", 0);
-	if(vsrc_node != NULL) {
-		struct device_node *i2c_node = of_get_parent(vsrc_node);
-		int addr;
-		struct property *pp = NULL;
-		char *strtoken = "i2c";
-
-		if(i2c_node) {
-			of_property_read_u32(vsrc_node, "reg", &addr);
-			for_each_property_of_node(of_aliases, pp) {
-				if(strcmp(pp->value, i2c_node->full_name) == 0) {
-					sprintf(vdev->dev->subdev_name, "%s-%04x", strstr(pp->name, strtoken) + strlen(strtoken), addr);
-					logd("subdev name: %s", vdev->dev->subdev_name);
-				}
-			}
-		} else {
-			loge("Failed to i2c node\n");
-		}
-
-		logd("save videosource i2c value(%s) to tccvindev\n", vdev->dev->subdev_name);
-	} else {
-		loge("\"videosource\" node is not found.\n");
-//		return -ENODEV;
 	}
 
 	// VIN
@@ -293,6 +264,9 @@ static int tccvin_parse_device_tree(struct tccvin_streaming * vdev) {
 
 #ifdef CONFIG_OVERLAY_PGL
 	// Parking Guide Line
+	of_property_read_u32_index(main_node, "use_pgl", 0, &vdev->cif.use_pgl);
+	dlog("%10s[%2d]: %d\n", "usage status pgl", vdev->vid_dev.minor, vdev->cif.use_pgl);
+
 	vdev->cif.vioc_path.pgl = -1;
 	// VIDEO_IN04~06 don't have RDMA
 	if(vdev->cif.vioc_path.vin >= VIOC_VIN00 && vdev->cif.vioc_path.vin <= VIOC_VIN30) {
@@ -305,7 +279,7 @@ static int tccvin_parse_device_tree(struct tccvin_streaming * vdev) {
 			}
 		} else {
 			logw("\"rdma\" node is not found.\n");
-//			return -ENODEV;
+			return -ENODEV;
 		}
 	}
 #endif//CONFIG_OVERLAY_PGL
@@ -495,8 +469,6 @@ static int tccvin_reset_vioc_path(struct tccvin_streaming * vdev) {
 #endif
 	int						ret = 0;
 
-	FUNCTION_IN
-
 	nComponent = sizeof(vioc_component) / sizeof(vioc_component[0]);
 
 #if 0//defined(CONFIG_TCC803X_CA7S) && defined(CONFIG_VIOC_MGR)
@@ -565,8 +537,6 @@ err_viocmg:
 #if 0//defined(CONFIG_TCC803X_CA7S) && defined(CONFIG_VIOC_MGR)
 end:
 #endif//defined(CONFIG_TCC803X_CA7S) && defined(CONFIG_VIOC_MGR)
-
-	FUNCTION_OUT
 	return ret;
 }
 
@@ -624,6 +594,46 @@ static int tccvin_check_cif_port_mapping(struct tccvin_streaming * vdev) {
 }
 #endif
 
+#if defined(CONFIG_OVERLAY_PGL) && !defined(CONFIG_OVERLAY_DPGL)
+/*
+ * tccvin_set_pgl
+ *
+ * - DESCRIPTION:
+ *	Set rdma component to read parking guideline image
+ *
+ * - PARAMETERS:
+ *	@vdev:	video-input path device's data
+ *
+ * - RETURNS:
+ *	0:		Success
+ */
+int tccvin_set_pgl(struct tccvin_streaming * vdev) {
+	volatile void __iomem	* pRDMA		= VIOC_RDMA_GetAddress(vdev->cif.vioc_path.pgl);
+
+	unsigned int	width		= vdev->cur_frame->wWidth;
+	unsigned int	height		= vdev->cur_frame->wHeight;
+	unsigned int	format		= PGL_FORMAT;
+	unsigned int	buf_addr	= vdev->cif.pmap_pgl.base;
+
+	logd("RDMA: 0x%p, size[%d x %d], format[%d]. \n", pRDMA, width, height, format);
+
+	VIOC_RDMA_SetImageFormat(pRDMA, format);
+	VIOC_RDMA_SetImageSize(pRDMA, width, height);
+	VIOC_RDMA_SetImageOffset(pRDMA, format, width);
+	VIOC_RDMA_SetImageBase(pRDMA, buf_addr, 0, 0);
+//	VIOC_RDMA_SetImageAlphaEnable(pRDMA, ON);
+//	VIOC_RDMA_SetImageAlpha(pRDMA, 0xff, 0xff);
+	if(vdev->cif.use_pgl == 1) {
+		VIOC_RDMA_SetImageEnable(pRDMA);
+		VIOC_RDMA_SetImageUpdate(pRDMA);
+	} else {
+		VIOC_RDMA_SetImageDisable(pRDMA);
+	}
+
+	return 0;
+}
+#endif//CONFIG_OVERLAY_PGL
+
 /*
  * tccvin_set_vin
  *
@@ -638,31 +648,40 @@ static int tccvin_check_cif_port_mapping(struct tccvin_streaming * vdev) {
  */
 static int tccvin_set_vin(struct tccvin_streaming * vdev) {
 	volatile void __iomem	* pVIN		= VIOC_VIN_GetAddress(vdev->cif.vioc_path.vin);
-	videosource_format_t	* vs_info	= vdev->cif.videosource_info;
-
-	unsigned int	data_order			= vs_info->data_order;
-	unsigned int	data_format			= vs_info->data_format;
-	unsigned int	gen_field_en		= vs_info->gen_field_en;
-
-	unsigned int	de_active_low		= vs_info->de_active_low;
-	unsigned int	field_bfield_low	= vs_info->field_bfield_low;
-	unsigned int	vs_active_low		= !!(vs_info->polarities & V4L2_DV_VSYNC_POS_POL);
-	unsigned int	hs_active_low		= !!(vs_info->polarities & V4L2_DV_HSYNC_POS_POL);
-	unsigned int	pxclk_pol			= !!(vs_info->polarities & V4L2_DV_PCLK_POS_POL);
-	unsigned int	vs_mask				= vs_info->vs_mask;
-	unsigned int	hsde_connect_en		= vs_info->hsde_connect_en;
-	unsigned int	intpl_en			= vs_info->intpl_en;
-	unsigned int	conv_en				= vs_info->conv_en;
-	unsigned int	interlaced			= !!(vs_info->interlaced & V4L2_DV_INTERLACED);
-	unsigned int	width				= vs_info->width;
-	unsigned int	height				= vs_info->height >> interlaced;
+	struct v4l2_dv_timings	* dv_timings	= &vdev->dv_timings;
+	struct v4l2_bt_timings	* bt_timings	= &dv_timings->bt;
+	unsigned int		data_order	= vdev->vs_sync_info.data_order;
+	unsigned int		data_format	= vdev->vs_sync_info.data_format;
+	unsigned int		gen_field_en	= vdev->vs_sync_info.gen_field_en;
+	unsigned int		de_active_low	= vdev->vs_sync_info.de_active_low;
+	unsigned int		field_bfield_low= vdev->vs_sync_info.field_bfield_low;
+	unsigned int		vs_active_low	= !!(bt_timings->polarities & V4L2_DV_VSYNC_POS_POL);
+	unsigned int		hs_active_low	= !!(bt_timings->polarities & V4L2_DV_HSYNC_POS_POL);
+	unsigned int		pxclk_pol	= vdev->vs_sync_info.pclk_polarity;
+	unsigned int		vs_mask		= vdev->vs_sync_info.vs_mask;
+	unsigned int		hsde_connect_en	= vdev->vs_sync_info.intpl_en;
+	unsigned int		intpl_en	= vdev->vs_sync_info.intpl_en;
+	unsigned int		conv_en		= vdev->vs_sync_info.conv_en;
+	unsigned int		interlaced	= !!(bt_timings->interlaced & V4L2_DV_INTERLACED);
+	unsigned int		width		= bt_timings->width;
+	unsigned int		height		= bt_timings->height >> interlaced;
 #if defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X)
-	unsigned int	se					= vs_info->se;
-	unsigned int	fvs 				= vs_info->fvs;
+	unsigned int		stream_enable	= vdev->vs_sync_info.stream_enable;
+	unsigned int		flush_vsync	= vdev->vs_sync_info.flush_vsync;
 #endif//defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X)
 
-	FUNCTION_IN
 	logd("VIN: 0x%p, Source Size - width: %d, height: %d\n", pVIN, width, height);
+
+	loge("data_order:	%d\n", data_order);
+	loge("data_format:	%d\n", data_format);
+	loge("stream_enable:	%d\n", stream_enable);
+	loge("gen_field_en:	%d\n", gen_field_en);
+	loge("de_active_low:	%d\n", de_active_low);
+	loge("vs_mask:		%d\n", vs_mask);
+	loge("hsde_connect_en:	%d\n", hsde_connect_en);
+	loge("intpl_en:		%d\n", intpl_en);
+	loge("conv_en:		%d\n", conv_en);
+	loge("flush_vsync:	%d\n", flush_vsync);
 
 	VIOC_VIN_SetSyncPolarity(pVIN, hs_active_low, vs_active_low, field_bfield_low, de_active_low, gen_field_en, pxclk_pol);
 	VIOC_VIN_SetCtrl(pVIN, conv_en, hsde_connect_en, vs_mask, data_format, data_order);
@@ -674,21 +693,21 @@ static int tccvin_set_vin(struct tccvin_streaming * vdev) {
 	VIOC_VIN_SetY2RMode(pVIN, 2);
 
 #if defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X)
-	VIOC_VIN_SetSEEnable(pVIN, se);
-	VIOC_VIN_SetFlushBufferEnable(pVIN, fvs);
+	VIOC_VIN_SetSEEnable(pVIN, stream_enable);
+	VIOC_VIN_SetFlushBufferEnable(pVIN, flush_vsync);
 #endif//defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X)
 
-	logd("vdev->cif.videosource_format.data_format: 0x%08x, FMT_YUV422_16BIT: 0x%08x, FMT_YUV422_8BIT: 0x%08x\n", vdev->cif.videosource_info->data_format, FMT_YUV422_16BIT, FMT_YUV422_8BIT);
+	logd("data_format: 0x%08x, FMT_YUV422_16BIT: 0x%08x, FMT_YUV422_8BIT: 0x%08x\n", data_format, FMT_YUV422_16BIT, FMT_YUV422_8BIT);
 	logd("vdev->cur_format->fcc: 0x%08x, V4L2_PIX_FMT_RGB24: 0x%08x, V4L2_PIX_FMT_RGB32: 0x%08x\n", vdev->cur_format->fcc, V4L2_PIX_FMT_RGB24, V4L2_PIX_FMT_RGB32);
 
-	if( ((vdev->cif.videosource_info->data_format == FMT_YUV422_16BIT) ||
-	    (vdev->cif.videosource_info->data_format == FMT_YUV422_8BIT) ||
-	    (vdev->cif.videosource_info->data_format == FMT_YUVK4444_16BIT) ||
-	    (vdev->cif.videosource_info->data_format == FMT_YUVK4224_24BIT) ) && \
-		((vdev->cur_format->fcc == V4L2_PIX_FMT_RGB24) ||	\
+	if(((data_format == FMT_YUV422_16BIT)	|| \
+	    (data_format == FMT_YUV422_8BIT)	|| \
+	    (data_format == FMT_YUVK4444_16BIT)	|| \
+	    (data_format == FMT_YUVK4224_24BIT)) && \
+		((vdev->cur_format->fcc == V4L2_PIX_FMT_RGB24) || \
 		 (vdev->cur_format->fcc == V4L2_PIX_FMT_RGB32))) {
-		logi("vdev->cif.videosource_format.interlaced: 0x%08x\n", vdev->cif.videosource_info->interlaced);
-		if(!((vdev->cif.videosource_info->interlaced & V4L2_DV_INTERLACED) && (vdev->cif.vioc_path.viqe != -1)))
+		logi("interlaced: %d\n", interlaced);
+		if(!((interlaced) && (vdev->cif.vioc_path.viqe != -1)))
 			VIOC_VIN_SetY2REnable(pVIN, ON);
 	} else {
 		VIOC_VIN_SetY2REnable(pVIN, OFF);
@@ -696,7 +715,6 @@ static int tccvin_set_vin(struct tccvin_streaming * vdev) {
 
 	VIOC_VIN_SetEnable(pVIN, ON);
 
-	FUNCTION_OUT
 	return 0;
 }
 
@@ -713,36 +731,38 @@ static int tccvin_set_vin(struct tccvin_streaming * vdev) {
  *	0:		Success
  */
 static int tccvin_set_deinterlacer(struct tccvin_streaming * vdev) {
-	int		ret	= 0;
-
-	FUNCTION_IN
+	struct tccvin_device	*dev		= vdev->dev;
+	struct v4l2_dv_timings	* dv_timings	= &vdev->dv_timings;
+	struct v4l2_bt_timings	* bt_timings	= &dv_timings->bt;
+	unsigned int		data_format	= vdev->vs_sync_info.data_format;
+	int			ret		= 0;
 
 	if(vdev->cif.vioc_path.viqe != -1) {
-		volatile void __iomem	* pVIQE			= VIOC_VIQE_GetAddress(vdev->cif.vioc_path.viqe);
+		volatile void __iomem	* pVIQE		= VIOC_VIQE_GetAddress(vdev->cif.vioc_path.viqe);
 
-		unsigned int			interlaced		= !!(vdev->cif.videosource_info->interlaced & V4L2_DV_INTERLACED);
-		unsigned int			width			= vdev->cif.videosource_info->width;
-		unsigned int			height			= vdev->cif.videosource_info->height >> interlaced;
+		unsigned int		interlaced	= !!(bt_timings->interlaced & V4L2_DV_INTERLACED);
+		unsigned int		width		= bt_timings->width;
+		unsigned int		height		= bt_timings->height >> interlaced;
 
-		unsigned int			viqe_width		= 0;
-		unsigned int			viqe_height		= 0;
-		unsigned int			format			= VIOC_VIQE_FMT_YUV422;
-		unsigned int			bypass_deintl	= VIOC_VIQE_DEINTL_MODE_3D;
-		unsigned int			offset			= width * height * 2 * 2;
-		unsigned int			deintl_base0	= vdev->cif.pmap_viqe.base;
-		unsigned int			deintl_base1	= deintl_base0 + offset;
-		unsigned int			deintl_base2	= deintl_base1 + offset;
-		unsigned int			deintl_base3	= deintl_base2 + offset;
+		unsigned int		viqe_width	= 0;
+		unsigned int		viqe_height	= 0;
+		unsigned int		format		= VIOC_VIQE_FMT_YUV422;
+		unsigned int		bypass_deintl	= VIOC_VIQE_DEINTL_MODE_3D;
+		unsigned int		offset		= width * height * 2 * 2;
+		unsigned int		deintl_base0	= vdev->cif.pmap_viqe.base;
+		unsigned int		deintl_base1	= deintl_base0 + offset;
+		unsigned int		deintl_base2	= deintl_base1 + offset;
+		unsigned int		deintl_base3	= deintl_base2 + offset;
 
-		unsigned int			cdf_lut_en		= OFF;
-		unsigned int			his_en			= OFF;
-		unsigned int			gamut_en		= OFF;
-		unsigned int			d3d_en			= OFF;
-		unsigned int			deintl_en		= ON;
+		unsigned int		cdf_lut_en	= OFF;
+		unsigned int		his_en		= OFF;
+		unsigned int		gamut_en	= OFF;
+		unsigned int		d3d_en		= OFF;
+		unsigned int		deintl_en	= ON;
 
-//		struct device_node		* node			= NULL;
-//		unsigned int			* viqe_set_reg1	= NULL;
-//		unsigned int			* viqe_set_reg2	= NULL;
+//		struct device_node	* node		= NULL;
+//		unsigned int		* viqe_set_reg1	= NULL;
+//		unsigned int		* viqe_set_reg2	= NULL;
 
 		logd("VIQE: 0x%p, Source Size - width: %d, height: %d\n", pVIQE, width, height);
 
@@ -761,10 +781,10 @@ static int tccvin_set_deinterlacer(struct tccvin_streaming * vdev) {
 		if(vdev->cif.vioc_path.vin <= VIOC_VIN30) {
 			VIOC_CONFIG_PlugIn(vdev->cif.vioc_path.viqe, vdev->cif.vioc_path.vin);
 
-			if( ((vdev->cif.videosource_info->data_format == FMT_YUV422_16BIT) ||
-			    (vdev->cif.videosource_info->data_format == FMT_YUV422_8BIT) ||
-			    (vdev->cif.videosource_info->data_format == FMT_YUVK4444_16BIT) ||
-			    (vdev->cif.videosource_info->data_format == FMT_YUVK4224_24BIT) ) && \
+			if(((data_format == FMT_YUV422_16BIT) ||
+			    (data_format == FMT_YUV422_8BIT) ||
+			    (data_format == FMT_YUVK4444_16BIT) ||
+			    (data_format == FMT_YUVK4224_24BIT)) && \
 				((vdev->cur_format->fcc == V4L2_PIX_FMT_RGB24) ||	\
 				 (vdev->cur_format->fcc == V4L2_PIX_FMT_RGB32))) {
 				VIOC_VIQE_SetImageY2RMode(pVIQE, 2);
@@ -785,7 +805,6 @@ static int tccvin_set_deinterlacer(struct tccvin_streaming * vdev) {
 		ret = -1;
 	}
 
-	FUNCTION_OUT
 	return ret;
 }
 
@@ -802,35 +821,35 @@ static int tccvin_set_deinterlacer(struct tccvin_streaming * vdev) {
  * - RETURNS:
  *	0:		Success
  */
-static int tccvin_set_scaler(tccvin_cif_t * cif, struct tccvin_frame *frame) {
+static int tccvin_set_scaler(struct tccvin_streaming * vdev, struct tccvin_frame *frame) {
+	struct v4l2_dv_timings	* dv_timings	= &vdev->dv_timings;
+	struct v4l2_bt_timings	* bt_timings	= &dv_timings->bt;
+	tccvin_cif_t		* cif		= &vdev->cif;
 	volatile void __iomem	* pSC		= VIOC_SC_GetAddress(cif->vioc_path.scaler);
 
 	unsigned int	width	= frame->wWidth;
 	unsigned int	height	= frame->wHeight;
 
-	unsigned int	crop_x	= cif->videosource_info->crop_x;
-	unsigned int	crop_y	= cif->videosource_info->crop_y;
+	unsigned int	crop_x	= 0;
+	unsigned int	crop_y	= 0;
+	unsigned int	crop_w	= 0;
+	unsigned int	crop_h	= 0;
 
-	unsigned int	crop_w	= cif->videosource_info->crop_w;
-	unsigned int	crop_h	= cif->videosource_info->crop_h;
-
-	FUNCTION_IN
 	logd("SC: 0x%p, Output Size - width: %d, height: %d\n", pSC, width, height);
 
-	if((cif->videosource_info->width != frame->wWidth || cif->videosource_info->height != frame->wHeight) || \
-			(crop_w != 0 || crop_h != 0)) {
-			// Plug the scaler in
-			VIOC_CONFIG_PlugIn(cif->vioc_path.scaler, cif->vioc_path.vin);
+	if((bt_timings->width != width || bt_timings->height != width) || \
+		(crop_w != 0 || crop_h != 0)) {
+		// Plug the scaler in
+		VIOC_CONFIG_PlugIn(cif->vioc_path.scaler, cif->vioc_path.vin);
 
-			// Configure the scaler
-			VIOC_SC_SetBypass(pSC, OFF);
-			VIOC_SC_SetDstSize(pSC, width + crop_w, height + crop_h + 2);		// workaround: scaler margin
-			VIOC_SC_SetOutPosition(pSC, crop_x, crop_y);
-			VIOC_SC_SetOutSize(pSC, width, height);
-			VIOC_SC_SetUpdate(pSC);
+		// Configure the scaler
+		VIOC_SC_SetBypass(pSC, OFF);
+		VIOC_SC_SetDstSize(pSC, width + crop_w, height + crop_h + 2);		// workaround: scaler margin
+		VIOC_SC_SetOutPosition(pSC, crop_x, crop_y);
+		VIOC_SC_SetOutSize(pSC, width, height);
+		VIOC_SC_SetUpdate(pSC);
 	}
 
-	FUNCTION_OUT
 	return 0;
 }
 
@@ -861,7 +880,6 @@ static int tccvin_set_wmixer(struct tccvin_streaming * vdev) {
 	unsigned int key_mask_B	= ((PGL_BGM_B >> 3) << 3 );
 #endif//CONFIG_OVERLAY_PGL
 
-	FUNCTION_IN
 	logd("WMIXer: 0x%p, Size - width: %d, height: %d\n", pWMIXer, width, height);
 
 	// Configure the wmixer
@@ -875,7 +893,6 @@ static int tccvin_set_wmixer(struct tccvin_streaming * vdev) {
 	VIOC_CONFIG_WMIXPath(vdev->cif.vioc_path.vin, OFF);	// ON: Mixing mode / OFF: Bypass mode
 #endif
 
-	FUNCTION_OUT
 	return 0;
 }
 
@@ -907,7 +924,6 @@ static int tccvin_set_wdma(struct tccvin_streaming * vdev) {
 	unsigned long	addr1	= 0;
 	unsigned long	addr2	= 0;
 
-	FUNCTION_IN
 	logd("WDMA: 0x%p, size[%d x %d], format[%d]. \n", pWDMA, width, height, format);
 
 	VIOC_WDMA_SetImageFormat(pWDMA, format);
@@ -962,7 +978,6 @@ static int tccvin_set_wdma(struct tccvin_streaming * vdev) {
 		VIOC_WDMA_SetImageEnable(pWDMA, ON);
 	}
 
-	FUNCTION_OUT
 	return 0;
 }
 
@@ -1137,9 +1152,9 @@ static int tccvin_allocate_essential_buffers(struct tccvin_streaming * vdev) {
 }
 
 static int tccvin_start_stream(struct tccvin_streaming * vdev) {
-	tccvin_cif_t	* cif	= &vdev->cif;
-
-	FUNCTION_IN
+	struct v4l2_dv_timings	* dv_timings	= &vdev->dv_timings;
+	struct v4l2_bt_timings	* bt_timings	= &dv_timings->bt;
+	tccvin_cif_t		* cif		= &vdev->cif;
 
 	// size info
 	logd("tgt: %d * %d\n", vdev->cur_frame->wWidth, vdev->cur_frame->wHeight);
@@ -1159,14 +1174,14 @@ static int tccvin_start_stream(struct tccvin_streaming * vdev) {
 	tccvin_set_vin(vdev);
 
 	// set deinterlacer
-	if(!!(vdev->cif.videosource_info->interlaced & V4L2_DV_INTERLACED)) {
+	if(!!(bt_timings->interlaced & V4L2_DV_INTERLACED)) {
 		// set Deinterlacer
 		tccvin_set_deinterlacer(vdev);
 	}
 
 	// set scaler
 	if(cif->vioc_path.vin <= VIOC_VIN30) {
-		tccvin_set_scaler(cif, vdev->cur_frame);
+		tccvin_set_scaler(vdev, vdev->cur_frame);
 	}
 
 	// set wmixer
@@ -1178,22 +1193,21 @@ static int tccvin_start_stream(struct tccvin_streaming * vdev) {
 	tccvin_set_wdma(vdev);
 	mdelay(16 * 3);	// wait for the 3 frames in case of viqe 3d mode (16ms * 3 frames)
 
-	FUNCTION_OUT
 	return 0;
 }
 
 static int tccvin_stop_stream(struct tccvin_streaming * vdev) {
+	struct v4l2_dv_timings	* dv_timings	= &vdev->dv_timings;
+	struct v4l2_bt_timings	* bt_timings	= &dv_timings->bt;
+	tccvin_cif_t		* cif		= &vdev->cif;
 #ifdef CONFIG_OVERLAY_PGL
 	volatile void __iomem	* pPGL		= VIOC_RDMA_GetAddress(vdev->cif.vioc_path.pgl);
 #endif//CONFIG_OVERLAY_PGL
 	volatile void __iomem	* pWDMA		= VIOC_WDMA_GetAddress(vdev->cif.vioc_path.wdma);
-	VIOC_PlugInOutCheck		vioc_plug_state;
-	tccvin_cif_t	* cif	= &vdev->cif;
+	VIOC_PlugInOutCheck	vioc_plug_state;
 
 	int idxLoop;
 	unsigned int status;
-
-	FUNCTION_IN
 
 	VIOC_WDMA_SetIreqMask(pWDMA, VIOC_WDMA_IREQ_ALL_MASK, 0x1);	// disable WDMA interrupt
 	VIOC_WDMA_SetImageDisable(pWDMA);
@@ -1220,7 +1234,7 @@ static int tccvin_stop_stream(struct tccvin_streaming * vdev) {
 			VIOC_CONFIG_PlugOut(vdev->cif.vioc_path.scaler);
 		}
 
-		if(!!(vdev->cif.videosource_info->interlaced & V4L2_DV_INTERLACED)) {
+		if(!!(bt_timings->interlaced & V4L2_DV_INTERLACED)) {
 			if(vdev->cif.vioc_path.viqe != -1) {
 				VIOC_CONFIG_Device_PlugState(vdev->cif.vioc_path.viqe, &vioc_plug_state);
 				if(vioc_plug_state.enable && vioc_plug_state.connect_statue == VIOC_PATH_CONNECTED) {
@@ -1247,14 +1261,11 @@ static int tccvin_stop_stream(struct tccvin_streaming * vdev) {
 	// reset vioc path
 	tccvin_reset_vioc_path(vdev);
 
-	FUNCTION_OUT
 	return 0;
 }
 
 static int tccvin_request_irq(struct tccvin_streaming * vdev) {
 	int					ret			= 0;
-
-	FUNCTION_IN
 
 	if((vdev->cif.vioc_irq_num != -1) && (vdev->cif.vioc_irq_reg == 0)) {
 		vdev->cif.vioc_intr.id   = -1;
@@ -1284,14 +1295,11 @@ static int tccvin_request_irq(struct tccvin_streaming * vdev) {
 		return -1;
 	}
 
-	FUNCTION_OUT
 	return ret;
 }
 
 static int tccvin_free_irq(struct tccvin_streaming * vdev) {
 	int					ret			= 0;
-
-	FUNCTION_IN
 
 	if((vdev->cif.vioc_irq_num != -1) && (vdev->cif.vioc_irq_reg == 1)) {
 		if(vdev->cif.vioc_irq_reg == 1) {
@@ -1308,7 +1316,6 @@ static int tccvin_free_irq(struct tccvin_streaming * vdev) {
 		return -1;
 	}
 
-	FUNCTION_OUT
 	return ret;
 }
 
@@ -1319,31 +1326,22 @@ static int tccvin_get_clock(struct tccvin_streaming * vdev) {
 	struct device_node	* main_node	= vdev->dev->pdev->dev.of_node;
 	int					ret			= 0;
 
-	FUNCTION_IN
-
 	vdev->cif.vioc_clk = of_clk_get(main_node, 0);
 	ret = -IS_ERR(vdev->cif.vioc_clk);
 	if(ret != 0) {
 		loge("Find the \"clock\" node\n");
 	}
 
-	FUNCTION_OUT
 	return ret;
 }
 
 static void tccvin_put_clock(struct tccvin_streaming * vdev) {
-	FUNCTION_IN
-
 	if(!IS_ERR(vdev->cif.vioc_clk))
 		clk_put(vdev->cif.vioc_clk);
-
-	FUNCTION_OUT
 }
 
 static int tccvin_enable_clock(struct tccvin_streaming * vdev) {
 	int		ret = 0;
-
-	FUNCTION_IN
 
 	if(!IS_ERR(vdev->cif.vioc_clk)) {
 		ret = clk_prepare_enable(vdev->cif.vioc_clk);
@@ -1352,25 +1350,18 @@ static int tccvin_enable_clock(struct tccvin_streaming * vdev) {
 		}
 	}
 
-	FUNCTION_OUT
 	return ret;
 }
 
 static void tccvin_disable_clock(struct tccvin_streaming * vdev) {
-	FUNCTION_IN
-
 	if(!IS_ERR(vdev->cif.vioc_clk))
 		clk_disable_unprepare(vdev->cif.vioc_clk);
-
-	FUNCTION_OUT
 }
 
 int tccvin_video_init(struct tccvin_streaming *stream) {
 	struct tccvin_format *format = NULL;
 	struct tccvin_frame *frame = NULL;
 	int		ret = 0;
-
-	FUNCTION_IN
 
 	// parse device tree
 	ret = tccvin_parse_device_tree(stream);
@@ -1392,18 +1383,6 @@ int tccvin_video_init(struct tccvin_streaming *stream) {
 		loge("tccvin_enable_clock returns %d\n", ret);
 		return ret;
 	}
-
-	// get a video source
-#if 0//def CONFIG_VIDEO_VIDEOSOURCE
-	stream->cif.videosource_info				= &videosource_info;
-	videosource_if_initialize();
-	if(stream->cif.videosource_info == NULL) {
-		logi("ERROR: videosource_info is NULL.\n");
-		return -1;
-	}
-
-	stream->cif.skip_frame					= stream->cif.videosource_info->capture_skip_frame;
-#endif//CONFIG_VIDEO_VIDEOSOURCE
 
 	stream->is_handover_needed				= 0;
 
@@ -1445,14 +1424,11 @@ int tccvin_video_init(struct tccvin_streaming *stream) {
 	stream->cur_format = format;
 	stream->cur_frame = frame;
 
-	FUNCTION_OUT
 	return ret;
 }
 
 int tccvin_video_deinit(struct tccvin_streaming *stream) {
 	int		ret = 0;
-
-	FUNCTION_IN
 
 	// deinit v4l2 resources
 	mutex_destroy(&(stream->cif.lock));
@@ -1463,13 +1439,11 @@ int tccvin_video_deinit(struct tccvin_streaming *stream) {
 	// put the vioc's clock
 	tccvin_put_clock(stream);
 
-	FUNCTION_OUT
 	return ret;
 }
 
 int tccvin_video_streamon(struct tccvin_streaming *stream, int is_handover_needed) {
 	int		ret = 0;
-	FUNCTION_IN
 
 	// update the is_handover_needed
 	stream->is_handover_needed	= is_handover_needed;
@@ -1499,14 +1473,11 @@ int tccvin_video_streamon(struct tccvin_streaming *stream, int is_handover_neede
 
 	stream->cam_streaming = 1;
 
-	FUNCTION_OUT
 	return ret;
 }
 
 int tccvin_video_streamoff(struct tccvin_streaming *stream, int is_handover_needed) {
 	int		ret = 0;
-
-	FUNCTION_IN
 
 	stream->cam_streaming = 0;
 
@@ -1524,6 +1495,5 @@ int tccvin_video_streamoff(struct tccvin_streaming *stream, int is_handover_need
 		return -1;
 	}
 
-	FUNCTION_OUT
 	return ret;
 }

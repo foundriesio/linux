@@ -9,7 +9,13 @@
 config VIDEO_TCCVIN2
 	bool "Telechips Video-Input Path Driver V2"
 	default n
-        depends on VIDEO_V4L2
+        depends on VIDEO_V4L2 && VIDEO_V4L2_SUBDEV_API && OF
         select VIDEOBUF2_VMALLOC
+	select V4L2_FWNODE
 	---help---
 	  Support for V4L2 Standard Capture Driver
+
+config OVERLAY_PGL
+        bool "Overlay Video-Input with Parking Guide Line"
+        depends on VIDEO_TCCVIN2
+        default n

@@ -194,6 +194,17 @@ config VIDEO_ADV7180
 	  To compile this driver as a module, choose M here: the
 	  module will be called adv7180.
 
+config VIDEO_ADV7182
+	tristate "Analog Devices ADV7182 decoder"
+	depends on GPIOLIB && VIDEO_V4L2 && I2C && VIDEO_V4L2_SUBDEV_API
+	depends on OF
+	select REGMAP_I2C
+	---help---
+	  Support for the Analog Devices ADV7182 video decoder.
+
+	  To compile this driver as a module, choose M here: the
+	  module will be called adv7182.
+
 config VIDEO_ADV7183
 	tristate "Analog Devices ADV7183 decoder"
 	depends on VIDEO_V4L2 && I2C
@@ -259,6 +270,17 @@ config VIDEO_ADV7842_CEC
 	---help---
 	  When selected the adv7842 will support the optional
 	  HDMI CEC feature.
+
+config VIDEO_ISL79988
+	tristate "Analog Devices ISL79988 decoder"
+	depends on GPIOLIB && VIDEO_V4L2 && I2C && VIDEO_V4L2_SUBDEV_API
+	depends on OF
+	select REGMAP_I2C
+	---help---
+	  Support for the Analog Devices ISL79988 video decoder.
+
+	  To compile this driver as a module, choose M here: the
+	  module will be called ISL79988.
 
 config VIDEO_BT819
 	tristate "BT819A VideoStream decoder"

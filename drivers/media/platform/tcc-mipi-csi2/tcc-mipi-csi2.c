@@ -11,8 +11,7 @@
 #include <linux/delay.h>
 #include <linux/platform_device.h>
 #include <linux/interrupt.h>
-
-#include <video/tcc/videosource_ioctl.h>
+#include <media/v4l2-subdev.h>
 #include <video/tcc/vioc_ddicfg.h>
 
 #include "tcc-mipi-csi2-reg.h"
@@ -20,10 +19,38 @@
 #include "tcc-mipi-ckc-reg.h"
 #include "tcc-mipi-csi2.h"
 
+#define LOG_TAG			"MIPI/CSI2"
+
+#define loge(fmt, ...)		pr_err("[ERROR][%s] %s - "	fmt, LOG_TAG, __FUNCTION__, ##__VA_ARGS__)
+#define logw(fmt, ...)		pr_err("[WARN][%s] %s - "	fmt, LOG_TAG, __FUNCTION__, ##__VA_ARGS__)
+#define logd(fmt, ...)		pr_err("[DEBUG][%s] %s - "	fmt, LOG_TAG, __FUNCTION__, ##__VA_ARGS__)
+#define logi(fmt, ...)		pr_err("[INFO][%s] %s - "	fmt, LOG_TAG, __FUNCTION__, ##__VA_ARGS__)
+
+#define WIDTH			1280
+#define HEIGHT			720
+
 #define DEFAULT_CSIS_FREQ 300000000UL
+
+typedef struct videosource_format {
+	int					mipi_csi2_port;
+
+	unsigned int				width;
+	unsigned int				height;
+
+	unsigned int				input_ch_num;
+	unsigned int				pixel_mode;
+	unsigned int				interleave_mode;
+	unsigned int				data_lane_num;
+	unsigned int				data_format;
+	unsigned int				hssettle;
+	unsigned int				clksettlectl;
+	unsigned int				csi2_irq;
+	unsigned int				gdb_irq;
+} videosource_format_t;
 
 struct tcc_mipi_csi2_state {
 	struct platform_device *pdev;
+	struct v4l2_subdev	sd;
 
 	volatile void __iomem *csi_base;
 	volatile void __iomem *ckc_base;
@@ -635,27 +662,27 @@ static int tcc_mipi_csi2_set_interface(struct tcc_mipi_csi2_state * state,
 		 * Set D-PHY Common control
 		 */
 		pr_info("[INFO][MIPI-CSI2] hssettle value : 0x%x \n", \
-			format->des_info.hssettle);
+			format->hssettle);
 
 		MIPI_CSIS_Set_DPHY_Common_Control(state,
-			format->des_info.hssettle, \
-			format->des_info.clksettlectl, \
+			format->hssettle, \
+			format->clksettlectl, \
 			ON, \
 			OFF, \
 			OFF, \
-			format->des_info.data_lane_num, \
+			format->data_lane_num, \
 			ON);
 
-		for(idx = 0; idx < format->des_info.input_ch_num ; idx++) {
+		for(idx = 0; idx < format->input_ch_num ; idx++) {
 			MIPI_CSIS_Set_ISP_Configuration(state, 
 				idx, \
-				format->des_info.pixel_mode, \
+				format->pixel_mode, \
 				OFF, \
 				OFF, \
-				format->des_info.data_format, \
+				format->data_format, \
 				idx);
-			if ((format->des_info.data_format >= DATA_FORMAT_RAW10) &&
-			    (format->des_info.data_format <= DATA_FORMAT_RAW12)) {
+			if ((format->data_format >= DATA_FORMAT_RAW10) &&
+			    (format->data_format <= DATA_FORMAT_RAW12)) {
 				MIPI_CSIS_Set_ISP_Resolution(state,
 					idx,
 					format->width + 16, format->height + 16);
@@ -665,13 +692,13 @@ static int tcc_mipi_csi2_set_interface(struct tcc_mipi_csi2_state * state,
 					format->width , format->height);
 			}
 #ifdef CONFIG_ARCH_TCC805X
-			if ((format->des_info.data_format >= DATA_FORMAT_RAW10) &&
-			    (format->des_info.data_format <= DATA_FORMAT_RAW12)) {
+			if ((format->data_format >= DATA_FORMAT_RAW10) &&
+			    (format->data_format <= DATA_FORMAT_RAW12)) {
 				MIPI_WRAP_Set_VSync_Polarity(state, idx, 1);
 				MIPI_WRAP_Set_MIPI_Output_RAW12(state, idx, 3);
 			}
 
-			if ((format->des_info.data_format) == DATA_FORMAT_RAW8) {
+			if ((format->data_format) == DATA_FORMAT_RAW8) {
 				MIPI_WRAP_Set_MIPI_Output_RAW12(state, idx, 1);
 			}
 #endif
@@ -680,11 +707,11 @@ static int tcc_mipi_csi2_set_interface(struct tcc_mipi_csi2_state * state,
 		MIPI_CSIS_Set_CSIS_Clock_Control(state, 0x0, 0xf);
 
 		MIPI_CSIS_Set_CSIS_Common_Control(state, 
-			format->des_info.input_ch_num, \
+			format->input_ch_num, \
 			0x0, \
 			ON, \
-			format->des_info.interleave_mode, \
-			format->des_info.data_lane_num, \
+			format->interleave_mode, \
+			format->data_lane_num, \
 			OFF, \
 			OFF, \
 			ON);
@@ -992,19 +1019,17 @@ err:
 }
 #endif
 
-extern void tcc_isp_enable(unsigned int idx, videosource_format_t * format, unsigned int enable);
+extern void tcc_isp_enable(unsigned int idx, unsigned int width, unsigned int height, unsigned int enable);
 
-int tcc_mipi_csi2_enable(
-		unsigned int idx, 
-		videosource_format_t * format, unsigned int enable)
+int tcc_mipi_csi2_enable(videosource_format_t * format, unsigned int enable)
 {
-	struct tcc_mipi_csi2_state * state = arr_state[idx];
+	struct tcc_mipi_csi2_state * state = arr_state[format->mipi_csi2_port];
 	int ret = 0, isp_idx = 0;
 
 	pr_debug("[DEBUG][MIPI-CSI2] %s in \n", __func__);
 
 	for (isp_idx = 0; isp_idx < state->isp_number; isp_idx++) {
-		tcc_isp_enable(isp_idx, format, ON);
+		tcc_isp_enable(isp_idx, format->width, format->height, ON);
 	}
 
 	ret = tcc_mipi_csi2_set_interface(state, format, enable);
@@ -1024,12 +1049,72 @@ err:
 	return ret;
 }
 
+/*
+ * Helper fuctions for reflection
+ */
+static inline struct tcc_mipi_csi2_state *to_state(struct v4l2_subdev *sd) {
+	return container_of(sd, struct tcc_mipi_csi2_state, sd);
+}
+
+/*
+ * v4l2_subdev_video_ops implementations
+ */
+static int mipi_csi2_s_stream(struct v4l2_subdev *sd, int enable) {
+	struct tcc_mipi_csi2_state	* state	= NULL;
+	int				ret	= 0;
+
+	state = to_state(sd);
+	if(!state) {
+		loge("Failed to get video source object by subdev\n");
+		ret = -EINVAL;
+	} else {
+		tcc_mipi_csi2_enable(&state->fmt, 1);
+	}
+
+	return ret;
+}
+
+/*
+ * v4l2_subdev_internal_ops implementations
+ */
+static const struct v4l2_subdev_video_ops mipi_csi2_video_ops = {
+	.s_stream		= mipi_csi2_s_stream,
+};
+
+static const struct v4l2_subdev_ops mipi_csi2_ops = {
+	.video			= &mipi_csi2_video_ops,
+};
+
+struct tcc_mipi_csi2_state mipi_csi2_data = {
+	.fmt = {
+		.mipi_csi2_port		= 0,
+
+		// deprecated
+		.width			= WIDTH,
+		.height			= HEIGHT,		      // - 1,
+
+#ifdef CONFIG_MIPI_1_CH_CAMERA
+		.input_ch_num		= 1,
+#else
+		.input_ch_num		= 4,
+#endif
+
+		.pixel_mode		= PIXEL_MODE_SINGLE,
+		.interleave_mode	= INTERLEAVE_MODE_VC_DT,
+		.data_lane_num		= 4,
+		.data_format		= DATA_FORMAT_YUV422_8BIT,
+		.hssettle		= 0x11,
+		.clksettlectl		= 0x00,
+	},
+};
+
 static const struct of_device_id tcc_mipi_csi2_of_match[] = {
 	{
-		.compatible = "telechips,tcc803x-mipi-csi2",
+		.compatible	= "telechips,tcc803x-mipi-csi2",
 	},
 	{
-		.compatible = "telechips,tcc805x-mipi-csi2",
+		.compatible	= "telechips,tcc805x-mipi-csi2",
+		.data		= &mipi_csi2_data,
 	},
 	{
 		/* sentinel */
@@ -1051,14 +1136,15 @@ static int tcc_mipi_csi2_probe(struct platform_device *pdev)
 		ret = -ENOMEM;
 		goto err;
 	}
-	state->pdev = pdev;
 
 	of_id = of_match_node(tcc_mipi_csi2_of_match, dev->of_node);
 	if (WARN_ON(of_id == NULL)) {
 		ret = -EINVAL;
 		goto err;
 	}
+	memcpy(state, (const void *)of_id->data, sizeof(*state));
 	pdev->id = of_alias_get_id(pdev->dev.of_node, "mipi-csi2-");
+	state->pdev = pdev;
 
 	/*
 	 * Parse device tree
@@ -1102,6 +1188,23 @@ static int tcc_mipi_csi2_probe(struct platform_device *pdev)
 	if (ret) {
 		pr_err("[ERR][MIPI-CSI2] fail - Interrupt request \n");
 		goto e_clkdis;
+	}
+
+	v4l2_subdev_init(&state->sd, &mipi_csi2_ops);
+	/* the owner is the same as the i2c_client's driver owner */
+	state->sd.owner = pdev->dev.driver->owner;
+	state->sd.dev = &pdev->dev;
+	/* i2c_client and v4l2_subdev point to one another */
+	v4l2_set_subdevdata(&state->sd, pdev);
+        /* initialize name */
+        snprintf(state->sd.name, sizeof(state->sd.name), "tcc-mipi-csi2");
+
+	// register a v4l2 sub device
+	ret = v4l2_async_register_subdev(&state->sd);
+	if (ret) {
+		loge("Failed to register subdevice\n");
+	} else {
+		loge("%s is registered as a v4l2 sub device.\n", state->sd.name);
 	}
 
 	pr_info("[INFO][MIPI-CSI2] Success proving MIPI-CSI2-%d \n", pdev->id);

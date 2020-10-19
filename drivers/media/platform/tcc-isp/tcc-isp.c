@@ -377,17 +377,15 @@ static inline void tcc_isp_additional_setting(struct tcc_isp_state * state)
 	pr_info("[INFO][tcc-isp] finish %s \n", __func__);
 }
 
-void tcc_isp_enable(
-		unsigned int idx, 
-		videosource_format_t * format, unsigned int enable)
+void tcc_isp_enable(unsigned int idx, unsigned int width, unsigned int height, unsigned int enable)
 {
 	/* input */
-	arr_state[idx]->isp->i_state.width = format->width + 16;
-	arr_state[idx]->isp->i_state.height = format->height + 16;
+	arr_state[idx]->isp->i_state.width = width + 16;
+	arr_state[idx]->isp->i_state.height = height + 16;
 
 	/* output */
-	arr_state[idx]->isp->o_state.width = format->width;
-	arr_state[idx]->isp->o_state.height = format->height;
+	arr_state[idx]->isp->o_state.width = width;
+	arr_state[idx]->isp->o_state.height = height;
 
 	if (enable) {
 		tcc_isp_init(arr_state[idx]);

@@ -95,7 +95,6 @@ static int tccvin_v4l2_try_format(struct tccvin_streaming *stream,
 	__u32 interval;
 	int ret = 0;
 	__u8 *fcc;
-	FUNCTION_IN
 
 	if (fmt->type != stream->type) {
 		loge("fmt->type: 0x%08x, stream->type: 0x%08x\n", fmt->type, stream->type);
@@ -176,7 +175,6 @@ static int tccvin_v4l2_try_format(struct tccvin_streaming *stream,
 	if (tccvin_frame != NULL)
 		*tccvin_frame = frame;
 
-	FUNCTION_OUT
 	return ret;
 }
 
@@ -219,7 +217,6 @@ static int tccvin_v4l2_set_format(struct tccvin_streaming *stream,
 	struct tccvin_format *format;
 	struct tccvin_frame *frame;
 	int ret;
-	FUNCTION_IN
 
 	if (fmt->type != stream->type) {
 		loge("fmt->type: 0x%08x, stream->type: 0x%08x\n", fmt->type, stream->type);
@@ -245,7 +242,6 @@ static int tccvin_v4l2_set_format(struct tccvin_streaming *stream,
 done:
 	mutex_unlock(&stream->mutex);
 
-	FUNCTION_OUT
 	return ret;
 }
 
@@ -313,7 +309,6 @@ static int tccvin_v4l2_open(struct file *file)
 {
 	struct tccvin_streaming *stream;
 	struct tccvin_fh *handle;
-	FUNCTION_IN
 
 	stream = video_drvdata(file);
 
@@ -333,7 +328,6 @@ static int tccvin_v4l2_open(struct file *file)
 	handle->state = TCCVIN_HANDLE_PASSIVE;
 	file->private_data = handle;
 
-	FUNCTION_OUT
 	return 0;
 }
 
@@ -341,7 +335,6 @@ static int tccvin_v4l2_release(struct file *file)
 {
 	struct tccvin_fh *handle = file->private_data;
 	struct tccvin_streaming *stream = handle->stream;
-	FUNCTION_IN
 
 	/* Only free resources if this is a privileged handle. */
 	if (tccvin_has_privileges(handle))
@@ -358,7 +351,6 @@ static int tccvin_v4l2_release(struct file *file)
 	--stream->dev->users;
 	mutex_unlock(&stream->dev->lock);
 
-	FUNCTION_OUT
 	return 0;
 }
 
@@ -366,7 +358,6 @@ static int tccvin_ioctl_querycap(struct file *file, void *fh,
 			      struct v4l2_capability *cap)
 {
 	struct video_device *vdev = video_devdata(file);
-	FUNCTION_IN
 
 	strlcpy(cap->driver, DRIVER_NAME, sizeof(cap->driver));
 	strlcpy(cap->card, vdev->name, sizeof(cap->card));
@@ -384,7 +375,6 @@ static int tccvin_ioctl_querycap(struct file *file, void *fh,
 	logd("device_caps: 0x%08x\n", cap->device_caps);
 	logd("capabilities: 0x%08x\n", cap->capabilities);
 
-	FUNCTION_OUT
 	return 0;
 }
 
@@ -394,7 +384,6 @@ static int tccvin_ioctl_enum_fmt(struct tccvin_streaming *stream,
 	struct tccvin_format *format;
 	enum v4l2_buf_type type = fmt->type;
 	__u32 index = fmt->index;
-	FUNCTION_IN
 
 	if (fmt->type != stream->type || fmt->index >= stream->nformats)
 		return -EINVAL;
@@ -410,7 +399,6 @@ static int tccvin_ioctl_enum_fmt(struct tccvin_streaming *stream,
 	fmt->pixelformat = format->fcc;
 	logd("index: %d, type: 0x%08x, flags: 0x%08x, description: %s, pixelformat: 0x%08x\n", fmt->index, fmt->type, fmt->flags, fmt->description, fmt->pixelformat);
 
-	FUNCTION_OUT
 	return 0;
 }
 
@@ -420,11 +408,9 @@ static int tccvin_ioctl_enum_fmt_vid_cap(struct file *file, void *fh,
 	struct tccvin_fh *handle = fh;
 	struct tccvin_streaming *stream = handle->stream;
 	int		ret = 0;
-	FUNCTION_IN
 
 	ret = tccvin_ioctl_enum_fmt(stream, fmt);
 
-	FUNCTION_OUT
 	return ret;
 }
 
@@ -434,10 +420,9 @@ static int tccvin_ioctl_g_fmt_vid_cap(struct file *file, void *fh,
 	struct tccvin_fh *handle = fh;
 	struct tccvin_streaming *stream = handle->stream;
 	int	ret;
-	FUNCTION_IN
 
 	ret = tccvin_v4l2_get_format(stream, fmt);
-	FUNCTION_OUT
+
 	return ret;
 }
 
@@ -447,7 +432,6 @@ static int tccvin_ioctl_s_fmt_vid_cap(struct file *file, void *fh,
 	struct tccvin_fh *handle = fh;
 	struct tccvin_streaming *stream = handle->stream;
 	int ret;
-	FUNCTION_IN
 
 	ret = tccvin_acquire_privileges(handle);
 	if (ret < 0) {
@@ -456,7 +440,7 @@ static int tccvin_ioctl_s_fmt_vid_cap(struct file *file, void *fh,
 	}
 
 	ret = tccvin_v4l2_set_format(stream, fmt);
-	FUNCTION_OUT
+
 	return ret;
 }
 
@@ -466,13 +450,11 @@ static int tccvin_ioctl_try_fmt_vid_cap(struct file *file, void *fh,
 	struct tccvin_fh *handle = fh;
 	struct tccvin_streaming *stream = handle->stream;
 	int	ret;
-	FUNCTION_IN
 
 	ret = tccvin_v4l2_try_format(stream, fmt, NULL, NULL);
 	if (ret < 0)
 		loge("tccvin_v4l2_try_format, ret: %d\n", ret);
 
-	FUNCTION_OUT
 	return ret;
 }
 
@@ -482,7 +464,6 @@ static int tccvin_ioctl_reqbufs(struct file *file, void *fh,
 	struct tccvin_fh *handle = fh;
 	struct tccvin_streaming *stream = handle->stream;
 	int ret;
-	FUNCTION_IN
 
 	logd("count: %d, type: 0x%08x, memory: 0x%08x, res[1]: 0x%08x, res[0]: 0x%08x\n", rb->count, rb->type, rb->memory, rb->reserved[1], rb->reserved[0]);
 
@@ -505,7 +486,6 @@ static int tccvin_ioctl_reqbufs(struct file *file, void *fh,
 
 	logd("requested count: %d, type: 0x%08x, memory: 0x%08x, res[1]: 0x%08x, res[0]: 0x%08x\n", rb->count, rb->type, rb->memory, rb->reserved[1], rb->reserved[0]);
 
-	FUNCTION_OUT
 	return 0;
 }
 
@@ -515,7 +495,6 @@ static int tccvin_ioctl_querybuf(struct file *file, void *fh,
 	struct tccvin_fh *handle = fh;
 	struct tccvin_streaming *stream = handle->stream;
 	int ret;
-	FUNCTION_IN
 
 	if (!tccvin_has_privileges(handle)) {
 		return -EBUSY;
@@ -540,7 +519,6 @@ static int tccvin_ioctl_querybuf(struct file *file, void *fh,
 		logd("%s - Need to be implemented\n", __func__);
 	}
 
-	FUNCTION_OUT
 	return ret;
 }
 
@@ -549,7 +527,6 @@ static int tccvin_ioctl_qbuf(struct file *file, void *fh, struct v4l2_buffer *bu
 	struct tccvin_fh *handle = fh;
 	struct tccvin_streaming *stream = handle->stream;
 	int ret;
-//	FUNCTION_IN
 
 	if (!tccvin_has_privileges(handle)) {
 		loge("!tccvin_has_privileges\n");
@@ -563,7 +540,6 @@ static int tccvin_ioctl_qbuf(struct file *file, void *fh, struct v4l2_buffer *bu
 
 	dlog("tccvin_queue_buffer, ret: %d\n", ret);
 
-//	FUNCTION_OUT
 	return ret;
 }
 
@@ -572,7 +548,6 @@ static int tccvin_ioctl_dqbuf(struct file *file, void *fh, struct v4l2_buffer *b
 	struct tccvin_fh *handle = fh;
 	struct tccvin_streaming *stream = handle->stream;
 	int ret;
-//	FUNCTION_IN
 
 	if (!tccvin_has_privileges(handle))
 		return -EBUSY;
@@ -585,7 +560,6 @@ static int tccvin_ioctl_dqbuf(struct file *file, void *fh, struct v4l2_buffer *b
 
 	dlog("tccvin_dqueue_buffer, ret: %d\n", ret);
 
-//	FUNCTION_OUT
 	return ret;
 }
 
@@ -595,7 +569,6 @@ static int tccvin_ioctl_streamon(struct file *file, void *fh,
 	struct tccvin_fh *handle = fh;
 	struct tccvin_streaming *stream = handle->stream;
 	int ret;
-	FUNCTION_IN
 
 	if (!tccvin_has_privileges(handle))
 		return -EBUSY;
@@ -606,7 +579,6 @@ static int tccvin_ioctl_streamon(struct file *file, void *fh,
 		loge("tccvin_queue_streamon, v4l2_buf_type: %d, ret: %d\n", type, ret);
 	mutex_unlock(&stream->mutex);
 
-	FUNCTION_OUT
 	return ret;
 }
 
@@ -616,7 +588,6 @@ static int tccvin_ioctl_streamoff(struct file *file, void *fh,
 	struct tccvin_fh *handle = fh;
 	struct tccvin_streaming *stream = handle->stream;
 	int ret;
-	FUNCTION_IN
 
 	if (!tccvin_has_privileges(handle))
 		return -EBUSY;
@@ -627,7 +598,6 @@ static int tccvin_ioctl_streamoff(struct file *file, void *fh,
 		loge("tccvin_queue_streamoff, queue->streaming: %d, ret: %d\n", stream->queue.queue.streaming, ret);
 	mutex_unlock(&stream->mutex);
 
-	FUNCTION_OUT
 	return ret;
 }
 
@@ -635,7 +605,6 @@ static int tccvin_ioctl_enum_input(struct file *file, void *fh,
 				struct v4l2_input *input)
 {
 	u32 index = input->index;
-	FUNCTION_IN
 
 	if(index != 0)
 		return -EINVAL;
@@ -646,18 +615,15 @@ static int tccvin_ioctl_enum_input(struct file *file, void *fh,
 	input->type = V4L2_INPUT_TYPE_CAMERA;
 	logd("index: %d, name: %s, type: 0x%08x\n", input->index, input->name, input->type);
 
-	FUNCTION_OUT
 	return 0;
 }
 
 static int tccvin_ioctl_g_input(struct file *file, void *fh, unsigned int *input)
 {
-	FUNCTION_IN
 
 	*input = 0;
 	logd("input index: %d\n", *input);
 
-	FUNCTION_OUT
 	return 0;
 }
 
@@ -669,7 +635,6 @@ static int tccvin_ioctl_enum_framesizes(struct file *file, void *fh,
 	struct tccvin_format *format = NULL;
 	struct tccvin_frame *frame;
 	int i;
-	FUNCTION_IN
 
 	/* Look for the given pixel format */
 	for (i = 0; i < stream->nformats; i++) {
@@ -692,7 +657,6 @@ static int tccvin_ioctl_enum_framesizes(struct file *file, void *fh,
 	fsize->discrete.height = frame->wHeight;
 	logd("index: %d, pixel_format: 0x%08x, type: 0x%08x, width: %d, height: %d\n", fsize->index, fsize->pixel_format, fsize->type, fsize->discrete.width, fsize->discrete.height);
 
-	FUNCTION_OUT
 	return 0;
 }
 
@@ -704,7 +668,6 @@ static int tccvin_ioctl_enum_frameintervals(struct file *file, void *fh,
 	struct tccvin_format *format = NULL;
 	struct tccvin_frame *frame = NULL;
 	int i;
-	FUNCTION_IN
 
 	/* Look for the given pixel format and frame size */
 	for (i = 0; i < stream->nformats; i++) {
@@ -744,7 +707,6 @@ static int tccvin_ioctl_enum_frameintervals(struct file *file, void *fh,
 			fival->index, fival->pixel_format, fival->width, fival->height, fival->type, fival->discrete.denominator);
 	}
 
-	FUNCTION_OUT
 	return 0;
 }
 
@@ -752,12 +714,10 @@ static int tccvin_v4l2_mmap(struct file *file, struct vm_area_struct *vma) {
 	struct tccvin_fh *handle = file->private_data;
 	struct tccvin_streaming *stream = handle->stream;
 	int	ret = 0;
-	FUNCTION_IN
 
 	ret = tccvin_queue_mmap(&stream->queue, vma);
 	logd("start: 0x%08lx, end: 0x%08lx, off: 0x%08lx\n", vma->vm_start, vma->vm_end, vma->vm_pgoff);
 
-	FUNCTION_OUT
 	return ret;
 }
 
@@ -766,13 +726,11 @@ static unsigned int tccvin_v4l2_poll(struct file *file, poll_table *wait)
 	struct tccvin_fh *handle = file->private_data;
 	struct tccvin_streaming *stream = handle->stream;
 	int		ret;
-//	FUNCTION_IN
 
 	ret = tccvin_queue_poll(&stream->queue, file, wait);
 	if (ret < 0)
 		logw("_qproc: %p, _key: 0x%08lx, ret: %d\n", wait->_qproc, wait->_key, ret);
 
-//	FUNCTION_OUT
 	return ret;
 }
 

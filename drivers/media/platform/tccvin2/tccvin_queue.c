@@ -84,7 +84,6 @@ static int tccvin_queue_setup(struct vb2_queue *vq,
 	struct tccvin_video_queue *queue = vb2_get_drv_priv(vq);
 	struct tccvin_streaming *stream = tccvin_queue_to_stream(queue);
 	unsigned size = stream->cur_frame->dwMaxVideoFrameBufferSize;
-	FUNCTION_IN
 
 	/*
 	 * When called with plane sizes, validate them. The driver supports
@@ -96,7 +95,7 @@ static int tccvin_queue_setup(struct vb2_queue *vq,
 
 	*nplanes = 1;
 	sizes[0] = size;
-	FUNCTION_OUT
+
 	return 0;
 }
 
@@ -105,7 +104,6 @@ static int tccvin_buffer_prepare(struct vb2_buffer *vb)
 	struct vb2_v4l2_buffer *vbuf = to_vb2_v4l2_buffer(vb);
 	struct tccvin_video_queue *queue = vb2_get_drv_priv(vb->vb2_queue);
 	struct tccvin_buffer *buf = tccvin_vbuf_to_buffer(vbuf);
-	FUNCTION_IN
 
 	if (vb->type == V4L2_BUF_TYPE_VIDEO_OUTPUT &&
 	    vb2_get_plane_payload(vb, 0) > vb2_plane_size(vb, 0)) {
@@ -125,7 +123,6 @@ static int tccvin_buffer_prepare(struct vb2_buffer *vb)
 	else
 		buf->bytesused = vb2_get_plane_payload(vb, 0);
 
-	FUNCTION_OUT
 	return 0;
 }
 
@@ -135,7 +132,6 @@ static void tccvin_buffer_queue(struct vb2_buffer *vb)
 	struct tccvin_video_queue *queue = vb2_get_drv_priv(vb->vb2_queue);
 	struct tccvin_buffer *buf = tccvin_vbuf_to_buffer(vbuf);
 	unsigned long flags;
-	FUNCTION_IN
 
 	spin_lock_irqsave(&queue->irqlock, flags);
 	if (likely(!(queue->flags & TCCVIN_QUEUE_DISCONNECTED))) {
@@ -149,7 +145,6 @@ static void tccvin_buffer_queue(struct vb2_buffer *vb)
 	}
 
 	spin_unlock_irqrestore(&queue->irqlock, flags);
-	FUNCTION_OUT
 }
 
 static int tccvin_start_streaming(struct vb2_queue *vq, unsigned int count)
@@ -158,7 +153,6 @@ static int tccvin_start_streaming(struct vb2_queue *vq, unsigned int count)
 	struct tccvin_streaming *stream = tccvin_queue_to_stream(queue);
 	unsigned long flags;
 	int ret;
-	FUNCTION_IN
 
 	queue->buf_used = 0;
 
@@ -170,7 +164,6 @@ static int tccvin_start_streaming(struct vb2_queue *vq, unsigned int count)
 	tccvin_queue_return_buffers(queue, TCCVIN_BUF_STATE_QUEUED);
 	spin_unlock_irqrestore(&queue->irqlock, flags);
 
-	FUNCTION_OUT
 	return ret;
 }
 
@@ -179,15 +172,12 @@ static void tccvin_stop_streaming(struct vb2_queue *vq)
 	struct tccvin_video_queue *queue = vb2_get_drv_priv(vq);
 	struct tccvin_streaming *stream = tccvin_queue_to_stream(queue);
 	unsigned long flags;
-	FUNCTION_IN
 
 	spin_lock_irqsave(&queue->irqlock, flags);
 	tccvin_queue_return_buffers(queue, TCCVIN_BUF_STATE_ERROR);
 	spin_unlock_irqrestore(&queue->irqlock, flags);
 
 	tccvin_video_streamoff(stream, 0);
-
-	FUNCTION_OUT
 }
 
 static const struct vb2_ops tccvin_queue_qops = {
@@ -205,7 +195,6 @@ int tccvin_queue_init(struct tccvin_video_queue *queue, enum v4l2_buf_type type,
 {
 	struct tccvin_streaming *stream = tccvin_queue_to_stream(queue);
 	int ret;
-	FUNCTION_IN
 
 	queue->queue.type = type;
 	queue->queue.io_modes = VB2_MMAP | VB2_USERPTR | VB2_DMABUF;
@@ -229,17 +218,14 @@ int tccvin_queue_init(struct tccvin_video_queue *queue, enum v4l2_buf_type type,
 	queue->flags = drop_corrupted ? TCCVIN_QUEUE_DROP_CORRUPTED : 0;
 	logd("drop_corrupted: %d, queue->flags: 0x%08x", drop_corrupted, queue->flags);
 
-	FUNCTION_OUT
 	return 0;
 }
 
 void tccvin_queue_release(struct tccvin_video_queue *queue)
 {
-	FUNCTION_IN
 	mutex_lock(&queue->mutex);
 	vb2_queue_release(&queue->queue);
 	mutex_unlock(&queue->mutex);
-	FUNCTION_OUT
 }
 
 /* -----------------------------------------------------------------------------
@@ -250,39 +236,33 @@ int tccvin_request_buffers(struct tccvin_video_queue *queue,
 			struct v4l2_requestbuffers *rb)
 {
 	int ret;
-	FUNCTION_IN
 
 	mutex_lock(&queue->mutex);
 	ret = vb2_reqbufs(&queue->queue, rb);
 	mutex_unlock(&queue->mutex);
 
-	FUNCTION_OUT
 	return ret ? ret : rb->count;
 }
 
 int tccvin_query_buffer(struct tccvin_video_queue *queue, struct v4l2_buffer *buf)
 {
 	int ret;
-	FUNCTION_IN
 
 	mutex_lock(&queue->mutex);
 	ret = vb2_querybuf(&queue->queue, buf);
 	mutex_unlock(&queue->mutex);
 
-	FUNCTION_OUT
 	return ret;
 }
 
 int tccvin_queue_buffer(struct tccvin_video_queue *queue, struct v4l2_buffer *buf)
 {
 	int ret;
-	FUNCTION_IN
 
 	mutex_lock(&queue->mutex);
 	ret = vb2_qbuf(&queue->queue, buf);
 	mutex_unlock(&queue->mutex);
 
-	FUNCTION_OUT
 	return ret;
 }
 
@@ -290,13 +270,11 @@ int tccvin_export_buffer(struct tccvin_video_queue *queue,
 		      struct v4l2_exportbuffer *exp)
 {
 	int ret;
-	FUNCTION_IN
 
 	mutex_lock(&queue->mutex);
 	ret = vb2_expbuf(&queue->queue, exp);
 	mutex_unlock(&queue->mutex);
 
-	FUNCTION_OUT
 	return ret;
 }
 
@@ -304,39 +282,33 @@ int tccvin_dequeue_buffer(struct tccvin_video_queue *queue, struct v4l2_buffer *
 		       int nonblocking)
 {
 	int ret;
-	FUNCTION_IN
 
 	mutex_lock(&queue->mutex);
 	ret = vb2_dqbuf(&queue->queue, buf, nonblocking);
 	mutex_unlock(&queue->mutex);
 
-	FUNCTION_OUT
 	return ret;
 }
 
 int tccvin_queue_streamon(struct tccvin_video_queue *queue, enum v4l2_buf_type type)
 {
 	int ret;
-	FUNCTION_IN
 
 	mutex_lock(&queue->mutex);
 	ret = vb2_streamon(&queue->queue, type);
 	mutex_unlock(&queue->mutex);
 
-	FUNCTION_OUT
 	return ret;
 }
 
 int tccvin_queue_streamoff(struct tccvin_video_queue *queue, enum v4l2_buf_type type)
 {
 	int ret;
-	FUNCTION_IN
 
 	mutex_lock(&queue->mutex);
 	ret = vb2_streamoff(&queue->queue, type);
 	mutex_unlock(&queue->mutex);
 
-	FUNCTION_OUT
 	return ret;
 }
 
