@@ -731,7 +731,6 @@ static int tccvin_set_vin(struct tccvin_streaming * vdev) {
  *	0:		Success
  */
 static int tccvin_set_deinterlacer(struct tccvin_streaming * vdev) {
-	struct tccvin_device	*dev		= vdev->dev;
 	struct v4l2_dv_timings	* dv_timings	= &vdev->dv_timings;
 	struct v4l2_bt_timings	* bt_timings	= &dv_timings->bt;
 	unsigned int		data_format	= vdev->vs_sync_info.data_format;
@@ -957,10 +956,10 @@ static int tccvin_set_wdma(struct tccvin_streaming * vdev) {
 				break;
 			default:
 				loge("v4l2 buffer memory type is not supported\n");
-				return;
+				return -1;
 			}
 			tccvin_convert_to_multi_planes_buffer_addresses(width, height, vdev->cur_format->fcc, &addr0, &addr1, &addr2);
-			logd("ADDR0: 0x%08x, ADDR1: 0x%08x, ADDR2: 0x%08x\n", addr0, addr1, addr2);
+			logd("ADDR0: 0x%08lx, ADDR1: 0x%08lx, ADDR2: 0x%08lx\n", addr0, addr1, addr2);
 			VIOC_WDMA_SetImageBase(pWDMA, addr0, addr1, addr2);
 			VIOC_WDMA_SetImageEnable(pWDMA, ON);
 		} else {
@@ -973,7 +972,7 @@ static int tccvin_set_wdma(struct tccvin_streaming * vdev) {
 		addr1 = 0;
 		addr2 = 0;
 
-		logd("ADDR0: 0x%08x, ADDR1: 0x%08x, ADDR2: 0x%08x\n", addr0, addr1, addr2);
+		logd("ADDR0: 0x%08lx, ADDR1: 0x%08lx, ADDR2: 0x%08lx\n", addr0, addr1, addr2);
 		VIOC_WDMA_SetImageBase(pWDMA, addr0, addr1, addr2);
 		VIOC_WDMA_SetImageEnable(pWDMA, ON);
 	}
@@ -1066,7 +1065,7 @@ update_wdma:
 			return;
 		}
 		tccvin_convert_to_multi_planes_buffer_addresses(stream->cur_frame->wWidth, stream->cur_frame->wHeight, stream->cur_format->fcc, &addr0, &addr1, &addr2);
-		logd("ADDR0: 0x%08x, ADDR1: 0x%08x, ADDR2: 0x%08x\n", addr0, addr1, addr2);
+		logd("ADDR0: 0x%08lx, ADDR1: 0x%08lx, ADDR2: 0x%08lx\n", addr0, addr1, addr2);
 		VIOC_WDMA_SetImageBase(pWDMABase, addr0, addr1, addr2);
 		VIOC_WDMA_SetImageEnable(pWDMABase, OFF);
 	} else {

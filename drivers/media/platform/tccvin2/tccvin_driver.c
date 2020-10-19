@@ -418,21 +418,21 @@ int tccvin_init_endpoint_gragh(struct tccvin_device *vdev, struct device_node *b
 
 	loge("loop: %d\n", idxSubDev);
 
-	loge("base_node: 0x%08x\n", base_node);
+	loge("base_node: 0x%px\n", base_node);
 
 	remt_node = of_graph_get_remote_endpoint(base_node);
 	if(!remt_node) {
 		loge("to find a remote endpoint of the base endpoint node\n");
 		ret = -ENODEV;
 	} else {
-		loge("remt_node: 0x%08x\n", remt_node);
+		loge("remt_node: 0x%px\n", remt_node);
 
 		repa_node = of_graph_get_remote_port_parent(base_node);
 		if(!repa_node) {
 			loge("to find a remote parent node\n");
 			ret = -ENODEV;
 		} else {
-			loge("repa_node: 0x%08x\n", repa_node);
+			loge("repa_node: 0x%px\n", repa_node);
 
 			while(1) {
 				endp_node = of_graph_get_next_endpoint(repa_node, endp_node);
@@ -441,7 +441,7 @@ int tccvin_init_endpoint_gragh(struct tccvin_device *vdev, struct device_node *b
 					ret = -ENODEV;
 					break;
 				} else {
-					loge("endp_node: 0x%08x\n", endp_node);
+					loge("endp_node: 0x%px\n", endp_node);
 
 					if(endp_node != remt_node) {
 						loge("endp_node != remt_node\n");
@@ -512,7 +512,7 @@ int tccvin_init_endpoint_gragh(struct tccvin_device *vdev, struct device_node *b
 						vdev->asd[idxSubDev]->match_type		= V4L2_ASYNC_MATCH_FWNODE;
 						vdev->asd[idxSubDev]->match.fwnode.fwnode	= of_fwnode_handle(repa_node);
 						idxSubDev++;
-						
+
 						of_node_put(endp_node);
 						break;
 					}
@@ -530,7 +530,6 @@ int tccvin_init_endpoint_gragh(struct tccvin_device *vdev, struct device_node *b
 int tccvin_init_subdevices(struct tccvin_device *vdev) {
 	struct device_node		*main_node	= vdev->stream->dev->pdev->dev.of_node;
 	struct device_node		*endp_node	= NULL;
-	struct device_node		*remt_node	= NULL;
 	struct v4l2_async_notifier	*notifier	= &vdev->notifier;
 	int				ret		= 0;
 
