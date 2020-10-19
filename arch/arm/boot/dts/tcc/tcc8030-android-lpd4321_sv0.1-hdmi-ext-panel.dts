@@ -57,6 +57,15 @@
 
 	/* hdmi override. */
 	i2c@16300000 {
+		hdmi_pvlbjt {
+			compatible = "telechips,pvlbjt_020_01";
+			reg=<0x22>;
+			hdmi-ext-panel = <1>;
+			backlight-on-gpios = <&gpma 27 0>; 	// BACKLIGHT ON
+			power-on-gpios = <&gpc 8 0>;		// LCD_ON
+			reset-gpios = <&gpc 9 0>;		// LCD_RST
+			pinctrl-0 = <&hdmi_panel>;
+		};
 		hdmi_adv7613 {
 			compatible = "telechips,adv7613";
 			reg=<0x4C>;
