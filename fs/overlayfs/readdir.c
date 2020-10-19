@@ -358,19 +358,25 @@ static int ovl_iterate(struct file *file, struct dir_context *ctx)
 	struct ovl_dir_file *od = file->private_data;
 	struct dentry *dentry = file->f_path.dentry;
 	struct ovl_cache_entry *p;
+	const struct cred *old_cred;
+	int err;
 
+	old_cred = ovl_override_creds(dentry->d_sb);
 	if (!ctx->pos)
 		ovl_dir_reset(file);
 
-	if (od->is_real)
-		return iterate_dir(od->realfile, ctx);
+	if (od->is_real) {
+		err = iterate_dir(od->realfile, ctx);
+		goto out;
+	}
 
 	if (!od->cache) {
 		struct ovl_dir_cache *cache;
 
 		cache = ovl_cache_get(dentry);
+		err = PTR_ERR(cache);
 		if (IS_ERR(cache))
-			return PTR_ERR(cache);
+			goto out;
 
 		od->cache = cache;
 		ovl_seek_cursor(od, ctx->pos);
@@ -384,7 +390,10 @@ static int ovl_iterate(struct file *file, struct dir_context *ctx)
 		od->cursor = p->l_node.next;
 		ctx->pos++;
 	}
-	return 0;
+	err = 0;
+out:
+	revert_creds(old_cred);
+	return err;
 }
 
 static loff_t ovl_dir_llseek(struct file *file, loff_t offset, int origin)
@@ -430,7 +439,14 @@ out_unlock:
 static struct file *ovl_dir_open_realfile(struct file *file,
 					  struct path *realpath)
 {
-	return ovl_path_open(realpath, O_RDONLY | (file->f_flags & O_LARGEFILE));
+	struct file *res;
+	const struct cred *old_cred;
+
+	old_cred = ovl_override_creds(file_inode(file)->i_sb);
+	res = ovl_path_open(realpath, O_RDONLY | (file->f_flags & O_LARGEFILE));
+	revert_creds(old_cred);
+
+	return res;
 }
 
 static int ovl_dir_fsync(struct file *file, loff_t start, loff_t end,
