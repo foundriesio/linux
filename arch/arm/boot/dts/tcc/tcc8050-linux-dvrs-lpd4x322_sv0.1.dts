@@ -74,6 +74,11 @@
 		vqmmc-supply = <&vqmmc_emmc>;
 	};
 
+	wmixer_drv1: wmixer_drv@1 {
+		rdmas = <&vioc_rdma VIOC_RDMA12 VIOC_RDMA13>;
+		status = "okay";
+	};
+
         tcc-gpio-sample {
                 compatible = "gpio-sample";
                 leble = "TCC GPIO";

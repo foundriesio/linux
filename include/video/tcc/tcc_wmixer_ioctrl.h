@@ -108,7 +108,7 @@ typedef struct {
 	unsigned int 			dst_win_bottom;
 
 	unsigned int			interlaced;
-	// for only TCC898x 
+	// for only TCC898x
 	unsigned int			mc_num;
 	unsigned int			dst_fmt_ext_info;	//0, 8 : 8bit normal  10 : 10bit data type,  0x10 : map converter
 } WMIXER_ALPHASCALERING_INFO_TYPE;
@@ -132,6 +132,9 @@ typedef struct {
 	unsigned int 		src0_Vaddr;
 	unsigned short 	src0_width;
 	unsigned short 	src0_height;
+	unsigned short 	src0_dst_width;
+	unsigned short 	src0_dst_height;
+	unsigned char 	src0_use_scaler;
 	unsigned short 	src0_winLeft;
 	unsigned short	src0_winTop;
 	unsigned short	src0_winRight;
@@ -182,7 +185,7 @@ typedef struct {
 
 #define WMIXER                  'w'
 #define TCC_WMIXER_IOCTRL 					0x01
-#define TCC_WMIXER_IOCTRL_KERNEL 			0x02	
+#define TCC_WMIXER_IOCTRL_KERNEL 			0x02
 #define TCC_WMIXER_ALPHA_SCALING 			0x04
 #define TCC_WMIXER_ALPHA_SCALING_KERNEL		0x08
 #define TCC_WMIXER_ALPHA_MIXING 			0x10
