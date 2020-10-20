@@ -76,12 +76,12 @@ static bool of_parse_dp_dt( struct Dptx_Params	*pstDptx, struct device_node *pst
 	pstSerDes_DN = of_find_compatible_node( NULL, NULL, "telechips,serdes_evb_type");
 	if( !pstSerDes_DN ) 
 	{
-		dptx_err("Can't find SerDes node \n");
+		//dptx_err("Can't find SerDes node \n");
 	}
 
 	if( of_property_read_u32( pstSerDes_DN, "serdes_evb_type", &uiEVB_Type ) < 0) 
 	{
-		dptx_err("Can't get EVB type");
+		//dptx_err("Can't get EVB type");
 	}
 
 	pstDptx->uiHPD_GPIO = of_get_gpio( pstNode, 0 );
