@@ -165,6 +165,7 @@ typedef struct {
 	unsigned int 		dst_Yaddr;
 	unsigned int 		dst_Uaddr;
 	unsigned int 		dst_Vaddr;
+	unsigned int 	dst_rgb_swap;
 	unsigned short 	dst_width;
 	unsigned short 	dst_height;
 	unsigned short 	dst_winLeft;
