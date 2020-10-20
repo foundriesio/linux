@@ -545,6 +545,11 @@ static int wmixer_drv_alpha_mixing_ctrl(struct wmixer_drv_type *wmixer)
     VIOC_RDMA_SetImageAlphaEnable(pWMIX_rdma_base, 1);
     VIOC_RDMA_SetImageAlphaSelect(pWMIX_rdma_base, 1);
     VIOC_RDMA_SetImageFormat(pWMIX_rdma_base, apb_info->src0_fmt);
+    if ((apb_info->src0_fmt > VIOC_IMG_FMT_COMP) && (apb_info->dst_fmt < VIOC_IMG_FMT_COMP)) {	//와드
+        VIOC_RDMA_SetImageY2REnable(pWMIX_rdma_base, 1);
+    } else {
+        VIOC_RDMA_SetImageY2REnable(pWMIX_rdma_base, 0);
+    }
     VIOC_RDMA_SetImageSize(pWMIX_rdma_base, apb_info->src0_width, apb_info->src0_height);
     VIOC_RDMA_SetImageOffset(pWMIX_rdma_base, apb_info->src0_fmt, apb_info->src0_width);
     VIOC_RDMA_SetImageBase(pWMIX_rdma_base, apb_info->src0_Yaddr, apb_info->src0_Uaddr, apb_info->src0_Vaddr);
@@ -552,6 +557,11 @@ static int wmixer_drv_alpha_mixing_ctrl(struct wmixer_drv_type *wmixer)
     VIOC_RDMA_SetImageAlphaEnable(pWMIX_rdma1_base, 1);
     VIOC_RDMA_SetImageAlphaSelect(pWMIX_rdma1_base, 1);
     VIOC_RDMA_SetImageFormat(pWMIX_rdma1_base, apb_info->src1_fmt);
+    if ((apb_info->src1_fmt > VIOC_IMG_FMT_COMP) && (apb_info->dst_fmt < VIOC_IMG_FMT_COMP)) {	//와드
+        VIOC_RDMA_SetImageY2REnable(pWMIX_rdma1_base, 1);
+    } else {
+        VIOC_RDMA_SetImageY2REnable(pWMIX_rdma1_base, 0);
+    }
     VIOC_RDMA_SetImageSize(pWMIX_rdma1_base, apb_info->src1_width, apb_info->src1_height);
     VIOC_RDMA_SetImageOffset(pWMIX_rdma1_base, apb_info->src1_fmt, apb_info->src1_width);
     VIOC_RDMA_SetImageBase(pWMIX_rdma1_base, apb_info->src1_Yaddr, apb_info->src1_Uaddr, apb_info->src1_Vaddr);
@@ -600,9 +610,18 @@ static int wmixer_drv_alpha_mixing_ctrl(struct wmixer_drv_type *wmixer)
     VIOC_WMIX_SetUpdate(pWMIX_wmix_base);
 
     VIOC_WDMA_SetImageFormat(pWMIX_wdma_base, apb_info->dst_fmt);
+    if ( apb_info->dst_fmt < VIOC_IMG_FMT_COMP )
+		VIOC_WDMA_SetImageRGBSwapMode( pWMIX_wdma_base, apb_info->dst_rgb_swap);
+	else
+		VIOC_WDMA_SetImageRGBSwapMode( pWMIX_wdma_base, 0);
     VIOC_WDMA_SetImageSize(pWMIX_wdma_base, apb_info->dst_width, apb_info->dst_height);
     VIOC_WDMA_SetImageOffset(pWMIX_wdma_base, apb_info->dst_fmt, apb_info->dst_width);
     VIOC_WDMA_SetImageBase(pWMIX_wdma_base, apb_info->dst_Yaddr, apb_info->dst_Uaddr, apb_info->dst_Vaddr);
+    if ((apb_info->src0_fmt < VIOC_IMG_FMT_COMP) && (apb_info->dst_fmt > VIOC_IMG_FMT_COMP)) {
+		VIOC_WDMA_SetImageR2YEnable(pWMIX_wdma_base, 1);
+	} else {
+		VIOC_WDMA_SetImageR2YEnable(pWMIX_wdma_base, 0);
+	}
     VIOC_WDMA_SetImageEnable(pWMIX_wdma_base, 0 /* OFF */);
     vioc_intr_clear(wmixer->vioc_intr->id, wmixer->vioc_intr->bits);
 
