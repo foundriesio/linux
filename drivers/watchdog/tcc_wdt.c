@@ -767,6 +767,90 @@ static int tcc_wdt_pm_resume(struct device *dev)
 #define tcc_wdt_pm_resume	NULL
 #endif
 
+/* [TCCQB] QUICKBOOT */
+
+#ifdef CONFIG_QUICKBOOT_WATCHDOG
+
+#define TCCWDT_RESET_TIME_QB       20	/* Reset time */
+
+void tccwdt_qb_init(void)
+{
+        if (wdt_ctrl_base == NULL) {
+                pr_err("[%s][%s][%s] Watchdog is not enabled. Check .dtsi file.\n", TCC_WDT_ERROR, TCC_WATCHDOG_MODULE, TCC_SUBCATEGORY);
+                return;
+        }
+
+        watchdog_status = tccwdt_get_status();
+        tccwdt_kickdog();
+        tccwdt_stop();			/* To Disable TCC WatchDog */
+
+        tccwdt_reset_time = TCCWDT_RESET_TIME_QB;       /* SET QuickBoot WatchDog Time. */
+
+        wdt_writel((WDT_CNT_MASK)&(tccwdt_reset_time*wdt_rate), wdt_cnt_reg);
+        wdt_writel(wdt_readl(wdt_ctrl_base)|WDT_EN|WDT_PMU_RST_EN, wdt_ctrl_base);      /* Enable watchdog */
+
+        pr_info("[%s][%s][%s] Enable QuickBoot Watchdog Reset Time : %d sec\n", TCC_WDT_INFO, TCC_WATCHDOG_MODULE, TCC_SUBCATEGORY, tccwdt_reset_time);
+
+        tccwdt_kickdog();       /* Kick QuickBoot WatchDog */
+}
+
+void tccwdt_qb_exit(void)
+{
+        if (wdt_ctrl_base == NULL) {
+                pr_err("[%s][%s][%s] Watchdog is not enabled. Check .dtsi file.\n", TCC_WDT_ERROR, TCC_WATCHDOG_MODULE, TCC_SUBCATEGORY);
+                return;
+        }
+
+        pr_info("[%s][%s][%s] *** Disable QuickBoot Watchdog ***\n", TCC_WDT_INFO, TCC_WATCHDOG_MODULE, TCC_SUBCATEGORY);
+        tccwdt_stop();				/* Disable QuickBoot WatchDog */
+
+        tccwdt_reset_time = TCCWDT_RESET_TIME;  /* SET TCC WatchDog Time. */
+
+        if(watchdog_status) {
+                tccwdt_start();			/* Enable TCC WatchDog */
+                pr_info("[%s][%s][%s] Enable TCC Watchdog Reset Time : %d sec\n", TCC_WDT_INFO, TCC_WATCHDOG_MODULE, TCC_SUBCATEGORY, tccwdt_reset_time);
+        }
+}
+
+void tccwdt_qb_kickdog(void)
+{
+        if (wdt_ctrl_base == NULL) {
+                pr_err("[%s][%s][%s] Watchdog is not initialized! QB Watchdog cannot work!\n", TCC_WDT_ERROR, TCC_WATCHDOG_MODULE, TCC_SUBCATEGORY);
+                return;
+        }
+
+        tccwdt_kickdog();
+}
+
+void tccwdt_qb_reset_time(int wdt_sec)
+{
+        if (wdt_ctrl_base == NULL) {
+                pr_err("[%s][%s][%s] Watchdog is not enabled. Check dtsi file.\n", TCC_WDT_ERROR, TCC_WATCHDOG_MODULE, TCC_SUBCATEGORY);
+                return;
+        }
+
+        tccwdt_stop();
+
+        /*      SET Default TCCWDT_RESET_TIME_QB        */
+        if (wdt_sec == 0)
+                wdt_sec = TCCWDT_RESET_TIME_QB;
+
+        /*      SET New Wdt Reset Time  */
+        wdt_writel((WDT_CNT_MASK)&(tccwdt_reset_time*wdt_rate), wdt_cnt_reg);
+        wdt_writel(wdt_readl(wdt_ctrl_base)|WDT_EN|WDT_PMU_RST_EN, wdt_ctrl_base);      /* enable watchdog */
+
+        pr_info("[%s][%s][%s] QuickBoot Watchdog Reset Time : %d sec\n", TCC_WDT_INFO, TCC_WATCHDOG_MODULE, TCC_SUBCATEGORY, wdt_sec);
+
+        tccwdt_kickdog();
+}
+
+EXPORT_SYMBOL(tccwdt_qb_init);
+EXPORT_SYMBOL(tccwdt_qb_exit);
+EXPORT_SYMBOL(tccwdt_qb_kickdog);
+EXPORT_SYMBOL(tccwdt_qb_reset_time);
+
+#endif
+
 static const struct of_device_id tcc_wdt_of_match[] = {
 	{
 		.compatible = "telechips,wdt",
