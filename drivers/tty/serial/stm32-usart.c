@@ -402,6 +402,27 @@ static void stm32_usart_receive_chars(struct uart_port *port,
 		tty_flip_buffer_push(tport);
 }
 
+static bool stm32_usart_tx_dma_started(struct stm32_port *stm32_port)
+{
+	enum dma_status tx_dma_status;
+
+	if (!stm32_port->tx_ch)
+		return false;
+
+	tx_dma_status = dmaengine_tx_status(stm32_port->tx_ch,
+					    stm32_port->tx_ch->cookie, NULL);
+
+	return tx_dma_status == DMA_IN_PROGRESS;
+}
+
+static bool stm32_usart_tx_dma_enabled(struct stm32_port *stm32_port)
+{
+	struct stm32_usart_offsets *ofs = &stm32_port->info->ofs;
+
+	return !!(readl_relaxed(stm32_port->port.membase + ofs->cr3)
+				& USART_CR3_DMAT);
+}
+
 static void stm32_usart_tx_dma_complete(void *arg)
 {
 	struct uart_port *port = arg;
@@ -409,9 +430,8 @@ static void stm32_usart_tx_dma_complete(void *arg)
 	struct stm32_usart_offsets *ofs = &stm32port->info->ofs;
 	unsigned long flags;
 
-	dmaengine_terminate_async(stm32port->tx_ch);
 	stm32_usart_clr_bits(port, ofs->cr3, USART_CR3_DMAT);
-	stm32port->tx_dma_busy = false;
+	dmaengine_terminate_async(stm32port->tx_ch);
 
 	/* Let's see if we have pending data to send */
 	spin_lock_irqsave(&port->lock, flags);
@@ -461,10 +481,8 @@ static void stm32_usart_transmit_chars_pio(struct uart_port *port)
 	struct stm32_usart_offsets *ofs = &stm32_port->info->ofs;
 	struct circ_buf *xmit = &port->state->xmit;
 
-	if (stm32_port->tx_dma_busy) {
+	if (stm32_usart_tx_dma_enabled(stm32_port))
 		stm32_usart_clr_bits(port, ofs->cr3, USART_CR3_DMAT);
-		stm32_port->tx_dma_busy = false;
-	}
 
 	while (!uart_circ_empty(xmit)) {
 		/* Check that TDR is empty before filling FIFO */
@@ -491,10 +509,11 @@ static void stm32_usart_transmit_chars_dma(struct uart_port *port)
 	dma_cookie_t cookie;
 	unsigned int count, i, ret;
 
-	if (stm32port->tx_dma_busy)
+	if (stm32_usart_tx_dma_started(stm32port)) {
+		if (!stm32_usart_tx_dma_enabled(stm32port))
+			stm32_usart_set_bits(port, ofs->cr3, USART_CR3_DMAT);
 		return;
-
-	stm32port->tx_dma_busy = true;
+	}
 
 	count = uart_circ_chars_pending(xmit);
 
@@ -560,7 +579,8 @@ static void stm32_usart_transmit_chars(struct uart_port *port)
 	int ret;
 
 	if (port->x_char) {
-		if (stm32_port->tx_dma_busy)
+		if (stm32_usart_tx_dma_started(stm32_port) &&
+		    stm32_usart_tx_dma_enabled(stm32_port))
 			stm32_usart_clr_bits(port, ofs->cr3, USART_CR3_DMAT);
 
 		/* Check that TDR is empty before filling FIFO */
@@ -575,7 +595,7 @@ static void stm32_usart_transmit_chars(struct uart_port *port)
 		writel_relaxed(port->x_char, port->membase + ofs->tdr);
 		port->x_char = 0;
 		port->icount.tx++;
-		if (stm32_port->tx_dma_busy)
+		if (stm32_usart_tx_dma_started(stm32_port))
 			stm32_usart_set_bits(port, ofs->cr3, USART_CR3_DMAT);
 		return;
 	}
@@ -715,7 +735,8 @@ static void stm32_usart_stop_tx(struct uart_port *port)
 	struct stm32_usart_offsets *ofs = &stm32_port->info->ofs;
 
 	stm32_usart_tx_interrupt_disable(port);
-	if (stm32_port->tx_dma_busy) {
+	if (stm32_usart_tx_dma_started(stm32_port) &&
+	    stm32_usart_tx_dma_enabled(stm32_port)) {
 		dmaengine_terminate_async(stm32_port->tx_ch);
 		stm32_usart_clr_bits(port, ofs->cr3, USART_CR3_DMAT);
 	}
@@ -745,7 +766,6 @@ static void stm32_usart_flush_buffer(struct uart_port *port)
 		spin_lock(&port->lock);
 
 		stm32_usart_clr_bits(port, ofs->cr3, USART_CR3_DMAT);
-		stm32_port->tx_dma_busy = false;
 	}
 }
 
@@ -1457,8 +1477,6 @@ static int stm32_usart_of_dma_tx_probe(struct stm32_port *stm32port,
 	struct device *dev = &pdev->dev;
 	struct dma_slave_config config;
 	int ret;
-
-	stm32port->tx_dma_busy = false;
 
 	stm32port->tx_buf = dma_alloc_coherent(&pdev->dev, TX_BUF_L,
 					       &stm32port->tx_dma_buf,
