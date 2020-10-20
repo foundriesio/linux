@@ -19,7 +19,8 @@ dtb-$(CONFIG_ARCH_TCC805X) += \
 	tcc8050-android-lpd4x322_sv0.1.dtb \
 	tcc8053-android-lpd4x322_sv0.1.dtb \
 	tcc8059-android-lpd4x321_sv0.1.dtb \
-	tcc8060-android-board-xxx.dtb
+	tcc8060-android-board-xxx.dtb \
+	tcc8050-android-ems.dtb
 else
 dtb-$(CONFIG_ARCH_TCC899X) += \
 	tcc8990-linux-lpd4322-v0.1.dtb \
@@ -42,13 +43,15 @@ ifeq ($(CONFIG_TCC805X_CA53Q),y)
 dtb-$(CONFIG_ARCH_TCC805X) += \
 	tcc8050-linux-subcore-a53q.dtb \
 	tcc8053-linux-subcore-a53q.dtb \
-	tcc8059-linux-subcore-a53q.dtb
+	tcc8059-linux-subcore-a53q.dtb \
+	tcc8050-linux-ems-subcore-a53q.dtb
 else
 dtb-$(CONFIG_ARCH_TCC805X) += \
 	tcc8050-linux-lpd4x322_sv0.1.dtb \
 	tcc8053-linux-lpd4x322_sv0.1.dtb \
 	tcc8059-linux-lpd4x321_sv0.1.dtb \
-	tcc8060-linux-board-xxx.dtb
+	tcc8060-linux-board-xxx.dtb \
+	tcc8050-linux-ems.dtb
 endif
 endif
 
@@ -69,7 +72,8 @@ dtbo-y += \
 	overlay-tcc8050-android-lpd4x322_sv0.1.dtbo \
 	overlay-tcc8053-android-lpd4x322_sv0.1.dtbo \
 	overlay-tcc8059-android-lpd4x321_sv0.1.dtbo \
-	overlay-tcc8060-android-board-xxx.dtbo
+	overlay-tcc8060-android-board-xxx.dtbo \
+	overlay-tcc8050-android-ems.dtbo
 endif
 
 always         := $(dtb-y)

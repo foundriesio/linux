@@ -1128,12 +1128,14 @@ ifeq ($(CONFIG_TCC805X_CA53Q),y)
 dtb-$(CONFIG_ARCH_TCC805X) += \
 	tcc/tcc8050-linux-subcore-a53q.dtb \
 	tcc/tcc8053-linux-subcore-a53q.dtb \
-	tcc/tcc8059-linux-subcore-a53q.dtb
+	tcc/tcc8059-linux-subcore-a53q.dtb \
+	tcc/tcc8050-linux-ems-subcore-a53q.dtb
 else
 dtb-$(CONFIG_ARCH_TCC805X) += \
 	tcc/tcc8050-linux-lpd4x322_sv0.1.dtb \
 	tcc/tcc8053-linux-lpd4x322_sv0.1.dtb \
 	tcc/tcc8059-linux-lpd4x321_sv0.1.dtb \
+	tcc/tcc8050-linux-ems.dtb \
 	tcc/tcc8060-linux-board-xxx.dtb
 endif
 endif
