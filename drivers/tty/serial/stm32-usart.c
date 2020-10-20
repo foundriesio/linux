@@ -903,8 +903,17 @@ static void stm32_usart_shutdown(struct uart_port *port)
 					 isr, (isr & USART_SR_TC),
 					 10, 100000);
 
-	if (ret)
+	/*
+	 * Send the TC error message only when ISR_TC is not set and
+	 * data stored in TDR / TX FIFO.
+	 */
+	if (ret && !(readl_relaxed(port->membase + ofs->isr) & USART_SR_TXE))
 		dev_err(port->dev, "transmission complete not set\n");
+
+	/* flush RX & TX FIFO */
+	if (ofs->rqr != UNDEF_REG)
+		stm32_usart_set_bits(port, ofs->rqr,
+				     USART_RQR_TXFRQ | USART_RQR_RXFRQ);
 
 	stm32_usart_clr_bits(port, ofs->cr1, val);
 
@@ -968,7 +977,11 @@ static void stm32_usart_set_termios(struct uart_port *port,
 						(isr & USART_SR_TC),
 						10, 100000);
 
-	if (ret)
+	/*
+	 * Send the TC error message only when ISR_TC is not set and
+	 * data stored in TDR / TX FIFO.
+	 */
+	if (ret && !(readl_relaxed(port->membase + ofs->isr) & USART_SR_TXE))
 		dev_err(port->dev, "transmission complete not set\n");
 
 	/* Stop serial port and reset value */
