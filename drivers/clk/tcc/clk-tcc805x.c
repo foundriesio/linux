@@ -76,8 +76,9 @@ void tcc_ckc_save(unsigned int clk_down)
 	pr_info("[INFO][tcc_clk][%s] Clock driver suspended\n", TCC_SUBCATEGORY);	
 
 #if !defined(CONFIG_TCC805X_CA53Q)
-	for (i = 0; i < PERI_MAX; i++) {
 	ckc_backup = kzalloc(sizeof(struct ckc_backup_reg), GFP_KERNEL);
+
+	for (i = 0; i < PERI_MAX; i++) {
 		if (((TCC_CKC_SMU_END <= i) && (i < TCC_CKC_DDI))	||
 			((TCC_CKC_DDI_END <= i) && (i < TCC_CKC_HSIO))	 ||
 			((TCC_CKC_HSIO_END <= i) && (i < TCC_CKC_IO))	 ||
