@@ -405,14 +405,14 @@ static int tcc_cb_wdt_probe(struct platform_device *pdev)
 	struct resource *res;
 
 	cb_wdt = devm_kzalloc(&pdev->dev, sizeof(struct tcc_cb_wdt), GFP_KERNEL);
-	if(cb_wdt != NULL) {
+	if(cb_wdt == NULL) {
 		dev_err(&pdev->dev, "[ERROR][TCC_CB_WDT] failed to allocate memory\n");
 		return -ENOMEM;
 	}
 
 	/* get watchdog base address */
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
-	if(res != NULL) {
+	if(res == NULL) {
 		dev_err(&pdev->dev, "[ERROR][TCC_CB_WDT] failed to get register address\n");
 		return -ENOMEM;
 	}
@@ -531,7 +531,7 @@ static int tcc_cb_wdt_probe(struct platform_device *pdev)
 		dev_err(&pdev->dev, "[ERROR][TCC_CB_WDT] failed to start watchdog\n");
 		return ret;
 	}
-
+	
 	return 0;
 }
 
