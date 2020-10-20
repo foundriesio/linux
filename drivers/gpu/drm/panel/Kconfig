@@ -126,4 +126,13 @@ config DRM_PANEL_LVDS_TCC
 	  This driver supports LVDS panels that don't require device-specific
 	  handling of power supplies or control signals.
 
+config DRM_PANEL_DPV14_TCC
+	tristate "DPV14 panel driver for Telechips"
+	depends on OF && ARCH_TCC805X
+	default y if ARCH_TCC805X
+	select VIDEOMODE_HELPERS
+	help
+	  This driver supports DP panels that don't require device-specific
+	  handling of power supplies or control signals.
+	  
 endmenu
