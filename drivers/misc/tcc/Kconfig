@@ -8,14 +8,14 @@ config TCC_SDR
 config TCC_SCALER
 	tristate "Telechips scaler driver"
 	depends on ARCH_TCC
-	default y
+	default n
 	help
 		Telechips scaler driver
 
 config TCC_WMIXER
 	tristate "Telechips WMixer driver"
 	depends on ARCH_TCC
-	default y
+	default n
 	help
 		Telechips WMixer driver
 

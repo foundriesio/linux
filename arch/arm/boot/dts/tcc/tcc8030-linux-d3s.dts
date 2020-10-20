@@ -1,0 +1,316 @@
+/*
+ * Device tree for Telechips TCC8031 AVN board
+ *
+ * Copyright (C) 2018 Telechips Inc. - http://www.telechips.com
+ *
+ * This file is dual-licensed: you can use it either under the terms
+ * of the GPL or the X11 license, at your option. Note that this dual
+ * licensing only applies to this file, and not this project as a
+ * whole.
+ *
+ *  a) This file is free software; you can redistribute it and/or
+ *     modify it under the terms of the GNU General Public License as
+ *     published by the Free Software Foundation; either version 2 of the
+ *     License, or (at your option) any later version.
+ *
+ *     This file is distributed in the hope that it will be useful,
+ *     but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *     GNU General Public License for more details.
+ *
+ * Or, alternatively,
+ *
+ *  b) Permission is hereby granted, free of charge, to any person
+ *     obtaining a copy of this software and associated documentation
+ *     files (the "Software"), to deal in the Software without
+ *     restriction, including without limitation the rights to use,
+ *     copy, modify, merge, publish, distribute, sublicense, and/or
+ *     sell copies of the Software, and to permit persons to whom the
+ *     Software is furnished to do so, subject to the following
+ *     conditions:
+ *
+ *     The above copyright notice and this permission notice shall be
+ *     included in all copies or substantial portions of the Software.
+ *
+ *     THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+ *     EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
+ *     OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+ *     NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
+ *     HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
+ *     WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+ *     FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
+ *     OTHER DEALINGS IN THE SOFTWARE.
+ */
+
+/dts-v1/;
+
+#include "tcc8031-linux-avn.dtsi"
+
+/ {
+	/* Describe here after remove this statement if you have something to be override. */
+	/* SD CARD */
+	sdhc1_pwrseq: sdhc1_pwrseq {
+		compatible = "mmc-pwrseq-simple";
+		reset-gpios = <&gpsd1 8 GPIO_ACTIVE_LOW>;
+	};
+
+	sdhc@16450000 {
+		broken-cd;
+		cd-inverted;
+		keep-power-in-suspend;
+
+		wp-gpios = <&gpsd1 7 0>;
+		cd-gpios = <&gpsd1 6 0>;
+
+		mmc-pwrseq = <&sdhc1_pwrseq>;
+		vqmmc-supply = <&vdd_ldo3>;
+	};
+	
+	/* SDIO */
+	vqmmc_sdio: vqmmc_sdio {
+		compatible = "regulator-fixed";
+		regulator-name = "vqmmc_sdio";
+		regulator-min-microvolt = <1800000>;
+		regulator-max-microvolt = <1800000>;
+		regulator-always-on;
+	};
+
+	sdhc@16460000 {
+		//non-removable;
+		keep-power-in-suspend;
+		cap-sdio-irq;
+
+		vqmmc-supply = <&vqmmc_sdio>;
+
+		cd-force-presence-change;
+
+		tcm38xx {
+			compatible = "telechips,tcm38xx";
+			wifi_pwr-gpio = <&gpsd2 6 0>; /* BT_WIFI_VBAT_EN */
+			wlreg_on-gpio = <&gpsd2 8 0>; /* WIFI_REG_ON */
+			//wifi_pwr_1p8v-gpio = <&gpsd1 6 0>;
+			//wifi_pwr_3p3v-gpio = <&gpsd1 7 0>;
+		};
+	};
+
+	timer@14300000 {
+		/* Timer 0 is used for WIFI LPO */
+		tcc-timer-reserved = <0>;
+	};
+
+	tm123xdhp90 {
+		compatible = "telechips,lvds-tm123xdhp90";
+		status = "okay";
+		lvds0 = <&lvds_phy>;
+		power-on-gpios = <&gpb 17 0>;		// LCD_ON
+		reset-gpios = <&gpb 18 0>;		// LCD_RST
+		/*
+		display-on-gpios = ;		// LCD_DISP
+		lvds-stby-gpios = ;		// LCD_DE = LVDS_STBY in LVDS
+		lvds-power-gpios = ;		// LVDS_EN
+		lvds-power-gpios1 = ;		// V_5V0_EN
+		*/
+		mode = <1>;		/* 0: single 1: dual */
+		ports = <2 3>;
+
+	};
+
+	hdmi640x480tu {
+		compatible = "telechips,hdmi640x480tu";
+		status = "okay";
+	};
+
+	tcc-drm-lcd {
+	        compatible = "telechips,tcc-drm-lcd";
+	        display-port-num = <0>;
+	        reg = <0x12000000 0x100 0x12000400 0x100 0x12001800 0x100>,
+				/* VIOC_REMAP */
+				  <0x12000000 0x100 0x12004000 0x100 0x12018000 0x100>;
+	        reg-names = "ddc", "rdma", "wmix";
+	        interrupts = <GIC_SPI VIOC1_IRQI IRQ_TYPE_LEVEL_HIGH>;
+	        interrupt-names = "vsync";
+	        clock-names = "ddibus_vioc", "peri_lcd";
+	        clocks = <&clk_ddi DDIBUS_VIOC>, <&clk_peri PERI_LCD0>;
+	        status = "okay";
+		display-timings {
+			native-mode = <&timing0>;
+			timing0: timing {
+				clock-frequency = <88200000>;
+				hactive = <1920>;
+				vactive = <720>;
+				hfront-porch = <28>;
+				hback-porch = <28>;
+				hsync-len = <8>;
+				vback-porch = <10>;
+				vfront-porch = <10>;
+				vsync-len = <2>;
+			};
+		};
+	};
+
+	tcc-drm-ext {
+	        compatible = "telechips,tcc-drm-ext";
+	        display-port-num = <1>;
+	        reg = <0x12000100 0x100 0x12000800 0x100 0x12001900 0x100>,
+				/* VIOC_REMAP */
+				  <0x12001000 0x100 0x12008000 0x100 0x12019000 0x100>;
+	        reg-names = "ddc", "rdma", "wmix";
+	        interrupts = <GIC_SPI VIOC1_IRQI IRQ_TYPE_LEVEL_HIGH>;
+	        interrupt-names = "vsync";
+	        clock-names = "ddibus_vioc", "peri_lcd";
+	        clocks = <&clk_ddi DDIBUS_VIOC>, <&clk_peri PERI_LCD1>;
+	        status = "okay";
+		display-timings {
+			native-mode = <&timing1>;
+			timing1: timing {
+				clock-frequency = <88200000>;
+				hactive = <1920>;
+				vactive = <720>;
+				hfront-porch = <28>;
+				hback-porch = <28>;
+				hsync-len = <8>;
+				vback-porch = <10>;
+				vfront-porch = <10>;
+				vsync-len = <2>;
+			};
+		};
+	};
+
+	tcc-drm-third {
+	        compatible = "telechips,tcc-drm-third";
+	        display-port-num = <2>;
+	        reg = <0x12000200 0x100 0x12000C00 0x100 0x12001A00 0x100>,
+				/* VIOC_REMAP */
+				  <0x12002000 0x100 0x1200C000 0x100 0x1201A000 0x100>;
+	        reg-names = "ddc", "rdma", "wmix";
+	        interrupts = <GIC_SPI VIOC1_IRQI IRQ_TYPE_LEVEL_HIGH>;
+	        interrupt-names = "vsync";
+	        clock-names = "ddibus_vioc", "peri_lcd";
+	        clocks = <&clk_ddi DDIBUS_VIOC>, <&clk_peri PERI_LCD2>;
+	        status = "okay";
+		display-timings {
+			native-mode = <&timing2>;
+			timing2: timing {
+				clock-frequency = <51200000>;
+				hactive = <1024>;
+				vactive = <600>;
+				hfront-porch = <147>;
+				hback-porch = <147>;
+				hsync-len = <19>;
+				vback-porch = <10>;
+				vfront-porch = <25>;
+				vsync-len = <2>;
+			};
+		};
+	};
+
+	vout_drv@1 {
+	    rdma = <&vioc_rdma VIOC_RDMA10>;
+	    wmix = <&vioc_wmix VIOC_WMIX2>;
+	    disp = <&vioc_disp VIOC_DISP2>;
+	    subplane_rdma = <&vioc_rdma VIOC_RDMA09>;
+		status = "disabled";
+	};
+
+	vioc_mgr@0 {
+		status = "okay";
+	};
+	tcc-gpio-sample {
+		compatible = "gpio-sample";
+		leble = "TCC GPIO";
+		/*EDGE_RISING : 0, EDGE_FALLING : 1, EDGE_BOTH : 2,
+		LEVEL_HIGH : 3, LEVEL_LOW : 4*/
+		irq-type = <2>;
+		gpios = <&gpa 1 0>;
+	};
+
+#if 1//1:forISDBTApplication
+	tcc_vsync_drv {
+		compatible = "telechips,tcc_vsync";
+		display-vioc0 = <&vioc_disp VIOC_DISP0>;
+		display-vioc1 = <&vioc_disp VIOC_DISP1>;
+		status = "okay";
+	};
+
+	tcc_video_viqe {
+		compatible = "telechips,tcc_viqe";
+
+		tcc_viqe_viqe_common {
+			telechips,viqe,0 = <&vioc_viqe VIOC_VIQE0>;
+			telechips,viqe,1 = <&vioc_viqe VIOC_VIQE1>;
+			vioc_deintls = <VIOC_DEINTLS0>;
+			board_num=<1>;
+		};
+
+		tcc_video_viqe_lcd {
+			telechips,wmixer = <&vioc_wmix VIOC_WMIX0>;
+			telechips,rdma,60 = <&vioc_rdma VIOC_RDMA03>;
+			telechips,disp = <&vioc_disp VIOC_DISP0>;
+			telechips,sc = <&vioc_scaler VIOC_SCALER1>;
+			viqe_rdma_num_60 = <VIOC_VIQE_RDMA_03>;
+			sc_rdma_num_60 = <VIOC_SC_RDMA_03>;
+		};
+
+		tcc_video_viqe_external {
+			telechips,wmixer = <&vioc_wmix VIOC_WMIX1>;
+			telechips,rdma,60 = <&vioc_rdma VIOC_RDMA07>;
+			telechips,disp = <&vioc_disp VIOC_DISP1>;
+			telechips,sc = <&vioc_scaler VIOC_SCALER1>;
+			viqe_rdma_num_60 = <VIOC_VIQE_RDMA_07>;
+			sc_rdma_num_60 = <VIOC_SC_RDMA_07>;
+		};
+
+		tcc_video_viqe_external_sub {
+			telechips,wmixer = <&vioc_wmix VIOC_WMIX1>;
+			telechips,rdma,60 = <&vioc_rdma VIOC_RDMA06>;
+			telechips,disp = <&vioc_disp VIOC_DISP1>;
+			telechips,sc = <&vioc_scaler VIOC_SCALER3>;
+			viqe_rdma_num_60 = <VIOC_VIQE_RDMA_06>;
+			sc_rdma_num_60 = <VIOC_SC_RDMA_06>;
+		};
+
+		tcc_video_main_m2m{
+			main_rdma_num_m2m = <VIOC_VIQE_RDMA_14>;
+			telechips,main_rdma,m2m = <&vioc_rdma VIOC_RDMA14>;
+		};
+
+		tcc_video_sub_m2m {
+			sub_rdma_num_m2m = <VIOC_VIQE_RDMA_12>;
+			telechips,sub_rdma,m2m = <&vioc_rdma VIOC_RDMA12>;
+		};
+
+		tcc_video_scaler_main_m2m {
+			clocks = <&clk_ddi DDIBUS_VIOC>;
+			m2m_sc_rdma = <&vioc_rdma VIOC_RDMA14>;
+			m2m_sc_scaler = <&vioc_scaler VIOC_SCALER1>;
+			m2m_sc_wmix = <&vioc_wmix VIOC_WMIX4>;
+			m2m_sc_wdma = <&vioc_wdma VIOC_WDMA04>;
+			m2m_sc_scaler_path = <VIOC_SC_RDMA_14>;
+			m2m_sc_settop_support = <1>;
+		};
+
+		tcc_video_scaler_sub_m2m {
+			clocks = <&clk_ddi DDIBUS_VIOC>;
+			m2m_sc_rdma = <&vioc_rdma VIOC_RDMA12>;
+			m2m_sc_scaler = <&vioc_scaler VIOC_SCALER3>;
+			m2m_sc_wmix = <&vioc_wmix VIOC_WMIX3>;
+			m2m_sc_wdma = <&vioc_wdma VIOC_WDMA03>;
+			m2m_sc_scaler_path = <VIOC_SC_RDMA_12>;
+			m2m_sc_settop_support = <1>;
+		};
+	};
+
+	wmixer_drv1: wmixer_drv@1 {
+		rdmas = <&vioc_rdma VIOC_RDMA12 VIOC_RDMA13>;
+		status = "okay";
+	};
+#endif
+};
+
+&ictc {
+	status = "okay";
+};
+
+&boot_time {
+	status = "okay";
+};
