@@ -14,6 +14,7 @@
 #define __TCC_DRM_DPI_H__
 
 #if defined(CONFIG_TCC_DP_DRIVER_V1_4)
+#include <include/dptx_drm.h>
 struct tcc_drm_dp_callback_funcs {
 	int (*attach)(struct drm_encoder *encoder, int dp_id, int flags );
 	int (*detach)(struct drm_encoder *encoder, int dp_id, int flags );
