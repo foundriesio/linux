@@ -1084,7 +1084,8 @@ dtb-$(CONFIG_ARCH_TCC897X) += \
 dtb-$(CONFIG_ARCH_TCC803X) += \
 	tcc/tcc8030-android-lpd4321_sv0.1.dtb \
 	tcc/tcc8030-android-lpd4321_sv0.1_for_t-sound.dtb \
-	tcc/tcc8030-android-dual-lpd4321-ivi_sv0.1.dtb
+	tcc/tcc8030-android-dual-lpd4321-ivi_sv0.1.dtb \
+	tcc/tcc8030-android-d3s.dtb
 ifeq ($(CONFIG_TCC_HDMI_DRIVER_V2_0),y)
 dtb-$(CONFIG_ARCH_TCC803X) += \
 	tcc/tcc8030-android-lpd4321_sv0.1-hdmi-ext-output.dtb \
@@ -1160,7 +1161,8 @@ dtbo-y += \
 	tcc/overlay-tcc8030-android-lpd4321_sv0.1.dtbo \
 	tcc/overlay-tcc8030-android-dual-lpd4321-ivi_sv0.1.dtbo \
 	tcc/overlay-tcc8030-android-lpd4321_sv0.1-hdmi-ext-output.dtbo \
-	tcc/overlay-tcc8030-android-lpd4321_sv0.1-hdmi-ext-panel.dtbo
+	tcc/overlay-tcc8030-android-lpd4321_sv0.1-hdmi-ext-panel.dtbo \
+	tcc/overlay-tcc8030-android-d3s.dtbo
 
 dtb-y += \
 	tcc/tcc9010-soc.dtb
