@@ -147,22 +147,19 @@ static long vmem_compat_ioctl(struct file* file, unsigned int cmd, unsigned long
 }
 #endif
 
-static unsigned int vmem_poll(struct file* filp, poll_table * wait)
+static unsigned int vmem_poll(struct file* filp, poll_table* wait)
 {
 	vpu_comm_data_t* vpu_data = (vpu_comm_data_t*)filp->private_data;
 
 	if (vpu_data == NULL)
 	{
-		return -EFAULT;
+		return POLLERR | POLLNVAL;
 	}
 
-	if (vpu_data->count > 0)
+	if (vpu_data->count == 0)
 	{
-		vpu_data->count--;
-		return POLLIN;
+		poll_wait(filp, &(vpu_data->wq), wait);
 	}
-
-	poll_wait(filp, &(vpu_data->wq), wait);
 
 	if (vpu_data->count > 0)
 	{

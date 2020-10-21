@@ -263,7 +263,7 @@ void hmgr_hw_assert(void)
 {
 #if defined(VIDEO_IP_DIRECT_RESET_CTRL)
 	// ACLK > CCLK > BCLK
-	V_DBG(DEBUG_RSTCLK, "enter");
+	V_DBG(VPU_DBG_RSTCLK, "enter");
 
 	if (vbus_hevc_bus_reset)
 	{
@@ -275,7 +275,7 @@ void hmgr_hw_assert(void)
 		reset_control_assert(vbus_hevc_core_reset);
 	}
 
-	V_DBG(DEBUG_RSTCLK, "out!! (rsr:0x%x)", hmgr_get_reset_register());
+	V_DBG(VPU_DBG_RSTCLK, "out!! (rsr:0x%x)", hmgr_get_reset_register());
 #endif
 }
 
@@ -283,7 +283,7 @@ void hmgr_hw_deassert(void)
 {
 #if defined(VIDEO_IP_DIRECT_RESET_CTRL)
 	//  BCLK > CCLK > ACLK
-	V_DBG(DEBUG_RSTCLK, "enter");
+	V_DBG(VPU_DBG_RSTCLK, "enter");
 
 	if (vbus_hevc_core_reset)
 	{
@@ -295,7 +295,7 @@ void hmgr_hw_deassert(void)
 		reset_control_deassert(vbus_hevc_bus_reset);
 	}
 
-	V_DBG(DEBUG_RSTCLK, "out!! (rsr:0x%x)", hmgr_get_reset_register());
+	V_DBG(VPU_DBG_RSTCLK, "out!! (rsr:0x%x)", hmgr_get_reset_register());
 #endif
 }
 
@@ -383,12 +383,6 @@ void hmgr_status_clear(unsigned int* base_addr)
 {
 	return;
 }
-
-int hmgr_is_loadable(void)
-{
-	return 0;
-}
-EXPORT_SYMBOL(hmgr_is_loadable);
 
 void hmgr_init_variable(void)
 {

@@ -32,8 +32,6 @@
 #include "vpu_comm.h"
 #include "vpu_devices.h"
 
-extern int vmgr_hevc_enc_is_loadable(void);
-
 extern int vmgr_hevc_enc_probe(struct platform_device* pdev);
 extern int vmgr_hevc_enc_remove(struct platform_device* pdev);
 
@@ -45,8 +43,8 @@ extern int vmgr_hevc_enc_resume(struct platform_device* pdev);
 #ifdef CONFIG_OF
 static struct of_device_id vmgr_hevc_enc_of_match[] =
 {
-		{ .compatible = "telechips,vpu_hevc_enc_dev_mgr" },	//VPU_HEVC_ENC_MGR_NAME
-		{}
+	{ .compatible = "telechips,vpu_hevc_enc_dev_mgr" }, //VPU_HEVC_ENC_MGR_NAME
+	{}
 };
 MODULE_DEVICE_TABLE(of, vmgr_hevc_enc_of_match);
 #endif
@@ -76,9 +74,6 @@ static void __exit vpu_hevc_enc_dev_cleanup(void)
 
 static int vpu_hevc_enc_dev_init(void)
 {
-	if (vmgr_hevc_enc_is_loadable() > 0)
-		return -1;
-
 	printk("============> VPU HEVC ENC device drivers enter!! -------\n");
 
 	/*

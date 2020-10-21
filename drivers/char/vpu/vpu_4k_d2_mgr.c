@@ -128,6 +128,7 @@ static unsigned int _vpu_4k_d2mgr_ReadRegVCE(unsigned int vce_addr)
 #define VCORE_DBG_ADDR              0x8300
 #define VCORE_DBG_DATA              0x8304
 #define VCORE_DBG_READY             0x8308
+
 	int     vcpu_reg_addr;
 	int     udata;
 
@@ -227,7 +228,7 @@ static void _vpu_4k_d2_dump_status(void)
 	printk("[DEBUG-BPUHEVC] TC_BUSY> tc_dec_busy: %1d, tc_fifo_busy: 0x%02x\n", ((tc_busy >> 3) & 0x1), (tc_busy & 0x7));
 	printk("[DEBUG-BPUHEVC] LF_FSM>  SAO: 0x%1x, LF: 0x%1x\n", ((lf_fsm >> 4) & 0xf), (lf_fsm  & 0xf));
 	printk("[DEBUG-BPUHEVC] BS_DATA> ExpEnd=%1d, bs_valid: 0x%03x, bs_data: 0x%03x\n", ((bs_data >> 31) & 0x1), ((bs_data >> 16) & 0xfff), (bs_data & 0xfff));
-	printk("[DEBUG-BPUHEVC] BUS_BUSY> mib_wreq_done: %1d, mib_busy: %1d, sdma_bus: %1d\n", ((bbusy >> 2) & 0x1), ((bbusy >> 1) & 0x1) , (bbusy & 0x1));
+	printk("[DEBUG-BPUHEVC] BUS_BUSY> mib_wreq_done: %1d, mib_busy: %1d, sdma_bus: %1d\n", ((bbusy >> 2) & 0x1), ((bbusy >> 1) & 0x1), (bbusy & 0x1));
 	printk("[DEBUG-BPUHEVC] FIFO_VALID> cu: %1d, tu: %1d, iptu: %1d, lf: %1d, coff: %1d\n\n", ((fv >> 4) & 0x1), ((fv >> 3) & 0x1), ((fv >> 2) & 0x1), ((fv >> 1) & 0x1), (fv & 0x1));
 	printk("[-] BPU REG Dump\n");
 
@@ -587,11 +588,7 @@ static int _vmgr_4k_d2_internal_handler(unsigned int reason)
 					oper_inst = atomic_read(&vmgr_4k_d2_data.oper_intr);
 				}
 
-				if (vmgr_4k_d2_is_loadable() > 0)
-				{
-					ret_code = RETCODE_CODEC_EXIT;
-				}
-				else if (oper_inst & reason)
+				if (oper_inst & reason)
 				{
 					detailk("Success 2: vpu-4k-d2 vp9/hevc operation!! \n");
 				#if defined(FORCED_ERROR)
@@ -630,7 +627,7 @@ static int _vmgr_4k_d2_internal_handler(unsigned int reason)
 		 ret_code, cntInt_4kd2, cntwk_4kd2, vmgr_4k_d2_data.oper_intr);
 	#endif
 
-	V_DBG(DEBUG_ENC_INTERRUPT, "out (Interrupt option=%d, isr cnt=%d, ev=%d)",
+	V_DBG(VPU_DBG_INTERRUPT, "out (Interrupt option=%d, isr cnt=%d, ev=%d)",
 		vmgr_4k_d2_data.check_interrupt_detection,
 		cntInt_4kd2,
 		ret_code);
@@ -642,7 +639,7 @@ static int _vmgr_4k_d2_process(vputype type, int cmd, long pHandle, void* args)
 {
 	int ret = 0;
 #ifdef CONFIG_VPU_TIME_MEASUREMENT
-	struct timeval t1 , t2;
+	struct timeval t1, t2;
 	int time_gap_ms = 0;
 #endif
 
@@ -1490,26 +1487,32 @@ static int _vmgr_4k_d2_release(struct inode* inode, struct file* filp)
 
 VpuList_t* vmgr_4k_d2_list_manager(VpuList_t* args, unsigned int cmd)
 {
-	VpuList_t* ret;
+	VpuList_t* ret = NULL;
+	VpuList_t* oper_data = (VpuList_t*) args;
+
+	if (!oper_data)
+	{
+		if (cmd == LIST_ADD || cmd == LIST_DEL)
+		{
+			V_DBG(VPU_DBG_ERROR, "Data is null, cmd=%d", cmd);
+			return NULL;
+		}
+	}
+
+	if (cmd == LIST_ADD)
+	{
+		*oper_data->vpu_result = RET0;
+	}
+
 
 	mutex_lock(&vmgr_4k_d2_data.comm_data.list_mutex);
 	{
-		VpuList_t* data = NULL;
-		ret = NULL;
-
 		switch (cmd)
 		{
 			case LIST_ADD:
 			{
-				if (!args)
-				{
-					err("ADD :: data is null \n");
-					goto Error;
-				}
-
-				data = (VpuList_t*)args;
-				*(data->vpu_result) |= RET1;
-				list_add_tail(&data->list, &vmgr_4k_d2_data.comm_data.main_list);
+				*oper_data->vpu_result |= RET1;
+				list_add_tail(&oper_data->list, &vmgr_4k_d2_data.comm_data.main_list);
 				vmgr_4k_d2_data.cmd_queued++;
 				vmgr_4k_d2_data.comm_data.thread_intr++;
 			}
@@ -1517,13 +1520,7 @@ VpuList_t* vmgr_4k_d2_list_manager(VpuList_t* args, unsigned int cmd)
 
 			case LIST_DEL:
 			{
-				if (!args)
-				{
-					err("DEL :: data is null \n");
-					goto Error;
-				}
-				data = (VpuList_t*)args;
-				list_del(&data->list);
+				list_del(&oper_data->list);
 				vmgr_4k_d2_data.cmd_queued--;
 			}
 			break;
@@ -1539,14 +1536,13 @@ VpuList_t* vmgr_4k_d2_list_manager(VpuList_t* args, unsigned int cmd)
 
 			case LIST_GET_ENTRY:
 			{
-				ret =  list_first_entry(&vmgr_4k_d2_data.comm_data.main_list, VpuList_t, list);
+				ret = list_first_entry(&vmgr_4k_d2_data.comm_data.main_list, VpuList_t, list);
 			}
 			break;
 		}
 	}
-
-Error:
 	mutex_unlock(&vmgr_4k_d2_data.comm_data.list_mutex);
+
 	if (cmd == LIST_ADD)
 	{
 		wake_up_interruptible(&vmgr_4k_d2_data.comm_data.thread_wq);
@@ -1575,26 +1571,26 @@ static int _vmgr_4k_d2_operation(void)
 			return 0;
 		}
 
-		*(oper_data->vpu_result) |= RET2;
+		*oper_data->vpu_result |= RET2;
 
 		dprintk("_vmgr_4k_d2_operation [%d] :: cmd = 0x%x, vmgr_4k_d2_data.cmd_queued(%d) \n", oper_data->type, oper_data->cmd_type, vmgr_4k_d2_data.cmd_queued);
 
-		if (oper_data != NULL && oper_data->type < VPU_4K_D2_MAX)
+		if (oper_data->type < VPU_4K_D2_MAX)
 		{
-			*(oper_data->vpu_result) |= RET3;
+			*oper_data->vpu_result |= RET3;
 
-			*(oper_data->vpu_result) = _vmgr_4k_d2_process(oper_data->type, oper_data->cmd_type, oper_data->handle, oper_data->args);
+			*oper_data->vpu_result = _vmgr_4k_d2_process(oper_data->type, oper_data->cmd_type, oper_data->handle, oper_data->args);
 			oper_finished = 1;
-			if (*(oper_data->vpu_result) != RETCODE_SUCCESS)
+			if (*oper_data->vpu_result != RETCODE_SUCCESS)
 			{
-				if (*(oper_data->vpu_result) != RETCODE_INSUFFICIENT_BITSTREAM &&
-					*(oper_data->vpu_result) != RETCODE_INSUFFICIENT_BITSTREAM_BUF)
+				if ((*oper_data->vpu_result != RETCODE_INSUFFICIENT_BITSTREAM) &&
+					(*oper_data->vpu_result != RETCODE_INSUFFICIENT_BITSTREAM_BUF))
 				{
 					err("vmgr_4k_d2_out[0x%x] :: type = %d, vmgr_4k_d2_data.handle = 0x%x, cmd = 0x%x, frame_len %d \n",
-							*(oper_data->vpu_result), oper_data->type, oper_data->handle, oper_data->cmd_type, vmgr_4k_d2_data.szFrame_Len);
+							*oper_data->vpu_result, oper_data->type, oper_data->handle, oper_data->cmd_type, vmgr_4k_d2_data.szFrame_Len);
 				}
 
-				if (*(oper_data->vpu_result) == RETCODE_CODEC_EXIT)
+				if (*oper_data->vpu_result == RETCODE_CODEC_EXIT)
 				{
 					vmgr_4k_d2_restore_clock(0, atomic_read(&vmgr_4k_d2_data.dev_opened));
 					_vmgr_4k_d2_close_all(1);
@@ -1605,7 +1601,7 @@ static int _vmgr_4k_d2_operation(void)
 		{
 			printk("_vmgr_4k_d2_operation :: missed info or unknown command => type = 0x%x, cmd = 0x%x,  \n", oper_data->type, oper_data->cmd_type);
 
-			*(oper_data->vpu_result) = RETCODE_FAILURE;
+			*oper_data->vpu_result = RETCODE_FAILURE;
 			oper_finished = 0;
 		}
 
@@ -1650,9 +1646,10 @@ static int _vmgr_4k_d2_thread(void* kthread)
 		{
 			vmgr_4k_d2_data.cmd_processing = 0;
 
-			wait_event_interruptible_timeout(vmgr_4k_d2_data.comm_data.thread_wq,
-											 vmgr_4k_d2_data.comm_data.thread_intr > 0,
-											 msecs_to_jiffies(50));
+			(void)wait_event_interruptible_timeout(vmgr_4k_d2_data.comm_data.thread_wq,
+												vmgr_4k_d2_data.comm_data.thread_intr > 0,
+												msecs_to_jiffies(50));
+
 			vmgr_4k_d2_data.comm_data.thread_intr = 0;
 		}
 		else
@@ -1692,7 +1689,7 @@ static int _vmgr_4k_d2_mmap(struct file* file, struct vm_area_struct* vma)
 #endif
 
 	vma->vm_page_prot = vmem_get_pgprot(vma->vm_page_prot, vma->vm_pgoff);
-	if (remap_pfn_range(vma,vma->vm_start, vma->vm_pgoff , vma->vm_end - vma->vm_start, vma->vm_page_prot))
+	if (remap_pfn_range(vma,vma->vm_start, vma->vm_pgoff, vma->vm_end - vma->vm_start, vma->vm_page_prot))
 	{
 		printk("_vmgr_4k_d2_mmap :: remap_pfn_range failed\n");
 		return -EAGAIN;

@@ -33,7 +33,6 @@ unsigned long vp9mgr_get_int_flags(void);
 void vp9mgr_init_interrupt(void);
 int vp9mgr_BusPrioritySetting(int mode, int type);
 void vp9mgr_status_clear(unsigned int* base_addr);
-int vp9mgr_is_loadable(void);
 
 void vp9mgr_init_variable(void);
 

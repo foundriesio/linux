@@ -44,7 +44,7 @@ static int cache_droped = 0;
 void vmgr_enable_clock(int vbus_no_ctrl, int only_clk_ctrl)
 {
 	// BCLK > CCLK > ACLK
-	V_DBG(DEBUG_RSTCLK, "enter");
+	V_DBG(VPU_DBG_RSTCLK, "enter");
 
 	if (fbus_vbus_clk && !vbus_no_ctrl)
 		clk_prepare_enable(fbus_vbus_clk);
@@ -83,7 +83,7 @@ void vmgr_enable_clock(int vbus_no_ctrl, int only_clk_ctrl)
 void vmgr_disable_clock(int vbus_no_ctrl, int only_clk_ctrl)
 {
 	// ACLK > CCLK > BCLK
-	V_DBG(DEBUG_RSTCLK, "enter");
+	V_DBG(VPU_DBG_RSTCLK, "enter");
 
 	if (vbus_xoda_clk)
 		clk_disable_unprepare(vbus_xoda_clk);
@@ -200,7 +200,7 @@ void vmgr_hw_assert(void)
 {
 #if defined(VIDEO_IP_DIRECT_RESET_CTRL)
 	//  ACLK > CCLK > BCLK
-	V_DBG(DEBUG_RSTCLK, "enter");
+	V_DBG(VPU_DBG_RSTCLK, "enter");
 	if (vbus_xoda_reset)
 	{
 		reset_control_assert(vbus_xoda_reset);
@@ -209,7 +209,7 @@ void vmgr_hw_assert(void)
 	{
 		reset_control_assert(vbus_core_reset);
 	}
-	V_DBG(DEBUG_RSTCLK, "out!! (rsr:0x%x)", vmgr_get_reset_register());
+	V_DBG(VPU_DBG_RSTCLK, "out!! (rsr:0x%x)", vmgr_get_reset_register());
 #endif
 }
 
@@ -217,7 +217,7 @@ void vmgr_hw_deassert(void)
 {
 #if defined(VIDEO_IP_DIRECT_RESET_CTRL)
 	// BCLK > CCLK > ACLK
-	V_DBG(DEBUG_RSTCLK, "enter");
+	V_DBG(VPU_DBG_RSTCLK, "enter");
 	if (vbus_core_reset)
 	{
 		reset_control_deassert(vbus_core_reset);
@@ -226,7 +226,7 @@ void vmgr_hw_deassert(void)
 	{
 		reset_control_deassert(vbus_xoda_reset);
 	}
-	V_DBG(DEBUG_RSTCLK, "out!! (rsr:0x%x)", vmgr_get_reset_register());
+	V_DBG(VPU_DBG_RSTCLK, "out!! (rsr:0x%x)", vmgr_get_reset_register());
 #endif
 }
 
@@ -316,12 +316,6 @@ void vmgr_status_clear(unsigned int* base_addr)
 	vetc_reg_write(base_addr, 0x00C, 0x01);
 #endif
 }
-
-int vmgr_is_loadable(void)
-{
-	return 0;
-}
-EXPORT_SYMBOL(vmgr_is_loadable);
 
 void vmgr_init_variable(void)
 {

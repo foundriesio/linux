@@ -212,12 +212,12 @@ int tcc_jpu_dec_internal(int Op, codec_handle_t* pHandle, void* pParam1, void* p
 
 			memcpy((jpu_dec_output_t*)pParam2, &pstInst->stJpuDecOutput, sizeof(jpu_dec_output_t));
 			tracetee("[[KERNEL(JPU_DEC_DECODE)OUT][W:%d][H:%d][DecStatus:%d][ConsumedBytes:%d][ErrMBs:%d][DispOutIdx:%d]"
-				  , pstInst->stJpuDecOutput.m_DecOutInfo.m_iWidth
-				  , pstInst->stJpuDecOutput.m_DecOutInfo.m_iHeight
-				  , pstInst->stJpuDecOutput.m_DecOutInfo.m_iDecodingStatus
-				  , pstInst->stJpuDecOutput.m_DecOutInfo.m_iConsumedBytes
-				  , pstInst->stJpuDecOutput.m_DecOutInfo.m_iNumOfErrMBs
-				  , pstInst->stJpuDecOutput.m_DecOutInfo.m_iDispOutIdx);
+				 , pstInst->stJpuDecOutput.m_DecOutInfo.m_iWidth
+				 , pstInst->stJpuDecOutput.m_DecOutInfo.m_iHeight
+				 , pstInst->stJpuDecOutput.m_DecOutInfo.m_iDecodingStatus
+				 , pstInst->stJpuDecOutput.m_DecOutInfo.m_iConsumedBytes
+				 , pstInst->stJpuDecOutput.m_DecOutInfo.m_iNumOfErrMBs
+				 , pstInst->stJpuDecOutput.m_DecOutInfo.m_iDispOutIdx);
 		}
 		break;
 
@@ -357,11 +357,7 @@ static int _jmgr_internal_handler(void)
 		{
 			ret = wait_event_interruptible_timeout(jmgr_data.oper_wq, atomic_read(&jmgr_data.oper_intr) > 0, msecs_to_jiffies(timeout));
 
-			if (jmgr_is_loadable() > 0)
-			{
-				ret_code = RETCODE_CODEC_EXIT;
-			}
-			else if (atomic_read(&jmgr_data.oper_intr) > 0)
+			if (atomic_read(&jmgr_data.oper_intr) > 0)
 			{
 				detailk("Success 2: jpu operation!! \n");
 
@@ -389,7 +385,7 @@ static int _jmgr_internal_handler(void)
 		jmgr_status_clear(jmgr_data.base_addr);
 	}
 
-	V_DBG(DEBUG_ENC_INTERRUPT, "out (Interrupt option=%d, ev=%d)",
+	V_DBG(VPU_DBG_INTERRUPT, "out (Interrupt option=%d, ev=%d)",
 		jmgr_data.check_interrupt_detection,
 		ret_code);
 
@@ -398,37 +394,42 @@ static int _jmgr_internal_handler(void)
 
 static int _jmgr_convert_returnType(int err)
 {
+	int ret;
+
 	if (err >= JPG_RET_INVALID_HANDLE && err <= JPG_RET_NOT_INITIALIZED)
 	{
-		return (err - 2);
+		ret = (err - 2);
 	}
-
-	switch (err)
+	else
 	{
-		case JPG_RET_BIT_EMPTY:
-			return 50;
-
-		case JPG_RET_EOS:
-			return 51;
-
-		case JPG_RET_INSUFFICIENT_BITSTREAM_BUF:
-			return RETCODE_INSUFFICIENT_BITSTREAM_BUF;
-
-		case JPG_RET_CODEC_FINISH:
-			return RETCODE_CODEC_FINISH;
-
-		default:
-			return err;
+		switch (err)
+		{
+			case JPG_RET_BIT_EMPTY:
+				ret = 50;
+				break;
+			case JPG_RET_EOS:
+				ret = 51;
+				break;
+			case JPG_RET_INSUFFICIENT_BITSTREAM_BUF:
+				ret = RETCODE_INSUFFICIENT_BITSTREAM_BUF;
+				break;
+			case JPG_RET_CODEC_FINISH:
+				ret = RETCODE_CODEC_FINISH;
+				break;
+			default:
+				ret = err;
+				break;
+		}
 	}
 
-	return err;
+	return ret;
 }
 
 static int _jmgr_process(vputype type, int cmd, long pHandle, void* args)
 {
 	int ret = 0;
 #ifdef CONFIG_VPU_TIME_MEASUREMENT
-	struct timeval t1 , t2;
+	struct timeval t1, t2;
 	int time_gap_ms = 0;
 #endif
 
@@ -1258,26 +1259,32 @@ static int _jmgr_release(struct inode* inode, struct file* filp)
 
 VpuList_t* jmgr_list_manager(VpuList_t* args, unsigned int cmd)
 {
-	VpuList_t* ret;
+	VpuList_t* ret = NULL;
+	VpuList_t* oper_data = (VpuList_t*) args;
+
+	if (!oper_data)
+	{
+		if (cmd == LIST_ADD || cmd == LIST_DEL)
+		{
+			V_DBG(VPU_DBG_ERROR, "Data is null, cmd=%d", cmd);
+			return NULL;
+		}
+	}
+
+	if (cmd == LIST_ADD)
+	{
+		*oper_data->vpu_result = RET0;
+	}
+
 
 	mutex_lock(&jmgr_data.comm_data.list_mutex);
 	{
-		VpuList_t* data = NULL;
-		ret = NULL;
-
 		switch (cmd)
 		{
 			case LIST_ADD:
 			{
-				if (!args)
-				{
-					err("ADD :: data is null \n");
-					goto Error;
-				}
-
-				data = (VpuList_t*)args;
-				*(data->vpu_result) |= RET1;
-				list_add_tail(&data->list, &jmgr_data.comm_data.main_list);
+				*oper_data->vpu_result |= RET1;
+				list_add_tail(&oper_data->list, &jmgr_data.comm_data.main_list);
 				jmgr_data.cmd_queued++;
 				jmgr_data.comm_data.thread_intr++;
 			}
@@ -1285,13 +1292,7 @@ VpuList_t* jmgr_list_manager(VpuList_t* args, unsigned int cmd)
 
 			case LIST_DEL:
 			{
-				if (!args)
-				{
-					err("DEL :: data is null \n");
-					goto Error;
-				}
-				data = (VpuList_t*)args;
-				list_del(&data->list);
+				list_del(&oper_data->list);
 				jmgr_data.cmd_queued--;
 			}
 			break;
@@ -1312,9 +1313,8 @@ VpuList_t* jmgr_list_manager(VpuList_t* args, unsigned int cmd)
 			break;
 		}
 	}
-
-Error:
 	mutex_unlock(&jmgr_data.comm_data.list_mutex);
+
 	if (cmd == LIST_ADD)
 	{
 		wake_up_interruptible(&jmgr_data.comm_data.thread_wq);
@@ -1340,27 +1340,27 @@ static int _jmgr_operation(void)
 			jmgr_data.cmd_processing = 0;
 			return 0;
 		}
-		*(oper_data->vpu_result) |= RET2;
+		*oper_data->vpu_result |= RET2;
 
 		dprintk("_jmgr_operation [%d] :: cmd = 0x%x, cmd_queued(%d) \n", oper_data->type, oper_data->cmd_type, jmgr_data.cmd_queued);
 
-		if (oper_data != NULL && oper_data->type < JPU_MAX)
+		if (oper_data->type < JPU_MAX)
 		{
-			*(oper_data->vpu_result) |= RET3;
+			*oper_data->vpu_result |= RET3;
 
-			*(oper_data->vpu_result) = _jmgr_process(oper_data->type, oper_data->cmd_type, oper_data->handle, oper_data->args);
+			*oper_data->vpu_result = _jmgr_process(oper_data->type, oper_data->cmd_type, oper_data->handle, oper_data->args);
 			oper_finished = 1;
-			if (*(oper_data->vpu_result) != RETCODE_SUCCESS)
+			if (*oper_data->vpu_result != RETCODE_SUCCESS)
 			{
-				if (*(oper_data->vpu_result) != RETCODE_INSUFFICIENT_BITSTREAM &&
-					*(oper_data->vpu_result) != RETCODE_INSUFFICIENT_BITSTREAM_BUF)
+				if ((*oper_data->vpu_result != RETCODE_INSUFFICIENT_BITSTREAM) &&
+					(*oper_data->vpu_result != RETCODE_INSUFFICIENT_BITSTREAM_BUF))
 				{
 					err("jmgr_out[0x%x] :: type = %d, handle = 0x%x, cmd = 0x%x, frame_len %d \n",
-							*(oper_data->vpu_result), oper_data->type, oper_data->handle,
+							*oper_data->vpu_result, oper_data->type, oper_data->handle,
 							oper_data->cmd_type, jmgr_data.szFrame_Len);
 				}
 
-				if (*(oper_data->vpu_result) == RETCODE_CODEC_EXIT)
+				if (*oper_data->vpu_result == RETCODE_CODEC_EXIT)
 				{
 					jmgr_restore_clock(0, atomic_read(&jmgr_data.dev_opened));
 					_jmgr_close_all(1);
@@ -1370,7 +1370,7 @@ static int _jmgr_operation(void)
 		else
 		{
 			printk("_jmgr_operation :: missed info or unknown command => type = 0x%x, cmd = 0x%x,  \n", oper_data->type, oper_data->cmd_type);
-			*(oper_data->vpu_result) = RETCODE_FAILURE;
+			*oper_data->vpu_result = RETCODE_FAILURE;
 			oper_finished = 0;
 		}
 
@@ -1416,9 +1416,10 @@ static int _jmgr_thread(void* kthread)
 		{
 			jmgr_data.cmd_processing = 0;
 
-			wait_event_interruptible_timeout(jmgr_data.comm_data.thread_wq,
-											 jmgr_data.comm_data.thread_intr > 0,
-								             msecs_to_jiffies(50));
+			(void)wait_event_interruptible_timeout(jmgr_data.comm_data.thread_wq,
+											 	jmgr_data.comm_data.thread_intr > 0,
+												msecs_to_jiffies(50));
+
 			jmgr_data.comm_data.thread_intr = 0;
 		}
 		else
@@ -1458,7 +1459,7 @@ static int _jmgr_mmap(struct file* file, struct vm_area_struct* vma)
 #endif
 
 	vma->vm_page_prot = vmem_get_pgprot(vma->vm_page_prot, vma->vm_pgoff);
-	if (remap_pfn_range(vma,vma->vm_start, vma->vm_pgoff , vma->vm_end - vma->vm_start, vma->vm_page_prot))
+	if (remap_pfn_range(vma,vma->vm_start, vma->vm_pgoff, vma->vm_end - vma->vm_start, vma->vm_page_prot))
 	{
 		printk("_jmgr_mmap :: remap_pfn_range failed\n");
 		return -EAGAIN;

@@ -120,24 +120,24 @@ int vp9mgr_get_reset_register(void)
 void vp9mgr_hw_assert(void)
 {
 #if defined(VIDEO_IP_DIRECT_RESET_CTRL)
-	V_DBG(DEBUG_RSTCLK, "enter");
+	V_DBG(VPU_DBG_RSTCLK, "enter");
 	if (vbus_vp9_reset)
 	{
 		reset_control_assert(vbus_vp9_reset);
 	}
-	V_DBG(DEBUG_RSTCLK, "out!! (rsr:0x%x)", vp9mgr_get_reset_register());
+	V_DBG(VPU_DBG_RSTCLK, "out!! (rsr:0x%x)", vp9mgr_get_reset_register());
 #endif
 }
 
 void vp9mgr_hw_deassert(void)
 {
 #if defined(VIDEO_IP_DIRECT_RESET_CTRL)
-	V_DBG(DEBUG_RSTCLK, "enter");
+	V_DBG(VPU_DBG_RSTCLK, "enter");
 	if (vbus_vp9_reset)
 	{
 		reset_control_deassert(vbus_vp9_reset);
 	}
-	V_DBG(DEBUG_RSTCLK, "out!! (rsr:0x%x)", vp9mgr_get_reset_register());
+	V_DBG(VPU_DBG_RSTCLK, "out!! (rsr:0x%x)", vp9mgr_get_reset_register());
 #endif
 }
 
@@ -224,12 +224,6 @@ void vp9mgr_status_clear(unsigned int* base_addr)
 {
 	return;
 }
-
-int vp9mgr_is_loadable(void)
-{
-	return 0;
-}
-EXPORT_SYMBOL(vp9mgr_is_loadable);
 
 void vp9mgr_init_variable(void)
 {

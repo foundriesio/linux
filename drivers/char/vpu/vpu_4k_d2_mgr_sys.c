@@ -76,7 +76,7 @@ inline void vbus_matrix(void)
 void vmgr_4k_d2_enable_clock(int vbus_no_ctrl, int only_clk_ctrl)
 {
 	// BCLK > CCLK > ACLK
-	V_DBG(DEBUG_RSTCLK, "enter");
+	V_DBG(VPU_DBG_RSTCLK, "enter");
 
 	if (fbus_vbus_clk && !vbus_no_ctrl)
 		clk_prepare_enable(fbus_vbus_clk);
@@ -120,7 +120,7 @@ void vmgr_4k_d2_enable_clock(int vbus_no_ctrl, int only_clk_ctrl)
 void vmgr_4k_d2_disable_clock(int vbus_no_ctrl, int only_clk_ctrl)
 {
 	// ACLK > CCLK > BCLK
-	V_DBG(DEBUG_RSTCLK, "enter");
+	V_DBG(VPU_DBG_RSTCLK, "enter");
 
 	if (vbus_hevc_bus_clk)
 		clk_disable_unprepare(vbus_hevc_bus_clk);
@@ -327,7 +327,7 @@ int vmgr_4k_d2_get_reset_register(void)
 void vmgr_4k_d2_hw_assert(void)
 {
 #if defined(VIDEO_IP_DIRECT_RESET_CTRL)
-	V_DBG(DEBUG_RSTCLK, "enter");
+	V_DBG(VPU_DBG_RSTCLK, "enter");
 
 	if (vbus_hevc_bus_reset)
 	{
@@ -339,14 +339,14 @@ void vmgr_4k_d2_hw_assert(void)
 		reset_control_assert(vbus_hevc_core_reset);
 	}
 
-	V_DBG(DEBUG_RSTCLK, "out!! (rsr:0x%x)", vmgr_4k_d2_get_reset_register());
+	V_DBG(VPU_DBG_RSTCLK, "out!! (rsr:0x%x)", vmgr_4k_d2_get_reset_register());
 #endif
 }
 
 void vmgr_4k_d2_hw_deassert(void)
 {
 #if defined(VIDEO_IP_DIRECT_RESET_CTRL)
-	V_DBG(DEBUG_RSTCLK, "enter");
+	V_DBG(VPU_DBG_RSTCLK, "enter");
 
 	if (vbus_hevc_core_reset)
 	{
@@ -358,14 +358,14 @@ void vmgr_4k_d2_hw_deassert(void)
 		reset_control_deassert(vbus_hevc_bus_reset);
 	}
 
-	V_DBG(DEBUG_RSTCLK, "out!! (rsr:0x%x)", vmgr_4k_d2_get_reset_register());
+	V_DBG(VPU_DBG_RSTCLK, "out!! (rsr:0x%x)", vmgr_4k_d2_get_reset_register());
 #endif
 }
 
 void vmgr_4k_d2_hw_reset(void)
 {
 #if defined(VIDEO_IP_DIRECT_RESET_CTRL)
-	V_DBG(DEBUG_RSTCLK, "enter");
+	V_DBG(VPU_DBG_RSTCLK, "enter");
 
 	udelay(1000); //1ms
 
@@ -377,7 +377,7 @@ void vmgr_4k_d2_hw_reset(void)
 
 	udelay(1000); //1ms
 
-	V_DBG(DEBUG_RSTCLK, "out (rsr:0x%x)", vmgr_4k_d2_get_reset_register());
+	V_DBG(VPU_DBG_RSTCLK, "out (rsr:0x%x)", vmgr_4k_d2_get_reset_register());
 #endif
 }
 
@@ -449,12 +449,6 @@ int vmgr_4k_d2_BusPrioritySetting(int mode, int type)
 {
 	return 0;
 }
-
-int vmgr_4k_d2_is_loadable(void)
-{
-	return 0;
-}
-EXPORT_SYMBOL(vmgr_4k_d2_is_loadable);
 
 void vmgr_4k_d2_init_variable(void)
 {

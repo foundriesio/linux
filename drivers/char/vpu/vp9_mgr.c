@@ -50,8 +50,6 @@ extern void do_gettimeofday(struct timeval* tv);
 
 extern int tcc_vp9_dec(int Op, codec_handle_t* pHandle, void* pParam1, void* pParam2);
 
-VpuList_t* vp9mgr_list_manager(VpuList_t* args, unsigned int cmd);
-
 int vp9mgr_opened(void)
 {
 	if (atomic_read(&vp9mgr_data.dev_opened) == 0)
@@ -142,11 +140,7 @@ static int _vp9mgr_internal_handler(void)
 		{
 			ret = wait_event_interruptible_timeout(vp9mgr_data.oper_wq, atomic_read(&vp9mgr_data.oper_intr) > 0, msecs_to_jiffies(timeout));
 
-			if (vp9mgr_is_loadable() > 0)
-			{
-				ret_code = RETCODE_CODEC_EXIT;
-			}
-			else if (atomic_read(&vp9mgr_data.oper_intr) > 0)
+			if (atomic_read(&vp9mgr_data.oper_intr) > 0)
 			{
 				detailk("Success 2: vp9 operation!! \n");
 #if defined(FORCED_ERROR)
@@ -172,7 +166,7 @@ static int _vp9mgr_internal_handler(void)
 		vp9mgr_status_clear(vp9mgr_data.base_addr);
 	}
 
-	V_DBG(DEBUG_ENC_INTERRUPT, "out (Interrupt option=%d, ev=%d)",
+	V_DBG(VPU_DBG_INTERRUPT, "out (Interrupt option=%d, ev=%d)",
 		vp9mgr_data.check_interrupt_detection,
 		ret_code);
 
@@ -183,7 +177,7 @@ static int _vp9mgr_process(vputype type, int cmd, int pHandle, void* args)
 {
 	int ret = 0;
 #ifdef CONFIG_VPU_TIME_MEASUREMENT
-	struct timeval t1 , t2;
+	struct timeval t1, t2;
 	int time_gap_ms = 0;
 #endif
 
@@ -972,26 +966,32 @@ static int _vp9mgr_release(struct inode* inode, struct file* filp)
 
 VpuList_t* vp9mgr_list_manager(VpuList_t* args, unsigned int cmd)
 {
-	VpuList_t* ret;
+	VpuList_t* ret = NULL;
+	VpuList_t* oper_data = (VpuList_t*) args;
+
+	if (!oper_data)
+	{
+		if (cmd == LIST_ADD || cmd == LIST_DEL)
+		{
+			V_DBG(VPU_DBG_ERROR, "Data is null, cmd=%d", cmd);
+			return NULL;
+		}
+	}
+
+	if (cmd == LIST_ADD)
+	{
+		*oper_data->vpu_result = RET0;
+	}
+
 
 	mutex_lock(&vp9mgr_data.comm_data.list_mutex);
 	{
-		VpuList_t* data = NULL;
-		ret = NULL;
-
 		switch (cmd)
 		{
 			case LIST_ADD:
 			{
-				if (!args)
-				{
-					err("ADD :: data is null \n");
-					goto Error;
-				}
-
-				data = (VpuList_t*)args;
-				*(data->vpu_result) |= RET1;
-				list_add_tail(&data->list, &vp9mgr_data.comm_data.main_list);
+				*oper_data->vpu_result |= RET1;
+				list_add_tail(&oper_data->list, &vp9mgr_data.comm_data.main_list);
 				vp9mgr_data.cmd_queued++;
 				vp9mgr_data.comm_data.thread_intr++;
 			}
@@ -999,13 +999,7 @@ VpuList_t* vp9mgr_list_manager(VpuList_t* args, unsigned int cmd)
 
 			case LIST_DEL:
 			{
-				if (!args)
-				{
-					err("DEL :: data is null \n");
-					goto Error;
-				}
-				data = (VpuList_t*)args;
-				list_del(&data->list);
+				list_del(&oper_data->list);
 				vp9mgr_data.cmd_queued--;
 			}
 			break;
@@ -1026,9 +1020,8 @@ VpuList_t* vp9mgr_list_manager(VpuList_t* args, unsigned int cmd)
 			break;
 		}
 	}
-
-Error:
 	mutex_unlock(&vp9mgr_data.comm_data.list_mutex);
+
 	if (cmd == LIST_ADD)
 	{
 		wake_up_interruptible(&vp9mgr_data.comm_data.thread_wq);
@@ -1056,26 +1049,26 @@ static int _vp9mgr_operation(void)
 			vp9mgr_data.cmd_processing = 0;
 			return 0;
 		}
-		*(oper_data->vpu_result) |= RET2;
+		*oper_data->vpu_result |= RET2;
 
 		dprintk("_vp9mgr_operation [%d] :: cmd = 0x%x, vp9mgr_data.cmd_queued(%d) \n", oper_data->type, oper_data->cmd_type, vp9mgr_data.cmd_queued);
 
 		if (oper_data->type < VP9_MAX && oper_data != NULL)
 		{
-			*(oper_data->vpu_result) |= RET3;
+			*oper_data->vpu_result |= RET3;
 
-			*(oper_data->vpu_result) = _vp9mgr_process(oper_data->type, oper_data->cmd_type, oper_data->handle, oper_data->args);
+			*oper_data->vpu_result = _vp9mgr_process(oper_data->type, oper_data->cmd_type, oper_data->handle, oper_data->args);
 			oper_finished = 1;
-			if (*(oper_data->vpu_result) != RETCODE_SUCCESS)
+			if (*oper_data->vpu_result != RETCODE_SUCCESS)
 			{
-				if (*(oper_data->vpu_result) != RETCODE_INSUFFICIENT_BITSTREAM &&
-					*(oper_data->vpu_result) != RETCODE_INSUFFICIENT_BITSTREAM_BUF)
+				if ((*oper_data->vpu_result != RETCODE_INSUFFICIENT_BITSTREAM) &&
+					(*oper_data->vpu_result != RETCODE_INSUFFICIENT_BITSTREAM_BUF))
 				{
 					err("vp9mgr_out[0x%x/%d] :: type = %d, vp9mgr_data.handle = 0x%x, cmd = 0x%x, frame_len %d \n",
-							 *(oper_data->vpu_result), *(oper_data->vpu_result), oper_data->type, oper_data->handle, oper_data->cmd_type, vp9mgr_data.szFrame_Len);
+							 *oper_data->vpu_result, *oper_data->vpu_result, oper_data->type, oper_data->handle, oper_data->cmd_type, vp9mgr_data.szFrame_Len);
 				}
 
-				if (*(oper_data->vpu_result) == RETCODE_CODEC_EXIT)
+				if (*oper_data->vpu_result == RETCODE_CODEC_EXIT)
 				{
 					vp9mgr_restore_clock(0, atomic_read(&vp9mgr_data.dev_opened));
 					_vp9mgr_close_all(1);
@@ -1086,7 +1079,7 @@ static int _vp9mgr_operation(void)
 		{
 			printk("_vp9mgr_operation :: missed info or unknown command => type = 0x%x, cmd = 0x%x,  \n", oper_data->type, oper_data->cmd_type);
 
-			*(oper_data->vpu_result) = RETCODE_FAILURE;
+			*oper_data->vpu_result = RETCODE_FAILURE;
 			oper_finished = 0;
 		}
 
@@ -1131,9 +1124,10 @@ static int _vp9mgr_thread(void* kthread)
 		{
 			vp9mgr_data.cmd_processing = 0;
 
-			wait_event_interruptible_timeout(vp9mgr_data.comm_data.thread_wq,
-											 vp9mgr_data.comm_data.thread_intr > 0,
-											 msecs_to_jiffies(50));
+			(void)wait_event_interruptible_timeout(vp9mgr_data.comm_data.thread_wq,
+												vp9mgr_data.comm_data.thread_intr > 0,
+												msecs_to_jiffies(50));
+
 			vp9mgr_data.comm_data.thread_intr = 0;
 		}
 		else
@@ -1173,7 +1167,7 @@ static int _vp9mgr_mmap(struct file* file, struct vm_area_struct* vma)
 #endif
 
 	vma->vm_page_prot = vmem_get_pgprot(vma->vm_page_prot, vma->vm_pgoff);
-	if (remap_pfn_range(vma,vma->vm_start, vma->vm_pgoff , vma->vm_end - vma->vm_start, vma->vm_page_prot))
+	if (remap_pfn_range(vma,vma->vm_start, vma->vm_pgoff, vma->vm_end - vma->vm_start, vma->vm_page_prot))
 	{
 		printk("_vp9mgr_mmap :: remap_pfn_range failed\n");
 		return -EAGAIN;

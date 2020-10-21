@@ -45,7 +45,7 @@ static int cache_droped = 0;
 
 void vmgr_hevc_enc_enable_clock(int vbus_no_ctrl)
 {
-	V_DBG(DEBUG_RSTCLK, "vmgr_hevc_enc_enable_clock");
+	V_DBG(VPU_DBG_RSTCLK, "vmgr_hevc_enc_enable_clock");
 
 	if (fbus_vbus_clk && !vbus_no_ctrl)
 		clk_prepare_enable(fbus_vbus_clk);
@@ -62,7 +62,7 @@ void vmgr_hevc_enc_enable_clock(int vbus_no_ctrl)
 
 void vmgr_hevc_enc_disable_clock(int vbus_no_ctrl)
 {
-	V_DBG(DEBUG_RSTCLK, "vmgr_hevc_enc_disable_clock");
+	V_DBG(VPU_DBG_RSTCLK, "vmgr_hevc_enc_disable_clock");
 
 	if (vbus_hevc_encoder_clk)
 		clk_disable_unprepare(vbus_hevc_encoder_clk);
@@ -83,7 +83,7 @@ void vmgr_hevc_enc_get_clock(struct device_node* node)
 {
 	if (node == NULL)
 	{
-		V_DBG(DEBUG_VPU_ERROR, "device node is null");
+		V_DBG(VPU_DBG_ERROR, "device node is null");
 	}
 
 	fbus_vbus_clk = of_clk_get(node, 0);
@@ -243,37 +243,37 @@ int vmgr_hevc_enc_get_reset_register(void)
 void vmgr_hevc_enc_hw_assert(void)
 {
 #if defined(VIDEO_IP_DIRECT_RESET_CTRL)
-	V_DBG(DEBUG_RSTCLK, "enter");
+	V_DBG(VPU_DBG_RSTCLK, "enter");
 
 	if (vbus_hevc_encoder_rst)
 	{
-		V_DBG(DEBUG_RSTCLK, "Video bus hevc encoder reset: assert (rsr:0x%x)\n", vmgr_hevc_enc_get_reset_register());
+		V_DBG(VPU_DBG_RSTCLK, "Video bus hevc encoder reset: assert (rsr:0x%x)\n", vmgr_hevc_enc_get_reset_register());
 		reset_control_assert(vbus_hevc_encoder_rst);
 	}
 
-	V_DBG(DEBUG_RSTCLK, "out!! (rsr:0x%x)", vmgr_hevc_enc_get_reset_register());
+	V_DBG(VPU_DBG_RSTCLK, "out!! (rsr:0x%x)", vmgr_hevc_enc_get_reset_register());
 #endif
 }
 
 void vmgr_hevc_enc_hw_deassert(void)
 {
 #if defined(VIDEO_IP_DIRECT_RESET_CTRL)
-	V_DBG(DEBUG_RSTCLK, "enter");
+	V_DBG(VPU_DBG_RSTCLK, "enter");
 
 	if (vbus_hevc_encoder_rst)
 	{
-		V_DBG(DEBUG_RSTCLK, "Video bus hevc encoder reset: deassert (rsr:0x%x)\n", vmgr_hevc_enc_get_reset_register());
+		V_DBG(VPU_DBG_RSTCLK, "Video bus hevc encoder reset: deassert (rsr:0x%x)\n", vmgr_hevc_enc_get_reset_register());
 		reset_control_deassert(vbus_hevc_encoder_rst);
 	}
 
-	V_DBG(DEBUG_RSTCLK, "out!! (rsr:0x%x)", vmgr_hevc_enc_get_reset_register());
+	V_DBG(VPU_DBG_RSTCLK, "out!! (rsr:0x%x)", vmgr_hevc_enc_get_reset_register());
 #endif
 }
 
 void vmgr_hevc_enc_hw_reset(void)
 {
 #if defined(VIDEO_IP_DIRECT_RESET_CTRL)
-	V_DBG(DEBUG_RSTCLK, "enter");
+	V_DBG(VPU_DBG_RSTCLK, "enter");
 
 	udelay(1000); //1ms
 
@@ -285,7 +285,7 @@ void vmgr_hevc_enc_hw_reset(void)
 
 	udelay(1000); //1ms
 
-	V_DBG(DEBUG_RSTCLK, "out (rsr:0x%x)", vmgr_hevc_enc_get_reset_register());
+	V_DBG(VPU_DBG_RSTCLK, "out (rsr:0x%x)", vmgr_hevc_enc_get_reset_register());
 #endif
 }
 
@@ -294,7 +294,7 @@ void vmgr_hevc_enc_restore_clock(int vbus_no_ctrl, int opened_cnt)
 #if 1 // unnecessary process: recommended by soc
 	int opened_count = opened_cnt;
 
-	V_DBG(DEBUG_RSTCLK, "opened_cnt: %d", opened_cnt);
+	V_DBG(VPU_DBG_RSTCLK, "opened_cnt: %d", opened_cnt);
 
 	vmgr_hevc_enc_hw_assert();
 
@@ -367,12 +367,6 @@ void vmgr_hevc_enc_status_clear(unsigned int* base_addr)
 	vetc_reg_write(base_addr, 0x00C, 0x01);
 #endif
 }
-
-int vmgr_hevc_enc_is_loadable(void)
-{
-	return 0;
-}
-EXPORT_SYMBOL(vmgr_hevc_enc_is_loadable);
 
 void vmgr_hevc_enc_init_variable(void)
 {

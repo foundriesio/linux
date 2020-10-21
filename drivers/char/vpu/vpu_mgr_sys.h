@@ -37,7 +37,6 @@ unsigned long vmgr_get_int_flags(void);
 void vmgr_init_interrupt(void);
 int vmgr_BusPrioritySetting(int mode, int type);
 void vmgr_status_clear(unsigned int* base_addr);
-int vmgr_is_loadable(void);
 
 void vmgr_init_variable(void);
 

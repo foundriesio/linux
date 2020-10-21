@@ -200,11 +200,7 @@ static int _vmgr_internal_handler(void)
 		{
 			ret = wait_event_interruptible_timeout(vmgr_data.oper_wq, atomic_read(&vmgr_data.oper_intr) > 0, msecs_to_jiffies(timeout));
 
-			if (vmgr_is_loadable() > 0)
-			{
-				ret_code = RETCODE_CODEC_EXIT;
-			}
-			else if (atomic_read(&vmgr_data.oper_intr) > 0)
+			if (atomic_read(&vmgr_data.oper_intr) > 0)
 			{
 				detailk("Success 2: vpu operation!! \n");
 			#if defined(FORCED_ERROR)
@@ -236,7 +232,7 @@ static int _vmgr_internal_handler(void)
 		vmgr_status_clear(vmgr_data.base_addr);
 	}
 
-	V_DBG(DEBUG_ENC_INTERRUPT, "out (Interrupt option=%d, isr cnt=%d, ev=%d)",
+	V_DBG(VPU_DBG_INTERRUPT, "out (Interrupt option=%d, isr cnt=%d, ev=%d)",
 		vmgr_data.check_interrupt_detection,
 		cntInt_vpu,
 		ret_code);
@@ -1417,26 +1413,31 @@ static int _vmgr_release(struct inode* inode, struct file* filp)
 
 VpuList_t* vmgr_list_manager(VpuList_t* args, unsigned int cmd)
 {
-	VpuList_t* ret;
+	VpuList_t* ret = NULL;
+	VpuList_t* oper_data = (VpuList_t*) args;
+
+	if (!oper_data)
+	{
+		if (cmd == LIST_ADD || cmd == LIST_DEL)
+		{
+			V_DBG(VPU_DBG_ERROR, "Data is null, cmd=%d", cmd);
+			return NULL;
+		}
+	}
+
+	if (cmd == LIST_ADD)
+	{
+		*oper_data->vpu_result = RET0;
+	}
 
 	mutex_lock(&vmgr_data.comm_data.list_mutex);
 	{
-		VpuList_t* data = NULL;
-		ret = NULL;
-
 		switch (cmd)
 		{
 			case LIST_ADD:
 			{
-				if (!args)
-				{
-					err("ADD :: data is null \n");
-					goto Error;
-				}
-
-				data = (VpuList_t*)args;
-				*(data->vpu_result) |= RET1;
-				list_add_tail(&data->list, &vmgr_data.comm_data.main_list);
+				*oper_data->vpu_result |= RET1;
+				list_add_tail(&oper_data->list, &vmgr_data.comm_data.main_list);
 				vmgr_data.cmd_queued++;
 				vmgr_data.comm_data.thread_intr++;
 			}
@@ -1444,13 +1445,7 @@ VpuList_t* vmgr_list_manager(VpuList_t* args, unsigned int cmd)
 
 			case LIST_DEL:
 			{
-				if (!args)
-				{
-					err("DEL :: data is null \n");
-					goto Error;
-				}
-				data = (VpuList_t*)args;
-				list_del(&data->list);
+				list_del(&oper_data->list);
 				vmgr_data.cmd_queued--;
 			}
 			break;
@@ -1471,9 +1466,8 @@ VpuList_t* vmgr_list_manager(VpuList_t* args, unsigned int cmd)
 			break;
 		}
 	}
-
-Error:
 	mutex_unlock(&vmgr_data.comm_data.list_mutex);
+
 	if (cmd == LIST_ADD)
 	{
 		wake_up_interruptible(&vmgr_data.comm_data.thread_wq);
@@ -1489,7 +1483,7 @@ VpuList_t* vmgr_waitlist_manager(VpuList_t* args, unsigned int cmd)
 	VpuList_t* ret;
 
 	{
-		VpuList_t* data = NULL;
+		VpuList_t* oper_data = NULL;
 		ret = NULL;
 
 		switch (cmd)
@@ -1502,9 +1496,9 @@ VpuList_t* vmgr_waitlist_manager(VpuList_t* args, unsigned int cmd)
 					goto Error;
 				}
 
-				data = (VpuList_t*)args;
-				*(data->vpu_result) |= RET4_WAIT;
-				list_add_tail(&data->list, &vmgr_data.comm_data.wait_list);
+				oper_data = (VpuList_t*)args;
+				*oper_data->vpu_result |= RET4_WAIT;
+				list_add_tail(&oper_data->list, &vmgr_data.comm_data.wait_list);
 				cmd_queued_fot_wait_list++;
 			}
 			break;
@@ -1516,8 +1510,8 @@ VpuList_t* vmgr_waitlist_manager(VpuList_t* args, unsigned int cmd)
 					err("DEL :: data is null \n");
 					goto Error;
 				}
-				data = (VpuList_t*)args;
-				list_del(&data->list);
+				oper_data = (VpuList_t*)args;
+				list_del(&oper_data->list);
 				cmd_queued_fot_wait_list--;
 			}
 			break;
@@ -1610,7 +1604,7 @@ static int _vmgr_operation(void)
 						is_from_wait_list = 0;
 
 						wprintk("[%d] process command for waiting VPU!! \n", oper_data->type);
-						*(oper_data->vpu_result) |= RET2;
+						*oper_data->vpu_result |= RET2;
 						break;
 					}
 				}
@@ -1635,8 +1629,8 @@ static int _vmgr_operation(void)
 					return 0;
 				}
 
-				*(oper_data->vpu_result) &= ~RET4_WAIT;
-				*(oper_data->vpu_result) |= RET2;
+				*oper_data->vpu_result &= ~RET4_WAIT;
+				*oper_data->vpu_result |= RET2;
 			}
 		}
 		else
@@ -1649,27 +1643,28 @@ static int _vmgr_operation(void)
 				vmgr_data.cmd_processing = 0;
 				return 0;
 			}
-			*(oper_data->vpu_result) |= RET2;
+
+			*oper_data->vpu_result |= RET2;
 		}
 
 		dprintk("_vmgr_operation [%d] :: cmd = 0x%x, cmd_queued(%d) \n", oper_data->type, oper_data->cmd_type, vmgr_data.cmd_queued);
 
-		if (oper_data != NULL && oper_data->type < VPU_MAX)
+		if (oper_data->type < VPU_MAX)
 		{
-			*(oper_data->vpu_result) |= RET3;
+			*oper_data->vpu_result |= RET3;
 
-			*(oper_data->vpu_result) = _vmgr_process(oper_data->type, oper_data->cmd_type, oper_data->handle, oper_data->args);
+			*oper_data->vpu_result = _vmgr_process(oper_data->type, oper_data->cmd_type, oper_data->handle, oper_data->args);
 			oper_finished = 1;
-			if (*(oper_data->vpu_result) != RETCODE_SUCCESS)
+			if (*oper_data->vpu_result != RETCODE_SUCCESS)
 			{
-				if (*(oper_data->vpu_result) != RETCODE_INSUFFICIENT_BITSTREAM &&
-					*(oper_data->vpu_result) != RETCODE_INSUFFICIENT_BITSTREAM_BUF)
+				if ((*oper_data->vpu_result != RETCODE_INSUFFICIENT_BITSTREAM) &&
+					(*oper_data->vpu_result != RETCODE_INSUFFICIENT_BITSTREAM_BUF))
 				{
 					err("vmgr_out[0x%x] :: type = %d, handle = 0x%x, cmd = 0x%x, frame_len %d \n",
-							*(oper_data->vpu_result), oper_data->type, oper_data->handle, oper_data->cmd_type, vmgr_data.szFrame_Len);
+							*oper_data->vpu_result, oper_data->type, oper_data->handle, oper_data->cmd_type, vmgr_data.szFrame_Len);
 				}
 
-				if (*(oper_data->vpu_result) == RETCODE_CODEC_EXIT)
+				if (*oper_data->vpu_result == RETCODE_CODEC_EXIT)
 				{
 					vmgr_restore_clock(0, atomic_read(&vmgr_data.dev_opened));
 					_vmgr_close_all(1);
@@ -1684,7 +1679,7 @@ static int _vmgr_operation(void)
 		{
 			printk("_vmgr_operation: missed info or unknown command => type = 0x%x, cmd = 0x%x \n", oper_data->type, oper_data->cmd_type);
 
-			*(oper_data->vpu_result) = RETCODE_FAILURE;
+			*oper_data->vpu_result = RETCODE_FAILURE;
 			oper_finished = 0;
 		}
 
@@ -1746,9 +1741,10 @@ static int _vmgr_thread(void* kthread)
 		{
 			vmgr_data.cmd_processing = 0;
 
-			wait_event_interruptible_timeout(vmgr_data.comm_data.thread_wq,
-											vmgr_data.comm_data.thread_intr > 0,
-											msecs_to_jiffies(50));
+			(void)wait_event_interruptible_timeout(vmgr_data.comm_data.thread_wq,
+												vmgr_data.comm_data.thread_intr > 0,
+												msecs_to_jiffies(50));
+
 			vmgr_data.comm_data.thread_intr = 0;
 		}
 		else
@@ -1788,7 +1784,7 @@ static int _vmgr_mmap(struct file* file, struct vm_area_struct* vma)
 #endif
 
 	vma->vm_page_prot = vmem_get_pgprot(vma->vm_page_prot, vma->vm_pgoff);
-	if (remap_pfn_range(vma,vma->vm_start, vma->vm_pgoff , vma->vm_end - vma->vm_start, vma->vm_page_prot))
+	if (remap_pfn_range(vma,vma->vm_start, vma->vm_pgoff, vma->vm_end - vma->vm_start, vma->vm_page_prot))
 	{
 		printk("_vmgr_mmap :: remap_pfn_range failed\n");
 		return -EAGAIN;

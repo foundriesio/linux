@@ -32,8 +32,6 @@
 #include "vpu_comm.h"
 #include "vpu_devices.h"
 
-extern int vmgr_4k_d2_is_loadable(void);
-
 extern int vmgr_4k_d2_probe(struct platform_device* pdev);
 extern int vmgr_4k_d2_remove(struct platform_device* pdev);
 #if defined(CONFIG_PM)
@@ -44,8 +42,8 @@ extern int vmgr_4k_d2_resume(struct platform_device* pdev);
 #ifdef CONFIG_OF
 static struct of_device_id vpu_4k_d2_of_match[] =
 {
-		{ .compatible = "telechips,vpu_4k_d2_dev_mgr" },//VPU_4K_D2_MGR_NAME
-		{}
+	{ .compatible = "telechips,vpu_4k_d2_dev_mgr" },//VPU_4K_D2_MGR_NAME
+	{}
 };
 MODULE_DEVICE_TABLE(of, vpu_4k_d2_of_match);
 #endif
