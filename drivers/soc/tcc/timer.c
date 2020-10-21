@@ -7,7 +7,6 @@
 #include <linux/clocksource.h>
 #include <linux/of_address.h>
 #include <linux/of_irq.h>
-#include <linux/syscore_ops.h>
 #include <soc/tcc/timer_reg.h>
 #include <soc/tcc/timer_api.h>
 
@@ -273,7 +272,6 @@ void tcc_unregister_timer(struct tcc_timer *timer)
 }
 EXPORT_SYMBOL(tcc_unregister_timer);
 
-#if defined(CONFIG_PM_SLEEP)
 #define TIMER_REG_SIZE	((u32)0xA0)
 static u32 *timer_backup;
 
@@ -310,25 +308,6 @@ void tcc_timer_restore(void)
 	kfree(timer_backup);
 	timer_backup = NULL;
 }
-
-#if defined(CONFIG_ARCH_TCC805X)
-static int tcc_timer_suspend(void)
-{
-	tcc_timer_save();
-	return 0;
-}
-
-static void tcc_timer_resume(void)
-{
-	tcc_timer_restore();
-}
-
-static struct syscore_ops tcc_timer_syscore_ops = {
-	.suspend = tcc_timer_suspend,
-	.resume = tcc_timer_resume,
-};
-#endif
-#endif
 
 static void tcc_timer_parse_dt(struct device_node *np)
 {
@@ -440,9 +419,6 @@ static int __init tcc_init_timer(struct device_node *np)
 	/* check the reserved timer */
 	tcc_timer_parse_dt(np);
 
-#if defined(CONFIG_ARCH_TCC805X)
-	register_syscore_ops(&tcc_timer_syscore_ops);
-#endif
 	timer_initialized = 1;
 
 	return 0;
