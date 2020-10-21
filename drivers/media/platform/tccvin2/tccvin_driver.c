@@ -361,39 +361,41 @@ int tccvin_async_bound(struct v4l2_async_notifier *notifier, struct v4l2_subdev 
 	// register subdevice here
 	dev->subdevs[dev->bounded_subdevs++] = subdev;
 
-	if(!strncmp(subdev->name, "adv7182", strlen("adv7182")) || !strncmp(subdev->name, "max9286", strlen("max9286"))) {
-		timings = &dev->stream->dv_timings;
-		ret = v4l2_subdev_call(subdev, video, g_dv_timings, timings);
-		if(ret) {
-			loge("v4l2_subdev_call(video, g_dv_timings) is wrong\n");
-//			return ret;
-		} else {
-			logd("width: %d, height: %d, interalced: %d, polarities: 0x%08x\n", \
-				timings->bt.width, timings->bt.height, timings->bt.interlaced, timings->bt.polarities);
-		}
+	timings = &dev->stream->dv_timings;
+	ret = v4l2_subdev_call(subdev, video, g_dv_timings, timings);
+	if (ret) {
+		loge("v4l2_subdev_call(video, g_dv_timings) is wrong\n");
+	} else {
+		logd("width: %d, height: %d, interalced: %d, polarities: 0x%08x\n", \
+		     timings->bt.width, timings->bt.height, timings->bt.interlaced, timings->bt.polarities);
+	}
 
-		// power-up sequence & initial i2c setting
-		ret = v4l2_subdev_call(subdev, core, s_power, enable);
+	// power-up sequence & initial i2c setting
+	ret = v4l2_subdev_call(subdev, core, s_power, enable);
+	if (ret) {
+		loge("v4l2_subdev_call(subdev, core, s_power, enable) is wrong\n");
 	}
 
 	ret = v4l2_subdev_call(subdev, video, s_stream, enable);
-
-	if(!strncmp(subdev->name, "adv7182", strlen("adv7182")) || !strncmp(subdev->name, "max9286", strlen("max9286"))) {
-		for(idxTry = 0; idxTry < nTry; idxTry++) {
-			ret = v4l2_subdev_call(subdev, video, g_input_status, &status);
-			if(ret < 0) {
-				loge("subdev is not avaliable\n");
-			} else {
-				if(status & V4L2_IN_ST_NO_SIGNAL) {
-					loge("subdev is in V4L2_IN_ST_NO_SIGNAL status\n");
-				} else {
-					loge("subdev is available\n");
-					break;
-				}
-			}
-			msleep(10);
-		}
+	if (ret) {
+		loge("v4l2_subdev_call(subdev, video, s_stream, enable) is wrong\n");
 	}
+
+	for(idxTry = 0; idxTry < nTry; idxTry++) {
+		ret = v4l2_subdev_call(subdev, video, g_input_status, &status);
+		if(ret < 0) {
+			loge("subdev is not avaliable\n");
+		} else {
+			if(status & V4L2_IN_ST_NO_SIGNAL) {
+				loge("subdev is in V4L2_IN_ST_NO_SIGNAL status\n");
+			} else {
+				loge("subdev is available\n");
+				break;
+			}
+		}
+		msleep(10);
+	}
+
 
 	return ret;
 }

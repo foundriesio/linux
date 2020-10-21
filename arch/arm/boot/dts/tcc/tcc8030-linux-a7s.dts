@@ -48,10 +48,7 @@
 		fb0 = &fb0;
 		fb1 = &fb1;
 		mipi-csi2-0 = &mipi_csi2_0;
-		videosource0 = &videosource0;
-		videosource1 = &videosource1;
-		//videoinput0 = &videoinput0;
-		//videoinput1 = &videoinput1;
+		videoinput0 = &videoinput0;
 		i2s0 = &i2s0;
 		adma0 = &adma0;
 #if defined(CONFIG_OVERLAY1)
@@ -730,36 +727,18 @@
 		pinctrl-0 = <&i2c12_bus>;
 
 		isl79988: isl79988 {
-			compatible	= "adi,isl79988";
-			pinctrl-names	= "idle", "active";
-			pinctrl-0	= <&cam0_8bit_idle>;
-			pinctrl-1	= <&cam0_clk &cam0_data_8bit>;
-			rst-gpios	= <&gpb 14 0>;
-			reg		= <0x44>;	// 0x88 >> 1
+			compatible      = "adi,isl79988";
+			pinctrl-names   = "default";
+			pinctrl-0       = <&cam0_clk &cam0_data_8bit>;
+			cifport         = <0>;
+			rst-gpios       = <&gpb 14 0>;
+			reg             = <0x44>;	// 0x88 >> 1
 			port {
 				isl79988_out: endpoint {
-					remote-endpoint	= <&videoinput0_in>;
+					remote-endpoint = <&videoinput0_in>;
+					bus-width       = <8>;
 				};
 			};
-		};
-
-		videosource0: videodecoder_isl79988 {
-			compatible	= "intersil,isl79988";
-			pinctrl-names	= "idle", "active";
-			cifport		= <0>;
-			pinctrl-0	= <&cam0_8bit_idle>;
-			pinctrl-1	= <&cam0_clk &cam0_data_8bit>;
-			rst-gpios	= <&gpb 14 1>;
-			reg		= <0x44>;	// 0x88 >> 1
-		};
-
-		videosource1: deserializer_max9286 {
-			compatible	= "maxim,max9286";
-			cifport		= <5>;
-			pwd-gpios	= <&gpg 5 1>;
-			intb-gpios	= <&gph 11 1>;
-			reg		= <0x48>;	// 0x90 >> 1
-			mipi-csi2-idx   = <0>;
 		};
 	};
 
@@ -1244,7 +1223,7 @@
 	};
 #endif
 	switch_reverse {
-		compatible = "telechips,switch_reverse";
+		compatible = "telechips,switch_gpio_reverse";
 		status = "okay";
 
 		pinctrl-names = "default";
@@ -1254,15 +1233,28 @@
 		switch-active = <0>;
 	};
 
-	videoinput@0 {
+	videoinput0: videoinput@0 {
 		status = "okay";
-		cifport		= <&cifport 0>;
+		compatible = "telechips,video-input";
+		cifport    = <&cifport 0>;
+		clocks     = <&clk_ddi DDIBUS_VIOC>;
+		rdma       = <&vioc_rdma VIOC_RDMA16>;
+		vin        = <&vioc_vin VIOC_VIN00>;
+		viqe       = <&vioc_viqe VIOC_VIQE1>;
+		viqe_set   = <&viqe_hidden>;
+		deintls    = <&vioc_deintls VIOC_DEINTLS0>;
+		scaler     = <&vioc_scaler VIOC_SCALER2>;
+		wmixer     = <&vioc_wmix VIOC_WMIX5>;
+		wdma       = <&vioc_wdma VIOC_WDMA05>;
+		fifo       = <&vioc_fifo VIOC_FIFO0>;
+
 		port {
 			videoinput0_in: endpoint {
 				remote-endpoint	= <&isl79988_out>;
                 	        bus-type	= <0>;
-//				hsync-active	= <0>;
-//				vsync-active	= <0>;
+				bus-width       = <8>;
+				// hsync-active	= <0>;
+				// vsync-active	= <0>;
 				pclk-sample	= <0>;
 				data-active	= <0>;
 
@@ -1348,11 +1340,11 @@
 
 	/* vioc_mgr for A7S */
 	vioc_mgr0: vioc_mgr@0 {
-		compatible = "telechips,vioc_mgr";
-		device-name ="vioc_mgr_a7s";
-		mbox-names ="a7s-vioc";
-		mboxes = <&mbox1 TCC_MBOX1_CH_VIOC>;
-		status = "okay";
+		compatible  = "telechips,vioc_mgr";
+		device-name = "vioc_mgr_sub";
+		mbox-names  = "sub-vioc";
+		mboxes      = <&mbox1 TCC_MBOX1_CH_VIOC>;
+		status      = "okay";
 	};
 
 	gpio_keys_polled {

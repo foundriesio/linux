@@ -46,7 +46,8 @@
 #define WIDTH			720
 #define HEIGHT			480
 
-#define ISL79988_STATUS_REG	0x03
+#define ISL79988_STATUS_REG	0x1B
+#define ISL79988_STATUS_VAL	0x03
 
 struct power_sequence {
 	int			pwr_port;
@@ -72,28 +73,29 @@ struct isl79988 {
 };
 
 const struct reg_sequence isl79988_reg_defaults[] = {
-	{0xff, 0x00, 0},    // page 0
-	{0x02, 0x00, 0},    //
-	{0x03, 0x00, 0},    // Disable Tri-state
-	{0xff, 0x01, 0}, // page 1
-	{0x1C, 0x07, 0}, // auto dection
-	{0x37, 0x06, 0}, //
-	{0x39, 0x18, 0}, //
-	{0x33, 0x85, 0}, // Free-run 60Hz
-	{0x2f, 0xe6, 0}, // auto blue screen
-	{0xff, 0x00, 0}, // page 0
-	{0x07, 0x00, 0}, // 1 ch mode
-	{0x09, 0x4f, 0}, // PLL=27MHz
-	{0x0B, 0x42, 0}, // PLL=27MHz
-	{0xff, 0x05, 0}, // page 5
-	{0x05, 0x42, 0}, // byte interleave
-	{0x06, 0x61, 0}, // byte interleave
-	{0x0E, 0x00, 0}, //
-	{0x11, 0xa0, 0}, // Packet cnt = 1440 (EVB only)
-	{0x13, 0x1B, 0}, //
-	{0x33, 0x40, 0}, //
-	{0x34, 0x18, 0}, // PLL normal
-	{0x00, 0x02, 0}, // Decoder on
+	{0xff, 0x00, 0},	// page 0
+	{0x02, 0x00, 0},	//
+	{0x03, 0x00, 0},	// Disable Tri-state
+	{0x04, 0x0A, 0},	// Invert Clock
+	{0xff, 0x01, 0},	// page 1
+	{0x1C, 0x07, 0},	// auto dection
+	{0x37, 0x06, 0},	//
+	{0x39, 0x18, 0},	//
+	{0x33, 0x85, 0},	// Free-run 60Hz
+	{0x2f, 0xe6, 0},	// auto blue screen
+	{0xff, 0x00, 0},	// page 0
+	{0x07, 0x00, 0},	// 1 ch mode
+	{0x09, 0x4f, 0},	// PLL			  = 27MHz
+	{0x0B, 0x42, 0},	// PLL			  = 27MHz
+	{0xff, 0x05, 0},	// page 5
+	{0x05, 0x42, 0},	// byte interleave
+	{0x06, 0x61, 0},	// byte interleave
+	{0x0E, 0x00, 0},	//
+	{0x11, 0xa0, 0},	// Packet cnt		  = 1440 (EVB only)
+	{0x13, 0x1B, 0},	//
+	{0x33, 0x40, 0},	//
+	{0x34, 0x18, 0},	// PLL normal
+	{0x00, 0x02, 700},	// Decoder on
 };
 
 static const struct regmap_config isl79988_regmap = {
@@ -220,12 +222,16 @@ static int isl79988_g_input_status(struct v4l2_subdev *sd, u32 *status) {
 	int			ret	= 0;
 
 	// check V4L2_IN_ST_NO_SIGNAL
-	ret = regmap_read(dev->regmap, ISL79988_STATUS_REG, &val);
-	if(ret < 0) {
+	if ((ret = regmap_write(dev->regmap, 0xFF, 0x00)) < 0) {
+		loge("Failed to set to use page 0\n");
+	}
+
+	if ((ret = regmap_read(dev->regmap, ISL79988_STATUS_REG, &val)) < 0) {
 		loge("failure to check V4L2_IN_ST_NO_SIGNAL\n");
 	} else {
 		logd("status: 0x%08x\n", val);
-		if(val & ISL79988_STATUS_REG) {
+
+		if ((val & 0x0F) != ISL79988_STATUS_VAL) {
 			*status &= ~V4L2_IN_ST_NO_SIGNAL;
 		} else {
 			*status |= V4L2_IN_ST_NO_SIGNAL;
@@ -299,8 +305,8 @@ MODULE_DEVICE_TABLE(of, isl79988_of_match);
 #endif
 
 int isl79988_probe(struct i2c_client *client, const struct i2c_device_id *id) {
+	const struct of_device_id *dev_id = NULL;
 	struct isl79988		*dev	= NULL;
-	struct of_device_id	*dev_id	= NULL; 
 	int			ret	= 0;
 
 	// allocate and clear memory for a device
@@ -398,4 +404,3 @@ static struct i2c_driver isl79988_driver = {
 };
 
 module_i2c_driver(isl79988_driver);
-
