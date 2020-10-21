@@ -1,0 +1,99 @@
+// SPDX-License-Identifier: (GPL-2.0+ OR MIT)
+/*
+ * Device tree for Telechips TCC8031 AVN board
+ *
+ * Copyright (C) 2018 Telechips Inc.
+ */
+
+#ifndef DT_OVERLAY
+/dts-v1/;
+#endif
+
+#include "tcc8031-android-avn.dtsi"
+
+/* SD CARD */
+&sdhc1_pwrseq {
+	compatible = "mmc-pwrseq-simple";
+	reset-gpios = <&gpsd1 8 GPIO_ACTIVE_LOW>;
+};
+
+&sdhc1 {
+	broken-cd;
+	cd-inverted;
+	keep-power-in-suspend;
+
+	wp-gpios = <&gpsd1 7 0>;
+	cd-gpios = <&gpsd1 6 0>;
+
+	mmc-pwrseq = <&sdhc1_pwrseq>;
+	vqmmc-supply = <&vdd_ldo3>;
+};
+
+/* SDIO */
+&vqmmc_sdio {
+	compatible = "regulator-fixed";
+	regulator-name = "vqmmc_sdio";
+	regulator-min-microvolt = <1800000>;
+	regulator-max-microvolt = <1800000>;
+	regulator-always-on;
+};
+
+&sdhc2 {
+	//non-removable;
+	keep-power-in-suspend;
+	cap-sdio-irq;
+
+	vqmmc-supply = <&vqmmc_sdio>;
+
+	cd-force-presence-change;
+
+	tcm38xx {
+		compatible = "telechips,tcm38xx";
+		wifi_pwr-gpio = <&gpsd2 6 0>; /* BT_WIFI_VBAT_EN */
+		wlreg_on-gpio = <&gpsd2 8 0>; /* WIFI_REG_ON */
+		//wifi_pwr_1p8v-gpio = <&gpsd1 6 0>;
+		//wifi_pwr_3p3v-gpio = <&gpsd1 7 0>;
+	};
+};
+
+&tcc_timer {
+	/* Timer 0 is used for WIFI LPO */
+	tcc-timer-reserved = <0>;
+};
+
+&tm123xdhp90 {
+	compatible = "telechips,lvds-tm123xdhp90";
+	status = "okay";
+	lvds0 = <&lvds_phy>;
+	power-on-gpios = <&gpb 17>;		// LCD_ON
+	reset-gpios = <&gpb 18 0>;		// LCD_RST
+	/*
+	display-on-gpios = ;		// LCD_DISP
+	lvds-stby-gpios = ;		// LCD_DE = LVDS_STBY in LVDS
+	lvds-power-gpios = ;		// LVDS_EN
+	lvds-power-gpios1 = ;		// V_5V0_EN
+	*/
+	mode = <1>;		/* 0: single 1: dual */
+	ports = <2 3 4>;
+	mux_select = <0>; /*lcdc mux select */
+};
+
+&gpu1 {
+	status = "disabled";
+};
+
+&tcc_scrshare0{
+	status = "okay";
+};
+
+&vioc_mgr0 {
+	status = "okay";
+};
+
+&ictc {
+	status = "okay";
+};
+
+&boot_time {
+        status = "okay";
+};
