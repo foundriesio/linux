@@ -7,6 +7,7 @@
 #include <linux/clocksource.h>
 #include <linux/of_address.h>
 #include <linux/of_irq.h>
+#include <linux/syscore_ops.h>
 #include <soc/tcc/timer_reg.h>
 #include <soc/tcc/timer_api.h>
 
@@ -29,6 +30,7 @@ static void __iomem *timer_base;
 static unsigned long clk_rate;
 static int timer_initialized;
 static struct tcc_timer timer_res[TCC_TIMER_MAX];
+static u32 tco_id;
 
 #ifdef CONFIG_TCC_MICOM
 extern int is_micom_timer(u32 ch);
@@ -58,6 +60,16 @@ static irqreturn_t tcc_timer_handler(int irq, void *data)
 tcc_timer_irq_none:
 	return IRQ_NONE;
 }
+
+static void tcc_timer_tco_enable(u32 id)
+{
+	/* Set TREF to generate 32.768KHz approximately */
+	timer_writel(TREF_LPO_REF,
+		     timer_base + (id * TIMER_OFFSET) + TIMER_TREF);
+	/* Enable Timer with TCKSEL=0 */
+	timer_writel(1, timer_base + (id * TIMER_OFFSET) + TIMER_TCFG);
+}
+
 
 int tcc_timer_enable(struct tcc_timer *timer)
 {
@@ -272,6 +284,7 @@ void tcc_unregister_timer(struct tcc_timer *timer)
 }
 EXPORT_SYMBOL(tcc_unregister_timer);
 
+#if defined(CONFIG_PM_SLEEP)
 #define TIMER_REG_SIZE	((u32)0xA0)
 static u32 *timer_backup;
 
@@ -309,6 +322,26 @@ void tcc_timer_restore(void)
 	timer_backup = NULL;
 }
 
+#if defined(CONFIG_ARCH_TCC805X)
+static int tcc_timer_suspend(void)
+{
+	/* do nothing */
+	return 0;
+}
+
+static void tcc_timer_resume(void)
+{
+	/* enable TCO for LPO clock source */
+	tcc_timer_tco_enable(tco_id);
+}
+
+static struct syscore_ops tcc_timer_syscore_ops = {
+	.suspend = tcc_timer_suspend,
+	.resume = tcc_timer_resume,
+};
+#endif
+#endif
+
 static void tcc_timer_parse_dt(struct device_node *np)
 {
 	struct property *prop;
@@ -322,14 +355,8 @@ static void tcc_timer_parse_dt(struct device_node *np)
 				      "[INFO][%s]: reserved channel-%d for LPO clock\n",
 				      TCC_TIMER_NAME, res);
 			timer_res[res].reserved = 1;
-			/* Enable Timer with TCKSEL=0 */
-			timer_writel(1,
-				     timer_base + (res * TIMER_OFFSET) +
-				     TIMER_TCFG);
-			/* Set TREF to generate 32.768KHz approximately */
-			timer_writel(TREF_LPO_REF,
-				     timer_base + (res * TIMER_OFFSET) +
-				     TIMER_TREF);
+			tcc_timer_tco_enable(res);
+			tco_id = res;
 		}
 	}
 
@@ -419,6 +446,9 @@ static int __init tcc_init_timer(struct device_node *np)
 	/* check the reserved timer */
 	tcc_timer_parse_dt(np);
 
+#if defined(CONFIG_ARCH_TCC805X)
+	register_syscore_ops(&tcc_timer_syscore_ops);
+#endif
 	timer_initialized = 1;
 
 	return 0;
