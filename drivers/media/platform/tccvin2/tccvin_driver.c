@@ -347,55 +347,14 @@ static int tccvin_register_video(struct tccvin_device *dev,
 
 int tccvin_async_bound(struct v4l2_async_notifier *notifier, struct v4l2_subdev *subdev, struct v4l2_async_subdev *asd) {
 	struct tccvin_device	* dev		= NULL;
-	int			enable		= 1;
-	struct v4l2_dv_timings	*timings	= NULL;
-	int			idxTry		= 0;
-	int			nTry		= 3;
-	unsigned int		status		= 0;
 	int			ret		= 0;
 
-	loge("a v4l2 sub device %s is bounded\n", subdev->name);
+	logd("a v4l2 sub device %s is bounded\n", subdev->name);
 
 	dev = container_of(notifier, struct tccvin_device, notifier);
 
 	// register subdevice here
 	dev->subdevs[dev->bounded_subdevs++] = subdev;
-
-	timings = &dev->stream->dv_timings;
-	ret = v4l2_subdev_call(subdev, video, g_dv_timings, timings);
-	if (ret) {
-		loge("v4l2_subdev_call(video, g_dv_timings) is wrong\n");
-	} else {
-		logd("width: %d, height: %d, interalced: %d, polarities: 0x%08x\n", \
-		     timings->bt.width, timings->bt.height, timings->bt.interlaced, timings->bt.polarities);
-	}
-
-	// power-up sequence & initial i2c setting
-	ret = v4l2_subdev_call(subdev, core, s_power, enable);
-	if (ret) {
-		loge("v4l2_subdev_call(subdev, core, s_power, enable) is wrong\n");
-	}
-
-	ret = v4l2_subdev_call(subdev, video, s_stream, enable);
-	if (ret) {
-		loge("v4l2_subdev_call(subdev, video, s_stream, enable) is wrong\n");
-	}
-
-	for(idxTry = 0; idxTry < nTry; idxTry++) {
-		ret = v4l2_subdev_call(subdev, video, g_input_status, &status);
-		if(ret < 0) {
-			loge("subdev is not avaliable\n");
-		} else {
-			if(status & V4L2_IN_ST_NO_SIGNAL) {
-				loge("subdev is in V4L2_IN_ST_NO_SIGNAL status\n");
-			} else {
-				loge("subdev is available\n");
-				break;
-			}
-		}
-		msleep(10);
-	}
-
 
 	return ret;
 }
@@ -409,32 +368,57 @@ int tccvin_async_complete(struct v4l2_async_notifier *notifier) {
 	return 0;
 }
 
+void tccvin_print_fwnode_info(struct v4l2_fwnode_endpoint *fwnode_endpoint) {
+	logd("bus-type: %d\n", fwnode_endpoint->bus_type);
+	switch(fwnode_endpoint->bus_type) {
+	case V4L2_MBUS_PARALLEL:
+	case V4L2_MBUS_BT656:
+		logd("bus.parallel.flags: 0x%08x\n", fwnode_endpoint->bus.parallel.flags);
+		// hsync-active
+		logd("hsync-active: %s\n", (fwnode_endpoint->bus.parallel.flags & V4L2_MBUS_HSYNC_ACTIVE_HIGH) ? "V4L2_MBUS_HSYNC_ACTIVE_HIGH" : "V4L2_MBUS_HSYNC_ACTIVE_LOW");
+		// vsync-active
+		logd("vsync-active: %s\n", (fwnode_endpoint->bus.parallel.flags & V4L2_MBUS_VSYNC_ACTIVE_HIGH) ? "V4L2_MBUS_VSYNC_ACTIVE_HIGH" : "V4L2_MBUS_VSYNC_ACTIVE_LOW");
+		// pclk-sample
+		logd("pclk-sample: %s\n", (fwnode_endpoint->bus.parallel.flags & V4L2_MBUS_PCLK_SAMPLE_RISING) ? "V4L2_MBUS_PCLK_SAMPLE_RISING" : "V4L2_MBUS_PCLK_SAMPLE_FALLING");
+		// data-active
+		logd("data-active: %s\n", (fwnode_endpoint->bus.parallel.flags & V4L2_MBUS_DATA_ACTIVE_HIGH) ? "V4L2_MBUS_DATA_ACTIVE_HIGH" : "V4L2_MBUS_DATA_ACTIVE_LOW");
+		// conv_en
+		logd("conv_en: %s\n", (fwnode_endpoint->bus_type == V4L2_MBUS_BT656) ? "V4L2_MBUS_BT656" : "V4L2_MBUS_PARALLEL");
+		// bus width
+		logd("bus-width: %d\n", fwnode_endpoint->bus.parallel.bus_width);
+		break;
+	case V4L2_MBUS_CSI2:
+		break;
+	default:
+		break;
+	}
+}
+
 int idxSubDev = 0;
 
 int tccvin_init_endpoint_gragh(struct tccvin_device *vdev, struct device_node *base_node) {
+	struct fwnode_handle		*base_fwnode	= NULL;		// the fwnode of the base
 	struct device_node		*remt_node	= NULL;		// the remote of the base
-
 	struct device_node		*repa_node	= NULL;		// the parent of the remote
 	struct device_node		*endp_node	= NULL;
 	int				ret		= 0;
 
-	loge("loop: %d\n", idxSubDev);
+	logd("idxSubDev: %d, base_node: 0x%08x\n", idxSubDev, base_node);
 
-	loge("base_node: 0x%px\n", base_node);
-
-	remt_node = of_graph_get_remote_endpoint(base_node);
+	base_fwnode	= of_fwnode_handle(base_node);
+	remt_node	= of_graph_get_remote_endpoint(base_node);
 	if(!remt_node) {
 		loge("to find a remote endpoint of the base endpoint node\n");
 		ret = -ENODEV;
 	} else {
-		loge("remt_node: 0x%px\n", remt_node);
+		logd("remt_node: 0x%08x\n", remt_node);
 
 		repa_node = of_graph_get_remote_port_parent(base_node);
 		if(!repa_node) {
 			loge("to find a remote parent node\n");
 			ret = -ENODEV;
 		} else {
-			loge("repa_node: 0x%px\n", repa_node);
+			logd("repa_node: 0x%08x\n", repa_node);
 
 			while(1) {
 				endp_node = of_graph_get_next_endpoint(repa_node, endp_node);
@@ -443,71 +427,36 @@ int tccvin_init_endpoint_gragh(struct tccvin_device *vdev, struct device_node *b
 					ret = -ENODEV;
 					break;
 				} else {
-					loge("endp_node: 0x%px\n", endp_node);
+					logd("endp_node: 0x%08x\n", endp_node);
 
 					if(endp_node != remt_node) {
-						loge("endp_node != remt_node\n");
+						logd("endp_node != remt_node\n");
 						tccvin_init_endpoint_gragh(vdev, endp_node);
 						of_node_put(endp_node);
 					} else {
-						loge("endp_node == remt_node\n");
-						ret = v4l2_fwnode_endpoint_parse(of_fwnode_handle(base_node), &vdev->fw_ep[idxSubDev]);
+						logd("endp_node == remt_node\n");
+						ret = v4l2_fwnode_endpoint_parse(base_fwnode, &vdev->fw_ep[idxSubDev]);
 					        if(ret) {
 							loge("to parse v4l2 fwnode endpoint\n");
 					        } else {
-							loge("bus-type: %d\n", vdev->fw_ep[idxSubDev].bus_type);
-							switch(vdev->fw_ep[idxSubDev].bus_type) {
-							case V4L2_MBUS_PARALLEL:
-							case V4L2_MBUS_BT656:
-								loge("bus.parallel.flags: 0x%08x\n", vdev->fw_ep[idxSubDev].bus.parallel.flags);
-								// hsync-active
-								if(vdev->fw_ep[idxSubDev].bus.parallel.flags & V4L2_MBUS_HSYNC_ACTIVE_HIGH)
-									loge("hsync-active: V4L2_MBUS_HSYNC_ACTIVE_HIGH\n");
-								else if(vdev->fw_ep[idxSubDev].bus.parallel.flags & V4L2_MBUS_HSYNC_ACTIVE_LOW)
-									loge("hsync-active: V4L2_MBUS_HSYNC_ACTIVE_LOW\n");
-								// vsync-active
-								if(vdev->fw_ep[idxSubDev].bus.parallel.flags & V4L2_MBUS_VSYNC_ACTIVE_HIGH)
-									loge("vsync-active: V4L2_MBUS_VSYNC_ACTIVE_HIGH\n");
-								else if(vdev->fw_ep[idxSubDev].bus.parallel.flags & V4L2_MBUS_VSYNC_ACTIVE_LOW)
-									loge("vsync-active: V4L2_MBUS_VSYNC_ACTIVE_LOW\n");
-								// pclk-sample
-								vdev->stream->vs_sync_info.pclk_polarity = (vdev->fw_ep[idxSubDev].bus.parallel.flags & V4L2_MBUS_PCLK_SAMPLE_RISING) ? 1 : 0;
-								loge("pclk-sample: %s\n", vdev->stream->vs_sync_info.pclk_polarity ? "V4L2_MBUS_PCLK_SAMPLE_RISING" : "V4L2_MBUS_PCLK_SAMPLE_FALLING");
-								// data-active
-								vdev->stream->vs_sync_info.de_active_low = (vdev->fw_ep[idxSubDev].bus.parallel.flags & V4L2_MBUS_DATA_ACTIVE_HIGH) ? 1 : 0;
-								loge("data-active: %s\n", vdev->stream->vs_sync_info.de_active_low ? "V4L2_MBUS_DATA_ACTIVE_HIGH" : "V4L2_MBUS_DATA_ACTIVE_LOW");
-								// conv_en
-								vdev->stream->vs_sync_info.conv_en = (vdev->fw_ep[idxSubDev].bus_type == V4L2_MBUS_BT656) ? 1 : 0;
-								loge("conv_en: %s\n", vdev->stream->vs_sync_info.conv_en ? "V4L2_MBUS_BT656" : "V4L2_MBUS_PARALLEL");
-								// bus width
-								loge("bus-width: %d\n", vdev->fw_ep[idxSubDev].bus.parallel.bus_width);
-								break;
-							case V4L2_MBUS_CSI2:
-								break;
-							default:
-								break;
-							}
-						}
+							tccvin_print_fwnode_info(&vdev->fw_ep[idxSubDev]);
 
-						// common video source sync info
-						{
-							struct fwnode_handle *fwnode = of_fwnode_handle(base_node);
+							// pclk-sample
+							vdev->stream->vs_sync_info.pclk_polarity = (vdev->fw_ep[idxSubDev].bus.parallel.flags & V4L2_MBUS_PCLK_SAMPLE_RISING) ? 1 : 0;
+							// data-active
+							vdev->stream->vs_sync_info.de_active_low = (vdev->fw_ep[idxSubDev].bus.parallel.flags & V4L2_MBUS_DATA_ACTIVE_HIGH) ? 1 : 0;
 
-							// data-order
-							if(!fwnode_property_read_u32(fwnode, "data-order", &vdev->stream->vs_sync_info.data_order))
-								loge("data-order: %d\n", vdev->stream->vs_sync_info.data_order);
-							// data-format
-							if(!fwnode_property_read_u32(fwnode, "data-format", &vdev->stream->vs_sync_info.data_format))
-								loge("data-format: %d\n", vdev->stream->vs_sync_info.data_format);
-							// stream-enable
-							if(!fwnode_property_read_u32(fwnode, "stream-enable", &vdev->stream->vs_sync_info.stream_enable))
-								loge("stream-enable: %d\n", vdev->stream->vs_sync_info.stream_enable);
-							// conv-en
-							if(!fwnode_property_read_u32(fwnode, "conv-en", &vdev->stream->vs_sync_info.conv_en))
-								loge("conv-en: %d\n", vdev->stream->vs_sync_info.conv_en);
-							// flush-vsync
-							if(!fwnode_property_read_u32(fwnode, "flush-vsync", &vdev->stream->vs_sync_info.flush_vsync))
-								loge("flush-vsync: %d\n", vdev->stream->vs_sync_info.flush_vsync);
+							// extra video source sync info
+							fwnode_property_read_u32(base_fwnode, "data-order", &vdev->stream->vs_sync_info.data_order);
+							fwnode_property_read_u32(base_fwnode, "data-format", &vdev->stream->vs_sync_info.data_format);
+							fwnode_property_read_u32(base_fwnode, "stream-enable", &vdev->stream->vs_sync_info.stream_enable);
+							fwnode_property_read_u32(base_fwnode, "gen-field-en", &vdev->stream->vs_sync_info.gen_field_en);
+							fwnode_property_read_u32(base_fwnode, "field-bfield-low", &vdev->stream->vs_sync_info.field_bfield_low);
+							fwnode_property_read_u32(base_fwnode, "vs-mask", &vdev->stream->vs_sync_info.vs_mask);
+							fwnode_property_read_u32(base_fwnode, "hsde-connect-en", &vdev->stream->vs_sync_info.hsde_connect_en);
+							fwnode_property_read_u32(base_fwnode, "intpl-en", &vdev->stream->vs_sync_info.intpl_en);
+							fwnode_property_read_u32(base_fwnode, "conv-en", &vdev->stream->vs_sync_info.conv_en);
+							fwnode_property_read_u32(base_fwnode, "flush-vsync", &vdev->stream->vs_sync_info.flush_vsync);
 						}
 
 						vdev->asd[idxSubDev] = kmalloc(sizeof(struct v4l2_async_subdev), GFP_KERNEL);
@@ -518,7 +467,6 @@ int tccvin_init_endpoint_gragh(struct tccvin_device *vdev, struct device_node *b
 						of_node_put(endp_node);
 						break;
 					}
-//					of_node_put(endp_node);
 				}
 			}
 			of_node_put(repa_node);
@@ -544,7 +492,7 @@ int tccvin_init_subdevices(struct tccvin_device *vdev) {
 		of_node_put(endp_node);
 	}
 
-	loge("idxSubDev: %d\n", idxSubDev);
+	logd("the num of subdevs to be registered: %d\n", idxSubDev);
 	notifier->num_subdevs	= idxSubDev;
 	notifier->subdevs	= vdev->asd;
 	notifier->bound		= tccvin_async_bound;

@@ -157,6 +157,7 @@ struct tccvin_vs_sync_info {
 	unsigned int		vs_mask;
 	unsigned int		hsde_connect_en;
 	unsigned int		intpl_en;
+	unsigned int		interlaced;
 	unsigned int		conv_en;		// OFF: BT.601 / ON: BT.656
 
 	/* VIN_MISC */
@@ -268,7 +269,7 @@ struct tccvin_streaming {
 	int					cam_streaming;
 };
 
-#define TCCVIN_MAX_VIDEOSOURCE			3
+#define TCCVIN_MAX_VIDEOSOURCE			4
 
 struct tccvin_device {
 	struct platform_device			*pdev;

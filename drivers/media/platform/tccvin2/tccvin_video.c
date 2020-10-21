@@ -39,7 +39,6 @@
  * Video formats
  */
 
-//static struct tccvin_format_desc tccvin_fmts[] = {
 struct tccvin_format_desc tccvin_fmts[] = {
 	/* RGB */
 	{
@@ -139,7 +138,6 @@ int tccvin_format_num(void)
 	return num;
 }
 
-//static
 struct tccvin_format_desc *tccvin_format_by_guid(const __u32 guid)
 {
 	unsigned int len = ARRAY_SIZE(tccvin_fmts);
@@ -662,7 +660,7 @@ static int tccvin_set_vin(struct tccvin_streaming * vdev) {
 	unsigned int		hsde_connect_en	= vdev->vs_sync_info.intpl_en;
 	unsigned int		intpl_en	= vdev->vs_sync_info.intpl_en;
 	unsigned int		conv_en		= vdev->vs_sync_info.conv_en;
-	unsigned int		interlaced	= !!(bt_timings->interlaced & V4L2_DV_INTERLACED);
+	unsigned int		interlaced	= !!(bt_timings->interlaced & V4L2_DV_INTERLACED);//vdev->vs_sync_info.interlaced;//
 	unsigned int		width		= bt_timings->width;
 	unsigned int		height		= bt_timings->height >> interlaced;
 #if defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X)
@@ -672,16 +670,17 @@ static int tccvin_set_vin(struct tccvin_streaming * vdev) {
 
 	logd("VIN: 0x%p, Source Size - width: %d, height: %d\n", pVIN, width, height);
 
-	loge("data_order:	%d\n", data_order);
-	loge("data_format:	%d\n", data_format);
-	loge("stream_enable:	%d\n", stream_enable);
-	loge("gen_field_en:	%d\n", gen_field_en);
-	loge("de_active_low:	%d\n", de_active_low);
-	loge("vs_mask:		%d\n", vs_mask);
-	loge("hsde_connect_en:	%d\n", hsde_connect_en);
-	loge("intpl_en:		%d\n", intpl_en);
-	loge("conv_en:		%d\n", conv_en);
-	loge("flush_vsync:	%d\n", flush_vsync);
+	logd("data_order:	%d\n", data_order);
+	logd("data_format:	%d\n", data_format);
+	logd("stream_enable:	%d\n", stream_enable);
+	logd("gen_field_en:	%d\n", gen_field_en);
+	logd("de_active_low:	%d\n", de_active_low);
+	logd("vs_mask:		%d\n", vs_mask);
+	logd("hsde_connect_en:	%d\n", hsde_connect_en);
+	logd("intpl_en:		%d\n", intpl_en);
+	logd("interlaced:	%d\n", interlaced);
+	logd("conv_en:		%d\n", conv_en);
+	logd("flush_vsync:	%d\n", flush_vsync);
 
 	VIOC_VIN_SetSyncPolarity(pVIN, hs_active_low, vs_active_low, field_bfield_low, de_active_low, gen_field_en, pxclk_pol);
 	VIOC_VIN_SetCtrl(pVIN, conv_en, hsde_connect_en, vs_mask, data_format, data_order);
@@ -697,19 +696,19 @@ static int tccvin_set_vin(struct tccvin_streaming * vdev) {
 	VIOC_VIN_SetFlushBufferEnable(pVIN, flush_vsync);
 #endif//defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X)
 
-	logd("data_format: 0x%08x, FMT_YUV422_16BIT: 0x%08x, FMT_YUV422_8BIT: 0x%08x\n", data_format, FMT_YUV422_16BIT, FMT_YUV422_8BIT);
-	logd("vdev->cur_format->fcc: 0x%08x, V4L2_PIX_FMT_RGB24: 0x%08x, V4L2_PIX_FMT_RGB32: 0x%08x\n", vdev->cur_format->fcc, V4L2_PIX_FMT_RGB24, V4L2_PIX_FMT_RGB32);
-
+	logd("v4l2 preview format(fcc): 0x%08x\n", vdev->cur_format->fcc);
 	if(((data_format == FMT_YUV422_16BIT)	|| \
 	    (data_format == FMT_YUV422_8BIT)	|| \
 	    (data_format == FMT_YUVK4444_16BIT)	|| \
 	    (data_format == FMT_YUVK4224_24BIT)) && \
 		((vdev->cur_format->fcc == V4L2_PIX_FMT_RGB24) || \
 		 (vdev->cur_format->fcc == V4L2_PIX_FMT_RGB32))) {
-		logi("interlaced: %d\n", interlaced);
-		if(!((interlaced) && (vdev->cif.vioc_path.viqe != -1)))
+		if(!((interlaced) && (vdev->cif.vioc_path.viqe != -1))) {
+			logd("y2r is ENABLED\n");
 			VIOC_VIN_SetY2REnable(pVIN, ON);
+		}
 	} else {
+		logd("y2r is DISABLED\n");
 		VIOC_VIN_SetY2REnable(pVIN, OFF);
 	}
 
@@ -739,7 +738,7 @@ static int tccvin_set_deinterlacer(struct tccvin_streaming * vdev) {
 	if(vdev->cif.vioc_path.viqe != -1) {
 		volatile void __iomem	* pVIQE		= VIOC_VIQE_GetAddress(vdev->cif.vioc_path.viqe);
 
-		unsigned int		interlaced	= !!(bt_timings->interlaced & V4L2_DV_INTERLACED);
+		unsigned int		interlaced	= !!(bt_timings->interlaced & V4L2_DV_INTERLACED);//vdev->vs_sync_info.interlaced;//
 		unsigned int		width		= bt_timings->width;
 		unsigned int		height		= bt_timings->height >> interlaced;
 
@@ -1441,8 +1440,94 @@ int tccvin_video_deinit(struct tccvin_streaming *stream) {
 	return ret;
 }
 
+int tccvin_video_subdevs_streamon(struct tccvin_streaming *stream) {
+	struct tccvin_device	*dev		= stream->dev;
+	int			idxSubDev	= 0;
+	struct v4l2_subdev	*subdev		= NULL;
+	struct v4l2_dv_timings	*timings	= NULL;
+	int			idxTry		= 0;
+	int			nTry		= 3;
+	unsigned int		status		= 0;
+	int			ret		= 0;
+
+	// v4l2 sub dev - core functions
+	for(idxSubDev=0; idxSubDev<dev->bounded_subdevs; idxSubDev++) {
+		subdev = dev->subdevs[idxSubDev];
+
+		// power-up sequence & initial i2c setting
+		ret = v4l2_subdev_call(subdev, core, s_power, 1);
+
+		// configure as init status
+		ret = v4l2_subdev_call(subdev, core, init, 0);
+	}
+
+	for(idxSubDev=0; idxSubDev<dev->bounded_subdevs; idxSubDev++) {
+		subdev = dev->subdevs[dev->bounded_subdevs - 1 - idxSubDev];
+
+		// start stream
+		ret = v4l2_subdev_call(subdev, video, s_stream, 1);
+
+		// signal check
+		for(idxTry = 0; idxTry < nTry; idxTry++) {
+			ret = v4l2_subdev_call(subdev, video, g_input_status, &status);
+			if(ret < 0) {
+				logd("subdev is unavaliable\n");
+				break;
+			} else {
+				if(status & V4L2_IN_ST_NO_SIGNAL) {
+					logd("subdev is not stable\n");
+				} else {
+					logd("subdev is stable\n");
+					break;
+				}
+			}
+			msleep(10);
+		}
+	}
+
+	for(idxSubDev=0; idxSubDev<dev->bounded_subdevs; idxSubDev++) {
+		subdev = dev->subdevs[idxSubDev];
+
+		timings = &dev->stream->dv_timings;
+		ret = v4l2_subdev_call(subdev, video, g_dv_timings, timings);
+		if(ret) {
+			logd("v4l2_subdev_call(video, g_dv_timings) is wrong\n");
+		} else {
+			logd("width: %d, height: %d, interalced: %d, polarities: 0x%08x\n", \
+				timings->bt.width, timings->bt.height, timings->bt.interlaced, timings->bt.polarities);
+			break;
+		}
+	}
+
+	return ret;
+}
+
+int tccvin_video_subdevs_streamoff(struct tccvin_streaming *stream) {
+	struct tccvin_device	*dev		= stream->dev;
+	int			idxSubDev	= 0;
+	struct v4l2_subdev	*subdev		= NULL;
+	int			ret		= 0;
+
+	for(idxSubDev=0; idxSubDev<dev->bounded_subdevs; idxSubDev++) {
+		subdev = dev->subdevs[dev->bounded_subdevs - 1 - idxSubDev];
+
+		// stop stream
+		ret = v4l2_subdev_call(subdev, video, s_stream, 0);
+	}
+
+	// v4l2 sub dev - core functions
+	for(idxSubDev=0; idxSubDev<dev->bounded_subdevs; idxSubDev++) {
+		subdev = dev->subdevs[idxSubDev];
+
+		// power-down sequence
+		ret = v4l2_subdev_call(subdev, core, s_power, 0);
+	}
+
+	return ret;
+}
+
 int tccvin_video_streamon(struct tccvin_streaming *stream, int is_handover_needed) {
-	int		ret = 0;
+	int			ret		= 0;
 
 	// update the is_handover_needed
 	stream->is_handover_needed	= is_handover_needed;
@@ -1455,7 +1540,12 @@ int tccvin_video_streamon(struct tccvin_streaming *stream, int is_handover_neede
 		return 0;
 	}
 
-	logi("Video-Input Path(%d) is NOT working\n", stream->vdev.num);
+	ret = tccvin_video_subdevs_streamon(stream);
+	if(ret < 0) {
+		loge("to start v4l2 sub devices\n");
+		return -1;
+	}
+
 	ret = tccvin_start_stream(stream);
 	if(ret < 0) {
 		loge("Start Stream\n");
@@ -1491,6 +1581,12 @@ int tccvin_video_streamoff(struct tccvin_streaming *stream, int is_handover_need
 	ret = tccvin_stop_stream(stream);
 	if(ret < 0) {
 		loge("Stop Stream\n");
+		return -1;
+	}
+
+	ret = tccvin_video_subdevs_streamoff(stream);
+	if(ret < 0) {
+		loge("to stop v4l2 sub devices\n");
 		return -1;
 	}
 
