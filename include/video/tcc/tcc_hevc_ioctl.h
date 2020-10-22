@@ -82,6 +82,18 @@ typedef struct {
 /* binaray structure bearer for 32/64 userspace and 64/32 kernel space environment */
 typedef struct {
     int result;
+    codec_handle_t gsHevcDecHandle;
+    hevc_dec_init_64bit_t gsHevcDecInitEx;
+} HEVC_INIT_BEARER_t;
+
+typedef struct {
+    int result;
+    hevc_dec_init_64bit_t gsHevcDecInitEx;
+    hevc_dec_ring_buffer_setting_in_t gsHevcDecRingFeed;
+} HEVC_RINGBUF_SETBUF_BEARER_t;
+
+typedef struct {
+    int result;
     unsigned long long cVersionAddr;
     unsigned long long cBuildDataAddr;
 } HEVC_GET_VERSION_BEARER_t;
