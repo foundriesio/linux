@@ -18,8 +18,6 @@
 };
 
 &aliases {
-	videosource0 = &videosource0;
-	videosource1 = &videosource1;
 };
 
 &pcie {
@@ -228,147 +226,85 @@
 
 &i2c0 {
 	status = "okay";
-	port-mux = <12>;
+	port-mux = <11>;
 	pinctrl-names = "default";
-	pinctrl-0 = <&i2c12_bus>;
+	pinctrl-0 = <&i2c11_bus>;
+	clock-frequency = <100000>;
+};
 
-	pmic@5A {
-		compatible = "dlg,da9063";
-		reg = <0x5A>;
+&i2c1 {
+	status = "okay";
+	port-mux = <6>;
+	pinctrl-names = "default";
+	pinctrl-0 = <&i2c6_bus>;
 
-		da9063_gpio: gpio {
-			compatible = "dlg,da9063-gpio";
+	pmic@58 {
+		compatible = "dlg,da9062";
+		reg = <0x58>;
+		int-gpios = <&gpma 12 0>;
+
+		da9062_gpio: gpio {
+			compatible = "dlg,da9062-gpio";
 			gpio-controller;
 			#gpio-cells = <2>;
 		};
 
 		regulators {
-			vdd_bcore1: bcore1 {
-				regulator-name = "cpu_0p9v";
-				regulator-min-microvolt = <855000>;
-				regulator-max-microvolt = <900000>;
-				regulator-always-on;
-				regulator-boot-on;
+			DA9062_BUCK1: buck1 {
+			regulator-name = "vdd_cpu0";
+			regulator-min-microvolt = <300000>;
+			regulator-max-microvolt = <1570000>;
+			regulator-min-microamp = <500000>;
+			regulator-max-microamp = <2000000>;
+			regulator-always-on;
 			};
 
-			vdd_bcore2: bcore2 {
-				regulator-name = "core_0p8v";
-				regulator-min-microvolt = <760000>;
-				regulator-max-microvolt = <800000>;
-				regulator-always-on;
-				regulator-boot-on;
+			DA9062_BUCK2: buck2 {
+			regulator-name = "vdd_gv";
+			regulator-min-microvolt = <300000>;
+			regulator-max-microvolt = <1570000>;
+			regulator-min-microamp = <500000>;
+			regulator-max-microamp = <2000000>;
+			regulator-always-on;
 			};
 
-			vdd_bpro: bpro {
-				regulator-name = "vdd_mali";
-				regulator-min-microvolt = <760000>;
-				regulator-max-microvolt = <800000>;
-				regulator-always-on;
-				regulator-boot-on;
+			DA9062_BUCK3: buck3 {
+			regulator-name = "vdd_core";
+			regulator-min-microvolt = <800000>;
+			regulator-max-microvolt = <3340000>;
+			regulator-min-microamp = <500000>;
+			regulator-max-microamp = <2000000>;
+			regulator-always-on;
 			};
 
-			vdd_bmem: bmem {
-				regulator-name = "io_1p8v";
-				regulator-min-microvolt = <1700000>;
-				regulator-max-microvolt = <1800000>;
-				regulator-always-on;
-				regulator-boot-on;
+			DA9062_BUCK4: buck4 {
+			regulator-name = "vdd_cpu1";
+			regulator-min-microvolt = <530000>;
+			regulator-max-microvolt = <1800000>;
+			regulator-min-microamp = <500000>;
+			regulator-max-microamp = <2000000>;
+			regulator-always-on;
 			};
 
-			vdd_bio: bio {
-				regulator-name = "io_3p3v";
-				regulator-min-microvolt = <3000000>;
-				regulator-max-microvolt = <3300000>;
-				regulator-always-on;
-				regulator-boot-on;
+			DA9062_LDO1: ldo1 {
+			regulator-name = "vdd_io";
+			regulator-min-microvolt = <900000>;
+			regulator-max-microvolt = <3600000>;
+			regulator-always-on;
 			};
-
-			vdd_bperi: bperi {
-				regulator-name = "mem_1p1v";
-				regulator-min-microvolt = <1045000>;
-				regulator-max-microvolt = <1100000>;
-				regulator-always-on;
-				regulator-boot-on;
+#if 0
+			/* Temp block for LDO2. Block min-microvolt of LDO2 */
+			DA9062_LDO2: ldo2 {
+			regulator-name = "mem_1p8";
+			regulator-min-microvolt = <1700000>;
+			regulator-max-microvolt = <1800000>;
+			regulator-always-on;
+			regulator-boot-on;
 			};
-
-			vdd_ldo3: ldo3 {
-				/* peri_1p8v */
-				regulator-name = "sdio_pwr";
-				regulator-min-microvolt = <1800000>;
-				regulator-max-microvolt = <3300000>;
-				regulator-always-on;
-				regulator-boot-on;
-			};
-
-			vdd_ldo7: ldo7 {
-				regulator-name = "cpu_1p2v";
-				regulator-min-microvolt = <1200000>;
-				regulator-max-microvolt = <1200000>;
-				regulator-always-on;
-				regulator-boot-on;
-			};
-
-			vdd_ldo8: ldo8 {
-				regulator-name = "mem_1p8v";
-				regulator-min-microvolt = <1800000>;
-				regulator-max-microvolt = <1800000>;
-				regulator-always-on;
-				regulator-boot-on;
-			};
-
-			vdd_ldo9: ldo9 {
-				regulator-name = "pmic_io_pwr";
-				regulator-min-microvolt = <950000>;
-				regulator-max-microvolt = <3600000>;
-				regulator-always-on;
-				regulator-boot-on;
-			};
-
-			vdd_ldo11: ldo11 {
-				/* peri_3p3v */
-				regulator-name = "emmc_pwr";
-				regulator-min-microvolt = <3300000>;
-				regulator-max-microvolt = <3300000>;
-				regulator-always-on;
-				regulator-boot-on;
-			};
+#endif
 		};
-	}; /* pmic da9063 */
+	}; /* pmic da9062 */
 
-	videosource0: videodecoder_isl79988 {
-		compatible	= "intersil,isl79988";
-		pinctrl-names	= "idle", "active";
-		cifport		= <0>;
-		pinctrl-0	= <&cam0_8bit_idle>;
-		pinctrl-1	= <&cam0_clk &cam0_data_8bit>;
-		rst-gpios	= <&gpb 14 1>;
-		reg		= <0x44>;	// 0x88 >> 1
-	};
-
-	videosource1: deserializer_max9286 {
-		compatible	= "maxim,max9286";
-		cifport		= <5>;
-		pwd-gpios	= <&gpg 5 1>;
-		intb-gpios	= <&gph 11 1>;
-		reg		= <0x48>;	// 0x90 >> 1
-		mipi-csi2-idx   = <0>;
-	};
-};
-
-&i2c1 {
-	status = "okay";
-	port-mux = <13>; /* [0]SCL [1]SDA */
-	pinctrl-names = "default";
-	pinctrl-0 = <&i2c13_bus>;
-
-	ssd253x@48 {
-		compatible = "solomon,ssd253x";
-		reg = <0x48>;
-		pinctrl-names = "default";
-		pinctrl-0 = <&tsc_default>;
-		int-gpios = <&gpsd1 9 0x0>;
-		rst-gpios = <&gpb 16 0x0>;
-	};
 	mxt_touch@4a {
 		compatible = "atmel,maxtouch";
 		reg = <0x4a>;
@@ -378,59 +314,40 @@
 		irq-gpios = <&gpsd1 9 0x0>;
 		reset-gpios = <&gpb 16 0x0>;
 	};
-	ga657x@5d {
-		compatible = "goodix,ga657x";
-		reg = <0x5d>;
-		status = "okay";
-		pinctrl-names = "default";
-		pinctrl-0 = <&tsc_default>;
-
-		reset-gpios = <&gpb 16 0x0>;
-		irq-gpios = <&gpsd1 9 0x0>;
-		irq-flags = <2>;
-
-		touchscreen-max-id = <11>;
-		touchscreen-size-x = <1920>;
-		touchscreen-size-y = <720>;
-		touchscreen-max-w = <512>;
-		touchscreen-max-p = <512>;
-		touchscreen-key-map = <172>, <158>; /*KEY_HOMEPAGE=172, KEY_BACK=158, KEY_MENU=139*/
-		goodix,slide-wakeup = <0>;
-		goodix,type-a-report = <0>;
-		goodix,driver-send-cfg = <0>;
-		goodix,resume-in-workqueue = <0>;
-		goodix,swap-x2y = <0>;
-		goodix,esd-protect = <1>;
-		goodix,auto-update = <0>;
-		goodix,auto-update-cfg = <0>;
-		goodix,power-off-sleep = <0>;
-		goodix,pen-suppress-finger = <0>;
-		goodix,cfg-group0 = [
-			53 D0 02 00 05 05 F5 D5 21 48 2D 0F 5A 41 0E 05 00 00 32 32 20 00 05 14 14 1A 14 8B 2B 00
-		];
-	};
 };
+
 
 &i2c2 {
 	status = "okay";
-	port-mux = <20>; /* [0]SCL [1]SDA */
+	port-mux = <13>;
 	pinctrl-names = "default";
-	pinctrl-0 = <&i2c20_bus>;
+	pinctrl-0 = <&i2c13_bus>;
 	ak4601: ak4601@10 {
 		compatible = "akm,ak4601";
-		ak4601,pdn-gpio = <&gpe 14 0>;
-		cmute-gpios = <&gpe 15 1>;	//CODEC_MUTE    0: active high, 1: active low
-		amute-gpios = <&gpma 1 0>;	//AMP_MUTE      0: active high, 1: active low
-		stanby-gpios = <&gpma 2 0>;	//AMP_STBY      0: active high, 1: active low	
+		ak4601,pdn-gpio = <&gpb 27 0>;
+		cmute-gpios = <&gpb 28 1>;	//CODEC_MUTE    0: active high, 1: active low
+		amute-gpios = <&gpma 27 0>;	//AMP_MUTE      0: active high, 1: active low
+//		amute-gpios = <&gpmb 27 0>;	//AMP_MUTE      0: active high, 1: active low
+		stanby-gpios = <&gpma 26 0>;	//AMP_STBY      0: active high, 1: active low
+//		stanby-gpios = <&gpmb 26 0>;	//AMP_STBY      0: active high, 1: active low
 		reg = <0x10>;
 	};
 };
 
 &i2c3 {
 	status = "okay";
-	port-mux = <11>; /* [0]SCL [1]SDA */
+	port-mux = <22>; /* [0]SCL [1]SDA */
 	pinctrl-names = "default";
-	pinctrl-0 = <&i2c11_bus>;
+	pinctrl-0 = <&i2c22_bus>;
+	clock-frequency = <400000>;
+};
+
+&i2c7 {
+	status = "okay";
+	port-mux = <12>; /* [0]SCL [1]SDA */
+	pinctrl-names = "default";
+	pinctrl-0 = <&i2c12_bus>;
+	clock-frequency = <400000>;
 };
 
 &gpsb0 {
@@ -691,7 +608,7 @@
 &auth_cp {
 	compatible = "telechips, tcc-cp";
 	cp-type = <2>;	    /* 2.0C = 1, 2.0B = 0, 3.0 = 2 */
-	i2c-channel = <3>;	/* 0 ~ 3 */
+	i2c-channel = <0>;	/* 0 ~ 3 */
 	/*	power-ctrl-able; */
 	/* cp_power-gpio = <&gpk 14 0>; */
 	/* cp_reset-gpio = <&gpk 11 0>; */
