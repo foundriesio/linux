@@ -100,7 +100,7 @@
 
 // DECODER on VPU
 #define INST_1ST_USE                    (1)
-#define INST_1ST_IS_HEVC_TYPE           (0)
+#define INST_1ST_IS_HEVC_TYPE           (1)
 #define INST_1ST_VIDEO_WIDTH            (1920)  // HEVC: 32x alignment, Other: 16x alignment
 #define INST_1ST_VIDEO_HEIGHT           (1088)  // HEVC: 32x alignment, Other: 16x alignment
 #define INST_1ST_MAX_FRAMEBUFFERS       (24)    // HEVC-4K: 7, Others: 1~24
