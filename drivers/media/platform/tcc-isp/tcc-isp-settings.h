@@ -1,3 +1,8 @@
+// SPDX-License-Identifier: GPL-2.0-or-later
+/*
+ * Copyright (C) Telechips Inc.
+ */
+
 #ifndef __MCNEX_SETTING_H__
 #define __MCNEX_SETTING_H__
 
