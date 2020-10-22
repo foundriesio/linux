@@ -579,8 +579,10 @@
 
 #define SPACE	0x00100000
 
-#if defined(CONFIG_ARCH_TCC805X)
+#if defined(CONFIG_ARCH_TCC805X) && !defined(CONFIG_TCC805X_CLUSTER)
 #define PMAP_BASE	(0x80000000)
+#elif defined(CONFIG_TCC805X_CLUSTER)
+#define PMAP_BASE	(0x40000000)
 #elif defined(CONFIG_ARCH_TCC897X)
 #define PMAP_BASE	(0x87800000)
 #else

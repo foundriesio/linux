@@ -350,6 +350,12 @@ config TCC805X_CA53Q
 	help
 	  Select this option building a kernel for TCC805X Cortex-A53 Subcore.
 
+config TCC805X_CLUSTER
+	bool "Build for TCC805X Maincore Cluster"
+	depends on ARCH_TCC805X
+	help
+	  Select this option building a kernel for TCC805X Cortex-A72 Cluster.
+
 config ARCH_TCC803X
 	bool "ARMv8 based Telechips TCC803x"
 	select ARM_GIC
