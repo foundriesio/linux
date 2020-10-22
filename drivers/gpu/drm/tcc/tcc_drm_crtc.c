@@ -667,7 +667,7 @@ int tcc_crtc_parse_edid_ioctl(struct drm_device *dev, void *data, struct drm_fil
 
 	pr_info("[DEBUG][%d][%s] Ioctl called \n", __LINE__, __FUNCTION__);
 
-	memset(&base_edid, 0, sizeof(base_edid));
+	memset(base_edid, 0, sizeof(base_edid));
 	/* get crtc */
 	crtc = drm_crtc_find(dev, args->crtc_id);
 	if(!crtc){
@@ -684,7 +684,7 @@ int tcc_crtc_parse_edid_ioctl(struct drm_device *dev, void *data, struct drm_fil
 	tcc_crtc_fill_detailed_edid(base_edid, &crtc_state->mode);
 	tcc_crtc_edid_checksum(base_edid);
 
-	memcpy(args->data, &base_edid, sizeof(base_edid));
+	memcpy(args->data, base_edid, sizeof(base_edid));
 
 	return 0;
 }
