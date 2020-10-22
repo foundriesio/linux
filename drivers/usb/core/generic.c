@@ -207,9 +207,7 @@ static int __check_usb_generic(struct device_driver *drv, void *data)
 		return 0;
 	if (!udrv->id_table)
 		return 0;
-	if (usb_device_match_id(udev, udrv->id_table) != NULL)
-		return 1;
-	return (udrv->match && udrv->match(udev));
+	return usb_driver_applicable(udev, udrv);
 }
 
 static bool usb_generic_driver_match(struct usb_device *udev)
