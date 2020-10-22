@@ -129,24 +129,7 @@ enum DPTX_TRAINING_PATTERN_TYPE
 };
 
 
-struct DPTX_API_Core_Params
-{
-	bool							bSSC_On;
-	enum DPTX_API_LINK_NUM_OF_LANE	eMaxNumOfLanes;
-	enum DPTX_API_LINK_RATE			eMaxRate;
-};
-
-struct DPTX_API_AVGEN_Params
-{
-	enum DPTX_API_VIDEO_COLORIMETRY_TYPE		eColorimetry;
-	enum DPTX_API_VIDEO_RGB_STANDARD_TYPE		eRGB_Standard;
-	enum DPTX_API_VIDEO_REFRESH_RATE			eRefresh_Rate;
-	enum DPTX_API_VIDEO_FORMAT_TYPE				eVideo_Format;
-	enum DPTX_API_VIDEO_PIXEL_ENCODING_TYPE		ePixel_Encoding;
-	u32											uiVideo_Code;
-};
-
-typedef struct   DPTX_API_Dtd_Params
+struct   DPTX_API_Dtd_Params_t
 {
 	u8	interlaced;			/* 1 : interlaced, 0 : progressive */
 	u8	h_sync_polarity;
@@ -163,15 +146,14 @@ typedef struct   DPTX_API_Dtd_Params
 	u16	v_sync_offset;
 	u16	v_sync_pulse_width;
 	u32	uiPixel_Clock;
-}DPTX_API_Dtd_Params_t;
+};
 
 
-bool Dpv14_Tx_API_Set_Video_Mute( bool bMute, u8 ucStream_Index );
-bool Dpv14_Tx_API_Get_Video_Mute( bool *pbMute, u8 ucStream_Index );
-bool Dpv14_Tx_API_Set_Core_Params( struct DPTX_API_Core_Params	*pstDpCore_Params );
-bool Dpv14_Tx_API_Get_Core_Params( struct DPTX_API_Core_Params	*pstDpCore_Params );
-bool Dpv14_Tx_API_Set_AVGen_Params( struct DPTX_API_AVGEN_Params	*pstDpAvGen_Params, u8 ucStream_Index );
-bool Dpv14_Tx_API_Get_AVGen_Params( struct DPTX_API_AVGEN_Params	*pstDpAvGen_Params, u8 ucStream_Index );
+int Dpv14_Tx_API_Get_HPD_State( bool *pbHPD_State );
+int Dpv14_Tx_API_Get_Port_Composition( bool *pbHPD_State );
+int Dpv14_Tx_API_Get_Edid( u8 ucStream_Index );
+int Dpv14_Tx_API_Set_Video_Timing( u8 ucStream_Index, struct DPTX_API_Dtd_Params_t *dptx_detailed_timing );
+int Dpv14_Tx_API_Set_Video_Enable( u8 ucStream_Index, bool bEnable );
 
 bool Dpv14_Tx_API_Set_Audio_Mute( bool bMute );
 bool Dpv14_Tx_API_Get_Audio_Mute( bool *pbMute );
@@ -185,9 +167,4 @@ bool Dpv14_Tx_API_Set_Audio_Max_NumOfCh( enum  DPTX_AUDIO_NUM_OF_CHANNELS eAudio
 bool Dpv14_Tx_API_Get_Audio_Max_NumOfCh( u8 *pucAudio_NumOfCh );
 bool Dpv14_Tx_API_Set_Audio_Sel( u32 ucData );
 
-bool Dpv14_Tx_API_Read_Edid( bool bI2C_Over_Aux, u8 ucStream_Index );
-bool Dpv14_Tx_API_Read_Edid_Over_Aux( void );
-bool Dpv14_Tx_API_Get_Configured_Dtd_Infor( DPTX_API_Dtd_Params_t *pstDptx_Dtd_Params, u8 ucStream_Index );
-bool Dpv14_Tx_API_Get_Dtd_Infor_From_VideoCode( u32 uiVideo_Code, DPTX_API_Dtd_Params_t *pstDptx_Dtd_Params,  u32 uiRefreshRate, u8 ucVideoFormat );
-bool Dpv14_Tx_API_Get_Dtd_Infor_From_Edid( DPTX_API_Dtd_Params_t *pstDptx_Dtd_Params, u8 ucStream_Index );
 #endif /* __DPTX_API_H__  */

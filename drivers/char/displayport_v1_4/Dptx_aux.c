@@ -12,7 +12,7 @@
 #define DPTX_AUX_MAX_RW_RETRY				200
 #define DPTX_AUX_MAX_REPLY_RETRY			50
 
-static bool dptx_aux_read_data( struct Dptx_Params *dptx, u8 *pucBuffer, u32 uiLength )
+static void dptx_aux_read_data( struct Dptx_Params *dptx, u8 *pucBuffer, u32 uiLength )
 {
 	u32				uiElements;
 	u32				*puiData = dptx->stAuxParams.auiReadData;
@@ -21,8 +21,6 @@ static bool dptx_aux_read_data( struct Dptx_Params *dptx, u8 *pucBuffer, u32 uiL
 	{
 		pucBuffer[uiElements] = ( puiData[uiElements / 4] >> ((uiElements % 4) * 8) ) & 0xff;
 	}
-		
-	return ( DPTX_RETURN_SUCCESS );
 }
 
 static void dptx_aux_clear_data( struct Dptx_Params *pstDptx )
@@ -33,7 +31,7 @@ static void dptx_aux_clear_data( struct Dptx_Params *pstDptx )
  	Dptx_Reg_Writel( pstDptx, DPTX_AUX_DATA3, 0 );
  }
 
-static bool dptx_aux_write_data( struct Dptx_Params *pstDptx, u8 const *pucBuffer, u32 uiLength )
+static void dptx_aux_write_data( struct Dptx_Params *pstDptx, u8 const *pucBuffer, u32 uiLength )
 {
 	u32		uiElements;
 	u32		auiWriteData[4];
@@ -49,22 +47,19 @@ static bool dptx_aux_write_data( struct Dptx_Params *pstDptx, u8 const *pucBuffe
  	Dptx_Reg_Writel( pstDptx, DPTX_AUX_DATA1, auiWriteData[1] );
  	Dptx_Reg_Writel( pstDptx, DPTX_AUX_DATA2, auiWriteData[2] );
   	Dptx_Reg_Writel( pstDptx, DPTX_AUX_DATA3, auiWriteData[3] );
-
-	return ( DPTX_RETURN_SUCCESS );
 }
 
-static bool dptx_aux_read_write(	struct Dptx_Params	*pstDptx, bool bRead_Mode, bool	bI2C_Mode, bool	bMot_Mode, bool	bAddr_Only, u32 uiAddr, u8	*pucBuffer, u32 uiLength )
+static int dptx_aux_read_write(	struct Dptx_Params	*pstDptx, bool bRead_Mode, bool	bI2C_Mode, bool	bMot_Mode, bool	bAddr_Only, u32 uiAddr, u8	*pucBuffer, u32 uiLength )
 {
-	bool			bRetVal, bAckSuccess;
-	u8				ucTtries = 0;
+	bool			bAckSuccess;
 	u8				ucAux_Status, ucAux_Bytes_Read;
 	u32				uiCmd_Type, uiAux_Cmd;
-	u32				uiCount = 0;
+	u32				uiCount = 0, uiTtries = 0;
 
 	if( ( uiLength > 16 ) || ( uiLength == 0 ) )
 	{
 		dptx_err( "AUX read/write len must be 1-15, len=%d ", uiLength);
-		return ( DPTX_RETURN_FAIL );
+		return ( EBADF );
 	}
 
 	uiCmd_Type = bRead_Mode ? DPTX_AUX_CMD_TYPE_READ : DPTX_AUX_CMD_TYPE_WRITE;
@@ -84,9 +79,8 @@ static bool dptx_aux_read_write(	struct Dptx_Params	*pstDptx, bool bRead_Mode, b
 		uiAux_Cmd |= DPTX_AUX_CMD_I2C_ADDR_ONLY;
 	}
 
-	while( ucTtries++ < DPTX_AUX_MAX_RW_RETRY )
+	while( uiTtries++ < DPTX_AUX_MAX_RW_RETRY )
 	{	
-		//For testing
 		Dptx_Core_Clear_General_Interrupt( pstDptx, (u32)DPTX_ISTS_AUX_REPLY );
 
 		dptx_aux_clear_data( pstDptx );
@@ -121,8 +115,8 @@ static bool dptx_aux_read_write(	struct Dptx_Params	*pstDptx, bool bRead_Mode, b
 
 			if( uiCount++ > DPTX_AUX_MAX_REPLY_RETRY )
 			{
-				dptx_err("No response from Sink for 5000us -> try(%d)... ", ucTtries);
-				return ( DPTX_RETURN_FAIL );
+				dptx_err("No response from Sink for 5000us -> try(%d)... ", uiTtries);
+				return ( ENODEV );
 			}
 
 			udelay( 100 );
@@ -148,24 +142,23 @@ static bool dptx_aux_read_write(	struct Dptx_Params	*pstDptx, bool bRead_Mode, b
 			case DPTX_AUX_STS_STATUS_ACK:
 				if( ucAux_Bytes_Read == 0 ) 
 				{
-					dptx_dbg("DPTX_AUX_STS_STATUS_ACK, but Bytes Read = 0, Retry(%d)... ", ucTtries);
+					dptx_dbg("DPTX_AUX_STS_STATUS_ACK, but Bytes Read = 0, Retry(%d)... ", uiTtries);
 					Dptx_Core_Soft_Reset( pstDptx, DPTX_SRST_CTRL_AUX );
 					mdelay( 1 );
 				}
 				else
 				{
-					//dptx_dbg( "DPTX_AUX_STS_STATUS_ACK.. Success from try %d ", ucTtries );
+					//dptx_dbg( "DPTX_AUX_STS_STATUS_ACK.. Success from try %d ", uiTtries );
 					bAckSuccess = true;
 				}
 				break;
 			case DPTX_AUX_STS_STATUS_NACK:
 			case DPTX_AUX_STS_STATUS_I2C_NACK:
-				dptx_err( "AUX Nack Status(%d).. try %d ", ucAux_Status, ucTtries);
-				return ( DPTX_RETURN_FAIL );
+				return ( ESPIPE );
 				break;
 			case DPTX_AUX_STS_STATUS_I2C_DEFER:
 			case DPTX_AUX_STS_STATUS_DEFER:
-				dptx_dbg( "AUX Defer status(%d).. try %d ", ucAux_Status, ucTtries);
+				dptx_dbg("AUX Defer status(%d).. try %d ", ucAux_Status, uiTtries);
 				mdelay( 1 );
 				break;
 			default:
@@ -190,28 +183,18 @@ static bool dptx_aux_read_write(	struct Dptx_Params	*pstDptx, bool bRead_Mode, b
  			pstDptx->stAuxParams.auiReadData[2] = Dptx_Reg_Readl( pstDptx, DPTX_AUX_DATA2 );
  			pstDptx->stAuxParams.auiReadData[3] = Dptx_Reg_Readl( pstDptx, DPTX_AUX_DATA3 );
  			
-			bRetVal = dptx_aux_read_data( pstDptx, pucBuffer, uiLength );
+			dptx_aux_read_data( pstDptx, pucBuffer, uiLength );
 
-/*
-			printf("\n ***Read %d bytes(0x%08x, 0x%08x, 0x%08x, 0x%08x) ==> ", uiLength, pstDptx->stAuxParams.auiReadData[0], pstDptx->stAuxParams.auiReadData[1], pstDptx->stAuxParams.auiReadData[2], pstDptx->stAuxParams.auiReadData[3] );
-			
-			for( u8 ucCount = 0; ucCount < uiLength; ucCount++ )
-			{
-				printf(" 0x%02x", pucBuffer[ucCount]);
-			}
-			printf("\n");	
-*/			
-			
-			return ( bRetVal );
+			return ( 0 );
 		}
 	}
 	else	
 	{
-		dptx_err("AUX communication exceeded retries to %d", ucTtries);
-		return ( DPTX_RETURN_FAIL );
+		dptx_err("AUX communication exceeded retries to %d", uiTtries);
+		return ( ENODEV );
 	}
 
-	return ( DPTX_RETURN_SUCCESS );
+	return ( 0 );
 }
 
 bool Dptx_Aux_Read_DPCD( struct Dptx_Params *pstDptx, u32 uiAddr, u8 *pucBuffer )
@@ -219,11 +202,7 @@ bool Dptx_Aux_Read_DPCD( struct Dptx_Params *pstDptx, u32 uiAddr, u8 *pucBuffer 
 	bool		bRetVal;
 	bool		bRead_Mode = true, bI2C_Mode = false, bEnableMot_Mode = true, bAdressOnly = false;
 	
-	bRetVal = dptx_aux_read_write( pstDptx, bRead_Mode, bI2C_Mode, bEnableMot_Mode, bAdressOnly, uiAddr, pucBuffer, 1 );
-	if( bRetVal == DPTX_RETURN_FAIL )	
-	{
-		return ( DPTX_RETURN_FAIL );
-	}
+	bRetVal = (bool)dptx_aux_read_write( pstDptx, bRead_Mode, bI2C_Mode, bEnableMot_Mode, bAdressOnly, uiAddr, pucBuffer, 1 );
 	
 	return ( bRetVal );
 }
@@ -239,7 +218,7 @@ bool Dptx_Aux_Read_Bytes_From_DPCD( struct Dptx_Params *pstDptx, u32 uiAddr, u8 
 	{
 		uiActive_Length = min_t( unsigned int, uiLength - uiElements, 16 );
 		
-		bRetVal = dptx_aux_read_write( pstDptx, bRead_Mode, bI2C_Mode, bEnableMot_Mode, bAdressOnly, uiAddr + uiElements, &pucBuffer[uiElements], uiActive_Length );
+		bRetVal = (bool)dptx_aux_read_write( pstDptx, bRead_Mode, bI2C_Mode, bEnableMot_Mode, bAdressOnly, uiAddr + uiElements, &pucBuffer[uiElements], uiActive_Length );
 		if( bRetVal == DPTX_RETURN_FAIL )	
 		{
 			return ( DPTX_RETURN_FAIL );
@@ -256,7 +235,7 @@ bool Dptx_Aux_Write_DPCD( struct Dptx_Params *pstDptx, u32 uiAddr, u8 ucBuffer )
 	bool		bRetVal;
 	bool		bRead_Mode = false, bI2C_Mode = false, bEnableMot_Mode = true, bAdressOnly = false;
 
-	bRetVal = dptx_aux_read_write( pstDptx, bRead_Mode, bI2C_Mode, bEnableMot_Mode, bAdressOnly, uiAddr, &ucBuffer, 1 );
+	bRetVal = (bool)dptx_aux_read_write( pstDptx, bRead_Mode, bI2C_Mode, bEnableMot_Mode, bAdressOnly, uiAddr, &ucBuffer, 1 );
 	if( bRetVal == DPTX_RETURN_FAIL )	
 	{
 		return ( DPTX_RETURN_FAIL );
@@ -276,7 +255,7 @@ bool Dptx_Aux_Write_Bytes_To_DPCD( struct Dptx_Params *pstDptx, u32 uiAddr, u8 *
 	{
 		uiActive_Length = min_t( unsigned int, uiLength - uiElements, 16 );
 		
-		bRetVal = dptx_aux_read_write( pstDptx, bRead_Mode, bI2C_Mode, bEnableMot_Mode, bAdressOnly, uiAddr + uiElements, &pucBuffer[uiElements], uiActive_Length );
+		bRetVal = (bool)dptx_aux_read_write( pstDptx, bRead_Mode, bI2C_Mode, bEnableMot_Mode, bAdressOnly, uiAddr + uiElements, &pucBuffer[uiElements], uiActive_Length );
 		if( bRetVal == DPTX_RETURN_FAIL )	
 		{
 			return ( DPTX_RETURN_FAIL );
@@ -288,10 +267,10 @@ bool Dptx_Aux_Write_Bytes_To_DPCD( struct Dptx_Params *pstDptx, u32 uiAddr, u8 *
 	return ( bRetVal );	
 }
 
-bool Dptx_Aux_Read_Bytes_From_I2C( struct Dptx_Params *pstDptx, u32 uiDevice_Addr, u8 *pucBuffer, u32 uiLength )
+int Dptx_Aux_Read_Bytes_From_I2C( struct Dptx_Params *pstDptx, u32 uiDevice_Addr, u8 *pucBuffer, u32 uiLength )
 {
-	bool		bRetVal;
 	bool		bRead_Mode = true, bI2C_Mode = true, bEnableMot_Mode = true, bAdressOnly = false;
+	int			iRetVal;
 	u32			uiActive_Length = 0;
 	u32			uiElements;	
 
@@ -299,60 +278,54 @@ bool Dptx_Aux_Read_Bytes_From_I2C( struct Dptx_Params *pstDptx, u32 uiDevice_Add
 	{
 		uiActive_Length = min_t( unsigned int, uiLength - uiElements, 16 );
 		
-		bRetVal = dptx_aux_read_write( pstDptx, bRead_Mode, bI2C_Mode, bEnableMot_Mode, bAdressOnly, uiDevice_Addr, &pucBuffer[uiElements], uiActive_Length );
-		if( bRetVal == DPTX_RETURN_FAIL )	
+		iRetVal = dptx_aux_read_write( pstDptx, bRead_Mode, bI2C_Mode, bEnableMot_Mode, bAdressOnly, uiDevice_Addr, &pucBuffer[uiElements], uiActive_Length );
+		if( iRetVal )
 		{
-			return ( DPTX_RETURN_FAIL );
+			return ( iRetVal );
 		}
 
 		uiElements += uiActive_Length;
 	}
 	
-	return ( bRetVal );	
+	return ( iRetVal );	
 }
 
-bool Dptx_Aux_Write_Bytes_To_I2C( struct Dptx_Params *pstDptx, u32 uiDevice_Addr, u8 *pucBuffer, u32 uiLength )
+int Dptx_Aux_Write_Bytes_To_I2C( struct Dptx_Params *pstDptx, u32 uiDevice_Addr, u8 *pucBuffer, u32 uiLength )
 {
-	bool		bRetVal;
 	bool		bRead_Mode = false, bI2C_Mode = true, bEnableMot_Mode = true, bAdressOnly = false;
-	u32			uiActive_Length = 0;
-	u32			uiElements;
+	int		iRetVal;
+	u32		uiActive_Length = 0;
+	u32		uiElements;
 
 	for( uiElements = 0; uiElements < uiLength; )
 	{
 		uiActive_Length = min_t( unsigned int, uiLength - uiElements, 16 );
 		
-		bRetVal = dptx_aux_read_write( pstDptx, bRead_Mode, bI2C_Mode, bEnableMot_Mode, bAdressOnly, uiDevice_Addr, &pucBuffer[uiElements], uiActive_Length );
-		if( bRetVal == DPTX_RETURN_FAIL )	
+		iRetVal = dptx_aux_read_write( pstDptx, bRead_Mode, bI2C_Mode, bEnableMot_Mode, bAdressOnly, uiDevice_Addr, &pucBuffer[uiElements], uiActive_Length );
+		if( iRetVal )
 		{
-			return ( DPTX_RETURN_FAIL );
+			return ( iRetVal );
 		}
 
 		uiElements += uiActive_Length;
 	}
 
-	return ( bRetVal );		
+	return ( iRetVal );		
 }
 
-bool Dptx_Aux_Write_AddressOnly_To_I2C( struct Dptx_Params *pstDptx,    	          unsigned int uiDevice_Addr )
+int Dptx_Aux_Write_AddressOnly_To_I2C( struct Dptx_Params *pstDptx,    	          unsigned int uiDevice_Addr )
 {
-	bool		bRetVal;
 	bool		bRead_Mode = false, bI2C_Mode = true, bEnableMot_Mode = false, bAdressOnly = true;
+	int			iRetVal;
 	u8			ucByte;
 	
-	bRetVal = dptx_aux_read_write( pstDptx, bRead_Mode, bI2C_Mode, bEnableMot_Mode, bAdressOnly, uiDevice_Addr, &ucByte, 1 );
-	if( bRetVal == DPTX_RETURN_FAIL )	
+	iRetVal = dptx_aux_read_write( pstDptx, bRead_Mode, bI2C_Mode, bEnableMot_Mode, bAdressOnly, uiDevice_Addr, &ucByte, 1 );
+	if( iRetVal )
 	{
-		return ( DPTX_RETURN_FAIL );
+		return ( iRetVal );
 	}
 
-	return ( bRetVal );	
+	return ( iRetVal );	
 }
-
-
-
-
-
-
 
 

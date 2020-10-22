@@ -105,11 +105,6 @@
 		aux-active = <1>;
 	};
 
-	serdes_evb {
-		compatible = "telechips,serdes_evb_type";
-		serdes_evb_type = <1>; /* 0 TCC8059, 1 TCC8050/3 */
-	};
-	
 	fbdisplay: fbdisplay@12000000 {
 		telechips,fbdisplay_num = <0>;
 		//Linuxplatform
@@ -284,6 +279,44 @@
 		};
 
 	};
+	
+	i2c@16360000 {
+		status = "okay";
+		port-mux = <37>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&i2c37_bus>;
+
+		dp_serializer:max96851@60 {
+			compatible	= "maxim,serdes";
+			reg		= <0x60>;
+		};
+		
+		dp_deserializer0:max96878@48 {
+			compatible	= "maxim,serdes";
+			reg		= <0x48>;
+		};
+		
+		dp_deserializer1:max96878@4A {
+			compatible	= "maxim,serdes";
+			reg		= <0x4A>;
+		};
+		
+		dp_deserializer2:max96878@4C {
+			compatible	= "maxim,serdes";
+			reg		= <0x4C>;
+		};
+		
+		dp_deserializer3:max96878@68 {
+			compatible	= "maxim,serdes";
+			reg		= <0x68>;
+		};
+		
+		serdes_path:serdes_path@1{
+		compatible = "telechips,serdes_path_configuration";
+		serdes_path_configuration = <1>; /* 0 TCC8059, 1 TCC8050/3 */
+		};
+	};
+	
 #if 0
 	i2c@16360000 {
 		status = "okay";

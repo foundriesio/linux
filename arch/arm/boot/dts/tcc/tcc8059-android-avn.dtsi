@@ -218,6 +218,31 @@
 			 };
 		 };
 	 }; /* pmic da9062 */
+
+	 dp_serializer:max96851@60 {
+			compatible	= "maxim,serdes";
+			reg		= <0x60>;
+	};
+
+	dp_deserializer0:max96878@48 {
+		compatible	= "maxim,serdes";
+		reg		= <0x48>;
+	};
+
+	dp_deserializer1:max96878@4A {
+		compatible	= "maxim,serdes";
+		reg		= <0x4A>;
+	};
+
+	dp_deserializer2:max96878@4C {
+		compatible	= "maxim,serdes";
+		reg		= <0x4C>;
+	};
+
+	serdes_path:serdes_path@0{
+		compatible = "telechips,serdes_path_configuration";
+		serdes_path_configuration = <0>; /* 0 TCC8059, 1 TCC8050/3 */
+	};
 };
 
 &i2c1 {

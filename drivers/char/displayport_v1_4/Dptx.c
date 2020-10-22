@@ -41,13 +41,16 @@ Suite 330, Boston, MA 02111-1307 USA
 #include "Dptx_dbg.h"
 #include "Dptx_drm_dp_addition.h"
 
+#if defined( CONFIG_DRM_TCC )
+extern int tcc_dp_unregister_drm( void );
+#endif
 
-static bool of_parse_dp_dt( struct Dptx_Params	*pstDptx, struct device_node *pstNode, u8 *pucEvb_Type, u32 *puiPeri0_PClk, u32 *puiPeri1_PClk, u32 *puiPeri2_PClk, u32 *puiPeri3_PClk )
+extern void Dpv14_Tx_API_Hpd_Intr_CB( u8 ucDP_Index, bool bHPD_State );
+
+static bool of_parse_dp_dt( struct Dptx_Params	*pstDptx, struct device_node *pstNode, u32 *puiPeri0_PClk, u32 *puiPeri1_PClk, u32 *puiPeri2_PClk, u32 *puiPeri3_PClk )
 {
 	unsigned long	ulDispX_Peri_Clk;
-	u32				uiEVB_Type;
 	struct clk		*DISP0_Peri_Clk, *DISP1_Peri_Clk, *DISP2_Peri_Clk, *DISP3_Peri_Clk;
-	struct device_node 		*pstSerDes_DN;
 	
 	DISP0_Peri_Clk = of_clk_get_by_name( pstNode, "disp0-clk" );
 	if( !DISP0_Peri_Clk ) 
@@ -73,17 +76,6 @@ static bool of_parse_dp_dt( struct Dptx_Params	*pstDptx, struct device_node *pst
 		dptx_err("Can't find DISP3 Peri clock \n");
 	}
 
-	pstSerDes_DN = of_find_compatible_node( NULL, NULL, "telechips,serdes_evb_type");
-	if( !pstSerDes_DN ) 
-	{
-		//dptx_err("Can't find SerDes node \n");
-	}
-
-	if( of_property_read_u32( pstSerDes_DN, "serdes_evb_type", &uiEVB_Type ) < 0) 
-	{
-		//dptx_err("Can't get EVB type");
-	}
-
 	pstDptx->uiHPD_GPIO = of_get_gpio( pstNode, 0 );
 
 	ulDispX_Peri_Clk = clk_get_rate( DISP0_Peri_Clk );
@@ -98,8 +90,6 @@ static bool of_parse_dp_dt( struct Dptx_Params	*pstDptx, struct device_node *pst
 	ulDispX_Peri_Clk = clk_get_rate( DISP3_Peri_Clk );
 	*puiPeri3_PClk = ( ulDispX_Peri_Clk / 1000 );
 
-	*pucEvb_Type = (u8)uiEVB_Type;
-
 	return ( 0 );
 }
 
@@ -107,10 +97,10 @@ static int Dpv14_Tx_Probe( struct platform_device *pdev)
 {
 	bool					bRetVal = 0;
 	bool					bHotPlugged = false;
-	u8						ucEVB_Type = 0;
 	u32						auiPeri_Pixel_Clock[PHY_INPUT_STREAM_MAX] = { 0, };
 	struct resource			*pstResource;
 	struct Dptx_Params		*pstDptx;
+	struct Dptx_Video_Params	*pstVideoParams;
 
 	dptx_dbg("");
 	dptx_dbg("****************************************");
@@ -167,7 +157,7 @@ static int Dpv14_Tx_Probe( struct platform_device *pdev)
 	if( !pstResource ) 
 	{
 		dptx_err("[%s:%d]No memory resource\n", __func__, __LINE__);
-		return -ENODEV; 
+		return ( -ENODEV );
 	}
 
 	pstDptx->pioPMU_BaseAddr = devm_ioremap( &pdev->dev, pstResource->start, pstResource->end - pstResource->start );
@@ -185,7 +175,7 @@ static int Dpv14_Tx_Probe( struct platform_device *pdev)
 	}
 
 #ifdef CONFIG_OF
-	of_parse_dp_dt( pstDptx, pdev->dev.of_node, &ucEVB_Type, &auiPeri_Pixel_Clock[PHY_INPUT_STREAM_0], &auiPeri_Pixel_Clock[PHY_INPUT_STREAM_1], &auiPeri_Pixel_Clock[PHY_INPUT_STREAM_2], &auiPeri_Pixel_Clock[PHY_INPUT_STREAM_3] );
+	of_parse_dp_dt( pstDptx, pdev->dev.of_node, &auiPeri_Pixel_Clock[PHY_INPUT_STREAM_0], &auiPeri_Pixel_Clock[PHY_INPUT_STREAM_1], &auiPeri_Pixel_Clock[PHY_INPUT_STREAM_2], &auiPeri_Pixel_Clock[PHY_INPUT_STREAM_3] );
 #endif
 
 	platform_set_drvdata( pdev, pstDptx );
@@ -195,18 +185,12 @@ static int Dpv14_Tx_Probe( struct platform_device *pdev)
 	bRetVal = Dptx_Intr_Get_HotPlug_Status( pstDptx, &bHotPlugged );
 	if( bRetVal ) 
 	{
-		dptx_err("from Dptx_Intr_Get_HPD_Status()");
+		dptx_err("from Dptx_Intr_Get_HotPlug_Status()");
 	}
 	
 	pstDptx->eLast_HPDStatus = ( bHotPlugged == (bool)HPD_STATUS_PLUGGED ) ? (bool)HPD_STATUS_PLUGGED : (bool)HPD_STATUS_UNPLUGGED;
 	
-	pr_info("[INF][DP V14]%s %s : Link base 0x16%x, MIC Sub-system base 0x16%x, PMU base 0x16%x, HPD IRQ %d \n", 
-				( ucEVB_Type == 0 ) ? "TCC8059":"TCC8050", 
-				( pstDptx->eLast_HPDStatus == HPD_STATUS_PLUGGED ) ? "Plugged":"Unplugged", 
-				pstDptx->pioDPLink_BaseAddr, pstDptx->pioMIC_SubSystem_BaseAddr, pstDptx->pioPMU_BaseAddr,
-				pstDptx->uiHPD_IRQ );
-
-	bRetVal = Dptx_Platform_Init_Params( pstDptx, &pdev->dev, ucEVB_Type );
+	bRetVal = Dptx_Platform_Init_Params( pstDptx, &pdev->dev );
 	if( bRetVal )
 	{
 		dptx_err("from Dptx_Platform_Init_Params()");
@@ -256,9 +240,22 @@ static int Dpv14_Tx_Probe( struct platform_device *pdev)
 		return -ENODEV;
 	}
 
+	pstVideoParams = &pstDptx->stVideoParams;
+
+	dptx_notice("TCC-DPTX-V %d.%d.%d", TCC_DPTX_DRV_MAJOR_VER, TCC_DPTX_DRV_MINOR_VER, TCC_DPTX_DRV_SUBTITLE_VER );
+	dptx_notice("	Hot %s ", ( pstDptx->eLast_HPDStatus == HPD_STATUS_PLUGGED ) ? "Plugged":"Unplugged", pstDptx->uiHPD_IRQ );
+	dptx_notice("	%s mode, %d lanes, %s rate", pstDptx->bMultStreamTransport ? "MST":"SST", pstDptx->stDptxLink.ucNumOfLanes, 
+					pstDptx->stDptxLink.ucLinkRate == DPTX_PHYIF_CTRL_RATE_RBR ? "RBR":( pstDptx->stDptxLink.ucLinkRate == DPTX_PHYIF_CTRL_RATE_HBR ) ?  "HBR":( pstDptx->stDptxLink.ucLinkRate == DPTX_PHYIF_CTRL_RATE_HBR2 ) ? "HB2":"HBR3");
+	dptx_notice("	%d streams enable -> Pixel encoding = %s, VIC = %d %d %d %d, PClk = %d %d %d %d",
+					pstDptx->ucNumOfStreams,
+					( pstVideoParams->ucPixel_Encoding == PIXEL_ENCODING_TYPE_RGB ) ? "RGB":( pstVideoParams->ucPixel_Encoding == PIXEL_ENCODING_TYPE_YCBCR422 ) ? "YCbCr422":"YCbCr444",
+					pstVideoParams->auiVideo_Code[0], pstVideoParams->auiVideo_Code[1], pstVideoParams->auiVideo_Code[2], pstVideoParams->auiVideo_Code[3],
+					pstVideoParams->uiPeri_Pixel_Clock[0], pstVideoParams->uiPeri_Pixel_Clock[1], pstVideoParams->uiPeri_Pixel_Clock[2], pstVideoParams->uiPeri_Pixel_Clock[3] );
+
+	Dptx_Intr_Register_HPD_Callback( pstDptx,	Dpv14_Tx_API_Hpd_Intr_CB );
 	Dptx_Core_Enable_Global_Intr( pstDptx,	( DPTX_IEN_HPD | DPTX_IEN_HDCP | DPTX_IEN_SDP | DPTX_IEN_TYPE_C ) );
 
-	return 0;
+	return ( 0 );
 }
 
 
@@ -307,6 +304,10 @@ static int Dpv14_Tx_Suspend( struct platform_device *pdev, pm_message_t state )
 
 	pstDptx = platform_get_drvdata( pdev );
 	
+#if defined( CONFIG_DRM_TCC )
+	tcc_dp_unregister_drm();
+#endif
+
 	bRetVal = Dptx_Core_Deinit( pstDptx );
 	if( bRetVal ) 
 	{
@@ -328,7 +329,6 @@ static int Dpv14_Tx_Suspend( struct platform_device *pdev, pm_message_t state )
 static int Dpv14_Tx_Resume( struct platform_device *pdev )
 {
 	bool	bRetVal;
-	struct resource			*pstResource;
 	struct Dptx_Params		*pstDptx;
 	struct Dptx_Video_Params	*pstVideoParams;
 
@@ -344,14 +344,14 @@ static int Dpv14_Tx_Resume( struct platform_device *pdev )
 
 	pstVideoParams = &pstDptx->stVideoParams;
 	
-	pr_info("[INF][DP V14]%s resume: Hot %s, HPD IRQ %d, SSC = %s, FEC = %s, PClk %d %d %d %d \n", 
-				( pstDptx->ucEVB_Type == 0 ) ? "TCC8059":"TCC8050", 
+	dptx_info("Resume: Hot %s, HPD IRQ %d, SSC = %s, PClk %d %d %d %d \n", 
 				( pstDptx->eLast_HPDStatus == HPD_STATUS_PLUGGED ) ? "Plugged":"Unplugged", 
 				pstDptx->uiHPD_IRQ,
 				pstDptx->bSpreadSpectrum_Clock ? "On":"Off", 
-				pstDptx->bForwardErrorCorrection ? "On":"Off",
 				pstVideoParams->uiPeri_Pixel_Clock[PHY_INPUT_STREAM_0], pstVideoParams->uiPeri_Pixel_Clock[PHY_INPUT_STREAM_1], 
 				pstVideoParams->uiPeri_Pixel_Clock[PHY_INPUT_STREAM_2], pstVideoParams->uiPeri_Pixel_Clock[PHY_INPUT_STREAM_3] );
+
+	Dptx_Max968XX_Reset( pstDptx );
 
 	Dptx_Platform_Set_PMU_ColdReset_Release( pstDptx );
 	Dptx_Platform_Set_APAccess_Mode( pstDptx );
@@ -398,14 +398,6 @@ static const struct of_device_id dpv14_tx[] = {
         { .compatible =	"telechips,dpv14-tx" },
         { }
 };
-
-#if 0//defined(CONFIG_PM)
-static const struct dev_pm_ops dptx_dev_pm_ops = {
-	SET_SYSTEM_SLEEP_PM_OPS( Dpv14_Tx_Suspend, Dpv14_Tx_Resume )
-//	SET_RUNTIME_PM_OPS(dptx_runtime_suspend, dptx_runtime_resume, 	dptx_runtime_idle)
-};
-#endif
-
 
 static struct platform_driver __refdata stDpv14_Tx_pdrv = {
 		.probe = Dpv14_Tx_Probe,

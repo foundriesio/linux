@@ -21,45 +21,50 @@
 static struct Dptx_Params *pstHandle;
 
 
-bool Dptx_Platform_Init_Params( struct Dptx_Params	*pstDptx, struct device	*pstParentDev, u8 ucEVB_Type )
+bool Dptx_Platform_Init_Params( struct Dptx_Params	*pstDptx, struct device	*pstParentDev )
 {
 	u8		ucStream_Index;
 
 	pstDptx->pstParentDev				= pstParentDev;
 	pstDptx->pcDevice_Name				= "Dptx V14";
 
-	pstDptx->ucEVB_Type					= ucEVB_Type;
-	
-	pstDptx->bForwardErrorCorrection	= false;
 	pstDptx->bSpreadSpectrum_Clock		= true;
-	pstDptx->bEstablish_Timing_Present	= false;
-	pstDptx->eEstablished_Timing		= DMT_NONE; 
+
+#if defined( CONFIG_DRM_TCC )	
+	pstDptx->bUsed_TCC_DRM_Interface	= true;
+#endif
+	
+	pstDptx->eEstablished_Timing		= DMT_NOT_SUPPORTED; 
 
 	pstDptx->uiHDCP22_RegAddr_Offset	= DP_HDCP_OFFSET;
 	pstDptx->uiRegBank_RegAddr_Offset	= DP_REGISTER_BANK_OFFSET;
 	pstDptx->uiCKC_RegAddr_Offset		= DP_CKC_OFFSET;
 	pstDptx->uiProtect_RegAddr_Offset	= DP_PROTECT_OFFSET;
 
+	pstDptx->pvHPD_Intr_CallBack		= NULL;
+
 	for( ucStream_Index = 0; ucStream_Index < PHY_INPUT_STREAM_MAX; ucStream_Index++ )
 	{
-		pstDptx->aucVCP_Id[ucStream_Index]	= ( ucStream_Index + 1 );		// To do ?????
+		pstDptx->aucVCP_Id[ucStream_Index]	= ( ucStream_Index + 1 );
 
 #if defined( CONFIG_DP_INPUT_PORT )
 		pstDptx->aucDP_InputPort[ucStream_Index] = ucStream_Index;
 #endif
+	
+		pstDptx->paucEdidBuf_Entry[ucStream_Index] = kzalloc( DPTX_EDID_BUFLEN, GFP_KERNEL );
+		if( pstDptx->paucEdidBuf_Entry[ucStream_Index] == NULL ) 
+        	{
+		      dptx_err("failed to alloc EDID memory" );
+		      return ( DPTX_RETURN_FAIL );
+         	}
+
+		memset( pstDptx->paucEdidBuf_Entry[ucStream_Index], 0, DPTX_EDID_BUFLEN );
 	}
 	
 	pstDptx->pucEdidBuf = kzalloc( DPTX_EDID_BUFLEN, GFP_KERNEL );
 	if( pstDptx->pucEdidBuf == NULL ) 
 	{
 		dptx_err("failed to alloc EDID memory" );
-		return ( DPTX_RETURN_FAIL );
-	}
-
-	pstDptx->pucSecondary_EDID = kzalloc( DPTX_EDID_BUFLEN, GFP_KERNEL );
-	if( pstDptx->pucSecondary_EDID == NULL ) 
-	{
-		dptx_err("failed to alloc secondary EDID memory" );
 		return ( DPTX_RETURN_FAIL );
 	}
 
@@ -91,7 +96,7 @@ bool Dptx_Platform_Init( struct Dptx_Params	*pstDptx )
 		return (DPTX_RETURN_FAIL);
 	}
 
-	bRetVal = Dptx_Platform_Set_RegisterBank( pstDptx, pstDptx->ucMax_Rate );
+	bRetVal = Dptx_Platform_Set_RegisterBank( pstDptx, (enum PHY_LINK_RATE)pstDptx->ucMax_Rate );
 	if( bRetVal == DPTX_RETURN_FAIL )
 	{
 		dptx_err("from Dptx_Platform_Set_RegisterBank()" );
@@ -207,7 +212,7 @@ bool Dptx_Platform_Get_PLLLock_Status( struct Dptx_Params	*pstDptx, bool *pbPll_
 	return ( DPTX_RETURN_SUCCESS );
 }
 
-bool Dptx_Platform_Set_RegisterBank(	struct Dptx_Params	*pstDptx, enum PHY_RATE eLinkRate )
+bool Dptx_Platform_Set_RegisterBank(	struct Dptx_Params	*pstDptx, enum PHY_LINK_RATE eLinkRate )
 {
 	/*
 	 *  Register bank settings can be changed by application
@@ -215,7 +220,7 @@ bool Dptx_Platform_Set_RegisterBank(	struct Dptx_Params	*pstDptx, enum PHY_RATE 
 
 	switch( eLinkRate )
 	{
-		case RATE_RBR:
+		case LINK_RATE_RBR:
 	Dptx_Reg_Writel( pstDptx, (u32)( pstDptx->uiRegBank_RegAddr_Offset + DP_REGISTER_BANK_REG_0 ), (u32)0x004D0000 );	
 	Dptx_Reg_Writel( pstDptx, (u32)( pstDptx->uiRegBank_RegAddr_Offset + DP_REGISTER_BANK_REG_20 ), (u32)0x00002501 );	
 			// SoC guild for HDCP
@@ -234,8 +239,8 @@ bool Dptx_Platform_Set_RegisterBank(	struct Dptx_Params	*pstDptx, enum PHY_RATE 
 	                Dptx_Reg_Writel( pstDptx, (u32)( pstDptx->uiRegBank_RegAddr_Offset + DP_REGISTER_BANK_REG_22 ), (u32)0x00000801 );
 			Dptx_Reg_Writel( pstDptx, (u32)( pstDptx->uiRegBank_RegAddr_Offset + DP_REGISTER_BANK_REG_22 ), (u32)0x00000000 );
 			break;
-		case RATE_HBR:
-		case RATE_HBR2:
+		case LINK_RATE_HBR:
+		case LINK_RATE_HBR2:
 	                Dptx_Reg_Writel( pstDptx, (u32)( pstDptx->uiRegBank_RegAddr_Offset + DP_REGISTER_BANK_REG_0 ),  (u32)0x002D0000 );	
 	                Dptx_Reg_Writel( pstDptx, (u32)( pstDptx->uiRegBank_RegAddr_Offset + DP_REGISTER_BANK_REG_21 ), (u32)0x00000000 );	
 	                Dptx_Reg_Writel( pstDptx, (u32)( pstDptx->uiRegBank_RegAddr_Offset + DP_REGISTER_BANK_REG_20 ), (u32)0x00002501 );	
@@ -262,14 +267,12 @@ bool Dptx_Platform_Set_RegisterBank(	struct Dptx_Params	*pstDptx, enum PHY_RATE 
 
 			//Dptx_Reg_Writel( pstDptx, (u32)( pstDptx->uiRegBank_RegAddr_Offset + DP_REGISTER_BANK_REG_10 ), (u32)0x08300000 );
 			Dptx_Reg_Writel( pstDptx, (u32)( pstDptx->uiRegBank_RegAddr_Offset + DP_REGISTER_BANK_REG_10 ), (u32)0x08700000 );
-
 			Dptx_Reg_Writel( pstDptx, (u32)( pstDptx->uiRegBank_RegAddr_Offset + DP_REGISTER_BANK_REG_12 ), (u32)0xA00F0003 );
-
 			Dptx_Reg_Writel( pstDptx, (u32)( pstDptx->uiRegBank_RegAddr_Offset + DP_REGISTER_BANK_REG_23 ), (u32)0x00000008 );	
 	                Dptx_Reg_Writel( pstDptx, (u32)( pstDptx->uiRegBank_RegAddr_Offset + DP_REGISTER_BANK_REG_22 ), (u32)0x00000801 );
 			Dptx_Reg_Writel( pstDptx, (u32)( pstDptx->uiRegBank_RegAddr_Offset + DP_REGISTER_BANK_REG_22 ), (u32)0x00000000 );
 			break;
-		case RATE_HBR3:
+		case LINK_RATE_HBR3:
                    	Dptx_Reg_Writel( pstDptx, (u32)( pstDptx->uiRegBank_RegAddr_Offset + DP_REGISTER_BANK_REG_0 ),  (u32)0x002D0000 );	
 	                Dptx_Reg_Writel( pstDptx, (u32)( pstDptx->uiRegBank_RegAddr_Offset + DP_REGISTER_BANK_REG_21 ), (u32)0x00000000 );	
 	                Dptx_Reg_Writel( pstDptx, (u32)( pstDptx->uiRegBank_RegAddr_Offset + DP_REGISTER_BANK_REG_20 ), (u32)0x00002501 );	
@@ -283,22 +286,18 @@ bool Dptx_Platform_Set_RegisterBank(	struct Dptx_Params	*pstDptx, enum PHY_RATE 
 			
 			//Dptx_Reg_Writel( pstDptx, (u32)( pstDptx->uiRegBank_RegAddr_Offset + DP_REGISTER_BANK_REG_10 ), (u32)0x00300000 );
 			Dptx_Reg_Writel( pstDptx, (u32)( pstDptx->uiRegBank_RegAddr_Offset + DP_REGISTER_BANK_REG_10 ), (u32)0x00700000 );
-	
                   	Dptx_Reg_Writel( pstDptx, (u32)( pstDptx->uiRegBank_RegAddr_Offset + DP_REGISTER_BANK_REG_11 ), (u32)0x00000401 );	
                      	Dptx_Reg_Writel( pstDptx, (u32)( pstDptx->uiRegBank_RegAddr_Offset + DP_REGISTER_BANK_REG_13 ), (u32)0xA8000616 );	
                 	Dptx_Reg_Writel( pstDptx, (u32)( pstDptx->uiRegBank_RegAddr_Offset + DP_REGISTER_BANK_REG_14 ), (u32)0x115C0045 );	
 
 			Dptx_Reg_Writel( pstDptx, (u32)( pstDptx->uiRegBank_RegAddr_Offset + DP_REGISTER_BANK_REG_16 ), (u32)0x00004000 );	
 			Dptx_Reg_Writel( pstDptx, (u32)( pstDptx->uiRegBank_RegAddr_Offset + DP_REGISTER_BANK_REG_15 ), (u32)0x8B000000 );
-			
                    	Dptx_Reg_Writel( pstDptx, (u32)( pstDptx->uiRegBank_RegAddr_Offset + DP_REGISTER_BANK_REG_17 ), (u32)0x10000000 );	
                       	Dptx_Reg_Writel( pstDptx, (u32)( pstDptx->uiRegBank_RegAddr_Offset + DP_REGISTER_BANK_REG_20 ), (u32)0x00002501 );
 			
 			//Dptx_Reg_Writel( pstDptx, (u32)( pstDptx->uiRegBank_RegAddr_Offset + DP_REGISTER_BANK_REG_10 ), (u32)0x08300000 );
 			Dptx_Reg_Writel( pstDptx, (u32)( pstDptx->uiRegBank_RegAddr_Offset + DP_REGISTER_BANK_REG_10 ), (u32)0x08700000 );
-			
                       	Dptx_Reg_Writel( pstDptx, (u32)( pstDptx->uiRegBank_RegAddr_Offset + DP_REGISTER_BANK_REG_12 ), (u32)0xA00F0003 );
-
 			Dptx_Reg_Writel( pstDptx, (u32)( pstDptx->uiRegBank_RegAddr_Offset + DP_REGISTER_BANK_REG_23 ), (u32)0x00000008 );	
 			Dptx_Reg_Writel( pstDptx, (u32)( pstDptx->uiRegBank_RegAddr_Offset + DP_REGISTER_BANK_REG_22 ), (u32)0x00000801 );
                         Dptx_Reg_Writel( pstDptx, (u32)( pstDptx->uiRegBank_RegAddr_Offset + DP_REGISTER_BANK_REG_22 ), (u32)0x00000000 );	
@@ -372,16 +371,21 @@ bool Dptx_Platform_ClkPath_To_XIN(	struct Dptx_Params	*pstDptx )
 
 bool Dptx_Platform_Free_Handle( struct Dptx_Params	*pstDptx_Handle )
 {
-	if( pstDptx_Handle->pucSecondary_EDID != NULL ) 
-	{
-		kfree( pstDptx_Handle->pucSecondary_EDID );
-		pstDptx_Handle->pucSecondary_EDID = NULL;
-	}
+	u8		ucStream_Index;
 
 	if( pstDptx_Handle->pucEdidBuf != NULL ) 
 	{
 		kfree( pstDptx_Handle->pucEdidBuf );
 		pstDptx_Handle->pucEdidBuf = NULL;
+	}
+
+	for( ucStream_Index = 0; ucStream_Index < PHY_INPUT_STREAM_MAX; ucStream_Index++ )
+	{
+		pstDptx_Handle->paucEdidBuf_Entry[ucStream_Index] = kzalloc( DPTX_EDID_BUFLEN, GFP_KERNEL );
+		if( pstDptx_Handle->paucEdidBuf_Entry[ucStream_Index] != NULL ) 
+		{
+			kfree( pstDptx_Handle->paucEdidBuf_Entry[ucStream_Index] );
+		}
 	}
 
 	if( pstDptx_Handle != NULL ) 

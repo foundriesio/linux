@@ -9,8 +9,9 @@
 #include <linux/compat.h>
 #include <linux/irqreturn.h>
 
-#define WORKING_AREA_UBOOT
-//#define CONFIG_DP_INPUT_PORT
+#define TCC_DPTX_DRV_MAJOR_VER			1
+#define TCC_DPTX_DRV_MINOR_VER			0
+#define TCC_DPTX_DRV_SUBTITLE_VER		0
 
 #define DP_DDIBUS_BASE_REG_ADDRESS		0x12400000
 #define DP_MICOM_BASE_REG_ADDRESS		0x1BD00000
@@ -24,41 +25,23 @@
 #define DP_CUSTOM_1027_DTD_VIC			1027	/** 1027 : 1920x720 : PVLBJT_020_01 */
 #define DP_CUSTOM_MAX_DTD_VIC			1030
 
-#define DPTX_REGISTER_ACCESS_DDIBUS		true
-#define DPTX_REGISTER_ACCESS_MICOM		false
-#define DPTX_REGISTER_ACCESS_MODE		DPTX_REGISTER_ACCESS_DDIBUS
-
-#define DPTX_VIC_READ_PANEL_EDID		0
-
-#define DPTX_ENABLED_MST				true
-#define DPTX_DIABLED_MST				false
-
 #define DPTX_SINK_CAP_SIZE				0x100
 #define DPTX_SDP_NUM					0x10
 #define DPTX_SDP_LEN					0x9
 #define DPTX_SDP_SIZE					( 9 * 4 )
 
+#define DPTX_DEFAULT_LINK_RATE			DPTX_PHYIF_CTRL_RATE_HBR2
 #define DPTX_MAX_LINK_LANES				4
 #define DPTX_MAX_LINK_SYMBOLS			64
 #define DPTX_MAX_LINK_SLOTS				64
 
-#define DPTX_DEFAULT_MAX_LINK_RATE			DPTX_PHYIF_CTRL_RATE_HBR2
-#define DPTX_LCD_DEFAULT_LINK_RATE			DPTX_PHYIF_CTRL_RATE_HBR2
-#define DPTX_MONITOR_DEFAULT_LINK_RATE		DPTX_PHYIF_CTRL_RATE_HBR2
-
-#define DPTX_DEFAULT_LINK_LANES			DPTX_MAX_LINK_LANES
-
+#define DP_LINK_STATUS_SIZE	  			6
 #define MAX_VOLTAGE_SWING_LEVEL			4
 #define MAX_PRE_EMPHASIS_LEVEL			4
 
-#define DP_LINK_STATUS_SIZE	  			6
-
-#define DPTX_EDID_BUFLEN				128
-#define EDID_MAX_INPUT_NUM_OF_CHANNELS	8
-
-#define DPTX_DEFAULT_VID_INPUT_STREAM_INDEX0			0
-
-#define DPTX_DEFAULT_VIDEO_CODE			4
+#define INVALID_MST_PORT_NUM			0xFF
+#define DPTX_EDID_BUFLEN				512
+#define DPTX_ONE_EDID_BLK_LEN			128
 
 #define DPTX_RETURN_SUCCESS				false
 #define DPTX_RETURN_FAIL				true
@@ -74,32 +57,6 @@
 #define PREDETERMINED_PRE_EMP_ON_EQ			0 // PRE_EMPHASIS_LEVEL_0
 #define PREDETERMINED_VSW_ON_EQ				0 // VOLTAGE_SWING_LEVEL_0
 #endif
-
-enum MST_INPUT_PORT_TYPE
-{
-	INPUT_PORT_TYPE_TX			= 0,	
-	INPUT_PORT_TYPE_RX			= 1,
-	INPUT_PORT_TYPE_INVALID		= 2
-};
-
-enum MST_BRANCH_UNIT_INDEX
-{
-	FIRST_MST_BRANCH_UNIT			= 0,	
-	SECOND_MST_BRANCH_UNIT			= 1,
-	THIRRD_MST_BRANCH_UNIT			= 2,
-	INVALID_MST_BRANCH_UNIT			= 3
-};
-
-enum MST_PEER_DEV_TYPE
-{
-	PEER_NO_DEV_CONNECTED			= 0,	
-	PEER_SOURCE_DEV					= 1,
-	PEER_BRANCHING_DEV				= 2,
-	PEER_STREAM_SINK_DEV			= 3,
-	PEER_DP_TO_LEGECY_CONV			= 4,
-	PEER_DP_TO_WIRELESS_CONV		= 5,
-	PEER_WIRELESS_TO_DP_CONV		= 6
-};
 
 enum REG_DIV_CFG
 {
@@ -118,12 +75,13 @@ enum PHY_POWER_STATE
 	PHY_POWER_DOWN_REF_CLOCK			= 0x0C
 };
 
-enum PHY_RATE 
+enum PHY_LINK_RATE 
 {
-	RATE_RBR = 0,	/* 1.62 Gbs */
-	RATE_HBR,	/* 2.7 Gbs */
-	RATE_HBR2,	/* 5.4 Gbs */
-	RATE_HBR3	/* 8.1 Gbs */
+	LINK_RATE_RBR = 0,	/* 1.62 Gbs */
+	LINK_RATE_HBR,	/* 2.7 Gbs */
+	LINK_RATE_HBR2,	/* 5.4 Gbs */
+	LINK_RATE_HBR3,	/* 8.1 Gbs */
+	LINK_RATE_MAX
 };
 
 enum PHY_PRE_EMPHASIS_LEVEL
@@ -160,6 +118,42 @@ enum PHY_LANE_INDEX
 	PHY_LANE_2		= 2,
 	PHY_LANE_3		= 3,
 	PHY_LANE_MAX	= 4
+};
+
+enum MST_INPUT_PORT_TYPE
+{
+	INPUT_PORT_TYPE_TX			= 0,	
+	INPUT_PORT_TYPE_RX			= 1,
+	INPUT_PORT_TYPE_INVALID		= 2
+};
+
+enum MST_BRANCH_UNIT_INDEX
+{
+	FIRST_MST_BRANCH_UNIT			= 0,	
+	SECOND_MST_BRANCH_UNIT			= 1,
+	THIRRD_MST_BRANCH_UNIT			= 2,
+	INVALID_MST_BRANCH_UNIT			= 3
+};
+
+enum MST_PEER_DEV_TYPE
+{
+	PEER_NO_DEV_CONNECTED			= 0,	
+	PEER_SOURCE_DEV					= 1,
+	PEER_BRANCHING_DEV				= 2,
+	PEER_STREAM_SINK_DEV			= 3,
+	PEER_DP_TO_LEGECY_CONV			= 4,
+	PEER_DP_TO_WIRELESS_CONV		= 5,
+	PEER_WIRELESS_TO_DP_CONV		= 6
+};
+
+enum SER_DES_INPUT_INDEX
+{
+	SER_INPUT_INDEX_0		= 0,
+	DES_INPUT_INDEX_0		= 1,
+	DES_INPUT_INDEX_1		= 2,
+	DES_INPUT_INDEX_2		= 3,
+	DES_INPUT_INDEX_3		= 4,
+	SER_DES_INPUT_INDEX_MAX		= 5
 };
 
 enum VIDEO_RGB_TYPE
@@ -349,7 +343,7 @@ enum DMT_ESTABLISHED_TIMING
 	DMT_640x480_60hz,
 	DMT_800x600_60hz,
 	DMT_1024x768_60hz,
-	DMT_NONE
+	DMT_NOT_SUPPORTED
 };
 
 enum HPD_Detection_Status
@@ -370,11 +364,14 @@ enum AUX_REPLY_Status
 	AUX_REPLY_RECEIVED
 };
 
+
+typedef void (*Dptx_HPD_Intr_Callback)( u8 ucDP_Index, bool bHPD_State );
+
+
 struct Dptx_Link_Params 
 {
-	bool	bTraining_Done;
 	u8		aucTraining_Status[DP_LINK_STATUS_SIZE];
-	u8		ucLinkRate;		/* 0 - RBR, 1 - HBR, 2 - HBR2, 3 - HBR3 */
+	u8		ucLinkRate;
 	u8		ucNumOfLanes;
 	u8		aucPreEmphasis_level[MAX_PRE_EMPHASIS_LEVEL];
 	u8		aucVoltageSwing_level[MAX_VOLTAGE_SWING_LEVEL];
@@ -384,7 +381,6 @@ struct Dptx_Aux_Params
 {
 	u32			uiAuxStatus;
 	u32			auiReadData[4];
-	atomic_t 	Abort;
 };
 
 struct Dptx_Avgen_SDP_FullData 
@@ -478,13 +474,15 @@ struct Dptx_Params
 	struct mutex	Mutex;
 	struct device	*pstParentDev;
 	wait_queue_head_t	WaitQ;
+	
 	atomic_t		HPD_IRQ_State;
 	atomic_t		Sink_request;
 
 	u32             uiHPD_GPIO;
     u32             uiHPD_IRQ;
 
-	bool 			bHPD_IRQ_Enable;
+	bool			bUsed_TCC_DRM_Interface;
+	bool			bSideBand_MSG_Supported;
 	char			*pcDevice_Name;
 
 	void __iomem	*pioDPLink_BaseAddr;/* DP register base address */
@@ -497,34 +495,24 @@ struct Dptx_Params
 	u32 			uiProtect_RegAddr_Offset;
 
 	bool			bSpreadSpectrum_Clock;	
-	bool			bForwardErrorCorrection;     /* Forward Error Correction */
 	bool			bMultStreamTransport; 		/* Multi Stream Transport */				
-	bool			bEstablish_Timing_Present;
 
-	u8				ucEVB_Type;	
 	u8				ucNumOfStreams;
+	u8				ucNumOfPorts;
 	u8				ucMax_Rate;		/* The maximum rate that the controller supports -> Default setting is DPTX_PHYIF_CTRL_RATE_HBR as 0x01 ==> 0 - RBR, 1 - HBR, 2 - HBR2, 3 - HBR3 */
 	u8				ucMax_Lanes;	/* The maximum lane count that the controller supports -> Default setting is 4 */
-
-#if defined( CONFIG_DP_INPUT_PORT )
-	u8				aucDDI_Mux_Index[PHY_INPUT_STREAM_MAX];
-#endif
-
+	u8				*pucEdidBuf;	/* 512Bytes EDID data */
+	u8				*paucEdidBuf_Entry[PHY_INPUT_STREAM_MAX];
     u8				aucStreamSink_PortNumber[PHY_INPUT_STREAM_MAX];
 	u8				aucRAD_PortNumber[PHY_INPUT_STREAM_MAX];
 	u8				aucVCP_Id[PHY_INPUT_STREAM_MAX];
 	u8				aucDPCD_Caps[DPTX_SINK_CAP_SIZE];
-	u8				*pucEdidBuf;	/* 128Bytes EDID data */
-	u8				*pucSecondary_EDID; /* Secondary EDID data */
 	u8				aucNumOfSlots[PHY_INPUT_STREAM_MAX];
     u16				ausPayloadBandwidthNumber[PHY_INPUT_STREAM_MAX];
 
 	enum HPD_Detection_Status eLast_HPDStatus;
-	
-	struct work_struct     stDPTx_Intr_Handler;
-    struct work_struct     stDPTx_HPD_Handler;
-
 	enum DMT_ESTABLISHED_TIMING			eEstablished_Timing;
+	
 	struct Dptx_Video_Params			stVideoParams;
 	struct Dptx_Audio_Params			stAudioParams;
 	struct Dptx_Audio_Short_Descriptor	stAudio_Short_Descriptor;
@@ -533,17 +521,23 @@ struct Dptx_Params
 	struct Dptx_Avgen_SDP_FullData		astSdp_List[DPTX_SDP_NUM];
 	struct Dptx_Aux_Params				stAuxParams;
 	struct Dptx_Link_Params				stDptxLink;
+
+	Dptx_HPD_Intr_Callback				pvHPD_Intr_CallBack;
 };
 
 
 
-bool Dptx_Platform_Init_Params( struct Dptx_Params	*pstDptx, struct device	*pstParentDev, u8 ucEVB_Type );
+int Dpv14_Tx_Attach_DRM( u8 ucDP_Index );
+int Dpv14_Tx_Deatach_DRM( u8 ucDP_Index );
+
+
+bool Dptx_Platform_Init_Params( struct Dptx_Params	*pstDptx, struct device	*pstParentDev );
 bool Dptx_Platform_Init( struct Dptx_Params	*pstDptx );
 bool Dptx_Platform_Deinit( struct Dptx_Params	*pstDptx );
 bool Dptx_Platform_Set_ProtectRegister_PW( struct Dptx_Params	*pstDptx, u32 uiProtect_Cfg_PW );
 bool Dptx_Platform_Set_ProtectRegister_CfgAccess( struct Dptx_Params	*pstDptx, bool bAccessable );
 bool Dptx_Platform_Set_ProtectRegister_CfgLock( struct Dptx_Params	*pstDptx, bool bAccessable );
-bool Dptx_Platform_Set_RegisterBank(	struct Dptx_Params	*pstDptx, enum PHY_RATE eLinkRate );
+bool Dptx_Platform_Set_RegisterBank(	struct Dptx_Params	*pstDptx, enum PHY_LINK_RATE eLinkRate );
 bool Dptx_Platform_Set_PLL_Divisor(	struct Dptx_Params	*pstDptx, u32 uiBLK0_Divisor, u32 uiBLK1_Divisor, u32 uiBLK2_Divisor, u32 uiBLK3_Divisor );
 bool Dptx_Platform_Set_PLL_ClockSource( struct Dptx_Params	*pstDptx, u8 ucClockSource );
 bool Dptx_Platform_Get_PLLLock_Status( struct Dptx_Params	*pstDptx, bool *pbPll_Locked );
@@ -562,8 +556,6 @@ bool Dptx_Core_Link_Power_On( struct Dptx_Params *pstDptx );
 bool Dptx_Core_Init_Params( struct Dptx_Params *pstDptx );
 bool Dptx_Core_Init( struct Dptx_Params *pstDptx );
 bool Dptx_Core_Deinit( struct Dptx_Params *pstDptx );
-bool Dptx_Core_Set_Params( struct Dptx_Params *pstDptx, u8 ucMaxLane, u8 ucMaxRate, bool bEnableSSC );
-bool Dptx_Core_Get_Params( struct Dptx_Params *pstDptx, u8 *pucMaxLane, u8 *pucMaxRate, bool *pbEnableSSC );
 void Dptx_Core_Soft_Reset( struct Dptx_Params *pstDptx, u32 uiReset_Bits );
 void Dptx_Core_Init_PHY( struct Dptx_Params *pstDptx );
 void Dptx_Core_Enable_Global_Intr( struct Dptx_Params *pstDptx, u32 uiEnable_Bits );
@@ -573,14 +565,13 @@ bool Dptx_Core_Get_PHY_BUSY_Status( struct Dptx_Params *dptx, u8 ucNumOfLanes );
 bool Dptx_Core_Get_PHY_NumOfLanes( struct Dptx_Params *dptx, u8 *pucNumOfLanes );
 bool Dptx_Core_Get_Sink_SSC_Capability( struct Dptx_Params *dptx, bool *pbSSC_Profiled );
 bool Dptx_Core_Get_PHY_Rate( struct Dptx_Params *dptx, u8 *pucPHY_Rate );
-bool Dptx_Core_Get_RTL_Configuration_Parameters( struct Dptx_Params *pstDptx );
 bool Dptx_Core_Get_Stream_Mode( struct Dptx_Params *pstDptx, bool *pbMST_Mode );
 
 bool Dptx_Core_Set_PHY_PowerState( struct Dptx_Params *pstDptx, enum PHY_POWER_STATE ePowerState );
 bool Dptx_Core_Set_PHY_NumOfLanes( struct Dptx_Params *pstDptx, u8 ucNumOfLanes );
 bool Dptx_Core_Set_PHY_SSC( struct Dptx_Params *dptx, bool bSink_Supports_SSC );
 bool Dptx_Core_Get_PHY_SSC( struct Dptx_Params *pstDptx, bool *pbSSC_Enabled );
-bool Dptx_Core_Set_PHY_Rate( struct Dptx_Params *pstDptx, enum PHY_RATE eRate );
+bool Dptx_Core_Set_PHY_Rate( struct Dptx_Params *pstDptx, enum PHY_LINK_RATE eRate );
 bool Dptx_Core_Set_PHY_PreEmphasis( struct Dptx_Params *pstDptx,  			        unsigned int iLane_Index, enum PHY_PRE_EMPHASIS_LEVEL ePreEmphasisLevel );
 bool Dptx_Core_Set_PHY_VSW( struct Dptx_Params *pstDptx, unsigned int iLane_Index, enum PHY_VOLTAGE_SWING_LEVEL eVoltageSwingLevel );
 bool Dptx_Core_Set_PHY_Pattern( struct Dptx_Params *pstDptx, u32 uiPattern );
@@ -593,27 +584,10 @@ bool Dptx_Core_PHY_Bandwidth_To_Rate( struct Dptx_Params *pstDptx, u8 ucBandWidt
 /* Dptx AV Generator */
 bool Dptx_Avgen_Init_Video_Params( struct Dptx_Params *pstDptx, u32 uiPeri_Pixel_Clock[PHY_INPUT_STREAM_MAX] );
 bool Dptx_Avgen_Init_Audio_Params( struct Dptx_Params *pstDptx );
-bool Dptx_Avgen_Init( struct Dptx_Params *pstDptx );
-bool Dptx_Avgen_Set_Video_Params( struct Dptx_Params *pstDptx, 
-														u8 ucColorimetry, 
-														u8 ucRGB_Standard, 
-														u8 ucVideo_Format,
-														u8 ucPixel_Encoding,
-														u32 uiRefresh_Rate,
-														u32 uiVideo_Code,
-														u8	ucStream_Index );
-bool Dptx_Avgen_Get_Video_Params( struct Dptx_Params *pstDptx, 
-														u8 *pucColorimetry, 
-														u8 *pucRGB_Standard, 
-														u8 *pucVideo_Format,
-														u8 *pucPixel_Encoding,
-														u32 *puiRefresh_Rate,
-														u32 *puiVideo_Code,
-														u8	ucStream_Index );
-bool Dptx_Avgen_Set_Video_Code( struct Dptx_Params *pstDptx, u32 uiVideo_Code, u8 ucStream_Index );
 bool Dptx_Avgen_Get_Video_Code( struct Dptx_Params *pstDptx, u32 *puiVideo_Code, u8 ucStream_Index );
 bool Dptx_Avgen_Set_Video_Stream_Enable( struct Dptx_Params *pstDptx, bool bEnable_Stream, u8 ucStream_Index );
 bool Dptx_Avgen_Get_Video_Stream_Enable( struct Dptx_Params *pstDptx, bool *pbEnable_Stream, u8 ucStream_Index );
+bool Dptx_Avgen_Set_Video_Detailed_Timing( struct Dptx_Params *pstDptx, u8 ucStream_Index, struct Dptx_Dtd_Params *pstDtd_Params );
 bool Dptx_Avgen_Set_Video_Timing( struct Dptx_Params *pstDptx, u8 ucStream_Index );
 bool Dptx_Avgen_Get_Pixel_Mode( struct Dptx_Params *pstDptx, u8 ucStream_Index, u8 *pucPixelMode );
 bool Dptx_Avgen_Get_Video_NumOfStreams( struct Dptx_Params *pstDptx, u8 *pucEnabled_Streams );
@@ -628,41 +602,34 @@ void Dptx_Avgen_Set_Audio_DataWidth( struct Dptx_Params *pstDptx, u8 ucInGen_Dat
 void Dptx_Avgen_Set_Audio_Input_InterfaceType( struct Dptx_Params* pstDptx, u8 ucAudInput_InterfaceType );
 void Dptx_Avgen_Set_Audio_HBR_Mode( struct Dptx_Params* pstDptx, bool bEnable );
 void Dptx_Avgen_Set_Audio_SDP_InforFrame( struct Dptx_Params *pstDptx, bool bEnable );
+void Dptx_Avgen_Set_Audio_Stream_Enable( struct Dptx_Params *pstDptx, u8 ucSatrem_Index, bool bEnable );
 void Dptx_Avgen_Set_Audio_Mute( struct Dptx_Params *pstDptx, bool bMute );
 void Dptx_Avgen_Enable_Audio_SDP( struct Dptx_Params *dptx );
 void Dptx_Avgen_Disable_Audio_SDP( struct Dptx_Params *pstDptx );
 void Dptx_Avgen_Enable_Audio_Timestamp( struct Dptx_Params *dptx );
 void Dptx_Avgen_Disable_Audio_Timestamp( struct Dptx_Params *dptx );
-bool Dptx_Avgen_Get_VIC_From_VIOC( struct Dptx_Params *pstDptx );
 bool Dptx_Avgen_Get_VIC_From_Dtd( struct Dptx_Params *pstDptx, u8 ucStream_Index, u32 *puiVideo_Code );
 bool Dptx_Avgen_Fill_Dtd( struct Dptx_Dtd_Params *pstDtd, u32 uiVideo_Code, u32 uiRefreshRate, u8 ucVideoFormat );
-bool Dptx_Avgen_Parse_Dtd( struct Dptx_Dtd_Params *pstDtd, u8 aucData[18] );
-bool Dptx_Avgen_Fill_DTD_BasedOn_EST_Timings( struct Dptx_Params* pstDptx, struct Dptx_Dtd_Params *pstDTD );
 
 
 /* Dptx Link */
 bool Dptx_Link_Perform_Training( struct Dptx_Params *pstDptx, u8 ucRate, u8 ucNumOfLanes );
-bool Dptx_link_Get_LinkTraining_Status( struct Dptx_Params *pstDptx );
+bool Dptx_Link_Perform_BringUp( struct Dptx_Params *pstDptx, bool bSink_MST_Supported );
+bool Dptx_Link_Get_LinkTraining_Status( struct Dptx_Params *pstDptx, bool *pbTrainingState );
 
 
 /* Dptx Interrupt */
 irqreturn_t Dptx_Intr_IRQ( int irq, void *dev );
 irqreturn_t Dptx_Intr_Threaded_IRQ( int irq, void *dev );
-bool Dptx_Intr_Handle_Hotplug( struct Dptx_Params *pstDptx );
+bool Dptx_Intr_Register_HPD_Callback( struct Dptx_Params *pstDptx, Dptx_HPD_Intr_Callback HPD_Intr_Callback );
 bool Dptx_Intr_Handle_HotUnplug( struct Dptx_Params *pstDptx );
-bool Dptx_Intr_Handle_Edid( struct Dptx_Params *pstDptx, u8 ucStream_Index );
-bool Dptx_Intr_Get_HPD_Status( struct Dptx_Params *pstDptx, enum HPD_Detection_Status *peHPD_Status );
 bool Dptx_Intr_Get_HotPlug_Status( struct Dptx_Params *pstDptx, bool *pbHotPlug_Status );
-bool Dptx_Intr_Get_HDCP_Status( struct Dptx_Params *pstDptx, enum HDCP_Detection_Status *peHDCP_Status );
 
 
 /* Dptx EDID */
+bool Dptx_Edid_Verify_BaseBlk_Data( u8 *pucEDID_Buf );
 bool Dptx_Edid_Read_EDID_I2C_Over_Aux( struct Dptx_Params *pstDptx );
-bool Dptx_Edid_Read_EDID_Over_Sideband_Msg( struct Dptx_Params *pstDptx, u8 ucStream_Index );
-bool Dptx_Edid_Verify_EDID( struct Dptx_Params *pstDptx );
-bool Dptx_Edid_Parse_Audio_Data_Block( struct Dptx_Params * pstDptx );
-bool Dptx_Edid_Check_Detailed_Timing_Descriptors( struct Dptx_Params *pstDptx );
-bool Dptx_Edid_Config_Audio_BasedOn_EDID( struct Dptx_Params *pstDptx );;
+bool Dptx_Edid_Read_EDID_Over_Sideband_Msg( struct Dptx_Params *pstDptx, u8 ucStream_Index, bool bSkipped_PortComposition );
 
 
 /* Dptx HDCP */
@@ -674,18 +641,17 @@ bool Dptx_Hdcp_Configure_HDCP13( struct Dptx_Params *pstDptx );
 
 
 /* Dptx Extension */
-bool Dptx_Ext_Switch_SST_To_MST( struct Dptx_Params *pstDptx, u8 ucNumOfStreams );
-bool Dptx_Ext_Switch_MST_To_SST( struct Dptx_Params *pstDptx );
-bool Dptx_Ext_Enable_FEC( struct Dptx_Params *pstDptx );
-bool Dptx_Ext_Disable_FEC( struct Dptx_Params *pstDptx );
 bool Dptx_Ext_Clear_VCP_Tables( struct Dptx_Params *pstDptx );
 bool Dptx_Ext_Initiate_MST_Act( struct Dptx_Params *pstDptx );
+bool Dptx_Ext_Set_Stream_Mode( struct Dptx_Params *pstDptx, bool bMST_Supported, u8 ucNumOfPorts );
+bool Dptx_Ext_Get_Stream_Mode( struct Dptx_Params *pstDptx, bool *pbMST_Supported, u8 *pucNumOfPorts );
+bool Dptx_Ext_Get_Sink_Stream_Capability( struct Dptx_Params *pstDptx, bool *pbMST_Supported );
 bool Dptx_Ext_Set_Stream_Capability( struct Dptx_Params *pstDptx );
-bool Dptx_Ext_Set_VCPID_MST( struct Dptx_Params *pstDptx, u8 ucNumOfStreams, u8 aucVCP_Id[PHY_INPUT_STREAM_MAX] );
 bool Dptx_Ext_Set_Link_VCP_Tables( struct Dptx_Params *pstDptx, u8 ucStream_Index );
 bool Dptx_Ext_Set_Sink_VCP_Table_Slots( struct Dptx_Params *pstDptx, u8 ucStream_Index );
-bool Dptx_Ext_Get_Topology( struct Dptx_Params *dptx );
-bool Dptx_Ext_Remote_I2C_Read( struct Dptx_Params *pstDptx, u8 ucStream_Count );
+bool Dptx_Ext_Get_TopologyState( struct Dptx_Params *pstDptx, u8 *pucNumOfHotpluggedPorts );
+bool Dptx_Ext_Set_Topology_Configuration( struct Dptx_Params *pstDptx, u8 ucNumOfPorts, bool bSideBand_MSG_Supported );
+bool Dptx_Ext_Remote_I2C_Read( struct Dptx_Params *pstDptx, u8 ucStream_Index, bool bSkipped_PortComposition );
 
 
 /* Dptx Register */
@@ -701,9 +667,14 @@ bool Dptx_Aux_Read_DPCD( struct Dptx_Params *pstDptx, u32 uiAddr, u8 *pucBuffer 
 bool Dptx_Aux_Read_Bytes_From_DPCD( struct Dptx_Params *pstDptx, u32 uiAddr, u8 *pucBuffer, u32 len );
 bool Dptx_Aux_Write_DPCD( struct Dptx_Params *pstDptx, u32 uiAddr, u8 ucBuffer );
 bool Dptx_Aux_Write_Bytes_To_DPCD( struct Dptx_Params *pstDptx, u32 uiAddr, u8 *pucBuffer, u32 uiLength );
+int  Dptx_Aux_Read_Bytes_From_I2C( struct Dptx_Params *pstDptx, u32 uiDevice_Addr, u8 *pucBuffer, u32 uiLength );
+int  Dptx_Aux_Write_Bytes_To_I2C( struct Dptx_Params *pstDptx, u32 uiDevice_Addr, u8 *pucBuffer, u32 uiLength );
+int  Dptx_Aux_Write_AddressOnly_To_I2C( struct Dptx_Params *pstDptx,        		          unsigned int uiDevice_Addr );
 
-bool Dptx_Aux_Read_Bytes_From_I2C( struct Dptx_Params *pstDptx, u32 uiDevice_Addr, u8 *pucBuffer, u32 uiLength );
-bool Dptx_Aux_Write_Bytes_To_I2C( struct Dptx_Params *pstDptx, u32 uiDevice_Addr, u8 *pucBuffer, u32 uiLength );
-bool Dptx_Aux_Write_AddressOnly_To_I2C( struct Dptx_Params *pstDptx,        		          unsigned int uiDevice_Addr );
+
+/* Dptx SerDes */
+bool Dptx_Max968XX_Reset( struct Dptx_Params *pstDptx );
+bool Dptx_Max968XX_Get_TopologyState( u8 *pucNumOfPluggedPorts );
+//bool Dptx_Max968XX_Get_Des_VideoLocked( bool *pbVideoLocked );
 
 #endif /* __DPTX_API_H__  */
