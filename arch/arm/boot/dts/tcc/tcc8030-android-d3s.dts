@@ -9,7 +9,7 @@
 /dts-v1/;
 #endif
 
-#include "tcc8031-android-avn.dtsi"
+#include "tcc8031-android-avn-pe.dtsi"
 
 /* SD CARD */
 &sdhc1_pwrseq {

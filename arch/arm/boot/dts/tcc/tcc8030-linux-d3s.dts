@@ -44,7 +44,7 @@
 
 /dts-v1/;
 
-#include "tcc8031-linux-avn.dtsi"
+#include "tcc8031-linux-avn-pe.dtsi"
 
 / {
 	/* Describe here after remove this statement if you have something to be override. */
