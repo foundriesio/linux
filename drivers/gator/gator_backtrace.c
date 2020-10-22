@@ -95,7 +95,6 @@ static void kernel_backtrace(int cpu, struct pt_regs *const regs)
     frame.pc = regs->ARM_pc;
 #else
     frame.fp = regs->regs[29];
-    frame.sp = regs->sp;
     frame.pc = regs->pc;
 #endif
 
