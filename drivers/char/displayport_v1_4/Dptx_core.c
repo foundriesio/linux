@@ -62,39 +62,34 @@ bool Dptx_Core_Init_Params( struct Dptx_Params *pstDptx )
 {
 	bool		bRetVal;
 	
-	bRetVal = Dptx_Core_Get_PHY_NumOfLanes( pstDptx, &pstDptx->ucMax_Lanes );
+	pstDptx->ucMax_Rate	  = DPTX_DEFAULT_LINK_RATE;
+	pstDptx->ucMax_Lanes = DPTX_MAX_LINK_LANES;
+	
+	bRetVal = Dptx_Core_Get_PHY_NumOfLanes( pstDptx, &pstDptx->stDptxLink.ucNumOfLanes );
 	if( bRetVal )
 	{
-		dptx_err("from Dptx_Core_Get_PHY_NumOfLanes()");
-
-		pstDptx->ucMax_Lanes = (u8)DPTX_MAX_LINK_LANES;
+		pstDptx->stDptxLink.ucNumOfLanes = pstDptx->ucMax_Rate;
 	}
 
-	bRetVal = Dptx_Core_Get_PHY_Rate( pstDptx, &pstDptx->ucMax_Rate );
+	bRetVal = Dptx_Core_Get_PHY_Rate( pstDptx, &pstDptx->stDptxLink.ucLinkRate );
 	if( bRetVal )
 	{
-		dptx_err("from Dptx_Core_Get_PHY_Rate()");
-
-		pstDptx->ucMax_Rate = (u8)DPTX_DEFAULT_MAX_LINK_RATE;
+		pstDptx->stDptxLink.ucLinkRate  = pstDptx->ucMax_Rate;
 	}
 
 	bRetVal = Dptx_Core_Get_Stream_Mode( pstDptx, &pstDptx->bMultStreamTransport );
 	if( bRetVal )
 	{
-		dptx_err("from Dptx_Core_Get_Stream_Mode()");
-
 		pstDptx->bMultStreamTransport = false;
 	}
 
 	bRetVal = Dptx_Core_Get_PHY_SSC( pstDptx, &pstDptx->bSpreadSpectrum_Clock );
 	if( bRetVal )
 	{
-		dptx_err("from Dptx_Core_Get_PHY_SSC()");
-
 		pstDptx->bSpreadSpectrum_Clock = true;
 	}
 	
-	pr_info("[INF][DP V14]Stream mode = %s, NumOfLanes = %d, Max. rates = %d, SSC = %s \n", pstDptx->bMultStreamTransport ? "MST":"SST", pstDptx->ucMax_Lanes, pstDptx->ucMax_Rate, ( pstDptx->bSpreadSpectrum_Clock ) ? "On":"Off" );
+//	dptx_info("Stream mode = %s, NumOfLanes = %d, Max. rates = %d, SSC = %s", pstDptx->bMultStreamTransport ? "MST":"SST", pstDptx->stDptxLink.ucNumOfLanes, pstDptx->stDptxLink.ucLinkRate, ( pstDptx->bSpreadSpectrum_Clock ) ? "On":"Off" );
 	
 	return ( DPTX_RETURN_SUCCESS );	
 }
@@ -114,7 +109,6 @@ bool Dptx_Core_Init( struct Dptx_Params *pstDptx )
 	}
 
 	Dptx_Core_Disable_Global_Intr( pstDptx );
-	//Dptx_Core_Get_RTL_Configuration_Parameters( pstDptx );
 
 	Dptx_Core_Soft_Reset( pstDptx, DPTX_SRST_CTRL_ALL );	/* #define DPTX_SRST_CTRL_ALL ( DPTX_SRST_CTRL_CONTROLLER | DPTX_SRST_CTRL_HDCP | DPTX_SRST_CTRL_AUDIO_SAMPLER | DPTX_SRST_CTRL_AUX ) */
 
@@ -159,7 +153,6 @@ bool Dptx_Core_Init( struct Dptx_Params *pstDptx )
 	uiRegMap_HDCP_INTR |= DPTX_HDCP22_GPIOINT;
 	Dptx_Reg_Writel( pstDptx, DPTX_HDCP_API_INT_MSK, uiRegMap_HDCP_INTR );
 
-	// For testing
 	//Dptx_Core_Enable_Global_Intr( pstDptx, ( DPTX_IEN_HPD | DPTX_IEN_HDCP | DPTX_IEN_SDP | DPTX_IEN_AUDIO_FIFO_OVERFLOW | DPTX_IEN_VIDEO_FIFO_OVERFLOW | DPTX_IEN_TYPE_C ) );
 	Dptx_Core_Enable_Global_Intr( pstDptx, ( DPTX_IEN_HPD | DPTX_IEN_HDCP | DPTX_IEN_SDP | DPTX_IEN_TYPE_C ) ); /* Enable all top-level interrupts */
 	
@@ -206,43 +199,6 @@ bool Dptx_Core_Deinit( struct Dptx_Params *pstDptx )
 	
 	return ( DPTX_RETURN_SUCCESS );
 }
-
-bool  Dptx_Core_Set_Params( struct Dptx_Params *pstDptx, u8 ucMaxLane, u8 ucMaxRate, bool bEnableSSC )
-{
-	bool		bRetVal;
-
-	pstDptx->ucMax_Lanes = ucMaxLane;
-	pstDptx->ucMax_Rate = ucMaxRate;
-	pstDptx->bSpreadSpectrum_Clock = bEnableSSC;
-
-	bRetVal = Dptx_Intr_Handle_HotUnplug( pstDptx );
-	if( bRetVal )
-	{
-		dptx_err("from Dptx_Intr_Handle_Hotplug()");
-		return ( DPTX_RETURN_FAIL );
-	}
-
-	bRetVal = Dptx_Intr_Handle_Hotplug( pstDptx );
-	if( bRetVal )
-	{
-		dptx_err("from Dptx_Intr_Handle_Hotplug()");
-		return ( DPTX_RETURN_FAIL );
-	}
-		
-	return ( DPTX_RETURN_SUCCESS );
-}
-
-bool  Dptx_Core_Get_Params( struct Dptx_Params *pstDptx, u8 *pucMaxLane, u8 *pucMaxRate, bool *pbEnableSSC )
-{
-	bool	bRetVal;
-
-	*pucMaxLane		= pstDptx->stDptxLink.ucNumOfLanes;
-	*pucMaxRate		= pstDptx->stDptxLink.ucLinkRate;
-	*pbEnableSSC	= pstDptx->bSpreadSpectrum_Clock;
-		
-	return ( DPTX_RETURN_SUCCESS );
-}
-
 
 /* Synopsys -> Initializes the PHY layer of the core. This needs to be called whenever the PHY layer is reset. */
 void Dptx_Core_Init_PHY( struct Dptx_Params *pstDptx )
@@ -445,7 +401,6 @@ bool Dptx_Core_Set_PHY_SSC( struct Dptx_Params *pstDptx, bool bSink_Supports_SSC
 
 	Dptx_Reg_Writel( pstDptx, DPTX_PHYIF_CTRL, uiRegMap_PhyIfCtrl );
 
-	/* Moved from dptx_intr_handle_hotplug() */
 	bRetVal = Dptx_Core_Set_PHY_PowerState( pstDptx, PHY_POWER_ON );/* Move to Powered on as x0 */
 	if( bRetVal ==	DPTX_RETURN_FAIL )
 	{
@@ -514,7 +469,6 @@ bool Dptx_Core_Get_Sink_SSC_Capability( struct Dptx_Params *pstDptx, bool *pbSSC
 
 bool Dptx_Core_Get_Stream_Mode( struct Dptx_Params *pstDptx, bool *pbMST_Mode )
 {
-	u8		ucPHY_Lanes;
 	u32		uiRegMap_Cctl;
 
 	/* 
@@ -690,7 +644,7 @@ bool Dptx_Core_Set_PHY_PowerState( struct Dptx_Params *pstDptx, enum PHY_POWER_S
 	Synopsys -> If the Synopsys Combo PHY is used, the software must first program PHY_POWERDOWN to 2 or 3 first and 
 				watiting for PHYBUSY to clear. Afterwards, rate can be changed along with PHY_POWERDOWN
 */
-bool Dptx_Core_Set_PHY_Rate( struct Dptx_Params *pstDptx, enum PHY_RATE eRate )
+bool Dptx_Core_Set_PHY_Rate( struct Dptx_Params *pstDptx, enum PHY_LINK_RATE eRate )
 {
 	u32		uiPhyIfCtrl;
 
@@ -903,42 +857,6 @@ bool Dptx_Core_Set_PHY_Pattern( struct Dptx_Params *pstDptx, u32 uiPattern )
 	uiPhyTPSSelection |= (( uiPattern << DPTX_PHYIF_CTRL_TPS_SEL_SHIFT ) & DPTX_PHYIF_CTRL_TPS_SEL_MASK );
 	
 	Dptx_Reg_Writel( pstDptx, DPTX_PHYIF_CTRL, uiPhyTPSSelection );
-
-	return ( DPTX_RETURN_SUCCESS );
-}
-
-bool Dptx_Core_Get_RTL_Configuration_Parameters( struct Dptx_Params *pstDptx )
-{
-	u32				ucRegMap_Conf1, uiReMap_HDCPConfig;
-
-	/*
-	 *	DPTX_CONFIG_REG[0x100 + (i * 10000 ), i = DWC_DPTX_NUM_STREAMS - 1] : This is can be used by the software to read the configured RTL configuration parameters
-	 *	 																	In MST mode, even though this is visible for each streams this should be accessed with respect to Stream 0 address only. 
-	 * -.HDCP_EN[Bit 0]( 0: HDCP disabled, 1: HDCP enabled ) 
-	 * -.AUDIO_SELECTED[Bit 2:1]( 0: I2S Interface, 1: SPDIF Interface, 2: I2S and SPDIF Interface, 3: None )
-	 * -.NUM_STREAMS[Bit 18:16]( 1 : SST Mode, 2 : Two streams, 3 : Three streams, 4 : Four streams )  --> Combo PHY 
-	 * -.MP_MODE[Bit 21:19]( 1: Single Pixel Mode, 2: Dual Pixel Mode, 4: Quad Pixel Mode ) 
-	 * -.DSC_EN[Bit 22]( 0: Internal DSC disabled, 1: Internal DSC enabled ) 
-	 * -.EDP_EN[Bit 23]( 0: EDP disabled, 1: EDP enabled ) 
-	 * -.FEC_EN[Bit 24]( 0: FEC disabled, 1: FEC enabled ) 
-	 * -.NUM_DSC_ENC[Bit 28:25]: The value of the parameter DPTX_NUM_DSC_ENC
-	 * -.GEN2PHY[Bit 29]( 1 : DWC_DPTX_COMBO_PHY_C10_GEN2 )  --> Combo PHY 
-	 * -.DSC[Bit 31:30]: The value of the parameter DPTX_NUM_DSC_ENC
-	 */
-
-	ucRegMap_Conf1 = Dptx_Reg_Readl( pstDptx, DPTX_CONFIG1 );
-
-	dptx_dbg( "DPTX_CONFIG_REG[0x100] ... Configured RTL_Configuration_Parameters " );
-	dptx_dbg( "  -.Configured the number of streams : %d streams", (u32)( ( ucRegMap_Conf1 & DPTX_CONFIG1_NUM_STREAMS_MASK ) >> DPTX_CONFIG1_NUM_STREAMS_SHIFT ) );
-	dptx_dbg( "  -.Configured Pixel mode : %d pixel modes", (u32)(( ucRegMap_Conf1 & DPTX_CONFIG1_MP_MODE_MASK ) >> DPTX_CONFIG1_MP_MODE_SHIFT ) );
-	dptx_dbg( "  -.Configured DSC : %s", ( ucRegMap_Conf1 & DPTX_CONFIG1_DSC_EN ) ? "Enabled" : "Disabled" );
-	dptx_dbg( "  -.Configured FEC : %s", ( ucRegMap_Conf1 & DPTX_CONFIG1_FEC_EN ) ? "Enabled" : "Disabled" );
-
-	uiReMap_HDCPConfig = Dptx_Reg_Readl( pstDptx, DPTX_HDCP_CONFIG );
-	dptx_dbg( "  -.Configured HDCP : %s -> DPTX_HDCP_CONFIG[0x%x]= 0x%08x ", ( ucRegMap_Conf1 & DPTX_CONFIG1_HDCP_EN ) ? "Enabled" : "Disabled", DPTX_HDCP_CONFIG, uiReMap_HDCPConfig );
-	
-	dptx_dbg( "  -.Configured Audio input : %s", ( ucRegMap_Conf1 & DPTX_CONFIG1_AUIDO_SELECTED_MASK ) == 0 ? "I2S" : "SPDIF" );
-	dptx_dbg( "  -.Configured GEN2PHY : %s", ( ucRegMap_Conf1 & DPTX_CONFIG1_GEN2_PHY ) ? "COMBO_PHY_C10_GEN2" : "Not COMBO_PHY_C10_GEN2" ); 
 
 	return ( DPTX_RETURN_SUCCESS );
 }

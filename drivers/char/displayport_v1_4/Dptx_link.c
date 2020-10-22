@@ -631,7 +631,7 @@ static bool dptx_link_initiate_training( struct Dptx_Params *pstDptx )
 		return ( DPTX_RETURN_FAIL );
 	}
 	
-	bRetVal = Dptx_Core_Set_PHY_Rate( pstDptx, ( enum PHY_RATE )pstDptx->stDptxLink.ucLinkRate );
+	bRetVal = Dptx_Core_Set_PHY_Rate( pstDptx, ( enum PHY_LINK_RATE )pstDptx->stDptxLink.ucLinkRate );
 	if( bRetVal ==	DPTX_RETURN_FAIL )
 	{
 		return ( DPTX_RETURN_FAIL );
@@ -788,9 +788,9 @@ static bool dptx_link_init_training( struct Dptx_Params *pstDptx, u8 ucLink_Rate
 
 	if( ucLink_Rate > DPTX_PHYIF_CTRL_RATE_HBR3 )
 	{
-		dptx_err("Invalid rate = %d to %d", ucLink_Rate, DPTX_DEFAULT_MAX_LINK_RATE  );
+		dptx_err("Invalid rate = %d to %d", ucLink_Rate, DPTX_DEFAULT_LINK_RATE  );
 		
-		ucLink_Rate = DPTX_DEFAULT_MAX_LINK_RATE;
+		ucLink_Rate = DPTX_DEFAULT_LINK_RATE;
 	}
 	if(( ucNumOfLanes == 0 ) || ( ucNumOfLanes == 3 ) || ( ucNumOfLanes > 4 ))
 	{
@@ -840,15 +840,13 @@ static bool dptx_link_init_training( struct Dptx_Params *pstDptx, u8 ucLink_Rate
 	pstDptx->stDptxLink.ucNumOfLanes	= ucNumOfLanes;
 	pstDptx->stDptxLink.ucLinkRate		= ucLink_Rate;
 
-	pstDptx->stDptxLink.bTraining_Done	= false;
-
 	if( pstDptx->ucMax_Rate != pstDptx->stDptxLink.ucLinkRate )
 	{
 		dptx_warn("Reducing Link rate = %s -> Sink one = %s ", 
 				pstDptx->ucMax_Rate == DPTX_PHYIF_CTRL_RATE_RBR ? "RBR":( pstDptx->ucMax_Rate == DPTX_PHYIF_CTRL_RATE_HBR ) ?  "HBR":( pstDptx->ucMax_Rate == DPTX_PHYIF_CTRL_RATE_HBR2 ) ? "HB2":"HBR3",
 				pstDptx->stDptxLink.ucLinkRate == DPTX_PHYIF_CTRL_RATE_RBR ? "RBR":( pstDptx->stDptxLink.ucLinkRate == DPTX_PHYIF_CTRL_RATE_HBR ) ?  "HBR":( pstDptx->stDptxLink.ucLinkRate == DPTX_PHYIF_CTRL_RATE_HBR2 ) ? "HB2":"HBR3");
 	
-		bRetVal = Dptx_Platform_Set_RegisterBank( pstDptx, (enum PHY_RATE)pstDptx->stDptxLink.ucLinkRate );
+		bRetVal = Dptx_Platform_Set_RegisterBank( pstDptx, (enum PHY_LINK_RATE)pstDptx->stDptxLink.ucLinkRate );
 		if( bRetVal ==	DPTX_RETURN_FAIL )
 		{
 			return ( DPTX_RETURN_FAIL );
@@ -1032,8 +1030,6 @@ again:
 		return ( DPTX_RETURN_FAIL );
 	}
 	
-	pstDptx->stDptxLink.bTraining_Done = true;
-	
 	return ( DPTX_RETURN_SUCCESS );
 #endif
 
@@ -1188,8 +1184,6 @@ again:
 		return ( DPTX_RETURN_FAIL );
 	}
 	
-	pstDptx->stDptxLink.bTraining_Done = true;
-
 	bRetVal = Dptx_Aux_Read_DPCD( pstDptx, DP_SINK_COUNT, &ucDPCD_SinkCount );/* Branch device detection */
 	if( bRetVal == DPTX_RETURN_FAIL )
 	{
@@ -1214,50 +1208,121 @@ fail:
 	return ( DPTX_RETURN_FAIL );
 }
 
-bool Dptx_link_Get_LinkTraining_Status( struct Dptx_Params *pstDptx )
+bool Dptx_Link_Perform_BringUp( struct Dptx_Params *pstDptx, bool bSink_MST_Supported )
 {
 	bool		bRetVal;
-	u8			ucDPCD_LanAlign_StatusUpdated;
+	bool		bSink_SSC_Profiled;
+	u32			uiRegMap_Cctl;
+	
+	bRetVal = Dptx_Core_Set_PHY_NumOfLanes( pstDptx, (u8)pstDptx->ucMax_Lanes );
+	if( bRetVal == DPTX_RETURN_FAIL )
+	{
+		return ( DPTX_RETURN_FAIL );
+	}
+
+	bRetVal = Dptx_Aux_Write_DPCD( pstDptx, DP_SET_POWER, DP_SET_POWER_D0 );
+	if( bRetVal ==  DPTX_RETURN_FAIL )
+	{
+		return ( DPTX_RETURN_FAIL );
+	}
+
+	bRetVal = Dptx_Core_Get_Sink_SSC_Capability( pstDptx, &bSink_SSC_Profiled );
+	if( bRetVal == DPTX_RETURN_FAIL )
+	{
+		return ( DPTX_RETURN_FAIL );
+	}
+
+	bRetVal = Dptx_Core_Set_PHY_SSC( pstDptx, bSink_SSC_Profiled );
+	if( bRetVal ==  DPTX_RETURN_FAIL )
+	{
+		return ( DPTX_RETURN_FAIL );
+	}
+
+	if( bSink_MST_Supported ) 
+	{
+		uiRegMap_Cctl = Dptx_Reg_Readl( pstDptx, DPTX_CCTL );
+		uiRegMap_Cctl |= DPTX_CCTL_ENABLE_MST_MODE;
+		Dptx_Reg_Writel( pstDptx, DPTX_CCTL, uiRegMap_Cctl);
+
+		bRetVal = Dptx_Aux_Write_DPCD( pstDptx, DP_MSTM_CTRL, ( DP_MST_EN | DP_UP_REQ_EN | DP_UPSTREAM_IS_SRC ) );
+		if( bRetVal == DPTX_RETURN_FAIL )
+		{
+			return ( DPTX_RETURN_FAIL );
+		}
+	}
+	else
+	{
+		uiRegMap_Cctl = Dptx_Reg_Readl( pstDptx, DPTX_CCTL );
+		uiRegMap_Cctl &= ~DPTX_CCTL_ENABLE_MST_MODE;
+		Dptx_Reg_Writel( pstDptx, DPTX_CCTL, uiRegMap_Cctl);
+
+		bRetVal = Dptx_Aux_Write_DPCD( pstDptx, DP_MSTM_CTRL, ~( DP_MST_EN | DP_UP_REQ_EN | DP_UPSTREAM_IS_SRC ) );
+		if( bRetVal == DPTX_RETURN_FAIL )
+		{
+			return ( DPTX_RETURN_FAIL );
+		}
+	}
+
+	memset( pstDptx->aucDPCD_Caps, 0, DPTX_SINK_CAP_SIZE );
+
+	bRetVal = Dptx_Aux_Read_Bytes_From_DPCD( pstDptx, DP_DPCD_REV, pstDptx->aucDPCD_Caps, DPTX_SINK_CAP_SIZE );
+	if( bRetVal == DPTX_RETURN_FAIL )
+	{
+		return (DPTX_RETURN_FAIL);
+	}
+
+	if( pstDptx->aucDPCD_Caps[DP_TRAINING_AUX_RD_INTERVAL] & DP_EXTENDED_RECEIVER_CAPABILITY_FIELD_PRESENT ) 
+	{
+		dptx_dbg("Sink has extended receiver capability... read from 0x2200" );
+
+		bRetVal = Dptx_Aux_Read_Bytes_From_DPCD( pstDptx, 0x2200, pstDptx->aucDPCD_Caps, DPTX_SINK_CAP_SIZE );	
+		if( bRetVal == DPTX_RETURN_FAIL )
+        	{
+			return ( DPTX_RETURN_FAIL );
+		}
+	}
+
+	dptx_dbg("Sink DP Revision %x.%x ", (pstDptx->aucDPCD_Caps[0] & 0xF0) >> 4, pstDptx->aucDPCD_Caps[0] & 0xF );
+	
+		return (DPTX_RETURN_SUCCESS);
+	}
+
+bool Dptx_Link_Get_LinkTraining_Status( struct Dptx_Params *pstDptx, bool *pbTrainingState )
+{
+	bool		bRetVal;
 	bool		bChannel_Eq_Status, bCR_Status;
 
 	bRetVal = Dptx_Aux_Read_Bytes_From_DPCD( pstDptx, DP_LANE0_1_STATUS, pstDptx->stDptxLink.aucTraining_Status, DP_LINK_STATUS_SIZE );
-	dptx_dbg("Dptx_Aux_Read_Bytes_From_DPCD : 0x%x ~ 0x%x", DP_LANE0_1_STATUS, ( DP_LANE0_1_STATUS + DP_LINK_STATUS_SIZE ));
 	if( bRetVal == DPTX_RETURN_FAIL )
 	{
 		dptx_err("From Dptx_Aux_Read_Bytes_From_DPCD ");
 		return (DPTX_RETURN_FAIL);
 	}
 
-	ucDPCD_LanAlign_StatusUpdated = pstDptx->stDptxLink.aucTraining_Status[DP_LANE_ALIGN_STATUS_UPDATED - DP_LANE0_1_STATUS];
-	if( !( ucDPCD_LanAlign_StatusUpdated & DP_LINK_STATUS_UPDATED ) )
-	{
-		dptx_dbg("Status was not updated after last updated and cleared after read. ");
-		return (DPTX_RETURN_SUCCESS);
-	}
+	dptx_dbg("Training status: 0x%x 0x%x 0x%x 0x%x 0x%x 0x%x", 
+		pstDptx->stDptxLink.aucTraining_Status[0], pstDptx->stDptxLink.aucTraining_Status[1],
+		pstDptx->stDptxLink.aucTraining_Status[2], pstDptx->stDptxLink.aucTraining_Status[3],
+		pstDptx->stDptxLink.aucTraining_Status[4], pstDptx->stDptxLink.aucTraining_Status[5] );
 
-	/* Check if need to retrain link */
-	if( pstDptx->stDptxLink.bTraining_Done )
+	bCR_Status = Drm_Addition_Get_Clock_Recovery_Status( pstDptx->stDptxLink.aucTraining_Status, pstDptx->ucMax_Lanes );
+	if( bCR_Status )
 	{
-		bChannel_Eq_Status = Drm_Addition_Get_Channel_EQ_Status( pstDptx->stDptxLink.aucTraining_Status, pstDptx->stDptxLink.ucNumOfLanes ); 
+		bChannel_Eq_Status = Drm_Addition_Get_Channel_EQ_Status( pstDptx->stDptxLink.aucTraining_Status, pstDptx->ucMax_Lanes ); 
 		if( bChannel_Eq_Status )
 		{
-			bCR_Status = Drm_Addition_Get_Clock_Recovery_Status( pstDptx->stDptxLink.aucTraining_Status, pstDptx->stDptxLink.ucNumOfLanes );
-			if( bCR_Status )
-			{
-				dptx_dbg("CR and EQ are done + SYMBOL is locked ");
-
-				return (DPTX_RETURN_SUCCESS);
-			}
-			else
-			{
-				dptx_err("CR is not done... Retraining link ");
-			}
+			dptx_dbg("CR and EQ are done");
+			*pbTrainingState = true;
 		}
 		else
 		{
-			dptx_err("Channel EQ is not done... Retraining link ");
-			return (DPTX_RETURN_FAIL);
+			dptx_dbg("Channel EQ is not done... ");
+			*pbTrainingState = false;
 		}
+	}
+	else
+	{
+		dptx_dbg("CR is not done... ");
+		*pbTrainingState = false;
 	}
 
 	return ( DPTX_RETURN_SUCCESS );
