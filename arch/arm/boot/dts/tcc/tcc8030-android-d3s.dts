@@ -26,7 +26,7 @@
 	cd-gpios = <&gpsd1 6 0>;
 
 	mmc-pwrseq = <&sdhc1_pwrseq>;
-	vqmmc-supply = <&vdd_ldo3>;
+//	vqmmc-supply = <&vdd_ldo3>;
 };
 
 /* SDIO */
