@@ -182,7 +182,7 @@ err_out:
 	return 0;
 }
 
-static int tcc_drm_dp_set_video(struct tcc_dpi *ctx, struct drm_crtc_state *crtc_state)
+static int tcc_drm_encoder_set_video(struct tcc_dpi *ctx, struct drm_crtc_state *crtc_state)
 {
 	struct dptx_detailed_timing_t timing;
 	struct videomode vm;
@@ -192,6 +192,9 @@ static int tcc_drm_dp_set_video(struct tcc_dpi *ctx, struct drm_crtc_state *crtc
 	if(ctx->dp->funcs == NULL)
 		goto err_out;
 	if(ctx->dp->funcs->set_video == NULL)
+		goto err_out;
+
+	if(ctx->hw_device->connector_type != DRM_MODE_CONNECTOR_DisplayPort)
 		goto err_out;
 
 	drm_display_mode_to_videomode(&crtc_state->adjusted_mode, &vm);
@@ -209,7 +212,8 @@ static int tcc_drm_dp_set_video(struct tcc_dpi *ctx, struct drm_crtc_state *crtc
 	timing.v_sync_offset = vm.vfront_porch;
 	timing.v_sync_pulse_width = vm.vsync_len;
 	timing.v_sync_polarity = (vm.flags & DISPLAY_FLAGS_VSYNC_LOW)?0:1;
-	timing.pixel_clock = clk_get_rate(ctx->hw_device->ddc_clock);
+	/* DP pixel clock in kHz */
+	timing.pixel_clock = DIV_ROUND_UP(clk_get_rate(ctx->hw_device->ddc_clock), 1000);
 
 	if(ctx->dp->funcs->set_video(ctx->dp->dp_id, &timing) < 0)
 		goto err_out;
@@ -219,7 +223,7 @@ err_out:
 	return -ENODEV;
 }
 
-static int tcc_drm_dp_set_enable_video(struct tcc_dpi *ctx, unsigned char enable)
+static int tcc_drm_encoder_enable_video(struct tcc_dpi *ctx, unsigned char enable)
 {
 	int ret = 0;
 	if(ctx->dp == NULL)
@@ -228,6 +232,8 @@ static int tcc_drm_dp_set_enable_video(struct tcc_dpi *ctx, unsigned char enable
 		goto err_out;
 	if(ctx->dp->funcs->set_enable_video == NULL)
 		goto err_out;
+	if(ctx->hw_device->connector_type != DRM_MODE_CONNECTOR_DisplayPort)
+		goto err_out;
 	if(ctx->dp->funcs->set_enable_video(ctx->dp->dp_id, enable) < 0)
 		goto err_out;
 
@@ -235,6 +241,9 @@ static int tcc_drm_dp_set_enable_video(struct tcc_dpi *ctx, unsigned char enable
 err_out:
 	return -EINVAL;
 }
+#else
+#define tcc_drm_encoder_set_video(ctx, crtc_state)
+#define tcc_drm_encoder_enable_video(ctx, enable)
 #endif
 
 static enum drm_connector_status
@@ -311,13 +320,13 @@ static int tcc_dpi_get_modes(struct drm_connector *connector)
 	if (ctx->panel != NULL) {
 		count = drm_panel_get_modes(ctx->panel);
 		if(count > 0)
-			goto find_panel_mode;
+			goto find_modes;
 	}
 	/* step2: Check detailed timing from device tree */
 	if (ctx->vm != NULL) {
 		drm_display_mode_from_videomode(ctx->vm, mode);
 		count = 1;
-		goto find_panel_mode;
+		goto probed_add_modes;
 	}
 	/* step3: Check kernel config */
 	if(ctx->hw_device == NULL) {
@@ -345,7 +354,7 @@ static int tcc_dpi_get_modes(struct drm_connector *connector)
 			count = drm_add_edid_modes(connector, edid);
 			drm_edid_to_eld(connector, edid);
 			devm_kfree(ctx->dev, edid);
-			goto find_edid_modes;
+			goto find_modes;
 		}
 		break;
 	#endif
@@ -362,13 +371,14 @@ static int tcc_dpi_get_modes(struct drm_connector *connector)
 		break;
 	}
 
-find_panel_mode:
+probed_add_modes:
 	if(count) {
 		mode->type = DRM_MODE_TYPE_DRIVER | DRM_MODE_TYPE_PREFERRED;
 		drm_mode_probed_add(connector, mode);
 	}
 
-find_edid_modes:
+find_modes:
+
 	return count;
 
 err_out:
@@ -415,13 +425,8 @@ tcc_dpi_atomic_mode_set(struct drm_encoder *encoder,
 		/*  panel->funcs->prepare(panel) */
 	}
 
-	#if defined(CONFIG_TCC_DP_DRIVER_V1_4)
-	if(ctx->hw_device->connector_type == DRM_MODE_CONNECTOR_DisplayPort) {
-		tcc_drm_dp_set_video(ctx, crtc_state);
-
-		tcc_drm_dp_set_enable_video(ctx, 1);
-	}
-	#endif
+	tcc_drm_encoder_set_video(ctx, crtc_state);
+	tcc_drm_encoder_enable_video(ctx, 1);
 }
 
 static void tcc_dpi_enable(struct drm_encoder *encoder)
@@ -452,11 +457,7 @@ static void tcc_dpi_disable(struct drm_encoder *encoder)
 		/* panel->funcs->unprepare(panel); */
 	}
 
-	#if defined(CONFIG_TCC_DP_DRIVER_V1_4)
-	if(ctx->hw_device->connector_type == DRM_MODE_CONNECTOR_DisplayPort) {
-		tcc_drm_dp_set_enable_video(ctx, 0);
-	}
-	#endif
+	tcc_drm_encoder_enable_video(ctx, 0);
 }
 
 static const struct drm_encoder_helper_funcs tcc_dpi_encoder_helper_funcs = {

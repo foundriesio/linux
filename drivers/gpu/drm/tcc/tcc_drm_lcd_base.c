@@ -639,16 +639,18 @@ static void lcd_enable(struct tcc_drm_crtc *crtc)
 	int ret;
 	struct lcd_context *ctx = crtc->ctx;
 
-	if (!test_and_set_bit(CRTC_FLAGS_PCLK_BIT, &ctx->crtc_flags)) {
-		dev_info(ctx->dev,
-			"[INFO][%s] %s line(%d) enable pclk %ldHz\r\n",
-					LOG_TAG, __func__, __LINE__,
-					clk_get_rate(ctx->hw_data.ddc_clock));
-		ret = clk_prepare_enable(ctx->hw_data.ddc_clock);
-		if  (ret < 0) {
-			dev_warn(ctx->dev,
-			"[WARN][%s] %s line(%d) failed to enable the lcd clk\r\n",
-							LOG_TAG, __func__, __LINE__);
+	if(ctx->hw_data.connector_type == DRM_MODE_CONNECTOR_LVDS) {
+		if (!test_and_set_bit(CRTC_FLAGS_PCLK_BIT, &ctx->crtc_flags)) {
+			dev_info(ctx->dev,
+				"[INFO][%s] %s line(%d) enable pclk %ldHz for LVDS\r\n",
+						LOG_TAG, __func__, __LINE__,
+						clk_get_rate(ctx->hw_data.ddc_clock));
+			ret = clk_prepare_enable(ctx->hw_data.ddc_clock);
+			if  (ret < 0) {
+				dev_warn(ctx->dev,
+				"[WARN][%s] %s line(%d) failed to enable the lcd clk\r\n",
+								LOG_TAG, __func__, __LINE__);
+			}
 		}
 	}
 
@@ -768,6 +770,21 @@ static void lcd_mode_set_nofb(struct tcc_drm_crtc *crtc)
 	}
 	mutex_unlock(&ctx->chromakey_mutex);
 	#endif
+	if(ctx->hw_data.connector_type != DRM_MODE_CONNECTOR_LVDS) {
+		int ret;
+		if (!test_and_set_bit(CRTC_FLAGS_PCLK_BIT, &ctx->crtc_flags)) {
+			dev_info(ctx->dev,
+				"[INFO][%s] %s line(%d) enable pclk %ldHz\r\n",
+						LOG_TAG, __func__, __LINE__,
+						clk_get_rate(ctx->hw_data.ddc_clock));
+			ret = clk_prepare_enable(ctx->hw_data.ddc_clock);
+			if  (ret < 0) {
+				dev_warn(ctx->dev,
+				"[WARN][%s] %s line(%d) failed to enable the lcd clk\r\n",
+								LOG_TAG, __func__, __LINE__);
+			}
+		}
+	}
 }
 
 static const struct tcc_drm_crtc_ops lcd_crtc_ops = {
