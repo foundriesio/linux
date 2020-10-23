@@ -302,6 +302,13 @@
 			regulator-boot-on;
 			};
 #endif
+			DA9062_LDO4: ldo4 {
+				regulator-name = "sdio_pwr";
+				regulator-min-microvolt = <1800000>;
+				regulator-max-microvolt = <3300000>;
+				regulator-always-on;
+				regulator-boot-on;
+			};
 		};
 	}; /* pmic da9062 */
 
@@ -641,8 +648,20 @@
 	vqmmc-supply = <&vqmmc_emmc>;
 };
 
-/* SD CARD */
+/* SDIO */
 &sdhc1 {
+	status = "okay";
+	bus-width = <4>;
+	max-frequency = <200000000>;
+	pinctrl-names = "default";
+	pinctrl-0 = <&sd1_clk &sd1_cmd &sd1_bus4 &out0_clk>;
+	clocks = <&clk_peri PERI_SDMMC1 &clk_io IOBUS_SDMMC1>;
+	clock-names = "mmc_fclk", "mmc_hclk";
+};
+
+
+/* SD CARD */
+&sdhc2 {
 	status = "okay";
 #ifndef CONFIG_MMC_SDHCI_TCC_MODULE_ONLY
 	compatible = "telechips,tcc-sdhci";
@@ -653,22 +672,11 @@
 	 */
 	compatible = "telechips,tcc803x-sdhci,module-only";
 #endif
-	controller-id = <1>;
+	controller-id = <2>;
 	bus-width = <4>;
 	max-frequency = <200000000>;
 	pinctrl-names = "default";
-	pinctrl-0 = <&sd1_clk &sd1_cmd &sd1_bus4 &sd1_bus4_wp_cd>;
-};
-
-/* SDIO */
-&sdhc2 {
-	status = "okay";
-	bus-width = <4>;
-	max-frequency = <200000000>;
-	pinctrl-names = "default";
-	pinctrl-0 = <&sd2_clk &sd2_cmd &sd2_bus4 &out0_clk>;
-	clocks = <&clk_peri PERI_SDMMC2 &clk_io IOBUS_SDMMC2>;
-	clock-names = "mmc_fclk", "mmc_hclk";
+	pinctrl-0 = <&sd2_clk &sd2_cmd &sd2_bus4 &sd1_bus4_wp_cd>;
 };
 
 /* broadcast(DAB/DMB) */

@@ -17,18 +17,6 @@
 	reset-gpios = <&gpsd1 8 GPIO_ACTIVE_LOW>;
 };
 
-&sdhc1 {
-	broken-cd;
-	cd-inverted;
-	keep-power-in-suspend;
-
-	wp-gpios = <&gpsd1 7 0>;
-	cd-gpios = <&gpsd1 6 0>;
-
-	mmc-pwrseq = <&sdhc1_pwrseq>;
-//	vqmmc-supply = <&vdd_ldo3>;
-};
-
 /* SDIO */
 &vqmmc_sdio {
 	compatible = "regulator-fixed";
@@ -38,7 +26,7 @@
 	regulator-always-on;
 };
 
-&sdhc2 {
+&sdhc1 {
 	//non-removable;
 	keep-power-in-suspend;
 	cap-sdio-irq;
@@ -55,6 +43,19 @@
 		//wifi_pwr_3p3v-gpio = <&gpsd1 7 0>;
 	};
 };
+
+&sdhc2 {
+	broken-cd;
+	cd-inverted;
+	keep-power-in-suspend;
+
+	wp-gpios = <&gpsd1 7 0>;
+	cd-gpios = <&gpsd1 6 0>;
+
+	mmc-pwrseq = <&sdhc1_pwrseq>;
+	vqmmc-supply = <&DA9062_LDO4>;
+};
+
 
 &tcc_timer {
 	/* Timer 0 is used for WIFI LPO */
