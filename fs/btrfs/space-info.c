@@ -182,11 +182,10 @@ static inline u64 calc_global_rsv_need_space(struct btrfs_block_rsv *global)
 	return (global->size << 1);
 }
 
-static int can_overcommit(struct btrfs_root *root,
-			  struct btrfs_space_info *space_info, u64 bytes,
-			  enum btrfs_reserve_flush_enum flush)
+int can_overcommit(struct btrfs_fs_info *fs_info,
+			 struct btrfs_space_info *space_info, u64 bytes,
+			 enum btrfs_reserve_flush_enum flush)
 {
-	struct btrfs_fs_info *fs_info = root->fs_info;
 	u64 profile;
 	u64 avail;
 	u64 used;
@@ -251,10 +250,8 @@ again:
 
 		ticket = list_first_entry(head, struct reserve_ticket,
 					  list);
-		/* Check and see if our ticket can be satisified now. */
 		if ((used + ticket->bytes <= space_info->total_bytes) ||
-		    can_overcommit(fs_info->extent_root, space_info,
-				   ticket->bytes, flush)) {
+		    can_overcommit(fs_info, space_info, ticket->bytes, flush)) {
 			btrfs_space_info_update_bytes_may_use(fs_info,
 							      space_info,
 							      ticket->bytes);
@@ -262,7 +259,6 @@ again:
 			ticket->bytes = 0;
 			space_info->tickets_id++;
 			wake_up(&ticket->wait);
-
 		} else {
 			break;
 		}
@@ -381,10 +377,9 @@ static inline u64 calc_reclaim_items_nr(struct btrfs_fs_info *fs_info,
 /*
  * shrink metadata reservation for delalloc
  */
-static void shrink_delalloc(struct btrfs_root *root, u64 to_reclaim, u64 orig,
-			    bool wait_ordered)
+static void shrink_delalloc(struct btrfs_fs_info *fs_info, u64 to_reclaim,
+			    u64 orig, bool wait_ordered)
 {
-	struct btrfs_fs_info *fs_info = root->fs_info;
 	struct btrfs_space_info *space_info;
 	struct btrfs_trans_handle *trans;
 	u64 delalloc_bytes;
@@ -595,7 +590,7 @@ static int flush_space(struct btrfs_fs_info *fs_info,
 		break;
 	case FLUSH_DELALLOC:
 	case FLUSH_DELALLOC_WAIT:
-		shrink_delalloc(root, num_bytes * 2, num_bytes,
+		shrink_delalloc(fs_info, num_bytes * 2, num_bytes,
 				state == FLUSH_DELALLOC_WAIT);
 		break;
 	case FLUSH_DELAYED_REFS_NR:
@@ -650,7 +645,7 @@ static int flush_space(struct btrfs_fs_info *fs_info,
 }
 
 static inline u64
-btrfs_calc_reclaim_metadata_size(struct btrfs_root *root,
+btrfs_calc_reclaim_metadata_size(struct btrfs_fs_info *fs_info,
 				 struct btrfs_space_info *space_info)
 {
 	struct reserve_ticket *ticket;
@@ -666,14 +661,14 @@ btrfs_calc_reclaim_metadata_size(struct btrfs_root *root,
 		return to_reclaim;
 
 	to_reclaim = min_t(u64, num_online_cpus() * SZ_1M, SZ_16M);
-	if (can_overcommit(root, space_info, to_reclaim,
+	if (can_overcommit(fs_info, space_info, to_reclaim,
 			   BTRFS_RESERVE_FLUSH_ALL))
 		return 0;
 
 	used = space_info->bytes_used + space_info->bytes_reserved +
 	       space_info->bytes_pinned + space_info->bytes_readonly +
 	       space_info->bytes_may_use;
-	if (can_overcommit(root, space_info, SZ_1M, BTRFS_RESERVE_FLUSH_ALL))
+	if (can_overcommit(fs_info, space_info, SZ_1M, BTRFS_RESERVE_FLUSH_ALL))
 		expected = div_factor_fine(space_info->total_bytes, 95);
 	else
 		expected = div_factor_fine(space_info->total_bytes, 90);
@@ -687,17 +682,17 @@ btrfs_calc_reclaim_metadata_size(struct btrfs_root *root,
 	return to_reclaim;
 }
 
-static inline int need_do_async_reclaim(struct btrfs_space_info *space_info,
-					struct btrfs_root *root, u64 used)
+static inline int need_do_async_reclaim(struct btrfs_fs_info *fs_info,
+					struct btrfs_space_info *space_info,
+					u64 used)
 {
-	struct btrfs_fs_info *fs_info = root->fs_info;
 	u64 thresh = div_factor_fine(space_info->total_bytes, 98);
 
 	/* If we're just plain full then async reclaim just slows us down. */
 	if ((space_info->bytes_used + space_info->bytes_reserved) >= thresh)
 		return 0;
 
-	if (!btrfs_calc_reclaim_metadata_size(root, space_info))
+	if (!btrfs_calc_reclaim_metadata_size(fs_info, space_info))
 		return 0;
 
 	return (used >= thresh && !btrfs_fs_closing(fs_info) &&
@@ -819,8 +814,7 @@ static void btrfs_async_reclaim_metadata_space(struct work_struct *work)
 	space_info = btrfs_find_space_info(fs_info, BTRFS_BLOCK_GROUP_METADATA);
 
 	spin_lock(&space_info->lock);
-	to_reclaim = btrfs_calc_reclaim_metadata_size(fs_info->fs_root,
-						      space_info);
+	to_reclaim = btrfs_calc_reclaim_metadata_size(fs_info, space_info);
 	if (!to_reclaim) {
 		space_info->flush = 0;
 		spin_unlock(&space_info->lock);
@@ -841,7 +835,7 @@ static void btrfs_async_reclaim_metadata_space(struct work_struct *work)
 			spin_unlock(&space_info->lock);
 			return;
 		}
-		to_reclaim = btrfs_calc_reclaim_metadata_size(fs_info->fs_root,
+		to_reclaim = btrfs_calc_reclaim_metadata_size(fs_info,
 							      space_info);
 		ticket = list_first_entry(&space_info->tickets,
 					  struct reserve_ticket, list);
@@ -916,8 +910,7 @@ static void priority_reclaim_metadata_space(struct btrfs_fs_info *fs_info,
 	int flush_state;
 
 	spin_lock(&space_info->lock);
-	to_reclaim = btrfs_calc_reclaim_metadata_size(fs_info->extent_root,
-						      space_info);
+	to_reclaim = btrfs_calc_reclaim_metadata_size(fs_info, space_info);
 	if (!to_reclaim) {
 		spin_unlock(&space_info->lock);
 		return;
@@ -1063,12 +1056,11 @@ static inline bool is_normal_flushing(enum btrfs_reserve_flush_enum flush)
  * regain reservations will be made and this will fail if there is not enough
  * space already.
  */
-static int __reserve_metadata_bytes(struct btrfs_root *root,
+static int __reserve_metadata_bytes(struct btrfs_fs_info *fs_info,
 				    struct btrfs_space_info *space_info,
 				    u64 orig_bytes,
 				    enum btrfs_reserve_flush_enum flush)
 {
-	struct btrfs_fs_info *fs_info = root->fs_info;
 	struct reserve_ticket ticket;
 	u64 used;
 	int ret = 0;
@@ -1096,13 +1088,14 @@ static int __reserve_metadata_bytes(struct btrfs_root *root,
 	 * on.  If not see if we can overcommit, and if we can, hooray carry on.
 	 * If not things get more complicated.
 	 */
-	if (!pending_tickets &&
+	if (!pending_tickets  &&
 	    ((used + orig_bytes <= space_info->total_bytes) ||
-	     can_overcommit(root, space_info, orig_bytes, flush))) {
+	     can_overcommit(fs_info, space_info, orig_bytes, flush))) {
 		btrfs_space_info_update_bytes_may_use(fs_info, space_info,
 						      orig_bytes);
 		ret = 0;
 	}
+
 	/*
 	 * If we couldn't make a reservation then setup our reservation ticket
 	 * and kick the async worker if it's not already running.
@@ -1124,7 +1117,7 @@ static int __reserve_metadata_bytes(struct btrfs_root *root,
 							  orig_bytes, flush,
 							  "enospc");
 				queue_work(system_unbound_wq,
-					   &root->fs_info->async_reclaim_work);
+					   &fs_info->async_reclaim_work);
 			}
 		} else {
 			list_add_tail(&ticket.list,
@@ -1138,7 +1131,7 @@ static int __reserve_metadata_bytes(struct btrfs_root *root,
 		 * the async reclaim as we will panic.
 		 */
 		if (!test_bit(BTRFS_FS_LOG_RECOVERING, &fs_info->flags) &&
-		    need_do_async_reclaim(space_info, root, used) &&
+		    need_do_async_reclaim(fs_info, space_info, used) &&
 		    !work_busy(&fs_info->async_reclaim_work)) {
 			trace_btrfs_trigger_flush(fs_info, space_info->flags,
 						  orig_bytes, flush, "preempt");
@@ -1176,7 +1169,7 @@ int btrfs_reserve_metadata_bytes(struct btrfs_root *root,
 	struct btrfs_block_rsv *global_rsv = &fs_info->global_block_rsv;
 	int ret;
 
-	ret = __reserve_metadata_bytes(root, block_rsv->space_info, orig_bytes,
+	ret = __reserve_metadata_bytes(fs_info, block_rsv->space_info, orig_bytes,
 				       flush);
 	if (ret == -ENOSPC &&
 	    unlikely(root->orphan_cleanup_state == ORPHAN_CLEANUP_STARTED)) {
