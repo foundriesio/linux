@@ -1739,6 +1739,8 @@ void migrate_disable(void)
 		return;
 	}
 
+	trace_sched_migrate_disable_tp(p);
+
 	preempt_disable();
 	this_rq()->nr_pinned++;
 	p->migration_disabled = 1;
@@ -1771,6 +1773,8 @@ void migrate_enable(void)
 	p->migration_disabled = 0;
 	this_rq()->nr_pinned--;
 	preempt_enable();
+
+	trace_sched_migrate_enable_tp(p);
 }
 EXPORT_SYMBOL_GPL(migrate_enable);
 
