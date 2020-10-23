@@ -382,9 +382,11 @@ static int lcd_atomic_check(struct tcc_drm_crtc *crtc,
 	u32 clkdiv;
 
 	ddi_config = VIOC_DDICONFIG_GetAddress();
+	#if !defined(CONFIG_ARCH_TCC897X)
 	if(VIOC_DDICONFIG_GetPeriClock(ddi_config, get_vioc_index(ctx->hw_data.display_device.blk_num))) {
 		pixel_clock_from_hdmi = 1;
 	}
+	#endif
 
 	if (mode->clock == 0) {
 		dev_warn(ctx->dev, "[WARN][%s] %s line(%d) Mode has zero clock value.\n",

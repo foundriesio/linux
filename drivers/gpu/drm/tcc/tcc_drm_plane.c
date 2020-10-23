@@ -118,6 +118,65 @@ static void tcc_plane_mode_set(struct tcc_drm_plane_state *tcc_state)
 	//		tcc_state->crtc.w, tcc_state->crtc.h);
 }
 
+static void tcc_plane_mode_set_dump(struct tcc_drm_plane_state *tcc_state)
+{
+	struct drm_plane_state *state = &tcc_state->base;
+
+	int crtc_x, crtc_y;
+	unsigned int crtc_w, crtc_h;
+	unsigned int src_x, src_y, src_w, src_h;
+
+	/*
+	 * The original src/dest coordinates are stored in tcc_state->base,
+	 * but we want to keep another copy internal to our driver that we can
+	 * clip/modify ourselves.
+	 */
+	crtc_x = state->crtc_x;
+	crtc_y = state->crtc_y;
+	crtc_w = state->crtc_w;
+	crtc_h = state->crtc_h;
+
+	/* Source parameters given in 16.16 fixed point, ignore fractional. */
+	src_x = state->src_x >> 16;
+	src_y = state->src_y >> 16;
+	src_w = state->src_w >> 16;
+	src_h = state->src_h >> 16;
+
+	pr_info("Before: src: %d, %d, %dx%d dst: %d, %d, %dx%d\r\n",
+			src_x, src_y, src_w, src_h,
+			crtc_x, crtc_y, crtc_w, crtc_h);
+
+	if (crtc_x < 0) {
+		src_x += -crtc_x;
+		crtc_w += crtc_x;
+		crtc_x = 0;
+	}
+
+	if (crtc_y < 0) {
+		src_y += -crtc_y;
+		crtc_h += crtc_y;
+		crtc_y = 0;
+	}
+
+	/* set drm framebuffer data. */
+	tcc_state->src.x = src_x;
+	tcc_state->src.y = src_y;
+	tcc_state->src.w = src_w;
+	tcc_state->src.h = src_h;
+
+	/* set plane range to be displayed. */
+	tcc_state->crtc.x = crtc_x;
+	tcc_state->crtc.y = crtc_y;
+	tcc_state->crtc.w = crtc_w;
+	tcc_state->crtc.h = crtc_h;
+
+	pr_info("Fixed: src: %d, %d, %dx%d dst: %d, %d, %dx%d\r\n",
+			tcc_state->src.x, tcc_state->src.y,
+			tcc_state->src.w, tcc_state->src.h,
+			tcc_state->crtc.x, tcc_state->crtc.y,
+			tcc_state->crtc.w, tcc_state->crtc.h);
+}
+
 static void tcc_drm_plane_reset(struct drm_plane *plane)
 {
 	struct tcc_drm_plane_state *tcc_state;
@@ -260,6 +319,7 @@ static int tcc_plane_atomic_check(struct drm_plane *plane,
 		goto err_null;
 	}
 	/* translate state into tcc_state */
+	//tcc_plane_mode_set_dump(tcc_state);
 	tcc_plane_mode_set(tcc_state);
 
 	return 0;
