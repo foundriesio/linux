@@ -736,10 +736,8 @@ static void stm32_usart_stop_tx(struct uart_port *port)
 
 	stm32_usart_tx_interrupt_disable(port);
 	if (stm32_usart_tx_dma_started(stm32_port) &&
-	    stm32_usart_tx_dma_enabled(stm32_port)) {
-		dmaengine_terminate_async(stm32_port->tx_ch);
+	    stm32_usart_tx_dma_enabled(stm32_port))
 		stm32_usart_clr_bits(port, ofs->cr3, USART_CR3_DMAT);
-	}
 }
 
 /* There are probably characters waiting to be transmitted. */
@@ -921,6 +919,12 @@ static void stm32_usart_shutdown(struct uart_port *port)
 	struct stm32_usart_config *cfg = &stm32_port->info->cfg;
 	u32 val, isr;
 	int ret;
+
+	if (stm32_usart_tx_dma_enabled(stm32_port))
+		stm32_usart_clr_bits(port, ofs->cr3, USART_CR3_DMAT);
+
+	if (stm32_usart_tx_dma_started(stm32_port))
+		dmaengine_terminate_async(stm32_port->tx_ch);
 
 	/* Disable modem control interrupts */
 	stm32_usart_disable_ms(port);
