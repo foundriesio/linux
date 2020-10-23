@@ -1,5 +1,5 @@
 From: Valentin Schneider <valentin.schneider@arm.com>
-Date: Tue, 13 Oct 2020 15:01:15 +0100
+Date: Fri, 23 Oct 2020 12:12:16 +0200
 Subject: [PATCH 18/19] sched: Deny self-issued __set_cpus_allowed_ptr() when
  migrate_disable()
 
@@ -17,7 +17,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/kernel/sched/core.c
 +++ b/kernel/sched/core.c
-@@ -2187,8 +2187,17 @@ static int __set_cpus_allowed_ptr(struct
+@@ -2244,8 +2244,17 @@ static int __set_cpus_allowed_ptr(struct
  		goto out;
  	}
  

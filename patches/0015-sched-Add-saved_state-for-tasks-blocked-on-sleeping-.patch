@@ -37,7 +37,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  #ifdef CONFIG_SMP
 --- a/kernel/sched/core.c
 +++ b/kernel/sched/core.c
-@@ -3221,7 +3221,7 @@ try_to_wake_up(struct task_struct *p, un
+@@ -3278,7 +3278,7 @@ try_to_wake_up(struct task_struct *p, un
  	int cpu, success = 0;
  
  	preempt_disable();
@@ -46,7 +46,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  		/*
  		 * We're waking current, this means 'p->on_rq' and 'task_cpu(p)
  		 * == smp_processor_id()'. Together this means we can special
-@@ -3251,8 +3251,26 @@ try_to_wake_up(struct task_struct *p, un
+@@ -3308,8 +3308,26 @@ try_to_wake_up(struct task_struct *p, un
  	 */
  	raw_spin_lock_irqsave(&p->pi_lock, flags);
  	smp_mb__after_spinlock();
@@ -74,7 +74,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  
  	trace_sched_waking(p);
  
-@@ -3442,6 +3460,18 @@ int wake_up_process(struct task_struct *
+@@ -3499,6 +3517,18 @@ int wake_up_process(struct task_struct *
  }
  EXPORT_SYMBOL(wake_up_process);
  

@@ -1,5 +1,5 @@
 From: Peter Zijlstra <peterz@infradead.org>
-Date: Fri, 25 Sep 2020 15:45:11 +0200
+Date: Fri, 23 Oct 2020 12:12:03 +0200
 Subject: [PATCH 05/19] workqueue: Manually break affinity on hotplug
 
 Don't rely on the scheduler to force break affinity for us -- it will

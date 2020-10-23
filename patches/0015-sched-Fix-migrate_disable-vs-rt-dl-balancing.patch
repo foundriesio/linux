@@ -1,5 +1,5 @@
 From: Peter Zijlstra <peterz@infradead.org>
-Date: Mon, 28 Sep 2020 17:06:07 +0200
+Date: Fri, 23 Oct 2020 12:12:13 +0200
 Subject: [PATCH 15/19] sched: Fix migrate_disable() vs rt/dl balancing
 
 In order to minimize the interference of migrate_disable() on lower
@@ -107,7 +107,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  static inline bool rq_has_pinned_tasks(struct rq *rq)
  {
  	return rq->nr_pinned;
-@@ -1917,6 +1912,49 @@ static int migration_cpu_stop(void *data
+@@ -1976,6 +1971,49 @@ static int migration_cpu_stop(void *data
  	return 0;
  }
  
@@ -157,7 +157,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  /*
   * sched_class::set_cpus_allowed must do the below, but is not required to
   * actually call this function.
-@@ -2004,6 +2042,14 @@ static int affine_move_task(struct rq *r
+@@ -2056,6 +2094,14 @@ static int affine_move_task(struct rq *r
  
  	/* Can the task run on the task's current CPU? If so, we're done */
  	if (cpumask_test_cpu(task_cpu(p), &p->cpus_mask)) {
@@ -172,7 +172,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  		pending = p->migration_pending;
  		if (pending) {
  			refcount_inc(&pending->refs);
-@@ -2012,6 +2058,11 @@ static int affine_move_task(struct rq *r
+@@ -2064,6 +2110,11 @@ static int affine_move_task(struct rq *r
  		}
  		task_rq_unlock(rq, p, rf);
  
@@ -184,15 +184,15 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  		if (complete)
  			goto do_complete;
  
-@@ -2049,6 +2100,7 @@ static int affine_move_task(struct rq *r
- 
+@@ -2100,6 +2151,7 @@ static int affine_move_task(struct rq *r
  	if (flags & SCA_MIGRATE_ENABLE) {
  
+ 		refcount_inc(&pending->refs); /* pending->{arg,stop_work} */
 +		p->migration_flags &= ~MDF_PUSH;
  		task_rq_unlock(rq, p, rf);
- 		pending->arg = arg;
- 		stop_one_cpu_nowait(cpu_of(rq), migration_cpu_stop,
-@@ -2661,11 +2713,6 @@ static inline int __set_cpus_allowed_ptr
+ 
+ 		pending->arg = (struct migration_arg) {
+@@ -2718,11 +2770,6 @@ static inline int __set_cpus_allowed_ptr
  
  static inline void migrate_disable_switch(struct rq *rq, struct task_struct *p) { }
  

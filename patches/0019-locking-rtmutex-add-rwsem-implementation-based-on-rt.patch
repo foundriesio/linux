@@ -43,8 +43,8 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 ---
  include/linux/rwsem-rt.h  |   69 ++++++++++
- kernel/locking/rwsem-rt.c |  292 ++++++++++++++++++++++++++++++++++++++++++++++
- 2 files changed, 361 insertions(+)
+ kernel/locking/rwsem-rt.c |  307 ++++++++++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 376 insertions(+)
  create mode 100644 include/linux/rwsem-rt.h
  create mode 100644 kernel/locking/rwsem-rt.c
 
@@ -122,12 +122,13 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 +#endif
 --- /dev/null
 +++ b/kernel/locking/rwsem-rt.c
-@@ -0,0 +1,292 @@
+@@ -0,0 +1,307 @@
 +// SPDX-License-Identifier: GPL-2.0-only
 +#include <linux/rwsem.h>
 +#include <linux/sched/debug.h>
 +#include <linux/sched/signal.h>
 +#include <linux/export.h>
++#include <linux/blkdev.h>
 +
 +#include "rtmutex_common.h"
 +
@@ -211,6 +212,13 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 +
 +	if (__down_read_trylock(sem))
 +		return 0;
++
++	/*
++	 * Flush blk before ->pi_blocked_on is set. At schedule() time it is too
++	 * late if one of the callbacks needs to acquire a sleeping lock.
++	 */
++	if (blk_needs_flush_plug(current))
++		blk_schedule_flush_plug(current);
 +
 +	might_sleep();
 +	raw_spin_lock_irq(&m->wait_lock);
@@ -333,6 +341,13 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 +{
 +	struct rt_mutex *m = &sem->rtmutex;
 +	unsigned long flags;
++
++	/*
++	 * Flush blk before ->pi_blocked_on is set. At schedule() time it is too
++	 * late if one of the callbacks needs to acquire a sleeping lock.
++	 */
++	if (blk_needs_flush_plug(current))
++		blk_schedule_flush_plug(current);
 +
 +	/* Take the rtmutex as a first step */
 +	if (__rt_mutex_lock_state(m, state))

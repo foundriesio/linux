@@ -15,7 +15,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/kernel/locking/rtmutex.c
 +++ b/kernel/locking/rtmutex.c
-@@ -1899,7 +1899,11 @@ EXPORT_SYMBOL_GPL(rt_mutex_lock_killable
+@@ -1884,7 +1884,11 @@ int __sched __rt_mutex_futex_trylock(str
  
  int __sched __rt_mutex_trylock(struct rt_mutex *lock)
  {

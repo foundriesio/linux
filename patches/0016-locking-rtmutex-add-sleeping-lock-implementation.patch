@@ -936,7 +936,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  }
  
  int __sched __rt_mutex_lock_state(struct rt_mutex *lock, int state)
-@@ -1612,16 +1941,13 @@ void __sched __rt_mutex_unlock(struct rt
+@@ -1597,16 +1926,13 @@ void __sched __rt_mutex_unlock(struct rt
  void __sched rt_mutex_unlock(struct rt_mutex *lock)
  {
  	mutex_release(&lock->dep_map, _RET_IP_);
@@ -957,7 +957,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  {
  	lockdep_assert_held(&lock->wait_lock);
  
-@@ -1638,23 +1964,35 @@ bool __sched __rt_mutex_futex_unlock(str
+@@ -1623,23 +1949,35 @@ bool __sched __rt_mutex_futex_unlock(str
  	 * avoid inversion prior to the wakeup.  preempt_disable()
  	 * therein pairs with rt_mutex_postunlock().
  	 */
@@ -996,7 +996,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  }
  
  /**
-@@ -1690,7 +2028,7 @@ void __rt_mutex_init(struct rt_mutex *lo
+@@ -1675,7 +2013,7 @@ void __rt_mutex_init(struct rt_mutex *lo
  	if (name && key)
  		debug_rt_mutex_init(lock, name, key);
  }
@@ -1005,7 +1005,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  /**
   * rt_mutex_init_proxy_locked - initialize and lock a rt_mutex on behalf of a
-@@ -1710,6 +2048,14 @@ void rt_mutex_init_proxy_locked(struct r
+@@ -1695,6 +2033,14 @@ void rt_mutex_init_proxy_locked(struct r
  				struct task_struct *proxy_owner)
  {
  	__rt_mutex_init(lock, NULL, NULL);
@@ -1020,7 +1020,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	debug_rt_mutex_proxy_lock(lock, proxy_owner);
  	rt_mutex_set_owner(lock, proxy_owner);
  }
-@@ -1733,6 +2079,26 @@ void rt_mutex_proxy_unlock(struct rt_mut
+@@ -1718,6 +2064,26 @@ void rt_mutex_proxy_unlock(struct rt_mut
  	rt_mutex_set_owner(lock, NULL);
  }
  
@@ -1047,7 +1047,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  /**
   * __rt_mutex_start_proxy_lock() - Start lock acquisition for another task
   * @lock:		the rt_mutex to take
-@@ -1805,6 +2171,9 @@ int __rt_mutex_start_proxy_lock(struct r
+@@ -1790,6 +2156,9 @@ int __rt_mutex_start_proxy_lock(struct r
  		ret = 0;
  	}
  
@@ -1057,7 +1057,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	return ret;
  }
  
-@@ -1894,6 +2263,9 @@ int rt_mutex_wait_proxy_lock(struct rt_m
+@@ -1879,6 +2248,9 @@ int rt_mutex_wait_proxy_lock(struct rt_m
  	 * have to fix that up.
  	 */
  	fixup_rt_mutex_waiters(lock);

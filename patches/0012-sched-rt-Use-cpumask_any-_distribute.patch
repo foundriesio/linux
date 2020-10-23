@@ -1,5 +1,5 @@
 From: Peter Zijlstra <peterz@infradead.org>
-Date: Thu, 1 Oct 2020 15:54:14 +0200
+Date: Fri, 23 Oct 2020 12:12:10 +0200
 Subject: [PATCH 12/19] sched,rt: Use cpumask_any*_distribute()
 
 Replace a bunch of cpumask_any*() instances with

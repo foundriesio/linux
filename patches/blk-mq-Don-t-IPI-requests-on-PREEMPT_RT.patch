@@ -1,0 +1,37 @@
+From: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
+Date: Fri, 23 Oct 2020 12:21:51 +0200
+Subject: [PATCH] blk-mq: Don't IPI requests on PREEMPT_RT
+
+blk_mq_complete_request_remote() will dispatch request completion to
+another CPU via IPI if the CPU belongs to a different cache domain.
+
+This breaks on PREEMPT_RT because the IPI function will complete the
+request in IRQ context which includes acquiring spinlock_t typed locks.
+Completing the IPI request in softirq on the remote CPU is probably less
+efficient because it would require to wake ksoftirqd for this task
+(which runs at SCHED_OTHER).
+
+Ignoring the IPI request and completing the request locally is probably
+the best option. It be completed either in the IRQ-thread or at the end
+of the routine in softirq context.
+
+Let blk_mq_complete_need_ipi() return that there is no need for IPI on
+PREEMPT_RT.
+
+Reported-by: David Runge <dave@sleepmap.de>
+Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
+---
+ block/blk-mq.c |    2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+--- a/block/blk-mq.c
++++ b/block/blk-mq.c
+@@ -645,7 +645,7 @@ static inline bool blk_mq_complete_need_
+ {
+ 	int cpu = raw_smp_processor_id();
+ 
+-	if (!IS_ENABLED(CONFIG_SMP) ||
++	if (!IS_ENABLED(CONFIG_SMP) || IS_ENABLED(CONFIG_PREEMPT_RT) ||
+ 	    !test_bit(QUEUE_FLAG_SAME_COMP, &rq->q->queue_flags))
+ 		return false;
+ 

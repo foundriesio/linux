@@ -8,9 +8,9 @@ Required for lock implementation ontop of rtmutex.
 Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 ---
- kernel/locking/rtmutex.c        |   58 ++++++++++++++++++++++++++--------------
+ kernel/locking/rtmutex.c        |   54 ++++++++++++++++++++++++++++------------
  kernel/locking/rtmutex_common.h |    3 ++
- 2 files changed, 42 insertions(+), 19 deletions(-)
+ 2 files changed, 41 insertions(+), 16 deletions(-)
 
 --- a/kernel/locking/rtmutex.c
 +++ b/kernel/locking/rtmutex.c
@@ -68,16 +68,9 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  }
  EXPORT_SYMBOL_GPL(rt_mutex_lock_interruptible);
  
-@@ -1552,12 +1564,18 @@ int __sched __rt_mutex_futex_trylock(str
-  */
- int __sched rt_mutex_lock_killable(struct rt_mutex *lock)
- {
--	might_sleep();
--
--	return rt_mutex_fastlock(lock, TASK_KILLABLE, rt_mutex_slowlock);
-+	return rt_mutex_lock_state(lock, 0, TASK_KILLABLE);
+@@ -1541,6 +1553,14 @@ int __sched __rt_mutex_futex_trylock(str
+ 	return __rt_mutex_slowtrylock(lock);
  }
- EXPORT_SYMBOL_GPL(rt_mutex_lock_killable);
  
 +int __sched __rt_mutex_trylock(struct rt_mutex *lock)
 +{
@@ -90,7 +83,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  /**
   * rt_mutex_trylock - try to lock a rt_mutex
   *
-@@ -1573,10 +1591,7 @@ int __sched rt_mutex_trylock(struct rt_m
+@@ -1556,10 +1576,7 @@ int __sched rt_mutex_trylock(struct rt_m
  {
  	int ret;
  
@@ -102,7 +95,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	if (ret)
  		mutex_acquire(&lock->dep_map, 0, 1, _RET_IP_);
  
-@@ -1584,6 +1599,11 @@ int __sched rt_mutex_trylock(struct rt_m
+@@ -1567,6 +1584,11 @@ int __sched rt_mutex_trylock(struct rt_m
  }
  EXPORT_SYMBOL_GPL(rt_mutex_trylock);
  

@@ -1,5 +1,5 @@
 From: Thomas Gleixner <tglx@linutronix.de>
-Date: Wed, 26 Aug 2020 14:08:10 +0200
+Date: Fri, 23 Oct 2020 12:12:09 +0200
 Subject: [PATCH 11/19] sched/core: Make migrate disable and CPU hotplug
  cooperative
 
@@ -59,7 +59,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  #endif
  
  /*
-@@ -2638,6 +2651,11 @@ static inline bool is_migration_disabled
+@@ -2695,6 +2708,11 @@ static inline bool is_migration_disabled
  	return false;
  }
  
@@ -71,7 +71,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  #endif
  
  static void
-@@ -7006,15 +7024,20 @@ static void balance_push(struct rq *rq)
+@@ -7064,15 +7082,20 @@ static void balance_push(struct rq *rq)
  	 * Both the cpu-hotplug and stop task are in this case and are
  	 * required to complete the hotplug process.
  	 */
@@ -94,7 +94,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  			raw_spin_unlock(&rq->lock);
  			rcuwait_wake_up(&rq->hotplug_wait);
  			raw_spin_lock(&rq->lock);
-@@ -7061,7 +7084,8 @@ static void balance_hotplug_wait(void)
+@@ -7119,7 +7142,8 @@ static void balance_hotplug_wait(void)
  {
  	struct rq *rq = this_rq();
  
@@ -104,7 +104,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  			   TASK_UNINTERRUPTIBLE);
  }
  
-@@ -7306,7 +7330,7 @@ int sched_cpu_dying(unsigned int cpu)
+@@ -7364,7 +7388,7 @@ int sched_cpu_dying(unsigned int cpu)
  	sched_tick_stop(cpu);
  
  	rq_lock_irqsave(rq, &rf);

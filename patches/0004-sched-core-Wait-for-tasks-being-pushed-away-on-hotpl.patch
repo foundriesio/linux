@@ -1,5 +1,5 @@
 From: Thomas Gleixner <tglx@linutronix.de>
-Date: Mon, 14 Sep 2020 14:47:28 +0200
+Date: Fri, 23 Oct 2020 12:12:02 +0200
 Subject: [PATCH 04/19] sched/core: Wait for tasks being pushed away on hotplug
 
 RT kernels need to ensure that all tasks which are not per CPU kthreads

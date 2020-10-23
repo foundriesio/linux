@@ -42,8 +42,8 @@
 # https://lkml.kernel.org/r/20200828100022.1099682-2-npiggin@gmail.com
 mm-fix-exec-activate_mm-vs-TLB-shootdown-and-lazy-tl.patch
 
-# 2020-10-15 13:05 Peter Zijlstra [PATCH v3 00/19] sched: Migrate disable support
-# 20201015110532.738127234@infradead.org
+# 2020-10-23 12:11 Peter Zijlstra [PATCH v4 00/19] sched: Migrate disable support
+# 20201023101158.088940906@infradead.org
 0001-stop_machine-Add-function-and-caller-debug-info.patch
 0002-sched-Fix-balance_callback.patch
 0003-sched-hotplug-Ensure-only-per-cpu-kthreads-run-durin.patch
@@ -79,6 +79,9 @@ io_wq-Make-io_wqe-lock-a-raw_spinlock_t.patch
 # 20200915074816.52zphpywj4zidspk@linutronix.de
 bus-mhi-Remove-include-of-rwlock_types.h.patch
 
+# 20201023110400.bx3uzsb7xy5jtsea@linutronix.de
+blk-mq-Don-t-IPI-requests-on-PREEMPT_RT.patch
+
 ############################################################
 # Ready for posting
 ############################################################
@@ -98,7 +101,6 @@ bus-mhi-Remove-include-of-rwlock_types.h.patch
 0012-printk-move-console-printing-to-kthreads.patch
 0013-printk-remove-deferred-printing.patch
 0014-printk-add-console-handover.patch
-0015-printk-add-pr_flush.patch
 printk-Tiny-cleanup.patch
 
 ############################################################
@@ -144,7 +146,6 @@ tasklets-Use-static-line-for-functions.patch
 0004-locking-rtmutex-Remove-rt_mutex_timed_lock.patch
 0005-locking-rtmutex-Handle-the-various-new-futex-race-co.patch
 0006-futex-Fix-bug-on-when-a-requeued-RT-task-times-out.patch
-0007-locking-rtmutex-Add-rtmutex_lock_killable.patch
 0008-locking-rtmutex-Make-lock_killable-work.patch
 0009-locking-spinlock-Split-the-lock-types-header.patch
 0010-locking-rtmutex-Avoid-include-hell.patch
@@ -199,6 +200,8 @@ seqlock-Fix-multiple-kernel-doc-warnings.patch
 0011-seqlock-seqcount_t-Implement-all-read-APIs-as-statem.patch
 0012-seqlock-seqcount_LOCKNAME_t-Introduce-PREEMPT_RT-sup.patch
 0013-seqlock-PREEMPT_RT-Do-not-starve-seqlock_t-writers.patch
+# 267580db047ef428a70bef8287ca62c5a450c139
+seqlock-Unbreak-lockdep.patch
 ##
 0024-xfrm-Use-sequence-counter-with-associated-spinlock.patch
 u64_stats-Disable-preemption-on-32bit-UP-SMP-with-RT.patch

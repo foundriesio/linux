@@ -125,7 +125,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  {
  	return vprintk_emit(0, LOGLEVEL_DEFAULT, NULL, fmt, args);
  }
-@@ -3369,7 +3345,7 @@ EXPORT_SYMBOL_GPL(kmsg_dump_get_line);
+@@ -3303,7 +3279,7 @@ EXPORT_SYMBOL_GPL(kmsg_dump_get_line);
   * @syslog: include the "<4>" prefixes
   * @buf: buffer to copy the line to
   * @size: maximum size of the buffer
@@ -134,7 +134,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
   *
   * Start at the end of the kmsg buffer and fill the provided buffer
   * with as many of the the *youngest* kmsg records that fit into it.
-@@ -3536,7 +3512,7 @@ static bool __prb_trylock(struct prb_cpu
+@@ -3470,7 +3446,7 @@ static bool __prb_trylock(struct prb_cpu
   *
   * It is safe to call this function from any context and state.
   */
@@ -143,7 +143,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  {
  	for (;;) {
  		if (__prb_trylock(cpu_lock, cpu_store))
-@@ -3554,7 +3530,7 @@ void prb_lock(struct prb_cpulock *cpu_lo
+@@ -3488,7 +3464,7 @@ void prb_lock(struct prb_cpulock *cpu_lo
   *
   * It is safe to call this function from any context and state.
   */

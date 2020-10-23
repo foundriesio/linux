@@ -303,7 +303,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  }
  
  /**
-@@ -2261,7 +2407,7 @@ int rt_mutex_wait_proxy_lock(struct rt_m
+@@ -2246,7 +2392,7 @@ int rt_mutex_wait_proxy_lock(struct rt_m
  	raw_spin_lock_irq(&lock->wait_lock);
  	/* sleep on the mutex */
  	set_current_state(TASK_INTERRUPTIBLE);
@@ -312,7 +312,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	/*
  	 * try_to_take_rt_mutex() sets the waiter bit unconditionally. We might
  	 * have to fix that up.
-@@ -2331,3 +2477,97 @@ bool rt_mutex_cleanup_proxy_lock(struct
+@@ -2316,3 +2462,97 @@ bool rt_mutex_cleanup_proxy_lock(struct
  
  	return cleanup;
  }
@@ -430,7 +430,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  					  struct rt_mutex_waiter *waiter,
 --- a/kernel/locking/rwsem-rt.c
 +++ b/kernel/locking/rwsem-rt.c
-@@ -130,7 +130,7 @@ static int __sched __down_read_common(st
+@@ -138,7 +138,7 @@ static int __sched __down_read_common(st
  	 */
  	rt_mutex_init_waiter(&waiter, false);
  	ret = rt_mutex_slowlock_locked(m, state, NULL, RT_MUTEX_MIN_CHAINWALK,
