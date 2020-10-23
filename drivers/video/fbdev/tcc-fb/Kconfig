@@ -9,19 +9,19 @@ config FB_TCC
 	select FB_CFB_COPYAREA
 	select FB_CFB_IMAGEBLIT
 	help
-	  Framebuffer driver for Telechips TCC series.
+	  Framebuffer driver for Telechips TCC SoC.
 	  If unsure, say N.
 
 config FB_VIOC
-	bool "Telechips VIOC Frame buffer support"
+	bool "TVFB - Telechips VIOC Frame buffer support"
 	depends on FB_TCC && ARCH_TCC
 	default y
 	select FB_CFB_FILLRECT
 	select FB_CFB_COPYAREA
 	select FB_CFB_IMAGEBLIT
 	help
-	  Framebuffer driver for Telechips VIOC series.
-	  If unsure, say N.
+		This is default Frame buffer driver for Telechips Soc.
+		It provides additional functions besides ui control function.
 
 config VIOC_CORERESET_SUPPORT
 	bool "Telechips VIOC core reset senario support"
@@ -55,14 +55,17 @@ config BUILTIN_2ND_DISPLAY_ON_1ST_DISPLAY
 		NOTE: This should only be used in certain demos.
 
 config FB_NEW
-	bool "Telechips New Frame buffer support"
+	bool "TSVFB - Telechips Simple VIOC Frame buffer support"
 	depends on FB && ARCH_TCC
 	select FB_CFB_FILLRECT
 	select FB_CFB_COPYAREA
 	select FB_CFB_IMAGEBLIT
 	default n
 	help
-		Choose this option if you want to use new fb driver.
+		This is Simple Frame buffer driver for Telechips Soc.
+		It is complex and difficult to use TVFB because additional functions other
+		than UI control function are provided. Therefore, in this frame buffer driver,
+		unnecessary functions other than the UI control function are removed.
 
 config FB_NEW_FB0
 	bool "TCC805X New Frame buffer Subcore linux fb0 device"
