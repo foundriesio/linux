@@ -54,18 +54,6 @@
 		reset-gpios = <&gpsd1 8 GPIO_ACTIVE_LOW>;
 	};
 
-	sdhc@16450000 {
-		broken-cd;
-		cd-inverted;
-		keep-power-in-suspend;
-
-		wp-gpios = <&gpsd1 7 0>;
-		cd-gpios = <&gpsd1 6 0>;
-
-		mmc-pwrseq = <&sdhc1_pwrseq>;
-//		vqmmc-supply = <&vdd_ldo3>;
-	};
-
 	/* SDIO */
 	vqmmc_sdio: vqmmc_sdio {
 		compatible = "regulator-fixed";
@@ -75,7 +63,7 @@
 		regulator-always-on;
 	};
 
-	sdhc@16460000 {
+	sdhc@16450000 {
 		//non-removable;
 		keep-power-in-suspend;
 		cap-sdio-irq;
@@ -91,6 +79,17 @@
 			//wifi_pwr_1p8v-gpio = <&gpsd1 6 0>;
 			//wifi_pwr_3p3v-gpio = <&gpsd1 7 0>;
 		};
+	};
+	sdhc@16460000 {
+		broken-cd;
+		cd-inverted;
+		keep-power-in-suspend;
+
+		wp-gpios = <&gpsd1 7 0>;
+		cd-gpios = <&gpsd1 6 0>;
+
+		mmc-pwrseq = <&sdhc1_pwrseq>;
+		vqmmc-supply = <&DA9062_LDO4>;
 	};
 
 	timer@14300000 {
