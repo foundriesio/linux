@@ -95,7 +95,7 @@ const struct reg_sequence isl79988_reg_defaults[] = {
 	{0x13, 0x1B, 0},	//
 	{0x33, 0x40, 0},	//
 	{0x34, 0x18, 0},	// PLL normal
-	{0x00, 0x02, 700},	// Decoder on
+	{0x00, 0x02, 0},	// Decoder on
 };
 
 static const struct regmap_config isl79988_regmap = {
@@ -117,16 +117,17 @@ struct v4l2_dv_timings isl79988_dv_timings = {
 };
 
 static u32 isl79988_codes[] = {
-	MEDIA_BUS_FMT_UYVY8_2X8
+	MEDIA_BUS_FMT_UYVY8_2X8,
 };
 
 struct v4l2_mbus_config isl79988_mbus_config = {
 	.type = V4L2_MBUS_BT656,
-	.flags = V4L2_MBUS_DATA_ACTIVE_LOW |
-	V4L2_MBUS_PCLK_SAMPLE_FALLING |
-	V4L2_MBUS_VSYNC_ACTIVE_LOW |
-	V4L2_MBUS_HSYNC_ACTIVE_LOW |
-	V4L2_MBUS_MASTER
+	.flags = \
+		V4L2_MBUS_DATA_ACTIVE_LOW | \
+		V4L2_MBUS_PCLK_SAMPLE_FALLING | \
+		V4L2_MBUS_VSYNC_ACTIVE_LOW | \
+		V4L2_MBUS_HSYNC_ACTIVE_LOW | \
+		V4L2_MBUS_MASTER,
 };
 
 /*
@@ -264,6 +265,7 @@ static int isl79988_s_stream(struct v4l2_subdev *sd, int enable) {
 		ret = -EINVAL;
 	} else {
 		ret = regmap_multi_reg_write(dev->regmap, isl79988_reg_defaults, ARRAY_SIZE(isl79988_reg_defaults));
+		msleep(600);
 	}
 
 	return ret;
@@ -321,22 +323,22 @@ static const struct v4l2_subdev_core_ops isl79988_v4l2_subdev_core_ops = {
 };
 
 static const struct v4l2_subdev_video_ops isl79988_v4l2_subdev_video_ops = {
-	.g_input_status		= isl79988_g_input_status,
+	.g_input_status	= isl79988_g_input_status,
 	.s_stream		= isl79988_s_stream,
-	.g_dv_timings		= isl79988_g_dv_timings,
-	.g_mbus_config          = isl79988_g_mbus_config
+	.g_dv_timings	= isl79988_g_dv_timings,
+	.g_mbus_config	= isl79988_g_mbus_config
 };
 
 static const struct v4l2_subdev_pad_ops isl79988_v4l2_subdev_pad_ops = {
 	.enum_mbus_code = isl79988_enum_mbus_code,
-	.get_fmt = isl79988_get_fmt,
-	.set_fmt = isl79988_set_fmt,
+	.get_fmt		= isl79988_get_fmt,
+	.set_fmt		= isl79988_set_fmt,
 };
 
 static const struct v4l2_subdev_ops isl79988_ops = {
-	.core			= &isl79988_v4l2_subdev_core_ops,
-	.video			= &isl79988_v4l2_subdev_video_ops,
-	.pad                    = &isl79988_v4l2_subdev_pad_ops,
+	.core		= &isl79988_v4l2_subdev_core_ops,
+	.video		= &isl79988_v4l2_subdev_video_ops,
+	.pad		= &isl79988_v4l2_subdev_pad_ops,
 };
 
 struct isl79988 isl79988_data = {
@@ -360,8 +362,8 @@ MODULE_DEVICE_TABLE(of, isl79988_of_match);
 #endif
 
 int isl79988_probe(struct i2c_client *client, const struct i2c_device_id *id) {
-	const struct of_device_id *dev_id = NULL;
 	struct isl79988		*dev	= NULL;
+	const struct of_device_id *dev_id = NULL;
 	int			ret	= 0;
 
 	// allocate and clear memory for a device
@@ -404,14 +406,14 @@ int isl79988_probe(struct i2c_client *client, const struct i2c_device_id *id) {
 	if (ret) {
 		loge("Failed to register subdevice\n");
 	} else {
-		loge("%s is registered as a v4l2 sub device.\n", dev->sd.name);
+		logi("%s is registered as a v4l2 sub device.\n", dev->sd.name);
 	}
 
 	// request gpio
 	isl79988_request_gpio(dev);
 
 	// init regmap
-        dev->regmap = devm_regmap_init_i2c(client, &isl79988_regmap);
+	dev->regmap = devm_regmap_init_i2c(client, &isl79988_regmap);
 	if(IS_ERR(dev->regmap)) {
 		loge("devm_regmap_init_i2c is wrong\n");
 		ret = -1;
@@ -429,11 +431,11 @@ goto_end:
 }
 
 int isl79988_remove(struct i2c_client *client) {
-	struct v4l2_subdev	*sd	= i2c_get_clientdata(client);
+	struct v4l2_subdev	*sd		= i2c_get_clientdata(client);
 	struct isl79988		*dev	= to_state(sd);
 
 	// release regmap
-        regmap_exit(dev->regmap);
+	regmap_exit(dev->regmap);
 
 	// gree gpio
 	isl79988_free_gpio(dev);
@@ -452,7 +454,7 @@ static struct i2c_driver isl79988_driver = {
 	.probe		= isl79988_probe,
 	.remove		= isl79988_remove,
 	.driver		= {
-		.name		= "isl79988",
+		.name			= "isl79988",
 		.of_match_table	= of_match_ptr(isl79988_of_match),
 	},
 	.id_table	= isl79988_id,

@@ -125,7 +125,6 @@ static int max96705_s_stream(struct v4l2_subdev *sd, int enable) {
 		loge("Failed to get video source object by subdev\n");
 		ret = -EINVAL;
 	} else {
-		printk(KERN_ERR "Start stream of max96705\n");
 		ret = regmap_multi_reg_write(dev->regmap, max96705_reg_defaults, ARRAY_SIZE(max96705_reg_defaults));
 	}
 
