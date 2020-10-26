@@ -24,6 +24,7 @@ static inline u32 __tcc_rng_read_word(void)
 static inline char __tcc_rng_read_byte(void)
 {
 	u32 rand;
+
 	if (rnd_byte_cnt == 0) {
 		rand = __tcc_rng_read_word();
 		memcpy(rnd_byte, &rand, 4);
@@ -69,7 +70,9 @@ static int tcc_rng_probe(struct platform_device *pdev)
 	int err;
 
 #if defined(HSM_TRNG)
-	rnd_word = dma_alloc_coherent(dev, MAX_ENR_CNT << 2, &phy_rnd_word, GFP_KERNEL);
+	phy_rnd_word = 0;
+	rnd_word = dma_alloc_coherent(dev, MAX_ENR_CNT << 2, &phy_rnd_word,
+			GFP_KERNEL);
 #elif defined(HSB_TRNG)
 	struct resource *regs;
 
@@ -122,7 +125,9 @@ static int tcc_rng_remove(struct platform_device *pdev)
 }
 
 static const struct of_device_id tcc_rng_of_match[] = {
-	{ .compatible = "telechips,tcc-rng", },
+	{
+		.compatible = "telechips,tcc-rng",
+	},
 	{},
 };
 

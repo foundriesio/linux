@@ -1,0 +1,23 @@
+Telechips Random Number Generator
+
+Required properties:
+
+- compatible  : Should be "telechips,tcc-rng".
+- reg         : Specifies base physical address and size of the registers map.
+- clocks      : Phandle to clock-controller plus clock-specifier pair.
+
+Example for tcc897x:
+
+	trng@71EB0100 {
+		compatible = "telechips,tcc-rng";
+		reg = <0x71EB0100 0x100>;
+		clocks = <&clk_hsio HSIOBUS_TRNG>;
+		status = "okay";
+	};
+
+Example for tcc803x, tcc899x or tcc901x:
+
+	trng@11DB0100 {
+		compatible = "telechips,tcc-rng";
+		status = "okay";
+	};
