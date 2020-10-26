@@ -22,6 +22,9 @@
  * to the Free Software Foundation, Inc.,
  * 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  */
+//#define NDEBUG
+#define TLOG_LEVEL (TLOG_DEBUG)
+#include "tcc_hsm_log.h"
 
 #include <linux/clk.h>
 #include <linux/delay.h>
@@ -40,22 +43,6 @@
 
 #include "tcc_hsm_sp_cmd.h"
 
-/****************************************************************************
-  DEFINITiON
- ****************************************************************************/
-#define DEBUG_TCC_HSM_SP_CMD
-#ifdef DEBUG_TCC_HSM_SP_CMD
-#undef dprintk
-#define dprintk(msg...)			printk(KERN_DEBUG "[DEBUG][TCCHSM] " msg);
-#undef eprintk
-#define eprintk(msg...)			printk(KERN_ERR "[ERROR][TCCHSM] " msg);
-#else
-#undef dprintk
-#define dprintk(msg...)
-#undef eprintk
-#define eprintk(msg...)			//printk(KERN_ERR "[ERROR][TCCHSM] " msg);
-#endif
-
 int32_t tcc_hsm_sp_cmd_get_version(uint32_t device_id, uint32_t *major, uint32_t *minor)
 {
 	int32_t mbox_data[2] = {0, };
@@ -67,14 +54,14 @@ int32_t tcc_hsm_sp_cmd_get_version(uint32_t device_id, uint32_t *major, uint32_t
 		device_id, TCCHSM_CMD_GET_VERSION, mbox_data, sizeof(mbox_data), mbox_result,
 		sizeof(mbox_result));
 	if (mbox_result_size < 0) {
-		dprintk("[%s:%d] sp_sendrecv_cmd error(%d)\n", __func__, __LINE__, mbox_result_size);
+		ELOG("sec_sendrecv_cmd error(%d)\n", mbox_result_size);
 		result = -EBADR;
 		goto out;
 	}
 
-	result = mbox_result[0];	
+	result = mbox_result[0];
 	if (result != 0) {
-		dprintk("[%s:%d] SP returned an error: %d\n", __func__, __LINE__, result);
+		ELOG("SP returned an error: %d\n", result);
 		goto out;
 	}
 
@@ -104,17 +91,17 @@ int32_t tcc_hsm_sp_cmd_set_mode(
 		device_id, TCCHSM_CMD_SET_MODE, mbox_data, sizeof(mbox_data), &mbox_result,
 		sizeof(mbox_result));
 	if (mbox_result_size < 0) {
-		dprintk("[%s:%d] sp_sendrecv_cmd error(%d)\n", __func__, __LINE__, mbox_result_size);
+		ELOG("sec_sendrecv_cmd error(%d)\n", mbox_result_size);
 		result = -EBADR;
 		goto out;
 	}
 
-	result = mbox_result;	
+	result = mbox_result;
 	if (result != 0) {
-		dprintk("[%s:%d] SP returned an error: %d\n", __func__, __LINE__, result);
+		ELOG("SP returned an error: %d\n", result);
 		goto out;
 	}
-	
+
 out:
 	return result;
 }
@@ -141,17 +128,17 @@ int32_t tcc_hsm_sp_cmd_set_key(
 		device_id, TCCHSM_CMD_SET_KEY, mbox_data, sizeof(mbox_data), &mbox_result,
 		sizeof(mbox_result));
 	if (mbox_result_size < 0) {
-		dprintk("[%s:%d] sp_sendrecv_cmd error(%d)\n", __func__, __LINE__, mbox_result_size);
+		ELOG("sec_sendrecv_cmd error(%d)\n", mbox_result_size);
 		result = -EBADR;
 		goto out;
 	}
 
-	result = mbox_result;	
+	result = mbox_result;
 	if (result != 0) {
-		dprintk("[%s:%d] SP returned an error: %d\n", __func__, __LINE__, result);
+		ELOG("SP returned an error: %d\n", result);
 		goto out;
 	}
-	
+
 out:
 	return result;
 }
@@ -175,17 +162,17 @@ int32_t tcc_hsm_sp_cmd_set_iv(uint32_t device_id, uint32_t keyIndex, uint8_t *iv
 		device_id, TCCHSM_CMD_SET_IV, mbox_data, sizeof(mbox_data), &mbox_result,
 		sizeof(mbox_result));
 	if (mbox_result_size < 0) {
-		dprintk("[%s:%d] sp_sendrecv_cmd error(%d)\n", __func__, __LINE__, mbox_result_size);
+		ELOG("sec_sendrecv_cmd error(%d)\n", mbox_result_size);
 		result = -EBADR;
 		goto out;
 	}
 
-	result = mbox_result;	
+	result = mbox_result;
 	if (result != 0) {
-		dprintk("[%s:%d] SP returned an error: %d\n", __func__, __LINE__, result);
+		ELOG("SP returned an error: %d\n", result);
 		goto out;
 	}
-	
+
 out:
 	return result;
 }
@@ -209,17 +196,17 @@ int32_t tcc_hsm_sp_cmd_set_kldata(
 		device_id, TCCHSM_CMD_SET_KLDATA, mbox_data, sizeof(mbox_data), &mbox_result,
 		sizeof(mbox_result));
 	if (mbox_result_size < 0) {
-		dprintk("[%s:%d] sp_sendrecv_cmd error(%d)\n", __func__, __LINE__, mbox_result_size);
+		ELOG("sec_sendrecv_cmd error(%d)\n", mbox_result_size);
 		result = -EBADR;
 		goto out;
 	}
 
-	result = mbox_result;	
+	result = mbox_result;
 	if (result != 0) {
-		dprintk("[%s:%d] SP returned an error: %d\n", __func__, __LINE__, result);
+		ELOG("SP returned an error: %d\n", result);
 		goto out;
 	}
-	
+
 out:
 	return result;
 }
@@ -250,17 +237,17 @@ int32_t tcc_hsm_sp_cmd_run_cipher_by_dma(
 		device_id, TCCHSM_CMD_RUN_CIPHER_BY_DMA, mbox_data, sizeof(mbox_data), &mbox_result,
 		sizeof(mbox_result));
 	if (mbox_result_size < 0) {
-		dprintk("[%s:%d] sp_sendrecv_cmd error(%d)\n", __func__, __LINE__, mbox_result_size);
+		ELOG("sec_sendrecv_cmd error(%d)\n", mbox_result_size);
 		result = -EBADR;
 		goto out;
 	}
 
-	result = mbox_result;	
+	result = mbox_result;
 	if (result != 0) {
-		dprintk("[%s:%d] SP returned an error: %d\n", __func__, __LINE__, result);
+		ELOG("SP returned an error: %d\n", result);
 		goto out;
 	}
-	
+
 out:
 	return result;
 }
@@ -282,14 +269,14 @@ tcc_hsm_sp_cmd_write_otp(uint32_t device_id, uint32_t otpAddr, uint8_t *otpBuf, 
 		device_id, TCCHSM_CMD_WRITE_OTP, mbox_data, sizeof(mbox_data), &mbox_result,
 		sizeof(mbox_result));
 	if (mbox_result_size < 0) {
-		dprintk("[%s:%d] sp_sendrecv_cmd error(%d)\n", __func__, __LINE__, mbox_result_size);
+		ELOG("sec_sendrecv_cmd error(%d)\n", mbox_result_size);
 		result = -EBADR;
 		goto out;
 	}
 
-	result = mbox_result;	
+	result = mbox_result;
 	if (result != 0) {
-		dprintk("[%s:%d] SP returned an error: %d\n", __func__, __LINE__, result);
+		ELOG("SP returned an error: %d\n", result);
 		goto out;
 	}
 
@@ -310,14 +297,14 @@ int32_t tcc_hsm_sp_cmd_get_rand(uint32_t device_id, uint8_t *rng, int32_t rngSiz
 		device_id, TCCHSM_CMD_GET_RNG, &mbox_data, sizeof(mbox_data), mbox_result,
 		sizeof(mbox_result));
 	if (mbox_result_size < 0) {
-		dprintk("[%s:%d] sp_sendrecv_cmd error(%d)\n", __func__, __LINE__, mbox_result_size);
+		ELOG("sec_sendrecv_cmd error(%d)\n", mbox_result_size);
 		result = -EBADR;
 		goto out;
 	}
 
-	result = mbox_result[0];	
+	result = mbox_result[0];
 	if (result != 0) {
-		dprintk("[%s:%d] SP returned an error: %d\n", __func__, __LINE__, result);
+		ELOG("SP returned an error: %d\n", result);
 		goto out;
 	}
 
