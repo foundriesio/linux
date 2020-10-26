@@ -3,6 +3,7 @@ BasedOnStyle: WebKit
 AlignAfterOpenBracket: AlwaysBreak #DontAlign
 AlignConsecutiveAssignments: false
 AlignConsecutiveDeclarations: false
+# AlignConsecutiveMacros: true
 AlignEscapedNewlines: Left
 AlignOperands: false
 AlignTrailingComments: true
@@ -19,20 +20,20 @@ BinPackArguments: true
 BinPackParameters: true
 # BraceWrapping
 BreakBeforeBinaryOperators: NonAssignment
-BreakBeforeBraces: WebKit
+BreakBeforeBraces: Linux
 BreakBeforeInheritanceComma: false
 BreakBeforeTernaryOperators: false
 BreakConstructorInitializers: BeforeColon
 BreakStringLiterals: false
-ColumnLimit: 100
+ColumnLimit: 80
 CompactNamespaces: false
 ConstructorInitializerAllOnOneLineOrOnePerLine: false
-ContinuationIndentWidth: 4
+ContinuationIndentWidth: 8
 Cpp11BracedListStyle: true
-DerivePointerAlignment: true
+DerivePointerAlignment: false
 FixNamespaceComments: true
 IndentCaseLabels: false
-IndentWidth: 4
+IndentWidth: 8
 KeepEmptyLinesAtTheStartOfBlocks: false
 Language: Cpp
 NamespaceIndentation: None
@@ -50,5 +51,5 @@ SpacesInParentheses: false
 SpacesInSquareBrackets: false
 Standard: Cpp11
 PointerAlignment: Right
-TabWidth: 4
-UseTab: ForContinuationAndIndentation
+TabWidth: 8
+UseTab: Always
