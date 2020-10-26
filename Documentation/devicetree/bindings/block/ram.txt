@@ -1,0 +1,20 @@
+Telechips RAM block driver
+
+A block driver uses RAM as a storage.
+
+Required properties:
+- compatible: should be "telechips,ramblk".
+- memory-region: specifies the region of the reserved memory.
+
+Example:
+	reserved_ramblk: reserved_ramblk {
+		compatible = "telechips,pmap";
+		telechips,pmap-name = "ramblk";
+		no-map;
+		size = <0x8000000>;
+	};
+
+	ramblk {
+		compatible = "telechips,ramblk";
+		memory-region = <&reserved_ramblk>;
+	};
