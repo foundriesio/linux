@@ -30,7 +30,7 @@
 #include <linux/of_device.h>
 #include <linux/platform_device.h>
 
-#include <asm/io.h>
+#include <linux/io.h>
 #include <linux/delay.h>
 #include <linux/platform_device.h>
 
@@ -39,14 +39,14 @@ static bool bt_enabled;
 //static bool host_wake_uart_enabled;
 //static bool wake_uart_enabled;
 
-static int bt_wake_port		= 0;
-static int bt_hwake_port	= 0;
-static int bt_reg_on_port	= 0;
-static int bt_power_port	= 0;
-static int bt_power_1p8v_port	= 0;
-static int bt_power_3p3v_port	= 0;
+static int bt_wake_port;
+static int bt_hwake_port;
+static int bt_reg_on_port;
+static int bt_power_port;
+static int bt_power_1p8v_port;
+static int bt_power_3p3v_port;
 
-/*
+#if 0
 struct bcm_bt_lpm {
 	int wake;
 	int host_wake;
@@ -59,35 +59,31 @@ struct bcm_bt_lpm {
 	struct wake_lock wake_lock;
 	char wake_lock_name[100];
 } bt_lpm;
-*/
+#endif
 
 static int bt_reg_on_skip = 1;
 
 /* rfkill_ops callback. Turn transmitter on when blocked is false */
 static int tcc_bt_rfkill_set_power(void *data, bool blocked)
 {
-    printk("[## BT ##] tcc_bt_rfkill_set_power [%d]\n", blocked);
+	pr_info("[INFO][BT] %s [%d]\n", __func__, blocked);
 
-    if (!blocked)
-    {
-        if (bt_reg_on_skip)
-            bt_reg_on_skip = 0;
-        else
-        {
-            if (gpio_is_valid(bt_wake_port))
-                gpio_direction_output(bt_wake_port, 1);
-            if (gpio_is_valid(bt_reg_on_port))
-                gpio_set_value_cansleep(bt_reg_on_port, 1);
-        }
-    }
-    else
-    {
-        if (gpio_is_valid(bt_reg_on_port))
-            gpio_set_value_cansleep(bt_reg_on_port, 0);
-    }
+	if (!blocked) {
+		if (bt_reg_on_skip)
+			bt_reg_on_skip = 0;
+		else {
+			if (gpio_is_valid(bt_wake_port))
+				gpio_direction_output(bt_wake_port, 1);
+			if (gpio_is_valid(bt_reg_on_port))
+				gpio_set_value_cansleep(bt_reg_on_port, 1);
+		}
+	} else {
+		if (gpio_is_valid(bt_reg_on_port))
+			gpio_set_value_cansleep(bt_reg_on_port, 0);
+	}
 
-    bt_enabled = !blocked;
-    return 0;
+	bt_enabled = !blocked;
+	return 0;
 }
 
 static const struct rfkill_ops tcc_bt_rfkill_ops = {
@@ -115,8 +111,10 @@ static void set_wake_locked(int wake)
 #endif
 
 #if 0
-static enum hrtimer_restart enter_lpm(struct hrtimer *timer) {
+static enum hrtimer_restart enter_lpm(struct hrtimer *timer)
+{
 	unsigned long flags;
+
 	spin_lock_irqsave(&bt_lpm.uport->lock, flags);
 	set_wake_locked(0);
 	spin_unlock_irqrestore(&bt_lpm.uport->lock, flags);
@@ -124,16 +122,18 @@ static enum hrtimer_restart enter_lpm(struct hrtimer *timer) {
 }
 #endif
 
-void bcm_bt_lpm_exit_lpm_locked(struct uart_port *uport) {
-/*	bt_lpm.uport = uport;
+void bcm_bt_lpm_exit_lpm_locked(struct uart_port *uport)
+{
+#if 0
+	bt_lpm.uport = uport;
 
 	hrtimer_try_to_cancel(&bt_lpm.enter_lpm_timer);
 
 	set_wake_locked(1);
 
 	hrtimer_start(&bt_lpm.enter_lpm_timer, bt_lpm.enter_lpm_delay,
-		HRTIMER_MODE_REL);
-*/
+		      HRTIMER_MODE_REL);
+#endif
 }
 EXPORT_SYMBOL(bcm_bt_lpm_exit_lpm_locked);
 
@@ -147,13 +147,13 @@ static void update_host_wake_locked(int host_wake)
 		wake_lock(&bt_lpm.wake_lock);
 		if (!host_wake_uart_enabled)
 			omap_uart_enable(2);
-	} else  {
+	} else {
 		if (host_wake_uart_enabled)
 			omap_uart_disable(2);
 		// Take a timed wakelock, so that upper layers can take it.
 		// The chipset deasserts the hostwake lock, when there is no
 		// more data to send.
-		wake_lock_timeout(&bt_lpm.wake_lock, HZ/2);
+		wake_lock_timeout(&bt_lpm.wake_lock, HZ / 2);
 	}
 	host_wake_uart_enabled = host_wake;
 }
@@ -164,6 +164,7 @@ static irqreturn_t host_wake_isr(int irq, void *dev)
 {
 	int host_wake;
 	unsigned long flags;
+
 	host_wake = gpio_get_value(BT_HOST_WAKE_GPIO);
 	irq_set_irq_type(irq, host_wake ? IRQF_TRIGGER_LOW : IRQF_TRIGGER_HIGH);
 	if (!bt_lpm.uport) {
@@ -185,9 +186,8 @@ static int bcm_bt_lpm_init(struct platform_device *pdev)
 	int rc;
 
 	rc = gpio_request(BT_WAKE_GPIO, "bcm4330_wake_gpio");
-	if (unlikely(rc)) {
+	if (unlikely(rc))
 		return rc;
-	}
 
 	rc = gpio_request(BT_HOST_WAKE_GPIO, "bcm4330_host_wake_gpio");
 	if (unlikely(rc)) {
@@ -195,15 +195,16 @@ static int bcm_bt_lpm_init(struct platform_device *pdev)
 		return rc;
 	}
 
-	hrtimer_init(&bt_lpm.enter_lpm_timer, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
-	bt_lpm.enter_lpm_delay = ktime_set(1, 0);  /* 1 sec */
+	hrtimer_init(&bt_lpm.enter_lpm_timer, CLOCK_MONOTONIC,
+		     HRTIMER_MODE_REL);
+	bt_lpm.enter_lpm_delay = ktime_set(1, 0);	/* 1 sec */
 	bt_lpm.enter_lpm_timer.function = enter_lpm;
 
 	bt_lpm.host_wake = 0;
 
 	irq = gpio_to_irq(BT_HOST_WAKE_GPIO);
 	ret = request_irq(irq, host_wake_isr, IRQF_TRIGGER_HIGH,
-		"bt host_wake", NULL);
+			  "bt host_wake", NULL);
 	if (ret) {
 		gpio_free(BT_WAKE_GPIO);
 		gpio_free(BT_HOST_WAKE_GPIO);
@@ -221,137 +222,154 @@ static int bcm_bt_lpm_init(struct platform_device *pdev)
 	gpio_direction_input(BT_HOST_WAKE_GPIO);
 
 	snprintf(bt_lpm.wake_lock_name, sizeof(bt_lpm.wake_lock_name),
-			"BTLowPower");
+		 "BTLowPower");
 	wake_lock_init(&bt_lpm.wake_lock, WAKE_LOCK_SUSPEND,
-			 bt_lpm.wake_lock_name);
-	
+		       bt_lpm.wake_lock_name);
+
 	return 0;
 }
 #endif
 
-static struct of_device_id tcc_bluetooth_dt_match[2] = {
-    {.name = "", .type = "", .compatible = "telechips, tcc_bluetooth", NULL},
-    {.name = "", .type = "", .compatible = "", NULL},
+static const struct of_device_id tcc_bluetooth_dt_match[2] = {
+	{
+		.name = "",
+		.type = "",
+		.compatible = "telechips, tcc_bluetooth",
+		NULL
+	},
+	{
+		.name = "",
+		.type = "",
+		.compatible = "",
+		NULL
+	},
 };
+
 MODULE_DEVICE_TABLE(of, tcc_bluetooth_dt_match);
 
 static int tcc_bluetooth_probe(struct platform_device *pdev)
 {
 	int rc = 0;
 	int ret = 0;
-	const struct of_device_id *match;	
-    struct device_node *np = pdev->dev.of_node;
+	const struct of_device_id *match;
+	struct device_node *np = pdev->dev.of_node;
 
-	printk("[## BT ##] tcc_bluetooth_probe\n");
-	
+	pr_info("[INFO][BT] %s\n", __func__);
+
 	match = of_match_device(tcc_bluetooth_dt_match, &pdev->dev);
-	if(!match)
-	{
-        printk("[## BT ##] of_match_device fail %s \n", __func__);
+	if (!match) {
+		pr_err("[ERR][BT] of_match_device fail %s\n", __func__);
 		return -EINVAL;
 	}
-	
-	bt_power_1p8v_port	= 0;
-	bt_power_3p3v_port	= 0;
-	bt_power_port		= 0;
-	bt_wake_port		= 0;
-	bt_hwake_port		= 0;
-	bt_reg_on_port		= 0;
 
-    if (np) {
-	bt_power_1p8v_port = of_get_named_gpio(np, "bt_power_1p8v-gpio", 0);
-        if (gpio_is_valid(bt_power_1p8v_port)) {
-            gpio_request(bt_power_1p8v_port, "bt_power_1p8v");
-            gpio_direction_output(bt_power_1p8v_port, 1);
-        } else {
-            //printk("[## BT ##] %s: err to get gpios: ret:%x\n", __func__, bt_power_1p8v_port);
-            bt_power_1p8v_port = -1;
-        }
+	bt_power_1p8v_port = 0;
+	bt_power_3p3v_port = 0;
+	bt_power_port = 0;
+	bt_wake_port = 0;
+	bt_hwake_port = 0;
+	bt_reg_on_port = 0;
 
-	bt_power_3p3v_port = of_get_named_gpio(np, "bt_power_3p3v-gpio", 0);
-        if (gpio_is_valid(bt_power_3p3v_port)) {
-            gpio_request(bt_power_3p3v_port, "bt_power_3p3v");
-            gpio_direction_output(bt_power_3p3v_port, 1);
-        } else {
-            //printk("[## BT ##] %s: err to get gpios: ret:%x\n", __func__, bt_power_3p3v_port);
-            bt_power_3p3v_port = -1;
-        }
+	if (np) {
+		bt_power_1p8v_port =
+		    of_get_named_gpio(np, "bt_power_1p8v-gpio", 0);
+		if (gpio_is_valid(bt_power_1p8v_port)) {
+			gpio_request(bt_power_1p8v_port, "bt_power_1p8v");
+			gpio_direction_output(bt_power_1p8v_port, 1);
+		} else {
+			//pr_err("[ERR][BT] %s: err to get gpios: ret:%x\n",
+			//       __func__, bt_power_1p8v_port);
+			bt_power_1p8v_port = -1;
+		}
 
-        bt_power_port = of_get_named_gpio(np, "bt_power-gpio", 0);
-        if (gpio_is_valid(bt_power_port)) {
-            gpio_request(bt_power_port, "bt_power");
-            gpio_direction_output(bt_power_port, 1);
-            mdelay(10);
-        } else {
-            //printk("[## BT ##] %s: err to get gpios: ret:%x\n", __func__, bt_power_port);
-            bt_power_port = -1;
-        }
+		bt_power_3p3v_port =
+		    of_get_named_gpio(np, "bt_power_3p3v-gpio", 0);
+		if (gpio_is_valid(bt_power_3p3v_port)) {
+			gpio_request(bt_power_3p3v_port, "bt_power_3p3v");
+			gpio_direction_output(bt_power_3p3v_port, 1);
+		} else {
+			//pr_err("[ERR][BT] %s: err to get gpios: ret:%x\n",
+			//       __func__, bt_power_3p3v_port);
+			bt_power_3p3v_port = -1;
+		}
 
-        bt_reg_on_port = of_get_named_gpio(np, "bt_reg_on-gpio", 0);
-        if (gpio_is_valid(bt_reg_on_port)) {
-            gpio_request(bt_reg_on_port, "bt_reg_on");
-            gpio_direction_output(bt_reg_on_port, 0);
-        } else {
-            printk("[## BT ##] %s: err to get gpios: ret:%x\n", __func__, bt_reg_on_port);
-            bt_reg_on_port = -1;
-        }
+		bt_power_port = of_get_named_gpio(np, "bt_power-gpio", 0);
+		if (gpio_is_valid(bt_power_port)) {
+			gpio_request(bt_power_port, "bt_power");
+			gpio_direction_output(bt_power_port, 1);
+			mdelay(10);
+		} else {
+			//pr_err("[ERR][BT] %s: err to get gpios: ret:%x\n",
+			//       __func__, bt_power_port);
+			bt_power_port = -1;
+		}
 
-        bt_wake_port = of_get_named_gpio(np, "bt_wake-gpio", 0);
-        if (gpio_is_valid(bt_wake_port)) {
-            gpio_request(bt_wake_port, "bt_wake");
-            gpio_direction_output(bt_wake_port, 1);
-        } else {
-            //printk("[## BT ##] %s: err to get gpios: ret:%x\n", __func__, bt_wake_port);
-            bt_wake_port = -1;
-        }
+		bt_reg_on_port = of_get_named_gpio(np, "bt_reg_on-gpio", 0);
+		if (gpio_is_valid(bt_reg_on_port)) {
+			gpio_request(bt_reg_on_port, "bt_reg_on");
+			gpio_direction_output(bt_reg_on_port, 0);
+		} else {
+			pr_err("[ERR][BT] %s: err to get gpios: ret:%x\n",
+			       __func__, bt_reg_on_port);
+			bt_reg_on_port = -1;
+		}
 
-        bt_hwake_port = of_get_named_gpio(np, "bt_hwake-gpio", 0);
-        if (gpio_is_valid(bt_hwake_port)) {
-            gpio_request(bt_hwake_port, "bt_hwake");
-            gpio_direction_input(bt_hwake_port);
-        } else {
-            //printk("[## BT ##] %s: err to get gpios: ret:%x\n", __func__, bt_hwake_port);
-            bt_hwake_port = -1;
-        }
-    }
-/*
-	rc = gpio_request(BT_RESET_GPIO, "bcm4330_nreset_gpip");
-	if (unlikely(rc)) {
-		return rc;
+		bt_wake_port = of_get_named_gpio(np, "bt_wake-gpio", 0);
+		if (gpio_is_valid(bt_wake_port)) {
+			gpio_request(bt_wake_port, "bt_wake");
+			gpio_direction_output(bt_wake_port, 1);
+		} else {
+			//pr_err("[ERR][BT] %s: err to get gpios: ret:%x\n",
+			//       __func__, bt_wake_port);
+			bt_wake_port = -1;
+		}
+
+		bt_hwake_port = of_get_named_gpio(np, "bt_hwake-gpio", 0);
+		if (gpio_is_valid(bt_hwake_port)) {
+			gpio_request(bt_hwake_port, "bt_hwake");
+			gpio_direction_input(bt_hwake_port);
+		} else {
+			//pr_err("[ERR][BT] %s: err to get gpios: ret:%x\n",
+			//       __func__, bt_hwake_port);
+			bt_hwake_port = -1;
+		}
 	}
+#if 0
+	rc = gpio_request(BT_RESET_GPIO, "bcm4330_nreset_gpip");
+	if (unlikely(rc))
+		return rc;
 
 	rc = gpio_request(BT_REG_GPIO, "bcm4330_nshutdown_gpio");
 	if (unlikely(rc)) {
 		gpio_free(BT_RESET_GPIO);
 		return rc;
 	}
-*/
+#endif
 	bt_rfkill = rfkill_alloc("Telechips Bluetooth", &pdev->dev,
-				RFKILL_TYPE_BLUETOOTH, &tcc_bt_rfkill_ops,
-				NULL);
+				 RFKILL_TYPE_BLUETOOTH, &tcc_bt_rfkill_ops,
+				 NULL);
 
 	if (unlikely(!bt_rfkill)) {
 		//gpio_free(BT_RESET_GPIO);
 		//gpio_free(BT_REG_GPIO);
-		printk("[## BT ##] rfkill_alloc failed \n");
+		pr_err("[ERR][BT] rfkill_alloc failed\n");
 		return -ENOMEM;
 	}
 
 	rc = rfkill_register(bt_rfkill);
 
 	if (unlikely(rc)) {
-		printk("[## BT ##] rfkill_register failed \n");
+		pr_err("[ERR][BT] rfkill_register failed\n");
 		rfkill_destroy(bt_rfkill);
 		//gpio_free(BT_RESET_GPIO);
 		//gpio_free(BT_REG_GPIO);
 		return -1;
 	}
-	printk("[## BT ##] rfkill_register Telechips Bluetooth \n");
+	pr_info("[INFO][BT] rfkill_register Telechips Bluetooth\n");
 
 	rfkill_set_states(bt_rfkill, true, false);
-//	tcc_bt_rfkill_set_power(NULL, true);
+	//tcc_bt_rfkill_set_power(NULL, true);
 
-#if 0//defined (CONFIG_TCC_BRCM_BCM4330_MODULE_SUPPORT)
+#if 0 //defined (CONFIG_TCC_BRCM_BCM4330_MODULE_SUPPORT)
 	ret = bcm_bt_lpm_init(pdev);
 	if (ret) {
 		rfkill_unregister(bt_rfkill);
@@ -370,22 +388,22 @@ static int tcc_bluetooth_remove(struct platform_device *pdev)
 	rfkill_unregister(bt_rfkill);
 	rfkill_destroy(bt_rfkill);
 
-	printk("[## BT ##] tcc_bluetooth_remove \n");
-/*
+	pr_info("[INFO][BT] %s\n", __func__);
+#if 0
 	gpio_free(BT_REG_GPIO);
 	gpio_free(BT_RESET_GPIO);
 	gpio_free(BT_WAKE_GPIO);
 	gpio_free(BT_HOST_WAKE_GPIO);
 
 	wake_lock_destroy(&bt_lpm.wake_lock);
-*/
+#endif
 	return 0;
 }
 
 int tcc_bluetooth_suspend(struct platform_device *pdev, pm_message_t state)
 {
-	printk("[## BT ##] tcc_bluetooth_suspend \n");
-/*
+	pr_info("[INFO][BT] %s\n", __func__);
+#if 0
 	int irq = gpio_to_irq(BT_HOST_WAKE_GPIO);
 	int host_wake;
 
@@ -396,17 +414,18 @@ int tcc_bluetooth_suspend(struct platform_device *pdev, pm_message_t state)
 		enable_irq(irq);
 		return -EBUSY;
 	}
-*/
+#endif
 	return 0;
 }
 
 int tcc_bluetooth_resume(struct platform_device *pdev)
 {
-	printk("[## BT ##] tcc_bluetooth_resume \n");
-/*
+	pr_info("[INFO][BT] %s\n", __func__);
+#if 0
 	int irq = gpio_to_irq(BT_HOST_WAKE_GPIO);
+
 	enable_irq(irq);
-*/
+#endif
 	return 0;
 }
 
@@ -426,7 +445,7 @@ static int __init tcc_bluetooth_init(void)
 {
 	bt_enabled = false;
 
-	printk("[## BT ##] tcc_bluetooth_init\n");
+	pr_info("[INFO][BT] %s\n", __func__);
 	return platform_driver_register(&tcc_bluetooth_platform_driver);
 }
 
