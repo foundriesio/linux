@@ -41,7 +41,7 @@ obj-$(CONFIG_TCC_MAILBOX)	+= mailbox-tcc.o
 
 obj-$(CONFIG_TCC_MAILBOX_TEST)	+= mailbox-tcc_test.o
 
-obj-$(CONFIG_TCC_MAILBOX_AUDIO) += tcc_mailbox_audio/
+#obj-$(CONFIG_TCC_MAILBOX_AUDIO) += tcc_mailbox_audio/
 
 obj-$(CONFIG_TCC_SECURE_PROCESSOR)	+= tcc_sp_ipc.o
 
