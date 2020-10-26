@@ -914,6 +914,56 @@ config VIDEO_M52790
 
 	 To compile this driver as a module, choose M here: the
 	 module will be called m52790.
+comment "Serializers and Deserializers"
+
+config VIDEO_ISPXXX
+	tristate "Sony ISPXXX ISP"
+	depends on GPIOLIB && VIDEO_V4L2 && I2C && VIDEO_V4L2_SUBDEV_API
+	---help---
+	  Support for the Sony ISPXXX ISP.
+
+	  To compile this driver as a module, choose M here: the
+	  module will be called ispxxx.
+
+config VIDEO_MAX9275
+	tristate "Maxim MAX9275 Serializer"
+	depends on GPIOLIB && VIDEO_V4L2 && I2C && VIDEO_V4L2_SUBDEV_API
+	select REGMAP_I2C
+	---help---
+	  Support for the Maxim MAX9275 Serializer.
+
+	  To compile this driver as a module, choose M here: the
+	  module will be called max9275.
+
+config VIDEO_MAX96705
+	tristate "Maxim MAX96705 Serializer"
+	depends on GPIOLIB && VIDEO_V4L2 && I2C && VIDEO_V4L2_SUBDEV_API
+	select REGMAP_I2C
+	---help---
+	  Support for the Maxim MAX96705 Serializer.
+
+	  To compile this driver as a module, choose M here: the
+	  module will be called max96705.
+
+config VIDEO_MAX9286
+	tristate "Maxim MAX9286 Deserializer"
+	depends on GPIOLIB && VIDEO_V4L2 && I2C && VIDEO_V4L2_SUBDEV_API
+	select REGMAP_I2C
+	---help---
+	  Support for the Maxim MAX9286 Deserializer.
+
+	  To compile this driver as a module, choose M here: the
+	  module will be called max9286.
+
+config VIDEO_MAX96712
+	tristate "Maxim MAX96712 Deserializer"
+	depends on GPIOLIB && VIDEO_V4L2 && I2C && VIDEO_V4L2_SUBDEV_API
+	select REGMAP_I2C
+	---help---
+	  Support for the Maxim MAX96712 Deserializer.
+
+	  To compile this driver as a module, choose M here: the
+	  module will be called max96712.
 endmenu
 
 menu "Sensors used on soc_camera driver"

@@ -100,12 +100,12 @@ typedef struct tccvin_cif {
 	struct vioc_intr_type		vioc_intr;
 
 	// usage status pgl
-	unsigned int				use_pgl;
+	unsigned int			use_pgl;
 
 	// optional pmap
-	struct pmap					pmap_pgl;
-	struct pmap					pmap_viqe;
-    struct pmap                      pmap_preview;
+	struct pmap			pmap_pgl;
+	struct pmap			pmap_viqe;
+	struct pmap			pmap_preview;
 
 	// framebuffer
 	buf_addr_t			* preview_buf_addr;
@@ -241,6 +241,8 @@ struct tccvin_streaming {
 
 	struct v4l2_dv_timings			dv_timings;
 	struct tccvin_vs_sync_info		vs_sync_info;
+	struct v4l2_subdev_mbus_code_enum 	mbus_code;
+	struct v4l2_mbus_config                 mbus_config;
 	enum v4l2_buf_type			type;
 
 	unsigned int				nformats;

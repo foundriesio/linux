@@ -36,33 +36,35 @@
 #include <media/v4l2-subdev.h>
 #include <video/tcc/vioc_vin.h>
 
-#define LOG_TAG			"VSRC"
+#define LOG_TAG			"VSRC:MAX9286"
 
 #define loge(fmt, ...)		pr_err("[ERROR][%s] %s - "	fmt, LOG_TAG, __FUNCTION__, ##__VA_ARGS__)
 #define logw(fmt, ...)		pr_warn("[WARN][%s] %s - "	fmt, LOG_TAG, __FUNCTION__, ##__VA_ARGS__)
 #define logd(fmt, ...)		pr_debug("[DEBUG][%s] %s - "	fmt, LOG_TAG, __FUNCTION__, ##__VA_ARGS__)
 #define logi(fmt, ...)		pr_info("[INFO][%s] %s - "	fmt, LOG_TAG, __FUNCTION__, ##__VA_ARGS__)
 
-#define WIDTH			720
-#define HEIGHT			480
+#define WIDTH			1280
+#define HEIGHT			720
 
-#define ADV7182_REG_STATUS_1	0x10
-#define ADV7182_VAL_STATUS_1	0x07
+#define MAX9286_REG_STATUS_1	0x1E
+#define MAX9286_VAL_STATUS_1	0x40
 
 struct power_sequence {
 	int			pwr_port;
 	int			pwd_port;
 	int			rst_port;
+	int			intb_port;
 
 	enum of_gpio_flags	pwr_value;
 	enum of_gpio_flags	pwd_value;
 	enum of_gpio_flags	rst_value;
+	enum of_gpio_flags	intb_value;
 };
 
 /*
  * This object contains essential v4l2 objects such as sub-device and ctrl_handler
  */
-struct adv7182 {
+struct max9286 {
 	struct v4l2_subdev		sd;
 	struct v4l2_ctrl_handler	hdl;
 
@@ -72,24 +74,37 @@ struct adv7182 {
 	struct regmap			*regmap;
 };
 
-const struct reg_sequence adv7182_reg_defaults[] = {
-	{0x0f, 0x00, 0},	/* Exit Power Down Mode */
-	{0x00, 0x00, 0},	/* INSEL = CVBS in on Ain 1 */
-	{0x03, 0x0c, 0},	/* Enable Pixel & Sync output drivers */
-	{0x04, 0x17, 0},	/* Power-up INTRQ pad & Enable SFL */
-	{0x13, 0x00, 0},	/* Enable INTRQ output driver */
-	{0x17, 0x41, 0},	/* select SH1 */
-	{0x1d, 0x40, 0},	/* Enable LLC output driver */
-	{0x52, 0xcb, 0},	/* ADI Recommended Writes */
-	{0x0e, 0x80, 0},	/* ADI Recommended Writes */
-	{0xd9, 0x44, 0},	/* ADI Recommended Writes */
-	{0x0e, 0x00, 0},	/* ADI Recommended Writes */
-	{0x0e, 0x40, 0},	/* Select User Sub Map 2 */
-	{0xe0, 0x01, 0},	/* Select fast Switching Mode */
-	{0x0e, 0x00, 0},	/* Select User Map */
+const struct reg_sequence max9286_reg_defaults[] = {
+	// init
+	// enable 4ch
+	{0X0A, 0X0F, 0},	 //    Write   Disable all Forward control channel
+	{0X34, 0X35, 0},	 //    Write   Disable auto acknowledge
+	{0X15, 0X83, 0},	 //    Write   Select the combined camera line format for CSI2 output
+	{0X12, 0XF3, 5},	 //    Write   MIPI Output setting
+//	{0xff, 5},		 //    Write   5mS
+	{0X63, 0X00, 0},	 //    Write   Widows off
+	{0X64, 0X00, 0},	 //    Write   Widows off
+	{0X62, 0X1F, 0},	 //    Write   FRSYNC Diff off
+#if 1
+	{0x01, 0xc0, 0},	 //    Write   manual mode
+	{0X08, 0X25, 0},	 //    Write   FSYNC-period-High
+	{0X07, 0XC3, 0},	 //    Write   FSYNC-period-Mid
+	{0X06, 0XF8, 5},	 //    Write   FSYNC-period-Low
+#endif
+	{0X00, 0XEF, 5},	 //    Write   Port 0~3 used
+//	  {0x0c, 0x91},
+//	{0xff, 5},		 //    Write   5mS
+#if defined(CONFIG_MIPI_OUTPUT_TYPE_LINE_CONCAT)
+	{0X15, 0X0B, 0},	 //    Write   Enable MIPI output (line concatenation)
+#else
+	{0X15, 0X9B, 0},	 //    Write   Enable MIPI output (line interleave)
+#endif
+	{0X69, 0XF0, 0},	 //    Write   Auto mask & comabck enable
+	{0x01, 0x00, 0},
+	{0X0A, 0XFF, 0},	 //    Write   All forward channel enable
 };
 
-static const struct regmap_config adv7182_regmap = {
+static const struct regmap_config max9286_regmap = {
 	.reg_bits		= 8,
 	.val_bits		= 8,
 
@@ -97,34 +112,20 @@ static const struct regmap_config adv7182_regmap = {
 	.cache_type		= REGCACHE_NONE,
 };
 
-struct v4l2_dv_timings adv7182_dv_timings = {
+struct v4l2_dv_timings max9286_dv_timings = {
 	.type	= V4L2_DV_BT_656_1120,
 	.bt	= {
 		.width		= WIDTH,
 		.height		= HEIGHT,
-		.interlaced	= V4L2_DV_INTERLACED,
+		.interlaced	= V4L2_DV_PROGRESSIVE,
 		.polarities	= 0,//V4L2_DV_HSYNC_POS_POL | V4L2_DV_VSYNC_POS_POL,
 	},
-};
-
-static u32 adv7182_codes[] = {
-	MEDIA_BUS_FMT_UYVY8_2X8,
-};
-
-struct v4l2_mbus_config adv7182_mbus_config = {
-	.type	= V4L2_MBUS_BT656,
-	.flags	= \
-		V4L2_MBUS_DATA_ACTIVE_LOW	| \
-		V4L2_MBUS_PCLK_SAMPLE_FALLING	| \
-		V4L2_MBUS_VSYNC_ACTIVE_LOW	| \
-		V4L2_MBUS_HSYNC_ACTIVE_LOW	| \
-		V4L2_MBUS_MASTER,
 };
 
 /*
  * gpio fuctions
  */
-int adv7182_parse_device_tree(struct adv7182 *dev, struct i2c_client *client) {
+int max9286_parse_device_tree(struct max9286 * dev, struct i2c_client *client) {
 	struct device_node	*node	= client->dev.of_node;
 	int			ret	= 0;
 
@@ -132,6 +133,7 @@ int adv7182_parse_device_tree(struct adv7182 *dev, struct i2c_client *client) {
 		dev->gpio.pwr_port = of_get_named_gpio_flags(node, "pwr-gpios", 0, &dev->gpio.pwr_value);
 		dev->gpio.pwd_port = of_get_named_gpio_flags(node, "pwd-gpios", 0, &dev->gpio.pwd_value);
 		dev->gpio.rst_port = of_get_named_gpio_flags(node, "rst-gpios", 0, &dev->gpio.rst_value);
+		dev->gpio.intb_port = of_get_named_gpio_flags(node, "intb-gpios", 0, &dev->gpio.intb_value);
 	} else {
 		loge("could not find sensor module node!! \n");
 		ret = -ENODEV;
@@ -140,47 +142,55 @@ int adv7182_parse_device_tree(struct adv7182 *dev, struct i2c_client *client) {
 	return ret;
 }
 
-void adv7182_request_gpio(struct adv7182 *dev) {
+void max9286_request_gpio(struct max9286 * dev) {
 	if(0 < dev->gpio.pwr_port) {
-		gpio_request(dev->gpio.pwr_port, "adv7182 power");
+		gpio_request(dev->gpio.pwr_port, "max9286 power");
 		gpio_direction_output(dev->gpio.pwr_port, dev->gpio.pwr_value);
 		logd("[pwr] gpio: %3d, new val: %d, cur val: %d\n", \
 			dev->gpio.pwr_port, dev->gpio.pwr_value, gpio_get_value(dev->gpio.pwr_port));
 	}
 	if(0 < dev->gpio.pwd_port) {
-		gpio_request(dev->gpio.pwd_port, "adv7182 power-down");
+		gpio_request(dev->gpio.pwd_port, "max9286 power down");
 		gpio_direction_output(dev->gpio.pwd_port, dev->gpio.pwd_value);
 		logd("[pwd] gpio: %3d, new val: %d, cur val: %d\n", \
 			dev->gpio.pwd_port, dev->gpio.pwd_value, gpio_get_value(dev->gpio.pwd_port));
 	}
 	if(0 < dev->gpio.rst_port) {
-		gpio_request(dev->gpio.rst_port, "adv7182 reset");
+		gpio_request(dev->gpio.rst_port, "max9286 reset");
 		gpio_direction_output(dev->gpio.rst_port, dev->gpio.rst_value);
 		logd("[rst] gpio: %3d, new val: %d, cur val: %d\n", \
 			dev->gpio.rst_port, dev->gpio.rst_value, gpio_get_value(dev->gpio.rst_port));
 	}
+	if(0 < dev->gpio.intb_port) {
+		gpio_request(dev->gpio.intb_port, "max9286 interrupt");
+		gpio_direction_input(dev->gpio.intb_port);
+		logd("[int] gpio: %3d, new val: %d, cur val: %d\n", \
+			dev->gpio.intb_port, dev->gpio.intb_value, gpio_get_value(dev->gpio.intb_port));
+	}
 }
 
-void adv7182_free_gpio(struct adv7182 *dev) {
+void max9286_free_gpio(struct max9286 * dev) {
 	if(0 < dev->gpio.pwr_port)
 		gpio_free(dev->gpio.pwr_port);
 	if(0 < dev->gpio.pwd_port)
 		gpio_free(dev->gpio.pwd_port);
 	if(0 < dev->gpio.rst_port)
 		gpio_free(dev->gpio.rst_port);
+	if(0 < dev->gpio.intb_port)
+		gpio_free(dev->gpio.intb_port);
 }
 
 /*
  * Helper fuctions for reflection
  */
-static inline struct adv7182 *to_state(struct v4l2_subdev *sd) {
-	return container_of(sd, struct adv7182, sd);
+static inline struct max9286 *to_state(struct v4l2_subdev *sd) {
+	return container_of(sd, struct max9286, sd);
 }
 
 /*
  * v4l2_ctrl_ops implementations
  */
-static int adv7182_s_ctrl(struct v4l2_ctrl *ctrl) {
+static int max9286_s_ctrl(struct v4l2_ctrl *ctrl) {
 	int	ret = 0;
 
 	switch (ctrl->id) {
@@ -200,18 +210,18 @@ static int adv7182_s_ctrl(struct v4l2_ctrl *ctrl) {
 /*
  * v4l2_subdev_core_ops implementations
  */
-static int adv7182_set_power(struct v4l2_subdev *sd, int on) {
-	struct adv7182		*dev	= to_state(sd);
+static int max9286_set_power(struct v4l2_subdev *sd, int on) {
+	struct max9286		*dev	= to_state(sd);
 	struct power_sequence	*gpio	= &dev->gpio;
 
 	if(on) {
-		if(0 < dev->gpio.rst_port) {
-			gpio_set_value_cansleep(gpio->rst_port, 1);
+		if(0 < dev->gpio.pwd_port) {
+			gpio_set_value_cansleep(gpio->pwd_port, 1);
 			msleep(20);
 		}
 	} else {
-		if(0 < dev->gpio.rst_port)
-			gpio_set_value_cansleep(gpio->rst_port, 0);
+		if(0 < dev->gpio.pwd_port)
+			gpio_set_value_cansleep(gpio->pwd_port, 0);
 		msleep(5);
 	}
 
@@ -221,18 +231,18 @@ static int adv7182_set_power(struct v4l2_subdev *sd, int on) {
 /*
  * v4l2_subdev_video_ops implementations
  */
-static int adv7182_g_input_status(struct v4l2_subdev *sd, u32 *status) {
-	struct adv7182		*dev	= to_state(sd);
+static int max9286_g_input_status(struct v4l2_subdev *sd, u32 *status) {
+	struct max9286		*dev	= to_state(sd);
 	unsigned int		val	= 0;
 	int			ret	= 0;
 
 	// check V4L2_IN_ST_NO_SIGNAL
-	ret = regmap_read(dev->regmap, ADV7182_REG_STATUS_1, &val);
+	ret = regmap_read(dev->regmap, MAX9286_REG_STATUS_1, &val);
 	if(ret < 0) {
 		loge("failure to check V4L2_IN_ST_NO_SIGNAL\n");
 	} else {
-		logd("status: 0x%08x\n", val);
-		if(val & ADV7182_VAL_STATUS_1) {
+		loge("status: 0x%08x\n", val);
+		if(val == MAX9286_VAL_STATUS_1) {
 			*status &= ~V4L2_IN_ST_NO_SIGNAL;
 		} else {
 			*status |= V4L2_IN_ST_NO_SIGNAL;
@@ -242,8 +252,8 @@ static int adv7182_g_input_status(struct v4l2_subdev *sd, u32 *status) {
 	return ret;
 }
 
-static int adv7182_s_stream(struct v4l2_subdev *sd, int enable) {
-	struct adv7182		*dev	= NULL;
+static int max9286_s_stream(struct v4l2_subdev *sd, int enable) {
+	struct max9286		* dev	= NULL;
 	int			ret	= 0;
 
 	dev = to_state(sd);
@@ -251,101 +261,67 @@ static int adv7182_s_stream(struct v4l2_subdev *sd, int enable) {
 		loge("Failed to get video source object by subdev\n");
 		ret = -EINVAL;
 	} else {
-		ret = regmap_multi_reg_write(dev->regmap, adv7182_reg_defaults, ARRAY_SIZE(adv7182_reg_defaults));
+		ret = regmap_multi_reg_write(dev->regmap, max9286_reg_defaults, ARRAY_SIZE(max9286_reg_defaults));
 	}
 
 	return ret;
 }
 
-static int adv7182_g_dv_timings(struct v4l2_subdev *sd, struct v4l2_dv_timings *timings) {
-	memcpy((void *)timings, (const void *)&adv7182_dv_timings, sizeof(*timings));
+static int max9286_g_dv_timings(struct v4l2_subdev *sd, struct v4l2_dv_timings *timings) {
+	memcpy((void *)timings, (const void *)&max9286_dv_timings, sizeof(*timings));
 
-	return 0;
-}
-
-static int adv7182_g_mbus_config(struct v4l2_subdev *sd, struct v4l2_mbus_config *cfg) {
-	memcpy((void *)cfg, (const void *)&adv7182_mbus_config, sizeof(*cfg));
-	
-	return 0;
-}
-
-/*
- * v4l2_subdev_pad_ops implementations
- */
-static int adv7182_enum_mbus_code(struct v4l2_subdev *sd, struct v4l2_subdev_pad_config *cfg, struct v4l2_subdev_mbus_code_enum *code) {
-	if((code->pad != 0) || (ARRAY_SIZE(adv7182_codes) <= code->index))
-		return -EINVAL;
-
-	code->code = adv7182_codes[code->index];
-
-	return 0;
-}
-
-static int adv7182_get_fmt(struct v4l2_subdev *sd, struct v4l2_subdev_pad_config *cfg, struct v4l2_subdev_format *format) {
-	return 0;
-}
-
-static int adv7182_set_fmt(struct v4l2_subdev *sd, struct v4l2_subdev_pad_config *cfg, struct v4l2_subdev_format *format) {
 	return 0;
 }
 
 /*
  * v4l2_subdev_internal_ops implementations
  */
-static const struct v4l2_ctrl_ops adv7182_ctrl_ops = {
-	.s_ctrl			= adv7182_s_ctrl,
+static const struct v4l2_ctrl_ops max9286_ctrl_ops = {
+	.s_ctrl			= max9286_s_ctrl,
 };
 
-static const struct v4l2_subdev_core_ops adv7182_v4l2_subdev_core_ops = {
-	.s_power		= adv7182_set_power,
+static const struct v4l2_subdev_core_ops max9286_core_ops = {
+	.s_power		= max9286_set_power,
 };
 
-static const struct v4l2_subdev_video_ops adv7182_v4l2_subdev_video_ops = {
-	.g_input_status		= adv7182_g_input_status,
-	.s_stream		= adv7182_s_stream,
-	.g_dv_timings		= adv7182_g_dv_timings,
-	.g_mbus_config		= adv7182_g_mbus_config,
+static const struct v4l2_subdev_video_ops max9286_video_ops = {
+	.g_input_status		= max9286_g_input_status,
+	.s_stream		= max9286_s_stream,
+	.g_dv_timings		= max9286_g_dv_timings,
 };
 
-static const struct v4l2_subdev_pad_ops adv7182_v4l2_subdev_pad_ops = {
-	.enum_mbus_code		= adv7182_enum_mbus_code,
-	.get_fmt		= adv7182_get_fmt,
-	.set_fmt		= adv7182_set_fmt,
+static const struct v4l2_subdev_ops max9286_ops = {
+	.core			= &max9286_core_ops,
+	.video			= &max9286_video_ops,
 };
 
-static const struct v4l2_subdev_ops adv7182_ops = {
-	.core			= &adv7182_v4l2_subdev_core_ops,
-	.video			= &adv7182_v4l2_subdev_video_ops,
-	.pad			= &adv7182_v4l2_subdev_pad_ops,
+struct max9286 max9286_data = {
 };
 
-struct adv7182 adv7182_data = {
-};
-
-static const struct i2c_device_id adv7182_id[] = {
-	{ "adv7182", 0 },
+static const struct i2c_device_id max9286_id[] = {
+	{ "max9286", 0, },
 	{ }
 };
-MODULE_DEVICE_TABLE(i2c, adv7182_id);
+MODULE_DEVICE_TABLE(i2c, max9286_id);
 
 #if IS_ENABLED(CONFIG_OF)
-static struct of_device_id adv7182_of_match[] = {
+static struct of_device_id max9286_of_match[] = {
 	{
-		.compatible	= "adi,adv7182",
-		.data		= &adv7182_data,
+		.compatible	= "maxim,max9286",
+		.data		= &max9286_data,
 	},
 	{}
 };
-MODULE_DEVICE_TABLE(of, adv7182_of_match);
+MODULE_DEVICE_TABLE(of, max9286_of_match);
 #endif
 
-int adv7182_probe(struct i2c_client *client, const struct i2c_device_id *id) {
-	struct adv7182			*dev	= NULL;
-	const struct of_device_id	*dev_id	= NULL; 
-	int				ret	= 0;
+int max9286_probe(struct i2c_client * client, const struct i2c_device_id * id) {
+	struct max9286		*dev	= NULL;
+	struct of_device_id	*dev_id	= NULL;
+	int			ret	= 0;
 
 	// allocate and clear memory for a device
-	dev = devm_kzalloc(&client->dev, sizeof(struct adv7182), GFP_KERNEL);
+	dev = devm_kzalloc(&client->dev, sizeof(struct max9286), GFP_KERNEL);
 	if(dev == NULL) {
 		loge("Allocate a device struct.\n");
 		return -ENOMEM;
@@ -353,25 +329,25 @@ int adv7182_probe(struct i2c_client *client, const struct i2c_device_id *id) {
 
 	// set the specific information
 	if(client->dev.of_node) {
-		dev_id = of_match_node(adv7182_of_match, client->dev.of_node);
+		dev_id = of_match_node(max9286_of_match, client->dev.of_node);
 		memcpy(dev, (const void *)dev_id->data, sizeof(*dev));
 	}
 
 	logd("name: %s, addr: 0x%x, client: 0x%p\n", client->name, (client->addr)<<1, client);
 
 	// parse the device tree
-	if((ret = adv7182_parse_device_tree(dev, client)) < 0) {
+	if((ret = max9286_parse_device_tree(dev, client)) < 0) {
 		loge("cannot initialize gpio port\n");
 		return ret;
 	}
 
 	// Register with V4L2 layer as a slave device
-	v4l2_i2c_subdev_init(&dev->sd, client, &adv7182_ops);
+	v4l2_i2c_subdev_init(&dev->sd, client, &max9286_ops);
 
 	// regitster v4l2 control handlers
 	v4l2_ctrl_handler_init(&dev->hdl, 2);
-	v4l2_ctrl_new_std(&dev->hdl, &adv7182_ctrl_ops, V4L2_CID_BRIGHTNESS, 0, 255, 1, 128);
-	v4l2_ctrl_new_std_menu(&dev->hdl, &adv7182_ctrl_ops, V4L2_CID_DV_RX_IT_CONTENT_TYPE, V4L2_DV_IT_CONTENT_TYPE_NO_ITC, 0, V4L2_DV_IT_CONTENT_TYPE_NO_ITC);
+	v4l2_ctrl_new_std(&dev->hdl, &max9286_ctrl_ops, V4L2_CID_BRIGHTNESS, 0, 255, 1, 128);
+	v4l2_ctrl_new_std_menu(&dev->hdl, &max9286_ctrl_ops, V4L2_CID_DV_RX_IT_CONTENT_TYPE, V4L2_DV_IT_CONTENT_TYPE_NO_ITC, 0, V4L2_DV_IT_CONTENT_TYPE_NO_ITC);
 	dev->sd.ctrl_handler = &dev->hdl;
 	if (dev->hdl.error) {
 		loge("v4l2_ctrl_handler_init is wrong\n");
@@ -388,10 +364,10 @@ int adv7182_probe(struct i2c_client *client, const struct i2c_device_id *id) {
 	}
 
 	// request gpio
-	adv7182_request_gpio(dev);
+	max9286_request_gpio(dev);
 
 	// init regmap
-        dev->regmap = devm_regmap_init_i2c(client, &adv7182_regmap);
+        dev->regmap = devm_regmap_init_i2c(client, &max9286_regmap);
 	if(IS_ERR(dev->regmap)) {
 		loge("devm_regmap_init_i2c is wrong\n");
 		ret = -1;
@@ -408,15 +384,15 @@ goto_end:
 	return ret;
 }
 
-int adv7182_remove(struct i2c_client *client) {
+int max9286_remove(struct i2c_client * client) {
 	struct v4l2_subdev	*sd	= i2c_get_clientdata(client);
-	struct adv7182		*dev	= to_state(sd);
+	struct max9286		*dev	= to_state(sd);
 
 	// release regmap
         regmap_exit(dev->regmap);
 
 	// gree gpio
-	adv7182_free_gpio(dev);
+	max9286_free_gpio(dev);
 
 	v4l2_ctrl_handler_free(&dev->hdl);
 
@@ -428,15 +404,14 @@ int adv7182_remove(struct i2c_client *client) {
 	return 0;
 }
 
-static struct i2c_driver adv7182_driver = {
-	.probe		= adv7182_probe,
-	.remove		= adv7182_remove,
+static struct i2c_driver max9286_driver = {
+	.probe		= max9286_probe,
+	.remove		= max9286_remove,
 	.driver		= {
-		.name		= "adv7182",
-		.of_match_table	= of_match_ptr(adv7182_of_match),
+		.name		= "max9286",
+		.of_match_table	= of_match_ptr(max9286_of_match),
 	},
-	.id_table	= adv7182_id,
+	.id_table	= max9286_id,
 };
 
-module_i2c_driver(adv7182_driver);
-
+module_i2c_driver(max9286_driver);

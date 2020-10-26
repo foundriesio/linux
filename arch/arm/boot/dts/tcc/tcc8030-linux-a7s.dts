@@ -728,7 +728,6 @@
 
 		isl79988: isl79988 {
 			compatible      = "adi,isl79988";
-			pinctrl-names   = "default";
 			pinctrl-0       = <&cam0_clk &cam0_data_8bit>;
 			cifport         = <0>;
 			rst-gpios       = <&gpb 14 0>;
@@ -739,6 +738,38 @@
 					bus-width       = <8>;
 				};
 			};
+		};
+
+		max96705: max96705 {
+			compatible	= "maxim,max96705";
+			reg		= <0x40>;	// 0x80 >> 1
+			port {
+				max96705_out: endpoint {
+					remote-endpoint = <&max9286_in>;
+				};
+	                };
+		};
+
+		max9286: max9286 {
+			compatible	= "maxim,max9286";
+			cifport		= <5>;
+			pwd-gpios	= <&gpg 5 1>;
+			intb-gpios	= <&gph 11 1>;
+			reg		= <0x48>;	// 0x90 >> 1
+			ports {
+			        port@0 {
+					reg = <0>;
+					max9286_in: endpoint {
+						remote-endpoint = <&max96705_out>;
+					};
+				};
+			        port@1 {
+					reg = <1>;
+					max9286_out: endpoint {
+						remote-endpoint = <&mipi_csi_in>;
+					};
+				};
+	                };
 		};
 	};
 
@@ -1130,14 +1161,33 @@
 	mipi_csi2_0:mipi_csi@123c0000{
 		compatible = "telechips,tcc803x-mipi-csi2";
 		status = "okay";
-		reg =	<0x123c0000 0x120>,
-		   	<0x123c0200 0x5c>;
+
+		reg = <0x123c0000 0x120>,
+		      <0x123c0200 0x5c>;
 		reg-names = "csi", "gdb";
+
 		clocks = <&clk_peri PERI_MIPI_CSI>;
+		clock-names = "mipi-csi-clk";
+
 		clock-frequency = <300000000>;
 
-		interrupts =	<GIC_SPI 124 IRQ_TYPE_LEVEL_HIGH>,// MIPI0 CSIS
-				<GIC_SPI 125 IRQ_TYPE_LEVEL_HIGH>;// MIPI0 Generic
+		interrupts = <GIC_SPI 124 IRQ_TYPE_LEVEL_HIGH>,// MIPI0 CSIS
+		             <GIC_SPI 125 IRQ_TYPE_LEVEL_HIGH>;// MIPI0 Generic
+
+		ports {
+		        port@0 {
+				reg = <0>;
+		                mipi_csi_in: endpoint {
+		                        remote-endpoint = <&max9286_out>;
+		                };
+			};
+			port@1 {
+				reg = <1>;
+				mipi_csi_out: endpoint {
+					remote-endpoint	= <&videoinput0_in>;
+				};
+			};
+		};
 	 };
 
 	fbdisplay: fbdisplay@12000000 {
@@ -1236,7 +1286,7 @@
 	videoinput0: videoinput@0 {
 		status = "okay";
 		compatible = "telechips,video-input";
-		cifport    = <&cifport 0>;
+		cifport = <&cifport 5>;
 		clocks     = <&clk_ddi DDIBUS_VIOC>;
 		rdma       = <&vioc_rdma VIOC_RDMA16>;
 		vin        = <&vioc_vin VIOC_VIN00>;
@@ -1250,17 +1300,19 @@
 
 		port {
 			videoinput0_in: endpoint {
-				remote-endpoint	= <&isl79988_out>;
-                	        bus-type	= <0>;
+				bus-type	= <0>;
 				bus-width       = <8>;
-				// hsync-active	= <0>;
-				// vsync-active	= <0>;
-				pclk-sample	= <0>;
-				data-active	= <0>;
+				/* to use isl79988, define isl79988_out instead of mipi_csi_out
+				 * and disable properties both stream-enable and flush-vsync
+				 *
+				 * remote-endpoint	= <&isl79988_out>;
+				 */
 
-				data-order	= <0>;	// VIN_CTRL.DO		- 0: ORDER_RGB
-				data-format	= <1>;	// VIN_CTRL.FMT		- 1: FMT_YUV422_8BIT
-				conv-en		= <1>;	// VIN_CTRL.CONV	- 1: BT.656
+
+				remote-endpoint	= <&mipi_csi_out>;
+
+				stream-enable	= <1>;	// VIN_CTRL.SE
+				flush-vsync	= <1>;	// VIN_MISC.FVS
 			};
 		};
 	};

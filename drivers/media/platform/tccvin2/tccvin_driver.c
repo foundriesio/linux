@@ -441,21 +441,13 @@ int tccvin_init_endpoint_gragh(struct tccvin_device *vdev, struct device_node *b
 					        } else {
 							tccvin_print_fwnode_info(&vdev->fw_ep[idxSubDev]);
 
-							// pclk-sample
-							vdev->stream->vs_sync_info.pclk_polarity = (vdev->fw_ep[idxSubDev].bus.parallel.flags & V4L2_MBUS_PCLK_SAMPLE_RISING) ? 1 : 0;
-							// data-active
-							vdev->stream->vs_sync_info.de_active_low = (vdev->fw_ep[idxSubDev].bus.parallel.flags & V4L2_MBUS_DATA_ACTIVE_HIGH) ? 1 : 0;
-
 							// extra video source sync info
-							fwnode_property_read_u32(base_fwnode, "data-order", &vdev->stream->vs_sync_info.data_order);
-							fwnode_property_read_u32(base_fwnode, "data-format", &vdev->stream->vs_sync_info.data_format);
 							fwnode_property_read_u32(base_fwnode, "stream-enable", &vdev->stream->vs_sync_info.stream_enable);
 							fwnode_property_read_u32(base_fwnode, "gen-field-en", &vdev->stream->vs_sync_info.gen_field_en);
 							fwnode_property_read_u32(base_fwnode, "field-bfield-low", &vdev->stream->vs_sync_info.field_bfield_low);
 							fwnode_property_read_u32(base_fwnode, "vs-mask", &vdev->stream->vs_sync_info.vs_mask);
 							fwnode_property_read_u32(base_fwnode, "hsde-connect-en", &vdev->stream->vs_sync_info.hsde_connect_en);
 							fwnode_property_read_u32(base_fwnode, "intpl-en", &vdev->stream->vs_sync_info.intpl_en);
-							fwnode_property_read_u32(base_fwnode, "conv-en", &vdev->stream->vs_sync_info.conv_en);
 							fwnode_property_read_u32(base_fwnode, "flush-vsync", &vdev->stream->vs_sync_info.flush_vsync);
 						}
 

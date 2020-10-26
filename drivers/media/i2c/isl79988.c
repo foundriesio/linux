@@ -116,6 +116,19 @@ struct v4l2_dv_timings isl79988_dv_timings = {
 	},
 };
 
+static u32 isl79988_codes[] = {
+	MEDIA_BUS_FMT_UYVY8_2X8
+};
+
+struct v4l2_mbus_config isl79988_mbus_config = {
+	.type = V4L2_MBUS_BT656,
+	.flags = V4L2_MBUS_DATA_ACTIVE_LOW |
+	V4L2_MBUS_PCLK_SAMPLE_FALLING |
+	V4L2_MBUS_VSYNC_ACTIVE_LOW |
+	V4L2_MBUS_HSYNC_ACTIVE_LOW |
+	V4L2_MBUS_MASTER
+};
+
 /*
  * gpio fuctions
  */
@@ -262,6 +275,40 @@ static int isl79988_g_dv_timings(struct v4l2_subdev *sd, struct v4l2_dv_timings 
 	return 0;
 }
 
+static int isl79988_g_mbus_config(struct v4l2_subdev *sd, struct v4l2_mbus_config *cfg)
+{
+	memcpy((void *)cfg, (const void *)&isl79988_mbus_config, sizeof(*cfg));
+
+	return 0;
+}
+
+/*
+ * v4l2_subdev_pad_ops implementations
+ */
+static int isl79988_enum_mbus_code(
+	struct v4l2_subdev *sd, struct v4l2_subdev_pad_config *cfg,
+	struct v4l2_subdev_mbus_code_enum *code)
+{
+	if ((code->pad != 0) || (ARRAY_SIZE(isl79988_codes) <= code->index))
+		return -EINVAL;
+
+	code->code = isl79988_codes[code->index];
+
+	return 0;
+}
+
+static int isl79988_get_fmt(
+	struct v4l2_subdev *sd, struct v4l2_subdev_pad_config *cfg, struct v4l2_subdev_format *format)
+{
+	return 0;
+}
+
+static int isl79988_set_fmt(
+	struct v4l2_subdev *sd, struct v4l2_subdev_pad_config *cfg, struct v4l2_subdev_format *format)
+{
+	return 0;
+}
+
 /*
  * v4l2_subdev_internal_ops implementations
  */
@@ -277,11 +324,19 @@ static const struct v4l2_subdev_video_ops isl79988_v4l2_subdev_video_ops = {
 	.g_input_status		= isl79988_g_input_status,
 	.s_stream		= isl79988_s_stream,
 	.g_dv_timings		= isl79988_g_dv_timings,
+	.g_mbus_config          = isl79988_g_mbus_config
+};
+
+static const struct v4l2_subdev_pad_ops isl79988_v4l2_subdev_pad_ops = {
+	.enum_mbus_code = isl79988_enum_mbus_code,
+	.get_fmt = isl79988_get_fmt,
+	.set_fmt = isl79988_set_fmt,
 };
 
 static const struct v4l2_subdev_ops isl79988_ops = {
 	.core			= &isl79988_v4l2_subdev_core_ops,
 	.video			= &isl79988_v4l2_subdev_video_ops,
+	.pad                    = &isl79988_v4l2_subdev_pad_ops,
 };
 
 struct isl79988 isl79988_data = {
