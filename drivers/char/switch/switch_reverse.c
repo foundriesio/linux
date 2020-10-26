@@ -420,7 +420,7 @@ int switch_remove(struct platform_device *pdev) {
 
 #ifdef CONFIG_OF
 const struct of_device_id switch_of_match[] = {
-        { .compatible = "telechips,switch_gpio_reverse", },
+        { .compatible = "telechips,switch", },
         { },
 };
 MODULE_DEVICE_TABLE(of, switch_of_match);
