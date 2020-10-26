@@ -1,0 +1,9 @@
+Telechips restart driver
+
+A system reset is done by setting the PMU registers.
+
+Required properties:
+- compatible: should be "telechips,restart".
+
+Optional properties:
+- reg: Specifies the base address of the PMU register
