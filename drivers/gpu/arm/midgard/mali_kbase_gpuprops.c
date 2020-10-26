@@ -158,11 +158,13 @@ static void kbase_gpuprops_get_props(base_gpu_props * const gpu_props, struct kb
  * TCC8033 - MP2/MP1
  * TCC8034, TCC8036 - MP2
  */
-        struct arm_smccc_res res;
-        arm_smccc_smc(SIP_CHIP_NAME, 0, 0, 0, 0, 0, 0, 0, &res);
-        //printk("%s %08X\n",__func__, res.a0);    // chip id
+	struct arm_smccc_res res;
+
+	arm_smccc_smc(SIP_CHIP_NAME, 0, 0, 0, 0, 0, 0, 0, &res);
+    //dev_info("%s %08X\n",__func__, res.a0);    // chip id
 	res.a0 = (res.a0 & 0xFFFF);
-	if(res.a0 == 0x8030 || res.a0 == 0x8031 || res.a0 == 0x8032 || res.a0 == 0x8035 || res.a0 == 0x8037)	// MP3
+	if (res.a0 == 0x8030 || res.a0 == 0x8031 || res.a0 == 0x8032 ||
+			 res.a0 == 0x8035 || res.a0 == 0x8037)	// MP3
 		gpu_props->raw_props.shader_present =
 			((u64) regdump.shader_present_hi << 32) +
 			regdump.shader_present_lo;
@@ -177,7 +179,8 @@ static void kbase_gpuprops_get_props(base_gpu_props * const gpu_props, struct kb
 
 #endif
 #endif
-//	printk("%s shader_present:0x%llu\n", __func__, gpu_props->raw_props.shader_present);
+//	dev_info("%s shader_present:0x%llu\n",
+//		 __func__, gpu_props->raw_props.shader_present);
 	gpu_props->raw_props.tiler_present =
 		((u64) regdump.tiler_present_hi << 32) +
 		regdump.tiler_present_lo;

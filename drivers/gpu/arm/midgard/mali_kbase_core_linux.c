@@ -52,7 +52,7 @@
 #include <mali_kbase_ctx_sched.h>
 #include <mali_kbase_reset_gpu.h>
 #include <backend/gpu/mali_kbase_device_internal.h>
-#include <backend/gpu/mali_kbase_pm_internal.h> // TCC - for TCC803X A53/A7S core reset
+#include <backend/gpu/mali_kbase_pm_internal.h> /* for core resetion TCC803X */
 #include "mali_kbase_ioctl.h"
 #include "mali_kbase_hwcnt_context.h"
 #include "mali_kbase_hwcnt_virtualizer.h"
@@ -4083,7 +4083,7 @@ static int kbase_platform_device_probe(struct platform_device *pdev)
 	const struct list_head *dev_list;
 	int err = 0;
 
-	printk("MALI-G51 : %s\n", MALI_RELEASE_NAME); // TCC
+	dev_info("MALI-G51 : %s\n", MALI_RELEASE_NAME); // TCC
 	kbdev = kbase_device_alloc();
 	if (!kbdev) {
 		dev_err(&pdev->dev, "Allocate device failed\n");
@@ -4119,7 +4119,9 @@ static int kbase_platform_device_probe(struct platform_device *pdev)
 	}
 	kbdev->inited_subsys |= inited_registers_map;
 
-	kbase_pm_disable_interrupts_nolock(kbdev);		//TCC - for TCC803X A53/A7S core reset
+	//TCC - for TCC803X A53/A7S core reset
+	kbase_pm_disable_interrupts_nolock(kbdev);
+
 
 	err = power_control_init(pdev);
 	if (err) {
