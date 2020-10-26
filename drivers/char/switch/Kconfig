@@ -9,6 +9,7 @@
 config SWITCH_REVERSE
 	tristate "Reverse Switch Driver"
 	default n
-	help
-		Choose this option if you want to use reverse switch driver
+	---help---
+	Choose this option if you want to use reverse switch driver.
 
+	Note that you can use a soft switch using a sysfs.
