@@ -10,7 +10,7 @@
 #include <linux/irqreturn.h>
 
 #define TCC_DPTX_DRV_MAJOR_VER			1
-#define TCC_DPTX_DRV_MINOR_VER			0
+#define TCC_DPTX_DRV_MINOR_VER			1
 #define TCC_DPTX_DRV_SUBTITLE_VER		0
 
 #define DP_DDIBUS_BASE_REG_ADDRESS		0x12400000
@@ -621,6 +621,7 @@ bool Dptx_Link_Get_LinkTraining_Status( struct Dptx_Params *pstDptx, bool *pbTra
 /* Dptx Interrupt */
 irqreturn_t Dptx_Intr_IRQ( int irq, void *dev );
 irqreturn_t Dptx_Intr_Threaded_IRQ( int irq, void *dev );
+bool Dptx_Intr_Get_Port_Composition( struct Dptx_Params *pstDptx, bool *pbSideBand_MSG_Supported );
 bool Dptx_Intr_Register_HPD_Callback( struct Dptx_Params *pstDptx, Dptx_HPD_Intr_Callback HPD_Intr_Callback );
 bool Dptx_Intr_Handle_HotUnplug( struct Dptx_Params *pstDptx );
 bool Dptx_Intr_Get_HotPlug_Status( struct Dptx_Params *pstDptx, bool *pbHotPlug_Status );

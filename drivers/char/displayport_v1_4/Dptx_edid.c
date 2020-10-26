@@ -206,7 +206,7 @@ bool Dptx_Edid_Read_EDID_I2C_Over_Aux( struct Dptx_Params *pstDptx )
 	if( iRetVal )
 	{
 		if( iRetVal == ESPIPE )
-	{
+		{
 			dptx_warn("Sink doesn't support EDID data on I2C Over Aux");
 		}
 		return ( DPTX_RETURN_FAIL );
