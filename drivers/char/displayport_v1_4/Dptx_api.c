@@ -177,7 +177,7 @@ int tcc_dp_register_drm( struct drm_encoder *encoder, struct tcc_drm_dp_callback
 		return ( -ENODEV );
 	}
 
-	dptx_info("DP is registered by DRM");
+	dptx_notice("DP %d is registered by DRM", ucDP_Index);
 
 	pstDptx_drm_context->pstDrm_encoder = encoder;
 	pstDptx_drm_context->sttcc_drm_dp_callbacks.attach = callbacks->attach;
@@ -201,6 +201,7 @@ EXPORT_SYMBOL( tcc_dp_unregister_drm );
 
 int dpv14_api_get_hpd_state( int dp_id, unsigned char *hpd_state )
 {
+	bool				bHPD_State;
 	struct Dptx_Params 	*pstHandle;
 
 	if(( dp_id >= PHY_INPUT_STREAM_MAX ) || ( dp_id < PHY_INPUT_STREAM_0 ))
@@ -220,6 +221,15 @@ int dpv14_api_get_hpd_state( int dp_id, unsigned char *hpd_state )
 	{
 		dptx_err("Failed to get handle" );
 		return ( -ENODEV );
+	}
+
+	Dptx_Intr_Get_HotPlug_Status( pstHandle, &bHPD_State );
+	if( bHPD_State == (bool)HPD_STATUS_UNPLUGGED )
+	{
+		dptx_info("DP %d is not attached", dp_id);
+
+		*hpd_state = (unsigned char)0;
+		return ( 0 );
 	}
 
 	if( (u8)dp_id >= pstHandle->ucNumOfPorts )
@@ -352,7 +362,7 @@ int dpv14_api_set_video_timing( int dp_id, struct dptx_detailed_timing_t *dptx_d
 
 	if( bMST_Supported == (bool)DPTX_STREAM_CAP_SST )
 	{
-		dptx_info("Set video timing on SST mode..." );
+		dptx_dbg("Set video timing on SST mode..." );
 
 		if( dp_id != PHY_INPUT_STREAM_0 )
 		{
@@ -362,7 +372,7 @@ int dpv14_api_set_video_timing( int dp_id, struct dptx_detailed_timing_t *dptx_d
 	}
 	else
 	{
-		dptx_info("Set video timing on MST mode..." );
+		dptx_dbg("Set video timing on MST mode..." );
 	}
 
 	bRetVal = Dptx_Avgen_Set_Video_Detailed_Timing( pstHandle, (u8)dp_id, &stDtd_Params );
@@ -371,7 +381,7 @@ int dpv14_api_set_video_timing( int dp_id, struct dptx_detailed_timing_t *dptx_d
 		return ( -ENODEV );
 	}
 	
-	dptx_info("\n[Dptx_Avgen_Get_VIC_From_Dtd] : ");
+	dptx_info("[Detailed timing from DRM] : DP %d ", dp_id);
 	dptx_info("		Pixel clk = %d ", (u32)dptx_detailed_timing->pixel_clock );
 	dptx_info("		%s", ( dptx_detailed_timing->interlaced ) ? "Interlace" : "Progressive" );
 	dptx_info("		H Active(%d), V Active(%d)", (u32)dptx_detailed_timing->h_active, (u32)dptx_detailed_timing->v_active );
@@ -402,18 +412,7 @@ int dpv14_api_set_video_stream_enable( int dp_id, unsigned char enable )
 		return ( -ENODEV );
 	}
 
-	bRetVal = Dptx_Intr_Get_HotPlug_Status( pstHandle, &bHPDStatus );
-	if( bRetVal == DPTX_API_RETURN_FAIL ) 
-	{
-		return ( -ENODEV );
-	}
-	if( bHPDStatus == (bool)HPD_STATUS_UNPLUGGED ) 
-	{
-		dptx_err("HPD is unplugged" );
-		return ( -ENODEV );
-	}
-
-	dptx_info("Set video timing on MST mode..." );
+	dptx_info("Set video %s...",  enable ? "enable":"disable" );
 
 	bRetVal = Dptx_Avgen_Set_Video_Stream_Enable( pstHandle, (bool)enable, (u8)dp_id );
 	if( bRetVal == DPTX_API_RETURN_FAIL ) 
@@ -463,7 +462,6 @@ int dpv14_api_set_audio_stream_enable( int dp_id, unsigned char enable )
 
 void Dpv14_Tx_API_Hpd_Intr_CB( u8 ucDP_Index, bool bHPD_State )
 {
-
 	dptx_info("Callback called with DP %d, HPD %s", ucDP_Index, bHPD_State ? "Plugged":"Unplugged" );
 
 #if defined( CONFIG_DRM_TCC )
@@ -611,7 +609,6 @@ int Dpv14_Tx_API_Get_Port_Composition( bool *pbHPD_State )
 	else
 	{
 		ucNumOfPluggedPorts = 1;
-		dptx_info("1 %s is connected", ucNumOfPluggedPorts ? "SerDes":"Ext. monitor");
 	}
 
 	if( ucNumOfPluggedPorts == 1 )

@@ -739,7 +739,7 @@ bool Dptx_Max968XX_Reset( struct Dptx_Params *pstDptx )
 		pstMax968xx_dev = &stMax968xx_dev[ucSerDes_Index];
 		if( pstMax968xx_dev->pstClient == NULL )
 		{
-			dptx_info("I2C Handle is NULL");
+			dptx_dbg("I2C Handle is NULL");
 			continue;
 		}
 

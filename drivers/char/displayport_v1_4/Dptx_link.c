@@ -566,13 +566,13 @@ int dptx_link_perform_ch_equalization( struct Dptx_Params *pstDptx, bool *pbCR_D
 
 				if( ucDPCD_LaneAlign_Status & DP_LINK_STATUS_UPDATED )
 				{
-					dptx_info("Link status and Adjust Request updated(0x%x) after %dms", ucDPCD_LaneAlign_Status, ucRetry_SinkStatus );
+					dptx_dbg("Link status and Adjust Request updated(0x%x) after %dms", ucDPCD_LaneAlign_Status, ucRetry_SinkStatus );
 					break;
 				}
 
 				if( ucRetry_SinkStatus == MAX_TRY_SINK_LINK_STATUS_UPDATE )
 				{
-					dptx_info("Link status and Adjust Request NOT updated(0x%x) for 100ms", ucDPCD_LaneAlign_Status );
+					dptx_dbg("Link status and Adjust Request NOT updated(0x%x) for 100ms", ucDPCD_LaneAlign_Status );
 				}
 
 				mdelay( 1 ); 

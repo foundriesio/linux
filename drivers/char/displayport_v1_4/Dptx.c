@@ -41,9 +41,6 @@ Suite 330, Boston, MA 02111-1307 USA
 #include "Dptx_dbg.h"
 #include "Dptx_drm_dp_addition.h"
 
-#if defined( CONFIG_DRM_TCC )
-extern int tcc_dp_unregister_drm( void );
-#endif
 
 extern void Dpv14_Tx_API_Hpd_Intr_CB( u8 ucDP_Index, bool bHPD_State );
 
@@ -96,7 +93,7 @@ static bool of_parse_dp_dt( struct Dptx_Params	*pstDptx, struct device_node *pst
 static int Dpv14_Tx_Probe( struct platform_device *pdev)
 {
 	bool					bRetVal = 0;
-	bool					bHotPlugged = false;
+	bool					bHotPlugged = false, bSideBand_MSG_Supported;
 	u32						auiPeri_Pixel_Clock[PHY_INPUT_STREAM_MAX] = { 0, };
 	struct resource			*pstResource;
 	struct Dptx_Params		*pstDptx;
@@ -182,14 +179,6 @@ static int Dpv14_Tx_Probe( struct platform_device *pdev)
 
 	Dptx_Platform_Set_Device_Handle( pstDptx );
 
-	bRetVal = Dptx_Intr_Get_HotPlug_Status( pstDptx, &bHotPlugged );
-	if( bRetVal ) 
-	{
-		dptx_err("from Dptx_Intr_Get_HotPlug_Status()");
-	}
-	
-	pstDptx->eLast_HPDStatus = ( bHotPlugged == (bool)HPD_STATUS_PLUGGED ) ? (bool)HPD_STATUS_PLUGGED : (bool)HPD_STATUS_UNPLUGGED;
-	
 	bRetVal = Dptx_Platform_Init_Params( pstDptx, &pdev->dev );
 	if( bRetVal )
 	{
@@ -240,6 +229,18 @@ static int Dpv14_Tx_Probe( struct platform_device *pdev)
 		return -ENODEV;
 	}
 
+	bRetVal = Dptx_Intr_Get_HotPlug_Status( pstDptx, &bHotPlugged );
+	if( bRetVal )
+	{
+		dptx_err("from Dptx_Intr_Get_HotPlug_Status()");
+	}
+
+	pstDptx->eLast_HPDStatus = ( bHotPlugged == (bool)HPD_STATUS_PLUGGED ) ? (bool)HPD_STATUS_PLUGGED : (bool)HPD_STATUS_UNPLUGGED;
+	if( bHotPlugged == (bool)HPD_STATUS_PLUGGED )
+	{
+		Dptx_Intr_Get_Port_Composition( pstDptx, &bSideBand_MSG_Supported );
+	}
+
 	pstVideoParams = &pstDptx->stVideoParams;
 
 	dptx_notice("TCC-DPTX-V %d.%d.%d", TCC_DPTX_DRV_MAJOR_VER, TCC_DPTX_DRV_MINOR_VER, TCC_DPTX_DRV_SUBTITLE_VER );
@@ -266,7 +267,7 @@ static int Dpv14_Tx_Remove(struct platform_device *pstDev)
 	
 	dptx_dbg("");
 	dptx_dbg("****************************************");
-    dptx_info("Remove: DP V1.4 driver ");
+    dptx_dbg("Remove: DP V1.4 driver ");
     dptx_dbg("****************************************");
 	dptx_dbg("");
 
@@ -304,10 +305,6 @@ static int Dpv14_Tx_Suspend( struct platform_device *pdev, pm_message_t state )
 
 	pstDptx = platform_get_drvdata( pdev );
 	
-#if defined( CONFIG_DRM_TCC )
-	tcc_dp_unregister_drm();
-#endif
-
 	bRetVal = Dptx_Core_Deinit( pstDptx );
 	if( bRetVal ) 
 	{
