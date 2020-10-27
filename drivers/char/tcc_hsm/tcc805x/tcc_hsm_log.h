@@ -48,11 +48,11 @@
 /* clang-format on */
 
 /* no logging */
-#define _NLOG(...)               \
-	do {                         \
-		if (0) {                 \
+#define _NLOG(...)                           \
+	do {                                 \
+		if (0) {                     \
 			printk(__VA_ARGS__); \
-		}                        \
+		}                            \
 	} while (0)
 
 /* logging */
@@ -62,7 +62,7 @@
 
 /* Debug logging */
 #if (TLOG_LEVEL >= TLOG_DEBUG)
-#define _DLOG(...) dynamic_pr_debug(__VA_ARGS__);
+#define _DLOG(...) dynamic_pr_debug(__VA_ARGS__)
 #else
 #define _DLOG(...) _NLOG(__VA_ARGS__)
 #endif
@@ -76,7 +76,7 @@
 
 /* Warning logging */
 #if (TLOG_LEVEL >= TLOG_WARNING)
-#define _WLOG(...) pr_warning(__VA_ARGS__)
+#define _WLOG(...) pr_warn(__VA_ARGS__)
 #else
 #define _WLOG(...) _NLOG(__VA_ARGS__)
 #endif
@@ -90,16 +90,20 @@
 
 /* color tagging */
 #define TRACE _DLOG(NORMAL_COLOR "[%s:%d]\n", TLOG_TAG, __LINE__)
-#define DLOG(fmt, ...) \
-	_DLOG(GREEN_COLOR "[DEBUG][%s][%d]" NORMAL_COLOR " " fmt, TLOG_TAG, __LINE__, ##__VA_ARGS__)
+#define DLOG(fmt, ...)                                                      \
+	_DLOG(GREEN_COLOR "[DEBUG][%s][%d]" NORMAL_COLOR " " fmt, TLOG_TAG, \
+	      __LINE__, ##__VA_ARGS__)
 
-#define ILOG(fmt, ...) \
-	_ILOG(YELLOW_COLOR "[INFO][%s][%d]" NORMAL_COLOR " " fmt, TLOG_TAG, __LINE__, ##__VA_ARGS__)
+#define ILOG(fmt, ...)                                                      \
+	_ILOG(YELLOW_COLOR "[INFO][%s][%d]" NORMAL_COLOR " " fmt, TLOG_TAG, \
+	      __LINE__, ##__VA_ARGS__)
 
-#define WLOG(fmt, ...) \
-	_WLOG(COLORWRN_COLOR "[WARN][%s][%d]" NORMAL_COLOR " " fmt, TLOG_TAG, __LINE__, ##__VA_ARGS__)
+#define WLOG(fmt, ...)                                                        \
+	_WLOG(COLORWRN_COLOR "[WARN][%s][%d]" NORMAL_COLOR " " fmt, TLOG_TAG, \
+	      __LINE__, ##__VA_ARGS__)
 
-#define ELOG(fmt, ...) \
-	_ELOG(COLORERR_COLOR "[ERROR][%s][%d]" NORMAL_COLOR " " fmt, TLOG_TAG, __LINE__, ##__VA_ARGS__)
+#define ELOG(fmt, ...)                                                         \
+	_ELOG(COLORERR_COLOR "[ERROR][%s][%d]" NORMAL_COLOR " " fmt, TLOG_TAG, \
+	      __LINE__, ##__VA_ARGS__)
 
 #endif

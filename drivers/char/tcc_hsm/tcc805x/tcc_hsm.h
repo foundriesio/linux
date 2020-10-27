@@ -35,8 +35,7 @@
 #define TCC_HSM_RSA_DIG_SIZE 128
 #define TCC_HSM_RSA_SIG_SIZE 128
 
-enum tcc_hsm_ioctl_obj_id_aes
-{
+enum tcc_hsm_ioctl_obj_id_aes {
 	OID_AES_ENCRYPT = 0x00000000,
 	OID_AES_DECRYPT = 0x01000000,
 	OID_AES_ECB_128 = 0x00100008,
@@ -58,16 +57,14 @@ enum tcc_hsm_ioctl_obj_id_aes
 	OID_AES_GCM_256 = 0x00201108,
 };
 
-enum tcc_hsm_ioctl_obj_id_sm4
-{
+enum tcc_hsm_ioctl_obj_id_sm4 {
 	OID_SM4_ENCRYPT = 0x00000000,
 	OID_SM4_DECRYPT = 0x01000000,
 	OID_SM4_ECB_128 = 0x00100008,
 	OID_SM4_CBC_128 = 0x00100108,
 };
 
-enum tcc_hsm_ioctl_obj_id_hmac
-{
+enum tcc_hsm_ioctl_obj_id_hmac {
 	OID_HMAC_SHA1_160 = 0x00011100,
 	OID_HMAC_SHA2_224 = 0x00012200,
 	OID_HMAC_SHA2_256 = 0x00012300,
@@ -79,8 +76,7 @@ enum tcc_hsm_ioctl_obj_id_hmac
 	OID_HMAC_SHA3_512 = 0x00013500,
 };
 
-enum tcc_hsm_ioctl_obj_id_hash
-{
+enum tcc_hsm_ioctl_obj_id_hash {
 	OID_SHA1_160 = 0x00001100,
 	OID_SHA2_224 = 0x00002200,
 	OID_SHA2_256 = 0x00002300,
@@ -93,8 +89,7 @@ enum tcc_hsm_ioctl_obj_id_hash
 	OID_SM3_256 = 0x01002300,
 };
 
-enum tcc_hsm_ioctl_obj_id_ecc
-{
+enum tcc_hsm_ioctl_obj_id_ecc {
 	OID_ECC_P256 = 0x00000013,
 	OID_ECC_P384 = 0x00000014,
 	OID_ECC_P521 = 0x00000015,
@@ -104,15 +99,13 @@ enum tcc_hsm_ioctl_obj_id_ecc
 	OID_SM2_256_SM3_256 = 0x010023A3,
 };
 
-struct tcc_hsm_ioctl_set_key_param
-{
+struct tcc_hsm_ioctl_set_key_param {
 	uint32_t addr;
 	uint32_t data_size;
 	uint32_t key_index;
 };
 
-struct tcc_hsm_ioctl_aes_param
-{
+struct tcc_hsm_ioctl_aes_param {
 	uint32_t obj_id;
 	uint8_t key[TCC_HSM_AES_KEY_SIZE];
 	uint32_t key_size;
@@ -129,8 +122,7 @@ struct tcc_hsm_ioctl_aes_param
 	uint32_t dma;
 };
 
-struct tcc_hsm_ioctl_aes_by_kt_param
-{
+struct tcc_hsm_ioctl_aes_by_kt_param {
 	uint32_t obj_id;
 	uint32_t key_index;
 	uint8_t iv[TCC_HSM_AES_IV_SIZE];
@@ -146,8 +138,7 @@ struct tcc_hsm_ioctl_aes_by_kt_param
 	uint32_t dma;
 };
 
-struct tcc_hsm_ioctl_mac_param
-{
+struct tcc_hsm_ioctl_mac_param {
 	uint32_t obj_id;
 	uint8_t key[TCC_HSM_MAC_KEY_SIZE];
 	uint32_t key_size;
@@ -158,8 +149,7 @@ struct tcc_hsm_ioctl_mac_param
 	uint32_t dma;
 };
 
-struct tcc_hsm_ioctl_mac_by_kt_param
-{
+struct tcc_hsm_ioctl_mac_by_kt_param {
 	uint32_t obj_id;
 	uint32_t key_index;
 	uint64_t src;
@@ -169,8 +159,7 @@ struct tcc_hsm_ioctl_mac_by_kt_param
 	uint32_t dma;
 };
 
-struct tcc_hsm_ioctl_hash_param
-{
+struct tcc_hsm_ioctl_hash_param {
 	uint32_t obj_id;
 	uint64_t src;
 	uint32_t src_size;
@@ -179,8 +168,7 @@ struct tcc_hsm_ioctl_hash_param
 	uint32_t dma;
 };
 
-struct tcc_hsm_ioctl_ecdsa_param
-{
+struct tcc_hsm_ioctl_ecdsa_param {
 	uint32_t obj_id;
 	uint8_t key[TCC_HSM_ECDSA_KEY_SIZE];
 	uint32_t key_size;
@@ -190,8 +178,7 @@ struct tcc_hsm_ioctl_ecdsa_param
 	uint32_t sig_size;
 };
 
-struct tcc_hsm_ioctl_rsassa_param
-{
+struct tcc_hsm_ioctl_rsassa_param {
 	uint32_t obj_id;
 	uint8_t modN[TCC_HSM_MODE_N_SIZE];
 	uint32_t modN_size;
@@ -203,21 +190,18 @@ struct tcc_hsm_ioctl_rsassa_param
 	uint32_t sign_size;
 };
 
-struct tcc_hsm_ioctl_write_param
-{
+struct tcc_hsm_ioctl_write_param {
 	uint32_t addr;
 	uint64_t data;
 	uint32_t data_size;
 };
 
-struct tcc_hsm_ioctl_rng_param
-{
+struct tcc_hsm_ioctl_rng_param {
 	uint64_t rng;
 	uint32_t rng_size;
 };
 
-struct tcc_hsm_ioctl_version_param
-{
+struct tcc_hsm_ioctl_version_param {
 	uint32_t x;
 	uint32_t y;
 	uint32_t z;
