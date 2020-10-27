@@ -2,17 +2,19 @@
  *
  * Copyright (C) 2020 Telechips Inc.
  *
- * This program is free software; you can redistribute it and/or modify it under the terms
- * of the GNU General Public License as published by the Free Software Foundation;
- * either version 2 of the License, or (at your option) any later version.
+ * This program is free software; you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free Software
+ * Foundation; either version 2 of the License, or (at your option) any later
+ * version.
  *
- * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
- * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
- * PURPOSE. See the GNU General Public License for more details.
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+ * FOR A PARTICULAR PURPOSE. See the GNU General Public License for more
+ * details.
  *
  * You should have received a copy of the GNU General Public License along with
- * this program; if not, write to the Free Software Foundation, Inc., 59 Temple Place,
- * Suite 330, Boston, MA 02111-1307 USA
+ * this program; if not, write to the Free Software Foundation, Inc., 59 Temple
+ * Place, Suite 330, Boston, MA 02111-1307 USA
  ****************************************************************************/
 
 #include <linux/platform_device.h>
@@ -32,7 +34,7 @@
 #include <linux/of_device.h>
 #include <linux/uaccess.h>
 
-#include <asm/io.h>
+#include <linux/io.h>
 
 #include <linux/mailbox/tcc_multi_mbox.h>
 #include <linux/mailbox_client.h>
@@ -43,27 +45,32 @@
 
 #define LOG_TAG			"VIOCM"
 
-#define loge(fmt, ...)			pr_err("[ERROR][%s] %s - "	fmt, LOG_TAG, __FUNCTION__, ##__VA_ARGS__)
-#define logw(fmt, ...)			pr_warn("[WARN][%s] %s - "	fmt, LOG_TAG, __FUNCTION__, ##__VA_ARGS__)
-#define logd(fmt, ...)			pr_debug("[DEBUG][%s] %s - "	fmt, LOG_TAG, __FUNCTION__, ##__VA_ARGS__)
-#define logi(fmt, ...)			pr_info("[INFO][%s] %s - "	fmt, LOG_TAG, __FUNCTION__, ##__VA_ARGS__)
-#define log				logi
-#define dlog(fmt, ...)			do { if(vioc_loglevel) { logd(fmt, ##__VA_ARGS__); } } while(0)
+#define loge(fmt, ...) \
+	pr_err("[ERROR][%s] %s - "	fmt, LOG_TAG, __func__, ##__VA_ARGS__)
+#define logw(fmt, ...) \
+	pr_warn("[WARN][%s] %s - "	fmt, LOG_TAG, __func__, ##__VA_ARGS__)
+#define logd(fmt, ...) \
+	pr_debug("[DEBUG][%s] %s - "	fmt, LOG_TAG, __func__, ##__VA_ARGS__)
+#define logi(fmt, ...) \
+	pr_info("[INFO][%s] %s - "	fmt, LOG_TAG, __func__, ##__VA_ARGS__)
+#define log \
+	logi
+#define dlog(fmt, ...) \
+	do { if (debug) logd(fmt, ##__VA_ARGS__); } while (0)
 
 #define VIOC_MGR_DEV_MINOR		0
 
-typedef struct _vioc_mgr_tx_t {
+struct _vioc_mgr_tx_t {
 	struct mutex lock;
 	atomic_t seq;
-}vioc_mgr_tx_t;
+};
 
-typedef struct _vioc_mgr_rx_t {
+struct _vioc_mgr_rx_t {
 	struct mutex lock;
 	atomic_t seq;
-}vioc_mgr_rx_t;
+};
 
-struct vioc_mgr_device
-{
+struct vioc_mgr_device {
 	struct platform_device *pdev;
 	struct device *dev;
 	struct cdev cdev;
@@ -79,53 +86,52 @@ struct vioc_mgr_device
 
 	atomic_t status;
 
-	vioc_mgr_tx_t tx;
-	vioc_mgr_rx_t rx;
+	struct _vioc_mgr_tx_t tx;
+	struct _vioc_mgr_rx_t rx;
 };
 
 static struct vioc_mgr_device *vioc_mgr_device;
 static wait_queue_head_t mbox_waitq;
-static int mbox_done = 0;
+static int mbox_done;
 
-/* Function : vioc_mgr_set_ovp
- * Description: Set the layer-order of WMIXx block
- * data[0] : WMIX Block Number
- * data[1] : ovp (Please refer to the full spec)
+/* Function : vioc_mgr_set_ovp Description: Set the layer-order of WMIXx block
+ * data[0] : WMIX Block Number data[1] : ovp (Please refer to the full spec)
  */
 static void vioc_mgr_set_ovp(struct tcc_mbox_data *mssg)
 {
-	VIOC_WMIX_SetOverlayPriority(VIOC_WMIX_GetAddress(mssg->data[0]), mssg->data[1]);
-	VIOC_WMIX_SetUpdate(VIOC_WMIX_GetAddress(mssg->data[0]));
+	VIOC_WMIX_SetOverlayPriority(
+		VIOC_WMIX_GetAddress(mssg->data[0]), mssg->data[1]);
+	VIOC_WMIX_SetUpdate(
+		VIOC_WMIX_GetAddress(mssg->data[0]));
 }
 
-/* Function : vioc_mgr_set_pos
- * Description : Set the position of WMIXx block
- * data[0] : WMIX block number
- * data[1] : the input channel
- * data[2] : x-position
+/* Function : vioc_mgr_set_pos Description : Set the position of WMIXx block
+ * data[0] : WMIX block number data[1] : the input channel data[2] : x-position
  * data[3] : y-position
  */
 static void vioc_mgr_set_pos(struct tcc_mbox_data *mssg)
 {
-	VIOC_WMIX_SetPosition(VIOC_WMIX_GetAddress(mssg->data[0]), mssg->data[1], mssg->data[2], mssg->data[3]);
+	VIOC_WMIX_SetPosition(VIOC_WMIX_GetAddress(
+		mssg->data[0]), mssg->data[1], mssg->data[2], mssg->data[3]);
 	VIOC_WMIX_SetUpdate(VIOC_WMIX_GetAddress(mssg->data[0]));
 }
 
-/* Function : vioc_mgr_set_reset
- * Description : VIOC Block SWReset
- * data[0] : VIOC Block Number
- * data[1] : mode (0: clear, 1: reset)
+/* Function : vioc_mgr_set_reset Description : VIOC Block SWReset data[0] : VIOC
+ * Block Number data[1] : mode (0: clear, 1: reset)
  */
 static void vioc_mgr_set_reset(struct tcc_mbox_data *mssg)
 {
 	VIOC_CONFIG_SWReset_RAW(mssg->data[0], mssg->data[1]);
 }
 
-int vioc_mgr_queue_work(unsigned int command, unsigned int blk, unsigned int data0, unsigned int data1, unsigned int data2)
+int vioc_mgr_queue_work(unsigned int command, unsigned int blk,
+	unsigned int data0, unsigned int data1, unsigned int data2)
 {
 	int ret = 0;
-	if(atomic_read(&vioc_mgr_device->status) == VIOC_STS_READY) {
+
+	if (atomic_read(&vioc_mgr_device->status) == VIOC_STS_READY) {
 		struct tcc_mbox_data data;
+
 		memset(&data, 0x0, sizeof(struct tcc_mbox_data));
 		data.data[0] = blk;
 		data.data[1] = data0;
@@ -133,7 +139,7 @@ int vioc_mgr_queue_work(unsigned int command, unsigned int blk, unsigned int dat
 		data.data[3] = data2;
 
 		mutex_lock(&vioc_mgr_device->rx.lock);
-		switch(command) {
+		switch (command) {
 		case VIOC_CMD_OVP:
 			vioc_mgr_set_ovp(&data);
 			break;
@@ -160,35 +166,38 @@ int vioc_mgr_queue_work(unsigned int command, unsigned int blk, unsigned int dat
 EXPORT_SYMBOL(vioc_mgr_queue_work);
 
 
-static void vioc_mgr_send_message(struct vioc_mgr_device *vioc_mgr, struct tcc_mbox_data *mssg)
+static void vioc_mgr_send_message(struct vioc_mgr_device *vioc_mgr,
+	struct tcc_mbox_data *mssg)
 {
-	if(vioc_mgr) {
+	if (vioc_mgr) {
 		int ret;
+
 		ret = mbox_send_message(vioc_mgr->mbox_ch, mssg);
 #if defined(CONFIG_ARCH_TCC805X)
-		if(ret < 0 )
-		{
-			loge("vioc manager mbox send error(%d)\n",ret);
-		}
+		if (ret < 0)
+			loge("vioc manager mbox send error(%d)\n", ret);
 #else
 		mbox_client_txdone(vioc_mgr->mbox_ch, ret);
 #endif
 	}
 }
 
-static void vioc_mgr_cmd_handler(struct vioc_mgr_device *vioc_mgr, struct tcc_mbox_data *data)
+static void vioc_mgr_cmd_handler(struct vioc_mgr_device *vioc_mgr,
+	struct tcc_mbox_data *data)
 {
-	if(data && vioc_mgr) {
+	if (data && vioc_mgr) {
 		unsigned int cmd = ((data->cmd[1] >> 16) & 0xFFFF);
 
-		if(data->cmd[0]) {
-			if(atomic_read(&vioc_mgr->rx.seq) > data->cmd[0]) {
-				loge("already processed command(%d,%d)\n", atomic_read(&vioc_mgr->rx.seq), data->cmd[1]);
+		if (data->cmd[0]) {
+			if (atomic_read(&vioc_mgr->rx.seq) > data->cmd[0]) {
+				loge("already processed command(%d,%d)\n",
+					atomic_read(&vioc_mgr->rx.seq),
+					data->cmd[1]);
 				return;
 			}
 		}
 
-		switch(cmd) {
+		switch (cmd) {
 		case VIOC_CMD_OVP:
 			vioc_mgr_set_ovp(data);
 			break;
@@ -207,7 +216,7 @@ static void vioc_mgr_cmd_handler(struct vioc_mgr_device *vioc_mgr, struct tcc_mb
 		}
 
 		/* Update rx-sequence ID */
-		if(data->cmd[0]) {
+		if (data->cmd[0]) {
 			data->cmd[1] |= VIOC_MGR_ACK;
 			vioc_mgr_send_message(vioc_mgr, data);
 			atomic_set(&vioc_mgr->rx.seq, data->cmd[0]);
@@ -221,16 +230,16 @@ end_handler:
 static void vioc_mgr_receive_message(struct mbox_client *client, void *mssg)
 {
 	struct tcc_mbox_data *msg = (struct tcc_mbox_data *)mssg;
-	struct vioc_mgr_device *vioc_mgr = container_of(client, struct vioc_mgr_device, cl);
+	struct vioc_mgr_device *vioc_mgr =
+		container_of(client, struct vioc_mgr_device, cl);
 	unsigned int command  = ((msg->cmd[1] >> 16) & 0xFFFF);
 
-	switch(command) {
+	switch (command) {
 	case VIOC_CMD_OVP:
 	case VIOC_CMD_POS:
 	case VIOC_CMD_RESET:
-		if(atomic_read(&vioc_mgr->status) == VIOC_STS_READY)
-		{
-			if(msg->cmd[1] & VIOC_MGR_ACK) {
+		if (atomic_read(&vioc_mgr->status) == VIOC_STS_READY) {
+			if (msg->cmd[1] & VIOC_MGR_ACK) {
 				mbox_done = 1;
 				wake_up_interruptible(&mbox_waitq);
 				return;
@@ -242,9 +251,10 @@ static void vioc_mgr_receive_message(struct mbox_client *client, void *mssg)
 		}
 		break;
 	case VIOC_CMD_READY:
-		if((atomic_read(&vioc_mgr->status) == VIOC_STS_INIT) || (atomic_read(&vioc_mgr->status) == VIOC_STS_READY)) {
+		if ((atomic_read(&vioc_mgr->status) == VIOC_STS_INIT)
+			|| (atomic_read(&vioc_mgr->status) == VIOC_STS_READY)) {
 			atomic_set(&vioc_mgr->status, VIOC_STS_READY);
-			if(!(msg->cmd[1] & VIOC_MGR_ACK)) {
+			if (!(msg->cmd[1] & VIOC_MGR_ACK)) {
 				msg->cmd[1] |= VIOC_MGR_ACK;
 				vioc_mgr_send_message(vioc_mgr, msg);
 			}
@@ -258,13 +268,14 @@ static void vioc_mgr_receive_message(struct mbox_client *client, void *mssg)
 	}
 }
 
-static long vioc_mgr_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
+static long vioc_mgr_ioctl(struct file *filp,
+	unsigned int cmd, unsigned long arg)
 {
 	struct vioc_mgr_device *vioc_mgr = filp->private_data;
 	struct tcc_mbox_data data;
 	long ret = 0;
 
-	if(atomic_read(&vioc_mgr->status) != VIOC_STS_READY) {
+	if (atomic_read(&vioc_mgr->status) != VIOC_STS_READY) {
 		loge("Not ready to send message\n");
 		ret = -100;
 		return ret;
@@ -272,41 +283,50 @@ static long vioc_mgr_ioctl(struct file *filp, unsigned int cmd, unsigned long ar
 
 	mutex_lock(&vioc_mgr->tx.lock);
 
-	switch(cmd) {
+	switch (cmd) {
 	case IOCTL_VIOC_MGR_SET_OVP:
 	case IOCTL_VIOC_MGR_SET_OVP_KERNEL:
-		if(cmd == IOCTL_VIOC_MGR_SET_OVP) {
-			ret = copy_from_user(&data, (void *)arg, sizeof(struct tcc_mbox_data));
-			if(ret) {
-				loge("Unable to copy the paramter(%ld)\n", ret);
+		if (cmd == IOCTL_VIOC_MGR_SET_OVP) {
+			ret = copy_from_user(&data, (void *)arg,
+				sizeof(struct tcc_mbox_data));
+			if (ret) {
+				loge("Unable to copy the parameter(%ld)\n",
+					ret);
 				goto err_ioctl;
 			}
-		} else if(cmd == IOCTL_VIOC_MGR_SET_OVP_KERNEL){
-			memcpy(&data, (struct tcc_mbox_data *)arg, sizeof(struct tcc_mbox_data));
+		} else if (cmd == IOCTL_VIOC_MGR_SET_OVP_KERNEL) {
+			memcpy(&data, (struct tcc_mbox_data *)arg,
+				sizeof(struct tcc_mbox_data));
 		}
 		break;
 	case IOCTL_VIOC_MGR_SET_POS:
 	case IOCTL_VIOC_MGR_SET_POS_KERNEL:
-		if(cmd == IOCTL_VIOC_MGR_SET_POS) {
-			ret = copy_from_user(&data, (void *)arg, sizeof(struct tcc_mbox_data));
-			if(ret) {
-				loge("Unable to copy the paramter(%ld)\n", ret);
+		if (cmd == IOCTL_VIOC_MGR_SET_POS) {
+			ret = copy_from_user(&data, (void *)arg,
+				sizeof(struct tcc_mbox_data));
+			if (ret) {
+				loge("Unable to copy the parameter(%ld)\n",
+					ret);
 				goto err_ioctl;
 			}
-		} else if(cmd == IOCTL_VIOC_MGR_SET_POS_KERNEL){
-			memcpy(&data, (struct tcc_mbox_data *)arg, sizeof(struct tcc_mbox_data));
+		} else if (cmd == IOCTL_VIOC_MGR_SET_POS_KERNEL) {
+			memcpy(&data, (struct tcc_mbox_data *)arg,
+				sizeof(struct tcc_mbox_data));
 		}
 		break;
 	case IOCTL_VIOC_MGR_SET_RESET:
 	case IOCTL_VIOC_MGR_SET_RESET_KERNEL:
-		if(cmd == IOCTL_VIOC_MGR_SET_RESET) {
-			ret = copy_from_user(&data, (void *)arg, sizeof(struct tcc_mbox_data));
-			if(ret) {
-				loge("Unable to copy the paramter(%ld)\n", ret);
+		if (cmd == IOCTL_VIOC_MGR_SET_RESET) {
+			ret = copy_from_user(&data, (void *)arg,
+				sizeof(struct tcc_mbox_data));
+			if (ret) {
+				loge("Unable to copy the parameter(%ld)\n",
+					ret);
 				goto err_ioctl;
 			}
-		} else if(cmd == IOCTL_VIOC_MGR_SET_RESET_KERNEL){
-			memcpy(&data, (struct tcc_mbox_data *)arg, sizeof(struct tcc_mbox_data));
+		} else if (cmd == IOCTL_VIOC_MGR_SET_RESET_KERNEL) {
+			memcpy(&data, (struct tcc_mbox_data *)arg,
+				sizeof(struct tcc_mbox_data));
 		}
 		break;
 	default:
@@ -323,9 +343,11 @@ static long vioc_mgr_ioctl(struct file *filp, unsigned int cmd, unsigned long ar
 	mbox_done = 0;
 
 	vioc_mgr_send_message(vioc_mgr, &data);
-	ret = wait_event_interruptible_timeout(mbox_waitq, mbox_done == 1, msecs_to_jiffies(100));
-	if(ret <= 0)
-		loge("Timeout vioc_mgr_send_message(%ld)(%d) \n", ret, mbox_done);
+	ret = wait_event_interruptible_timeout(mbox_waitq,
+		mbox_done == 1, msecs_to_jiffies(100));
+	if (ret <= 0)
+		loge("Timeout vioc_mgr_send_message(%ld)(%d)\n",
+			ret, mbox_done);
 	mbox_done = 0;
 
 err_ioctl:
@@ -335,28 +357,30 @@ err_ioctl:
 
 static int vioc_mgr_release(struct inode *inode, struct file *filp)
 {
-    return 0;
+	return 0;
 }
 
 static int vioc_mgr_open(struct inode *inode, struct file *filp)
 {
-	struct vioc_mgr_device *vioc_mgr = container_of(inode->i_cdev, struct vioc_mgr_device, cdev);
-	if(!vioc_mgr)
+	struct vioc_mgr_device *vioc_mgr =
+		container_of(inode->i_cdev, struct vioc_mgr_device, cdev);
+	if (!vioc_mgr)
 		return -ENODEV;
 
 	filp->private_data = vioc_mgr;
-    return 0;
+
+	return 0;
 }
 
-struct file_operations vioc_mgr_fops =
-{
-    .owner    = THIS_MODULE,
-    .open     = vioc_mgr_open,
-    .release  = vioc_mgr_release,
-    .unlocked_ioctl = vioc_mgr_ioctl,
+const struct file_operations vioc_mgr_fops = {
+	.owner    = THIS_MODULE,
+	.open     = vioc_mgr_open,
+	.release  = vioc_mgr_release,
+	.unlocked_ioctl = vioc_mgr_ioctl,
 };
 
-static struct mbox_chan *vioc_mgr_request_channel(struct vioc_mgr_device *vioc_mgr, const char *name)
+static struct mbox_chan *vioc_mgr_request_channel(
+	struct vioc_mgr_device *vioc_mgr, const char *name)
 {
 	struct mbox_chan *channel;
 
@@ -372,7 +396,7 @@ static struct mbox_chan *vioc_mgr_request_channel(struct vioc_mgr_device *vioc_m
 #endif
 	vioc_mgr->cl.knows_txdone = false;
 	channel = mbox_request_channel_byname(&vioc_mgr->cl, name);
-	if(IS_ERR(channel)) {
+	if (IS_ERR(channel)) {
 		loge("Fail mbox_request_channel_byname(%s)\n", name);
 		return NULL;
 	}
@@ -388,8 +412,9 @@ static int vioc_mgr_rx_init(struct vioc_mgr_device *vioc_mgr)
 	mutex_init(&vioc_mgr->rx.lock);
 	atomic_set(&vioc_mgr->rx.seq, 0);
 
-	vioc_mgr->mbox_ch = vioc_mgr_request_channel(vioc_mgr, vioc_mgr->mbox_name);
-	if(IS_ERR(vioc_mgr->mbox_ch)) {
+	vioc_mgr->mbox_ch =
+		vioc_mgr_request_channel(vioc_mgr, vioc_mgr->mbox_name);
+	if (IS_ERR(vioc_mgr->mbox_ch)) {
 		ret = PTR_ERR(vioc_mgr->mbox_ch);
 		loge("Fail vioc_mgr_request_channel(%d)\n", ret);
 		goto err_rx_init;
@@ -418,34 +443,38 @@ static int vioc_mgr_probe(struct platform_device *pdev)
 	int ret;
 	struct vioc_mgr_device *vioc_mgr;
 
-	vioc_mgr = devm_kzalloc(&pdev->dev, sizeof(struct vioc_mgr_device), GFP_KERNEL);
-	if(!vioc_mgr)
+	vioc_mgr = devm_kzalloc(&pdev->dev,
+			sizeof(struct vioc_mgr_device), GFP_KERNEL);
+	if (!vioc_mgr)
 		return -ENOMEM;
 	platform_set_drvdata(pdev, vioc_mgr);
 
-	of_property_read_string(pdev->dev.of_node, "device-name", &vioc_mgr->name);
-	of_property_read_string(pdev->dev.of_node, "mbox-names", &vioc_mgr->mbox_name);
+	of_property_read_string(pdev->dev.of_node,
+		"device-name", &vioc_mgr->name);
+	of_property_read_string(pdev->dev.of_node,
+		"mbox-names", &vioc_mgr->mbox_name);
 #if defined(CONFIG_ARCH_TCC805X)
-	of_property_read_string(pdev->dev.of_node, "mbox-id", &vioc_mgr->mbox_id);
+	of_property_read_string(pdev->dev.of_node,
+		"mbox-id", &vioc_mgr->mbox_id);
 #endif
 
 	ret = alloc_chrdev_region(&vioc_mgr->devt, VIOC_MGR_DEV_MINOR,
 			1, vioc_mgr->name);
-	if(ret) {
-		loge("Fail alloc_chrdev_region(%d) \n", ret);
+	if (ret) {
+		loge("Fail alloc_chrdev_region(%d)\n", ret);
 		return ret;
 	}
 
 	cdev_init(&vioc_mgr->cdev, &vioc_mgr_fops);
 	vioc_mgr->cdev.owner = THIS_MODULE;
 	ret = cdev_add(&vioc_mgr->cdev, vioc_mgr->devt, 1);
-	if(ret) {
+	if (ret) {
 		loge("Fail cdev_add(%d)\n", ret);
 		return ret;
 	}
 
 	vioc_mgr->class = class_create(THIS_MODULE, vioc_mgr->name);
-	if(IS_ERR(vioc_mgr->class)) {
+	if (IS_ERR(vioc_mgr->class)) {
 		ret = PTR_ERR(vioc_mgr->class);
 		loge("Fail class_create(%d)\n", ret);
 		return ret;
@@ -453,7 +482,7 @@ static int vioc_mgr_probe(struct platform_device *pdev)
 
 	vioc_mgr->dev = device_create(vioc_mgr->class, &pdev->dev,
 			vioc_mgr->devt, NULL, vioc_mgr->name);
-	if(IS_ERR(vioc_mgr->dev)) {
+	if (IS_ERR(vioc_mgr->dev)) {
 		ret = PTR_ERR(vioc_mgr->dev);
 		loge("Fail device_create(%d)\n", ret);
 		return ret;
@@ -464,14 +493,14 @@ static int vioc_mgr_probe(struct platform_device *pdev)
 	atomic_set(&vioc_mgr->status, VIOC_STS_INIT);
 
 	vioc_mgr_tx_init(vioc_mgr);
-	if(vioc_mgr_rx_init(vioc_mgr)) {
+	if (vioc_mgr_rx_init(vioc_mgr)) {
 		loge("Fail vioc_mgr_rx_init\n");
 		return -EFAULT;
 	}
 
 	vioc_mgr_device = vioc_mgr;
 
-	log("%s Driver Initialized \n", vioc_mgr->name);
+	log("%s Driver Initialized\n", vioc_mgr->name);
 
 	return ret;
 }
@@ -479,16 +508,18 @@ static int vioc_mgr_probe(struct platform_device *pdev)
 static int vioc_mgr_remove(struct platform_device *pdev)
 {
 	struct vioc_mgr_device *vioc_mgr = platform_get_drvdata(pdev);
+
 	device_destroy(vioc_mgr->class, vioc_mgr->devt);
 	class_destroy(vioc_mgr->class);
 	cdev_del(&vioc_mgr->cdev);
 	unregister_chrdev_region(vioc_mgr->devt, 1);
+
 	return 0;
 }
 
 #ifdef CONFIG_OF
 static const struct of_device_id vioc_mgr_of_match[] = {
-	{.compatible = "telechips,vioc_mgr", },
+	{ .compatible = "telechips,vioc_mgr", },
 	{ },
 };
 MODULE_DEVICE_TABLE(of, vioc_mgr_ctrl_of_match);
