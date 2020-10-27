@@ -108,3 +108,11 @@ config SCSI_UFS_TCC
 	  This selects the Telechips UFS host controller support.
 
 	  If unsure, say N.
+
+config SCSI_TCC_SC_UFS
+	tristate "Telechips Storage Core UFS Proxy Driver"
+	depends on ARCH_TCC
+	depends on TCC_SC_FW_PROTOCOL
+	help
+	  This selects the Telechips Storage Core MMC Proxy Driver.
+

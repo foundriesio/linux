@@ -76,6 +76,12 @@
 		vqmmc-supply = <&vqmmc_emmc>;
 	};
 
+	tcc_sc_ufs: tcc_sc_ufs {
+		compatible = "telechips,tcc805x-sc-ufs";
+		status = "okay";
+		sc-firmware = <&tcc_sc_fw>;
+	};
+
 	wmixer_drv1: wmixer_drv@1 {
 		rdmas = <&vioc_rdma VIOC_RDMA12 VIOC_RDMA13>;
 		status = "okay";

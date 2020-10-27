@@ -74,6 +74,12 @@
 		vqmmc-supply = <&vqmmc_emmc>;
 	};
 
+	tcc_sc_ufs: tcc_sc_ufs {
+		compatible = "telechips,tcc805x-sc-ufs";
+		status = "okay";
+		sc-firmware = <&tcc_sc_fw>;
+	};
+
         tcc-gpio-sample {
                 compatible = "gpio-sample";
                 leble = "TCC GPIO";
