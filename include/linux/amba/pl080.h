@@ -10,7 +10,7 @@
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
  * published by the Free Software Foundation.
-*/
+ */
 
 /* Note, there are some Samsung updates to this controller block which
  * make it not entierly compatible with the PL080 specification from
@@ -19,7 +19,7 @@
  * The Samsung defines are PL080S, and add an extra control register,
  * the ability to move more than 2^11 counts of data and some extra
  * OneNAND features.
-*/
+ */
 
 #ifndef ASM_PL080_H
 #define ASM_PL080_H
