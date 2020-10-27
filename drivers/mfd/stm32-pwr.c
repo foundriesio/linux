@@ -158,6 +158,8 @@ static int stm32_pwr_set_affinity_parent(struct irq_data *data,
 	struct stm32_pwr_data *priv = data->domain->host_data;
 	struct irq_data *parent = irq_get_irq_data(priv->irq);
 
+	irq_data_update_effective_affinity(data, dest);
+
 	if (parent->chip && parent->chip->irq_set_affinity)
 		return parent->chip->irq_set_affinity(parent, dest, force);
 
