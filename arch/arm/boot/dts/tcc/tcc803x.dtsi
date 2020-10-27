@@ -721,16 +721,6 @@
 		status = "disabled";
 	};
 
-	tcc_pm {
-		compatible = "telechips,pm";
-		reg = < 0x16400000 0x000100  /* nfc*/
-			0x16430000 0x000030  /* edi*/
-			0x16600000 0x000050  /* uart0*/
-			0x16684000 0x000010  /* uart config*/
-			0x14200000 0x000700>;  /* gpio*/
-		suspend_mode = <0>;	/* 0:sleep, 1:shutdown, 2:wfi */
-	};
-
 	pmu_rst: reset-controller@140000b4 {
 		compatible = "telechips,reset";
 		#reset-cells = <1>;
