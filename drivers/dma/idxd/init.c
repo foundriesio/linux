@@ -189,6 +189,9 @@ static int idxd_setup_internals(struct idxd_device *idxd)
 		atomic_set(&wq->dq_count, 0);
 		init_waitqueue_head(&wq->submit_waitq);
 		wq->idxd_cdev.minor = -1;
+		wq->wqcfg = devm_kzalloc(dev, idxd->wqcfg_size, GFP_KERNEL);
+		if (!wq->wqcfg)
+			return -ENOMEM;
 		rc = percpu_init_rwsem(&wq->submit_lock);
 		if (rc < 0) {
 			idxd_wqs_free_lock(idxd);
@@ -263,6 +266,8 @@ static void idxd_read_caps(struct idxd_device *idxd)
 	dev_dbg(dev, "total workqueue size: %u\n", idxd->max_wq_size);
 	idxd->max_wqs = idxd->hw.wq_cap.num_wqs;
 	dev_dbg(dev, "max workqueues: %u\n", idxd->max_wqs);
+	idxd->wqcfg_size = 1 << (idxd->hw.wq_cap.wqcfg_size + IDXD_WQCFG_MIN);
+	dev_dbg(dev, "wqcfg size: %u\n", idxd->wqcfg_size);
 
 	/* reading operation capabilities */
 	for (i = 0; i < 4; i++) {
