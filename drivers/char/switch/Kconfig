@@ -12,4 +12,6 @@ config SWITCH_REVERSE
 	---help---
 	Choose this option if you want to use reverse switch driver.
 
-	Note that you can use a soft switch using a sysfs.
+	Note that you can use two types of the switches.
+	- a physical switch
+	- a soft switch using a sysfs
