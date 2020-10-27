@@ -361,15 +361,15 @@ static void stm32_usart_receive_chars(struct uart_port *port,
 	struct tty_port *tport = &port->state->port;
 	struct stm32_port *stm32_port = to_stm32_port(port);
 	struct stm32_usart_offsets *ofs = &stm32_port->info->ofs;
+	enum dma_status rx_dma_status;
 	u32 sr;
 	unsigned int size;
 
 	if (stm32_usart_rx_dma_enabled(port) || force_dma_flush) {
-		stm32_port->status =
-			dmaengine_tx_status(stm32_port->rx_ch,
-					    stm32_port->rx_ch->cookie,
-					    &stm32_port->state);
-		if (stm32_port->status == DMA_IN_PROGRESS) {
+		rx_dma_status = dmaengine_tx_status(stm32_port->rx_ch,
+						    stm32_port->rx_ch->cookie,
+						    &stm32_port->state);
+		if (rx_dma_status == DMA_IN_PROGRESS) {
 			/* Empty DMA buffer */
 			size = stm32_usart_receive_chars_dma(port);
 			sr = readl_relaxed(port->membase + ofs->isr);
