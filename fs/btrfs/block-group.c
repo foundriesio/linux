@@ -1238,11 +1238,11 @@ static int inc_block_group_ro(struct btrfs_block_group_cache *cache, int force)
 		 * BTRFS_RESERVE_NO_FLUSH to give ourselves the most amount of
 		 * leeway to allow us to mark this block group as read only.
 		 */
-		if (btrfs_can_overcommit(cache->fs_info->tree_root, sinfo, num_bytes,
+		if (btrfs_can_overcommit(cache->fs_info, sinfo, num_bytes,
 					 BTRFS_RESERVE_NO_FLUSH))
 			ret = 0;
 	}
-	
+
 	if (!ret) {
 		sinfo->bytes_readonly += num_bytes;
 		cache->ro++;
