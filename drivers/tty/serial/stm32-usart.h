@@ -271,7 +271,6 @@ struct stm32_port {
 	int rdr_mask;		/* receive data register mask */
 	struct mctrl_gpios *gpios; /* modem control gpios */
 	struct dma_tx_state state;
-	enum dma_status status;
 };
 
 static struct stm32_port stm32_ports[STM32_MAX_PORTS];
