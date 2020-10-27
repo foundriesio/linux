@@ -1,16 +1,18 @@
 /* Copyright (C) 2018 Telechips Inc.
  *
- * This program is free software; you can redistribute it and/or modify it under the terms
- * of the GNU General Public License as published by the Free Software Foundation;
- * either version 2 of the License, or (at your option) any later version.
+ * This program is free software; you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free Software
+ * Foundation; either version 2 of the License, or (at your option) any later
+ * version.
  *
- * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
- * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
- * PURPOSE. See the GNU General Public License for more details.
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+ * FOR A PARTICULAR PURPOSE. See the GNU General Public License for more
+ * details.
  *
  * You should have received a copy of the GNU General Public License along with
- * this program; if not, write to the Free Software Foundation, Inc., 59 Temple Place,
- * Suite 330, Boston, MA 02111-1307 USA
+ * this program; if not, write to the Free Software Foundation, Inc., 59 Temple
+ * Place, Suite 330, Boston, MA 02111-1307 USA
  */
 
 #ifndef INCLUDED_SEC_DRV
@@ -21,18 +23,17 @@
 /**
  * Syntatic structure used for commnication with A53 <-> M4, A7, R5.
  */
-struct sec_segment
-{
-	int cmd;                /**< Multi ipc command */
-	uint64_t data_addr;     /**< Data to send */
-	int size;               /**< Size of data */
-	uint64_t rdata_addr;    /**< Data to receive */
-	int rsize;              /**< Size of rdata */
-	unsigned int device_id; /**< Type A53, A7, R5, M4  */
+struct sec_segment {
+	int cmd;		/**< Multi ipc command */
+	uint64_t data_addr;	/**< Data to send */
+	int size;		/**< Size of data */
+	uint64_t rdata_addr;	/**< Data to receive */
+	int rsize;		/**< Size of rdata */
+	unsigned int device_id;	/**< Type A53, A7, R5, M4  */
 };
 
 /** Mailbox driver instance. */
-typedef enum _mbox_dev {
+enum mbox_dev {
 	MBOX_DEV_M4 = 0,
 	MBOX_DEV_A7,
 	MBOX_DEV_R5,
@@ -40,15 +41,15 @@ typedef enum _mbox_dev {
 	MBOX_DEV_A72,
 	MBOX_DEV_HSM,
 	MBOX_DEV_MAX
-} mbox_dev;
+};
 
 /**
  * @defgroup spdrv Multi IPC Device Driver
  *  Channel, communicating with between SP, SP API, and demux.
  * @addtogroup spdrv
  * @{
- * @file tcc_sp_ipc.h This file contains Secure Process (SP) device driver interface,
- *	called by demux driver.
+ * @file tcc_sp_ipc.h This file contains Secure Process (SP) device driver
+ *interface, called by demux driver.
  */
 
 // clang-format off
@@ -88,10 +89,12 @@ typedef enum _mbox_dev {
  * - HWDMX_RESERVED16	\#define HWDMX_RESERVED16 SP_EVENT(magic_num, 16)
  * @attention Up to 16 of events can be assigned.
  */
-#define SEC_IPC_EVENT(magic_num, event) ((1 << (event + 15)) | ((magic_num & 0xF) << 12))
+#define SEC_IPC_EVENT(magic_num, event) \
+	((1 << (event + 15)) | ((magic_num & 0xF) << 12))
 
-void sec_set_callback(int (*dmx_callback)(int cmd, void *rdata, int size));
-int sec_sendrecv_cmd(unsigned int device_id, int cmd, void *data, int size, void *rdata, int rsize);
+void sec_set_callback(int (*dmx_callback) (int cmd, void *rdata, int size));
+int sec_sendrecv_cmd(unsigned int device_id, int cmd, void *data, int size,
+		     void *rdata, int rsize);
 
 /** @} */
 
