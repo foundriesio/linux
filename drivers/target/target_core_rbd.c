@@ -408,8 +408,8 @@ static void tcm_rbd_cmp_and_write_callback(struct rbd_img_request *img_request)
 	if (img_request->result <= -MAX_ERRNO) {
 		/* OSDs return -MAX_ERRNO - offset_of_mismatch */
 		cmd->sense_info = (u32)(-1 * (img_request->result + MAX_ERRNO));
-		pr_notice("COMPARE_AND_WRITE: miscompare at offset %llu\n",
-			  (unsigned long long)cmd->bad_sector);
+		pr_debug("COMPARE_AND_WRITE: miscompare at offset %u\n",
+			 cmd->sense_info);
 		sense_reason = TCM_MISCOMPARE_VERIFY;
 	}
 	kfree(caw_state->cmp_and_write_sg);
