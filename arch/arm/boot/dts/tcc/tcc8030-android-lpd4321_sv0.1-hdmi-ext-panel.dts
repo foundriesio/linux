@@ -61,7 +61,7 @@
 			compatible = "telechips,pvlbjt_020_01";
 			reg=<0x22>;
 			hdmi-ext-panel = <1>;
-			backlight-on-gpios = <&gpma 27 0>; 	// BACKLIGHT ON
+			backlight-on-gpios = <&gpma 27 0>;	// BACKLIGHT ON
 			power-on-gpios = <&gpc 8 0>;		// LCD_ON
 			reset-gpios = <&gpc 9 0>;		// LCD_RST
 			pinctrl-0 = <&hdmi_panel>;
@@ -69,7 +69,7 @@
 		hdmi_adv7613 {
 			compatible = "telechips,adv7613";
 			reg=<0x4C>;
-			hdmi-ext-panel = <1>;			// HDMI EXT PANEL
+			hdmi-ext-panel = <1>; // HDMI EXT PANEL
 			main-slave = <0x4C>;
 			cec-slave = <0x40>;
 			info-slave = <0x3E>;
@@ -79,7 +79,7 @@
 			hdmi-slave = <0x34>;
 			cp-slave = <0x22>;
 			lvds-slave = <0x60>;
-			backlight-on-gpios = <&gpma 27 0>; 	// BACKLIGHT ON
+			backlight-on-gpios = <&gpma 27 0>;	// BACKLIGHT ON
 			power-on-gpios = <&gpc 8 0>;		// LCD_ON
 			reset-gpios = <&gpc 9 0>;		// LCD_RST
 			pinctrl-0 = <&hdmi_panel>;
@@ -100,14 +100,14 @@
 	};
 
 	/* gmac
-		gmac1_rxer	: gpc-14
- 		gmac1_rxdv	: gpc-8
-		gmac1_txer	: gpc-15 */
+	 * gmac1_rxer	: gpc-14
+	 * gmac1_rxdv	: gpc-8
+	 * gmac1_txer	: gpc-15
+	 */
 	gmac@11b00000 {
 		status = "disable";
 	};
 
-	/* uart7_rtscts : gpc-8, gpc-9*/
-	/* i2c14_bus 	: gpc-14, gpc-15 */
-
+	/* uart7_rtscts	: gpc-8, gpc-9 */
+	/* i2c14_bus	: gpc-14, gpc-15 */
 };

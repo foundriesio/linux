@@ -41,7 +41,7 @@ static ssize_t off_test_store(struct device *dev, struct device_attribute *attr,
 	tcc_wdt_disable_timer_test();
 	return count;
 }
-static DEVICE_ATTR(off_test, S_IWUSR, NULL, off_test_store);
+static DEVICE_ATTR(off_test, 0200, NULL, off_test_store);
 #endif
 
 #ifdef CONFIG_HOTPLUG_CPU

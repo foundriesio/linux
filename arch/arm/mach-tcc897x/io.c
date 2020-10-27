@@ -23,7 +23,6 @@
 #include <asm/io.h>
 
 #include <mach/bsp.h>
-#include <soc/tcc/pmap.h>
 
 /*
  * The machine specific code may provide the extra mapping besides the

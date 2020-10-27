@@ -130,15 +130,16 @@
 			compatible = "telechips,pmap";
 			telechips,pmap-name = "ump_reserved";
 			alloc-ranges = <RESERVED_MEM_BASE RESERVED_MEM_SIZE>;
-			size = <PMAP_SIZE_UMP_RESERVED>; // Max-Video-Resolution(Aligned_256KB(w*h*3/2)) * 12 + 1MB
+			// Max-Video-Resolution(Aligned_256KB(w*h*3/2))*12+1MB
+			size = <PMAP_SIZE_UMP_RESERVED>;
 		};
 
-                pmap_ion_carveout_cam: ion_carveout_cam {
-                        compatible = "telechips,pmap";
-                        telechips,pmap-name = "ion_carveout_cam";
-                        alloc-ranges = <RESERVED_MEM_BASE RESERVED_MEM_SIZE>;
-                        size = <PMAP_SIZE_ION_CARVEOUT_CAM>; // 12MB
-                };
+		pmap_ion_carveout_cam: ion_carveout_cam {
+			compatible = "telechips,pmap";
+			telechips,pmap-name = "ion_carveout_cam";
+			alloc-ranges = <RESERVED_MEM_BASE RESERVED_MEM_SIZE>;
+			size = <PMAP_SIZE_ION_CARVEOUT_CAM>; // 12MB
+		};
 
 		/*-----------------------------------------------------------
 		 * RearCamera Memory (synchronized with bootloader)
@@ -228,7 +229,7 @@
 
 	pinctrl: pinctrl@14200000 {
 		compatible = "telechips,tcc803x-pinctrl";
-		reg = <0x14200000 0x300 0x14800800 0x100>;	/* gpio, pmgpio */
+		reg = <0x14200000 0x300 0x14800800 0x100>; /* gpio, pmgpio */
 		gpio-controller;
 		#address-cells = <1>;
 		#size-cells = <0>;
@@ -531,16 +532,16 @@
 	vioc_rdma: vioc_rdma@12000400{
 		compatible = "telechips,vioc_rdma";
 		reg = <0x12000400 0x100 0x12000500 0x100 0x12000600 0x100 0x12000700 0x100
-			   0x12000800 0x100 0x12000900 0x100 0x12000a00 0x100 0x12000b00 0x100
-			   0x12000c00 0x100 0x12000d00 0x100 0x12000e00 0x100 0x12000f00 0x100
-			   0x12001000 0x100 0x12001100 0x100 0x12001200 0x100 0x12001300 0x100
-			   0x12001400 0x100 0x12001500 0x100>,
-			/* VIOC_REMAP */
-			  <0x12004000 0x100 0x12005000 0x100 0x12006000 0x100 0x12007000 0x100
-			   0x12008000 0x100 0x12009000 0x100 0x1200a000 0x100 0x1200b000 0x100
-			   0x1200c000 0x100 0x1200d000 0x100 0x1200e000 0x100 0x1200f000 0x100
-			   0x12010000 0x100 0x12011000 0x100 0x12012000 0x100 0x12013000 0x100
-			   0x12014000 0x100 0x12015000 0x100>;
+		       0x12000800 0x100 0x12000900 0x100 0x12000a00 0x100 0x12000b00 0x100
+		       0x12000c00 0x100 0x12000d00 0x100 0x12000e00 0x100 0x12000f00 0x100
+		       0x12001000 0x100 0x12001100 0x100 0x12001200 0x100 0x12001300 0x100
+		       0x12001400 0x100 0x12001500 0x100>,
+		      /* VIOC_REMAP */
+		      <0x12004000 0x100 0x12005000 0x100 0x12006000 0x100 0x12007000 0x100
+		       0x12008000 0x100 0x12009000 0x100 0x1200a000 0x100 0x1200b000 0x100
+		       0x1200c000 0x100 0x1200d000 0x100 0x1200e000 0x100 0x1200f000 0x100
+		       0x12010000 0x100 0x12011000 0x100 0x12012000 0x100 0x12013000 0x100
+		       0x12014000 0x100 0x12015000 0x100>;
 		interrupts = <GIC_SPI 84 IRQ_TYPE_LEVEL_HIGH>,
 			     <GIC_SPI 84 IRQ_TYPE_LEVEL_HIGH>,
 			     <GIC_SPI 84 IRQ_TYPE_LEVEL_HIGH>,
@@ -564,10 +565,10 @@
 	vioc_wmix: vioc_wmix@12001800{
 		compatible = "telechips,vioc_wmix";
 		reg = <0x12001800 0x100 0x12001900 0x100 0x12001a00 0x100 0x12001b00 0x100
-			   0x12001c00 0x100 0x12001d00 0x100 0x12001e00 0x100>,
-			/* VIOC_REMAP */
-			  <0x12018000 0x100 0x12019000 0x100 0x1201a000 0x100 0x1201b000 0x100
-			   0x1201c000 0x100 0x1201d000 0x100 0x1201e000 0x100>;
+		       0x12001c00 0x100 0x12001d00 0x100 0x12001e00 0x100>,
+		      /* VIOC_REMAP */
+		      <0x12018000 0x100 0x12019000 0x100 0x1201a000 0x100 0x1201b000 0x100
+		       0x1201c000 0x100 0x1201d000 0x100 0x1201e000 0x100>;
 		interrupts = <GIC_SPI 84 IRQ_TYPE_LEVEL_HIGH>,
 			     <GIC_SPI 84 IRQ_TYPE_LEVEL_HIGH>,
 			     <GIC_SPI 84 IRQ_TYPE_LEVEL_HIGH>,
@@ -580,22 +581,22 @@
 	vioc_scaler:vioc_scaler@12002000{
 		compatible = "telechips,scaler";
 		reg = <0x12002000 0x100 0x12002100 0x100 0x12002200 0x100 0x12002300 0x100
-			   0x12002400 0x100 0x12002500 0x100 0x12002600 0x100 0x12002700 0x100>,
-			/* VIOC_REMAP */
-			  <0x12020000 0x100 0x12021000 0x100 0x12022000 0x100 0x12023000 0x100
-			   0x12024000 0x100 0x12025000 0x100 0x12026000 0x100 0x12027000 0x100>;
+		       0x12002400 0x100 0x12002500 0x100 0x12002600 0x100 0x12002700 0x100>,
+		      /* VIOC_REMAP */
+		      <0x12020000 0x100 0x12021000 0x100 0x12022000 0x100 0x12023000 0x100
+		       0x12024000 0x100 0x12025000 0x100 0x12026000 0x100 0x12027000 0x100>;
 		status = "disabled";
 	};
 
 	vioc_wdma:vioc_wdma@12002800{
 		compatible = "telechips,vioc_wdma";
 		reg = <0x12002800 0x100 0x12002900 0x100 0x12002a00 0x100 0x12002b00 0x100
-			   0x12002c00 0x100 0x12002d00 0x100 0x12002e00 0x100 0x12002f00 0x100
-			   0x12003000 0x100 0x12014000 0x100 0x12014100 0x100 0x12014200 0x100>,
-			/* VIOC_REMAP */
-			  <0x12028000 0x100 0x12029000 0x100 0x1202a000 0x100 0x1202b000 0x100
-			   0x1202c000 0x100 0x1202d000 0x100 0x1202e000 0x100 0x1202f000 0x100
-			   0x12030000 0x100 0x12052000 0x100 0x12053000 0x100 0x12054000 0x100>;
+		       0x12002c00 0x100 0x12002d00 0x100 0x12002e00 0x100 0x12002f00 0x100
+		       0x12003000 0x100 0x12014000 0x100 0x12014100 0x100 0x12014200 0x100>,
+		      /* VIOC_REMAP */
+		      <0x12028000 0x100 0x12029000 0x100 0x1202a000 0x100 0x1202b000 0x100
+		       0x1202c000 0x100 0x1202d000 0x100 0x1202e000 0x100 0x1202f000 0x100
+		       0x12030000 0x100 0x12052000 0x100 0x12053000 0x100 0x12054000 0x100>;
 		interrupts = <GIC_SPI 84 IRQ_TYPE_LEVEL_HIGH>,
 			     <GIC_SPI 84 IRQ_TYPE_LEVEL_HIGH>,
 			     <GIC_SPI 84 IRQ_TYPE_LEVEL_HIGH>,
@@ -613,20 +614,20 @@
 	vioc_vin:vioc_vin@12004000{
 		compatible = "telechips,vioc_vin";
 		reg = <0x12004000 0x400 0x12004400 0x600
-			   0x12005000 0x400 0x12005400 0x600
-			   0x12006000 0x400 0x12006400 0x600
-			   0x12007000 0x400 0x12007400 0x600
-			   0x12018000 0x400 0x12018400 0x600
-			   0x12019000 0x400 0x12019400 0x600
-			   0x1201a000 0x400 0x1201a400 0x600>,
-			/* VIOC_REMAP */
-			  <0x12040000 0x400 0x12040400 0x600
-			   0x12041000 0x400 0x12041400 0x600
-			   0x12042000 0x400 0x12042400 0x600
-			   0x12043000 0x400 0x12043400 0x600
-			   0x12055000 0x400 0x12055400 0x600
-			   0x12056000 0x400 0x12056400 0x600
-			   0x12057000 0x400 0x12057400 0x600>;
+		       0x12005000 0x400 0x12005400 0x600
+		       0x12006000 0x400 0x12006400 0x600
+		       0x12007000 0x400 0x12007400 0x600
+		       0x12018000 0x400 0x12018400 0x600
+		       0x12019000 0x400 0x12019400 0x600
+		       0x1201a000 0x400 0x1201a400 0x600>,
+		      /* VIOC_REMAP */
+		      <0x12040000 0x400 0x12040400 0x600
+		       0x12041000 0x400 0x12041400 0x600
+		       0x12042000 0x400 0x12042400 0x600
+		       0x12043000 0x400 0x12043400 0x600
+		       0x12055000 0x400 0x12055400 0x600
+		       0x12056000 0x400 0x12056400 0x600
+		       0x12057000 0x400 0x12057400 0x600>;
 		interrupts = <GIC_SPI 84 IRQ_TYPE_LEVEL_HIGH>,
 			     <GIC_SPI 84 IRQ_TYPE_LEVEL_HIGH>,
 			     <GIC_SPI 84 IRQ_TYPE_LEVEL_HIGH>,
@@ -647,44 +648,44 @@
 	vioc_viqe:vioc_viqe@1200d000{
 		compatible = "telechips,vioc_viqe";
 		reg = <0x1200d000 0x1000 0x12010000 0x1000>,
-			/* VIOC_REMAP */
-			  <0x1204b000 0x1000 0x1204e000 0x1000>;
+		      /* VIOC_REMAP */
+		      <0x1204b000 0x1000 0x1204e000 0x1000>;
 	};
 
 	viqe_hidden:viqe_hidden{
 		reg = <0x1200d100 0x4 0x1200d10c 0x4>,
-			/* VIOC_REMAP */
-			  <0x1204b100 0x4 0x1204b10c 0x4>;
+		      /* VIOC_REMAP */
+		      <0x1204b100 0x4 0x1204b10c 0x4>;
 	};
 
 	vioc_deintls:vioc_deintls@12003800{
 		compatible = "telechips,vioc_deintls";
 		reg = <0x12003800 0x100>,
-			/* VIOC_REMAP */
-			  <0x12038000 0x100>;
+		      /* VIOC_REMAP */
+		      <0x12038000 0x100>;
 		status = "disabled";
 	};
 
 	vioc_fifo:vioc_fifo@12003b00{
 		compatible = "telechips,vioc_fifo";
 		reg = <0x12003b00 0x100>,
-			/* VIOC_REMAP */
-			  <0x1203b000 0x100>;
+		      /* VIOC_REMAP */
+		      <0x1203b000 0x100>;
 		status = "disabled";
 	};
 
 	vioc_rdma_arbitor:vioc_rdma_arbitor@12003f00{
 		reg = <0x12003f00 0x20 0x12003f20 0x20 0x12003f40 0x20 0x12003f60 0x20>,
-			/* VIOC_REMAP */
-			  <0x1203f000 0x20 0x1203f020 0x20 0x1203f040 0x20 0x1203f060 0x20>;
+		      /* VIOC_REMAP */
+		      <0x1203f000 0x20 0x1203f020 0x20 0x1203f040 0x20 0x1203f060 0x20>;
 		arbitor_num = <4>;
 	};
 
 	mipi_csi2_0:mipi_csi@123c0000{
 		compatible = "telechips,tcc803x-mipi-csi2";
 		status = "okay";
-		reg =	<0x123c0000 0x120>,
-		   	<0x123c0200 0x5c>;
+		reg = <0x123c0000 0x120>,
+		      <0x123c0200 0x5c>;
 		reg-names = "csi", "gdb";
 		clocks = <&clk_peri PERI_MIPI_CSI>;
 		clock-frequency = <300000000>;
@@ -713,8 +714,8 @@
 		status = "okay";
 		reg = <0x10200000 0x4000>;
 		interrupts = <GIC_SPI 93 IRQ_TYPE_LEVEL_HIGH>,
-		             <GIC_SPI 93 IRQ_TYPE_LEVEL_HIGH>,
-		             <GIC_SPI 93 IRQ_TYPE_LEVEL_HIGH>;
+			     <GIC_SPI 93 IRQ_TYPE_LEVEL_HIGH>,
+			     <GIC_SPI 93 IRQ_TYPE_LEVEL_HIGH>;
 		interrupt-names = "JOB", "MMU", "GPU";
 		clocks = <&clk_fbus FBUS_GPU>;
 		clock-names = "mali_clk";
@@ -759,7 +760,9 @@
 	tcc_overlay_drv {
 		compatible = "telechips,tcc_overlay";
 		fbdisplay-overlay = <&fbdisplay>;
-		rdmas = <&vioc_rdma VIOC_RDMA00 VIOC_RDMA01 VIOC_RDMA02 VIOC_RDMA03 VIOC_RDMA04 VIOC_RDMA05 VIOC_RDMA06 VIOC_RDMA07>;
+		rdmas = <&vioc_rdma
+			 VIOC_RDMA00 VIOC_RDMA01 VIOC_RDMA02 VIOC_RDMA03
+			 VIOC_RDMA04 VIOC_RDMA05 VIOC_RDMA06 VIOC_RDMA07>;
 		wmixs = <&vioc_wmix VIOC_WMIX0 VIOC_WMIX1>;
 		rdma_init_layer = <1>;
 		status = "okay";
@@ -870,14 +873,14 @@
 		 mboxes = <&mbox1 TCC_MBOX1_CH_IPC>;
 	 };
 
-        /* tcc_scrshare for A7S */
-        tcc_scrshare0: tcc_scrshare@0 {
-                compatible = "telechips,tcc_scrshare";
-                device-name ="tcc_scrshare_a7s";
-                mbox-names ="a7s-scrshare";
-                mboxes = <&mbox1 TCC_MBOX1_CH_SCRSHARE>;
-                status = "okay";
-        };
+	/* tcc_scrshare for A7S */
+	tcc_scrshare0: tcc_scrshare@0 {
+		compatible = "telechips,tcc_scrshare";
+		device-name ="tcc_scrshare_a7s";
+		mbox-names ="a7s-scrshare";
+		mboxes = <&mbox1 TCC_MBOX1_CH_SCRSHARE>;
+		status = "okay";
+	};
 
 	/* vioc_mgr for A7S */
 	vioc_mgr0: vioc_mgr@0 {
@@ -937,7 +940,8 @@
 	i2s0: i2s@16101000 {
 		compatible = "telechips,i2s";
 		reg = <0x16101000 0x50>;
-		clocks = <&clk_peri PERI_MDAI0 &clk_io IOBUS_DAI0 &clk_peri PERI_MFLT0_DAI>;
+		clocks = <&clk_peri PERI_MDAI0 &clk_io IOBUS_DAI0
+			  &clk_peri PERI_MFLT0_DAI>;
 		clock-frequency = <11289600>;	// 44100*256
 		have-fifo-clear=<1>;
 		block-type = <1>; // 0: Stereo 1: 7.1CH
@@ -945,7 +949,6 @@
 		status = "disabled";
 	};
 };
-
 
 &pinctrl {
 	gpa: gpa {
@@ -1221,15 +1224,18 @@
 
 	cam0_8bit_idle: cam0_8bit_idle {
 		telechips,pins = "gpa-0",
-				 "gpa-3",  "gpa-4",  "gpa-5",  "gpa-6",  "gpa-7",  "gpa-8",  "gpa-9",  "gpa-10";
+				 "gpa-3",  "gpa-4",  "gpa-5",  "gpa-6",
+				 "gpa-7",  "gpa-8",  "gpa-9",  "gpa-10";
 		telechips,pin-function = <0>;
 		telechips,output-low;
 	};
 
 	cam0_16bit_idle: cam0_16bit_idle {
 		telechips,pins = "gpa-0",
-				 "gpa-3",  "gpa-4",  "gpa-5",  "gpa-6",  "gpa-7",  "gpa-8",  "gpa-9",  "gpa-10",
-				 "gpa-13", "gpa-14", "gpa-15", "gpa-16", "gpa-17", "gpa-18", "gpa-19", "gpa-20";
+				 "gpa-3",  "gpa-4",  "gpa-5",  "gpa-6",
+				 "gpa-7",  "gpa-8",  "gpa-9",  "gpa-10",
+				 "gpa-13", "gpa-14", "gpa-15", "gpa-16",
+				 "gpa-17", "gpa-18", "gpa-19", "gpa-20";
 		telechips,pin-function = <0>;
 		telechips,output-low;
 	};
@@ -1241,143 +1247,145 @@
 	};
 
 	cam0_data_8bit: cam0_data_8bit {
-		telechips,pins = "gpa-3",  "gpa-4",  "gpa-5",  "gpa-6",  "gpa-7",  "gpa-8",  "gpa-9",  "gpa-10";
+		telechips,pins = "gpa-3",  "gpa-4",  "gpa-5",  "gpa-6",
+				 "gpa-7",  "gpa-8",  "gpa-9",  "gpa-10";
 		telechips,pin-function = <3>;
 		telechips,drive-strength = <3>;
 	};
 
 	cam0_data_16bit: cam0_data_16bit {
-		telechips,pins = "gpa-3",  "gpa-4",  "gpa-5",  "gpa-6",  "gpa-7",  "gpa-8",  "gpa-9",  "gpa-10",
-				 "gpa-13", "gpa-14", "gpa-15", "gpa-16", "gpa-17", "gpa-18", "gpa-19", "gpa-20";
+		telechips,pins = "gpa-3",  "gpa-4",  "gpa-5",  "gpa-6",
+				 "gpa-7",  "gpa-8",  "gpa-9",  "gpa-10",
+				 "gpa-13", "gpa-14", "gpa-15", "gpa-16",
+				 "gpa-17", "gpa-18", "gpa-19", "gpa-20";
 		telechips,pin-function = <3>;
 		telechips,drive-strength = <3>;
 	};
 
-/*****************************************************
-* Multi DAI Port_3 m1:multi, dai3:port3
-******************************************************/
-    //t_SND for move sound card from a53 to a7
-    m1dai3_mclk: m1dai3_mclk{
-        telechips,pins = "gpe-0";
-        telechips,pin-function = <1>;
-    };
-    
-    m1dai3_mclk_idle: m1dai3_mclk_idle{
-        telechips,pins = "gpe-0";
-        telechips,pin-function = <0>;
-	telechips,output-low = <0>;
-    };
-    
-    m1dai3_bclk: m1dai3_bclk{
-        telechips,pins = "gpe-1";
-        telechips,pin-function = <1>;
-    };
+	/******************************************************
+	 * Multi DAI Port_3 m1:multi, dai3:port3
+	 ******************************************************/
+	//t_SND for move sound card from a53 to a7
+	m1dai3_mclk: m1dai3_mclk{
+		telechips,pins = "gpe-0";
+		telechips,pin-function = <1>;
+	};
 
-    m1dai3_bclk_idle: m1dai3_bclk_idle{
-        telechips,pins = "gpe-1";
-        telechips,pin-function = <0>;
-	telechips,output-low = <0>;
-    };
+	m1dai3_mclk_idle: m1dai3_mclk_idle{
+		telechips,pins = "gpe-0";
+		telechips,pin-function = <0>;
+		telechips,output-low = <0>;
+	};
 
-    m1dai3_lrck: m1dai3_lrck{
-        telechips,pins = "gpe-2";
-        telechips,pin-function = <1>;
-    };
-    
-    m1dai3_lrck_idle: m1dai3_lrck_idle{
-        telechips,pins = "gpe-2";
-        telechips,pin-function = <0>;
-	telechips,output-low = <0>;
-    };    
+	m1dai3_bclk: m1dai3_bclk{
+		telechips,pins = "gpe-1";
+		telechips,pin-function = <1>;
+	};
 
-    m1dai3_dao0: m1dai3_dao0{
-        telechips,pins = "gpe-3";
-        telechips,pin-function = <1>;
-    };
-    
-    m1dai3_dao0_idle: m1dai3_dao0_idle{
-        telechips,pins = "gpe-3";
-        telechips,pin-function = <0>;
-	telechips,output-low = <0>;
-    };   
-    
-    m1dai3_dai0: m1dai3_dai0{
-        telechips,pins = "gpe-4";
-        telechips,pin-function = <1>;
-    };
+	m1dai3_bclk_idle: m1dai3_bclk_idle{
+		telechips,pins = "gpe-1";
+		telechips,pin-function = <0>;
+		telechips,output-low = <0>;
+	};
 
-    m1dai3_dai0_idle: m1dai3_dai0_idle{
-        telechips,pins = "gpe-4";
-        telechips,pin-function = <0>;
-	telechips,output-low = <0>;
-    };   
+	m1dai3_lrck: m1dai3_lrck{
+		telechips,pins = "gpe-2";
+		telechips,pin-function = <1>;
+	};
 
-    m1dai3_dao1: m1dai3_dao1{
-        telechips,pins = "gpe-5";
-        telechips,pin-function = <1>;
-    };
-    
-    m1dai3_dao1_idle: m1dai3_dao1_idle{
-        telechips,pins = "gpe-5";
-        telechips,pin-function = <0>;
-	telechips,output-low = <0>;
-    };   
-    
-    m1dai3_dai1: m1dai3_dai1{
-        telechips,pins = "gpe-6";
-        telechips,pin-function = <1>;
-    };
+	m1dai3_lrck_idle: m1dai3_lrck_idle{
+		telechips,pins = "gpe-2";
+		telechips,pin-function = <0>;
+		telechips,output-low = <0>;
+	};
 
-    m1dai3_dai1_idle: m1dai3_dai1_idle{
-        telechips,pins = "gpe-6";
-        telechips,pin-function = <0>;
-	telechips,output-low = <0>;
-    };   
-    
-    m1dai3_dao2: m1dai3_dao2{
-        telechips,pins = "gpe-7";
-        telechips,pin-function = <1>;
-    };
-    
-    m1dai3_dao2_idle: m1dai3_dao2_idle{
-        telechips,pins = "gpe-7";
-        telechips,pin-function = <0>;
-	telechips,output-low = <0>;
-    };   
-    
-    m1dai3_dai2: m1dai3_dai2{
-        telechips,pins = "gpe-8";
-        telechips,pin-function = <1>;
-    };
-    
-     m1dai3_dai2_idle: m1dai3_dai2_idle{
-        telechips,pins = "gpe-8";
-        telechips,pin-function = <0>;
-	telechips,output-low = <0>;
-    };   
+	m1dai3_dao0: m1dai3_dao0{
+		telechips,pins = "gpe-3";
+		telechips,pin-function = <1>;
+	};
 
-    m1dai3_dao3: m1dai3_dao3{
-        telechips,pins = "gpe-9";
-        telechips,pin-function = <1>;
-    };
-    
-     m1dai3_dao3_idle: m1dai3_dao3_idle{
-        telechips,pins = "gpe-9";
-        telechips,pin-function = <0>;
-	telechips,output-low = <0>;
-    };       
-    
-    m1dai3_dai3: m1dai3_dai3{
-        telechips,pins = "gpe-10";
-        telechips,pin-function = <1>;
-    };
-    
-     m1dai3_dai3_idle: m1dai3_dai3_idle{
-        telechips,pins = "gpe-10";
-        telechips,pin-function = <0>;
-	telechips,output-low = <0>;
-    };           
+	m1dai3_dao0_idle: m1dai3_dao0_idle{
+		telechips,pins = "gpe-3";
+		telechips,pin-function = <0>;
+		telechips,output-low = <0>;
+	};
 
+	m1dai3_dai0: m1dai3_dai0{
+		telechips,pins = "gpe-4";
+		telechips,pin-function = <1>;
+	};
+
+	m1dai3_dai0_idle: m1dai3_dai0_idle{
+		telechips,pins = "gpe-4";
+		telechips,pin-function = <0>;
+		telechips,output-low = <0>;
+	};
+
+	m1dai3_dao1: m1dai3_dao1{
+		telechips,pins = "gpe-5";
+		telechips,pin-function = <1>;
+	};
+
+	m1dai3_dao1_idle: m1dai3_dao1_idle{
+		telechips,pins = "gpe-5";
+		telechips,pin-function = <0>;
+		telechips,output-low = <0>;
+	};
+
+	m1dai3_dai1: m1dai3_dai1{
+		telechips,pins = "gpe-6";
+		telechips,pin-function = <1>;
+	};
+
+	m1dai3_dai1_idle: m1dai3_dai1_idle{
+		telechips,pins = "gpe-6";
+		telechips,pin-function = <0>;
+		telechips,output-low = <0>;
+	};
+
+	m1dai3_dao2: m1dai3_dao2{
+		telechips,pins = "gpe-7";
+		telechips,pin-function = <1>;
+	};
+
+	m1dai3_dao2_idle: m1dai3_dao2_idle{
+		telechips,pins = "gpe-7";
+		telechips,pin-function = <0>;
+		telechips,output-low = <0>;
+	};
+
+	m1dai3_dai2: m1dai3_dai2{
+		telechips,pins = "gpe-8";
+		telechips,pin-function = <1>;
+	};
+
+	m1dai3_dai2_idle: m1dai3_dai2_idle{
+		telechips,pins = "gpe-8";
+		telechips,pin-function = <0>;
+		telechips,output-low = <0>;
+	};
+
+	m1dai3_dao3: m1dai3_dao3{
+		telechips,pins = "gpe-9";
+		telechips,pin-function = <1>;
+	};
+
+	m1dai3_dao3_idle: m1dai3_dao3_idle{
+		telechips,pins = "gpe-9";
+		telechips,pin-function = <0>;
+		telechips,output-low = <0>;
+	};
+
+	m1dai3_dai3: m1dai3_dai3{
+		telechips,pins = "gpe-10";
+		telechips,pin-function = <1>;
+	};
+
+	m1dai3_dai3_idle: m1dai3_dai3_idle{
+		telechips,pins = "gpe-10";
+		telechips,pin-function = <0>;
+		telechips,output-low = <0>;
+	};
 };
 
 &uart0 {

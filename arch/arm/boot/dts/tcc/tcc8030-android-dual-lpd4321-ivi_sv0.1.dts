@@ -2,7 +2,7 @@
 /*
  * Device tree for Telechips TCC8030 Dual Chip Solution - IVI Side
  *
- * Copyright (C) 2018 Telechips Inc. 
+ * Copyright (C) 2018 Telechips Inc.
  */
 
 #ifndef DT_OVERLAY
@@ -69,11 +69,11 @@
 	power-on-gpios = <&gpb 17>;		// LCD_ON
 	reset-gpios = <&gpb 18 0>;		// LCD_RST
 	/*
-	display-on-gpios = ;		// LCD_DISP
-	lvds-stby-gpios = ;		// LCD_DE = LVDS_STBY in LVDS
-	lvds-power-gpios = ;		// LVDS_EN
-	lvds-power-gpios1 = ;		// V_5V0_EN
-	*/
+	 * display-on-gpios = ;		// LCD_DISP
+	 * lvds-stby-gpios = ;		// LCD_DE = LVDS_STBY in LVDS
+	 * lvds-power-gpios = ;		// LVDS_EN
+	 * lvds-power-gpios1 = ;	// V_5V0_EN
+	 */
 	mode = <1>;		/* 0: single 1: dual */
 	ports = <2 3 4>;
 };

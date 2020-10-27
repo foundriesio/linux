@@ -769,7 +769,7 @@ static int __init rmem_pmap_setup(struct reserved_mem *rmem)
 		if ((groups >= 1U) && (groups <= MAX_PMAP_GROUPS)) {
 			flags |= PMAP_FLAG_SECURED;
 		}
-	} 
+	}
 #endif
 
 	prop = of_get_flat_dt_prop(node, "telechips,pmap-shared", NULL);

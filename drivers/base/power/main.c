@@ -931,7 +931,7 @@ void dpm_resume(pm_message_t state)
 	ktime_t starttime = ktime_get();
 
 #if defined(CONFIG_PM_VERBOSE_DPM_SUSPEND)
-	printk("%s(%s) : start\n", __func__, pm_verb(state.event));
+	pr_info("%s(%s) : start\n", __func__, pm_verb(state.event));
 #endif
 
 	trace_suspend_resume(TPS("dpm_resume"), state.event, true);
@@ -959,18 +959,18 @@ void dpm_resume(pm_message_t state)
 
 #if defined(CONFIG_PM_VERBOSE_DPM_SUSPEND)
 #if defined(CONFIG_PM_VERBOSE_DPM_SUSPEND_FULL)
-			printk("dpm [:%s:", dev_name(dev));
+			pr_info("dpm [:%s:", dev_name(dev));
 #else
-			if(dev->driver)
-				printk("dpm [:%s:", dev->driver->name);
+			if (dev->driver)
+				pr_info("dpm [:%s:", dev->driver->name);
 #endif
 #endif
 			error = device_resume(dev, state, false);
 #if defined(CONFIG_PM_VERBOSE_DPM_SUSPEND)
 #if !defined(CONFIG_PM_VERBOSE_DPM_SUSPEND_FULL)
-			if(dev->driver)
+			if (dev->driver)
 #endif
-				printk("]\n");
+				pr_info("]\n");
 #endif
 
 			if (error) {
@@ -1657,7 +1657,7 @@ int dpm_suspend(pm_message_t state)
 	int error = 0;
 
 #if defined(CONFIG_PM_VERBOSE_DPM_SUSPEND)
-	printk("%s(%s) : start\n", __func__, pm_verb(state.event));
+	pr_info("%s(%s) : start\n", __func__, pm_verb(state.event));
 #endif
 
 	trace_suspend_resume(TPS("dpm_suspend"), state.event, true);
@@ -1677,10 +1677,10 @@ int dpm_suspend(pm_message_t state)
 //+[TCCQB] device suspend
 #if defined(CONFIG_PM_VERBOSE_DPM_SUSPEND)
 #if defined(CONFIG_PM_VERBOSE_DPM_SUSPEND_FULL)
-		printk("dpm [:%s:", dev_name(dev));
+		pr_info("dpm [:%s:", dev_name(dev));
 #else
-		if(dev->driver)
-			printk("dpm [:%s:", dev->driver->name);
+		if (dev->driver)
+			pr_info("dpm [:%s:", dev->driver->name);
 #endif
 #endif
 //-[TCCQB]
@@ -1689,9 +1689,9 @@ int dpm_suspend(pm_message_t state)
 //+[TCCQB] device suspend
 #if defined(CONFIG_PM_VERBOSE_DPM_SUSPEND)
 #if !defined(CONFIG_PM_VERBOSE_DPM_SUSPEND_FULL)
-		if(dev->driver)
+		if (dev->driver)
 #endif
-		printk("]\n");
+			pr_info("]\n");
 #endif
 //-[TCCQB]
 //

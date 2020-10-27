@@ -62,15 +62,16 @@
 	};
 
 	/* gmac
-		gmac1_rxer	: gpc-14
- 		gmac1_rxdv	: gpc-8
-		gmac1_txer	: gpc-15 */
+	 * gmac1_rxer	: gpc-14
+	 * gmac1_rxdv	: gpc-8
+	 * gmac1_txer	: gpc-15
+	 */
 	gmac@11b00000 {
 		status = "disable";
 	};
 
-	/* uart7_rtscts : gpc-8, gpc-9*/
-	/* i2c14_bus 	: gpc-14, gpc-15 */
+	/* uart7_rtscts	: gpc-8, gpc-9 */
+	/* i2c14_bus	: gpc-14, gpc-15 */
 
 	/* pmap for frame buffer 1 */
 	reserved-memory {

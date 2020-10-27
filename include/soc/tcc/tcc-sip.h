@@ -12,8 +12,8 @@
  * GNU General Public License for more details.
  */
 
-#ifndef __TCC_SIP_H_
-#define __TCC_SIP_H_
+#ifndef SOC_TCC_SIP_H
+#define SOC_TCC_SIP_H
 
 #define SIP_CMD_TAG		(0x82000000)
 /* 8200_TXXX	: SMC Function ID Struct*/
@@ -139,4 +139,4 @@ enum {
 	SIP_CRYPTO_CIPHER_RUN,
 };
 
-#endif /* __TCC_SIP_H_ */
+#endif /* SOC_TCC_SIP_H */
