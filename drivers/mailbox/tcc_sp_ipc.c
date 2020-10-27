@@ -157,8 +157,9 @@ static int sp_event_idx(uint32_t event)
 		event >>= 1;
 		idx++;
 	}
-	if (idx == 16)
+	if (idx == 16) {
 		return -1;
+	}
 
 	return idx;
 }
@@ -245,11 +246,11 @@ int sp_sendrecv_cmd(int cmd, void *data, int size, void *rdata, int rsize)
 	}
 
 	// Copy received data
-	if (mbox_rmsg.trans_type == DATA_MBOX)
+	if (mbox_rmsg.trans_type == DATA_MBOX) {
 		memcpy(rdata, mbox_rmsg.message, mbox_rmsg.msg_len);
-	else
+	} else {
 		memcpy(rdata, vaddr, mbox_rmsg.msg_len);
-
+	}
 	// print_hex_dump_bytes("Received: ", DUMP_PREFIX_ADDRESS,
 	// mbox_rmsg.message, size);
 	result = mbox_rmsg.msg_len;
@@ -349,9 +350,9 @@ static int sp_sendack_cmd(int cmd, struct cipher_data_t *data)
 
 	} else if (mbox_msg.msg_len > 4) {
 		memcpy(&rdata, mbox_msg.message, mbox_msg.msg_len);
-		if (rdata.size != data->size)
+		if (rdata.size != data->size) {
 			result = -2;
-		else
+		} else
 			result = 0;
 
 	} else
@@ -680,10 +681,11 @@ static unsigned int sp_poll(struct file *filp, poll_table *wait)
 {
 	poll_wait(filp, &event_waitq, wait);
 
-	if (recv_event != 0)
+	if (recv_event != 0) {
 		return POLLPRI;
-	else
+	} else {
 		return 0;
+	}
 }
 
 /**
