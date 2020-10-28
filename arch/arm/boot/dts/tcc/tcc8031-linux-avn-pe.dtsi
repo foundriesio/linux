@@ -232,6 +232,11 @@
 		pinctrl-names = "default";
 		pinctrl-0 = <&i2c11_bus>;
 		clock-frequency = <100000>;
+
+		tsc_serdes {
+			compatible = "telechips,tcc803x-tsc-serdes";
+			reg = <0x6A>;
+		};
 	};
 
 	i2c@16310000 {
