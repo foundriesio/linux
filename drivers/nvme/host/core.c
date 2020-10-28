@@ -1557,7 +1557,8 @@ static void nvme_update_disk_info(struct gendisk *disk,
 	blk_mq_unfreeze_queue(disk->queue);
 }
 
-static void __nvme_revalidate_disk(struct gendisk *disk, struct nvme_id_ns *id)
+static void __nvme_revalidate_disk(struct gendisk *disk, struct nvme_id_ns *id,
+				   bool first_scan)
 {
 	struct nvme_ns *ns = disk->private_data;
 
@@ -1583,7 +1584,7 @@ static void __nvme_revalidate_disk(struct gendisk *disk, struct nvme_id_ns *id)
 	if (ns->ndev)
 		nvme_nvm_update_nvm_info(ns);
 #ifdef CONFIG_NVME_MULTIPATH
-	if (ns->head->disk && ns->ctrl->state == NVME_CTRL_LIVE) {
+	if (ns->head->disk && ns->ctrl->state == NVME_CTRL_LIVE && first_scan) {
 		nvme_update_disk_info(ns->head->disk, ns, id);
 		blk_queue_stack_limits(ns->head->disk->queue, ns->queue);
 		nvme_mpath_update_disk_size(ns->head->disk);
@@ -1616,7 +1617,7 @@ static int nvme_revalidate_disk(struct gendisk *disk)
 		goto free_id;
 	}
 
-	__nvme_revalidate_disk(disk, id);
+	__nvme_revalidate_disk(disk, id, false);
 	ret = nvme_report_ns_ids(ctrl, ns->head->ns_id, id, &ids);
 	if (ret)
 		goto free_id;
@@ -3229,7 +3230,7 @@ static int nvme_alloc_ns(struct nvme_ctrl *ctrl, unsigned nsid)
 	memcpy(disk->disk_name, disk_name, DISK_NAME_LEN);
 	ns->disk = disk;
 
-	__nvme_revalidate_disk(disk, id);
+	__nvme_revalidate_disk(disk, id, true);
 
 	down_write(&ctrl->namespaces_rwsem);
 	list_add_tail(&ns->list, &ctrl->namespaces);
