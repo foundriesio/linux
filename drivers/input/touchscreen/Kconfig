@@ -1286,4 +1286,13 @@ config TOUCHSCREEN_GA657X_TOOL
 	  to your system.
 
 	  If unsure, say N.
+
+config TOUCHSCREEN_INIT_SERDES
+	tristate "Init Serdes for Telechips EVB Touchscreen"
+	depends on I2C && (ARCH_TCC805X || ARCH_TCC803X) && INPUT_TOUCHSCREEN
+	help
+	  Say Y here if you use Touch Screen in Telechips EVB.
+	  To initialize Touch Screen, Teleichips EVB have to update
+	  Serializer/Deserialzer Register for setting GPIO and I2C path.
+	  for more deatil, iRefer to Application Note for Touch Screen in EVB.
 endif
