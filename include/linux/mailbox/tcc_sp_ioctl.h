@@ -1,16 +1,7 @@
-/* Copyright (C) 2018 Telechips Inc.
+/*
+ * SPDX-License-Identifier: GPL-2.0-or-later
  *
- * This program is free software; you can redistribute it and/or modify it under the terms
- * of the GNU General Public License as published by the Free Software Foundation;
- * either version 2 of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
- * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
- * PURPOSE. See the GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License along with
- * this program; if not, write to the Free Software Foundation, Inc., 59 Temple Place,
- * Suite 330, Boston, MA 02111-1307 USA
+ * Copyright (C) Telechips Inc.
  */
 
 #ifndef INCLUDED_TCC_SP_IOCTL
@@ -21,42 +12,42 @@
 /**
  * @addtogroup spdrv
  * @{
- * @file tcc_sp_ioctl.h This file contains SP ioctl commands, SP command and event
- *  macros to communicate with SP.
+ * @file tcc_sp_ioctl.h
+ *	This file contains SP ioctl commands, SP command and event
+ *	macros to communicate with SP.
  */
 
 /**
  * Syntatic structure used for commnication with SP.
  */
-struct sp_segment
-{
-	int cmd;             /**< SP command */
+struct sp_segment {
+	int cmd;	     /**< SP command */
 	uint64_t data_addr;  /**< Data to send */
-	int size;            /**< Size of data */
+	int size;	    /**< Size of data */
 	uint64_t rdata_addr; /**< Data to receive */
-	int rsize;           /**< Size of rdata */
+	int rsize;	   /**< Size of rdata */
 };
 
 // clang-format off
 #define SP_IOCTL_MAGIC 'S'
 
 /** Only used during SP firmware development. */
-#define SP_RESET				_IO(SP_IOCTL_MAGIC, 0)
+#define SP_RESET		_IO(SP_IOCTL_MAGIC, 0)
 
 /** Sends and receives #sp_segment to SP. */
-#define SP_SENDRECV_CMD			_IOWR(SP_IOCTL_MAGIC, 1, struct sp_segment)
+#define SP_SENDRECV_CMD		_IOWR(SP_IOCTL_MAGIC, 1, struct sp_segment)
 
 /** Gets an event when poll operation is awaken. */
-#define SP_GET_EVENTS			_IOR(SP_IOCTL_MAGIC, 2, struct sp_segment)
+#define SP_GET_EVENTS		_IOR(SP_IOCTL_MAGIC, 2, struct sp_segment)
 
 /** Subscribes an event to be notified. */
-#define SP_SUBSCRIBE_EVENT		_IOW(SP_IOCTL_MAGIC, 3, struct sp_segment)
+#define SP_SUBSCRIBE_EVENT	_IOW(SP_IOCTL_MAGIC, 3, struct sp_segment)
 
 /** Unsubscribes an event to be notified. */
 #define SP_UNSUBSCRIBE_EVENT	_IOW(SP_IOCTL_MAGIC, 4, struct sp_segment)
 
 /** Gets an event when poll operation is awaken. */
-#define SP_GET_EVT_INFO			_IOR(SP_IOCTL_MAGIC, 5, struct sp_segment)
+#define SP_GET_EVT_INFO		_IOR(SP_IOCTL_MAGIC, 5, struct sp_segment)
 // clang-format on
 
 /**
@@ -80,7 +71,8 @@ struct sp_segment
  * - HWDMX_RESERVED16	\#define HWDMX_RESERVED16 SP_EVENT(magic_num, 16)
  * @attention Up to 16 of events can be assigned.
  */
-#define SP_EVENT(magic_num, event) ((1 << (event + 15)) | ((magic_num & 0xF) << 12))
+#define SP_EVENT(magic_num, event) \
+	((1 << (event + 15)) | ((magic_num & 0xF) << 12))
 
 /** @} */
 
