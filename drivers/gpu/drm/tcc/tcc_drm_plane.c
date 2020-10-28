@@ -235,22 +235,22 @@ static int tcc_plane_atomic_check(struct drm_plane *plane,
 
 	if(state == NULL) {
 		ret = -EINVAL;
-		dev_warn(plane->dev->dev, "[WARN][%s] %s line(%d) state is NULL with err(%d)\r\n",
-									LOG_TAG, __func__, __LINE__, ret);
+		dev_warn(plane->dev->dev, "[WARN][%s] %s state is NULL with err(%d)\r\n",
+									LOG_TAG, __func__, ret);
 		goto err_null;
 	}
 	tcc_state = to_tcc_plane_state(state);
 	if(tcc_state == NULL) {
 		ret = -EINVAL;
-		dev_warn(plane->dev->dev, "[WARN][%s] %s line(%d) tcc_state is NULL with err(%d)\r\n",
-									LOG_TAG, __func__, __LINE__, ret);
+		dev_warn(plane->dev->dev, "[WARN][%s] %s tcc_state is NULL with err(%d)\r\n",
+									LOG_TAG, __func__, ret);
 		goto err_null;
 	}
 
 	if(state->state == NULL) {
 		ret = -EINVAL;
-		dev_warn(plane->dev->dev, "[WARN][%s] %s line(%d) state->state is NULL with err(%d)\r\n",
-									LOG_TAG, __func__, __LINE__, ret);
+		dev_warn(plane->dev->dev, "[WARN][%s] %s state->state is NULL with err(%d)\r\n",
+									LOG_TAG, __func__, ret);
 		goto err_null;
 	}
 
@@ -262,8 +262,8 @@ static int tcc_plane_atomic_check(struct drm_plane *plane,
 	crtc_state = drm_atomic_get_existing_crtc_state(state->state, state->crtc);
 	if(crtc_state == NULL) {
 		ret = -EINVAL;
-		dev_warn(plane->dev->dev, "[WARN][%s] %s line(%d) crtc_state is NULL with err(%d)\r\n",
-									LOG_TAG, __func__, __LINE__, ret);
+		dev_warn(plane->dev->dev, "[WARN][%s] %s crtc_state is NULL with err(%d)\r\n",
+									LOG_TAG, __func__, ret);
 		goto err_null;
 	}
 
@@ -277,44 +277,44 @@ static int tcc_plane_atomic_check(struct drm_plane *plane,
         /* we should have a crtc state if the plane is attached to a crtc */
         if (WARN_ON(crtc_state == NULL)) {
 		dev_warn(plane->dev->dev,
-			"[WARN][%s] %s line(%d) err(%d)\r\n", LOG_TAG, __func__, __LINE__, ret);
+			"[WARN][%s] %s err(%d)\r\n", LOG_TAG, __func__, ret);
                 ret = -EINVAL;
 		goto err_null;
 	}
 
 	if (!state->crtc || !state->fb) {
 		dev_warn(plane->dev->dev,
-			"[WARN][%s] %s line(%d) err(%d)\r\n", LOG_TAG, __func__, __LINE__, ret);
+			"[WARN][%s] %s err(%d)\r\n", LOG_TAG, __func__, ret);
 		ret = -EINVAL;
 		goto err_null;
 	}
 
         if (state->crtc_x + state->crtc_w > crtc_state->adjusted_mode.hdisplay) {
 		dev_warn(plane->dev->dev,
-			"[WARN][%s] %s line(%d) err(%d)\r\n", LOG_TAG, __func__, __LINE__, ret);
+			"[WARN][%s] %s err(%d)\r\n", LOG_TAG, __func__, ret);
                 ret = -EINVAL;
 		goto err_null;
 	}
 
         if (state->crtc_y + state->crtc_h > crtc_state->adjusted_mode.vdisplay) {
 		dev_warn(plane->dev->dev,
-			"[WARN][%s] %s line(%d) err(%d)\r\n", LOG_TAG, __func__, __LINE__, ret);
+			"[WARN][%s] %s err(%d)\r\n", LOG_TAG, __func__, ret);
                 ret = -EINVAL;
 		goto err_null;
 	}
 
 	if ((state->src_w >> 16) != state->crtc_w) {
 		dev_warn(plane->dev->dev,
-			"[WARN][%s] %s line(%d) mismatch %d with %d scaling mode is not supported\r\n",
-						LOG_TAG, __func__, __LINE__, state->src_w >> 16, state->crtc_w);
+			"[WARN][%s] %s mismatch %d with %d scaling mode is not supported\r\n",
+						LOG_TAG, __func__, state->src_w >> 16, state->crtc_w);
 		ret = -ENOTSUPP;
 		goto err_null;
 	}
 
 	if ((state->src_h >> 16) != state->crtc_h) {
 		dev_warn(plane->dev->dev,
-			"[WARN][%s] %s line(%d) mismatch %d with %d scaling mode is not supported\r\n",
-						LOG_TAG, __func__, __LINE__, state->src_h >> 16, state->crtc_h);
+			"[WARN][%s] %s mismatch %d with %d scaling mode is not supported\r\n",
+						LOG_TAG, __func__, state->src_h >> 16, state->crtc_h);
 		ret = -ENOTSUPP;
 		goto err_null;
 	}

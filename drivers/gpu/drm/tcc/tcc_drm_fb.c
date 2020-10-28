@@ -47,7 +47,7 @@ static int check_fb_gem_memory_type(struct drm_device *dev,
 	 * supported without IOMMU.
 	 */
 	if (IS_NONCONTIG_BUFFER(flags)) {
-		dev_err(dev->dev, "[ERR][DRMFB] %s line(%d) Non-contiguous GEM memory is not supported \r\n", __func__, __LINE__);
+		dev_err(dev->dev, "[ERR][DRMFB] %s Non-contiguous GEM memory is not supported \r\n", __func__);
 		return -EINVAL;
 	}
 
@@ -106,14 +106,14 @@ tcc_user_fb_create(struct drm_device *dev, struct drm_file *file_priv,
 
                 obj = drm_gem_object_lookup(file_priv, mode_cmd->handles[i]);
                 if (!obj) {
-			dev_err(dev->dev, "[ERR][DRMFB] %s line(%d) Failed to lookup gem object \r\n", __func__, __LINE__);
+			dev_err(dev->dev, "[ERR][DRMFB] %s Failed to lookup gem object \r\n", __func__);
                         ret = -ENOENT;
                         goto err_gem_object_unreference;
                 }
 
                 tcc_gem[i] = to_tcc_gem(obj);
                 if (size > tcc_gem[i]->size) {
-			dev_err(dev->dev, "[ERR][DRMFB] %s line(%d) Out of size for gem object \r\n", __func__, __LINE__);
+			dev_err(dev->dev, "[ERR][DRMFB] %s Out of size for gem object \r\n", __func__);
 			drm_gem_object_unreference_unlocked(&tcc_gem[i]->base);
                         ret = -EINVAL;
                         goto err_gem_object_unreference;
@@ -122,7 +122,7 @@ tcc_user_fb_create(struct drm_device *dev, struct drm_file *file_priv,
 
         fb = tcc_drm_fb_alloc(dev, mode_cmd, tcc_gem, i);
         if (IS_ERR(fb)) {
-		dev_err(dev->dev, "[ERR][DRMFB] %s line(%d) Failed to tcc_drm_fb_alloc\r\n", __func__, __LINE__);
+		dev_err(dev->dev, "[ERR][DRMFB] %s Failed to tcc_drm_fb_alloc\r\n", __func__);
                 ret = PTR_ERR(fb);
                 goto err_gem_object_unreference;
         }
@@ -215,7 +215,7 @@ tcc_drm_fb_alloc(struct drm_device *dev,
         for (i = 0; i < num_planes; i++) {
 		ret = check_fb_gem_memory_type(dev, tcc_gem[i]);
 		if(ret < 0) {
-			dev_err(dev->dev, "[ERR][DRMFB] %s line(%d) Failed to check_fb_gem_memory_type \r\n", __func__, __LINE__);
+			dev_err(dev->dev, "[ERR][DRMFB] %s Failed to check_fb_gem_memory_type \r\n", __func__);
 			goto err_memory_type;
 		}
                 tcc_fb->tcc_gem[i] = tcc_gem[i];

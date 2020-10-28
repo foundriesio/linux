@@ -47,12 +47,12 @@ do { 									\
 	if(vblank_event != NULL) {					\
 		switch(vblank_event->event.base.type) {			\
 			case DRM_EVENT_VBLANK:				\
-				dev_info(dev, "[INFO][%s] %s line(%d) DRM_EVENT_VBLANK\r\n", \
-					 			LOG_TAG, __func__, __LINE__); \
+				dev_info(dev, "[INFO][%s] %s DRM_EVENT_VBLANK\r\n", \
+								LOG_TAG, __func__); \
 				break;					\
 			case DRM_EVENT_FLIP_COMPLETE:			\
-				dev_info(dev, "[INFO][%s] %s line(%d) DRM_EVENT_FLIP_COMPLETE\r\n", \
-						LOG_TAG, __func__, __LINE__); \
+				dev_info(dev, "[INFO][%s] %s DRM_EVENT_FLIP_COMPLETE\r\n", \
+						LOG_TAG, __func__); \
 				break;					\
 		}							\
 	}								\
@@ -195,14 +195,14 @@ void tcc_crtc_handle_event(struct tcc_drm_crtc *tcc_crtc)
 	struct drm_pending_vblank_event *event = new_crtc_state->event;
 
 	if (!new_crtc_state->active) {
-		//dev_debug("[DEBUG][%s] %s line(%d) new crtc state is not active\r\n",
-		//	LOG_TAG, __func__, __LINE__);
+		//dev_debug("[DEBUG][%s] %s new crtc state is not active\r\n",
+		//	LOG_TAG, __func__);
 		return;
 	}
 
 	if (event == NULL) {
-		pr_info("[INFO][%s] %s line(%d) event is NULL\r\n",
-					LOG_TAG, __func__, __LINE__);
+		pr_info("[INFO][%s] %s event is NULL\r\n",
+					LOG_TAG, __func__);
 		return;
 	}
 
@@ -312,8 +312,8 @@ static void tcc_drm_crtc_force_disable(struct drm_crtc *crtc,
 
 go_find_crtc:
 	dev_info(crtc->dev->dev,
-		"[INFO][%s] %s line(%d) Turn off display device on this CRTC\r\n",
-		LOG_TAG, __func__, __LINE__);
+		"[INFO][%s] %s Turn off display device on this CRTC\r\n",
+		LOG_TAG, __func__);
 
 	/* Disable panels if exist */
 	funcs = encoder->helper_private;
@@ -344,8 +344,8 @@ static int tcc_drm_crtc_check_display_timing(struct drm_crtc *crtc,
 	/* Check turn on status of display device */
 	if(!ddinfo.enable) {
 		dev_info(crtc->dev->dev,
-			"[INFO][%s] %s line(%d) display device is disabled\r\n",
-			LOG_TAG, __func__, __LINE__);
+			"[INFO][%s] %s display device is disabled\r\n",
+			LOG_TAG, __func__);
 		need_reset = 1;
 		goto out_state_on;
 	}
@@ -354,8 +354,8 @@ static int tcc_drm_crtc_check_display_timing(struct drm_crtc *crtc,
 	vactive = tcc_drm_crtc_calc_vactive(mode);
 	if(ddinfo.width != mode->hdisplay || ddinfo.height != vactive) {
 		dev_info(crtc->dev->dev,
-			"[INFO][%s] %s line(%d) display size is not match %dx%d : %dx%d\r\n",
-			LOG_TAG, __func__, __LINE__,
+			"[INFO][%s] %s display size is not match %dx%d : %dx%d\r\n",
+			LOG_TAG, __func__,
 			ddinfo.width, ddinfo.height, mode->hdisplay, vactive);
 		need_reset = 1;
 		goto out_turnoff;
@@ -363,8 +363,8 @@ static int tcc_drm_crtc_check_display_timing(struct drm_crtc *crtc,
 	/* Check pixel clock */
 	if(!tcc_drm_crtc_check_pixelclock_match(clk_get_rate(hw_data->ddc_clock), mode->clock * 1000)) {
 		dev_info(crtc->dev->dev,
-			"[INFO][%s] %s line(%d) clock is not match %ldHz : %dHz\r\n",
-			LOG_TAG, __func__, __LINE__, clk_get_rate(hw_data->ddc_clock), mode->clock * 1000);
+			"[INFO][%s] %s clock is not match %ldHz : %dHz\r\n",
+			LOG_TAG, __func__, clk_get_rate(hw_data->ddc_clock), mode->clock * 1000);
 		need_reset = 1;
 		goto out_turnoff;
 	}
@@ -649,7 +649,7 @@ int tcc_crtc_edid_checksum(struct edid *base_edid)
 	for(i=0;i<EDID_LENGTH-1;i++){
 		csum += data[i];
 	}
-	printk(KERN_INFO "[DEBUG][%d][%s] Sum of EDID is %2x, Checksum is %2x\n", __LINE__,  __FUNCTION__, csum, 0xFF-csum+1);
+	printk(KERN_INFO "[DEBUG][%d][%s] Sum of EDID is %2x, Checksum is %2x\n",  __FUNCTION__, csum, 0xFF-csum+1);
 
 	base_edid->checksum = 0xFF-csum+1;
 	return 0;
@@ -665,17 +665,17 @@ int tcc_crtc_parse_edid_ioctl(struct drm_device *dev, void *data, struct drm_fil
 
 	int i =0;
 
-	pr_info("[DEBUG][%d][%s] Ioctl called \n", __LINE__, __FUNCTION__);
+	pr_info("[DEBUG][%d][%s] Ioctl called \n", __FUNCTION__);
 
 	memset(base_edid, 0, sizeof(base_edid));
 	/* get crtc */
 	crtc = drm_crtc_find(dev, args->crtc_id);
 	if(!crtc){
-		pr_err("[ERR][DRMCRTC] %s line(%d) Invalid crtc ID \r\n",  __func__, __LINE__);
+		pr_err("[ERR][DRMCRTC] %s Invalid crtc ID \r\n",  __func__);
 		return -ENOENT;
 	}
 	crtc_state = crtc->state;
-	pr_info("[DEBUG][%d][%s] crtc_id : [%d]\n", __LINE__, __FUNCTION__, args->crtc_id);
+	pr_info("[DEBUG][%d][%s] crtc_id : [%d]\n", __FUNCTION__, args->crtc_id);
 
 	// fill edid with base info
 	tcc_crtc_fill_base_edid(base_edid);
@@ -815,8 +815,8 @@ finish:
 	/* Set pixel clocks */
 	if(!tcc_drm_crtc_check_pixelclock_match(clk_get_rate(hw_data->ddc_clock), vm.pixelclock)) {
 		dev_info(crtc->dev->dev,
-			"[INFO][%s] %s line(%d) clock is not match %ldHz : %dHz\r\n",
-			LOG_TAG, __func__, __LINE__, clk_get_rate(hw_data->ddc_clock), mode->clock * 1000);
+			"[INFO][%s] %s clock is not match %ldHz : %dHz\r\n",
+			LOG_TAG, __func__, clk_get_rate(hw_data->ddc_clock), mode->clock * 1000);
 		clk_set_rate(hw_data->ddc_clock, vm.pixelclock);
 	}
 

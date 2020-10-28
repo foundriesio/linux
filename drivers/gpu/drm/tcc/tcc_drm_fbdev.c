@@ -202,13 +202,13 @@ int tcc_drm_fb_helper_ioctl(struct fb_info *info, unsigned int cmd,
 }
 
 static struct fb_ops tcc_drm_fb_ops = {
-	.owner		= THIS_MODULE,
+	.owner = THIS_MODULE,
 	DRM_FB_HELPER_DEFAULT_OPS,
-	.fb_mmap        = tcc_drm_fb_mmap,
-	.fb_fillrect	= drm_fb_helper_cfb_fillrect,
-	.fb_copyarea	= drm_fb_helper_cfb_copyarea,
-	.fb_imageblit	= drm_fb_helper_cfb_imageblit,
-	.fb_ioctl       = tcc_drm_fb_helper_ioctl,
+	.fb_mmap = tcc_drm_fb_mmap,
+	.fb_fillrect = drm_fb_helper_cfb_fillrect,
+	.fb_copyarea = drm_fb_helper_cfb_copyarea,
+	.fb_imageblit = drm_fb_helper_cfb_imageblit,
+	.fb_ioctl = tcc_drm_fb_helper_ioctl,
 };
 
 static int tcc_drm_fbdev_update(struct drm_fb_helper *helper,

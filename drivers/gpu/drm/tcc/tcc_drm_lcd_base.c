@@ -230,8 +230,8 @@ static irqreturn_t lcd_irq_handler(int irq, void *dev_id)
 
 	if (ctx == NULL) {
 		dev_warn(ctx->dev,
-				"[WARN][%s] %s line(%d) ctx is NULL\r\n",
-					LOG_TAG, __func__, __LINE__);
+				"[WARN][%s] %s ctx is NULL\r\n",
+					LOG_TAG, __func__);
 		return IRQ_HANDLED;
 	}
 
@@ -246,8 +246,8 @@ static irqreturn_t lcd_irq_handler(int irq, void *dev_id)
 		/* check the crtc is detached already from encoder */
 		if (ctx->drm_dev == NULL) {
 			dev_warn(ctx->dev,
-				"[WARN][%s] %s line(%d) drm_dev is not binded\r\n",
-					LOG_TAG, __func__, __LINE__);
+				"[WARN][%s] %s drm_dev is not binded\r\n",
+					LOG_TAG, __func__);
 			goto out;
 		}
 
@@ -343,13 +343,13 @@ static void lcd_enable_video_output(struct lcd_context *ctx, unsigned int win,
 {
 	do {
 		if(win >= ctx->hw_data.rdma_counts) {
-			dev_info(ctx->dev, "[ERROR][%s] %s line(%d) win(%d) is out of range (%d)\r\n",
-				LOG_TAG, __func__, __LINE__, win, ctx->hw_data.rdma_counts);
+			dev_dbg(ctx->dev, "[DEBUG][%s] %s win(%d) is out of range (%d)\r\n",
+				LOG_TAG, __func__, win, ctx->hw_data.rdma_counts);
 			break;
 		}
 		if(ctx->hw_data.rdma[win].virt_addr == NULL) {
-			dev_info(ctx->dev, "[ERROR][%s] %s line(%d) virtual address of win(%d) is NULL\r\n",
-				LOG_TAG, __func__, __LINE__, win);
+			dev_warn(ctx->dev, "[WARN][%s] %s virtual address of win(%d) is NULL\r\n",
+				LOG_TAG, __func__, win);
 			break;
 		}
 		if (enable) {
@@ -389,8 +389,8 @@ static int lcd_atomic_check(struct tcc_drm_crtc *crtc,
 	#endif
 
 	if (mode->clock == 0) {
-		dev_warn(ctx->dev, "[WARN][%s] %s line(%d) Mode has zero clock value.\n",
-								LOG_TAG, __func__, __LINE__);
+		dev_warn(ctx->dev, "[WARN][%s] %s Mode has zero clock value.\n",
+								LOG_TAG, __func__);
 		return -EINVAL;
 	}
 
@@ -400,8 +400,8 @@ static int lcd_atomic_check(struct tcc_drm_crtc *crtc,
 		lcd_rate = clk_get_rate(ctx->hw_data.ddc_clock);
 		if (2 * lcd_rate < ideal_clk) {
 			dev_err(ctx->dev,
-				"[ERROR][%s] %s line(%d) sclk_lcd clock too low(%lu) for requested pixel clock(%lu)\n",
-				 					LOG_TAG, __func__, __LINE__, lcd_rate, ideal_clk);
+				"[ERROR][%s] %s sclk_lcd clock too low(%lu) for requested pixel clock(%lu)\n",
+				 					LOG_TAG, __func__, lcd_rate, ideal_clk);
 			return -EINVAL;
 		}
 
@@ -409,8 +409,8 @@ static int lcd_atomic_check(struct tcc_drm_crtc *crtc,
 		clkdiv = DIV_ROUND_CLOSEST(lcd_rate, ideal_clk);
 		if (clkdiv >= 0x200) {
 			dev_err(ctx->dev,
-				"[ERROR][%s] %s line(%d) requested pixel clock(%lu) too low\n",
-				 			LOG_TAG, __func__, __LINE__, ideal_clk);
+				"[ERROR][%s] %s requested pixel clock(%lu) too low\n",
+				 			LOG_TAG, __func__, ideal_clk);
 			return -EINVAL;
 		}
 	}
@@ -428,13 +428,13 @@ static void lcd_win_set_pixfmt(struct lcd_context *ctx, unsigned int win,
 
 	do {
 		if(win >= ctx->hw_data.rdma_counts) {
-			pr_err("[ERROR][%s] %s line(%d) win(%d) is out of range (%d)\r\n",
-				LOG_TAG, __func__, __LINE__, win, ctx->hw_data.rdma_counts);
+			pr_err("[ERROR][%s] %s linewin(%d) is out of range (%d)\r\n",
+				LOG_TAG, __func__, win, ctx->hw_data.rdma_counts);
 			break;
 		}
 		if(ctx->hw_data.rdma[win].virt_addr == NULL) {
-			pr_err("[ERROR][%s] %s line(%d) virtual address of win(%d) is NULL\r\n",
-				LOG_TAG, __func__, __LINE__, win);
+			pr_err("[ERROR][%s] %s virtual address of win(%d) is NULL\r\n",
+				LOG_TAG, __func__, win);
 			break;
 		}
 
@@ -530,19 +530,19 @@ static void lcd_update_plane(struct tcc_drm_crtc *crtc,
 
 	do {
 		if(ctx->keep_logo) {
-			dev_info(ctx->dev, "[INFO][%s] %s line(%d) skip logo\r\n",
-							LOG_TAG, __func__, __LINE__);
+			dev_info(ctx->dev, "[INFO][%s] %s skip logo\r\n",
+							LOG_TAG, __func__);
 			ctx->keep_logo--;
 			break;
 		}
 		if(win >= ctx->hw_data.rdma_counts) {
-			pr_err("[ERROR][%s] %s line(%d) win(%d) is out of range (%d)\r\n",
-				LOG_TAG, __func__, __LINE__, win, ctx->hw_data.rdma_counts);
+			pr_err("[ERROR][%s] %s win(%d) is out of range (%d)\r\n",
+				LOG_TAG, __func__, win, ctx->hw_data.rdma_counts);
 			break;
 		}
 		if(ctx->hw_data.rdma[win].virt_addr == NULL) {
-			pr_err("[ERROR][%s] %s line(%d) virtual address of win(%d) is NULL\r\n",
-				LOG_TAG, __func__, __LINE__, win);
+			pr_err("[ERROR][%s] %s virtual address of win(%d) is NULL\r\n",
+				LOG_TAG, __func__, win);
 			break;
 		}
 		pWMIX = ctx->hw_data.wmixer.virt_addr;
@@ -553,13 +553,13 @@ static void lcd_update_plane(struct tcc_drm_crtc *crtc,
 
 		dma_addr = tcc_drm_fb_dma_addr(fb, 0) + offset;
 		if(dma_addr == (dma_addr_t)0) {
-			DRM_ERROR("[ERROR][%s] %s line(%d) dma address of win(%d) is NULL\r\n",
-				LOG_TAG,__func__, __LINE__, win);
+			DRM_ERROR("[ERROR][%s] %s dma address of win(%d) is NULL\r\n",
+				LOG_TAG,__func__, win);
 			break;
 		}
 		if(upper_32_bits(dma_addr) > 0 ) {
-			DRM_ERROR("[ERROR][%s] %s line(%d) dma address of win(%d) is out of range\r\n",
-				LOG_TAG, __func__, __LINE__, win);
+			DRM_ERROR("[ERROR][%s] %s dma address of win(%d) is out of range\r\n",
+				LOG_TAG, __func__, win);
 			break;
 		}
 
@@ -567,9 +567,10 @@ static void lcd_update_plane(struct tcc_drm_crtc *crtc,
 		VIOC_RDMA_GetImageEnable(ctx->hw_data.rdma[win].virt_addr, &enabled);
 		if(!enabled) {
 			if(get_vioc_type(ctx->hw_data.rdma[win].blk_num) == get_vioc_type(VIOC_RDMA)) {
-				dev_info(ctx->dev,
-					"[INFO][%s] %s win(%d) swreset RDMA, because rdma was disabled\r\n",
-											LOG_TAG, __func__, win);
+				dev_dbg(ctx->dev,
+				"[DEBUG][%s] %s win(%d) swreset RDMA, "
+					"because rdma was disabled\r\n",
+						LOG_TAG, __func__, win);
 				VIOC_CONFIG_SWReset(ctx->hw_data.rdma[win].blk_num, VIOC_CONFIG_RESET);
 				VIOC_CONFIG_SWReset(ctx->hw_data.rdma[win].blk_num, VIOC_CONFIG_CLEAR);
 			}
@@ -642,22 +643,22 @@ static void lcd_enable(struct tcc_drm_crtc *crtc)
 	if(ctx->hw_data.connector_type == DRM_MODE_CONNECTOR_LVDS) {
 		if (!test_and_set_bit(CRTC_FLAGS_PCLK_BIT, &ctx->crtc_flags)) {
 			dev_info(ctx->dev,
-				"[INFO][%s] %s line(%d) enable pclk %ldHz for LVDS\r\n",
-						LOG_TAG, __func__, __LINE__,
+				"[INFO][%s] %s Enable LVDS-PCLK %ldHz \r\n",
+						LOG_TAG, __func__,
 						clk_get_rate(ctx->hw_data.ddc_clock));
 			ret = clk_prepare_enable(ctx->hw_data.ddc_clock);
 			if  (ret < 0) {
 				dev_warn(ctx->dev,
-				"[WARN][%s] %s line(%d) failed to enable the lcd clk\r\n",
-								LOG_TAG, __func__, __LINE__);
+				"[WARN][%s] %s failed to enable the lcd clk\r\n",
+								LOG_TAG, __func__);
 			}
 		}
 	}
 
 	if(!crtc->enabled) {
 		dev_info(ctx->dev,
-			"[INFO][%s] %s line(%d) turn on display dev\r\n",
-							LOG_TAG, __func__, __LINE__);
+			"[INFO][%s] %s Turn on\r\n",
+							LOG_TAG, __func__);
 		#if defined(CONFIG_PM)
 		pm_runtime_get_sync(ctx->dev);
 		#endif
@@ -676,8 +677,8 @@ static void lcd_disable(struct tcc_drm_crtc *crtc)
 		lcd_enable_video_output(ctx, i, false);
 	}
 
-	dev_info(ctx->dev, "[INFO][%s] %s line(%d) turn off display dev\r\n",
-							LOG_TAG, __func__, __LINE__);
+	dev_info(ctx->dev, "[INFO][%s] %s Turn off\r\n",
+							LOG_TAG, __func__);
 	if(VIOC_DISP_Get_TurnOnOff(ctx->hw_data.display_device.virt_addr))
 		VIOC_DISP_TurnOff(ctx->hw_data.display_device.virt_addr);
 
@@ -688,8 +689,8 @@ static void lcd_disable(struct tcc_drm_crtc *crtc)
 	}
 
 	if (test_and_clear_bit(CRTC_FLAGS_PCLK_BIT, &ctx->crtc_flags)) {
-		dev_info(ctx->dev, "[INFO][%s] %s line(%d) disable pck\r\n",
-							LOG_TAG, __func__, __LINE__);
+		dev_info(ctx->dev, "[INFO][%s] %s Disable PCLK\r\n",
+							LOG_TAG, __func__);
 		clk_disable_unprepare(ctx->hw_data.ddc_clock);
 	}
 	crtc->enabled = 0;
@@ -774,14 +775,14 @@ static void lcd_mode_set_nofb(struct tcc_drm_crtc *crtc)
 		int ret;
 		if (!test_and_set_bit(CRTC_FLAGS_PCLK_BIT, &ctx->crtc_flags)) {
 			dev_info(ctx->dev,
-				"[INFO][%s] %s line(%d) enable pclk %ldHz\r\n",
-						LOG_TAG, __func__, __LINE__,
+				"[INFO][%s] %s Enable PCLK  %ldHz\r\n",
+						LOG_TAG, __func__,
 						clk_get_rate(ctx->hw_data.ddc_clock));
 			ret = clk_prepare_enable(ctx->hw_data.ddc_clock);
 			if  (ret < 0) {
 				dev_warn(ctx->dev,
-				"[WARN][%s] %s line(%d) failed to enable the lcd clk\r\n",
-								LOG_TAG, __func__, __LINE__);
+				"[WARN][%s] %s failed to enable the lcd clk\r\n",
+								LOG_TAG, __func__);
 			}
 		}
 	}
@@ -820,8 +821,8 @@ static int lcd_bind(struct device *dev, struct device *master, void *data)
 		ret = clk_prepare_enable(ctx->hw_data.vioc_clock);
 		if (ret < 0) {
 			dev_err(dev,
-				"[ERROR][%s] %s line(%d) failed to enable the bus clk\n",
-								LOG_TAG, __func__, __LINE__);
+				"[ERROR][%s] %s failed to enable the bus clk\n",
+								LOG_TAG, __func__);
 			return -1;
 		}
 	}
@@ -840,8 +841,8 @@ static int lcd_bind(struct device *dev, struct device *master, void *data)
 					formats_list, formats_list_size);
 		if(ret) {
 			dev_err(dev,
-				"[ERROR][%s] %s line(%d) failed to initizliaed the planes\n",
-									LOG_TAG, __func__, __LINE__);
+				"[ERROR][%s] %s failed to initizliaed the planes\n",
+									LOG_TAG, __func__);
 			return ret;
 		}
 
@@ -895,15 +896,15 @@ static int lcd_probe(struct platform_device *pdev)
 
 	if (!dev->of_node) {
 		dev_err(dev,
-			"[ERROR][%s] %s line(%d) failed to get the device node\n",
-							LOG_TAG, __func__, __LINE__);
+			"[ERROR][%s] %s failed to get the device node\n",
+							LOG_TAG, __func__);
 		return -ENODEV;
 	}
 	ctx = devm_kzalloc(dev, sizeof(*ctx), GFP_KERNEL);
 	if (ctx == NULL) {
 		dev_err(dev,
-			"[ERROR][%s] %s line(%d) ctx is NULL\n",
-					LOG_TAG, __func__, __LINE__);
+			"[ERROR][%s] %s ctx is NULL\n",
+					LOG_TAG, __func__);
 		return -ENOMEM;
 	}
 
@@ -911,14 +912,14 @@ static int lcd_probe(struct platform_device *pdev)
 	ctx->data = (struct tcc_drm_device_data*)of_device_get_match_data(&pdev->dev);
 	if(ctx->data == NULL) {
 		dev_err(dev,
-			"[ERROR][%s] %s line(%d) failed to get match data\r\n",
-					LOG_TAG, __func__, __LINE__);
+			"[ERROR][%s] %s failed to get match data\r\n",
+					LOG_TAG, __func__);
 		return -ENOMEM;
 	}
 	if(tcc_drm_address_dt_parse(pdev, &ctx->hw_data, ctx->data->version) < 0) {
 		dev_err(dev,
-			"[ERROR][%s] %s line(%d) failed to parse device tree\n",
-							LOG_TAG, __func__, __LINE__);
+			"[ERROR][%s] %s failed to parse device tree\n",
+							LOG_TAG, __func__);
 		return ret;
 	}
 	switch(ctx->data->output_type) {
@@ -950,8 +951,8 @@ static int lcd_probe(struct platform_device *pdev)
 		return -ENODEV;
 	}
 
-	dev_dbg(dev, "[DEBUG][%s] %s line(%d) %s start probe with pdev(%p)\r\n",
-				LOG_TAG, __func__, __LINE__, ctx->data->name, pdev);
+	dev_dbg(dev, "[DEBUG][%s] %s %s start probe with pdev(%p)\r\n",
+				LOG_TAG, __func__, ctx->data->name, pdev);
 
 	spin_lock_init(&ctx->irq_lock);
 
@@ -971,8 +972,8 @@ static int lcd_probe(struct platform_device *pdev)
 	#endif
 	ret = component_add(dev, &lcd_component_ops);
 	if (ret) {
-		dev_err(dev, "[ERROR][%s] %s line(%d) failed to component_add\r\n",
-							LOG_TAG, __func__, __LINE__);
+		dev_err(dev, "[ERROR][%s] %s failed to component_add\r\n",
+							LOG_TAG, __func__);
 		goto err_disable_pm_runtime;
 	}
 	#if defined(CONFIG_DRM_TCC_KEEP_LOGO)
@@ -1019,11 +1020,12 @@ static int lcd_remove(struct platform_device *pdev)
 static int tcc_lcd_suspend(struct device *dev)
 {
 	struct lcd_context *ctx = dev_get_drvdata(dev);
-	dev_info(dev, "[ERROR][%s] %s line(%d) \r\n", LOG_TAG, __func__, __LINE__);
+	dev_info(dev, "[INFO][%s] %s \r\n",
+				LOG_TAG, __func__);
 
 	if (test_bit(CRTC_FLAGS_VCLK_BIT, &ctx->crtc_flags)) {
-		dev_info(dev, "[INFO][%s] %s line(%d) disable vclk\r\n",
-						LOG_TAG, __func__, __LINE__);
+		dev_info(dev, "[INFO][%s] %s Eisable vclk\r\n",
+						LOG_TAG, __func__);
 		clk_disable_unprepare(ctx->hw_data.vioc_clock);
 	}
 
@@ -1033,9 +1035,10 @@ static int tcc_lcd_suspend(struct device *dev)
 static int tcc_lcd_resume(struct device *dev)
 {
 	struct lcd_context *ctx = dev_get_drvdata(dev);
-	dev_info(dev, "[ERROR][%s] %s line(%d) \r\n", LOG_TAG, __func__, __LINE__);
+	dev_info(dev, "[INFO][%s] %s \r\n",
+				LOG_TAG, __func__);
 	if (test_bit(CRTC_FLAGS_VCLK_BIT, &ctx->crtc_flags)) {
-		dev_info(dev, "[INFO][%s] %s line(%d) enable vclk\r\n", LOG_TAG, __func__, __LINE__);
+		dev_info(dev, "[INFO][%s] %s Enable vclk\r\n", LOG_TAG, __func__);
 		clk_prepare_enable(ctx->hw_data.vioc_clock);
 	}
 	return 0;

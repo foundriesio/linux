@@ -825,12 +825,12 @@ tcc_drm_gem_prime_import_sg_table(struct drm_device *dev,
 		ret = -1;
 		return ERR_PTR(ret);
 	}
-	
+
 	tcc_gem->sgt = sgt;
 	if (tcc_gem->sgt->nents != 1) {
 		ret = -EINVAL;
-		printk(KERN_ERR "[ERR][DRMCRTC] %s line(%d) nents is %d - Not continuous memory!!\r\n", 
-			__func__, __LINE__, tcc_gem->sgt->nents);
+		printk(KERN_ERR "[ERR][DRMCRTC] %s nents is %d - Not continuous memory!!\r\n",
+			__func__, tcc_gem->sgt->nents);
 		goto err;
 	}
 
