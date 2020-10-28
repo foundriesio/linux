@@ -14,30 +14,11 @@ Reported-by: Carsten Emde <cbe@osadl.org>
 Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 
 ---
- block/blk-mq.c          |    2 ++
  include/linux/preempt.h |    3 +++
  lib/irq_poll.c          |    5 +++++
  net/core/dev.c          |    7 +++++++
- 4 files changed, 17 insertions(+)
+ 3 files changed, 15 insertions(+)
 
---- a/block/blk-mq.c
-+++ b/block/blk-mq.c
-@@ -604,6 +604,7 @@ static void blk_mq_trigger_softirq(struc
- 	if (list->next == &rq->ipi_list)
- 		raise_softirq_irqoff(BLOCK_SOFTIRQ);
- 	local_irq_restore(flags);
-+	preempt_check_resched_rt();
- }
- 
- static int blk_softirq_cpu_dead(unsigned int cpu)
-@@ -617,6 +618,7 @@ static int blk_softirq_cpu_dead(unsigned
- 			 this_cpu_ptr(&blk_cpu_done));
- 	raise_softirq_irqoff(BLOCK_SOFTIRQ);
- 	local_irq_enable();
-+	preempt_check_resched_rt();
- 
- 	return 0;
- }
 --- a/include/linux/preempt.h
 +++ b/include/linux/preempt.h
 @@ -187,8 +187,10 @@ do { \

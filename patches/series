@@ -79,8 +79,13 @@ io_wq-Make-io_wqe-lock-a-raw_spinlock_t.patch
 # 20200915074816.52zphpywj4zidspk@linutronix.de
 bus-mhi-Remove-include-of-rwlock_types.h.patch
 
-# 20201023110400.bx3uzsb7xy5jtsea@linutronix.de
-blk-mq-Don-t-IPI-requests-on-PREEMPT_RT.patch
+# 20201028141251.3608598-1-bigeasy@linutronix.de
+0001-blk-mq-Don-t-complete-on-a-remote-CPU-in-force-threa.patch
+0002-blk-mq-Always-complete-remote-completions-requests-i.patch
+0003-blk-mq-Use-llist_head-for-blk_cpu_done.patch
+
+# 20201028181041.xyeothhkouc3p4md@linutronix.de
+lib-test_lockup-Minimum-fix-to-get-it-compiled-on-PR.patch
 
 ############################################################
 # Ready for posting
@@ -146,22 +151,22 @@ tasklets-Use-static-line-for-functions.patch
 0004-locking-rtmutex-Remove-rt_mutex_timed_lock.patch
 0005-locking-rtmutex-Handle-the-various-new-futex-race-co.patch
 0006-futex-Fix-bug-on-when-a-requeued-RT-task-times-out.patch
-0008-locking-rtmutex-Make-lock_killable-work.patch
-0009-locking-spinlock-Split-the-lock-types-header.patch
-0010-locking-rtmutex-Avoid-include-hell.patch
-0011-lockdep-Reduce-header-files-in-debug_locks.h.patch
-0012-locking-split-out-the-rbtree-definition.patch
-0013-locking-rtmutex-Provide-rt_mutex_slowlock_locked.patch
-0014-locking-rtmutex-export-lockdep-less-version-of-rt_mu.patch
-0015-sched-Add-saved_state-for-tasks-blocked-on-sleeping-.patch
-0016-locking-rtmutex-add-sleeping-lock-implementation.patch
-0017-locking-rtmutex-Allow-rt_mutex_trylock-on-PREEMPT_RT.patch
-0018-locking-rtmutex-add-mutex-implementation-based-on-rt.patch
-0019-locking-rtmutex-add-rwsem-implementation-based-on-rt.patch
-0020-locking-rtmutex-add-rwlock-implementation-based-on-r.patch
-0021-locking-rtmutex-wire-up-RT-s-locking.patch
-0022-locking-rtmutex-add-ww_mutex-addon-for-mutex-rt.patch
-0023-locking-rtmutex-Use-custom-scheduling-function-for-s.patch
+0007-locking-rtmutex-Make-lock_killable-work.patch
+0008-locking-spinlock-Split-the-lock-types-header.patch
+0009-locking-rtmutex-Avoid-include-hell.patch
+0010-lockdep-Reduce-header-files-in-debug_locks.h.patch
+0011-locking-split-out-the-rbtree-definition.patch
+0012-locking-rtmutex-Provide-rt_mutex_slowlock_locked.patch
+0013-locking-rtmutex-export-lockdep-less-version-of-rt_mu.patch
+0014-sched-Add-saved_state-for-tasks-blocked-on-sleeping-.patch
+0015-locking-rtmutex-add-sleeping-lock-implementation.patch
+0016-locking-rtmutex-Allow-rt_mutex_trylock-on-PREEMPT_RT.patch
+0017-locking-rtmutex-add-mutex-implementation-based-on-rt.patch
+0018-locking-rtmutex-add-rwsem-implementation-based-on-rt.patch
+0019-locking-rtmutex-add-rwlock-implementation-based-on-r.patch
+0020-locking-rtmutex-wire-up-RT-s-locking.patch
+0021-locking-rtmutex-add-ww_mutex-addon-for-mutex-rt.patch
+0022-locking-rtmutex-Use-custom-scheduling-function-for-s.patch
 
 ###############################################################
 # Stuff broken upstream and upstream wants something different
@@ -179,6 +184,7 @@ signal-revert-ptrace-preempt-magic.patch
 # PREEMPT NORT
 preempt-nort-rt-variants.patch
 mm-make-vmstat-rt-aware.patch
+mm-memcontrol-Disable-preemption-in-__mod_memcg_lruv.patch
 
 # seqcount
 # https://lkml.kernel.org/r/20200817000200.20993-1-rdunlap@infradead.org
