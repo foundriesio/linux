@@ -11,7 +11,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 
 --- a/arch/mips/Kconfig
 +++ b/arch/mips/Kconfig
-@@ -2653,7 +2653,7 @@ config MIPS_CRC_SUPPORT
+@@ -2718,7 +2718,7 @@ config WAR_MIPS34K_MISSED_ITLB
  #
  config HIGHMEM
  	bool "High Memory Support"

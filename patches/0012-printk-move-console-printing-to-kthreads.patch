@@ -388,7 +388,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 -	 *
 -	 * console_trylock() is not able to detect the preemptive
 -	 * context reliably. Therefore the value must be stored before
--	 * and cleared after the the "again" goto label.
+-	 * and cleared after the "again" goto label.
 -	 */
 -	do_cond_resched = console_may_schedule;
 -again:

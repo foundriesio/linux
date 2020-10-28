@@ -65,5 +65,5 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 -		if (ratelimit < 10 &&
 +		if (ratelimit < 10 && !local_bh_blocked() &&
  		    (local_softirq_pending() & SOFTIRQ_STOP_IDLE_MASK)) {
- 			pr_warn("NOHZ: local_softirq_pending %02x\n",
+ 			pr_warn("NOHZ tick-stop error: Non-RCU local softirq work is pending, handler #%02x!!!\n",
  				(unsigned int) local_softirq_pending());

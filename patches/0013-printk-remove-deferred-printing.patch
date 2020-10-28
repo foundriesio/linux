@@ -24,14 +24,12 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/arch/arm/kernel/smp.c
 +++ b/arch/arm/kernel/smp.c
-@@ -680,11 +680,9 @@ void handle_IPI(int ipinr, struct pt_reg
+@@ -672,9 +672,7 @@ static void do_handle_IPI(int ipinr)
  		break;
  
  	case IPI_CPU_BACKTRACE:
 -		printk_nmi_enter();
- 		irq_enter();
- 		nmi_cpu_backtrace(regs);
- 		irq_exit();
+ 		nmi_cpu_backtrace(get_irq_regs());
 -		printk_nmi_exit();
  		break;
  
@@ -68,7 +66,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	} while (0)
 --- a/include/linux/printk.h
 +++ b/include/linux/printk.h
-@@ -147,18 +147,6 @@ static inline __printf(1, 2) __cold
+@@ -149,18 +149,6 @@ static inline __printf(1, 2) __cold
  void early_printk(const char *s, ...) { }
  #endif
  
@@ -341,7 +339,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 -}
 --- a/kernel/trace/trace.c
 +++ b/kernel/trace/trace.c
-@@ -9249,7 +9249,6 @@ void ftrace_dump(enum ftrace_dump_mode o
+@@ -9304,7 +9304,6 @@ void ftrace_dump(enum ftrace_dump_mode o
  	tracing_off();
  
  	local_irq_save(flags);
@@ -349,7 +347,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  	/* Simulate the iterator */
  	trace_init_global_iter(&iter);
-@@ -9329,7 +9328,6 @@ void ftrace_dump(enum ftrace_dump_mode o
+@@ -9384,7 +9383,6 @@ void ftrace_dump(enum ftrace_dump_mode o
  		atomic_dec(&per_cpu_ptr(iter.array_buffer->data, cpu)->disabled);
  	}
  	atomic_dec(&dump_running);

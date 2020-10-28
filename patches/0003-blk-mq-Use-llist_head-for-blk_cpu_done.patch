@@ -143,7 +143,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	}
  
  	return true;
-@@ -3877,7 +3849,7 @@ static int __init blk_mq_init(void)
+@@ -3905,7 +3877,7 @@ static int __init blk_mq_init(void)
  	int i;
  
  	for_each_possible_cpu(i)
@@ -154,7 +154,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	cpuhp_setup_state_nocalls(CPUHP_BLOCK_SOFTIRQ_DEAD,
 --- a/include/linux/blkdev.h
 +++ b/include/linux/blkdev.h
-@@ -154,7 +154,7 @@ struct request {
+@@ -156,7 +156,7 @@ struct request {
  	 */
  	union {
  		struct hlist_node hash;	/* merge hash */
