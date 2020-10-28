@@ -1267,7 +1267,6 @@ bool Dptx_Ext_Initiate_MST_Act( struct Dptx_Params *pstDptx )
 bool Dptx_Ext_Get_TopologyState( struct Dptx_Params *pstDptx, u8 *pucNumOfHotpluggedPorts )
 {
 	bool									bRetVal;
-	int										iRetVal;
 	u8										ucMainPort_Count, ucBranchPort_Count, ucBranchPort_Number = 0,        ucSinkDevPort_Index = 0;
 	struct drm_dp_sideband_msg_rx			*pstMain_Msg_Rx, *pstMsg_Rx;
         struct drm_dp_sideband_msg_reply_body	*pstMain_Msg_Reply, *pstMsg_Reply;
@@ -1282,16 +1281,16 @@ bool Dptx_Ext_Get_TopologyState( struct Dptx_Params *pstDptx, u8 *pucNumOfHotplu
 	bRetVal = dptx_ext_clear_sideband_msg_payload_id_table( pstDptx );
 	if( bRetVal )
 	{
-		return ( iRetVal );
+		return ( bRetVal );
 	}
 
 	pstMain_Msg_Rx = &pstDptx_Topology_Params->stMainBranch_Msg_Rx;
 	pstMain_Msg_Reply = &pstDptx_Topology_Params->stMainBranch_Msg_Reply;
 
-        iRetVal = dptx_ext_set_sideband_msg_link_address( pstDptx, pstMain_Msg_Rx, pstMain_Msg_Reply, INVALID_MST_PORT_NUM );
-        if( iRetVal )
+    bRetVal = dptx_ext_set_sideband_msg_link_address( pstDptx, pstMain_Msg_Rx, pstMain_Msg_Reply, INVALID_MST_PORT_NUM );
+    if( bRetVal )
 	{
-		return ( iRetVal );
+		return ( bRetVal );
 	}
 	
 	dptx_dbg("1st Brach DP_LINK_ADDRESS-NPORTS = %d", pstMain_Msg_Reply->u.link_addr.nports);
@@ -1330,11 +1329,11 @@ bool Dptx_Ext_Get_TopologyState( struct Dptx_Params *pstDptx, u8 *pucNumOfHotplu
 	
 			ucBranchPort_Number++;
 		
-			iRetVal = dptx_ext_set_sideband_msg_link_address( pstDptx, pstMsg_Rx, pstMsg_Reply, pstMain_Msg_Reply->u.link_addr.ports[ucMainPort_Count].port_number );
-                        if( iRetVal )
-	                {
-			     return ( iRetVal );
-	                }
+			bRetVal = dptx_ext_set_sideband_msg_link_address( pstDptx, pstMsg_Rx, pstMsg_Reply, pstMain_Msg_Reply->u.link_addr.ports[ucMainPort_Count].port_number );
+            if( bRetVal )
+            {
+			     return ( bRetVal );
+            }
 	 	
 			dptx_dbg("%d Brach DP_LINK_ADDRESS-NPORTS = %d", ( ucBranchPort_Number + 1 ), pstMsg_Reply->u.link_addr.nports);
 			for( ucBranchPort_Count = 0; ucBranchPort_Count < pstMsg_Reply->u.link_addr.nports; ucBranchPort_Count++ ) 
@@ -1686,6 +1685,5 @@ bool Dptx_Ext_Remote_I2C_Read( struct Dptx_Params *pstDptx, u8 ucStream_Index, b
 
 	return ( DPTX_RETURN_SUCCESS );
 }
-
 
 
