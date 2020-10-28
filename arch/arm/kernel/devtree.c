@@ -212,7 +212,8 @@ const struct machine_desc * __init setup_machine_fdt(unsigned int dt_phys)
 {
 	const struct machine_desc *mdesc, *mdesc_best = NULL;
 
-#if defined(CONFIG_ARCH_MULTIPLATFORM) || defined(CONFIG_ARM_SINGLE_ARMV7M)
+#if defined(CONFIG_ARCH_MULTIPLATFORM) || defined(CONFIG_ARM_SINGLE_ARMV7M)\
+				|| defined(CONFIG_ARM_SINGLE_ARMV7A)
 	DT_MACHINE_START(GENERIC_DT, "Generic DT based system")
 		.l2c_aux_val = 0x0,
 		.l2c_aux_mask = ~0x0,

@@ -1,0 +1,15 @@
+# SPDX-License-Identifier: GPL-2.0
+
+config USB_ISP1763
+	tristate "ST ISP 1763 support"
+	depends on USB
+	help
+	  Say Y or M here if your system as an ISP1763 USB host controller
+	  or an ISP1763 USB dual-role controller.
+
+	  This driver does not support isochronous transfers or OTG.
+	  This USB controller is usually attached to a non-DMA-Master
+	  capable bus.
+
+	  To compile this driver as a module, choose M here: the
+	  module will be called isp1763.
