@@ -695,29 +695,6 @@ config TCC_ADC
 	help
 	  Say yes here to have support for the TELECHIPS ADC.
 
-config TCC_MT_ADC
-	bool "Telechips Multi-intput ADC driver"
-	depends on ARCH_TCC802X
-	default n
-	help
-		Say yes here to have support for the TELECHIPS ADC.
-
-if TCC_MT_ADC
-config TCC_MT_ADC0
-	bool "Enable TCC ADC0"
-	depends on !TCC_MICOM && !TCC_ADC0_OFF
-	default y
-	help
-		Use ADC Core0
-
-config TCC_MT_ADC1
-	bool "Enable TCC ADC1"
-	depends on !TCC_ADC1_OFF
-	default y
-	help
-		Use ADC Core1
-endif #TCC_MT_ADC
-
 config TI_ADC081C
 	tristate "Texas Instruments ADC081C/ADC101C/ADC121C family"
 	depends on I2C

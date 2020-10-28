@@ -932,8 +932,6 @@ static void dwc2_change_dr_mode(struct work_struct *w)
 		}
 		dev_warn(hsotg->dev, "[WARN][USB] Current mode is %s \n", (hsotg->dr_mode == USB_DR_MODE_HOST) ? "Host" : "Device");
 	}
-
-	return res;
 }
 #endif
 

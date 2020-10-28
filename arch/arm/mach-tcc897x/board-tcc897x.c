@@ -15,29 +15,31 @@
 #include <plat/platsmp.h>
 #include <mach/iomap.h>
 
-extern struct smp_operations tcc_smp_ops;
-extern void __init tcc_mem_reserve(void);
-extern void __init tcc_map_common_io(void);
+#include "common.h"
+
+/* Wrapper of 'OF_DEV_AUXDATA' to parenthesize arguments */
+#define OF_DEV_AUXDATA_P(_compat, _phys, _name) \
+	OF_DEV_AUXDATA((_compat), (_phys), (_name), NULL)
 
 static struct of_dev_auxdata tcc897x_auxdata_lookup[] __initdata = {
-	OF_DEV_AUXDATA("telechips,vioc-fb", TCC_PA_VIOC, "tccfb", NULL),
-	OF_DEV_AUXDATA("telechips,tcc897x-sdhc", TCC897X_PA_SDMMC0, "tcc-sdhc.0", NULL),
-	OF_DEV_AUXDATA("telechips,tcc897x-sdhc", TCC897X_PA_SDMMC2, "tcc-sdhc.2", NULL),
-	OF_DEV_AUXDATA("telechips,tcc897x-sdhc", TCC897X_PA_SDMMC3, "tcc-sdhc.3", NULL),
-	OF_DEV_AUXDATA("telechips,nand-v8", TCC897X_PA_NFC, "tcc_nand", NULL),
-	OF_DEV_AUXDATA("telechips,tcc-ehci", TCC_PA_EHCI, "tcc-ehci", NULL),
-	OF_DEV_AUXDATA("telechips,tcc-ohci", TCC_PA_OHCI, "tcc-ohci", NULL),
-	OF_DEV_AUXDATA("telechips,dwc_otg", TCC_PA_DWC_OTG, "dwc_otg", NULL),
-	OF_DEV_AUXDATA("telechips,i2c", TCC_PA_I2C0, "i2c.0", NULL),
-	OF_DEV_AUXDATA("telechips,i2c", TCC_PA_I2C1, "i2c.1", NULL),
-	OF_DEV_AUXDATA("telechips,i2c", TCC_PA_I2C2, "i2c.2", NULL),
-	OF_DEV_AUXDATA("telechips,i2c", TCC_PA_I2C3, "i2c.3", NULL),
-	OF_DEV_AUXDATA("telechips,wmixer_drv", 0, "wmixer0", NULL),
-	OF_DEV_AUXDATA("telechips,wmixer_drv", 1, "wmixer1", NULL),
-	OF_DEV_AUXDATA("telechips,scaler_drv", 1, "scaler1", NULL),
-	OF_DEV_AUXDATA("telechips,scaler_drv", 3, "scaler3", NULL),
-	OF_DEV_AUXDATA("telechips,tcc_wdma", 0, "wdma", NULL),
-	OF_DEV_AUXDATA("telechips,tcc_overlay", 0, "overlay", NULL),
+	OF_DEV_AUXDATA_P("telechips,vioc-fb", TCC_PA_VIOC, "tccfb"),
+	OF_DEV_AUXDATA_P("telechips,tcc897x-sdhc", TCC_PA_SDMMC0, "tcc-sdhc.0"),
+	OF_DEV_AUXDATA_P("telechips,tcc897x-sdhc", TCC_PA_SDMMC2, "tcc-sdhc.2"),
+	OF_DEV_AUXDATA_P("telechips,tcc897x-sdhc", TCC_PA_SDMMC3, "tcc-sdhc.3"),
+	OF_DEV_AUXDATA_P("telechips,nand-v8", TCC_PA_NFC, "tcc_nand"),
+	OF_DEV_AUXDATA_P("telechips,tcc-ehci", TCC_PA_EHCI, "tcc-ehci"),
+	OF_DEV_AUXDATA_P("telechips,tcc-ohci", TCC_PA_OHCI, "tcc-ohci"),
+	OF_DEV_AUXDATA_P("telechips,dwc_otg", TCC_PA_DWC_OTG, "dwc_otg"),
+	OF_DEV_AUXDATA_P("telechips,i2c", TCC_PA_I2C0, "i2c.0"),
+	OF_DEV_AUXDATA_P("telechips,i2c", TCC_PA_I2C1, "i2c.1"),
+	OF_DEV_AUXDATA_P("telechips,i2c", TCC_PA_I2C2, "i2c.2"),
+	OF_DEV_AUXDATA_P("telechips,i2c", TCC_PA_I2C3, "i2c.3"),
+	OF_DEV_AUXDATA_P("telechips,wmixer_drv", 0, "wmixer0"),
+	OF_DEV_AUXDATA_P("telechips,wmixer_drv", 1, "wmixer1"),
+	OF_DEV_AUXDATA_P("telechips,scaler_drv", 1, "scaler1"),
+	OF_DEV_AUXDATA_P("telechips,scaler_drv", 3, "scaler3"),
+	OF_DEV_AUXDATA_P("telechips,tcc_wdma", 0, "wdma"),
+	OF_DEV_AUXDATA_P("telechips,tcc_overlay", 0, "overlay"),
 	{},
 };
 
@@ -54,10 +56,10 @@ static char const *tcc897x_dt_compat[] __initconst = {
 };
 
 DT_MACHINE_START(TCC897X_DT, "Telechips TCC897x (Flattened Device Tree)")
-	.init_machine 	= tcc897x_dt_init,
-	.smp			= smp_ops(tcc_smp_ops),
-	.smp_init		= smp_init_ops(tcc_smp_init_ops),
-	.map_io			= tcc_map_common_io,
-	.dt_compat 		= tcc897x_dt_compat,
-	.reserve		= tcc_mem_reserve,
+	.init_machine	= tcc897x_dt_init,
+	.smp		= smp_ops(tcc_smp_ops),
+	.smp_init	= smp_init_ops(tcc_smp_init_ops),
+	.map_io		= tcc_map_common_io,
+	.dt_compat	= tcc897x_dt_compat,
+	.reserve	= tcc_mem_reserve,
 MACHINE_END

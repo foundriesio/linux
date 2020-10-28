@@ -27,8 +27,8 @@
 
 #include "tcc_gmac_ptp.h"
 
-struct tcc_gmac_ptp_ops *g_ptp_ops;
-unsigned long g_base_addr;
+static struct tcc_gmac_ptp_ops *g_ptp_ops;
+static void __iomem *g_base_addr;
 
 static int tcc_gmac_ptp_adjfreq(struct ptp_clock_info *ptp, s32 ppb)
 {
@@ -36,14 +36,14 @@ static int tcc_gmac_ptp_adjfreq(struct ptp_clock_info *ptp, s32 ppb)
 	u32 ns;
 
 	if (ppb< 0) {
-		addsub = false;
-		ns = -1 * ppb;
+		addsub = (bool)false;
+		ns = (unsigned int)(-ppb);
 	} else {
-		addsub= true;
-		ns = ppb;
+		addsub= (bool)true;
+		ns = (unsigned int)ppb;
 	}
 		
-	return g_ptp_ops->update_system_time(g_base_addr, 0, ns, addsub);
+	return g_ptp_ops->update_system_time(g_base_addr, (unsigned)0, (unsigned)ns, (bool)addsub);
 }
 
 static int tcc_gmac_ptp_adjtime(struct ptp_clock_info *ptp, s64 delta)
@@ -54,16 +54,16 @@ static int tcc_gmac_ptp_adjtime(struct ptp_clock_info *ptp, s64 delta)
 	struct timespec ts;
 
 	if (delta < 0) {
-		addsub = false;
-		ns = -1 * delta;
+		addsub = (bool)false;
+		ns = (unsigned int)-delta;
 	} else {
-		addsub= true;
-		ns = delta;
+		addsub= (bool)true;
+		ns = (unsigned int)delta;
 	}
 		
 	time = ns_to_ktime(ns);
 	ts = ktime_to_timespec(time);
-	return g_ptp_ops->update_system_time(g_base_addr, ts.tv_sec, ts.tv_nsec, addsub);
+	return g_ptp_ops->update_system_time(g_base_addr, (unsigned)ts.tv_sec, (unsigned)ts.tv_nsec, (bool)addsub);
 }
 
 static int tcc_gmac_ptp_gettime(struct ptp_clock_info *ptp, struct timespec64 *ts)
@@ -104,7 +104,7 @@ struct ptp_clock *tcc_gmac_ptp_probe(struct net_device *dev)
 {
 	struct tcc_gmac_priv *priv = netdev_priv(dev);
 	
-	g_base_addr = dev->base_addr;
+	g_base_addr = (void __iomem *)dev->base_addr;
 	g_ptp_ops = priv->hw->ptp;
 
 	return ptp_clock_register(&tcc_gmac_ptp, NULL);

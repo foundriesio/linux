@@ -442,7 +442,7 @@ static struct miscdevice cipher_misc_device =
 static int tcc_cipher_probe(struct platform_device *pdev)
 {
 #ifdef USE_REV_MEMORY
-	pmap_t pmap_secure_hash;
+	struct pmap pmap_secure_hash;
 #endif
 
 	if( !pdev->dev.of_node ) {

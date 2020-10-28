@@ -52,51 +52,59 @@
 
 #define REQ_HSM_GET_VER                     0x20010000
 
-typedef enum _dma_type {
+enum dma_type {
 	HSM_NONE_DMA = 0,
 	HSM_DMA
-} dma_type;
+};
 
 // clang-format on
 
 int32_t tcc_hsm_cmd_set_key(
-	uint32_t device_id, uint32_t req, uint32_t addr, uint32_t key_size, uint32_t key_index);
+	uint32_t device_id, uint32_t req, uint32_t addr, uint32_t key_size,
+	uint32_t key_index);
 
 int32_t tcc_hsm_cmd_run_aes(
-	uint32_t device_id, uint32_t req, uint32_t objID, uint8_t *key, uint32_t keySize, uint8_t *iv,
-	uint32_t ivSize, uint8_t *tag, uint32_t tag_size, uint8_t *aad, uint32_t aad_size, uint32_t src,
+	uint32_t device_id, uint32_t req, uint32_t objID, uint8_t *key,
+	uint32_t keySize, uint8_t *iv, uint32_t ivSize, uint8_t *tag,
+	uint32_t tag_size, uint8_t *aad, uint32_t aad_size, uint32_t src,
 	uint32_t srcSize, uint32_t dst, uint32_t dstSize);
 int32_t tcc_hsm_cmd_run_aes_by_kt(
-	uint32_t device_id, uint32_t req, uint32_t obj_id, uint32_t key_index, uint8_t *iv,
-	uint32_t iv_size, uint8_t *tag, uint32_t tag_size, uint8_t *aad, uint32_t aad_size,
-	uint32_t src, uint32_t src_size, uint32_t dst, uint32_t dst_size);
+	uint32_t device_id, uint32_t req, uint32_t obj_id, uint32_t key_index,
+	uint8_t *iv, uint32_t iv_size, uint8_t *tag, uint32_t tag_size,
+	uint8_t *aad, uint32_t aad_size, uint32_t src, uint32_t src_size,
+	uint32_t dst, uint32_t dst_size);
 
 int32_t tcc_hsm_cmd_gen_mac(
-	uint32_t device_id, uint32_t req, uint32_t obj_id, uint8_t *key, uint32_t key_size,
-	uint32_t src, uint32_t src_size, uint8_t *mac, uint32_t mac_size);
+	uint32_t device_id, uint32_t req, uint32_t obj_id, uint8_t *key,
+	uint32_t key_size, uint32_t src, uint32_t src_size, uint8_t *mac,
+	uint32_t mac_size);
 int32_t tcc_hsm_cmd_gen_mac_by_kt(
-	uint32_t device_id, uint32_t req, uint32_t obj_id, uint32_t key_index, uint32_t src,
-	uint32_t src_size, uint8_t *mac, uint32_t mac_size);
+	uint32_t device_id, uint32_t req, uint32_t obj_id, uint32_t key_index,
+	uint32_t src, uint32_t src_size, uint8_t *mac, uint32_t mac_size);
 
 int32_t tcc_hsm_cmd_gen_hash(
-	uint32_t device_id, uint32_t req, uint32_t obj_id, uint32_t src, uint32_t src_size,
-	uint8_t *dig, uint32_t dig_size);
+	uint32_t device_id, uint32_t req, uint32_t obj_id, uint32_t src,
+	uint32_t src_size, uint8_t *dig, uint32_t dig_size);
 
 int32_t tcc_hsm_cmd_run_ecdsa(
-	uint32_t device_id, uint32_t req, uint32_t objID, uint8_t *key, uint32_t keySize,
-	uint8_t *digest, uint32_t digesteSize, uint8_t *sign, uint32_t signSize);
+	uint32_t device_id, uint32_t req, uint32_t objID, uint8_t *key,
+	uint32_t keySize, uint8_t *digest, uint32_t digesteSize, uint8_t *sign,
+	uint32_t signSize);
 
 int32_t tcc_hsm_cmd_run_rsa(
-	uint32_t device_id, uint32_t req, uint32_t obj_id, uint8_t *modN, uint32_t modN_size,
-	uint32_t key, uint32_t key_size, uint8_t *digest, uint32_t digest_size, uint8_t *sig,
-	uint32_t sig_size);
+	uint32_t device_id, uint32_t req, uint32_t obj_id, uint8_t *modN,
+	uint32_t modN_size, uint32_t key, uint32_t key_size, uint8_t *digest,
+	uint32_t digest_size, uint8_t *sig, uint32_t sig_size);
 
-int32_t tcc_hsm_cmd_get_rand(uint32_t device_id, uint32_t req, uint32_t rng, int32_t rng_size);
+int32_t tcc_hsm_cmd_get_rand(
+	uint32_t device_id, uint32_t req, uint32_t rng, int32_t rng_size);
 
 int32_t tcc_hsm_cmd_write(
-	uint32_t device_id, uint32_t req, uint32_t addr, uint8_t *buf, uint32_t buf_size);
+	uint32_t device_id, uint32_t req, uint32_t addr, uint8_t *buf,
+	uint32_t buf_size);
 
-int32_t
-tcc_hsm_cmd_get_version(uint32_t device_id, uint32_t req, uint32_t *x, uint32_t *y, uint32_t *z);
+int32_t tcc_hsm_cmd_get_version(
+	uint32_t device_id, uint32_t req, uint32_t *x, uint32_t *y,
+	uint32_t *z);
 
 #endif /*_TCC_HSM_CMD_H_*/

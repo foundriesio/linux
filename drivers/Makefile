@@ -185,4 +185,5 @@ obj-$(CONFIG_FSI)		+= fsi/
 obj-$(CONFIG_TEE)		+= tee/
 obj-$(CONFIG_MULTIPLEXER)	+= mux/
 obj-$(CONFIG_THERMAL)		+= thermal/
+obj-$(CONFIG_GATOR)     += gator/
 obj-y				+= ictc/

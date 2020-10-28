@@ -41,6 +41,7 @@ obj-$(CONFIG_VIDEO_SAMSUNG_S5P_CEC)	+= s5p-cec/
 obj-$(CONFIG_VIDEO_SAMSUNG_EXYNOS_GSC)	+= exynos-gsc/
 
 obj-$(CONFIG_TCC_MIPI_CSI2)		+= tcc-mipi-csi2/
+obj-$(CONFIG_TCC_ISP)			+= tcc-isp/
 obj-$(CONFIG_VIDEO_VIDEOSOURCE)		+= videosource/
 obj-$(CONFIG_VIDEO_VIDEOSOURCE2)	+= videosource2/
 obj-$(CONFIG_VIDEO_TCCVIN)		+= tccvin/

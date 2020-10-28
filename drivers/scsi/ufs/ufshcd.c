@@ -44,11 +44,12 @@
 #include "ufshcd.h"
 #include "ufs_quirks.h"
 #include "unipro.h"
+#include "ufs-tcc.h"
 
 #define CREATE_TRACE_POINTS
 #include <trace/events/ufs.h>
 
-#define UFSHCD_REQ_SENSE_SIZE	18
+#define UFSHCD_REQ_SENSE_SIZE	96//18
 
 #define UFSHCD_ENABLE_INTRS	(UTP_TRANSFER_REQ_COMPL |\
 				 UTP_TASK_REQ_COMPL |\
@@ -59,7 +60,7 @@
 /* NOP OUT retries waiting for NOP IN response */
 #define NOP_OUT_RETRIES    10
 /* Timeout after 30 msecs if NOP OUT hangs without response */
-#define NOP_OUT_TIMEOUT    30 /* msecs */
+#define NOP_OUT_TIMEOUT    3000 /* msecs */
 
 /* Query request retries */
 #define QUERY_REQ_RETRIES 3
@@ -639,7 +640,9 @@ static inline void ufshcd_put_tm_slot(struct ufs_hba *hba, int slot)
  */
 static inline void ufshcd_utrl_clear(struct ufs_hba *hba, u32 pos)
 {
-	ufshcd_writel(hba, ~(1 << pos), REG_UTP_TRANSFER_REQ_LIST_CLEAR);
+	//ufshcd_writel(hba, ~(1 << pos), REG_UTP_TRANSFER_REQ_LIST_CLEAR);
+	ufshcd_writel(hba, (1 << pos), REG_UTP_TRANSFER_REQ_LIST_CLEAR);
+
 }
 
 /**
@@ -1745,10 +1748,30 @@ static void ufshcd_clk_scaling_update_busy(struct ufs_hba *hba)
 static inline
 void ufshcd_send_command(struct ufs_hba *hba, unsigned int task_tag)
 {
+	u32 reg;
+
+	ufshcd_writel(hba, ~0, REG_INTERRUPT_STATUS);
+
+	ufshcd_enable_run_stop_reg(hba);
+	/*
+	ufshcd_writel(hba, UTP_TRANSFER_REQ_LIST_RUN_STOP_BIT,
+		      REG_UTP_TRANSFER_REQ_LIST_RUN_STOP);
+			  */
+	do {
+		reg = ufshcd_readl(hba, REG_UTP_TRANSFER_REQ_LIST_RUN_STOP);
+	} while(reg == 0);
+
 	hba->lrb[task_tag].issue_time_stamp = ktime_get();
 	ufshcd_clk_scaling_start_busy(hba);
 	__set_bit(task_tag, &hba->outstanding_reqs);
 	ufshcd_writel(hba, 1 << task_tag, REG_UTP_TRANSFER_REQ_DOOR_BELL);
+
+	do {
+		reg = ufshcd_readl(hba, REG_UTP_TRANSFER_REQ_DOOR_BELL);
+	} while(reg == 1);
+
+	//mdelay(10);
+
 	/* Make sure that doorbell is committed immediately */
 	wmb();
 	ufshcd_add_command_trace(hba, task_tag, "send");
@@ -1823,6 +1846,7 @@ static inline void ufshcd_hba_capabilities(struct ufs_hba *hba)
 
 	/* nutrs and nutmrs are 0 based values */
 	hba->nutrs = (hba->capabilities & MASK_TRANSFER_REQUESTS_SLOTS) + 1;
+	//hba->nutrs = 1;
 	hba->nutmrs =
 	((hba->capabilities & MASK_TASK_MANAGEMENT_REQUEST_SLOTS) >> 16) + 1;
 }
@@ -1952,9 +1976,9 @@ ufshcd_send_uic_cmd(struct ufs_hba *hba, struct uic_command *uic_cmd)
 	spin_lock_irqsave(hba->host->host_lock, flags);
 	ret = __ufshcd_send_uic_cmd(hba, uic_cmd, true);
 	spin_unlock_irqrestore(hba->host->host_lock, flags);
-	if (!ret)
+	if (!ret) {
 		ret = ufshcd_wait_for_uic_cmd(hba, uic_cmd);
-
+	}
 	mutex_unlock(&hba->uic_cmd_mutex);
 
 	ufshcd_release(hba);
@@ -1974,9 +1998,13 @@ static int ufshcd_map_sg(struct ufs_hba *hba, struct ufshcd_lrb *lrbp)
 	struct scsi_cmnd *cmd;
 	int sg_segments;
 	int i;
+	dma_addr_t base_addr;
+	void *base_addr_virt;
 
 	cmd = lrbp->cmd;
+	dma_set_mask_and_coherent(hba->dev, DMA_BIT_MASK(32));
 	sg_segments = scsi_dma_map(cmd);
+	dma_set_mask_and_coherent(hba->dev, DMA_BIT_MASK(64));
 	if (sg_segments < 0)
 		return sg_segments;
 
@@ -1992,14 +2020,32 @@ static int ufshcd_map_sg(struct ufs_hba *hba, struct ufshcd_lrb *lrbp)
 		prd_table = (struct ufshcd_sg_entry *)lrbp->ucd_prdt_ptr;
 
 		scsi_for_each_sg(cmd, sg, sg_segments, i) {
+#if 0
+			if (cmd->sc_data_direction == DMA_TO_DEVICE) {
+				memcpy(base_addr_virt, sg_virt(sg), sg_dma_len(sg));
+			}
+#endif
 			prd_table[i].size  =
 				cpu_to_le32(((u32) sg_dma_len(sg))-1);
 			prd_table[i].base_addr =
+				//cpu_to_le32(lower_32_bits(base_addr));
 				cpu_to_le32(lower_32_bits(sg->dma_address));
 			prd_table[i].upper_addr =
+				//cpu_to_le32(upper_32_bits(base_addr));
 				cpu_to_le32(upper_32_bits(sg->dma_address));
 			prd_table[i].reserved = 0;
+			base_addr += sg_dma_len(sg);
+			base_addr_virt += sg_dma_len(sg);
+			//printk("%s:%d, base_addr = 0x%llx, sg_dma_len = %d\n", __func__,
+			//			__LINE__, (u64)sg->dma_address, sg_dma_len(sg));
 		}
+#if 0
+		/* Switch ownership to the DMA */
+		dma_sync_single_for_device(hba->dev,
+					   hba->bounce_addr,
+					   hba->bounce_buffer_size,
+					   cmd->sc_data_direction);
+#endif
 	} else {
 		lrbp->utr_descriptor_ptr->prd_table_length = 0;
 	}
@@ -2103,10 +2149,11 @@ static void ufshcd_prepare_req_desc_hdr(struct ufshcd_lrb *lrbp,
  * @upiu_flags - flags
  */
 static
-void ufshcd_prepare_utp_scsi_cmd_upiu(struct ufshcd_lrb *lrbp, u32 upiu_flags)
+void ufshcd_prepare_utp_scsi_cmd_upiu(struct ufs_hba *hba, struct ufshcd_lrb *lrbp, u32 upiu_flags)
 {
 	struct utp_upiu_req *ucd_req_ptr = lrbp->ucd_req_ptr;
 	unsigned short cdb_len;
+	u32 reg;
 
 	/* command descriptor fields */
 	ucd_req_ptr->header.dword_0 = UPIU_HEADER_DWORD(
@@ -2120,6 +2167,11 @@ void ufshcd_prepare_utp_scsi_cmd_upiu(struct ufshcd_lrb *lrbp, u32 upiu_flags)
 
 	ucd_req_ptr->sc.exp_data_transfer_len =
 		cpu_to_be32(lrbp->cmd->sdb.length);
+	//printk("%s:%d exp_data_transfer_len = %08x sdb.length = %08x\n", __func__, __LINE__, ucd_req_ptr->sc.exp_data_transfer_len, lrbp->cmd->sdb.length);
+	//printk("%s:%d sc.cdb[0] = %x, sc.cdb[1] = %x, sc.cdb[2] = %x, sc.cdb[3] = %x\n", __func__, __LINE__,
+	//				lrbp->cmd->cmnd[0], lrbp->cmd->cmnd[1], lrbp->cmd->cmnd[2], lrbp->cmd->cmnd[3]);
+	//if ((lrbp->cmd->sdb.length < 0x1000) && (lrbp->cmd->cmnd[0] == 0x28))
+	//	ucd_req_ptr->sc.exp_data_transfer_len = 0x00100000;
 
 	cdb_len = min_t(unsigned short, lrbp->cmd->cmd_len, MAX_CDB_SIZE);
 	memset(ucd_req_ptr->sc.cdb, 0, MAX_CDB_SIZE);
@@ -2142,6 +2194,7 @@ static void ufshcd_prepare_utp_query_req_upiu(struct ufs_hba *hba,
 	struct ufs_query *query = &hba->dev_cmd.query;
 	u16 len = be16_to_cpu(query->request.upiu_req.length);
 	u8 *descp = (u8 *)lrbp->ucd_req_ptr + GENERAL_UPIU_REQUEST_SIZE;
+	u32 reg;
 
 	/* Query request header */
 	ucd_req_ptr->header.dword_0 = UPIU_HEADER_DWORD(
@@ -2168,9 +2221,11 @@ static void ufshcd_prepare_utp_query_req_upiu(struct ufs_hba *hba,
 	memset(lrbp->ucd_rsp_ptr, 0, sizeof(struct utp_upiu_rsp));
 }
 
-static inline void ufshcd_prepare_utp_nop_upiu(struct ufshcd_lrb *lrbp)
+static inline void ufshcd_prepare_utp_nop_upiu(struct ufs_hba *hba,
+				struct ufshcd_lrb *lrbp)
 {
 	struct utp_upiu_req *ucd_req_ptr = lrbp->ucd_req_ptr;
+	u32 reg;
 
 	memset(ucd_req_ptr, 0, sizeof(struct utp_upiu_req));
 
@@ -2206,7 +2261,7 @@ static int ufshcd_comp_devman_upiu(struct ufs_hba *hba, struct ufshcd_lrb *lrbp)
 	if (hba->dev_cmd.type == DEV_CMD_TYPE_QUERY)
 		ufshcd_prepare_utp_query_req_upiu(hba, lrbp, upiu_flags);
 	else if (hba->dev_cmd.type == DEV_CMD_TYPE_NOP)
-		ufshcd_prepare_utp_nop_upiu(lrbp);
+		ufshcd_prepare_utp_nop_upiu(hba, lrbp);
 	else
 		ret = -EINVAL;
 
@@ -2233,7 +2288,7 @@ static int ufshcd_comp_scsi_upiu(struct ufs_hba *hba, struct ufshcd_lrb *lrbp)
 	if (likely(lrbp->cmd)) {
 		ufshcd_prepare_req_desc_hdr(lrbp, &upiu_flags,
 						lrbp->cmd->sc_data_direction);
-		ufshcd_prepare_utp_scsi_cmd_upiu(lrbp, upiu_flags);
+		ufshcd_prepare_utp_scsi_cmd_upiu(hba, lrbp, upiu_flags);
 	} else {
 		ret = -EINVAL;
 	}
@@ -2281,6 +2336,7 @@ static int ufshcd_queuecommand(struct Scsi_Host *host, struct scsi_cmnd *cmd)
 	unsigned long flags;
 	int tag;
 	int err = 0;
+	int reg;
 
 	hba = shost_priv(host);
 
@@ -2370,6 +2426,11 @@ static int ufshcd_queuecommand(struct Scsi_Host *host, struct scsi_cmnd *cmd)
 	/* issue command to the controller */
 	spin_lock_irqsave(hba->host->host_lock, flags);
 	ufshcd_vops_setup_xfer_req(hba, tag, (lrbp->cmd ? true : false));
+
+	reg = ufshcd_readl(hba, REG_UTRL_NEXUS_TYPE);
+	ufshcd_writel(hba, reg_setb(reg, lrbp->task_tag), REG_UTRL_NEXUS_TYPE);
+
+
 	ufshcd_send_command(hba, tag);
 out_unlock:
 	spin_unlock_irqrestore(hba->host->host_lock, flags);
@@ -2563,6 +2624,7 @@ static int ufshcd_exec_dev_cmd(struct ufs_hba *hba,
 	int tag;
 	struct completion wait;
 	unsigned long flags;
+	int reg;
 
 	down_read(&hba->clk_scaling_lock);
 
@@ -2576,6 +2638,7 @@ static int ufshcd_exec_dev_cmd(struct ufs_hba *hba,
 	init_completion(&wait);
 	lrbp = &hba->lrb[tag];
 	WARN_ON(lrbp->cmd);
+
 	err = ufshcd_compose_dev_cmd(hba, lrbp, cmd_type, tag);
 	if (unlikely(err))
 		goto out_put_tag;
@@ -2586,6 +2649,10 @@ static int ufshcd_exec_dev_cmd(struct ufs_hba *hba,
 	wmb();
 	spin_lock_irqsave(hba->host->host_lock, flags);
 	ufshcd_vops_setup_xfer_req(hba, tag, (lrbp->cmd ? true : false));
+
+	reg = ufshcd_readl(hba, REG_UTRL_NEXUS_TYPE);
+	ufshcd_writel(hba, reg_clrb(reg, lrbp->task_tag), REG_UTRL_NEXUS_TYPE);
+
 	ufshcd_send_command(hba, tag);
 	spin_unlock_irqrestore(hba->host->host_lock, flags);
 
@@ -2820,6 +2887,7 @@ static int __ufshcd_query_descriptor(struct ufs_hba *hba,
 	struct ufs_query_req *request = NULL;
 	struct ufs_query_res *response = NULL;
 	int err;
+	u32 reg;
 
 	BUG_ON(!hba);
 
@@ -2839,6 +2907,7 @@ static int __ufshcd_query_descriptor(struct ufs_hba *hba,
 	}
 
 	mutex_lock(&hba->dev_cmd.lock);
+
 	ufshcd_init_query(hba, &request, &response, opcode, idn, index,
 			selector);
 	hba->dev_cmd.query.descriptor = desc_buf;
@@ -3194,6 +3263,46 @@ static inline int ufshcd_read_unit_desc_param(struct ufs_hba *hba,
 				      param_offset, param_read_buf, param_size);
 }
 
+#if 0
+static int ufshcd_allocate_bounce_buffer(struct ufs_hba *hba)
+{
+	unsigned int bounce_size;
+	int ret;
+
+	bounce_size = SG_ALL * 0x1000;
+
+	/*
+	 * When we just support one segment, we can get significant
+	 * speedups by the help of a bounce buffer to group scattered
+	 * reads/writes together.
+	 */
+	hba->bounce_buffer = devm_kmalloc(hba->dev,
+					   bounce_size,
+					   GFP_KERNEL);
+	if (!hba->bounce_buffer) {
+		dev_err(hba->dev, "failed to allocate %u bytes for bounce buffer, falling back to single segments\n",
+		       bounce_size);
+		/*
+		 * Exiting with zero here makes sure we proceed with
+		 * mmc->max_segs == 1.
+		 */
+		return 0;
+	}
+	dma_set_mask_and_coherent(hba->dev, DMA_BIT_MASK(32));
+	hba->bounce_addr = dma_map_single(hba->dev,
+					   hba->bounce_buffer,
+					   bounce_size,
+					   DMA_BIDIRECTIONAL);
+	ret = dma_mapping_error(hba->dev, hba->bounce_addr);
+	dma_set_mask_and_coherent(hba->dev, DMA_BIT_MASK(64));
+	if (ret)
+		return 0;
+	hba->bounce_buffer_size = bounce_size;
+
+	return 0;
+}
+#endif 
+
 /**
  * ufshcd_memory_alloc - allocate memory for host memory space data structures
  * @hba: per adapter instance
@@ -3217,6 +3326,8 @@ static int ufshcd_memory_alloc(struct ufs_hba *hba)
 						  ucdl_size,
 						  &hba->ucdl_dma_addr,
 						  GFP_KERNEL);
+	//hba->ucdl_base_addr = ioremap(0x1D300200, ucdl_size);
+	//hba->ucdl_dma_addr = 0x1D300200;
 
 	/*
 	 * UFSHCI requires UTP command descriptor to be 128 byte aligned.
@@ -3224,6 +3335,7 @@ static int ufshcd_memory_alloc(struct ufs_hba *hba)
 	 * if hba->ucdl_dma_addr is aligned to PAGE_SIZE, then it will
 	 * be aligned to 128 bytes as well
 	 */
+
 	if (!hba->ucdl_base_addr ||
 	    WARN_ON(hba->ucdl_dma_addr & (PAGE_SIZE - 1))) {
 		dev_err(hba->dev,
@@ -3240,6 +3352,7 @@ static int ufshcd_memory_alloc(struct ufs_hba *hba)
 						   utrdl_size,
 						   &hba->utrdl_dma_addr,
 						   GFP_KERNEL);
+
 	if (!hba->utrdl_base_addr ||
 	    WARN_ON(hba->utrdl_dma_addr & (PAGE_SIZE - 1))) {
 		dev_err(hba->dev,
@@ -3247,6 +3360,8 @@ static int ufshcd_memory_alloc(struct ufs_hba *hba)
 		goto out;
 	}
 
+	//hba->utrdl_base_addr = ioremap(0x1D300000, utrdl_size);
+	//hba->utrdl_dma_addr = 0x1D300000;
 	/*
 	 * Allocate memory for UTP Task Management descriptors
 	 * UFSHCI requires 1024 byte alignment of UTMRD
@@ -3262,6 +3377,8 @@ static int ufshcd_memory_alloc(struct ufs_hba *hba)
 		"Task Management Descriptor Memory allocation failed\n");
 		goto out;
 	}
+	//hba->utmrdl_base_addr = ioremap(0x1D303800, utmrdl_size);
+	//hba->utmrdl_dma_addr = 0x1D303800;
 
 	/* Allocate memory for local reference block */
 	hba->lrb = devm_kzalloc(hba->dev,
@@ -3271,6 +3388,12 @@ static int ufshcd_memory_alloc(struct ufs_hba *hba)
 		dev_err(hba->dev, "LRB Memory allocation failed\n");
 		goto out;
 	}
+
+#if 0
+	if (ufshcd_allocate_bounce_buffer(hba))
+		goto out;
+#endif
+
 	return 0;
 out:
 	return -ENOMEM;
@@ -3669,6 +3792,9 @@ static int ufshcd_link_recovery(struct ufs_hba *hba)
 
 	return ret;
 }
+
+static int
+ufshcd_send_request_sense(struct ufs_hba *hba, struct scsi_device *sdp);
 
 static int __ufshcd_uic_hibern8_enter(struct ufs_hba *hba)
 {
@@ -4504,6 +4630,9 @@ ufshcd_transfer_rsp_status(struct ufs_hba *hba, struct ufshcd_lrb *lrbp)
 	case OCS_SUCCESS:
 		result = ufshcd_get_req_rsp(lrbp->ucd_rsp_ptr);
 		hba->ufs_stats.last_hibern8_exit_tstamp = ktime_set(0, 0);
+		//ufshcd_print_host_regs(hba);
+		//ufshcd_print_host_state(hba);
+
 		switch (result) {
 		case UPIU_TRANSACTION_RESPONSE:
 			/*
@@ -4571,8 +4700,13 @@ ufshcd_transfer_rsp_status(struct ufs_hba *hba, struct ufshcd_lrb *lrbp)
 		break;
 	} /* end of switch */
 
-	if (host_byte(result) != DID_OK)
+	if (host_byte(result) != DID_OK) {
 		ufshcd_print_trs(hba, 1 << lrbp->task_tag, true);
+	} else {
+		return result;
+		//ufshcd_print_trs(hba, 1 << lrbp->task_tag, true);
+	}
+
 	return result;
 }
 
@@ -4607,13 +4741,35 @@ static void __ufshcd_transfer_req_compl(struct ufs_hba *hba,
 	struct scsi_cmnd *cmd;
 	int result;
 	int index;
-
+	struct scatterlist *sg;
+	int sg_segment;
+	int i = 0;
+	struct ufshcd_sg_entry *prd_table;
+	void *base_addr;
 	for_each_set_bit(index, &completed_reqs, hba->nutrs) {
 		lrbp = &hba->lrb[index];
 		cmd = lrbp->cmd;
+
+		prd_table = (struct ufshcd_sg_entry *)lrbp->ucd_prdt_ptr;
 		if (cmd) {
 			ufshcd_add_command_trace(hba, index, "complete");
 			result = ufshcd_transfer_rsp_status(hba, lrbp);
+			sg_segment = scsi_sg_count(cmd);
+			//base_addr = hba->bounce_buffer;
+			//base_addr = hba->sbus_sram;
+#if 0
+#if 1
+			dma_sync_single_for_cpu(
+						hba->dev,
+						hba->bounce_addr,
+						hba->bounce_buffer_size,
+						DMA_FROM_DEVICE);
+#endif
+			scsi_for_each_sg(cmd, sg, sg_segment, i) {
+				memcpy(sg_virt(sg), base_addr, sg_dma_len(sg));
+				base_addr += sg_dma_len(sg);
+			}
+#endif
 			scsi_dma_unmap(cmd);
 			cmd->result = result;
 			/* Mark completed command as NULL in LRB */
@@ -5337,8 +5493,9 @@ static void ufshcd_sl_intr(struct ufs_hba *hba, u32 intr_status)
 	if (intr_status & UTP_TASK_REQ_COMPL)
 		ufshcd_tmc_handler(hba);
 
-	if (intr_status & UTP_TRANSFER_REQ_COMPL)
+	if (intr_status & UTP_TRANSFER_REQ_COMPL) {
 		ufshcd_transfer_req_compl(hba);
+	}
 }
 
 /**
@@ -5382,6 +5539,7 @@ static int ufshcd_clear_tm_cmd(struct ufs_hba *hba, int tag)
 
 	spin_lock_irqsave(hba->host->host_lock, flags);
 	ufshcd_writel(hba, ~(1 << tag), REG_UTP_TASK_REQ_LIST_CLEAR);
+
 	spin_unlock_irqrestore(hba->host->host_lock, flags);
 
 	/* poll for max. 1 sec to clear door bell register by h/w */
@@ -5412,6 +5570,7 @@ static int ufshcd_issue_tm_cmd(struct ufs_hba *hba, int lun_id, int task_id,
 	int free_slot;
 	int err;
 	int task_tag;
+	u32 type;
 
 	host = hba->host;
 
@@ -5451,6 +5610,22 @@ static int ufshcd_issue_tm_cmd(struct ufs_hba *hba, int lun_id, int task_id,
 	ufshcd_vops_setup_task_mgmt(hba, free_slot, tm_function);
 
 	/* send command to the controller */
+
+	type = ufshcd_readl(hba, REG_UTMRL_NEXUS_TYPE);
+	switch (tm_function) {
+    case UFS_ABORT_TASK:
+    case UFS_QUERY_TASK:
+        type |= (1 << free_slot);
+        break;
+    case UFS_ABORT_TASK_SET:
+    case UFS_CLEAR_TASK_SET:
+    case UFS_LOGICAL_RESET:
+    case UFS_QUERY_TASK_SET:
+        type &= ~(1 << free_slot);
+		break;
+	}
+	ufshcd_writel(hba, type, REG_UTMRL_NEXUS_TYPE);
+
 	__set_bit(free_slot, &hba->outstanding_tasks);
 
 	/* Make sure descriptors are ready before ringing the task doorbell */
@@ -5995,31 +6170,41 @@ static int ufshcd_scsi_add_wlus(struct ufs_hba *hba)
 	int ret = 0;
 	struct scsi_device *sdev_rpmb;
 	struct scsi_device *sdev_boot;
+	printk("%s:%d\n", __func__, __LINE__);
 
 	hba->sdev_ufs_device = __scsi_add_device(hba->host, 0, 0,
-		ufshcd_upiu_wlun_to_scsi_wlun(UFS_UPIU_UFS_DEVICE_WLUN), NULL);
+		0x0/*ufshcd_upiu_wlun_to_scsi_wlun(UFS_UPIU_UFS_DEVICE_WLUN)i*/, NULL);
 	if (IS_ERR(hba->sdev_ufs_device)) {
 		ret = PTR_ERR(hba->sdev_ufs_device);
 		hba->sdev_ufs_device = NULL;
 		goto out;
 	}
+	printk("%s:%d\n", __func__, __LINE__);
 	scsi_device_put(hba->sdev_ufs_device);
 
+	printk("%s:%d\n", __func__, __LINE__);
+	ret = ufshcd_send_request_sense(hba, hba->sdev_ufs_device);
+
 	sdev_boot = __scsi_add_device(hba->host, 0, 0,
-		ufshcd_upiu_wlun_to_scsi_wlun(UFS_UPIU_BOOT_WLUN), NULL);
+		ufshcd_upiu_wlun_to_scsi_wlun(UFS_UPIU_RPMB_WLUN), NULL);
 	if (IS_ERR(sdev_boot)) {
 		ret = PTR_ERR(sdev_boot);
 		goto remove_sdev_ufs_device;
 	}
 	scsi_device_put(sdev_boot);
 
+	ret = ufshcd_send_request_sense(hba, sdev_boot);
+	printk("%s:%d\n", __func__, __LINE__);
 	sdev_rpmb = __scsi_add_device(hba->host, 0, 0,
-		ufshcd_upiu_wlun_to_scsi_wlun(UFS_UPIU_RPMB_WLUN), NULL);
+		ufshcd_upiu_wlun_to_scsi_wlun(UFS_UPIU_BOOT_WLUN), NULL);
 	if (IS_ERR(sdev_rpmb)) {
 		ret = PTR_ERR(sdev_rpmb);
 		goto remove_sdev_boot;
 	}
 	scsi_device_put(sdev_rpmb);
+
+	ret = ufshcd_send_request_sense(hba, sdev_rpmb);
+	printk("%s:%d\n", __func__, __LINE__);
 	goto out;
 
 remove_sdev_boot:
@@ -6313,6 +6498,7 @@ static void ufshcd_def_desc_sizes(struct ufs_hba *hba)
 	hba->desc_size.geom_desc = QUERY_DESC_GEOMETRY_DEF_SIZE;
 }
 
+
 /**
  * ufshcd_probe_hba - probe hba to detect device and initialize
  * @hba: per-adapter instance
@@ -6323,8 +6509,8 @@ static int ufshcd_probe_hba(struct ufs_hba *hba)
 {
 	struct ufs_dev_desc card = {0};
 	int ret;
+	struct scsi_device *sdp;
 	ktime_t start = ktime_get();
-
 	ret = ufshcd_link_startup(hba);
 	if (ret)
 		goto out;
@@ -6347,6 +6533,7 @@ static int ufshcd_probe_hba(struct ufs_hba *hba)
 	if (ret)
 		goto out;
 
+
 	/* Init check for device descriptor sizes */
 	ufshcd_init_desc_sizes(hba);
 
@@ -6358,7 +6545,9 @@ static int ufshcd_probe_hba(struct ufs_hba *hba)
 	}
 
 	ufs_fixup_device_setup(hba, &card);
+
 	ufshcd_tune_unipro_params(hba);
+
 
 	ret = ufshcd_set_vccq_rail_unused(hba,
 		(hba->dev_quirks & UFS_DEVICE_NO_VCCQ) ? true : false);
@@ -6367,7 +6556,9 @@ static int ufshcd_probe_hba(struct ufs_hba *hba)
 
 	/* UFS device is also active now */
 	ufshcd_set_ufs_dev_active(hba);
+
 	ufshcd_force_reset_auto_bkops(hba);
+
 	hba->wlun_dev_clr_ua = true;
 
 	if (ufshcd_get_max_pwr_mode(hba)) {
@@ -6402,11 +6593,12 @@ static int ufshcd_probe_hba(struct ufs_hba *hba)
 		if (!hba->is_init_prefetch)
 			ufshcd_init_icc_levels(hba);
 
-		/* Add required well known logical units to scsi mid layer */
-		if (ufshcd_scsi_add_wlus(hba))
-			goto out;
 
-		/* Initialize devfreq after UFS device is detected */
+		/* Add required well known logical units to scsi mid layer */
+//		if (ufshcd_scsi_add_wlus(hba))
+//			goto out;
+
+				/* Initialize devfreq after UFS device is detected */
 		if (ufshcd_is_clkscaling_supported(hba)) {
 			memcpy(&hba->clk_scaling.saved_pwr_info.info,
 				&hba->pwr_info,
@@ -6426,9 +6618,11 @@ static int ufshcd_probe_hba(struct ufs_hba *hba)
 			}
 			hba->clk_scaling.is_allowed = true;
 		}
-
+		printk("%s:%d\n", __func__, __LINE__);
 		scsi_scan_host(hba->host);
+		printk("%s:%d\n", __func__, __LINE__);
 		pm_runtime_put_sync(hba->dev);
+
 	}
 
 	if (!hba->is_init_prefetch)
@@ -6447,6 +6641,7 @@ out:
 	trace_ufshcd_init(dev_name(hba->dev), ret,
 		ktime_to_us(ktime_sub(ktime_get(), start)),
 		hba->curr_dev_pwr_mode, hba->uic_link_state);
+
 	return ret;
 }
 
@@ -6999,19 +7194,19 @@ ufshcd_send_request_sense(struct ufs_hba *hba, struct scsi_device *sdp)
 				0,
 				0,
 				0,
-				UFSHCD_REQ_SENSE_SIZE,
+				18,//UFSHCD_REQ_SENSE_SIZE,
 				0};
 	char *buffer;
 	int ret;
 
-	buffer = kzalloc(UFSHCD_REQ_SENSE_SIZE, GFP_KERNEL);
+	buffer = kzalloc(18,/*UFSHCD_REQ_SENSE_SIZE,*/ GFP_KERNEL);
 	if (!buffer) {
 		ret = -ENOMEM;
 		goto out;
 	}
-
+	printk("%s:%d\n", __func__, __LINE__);
 	ret = scsi_execute(sdp, cmd, DMA_FROM_DEVICE, buffer,
-			UFSHCD_REQ_SENSE_SIZE, NULL, NULL,
+			18/*UFSHCD_REQ_SENSE_SIZE*/, NULL, NULL,
 			msecs_to_jiffies(1000), 3, 0, RQF_PM, NULL);
 	if (ret)
 		pr_err("%s: failed with err %d\n", __func__, ret);
@@ -7305,7 +7500,18 @@ static int ufshcd_suspend(struct ufs_hba *hba, enum ufs_pm_op pm_op)
 		ufshcd_disable_auto_bkops(hba);
 		ret = ufshcd_set_dev_pwr_mode(hba, req_dev_pwr_mode);
 		if (ret)
+		{
+			if (ret == -ENODEV)
+			{
+				printk(KERN_ERR "%s:%d - scsi is already gone!!\n", __func__, __LINE__);
+				ufshcd_set_link_off(hba);
+				goto disable_clks;
+			}
+			else
+			{
 			goto enable_gating;
+			}
+		}
 	}
 
 	ret = ufshcd_link_state_transition(hba, req_link_state, 1);
@@ -7387,9 +7593,6 @@ static int ufshcd_resume(struct ufs_hba *hba, enum ufs_pm_op pm_op)
 		goto out;
 
 	/* enable the host irq as host controller would be active soon */
-	ret = ufshcd_enable_irq(hba);
-	if (ret)
-		goto disable_irq_and_vops_clks;
 
 	ret = ufshcd_vreg_set_hpm(hba);
 	if (ret)
@@ -7403,6 +7606,18 @@ static int ufshcd_resume(struct ufs_hba *hba, enum ufs_pm_op pm_op)
 	ret = ufshcd_vops_resume(hba, pm_op);
 	if (ret)
 		goto disable_vreg;
+
+	/* enable irq after host controller reset
+	 * to void nobody care irq problem
+	 */
+	ufshcd_writel(hba, ufshcd_readl(hba, REG_INTERRUPT_STATUS),
+		      REG_INTERRUPT_STATUS);
+	ufshcd_writel(hba, 0x7FFF, REG_INTERRUPT_ENABLE);
+	ret = ufshcd_enable_irq(hba);
+	if (ret)
+	{
+		goto disable_irq_and_vops_clks;
+	}
 
 	if (ufshcd_is_link_hibern8(hba)) {
 		ret = ufshcd_uic_hibern8_exit(hba);
@@ -7780,6 +7995,7 @@ EXPORT_SYMBOL(ufshcd_shutdown);
  */
 void ufshcd_remove(struct ufs_hba *hba)
 {
+	iounmap(hba->sbus_sram);
 	ufshcd_remove_sysfs_nodes(hba);
 	scsi_remove_host(hba->host);
 	/* disable interrupts */
@@ -7880,6 +8096,7 @@ int ufshcd_init(struct ufs_hba *hba, void __iomem *mmio_base, unsigned int irq)
 	hba->mmio_base = mmio_base;
 	hba->irq = irq;
 
+	hba->sbus_sram = ioremap(0x1D300000, 0x4000);
 	/* Set descriptor lengths to specification defaults */
 	ufshcd_def_desc_sizes(hba);
 

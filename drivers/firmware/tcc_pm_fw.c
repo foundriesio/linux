@@ -14,6 +14,12 @@
 
 #define TCC_PM_FW_DEV_NAME "tcc-pm-fw"
 
+#define tcc_pm_fw_dev_err(dev, msg, err) \
+	dev_err((dev), "[ERROR][pmfw] Failed to %s. (err: %d)\n", (msg), err)
+
+#define tcc_pm_fw_dev_info(dev, msg, ...) \
+	dev_info((dev), "[INFO][pmfw] " msg "\n", ##__VA_ARGS__)
+
 struct bit_field {
 	void __iomem *reg;
 	u32 mask;
@@ -33,12 +39,15 @@ struct tcc_pm_fw_drvdata {
 #define pwrstr_to_tcc_pm_fw_drvdata(kobj) \
 	container_of(kobj, struct tcc_pm_fw_drvdata, pwrstr)
 
-inline void tcc_pm_fw_dev_err(struct device *dev, const char *msg, int err)
+static ssize_t application_ready_show(struct kobject *kobj,
+		struct kobj_attribute *attr, char *buf)
 {
-	dev_err(dev, "[ERROR][PM_FW] Failed to %s. (err: %d)\n", msg, err);
+	struct tcc_pm_fw_drvdata *data = pwrstr_to_tcc_pm_fw_drvdata(kobj);
+
+	return sprintf(buf, "%d\n", data->application_ready ? 1 : 0);
 }
 
-ssize_t application_ready_store(struct kobject *kobj,
+static ssize_t application_ready_store(struct kobject *kobj,
 		struct kobj_attribute *attr, const char *buf, size_t count)
 {
 	struct tcc_pm_fw_drvdata *data = pwrstr_to_tcc_pm_fw_drvdata(kobj);
@@ -46,10 +55,11 @@ ssize_t application_ready_store(struct kobject *kobj,
 	struct tcc_mbox_data msg;
 	int ret;
 
-	if (data->application_ready)
-		return count;
+	if (data->application_ready) {
+		return (ssize_t)count;
+	}
 
-	memset(msg.cmd, 0, sizeof(*msg.cmd) * MBOX_CMD_FIFO_SIZE);
+	memset(msg.cmd, 0, sizeof(*msg.cmd) * (size_t)MBOX_CMD_FIFO_SIZE);
 	msg.cmd[0] = 1U;
 	msg.data_len = 0;
 
@@ -63,18 +73,19 @@ ssize_t application_ready_store(struct kobject *kobj,
 
 	data->application_ready = true;
 
-	return count;
+	return (ssize_t)count;
 }
 
 static struct kobj_attribute application_ready_attr = {
 	.attr = {
 		.name = "application_ready",
-		.mode = 0200,
+		.mode = 0600,
 	},
+	.show = application_ready_show,
 	.store = application_ready_store,
 };
 
-ssize_t boot_reason_show(struct kobject *kobj,
+static ssize_t boot_reason_show(struct kobject *kobj,
 		struct kobj_attribute *attr, char *buf)
 {
 	struct tcc_pm_fw_drvdata *data = pwrstr_to_tcc_pm_fw_drvdata(kobj);
@@ -160,11 +171,13 @@ static void tcc_pm_fw_event_listener(struct mbox_client *client, void *message)
 	char *envp[2] = {env, NULL};
 	int ret;
 
-	if (client == NULL || msg == NULL)
+	if ((client == NULL) || (msg == NULL)) {
 		return;
+	}
 
 	message_type = msg->cmd[0] & 0xFFU;
 
+	tcc_pm_fw_dev_info(client->dev, "Power event %u raised.", message_type);
 	sprintf(env, "PM_EVENT=%u", message_type);
 
 	ret = kobject_uevent_env(&(client->dev->kobj), KOBJ_CHANGE, envp);
@@ -199,7 +212,7 @@ static inline void tcc_pm_fw_mbox_free(struct device *dev, struct mbox_chan *ch)
 	devm_kfree(dev, cl);
 }
 
-int tcc_pm_fw_probe(struct platform_device *pdev)
+static int tcc_pm_fw_probe(struct platform_device *pdev)
 {
 	struct device *dev = &pdev->dev;
 	struct device_node *np = dev->of_node;
@@ -240,7 +253,7 @@ int tcc_pm_fw_probe(struct platform_device *pdev)
 	/* Initialize access to boot-reason register field */
 	data->boot_reason = tcc_pm_fw_boot_reason_init(dev, boot_reason_pr);
 	if (IS_ERR(data->boot_reason)) {
-		ret = PTR_ERR(data->boot_reason);
+		ret = (int)PTR_ERR(data->boot_reason);
 		tcc_pm_fw_dev_err(dev, "init access to boot reason", ret);
 		goto boot_reason_init_error;
 	}
@@ -248,7 +261,7 @@ int tcc_pm_fw_probe(struct platform_device *pdev)
 	/* Initialize AP-MC mailbox channel to get ACC_ON/OFF events */
 	data->mbox_chan = tcc_pm_fw_mbox_init(dev, mbox_name);
 	if (IS_ERR(data->mbox_chan)) {
-		ret = PTR_ERR(data->mbox_chan);
+		ret = (int)PTR_ERR(data->mbox_chan);
 		tcc_pm_fw_dev_err(dev, "init AP-MC mailbox channel", ret);
 		goto mbox_init_error;
 	}
@@ -272,7 +285,7 @@ pre_init_error:
 	return ret;
 }
 
-int tcc_pm_fw_suspend(struct platform_device *pdev, pm_message_t state)
+static int tcc_pm_fw_suspend(struct platform_device *pdev, pm_message_t state)
 {
 	struct tcc_pm_fw_drvdata *data = platform_get_drvdata(pdev);
 
@@ -285,7 +298,7 @@ int tcc_pm_fw_suspend(struct platform_device *pdev, pm_message_t state)
 	return 0;
 }
 
-static const struct of_device_id tcc_pm_fw_match[] = {
+static const struct of_device_id tcc_pm_fw_match[2] = {
 	{ .compatible = "telechips,pm-fw" },
 	{ /* sentinel */ }
 };

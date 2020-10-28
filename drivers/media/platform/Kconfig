@@ -168,6 +168,9 @@ config VIDEO_TI_CAL
 # Telechips MIPI CSI-2 driver configuration
 source "drivers/media/platform/tcc-mipi-csi2/Kconfig"
 
+# Telechips ISP driver configuration
+source "drivers/media/platform/tcc-isp/Kconfig"
+
 # Telechips Video Source Driver Configuration
 source "drivers/media/platform/videosource/Kconfig"
 source "drivers/media/platform/videosource2/Kconfig"

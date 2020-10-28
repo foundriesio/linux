@@ -5,8 +5,8 @@
  * Copyright (C) 2019 Telechips Inc.
  */
 
-#ifndef __DT_BINDINGS_TELECHIPS_CLK_COMMON_H
-#define __DT_BINDINGS_TELECHIPS_CLK_COMMON_H
+#ifndef DT_BINDINGS_TELECHIPS_CLK_COMMON_H
+#define DT_BINDINGS_TELECHIPS_CLK_COMMON_H
 
 #ifndef BIT
 #define BIT(nr)			(1 << (nr))
@@ -28,12 +28,12 @@
 #define CLK_OPS_PARENT_ENABLE	BIT(12)
 
 /* Vendor-specific flags */
-#define CLK_F_SKIP_SSCG		(1 << 28)
-#define CLK_F_SRC_CLK_MASK	0x3f
-#define CLK_F_SRC_CLK_SHIFT	16
+#define CLK_F_SKIP_SSCG		(1UL << 28UL)
+#define CLK_F_SRC_CLK_MASK	0x3fUL
+#define CLK_F_SRC_CLK_SHIFT	16UL
 #define CLK_F_SRC_CLK(x)	((((x) & CLK_F_SRC_CLK_MASK) << CLK_F_SRC_CLK_SHIFT) | CLK_F_FIXED)
-#define CLK_F_FIXED		(1 << 29)	/* Use fixed source clock */
-#define CLK_F_DCO_MODE		(1 << 30)	/* Set DCO mode */
-#define CLK_F_DIV_MODE		(1 << 31)	/* Set divide mode */
+#define CLK_F_FIXED		(1UL << 29UL)	/* Use fixed source clock */
+#define CLK_F_DCO_MODE		(1UL << 30UL)	/* Set DCO mode */
+#define CLK_F_DIV_MODE		(1UL << 31UL)	/* Set divide mode */
 
-#endif /* __DT_BINDINGS_TELECHIPS_CLK_COMMON_H */
+#endif /* DT_BINDINGS_TELECHIPS_CLK_COMMON_H */

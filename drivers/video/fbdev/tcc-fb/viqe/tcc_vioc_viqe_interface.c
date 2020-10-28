@@ -1242,7 +1242,7 @@ EXPORT_SYMBOL(TCC_VIQE_DI_Sub_DeInit60Hz_M2M);
 
 int TCC_VIQE_Scaler_Init_Buffer_M2M(void)
 {
-	pmap_t pmap_info;
+	struct pmap pmap_info;
 	unsigned int szBuffer = 0;
 	int buffer_cnt = 0;
 

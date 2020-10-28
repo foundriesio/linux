@@ -28,16 +28,18 @@
  * \file
  *		TCC_HEVCDEC.h
  * \date
+ *		2020/10/22
  *		2020/02/06
  *		2018/11/13
  *		2018/04/02
  *		2018/03/22
  *		2016/08/21
  * \author
- *		AV algorithm group(AValgorithm@telechips.com) 
+ *		AV algorithm group(AValgorithm@telechips.com)
  * \brief
  *		main api
  * \version
+ *		3.03.0.02(2020/10/22) : fix ioctl miscommunition btw omx and 64bit kernel when android mediacodec works like 32bit
  *		3.03.0.00(2020/02/06) : Added sleep (m_Usleep) callback and Forcely escape (TCC_HEVC_DEC_ESC, TCC_HEVC_DEC_EXT) funtions on API
  *		3.02.0.00(2018/11/13)
  *		3.01.0.00(2018/04/02)
@@ -467,6 +469,44 @@ typedef struct hevc_dec_init_t
 
 	unsigned int m_Reserved[31];		//! Reserved.	// TEST_FW_WRITING
 } hevc_dec_init_t;
+
+// ===========================================================================
+// [32 bit user-space bearer for |hevc_dec_init_t|]
+typedef struct hevc_dec_init_64bit_t
+{
+    codec_addr_t m_BitWorkAddr[2];      //!< physical[0] and virtual[1] address of a working space of the decoder. This working buffer space consists of work buffer, code buffer, and parameter buffer.
+    codec_addr_t m_CodeAddr[2];         //!< physical[0] and virtual[1] address of a code buffer of the decoder.    // TEST_FW_WRITING
+    codec_addr_t m_RegBaseVirtualAddr;  //!< virtual address BIT_BASE
+
+    //! Bitstream Info
+    int m_iBitstreamFormat;             //!< bitstream format
+    codec_addr_t m_BitstreamBufAddr[2]; //!< bitstream buf address : multiple of 4
+    int m_iBitstreamBufSize;            //!< bitstream buf size    : multiple of 1024
+
+    unsigned int m_uiDecOptFlags;
+
+
+    //! HEVC Control
+    unsigned int m_bEnableUserData;     //!< If this is set, HEVC returns userdata.
+    codec_addr_t m_UserDataAddr[2];
+    int m_iUserDataBufferSize;
+    unsigned int m_bCbCrInterleaveMode; //!< 0 (chroma separate mode   : CbCr data is written in separate frame memories)
+                                        //!< 1 (chroma interleave mode : CbCr data is interleaved in chroma memory)
+    int m_iFilePlayEnable;              //!< enable file play mode. If this value is set to 0, streaming mode with ring buffer will be used
+
+    //! Callback Func
+    unsigned long long cb_dummy_memcpy;
+    unsigned long long cb_dummy_memset;
+    unsigned long long cb_dummy_interrupt;
+    unsigned long long cb_dummy_ioremap;
+    unsigned long long cb_dummy_iounmap;
+    unsigned long long cb_dummy_reg_read;
+    unsigned long long cb_dummy_reg_write;
+    unsigned long long cb_dummy_usleep;
+
+    unsigned int m_Reserved[31];        //! Reserved.    // TEST_FW_WRITING
+} hevc_dec_init_64bit_t;
+// ===========================================================================
 
 typedef struct hevc_dec_input_t
 {

@@ -32,4 +32,5 @@ obj-$(CONFIG_INPUT_KEYCOMBO)	+= keycombo.o
 
 
 obj-$(CONFIG_RMI4_CORE)		+= rmi4/
-obj-$(CONFIG_TCC_TOUCH_BRIDGE) += tcc_early_touch/
+obj-$(CONFIG_TCC_TOUCH_BRIDGE) += tc_touch_share/
+obj-$(CONFIG_TCC_TOUCH_RECEIVE) += tc_touch_share/

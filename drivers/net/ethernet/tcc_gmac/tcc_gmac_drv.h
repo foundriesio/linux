@@ -136,7 +136,7 @@ struct tcc_gmac_extra_stats {
 #define FLOW_OFF	0
 #define FLOW_RX		1
 #define FLOW_TX		2
-#define FLOW_AUTO	(FLOW_TX | FLOW_RX)
+#define FLOW_AUTO	((unsigned)FLOW_TX | (unsigned)FLOW_RX)
 
 #define SF_DMA_MODE 1 /* DMA STORE-AND-FORWARD Operation Mode */
 
@@ -346,7 +346,7 @@ struct rx_dma_ch_t {
 
 //#define MAX_FRAME_SIZE			(1514 * 8) //bits
 //#define MAX_INTERFERENCE_SIZE	(1514 * 8) //bits
-#define MAX_FRAME_SIZE			(1514 * 8) //bits
+#define MAX_FRAME_SIZE			((unsigned)1514 * (unsigned)8) //bits
 #define MAX_INTERFERENCE_SIZE	(16384 * 8) //bits
 
 #define SR_CLASS_A_DEFAULT_PRIORITY		(3)

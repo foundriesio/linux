@@ -139,8 +139,8 @@ char default_component_resolution = STARTER_COMPONENT_720P;
 #endif
 EXPORT_SYMBOL(default_component_resolution);
 
-static pmap_t pmap_fb;
-static pmap_t pmap_attach;
+static struct pmap pmap_fb;
+static struct pmap pmap_attach;
 
 static int persist_display_mode = -1;
 static int output_starter_display_mode = 0;

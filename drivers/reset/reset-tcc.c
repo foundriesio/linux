@@ -15,7 +15,7 @@
 struct tcc_reset_data {
 	struct reset_controller_dev rcdev;
 	spinlock_t lock;
-	int op;
+	unsigned long op;
 };
 
 static int tcc_reset_assert(struct reset_controller_dev *rcdev,
@@ -66,13 +66,15 @@ static int tcc_reset_probe(struct platform_device *pdev)
 	struct tcc_reset_data *priv;
 
 	priv = devm_kzalloc(&pdev->dev, sizeof(*priv), GFP_KERNEL);
-	if (!priv)
+	if (priv == NULL) {
 		return -ENOMEM;
+	}
 	platform_set_drvdata(pdev, priv);
 
-	priv->op = (int) of_device_get_match_data(&pdev->dev);
-	if (WARN_ON(!priv->op))
+	priv->op = (unsigned long) of_device_get_match_data(&pdev->dev);
+	if (WARN_ON(priv->op == 0UL)) {
 		return -EINVAL;
+	}
 
 	spin_lock_init(&priv->lock);
 
@@ -84,7 +86,7 @@ static int tcc_reset_probe(struct platform_device *pdev)
 	return devm_reset_controller_register(&pdev->dev, &priv->rcdev);
 }
 
-static const struct of_device_id tcc_reset_match[] = {
+static const struct of_device_id tcc_reset_match[6] = {
 	{
 		.compatible = "telechips,reset",
 		.data = (void *) SIP_CLK_SWRESET,

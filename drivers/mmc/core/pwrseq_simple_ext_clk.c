@@ -2,7 +2,7 @@
 /*
  * Copyright (C) Telechips Inc.
  */
- 
+
 #include <linux/clk.h>
 #include <linux/init.h>
 #include <linux/kernel.h>
@@ -26,11 +26,15 @@ struct mmc_pwrseq_simple_ext_clk {
 	struct clk *ext_clk;
 };
 
-#define to_pwrseq_simple(p) container_of(p, struct mmc_pwrseq_simple_ext_clk, pwrseq)
+#define to_pwrseq_simple(p) container_of(p, \
+					struct mmc_pwrseq_simple_ext_clk, \
+					pwrseq)
 
 static void mmc_pwrseq_simple_ext_clk_pre_power_on(struct mmc_host *host)
 {
-	struct mmc_pwrseq_simple_ext_clk *pwrseq = to_pwrseq_simple(host->pwrseq);
+	struct mmc_pwrseq_simple_ext_clk *pwrseq;
+
+	pwrseq = to_pwrseq_simple(host->pwrseq);
 
 	if (!IS_ERR(pwrseq->ext_clk) && !pwrseq->clk_enabled) {
 		clk_prepare_enable(pwrseq->ext_clk);
@@ -42,7 +46,9 @@ static void mmc_pwrseq_simple_ext_clk_pre_power_on(struct mmc_host *host)
 }
 static void mmc_pwrseq_simple_ext_clk_power_off(struct mmc_host *host)
 {
-	struct mmc_pwrseq_simple_ext_clk *pwrseq = to_pwrseq_simple(host->pwrseq);
+	struct mmc_pwrseq_simple_ext_clk *pwrseq;
+
+	pwrseq = to_pwrseq_simple(host->pwrseq);
 
 	if (!IS_ERR(pwrseq->ext_clk) && pwrseq->clk_enabled) {
 		clk_disable_unprepare(pwrseq->ext_clk);
@@ -79,7 +85,7 @@ static int mmc_pwrseq_simple_ext_clk_probe(struct platform_device *pdev)
 	device_property_read_u32(dev, "ext_clock_speed",
 				 &pwrseq->ext_clk_speed);
 
-	if(pwrseq->ext_clk_speed == 0) {
+	if (pwrseq->ext_clk_speed == 0) {
 		dev_err(&pdev->dev, "err! clock speed is zero\n");
 		return -EINVAL;
 	}

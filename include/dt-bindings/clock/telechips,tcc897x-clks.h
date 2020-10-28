@@ -247,7 +247,7 @@
 #define HSIOBUS_TRNG		22
 #define HSIOBUS_MAX		23
 
-/* IP Isolation Control Register (PMU_ISOL: 0x7440005C) */
+/* IP Isolation Control Register (PMU_ISOL: 0x7440009C) */
 #define ISOIP_TOP_OTP		0
 #define ISOIP_TOP_RTC		1
 #define ISOIP_TOP_PLL		2

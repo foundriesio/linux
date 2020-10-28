@@ -63,6 +63,7 @@ typedef struct tcc_context {
 
 	/* To calculate utilization for x sec */
 	IMG_BOOL			gpu_active;
+	void __iomem *pv3DBusConfReg;
 	IMG_HANDLE hSysLISRData;
 	PFN_LISR pfnDeviceLISR;
 	void *pvDeviceLISRData;	

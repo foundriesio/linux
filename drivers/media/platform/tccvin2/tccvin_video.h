@@ -105,10 +105,13 @@ typedef struct tccvin_cif {
 	unsigned int				vioc_irq_num;
 	struct vioc_intr_type		vioc_intr;
 
+	// usage status pgl
+	unsigned int				use_pgl;
+
 	// optional pmap
-	pmap_t						pmap_pgl;
-	pmap_t						pmap_viqe;
-    pmap_t                      pmap_preview;
+	struct pmap					pmap_pgl;
+	struct pmap					pmap_viqe;
+    struct pmap                      pmap_preview;
 
 	// framebuffer
 	buf_addr_t					* preview_buf_addr;
@@ -336,6 +339,7 @@ extern const struct v4l2_file_operations tccvin_fops;
 
 /* Video */
 extern struct tccvin_format_desc tccvin_fmts[];
+extern int tccvin_format_num(void);
 extern struct tccvin_format_desc *tccvin_format_by_guid(const __u32 guid);
 extern int tccvin_video_init(struct tccvin_streaming *stream);
 extern int tccvin_video_deinit(struct tccvin_streaming *stream);

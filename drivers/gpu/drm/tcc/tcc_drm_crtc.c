@@ -21,9 +21,19 @@
 #include <drm/drm_edid.h>
 #include <drm/tcc_drm.h>
 
-#include "tcc_drm_crtc.h"
-#include "tcc_drm_drv.h"
-#include "tcc_drm_plane.h"
+#include <linux/clk.h>
+#include <video/display_timing.h>
+#include <video/videomode.h>
+#include <video/tcc/vioc_global.h>
+#include <video/tcc/vioc_rdma.h>
+#include <video/tcc/vioc_disp.h>
+#include <video/tcc/vioc_wmix.h>
+#include <video/tcc/vioc_config.h>
+
+#include <tcc_drm_crtc.h>
+#include <tcc_drm_drv.h>
+#include <tcc_drm_plane.h>
+#define LOG_TAG "DRMCRTC"
 
 enum tcc_drm_crtc_flip_status {
 	TCC_DRM_CRTC_FLIP_STATUS_NONE = 0,
@@ -31,16 +41,18 @@ enum tcc_drm_crtc_flip_status {
 	TCC_DRM_CRTC_FLIP_STATUS_DONE,
 };
 
-#define tcc_drm_crtc_dump_event(in_event) \
+#define tcc_drm_crtc_dump_event(dev, in_event) \
 do { 									\
 	struct drm_pending_vblank_event *vblank_event = (in_event); 	\
 	if(vblank_event != NULL) {					\
 		switch(vblank_event->event.base.type) {			\
 			case DRM_EVENT_VBLANK:				\
-				printk(KERN_INFO "[INF][DRMCRTC] %s line(%d) DRM_EVENT_VBLANK\r\n",  __func__, __LINE__);	\
+				dev_info(dev, "[INFO][%s] %s line(%d) DRM_EVENT_VBLANK\r\n", \
+					 			LOG_TAG, __func__, __LINE__); \
 				break;					\
 			case DRM_EVENT_FLIP_COMPLETE:			\
-				printk(KERN_INFO "[INF][DRMCRTC] %s line(%d) DRM_EVENT_FLIP_COMPLETE\r\n",  __func__, __LINE__);\
+				dev_info(dev, "[INFO][%s] %s line(%d) DRM_EVENT_FLIP_COMPLETE\r\n", \
+						LOG_TAG, __func__, __LINE__); \
 				break;					\
 		}							\
 	}								\
@@ -139,8 +151,17 @@ static enum drm_mode_status tcc_crtc_mode_valid(struct drm_crtc *crtc,
 	return MODE_OK;
 }
 
+static void tcc_crtc_set_nofb(struct drm_crtc *crtc)
+{
+	struct tcc_drm_crtc *tcc_crtc = to_tcc_crtc(crtc);
+
+	if (tcc_crtc->ops->mode_set_nofb)
+		return tcc_crtc->ops->mode_set_nofb(tcc_crtc);
+}
+
 static const struct drm_crtc_helper_funcs tcc_crtc_helper_funcs = {
 	.mode_valid	= tcc_crtc_mode_valid,
+	.mode_set_nofb = tcc_crtc_set_nofb,
 	.atomic_check	= tcc_crtc_atomic_check,
 	.atomic_begin	= tcc_crtc_atomic_begin,
 	.atomic_flush	= tcc_crtc_atomic_flush,
@@ -174,12 +195,14 @@ void tcc_crtc_handle_event(struct tcc_drm_crtc *tcc_crtc)
 	struct drm_pending_vblank_event *event = new_crtc_state->event;
 
 	if (!new_crtc_state->active) {
-		printk(KERN_WARNING "[WARN][DRMCRTC] %s new crtc state is not active\r\n", __func__);
+		//dev_debug("[DEBUG][%s] %s line(%d) new crtc state is not active\r\n",
+		//	LOG_TAG, __func__, __LINE__);
 		return;
 	}
 
 	if (event == NULL) {
-		DRM_DEBUG_KMS("[DBG][DRMCRTC] %s event is NULL\r\n", __func__);
+		pr_info("[INFO][%s] %s line(%d) event is NULL\r\n",
+					LOG_TAG, __func__, __LINE__);
 		return;
 	}
 
@@ -234,6 +257,125 @@ static const struct drm_crtc_funcs tcc_crtc_funcs = {
 	.enable_vblank = tcc_drm_crtc_enable_vblank,
 	.disable_vblank = tcc_drm_crtc_disable_vblank,
 };
+
+static  u32 tcc_drm_crtc_calc_vactive(struct drm_display_mode *mode)
+{
+	u32 vactive;
+
+	if(mode == NULL)
+		goto err_null_pointer;
+
+	vactive = mode->vdisplay;
+	#if defined(CONFIG_DRM_TCC_SUPPORT_3D)
+	if(mode->flags & DRM_MODE_FLAG_3D_FRAME_PACKING) {
+		u32 vblank = mode->vtotal - mode->vdisplay;
+		if(mode->flags & DRM_MODE_FLAG_INTERLACE) {
+			vactive = (vactive << 2) + (3*vblank+2);
+		} else {
+			vactive = (vactive << 1) + vblank;
+		}
+	} else
+	#endif
+	if(mode->flags & DRM_MODE_FLAG_INTERLACE) {
+		vactive <<= 1;
+	}
+	return vactive;
+
+err_null_pointer:
+	return 0;
+}
+
+static int tcc_drm_crtc_check_pixelclock_match(unsigned long res, unsigned long data)
+{
+	unsigned long bp;
+	int match = 0;
+
+	bp = DIV_ROUND_UP(data, 10);
+	if(res > (data - bp) && res < (data + bp)) {
+		match = 1;
+	}
+	return match;
+}
+
+static void tcc_drm_crtc_force_disable(struct drm_crtc *crtc,
+				     struct tcc_hw_device *hw_data)
+{
+	const struct drm_encoder_helper_funcs *funcs;
+        struct drm_encoder *encoder;
+	int i;
+
+        drm_for_each_encoder(encoder, crtc->dev)
+                if (encoder->crtc == crtc)
+                        goto go_find_crtc;
+
+	return;
+
+go_find_crtc:
+	dev_info(crtc->dev->dev,
+		"[INFO][%s] %s line(%d) Turn off display device on this CRTC\r\n",
+		LOG_TAG, __func__, __LINE__);
+
+	/* Disable panels if exist */
+	funcs = encoder->helper_private;
+	if(funcs->disable != NULL)
+		funcs->disable(encoder);
+
+	/* Turn off display device */
+	if(VIOC_DISP_Get_TurnOnOff(hw_data->display_device.virt_addr))
+		VIOC_DISP_TurnOff(hw_data->display_device.virt_addr);
+
+	/* Disable all planes on this crtc */
+	for(i = 0;i < RDMA_MAX_NUM; i++) {
+		if(hw_data->rdma[i].virt_addr != NULL)
+			VIOC_RDMA_SetImageDisableNW(hw_data->rdma[i].virt_addr);
+	}
+	//PCK.
+}
+
+static int tcc_drm_crtc_check_display_timing(struct drm_crtc *crtc,
+				     struct drm_display_mode *mode,
+				     struct tcc_hw_device *hw_data)
+{
+	struct DisplayBlock_Info ddinfo;
+	int need_reset = 0;
+	u32 vactive;
+
+	VIOC_DISP_GetDisplayBlock_Info(hw_data->display_device.virt_addr, &ddinfo);
+	/* Check turn on status of display device */
+	if(!ddinfo.enable) {
+		dev_info(crtc->dev->dev,
+			"[INFO][%s] %s line(%d) display device is disabled\r\n",
+			LOG_TAG, __func__, __LINE__);
+		need_reset = 1;
+		goto out_state_on;
+	}
+
+	/* Check width and height */
+	vactive = tcc_drm_crtc_calc_vactive(mode);
+	if(ddinfo.width != mode->hdisplay || ddinfo.height != vactive) {
+		dev_info(crtc->dev->dev,
+			"[INFO][%s] %s line(%d) display size is not match %dx%d : %dx%d\r\n",
+			LOG_TAG, __func__, __LINE__,
+			ddinfo.width, ddinfo.height, mode->hdisplay, vactive);
+		need_reset = 1;
+		goto out_turnoff;
+	}
+	/* Check pixel clock */
+	if(!tcc_drm_crtc_check_pixelclock_match(clk_get_rate(hw_data->ddc_clock), mode->clock * 1000)) {
+		dev_info(crtc->dev->dev,
+			"[INFO][%s] %s line(%d) clock is not match %ldHz : %dHz\r\n",
+			LOG_TAG, __func__, __LINE__, clk_get_rate(hw_data->ddc_clock), mode->clock * 1000);
+		need_reset = 1;
+		goto out_turnoff;
+	}
+	return 0;
+
+out_turnoff:
+	tcc_drm_crtc_force_disable(crtc, hw_data);
+
+out_state_on:
+	return need_reset;
+}
 
 struct tcc_drm_crtc *tcc_drm_crtc_create(struct drm_device *drm_dev,
 					struct drm_plane *primary,
@@ -302,14 +444,6 @@ int tcc_drm_set_possible_crtcs(struct drm_encoder *encoder,
 	return 0;
 }
 
-void tcc_drm_crtc_te_handler(struct drm_crtc *crtc)
-{
-	struct tcc_drm_crtc *tcc_crtc = to_tcc_crtc(crtc);
-
-	if (tcc_crtc->ops->te_handler)
-		tcc_crtc->ops->te_handler(tcc_crtc);
-}
-
 void tcc_drm_crtc_vblank_handler(struct drm_crtc *crtc)
 {
 	struct tcc_drm_crtc *tcc_crtc = to_tcc_crtc(crtc);
@@ -324,7 +458,6 @@ void tcc_drm_crtc_vblank_handler(struct drm_crtc *crtc)
 		}
 	}
 }
-
 void tcc_crtc_fill_base_edid(struct edid *base_edid)
 {
 	/*
@@ -491,8 +624,8 @@ void tcc_crtc_fill_detailed_edid(struct edid * base_edid, struct drm_display_mod
 	//horizontal sync pulse width hsyncwidth - lower 8bits
 	base_edid->detailed_timings[0].data.pixel_data.hsync_pulse_width_lo = (mode->hsync_end - mode->hsync_start) & 0xff;
 
-	//Vertical Front Porch  -  --- stored in Upper Nibble : contains lower 4 bits 
-	//Vertical Sync Pulse Width in Lines  vsyncwidth  --- stored in Lower Nibble : contains lower 4 bits  
+	//Vertical Front Porch  -  --- stored in Upper Nibble : contains lower 4 bits
+	//Vertical Sync Pulse Width in Lines  vsyncwidth  --- stored in Lower Nibble : contains lower 4 bits
 	base_edid->detailed_timings[0].data.pixel_data.vsync_offset_pulse_width_lo = (((mode->vsync_start - mode->vdisplay) & 0xf) << 4) | ((mode->vsync_end - mode->vsync_start) & 0xf);
 	base_edid->detailed_timings[0].data.pixel_data.hsync_vsync_offset_pulse_width_hi = (((mode->hsync_start - mode->hdisplay) >> 8) << 6) || (((mode->hsync_end - mode->hsync_start) >> 8) << 4) ||
 																					(((mode->vsync_start - mode->vdisplay) >> 4 ) << 2) || ((mode->vsync_end - mode->vsync_start) >> 4);
@@ -534,7 +667,7 @@ int tcc_crtc_parse_edid_ioctl(struct drm_device *dev, void *data, struct drm_fil
 
 	pr_info("[DEBUG][%d][%s] Ioctl called \n", __LINE__, __FUNCTION__);
 
-	memset(&base_edid, 0, sizeof(base_edid));
+	memset(base_edid, 0, sizeof(base_edid));
 	/* get crtc */
 	crtc = drm_crtc_find(dev, args->crtc_id);
 	if(!crtc){
@@ -551,7 +684,144 @@ int tcc_crtc_parse_edid_ioctl(struct drm_device *dev, void *data, struct drm_fil
 	tcc_crtc_fill_detailed_edid(base_edid, &crtc_state->mode);
 	tcc_crtc_edid_checksum(base_edid);
 
-	memcpy(args->data, &base_edid, sizeof(base_edid));
+	memcpy(args->data, base_edid, sizeof(base_edid));
 
 	return 0;
+}
+
+int tcc_drm_crtc_set_display_timing(struct drm_crtc *crtc,
+				     struct drm_display_mode *mode,
+				     struct tcc_hw_device *hw_data)
+{
+	#if defined(CONFIG_ARCH_TCC805X)
+	stLTIMING stTimingParam;
+        stLCDCTR stCtrlParam;
+	bool interlace;
+	u32 tmp_sync;
+	u32 vactive;
+	#endif
+	struct videomode vm;
+	if(crtc == NULL)
+		goto err_null_pointer;
+	if(crtc->dev == NULL)
+		goto err_null_pointer;
+	if(mode == NULL)
+		goto err_null_pointer;
+	if(hw_data == NULL)
+		goto err_null_pointer;
+	if(crtc->dev->dev == NULL)
+		goto err_null_pointer;
+
+	drm_display_mode_to_videomode(mode, &vm);
+
+	#if defined(CONFIG_ARCH_TCC805X)
+	if(!tcc_drm_crtc_check_display_timing(crtc, mode, hw_data))
+		goto finish;
+
+	/* Display MUX */
+	VIOC_CONFIG_LCDPath_Select(get_vioc_index(hw_data->display_device.blk_num), hw_data->lcdc_mux);
+	dev_info(crtc->dev->dev,
+			"[INFO][%s] %s display device(%d) to connect mux(%d)\r\n",
+					LOG_TAG, __func__, get_vioc_index(hw_data->display_device.blk_num), hw_data->lcdc_mux);
+
+	memset(&stCtrlParam, 0, sizeof(stLCDCTR));
+	memset(&stTimingParam, 0, sizeof(stLTIMING));
+	interlace = vm.flags & DISPLAY_FLAGS_INTERLACED;
+	stCtrlParam.iv = (vm.flags & DISPLAY_FLAGS_VSYNC_LOW)?1:0;
+	stCtrlParam.ih = (vm.flags & DISPLAY_FLAGS_HSYNC_LOW)?1:0;
+	stCtrlParam.dp = (vm.flags & DISPLAY_FLAGS_DOUBLECLK)?1:0;
+
+	if(interlace) {
+		stCtrlParam.tv = 1;
+		stCtrlParam.advi = 1;
+	}
+	else {
+		stCtrlParam.ni = 1;
+	}
+
+	/* Calc vactive */
+	vactive = tcc_drm_crtc_calc_vactive(mode);
+
+	stTimingParam.lpc = vm.hactive;
+	stTimingParam.lewc = vm.hfront_porch;
+	stTimingParam.lpw = (vm.hsync_len>0)?(vm.hsync_len-1):0;
+	stTimingParam.lswc = vm.hback_porch;
+
+	if(interlace){
+		tmp_sync = vm.vsync_len << 1;
+		stTimingParam.fpw = (tmp_sync>0)?(tmp_sync-1):0;
+		tmp_sync = vm.vback_porch << 1;
+		stTimingParam.fswc = (tmp_sync>0)?(tmp_sync-1):0;
+		stTimingParam.fewc = vm.vfront_porch << 1;
+		stTimingParam.fswc2 = stTimingParam.fswc+1;
+		stTimingParam.fewc2 = (stTimingParam.fewc>0)?(stTimingParam.fewc-1):0;
+		if(mode->vtotal == 1250 && vm.hactive == 1920 && vm.vactive == 540) {
+			/* VIC 1920x1080@50i 1250 vtotal */
+			stTimingParam.fewc -= 2;
+		}
+	}
+	else {
+		stTimingParam.fpw = (vm.vsync_len>0)?(vm.vsync_len-1):0;
+		stTimingParam.fswc = (vm.vback_porch>0)?(vm.vback_porch-1):0;
+		stTimingParam.fewc = (vm.vfront_porch>0)?(vm.vfront_porch-1):0;
+		stTimingParam.fswc2 = stTimingParam.fswc;
+		stTimingParam.fewc2 = stTimingParam.fewc;
+	}
+
+	// Check 3D Frame Packing
+	#if defined(CONFIG_DRM_TCC_SUPPORT_3D)
+	if(mode->flags & DRM_MODE_FLAG_3D_FRAME_PACKING)
+		stTimingParam.framepacking = 1;
+	else if (mode->flags & DRM_MODE_FLAG_3D_SIDE_BY_SIDE_HALF)
+		stTimingParam.framepacking = 2;
+	else if (mode->flags & DRM_MODE_FLAG_3D_TOP_AND_BOTTOM)
+		stTimingParam.framepacking = 3;
+	#endif
+
+	/* Common Timing Parameters */
+	stTimingParam.flc = (vactive>0)?(vactive-1):0;
+	stTimingParam.fpw2 = stTimingParam.fpw;
+	stTimingParam.flc2 = stTimingParam.flc;
+
+	/* swreset display device */
+	VIOC_CONFIG_SWReset(hw_data->display_device.blk_num, VIOC_CONFIG_RESET);
+	VIOC_CONFIG_SWReset(hw_data->display_device.blk_num, VIOC_CONFIG_CLEAR);
+
+	VIOC_CONFIG_SWReset(hw_data->wmixer.blk_num, VIOC_CONFIG_RESET);
+	VIOC_CONFIG_SWReset(hw_data->wmixer.blk_num, VIOC_CONFIG_CLEAR);
+
+	//vioc_reset_rdma_on_display_path(pDisplayInfo->DispNum);
+
+	VIOC_WMIX_SetOverlayPriority(hw_data->wmixer.virt_addr, 24);
+	VIOC_WMIX_SetSize(hw_data->wmixer.virt_addr, vm.hactive, vactive);
+	VIOC_WMIX_SetUpdate (hw_data->wmixer.virt_addr);
+
+	VIOC_DISP_SetTimingParam(hw_data->display_device.virt_addr, &stTimingParam);
+	VIOC_DISP_SetControlConfigure(hw_data->display_device.virt_addr, &stCtrlParam);
+
+	/* PXDW
+	 * YCC420 with stb pxdw is 27
+	 * YCC422 with stb is pxdw 21, with out stb is 8
+	 * YCC444 && RGB with stb is 23, with out stb is 12
+	 * TCCDRM can only support RGB as format of the display device. */
+	VIOC_DISP_SetPXDW(hw_data->display_device.virt_addr, 12);
+
+	VIOC_DISP_SetSize (hw_data->display_device.virt_addr, vm.hactive, vactive);
+	VIOC_DISP_SetBGColor(hw_data->display_device.virt_addr, 0, 0, 0, 0);
+
+finish:
+	#endif
+
+	/* Set pixel clocks */
+	if(!tcc_drm_crtc_check_pixelclock_match(clk_get_rate(hw_data->ddc_clock), vm.pixelclock)) {
+		dev_info(crtc->dev->dev,
+			"[INFO][%s] %s line(%d) clock is not match %ldHz : %dHz\r\n",
+			LOG_TAG, __func__, __LINE__, clk_get_rate(hw_data->ddc_clock), mode->clock * 1000);
+		clk_set_rate(hw_data->ddc_clock, vm.pixelclock);
+	}
+
+	return 0;
+
+err_null_pointer:
+	return -1;
 }

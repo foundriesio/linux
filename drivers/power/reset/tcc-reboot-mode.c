@@ -36,10 +36,10 @@ static int tcc_reboot_mode_write(struct reboot_mode_driver *reboot,
 	writel(magic, pmu_usstatus);
 #endif
 
-	return res.a0;
+	return (int)res.a0;
 }
 
-struct reboot_mode_driver tcc_reboot_mode = {
+static struct reboot_mode_driver tcc_reboot_mode = {
 	.write = tcc_reboot_mode_write,
 };
 
@@ -62,15 +62,16 @@ static int tcc_reboot_mode_probe(struct platform_device *pdev)
 	tcc_reboot_mode.dev = &pdev->dev;
 
 	ret = devm_reboot_mode_register(&pdev->dev, &tcc_reboot_mode);
-	if (ret)
+	if (ret != 0) {
 		dev_err(&pdev->dev, "failed to register reboot mode\n");
+	}
 
 	return ret;
 }
 
-static const struct of_device_id tcc_reboot_mode_of_match[] = {
+static const struct of_device_id tcc_reboot_mode_of_match[2] = {
 	{ .compatible = "telechips,reboot-mode" },
-	{}
+	{ /* sentinel */ }
 };
 
 static struct platform_driver tcc_reboot_mode_driver = {

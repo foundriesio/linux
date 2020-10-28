@@ -14,29 +14,12 @@
 #include <asm/assembler.h>
 #include <asm/mcpm.h>
 
-#ifdef CONFIG_ARM_TRUSTZONE
-#ifndef __ASSEMBLY__
-#define __ASSEMBLY__
-#endif
-#include <mach/smc.h>
-#endif
-
 /*
  * Realview/Versatile Express specific entry point for secondary CPUs.
  * This provides a "holding pen" into which all secondary cores are held
  * until we're ready for them to initialise.
  */
 ENTRY(tcc_secondary_startup)
-
-#ifdef CONFIG_ARM_TRUSTZONE
-	stmfd	sp!, {r0-r1, lr}
-	ldr	r0, =0
-	ldr	r1, =TZ_SECUREOS_BASE
-	mov	lr, pc
-	mov	pc, r1
-	ldmfd	sp!, {r0-r1, lr}
-#endif
-
  ARM_BE8(setend	be)
 	mrc	p15, 0, r0, c0, c0, 5
 	bic	r0, #0xff000000

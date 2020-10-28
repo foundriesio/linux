@@ -83,9 +83,9 @@ struct tcc_tsif_pri_handle
 	struct tcc_hwdmx_tsif_rx_handle demux[HWDMX_NUM];
 	struct timer_list timer;
 #if defined(USE_REV_MEMORY)
-	pmap_t pmap_tsif;
+	struct pmap pmap_tsif;
 	void *mem_base;
-	pmap_t pmap_secure_tsif;
+	struct pmap pmap_secure_tsif;
 	void *virt_secure_tsif;
 #endif
 	struct tea_dma_buf *static_dma_buffer[HWDMX_NUM];

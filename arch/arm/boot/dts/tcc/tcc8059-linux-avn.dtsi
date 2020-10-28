@@ -21,6 +21,9 @@
 		videosource1 = &videosource1; /* max9286 */
 		videosource2 = &videosource2; /* max9276 */
 		//videosource3 = &videosource3; /* max96712 */
+		//videosource4 = &videosource4; /* max9286 for ispless cam */
+		videosource10 = &videosource10;	// ar0135
+		videosource11 = &videosource11;	// max96759
 	};
 
 	pcie@11000000 {
@@ -32,7 +35,7 @@
 	ehci_phy@11DA0010 {
 		status = "disabled";
 		vbus-ctrl-able;
-		vbus-gpio = <&gpa 28 0>; /* 0 : GPIO_ACTIVE_HIGH, 1 : GPIO_ACTIVE_LOW */
+		vbus-gpio = <&gpext1 4 0>; /* 0 : GPIO_ACTIVE_HIGH, 1 : GPIO_ACTIVE_LOW */
 	};
 
 	ehci@11A00000 {
@@ -52,7 +55,7 @@
 	dwc_otg_phy@11DA0100 {
 		status = "okay";
 		vbus-ctrl-able;
-		vbus-gpio = <&gpa 27 0>; /* 0 : GPIO_ACTIVE_HIGH, 1 : GPIO_ACTIVE_LOW */
+		vbus-gpio = <&gpext1 5 0>; /* 0 : GPIO_ACTIVE_HIGH, 1 : GPIO_ACTIVE_LOW */
 	};
 
 	mux_host_phy@11DA00DC {
@@ -68,7 +71,7 @@
 	dwc3_phy@11D90000 {
 		status = "okay";
 		vbus-ctrl-able;
-		vbus-gpio = <&gpa 29 0>; /* 0 : GPIO_ACTIVE_HIGH, 1 : GPIO_ACTIVE_LOW */
+		vbus-gpio = <&gpext1 3 0>; /* 0 : GPIO_ACTIVE_HIGH, 1 : GPIO_ACTIVE_LOW */
 	};
 
 	dwc3_platform {
@@ -107,10 +110,13 @@
 
 	cpu-id@14200290{
 		compatible = "telechips,tcc-cpu-id";
-		reg = <0x14200290 0x4 0x14200298 0x4 0x1420029C 0x4 0x14400014 0x4>;
+		reg = <0x0 0x14200290 0x0 0x4>,
+		<0x0 0x14200298 0x0 0x4>,
+		<0x0 0x1420029C 0x0 0x4>,
+		<0x0 0x14400014 0x0 0x4>;
 		status = "okay";
 	};
-
+	
 	graphic2d:graphic2d@1A400000 {
 		status ="okay";
 	};
@@ -218,6 +224,30 @@
           };
         }; // pmic mpq7920
 */
+		dp_serializer:max96851@60 {
+			compatible	= "maxim,serdes";
+			reg		= <0x60>;
+		};
+	
+		dp_deserializer0:max96878@48 {
+			compatible	= "maxim,serdes";
+			reg		= <0x48>;
+		};
+	
+		dp_deserializer1:max96878@4A {
+			compatible	= "maxim,serdes";
+			reg		= <0x4A>;
+		};
+	
+		dp_deserializer2:max96878@4C {
+			compatible	= "maxim,serdes";
+			reg		= <0x4C>;
+		};
+	
+		serdes_path:serdes_path@0{
+			compatible = "telechips,serdes_path_configuration";
+			serdes_path_configuration = <0>; /* 0 TCC8059, 1 TCC8050/3 */
+		};
 	};
 
 	i2c@16310000 {
@@ -266,6 +296,13 @@
 			pinctrl-0 = <&tsc1_default>;
 			irq-gpios = <&gpe 19 0x0>;
 		};
+
+		gpext1: tca9539@74 {
+			compatible = "nxp,pca9539";
+			reg = <0x74>;
+			gpio-controller;
+			#gpio-cells = <2>;
+		};
 	};
 
 	i2c@16370000 {
@@ -310,9 +347,37 @@
 			pwd-gpios	= <&gpg 5 1>;
 			intb-gpios	= <&gph 11 1>;
 			reg		= <0x29>;	// 0x52 >> 1
-			mipi-csi2-idx   = <0>;
+			mipi-csi2-idx	= <0>;
+		};
+
+		videosource4: deserializer_max9286_isp {
+			compatible	= "maxim,max9286_isp";
+			cifport		= <5>;
+			pwd-gpios	= <&gpg 5 1>;
+			intb-gpios	= <&gph 11 1>;
+			rst-gpios	= <&gpb 15 1>;  /* mcnex module sensor */
+			reg		= <0x48>;	// 0x90 >> 1
+			mipi-csi2-idx	= <0>;
 		};
 #endif
+		videosource10: cis_ar0135 {
+			compatible	= "onsemiconductor,ar0135";
+			pinctrl-names	= "idle", "active";
+			cifport		= <0>;
+			pinctrl-0	= <&cam0_16bit_idle>;
+			pinctrl-1	= <&cam0_clk &cam0_hsync &cam0_vsync &cam0_data_16bit>;
+			rst-gpios	= <&gpb 14 1>;
+			reg		= <0x10>;	// 0x20 >> 1
+		};
+
+		videosource11: deserializer_max96759 {
+			compatible	= "maxim,max96759";
+			pinctrl-names	= "idle", "active";
+			cifport		= <0>;
+			pinctrl-0	= <&cam0_16bit_idle>;
+			pinctrl-1	= <&cam0_clk &cam0_hsync &cam0_vsync &cam0_fld &cam0_data_16bit>;
+			reg		= <0x49>;	// 0x92 >> 1
+		};
 	};
 
 	/*
@@ -328,6 +393,7 @@
 		mipi-chmux-1 = <0>;
 		mipi-chmux-2 = <0>;
 		mipi-chmux-3 = <0>;
+
 		/*
 		 * 0: select output of MIPI1
 		 * 1: select output of MIPI0
@@ -337,12 +403,36 @@
 		mipi-chmux-6 = <0>;
 		mipi-chmux-7 = <0>;
 
+		/*
+		 * 1: bypass isp
+		 * 0: use isp
+		 */
 		isp0-bypass = <1>;
 		isp1-bypass = <1>;
 		isp2-bypass = <1>;
 		isp3-bypass = <1>;
+
+		/*
+		 * the number of isp to use
+		 */
+		isp-number = <0>;
 	};
 
+	isp0@1bc80000 {
+		status = "okay";
+	};
+
+	isp1@1bca0000 {
+		status = "okay";
+	};
+
+	isp2@1bcc0000 {
+		status = "okay";
+	};
+
+	isp3@1bce0000 {
+		status = "okay";
+	};
 
 	videoinput@0 {
 		status = "okay";
@@ -737,11 +827,6 @@
 	tcc_bt_dev {
 		compatible = "telechips, tcc_bt_dev";
 		status = "okay";
-	};
-
-	tcckey@16050000 {
-	    compatible = "telechips,tcckey";
-	    status = "okay";
 	};
 
 	vout_drv@0 {

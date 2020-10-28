@@ -815,12 +815,12 @@ void ipc_try_connection(struct ipc_device *ipc_dev)
 
 	if((ipc_handle->ipcStatus < IPC_READY)||(ipc_handle->readBuffer.status<IPC_BUF_READY))
 	{
-		IPC_INT64 curTime;
-		IPC_INT64 preTime;
-		IPC_INT64 diffTime;
+		IPC_UINT64 curTime;
+		IPC_UINT64 preTime;
+		IPC_UINT64 diffTime;
 
-		preTime = (IPC_INT64)ipc_dev->ipc_handler.requestConnectTime;
-		curTime = (IPC_INT64)ipc_get_msec();
+		preTime = (IPC_UINT64)ipc_dev->ipc_handler.requestConnectTime;
+		curTime = get_jiffies_64();
 		if(curTime >= preTime)
 		{
 			diffTime = curTime - preTime;

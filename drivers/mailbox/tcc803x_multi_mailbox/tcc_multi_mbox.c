@@ -131,7 +131,6 @@ struct tcc_mbox_device
 	int irq;
 	struct mutex lock;
 	int32_t ch_enable[TCC_MBOX_CH_LIMIT];
-	struct timeval ts;
 };
 
 typedef void (*mbox_receive_queue_t)(void *dev_id, unsigned int ch, struct tcc_mbox_data *msg);
@@ -167,73 +166,11 @@ struct tcc_channel {
 	mbox_receiveQueue *receiveQueue;
 };
 
-static int32_t is_mbox_timeout(struct timeval *ts_old, unsigned long *remain_time);
 static void tcc_received_msg(void *dev_id, unsigned int ch, struct tcc_mbox_data *msg);
 static void mbox_pump_messages(struct kthread_work *work);
 static int mbox_receive_queue_init(mbox_receiveQueue *mbox_queue, mbox_receive_queue_t handler, void *handler_pdata, const char *name);
 static int deregister_receive_queue(mbox_receiveQueue *mbox_queue);
 static int mbox_add_queue_and_work(mbox_receiveQueue *mbox_queue, mbox_receive_list *mbox_list);
-
-static int32_t is_mbox_timeout(struct timeval *ts_old, unsigned long *remain_time)
-{
-	int32_t timeout = 0;
-	struct timeval ts_cur;
-
-	if((ts_old != NULL)&&(remain_time != NULL ))
-	{
-		*remain_time =0;
-
-		do_gettimeofday(&ts_cur);
-
-		if(ts_old->tv_sec < ts_cur.tv_sec)
-		{
-			if((ts_old->tv_sec +1) < ts_cur.tv_sec)
-			{
-				timeout = 1;
-			}
-			else
-			{
-				unsigned long diff_usec;
-				if(ts_cur.tv_usec >= ts_old->tv_usec)
-				{
-					diff_usec = ((unsigned long)ts_cur.tv_usec - (unsigned long)ts_old->tv_usec);
-				}
-				else
-				{
-					diff_usec = ((1000000U - (unsigned long)ts_old->tv_usec)+(unsigned long)ts_cur.tv_usec);
-				}
-
-				if( diff_usec >= (unsigned long)MBOX_TIMEOUT)
-				{
-					timeout =1;
-				}
-				else
-				{
-					timeout = 0;
-					*remain_time = diff_usec;
-				}
-			}
-		}
-		else if(ts_old->tv_sec == ts_cur.tv_sec)
-		{
-			unsigned long diff_usec = (ts_cur.tv_usec - ts_old->tv_usec);
-			if(diff_usec >= MBOX_TIMEOUT)
-			{
-				timeout =1;
-			}
-			else
-			{
-				timeout = 0;
-				*remain_time = diff_usec;
-			}
-		}
-		else
-		{
-			timeout = 0;
-		}
-	}
-	return timeout;
-}
 
 static void mbox_pump_messages(struct kthread_work *work)
 {
@@ -358,58 +295,55 @@ static int tcc_multich_mbox_send(struct mbox_chan *chan, void *mbox_msg)
 		}
 		else
 		{
+			int32_t timeOutCnt = 30;  //30 * 100usec = 3000usec
+
 			mutex_lock(&mdev->lock);
 
 			/* check fifo */
-			while((readl_relaxed(mdev->base + MBOXSTR) & MEMP_MASK) == 0)
+			while(((readl_relaxed(mdev->base + MBOXSTR) & MEMP_MASK) == 0)&&(timeOutCnt > 0))
 			{
-				int32_t timeout=0;
-				unsigned long remain_time;
-				timeout = is_mbox_timeout(&mdev->ts, &remain_time);
-				if(timeout == 1)
-				{
-					/* flush fifo or return busy */
-					writel_relaxed((readl_relaxed(mdev->base + MBOXCTR) | FLUSH_BIT), mdev->base + MBOXCTR);
-					break;
-				}
-				else
-				{
-					udelay(100);
-				}
+				udelay(100);
+				timeOutCnt--;
 			}
 
-			/* check data fifo */
-			if ((readl_relaxed(mdev->base + MBOX_DT_STR) & DATA_MEMP_MASK) == 0)
+			if((readl_relaxed(mdev->base + MBOXSTR) & MEMP_MASK) == MEMP_MASK)
 			{
-				/* flush buffer */
-				writel_relaxed((readl_relaxed(mdev->base + MBOXCTR) | D_FLUSH_BIT), mdev->base + MBOXCTR);
-			}
-
-			/* disable data output. */
-			writel_relaxed((readl_relaxed(mdev->base + MBOXCTR) & ~(OEN_BIT)), mdev->base + MBOXCTR);
-
-			/* write data fifo */
-			if(msg->data_len > 0)
-			{
-				for(idx =0; idx < msg->data_len; idx++)
+				/* check data fifo */
+				if ((readl_relaxed(mdev->base + MBOX_DT_STR) & DATA_MEMP_MASK) == 0)
 				{
-					writel_relaxed(msg->data[idx], mdev->base + MBOXDTXD);
+					/* flush buffer */
+					writel_relaxed((readl_relaxed(mdev->base + MBOXCTR) | D_FLUSH_BIT), mdev->base + MBOXCTR);
 				}
+
+				/* disable data output. */
+				writel_relaxed((readl_relaxed(mdev->base + MBOXCTR) & ~(OEN_BIT)), mdev->base + MBOXCTR);
+
+				/* write data fifo */
+				if(msg->data_len > 0)
+				{
+					for(idx =0; idx < msg->data_len; idx++)
+					{
+						writel_relaxed(msg->data[idx], mdev->base + MBOXDTXD);
+					}
+				}
+
+				/* write command fifo */
+				writel_relaxed(chan_info->channel, mdev->base + MBOXTXD(0));
+				writel_relaxed(msg->cmd[0], mdev->base + MBOXTXD(1));
+				writel_relaxed(msg->cmd[1], mdev->base + MBOXTXD(2));
+				writel_relaxed(msg->cmd[2], mdev->base + MBOXTXD(3));
+				writel_relaxed(msg->cmd[3], mdev->base + MBOXTXD(4));
+				writel_relaxed(msg->cmd[4], mdev->base + MBOXTXD(5));
+				writel_relaxed(msg->cmd[5], mdev->base + MBOXTXD(6));
+				writel_relaxed(msg->cmd[6], mdev->base + MBOXTXD(7));
+
+				/* enable data output. */
+				writel_relaxed(readl_relaxed(mdev->base + MBOXCTR) | OEN_BIT, mdev->base + MBOXCTR);
 			}
-
-			/* write command fifo */
-			writel_relaxed(chan_info->channel, mdev->base + MBOXTXD(0));
-			writel_relaxed(msg->cmd[0], mdev->base + MBOXTXD(1));
-			writel_relaxed(msg->cmd[1], mdev->base + MBOXTXD(2));
-			writel_relaxed(msg->cmd[2], mdev->base + MBOXTXD(3));
-			writel_relaxed(msg->cmd[3], mdev->base + MBOXTXD(4));
-			writel_relaxed(msg->cmd[4], mdev->base + MBOXTXD(5));
-			writel_relaxed(msg->cmd[5], mdev->base + MBOXTXD(6));
-			writel_relaxed(msg->cmd[6], mdev->base + MBOXTXD(7));
-
-			do_gettimeofday(&mdev->ts);
-			/* enable data output. */
-			writel_relaxed(readl_relaxed(mdev->base + MBOXCTR) | OEN_BIT, mdev->base + MBOXCTR);
+			else
+			{
+				dprintk(mdev->mbox.dev,"mbox is not empty. timeout\n");
+			}
 
 			mutex_unlock(&mdev->lock);
 		}
@@ -716,7 +650,6 @@ static int tcc_multich_mbox_probe(struct platform_device *pdev)
 		{
 			mdev->ch_enable[i] = TCC_MBOX_CH_DISALBE;
 		}
-		do_gettimeofday(&mdev->ts);
 
 		if(of_property_read_u32(pdev->dev.of_node, "max-channel", &max_channel) != 0)
 		{

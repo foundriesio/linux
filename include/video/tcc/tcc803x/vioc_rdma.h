@@ -414,6 +414,7 @@ extern void VIOC_RDMA_SetIreqMask(volatile void __iomem *reg, unsigned int mask,
 extern unsigned int VIOC_RDMA_GetStatus(volatile void __iomem *reg);
 
 extern volatile void __iomem* VIOC_RDMA_GetAddress(unsigned int vioc_id);
+extern int VIOC_RDMA_IsVRDMA(unsigned int vioc_id);
 extern void VIOC_RDMA_SetDataFormat(volatile void __iomem *reg, unsigned int fmt_type, unsigned int fill_mode);
 #ifdef CONFIG_ARCH_TCC898X
 extern void VIOC_RDMA_DEC_CTRL(volatile void __iomem *reg, unsigned int base, unsigned int length, unsigned int has_alpha, unsigned int has_comp);

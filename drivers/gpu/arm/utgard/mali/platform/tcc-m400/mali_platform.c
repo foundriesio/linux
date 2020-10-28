@@ -230,7 +230,7 @@ int mali_platform_device_register(void)
 #endif
 
 #ifndef CONFIG_MALI_OS_MEMORY
-	pmap_t pmap_mali_reserved;
+	struct pmap pmap_mali_reserved;
 	pmap_get_info("mali_reserved", &pmap_mali_reserved);
 	unsigned int test_addr;
 	unsigned int test_size;

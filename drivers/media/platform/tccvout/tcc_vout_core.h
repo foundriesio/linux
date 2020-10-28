@@ -27,7 +27,7 @@
 #define GET_ADDR_YUV420_spV(Uaddr, x, y) 	(((((unsigned int)Uaddr+(x*y/4)) + ALIGN_BIT) >> BIT_0)<<BIT_0)
 #endif
 
-extern int vout_get_pmap(pmap_t *pmap);
+extern int vout_get_pmap(struct pmap *pmap);
 extern int vout_set_vout_path(struct tcc_vout_device *vout);
 extern int vout_set_m2m_path(int deintl_default, struct tcc_vout_device *vout);
 extern int vout_vioc_set_default(struct tcc_vout_device *vout);

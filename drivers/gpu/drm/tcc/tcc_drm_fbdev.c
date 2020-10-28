@@ -39,9 +39,7 @@
 
 struct tcc_drm_fbdev {
 	struct drm_fb_helper	drm_fb_helper;
-	struct drm_framebuffer 	fb;
 	struct tcc_drm_gem	*tcc_gem;
-	struct tcc_drm_private 	*private
 };
 
 static int tcc_drm_fb_mmap(struct fb_info *info,
@@ -250,15 +248,13 @@ static int tcc_drm_fbdev_update(struct drm_fb_helper *helper,
 
 	fbi->screen_base = tcc_gem->kvaddr + offset;
 	fbi->screen_size = size;
+	fbi->fix.smem_start = (phys_addr_t)(tcc_gem->dma_addr + offset);
 	fbi->fix.smem_len = size;
+	helper->dev->mode_config.fb_base = tcc_gem->dma_addr;
 
 	return 0;
 }
 
-static const struct drm_framebuffer_funcs tcc_drm_fb_funcs = {
-	.destroy	= drm_gem_fb_destroy,
-	.create_handle	= drm_gem_fb_create_handle,
-};
 
 static int tcc_drm_fbdev_probe(struct drm_fb_helper *helper,
 				    struct drm_fb_helper_surface_size *sizes)
@@ -289,17 +285,13 @@ static int tcc_drm_fbdev_probe(struct drm_fb_helper *helper,
 
 	tcc_fbdev->tcc_gem = tcc_gem;
 
-	helper->fb = &tcc_fbdev->fb;
-	if (IS_ERR(helper->fb)) {
-		DRM_ERROR("failed to create drm framebuffer.\n");
-		ret = PTR_ERR(helper->fb);
-		goto err_destroy_gem;
-	}
-
-	tcc_fbdev->fb.obj[0] = &tcc_gem->base;
-
-	drm_helper_mode_fill_fb_struct(dev, &tcc_fbdev->fb, &mode_cmd);
-	drm_framebuffer_init(dev, &tcc_fbdev->fb, &tcc_drm_fb_funcs);
+        helper->fb =
+                tcc_drm_fb_alloc(dev, &mode_cmd, &tcc_gem, 1);
+        if (IS_ERR(helper->fb)) {
+                DRM_ERROR("failed to create drm framebuffer.\n");
+                ret = PTR_ERR(helper->fb);
+                goto err_destroy_gem;
+        }
 
 	ret = tcc_drm_fbdev_update(helper, sizes, tcc_gem);
 	if (ret < 0)
@@ -337,9 +329,7 @@ int tcc_drm_fbdev_init(struct drm_device *dev)
 	if (!fbdev)
 		return -ENOMEM;
 
-	fbdev->private = private;
 	private->fb_helper = &fbdev->drm_fb_helper;
-	private->fbdev = fbdev;
 
 	drm_fb_helper_prepare(dev, &fbdev->drm_fb_helper, &tcc_drm_fb_helper_funcs);
 

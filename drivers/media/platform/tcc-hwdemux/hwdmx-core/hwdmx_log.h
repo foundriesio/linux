@@ -1,23 +1,18 @@
-/* Copyright (c) Telechips Inc.
- * All rights reserved
- * This source code contains confidential information of Telechips.
+/* Copyright (C) 2018 Telechips Inc.
  *
- * Any unauthorized use without a written permission of Telechips including
- * not limited to re-distribution in source or binary form is strictly
- * prohibited. This source code is provided “AS IS” and nothing contained
- * in this source code shall constitute any express or implied warranty of
- * any kind, including without limitation, any warranty of merchantability,
- * fitness for a particular purpose or non-infringement of any patent,
- * copyright or other third party intellectual property right. No warranty
- * is made, express or implied, regarding the information’s accuracy,
- * completeness, or performance.
+ * This program is free software; you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free Software
+ * Foundation; either version 2 of the License, or (at your option) any later
+ * version.
  *
- * In no event shall Telechips be liable for any claim, damages or other
- * liability arising from, out of or in connection with this source code
- * or the use in the source code.
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+ * FOR A PARTICULAR PURPOSE. See the GNU General Public License for more
+ * details.
  *
- * This source code is provided subject to the terms of a Mutual Non-Disclosure
- * Agreement between Telechips and Company.
+ * You should have received a copy of the GNU General Public License along with
+ * this program; if not, write to the Free Software Foundation, Inc., 59 Temple
+ * Place, Suite 330, Boston, MA 02111-1307 USA
  */
 
 #ifndef _T_LOG_H
@@ -29,7 +24,6 @@
 
 #include <linux/printk.h>
 
-#define TLOG_VERBOS 5
 #define TLOG_DEBUG 4
 #define TLOG_INFO 3
 #define TLOG_WARNING 2
@@ -65,11 +59,11 @@
 /* clang-format on */
 
 /* no logging */
-#define _NLOG(...)               \
-	do {                         \
-		if (0) {                 \
+#define _NLOG(...)                           \
+	do {                                 \
+		if (0) {                     \
 			printk(__VA_ARGS__); \
-		}                        \
+		}                            \
 	} while (0)
 
 /* logging */
@@ -79,7 +73,7 @@
 
 /* Debug logging */
 #if (TLOG_LEVEL >= TLOG_DEBUG)
-#define _DLOG(...) dynamic_pr_debug(__VA_ARGS__);
+#define _DLOG(...) dynamic_pr_debug(__VA_ARGS__)
 #else
 #define _DLOG(...) _NLOG(__VA_ARGS__)
 #endif
@@ -93,7 +87,7 @@
 
 /* Warning logging */
 #if (TLOG_LEVEL >= TLOG_WARNING)
-#define _WLOG(...) pr_warning(__VA_ARGS__)
+#define _WLOG(...) pr_warn(__VA_ARGS__)
 #else
 #define _WLOG(...) _NLOG(__VA_ARGS__)
 #endif
@@ -106,17 +100,21 @@
 #endif
 
 /* color tagging */
-#define TRACE _DLOG("[%s][%d]\n", TLOG_TAG, __LINE__)
-#define DLOG(fmt, ...) \
-	_DLOG(GREEN_COLOR "[DEBUG][%s][%d]" NORMAL_COLOR " " fmt, TLOG_TAG, __LINE__, ##__VA_ARGS__)
+#define TRACE _DLOG("[%s:%d]\n", TLOG_TAG, __LINE__)
+#define DLOG(fmt, ...)                                                      \
+	_DLOG(GREEN_COLOR "[DEBUG][%s][%d]" NORMAL_COLOR " " fmt, TLOG_TAG, \
+	      __LINE__, ##__VA_ARGS__)
 
-#define ILOG(fmt, ...) \
-	_ILOG(YELLOW_COLOR "[INFO][%s][%d]" NORMAL_COLOR " " fmt, TLOG_TAG, __LINE__, ##__VA_ARGS__)
+#define ILOG(fmt, ...)                                                      \
+	_ILOG(YELLOW_COLOR "[INFO][%s][%d]" NORMAL_COLOR " " fmt, TLOG_TAG, \
+	      __LINE__, ##__VA_ARGS__)
 
-#define WLOG(fmt, ...) \
-	_WLOG(COLORWRN_COLOR "[WARN][%s][%d]" NORMAL_COLOR " " fmt, TLOG_TAG, __LINE__, ##__VA_ARGS__)
+#define WLOG(fmt, ...)                                                        \
+	_WLOG(COLORWRN_COLOR "[WARN][%s][%d]" NORMAL_COLOR " " fmt, TLOG_TAG, \
+	      __LINE__, ##__VA_ARGS__)
 
-#define ELOG(fmt, ...) \
-	_ELOG(COLORERR_COLOR "[ERROR][%s][%d]" NORMAL_COLOR " " fmt, TLOG_TAG, __LINE__, ##__VA_ARGS__)
+#define ELOG(fmt, ...)                                                         \
+	_ELOG(COLORERR_COLOR "[ERROR][%s][%d]" NORMAL_COLOR " " fmt, TLOG_TAG, \
+	      __LINE__, ##__VA_ARGS__)
 
 #endif

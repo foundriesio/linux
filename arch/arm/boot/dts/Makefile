@@ -1084,7 +1084,8 @@ dtb-$(CONFIG_ARCH_TCC897X) += \
 dtb-$(CONFIG_ARCH_TCC803X) += \
 	tcc/tcc8030-android-lpd4321_sv0.1.dtb \
 	tcc/tcc8030-android-lpd4321_sv0.1_for_t-sound.dtb \
-	tcc/tcc8030-android-dual-lpd4321-ivi_sv0.1.dtb
+	tcc/tcc8030-android-dual-lpd4321-ivi_sv0.1.dtb \
+	tcc/tcc8030-android-d3s.dtb
 ifeq ($(CONFIG_TCC_HDMI_DRIVER_V2_0),y)
 dtb-$(CONFIG_ARCH_TCC803X) += \
 	tcc/tcc8030-android-lpd4321_sv0.1-hdmi-ext-output.dtb \
@@ -1111,7 +1112,8 @@ dtb-$(CONFIG_ARCH_TCC803X) += \
 	tcc/tcc8030-linux-lpd4321_sv0.1_for_t-sound.dtb \
 	tcc/tcc8030-linux-lpd4321_sv0.1_vbus-pmic-output.dtb \
 	tcc/tcc8030-linux-dual-lpd4321-cluster_sv0.1.dtb \
-	tcc/tcc8030-linux-dual-lpd4321-ivi_sv0.1.dtb
+	tcc/tcc8030-linux-dual-lpd4321-ivi_sv0.1.dtb \
+	tcc/tcc8030-linux-d3s.dtb
 dtb-$(CONFIG_TCC803X_CA7S) += \
 	tcc/tcc8030-linux-a7s.dtb \
 	tcc/tcc8030-linux-a7s_for_t-sound.dtb
@@ -1128,12 +1130,14 @@ ifeq ($(CONFIG_TCC805X_CA53Q),y)
 dtb-$(CONFIG_ARCH_TCC805X) += \
 	tcc/tcc8050-linux-subcore-a53q.dtb \
 	tcc/tcc8053-linux-subcore-a53q.dtb \
-	tcc/tcc8059-linux-subcore-a53q.dtb
+	tcc/tcc8059-linux-subcore-a53q.dtb \
+	tcc/tcc8050-linux-ems-subcore-a53q.dtb
 else
 dtb-$(CONFIG_ARCH_TCC805X) += \
 	tcc/tcc8050-linux-lpd4x322_sv0.1.dtb \
 	tcc/tcc8053-linux-lpd4x322_sv0.1.dtb \
 	tcc/tcc8059-linux-lpd4x321_sv0.1.dtb \
+	tcc/tcc8050-linux-ems.dtb \
 	tcc/tcc8060-linux-board-xxx.dtb
 endif
 endif
@@ -1157,7 +1161,8 @@ dtbo-y += \
 	tcc/overlay-tcc8030-android-lpd4321_sv0.1.dtbo \
 	tcc/overlay-tcc8030-android-dual-lpd4321-ivi_sv0.1.dtbo \
 	tcc/overlay-tcc8030-android-lpd4321_sv0.1-hdmi-ext-output.dtbo \
-	tcc/overlay-tcc8030-android-lpd4321_sv0.1-hdmi-ext-panel.dtbo
+	tcc/overlay-tcc8030-android-lpd4321_sv0.1-hdmi-ext-panel.dtbo \
+	tcc/overlay-tcc8030-android-d3s.dtbo
 
 dtb-y += \
 	tcc/tcc9010-soc.dtb

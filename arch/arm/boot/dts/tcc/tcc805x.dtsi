@@ -104,6 +104,10 @@
 		wdma-drv0 = &wdma_drv0;
 		mipi-csi2-0 = &mipi_csi2_0;
 		mipi-csi2-1 = &mipi_csi2_1;
+		isp0 = &isp0;
+		isp1 = &isp1;
+		isp2 = &isp2;
+		isp3 = &isp3;
 		videoinput0 = &videoinput0;
 		videoinput1 = &videoinput1;
 		videoinput2 = &videoinput2;
@@ -1365,23 +1369,25 @@
 			     <GIC_SPI 38 0>;
 		clocks = <&clk_peri PERI_TCT>;
 		clock-frequency = <12000000>;
+
+		/* timer 0 and 1 are reserved for watchdog (default) */
+		tcc-timer-reserved-for-wdt = <0 1>;
 	};
 
-	watchdog@144000D0 {
-		compatible = "telechips,wdt";
-		reg = <0x0 0x144000D8 0x0 0x4>, /* wdt_ctrl */
-		      <0x0 0x144000DC 0x0 0x4>, /* wdt_cnt */
-		      <0x0 0x144000E4 0x0 0x4>, /* wdt_clear */
-		      <0x0 0x14300070 0x0 0xC>, /* wdt_timer */
-		      <0x0 0x14300060 0x0 0x4>; /* wdt_int_sts */
-		clocks = <&clk_peri PERI_TCX &clk_peri PERI_TCT>;
+	cb_watchdog: cb_watchdog@0x17010000 {
+		compatible = "telechips,tcc-cb-wdt";
+		reg = <0x0 0x17010000 0x0 0x10>,
+			<0x0 0x14300000 0x0 0xC>,
+			<0x0 0x14300060 0x0 0x4>;
+		interrupts = <GIC_SPI 33 0>;
+		clock-names = "clk_wdt", "clk_kick";
+		clocks = <&clk_peri PERI_CB_WDT>, <&clk_peri PERI_TCT>;
 		clock-frequency = <24000000>;
-		interrupts = <GIC_SPI 39 0>;
-		int-offset = <6>;
-		clear-bit = <0>;
+		status = "okay";
 
-		have-rstcnt-reg;        /* indicates separated reset count register later TCC899x */
-		/* status = "disabled"; */
+		kick-timer-id = <0>;
+		pretimeout-sec = <1>;
+		timeout-sec = <5>;
 	};
 
 	reboot-mode {
@@ -1389,6 +1395,7 @@
 		mode-normal = <BOOT_NORMAL>;
 		mode-bootloader = <BOOT_FASTBOOT>;
 		mode-recovery = <BOOT_RECOVERY>;
+		mode-ddrcheck = <BOOT_DDR_CHECK>;
 	};
 
 
@@ -1530,7 +1537,7 @@
                 device-name ="tcc_scrshare_main";
                 mbox-names ="main-scrshare";
                 mboxes = <&cb_mbox TCC_CB_MBOX_SCRSHARE>;
-		mbox-id = TCC_MBOX_SCRSHARE_ID;		
+		mbox-id = TCC_MBOX_SCRSHARE_ID;
                 status = "disabled";
         };
 
@@ -1551,6 +1558,13 @@
 		mbox-names ="sdr-ipc";
 		mboxes = <&cb_mbox TCC_CB_MBOX_SDR>;
 		mbox-id = TCC_MBOX_SDR_ID;
+	};
+
+	tstb:tcc_touch_bridge {
+	    compatible = "telechips,tcc_touch_bridge";
+	    mbox-names ="tb-mbox";
+		mboxes = <&cb_mbox TCC_CB_MBOX_TCHSHARE>;
+		mbox-id = TCC_MBOX_TCHSHARE_ID;
 	};
 
 	tcc_sc_fw: tcc_sc_fw {
@@ -1809,7 +1823,8 @@
 	gpu:gpu@0x10100000 {
 		compatible = "imagination,powerVR-9XTP";
 //		status = "disabled";
-		reg = <0x0 0x10100000 0x0 0x10000>;
+		reg = <0x0 0x10100000 0x0 0x10000>, 	/* 3D Graphic Engine Configuration and Control */
+		      <0x0 0x10010000 0x0 0x30>; 	/* 3D BUS Configuration and Control */
 #if defined(CONFIG_POWERVR_VZ)
 		interrupts = <GIC_SPI 124 IRQ_TYPE_LEVEL_HIGH>;
 #else
@@ -2232,6 +2247,8 @@
 		interrupts = <GIC_SPI 89 IRQ_TYPE_LEVEL_HIGH>;
 		clocks = <&clk_peri PERI_UART1>, <&clk_io IOBUS_UART1>;
 		clock-names = "uartclk", "apb_pclk";
+		assigned-clocks = <&clk_peri PERI_UART1>;
+		assigned-clock-rates = <48000000>;
 		status = "disabled";
 	};
 
@@ -2243,6 +2260,8 @@
 		interrupts = <GIC_SPI 90 IRQ_TYPE_LEVEL_HIGH>;
 		clocks = <&clk_peri PERI_UART2>, <&clk_io IOBUS_UART2>;
 		clock-names = "uartclk", "apb_pclk";
+		assigned-clocks = <&clk_peri PERI_UART2>;
+		assigned-clock-rates = <48000000>;
 		status = "disabled";
 	};
 
@@ -2255,6 +2274,8 @@
 		interrupts = <GIC_SPI 91 IRQ_TYPE_LEVEL_HIGH>;
 		clocks = <&clk_peri PERI_UART3>, <&clk_io IOBUS_UART3>;
 		clock-names = "uartclk", "apb_pclk";
+		assigned-clocks = <&clk_peri PERI_UART3>;
+		assigned-clock-rates = <48000000>;
 		status = "disabled";
 	};
 
@@ -2267,44 +2288,52 @@
 		interrupts = <GIC_SPI 69 IRQ_TYPE_LEVEL_HIGH>;
 		clocks = <&clk_peri PERI_UART4>, <&clk_io IOBUS_UART4>;
 		clock-names = "uartclk", "apb_pclk";
+		assigned-clocks = <&clk_peri PERI_UART4>;
+		assigned-clock-rates = <48000000>;
 		status = "disabled";
 	};
 
-        uart5: serial@16650000 {
-                compatible = "arm,pl011", "arm,primecell";
-                reg = <0x0 0x16650000 0x0 0x1000>;
+	uart5: serial@16650000 {
+		compatible = "arm,pl011", "arm,primecell";
+		reg = <0x0 0x16650000 0x0 0x1000>;
 		config-reg = <0x16689000 0x8>;
-                arm,primecell-periphid = <0x001feff7>;
-                sc-firmware = <&tcc_sc_fw>;
-                interrupts = <GIC_SPI 111 IRQ_TYPE_LEVEL_HIGH>;
-                clocks = <&clk_peri PERI_UART5>, <&clk_io IOBUS_UART5>;
-                clock-names = "uartclk", "apb_pclk";
-                status = "disabled";
-        };
+		arm,primecell-periphid = <0x001feff7>;
+		sc-firmware = <&tcc_sc_fw>;
+		interrupts = <GIC_SPI 111 IRQ_TYPE_LEVEL_HIGH>;
+		clocks = <&clk_peri PERI_UART5>, <&clk_io IOBUS_UART5>;
+		clock-names = "uartclk", "apb_pclk";
+		assigned-clocks = <&clk_peri PERI_UART5>;
+		assigned-clock-rates = <48000000>;
+		status = "disabled";
+	};
 
-        uart6: serial@16660000 {
-                compatible = "arm,pl011", "arm,primecell";
-                reg = <0x0 0x16660000 0x0 0x1000>;
+	uart6: serial@16660000 {
+		compatible = "arm,pl011", "arm,primecell";
+		reg = <0x0 0x16660000 0x0 0x1000>;
 		config-reg = <0x16689000 0x8>;
-                arm,primecell-periphid = <0x001feff7>;
-                sc-firmware = <&tcc_sc_fw>;
-                interrupts = <GIC_SPI 112 IRQ_TYPE_LEVEL_HIGH>;
-                clocks = <&clk_peri PERI_UART6>, <&clk_io IOBUS_UART6>;
-                clock-names = "uartclk", "apb_pclk";
-                status = "disabled";
-        };
+		arm,primecell-periphid = <0x001feff7>;
+		sc-firmware = <&tcc_sc_fw>;
+		interrupts = <GIC_SPI 112 IRQ_TYPE_LEVEL_HIGH>;
+		clocks = <&clk_peri PERI_UART6>, <&clk_io IOBUS_UART6>;
+		clock-names = "uartclk", "apb_pclk";
+		assigned-clocks = <&clk_peri PERI_UART6>;
+		assigned-clock-rates = <48000000>;
+		status = "disabled";
+	};
 
-        uart7: serial@16670000 {
-                compatible = "arm,pl011", "arm,primecell";
-                reg = <0x0 0x16670000 0x0 0x1000>;
+	uart7: serial@16670000 {
+		compatible = "arm,pl011", "arm,primecell";
+		reg = <0x0 0x16670000 0x0 0x1000>;
 		config-reg = <0x16689000 0x8>;
-                arm,primecell-periphid = <0x001feff7>;
-                sc-firmware = <&tcc_sc_fw>;
-                interrupts = <GIC_SPI 113 IRQ_TYPE_LEVEL_HIGH>;
-                clocks = <&clk_peri PERI_UART7>, <&clk_io IOBUS_UART7>;
-                clock-names = "uartclk", "apb_pclk";
-                status = "disabled";
-        };
+		arm,primecell-periphid = <0x001feff7>;
+		sc-firmware = <&tcc_sc_fw>;
+		interrupts = <GIC_SPI 113 IRQ_TYPE_LEVEL_HIGH>;
+		clocks = <&clk_peri PERI_UART7>, <&clk_io IOBUS_UART7>;
+		clock-names = "uartclk", "apb_pclk";
+		assigned-clocks = <&clk_peri PERI_UART7>;
+		assigned-clock-rates = <48000000>;
+		status = "disabled";
+	};
 
         pcie: pcie@11000000 {
                 compatible = "telechips,pcie", "snps,dw-pcie";
@@ -2862,6 +2891,19 @@
 		};
 	};
 
+	tcc_ufs: tcc_ufs@1D280000 {
+		compatible = "telechips,tcc-ufs";
+		reg =   <0x0 0x1d280000 0x0 0x2000>,
+				<0x0 0x1d270000 0x0 0x4000>,
+				<0x0 0x1d274000 0x0 0x4000>,
+				<0x0 0x1d2c0000 0x0 0xC0>,
+				<0x0 0x1d290000 0x0 0x400>,
+				<0x0 0x1dff0000 0x0 0x40>;
+		reg-names = "ufs-hci", "ufs-unipro", "ufs-mphy", "ufs-sbus-config", "ufs-fmp", "ufs-sec";
+		interrupts = <GIC_SPI 325 IRQ_TYPE_LEVEL_HIGH>;
+		status = "disabled";
+	};
+
 	trng@11DB0100 {
 		compatible = "telechips,tcc-rng";
 		reg = <0x0 0x11DB0100 0x0 0x100>;
@@ -3182,15 +3224,7 @@
 		reg =	<0x0 0x1bc00800 0x0 0x120>,	/* csi0_base */
 			<0x0 0x1bc00a00 0x0 0x05c>,	/* gdb0_base */
 			<0x0 0x1bc00000 0x0 0x014>,	/* ckc_base */
-			<0x0 0x1bc00400 0x0 0x120>,	/* cfg_base */
-			<0x0 0x1bc80000 0x0 0x10000>,	/* ISP0 */
-			<0x0 0x1bc90000 0x0 0x10000>,	/* ISP0 memory */
-			<0x0 0x1bca0000 0x0 0x10000>,	/* ISP1 */
-			<0x0 0x1bcb0000 0x0 0x10000>,	/* ISP1 memory */
-			<0x0 0x1bcc0000 0x0 0x10000>,	/* ISP2 */
-			<0x0 0x1bcd0000 0x0 0x10000>,	/* ISP2 memory */
-			<0x0 0x1bce0000 0x0 0x10000>,	/* ISP3 */
-			<0x0 0x1bcf0000 0x0 0x10000>;	/* ISP3 memory */
+			<0x0 0x1bc00400 0x0 0x120>;	/* cfg_base */
 		reg-names = "csi", "gdb", "ckc", "cfg";
 
 		clock-frequency = <600000000>;
@@ -3206,21 +3240,52 @@
 		reg =	<0x0 0x1bc00c00 0x0 0x120>,	/* csi0_base */
 			<0x0 0x1bc00e00 0x0 0x05c>,	/* gdb0_base */
 			<0x0 0x1bc00000 0x0 0x014>,	/* ckc_base */
-			<0x0 0x1bc00400 0x0 0x120>,	/* cfg_base */
-			<0x0 0x1bc80000 0x0 0x10000>,	/* ISP0 */
-			<0x0 0x1bc90000 0x0 0x10000>,	/* ISP0 memory */
-			<0x0 0x1bca0000 0x0 0x10000>,	/* ISP1 */
-			<0x0 0x1bcb0000 0x0 0x10000>,	/* ISP1 memory */
-			<0x0 0x1bcc0000 0x0 0x10000>,	/* ISP2 */
-			<0x0 0x1bcd0000 0x0 0x10000>,	/* ISP2 memory */
-			<0x0 0x1bce0000 0x0 0x10000>,	/* ISP3 */
-			<0x0 0x1bcf0000 0x0 0x10000>;	/* ISP3 memory */
+			<0x0 0x1bc00400 0x0 0x120>;	/* cfg_base */
 		reg-names = "csi", "gdb", "ckc", "cfg";
 
 		clock-frequency = <600000000>;
 
 		interrupts =	<GIC_SPI 160 IRQ_TYPE_LEVEL_HIGH>,// MIPI1 CSIS
 				<GIC_SPI 161 IRQ_TYPE_LEVEL_HIGH>;// MIPI1 Generic
+	};
+
+	/* only for TCC805X ES(TCS CV8050C-618) */
+	isp_iommu: isp_iommu {
+		compatible = "telechips,tcc-isp-iommu";
+		iommus = <&smmu_dbus 0x90 0x7f00>;
+		status = "okay";
+	};
+
+	isp0: isp0@1bc80000 {
+		compatible = "telechips,tcc805x-isp";
+		status = "disabled";
+		reg = 	<0x0 0x1bc80000 0x0 0x10000>,	/* ISP base */
+			<0x0 0x1bc90000 0x0 0x10000>;	/* ISP memory */
+		reg-names = "isp_base", "mem_base";
+	};
+
+	isp1: isp1@1bca0000 {
+		compatible = "telechips,tcc805x-isp";
+		status = "disabled";
+		reg = 	<0x0 0x1bca0000 0x0 0x10000>,	/* ISP base */
+			<0x0 0x1bcb0000 0x0 0x10000>;	/* ISP memory */
+		reg-names = "isp_base", "mem_base";
+	};
+
+	isp2: isp2@1bcc0000 {
+		compatible = "telechips,tcc805x-isp";
+		status = "disabled";
+		reg = 	<0x0 0x1bcc0000 0x0 0x10000>,	/* ISP base */
+			<0x0 0x1bcd0000 0x0 0x10000>;	/* ISP memory */
+		reg-names = "isp_base", "mem_base";
+	};
+
+	isp3: isp3@1bce0000 {
+		compatible = "telechips,tcc805x-isp";
+		status = "disabled";
+		reg = 	<0x0 0x1bce0000 0x0 0x10000>,	/* ISP base */
+			<0x0 0x1bcf0000 0x0 0x10000>;	/* ISP memory */
+		reg-names = "isp_base", "mem_base";
 	};
 
 	fb_cr: fb_cr@12000000{
@@ -3442,7 +3507,7 @@ tcc_overlay_drv1: tcc_overlay_drv@1 { //for DVRS
 	    deintl_block = <&vioc_deintls VIOC_DEINTLS0>;
 	    scaler = <&vioc_scaler VIOC_SCALER3>;
 
-	    status = "disabled";
+	    status = "okay";
 	};
 
 	composite {
@@ -3749,45 +3814,19 @@ tcc_overlay_drv1: tcc_overlay_drv@1 { //for DVRS
 		status = "okay";
 	};
 
-	/*mtadc0@16053000 {
-		compatible = "telechips,mtadc";
-		reg = <0x16053000 0x100 0x1440006C 0x4>;
-		clocks = <&clk_peri PERI_ADC0 &clk_io IOBUS_ADC &clk_isoip_top ISOIP_TOP_TSADC0>;
-		clock-frequency = <12000000>;
-		ckin-frequency  = <1000000>;
-		adc-12bit-resolution;
-		adc-delay = <150>;
-		status = "okay";
+	dpv14_tx: dpv14_tx@12400000 {
+		compatible = "telechips,dpv14-tx";
+		reg = <0x0 0x12400000 0x0 0x100000>, <0x0 0x1B930000 0x0 0x78>, <0x0 0x1B936000 0x0 0x258>;
+		reg-names = "DDIBUS_BASE_ADD", "MICOM_SUB_SYSTEM_CONF", "PMU_BASE_ADD";
+		interrupts = <GIC_SPI 294 IRQ_TYPE_LEVEL_HIGH>;
+		interrupt-names = "dp_hpd";
+		clocks = <&clk_peri PERI_LCD0>, <&clk_peri PERI_LCD1>, <&clk_peri PERI_LCD2>, <&clk_peri PERI_LCD3>;
+		clock-names = "disp0-clk", "disp1-clk", "disp2-clk", "disp3-clk";
+			
+		pinctrl-names = "default";
+		pinctrl-0 = <&dp_hpd_gpio>;
+		gpios = <&gpc 14 0>;
 	};
-
-	mtadc1@16053000 {
-		compatible = "telechips,mtadc";
-		reg = <0x16053000 0x100 0x1440006C 0x4>;
-		clocks = <&clk_peri PERI_ADC1 &clk_io IOBUS_ADC &clk_isoip_top ISOIP_TOP_TSADC1>;
-		clock-frequency = <12000000>;
-		ckin-frequency  = <1000000>;
-		adc-12bit-resolution;
-		adc-delay = <150>;
-		status = "okay";
-	};
-
-	adc@16050000 {
-		compatible = "telechips,adc";
-		reg = <0x16050000 0x24 0x1440000C 0x4>;
-		clocks = <&clk_peri PERI_TSADC &clk_io IOBUS_TSADC &clk_isoip_top ISOIP_TOP_TSADC0>;
-		clock-frequency = <12000000>;
-		ckin-frequency  = <1000000>;
-		adc-12bit-resolution;
-		adc-delay = <150>;
-		status = "okay";
-	};
-
-	tsadc@16050000 {    [> ADC Touch Screen <]
-		compatible = "telechips,tsadc";
-		reg = <16050000 0x24 0x1440000C 0x4>;
-		int-gpios = <&gpadc 6 0>;
-		status = "okay";
-	};*/
 
 	adc: adc@1b700000 {
 		compatible = "telechips,tcc805x-adc";
@@ -3822,9 +3861,9 @@ tcc_overlay_drv1: tcc_overlay_drv@1 { //for DVRS
         cpu_id: cpu-id@14200290{
                 compatible = "telechips,tcc-cpu-id";
 		reg = <0x0 0x14200290 0x0 0x4>,
-		      <0x0 0x14200298 0x0 0x4>,
-		      <0x0 0x1420029C 0x0 0x4>,
-		      <0x0 0x14400014 0x0 0x4>;
+		<0x0 0x14200298 0x0 0x4>,
+		<0x0 0x1420029C 0x0 0x4>,
+		<0x0 0x14400014 0x0 0x4>;
                 status = "okay";
         };
 
@@ -3878,8 +3917,6 @@ tcc_overlay_drv1: tcc_overlay_drv@1 { //for DVRS
 
 	auth_cp: auth-cp {};
 
-	tcckey: tcckey@16050000 {};
-
 	smartcard: smartcard {};
 
 	tcc_dxb_ctrl: tcc_dxb_ctrl {};
@@ -3890,34 +3927,33 @@ tcc_overlay_drv1: tcc_overlay_drv@1 { //for DVRS
 
 	thermal: thermal@14700000 {
 		compatible = "telechips,tcc-thermal";
-
-		reg = <0x0 0x14700000 0x0 0x4>, //0:Enable register
-		      <0x0 0x14700004 0x0 0x4>, //1:Control register
-		      <0x0 0x1470000C 0x0 0x4>, //2:Probe select register
-		      <0x0 0x14200290 0x0 0x4>, //3:ECID Control register
-		      <0x0 0x1420029C 0x0 0x4>, //4:ECID Data register
-		      <0x0 0x147000D0 0x0 0x4>,
-		      <0x0 0x147000D4 0x0 0x4>,
-		      <0x0 0x147000D8 0x0 0x4>,
-		      <0x0 0x147000DC 0x0 0x4>,
-		      <0x0 0x147000E0 0x0 0x4>,
-		      <0x0 0x147000E4 0x0 0x4>, //5-10:TSENSOR Data register
-		      <0x0 0x14700024 0x0 0x4>, //11:Interrupt Eable register
-		      <0x0 0x14700034 0x0 0x4>, //12:Interrupt Status register
-		      <0x0 0x14700050 0x0 0x4>,
-		      <0x0 0x14700054 0x0 0x4>, // 13, 14:Threshold Data register(MAIN)
-		      <0x0 0x14700058 0x0 0x4>,
-		      <0x0 0x1470005C 0x0 0x4>, // 15, 16:Threshold Data register(Probe0)
-		      <0x0 0x14700060 0x0 0x4>,
-		      <0x0 0x14700064 0x0 0x4>, // 17, 18:Threshold Data register(Probe1)
-		      <0x0 0x14700068 0x0 0x4>,
-		      <0x0 0x1470006C 0x0 0x4>, // 19, 20:Threshold Data register(Probe2)
-		      <0x0 0x14700070 0x0 0x4>,
-		      <0x0 0x14700074 0x0 0x4>, // 21, 22:Threshold Data register(Probe3)
-		      <0x0 0x14700078 0x0 0x4>,
-		      <0x0 0x1470007C 0x0 0x4>, // 23, 24:Threshold Data register(Probe4)
-		      <0x0 0x14700044 0x0 0x4>, //25:Interrupt Clear register
-		      <0x0 0x1470002C 0x0 0x4>; //26:Interrupt Mask register
+		
+                reg = <0x0 0x14700000 0x0 0x4>, //0:Enable register
+                      <0x0 0x14700004 0x0 0x4>, //1:Control register
+                      <0x0 0x1470000C 0x0 0x4>, //2:Probe select register
+                      <0x0 0x147000D0 0x0 0x4>,
+                      <0x0 0x147000D4 0x0 0x4>,
+                      <0x0 0x147000D8 0x0 0x4>,
+                      <0x0 0x147000DC 0x0 0x4>,
+                      <0x0 0x147000E0 0x0 0x4>,
+                      <0x0 0x147000E4 0x0 0x4>, //3-8:TSENSOR Data register
+                      <0x0 0x14700024 0x0 0x4>, //9:Interrupt Eable register
+                      <0x0 0x14700034 0x0 0x4>, //10:Interrupt Status register
+                      <0x0 0x14700050 0x0 0x4>,
+                      <0x0 0x14700054 0x0 0x4>, // 11, 12:Threshold Data register(MAIN)
+                      <0x0 0x14700058 0x0 0x4>,
+                      <0x0 0x1470005C 0x0 0x4>, // 13, 14:Threshold Data register(Probe0)
+                      <0x0 0x14700060 0x0 0x4>,
+                      <0x0 0x14700064 0x0 0x4>, // 15, 16:Threshold Data register(Probe1)
+                      <0x0 0x14700068 0x0 0x4>,
+                      <0x0 0x1470006C 0x0 0x4>, // 17, 18:Threshold Data register(Probe2)
+                      <0x0 0x14700070 0x0 0x4>,
+                      <0x0 0x14700074 0x0 0x4>, // 19, 20:Threshold Data register(Probe3)
+                      <0x0 0x14700078 0x0 0x4>,
+                      <0x0 0x1470007C 0x0 0x4>, // 21, 22:Threshold Data register(Probe4)
+                      <0x0 0x14700044 0x0 0x4>, // 23:Interrupt Clear register
+                      <0x0 0x1470002C 0x0 0x4>, // 24:Interrupt Mask register
+                      <0x0 0x14700154 0x0 0x4>; // 25:Interval time register
 
 		status = "okay";
 
@@ -3931,6 +3967,7 @@ tcc_overlay_drv1: tcc_overlay_drv@1 { //for DVRS
 
 		threshold_high_temp = <85>;
 		threshold_low_temp = <(-15)>;
+		interval_time = <120>;
 
 		throttle_table {
 			throttle_tab_0 {

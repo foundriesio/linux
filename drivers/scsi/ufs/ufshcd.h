@@ -677,6 +677,13 @@ struct ufs_hba {
 
 	struct rw_semaphore clk_scaling_lock;
 	struct ufs_desc_size desc_size;
+
+	void *sbus_sram;
+#if 0
+	char *bounce_buffer;
+	dma_addr_t bounce_addr;
+	unsigned int bounce_buffer_size;
+#endif
 };
 
 /* Returns true if clocks can be gated. Otherwise false */

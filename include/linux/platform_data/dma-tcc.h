@@ -6,8 +6,8 @@
  * published by the Free Software Foundation.
  */
 
-#ifndef __DMA_TCC_H
-#define __DMA_TCC_H
+#ifndef DMA_TCC_H
+#define DMA_TCC_H
 
 struct tcc_dma_platform_data {
 	int nr_channels;

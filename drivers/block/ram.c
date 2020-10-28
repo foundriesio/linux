@@ -54,8 +54,8 @@ static void ramblk_request(struct request_queue *q)
 		buffer  = bio_data(req->bio);
 
 		dev_dbg(ramblk->dev, "%s: %s: req=%p, pos=%lld, sz=%d, data=%p\n",
-				__func__, rq_data_dir(req) == WRITE ? "wr" : "rd", req,
-				blk_rq_pos(req), blk_rq_cur_bytes(req), buffer);
+			__func__, rq_data_dir(req) == WRITE ? "wr" : "rd", req,
+			blk_rq_pos(req), blk_rq_cur_bytes(req), buffer);
 
 		switch (rq_data_dir(req)) {
 		case WRITE:
@@ -102,7 +102,7 @@ static int ramblk_ioctl(struct block_device *bdev, fmode_t mode,
 }
 
 #ifdef CONFIG_COMPAT
-static int ramblk_compat_ioctl(strcut block_device *bdev, fmode_t mode,
+static int ramblk_compat_ioctl(struct block_device *bdev, fmode_t mode,
 		unsigned int cmd, unsigned long arg)
 {
 	return ramblk_ioctl(bdev, mode, cmd, arg);

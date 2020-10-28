@@ -72,6 +72,7 @@ static __u32 tccvin_v4l2_get_bytesperline(const struct tccvin_format *format,
 {
 	switch (format->fcc) {
 	case V4L2_PIX_FMT_NV12:
+	case V4L2_PIX_FMT_NV21:
 	case V4L2_PIX_FMT_YVU420:
 	case V4L2_PIX_FMT_YUV420:
 	case V4L2_PIX_FMT_M420:
@@ -614,17 +615,20 @@ static int tccvin_ioctl_streamoff(struct file *file, void *fh,
 {
 	struct tccvin_fh *handle = fh;
 	struct tccvin_streaming *stream = handle->stream;
+	int ret;
 	FUNCTION_IN
 
 	if (!tccvin_has_privileges(handle))
 		return -EBUSY;
 
 	mutex_lock(&stream->mutex);
-	tccvin_queue_streamoff(&stream->queue, type);
+	ret = tccvin_queue_streamoff(&stream->queue, type);
+	if (ret < 0)
+		loge("tccvin_queue_streamoff, queue->streaming: %d, ret: %d\n", stream->queue.queue.streaming, ret);
 	mutex_unlock(&stream->mutex);
 
 	FUNCTION_OUT
-	return 0;
+	return ret;
 }
 
 static int tccvin_ioctl_enum_input(struct file *file, void *fh,

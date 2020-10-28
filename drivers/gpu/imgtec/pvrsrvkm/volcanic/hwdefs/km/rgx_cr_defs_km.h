@@ -5027,6 +5027,208 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define RGX_CR_RAC_SOFT_RESET_SPU0_CLRMSK                 (0xFFFFFFFEU)
 #define RGX_CR_RAC_SOFT_RESET_SPU0_EN                     (0x00000001U)
 
+/*
+Page faults stall status. High when the BIF has finished processing data during a Page fault and it is therefore safe to reset it. The BIF idle signal cannot be used for this purpose since it may be asserted if the BIF has valid inputs.
+*/
+/*
+    Register RGX_CR_BIF_PFS
+*/
+#define RGX_CR_BIF_PFS                                    (0xF0B0U)
+#define RGX_CR_BIF_PFS_MASKFULL                           (IMG_UINT64_C(0x00000000000001FF))
+/* SLC_STALLING
+High when the slc is stalling valid requests or write data.
+*/
+#define RGX_CR_BIF_PFS_SLC_STALLING_SHIFT                 (8U)
+#define RGX_CR_BIF_PFS_SLC_STALLING_CLRMSK                (0xFFFFFEFFU)
+#define RGX_CR_BIF_PFS_SLC_STALLING_EN                    (0x00000100U)
+/* TILING_IDLE default: 0x00000001
+High when the tiling module is idle.
+*/
+#define RGX_CR_BIF_PFS_TILING_IDLE_SHIFT                  (7U)
+#define RGX_CR_BIF_PFS_TILING_IDLE_CLRMSK                 (0xFFFFFF7FU)
+#define RGX_CR_BIF_PFS_TILING_IDLE_EN                     (0x00000080U)
+/* ARB_IDLE default: 0x00000001
+High when the arbiter is idle.
+*/
+#define RGX_CR_BIF_PFS_ARB_IDLE_SHIFT                     (6U)
+#define RGX_CR_BIF_PFS_ARB_IDLE_CLRMSK                    (0xFFFFFFBFU)
+#define RGX_CR_BIF_PFS_ARB_IDLE_EN                        (0x00000040U)
+/* RTN_MEM_IF_IDLE default: 0x00000001
+High when the return memory interface is idle.
+*/
+#define RGX_CR_BIF_PFS_RTN_MEM_IF_IDLE_SHIFT              (5U)
+#define RGX_CR_BIF_PFS_RTN_MEM_IF_IDLE_CLRMSK             (0xFFFFFFDFU)
+#define RGX_CR_BIF_PFS_RTN_MEM_IF_IDLE_EN                 (0x00000020U)
+/* NONMETA_REQ_COMPLETE default: 0x00000001
+Requests may not be stalled immediately if the arbiter is in the process of splitting a burst. This will high once the arbiter has finished processing all spit bursts and all new requests will be stalled.
+*/
+#define RGX_CR_BIF_PFS_NONMETA_REQ_COMPLETE_SHIFT         (4U)
+#define RGX_CR_BIF_PFS_NONMETA_REQ_COMPLETE_CLRMSK        (0xFFFFFFEFU)
+#define RGX_CR_BIF_PFS_NONMETA_REQ_COMPLETE_EN            (0x00000010U)
+/* NONMETA_WDATA_COMPLETE default: 0x00000001
+High when the arbiter has received all wdata for the requests that have not been stalled. 
+*/
+#define RGX_CR_BIF_PFS_NONMETA_WDATA_COMPLETE_SHIFT       (3U)
+#define RGX_CR_BIF_PFS_NONMETA_WDATA_COMPLETE_CLRMSK      (0xFFFFFFF7U)
+#define RGX_CR_BIF_PFS_NONMETA_WDATA_COMPLETE_EN          (0x00000008U)
+/* WDATA_IP_IDLE default: 0x00000001
+High when input wdata valids are all low for non-meta requestors, and also the valids after the timing buffers 
+*/
+#define RGX_CR_BIF_PFS_WDATA_IP_IDLE_SHIFT                (2U)
+#define RGX_CR_BIF_PFS_WDATA_IP_IDLE_CLRMSK               (0xFFFFFFFBU)
+#define RGX_CR_BIF_PFS_WDATA_IP_IDLE_EN                   (0x00000004U)
+/* REQUEST_IP_IDLE default: 0x00000001
+High when input request valids are all low for non-meta requestors, and also the valids after the timing buffers 
+*/
+#define RGX_CR_BIF_PFS_REQUEST_IP_IDLE_SHIFT              (1U)
+#define RGX_CR_BIF_PFS_REQUEST_IP_IDLE_CLRMSK             (0xFFFFFFFDU)
+#define RGX_CR_BIF_PFS_REQUEST_IP_IDLE_EN                 (0x00000002U)
+/* STALL_COMPLETE default: 0x00000001
+High when the BIF has finished processing all non-meta requestors.
+*/
+#define RGX_CR_BIF_PFS_STALL_COMPLETE_SHIFT               (0U)
+#define RGX_CR_BIF_PFS_STALL_COMPLETE_CLRMSK              (0xFFFFFFFEU)
+#define RGX_CR_BIF_PFS_STALL_COMPLETE_EN                  (0x00000001U)
+
+
+/*
+Page faults stall status. High when the BIF has finished processing data during a Page fault and it is therefore safe to reset it. The BIF idle signal cannot be used for this purpose since it may be asserted if the BIF has valid inputs.
+*/
+/*
+    Register RGX_CR_BIF_TEXAS0_PFS
+*/
+#define RGX_CR_BIF_TEXAS0_PFS                             (0xF0B8U)
+#define RGX_CR_BIF_TEXAS0_PFS_MASKFULL                    (IMG_UINT64_C(0x000000000000007F))
+/* JONES_CFI_INFLIGHT
+High when CFI request from Jones requestors in Texas0 BIF being processed
+*/
+#define RGX_CR_BIF_TEXAS0_PFS_JONES_CFI_INFLIGHT_SHIFT    (6U)
+#define RGX_CR_BIF_TEXAS0_PFS_JONES_CFI_INFLIGHT_CLRMSK   (0xFFFFFFBFU)
+#define RGX_CR_BIF_TEXAS0_PFS_JONES_CFI_INFLIGHT_EN       (0x00000040U)
+/* JONES_CFI_IDLE
+High when no CFI requests from Jones requestors in Texas0 BIF
+*/
+#define RGX_CR_BIF_TEXAS0_PFS_JONES_CFI_IDLE_SHIFT        (5U)
+#define RGX_CR_BIF_TEXAS0_PFS_JONES_CFI_IDLE_CLRMSK       (0xFFFFFFDFU)
+#define RGX_CR_BIF_TEXAS0_PFS_JONES_CFI_IDLE_EN           (0x00000020U)
+/* SLC_STALLING
+High when the slc is stalling valid requests or write data.
+*/
+#define RGX_CR_BIF_TEXAS0_PFS_SLC_STALLING_SHIFT          (4U)
+#define RGX_CR_BIF_TEXAS0_PFS_SLC_STALLING_CLRMSK         (0xFFFFFFEFU)
+#define RGX_CR_BIF_TEXAS0_PFS_SLC_STALLING_EN             (0x00000010U)
+/* TILING_IDLE default: 0x00000001 */
+#define RGX_CR_BIF_TEXAS0_PFS_TILING_IDLE_SHIFT           (3U)
+#define RGX_CR_BIF_TEXAS0_PFS_TILING_IDLE_CLRMSK          (0xFFFFFFF7U)
+#define RGX_CR_BIF_TEXAS0_PFS_TILING_IDLE_EN              (0x00000008U)
+/* ARB_IDLE default: 0x00000001
+High when the arbiter is idle.
+*/
+#define RGX_CR_BIF_TEXAS0_PFS_ARB_IDLE_SHIFT              (2U)
+#define RGX_CR_BIF_TEXAS0_PFS_ARB_IDLE_CLRMSK             (0xFFFFFFFBU)
+#define RGX_CR_BIF_TEXAS0_PFS_ARB_IDLE_EN                 (0x00000004U)
+/* RTN_MEM_IF_IDLE default: 0x00000001
+High when the return memory interface is idle.
+*/
+#define RGX_CR_BIF_TEXAS0_PFS_RTN_MEM_IF_IDLE_SHIFT       (1U)
+#define RGX_CR_BIF_TEXAS0_PFS_RTN_MEM_IF_IDLE_CLRMSK      (0xFFFFFFFDU)
+#define RGX_CR_BIF_TEXAS0_PFS_RTN_MEM_IF_IDLE_EN          (0x00000002U)
+/* STALL_COMPLETE default: 0x00000001
+High when the BIF has finished processing all non-meta requestors.
+*/
+#define RGX_CR_BIF_TEXAS0_PFS_STALL_COMPLETE_SHIFT        (0U)
+#define RGX_CR_BIF_TEXAS0_PFS_STALL_COMPLETE_CLRMSK       (0xFFFFFFFEU)
+#define RGX_CR_BIF_TEXAS0_PFS_STALL_COMPLETE_EN           (0x00000001U)
+
+
+/*
+Page faults stall status. High when the BIF has finished processing data during a Page fault and it is therefore safe to reset it. The BIF idle signal cannot be used for this purpose since it may be asserted if the BIF has valid inputs.
+*/
+/*
+    Register RGX_CR_BIF_TEXAS1_PFS
+*/
+#define RGX_CR_BIF_TEXAS1_PFS                             (0xF0C8U)
+#define RGX_CR_BIF_TEXAS1_PFS_MASKFULL                    (IMG_UINT64_C(0x000000000000007F))
+/* ARB_ACCUM_STALLING_PDSRW
+High when the arbiter is stalling valid requests on PDSRW due to pending matching accumulation request on MCU.
+*/
+#define RGX_CR_BIF_TEXAS1_PFS_ARB_ACCUM_STALLING_PDSRW_SHIFT (6U)
+#define RGX_CR_BIF_TEXAS1_PFS_ARB_ACCUM_STALLING_PDSRW_CLRMSK (0xFFFFFFBFU)
+#define RGX_CR_BIF_TEXAS1_PFS_ARB_ACCUM_STALLING_PDSRW_EN (0x00000040U)
+/* ARB_ACCUM_STALLING_MCU
+High when the arbiter is stalling valid requests on MCU due to pending matching accumulation request on PDSRW.
+*/
+#define RGX_CR_BIF_TEXAS1_PFS_ARB_ACCUM_STALLING_MCU_SHIFT (5U)
+#define RGX_CR_BIF_TEXAS1_PFS_ARB_ACCUM_STALLING_MCU_CLRMSK (0xFFFFFFDFU)
+#define RGX_CR_BIF_TEXAS1_PFS_ARB_ACCUM_STALLING_MCU_EN   (0x00000020U)
+/* SLC_STALLING
+High when the slc is stalling valid requests or write data.
+*/
+#define RGX_CR_BIF_TEXAS1_PFS_SLC_STALLING_SHIFT          (4U)
+#define RGX_CR_BIF_TEXAS1_PFS_SLC_STALLING_CLRMSK         (0xFFFFFFEFU)
+#define RGX_CR_BIF_TEXAS1_PFS_SLC_STALLING_EN             (0x00000010U)
+/* TILING_IDLE default: 0x00000001
+High when the tiling module is idle.
+*/
+#define RGX_CR_BIF_TEXAS1_PFS_TILING_IDLE_SHIFT           (3U)
+#define RGX_CR_BIF_TEXAS1_PFS_TILING_IDLE_CLRMSK          (0xFFFFFFF7U)
+#define RGX_CR_BIF_TEXAS1_PFS_TILING_IDLE_EN              (0x00000008U)
+/* ARB_IDLE default: 0x00000001
+High when the arbiter is idle.
+*/
+#define RGX_CR_BIF_TEXAS1_PFS_ARB_IDLE_SHIFT              (2U)
+#define RGX_CR_BIF_TEXAS1_PFS_ARB_IDLE_CLRMSK             (0xFFFFFFFBU)
+#define RGX_CR_BIF_TEXAS1_PFS_ARB_IDLE_EN                 (0x00000004U)
+/* RTN_MEM_IF_IDLE default: 0x00000001
+High when the return memory interface is idle.
+*/
+#define RGX_CR_BIF_TEXAS1_PFS_RTN_MEM_IF_IDLE_SHIFT       (1U)
+#define RGX_CR_BIF_TEXAS1_PFS_RTN_MEM_IF_IDLE_CLRMSK      (0xFFFFFFFDU)
+#define RGX_CR_BIF_TEXAS1_PFS_RTN_MEM_IF_IDLE_EN          (0x00000002U)
+/* STALL_COMPLETE default: 0x00000001
+High when the BIF has finished processing all non-meta requestors.
+*/
+#define RGX_CR_BIF_TEXAS1_PFS_STALL_COMPLETE_SHIFT        (0U)
+#define RGX_CR_BIF_TEXAS1_PFS_STALL_COMPLETE_CLRMSK       (0xFFFFFFFEU)
+#define RGX_CR_BIF_TEXAS1_PFS_STALL_COMPLETE_EN           (0x00000001U)
+
+/*
+Outstanding 256-bit read data external to JONES BIF
+*/
+/*
+    Register RGX_CR_BIF_OUTSTANDING_READ
+*/
+#define RGX_CR_BIF_OUTSTANDING_READ                       (0xF098U)
+#define RGX_CR_BIF_OUTSTANDING_READ_MASKFULL              (IMG_UINT64_C(0x000000000000FFFF))
+/* COUNTER*/
+#define RGX_CR_BIF_OUTSTANDING_READ_COUNTER_SHIFT         (0U)
+#define RGX_CR_BIF_OUTSTANDING_READ_COUNTER_CLRMSK        (0xFFFF0000U)
+
+
+/*
+Outstanding 256-bit read data external to SPU 1 BIF
+*/
+/*
+    Register RGX_CR_BIF_TEXAS1_OUTSTANDING_READ
+*/
+#define RGX_CR_BIF_TEXAS1_OUTSTANDING_READ                (0xF0A0U)
+#define RGX_CR_BIF_TEXAS1_OUTSTANDING_READ_MASKFULL       (IMG_UINT64_C(0x000000000000FFFF))
+/* COUNTER*/
+#define RGX_CR_BIF_TEXAS1_OUTSTANDING_READ_COUNTER_SHIFT  (0U)
+#define RGX_CR_BIF_TEXAS1_OUTSTANDING_READ_COUNTER_CLRMSK (0xFFFF0000U)
+
+
+/*
+Outstanding 256-bit read data external to SPU 0 BIF
+*/
+/*
+    Register RGX_CR_BIF_TEXAS0_OUTSTANDING_READ
+*/
+#define RGX_CR_BIF_TEXAS0_OUTSTANDING_READ                (0xF0A8U)
+#define RGX_CR_BIF_TEXAS0_OUTSTANDING_READ_MASKFULL       (IMG_UINT64_C(0x000000000000FFFF))
+/* COUNTER*/
+#define RGX_CR_BIF_TEXAS0_OUTSTANDING_READ_COUNTER_SHIFT  (0U)
+#define RGX_CR_BIF_TEXAS0_OUTSTANDING_READ_COUNTER_CLRMSK (0xFFFF0000U)
 
 #endif /* RGX_CR_DEFS_KM_H */
 

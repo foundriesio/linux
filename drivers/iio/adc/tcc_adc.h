@@ -1,105 +1,96 @@
-/****************************************************************************
- * tcc_adc.h
- * Copyright (C) 2014 Telechips Inc.
- *
- * This program is free software; you can redistribute it and/or modify it under the terms
- * of the GNU General Public License as published by the Free Software Foundation;
- * either version 2 of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
- * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
- * PURPOSE. See the GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License along with
- * this program; if not, write to the Free Software Foundation, Inc., 59 Temple Place,
- * Suite 330, Boston, MA 02111-1307 USA
-****************************************************************************/
+// SPDX-License-Identifier: GPL-2.0-or-later
+/*
+ * Copyright (C) Telechips Inc.
+ */
 
-#ifndef __TCC_ADC_H__
-#define __TCC_ADC_H__
+#ifndef TCC_ADC_H
+#define TCC_ADC_H
 
 #define PMU_TSADC_STOP_SHIFT	0
 #define PMU_TSADC_PWREN_SHIFT	16
 
 /*
- * TCC 803x ADC Register
+ * TCC MICOM ADC Register
  */
-#define ADCCMD	0x00
-#define ADCIRQ	0x04
-#define ADCCTRL	0x08
-#define ADCDATA0 0x80
-#define ADC_CLK_OUT_EN (1<<30)
-#define ADC_CLK_DIV_EN (1<<29)
+#define ADCCMD				0x00U
+#define ADCIRQ				0x04U
+#define ADCCTRL				0x08U
+#define ADCDATA0			0x80U
+#define ADC_CLK_OUT_EN		BIT(30)
+#define ADC_CLK_DIV_EN		BIT(29)
+
+#define ADCCMD_DONE			BIT(31)
+#define ADCCMD_SMP_CMD(x)	BIT(x)
+#define ADCDATA_MASK		0xFFFU
 
 /*
  * TCC ADC Register
  */
-#define ADCCON_REG	0x00
-#define ADCTSC_REG	0x04
-#define ADCDLY_REG	0x08
-#define ADCDAT0_REG	0x0C
-#define ADCDAT1_REG	0x10
-#define ADCUPDN_REG	0x14
-#define ADCINTEOC_REG	0x18
-#define ADCINTWKU_REG	0x20
+#define ADCCON_REG		0x00U
+#define ADCTSC_REG		0x04U
+#define ADCDLY_REG		0x08U
+#define ADCDAT0_REG		0x0CU
+#define ADCDAT1_REG		0x10U
+#define ADCUPDN_REG		0x14U
+#define ADCINTEOC_REG	0x18U
+#define ADCINTWKU_REG	0x20U
 
-#define ADCCON_ADCNUM(x)	(((x)&0xF)<<18)
-#define ADCCON_12BIT_RES	(1<<17)
-#define ADCCON_E_FLG		(1<<16)
-#define ADCCON_PS_EN		(1<<15)
-#define ADCCON_PS_VAL_MASK	0xFF
-#define ADCCON_PS_VAL(x)	(((x)&ADCCON_PS_VAL_MASK)<<7)
-#define ADCCON_ASEL(x)		(((x)&0xF)<<3)
-#define ADCCON_STBY		(1<<2)
-#define ADCCON_RD_ST		(1<<1)
-#define ADCCON_EN_ST		(1<<0)
+#define ADCCON_ADCNUM(x)	(((x)&0xFU) << 18U)
+#define ADCCON_12BIT_RES	BIT(17)
+#define ADCCON_E_FLG		BIT(16)
+#define ADCCON_PS_EN		BIT(15)
+#define ADCCON_PS_VAL_MASK	0xFFU
+#define ADCCON_PS_VAL(x)	(((x)&ADCCON_PS_VAL_MASK) << 7U)
+#define ADCCON_ASEL(x)		(((x)&0xFU) << 3U)
+#define ADCCON_STBY			BIT(2)
+#define ADCCON_RD_ST		BIT(1)
+#define ADCCON_EN_ST		BIT(0)
 
-#define ADCTSC_XY_PST_MASK	(3<<0)
-#define ADCTSC_XY_PST(x)	((x&ADCTSC_XY_PST_MASK)<<0)
-#define ADCTSC_AUTO		(1<<2)
-#define ADCTSC_PUON		(1<<3)
-#define ADCTSC_XPEN		(1<<4)
-#define ADCTSC_XMEN		(1<<5)
-#define ADCTSC_YPEN		(1<<6)
-#define ADCTSC_YMEN		(1<<7)
-#define ADCTSC_UDEN		(1<<8)
-#define ADCTSC_MASK	    0x1FF
+#define ADCTSC_XY_PST_MASK	0x3U
+#define ADCTSC_XY_PST(x)	((x) & ADCTSC_XY_PST_MASK)
+#define ADCTSC_AUTO			BIT(2)
+#define ADCTSC_PUON			BIT(3)
+#define ADCTSC_XPEN			BIT(4)
+#define ADCTSC_XMEN			BIT(5)
+#define ADCTSC_YPEN			BIT(6)
+#define ADCTSC_YMEN			BIT(7)
+#define ADCTSC_UDEN			BIT(8)
+#define ADCTSC_MASK			0x1FFU
 
-#define ADCDLY_DELAY_MASK	0xFFFF
+#define ADCDLY_DELAY_MASK	0xFFFFU
 #define ADCDLY_DELAY(x)		((x)&ADCDLY_DELAY_MASK)
 
-#define ADCDAT0_UPDN		(1<<15)
+#define ADCDAT0_UPDN		BIT(15)
 
-#define ADCDAT1_UPDN		(1<<15)
+#define ADCDAT1_UPDN		BIT(15)
 
-#define ADCUPDN_UP		(1<<1)
-#define ADCUPDN_DOWN		(1<<0)
+#define ADCUPDN_UP			BIT(1)
+#define ADCUPDN_DOWN		BIT(0)
 
-#define ADCINTEOC_CLR		(1<<0)
-#define ADCINTWKU_CLR		(1<<0)
+#define ADCINTEOC_CLR		BIT(0)
+#define ADCINTWKU_CLR		BIT(0)
 
 #if defined(CONFIG_ARCH_TCC899X)
 #define GENERAL_ADC
 #endif
-enum {
-	ADC_CH0 = 0,
-	ADC_CH1,
-	ADC_CH2,
-	ADC_CH3,
-	ADC_CH4,
-	ADC_CH5,
-	ADC_TOUCHSCREEN = 6,
-	ADC_CH6 = 6,
-	ADC_CH7,
-	ADC_CH8,
-	ADC_CH9,
-	ADC_CH10,
-	ADC_CH11,
-	ADC_CH12,
-	ADC_CH13,
-	ADC_CH14,
-	ADC_CH15,
-};
+
+#define ADC_CH0 0
+#define ADC_CH1 1
+#define ADC_CH2 2
+#define ADC_CH3 3
+#define ADC_CH4 4
+#define ADC_CH5 5
+#define ADC_TOUCHSCREEN 6
+#define ADC_CH6 6
+#define ADC_CH7 7
+#define ADC_CH8 8
+#define ADC_CH9 9
+#define ADC_CH10 10
+#define ADC_CH11 11
+#define ADC_CH12 12
+#define ADC_CH13 13
+#define ADC_CH14 14
+#define ADC_CH15 15
 
 struct tcc_adc_client {
 	struct device		*dev;
@@ -108,7 +99,4 @@ struct tcc_adc_client {
 	unsigned long		data;
 };
 
-extern struct tcc_adc_client *tcc_adc_register(struct device *dev, int ch);
-extern void tcc_adc_release(struct tcc_adc_client *client);
-extern unsigned long tcc_adc_getdata(struct tcc_adc_client *client);
-#endif /* __TCC_ADC_H__ */
+#endif /* TCC_ADC_H */

@@ -55,7 +55,7 @@ IPC_INT32 ipc_send_open(struct ipc_device *ipc_dev)
 	sendMsg.data_len = 0;
 
 	ipc_dev->ipc_handler.openSeqID = sendMsg.cmd[0];
-	ipc_dev->ipc_handler.requestConnectTime = ipc_get_msec();
+	ipc_dev->ipc_handler.requestConnectTime = get_jiffies_64();
 
 	ret = ipc_mailbox_send(ipc_dev, &sendMsg);
 	return ret;

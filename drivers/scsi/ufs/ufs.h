@@ -61,7 +61,7 @@
  * This means max. LUN number reported from UFS device could be 0xC17F.
  */
 #define UFS_UPIU_MAX_UNIT_NUM_ID	0x7F
-#define UFS_MAX_LUNS		(SCSI_W_LUN_BASE + UFS_UPIU_MAX_UNIT_NUM_ID)
+#define UFS_MAX_LUNS		3//(SCSI_W_LUN_BASE + UFS_UPIU_MAX_UNIT_NUM_ID)
 #define UFS_UPIU_WLUN_ID	(1 << 7)
 #define UFS_UPIU_MAX_GENERAL_LUN	8
 

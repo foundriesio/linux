@@ -1,19 +1,7 @@
-/****************************************************************************
- * iomap.h
- * Copyright (C) 2014 Telechips Inc.
- *
- * This program is free software; you can redistribute it and/or modify it under the terms
- * of the GNU General Public License as published by the Free Software Foundation;
- * either version 2 of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
- * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
- * PURPOSE. See the GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License along with
- * this program; if not, write to the Free Software Foundation, Inc., 59 Temple Place,
- * Suite 330, Boston, MA 02111-1307 USA
- ****************************************************************************/
+// SPDX-License-Identifier: GPL-2.0-or-later
+/*
+ * Copyright (C) Telechips Inc.
+ */
 
 #ifndef __ASM_ARCH_TCC_IOMAP_H
 #define __ASM_ARCH_TCC_IOMAP_H
@@ -54,14 +42,14 @@
 #define TCC_PA_UARTPORTCFG	0x763F0000
 
 /* SD/MMC/SDIO controllers */
-#define TCC897X_PA_SDMMC0	0x76020000
-#define TCC897X_PA_SDMMC1	0x76020200
-#define TCC897X_PA_SDMMC2	0x76020400
-#define TCC897X_PA_SDMMC3	0x76020600
+#define TCC_PA_SDMMC0		0x76020000
+#define TCC_PA_SDMMC1		0x76020200
+#define TCC_PA_SDMMC2		0x76020400
+#define TCC_PA_SDMMC3		0x76020600
 #define TCCSDMMC_PA_CHCTRL	0x76020800
 
 /* NAND flash controller */
-#define TCC897X_PA_NFC		0x76600000
+#define TCC_PA_NFC		0x76600000
 
 /* I2C */
 #define TCC_PA_I2C0		0x76300000
@@ -87,11 +75,11 @@
 #define TCC_PA_IOBUSCFG		0x76066000
 
 /* Remote Control */
-#define TCC_PA_REMOTECTRL		0x76070000
-#define TCC_PA_REMOCON_CONFIG		0x74400128
+#define TCC_PA_REMOTECTRL	0x76070000
+#define TCC_PA_REMOCON_CONFIG	0x74400128
 
 /* PWM */
-#define TCC_PA_PWM			0x76050000
+#define TCC_PA_PWM		0x76050000
 
 /****************
  * HSIO BUS

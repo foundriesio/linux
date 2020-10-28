@@ -56,7 +56,7 @@
 #endif
 
 #include <soc/tcc/pmap.h>
-#include <soc/tcc/timer.h>
+#include <soc/tcc/timer_api.h>
 #include <video/tcc/tcc_types.h>
 
 #include <video/tcc/tccfb.h>

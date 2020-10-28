@@ -1,50 +1,41 @@
-/* soc/tcc/pmap.h
- *
- * Copyright (C) 2010 Telechips, Inc.
- *
- * This software is licensed under the terms of the GNU General Public
- * License version 2, as published by the Free Software Foundation, and
- * may be copied, distributed, and modified under those terms.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
+// SPDX-License-Identifier: GPL-2.0-or-later
+/*
+ * Copyright (C) Telechips Inc.
  */
 
-#ifndef __PLAT_PMAP_H
-#define __PLAT_PMAP_H
+#ifndef SOC_TCC_PMAP_H
+#define SOC_TCC_PMAP_H
 
-#define TCC_PMAP_NAME_LEN	16
+#define TCC_PMAP_NAME_LEN	(16U)
 
-#define PMAP_FLAG_SECURED	(1 << 1)
-#define PMAP_FLAG_SHARED	(1 << 2)
-#define PMAP_FLAG_CMA_ALLOC	(1 << 3)
+#define PMAP_FLAG_SECURED	((u32)1U << 1)
+#define PMAP_FLAG_SHARED	((u32)1U << 2)
+#define PMAP_FLAG_CMA_ALLOC	((u32)1U << 3)
 
-#define pmap_is_secured(pmap)	( (pmap)->flags & PMAP_FLAG_SECURED )
-#define pmap_is_shared(pmap)	( (pmap)->flags & PMAP_FLAG_SHARED )
-#define pmap_is_cma_alloc(pmap)	( (pmap)->flags & PMAP_FLAG_CMA_ALLOC )
+#define pmap_is_secured(pmap)	(((pmap)->flags & PMAP_FLAG_SECURED) != 0U)
+#define pmap_is_shared(pmap)	(((pmap)->flags & PMAP_FLAG_SHARED) != 0U)
+#define pmap_is_cma_alloc(pmap)	(((pmap)->flags & PMAP_FLAG_CMA_ALLOC) != 0U)
 
-typedef struct {
+struct pmap {
 	char name[TCC_PMAP_NAME_LEN];
 	u64 base;
 	u64 size;
-	__u32 groups;
-	__u32 rc;
-	unsigned int flags;
-} pmap_t;
+	u32 groups;
+	u32 rc;
+	u32 flags;
+};
 
 
-int pmap_check_region(__u32 base, __u32 size);
-int pmap_get_info(const char *name, pmap_t *mem);
+int pmap_check_region(u64 base, u64 size);
+int pmap_get_info(const char *name, struct pmap *mem);
 int pmap_release_info(const char *name);
 
 #ifdef CONFIG_PMAP_TO_CMA
-void *pmap_cma_remap(__u32 base, __u32 size);
-void pmap_cma_unmap(void *virt, __u32 size);
+void *pmap_cma_remap(u64 base, u64 size);
+void pmap_cma_unmap(void *virt, u64 size);
 #else
 #define pmap_cma_remap(base, size) NULL
 #define pmap_cma_unmap(base, size)
 #endif
 
-#endif  /* __PLAT_PMAP_H */
+#endif  /* SOC_TCC_PMAP_H */

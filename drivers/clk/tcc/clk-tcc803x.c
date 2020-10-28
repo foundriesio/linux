@@ -10,7 +10,6 @@
 //#include <linux/irqflags.h>
 #include <linux/slab.h>
 #if !defined(CONFIG_ARM64_TCC_BUILD)
-#include <mach/smc.h>
 #include <asm/system_info.h>
 #endif
 

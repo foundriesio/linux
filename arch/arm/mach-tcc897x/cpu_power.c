@@ -13,35 +13,34 @@
 int tcc_cpu_pwdn(unsigned int cluster, unsigned int cpu, unsigned int pwdn)
 {
 	void __iomem *rst_reg = IOMEM(io_p2v(TCC_PA_PMU + PMU_SYSRST));
-	unsigned rst_mask;
+	u32 rst_mask;
 
 	if (cluster != 0)
 		return -1;
 
 	switch (cpu) {
 	case CPU_0:
-		rst_mask = 1<<16;
+		rst_mask = (u32)1U << 16;
 		break;
 	case CPU_1:
-		rst_mask = 1<<15;
+		rst_mask = (u32)1U << 15;
 		break;
 	case CPU_2:
-		rst_mask = 1<<14;
+		rst_mask = (u32)1U << 14;
 		break;
 	case CPU_3:
-		rst_mask = 1<<13;
+		rst_mask = (u32)1U << 13;
 		break;
 	default:
 		return -1;
 	}
 
-	if (pwdn) {
+	if (pwdn != 0) {
 		/* reset: reset mode */
 		writel_relaxed(readl_relaxed(rst_reg) & ~rst_mask, rst_reg);
 
 		/* cpu power down */
-	}
-	else {
+	} else {
 		/* cpu power up */
 
 		/* reset: normal mode */

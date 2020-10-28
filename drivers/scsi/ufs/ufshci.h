@@ -80,6 +80,9 @@ enum {
 	REG_UFS_CRYPTOCAP			= 0x104,
 
 	UFSHCI_CRYPTO_REG_SPACE_SIZE		= 0x400,
+	REG_UTRL_NEXUS_TYPE			= 0x1140,
+	REG_UTMRL_NEXUS_TYPE		= 0x1144,
+	HCI_MPHY_REFCLK_SEL			= 0x1208
 };
 
 /* Controller capability masks */
@@ -230,8 +233,8 @@ enum {
 #define UIC_ARG_MPHY_TX_GEN_SEL_INDEX(lane) (lane)
 #define UIC_ARG_MPHY_RX_GEN_SEL_INDEX(lane) (PA_MAXDATALANES + (lane))
 
-#define UIC_ARG_MIB_SEL(attr, sel)	((((attr) & 0xFFFF) << 16) |\
-					 ((sel) & 0xFFFF))
+#define UIC_ARG_MIB_SEL(attr, sel)	((((attr) & 0xFFFFU) << 16U) |\
+					 ((sel) & 0xFFFFU))
 #define UIC_ARG_MIB(attr)		UIC_ARG_MIB_SEL(attr, 0)
 #define UIC_ARG_ATTR_TYPE(t)		(((t) & 0xFF) << 16)
 #define UIC_GET_ATTR_ID(v)		(((v) >> 16) & 0xFFFF)

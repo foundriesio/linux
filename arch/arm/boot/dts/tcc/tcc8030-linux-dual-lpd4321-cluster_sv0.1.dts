@@ -47,8 +47,6 @@
 #include "tcc8031-linux-avn.dtsi"
 
 / {
-	/* Describe here after remove this statement if you have something to be override. */
-
 	dwc3_platform {
 		status = "disabled";
 	};

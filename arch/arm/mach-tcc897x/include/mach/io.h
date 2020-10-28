@@ -58,15 +58,7 @@
 #define io_p2v(pa)	((pa) + IO_OFFSET)
 #define io_v2p(va)	((va) - IO_OFFSET)
 
-#define __arch_ioremap	tcc_ioremap
-#define __arch_iounmap	tcc_iounmap
-
 /* Physical value to Virtual Address */
 #define tcc_p2v(pa) io_p2v(pa)
-
-#ifndef __ASSEMBLER__
-void __iomem *tcc_ioremap(unsigned long p, size_t size, unsigned int type);
-void tcc_iounmap(volatile void __iomem *addr);
-#endif
 
 #endif	/*__ASM_ARM_ARCH_IO_H__*/

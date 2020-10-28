@@ -48,6 +48,22 @@ struct tcc_sc_fw_mmc_data {
 	struct scatterlist	*sg;
 };
 
+struct tcc_sc_fw_ufs_cmd {
+	unsigned int		datsz;
+	unsigned int		blocks;
+	unsigned int		lba;
+	int			error;
+	unsigned int		dir;
+	unsigned int		lun;
+	unsigned int		tag;
+	unsigned int		op;
+	unsigned int		cdb;
+
+	int			sg_count;
+	struct scatterlist	*sg;
+	unsigned int		resp[4];
+};
+
 struct tcc_sc_fw_mmc_ops {
 	int (*request_command)(const struct tcc_sc_fw_handle *handle,
 			struct tcc_sc_fw_mmc_cmd *cmd, struct tcc_sc_fw_mmc_data *data);
@@ -55,20 +71,27 @@ struct tcc_sc_fw_mmc_ops {
 		struct tcc_sc_fw_prot_mmc *mmc_info);
 };
 
+struct tcc_sc_fw_ufs_ops {
+	int (*request_command)(const struct tcc_sc_fw_handle *handle,
+			struct tcc_sc_fw_ufs_cmd *cmd);
+};
+
 struct tcc_sc_fw_gpio_ops {
 	int (*request_gpio)(const struct tcc_sc_fw_handle *handle,
 			uint32_t address, uint32_t bit_number, uint32_t width, uint32_t value);
-	//int (*request_gpio_multi)(const struct tcc_sc_fw_handle *handle, struct tcc_sc_gpio_req_data* gpio_req_data);
+	int (*request_gpio_multi)(const struct tcc_sc_fw_handle *handle, struct tcc_sc_gpio_req_data* gpio_req_data);
 };
 
 struct tcc_sc_fw_ops {
 	struct tcc_sc_fw_mmc_ops *mmc_ops;
+	struct tcc_sc_fw_ufs_ops *ufs_ops;
 	struct tcc_sc_fw_gpio_ops *gpio_ops;
 };
 
 struct tcc_sc_fw_handle {
 	struct tcc_sc_fw_version version;
 	struct tcc_sc_fw_ops ops;
+	void *priv;
 };
 
 const struct tcc_sc_fw_handle *tcc_sc_fw_get_handle(struct device_node *np);

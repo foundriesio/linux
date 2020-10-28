@@ -37,8 +37,8 @@
 #include <linux/sched.h>
 #include <linux/wait.h>
 
-#include <asm/io.h>
-#include <asm/uaccess.h>
+#include <linux/io.h>
+#include <linux/uaccess.h>
 #include <asm/div64.h>
 
 #include "tcc_hsm_cmd.h"
@@ -48,7 +48,8 @@
 #define MBOX_LOCATION_CMD 0x0000
 
 int32_t tcc_hsm_cmd_set_key(
-	uint32_t device_id, uint32_t req, uint32_t addr, uint32_t key_size, uint32_t key_index)
+	uint32_t device_id, uint32_t req, uint32_t addr, uint32_t key_size,
+	uint32_t key_index)
 {
 	uint32_t data[128] = {0};
 	uint32_t index = 0;
@@ -63,7 +64,8 @@ int32_t tcc_hsm_cmd_set_key(
 	data_size = (sizeof(uint32_t) * index);
 
 	rdata_size = sec_sendrecv_cmd(
-		device_id, (req | MBOX_LOCATION_DATA), data, data_size, &rdata, DMA_MAX_RSIZE);
+		device_id, (req | MBOX_LOCATION_DATA), data, data_size, &rdata,
+		DMA_MAX_RSIZE);
 	if (rdata_size < 0) {
 		ELOG("sec_sendrecv_cmd error(%d)\n", rdata_size);
 		return -EBADR;
@@ -79,9 +81,10 @@ int32_t tcc_hsm_cmd_set_key(
 }
 
 int32_t tcc_hsm_cmd_run_aes(
-	uint32_t device_id, uint32_t req, uint32_t obj_id, uint8_t *key, uint32_t key_size, uint8_t *iv,
-	uint32_t iv_size, uint8_t *tag, uint32_t tag_size, uint8_t *aad, uint32_t aad_size,
-	uint32_t src, uint32_t src_size, uint32_t dst, uint32_t dst_size)
+	uint32_t device_id, uint32_t req, uint32_t obj_id, uint8_t *key,
+	uint32_t key_size, uint8_t *iv, uint32_t iv_size, uint8_t *tag,
+	uint32_t tag_size, uint8_t *aad, uint32_t aad_size, uint32_t src,
+	uint32_t src_size, uint32_t dst, uint32_t dst_size)
 {
 	uint32_t data[128] = {0};
 	uint32_t index = 0;
@@ -117,7 +120,8 @@ int32_t tcc_hsm_cmd_run_aes(
 	data_size = (sizeof(uint32_t) * index);
 
 	rdata_size = sec_sendrecv_cmd(
-		device_id, (req | MBOX_LOCATION_DATA), data, data_size, rdata, DMA_MAX_RSIZE);
+		device_id, (req | MBOX_LOCATION_DATA), data, data_size, rdata,
+		DMA_MAX_RSIZE);
 	if (rdata_size < 0) {
 		ELOG("sec_sendrecv_cmd error(%d)\n", rdata_size);
 		return -EBADR;
@@ -142,9 +146,10 @@ int32_t tcc_hsm_cmd_run_aes(
 }
 
 int32_t tcc_hsm_cmd_run_aes_by_kt(
-	uint32_t device_id, uint32_t req, uint32_t obj_id, uint32_t key_index, uint8_t *iv,
-	uint32_t iv_size, uint8_t *tag, uint32_t tag_size, uint8_t *aad, uint32_t aad_size,
-	uint32_t src, uint32_t src_size, uint32_t dst, uint32_t dst_size)
+	uint32_t device_id, uint32_t req, uint32_t obj_id, uint32_t key_index,
+	uint8_t *iv, uint32_t iv_size, uint8_t *tag, uint32_t tag_size,
+	uint8_t *aad, uint32_t aad_size, uint32_t src, uint32_t src_size,
+	uint32_t dst, uint32_t dst_size)
 {
 	uint32_t data[128] = {0};
 	uint32_t index = 0;
@@ -176,7 +181,8 @@ int32_t tcc_hsm_cmd_run_aes_by_kt(
 	data_size = (sizeof(uint32_t) * index);
 
 	rdata_size = sec_sendrecv_cmd(
-		device_id, (req | MBOX_LOCATION_DATA), data, data_size, rdata, DMA_MAX_RSIZE);
+		device_id, (req | MBOX_LOCATION_DATA), data, data_size, rdata,
+		DMA_MAX_RSIZE);
 	if (rdata_size < 0) {
 		ELOG("sec_sendrecv_cmd error(%d)\n", rdata_size);
 		return -EBADR;
@@ -200,8 +206,9 @@ int32_t tcc_hsm_cmd_run_aes_by_kt(
 }
 
 int32_t tcc_hsm_cmd_gen_mac(
-	uint32_t device_id, uint32_t req, uint32_t obj_id, uint8_t *key, uint32_t key_size,
-	uint32_t src, uint32_t src_size, uint8_t *mac, uint32_t mac_size)
+	uint32_t device_id, uint32_t req, uint32_t obj_id, uint8_t *key,
+	uint32_t key_size, uint32_t src, uint32_t src_size, uint8_t *mac,
+	uint32_t mac_size)
 {
 	uint32_t data[128] = {0};
 	uint32_t index = 0;
@@ -229,7 +236,8 @@ int32_t tcc_hsm_cmd_gen_mac(
 
 	data_size = (sizeof(uint32_t) * index);
 	rdata_size = sec_sendrecv_cmd(
-		device_id, (req | MBOX_LOCATION_DATA), data, data_size, rdata, DMA_MAX_RSIZE);
+		device_id, (req | MBOX_LOCATION_DATA), data, data_size, rdata,
+		DMA_MAX_RSIZE);
 	if (rdata_size < 0) {
 		ELOG("sec_sendrecv_cmd error(%d)\n", rdata_size);
 		return -EBADR;
@@ -253,8 +261,8 @@ int32_t tcc_hsm_cmd_gen_mac(
 }
 
 int32_t tcc_hsm_cmd_gen_mac_by_kt(
-	uint32_t device_id, uint32_t req, uint32_t obj_id, uint32_t key_index, uint32_t src,
-	uint32_t src_size, uint8_t *mac, uint32_t mac_size)
+	uint32_t device_id, uint32_t req, uint32_t obj_id, uint32_t key_index,
+	uint32_t src, uint32_t src_size, uint8_t *mac, uint32_t mac_size)
 {
 	uint32_t data[128] = {0};
 	uint32_t index = 0;
@@ -262,7 +270,8 @@ int32_t tcc_hsm_cmd_gen_mac_by_kt(
 	int32_t data_size = 0, rdata_size = 0;
 	int32_t result = 0;
 
-	if ((req == REQ_HSM_GEN_HMAC_BY_KT) || (req == REQ_HSM_GEN_SM3_HMAC_BY_KT)) {
+	if ((req == REQ_HSM_GEN_HMAC_BY_KT)
+	    || (req == REQ_HSM_GEN_SM3_HMAC_BY_KT)) {
 		data[index++] = obj_id;
 	}
 	data[index++] = HSM_DMA;
@@ -277,7 +286,8 @@ int32_t tcc_hsm_cmd_gen_mac_by_kt(
 
 	data_size = (sizeof(uint32_t) * index);
 	rdata_size = sec_sendrecv_cmd(
-		device_id, (req | MBOX_LOCATION_DATA), data, data_size, rdata, DMA_MAX_RSIZE);
+		device_id, (req | MBOX_LOCATION_DATA), data, data_size, rdata,
+		DMA_MAX_RSIZE);
 	if (rdata_size < 0) {
 		ELOG("sec_sendrecv_cmd error(%d)\n", rdata_size);
 		return -EBADR;
@@ -302,8 +312,8 @@ int32_t tcc_hsm_cmd_gen_mac_by_kt(
 }
 
 int32_t tcc_hsm_cmd_gen_hash(
-	uint32_t device_id, uint32_t req, uint32_t obj_id, uint32_t src, uint32_t src_size,
-	uint8_t *dig, uint32_t dig_size)
+	uint32_t device_id, uint32_t req, uint32_t obj_id, uint32_t src,
+	uint32_t src_size, uint8_t *dig, uint32_t dig_size)
 {
 	uint32_t data[128] = {0};
 	uint32_t index = 0;
@@ -320,7 +330,8 @@ int32_t tcc_hsm_cmd_gen_hash(
 	data_size = (sizeof(uint32_t) * index);
 
 	rdata_size = sec_sendrecv_cmd(
-		device_id, (req | MBOX_LOCATION_DATA), data, data_size, rdata, DMA_MAX_RSIZE);
+		device_id, (req | MBOX_LOCATION_DATA), data, data_size, rdata,
+		DMA_MAX_RSIZE);
 	if (rdata_size < 0) {
 		ELOG("sec_sendrecv_cmd error(%d)\n", rdata_size);
 		return -EBADR;
@@ -343,8 +354,9 @@ int32_t tcc_hsm_cmd_gen_hash(
 }
 
 int32_t tcc_hsm_cmd_run_ecdsa(
-	uint32_t device_id, uint32_t req, uint32_t obj_id, uint8_t *key, uint32_t key_size,
-	uint8_t *digest, uint32_t digest_size, uint8_t *sig, uint32_t sig_size)
+	uint32_t device_id, uint32_t req, uint32_t obj_id, uint8_t *key,
+	uint32_t key_size, uint8_t *digest, uint32_t digest_size, uint8_t *sig,
+	uint32_t sig_size)
 {
 	uint32_t data[128] = {0};
 	uint32_t index = 0;
@@ -371,7 +383,8 @@ int32_t tcc_hsm_cmd_run_ecdsa(
 	data_size = (sizeof(uint32_t) * index);
 
 	rdata_size = sec_sendrecv_cmd(
-		device_id, (req | MBOX_LOCATION_DATA), data, data_size, rdata, DMA_MAX_RSIZE);
+		device_id, (req | MBOX_LOCATION_DATA), data, data_size, rdata,
+		DMA_MAX_RSIZE);
 	if (rdata_size < 0) {
 		ELOG("sec_sendrecv_cmd error(%d)\n", rdata_size);
 		return -EBADR;
@@ -397,9 +410,9 @@ int32_t tcc_hsm_cmd_run_ecdsa(
 }
 
 int32_t tcc_hsm_cmd_run_rsa(
-	uint32_t device_id, uint32_t req, uint32_t obj_id, uint8_t *modN, uint32_t modN_size,
-	uint32_t key, uint32_t key_size, uint8_t *digest, uint32_t digest_size, uint8_t *sig,
-	uint32_t sig_size)
+	uint32_t device_id, uint32_t req, uint32_t obj_id, uint8_t *modN,
+	uint32_t modN_size, uint32_t key, uint32_t key_size, uint8_t *digest,
+	uint32_t digest_size, uint8_t *sig, uint32_t sig_size)
 {
 	uint32_t data[128] = {0};
 	uint32_t index = 0;
@@ -421,14 +434,17 @@ int32_t tcc_hsm_cmd_run_rsa(
 	index += (digest_size + 3) / sizeof(uint32_t);
 
 	data[index++] = sig_size;
-	if ((req == REQ_HSM_RUN_RSASSA_PKCS_VERIFY) || (req == REQ_HSM_RUN_RSASSA_PSS_VERIFY)) {
+	if ((req == REQ_HSM_RUN_RSASSA_PKCS_VERIFY)
+	    || (req == REQ_HSM_RUN_RSASSA_PSS_VERIFY)) {
 		memcpy(&data[index], sig, sig_size);
 		index += (sig_size + 3) / sizeof(uint32_t);
 	}
 	data_size = (sizeof(uint32_t) * index);
-	// ELOG("data_size=%d %d %d %d\n", data_size, modN_size, digest_size, sig_size);
+	// ELOG("data_size=%d %d %d %d\n", data_size, modN_size, digest_size,
+	// sig_size);
 	rdata_size = sec_sendrecv_cmd(
-		device_id, (req | MBOX_LOCATION_DATA), data, data_size, rdata, DMA_MAX_RSIZE);
+		device_id, (req | MBOX_LOCATION_DATA), data, data_size, rdata,
+		DMA_MAX_RSIZE);
 	if (rdata_size < 0) {
 		ELOG("sec_sendrecv_cmd error(%d)\n", rdata_size);
 		return -EBADR;
@@ -439,9 +455,12 @@ int32_t tcc_hsm_cmd_run_rsa(
 		ELOG("Error: 0x%x\n", result);
 		return result;
 	}
-	if ((req == REQ_HSM_RUN_RSASSA_PKCS_VERIFY) || (req == REQ_HSM_RUN_RSASSA_PSS_VERIFY)) {
+	if ((req == REQ_HSM_RUN_RSASSA_PKCS_VERIFY)
+	    || (req == REQ_HSM_RUN_RSASSA_PSS_VERIFY)) {
 		return result;
-	} else if ((req == REQ_HSM_RUN_RSASSA_PKCS_SIGN) || (req == REQ_HSM_RUN_RSASSA_PSS_SIGN)) {
+	} else if (
+		(req == REQ_HSM_RUN_RSASSA_PKCS_SIGN)
+		|| (req == REQ_HSM_RUN_RSASSA_PSS_SIGN)) {
 		if (rdata[1] == sig_size) {
 			memcpy(sig, (uint8_t *)&rdata[2], sig_size);
 		} else {
@@ -453,7 +472,8 @@ int32_t tcc_hsm_cmd_run_rsa(
 	return result;
 }
 
-int32_t tcc_hsm_cmd_get_rand(uint32_t device_id, uint32_t req, uint32_t rng, int32_t rng_size)
+int32_t tcc_hsm_cmd_get_rand(
+	uint32_t device_id, uint32_t req, uint32_t rng, int32_t rng_size)
 {
 	uint32_t data[128] = {0};
 	uint32_t index = 0;
@@ -468,7 +488,8 @@ int32_t tcc_hsm_cmd_get_rand(uint32_t device_id, uint32_t req, uint32_t rng, int
 	data_size = (sizeof(uint32_t) * index);
 
 	rdata_size = sec_sendrecv_cmd(
-		device_id, (req | MBOX_LOCATION_DATA), data, data_size, &rdata, DMA_MAX_RSIZE);
+		device_id, (req | MBOX_LOCATION_DATA), data, data_size, &rdata,
+		DMA_MAX_RSIZE);
 	if (rdata_size < 0) {
 		ELOG("sec_sendrecv_cmd error(%d)\n", rdata_size);
 		return -EBADR;
@@ -484,7 +505,8 @@ int32_t tcc_hsm_cmd_get_rand(uint32_t device_id, uint32_t req, uint32_t rng, int
 }
 
 int32_t tcc_hsm_cmd_write(
-	uint32_t device_id, uint32_t req, uint32_t addr, uint8_t *buf, uint32_t buf_size)
+	uint32_t device_id, uint32_t req, uint32_t addr, uint8_t *buf,
+	uint32_t buf_size)
 {
 	uint32_t data[128] = {0};
 	uint32_t index = 0;
@@ -503,7 +525,8 @@ int32_t tcc_hsm_cmd_write(
 	data_size = (sizeof(uint32_t) * index);
 
 	rdata_size = sec_sendrecv_cmd(
-		device_id, (req | MBOX_LOCATION_DATA), data, data_size, &rdata, DMA_MAX_RSIZE);
+		device_id, (req | MBOX_LOCATION_DATA), data, data_size, &rdata,
+		DMA_MAX_RSIZE);
 	if (rdata_size < 0) {
 		ELOG("sec_sendrecv_cmd error(%d)\n", rdata_size);
 		return -EBADR;
@@ -519,16 +542,17 @@ int32_t tcc_hsm_cmd_write(
 }
 
 int32_t tcc_hsm_cmd_write_snor(
-	uint32_t device_id, uint32_t req, uint32_t snor_addr, uint8_t *buf, uint32_t buf_Size)
+	uint32_t device_id, uint32_t req, uint32_t snor_addr, uint8_t *buf,
+	uint32_t buf_Size)
 {
 	int32_t result = -1;
-	//	req |= MBOX_LOCATION_DATA;
+	//      req |= MBOX_LOCATION_DATA;
 
 	return result;
 }
 
-int32_t
-tcc_hsm_cmd_get_version(uint32_t device_id, uint32_t req, uint32_t *x, uint32_t *y, uint32_t *z)
+int32_t tcc_hsm_cmd_get_version(
+	uint32_t device_id, uint32_t req, uint32_t *x, uint32_t *y, uint32_t *z)
 {
 	uint32_t data[128] = {0};
 	uint32_t index = 0;
@@ -539,7 +563,8 @@ tcc_hsm_cmd_get_version(uint32_t device_id, uint32_t req, uint32_t *x, uint32_t 
 	data_size = (sizeof(uint32_t) * index);
 
 	rdata_size = sec_sendrecv_cmd(
-		device_id, (req | MBOX_LOCATION_DATA), data, data_size, rdata, DMA_MAX_RSIZE);
+		device_id, (req | MBOX_LOCATION_DATA), data, data_size, rdata,
+		DMA_MAX_RSIZE);
 	if (rdata_size < 0) {
 		ELOG("sec_sendrecv_cmd error(%d)\n", rdata_size);
 		return -EBADR;

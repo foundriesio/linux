@@ -250,7 +250,7 @@ typedef struct {
 }stUmp_sw_buffer;
 
 static unsigned int bInited_ump_reserved_sw = 0;
-static pmap_t pmap_ump_reserved_sw;
+static struct pmap pmap_ump_reserved_sw;
 static void* remap_ump_reserved_sw = NULL;
 static stUmp_sw_buffer ump_sw_buf[UMP_SW_BLOCK_MAX_CNT]; //physical address
 
@@ -740,7 +740,7 @@ static int tmem_mmap(struct file *file, struct vm_area_struct *vma)
         return -EPERM;
     }
 
-    vma->vm_page_prot = phys_mem_access_prot(file, vma->vm_pgoff, size, vma->vm_page_prot);
+    vma->vm_page_prot = pgprot_writecombine(vma->vm_page_prot);
     vma->vm_ops = &tmem_mmap_ops;
 
     if (remap_pfn_range(vma,

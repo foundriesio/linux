@@ -68,7 +68,7 @@ unsigned int VDE_HStart	= 20;
 static OUT_TYPE out_type = DOVI;
 static OUT_FORMAT out_color_format = DV_OUT_FMT_YUV422;
 
-static pmap_t pmap_dv_regs;
+static struct pmap pmap_dv_regs;
 static void __iomem *pBase_vAddr;
 static char bOsd1_on = 0;
 static char bOsd3_on = 0;

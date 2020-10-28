@@ -22,5 +22,6 @@
 #include "max9286.h"
 #include "max9276.h"
 #include "max96712.h"
+#include "max96759.h"
 
 #endif//MIPI_DESERIALIZER_H

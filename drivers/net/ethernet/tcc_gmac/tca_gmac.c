@@ -32,6 +32,7 @@
 //#endif
 
 #include <linux/of_address.h>
+#define MAX_INTF_LEN	6
 
 static void __iomem *gmac_base = NULL;
 static void __iomem *hsio_base = NULL;
@@ -39,9 +40,10 @@ static void __iomem *hsio_base = NULL;
 int tca_gmac_init(struct device_node *np, struct gmac_dt_info_t *dt_info)
 {
 	int ret = 0;
-	char *phy_str;
+	const char *phy_str;
+	void *dummy_ptr;
 
-	if (of_property_read_u32(np, "index", &dt_info->index)) {
+	if (of_property_read_u32(np, "index", &dt_info->index) != 0) {
 		printk(KERN_ERR "[ERROR][GMAC] gmac index not exist\n");
 		return -EINVAL;
 	}
@@ -53,34 +55,48 @@ int tca_gmac_init(struct device_node *np, struct gmac_dt_info_t *dt_info)
 	hsio_base = of_iomap(np,1);
 
 	dt_info->gmac_clk = of_clk_get_by_name(np, "gmac-pclk");
-	BUG_ON(dt_info->gmac_clk == NULL);
+	if (dt_info->gmac_clk == NULL){
+		return -EINVAL;
+	}
 
 	dt_info->hsio_clk = of_clk_get_by_name(np, "hsio-clk");
-	BUG_ON(dt_info->hsio_clk == NULL);
+	if (dt_info->hsio_clk == NULL){
+		return -EINVAL;
+	}
 
 	dt_info->ptp_clk  = of_clk_get_by_name(np, "ptp-pclk");
-	BUG_ON(dt_info->ptp_clk == NULL);
+	if (dt_info->ptp_clk == NULL){
+		return -EINVAL;
+	}
 	
 	dt_info->gmac_hclk = of_clk_get_by_name(np, "gmac-hclk");
-	BUG_ON(dt_info->gmac_hclk == NULL);
+	if (dt_info->gmac_hclk == NULL){
+		return -EINVAL;
+	}
 
 	ret = of_get_named_gpio(np, "phyrst-gpio", 0);
-	dt_info->phy_rst = (ret < 0) ? 0 : ret;
+	dt_info->phy_rst = (ret < 0) ? (unsigned int )0 : (unsigned int)ret;
 	ret = of_get_named_gpio(np, "phyon-gpio", 0);
-	dt_info->phy_on = (ret < 0) ? 0 : ret;
+	dt_info->phy_on = (ret < 0) ? (unsigned int )0 : (unsigned int)ret;
 
-	if (dt_info->phy_rst)
+	if (dt_info->phy_rst != (unsigned int)0)
 		gpio_request(dt_info->phy_rst, "PHY_RST");
 
-	if (dt_info->phy_on)
+	if (dt_info->phy_on != (unsigned int)0)
 		gpio_request(dt_info->phy_on, "PHY_ON");
 
-	phy_str = (char*)of_get_property(np, "phy-interface",NULL);
-	dt_info->phy_inf = !strcmp(phy_str, "mii") ? PHY_INTERFACE_MODE_MII :
-		!strcmp(phy_str, "gmii") ? PHY_INTERFACE_MODE_GMII :
-		!strcmp(phy_str, "rmii") ? PHY_INTERFACE_MODE_RMII :
-		!strcmp(phy_str, "rgmii") ? PHY_INTERFACE_MODE_RGMII :
-		PHY_INTERFACE_MODE_NA;
+	phy_str = of_get_property(np, "phy-interface",NULL);
+	
+	if (strncmp(phy_str, "mii", MAX_INTF_LEN) == 0)
+		dt_info->phy_inf = PHY_INTERFACE_MODE_MII;
+	else if (strncmp(phy_str, "gmii", MAX_INTF_LEN) == 0)
+		dt_info->phy_inf = PHY_INTERFACE_MODE_GMII;
+	else if (strncmp(phy_str, "rmii", MAX_INTF_LEN) == 0)
+		dt_info->phy_inf = PHY_INTERFACE_MODE_RMII;
+	else if (strncmp(phy_str, "rgmii", MAX_INTF_LEN) == 0)
+		dt_info->phy_inf = PHY_INTERFACE_MODE_RGMII;
+	else 
+		dt_info->phy_inf = PHY_INTERFACE_MODE_NA;
 
 	if (dt_info->phy_inf == PHY_INTERFACE_MODE_NA) {
 		printk(KERN_ERR "[ERROR][GMAC] unknown phy interface : %d\n", dt_info->phy_inf);
@@ -178,11 +194,11 @@ void tca_gmac_clk_enable(struct gmac_dt_info_t *dt_info)
 //		clk_prepare_enable(dt_info->hsio_clk);
 //	}
 
-	if (dt_info->gmac_hclk) {
+	if (dt_info->gmac_hclk != 0) {
 		clk_prepare_enable(dt_info->gmac_hclk);
 	}
 
-	if (dt_info->gmac_clk) {
+	if (dt_info->gmac_clk != 0) {
 		clk_prepare_enable(dt_info->gmac_clk);
 		switch(dt_info->phy_inf) {
 			case PHY_INTERFACE_MODE_MII:
@@ -203,7 +219,7 @@ void tca_gmac_clk_enable(struct gmac_dt_info_t *dt_info)
 		printk(KERN_ERR "[ERROR][GMAC] dt_info->gmac_clk is not exist\n");
 	}
 
-	if (dt_info->ptp_clk) {
+	if (dt_info->ptp_clk != 0) {
 		clk_prepare_enable(dt_info->ptp_clk);
 		clk_set_rate(dt_info->ptp_clk, 50*1000*1000);
 	}
@@ -211,16 +227,16 @@ void tca_gmac_clk_enable(struct gmac_dt_info_t *dt_info)
 
 void tca_gmac_clk_disable(struct gmac_dt_info_t *dt_info)
 {
-	if (dt_info->ptp_clk) {
+	if (dt_info->ptp_clk != 0) {
 		clk_set_rate(dt_info->ptp_clk, 6*1000*1000);
 		clk_disable_unprepare(dt_info->ptp_clk);
 	} 
-	if (dt_info->gmac_clk) {
+	if (dt_info->gmac_clk != 0) {
 		clk_set_rate(dt_info->gmac_clk, 6*1000*1000);
 		clk_disable_unprepare(dt_info->gmac_clk);
 	}
 
-	if (dt_info->gmac_hclk) {
+	if (dt_info->gmac_hclk != 0) {
 		clk_disable_unprepare(dt_info->gmac_hclk);
 	}
 
@@ -229,9 +245,9 @@ void tca_gmac_clk_disable(struct gmac_dt_info_t *dt_info)
 //	}
 }
 
-unsigned int tca_gmac_get_hsio_clk(struct gmac_dt_info_t *dt_info)
+unsigned long tca_gmac_get_hsio_clk(struct gmac_dt_info_t *dt_info)
 {
-	if(dt_info->hsio_clk) {
+	if(dt_info->hsio_clk != 0) {
 		printk(KERN_INFO "[INFO][GMAC] hsio_clk : %lu\n", clk_get_rate(dt_info->hsio_clk));
 		return clk_get_rate(dt_info->hsio_clk);
 	}
@@ -246,7 +262,7 @@ phy_interface_t tca_gmac_get_phy_interface(struct gmac_dt_info_t *dt_info)
 
 void tca_gmac_phy_pwr_on(struct gmac_dt_info_t *dt_info)
 {
-	if (dt_info->phy_on) {
+	if (dt_info->phy_on != (unsigned)0) {
 		gpio_direction_output(dt_info->phy_on, 1);
 		msleep(10);
 	}
@@ -254,12 +270,12 @@ void tca_gmac_phy_pwr_on(struct gmac_dt_info_t *dt_info)
 
 void tca_gmac_phy_pwr_off(struct gmac_dt_info_t *dt_info)
 {
-	if (dt_info->phy_rst) {
+	if (dt_info->phy_rst != (unsigned )0) {
 		gpio_direction_output(dt_info->phy_rst, 0);
 		msleep(10);
 	}
 	
-	if (dt_info->phy_on) {
+	if (dt_info->phy_on != (unsigned )0) {
 		gpio_direction_output(dt_info->phy_on, 0);
 		msleep(10);
 	}
@@ -267,7 +283,7 @@ void tca_gmac_phy_pwr_off(struct gmac_dt_info_t *dt_info)
 
 void tca_gmac_phy_reset(struct gmac_dt_info_t *dt_info)
 {
-	if (dt_info->phy_rst) {
+	if (dt_info->phy_rst != (unsigned )0) {
 		gpio_direction_output(dt_info->phy_rst, 0);
 		msleep(10);
 		gpio_direction_output(dt_info->phy_rst, 1);
@@ -279,34 +295,34 @@ void tca_gmac_tunning_timing(struct gmac_dt_info_t *dt_info, void __iomem *ioadd
 {
 
 	{
-		writel( ((dt_info->txclk_i_dly&0x1f)<<0) |
-				((dt_info->txclk_i_inv&0x01)<<7) |
-				((dt_info->txclk_o_dly&0x1f)<<8) |
-				((dt_info->txclk_o_inv&0x01)<<15)|
-				((dt_info->txen_dly&0x1f)<<16)   |
-				((dt_info->txer_dly&0x1f)<<24), ioaddr+GMACDLY0_OFFSET);
-		writel(	((dt_info->txd0_dly & 0x1f)<<0) |
-				((dt_info->txd1_dly & 0x1f)<<8) |
-				((dt_info->txd2_dly & 0x1f)<<16)|
-				((dt_info->txd3_dly & 0x1f)<<24), ioaddr+GMACDLY1_OFFSET);
-		writel(	((dt_info->txd4_dly & 0x1f)<<0) |
-				((dt_info->txd5_dly & 0x1f)<<8) |
-				((dt_info->txd6_dly & 0x1f)<<16)|
-				((dt_info->txd7_dly & 0x1f)<<24), ioaddr+GMACDLY2_OFFSET);
-		writel(	((dt_info->rxclk_i_dly & 0x1f)<<0)|
-				((dt_info->rxclk_i_inv & 0x01)<<7)|
-				((dt_info->rxdv_dly & 0x1f)<<16)  |
-				((dt_info->rxer_dly & 0x1f)<<24), ioaddr+GMACDLY3_OFFSET);
-		writel(	((dt_info->rxd0_dly & 0x1f)<<0) |
-				((dt_info->rxd1_dly & 0x1f)<<8) |
-				((dt_info->rxd2_dly & 0x1f)<<16)|
-				((dt_info->rxd3_dly & 0x1f)<<24), ioaddr+GMACDLY4_OFFSET);
-		writel(	((dt_info->rxd4_dly & 0x1f)<<0) |
-				((dt_info->rxd5_dly & 0x1f)<<8) |
-				((dt_info->rxd6_dly & 0x1f)<<16)|
-				((dt_info->rxd7_dly & 0x1f)<<24), ioaddr+GMACDLY5_OFFSET);
-		writel(	((dt_info->col_dly & 0x1f)<<0)|
-				((dt_info->crs_dly & 0x1f)<<8), ioaddr+GMACDLY6_OFFSET);
+		writel( (((unsigned int)dt_info->txclk_i_dly&(unsigned int)0x1f)) | 
+				(((unsigned int)dt_info->txclk_i_inv&(unsigned int)0x01)<<7) |
+				(((unsigned int)dt_info->txclk_o_dly&(unsigned int)0x1f)<<8) |
+				(((unsigned int)dt_info->txclk_o_inv&(unsigned int)0x01)<<15)|
+				(((unsigned int)dt_info->txen_dly&(unsigned int)0x1f)<<16)   |
+				(((unsigned int)dt_info->txer_dly&(unsigned int)0x1f)<<24), ioaddr+GMACDLY0_OFFSET);
+		writel(	(((unsigned int)dt_info->txd0_dly & (unsigned int)0x1f)<<0) |
+				(((unsigned int)dt_info->txd1_dly & (unsigned int)0x1f)<<8) |
+				(((unsigned int)dt_info->txd2_dly & (unsigned int)0x1f)<<16)|
+				(((unsigned int)dt_info->txd3_dly & (unsigned int)0x1f)<<24), ioaddr+GMACDLY1_OFFSET);
+		writel(	(((unsigned int)dt_info->txd4_dly & (unsigned int)0x1f)<<0) |
+				(((unsigned int)dt_info->txd5_dly & (unsigned int)0x1f)<<8) |
+				(((unsigned int)dt_info->txd6_dly & (unsigned int)0x1f)<<16)|
+				(((unsigned int)dt_info->txd7_dly & (unsigned int)0x1f)<<24), ioaddr+GMACDLY2_OFFSET);
+		writel(	(((unsigned int)dt_info->rxclk_i_dly & (unsigned int)0x1f)<<0)|
+				(((unsigned int)dt_info->rxclk_i_inv & (unsigned int)0x01)<<7)|
+				(((unsigned int)dt_info->rxdv_dly & (unsigned int)0x1f)<<16)  |
+				(((unsigned int)dt_info->rxer_dly & (unsigned int)0x1f)<<24), ioaddr+GMACDLY3_OFFSET);
+		writel(	(((unsigned int)dt_info->rxd0_dly & (unsigned int)0x1f)<<0) |
+				(((unsigned int)dt_info->rxd1_dly & (unsigned int)0x1f)<<8) |
+				(((unsigned int)dt_info->rxd2_dly & (unsigned int)0x1f)<<16)|
+				(((unsigned int)dt_info->rxd3_dly & (unsigned int)0x1f)<<24), ioaddr+GMACDLY4_OFFSET);
+		writel(	(((unsigned int)dt_info->rxd4_dly & (unsigned int)0x1f)<<0) |
+				(((unsigned int)dt_info->rxd5_dly & (unsigned int)0x1f)<<8) |
+				(((unsigned int)dt_info->rxd6_dly & (unsigned int)0x1f)<<16)|
+				(((unsigned int)dt_info->rxd7_dly & (unsigned int)0x1f)<<24), ioaddr+GMACDLY5_OFFSET);
+		writel(	(((unsigned int)dt_info->col_dly & (unsigned int)0x1f)<<0)|
+				(((unsigned int)dt_info->crs_dly & (unsigned int)0x1f)<<8), ioaddr+GMACDLY6_OFFSET);
 	}
 }
 
@@ -319,29 +335,29 @@ void tca_gmac_portinit(struct gmac_dt_info_t *dt_info, void __iomem *ioaddr)
 
 	gpio_direction_output(dt_info->phy_rst, 0);
 
-	if (dt_info->phy_on)
+	if (dt_info->phy_on != (unsigned int)0)
 		gpio_direction_output(dt_info->phy_on, 0);
 
-	writel(readl(pcfg1)&~CFG1_CE, pcfg1); //clock disable
+	writel((unsigned int)readl(pcfg1)&(unsigned int)(~(unsigned int)CFG1_CE), pcfg1); //clock disable
 	
 	switch(dt_info->phy_inf) {
 		case PHY_INTERFACE_MODE_MII:
-			writel((readl(pcfg1)&~CFG1_PHY_INFSEL_MASK)|(6<<CFG1_PHY_INFSEL_SHIFT), pcfg1);
+			writel(((unsigned int)readl(pcfg1)&(unsigned int)(~CFG1_PHY_INFSEL_MASK))|(unsigned int)((unsigned)6<<CFG1_PHY_INFSEL_SHIFT), pcfg1);
 			break;
 		case PHY_INTERFACE_MODE_RMII:
-			writel((readl(pcfg1)&~CFG1_PHY_INFSEL_MASK)|(4<<CFG1_PHY_INFSEL_SHIFT), pcfg1);
+			writel(((unsigned int)readl(pcfg1)&(unsigned int)(~CFG1_PHY_INFSEL_MASK))|(unsigned int)((unsigned)4<<CFG1_PHY_INFSEL_SHIFT), pcfg1);
 			break;
 		case PHY_INTERFACE_MODE_GMII:
-			writel((readl(pcfg1)&~CFG1_PHY_INFSEL_MASK)|(0<<CFG1_PHY_INFSEL_SHIFT), pcfg1);
+			writel(((unsigned int)readl(pcfg1)&(unsigned int)(~CFG1_PHY_INFSEL_MASK))|(unsigned int)((unsigned)0<<CFG1_PHY_INFSEL_SHIFT), pcfg1);
 			break;
 		case PHY_INTERFACE_MODE_RGMII:
-			writel((readl(pcfg1)&~CFG1_PHY_INFSEL_MASK)|(1<<CFG1_PHY_INFSEL_SHIFT), pcfg1);
+			writel(((unsigned int)readl(pcfg1)&(unsigned int)(~CFG1_PHY_INFSEL_MASK))|(unsigned int)((unsigned)1<<CFG1_PHY_INFSEL_SHIFT), pcfg1);
 			break;
 		default:
 			break;
 	}
 
-	writel(readl(pcfg1)|CFG1_CE, pcfg1); //clock enable
+	writel((unsigned int)readl(pcfg1)|(unsigned int)CFG1_CE, pcfg1); //clock enable
 #else
 	volatile PHSIOBUSCFG pHSIOCFG= (volatile PHSIOBUSCFG)tcc_p2v(HwHSIOBUSCFG_BASE);
 
@@ -424,22 +440,25 @@ void tca_gmac_portinit(struct gmac_dt_info_t *dt_info, void __iomem *ioaddr)
 void IO_UTIL_ReadECID (unsigned ecid[])
 {
 	//void __iomem *pgpio = (void __iomem*)io_p2v(TCC_PA_GPIO);
-	void __iomem *pgpio = ioremap(TCC_PA_GPIO, 0x00100000);
+	//void __iomem *pgpio = ioremap(TCC_PA_GPIO, 0x00100000);
+	void __iomem *pgpio;
 	unsigned i;
+	
+	pgpio = ioremap((unsigned)TCC_PA_GPIO, (unsigned)0x100000);
 
 	ecid[0] = ecid[1] = ecid[2] = ecid[3] = 0;
 
 	writel(MODE,        pgpio+ECID0_OFFSET);
-	writel(MODE|CS|SEC, pgpio+ECID0_OFFSET);
+	writel((unsigned)MODE|(unsigned)CS|(unsigned)SEC, pgpio+ECID0_OFFSET);
 
-	for (i=0;i<8;i++) {
-		writel(MODE|CS|(i<<17)|SEC,                   pgpio+ECID0_OFFSET);
-		writel(MODE|CS|(i<<17)|SIGDEV|SEC,            pgpio+ECID0_OFFSET);
-		writel(MODE|CS|(i<<17)|SIGDEV|PRCHG|SEC,      pgpio+ECID0_OFFSET);
-		writel(MODE|CS|(i<<17)|SIGDEV|PRCHG|FSET|SEC, pgpio+ECID0_OFFSET);
-		writel(MODE|CS|(i<<17)|PRCHG|FSET|SEC,        pgpio+ECID0_OFFSET);
-		writel(MODE|CS|(i<<17)|FSET|SEC,              pgpio+ECID0_OFFSET);
-		writel(MODE|CS|(i<<17)|SEC,                   pgpio+ECID0_OFFSET);
+	for (i=0;i<(unsigned)8;i++) {
+		writel((unsigned)MODE|(unsigned)CS|((unsigned)i<<(unsigned)17)|(unsigned)SEC,                   pgpio+ECID0_OFFSET);
+		writel((unsigned)MODE|(unsigned)CS|((unsigned)i<<(unsigned)17)|(unsigned)SIGDEV|(unsigned)SEC,            pgpio+ECID0_OFFSET);
+		writel((unsigned)MODE|(unsigned)CS|((unsigned)i<<(unsigned)17)|(unsigned)SIGDEV|(unsigned)PRCHG|(unsigned)SEC,      pgpio+ECID0_OFFSET);
+		writel((unsigned)MODE|(unsigned)CS|((unsigned)i<<(unsigned)17)|(unsigned)SIGDEV|(unsigned)PRCHG|(unsigned)FSET|(unsigned)SEC, pgpio+ECID0_OFFSET);
+		writel((unsigned)MODE|(unsigned)CS|((unsigned)i<<(unsigned)17)|(unsigned)PRCHG|(unsigned)FSET|(unsigned)SEC,        pgpio+ECID0_OFFSET);
+		writel((unsigned)MODE|(unsigned)CS|((unsigned)i<<(unsigned)17)|(unsigned)FSET|(unsigned)SEC,              pgpio+ECID0_OFFSET);
+		writel((unsigned)MODE|(unsigned)CS|((unsigned)i<<(unsigned)17)|(unsigned)SEC,                   pgpio+ECID0_OFFSET);
 	}
 
 	ecid[0] = readl(pgpio+ECID2_OFFSET);	// Low	32 Bit
@@ -448,16 +467,16 @@ void IO_UTIL_ReadECID (unsigned ecid[])
 	writel(0x00000000, pgpio+ECID0_OFFSET);	// ECID Closed
 
 	writel(MODE,    pgpio+ECID0_OFFSET);
-	writel(MODE|CS, pgpio+ECID0_OFFSET);
+	writel(MODE|(unsigned)CS, pgpio+ECID0_OFFSET);
 
-	for (i=0;i<8;i++) {
-		writel(MODE|CS|(i<<17),                   pgpio+ECID0_OFFSET);
-		writel(MODE|CS|(i<<17)|SIGDEV,            pgpio+ECID0_OFFSET);
-		writel(MODE|CS|(i<<17)|SIGDEV|PRCHG,      pgpio+ECID0_OFFSET);
-		writel(MODE|CS|(i<<17)|SIGDEV|PRCHG|FSET, pgpio+ECID0_OFFSET);
-		writel(MODE|CS|(i<<17)|PRCHG|FSET,        pgpio+ECID0_OFFSET);
-		writel(MODE|CS|(i<<17)|FSET,              pgpio+ECID0_OFFSET);
-		writel(MODE|CS|(i<<17),                   pgpio+ECID0_OFFSET);
+	for (i=0;i<(unsigned)8;i++) {
+		writel((unsigned)MODE|(unsigned)CS|((unsigned)i<<17),                   pgpio+ECID0_OFFSET);
+		writel((unsigned)MODE|(unsigned)CS|((unsigned)i<<17)|(unsigned)SIGDEV,            pgpio+ECID0_OFFSET);
+		writel((unsigned)MODE|(unsigned)CS|((unsigned)i<<17)|(unsigned)SIGDEV|(unsigned)PRCHG,      pgpio+ECID0_OFFSET);
+		writel((unsigned)MODE|(unsigned)CS|((unsigned)i<<17)|(unsigned)SIGDEV|(unsigned)PRCHG|(unsigned)FSET, pgpio+ECID0_OFFSET);
+		writel((unsigned)MODE|(unsigned)CS|((unsigned)i<<17)|(unsigned)PRCHG|(unsigned)FSET,        pgpio+ECID0_OFFSET);
+		writel((unsigned)MODE|(unsigned)CS|((unsigned)i<<17)|(unsigned)FSET,              pgpio+ECID0_OFFSET);
+		writel((unsigned)MODE|(unsigned)CS|((unsigned)i<<17),                   pgpio+ECID0_OFFSET);
 	}
 
 	ecid[2] = readl(pgpio+ECID2_OFFSET);	// Low	32 Bit
@@ -477,18 +496,18 @@ void IO_UTIL_ReadECID (unsigned ecid[])
 
 #define ECID_MAC_ID_BIT_MASK	0x3 //ecid0 [22:23]
 
-int tca_get_mac_addr_from_ecid(char *mac_addr)
+int tca_get_mac_addr_from_ecid(unsigned char * mac_addr)
 {
 	unsigned ecid[4] = {0,0,0,0};
 	unsigned int id_bit = 0;
 	IO_UTIL_ReadECID(ecid);
 
-	id_bit = (ecid[0] >> 22) & ECID_MAC_ID_BIT_MASK;
+	id_bit = (ecid[0] >> (unsigned)22) & (unsigned)ECID_MAC_ID_BIT_MASK;
 	//printk("ECID MAC [23:47] : 0x%x\n", (ecid[0] >> 23) + (ecid[1] << 9));
 	//printk("ECID MAC [22:46] : 0x%x\n", (ecid[0] >> 22) + (ecid[1] << 10));
 	//printk("ECID ID bit[22:23] = %d \n", id_bit);
 	
-	if(ecid[2] !=0 || ecid[3] !=0){
+	if( (ecid[2] !=(unsigned)0) || (ecid[3] !=(unsigned)0) ){
 #if 0
 		if( (ecid[2] >> 23) & 0x01 )
 		{
@@ -508,33 +527,33 @@ int tca_get_mac_addr_from_ecid(char *mac_addr)
 		switch(id_bit)
 		{
 			case 0:
-				mac_addr[0] = 0xF4;
-				mac_addr[1] = 0x50;
-				mac_addr[2] = 0xEB;
+				mac_addr[0] = (unsigned char)((unsigned)0xF4 & (unsigned)0xFF);
+				mac_addr[1] = (unsigned char)((unsigned)0x50 & (unsigned)0xFF);
+				mac_addr[2] = (unsigned char)((unsigned)0xEB & (unsigned)0xFF);
 				break;
 			case 1:
-				mac_addr[0] = 0x3C;
-				mac_addr[1] = 0x7F;
-				mac_addr[2] = 0x6F;
+				mac_addr[0] = (unsigned char)((unsigned)0x3C & (unsigned)0xFF);
+				mac_addr[1] = (unsigned char)((unsigned)0x7F & (unsigned)0xFF);
+				mac_addr[2] = (unsigned char)((unsigned)0x6F & (unsigned)0xFF);
 				break;
 			case 2:
-				mac_addr[0] = 0x88;
-				mac_addr[1] = 0x46;
-				mac_addr[2] = 0x2A;
+				mac_addr[0] = (unsigned char)((unsigned)0x88 & (unsigned)0xFF);
+				mac_addr[1] = (unsigned char)((unsigned)0x46 & (unsigned)0xFF);
+				mac_addr[2] = (unsigned char)((unsigned)0x2A & (unsigned)0xFF);
 				break;
 			case 3:
-				mac_addr[0] = 0x7C;
-				mac_addr[1] = 0x24;
-				mac_addr[2] = 0x0C;
+				mac_addr[0] = (unsigned char)((unsigned)0x7C & (unsigned)0xFF);
+				mac_addr[1] = (unsigned char)((unsigned)0x24 & (unsigned)0xFF);
+				mac_addr[2] = (unsigned char)((unsigned)0x0C & (unsigned)0xFF);
 				break;
 			default:
 				break;
 		}
 
 #endif
-		mac_addr[3]= (ecid[3] >>8) & 0xFF;
-		mac_addr[4]= (ecid[3] & 0xFF);
-		mac_addr[5]= (ecid[2] >> 24) & 0xFF ;
+		mac_addr[3]= (unsigned char)((ecid[3] >>(unsigned )8) & (unsigned )0xFF);
+		mac_addr[4]= (unsigned char)((ecid[3] & (unsigned )0xFF));
+		mac_addr[5]= (unsigned char)((ecid[2] >> (unsigned )24) & (unsigned )0xFF);
 		return 0;
 	} 
 

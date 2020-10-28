@@ -11,63 +11,41 @@ MODULE_DESCRIPTION("TCC Marvell PHY driver");
 MODULE_AUTHOR("Telechips");
 MODULE_LICENSE("GPL");
 
-#define	MMD_ACCESS_CTRL			13
-#define MMD_ACCESS_ADDR_DATA	14
+#define	MMD_ACCESS_CTRL			(unsigned)(13)
+#define MMD_ACCESS_ADDR_DATA	(unsigned)(14)
 
-#define OPERATION_BIT_SHIFT		14
-#define OPERATION_ADDR			0x0
-#define OPERATION_RW			0x1
+#define OPERATION_BIT_SHIFT		(unsigned)(14)
+#define OPERATION_ADDR			(unsigned)(0x0)
+#define OPERATION_RW			(unsigned)(0x1)
 
 #define MRVL_Q212X_LPSD_FEATURE_ENABLE 0
 
-int phy_read_c22_to_c45(struct phy_device *phydev, uint16_t dev_addr, u32 reg_addr)
+static int phy_read_c22_to_c45(struct phy_device *phydev, uint16_t dev_addr, u32 reg_addr)
 {
-	phy_write(phydev, MMD_ACCESS_CTRL, (u32)((OPERATION_ADDR << OPERATION_BIT_SHIFT) | dev_addr));
-	phy_write(phydev, MMD_ACCESS_ADDR_DATA, reg_addr);
-	phy_write(phydev, MMD_ACCESS_CTRL, (OPERATION_RW << OPERATION_BIT_SHIFT) | dev_addr);
+	phy_write(phydev, MMD_ACCESS_CTRL, (unsigned short)((unsigned short)(OPERATION_ADDR << OPERATION_BIT_SHIFT) | dev_addr));
+	phy_write(phydev, MMD_ACCESS_ADDR_DATA, (unsigned short)reg_addr);
+	phy_write(phydev, MMD_ACCESS_CTRL, (unsigned short)((unsigned short)(OPERATION_RW << OPERATION_BIT_SHIFT) | dev_addr) );
 	return phy_read(phydev, (u32)MMD_ACCESS_ADDR_DATA);
 }
 
-void phy_write_c22_to_c45(struct phy_device *phydev, uint16_t dev_addr, uint16_t reg_addr, uint16_t data)
+static void phy_write_c22_to_c45(struct phy_device *phydev, uint16_t dev_addr, uint16_t reg_addr, uint16_t data)
 {
-	phy_write(phydev, MMD_ACCESS_CTRL, OPERATION_ADDR + dev_addr);
-	phy_write(phydev, MMD_ACCESS_ADDR_DATA, reg_addr);
-	phy_write(phydev, MMD_ACCESS_CTRL, OPERATION_RW + dev_addr);
-	phy_write(phydev, MMD_ACCESS_ADDR_DATA, data);
+	phy_write(phydev, MMD_ACCESS_CTRL, (unsigned short)((unsigned short)OPERATION_ADDR + dev_addr) );
+	phy_write(phydev, MMD_ACCESS_ADDR_DATA, (unsigned short)reg_addr);
+	phy_write(phydev, MMD_ACCESS_CTRL, (unsigned short)((unsigned short)OPERATION_RW + dev_addr) );
+	phy_write(phydev, MMD_ACCESS_ADDR_DATA, (unsigned short)data);
 
 	return;
 }
 
-// custom code.
-// Obtain model number from a register. Useful to verify SMI connection.
-// @param phyAddr address of the PHY
-// @return constant value MRVL_Q212X_PRODUCT_ID read from a register
-/*
-uint16_t getModelNum(uint16_t phyAddr) {
-	uint16_t modelNum = phy_read_c22_to_c45(phyAddr, 1, 0x0003);
-	return ((modelNum & 0x03F0) >> 4);
-}
-
-// Obtain revision number from a register.
-// @param phyAddr address of the PHY
-// @return PHY revision MRVL_Q212X_REV
-uint16_t getRevNum(uint16_t phyAddr) {
-	uint16_t revision = phy_read_c22_to_c45(phyAddr, 1, 0x0003);
-	return revision & 0x000F;
-}
-*/
-
-// Software Reset procedure
-// @param phyAddr address of the PHY
-// @return void
-void softReset(struct phy_device *phydev){
-	uint16_t regDataAuto = phy_read_c22_to_c45(phydev, 1, 0x0000);
-	regDataAuto |= 1 << 11;
+static void softReset(struct phy_device *phydev){
+	uint16_t regDataAuto = (unsigned short)phy_read_c22_to_c45(phydev, 1, 0x0000);
+	regDataAuto |= (unsigned short)((unsigned)1 << (unsigned)11);
 	phy_write_c22_to_c45(phydev, 1, 0x0000, regDataAuto);
 	phy_write_c22_to_c45(phydev, 3, 0xFFE4, 0x000C);
 	msleep(1);
 	phy_write_c22_to_c45(phydev, 3, 0xFFE4, 0x06B6);
-	regDataAuto &= ~(1 << 11);
+	regDataAuto &= (unsigned short)(~((unsigned)1 << (unsigned)11));
 	phy_write_c22_to_c45(phydev, 1, 0x0000, regDataAuto);
 	msleep(1);
 	phy_write_c22_to_c45(phydev, 3, 0xFC47, 0x0030);
@@ -81,26 +59,28 @@ void softReset(struct phy_device *phydev){
 	phy_write_c22_to_c45(phydev, 3, 0xFFE4, 0x000C);
 }
 
-// Set Master/Slave mode of the PHY by software
-// @param phyAddr address of the PHY
-// @param forceMaster   non-zero (Master)   otherwise (Slave)
-// @return void
-void setMasterSlave(struct phy_device *phydev, bool forceMaster){
+static void setMasterSlave(struct phy_device *phydev, bool forceMaster){
 	uint16_t regData = 0;
-	regData = phy_read_c22_to_c45(phydev, 1, 0x0834);
+
+	regData = (unsigned short)phy_read_c22_to_c45(phydev, 1, 0x0834);
 	if (forceMaster){
-		regData |= 0x4000;
+		regData |= (unsigned short)0x4000;
 	}
 	else{
-		regData &= 0xBFFF;
+		regData &= (unsigned short)0xBFFF;
 	}
 		
 	phy_write_c22_to_c45(phydev, 1, 0x0834, regData);
 
-	if (forceMaster && MRVL_Q212X_LPSD_FEATURE_ENABLE){
+/*
+	if ( ((unsigned)forceMaster != (unsigned)0) ){ 
+#ifdef MRVL_Q212X_LPSD_FEATURE_ENABLE
 		phy_write_c22_to_c45(phydev, 7, 0x8032, 0x005A);
+#endif
 	}
 	else{
+	*/
+	{
 		phy_write_c22_to_c45(phydev, 7, 0x8032, 0x0064);
 	}
 	phy_write_c22_to_c45(phydev, 7, 0x8031, 0x0A01);
@@ -108,65 +88,51 @@ void setMasterSlave(struct phy_device *phydev, bool forceMaster){
 	
 }
 
-// Get current master/slave setting
-// @param phyAddr bootstrap address of the PHY
-// @return 0x1 if master, 0x0 if slave
-uint16_t getMasterSlave (struct phy_device *phydev){
-    return ( (phy_read_c22_to_c45(phydev, 7, 0x8001) >> 14) & 0x0001 );
+static uint16_t getMasterSlave (struct phy_device *phydev){
+    return (unsigned short)( (unsigned)((unsigned)phy_read_c22_to_c45(phydev, 7, 0x8001) >> (unsigned)14) & (unsigned)0x0001 );
 }
 
-// Get link status including PCS (local/remote) and local PMA to see if it's ready to send traffic
-// @param phyAddr address of the PHY
-// @return true if link is up, false otherwise
-bool checkLink(struct phy_device *phydev){
+static bool checkLink(struct phy_device *phydev){
 	uint16_t retData1, retData2 = 0;
 	phy_read_c22_to_c45(phydev, 3, 0x0901);
-	retData1 = phy_read_c22_to_c45(phydev, 3, 0x0901);
-	retData2 = phy_read_c22_to_c45(phydev, 7, 0x8001);
+	retData1 = (unsigned short)phy_read_c22_to_c45(phydev, 3, 0x0901);
+	retData2 = (unsigned short)phy_read_c22_to_c45(phydev, 7, 0x8001);
 	msleep(1);
-	return (0x0 != (retData1 & 0x0004)) && (0x0 != (retData2 & 0x3000));
+	return ((unsigned short)0x0 != ((unsigned short)retData1 & (unsigned short)0x0004)) && ((unsigned short)0x0 != ((unsigned short)retData2 & (unsigned short)0x3000));
+	// return ( ((unsigned short)0x0 != ((unsigned short)retData1 & (unsigned)0x0004)) && ((unsigned)0x0 != ((unsigned short)retData2 & (unsigned short)0x3000)) );
 }
 
-// Get real time PMA link status
-// @param phydev address of the PHY
-// @return true if link is up, false otherwise
-bool getRealTimeLinkStatus(struct phy_device *phydev){
+static bool getRealTimeLinkStatus(struct phy_device *phydev){
 	uint16_t retData = 0;
 	phy_read_c22_to_c45(phydev, 3, 0x0901);
-	retData = phy_read_c22_to_c45(phydev, 3, 0x0901);
-	return (0x0 != (retData & 0x0004));
+	retData = (unsigned short)phy_read_c22_to_c45(phydev, 3, 0x0901);
+	return ((unsigned short)0x0 != ((unsigned short)retData & (unsigned short)0x0004));
 }
 
-// Get latched link status ?find out if link was down since last time checked
-// @param phydev address of the PHY
-// @return true if link was up since last check, false otherwise
-bool getLatchedLinkStatus(struct phy_device *phydev){
-	uint16_t retData = phy_read_c22_to_c45(phydev, 7, 0x0201);
+static bool getLatchedLinkStatus(struct phy_device *phydev){
+	uint16_t retData = (unsigned short)phy_read_c22_to_c45(phydev, 7, 0x0201);
 
-	return (0x0 != (retData & 0x0004));
+	return ((unsigned short)0x0 != ((unsigned short)retData & (unsigned short)0x0004));
 	
 }
 
-// Initialize PHY
-// @param phyAddr address of the PHY
-// @return void
-void initQ212X(struct phy_device *phydev){
+static void initQ212X(struct phy_device *phydev){
 	uint16_t regData = 0;
 	unsigned int get_mas_slave;
 
 	msleep(2);
 	phy_write_c22_to_c45(phydev, 1, 0x0900, 0x4000);		
 	phy_write_c22_to_c45(phydev, 7, 0x0200, 0x0000);		
-	regData = phy_read_c22_to_c45(phydev, 1, 0x0834);
-	regData = (regData & 0xFFF0) | 0x0001;
+	regData = (unsigned short)phy_read_c22_to_c45(phydev, 1, 0x0834);
+	regData = (unsigned short)( ((unsigned short)regData & (unsigned short)0xFFF0) | (unsigned short)0x0001 );
 	
         get_mas_slave = getMasterSlave(phydev);
-        if(get_mas_slave == 0x1){ // master
-                regData &= (~(1<<14));
-                regData |= (1<<14);
+        if((unsigned)get_mas_slave == (unsigned)0x1){ // master
+                regData &= (unsigned short)(~(unsigned short)((unsigned short)1<<(unsigned short)14));
+                regData |= (unsigned short)((unsigned short)1<<(unsigned short)14);
         }
         else{ // slave
-                regData &= (~(1<<14));
+                regData &= (unsigned short)(~(unsigned short)((unsigned short)1<<(unsigned short)14));
         }
 
 	phy_write_c22_to_c45(phydev, 1, 0x0834, regData);		
@@ -259,31 +225,28 @@ static int q2110_config_init(struct phy_device *phydev)
 	initQ212X(phydev);
 
 	printk("phy id before: %08x\n", phydev->phy_id);
-	phydev->phy_id = phy_read_c22_to_c45(phydev, 1, 0x0003);
+	phydev->phy_id = (unsigned int)phy_read_c22_to_c45(phydev, 1, 0x0003);
 
 	printk("q2110 phy master(1)/slave(0) : %x\n", getMasterSlave(phydev));
 	printk("phy id : %08x\n", phydev->phy_id);
 
-	// Change RGMII Transmit Timing Control value
-	// phy_write_c22_to_c45(phydev, 0x31, 0x8001, (0x1 << 14));	
-	// phy_write_c22_to_c45(phydev, 0x31, 0x8000, (0x1 << 15));
 
 	return 0;
 }
 
-int q2110_read_status(struct phy_device *phydev)
+static int q2110_read_status(struct phy_device *phydev)
 {
 	int err;
 	int ret;
 
 	/* Update the link, but return if there
 	 * was an error */
-	phydev->link = getLatchedLinkStatus(phydev);
+	phydev->link = (int)getLatchedLinkStatus(phydev);
 	phydev->speed = SPEED_1000;
 	// phydev->speed = SPEED_100;
 	phydev->duplex = DUPLEX_FULL;
 	
-	if(phydev->link)
+	if((unsigned)phydev->link != (unsigned)0 )
 		phydev->state = PHY_RUNNING;
 	else
 		phydev->state = PHY_NOLINK;
@@ -294,13 +257,13 @@ int q2110_read_status(struct phy_device *phydev)
 }
 
 
-int q2110_setAnegGe(struct phy_device *phydev){
+static int q2110_setAnegGe(struct phy_device *phydev){
 
         uint16_t regDataAuto = 0;
 
         // q2110_init_A0Ge(phydev);
 
-        regDataAuto = phy_read_c22_to_c45(phydev, 7, 0x0202);
+        regDataAuto = (unsigned short)phy_read_c22_to_c45(phydev, 7, 0x0202);
 
         phy_write_c22_to_c45(phydev, 7, 0x8032, 0x0200);
         phy_write_c22_to_c45(phydev, 7, 0x8031, 0x0a03);
@@ -325,12 +288,12 @@ static int q2110_aneg_done(struct phy_device *phydev)
 	return 0;
 }
 
-static struct phy_driver q2110_driver[] = {
+static struct phy_driver q2110_driver[1] = {
 	{
 	.phy_id			= 0x00000980,	// OUI + Model Number + Revision Number
 	.phy_id_mask	= 0x00000000,	// Uncertain Revision Number
 	.name			= "Marvell Q2110",
-	.features		= SUPPORTED_100baseT_Full | SUPPORTED_1000baseT_Full | SUPPORTED_MII,
+	.features		= (unsigned int)SUPPORTED_100baseT_Full | (unsigned int)SUPPORTED_1000baseT_Full | (unsigned int)SUPPORTED_MII,
 	.flags			= PHY_POLL,
 	.config_init	= &q2110_config_init,
 	.read_status	= &q2110_read_status,

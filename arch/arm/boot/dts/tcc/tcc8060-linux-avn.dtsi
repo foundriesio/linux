@@ -680,11 +680,6 @@
 		status = "okay";
 	};
 
-	tcckey@16050000 {
-	    compatible = "telechips,tcckey";
-	    status = "okay";
-	};
-
 	vout_drv@0 {
 		status = "okay";
 	};

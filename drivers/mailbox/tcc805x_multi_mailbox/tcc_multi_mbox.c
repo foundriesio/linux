@@ -798,7 +798,7 @@ static int tcc_multich_mbox_startup(struct mbox_chan *chan)
 			if(of_property_read_string(cl->dev->of_node,"mbox-id", &mbox_id_ptr) == 0)
 			{
 				d1printk(mdev,mdev->mbox.dev,"mbox id is %s\n", mbox_id_ptr);
-				mbox_id_len = strlen(mbox_id_ptr);
+				mbox_id_len = strnlen(mbox_id_ptr, (MBOX_ID_MAX_LEN+1));
 				if(mbox_id_len > (MBOX_ID_MAX_LEN))
 				{
 					eprintk(mdev->mbox.dev,"mbox id(%s) is too long. Max len is %d\n", mbox_id_ptr, MBOX_ID_MAX_LEN);

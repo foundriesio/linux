@@ -20,6 +20,7 @@
 
 //#include "ds90ub964.h"
 #include "max9286.h"
+#include "max9286_isp.h"
 #include "max96712.h"
 
 #endif//MIPI_DESERIALIZER_H

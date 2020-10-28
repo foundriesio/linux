@@ -7,6 +7,7 @@
 
 #define pr_fmt(fmt)	"[tcc_clk] " fmt
 
+#include <linux/kernel.h>
 #include <linux/version.h>
 #include <linux/clkdev.h>
 #include <linux/clk.h>
@@ -28,7 +29,7 @@
 struct tcc_clk {
 	struct clk_hw hw;
 	const struct clk_ops *ops;
-	int id;
+	unsigned int id;
 	struct list_head list;
 };
 
@@ -47,11 +48,19 @@ static struct tcc_ckc_ops *ckc_ops;
 static int tcc_debugfs_clk_enable_show(void *data, u64 *val)
 {
 	struct tcc_clk *tcc = (struct tcc_clk *) data;
+	int en_ret;
 
-	if (!tcc->ops->is_enabled)
+	if (tcc->ops->is_enabled == NULL)
 		return -ENOENT;
 
-	*val = tcc->ops->is_enabled(&tcc->hw);
+	en_ret = tcc->ops->is_enabled(&tcc->hw);
+
+	if (en_ret < 0) {
+		clk_err(".is_enable() operation error.\n");
+		return -EINVAL;
+	}
+
+	*val = (u64)en_ret;
 	return 0;
 }
 static int tcc_debugfs_clk_enable_store(void *data, u64 val)
@@ -59,7 +68,7 @@ static int tcc_debugfs_clk_enable_store(void *data, u64 val)
 	struct tcc_clk *tcc = (struct tcc_clk *) data;
 	int ret = 0;
 
-	if (val == 0)
+	if (val == (u64)0)
 		clk_disable_unprepare(tcc->hw.clk);
 	else
 		ret = clk_prepare_enable(tcc->hw.clk);
@@ -72,9 +81,10 @@ DEFINE_DEBUGFS_ATTRIBUTE(tcc_clk_enable_fops, tcc_debugfs_clk_enable_show,
 static int tcc_clk_debug_init(struct clk_hw *hw, struct dentry *dentry)
 {
 #ifdef CONFIG_DEBUG_FS
-	struct tcc_clk *tcc = to_tcc_clk(hw);
+	struct tcc_clk *tcc = to_tcc_clk((hw));
+	char clk_en_str[]= "clk_enable";
 
-	clk_debugfs_add_file(hw, "clk_enable", 0444, tcc,
+	clk_debugfs_add_file(hw, clk_en_str, 0444, tcc,
 			&tcc_clk_enable_fops);
 	return 0;
 #else
@@ -86,37 +96,37 @@ static struct clk *tcc_onecell_get(struct of_phandle_args *clkspec, void *data)
 {
 	struct clk_onecell_data *clk_data = data;
 	unsigned int idx = clkspec->args[0];
-	int i;
+	unsigned int i;
 
 	for (i = 0; i < clk_data->clk_num; i++) {
 		struct clk *clk = clk_data->clks[i];
-		struct tcc_clk *tcc_clk;
+		struct tcc_clk *tcc_clk_ptr;
 
-		tcc_clk = to_tcc_clk(__clk_get_hw(clk));
-		if (idx == tcc_clk->id)
+		tcc_clk_ptr = to_tcc_clk((__clk_get_hw(clk)));
+		if (idx == tcc_clk_ptr->id)
 			return clk;
 	}
 	return NULL;
 }
 
-static int tcc_clk_register(struct device_node *np, const struct clk_ops *ops)
+static long tcc_clk_register(struct device_node *np, const struct clk_ops *ops)
 {
 	struct clk_onecell_data *clk_data;
-	struct tcc_clk *tcc_clk;
+	struct tcc_clk *tcc_clk_ptr;
 	struct clk *clk;
-	int num_clks;
-	int ret = 0;
-	int i;
+	unsigned long num_clks;
+	long ret = 0;
+	unsigned int i;
 
-	num_clks = of_property_count_strings(np, "clock-output-names");
+	num_clks = (unsigned long)of_property_count_strings(np, "clock-output-names");
 	pr_debug("%pOFfp: %s: # of clks = %d\n", np, __func__, num_clks);
 
 	clk_data = kzalloc(sizeof(struct clk_onecell_data), GFP_KERNEL);
-	if (!clk_data)
+	if (clk_data == NULL)
 		return -ENOMEM;
 
 	clk_data->clks = kcalloc(num_clks, sizeof(struct clk *), GFP_KERNEL);
-	if (!clk_data->clks) {
+	if ((clk_data->clks) == NULL) {
 		kfree(clk_data);
 		return -ENOMEM;
 	}
@@ -125,23 +135,23 @@ static int tcc_clk_register(struct device_node *np, const struct clk_ops *ops)
 		struct clk_init_data init = { };
 		const char **parent_names;
 		const char *clk_name;
-		u32 index;
-		u32 flags = 0;
+		unsigned int index;
+		unsigned int flags = 0;
 
-		tcc_clk = kzalloc(sizeof(tcc_clk), GFP_KERNEL);
-		if (!tcc_clk) {
-			ret = PTR_ERR(tcc_clk);
+		tcc_clk_ptr = kzalloc(sizeof(struct tcc_clk), GFP_KERNEL);
+		if (tcc_clk_ptr == NULL) {
+			ret = PTR_ERR(tcc_clk_ptr);
 			goto err;
 		}
 
 		ret = of_property_read_string_index(np, "clock-output-names",
-					i, &clk_name);
-		if (ret)
+					(int)i, &clk_name);
+		if (ret != 0)
 			goto err;
 
 		ret = of_property_read_u32_index(np, "clock-indices",
 					i, &index);
-		if (ret)
+		if (ret != 0)
 			index = i;
 
 		/* Optional properties for the clock flags */
@@ -149,7 +159,7 @@ static int tcc_clk_register(struct device_node *np, const struct clk_ops *ops)
 				i, &flags);
 
 		init.name = clk_name;
-		init.num_parents = of_clk_get_parent_count(np);
+		init.num_parents = (u8)of_clk_get_parent_count(np);
 		parent_names = kcalloc(init.num_parents, sizeof(char *),
 				GFP_KERNEL);
 		of_clk_parent_fill(np, parent_names, init.num_parents);
@@ -160,28 +170,28 @@ static int tcc_clk_register(struct device_node *np, const struct clk_ops *ops)
 		init.flags |= CLK_IGNORE_UNUSED;
 #endif
 		init.ops = ops;
-		tcc_clk->hw.init = &init;
-		tcc_clk->ops = ops;
-		tcc_clk->id = index;
+		tcc_clk_ptr->hw.init = &init;
+		tcc_clk_ptr->ops = ops;
+		tcc_clk_ptr->id = index;
 
-		clk = clk_register(NULL, &tcc_clk->hw);
+		clk = clk_register(NULL, &tcc_clk_ptr->hw);
 		if (IS_ERR_OR_NULL(clk)) {
 			clk_err("failed to register clk '%s' (%ld)\n", clk_name,
 				PTR_ERR(clk));
-			kfree(tcc_clk);
+			kfree(tcc_clk_ptr);
 			continue;
 		}
 		ret = clk_register_clkdev(clk, clk_name, NULL);
-		if (ret) {
+		if (ret != 0) {
 			clk_err("failed to register clkdev '%s' (%d)\n",
 					clk_name, ret);
 			clk_unregister(clk);
-			kfree(tcc_clk);
+			kfree(tcc_clk_ptr);
 			continue;
 		}
 		clk_data->clks[i] = clk;
 
-		list_add_tail(&tcc_clk->list, &tcc_clk_list);
+		list_add_tail(&(tcc_clk_ptr->list), &tcc_clk_list);
 
 		pr_debug("%pOFfp: '%s' registered (index=%d)\n", np, clk_name,
 			 index);
@@ -212,24 +222,24 @@ void tcc_ckc_set_ops(struct tcc_ckc_ops *ops)
 static long tcc_round_rate(struct clk_hw *hw, unsigned long rate,
 			   unsigned long *best_parent_rate)
 {
-	return rate;
+	return (long)rate;
 }
 
 
 static int tcc_clkctrl_enable(struct clk_hw *hw)
 {
 	struct arm_smccc_res res;
-	struct tcc_clk *tcc = to_tcc_clk(hw);
+	struct tcc_clk *tcc = to_tcc_clk((hw));
 
 	if (ckc_ops != NULL) {
-		if (ckc_ops->ckc_pmu_pwdn)
+		if ((ckc_ops->ckc_pmu_pwdn) != NULL)
 			ckc_ops->ckc_pmu_pwdn(tcc->id, false);
-		if (ckc_ops->ckc_swreset)
+		if ((ckc_ops->ckc_swreset) != NULL)
 			ckc_ops->ckc_swreset(tcc->id, false);
-		if (ckc_ops->ckc_clkctrl_enable)
+		if ((ckc_ops->ckc_clkctrl_enable) != NULL)
 			ckc_ops->ckc_clkctrl_enable(tcc->id);
 	} else {
-		arm_smccc_smc(SIP_CLK_ENABLE_CLKCTRL, tcc->id, 0, 0, 0, 0, 0, 0,
+		arm_smccc_smc((unsigned long)SIP_CLK_ENABLE_CLKCTRL, tcc->id, 0, 0, 0, 0, 0, 0,
 			      &res);
 	}
 
@@ -240,17 +250,17 @@ static int tcc_clkctrl_enable(struct clk_hw *hw)
 static void tcc_clkctrl_disable(struct clk_hw *hw)
 {
 	struct arm_smccc_res res;
-	struct tcc_clk *tcc = to_tcc_clk(hw);
+	struct tcc_clk *tcc = to_tcc_clk((hw));
 
 	if (ckc_ops != NULL) {
-		if (ckc_ops->ckc_clkctrl_disable)
+		if ((ckc_ops->ckc_clkctrl_disable) != NULL)
 			ckc_ops->ckc_clkctrl_disable(tcc->id);
-		if (ckc_ops->ckc_swreset)
+		if ((ckc_ops->ckc_swreset) != NULL)
 			ckc_ops->ckc_swreset(tcc->id, true);
-		if (ckc_ops->ckc_pmu_pwdn)
+		if ((ckc_ops->ckc_pmu_pwdn) != NULL)
 			ckc_ops->ckc_pmu_pwdn(tcc->id, true);
 	} else {
-		arm_smccc_smc(SIP_CLK_DISABLE_CLKCTRL, tcc->id, 0, 0, 0, 0, 0,
+		arm_smccc_smc((unsigned long)SIP_CLK_DISABLE_CLKCTRL, tcc->id, 0, 0, 0, 0, 0,
 			      0, &res);
 	}
 }
@@ -261,13 +271,13 @@ static unsigned long tcc_clkctrl_recalc_rate(struct clk_hw *hw,
 {
 	struct arm_smccc_res res;
 	unsigned long rate = 0;
-	struct tcc_clk *tcc = to_tcc_clk(hw);
+	struct tcc_clk *tcc = to_tcc_clk((hw));
 
 	if (ckc_ops != NULL) {
-		if (ckc_ops->ckc_clkctrl_get_rate)
+		if ((ckc_ops->ckc_clkctrl_get_rate) != NULL)
 			rate = ckc_ops->ckc_clkctrl_get_rate(tcc->id);
 	} else {
-		arm_smccc_smc(SIP_CLK_GET_CLKCTRL, tcc->id, 0, 0, 0, 0, 0, 0,
+		arm_smccc_smc((unsigned long)SIP_CLK_GET_CLKCTRL, tcc->id, 0, 0, 0, 0, 0, 0,
 			      &res);
 		rate = res.a0;
 	}
@@ -278,13 +288,13 @@ static int tcc_clkctrl_set_rate(struct clk_hw *hw, unsigned long rate,
 				unsigned long parent_rate)
 {
 	struct arm_smccc_res res;
-	struct tcc_clk *tcc = to_tcc_clk(hw);
+	struct tcc_clk *tcc = to_tcc_clk((hw));
 
 	if (ckc_ops != NULL) {
-		if (ckc_ops->ckc_clkctrl_set_rate)
+		if ((ckc_ops->ckc_clkctrl_set_rate) != NULL)
 			ckc_ops->ckc_clkctrl_set_rate(tcc->id, rate);
 	} else {
-		arm_smccc_smc(SIP_CLK_SET_CLKCTRL, tcc->id, 1, rate, 0, 0, 0, 0,
+		arm_smccc_smc((unsigned long)SIP_CLK_SET_CLKCTRL, tcc->id, 1, rate, 0, 0, 0, 0,
 			      &res);
 	}
 
@@ -294,15 +304,15 @@ static int tcc_clkctrl_set_rate(struct clk_hw *hw, unsigned long rate,
 static int tcc_clkctrl_is_enabled(struct clk_hw *hw)
 {
 	struct arm_smccc_res res;
-	struct tcc_clk *tcc = to_tcc_clk(hw);
+	struct tcc_clk *tcc = to_tcc_clk((hw));
 
 	if (ckc_ops != NULL) {
-		if (ckc_ops->ckc_is_clkctrl_enabled)
-			return ckc_ops->ckc_is_clkctrl_enabled(tcc->id) ? 1 : 0;
+		if ((ckc_ops->ckc_is_clkctrl_enabled) != NULL)
+			return (ckc_ops->ckc_is_clkctrl_enabled(tcc->id) != 0) ? 1 : 0;
 	} else {
-		arm_smccc_smc(SIP_CLK_IS_CLKCTRL, tcc->id, 0, 0, 0, 0, 0, 0,
+		arm_smccc_smc((unsigned long)SIP_CLK_IS_CLKCTRL, tcc->id, 0, 0, 0, 0, 0, 0,
 			      &res);
-		return res.a0;
+		return (int)res.a0;
 	}
 
 	return 0;
@@ -330,13 +340,13 @@ CLK_OF_DECLARE(tcc_clk_fbus, "telechips,clk-fbus", tcc_fbus_init);
 static int tcc_peri_enable(struct clk_hw *hw)
 {
 	struct arm_smccc_res res;
-	struct tcc_clk *tcc = to_tcc_clk(hw);
+	struct tcc_clk *tcc = to_tcc_clk((hw));
 
 	if (ckc_ops != NULL) {
-		if (ckc_ops->ckc_peri_enable)
+		if ((ckc_ops->ckc_peri_enable) != NULL)
 			ckc_ops->ckc_peri_enable(tcc->id);
 	} else {
-		arm_smccc_smc(SIP_CLK_ENABLE_PERI, tcc->id, 0, 0, 0, 0, 0, 0,
+		arm_smccc_smc((unsigned long)SIP_CLK_ENABLE_PERI, tcc->id, 0, 0, 0, 0, 0, 0,
 			      &res);
 	}
 	return 0;
@@ -345,13 +355,13 @@ static int tcc_peri_enable(struct clk_hw *hw)
 static void tcc_peri_disable(struct clk_hw *hw)
 {
 	struct arm_smccc_res res;
-	struct tcc_clk *tcc = to_tcc_clk(hw);
+	struct tcc_clk *tcc = to_tcc_clk((hw));
 
 	if (ckc_ops != NULL) {
-		if (ckc_ops->ckc_peri_disable)
+		if ((ckc_ops->ckc_peri_disable) != NULL)
 			ckc_ops->ckc_peri_disable(tcc->id);
 	} else {
-		arm_smccc_smc(SIP_CLK_DISABLE_PERI, tcc->id, 0, 0, 0, 0, 0, 0,
+		arm_smccc_smc((unsigned long)SIP_CLK_DISABLE_PERI, tcc->id, 0, 0, 0, 0, 0, 0,
 			      &res);
 	}
 }
@@ -361,13 +371,13 @@ static unsigned long tcc_peri_recalc_rate(struct clk_hw *hw,
 {
 	struct arm_smccc_res res;
 	unsigned long rate = 0;
-	struct tcc_clk *tcc = to_tcc_clk(hw);
+	struct tcc_clk *tcc = to_tcc_clk((hw));
 
 	if (ckc_ops != NULL) {
-		if (ckc_ops->ckc_peri_get_rate)
+		if ((ckc_ops->ckc_peri_get_rate) != NULL)
 			rate = ckc_ops->ckc_peri_get_rate(tcc->id);
 	} else {
-		arm_smccc_smc(SIP_CLK_GET_PCLKCTRL, tcc->id, 0, 0, 0, 0, 0, 0,
+		arm_smccc_smc((unsigned long)SIP_CLK_GET_PCLKCTRL, tcc->id, 0, 0, 0, 0, 0, 0,
 			      &res);
 		return res.a0;
 	}
@@ -378,25 +388,25 @@ static int tcc_peri_set_rate(struct clk_hw *hw, unsigned long rate,
 			     unsigned long parent_rate)
 {
 	struct arm_smccc_res res;
-	struct tcc_clk *tcc = to_tcc_clk(hw);
+	struct tcc_clk *tcc = to_tcc_clk((hw));
 	unsigned long flags = __clk_get_flags(hw->clk);
 	unsigned long vflags = 0;
 
 	if (ckc_ops != NULL) {
-		if (ckc_ops->ckc_peri_set_rate)
+		if ((ckc_ops->ckc_peri_set_rate) != NULL)
 			ckc_ops->ckc_peri_set_rate(tcc->id, rate);
 	} else {
 		/* We care only about vendor-specific flags */
-		if (flags & CLK_F_FIXED)
+		if ((flags & CLK_F_FIXED) != 0UL)
 			vflags |= (flags & (CLK_F_SRC_CLK_MASK <<
 				  CLK_F_SRC_CLK_SHIFT))	>> CLK_F_SRC_CLK_SHIFT;
-		if (flags & CLK_F_DCO_MODE)
+		if ((flags & CLK_F_DCO_MODE) != 0UL)
 			vflags |= CLK_F_DCO_MODE;
-		if (flags & CLK_F_SKIP_SSCG)
+		if ((flags & CLK_F_SKIP_SSCG) != 0UL)
 			vflags |= CLK_F_SKIP_SSCG;
-		if (flags & CLK_F_DIV_MODE)
+		if ((flags & CLK_F_DIV_MODE) != 0UL)
 			vflags |= CLK_F_DIV_MODE;
-		arm_smccc_smc(SIP_CLK_SET_PCLKCTRL, tcc->id, 1, rate, vflags,
+		arm_smccc_smc((unsigned long)SIP_CLK_SET_PCLKCTRL, tcc->id, 1UL, rate, vflags,
 				0, 0, 0, &res);
 	}
 	return 0;
@@ -405,14 +415,14 @@ static int tcc_peri_set_rate(struct clk_hw *hw, unsigned long rate,
 static int tcc_peri_is_enabled(struct clk_hw *hw)
 {
 	struct arm_smccc_res res;
-	struct tcc_clk *tcc = to_tcc_clk(hw);
+	struct tcc_clk *tcc = to_tcc_clk((hw));
 
 	if (ckc_ops != NULL) {
-		if (ckc_ops->ckc_is_peri_enabled)
-			return ckc_ops->ckc_is_peri_enabled(tcc->id) ? 1 : 0;
+		if ((ckc_ops->ckc_is_peri_enabled) != NULL)
+			return (ckc_ops->ckc_is_peri_enabled(tcc->id) != 0) ? 1 : 0;
 	} else {
-		arm_smccc_smc(SIP_CLK_IS_PERI, tcc->id, 0, 0, 0, 0, 0, 0, &res);
-		return res.a0;
+		arm_smccc_smc((unsigned long)SIP_CLK_IS_PERI, tcc->id, 0, 0, 0, 0, 0, 0, &res);
+		return (int)res.a0;
 	}
 	return 0;
 }
@@ -426,7 +436,7 @@ static int debugfs_peri_clk_src_get(void *data, u64 *val)
 	if (ckc_ops != NULL) {
 		// TODO
 	} else {
-		arm_smccc_smc(SIP_CLK_GET_PCLKCTRL, tcc->id, 0, 0, 0, 0, 0, 0,
+		arm_smccc_smc((unsigned long)SIP_CLK_GET_PCLKCTRL, tcc->id, 0, 0, 0, 0, 0, 0,
 				&res);
 		*val = res.a1;
 	}
@@ -443,7 +453,7 @@ static int debugfs_peri_clk_div_get(void *data, u64 *val)
 	if (ckc_ops != NULL) {
 		// TODO
 	} else {
-		arm_smccc_smc(SIP_CLK_GET_PCLKCTRL, tcc->id, 0, 0, 0, 0, 0, 0,
+		arm_smccc_smc((unsigned long)SIP_CLK_GET_PCLKCTRL, tcc->id, 0, 0, 0, 0, 0, 0,
 				&res);
 		*val = res.a2;
 	}
@@ -456,11 +466,13 @@ DEFINE_DEBUGFS_ATTRIBUTE(tcc_peri_clk_div_fops, debugfs_peri_clk_div_get,
 static int tcc_peri_debug_init(struct clk_hw *hw, struct dentry *dentry)
 {
 #ifdef CONFIG_DEBUG_FS
-	struct tcc_clk *tcc = to_tcc_clk(hw);
+	struct tcc_clk *tcc = to_tcc_clk((hw));
+	char clk_src_str[] = "clk_src";
+	char clk_div_str[] = "clk_div";
 
-	clk_debugfs_add_file(hw, "clk_src", 0444, tcc,
+	clk_debugfs_add_file(hw, clk_src_str, 0444, tcc,
 			&tcc_peri_clk_src_fops);
-	clk_debugfs_add_file(hw, "clk_div", 0444, tcc,
+	clk_debugfs_add_file(hw, clk_div_str, 0444, tcc,
 			&tcc_peri_clk_div_fops);
 
 	return tcc_clk_debug_init(hw, dentry);
@@ -490,13 +502,13 @@ CLK_OF_DECLARE(tcc_clk_peri, "telechips,clk-peri", tcc_peri_init);
 static int tcc_isoip_top_enable(struct clk_hw *hw)
 {
 	struct arm_smccc_res res;
-	struct tcc_clk *tcc = to_tcc_clk(hw);
+	struct tcc_clk *tcc = to_tcc_clk((hw));
 
 	if (ckc_ops != NULL) {
-		if (ckc_ops->ckc_isoip_top_pwdn)
+		if ((ckc_ops->ckc_isoip_top_pwdn) != NULL)
 			ckc_ops->ckc_isoip_top_pwdn(tcc->id, false);
 	} else {
-		arm_smccc_smc(SIP_CLK_ENABLE_ISOTOP, tcc->id, 0, 0, 0, 0, 0, 0,
+		arm_smccc_smc((unsigned long)SIP_CLK_ENABLE_ISOTOP, tcc->id, 0, 0, 0, 0, 0, 0,
 			      &res);
 	}
 
@@ -507,13 +519,13 @@ static int tcc_isoip_top_enable(struct clk_hw *hw)
 static void tcc_isoip_top_disable(struct clk_hw *hw)
 {
 	struct arm_smccc_res res;
-	struct tcc_clk *tcc = to_tcc_clk(hw);
+	struct tcc_clk *tcc = to_tcc_clk((hw));
 
 	if (ckc_ops != NULL) {
-		if (ckc_ops->ckc_isoip_top_pwdn)
+		if ((ckc_ops->ckc_isoip_top_pwdn) != NULL)
 			ckc_ops->ckc_isoip_top_pwdn(tcc->id, true);
 	} else {
-		arm_smccc_smc(SIP_CLK_DISABLE_ISOTOP, tcc->id, 0, 0, 0, 0, 0, 0,
+		arm_smccc_smc((unsigned long)SIP_CLK_DISABLE_ISOTOP, tcc->id, 0, 0, 0, 0, 0, 0,
 			      &res);
 	}
 }
@@ -522,15 +534,15 @@ static void tcc_isoip_top_disable(struct clk_hw *hw)
 static int tcc_isoip_top_is_enabled(struct clk_hw *hw)
 {
 	struct arm_smccc_res res;
-	struct tcc_clk *tcc = to_tcc_clk(hw);
+	struct tcc_clk *tcc = to_tcc_clk((hw));
 
 	if (ckc_ops != NULL) {
-		if (ckc_ops->ckc_is_isoip_top_pwdn)
-			return ckc_ops->ckc_is_isoip_top_pwdn(tcc->id) ? 0 : 1;
+		if ((ckc_ops->ckc_is_isoip_top_pwdn) != NULL)
+			return (ckc_ops->ckc_is_isoip_top_pwdn(tcc->id) != 0) ? 0 : 1;
 	} else {
-		arm_smccc_smc(SIP_CLK_IS_ISOTOP, tcc->id, 0, 0, 0, 0, 0, 0,
+		arm_smccc_smc((unsigned long)SIP_CLK_IS_ISOTOP, tcc->id, 0, 0, 0, 0, 0, 0,
 			      &res);
-		return (res.a0 == 1) ? 0 : 1;
+		return (res.a0 == (unsigned long)1) ? 0 : 1;
 	}
 	return 0;
 }
@@ -554,13 +566,13 @@ CLK_OF_DECLARE(tcc_clk_isoip_top, "telechips,clk-isoip_top",
 static int tcc_isoip_ddi_enable(struct clk_hw *hw)
 {
 	struct arm_smccc_res res;
-	struct tcc_clk *tcc = to_tcc_clk(hw);
+	struct tcc_clk *tcc = to_tcc_clk((hw));
 
 	if (ckc_ops != NULL) {
-		if (ckc_ops->ckc_isoip_ddi_pwdn)
+		if ((ckc_ops->ckc_isoip_ddi_pwdn) != NULL)
 			ckc_ops->ckc_isoip_ddi_pwdn(tcc->id, false);
 	} else {
-		arm_smccc_smc(SIP_CLK_ENABLE_ISODDI, tcc->id, 0, 0, 0, 0, 0, 0,
+		arm_smccc_smc((unsigned long)SIP_CLK_ENABLE_ISODDI, tcc->id, 0, 0, 0, 0, 0, 0,
 			      &res);
 	}
 
@@ -571,13 +583,13 @@ static int tcc_isoip_ddi_enable(struct clk_hw *hw)
 static void tcc_isoip_ddi_disable(struct clk_hw *hw)
 {
 	struct arm_smccc_res res;
-	struct tcc_clk *tcc = to_tcc_clk(hw);
+	struct tcc_clk *tcc = to_tcc_clk((hw));
 
 	if (ckc_ops != NULL) {
-		if (ckc_ops->ckc_isoip_ddi_pwdn)
+		if ((ckc_ops->ckc_isoip_ddi_pwdn) != NULL)
 			ckc_ops->ckc_isoip_ddi_pwdn(tcc->id, true);
 	} else {
-		arm_smccc_smc(SIP_CLK_DISABLE_ISODDI, tcc->id, 0, 0, 0, 0, 0, 0,
+		arm_smccc_smc((unsigned long)SIP_CLK_DISABLE_ISODDI, tcc->id, 0, 0, 0, 0, 0, 0,
 			      &res);
 	}
 }
@@ -586,15 +598,15 @@ static void tcc_isoip_ddi_disable(struct clk_hw *hw)
 static int tcc_isoip_ddi_is_enabled(struct clk_hw *hw)
 {
 	struct arm_smccc_res res;
-	struct tcc_clk *tcc = to_tcc_clk(hw);
+	struct tcc_clk *tcc = to_tcc_clk((hw));
 
 	if (ckc_ops != NULL) {
-		if (ckc_ops->ckc_is_isoip_ddi_pwdn)
-			return ckc_ops->ckc_is_isoip_ddi_pwdn(tcc->id) ? 0 : 1;
+		if ((ckc_ops->ckc_is_isoip_ddi_pwdn) != NULL)
+			return (ckc_ops->ckc_is_isoip_ddi_pwdn(tcc->id) != 0) ? 0 : 1;
 	} else {
-		arm_smccc_smc(SIP_CLK_IS_ISODDI, tcc->id, 0, 0, 0, 0, 0, 0,
+		arm_smccc_smc((unsigned long)SIP_CLK_IS_ISODDI, tcc->id, 0, 0, 0, 0, 0, 0,
 			      &res);
-		return (res.a0 == 1) ? 0 : 1;
+		return (res.a0 == (unsigned long)1) ? 0 : 1;
 	}
 
 	return 0;
@@ -619,15 +631,15 @@ CLK_OF_DECLARE(tcc_clk_isoip_ddi, "telechips,clk-isoip_ddi",
 static int tcc_ddibus_enable(struct clk_hw *hw)
 {
 	struct arm_smccc_res res;
-	struct tcc_clk *tcc = to_tcc_clk(hw);
+	struct tcc_clk *tcc = to_tcc_clk((hw));
 
 	if (ckc_ops != NULL) {
-		if (ckc_ops->ckc_ddibus_pwdn)
+		if ((ckc_ops->ckc_ddibus_pwdn) != NULL)
 			ckc_ops->ckc_ddibus_pwdn(tcc->id, false);
-		if (ckc_ops->ckc_ddibus_swreset)
+		if ((ckc_ops->ckc_ddibus_swreset) != NULL)
 			ckc_ops->ckc_ddibus_swreset(tcc->id, false);
 	} else {
-		arm_smccc_smc(SIP_CLK_ENABLE_DDIBUS, tcc->id, 0, 0, 0, 0, 0, 0,
+		arm_smccc_smc((unsigned long)SIP_CLK_ENABLE_DDIBUS, tcc->id, 0, 0, 0, 0, 0, 0,
 			      &res);
 	}
 	return 0;
@@ -636,15 +648,15 @@ static int tcc_ddibus_enable(struct clk_hw *hw)
 static void tcc_ddibus_disable(struct clk_hw *hw)
 {
 	struct arm_smccc_res res;
-	struct tcc_clk *tcc = to_tcc_clk(hw);
+	struct tcc_clk *tcc = to_tcc_clk((hw));
 
 	if (ckc_ops != NULL) {
-		if (ckc_ops->ckc_ddibus_swreset)
+		if ((ckc_ops->ckc_ddibus_swreset) != NULL)
 			ckc_ops->ckc_ddibus_swreset(tcc->id, true);
-		if (ckc_ops->ckc_ddibus_pwdn)
+		if ((ckc_ops->ckc_ddibus_pwdn) != NULL)
 			ckc_ops->ckc_ddibus_pwdn(tcc->id, true);
 	} else {
-		arm_smccc_smc(SIP_CLK_DISABLE_DDIBUS, tcc->id, 0, 0, 0, 0, 0, 0,
+		arm_smccc_smc((unsigned long)SIP_CLK_DISABLE_DDIBUS, tcc->id, 0, 0, 0, 0, 0, 0,
 			      &res);
 	}
 }
@@ -652,15 +664,15 @@ static void tcc_ddibus_disable(struct clk_hw *hw)
 static int tcc_ddibus_is_enabled(struct clk_hw *hw)
 {
 	struct arm_smccc_res res;
-	struct tcc_clk *tcc = to_tcc_clk(hw);
+	struct tcc_clk *tcc = to_tcc_clk((hw));
 
 	if (ckc_ops != NULL) {
-		if (ckc_ops->ckc_is_ddibus_pwdn)
-			return ckc_ops->ckc_is_ddibus_pwdn(tcc->id) ? 0 : 1;
+		if ((ckc_ops->ckc_is_ddibus_pwdn) != NULL)
+			return (ckc_ops->ckc_is_ddibus_pwdn(tcc->id) != 0)? 0 : 1;
 	} else {
-		arm_smccc_smc(SIP_CLK_IS_DDIBUS, tcc->id, 0, 0, 0, 0, 0, 0,
+		arm_smccc_smc((unsigned long)SIP_CLK_IS_DDIBUS, tcc->id, 0, 0, 0, 0, 0, 0,
 			      &res);
-		return (res.a0 == 1) ? 0 : 1;
+		return (res.a0 == (unsigned long)1) ? 0 : 1;
 	}
 
 	return 0;
@@ -682,15 +694,15 @@ CLK_OF_DECLARE(tcc_clk_ddibus, "telechips,clk-ddibus", tcc_ddibus_init);
 static int tcc_iobus_enable(struct clk_hw *hw)
 {
 	struct arm_smccc_res res;
-	struct tcc_clk *tcc = to_tcc_clk(hw);
+	struct tcc_clk *tcc = to_tcc_clk((hw));
 
 	if (ckc_ops != NULL) {
-		if (ckc_ops->ckc_iobus_pwdn)
+		if ((ckc_ops->ckc_iobus_pwdn) != NULL)
 			ckc_ops->ckc_iobus_pwdn(tcc->id, false);
-		if (ckc_ops->ckc_iobus_swreset)
+		if ((ckc_ops->ckc_iobus_swreset) != NULL)
 			ckc_ops->ckc_iobus_swreset(tcc->id, false);
 	} else {
-		arm_smccc_smc(SIP_CLK_ENABLE_IOBUS, tcc->id, 0, 0, 0, 0, 0, 0,
+		arm_smccc_smc((unsigned long)SIP_CLK_ENABLE_IOBUS, tcc->id, 0, 0, 0, 0, 0, 0,
 			      &res);
 	}
 
@@ -700,15 +712,15 @@ static int tcc_iobus_enable(struct clk_hw *hw)
 static void tcc_iobus_disable(struct clk_hw *hw)
 {
 	struct arm_smccc_res res;
-	struct tcc_clk *tcc = to_tcc_clk(hw);
+	struct tcc_clk *tcc = to_tcc_clk((hw));
 
 	if (ckc_ops != NULL) {
-		if (ckc_ops->ckc_iobus_swreset)
+		if ((ckc_ops->ckc_iobus_swreset) != NULL)
 			ckc_ops->ckc_iobus_swreset(tcc->id, true);
-		if (ckc_ops->ckc_iobus_pwdn)
+		if ((ckc_ops->ckc_iobus_pwdn) != NULL)
 			ckc_ops->ckc_iobus_pwdn(tcc->id, true);
 	} else {
-		arm_smccc_smc(SIP_CLK_DISABLE_IOBUS, tcc->id, 0, 0, 0, 0, 0, 0,
+		arm_smccc_smc((unsigned long)SIP_CLK_DISABLE_IOBUS, tcc->id, 0, 0, 0, 0, 0, 0,
 			      &res);
 	}
 }
@@ -716,15 +728,15 @@ static void tcc_iobus_disable(struct clk_hw *hw)
 static int tcc_iobus_is_enabled(struct clk_hw *hw)
 {
 	struct arm_smccc_res res;
-	struct tcc_clk *tcc = to_tcc_clk(hw);
+	struct tcc_clk *tcc = to_tcc_clk((hw));
 
 	if (ckc_ops != NULL) {
-		if (ckc_ops->ckc_is_iobus_pwdn)
-			return ckc_ops->ckc_is_iobus_pwdn(tcc->id) ? 0 : 1;
+		if ((ckc_ops->ckc_is_iobus_pwdn) != NULL)
+			return (ckc_ops->ckc_is_iobus_pwdn(tcc->id) != 0) ? 0 : 1;
 	} else {
-		arm_smccc_smc(SIP_CLK_IS_IOBUS, tcc->id, 0, 0, 0, 0, 0, 0,
+		arm_smccc_smc((unsigned long)SIP_CLK_IS_IOBUS, tcc->id, 0, 0, 0, 0, 0, 0,
 			      &res);
-		return (res.a0 == 1) ? 0 : 1;
+		return (res.a0 == (unsigned long)1) ? 0 : 1;
 	}
 
 	return 0;
@@ -747,15 +759,15 @@ CLK_OF_DECLARE(tcc_clk_iobus, "telechips,clk-iobus", tcc_iobus_init);
 static int tcc_vpubus_enable(struct clk_hw *hw)
 {
 	struct arm_smccc_res res;
-	struct tcc_clk *tcc = to_tcc_clk(hw);
+	struct tcc_clk *tcc = to_tcc_clk((hw));
 
 	if (ckc_ops != NULL) {
-		if (ckc_ops->ckc_vpubus_pwdn)
+		if ((ckc_ops->ckc_vpubus_pwdn) != NULL)
 			ckc_ops->ckc_vpubus_pwdn(tcc->id, false);
-		if (ckc_ops->ckc_vpubus_swreset)
+		if ((ckc_ops->ckc_vpubus_swreset) != NULL)
 			ckc_ops->ckc_vpubus_swreset(tcc->id, false);
 	} else {
-		arm_smccc_smc(SIP_CLK_ENABLE_VPUBUS, tcc->id, 0, 0, 0, 0, 0, 0,
+		arm_smccc_smc((unsigned long)SIP_CLK_ENABLE_VPUBUS, tcc->id, 0, 0, 0, 0, 0, 0,
 			      &res);
 	}
 
@@ -765,15 +777,15 @@ static int tcc_vpubus_enable(struct clk_hw *hw)
 static void tcc_vpubus_disable(struct clk_hw *hw)
 {
 	struct arm_smccc_res res;
-	struct tcc_clk *tcc = to_tcc_clk(hw);
+	struct tcc_clk *tcc = to_tcc_clk((hw));
 
 	if (ckc_ops != NULL) {
-		if (ckc_ops->ckc_vpubus_swreset)
+		if ((ckc_ops->ckc_vpubus_swreset) != NULL)
 			ckc_ops->ckc_vpubus_swreset(tcc->id, true);
-		if (ckc_ops->ckc_vpubus_pwdn)
+		if ((ckc_ops->ckc_vpubus_pwdn) != NULL)
 			ckc_ops->ckc_vpubus_pwdn(tcc->id, true);
 	} else {
-		arm_smccc_smc(SIP_CLK_DISABLE_VPUBUS, tcc->id, 0, 0, 0, 0, 0, 0,
+		arm_smccc_smc((unsigned long)SIP_CLK_DISABLE_VPUBUS, tcc->id, 0, 0, 0, 0, 0, 0,
 			      &res);
 	}
 }
@@ -781,15 +793,15 @@ static void tcc_vpubus_disable(struct clk_hw *hw)
 static int tcc_vpubus_is_enabled(struct clk_hw *hw)
 {
 	struct arm_smccc_res res;
-	struct tcc_clk *tcc = to_tcc_clk(hw);
+	struct tcc_clk *tcc = to_tcc_clk((hw));
 
 	if (ckc_ops != NULL) {
-		if (ckc_ops->ckc_is_vpubus_pwdn)
-			return ckc_ops->ckc_is_vpubus_pwdn(tcc->id) ? 0 : 1;
+		if ((ckc_ops->ckc_is_vpubus_pwdn) != NULL)
+			return (ckc_ops->ckc_is_vpubus_pwdn(tcc->id) != 0) ? 0 : 1;
 	} else {
-		arm_smccc_smc(SIP_CLK_IS_VPUBUS, tcc->id, 0, 0, 0, 0, 0, 0,
+		arm_smccc_smc((unsigned long)SIP_CLK_IS_VPUBUS, tcc->id, 0, 0, 0, 0, 0, 0,
 			      &res);
-		return (res.a0 == 1) ? 0 : 1;
+		return (res.a0 == (unsigned long)1) ? 0 : 1;
 	}
 
 	return 0;
@@ -812,15 +824,15 @@ CLK_OF_DECLARE(tcc_clk_vpubus, "telechips,clk-vpubus", tcc_vpubus_init);
 static int tcc_hsiobus_enable(struct clk_hw *hw)
 {
 	struct arm_smccc_res res;
-	struct tcc_clk *tcc = to_tcc_clk(hw);
+	struct tcc_clk *tcc = to_tcc_clk((hw));
 
 	if (ckc_ops != NULL) {
-		if (ckc_ops->ckc_hsiobus_pwdn)
+		if ((ckc_ops->ckc_hsiobus_pwdn) != NULL)
 			ckc_ops->ckc_hsiobus_pwdn(tcc->id, false);
-		if (ckc_ops->ckc_hsiobus_swreset)
+		if ((ckc_ops->ckc_hsiobus_swreset) != NULL)
 			ckc_ops->ckc_hsiobus_swreset(tcc->id, false);
 	} else {
-		arm_smccc_smc(SIP_CLK_ENABLE_HSIOBUS, tcc->id, 0, 0, 0, 0, 0, 0,
+		arm_smccc_smc((unsigned long)SIP_CLK_ENABLE_HSIOBUS, tcc->id, 0, 0, 0, 0, 0, 0,
 			      &res);
 	}
 
@@ -830,15 +842,15 @@ static int tcc_hsiobus_enable(struct clk_hw *hw)
 static void tcc_hsiobus_disable(struct clk_hw *hw)
 {
 	struct arm_smccc_res res;
-	struct tcc_clk *tcc = to_tcc_clk(hw);
+	struct tcc_clk *tcc = to_tcc_clk((hw));
 
 	if (ckc_ops != NULL) {
-		if (ckc_ops->ckc_hsiobus_swreset)
+		if ((ckc_ops->ckc_hsiobus_swreset) != NULL)
 			ckc_ops->ckc_hsiobus_swreset(tcc->id, true);
-		if (ckc_ops->ckc_hsiobus_pwdn)
+		if ((ckc_ops->ckc_hsiobus_pwdn) != NULL)
 			ckc_ops->ckc_hsiobus_pwdn(tcc->id, true);
 	} else {
-		arm_smccc_smc(SIP_CLK_DISABLE_HSIOBUS, tcc->id, 0, 0, 0, 0, 0,
+		arm_smccc_smc((unsigned long)SIP_CLK_DISABLE_HSIOBUS, tcc->id, 0, 0, 0, 0, 0,
 			      0, &res);
 	}
 }
@@ -846,15 +858,15 @@ static void tcc_hsiobus_disable(struct clk_hw *hw)
 static int tcc_hsiobus_is_enabled(struct clk_hw *hw)
 {
 	struct arm_smccc_res res;
-	struct tcc_clk *tcc = to_tcc_clk(hw);
+	struct tcc_clk *tcc = to_tcc_clk((hw));
 
 	if (ckc_ops != NULL) {
-		if (ckc_ops->ckc_is_hsiobus_pwdn)
-			return ckc_ops->ckc_is_hsiobus_pwdn(tcc->id) ? 0 : 1;
+		if ((ckc_ops->ckc_is_hsiobus_pwdn) != NULL)
+			return (ckc_ops->ckc_is_hsiobus_pwdn(tcc->id) != 0) ? 0 : 1;
 	} else {
-		arm_smccc_smc(SIP_CLK_IS_HSIOBUS, tcc->id, 0, 0, 0, 0, 0, 0,
+		arm_smccc_smc((unsigned long)SIP_CLK_IS_HSIOBUS, tcc->id, 0, 0, 0, 0, 0, 0,
 			      &res);
-		return (res.a0 == 1) ? 0 : 1;
+		return (res.a0 == (unsigned long)1) ? 0 : 1;
 	}
 
 	return 0;
@@ -876,15 +888,15 @@ CLK_OF_DECLARE(tcc_clk_hsiobus, "telechips,clk-hsiobus", tcc_hsiobus_init);
 static int tcc_pll_is_enabled(struct clk_hw *hw)
 {
 	struct arm_smccc_res res;
-	struct tcc_clk *tcc = to_tcc_clk(hw);
+	struct tcc_clk *tcc = to_tcc_clk((hw));
 
 	if (ckc_ops != NULL) {
-		if (ckc_ops->ckc_is_pll_enabled)
-			return ckc_ops->ckc_is_pll_enabled(tcc->id) ? 0 : 1;
+		if ((ckc_ops->ckc_is_pll_enabled) != NULL)
+			return (ckc_ops->ckc_is_pll_enabled(tcc->id) != 0) ? 0 : 1;
 	} else {
-		arm_smccc_smc(SIP_CLK_IS_PLL_ENABLED, tcc->id,
+		arm_smccc_smc((unsigned long)SIP_CLK_IS_PLL_ENABLED, tcc->id,
 				0, 0, 0, 0, 0, 0, &res);
-		return res.a0;
+		return (int)res.a0;
 	}
 	return 0;
 }
@@ -894,13 +906,13 @@ static unsigned long tcc_pll_recalc_rate(struct clk_hw *hw,
 {
 	struct arm_smccc_res res;
 	unsigned long rate = 0;
-	struct tcc_clk *tcc = to_tcc_clk(hw);
+	struct tcc_clk *tcc = to_tcc_clk((hw));
 
 	if (ckc_ops != NULL) {
-		if (ckc_ops->ckc_clkctrl_get_rate)
+		if ((ckc_ops->ckc_clkctrl_get_rate) != NULL)
 			rate = ckc_ops->ckc_pll_get_rate(tcc->id);
 	} else {
-		arm_smccc_smc(SIP_CLK_GET_PLL, tcc->id, 0, 0, 0, 0, 0, 0,
+		arm_smccc_smc((unsigned long)SIP_CLK_GET_PLL, tcc->id, 0, 0, 0, 0, 0, 0,
 			      &res);
 		rate = res.a0;
 	}

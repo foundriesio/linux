@@ -39,9 +39,10 @@ struct tcc_mipi_csi2_state {
 
 	unsigned int mipi_chmux[CSI_CFG_MIPI_CHMUX_MAX];
 	unsigned int isp_bypass[CSI_CFG_ISP_BYPASS_MAX];
+	unsigned int isp_number;
 };
 
-struct tcc_mipi_csi2_state * arr_state[3];
+static struct tcc_mipi_csi2_state * arr_state[3];
 
 #if 0 //Block build warning.
 static struct tcc_mipi_csi2_state *pdev_to_state(struct platform_device **pdev)
@@ -525,6 +526,22 @@ static void MIPI_WRAP_Set_Reset_GEN(struct tcc_mipi_csi2_state * state,
 	__raw_writel(val, reg);
 }
 
+static void MIPI_WRAP_Set_VSync_Polarity(struct tcc_mipi_csi2_state * state,
+	unsigned int ch,
+	unsigned int pol)
+{
+	unsigned int val;
+	volatile void __iomem * reg = 0;
+
+	reg = state->cfg_base + CSI0_CFG + (state->pdev->id * 0x4);
+
+	val = (__raw_readl(reg) & ~(CSI_CFG_VSYNC_INV0_MASK << ch));
+
+	val |= (pol << (CSI_CFG_VSYNC_INV0_SHIFT + ch));
+
+	__raw_writel(val, reg);
+}
+
 static void MIPI_WRAP_Set_Output_Mux(struct tcc_mipi_csi2_state * state,
 		unsigned int mux, unsigned int sel)
 {
@@ -551,6 +568,20 @@ static void MIPI_WRAP_Set_ISP_BYPASS(struct tcc_mipi_csi2_state * state,
 
 	val = (__raw_readl(reg) & ~(ISP_BYPASS_ISP0_BYP_MASK << ch));
 	val |= (bypass << (ISP_BYPASS_ISP0_BYP_SHIFT + ch));
+	__raw_writel(val, reg);
+
+}
+
+static void MIPI_WRAP_Set_MIPI_Output_RAW12(struct tcc_mipi_csi2_state * state,
+	unsigned int ch, unsigned int fmt)
+{
+	unsigned int val;
+	volatile void __iomem * reg = 0;
+
+	reg = state->cfg_base + ISP_FMT_CFG;
+
+	val = (__raw_readl(reg) & ~(ISP_FMT_CFG_ISP0_FMT_MASK << (ch * 4)));
+	val |= (fmt << (ISP_FMT_CFG_ISP0_FMT_SHIFT + (ch * 4)));
 	__raw_writel(val, reg);
 
 }
@@ -623,9 +654,27 @@ static int tcc_mipi_csi2_set_interface(struct tcc_mipi_csi2_state * state,
 				OFF, \
 				format->des_info.data_format, \
 				idx);
-			MIPI_CSIS_Set_ISP_Resolution(state, 
-				idx, 
-				format->width , format->height);
+			if ((format->des_info.data_format >= DATA_FORMAT_RAW10) &&
+			    (format->des_info.data_format <= DATA_FORMAT_RAW12)) {
+				MIPI_CSIS_Set_ISP_Resolution(state,
+					idx,
+					format->width + 16, format->height + 16);
+			} else {
+				MIPI_CSIS_Set_ISP_Resolution(state,
+					idx,
+					format->width , format->height);
+			}
+#ifdef CONFIG_ARCH_TCC805X
+			if ((format->des_info.data_format >= DATA_FORMAT_RAW10) &&
+			    (format->des_info.data_format <= DATA_FORMAT_RAW12)) {
+				MIPI_WRAP_Set_VSync_Polarity(state, idx, 1);
+				MIPI_WRAP_Set_MIPI_Output_RAW12(state, idx, 3);
+			}
+
+			if ((format->des_info.data_format) == DATA_FORMAT_RAW8) {
+				MIPI_WRAP_Set_MIPI_Output_RAW12(state, idx, 1);
+			}
+#endif
 		}
 
 		MIPI_CSIS_Set_CSIS_Clock_Control(state, 0x0, 0xf);
@@ -856,6 +905,13 @@ static int tcc_mipi_csi2_parse_dt(struct platform_device *pdev,
 		of_property_read_u32_index(node, \
 			prop_name, 0, &(state->isp_bypass[index]));
 	}
+
+	/*
+	 * Get ISP number
+	 */
+	of_property_read_u32_index(node, \
+		"isp-number", 0, &(state->isp_number));
+
 #endif
 	/*
 	 * get interrupt number
@@ -936,14 +992,20 @@ err:
 }
 #endif
 
+extern void tcc_isp_enable(unsigned int idx, videosource_format_t * format, unsigned int enable);
+
 int tcc_mipi_csi2_enable(
 		unsigned int idx, 
 		videosource_format_t * format, unsigned int enable)
 {
 	struct tcc_mipi_csi2_state * state = arr_state[idx];
-	int ret = 0;
+	int ret = 0, isp_idx = 0;
 
 	pr_debug("[DEBUG][MIPI-CSI2] %s in \n", __func__);
+
+	for (isp_idx = 0; isp_idx < state->isp_number; isp_idx++) {
+		tcc_isp_enable(isp_idx, format, ON);
+	}
 
 	ret = tcc_mipi_csi2_set_interface(state, format, enable);
 	if (ret < 0) {

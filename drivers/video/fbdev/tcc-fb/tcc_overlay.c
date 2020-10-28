@@ -168,7 +168,7 @@ static int tcc_overlay_mmap(struct file *file, struct vm_area_struct *vma)
 	vma->vm_ops	= NULL;
 	vma->vm_flags 	|= VM_IO;
 	vma->vm_flags 	|= VM_DONTEXPAND | VM_DONTDUMP;
-	
+
 	return 0;
 }
 
@@ -176,7 +176,7 @@ DECLARE_WAIT_QUEUE_HEAD(overlay_wait);
 
 static unsigned int tcc_overlay_poll(struct file *file, struct poll_table_struct *wait)
 {
-	poll_wait(file, &(overlay_wait), wait);	
+	poll_wait(file, &(overlay_wait), wait);
 
 	return POLLIN;
 }
@@ -217,7 +217,7 @@ static int tcc_overlay_display_shared_screen(overlay_shared_buffer_t buffer_cfg,
 		tcc_ctrl_ext_frame(0);
 		#endif//CONFIG_DISPLAY_EXT_FRAME
 	}
-	return 0;	
+	return 0;
 }
 #endif
 
@@ -342,7 +342,7 @@ static int tcc_overlay_display_video_buffer(overlay_video_buffer_t buffer_cfg, s
 		tcc_ctrl_ext_frame(0);
 		#endif//CONFIG_DISPLAY_EXT_FRAME
 	}
-	return 0;	
+	return 0;
 }
 
 
@@ -362,7 +362,7 @@ static long tcc_overlay_ioctl(struct file *file, unsigned int cmd, unsigned long
 			return tcc_overlay_display_shared_screen(overBuffCfg, overlay_drv);
 		}
 #endif
-		
+
 		case OVERLAY_PUSH_VIDEO_BUFFER:
 		{
 			overlay_video_buffer_t overBuffCfg;
@@ -385,7 +385,7 @@ static long tcc_overlay_ioctl(struct file *file, unsigned int cmd, unsigned long
 				return 0;
 			}
 			break;
-			
+
 		case OVERLAY_SET_LAYER:
 			{
 				unsigned int overlay_layer;
@@ -456,8 +456,8 @@ static long tcc_overlay_ioctl(struct file *file, unsigned int cmd, unsigned long
 			break;
 
 		default:
-			pr_err(" Unsupported IOCTL(%d)!!!\n", cmd);      
-			break;			
+			pr_err(" Unsupported IOCTL(%d)!!!\n", cmd);
+			break;
 	}
 
 	return 0;
@@ -468,14 +468,14 @@ static int tcc_overlay_release(struct inode *inode, struct file *file)
 	unsigned int layer = 0;
 	struct miscdevice	*misc = (struct miscdevice *)file->private_data;
 	struct overlay_drv_type *overlay_drv = dev_get_drvdata(misc->parent);
-	
+
 	overlay_drv->open_cnt--;
-	
+
 	dprintk("tcc_overlay_release num:%d \n", overlay_drv->open_cnt);
 
 	if(overlay_drv->open_cnt==0)
 	{
-		
+
 //		VIOC_PlugInOutCheck VIOC_PlugIn;
 
 		layer = overlay_drv->layer_nlast;
@@ -501,10 +501,10 @@ static int tcc_overlay_release(struct inode *inode, struct file *file)
 		VIOC_CONFIG_Device_PlugState(VIOC_FCDEC0,  &VIOC_PlugIn);
 
 		if(VIOC_PlugIn.enable && (overlay_drv->rdma[layer].id == VIOC_PlugIn.connect_device))		{
-			pr_info("tcc overlay drv fcdec plug out  from rdma : %d \n", overlay_drv->rdma[layer].id);				
+			pr_info("tcc overlay drv fcdec plug out  from rdma : %d \n", overlay_drv->rdma[layer].id);
 
-			VIOC_CONFIG_PlugOut(VIOC_FCDEC0);		
-			
+			VIOC_CONFIG_PlugOut(VIOC_FCDEC0);
+
 			VIOC_CONFIG_SWReset(overlay_drv->pIREQConfig, VIOC_CONFIG_FCDEC, 0, VIOC_CONFIG_RESET);
 			VIOC_CONFIG_SWReset(overlay_drv->pIREQConfig, VIOC_CONFIG_FCDEC, 0, VIOC_CONFIG_CLEAR);
 		}
@@ -529,7 +529,7 @@ static int tcc_overlay_open(struct inode *inode, struct file *file)
 
 	dprintk("tcc_overlay_open num:%d \n", overlay_drv->open_cnt);
 
-	return 0;	
+	return 0;
 }
 
 static const struct file_operations tcc_overlay_fops =
@@ -544,7 +544,7 @@ static const struct file_operations tcc_overlay_fops =
 
 
 static int tcc_overlay_probe(struct platform_device *pdev)
-{	
+{
 	struct overlay_drv_type *overlay_drv;
 	struct device_node  *vioc_node, *tmp_node;
 	unsigned int index;
@@ -554,7 +554,7 @@ static int tcc_overlay_probe(struct platform_device *pdev)
 
 	if(!overlay_drv)
 		return -ENOMEM;
-		
+
 	overlay_drv->misc = kzalloc(sizeof(struct miscdevice), GFP_KERNEL);
 
 	if(!overlay_drv->misc)
@@ -602,7 +602,7 @@ static int tcc_overlay_probe(struct platform_device *pdev)
 #if defined (CONFIG_TCC_SCREEN_SHARE)
 			if((overlay_drv->fb_dd_num == 1) && (i==1))
 				VIOC_RDMA_SetImageDisable(overlay_drv->rdma[i].reg);
-#endif			
+#endif
 		}
 		dprintk("%s-%d :: fd_num(%d) => rdma[%d]: %d %d/%p\n", __func__, __LINE__, overlay_drv->fb_dd_num, i, index, overlay_drv->rdma[i].id, overlay_drv->rdma[i].reg);
 
@@ -669,7 +669,7 @@ static int tcc_overlay_suspend(struct platform_device *pdev, pm_message_t state)
 	struct overlay_drv_type *overlay_drv = (struct overlay_drv_type *)platform_get_drvdata(pdev);
 
 	if(overlay_drv->open_cnt != 0)
-	{	
+	{
 		pr_info("[INF][OVERLAY] tcc_overlay_suspend %d opened\n", overlay_drv->open_cnt);
 		clk_disable_unprepare(overlay_drv->clk);
 	}
@@ -681,10 +681,9 @@ static int tcc_overlay_resume(struct platform_device *pdev)
 	struct overlay_drv_type *overlay_drv = (struct overlay_drv_type *)platform_get_drvdata(pdev);
 
 	if(overlay_drv->open_cnt != 0)
-	{	
+	{
 		pr_info("[INF][OVERLAY] tcc_overlay_resume %d opened\n", overlay_drv->open_cnt);
 		clk_prepare_enable(overlay_drv->clk);
-		tcc_overlay_display_video_buffer(overlay_drv->overBuffCfg, overlay_drv);
 	}
 	return 0;
 }
@@ -725,7 +724,7 @@ tcc_overlay_cleanup(void)
 
 static char banner[] __initdata = KERN_INFO "TCC Overlay driver initializing\n";
 
-static int __init 
+static int __init
 tcc_overlay_init(void)
 {
 	printk(banner);

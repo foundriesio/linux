@@ -3,8 +3,8 @@
  * Copyright (C) Telechips Inc.
  */
 
-#ifndef __CLK_TCC805X__H__
-#define __CLK_TCC805X__H__
+#ifndef CLK_TCC805X__H
+#define CLK_TCC805X__H
 
 #include <dt-bindings/clock/telechips,tcc805x-clks.h>
 
@@ -12,12 +12,12 @@
  * Need for pmu&ckc register control
  ************************************/
 
-#define XIN_CLK_RATE    (24*1000*1000)  // 24MHz
-#define XTIN_CLK_RATE   32768   // 32.768kHz
-#define HDMI_CLK_RATE   (27*1000*1000)
-#define HDMI_PCLK_RATE  27      // dummy value for set lcdc peri source to hdmi pclk
-#define EXT0_CLK_RATE   (24*1000*1000)  // 24MHz
-#define EXT1_CLK_RATE   (24*1000*1000)  // 24MHz
+#define XIN_CLK_RATE    (unsigned long)(24*1000*1000)  // 24MHz
+#define XTIN_CLK_RATE   (unsigned long)32768   // 32.768kHz
+#define HDMI_CLK_RATE   (unsigned long)(27*1000*1000)
+#define HDMI_PCLK_RATE  (unsigned long)27      // dummy value for set lcdc peri source to hdmi pclk
+#define EXT0_CLK_RATE   (unsigned long)(24*1000*1000)  // 24MHz
+#define EXT1_CLK_RATE   (unsigned long)(24*1000*1000)  // 24MHz
 
 #define CKC_DISABLE     0
 #define CKC_ENABLE      1
@@ -159,10 +159,5 @@ typedef struct {
 	unsigned int mon;
 	unsigned int divc;
 } tDCKC;
-
-extern unsigned long tca_ckc_get_nand_iobus_clk(void);
-extern int tcc_ckc_set_hdmi_audio_src(unsigned int src_id);
-extern int tcc_ckc_adjust_audio_clk(unsigned int aud_id, int value);
-extern void tcc_ckc_restore_audio_clk(unsigned int aud_id);
 
 #endif /* __CLK_TCC805X__H__ */

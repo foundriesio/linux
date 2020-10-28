@@ -193,7 +193,7 @@ config TCC_SECURE_PROCESSOR
 config TCC_MAILBOX_AUDIO
 	tristate "Telechips Mailbox Audio Client"
 	depends on TCC_MAILBOX
-	default y
+	default n
 
 config TCC_MULTI_MAILBOX
 	tristate "Telechips Multi Channel Mailbox"

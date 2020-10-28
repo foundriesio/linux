@@ -24,29 +24,27 @@
 #include <mach/sram_map.h>
 #include <mach/cpu_power.h>
 
-#ifdef CONFIG_ARM_TRUSTZONE
-#include <mach/smc.h>
+#ifdef CONFIG_HOTPLUG_CPU
+#include "hotplug.h"
 #endif
 
 extern void tcc_secondary_startup(void);
-#ifdef CONFIG_HOTPLUG_CPU
-extern void tcc_cpu_die(unsigned int cpu);
-extern int tcc_cpu_kill(unsigned int cpu);
-extern int tcc_cpu_disable(unsigned int cpu);
-#endif
 
 static void write_pen_release(int val)
 {
 	pen_release = val;
-	smp_wmb();
+	smp_wmb(); /* Make sure pen_release is updated */
 	__cpuc_flush_dcache_area((void *)&pen_release, sizeof(pen_release));
-	outer_clean_range( __pa(&pen_release), __pa(&pen_release + 1));
+	outer_clean_range(__pa(&pen_release), __pa(&pen_release + 1));
 }
 
-static int __init tcc_dt_cpus_num(unsigned long node, const char *uname, int depth, void *data)
+static int __init tcc_dt_cpus_num(unsigned long node, const char *uname,
+				  int depth, void *data)
 {
 	static int prev_depth = -1;
 	static int nr_cpus = -1;
+
+	const char *device_type;
 
 	if (prev_depth > depth && nr_cpus > 0)
 		return nr_cpus;
@@ -55,7 +53,7 @@ static int __init tcc_dt_cpus_num(unsigned long node, const char *uname, int dep
 		nr_cpus = 0;
 
 	if (nr_cpus >= 0) {
-		const char *device_type = of_get_flat_dt_prop(node, "device_type", NULL);
+		device_type = of_get_flat_dt_prop(node, "device_type", NULL);
 
 		if (device_type && strcmp(device_type, "cpu") == 0)
 			nr_cpus++;
@@ -69,7 +67,7 @@ static int __init tcc_dt_cpus_num(unsigned long node, const char *uname, int dep
 static void __init tcc_smp_init_cpus(void)
 {
 	int i;
-	unsigned smp_cores = readl_relaxed(IOMEM(sram_p2v(SRAM_BOOT_ADDR+0x60)));
+	u32 smp_cores = readl_relaxed(IOMEM(sram_p2v(SRAM_BOOT_ADDR+0x60)));
 	int ncores = of_scan_flat_dt(tcc_dt_cpus_num, NULL);
 
 	if (ncores > nr_cpu_ids) {
@@ -89,6 +87,7 @@ static void __init tcc_smp_init_cpus(void)
 static void __init tcc_smp_prepare_cpus(unsigned int max_cpus)
 {
 	int i;
+
 	for (i = 0; i < max_cpus; i++)
 		set_cpu_present(i, true);
 }
@@ -105,14 +104,11 @@ static int tcc_boot_secondary(unsigned int cpu, struct task_struct *idle)
 
 	write_pen_release(cpu_logical_map(cpu));
 
-#ifdef CONFIG_ARM_TRUSTZONE
-	_tz_smc(SMC_CMD_SMP_SECONDARY_ADDR, cpu, virt_to_phys(tcc_secondary_startup), 0);
-	_tz_smc(SMC_CMD_SMP_SECONDARY_CFG, cpu, 1, 0);
-#else
-	writel_relaxed(virt_to_phys(tcc_secondary_startup), reg + SEC_START + (cpu*0x4));
+	writel_relaxed(virt_to_phys(tcc_secondary_startup),
+		       reg + SEC_START + (cpu*0x4));
+
 	writel_relaxed(1, reg + SEC_VALID + (cpu*0x4));
-#endif
-	
+
 	tcc_cpu_pwdn(0, cpu, 0);
 	mdelay(1);
 

@@ -887,6 +887,10 @@ static int pca953x_probe(struct i2c_client *client,
 	}
 
 	i2c_set_clientdata(client, chip);
+
+	pca953x_gpio_direction_output(&chip->gpio_chip, 4, 1);
+	pca953x_gpio_set_value(&chip->gpio_chip, 4, 1);
+
 	return 0;
 
 err_exit:
@@ -943,6 +947,7 @@ static const struct of_device_id pca953x_dt_ids[] = {
 
 	{ .compatible = "ti,pca6107", .data = OF_953X( 8, PCA_INT), },
 	{ .compatible = "ti,pca9536", .data = OF_953X( 4, 0), },
+	{ .compatible = "ti,tca9539", .data = OF_953X(16, PCA_INT), },
 	{ .compatible = "ti,tca6408", .data = OF_953X( 8, PCA_INT), },
 	{ .compatible = "ti,tca6416", .data = OF_953X(16, PCA_INT), },
 	{ .compatible = "ti,tca6424", .data = OF_953X(24, PCA_INT), },

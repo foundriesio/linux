@@ -36,12 +36,12 @@ static int cpu_subsys_match(struct device *dev, struct device_driver *drv)
 extern int tcc_wdt_disable_timer_test(void);
 
 static ssize_t off_test_store(struct device *dev, struct device_attribute *attr,
-		const char *buf, size_t count)
+			      const char *buf, size_t count)
 {
 	tcc_wdt_disable_timer_test();
 	return count;
 }
-static DEVICE_ATTR(off_test, S_IWUSR, NULL, off_test_store);
+static DEVICE_ATTR(off_test, 0200, NULL, off_test_store);
 #endif
 
 #ifdef CONFIG_HOTPLUG_CPU

@@ -18,7 +18,7 @@ enum {
 	CPU_PWDN
 };
 
-extern int tcc_cpu_pwdn(unsigned int cluster, unsigned int cpu, unsigned int pwdn);
-extern int tcc_cluster_pwdn(unsigned int cluster, unsigned int pwdn);
+int tcc_cpu_pwdn(unsigned int cluster, unsigned int cpu, unsigned int pwdn);
+int tcc_cluster_pwdn(unsigned int cluster, unsigned int pwdn);
 
 #endif /* __CPU_POWER_H__ */

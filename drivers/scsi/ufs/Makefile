@@ -7,3 +7,4 @@ obj-$(CONFIG_SCSI_UFS_TCC) += ufs-tcc.o
 obj-$(CONFIG_SCSI_UFSHCD) += ufshcd.o
 obj-$(CONFIG_SCSI_UFSHCD_PCI) += ufshcd-pci.o
 obj-$(CONFIG_SCSI_UFSHCD_PLATFORM) += ufshcd-pltfrm.o
+obj-$(CONFIG_SCSI_TCC_SC_UFS) += tcc_sc_ufs.o

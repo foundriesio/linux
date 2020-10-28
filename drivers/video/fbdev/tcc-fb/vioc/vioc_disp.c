@@ -514,9 +514,9 @@ void VIOC_DISP_GetDisplayBlock_Info(volatile void __iomem *reg,
 	DDinfo->pCtrlParam.y2r = (value & DCTRL_Y2R_MASK) >> DCTRL_Y2R_SHIFT;
 	DDinfo->enable = (value & DCTRL_LEN_MASK) >> DCTRL_LEN_SHIFT;
 	DDinfo->width =
-		(__raw_readl(reg + DDS) & ~(DDS_HSIZE_MASK)) >> DDS_HSIZE_SHIFT;
+		(__raw_readl(reg + DDS) & (DDS_HSIZE_MASK)) >> DDS_HSIZE_SHIFT;
 	DDinfo->height =
-		(__raw_readl(reg + DDS) & ~(DDS_VSIZE_MASK)) >> DDS_VSIZE_SHIFT;
+		(__raw_readl(reg + DDS) & (DDS_VSIZE_MASK)) >> DDS_VSIZE_SHIFT;
 }
 
 void VIOC_DISP_SetPXDW(volatile void __iomem *reg, unsigned char PXDW)

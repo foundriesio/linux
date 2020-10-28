@@ -1,0 +1,9 @@
+#
+# Displayport Configuration
+#
+
+config TCC_DP_DRIVER_V1_4
+	bool "Support DisplayPort V1.4 drivers"
+	depends on ARCH_TCC805X
+	default y
+

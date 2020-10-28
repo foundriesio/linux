@@ -90,7 +90,7 @@ typedef struct {
 	struct tcc_lcdc_image_update 		CurrImage;
 	struct tcc_lcdc_image_update		LastImage;
 	int enabled;
-	pmap_t pmapBuff;
+	struct pmap pmapBuff;
 
 	volatile void __iomem * pRDMA;
 

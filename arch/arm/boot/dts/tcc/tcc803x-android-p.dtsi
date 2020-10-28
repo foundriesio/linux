@@ -17,7 +17,7 @@
 #if !defined(CONFIG_ANDROID_AB_UPDATE)
 			fsmgr_flags = "wait";
 #else
-            fsmgr_flags = "wait,slotselect";
+			fsmgr_flags = "wait,slotselect";
 #endif
 
 		};

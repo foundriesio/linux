@@ -174,10 +174,7 @@ static int tccvin_parse_streaming(struct tccvin_device *dev)
 	streaming->type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
 
 	/* Count the format and frame descriptors. */
-	while(tccvin_fmts[nformats+1].name != NULL) {
-		nformats++;
-		//logd("nformats count: %d", nformats);
-	}
+	nformats = tccvin_format_num();
 	nframes = sizeof(framesize_list) / sizeof(framesize_list[0]);
 	nintervals = 2;
 

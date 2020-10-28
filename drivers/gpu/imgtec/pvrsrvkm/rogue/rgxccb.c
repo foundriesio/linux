@@ -2277,8 +2277,8 @@ PVRSRV_ERROR CheckForStalledCCB(PVRSRV_DEVICE_NODE *psDevNode, RGX_CLIENT_CCB *p
 		PVRSRV_RGXDEV_INFO *psDevInfo = (PVRSRV_RGXDEV_INFO*)psDevNode->pvDevice;
 
 		/* Only log a stalled CCB if GPU is idle (any state other than POW_ON is considered idle) */
-		if ((psDevInfo->psRGXFWIfFwSysData->ePowState != RGXFWIF_POW_ON) &&
-			psDevInfo->ui32SLRHoldoffCounter == 0)
+		if (((psDevInfo->psRGXFWIfFwSysData == NULL) || (psDevInfo->psRGXFWIfFwSysData->ePowState != RGXFWIF_POW_ON)) &&
+			(psDevInfo->ui32SLRHoldoffCounter == 0))
 		{
 			static __maybe_unused const char *pszStalledAction =
 #if defined(PVRSRV_STALLED_CCB_ACTION)

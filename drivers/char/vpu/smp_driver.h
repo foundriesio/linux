@@ -2,24 +2,15 @@
 /*
  * Copyright (C) Telechips Inc.
  */
-/*
- *   FileName    : smp_driver.h
- *   Description : vpu CA driver for OPTEE
- *
- *   TCC Version 1.0
- *   Copyright (c) Telechips Inc.
- *   All rights reserved
- *
- */
 
-#ifndef _SMP_DRIVER_H_
-#define _SMP_DRIVER_H_
+#ifndef SMP_DRIVER_H
+#define SMP_DRIVER_H
 
 #include <linux/tee_drv.h>
 #include <video/tcc/autoconf.h>
 
 #define TA_VPU_UUID { 0x56d35baf, 0x4cf1, 0x4b38, \
-    { 0xa2, 0xf1, 0xc5, 0xbc, 0x5a, 0x96, 0x50, 0x46 } };
+	{ 0xa2, 0xf1, 0xc5, 0xbc, 0x5a, 0x96, 0x50, 0x46 } };
 
 #define TA_JPU_UUID { 0x61e14432, 0x720b, 0x4760, { 0x84, 0x53, 0x90, 0x8a, 0x00, 0x49, 0xd3, 0x8e } }
 
@@ -56,13 +47,13 @@ int vpu_optee_close(void);
 #ifndef _CODEC_HANDLE_T_
 #define _CODEC_HANDLE_T_
 #if defined(CONFIG_ARM64)
-typedef long long codec_handle_t;   //!< handle - 64bit
+typedef long long codec_handle_t; //!< handle - 64bit
 #else
-typedef long codec_handle_t;        //!< handle - 32bit
+typedef long codec_handle_t; //!< handle - 32bit
 #endif
 #endif
-int jpu_optee_command(int Op, void *pstInst, long lInstSize);
+int jpu_optee_command(int Op, void* pstInst, long lInstSize);
 int jpu_optee_open(void);
 int jpu_optee_close(void);
 
-#endif // _SMP_DRIVER_H_
+#endif /*SMP_DRIVER_H*/

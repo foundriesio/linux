@@ -47,8 +47,8 @@
 #include "tcc8030-linux-lpd4321_sv0.1.dts"
 
 / {
-	/* USB 3.0 DRD */                      
-	dwc3_platform { 
+	/* USB 3.0 DRD */
+	dwc3_platform {
 		vbus-gpio = <&da9063_gpio 4 0>;
 	};
 

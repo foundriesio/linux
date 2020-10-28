@@ -81,10 +81,13 @@ typedef struct tccvin_cif {
 	unsigned int				vioc_irq_num;
 	struct vioc_intr_type		vioc_intr;
 
+	// usage status pgl
+	unsigned int				use_pgl;
+
 	// optional pmap
-	pmap_t						pmap_pgl;
-	pmap_t						pmap_viqe;
-    pmap_t                      pmap_preview;
+	struct pmap					pmap_pgl;
+	struct pmap					pmap_viqe;
+    struct pmap                      pmap_preview;
 
 	// framebuffer
 	buf_addr_t					preview_buf_addr[MAX_BUFFERRS];
@@ -116,15 +119,9 @@ enum PREVIEW_METHOD {
 #endif
 
 #define PGL_FORMAT			(VIOC_IMG_FMT_ARGB8888)
-#if defined(CONFIG_OVERLAY_DPGL)
-#define PGL_BG_R			(0)
-#define PGL_BG_G			(0)
-#define PGL_BG_B			(0)
-#else
 #define PGL_BG_R			(0xff)
 #define PGL_BG_G			(0xff)
 #define PGL_BG_B			(0xff)
-#endif
 #define PGL_BGM_R			(0xff)
 #define PGL_BGM_G			(0xff)
 #define PGL_BGM_B			(0xff)

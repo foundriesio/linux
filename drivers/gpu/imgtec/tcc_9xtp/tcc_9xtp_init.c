@@ -56,6 +56,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "power.h"
 #include "tcc_9xtp_init.h"
 #include "pvrsrv_device.h"
+#include "pvrsrv.h"
 #include "syscommon.h"
 #include <linux/clk-provider.h>
 #include <linux/pm_runtime.h>
@@ -67,35 +68,42 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <linux/dma-mapping.h>
 
 static struct tcc_context *g_platform = NULL;
+//#define CLK_CONTROL_IN_TF-A_ROM
 
 static void RgxEnableClock(struct tcc_context *platform)
 {
 	if (!platform->gpu_clk)
 	{
-		printk("gpu_clk is null\n");
+		PVR_DPF((PVR_DBG_ERROR, "gpu_clk is null\n"));
 		return;
 	}
 
 	if (!platform->gpu_active) {
+		#if CLK_CONTROL_IN_TF-A_ROM
 		clk_prepare_enable(platform->gpu_clk);
+		#else
+		//CLKMASK unmask
+		OSWriteHWReg32(platform->pv3DBusConfReg, 0, 7);
+		#endif
 		platform->gpu_active = IMG_TRUE;
-	} else {
-		PVR_DPF((PVR_DBG_WARNING, "Failed to enable clock!"));
 	}
 }
 
 static void RgxDisableClock(struct tcc_context *platform)
 {
 	if (!platform->gpu_clk) {
-		printk("gpu_clk is null");
+		PVR_DPF((PVR_DBG_ERROR, "gpu_clk is null\n"));
 		return;
 	}
 
 	if (platform->gpu_active) {
+		#if CLK_CONTROL_IN_TF-A_ROM
 		clk_disable_unprepare(platform->gpu_clk);
+		#else
+		//CLKMASK mask
+		OSWriteHWReg32(platform->pv3DBusConfReg, 0, 2);
+		#endif
 		platform->gpu_active = IMG_FALSE;
-	} else {
-		PVR_DPF((PVR_DBG_WARNING, "Failed to disable clock!"));
 	}
 }
 
@@ -105,8 +113,6 @@ static void RgxEnablePower(struct tcc_context *platform)
 	if (!platform->bEnablePd) {
 		pm_runtime_get_sync(dev);
 		platform->bEnablePd = IMG_TRUE;
-	} else {
-		PVR_DPF((PVR_DBG_WARNING, "Failed to enable gpu_pd clock!"));
 	}
 }
 
@@ -116,8 +122,6 @@ static void RgxDisablePower(struct tcc_context *platform)
 	if (platform->bEnablePd) {
 		pm_runtime_put_sync(dev);
 		platform->bEnablePd = IMG_FALSE;
-	} else {
-		PVR_DPF((PVR_DBG_WARNING, "Failed to enable gpu_pd clock!"));
 	}
 }
 
@@ -140,11 +144,16 @@ PVRSRV_ERROR TccPrePowerState(IMG_HANDLE hSysData,
 							 IMG_BOOL bForced)
 {
 	struct tcc_context *platform = (struct tcc_context *)hSysData;
-
-	if (eNewPowerState == PVRSRV_DEV_POWER_STATE_ON)
-		RgxResume(platform);
+#if defined(SUPPORT_AUTOVZ)
+    if (PVRSRV_VZ_MODE_IS(GUEST) || (platform->dev_config->psDevNode->bAutoVzFwIsUp))
+        return PVRSRV_OK;
+#else
+	if ((eNewPowerState != eCurrentPowerState) &&
+	    (eNewPowerState != PVRSRV_DEV_POWER_STATE_ON))
+		RgxSuspend(platform);
 	return PVRSRV_OK;
-
+#endif
+	
 }
 
 PVRSRV_ERROR TccPostPowerState(IMG_HANDLE hSysData,
@@ -154,9 +163,15 @@ PVRSRV_ERROR TccPostPowerState(IMG_HANDLE hSysData,
 {
 	struct tcc_context *platform = (struct tcc_context *)hSysData;
 
-	if (eNewPowerState == PVRSRV_DEV_POWER_STATE_OFF)
-		RgxSuspend(platform);
+#if defined(SUPPORT_AUTOVZ)
+    if (PVRSRV_VZ_MODE_IS(GUEST) || (platform->dev_config->psDevNode->bAutoVzFwIsUp))
+        return PVRSRV_OK;
+#else
+	if ((eNewPowerState != eCurrentPowerState) &&
+	    (eCurrentPowerState != PVRSRV_DEV_POWER_STATE_ON))
+		RgxResume(platform);
 	return PVRSRV_OK;
+#endif
 }
 
 void RgxTccUnInit(struct tcc_context *platform)
@@ -169,7 +184,9 @@ void RgxTccUnInit(struct tcc_context *platform)
 		devm_clk_put(dev, platform->gpu_clk);
 		platform->gpu_clk = NULL;
 	}
-
+#ifndef SUPPORT_AUTOVZ	
+	iounmap((void __iomem *) platform->pv3DBusConfReg);
+#endif
 	pm_runtime_disable(dev);
 	devm_kfree(dev, platform);
 
@@ -196,6 +213,26 @@ struct tcc_context *RgxTccInit(PVRSRV_DEVICE_CONFIG* psDevConfig)
 
 	PVR_DPF((PVR_DBG_MESSAGE, "%s: dma_mask = %llx", __func__, dev->coherent_dma_mask));
 
+#ifndef SUPPORT_AUTOVZ
+	//To support core-reset in native-mode
+	struct resource *psDevMemRes = NULL;
+
+	psDevMemRes = platform_get_resource(to_platform_device(dev), IORESOURCE_MEM, 1);
+	platform->pv3DBusConfReg = (void __iomem *)ioremap(psDevMemRes->start, resource_size(psDevMemRes));
+	OSWriteHWReg32(platform->pv3DBusConfReg, 8, 2);
+	OSWriteHWReg32(platform->pv3DBusConfReg, 4, 7);
+	OSWriteHWReg32(platform->pv3DBusConfReg, 0, 7);
+	
+	//PWRDOWN, SWRESET, CLKMASK
+	OSWriteHWReg32(platform->pv3DBusConfReg, 8, 0);
+	OSWriteHWReg32(platform->pv3DBusConfReg, 4, 2);
+	OSWriteHWReg32(platform->pv3DBusConfReg, 0, 2);
+	
+	//pwrdown not request, not reset, unmask
+	OSWriteHWReg32(platform->pv3DBusConfReg, 8, 2);
+	OSWriteHWReg32(platform->pv3DBusConfReg, 4, 7);
+	OSWriteHWReg32(platform->pv3DBusConfReg, 0, 7);
+#endif
 	platform->dev_config = psDevConfig;
 	platform->gpu_active = IMG_FALSE;
 
@@ -212,11 +249,6 @@ struct tcc_context *RgxTccInit(PVRSRV_DEVICE_CONFIG* psDevConfig)
 	{
 		psRGXData->psRGXTimingInfo->ui32CoreClockSpeed = clk_get_rate(platform->gpu_clk);
 	}
-
-	(void) TccPrePowerState(platform,
-						   PVRSRV_DEV_POWER_STATE_ON,
-						   PVRSRV_DEV_POWER_STATE_DEFAULT,
-						   IMG_FALSE);
 
 	return platform;
 

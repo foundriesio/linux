@@ -2,92 +2,101 @@
 /*
  * Copyright (C) Telechips Inc.
  */
-/*
- *   drivers/char/vpu/vpu_hevc_enc_mgr.c
- *   Author:  <linux@telechips.com>
- *   Created: Apr 29, 2020
- *   Description: Manager module for TCC HEVC ENC
- */
 
 #ifdef CONFIG_SUPPORT_TCC_WAVE420L_VPU_HEVC_ENC
 
-#include <linux/of.h>
-#include <linux/io.h>
-#include <linux/platform_device.h>
-#include <linux/miscdevice.h>
-#include <linux/uaccess.h>
 #include <asm/system_info.h>
-
-#include "vpu_devices.h"
-#include "vpu_buffer.h"
-#include <soc/tcc/pmap.h>
+#include <linux/delay.h>
+#include <linux/io.h>
+#include <linux/of.h>
 #include <linux/of_address.h>
+#include <linux/miscdevice.h>
+#include <linux/mm.h>
+#include <linux/module.h>
+#include <linux/platform_device.h>
+#include <linux/kernel.h>
+#include <linux/kthread.h>
+#include <linux/uaccess.h>
+#include <soc/tcc/pmap.h>
 
+#include "vpu_buffer.h"
+#include "vpu_comm.h"
+#include "vpu_devices.h"
 #include "vpu_hevc_enc_mgr_sys.h"
-
+#include "vpu_hevc_enc_mgr.h"
 
 static unsigned int cntInt_vpu_he = 0;
-static volatile void __iomem *vidsys_conf_reg;
+static volatile void __iomem* vidsys_conf_reg;
 
-/////////////////////////////////////////////////////////////////////////////
 // Control only once!!
 static mgr_data_t vmgr_hevc_enc_data;
-static struct task_struct *kidle_task = NULL;
+static struct task_struct* kidle_task = NULL;
 
 extern int tcc_vpu_hevc_enc(int Op, codec_handle_t* pHandle, void* pParam1, void* pParam2);
 extern int tcc_vpu_hevc_enc_esc(int Op, codec_handle_t* pHandle, void* pParam1, void* pParam2);
 extern int tcc_vpu_hevc_enc_ext(int Op, codec_handle_t* pHandle, void* pParam1, void* pParam2);
 
-VpuList_t* vmgr_hevc_enc_list_manager(VpuList_t* args, unsigned int cmd);
-/////////////////////////////////////////////////////////////////////////////
-
 VpuList_t* vmgr_hevc_enc_list_manager(VpuList_t* args, unsigned int cmd)
 {
-	VpuList_t *ret = NULL;
-	VpuList_t* data = (VpuList_t*) args;
+	VpuList_t* ret = NULL;
+	VpuList_t* oper_data = (VpuList_t*) args;
+
+	if (!oper_data)
+	{
+		if (cmd == LIST_ADD || cmd == LIST_DEL)
+		{
+			V_DBG(VPU_DBG_ERROR, "Data is null, cmd=%d", cmd);
+			return NULL;
+		}
+	}
+
+	if (cmd == LIST_ADD)
+	{
+		*oper_data->vpu_result = RET0;
+	}
+
 
 	mutex_lock(&vmgr_hevc_enc_data.comm_data.list_mutex);
-
-	if(cmd == LIST_ADD || cmd == LIST_DEL)
 	{
-		if(data == NULL)
+		switch (cmd)
 		{
-			V_DBG(DEBUG_VPU_ERROR, "ADD :: data is null");
-			goto Error;
+			case LIST_ADD:
+			{
+				*oper_data->vpu_result |= RET1;
+				list_add_tail(&oper_data->list, &vmgr_hevc_enc_data.comm_data.main_list);
+				vmgr_hevc_enc_data.cmd_queued++;
+				vmgr_hevc_enc_data.comm_data.thread_intr++;
+			}
+			break;
+
+			case LIST_DEL:
+			{
+				list_del(&oper_data->list);
+				vmgr_hevc_enc_data.cmd_queued--;
+			}
+			break;
+
+			case LIST_IS_EMPTY:
+			{
+				if (list_empty(&vmgr_hevc_enc_data.comm_data.main_list))
+				{
+					ret = (VpuList_t*) 0x1234;
+				}
+			}
+			break;
+
+			case LIST_GET_ENTRY:
+			{
+				ret = list_first_entry(&vmgr_hevc_enc_data.comm_data.main_list, VpuList_t, list);
+			}
+			break;
 		}
 	}
-
-	switch (cmd)
-	{
-	case LIST_ADD:
-		*(data->vpu_result) |= RET1;
-		list_add_tail(&data->list, &vmgr_hevc_enc_data.comm_data.main_list);
-		vmgr_hevc_enc_data.cmd_queued++;
-		vmgr_hevc_enc_data.comm_data.thread_intr++;
-		break;
-
-	case LIST_DEL:
-		list_del(&data->list);
-		vmgr_hevc_enc_data.cmd_queued--;
-		break;
-
-	case LIST_IS_EMPTY:
-		if(list_empty(&vmgr_hevc_enc_data.comm_data.main_list))
-		{
-			ret = (VpuList_t*) 0x1234;
-		}
-		break;
-
-	case LIST_GET_ENTRY:
-		ret = list_first_entry(&vmgr_hevc_enc_data.comm_data.main_list, VpuList_t, list);
-		break;
-	}
-
-Error:
 	mutex_unlock(&vmgr_hevc_enc_data.comm_data.list_mutex);
-	if(cmd == LIST_ADD)
+
+	if (cmd == LIST_ADD)
 	{
-		wake_up_interruptible(&(vmgr_hevc_enc_data.comm_data.thread_wq));
+		wake_up_interruptible(&vmgr_hevc_enc_data.comm_data.thread_wq);
 	}
 
 	return ret;
@@ -98,41 +107,39 @@ static void _vmgr_hevc_enc_wait_process(int wait_ms)
 	int max_count = wait_ms/20;
 
 	//wait!! in case exceptional processing. ex). sdcard out!!
-	while(vmgr_hevc_enc_data.cmd_processing)
+	while (vmgr_hevc_enc_data.cmd_processing)
 	{
 		max_count--;
 		msleep(20);
 
-		if(max_count <= 0)
+		if (max_count <= 0)
 		{
-			V_DBG(DEBUG_VPU_ERROR, "cmd_processing(cmd %d) didn't finish!!", vmgr_hevc_enc_data.current_cmd);
+			V_DBG(VPU_DBG_ERROR, "cmd_processing(cmd %d) didn't finish!!", vmgr_hevc_enc_data.current_cmd);
 			break;
 		}
 	}
 }
 
-static irqreturn_t _vmgr_hevc_enc_isr_handler(int irq, void *dev_id)
+static irqreturn_t _vmgr_hevc_enc_isr_handler(int irq, void* dev_id)
 {
 	cntInt_vpu_he++;
 
-	//V_DBG(DEBUG_ENC_INTERRUPT, "HEVC ENC interrupt happens %d times", cntInt_vpu_he);
-
 	atomic_inc(&vmgr_hevc_enc_data.oper_intr);
 
-	wake_up_interruptible(&(vmgr_hevc_enc_data.oper_wq));
+	wake_up_interruptible(&vmgr_hevc_enc_data.oper_wq);
 
 	return IRQ_HANDLED;
 }
 
-static int _vmgr_hevc_enc_cmd_open(char *str)
+static int _vmgr_hevc_enc_cmd_open(char* str)
 {
 	int ret = 0;
 
-	V_DBG(DEBUG_ENC_SEQUENCE, "======> _vmgr_hevc_enc_%s_open enter!! %d'th", str, atomic_read(&vmgr_hevc_enc_data.dev_opened) );
+	V_DBG(VPU_DBG_SEQUENCE, "======> _vmgr_hevc_enc_%s_open enter!! %d'th", str, atomic_read(&vmgr_hevc_enc_data.dev_opened));
 
 	vmgr_hevc_enc_enable_clock(0);
 
-	if(atomic_read(&vmgr_hevc_enc_data.dev_opened) == 0)
+	if (atomic_read(&vmgr_hevc_enc_data.dev_opened) == 0)
 	{
 	#ifdef FORCED_ERROR
 		forced_error_count = FORCED_ERR_CNT;
@@ -143,11 +150,10 @@ static int _vmgr_hevc_enc_cmd_open(char *str)
 
 		vmgr_hevc_enc_hw_reset();
 		vmgr_hevc_enc_enable_irq(vmgr_hevc_enc_data.irq);
-		//vetc_reg_init(vmgr_hevc_enc_data.base_addr);
-		if(0 > (ret = vmem_init()))
+
+		if (0 > (ret = vmem_init()))
 		{
-			V_DBG(DEBUG_VPU_ERROR, "failed to allocate memory for VPU_HEVC_ENC(WAVE420L)!! %d", ret);
-			//return -ENOMEM;
+			V_DBG(VPU_DBG_ERROR, "failed to allocate memory for VPU_HEVC_ENC(WAVE420L)!! %d", ret);
 		}
 
 		cntInt_vpu_he = 0;
@@ -155,7 +161,7 @@ static int _vmgr_hevc_enc_cmd_open(char *str)
 
 	atomic_inc(&vmgr_hevc_enc_data.dev_opened);
 
-	V_DBG(DEBUG_ENC_SEQUENCE, "======> _vmgr_hevc_enc_%s_open out!! %d'th", str, atomic_read(&vmgr_hevc_enc_data.dev_opened) );
+	V_DBG(VPU_DBG_SEQUENCE, "======> _vmgr_hevc_enc_%s_open out!! %d'th", str, atomic_read(&vmgr_hevc_enc_data.dev_opened));
 
 	return 0;
 }
@@ -172,18 +178,18 @@ int vmgr_hevc_enc_get_close(vputype type)
 
 int vmgr_hevc_enc_set_close(vputype type, int value, int bfreemem)
 {
-	if(vmgr_hevc_enc_get_close(type) == value)
+	if (vmgr_hevc_enc_get_close(type) == value)
 	{
-		V_DBG(DEBUG_ENC_DETAIL, " %d was already set to %d.", type, value);
+		V_DBG(VPU_DBG_CLOSE, " %d was already set to %d.", type, value);
 		return -1;
 	}
 
 	vmgr_hevc_enc_data.closed[type] = value;
-	if(value == 1)
+	if (value == 1)
 	{
 		vmgr_hevc_enc_data.handle[type] = 0x00;
 
-		if(bfreemem)
+		if (bfreemem)
 			vmem_proc_free_memory(type);
 	}
 
@@ -192,18 +198,16 @@ int vmgr_hevc_enc_set_close(vputype type, int value, int bfreemem)
 
 static void _vmgr_hevc_enc_close_all(int bfreemem)
 {
-#if defined(CONFIG_VENC_CNT_1) || defined(CONFIG_VENC_CNT_2) || defined(CONFIG_VENC_CNT_3) \
-	|| defined(CONFIG_VENC_CNT_4) || defined(CONFIG_VENC_CNT_5)
+#if DEFINED_CONFIG_VENC_CNT_12345
 	vmgr_hevc_enc_set_close(VPU_ENC, 1, bfreemem);
 #endif
-#if defined(CONFIG_VENC_CNT_2) || defined(CONFIG_VENC_CNT_3) || defined(CONFIG_VENC_CNT_4) \
-	|| defined(CONFIG_VENC_CNT_5)
+#if DEFINED_CONFIG_VENC_CNT_2345
 	vmgr_hevc_enc_set_close(VPU_ENC_EXT, 1, bfreemem);
 #endif
-#if defined(CONFIG_VENC_CNT_3) || defined(CONFIG_VENC_CNT_4) || defined(CONFIG_VENC_CNT_5)
+#if DEFINED_CONFIG_VENC_CNT_345
 	vmgr_hevc_enc_set_close(VPU_ENC_EXT2, 1, bfreemem);
 #endif
-#if defined(CONFIG_VENC_CNT_4) || defined(CONFIG_VENC_CNT_5)
+#if DEFINED_CONFIG_VENC_CNT_45
 	vmgr_hevc_enc_set_close(VPU_ENC_EXT3, 1, bfreemem);
 #endif
 #if defined(CONFIG_VENC_CNT_5)
@@ -211,32 +215,33 @@ static void _vmgr_hevc_enc_close_all(int bfreemem)
 #endif
 }
 
-int vmgr_hevc_enc_process_ex(VpuList_t *cmd_list, vputype type, int Op, int *result)
+int vmgr_hevc_enc_process_ex(VpuList_t* cmd_list, vputype type, int Op, int* result)
 {
-    if(atomic_read(&vmgr_hevc_enc_data.dev_opened) == 0)
-    {
-        return 0;
-    }
+	if (atomic_read(&vmgr_hevc_enc_data.dev_opened) == 0)
+	{
+		return 0;
+	}
 
-    printk(" \n process_ex %d - 0x%x \n\n", type, Op);
+	printk(" \n process_ex %d - 0x%x \n\n", type, Op);
 
-    if(!vmgr_hevc_enc_get_close(type))
-    {
-        cmd_list->type          = type;
-        cmd_list->cmd_type      = Op;
-        cmd_list->handle        = vmgr_hevc_enc_data.handle[type];
-        cmd_list->args          = NULL;
-        cmd_list->comm_data     = NULL;
-        cmd_list->vpu_result    = result;
-        vmgr_hevc_enc_list_manager(cmd_list, LIST_ADD);
-    }
+	if (!vmgr_hevc_enc_get_close(type))
+	{
+		cmd_list->type          = type;
+		cmd_list->cmd_type      = Op;
+		cmd_list->handle        = vmgr_hevc_enc_data.handle[type];
+		cmd_list->args          = NULL;
+		cmd_list->comm_data     = NULL;
+		cmd_list->vpu_result    = result;
 
-    return 1;
+		vmgr_hevc_enc_list_manager(cmd_list, LIST_ADD);
+	}
+
+	return 1;
 }
 
-static int _vmgr_hevc_enc_proc_exit_by_external(struct VpuList *list, int *result, unsigned int type)
+static int _vmgr_hevc_enc_proc_exit_by_external(struct VpuList* list, int* result, unsigned int type)
 {
-	if(!vmgr_hevc_enc_get_close(type) && vmgr_hevc_enc_data.handle[type] != 0x00)
+	if (!vmgr_hevc_enc_get_close(type) && vmgr_hevc_enc_data.handle[type] != 0x00)
 	{
 		list->type = type;
 		list->cmd_type = VPU_ENC_CLOSE;
@@ -260,12 +265,13 @@ static int _vmgr_hevc_enc_external_all_close(int wait_ms)
 	int max_count = 0;
 	int ret;
 
-	for(type = VPU_ENC; type < VPU_HEVC_ENC_MAX; type++)
+	for (type = VPU_ENC; type < VPU_HEVC_ENC_MAX; type++)
 	{
-		if(_vmgr_hevc_enc_proc_exit_by_external(&vmgr_hevc_enc_data.vList[type], &ret, type)) {
+		if (_vmgr_hevc_enc_proc_exit_by_external(&vmgr_hevc_enc_data.vList[type], &ret, type))
+		{
 			max_count = wait_ms/10;
 
-			while(!vmgr_hevc_enc_get_close(type))
+			while (!vmgr_hevc_enc_get_close(type))
 			{
 				max_count--;
 				msleep(10);
@@ -276,21 +282,22 @@ static int _vmgr_hevc_enc_external_all_close(int wait_ms)
 	return 0;
 }
 
-static int _vmgr_hevc_enc_cmd_release(char *str)
+static int _vmgr_hevc_enc_cmd_release(char* str)
 {
-	V_DBG(DEBUG_ENC_CLOSE, "======> _vmgr_hevc_enc_%s_release In!! %d'th", str, atomic_read(&vmgr_hevc_enc_data.dev_opened) );
+	V_DBG(VPU_DBG_CLOSE, "======> _vmgr_hevc_enc_%s_release In!! %d'th", str, atomic_read(&vmgr_hevc_enc_data.dev_opened));
 
-	if(atomic_read(&vmgr_hevc_enc_data.dev_opened) > 0)
+	if (atomic_read(&vmgr_hevc_enc_data.dev_opened) > 0)
 	{
 		atomic_dec(&vmgr_hevc_enc_data.dev_opened);
 	}
 
-	if(atomic_read(&vmgr_hevc_enc_data.dev_opened) == 0)
+	if (atomic_read(&vmgr_hevc_enc_data.dev_opened) == 0)
 	{
-		int type = 0, alive_cnt = 0;
+		int type = 0;
+		int alive_cnt = 0;
 
 		// To close whole vpu-hevc-enc instance when being killed process opened this.
-		if(!vmgr_hevc_enc_data.bVpu_already_proc_force_closed)
+		if (!vmgr_hevc_enc_data.bVpu_already_proc_force_closed)
 		{
 			vmgr_hevc_enc_data.external_proc = 1;
 			_vmgr_hevc_enc_external_all_close(200);
@@ -298,18 +305,16 @@ static int _vmgr_hevc_enc_cmd_release(char *str)
 		}
 		vmgr_hevc_enc_data.bVpu_already_proc_force_closed = false;
 
-		for(type=VPU_ENC; type<VPU_HEVC_ENC_MAX; type++)
+		for (type=VPU_ENC; type<VPU_HEVC_ENC_MAX; type++)
 		{
-			if( vmgr_hevc_enc_data.closed[type] == 0 )
+			if (vmgr_hevc_enc_data.closed[type] == 0)
 			{
 				alive_cnt++;
 			}
 		}
 
-		if(alive_cnt)
+		if (alive_cnt)
 		{
-			// clear instances of vpu-hevc-enc by force.
-			//TCC_VPU_DEC(0x40, (void*)NULL, (void*)NULL, (void*)NULL);
 			printk("VPU-HEVC-ENC might be cleared by force. \n");
 		}
 
@@ -331,7 +336,7 @@ static int _vmgr_hevc_enc_cmd_release(char *str)
 
 	vmgr_hevc_enc_data.nOpened_Count++;
 
-	V_DBG(DEBUG_ENC_CLOSE, "======> _vmgr_hevc_enc_%s_release Out!! %d'th, total = %d  - DEC(%d/%d/%d/%d/%d)",
+	V_DBG(VPU_DBG_ERROR, "======> _vmgr_hevc_enc_%s_release Out!! %d'th, total = %d  - DEC(%d/%d/%d/%d/%d)",
 		str,
 		atomic_read(&vmgr_hevc_enc_data.dev_opened),
 		vmgr_hevc_enc_data.nOpened_Count,
@@ -339,22 +344,22 @@ static int _vmgr_hevc_enc_cmd_release(char *str)
 		vmgr_hevc_enc_get_close(VPU_ENC_EXT),
 		vmgr_hevc_enc_get_close(VPU_ENC_EXT2),
 		vmgr_hevc_enc_get_close(VPU_ENC_EXT3),
-		vmgr_hevc_enc_get_close(VPU_ENC_EXT4)
-		);
+		vmgr_hevc_enc_get_close(VPU_ENC_EXT4));
 
 	return 0;
 }
 
-static int _vmgr_hevc_enc_open(struct inode *inode, struct file *filp)
+static int _vmgr_hevc_enc_open(struct inode* inode, struct file* filp)
 {
-	if (!vmgr_hevc_enc_data.irq_reged) {
-		V_DBG(DEBUG_VPU_ERROR, "not registered vpu-hevc-enc-mgr-irq");
+	if (!vmgr_hevc_enc_data.irq_reged)
+	{
+		V_DBG(VPU_DBG_ERROR, "not registered vpu-hevc-enc-mgr-irq");
 	}
 
 #ifdef USE_DEV_OPEN_CLOSE_IOCTL
-	V_DBG(DEBUG_ENC_SEQUENCE, "_vmgr_hevc_enc_open In!! %d'th", atomic_read(&vmgr_hevc_enc_data.dev_file_opened));
+	V_DBG(VPU_DBG_SEQUENCE, "_vmgr_hevc_enc_open In!! %d'th", atomic_read(&vmgr_hevc_enc_data.dev_file_opened));
 	atomic_inc(&vmgr_hevc_enc_data.dev_file_opened);
-	V_DBG(DEBUG_ENC_SEQUENCE, "_vmgr_hevc_enc_open Out!! %d'th", atomic_read(&vmgr_hevc_enc_data.dev_file_opened));
+	V_DBG(VPU_DBG_SEQUENCE, "_vmgr_hevc_enc_open Out!! %d'th", atomic_read(&vmgr_hevc_enc_data.dev_file_opened));
 #else
 	mutex_lock(&vmgr_hevc_enc_data.comm_data.file_mutex);
 	_vmgr_hevc_enc_cmd_open("file");
@@ -365,7 +370,7 @@ static int _vmgr_hevc_enc_open(struct inode *inode, struct file *filp)
 	return 0;
 }
 
-static int _vmgr_hevc_enc_release(struct inode *inode, struct file *filp)
+static int _vmgr_hevc_enc_release(struct inode* inode, struct file* filp)
 {
 #ifdef USE_DEV_OPEN_CLOSE_IOCTL
 	dprintk("_vmgr_hevc_enc_release In!! %d'th\n", atomic_read(&vmgr_hevc_enc_data.dev_file_opened));
@@ -375,13 +380,13 @@ static int _vmgr_hevc_enc_release(struct inode *inode, struct file *filp)
 	printk("_vmgr_hevc_enc_release Out!! %d'th, total = %d  - DEC(%d/%d/%d/%d/%d)\n", atomic_read(&vmgr_hevc_enc_data.dev_file_opened), vmgr_hevc_enc_data.nOpened_Count,
 					vmgr_hevc_enc_get_close(VPU_DEC), vmgr_hevc_enc_get_close(VPU_DEC_EXT), vmgr_hevc_enc_get_close(VPU_DEC_EXT2), vmgr_hevc_enc_get_close(VPU_DEC_EXT3), vmgr_hevc_enc_get_close(VPU_DEC_EXT4));
 #else
-	V_DBG(DEBUG_ENC_CLOSE, "enter");
+	V_DBG(VPU_DBG_ERROR, "enter");
 
 	mutex_lock(&vmgr_hevc_enc_data.comm_data.file_mutex);
 	_vmgr_hevc_enc_cmd_release("file");
 	mutex_unlock(&vmgr_hevc_enc_data.comm_data.file_mutex);
 
-	V_DBG(DEBUG_ENC_CLOSE, "out");
+	V_DBG(VPU_DBG_ERROR, "out");
 #endif
 
 	return 0;
@@ -392,27 +397,22 @@ static int _vmgr_hevc_enc_internal_handler(void)
 	int ret, ret_code = RETCODE_INTR_DETECTION_NOT_ENABLED;
 	int timeout = 200;
 
-	if(vmgr_hevc_enc_data.check_interrupt_detection)
+	if (vmgr_hevc_enc_data.check_interrupt_detection)
 	{
-		if(atomic_read(&vmgr_hevc_enc_data.oper_intr) > 0)
+		if (atomic_read(&vmgr_hevc_enc_data.oper_intr) > 0)
 		{
-			V_DBG(DEBUG_ENC_INTERRUPT, "Success-1: vpu hevc enc operation!! (isr cnt:%d)", cntInt_vpu_he);
+			V_DBG(VPU_DBG_INTERRUPT, "Success-1: vpu hevc enc operation!! (isr cnt:%d)", cntInt_vpu_he);
 			ret_code = RETCODE_SUCCESS;
 		}
 		else
 		{
 			ret = wait_event_interruptible_timeout(vmgr_hevc_enc_data.oper_wq,
 										atomic_read(&vmgr_hevc_enc_data.oper_intr) > 0,
-										msecs_to_jiffies(timeout)
-										);
+										msecs_to_jiffies(timeout));
 
-			if(vmgr_hevc_enc_is_loadable() > 0)
+			if (atomic_read(&vmgr_hevc_enc_data.oper_intr) > 0)
 			{
-				ret_code = RETCODE_CODEC_EXIT;
-			}
-			else if(atomic_read(&vmgr_hevc_enc_data.oper_intr) > 0)
-			{
-				V_DBG(DEBUG_ENC_INTERRUPT, "Success-2: vpu hevc enc operation!! (isr cnt:%d)", cntInt_vpu_he);
+				V_DBG(VPU_DBG_INTERRUPT, "Success-2: vpu hevc enc operation!! (isr cnt:%d)", cntInt_vpu_he);
 			#if defined(FORCED_ERROR)
 				if (forced_error_count-- <= 0)
 				{
@@ -426,7 +426,7 @@ static int _vmgr_hevc_enc_internal_handler(void)
 			}
 			else
 			{
-				V_DBG(DEBUG_VPU_ERROR, "[CMD 0x%x][ret:%d]: vpu timed_out(ref %d msec) => oper_intr[%d], isr cnt:%d!! [%d]th frame len %d",
+				V_DBG(VPU_DBG_ERROR, "[CMD 0x%x][ret:%d]: vpu timed_out(ref %d msec) => oper_intr[%d], isr cnt:%d!! [%d]th frame len %d",
 					vmgr_hevc_enc_data.current_cmd,
 					ret,
 					timeout,
@@ -444,7 +444,7 @@ static int _vmgr_hevc_enc_internal_handler(void)
 		vmgr_hevc_enc_status_clear(vmgr_hevc_enc_data.base_addr);
 	}
 
-	V_DBG(DEBUG_ENC_INTERRUPT, "out (Interrupt option=%d, isr cnt=%d, ev=%d)",
+	V_DBG(VPU_DBG_INTERRUPT, "out (Interrupt option=%d, isr cnt=%d, ev=%d)",
 		vmgr_hevc_enc_data.check_interrupt_detection,
 		cntInt_vpu_he,
 		ret_code
@@ -464,8 +464,7 @@ static int _vmgr_hevc_enc_process(vputype type, int cmd, long pHandle, void* arg
 	vmgr_hevc_enc_data.check_interrupt_detection = 0;
 	vmgr_hevc_enc_data.current_cmd = cmd;
 
-#if defined(CONFIG_VENC_CNT_1) || defined(CONFIG_VENC_CNT_2) || defined(CONFIG_VENC_CNT_3) \
-	|| defined(CONFIG_VENC_CNT_4) || defined(CONFIG_VENC_CNT_5)
+#if DEFINED_CONFIG_VENC_CNT_12345
 
 	if (type <= VPU_HEVC_ENC_MAX)
 	{
@@ -479,31 +478,31 @@ static int _vmgr_hevc_enc_process(vputype type, int cmd, long pHandle, void* arg
 
 		if (cmd != VPU_ENC_ENCODE)
 		{
-			V_DBG(DEBUG_ENC_SEQUENCE, "@@@@@@@@@@ Encoder(%d), command: 0x%x", type, cmd);
+			V_DBG(VPU_DBG_SEQUENCE, "Encoder(%d), command: 0x%x", type, cmd);
 		}
 
 		switch (cmd)
 		{
 			case VPU_ENC_INIT:
 			{
-				VENC_HEVC_INIT_t* arg = (VENC_HEVC_INIT_t *) args;
+				VENC_HEVC_INIT_t* arg = (VENC_HEVC_INIT_t*) args;
 
 				vmgr_hevc_enc_data.check_interrupt_detection = 1;
 
 				vmgr_hevc_enc_data.handle[type] = 0x00;
-				vmgr_hevc_enc_data.szFrame_Len = arg->encInit.m_iPicWidth * arg->encInit.m_iPicHeight *3 / 2;
+				vmgr_hevc_enc_data.szFrame_Len = arg->encInit.m_iPicWidth * arg->encInit.m_iPicHeight * 3 / 2;
 
 				arg->encInit.m_RegBaseAddr[VA] = (codec_addr_t) vmgr_hevc_enc_data.base_addr;
-				arg->encInit.m_Memcpy		= (void* (*) ( void*, const void*, unsigned int, unsigned int )) vetc_memcpy;
-				arg->encInit.m_Memset		= (void (*) ( void*, int, unsigned int, unsigned int )) vetc_memset;
-				arg->encInit.m_Interrupt	= (int (*) ( void )) _vmgr_hevc_enc_internal_handler;
-				arg->encInit.m_Ioremap		= (void* (*) ( phys_addr_t, unsigned int )) vetc_ioremap;
-				arg->encInit.m_Iounmap		= (void (*) ( void* )) vetc_iounmap;
-				arg->encInit.m_reg_read		= (unsigned int (*)(void *, unsigned int)) vetc_reg_read;
-				arg->encInit.m_reg_write	= (void (*)(void *, unsigned int, unsigned int)) vetc_reg_write;
-				arg->encInit.m_Usleep		= (void (*)(unsigned int, unsigned int))usleep_range;
+				arg->encInit.m_Memcpy		= (void* (*) (void*, const void*, unsigned int, unsigned int)) vetc_memcpy;
+				arg->encInit.m_Memset		= (void (*) (void*, int, unsigned int, unsigned int)) vetc_memset;
+				arg->encInit.m_Interrupt	= (int (*) (void)) _vmgr_hevc_enc_internal_handler;
+				arg->encInit.m_Ioremap		= (void* (*) (phys_addr_t, unsigned int)) vetc_ioremap;
+				arg->encInit.m_Iounmap		= (void (*) (void*)) vetc_iounmap;
+				arg->encInit.m_reg_read		= (unsigned int (*)(void*, unsigned int)) vetc_reg_read;
+				arg->encInit.m_reg_write	= (void (*)(void*, unsigned int, unsigned int)) vetc_reg_write;
+				arg->encInit.m_Usleep		= (void (*)(unsigned int, unsigned int))vetc_usleep;
 
-				V_DBG(DEBUG_ENC_SEQUENCE, "@@ Enc :: Init In =>Memcpy(0x%px),Memset(0x%px),Interrupt(0x%px),"
+				V_DBG(VPU_DBG_SEQUENCE, "Enc :: Init In =>Memcpy(0x%px),Memset(0x%px),Interrupt(0x%px),"
 					"remap(0x%px),unmap(0x%px),read(0x%px),write(0x%px),sleep(0x%px)||workbuff(0x%px/0x%px),Reg(0x%px/0x%px),"
 					"format(%d),W:H(%d:%d),Fps(%d),Bps(%d),Keyi(%d),Stream(0x%px/0x%px, %d),Reg(0x%px):Sec. AXI (0x%x)",
 					arg->encInit.m_Memcpy, arg->encInit.m_Memset, arg->encInit.m_Interrupt,
@@ -513,24 +512,23 @@ static int _vmgr_hevc_enc_process(vputype type, int cmd, long pHandle, void* arg
 					arg->encInit.m_iBitstreamFormat, arg->encInit.m_iPicWidth, arg->encInit.m_iPicHeight,
 					arg->encInit.m_iFrameRate, arg->encInit.m_iTargetKbps, arg->encInit.m_iKeyInterval,
 					arg->encInit.m_BitstreamBufferAddr[PA], arg->encInit.m_BitstreamBufferAddr[VA],
-					arg->encInit.m_iBitstreamBufferSize, vidsys_conf_reg, vetc_reg_read(vidsys_conf_reg, 0x84)
-					);
+					arg->encInit.m_iBitstreamBufferSize, vidsys_conf_reg, vetc_reg_read((void *) vidsys_conf_reg, 0x84));
 
 				ret = tcc_vpu_hevc_enc(cmd, (void*)(&arg->handle), (void*)(&arg->encInit), (void*)(&arg->encInitialInfo));
-				if(ret != RETCODE_SUCCESS)
+				if (ret != RETCODE_SUCCESS)
 				{
-					V_DBG(DEBUG_VPU_ERROR, " :: Init failed with ret(0x%x)", ret);
-					if( ret != RETCODE_CODEC_EXIT )
+					V_DBG(VPU_DBG_ERROR, " :: Init failed with ret(0x%x)", ret);
+					if (ret != RETCODE_CODEC_EXIT)
 					{
 						vetc_dump_reg_all(vmgr_hevc_enc_data.base_addr, "Init error");
 					}
 				}
 
-				if(ret != RETCODE_CODEC_EXIT && arg->handle != 0)
+				if (ret != RETCODE_CODEC_EXIT && arg->handle != 0)
 				{
 					vmgr_hevc_enc_data.handle[type] = arg->handle;
 					vmgr_hevc_enc_set_close(type, 0, 0);
-					V_DBG(DEBUG_ENC_SEQUENCE, "vmgr_hevc_enc_data.handle = 0x%x", arg->handle);
+					V_DBG(VPU_DBG_SEQUENCE, "vmgr_hevc_enc_data.handle = 0x%x", arg->handle);
 				}
 				else
 				{
@@ -538,7 +536,7 @@ static int _vmgr_hevc_enc_process(vputype type, int cmd, long pHandle, void* arg
 					vmgr_hevc_enc_set_close(type, 0, 0);
 					vmgr_hevc_enc_set_close(type, 1, 1);
 				}
-				V_DBG(DEBUG_ENC_SEQUENCE, " :: Init Done Handle(0x%x)", arg->handle);
+				V_DBG(VPU_DBG_SEQUENCE, " :: Init Done Handle(0x%x)", arg->handle);
 				vmgr_hevc_enc_data.nDecode_Cmd = 0;
 
 			#ifdef CONFIG_VPU_TIME_MEASUREMENT
@@ -551,13 +549,12 @@ static int _vmgr_hevc_enc_process(vputype type, int cmd, long pHandle, void* arg
 
 			case VPU_ENC_REG_FRAME_BUFFER:
 			{
-				VENC_HEVC_SET_BUFFER_t *arg = (VENC_HEVC_SET_BUFFER_t *) args;
+				VENC_HEVC_SET_BUFFER_t* arg = (VENC_HEVC_SET_BUFFER_t*) args;
 
-				V_DBG(DEBUG_ENC_SEQUENCE, "HEnc-%d: Register a frame buffer w PA(0x%px)/VA(0x%px)",
+				V_DBG(VPU_DBG_SEQUENCE, "HEnc-%d: Register a frame buffer w PA(0x%px)/VA(0x%px)",
 					type,
 					arg->encBuffer.m_FrameBufferStartAddr[0],
-					arg->encBuffer.m_FrameBufferStartAddr[1]
-					);
+					arg->encBuffer.m_FrameBufferStartAddr[1]);
 
 				ret = tcc_vpu_hevc_enc(cmd, (codec_handle_t*)&pHandle, (void*)(&arg->encBuffer), (void*)NULL);
 			}
@@ -565,17 +562,16 @@ static int _vmgr_hevc_enc_process(vputype type, int cmd, long pHandle, void* arg
 
 			case VPU_ENC_PUT_HEADER:
 			{
-				VENC_HEVC_PUT_HEADER_t *arg = (VENC_HEVC_PUT_HEADER_t *) args;
+				VENC_HEVC_PUT_HEADER_t* arg = (VENC_HEVC_PUT_HEADER_t*) args;
 
 				vmgr_hevc_enc_data.check_interrupt_detection = 1;
 
-				V_DBG(DEBUG_ENC_SEQUENCE, "HEnc-%d: put an Enc header w type(%d),size(%d),PA(0x%px)/VA(0x%px)",
+				V_DBG(VPU_DBG_SEQUENCE, "HEnc-%d: put an Enc header w type(%d),size(%d),PA(0x%px)/VA(0x%px)",
 					type,
 					arg->encHeader.m_iHeaderType,
 					arg->encHeader.m_iHeaderSize,
 					arg->encHeader.m_HeaderAddr[0],
-					arg->encHeader.m_HeaderAddr[1]
-					);
+					arg->encHeader.m_HeaderAddr[1]);
 
 				ret = tcc_vpu_hevc_enc(cmd, (codec_handle_t*)&pHandle, (void*)(&arg->encHeader), (void*)NULL);
 			}
@@ -583,12 +579,12 @@ static int _vmgr_hevc_enc_process(vputype type, int cmd, long pHandle, void* arg
 
 			case VPU_ENC_ENCODE:
 			{
-				VENC_HEVC_ENCODE_t *arg = (VENC_HEVC_ENCODE_t *)args;
+				VENC_HEVC_ENCODE_t* arg = (VENC_HEVC_ENCODE_t*)args;
 			#ifdef CONFIG_VPU_TIME_MEASUREMENT
-				do_gettimeofday( &t1 );
+				do_gettimeofday(&t1);
 			#endif
 
-				V_DBG(DEBUG_ENC_SEQUENCE, " enter w/ Handle(0x%x) :: 0x%x-0x%x-0x%x, %d-%d-%d, %d-%d-%d, %d, 0x%x-%d",
+				V_DBG(VPU_DBG_SEQUENCE, " enter w/ Handle(0x%x) :: 0x%x-0x%x-0x%x, %d-%d-%d, %d-%d-%d, %d, 0x%x-%d",
 						pHandle,
 						arg->encInput.m_PicYAddr,
 						arg->encInput.m_PicCbAddr,
@@ -601,48 +597,47 @@ static int _vmgr_hevc_enc_process(vputype type, int cmd, long pHandle, void* arg
 						arg->encInput.m_iChangeFrameRate,
 						arg->encInput.m_iChangeKeyInterval,
 						arg->encInput.m_BitstreamBufferAddr,
-						arg->encInput.m_iBitstreamBufferSize
-						);
+						arg->encInput.m_iBitstreamBufferSize);
 
 				vmgr_hevc_enc_data.check_interrupt_detection = 1;
 				ret = tcc_vpu_hevc_enc(cmd, (codec_handle_t*)&pHandle, (void*)(&arg->encInput), (void*)(&arg->encOutput));
 
-			#if 0//def VPU_HEVC_ENC_REGISTER_DUMP
-				if(arg->encInput.m_iForceIPicture != 0)
+			#if 0 //VPU_HEVC_ENC_REGISTER_DUMP
+				if (arg->encInput.m_iForceIPicture != 0)
 					printk("ForceIPicture = %d, 0x%x - 0x%x \n", arg->encInput.m_iForceIPicture, _vmgr_reg_read(0x194), _vmgr_reg_read(0x1C4));
-			//#else
-				if(arg->encInput.m_iChangeRcParamFlag != 0 && (arg->encInput.m_iChangeTargetKbps != 0 || arg->encInput.m_iChangeFrameRate != 0))
+			#else
+				#if 0
+				if (arg->encInput.m_iChangeRcParamFlag != 0 && (arg->encInput.m_iChangeTargetKbps != 0 || arg->encInput.m_iChangeFrameRate != 0))
 				{
 					printk("Flag(%d) :: %d Kbps, %d fps => %d kbps, %d bit, %d Qp \n", arg->encInput.m_iChangeRcParamFlag,
 						arg->encInput.m_iChangeTargetKbps, arg->encInput.m_iChangeFrameRate, _vmgr_reg_read(0x128), _vmgr_reg_read(0x12C), _vmgr_reg_read(0x1D4));
-						//vetc_dump_reg_all("after encode");
 				}
 				else
 				{
-					if(arg->encInput.m_iChangeTargetKbps != _vmgr_reg_read(0x128))
+					if (arg->encInput.m_iChangeTargetKbps != _vmgr_reg_read(0x128))
 					{
 						printk("%d Kbps => %d kbps, %d bit, %d Qp \n", arg->encInput.m_iChangeTargetKbps, _vmgr_reg_read(0x128), _vmgr_reg_read(0x12C), _vmgr_reg_read(0x1D4));
 					}
 				}
+				#endif
 			#endif
 
 				vmgr_hevc_enc_data.nDecode_Cmd++;
 
 			#ifdef CONFIG_VPU_TIME_MEASUREMENT
-				do_gettimeofday( &t2 );
+				do_gettimeofday(&t2);
 			#endif
 
-				V_DBG(DEBUG_ENC_SEQUENCE, " out w/ [%d] !! PicType[%d], Encoded_size[%d]",
+				V_DBG(VPU_DBG_SEQUENCE, " out w/ [%d] !! PicType[%d], Encoded_size[%d]",
 					ret,
 					arg->encOutput.m_iPicType,
-					arg->encOutput.m_iBitstreamOutSize
-					);
+					arg->encOutput.m_iBitstreamOutSize);
 			}
 			break;
 
 			case VPU_ENC_CLOSE:
 			{
-				V_DBG(DEBUG_ENC_SEQUENCE, " VPU_ENC_CLOSE !!");
+				V_DBG(VPU_DBG_SEQUENCE, " VPU_ENC_CLOSE !!");
 
 				vmgr_hevc_enc_data.check_interrupt_detection = 1;
 				ret = tcc_vpu_hevc_enc(cmd, (codec_handle_t*)&pHandle, (void*)NULL, (void*)NULL);
@@ -652,7 +647,7 @@ static int _vmgr_hevc_enc_process(vputype type, int cmd, long pHandle, void* arg
 
 			default:
 			{
-				V_DBG(DEBUG_VPU_ERROR, " :: not supported command(0x%x) \n", cmd);
+				V_DBG(VPU_DBG_ERROR, " :: not supported command(0x%x) \n", cmd);
 				return 0x999;
 			}
 			break;
@@ -687,8 +682,7 @@ static int _vmgr_hevc_enc_process(vputype type, int cmd, long pHandle, void* arg
 				vmgr_hevc_enc_data.iTime[type].proc_time[18], vmgr_hevc_enc_data.iTime[type].proc_time[19], vmgr_hevc_enc_data.iTime[type].proc_time[20],
 				vmgr_hevc_enc_data.iTime[type].proc_time[21], vmgr_hevc_enc_data.iTime[type].proc_time[22], vmgr_hevc_enc_data.iTime[type].proc_time[23],
 				vmgr_hevc_enc_data.iTime[type].proc_time[24], vmgr_hevc_enc_data.iTime[type].proc_time[25], vmgr_hevc_enc_data.iTime[type].proc_time[26],
-				vmgr_hevc_enc_data.iTime[type].proc_time[27], vmgr_hevc_enc_data.iTime[type].proc_time[28], vmgr_hevc_enc_data.iTime[type].proc_time[29]
-				);
+				vmgr_hevc_enc_data.iTime[type].proc_time[27], vmgr_hevc_enc_data.iTime[type].proc_time[28], vmgr_hevc_enc_data.iTime[type].proc_time[29]);
 
 			vmgr_hevc_enc_data.iTime[type].proc_base_cnt = 0;
 			vmgr_hevc_enc_data.iTime[type].proc_time_30frames = 0;
@@ -708,87 +702,85 @@ static int _vmgr_hevc_enc_process(vputype type, int cmd, long pHandle, void* arg
 static int _vmgr_hevc_enc_operation(void)
 {
 	int oper_finished;
-	VpuList_t *oper_data = NULL;
+	VpuList_t* oper_data = NULL;
 
-	while(!vmgr_hevc_enc_list_manager(NULL, LIST_IS_EMPTY) )
+	while (!vmgr_hevc_enc_list_manager(NULL, LIST_IS_EMPTY))
 	{
-		V_DBG(DEBUG_ENC_THREAD, ":: not empty cmd_queued (%d)", vmgr_hevc_enc_data.cmd_queued);
+		V_DBG(VPU_DBG_THREAD, ":: not empty cmd_queued (%d)", vmgr_hevc_enc_data.cmd_queued);
 
 		vmgr_hevc_enc_data.cmd_processing = 1;
 		oper_finished = 1;
 
 		oper_data = (VpuList_t*) vmgr_hevc_enc_list_manager(NULL, LIST_GET_ENTRY);
-		if(!oper_data)
+		if (!oper_data)
 		{
-			V_DBG(DEBUG_VPU_ERROR, "data is null");
+			V_DBG(VPU_DBG_ERROR, "data is null");
 			vmgr_hevc_enc_data.cmd_processing = 0;
 			return 0;
 		}
-		*(oper_data->vpu_result) |= RET2;
 
-		V_DBG(DEBUG_ENC_THREAD, "[%d] :: cmd = 0x%x, vmgr_hevc_enc_data.cmd_queued (%d)",
+		*oper_data->vpu_result |= RET2;
+
+		V_DBG(VPU_DBG_THREAD, "[%d] :: cmd = 0x%x, vmgr_hevc_enc_data.cmd_queued (%d)",
 			oper_data->type,
 			oper_data->cmd_type,
-			vmgr_hevc_enc_data.cmd_queued
-			);
+			vmgr_hevc_enc_data.cmd_queued);
 
-		if((oper_data->type >= VPU_ENC && oper_data->type < VPU_HEVC_ENC_MAX) && oper_data != NULL /*&& oper_data->comm_data != NULL*/)
+		if (oper_data->type >= VPU_ENC && oper_data->type < VPU_HEVC_ENC_MAX)
 		{
-			*(oper_data->vpu_result) |= RET3;
-			*(oper_data->vpu_result) = _vmgr_hevc_enc_process(oper_data->type,
+			*oper_data->vpu_result |= RET3;
+			*oper_data->vpu_result = _vmgr_hevc_enc_process(oper_data->type,
 													oper_data->cmd_type,
 													oper_data->handle,
-													oper_data->args
-													);
+													oper_data->args);
 			oper_finished = 1;
-			if(*(oper_data->vpu_result) != RETCODE_SUCCESS)
+			if (*oper_data->vpu_result != RETCODE_SUCCESS)
 			{
-				if(*(oper_data->vpu_result) != RETCODE_INSUFFICIENT_BITSTREAM &&
-					*(oper_data->vpu_result) != RETCODE_INSUFFICIENT_BITSTREAM_BUF)
+				if ((*oper_data->vpu_result != RETCODE_INSUFFICIENT_BITSTREAM) &&
+					(*oper_data->vpu_result != RETCODE_INSUFFICIENT_BITSTREAM_BUF))
 				{
-					V_DBG(DEBUG_VPU_ERROR, "- out[0x%px] :: type = %u, vmgr_hevc_enc_data.handle = 0x%lx, cmd = %d, frame_len %u",
-							(void *)*(oper_data->vpu_result), oper_data->type, oper_data->handle, oper_data->cmd_type, vmgr_hevc_enc_data.szFrame_Len);
+					V_DBG(VPU_DBG_ERROR, "- out[0x%px] :: type = %u, vmgr_hevc_enc_data.handle = 0x%lx, cmd = %d, frame_len %u",
+							(void*)*oper_data->vpu_result, oper_data->type, oper_data->handle, oper_data->cmd_type, vmgr_hevc_enc_data.szFrame_Len);
 				}
 
-				if(*(oper_data->vpu_result) == RETCODE_CODEC_EXIT)
+				if (*oper_data->vpu_result == RETCODE_CODEC_EXIT)
 				{
-					vmgr_hevc_enc_restore_clock(0, atomic_read(&vmgr_hevc_enc_data.dev_opened) );
+					vmgr_hevc_enc_restore_clock(0, atomic_read(&vmgr_hevc_enc_data.dev_opened));
 					_vmgr_hevc_enc_close_all(1);
 				}
 			}
 		}
 		else
 		{
-			V_DBG(DEBUG_VPU_ERROR, " :: missed info or unknown command > type = 0x%x, cmd = 0x%x",
+			V_DBG(VPU_DBG_ERROR, " :: missed info or unknown command > type = 0x%x, cmd = 0x%x",
 				oper_data->type,
-				oper_data->cmd_type
-				);
+				oper_data->cmd_type);
 
-			*(oper_data->vpu_result) = RETCODE_FAILURE;
+			*oper_data->vpu_result = RETCODE_FAILURE;
 			oper_finished = 0;
 		}
 
-		if(oper_finished)
+		if (oper_finished)
 		{
-			if(oper_data->comm_data != NULL && atomic_read(&vmgr_hevc_enc_data.dev_opened) != 0)
+			if (oper_data->comm_data != NULL && atomic_read(&vmgr_hevc_enc_data.dev_opened) != 0)
 			{
-				oper_data->comm_data->count += 1;
-				if(oper_data->comm_data->count != 1)
+				oper_data->comm_data->count++;
+				if (oper_data->comm_data->count != 1)
 				{
-					V_DBG(DEBUG_ENC_THREAD, "polling wakeup count = %d :: type(0x%x) cmd(0x%x)",
+					V_DBG(VPU_DBG_THREAD, "polling wakeup count = %d :: type(0x%x) cmd(0x%x)",
 							oper_data->comm_data->count, oper_data->type, oper_data->cmd_type);
 				}
-				wake_up_interruptible(&(oper_data->comm_data->wq));
+				wake_up_interruptible(&oper_data->comm_data->wq);
 			}
 			else
 			{
-				V_DBG(DEBUG_VPU_ERROR, "Error: abnormal exception or external command was processed!! 0x%p - %d",
+				V_DBG(VPU_DBG_ERROR, "Error: abnormal exception or external command was processed!! 0x%p - %d",
 					oper_data->comm_data, atomic_read(&vmgr_hevc_enc_data.dev_opened));
 			}
 		}
 		else
 		{
-			V_DBG(DEBUG_VPU_ERROR, "Error: abnormal exception 2!! 0x%p - %d\n", oper_data->comm_data, atomic_read(&vmgr_hevc_enc_data.dev_opened));
+			V_DBG(VPU_DBG_ERROR, "Error: abnormal exception 2!! 0x%p - %d\n", oper_data->comm_data, atomic_read(&vmgr_hevc_enc_data.dev_opened));
 		}
 
 		vmgr_hevc_enc_list_manager(oper_data, LIST_DEL);
@@ -799,20 +791,20 @@ static int _vmgr_hevc_enc_operation(void)
 	return 0;
 }
 
-
-static int _vmgr_hevc_enc_thread(void *kthread)
+static int _vmgr_hevc_enc_thread(void* kthread)
 {
-	V_DBG(DEBUG_ENC_THREAD, "enter");
+	V_DBG(VPU_DBG_THREAD, "enter");
 
-	do {
+	do
+	{
 		if (vmgr_hevc_enc_list_manager(NULL, LIST_IS_EMPTY))
 		{
 			vmgr_hevc_enc_data.cmd_processing = 0;
 
-			wait_event_interruptible_timeout(vmgr_hevc_enc_data.comm_data.thread_wq,
-									vmgr_hevc_enc_data.comm_data.thread_intr > 0,
-									msecs_to_jiffies(50)
-									);
+			(void)wait_event_interruptible_timeout(vmgr_hevc_enc_data.comm_data.thread_wq,
+												vmgr_hevc_enc_data.comm_data.thread_intr > 0,
+												msecs_to_jiffies(50));
+
 			vmgr_hevc_enc_data.comm_data.thread_intr = 0;
 		}
 		else
@@ -823,9 +815,9 @@ static int _vmgr_hevc_enc_thread(void *kthread)
 			}
 			else
 			{
-				VpuList_t *oper_data = NULL;
+				VpuList_t* oper_data = NULL;
 
-				V_DBG(DEBUG_ENC_THREAD, "DEL for empty");
+				V_DBG(VPU_DBG_THREAD, "DEL for empty");
 
 				oper_data = vmgr_hevc_enc_list_manager(NULL, LIST_GET_ENTRY);
 				if (oper_data)
@@ -834,16 +826,15 @@ static int _vmgr_hevc_enc_thread(void *kthread)
 				}
 			}
 		}
-	}while (!kthread_should_stop() );
+	} while (!kthread_should_stop());
 
-	V_DBG(DEBUG_ENC_THREAD, "finish");
+	V_DBG(VPU_DBG_THREAD, "finish");
 
 	return 0;
 }
 
-//////////////////////////////////////////////////////////////////////////
 static unsigned int hangup_rel_count = 0;
-static long _vmgr_hevc_enc_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
+static long _vmgr_hevc_enc_ioctl(struct file* file, unsigned int cmd, unsigned long arg)
 {
 	int ret = 0;
 	CONTENTS_INFO info;
@@ -855,357 +846,319 @@ static long _vmgr_hevc_enc_ioctl(struct file *file, unsigned int cmd, unsigned l
 	{
 		case VPU_SET_CLK:
 		case VPU_SET_CLK_KERNEL:
+		{
+			if (cmd == VPU_SET_CLK_KERNEL)
 			{
-				if(cmd == VPU_SET_CLK_KERNEL)
+				(void)memcpy(&info, (CONTENTS_INFO*) arg, sizeof(info));
+
+				if (info.type >= VPU_ENC && info.isSWCodec)
 				{
-					if(NULL == memcpy(&info, (CONTENTS_INFO *) arg, sizeof(info) ) )
-					{
-						ret = -EFAULT;
-					}
-					else
-					{
-						if (info.type >= VPU_ENC && info.isSWCodec)
-						{
-							vmgr_hevc_enc_data.clk_limitation = 0;
-							V_DBG(DEBUG_ENC_SEQUENCE, "The clock limitation for VPU HEVC ENC is released.");
-						}
-					}
+					vmgr_hevc_enc_data.clk_limitation = 0;
+					V_DBG(VPU_DBG_SEQUENCE, "The clock limitation for VPU HEVC ENC is released.");
+				}
+			}
+			else
+			{
+				if (copy_from_user(&info, (CONTENTS_INFO*)arg, sizeof(info)))
+				{
+					ret = -EFAULT;
 				}
 				else
 				{
-					if(copy_from_user(&info, (CONTENTS_INFO *)arg, sizeof(info)))
+					if (info.type >= VPU_ENC && info.isSWCodec)
 					{
-						ret = -EFAULT;
-					}
-					else
-					{
-						if (info.type >= VPU_ENC && info.isSWCodec)
-						{
-							vmgr_hevc_enc_data.clk_limitation = 0;
-							V_DBG(DEBUG_ENC_SEQUENCE, "The clock limitation for VPU HEVC ENC is released.");
-						}
+						vmgr_hevc_enc_data.clk_limitation = 0;
+						V_DBG(VPU_DBG_SEQUENCE, "The clock limitation for VPU HEVC ENC is released.");
 					}
 				}
 			}
-			break;
+		}
+		break;
 
 		case VPU_GET_FREEMEM_SIZE:
 		case VPU_GET_FREEMEM_SIZE_KERNEL:
+		{
+			unsigned int type;
+			unsigned int freemem_sz;
+			if (cmd == VPU_GET_FREEMEM_SIZE_KERNEL)
 			{
-				unsigned int type;
-				unsigned int freemem_sz;
-				if(cmd == VPU_GET_FREEMEM_SIZE_KERNEL)
-				{
-					if(NULL == memcpy(&type, (unsigned int*)arg, sizeof(unsigned int) ) )
-					{
-						ret = -EFAULT;
-					}
-					else
-					{
-						if(type > VPU_HEVC_ENC_MAX)
-							type = VPU_DEC;
+				(void)memcpy(&type, (unsigned int*)arg, sizeof(unsigned int));
 
-						freemem_sz = vmem_get_freemem_size(type);
-						if(NULL == memcpy((unsigned int*)arg, &freemem_sz, sizeof(unsigned int) ) )
-						{
-							ret = -EFAULT;
-						}
-					}
+				if (type > VPU_HEVC_ENC_MAX)
+					type = VPU_DEC;
+
+				freemem_sz = vmem_get_freemem_size(type);
+
+				(void)memcpy((unsigned int*)arg, &freemem_sz, sizeof(unsigned int));
+			}
+			else
+			{
+				if (copy_from_user(&type, (unsigned int*)arg, sizeof(unsigned int)))
+				{
+					ret = -EFAULT;
 				}
 				else
 				{
-					if(copy_from_user(&type, (unsigned int*)arg, sizeof(unsigned int) ) )
+					if (type > VPU_HEVC_ENC_MAX)
+						type = VPU_DEC;
+
+					freemem_sz = vmem_get_freemem_size(type);
+					if (copy_to_user((unsigned int*)arg, &freemem_sz, sizeof(unsigned int)))
 					{
 						ret = -EFAULT;
 					}
-					else
-					{
-						if(type > VPU_HEVC_ENC_MAX)
-							type = VPU_DEC;
-
-						freemem_sz = vmem_get_freemem_size(type);
-						if(copy_to_user((unsigned int*)arg, &freemem_sz, sizeof(unsigned int) ) )
-						{
-							ret = -EFAULT;
-						}
-					}
 				}
 			}
-			break;
+		}
+		break;
 
 		case VPU_HW_RESET:
 			vmgr_hevc_enc_hw_reset();
-			break;
+		break;
 
 		case VPU_SET_MEM_ALLOC_MODE:
 		case VPU_SET_MEM_ALLOC_MODE_KERNEL:
+		{
+			if (cmd == VPU_SET_MEM_ALLOC_MODE_KERNEL)
 			{
-				if(cmd == VPU_SET_MEM_ALLOC_MODE_KERNEL)
+				(void)memcpy(&open_info,(OPENED_sINFO*)arg, sizeof(OPENED_sINFO));
+
+				if (open_info.opened_cnt != 0)
 				{
-					if(NULL == memcpy(&open_info,(OPENED_sINFO*)arg, sizeof(OPENED_sINFO) ) )
-					{
-						ret = -EFAULT;
-					}
-					else
-					{
-						if(open_info.opened_cnt != 0)
-						{
-							vmem_set_only_decode_mode(open_info.type);
-						}
-						ret = 0;
-					}
+					vmem_set_only_decode_mode(open_info.type);
+				}
+				ret = 0;
+			}
+			else
+			{
+				if (copy_from_user(&open_info, (OPENED_sINFO*)arg, sizeof(OPENED_sINFO)))
+				{
+					ret = -EFAULT;
 				}
 				else
 				{
-					if(copy_from_user(&open_info, (OPENED_sINFO *)arg, sizeof(OPENED_sINFO) ) )
+					if (open_info.opened_cnt != 0)
 					{
-						ret = -EFAULT;
+						vmem_set_only_decode_mode(open_info.type);
 					}
-					else
-					{
-						if(open_info.opened_cnt != 0)
-						{
-							vmem_set_only_decode_mode(open_info.type);
-						}
-						ret = 0;
-					}
+					ret = 0;
 				}
 			}
-			break;
+		}
+		break;
 
 		case VPU_CHECK_CODEC_STATUS:
 		case VPU_CHECK_CODEC_STATUS_KERNEL:
+		{
+			if (cmd == VPU_CHECK_CODEC_STATUS_KERNEL)
 			{
-				if(cmd == VPU_CHECK_CODEC_STATUS_KERNEL)
+				(void)memcpy((int*)arg, vmgr_hevc_enc_data.closed, sizeof(vmgr_hevc_enc_data.closed));
+			}
+			else
+			{
+				if (copy_to_user((int*)arg, vmgr_hevc_enc_data.closed, sizeof(vmgr_hevc_enc_data.closed)))
 				{
-					if(NULL == memcpy((int *)arg, vmgr_hevc_enc_data.closed, sizeof(vmgr_hevc_enc_data.closed) ) )
-					{
-						ret = -EFAULT;
-					}
+					ret = -EFAULT;
 				}
 				else
 				{
-					if(copy_to_user((int*)arg, vmgr_hevc_enc_data.closed, sizeof(vmgr_hevc_enc_data.closed) ) )
-					{
-						ret = -EFAULT;
-					}
-					else
-					{
-						ret = 0;
-					}
+					ret = 0;
 				}
 			}
-			break;
+		}
+		break;
 
 		case VPU_CHECK_INSTANCE_AVAILABLE:
 		case VPU_CHECK_INSTANCE_AVAILABLE_KERNEL:
+		{
+			unsigned int nAvailable_Instance = 0;
+			unsigned int type = VPU_DEC;
+
+			ret = 0;
+
+			if (cmd == VPU_CHECK_INSTANCE_AVAILABLE_KERNEL)
 			{
-				unsigned int nAvailable_Instance = 0;
-				unsigned int type = VPU_DEC;
-
-				ret = 0;
-
-				if(cmd == VPU_CHECK_INSTANCE_AVAILABLE_KERNEL)
+				if (NULL == memcpy(&type, (int*)arg, sizeof(unsigned int)))
 				{
-					if(NULL == memcpy(&type, (int*)arg, sizeof(unsigned int) ) )
+					ret = -EFAULT;
+				}
+				else
+				{
+					if (copy_from_user(&type, (int*)arg, sizeof(unsigned int)))
 					{
 						ret = -EFAULT;
 					}
-					else
-					{
-						if (copy_from_user(&type, (int*)arg, sizeof(unsigned int) ) )
-						{
-							ret = -EFAULT;
-						}
-					}
 				}
+			}
 
-				if(ret == 0)
+			if (ret == 0)
+			{
+				vdec_check_instance_available(&nAvailable_Instance);
+
+				if (cmd == VPU_CHECK_INSTANCE_AVAILABLE_KERNEL)
 				{
-					vdec_check_instance_available(&nAvailable_Instance);
-
-					if(cmd == VPU_CHECK_INSTANCE_AVAILABLE_KERNEL)
+					(void)memcpy((unsigned int*)arg, &nAvailable_Instance, sizeof(unsigned int));
+				}
+				else
+				{
+					if (copy_to_user((unsigned int*)arg, &nAvailable_Instance, sizeof(unsigned int)))
 					{
-						if(NULL == memcpy((unsigned int*)arg, &nAvailable_Instance, sizeof(unsigned int) ) )
-						{
-							ret = -EFAULT;
-						}
-					}
-					else
-					{
-						if(copy_to_user((unsigned int*)arg, &nAvailable_Instance, sizeof(unsigned int) ) )
-						{
-							ret = -EFAULT;
-						}
+						ret = -EFAULT;
 					}
 				}
 			}
-			break;
+		}
+		break;
 
 		case VPU_GET_INSTANCE_IDX:
 		case VPU_GET_INSTANCE_IDX_KERNEL:
+		{
+			INSTANCE_INFO iInst;
+			if (cmd == VPU_GET_INSTANCE_IDX_KERNEL)
 			{
-				INSTANCE_INFO iInst;
-				if(cmd == VPU_GET_INSTANCE_IDX_KERNEL)
+				(void)memcpy(&iInst, (int*)arg, sizeof(INSTANCE_INFO));
+			}
+			else
+			{
+				if (copy_from_user(&iInst, (int*)arg, sizeof(INSTANCE_INFO)))
 				{
-					if(NULL == memcpy(&iInst, (int*)arg, sizeof(INSTANCE_INFO) ) )
-					{
-						ret = -EFAULT;
-					}
+					ret = -EFAULT;
+				}
+			}
+
+			if (ret == 0)
+			{
+				venc_get_instance(&iInst.nInstance);
+
+				if (cmd == VPU_GET_INSTANCE_IDX_KERNEL)
+				{
+					(void)memcpy((int*)arg, &iInst, sizeof(INSTANCE_INFO));
 				}
 				else
 				{
-					if(copy_from_user(&iInst, (int*)arg, sizeof(INSTANCE_INFO) ) )
+					if (copy_to_user((int*)arg, &iInst, sizeof(INSTANCE_INFO)))
 					{
 						ret = -EFAULT;
 					}
 				}
-
-				if(ret == 0)
-				{
-					venc_get_instance(&iInst.nInstance);
-
-					if(cmd == VPU_GET_INSTANCE_IDX_KERNEL)
-					{
-						if(NULL == memcpy((int*)arg, &iInst, sizeof(INSTANCE_INFO) ) )
-						{
-							ret = -EFAULT;
-						}
-					}
-					else
-					{
-						if(copy_to_user((int*)arg, &iInst, sizeof(INSTANCE_INFO) ) )
-						{
-							ret = -EFAULT;
-						}
-					}
-				}
 			}
-			break;
+		}
+		break;
 
 		case VPU_CLEAR_INSTANCE_IDX:
 		case VPU_CLEAR_INSTANCE_IDX_KERNEL:
+		{
+			INSTANCE_INFO iInst;
+			if (cmd == VPU_CLEAR_INSTANCE_IDX_KERNEL)
 			{
-				INSTANCE_INFO iInst;
-				if(cmd == VPU_CLEAR_INSTANCE_IDX_KERNEL)
-				{
-					if (NULL == memcpy(&iInst, (int*)arg, sizeof(INSTANCE_INFO)))
-					{
-						ret = -EFAULT;
-					}
-				}
-				else
-				{
-					if (copy_from_user(&iInst, (int*)arg, sizeof(INSTANCE_INFO)))
-						ret = -EFAULT;
-				}
-
-				if(ret == 0)
-				{
-					venc_clear_instance(iInst.nInstance);
-				}
+				(void)memcpy(&iInst, (int*)arg, sizeof(INSTANCE_INFO));
 			}
-			break;
+			else
+			{
+				if (copy_from_user(&iInst, (int*)arg, sizeof(INSTANCE_INFO)))
+					ret = -EFAULT;
+			}
+
+			if (ret == 0)
+			{
+				venc_clear_instance(iInst.nInstance);
+			}
+		}
+		break;
 
 		case VPU_SET_RENDERED_FRAMEBUFFER:
 		case VPU_SET_RENDERED_FRAMEBUFFER_KERNEL:
+		{
+			if (cmd == VPU_SET_RENDERED_FRAMEBUFFER_KERNEL)
 			{
-				if(cmd == VPU_SET_RENDERED_FRAMEBUFFER_KERNEL)
+				(void)memcpy(&vmgr_hevc_enc_data.gsRender_fb_info,(void*)arg,sizeof(VDEC_RENDERED_BUFFER_t));
+			}
+			else
+			{
+				if (copy_from_user(&vmgr_hevc_enc_data.gsRender_fb_info, (void*)arg, sizeof(VDEC_RENDERED_BUFFER_t)))
 				{
-					if(NULL == memcpy(&vmgr_hevc_enc_data.gsRender_fb_info,(void*)arg,sizeof(VDEC_RENDERED_BUFFER_t) ) )
-					{
-						ret = -EFAULT;
-					}
+					ret = -EFAULT;
 				}
 				else
 				{
-					if(copy_from_user(&vmgr_hevc_enc_data.gsRender_fb_info, (void *)arg, sizeof(VDEC_RENDERED_BUFFER_t) ) )
-					{
-						ret = -EFAULT;
-					}
-					else
-					{
-						V_DBG(DEBUG_ENC_SEQUENCE, "set rendered buffer info: 0x%x ~ 0x%x ",
-							vmgr_hevc_enc_data.gsRender_fb_info.start_addr_phy, vmgr_hevc_enc_data.gsRender_fb_info.size);
-					}
+					V_DBG(VPU_DBG_SEQUENCE, "set rendered buffer info: 0x%x ~ 0x%x ",
+						vmgr_hevc_enc_data.gsRender_fb_info.start_addr_phy, vmgr_hevc_enc_data.gsRender_fb_info.size);
 				}
 			}
-			break;
+		}
+		break;
 
 		case VPU_GET_RENDERED_FRAMEBUFFER:
 		case VPU_GET_RENDERED_FRAMEBUFFER_KERNEL:
+		{
+			if (cmd == VPU_GET_RENDERED_FRAMEBUFFER_KERNEL)
 			{
-				if(cmd == VPU_GET_RENDERED_FRAMEBUFFER_KERNEL)
+				(void)memcpy((void*)arg, &vmgr_hevc_enc_data.gsRender_fb_info, sizeof(VDEC_RENDERED_BUFFER_t));
+			}
+			else
+			{
+				if (copy_to_user((void*)arg, &vmgr_hevc_enc_data.gsRender_fb_info, sizeof(VDEC_RENDERED_BUFFER_t)))
 				{
-					if(NULL == memcpy((void*)arg, &vmgr_hevc_enc_data.gsRender_fb_info, sizeof(VDEC_RENDERED_BUFFER_t) ) )
-					{
-						ret = -EFAULT;
-					}
+					ret = -EFAULT;
 				}
 				else
 				{
-					if(copy_to_user((void*)arg, &vmgr_hevc_enc_data.gsRender_fb_info, sizeof(VDEC_RENDERED_BUFFER_t) ) )
-					{
-						ret = -EFAULT;
-					}
-					else
-					{
-						V_DBG(DEBUG_ENC_SEQUENCE, "get rendered buffer info: 0x%x ~ 0x%x",
-							vmgr_hevc_enc_data.gsRender_fb_info.start_addr_phy, vmgr_hevc_enc_data.gsRender_fb_info.size);
-					}
+					V_DBG(VPU_DBG_SEQUENCE, "get rendered buffer info: 0x%x ~ 0x%x",
+						vmgr_hevc_enc_data.gsRender_fb_info.start_addr_phy, vmgr_hevc_enc_data.gsRender_fb_info.size);
 				}
 			}
-			break;
+		}
+		break;
 
 		case VPU_TRY_FORCE_CLOSE:
 		case VPU_TRY_FORCE_CLOSE_KERNEL:
+		{
+			if (!vmgr_hevc_enc_data.bVpu_already_proc_force_closed)
 			{
-				if(!vmgr_hevc_enc_data.bVpu_already_proc_force_closed)
-				{
-					vmgr_hevc_enc_data.external_proc = 1;
-					_vmgr_hevc_enc_external_all_close(200);
-					vmgr_hevc_enc_data.external_proc = 0;
-					vmgr_hevc_enc_data.bVpu_already_proc_force_closed = true;
-				}
+				vmgr_hevc_enc_data.external_proc = 1;
+				_vmgr_hevc_enc_external_all_close(200);
+				vmgr_hevc_enc_data.external_proc = 0;
+				vmgr_hevc_enc_data.bVpu_already_proc_force_closed = true;
 			}
-			break;
+		}
+		break;
 
 		case VPU_TRY_CLK_RESTORE:
 		case VPU_TRY_CLK_RESTORE_KERNEL:
-			{
-				vmgr_hevc_enc_restore_clock(0, atomic_read(&vmgr_hevc_enc_data.dev_opened) );
-			}
-			break;
+		{
+			vmgr_hevc_enc_restore_clock(0, atomic_read(&vmgr_hevc_enc_data.dev_opened));
+		}
+		break;
 
 #ifdef USE_DEV_OPEN_CLOSE_IOCTL
 		case VPU_TRY_OPEN_DEV:
 		case VPU_TRY_OPEN_DEV_KERNEL:
-			{
-				_vmgr_hevc_enc_cmd_open("cmd");
-			}
-			break;
+		{
+			_vmgr_hevc_enc_cmd_open("cmd");
+		}
+		break;
 
 		case VPU_TRY_CLOSE_DEV:
 		case VPU_TRY_CLOSE_DEV_KERNEL:
-			{
-				_vmgr_hevc_enc_cmd_release("cmd");
-			}
-			break;
+		{
+			_vmgr_hevc_enc_cmd_release("cmd");
+		}
+		break;
 #endif
 
 		case VPU_TRY_HANGUP_RELEASE:
-			{
-				hangup_rel_count++;
-				printk(" vpu ===> VPU_TRY_HANGUP_RELEASE %d'th\n", hangup_rel_count);
-			}
-			break;
+		{
+			hangup_rel_count++;
+			printk(" vpu ===> VPU_TRY_HANGUP_RELEASE %d'th\n", hangup_rel_count);
+		}
+		break;
 
 		default:
-			{
-				V_DBG(DEBUG_VPU_ERROR, "Unsupported ioctl[%d]!!!", cmd);
-				ret = -EINVAL;
-			}
-			break;
+		{
+			V_DBG(VPU_DBG_ERROR, "Unsupported ioctl[%d]!!!", cmd);
+			ret = -EINVAL;
+		}
+		break;
 	}
 
 	mutex_unlock(&vmgr_hevc_enc_data.comm_data.io_mutex);
@@ -1214,26 +1167,26 @@ static long _vmgr_hevc_enc_ioctl(struct file *file, unsigned int cmd, unsigned l
 }
 
 #ifdef CONFIG_COMPAT
-static long _vmgr_hevc_enc_compat_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
+static long _vmgr_hevc_enc_compat_ioctl(struct file* file, unsigned int cmd, unsigned long arg)
 {
-	return _vmgr_hevc_enc_ioctl(file, cmd, (unsigned long) compat_ptr(arg) );
+	return _vmgr_hevc_enc_ioctl(file, cmd, (unsigned long) compat_ptr(arg));
 }
 #endif
 
-static int _vmgr_hevc_enc_mmap(struct file *file, struct vm_area_struct *vma)
+static int _vmgr_hevc_enc_mmap(struct file* file, struct vm_area_struct* vma)
 {
 #if defined(CONFIG_TCC_MEM)
-	if(range_is_allowed(vma->vm_pgoff, vma->vm_end - vma->vm_start) < 0)
+	if (range_is_allowed(vma->vm_pgoff, vma->vm_end - vma->vm_start) < 0)
 	{
-		V_DBG(DEBUG_VPU_ERROR, "_vmgr_mmap: this address is not allowed");
+		V_DBG(VPU_DBG_ERROR, "_vmgr_mmap: this address is not allowed");
 		return -EAGAIN;
 	}
 #endif
 
 	vma->vm_page_prot = vmem_get_pgprot(vma->vm_page_prot, vma->vm_pgoff);
-	if(remap_pfn_range(vma,vma->vm_start, vma->vm_pgoff , vma->vm_end - vma->vm_start, vma->vm_page_prot))
+	if (remap_pfn_range(vma,vma->vm_start, vma->vm_pgoff, vma->vm_end - vma->vm_start, vma->vm_page_prot))
 	{
-		V_DBG(DEBUG_VPU_ERROR, "_vmgr_mmap :: remap_pfn_range failed");
+		V_DBG(VPU_DBG_ERROR, "_vmgr_mmap :: remap_pfn_range failed");
 		return -EAGAIN;
 	}
 
@@ -1244,7 +1197,8 @@ static int _vmgr_hevc_enc_mmap(struct file *file, struct vm_area_struct *vma)
 	return 0;
 }
 
-static struct file_operations _vmgr_hevc_enc_fops = {
+static struct file_operations _vmgr_hevc_enc_fops =
+{
 	.open				= _vmgr_hevc_enc_open,
 	.release			= _vmgr_hevc_enc_release,
 	.mmap				= _vmgr_hevc_enc_mmap,
@@ -1256,35 +1210,35 @@ static struct file_operations _vmgr_hevc_enc_fops = {
 
 static struct miscdevice _vmgr_hevc_enc_misc_device =
 {
-    MISC_DYNAMIC_MINOR,
-    VPU_HEVC_ENC_MGR_NAME,
-    &_vmgr_hevc_enc_fops,
+	MISC_DYNAMIC_MINOR,
+	VPU_HEVC_ENC_MGR_NAME,
+	&_vmgr_hevc_enc_fops,
 };
 
 int vmgr_hevc_enc_opened(void)
 {
-    if(atomic_read(&vmgr_hevc_enc_data.dev_opened) == 0)
-        return 0;
-    return 1;
+	if (atomic_read(&vmgr_hevc_enc_data.dev_opened) == 0)
+		return 0;
+	return 1;
 }
 EXPORT_SYMBOL(vmgr_hevc_enc_opened);
 
-int vmgr_hevc_enc_probe(struct platform_device *pdev)
+int vmgr_hevc_enc_probe(struct platform_device* pdev)
 {
 	int ret;
 	int type = 0;
 	unsigned long int_flags;
-	struct resource *res = NULL;
+	struct resource* resource = NULL;
 
 	if (pdev->dev.of_node == NULL)
 	{
 		return -ENODEV;
 	}
 
-	V_DBG(DEBUG_ENC_PROBE, "enter");
+	V_DBG(VPU_DBG_PROBE, "enter");
 
-	memset(&vmgr_hevc_enc_data, 0, sizeof(mgr_data_t) );
-	for(type=VPU_ENC; type<VPU_HEVC_ENC_MAX; type++)
+	memset(&vmgr_hevc_enc_data, 0, sizeof(mgr_data_t));
+	for (type=VPU_ENC; type<VPU_HEVC_ENC_MAX; type++)
 	{
 		vmgr_hevc_enc_data.closed[type] = 1;
 	}
@@ -1296,34 +1250,40 @@ int vmgr_hevc_enc_probe(struct platform_device *pdev)
 	atomic_set(&vmgr_hevc_enc_data.dev_file_opened, 0);
 #endif
 
-	vmgr_hevc_enc_data.irq = platform_get_irq(pdev, 0);
-	if (vmgr_hevc_enc_data.irq < 0) {
-		dev_err(&pdev->dev, "could not get IRQ");
-		return vmgr_hevc_enc_data.irq;
+	//Fetching IRQ number for device
+	{
+		int irq = platform_get_irq(pdev, 0);
+		if (irq < 0)
+		{
+			dev_err(&pdev->dev, "could not get IRQ");
+			return irq;
+		}
+
+		vmgr_hevc_enc_data.irq = (unsigned int)irq;
 	}
 
 	vmgr_hevc_enc_data.nOpened_Count = 0;
-	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
-	if (!res)
+	resource = platform_get_resource(pdev, IORESOURCE_MEM, 0);
+	if (!resource)
 	{
-		V_DBG(DEBUG_VPU_ERROR, "failed to get phy memory resourcea");
+		V_DBG(VPU_DBG_ERROR, "failed to get phy memory resourcea");
 		return -1;
 	}
-	res->end += 1;
+	resource->end += 1;
 
-	vmgr_hevc_enc_data.base_addr = devm_ioremap(&pdev->dev, res->start, res->end-res->start);
-	V_DBG(DEBUG_ENC_PROBE, "VPU-HEVC-ENC base address [0x%x -> 0x%px], resource size [%d], irq num [%d]",
-		res->start, vmgr_hevc_enc_data.base_addr, res->end-res->start, vmgr_hevc_enc_data.irq-32);
+	vmgr_hevc_enc_data.base_addr = devm_ioremap(&pdev->dev, resource->start, (resource->end - resource->start));
+	V_DBG(VPU_DBG_PROBE, "VPU-HEVC-ENC base address [0x%x -> 0x%px], resource size [%d], irq num [%d]",
+		resource->start, vmgr_hevc_enc_data.base_addr, (resource->end - resource->start), (vmgr_hevc_enc_data.irq - 32));
 
-	vidsys_conf_reg = (volatile void __iomem *)of_iomap(pdev->dev.of_node, 1);
+	vidsys_conf_reg = (volatile void __iomem*)of_iomap(pdev->dev.of_node, 1);
 	if (vidsys_conf_reg == NULL)
 	{
-		V_DBG(DEBUG_VPU_ERROR, "vidsys_conf_reg: NULL");
+		V_DBG(VPU_DBG_ERROR, "vidsys_conf_reg: NULL");
 	}
 	else
 	{
 		vetc_reg_write((void*)vidsys_conf_reg, 0x84, 0x9c9a3000);
-		V_DBG(DEBUG_ENC_PROBE, "Video sub-system cfg reg (0x%px) : Sec. AXI (0x%x)", vidsys_conf_reg, vetc_reg_read(vidsys_conf_reg, 0x84));
+		V_DBG(VPU_DBG_PROBE, "Video sub-system cfg reg (0x%px) : Sec. AXI (0x%x)", vidsys_conf_reg, vetc_reg_read((void *) vidsys_conf_reg, 0x84));
 	}
 
 	vmgr_hevc_enc_get_clock(pdev->dev.of_node);
@@ -1339,9 +1299,10 @@ int vmgr_hevc_enc_probe(struct platform_device *pdev)
 	INIT_LIST_HEAD(&vmgr_hevc_enc_data.comm_data.main_list);
 	INIT_LIST_HEAD(&vmgr_hevc_enc_data.comm_data.wait_list);
 
-	if( 0 > (ret = vmem_config()))
+	ret = vmem_config();
+	if (ret < 0)
 	{
-		V_DBG(DEBUG_VPU_ERROR, "unable to configure memory for VPU HEVC ENC!! %d", ret);
+		V_DBG(VPU_DBG_ERROR, "unable to configure memory for VPU HEVC ENC!! %d", ret);
 		return -ENOMEM;
 	}
 
@@ -1351,11 +1312,10 @@ int vmgr_hevc_enc_probe(struct platform_device *pdev)
 							_vmgr_hevc_enc_isr_handler,
 							int_flags,
 							VPU_HEVC_ENC_MGR_NAME,
-							&vmgr_hevc_enc_data
-							);
+							&vmgr_hevc_enc_data);
 	if (ret)
 	{
-		V_DBG(DEBUG_VPU_ERROR, "to aquire vpu-hevc-enc-irq");
+		V_DBG(VPU_DBG_ERROR, "to aquire vpu-hevc-enc-irq");
 	}
 	vmgr_hevc_enc_data.irq_reged = 1;
 	vmgr_hevc_enc_disable_irq(vmgr_hevc_enc_data.irq);
@@ -1363,41 +1323,43 @@ int vmgr_hevc_enc_probe(struct platform_device *pdev)
 	kidle_task = kthread_run(_vmgr_hevc_enc_thread, NULL, "vHEVC_ENC_th");
 	if (IS_ERR(kidle_task))
 	{
-		V_DBG(DEBUG_VPU_ERROR, "unable to create thread!!");
+		V_DBG(VPU_DBG_ERROR, "unable to create thread!!");
 		kidle_task = NULL;
 		return -1;
 	}
-	V_DBG(DEBUG_ENC_PROBE, "success: thread created!!");
+	V_DBG(VPU_DBG_PROBE, "success: thread created!!");
 
-    _vmgr_hevc_enc_close_all(1);
+	_vmgr_hevc_enc_close_all(1);
 
-    if (misc_register(&_vmgr_hevc_enc_misc_device)) {
-        V_DBG(DEBUG_VPU_ERROR, "VPU HEVC ENC Manager: Couldn't register device");
-        return -EBUSY;
-    }
+	if (misc_register(&_vmgr_hevc_enc_misc_device))
+	{
+		V_DBG(VPU_DBG_ERROR, "VPU HEVC ENC Manager: Couldn't register device");
+		return -EBUSY;
+	}
 
 	vmgr_hevc_enc_enable_clock(0);
 	vmgr_hevc_enc_disable_clock(0);
 
-    return 0;
+	return 0;
 
 }
 EXPORT_SYMBOL(vmgr_hevc_enc_probe);
 
-int vmgr_hevc_enc_remove(struct platform_device *pdev)
+int vmgr_hevc_enc_remove(struct platform_device* pdev)
 {
-	V_DBG(DEBUG_ENC_CLOSE, "enter");
+	V_DBG(VPU_DBG_CLOSE, "enter");
 
 	misc_deregister(&_vmgr_hevc_enc_misc_device);
 
-	if(kidle_task)
+	if (kidle_task)
 	{
 		kthread_stop(kidle_task);
 		kidle_task = NULL;
 	}
 
-	devm_iounmap(&pdev->dev, (void __iomem *)vmgr_hevc_enc_data.base_addr);
-	if (vmgr_hevc_enc_data.irq_reged) {
+	devm_iounmap(&pdev->dev, (void __iomem*)vmgr_hevc_enc_data.base_addr);
+	if (vmgr_hevc_enc_data.irq_reged)
+	{
 		vmgr_hevc_enc_free_irq(vmgr_hevc_enc_data.irq, &vmgr_hevc_enc_data);
 		vmgr_hevc_enc_data.irq_reged = 0;
 	}
@@ -1406,27 +1368,25 @@ int vmgr_hevc_enc_remove(struct platform_device *pdev)
 	vmgr_hevc_enc_put_reset();
 	vmem_deinit();
 
-	V_DBG(DEBUG_ENC_CLOSE, "out :: thread stopped!!");
+	V_DBG(VPU_DBG_CLOSE, "out :: thread stopped!!");
 
 	return 0;
 }
 EXPORT_SYMBOL(vmgr_hevc_enc_remove);
 
-
 #if defined(CONFIG_PM)
-int vmgr_hevc_enc_suspend(struct platform_device *pdev, pm_message_t state)
+int vmgr_hevc_enc_suspend(struct platform_device* pdev, pm_message_t state)
 {
 	int i, open_count = 0;
 
-	if(atomic_read(&vmgr_hevc_enc_data.dev_opened) != 0)
+	if (atomic_read(&vmgr_hevc_enc_data.dev_opened) != 0)
 	{
 		printk("\n vpu hevc enc: suspend enter for ENC(%d/%d/%d/%d/%d)\n",
 			vmgr_hevc_enc_get_close(VPU_ENC),
 			vmgr_hevc_enc_get_close(VPU_ENC_EXT),
 			vmgr_hevc_enc_get_close(VPU_ENC_EXT2),
 			vmgr_hevc_enc_get_close(VPU_ENC_EXT3),
-			vmgr_hevc_enc_get_close(VPU_ENC_EXT4)
-			);
+			vmgr_hevc_enc_get_close(VPU_ENC_EXT4));
 
 		_vmgr_hevc_enc_external_all_close(200);
 
@@ -1443,8 +1403,7 @@ int vmgr_hevc_enc_suspend(struct platform_device *pdev, pm_message_t state)
 			vmgr_hevc_enc_get_close(VPU_ENC_EXT),
 			vmgr_hevc_enc_get_close(VPU_ENC_EXT2),
 			vmgr_hevc_enc_get_close(VPU_ENC_EXT3),
-			vmgr_hevc_enc_get_close(VPU_ENC_EXT4)
-			);
+			vmgr_hevc_enc_get_close(VPU_ENC_EXT4));
 	}
 
 	return 0;
@@ -1452,7 +1411,7 @@ int vmgr_hevc_enc_suspend(struct platform_device *pdev, pm_message_t state)
 }
 EXPORT_SYMBOL(vmgr_hevc_enc_suspend);
 
-int vmgr_hevc_enc_resume(struct platform_device *pdev)
+int vmgr_hevc_enc_resume(struct platform_device* pdev)
 {
 	int i, open_count = 0;
 
@@ -1479,4 +1438,4 @@ MODULE_AUTHOR("Telechips.");
 MODULE_DESCRIPTION("TCC vpu hevc enc manager");
 MODULE_LICENSE("GPL");
 
-#endif
+#endif /*CONFIG_SUPPORT_TCC_WAVE420L_VPU_HEVC_ENC*/
