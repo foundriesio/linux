@@ -998,10 +998,12 @@ static int dwc2_driver_remove(struct platform_device *dev)
 static void dwc2_driver_shutdown(struct platform_device *dev)
 {
 	struct dwc2_hsotg *hsotg = platform_get_drvdata(dev);
+
 #ifdef CONFIG_USB_DWC2_TCC_MUX
 	disable_irq(hsotg->ehci_irq);
 #endif
-	disable_irq(hsotg->irq);
+	dwc2_disable_global_interrupts(hsotg);
+	synchronize_irq(hsotg->irq);
 }
 
 /**
@@ -1170,7 +1172,7 @@ static int dwc2_driver_probe(struct platform_device *dev)
 	}
 #ifdef CONFIG_USB_DWC2_TCC
 	retval = device_create_file(&dev->dev, &dev_attr_vbus);
-	if (retval) 
+	if (retval)
 		dev_err(hsotg->dev, "[ERROR][USB] failed to create vbus\n");
 	#ifdef CONFIG_USB_DWC2_DUAL_ROLE
 	hsotg->drd_wq = create_singlethread_workqueue("dwc2");
@@ -1209,7 +1211,6 @@ static int dwc2_driver_probe(struct platform_device *dev)
 	hsotg->dr_mode = USB_DR_MODE_PERIPHERAL;
 	dwc2_manual_change(hsotg);
 			#endif
-
 		#endif //CONFIG_USB_DWC2_TCC_FIRST
 	#endif //CONFIG_USB_DWC2_DUAL_ROLE
 #endif //CONFIG_USB_DWC2_TCC
@@ -1225,10 +1226,24 @@ static int dwc2_driver_probe(struct platform_device *dev)
 		dev_err(hsotg->dev, "[ERROR][USB] failed to create dwc_host_mux_pcfg1\n");
 #endif
 
+#if IS_ENABLED(CONFIG_USB_DWC2_PERIPHERAL) || \
+	IS_ENABLED(CONFIG_USB_DWC2_DUAL_ROLE)
+	/* Postponed adding a new gadget to the udc class driver list */
+	if (hsotg->gadget_enabled) {
+		retval = usb_add_gadget_udc(hsotg->dev, &hsotg->gadget);
+		if (retval) {
+			hsotg->gadget.udc = NULL;
+			dwc2_hsotg_remove(hsotg);
+			goto error;
+		}
+	}
+#endif /* CONFIG_USB_DWC2_PERIPHERAL || CONFIG_USB_DWC2_DUAL_ROLE */
+
 skip_mode_change:
 	return 0;
 error:
-	dwc2_lowlevel_hw_disable(hsotg);
+	if (hsotg->dr_mode != USB_DR_MODE_PERIPHERAL)
+		dwc2_lowlevel_hw_disable(hsotg);
 	return retval;
 }
 

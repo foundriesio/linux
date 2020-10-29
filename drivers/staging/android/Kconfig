@@ -38,7 +38,6 @@ endif
 if ION_4_14
 source "drivers/staging/android/ion/Kconfig"
 endif
-source "drivers/staging/android/fiq_debugger/Kconfig"
 
 endif # if ANDROID
 
