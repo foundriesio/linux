@@ -361,7 +361,7 @@ static int tcc_sc_fw_cmd_request_ufs_cmd(const struct tcc_sc_fw_handle *handle,
 	req_cmd.uid = 0;
 	req_cmd.cmd = TCC_SC_CMD_REQ_UFS_REQ;
 	req_cmd.args[0] = sc_cmd->datsz;
-	req_cmd.args[1] = sc_cmd->cdb;
+	req_cmd.args[1] = sc_cmd->sg_count; //sc_cmd->cdb;
 	req_cmd.args[2] = sc_cmd->lba; //reserved
 	req_cmd.args[3] = sc_cmd->lun;
 	req_cmd.args[4] = sc_cmd->tag;
@@ -370,10 +370,10 @@ static int tcc_sc_fw_cmd_request_ufs_cmd(const struct tcc_sc_fw_handle *handle,
 	memcpy(xfer->tx_mssg.cmd, &req_cmd, sizeof(struct tcc_sc_fw_cmd));
 	xfer->tx_mssg.cmd_len = (unsigned int) (sizeof(struct tcc_sc_fw_cmd) / sizeof(u32));
 
-	xfer->tx_mssg.data_buf[0] = sc_cmd->datsz;
-	xfer->tx_mssg.data_buf[1] = sc_cmd->blocks;
-	xfer->tx_mssg.data_buf[2] = 0; //reserved
-	xfer->tx_mssg.data_buf[3] = (unsigned int) sc_cmd->sg_count;
+	xfer->tx_mssg.data_buf[0] = sc_cmd->cdb0;
+	xfer->tx_mssg.data_buf[1] = sc_cmd->cdb1;
+	xfer->tx_mssg.data_buf[2] = sc_cmd->cdb2;
+	xfer->tx_mssg.data_buf[3] = sc_cmd->cdb3;//(unsigned int) sc_cmd->sg_count;
 	for_each_sg((sc_cmd->sg), (sg), sc_cmd->sg_count, i) {
 		addr = sg_dma_address(sg);
 		len = sg_dma_len(sg);

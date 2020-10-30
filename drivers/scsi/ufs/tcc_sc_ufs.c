@@ -173,6 +173,11 @@ static void tcc_sc_ufs_queuecommand(struct work_struct *work)
 	//sc_cmd.cdb = (unsigned int)virt_to_phys(scsi_cmd->cmnd);
 	memcpy(sc_host->scsi_cdb_base_addr, scsi_cmd->cmnd, 16);
 	sc_cmd.cdb = sc_host->scsi_cdb_dma_addr;
+	memcpy(&sc_cmd.cdb0, &scsi_cmd->cmnd[0], 4);
+	memcpy(&sc_cmd.cdb1, &scsi_cmd->cmnd[4], 4);
+	memcpy(&sc_cmd.cdb2, &scsi_cmd->cmnd[8], 4);
+	memcpy(&sc_cmd.cdb3, &scsi_cmd->cmnd[12], 4);
+
 #if 0
 	dev_dbg(sc_host->dev, "sg_count = %d, datsz = 0x%x, lba = 0x%x, lun = %d, op = %x, direction = %d, tag = %d\n", sc_cmd.sg_count, sc_cmd.datsz, sc_cmd.lba, tcc_sc_ufs_scsi_to_upiu_lun(scsi_cmd->device->lun),sc_cmd.op, direction, tag);
 #endif
@@ -280,6 +285,11 @@ static int tcc_sc_ufs_change_queue_depth(struct scsi_device *sdev, int depth)
 	return scsi_change_queue_depth(sdev, depth);
 }
 
+static int tcc_sc_ufs_eh_device_reset_handler(struct scsi_cmnd *cmd)
+{
+	return SUCCESS;
+}
+
 static struct scsi_host_template tcc_sc_ufs_driver_template = {
 	.module			= THIS_MODULE,
 	.name			= "tcc-sc-ufs",
@@ -290,7 +300,7 @@ static struct scsi_host_template tcc_sc_ufs_driver_template = {
 	.slave_destroy		= tcc_sc_ufs_slave_destroy,
 	.change_queue_depth	= tcc_sc_ufs_change_queue_depth,
 	//.eh_abort_handler	= tcc_sc_ufs_abort,
-	//.eh_device_reset_handler = tcc_sc_ufs_eh_device_reset_handler,
+	.eh_device_reset_handler = tcc_sc_ufs_eh_device_reset_handler,
 	//.eh_host_reset_handler   = tcc_sc_ufs_eh_host_reset_handler,
 	//.eh_timed_out		= tcc_sc_ufs_eh_timed_out,
 	.this_id		= -1,

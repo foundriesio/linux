@@ -59,6 +59,11 @@ struct tcc_sc_fw_ufs_cmd {
 	unsigned int		op;
 	unsigned int		cdb;
 
+	unsigned int		cdb0;
+	unsigned int		cdb1;
+	unsigned int		cdb2;
+	unsigned int		cdb3;
+
 	int			sg_count;
 	struct scatterlist	*sg;
 	unsigned int		resp[4];
