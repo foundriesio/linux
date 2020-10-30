@@ -15,20 +15,22 @@
  * GNU General Public License for more details.
  */
 
-
 #include <linux/module.h>
 #include <linux/of_device.h>
 #include <linux/clk.h>
 
 #define LPO_DEV_NAME		"tcm-lpo"
 
-#define LPO_DEBUG    0
+#define _pr_fmt(fmt) "[TCM_LPO] %s: " fmt
 
-#if LPO_DEBUG
-#define lpo_dbg(fmt, arg...)     printk(fmt, ##arg)
-#else
-#define lpo_dbg(arg...)
-#endif
+#define eprintk(msg, ...) \
+	((void)pr_err("[ERR]" _pr_fmt(msg), __func__, ##__VA_ARGS__))
+#define wprintk(msg, ...) \
+	((void)pr_warn("[WRN]" _pr_fmt(msg), __func__, ##__VA_ARGS__))
+#define iprintk(msg, ...) \
+	((void)pr_info("[INF]" _pr_fmt(msg), __func__, ##__VA_ARGS__))
+#define dprintk(msg, ...) \
+	((void)pr_info("[DBG]" _pr_fmt(msg), __func__, ##__VA_ARGS__))
 
 #define COLOR_RED "\x1b[31m"
 #define COLOR_GREEN "\x1b[32m"
@@ -40,9 +42,10 @@
 
 #ifdef CONFIG_OF
 static const struct of_device_id tcm_lpo_of_match[] = {
-	{.compatible = "telechips,tcm-lpo", },
-	{/* sentinel */},
+	{.compatible = "telechips,tcm-lpo",},
+	{ /* sentinel */ },
 };
+
 MODULE_DEVICE_TABLE(of, tcm_lpo_of_match);
 #endif
 
@@ -59,41 +62,40 @@ static int tcm_lpo_probe(struct platform_device *pdev)
 	const struct of_device_id *match;
 #endif
 
-	lpo_dbg("%s\n", __func__);
+	dprintk("probe\n");
 
 #ifdef CONFIG_OF
 	match = of_match_device(tcm_lpo_of_match, &pdev->dev);
-	if(!match)
-	{
-        lpo_dbg("%s: of_match_device fail \n", __func__);
+	if (!match) {
+		eprintk("of_match_device fail\n");
 		return -EINVAL;
 	}
 
 	ext_clk = devm_clk_get(dev, "ext_clock");
 	if (IS_ERR(ext_clk) && PTR_ERR(ext_clk) != -ENOENT) {
-		lpo_dbg("%s: devm_clk_get fail \n", __func__);
+		eprintk("devm_clk_get fail\n");
 		return PTR_ERR(ext_clk);
 	}
 
 	device_property_read_u32(dev, "ext_clock_speed", &ext_clk_speed);
-	if(ext_clk_speed == 0) {
-		lpo_dbg("err! clock speed is zero\n");
+	if (ext_clk_speed == 0) {
+		eprintk("err! clock speed is zero\n");
 		return -EINVAL;
 	}
 
 	err = clk_prepare_enable(ext_clk);
 	if (err) {
-		lpo_dbg("Failed to enable ext_clk: %d\n", err);
+		eprintk("Failed to enable ext_clk: %d\n", err);
 		return err;
 	}
 
 	err = clk_set_rate(ext_clk, ext_clk_speed);
 	if (err) {
-		lpo_dbg("Can't set pll_a rate: %d\n", err);
+		eprintk("Can't set pll_a rate: %d\n", err);
 		return err;
 	}
 
-	printk(COLOR_GREEN "%s: LPO is %d " COLOR_RESET "\n", __func__, ext_clk_speed);
+	iprintk(COLOR_GREEN "LPO is %d " COLOR_RESET "\n", ext_clk_speed);
 #endif
 
 	return 0;
@@ -101,7 +103,7 @@ static int tcm_lpo_probe(struct platform_device *pdev)
 
 static int tcm_lpo_remove(struct platform_device *pdev)
 {
-	lpo_dbg("%s\n", __func__);
+	iprintk("remove\n");
 
 	return 0;
 }
@@ -110,26 +112,26 @@ static int tcm_lpo_remove(struct platform_device *pdev)
  * TCM_LPO Module Init/Exit
  ******************************************************************************/
 static struct platform_driver tcm_lpo = {
-	.probe	= tcm_lpo_probe,
-	.remove	= tcm_lpo_remove,
-	.driver	= {
-		.name	= LPO_DEV_NAME,
-		.owner	= THIS_MODULE,
+	.probe = tcm_lpo_probe,
+	.remove = tcm_lpo_remove,
+	.driver = {
+		   .name = LPO_DEV_NAME,
+		   .owner = THIS_MODULE,
 #ifdef CONFIG_OF
-		.of_match_table = tcm_lpo_of_match,
+		   .of_match_table = tcm_lpo_of_match,
 #endif
-	},
+		   },
 };
 
 static int __init tcm_lpo_init(void)
 {
-	printk("%s\n", __func__);
+	iprintk("init\n");
 	return platform_driver_register(&tcm_lpo);
 }
 
 static void __exit tcm_lpo_exit(void)
 {
-	printk("%s\n", __func__);
+	iprintk("exit\n");
 	platform_driver_unregister(&tcm_lpo);
 }
 
