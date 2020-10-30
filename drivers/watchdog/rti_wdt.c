@@ -172,8 +172,10 @@ static int rti_wdt_probe(struct platform_device *pdev)
 	pm_runtime_enable(dev);
 	ret = pm_runtime_get_sync(dev);
 	if (ret) {
-		if (ret != -EPROBE_DEFER)
+		if (ret != -EPROBE_DEFER) {
+			pm_runtime_put_noidle(dev);
 			dev_err(&pdev->dev, "runtime pm failed\n");
+		}
 		return ret;
 	}
 
