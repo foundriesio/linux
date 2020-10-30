@@ -187,7 +187,7 @@ int dwc2_tcc_vbus_ctrl(struct dwc2_hsotg *hsotg, int on_off)
 
 	if (!vbus_control_enable) {
 		dev_warn(hsotg->dev, "[WARN][USB] dwc_otg vbus ctrl disable.\n");
-		return -1;
+		return 0;
 	}
 	if (!phy) {
 		dev_err(hsotg->dev, "[ERROR][USB] [%s:%d]PHY driver is needed\n", __func__, __LINE__);
