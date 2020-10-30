@@ -794,7 +794,7 @@ static void stm32_usart_stop_rx(struct uart_port *port)
 	/* Disable DMA request line and RX DMA. */
 	if (stm32_port->rx_ch) {
 		stm32_usart_clr_bits(port, ofs->cr3, USART_CR3_DMAR);
-		dmaengine_terminate_sync(stm32_port->rx_ch);
+		dmaengine_terminate_async(stm32_port->rx_ch);
 	}
 
 	stm32_usart_clr_bits(port, ofs->cr1, stm32_port->cr1_irq);
