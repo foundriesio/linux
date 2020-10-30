@@ -47,6 +47,7 @@
 		i2c7 = &i2c7;
 		fb0 = &fb0;
 		fb1 = &fb1;
+		mipi-csi2-0 = &mipi_csi2_0;
 		videoinput0 = &videoinput0;
 		i2s0 = &i2s0;
 		adma0 = &adma0;
@@ -739,6 +740,38 @@
 				};
 			};
 		};
+
+		max96705: max96705 {
+			compatible	= "maxim,max96705";
+			reg		= <0x40>;	// 0x80 >> 1
+			port {
+				max96705_out: endpoint {
+					remote-endpoint = <&max9286_in>;
+				};
+	                };
+		};
+
+		max9286: max9286 {
+			compatible	= "maxim,max9286";
+			cifport		= <5>;
+			pwd-gpios	= <&gpg 5 1>;
+			intb-gpios	= <&gph 11 1>;
+			reg		= <0x48>;	// 0x90 >> 1
+			ports {
+			        port@0 {
+					reg = <0>;
+					max9286_in: endpoint {
+						remote-endpoint = <&max96705_out>;
+					};
+				};
+			        port@1 {
+					reg = <1>;
+					max9286_out: endpoint {
+						remote-endpoint = <&mipi_csi_in>;
+					};
+				};
+	                };
+		};
 	};
 
 	i2c1: i2c@16310000 {
@@ -1125,6 +1158,37 @@
 			  <0x1203f000 0x20 0x1203f020 0x20 0x1203f040 0x20 0x1203f060 0x20>;
 		arbitor_num = <4>;
 	};
+
+	mipi_csi2_0:mipi_csi@123c0000 {
+		compatible = "telechips,tcc803x-mipi-csi2";
+
+		reg = <0x123c0000 0x120>,
+		      <0x123c0200 0x5c>;
+		reg-names = "csi", "gdb";
+
+		clocks = <&clk_peri PERI_MIPI_CSI>;
+		clock-names = "mipi-csi-clk";
+
+		clock-frequency = <300000000>;
+
+		interrupts = <GIC_SPI 124 IRQ_TYPE_LEVEL_HIGH>,// MIPI0 CSIS
+		             <GIC_SPI 125 IRQ_TYPE_LEVEL_HIGH>;// MIPI0 Generic
+
+		ports {
+		        port@0 {
+				reg = <0>;
+		                mipi_csi_in: endpoint {
+		                        remote-endpoint = <&max9286_out>;
+		                };
+			};
+			port@1 {
+				reg = <1>;
+				mipi_csi_out: endpoint {
+					remote-endpoint	= <&videoinput0_in>;
+				};
+			};
+		};
+	 };
 
 	fbdisplay: fbdisplay@12000000 {
 		compatible = "telechips,vioc-fb";
