@@ -32,6 +32,33 @@
 0018-sched-Deny-self-issued-__set_cpus_allowed_ptr-when-m.patch
 0019-sched-Comment-affine_move_task.patch
 
+# 2020-10-29 23:18 Thomas Gleixner ( 113) [patch V2 00/18] mm/highmem: Preemptible variant of kmap_atomic & friend
+# 20201029221806.189523375@linutronix.de
+# + fixes
+0001-sched-Make-migrate_disable-enable-independent-of-RT.patch
+0002-mm-highmem-Un-EXPORT-__kmap_atomic_idx.patch
+0003-highmem-Provide-generic-variant-of-kmap_atomic.patch
+0004-x86-mm-highmem-Use-generic-kmap-atomic-implementatio.patch
+0005-arc-mm-highmem-Use-generic-kmap-atomic-implementatio.patch
+0006-ARM-highmem-Switch-to-generic-kmap-atomic.patch
+0007-csky-mm-highmem-Switch-to-generic-kmap-atomic.patch
+0008-microblaze-mm-highmem-Switch-to-generic-kmap-atomic.patch
+0009-mips-mm-highmem-Switch-to-generic-kmap-atomic.patch
+0010-nds32-mm-highmem-Switch-to-generic-kmap-atomic.patch
+0011-powerpc-mm-highmem-Switch-to-generic-kmap-atomic.patch
+0012-sparc-mm-highmem-Switch-to-generic-kmap-atomic.patch
+0013-xtensa-mm-highmem-Switch-to-generic-kmap-atomic.patch
+0014-mm-highmem-Remove-the-old-kmap_atomic-cruft.patch
+0015-io-mapping-Cleanup-atomic-iomap.patch
+0016-sched-highmem-Store-local-kmaps-in-task-struct.patch
+0017-mm-highmem-Provide-kmap_local.patch
+0018-io-mapping-Provide-iomap_local-variant.patch
+#
+highmem-Don-t-disable-preemption-on-RT-in-kmap_atomi.patch
+
+# 8a26c219cafe66431da3350da1687a50f635f3c2
+rcu-Don-t-invoke-try_invoke_on_locked_down_task-with.patch
+
 ############################################################
 # POSTED
 ############################################################
@@ -42,6 +69,7 @@ Use-CONFIG_PREEMPTION.patch
 0001-blk-mq-Don-t-complete-on-a-remote-CPU-in-force-threa.patch
 0002-blk-mq-Always-complete-remote-completions-requests-i.patch
 0003-blk-mq-Use-llist_head-for-blk_cpu_done.patch
+block-mq-Disable-preemption-in-blk_mq_complete_reque.patch
 
 # 20201028181041.xyeothhkouc3p4md@linutronix.de
 lib-test_lockup-Minimum-fix-to-get-it-compiled-on-PR.patch
@@ -334,12 +362,6 @@ x86-Enable-RT.patch
 ################################################################################
 
 # KMAP/HIGHMEM
-mm-rt-kmap-atomic-scheduling.patch
-x86-highmem-add-a-already-used-pte-check.patch
-arm-highmem-flush-tlb-on-unmap.patch
-arm-enable-highmem-for-rt.patch
-# Rewrite as pagefault disabled is upstream splitted already. The problem comes
-# with the highmem pieces.
 mm-scatterlist-dont-disable-irqs-on-RT.patch
 
 # PREEMPT LAZY
@@ -380,12 +402,8 @@ ARM64-Allow-to-enable-RT.patch
 # PowerPC
 powerpc-pseries-iommu-Use-a-locallock-instead-local_ir.patch
 powerpc-kvm-Disable-in-kernel-MPIC-emulation-for-PRE.patch
-power-disable-highmem-on-rt.patch
 powerpc-stackprotector-work-around-stack-guard-init-.patch
 POWERPC-Allow-to-enable-RT.patch
-
-# MIPS
-mips-disable-highmem-on-rt.patch
 
 # DRIVERS
 # Postpone, disable

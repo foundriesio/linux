@@ -1,0 +1,114 @@
+From: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
+Date: Fri, 30 Oct 2020 13:59:06 +0100
+Subject: [PATCH] highmem: Don't disable preemption on RT in kmap_atomic()
+
+Disabling preemption make it impossible to acquire sleeping locks within
+kmap_atomic() section.
+For PREEMPT_RT it is sufficient to disable migration.
+
+Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
+---
+ include/linux/highmem.h    |   20 ++++++++++++++++----
+ include/linux/io-mapping.h |   20 ++++++++++++++++----
+ 2 files changed, 32 insertions(+), 8 deletions(-)
+
+--- a/include/linux/highmem.h
++++ b/include/linux/highmem.h
+@@ -139,7 +139,10 @@ static inline void kunmap(struct page *p
+  */
+ static inline void *kmap_atomic_prot(struct page *page, pgprot_t prot)
+ {
+-	preempt_disable();
++	if (IS_ENABLED(CONFIG_PREEMPT_RT))
++		migrate_disable();
++	else
++		preempt_disable();
+ 	pagefault_disable();
+ 	return __kmap_local_page_prot(page, prot);
+ }
+@@ -151,7 +154,10 @@ static inline void *kmap_atomic(struct p
+ 
+ static inline void *kmap_atomic_pfn(unsigned long pfn)
+ {
+-	preempt_disable();
++	if (IS_ENABLED(CONFIG_PREEMPT_RT))
++		migrate_disable();
++	else
++		preempt_disable();
+ 	pagefault_disable();
+ 	return __kmap_local_pfn_prot(pfn, kmap_prot);
+ }
+@@ -245,7 +251,10 @@ static inline void kunmap(struct page *p
+ 
+ static inline void *kmap_atomic(struct page *page)
+ {
+-	preempt_disable();
++	if (IS_ENABLED(CONFIG_PREEMPT_RT))
++		migrate_disable();
++	else
++		preempt_disable();
+ 	pagefault_disable();
+ 	return page_address(page);
+ }
+@@ -301,7 +310,10 @@ do {								\
+ 	BUILD_BUG_ON(__same_type((__addr), struct page *));	\
+ 	__kunmap_atomic(__addr);				\
+ 	pagefault_enable();					\
+-	preempt_enable();					\
++	if (IS_ENABLED(CONFIG_PREEMPT_RT))			\
++		migrate_enable();				\
++	else							\
++		preempt_enable();				\
+ } while (0)
+ 
+ #define kunmap_local(__addr)					\
+--- a/include/linux/io-mapping.h
++++ b/include/linux/io-mapping.h
+@@ -69,7 +69,10 @@ io_mapping_map_atomic_wc(struct io_mappi
+ 
+ 	BUG_ON(offset >= mapping->size);
+ 	phys_addr = mapping->base + offset;
+-	preempt_disable();
++	if (IS_ENABLED(CONFIG_PREEMPT_RT))
++		migrate_disable();
++	else
++		preempt_disable();
+ 	pagefault_disable();
+ 	return __iomap_local_pfn_prot(PHYS_PFN(phys_addr), mapping->prot);
+ }
+@@ -79,7 +82,10 @@ io_mapping_unmap_atomic(void __iomem *va
+ {
+ 	kunmap_local_indexed((void __force *)vaddr);
+ 	pagefault_enable();
+-	preempt_enable();
++	if (IS_ENABLED(CONFIG_PREEMPT_RT))
++		migrate_enable();
++	else
++		preempt_enable();
+ }
+ 
+ static inline void __iomem *
+@@ -170,7 +176,10 @@ static inline void __iomem *
+ io_mapping_map_atomic_wc(struct io_mapping *mapping,
+ 			 unsigned long offset)
+ {
+-	preempt_disable();
++	if (IS_ENABLED(CONFIG_PREEMPT_RT))
++		migrate_disable();
++	else
++		preempt_disable();
+ 	pagefault_disable();
+ 	return io_mapping_map_wc(mapping, offset, PAGE_SIZE);
+ }
+@@ -180,7 +189,10 @@ io_mapping_unmap_atomic(void __iomem *va
+ {
+ 	io_mapping_unmap(vaddr);
+ 	pagefault_enable();
+-	preempt_enable();
++	if (IS_ENABLED(CONFIG_PREEMPT_RT))
++		migrate_enable();
++	else
++		preempt_enable();
+ }
+ 
+ static inline void __iomem *
