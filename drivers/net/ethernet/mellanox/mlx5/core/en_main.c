@@ -203,6 +203,12 @@ void mlx5e_init_rq_type_params(struct mlx5_core_dev *mdev,
 		MLX5E_PARAMS_MINIMUM_LOG_RQ_SIZE :
 		MLX5E_PARAMS_DEFAULT_LOG_RQ_SIZE;
 
+#ifdef CONFIG_PPC64
+	/* If ddw is not enabled, set ring size to 512 */
+	if (!get_dma_offset(&mdev->pdev->dev) && (params->log_rq_mtu_frames > 9))
+		params->log_rq_mtu_frames = 9;
+#endif
+
 	mlx5_core_info(mdev, "MLX5E: StrdRq(%d) RqSz(%ld) StrdSz(%ld) RxCqeCmprss(%d)\n",
 		       params->rq_wq_type == MLX5_WQ_TYPE_LINKED_LIST_STRIDING_RQ,
 		       params->rq_wq_type == MLX5_WQ_TYPE_LINKED_LIST_STRIDING_RQ ?
@@ -2786,20 +2792,6 @@ free_in:
 	return err;
 }
 
-static void mlx5e_build_inner_indir_tir_ctx(struct mlx5e_priv *priv,
-					    enum mlx5e_traffic_types tt,
-					    u32 *tirc)
-{
-	MLX5_SET(tirc, tirc, transport_domain, priv->mdev->mlx5e_res.td.tdn);
-
-	mlx5e_build_tir_ctx_lro(&priv->channels.params, tirc);
-
-	MLX5_SET(tirc, tirc, disp_type, MLX5_TIRC_DISP_TYPE_INDIRECT);
-	MLX5_SET(tirc, tirc, indirect_table, priv->indir_rqt.rqtn);
-
-	mlx5e_build_indir_tir_ctx_hash(&priv->channels.params, tt, tirc, true);
-}
-
 static int mlx5e_set_mtu(struct mlx5_core_dev *mdev,
 			 struct mlx5e_params *params, u16 mtu)
 {
@@ -3181,30 +3173,38 @@ void mlx5e_cleanup_nic_tx(struct mlx5e_priv *priv)
 		mlx5e_destroy_tis(priv->mdev, priv->tisn[tc]);
 }
 
-static void mlx5e_build_indir_tir_ctx(struct mlx5e_priv *priv,
-				      enum mlx5e_traffic_types tt,
-				      u32 *tirc)
+static void mlx5e_build_indir_tir_ctx_common(struct mlx5e_priv *priv,
+					     u32 rqtn, u32 *tirc)
 {
 	MLX5_SET(tirc, tirc, transport_domain, priv->mdev->mlx5e_res.td.tdn);
+	MLX5_SET(tirc, tirc, disp_type, MLX5_TIRC_DISP_TYPE_INDIRECT);
+	MLX5_SET(tirc, tirc, indirect_table, rqtn);
 	MLX5_SET(tirc, tirc, tunneled_offload_en,
 		 priv->channels.params.tunneled_offload_en);
 
 	mlx5e_build_tir_ctx_lro(&priv->channels.params, tirc);
+}
 
-	MLX5_SET(tirc, tirc, disp_type, MLX5_TIRC_DISP_TYPE_INDIRECT);
-	MLX5_SET(tirc, tirc, indirect_table, priv->indir_rqt.rqtn);
+static void mlx5e_build_indir_tir_ctx(struct mlx5e_priv *priv,
+				      enum mlx5e_traffic_types tt,
+				      u32 *tirc)
+{
+	mlx5e_build_indir_tir_ctx_common(priv, priv->indir_rqt.rqtn, tirc);
 	mlx5e_build_indir_tir_ctx_hash(&priv->channels.params, tt, tirc, false);
 }
 
 static void mlx5e_build_direct_tir_ctx(struct mlx5e_priv *priv, u32 rqtn, u32 *tirc)
 {
-	MLX5_SET(tirc, tirc, transport_domain, priv->mdev->mlx5e_res.td.tdn);
-
-	mlx5e_build_tir_ctx_lro(&priv->channels.params, tirc);
-
-	MLX5_SET(tirc, tirc, disp_type, MLX5_TIRC_DISP_TYPE_INDIRECT);
-	MLX5_SET(tirc, tirc, indirect_table, rqtn);
+	mlx5e_build_indir_tir_ctx_common(priv, rqtn, tirc);
 	MLX5_SET(tirc, tirc, rx_hash_fn, MLX5_RX_HASH_FN_INVERTED_XOR8);
+}
+
+static void mlx5e_build_inner_indir_tir_ctx(struct mlx5e_priv *priv,
+					    enum mlx5e_traffic_types tt,
+					    u32 *tirc)
+{
+	mlx5e_build_indir_tir_ctx_common(priv, priv->indir_rqt.rqtn, tirc);
+	mlx5e_build_indir_tir_ctx_hash(&priv->channels.params, tt, tirc, true);
 }
 
 int mlx5e_create_indirect_tirs(struct mlx5e_priv *priv, bool inner_ttc)
