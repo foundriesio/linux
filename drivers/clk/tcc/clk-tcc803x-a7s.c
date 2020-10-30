@@ -28,9 +28,6 @@
 #define MAX_TCC_PLL	5
 #define MAX_CLK_SRC	(MAX_TCC_PLL*2 + 2)	// XIN, XTIN
 
-#define MAX_AUDIO_8CLK_LIST             7
-#define PLL3_AUDIO_FIXED        196608000
-
 static void __iomem	*ckc_base = NULL;
 static void __iomem	*pmu_base = NULL;
 
@@ -56,10 +53,6 @@ static unsigned int	stClockG3D;
 
 static struct tcc_ckc_ops tcc803x_ops;
 static inline void tcc_ckc_reset_clock_source(int id);
-
-static uint32_t tcc_audio_times_of_8_table[MAX_AUDIO_8CLK_LIST] = {
-	8192000, 16384000, 24576000, 32768000, 49152000, 65536000, 98304000
-};
 
 /* PLL Configuration Macro */
 #define tcc_pll_write(reg,en,p,m,s,src) { \
@@ -1274,9 +1267,6 @@ static inline int tcc_find_pclk(tPCLKCTRL *PCLKCTRL, tPCLKTYPE type, u32 flags)
 		if ((flags & CLK_F_SKIP_SSCG) && tcc_ckc_is_dpll_mode(i))
 			continue;
 
-		if ((i == PLL_3) || (i == PLL_DIV_3))                   /* PLL_3 : Used only on audio */
-			continue;
-
 		if (stClockSource[i] == 0)
 			continue;
 
@@ -1412,17 +1402,6 @@ static inline tPCLKTYPE tcc_check_pclk_type(unsigned int periname)
 	return PCLKCTRL_TYPE_XXX;
 }
 
-static int tcc_ckc_find_8_clk_table(unsigned int rate) {
-	unsigned int i;
-
-	for (i = 0; i < MAX_AUDIO_8CLK_LIST; i++) {
-		if (rate == tcc_audio_times_of_8_table[i])
-			return 1;
-	}
-
-	return 0;
-}
-
 static int tcc_ckc_peri_enable(int id)
 {
 	void __iomem	*reg = ckc_base + CKC_PCLKCTRL + (id * 4);
@@ -1491,25 +1470,6 @@ static int tcc_ckc_peri_set_rate(int id, unsigned long rate, u32 flags)
 		nPCLKCTRL.freq = HDMI_PCLK_RATE;
 	}
 	else {
-		if ((id == PERI_MDAI0) || (id == PERI_SRCH0_CORE) || (id == PERI_MDAI1) || (id == PERI_SRCH1_CORE)
-				|| (id == PERI_MDAI2) || (id == PERI_SRCH2_CORE) || (id == PERI_SRCH3_CORE)) {
-			if (tcc_ckc_find_8_clk_table(rate) != 0) {
-				/* 8, 16, 24, 32, 48, 64, 96, 192 KHz */
-				uint32_t k_val = 4719;          /* Manually Calculated. */
-				uint32_t peri_div = 0;
-				uintptr_t reg = ckc_base + CKC_PCLKCTRL + (id * 4);
-
-				if (tcc_ckc_pll_get_rate(PLL_3) != PLL3_AUDIO_FIXED) {
-					tcc_ckc_pll_set_rate(PLL_3, PLL3_AUDIO_FIXED);
-					ckc_writel(ckc_readl(0x1400006C) | (k_val << 16), 0x1400006C);
-				}
-				peri_div = tcc_ckc_pll_get_rate(PLL_3)/rate;
-				tcc_pclkctrl_write(reg, PCLKCTRL_MODE_DIVIDER, 1, PCLKCTRL_SEL_PLL3, peri_div - 1, type);
-				
-				return 0;
-			}
-		}
-
 		if (tcc_find_pclk(&nPCLKCTRL, type, flags))
 			goto tcc_ckc_setperi_failed;
 	}
