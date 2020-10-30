@@ -1,6 +1,18 @@
-// SPDX-License-Identifier: GPL-2.0-or-later
 /*
- * Copyright (C) Telechips Inc.
+ *      tccvin_video.h
+ *
+ *      Copyright (c) 2020-
+ *          Telechips Inc.
+ *      Copyright (C) 2005-2010
+ *          Laurent Pinchart (laurent.pinchart@ideasonboard.com)
+ *
+ *      This program is free software; you can redistribute it and/or modify
+ *      it under the terms of the GNU General Public License as published by
+ *      the Free Software Foundation; either version 2 of the License, or
+ *      (at your option) any later version.
+ *
+ *      SPDX-license-Identifier : GPL-2.0+
+ *
  */
 
 #ifndef _TCCVIN_VIDEO_H_
@@ -66,7 +78,7 @@
 
 struct tccvin_device;
 
-typedef struct vioc_path {
+struct vioc_path {
 	int				vin;
 	int				viqe;
 	int				deintl_s;
@@ -78,22 +90,23 @@ typedef struct vioc_path {
 	int				rdma;
 	int				wmixer_out;
 	int				disp;
-} vioc_path_t;
+};
 
-typedef struct buf_addr {
+struct buf_addr {
 	unsigned long			addr0;
 	unsigned long			addr1;
 	unsigned long			addr2;
-} buf_addr_t;
+};
 
-typedef struct tccvin_cif {
+struct tccvin_cif {
 	// cif port
 	unsigned int			cif_port;
-	volatile void __iomem		* cifport_addr;
+
+	void __iomem			*cifport_addr;
 
 	// vioc
-	struct clk			* vioc_clk;
-	vioc_path_t 			vioc_path;
+	struct clk			*vioc_clk;
+	struct vioc_path		vioc_path;
 
 	unsigned int			vioc_irq_reg;
 	unsigned int			vioc_irq_num;
@@ -108,20 +121,20 @@ typedef struct tccvin_cif {
 	struct pmap			pmap_preview;
 
 	// framebuffer
-	buf_addr_t			* preview_buf_addr;
-	void __iomem			* vir;
+	struct buf_addr			*preview_buf_addr;
+	void __iomem			*vir;
 
 	unsigned int			skip_frame;
 
 	struct work_struct		wdma_work;
 
 	struct mutex			lock;
-} tccvin_cif_t;
+};
 
-typedef enum preview_method {
+enum preview_method {
 	PREVIEW_V4L2	= 0,
 	PREVIEW_DD,
-} preview_method_t;
+};
 
 struct tccvin_format_desc {
 	char				*name;
@@ -141,24 +154,24 @@ struct tccvin_format_desc {
  * code makes sure terminal types have a non-null MSB.
  *
  * For terminals, the type's most significant bit stores the terminal
- * direction (either TCCVIN_TERM_INPUT or TCCVIN_TERM_OUTPUT). The type field should
- * always be accessed with the TCCVIN_ENTITY_* macros and never directly.
+ * direction (either TCCVIN_TERM_INPUT or TCCVIN_TERM_OUTPUT). The type field
+ * should always be accessed with the TCCVIN_ENTITY_* macros and never directly.
  */
 
-struct tccvin_vs_sync_info {
+struct tccvin_vs_info {
 	/* VIN_CTRL */
-	unsigned int		data_order;		// data order for vin
-	unsigned int		data_format;		// data format for vin
+	unsigned int		data_order;
+	unsigned int		data_format;
 	unsigned int		stream_enable;
 	unsigned int		gen_field_en;
-	unsigned int		de_active_low;
+	unsigned int		de_low;
 	unsigned int		pclk_polarity;
-	unsigned int		field_bfield_low;
+	unsigned int		field_low;
 	unsigned int		vs_mask;
 	unsigned int		hsde_connect_en;
 	unsigned int		intpl_en;
 	unsigned int		interlaced;
-	unsigned int		conv_en;		// OFF: BT.601 / ON: BT.656
+	unsigned int		conv_en;
 
 	/* VIN_MISC */
 	unsigned int		flush_vsync;
@@ -180,7 +193,7 @@ struct tccvin_frame {
 	__u8  bmCapabilities;
 	__u16 wWidth;
 	__u16 wHeight;
-	__u32 dwMaxVideoFrameBufferSize;	// sizeimage
+	__u32 dwMaxVideoFrameBufferSize;
 	__u8  bFrameIntervalType;
 	__u32 dwDefaultFrameInterval;
 	__u32 *dwFrameInterval;
@@ -240,9 +253,9 @@ struct tccvin_streaming {
 	atomic_t				active;
 
 	struct v4l2_dv_timings			dv_timings;
-	struct tccvin_vs_sync_info		vs_sync_info;
-	struct v4l2_subdev_mbus_code_enum 	mbus_code;
-	struct v4l2_mbus_config                 mbus_config;
+	struct tccvin_vs_info			vs_info;
+	struct v4l2_subdev_mbus_code_enum	mbus_code;
+	struct v4l2_mbus_config			mbus_config;
 	enum v4l2_buf_type			type;
 
 	unsigned int				nformats;
@@ -271,13 +284,13 @@ struct tccvin_streaming {
 	int					cam_streaming;
 };
 
-#define TCCVIN_MAX_VIDEOSOURCE			4
+#define NUM_VIDEOSOURCES			4
 
 struct tccvin_device {
 	struct platform_device			*pdev;
 	char					name[32];
 
-	struct mutex				lock;		/* Protects users */
+	struct mutex				lock;
 	unsigned int				users;
 
 	/* Video control interface */
@@ -286,9 +299,9 @@ struct tccvin_device {
 	int					bounded_subdevs;
 	int					current_subdev_idx;
 
-        struct v4l2_fwnode_endpoint		fw_ep[TCCVIN_MAX_VIDEOSOURCE];
-	struct v4l2_async_subdev		*asd[TCCVIN_MAX_VIDEOSOURCE];
-	struct v4l2_subdev			*subdevs[TCCVIN_MAX_VIDEOSOURCE];
+	struct v4l2_fwnode_endpoint		fw_ep[NUM_VIDEOSOURCES];
+	struct v4l2_async_subdev		*asd[NUM_VIDEOSOURCES];
+	struct v4l2_subdev			*subdevs[NUM_VIDEOSOURCES];
 	struct v4l2_async_notifier		notifier;
 
 	struct list_head			entities;
@@ -318,10 +331,14 @@ extern unsigned int tccvin_timeout_param;
 
 #define LOG_TAG			"VIN"
 
-#define loge(fmt, ...)		pr_err("[ERROR][%s] %s - "	fmt, LOG_TAG, __FUNCTION__, ##__VA_ARGS__)
-#define logw(fmt, ...)		pr_warn("[WARN][%s] %s - "	fmt, LOG_TAG, __FUNCTION__, ##__VA_ARGS__)
-#define logd(fmt, ...)		pr_debug("[DEBUG][%s] %s - "	fmt, LOG_TAG, __FUNCTION__, ##__VA_ARGS__)
-#define logi(fmt, ...)		pr_info("[INFO][%s] %s - "	fmt, LOG_TAG, __FUNCTION__, ##__VA_ARGS__)
+#define loge(fmt, ...) \
+	pr_err("[ERROR][%s] %s - "	fmt, LOG_TAG, __func__, ##__VA_ARGS__)
+#define logw(fmt, ...) \
+	pr_warn("[WARN][%s] %s - "	fmt, LOG_TAG, __func__, ##__VA_ARGS__)
+#define logd(fmt, ...) \
+	pr_debug("[DEBUG][%s] %s - "	fmt, LOG_TAG, __func__, ##__VA_ARGS__)
+#define logi(fmt, ...) \
+	pr_info("[INFO][%s] %s - "	fmt, LOG_TAG, __func__, ##__VA_ARGS__)
 #define dlog(fmt, ...)
 
 /* --------------------------------------------------------------------------
@@ -329,17 +346,28 @@ extern unsigned int tccvin_timeout_param;
  */
 
 /* Video buffers queue management. */
-extern int tccvin_queue_init(struct tccvin_video_queue *queue, enum v4l2_buf_type type, int drop_corrupted);
+extern int tccvin_queue_init(struct tccvin_video_queue *queue,
+	enum v4l2_buf_type type, int drop_corrupted);
 extern void tccvin_queue_release(struct tccvin_video_queue *queue);
-extern int tccvin_request_buffers(struct tccvin_video_queue *queue, struct v4l2_requestbuffers *rb);
-extern int tccvin_query_buffer(struct tccvin_video_queue *queue, struct v4l2_buffer *v4l2_buf);
-extern int tccvin_queue_buffer(struct tccvin_video_queue *queue, struct v4l2_buffer *v4l2_buf);
-extern int tccvin_dequeue_buffer(struct tccvin_video_queue *queue, struct v4l2_buffer *v4l2_buf, int nonblocking);
-extern int tccvin_queue_streamon(struct tccvin_video_queue *queue, enum v4l2_buf_type type);
-extern int tccvin_queue_streamoff(struct tccvin_video_queue *queue, enum v4l2_buf_type type);
-extern struct tccvin_buffer *tccvin_queue_next_buffer(struct tccvin_video_queue *queue, struct tccvin_buffer *buf);
-extern int tccvin_queue_mmap(struct tccvin_video_queue *queue, struct vm_area_struct *vma);
-extern unsigned int tccvin_queue_poll(struct tccvin_video_queue *queue, struct file *file, poll_table *wait);
+extern int tccvin_request_buffers(struct tccvin_video_queue *queue,
+	struct v4l2_requestbuffers *rb);
+extern int tccvin_query_buffer(struct tccvin_video_queue *queue,
+	struct v4l2_buffer *v4l2_buf);
+extern int tccvin_queue_buffer(struct tccvin_video_queue *queue,
+	struct v4l2_buffer *v4l2_buf);
+extern int tccvin_dequeue_buffer(struct tccvin_video_queue *queue,
+	struct v4l2_buffer *v4l2_buf, int nonblocking);
+extern int tccvin_queue_streamon(struct tccvin_video_queue *queue,
+	enum v4l2_buf_type type);
+extern int tccvin_queue_streamoff(struct tccvin_video_queue *queue,
+	enum v4l2_buf_type type);
+extern struct tccvin_buffer *
+tccvin_queue_next_buffer(struct tccvin_video_queue *queue,
+	struct tccvin_buffer *buf);
+extern int tccvin_queue_mmap(struct tccvin_video_queue *queue,
+	struct vm_area_struct *vma);
+extern unsigned int tccvin_queue_poll(struct tccvin_video_queue *queue,
+	struct file *file, poll_table *wait);
 extern int tccvin_queue_is_allocated(struct tccvin_video_queue *queue);
 static inline int tccvin_queue_is_streaming(struct tccvin_video_queue *queue)
 {
@@ -356,10 +384,13 @@ extern int tccvin_format_num(void);
 extern struct tccvin_format_desc *tccvin_format_by_guid(const __u32 guid);
 extern int tccvin_video_init(struct tccvin_streaming *stream);
 extern int tccvin_video_deinit(struct tccvin_streaming *stream);
-extern int tccvin_video_streamon(struct tccvin_streaming *stream, int is_handover_needed);
-extern int tccvin_video_streamoff(struct tccvin_streaming *stream, int is_handover_needed);
+extern int tccvin_video_streamon(struct tccvin_streaming *stream,
+	int is_handover_needed);
+extern int tccvin_video_streamoff(struct tccvin_streaming *stream,
+	int is_handover_needed);
 
 /* Utility functions */
-extern void tccvin_simplify_fraction(uint32_t *numerator, uint32_t *denominator, unsigned int n_terms, unsigned int threshold);
+extern void tccvin_simplify_fraction(uint32_t *numerator, uint32_t *denominator,
+	unsigned int n_terms, unsigned int threshold);
 
 #endif
