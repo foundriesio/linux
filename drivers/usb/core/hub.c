@@ -1978,8 +1978,8 @@ static int hub_probe(struct usb_interface *intf, const struct usb_device_id *id)
 
 #ifdef CONFIG_TCC_EH_ELECT_TST
 	if (hdev->level == hub_level) {
-        dev_emerg(&intf->dev,
-            "[EMERG][USB] \x1b[1;31mUnsupported bus topology: hub nested too deep\x1b[0m\n");
+		dev_emerg(&intf->dev,
+			"[EMERG][USB] \x1b[1;31mUnsupported bus topology: hub nested too deep\x1b[0m\n");
 #else
 	if (hdev->level == MAX_TOPO_LEVEL) {
 		dev_err(&intf->dev,
@@ -2342,12 +2342,14 @@ void usb_disconnect(struct usb_device **pdev)
 	 */
 	usb_set_device_state(udev, USB_STATE_NOTATTACHED);
 #ifdef CONFIG_TCC_DWC_HS_ELECT_TST
-    if (udev->bus->b_hnp_enable && udev->portnum == udev->bus->otg_port) {
-    	cancel_delayed_work_sync((struct delayed_work *)(udev->bus->hnp_work));
-        udev->bus->b_hnp_enable = 0;
-    }
-    dev_emerg(&udev->dev, "[EMERG][USB] USB disconnect(%s), device number %d\n", udev->product,
-    	udev->devnum);
+	if (udev->bus->b_hnp_enable && udev->portnum == udev->bus->otg_port) {
+		cancel_delayed_work_sync(
+			(struct delayed_work *)(udev->bus->hnp_work));
+		udev->bus->b_hnp_enable = 0;
+	}
+	dev_emerg(&udev->dev,
+		"[EMERG][USB] USB disconnect(%s), device number %d\n",
+		udev->product, udev->devnum);
 #else
 
 	dev_info(&udev->dev, "[INFO][USB] USB disconnect, device number %d\n",
@@ -2412,17 +2414,15 @@ void usb_disconnect(struct usb_device **pdev)
 	hub_free_dev(udev);
 
 	put_device(&udev->dev);
-#if defined (CONFIG_DYNAMIC_DC_LEVEL_ADJUSTMENT)
-    {
-    	struct usb_hcd *hcd = bus_to_hcd(udev->bus);
-        set_port_dc_level(hcd, CONFIG_USB_HS_DC_VOLTAGE_LEVEL);
-    }
+#if defined(CONFIG_DYNAMIC_DC_LEVEL_ADJUSTMENT)
+	struct usb_hcd *hcd = bus_to_hcd(udev->bus);
+
+	set_port_dc_level(hcd, CONFIG_USB_HS_DC_VOLTAGE_LEVEL);
 #endif
-#if defined (CONFIG_TCC_BC_12)
-    {
-    	struct usb_hcd *hcd = bus_to_hcd(udev->bus);
-        set_chg_det(hcd);
-    }
+#if defined(CONFIG_TCC_BC_12)
+	struct usb_hcd *hcd = bus_to_hcd(udev->bus);
+
+	set_chg_det(hcd);
 #endif
 
 }
@@ -2466,8 +2466,9 @@ static int usb_enumerate_device_otg(struct usb_device *udev)
 {
 	int err = 0;
 
-//#ifdef	CONFIG_USB_OTG
-#if defined(CONFIG_USB_OTG) || (defined(CONFIG_TCC_DWC_HS_ELECT_TST) && defined(HCI_TPL_SUPPORT))
+#if defined(CONFIG_USB_OTG) || \
+		(defined(CONFIG_TCC_DWC_HS_ELECT_TST) && \
+		defined(HCI_TPL_SUPPORT))
 	/*
 	 * OTG-aware devices on OTG-capable root hubs may be able to use SRP,
 	 * to wake us after we've powered off VBUS; and HNP, switching roles
@@ -2505,9 +2506,9 @@ static int usb_enumerate_device_otg(struct usb_device *udev)
 				 * customize to match your product.
 				 */
 #ifdef CONFIG_TCC_DWC_HS_ELECT_TST
-                dev_info(&udev->dev,
-	                "[INFO][USB] \x1b[1;31mcan't set HNP mode: %d\x1b[0m\n",
-                    err);
+				dev_info(&udev->dev,
+					"[INFO][USB] \x1b[1;31mcan't set HNP mode: %d\x1b[0m\n",
+				err);
 #else
 
 				dev_err(&udev->dev, "[ERROR][USB] can't set HNP mode: %d\n",
@@ -2516,19 +2517,20 @@ static int usb_enumerate_device_otg(struct usb_device *udev)
 				bus->b_hnp_enable = 0;
 			}
 #ifdef CONFIG_TCC_DWC_HS_ELECT_TST
-            else {
-	            err = usb_control_msg(udev,
-                usb_sndctrlpipe(udev, 0),
-    	            USB_REQ_SET_FEATURE, 0,
-                    USB_DEVICE_A_HNP_SUPPORT,
-                    0, NULL, 0, USB_CTRL_SET_TIMEOUT);
-                if (err < 0) {
-          	    	dev_info(&udev->dev,
-                    	"[INFO][USB] \x1b[1;31mcan't set A-HNP SUPPORT: %d\x1b\n",
-                        	err);
-                    bus->b_hnp_enable = 0;
-                }
-            }
+			else {
+				err = usb_control_msg(udev,
+						usb_sndctrlpipe(udev, 0),
+						USB_REQ_SET_FEATURE, 0,
+						USB_DEVICE_A_HNP_SUPPORT,
+						0, NULL, 0,
+						USB_CTRL_SET_TIMEOUT);
+				if (err < 0) {
+					dev_info(&udev->dev,
+							"[INFO][USB] \x1b[1;31mcan't set A-HNP SUPPORT: %d\x1b\n",
+							err);
+					bus->b_hnp_enable = 0;
+				}
+			}
 #endif
 		} else if (desc->bLength == sizeof
 				(struct usb_otg_descriptor)) {
@@ -2598,7 +2600,9 @@ static int usb_enumerate_device(struct usb_device *udev)
 			|| udev->bus->is_b_host)) {
 			err = usb_port_suspend(udev, PMSG_AUTO_SUSPEND);
 			if (err < 0)
-				dev_dbg(&udev->dev, "[DEBUG][USB] HNP fail, %d\n", err);
+				dev_dbg(&udev->dev,
+					"[DEBUG][USB] HNP fail, %d\n",
+					err);
 		}
 		return -ENOTSUPP;
 	}
@@ -2739,7 +2743,9 @@ int usb_new_device(struct usb_device *udev)
 	 */
 	err = device_add(&udev->dev);
 	if (err) {
-		dev_err(&udev->dev, "[ERROR][USB] can't device_add, error %d\n", err);
+		dev_err(&udev->dev,
+			"[ERROR][USB] can't device_add, error %d\n",
+			err);
 		goto fail;
 	}
 
@@ -2816,15 +2822,17 @@ int usb_authorize_device(struct usb_device *usb_dev)
 	result = usb_autoresume_device(usb_dev);
 	if (result < 0) {
 		dev_err(&usb_dev->dev,
-			"[ERROR][USB] can't autoresume for authorization: %d\n", result);
+			"[ERROR][USB] can't autoresume for authorization: %d\n",
+			result);
 		goto error_autoresume;
 	}
 
 	if (usb_dev->wusb) {
 		result = usb_get_device_descriptor(usb_dev, sizeof(usb_dev->descriptor));
 		if (result < 0) {
-			dev_err(&usb_dev->dev, "[ERROR][USB] can't re-read device descriptor for "
-				"authorization: %d\n", result);
+			dev_err(&usb_dev->dev,
+			"[ERROR][USB] can't re-read device descriptor for authorization: %d\n",
+			result);
 			goto error_device_descriptor;
 		}
 	}
@@ -2838,7 +2846,8 @@ int usb_authorize_device(struct usb_device *usb_dev)
 		result = usb_set_configuration(usb_dev, c);
 		if (result) {
 			dev_err(&usb_dev->dev,
-				"[ERROR][USB] can't set config #%d, error %d\n", c, result);
+				"[ERROR][USB] can't set config #%d, error %d\n",
+				c, result);
 			/* This need not be fatal.  The user can try to
 			 * set other configurations. */
 		}
@@ -2940,7 +2949,9 @@ static bool hub_port_warm_reset_required(struct usb_hub *hub, int port1,
 	return link_state == USB_SS_PORT_LS_SS_INACTIVE
 		|| link_state == USB_SS_PORT_LS_COMP_MOD;
 #else
-    printk("[INFO][USB] \x1b[1;33m[%s:%d] For USB 3.0 electrical test, warm reset is unsupported.\x1b[0m\n", __func__, __LINE__);
+	pr_info(
+		"[INFO][USB] \x1b[1;33m[%s:%d] For USB 3.0 electrical test, warm reset is unsupported.\x1b[0m\n",
+		__func__, __LINE__);
     return FALSE;
 #endif
 
@@ -3046,8 +3057,8 @@ static int hub_port_reset(struct usb_hub *hub, int port1,
 
 	if (!hub_is_superspeed(hub->hdev)) {
 		if (warm) {
-			dev_err(hub->intfdev, "[ERROR][USB] only USB3 hub support "
-						"warm reset\n");
+			dev_err(hub->intfdev,
+				"[ERROR][USB] only USB3 hub support warm reset\n");
 			return -EINVAL;
 		}
 		/* Block EHCI CF initialization during the port reset.
@@ -3480,7 +3491,9 @@ int usb_port_suspend(struct usb_device *udev, pm_message_t msg)
 		status = 0;
 	}
 	if (status) {
-		dev_dbg(&port_dev->dev, "[DEBUG][USB] can't suspend, status %d\n", status);
+		dev_dbg(&port_dev->dev,
+			"[DEBUG][USB] can't suspend, status %d\n",
+			status);
 
 		/* Try to enable USB3 LTM again */
 		usb_enable_ltm(udev);
@@ -3702,7 +3715,8 @@ int usb_port_resume(struct usb_device *udev, pm_message_t msg)
 	if (!test_and_set_bit(port1, hub->child_usage_bits)) {
 		status = pm_runtime_get_sync(&port_dev->dev);
 		if (status < 0) {
-			dev_dbg(&udev->dev, "[DEBUG][USB] can't resume usb port, status %d\n",
+			dev_dbg(&udev->dev,
+				"[DEBUG][USB] can't resume usb port, status %d\n",
 					status);
 			return status;
 		}
@@ -3725,7 +3739,9 @@ int usb_port_resume(struct usb_device *udev, pm_message_t msg)
 		status = usb_clear_port_feature(hub->hdev,
 				port1, USB_PORT_FEAT_SUSPEND);
 	if (status) {
-		dev_dbg(&port_dev->dev, "[DEBUG][USB] can't resume, status %d\n", status);
+		dev_dbg(&port_dev->dev,
+			"[DEBUG][USB] can't resume, status %d\n",
+				status);
 	} else {
 		/* drive resume for USB_RESUME_TIMEOUT msec */
 		dev_dbg(&udev->dev, "[DEBUG][USB] usb %sresume\n",
@@ -3765,7 +3781,9 @@ int usb_port_resume(struct usb_device *udev, pm_message_t msg)
 	if (status == 0)
 		status = finish_port_resume(udev);
 	if (status < 0) {
-		dev_dbg(&udev->dev, "[DEBUG][USB] can't resume, status %d\n", status);
+		dev_dbg(&udev->dev,
+			"[DEBUG][USB] can't resume, status %d\n",
+				status);
 		hub_port_logical_disconnect(hub, port1);
 	} else  {
 		/* Try to enable USB2 hardware LPM */
@@ -4058,14 +4076,15 @@ static int usb_set_device_initiated_lpm(struct usb_device *udev,
 		feature = USB_DEVICE_U2_ENABLE;
 		break;
 	default:
-		dev_warn(&udev->dev, "[WARN][USB] %s: Can't %s non-U1 or U2 state.\n",
+		dev_warn(&udev->dev,
+			"[WARN][USB] %s: Can't %s non-U1 or U2 state.\n",
 				__func__, enable ? "enable" : "disable");
 		return -EINVAL;
 	}
 
 	if (udev->state != USB_STATE_CONFIGURED) {
-		dev_dbg(&udev->dev, "[DEBUG][USB] %s: Can't %s %s state "
-				"for unconfigured device.\n",
+		dev_dbg(&udev->dev,
+			"[DEBUG][USB] %s: Can't %s %s state for unconfigured device.\n",
 				__func__, enable ? "enable" : "disable",
 				usb3_lpm_names[state]);
 		return 0;
@@ -4091,7 +4110,8 @@ static int usb_set_device_initiated_lpm(struct usb_device *udev,
 				USB_CTRL_SET_TIMEOUT);
 	}
 	if (ret < 0) {
-		dev_warn(&udev->dev, "[WARN][USB] %s of device-initiated %s failed.\n",
+		dev_warn(&udev->dev,
+			"[WARN][USB] %s of device-initiated %s failed.\n",
 				enable ? "Enable" : "Disable",
 				usb3_lpm_names[state]);
 		return -EBUSY;
@@ -4113,15 +4133,16 @@ static int usb_set_lpm_timeout(struct usb_device *udev,
 		feature = USB_PORT_FEAT_U2_TIMEOUT;
 		break;
 	default:
-		dev_warn(&udev->dev, "[WARN][USB] %s: Can't set timeout for non-U1 or U2 state.\n",
+		dev_warn(&udev->dev,
+			"[WARN][USB] %s: Can't set timeout for non-U1 or U2 state.\n",
 				__func__);
 		return -EINVAL;
 	}
 
 	if (state == USB3_LPM_U1 && timeout > USB3_LPM_U1_MAX_TIMEOUT &&
 			timeout != USB3_LPM_DEVICE_INITIATED) {
-		dev_warn(&udev->dev, "[WARN][USB] Failed to set %s timeout to 0x%x, "
-				"which is a reserved value.\n",
+		dev_warn(&udev->dev,
+			"[WARN][USB] Failed to set %s timeout to 0x%x, which is a reserved value.\n",
 				usb3_lpm_names[state], timeout);
 		return -EINVAL;
 	}
@@ -4130,8 +4151,9 @@ static int usb_set_lpm_timeout(struct usb_device *udev,
 			USB_PORT_LPM_TIMEOUT(timeout) | udev->portnum,
 			feature);
 	if (ret < 0) {
-		dev_warn(&udev->dev, "[WARN][USB] Failed to set %s timeout to 0x%x,"
-				"error code %i\n", usb3_lpm_names[state],
+		dev_warn(&udev->dev,
+			"[WARN][USB] Failed to set %s timeout to 0x%x, error code %i\n",
+				usb3_lpm_names[state],
 				timeout, ret);
 		return -EBUSY;
 	}
@@ -4178,7 +4200,8 @@ static void usb_enable_link_state(struct usb_hcd *hcd, struct usb_device *udev,
 	 */
 	ret = usb_req_set_sel(udev, state);
 	if (ret < 0) {
-		dev_warn(&udev->dev, "[WARN][USB] Set SEL for device-initiated %s failed.\n",
+		dev_warn(&udev->dev,
+			"[WARN][USB] Set SEL for device-initiated %s failed.\n",
 				usb3_lpm_names[state]);
 		return;
 	}
@@ -4195,8 +4218,9 @@ static void usb_enable_link_state(struct usb_hcd *hcd, struct usb_device *udev,
 		return;
 
 	if (timeout < 0) {
-		dev_warn(&udev->dev, "[WARN][USB] Could not enable %s link state, "
-				"xHCI error %i.\n", usb3_lpm_names[state],
+		dev_warn(&udev->dev,
+			"[WARN][USB] Could not enable %s link state, xHCI error %i.\n",
+				usb3_lpm_names[state],
 				timeout);
 		return;
 	}
@@ -4251,7 +4275,8 @@ static int usb_disable_link_state(struct usb_hcd *hcd, struct usb_device *udev,
 	case USB3_LPM_U2:
 		break;
 	default:
-		dev_warn(&udev->dev, "[WARN][USB] %s: Can't disable non-U1 or U2 state.\n",
+		dev_warn(&udev->dev,
+			"[WARN][USB] %s: Can't disable non-U1 or U2 state.\n",
 				__func__);
 		return -EINVAL;
 	}
@@ -4262,8 +4287,8 @@ static int usb_disable_link_state(struct usb_hcd *hcd, struct usb_device *udev,
 	usb_set_device_initiated_lpm(udev, state, false);
 
 	if (hcd->driver->disable_usb3_lpm_timeout(hcd, udev, state))
-		dev_warn(&udev->dev, "[WARN][USB] Could not disable xHCI %s timeout, "
-				"bus schedule bandwidth may be impacted.\n",
+		dev_warn(&udev->dev,
+			"[WARN][USB] Could not disable xHCI %s timeout, bus schedule bandwidth may be impacted.\n",
 				usb3_lpm_names[state]);
 
 	/* As soon as usb_set_lpm_timeout(0) return 0, hub initiated LPM
@@ -4485,7 +4510,9 @@ static int hub_port_disable(struct usb_hub *hub, int port1, int set_state)
 	if (port_dev->child && set_state)
 		usb_set_device_state(port_dev->child, USB_STATE_NOTATTACHED);
 	if (ret && ret != -ENODEV)
-		dev_err(&port_dev->dev, "[ERROR][USB] cannot disable (err = %d)\n", ret);
+		dev_err(&port_dev->dev,
+			"[ERROR][USB] cannot disable (err = %d)\n",
+			ret);
 	return ret;
 }
 
@@ -4540,7 +4567,8 @@ int hub_port_debounce(struct usb_hub *hub, int port1, bool must_be_connected)
 		msleep(HUB_DEBOUNCE_STEP);
 	}
 
-	dev_dbg(&port_dev->dev, "[DEBUG][USB] debounce total %dms stable %dms status 0x%x\n",
+	dev_dbg(&port_dev->dev,
+		"[DEBUG][USB] debounce total %dms stable %dms status 0x%x\n",
 			total_time, stable_time, portstatus);
 
 	if (stable_time < HUB_DEBOUNCE_STABLE)
@@ -4916,8 +4944,8 @@ hub_port_init(struct usb_hub *hub, struct usb_device *udev, int port1,
 	 */
 	if ((udev->speed >= USB_SPEED_SUPER) &&
 			(le16_to_cpu(udev->descriptor.bcdUSB) < 0x0300)) {
-		dev_err(&udev->dev, "[ERROR][USB] got a wrong device descriptor, "
-				"warm reset device\n");
+		dev_err(&udev->dev,
+			"[ERROR][USB] got a wrong device descriptor, warm reset device\n");
 		hub_port_reset(hub, port1, udev,
 				HUB_BH_RESET_TIME, true);
 		retval = -EINVAL;
@@ -4932,14 +4960,20 @@ hub_port_init(struct usb_hub *hub, struct usb_device *udev, int port1,
 	if (usb_endpoint_maxp(&udev->ep0.desc) != i) {
 		if (udev->speed == USB_SPEED_LOW ||
 				!(i == 8 || i == 16 || i == 32 || i == 64)) {
-			dev_err(&udev->dev, "[ERROR][USB] Invalid ep0 maxpacket: %d\n", i);
+			dev_err(&udev->dev,
+				"[ERROR][USB] Invalid ep0 maxpacket: %d\n",
+				i);
 			retval = -EMSGSIZE;
 			goto fail;
 		}
 		if (udev->speed == USB_SPEED_FULL)
-			dev_dbg(&udev->dev, "[DEBUG][USB] ep0 maxpacket = %d\n", i);
+			dev_dbg(&udev->dev,
+				"[DEBUG][USB] ep0 maxpacket = %d\n",
+				i);
 		else
-			dev_warn(&udev->dev, "[WARN][USB] Using ep0 maxpacket: %d\n", i);
+			dev_warn(&udev->dev,
+				"[WARN][USB] Using ep0 maxpacket: %d\n",
+				i);
 		udev->ep0.desc.wMaxPacketSize = cpu_to_le16(i);
 		usb_ep0_reinit(udev);
 	}
@@ -5152,31 +5186,32 @@ static void hub_port_connect(struct usb_hub *hub, int port1, u16 portstatus,
 		usb_lock_port(port_dev);
 		status = hub_port_init(hub, udev, port1, i);
 		usb_unlock_port(port_dev);
-#if defined (CONFIG_DYNAMIC_DC_LEVEL_ADJUSTMENT)
-        {
-	        int dclevel = get_port_dc_level(hcd);
+#if defined(CONFIG_DYNAMIC_DC_LEVEL_ADJUSTMENT)
+		int dclevel = get_port_dc_level(hcd);
 
-            if(status < 0) {
-      	    	dev_dbg(&udev->dev, "[DEBUG][USB] \x1b[1;34m[%s:%d]port init fail:dc level=0x%x\x1b[0m\n", __func__, __LINE__,dclevel);
-                if(dclevel > CONFIG_MIN_DC_VOLTAGE_LEVEL) {
-                	if(!set_port_dc_level(hcd, dclevel-1))
-                    	status = 0;
-                } else {
-                	dev_dbg(&udev->dev, "[DEBUG][USB] \x1b[1;33mreset the hs dc voltage level\x1b[0m\n");
-                    goto loop_disable;
-                  }
+		if (status < 0) {
+			dev_dbg(&udev->dev,
+				"[DEBUG][USB] \x1b[1;34m[%s:%d]port init fail:dc level=0x%x\x1b[0m\n",
+				__func__, __LINE__, dclevel);
+			if (dclevel > CONFIG_MIN_DC_VOLTAGE_LEVEL) {
+				if (!set_port_dc_level(hcd, dclevel-1))
+					status = 0;
+			} else {
+				dev_dbg(&udev->dev,
+					"[DEBUG][USB] \x1b[1;33mreset the hs dc voltage level\x1b[0m\n");
+				goto loop_disable;
+			}
 
-                  i--;
-                  goto loop;
-            }
+			i--;
+			goto loop;
+		}
 
-            /* Setting the stable HS DC voltage level */
-            if((dclevel > CONFIG_MIN_DC_VOLTAGE_LEVEL)) {          //If it has failed to record
-            	/* If current HS DC votage level is minmum level, You should keep the current setting. */
-                set_port_dc_level(hcd, dclevel-1);
-                dev_dbg(&udev->dev, "[DEBUG][USB] \x1b[1;33mset the stable hs dc voltage level(margin=1)\x1b[0m\n");
-            }
-        }
+		/* Setting the stable HS DC voltage level */
+		if (dclevel > CONFIG_MIN_DC_VOLTAGE_LEVEL) {
+			set_port_dc_level(hcd, dclevel-1);
+			dev_dbg(&udev->dev,
+				"[DEBUG][USB] \x1b[1;33mset the stable hs dc voltage level(margin=1)\x1b[0m\n");
+		}
 #endif /* CONFIG_DYNAMIC_DC_LEVEL_ADJUSTMENT */
 
 		if (status < 0)
@@ -5198,13 +5233,14 @@ static void hub_port_connect(struct usb_hub *hub, int port1, u16 portstatus,
 			status = usb_get_status(udev, USB_RECIP_DEVICE, 0,
 					&devstat);
 			if (status) {
-				dev_dbg(&udev->dev, "[DEBUG][USB] get status %d ?\n", status);
+				dev_dbg(&udev->dev,
+					"[DEBUG][USB] get status %d ?\n",
+					status);
 				goto loop_disable;
 			}
 			if ((devstat & (1 << USB_DEVICE_SELF_POWERED)) == 0) {
 				dev_err(&udev->dev,
-					"[ERROR][USB] can't connect bus-powered hub "
-					"to this port\n");
+					"[ERROR][USB] can't connect bus-powered hub to this port\n");
 				if (hub->has_indicators) {
 					hub->indicator[port1-1] =
 						INDICATOR_AMBER_BLINK;
@@ -5264,27 +5300,24 @@ static void hub_port_connect(struct usb_hub *hub, int port1, u16 portstatus,
 
 		status = hub_power_remaining(hub);
 		if (status)
-			dev_dbg(hub->intfdev, "[DEBUG][USB] %dmA power budget left\n", status);
+			dev_dbg(hub->intfdev,
+				"[DEBUG][USB] %dmA power budget left\n",
+				status);
 /* TCC Embedded Host Electrical Test */
 #ifdef CONFIG_TCC_EH_ELECT_TST
-        if (unlikely(host_test_mode_val >= _TEST_SE0_NAK &&
-        	host_test_mode_val <= _SINGLE_STEP_SET_FEATURE)) {
-            udev->descriptor.idVendor = cpu_to_le16(_TEST_VID);
-            udev->descriptor.idProduct = cpu_to_le16(host_test_mode_val);
-            host_test_mode_val = 0;
-        }
-        if (le16_to_cpu(udev->descriptor.idVendor) == _TEST_VID) {
-        	//if (!strcmp(hcd->driver->description, "dwc_otg_hcd")
-            //      || !strcmp(hcd->driver->description, "xhci-hcd") )
-            {
-            	/* for xhci-hcd and dwc_otg_hcd*/
-                //printk("\x1b[1;33m[%s:%d] desc : %s \x1b[0m\n", __func__, __LINE__, hcd->driver->description);
-                TCC_OPT_TEST(hub, port1, udev);
-            }
-            //else {
-            //      printk("[INFO][USB] \x1b[1;33m[%s:%d] Undefined device description : %s \x1b[0m\n", __func__, __LINE__, hcd->driver->descripti
-            //}
-        }
+		if (unlikely(host_test_mode_val >=
+					_TEST_SE0_NAK &&
+					host_test_mode_val <=
+					_SINGLE_STEP_SET_FEATURE)) {
+			udev->descriptor.idVendor = cpu_to_le16(_TEST_VID);
+			udev->descriptor.idProduct =
+				cpu_to_le16(host_test_mode_val);
+			host_test_mode_val = 0;
+		}
+		if (le16_to_cpu(udev->descriptor.idVendor) ==
+				_TEST_VID) {
+			TCC_OPT_TEST(hub, port1, udev);
+		}
 #endif /* CONFIG_TCC_EH_ELECT_TST */
 
 		return;
@@ -5297,21 +5330,11 @@ loop:
 		hub_free_dev(udev);
 		usb_put_dev(udev);
 		if ((status == -ENOTCONN) || (status == -ENOTSUPP)) {
-#if defined (CONFIG_DYNAMIC_DC_LEVEL_ADJUSTMENT)
-        	set_port_dc_level( hcd, CONFIG_USB_HS_DC_VOLTAGE_LEVEL);
+#if defined(CONFIG_DYNAMIC_DC_LEVEL_ADJUSTMENT)
+			set_port_dc_level(hcd, CONFIG_USB_HS_DC_VOLTAGE_LEVEL);
 #endif
 			break;
 		}
-		#if 0 //to prevent otg port is stuck
-		/* When halfway through our retry count, power-cycle the port */
-		if (i == (SET_CONFIG_TRIES / 2) - 1) {
-			dev_info(&port_dev->dev, "[INFO][USB] attempt power cycle\n");
-			usb_hub_set_port_power(hdev, hub, port1, false);
-			msleep(2 * hub_power_on_good_delay(hub));
-			usb_hub_set_port_power(hdev, hub, port1, true);
-			msleep(hub_power_on_good_delay(hub));
-		}
-		#endif
 	}
 	if (hub->hdev->parent ||
 			!hcd->driver->port_handed_over ||
@@ -5345,7 +5368,9 @@ static void hub_port_connect_change(struct usb_hub *hub, int port1,
 	struct usb_device *udev = port_dev->child;
 	int status = -ENODEV;
 
-	dev_dbg(&port_dev->dev, "[DEBUG][USB] status %04x, change %04x, %s\n", portstatus,
+	dev_dbg(&port_dev->dev,
+		"[DEBUG][USB] status %04x, change %04x, %s\n",
+			portstatus,
 			portchange, portspeed(hub, portstatus));
 
 	if (hub->has_indicators) {
@@ -5541,11 +5566,15 @@ static void hub_event(struct work_struct *work)
 		goto out_autopm;
 
 	if (hub->error) {
-		dev_dbg(hub_dev, "[DEBUG][USB] resetting for error %d\n", hub->error);
+		dev_dbg(hub_dev,
+			"[DEBUG][USB] resetting for error %d\n",
+			hub->error);
 
 		ret = usb_reset_device(hdev);
 		if (ret) {
-			dev_dbg(hub_dev, "[DEBUG][USB] error resetting hub: %d\n", ret);
+			dev_dbg(hub_dev,
+			"[DEBUG][USB] error resetting hub: %d\n",
+			ret);
 			goto out_autopm;
 		}
 
@@ -5650,7 +5679,8 @@ static struct usb_driver hub_driver = {
 int usb_hub_init(void)
 {
 	if (usb_register(&hub_driver) < 0) {
-		printk(KERN_ERR "[ERROR][USB] %s: can't register hub driver\n",
+		pr_err(
+			"[ERROR][USB] %s: can't register hub driver\n",
 			usbcore_name);
 		return -1;
 	}
@@ -5667,7 +5697,8 @@ int usb_hub_init(void)
 
 	/* Fall through if kernel_thread failed */
 	usb_deregister(&hub_driver);
-	pr_err("[ERROR][USB] %s: can't allocate workqueue for usb hub\n", usbcore_name);
+	pr_err("[ERROR][USB] %s: can't allocate workqueue for usb hub\n",
+		usbcore_name);
 
 	return -1;
 }
@@ -5737,14 +5768,16 @@ static int descriptors_changed(struct usb_device *udev,
 		length = usb_get_descriptor(udev, USB_DT_CONFIG, index, buf,
 				old_length);
 		if (length != old_length) {
-			dev_dbg(&udev->dev, "[DEBUG][USB] config index %d, error %d\n",
+			dev_dbg(&udev->dev,
+				"[DEBUG][USB] config index %d, error %d\n",
 					index, length);
 			changed = 1;
 			break;
 		}
 		if (memcmp(buf, udev->rawdescriptors[index], old_length)
 				!= 0) {
-			dev_dbg(&udev->dev, "[DEBUG][USB] config index %d changed (#%d)\n",
+			dev_dbg(&udev->dev,
+				"[DEBUG][USB] config index %d changed (#%d)\n",
 				index,
 				((struct usb_config_descriptor *) buf)->
 					bConfigurationValue);
@@ -5838,7 +5871,9 @@ static int usb_reset_and_verify_device(struct usb_device *udev)
 	 */
 	ret = usb_unlocked_disable_lpm(udev);
 	if (ret) {
-		dev_err(&udev->dev, "[ERROR][USB] %s Failed to disable LPM\n.", __func__);
+		dev_err(&udev->dev,
+			"[ERROR][USB] %s Failed to disable LPM\n.",
+			__func__);
 		goto re_enumerate_no_bos;
 	}
 	ret = usb_disable_ltm(udev);
@@ -5879,8 +5914,7 @@ static int usb_reset_and_verify_device(struct usb_device *udev)
 	ret = usb_hcd_alloc_bandwidth(udev, udev->actconfig, NULL, NULL);
 	if (ret < 0) {
 		dev_warn(&udev->dev,
-				"[WARN][USB] Busted HC?  Not enough HCD resources for "
-				"old configuration.\n");
+				"[WARN][USB] Busted HC?  Not enough HCD resources for old configuration.\n");
 		mutex_unlock(hcd->bandwidth_mutex);
 		goto re_enumerate;
 	}
@@ -5925,8 +5959,7 @@ static int usb_reset_and_verify_device(struct usb_device *udev)
 			intf->resetting_device = 0;
 		}
 		if (ret < 0) {
-			dev_err(&udev->dev, "[ERROR][USB] failed to restore interface %d "
-				"altsetting %d (error=%d)\n",
+			dev_err(&udev->dev, "[ERROR][USB] failed to restore interface %d altsetting %d (error=%d)\n",
 				desc->bInterfaceNumber,
 				desc->bAlternateSetting,
 				ret);
@@ -5994,7 +6027,9 @@ int usb_reset_device(struct usb_device *udev)
 
 	if (!udev->parent) {
 		/* this requires hcd-specific logic; see ohci_restart() */
-		dev_dbg(&udev->dev, "[DEBUG][USB] %s for root hub!\n", __func__);
+		dev_dbg(&udev->dev,
+			"[DEBUG][USB] %s for root hub!\n",
+			__func__);
 		return -EISDIR;
 	}
 
