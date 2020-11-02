@@ -339,19 +339,20 @@ static int tcc_ckc_dedicated_plldiv_set(int id, uint32_t div)
 
 	switch(id) {
 	case FBUS_CPU0:
-		reg = cpu0_base + DCKC_PLLPMS;
+		reg = cpu0_base + DCKC_PLLDIVC;
 		break;
 	case FBUS_CPU1:
-		reg = cpu1_base + DCKC_PLLPMS;
+		reg = cpu1_base + DCKC_PLLDIVC;
 		break;
 	default:
 		return -1;
 	}
 
 	if (div)
-		reg_values |= ((1 << 7)|(div & 0x1F));
+		reg_values |= ((1 << 7)|(div & 0x3F));
 	else
 		reg_values |= 1;
+
 	ckc_writel(reg_values, reg);
 
 	return 0;
