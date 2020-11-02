@@ -9,7 +9,7 @@
 #include "u_f.h"
 #include "u_os_desc.h"
 
-#if defined (CONFIG_USB_CONFIGFS) && defined (CONFIG_ANDROID)
+#if defined(CONFIG_USB_CONFIGFS) && defined(CONFIG_ANDROID)
 #include <linux/wakelock.h>
 #endif
 
@@ -38,7 +38,7 @@ struct device *create_function_device(char *name)
 EXPORT_SYMBOL_GPL(create_function_device);
 #endif
 
-#if defined (CONFIG_USB_CONFIGFS) && defined (CONFIG_ANDROID)
+#if defined(CONFIG_USB_CONFIGFS) && defined(CONFIG_ANDROID)
 struct wake_lock usb_config_wake_lock;
 #endif
 
@@ -1259,8 +1259,8 @@ static void purge_configs_funcs(struct gadget_info *gi)
 			list_move_tail(&f->list, &cfg->func_list);
 			if (f->unbind) {
 				dev_dbg(&gi->cdev.gadget->dev,
-				         "[DEBUG][USB] unbind function '%s'/%p\n",
-				         f->name, f);
+						"[DEBUG][USB] unbind function '%s'/%p\n",
+						f->name, f);
 				f->unbind(c, f);
 			}
 		}
@@ -1452,26 +1452,30 @@ static void android_work(struct work_struct *data)
 	if (status[0]) {
 		kobject_uevent_env(&android_device->kobj,
 					KOBJ_CHANGE, connected);
-		pr_info("[INFO][USB] %s: sent uevent %s\n", __func__, connected[0]);
+		pr_info("[INFO][USB] %s: sent uevent %s\n",
+				__func__, connected[0]);
 		uevent_sent = true;
 	}
 
 	if (status[1]) {
 		kobject_uevent_env(&android_device->kobj,
 					KOBJ_CHANGE, configured);
-		pr_info("[INFO][USB] %s: sent uevent %s\n", __func__, configured[0]);
+		pr_info("[INFO][USB] %s: sent uevent %s\n",
+				__func__, configured[0]);
 		uevent_sent = true;
 	}
 
 	if (status[2]) {
 		kobject_uevent_env(&android_device->kobj,
 					KOBJ_CHANGE, disconnected);
-		pr_info("[INFO][USB] %s: sent uevent %s\n", __func__, disconnected[0]);
+		pr_info("[INFO][USB] %s: sent uevent %s\n",
+				__func__, disconnected[0]);
 		uevent_sent = true;
 	}
 
 	if (!uevent_sent) {
-		pr_info("[INFO][USB] %s: did not send uevent (%d %d %p)\n", __func__,
+		pr_info("[INFO][USB] %s: did not send uevent (%d %d %p)\n",
+			__func__,
 			gi->connected, gi->sw_connected, cdev->config);
 	}
 }
@@ -1787,8 +1791,9 @@ static int __init gadget_cfs_init(void)
 		return PTR_ERR(android_class);
 #endif
 
-#if defined (CONFIG_USB_CONFIGFS) && defined (CONFIG_ANDROID)
-	wake_lock_init(&usb_config_wake_lock, WAKE_LOCK_SUSPEND, "usb_config_wake_lock");
+#if defined(CONFIG_USB_CONFIGFS) && defined(CONFIG_ANDROID)
+	wake_lock_init(&usb_config_wake_lock,
+			WAKE_LOCK_SUSPEND, "usb_config_wake_lock");
 #endif
 	return ret;
 }
@@ -1796,7 +1801,7 @@ module_init(gadget_cfs_init);
 
 static void __exit gadget_cfs_exit(void)
 {
-#if defined (CONFIG_USB_CONFIGFS) && defined (CONFIG_ANDROID)
+#if defined(CONFIG_USB_CONFIGFS) && defined(CONFIG_ANDROID)
 	wake_lock_destroy(&usb_config_wake_lock);
 #endif
 	configfs_unregister_subsystem(&gadget_subsys);
