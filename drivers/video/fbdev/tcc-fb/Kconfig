@@ -579,14 +579,16 @@ config TCC_DUAL_DISPLAY
 choice
 	depends on TCC_DUAL_DISPLAY
 	prompt "Dual display resolution setting"
+	default DUAL_DISPLAY_FHD
 
 	config DUAL_DISPLAY_HD
-	bool " HD (1280 x 720)"
+		bool "HD (1280 x 720)"
+
 	config DUAL_DISPLAY_FHD
-	default y
-	bool "FHD (1920 x 1080)"
+		bool "FHD (1920 x 1080)"
+
 	config DUAL_DISPLAY_UHD
-	bool "UHD (3840 x 2160)"
+		bool "UHD (3840 x 2160)"
 endchoice
 
 endmenu
