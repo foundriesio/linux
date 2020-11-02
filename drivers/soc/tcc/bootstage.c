@@ -4,32 +4,101 @@
  */
 
 #include <linux/kernel.h>
-#include <linux/list_sort.h>
+#include <linux/arm-smccc.h>
 #include <linux/module.h>
 #include <linux/of.h>
+#include <linux/platform_device.h>
+#include <linux/proc_fs.h>
+#include <linux/seq_file.h>
+#include <linux/suspend.h>
+#include <soc/tcc/tcc-sip.h>
 
-#if defined(CONFIG_PROC_FS)
-#  include <linux/proc_fs.h>
-#  include <linux/seq_file.h>
+#define bootstage_pr_err(msg, err) \
+	pr_err("[ERROR][bootstage] Failed to %s. (err: %d)\n", (msg), err)
+
+#if defined(CONFIG_ARCH_TCC805X)
+#define NR_BOOT_STAGES (25U)
+
+static const char *const bootstage_desc[NR_BOOT_STAGES] = {
+	/* Boot Stages on Storage Core BL0 */
+	"setup sc bl0",
+	"storage init",
+	"post storage init",
+	"reset hsm",
+	"load sc fw header",
+	"load sc fw",
+	"wait hsm",
+	"verify sc fw",
+	"set hsm ready",
+	"set sc ready",
+	/* Boot Stages on AP Boot Firmware */
+	"load bl1",
+	"setup bl1",
+	"load h/w config",
+	"initialize dram",
+	"load bl2",
+	"load secure f/w",
+	"load bl3",
+	"setup bl2",
+	/* Boot Stages on AP U-Boot */
+	"setup bl3",
+	"board init f",
+	"relocation",
+	"board init r",
+	"main loop",
+	"boot kernel",
+	/* Boot Stages on Kernel */
+	"kernel init",
+};
+#else
+#define NR_BOOT_STAGES (0U)
 #endif
 
-#define MAX_STAGES	64U
+static inline unsigned long add_boot_timestamp(void)
+{
+	struct arm_smccc_res res;
 
-static unsigned int nr_stages;
+	arm_smccc_smc(SIP_CHIP_ADD_BOOTTIME, 0, 0, 0, 0, 0, 0, 0, &res);
 
-struct bootstage {
-	const char *name;
-	u32 stamp;
+	return res.a0;
+}
 
-	struct list_head list;
-};
+static inline unsigned long get_boot_timestamp(unsigned long index)
+{
+	struct arm_smccc_res res;
 
-static struct bootstage stage_pool[MAX_STAGES];
+	arm_smccc_smc(SIP_CHIP_GET_BOOTTIME, index, 0, 0, 0, 0, 0, 0, &res);
 
-static LIST_HEAD(bootstage_list_head);
-static LIST_HEAD(bootaccum_list_head);
+	return res.a0;
+}
 
-#if defined(CONFIG_PROC_FS)
+static inline unsigned long get_boot_timestamp_num(void)
+{
+	struct arm_smccc_res res;
+
+	arm_smccc_smc(SIP_CHIP_GET_BOOTTIME_NUM, 0, 0, 0, 0, 0, 0, 0, &res);
+
+	return res.a0;
+}
+
+static inline u32 validate_boot_timestamp_num(u32 nr_actual)
+{
+	if (nr_actual != NR_BOOT_STAGES) {
+		pr_err("[ERROR][bootstage] Number of stages does not match. (actual: %u, expected: %u)\n",
+		       nr_actual, NR_BOOT_STAGES);
+
+		if (nr_actual > NR_BOOT_STAGES) {
+			/*
+			 * Bootstage description array will be over-accessed,
+			 * if actual number of stages are larger than expected.
+			 */
+			nr_actual = NR_BOOT_STAGES;
+		}
+	}
+
+	return nr_actual;
+}
+
 static inline const char *u32_to_str_in_format(u32 num)
 {
 	static char format[13]; /* ",000,000,000" */
@@ -44,10 +113,12 @@ static inline const char *u32_to_str_in_format(u32 num)
 	idx = 0U;
 
 	while (format[idx] == ',' || format[idx] == '0') {
+		/* Remove unnecessary delimiters and zeros in front */
 		++idx;
 	}
 
 	if (format[idx] == '\0') {
+		/* Keep the last zero, if the num is just zero */
 		--idx;
 	}
 
@@ -60,29 +131,30 @@ static int bootstage_report_show(struct seq_file *m, void *v)
 	 * CAUTION. This function is **NOT THREAD SAFE** !!!
 	 */
 
-	struct bootstage *stage;
+	u32 i, num, stamp, prev = 0;
 	const char *stamp_s;
-	u32 prev = 0U;
 
-	seq_printf(m, "Timer summary in microseconds (%u records):\n",
-			nr_stages);
+	num = get_boot_timestamp_num();
+	num = validate_boot_timestamp_num(num);
+
+	seq_printf(m, "Timer summary in microseconds (%u records):\n", num);
 
 	seq_printf(m, "%11s%11s  %s\n", "Mark", "Elapsed", "Stage");
-	list_for_each_entry(stage, &bootstage_list_head, list) {
-		stamp_s = u32_to_str_in_format(stage->stamp);
-		seq_printf(m, "%11s", stamp_s);
+	seq_printf(m, "%11u%11u  %s\n", 0U, 0U, "reset");
 
-		stamp_s = u32_to_str_in_format(stage->stamp - prev);
-		seq_printf(m, "%11s", stamp_s);
+	for (i = 0; i < num; i++) {
+		stamp = get_boot_timestamp(i);
 
-		prev = stage->stamp;
-		seq_printf(m, "  %s\n", stage->name);
-	}
+		if (stamp != 0) {
+			stamp_s = u32_to_str_in_format(stamp);
+			seq_printf(m, "%11s", stamp_s);
 
-	seq_puts(m, "\nAccumulated time:\n");
-	list_for_each_entry(stage, &bootaccum_list_head, list) {
-		stamp_s = u32_to_str_in_format(stage->stamp);
-		seq_printf(m, "%11s%11s  %s\n", "", stamp_s, stage->name);
+			stamp_s = u32_to_str_in_format(stamp - prev);
+			seq_printf(m, "%11s", stamp_s);
+
+			prev = stamp;
+			seq_printf(m, "  %s\n", bootstage_desc[i]);
+		}
 	}
 
 	return 0;
@@ -102,10 +174,23 @@ static const struct file_operations bootstage_report_fops = {
 
 static int bootstage_data_show(struct seq_file *m, void *v)
 {
-	struct bootstage *stage;
+	/*
+	 * CAUTION. This function is **NOT THREAD SAFE** !!!
+	 */
 
-	list_for_each_entry(stage, &bootstage_list_head, list) {
-		seq_printf(m, "%s,%u\n", stage->name, stage->stamp);
+	u32 i, num, stamp, prev = 0;
+
+	num = get_boot_timestamp_num();
+	num = validate_boot_timestamp_num(num);
+
+	for (i = 0; i < num; i++) {
+		stamp = get_boot_timestamp(i);
+		seq_printf(m, "%s,%u\n", bootstage_desc[i], stamp - prev);
+
+		if (stamp != 0) {
+			/* Do not calculate with the skipped stages */
+			prev = stamp;
+		}
 	}
 
 	return 0;
@@ -123,99 +208,98 @@ static const struct file_operations bootstage_data_fops = {
 	.release	= seq_release,
 };
 
-static int bootstage_procfs_init(void)
+static int bootstage_pm_notifier_call(struct notifier_block *nb,
+				      unsigned long action, void *data)
 {
-	struct proc_dir_entry *pdir = proc_mkdir("bootstage", NULL);
-	struct proc_dir_entry *ret;
-
-	ret = proc_create("report", 0444, pdir, &bootstage_report_fops);
-	if (ret == NULL) {
-		return -ENOMEM;
-	}
-
-	ret = proc_create("data", 0444, pdir, &bootstage_data_fops);
-	if (ret == NULL) {
-		return -ENOMEM;
+	switch (action) {
+	case PM_POST_SUSPEND:
+		add_boot_timestamp();
+		break;
+	default:
+		break;
 	}
 
 	return 0;
 }
 
-#endif
+struct notifier_block bootstage_pm_notifier = {
+	.notifier_call = bootstage_pm_notifier_call,
+};
 
-static void __init parse_one_bootstage(struct device_node *node)
+static struct proc_dir_entry *bootstage_procfs_init(void)
 {
-	struct bootstage *stage = NULL;
-	struct list_head *head = NULL;
-	int ret;
+	struct proc_dir_entry *pdir, *pent;
 
-	if (nr_stages >= MAX_STAGES) {
-		return;
+	/* Create `/proc/bootstage` procfs directory */
+	pdir = proc_mkdir("bootstage", NULL);
+	if (pdir == NULL) {
+		goto procfs_dir_init_error;
 	}
 
-	stage = &stage_pool[nr_stages];
-
-	ret = of_property_read_string(node, "name", &(stage->name));
-	if (ret == 0) {
-		ret = of_property_read_u32(node, "mark", &(stage->stamp));
-		if (ret == 0) {
-			head = &bootstage_list_head;
-		} else {
-			ret = of_property_read_u32(node, "accum",
-						   &(stage->stamp));
-			if (ret == 0) {
-				head = &bootaccum_list_head;
-			}
-		}
+	/* Create `/proc/bootstage/report` procfs entry */
+	pent = proc_create("report", 0444, pdir, &bootstage_report_fops);
+	if (pent == NULL) {
+		pdir = NULL;
+		goto procfs_report_init_error;
 	}
 
-	if (head != NULL) {
-		list_add_tail(&(stage->list), head);
-		++nr_stages;
+	/* Create `/proc/bootstage/data` procfs entry */
+	pent = proc_create("data", 0444, pdir, &bootstage_data_fops);
+	if (pent == NULL) {
+		pdir = NULL;
+		goto procfs_data_init_error;
 	}
+
+	return pdir;
+
+	// Below line will never gonna happened, but keep in comments for
+	// future usage:
+	// remove_proc_entry("data", pdir);
+procfs_data_init_error:
+	remove_proc_entry("report", pdir);
+procfs_report_init_error:
+	remove_proc_entry("bootstage", NULL);
+procfs_dir_init_error:
+	return pdir;
 }
 
-static int __init cmp_stages(void *p, struct list_head *a, struct list_head *b)
+static void bootstage_procfs_free(struct proc_dir_entry *pdir)
 {
-	struct bootstage *sa = list_entry(a, struct bootstage, list);
-	struct bootstage *sb = list_entry(b, struct bootstage, list);
-
-	return (sa->stamp <= sb->stamp) ? -1 : 1;
+	remove_proc_entry("data", pdir);
+	remove_proc_entry("report", pdir);
+	remove_proc_entry("bootstage", NULL);
 }
-
-static int __init bootstage_init(void)
+static int bootstage_init(void)
 {
-	struct device_node *node, *sub;
+	struct proc_dir_entry *pdir;
+	int ret = 0;
 
-#if defined(CONFIG_PROC_FS)
-	int ret = bootstage_procfs_init();
-
-	if (ret < 0) {
-		return ret;
-	}
-#endif
-
-	nr_stages = 0U;
-
-	node = of_find_node_by_name(NULL, "bootstage");
-
-	/*
-	 * Bootstage configuration(s) on U-Boot may not be enabled,
-	 * so it is acceptable to be failed on finding `bootstage` node.
-	 */
-	if (node == NULL) {
-		return 0;
+	/* Create `/proc/bootstage` procfs directory and child entries */
+	pdir = bootstage_procfs_init();
+	if (pdir == NULL) {
+		ret = -ENOMEM;
+		bootstage_pr_err("init `proc/bootstage` procfs", ret);
+		goto procfs_init_error;
 	}
 
-	for_each_child_of_node(node, sub) {
-		parse_one_bootstage(sub);
+	/* Register PM notifier for boot time until resumption */
+	ret = register_pm_notifier(&bootstage_pm_notifier);
+	if (ret != 0) {
+		bootstage_pr_err("init `proc/bootstage` procfs", ret);
+		goto pm_notifier_register_error;
 	}
-
-	list_sort(NULL, &bootstage_list_head, cmp_stages);
-	list_sort(NULL, &bootaccum_list_head, cmp_stages);
 
 	return 0;
+
+	// Below line will never gonna happened, but keep in comments for
+	// future usage:
+	// unregister_pm_notifier(&bootstage_pm_notifier);
+pm_notifier_register_error:
+	bootstage_procfs_free(pdir);
+procfs_init_error:
+	return ret;
 }
+
 late_initcall(bootstage_init);
 
 MODULE_AUTHOR("Jigi Kim <jigi.kim@telechips.com>");

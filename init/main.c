@@ -95,7 +95,7 @@
 #include <asm/sections.h>
 #include <asm/cacheflush.h>
 
-#ifdef CONFIG_BOOT_TIME
+#if defined(CONFIG_BOOT_TIME) || defined(CONFIG_TCC_BOOTSTAGE)
 #include <linux/arm-smccc.h>
 #endif
 
@@ -1007,9 +1007,11 @@ static inline void mark_readonly(void)
 static int __ref kernel_init(void *unused)
 {
 	int ret;
-#ifdef CONFIG_BOOT_TIME
+#if defined(CONFIG_BOOT_TIME) || defined(CONFIG_TCC_BOOTSTAGE)
 	struct arm_smccc_res res;
+#endif
 
+#if defined(CONFIG_BOOT_TIME)
 	arm_smccc_smc(0x82007003, 0, 0, 0, 0, 0, 0, 0, &res);
 #endif
 
@@ -1024,7 +1026,7 @@ static int __ref kernel_init(void *unused)
 
 	rcu_end_inkernel_boot();
 
-#ifdef CONFIG_BOOT_TIME
+#if defined(CONFIG_BOOT_TIME) || defined(CONFIG_TCC_BOOTSTAGE)
 	arm_smccc_smc(0x82007003, 0, 0, 0, 0, 0, 0, 0, &res);
 #endif
 
