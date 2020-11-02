@@ -1505,7 +1505,9 @@ int __dwc3_gadget_ep_set_halt(struct dwc3_ep *dep, int value, int protocol)
 	int					ret;
 
 	if (usb_endpoint_xfer_isoc(dep->endpoint.desc)) {
-		dev_err(dwc->dev, "[ERROR][USB] %s is of Isochronous type\n", dep->name);
+		dev_err(dwc->dev,
+				"[ERROR][USB] %s is of Isochronous type\n",
+				dep->name);
 		return -EINVAL;
 	}
 
@@ -1897,14 +1899,18 @@ static int __dwc3_gadget_start(struct dwc3 *dwc)
 	dep = dwc->eps[0];
 	ret = __dwc3_gadget_ep_enable(dep, false, false);
 	if (ret) {
-		dev_err(dwc->dev, "[ERROR][USB] failed to enable %s\n", dep->name);
+		dev_err(dwc->dev,
+				"[ERROR][USB] failed to enable %s\n",
+				dep->name);
 		goto err0;
 	}
 
 	dep = dwc->eps[1];
 	ret = __dwc3_gadget_ep_enable(dep, false, false);
 	if (ret) {
-		dev_err(dwc->dev, "[ERROR][USB] failed to enable %s\n", dep->name);
+		dev_err(dwc->dev,
+				"[ERROR][USB] failed to enable %s\n",
+				dep->name);
 		goto err1;
 	}
 
@@ -2054,7 +2060,9 @@ static void dwc3_gadget_set_speed(struct usb_gadget *g,
 			reg |= DWC3_DCFG_SUPERSPEED_PLUS;
 			break;
 		default:
-			dev_err(dwc->dev, "[ERROR][USB] invalid speed (%d)\n", speed);
+			dev_err(dwc->dev,
+					"[ERROR][USB] invalid speed (%d)\n",
+					speed);
 
 			if (dwc->revision & DWC3_REVISION_IS_DWC31)
 				reg |= DWC3_DCFG_SUPERSPEED_PLUS;
@@ -2822,14 +2830,18 @@ static void dwc3_gadget_conndone_interrupt(struct dwc3 *dwc)
 	dep = dwc->eps[0];
 	ret = __dwc3_gadget_ep_enable(dep, true, false);
 	if (ret) {
-		dev_err(dwc->dev, "[ERROR][USB] failed to enable %s\n", dep->name);
+		dev_err(dwc->dev,
+				"[ERROR][USB] failed to enable %s\n",
+				dep->name);
 		return;
 	}
 
 	dep = dwc->eps[1];
 	ret = __dwc3_gadget_ep_enable(dep, true, false);
 	if (ret) {
-		dev_err(dwc->dev, "[ERROR][USB] failed to enable %s\n", dep->name);
+		dev_err(dwc->dev,
+				"[ERROR][USB] failed to enable %s\n",
+				dep->name);
 		return;
 	}
 
@@ -3047,7 +3059,9 @@ static void dwc3_process_event_entry(struct dwc3 *dwc,
 	else if (event->type.type == DWC3_EVENT_TYPE_DEV)
 		dwc3_gadget_interrupt(dwc, &event->devt);
 	else
-		dev_err(dwc->dev, "[ERROR][USB] UNKNOWN IRQ type %d\n", event->raw);
+		dev_err(dwc->dev,
+				"[ERROR][USB] UNKNOWN IRQ type %d\n",
+				event->raw);
 }
 
 static irqreturn_t dwc3_process_event_buf(struct dwc3_event_buffer *evt)

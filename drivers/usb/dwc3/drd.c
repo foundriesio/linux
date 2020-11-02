@@ -52,7 +52,7 @@ static int dwc3_drd_notifier(struct notifier_block *nb,
 int dwc3_drd_init(struct dwc3 *dwc)
 {
 	int ret;
-/*
+#if 0
 	if (dwc->dev->of_node) {
 		if (of_property_read_bool(dwc->dev->of_node, "extcon"))
 			dwc->edev = extcon_get_edev_by_phandle(dwc->dev, 0);
@@ -64,11 +64,12 @@ int dwc3_drd_init(struct dwc3 *dwc)
 		ret = extcon_register_notifier(dwc->edev, EXTCON_USB_HOST,
 					       &dwc->edev_nb);
 		if (ret < 0) {
-			dev_err(dwc->dev, "[ERROR][USB] couldn't register cable notifier\n");
+			dev_err(dwc->dev,
+				"[ERROR][USB] couldn't register cable notifier\n");
 			return ret;
 		}
 	}
-*/
+#endif
 	dwc3_drd_update(dwc);
 
 	return 0;
