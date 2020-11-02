@@ -52,14 +52,15 @@ static bool tee_client_is_sec_buf_param(uint32_t type)
 	}
 }
 
-static int tee_client_match(struct tee_ioctl_version_data *data, const void *vers)
+static int
+tee_client_match(struct tee_ioctl_version_data *data, const void *vers)
 {
 	return !!1;
 }
 
-static int tee_client_set_params(struct tee_context * context,
-				 struct tee_client_params * params,
-				 struct tee_param * tee_params,
+static int tee_client_set_params(struct tee_context *context,
+				 struct tee_client_params *params,
+				 struct tee_param *tee_params,
 				 uint32_t *num_params)
 {
 	int i;
@@ -79,29 +80,35 @@ static int tee_client_set_params(struct tee_context * context,
 		switch (params->params[i].type) {
 		case TEE_CLIENT_PARAM_BUF_IN:
 		case TEE_CLIENT_PARAM_SEC_BUF_IN:
-			tee_params[i].attr = TEE_IOCTL_PARAM_ATTR_TYPE_MEMREF_INPUT;
+			tee_params[i].attr =
+				TEE_IOCTL_PARAM_ATTR_TYPE_MEMREF_INPUT;
 			param_nums++;
 			break;
 		case TEE_CLIENT_PARAM_BUF_OUT:
 		case TEE_CLIENT_PARAM_SEC_BUF_OUT:
-			tee_params[i].attr = TEE_IOCTL_PARAM_ATTR_TYPE_MEMREF_OUTPUT;
+			tee_params[i].attr =
+				TEE_IOCTL_PARAM_ATTR_TYPE_MEMREF_OUTPUT;
 			param_nums++;
 			break;
 		case TEE_CLIENT_PARAM_BUF_INOUT:
 		case TEE_CLIENT_PARAM_SEC_BUF_INOUT:
-			tee_params[i].attr = TEE_IOCTL_PARAM_ATTR_TYPE_MEMREF_INOUT;
+			tee_params[i].attr =
+				TEE_IOCTL_PARAM_ATTR_TYPE_MEMREF_INOUT;
 			param_nums++;
 			break;
 		case TEE_CLIENT_PARAM_VALUE_IN:
-			tee_params[i].attr = TEE_IOCTL_PARAM_ATTR_TYPE_VALUE_INPUT;
+			tee_params[i].attr =
+				TEE_IOCTL_PARAM_ATTR_TYPE_VALUE_INPUT;
 			param_nums++;
 			break;
 		case TEE_CLIENT_PARAM_VALUE_OUT:
-			tee_params[i].attr = TEE_IOCTL_PARAM_ATTR_TYPE_VALUE_OUTPUT;
+			tee_params[i].attr =
+				TEE_IOCTL_PARAM_ATTR_TYPE_VALUE_OUTPUT;
 			param_nums++;
 			break;
 		case TEE_CLIENT_PARAM_VALUE_INOUT:
-			tee_params[i].attr = TEE_IOCTL_PARAM_ATTR_TYPE_VALUE_INOUT;
+			tee_params[i].attr =
+				TEE_IOCTL_PARAM_ATTR_TYPE_VALUE_INOUT;
 			param_nums++;
 			break;
 		default:
@@ -112,15 +119,19 @@ static int tee_client_set_params(struct tee_context * context,
 		if (tee_client_is_buf_param(params->params[i].type)) {
 			struct tee_shm *shm;
 
-			shm = tee_shm_register_for_kern(context,
-					(unsigned long)params->params[i].tee_client_memref.buffer,
-					params->params[i].tee_client_memref.size, 0);
+			shm = tee_shm_register_for_kern(
+				context,
+				(unsigned long)params->params[i]
+					.tee_client_memref.buffer,
+				params->params[i].tee_client_memref.size, 0);
 			if (IS_ERR(shm)) {
-				void * va;
+				void *va;
 				// Try to allocate shm
-				shm = tee_shm_alloc(context,
-						params->params[i].tee_client_memref.size,
-						TEE_SHM_MAPPED | TEE_SHM_DMA_BUF);
+				shm = tee_shm_alloc(
+					context,
+					params->params[i]
+						.tee_client_memref.size,
+					TEE_SHM_MAPPED | TEE_SHM_DMA_BUF);
 				if (IS_ERR(shm))
 					goto FREE_EXIT;
 
@@ -128,26 +139,36 @@ static int tee_client_set_params(struct tee_context * context,
 				if (IS_ERR(va))
 					goto FREE_EXIT;
 
-				memcpy(va, params->params[i].tee_client_memref.buffer,
-					   params->params[i].tee_client_memref.size);
+				memcpy(va,
+				       params->params[i]
+					       .tee_client_memref.buffer,
+				       params->params[i]
+					       .tee_client_memref.size);
 			}
 
 			tee_params[i].u.memref.shm = shm;
-			tee_params[i].u.memref.size = params->params[i].tee_client_memref.size;
-		} else if (tee_client_is_sec_buf_param(params->params[i].type)) {
+			tee_params[i].u.memref.size =
+				params->params[i].tee_client_memref.size;
+		} else if (tee_client_is_sec_buf_param(
+				   params->params[i].type)) {
 			struct tee_shm *shm;
 
-			shm = tee_client_shm_sdp_register(context,
-					(unsigned long)params->params[i].tee_client_memref.buffer,
-					params->params[i].tee_client_memref.size);
+			shm = tee_client_shm_sdp_register(
+				context,
+				(unsigned long)params->params[i]
+					.tee_client_memref.buffer,
+				params->params[i].tee_client_memref.size);
 			if (IS_ERR(shm))
 				goto FREE_EXIT;
 
 			tee_params[i].u.memref.shm = shm;
-			tee_params[i].u.memref.size = params->params[i].tee_client_memref.size;
+			tee_params[i].u.memref.size =
+				params->params[i].tee_client_memref.size;
 		} else {
-		tee_params[i].u.value.a = params->params[i].tee_client_value.a;
-		tee_params[i].u.value.b = params->params[i].tee_client_value.b;
+			tee_params[i].u.value.a =
+				params->params[i].tee_client_value.a;
+			tee_params[i].u.value.b =
+				params->params[i].tee_client_value.b;
 		}
 	}
 
@@ -157,8 +178,8 @@ static int tee_client_set_params(struct tee_context * context,
 	return res;
 FREE_EXIT:
 	for (i = 0; i < TEE_CLIENT_PARAM_NUM; i++) {
-		if (tee_client_is_buf_param(params->params[i].type) ||
-				tee_client_is_sec_buf_param(params->params[i].type)) {
+		if (tee_client_is_buf_param(params->params[i].type)
+		    || tee_client_is_sec_buf_param(params->params[i].type)) {
 			if (tee_params[i].u.memref.shm)
 				tee_shm_free(tee_params[i].u.memref.shm);
 		}
@@ -167,8 +188,8 @@ FREE_EXIT:
 	return res;
 }
 
-static int tee_client_get_params(struct tee_client_params *params,
-				 struct tee_param *tee_params)
+static int tee_client_get_params(
+	struct tee_client_params *params, struct tee_param *tee_params)
 {
 	int i;
 	uint8_t *buf;
@@ -185,17 +206,21 @@ static int tee_client_get_params(struct tee_client_params *params,
 		case TEE_IOCTL_PARAM_ATTR_TYPE_MEMREF_INOUT:
 			buf = tee_shm_get_va(tee_params[i].u.memref.shm, 0);
 			if (buf != ERR_PTR(-EINVAL)) {
-				memcpy(params->params[i].tee_client_memref.buffer, buf,
-						tee_params[i].u.memref.size);
+				memcpy(params->params[i]
+					       .tee_client_memref.buffer,
+				       buf, tee_params[i].u.memref.size);
 			}
-			params->params[i].tee_client_memref.size = tee_params[i].u.memref.size;
+			params->params[i].tee_client_memref.size =
+				tee_params[i].u.memref.size;
 		case TEE_IOCTL_PARAM_ATTR_TYPE_MEMREF_INPUT:
 			tee_shm_free(tee_params[i].u.memref.shm);
 			break;
 		case TEE_IOCTL_PARAM_ATTR_TYPE_VALUE_OUTPUT:
 		case TEE_IOCTL_PARAM_ATTR_TYPE_VALUE_INOUT:
-			params->params[i].tee_client_value.a = tee_params[i].u.value.a;
-			params->params[i].tee_client_value.b = tee_params[i].u.value.b;
+			params->params[i].tee_client_value.a =
+				tee_params[i].u.value.a;
+			params->params[i].tee_client_value.b =
+				tee_params[i].u.value.b;
 			break;
 		default:
 			break;
@@ -207,7 +232,7 @@ static int tee_client_get_params(struct tee_client_params *params,
 
 int tee_client_open_ta(struct tee_client_uuid *uuid,
 		       struct tee_client_params *params,
-		       tee_client_context *context)
+		       struct tee_client_context **context)
 {
 	struct tee_ioctl_open_session_arg arg;
 	struct tee_client_context *ta_context;
@@ -217,7 +242,7 @@ int tee_client_open_ta(struct tee_client_uuid *uuid,
 		.gen_caps = TEE_GEN_CAP_GP,
 	};
 	struct tee_param tee_params[4];
-	void * params_ptr = NULL;
+	void *params_ptr = NULL;
 	uint32_t params_nums;
 	int rc;
 
@@ -276,7 +301,7 @@ int tee_client_open_ta(struct tee_client_uuid *uuid,
 }
 EXPORT_SYMBOL_GPL(tee_client_open_ta);
 
-int tee_client_execute_command(tee_client_context context,
+int tee_client_execute_command(struct tee_client_context *context,
 			       struct tee_client_params *params,
 			       int command)
 {
@@ -321,7 +346,7 @@ int tee_client_execute_command(tee_client_context context,
 }
 EXPORT_SYMBOL_GPL(tee_client_execute_command);
 
-void tee_client_close_ta(tee_client_context context)
+void tee_client_close_ta(struct tee_client_context *context)
 {
 	if (!context)
 		return;
@@ -333,8 +358,6 @@ void tee_client_close_ta(tee_client_context context)
 	tee_client_close_context(context->ctx);
 
 	vfree(context);
-
-	return;
 }
 EXPORT_SYMBOL_GPL(tee_client_close_ta);
 
@@ -357,6 +380,7 @@ static struct tee_version tee_proc_ver[] = {
 void tee_set_version(unsigned int cmd, struct tee_ioctl_version_tcc *ver)
 {
 	int idx;
+
 	switch (cmd) {
 	case TEE_IOC_SUPP_VERSION:
 		idx = 1;
@@ -375,13 +399,15 @@ void tee_set_version(unsigned int cmd, struct tee_ioctl_version_tcc *ver)
 	}
 
 	if (tee_proc_ver[idx].ver) {
-		pr_info("[INFO][OPTEE] %s version already set\n", tee_proc_ver[idx].name);
+		pr_info("%s version already set\n", tee_proc_ver[idx].name);
 		return;
 	}
 
-	tee_proc_ver[idx].ver = kmalloc(sizeof(struct tee_ioctl_version_tcc), GFP_KERNEL);
+	tee_proc_ver[idx].ver =
+		kmalloc(sizeof(struct tee_ioctl_version_tcc), GFP_KERNEL);
 	if (tee_proc_ver[idx].ver)
-		memcpy(tee_proc_ver[idx].ver, ver, sizeof(struct tee_ioctl_version_tcc));
+		memcpy(tee_proc_ver[idx].ver, ver,
+		       sizeof(struct tee_ioctl_version_tcc));
 }
 
 static void *tee_start(struct seq_file *m, loff_t *pos)
@@ -403,24 +429,45 @@ static int tee_show(struct seq_file *m, void *v)
 {
 	int idx;
 
-	for (idx=0 ; idx < ARRAY_SIZE(tee_proc_ver) ; idx++) {
+	for (idx = 0; idx < ARRAY_SIZE(tee_proc_ver); idx++) {
 		if (tee_proc_ver[idx].ver) {
-			seq_printf(m, "%s: v%d.%d.%d",
-				tee_proc_ver[idx].name, tee_proc_ver[idx].ver->major,
-				tee_proc_ver[idx].ver->minor, tee_proc_ver[idx].ver->tcc_rev);
+			seq_printf(
+				m, "%s: v%d.%d.%d", tee_proc_ver[idx].name,
+				tee_proc_ver[idx].ver->major,
+				tee_proc_ver[idx].ver->minor,
+				tee_proc_ver[idx].ver->tcc_rev);
 			if (tee_proc_ver[idx].ver->date) {
-				seq_printf(m, " - %04x/%02x/%02x %02x:%02x:%02x",
-					(uint32_t)((tee_proc_ver[idx].ver->date>>40)&0xFFFF),
-					(uint32_t)((tee_proc_ver[idx].ver->date>>32)&0xFF),
-					(uint32_t)((tee_proc_ver[idx].ver->date>>24)&0xFF),
-					(uint32_t)((tee_proc_ver[idx].ver->date>>16)&0xFF),
-					(uint32_t)((tee_proc_ver[idx].ver->date>>8)&0xFF),
-					(uint32_t)((tee_proc_ver[idx].ver->date)&0xFF));
+				seq_printf(
+					m, " - %04x/%02x/%02x %02x:%02x:%02x",
+					(uint32_t)(
+						(tee_proc_ver[idx].ver->date
+						 >> 40)
+						& 0xFFFF),
+					(uint32_t)(
+						(tee_proc_ver[idx].ver->date
+						 >> 32)
+						& 0xFF),
+					(uint32_t)(
+						(tee_proc_ver[idx].ver->date
+						 >> 24)
+						& 0xFF),
+					(uint32_t)(
+						(tee_proc_ver[idx].ver->date
+						 >> 16)
+						& 0xFF),
+					(uint32_t)(
+						(tee_proc_ver[idx].ver->date
+						 >> 8)
+						& 0xFF),
+					(uint32_t)(
+						(tee_proc_ver[idx].ver->date)
+						& 0xFF));
 			}
-			seq_printf(m, "\n");
+			seq_printf(m, "%c", '\n');
+		} else {
+			seq_printf(m, "%s: Not Implemented\n",
+				tee_proc_ver[idx].name);
 		}
-		else
-			seq_printf(m, "%s: Not Implemented\n", tee_proc_ver[idx].name);
 	}
 
 	return 0;
@@ -447,11 +494,11 @@ static const struct file_operations proc_tee_operations = {
 
 static int __init tee_proc_init(void)
 {
-	proc_create("optee", 0, NULL, &proc_tee_operations);
+	proc_create("optee", 0644, NULL, &proc_tee_operations);
 	return 0;
 }
 
-__initcall(tee_proc_init);
+device_initcall(tee_proc_init);
 
 /**
  * Allocate Dynamic Secure Media Path Area.
@@ -460,11 +507,12 @@ int tee_alloc_dynanic_smp(int id, uint32_t base, uint32_t size)
 {
 	struct arm_smccc_res res;
 
-	arm_smccc_smc(OPTEE_SMC_CALL_ALLOC_DYNAMIC_SMP, \
-		id, base, size, 0, 0, 0, 0, &res);
+	arm_smccc_smc(
+		OPTEE_SMC_CALL_ALLOC_DYNAMIC_SMP, id, base, size, 0, 0, 0, 0,
+		&res);
 
 	if (res.a0)
-		pr_err("\x1b[31m[ERROR][OPTEE] %s: cmd:0x%x, failed to allcate dynamic smp: res:0x%lx", \
+		pr_err("%s: cmd:0x%x, failed to allcate dynamic smp: res:0x%lx",
 			__func__, OPTEE_SMC_CALL_ALLOC_DYNAMIC_SMP, res.a0);
 
 	return (int)res.a0;
@@ -477,11 +525,12 @@ int tee_free_dynanic_smp(int id, uint32_t base, uint32_t size)
 {
 	struct arm_smccc_res res;
 
-	arm_smccc_smc(OPTEE_SMC_CALL_FREE_DYNAMIC_SMP, \
-		id, base, size, 0, 0, 0, 0, &res);
+	arm_smccc_smc(
+		OPTEE_SMC_CALL_FREE_DYNAMIC_SMP, id, base, size, 0, 0, 0, 0,
+		&res);
 
 	if (res.a0)
-		pr_err("\x1b[31m[ERROR][OPTEE] %s: xmd:0x%x, failed to release dynamic smp: res:0x%lx", \
+		pr_err("%s: xmd:0x%x, failed to release dynamic smp: res:0x%lx",
 			__func__, OPTEE_SMC_CALL_FREE_DYNAMIC_SMP, res.a0);
 
 	return (int)res.a0;

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2019-2020, Telechips Inc
+ * Copyright (c) Telechips Inc
  */
 
 #include <linux/tee_drv.h>
@@ -12,8 +12,6 @@ static struct tee_shm *trace_shm;
 void tee_trace_set_shm(struct tee_shm *shm)
 {
 	trace_shm = shm;
-
-	return;
 }
 
 struct tee_shm *tee_trace_get_shm(void)

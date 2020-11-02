@@ -106,12 +106,12 @@ struct optee_smc_call_get_os_revision_result {
 };
 
 /*
- * Get build date of Trusted OS.
+ * Get build date of Trusted OS. (Added by Telechips)
 
  * Returns value type is same with OPTEE_SMC_CALLS_REVISION
  * But the major means date(yyyymmdd) and minor means time(hhmmss).
  */
-#define OPTEE_SMC_FUNCID_GET_OS_BUILDDATE OPTEE_MSG_FUNCID_GET_OS_BUILDDATE	// Added by Telechips
+#define OPTEE_SMC_FUNCID_GET_OS_BUILDDATE OPTEE_MSG_FUNCID_GET_OS_BUILDDATE
 #define OPTEE_SMC_CALL_GET_OS_BUILDDATE \
 	OPTEE_SMC_FAST_CALL_VAL(OPTEE_SMC_FUNCID_GET_OS_BUILDDATE)
 
@@ -195,18 +195,18 @@ struct optee_smc_get_shm_config_result {
 };
 
 /*
- * Allocate Dynamic Secure Media Path Area
+ * Allocate Dynamic Secure Media Path Area  (Added by Telechips)
  * Returns value type is Global Platform error code.
  */
-#define OPTEE_SMC_FUNCID_ALLOC_DYNAMIC_SMP OPTEE_MSG_FUNCID_ALLOC_DYNAMIC_SMP	// Added by Telechips
+#define OPTEE_SMC_FUNCID_ALLOC_DYNAMIC_SMP OPTEE_MSG_FUNCID_ALLOC_DYNAMIC_SMP
 #define OPTEE_SMC_CALL_ALLOC_DYNAMIC_SMP \
 	OPTEE_SMC_FAST_CALL_VAL(OPTEE_SMC_FUNCID_ALLOC_DYNAMIC_SMP)
 
 /*
- * Release Dynamic Secure Media Path Area
+ * Release Dynamic Secure Media Path Area   (Added by Telechips)
  * Returns value type is Global Platform error code.
  */
-#define OPTEE_SMC_FUNCID_FREE_DYNAMIC_SMP OPTEE_MSG_FUNCID_FREE_DYNAMIC_SMP	// Added by Telechips
+#define OPTEE_SMC_FUNCID_FREE_DYNAMIC_SMP OPTEE_MSG_FUNCID_FREE_DYNAMIC_SMP
 #define OPTEE_SMC_CALL_FREE_DYNAMIC_SMP \
 	OPTEE_SMC_FAST_CALL_VAL(OPTEE_SMC_FUNCID_FREE_DYNAMIC_SMP)
 

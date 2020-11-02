@@ -350,8 +350,10 @@ static bool optee_msg_api_uid_is_optee_api(optee_invoke_fn *invoke_fn)
 }
 
 #ifdef CONFIG_ARCH_TCC
-extern void tee_set_version(unsigned int cmd, struct tee_ioctl_version_tcc *ver);
-static void optee_msg_get_os_revision(optee_invoke_fn *invoke_fn, struct tee_ioctl_version_tcc *ver)
+extern void tee_set_version(
+	unsigned int cmd, struct tee_ioctl_version_tcc *ver);
+static void optee_msg_get_os_revision(
+	optee_invoke_fn *invoke_fn, struct tee_ioctl_version_tcc *ver)
 #else
 static void optee_msg_get_os_revision(optee_invoke_fn *invoke_fn)
 #endif
@@ -384,7 +386,7 @@ static void optee_msg_get_os_revision(optee_invoke_fn *invoke_fn)
 			  &res.smccc);
 
 		ver->date = res.result.major;
-		ver->date = (ver->date<< 24) | (res.result.minor & 0xFFFFFF);
+		ver->date = (ver->date << 24) | (res.result.minor & 0xFFFFFF);
 
 		tee_set_version(TEE_IOC_OS_VERSION, ver);
 	}
@@ -601,10 +603,9 @@ static struct optee *optee_probe(struct device_node *np)
 
 #ifdef CONFIG_ARCH_TCC
 	version = kzalloc(sizeof(*version), GFP_KERNEL);
-	if (!version) {
-		pr_err("Failed to allocate memory\n");
+	if (!version)
 		return ERR_PTR(-ENOMEM);
-	}
+
 	optee_msg_get_os_revision(invoke_fn, version);
 #else
 	optee_msg_get_os_revision(invoke_fn);
@@ -700,8 +701,7 @@ static struct optee *optee_probe(struct device_node *np)
 	return optee;
 err:
 #ifdef CONFIG_ARCH_TCC
-	if (version)
-		kfree(version);
+	kfree(version);
 #endif
 
 	if (optee) {
@@ -762,7 +762,9 @@ static int __init optee_driver_init(void)
 	struct device_node *fw_np = NULL;
 	struct device_node *np = NULL;
 	struct optee *optee = NULL;
+#ifndef CONFIG_ARCH_TCC
 	int rc = 0;
+#endif
 
 	/* Node is supposed to be below /firmware */
 	fw_np = of_find_node_by_name(NULL, "firmware");
