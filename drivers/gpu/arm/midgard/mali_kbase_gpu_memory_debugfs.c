@@ -50,10 +50,11 @@ static int kbasep_gpu_memory_seq_show(struct seq_file *sfile, void *data)
 		seq_printf(sfile, "%-16s  %10u\n",
 				kbdev->devname,
 				atomic_read(&(kbdev->memdev.used_pages)));
+
 		mutex_lock(&kbdev->kctx_list_lock);
 		list_for_each_entry(kctx, &kbdev->kctx_list, kctx_list_link) {
 			/* output the memory usage and cap for each kctx
-			* opened on this device */ /* TCC */
+			 * opened on this device */ /* TCC */
 			seq_printf(sfile, "  %s-0x%p pid: %d %10u\n",
 				"kctx",
 				kctx,

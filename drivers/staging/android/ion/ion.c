@@ -519,7 +519,7 @@ int ion_phys(int dmabuf_fd, phys_addr_t *addr, size_t *len)
 	struct dma_buf *dmabuf;
 	struct sg_table *table;
 	struct page *page;
-	int ret = -1;	
+	int ret = -1;
 
 	pr_debug("%s: dmabuf_fd %d\n", __func__, dmabuf_fd);
 
@@ -527,25 +527,27 @@ int ion_phys(int dmabuf_fd, phys_addr_t *addr, size_t *len)
 	dmabuf = dma_buf_get(dmabuf_fd);
 	buffer = dmabuf->priv;
 	if (!buffer) {
-		pr_err("%s: there is no dmabuf associated with dmabuf_fd.\n",	__func__);
+		pr_err("%s: there is no dmabuf associated with dmabuf_fd.\n",
+			__func__);
 		dma_buf_put(dmabuf);
 		return -ENODEV;
 	}
-	
+
 	table = buffer->sg_table;
- 	page = sg_page(table->sgl);
+	page = sg_page(table->sgl);
 	*addr = PFN_PHYS(page_to_pfn(page));
 	*len = buffer->size;
 	up_read(&dev->lock);
 	dma_buf_put(dmabuf);
 
-	if(!addr) {
-		pr_err("%s: failed to get physical address.\n",	__func__);	
+	if (!addr) {
+		pr_err("%s: failed to get physical address.\n",	__func__);
 		return -ENODEV;
 	}
-	
+
 	return ret;
 }
+
 static const struct file_operations ion_fops = {
 	.owner          = THIS_MODULE,
 	.unlocked_ioctl = ion_ioctl,
@@ -563,7 +565,6 @@ static int ion_debug_heap_show(struct seq_file *s, void *unused)
 
 	return 0;
 }
-
 
 static int ion_debug_heap_open(struct inode *inode, struct file *file)
 {
@@ -639,10 +640,10 @@ void ion_device_add_heap(struct ion_heap *heap)
 	 */
 	plist_node_init(&heap->node, -heap->id);
 	plist_add(&heap->node, &dev->heaps);
-	
+
 	debug_file = debugfs_create_file(heap->name, 0664,
-					dev->debug_root, heap,
-					&debug_heap_fops);
+					 dev->debug_root, heap,
+					 &debug_heap_fops);
 
 	if (!debug_file) {
 		char buf[256], *path;

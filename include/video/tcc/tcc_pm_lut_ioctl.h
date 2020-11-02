@@ -17,32 +17,30 @@
 #include "autoconf.h"
 #include <linux/ioctl.h>
 
-#define PM_LUT_IOC_MAGIC		'P'
-#define TCC_PM_LUT_NUM 		8
+#define PM_LUT_IOC_MAGIC	'P'
+#define TCC_PM_LUT_NUM		8
 
-
-struct VIOC_PM_LUT_VALUE_SET
-{
-	unsigned int pm_lut_dev_num; 	//0~(VIOC_PIXELMAP_MAX-1)
-	unsigned int table[729]; 	
+struct VIOC_PM_LUT_VALUE_SET {
+	unsigned int pm_lut_dev_num;	//0~(VIOC_PIXELMAP_MAX-1)
+	unsigned int table[729];
 };
 
-struct VIOC_PM_LUT_ONOFF_SET
-{
+struct VIOC_PM_LUT_ONOFF_SET {
 	unsigned int pm_lut_onoff;
-	unsigned int pm_lut_dev_num; 		//0~(VIOC_PIXELMAP_MAX-1)
+	unsigned int pm_lut_dev_num;	//0~(VIOC_PIXELMAP_MAX-1)
 };
 
-struct VIOC_PM_LUT_PLUG_IN_SET
-{
+struct VIOC_PM_LUT_PLUG_IN_SET {
 	unsigned int enable;
-	unsigned int pm_lut_dev_num; 		//0~(VIOC_PIXELMAP_MAX-1)
-	unsigned int pm_lut_plug_in_ch; 	//ex :VIOC_RDMA00 
+	unsigned int pm_lut_dev_num;		//0~(VIOC_PIXELMAP_MAX-1)
+	unsigned int pm_lut_plug_in_ch;		//ex :VIOC_RDMA00
 };
 
-#define TCC_PM_LUT_SET				_IOW(PM_LUT_IOC_MAGIC, 0, struct VIOC_PM_LUT_VALUE_SET) //hw vioc pm_lut set
-#define TCC_PM_LUT_ONOFF			_IOW(PM_LUT_IOC_MAGIC, 1, struct VIOC_PM_LUT_ONOFF_SET)
-#define TCC_PM_LUT_PLUG_IN			_IOW(PM_LUT_IOC_MAGIC, 2, struct VIOC_PM_LUT_ONOFF_SET)
+#define TCC_PM_LUT_SET \
+	_IOW(PM_LUT_IOC_MAGIC, 0, struct VIOC_PM_LUT_VALUE_SET)
+#define TCC_PM_LUT_ONOFF \
+	_IOW(PM_LUT_IOC_MAGIC, 1, struct VIOC_PM_LUT_ONOFF_SET)
+#define TCC_PM_LUT_PLUG_IN \
+	_IOW(PM_LUT_IOC_MAGIC, 2, struct VIOC_PM_LUT_ONOFF_SET)
 
-#endif//
-
+#endif //
