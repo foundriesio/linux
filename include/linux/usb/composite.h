@@ -334,8 +334,8 @@ int usb_add_config(struct usb_composite_dev *,
 		struct usb_configuration *,
 		int (*)(struct usb_configuration *));
 
-extern void usb_remove_config(struct usb_composite_dev *,
-		struct usb_configuration *);
+extern void usb_remove_config(struct usb_composite_dev *dev,
+		struct usb_configuration *conf);
 
 /* predefined index for usb_composite_driver */
 enum {
