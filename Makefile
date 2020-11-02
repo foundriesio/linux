@@ -820,7 +820,7 @@ KBUILD_CFLAGS += $(call cc-option, -flive-patching=inline-clone)
 endif
 
 ifdef CONFIG_LIVEPATCH_IPA_CLONES
-KBUILD_CFLAGS += -fdump-ipa-clones
+KBUILD_CFLAGS += $(call cc-option, -fdump-ipa-clones)
 endif
 
 # arch Makefile may override CC so keep this after arch Makefile is included
