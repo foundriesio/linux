@@ -24,7 +24,7 @@
 #include <linux/wakelock.h>
 
 #include "u_os_desc.h"
-#if defined (CONFIG_USB_CONFIGFS) && (CONFIG_ANDROID)
+#if defined(CONFIG_USB_CONFIGFS) && (CONFIG_ANDROID)
 extern struct wake_lock usb_config_wake_lock;
 #endif
 /**
@@ -753,9 +753,10 @@ static void reset_config(struct usb_composite_dev *cdev)
 	}
 	cdev->config = NULL;
 	cdev->delayed_status = 0;
-#if defined (CONFIG_USB_CONFIGFS) && defined (CONFIG_ANDROID)
+#if defined(CONFIG_USB_CONFIGFS) && defined(CONFIG_ANDROID)
 	wake_lock_timeout(&usb_config_wake_lock, 1*HZ);
-	printk(KERN_INFO "[INFO][USB] %s : usb reset config wake unlock --\n", __func__);
+	INFO(cdev,
+		"[INFO][USB] %s : usb reset config wake unlock --\n", __func__);
 #endif
 }
 
@@ -778,9 +779,11 @@ static int set_config(struct usb_composite_dev *cdev,
 				 */
 				if (cdev->config)
 					reset_config(cdev);
-#if defined (CONFIG_USB_CONFIGFS) && defined (CONFIG_ANDROID)
+#if defined(CONFIG_USB_CONFIGFS) && defined(CONFIG_ANDROID)
 				wake_lock(&usb_config_wake_lock);
-				printk(KERN_INFO "[INFO][USB] %s : usb set config wake lock ++\n", __func__);
+				INFO(cdev,
+						"[INFO][USB] %s : usb set config wake lock ++\n",
+						__func__);
 #endif
 				result = 0;
 				break;
@@ -1613,7 +1616,7 @@ composite_setup(struct usb_gadget *gadget, const struct usb_ctrlrequest *ctrl)
 				cdev->gadget->ep0->maxpacket;
 			if (gadget_is_superspeed(gadget)) {
 				if (gadget->speed >= USB_SPEED_SUPER) {
-					cdev->desc.bcdUSB = cpu_to_le16(0x0320); //USB Certification for USB 3.2
+					cdev->desc.bcdUSB = cpu_to_le16(0x0320);
 					cdev->desc.bMaxPacketSize0 = 9;
 				} else {
 					cdev->desc.bcdUSB = cpu_to_le16(0x0210);
