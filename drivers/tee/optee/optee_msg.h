@@ -271,17 +271,17 @@ struct optee_msg_arg {
 /*
  * Get build date of Trusted OS.
  */
-#define OPTEE_MSG_FUNCID_GET_OS_BUILDDATE	0xFFF1		// Added by Telechips
+#define OPTEE_MSG_FUNCID_GET_OS_BUILDDATE	0xFFF1	// Added by Telechips
 
 /*
  * Allocate Dynamic Secure Media Path Area
  */
-#define OPTEE_MSG_FUNCID_ALLOC_DYNAMIC_SMP	0xFFF3		// Added by Telechips
+#define OPTEE_MSG_FUNCID_ALLOC_DYNAMIC_SMP	0xFFF3	// Added by Telechips
 
 /*
  * Release Dinamic Secure Media Path Area
  */
-#define OPTEE_MSG_FUNCID_FREE_DYNAMIC_SMP	0xFFF4		// Added by Telechips
+#define OPTEE_MSG_FUNCID_FREE_DYNAMIC_SMP	0xFFF4	// Added by Telechips
 
 /*
  * Do a secure call with struct optee_msg_arg as argument
@@ -328,7 +328,7 @@ struct optee_msg_arg {
 #define OPTEE_MSG_CMD_REGISTER_SHM	4
 #define OPTEE_MSG_CMD_UNREGISTER_SHM	5
 #ifdef CONFIG_ARCH_TCC
-#define OPTEE_MSG_CMD_REGISTER_TRACE_SHM	16 //(0x10)
+#define OPTEE_MSG_CMD_REGISTER_TRACE_SHM	16	// (0x10)
 #endif
 #define OPTEE_MSG_FUNCID_CALL_WITH_ARG	0x0004
 
@@ -422,7 +422,7 @@ struct optee_msg_arg {
  *					as in param[n-1].u.tmem.shm_ref)
  */
 #define OPTEE_MSG_RPC_CMD_SHM_ALLOC	6
-#define OPTEE_MSG_RPC_CMD_ALLOC_PRINT_BUFFER 20
+#define OPTEE_MSG_RPC_CMD_ALLOC_PRINT_BUFFER	20
 /* Memory that can be shared with a non-secure user space application */
 #define OPTEE_MSG_RPC_SHM_TYPE_APPL	0
 /* Memory only shared with non-secure kernel */
@@ -431,7 +431,7 @@ struct optee_msg_arg {
 #define OPTEE_MSG_RPC_SHM_TYPE_GLOBAL	2
 #ifdef CONFIG_ARCH_TCC
 /* Memory for shared trace buffer between tee supplicant and TEE */
-#define OPTEE_MSG_RPC_SHM_TYPE_TRACE_BUF  3
+#define OPTEE_MSG_RPC_SHM_TYPE_TRACE_BUF	3
 #endif
 
 /*

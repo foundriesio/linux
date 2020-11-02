@@ -98,9 +98,10 @@ static void teedev_close_context(struct tee_context *ctx)
 	// Put all kref count.
 	// This can not be a problem because teedev_close_context() is
 	// always called when release optee context.
-	// The reason why added this code is due to allocated shared memory is not freed,
-	// when CA is closed accidently by segmentation falut or something like that while TA is running.
-	//while (kref_read(&ctx->refcount))
+	// The reason why added this code is due to allocated shared memory
+	// is not freed, when CA is closed accidently by segmentation falut or
+	// something like that while TA is running.
+	// while (kref_read(&ctx->refcount))
 #endif
 	{
 		teedev_ctx_put(ctx);
@@ -236,7 +237,8 @@ static int tee_ioctl_shm_sdp_register(struct tee_context *ctx,
 
 	data.id = -1;
 
-	shm = tee_shm_sdp_register(ctx, data.addr, data.length, TEE_SHM_DMA_BUF | TEE_SHM_SDP_MEM);
+	shm = tee_shm_sdp_register(ctx, data.addr, data.length,
+				   TEE_SHM_DMA_BUF | TEE_SHM_SDP_MEM);
 	if (IS_ERR(shm))
 		return PTR_ERR(shm);
 
@@ -737,10 +739,11 @@ out:
 }
 
 #ifdef CONFIG_ARCH_TCC
+extern void tee_set_version(
+	unsigned int cmd, struct tee_ioctl_version_tcc *ver);
 static int tee_ioctl_user_version(unsigned int cmd, struct tee_context *ctx,
 			      struct tee_ioctl_version_tcc __user *uver)
 {
-	extern void tee_set_version(unsigned int cmd, struct tee_ioctl_version_tcc *ver);
 	struct tee_ioctl_version_tcc ver;
 
 	if (copy_from_user(&ver, uver, sizeof(ver)))
@@ -822,7 +825,8 @@ static long tee_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 #ifdef CONFIG_ARCH_TCC
 #ifdef CONFIG_ARM64
 #define pgprot_cached(prot) \
-	__pgprot_modify(prot, PTE_ATTRINDX_MASK, PTE_ATTRINDX(MT_NORMAL) | PTE_PXN | PTE_UXN)
+	__pgprot_modify(prot, PTE_ATTRINDX_MASK, \
+		PTE_ATTRINDX(MT_NORMAL) | PTE_PXN | PTE_UXN)
 #else
 #define pgprot_cached(prot) \
 	__pgprot_modify(prot, L_PTE_MT_MASK, L_PTE_MT_WRITEALLOC)
@@ -838,21 +842,19 @@ static void tee_mmap_mem_close(struct vm_area_struct *vma)
 	/* do nothing */
 }
 
-static struct vm_operations_struct tee_mmap_ops = {
+static const struct vm_operations_struct tee_mmap_ops = {
 	.open = tee_mmap_mem_open,
 	.close = tee_mmap_mem_close,
 };
-
-extern int range_is_allowed(unsigned long pfn, unsigned long size);
 
 static int tee_mmap(struct file *file, struct vm_area_struct *vma)
 {
 	size_t size = vma->vm_end - vma->vm_start;
 
 	if (range_is_allowed(vma->vm_pgoff, size) < 0) {
-		printk(KERN_ERR  "tee: this address is not allowed \n");
+		pr_err("tee: this address is not allowed\n");
 		return -EPERM;
-}
+	}
 
 	vma->vm_page_prot = pgprot_cached(vma->vm_page_prot);
 	vma->vm_ops = &tee_mmap_ops;
@@ -861,7 +863,7 @@ static int tee_mmap(struct file *file, struct vm_area_struct *vma)
 			    vma->vm_start,
 			    vma->vm_pgoff, size,
 			    vma->vm_page_prot)) {
-		printk(KERN_ERR  "tee: remap_pfn_range failed \n");
+		pr_err("tee: remap_pfn_range failed\n");
 		return -EAGAIN;
 	}
 	return 0;
@@ -1233,7 +1235,7 @@ EXPORT_SYMBOL_GPL(tee_client_invoke_func);
 
 #ifdef CONFIG_ARCH_TCC
 struct tee_shm *tee_client_shm_sdp_register(struct tee_context *ctx,
-                                            unsigned long addr, size_t size)
+					    unsigned long addr, size_t size)
 {
 	if (!ctx)
 		return ERR_PTR(-EINVAL);

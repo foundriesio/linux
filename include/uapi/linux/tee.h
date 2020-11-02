@@ -397,14 +397,14 @@ struct tee_ioctl_shm_register_data {
  *
  * The shared memory is unregisterred when the descriptor is closed.
  */
-#define TEE_IOC_SHM_REGISTER   _IOWR(TEE_IOC_MAGIC, TEE_IOC_BASE + 9, \
-				     struct tee_ioctl_shm_register_data)
+#define TEE_IOC_SHM_REGISTER	_IOWR(TEE_IOC_MAGIC, TEE_IOC_BASE + 9, \
+				      struct tee_ioctl_shm_register_data)
 
 /**
  * TEE_IOC_SHM_REGISTER_SDP - register sdp shared memory
  */
-#define TEE_IOC_SHM_REGISTER_SDP	_IOWR(TEE_IOC_MAGIC, TEE_IOC_BASE + 20, \
-						struct tee_ioctl_shm_register_data)
+#define TEE_IOC_SHM_REGISTER_SDP _IOWR(TEE_IOC_MAGIC, TEE_IOC_BASE + 20, \
+				       struct tee_ioctl_shm_register_data)
 
 /**
  * struct tee_ioctl_version_tcc - send sdk version to kernel
@@ -424,25 +424,25 @@ struct tee_ioctl_version_tcc {
  * TEE_IOC_CALIB_VERSION - calib libranry version
  */
 #define TEE_IOC_OS_VERSION	_IOWR(TEE_IOC_MAGIC, TEE_IOC_BASE + 21, \
-				     struct tee_ioctl_version_tcc)
+				      struct tee_ioctl_version_tcc)
 
 /**
  * TEE_IOC_SUPP_VERSION - tee supplicant version
  */
 #define TEE_IOC_SUPP_VERSION	_IOWR(TEE_IOC_MAGIC, TEE_IOC_BASE + 22, \
-				     struct tee_ioctl_version_tcc)
+				      struct tee_ioctl_version_tcc)
 
 /**
  * TEE_IOC_CLIENT_VERSION - tee client library version
  */
 #define TEE_IOC_CLIENT_VERSION	_IOWR(TEE_IOC_MAGIC, TEE_IOC_BASE + 23, \
-					     struct tee_ioctl_version_tcc)
+				      struct tee_ioctl_version_tcc)
 
 /**
  * TEE_IOC_CALIB_VERSION - calib libranry version
  */
 #define TEE_IOC_CALIB_VERSION	_IOWR(TEE_IOC_MAGIC, TEE_IOC_BASE + 24, \
-				     struct tee_ioctl_version_tcc)
+				      struct tee_ioctl_version_tcc)
 
 /**
  * struct tee_ioctl_trace_conf - send trace buf size config to kernel
@@ -455,8 +455,8 @@ struct tee_ioctl_trace_shm {
 /**
  * TEE_IOC_REGISTER_TRACE_SHM - register trace buffer shared memory to TEE
  */
-#define TEE_IOC_REGISTER_TRACE_SHM	_IOWR(TEE_IOC_MAGIC, TEE_IOC_BASE + 25, \
-				     struct tee_ioctl_trace_shm)
+#define TEE_IOC_REGISTER_TRACE_SHM	_IOWR(TEE_IOC_MAGIC, \
+			TEE_IOC_BASE + 25, struct tee_ioctl_trace_shm)
 
 /*
  * Five syscalls are used when communicating with the TEE driver.

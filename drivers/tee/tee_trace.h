@@ -28,3 +28,9 @@ struct tee_shm *tee_trace_get_shm(void);
  */
 void tee_trace_reset_shm(void);
 
+/**
+ * range_is_allowed is defined at tcc_mem.c.
+ * but it is not pre-defined any header files.
+ */
+int range_is_allowed(unsigned long pfn, unsigned long size);
+
