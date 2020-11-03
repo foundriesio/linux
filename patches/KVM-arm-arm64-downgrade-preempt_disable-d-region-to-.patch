@@ -47,5 +47,5 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 -		preempt_enable();
 +		migrate_enable();
  
- 		ret = handle_exit(vcpu, ret);
- 	}
+ 		/*
+ 		 * The ARMv8 architecture doesn't give the hypervisor
