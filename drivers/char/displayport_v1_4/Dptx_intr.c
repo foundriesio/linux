@@ -53,7 +53,7 @@ static int dptx_intr_handle_drm_interface( struct Dptx_Params *pstDptx, bool bHo
 {
 	bool		bRetVal;
 	bool		bTrainingState, bMST_Supported, bSideBand_MSG_Supported;
-	u8			ucDP_Index,   ucNumOfPluggedPorts = 0;
+	u8			ucDP_Index;
 
 	if( bHotPlugged == (bool)HPD_STATUS_UNPLUGGED )
 	{
@@ -63,9 +63,7 @@ static int dptx_intr_handle_drm_interface( struct Dptx_Params *pstDptx, bool bHo
 			return ( ENODEV );
 		}
 
-		pstDptx->ucNumOfPorts = 0;
-
-		for( ucDP_Index = 0; ucDP_Index < (u8)PHY_INPUT_STREAM_MAX; ucDP_Index++ )
+		for( ucDP_Index = 0; ucDP_Index < (u8)pstDptx->ucNumOfPorts; ucDP_Index++ )
 		{
 			if( pstDptx->pvHPD_Intr_CallBack == NULL )
 			{
@@ -75,6 +73,8 @@ static int dptx_intr_handle_drm_interface( struct Dptx_Params *pstDptx, bool bHo
 			
 			pstDptx->pvHPD_Intr_CallBack( ucDP_Index, (bool)HPD_STATUS_UNPLUGGED );
 		}
+
+		pstDptx->ucNumOfPorts = 0;
 
 		return ( 0 );
 	}
@@ -115,7 +115,7 @@ static int dptx_intr_handle_drm_interface( struct Dptx_Params *pstDptx, bool bHo
 		}
 	}
 
-	for( ucDP_Index = 0; ucDP_Index < ucNumOfPluggedPorts; ucDP_Index++ )
+	for( ucDP_Index = 0; ucDP_Index < pstDptx->ucNumOfPorts; ucDP_Index++ )
 	{
 		if( pstDptx->pvHPD_Intr_CallBack == NULL )
 		{
