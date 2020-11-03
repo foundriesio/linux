@@ -1,6 +1,6 @@
 From: Thomas Gleixner <tglx@linutronix.de>
-Date: Fri, 18 Sep 2020 14:04:36 +0200
-Subject: [PATCH 13/18] xtensa/mm/highmem: Switch to generic kmap atomic
+Date: Tue, 3 Nov 2020 10:27:29 +0100
+Subject: [PATCH 17/37] xtensa/mm/highmem: Switch to generic kmap atomic
 
 No reason having the same code in every architecture
 
@@ -8,11 +8,13 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 Cc: Chris Zankel <chris@zankel.net>
 Cc: Max Filippov <jcmvbkbc@gmail.com>
 Cc: linux-xtensa@linux-xtensa.org
+Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 ---
  arch/xtensa/Kconfig               |    1 
- arch/xtensa/include/asm/highmem.h |    9 +++++++
- arch/xtensa/mm/highmem.c          |   44 +++-----------------------------------
- 3 files changed, 14 insertions(+), 40 deletions(-)
+ arch/xtensa/include/asm/fixmap.h  |    4 +--
+ arch/xtensa/include/asm/highmem.h |   12 ++++++++-
+ arch/xtensa/mm/highmem.c          |   46 ++++----------------------------------
+ 4 files changed, 18 insertions(+), 45 deletions(-)
 
 --- a/arch/xtensa/Kconfig
 +++ b/arch/xtensa/Kconfig
@@ -24,9 +26,40 @@ Cc: linux-xtensa@linux-xtensa.org
  	help
  	  Linux can use the full amount of RAM in the system by
  	  default. However, the default MMUv2 setup only maps the
+--- a/arch/xtensa/include/asm/fixmap.h
++++ b/arch/xtensa/include/asm/fixmap.h
+@@ -16,7 +16,7 @@
+ #ifdef CONFIG_HIGHMEM
+ #include <linux/threads.h>
+ #include <linux/pgtable.h>
+-#include <asm/kmap_types.h>
++#include <asm/kmap_size.h>
+ #endif
+ 
+ /*
+@@ -39,7 +39,7 @@ enum fixed_addresses {
+ 	/* reserved pte's for temporary kernel mappings */
+ 	FIX_KMAP_BEGIN,
+ 	FIX_KMAP_END = FIX_KMAP_BEGIN +
+-		(KM_TYPE_NR * NR_CPUS * DCACHE_N_COLORS) - 1,
++		(KM_MAX_IDX * NR_CPUS * DCACHE_N_COLORS) - 1,
+ #endif
+ 	__end_of_fixed_addresses
+ };
 --- a/arch/xtensa/include/asm/highmem.h
 +++ b/arch/xtensa/include/asm/highmem.h
-@@ -68,6 +68,15 @@ static inline void flush_cache_kmaps(voi
+@@ -16,9 +16,8 @@
+ #include <linux/pgtable.h>
+ #include <asm/cacheflush.h>
+ #include <asm/fixmap.h>
+-#include <asm/kmap_types.h>
+ 
+-#define PKMAP_BASE		((FIXADDR_START - \
++#define PKMAP_BASE		((FIXADDR_START -			\
+ 				  (LAST_PKMAP + 1) * PAGE_SIZE) & PMD_MASK)
+ #define LAST_PKMAP		(PTRS_PER_PTE * DCACHE_N_COLORS)
+ #define LAST_PKMAP_MASK		(LAST_PKMAP - 1)
+@@ -68,6 +67,15 @@ static inline void flush_cache_kmaps(voi
  	flush_cache_all();
  }
  
@@ -53,7 +86,12 @@ Cc: linux-xtensa@linux-xtensa.org
  #if DCACHE_WAY_SIZE > PAGE_SIZE
  unsigned int last_pkmap_nr_arr[DCACHE_N_COLORS];
  wait_queue_head_t pkmap_map_wait_arr[DCACHE_N_COLORS];
-@@ -37,55 +35,21 @@ static inline enum fixed_addresses kmap_
+@@ -33,59 +31,25 @@ static inline void kmap_waitqueues_init(
+ 
+ static inline enum fixed_addresses kmap_idx(int type, unsigned long color)
+ {
+-	return (type + KM_TYPE_NR * smp_processor_id()) * DCACHE_N_COLORS +
++	return (type + KM_MAX_IDX * smp_processor_id()) * DCACHE_N_COLORS +
  		color;
  }
  
@@ -72,7 +110,7 @@ Cc: linux-xtensa@linux-xtensa.org
 -	set_pte(kmap_pte + idx, mk_pte(page, prot));
 -
 -	return (void *)vaddr;
-+	return kmap_idx(type, DCACHE_ALIAS(pfn << PAGE_SHIFT);
++	return kmap_idx(type, DCACHE_ALIAS(pfn << PAGE_SHIFT));
  }
 -EXPORT_SYMBOL(kmap_atomic_high_prot);
  

@@ -1,19 +1,23 @@
 From: Thomas Gleixner <tglx@linutronix.de>
-Date: Fri, 18 Sep 2020 14:00:29 +0200
-Subject: [PATCH 12/18] sparc/mm/highmem: Switch to generic kmap atomic
+Date: Tue, 3 Nov 2020 10:27:28 +0100
+Subject: [PATCH 16/37] sparc/mm/highmem: Switch to generic kmap atomic
 
 No reason having the same code in every architecture
 
 Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 Cc: "David S. Miller" <davem@davemloft.net>
 Cc: sparclinux@vger.kernel.org
+Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 ---
- arch/sparc/Kconfig               |    1 
- arch/sparc/include/asm/highmem.h |    7 +-
- arch/sparc/mm/Makefile           |    3 -
- arch/sparc/mm/highmem.c          |  115 ---------------------------------------
- arch/sparc/mm/srmmu.c            |    2 
- 5 files changed, 6 insertions(+), 122 deletions(-)
+ arch/sparc/Kconfig                  |    1 
+ arch/sparc/include/asm/highmem.h    |    8 +-
+ arch/sparc/include/asm/kmap_types.h |   11 ---
+ arch/sparc/include/asm/vaddrs.h     |    4 -
+ arch/sparc/mm/Makefile              |    3 
+ arch/sparc/mm/highmem.c             |  115 ------------------------------------
+ arch/sparc/mm/srmmu.c               |    2 
+ 7 files changed, 8 insertions(+), 136 deletions(-)
+ delete mode 100644 arch/sparc/include/asm/kmap_types.h
  delete mode 100644 arch/sparc/mm/highmem.c
 
 --- a/arch/sparc/Kconfig
@@ -28,7 +32,15 @@ Cc: sparclinux@vger.kernel.org
  	bool
 --- a/arch/sparc/include/asm/highmem.h
 +++ b/arch/sparc/include/asm/highmem.h
-@@ -33,8 +33,6 @@ extern unsigned long highstart_pfn, high
+@@ -24,7 +24,6 @@
+ #include <linux/interrupt.h>
+ #include <linux/pgtable.h>
+ #include <asm/vaddrs.h>
+-#include <asm/kmap_types.h>
+ #include <asm/pgtsrmmu.h>
+ 
+ /* declarations for highmem.c */
+@@ -33,8 +32,6 @@ extern unsigned long highstart_pfn, high
  #define kmap_prot __pgprot(SRMMU_ET_PTE | SRMMU_PRIV | SRMMU_CACHE)
  extern pte_t *pkmap_page_table;
  
@@ -37,7 +49,7 @@ Cc: sparclinux@vger.kernel.org
  /*
   * Right now we initialize only a single pte table. It can be extended
   * easily, subsequent pte tables have to be allocated in one physical
-@@ -53,6 +51,11 @@ void kmap_init(void) __init;
+@@ -53,6 +50,11 @@ void kmap_init(void) __init;
  
  #define flush_cache_kmaps()	flush_cache_all()
  
@@ -49,6 +61,38 @@ Cc: sparclinux@vger.kernel.org
  #endif /* __KERNEL__ */
  
  #endif /* _ASM_HIGHMEM_H */
+--- a/arch/sparc/include/asm/kmap_types.h
++++ /dev/null
+@@ -1,11 +0,0 @@
+-/* SPDX-License-Identifier: GPL-2.0 */
+-#ifndef _ASM_KMAP_TYPES_H
+-#define _ASM_KMAP_TYPES_H
+-
+-/* Dummy header just to define km_type.  None of this
+- * is actually used on sparc.  -DaveM
+- */
+-
+-#include <asm-generic/kmap_types.h>
+-
+-#endif
+--- a/arch/sparc/include/asm/vaddrs.h
++++ b/arch/sparc/include/asm/vaddrs.h
+@@ -32,13 +32,13 @@
+ #define SRMMU_NOCACHE_ALCRATIO	64	/* 256 pages per 64MB of system RAM */
+ 
+ #ifndef __ASSEMBLY__
+-#include <asm/kmap_types.h>
++#include <asm/kmap_size.h>
+ 
+ enum fixed_addresses {
+ 	FIX_HOLE,
+ #ifdef CONFIG_HIGHMEM
+ 	FIX_KMAP_BEGIN,
+-	FIX_KMAP_END = (KM_TYPE_NR * NR_CPUS),
++	FIX_KMAP_END = (KM_MAX_IDX * NR_CPUS),
+ #endif
+ 	__end_of_fixed_addresses
+ };
 --- a/arch/sparc/mm/Makefile
 +++ b/arch/sparc/mm/Makefile
 @@ -15,6 +15,3 @@ obj-$(CONFIG_SPARC32)   += leon_mm.o

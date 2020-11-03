@@ -51,7 +51,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
   extern void stop_critical_timings(void);
 --- a/kernel/locking/lockdep.c
 +++ b/kernel/locking/lockdep.c
-@@ -5292,6 +5292,7 @@ static void check_flags(unsigned long fl
+@@ -5286,6 +5286,7 @@ static void check_flags(unsigned long fl
  		}
  	}
  
@@ -59,7 +59,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  	/*
  	 * We dont accurately track softirq state in e.g.
  	 * hardirq contexts (such as on 4KSTACKS), so only
-@@ -5306,6 +5307,7 @@ static void check_flags(unsigned long fl
+@@ -5300,6 +5301,7 @@ static void check_flags(unsigned long fl
  			DEBUG_LOCKS_WARN_ON(!current->softirqs_enabled);
  		}
  	}

@@ -1,18 +1,22 @@
 From: Thomas Gleixner <tglx@linutronix.de>
-Date: Fri, 18 Sep 2020 13:30:40 +0200
-Subject: [PATCH 09/18] mips/mm/highmem: Switch to generic kmap atomic
+Date: Tue, 3 Nov 2020 10:27:25 +0100
+Subject: [PATCH 13/37] mips/mm/highmem: Switch to generic kmap atomic
 
 No reason having the same code in every architecture
 
 Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 Cc: Thomas Bogendoerfer <tsbogend@alpha.franken.de>
 Cc: linux-mips@vger.kernel.org
+Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 ---
- arch/mips/Kconfig               |    1 
- arch/mips/include/asm/highmem.h |    4 +-
- arch/mips/mm/highmem.c          |   77 ----------------------------------------
- arch/mips/mm/init.c             |    3 -
- 4 files changed, 3 insertions(+), 82 deletions(-)
+ arch/mips/Kconfig                  |    1 
+ arch/mips/include/asm/fixmap.h     |    4 -
+ arch/mips/include/asm/highmem.h    |    6 +-
+ arch/mips/include/asm/kmap_types.h |   13 ------
+ arch/mips/mm/highmem.c             |   77 -------------------------------------
+ arch/mips/mm/init.c                |    4 -
+ 6 files changed, 6 insertions(+), 99 deletions(-)
+ delete mode 100644 arch/mips/include/asm/kmap_types.h
 
 --- a/arch/mips/Kconfig
 +++ b/arch/mips/Kconfig
@@ -24,8 +28,37 @@ Cc: linux-mips@vger.kernel.org
  
  config CPU_SUPPORTS_HIGHMEM
  	bool
+--- a/arch/mips/include/asm/fixmap.h
++++ b/arch/mips/include/asm/fixmap.h
+@@ -17,7 +17,7 @@
+ #include <spaces.h>
+ #ifdef CONFIG_HIGHMEM
+ #include <linux/threads.h>
+-#include <asm/kmap_types.h>
++#include <asm/kmap_size.h>
+ #endif
+ 
+ /*
+@@ -52,7 +52,7 @@ enum fixed_addresses {
+ #ifdef CONFIG_HIGHMEM
+ 	/* reserved pte's for temporary kernel mappings */
+ 	FIX_KMAP_BEGIN = FIX_CMAP_END + 1,
+-	FIX_KMAP_END = FIX_KMAP_BEGIN+(KM_TYPE_NR*NR_CPUS)-1,
++	FIX_KMAP_END = FIX_KMAP_BEGIN + (KM_MAX_IDX * NR_CPUS) - 1,
+ #endif
+ 	__end_of_fixed_addresses
+ };
 --- a/arch/mips/include/asm/highmem.h
 +++ b/arch/mips/include/asm/highmem.h
+@@ -24,7 +24,7 @@
+ #include <linux/interrupt.h>
+ #include <linux/uaccess.h>
+ #include <asm/cpu-features.h>
+-#include <asm/kmap_types.h>
++#include <asm/kmap_size.h>
+ 
+ /* declarations for highmem.c */
+ extern unsigned long highstart_pfn, highend_pfn;
 @@ -48,11 +48,11 @@ extern pte_t *pkmap_page_table;
  
  #define ARCH_HAS_KMAP_FLUSH_TLB
@@ -40,6 +73,22 @@ Cc: linux-mips@vger.kernel.org
  
  #endif /* __KERNEL__ */
  
+--- a/arch/mips/include/asm/kmap_types.h
++++ /dev/null
+@@ -1,13 +0,0 @@
+-/* SPDX-License-Identifier: GPL-2.0 */
+-#ifndef _ASM_KMAP_TYPES_H
+-#define _ASM_KMAP_TYPES_H
+-
+-#ifdef CONFIG_DEBUG_HIGHMEM
+-#define	 __WITH_KM_FENCE
+-#endif
+-
+-#include <asm-generic/kmap_types.h>
+-
+-#undef __WITH_KM_FENCE
+-
+-#endif
 --- a/arch/mips/mm/highmem.c
 +++ b/arch/mips/mm/highmem.c
 @@ -8,8 +8,6 @@
@@ -132,7 +181,15 @@ Cc: linux-mips@vger.kernel.org
 -}
 --- a/arch/mips/mm/init.c
 +++ b/arch/mips/mm/init.c
-@@ -402,9 +402,6 @@ void __init paging_init(void)
+@@ -36,7 +36,6 @@
+ #include <asm/cachectl.h>
+ #include <asm/cpu.h>
+ #include <asm/dma.h>
+-#include <asm/kmap_types.h>
+ #include <asm/maar.h>
+ #include <asm/mmu_context.h>
+ #include <asm/sections.h>
+@@ -402,9 +401,6 @@ void __init paging_init(void)
  
  	pagetable_init();
  

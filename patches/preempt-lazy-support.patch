@@ -52,7 +52,7 @@ performance.
 
 Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 ---
- include/linux/preempt.h      |   51 +++++++++++++++++++++++++-
+ include/linux/preempt.h      |   54 ++++++++++++++++++++++++++--
  include/linux/sched.h        |   38 +++++++++++++++++++
  include/linux/thread_info.h  |   12 +++++-
  include/linux/trace_events.h |    1 
@@ -65,7 +65,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  kernel/trace/trace.h         |    2 +
  kernel/trace/trace_events.c  |    1 
  kernel/trace/trace_output.c  |   14 ++++++-
- 13 files changed, 243 insertions(+), 34 deletions(-)
+ 13 files changed, 246 insertions(+), 34 deletions(-)
 
 --- a/include/linux/preempt.h
 +++ b/include/linux/preempt.h
@@ -135,7 +135,17 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  #define preempt_enable_notrace() \
  do { \
  	barrier(); \
-@@ -282,7 +320,7 @@ do { \
+@@ -264,6 +302,9 @@ do { \
+ #define preempt_check_resched_rt()		barrier()
+ #define preemptible()				0
+ 
++#define preempt_lazy_disable()			barrier()
++#define preempt_lazy_enable()			barrier()
++
+ #endif /* CONFIG_PREEMPT_COUNT */
+ 
+ #ifdef MODULE
+@@ -282,7 +323,7 @@ do { \
  } while (0)
  #define preempt_fold_need_resched() \
  do { \
@@ -144,7 +154,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  		set_preempt_need_resched(); \
  } while (0)
  
-@@ -410,8 +448,15 @@ extern void migrate_enable(void);
+@@ -410,8 +451,15 @@ extern void migrate_enable(void);
  
  #else
  

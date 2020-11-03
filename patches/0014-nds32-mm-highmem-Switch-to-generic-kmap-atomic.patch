@@ -1,19 +1,23 @@
 From: Thomas Gleixner <tglx@linutronix.de>
-Date: Fri, 18 Sep 2020 13:33:51 +0200
-Subject: [PATCH 10/18] nds32/mm/highmem: Switch to generic kmap atomic
+Date: Tue, 3 Nov 2020 10:27:26 +0100
+Subject: [PATCH 14/37] nds32/mm/highmem: Switch to generic kmap atomic
 
 The mapping code is odd and looks broken. See FIXME in the comment.
+
+Also fix the harmless off by one in the FIX_KMAP_END define.
 
 Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 Cc: Nick Hu <nickhu@andestech.com>
 Cc: Greentime Hu <green.hu@gmail.com>
 Cc: Vincent Chen <deanbo422@gmail.com>
+Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 ---
  arch/nds32/Kconfig.cpu           |    1 
- arch/nds32/include/asm/highmem.h |   21 +++++++++++++----
+ arch/nds32/include/asm/fixmap.h  |    4 +--
+ arch/nds32/include/asm/highmem.h |   22 +++++++++++++----
  arch/nds32/mm/Makefile           |    1 
  arch/nds32/mm/highmem.c          |   48 ---------------------------------------
- 4 files changed, 17 insertions(+), 54 deletions(-)
+ 5 files changed, 19 insertions(+), 57 deletions(-)
  delete mode 100644 arch/nds32/mm/highmem.c
 
 --- a/arch/nds32/Kconfig.cpu
@@ -26,9 +30,37 @@ Cc: Vincent Chen <deanbo422@gmail.com>
  	help
  	  The address space of Andes processors is only 4 Gigabytes large
  	  and it has to accommodate user address space, kernel address
+--- a/arch/nds32/include/asm/fixmap.h
++++ b/arch/nds32/include/asm/fixmap.h
+@@ -6,7 +6,7 @@
+ 
+ #ifdef CONFIG_HIGHMEM
+ #include <linux/threads.h>
+-#include <asm/kmap_types.h>
++#include <asm/kmap_size.h>
+ #endif
+ 
+ enum fixed_addresses {
+@@ -14,7 +14,7 @@ enum fixed_addresses {
+ 	FIX_KMAP_RESERVED,
+ 	FIX_KMAP_BEGIN,
+ #ifdef CONFIG_HIGHMEM
+-	FIX_KMAP_END = FIX_KMAP_BEGIN + (KM_TYPE_NR * NR_CPUS),
++	FIX_KMAP_END = FIX_KMAP_BEGIN + (KM_MAX_IDX * NR_CPUS) - 1,
+ #endif
+ 	FIX_EARLYCON_MEM_BASE,
+ 	__end_of_fixed_addresses
 --- a/arch/nds32/include/asm/highmem.h
 +++ b/arch/nds32/include/asm/highmem.h
-@@ -45,11 +45,22 @@ extern pte_t *pkmap_page_table;
+@@ -5,7 +5,6 @@
+ #define _ASM_HIGHMEM_H
+ 
+ #include <asm/proc-fns.h>
+-#include <asm/kmap_types.h>
+ #include <asm/fixmap.h>
+ 
+ /*
+@@ -45,11 +44,22 @@ extern pte_t *pkmap_page_table;
  extern void kmap_init(void);
  
  /*
@@ -49,7 +81,7 @@ Cc: Vincent Chen <deanbo422@gmail.com>
 +		__nds32__isb();					\
 +	} while (0)
 +
-+#define arch_kmap_local_pre_unmap(vaddr, pte)			\
++#define arch_kmap_local_pre_unmap(vaddr)			\
 +	do {							\
 +		__nds32__tlbop_inv(vaddr);			\
 +		__nds32__isb();					\

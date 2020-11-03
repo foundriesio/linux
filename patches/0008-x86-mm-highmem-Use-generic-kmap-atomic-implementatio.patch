@@ -1,22 +1,28 @@
 From: Thomas Gleixner <tglx@linutronix.de>
-Date: Fri, 18 Sep 2020 10:42:27 +0200
-Subject: [PATCH 04/18] x86/mm/highmem: Use generic kmap atomic implementation
+Date: Tue, 3 Nov 2020 10:27:20 +0100
+Subject: [PATCH 08/37] x86/mm/highmem: Use generic kmap atomic implementation
 
 Convert X86 to the generic kmap atomic implementation and make the
 iomap_atomic() naming convention consistent while at it.
 
 Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 Cc: x86@kernel.org
+Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 ---
- arch/x86/Kconfig               |    3 +-
- arch/x86/include/asm/fixmap.h  |    1 
- arch/x86/include/asm/highmem.h |   12 ++++++--
- arch/x86/include/asm/iomap.h   |   18 ++++++------
- arch/x86/mm/highmem_32.c       |   59 -----------------------------------------
- arch/x86/mm/init_32.c          |   15 ----------
- arch/x86/mm/iomap_32.c         |   59 +++--------------------------------------
- include/linux/io-mapping.h     |    2 -
- 8 files changed, 27 insertions(+), 142 deletions(-)
+ arch/x86/Kconfig                      |    3 +
+ arch/x86/include/asm/fixmap.h         |    5 +-
+ arch/x86/include/asm/highmem.h        |   13 +++++--
+ arch/x86/include/asm/iomap.h          |   18 +++++-----
+ arch/x86/include/asm/kmap_types.h     |   13 -------
+ arch/x86/include/asm/paravirt_types.h |    1 
+ arch/x86/mm/highmem_32.c              |   59 ----------------------------------
+ arch/x86/mm/init_32.c                 |   15 --------
+ arch/x86/mm/iomap_32.c                |   59 ++--------------------------------
+ include/linux/highmem.h               |    2 -
+ include/linux/io-mapping.h            |    2 -
+ mm/highmem.c                          |    2 -
+ 12 files changed, 31 insertions(+), 161 deletions(-)
+ delete mode 100644 arch/x86/include/asm/kmap_types.h
 
 --- a/arch/x86/Kconfig
 +++ b/arch/x86/Kconfig
@@ -35,6 +41,24 @@ Cc: x86@kernel.org
  	def_bool y
 --- a/arch/x86/include/asm/fixmap.h
 +++ b/arch/x86/include/asm/fixmap.h
+@@ -31,7 +31,7 @@
+ #include <asm/pgtable_types.h>
+ #ifdef CONFIG_X86_32
+ #include <linux/threads.h>
+-#include <asm/kmap_types.h>
++#include <asm/kmap_size.h>
+ #else
+ #include <uapi/asm/vsyscall.h>
+ #endif
+@@ -94,7 +94,7 @@ enum fixed_addresses {
+ #endif
+ #ifdef CONFIG_X86_32
+ 	FIX_KMAP_BEGIN,	/* reserved pte's for temporary kernel mappings */
+-	FIX_KMAP_END = FIX_KMAP_BEGIN+(KM_TYPE_NR*NR_CPUS)-1,
++	FIX_KMAP_END = FIX_KMAP_BEGIN + (KM_MAX_IDX * NR_CPUS) - 1,
+ #ifdef CONFIG_PCI_MMCONFIG
+ 	FIX_PCIE_MCFG,
+ #endif
 @@ -151,7 +151,6 @@ extern void reserve_top_address(unsigned
  
  extern int fixmaps_set;
@@ -45,7 +69,15 @@ Cc: x86@kernel.org
  void __native_set_fixmap(enum fixed_addresses idx, pte_t pte);
 --- a/arch/x86/include/asm/highmem.h
 +++ b/arch/x86/include/asm/highmem.h
-@@ -58,11 +58,17 @@ extern unsigned long highstart_pfn, high
+@@ -23,7 +23,6 @@
+ 
+ #include <linux/interrupt.h>
+ #include <linux/threads.h>
+-#include <asm/kmap_types.h>
+ #include <asm/tlbflush.h>
+ #include <asm/paravirt.h>
+ #include <asm/fixmap.h>
+@@ -58,11 +57,17 @@ extern unsigned long highstart_pfn, high
  #define PKMAP_NR(virt)  ((virt-PKMAP_BASE) >> PAGE_SHIFT)
  #define PKMAP_ADDR(nr)  (PKMAP_BASE + ((nr) << PAGE_SHIFT))
  
@@ -98,6 +130,32 @@ Cc: x86@kernel.org
 +void iomap_free(resource_size_t base, unsigned long size);
  
  #endif /* _ASM_X86_IOMAP_H */
+--- a/arch/x86/include/asm/kmap_types.h
++++ /dev/null
+@@ -1,13 +0,0 @@
+-/* SPDX-License-Identifier: GPL-2.0 */
+-#ifndef _ASM_X86_KMAP_TYPES_H
+-#define _ASM_X86_KMAP_TYPES_H
+-
+-#if defined(CONFIG_X86_32) && defined(CONFIG_DEBUG_HIGHMEM)
+-#define  __WITH_KM_FENCE
+-#endif
+-
+-#include <asm-generic/kmap_types.h>
+-
+-#undef __WITH_KM_FENCE
+-
+-#endif /* _ASM_X86_KMAP_TYPES_H */
+--- a/arch/x86/include/asm/paravirt_types.h
++++ b/arch/x86/include/asm/paravirt_types.h
+@@ -41,7 +41,6 @@
+ #ifndef __ASSEMBLY__
+ 
+ #include <asm/desc_defs.h>
+-#include <asm/kmap_types.h>
+ #include <asm/pgtable_types.h>
+ #include <asm/nospec-branch.h>
+ 
 --- a/arch/x86/mm/highmem_32.c
 +++ b/arch/x86/mm/highmem_32.c
 @@ -4,65 +4,6 @@
@@ -270,6 +328,17 @@ Cc: x86@kernel.org
  }
 -EXPORT_SYMBOL_GPL(iounmap_atomic);
 +EXPORT_SYMBOL_GPL(iomap_atomic_pfn_prot);
+--- a/include/linux/highmem.h
++++ b/include/linux/highmem.h
+@@ -217,7 +217,7 @@ static inline void __kunmap_atomic(void
+ #endif /* CONFIG_HIGHMEM */
+ 
+ #if !defined(CONFIG_KMAP_LOCAL)
+-#if defined(CONFIG_HIGHMEM) || defined(CONFIG_X86_32)
++#if defined(CONFIG_HIGHMEM)
+ 
+ DECLARE_PER_CPU(int, __kmap_atomic_idx);
+ 
 --- a/include/linux/io-mapping.h
 +++ b/include/linux/io-mapping.h
 @@ -69,7 +69,7 @@ io_mapping_map_atomic_wc(struct io_mappi
@@ -281,3 +350,14 @@ Cc: x86@kernel.org
  }
  
  static inline void
+--- a/mm/highmem.c
++++ b/mm/highmem.c
+@@ -32,7 +32,7 @@
+ #include <linux/vmalloc.h>
+ 
+ #ifndef CONFIG_KMAP_LOCAL
+-#if defined(CONFIG_HIGHMEM) || defined(CONFIG_X86_32)
++#ifdef CONFIG_HIGHMEM
+ DEFINE_PER_CPU(int, __kmap_atomic_idx);
+ #endif
+ #endif

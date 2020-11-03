@@ -370,7 +370,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	int ret = 0;
  
  	new_owner = rt_mutex_next_owner(&pi_state->pi_mutex);
-@@ -1539,13 +1540,13 @@ static int wake_futex_pi(u32 __user *uad
+@@ -1541,13 +1542,13 @@ static int wake_futex_pi(u32 __user *uad
  	pi_state->owner = new_owner;
  	raw_spin_unlock(&new_owner->pi_lock);
  
@@ -387,7 +387,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  	return ret;
  }
-@@ -2841,7 +2842,7 @@ static int futex_lock_pi(u32 __user *uad
+@@ -2843,7 +2844,7 @@ static int futex_lock_pi(u32 __user *uad
  		goto no_block;
  	}
  
@@ -396,7 +396,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  	/*
  	 * On PREEMPT_RT_FULL, when hb->lock becomes an rt_mutex, we must not
-@@ -3203,7 +3204,7 @@ static int futex_wait_requeue_pi(u32 __u
+@@ -3205,7 +3206,7 @@ static int futex_wait_requeue_pi(u32 __u
  	 * The waiter is allocated on our stack, manipulated by the requeue
  	 * code while we sleep on uaddr.
  	 */

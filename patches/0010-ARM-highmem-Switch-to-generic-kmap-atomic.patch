@@ -1,6 +1,6 @@
 From: Thomas Gleixner <tglx@linutronix.de>
-Date: Fri, 18 Sep 2020 12:05:18 +0200
-Subject: [PATCH 06/18] ARM: highmem: Switch to generic kmap atomic
+Date: Tue, 3 Nov 2020 10:27:22 +0100
+Subject: [PATCH 10/37] ARM: highmem: Switch to generic kmap atomic
 
 No reason having the same code in every architecture.
 
@@ -8,12 +8,16 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 Cc: Russell King <linux@armlinux.org.uk>
 Cc: Arnd Bergmann <arnd@arndb.de>
 Cc: linux-arm-kernel@lists.infradead.org
+Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 ---
- arch/arm/Kconfig               |    1 
- arch/arm/include/asm/highmem.h |   31 +++++++---
- arch/arm/mm/Makefile           |    1 
- arch/arm/mm/highmem.c          |  121 -----------------------------------------
- 4 files changed, 23 insertions(+), 131 deletions(-)
+ arch/arm/Kconfig                  |    1 
+ arch/arm/include/asm/fixmap.h     |    4 -
+ arch/arm/include/asm/highmem.h    |   34 +++++++---
+ arch/arm/include/asm/kmap_types.h |   10 ---
+ arch/arm/mm/Makefile              |    1 
+ arch/arm/mm/highmem.c             |  121 --------------------------------------
+ 6 files changed, 27 insertions(+), 144 deletions(-)
+ delete mode 100644 arch/arm/include/asm/kmap_types.h
  delete mode 100644 arch/arm/mm/highmem.c
 
 --- a/arch/arm/Kconfig
@@ -26,9 +30,38 @@ Cc: linux-arm-kernel@lists.infradead.org
  	help
  	  The address space of ARM processors is only 4 Gigabytes large
  	  and it has to accommodate user address space, kernel address
+--- a/arch/arm/include/asm/fixmap.h
++++ b/arch/arm/include/asm/fixmap.h
+@@ -7,14 +7,14 @@
+ #define FIXADDR_TOP		(FIXADDR_END - PAGE_SIZE)
+ 
+ #include <linux/pgtable.h>
+-#include <asm/kmap_types.h>
++#include <asm/kmap_size.h>
+ 
+ enum fixed_addresses {
+ 	FIX_EARLYCON_MEM_BASE,
+ 	__end_of_permanent_fixed_addresses,
+ 
+ 	FIX_KMAP_BEGIN = __end_of_permanent_fixed_addresses,
+-	FIX_KMAP_END = FIX_KMAP_BEGIN + (KM_TYPE_NR * NR_CPUS) - 1,
++	FIX_KMAP_END = FIX_KMAP_BEGIN + (KM_MAX_IDX * NR_CPUS) - 1,
+ 
+ 	/* Support writing RO kernel text via kprobes, jump labels, etc. */
+ 	FIX_TEXT_POKE0,
 --- a/arch/arm/include/asm/highmem.h
 +++ b/arch/arm/include/asm/highmem.h
-@@ -46,19 +46,32 @@ extern pte_t *pkmap_page_table;
+@@ -2,7 +2,8 @@
+ #ifndef _ASM_HIGHMEM_H
+ #define _ASM_HIGHMEM_H
+ 
+-#include <asm/kmap_types.h>
++#include <asm/kmap_size.h>
++#include <asm/fixmap.h>
+ 
+ #define PKMAP_BASE		(PAGE_OFFSET - PMD_SIZE)
+ #define LAST_PKMAP		PTRS_PER_PTE
+@@ -46,19 +47,32 @@ extern pte_t *pkmap_page_table;
  
  #ifdef ARCH_NEEDS_KMAP_HIGH_GET
  extern void *kmap_high_get(struct page *page);
@@ -70,6 +103,19 @@ Cc: linux-arm-kernel@lists.infradead.org
 +	local_flush_tlb_kernel_page(vaddr)
  
  #endif
+--- a/arch/arm/include/asm/kmap_types.h
++++ /dev/null
+@@ -1,10 +0,0 @@
+-/* SPDX-License-Identifier: GPL-2.0 */
+-#ifndef __ARM_KMAP_TYPES_H
+-#define __ARM_KMAP_TYPES_H
+-
+-/*
+- * This is the "bare minimum".  AIO seems to require this.
+- */
+-#define KM_TYPE_NR 16
+-
+-#endif
 --- a/arch/arm/mm/Makefile
 +++ b/arch/arm/mm/Makefile
 @@ -19,7 +19,6 @@ obj-$(CONFIG_MODULES)		+= proc-syms.o

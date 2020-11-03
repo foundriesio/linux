@@ -1,6 +1,6 @@
 From: Thomas Gleixner <tglx@linutronix.de>
-Date: Fri, 18 Sep 2020 09:30:47 +0200
-Subject: [PATCH 03/18] highmem: Provide generic variant of kmap_atomic*
+Date: Tue, 3 Nov 2020 10:27:18 +0100
+Subject: [PATCH 06/37] highmem: Provide generic variant of kmap_atomic*
 
 The kmap_atomic* interfaces in all architectures are pretty much the same
 except for post map operations (flush) and pre- and post unmap operations.
@@ -10,11 +10,12 @@ Provide a generic variant for that.
 Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 Cc: Andrew Morton <akpm@linux-foundation.org>
 Cc: linux-mm@kvack.org
+Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 ---
- include/linux/highmem.h |   79 ++++++++++++++++++++++++++------
+ include/linux/highmem.h |   82 ++++++++++++++++++++++-----
  mm/Kconfig              |    3 +
- mm/highmem.c            |  118 +++++++++++++++++++++++++++++++++++++++++++++++-
- 3 files changed, 183 insertions(+), 17 deletions(-)
+ mm/highmem.c            |  144 +++++++++++++++++++++++++++++++++++++++++++++++-
+ 3 files changed, 211 insertions(+), 18 deletions(-)
 
 --- a/include/linux/highmem.h
 +++ b/include/linux/highmem.h
@@ -89,7 +90,7 @@ Cc: linux-mm@kvack.org
  
  /* declarations for linux/mm/highmem.c */
  unsigned int nr_free_highpages(void);
-@@ -157,21 +200,28 @@ static inline void *kmap_atomic(struct p
+@@ -147,25 +190,33 @@ static inline void *kmap_atomic(struct p
  	pagefault_disable();
  	return page_address(page);
  }
@@ -123,7 +124,20 @@ Cc: linux-mm@kvack.org
  #define kmap_flush_unused()	do {} while(0)
  
  #endif /* CONFIG_HIGHMEM */
-@@ -213,15 +263,14 @@ static inline void kmap_atomic_idx_pop(v
+ 
++#if !defined(CONFIG_KMAP_LOCAL)
+ #if defined(CONFIG_HIGHMEM) || defined(CONFIG_X86_32)
+ 
+ DECLARE_PER_CPU(int, __kmap_atomic_idx);
+@@ -196,22 +247,21 @@ static inline void kmap_atomic_idx_pop(v
+ 	__this_cpu_dec(__kmap_atomic_idx);
+ #endif
+ }
+-
++#endif
+ #endif
+ 
+ /*
   * Prevent people trying to call kunmap_atomic() as if it were kunmap()
   * kunmap_atomic() should get the return value of kmap_atomic, not the page.
   */
@@ -157,15 +171,19 @@ Cc: linux-mm@kvack.org
  endmenu
 --- a/mm/highmem.c
 +++ b/mm/highmem.c
-@@ -30,6 +30,7 @@
- #include <linux/kgdb.h>
+@@ -31,9 +31,11 @@
  #include <asm/tlbflush.h>
  #include <linux/vmalloc.h>
-+#include <asm/fixmap.h>
  
++#ifndef CONFIG_KMAP_LOCAL
  #if defined(CONFIG_HIGHMEM) || defined(CONFIG_X86_32)
  DEFINE_PER_CPU(int, __kmap_atomic_idx);
-@@ -365,9 +366,122 @@ void kunmap_high(struct page *page)
+ #endif
++#endif
+ 
+ /*
+  * Virtual_count is not a pure "count".
+@@ -365,9 +367,147 @@ void kunmap_high(struct page *page)
  	if (need_wakeup)
  		wake_up(pkmap_map_wait);
  }
@@ -175,10 +193,35 @@ Cc: linux-mm@kvack.org
 +#endif /* CONFIG_HIGHMEM */
 +
 +#ifdef CONFIG_KMAP_LOCAL
++
++#include <asm/kmap_size.h>
++
++static DEFINE_PER_CPU(int, __kmap_local_idx);
++
++static inline int kmap_local_idx_push(void)
++{
++	int idx = __this_cpu_inc_return(__kmap_local_idx) - 1;
++
++	WARN_ON_ONCE(in_irq() && !irqs_disabled());
++	BUG_ON(idx >= KM_MAX_IDX);
++	return idx;
++}
++
++static inline int kmap_local_idx(void)
++{
++	return __this_cpu_read(__kmap_local_idx) - 1;
++}
++
++static inline void kmap_local_idx_pop(void)
++{
++	int idx = __this_cpu_dec_return(__kmap_local_idx);
++
++	BUG_ON(idx < 0);
++}
++
 +#ifndef arch_kmap_local_post_map
 +# define arch_kmap_local_post_map(vaddr, pteval)	do { } while (0)
 +#endif
-+
 +#ifndef arch_kmap_local_pre_unmap
 +# define arch_kmap_local_pre_unmap(vaddr)		do { } while (0)
 +#endif
@@ -188,11 +231,11 @@ Cc: linux-mm@kvack.org
 +#endif
 +
 +#ifndef arch_kmap_local_map_idx
-+#define arch_kmap_local_map_idx(type, pfn)	kmap_local_calc_idx(type)
++#define arch_kmap_local_map_idx(idx, pfn)	kmap_local_calc_idx(idx)
 +#endif
 +
 +#ifndef arch_kmap_local_unmap_idx
-+#define arch_kmap_local_unmap_idx(type, vaddr)	kmap_local_calc_idx(type)
++#define arch_kmap_local_unmap_idx(idx, vaddr)	kmap_local_calc_idx(idx)
 +#endif
 +
 +#ifndef arch_kmap_local_high_get
@@ -211,9 +254,9 @@ Cc: linux-mm@kvack.org
 +#endif
 +}
 +
-+static inline int kmap_local_calc_idx(int type)
++static inline int kmap_local_calc_idx(int idx)
 +{
-+	return type + KM_TYPE_NR * smp_processor_id();
++	return idx + KM_MAX_IDX * smp_processor_id();
 +}
 +
 +static pte_t *__kmap_pte;
@@ -232,7 +275,7 @@ Cc: linux-mm@kvack.org
 +	int idx;
 +
 +	preempt_disable();
-+	idx = arch_kmap_local_map_idx(kmap_atomic_idx_push(), pfn);
++	idx = arch_kmap_local_map_idx(kmap_local_idx_push(), pfn);
 +	vaddr = __fix_to_virt(FIX_KMAP_BEGIN + idx);
 +	BUG_ON(!pte_none(*(kmap_pte - idx)));
 +	pteval = pfn_pte(pfn, prot);
@@ -276,13 +319,13 @@ Cc: linux-mm@kvack.org
 +	}
 +
 +	preempt_disable();
-+	idx = arch_kmap_local_unmap_idx(kmap_atomic_idx(), addr);
++	idx = arch_kmap_local_unmap_idx(kmap_local_idx(), addr);
 +	WARN_ON_ONCE(addr != __fix_to_virt(FIX_KMAP_BEGIN + idx));
 +
 +	arch_kmap_local_pre_unmap(addr);
 +	pte_clear(&init_mm, addr, kmap_pte - idx);
 +	arch_kmap_local_post_unmap(addr);
-+	kmap_atomic_idx_pop();
++	kmap_local_idx_pop();
 +	preempt_enable();
 +}
 +EXPORT_SYMBOL(kunmap_local_indexed);

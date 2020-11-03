@@ -1,18 +1,20 @@
 From: Thomas Gleixner <tglx@linutronix.de>
-Date: Fri, 18 Sep 2020 13:06:09 +0200
-Subject: [PATCH 08/18] microblaze/mm/highmem: Switch to generic kmap atomic
+Date: Tue, 3 Nov 2020 10:27:24 +0100
+Subject: [PATCH 12/37] microblaze/mm/highmem: Switch to generic kmap atomic
 
 No reason having the same code in every architecture.
 
 Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 Cc: Michal Simek <monstr@monstr.eu>
+Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 ---
  arch/microblaze/Kconfig               |    1 
+ arch/microblaze/include/asm/fixmap.h  |    4 -
  arch/microblaze/include/asm/highmem.h |    6 ++
  arch/microblaze/mm/Makefile           |    1 
  arch/microblaze/mm/highmem.c          |   78 ----------------------------------
  arch/microblaze/mm/init.c             |    6 --
- 5 files changed, 6 insertions(+), 86 deletions(-)
+ 6 files changed, 8 insertions(+), 88 deletions(-)
  delete mode 100644 arch/microblaze/mm/highmem.c
 
 --- a/arch/microblaze/Kconfig
@@ -25,6 +27,26 @@ Cc: Michal Simek <monstr@monstr.eu>
  	help
  	  The address space of Microblaze processors is only 4 Gigabytes large
  	  and it has to accommodate user address space, kernel address
+--- a/arch/microblaze/include/asm/fixmap.h
++++ b/arch/microblaze/include/asm/fixmap.h
+@@ -20,7 +20,7 @@
+ #include <asm/page.h>
+ #ifdef CONFIG_HIGHMEM
+ #include <linux/threads.h>
+-#include <asm/kmap_types.h>
++#include <asm/kmap_size.h>
+ #endif
+ 
+ #define FIXADDR_TOP	((unsigned long)(-PAGE_SIZE))
+@@ -47,7 +47,7 @@ enum fixed_addresses {
+ 	FIX_HOLE,
+ #ifdef CONFIG_HIGHMEM
+ 	FIX_KMAP_BEGIN,	/* reserved pte's for temporary kernel mappings */
+-	FIX_KMAP_END = FIX_KMAP_BEGIN + (KM_TYPE_NR * num_possible_cpus()) - 1,
++	FIX_KMAP_END = FIX_KMAP_BEGIN + (KM_MAX_IDX * num_possible_cpus()) - 1,
+ #endif
+ 	__end_of_fixed_addresses
+ };
 --- a/arch/microblaze/include/asm/highmem.h
 +++ b/arch/microblaze/include/asm/highmem.h
 @@ -25,7 +25,6 @@

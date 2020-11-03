@@ -1,6 +1,6 @@
 From: Thomas Gleixner <tglx@linutronix.de>
-Date: Tue, 22 Sep 2020 15:52:06 +0200
-Subject: [PATCH 01/18] sched: Make migrate_disable/enable() independent of RT
+Date: Tue, 3 Nov 2020 10:27:35 +0100
+Subject: [PATCH 23/37] sched: Make migrate_disable/enable() independent of RT
 
 Now that the scheduler can deal with migrate disable properly, there is no
 real compelling reason to make it only available for RT.
@@ -24,6 +24,7 @@ Cc: Steven Rostedt <rostedt@goodmis.org>
 Cc: Ben Segall <bsegall@google.com>
 Cc: Mel Gorman <mgorman@suse.de>
 Cc: Daniel Bristot de Oliveira <bristot@redhat.com>
+Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 ---
  include/linux/kernel.h  |   21 ++++++++++++++-------
  include/linux/preempt.h |   38 +++-----------------------------------

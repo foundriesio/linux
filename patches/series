@@ -32,27 +32,45 @@
 0018-sched-Deny-self-issued-__set_cpus_allowed_ptr-when-m.patch
 0019-sched-Comment-affine_move_task.patch
 
-# 2020-10-29 23:18 Thomas Gleixner ( 113) [patch V2 00/18] mm/highmem: Preemptible variant of kmap_atomic & friend
-# 20201029221806.189523375@linutronix.de
-# + fixes
-0001-sched-Make-migrate_disable-enable-independent-of-RT.patch
-0002-mm-highmem-Un-EXPORT-__kmap_atomic_idx.patch
-0003-highmem-Provide-generic-variant-of-kmap_atomic.patch
-0004-x86-mm-highmem-Use-generic-kmap-atomic-implementatio.patch
-0005-arc-mm-highmem-Use-generic-kmap-atomic-implementatio.patch
-0006-ARM-highmem-Switch-to-generic-kmap-atomic.patch
-0007-csky-mm-highmem-Switch-to-generic-kmap-atomic.patch
-0008-microblaze-mm-highmem-Switch-to-generic-kmap-atomic.patch
-0009-mips-mm-highmem-Switch-to-generic-kmap-atomic.patch
-0010-nds32-mm-highmem-Switch-to-generic-kmap-atomic.patch
-0011-powerpc-mm-highmem-Switch-to-generic-kmap-atomic.patch
-0012-sparc-mm-highmem-Switch-to-generic-kmap-atomic.patch
-0013-xtensa-mm-highmem-Switch-to-generic-kmap-atomic.patch
-0014-mm-highmem-Remove-the-old-kmap_atomic-cruft.patch
-0015-io-mapping-Cleanup-atomic-iomap.patch
-0016-sched-highmem-Store-local-kmaps-in-task-struct.patch
-0017-mm-highmem-Provide-kmap_local.patch
-0018-io-mapping-Provide-iomap_local-variant.patch
+# 2020-11-03 10:27 Thomas Gleixner [patch V3 00/37] mm/highmem: Preemptible variant of kmap_atomic & friends
+# 20201103092712.714480842@linutronix.de
+0001-mm-highmem-Un-EXPORT-__kmap_atomic_idx.patch
+0002-highmem-Remove-unused-functions.patch
+0003-fs-Remove-asm-kmap_types.h-includes.patch
+0004-sh-highmem-Remove-all-traces-of-unused-cruft.patch
+0005-asm-generic-Provide-kmap_size.h.patch
+0006-highmem-Provide-generic-variant-of-kmap_atomic.patch
+0007-highmem-Make-DEBUG_HIGHMEM-functional.patch
+0008-x86-mm-highmem-Use-generic-kmap-atomic-implementatio.patch
+0009-arc-mm-highmem-Use-generic-kmap-atomic-implementatio.patch
+0010-ARM-highmem-Switch-to-generic-kmap-atomic.patch
+0011-csky-mm-highmem-Switch-to-generic-kmap-atomic.patch
+0012-microblaze-mm-highmem-Switch-to-generic-kmap-atomic.patch
+0013-mips-mm-highmem-Switch-to-generic-kmap-atomic.patch
+0014-nds32-mm-highmem-Switch-to-generic-kmap-atomic.patch
+0015-powerpc-mm-highmem-Switch-to-generic-kmap-atomic.patch
+0016-sparc-mm-highmem-Switch-to-generic-kmap-atomic.patch
+0017-xtensa-mm-highmem-Switch-to-generic-kmap-atomic.patch
+0018-highmem-Get-rid-of-kmap_types.h.patch
+0019-mm-highmem-Remove-the-old-kmap_atomic-cruft.patch
+0020-io-mapping-Cleanup-atomic-iomap.patch
+0021-Documentation-io-mapping-Remove-outdated-blurb.patch
+0022-highmem-High-implementation-details-and-document-API.patch
+0023-sched-Make-migrate_disable-enable-independent-of-RT.patch
+0024-sched-highmem-Store-local-kmaps-in-task-struct.patch
+0025-mm-highmem-Provide-kmap_local.patch
+0026-io-mapping-Provide-iomap_local-variant.patch
+0027-x86-crashdump-32-Simplify-copy_oldmem_page.patch
+0028-mips-crashdump-Simplify-copy_oldmem_page.patch
+0029-ARM-mm-Replace-kmap_atomic_pfn.patch
+0030-highmem-Remove-kmap_atomic_pfn.patch
+0031-drm-ttm-Replace-kmap_atomic-usage.patch
+0032-drm-vmgfx-Replace-kmap_atomic.patch
+0033-highmem-Remove-kmap_atomic_prot.patch
+0034-drm-qxl-Replace-io_mapping_map_atomic_wc.patch
+0035-drm-nouveau-device-Replace-io_mapping_map_atomic_wc.patch
+0036-drm-i915-Replace-io_mapping_map_atomic_wc.patch
+0037-io-mapping-Remove-io_mapping_map_atomic_wc.patch
 #
 highmem-Don-t-disable-preemption-on-RT-in-kmap_atomi.patch
 
@@ -73,6 +91,9 @@ block-mq-Disable-preemption-in-blk_mq_complete_reque.patch
 
 # 20201028181041.xyeothhkouc3p4md@linutronix.de
 lib-test_lockup-Minimum-fix-to-get-it-compiled-on-PR.patch
+
+# 20201103190937.hga67rqhvknki3tp@linutronix.de
+timers-Don-t-block-on-expiry_lock-for-TIMER_IRQSAFE.patch
 
 ############################################################
 # Ready for posting
@@ -275,6 +296,7 @@ net-core-use-local_bh_disable-in-netif_rx_ni.patch
 # RTMUTEX
 pid.h-include-atomic.h.patch
 ptrace-fix-ptrace-vs-tasklist_lock-race.patch
+ptrace-fix-ptrace_unfreeze_traced-race-with-rt-lock.patch
 
 # MIGRATE DISABLE AND PER CPU
 # Revisit
