@@ -37,7 +37,7 @@ enum ion_heap_type {
 	ION_HEAP_TYPE_SYSTEM,
 	ION_HEAP_TYPE_SYSTEM_CONTIG,
 	ION_HEAP_TYPE_CARVEOUT,
-        ION_HEAP_TYPE_CARVEOUT_CAM,
+	ION_HEAP_TYPE_CARVEOUT_CAM,
 	ION_HEAP_TYPE_CHUNK,
 	ION_HEAP_TYPE_DMA,
 	ION_HEAP_TYPE_CUSTOM, /*
@@ -145,7 +145,7 @@ struct ion_tcc_phys_data {
 					struct ion_heap_query)
 
 /* TCC */
-#define ION_IOC_PHYS 		_IOWR(ION_IOC_MAGIC, 100, struct ion_tcc_phys_data)
-					
+#define ION_IOC_PHYS		_IOWR(ION_IOC_MAGIC, 100, \
+					struct ion_tcc_phys_data)
 
 #endif /* _UAPI_LINUX_ION_H */

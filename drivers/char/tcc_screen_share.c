@@ -34,7 +34,7 @@
 #include <linux/of_device.h>
 #include <linux/uaccess.h>
 
-#include <asm/io.h>
+#include <linux/io.h>
 
 #include <linux/mailbox/tcc_multi_mbox.h>
 #include <linux/mailbox_client.h>
@@ -52,15 +52,14 @@
 typedef struct _tcc_scrshare_tx_t {
 	struct mutex lock;
 	atomic_t seq;
-}tcc_scrshare_tx_t;
+} tcc_scrshare_tx_t;
 
 typedef struct _tcc_scrshare_rx_t {
 	struct mutex lock;
 	atomic_t seq;
-}tcc_scrshare_rx_t;
+} tcc_scrshare_rx_t;
 
-struct tcc_scrshare_device
-{
+struct tcc_scrshare_device {
 	struct platform_device *pdev;
 	struct device *dev;
 	struct cdev cdev;
@@ -82,31 +81,28 @@ struct tcc_scrshare_device
 
 static struct tcc_scrshare_device *tcc_scrshare_device;
 static wait_queue_head_t mbox_waitq;
-static int mbox_done = 0;
+static int mbox_done;
 static struct tcc_scrshare_info *tcc_scrshare_info;
 
-static struct file *overlay_file = NULL;
+static struct file *overlay_file;
 
 static void tcc_scrshare_on(void)
 {
-	tcc_scrshare_info->share_enable= 1;
+	tcc_scrshare_info->share_enable = 1;
 
-	if(overlay_file == NULL)
-	{
+	if (overlay_file == NULL) {
 		overlay_file = filp_open(OVERLAY_DRIVER, O_RDWR, 0666);
-		if(overlay_file == NULL) {
-		        pr_err("[ERR][SCREEN SHARE] driver open fail (%s)\n", OVERLAY_DRIVER);
-		}
+		if (overlay_file == NULL)
+			pr_err("open fail (%s)\n", OVERLAY_DRIVER);
 	}
 }
 
 static void tcc_scrshare_off(void)
 {
-	tcc_scrshare_info->share_enable= 0;
+	tcc_scrshare_info->share_enable = 0;
 
-	if(overlay_file)
-	{
-		filp_close(overlay_file, 0);	
+	if (overlay_file) {
+		filp_close(overlay_file, 0);
 		overlay_file = NULL;
 	}
 }
@@ -119,26 +115,31 @@ static void tcc_scrshare_get_dstinfo(struct tcc_mbox_data *mssg)
 	mssg->data[3] = tcc_scrshare_info->dstinfo->height;
 	mssg->data[4] = tcc_scrshare_info->dstinfo->img_num;
 	mssg->data_len = 5;
-	pr_debug("[DBG][SCREEN SHARE] %s x:%d, y:%d, w:%d, h:%d, img_num:%d\n", __func__, mssg->data[0], mssg->data[1], mssg->data[2], mssg->data[3], mssg->data[4]);
+	pr_debug("%s x:%d, y:%d, w:%d, h:%d, img_num:%d\n",
+		 __func__, mssg->data[0], mssg->data[1], mssg->data[2],
+		 mssg->data[3], mssg->data[4]);
 }
 
 static void tcc_scrshare_display(struct tcc_mbox_data *mssg)
 {
 	long ret = 0;
 	overlay_shared_buffer_t buffer_cfg;
-	pr_debug("[DBG][SCREEN SHARE] %s shared_enable:%d base:%d, frm_w:%d, frm_h:%d, fmt:%d\n", __func__, tcc_scrshare_info->share_enable, mssg->data[0], mssg->data[1], mssg->data[2], mssg->data[3]);
-	pr_debug("[DBG][SCREEN SHARE] %s dst x:%d, y:%d, w:%d, h:%d\n", __func__, 
-		tcc_scrshare_info->dstinfo->x, tcc_scrshare_info->dstinfo->y, tcc_scrshare_info->dstinfo->width, tcc_scrshare_info->dstinfo->height);
-	if(tcc_scrshare_info->share_enable)
-	{
-		if(overlay_file == NULL)
-		{
+
+	pr_debug("%s shared_enable:%d base:%d, frm_w:%d, frm_h:%d, fmt:%d\n",
+		 __func__, tcc_scrshare_info->share_enable, mssg->data[0],
+		 mssg->data[1], mssg->data[2], mssg->data[3]);
+	pr_debug("%s dst x:%d, y:%d, w:%d, h:%d\n", __func__,
+		 tcc_scrshare_info->dstinfo->x,
+		 tcc_scrshare_info->dstinfo->y,
+		 tcc_scrshare_info->dstinfo->width,
+		 tcc_scrshare_info->dstinfo->height);
+	if (tcc_scrshare_info->share_enable) {
+		if (overlay_file == NULL) {
 			overlay_file = filp_open(OVERLAY_DRIVER, O_RDWR, 0666);
-			if(overlay_file == NULL) {
-			        pr_err("[ERR][SCREEN SHARE] driver open fail (%s)\n", OVERLAY_DRIVER);
-			}
+			if (overlay_file == NULL)
+				pr_err("open fail (%s)\n", OVERLAY_DRIVER);
 		}
-		
+
 		buffer_cfg.src_addr = mssg->data[0];
 		buffer_cfg.frm_w = mssg->data[1];
 		buffer_cfg.frm_h = mssg->data[2];
@@ -148,45 +149,49 @@ static void tcc_scrshare_display(struct tcc_mbox_data *mssg)
 		buffer_cfg.dst_w = tcc_scrshare_info->dstinfo->width;
 		buffer_cfg.dst_h = tcc_scrshare_info->dstinfo->height;
 		buffer_cfg.layer = tcc_scrshare_info->dstinfo->img_num;
-		
-		ret = overlay_file->f_op->unlocked_ioctl(overlay_file, OVERLAY_PUSH_SHARED_BUFFER, (unsigned long)&buffer_cfg);
-		if(ret  < 0) {
-			pr_err("[ERR][SCREEN SHARE] OVERLAY_PUSH_SHARED_BUFFER\n");
-		}
+
+		ret = overlay_file->f_op->unlocked_ioctl(overlay_file,
+						 OVERLAY_PUSH_SHARED_BUFFER,
+						 (unsigned long)&buffer_cfg);
+		if (ret < 0)
+			pr_err("OVERLAY_PUSH_SHARED_BUFFER fail\n");
 	}
 }
 
-static void tcc_scrshare_send_message(struct tcc_scrshare_device *tcc_scrshare, struct tcc_mbox_data *mssg)
+static void tcc_scrshare_send_message(struct tcc_scrshare_device *tcc_scrshare,
+				      struct tcc_mbox_data *mssg)
 {
-	if(tcc_scrshare) {
+	if (tcc_scrshare) {
 		int ret;
+
 		ret = mbox_send_message(tcc_scrshare->mbox_ch, mssg);
 #if defined(CONFIG_ARCH_TCC805X)
-		if(ret < 0 )
-		{
-			pr_err("screen share mbox send error(%d)\n",ret);
-		}
+		if (ret < 0)
+			pr_err("screen share mbox send error(%d)\n", ret);
 #else
 		mbox_client_txdone(tcc_scrshare->mbox_ch, ret);
 #endif
 	}
 }
 
-static void tcc_scrshare_cmd_handler(struct tcc_scrshare_device *tcc_scrshare, struct tcc_mbox_data *data)
+static void tcc_scrshare_cmd_handler(struct tcc_scrshare_device *tcc_scrshare,
+				     struct tcc_mbox_data *data)
 {
-	if(data && tcc_scrshare) {
+	if (data && tcc_scrshare) {
 
 		unsigned int cmd = ((data->cmd[1] >> 16) & 0xFFFF);
 
-		if(data->cmd[0]) {
-			if(atomic_read(&tcc_scrshare->rx.seq) > data->cmd[0]) {
-				pr_err("[ERR][SCREEN SHARE] %s: already processed command(%d,%d)\n",
-						__func__, atomic_read(&tcc_scrshare->rx.seq), data->cmd[1]);
+		if (data->cmd[0]) {
+			if (atomic_read(&tcc_scrshare->rx.seq) > data->cmd[0]) {
+				pr_err("%s: already processed command(%d,%d)\n",
+				       __func__,
+				       atomic_read(&tcc_scrshare->rx.seq),
+				       data->cmd[1]);
 				return;
 			}
 		}
 
-		switch(cmd) {
+		switch (cmd) {
 		case SCRSHARE_CMD_GET_DSTINFO:
 			tcc_scrshare_get_dstinfo(data);
 			break;
@@ -203,77 +208,82 @@ static void tcc_scrshare_cmd_handler(struct tcc_scrshare_device *tcc_scrshare, s
 		case SCRSHARE_CMD_NULL:
 		case SCRSHARE_CMD_MAX:
 		default:
-			pr_warn("[WAR][SCREEN SHARE] warning in %s: Invalid command(%d) \n", __func__, cmd);
+			pr_warn("warning in %s: Invalid command(%d)\n",
+				__func__, cmd);
 			goto end_handler;
 		}
 
 		/* Update rx-sequence ID */
-		if(data->cmd[0]) {
+		if (data->cmd[0]) {
 			data->cmd[1] |= TCC_SCRSHARE_ACK;
 			tcc_scrshare_send_message(tcc_scrshare, data);
 			atomic_set(&tcc_scrshare->rx.seq, data->cmd[0]);
-			pr_debug("[DBG][SCREEN SHARE] %s rx&cmd[0]:0x%x, cmd[1]:0x%x\n", __func__, data->cmd[0], data->cmd[1]);
+			pr_debug("%s rx&cmd[0]:0x%x, cmd[1]:0x%x\n", __func__,
+				 data->cmd[0], data->cmd[1]);
 		}
 	}
 end_handler:
 	return;
 }
 
-
 static void tcc_scrshare_receive_message(struct mbox_client *client, void *mssg)
 {
 	struct tcc_mbox_data *msg = (struct tcc_mbox_data *)mssg;
-	struct tcc_scrshare_device *tcc_scrshare = container_of(client, struct tcc_scrshare_device, cl);
-	unsigned int command  = ((msg->cmd[1] >> 16) & 0xFFFF);
+	struct tcc_scrshare_device *tcc_scrshare =
+	    container_of(client, struct tcc_scrshare_device, cl);
+	unsigned int command = ((msg->cmd[1] >> 16) & 0xFFFF);
 
-	switch(command) {
+	switch (command) {
 	case SCRSHARE_CMD_GET_DSTINFO:
 	case SCRSHARE_CMD_SET_SRCINFO:
 	case SCRSHARE_CMD_ON:
 	case SCRSHARE_CMD_OFF:
-		if(atomic_read(&tcc_scrshare->status) == SCRSHARE_STS_READY)
-		{
-			if(msg->cmd[1] & TCC_SCRSHARE_ACK) {
-				if(command == SCRSHARE_CMD_GET_DSTINFO)
-				{
-					pr_debug("[DBG][SCREEN SHARE] %s msg x:%d, y:%d, width:%d, height:%d\n", __func__, msg->data[0], msg->data[1], msg->data[2], msg->data[3]);
-					tcc_scrshare_info->dstinfo->x = msg->data[0];
-					tcc_scrshare_info->dstinfo->y = msg->data[1];
-					tcc_scrshare_info->dstinfo->width = msg->data[2];
-					tcc_scrshare_info->dstinfo->height = msg->data[3];
-					tcc_scrshare_info->dstinfo->img_num= msg->data[4];
-				}
-				else if(command == SCRSHARE_CMD_ON)
-				{
-					pr_info("[INF][SCREEN SHARE] %s SCRSHARE_CMD_ON ok\n", __func__);
+		if (atomic_read(&tcc_scrshare->status) == SCRSHARE_STS_READY) {
+			if (msg->cmd[1] & TCC_SCRSHARE_ACK) {
+				if (command == SCRSHARE_CMD_GET_DSTINFO) {
+					pr_debug("%s x:%d, y:%d, w:%d, h:%d\n",
+					     __func__, msg->data[0],
+					     msg->data[1], msg->data[2],
+					     msg->data[3]);
+					tcc_scrshare_info->dstinfo->x =
+					    msg->data[0];
+					tcc_scrshare_info->dstinfo->y =
+					    msg->data[1];
+					tcc_scrshare_info->dstinfo->width =
+					    msg->data[2];
+					tcc_scrshare_info->dstinfo->height =
+					    msg->data[3];
+					tcc_scrshare_info->dstinfo->img_num =
+					    msg->data[4];
+				} else if (command == SCRSHARE_CMD_ON) {
+					pr_info("%s SCRSHARE_CMD_ON ok\n",
+						__func__);
 					tcc_scrshare_info->share_enable = 1;
-				}
-				else if(command == SCRSHARE_CMD_OFF)
-				{
-					pr_info("[INF][SCREEN SHARE] %s SCRSHARE_CMD_OFF ok\n", __func__);
+				} else if (command == SCRSHARE_CMD_OFF) {
+					pr_info("%s SCRSHARE_CMD_OFF ok\n",
+						__func__);
 					tcc_scrshare_info->share_enable = 0;
 				}
-				
+
 				mbox_done = 1;
 				wake_up_interruptible(&mbox_waitq);
 				return;
 			}
-
 			mutex_lock(&tcc_scrshare->rx.lock);
 			tcc_scrshare_cmd_handler(tcc_scrshare, msg);
 			mutex_unlock(&tcc_scrshare->rx.lock);
 		}
 		break;
 	case SCRSHARE_CMD_READY:
-		if(atomic_read(&tcc_scrshare->status) == SCRSHARE_STS_READY) {
+		if (atomic_read(&tcc_scrshare->status) == SCRSHARE_STS_READY) {
 			tcc_scrshare_off();
 			atomic_set(&tcc_scrshare->status, SCRSHARE_STS_INIT);
-			atomic_set(&tcc_scrshare->rx.seq, 0);		
+			atomic_set(&tcc_scrshare->rx.seq, 0);
 		}
 
-		if(atomic_read(&tcc_scrshare->status) == SCRSHARE_STS_INIT) {
+		if (atomic_read(&tcc_scrshare->status) == SCRSHARE_STS_INIT) {
 			atomic_set(&tcc_scrshare->status, SCRSHARE_STS_READY);
-			if(!(msg->cmd[1] & TCC_SCRSHARE_ACK)) {
+			if (!(msg->cmd[1] & TCC_SCRSHARE_ACK)) {
 				msg->cmd[1] |= TCC_SCRSHARE_ACK;
 				tcc_scrshare_send_message(tcc_scrshare, msg);
 			}
@@ -282,62 +292,76 @@ static void tcc_scrshare_receive_message(struct mbox_client *client, void *mssg)
 	case SCRSHARE_CMD_NULL:
 	case SCRSHARE_CMD_MAX:
 	default:
-		pr_warn("[WAR][SCREEN SHARE] warning in %s: Invalid command(%d) \n", __func__, msg->cmd[1]);
+		pr_warn("%s :Invalid command(%d)\n", __func__, msg->cmd[1]);
 		break;
 	}
 }
 
-static long tcc_scrshare_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
+static long tcc_scrshare_ioctl(struct file *filp, unsigned int cmd,
+			       unsigned long arg)
 {
 	struct tcc_scrshare_device *tcc_scrshare = filp->private_data;
 	struct tcc_mbox_data data;
 	long ret = 0;
-	
-	if((cmd!=IOCTL_TCC_SCRSHARE_SET_DSTINFO) && (atomic_read(&tcc_scrshare->status) != SCRSHARE_STS_READY)) {
-		pr_err("[ERR][SCREEN SHARE] %s: Not ready to send message status:%d\n", __func__, atomic_read(&tcc_scrshare->status));
+
+	if (atomic_read(&tcc_scrshare->status) != SCRSHARE_STS_READY) {
+		pr_err("%s: Not ready to send message status:%d\n",
+			 __func__, atomic_read(&tcc_scrshare->status));
 		ret = -100;
 		return ret;
 	}
 
 	mutex_lock(&tcc_scrshare->tx.lock);
 
-	switch(cmd) {
-	case IOCTL_TCC_SCRSHARE_SET_DSTINFO: //set in a7s
-		ret =copy_from_user(tcc_scrshare_info->dstinfo, (void *)arg, sizeof(struct tcc_scrshare_dstinfo));
-		if(ret) {
-			pr_err("[ERR][SCREEN SHARE] %s: unable to copy the paramter(%ld) \n", __func__, ret);
+	switch (cmd) {
+	case IOCTL_TCC_SCRSHARE_SET_DSTINFO:	//set in a7s
+		ret =
+		    copy_from_user(tcc_scrshare_info->dstinfo, (void *)arg,
+				   sizeof(struct tcc_scrshare_dstinfo));
+		if (ret) {
+			pr_err("%s: unable to copy the paramter(%ld)\n",
+				__func__, ret);
 			goto err_ioctl;
 		}
-		pr_info("[INF][SCREEN SHARE] %s SET_DSTINFO x:%d, y:%d, w:%d, h:%d, img_num:%d\n", __func__, 
-			tcc_scrshare_info->dstinfo->x, tcc_scrshare_info->dstinfo->y, tcc_scrshare_info->dstinfo->width, tcc_scrshare_info->dstinfo->height, tcc_scrshare_info->dstinfo->img_num);
+		pr_info("%s SET_DSTINFO x:%d, y:%d, w:%d, h:%d, img_num:%d\n",
+			__func__, tcc_scrshare_info->dstinfo->x,
+			tcc_scrshare_info->dstinfo->y,
+			tcc_scrshare_info->dstinfo->width,
+			tcc_scrshare_info->dstinfo->height,
+			tcc_scrshare_info->dstinfo->img_num);
 		goto err_ioctl;
-		break;
 	case IOCTL_TCC_SCRSHARE_GET_DSTINFO:	//call in a53
 	case IOCTL_TCC_SCRSHARE_GET_DSTINFO_KERNEL:
 		memset(&data, 0x0, sizeof(struct tcc_mbox_data));
 		data.cmd[1] = (SCRSHARE_CMD_GET_DSTINFO & 0xFFFF) << 16;
 		break;
-	case IOCTL_TCC_SCRSHARE_SET_SRCINFO: //set in a53
-		ret =copy_from_user(tcc_scrshare_info->srcinfo, (void *)arg, sizeof(struct tcc_scrshare_srcinfo));
-		if(ret) {
-			pr_err("[ERR][SCREEN SHARE] %s: unable to copy the paramter(%ld) \n", __func__, ret);
+	case IOCTL_TCC_SCRSHARE_SET_SRCINFO:	//set in a53
+		ret =
+		    copy_from_user(tcc_scrshare_info->srcinfo, (void *)arg,
+				   sizeof(struct tcc_scrshare_srcinfo));
+		if (ret) {
+			pr_err("%s: unable to copy the paramter(%ld)\n",
+				__func__, ret);
 			goto err_ioctl;
 		}
-		pr_info("[INF][SCREEN SHARE] %s SET_SRCINFO x:%d, y:%d, w:%d, h:%d\n", __func__, tcc_scrshare_info->srcinfo->x, tcc_scrshare_info->srcinfo->y, tcc_scrshare_info->srcinfo->width, tcc_scrshare_info->srcinfo->height);
+		pr_info("%s SET_SRCINFO x:%d, y:%d, w:%d, h:%d\n",
+			__func__, tcc_scrshare_info->srcinfo->x,
+			tcc_scrshare_info->srcinfo->y,
+			tcc_scrshare_info->srcinfo->width,
+			tcc_scrshare_info->srcinfo->height);
 		goto err_ioctl;
-		break;
-	case IOCTL_TCC_SCRSHARE_ON: //set in a53
-	case IOCTL_TCC_SCRSHARE_ON_KERNEL: //set in a53
+	case IOCTL_TCC_SCRSHARE_ON:	//set in a53
+	case IOCTL_TCC_SCRSHARE_ON_KERNEL:	//set in a53
 		memset(&data, 0x0, sizeof(struct tcc_mbox_data));
-		data.cmd[1] = (SCRSHARE_CMD_ON& 0xFFFF) << 16;
+		data.cmd[1] = (SCRSHARE_CMD_ON & 0xFFFF) << 16;
 		break;
-	case IOCTL_TCC_SCRSHARE_OFF: //set in a53
-	case IOCTL_TCC_SCRSHARE_OFF_KERNEL: //set in a53
+	case IOCTL_TCC_SCRSHARE_OFF:	//set in a53
+	case IOCTL_TCC_SCRSHARE_OFF_KERNEL:	//set in a53
 		memset(&data, 0x0, sizeof(struct tcc_mbox_data));
-		data.cmd[1] = (SCRSHARE_CMD_OFF& 0xFFFF) << 16;
+		data.cmd[1] = (SCRSHARE_CMD_OFF & 0xFFFF) << 16;
 		break;
 	default:
-		pr_warn("[WAR][SCREEN SHARE] warning in %s: Invalid command (%d)\n", __func__, cmd);
+		pr_warn("%s: Invalid command (%d)\n", __func__, cmd);
 		ret = -EINVAL;
 		goto err_ioctl;
 	}
@@ -350,17 +374,23 @@ static long tcc_scrshare_ioctl(struct file *filp, unsigned int cmd, unsigned lon
 	mbox_done = 0;
 
 	tcc_scrshare_send_message(tcc_scrshare, &data);
-	ret = wait_event_interruptible_timeout(mbox_waitq, mbox_done == 1, msecs_to_jiffies(100));
-	if(ret <= 0)
-		pr_err("[ERR][SCREEN SHARE] %s: Timeout tcc_scrshare_send_message(%ld)(%d) \n", __func__, ret, mbox_done);
-	else
-	{
-		if(cmd == IOCTL_TCC_SCRSHARE_GET_DSTINFO) {
-			ret = copy_to_user((void *)arg, tcc_scrshare_info->dstinfo, sizeof(struct tcc_scrshare_dstinfo));
-			if(ret) {
-				pr_err("error in %s: copy to user fail (%ld) \n", __func__, ret);
+	ret =
+	    wait_event_interruptible_timeout(mbox_waitq, mbox_done == 1,
+					     msecs_to_jiffies(100));
+	if (ret <= 0)
+		pr_err("%s: Timeout send_message(%ld)(%d)\n",
+			__func__, ret, mbox_done);
+	else {
+		if (cmd == IOCTL_TCC_SCRSHARE_GET_DSTINFO) {
+			ret =
+			    copy_to_user((void *)arg,
+					 tcc_scrshare_info->dstinfo,
+					 sizeof(struct tcc_scrshare_dstinfo));
+			if (ret) {
+				pr_err("%s: copy to user fail (%ld)\n",
+				       __func__, ret);
 				goto err_ioctl;
-			}			
+			}
 		}
 	}
 	mbox_done = 0;
@@ -370,30 +400,33 @@ err_ioctl:
 	return ret;
 }
 
-
-void tcc_scrshare_set_sharedBuffer(unsigned int addr, unsigned int frameWidth, unsigned int frameHeight, unsigned int fmt)
+void tcc_scrshare_set_sharedBuffer(unsigned int addr, unsigned int frameWidth,
+				   unsigned int frameHeight, unsigned int fmt)
 {
-	if((tcc_scrshare_info==NULL) || (addr <= 0) || (frameWidth <= 0) || (frameHeight <= 0) || (fmt <= 0)) {
-		pr_err("[ERR][SCREEN SHARE] %s Invalid arguments entered addr:0x%08x, frm_w:%d, frm_h:%d, fmt:0x%x\n", __func__, addr, frameWidth, frameHeight, fmt);
+	if ((tcc_scrshare_info == NULL) || (addr <= 0) || (frameWidth <= 0)
+	    || (frameHeight <= 0) || (fmt <= 0)) {
+		pr_err("%s Invalid args addr:0x%08x, w:%d, h:%d, fmt:0x%x\n",
+			__func__, addr, frameWidth, frameHeight, fmt);
 		return;
 	}
 
-	if((tcc_scrshare_info->share_enable) && (tcc_scrshare_info->srcinfo->width > 0))
-	{
+	if ((tcc_scrshare_info->share_enable)
+	    && (tcc_scrshare_info->srcinfo->width > 0)) {
 		long ret = 0;
 		struct tcc_mbox_data data;
 		unsigned int base0, base1, base2;
 
-		pr_debug("[DBG][SCREEN SHARE] %s addr:0x%08x, frm_w:%d, frm_h:%d, fmt:0x%x\n", __func__, addr, frameWidth, frameHeight, fmt);
+		pr_debug("%s addr:0x%08x, w:%d, h:%d, fmt:0x%x\n",
+			__func__, addr, frameWidth, frameHeight, fmt);
 		tccxxx_GetAddress(fmt, addr, frameWidth, frameHeight,
-								tcc_scrshare_info->srcinfo->x, tcc_scrshare_info->srcinfo->y, &base0, &base1, &base2);
-		
+			tcc_scrshare_info->srcinfo->x,
+			tcc_scrshare_info->srcinfo->y, &base0, &base1, &base2);
+
 		tcc_scrshare_info->src_addr = base0;
-		tcc_scrshare_info->frm_w= frameWidth;
+		tcc_scrshare_info->frm_w = frameWidth;
 		tcc_scrshare_info->frm_h = frameHeight;
 		tcc_scrshare_info->fmt = fmt;
-		
-		
+
 		mutex_lock(&tcc_scrshare_device->tx.lock);
 		memset(&data, 0x0, sizeof(struct tcc_mbox_data));
 		data.cmd[1] = (SCRSHARE_CMD_SET_SRCINFO & 0xFFFF) << 16;
@@ -411,11 +444,15 @@ void tcc_scrshare_set_sharedBuffer(unsigned int addr, unsigned int frameWidth, u
 		mbox_done = 0;
 
 		tcc_scrshare_send_message(tcc_scrshare_device, &data);
-		ret = wait_event_interruptible_timeout(mbox_waitq, mbox_done == 1, msecs_to_jiffies(100));
-		if(ret <= 0)
-			pr_err("[ERR][SCREEN SHARE] %s: Timeout tcc_scrshare_send_message(%ld)(%d).  A7S seems to have some problem. Try screen share on / off again\n", __func__, ret, mbox_done);
+		ret =
+		    wait_event_interruptible_timeout(mbox_waitq, mbox_done == 1,
+						     msecs_to_jiffies(100));
+		if (ret <= 0)
+			pr_err("%s: Timeout send_message(%ld)(%d)\n",
+				 __func__, ret, mbox_done);
+			pr_err("A7S seems to have some problem\n");
 		mbox_done = 0;
-		mutex_unlock(&tcc_scrshare_device->tx.lock);		
+		mutex_unlock(&tcc_scrshare_device->tx.lock);
 	}
 
 }
@@ -428,24 +465,26 @@ static int tcc_scrshare_release(struct inode *inode, struct file *filp)
 
 static int tcc_scrshare_open(struct inode *inode, struct file *filp)
 {
-	struct tcc_scrshare_device *tcc_scrshare = container_of(inode->i_cdev, struct tcc_scrshare_device, cdev);
-	if(!tcc_scrshare)
+	struct tcc_scrshare_device *tcc_scrshare =
+	    container_of(inode->i_cdev, struct tcc_scrshare_device, cdev);
+	if (!tcc_scrshare)
 		return -ENODEV;
 
 	filp->private_data = tcc_scrshare;
 
-    return 0;
+	return 0;
 }
 
-struct file_operations tcc_scrshare_fops =
-{
-    .owner    = THIS_MODULE,
-    .open     = tcc_scrshare_open,
-    .release  = tcc_scrshare_release,
-    .unlocked_ioctl = tcc_scrshare_ioctl,
+const struct file_operations tcc_scrshare_fops = {
+	.owner = THIS_MODULE,
+	.open = tcc_scrshare_open,
+	.release = tcc_scrshare_release,
+	.unlocked_ioctl = tcc_scrshare_ioctl,
 };
 
-static struct mbox_chan *tcc_scrshare_request_channel(struct tcc_scrshare_device *tcc_scrshare, const char *name)
+static struct mbox_chan *tcc_scrshare_request_channel(struct tcc_scrshare_device
+						      *tcc_scrshare,
+						      const char *name)
 {
 	struct mbox_chan *channel;
 
@@ -457,12 +496,13 @@ static struct mbox_chan *tcc_scrshare_request_channel(struct tcc_scrshare_device
 	tcc_scrshare->cl.tx_tout = 500;
 #else
 	tcc_scrshare->cl.tx_block = false;
-	tcc_scrshare->cl.tx_tout = 0; /*  doesn't matter here*/
+	tcc_scrshare->cl.tx_tout = 0;	/*  doesn't matter here */
 #endif
 	tcc_scrshare->cl.knows_txdone = false;
 	channel = mbox_request_channel_byname(&tcc_scrshare->cl, name);
-	if(IS_ERR(channel)) {
-		pr_err("[ERR][SCREEN SHARE] %s: Fail mbox_request_channel_byname(%s) \n", __func__, name);
+	if (IS_ERR(channel)) {
+		pr_err("%s: Fail mbox_request_channel_byname(%s)\n",
+			 __func__, name);
 		return NULL;
 	}
 
@@ -473,13 +513,16 @@ static int tcc_scrshare_rx_init(struct tcc_scrshare_device *tcc_scrshare)
 {
 	struct tcc_mbox_data data;
 	int ret = 0;
+
 	mutex_init(&tcc_scrshare->rx.lock);
 	atomic_set(&tcc_scrshare->rx.seq, 0);
 
-	tcc_scrshare->mbox_ch = tcc_scrshare_request_channel(tcc_scrshare, tcc_scrshare->mbox_name);
-	if(IS_ERR(tcc_scrshare->mbox_ch)) {
+	tcc_scrshare->mbox_ch =
+	    tcc_scrshare_request_channel(tcc_scrshare, tcc_scrshare->mbox_name);
+	if (IS_ERR(tcc_scrshare->mbox_ch)) {
 		ret = PTR_ERR(tcc_scrshare->mbox_ch);
-		pr_err("[ERR][SCREEN SHARE] %s: Fail tcc_scrshare_request_channel (%d)\n", __func__, ret);
+		pr_err("%s: Fail tcc_scrshare_request_channel(%d)\n",
+			 __func__, ret);
 		goto err_rx_init;
 	}
 
@@ -507,44 +550,49 @@ static int tcc_scrshare_probe(struct platform_device *pdev)
 	struct tcc_scrshare_device *tcc_scrshare;
 	struct tcc_scrshare_info *tcc_scrshare_disp_info;
 
-	tcc_scrshare = devm_kzalloc(&pdev->dev, sizeof(struct tcc_scrshare_device), GFP_KERNEL);
-	if(!tcc_scrshare)
+	tcc_scrshare =
+	    devm_kzalloc(&pdev->dev, sizeof(struct tcc_scrshare_device),
+			 GFP_KERNEL);
+	if (!tcc_scrshare)
 		return -ENOMEM;
 	platform_set_drvdata(pdev, tcc_scrshare);
 
-	of_property_read_string(pdev->dev.of_node, "device-name", &tcc_scrshare->name);
-	of_property_read_string(pdev->dev.of_node, "mbox-names", &tcc_scrshare->mbox_name);
+	of_property_read_string(pdev->dev.of_node, "device-name",
+				&tcc_scrshare->name);
+	of_property_read_string(pdev->dev.of_node, "mbox-names",
+				&tcc_scrshare->mbox_name);
 #if defined(CONFIG_ARCH_TCC805X)
-	of_property_read_string(pdev->dev.of_node, "mbox-id", &tcc_scrshare->mbox_id);
+	of_property_read_string(pdev->dev.of_node, "mbox-id",
+				&tcc_scrshare->mbox_id);
 #endif
-
 	ret = alloc_chrdev_region(&tcc_scrshare->devt, TCC_SCRSHARE_DEV_MINOR,
-			1, tcc_scrshare->name);
-	if(ret) {
-		pr_err("[ERR][SCREEN SHARE] %s: Fail alloc_chrdev_region(%d) \n", __func__, ret);
+				  1, tcc_scrshare->name);
+	if (ret) {
+		pr_err("%s: Fail alloc_chrdev_region(%d)\n", __func__, ret);
 		return ret;
 	}
 
 	cdev_init(&tcc_scrshare->cdev, &tcc_scrshare_fops);
 	tcc_scrshare->cdev.owner = THIS_MODULE;
 	ret = cdev_add(&tcc_scrshare->cdev, tcc_scrshare->devt, 1);
-	if(ret) {
-		pr_err("[ERR][SCREEN SHARE] %s: Fail cdev_add(%d) \n", __func__, ret);
+	if (ret) {
+		pr_err("%s: Fail cdev_add(%d)\n", __func__, ret);
 		return ret;
 	}
 
 	tcc_scrshare->class = class_create(THIS_MODULE, tcc_scrshare->name);
-	if(IS_ERR(tcc_scrshare->class)) {
+	if (IS_ERR(tcc_scrshare->class)) {
 		ret = PTR_ERR(tcc_scrshare->class);
-		pr_err("[ERR][SCREEN SHARE] %s: Fail class_create(%d) \n", __func__, ret);
+		pr_err("%s: Fail class_create(%d)\n", __func__, ret);
 		return ret;
 	}
 
 	tcc_scrshare->dev = device_create(tcc_scrshare->class, &pdev->dev,
-			tcc_scrshare->devt, NULL, tcc_scrshare->name);
-	if(IS_ERR(tcc_scrshare->dev)) {
+					  tcc_scrshare->devt, NULL,
+					  tcc_scrshare->name);
+	if (IS_ERR(tcc_scrshare->dev)) {
 		ret = PTR_ERR(tcc_scrshare->dev);
-		pr_err("[ERR][SCREEN SHARE] %s: Fail device_create(%d) \n", __func__, ret);
+		pr_err(" %s: Fail device_create(%d)\n", __func__, ret);
 		return ret;
 	}
 
@@ -553,39 +601,40 @@ static int tcc_scrshare_probe(struct platform_device *pdev)
 	atomic_set(&tcc_scrshare->status, SCRSHARE_STS_INIT);
 
 	tcc_scrshare_tx_init(tcc_scrshare);
-	if(tcc_scrshare_rx_init(tcc_scrshare)) {
-		pr_err("[ERR][SCREEN SHARE] %s: Fail tcc_scrshare_rx_init \n", __func__);
+	if (tcc_scrshare_rx_init(tcc_scrshare)) {
+		pr_err(" %s: Fail tcc_scrshare_rx_init\n", __func__);
 		return -EFAULT;
 	}
 
 	tcc_scrshare_device = tcc_scrshare;
 
-	tcc_scrshare_disp_info = kzalloc(sizeof(struct tcc_scrshare_info), GFP_KERNEL);
-	if(!tcc_scrshare_disp_info)
+	tcc_scrshare_disp_info =
+	    kzalloc(sizeof(struct tcc_scrshare_info), GFP_KERNEL);
+	if (!tcc_scrshare_disp_info)
 		return -ENOMEM;
-	tcc_scrshare_disp_info->srcinfo = kzalloc(sizeof(struct tcc_scrshare_srcinfo), GFP_KERNEL);
-	if(!tcc_scrshare_disp_info->srcinfo)
+	tcc_scrshare_disp_info->srcinfo =
+	    kzalloc(sizeof(struct tcc_scrshare_srcinfo), GFP_KERNEL);
+	if (!tcc_scrshare_disp_info->srcinfo)
 		goto err_scrshare_mem;
 
-	tcc_scrshare_disp_info->dstinfo = kzalloc(sizeof(struct tcc_scrshare_dstinfo), GFP_KERNEL);
-	if(!tcc_scrshare_disp_info->dstinfo)
+	tcc_scrshare_disp_info->dstinfo =
+	    kzalloc(sizeof(struct tcc_scrshare_dstinfo), GFP_KERNEL);
+	if (!tcc_scrshare_disp_info->dstinfo)
 		goto err_scrshare_mem;
-	
-	tcc_scrshare_disp_info->dstinfo->x= 640;
+
+	tcc_scrshare_disp_info->dstinfo->x = 640;
 	tcc_scrshare_disp_info->dstinfo->y = 0;
 	tcc_scrshare_disp_info->dstinfo->width = 640;
 	tcc_scrshare_disp_info->dstinfo->height = 720;
 	tcc_scrshare_disp_info->dstinfo->img_num = 1;
 	tcc_scrshare_info = tcc_scrshare_disp_info;
 
-	pr_info("[INF][SCREEN SHARE] %s:%s Driver Initialized\n", __func__, tcc_scrshare->name);
+	pr_info(" %s:%s Driver Initialized\n", __func__, tcc_scrshare->name);
 	return 0;
 err_scrshare_mem:
-	if(tcc_scrshare_disp_info->srcinfo)
-		kfree(tcc_scrshare_disp_info->srcinfo);
-	if(tcc_scrshare_disp_info)
-		kfree(tcc_scrshare_disp_info);
-	pr_err("[ERR][SCREEN SHARE] err_scrshare_mem. \n");
+	kfree(tcc_scrshare_disp_info->srcinfo);
+	kfree(tcc_scrshare_disp_info);
+	pr_err(" err_scrshare_mem.\n");
 
 	return ret;
 }
@@ -593,13 +642,11 @@ err_scrshare_mem:
 static int tcc_scrshare_remove(struct platform_device *pdev)
 {
 	struct tcc_scrshare_device *tcc_scrshare = platform_get_drvdata(pdev);
-	if(tcc_scrshare_info->dstinfo)
-		kfree(tcc_scrshare_info->dstinfo);
-	if(tcc_scrshare_info->srcinfo)
-		kfree(tcc_scrshare_info->srcinfo);
-	if(tcc_scrshare_info)
-		kfree(tcc_scrshare_info);
-	
+
+	kfree(tcc_scrshare_info->dstinfo);
+	kfree(tcc_scrshare_info->srcinfo);
+	kfree(tcc_scrshare_info);
+
 	device_destroy(tcc_scrshare->class, tcc_scrshare->devt);
 	class_destroy(tcc_scrshare->class);
 	cdev_del(&tcc_scrshare->cdev);
@@ -608,56 +655,60 @@ static int tcc_scrshare_remove(struct platform_device *pdev)
 }
 
 #ifdef CONFIG_PM
-static int tcc_scrshare_suspend(struct platform_device *pdev, pm_message_t state)
+static int tcc_scrshare_suspend(struct platform_device *pdev,
+				 pm_message_t state)
 {
-    int ret = 0;
+	int ret = 0;
+
 	struct tcc_scrshare_device *tcc_scrshare = platform_get_drvdata(pdev);
 
-    /* unregister mailbox client */
-    if(tcc_scrshare->mbox_ch != NULL)
-    {
-    	mbox_free_channel(tcc_scrshare->mbox_ch);
-        tcc_scrshare->mbox_ch = NULL;
+	/* unregister mailbox client */
+	if (tcc_scrshare->mbox_ch != NULL) {
+		mbox_free_channel(tcc_scrshare->mbox_ch);
+		tcc_scrshare->mbox_ch = NULL;
 	}
 
-    return ret;
+	return ret;
 }
 
 static int tcc_scrshare_resume(struct platform_device *pdev)
 {
 	int ret = 0;
+
 	struct tcc_scrshare_device *tcc_scrshare = platform_get_drvdata(pdev);
 
-    /* register mailbox client */
-    tcc_scrshare->mbox_ch = tcc_scrshare_request_channel(tcc_scrshare, tcc_scrshare->mbox_name);
+	/* register mailbox client */
+	tcc_scrshare->mbox_ch =
+	 tcc_scrshare_request_channel(tcc_scrshare, tcc_scrshare->mbox_name);
 
-    if(IS_ERR(tcc_scrshare->mbox_ch)) {
-    	ret = PTR_ERR(tcc_scrshare->mbox_ch);
-        pr_err("[ERR][SCREEN SHARE] %s: Fail tcc_scrshare_request_channel (%d)\n", __func__, ret);
-    }
+	if (IS_ERR(tcc_scrshare->mbox_ch)) {
+		ret = PTR_ERR(tcc_scrshare->mbox_ch);
+		pr_err("%s: Fail request_channel (%d)\n", __func__, ret);
+	}
 
-    return ret;
+	return ret;
 }
 #endif
 
 #ifdef CONFIG_OF
 static const struct of_device_id tcc_scrshare_of_match[] = {
-	{.compatible = "telechips,tcc_scrshare", },
-	{ },
+	{.compatible = "telechips,tcc_scrshare",},
+	{},
 };
+
 MODULE_DEVICE_TABLE(of, tcc_scrshare_ctrl_of_match);
 #endif
 
 static struct platform_driver tcc_scrshare = {
-	.probe	= tcc_scrshare_probe,
-	.remove	= tcc_scrshare_remove,
-	.driver	= {
-		.name	= "tcc_scrshare",
-		.owner	= THIS_MODULE,
+	.probe = tcc_scrshare_probe,
+	.remove = tcc_scrshare_remove,
+	.driver = {
+		   .name = "tcc_scrshare",
+		   .owner = THIS_MODULE,
 #ifdef CONFIG_OF
-		.of_match_table = tcc_scrshare_of_match,
+		   .of_match_table = tcc_scrshare_of_match,
 #endif
-	},
+		   },
 #ifdef CONFIG_PM
 	.suspend = tcc_scrshare_suspend,
 	.resume = tcc_scrshare_resume,
@@ -678,7 +729,6 @@ module_init(tcc_scrshare_init);
 module_exit(tcc_scrshare_exit);
 
 MODULE_AUTHOR("Telechips Inc.");
-MODULE_DESCRIPTION("Telechips Screen Share Driver");
+MODULE_DESCRIPTION("Telechips SCREEN_SHARE Driver");
 MODULE_LICENSE("GPL");
-
 
