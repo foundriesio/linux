@@ -4083,7 +4083,6 @@ static int kbase_platform_device_probe(struct platform_device *pdev)
 	const struct list_head *dev_list;
 	int err = 0;
 
-	dev_info("MALI-G51 : %s\n", MALI_RELEASE_NAME); // TCC
 	kbdev = kbase_device_alloc();
 	if (!kbdev) {
 		dev_err(&pdev->dev, "Allocate device failed\n");
@@ -4094,6 +4093,7 @@ static int kbase_platform_device_probe(struct platform_device *pdev)
 	kbdev->dev = &pdev->dev;
 	dev_set_drvdata(kbdev->dev, kbdev);
 
+	dev_info(kbdev->dev, "MALI-G51 : %s\n", MALI_RELEASE_NAME); // TCC
 #ifdef CONFIG_MALI_NO_MALI
 	err = gpu_device_create(kbdev);
 	if (err) {
