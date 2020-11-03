@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2018-2020, Telechips Inc.
+ * Copyright (c) Telechips Inc.
  * Copyright (c) 2015-2016, Linaro Limited
  */
 #include <linux/device.h>
@@ -13,16 +13,15 @@
 #include "tee_private.h"
 
 #ifdef CONFIG_ARCH_TCC
-#include <linux/version.h>
 #include <linux/module.h>
 #endif
 
 /* extra references appended to shm object for registered shared memory */
 struct tee_shm_dmabuf_ref {
-     struct tee_shm shm;
-     struct dma_buf *dmabuf;
-     struct dma_buf_attachment *attach;
-     struct sg_table *sgt;
+	struct tee_shm shm;
+	struct dma_buf *dmabuf;
+	struct dma_buf_attachment *attach;
+	struct sg_table *sgt;
 };
 
 static void tee_shm_release(struct tee_shm *shm)
@@ -97,13 +96,6 @@ static void tee_shm_op_release(struct dma_buf *dmabuf)
 	tee_shm_release(shm);
 }
 
-#ifdef CONFIG_ARCH_TCC
-static void *tee_shm_op_map_atomic(struct dma_buf *dmabuf, unsigned long pgnum)
-{
-	return NULL;
-}
-#endif
-
 static void *tee_shm_op_map(struct dma_buf *dmabuf, unsigned long pgnum)
 {
 	return NULL;
@@ -126,13 +118,7 @@ static const struct dma_buf_ops tee_shm_dma_buf_ops = {
 	.map_dma_buf = tee_shm_op_map_dma_buf,
 	.unmap_dma_buf = tee_shm_op_unmap_dma_buf,
 	.release = tee_shm_op_release,
-#if LINUX_VERSION_CODE <= KERNEL_VERSION(4,11,12)
-	.kmap_atomic = tee_shm_op_map_atomic,
-	.kmap = tee_shm_op_map,
-#else
-	.map_atomic = tee_shm_op_map_atomic,
 	.map = tee_shm_op_map,
-#endif
 	.mmap = tee_shm_op_mmap,
 };
 
@@ -143,8 +129,8 @@ static const struct dma_buf_ops tee_shm_dma_buf_ops = {
  * @size:	Requested size of shared memory
  * @flags:	Flags setting properties for the requested shared memory.
  */
-struct tee_shm *tee_shm_sdp_register(struct tee_context *ctx, unsigned long addr,
-				     size_t size, u32 flags)
+struct tee_shm *tee_shm_sdp_register(
+	struct tee_context *ctx, unsigned long addr, size_t size, u32 flags)
 {
 	struct tee_device *teedev = ctx->teedev;
 	struct tee_shm *shm;
@@ -342,8 +328,8 @@ struct tee_shm *tee_shm_priv_alloc(struct tee_device *teedev, size_t size)
 EXPORT_SYMBOL_GPL(tee_shm_priv_alloc);
 
 #ifdef CONFIG_ARCH_TCC
-struct tee_shm *tee_shm_register_for_kern(struct tee_context *ctx, unsigned long addr,
-										  size_t length, u32 flags)
+struct tee_shm *tee_shm_register_for_kern(
+	struct tee_context *ctx, unsigned long addr, size_t length, u32 flags)
 {
 	struct tee_device *teedev = ctx->teedev;
 	struct tee_shm *shm;
@@ -371,7 +357,6 @@ struct tee_shm *tee_shm_register_for_kern(struct tee_context *ctx, unsigned long
 
 	shm = kzalloc(sizeof(*shm), GFP_KERNEL);
 	if (!shm) {
-		dev_err(teedev->dev.parent, "allocate failed");
 		ret = ERR_PTR(-ENOMEM);
 		goto err;
 	}
@@ -392,9 +377,10 @@ struct tee_shm *tee_shm_register_for_kern(struct tee_context *ctx, unsigned long
 	}
 
 	for (i = 0; i < num_pages; i++) {
-		if (is_vmalloc_addr(start + offset) ||
+		if (is_vmalloc_addr((void *)start + offset) ||
 			is_module_address(start + offset)) {
-			shm->pages[i] = vmalloc_to_page(start + offset);
+			shm->pages[i] =
+				vmalloc_to_page((void *)start + offset);
 		} else if (virt_addr_valid(start + offset)) {
 			shm->pages[i] = virt_to_page(start + offset);
 		} else {
@@ -710,7 +696,7 @@ int tee_shm_va2pa(struct tee_shm *shm, void *va, phys_addr_t *pa)
 		return -EINVAL;
 
 	return tee_shm_get_pa(
-			shm, (unsigned long)va - (unsigned long)shm->kaddr, pa);
+		shm, (unsigned long)va - (unsigned long)shm->kaddr, pa);
 }
 EXPORT_SYMBOL_GPL(tee_shm_va2pa);
 

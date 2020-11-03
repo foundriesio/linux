@@ -123,7 +123,7 @@ struct esm_device {
 	bool			initialized;
 
 #ifdef CONFIG_OPTEE
-	tee_client_context	context;
+	struct tee_client_context *context;
 	struct tee_client_params *tee_params;
 #endif
 	struct delayed_work	avmute_work;

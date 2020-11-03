@@ -608,11 +608,13 @@ struct tee_client_driver {
  *
  * @returns a pointer to 'struct tee_shm'
  */
-struct tee_shm *tee_shm_sdp_register(struct tee_context *ctx, unsigned long addr,
-                                     size_t size, u32 flags);
+struct tee_shm *tee_shm_sdp_register(struct tee_context *ctx,
+				     unsigned long addr,
+				     size_t size, u32 flags);
 
 /**
- * tee_shm_register_for_kern() - Register shared memory buffer of kernel memory area
+ * tee_shm_register_for_kern()
+ * - Register shared memory buffer of kernel memory area
  * @ctx:	Context that registers the shared memory
  * @addr:	Address is kernel space (kmalloc only) of the shared buffer
  * @length:	Length of the shared buffer
@@ -620,20 +622,20 @@ struct tee_shm *tee_shm_sdp_register(struct tee_context *ctx, unsigned long addr
  *
  * @returns a pointer to 'struct tee_shm'
  */
-struct tee_shm *tee_shm_register_for_kern(struct tee_context *ctx, unsigned long addr,
-										  size_t length, u32 flags);
+struct tee_shm *tee_shm_register_for_kern(struct tee_context *ctx,
+	unsigned long addr, size_t length, u32 flags);
 
 struct tee_client_uuid {
-    uint32_t time_low;
-    uint16_t time_mid;
-    uint16_t time_hi_and_version;
-    uint8_t clock_seq_and_node[8];
+	uint32_t time_low;
+	uint16_t time_mid;
+	uint16_t time_hi_and_version;
+	uint8_t clock_seq_and_node[8];
 };
 
 struct tee_client_context {
-    struct tee_context *ctx;
-    uint32_t session;
-    bool session_initalized;
+	struct tee_context *ctx;
+	uint32_t session;
+	bool session_initalized;
 };
 
 #define TEE_CLIENT_PARAM_NONE            0
@@ -650,26 +652,25 @@ struct tee_client_context {
 #define TEE_CLIENT_PARAM_NUM             4
 
 struct tee_client_param {
-    struct {
-        void * buffer;
-        long size;
-    } tee_client_memref;
-    struct {
-        long a;
-        long b;
-    } tee_client_value;
+	struct {
+		void *buffer;
+		long size;
+	} tee_client_memref;
+	struct {
+		long a;
+		long b;
+	} tee_client_value;
 
-    long type;
+	long type;
 };
 
 struct tee_client_params {
-    struct tee_client_param params[TEE_CLIENT_PARAM_NUM];
+	struct tee_client_param params[TEE_CLIENT_PARAM_NUM];
 };
 
-typedef struct tee_client_context *tee_client_context;
-
 /**
- * tee_client_open_ta() - Initialize context and Open a session to a Trusted Application
+ * tee_client_open_ta()
+ * - Initialize context and Open a session to a Trusted Application
  * @uuid: uuid of Trusted Application
  * @params: Parameters (buffer or value) to be passed to the Trusted Application
  * @context: TEE related context to be filled out
@@ -677,8 +678,8 @@ typedef struct tee_client_context *tee_client_context;
  * Returns < 0 on error
  */
 int tee_client_open_ta(struct tee_client_uuid *uuid,
-                       struct tee_client_params *params,
-                       tee_client_context *context);
+			struct tee_client_params *params,
+			struct tee_client_context **context);
 
 /**
  * tee_client_execute_command() - Invoke a functions in a Trusted Application
@@ -688,15 +689,15 @@ int tee_client_open_ta(struct tee_client_uuid *uuid,
  *
  * Returns < 0 on error
  */
-int tee_client_execute_command(tee_client_context context,
-                               struct tee_client_params *params,
-                               int command);
+int tee_client_execute_command(struct tee_client_context *context,
+				struct tee_client_params *params,
+				int command);
 /**
  * tee_client_close_ta() - Close a Trusted Application
  * @context: TEE related context from tee_client_open()
  *
  */
-void tee_client_close_ta(tee_client_context context);
+void tee_client_close_ta(struct tee_client_context *context);
 
 /**
  * Allocate Dynamic Secure Media Path Area.
@@ -717,6 +718,6 @@ int tee_free_dynanic_smp(int id, uint32_t base, uint32_t size);
  *
  */
 struct tee_shm *tee_client_shm_sdp_register(struct tee_context *ctx,
-                                            unsigned long addr, size_t size);
+					unsigned long addr, size_t size);
 
 #endif /*__TEE_DRV_H*/

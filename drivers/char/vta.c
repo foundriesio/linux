@@ -79,7 +79,7 @@ struct vta_data_t {
 	struct platform_device *pdev;
 	struct task_struct *vta_thread;
 	unsigned long vta_time;
-	tee_client_context context;
+	struct tee_client_context *context;
 	unsigned long cmd;
 };
 struct vta_data_t *vta_data;
@@ -218,9 +218,9 @@ static unsigned int vta_get_display_output(void)
 	return output;
 }
 
-static __u32 vta_send_command(tee_client_context context,
-								struct tee_client_params *params,
-								int command)
+static __u32 vta_send_command(struct tee_client_context *context,
+				struct tee_client_params *params,
+				int command)
 {
 	__u32 tee_result;
 	DBG("\n");

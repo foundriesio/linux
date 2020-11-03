@@ -11,7 +11,7 @@
 #define cmdk(msg...) //printk("SMP_DRIVER [Cmd]: " msg);
 #define err(msg...) printk("SMP_DRIVER [Err]: "msg);
 
-static tee_client_context context = NULL;
+static struct tee_client_context *context = NULL;
 static int vpu_tee_client_count = 0;
 
 int vpu_optee_open(void)
@@ -89,7 +89,7 @@ int vpu_optee_close(void)
 	return 0;
 }
 
-static tee_client_context jpu_context = NULL;
+static struct tee_client_context *jpu_context = NULL;
 static int jpu_tee_client_count = 0;
 int jpu_optee_open(void)
 {
