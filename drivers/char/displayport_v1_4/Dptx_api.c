@@ -107,9 +107,11 @@ static int dpv14_api_attach_drm( u8 ucDP_Index )
 
 	if( pstDptx_drm_context->sttcc_drm_dp_callbacks.attach == NULL )
 	{
-		dptx_err("Port %d callback is not registered", ucDP_Index );
+		dptx_err("DP %d attach callback is not registered", ucDP_Index );
 		return ( -ENOMEM );
 	}
+
+	dptx_info("Calling attach() with DP %d to DRM", ucDP_Index);
 
 	pstDrm_encoder = pstDptx_drm_context->pstDrm_encoder;
 	pstDptx_drm_context->sttcc_drm_dp_callbacks.attach( pstDrm_encoder, (int)ucDP_Index, (int)0 );
@@ -130,9 +132,11 @@ static int dpv14_api_detach_drm( u8 ucDP_Index )
 
 	if( pstDptx_drm_context->sttcc_drm_dp_callbacks.detach == NULL )
 	{
-		dptx_err("Port %d callback is not registered", ucDP_Index );
+		dptx_err("DP %d detach callback is not registered", ucDP_Index );
 		return ( -ENOMEM );
 	}
+
+	dptx_info("Calling dettach() with DP %d to DRM", ucDP_Index);
 
 	pstDrm_encoder = pstDptx_drm_context->pstDrm_encoder;
 	pstDptx_drm_context->sttcc_drm_dp_callbacks.detach( pstDrm_encoder, (int)ucDP_Index, (int)0 );
@@ -226,7 +230,7 @@ int dpv14_api_get_hpd_state( int dp_id, unsigned char *hpd_state )
 	Dptx_Intr_Get_HotPlug_Status( pstHandle, &bHPD_State );
 	if( bHPD_State == (bool)HPD_STATUS_UNPLUGGED )
 	{
-		dptx_info("DP %d is not attached", dp_id);
+		dptx_info("DP %d is not plugged", dp_id);
 
 		*hpd_state = (unsigned char)0;
 		return ( 0 );
@@ -234,12 +238,12 @@ int dpv14_api_get_hpd_state( int dp_id, unsigned char *hpd_state )
 
 	if( (u8)dp_id >= pstHandle->ucNumOfPorts )
 	{
-		dptx_info("DP %d is not attached", dp_id);
+		dptx_info("DP %d is not plugged", dp_id);
 		*hpd_state = (unsigned char)0;
 	}
 	else
 	{
-		dptx_info("DP %d is attached", dp_id);
+		dptx_info("DP %d is plugged", dp_id);
 		*hpd_state = (unsigned char)1;
 	}
 	
@@ -274,7 +278,7 @@ int dpv14_api_get_edid( int dp_id, unsigned char *edid, int buf_length )
 	if( pucEDID_Buf == NULL )
 	{
 		dptx_err("DP %d EDID buffer is not available", dp_id );
-		
+
 		memset( edid, 0, buf_length );
 		return ( -ENODEV );
 	}
@@ -282,6 +286,8 @@ int dpv14_api_get_edid( int dp_id, unsigned char *edid, int buf_length )
 	bRetVal = Dptx_Edid_Verify_BaseBlk_Data( pucEDID_Buf );
 	if( bRetVal == DPTX_API_RETURN_FAIL )
 	{
+		dptx_err("DP %d EDID data is not valid", dp_id );
+
 		memset( edid, 0, buf_length );
 		return ( -ENODEV );
 	}
@@ -301,11 +307,10 @@ int dpv14_api_get_edid( int dp_id, unsigned char *edid, int buf_length )
 int dpv14_api_set_video_timing( int dp_id, struct dptx_detailed_timing_t *dptx_detailed_timing )
 {
 	bool					bRetVal;
-	bool					bHPDStatus, bMST_Supported;
+	bool					bMST_Supported;
 	u8						ucNumOfPorts;
 	struct Dptx_Params 	*pstHandle;
 	struct Dptx_Dtd_Params	stDtd_Params;
-	struct Dptx_Video_Params	*pstVideoParams;
 
 	if(( dp_id >= PHY_INPUT_STREAM_MAX ) || ( dp_id < PHY_INPUT_STREAM_0 ))
 	{
@@ -325,18 +330,6 @@ int dpv14_api_set_video_timing( int dp_id, struct dptx_detailed_timing_t *dptx_d
 		dptx_err("Failed to get handle" );
 		return ( -ENODEV );
 	}
-
-	bRetVal = Dptx_Intr_Get_HotPlug_Status( pstHandle, &bHPDStatus );
-	if( bRetVal == DPTX_API_RETURN_FAIL )
-	{
-		return ( -ENODEV );
-	}
-	if( bHPDStatus == (bool)HPD_STATUS_UNPLUGGED ) 
-	{
-		return ( -ENODEV );
-	}
-
-	pstVideoParams = &pstHandle->stVideoParams;
 
 	stDtd_Params.pixel_repetition_input = (u16)dptx_detailed_timing->pixel_repetition_input;
 	stDtd_Params.interlaced			= dptx_detailed_timing->interlaced;
@@ -396,7 +389,6 @@ int dpv14_api_set_video_timing( int dp_id, struct dptx_detailed_timing_t *dptx_d
 int dpv14_api_set_video_stream_enable( int dp_id, unsigned char enable )
 {
 	bool				bRetVal;
-	bool				bHPDStatus;
 	struct Dptx_Params 	*pstHandle;
 
 	if(( dp_id >= PHY_INPUT_STREAM_MAX ) || ( dp_id < PHY_INPUT_STREAM_0 ))
@@ -412,7 +404,7 @@ int dpv14_api_set_video_stream_enable( int dp_id, unsigned char enable )
 		return ( -ENODEV );
 	}
 
-	dptx_info("Set video %s...",  enable ? "enable":"disable" );
+	dptx_info("Set DP %d video %s...", dp_id, enable ? "enable":"disable" );
 
 	bRetVal = Dptx_Avgen_Set_Video_Stream_Enable( pstHandle, (bool)enable, (u8)dp_id );
 	if( bRetVal == DPTX_API_RETURN_FAIL ) 
@@ -426,7 +418,6 @@ int dpv14_api_set_video_stream_enable( int dp_id, unsigned char enable )
 int dpv14_api_set_audio_stream_enable( int dp_id, unsigned char enable )
 {
 	bool				bRetVal;
-	bool				bHPDStatus;
 	struct Dptx_Params 	*pstHandle;
 
 	if(( dp_id >= PHY_INPUT_STREAM_MAX ) || ( dp_id < PHY_INPUT_STREAM_0 ))
@@ -442,16 +433,7 @@ int dpv14_api_set_audio_stream_enable( int dp_id, unsigned char enable )
 		return ( -ENODEV );
 	}
 
-	bRetVal = Dptx_Intr_Get_HotPlug_Status( pstHandle, &bHPDStatus );
-	if( bRetVal == DPTX_API_RETURN_FAIL )
-	{
-		return ( -ENODEV );
-	}
-	if( bHPDStatus == (bool)HPD_STATUS_UNPLUGGED ) 
-	{
-		dptx_err("HPD is unplugged" );
-		return ( -ENODEV );
-	}
+	dptx_info("Set DP %d audio %s...",	enable ? "enable":"disable" );
 
 	Dptx_Avgen_Set_Audio_Stream_Enable( pstHandle, (u8)dp_id, (bool)enable );
 	
