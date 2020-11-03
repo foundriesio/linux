@@ -317,6 +317,15 @@ struct ceph_pool_perm {
 	char pool_ns[];
 };
 
+struct ceph_snapid_map {
+	struct rb_node node;
+	struct list_head lru;
+	atomic_t ref;
+	u64 snap;
+	dev_t dev;
+	unsigned long last_used;
+};
+
 /*
  * node for list of quotarealm inodes that are not visible from the filesystem
  * mountpoint, but required to handle, e.g. quotas.
@@ -409,6 +418,10 @@ struct ceph_mds_client {
 	spinlock_t	  dentry_lru_lock;
 	struct list_head  dentry_lru;
 	int		  num_dentry;
+
+	spinlock_t		snapid_map_lock;
+	struct rb_root		snapid_map_tree;
+	struct list_head	snapid_map_lru;
 
 	struct rw_semaphore     pool_perm_rwsem;
 	struct rb_root		pool_perm_tree;

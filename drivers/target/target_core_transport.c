@@ -3161,13 +3161,6 @@ static const struct sense_info sense_info_table[] = {
 	},
 };
 
-static void transport_err_sense_info(unsigned char *buffer, u32 info)
-{
-	buffer[SPC_INFO_VALIDITY_OFFSET] |= 0x80;
-	/* Sense Information */
-	put_unaligned_be32(info, &buffer[3]);
-}
-
 static int translate_sense_reason(struct se_cmd *cmd, sense_reason_t reason)
 {
 	const struct sense_info *si;
@@ -3201,7 +3194,9 @@ static int translate_sense_reason(struct se_cmd *cmd, sense_reason_t reason)
 						  cmd->bad_sector);
 
 	if (si->add_sense_info)
-		transport_err_sense_info(buffer, cmd->sense_info);
+		scsi_set_sense_information(buffer,
+					   cmd->scsi_sense_length,
+					   cmd->sense_info);
 
 	return 0;
 }
