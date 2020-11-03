@@ -201,7 +201,7 @@ void tcc_crtc_handle_event(struct tcc_drm_crtc *tcc_crtc)
 	}
 
 	if (event == NULL) {
-		pr_info("[INFO][%s] %s event is NULL\r\n",
+		pr_debug("[DEBUG][%s] %s event is NULL\r\n",
 					LOG_TAG, __func__);
 		return;
 	}
@@ -649,7 +649,9 @@ int tcc_crtc_edid_checksum(struct edid *base_edid)
 	for(i=0;i<EDID_LENGTH-1;i++){
 		csum += data[i];
 	}
-	printk(KERN_INFO "[DEBUG][%d][%s] Sum of EDID is %2x, Checksum is %2x\n",  __FUNCTION__, csum, 0xFF-csum+1);
+	pr_debug(
+		"[DEBUG][%s] %s Sum of EDID is %2x, Checksum is %2x\n",
+				LOG_TAG, __func__, csum, 0xFF-csum+1);
 
 	base_edid->checksum = 0xFF-csum+1;
 	return 0;
@@ -662,20 +664,35 @@ int tcc_crtc_parse_edid_ioctl(struct drm_device *dev, void *data, struct drm_fil
 	struct drm_crtc *crtc;
 	struct drm_crtc_state *crtc_state;
 	struct drm_tcc_edid * args = (void __user *)data;
+	int ret;
 
-	int i =0;
+	if(!dev) {
+		ret = -EINVAL;
+		goto err_out;
+	}
+	if(!dev->dev) {
+		ret = -EINVAL;
+		goto err_out;
+	}
 
-	pr_info("[DEBUG][%d][%s] Ioctl called \n", __FUNCTION__);
+	dev_info(dev->dev, "[INFO][%s] %s Ioctl called \n",
+						LOG_TAG, __func__);
 
 	memset(base_edid, 0, sizeof(base_edid));
 	/* get crtc */
 	crtc = drm_crtc_find(dev, args->crtc_id);
 	if(!crtc){
-		pr_err("[ERR][DRMCRTC] %s Invalid crtc ID \r\n",  __func__);
-		return -ENOENT;
+		dev_err(
+			dev->dev,
+			"[ERR][DRMCRTC] %sInvalid crtc ID \r\n",  __func__);
+		ret = -EINVAL;
+		goto err_out;
 	}
 	crtc_state = crtc->state;
-	pr_info("[DEBUG][%d][%s] crtc_id : [%d]\n", __FUNCTION__, args->crtc_id);
+	dev_info(
+		dev->dev,
+		"[INFO][%s] %s crtc_id : [%d]\n",
+			LOG_TAG, __func__, args->crtc_id);
 
 	// fill edid with base info
 	tcc_crtc_fill_base_edid(base_edid);
@@ -687,6 +704,8 @@ int tcc_crtc_parse_edid_ioctl(struct drm_device *dev, void *data, struct drm_fil
 	memcpy(args->data, base_edid, sizeof(base_edid));
 
 	return 0;
+err_out:
+	return ret;
 }
 
 int tcc_drm_crtc_set_display_timing(struct drm_crtc *crtc,

@@ -2593,6 +2593,12 @@ int drm_fb_helper_hotplug_event(struct drm_fb_helper *fb_helper)
 	}
 
 	if (!fb_helper->fb || !drm_fb_helper_is_bound(fb_helper)) {
+		if(fb_helper->dev && fb_helper->dev->dev)
+			dev_warn(
+				fb_helper->dev->dev,
+				"[WARN][DRMFB] %s drm is bound\r\n", __func__);
+		else
+			pr_warn("[WARN][DRMFB] %s drm is bound\r\n", __func__);
 		fb_helper->delayed_hotplug = true;
 		mutex_unlock(&fb_helper->lock);
 		return err;
