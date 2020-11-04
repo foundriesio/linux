@@ -81,22 +81,12 @@ static inline unsigned long get_boot_timestamp_num(void)
 	return res.a0;
 }
 
-static inline u32 validate_boot_timestamp_num(u32 nr_actual)
+static inline void validate_boot_timestamp_num(u32 num)
 {
-	if (nr_actual != NR_BOOT_STAGES) {
-		pr_err("[ERROR][bootstage] Number of stages does not match. (actual: %u, expected: %u)\n",
-		       nr_actual, NR_BOOT_STAGES);
-
-		if (nr_actual > NR_BOOT_STAGES) {
-			/*
-			 * Bootstage description array will be over-accessed,
-			 * if actual number of stages are larger than expected.
-			 */
-			nr_actual = NR_BOOT_STAGES;
-		}
+	if (num != NR_BOOT_STAGES) {
+		pr_warn("[WARN][bootstage] Number of stages does not match. (actual: %u, expected: %u)\n",
+			num, NR_BOOT_STAGES);
 	}
-
-	return nr_actual;
 }
 
 static inline const char *u32_to_str_in_format(u32 num)
@@ -131,31 +121,38 @@ static int bootstage_report_show(struct seq_file *m, void *v)
 	 * CAUTION. This function is **NOT THREAD SAFE** !!!
 	 */
 
-	u32 i, num, stamp, prev = 0;
-	const char *stamp_s;
+	u32 n, num, nr_actual = 0;
+	u32 stamp, prev = 0;
+	const char *stamp_fmt, *desc;
 
 	num = get_boot_timestamp_num();
-	num = validate_boot_timestamp_num(num);
+	validate_boot_timestamp_num(num);
 
 	seq_printf(m, "Timer summary in microseconds (%u records):\n", num);
 
 	seq_printf(m, "%11s%11s  %s\n", "Mark", "Elapsed", "Stage");
 	seq_printf(m, "%11u%11u  %s\n", 0U, 0U, "reset");
 
-	for (i = 0; i < num; i++) {
-		stamp = get_boot_timestamp(i);
+	for (n = 0; n < num; n++) {
+		desc = n < NR_BOOT_STAGES ? bootstage_desc[n] : "-";
+		stamp = get_boot_timestamp(n);
 
 		if (stamp != 0) {
-			stamp_s = u32_to_str_in_format(stamp);
-			seq_printf(m, "%11s", stamp_s);
+			stamp_fmt = u32_to_str_in_format(stamp);
+			seq_printf(m, "%11s", stamp_fmt);
 
-			stamp_s = u32_to_str_in_format(stamp - prev);
-			seq_printf(m, "%11s", stamp_s);
+			stamp_fmt = u32_to_str_in_format(stamp - prev);
+			seq_printf(m, "%11s", stamp_fmt);
 
 			prev = stamp;
-			seq_printf(m, "  %s\n", bootstage_desc[i]);
+			seq_printf(m, "  %s\n", desc);
+
+			++nr_actual;
 		}
 	}
+
+	seq_printf(m, "\n%u stages out of %u stages were proceeded. (%u stages skipped)\n",
+		   nr_actual, num, num - nr_actual);
 
 	return 0;
 }
@@ -178,19 +175,26 @@ static int bootstage_data_show(struct seq_file *m, void *v)
 	 * CAUTION. This function is **NOT THREAD SAFE** !!!
 	 */
 
-	u32 i, num, stamp, prev = 0;
+	u32 n, num;
+	u32 stamp, prev = 0;
+	const char *desc;
 
 	num = get_boot_timestamp_num();
-	num = validate_boot_timestamp_num(num);
+	validate_boot_timestamp_num(num);
 
-	for (i = 0; i < num; i++) {
-		stamp = get_boot_timestamp(i);
-		seq_printf(m, "%s,%u\n", bootstage_desc[i], stamp - prev);
+	seq_printf(m, "reset,0\n");
 
-		if (stamp != 0) {
-			/* Do not calculate with the skipped stages */
-			prev = stamp;
+	for (n = 0; n < num; n++) {
+		desc = n < NR_BOOT_STAGES ? bootstage_desc[n] : "-";
+		stamp = get_boot_timestamp(n);
+
+		if (stamp == 0) {
+			seq_printf(m, "%s,0\n", bootstage_desc[n]);
+			continue;
 		}
+
+		seq_printf(m, "%s,%u\n", bootstage_desc[n], stamp - prev);
+		prev = stamp;
 	}
 
 	return 0;
@@ -233,6 +237,7 @@ static struct proc_dir_entry *bootstage_procfs_init(void)
 	/* Create `/proc/bootstage` procfs directory */
 	pdir = proc_mkdir("bootstage", NULL);
 	if (pdir == NULL) {
+		/* Nothing to do, just return */
 		goto procfs_dir_init_error;
 	}
 
