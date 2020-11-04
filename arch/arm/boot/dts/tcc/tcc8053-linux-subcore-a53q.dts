@@ -1349,9 +1349,10 @@
 		reg = 	<0x1bc80000 0x10000>,	/* ISP base */
 			<0x1bc90000 0x10000>;	/* ISP memory */
 		reg-names = "isp_base", "mem_base";
-
+/* for isp mcu debugging
 		pinctrl-names = "default";
 		pinctrl-0 = <&isp0_uart_tx &isp0_uart_rx>;
+*/
 	};
 
 	isp1: isp1@1bca0000 {
@@ -1361,8 +1362,10 @@
 			<0x1bcb0000 0x10000>;	/* ISP memory */
 		reg-names = "isp_base", "mem_base";
 
+/* for isp mcu debugging
 		pinctrl-names = "default";
 		pinctrl-0 = <&isp1_uart_tx &isp1_uart_rx>;
+*/
 	};
 
 	isp2: isp2@1bcc0000 {
@@ -1372,8 +1375,10 @@
 			<0x1bcd0000 0x10000>;	/* ISP memory */
 		reg-names = "isp_base", "mem_base";
 
+/* for isp mcu debugging
 		pinctrl-names = "default";
 		pinctrl-0 = <&isp2_uart_tx &isp2_uart_rx>;
+*/
 	};
 
 	isp3: isp3@1bce0000 {
@@ -1383,8 +1388,10 @@
 			<0x1bcf0000 0x10000>;	/* ISP memory */
 		reg-names = "isp_base", "mem_base";
 
+/* for isp mcu debugging
 		pinctrl-names = "default";
 		pinctrl-0 = <&isp3_uart_tx &isp3_uart_rx>;
+*/
 	};
 #endif
 	fbdisplay: fbdisplay@12000000 {
