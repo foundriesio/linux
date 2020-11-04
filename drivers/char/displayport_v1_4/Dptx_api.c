@@ -12,11 +12,9 @@
 #include "Dptx_reg.h"
 #include "Dptx_dbg.h"
 #include "Dptx_drm_dp_addition.h"
-#include "dptx_drm.h"
 
-#if defined( CONFIG_DRM_TCC )
+#if defined(CONFIG_DRM_TCC)
 #include <tcc_drm_dpi.h>
-
 //#define ENABLE_DRM_INTRFACE_TEST
 
 #if defined( ENABLE_DRM_INTRFACE_TEST )
