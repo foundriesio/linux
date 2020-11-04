@@ -182,8 +182,11 @@ static void tcc_pm_fw_event_listener(struct mbox_client *client, void *message)
 
 	ret = kobject_uevent_env(&(client->dev->kobj), KOBJ_CHANGE, envp);
 
-	if (ret != 0)
+	if (ret != 0) {
 		tcc_pm_fw_dev_err(client->dev, "set uevent env", ret);
+	} else {
+		tcc_pm_fw_dev_info(client->dev, "PM_EVENT env updated.");
+	}
 }
 
 static struct mbox_chan *tcc_pm_fw_mbox_init(struct device *dev,
