@@ -18,7 +18,9 @@
 struct tcc_drm_dp_callback_funcs {
 	int (*attach)(struct drm_encoder *encoder, int dp_id, int flags );
 	int (*detach)(struct drm_encoder *encoder, int dp_id, int flags );
-	int (*register_helper_funcs)(struct drm_encoder *encoder, struct dptx_drm_helper_funcs *dptx_ops);
+	int (*register_helper_funcs)(
+		struct drm_encoder *encoder,
+		struct dptx_drm_helper_funcs *dptx_ops);
 };
 #endif
 #endif
