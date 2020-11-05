@@ -28,21 +28,21 @@
 #if defined(CONFIG_ARCH_TCC803X)
 
 enum tcc_pinconf_param {
-        TCC_PINCONF_PARAM_DRIVE_STRENGTH,
-        TCC_PINCONF_PARAM_NO_PULL,
-        TCC_PINCONF_PARAM_PULL_UP,
-        TCC_PINCONF_PARAM_PULL_DOWN,
-        TCC_PINCONF_PARAM_INPUT_ENABLE,
-        TCC_PINCONF_PARAM_OUTPUT_LOW,
-        TCC_PINCONF_PARAM_OUTPUT_HIGH,
-        TCC_PINCONF_PARAM_INPUT_BUFFER_ENABLE,
-        TCC_PINCONF_PARAM_INPUT_BUFFER_DISABLE,
-        TCC_PINCONF_PARAM_SCHMITT_INPUT,
-        TCC_PINCONF_PARAM_CMOS_INPUT,
-        TCC_PINCONF_PARAM_SLOW_SLEW,
-        TCC_PINCONF_PARAM_FAST_SLEW,
-        TCC_PINCONF_PARAM_ECLK_SEL,
-        TCC_PINCONF_PARAM_FUNC,
+	TCC_PINCONF_PARAM_DRIVE_STRENGTH,
+	TCC_PINCONF_PARAM_NO_PULL,
+	TCC_PINCONF_PARAM_PULL_UP,
+	TCC_PINCONF_PARAM_PULL_DOWN,
+	TCC_PINCONF_PARAM_INPUT_ENABLE,
+	TCC_PINCONF_PARAM_OUTPUT_LOW,
+	TCC_PINCONF_PARAM_OUTPUT_HIGH,
+	TCC_PINCONF_PARAM_INPUT_BUFFER_ENABLE,
+	TCC_PINCONF_PARAM_INPUT_BUFFER_DISABLE,
+	TCC_PINCONF_PARAM_SCHMITT_INPUT,
+	TCC_PINCONF_PARAM_CMOS_INPUT,
+	TCC_PINCONF_PARAM_SLOW_SLEW,
+	TCC_PINCONF_PARAM_FAST_SLEW,
+	TCC_PINCONF_PARAM_ECLK_SEL,
+	TCC_PINCONF_PARAM_FUNC,
 };
 #elif defined(CONFIG_ARCH_TCC802X)
 
@@ -163,20 +163,20 @@ struct tcc_pinmux_function {
 
 struct tcc_pin_group {
 	const char *name;
-	const unsigned int *pins;
-	unsigned int npins;
-	unsigned int func;
+	const u32 *pins;
+	u32 npins;
+	u32 func;
 };
 
 struct tcc_pinctrl;
 
 struct tcc_pin_bank {
 	char *name;
-	unsigned int base;
-	unsigned int pin_base;
-	unsigned int npins;
+	u32 base;
+	u32 pin_base;
+	u32 npins;
 
-	unsigned int reg_base;
+	u32 reg_base;
 
 	struct gpio_chip gpio_chip;
 	struct pinctrl_gpio_range gpio_range;
@@ -198,16 +198,16 @@ struct tcc_pin_bank {
  * @pinconf_set: configure a pin
  */
 struct tcc_pinctrl_ops {
-	int (*gpio_get)(void __iomem *base, unsigned offset);
-	void (*gpio_set)(void __iomem *base, unsigned offset, int value);
-	int (*gpio_set_direction)(void __iomem *base, unsigned offset,
+	int (*gpio_get)(void __iomem *base, u32 offset);
+	void (*gpio_set)(void __iomem *base, u32 offset, int value);
+	int (*gpio_set_direction)(void __iomem *base, u32 offset,
 				  int input);
-	int (*gpio_set_function)(void __iomem *base, unsigned offset,
+	int (*gpio_set_function)(void __iomem *base, u32 offset,
 				 int func);
-	int (*pinconf_get)(void __iomem *base, unsigned offset, int param);
-	int (*pinconf_set)(void __iomem *base, unsigned offset,
+	int (*pinconf_get)(void __iomem *base, u32 offset, int param);
+	int (*pinconf_set)(void __iomem *base, u32 offset,
 			   int param, int config);
-	int (*to_irq)(void __iomem *base, unsigned offset);
+	int (*to_irq)(void __iomem *base, u32 offset);
 };
 
 struct tcc_pinconf {
@@ -216,14 +216,14 @@ struct tcc_pinconf {
 };
 
 struct tcc_pinctrl_ext_irq {
-	unsigned int	size;
+	u32	size;
 	void		*data;
 };
 
 struct extintr_match_ {
-	unsigned used;
-	void __iomem* port_base;
-	unsigned port_num;
+	u32 used;
+	void __iomem *port_base;
+	u32 port_num;
 	int irq;
 };
 
@@ -236,12 +236,13 @@ struct tcc_pinctrl_soc_data {
 };
 
 int tcc_pinctrl_probe(struct platform_device *pdev,
-		      struct tcc_pinctrl_soc_data *soc_data, void __iomem *base, void __iomem *pmgpio_base);
+		      struct tcc_pinctrl_soc_data *soc_data,
+			  void __iomem *base, void __iomem *pmgpio_base);
 
-unsigned int tcc_irq_get_reverse(unsigned int irq);
-bool tcc_is_exti(unsigned int irq);
+u32 tcc_irq_get_reverse(u32 irq);
+bool tcc_is_exti(u32 irq);
 
-unsigned tcc_pinconf_pack(unsigned param, unsigned value);
-unsigned tcc_pinconf_unpack_param(unsigned config);
-unsigned tcc_pinconf_unpack_value(unsigned config);
+u32 tcc_pinconf_pack(u32 param, u32 value);
+u32 tcc_pinconf_unpack_param(u32 config);
+u32 tcc_pinconf_unpack_value(u32 config);
 #endif
