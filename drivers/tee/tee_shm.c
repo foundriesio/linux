@@ -96,6 +96,14 @@ static void tee_shm_op_release(struct dma_buf *dmabuf)
 	tee_shm_release(shm);
 }
 
+#ifdef CONFIG_ARCH_TCC
+static void *tee_shm_op_map_atomic(struct dma_buf *dmabuf,
+				   unsigned long pgnum)
+{
+	return NULL;
+}
+#endif
+
 static void *tee_shm_op_map(struct dma_buf *dmabuf, unsigned long pgnum)
 {
 	return NULL;
@@ -118,6 +126,9 @@ static const struct dma_buf_ops tee_shm_dma_buf_ops = {
 	.map_dma_buf = tee_shm_op_map_dma_buf,
 	.unmap_dma_buf = tee_shm_op_unmap_dma_buf,
 	.release = tee_shm_op_release,
+#ifdef CONFIG_ARCH_TCC
+	.map_atomic = tee_shm_op_map_atomic,
+#endif
 	.map = tee_shm_op_map,
 	.mmap = tee_shm_op_mmap,
 };
