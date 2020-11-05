@@ -21,30 +21,28 @@
 #include <linux/platform_device.h>
 #include <linux/slab.h>
 
-
 #include "pcie-designware.h"
-
 
 #define to_tcc_pcie(x)	dev_get_drvdata((x)->dev)
 
 struct tcc_pcie {
-	struct dw_pcie	*pci;
-	void __iomem		*phy_base;
-	void __iomem		*cfg_base;
-	int			reset_gpio;
-	int			ep_pwr_gpio;
-	struct clk		*clk_aux;
-	struct clk		*clk_apb;
-	struct clk		*clk_pcs;
-	struct clk		*clk_ref_ext;
-	struct clk		*clk_hsio;
-	struct clk		*clk_phy;
-	struct reset_control	*rst;
-	bool				using_phy;
-	unsigned int		using_ext_ref_clk;
-	unsigned int		for_si_test;
-	struct phy		*phy;
-	unsigned 		*suspend_regs;
+	struct dw_pcie *pci;
+	void __iomem *phy_base;
+	void __iomem *cfg_base;
+	int reset_gpio;
+	int ep_pwr_gpio;
+	struct clk *clk_aux;
+	struct clk *clk_apb;
+	struct clk *clk_pcs;
+	struct clk *clk_ref_ext;
+	struct clk *clk_hsio;
+	struct clk *clk_phy;
+	struct reset_control *rst;
+	bool using_phy;
+	unsigned int using_ext_ref_clk;
+	unsigned int for_si_test;
+	struct phy *phy;
+	unsigned int *suspend_regs;
 };
 
 #define TCC_PCIE_REG_BACKUP_SIZE	0x90
@@ -121,10 +119,9 @@ struct tcc_pcie {
 #define PCIE_PHY_TRSVRST		0x108
 
 #define LINK_INTR_EN_MASK              0xFFFFD080
-#define LINK_INTR_EN_VAL               0xFFFFD080      /* disable [13]INT_DISABLE */
+#define LINK_INTR_EN_VAL               0xFFFFD080/* disable [13]INT_DISABLE */
 #define PCIE_CFG_MSI_INT_MASK          (1<<31|1<<30|1<<29|1<<21|1<<5|1<<0)
 #define PCIE_CFG_INTX_MASK		(0xF<<12|0xF<<8)
-
 
 static inline void tcc_phy_writel(struct tcc_pcie *pcie, u32 val, u32 reg)
 {
@@ -136,9 +133,11 @@ static inline u32 tcc_phy_readl(struct tcc_pcie *pcie, u32 reg)
 	return readl(pcie->phy_base + reg);
 }
 
-static inline void tcc_cfg_write(struct tcc_pcie *pcie, u32 val, u32 reg, u32 mask)
+static inline void tcc_cfg_write(struct tcc_pcie *pcie, u32 val, u32 reg,
+				 u32 mask)
 {
-	writel((readl(pcie->cfg_base + reg) & ~mask)|val, pcie->cfg_base + reg);
+	writel((readl(pcie->cfg_base + reg) & ~mask) | val,
+	       pcie->cfg_base + reg);
 }
 
 static inline u32 tcc_cfg_read(struct tcc_pcie *pcie, u32 reg, u32 mask)
@@ -158,12 +157,18 @@ static void tcc_pcie_assert_phy_reset(struct tcc_pcie *tp)
 
 static void tcc_pcie_deassert_phy_reset(struct tcc_pcie *tp)
 {
-	tcc_cfg_write(tp, PCIE_CFG44_PHY_GLOBAL_RST, PCIE_CFG44, PCIE_CFG44_PHY_GLOBAL_RST);
-	tcc_cfg_write(tp, PCIE_CFG44_CFG_PERST, PCIE_CFG44, PCIE_CFG44_CFG_PERST);
-	tcc_cfg_write(tp, PCIE_CFG44_PHY_CMN_RST, PCIE_CFG44, PCIE_CFG44_PHY_CMN_RST);
-	tcc_cfg_write(tp, PCIE_CFG44_PHY_CMN_REG_RST, PCIE_CFG44, PCIE_CFG44_PHY_CMN_REG_RST);
-	tcc_cfg_write(tp, PCIE_CFG44_PHY_TRSV_REG_RST, PCIE_CFG44, PCIE_CFG44_PHY_TRSV_REG_RST);
-	tcc_cfg_write(tp, PCIE_CFG44_PHY_TRSV_RST, PCIE_CFG44, PCIE_CFG44_PHY_TRSV_RST);
+	tcc_cfg_write(tp, PCIE_CFG44_PHY_GLOBAL_RST, PCIE_CFG44,
+		      PCIE_CFG44_PHY_GLOBAL_RST);
+	tcc_cfg_write(tp, PCIE_CFG44_CFG_PERST, PCIE_CFG44,
+		      PCIE_CFG44_CFG_PERST);
+	tcc_cfg_write(tp, PCIE_CFG44_PHY_CMN_RST, PCIE_CFG44,
+		      PCIE_CFG44_PHY_CMN_RST);
+	tcc_cfg_write(tp, PCIE_CFG44_PHY_CMN_REG_RST, PCIE_CFG44,
+		      PCIE_CFG44_PHY_CMN_REG_RST);
+	tcc_cfg_write(tp, PCIE_CFG44_PHY_TRSV_REG_RST, PCIE_CFG44,
+		      PCIE_CFG44_PHY_TRSV_REG_RST);
+	tcc_cfg_write(tp, PCIE_CFG44_PHY_TRSV_RST, PCIE_CFG44,
+		      PCIE_CFG44_PHY_TRSV_RST);
 }
 
 static void tcc_pcie_power_on_phy(struct tcc_pcie *tp)
@@ -173,51 +178,42 @@ static void tcc_pcie_power_on_phy(struct tcc_pcie *tp)
 
 static void tcc_pcie_power_off_phy(struct tcc_pcie *tp, int pwdn)
 {
-	u32 val;
-
 	if (!pwdn)
 		return;
 
-	//tcc_pcie_assert_phy_reset(tp);
-	tcc_cfg_write(tp, PCIE_CFG08_PHY_POWER_OFF, PCIE_CFG08, PCIE_CFG08_PHY_POWER_OFF);
+	tcc_cfg_write(tp, PCIE_CFG08_PHY_POWER_OFF, PCIE_CFG08,
+		      PCIE_CFG08_PHY_POWER_OFF);
 }
-
 
 static void tcc_pcie_init_phy(struct tcc_pcie *tp)
 {
 	int i;
 
-	while(tcc_cfg_read(tp, PCIE_CFG08, 1<<1) == 0); // PLL Lock check
-	while(tcc_cfg_read(tp, PCIE_CFG08, 1<<0) == 0); // CDR Lock check
+	while (tcc_cfg_read(tp, PCIE_CFG08, 1 << 1) == 0)
+		;	// PLL Lock check
+	while (tcc_cfg_read(tp, PCIE_CFG08, 1 << 0) == 0)
+		;	// CDR Lock check
 
-	tcc_cfg_write(tp, 1<<4, PCIE_CFG43, 1<<4);
+	tcc_cfg_write(tp, 1 << 4, PCIE_CFG43, 1 << 4);
 	udelay(100);
 
-
-	while(tcc_cfg_read(tp, PCIE_CFG08, 1<<16) != 0) 
-	{
+	while (tcc_cfg_read(tp, PCIE_CFG08, 1 << 16) != 0)
 		;
-	}
-
 	i = 0;
-	while(tcc_cfg_read(tp, PCIE_CFG29, 1<<21) == 1) 
-	{
+	while (tcc_cfg_read(tp, PCIE_CFG29, 1 << 21) == 1)
 		;
-	}
-	
 }
 
 static void tcc_pcie_assert_reset(struct tcc_pcie *tp)
 {
 	struct dw_pcie *pci = tp->pci;
-	
+
 	if (tp->reset_gpio >= 0) {
 		devm_gpio_request_one(pci->dev, tp->reset_gpio,
-				GPIOF_OUT_INIT_LOW, "RESET");
+				      GPIOF_OUT_INIT_LOW, "RESET");
 		mdelay(1);
 		gpio_direction_output(tp->reset_gpio, 1);
 	}
-	return;
 }
 
 static int tcc_pcie_establish_link(struct tcc_pcie *tp)
@@ -227,26 +223,35 @@ static int tcc_pcie_establish_link(struct tcc_pcie *tp)
 	int count = 0;
 
 	/* EP power control, example : wifi_reg_on */
-	if(tp->ep_pwr_gpio >= 0){
-               devm_gpio_request_one(pci->dev, tp->ep_pwr_gpio, GPIOF_OUT_INIT_LOW, "EP_PWR");
-               mdelay(1);
-               gpio_direction_output(tp->ep_pwr_gpio, 1);
+	if (tp->ep_pwr_gpio >= 0) {
+		devm_gpio_request_one(pci->dev, tp->ep_pwr_gpio,
+				      GPIOF_OUT_INIT_LOW, "EP_PWR");
+		mdelay(1);
+		gpio_direction_output(tp->ep_pwr_gpio, 1);
 	}
 
-
-	if(tp->using_ext_ref_clk){
-		tcc_cfg_write(tp, 0<<8, PCIE_CFG08, 1<<8);
-		/* Enable bit for PHY reference clock from CKC (1: Propagates clock from CKC to PHY) */
-		tcc_cfg_write(tp, 1<<7, PCIE_CFG08, 1<<7);
-		/* Select reference clock source to PHY (1:CKC(PCLKCTRL15), 0:Oscillator) */
-		tcc_cfg_write(tp, 0<<6, PCIE_CFG08, 1<<6);
-	}
-	else{
-	      tcc_cfg_write(tp, 1<<8, PCIE_CFG08, 1<<8);
-	      /* Enable bit for PHY reference clock from CKC (1: Propagates clock from CKC to PHY) */
-	      tcc_cfg_write(tp, 1<<7, PCIE_CFG08, 1<<7);
-	      /* Select reference clock source to PHY (1:CKC(PCLKCTRL15), 0:Oscillator) */
-	      tcc_cfg_write(tp, 1<<6, PCIE_CFG08, 1<<6);
+	if (tp->using_ext_ref_clk) {
+		tcc_cfg_write(tp, 0 << 8, PCIE_CFG08, 1 << 8)
+			;/* Enable bit for PHY reference clock from CKC
+			  *(1: Propagates clock from CKC to PHY)
+			  */
+		tcc_cfg_write(tp, 1 << 7, PCIE_CFG08, 1 << 7)
+			;/* Select reference clock source to PHY
+			  *(1:CKC(PCLKCTRL15), 0:Oscillator)
+			  */
+		tcc_cfg_write(tp, 0 << 6, PCIE_CFG08, 1 << 6)
+			;
+	} else {
+		tcc_cfg_write(tp, 1 << 8, PCIE_CFG08, 1 << 8)
+			;/* Enable bit for PHY reference clock from CKC
+			  *(1: Propagates clock from CKC to PHY)
+			  */
+		tcc_cfg_write(tp, 1 << 7, PCIE_CFG08, 1 << 7)
+			;/* Select reference clock source to PHY
+			  *(1:CKC(PCLKCTRL15), 0:Oscillator)
+			  */
+		tcc_cfg_write(tp, 1 << 6, PCIE_CFG08, 1 << 6)
+			;
 	}
 
 	/* assert reset signals */
@@ -255,20 +260,21 @@ static int tcc_pcie_establish_link(struct tcc_pcie *tp)
 	/* de-assert phy reset */
 	tcc_pcie_deassert_phy_reset(tp);
 
-
-
 	/* pulse for common reset */
 	tcc_cfg_write(tp, 0, PCIE_CFG44, PCIE_CFG44_PHY_CMN_RST);
 	udelay(500);
-	tcc_cfg_write(tp, PCIE_CFG44_PHY_CMN_RST, PCIE_CFG44, PCIE_CFG44_PHY_CMN_RST);
+	tcc_cfg_write(tp, PCIE_CFG44_PHY_CMN_RST, PCIE_CFG44,
+		      PCIE_CFG44_PHY_CMN_RST);
 
-	if(!tp->using_ext_ref_clk){
-		writel(readl(tp->phy_base + PCIE_PHY_CMN_REG062)|0x8, tp->phy_base + PCIE_PHY_CMN_REG062);
-		writel(readl(tp->phy_base + PCIE_PHY_CMN_REG064)|0x80, tp->phy_base + PCIE_PHY_CMN_REG064);
+	if (!tp->using_ext_ref_clk) {
+		writel(readl(tp->phy_base + PCIE_PHY_CMN_REG062) | 0x8,
+		       tp->phy_base + PCIE_PHY_CMN_REG062);
+		writel(readl(tp->phy_base + PCIE_PHY_CMN_REG064) | 0x80,
+		       tp->phy_base + PCIE_PHY_CMN_REG064);
 	}
 
 	/* DBI_RO_WR_EN = 1 */
-	writel(readl(pci->dbi_base + 0x8bc)|0x1, pci->dbi_base + 0x8bc);
+	writel(readl(pci->dbi_base + 0x8bc) | 0x1, pci->dbi_base + 0x8bc);
 
 	/* setup root complex */
 	dw_pcie_setup_rc(pp);
@@ -279,15 +285,16 @@ static int tcc_pcie_establish_link(struct tcc_pcie *tp)
 	/* initialize phy */
 	tcc_pcie_init_phy(tp);
 	/* assert LTSSM enable */
-	tcc_cfg_write(tp, PCIE_CFG04_APP_LTSSM_ENABLE, PCIE_CFG04, PCIE_CFG04_APP_LTSSM_ENABLE);
+	tcc_cfg_write(tp, PCIE_CFG04_APP_LTSSM_ENABLE, PCIE_CFG04,
+		      PCIE_CFG04_APP_LTSSM_ENABLE);
 
-	writel(readl(pci->dbi_base + 0x80c)|0x20000,pci->dbi_base + 0x80c); // Set GEN2
+	/* Set GEN2 */
+	writel(readl(pci->dbi_base + 0x80c)|0x20000, pci->dbi_base+0x80c);
 
-	if(tp->for_si_test){
+	if (tp->for_si_test) {
 		dev_err(pci->dev, "######## PCI SI TEST MODE ########\n");
-		while (1) {
-	               wfi();
-		}
+		while (1)
+			wfi();
 	}
 
 	/* check if the link is up or not */
@@ -296,10 +303,11 @@ static int tcc_pcie_establish_link(struct tcc_pcie *tp)
 		count++;
 		if (count == 10) {
 			unsigned int val;
+
 			val = tcc_cfg_read(tp, PCIE_CFG08,
-				PCIE_CFG08_PHY_PLL_LOCKED) ? 1 : 0;
-			dev_err(pci->dev,"PLL Locked: 0x%x\n", val);
-			dev_err(pci->dev,"PCIe Link Fail\n");
+					   PCIE_CFG08_PHY_PLL_LOCKED) ? 1 : 0;
+			dev_err(pci->dev, "PLL Locked: 0x%x\n", val);
+			dev_err(pci->dev, "PCIe Link Fail\n");
 			return -EINVAL;
 		}
 	}
@@ -333,7 +341,7 @@ static irqreturn_t tcc_pcie_msi_irq_handler(int irq, void *arg)
 	irqreturn_t ret = IRQ_NONE;
 	unsigned int val;
 
-	val = tcc_cfg_read(tp, PCIE_CFG24, ~(PCIE_CFG_INTX_MASK|(1<<1)));
+	val = tcc_cfg_read(tp, PCIE_CFG24, ~(PCIE_CFG_INTX_MASK | (1 << 1)));
 	if (val) {
 		ret = dw_handle_msi_irq(pp);
 		tcc_cfg_write(tp, val, PCIE_CFG25, PCIE_CFG_MSI_INT_MASK);
@@ -362,27 +370,28 @@ static void tcc_pcie_enable_interrupts(struct tcc_pcie *tp)
 
 	if (IS_ENABLED(CONFIG_PCI_MSI))
 		dw_pcie_msi_init(pp);
-
-	return;
 }
 
-static void tcc_pcie_writel_rc(struct dw_pcie *pci, void __iomem *base, u32 reg, size_t size, u32 val)
+static void tcc_pcie_writel_rc(struct dw_pcie *pci, void __iomem *base,
+			       u32 reg, size_t size, u32 val)
 {
 	int ret;
 
 	if ((reg == 0x90c) || (reg == 0x914)) {
 		if (((val & 0xFFF00000) == 0x11000000)
-		|| ((val & 0xFFF00000) == 0x11600000)
-		|| ((val & 0xFFF00000) == 0x11700000)
-		|| ((val & 0xFFF00000) == 0x11800000)
-		)
+		    || ((val & 0xFFF00000) == 0x11600000)
+		    || ((val & 0xFFF00000) == 0x11700000)
+		    || ((val & 0xFFF00000) == 0x11800000)
+		    )
 			val &= 0x00FFFFFF;
 	}
 
 	ret = dw_pcie_write(base + reg, size, val);
 }
 
-static int tcc_pcie_cfg_read(void __iomem *addr, int where, int size, u32 *val)
+#if 0
+static int tcc_pcie_cfg_read(void __iomem *addr, int where, int size,
+			     u32 *val)
 {
 	*val = readl(addr);
 
@@ -395,7 +404,6 @@ static int tcc_pcie_cfg_read(void __iomem *addr, int where, int size, u32 *val)
 
 	return PCIBIOS_SUCCESSFUL;
 }
-
 static int tcc_pcie_cfg_write(void __iomem *addr, int where, int size, u32 val)
 {
 	if (size == 4)
@@ -409,13 +417,13 @@ static int tcc_pcie_cfg_write(void __iomem *addr, int where, int size, u32 val)
 
 	return PCIBIOS_SUCCESSFUL;
 }
-
+#endif
 static int tcc_pcie_link_up(struct dw_pcie *pci)
 {
 	struct tcc_pcie *tp = to_tcc_pcie(pci);
-	
+
 	if (!!tcc_cfg_read(tp, PCIE_CFG26, PCIE_CFG26_RDLH_LINK_UP) &&
-	    !!tcc_cfg_read(tp, PCIE_CFG33, (1<<17)))
+	    !!tcc_cfg_read(tp, PCIE_CFG33, (1 << 17)))
 		return 1;
 
 	return 0;
@@ -425,10 +433,9 @@ static int tcc_pcie_host_init(struct pcie_port *pp)
 {
 	struct dw_pcie *pci = to_dw_pcie_from_pp(pp);
 	struct tcc_pcie *tp = to_tcc_pcie(pci);
-	
-	if (dw_pcie_link_up(pci)) {
+
+	if (dw_pcie_link_up(pci))
 		dev_err(pci->dev, "Link already up\n");
-	}
 	else
 		tcc_pcie_establish_link(tp);
 	tcc_pcie_enable_interrupts(tp);
@@ -446,7 +453,7 @@ static const struct dw_pcie_ops dw_pcie_ops = {
 };
 
 static int __init add_pcie_port(struct tcc_pcie *tp,
-                                struct platform_device *pdev)
+				struct platform_device *pdev)
 {
 
 	struct dw_pcie *pci = tp->pci;
@@ -454,12 +461,12 @@ static int __init add_pcie_port(struct tcc_pcie *tp,
 	int ret;
 
 	pp->irq = platform_get_irq(pdev, 0);
-	if (pp->irq<0) {
+	if (pp->irq < 0) {
 		dev_err(&pdev->dev, "failed to get irq\n");
 		return -ENODEV;
 	}
 	ret = devm_request_irq(&pdev->dev, pp->irq, tcc_pcie_irq_handler,
-				IRQF_SHARED, "tcc-pcie", tp);
+			       IRQF_SHARED, "tcc-pcie", tp);
 	if (ret) {
 		dev_err(&pdev->dev, "failed to request irq\n");
 		return ret;
@@ -473,8 +480,8 @@ static int __init add_pcie_port(struct tcc_pcie *tp,
 		}
 
 		ret = devm_request_irq(&pdev->dev, pp->msi_irq,
-					tcc_pcie_msi_irq_handler,
-					IRQF_SHARED, "tcc-pcie-msi", tp);
+				       tcc_pcie_msi_irq_handler,
+				       IRQF_SHARED, "tcc-pcie-msi", tp);
 		if (ret) {
 			dev_err(&pdev->dev, "failed to request msi irq\n");
 			return ret;
@@ -498,7 +505,7 @@ static int tcc_pcie_probe(struct platform_device *pdev)
 	struct device *dev = &pdev->dev;
 	struct dw_pcie *pci;
 	struct tcc_pcie *tp;
-	int ret=0;
+	int ret = 0;
 
 	tp = devm_kzalloc(dev, sizeof(*tp), GFP_KERNEL);
 	if (!tp)
@@ -531,11 +538,16 @@ static int tcc_pcie_probe(struct platform_device *pdev)
 	}
 
 	tp->reset_gpio = of_get_named_gpio(pdev->dev.of_node, "reset-gpio", 0);
-	tp->ep_pwr_gpio = of_get_named_gpio(pdev->dev.of_node, "ep_pwr-gpio", 0);
+	tp->ep_pwr_gpio =
+	    of_get_named_gpio(pdev->dev.of_node, "ep_pwr-gpio", 0);
 
-	ret = of_property_read_u32(pdev->dev.of_node, "using_ext_ref_clk", &tp->using_ext_ref_clk);
+	ret =
+	    of_property_read_u32(pdev->dev.of_node, "using_ext_ref_clk",
+				 &tp->using_ext_ref_clk);
 
-	ret = of_property_read_u32(pdev->dev.of_node, "for_si_test", &tp->for_si_test);
+	ret =
+	    of_property_read_u32(pdev->dev.of_node, "for_si_test",
+				 &tp->for_si_test);
 
 	tp->clk_phy = devm_clk_get(&pdev->dev, "pcie_phy");
 	if (IS_ERR(tp->clk_phy)) {
@@ -587,7 +599,7 @@ static int tcc_pcie_probe(struct platform_device *pdev)
 		goto fail_clk_pcs;
 	}
 
-	if(!tp->using_ext_ref_clk){
+	if (!tp->using_ext_ref_clk) {
 		clk_set_rate(tp->clk_ref_ext, 100000000);
 		ret = clk_prepare_enable(tp->clk_ref_ext);
 		if (ret)
@@ -614,13 +626,13 @@ static int tcc_pcie_probe(struct platform_device *pdev)
 	}
 
 	tp->suspend_regs = kzalloc(TCC_PCIE_REG_BACKUP_SIZE, GFP_KERNEL);
-	if (!tp->suspend_regs)
+	if (tp->suspend_regs == NULL)
 		dev_err(&pdev->dev, "failed to allocate pcie reg backup table\n");
 
 	return 0;
 
 fail_clk_hsio:
-	;//clk_disable_unprepare(tcc_pcie->clk_hsio);
+	;			//clk_disable_unprepare(tcc_pcie->clk_hsio);
 fail_clk_ref_ext:
 	clk_disable_unprepare(tp->clk_ref_ext);
 fail_clk_pcs:
@@ -640,7 +652,7 @@ static int __exit tcc_pcie_remove(struct platform_device *pdev)
 	struct tcc_pcie *tp = platform_get_drvdata(pdev);
 	struct dw_pcie *pci = tp->pci;
 	struct pcie_port *pp = &pci->pp;
-	
+
 	disable_irq(pp->irq);
 
 	clk_disable_unprepare(tp->clk_phy);
@@ -660,23 +672,23 @@ static int tcc_pcie_suspend_noirq(struct device *dev)
 	struct dw_pcie *pci = tp->pci;
 	struct pcie_port *pp = &pci->pp;
 
-
 	if (!tp->suspend_regs) {
-		dev_err(dev, "%s: failed to allocate pcie reg backup table\n", __func__);
+		dev_err(dev, "%s: failed to allocate pcie reg backup table\n",
+			__func__);
 		return -1;
 	}
 
 	disable_irq(pp->irq);
 	memcpy(tp->suspend_regs, pci->dbi_base, TCC_PCIE_REG_BACKUP_SIZE);
 
-    gpio_direction_output(tp->reset_gpio, 0);
+	gpio_direction_output(tp->reset_gpio, 0);
 	tcc_pcie_power_off_phy(tp, 1);
 
-	writel(0, tp->cfg_base + 0x1C); // CACTIVE Clear
+	writel(0, tp->cfg_base + 0x1C);	// CACTIVE Clear
 	mdelay(50);
 
-	if(!tp->using_ext_ref_clk)
-	    clk_disable_unprepare(tp->clk_ref_ext);
+	if (!tp->using_ext_ref_clk)
+		clk_disable_unprepare(tp->clk_ref_ext);
 	clk_disable_unprepare(tp->clk_phy);
 	clk_disable_unprepare(tp->clk_hsio);
 
@@ -689,12 +701,10 @@ static int tcc_pcie_resume_noirq(struct device *dev)
 	struct dw_pcie *pci = tp->pci;
 	struct pcie_port *pp = &pci->pp;
 
-	u32 val;
-
 	clk_prepare_enable(tp->clk_hsio);
 	clk_prepare_enable(tp->clk_phy);
-	if(!tp->using_ext_ref_clk)	
-	    clk_prepare_enable(tp->clk_ref_ext);
+	if (!tp->using_ext_ref_clk)
+		clk_prepare_enable(tp->clk_ref_ext);
 
 	clk_prepare_enable(tp->clk_aux);
 
@@ -705,44 +715,38 @@ static int tcc_pcie_resume_noirq(struct device *dev)
 	}
 
 	/* re-establish link */
-	if (IS_ENABLED(CONFIG_PCI_MSI)) {
-		if (pp->ops->msi_host_init) {
-		//	int ret = 0;
-		//	ret = pp->ops->msi_host_init(pp, &dw_pcie_msi_chip);
-		//	if (ret < 0)
-		//		return ret;
-		}
-	}
-
-    tcc_pcie_establish_link(tp);
-    tcc_pcie_enable_interrupts(tp);
+	if (IS_ENABLED(CONFIG_PCI_MSI))
+		if (pp->ops->msi_host_init)
+			;
+	tcc_pcie_establish_link(tp);
+	tcc_pcie_enable_interrupts(tp);
 
 	if (tp->suspend_regs)
-		memcpy(pci->dbi_base, tp->suspend_regs, TCC_PCIE_REG_BACKUP_SIZE);
+		memcpy(pci->dbi_base, tp->suspend_regs,
+		       TCC_PCIE_REG_BACKUP_SIZE);
 
 	enable_irq(pp->irq);
 	return 0;
 }
 
 const struct dev_pm_ops tcc_pcie_pm = {
-	.suspend_noirq	= tcc_pcie_suspend_noirq,
-	.resume_noirq	= tcc_pcie_resume_noirq,
-	.freeze_noirq	= tcc_pcie_suspend_noirq,
-	.thaw_noirq	= tcc_pcie_resume_noirq,
+	.suspend_noirq = tcc_pcie_suspend_noirq,
+	.resume_noirq = tcc_pcie_resume_noirq,
+	.freeze_noirq = tcc_pcie_suspend_noirq,
+	.thaw_noirq = tcc_pcie_resume_noirq,
 };
 
 static const struct of_device_id tcc_pcie_of_match[] = {
-	{ .compatible = "telechips,pcie", },
-	{},
+	{.compatible = "telechips,pcie",},
 };
 
 static struct platform_driver tcc_pcie_driver = {
-	.remove		= __exit_p(tcc_pcie_remove),
+	.remove = __exit_p(tcc_pcie_remove),
 	.driver = {
-		.name	= "tcc-pcie",
-		.pm	= &tcc_pcie_pm,
-		.of_match_table = tcc_pcie_of_match,
-	},
+		   .name = "tcc-pcie",
+		   .pm = &tcc_pcie_pm,
+		   .of_match_table = tcc_pcie_of_match,
+		   },
 };
 
 /* Telechips PCIe driver does not allow module unload */
@@ -751,4 +755,5 @@ static int __init tcc_pcie_init(void)
 {
 	return platform_driver_probe(&tcc_pcie_driver, tcc_pcie_probe);
 }
+
 subsys_initcall(tcc_pcie_init);
