@@ -273,12 +273,11 @@ int get_hub_level(void)
 {
 	return hub_level;
 }
-EXPORT_SYMBOL(get_hub_level);
+
 void set_hub_level(int level)
 {
 	hub_level = level;
 }
-EXPORT_SYMBOL(set_hub_level);
 
 #endif /* CONFIG_TCC_EH_ELECT_TST */
 

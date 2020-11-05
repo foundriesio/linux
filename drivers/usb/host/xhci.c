@@ -45,7 +45,7 @@ module_param(link_quirk, int, S_IRUGO | S_IWUSR);
 MODULE_PARM_DESC(link_quirk, "Don't clear the chain bit on a link TRB");
 
 static unsigned long long quirks;
-module_param(quirks, ullong, S_IRUGO);
+module_param(quirks, ullong, 0444);
 MODULE_PARM_DESC(quirks, "Bit flags for quirks to be enabled as default");
 
 /**
@@ -59,30 +59,32 @@ MODULE_PARM_DESC(quirks, "Bit flags for quirks to be enabled as default");
  */
 int xhci_set_test_mode(struct xhci_hcd *xhci, int mode)
 {
-	u32             reg;
+	u32 reg;
 
 	reg = readl(&xhci->op_regs->port_power_base);
-	printk("[INFO][USB] @0x%08X: 0x%08X\n", &xhci->op_regs->port_power_base, reg);
+	xhci_info(xhci, "[INFO][USB] @0x%08lX: 0x%08X\n",
+			(unsigned long)&xhci->op_regs->port_power_base, reg);
 	reg &= ~PORT_TSTCTRL_MASK;
 
 	switch (mode) {
-		case TEST_J:
-		case TEST_K:
-		case TEST_SE0_NAK:
-		case TEST_PACKET:
-		case TEST_FORCE_EN:
-			xhci_quiesce(xhci);
-			reg |= mode << 28;
-			break;
-		default:
-			return -EINVAL;
+	case TEST_J:
+	case TEST_K:
+	case TEST_SE0_NAK:
+	case TEST_PACKET:
+	case TEST_FORCE_EN:
+		xhci_quiesce(xhci);
+		reg |= mode << 28;
+		break;
+	default:
+		return -EINVAL;
 	}
 
-	writel(reg,&xhci->op_regs->port_power_base);
+	writel(reg, &xhci->op_regs->port_power_base);
 	udelay(100);
 	reg = readl(&xhci->op_regs->port_power_base);
 
-	printk("[INFO][USB] @0x%08X: 0x%08X\n", &xhci->op_regs->port_power_base, reg);
+	xhci_info(xhci, "[INFO][USB] @0x%08lX: 0x%08X\n",
+			(unsigned long)&xhci->op_regs->port_power_base, reg);
 	return 0;
 }
 
@@ -1295,7 +1297,9 @@ static int xhci_check_args(struct usb_hcd *hcd, struct usb_device *udev,
 	struct xhci_virt_device	*virt_dev;
 
 	if (!hcd || (check_ep && !ep) || !udev) {
-		pr_debug("[DEBUG][USB] xHCI %s called with invalid args\n", func);
+		pr_debug("[DEBUG][USB] xHCI %s called with invalid args\n",
+				func);
+
 		return -EINVAL;
 	}
 	if (!udev->parent) {
@@ -3955,12 +3959,13 @@ static int xhci_setup_device(struct usb_hcd *hcd, struct usb_device *udev,
 		ret = -EINVAL;
 		break;
 	case COMP_USB_TRANSACTION_ERROR:
-		dev_warn(&udev->dev, "[WARN][USB] Device not responding to setup %s.\n", act);
+		dev_warn(&udev->dev, "[WARN][USB] Device not responding to setup %s.\n",
+				act);
 		ret = -EPROTO;
 		break;
 	case COMP_INCOMPATIBLE_DEVICE_ERROR:
-		dev_warn(&udev->dev,
-			 "[WARN][USB] ERROR: Incompatible device for setup %s command\n", act);
+		dev_warn(&udev->dev, "[WARN][USB] ERROR: Incompatible device for setup %s command\n",
+				act);
 		ret = -ENODEV;
 		break;
 	case COMP_SUCCESS:
