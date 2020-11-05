@@ -26,6 +26,7 @@
 #include <linux/stddef.h>
 #include <linux/vmalloc.h>
 #include <linux/fs.h>
+#include <kvm/arm_psci.h>
 #include <asm/cputype.h>
 #include <linux/uaccess.h>
 #include <asm/kvm.h>
@@ -321,7 +322,7 @@ static int get_timer_reg(struct kvm_vcpu *vcpu, const struct kvm_one_reg *reg)
 unsigned long kvm_arm_num_regs(struct kvm_vcpu *vcpu)
 {
 	return num_core_regs(vcpu) + kvm_arm_num_sys_reg_descs(vcpu)
-                + NUM_TIMER_REGS;
+		+ kvm_arm_get_fw_num_regs(vcpu)	+ NUM_TIMER_REGS;
 }
 
 /**
@@ -337,6 +338,11 @@ int kvm_arm_copy_reg_indices(struct kvm_vcpu *vcpu, u64 __user *uindices)
 	if (ret < 0)
 		return ret;
 	uindices += ret;
+
+	ret = kvm_arm_copy_fw_reg_indices(vcpu, uindices);
+	if (ret < 0)
+		return ret;
+	uindices += kvm_arm_get_fw_num_regs(vcpu);
 
 	ret = copy_timer_indices(vcpu, uindices);
 	if (ret < 0)
@@ -356,6 +362,9 @@ int kvm_arm_get_reg(struct kvm_vcpu *vcpu, const struct kvm_one_reg *reg)
 	if ((reg->id & KVM_REG_ARM_COPROC_MASK) == KVM_REG_ARM_CORE)
 		return get_core_reg(vcpu, reg);
 
+	if ((reg->id & KVM_REG_ARM_COPROC_MASK) == KVM_REG_ARM_FW)
+		return kvm_arm_get_fw_reg(vcpu, reg);
+
 	if (is_timer_reg(reg->id))
 		return get_timer_reg(vcpu, reg);
 
@@ -371,6 +380,9 @@ int kvm_arm_set_reg(struct kvm_vcpu *vcpu, const struct kvm_one_reg *reg)
 	/* Register group 16 means we set a core register. */
 	if ((reg->id & KVM_REG_ARM_COPROC_MASK) == KVM_REG_ARM_CORE)
 		return set_core_reg(vcpu, reg);
+
+	if ((reg->id & KVM_REG_ARM_COPROC_MASK) == KVM_REG_ARM_FW)
+		return kvm_arm_set_fw_reg(vcpu, reg);
 
 	if (is_timer_reg(reg->id))
 		return set_timer_reg(vcpu, reg);
