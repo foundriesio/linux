@@ -61,6 +61,11 @@ struct kvm_arch {
 	/* The last vcpu id that ran on each physical CPU */
 	int __percpu *last_vcpu_ran;
 
+#ifndef __GENKSYMS__
+	/* Mandated version of PSCI */
+	u32 psci_version;
+#endif
+
 	/*
 	 * Anything that is not used directly from assembly code goes
 	 * here.
@@ -76,9 +81,6 @@ struct kvm_arch {
 	/* Interrupt controller */
 	struct vgic_dist	vgic;
 	int max_vcpus;
-
-	/* Mandated version of PSCI */
-	u32 psci_version;
 };
 
 #define KVM_NR_MEM_OBJS     40
