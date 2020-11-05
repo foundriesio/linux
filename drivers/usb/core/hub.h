@@ -125,6 +125,8 @@ extern int hub_port_debounce(struct usb_hub *hub, int port1,
 		bool must_be_connected);
 extern int usb_clear_port_feature(struct usb_device *hdev,
 		int port1, int feature);
+extern int get_hub_level(void);
+extern void set_hub_level(int level);
 
 static inline bool hub_is_port_power_switchable(struct usb_hub *hub)
 {

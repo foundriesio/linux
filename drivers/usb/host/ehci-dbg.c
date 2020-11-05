@@ -15,6 +15,8 @@
 
 /* this file is part of ehci-hcd.c */
 
+#include "tcc-hcd.h"
+
 #ifdef CONFIG_DYNAMIC_DEBUG
 #include <linux/uaccess.h>
 /*
@@ -306,8 +308,6 @@ static int debug_registers_open(struct inode *, struct file *);
 static ssize_t debug_output(struct file*, char __user*, size_t, loff_t*);
 static int debug_close(struct inode *, struct file *);
 #ifdef CONFIG_TCC_EH_ELECT_TST
-extern int get_hub_level(void);
-extern void set_hub_level(int level);
 static int ehci_hub_level_show(struct seq_file *s, void *unused)
 {
 	unsigned int level;
@@ -321,102 +321,105 @@ static int ehci_hub_level_open(struct inode *inode, struct file *file)
 {
 	return single_open(file, ehci_hub_level_show, inode->i_private);
 }
-static ssize_t ehci_hub_level_write(struct file *file,
-		const char __user *ubuf, size_t count, loff_t *ppos)
+static ssize_t ehci_hub_level_write(struct file *file, const char __user *ubuf,
+		size_t count, loff_t *ppos)
 {
-	struct seq_file     *s = file->private_data;
-	struct ehci_hcd     *ehci = s->private;
-	char            buf[32];
-	int level	= 0;
+	struct seq_file *s = file->private_data;
+	struct ehci_hcd *ehci = s->private;
+	char buf[32];
+	int level = 0;
+	int ret;
 
 	if (copy_from_user(&buf, ubuf, min_t(size_t, sizeof(buf) - 1, count)))
 		return -EFAULT;
 
-	sscanf(buf, "%d", &level);
+	ret = kstrtoint(buf, 0, &level);
+	if (ret != 0)
+		return -EINVAL;
+
 	set_hub_level(level);
 
 	return count;
-
 }
 #endif
 
 static int ehci_testmode_show(struct seq_file *s, void *unused)
 {
-       struct ehci_hcd         *ehci = s->private;
-       unsigned long           flags;
-       u32                     reg;
+	struct ehci_hcd *ehci = s->private;
+	unsigned long flags;
+	u32 reg;
 
-       spin_lock_irqsave(&ehci->lock, flags);
-       reg = ehci_readl(ehci, &ehci->regs->port_status[0]);
-       reg &= EHCI_PORTPMSC_TESTMODE_MASK;
-       reg >>= 16;
-       spin_unlock_irqrestore(&ehci->lock, flags);
+	spin_lock_irqsave(&ehci->lock, flags);
+	reg = ehci_readl(ehci, &ehci->regs->port_status[0]);
+	reg &= EHCI_PORTPMSC_TESTMODE_MASK;
+	reg >>= 16;
+	spin_unlock_irqrestore(&ehci->lock, flags);
 
-       switch (reg) {
-       case 0:
-               seq_printf(s, "no test\n");
-               break;
-       case TEST_J:
-               seq_printf(s, "test_j\n");
-               break;
-       case TEST_K:
-               seq_printf(s, "test_k\n");
-               break;
-       case TEST_SE0_NAK:
-               seq_printf(s, "test_se0_nak\n");
-               break;
-       case TEST_PACKET:
-               seq_printf(s, "test_packet\n");
-               break;
-       case TEST_FORCE_EN:
-               seq_printf(s, "test_force_enable\n");
-               break;
-       default:
-               seq_printf(s, "UNKNOWN %d\n", reg);
-       }
+	switch (reg) {
+	case 0:
+		seq_puts(s, "no test\n");
+		break;
+	case TEST_J:
+		seq_puts(s, "test_j\n");
+		break;
+	case TEST_K:
+		seq_puts(s, "test_k\n");
+		break;
+	case TEST_SE0_NAK:
+		seq_puts(s, "test_se0_nak\n");
+		break;
+	case TEST_PACKET:
+		seq_puts(s, "test_packet\n");
+		break;
+	case TEST_FORCE_EN:
+		seq_puts(s, "test_force_enable\n");
+		break;
+	default:
+		seq_puts(s, "UNKNOWN test mode\n");
+	}
 
-       return 0;
+	return 0;
 }
 
 static int ehci_testmode_open(struct inode *inode, struct file *file)
 {
-       return single_open(file, ehci_testmode_show, inode->i_private);
+	return single_open(file, ehci_testmode_show, inode->i_private);
 }
 
-static ssize_t ehci_testmode_write(struct file *file,
-               const char __user *ubuf, size_t count, loff_t *ppos)
+static ssize_t ehci_testmode_write(struct file *file, const char __user *ubuf,
+		size_t count, loff_t *ppos)
 {
-       struct seq_file         *s = file->private_data;
-       struct ehci_hcd         *ehci = s->private;
-       u32                     testmode = 0;
-       char                    buf[32];
+	struct seq_file *s = file->private_data;
+	struct ehci_hcd *ehci = s->private;
+	u32 testmode = 0;
+	char buf[32];
 
-       if (copy_from_user(&buf, ubuf, min_t(size_t, sizeof(buf) - 1, count)))
-               return -EFAULT;
+	if (copy_from_user(&buf, ubuf, min_t(size_t, sizeof(buf) - 1, count)))
+		return -EFAULT;
 
-       if (!strncmp(buf, "test_j", 6))
-               testmode = TEST_J;
-       else if (!strncmp(buf, "test_k", 6))
-               testmode = TEST_K;
-       else if (!strncmp(buf, "test_se0_nak", 12))
-               testmode = TEST_SE0_NAK;
-       else if (!strncmp(buf, "test_packet", 11))
-               testmode = TEST_PACKET;
-       else if (!strncmp(buf, "test_force_enable", 17))
-               testmode = TEST_FORCE_EN;
-       else
-               testmode = 0;
+	if (!strncmp(buf, "test_j", 6))
+		testmode = TEST_J;
+	else if (!strncmp(buf, "test_k", 6))
+		testmode = TEST_K;
+	else if (!strncmp(buf, "test_se0_nak", 12))
+		testmode = TEST_SE0_NAK;
+	else if (!strncmp(buf, "test_packet", 11))
+		testmode = TEST_PACKET;
+	else if (!strncmp(buf, "test_force_enable", 17))
+		testmode = TEST_FORCE_EN;
+	else
+		testmode = 0;
 
-       ehci_set_test_mode(ehci, testmode);
+	ehci_set_test_mode(ehci, testmode);
 
-       return count;
+	return count;
 }
 
 static int ehci_prt_conn_sts_show(struct seq_file *s, void *unused)
 {
-	struct ehci_hcd     *ehci = s->private;
-	unsigned long       flags;
-	u32         reg;
+	struct ehci_hcd *ehci = s->private;
+	unsigned long flags;
+	u32 reg;
 
 	spin_lock_irqsave(&ehci->lock, flags);
 	reg = ehci_readl(ehci, &ehci->regs->port_status[0]);
@@ -424,14 +427,14 @@ static int ehci_prt_conn_sts_show(struct seq_file *s, void *unused)
 	spin_unlock_irqrestore(&ehci->lock, flags);
 
 	switch (reg) {
-		case USB_STATE_NOTATTACHED:
-			seq_printf(s, "NOT ATTACHED\n");
-			break;
-		case USB_STATE_ATTACHED:
-			seq_printf(s, "ATTACHED\n");
-			break;
-		default:
-			seq_printf(s, "UNKNOWN %d\n", reg);
+	case USB_STATE_NOTATTACHED:
+		seq_puts(s, "NOT ATTACHED\n");
+		break;
+	case USB_STATE_ATTACHED:
+		seq_puts(s, "ATTACHED\n");
+		break;
+	default:
+		seq_puts(s, "UNKNOWN USB state\n");
 	}
 
 	return 0;
@@ -454,12 +457,12 @@ static const struct file_operations ehci_hub_level_fops = {
 #endif
 
 static const struct file_operations ehci_testmode_fops = {
-       .owner          = THIS_MODULE,
-       .open           = ehci_testmode_open,
-       .write          = ehci_testmode_write,
-       .read           = seq_read,
-       .llseek         = seq_lseek,
-       .release        = single_release,
+	.owner          = THIS_MODULE,
+	.open           = ehci_testmode_open,
+	.write          = ehci_testmode_write,
+	.read           = seq_read,
+	.llseek         = seq_lseek,
+	.release        = single_release,
 };
 
 static const struct file_operations ehci_prt_conn_sts_fops = {
@@ -1206,18 +1209,21 @@ static inline void create_debug_files(struct ehci_hcd *ehci)
 		return;
 
 #ifdef CONFIG_TCC_EH_ELECT_TST
-   if (!debugfs_create_file("hub_level", S_IRUGO, ehci->debug_dir, ehci,
-                           &ehci_hub_level_fops))
-       goto file_error;
+	if (!debugfs_create_file("hub_level", 0444, ehci->debug_dir, ehci,
+				&ehci_hub_level_fops)) {
+		goto file_error;
+	}
 #endif
 
-    if (!debugfs_create_file("testmode", S_IRUGO, ehci->debug_dir, ehci,
- 	   &ehci_testmode_fops))
-        goto file_error;
-
-	if (!debugfs_create_file("ehci_prt_conn_sts", S_IRUGO, ehci->debug_dir, ehci,
-				&ehci_prt_conn_sts_fops))
+	if (!debugfs_create_file("testmode", 0444, ehci->debug_dir, ehci,
+				&ehci_testmode_fops)) {
 		goto file_error;
+	}
+
+	if (!debugfs_create_file("ehci_prt_conn_sts", 0444, ehci->debug_dir,
+				ehci, &ehci_prt_conn_sts_fops)) {
+		goto file_error;
+	}
 
 	if (!debugfs_create_file("async", S_IRUGO, ehci->debug_dir, bus,
 						&debug_async_fops))
