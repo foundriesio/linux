@@ -52,7 +52,7 @@ end_handler:
 static int dptx_intr_handle_drm_interface( struct Dptx_Params *pstDptx, bool bHotPlugged )
 {
 	bool		bRetVal;
-	bool		bTrainingState, bMST_Supported, bSideBand_MSG_Supported;
+	bool		bTrainingState;
 	u8			ucDP_Index;
 
 	if( bHotPlugged == (bool)HPD_STATUS_UNPLUGGED )
@@ -79,7 +79,7 @@ static int dptx_intr_handle_drm_interface( struct Dptx_Params *pstDptx, bool bHo
 		return ( 0 );
 	}
 
-	bRetVal = Dptx_Intr_Get_Port_Composition( pstDptx, &bSideBand_MSG_Supported );
+	bRetVal = Dptx_Intr_Get_Port_Composition( pstDptx );
 	if( bRetVal == DPTX_RETURN_FAIL )
 	{
 		return ( ENODEV );
@@ -107,7 +107,7 @@ static int dptx_intr_handle_drm_interface( struct Dptx_Params *pstDptx, bool bHo
 
 		if( pstDptx->bMultStreamTransport  )
 		{
-			bRetVal = Dptx_Ext_Set_Topology_Configuration( pstDptx, pstDptx->ucNumOfPorts, bSideBand_MSG_Supported );
+			bRetVal = Dptx_Ext_Set_Topology_Configuration( pstDptx, pstDptx->ucNumOfPorts, pstDptx->bSideBand_MSG_Supported );
 			if( bRetVal == DPTX_RETURN_FAIL )
 			{
 				return ( ENODEV );
@@ -330,11 +330,11 @@ irqreturn_t Dptx_Intr_IRQ( int irq, void *dev )
 	return eRetVal;
 }
 
-bool Dptx_Intr_Get_Port_Composition( struct Dptx_Params *pstDptx, bool *pbSideBand_MSG_Supported )
+bool Dptx_Intr_Get_Port_Composition( struct Dptx_Params *pstDptx )
 {
 	bool		bRetVal;
 	bool		bMST_Supported;
-	u8			ucNumOfPluggedPorts, ucDP_Index;
+	u8			ucNumOfPluggedPorts = 0, ucDP_Index;
 
 	bRetVal = Dptx_Ext_Get_Sink_Stream_Capability( pstDptx, &bMST_Supported );
 	if( bRetVal == DPTX_RETURN_FAIL )
@@ -358,9 +358,9 @@ bool Dptx_Intr_Get_Port_Composition( struct Dptx_Params *pstDptx, bool *pbSideBa
 				memset( pstDptx->paucEdidBuf_Entry[ucDP_Index], 0,	 DPTX_EDID_BUFLEN );
 			}
 
-			*pbSideBand_MSG_Supported = false;
+			pstDptx->bSideBand_MSG_Supported = false;
 
-			dptx_info("%d %s connected", ucNumOfPluggedPorts, ucNumOfPluggedPorts == 1 ? "Deserializer is":"Deserializers are");
+			dptx_notice("%d %s connected", ucNumOfPluggedPorts, ucNumOfPluggedPorts == 1 ? "Deserializer is":"Deserializers are");
 		}
 		else
 		{
@@ -385,9 +385,9 @@ bool Dptx_Intr_Get_Port_Composition( struct Dptx_Params *pstDptx, bool *pbSideBa
 				}
 			}
 
-			*pbSideBand_MSG_Supported = true;
+			pstDptx->bSideBand_MSG_Supported = true;
 
-			dptx_info("%d %s connected", ucNumOfPluggedPorts, ucNumOfPluggedPorts == 1 ? "Ext. monitor is":"Ext. monitors are");
+			dptx_notice("%d %s connected", ucNumOfPluggedPorts, ucNumOfPluggedPorts == 1 ? "Ext. monitor is":"Ext. monitors are");
 		}
 	}
 	else
@@ -395,13 +395,11 @@ bool Dptx_Intr_Get_Port_Composition( struct Dptx_Params *pstDptx, bool *pbSideBa
 		bRetVal = Dptx_Edid_Read_EDID_I2C_Over_Aux( pstDptx );
 		if( bRetVal == DPTX_RETURN_SUCCESS )
 		{
-			*pbSideBand_MSG_Supported = true;
-			dptx_info("1 Ext. monitor is connected");
+			dptx_notice("1 Ext. monitor is connected");
 		}
 		else
 		{
-			*pbSideBand_MSG_Supported = false;
-			dptx_info("1 SerDes is connected");
+			dptx_notice("1 SerDes is connected");
 		}
 
 		ucNumOfPluggedPorts = 1;
@@ -411,6 +409,15 @@ bool Dptx_Intr_Get_Port_Composition( struct Dptx_Params *pstDptx, bool *pbSideBa
 
 	pstDptx->ucNumOfPorts = ucNumOfPluggedPorts;
 	pstDptx->bMultStreamTransport = ( ucNumOfPluggedPorts == 1 ) ? false:true;
+
+	if( pstDptx->bMultStreamTransport )
+	{
+		pstDptx->ucMax_Rate = DPTX_PHYIF_CTRL_RATE_HBR3;
+	}
+	else
+	{
+		pstDptx->ucMax_Rate = DPTX_PHYIF_CTRL_RATE_HBR2;
+	}
 
 	return ( DPTX_RETURN_SUCCESS );
 }
