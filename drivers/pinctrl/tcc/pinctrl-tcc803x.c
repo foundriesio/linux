@@ -22,7 +22,7 @@
 #include <linux/of_address.h>
 #include <linux/irq.h>
 #include <linux/interrupt.h>
-#include <asm/io.h>
+#include <linux/io.h>
 #include "pinctrl-tcc.h"
 
 /* Register Offset */
@@ -60,92 +60,119 @@
 
 #define INT_EINT0	(0+32)
 
-#define IS_GPSD(X)	(X >= 100 ? 1: 0)
+#define IS_GPSD(X)	(X >= 100 ? 1 : 0)
 
 struct gpio_regs {
-	unsigned data;         /* data */
-	unsigned out_en;       /* output enable */
-	unsigned out_or;       /* OR fnction on output data */
-	unsigned out_bic;      /* BIC function on output data */
-	unsigned out_xor;      /* XOR function on output data */
-	unsigned strength0;    /* driver strength control 0 */
-	unsigned strength1;    /* driver strength control 1 */
-	unsigned pull_enable;  /* pull-up/down enable */
-	unsigned pull_select;  /* pull-up/down select */
-	unsigned in_en;        /* input enable */
-	unsigned in_type;      /* input type (Shmitt / CMOS) */
-	unsigned slew_rate;    /* slew rate */
-	unsigned func_select0; /* port configuration 0 */
-	unsigned func_select1; /* port configuration 1 */
-	unsigned func_select2; /* port configuration 2 */
-	unsigned func_select3; /* port configuration 3 */
+	u32 data;         /* data */
+	u32 out_en;       /* output enable */
+	u32 out_or;       /* OR fnction on output data */
+	u32 out_bic;      /* BIC function on output data */
+	u32 out_xor;      /* XOR function on output data */
+	u32 strength0;    /* driver strength control 0 */
+	u32 strength1;    /* driver strength control 1 */
+	u32 pull_enable;  /* pull-up/down enable */
+	u32 pull_select;  /* pull-up/down select */
+	u32 in_en;        /* input enable */
+	u32 in_type;      /* input type (Shmitt / CMOS) */
+	u32 slew_rate;    /* slew rate */
+	u32 func_select0; /* port configuration 0 */
+	u32 func_select1; /* port configuration 1 */
+	u32 func_select2; /* port configuration 2 */
+	u32 func_select3; /* port configuration 3 */
 };
 
 
 struct extintr_ {
-	unsigned port_base;
-	unsigned port_num;
-	unsigned irq;
+	u32 port_base;
+	u32 port_num;
+	u32 irq;
 };
 
-static void __iomem *gpio_base = NULL;
-static unsigned long base_offset = 0;
-static void __iomem *pmgpio_base = NULL;
+static void __iomem *gpio_base;
+static ulong base_offset;
+static void __iomem *pmgpio_base;
 
-#define IS_GPK(addr) ((((unsigned long)addr) == ((unsigned long)pmgpio_base)) ? 1 : 0)
+#define IS_GPK(addr) ((((ulong)addr) == ((ulong)pmgpio_base)) ? 1 : 0)
 
-static struct extintr_ extintr [] = {
-	{ 0,	0 },	//0: no source
-	{ GPA,  0 }, { GPA,  1 }, { GPA,  2 }, { GPA,  3 }, { GPA,  4 }, { GPA,  5 }, { GPA,  6 }, { GPA,  7 }, //1 ~ 32
-	{ GPA,  8 }, { GPA,  9 }, { GPA, 10 }, { GPA, 11 }, { GPA, 12 }, { GPA, 13 }, { GPA, 14 }, { GPA, 15 },
-	{ GPA, 16 }, { GPA, 17 }, { GPA, 18 }, { GPA, 19 }, { GPA, 20 }, { GPA, 21 }, { GPA, 22 }, { GPA, 23 },
-	{ GPA, 24 }, { GPA, 25 }, { GPA, 26 }, { GPA, 27 }, { GPA, 28 }, { GPA, 29 }, { GPA, 30 }, { GPA, 31 },
+static struct extintr_ extintr[] = {
+	{0,	0},	//0: no source
 
-	{ GPB,  0 }, { GPB,  1 }, { GPB,  2 }, { GPB,  3 }, { GPB,  4 }, { GPB,  5 }, { GPB,  6 }, { GPB,  7 }, //33 ~ 61
-	{ GPB,  8 }, { GPB,  9 }, { GPB, 10 }, { GPB, 11 }, { GPB, 12 }, { GPB, 13 }, { GPB, 14 }, { GPB, 15 },
-	{ GPB, 16 }, { GPB, 17 }, { GPB, 18 }, { GPB, 19 }, { GPB, 20 }, { GPB, 21 }, { GPB, 22 }, { GPB, 23 },
-	{ GPB, 24 }, { GPB, 25 }, { GPB, 26 }, { GPB, 27 }, { GPB, 28 },
+	//1 ~ 32
+	{GPA, 0}, {GPA, 1}, {GPA, 2}, {GPA, 3}, {GPA, 4},
+	{GPA, 5}, {GPA, 6}, {GPA, 7}, {GPA, 8}, {GPA, 9},
+	{GPA, 10}, {GPA, 11}, {GPA, 12}, {GPA, 13}, {GPA, 14},
+	{GPA, 15}, {GPA, 16}, {GPA, 17}, {GPA, 18}, {GPA, 19},
+	{GPA, 20}, {GPA, 21}, {GPA, 22}, {GPA, 23}, {GPA, 24},
+	{GPA, 25}, {GPA, 26}, {GPA, 27}, {GPA, 28}, {GPA, 29},
+	{GPA, 30}, {GPA, 31},
 
-	{ GPC,  0 }, { GPC,  1 }, { GPC,  2 }, { GPC,  3 }, { GPC,  4 }, { GPC,  5 }, { GPC,  6 }, { GPC,  7 }, //62 ~ 91
-	{ GPC,  8 }, { GPC,  9 }, { GPC, 10 }, { GPC, 11 }, { GPC, 12 }, { GPC, 13 }, { GPC, 14 }, { GPC, 15 },
-	{ GPC, 16 }, { GPC, 17 }, { GPC, 18 }, { GPC, 19 }, { GPC, 20 }, { GPC, 21 }, { GPC, 22 }, { GPC, 23 },
-	{ GPC, 24 }, { GPC, 25 }, { GPC, 26 }, { GPC, 27 }, { GPC, 28 }, { GPC, 29 },
+	//33 ~ 61
+	{GPB, 0}, {GPB, 1}, {GPB, 2}, {GPB, 3}, {GPB, 4},
+	{GPB, 5}, {GPB, 6}, {GPB, 7}, {GPB, 8}, {GPB, 9},
+	{GPB, 10}, {GPB, 11}, {GPB, 12}, {GPB, 13}, {GPB, 14},
+	{GPB, 15}, {GPB, 16}, {GPB, 17}, {GPB, 18}, {GPB, 19},
+	{GPB, 20}, {GPB, 21}, {GPB, 22}, {GPB, 23}, {GPB, 24},
+	{GPB, 25}, {GPB, 26}, {GPB, 27}, {GPB, 28},
 
-	{ GPE,  0 }, { GPE,  1 }, { GPE,  2 }, { GPE,  3 }, { GPE,  4 }, { GPE,  5 }, { GPE,  6 }, { GPE,  7 }, //92 ~ 111
-	{ GPE,  8 }, { GPE,  9 }, { GPE, 10 }, { GPE, 11 }, { GPE, 12 }, { GPE, 13 }, { GPE, 14 }, { GPE, 15 },
-	{ GPE, 16 }, { GPE, 17 }, { GPE, 18 }, { GPE, 19 }, 
+	//62 ~ 91
+	{GPC, 0}, {GPC, 1}, {GPC, 2}, {GPC, 3}, {GPC, 4},
+	{GPC, 5}, {GPC, 6}, {GPC, 7}, {GPC, 8}, {GPC, 9},
+	{GPC, 10}, {GPC, 11}, {GPC, 12}, {GPC, 13}, {GPC, 14},
+	{GPC, 15}, {GPC, 16}, {GPC, 17}, {GPC, 18}, {GPC, 19},
+	{GPC, 20}, {GPC, 21}, {GPC, 22}, {GPC, 23}, {GPC, 24},
+	{GPC, 25}, {GPC, 26}, {GPC, 27}, {GPC, 28}, {GPC, 29},
 
-	{ GPG,  0 }, { GPG,  1 }, { GPG,  2 }, { GPG,  3 }, { GPG,  4 }, { GPG,  5 }, { GPG,  6 }, { GPG,  7 }, //112 ~ 122
-	{ GPG,  8 }, { GPG,  9 }, { GPG, 10 }, 
+	//92 ~ 111
+	{GPE, 0}, {GPE, 1}, {GPE, 2}, {GPE, 3}, {GPE, 4},
+	{GPE, 5}, {GPE, 6}, {GPE, 7}, {GPE, 8}, {GPE, 9},
+	{GPE, 10}, {GPE, 11}, {GPE, 12}, {GPE, 13}, {GPE, 14},
+	{GPE, 15}, {GPE, 16}, {GPE, 17}, {GPE, 18}, {GPE, 19},
 
-	{ GPH,  0 }, { GPH,  1 }, { GPH,  2 }, { GPH,  3 }, { GPH,  4 }, { GPH,  5 }, { GPH,  6 }, { GPH,  7 }, //123 ~ 134
-	{ GPH,  8 }, { GPH,  9 }, { GPH, 10 }, { GPH, 11 },
+	//112 ~ 122
+	{GPG, 0}, {GPG, 1}, {GPG, 2}, {GPG, 3}, {GPG, 4},
+	{GPG, 5}, {GPG, 6}, {GPG, 7}, {GPG, 8}, {GPG, 9},
+	{GPG, 10},
 
-	{ GPMA,  0 }, { GPMA,  1 }, { GPMA,  2 }, { GPMA,  3 }, { GPMA,  4 }, { GPMA,  5 }, { GPMA,  6 }, { GPMA,  7 }, //135 ~ 164
-	{ GPMA,  8 }, { GPMA,  9 }, { GPMA, 10 }, { GPMA, 11 }, { GPMA, 12 }, { GPMA, 13 }, { GPMA, 14 }, { GPMA, 15 },
-	{ GPMA, 16 }, { GPMA, 17 }, { GPMA, 18 }, { GPMA, 19 }, { GPMA, 20 }, { GPMA, 21 }, { GPMA, 22 }, { GPMA, 23 },
-	{ GPMA, 24 }, { GPMA, 25 }, { GPMA, 26 }, { GPMA, 27 }, { GPMA, 28 }, { GPMA, 29 },   
+	//123 ~ 134
+	{GPH, 0}, {GPH, 1}, {GPH, 2}, {GPH, 3}, {GPH, 4},
+	{GPH, 5}, {GPH, 6}, {GPH, 7}, {GPH, 8}, {GPH, 9},
+	{GPH, 10}, {GPH, 11},
 
-	{ 0,    0}, // RTC source
+	//135 ~ 164
+	{GPMA, 0}, {GPMA, 1}, {GPMA, 2}, {GPMA, 3}, {GPMA, 4},
+	{GPMA, 5}, {GPMA, 6}, {GPMA, 7}, {GPMA, 8}, {GPMA, 9},
+	{GPMA, 10}, {GPMA, 11}, {GPMA, 12}, {GPMA, 13}, {GPMA, 14},
+	{GPMA, 15}, {GPMA, 16}, {GPMA, 17}, {GPMA, 18}, {GPMA, 19},
+	{GPMA, 20}, {GPMA, 21}, {GPMA, 22}, {GPMA, 23}, {GPMA, 24},
+	{GPMA, 25}, {GPMA, 26}, {GPMA, 27}, {GPMA, 28}, {GPMA, 29},
 
-	{ GPSD0,  0 }, { GPSD0,  1 }, { GPSD0,  2 }, { GPSD0,  3 }, { GPSD0,  4 }, { GPSD0,  5 }, { GPSD0,  6 }, { GPSD0,  7 }, //166 ~ 180
-	{ GPSD0,  8 }, { GPSD0,  9 }, { GPSD0, 10 }, { GPSD0, 11 }, { GPSD0, 12 }, { GPSD0, 13 }, { GPSD0, 14 },
+	{0, 0}, // RTC source
 
-	{ GPSD1,  0 }, { GPSD1,  1 }, { GPSD1,  2 }, { GPSD1,  3 }, { GPSD1,  4 }, { GPSD1,  5 }, { GPSD1,  6 }, { GPSD1,  7 }, //181 ~ 191
-	{ GPSD1,  8 }, { GPSD1,  9 }, { GPSD1, 10 },
+	//166 ~ 180
+	{GPSD0, 0}, {GPSD0, 1}, {GPSD0, 2}, {GPSD0, 3}, {GPSD0, 4},
+	{GPSD0, 5}, {GPSD0, 6}, {GPSD0, 7}, {GPSD0, 8}, {GPSD0, 9},
+	{GPSD0, 10}, {GPSD0, 11}, {GPSD0, 12}, {GPSD0, 13}, {GPSD0, 14},
 
-	{ GPSD2,  0 }, { GPSD2,  1 }, { GPSD2,  2 }, { GPSD2,  3 }, { GPSD2,  4 }, { GPSD2,  5 }, { GPSD2,  6 }, { GPSD2,  7 }, //192 ~ 201
-	{ GPSD2,  8 }, { GPSD2,  9 },
+	//181 ~ 191
+	{GPSD1, 0}, {GPSD1, 1}, {GPSD1, 2}, {GPSD1, 3}, {GPSD1, 4},
+	{GPSD1, 5}, {GPSD1, 6}, {GPSD1, 7}, {GPSD1, 8}, {GPSD1, 9},
+	{GPSD1, 10},
+
+	//192 ~ 201
+	{GPSD2, 0}, {GPSD2, 1}, {GPSD2, 2}, {GPSD2, 3}, {GPSD2, 4},
+	{GPSD2, 5}, {GPSD2, 6}, {GPSD2, 7}, {GPSD2, 8}, {GPSD2, 9},
 };
 
 static struct tcc_pinctrl_soc_data tcc803x_pinctrl_soc_data;
 
-inline static int tcc803x_set_eint(void __iomem *base, unsigned bit, int extint)
+static int tcc803x_set_eint(void __iomem *base, u32 bit, int extint)
 {
-	void __iomem *reg = (void __iomem *)(gpio_base + EINTSEL + 4*(extint/4));
-	unsigned int data, mask, shift, idx;
-	unsigned port = (unsigned)base - (unsigned)gpio_base;
-	struct extintr_match_ *match = (struct extintr_match_ *)tcc803x_pinctrl_soc_data.irq->data;
+	void __iomem *reg
+		= (void __iomem *)(gpio_base + EINTSEL + 4*(extint/4));
+	u32 data, mask, shift, idx;
+	u32 port = (u32)base - (u32)gpio_base;
+	struct extintr_match_ *match
+		= (struct extintr_match_ *)tcc803x_pinctrl_soc_data.irq->data;
 	int irq_size = tcc803x_pinctrl_soc_data.irq->size;
 
 	if (!gpio_base)
@@ -154,9 +181,13 @@ inline static int tcc803x_set_eint(void __iomem *base, unsigned bit, int extint)
 	if (extint >= irq_size/2)
 		return -1;
 
-	for (idx = 0 ; idx < ARRAY_SIZE(extintr) ; idx++)
-		if ((extintr[idx].port_base == port) && (extintr[idx].port_num == bit))
+	for (idx = 0 ; idx < ARRAY_SIZE(extintr) ; idx++) {
+		if ((extintr[idx].port_base == port)
+				&& (extintr[idx].port_num == bit)) {
 			break;
+		}
+	}
+
 	if (idx >= ARRAY_SIZE(extintr))
 		return -1;
 
@@ -174,13 +205,14 @@ inline static int tcc803x_set_eint(void __iomem *base, unsigned bit, int extint)
 	return 0;
 }
 
-static int tcc803x_gpio_get(void __iomem *base, unsigned offset)
+static int tcc803x_gpio_get(void __iomem *base, u32 offset)
 {
-	unsigned int data = readl(base + GPIO_DATA);
+	u32 data = readl(base + GPIO_DATA);
+
 	return data >> offset & 1;
 }
 
-static void tcc803x_gpio_set(void __iomem *base, unsigned offset, int value)
+static void tcc803x_gpio_set(void __iomem *base, u32 offset, int value)
 {
 	if (value)
 		writel(1<<offset, base + GPIO_DATA_OR);
@@ -188,10 +220,11 @@ static void tcc803x_gpio_set(void __iomem *base, unsigned offset, int value)
 		writel(1<<offset, base + GPIO_DATA_BIC);
 }
 
-static void tcc803x_gpio_pinconf_extra(void __iomem *base, unsigned offset, int value, unsigned base_offset)
+static void tcc803x_gpio_pinconf_extra
+	(void __iomem *base, u32 offset, int value, u32 base_offset)
 {
 	void __iomem *reg = base + base_offset;
-	unsigned int data;
+	u32 data;
 
 	data = readl(reg);
 	data &= ~(1 << offset);
@@ -200,19 +233,23 @@ static void tcc803x_gpio_pinconf_extra(void __iomem *base, unsigned offset, int 
 	writel(data, reg);
 }
 
-static void tcc803x_gpio_input_buffer_set(void __iomem *base, unsigned offset, int value)
+static void tcc803x_gpio_input_buffer_set
+	(void __iomem *base, u32 offset, int value)
 {
-	if (IS_GPK(base))
-		tcc803x_gpio_pinconf_extra(base, offset, value, PMGPIO_INPUT_BUFFER_ENABLE);
-	else
-		tcc803x_gpio_pinconf_extra(base, offset, value, GPIO_INPUT_BUFFER_ENABLE);
+	if (IS_GPK(base)) {
+		tcc803x_gpio_pinconf_extra
+			(base, offset, value, PMGPIO_INPUT_BUFFER_ENABLE);
+	} else {
+		tcc803x_gpio_pinconf_extra
+			(base, offset, value, GPIO_INPUT_BUFFER_ENABLE);
+	}
 }
 
-static int tcc803x_gpio_set_direction(void __iomem *base, unsigned offset,
+static int tcc803x_gpio_set_direction(void __iomem *base, u32 offset,
 				      int input)
 {
 	void __iomem *reg = base + GPIO_OUTPUT_ENABLE;
-	unsigned int data;
+	u32 data;
 
 	data = readl(reg);
 	data &= ~(1 << offset);
@@ -222,21 +259,18 @@ static int tcc803x_gpio_set_direction(void __iomem *base, unsigned offset,
 	return 0;
 }
 
-static int tcc803x_gpio_set_function(void __iomem *base, unsigned offset,
+static int tcc803x_gpio_set_function(void __iomem *base, u32 offset,
 				      int func)
 {
 	void __iomem *reg = base + GPIO_FUNC + 4*(offset / 8);
-	unsigned int data, mask, shift;
+	u32 data, mask, shift;
 
-	if(IS_GPSD(func))
-	{
+	if (IS_GPSD(func)) {
 		reg = base + GPIO_FUNC;
 		shift = (offset % 32);
 		func -= 100;
 		mask = 0x1 << shift;
-	}
-	else
-	{
+	} else {
 		shift = 4 * (offset % 8);
 		mask = 0xf << shift;
 	}
@@ -246,7 +280,7 @@ static int tcc803x_gpio_set_function(void __iomem *base, unsigned offset,
 	return 0;
 }
 
-static int tcc803x_gpio_get_drive_strength(void __iomem *base, unsigned offset)
+static int tcc803x_gpio_get_drive_strength(void __iomem *base, u32 offset)
 {
 	void __iomem *reg;
 	int data;
@@ -262,7 +296,7 @@ static int tcc803x_gpio_get_drive_strength(void __iomem *base, unsigned offset)
 	return data;
 }
 
-static int tcc803x_gpio_set_drive_strength(void __iomem *base, unsigned offset,
+static int tcc803x_gpio_set_drive_strength(void __iomem *base, u32 offset,
 					   int value)
 {
 	void __iomem *reg;
@@ -284,46 +318,53 @@ static int tcc803x_gpio_set_drive_strength(void __iomem *base, unsigned offset,
 }
 
 
-static void tcc803x_gpio_pull_enable(void __iomem *base, unsigned offset, int enable)
+static void tcc803x_gpio_pull_enable(void __iomem *base, u32 offset, int enable)
 {
 
-	if (IS_GPK(base))
-		tcc803x_gpio_pinconf_extra(base, offset, enable, PMGPIO_PULL_ENABLE);
-	else
-		tcc803x_gpio_pinconf_extra(base, offset, enable, GPIO_PULL_ENABLE);
+	if (IS_GPK(base)) {
+		tcc803x_gpio_pinconf_extra
+			(base, offset, enable, PMGPIO_PULL_ENABLE);
+	} else {
+		tcc803x_gpio_pinconf_extra
+			(base, offset, enable, GPIO_PULL_ENABLE);
+	}
 }
 
-static void tcc803x_gpio_pull_select(void __iomem *base, unsigned offset, int up)
+static void tcc803x_gpio_pull_select(void __iomem *base, u32 offset, int up)
 {
-	if (IS_GPK(base))
-		tcc803x_gpio_pinconf_extra(base, offset, up, PMGPIO_PULL_SELECT);
-	else
-		tcc803x_gpio_pinconf_extra(base, offset, up, GPIO_PULL_SELECT);
+	if (IS_GPK(base)) {
+		tcc803x_gpio_pinconf_extra
+			(base, offset, up, PMGPIO_PULL_SELECT);
+	} else {
+		tcc803x_gpio_pinconf_extra
+			(base, offset, up, GPIO_PULL_SELECT);
+	}
 }
 
-static void tcc803x_gpio_input_type(void __iomem *base, unsigned offset, int value)
+static void tcc803x_gpio_input_type(void __iomem *base, u32 offset, int value)
 {
 	tcc803x_gpio_pinconf_extra(base, offset, value, GPIO_INPUT_TYPE);
 }
 
-static void tcc803x_gpio_slew_rate(void __iomem *base, unsigned offset, int value)
+static void tcc803x_gpio_slew_rate(void __iomem *base, u32 offset, int value)
 {
 	tcc803x_gpio_pinconf_extra(base, offset, value, GPIO_SLEW_RATE);
 }
 
-static int tcc803x_gpio_set_eclk_sel(void __iomem *base, unsigned offset,
+static int tcc803x_gpio_set_eclk_sel(void __iomem *base, u32 offset,
 				     int value)
 {
 	void __iomem *reg = (void __iomem *)(gpio_base + ECLKSEL);
-	unsigned port = (unsigned)base - (unsigned)gpio_base;
-	unsigned int idx;
+	u32 port = (u32)base - (u32)gpio_base;
+	u32 idx;
 	int data;
 
 	if (value > 3)
 		return -EINVAL;
 
 	for (idx = 0 ; idx < ARRAY_SIZE(extintr) ; idx++)
-		if ((extintr[idx].port_base == port) && (extintr[idx].port_num == offset))
+		if ((extintr[idx].port_base == port)
+				&& (extintr[idx].port_num == offset))
 			break;
 	if (idx >= ARRAY_SIZE(extintr))
 		return -1;
@@ -335,25 +376,27 @@ static int tcc803x_gpio_set_eclk_sel(void __iomem *base, unsigned offset,
 	return 0;
 }
 
-static int tcc803x_gpio_to_irq(void __iomem *base, unsigned offset)
+static int tcc803x_gpio_to_irq(void __iomem *base, u32 offset)
 {
 	int i;
-	struct extintr_match_ *match = (struct extintr_match_ *)tcc803x_pinctrl_soc_data.irq->data;
+	struct extintr_match_ *match
+		= (struct extintr_match_ *)tcc803x_pinctrl_soc_data.irq->data;
 	int irq_size = tcc803x_pinctrl_soc_data.irq->size;
 
-        //irq_size is sum of normal and reverse external interrupt.
-        //however, normal and reverse external interrupts are actually single external interrupt.
-        //external interrupt size is half of irq_size.
+	//irq_size is sum of normal and reverse external interrupt.
+	//however, normal and reverse external interrupts
+	//are actually single external interrupt.
+	//external interrupt size is half of irq_size.
 
 	/* checking exist */
-	for (i=0; i < irq_size/2; i++) {
+	for (i = 0; i < irq_size/2; i++) {
 		if (match[i].used && (match[i].port_base == base)
 			&& (match[i].port_num == offset))
 			goto set_gpio_to_irq_finish;
 	}
 
 	/* checking unused external interrupt */
-	for (i=0; i < irq_size/2; i++) {
+	for (i = 0; i < irq_size/2; i++) {
 		if (!match[i].used) {
 			if (tcc803x_set_eint(base, offset, i) == 0)
 				goto set_gpio_to_irq_finish;
@@ -370,51 +413,57 @@ set_gpio_to_irq_finish:
 	return match[i].irq;
 }
 
-bool tcc_is_exti(unsigned int irq)
+bool tcc_is_exti(u32 irq)
 {
 	struct irq_data *d = irq_get_irq_data(irq);
 	irq_hw_number_t hwirq;
 	bool ret = false;
 
-	if(d == NULL) {
+	if (d == NULL) {
 		return false;
+		/* for coding style */
 	}
 
 	hwirq = irqd_to_hwirq(d);
 	hwirq -= 32;
 
-	if(hwirq > 31) {
+	if (hwirq > 31) {
 		ret = false;
+		/* for coding style */
 	} else {
 		ret = true;
+		/* for coding style */
 	}
 
 	return ret;
 }
 
-unsigned int tcc_irq_get_reverse(unsigned int irq)
+u32 tcc_irq_get_reverse(u32 irq)
 {
 	struct irq_data *d = irq_get_irq_data(irq);
 	irq_hw_number_t hwirq;
-	unsigned int ret = 0;
+	u32 ret = 0;
 
-	if(d == NULL) {
+	if (d == NULL) {
 		return IRQ_NOTCONNECTED;
+		/* for coding style */
 	}
 
 	hwirq = irqd_to_hwirq(d);
 	hwirq -= 32;
 
-	if(hwirq > 15) {
+	if (hwirq > 15) {
 		ret = IRQ_NOTCONNECTED;
+		/* for coding style */
 	} else {
 		ret = irq + 16;
+		/* for coding style */
 	}
 
 	return ret;
 }
 
-static int tcc803x_pinconf_get(void __iomem *base, unsigned offset, int param)
+static int tcc803x_pinconf_get(void __iomem *base, u32 offset, int param)
 {
 	int ret;
 
@@ -432,7 +481,7 @@ static int tcc803x_pinconf_get(void __iomem *base, unsigned offset, int param)
 	return ret;
 }
 
-int tcc803x_pinconf_set(void __iomem *base, unsigned offset, int param,
+int tcc803x_pinconf_set(void __iomem *base, u32 offset, int param,
 			int config)
 {
 	switch (param) {
@@ -484,32 +533,35 @@ int tcc803x_pinconf_set(void __iomem *base, unsigned offset, int param,
 		tcc803x_gpio_slew_rate(base, offset, param % 2);
 		break;
 	case TCC_PINCONF_PARAM_ECLK_SEL:
-		if (tcc803x_gpio_set_eclk_sel(base, offset, config) < 0) {
+		if (tcc803x_gpio_set_eclk_sel
+				(base, offset, config) < 0) {
 			return -EINVAL;
 		}
 		break;
 	case TCC_PINCONF_PARAM_FUNC:
-	         tcc803x_gpio_set_function(base, offset, config);
-                break;
+		tcc803x_gpio_set_function(base, offset, config);
+		break;
 	}
 	return 0;
 }
 
 static struct tcc_pinconf tcc803x_pin_configs[] = {
-	{ "telechips,drive-strength", TCC_PINCONF_PARAM_DRIVE_STRENGTH },
-	{ "telechips,no-pull", TCC_PINCONF_PARAM_NO_PULL },
-	{ "telechips,pull-up", TCC_PINCONF_PARAM_PULL_UP },
-	{ "telechips,pull-down", TCC_PINCONF_PARAM_PULL_DOWN },
-	{ "telechips,input-enable", TCC_PINCONF_PARAM_INPUT_ENABLE },
-	{ "telechips,output-low", TCC_PINCONF_PARAM_OUTPUT_LOW },
-	{ "telechips,output-high", TCC_PINCONF_PARAM_OUTPUT_HIGH },
-	{ "telechips,input_buffer_enable", TCC_PINCONF_PARAM_INPUT_BUFFER_ENABLE },
-	{ "telechips,input_buffer_disable", TCC_PINCONF_PARAM_INPUT_BUFFER_DISABLE },
-	{ "telechips,schmitt-input", TCC_PINCONF_PARAM_SCHMITT_INPUT },
-	{ "telechips,cmos-input", TCC_PINCONF_PARAM_CMOS_INPUT },
-	{ "telechips,slow-slew", TCC_PINCONF_PARAM_SLOW_SLEW },
-	{ "telechips,fast-slew", TCC_PINCONF_PARAM_FAST_SLEW },
-	{ "telechips,eclk-sel", TCC_PINCONF_PARAM_ECLK_SEL },
+	{"telechips,drive-strength", TCC_PINCONF_PARAM_DRIVE_STRENGTH},
+	{"telechips,no-pull", TCC_PINCONF_PARAM_NO_PULL},
+	{"telechips,pull-up", TCC_PINCONF_PARAM_PULL_UP},
+	{"telechips,pull-down", TCC_PINCONF_PARAM_PULL_DOWN},
+	{"telechips,input-enable", TCC_PINCONF_PARAM_INPUT_ENABLE},
+	{"telechips,output-low", TCC_PINCONF_PARAM_OUTPUT_LOW},
+	{"telechips,output-high", TCC_PINCONF_PARAM_OUTPUT_HIGH},
+	{"telechips,input_buffer_enable",
+		TCC_PINCONF_PARAM_INPUT_BUFFER_ENABLE},
+	{"telechips,input_buffer_disable",
+		TCC_PINCONF_PARAM_INPUT_BUFFER_DISABLE},
+	{"telechips,schmitt-input", TCC_PINCONF_PARAM_SCHMITT_INPUT},
+	{"telechips,cmos-input", TCC_PINCONF_PARAM_CMOS_INPUT},
+	{"telechips,slow-slew", TCC_PINCONF_PARAM_SLOW_SLEW},
+	{"telechips,fast-slew", TCC_PINCONF_PARAM_FAST_SLEW},
+	{"telechips,eclk-sel", TCC_PINCONF_PARAM_ECLK_SEL},
 };
 
 static struct tcc_pinctrl_ops tcc803x_ops = {
@@ -534,9 +586,10 @@ static int tcc803x_pinctrl_probe(struct platform_device *pdev)
 	gpio_base = of_iomap(pdev->dev.of_node, 0);
 	pmgpio_base = of_iomap(pdev->dev.of_node, 1);
 	cfg_res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
-	base_offset = (unsigned long)gpio_base - (unsigned long)cfg_res->start;
-	
-	return tcc_pinctrl_probe(pdev, &tcc803x_pinctrl_soc_data, gpio_base, pmgpio_base);
+	base_offset = (ulong)gpio_base - (ulong)cfg_res->start;
+
+	return tcc_pinctrl_probe
+		(pdev, &tcc803x_pinctrl_soc_data, gpio_base, pmgpio_base);
 }
 
 static const struct of_device_id tcc803x_pinctrl_of_match[] = {

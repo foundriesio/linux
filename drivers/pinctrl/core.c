@@ -1270,7 +1270,7 @@ unapply_new_state:
  */
 int pinctrl_select_state(struct pinctrl *p, struct pinctrl_state *state)
 {
-#if !(defined(CONFIG_PM_SLEEP)&&defined(CONFIG_ARCH_TCC805X))
+#if !(defined(CONFIG_PM_SLEEP) && defined(CONFIG_ARCH_TCC805X))
 	if (p->state == state)
 		return 0;
 
