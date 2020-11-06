@@ -69,6 +69,9 @@ patternProperties:
       phy-supply:
         description: regulator providing 3V3 power supply to the PHY.
 
+      vbus-supply:
+        description: regulator providing 5V Vbus to the USB connector.
+
       st,phy-tuning:
         $ref: /schemas/types.yaml#definitions/phandle
         description:
