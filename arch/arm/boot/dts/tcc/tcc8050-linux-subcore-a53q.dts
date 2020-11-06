@@ -1496,7 +1496,7 @@
 		device-priority = <FBX_DEVICE_LVDS>;
 		telechips,disp = <&vioc_disp VIOC_DISP0>;
 		telechips,wmixer = <&vioc_wmix VIOC_WMIX0>;
-		telechips,rdma = <&vioc_rdma VIOC_RDMA01>;
+		telechips,rdma = <&vioc_rdma VIOC_RDMA02>;
 	};
 #endif
 
