@@ -638,6 +638,19 @@ static int __maybe_unused dwc2_suspend(struct device *dev)
 
 	dwc2_drd_suspend(dwc2);
 
+	if (dwc2->params.power_down == DWC2_POWER_DOWN_PARAM_NONE) {
+		/*
+		 * Backup host registers when power_down param is 'none', if
+		 * controller power is disabled.
+		 * This shouldn't be needed, when using other power_down modes.
+		 */
+		ret = dwc2_backup_registers(dwc2);
+		if (ret) {
+			dev_err(dwc2->dev, "backup regs failed %d\n", ret);
+			return ret;
+		}
+	}
+
 	if (dwc2->params.activate_stm_id_vb_detection) {
 		unsigned long flags;
 		u32 ggpio, gotgctl;
@@ -715,8 +728,13 @@ static int __maybe_unused dwc2_resume(struct device *dev)
 		spin_unlock_irqrestore(&dwc2->lock, flags);
 	}
 
-	/* Need to restore FORCEDEVMODE/FORCEHOSTMODE */
-	dwc2_force_dr_mode(dwc2);
+	if (dwc2->params.power_down == DWC2_POWER_DOWN_PARAM_NONE) {
+		ret = dwc2_restore_registers(dwc2);
+		if (ret) {
+			dev_err(dwc2->dev, "restore regs failed %d\n", ret);
+			return ret;
+		}
+	}
 
 	dwc2_drd_resume(dwc2);
 
