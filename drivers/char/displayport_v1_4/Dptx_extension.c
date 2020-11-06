@@ -2,7 +2,11 @@
 /*
  * Copyright (C) Telechips Inc.
  */
+#include <linux/init.h>
+#include <linux/device.h>
 #include <linux/delay.h>
+#include <linux/module.h>
+#include <linux/proc_fs.h>
 
 #include "Dptx_v14.h"
 #include "Dptx_drm_dp_addition.h"
@@ -1279,7 +1283,7 @@ bool Dptx_Ext_Get_TopologyState( struct Dptx_Params *pstDptx, u8 *pucNumOfHotplu
 	memset(  &pstDptx->aucRAD_PortNumber[0], INVALID_MST_PORT_NUM, ( sizeof(u8) * PHY_INPUT_STREAM_MAX ));
 
 	bRetVal = dptx_ext_clear_sideband_msg_payload_id_table( pstDptx );
-	if( bRetVal )
+	if( bRetVal == DPTX_RETURN_FAIL )
 	{
 		return ( bRetVal );
 	}
@@ -1288,7 +1292,7 @@ bool Dptx_Ext_Get_TopologyState( struct Dptx_Params *pstDptx, u8 *pucNumOfHotplu
 	pstMain_Msg_Reply = &pstDptx_Topology_Params->stMainBranch_Msg_Reply;
 
     bRetVal = dptx_ext_set_sideband_msg_link_address( pstDptx, pstMain_Msg_Rx, pstMain_Msg_Reply, INVALID_MST_PORT_NUM );
-    if( bRetVal )
+    if( bRetVal == DPTX_RETURN_FAIL )
 	{
 		return ( bRetVal );
 	}
@@ -1330,7 +1334,7 @@ bool Dptx_Ext_Get_TopologyState( struct Dptx_Params *pstDptx, u8 *pucNumOfHotplu
 			ucBranchPort_Number++;
 		
 			bRetVal = dptx_ext_set_sideband_msg_link_address( pstDptx, pstMsg_Rx, pstMsg_Reply, pstMain_Msg_Reply->u.link_addr.ports[ucMainPort_Count].port_number );
-            if( bRetVal )
+            if( bRetVal == DPTX_RETURN_FAIL )
             {
 			     return ( bRetVal );
             }
@@ -1686,4 +1690,517 @@ bool Dptx_Ext_Remote_I2C_Read( struct Dptx_Params *pstDptx, u8 ucStream_Index, b
 	return ( DPTX_RETURN_SUCCESS );
 }
 
+
+
+
+
+/************************************************************************************/
+/*																					*/
+/*									Proc interface									*/
+/*																					*/
+/************************************************************************************/
+
+#define DPTX_DEBUGFS_BUF_SIZE		1024
+#define DATA_DUMP_BUF_SIZE			DPTX_EDID_BUFLEN
+
+static int dptx_ext_proc_open( struct inode *inode, struct file *filp );
+static int dptx_ext_proc_close( struct inode *inode, struct file *filp );
+static ssize_t dptx_ext_proc_read_hpd_state( struct file *filp, char __user *usr_buf, size_t cnt, loff_t *off_set );
+static ssize_t dptx_ext_proc_read_port_composition( struct file *filp, char __user *usr_buf, size_t cnt, loff_t *off_set );
+static ssize_t dptx_ext_proc_read_edid_data( struct file *filp, char __user *usr_buf, size_t cnt, loff_t *off_set );
+static ssize_t dptx_ext_proc_read_link_training_status( struct file *filp, char __user *usr_buf, size_t cnt, loff_t *off_set );
+static ssize_t dptx_ext_proc_read_video_timing( struct file *filp, char __user *usr_buf, size_t cnt, loff_t *off_set );
+static ssize_t dptx_ext_proc_write_video_timing( struct file *filp, const char __user *buffer, size_t cnt, loff_t *off_set );
+
+static const struct file_operations proc_fops_hpd_state = {
+    .owner   = THIS_MODULE,
+    .open    = dptx_ext_proc_open,
+    .release = dptx_ext_proc_close,
+    .read    = dptx_ext_proc_read_hpd_state,
+};
+
+static const struct file_operations proc_fops_topology_state = {
+    .owner   = THIS_MODULE,
+    .open    = dptx_ext_proc_open,
+    .release = dptx_ext_proc_close,
+    .read    = dptx_ext_proc_read_port_composition,
+};
+
+static const struct file_operations proc_fops_edid_data = {
+    .owner   = THIS_MODULE,
+    .open    = dptx_ext_proc_open,
+    .release = dptx_ext_proc_close,
+    .read    = dptx_ext_proc_read_edid_data,
+};
+
+static const struct file_operations proc_fops_linkT_data = {
+    .owner   = THIS_MODULE,
+    .open    = dptx_ext_proc_open,
+    .release = dptx_ext_proc_close,
+    .read    = dptx_ext_proc_read_link_training_status,
+};
+
+static const struct file_operations proc_fops_video_data = {
+    .owner   = THIS_MODULE,
+    .open    = dptx_ext_proc_open,
+    .release = dptx_ext_proc_close,
+    .read    = dptx_ext_proc_read_video_timing,
+    .write	 = dptx_ext_proc_write_video_timing,	
+};
+
+
+
+static void dptx_ext_Print_U8_Buf( u8 *pucBuf, u32 uiStart_RegOffset, u32 uiLength  )
+{
+	int			iOffset;
+	char		acStr[DATA_DUMP_BUF_SIZE];
+	int			iNumOfWritten = 0;
+	
+	iNumOfWritten += snprintf( &acStr[iNumOfWritten], DATA_DUMP_BUF_SIZE - iNumOfWritten, "\n" );
+
+	for( iOffset = 0; iOffset < uiLength; iOffset++ ) 
+	{
+		if( !( iOffset % 16 ) ) 
+		{
+			iNumOfWritten += snprintf( &acStr[iNumOfWritten], DATA_DUMP_BUF_SIZE - iNumOfWritten, "\n%02x:", ( uiStart_RegOffset + iOffset ));
+			if( iNumOfWritten >= DATA_DUMP_BUF_SIZE )
+			{
+				break;
+			}
+		}
+
+		iNumOfWritten += snprintf( &acStr[iNumOfWritten],  DATA_DUMP_BUF_SIZE - iNumOfWritten, " %02x", pucBuf[iOffset] );
+		if( iNumOfWritten >= DATA_DUMP_BUF_SIZE )
+		{
+			break;
+		}
+	}
+
+	dptx_info("%s", acStr);
+}
+
+
+int dptx_ext_proc_open( struct inode *inode, struct file *filp )
+{
+	try_module_get( THIS_MODULE );
+	return 0;
+}
+
+int dptx_ext_proc_close( struct inode *inode, struct file *filp )
+{
+	module_put( THIS_MODULE );
+	return 0;
+}
+
+ssize_t dptx_ext_proc_read_hpd_state( struct file *filp, char __user *usr_buf, size_t cnt, loff_t *off_set )
+{
+	bool				bHPD_State;
+	ssize_t				stSize;
+	char				*pcHpd_Buf;
+	struct Dptx_Params *pstDptx = PDE_DATA(file_inode(filp));
+	
+	pcHpd_Buf = devm_kzalloc( pstDptx->pstParentDev, DPTX_DEBUGFS_BUF_SIZE, GFP_KERNEL );
+	if( pcHpd_Buf == NULL )
+	{
+		dptx_err("Could not allocate HPD state buffer ");
+	}
+
+	Dptx_Intr_Get_HotPlug_Status( pstDptx, &bHPD_State );
+
+	stSize = sprintf( pcHpd_Buf, "%s\n", bHPD_State == (bool)HPD_STATUS_PLUGGED ? "Hot plugged":"Hot unplugged");
+		
+	stSize = simple_read_from_buffer( usr_buf, cnt, off_set, (void *)pcHpd_Buf, stSize );
+		
+	devm_kfree( pstDptx->pstParentDev, pcHpd_Buf );
+	
+	return ( stSize );
+}
+
+ssize_t dptx_ext_proc_read_port_composition( struct file *filp, char __user *usr_buf, size_t cnt, loff_t *off_set )
+{
+	bool				bRetVal;
+	bool				bHPD_State, bMST_Supported;
+	u8					ucNumOfPluggedPorts;
+	ssize_t				stSize;
+	char				*pcTopology_Buf;
+	struct Dptx_Params *pstDptx = PDE_DATA(file_inode(filp));
+	
+	pcTopology_Buf = devm_kzalloc( pstDptx->pstParentDev, DPTX_DEBUGFS_BUF_SIZE, GFP_KERNEL );
+	if( pcTopology_Buf == NULL )
+	{
+		dptx_err("Could not allocate HPD state buffer ");
+		return ( 0 );
+	}
+
+	bRetVal = Dptx_Intr_Get_HotPlug_Status( pstDptx, &bHPD_State );
+	if( bRetVal == DPTX_RETURN_FAIL ) 
+	{
+		return ( 0 );
+	}
+	if( bHPD_State == (bool)HPD_STATUS_UNPLUGGED )
+	{
+		dptx_err("Hot unplugged..." );
+		return ( 0 );
+	}
+
+	bRetVal = Dptx_Ext_Get_Sink_Stream_Capability( pstDptx, &bMST_Supported );
+	if( bRetVal == DPTX_RETURN_FAIL )
+	{
+		return ( 0 );
+	}
+	
+	if( bMST_Supported )
+	{
+		bRetVal = Dptx_Ext_Get_TopologyState( pstDptx, &ucNumOfPluggedPorts );
+		if( bRetVal == DPTX_RETURN_FAIL )
+		{
+			bRetVal = Dptx_Max968XX_Get_TopologyState( &ucNumOfPluggedPorts );
+			if( bRetVal == DPTX_RETURN_FAIL )
+			{
+				dptx_err("There is no sink devices connected.. %d", ucNumOfPluggedPorts);
+				return ( 0 );
+			}
+			
+			pstDptx->bSideBand_MSG_Supported = false;
+		}
+		else
+		{
+			pstDptx->bSideBand_MSG_Supported = true;
+		}
+	}
+	else
+	{
+		ucNumOfPluggedPorts = 1;
+	}
+
+	if( ucNumOfPluggedPorts == 1 )
+	{
+		bMST_Supported = false;
+		
+		Dptx_Ext_Set_Stream_Mode( pstDptx, false,     ucNumOfPluggedPorts );
+	}
+	else
+	{
+		Dptx_Ext_Set_Stream_Mode( pstDptx, true,     ucNumOfPluggedPorts );
+	}
+
+
+	stSize = sprintf( pcTopology_Buf, "%s : %d %s connected \n", 
+						bMST_Supported ? "MST mode":"SST mode", ucNumOfPluggedPorts, ucNumOfPluggedPorts == 1 ? "port is":"ports are");
+		
+	stSize = simple_read_from_buffer( usr_buf, cnt, off_set, (void *)pcTopology_Buf, stSize );
+		
+	devm_kfree( pstDptx->pstParentDev, pcTopology_Buf );
+	
+	return ( stSize );
+}
+
+ssize_t dptx_ext_proc_read_edid_data( struct file *filp, char __user *usr_buf, size_t cnt, loff_t *off_set )
+{
+	bool				bRetVal;
+	bool				bHPD_State, bSink_MST_Supported, bSink_Has_EDID = true;
+	u8					ucNumOfPluggedPorts = 0, ucStream_Index;
+	char				*pcEdid_Buf;
+	ssize_t				stSize;
+	struct Dptx_Params *pstDptx = PDE_DATA(file_inode(filp));
+
+	pcEdid_Buf = devm_kzalloc( pstDptx->pstParentDev, DPTX_DEBUGFS_BUF_SIZE, GFP_KERNEL );
+	if( pcEdid_Buf == NULL )
+	{
+		dptx_err("Could not allocate HPD state buffer ");
+	}
+
+	bRetVal = Dptx_Intr_Get_HotPlug_Status( pstDptx, &bHPD_State );
+	if( bRetVal == DPTX_RETURN_FAIL ) 
+	{
+		return ( 0 );
+	}
+	if( bHPD_State == (bool)HPD_STATUS_UNPLUGGED )
+	{
+		dptx_err("Hot unplugged..." );
+		return ( 0 );
+	}
+
+	Dptx_Ext_Get_Stream_Mode( pstDptx, &bSink_MST_Supported, &ucNumOfPluggedPorts );
+
+	if( ucNumOfPluggedPorts == 0 )
+	{
+		dptx_err("Get Port Composition first ");
+		return ( 0 );
+	}
+
+	if( bSink_MST_Supported )
+	{
+		for( ucStream_Index = 0; ucStream_Index < ucNumOfPluggedPorts; ucStream_Index++ )
+		{
+			bRetVal = Dptx_Edid_Read_EDID_Over_Sideband_Msg( pstDptx, ucStream_Index, true );
+			if( bRetVal == DPTX_RETURN_FAIL ) 
+			{
+				break;
+			}
+
+			dptx_ext_Print_U8_Buf( pstDptx->pucEdidBuf, 0, ( DPTX_ONE_EDID_BLK_LEN + DPTX_ONE_EDID_BLK_LEN ));
+		}
+
+		if( ucStream_Index == 0 )
+		{
+			bSink_Has_EDID = false;
+		}
+	}
+	else
+	{
+		bRetVal = Dptx_Edid_Read_EDID_I2C_Over_Aux( pstDptx );
+		if( bRetVal == DPTX_RETURN_FAIL )
+		{
+			bSink_Has_EDID = false;
+		}
+		else
+		{
+			dptx_ext_Print_U8_Buf( pstDptx->pucEdidBuf, 0, ( DPTX_ONE_EDID_BLK_LEN + DPTX_ONE_EDID_BLK_LEN ));
+		}
+	}
+
+	stSize = sprintf( pcEdid_Buf, "%s : %s %d %s connected \n", bSink_MST_Supported ? "MST mode":"SST mode",
+						bSink_Has_EDID ? "Sink has EDID from":"Sink doesn't have EDID from", ucNumOfPluggedPorts, ucNumOfPluggedPorts == 1 ? "port is":"ports are");
+
+	stSize = simple_read_from_buffer( usr_buf, cnt, off_set, (void *)pcEdid_Buf, stSize );
+		
+	devm_kfree( pstDptx->pstParentDev, pcEdid_Buf );
+	
+	return ( stSize );
+}
+
+ssize_t dptx_ext_proc_read_link_training_status( struct file *filp, char __user *usr_buf, size_t cnt, loff_t *off_set )
+{
+	bool				bRetVal;
+	bool				bHPD_State, bSink_MST_Supported, bTrainingState;
+	u8					ucNumOfPluggedPorts = 0;
+	char				*pcEdid_Buf;
+	ssize_t				stSize;
+	struct Dptx_Params *pstDptx = PDE_DATA(file_inode(filp));
+
+	pcEdid_Buf = devm_kzalloc( pstDptx->pstParentDev, DPTX_DEBUGFS_BUF_SIZE, GFP_KERNEL );
+	if( pcEdid_Buf == NULL )
+	{
+		dptx_err("Could not allocate HPD state buffer ");
+	}
+
+	bRetVal = Dptx_Intr_Get_HotPlug_Status( pstDptx, &bHPD_State );
+	if( bRetVal == DPTX_RETURN_FAIL ) 
+	{
+		return ( 0 );
+	}
+	if( bHPD_State == (bool)HPD_STATUS_UNPLUGGED )
+	{
+		dptx_err("Hot unplugged..." );
+		return ( 0 );
+	}
+
+	Dptx_Ext_Get_Stream_Mode( pstDptx, &bSink_MST_Supported, &ucNumOfPluggedPorts );
+
+	if( ucNumOfPluggedPorts == 0 )
+	{
+		dptx_err("Get Port Composition first ");
+		return ( 0 );
+	}
+
+	bRetVal = Dptx_Link_Get_LinkTraining_Status( pstDptx, &bTrainingState );
+	if( bRetVal == DPTX_RETURN_FAIL )
+	{
+		return ( 0 );
+	}
+	
+	if( bTrainingState )
+	{
+		stSize = sprintf( pcEdid_Buf, "%s : link training was already successed \n", bSink_MST_Supported ? "MST mode":"SST mode");
+
+		stSize = simple_read_from_buffer( usr_buf, cnt, off_set, (void *)pcEdid_Buf, stSize );
+		
+		devm_kfree( pstDptx->pstParentDev, pcEdid_Buf );
+	
+		return ( stSize );
+	}
+
+	bRetVal = Dptx_Link_Perform_BringUp( pstDptx, bSink_MST_Supported );
+	if( bRetVal == DPTX_RETURN_SUCCESS )
+	{
+		bRetVal = Dptx_Link_Perform_Training(     pstDptx, pstDptx->ucMax_Rate, pstDptx->ucMax_Lanes );
+		if( bRetVal == DPTX_RETURN_SUCCESS )
+		{	
+			bTrainingState = true;
+		}
+		else
+		{
+			bTrainingState = false;
+		}
+	}
+	else
+	{
+		bTrainingState = false;
+	}
+
+	if( bSink_MST_Supported  )
+	{
+		Dptx_Ext_Set_Topology_Configuration( pstDptx, pstDptx->ucNumOfPorts, pstDptx->bSideBand_MSG_Supported );
+	}
+
+	stSize = sprintf( pcEdid_Buf, "%s : link training %s with %s on %d lanes \n", bSink_MST_Supported ? "MST mode":"SST mode", bTrainingState ? "successed":"failed",
+						pstDptx->stDptxLink.ucLinkRate == DPTX_PHYIF_CTRL_RATE_RBR ? "RBR":( pstDptx->stDptxLink.ucLinkRate == DPTX_PHYIF_CTRL_RATE_HBR ) ? "HBR":( pstDptx->stDptxLink.ucLinkRate == DPTX_PHYIF_CTRL_RATE_HBR2 ) ? "HB2":"HBR3",
+						pstDptx->stDptxLink.ucNumOfLanes );
+
+	stSize = simple_read_from_buffer( usr_buf, cnt, off_set, (void *)pcEdid_Buf, stSize );
+		
+	devm_kfree( pstDptx->pstParentDev, pcEdid_Buf );
+	
+	return ( stSize );
+}
+
+ssize_t dptx_ext_proc_read_video_timing( struct file *filp, char __user *usr_buf, size_t cnt, loff_t *off_set )
+{
+	bool				bRetVal;
+	bool				bSink_MST_Supported;
+	u8					ucNumOfPluggedPorts = 0, ucStream_Index;
+	u16					usH_Active[PHY_INPUT_STREAM_MAX] = { 0, }, usV_Active[PHY_INPUT_STREAM_MAX] = { 0, };
+	char				*pcVideoTiming_Buf;
+	ssize_t				stSize;
+	struct Dptx_Dtd_Params	stDtd_Params;
+	struct Dptx_Params *pstDptx = PDE_DATA(file_inode(filp));
+
+	pcVideoTiming_Buf = devm_kzalloc( pstDptx->pstParentDev, DPTX_DEBUGFS_BUF_SIZE, GFP_KERNEL );
+	if( pcVideoTiming_Buf == NULL )
+	{
+		dptx_err("Could not allocate HPD state buffer ");
+	}
+
+	Dptx_Ext_Get_Stream_Mode( pstDptx, &bSink_MST_Supported, &ucNumOfPluggedPorts );
+
+	if(( ucNumOfPluggedPorts == 0 ) || ( ucNumOfPluggedPorts >= PHY_INPUT_STREAM_MAX ))
+	{
+		dptx_err("Invalid the Num. of Ports %d -> Get Port Composition first ", ucNumOfPluggedPorts);
+		return ( 0 );
+	}
+
+	for( ucStream_Index = 0; ucStream_Index < ucNumOfPluggedPorts; ucStream_Index++ )
+	{
+		bRetVal = Dptx_Avgen_Get_Video_Configured_Timing( pstDptx, ucStream_Index, &stDtd_Params );
+		if( bRetVal == DPTX_RETURN_FAIL )
+		{
+			return ( 0 );
+		}
+
+		usH_Active[ucStream_Index] = stDtd_Params.h_active;
+		usV_Active[ucStream_Index] = stDtd_Params.v_active;
+	}
+
+	stSize = sprintf( pcVideoTiming_Buf, "%s : 1st %d x %d, 2nd : %d x %d, 3rd : %d x %d, 4th : %d x %d\n",
+						bSink_MST_Supported ? "MST mode":"SST mode",
+						usH_Active[PHY_INPUT_STREAM_0], usV_Active[PHY_INPUT_STREAM_0], usH_Active[PHY_INPUT_STREAM_1], usV_Active[PHY_INPUT_STREAM_1],
+						usH_Active[PHY_INPUT_STREAM_2], usV_Active[PHY_INPUT_STREAM_2], usH_Active[PHY_INPUT_STREAM_3], usV_Active[PHY_INPUT_STREAM_3] );
+
+	stSize = simple_read_from_buffer( usr_buf, cnt, off_set, (void *)pcVideoTiming_Buf, stSize );
+
+	return ( stSize );
+}
+
+ssize_t dptx_ext_proc_write_video_timing( struct file *filp, const char __user *buffer, size_t cnt, loff_t *off_set )
+{
+	bool				bRetVal;
+	char				*pcVideoTiming_Buf;
+	int					iRetVal;
+	u32					uiVideoCode, uiStream_Index;
+	ssize_t				stSize;
+	struct Dptx_Dtd_Params	stDtd_Params;
+	struct Dptx_Params *pstDptx = PDE_DATA(file_inode(filp));
+
+	pcVideoTiming_Buf = devm_kzalloc( pstDptx->pstParentDev, DPTX_DEBUGFS_BUF_SIZE, GFP_KERNEL );
+	if( pcVideoTiming_Buf == NULL )
+	{
+		dptx_err("Could not allocate HPD state buffer ");
+		return ( 0 );
+	}
+
+	stSize = simple_write_to_buffer( pcVideoTiming_Buf, cnt, off_set, buffer, cnt );
+    if(( stSize != cnt ) && ( stSize >= 0 ))
+	{
+		dptx_err("Can't get input data : %d <-> %d ", stSize, cnt);
+		
+        devm_kfree( pstDptx->pstParentDev, pcVideoTiming_Buf );
+       	return ( -EIO );
+    }
+
+	pcVideoTiming_Buf[cnt] = '\0';
+
+	iRetVal = sscanf( pcVideoTiming_Buf, "%u %u", &uiStream_Index, &uiVideoCode );
+	if( iRetVal < 0 )
+	{
+		devm_kfree( pstDptx->pstParentDev, pcVideoTiming_Buf );
+		return ( 0 );
+	}
+
+	dptx_info(" Stream index : %d, Vidoe code : %d", uiStream_Index, uiVideoCode);
+
+	bRetVal = Dptx_Avgen_Fill_Dtd( &stDtd_Params, uiVideoCode, 60000, (u8)VIDEO_FORMAT_CEA_861 );
+	if( bRetVal == DPTX_RETURN_FAIL )
+	{
+		dptx_err("Can't find VIC %d <-> %d from dtd", uiVideoCode );
+
+		devm_kfree( pstDptx->pstParentDev, pcVideoTiming_Buf );
+		return ( 0 );
+	}
+
+	bRetVal = Dptx_Avgen_Set_Video_Detailed_Timing( pstDptx, (u8)uiStream_Index, &stDtd_Params );
+	if( bRetVal == DPTX_RETURN_FAIL )
+	{
+		devm_kfree( pstDptx->pstParentDev, pcVideoTiming_Buf );
+		return ( 0 );
+	}
+
+	Dptx_Avgen_Set_Video_Stream_Enable( pstDptx, true, uiStream_Index );
+
+	devm_kfree( pstDptx->pstParentDev, pcVideoTiming_Buf );
+
+	return ( stSize );
+}
+
+
+bool Dptx_Ext_Proc_Interface_Init( struct Dptx_Params *pstDptx )
+{
+	pstDptx->pstDP_Proc_Dir = proc_mkdir("dptx_v14", NULL);
+	if( pstDptx->pstDP_Proc_Dir == NULL )
+	{
+		dptx_err("Could not create file system @ /proc/dptx_v14 ");
+	}
+
+	pstDptx->pstDP_HPD_Dir = proc_create_data("hpd", S_IFREG | S_IRUGO,	pstDptx->pstDP_Proc_Dir, &proc_fops_hpd_state, pstDptx );
+	if( pstDptx->pstDP_HPD_Dir == NULL )
+	{
+		dptx_err("Could not create file system data @ /proc/dptx_v14/hpd");
+	}
+
+	pstDptx->pstDP_Topology_Dir = proc_create_data("topology", S_IFREG | S_IRUGO,	pstDptx->pstDP_Proc_Dir, &proc_fops_topology_state, pstDptx );
+	if( pstDptx->pstDP_Topology_Dir == NULL )
+	{
+		dptx_err("Could not create file system data @ /proc/dptx_v14/topology");
+	}
+
+	pstDptx->pstDP_EDID_Dir = proc_create_data("edid", S_IFREG | S_IRUGO,	pstDptx->pstDP_Proc_Dir, &proc_fops_edid_data, pstDptx );
+	if( pstDptx->pstDP_EDID_Dir == NULL )
+	{
+		dptx_err("Could not create file system data @ /proc/dptx_v14/edid");
+	}
+
+	pstDptx->pstDP_LinkT_Dir = proc_create_data("link", S_IFREG | S_IRUGO,	pstDptx->pstDP_Proc_Dir, &proc_fops_linkT_data, pstDptx );
+	if( pstDptx->pstDP_LinkT_Dir == NULL )
+	{
+		dptx_err("Could not create file system data @ /proc/dptx_v14/link");
+	}
+
+	pstDptx->pstDP_Video_Dir = proc_create_data("video", S_IFREG | S_IRUGO | S_IWUGO,	pstDptx->pstDP_Proc_Dir, &proc_fops_video_data, pstDptx );
+	if( pstDptx->pstDP_Video_Dir == NULL )
+	{
+		dptx_err("Could not create file system data @ /proc/dptx_v14/video");
+	}
+	
+	return ( DPTX_RETURN_SUCCESS );
+}
 

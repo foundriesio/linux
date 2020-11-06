@@ -732,7 +732,7 @@ bool Dptx_Max968XX_Reset( struct Dptx_Params *pstDptx )
 		ucSerDes_Index = Dptx_Max968XX_Convert_DevAdd_To_Index( (unsigned char)pstSERDES_Reg_Info[uiElements].uiDev_Addr );
 		if( ucSerDes_Index >= SER_DES_INPUT_INDEX_MAX )
 		{
-			//dptx_info("Can't find SerDes Index %d", ucSerDes_Index);
+			dptx_info("Can't find SerDes Index returned %d as device address 0x%x", ucSerDes_Index, pstSERDES_Reg_Info[uiElements].uiDev_Addr);
 			continue;
 		}
 

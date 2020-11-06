@@ -10,7 +10,7 @@
 #include <linux/irqreturn.h>
 
 #define TCC_DPTX_DRV_MAJOR_VER			1
-#define TCC_DPTX_DRV_MINOR_VER			1
+#define TCC_DPTX_DRV_MINOR_VER			2
 #define TCC_DPTX_DRV_SUBTITLE_VER		0
 
 #define DP_DDIBUS_BASE_REG_ADDRESS		0x12400000
@@ -522,6 +522,13 @@ struct Dptx_Params
 	struct Dptx_Aux_Params				stAuxParams;
 	struct Dptx_Link_Params				stDptxLink;
 
+	struct proc_dir_entry				*pstDP_Proc_Dir;
+	struct proc_dir_entry				*pstDP_HPD_Dir;
+	struct proc_dir_entry				*pstDP_Topology_Dir;
+	struct proc_dir_entry				*pstDP_EDID_Dir;
+	struct proc_dir_entry				*pstDP_LinkT_Dir;
+	struct proc_dir_entry				*pstDP_Video_Dir;
+
 	Dptx_HPD_Intr_Callback				pvHPD_Intr_CallBack;
 };
 
@@ -584,7 +591,6 @@ bool Dptx_Core_PHY_Bandwidth_To_Rate( struct Dptx_Params *pstDptx, u8 ucBandWidt
 /* Dptx AV Generator */
 bool Dptx_Avgen_Init_Video_Params( struct Dptx_Params *pstDptx, u32 uiPeri_Pixel_Clock[PHY_INPUT_STREAM_MAX] );
 bool Dptx_Avgen_Init_Audio_Params( struct Dptx_Params *pstDptx );
-bool Dptx_Avgen_Get_Video_Code( struct Dptx_Params *pstDptx, u32 *puiVideo_Code, u8 ucStream_Index );
 bool Dptx_Avgen_Set_Video_Stream_Enable( struct Dptx_Params *pstDptx, bool bEnable_Stream, u8 ucStream_Index );
 bool Dptx_Avgen_Get_Video_Stream_Enable( struct Dptx_Params *pstDptx, bool *pbEnable_Stream, u8 ucStream_Index );
 bool Dptx_Avgen_Set_Video_Detailed_Timing( struct Dptx_Params *pstDptx, u8 ucStream_Index, struct Dptx_Dtd_Params *pstDtd_Params );
@@ -621,7 +627,7 @@ bool Dptx_Link_Get_LinkTraining_Status( struct Dptx_Params *pstDptx, bool *pbTra
 /* Dptx Interrupt */
 irqreturn_t Dptx_Intr_IRQ( int irq, void *dev );
 irqreturn_t Dptx_Intr_Threaded_IRQ( int irq, void *dev );
-bool Dptx_Intr_Get_Port_Composition( struct Dptx_Params *pstDptx, bool *pbSideBand_MSG_Supported );
+bool Dptx_Intr_Get_Port_Composition( struct Dptx_Params *pstDptx );
 bool Dptx_Intr_Register_HPD_Callback( struct Dptx_Params *pstDptx, Dptx_HPD_Intr_Callback HPD_Intr_Callback );
 bool Dptx_Intr_Handle_HotUnplug( struct Dptx_Params *pstDptx );
 bool Dptx_Intr_Get_HotPlug_Status( struct Dptx_Params *pstDptx, bool *pbHotPlug_Status );
@@ -653,6 +659,8 @@ bool Dptx_Ext_Set_Sink_VCP_Table_Slots( struct Dptx_Params *pstDptx, u8 ucStream
 bool Dptx_Ext_Get_TopologyState( struct Dptx_Params *pstDptx, u8 *pucNumOfHotpluggedPorts );
 bool Dptx_Ext_Set_Topology_Configuration( struct Dptx_Params *pstDptx, u8 ucNumOfPorts, bool bSideBand_MSG_Supported );
 bool Dptx_Ext_Remote_I2C_Read( struct Dptx_Params *pstDptx, u8 ucStream_Index, bool bSkipped_PortComposition );
+bool Dptx_Ext_Proc_Interface_Init( struct Dptx_Params *pstDptx );
+
 
 
 /* Dptx Register */

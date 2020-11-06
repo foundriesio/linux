@@ -93,7 +93,7 @@ static bool of_parse_dp_dt( struct Dptx_Params	*pstDptx, struct device_node *pst
 static int Dpv14_Tx_Probe( struct platform_device *pdev)
 {
 	bool					bRetVal = 0;
-	bool					bHotPlugged = false, bSideBand_MSG_Supported;
+	bool					bHotPlugged = false;
 	u32						auiPeri_Pixel_Clock[PHY_INPUT_STREAM_MAX] = { 0, };
 	struct resource			*pstResource;
 	struct Dptx_Params		*pstDptx;
@@ -238,7 +238,7 @@ static int Dpv14_Tx_Probe( struct platform_device *pdev)
 	pstDptx->eLast_HPDStatus = ( bHotPlugged == (bool)HPD_STATUS_PLUGGED ) ? (bool)HPD_STATUS_PLUGGED : (bool)HPD_STATUS_UNPLUGGED;
 	if( bHotPlugged == (bool)HPD_STATUS_PLUGGED )
 	{
-		Dptx_Intr_Get_Port_Composition( pstDptx, &bSideBand_MSG_Supported );
+		Dptx_Intr_Get_Port_Composition( pstDptx );
 	}
 
 	pstVideoParams = &pstDptx->stVideoParams;
@@ -255,6 +255,8 @@ static int Dpv14_Tx_Probe( struct platform_device *pdev)
 
 	Dptx_Intr_Register_HPD_Callback( pstDptx,	Dpv14_Tx_API_Hpd_Intr_CB );
 	Dptx_Core_Enable_Global_Intr( pstDptx,	( DPTX_IEN_HPD | DPTX_IEN_HDCP | DPTX_IEN_SDP | DPTX_IEN_TYPE_C ) );
+
+	Dptx_Ext_Proc_Interface_Init( pstDptx );
 
 	return ( 0 );
 }
@@ -317,15 +319,13 @@ static int Dpv14_Tx_Suspend( struct platform_device *pdev, pm_message_t state )
 		dptx_err("from Dptx_Core_Deinit()");
 	}
 
-	mutex_destroy( &pstDptx->Mutex );
-	//devm_free_irq( &pdev->dev, pstDptx->uiHPD_IRQ, (void *)pstDptx );
-
 	return ( 0 );
 }
 
 static int Dpv14_Tx_Resume( struct platform_device *pdev )
 {
 	bool	bRetVal;
+	bool					bHotPlugged;	
 	struct Dptx_Params		*pstDptx;
 	struct Dptx_Video_Params	*pstVideoParams;
 
@@ -334,8 +334,6 @@ static int Dpv14_Tx_Resume( struct platform_device *pdev )
     dptx_dbg("PM Resume: DP V1.4 driver ");
     dptx_dbg("****************************************");
 	dptx_dbg("");
-
-	//gpio_direction_input( pstDptx->uiHPD_GPIO );
 
 	pstDptx = platform_get_drvdata( pdev );
 
@@ -354,26 +352,6 @@ static int Dpv14_Tx_Resume( struct platform_device *pdev )
 	Dptx_Platform_Set_APAccess_Mode( pstDptx );
 	Dptx_Platform_ClkPath_To_XIN( pstDptx );
 
-	mutex_init( &pstDptx->Mutex );
-
-	init_waitqueue_head( &pstDptx->WaitQ );
-	
-	atomic_set( &pstDptx->Sink_request, 0 );
-	atomic_set( &pstDptx->HPD_IRQ_State, 0 );
-
-	bRetVal = (bool)devm_request_threaded_irq(	&pdev->dev,
-													pstDptx->uiHPD_IRQ,
-													Dptx_Intr_IRQ,
-													Dptx_Intr_Threaded_IRQ,
-													IRQF_SHARED | IRQ_LEVEL,
-													"Dpv14_Tx",
-													pstDptx );
-	if( bRetVal ) 
-	{
-		dptx_err("from devm_request_threaded_irq()");
-		return -ENODEV;
-	}
-
 	bRetVal = Dptx_Platform_Init( pstDptx );
 	if( bRetVal ) 
 	{
@@ -384,6 +362,28 @@ static int Dpv14_Tx_Resume( struct platform_device *pdev )
 	if( bRetVal ) 
 	{
 		return -ENODEV;
+	}
+
+	bRetVal = Dptx_Intr_Get_HotPlug_Status( pstDptx, &bHotPlugged );
+	if( bRetVal ) 
+	{
+		return -ENODEV;
+	}
+
+	pstDptx->eLast_HPDStatus = (enum HPD_Detection_Status)bHotPlugged;
+
+	if( bHotPlugged == (bool)HPD_STATUS_PLUGGED )
+	{
+		bRetVal = Dptx_Link_Perform_BringUp( pstDptx, pstDptx->bMultStreamTransport );
+		if( bRetVal == DPTX_RETURN_SUCCESS ) 
+		{
+			Dptx_Link_Perform_Training(pstDptx, pstDptx->ucMax_Rate, pstDptx->ucMax_Lanes );
+
+			if( pstDptx->bMultStreamTransport  )
+			{
+				Dptx_Ext_Set_Topology_Configuration( pstDptx, pstDptx->ucNumOfPorts, pstDptx->bSideBand_MSG_Supported );
+			}
+		}
 	}
 
 	return 0;

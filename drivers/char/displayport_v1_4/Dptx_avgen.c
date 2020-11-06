@@ -731,15 +731,6 @@ bool Dptx_Avgen_Set_Video_Detailed_Timing( struct Dptx_Params *pstDptx, u8 ucStr
 	return ( DPTX_RETURN_SUCCESS );
 }
 
-bool Dptx_Avgen_Get_Video_Code( struct Dptx_Params *pstDptx, u32 *puiVideo_Code, u8 ucStream_Index )
-{
-	struct Dptx_Video_Params	*pstVideoParams = &pstDptx->stVideoParams;
-	
-	*puiVideo_Code = pstVideoParams->auiVideo_Code[ucStream_Index];
-
-	return ( DPTX_RETURN_SUCCESS );
-}
-
 bool Dptx_Avgen_Set_Video_Stream_Enable( struct Dptx_Params *pstDptx, bool bEnable_Stream, u8 ucStream_Index )
 {
 	u32				uiRegMap_VSampleCtrl;

@@ -1196,7 +1196,7 @@ again:
 		return ( DPTX_RETURN_FAIL );
 	}
 
-	pr_info("[INF][DP V14]Link training succeeded with rate=%d lanes=%d !!!", pstDptx->stDptxLink.ucLinkRate, pstDptx->stDptxLink.ucNumOfLanes );
+	dptx_info("[INF][DP V14]Link training succeeded with rate=%d lanes=%d !!!", pstDptx->stDptxLink.ucLinkRate, pstDptx->stDptxLink.ucNumOfLanes );
 	return ( DPTX_RETURN_SUCCESS );
 
 fail:
