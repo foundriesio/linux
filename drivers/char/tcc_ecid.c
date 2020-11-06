@@ -17,9 +17,8 @@
 #include <linux/delay.h>
 #include <linux/platform_device.h>
 #include <linux/gpio.h>
-#include <asm/delay.h>
+#include <linux/delay.h>
 #include <linux/clk.h>
-#include <asm/io.h>
 #include <linux/io.h>
 #include <asm/system_info.h>
 #include <linux/arm-smccc.h>
@@ -45,53 +44,71 @@
 //#define USER    (~Hw16)
 
 
-#if defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC901X)
+#if defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X) ||\
+	defined(CONFIG_ARCH_TCC901X) || defined(CONFIG_ARCH_TCC805X)
 #define SEL	  14
 #else
 #define SEL	  15
 #endif
 
-// ECID Code
-// -------- 31 ------------- 15 ----------- 0 --------
-// [0]     |****************|****************|    : '*' is valid
-// [1]     |0000000000000000|****************|    :
-//
+/* ECID Code
+ * -------- 31 ------------- 15 ----------- 0 --------
+ * [0]     |****************|****************|    : '*' is valid
+ * [1]     |0000000000000000|****************|    :
+ */
 
 
-struct ecid_platform_data
-{
+struct ecid_platform_data {
 	void __iomem *ecid0;
 	void __iomem *ecid2;
 	void __iomem *ecid3;
 	void __iomem *PMU;
-	unsigned gPKG;
-	unsigned gECID[2];
+	unsigned int gPKG;
+	unsigned int gECID[2];
 };
 
-static void IO_UTIL_ReadECID (struct ecid_platform_data *pdata, unsigned int iA)
+static void IO_UTIL_ReadECID(struct ecid_platform_data *pdata, unsigned int iA)
 {
 	unsigned int ecid_num, ecid_addr;
 	unsigned int ecid_data_parallel[4][2];
 
-	for(ecid_num=0U;ecid_num<4U;ecid_num++) { // 0: USER0, 1: SEC, 2:USR1, 3:SEC
+	for (ecid_num = 0U; ecid_num < 4U; ecid_num++) {
+		// 0: USER0, 1: SEC, 2:USR1, 3:SEC
 		writel(MODE | (ecid_num<<SEL), pdata->ecid0);
-		writel(MODE | (ecid_num<<SEL) | CS, pdata->ecid0) ;
+		writel(MODE | (ecid_num<<SEL) | CS, pdata->ecid0);
 
-		for(ecid_addr=0U;ecid_addr<8U;ecid_addr++) {
-			writel(MODE | CS | (ecid_addr<<17) | (ecid_num<<SEL), pdata->ecid0);
-			writel(MODE | CS | (ecid_addr<<17) | (ecid_num<<SEL) | SIGDEV, pdata->ecid0);
-			writel(MODE | CS | (ecid_addr<<17) | (ecid_num<<SEL) | SIGDEV | PRCHG, pdata->ecid0);
-			writel(MODE | CS | (ecid_addr<<17) | (ecid_num<<SEL) | SIGDEV | PRCHG | FSET, pdata->ecid0);
-			writel(MODE | CS | (ecid_addr<<17) | (ecid_num<<SEL) | PRCHG  | FSET, pdata->ecid0);
-			writel(MODE | CS | (ecid_addr<<17) | (ecid_num<<SEL) | FSET, pdata->ecid0);
-			writel(MODE | CS | (ecid_addr<<17) | (ecid_num<<SEL), pdata->ecid0);
+		for (ecid_addr = 0U; ecid_addr < 8U; ecid_addr++) {
+			writel(MODE | CS | (ecid_addr<<17) |
+			       (ecid_num<<SEL), pdata->ecid0);
+
+			writel(MODE | CS | (ecid_addr<<17) |
+			       (ecid_num<<SEL) | SIGDEV, pdata->ecid0);
+
+			writel(MODE | CS | (ecid_addr<<17) |
+			       (ecid_num<<SEL) | SIGDEV | PRCHG, pdata->ecid0);
+
+			writel(MODE | CS | (ecid_addr<<17) |
+			       (ecid_num<<SEL) | SIGDEV | PRCHG | FSET,
+			       pdata->ecid0);
+
+			writel(MODE | CS | (ecid_addr<<17) |
+			       (ecid_num<<SEL) | PRCHG  | FSET, pdata->ecid0);
+
+			writel(MODE | CS | (ecid_addr<<17) |
+			       (ecid_num<<SEL) | FSET, pdata->ecid0);
+
+			writel(MODE | CS | (ecid_addr<<17) |
+			       (ecid_num<<SEL), pdata->ecid0);
 		}
 
-		ecid_data_parallel[ecid_num][1] = readl_relaxed(pdata->ecid3);    // High 16 Bit
-		ecid_data_parallel[ecid_num][0] = readl_relaxed(pdata->ecid2);    // Low  32 Bit
-		writel(readl_relaxed(pdata->ecid0) & ~(((unsigned int)0x7)<<17), pdata->ecid0);   // A2,A1,A0 are LOW
+		// High 16 Bit
+		ecid_data_parallel[ecid_num][1] = readl_relaxed(pdata->ecid3);
+		// Low  32 Bit
+		ecid_data_parallel[ecid_num][0] = readl_relaxed(pdata->ecid2);
+		// A2,A1,A0 are LOW
+		writel(readl_relaxed(pdata->ecid0) & ~((0x7) << 17),
+		       pdata->ecid0);
 		writel(readl_relaxed(pdata->ecid0) & ~PRCHG, pdata->ecid0);
-		//printk("ECID[%d] Parallel Read = 0x%04X%08X\n",ecid_num,ecid_data_parallel[ecid_num][1],ecid_data_parallel[ecid_num][0]);
 
 		if (ecid_num == iA) {
 			pdata->gECID[0] = ecid_data_parallel[ecid_num][0];
@@ -101,43 +118,51 @@ static void IO_UTIL_ReadECID (struct ecid_platform_data *pdata, unsigned int iA)
 }
 
 #if 0
-static void IO_UTIL_ReadPKG (struct ecid_platform_data *pdata)
+static void IO_UTIL_ReadPKG(struct ecid_platform_data *pdata)
 {
 	pr_info("PMU = %08x\n", readl_relaxed(pdata->PMU));
-	pdata->gPKG = ((readl_relaxed(pdata->PMU)>>16)&(0x7));
+	pdata->gPKG = ((readl_relaxed(pdata->PMU) >> 16) & (0x7));
 }
 #endif
-static ssize_t cpu_id_read(struct device *dev, struct device_attribute *attr, char *buf)
+static ssize_t cpu_id_read(struct device *dev, struct device_attribute *attr,
+			   char *buf)
 {
 	struct ecid_platform_data *pdata = dev_get_drvdata(dev);
+
 	IO_UTIL_ReadECID(pdata, 1U);
-	return sprintf(buf, "%08X%08X", pdata->gECID[1], pdata->gECID[0]);	// chip id
+	// chip id
+	return sprintf(buf, "%08X%08X", pdata->gECID[1], pdata->gECID[0]);
 }
 
-static ssize_t cpu_id_write(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
+static ssize_t cpu_id_write(struct device *dev, struct device_attribute *attr,
+			    const char *buf, size_t count)
 {
 	return 1;
 }
 
-static ssize_t cpu_pkg_read(struct device *dev, struct device_attribute *attr, char *buf)
+static ssize_t cpu_pkg_read(struct device *dev, struct device_attribute *attr,
+			    char *buf)
 {
-        struct arm_smccc_res res;
+	struct arm_smccc_res res;
 
 	arm_smccc_smc(SIP_CHIP_NAME, 0, 0, 0, 0, 0, 0, 0, &res);
 	return sprintf(buf, "%08X", (unsigned int)res.a0);	// chip id
 }
 
-static ssize_t cpu_pkg_write(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
+static ssize_t cpu_pkg_write(struct device *dev, struct device_attribute *attr,
+			     const char *buf, size_t count)
 {
 	return 1;
 }
 
-static ssize_t cpu_rev_read(struct device *dev, struct device_attribute *attr, char *buf)
+static ssize_t cpu_rev_read(struct device *dev, struct device_attribute *attr,
+			    char *buf)
 {
 	return sprintf(buf, "%08X", system_rev);	// chip revision
 }
 
-static ssize_t cpu_rev_write(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
+static ssize_t cpu_rev_write(struct device *dev, struct device_attribute *attr,
+			     const char *buf, size_t count)
 {
 	return 1;
 }
@@ -148,7 +173,7 @@ static DEVICE_ATTR(chip_id, 0644, cpu_id_read, cpu_id_write);
 static DEVICE_ATTR(chip_pkg, 0644, cpu_pkg_read, cpu_pkg_write);
 static DEVICE_ATTR(chip_rev, 0644, cpu_rev_read, cpu_rev_write);
 
-static struct attribute * cpu_rev_sysfs_entries[] = {
+static struct attribute *cpu_rev_sysfs_entries[] = {
 	&dev_attr_chip_rev.attr,
 	NULL,
 };
@@ -158,7 +183,7 @@ static struct attribute_group cpu_rev_attr_group = {
 	.attrs	= cpu_rev_sysfs_entries,
 };
 
-static struct attribute * cpu_pkg_sysfs_entries[] = {
+static struct attribute *cpu_pkg_sysfs_entries[] = {
 	&dev_attr_chip_pkg.attr,
 	NULL,
 };
@@ -168,7 +193,7 @@ static struct attribute_group cpu_pkg_attr_group = {
 	.attrs	= cpu_pkg_sysfs_entries,
 };
 
-static struct attribute * cpu_id_sysfs_entries[] = {
+static struct attribute *cpu_id_sysfs_entries[] = {
 	&dev_attr_chip_id.attr,
 	NULL,
 };
@@ -184,27 +209,28 @@ static int cpu_id_probe(struct platform_device *pdev)
 	struct device_node *np = pdev->dev.of_node;
 	int ret;
 
-	pdata = devm_kzalloc(&pdev->dev, sizeof(struct ecid_platform_data), GFP_KERNEL);
+	pdata = devm_kzalloc(&pdev->dev, sizeof(struct ecid_platform_data),
+			     GFP_KERNEL);
 
-	if(np!=NULL)
+	if (np != NULL)
 		pdata->ecid0 = of_iomap(np, 0);
 	else
-	       ; // TODO: get platform resource
+		; // TODO: get platform resource
 
-	if(np!=NULL)
+	if (np != NULL)
 		pdata->ecid2 = of_iomap(np, 1);
 	else
-	       ; // TODO: get platform resource
+		; // TODO: get platform resource
 
-	if(np!=NULL)
+	if (np != NULL)
 		pdata->ecid3 = of_iomap(np, 2);
 	else
-	       ; // TODO: get platform resource
+		; // TODO: get platform resource
 
-	if(np!=NULL)
+	if (np != NULL)
 		pdata->PMU = of_iomap(np, 3);
 	else
-	       ; // TODO: get platform resource
+		; // TODO: get platform resource
 
 	pdata->gECID[0] = 0;
 	pdata->gECID[1] = 0;
@@ -215,10 +241,10 @@ static int cpu_id_probe(struct platform_device *pdev)
 	ret = sysfs_create_group(&pdev->dev.kobj, &cpu_pkg_attr_group);
 	ret = sysfs_create_group(&pdev->dev.kobj, &cpu_rev_attr_group);
 
-	if(ret!=0)
-		printk("[CPU_ID] error creating sysfs entries\n");
+	if (ret != 0)
+		pr_err("[CPU_ID] error creating sysfs entries\n");
 
-	printk("[CPU_ID] probe is done\n");
+	pr_info("[CPU_ID] probe is done\n");
 
 	return 0;
 }
@@ -247,8 +273,8 @@ static int cpu_id_resume(struct platform_device *pdev)
 #endif
 
 static const struct of_device_id tcc_ecid_id_table[2] = {
-    {    .compatible = "telechips,tcc-cpu-id",    },
-    {}
+	{ .compatible = "telechips,tcc-cpu-id", },
+	{}
 };
 MODULE_DEVICE_TABLE(of, tcc_ecid_id_table);
 
