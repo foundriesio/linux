@@ -355,12 +355,13 @@ static int tcc_dt_node_to_map(struct pinctrl_dev *pctldev,
 	configs = devm_kzalloc
 		(pctl->dev, sizeof(ulong) * num_configs, GFP_KERNEL);
 
-/* comment for kernel code style */
-//	if (configs == NULL) {
-//		dev_err(pctl->dev,
-//			"[ERROR][PINCTRL] failed to allocate memory for configs\n");
-//		return -ENOMEM;
-//	}
+	if (configs == NULL) {
+	/* comment for kernel code style */
+	//	dev_err(pctl->dev,
+	//		"[ERROR][PINCTRL]"
+	//		"Failed to allocate memory for configs\n");
+		return -ENOMEM;
+	}
 
 	group = kstrdup(np->name, GFP_KERNEL);
 
@@ -883,12 +884,12 @@ int tcc_pinctrl_probe(struct platform_device *pdev,
 
 	pctl = devm_kzalloc(&pdev->dev, sizeof(struct tcc_pinctrl), GFP_KERNEL);
 
+	if (pctl == NULL) {
 /* comment for kernel code style */
-//	if (pctl == NULL) {
 //		dev_err(&(pdev->dev),
 //			"failed to allocate pinctrl data\n");
-//		return -ENOMEM;
-//	}
+		return -ENOMEM;
+	}
 
 	pctl->pin_configs = soc_data->pin_configs;
 	pctl->nconfigs = soc_data->nconfigs;
