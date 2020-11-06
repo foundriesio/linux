@@ -306,24 +306,8 @@ static struct siw_device *siw_device_create(struct net_device *netdev)
 {
 	struct siw_device *sdev = NULL;
 	struct ib_device *base_dev;
-	struct device *parent = netdev->dev.parent;
 	int rv;
 
-	if (!parent) {
-		/*
-		 * The loopback device has no parent device,
-		 * so it appears as a top-level device. To support
-		 * loopback device connectivity, take this device
-		 * as the parent device. Skip all other devices
-		 * w/o parent device.
-		 */
-		if (netdev->type != ARPHRD_LOOPBACK) {
-			pr_warn("siw: device %s error: no parent device\n",
-				netdev->name);
-			return NULL;
-		}
-		parent = &netdev->dev;
-	}
 	sdev = ib_alloc_device(siw_device, base_dev);
 	if (!sdev)
 		return NULL;
@@ -382,7 +366,6 @@ static struct siw_device *siw_device_create(struct net_device *netdev)
 	 * per physical port.
 	 */
 	base_dev->phys_port_cnt = 1;
-	base_dev->dev.parent = parent;
 	base_dev->dev.dma_ops = &dma_virt_ops;
 	base_dev->dev.dma_parms = &sdev->dma_parms;
 	sdev->dma_parms = (struct device_dma_parameters)
@@ -428,7 +411,7 @@ static struct siw_device *siw_device_create(struct net_device *netdev)
 	atomic_set(&sdev->num_mr, 0);
 	atomic_set(&sdev->num_pd, 0);
 
-	sdev->numa_node = dev_to_node(parent);
+	sdev->numa_node = dev_to_node(&netdev->dev);
 	spin_lock_init(&sdev->lock);
 
 	return sdev;
