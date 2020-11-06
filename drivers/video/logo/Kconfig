@@ -27,6 +27,10 @@ config LOGO_LINUX_CLUT224
 	bool "Standard 224-color Linux logo"
 	default y
 
+config LOGO_TCC_1024X600_CLUT224
+	bool "Telechips 224-color ivi 1024x600 logo"
+	default n
+
 config LOGO_TCC_1280X720_CLUT224
 	bool "Telechips 224-color consumer 1280x720 logo"
 	depends on ANDROID

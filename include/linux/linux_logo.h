@@ -36,6 +36,7 @@ struct linux_logo {
 extern const struct linux_logo logo_linux_mono;
 extern const struct linux_logo logo_linux_vga16;
 extern const struct linux_logo logo_linux_clut224;
+extern const struct linux_logo logo_tcc_1024x600_clut224;
 extern const struct linux_logo logo_tcc_1280x720_clut224;
 extern const struct linux_logo logo_tcc_1920x720_clut224;
 extern const struct linux_logo logo_tcc_1920x1080_clut224;
