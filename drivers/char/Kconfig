@@ -674,7 +674,7 @@ config TCC_DRAM_TOOL
     default y
     depends on (ARCH_TCC899X) || (ARCH_TCC803X) || (ARCH_TCC901X)
     help
-      TCC DRAM Tool Driver : DRAM Traffic Monitor 
+      TCC DRAM Tool Driver : DRAM Traffic Monitor
 
 
 source "drivers/char/tcc_ipc/Kconfig"
