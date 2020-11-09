@@ -927,6 +927,7 @@ static void __init do_initcalls(void)
 	int level;
 #ifdef CONFIG_BOOT_TIME
 	struct arm_smccc_res res;
+
 	arm_smccc_smc(0x82007003, 0, 0, 0, 0, 0, 0, 0, &res);
 #endif
 
@@ -1086,7 +1087,7 @@ static int __ref kernel_init(void *unused)
 	      "See Linux Documentation/admin-guide/init.rst for guidance.");
 }
 
-#if defined(CONFIG_BOOT_TIME)&&defined(CONFIG_ARCH_TCC803X)
+#if defined(CONFIG_BOOT_TIME) && defined(CONFIG_ARCH_TCC803X)
 #define TC32MCNT 0x14300094
 #define READ_4_BYTES 0x4
 unsigned int basic_setup_done_time;
@@ -1128,9 +1129,9 @@ static noinline void __init kernel_init_freeable(void)
 
 	do_basic_setup();
 
-#if defined(CONFIG_BOOT_TIME)&&defined(CONFIG_ARCH_TCC803X)
-       basic_setup_done_time=readl(ioremap(TC32MCNT, READ_4_BYTES));
-       pr_err("kernel basic setup done : %d\n", basic_setup_done_time);
+#if defined(CONFIG_BOOT_TIME) && defined(CONFIG_ARCH_TCC803X)
+	basic_setup_done_time = readl(ioremap(TC32MCNT, READ_4_BYTES));
+	pr_err("kernel basic setup done : %d\n", basic_setup_done_time);
 #endif
 
 

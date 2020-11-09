@@ -56,6 +56,7 @@ static ssize_t application_ready_store(struct kobject *kobj,
 	int ret;
 
 	if (data->application_ready) {
+		/* Ignore duplicated application ready events */
 		return (ssize_t)count;
 	}
 
@@ -172,6 +173,7 @@ static void tcc_pm_fw_event_listener(struct mbox_client *client, void *message)
 	int ret;
 
 	if ((client == NULL) || (msg == NULL)) {
+		/* Never be happened, but check for just in case ... */
 		return;
 	}
 
