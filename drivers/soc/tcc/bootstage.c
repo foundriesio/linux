@@ -182,7 +182,7 @@ static int bootstage_data_show(struct seq_file *m, void *v)
 	num = get_boot_timestamp_num();
 	validate_boot_timestamp_num(num);
 
-	seq_printf(m, "reset,0\n");
+	seq_puts(m, "reset,0\n");
 
 	for (n = 0; n < num; n++) {
 		desc = n < NR_BOOT_STAGES ? bootstage_desc[n] : "-";
