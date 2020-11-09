@@ -1,8 +1,8 @@
 /* SPDX-License-Identifier: GPL-2.0 */
 /*
-* Copyright (c) 2019 -present Synopsys, Inc. and/or its affiliates.
-* Synopsys DesignWare HDMI driver
-*/
+ * Copyright (c) 2019 -present Synopsys, Inc. and/or its affiliates.
+ * Synopsys DesignWare HDMI driver
+ */
 #ifndef VIDEO_H_
 #define VIDEO_H_
 /**
@@ -21,7 +21,7 @@
  * @param params VideoParams
  * @return TRUE if successful
  */
-int video_Configure(struct hdmi_tx_dev *dev, videoParams_t * params);
+int video_Configure(struct hdmi_tx_dev *dev, videoParams_t *params);
 
 /**
  * Set up color space converter to video requirements
@@ -30,7 +30,7 @@ int video_Configure(struct hdmi_tx_dev *dev, videoParams_t * params);
  * @param params VideoParams
  * @return TRUE if successful
  */
-int video_ColorSpaceConverter(struct hdmi_tx_dev *dev, videoParams_t * params);
+int video_ColorSpaceConverter(struct hdmi_tx_dev *dev, videoParams_t *params);
 
 /**
  * Set up video packetizer which "packetizes" pixel transmission
@@ -39,7 +39,7 @@ int video_ColorSpaceConverter(struct hdmi_tx_dev *dev, videoParams_t * params);
  * @param params VideoParams
  * @return TRUE if successful
  */
-int video_VideoPacketizer(struct hdmi_tx_dev *dev, videoParams_t * params);
+int video_VideoPacketizer(struct hdmi_tx_dev *dev, videoParams_t *params);
 
 /**
  * Set up video mapping and stuffing
@@ -47,7 +47,7 @@ int video_VideoPacketizer(struct hdmi_tx_dev *dev, videoParams_t * params);
  * @param params VideoParams
  * @return TRUE if successful
  */
-int video_VideoSampler(struct hdmi_tx_dev *dev, videoParams_t * params);
+int video_VideoSampler(struct hdmi_tx_dev *dev, videoParams_t *params);
 
 /**
  * A test only method that is used for a test module
@@ -56,7 +56,7 @@ int video_VideoSampler(struct hdmi_tx_dev *dev, videoParams_t * params);
  * @param dataEnablePolarity
  * @return TRUE if successful
  */
-int video_VideoGenerator(struct hdmi_tx_dev *dev, videoParams_t * params,
+int video_VideoGenerator(struct hdmi_tx_dev *dev, videoParams_t *params,
 			 u8 dataEnablePolarity);
 
 #endif	/* VIDEO_H_ */

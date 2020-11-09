@@ -4,6 +4,10 @@
 EXTRA_CFLAGS += -I$(srctree)/drivers/char/hdmi_v2_0 \
  		-I$(srctree)/drivers/char/hdmi_v2_0/hdmi_api_lib/include
 
+ifdef CONFIG_TCC_HDCP2_CORE_DRIVER
+EXTRA_CFLAGS += -I$(srctree)/drivers/char/hdcp2_core
+endif
+
 obj-$(CONFIG_TCC_HDMI_DRIVER_V2_0)	+=  src/core/irq.o
 obj-$(CONFIG_TCC_HDMI_DRIVER_V2_0)	+=  src/phy/phy.o
 ifdef CONFIG_ARCH_TCC898X

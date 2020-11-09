@@ -1,8 +1,8 @@
 /* SPDX-License-Identifier: GPL-2.0 */
 /*
-* Copyright (c) 2019 -present Synopsys, Inc. and/or its affiliates.
-* Synopsys DesignWare HDMI driver
-*/
+ * Copyright (c) 2019 -present Synopsys, Inc. and/or its affiliates.
+ * Synopsys DesignWare HDMI driver
+ */
 #ifndef PACKETS_H_
 #define PACKETS_H_
 
@@ -25,8 +25,8 @@ int vendor_Configure(struct hdmi_tx_dev *dev, productParams_t *productParams);
  * Specific InfoFrame and Source Product Description InfoFrame
  * @return TRUE when successful
  */
-int packets_Configure(struct hdmi_tx_dev *dev, videoParams_t * video,
-		      productParams_t * prod);
+int packets_Configure(struct hdmi_tx_dev *dev, videoParams_t *video,
+		      productParams_t *prod);
 
 /**
  * Configure Audio Content Protection packets.
@@ -35,21 +35,24 @@ int packets_Configure(struct hdmi_tx_dev *dev, videoParams_t * video,
  * @param length of the ACP fields
  * @param autoSend Send Packets Automatically
  */
-void packets_AudioContentProtection(struct hdmi_tx_dev *dev, u8 type, const u8 * fields,
-				    u8 length, u8 autoSend);
+void packets_AudioContentProtection(
+	struct hdmi_tx_dev *dev,
+	u8 type, const u8 *fields, u8 length, u8 autoSend);
 
 /**
  * Configure ISRC 1 & 2 Packets
  * @param dev Device structure
- * @param initStatus Initial status which the packets are sent with (usually starting position)
+ * @param initStatus Initial status which the packets are sent
+ *			with (usually starting position)
  * @param codes ISRC codes array
  * @param length of the ISRC codes array
  * @param autoSend Send ISRC Automatically
- * @note Automatic sending does not change status automatically, it does the insertion of the packets in the data
- * islands.
+ * @note Automatic sending does not change status automatically, it does the
+ *	 insertion of the packets in the data islands.
  */
-void packets_IsrcPackets(struct hdmi_tx_dev *dev, u8 initStatus, const u8 * codes,
-			 u8 length, u8 autoSend);
+void packets_IsrcPackets(
+	struct hdmi_tx_dev *dev,
+	u8 initStatus, const u8 *codes, u8 length, u8 autoSend);
 
 /**
  * Send/stop sending AV Mute in the General Control Packet
@@ -59,7 +62,8 @@ void packets_IsrcPackets(struct hdmi_tx_dev *dev, u8 initStatus, const u8 * code
 void packets_AvMute(struct hdmi_tx_dev *dev, u8 enable);
 
 /**
- * Set ISRC status that is changing during play back depending on position (see HDMI 1.3a Section 8.8)
+ * Set ISRC status that is changing during play back depending on
+ * position (see HDMI 1.3a Section 8.8)
  * @param dev Device structure
  * @param status the ISRC status code according to position of track
  */
@@ -73,7 +77,8 @@ void packets_IsrcStatus(struct hdmi_tx_dev *dev, u8 status);
 void packets_StopSendAcp(struct hdmi_tx_dev *dev);
 
 /**
- * Stop sending ISRC 1 & 2 packets when in auto send mode (ISRC 2 packets cannot be send without ISRC 1)
+ * Stop sending ISRC 1 & 2 packets when in auto send mode (ISRC 2 packets
+ * cannot be send without ISRC 1)
  * @param dev Device structure
  */
 void packets_StopSendIsrc1(struct hdmi_tx_dev *dev);
@@ -85,7 +90,8 @@ void packets_StopSendIsrc1(struct hdmi_tx_dev *dev);
 void packets_StopSendIsrc2(struct hdmi_tx_dev *dev);
 
 /**
- * Stop sending Source Product Description InfoFrame packets when in auto send mode
+ * Stop sending Source Product Description InfoFrame packets when in
+ * auto send mode
  * @param dev Device structure
  */
 void packets_StopSendSpd(struct hdmi_tx_dev *dev);
@@ -97,7 +103,8 @@ void packets_StopSendSpd(struct hdmi_tx_dev *dev);
 void packets_StopSendVsd(struct hdmi_tx_dev *dev);
 
 /**
- * Disable all metadata packets from being sent automatically. (ISRC 1& 2, ACP, VSD and SPD)
+ * Disable all metadata packets from being sent automatically.
+ * (ISRC 1& 2, ACP, VSD and SPD)
  * @param dev Device structure
  */
 void packets_DisableAllPackets(struct hdmi_tx_dev *dev);
@@ -111,14 +118,16 @@ void packets_DisableAllPackets(struct hdmi_tx_dev *dev);
  * @param length of the payload array
  * @param autoSend Start send Vendor Specific InfoFrame automatically
  */
-int packets_VendorSpecificInfoFrame(struct hdmi_tx_dev *dev, u32 oui, const u8 * payload, u8 length, u8 autoSend);
+int packets_VendorSpecificInfoFrame(
+	struct hdmi_tx_dev *dev,
+	u32 oui, const u8 *payload, u8 length, u8 autoSend);
 
 /**
  * Configure Colorimetry packets
  * @param dev Device structure
  * @param video Video information structure
  */
-void packets_colorimetry_config(struct hdmi_tx_dev *dev, videoParams_t * video);
+void packets_colorimetry_config(struct hdmi_tx_dev *dev, videoParams_t *video);
 
 
 #endif	/* PACKETS_H_ */

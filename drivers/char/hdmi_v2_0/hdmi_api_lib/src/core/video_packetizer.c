@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: GPL-2.0
 /*
-* Copyright (c) 2019 - present Synopsys, Inc. and/or its affiliates.
-* Synopsys DesignWare HDMI driver
-*/
+ * Copyright (c) 2019 - present Synopsys, Inc. and/or its affiliates.
+ * Synopsys DesignWare HDMI driver
+ */
 #include <include/hdmi_includes.h>
 #include <include/hdmi_access.h>
 #include <include/hdmi_log.h>
@@ -33,13 +33,16 @@ void vp_PixelRepetitionFactor(struct hdmi_tx_dev *dev, u8 value)
 {
 	LOG_TRACE1(value);
 	/* desired factor */
-	hdmi_dev_write_mask(dev, VP_PR_CD, VP_PR_CD_DESIRED_PR_FACTOR_MASK, value);
+	hdmi_dev_write_mask(
+		dev, VP_PR_CD, VP_PR_CD_DESIRED_PR_FACTOR_MASK, value);
 	/* enable stuffing */
 	hdmi_dev_write_mask(dev, VP_STUFF, VP_STUFF_PR_STUFFING_MASK, 1);
 	/* enable block */
-	hdmi_dev_write_mask(dev, VP_CONF, VP_CONF_PR_EN_MASK, (value > 1) ? 1 : 0);
+	hdmi_dev_write_mask(
+		dev, VP_CONF, VP_CONF_PR_EN_MASK, (value > 1) ? 1 : 0);
 	/* bypass block */
-	hdmi_dev_write_mask(dev, VP_CONF, VP_CONF_BYPASS_SELECT_MASK, (value > 1) ? 0 : 1);
+	hdmi_dev_write_mask(
+		dev, VP_CONF, VP_CONF_BYPASS_SELECT_MASK, (value > 1) ? 0 : 1);
 }
 
 void vp_Ycc422RemapSize(struct hdmi_tx_dev *dev, u8 value)
@@ -67,7 +70,7 @@ void vp_OutputSelector(struct hdmi_tx_dev *dev, u8 value)
 		hdmi_dev_write_mask(dev, VP_CONF, VP_CONF_PP_EN_MASK, 0);
 		hdmi_dev_write_mask(dev, VP_CONF, VP_CONF_YCC422_EN_MASK, 0);
 	} else {
-		LOGGER(SNPS_ERROR,"wrong output option: %d", value);
+		LOGGER(SNPS_ERROR, "wrong output option: %d", value);
 		return;
 	}
 

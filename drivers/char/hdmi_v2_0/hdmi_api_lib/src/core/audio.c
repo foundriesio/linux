@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: GPL-2.0
 /*
-* Copyright (c) 2019 - present Synopsys, Inc. and/or its affiliates.
-* Synopsys DesignWare HDMI driver
-*/
+ * Copyright (c) 2019 - present Synopsys, Inc. and/or its affiliates.
+ * Synopsys DesignWare HDMI driver
+ */
 #include <include/hdmi_includes.h>
 #include <include/hdmi_access.h>
 #include <include/hdmi_log.h>
@@ -21,14 +21,14 @@
 #if defined(CONFIG_ARCH_TCC898X)
 #include <dt-bindings/clock/telechips,tcc898x-clks.h>
 #endif
-typedef struct audio_n_computation {
+struct audio_n_computation {
 	u32 pixel_clock;
 	u32 n;
 	u32 cts;
-}audio_n_computation_t;
+};
 
-audio_n_computation_t n_values_32kHz_24bit[] = {
-	/** for 24bits/Pixel **/
+struct audio_n_computation n_values_32kHz_24bit[] = {
+	/* for 24bits/Pixel **/
 	{0,      4096,  0     },
 	{25175,  4576,  28125 },
 	{25200,  4096,  25200 },
@@ -47,8 +47,8 @@ audio_n_computation_t n_values_32kHz_24bit[] = {
 	{0,      0,     0     }
 };
 
-audio_n_computation_t n_values_32kHz_30bit[] = {
-	/** for 30bits/Pixel **/
+struct audio_n_computation n_values_32kHz_30bit[] = {
+	/* for 30bits/Pixel **/
 	{0,      4096,  0     },
 	{31468,  9152,  70312 },
 	{31500,  4096,  31500 },
@@ -65,8 +65,8 @@ audio_n_computation_t n_values_32kHz_30bit[] = {
 	{0,      0,     0     }
 };
 
-audio_n_computation_t n_values_32kHz_36bit[] = {
-	/** for 36bits/Pixel **/
+struct audio_n_computation n_values_32kHz_36bit[] = {
+	/* for 36bits/Pixel **/
 	{0,      4096,  0     },
 	{37762,  9152,  84375 },
 	{37800,  4096,  37800 },
@@ -83,7 +83,7 @@ audio_n_computation_t n_values_32kHz_36bit[] = {
 	{0,      0,     0     }
 };
 
-audio_n_computation_t n_values_44p1kHz_24bit[] = {
+struct audio_n_computation n_values_44p1kHz_24bit[] = {
 	{0,      6272,  0     },
 	{25175,  7007,  31250 },
 	{25200,  6272,  28000 },
@@ -102,8 +102,8 @@ audio_n_computation_t n_values_44p1kHz_24bit[] = {
 	{0,      0,     0     }
 };
 
-audio_n_computation_t n_values_44p1kHz_30bit[] = {
-	/** for 30bits/Pixel **/
+struct audio_n_computation n_values_44p1kHz_30bit[] = {
+	/* for 30bits/Pixel **/
 	{0,      6272,  0     },
 	{31468,  14014, 78125 },
 	{31500,  6272,  35000 },
@@ -120,8 +120,8 @@ audio_n_computation_t n_values_44p1kHz_30bit[] = {
 	{0,      0,     0     }
 };
 
-audio_n_computation_t n_values_44p1kHz_36bit[] = {
-	/** for 36bits/Pixel **/
+struct audio_n_computation n_values_44p1kHz_36bit[] = {
+	/* for 36bits/Pixel **/
 	{0,      6272,  0     },
 	{37762,  7007,  46875 },
 	{37800,  6272,  42000 },
@@ -138,7 +138,7 @@ audio_n_computation_t n_values_44p1kHz_36bit[] = {
 	{0,      0,     0     }
 };
 
-audio_n_computation_t n_values_48kHz_24bit[] = {
+struct audio_n_computation n_values_48kHz_24bit[] = {
 	{0,      6144,  0     },
 	{25175,  6864,  28125 },
 	{25200,  6144,  25200 },
@@ -157,8 +157,8 @@ audio_n_computation_t n_values_48kHz_24bit[] = {
 	{0,      0,     0     }
 };
 
-audio_n_computation_t n_values_48kHz_30bit[] = {
-	/** for 30bits/Pixel **/
+struct audio_n_computation n_values_48kHz_30bit[] = {
+	/* for 30bits/Pixel **/
 	{0,      6144,  0     },
 	{31468,  9152,  46875 },
 	{31500,  6144,  31500 },
@@ -175,8 +175,8 @@ audio_n_computation_t n_values_48kHz_30bit[] = {
 	{0,      0,     0     }
 };
 
-audio_n_computation_t n_values_48kHz_36bit[] = {
-	/** for 36bits/Pixel **/
+struct audio_n_computation n_values_48kHz_36bit[] = {
+	/* for 36bits/Pixel **/
 	{0,      6144,  0     },
 	{37762,  9152,  56250 },
 	{37800,  6144,  37800 },
@@ -200,31 +200,34 @@ void _audio_clock_n(struct hdmi_tx_dev *dev, u32 value)
 {
 	LOG_TRACE();
 	/* 19-bit width */
-	hdmi_dev_write_mask(dev, AUD_N3, AUD_N3_NCTS_ATOMIC_WRITE_MASK,1);
-	hdmi_dev_write_mask(dev, AUD_N3, AUD_N3_AUDN_MASK, (u8)(value >> 16));
+	hdmi_dev_write_mask(dev, AUD_N3, AUD_N3_NCTS_ATOMIC_WRITE_MASK, 1);
+	hdmi_dev_write_mask(
+		dev, AUD_N3, AUD_N3_AUDN_MASK, (u8)(value >> 16));
 	hdmi_dev_write(dev, AUD_N2, (u8)(value >> 8));
 	hdmi_dev_write(dev, AUD_N1, (u8)(value >> 0));
 
-
 	/* no shift */
 	hdmi_dev_write_mask(dev, AUD_CTS3, AUD_CTS3_N_SHIFT_MASK, 0);
-
 }
 
 void _audio_clock_cts(struct hdmi_tx_dev *dev, u32 value)
 {
 	LOG_TRACE1(value);
-	if(value > 0){
+	if (value > 0) {
 		/* 19-bit width */
-		hdmi_dev_write_mask(dev, AUD_N3, AUD_N3_NCTS_ATOMIC_WRITE_MASK,1);
-		hdmi_dev_write_mask(dev, AUD_CTS3, AUD_CTS3_CTS_MANUAL_MASK, 1);
-		hdmi_dev_write_mask(dev, AUD_CTS3, AUD_CTS3_AUDCTS_MASK, (u8)(value >> 16));
+		hdmi_dev_write_mask(
+			dev, AUD_N3, AUD_N3_NCTS_ATOMIC_WRITE_MASK, 1);
+		hdmi_dev_write_mask(dev,
+			AUD_CTS3, AUD_CTS3_CTS_MANUAL_MASK, 1);
+		hdmi_dev_write_mask(
+			dev,
+			AUD_CTS3, AUD_CTS3_AUDCTS_MASK, (u8)(value >> 16));
 		hdmi_dev_write(dev, AUD_CTS2, (u8)(value >> 8));
 		hdmi_dev_write(dev, AUD_CTS1, (u8)(value >> 0));
-	}
-	else{
+	} else{
 		/* Set to automatic generation of CTS values */
-		hdmi_dev_write_mask(dev, AUD_CTS3, AUD_CTS3_CTS_MANUAL_MASK, 0);
+		hdmi_dev_write_mask(
+			dev, AUD_CTS3, AUD_CTS3_CTS_MANUAL_MASK, 0);
 	}
 }
 
@@ -242,10 +245,11 @@ void _audio_clock_cts_auto(struct hdmi_tx_dev *dev, u32 value)
 void _audio_clock_f(struct hdmi_tx_dev *dev, u8 value)
 {
 	LOG_TRACE();
-	hdmi_dev_write_mask(dev, AUD_INPUTCLKFS, AUD_INPUTCLKFS_IFSFACTOR_MASK, value);
+	hdmi_dev_write_mask(
+		dev, AUD_INPUTCLKFS, AUD_INPUTCLKFS_IFSFACTOR_MASK, value);
 }
 
-int configure_i2s(struct hdmi_tx_dev *dev, audioParams_t * audio)
+int configure_i2s(struct hdmi_tx_dev *dev, audioParams_t *audio)
 {
 	audio_i2s_configure(dev, audio);
 
@@ -264,15 +268,17 @@ int configure_i2s(struct hdmi_tx_dev *dev, audioParams_t * audio)
 		break;
 	default:
 		_audio_clock_f(dev, 0);
-		LOGGER(SNPS_ERROR, "%s:Fs Factor [%d] not supported\n", __func__, audio->mClockFsFactor);
+		LOGGER(
+			SNPS_ERROR,
+			"%s:Fs Factor [%d] not supported\n",
+			__func__, audio->mClockFsFactor);
 		return FALSE;
-		break;
 	}
 
 	return TRUE;
 }
 
-int configure_spdif(struct hdmi_tx_dev *dev, audioParams_t * audio)
+int configure_spdif(struct hdmi_tx_dev *dev, audioParams_t *audio)
 {
 	audio_spdif_config(dev, audio);
 
@@ -291,63 +297,71 @@ int configure_spdif(struct hdmi_tx_dev *dev, audioParams_t * audio)
 		break;
 	default:
 		_audio_clock_f(dev, 0);
-		LOGGER(SNPS_ERROR, "%s:Fs Factor [%d] not supported\n", __func__, audio->mClockFsFactor);
+		LOGGER(
+			SNPS_ERROR,
+			"%s:Fs Factor [%d] not supported\n",
+			__func__, audio->mClockFsFactor);
 		return FALSE;
-		break;
 	}
 
 	return TRUE;
 }
 
-void tcc_hdmi_audio_select_source(struct hdmi_tx_dev *dev, audioParams_t * audio)
+void tcc_hdmi_audio_select_source(
+	struct hdmi_tx_dev *dev, audioParams_t *audio)
 {
-	volatile void __iomem *tcc_io_bus = (volatile void __iomem *)dev->io_bus;
+	volatile void __iomem *tcc_io_bus =
+		(volatile void __iomem *)dev->io_bus;
 
 
-	if(dev->hdmi_audio_if_sel_ofst != 0xff) {
-	    iowrite32(audio->mIecSourceNumber, (void*)(tcc_io_bus + dev->hdmi_audio_if_sel_ofst));
-	}
+	if (dev->hdmi_audio_if_sel_ofst != 0xff)
+		iowrite32(
+			audio->mIecSourceNumber,
+			(void *)(tcc_io_bus + dev->hdmi_audio_if_sel_ofst));
 
-	if(dev->hdmi_rx_tx_chmux != 0xff && audio->mInterfaceType == SPDIF) {
-	    iowrite32(1 << (audio->mIecSourceNumber*8), (void*)(tcc_io_bus + dev->hdmi_rx_tx_chmux));
-	}
+	if (dev->hdmi_rx_tx_chmux != 0xff && audio->mInterfaceType == SPDIF)
+		iowrite32(
+			1 << (audio->mIecSourceNumber * 8),
+			(void *)(tcc_io_bus + dev->hdmi_rx_tx_chmux));
 
 }
 
 #if defined(CONFIG_ARCH_TCC898X)
 extern int tcc_ckc_set_hdmi_audio_src(unsigned int src_id);
 #endif
-void tcc_hdmi_spdif_clock_config(struct hdmi_tx_dev *dev, audioParams_t * audio)
+void tcc_hdmi_spdif_clock_config(struct hdmi_tx_dev *dev, audioParams_t *audio)
 {
-    unsigned int clk_rate;
+	unsigned int clk_rate;
 
-	if(dev->clk[HDMI_CLK_INDEX_SPDIF])
-	{
+	if (dev->clk[HDMI_CLK_INDEX_SPDIF]) {
 		clk_rate = audio->mSamplingFrequency*audio->mClockFsFactor;
 	    clk_disable_unprepare(dev->clk[HDMI_CLK_INDEX_SPDIF]);
 
-		if(audio->mIecSourceNumber)
-		{
+		if (audio->mIecSourceNumber) {
 			#if defined(CONFIG_ARCH_TCC898X)
 			tcc_ckc_set_hdmi_audio_src(PERI_MSPDIF1);
 			#endif
-			printk(KERN_INFO "[INFO][HDMI_V20]%s : clock config is spdif1 \n",__func__);
-		}
-		else
-		{
+			pr_info(
+				"[INFO][HDMI_V20]%s : clock for spdif1\n",
+				__func__);
+		} else {
 			#if defined(CONFIG_ARCH_TCC898X)
 			tcc_ckc_set_hdmi_audio_src(PERI_MSPDIF0);
 			#endif
-			printk(KERN_INFO "[INFO][HDMI_V20]%s : clock config is spdif0 \n",__func__);
+			pr_info(
+				"[INFO][HDMI_V20]%s : clock for spdif0\n",
+				__func__);
 		}
 
-	    clk_set_rate(dev->clk[HDMI_CLK_INDEX_SPDIF],clk_rate);
-	    clk_prepare_enable(dev->clk[HDMI_CLK_INDEX_SPDIF]);
+		clk_set_rate(dev->clk[HDMI_CLK_INDEX_SPDIF], clk_rate);
+		clk_prepare_enable(dev->clk[HDMI_CLK_INDEX_SPDIF]);
 
-		printk(KERN_INFO "[INFO][HDMI_V20]%s: HDMI SPDIF clk =  %dHz\r\n", FUNC_NAME, (int)clk_get_rate(dev->clk[HDMI_CLK_INDEX_SPDIF]));
+		pr_info(
+			"[INFO][HDMI_V20]%s: HDMI SPDIF clk =  %dHz\r\n",
+			__func__,
+			(int)clk_get_rate(dev->clk[HDMI_CLK_INDEX_SPDIF]));
 	}
 }
-
 
 /**********************************************
  * External functions
@@ -365,42 +379,53 @@ int audio_Initialize(struct hdmi_tx_dev *dev)
 
 #define CTS_AUTO 1
 
-int audio_Configure(struct hdmi_tx_dev *dev, audioParams_t * audio)
+int audio_Configure(struct hdmi_tx_dev *dev, audioParams_t *audio)
 {
 	u32 n = 0, cts = 0;
-        unsigned int pixel_clock;
+	unsigned int pixel_clock;
 
 	LOG_TRACE();
 
-	if((dev == NULL) || (audio == NULL)){
+	if ((dev == NULL) || (audio == NULL)) {
 		LOGGER(SNPS_ERROR, "Improper function arguments\n");
 		return FALSE;
 	}
 
 
-	if(dev->hdmi_tx_ctrl.audio_on == 0){
+	if (dev->hdmi_tx_ctrl.audio_on == 0) {
 		LOGGER(SNPS_WARN, "DVI mode selected: audio not configured");
 		return TRUE;
 	}
-        pixel_clock = (dev->hdmi_tx_ctrl.pixel_clock > 1000)?(dev->hdmi_tx_ctrl.pixel_clock / 1000):dev->hdmi_tx_ctrl.pixel_clock;
-	LOGGER(SNPS_DEBUG, "Audio interface type = %s\n", audio->mInterfaceType == I2S ? "I2S" :
-							audio->mInterfaceType == SPDIF ? "SPDIF" :
-							audio->mInterfaceType == HBR ? "HBR" :
-							audio->mInterfaceType == GPA ? "GPA" :
-							audio->mInterfaceType == DMA ? "DMA" : "---");
+	pixel_clock =
+		(dev->hdmi_tx_ctrl.pixel_clock > 1000) ?
+		(dev->hdmi_tx_ctrl.pixel_clock / 1000) :
+		dev->hdmi_tx_ctrl.pixel_clock;
+	LOGGER(
+		SNPS_DEBUG,
+		"Audio interface type = %s\n",
+			audio->mInterfaceType == I2S ? "I2S" :
+			audio->mInterfaceType == SPDIF ? "SPDIF" :
+			audio->mInterfaceType == HBR ? "HBR" :
+			audio->mInterfaceType == GPA ? "GPA" :
+			audio->mInterfaceType == DMA ? "DMA" : "---");
 
-	LOGGER(SNPS_DEBUG, "Audio coding = %s\n", audio->mCodingType == PCM ? "PCM" :
-						   audio->mCodingType == AC3 ? "AC3" :
-						   audio->mCodingType == MPEG1 ? "MPEG1" :
-						   audio->mCodingType == MP3 ? "MP3" :
-						   audio->mCodingType == MPEG2 ? "MPEG2" :
-						   audio->mCodingType == AAC ? "AAC" :
-						   audio->mCodingType == DTS ? "DTS" :
-						   audio->mCodingType == ATRAC ? "ATRAC" :
-						   audio->mCodingType == ONE_BIT_AUDIO ? "ONE BIT AUDIO" :
-						   audio->mCodingType == DOLBY_DIGITAL_PLUS ? "DOLBY DIGITAL +" :
-						   audio->mCodingType == DTS_HD ? "DTS HD" : "----");
-	LOGGER(SNPS_DEBUG, "Audio frequency = %.3d Hz\n", audio->mSamplingFrequency);
+	LOGGER(
+		SNPS_DEBUG,
+		"Audio coding = %s\n",
+			audio->mCodingType == PCM ? "PCM" :
+			audio->mCodingType == AC3 ? "AC3" :
+			audio->mCodingType == MPEG1 ? "MPEG1" :
+			audio->mCodingType == MP3 ? "MP3" :
+			audio->mCodingType == MPEG2 ? "MPEG2" :
+			audio->mCodingType == AAC ? "AAC" :
+			audio->mCodingType == DTS ? "DTS" :
+			audio->mCodingType == ATRAC ? "ATRAC" :
+			audio->mCodingType == ONE_BIT_AUDIO ? "ONE BIT AUDIO" :
+			audio->mCodingType == DOLBY_DIGITAL_PLUS ?
+			"DOLBY DIGITAL +" :
+			audio->mCodingType == DTS_HD ? "DTS HD" : "----");
+	LOGGER(SNPS_DEBUG,
+		"Audio frequency = %.3d Hz\n", audio->mSamplingFrequency);
 	LOGGER(SNPS_DEBUG, "Audio sample size = %d\n", audio->mSampleSize);
 	LOGGER(SNPS_DEBUG, "Audio FS factor = %d\n", audio->mClockFsFactor);
 
@@ -409,33 +434,28 @@ int audio_Configure(struct hdmi_tx_dev *dev, audioParams_t * audio)
 
 	audio_mute(dev, 1);
 
-	tcc_hdmi_audio_select_source(dev,audio);
+	tcc_hdmi_audio_select_source(dev, audio);
 
 	// Configure Frame Composer audio parameters
 	fc_audio_config(dev, audio);
 
-	if(audio->mInterfaceType == I2S){
-		if(configure_i2s(dev, audio) == FALSE){
+	if (audio->mInterfaceType == I2S) {
+		if (configure_i2s(dev, audio) == FALSE) {
 			LOGGER(SNPS_ERROR, "Configuring I2S audio\n");
 			return FALSE;
 		}
-	}
-	else if(audio->mInterfaceType == SPDIF){
-		if(configure_spdif(dev, audio) == FALSE){
+	} else if (audio->mInterfaceType == SPDIF) {
+		if (configure_spdif(dev, audio) == FALSE) {
 			LOGGER(SNPS_ERROR, "Configuring SPDIF audio\n");
 			return FALSE;
 		}
-	}
-	else if(audio->mInterfaceType == HBR){
+	} else if (audio->mInterfaceType == HBR) {
 		LOGGER(SNPS_ERROR, "HBR is not supported\n");
 		return FALSE;
-	}
-	else if (audio->mInterfaceType == GPA) {
+	} else if (audio->mInterfaceType == GPA) {
 		LOGGER(SNPS_ERROR, "GPA is not supported\n");
 		return FALSE;
-	}
-
-	else if (audio->mInterfaceType == DMA) {
+	} else if (audio->mInterfaceType == DMA) {
 		LOGGER(SNPS_ERROR, "DMA is not supported\n");
 		return FALSE;
 	}
@@ -444,13 +464,15 @@ int audio_Configure(struct hdmi_tx_dev *dev, audioParams_t * audio)
 	n = audio_ComputeN(dev, audio->mSamplingFrequency, pixel_clock);
 #if CTS_AUTO
 	_audio_clock_cts_auto(dev, n);
-	printk(KERN_INFO "[INFO][HDMI_V20]<< [%s] : TMDS Ratio(%dKHz), SamplingRate(%dHz), N(%d), CTS(auto) \r\n",
-	__func__,pixel_clock,audio->mSamplingFrequency,n);
+	pr_info(
+		"[INFO][HDMI_V20] %s TMDS_%dKHz, S_%dHz, N_%d, CTS_auto \r\n",
+		__func__, pixel_clock, audio->mSamplingFrequency, n);
 #else
 	_audio_clock_cts(dev, cts);
 	_audio_clock_n(dev, n);
-	printk(KERN_INFO "[INFO][HDMI_V20] << [%s] : TMDS Ratio(%dKHz), SamplingRate(%dHz), N(%d), CTS(%d)\r\n",
-	__func__,pixel_clock,audio->mSamplingFrequency,n,cts);
+	pr_info(
+		"[INFO][HDMI_V20] %s TMDS_%dKHz, S_%dHz, N_%d, CTS_%d \r\n",
+		__func__, pixel_clock, audio->mSamplingFrequency, n, cts);
 #endif
 	mc_audio_sampler_clock_enable(dev, 0);
 
@@ -459,7 +481,7 @@ int audio_Configure(struct hdmi_tx_dev *dev, audioParams_t * audio)
 	// Configure audio info frame packets
 	fc_audio_info_config(dev, audio);
 
-	if(audio->mInterfaceType == SPDIF)
+	if (audio->mInterfaceType == SPDIF)
 		tcc_hdmi_spdif_clock_config(dev, audio);
 
 	return TRUE;
@@ -470,12 +492,10 @@ int audio_mute(struct hdmi_tx_dev *dev, u8 state)
 	/* audio mute priority: AVMUTE, sample flat, validity */
 	/* AVMUTE also mutes video */
 	// TODO: Check the audio mute process
-	if(state){
+	if (state)
 		fc_audio_mute(dev);
-	}
-	else{
+	else
 		fc_audio_unmute(dev);
-	}
 	return TRUE;
 }
 
@@ -483,74 +503,79 @@ u32 audio_ComputeN(struct hdmi_tx_dev *dev, u32  freq, u32 pixelClk)
 {
 	int i = 0;
 	u32 n = 0;
-	audio_n_computation_t *n_values = NULL;
+	struct audio_n_computation *n_values = NULL;
 	int multiplier_factor = 1;
-	videoParams_t *video_parm = (videoParams_t*)dev->videoParam;
+	videoParams_t *video_parm = (videoParams_t *)dev->videoParam;
 
-	if(freq == 64000 || freq == 88200 || freq == 96000){
+	if (freq == 64000 || freq == 88200 || freq == 96000)
 		multiplier_factor = 2;
-	}
-	else if(freq == 128000 || freq == 176400 || freq == 192000){
+	else if (freq == 128000 || freq == 176400 || freq == 192000)
 		multiplier_factor = 4;
-	}
-	else if(freq == 256000 || freq == 352800 || freq== 384000){
+	else if (freq == 256000 || freq == 352800 || freq == 384000)
 		multiplier_factor = 8;
-	}
 
-	if(32000 == freq/multiplier_factor){
-		switch(video_parm->mColorResolution) {
-			case COLOR_DEPTH_8: default :
-				n_values = n_values_32kHz_24bit;
-				break;
-			case COLOR_DEPTH_10:
-				n_values = n_values_32kHz_30bit;
-				break;
-			case COLOR_DEPTH_12:
-				n_values = n_values_32kHz_36bit;
-				break;
+	if (freq / multiplier_factor == 32000) {
+		switch (video_parm->mColorResolution) {
+		case COLOR_DEPTH_8:
+		default:
+			n_values = n_values_32kHz_24bit;
+			break;
+		case COLOR_DEPTH_10:
+			n_values = n_values_32kHz_30bit;
+			break;
+		case COLOR_DEPTH_12:
+			n_values = n_values_32kHz_36bit;
+			break;
 		}
-	}
-	else if(44100 == freq/multiplier_factor){
-		switch(video_parm->mColorResolution) {
-			case COLOR_DEPTH_8: default :
-				n_values = n_values_44p1kHz_24bit;
-				break;
-			case COLOR_DEPTH_10:
-				n_values = n_values_44p1kHz_30bit;
-				break;
-			case COLOR_DEPTH_12:
-				n_values = n_values_44p1kHz_36bit;
-				break;
+	} else if (freq / multiplier_factor == 44100) {
+		switch (video_parm->mColorResolution) {
+		case COLOR_DEPTH_8:
+		default:
+			n_values = n_values_44p1kHz_24bit;
+			break;
+		case COLOR_DEPTH_10:
+			n_values = n_values_44p1kHz_30bit;
+			break;
+		case COLOR_DEPTH_12:
+			n_values = n_values_44p1kHz_36bit;
+			break;
 		}
-	}
-	else if(48000 == freq/multiplier_factor){
-		switch(video_parm->mColorResolution) {
-			case COLOR_DEPTH_8: default :
-				n_values = n_values_48kHz_24bit;
-				break;
-			case COLOR_DEPTH_10:
-				n_values = n_values_48kHz_30bit;
-				break;
-			case COLOR_DEPTH_12:
-				n_values = n_values_48kHz_36bit;
-				break;
+	} else if (freq / multiplier_factor == 48000) {
+		switch (video_parm->mColorResolution) {
+		case COLOR_DEPTH_8:
+		default:
+			n_values = n_values_48kHz_24bit;
+			break;
+		case COLOR_DEPTH_10:
+			n_values = n_values_48kHz_30bit;
+			break;
+		case COLOR_DEPTH_12:
+			n_values = n_values_48kHz_36bit;
+			break;
 		}
-	}
-	else {
-		LOGGER(SNPS_ERROR, "%s:Could not compute N values\n", __func__);
-		LOGGER(SNPS_ERROR, "%s:Audio Frequency %d\n", __func__, freq);
-		LOGGER(SNPS_ERROR, "%s:Pixel Clock %d\n", __func__, pixelClk);
-		LOGGER(SNPS_ERROR, "%s:Multiplier factor %d\n", __func__, multiplier_factor);
+	} else {
+		LOGGER(
+			SNPS_ERROR,
+			"%s:Could not compute N values\n", __func__);
+		LOGGER(
+			SNPS_ERROR,
+			"%s:Audio Frequency %d\n", __func__, freq);
+		LOGGER(
+			SNPS_ERROR,
+			"%s:Pixel Clock %d\n", __func__, pixelClk);
+		LOGGER(
+			SNPS_ERROR,
+			"%s:Multiplier factor %d\n",
+			__func__, multiplier_factor);
 		return FALSE;
 	}
 
-	for(i = 0; n_values[i].n != 0; i++){
-		if(pixelClk == n_values[i].pixel_clock){
+	for (i = 0; n_values[i].n != 0; i++)
+		if (pixelClk == n_values[i].pixel_clock) {
 			n = n_values[i].n * multiplier_factor;
 			LOGGER(SNPS_DEBUG, "Audio N value = %d\n", n);
 			return n;
 		}
-	}
 
 	n = n_values[0].n * multiplier_factor;
 
@@ -563,62 +588,72 @@ u32 audio_ComputeCts(struct hdmi_tx_dev *dev, u32 freq, u32 pixelClk)
 {
 	int i = 0;
 	u32 cts = 0;
-	audio_n_computation_t *n_values = NULL;
-	videoParams_t *video_parm = (videoParams_t*)dev->videoParam;
+	struct audio_n_computation *n_values = NULL;
+	videoParams_t *video_parm = (videoParams_t *)dev->videoParam;
 
-	if(freq == 32000||freq == 64000||freq == 128000||freq == 256000){
-		switch(video_parm->mColorResolution) {
-			case COLOR_DEPTH_8: default :
-				n_values = n_values_32kHz_24bit;
-				break;
-			case COLOR_DEPTH_10:
-				n_values = n_values_32kHz_30bit;
-				break;
-			case COLOR_DEPTH_12:
-				n_values = n_values_32kHz_36bit;
-				break;
+	if (
+		freq == 32000 || freq == 64000 ||
+		freq == 128000 || freq == 256000) {
+		switch (video_parm->mColorResolution) {
+		case COLOR_DEPTH_8:
+		default:
+			n_values = n_values_32kHz_24bit;
+			break;
+		case COLOR_DEPTH_10:
+			n_values = n_values_32kHz_30bit;
+			break;
+		case COLOR_DEPTH_12:
+			n_values = n_values_32kHz_36bit;
+			break;
 		}
-	}
-	else if(freq == 44100||freq == 88200||freq == 176400||freq == 352800){
-		switch(video_parm->mColorResolution) {
-			case COLOR_DEPTH_8: default :
-				n_values = n_values_44p1kHz_24bit;
-				break;
-			case COLOR_DEPTH_10:
-				n_values = n_values_44p1kHz_30bit;
-				break;
-			case COLOR_DEPTH_12:
-				n_values = n_values_44p1kHz_36bit;
-				break;
+	} else if (
+		freq == 44100 || freq == 88200 ||
+		freq == 176400 || freq == 352800) {
+		switch (video_parm->mColorResolution) {
+		case COLOR_DEPTH_8:
+		default:
+			n_values = n_values_44p1kHz_24bit;
+			break;
+		case COLOR_DEPTH_10:
+			n_values = n_values_44p1kHz_30bit;
+			break;
+		case COLOR_DEPTH_12:
+			n_values = n_values_44p1kHz_36bit;
+			break;
 		}
-	}
-	else if(freq == 48000||freq == 96000||freq == 192000||freq == 384000){
-		switch(video_parm->mColorResolution) {
-			case COLOR_DEPTH_8: default :
-				n_values = n_values_48kHz_24bit;
-				break;
-			case COLOR_DEPTH_10:
-				n_values = n_values_48kHz_30bit;
-				break;
-			case COLOR_DEPTH_12:
-				n_values = n_values_48kHz_36bit;
-				break;
+	} else if (
+		freq == 48000 || freq == 96000 ||
+		freq == 192000 || freq == 384000) {
+		switch (video_parm->mColorResolution) {
+		case COLOR_DEPTH_8:
+		default:
+			n_values = n_values_48kHz_24bit;
+			break;
+		case COLOR_DEPTH_10:
+			n_values = n_values_48kHz_30bit;
+			break;
+		case COLOR_DEPTH_12:
+			n_values = n_values_48kHz_36bit;
+			break;
 		}
-	}
-	else {
-		LOGGER(SNPS_ERROR, "%s:Could not compute CTS values\n", __func__);
-		LOGGER(SNPS_ERROR, "%s:Audio Frequency %d\n", __func__, freq);
+	} else {
+		LOGGER(
+			SNPS_ERROR,
+			"%s:Could not compute CTS values\n", __func__);
+		LOGGER(
+			SNPS_ERROR, "%s:Audio Frequency %d\n", __func__, freq);
 		LOGGER(SNPS_ERROR, "%s:Pixel Clock %d\n", __func__, pixelClk);
 		return FALSE;
 	}
 
-	for(i = 1; n_values[i].cts != 0; i++){
-		if(pixelClk == n_values[i].pixel_clock){
+	for (i = 1; n_values[i].cts != 0; i++)
+		if (pixelClk == n_values[i].pixel_clock) {
 			cts = n_values[i].cts;
-			LOGGER(SNPS_DEBUG, "audio_ComputeCtsEquation CTS = %d\n", cts);
+			LOGGER(
+				SNPS_DEBUG,
+				"audio_ComputeCtsEquation CTS = %d\n", cts);
 			return cts;
 		}
-	}
 
 	LOGGER(SNPS_DEBUG, "Audio CTS value auto\n");
 	return cts;
