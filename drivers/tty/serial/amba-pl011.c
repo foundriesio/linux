@@ -2327,7 +2327,7 @@ static void pl011_console_putchar(struct uart_port *port, int ch)
 #ifdef CONFIG_DEFERRED_CONSOLE_OUTPUT
 	if (oops_in_progress) {
 		while (pl011_read(uap, REG_FR) & UART01x_FR_TXFF)
-		cpu_relax();
+			cpu_relax();
 		pl011_write(ch, uap, REG_DR);
 	} else {
 		console_buffer[buffer_head++] = ch;
@@ -2451,7 +2451,8 @@ static int __init pl011_console_setup(struct console *co, char *options)
 
 #ifdef CONFIG_DEFERRED_CONSOLE_OUTPUT
 	buffer_head = buffer_tail = 0;
-	tasklet_init(&console_tasklet, tcc_console_tasklet,(unsigned long) uap);
+	tasklet_init(&console_tasklet,
+			tcc_console_tasklet, (unsigned long) uap);
 #endif
 	/* Allow pins to be muxed in and configured */
 	pinctrl_pm_select_default_state(uap->port.dev);
