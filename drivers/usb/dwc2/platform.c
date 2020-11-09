@@ -872,10 +872,10 @@ static int dwc2_lowlevel_hw_init(struct dwc2_hsotg *hsotg)
 		case -EPROBE_DEFER:
 			return ret;
 		default:
+			hsotg->phy = NULL;
 			dev_err(hsotg->dev,
 					"[ERROR][USB] error getting phy %d\n",
 					ret);
-			return ret;
 		}
 	}
 
@@ -1112,7 +1112,8 @@ static void dwc2_driver_shutdown(struct platform_device *dev)
 #ifdef CONFIG_USB_DWC2_TCC_MUX
 	disable_irq(hsotg->ehci_irq);
 #endif
-	disable_irq(hsotg->irq);
+	dwc2_disable_global_interrupts(hsotg);
+	synchronize_irq(hsotg->irq);
 }
 
 /**
@@ -1205,11 +1206,6 @@ static int dwc2_driver_probe(struct platform_device *dev)
 	dev_info(hsotg->dev,
 			"[INFO][USB] registering common handler for irq%d\n",
 			hsotg->irq);
-	retval = devm_request_irq(hsotg->dev, hsotg->irq,
-			dwc2_handle_common_intr, IRQF_SHARED,
-			dev_name(hsotg->dev), hsotg);
-	if (retval)
-		return retval;
 #ifdef CONFIG_USB_DWC2_TCC_MUX
 	hsotg->ehci_irq = platform_get_irq(dev, 1);
 	if (hsotg->irq < 0) {
@@ -1256,6 +1252,12 @@ static int dwc2_driver_probe(struct platform_device *dev)
 	retval = dwc2_get_hwparams(hsotg);
 	if (retval)
 		goto error;
+
+	retval = devm_request_irq(hsotg->dev, hsotg->irq,
+			dwc2_handle_common_intr, IRQF_SHARED,
+			dev_name(hsotg->dev), hsotg);
+	if (retval)
+		return retval;
 
 	dwc2_force_dr_mode(hsotg);
 
@@ -1351,9 +1353,23 @@ static int dwc2_driver_probe(struct platform_device *dev)
 #endif
 
 skip_mode_change:
+#if IS_ENABLED(CONFIG_USB_DWC2_PERIPHERAL) || \
+	IS_ENABLED(CONFIG_USB_DWC2_DUAL_ROLE)
+	/* Postponed adding a new gadget to the udc class driver list */
+	if (hsotg->gadget_enabled) {
+		retval = usb_add_gadget_udc(hsotg->dev, &hsotg->gadget);
+		if (retval) {
+			hsotg->gadget.udc = NULL;
+			dwc2_hsotg_remove(hsotg);
+			goto error;
+		}
+	}
+#endif /* CONFIG_USB_DWC2_PERIPHERAL || CONFIG_USB_DWC2_DUAL_ROLE */
+
 	return 0;
 error:
-	dwc2_lowlevel_hw_disable(hsotg);
+	if (hsotg->dr_mode != USB_DR_MODE_PERIPHERAL)
+		dwc2_lowlevel_hw_disable(hsotg);
 	return retval;
 }
 
