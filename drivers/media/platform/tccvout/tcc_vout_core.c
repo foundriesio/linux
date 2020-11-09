@@ -364,11 +364,13 @@ int vout_set_m2m_path(int deintl_default, struct tcc_vout_device *vout)
 		vioc->m2m_subplane_wmix.pos = 1;			// rdma pos 1 is GRDMA
 		vioc->m2m_wmix.ovp = vioc->m2m_subplane_wmix.ovp = 24;		// ovp 24: 0-1-2-3
 		break;
+#if !defined(CONFIG_ARCH_TCC897X)
 	case VIOC_RDMA11:
 		vioc->m2m_wmix.pos = 3;				// rdma pos 3 is VRDMA
 		vioc->m2m_subplane_wmix.pos = 2;			// rdma pos 0/1/2 is GRDMA8/9/10
 		vioc->m2m_wmix.ovp = vioc->m2m_subplane_wmix.ovp = 24;		// ovp 24: 0-1-2-3
 		break;
+#endif
 	case VIOC_RDMA12:
 		vioc->m2m_wmix.pos = 0;				// rdma pos 0 is VRDMA
 		vioc->m2m_subplane_wmix.pos = 1;			// rdma pos 1 is GRDMA
@@ -720,13 +722,15 @@ int vout_set_vout_path(struct tcc_vout_device *vout)
 	case VIOC_RDMA02:
 	case VIOC_RDMA03:
 	case VIOC_RDMA05:
-#if !defined(CONFIG_ARCH_TCC899X)
+#if !(defined(CONFIG_ARCH_TCC899X) | defined(CONFIG_ARCH_TCC897X))
 	case VIOC_RDMA06:
 #endif
 	case VIOC_RDMA07:
+#if !defined(CONFIG_ARCH_TCC897X)
 	case VIOC_RDMA09:
 	case VIOC_RDMA10:
 	case VIOC_RDMA11:
+#endif
 		if(get_vioc_index(vioc->wmix.id))
 			vioc->wmix.pos = get_vioc_index(vioc->rdma.id) - (0x4 * get_vioc_index(vioc->wmix.id));
 		else
