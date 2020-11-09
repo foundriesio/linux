@@ -342,6 +342,7 @@ static int tcc_thermal_read(struct tcc_thermal_data *data)
 {
 #if !defined(CONFIG_ARCH_TCC805X)
 	u8 code_temp;
+	int celsius_temp;
 #else
 	int celsius_temp;
 	int tag;
@@ -900,7 +901,6 @@ static int tcc_get_temp(struct thermal_zone_device *thermal,
 		pr_err("[ERROR][T-SENSOR] Temperature sensor not initialised\n");
 		return -EINVAL;
 	}
-	pr_info("[T-SENSOR] Temperature sensor - temperature is called\n");
 	data = thermal_zone->sensor_conf->private_data;
 	*temp = thermal_zone->sensor_conf->read_temperature(data);
 	*temp = *temp * MCELSIUS;
@@ -1458,10 +1458,12 @@ static void tcc_thermal_get_efuse(struct platform_device *pdev)
 	reg_temp &= ~(1 << 30);
 	writel(reg_temp, data->ecid_conf);      // CS:0
 	data->temp_trim1 = (readl(data->ecid_user0_reg1) & 0x0000FF00) >> 8;
+#if defined(CONFIG_ARCH_TCC803X) && defined(CONFIG_ARCH_TCC899X)
 	data->slop_trim = (readl(data->ecid_user0_reg1) & 0x000000F0) >> 4;
 	data->vref_trim =
 		((readl(data->ecid_user0_reg1) & 0x0000000F) << 1) |
 		((readl(data->ecid_user0_reg0) & 0x80000000) >> 31);
+#endif
 	ecid_reg1_temp = (readl(data->ecid_user0_reg1));
 	ecid_reg0_temp = (readl(data->ecid_user0_reg0));
 	reg_temp &= ~(1 << 31);
