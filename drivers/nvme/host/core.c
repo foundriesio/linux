@@ -1962,8 +1962,6 @@ static void nvme_update_disk_info(struct gendisk *disk,
 
 	if (id->nsattr & NVME_NS_ATTR_RO)
 		set_disk_ro(disk, true);
-	else
-		set_disk_ro(disk, false);
 }
 
 static int __nvme_revalidate_disk(struct gendisk *disk, struct nvme_id_ns *id)
