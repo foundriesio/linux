@@ -18,4 +18,4 @@
 
 #include "tcc-pmap-common.dtsi"
 
-#include "tcc8030-android-lpd4321_sv0.1.dts"
+#include "tcc803xp-android-lpd4321_sv0.1.dts"
