@@ -62,9 +62,8 @@ static int tcc_reboot_mode_probe(struct platform_device *pdev)
 	tcc_reboot_mode.dev = &pdev->dev;
 
 	ret = devm_reboot_mode_register(&pdev->dev, &tcc_reboot_mode);
-	if (ret != 0) {
+	if (ret != 0)
 		dev_err(&pdev->dev, "failed to register reboot mode\n");
-	}
 
 	return ret;
 }
