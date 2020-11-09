@@ -776,12 +776,10 @@ struct eth_dev *gether_setup_name(struct usb_gadget *g,
 
 	if (get_ether_addr(dev_addr, net->dev_addr))
 		dev_warn(&g->dev,
-			"[WARN][USB] using random %s ethernet address\n",
-			"self");
+			"[WARN][USB] using random %s ethernet address\n", "self");
 	if (get_ether_addr(host_addr, dev->host_mac))
 		dev_warn(&g->dev,
-			"[WARN][USB] using random %s ethernet address\n",
-			"host");
+			"[WARN][USB] using random %s ethernet address\n", "host");
 
 	if (ethaddr)
 		memcpy(ethaddr, dev->host_mac, ETH_ALEN);
@@ -800,9 +798,7 @@ struct eth_dev *gether_setup_name(struct usb_gadget *g,
 
 	status = register_netdev(net);
 	if (status < 0) {
-		dev_dbg(&g->dev,
-				"[DEBUG][USB] register_netdev failed, %d\n",
-				status);
+		dev_dbg(&g->dev, "[DEBUG][USB] register_netdev failed, %d\n", status);
 		free_netdev(net);
 		dev = ERR_PTR(status);
 	} else {
@@ -871,9 +867,7 @@ int gether_register_netdev(struct net_device *net)
 	g = dev->gadget;
 	status = register_netdev(net);
 	if (status < 0) {
-		dev_dbg(&g->dev,
-				"[DEBUG][USB] register_netdev failed, %d\n",
-				status);
+		dev_dbg(&g->dev, "[DEBUG][USB] register_netdev failed, %d\n", status);
 		return status;
 	} else {
 		INFO(dev, "HOST MAC %pM\n", dev->host_mac);
@@ -890,8 +884,7 @@ int gether_register_netdev(struct net_device *net)
 	status = dev_set_mac_address(net, &sa);
 	rtnl_unlock();
 	if (status)
-		pr_warn("[WARN][USB] cannot set self ethernet address: %d\n",
-				status);
+		pr_warn("[WARN][USB] cannot set self ethernet address: %d\n", status);
 	else
 		INFO(dev, "MAC %pM\n", dev->dev_mac);
 
