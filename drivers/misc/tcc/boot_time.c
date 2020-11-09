@@ -195,11 +195,9 @@ static long boot_time_ioctl(struct file *flip, unsigned int cmd, unsigned long a
 	return ret;
 }
 
-#if 0
-static ssize_t boot_time_show(struct device *dev, struct device_attribute *attr, char *buf){
-
-
-	//struct gpio_sample_platform_data *pdata = dev_get_drvdata(dev);
+#if defined(CONFIG_PROC_FS)
+static int boot_time_show(struct seq_file *m, void *v)
+{
 	struct arm_smccc_res res;
 	int cnt=0, i;
 
@@ -207,32 +205,39 @@ static ssize_t boot_time_show(struct device *dev, struct device_attribute *attr,
 
 	cnt = res.a0;
 
-	printk("num : %d\n", cnt);
+	seq_printf(m, "num %d\n", cnt);
 
 	for(i=0; i<cnt ; i++){
 		arm_smccc_smc(0x82007004, (unsigned long)i, 0, 0, 0, 0, 0, 0, &res);
-		printk("%s : %d\n", boot_stamp_desc[i], (uint32_t)res.a1);;
-		//printk("%d\n", (uint32_t)res.a1);
+		seq_printf(m, "%s : %d\n", boot_stamp_desc[i], (uint32_t)res.a1);;
 	}
 
-	return sprintf(buf,"boot time\n");
-
+	return 0;
 }
 
-static DEVICE_ATTR(boot_time, S_IRUGO|S_IWUSR, boot_time_show, NULL);
+static int boot_time_proc_open(struct inode *inode, struct file *file)
+{
+	return single_open(file, boot_time_show, PDE_DATA(inode));
+}
 
-static struct attribute *boot_time_attrs[] = {
-
-	&dev_attr_boot_time.attr,
-	NULL,
-
+static const struct file_operations boot_time_fops = {
+        .open           = boot_time_proc_open,
+        .read           = seq_read,
+        .llseek         = seq_lseek,
+        .release        = seq_release,
 };
 
-static const struct attribute_group boot_time_attr_group = {
+static int boot_time_procfs_init(void)
+{
+	struct proc_dir_entry *ret;
 
-	.attrs = boot_time_attrs,
+	ret = proc_create("boot_time", S_IRUGO, 0, &boot_time_fops);
+	if (ret == NULL) {
+		return -ENOMEM;
+	}
 
-};
+	return 0;
+}
 #endif
 
 static int boot_time_probe(struct platform_device *pdev){
@@ -240,8 +245,11 @@ static int boot_time_probe(struct platform_device *pdev){
 	struct device *dev = &pdev->dev;
 	int error=0;
 
-#if 0
-	error = sysfs_create_group(&pdev->dev.kobj, &boot_time_attr_group);
+#if defined(CONFIG_PROC_FS)
+	error = boot_time_procfs_init();
+	if(error < 0) {
+		return error;
+	}
 #endif
 
 	timer_tc32mcnt_addr = of_iomap(pdev->dev.of_node, 0);
@@ -333,5 +341,3 @@ MODULE_DESCRIPTION("Telechips Boot Time driver");
 MODULE_LICENSE("GPL");
 MODULE_ALIAS("platform:boot_time");
 MODULE_AUTHOR("Jaeyoung Park <dwayne.park@telechips.com>");
-
-
