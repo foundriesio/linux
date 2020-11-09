@@ -3,6 +3,9 @@ menuconfig TCC_TOUCH_SHARE
 	default n
 	help
 		The Share Touch between Main-core and Sub-core.
+		When this option is activated, the RECEIVE and BRIDGE menus are created
+		you must select the CONFIG suitable for the core
+		Main-Core - TCC_TOUCH_BRIDGE / Sub-Core - TCC_TOUCH_RECEIVE
 
 if TCC_TOUCH_SHARE
 
@@ -11,18 +14,30 @@ choice
 	default TCC_TOUCH_RECEIVE if TCC805X_CA53Q
 	default TCC_TOUCH_BRIDGE
 	help
-	This options touch share driver select.
+		This options touch share driver select.
 
-	TCC Touch Bridge shares touch data to other core.
-	TCC Touch Receive receivs touch data from TCC Touch Bridge and generates touch event.
+		TCC Touch Bridge shares touch data to other core.
+		Touch Receive receives touch data from Touch Bridge
+		and generates touch event.
 
 config TCC_TOUCH_BRIDGE
 	bool "TCC Touch Bridge Driver"
 	depends on TCC_MULTI_MAILBOX
+	help
+		This driver acts as an input handler
+		It sends touch data to the Sub-core through the mbox.
+		In order for this driver to work, the touch driver must be registered.
+		Because it operates Mbox communication and touch data,
+		It has a dependency on the touch driver and tcc multi mailbox driver
 
 config TCC_TOUCH_RECEIVE
 	bool "TCC Touch Receiver Driver"
 	depends on TCC_MULTI_MAILBOX
+	help
+		This driver generates touch data of Main-core.
+		When the driver is registered, the input device and sysfs are created.
+		Controls the transmission of touches based on the state of the sysfs.
+		The name of sysfs is touch_state.
 
 endchoice
 
