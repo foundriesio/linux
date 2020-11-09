@@ -3418,9 +3418,7 @@ host:
 static void _dwc2_hcd_stop(struct usb_hcd *hcd);
 void dwc2_manual_change(struct dwc2_hsotg *hsotg)
 {
-	u32 count = 0;
 	unsigned long flags;
-	struct usb_hcd *hcd = dwc2_hsotg_to_hcd(hsotg);
 
 	dev_info(hsotg->dev, "[INFO][USB] %s : Role Changing Request!!\n",
 			__func__);

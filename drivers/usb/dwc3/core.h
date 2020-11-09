@@ -77,22 +77,23 @@
 #define Hw0            0x00000001U
 #define HwZERO         0x00000000U
 
-#define ENABLE         1          
-#define DISABLE                0  
+#define ENABLE	1
+#define DISABLE	0
 
-#define ON             1          
-#define OFF            0          
+#define ON	1
+#define OFF	0
 
-#define TRUE           1     
-#define FALSE          0                                                    
-
-#define BITSET(X, MASK)                        ((X) |= (unsigned int)(MASK))
-#define BITSCLR(X, SMASK, CMASK)       ((X) = ((((unsigned int)(X)) | ((unsigned int)(SMASK))) & ~((unsigned int)(CMASK))) )
-#define BITCSET(X, CMASK, SMASK)       ((X) = ((((unsigned int)(X)) & ~((unsigned int)(CMASK))) | ((unsigned int)(SMASK))) )
-#define BITCLR(X, MASK)                        ((X) &= ~((unsigned int)(MASK)) )
-#define BITXOR(X, MASK)                        ((X) ^= (unsigned int)(MASK) )
-#define ISZERO(X, MASK)                        (!(((unsigned int)(X))&((unsigned int)(MASK))))
-#define        ISSET(X, MASK)                  ((unsigned long)(X)&((unsigned long)(MASK)))   
+#define BITSET(X, MASK)	((X) |= (unsigned int)(MASK))
+#define BITSCLR(X, SMASK, CMASK)	((X) = ((((unsigned int)(X)) | \
+				((unsigned int)(SMASK))) & \
+				~((unsigned int)(CMASK))))
+#define BITCSET(X, CMASK, SMASK)	((X) = ((((unsigned int)(X)) & \
+				~((unsigned int)(CMASK))) | \
+				((unsigned int)(SMASK))))
+#define BITCLR(X, MASK)	((X) &= ~((unsigned int)(MASK)))
+#define BITXOR(X, MASK)	((X) ^= (unsigned int)(MASK))
+#define ISZERO(X, MASK)	(!(((unsigned int)(X))&((unsigned int)(MASK))))
+#define	ISSET(X, MASK)	((unsigned long)(X)&((unsigned long)(MASK)))
 #define DWC3_MSG_MAX	500
 
 /* Global constants */

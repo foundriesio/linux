@@ -346,17 +346,22 @@ static void dwc2_hsotg_create_debug(struct dwc2_hsotg *hsotg)
 
 	file = debugfs_create_file("state", 0444, root, hsotg, &state_fops);
 	if (IS_ERR(file))
-		dev_err(hsotg->dev, "[ERROR][USB] %s: failed to create state\n", __func__);
+		dev_err(hsotg->dev,
+		"[ERROR][USB] %s: failed to create state\n",
+		__func__);
 
 	file = debugfs_create_file("testmode", 0644, root, hsotg,
 				   &testmode_fops);
 	if (IS_ERR(file))
-		dev_err(hsotg->dev, "[ERROR][USB] %s: failed to create testmode\n",
+		dev_err(hsotg->dev,
+		"[ERROR][USB] %s: failed to create testmode\n",
 			__func__);
 
 	file = debugfs_create_file("fifo", 0444, root, hsotg, &fifo_fops);
 	if (IS_ERR(file))
-		dev_err(hsotg->dev, "[ERROR][USB] %s: failed to create fifo\n", __func__);
+		dev_err(hsotg->dev,
+			"[ERROR][USB] %s: failed to create fifo\n",
+			__func__);
 
 	/* Create one file for each out endpoint */
 	for (epidx = 0; epidx < hsotg->num_of_eps; epidx++) {
@@ -878,7 +883,9 @@ int dwc2_debugfs_init(struct dwc2_hsotg *hsotg)
 				   hsotg->debug_root,
 				   hsotg, &params_fops);
 	if (IS_ERR(file))
-		dev_err(hsotg->dev, "[ERROR][USB] %s: failed to create params\n", __func__);
+		dev_err(hsotg->dev,
+			"[ERROR][USB] %s: failed to create params\n",
+			__func__);
 
 	file = debugfs_create_file("hw_params", 0444,
 				   hsotg->debug_root,
@@ -891,7 +898,9 @@ int dwc2_debugfs_init(struct dwc2_hsotg *hsotg)
 				   hsotg->debug_root,
 				   hsotg, &dr_mode_fops);
 	if (IS_ERR(file))
-		dev_err(hsotg->dev, "[ERROR][USB] %s: failed to create dr_mode\n", __func__);
+		dev_err(hsotg->dev,
+			"[ERROR][USB] %s: failed to create dr_mode\n",
+			__func__);
 
 	/* Add gadget debugfs nodes */
 	dwc2_hsotg_create_debug(hsotg);

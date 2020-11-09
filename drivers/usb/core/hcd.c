@@ -1008,7 +1008,7 @@ static void usb_bus_init (struct usb_bus *bus)
 
 #ifdef CONFIG_TCC_DWC_HS_ELECT_TST
 	bus->hnp_wq = create_workqueue("hnp_queue");
-	bus->hnp_work = kmalloc(sizeof(hnp_work_t), GFP_KERNEL);
+	bus->hnp_work = kmalloc(sizeof(struct hnp_work_t), GFP_KERNEL);
 	if (bus->hnp_work) {
 		INIT_DELAYED_WORK((struct delayed_work *)bus->hnp_work,
 				usb_hnp_work);

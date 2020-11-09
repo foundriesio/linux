@@ -1919,7 +1919,7 @@ int usb_disable_usb2_hardware_lpm(struct usb_device *udev)
 void usb_hnp_work(struct work_struct *work)
 {
 	int err;
-	hnp_work_t *w = (hnp_work_t *)work;
+	struct hnp_work_t *w = (struct hnp_work_t *)work;
 	struct usb_device *udev = w->udev;
 
 	err = usb_port_suspend(udev, PMSG_AUTO_SUSPEND);
