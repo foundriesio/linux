@@ -2610,25 +2610,29 @@ static int tcc_pl08x_of_probe(struct amba_device *adev,
 			return PTR_ERR(ac_base);
 		}
 
-		if (!of_property_read_u32_array(ac_np, "access-control0", ac_val, 2)) {
+		if (!of_property_read_u32_array(ac_np,
+					"access-control0", ac_val, 2)) {
 			dev_info(&adev->dev, "access-control0 start:0x%08X limit:0x%08X\n",
 				ac_val[0], ac_val[1]);
 			writel(ac_val[0], ac_base + UDMA_AC0_START);
 			writel(ac_val[1], ac_base + UDMA_AC0_LIMIT);
 		}
-		if (!of_property_read_u32_array(ac_np, "access-control1", ac_val, 2)) {
+		if (!of_property_read_u32_array(ac_np,
+					"access-control1", ac_val, 2)) {
 			dev_info(&adev->dev, "access-control1 start:0x%08X limit:0x%08X\n",
 				ac_val[0], ac_val[1]);
 			writel(ac_val[0], ac_base + UDMA_AC1_START);
 			writel(ac_val[1], ac_base + UDMA_AC1_LIMIT);
 		}
-		if (!of_property_read_u32_array(ac_np, "access-control2", ac_val, 2)) {
+		if (!of_property_read_u32_array(ac_np,
+					"access-control2", ac_val, 2)) {
 			dev_info(&adev->dev, "access-control2 start:0x%08X limit:0x%08X\n",
 				ac_val[0], ac_val[1]);
 			writel(ac_val[0], ac_base + UDMA_AC2_START);
 			writel(ac_val[1], ac_base + UDMA_AC2_LIMIT);
 		}
-		if (!of_property_read_u32_array(ac_np, "access-control3", ac_val, 2)) {
+		if (!of_property_read_u32_array(ac_np,
+					"access-control3", ac_val, 2)) {
 			dev_info(&adev->dev, "access-control3 start:0x%08X limit:0x%08X\n",
 				ac_val[0], ac_val[1]);
 			writel(ac_val[0], ac_base + UDMA_AC3_START);
@@ -2759,7 +2763,8 @@ static int pl08x_of_probe(struct amba_device *adev,
 #ifdef CONFIG_TCC_PL08X
 	ret = tcc_pl08x_of_probe(adev, pl08x, np);
 	if (ret)
-		dev_err(&adev->dev, "udma access-control value probe failed %d\n", ret);
+		dev_err(&adev->dev,
+			"udma access-control value probe failed %d\n", ret);
 #endif /* CONFIG_TCC_PL08X */
 
 	return of_dma_controller_register(adev->dev.of_node, pl08x_of_xlate,
