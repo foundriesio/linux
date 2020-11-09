@@ -92,7 +92,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
 --- a/kernel/signal.c
 +++ b/kernel/signal.c
-@@ -1313,6 +1313,34 @@ force_sig_info_to_task(struct kernel_sig
+@@ -1314,6 +1314,34 @@ force_sig_info_to_task(struct kernel_sig
  	struct k_sigaction *action;
  	int sig = info->si_signo;
  

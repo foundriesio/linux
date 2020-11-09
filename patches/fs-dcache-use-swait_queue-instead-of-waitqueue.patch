@@ -171,7 +171,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  #include <trace/events/oom.h>
  #include "internal.h"
  #include "fd.h"
-@@ -2036,7 +2037,7 @@ bool proc_fill_cache(struct file *file,
+@@ -2038,7 +2039,7 @@ bool proc_fill_cache(struct file *file,
  
  	child = d_hash_and_lookup(dir, &qname);
  	if (!child) {
