@@ -47,7 +47,7 @@
                 compatible = "android,fstab";
                 system {
                         compatible = "android,system";
-                        dev = "/dev/block/platform/tcc_sc_mmc/by-name/system";
+                        dev = "/dev/block/platform/tcc_sc_ufs/by-name/system";
                         type = "ext4";
                         mnt_flags = "ro,barrier=1";
 #if !defined(CONFIG_ANDROID_AB_UPDATE)
@@ -58,7 +58,7 @@
                 };
                 vendor {
                         compatible = "android,vendor";
-                        dev = "/dev/block/platform/tcc_sc_mmc/by-name/vendor";
+                        dev = "/dev/block/platform/tcc_sc_ufs/by-name/vendor";
                         type = "ext4";
                         mnt_flags = "ro,barrier=1";
 #if !defined(CONFIG_ANDROID_AB_UPDATE)
