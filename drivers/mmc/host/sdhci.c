@@ -558,10 +558,10 @@ static void sdhci_kunmap_atomic(void *buffer, unsigned long *flags)
 	local_irq_restore(*flags);
 }
 
-void sdhci_adma_write_desc(struct sdhci_host *host, void **desc,
-			   dma_addr_t addr, int len, unsigned cmd)
+static void sdhci_adma_write_desc(struct sdhci_host *host, void *desc,
+				  dma_addr_t addr, int len, unsigned cmd)
 {
-	struct sdhci_adma2_64_desc *dma_desc = *desc;
+	struct sdhci_adma2_64_desc *dma_desc = desc;
 
 	/* 32-bit and 64-bit descriptors have these members in same position */
 	dma_desc->cmd = cpu_to_le16(cmd);
@@ -570,19 +570,6 @@ void sdhci_adma_write_desc(struct sdhci_host *host, void **desc,
 
 	if (host->flags & SDHCI_USE_64_BIT_DMA)
 		dma_desc->addr_hi = cpu_to_le32((u64)addr >> 32);
-
-	*desc += host->desc_sz;
-}
-EXPORT_SYMBOL_GPL(sdhci_adma_write_desc);
-
-static inline void __sdhci_adma_write_desc(struct sdhci_host *host,
-					  void **desc, dma_addr_t addr,
-					  int len,  unsigned cmd)
-{
-	if (host->ops->adma_write_desc)
-		host->ops->adma_write_desc(host, desc, addr, len, cmd);
-
-	sdhci_adma_write_desc(host, desc, addr, len, cmd);
 }
 
 static void sdhci_adma_mark_end(void *desc)
@@ -635,13 +622,15 @@ static void sdhci_adma_table_pre(struct sdhci_host *host,
 			}
 
 			/* tran, valid */
-			__sdhci_adma_write_desc(host, &desc, align_addr,
-						offset, ADMA2_TRAN_VALID);
+			sdhci_adma_write_desc(host, desc, align_addr, offset,
+					      ADMA2_TRAN_VALID);
 
 			BUG_ON(offset > 65536);
 
 			align += SDHCI_ADMA2_ALIGN;
 			align_addr += SDHCI_ADMA2_ALIGN;
+
+			desc += host->desc_sz;
 
 			addr += offset;
 			len -= offset;
@@ -649,10 +638,12 @@ static void sdhci_adma_table_pre(struct sdhci_host *host,
 
 		BUG_ON(len > 65536);
 
-		/* tran, valid */
-		if (len)
-			__sdhci_adma_write_desc(host, &desc, addr, len,
-						ADMA2_TRAN_VALID);
+		if (len) {
+			/* tran, valid */
+			sdhci_adma_write_desc(host, desc, addr, len,
+					      ADMA2_TRAN_VALID);
+			desc += host->desc_sz;
+		}
 
 		/*
 		 * If this triggers then we have a calculation bug
@@ -669,7 +660,7 @@ static void sdhci_adma_table_pre(struct sdhci_host *host,
 		}
 	} else {
 		/* Add a terminating entry - nop, end, valid */
-		__sdhci_adma_write_desc(host, &desc, 0, 0, ADMA2_NOP_END_VALID);
+		sdhci_adma_write_desc(host, desc, 0, 0, ADMA2_NOP_END_VALID);
 	}
 }
 
