@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: GPL-2.0
 /*
-* Copyright (c) 2019 - present Synopsys, Inc. and/or its affiliates.
-* Synopsys DesignWare HDMI driver
-*/
+ * Copyright (c) 2019 - present Synopsys, Inc. and/or its affiliates.
+ * Synopsys DesignWare HDMI driver
+ */
 #include <include/hdmi_includes.h>
 #include <include/hdmi_access.h>
 #include <include/hdmi_log.h>
@@ -18,25 +18,26 @@ void fc_vsd_vendor_OUI(struct hdmi_tx_dev *dev, u32 id)
 	hdmi_dev_write(dev, (FC_VSDIEEEID2), id >> 16);
 }
 
-u8 fc_vsd_vendor_payload(struct hdmi_tx_dev *dev, const u8 * data, unsigned short length)
+u8 fc_vsd_vendor_payload(
+	struct hdmi_tx_dev *dev, const u8 *data, unsigned short length)
 {
 	const unsigned short size = 24;
-	unsigned i;
+	unsigned int i;
+
 	LOG_TRACE();
 	if (data == NULL) {
-		LOGGER(SNPS_WARN,"invalid parameter");
+		LOGGER(SNPS_WARN, "invalid parameter");
 		return 1;
 	}
 	if (length > size) {
 		length = size;
-		LOGGER(SNPS_WARN,"vendor payload truncated");
+		LOGGER(SNPS_WARN, "vendor payload truncated");
 	}
 	for (i = 0; i < size; i++) {
-		if(i < length) {
+		if (i < length)
 			hdmi_dev_write(dev, (FC_VSDPAYLOAD0 + (i*4)), data[i]);
-		} else {
+		else
 			hdmi_dev_write(dev, (FC_VSDPAYLOAD0 + (i*4)), 0);
-		}
 	}
 	// VSD sise IEEE(3-bit) + length
 	hdmi_dev_write(dev, FC_VSDSIZE, length + 3);

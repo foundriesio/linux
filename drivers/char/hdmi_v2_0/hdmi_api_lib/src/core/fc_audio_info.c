@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: GPL-2.0
 /*
-* Copyright (c) 2019 - present Synopsys, Inc. and/or its affiliates.
-* Synopsys DesignWare HDMI driver
-*/
+ * Copyright (c) 2019 - present Synopsys, Inc. and/or its affiliates.
+ * Synopsys DesignWare HDMI driver
+ */
 #include <include/hdmi_includes.h>
 #include <include/hdmi_access.h>
 #include <include/hdmi_log.h>
@@ -15,7 +15,8 @@
 void fc_channel_count(struct hdmi_tx_dev *dev, u8 noOfChannels)
 {
 	LOG_TRACE1(noOfChannels);
-	hdmi_dev_write_mask(dev, FC_AUDICONF0, FC_AUDICONF0_CC_MASK, noOfChannels);
+	hdmi_dev_write_mask(
+		dev, FC_AUDICONF0, FC_AUDICONF0_CC_MASK, noOfChannels);
 }
 
 void fc_sample_freq(struct hdmi_tx_dev *dev, u8 sf)
@@ -39,13 +40,16 @@ void fc_level_shift_value(struct hdmi_tx_dev *dev, u8 lsv)
 void fc_down_mix_inhibit(struct hdmi_tx_dev *dev, u8 prohibited)
 {
 	LOG_TRACE1(prohibited);
-	hdmi_dev_write_mask(dev, FC_AUDICONF3, FC_AUDICONF3_DM_INH_MASK, (prohibited ? 1 : 0));
+	hdmi_dev_write_mask(
+		dev, FC_AUDICONF3,
+		FC_AUDICONF3_DM_INH_MASK, (prohibited ? 1 : 0));
 }
 
 void fc_coding_type(struct hdmi_tx_dev *dev, u8 codingType)
 {
 	LOG_TRACE1(codingType);
-	hdmi_dev_write_mask(dev, FC_AUDICONF0, FC_AUDICONF0_CT_MASK, codingType);
+	hdmi_dev_write_mask(
+		dev, FC_AUDICONF0, FC_AUDICONF0_CT_MASK, codingType);
 }
 
 void fc_sampling_size(struct hdmi_tx_dev *dev, u8 ss)
@@ -54,12 +58,14 @@ void fc_sampling_size(struct hdmi_tx_dev *dev, u8 ss)
 	hdmi_dev_write_mask(dev, FC_AUDICONF1, FC_AUDICONF1_SS_MASK, ss);
 }
 
-void fc_audio_info_config(struct hdmi_tx_dev *dev, audioParams_t * audio)
+void fc_audio_info_config(struct hdmi_tx_dev *dev, audioParams_t *audio)
 {
 	u8 channel_count = audio_channel_count(dev, audio);
+
 	LOG_TRACE();
 
-	if(audio->mCodingType != PCM)	channel_count = 0;
+	if (audio->mCodingType != PCM)
+		channel_count = 0;
 
 	fc_channel_count(dev, channel_count);
 	fc_allocate_channels(dev, audio->mChannelAllocation);
@@ -67,42 +73,40 @@ void fc_audio_info_config(struct hdmi_tx_dev *dev, audioParams_t * audio)
 	fc_down_mix_inhibit(dev, audio->mDownMixInhibitFlag);
 
 	LOGGER(SNPS_DEBUG, "Audio channel count = %d", channel_count);
-	LOGGER(SNPS_DEBUG, "Audio channel allocation = %d", audio->mChannelAllocation);
+	LOGGER(
+		SNPS_DEBUG,
+		"Audio channel allocation = %d", audio->mChannelAllocation);
 	LOGGER(SNPS_DEBUG, "Audio level shift = %d", audio->mLevelShiftValue);
 
-	if ((audio->mCodingType == ONE_BIT_AUDIO) || (audio->mCodingType == DST)) {
+	if (
+		(audio->mCodingType == ONE_BIT_AUDIO) ||
+			(audio->mCodingType == DST)) {
 		u32 sampling_freq = audio->mSamplingFrequency;
 
 		/* Audio InfoFrame sample frequency when OBA or DST */
-		if (sampling_freq== 32000) {
+		if (sampling_freq == 32000)
 			fc_sample_freq(dev, 1);
-		}
-		else if (sampling_freq == 44100) {
+		else if (sampling_freq == 44100)
 			fc_sample_freq(dev, 2);
-		}
-		else if (sampling_freq == 48000) {
+		else if (sampling_freq == 48000)
 			fc_sample_freq(dev, 3);
-		}
-		else if (sampling_freq == 88200) {
+		else if (sampling_freq == 88200)
 			fc_sample_freq(dev, 4);
-		}
-		else if (sampling_freq == 96000) {
+		else if (sampling_freq == 96000)
 			fc_sample_freq(dev, 5);
-		}
-		else if (sampling_freq == 176400) {
+		else if (sampling_freq == 176400)
 			fc_sample_freq(dev, 6);
-		}
-		else if (sampling_freq == 192000) {
+		else if (sampling_freq == 192000)
 			fc_sample_freq(dev, 7);
-		}
-		else {
+		else
 			fc_sample_freq(dev, 0);
-		}
 	} else {
-		fc_sample_freq(dev, 0);	/* otherwise refer to stream header (0) */
+		fc_sample_freq(dev, 0);
+		/* otherwise refer to stream header (0) */
 	}
 
 	fc_coding_type(dev, 0);	/* for HDMI refer to stream header  (0) */
-	fc_sampling_size(dev, 0);	/* for HDMI refer to stream header  (0) */
+	fc_sampling_size(dev, 0);
+	/* for HDMI refer to stream header  (0) */
 }
 

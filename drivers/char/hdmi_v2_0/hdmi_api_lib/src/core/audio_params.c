@@ -1,32 +1,30 @@
 // SPDX-License-Identifier: GPL-2.0
 /*
-* Copyright (c) 2019 - present Synopsys, Inc. and/or its affiliates.
-* Synopsys DesignWare HDMI driver
-*/
+ * Copyright (c) 2019 - present Synopsys, Inc. and/or its affiliates.
+ * Synopsys DesignWare HDMI driver
+ */
 #include <include/hdmi_includes.h>
 #include <include/hdmi_access.h>
 #include <include/hdmi_log.h>
 #include <include/hdmi_ioctls.h>
 #include <include/audio_params.h>
 
-
-typedef union iec {
+union iec {
 	u32 frequency;
 	u8 sample_size;
-}iec_t;
+};
 
-typedef struct iec_sampling_freq {
-	iec_t iec;
+struct iec_sampling_freq {
+	union iec iec;
 	u8 value;
-}iec_params_t;
+};
 
-typedef struct channel_count {
+struct channel_count {
 	unsigned char channel_allocation;
 	unsigned char channel_count;
-}channel_count_t;
+};
 
-
-iec_params_t iec_original_sampling_freq_values[] = {
+struct iec_sampling_freq iec_original_sampling_freq_values[] = {
 		{{.frequency = 44100}, 0xF},
 		{{.frequency = 88200}, 0x7},
 		{{.frequency = 22050}, 0xB},
@@ -43,7 +41,7 @@ iec_params_t iec_original_sampling_freq_values[] = {
 		{{.frequency = 0},      0x0}
 };
 
-iec_params_t iec_sampling_freq_values[] = {
+struct iec_sampling_freq iec_sampling_freq_values[] = {
 		{{.frequency = 22050}, 0x4},
 		{{.frequency = 44100}, 0x0},
 		{{.frequency = 88200}, 0x8},
@@ -57,7 +55,7 @@ iec_params_t iec_sampling_freq_values[] = {
 		{{.frequency = 0},      0x0}
 };
 
-iec_params_t iec_word_length[] = {
+struct iec_sampling_freq iec_word_length[] = {
 		{{.sample_size = 16}, 0x2},
 		{{.sample_size = 17}, 0xC},
 		{{.sample_size = 18}, 0x4},
@@ -70,7 +68,7 @@ iec_params_t iec_word_length[] = {
 		{{.sample_size = 0},  0x0}
 };
 
-static channel_count_t channel_cnt[] = {
+static struct channel_count channel_cnt[] = {
 		{0x00, 1},
 		{0x01, 2},
 		{0x02, 2},
@@ -125,7 +123,7 @@ static channel_count_t channel_cnt[] = {
 };
 
 
-void audio_reset(struct hdmi_tx_dev *dev, audioParams_t * params)
+void audio_reset(struct hdmi_tx_dev *dev, audioParams_t *params)
 {
 	params->mInterfaceType = I2S;
 	params->mCodingType = PCM;
@@ -149,25 +147,31 @@ void audio_reset(struct hdmi_tx_dev *dev, audioParams_t * params)
 	params->mGpaInsertPucv = 0;
 }
 
-u8 audio_channel_count(struct hdmi_tx_dev *dev, audioParams_t * params)
+u8 audio_channel_count(struct hdmi_tx_dev *dev, audioParams_t *params)
 {
 	int i;
 
-	for(i = 0; channel_cnt[i].channel_count != 0; i++){
-		if(channel_cnt[i].channel_allocation == params->mChannelAllocation){
+	for (i = 0; channel_cnt[i].channel_count != 0; i++) {
+		if (
+			channel_cnt[i].channel_allocation ==
+					params->mChannelAllocation)
 			return channel_cnt[i].channel_count;
-		}
 	}
 
 	return 0;
 }
 
-u8 audio_iec_original_sampling_freq(struct hdmi_tx_dev *dev, audioParams_t * params)
+u8 audio_iec_original_sampling_freq(
+	struct hdmi_tx_dev *dev, audioParams_t *params)
 {
 	int i;
 
-	for(i = 0; iec_original_sampling_freq_values[i].iec.frequency != 0; i++){
-		if(params->mSamplingFrequency == iec_original_sampling_freq_values[i].iec.frequency){
+	for (
+		i = 0;
+		iec_original_sampling_freq_values[i].iec.frequency != 0; i++) {
+		if (
+			params->mSamplingFrequency ==
+			iec_original_sampling_freq_values[i].iec.frequency) {
 			u8 value = iec_original_sampling_freq_values[i].value;
 			return value;
 		}
@@ -177,12 +181,14 @@ u8 audio_iec_original_sampling_freq(struct hdmi_tx_dev *dev, audioParams_t * par
 	return 0x0;
 }
 
-u8 audio_iec_sampling_freq(struct hdmi_tx_dev *dev, audioParams_t * params)
+u8 audio_iec_sampling_freq(struct hdmi_tx_dev *dev, audioParams_t *params)
 {
 	int i;
 
-	for(i = 0; iec_sampling_freq_values[i].iec.frequency != 0; i++){
-		if(params->mSamplingFrequency == iec_sampling_freq_values[i].iec.frequency){
+	for (i = 0; iec_sampling_freq_values[i].iec.frequency != 0; i++) {
+		if (
+			params->mSamplingFrequency ==
+			iec_sampling_freq_values[i].iec.frequency) {
 			u8 value = iec_sampling_freq_values[i].value;
 			return value;
 		}
@@ -192,21 +198,21 @@ u8 audio_iec_sampling_freq(struct hdmi_tx_dev *dev, audioParams_t * params)
 	return 0x1;
 }
 
-u8 audio_iec_word_length(struct hdmi_tx_dev *dev, audioParams_t * params)
+u8 audio_iec_word_length(struct hdmi_tx_dev *dev, audioParams_t *params)
 {
 	int i;
 
-	for(i = 0; iec_word_length[i].iec.sample_size != 0; i++){
-		if(params->mSampleSize == iec_word_length[i].iec.sample_size){
+	for (i = 0; iec_word_length[i].iec.sample_size != 0; i++) {
+		if (params->mSampleSize == iec_word_length[i].iec.sample_size)
 			return iec_word_length[i].value;
-		}
 	}
 
 	// Not indicated
 	return 0x0;
 }
 
-u8 audio_is_channel_en(struct hdmi_tx_dev *dev, audioParams_t * params, u8 channel)
+u8 audio_is_channel_en(
+	struct hdmi_tx_dev *dev, audioParams_t *params, u8 channel)
 {
 	switch (channel) {
 	case 0:
@@ -217,17 +223,27 @@ u8 audio_is_channel_en(struct hdmi_tx_dev *dev, audioParams_t * params, u8 chann
 	case 3:
 		return (params->mChannelAllocation & BIT(1)) >> 1;
 	case 4:
-		if (((params->mChannelAllocation > 0x03) && (params->mChannelAllocation < 0x14)) || ((params->mChannelAllocation > 0x17) && (params->mChannelAllocation < 0x20)))
+		if (
+			((params->mChannelAllocation > 0x03) &&
+			(params->mChannelAllocation < 0x14)) ||
+			((params->mChannelAllocation > 0x17) &&
+			(params->mChannelAllocation < 0x20)))
 			return 1;
 		else
 			return 0;
 	case 5:
-		if (((params->mChannelAllocation > 0x07) && (params->mChannelAllocation < 0x14)) || ((params->mChannelAllocation > 0x1C) && (params->mChannelAllocation < 0x20)))
+		if (
+			((params->mChannelAllocation > 0x07) &&
+			(params->mChannelAllocation < 0x14)) ||
+			((params->mChannelAllocation > 0x1C) &&
+			(params->mChannelAllocation < 0x20)))
 			return 1;
 		else
 			return 0;
 	case 6:
-		if ((params->mChannelAllocation > 0x0B) && (params->mChannelAllocation < 0x20))
+		if (
+			(params->mChannelAllocation > 0x0B) &&
+			(params->mChannelAllocation < 0x20))
 			return 1;
 		else
 			return 0;
@@ -238,28 +254,28 @@ u8 audio_is_channel_en(struct hdmi_tx_dev *dev, audioParams_t * params, u8 chann
 	}
 }
 
-char * audio_interface_type_string(audioParams_t *pAudio)
+char *audio_interface_type_string(audioParams_t *pAudio)
 {
-	switch(pAudio->mInterfaceType){
+	switch (pAudio->mInterfaceType) {
 	case I2S:
-			return "I2S";
+		return "I2S";
 	case SPDIF:
 		return "SPDIF";
 	case HBR:
-			return "HBR";
+		return "HBR";
 	case GPA:
-			return "GPA";
+		return "GPA";
 	case DMA:
-			return "DMA";
+		return "DMA";
 	default:
 		break;
 	}
 	return "undefined";
 }
 
-char * audio_coding_type_string(audioParams_t *pAudio)
+char *audio_coding_type_string(audioParams_t *pAudio)
 {
-	switch(pAudio->mCodingType){
+	switch (pAudio->mCodingType) {
 	case PCM:
 		return "PCM";
 	case AC3:

@@ -14,42 +14,22 @@
  * this program; if not, write to the Free Software Foundation, Inc., 59 Temple
  * Place, Suite 330, Boston, MA 02111-1307 USA
  ****************************************************************************/
-#ifndef __PROC_FS_H__
-#define __PROC_FS_H__
+#ifndef __HDMI_MISC_H__
+#define __HDMI_MISC_H__
 
-void
-proc_interface_init(struct hdmi_tx_dev *dev);
+//MISC Funcations
+int dwc_hdmi_misc_register(struct hdmi_tx_dev *dev);
+int dwc_hdmi_misc_deregister(struct hdmi_tx_dev *dev);
+void dwc_hdmi_power_on_core(struct hdmi_tx_dev *dev, int need_link_reset);
 
-void
-proc_interface_remove(struct hdmi_tx_dev *dev);
+// API Functions
+void dwc_hdmi_api_register(struct hdmi_tx_dev *dev);
+void dwc_hdmi_power_on(struct hdmi_tx_dev *dev);
+void dwc_hdmi_power_off(struct hdmi_tx_dev *dev);
 
-ssize_t
-proc_read(struct file *filp, char __user *buf, size_t cnt, loff_t *off_set);
+int hdmi_api_dump_regs(void);
+void hdmi_activate_callback(void);
+int hdmi_api_vsif_update(productParams_t *productParams);
+int hdmi_api_vsif_update_by_index(int index);
 
-ssize_t
-proc_write(struct file *filp, const char __user *buffer, size_t cnt,
-		loff_t *off_set);
-
-int
-proc_open(struct inode *inode, struct file *filp);
-
-int
-proc_close(struct inode *inode, struct file *filp);
-
-ssize_t
-proc_read_edid(
-	struct file *filp, char __user *buf, size_t cnt, loff_t *off_set);
-
-ssize_t
-proc_write_bind(struct file *filp, const char __user *buffer, size_t cnt,
-		loff_t *off_set);
-
-ssize_t
-proc_write_hdcp_keys(struct file *filp, const char __user *buffer, size_t cnt,
-		loff_t *off_set);
-
-ssize_t
-proc_write_phy_config(struct file *filp, const char __user *buffer, size_t cnt,
-		loff_t *off_set);
-
-#endif /* __PROC_FS_H__ */
+#endif	/* __HDMI_MISC_H__ */

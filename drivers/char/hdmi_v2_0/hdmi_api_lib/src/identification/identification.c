@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: GPL-2.0
 /*
-* Copyright (c) 2019 - present Synopsys, Inc. and/or its affiliates.
-* Synopsys DesignWare HDMI driver
-*/
+ * Copyright (c) 2019 - present Synopsys, Inc. and/or its affiliates.
+ * Synopsys DesignWare HDMI driver
+ */
 #include "../../include/identification/identification.h"
 #include "../../include/identification/identification_reg.h"
 #include "../../../include/hdmi_log.h"
@@ -30,7 +30,8 @@ u8 id_product_type(struct hdmi_tx_dev *dev)
 
 int id_hdcp_support(struct hdmi_tx_dev *dev)
 {
-	if (hdmi_dev_read_mask(dev, PRODUCT_ID1, PRODUCT_ID1_PRODUCT_ID1_HDCP_MASK) == 3)
+	if (hdmi_dev_read_mask(
+		dev, PRODUCT_ID1, PRODUCT_ID1_PRODUCT_ID1_HDCP_MASK) == 3)
 		return TRUE;
 	else
 		return FALSE;

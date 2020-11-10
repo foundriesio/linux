@@ -1,8 +1,8 @@
 /* SPDX-License-Identifier: GPL-2.0 */
 /*
-* Copyright (c) 2019 -present Synopsys, Inc. and/or its affiliates.
-* Synopsys DesignWare HDMI driver
-*/
+ * Copyright (c) 2019 -present Synopsys, Inc. and/or its affiliates.
+ * Synopsys DesignWare HDMI driver
+ */
 #ifndef HALFRAMECOMPOSERVIDEO_H_
 #define HALFRAMECOMPOSERVIDEO_H_
 
