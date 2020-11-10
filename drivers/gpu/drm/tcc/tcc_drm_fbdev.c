@@ -27,19 +27,22 @@
 #include "tcc_drm_fb.h"
 #include "tcc_drm_fbdev.h"
 
-#define MAX_CONNECTOR		4
-#define PREFERRED_BPP		32
+#define MAX_CONNECTOR 4
+#define PREFERRED_BPP 32
 
 #define to_tcc_fbdev(x)	container_of(x, struct tcc_drm_fbdev,\
 				drm_fb_helper)
 
-#define DRMFBIO_CHECK_CRTC _IOR('D', 0x01, unsigned int)
-#define DRMFBIO_CTRL_SET_CHROMAKEY _IOW('D', 0x10, struct drm_ioctl_chromakey_t)
-#define DRMFBIO_CTRL_GET_CHROMAKEY _IOR('D', 0x11, struct drm_ioctl_chromakey_t)
+#define DRMFBIO_CHECK_CRTC \
+		_IOR('D', 0x01, unsigned int)
+#define DRMFBIO_CTRL_SET_CHROMAKEY \
+		_IOW('D', 0x10, struct drm_ioctl_chromakey_t)
+#define DRMFBIO_CTRL_GET_CHROMAKEY \
+		_IOR('D', 0x11, struct drm_ioctl_chromakey_t)
 
 struct tcc_drm_fbdev {
-	struct drm_fb_helper	drm_fb_helper;
-	struct tcc_drm_gem	*tcc_gem;
+	struct drm_fb_helper drm_fb_helper;
+	struct tcc_drm_gem *tcc_gem;
 };
 
 static int tcc_drm_fb_mmap(struct fb_info *info,
@@ -71,13 +74,16 @@ static int tcc_drm_fb_mmap(struct fb_info *info,
 
 
 
-static struct drm_crtc * tcc_drm_check_crtc_id(struct drm_fb_helper *fb_helper, unsigned int req_crtc_id)
+static struct drm_crtc *tcc_drm_check_crtc_id(
+	struct drm_fb_helper *fb_helper, unsigned int req_crtc_id)
 {
 	int i;
 	struct drm_crtc *crtc = NULL;
 
 	for (i = 0; i < fb_helper->crtc_count; i++) {
-                if (fb_helper->crtc_info[i].mode_set.crtc->base.id == req_crtc_id) {
+		if (
+			fb_helper->crtc_info[i].mode_set.crtc->base.id ==
+			req_crtc_id) {
 			crtc = fb_helper->crtc_info[i].mode_set.crtc;
 			break;
 		}
@@ -85,13 +91,17 @@ static struct drm_crtc * tcc_drm_check_crtc_id(struct drm_fb_helper *fb_helper, 
 	return crtc;
 }
 
-static struct drm_crtc * tcc_drm_get_crtc_by_index(struct drm_fb_helper *fb_helper, unsigned int req_crtc_index)
+static struct drm_crtc *tcc_drm_get_crtc_by_index(
+	struct drm_fb_helper *fb_helper, unsigned int req_crtc_index)
 {
 	int i;
 	struct drm_crtc *crtc = NULL;
 
 	for (i = 0; i < fb_helper->crtc_count; i++) {
-                if (drm_crtc_index(fb_helper->crtc_info[i].mode_set.crtc) == req_crtc_index) {
+		if (
+			drm_crtc_index(
+				fb_helper->crtc_info[i].mode_set.crtc) ==
+				req_crtc_index) {
 			crtc = fb_helper->crtc_info[i].mode_set.crtc;
 			break;
 		}
@@ -101,104 +111,125 @@ static struct drm_crtc * tcc_drm_get_crtc_by_index(struct drm_fb_helper *fb_help
 
 
 int tcc_drm_fb_helper_ioctl(struct fb_info *info, unsigned int cmd,
-                        unsigned long arg)
+			unsigned long arg)
 {
-        struct drm_fb_helper *fb_helper = info->par;
-        int ret = -EFAULT;
+	struct drm_fb_helper *fb_helper = info->par;
+	int ret = -EFAULT;
 
-        mutex_lock(&fb_helper->lock);
+	mutex_lock(&fb_helper->lock);
 
-        switch (cmd) {
+	switch (cmd) {
 	case DRMFBIO_CHECK_CRTC:
-		{
-			struct drm_crtc *crtc;
-			unsigned int req_crtc_id;
-			if (get_user(req_crtc_id, (unsigned int __user *)arg) < 0) {
-				break;
-			}
-			crtc = tcc_drm_check_crtc_id(fb_helper, req_crtc_id);
-			if(crtc != NULL)
-				ret = 0;
+	{
+		struct drm_crtc *crtc;
+		unsigned int req_crtc_id;
+
+		if (get_user(req_crtc_id, (unsigned int __user *)arg) < 0)
 			break;
-		}
+
+		crtc = tcc_drm_check_crtc_id(fb_helper, req_crtc_id);
+		if (crtc != NULL)
+			ret = 0;
+	}
+	break;
 	#if defined(CONFIG_DRM_TCC_CTRL_CHROMAKEY)
 	case DRMFBIO_CTRL_GET_CHROMAKEY:
-		{
-			struct drm_crtc *crtc;
-			struct tcc_drm_crtc *tcc_crtc;
-			struct drm_ioctl_chromakey_t chromakey;
-			if(copy_from_user(&chromakey, (void __user *)arg, sizeof(struct drm_ioctl_chromakey_t))) {
-                                pr_err("[ERR][DRMLCD]%s failed copy_from_user at line(%d)\r\n", __func__, __LINE__);
-				break;
-			}
-			crtc = tcc_drm_get_crtc_by_index(fb_helper, chromakey.crtc_index);
-			if(crtc == NULL) {
-				pr_err("[ERR][DRMFB] %s invalid index %d because crtc is NULL\r\n",
-					__func__, chromakey.crtc_index);
-				break;
-			}
-			tcc_crtc = to_tcc_crtc(crtc);
-			if(tcc_crtc == NULL) {
-				break;
-			}
-			if (tcc_crtc->ops->get_chromakey == NULL) {
-				break;
-			}
-			/* Layer range is 0 to 2 */
-			if(chromakey.chromakey_layer > 2) {
-				pr_err("[ERR][DRMFB] %s DRMFBIO_CTRL_GET_CHROMAKEY layer %d is not valid\r\n",
-					__func__, chromakey.chromakey_layer);
-				break;
-			}
-			ret = tcc_crtc->ops->get_chromakey(tcc_crtc,
-				chromakey.chromakey_layer,
-				&chromakey.chromakey_enable,
-				&chromakey.chromakey_value, &chromakey.chromakey_mask);
-			if(copy_to_user((void __user *)arg, &chromakey, sizeof(struct drm_ioctl_chromakey_t))) {
-                                pr_err("[ERR][DRMLCD]%s failed copy_to_user at line(%d)\r\n", __func__, __LINE__);
-				break;
-			}
+	{
+		struct drm_crtc *crtc;
+		struct tcc_drm_crtc *tcc_crtc;
+		struct drm_ioctl_chromakey_t chromakey;
+
+		if (
+			copy_from_user(
+				&chromakey, (void __user *)arg,
+				sizeof(struct drm_ioctl_chromakey_t))) {
+			pr_err(
+				"[ERR][DRMLCD]%s failed copy_from_user at line(%d)\r\n",
+				__func__, __LINE__);
+			break;
 		}
-		break;
+		crtc = tcc_drm_get_crtc_by_index(
+			fb_helper, chromakey.crtc_index);
+		if (crtc == NULL) {
+			pr_err(
+				"[ERR][DRMFB] %s invalid index %d because crtc is NULL\r\n",
+				__func__, chromakey.crtc_index);
+			break;
+		}
+		tcc_crtc = to_tcc_crtc(crtc);
+		if (tcc_crtc == NULL)
+			break;
+		if (tcc_crtc->ops->get_chromakey == NULL)
+			break;
+		/* Layer range is 0 to 2 */
+		if (chromakey.chromakey_layer > 2) {
+			pr_err(
+				"[ERR][DRMFB] %s DRMFBIO_CTRL_GET_CHROMAKEY layer %d is not valid\r\n",
+				__func__, chromakey.chromakey_layer);
+			break;
+		}
+		ret = tcc_crtc->ops->get_chromakey(tcc_crtc,
+			chromakey.chromakey_layer,
+			&chromakey.chromakey_enable,
+			&chromakey.chromakey_value,
+			&chromakey.chromakey_mask);
+		if (
+			copy_to_user(
+				(void __user *)arg, &chromakey,
+				sizeof(struct drm_ioctl_chromakey_t))) {
+			pr_err(
+				"[ERR][DRMLCD]%s failed copy_to_user at line(%d)\r\n",
+				__func__, __LINE__);
+			break;
+		}
+	}
+	break;
 
 	case DRMFBIO_CTRL_SET_CHROMAKEY:
-		{
-			struct drm_crtc *crtc;
-			struct tcc_drm_crtc *tcc_crtc;
-			struct drm_ioctl_chromakey_t chromakey;
-			if(copy_from_user(&chromakey, (void __user *)arg, sizeof(struct drm_ioctl_chromakey_t))) {
-                                pr_err("[ERR][DRMLCD]%s failed copy_from_user at line(%d)\r\n", __func__, __LINE__);
-				break;
-			}
-			crtc = tcc_drm_get_crtc_by_index(fb_helper, chromakey.crtc_index);
-			if(crtc == NULL) {
-				pr_err("[ERR][DRMFB] %s invalid index %d because crtc is NULL\r\n",
-					__func__, chromakey.crtc_index);
-				break;
-			}
-			tcc_crtc = to_tcc_crtc(crtc);
-			if(tcc_crtc == NULL) {
-				break;
-			}
-			if (tcc_crtc->ops->set_chromakey == NULL) {
-				break;
-			}
-			/* Layer range is 0 to 2 */
-			if(chromakey.chromakey_layer > 2) {
-				pr_err("[ERR][DRMFB] %s DRMFBIO_CTRL_SET_CHROMAKEY layer %d is not valid\r\n",
-					__func__, chromakey.chromakey_layer);
-				break;
-			}
-			ret = tcc_crtc->ops->set_chromakey(tcc_crtc,
-				chromakey.chromakey_layer,
-				chromakey.chromakey_enable,
-				&chromakey.chromakey_value, &chromakey.chromakey_mask);
+	{
+		struct drm_crtc *crtc;
+		struct tcc_drm_crtc *tcc_crtc;
+		struct drm_ioctl_chromakey_t chromakey;
+
+		if (
+			copy_from_user(
+				&chromakey, (void __user *)arg,
+				sizeof(struct drm_ioctl_chromakey_t))) {
+			pr_err(
+				"[ERR][DRMLCD]%s failed copy_from_user at line(%d)\r\n",
+				__func__, __LINE__);
+			break;
 		}
-		break;
+		crtc = tcc_drm_get_crtc_by_index(
+			fb_helper, chromakey.crtc_index);
+		if (crtc == NULL) {
+			pr_err(
+				"[ERR][DRMFB] %s invalid index %d because crtc is NULL\r\n",
+				__func__, chromakey.crtc_index);
+			break;
+		}
+		tcc_crtc = to_tcc_crtc(crtc);
+		if (tcc_crtc == NULL)
+			break;
+		if (tcc_crtc->ops->set_chromakey == NULL)
+			break;
+		/* Layer range is 0 to 2 */
+		if (chromakey.chromakey_layer > 2) {
+			pr_err(
+				"[ERR][DRMFB] %s DRMFBIO_CTRL_SET_CHROMAKEY layer %d is not valid\r\n",
+				__func__, chromakey.chromakey_layer);
+			break;
+		}
+		ret = tcc_crtc->ops->set_chromakey(tcc_crtc,
+			chromakey.chromakey_layer,
+			chromakey.chromakey_enable,
+			&chromakey.chromakey_value, &chromakey.chromakey_mask);
+	}
+	break;
 	#endif
 	}
-        mutex_unlock(&fb_helper->lock);
-        return ret;
+	mutex_unlock(&fb_helper->lock);
+	return ret;
 }
 
 static struct fb_ops tcc_drm_fb_ops = {
@@ -285,13 +316,13 @@ static int tcc_drm_fbdev_probe(struct drm_fb_helper *helper,
 
 	tcc_fbdev->tcc_gem = tcc_gem;
 
-        helper->fb =
-                tcc_drm_fb_alloc(dev, &mode_cmd, &tcc_gem, 1);
-        if (IS_ERR(helper->fb)) {
-                DRM_ERROR("failed to create drm framebuffer.\n");
-                ret = PTR_ERR(helper->fb);
-                goto err_destroy_gem;
-        }
+	helper->fb =
+		tcc_drm_fb_alloc(dev, &mode_cmd, &tcc_gem, 1);
+	if (IS_ERR(helper->fb)) {
+		DRM_ERROR("failed to create drm framebuffer.\n");
+		ret = PTR_ERR(helper->fb);
+		goto err_destroy_gem;
+	}
 
 	ret = tcc_drm_fbdev_update(helper, sizes, tcc_gem);
 	if (ret < 0)
@@ -331,7 +362,8 @@ int tcc_drm_fbdev_init(struct drm_device *dev)
 
 	private->fb_helper = &fbdev->drm_fb_helper;
 
-	drm_fb_helper_prepare(dev, &fbdev->drm_fb_helper, &tcc_drm_fb_helper_funcs);
+	drm_fb_helper_prepare(
+		dev, &fbdev->drm_fb_helper, &tcc_drm_fb_helper_funcs);
 
 	ret = drm_fb_helper_init(dev, &fbdev->drm_fb_helper, MAX_CONNECTOR);
 	if (ret < 0) {

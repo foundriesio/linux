@@ -66,36 +66,38 @@ struct drm_tcc_vidi_connection {
 #define TCC_GEM_CPU_PREP_WRITE       (1 << 1)
 #define TCC_GEM_CPU_PREP_NOWAIT      (1 << 2)
 
-#define TCC_GEM_CPU_PREP_FLAGS       (TCC_GEM_CPU_PREP_READ | TCC_GEM_CPU_PREP_WRITE | TCC_GEM_CPU_PREP_NOWAIT)
+#define TCC_GEM_CPU_PREP_FLAGS       ( \
+					TCC_GEM_CPU_PREP_READ | \
+					TCC_GEM_CPU_PREP_WRITE | \
+					TCC_GEM_CPU_PREP_NOWAIT)
 
 struct drm_tcc_gem_cpu_prep {
-        __u32 handle;         	/* in */
-        __u32 flags;           	/* in, mask of TCC_GEM_CPU_PREP_x */
+	__u32 handle; /* in */
+	__u32 flags; /* in, mask of TCC_GEM_CPU_PREP_x */
 };
 
 struct drm_tcc_gem_cpu_fini {
-        __u32 handle;         	/* in */
+	__u32 handle; /* in */
 };
 
 struct drm_tcc_edid {
-	__u32 crtc_id;         	/* in */
+	__u32 crtc_id; /* in */
 	__u8 data[512];
 };
 
 /* memory type definitions. */
 enum e_drm_tcc_gem_mem_type {
 	/* Physically Continuous memory and used as default. */
-	TCC_BO_CONTIG	= 0 << 0,
+	TCC_BO_CONTIG = 0 << 0,
 	/* Physically Non-Continuous memory. */
-	TCC_BO_NONCONTIG	= 1 << 0,
+	TCC_BO_NONCONTIG = 1 << 0,
 	/* non-cachable mapping and used as default. */
-	TCC_BO_NONCACHABLE	= 0 << 1,
+	TCC_BO_NONCACHABLE = 0 << 1,
 	/* cachable mapping. */
-	TCC_BO_CACHABLE	= 1 << 1,
+	TCC_BO_CACHABLE = 1 << 1,
 	/* write-combine mapping. */
-	TCC_BO_WC		= 1 << 2,
-	TCC_BO_MASK		= TCC_BO_NONCONTIG | TCC_BO_CACHABLE |
-					TCC_BO_WC
+	TCC_BO_WC = 1 << 2,
+	TCC_BO_MASK = TCC_BO_NONCONTIG | TCC_BO_CACHABLE | TCC_BO_WC
 };
 
 struct drm_tcc_g2d_get_ver {
@@ -124,18 +126,18 @@ struct drm_tcc_g2d_userptr {
 };
 
 struct drm_tcc_g2d_set_cmdlist {
-	__u64					cmd;
-	__u64					cmd_buf;
-	__u32					cmd_nr;
-	__u32					cmd_buf_nr;
+	__u64 cmd;
+	__u64 cmd_buf;
+	__u32 cmd_nr;
+	__u32 cmd_buf_nr;
 
 	/* for g2d event */
-	__u64					event_type;
-	__u64					user_data;
+	__u64 event_type;
+	__u64 user_data;
 };
 
 struct drm_tcc_g2d_exec {
-	__u64					async;
+	__u64 async;
 };
 
 enum drm_tcc_ops_id {
@@ -145,23 +147,22 @@ enum drm_tcc_ops_id {
 };
 
 struct drm_tcc_sz {
-	__u32	hsize;
-	__u32	vsize;
+	__u32 hsize;
+	__u32 vsize;
 };
 
 struct drm_tcc_pos {
-	__u32	x;
-	__u32	y;
-	__u32	w;
-	__u32	h;
+	__u32 x;
+	__u32 y;
+	__u32 w;
+	__u32 h;
 };
 
 enum drm_tcc_flip {
 	TCC_DRM_FLIP_NONE = (0 << 0),
 	TCC_DRM_FLIP_VERTICAL = (1 << 0),
 	TCC_DRM_FLIP_HORIZONTAL = (1 << 1),
-	TCC_DRM_FLIP_BOTH = TCC_DRM_FLIP_VERTICAL |
-			TCC_DRM_FLIP_HORIZONTAL,
+	TCC_DRM_FLIP_BOTH = TCC_DRM_FLIP_VERTICAL | TCC_DRM_FLIP_HORIZONTAL,
 };
 
 enum drm_tcc_degree {
@@ -351,14 +352,14 @@ struct drm_tcc_ipp_cmd_ctrl {
 #define DRM_IOCTL_TCC_VIDI_CONNECTION	DRM_IOWR(DRM_COMMAND_BASE + \
 		DRM_TCC_VIDI_CONNECTION, struct drm_tcc_vidi_connection)
 
-#define DRM_IOCTL_TCC_GEM_CPU_PREP   	DRM_IOWR(DRM_COMMAND_BASE + \
-                DRM_TCC_GEM_CPU_PREP, struct drm_tcc_gem_cpu_prep)
+#define DRM_IOCTL_TCC_GEM_CPU_PREP	DRM_IOWR(DRM_COMMAND_BASE + \
+		DRM_TCC_GEM_CPU_PREP, struct drm_tcc_gem_cpu_prep)
 
-#define DRM_IOCTL_TCC_GEM_CPU_FINI   	DRM_IOWR(DRM_COMMAND_BASE + \
-                DRM_TCC_GEM_CPU_FINI, struct drm_tcc_gem_cpu_fini)
+#define DRM_IOCTL_TCC_GEM_CPU_FINI	DRM_IOWR(DRM_COMMAND_BASE + \
+		DRM_TCC_GEM_CPU_FINI, struct drm_tcc_gem_cpu_fini)
 
 #define DRM_IOCTL_TCC_GET_EDID	DRM_IOWR(DRM_COMMAND_BASE + \
-                DRM_TCC_GET_EDID, struct drm_tcc_edid)
+		DRM_TCC_GET_EDID, struct drm_tcc_edid)
 
 #define DRM_IOCTL_TCC_IPP_GET_PROPERTY	DRM_IOWR(DRM_COMMAND_BASE + \
 		DRM_TCC_IPP_GET_PROPERTY, struct drm_tcc_ipp_prop_list)
@@ -373,13 +374,13 @@ struct drm_tcc_ipp_cmd_ctrl {
 #define DRM_TCC_IPP_EVENT		0x80000001
 
 struct drm_tcc_ipp_event {
-	struct drm_event	base;
-	__u64			user_data;
-	__u32			tv_sec;
-	__u32			tv_usec;
-	__u32			prop_id;
-	__u32			reserved;
-	__u32			buf_id[TCC_DRM_OPS_MAX];
+	struct drm_event base;
+	__u64 user_data;
+	__u32 tv_sec;
+	__u32 tv_usec;
+	__u32 prop_id;
+	__u32 reserved;
+	__u32 buf_id[TCC_DRM_OPS_MAX];
 };
 
 #endif /* _UAPI_TCC_DRM_H_ */

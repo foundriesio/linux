@@ -60,26 +60,28 @@ struct lcd_chromakeys {
 #endif
 
 struct lcd_context {
-	struct device			*dev;
-	struct drm_device		*drm_dev;
-	struct tcc_drm_crtc		*crtc;
-	struct drm_encoder 		*encoder;
-	struct tcc_drm_plane		planes[CRTC_WIN_NR_MAX];
+	struct device *dev;
+	struct drm_device *drm_dev;
+	struct tcc_drm_crtc *crtc;
+	struct drm_encoder *encoder;
+	struct tcc_drm_plane planes[CRTC_WIN_NR_MAX];
 
-	unsigned long			crtc_flags;
+	unsigned long crtc_flags;
 
 	/* VSYNC */
-	wait_queue_head_t		wait_vsync_queue;
-	atomic_t			wait_vsync_event;
+	wait_queue_head_t wait_vsync_queue;
+	atomic_t wait_vsync_event;
 
-	spinlock_t 			irq_lock;
+	spinlock_t irq_lock;
 
 	/*
 	 * keep_logo
-	 * If this flag is set to 1, DRM driver skips process that fills its plane with block color
-	 * when it is binded. In other words, If so any Logo image was displayed on screen at booting time,
-	 * it will is keep dislayed on screen until the DRM application is executed. */
-	int 				keep_logo;
+	 * If this flag is set to 1, DRM driver skips process that fills its
+	 * plane with block colorwhen it is binded. In other words, If so any
+	 * Logo image was displayed on screen at booting time, it will is keep
+	 * dislayed on screen until the DRM application is executed.
+	 */
+	int keep_logo;
 
 
 	#if defined(CONFIG_DRM_TCC_CTRL_CHROMAKEY)
@@ -88,14 +90,13 @@ struct lcd_context {
 	#endif
 
 	/* count for fifo-underrun */
-	unsigned int 			cnt_underrun;
+	unsigned int cnt_underrun;
 
 	/* Device driver data */
-	struct tcc_drm_device_data 	*data;
+	struct tcc_drm_device_data *data;
 
 	/* H/W data */
-	struct tcc_hw_device 		hw_data;
-
+	struct tcc_hw_device hw_data;
 };
 
 #if defined(CONFIG_DRM_TCC_LCD)
@@ -146,10 +147,10 @@ static const struct of_device_id lcd_driver_dt_match[] = {
 	#if defined(CONFIG_DRM_TCC_LCD)
 	{
 		.compatible = "telechips,tcc-drm-lcd",
-		.data = (const void*)&lcd_old_data,
+		.data = (const void *)&lcd_old_data,
 	}, {
 		.compatible = "telechips,tcc-drm-lcd-v1.0",
-		.data = (const void*)&lcd_v1_x_data,
+		.data = (const void *)&lcd_v1_x_data,
 	},
 	#endif
 }
@@ -159,10 +160,10 @@ static const struct of_device_id ext_driver_dt_match[] = {
 	#if defined(CONFIG_DRM_TCC_EXT)
 	{
 		.compatible = "telechips,tcc-drm-ext",
-		.data = (const void*)&ext_old_data,
+		.data = (const void *)&ext_old_data,
 	}, {
 		.compatible = "telechips,tcc-drm-ext-v1.0",
-		.data = (const void*)&ext_v1_x_data,
+		.data = (const void *)&ext_v1_x_data,
 	},
 	#endif
 }
@@ -172,10 +173,10 @@ static const struct of_device_id third_driver_dt_match[] = {
 	#if defined(CONFIG_DRM_TCC_THIRD)
 	{
 		.compatible = "telechips,tcc-drm-third",
-		.data = (const void*)&third_old_data,
+		.data = (const void *)&third_old_data,
 	}, {
 		.compatible = "telechips,tcc-drm-third-v1.0",
-		.data = (const void*)&third_v1_x_data,
+		.data = (const void *)&third_v1_x_data,
 	},
 	#endif
 }
@@ -185,10 +186,10 @@ static const struct of_device_id fourth_driver_dt_match[] = {
 	#if defined(CONFIG_DRM_TCC_FOURTH)
 	{
 		.compatible = "telechips,tcc-drm-fourth",
-		.data = (const void*)&fourth_old_data,
+		.data = (const void *)&fourth_old_data,
 	}, {
 		.compatible = "telechips,tcc-drm-fourth-v1.0",
-		.data = (const void*)&fourth_v1_x_data,
+		.data = (const void *)&fourth_v1_x_data,
 	},
 	#endif
 	{},
@@ -235,19 +236,22 @@ static irqreturn_t lcd_irq_handler(int irq, void *dev_id)
 		return IRQ_HANDLED;
 	}
 
-	display_device_blk_num = get_vioc_index(ctx->hw_data.display_device.blk_num);
+	display_device_blk_num =
+		get_vioc_index(ctx->hw_data.display_device.blk_num);
 
 	/* Get TCC VIOC block status register */
 	dispblock_status = vioc_intr_get_status(display_device_blk_num);
 
 	if (dispblock_status & (1 << VIOC_DISP_INTR_RU)) {
-		vioc_intr_clear(display_device_blk_num, (1 << VIOC_DISP_INTR_RU));
+		vioc_intr_clear(
+			display_device_blk_num, (1 << VIOC_DISP_INTR_RU));
 
 		/* check the crtc is detached already from encoder */
 		if (ctx->drm_dev == NULL) {
-			dev_warn(ctx->dev,
+			dev_warn(
+				ctx->dev,
 				"[WARN][%s] %s drm_dev is not binded\r\n",
-					LOG_TAG, __func__);
+				LOG_TAG, __func__);
 			goto out;
 		}
 
@@ -261,20 +265,27 @@ static irqreturn_t lcd_irq_handler(int irq, void *dev_id)
 
 	/* Check FIFO underrun. */
 	if (dispblock_status & (1 << VIOC_DISP_INTR_FU)) {
-		vioc_intr_clear(display_device_blk_num, (1 << VIOC_DISP_INTR_FU));
-		if(VIOC_DISP_Get_TurnOnOff(ctx->hw_data.display_device.virt_addr)) {
-			if((ctx->cnt_underrun++ % 120) == 0) {
-				dev_err(ctx->dev, "[ERROR][%s] FIFO UNDERRUN status(0x%x) %s\n",
-							LOG_TAG, dispblock_status, __func__);
-			}
+		vioc_intr_clear(
+			display_device_blk_num, (1 << VIOC_DISP_INTR_FU));
+		if (
+			VIOC_DISP_Get_TurnOnOff(
+				ctx->hw_data.display_device.virt_addr)) {
+			if ((ctx->cnt_underrun++ % 120) == 0)
+				dev_err(
+					ctx->dev,
+					"[ERROR][%s] FIFO UNDERRUN status(0x%x) %s\n",
+					LOG_TAG, dispblock_status, __func__);
 		}
 	}
 
 	if (dispblock_status & (1 << VIOC_DISP_INTR_DD))
-		vioc_intr_clear(display_device_blk_num, (1 << VIOC_DISP_INTR_DD));
+		vioc_intr_clear(
+			display_device_blk_num, (1 << VIOC_DISP_INTR_DD));
 
 	if (dispblock_status & (1 << VIOC_DISP_INTR_SREQ))
-		vioc_intr_clear(display_device_blk_num, (1 << VIOC_DISP_INTR_SREQ));
+		vioc_intr_clear(
+			display_device_blk_num,
+			(1 << VIOC_DISP_INTR_SREQ));
 out:
 	return IRQ_HANDLED;
 }
@@ -287,33 +298,43 @@ static int lcd_enable_vblank(struct tcc_drm_crtc *crtc)
 
 	spin_lock_irqsave(&ctx->irq_lock, irqflags);
 	if (!test_and_set_bit(CRTC_FLAGS_IRQ_BIT, &ctx->crtc_flags)) {
-		vioc_intr_clear(ctx->hw_data.display_device.blk_num, VIOC_DISP_INTR_DISPLAY);
+		vioc_intr_clear(
+			ctx->hw_data.display_device.blk_num,
+			VIOC_DISP_INTR_DISPLAY);
 
-		ret = devm_request_irq(ctx->dev, ctx->hw_data.display_device.irq_num,
-				lcd_irq_handler, IRQF_SHARED, ctx->data->name, ctx);
-		if(ret < 0) {
-			dev_err(ctx->dev, "[ERROR][%s] %s failed to request irq\r\n",
-									LOG_TAG, __func__);
+		ret = devm_request_irq(
+			ctx->dev, ctx->hw_data.display_device.irq_num,
+			lcd_irq_handler, IRQF_SHARED, ctx->data->name, ctx);
+		if (ret < 0) {
+			dev_err(
+				ctx->dev,
+				"[ERROR][%s] %s failed to request irq\r\n",
+				LOG_TAG, __func__);
 			goto err_irq_request;
 		}
-		vioc_intr_enable(ctx->hw_data.display_device.irq_num,
-		  get_vioc_index(ctx->hw_data.display_device.blk_num), VIOC_DISP_INTR_DISPLAY);
+		vioc_intr_enable(
+			ctx->hw_data.display_device.irq_num,
+			get_vioc_index(ctx->hw_data.display_device.blk_num),
+			VIOC_DISP_INTR_DISPLAY);
 	}
 err_irq_request:
 	spin_unlock_irqrestore(&ctx->irq_lock, irqflags);
 	return ret;
 }
 
-
 static void lcd_disable_vblank(struct tcc_drm_crtc *crtc)
 {
 	struct lcd_context *ctx = crtc->ctx;
 	unsigned long irqflags;
+
 	spin_lock_irqsave(&ctx->irq_lock, irqflags);
 	if (test_and_clear_bit(CRTC_FLAGS_IRQ_BIT, &ctx->crtc_flags)) {
-		vioc_intr_disable(ctx->hw_data.display_device.irq_num,
-		  get_vioc_index(ctx->hw_data.display_device.blk_num), VIOC_DISP_INTR_DISPLAY);
-		devm_free_irq(ctx->dev, ctx->hw_data.display_device.irq_num, ctx);
+		vioc_intr_disable(
+			ctx->hw_data.display_device.irq_num,
+			get_vioc_index(ctx->hw_data.display_device.blk_num),
+			VIOC_DISP_INTR_DISPLAY);
+		devm_free_irq(
+			ctx->dev, ctx->hw_data.display_device.irq_num, ctx);
 	}
 	spin_unlock_irqrestore(&ctx->irq_lock, irqflags);
 }
@@ -330,9 +351,11 @@ static void lcd_wait_for_vblank(struct tcc_drm_crtc *crtc)
 	 * timeout which is set to 50ms (refresh rate of 20).
 	 */
 	if (test_bit(CRTC_FLAGS_IRQ_BIT, &ctx->crtc_flags)) {
-		if (!wait_event_timeout(ctx->wait_vsync_queue,
-					!atomic_read(&ctx->wait_vsync_event),
-					msecs_to_jiffies(50)))
+		if (
+			!wait_event_timeout(
+				ctx->wait_vsync_queue,
+				!atomic_read(&ctx->wait_vsync_event),
+				msecs_to_jiffies(50)))
 			DRM_DEBUG_KMS("vblank wait timed out.\n");
 	}
 }
@@ -341,76 +364,87 @@ static void lcd_wait_for_vblank(struct tcc_drm_crtc *crtc)
 static void lcd_enable_video_output(struct lcd_context *ctx, unsigned int win,
 					bool enable)
 {
-	do {
-		if(win >= ctx->hw_data.rdma_counts) {
-			dev_dbg(ctx->dev, "[DEBUG][%s] %s win(%d) is out of range (%d)\r\n",
-				LOG_TAG, __func__, win, ctx->hw_data.rdma_counts);
-			break;
-		}
-		if(ctx->hw_data.rdma[win].virt_addr == NULL) {
-			dev_warn(ctx->dev, "[WARN][%s] %s virtual address of win(%d) is NULL\r\n",
-				LOG_TAG, __func__, win);
-			break;
-		}
-		if (enable) {
-			VIOC_RDMA_SetImageEnable(ctx->hw_data.rdma[win].virt_addr);
+	if (win >= ctx->hw_data.rdma_counts) {
+		dev_dbg(ctx->dev, "[DEBUG][%s] %s win(%d) is out of range (%d)\r\n",
+			LOG_TAG, __func__, win, ctx->hw_data.rdma_counts);
+		return;
+	}
+	if (ctx->hw_data.rdma[win].virt_addr == NULL) {
+		dev_warn(ctx->dev, "[WARN][%s] %s virtual address of win(%d) is NULL\r\n",
+			LOG_TAG, __func__, win);
+		return;
+	}
+	if (enable) {
+		VIOC_RDMA_SetImageEnable(ctx->hw_data.rdma[win].virt_addr);
+	} else {
+		if (test_bit(CRTC_FLAGS_PCLK_BIT, &ctx->crtc_flags)) {
+			VIOC_RDMA_SetImageDisable(
+				ctx->hw_data.rdma[win].virt_addr);
 		} else {
-			if (test_bit(CRTC_FLAGS_PCLK_BIT, &ctx->crtc_flags)) {
-				VIOC_RDMA_SetImageDisable(ctx->hw_data.rdma[win].virt_addr);
-			} else {
-				unsigned int enabled;
-				VIOC_RDMA_GetImageEnable(ctx->hw_data.rdma[win].virt_addr, &enabled);
-				if(enabled) {
-					dev_info(ctx->dev,
-						"[INFO][%s] %s win(%d) Disable RDMA with NoWait\r\n",
-										LOG_TAG, __func__, win);
-					VIOC_RDMA_SetImageDisableNW(ctx->hw_data.rdma[win].virt_addr);
-				}
+			unsigned int enabled;
+
+			VIOC_RDMA_GetImageEnable(
+				ctx->hw_data.rdma[win].virt_addr, &enabled);
+			if (enabled) {
+				dev_info(
+					ctx->dev,
+					"[INFO][%s] %s win(%d) Disable RDMA with NoWait\r\n",
+					LOG_TAG, __func__, win);
+				VIOC_RDMA_SetImageDisableNW(
+					ctx->hw_data.rdma[win].virt_addr);
 			}
 		}
-	} while(0);
+	}
 }
 
 static int lcd_atomic_check(struct tcc_drm_crtc *crtc,
-		struct drm_crtc_state *state)
+				struct drm_crtc_state *state)
 {
+	volatile void __iomem *ddi_config;
 	struct drm_display_mode *mode = &state->adjusted_mode;
 	struct lcd_context *ctx = crtc->ctx;
 	unsigned long ideal_clk, lcd_rate;
-	volatile void __iomem *ddi_config;
 	int pixel_clock_from_hdmi = 0;
 	u32 clkdiv;
 
 	ddi_config = VIOC_DDICONFIG_GetAddress();
 	#if !defined(CONFIG_ARCH_TCC897X)
-	if(VIOC_DDICONFIG_GetPeriClock(ddi_config, get_vioc_index(ctx->hw_data.display_device.blk_num))) {
+	if (
+		VIOC_DDICONFIG_GetPeriClock(
+			ddi_config,
+			get_vioc_index(ctx->hw_data.display_device.blk_num)))
 		pixel_clock_from_hdmi = 1;
-	}
 	#endif
 
 	if (mode->clock == 0) {
-		dev_warn(ctx->dev, "[WARN][%s] %s Mode has zero clock value.\n",
-								LOG_TAG, __func__);
+		dev_warn(
+			ctx->dev,
+			"[WARN][%s] %s Mode has zero clock value.\n",
+			LOG_TAG, __func__);
 		return -EINVAL;
 	}
 
-	if(!pixel_clock_from_hdmi) {
+	if (!pixel_clock_from_hdmi) {
 		ideal_clk = mode->clock * 1000;
 
 		lcd_rate = clk_get_rate(ctx->hw_data.ddc_clock);
 		if (2 * lcd_rate < ideal_clk) {
-			dev_err(ctx->dev,
+			dev_err(
+				ctx->dev,
 				"[ERROR][%s] %s sclk_lcd clock too low(%lu) for requested pixel clock(%lu)\n",
-				 					LOG_TAG, __func__, lcd_rate, ideal_clk);
+				LOG_TAG, __func__, lcd_rate, ideal_clk);
 			return -EINVAL;
 		}
 
-		/* Find the clock divider value that gets us closest to ideal_clk */
+		/*
+		 * Find the clock divider value that gets us closest
+		 * to ideal_clk
+		 */
 		clkdiv = DIV_ROUND_CLOSEST(lcd_rate, ideal_clk);
 		if (clkdiv >= 0x200) {
 			dev_err(ctx->dev,
 				"[ERROR][%s] %s requested pixel clock(%lu) too low\n",
-				 			LOG_TAG, __func__, ideal_clk);
+				LOG_TAG, __func__, ideal_clk);
 			return -EINVAL;
 		}
 	}
@@ -426,78 +460,61 @@ static void lcd_win_set_pixfmt(struct lcd_context *ctx, unsigned int win,
 	unsigned int vioc_y2r = 0;
 	unsigned int vioc_fmt;
 
-	do {
-		if(win >= ctx->hw_data.rdma_counts) {
-			pr_err("[ERROR][%s] %s linewin(%d) is out of range (%d)\r\n",
-				LOG_TAG, __func__, win, ctx->hw_data.rdma_counts);
-			break;
-		}
-		if(ctx->hw_data.rdma[win].virt_addr == NULL) {
-			pr_err("[ERROR][%s] %s virtual address of win(%d) is NULL\r\n",
-				LOG_TAG, __func__, win);
-			break;
-		}
+	if (win >= ctx->hw_data.rdma_counts) {
+		pr_err("[ERROR][%s] %s linewin(%d) is out of range (%d)\r\n",
+			LOG_TAG, __func__, win,
+			ctx->hw_data.rdma_counts);
+		return;
+	}
+	if (ctx->hw_data.rdma[win].virt_addr == NULL) {
+		pr_err("[ERROR][%s] %s virtual address of win(%d) is NULL\r\n",
+			LOG_TAG, __func__, win);
+		return;
+	}
 
-		pRDMA = ctx->hw_data.rdma[win].virt_addr;
-		/* Default RGB SWAP */
-		VIOC_RDMA_SetImageRGBSwapMode(pRDMA, 0); /* R-G-B */
-		switch (pixel_format) {
-		case DRM_FORMAT_BGR565:
-			//dev_info(ctx->dev,"[INFO][%s] %s win(%d) with DRM_FORMAT_BGR565\r\n", LOG_TAG, __func__, win);
-			vioc_swap = 5;  /* B-G-R */
-		case DRM_FORMAT_RGB565:
-			//if(pixel_format != DRM_FORMAT_BGR565)
-				//dev_info(ctx->dev,"[INFO][%s] %s win(%d) with DRM_FORMAT_RGB565\r\n", LOG_TAG, __func__, win);
-			vioc_fmt = TCC_LCDC_IMG_FMT_RGB565;
-			break;
-		case DRM_FORMAT_BGR888:
-			//dev_info(ctx->dev,"[INFO][%s] %s win(%d) with DRM_FORMAT_BGR888\r\n", LOG_TAG, __func__, win);
-			vioc_swap = 5;  /* B-G-R */
-		case DRM_FORMAT_RGB888:
-			//if(pixel_format != DRM_FORMAT_BGR888)
-				//dev_info(ctx->dev,"[INFO][%s] %s win(%d) with DRM_FORMAT_RGB888\r\n", LOG_TAG, __func__, win);
-			vioc_fmt = TCC_LCDC_IMG_FMT_RGB888_3;
-			break;
-		case DRM_FORMAT_XBGR8888:
-		case DRM_FORMAT_ABGR8888:
-			//dev_info(ctx->dev,"[INFO][%s] %s win(%d) with DRM_FORMAT_ABGR8888\r\n", LOG_TAG, __func__, win);
-			vioc_swap = 5;  /* B-G-R */
-		case DRM_FORMAT_XRGB8888:
-		case DRM_FORMAT_ARGB8888:
-			//if(pixel_format != DRM_FORMAT_ABGR8888)
-				//dev_info(ctx->dev,"[INFO][%s] %s win(%d) with DRM_FORMAT_ARGB8888\r\n", LOG_TAG, __func__, win);
-			vioc_fmt = TCC_LCDC_IMG_FMT_RGB888;
-			break;
-		case DRM_FORMAT_NV12:
-			//dev_info(ctx->dev,"[INFO][%s] %s win(%d) with DRM_FORMAT_NV12\r\n", LOG_TAG, __func__, win);
-			vioc_fmt = TCC_LCDC_IMG_FMT_YUV420ITL0;
-			vioc_y2r = 1;
-			break;
-		case DRM_FORMAT_NV21:
-			//dev_info(ctx->dev,"[INFO][%s] %s win(%d) with DRM_FORMAT_NV21\r\n", LOG_TAG, __func__, win);
-			vioc_fmt = TCC_LCDC_IMG_FMT_YUV420ITL1;
-			vioc_y2r = 1;
-			break;
-		case DRM_FORMAT_YVU420:
-			//dev_info(ctx->dev,"[INFO][%s] %s win(%d) with DRM_FORMAT_YVU420\r\n", LOG_TAG, __func__, win);
-		case DRM_FORMAT_YUV420:
-			//if(pixel_format != DRM_FORMAT_YVU420)
-				//dev_info(ctx->dev,"[INFO][%s] %s win(%d) with DRM_FORMAT_YUV420\r\n", LOG_TAG, __func__, win);
-			vioc_fmt = TCC_LCDC_IMG_FMT_YUV420SP;
-			vioc_y2r = 1;
-			break;
-		default:
-			DRM_DEBUG_KMS("invalid pixel size so using unpacked 24bpp.\n");
-			vioc_fmt = TCC_LCDC_IMG_FMT_RGB888;
-			break;
-		}
+	pRDMA = ctx->hw_data.rdma[win].virt_addr;
+	/* Default RGB SWAP */
+	VIOC_RDMA_SetImageRGBSwapMode(pRDMA, 0); /* R-G-B */
+	switch (pixel_format) {
+	case DRM_FORMAT_BGR565:
+		vioc_swap = 5;  /* B-G-R */
+	case DRM_FORMAT_RGB565:
+		vioc_fmt = TCC_LCDC_IMG_FMT_RGB565;
+		break;
+	case DRM_FORMAT_BGR888:
+		vioc_swap = 5;  /* B-G-R */
+	case DRM_FORMAT_RGB888:
+		vioc_fmt = TCC_LCDC_IMG_FMT_RGB888_3;
+		break;
+	case DRM_FORMAT_XBGR8888:
+	case DRM_FORMAT_ABGR8888:
+		vioc_swap = 5;  /* B-G-R */
+	case DRM_FORMAT_XRGB8888:
+	case DRM_FORMAT_ARGB8888:
+		vioc_fmt = TCC_LCDC_IMG_FMT_RGB888;
+		break;
+	case DRM_FORMAT_NV12:
+		vioc_fmt = TCC_LCDC_IMG_FMT_YUV420ITL0;
+		vioc_y2r = 1;
+		break;
+	case DRM_FORMAT_NV21:
+		vioc_fmt = TCC_LCDC_IMG_FMT_YUV420ITL1;
+		vioc_y2r = 1;
+		break;
+	case DRM_FORMAT_YVU420:
+	case DRM_FORMAT_YUV420:
+		vioc_fmt = TCC_LCDC_IMG_FMT_YUV420SP;
+		vioc_y2r = 1;
+		break;
+	default:
+		vioc_fmt = TCC_LCDC_IMG_FMT_RGB888;
+		break;
+	}
 
-		VIOC_RDMA_SetImageY2REnable(pRDMA, vioc_y2r);
-		VIOC_RDMA_SetImageRGBSwapMode(pRDMA, vioc_swap);
-		VIOC_RDMA_SetImageOffset(pRDMA, vioc_fmt, width);
-		VIOC_RDMA_SetImageFormat(pRDMA, vioc_fmt);
-
-	} while(0);
+	VIOC_RDMA_SetImageY2REnable(pRDMA, vioc_y2r);
+	VIOC_RDMA_SetImageRGBSwapMode(pRDMA, vioc_swap);
+	VIOC_RDMA_SetImageOffset(pRDMA, vioc_fmt, width);
+	VIOC_RDMA_SetImageFormat(pRDMA, vioc_fmt);
 }
 
 static void lcd_atomic_begin(struct tcc_drm_crtc *crtc)
@@ -528,102 +545,118 @@ static void lcd_update_plane(struct tcc_drm_crtc *crtc,
 	volatile void __iomem *pWMIX;
 	volatile void __iomem *pRDMA;
 
-	do {
-		if(ctx->keep_logo) {
-			dev_info(ctx->dev, "[INFO][%s] %s skip logo\r\n",
-							LOG_TAG, __func__);
-			ctx->keep_logo--;
-			break;
-		}
-		if(win >= ctx->hw_data.rdma_counts) {
-			pr_err("[ERROR][%s] %s win(%d) is out of range (%d)\r\n",
-				LOG_TAG, __func__, win, ctx->hw_data.rdma_counts);
-			break;
-		}
-		if(ctx->hw_data.rdma[win].virt_addr == NULL) {
-			pr_err("[ERROR][%s] %s virtual address of win(%d) is NULL\r\n",
+	if (ctx->keep_logo) {
+		dev_info(
+			ctx->dev,
+			"[INFO][%s] %s skip logo\r\n",
+			LOG_TAG, __func__);
+		ctx->keep_logo--;
+		return;
+	}
+	if (win >= ctx->hw_data.rdma_counts) {
+		pr_err(
+			"[ERROR][%s] %s win(%d) is out of range (%d)\r\n",
+			LOG_TAG,
+			__func__, win, ctx->hw_data.rdma_counts);
+		return;
+	}
+	if (ctx->hw_data.rdma[win].virt_addr == NULL) {
+		pr_err(
+			"[ERROR][%s] %s virtual address of win(%d) is NULL\r\n",
+			LOG_TAG, __func__, win);
+		return;
+	}
+	pWMIX = ctx->hw_data.wmixer.virt_addr;
+	pRDMA = ctx->hw_data.rdma[win].virt_addr;
+
+	offset = state->src.x * cpp;
+	offset += state->src.y * pitch;
+
+	dma_addr = tcc_drm_fb_dma_addr(fb, 0) + offset;
+	if (dma_addr == (dma_addr_t)0) {
+		DRM_ERROR(
+			"[ERROR][%s] %s dma address of win(%d) is NULL\r\n",
+			LOG_TAG, __func__, win);
+		return;
+	}
+	if (upper_32_bits(dma_addr) > 0) {
+		DRM_ERROR(
+			"[ERROR][%s] %s dma address of win(%d) is out of range\r\n",
+			LOG_TAG, __func__, win);
+		return;
+	}
+
+	/* Swreset RDMAs to prevent fifo-underrun */
+	VIOC_RDMA_GetImageEnable(
+		ctx->hw_data.rdma[win].virt_addr, &enabled);
+	if (!enabled) {
+		if (
+			get_vioc_type(
+				ctx->hw_data.rdma[win].blk_num) ==
+				get_vioc_type(VIOC_RDMA)) {
+			dev_dbg(ctx->dev,
+				"[DEBUG][%s] %s win(%d) swreset RDMA, because rdma was disabled\r\n",
 				LOG_TAG, __func__, win);
-			break;
+			VIOC_CONFIG_SWReset(
+				ctx->hw_data.rdma[win].blk_num,
+				VIOC_CONFIG_RESET);
+			VIOC_CONFIG_SWReset(
+				ctx->hw_data.rdma[win].blk_num,
+				VIOC_CONFIG_CLEAR);
 		}
-		pWMIX = ctx->hw_data.wmixer.virt_addr;
-		pRDMA = ctx->hw_data.rdma[win].virt_addr;
+	}
 
-		offset = state->src.x * cpp;
-		offset += state->src.y * pitch;
+	/* Using the pixel alpha */
+	VIOC_RDMA_SetImageAlphaSelect(pRDMA, 1);
+	if (
+		fb->format->format == DRM_FORMAT_ARGB8888 ||
+		fb->format->format == DRM_FORMAT_ABGR8888)
+		VIOC_RDMA_SetImageAlphaEnable(pRDMA, 1);
+	else
+		VIOC_RDMA_SetImageAlphaEnable(pRDMA, 0);
 
-		dma_addr = tcc_drm_fb_dma_addr(fb, 0) + offset;
-		if(dma_addr == (dma_addr_t)0) {
-			DRM_ERROR("[ERROR][%s] %s dma address of win(%d) is NULL\r\n",
-				LOG_TAG,__func__, win);
-			break;
-		}
-		if(upper_32_bits(dma_addr) > 0 ) {
-			DRM_ERROR("[ERROR][%s] %s dma address of win(%d) is out of range\r\n",
-				LOG_TAG, __func__, win);
-			break;
-		}
+	/* buffer start address */
+	val = lower_32_bits(dma_addr);
 
-		/* Swreset RDMAs to prevent fifo-underrun */
-		VIOC_RDMA_GetImageEnable(ctx->hw_data.rdma[win].virt_addr, &enabled);
-		if(!enabled) {
-			if(get_vioc_type(ctx->hw_data.rdma[win].blk_num) == get_vioc_type(VIOC_RDMA)) {
-				dev_dbg(ctx->dev,
-				"[DEBUG][%s] %s win(%d) swreset RDMA, "
-					"because rdma was disabled\r\n",
-						LOG_TAG, __func__, win);
-				VIOC_CONFIG_SWReset(ctx->hw_data.rdma[win].blk_num, VIOC_CONFIG_RESET);
-				VIOC_CONFIG_SWReset(ctx->hw_data.rdma[win].blk_num, VIOC_CONFIG_CLEAR);
-			}
-		}
+	switch (fb->format->format) {
+	case DRM_FORMAT_YVU420:
+		VIOC_RDMA_SetImageBase(
+			pRDMA, val, val+fb->offsets[2], val+fb->offsets[1]);
+		break;
+	case DRM_FORMAT_NV12:
+	case DRM_FORMAT_NV21:
+	case DRM_FORMAT_YUV420:
+		VIOC_RDMA_SetImageBase(
+			pRDMA, val, val+fb->offsets[1], val+fb->offsets[2]);
+		break;
+	default:
+		VIOC_RDMA_SetImageBase(pRDMA, val, 0, 0);
+		break;
+	}
+	VIOC_RDMA_SetImageSize(pRDMA, state->crtc.w, state->crtc.h);
 
-		/* Using the pixel alpha */
-		VIOC_RDMA_SetImageAlphaSelect(pRDMA, 1);
-		if(fb->format->format == DRM_FORMAT_ARGB8888
-			|| fb->format->format == DRM_FORMAT_ABGR8888)
-			VIOC_RDMA_SetImageAlphaEnable(pRDMA, 1);
-		else
-			VIOC_RDMA_SetImageAlphaEnable(pRDMA, 0);
+	/* buffer end address */
+	size = pitch * state->crtc.h;
+	val = lower_32_bits(dma_addr) + size;
 
-		/* buffer start address */
-		val = lower_32_bits(dma_addr);
-		//dev_info(ctx->dev, "[INFO][%s] %s win(%d) Base (0x%x, 0x%x, 0x%x)\r\n",
-			//LOG_TAG, __func__, win, val, val+fb->offsets[1], val+fb->offsets[2]);
-		switch(fb->format->format) {
-		case DRM_FORMAT_YVU420:
-			VIOC_RDMA_SetImageBase(pRDMA, val, val+fb->offsets[2], val+fb->offsets[1]);
-			break;
-		case DRM_FORMAT_NV12:
-		case DRM_FORMAT_NV21:
-		case DRM_FORMAT_YUV420:
-			VIOC_RDMA_SetImageBase(pRDMA, val, val+fb->offsets[1], val+fb->offsets[2]);
-			break;
-		default:
-			VIOC_RDMA_SetImageBase(pRDMA, val, 0, 0);
-			break;
-		}
-		VIOC_RDMA_SetImageSize(pRDMA, state->crtc.w, state->crtc.h);
+	DRM_DEBUG_KMS(
+		"start addr = 0x%llx, end addr = 0x%x, size = 0x%x\n",
+		dma_addr, val, size);
+	DRM_DEBUG_KMS(
+		"ovl_width = %d, ovl_height = %d\n",
+		state->crtc.w, state->crtc.h);
 
-		/* buffer end address */
-		size = pitch * state->crtc.h;
-		val = lower_32_bits(dma_addr) + size;
+	lcd_win_set_pixfmt(ctx, win, fb->format->format, state->src.w);
 
-		DRM_DEBUG_KMS("start addr = 0x%llx, end addr = 0x%x, size = 0x%x\n",
-				dma_addr, val, size);
-		DRM_DEBUG_KMS("ovl_width = %d, ovl_height = %d\n",
-				state->crtc.w, state->crtc.h);
-
-		lcd_win_set_pixfmt(ctx, win, fb->format->format, state->src.w);
-
-		lcd_enable_video_output(ctx, win, true);
-		#if defined(CONFIG_DRM_TCC_CTRL_CHROMAKEY)
-		mutex_lock(&ctx->chromakey_mutex);
-		#endif
-		VIOC_WMIX_SetPosition(pWMIX, win, state->crtc.x, state->crtc.y);
-		VIOC_WMIX_SetUpdate(pWMIX);
-		#if defined(CONFIG_DRM_TCC_CTRL_CHROMAKEY)
-		mutex_unlock(&ctx->chromakey_mutex);
-		#endif
-	} while(0);
+	lcd_enable_video_output(ctx, win, true);
+	#if defined(CONFIG_DRM_TCC_CTRL_CHROMAKEY)
+	mutex_lock(&ctx->chromakey_mutex);
+	#endif
+	VIOC_WMIX_SetPosition(pWMIX, win, state->crtc.x, state->crtc.y);
+	VIOC_WMIX_SetUpdate(pWMIX);
+	#if defined(CONFIG_DRM_TCC_CTRL_CHROMAKEY)
+	mutex_unlock(&ctx->chromakey_mutex);
+	#endif
 }
 
 static void lcd_disable_plane(struct tcc_drm_crtc *crtc,
@@ -640,25 +673,27 @@ static void lcd_enable(struct tcc_drm_crtc *crtc)
 	int ret;
 	struct lcd_context *ctx = crtc->ctx;
 
-	if(ctx->hw_data.connector_type == DRM_MODE_CONNECTOR_LVDS) {
+	if (ctx->hw_data.connector_type == DRM_MODE_CONNECTOR_LVDS) {
 		if (!test_and_set_bit(CRTC_FLAGS_PCLK_BIT, &ctx->crtc_flags)) {
-			dev_info(ctx->dev,
+			dev_info(
+				ctx->dev,
 				"[INFO][%s] %s Enable LVDS-PCLK %ldHz \r\n",
-						LOG_TAG, __func__,
-						clk_get_rate(ctx->hw_data.ddc_clock));
+				LOG_TAG, __func__,
+				clk_get_rate(ctx->hw_data.ddc_clock));
 			ret = clk_prepare_enable(ctx->hw_data.ddc_clock);
-			if  (ret < 0) {
-				dev_warn(ctx->dev,
-				"[WARN][%s] %s failed to enable the lcd clk\r\n",
-								LOG_TAG, __func__);
-			}
+			if  (ret < 0)
+				dev_warn(
+					ctx->dev,
+					"[WARN][%s] %s failed to enable the lcd clk\r\n",
+					LOG_TAG, __func__);
 		}
 	}
 
-	if(!crtc->enabled) {
-		dev_info(ctx->dev,
+	if (!crtc->enabled) {
+		dev_info(
+			ctx->dev,
 			"[INFO][%s] %s Turn on\r\n",
-							LOG_TAG, __func__);
+			LOG_TAG, __func__);
 		#if defined(CONFIG_PM)
 		pm_runtime_get_sync(ctx->dev);
 		#endif
@@ -673,24 +708,26 @@ static void lcd_disable(struct tcc_drm_crtc *crtc)
 {
 	struct lcd_context *ctx = crtc->ctx;
 	int i;
-	for(i = 0;i < RDMA_MAX_NUM; i++) {
-		lcd_enable_video_output(ctx, i, false);
-	}
 
-	dev_info(ctx->dev, "[INFO][%s] %s Turn off\r\n",
-							LOG_TAG, __func__);
-	if(VIOC_DISP_Get_TurnOnOff(ctx->hw_data.display_device.virt_addr))
+	for (i = 0; i < RDMA_MAX_NUM; i++)
+		lcd_enable_video_output(ctx, i, false);
+
+	dev_info(
+		ctx->dev, "[INFO][%s] %s Turn off\r\n",
+		LOG_TAG, __func__);
+	if (VIOC_DISP_Get_TurnOnOff(ctx->hw_data.display_device.virt_addr))
 		VIOC_DISP_TurnOff(ctx->hw_data.display_device.virt_addr);
 
-	if(crtc->enabled) {
-		#if defined(CONFIG_PM)
+	#if defined(CONFIG_PM)
+	if (crtc->enabled)
 		pm_runtime_put_sync(ctx->dev);
-		#endif
-	}
+	#endif
 
 	if (test_and_clear_bit(CRTC_FLAGS_PCLK_BIT, &ctx->crtc_flags)) {
-		dev_info(ctx->dev, "[INFO][%s] %s Disable PCLK\r\n",
-							LOG_TAG, __func__);
+		dev_info(
+			ctx->dev,
+			"[INFO][%s] %s Disable PCLK\r\n",
+			LOG_TAG, __func__);
 		clk_disable_unprepare(ctx->hw_data.ddc_clock);
 	}
 	crtc->enabled = 0;
@@ -698,47 +735,58 @@ static void lcd_disable(struct tcc_drm_crtc *crtc)
 
 #if defined(CONFIG_DRM_TCC_CTRL_CHROMAKEY)
 static int lcd_set_chromakey(struct tcc_drm_crtc *crtc,
-	unsigned int chromakey_layer,
-	unsigned int chromakey_enable,
+	unsigned int chromakey_layer, unsigned int chromakey_enable,
 	struct drm_chromakey_t *value, struct drm_chromakey_t *mask)
 {
 	struct lcd_context *ctx = crtc->ctx;
 
 	mutex_lock(&ctx->chromakey_mutex);
-	if(crtc->enabled) {
-		VIOC_WMIX_SetChromaKey(ctx->hw_data.wmixer.virt_addr, chromakey_layer,
+	if (crtc->enabled) {
+		VIOC_WMIX_SetChromaKey(
+			ctx->hw_data.wmixer.virt_addr, chromakey_layer,
 			chromakey_enable,
 			value->red, value->green, value->blue,
 			mask->red, mask->green, mask->blue);
 		VIOC_WMIX_SetUpdate(ctx->hw_data.wmixer.virt_addr);
 	}
 	/* store information */
-	ctx->lcd_chromakeys[chromakey_layer].chromakey_enable = chromakey_enable;
-	memcpy(&ctx->lcd_chromakeys[chromakey_layer].value, value, sizeof(*value));
-	memcpy(&ctx->lcd_chromakeys[chromakey_layer].mask, mask, sizeof(*mask));
+	ctx->lcd_chromakeys[
+		chromakey_layer].chromakey_enable = chromakey_enable;
+	memcpy(
+		&ctx->lcd_chromakeys[chromakey_layer].value,
+		value, sizeof(*value));
+	memcpy(
+		&ctx->lcd_chromakeys[chromakey_layer].mask,
+		mask, sizeof(*mask));
 	mutex_unlock(&ctx->chromakey_mutex);
 	return 0;
 }
 
 static int lcd_get_chromakey(struct tcc_drm_crtc *crtc,
-	unsigned int chromakey_layer,
-	unsigned int *chromakey_enable,
+	unsigned int chromakey_layer, unsigned int *chromakey_enable,
 	struct drm_chromakey_t *value, struct drm_chromakey_t *mask)
 {
 	int ret = -1;
 	struct lcd_context *ctx = crtc->ctx;
+
 	mutex_lock(&ctx->chromakey_mutex);
-	if(crtc->enabled) {
-		VIOC_WMIX_GetChromaKey(ctx->hw_data.wmixer.virt_addr, chromakey_layer,
+	if (crtc->enabled) {
+		VIOC_WMIX_GetChromaKey(
+			ctx->hw_data.wmixer.virt_addr, chromakey_layer,
 			chromakey_enable, &value->red,
 			&value->green, &value->blue,
 			&mask->red, &mask->green,
 			&mask->blue);
 		ret = 0;
 	} else {
-		*chromakey_enable = ctx->lcd_chromakeys[chromakey_layer].chromakey_enable;
-		memcpy(value, &ctx->lcd_chromakeys[chromakey_layer].value, sizeof(*value));
-		memcpy(mask, &ctx->lcd_chromakeys[chromakey_layer].mask, sizeof(*mask));
+		*chromakey_enable =
+		ctx->lcd_chromakeys[chromakey_layer].chromakey_enable;
+		memcpy(
+			value, &ctx->lcd_chromakeys[chromakey_layer].value,
+			sizeof(*value));
+		memcpy(
+			mask, &ctx->lcd_chromakeys[chromakey_layer].mask,
+			sizeof(*mask));
 	}
 	mutex_unlock(&ctx->chromakey_mutex);
 	return ret;
@@ -748,17 +796,18 @@ static int lcd_get_chromakey(struct tcc_drm_crtc *crtc,
 static void lcd_mode_set_nofb(struct tcc_drm_crtc *crtc)
 {
 	struct lcd_context *ctx = crtc->ctx;
-        struct drm_crtc_state *state = crtc->base.state;
+	struct drm_crtc_state *state = crtc->base.state;
 	#if defined(CONFIG_DRM_TCC_CTRL_CHROMAKEY)
 	int i;
 	#endif
+
 	#if defined(CONFIG_ARCH_TCC805X)
 	tcc_drm_crtc_set_display_timing(&crtc->base,
 			&state->adjusted_mode, &ctx->hw_data);
 	#endif
 	#if defined(CONFIG_DRM_TCC_CTRL_CHROMAKEY)
 	mutex_lock(&ctx->chromakey_mutex);
-	for(i = 0; i < 3; i++) {
+	for (i = 0; i < 3; i++) {
 		VIOC_WMIX_SetChromaKey(ctx->hw_data.wmixer.virt_addr, i,
 			ctx->lcd_chromakeys[i].chromakey_enable,
 			ctx->lcd_chromakeys[i].value.red,
@@ -771,25 +820,30 @@ static void lcd_mode_set_nofb(struct tcc_drm_crtc *crtc)
 	}
 	mutex_unlock(&ctx->chromakey_mutex);
 	#endif
-	if(ctx->hw_data.connector_type != DRM_MODE_CONNECTOR_LVDS) {
+	if (ctx->hw_data.connector_type != DRM_MODE_CONNECTOR_LVDS) {
 		int ret;
-		if (!test_and_set_bit(CRTC_FLAGS_PCLK_BIT, &ctx->crtc_flags)) {
-			dev_info(ctx->dev,
+
+		if (
+			!test_and_set_bit(
+				CRTC_FLAGS_PCLK_BIT, &ctx->crtc_flags)) {
+			dev_info(
+				ctx->dev,
 				"[INFO][%s] %s Enable PCLK  %ldHz\r\n",
-						LOG_TAG, __func__,
-						clk_get_rate(ctx->hw_data.ddc_clock));
+				LOG_TAG, __func__,
+				clk_get_rate(ctx->hw_data.ddc_clock));
 			ret = clk_prepare_enable(ctx->hw_data.ddc_clock);
 			if  (ret < 0) {
-				dev_warn(ctx->dev,
-				"[WARN][%s] %s failed to enable the lcd clk\r\n",
-								LOG_TAG, __func__);
+				dev_warn(
+					ctx->dev,
+					"[WARN][%s] %s failed to enable the lcd clk\r\n",
+					LOG_TAG, __func__);
 			}
 		}
 	}
 }
 
 static const struct tcc_drm_crtc_ops lcd_crtc_ops = {
-	.enable = lcd_enable, 	/* drm_crtc_helper_funcs->atomic_enable */
+	.enable = lcd_enable, /* drm_crtc_helper_funcs->atomic_enable */
 	.disable = lcd_disable, /* drm_crtc_helper_funcs->atomic_disable */
 	.enable_vblank = lcd_enable_vblank,
 	.disable_vblank = lcd_disable_vblank,
@@ -820,14 +874,15 @@ static int lcd_bind(struct device *dev, struct device *master, void *data)
 	if (!test_and_set_bit(CRTC_FLAGS_VCLK_BIT, &ctx->crtc_flags)) {
 		ret = clk_prepare_enable(ctx->hw_data.vioc_clock);
 		if (ret < 0) {
-			dev_err(dev,
+			dev_err(
+				dev,
 				"[ERROR][%s] %s failed to enable the bus clk\n",
-								LOG_TAG, __func__);
+				LOG_TAG, __func__);
 			return -1;
 		}
 	}
 	for (i = 0; i < ctx->hw_data.rdma_counts; i++) {
-		if(VIOC_RDMA_IsVRDMA(ctx->hw_data.rdma[i].blk_num)) {
+		if (VIOC_RDMA_IsVRDMA(ctx->hw_data.rdma[i].blk_num)) {
 			formats_list = lcd_formats_vrdma;
 			formats_list_size = ARRAY_SIZE(lcd_formats_vrdma);
 		} else {
@@ -835,25 +890,28 @@ static int lcd_bind(struct device *dev, struct device *master, void *data)
 			formats_list_size = ARRAY_SIZE(lcd_formats);
 		}
 
-		ret = tcc_plane_init(drm_dev,
-					&ctx->planes[i].base,
-					DRM_PLANE_TYPE(ctx->hw_data.rdma_plane_type[i]),
-					formats_list, formats_list_size);
-		if(ret) {
-			dev_err(dev,
+		ret = tcc_plane_init(
+			drm_dev,
+			&ctx->planes[i].base,
+			DRM_PLANE_TYPE(ctx->hw_data.rdma_plane_type[i]),
+			formats_list, formats_list_size);
+		if (ret) {
+			dev_err(
+				dev,
 				"[ERROR][%s] %s failed to initizliaed the planes\n",
-									LOG_TAG, __func__);
+				LOG_TAG, __func__);
 			return ret;
 		}
 
 		ctx->planes[i].win = i;
-		if(DRM_PLANE_TYPE(ctx->hw_data.rdma_plane_type[i]) == DRM_PLANE_TYPE_PRIMARY) {
+		if (
+			DRM_PLANE_TYPE(ctx->hw_data.rdma_plane_type[i]) ==
+			DRM_PLANE_TYPE_PRIMARY)
 			primary = &ctx->planes[i].base;
-		}
-
-		if(DRM_PLANE_TYPE(ctx->hw_data.rdma_plane_type[i]) == DRM_PLANE_TYPE_CURSOR) {
+		if (
+			DRM_PLANE_TYPE(ctx->hw_data.rdma_plane_type[i]) ==
+			DRM_PLANE_TYPE_CURSOR)
 			cursor = &ctx->planes[i].base;
-		}
 	}
 
 	ctx->crtc = tcc_drm_crtc_create(drm_dev, primary, cursor,
@@ -876,17 +934,14 @@ static void lcd_unbind(struct device *dev, struct device *master,
 		tcc_dpi_remove(ctx->encoder);
 
 	/* Deactivate CRTC clock */
-	if (test_and_clear_bit(CRTC_FLAGS_VCLK_BIT, &ctx->crtc_flags)) {
+	if (test_and_clear_bit(CRTC_FLAGS_VCLK_BIT, &ctx->crtc_flags))
 		clk_disable_unprepare(ctx->hw_data.vioc_clock);
-	}
 }
 
 static const struct component_ops lcd_component_ops = {
 	.bind	= lcd_bind,
 	.unbind = lcd_unbind,
 };
-
-
 
 static int lcd_probe(struct platform_device *pdev)
 {
@@ -895,34 +950,37 @@ static int lcd_probe(struct platform_device *pdev)
 	int ret = 0;
 
 	if (!dev->of_node) {
-		dev_err(dev,
+		dev_err(
+			dev,
 			"[ERROR][%s] %s failed to get the device node\n",
-							LOG_TAG, __func__);
+			LOG_TAG, __func__);
 		return -ENODEV;
 	}
 	ctx = devm_kzalloc(dev, sizeof(*ctx), GFP_KERNEL);
-	if (ctx == NULL) {
-		dev_err(dev,
-			"[ERROR][%s] %s ctx is NULL\n",
-					LOG_TAG, __func__);
+	if (ctx == NULL)
 		return -ENOMEM;
-	}
 
 	ctx->dev = dev;
-	ctx->data = (struct tcc_drm_device_data*)of_device_get_match_data(&pdev->dev);
-	if(ctx->data == NULL) {
-		dev_err(dev,
+	ctx->data =
+		(struct tcc_drm_device_data *)of_device_get_match_data(
+			&pdev->dev);
+	if (ctx->data == NULL) {
+		dev_err(
+			dev,
 			"[ERROR][%s] %s failed to get match data\r\n",
-					LOG_TAG, __func__);
+			LOG_TAG, __func__);
 		return -ENOMEM;
 	}
-	if(tcc_drm_address_dt_parse(pdev, &ctx->hw_data, ctx->data->version) < 0) {
-		dev_err(dev,
+	if (
+		tcc_drm_address_dt_parse(
+			pdev, &ctx->hw_data, ctx->data->version) < 0) {
+		dev_err(
+			dev,
 			"[ERROR][%s] %s failed to parse device tree\n",
-							LOG_TAG, __func__);
+			LOG_TAG, __func__);
 		return ret;
 	}
-	switch(ctx->data->output_type) {
+	switch (ctx->data->output_type) {
 	case TCC_DISPLAY_TYPE_LCD:
 		ctx->data->name = kstrdup("drm_lcd", GFP_KERNEL);
 		#if defined(CONFIG_DRM_TCC_LCD_VIC)
@@ -951,15 +1009,18 @@ static int lcd_probe(struct platform_device *pdev)
 		return -ENODEV;
 	}
 
-	dev_dbg(dev, "[DEBUG][%s] %s %s start probe with pdev(%p)\r\n",
-				LOG_TAG, __func__, ctx->data->name, pdev);
+	dev_dbg(
+		dev, "[DEBUG][%s] %s %s start probe with pdev(%p)\r\n",
+		LOG_TAG, __func__, ctx->data->name, pdev);
 
 	spin_lock_init(&ctx->irq_lock);
 
 	/* Disable & clean interrupt */
 	vioc_intr_disable(ctx->hw_data.display_device.irq_num,
-		  get_vioc_index(ctx->hw_data.display_device.blk_num), VIOC_DISP_INTR_DISPLAY);
-	vioc_intr_clear(ctx->hw_data.display_device.blk_num, VIOC_DISP_INTR_DISPLAY);
+		  get_vioc_index(ctx->hw_data.display_device.blk_num),
+		  VIOC_DISP_INTR_DISPLAY);
+	vioc_intr_clear(ctx->hw_data.display_device.blk_num,
+		VIOC_DISP_INTR_DISPLAY);
 
 	init_waitqueue_head(&ctx->wait_vsync_queue);
 	atomic_set(&ctx->wait_vsync_event, 0);
@@ -972,15 +1033,17 @@ static int lcd_probe(struct platform_device *pdev)
 	#endif
 	ret = component_add(dev, &lcd_component_ops);
 	if (ret) {
-		dev_err(dev, "[ERROR][%s] %s failed to component_add\r\n",
-							LOG_TAG, __func__);
+		dev_err(
+			dev, "[ERROR][%s] %s failed to component_add\r\n",
+			LOG_TAG, __func__);
 		goto err_disable_pm_runtime;
 	}
 	#if defined(CONFIG_DRM_TCC_KEEP_LOGO)
 	#if defined(CONFIG_DRM_FBDEV_EMULATION)
 	/* If fbdev emulation was selected then FB core calls set_par */
 	ctx->keep_logo = 1;
-	#if defined(CONFIG_LOGO) && (!defined(CONFIG_ARCH_TCC897X) && !defined(CONFIG_ARCH_TCC803X))
+	#if defined(CONFIG_LOGO) && (!defined(CONFIG_ARCH_TCC897X) && \
+		!defined(CONFIG_ARCH_TCC803X))
 	/* If logo was selected then FB core calls set_par twice */
 	ctx->keep_logo++;
 	#endif // CONFIG_LOGO
@@ -1004,6 +1067,7 @@ err_disable_pm_runtime:
 static int lcd_remove(struct platform_device *pdev)
 {
 	struct lcd_context *ctx = platform_get_drvdata(pdev);
+
 	#if defined(CONFIG_PM)
 	pm_runtime_disable(&pdev->dev);
 	#endif
@@ -1020,12 +1084,14 @@ static int lcd_remove(struct platform_device *pdev)
 static int tcc_lcd_suspend(struct device *dev)
 {
 	struct lcd_context *ctx = dev_get_drvdata(dev);
+
 	dev_info(dev, "[INFO][%s] %s \r\n",
 				LOG_TAG, __func__);
 
 	if (test_bit(CRTC_FLAGS_VCLK_BIT, &ctx->crtc_flags)) {
-		dev_info(dev, "[INFO][%s] %s Eisable vclk\r\n",
-						LOG_TAG, __func__);
+		dev_info(
+			dev, "[INFO][%s] %s Eisable vclk\r\n",
+			LOG_TAG, __func__);
 		clk_disable_unprepare(ctx->hw_data.vioc_clock);
 	}
 
@@ -1035,10 +1101,13 @@ static int tcc_lcd_suspend(struct device *dev)
 static int tcc_lcd_resume(struct device *dev)
 {
 	struct lcd_context *ctx = dev_get_drvdata(dev);
+
 	dev_info(dev, "[INFO][%s] %s \r\n",
 				LOG_TAG, __func__);
 	if (test_bit(CRTC_FLAGS_VCLK_BIT, &ctx->crtc_flags)) {
-		dev_info(dev, "[INFO][%s] %s Enable vclk\r\n", LOG_TAG, __func__);
+		dev_info(
+			dev,
+			"[INFO][%s] %s Enable vclk\r\n", LOG_TAG, __func__);
 		clk_prepare_enable(ctx->hw_data.vioc_clock);
 	}
 	return 0;

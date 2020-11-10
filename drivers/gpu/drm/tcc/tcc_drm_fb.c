@@ -27,12 +27,12 @@
 #include "tcc_drm_fbdev.h"
 #include "tcc_drm_crtc.h"
 
-#define to_tcc_fb(x)		(struct tcc_drm_fb*)(x)
-#define TCC_MAX_FB_BUFFER  	4
+#define to_tcc_fb(x) (struct tcc_drm_fb *)(x)
+#define TCC_MAX_FB_BUFFER 4
 
 struct tcc_drm_fb {
-        struct drm_framebuffer  fb;
-        struct tcc_drm_gem   	*tcc_gem[TCC_MAX_FB_BUFFER];
+	struct drm_framebuffer fb;
+	struct tcc_drm_gem *tcc_gem[TCC_MAX_FB_BUFFER];
 };
 
 static int check_fb_gem_memory_type(struct drm_device *dev,
@@ -41,13 +41,15 @@ static int check_fb_gem_memory_type(struct drm_device *dev,
 	unsigned int flags;
 
 	flags = tcc_gem->flags;
-
 	/*
 	 * Physically non-contiguous memory type for framebuffer is not
 	 * supported without IOMMU.
 	 */
 	if (IS_NONCONTIG_BUFFER(flags)) {
-		dev_err(dev->dev, "[ERR][DRMFB] %s Non-contiguous GEM memory is not supported \r\n", __func__);
+		dev_err(
+			dev->dev,
+			"[ERR][DRMFB] %s Non-contiguous GEM memory is not supported \r\n",
+			__func__);
 		return -EINVAL;
 	}
 
@@ -56,34 +58,34 @@ static int check_fb_gem_memory_type(struct drm_device *dev,
 
 static void tcc_drm_fb_destroy(struct drm_framebuffer *fb)
 {
-        struct tcc_drm_fb *tcc_fb = to_tcc_fb(fb);
+	struct tcc_drm_fb *tcc_fb = to_tcc_fb(fb);
 	struct drm_gem_object *obj;
-        unsigned int i;
+	unsigned int i;
 
-        for (i = 0; i < TCC_MAX_FB_BUFFER; i++) {
-                if (tcc_fb->tcc_gem[i] == NULL)
-                        continue;
-                obj = &tcc_fb->tcc_gem[i]->base;
-                drm_gem_object_unreference_unlocked(obj);
-        }
+	for (i = 0; i < TCC_MAX_FB_BUFFER; i++) {
+		if (tcc_fb->tcc_gem[i] == NULL)
+			continue;
+		obj = &tcc_fb->tcc_gem[i]->base;
+		drm_gem_object_unreference_unlocked(obj);
+	}
 	drm_framebuffer_cleanup(fb);
-        kfree(tcc_fb);
-        tcc_fb = NULL;
+	kfree(tcc_fb);
+	tcc_fb = NULL;
 }
 
 static int tcc_drm_fb_create_handle(struct drm_framebuffer *fb,
-                                        struct drm_file *file_priv,
-                                        unsigned int *handle)
+					struct drm_file *file_priv,
+					unsigned int *handle)
 {
-        struct tcc_drm_fb *tcc_fb = to_tcc_fb(fb);
+	struct tcc_drm_fb *tcc_fb = to_tcc_fb(fb);
 
-        return drm_gem_handle_create(file_priv,
-                                     &tcc_fb->tcc_gem[0]->base, handle);
+	return drm_gem_handle_create(file_priv,
+				     &tcc_fb->tcc_gem[0]->base, handle);
 }
 
 static const struct drm_framebuffer_funcs tcc_drm_fb_funcs = {
-	.destroy	= tcc_drm_fb_destroy,
-	.create_handle	= tcc_drm_fb_create_handle,
+	.destroy = tcc_drm_fb_destroy,
+	.create_handle = tcc_drm_fb_create_handle,
 };
 
 
@@ -91,50 +93,61 @@ static struct drm_framebuffer *
 tcc_user_fb_create(struct drm_device *dev, struct drm_file *file_priv,
 		      const struct drm_mode_fb_cmd2 *mode_cmd)
 {
-	const struct drm_format_info *info = drm_get_format_info(dev, mode_cmd);
-        struct tcc_drm_gem *tcc_gem[TCC_MAX_FB_BUFFER];
-        struct drm_gem_object *obj;
-        struct drm_framebuffer *fb;
-        int i;
-        int ret;
+	const struct drm_format_info *info =
+			drm_get_format_info(dev, mode_cmd);
+	struct tcc_drm_gem *tcc_gem[TCC_MAX_FB_BUFFER];
+	struct drm_gem_object *obj;
+	struct drm_framebuffer *fb;
+	int i;
+	int ret;
 
-        for (i = 0; i < info->num_planes; i++) {
-                unsigned int height = (i == 0) ? mode_cmd->height :
-                                     DIV_ROUND_UP(mode_cmd->height, info->vsub);
-                unsigned long size = height * mode_cmd->pitches[i] +
-                                     mode_cmd->offsets[i];
+	for (i = 0; i < info->num_planes; i++) {
+		unsigned int height = (i == 0) ? mode_cmd->height :
+				     DIV_ROUND_UP(
+					     mode_cmd->height, info->vsub);
+		unsigned long size = height * mode_cmd->pitches[i] +
+				     mode_cmd->offsets[i];
 
-                obj = drm_gem_object_lookup(file_priv, mode_cmd->handles[i]);
-                if (!obj) {
-			dev_err(dev->dev, "[ERR][DRMFB] %s Failed to lookup gem object \r\n", __func__);
-                        ret = -ENOENT;
-                        goto err_gem_object_unreference;
-                }
+		obj = drm_gem_object_lookup(file_priv, mode_cmd->handles[i]);
+		if (!obj) {
+			dev_err(
+				dev->dev,
+				"[ERR][DRMFB] %s Failed to lookup gem object \r\n",
+				__func__);
+			ret = -ENOENT;
+			goto err_gem_object_unreference;
+		}
 
-                tcc_gem[i] = to_tcc_gem(obj);
-                if (size > tcc_gem[i]->size) {
-			dev_err(dev->dev, "[ERR][DRMFB] %s Out of size for gem object \r\n", __func__);
+		tcc_gem[i] = to_tcc_gem(obj);
+		if (size > tcc_gem[i]->size) {
+			dev_err(
+				dev->dev,
+				"[ERR][DRMFB] %s Out of size for gem object \r\n",
+				__func__);
 			drm_gem_object_unreference_unlocked(&tcc_gem[i]->base);
-                        ret = -EINVAL;
-                        goto err_gem_object_unreference;
-                }
-        }
+			ret = -EINVAL;
+			goto err_gem_object_unreference;
+		}
+	}
 
-        fb = tcc_drm_fb_alloc(dev, mode_cmd, tcc_gem, i);
-        if (IS_ERR(fb)) {
-		dev_err(dev->dev, "[ERR][DRMFB] %s Failed to tcc_drm_fb_alloc\r\n", __func__);
-                ret = PTR_ERR(fb);
-                goto err_gem_object_unreference;
-        }
+	fb = tcc_drm_fb_alloc(dev, mode_cmd, tcc_gem, i);
+	if (IS_ERR(fb)) {
+		dev_err(
+			dev->dev,
+			"[ERR][DRMFB] %s Failed to tcc_drm_fb_alloc\r\n",
+			__func__);
+		ret = PTR_ERR(fb);
+		goto err_gem_object_unreference;
+	}
 
-        return fb;
+	return fb;
 
 err_gem_object_unreference:
 	pr_err("%s failed\r\n", __func__);
-        while (i--)
-                drm_gem_object_unreference_unlocked(&tcc_gem[i]->base);
+	while (i--)
+		drm_gem_object_unreference_unlocked(&tcc_gem[i]->base);
 
-        return ERR_PTR(ret);
+	return ERR_PTR(ret);
 }
 
 dma_addr_t tcc_drm_fb_dma_addr(struct drm_framebuffer *fb, int index)
@@ -142,14 +155,14 @@ dma_addr_t tcc_drm_fb_dma_addr(struct drm_framebuffer *fb, int index)
 	struct tcc_drm_fb *tcc_fb;
 	struct tcc_drm_gem *tcc_gem;
 
-	if(WARN_ON_ONCE(fb == NULL))
+	if (WARN_ON_ONCE(fb == NULL))
 		goto err_null;
-        if (WARN_ON_ONCE(index >= TCC_MAX_FB_BUFFER))
-                goto err_null;
+	if (WARN_ON_ONCE(index >= TCC_MAX_FB_BUFFER))
+		goto err_null;
 
 	tcc_fb = to_tcc_fb(fb);
 	if (tcc_fb == NULL)
-                goto err_null;
+		goto err_null;
 
 	tcc_gem = tcc_fb->tcc_gem[index];
 	return tcc_gem->dma_addr + fb->offsets[index];
@@ -165,7 +178,7 @@ err_null:
  * drm_atomic_helper_commit_tail().
  */
 static struct drm_mode_config_helper_funcs tcc_drm_mode_config_helpers = {
-        .atomic_commit_tail = drm_atomic_helper_commit_tail_rpm,
+	.atomic_commit_tail = drm_atomic_helper_commit_tail_rpm,
 };
 
 static const struct drm_mode_config_funcs tcc_drm_mode_config_funcs = {
@@ -202,37 +215,40 @@ void tcc_drm_mode_config_init(struct drm_device *dev)
 struct drm_framebuffer *
 tcc_drm_fb_alloc(struct drm_device *dev,
 		  const struct drm_mode_fb_cmd2 *mode_cmd,
-                  struct tcc_drm_gem **tcc_gem, unsigned int num_planes)
+		  struct tcc_drm_gem **tcc_gem, unsigned int num_planes)
 {
 	struct tcc_drm_fb *tcc_fb;
 	int ret, i;
 
 	tcc_fb = kzalloc(sizeof(*tcc_fb), GFP_KERNEL);
-        if (tcc_fb == NULL) {
+	if (tcc_fb == NULL) {
 		ret = -ENOMEM;
 		goto out_failed_alloc;
 	}
-        for (i = 0; i < num_planes; i++) {
+	for (i = 0; i < num_planes; i++) {
 		ret = check_fb_gem_memory_type(dev, tcc_gem[i]);
-		if(ret < 0) {
-			dev_err(dev->dev, "[ERR][DRMFB] %s Failed to check_fb_gem_memory_type \r\n", __func__);
+		if (ret < 0) {
+			dev_err(
+				dev->dev,
+				"[ERR][DRMFB] %s Failed to check_fb_gem_memory_type \r\n",
+				__func__);
 			goto err_memory_type;
 		}
-                tcc_fb->tcc_gem[i] = tcc_gem[i];
+		tcc_fb->tcc_gem[i] = tcc_gem[i];
 	}
 	drm_helper_mode_fill_fb_struct(dev, &tcc_fb->fb, mode_cmd);
 
 	/* Map gem object to FB handle */
-        for (i = 0; i < num_planes; i++)
-                tcc_fb->fb.obj[i] = &tcc_gem[i]->base;
+	for (i = 0; i < num_planes; i++)
+		tcc_fb->fb.obj[i] = &tcc_gem[i]->base;
 
-        ret = drm_framebuffer_init(dev, &tcc_fb->fb,
-                                   &tcc_drm_fb_funcs);
-        if (ret < 0) {
-                dev_err(dev->dev, "Failed to initialize framebuffer: %d\n",
-                        ret);
-                goto err_fb_init;
-        }
+	ret = drm_framebuffer_init(dev, &tcc_fb->fb,
+				   &tcc_drm_fb_funcs);
+	if (ret < 0) {
+		dev_err(dev->dev, "Failed to initialize framebuffer: %d\n",
+			ret);
+		goto err_fb_init;
+	}
 	return &tcc_fb->fb;
 
 err_fb_init:

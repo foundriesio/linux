@@ -39,39 +39,34 @@
 #define DRIVER_DATE	"20201028"
 #define DRIVER_MAJOR	1
 #define DRIVER_MINOR	2
-#define DRIVER_PATCH 	6
+#define DRIVER_PATCH	7
 
 static struct device *tcc_drm_get_dma_device(void);
 
 #ifdef CONFIG_DRM_UT_CORE
 unsigned int drm_ut_core = DRM_UT_CORE;
 #else
-unsigned int drm_ut_core = 0;
+unsigned int drm_ut_core;
 #endif
 #ifdef CONFIG_DRM_UT_DRIVER
 unsigned int drm_ut_driver = DRM_UT_DRIVER;
 #else
-unsigned int drm_ut_driver = 0;
+unsigned int drm_ut_driver;
 #endif
 #ifdef CONFIG_DRM_UT_KMS
 unsigned int drm_ut_kms = DRM_UT_KMS;
 #else
-unsigned int drm_ut_kms = 0;
+unsigned int drm_ut_kms;
 #endif
 #ifdef CONFIG_DRM_UT_PRIME
 unsigned int drm_ut_prime = DRM_UT_PRIME;
 #else
-unsigned int drm_ut_prime = 0;
+unsigned int drm_ut_prime;
 #endif
 
 void tcc_drm_debug_set(void)
 {
-	drm_debug = 0 \
-		| drm_ut_core \
-		| drm_ut_driver \
-		| drm_ut_kms \
-		| drm_ut_prime \
-		;
+	drm_debug = drm_ut_core | drm_ut_driver |  drm_ut_kms | drm_ut_prime;
 }
 
 int tcc_atomic_check(struct drm_device *dev,
@@ -163,7 +158,7 @@ static struct drm_driver tcc_drm_driver = {
 	.prime_fd_to_handle	= drm_gem_prime_fd_to_handle,
 	.gem_prime_export	= tcc_drm_gem_prime_export,
 	.gem_prime_import	= tcc_drm_gem_prime_import,
-	.gem_prime_res_obj  	= tcc_gem_prime_res_obj,
+	.gem_prime_res_obj	= tcc_gem_prime_res_obj,
 	.gem_prime_get_sg_table	= tcc_drm_gem_prime_get_sg_table,
 	.gem_prime_import_sg_table	= tcc_drm_gem_prime_import_sg_table,
 	.gem_prime_vmap		= tcc_drm_gem_prime_vmap,
@@ -282,9 +277,9 @@ static struct component_match *tcc_drm_match_add(struct device *dev)
 					    &info->driver->driver,
 					    (void *)platform_bus_type.match))) {
 			put_device(p);
-			dev_dbg(dev,
-				"[DEBUG][%s] component_match_add %s \r\n",
-						LOG_TAG, info->driver->driver.name);
+			dev_dbg(
+				dev, "[DEBUG][%s] component_match_add %s \r\n",
+				LOG_TAG, info->driver->driver.name);
 			component_match_add(dev, &match, compare_dev, d);
 			p = d;
 		}
@@ -325,9 +320,8 @@ static int tcc_drm_bind(struct device *dev)
 		ret = -ENODEV;
 		goto err_free_private;
 	}
-	if (private->dma_dev->dma_parms == NULL) {
-                private->dma_dev->dma_parms = &private->dma_parms;
-	}
+	if (private->dma_dev->dma_parms == NULL)
+		private->dma_dev->dma_parms = &private->dma_parms;
 
 	#if defined(CONFIG_ARCH_TCC805X)
 	dma_set_mask_and_coherent(private->dma_dev, DMA_BIT_MASK(32));

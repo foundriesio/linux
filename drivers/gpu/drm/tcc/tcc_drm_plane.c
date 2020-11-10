@@ -44,16 +44,17 @@
  *                           e -------
  *                                  f -------
  */
-static int tcc_plane_get_size(int start, unsigned length, unsigned last)
+static int tcc_plane_get_size(
+	int start, unsigned int length, unsigned int last)
 {
 	int end = start + length;
 	int size = 0;
 
 	if (start <= 0) {
 		if (end > 0)
-			size = min_t(unsigned, end, last);
+			size = min_t(unsigned int, end, last);
 	} else if (start <= last) {
-		size = min_t(unsigned, last - start, length);
+		size = min_t(unsigned int, last - start, length);
 	}
 
 	return size;
@@ -199,11 +200,13 @@ tcc_drm_plane_duplicate_state(struct drm_plane *plane)
 {
 	struct tcc_drm_plane_state *duplicate_state;
 
-	duplicate_state = kzalloc(sizeof(struct tcc_drm_plane_state), GFP_KERNEL);
+	duplicate_state = kzalloc(
+		sizeof(struct tcc_drm_plane_state), GFP_KERNEL);
 	if (!duplicate_state)
 		return NULL;
 
-	__drm_atomic_helper_plane_duplicate_state(plane, &duplicate_state->base);
+	__drm_atomic_helper_plane_duplicate_state(
+				plane, &duplicate_state->base);
 	return &duplicate_state->base;
 }
 
@@ -233,88 +236,110 @@ static int tcc_plane_atomic_check(struct drm_plane *plane,
 	struct drm_framebuffer *fb;
 	int ret = 0;
 
-	if(state == NULL) {
+	if (state == NULL) {
 		ret = -EINVAL;
-		dev_warn(plane->dev->dev, "[WARN][%s] %s state is NULL with err(%d)\r\n",
-									LOG_TAG, __func__, ret);
+		dev_warn(
+			plane->dev->dev,
+			"[WARN][%s] %s state is NULL with err(%d)\r\n",
+			LOG_TAG, __func__, ret);
 		goto err_null;
 	}
 	tcc_state = to_tcc_plane_state(state);
-	if(tcc_state == NULL) {
+	if (tcc_state == NULL) {
 		ret = -EINVAL;
-		dev_warn(plane->dev->dev, "[WARN][%s] %s tcc_state is NULL with err(%d)\r\n",
-									LOG_TAG, __func__, ret);
+		dev_warn(
+			plane->dev->dev,
+			"[WARN][%s] %s tcc_state is NULL with err(%d)\r\n",
+			LOG_TAG, __func__, ret);
 		goto err_null;
 	}
 
-	if(state->state == NULL) {
+	if (state->state == NULL) {
 		ret = -EINVAL;
-		dev_warn(plane->dev->dev, "[WARN][%s] %s state->state is NULL with err(%d)\r\n",
-									LOG_TAG, __func__, ret);
+		dev_warn(
+			plane->dev->dev,
+			"[WARN][%s] %s state->state is NULL with err(%d)\r\n",
+			LOG_TAG, __func__, ret);
 		goto err_null;
 	}
 
-	if(state->crtc == NULL || state->fb == NULL) {
-		/* There is no need for further checks if the plane is being disabled */
+	if (state->crtc == NULL || state->fb == NULL)
+		/*
+		 * There is no need for further checks if the plane is
+		 * being disabled
+		 */
 		goto err_null;
-	}
 
-	crtc_state = drm_atomic_get_existing_crtc_state(state->state, state->crtc);
-	if(crtc_state == NULL) {
+	crtc_state =
+		drm_atomic_get_existing_crtc_state(state->state, state->crtc);
+	if (crtc_state == NULL) {
 		ret = -EINVAL;
-		dev_warn(plane->dev->dev, "[WARN][%s] %s crtc_state is NULL with err(%d)\r\n",
-									LOG_TAG, __func__, ret);
+		dev_warn(
+			plane->dev->dev,
+			"[WARN][%s] %s crtc_state is NULL with err(%d)\r\n",
+			LOG_TAG, __func__, ret);
 		goto err_null;
 	}
 
-	if(state->fb->modifier != DRM_FORMAT_MOD_LINEAR) {
-		dev_warn(plane->dev->dev,
-			"[WARN][%s] %s only support DRM_FORMAT_MOD_LINEAR\r\n", LOG_TAG, __func__);
+	if (state->fb->modifier != DRM_FORMAT_MOD_LINEAR) {
+		dev_warn(
+			plane->dev->dev,
+			"[WARN][%s] %s only support DRM_FORMAT_MOD_LINEAR\r\n",
+			LOG_TAG, __func__);
 		ret = -EINVAL;
 		goto err_null;
 	}
 
-        /* we should have a crtc state if the plane is attached to a crtc */
-        if (WARN_ON(crtc_state == NULL)) {
-		dev_warn(plane->dev->dev,
+	/* we should have a crtc state if the plane is attached to a crtc */
+	if (WARN_ON(crtc_state == NULL)) {
+		dev_warn(
+			plane->dev->dev,
 			"[WARN][%s] %s err(%d)\r\n", LOG_TAG, __func__, ret);
-                ret = -EINVAL;
+		ret = -EINVAL;
 		goto err_null;
 	}
 
 	if (!state->crtc || !state->fb) {
+		dev_warn(
+			plane->dev->dev,
+			"[WARN][%s] %s err(%d)\r\n", LOG_TAG, __func__, ret);
+		ret = -EINVAL;
+		goto err_null;
+	}
+
+	if (
+		state->crtc_x + state->crtc_w >
+			crtc_state->adjusted_mode.hdisplay) {
+		dev_warn(
+			plane->dev->dev,
+			"[WARN][%s] %s err(%d)\r\n", LOG_TAG, __func__, ret);
+		ret = -EINVAL;
+		goto err_null;
+	}
+
+	if (
+		state->crtc_y + state->crtc_h >
+			crtc_state->adjusted_mode.vdisplay) {
 		dev_warn(plane->dev->dev,
 			"[WARN][%s] %s err(%d)\r\n", LOG_TAG, __func__, ret);
 		ret = -EINVAL;
 		goto err_null;
 	}
 
-        if (state->crtc_x + state->crtc_w > crtc_state->adjusted_mode.hdisplay) {
-		dev_warn(plane->dev->dev,
-			"[WARN][%s] %s err(%d)\r\n", LOG_TAG, __func__, ret);
-                ret = -EINVAL;
-		goto err_null;
-	}
-
-        if (state->crtc_y + state->crtc_h > crtc_state->adjusted_mode.vdisplay) {
-		dev_warn(plane->dev->dev,
-			"[WARN][%s] %s err(%d)\r\n", LOG_TAG, __func__, ret);
-                ret = -EINVAL;
-		goto err_null;
-	}
-
 	if ((state->src_w >> 16) != state->crtc_w) {
-		dev_warn(plane->dev->dev,
+		dev_warn(
+			plane->dev->dev,
 			"[WARN][%s] %s mismatch %d with %d scaling mode is not supported\r\n",
-						LOG_TAG, __func__, state->src_w >> 16, state->crtc_w);
+			LOG_TAG, __func__, state->src_w >> 16, state->crtc_w);
 		ret = -ENOTSUPP;
 		goto err_null;
 	}
 
 	if ((state->src_h >> 16) != state->crtc_h) {
-		dev_warn(plane->dev->dev,
+		dev_warn(
+			plane->dev->dev,
 			"[WARN][%s] %s mismatch %d with %d scaling mode is not supported\r\n",
-						LOG_TAG, __func__, state->src_h >> 16, state->crtc_h);
+			LOG_TAG, __func__, state->src_h >> 16, state->crtc_h);
 		ret = -ENOTSUPP;
 		goto err_null;
 	}
@@ -358,7 +383,7 @@ static void tcc_plane_atomic_disable(struct drm_plane *plane,
 }
 
 static const struct drm_plane_helper_funcs plane_helper_funcs = {
-        .prepare_fb =  drm_gem_fb_prepare_fb,
+	.prepare_fb =  drm_gem_fb_prepare_fb,
 	.atomic_check = tcc_plane_atomic_check,
 	.atomic_update = tcc_plane_atomic_update,
 	.atomic_disable = tcc_plane_atomic_disable,
