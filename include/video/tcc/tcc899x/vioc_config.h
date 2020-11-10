@@ -1622,5 +1622,6 @@ extern int VIOC_CONFIG_LCDPath_Select(unsigned int lcdx_sel, unsigned int lcdx_i
 extern volatile void __iomem* VIOC_IREQConfig_GetAddress(void);
 extern void VIOC_IREQConfig_DUMP(unsigned int offset, unsigned int size);
 
+extern int VIOC_AUTOPWR_Enalbe(unsigned int component, unsigned int onoff);
 
 #endif
