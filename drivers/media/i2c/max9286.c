@@ -71,12 +71,16 @@ struct power_sequence {
  */
 struct max9286 {
 	struct v4l2_subdev		sd;
-	struct v4l2_ctrl_handler	hdl;
+	struct v4l2_mbus_framefmt	fmt;
 
 	struct power_sequence		gpio;
 
 	/* Regmaps */
 	struct regmap			*regmap;
+
+	struct mutex lock;
+	unsigned int p_cnt;
+	unsigned int s_cnt;
 };
 
 const struct reg_sequence max9286_reg_defaults[] = {
@@ -129,6 +133,15 @@ struct v4l2_dv_timings max9286_dv_timings = {
 		.polarities	= 0,//V4L2_DV_XSYNC_POS_POL,
 	},
 };
+
+static void max9286_init_format(struct max9286 *dev)
+{
+	dev->fmt.width = 1280;
+	dev->fmt.height	= 720,
+	dev->fmt.code = MEDIA_BUS_FMT_YUYV8_2X8;
+	dev->fmt.field = V4L2_FIELD_NONE;
+	dev->fmt.colorspace = V4L2_COLORSPACE_SMPTE170M;
+}
 
 /*
  * gpio fuctions
@@ -202,30 +215,9 @@ void max9286_free_gpio(struct max9286 *dev)
 /*
  * Helper fuctions for reflection
  */
-static inline struct max9286 *to_state(struct v4l2_subdev *sd)
+static inline struct max9286 *to_dev(struct v4l2_subdev *sd)
 {
 	return container_of(sd, struct max9286, sd);
-}
-
-/*
- * v4l2_ctrl_ops implementations
- */
-static int max9286_s_ctrl(struct v4l2_ctrl *ctrl)
-{
-	int	ret = 0;
-
-	switch (ctrl->id) {
-	case V4L2_CID_BRIGHTNESS:
-	case V4L2_CID_CONTRAST:
-	case V4L2_CID_SATURATION:
-	case V4L2_CID_HUE:
-	case V4L2_CID_DO_WHITE_BALANCE:
-	default:
-		loge("V4L2_CID_BRIGHTNESS is not implemented yet.\n");
-		ret = -EINVAL;
-	}
-
-	return ret;
 }
 
 /*
@@ -233,19 +225,30 @@ static int max9286_s_ctrl(struct v4l2_ctrl *ctrl)
  */
 static int max9286_set_power(struct v4l2_subdev *sd, int on)
 {
-	struct max9286		*dev	= to_state(sd);
+	struct max9286		*dev	= to_dev(sd);
 	struct power_sequence	*gpio	= &dev->gpio;
 
+	mutex_lock(&dev->lock);
+
 	if (on) {
-		if (dev->gpio.pwd_port > 0) {
-			gpio_set_value_cansleep(gpio->pwd_port, 1);
-			msleep(20);
+		if (dev->p_cnt == 0) {
+			if (dev->gpio.pwd_port > 0) {
+				gpio_set_value_cansleep(gpio->pwd_port, 1);
+				msleep(20);
+			}
 		}
+		dev->p_cnt++;
 	} else {
-		if (dev->gpio.pwd_port > 0)
-			gpio_set_value_cansleep(gpio->pwd_port, 0);
-			msleep(20);
+		if (dev->p_cnt == 1) {
+			if (dev->gpio.pwd_port > 0) {
+				gpio_set_value_cansleep(gpio->pwd_port, 0);
+				msleep(20);
+			}
+		}
+		dev->p_cnt--;
 	}
+
+	mutex_unlock(&dev->lock);
 
 	return 0;
 }
@@ -255,9 +258,11 @@ static int max9286_set_power(struct v4l2_subdev *sd, int on)
  */
 static int max9286_g_input_status(struct v4l2_subdev *sd, u32 *status)
 {
-	struct max9286		*dev	= to_state(sd);
+	struct max9286		*dev	= to_dev(sd);
 	unsigned int		val	= 0;
 	int			ret	= 0;
+
+	mutex_lock(&dev->lock);
 
 	// check V4L2_IN_ST_NO_SIGNAL
 	ret = regmap_read(dev->regmap, MAX9286_REG_STATUS_1, &val);
@@ -273,42 +278,87 @@ static int max9286_g_input_status(struct v4l2_subdev *sd, u32 *status)
 		}
 	}
 
+	mutex_unlock(&dev->lock);
+
 	return ret;
 }
 
 static int max9286_s_stream(struct v4l2_subdev *sd, int enable)
 {
-	struct max9286		*dev	= NULL;
+	struct max9286		* dev	= to_dev(sd);
 	int			ret	= 0;
 
-	dev = to_state(sd);
-	if (!dev) {
-		loge("Failed to get video source object by subdev\n");
-		ret = -EINVAL;
-	} else {
-		ret = regmap_multi_reg_write(dev->regmap, max9286_reg_defaults,
-			ARRAY_SIZE(max9286_reg_defaults));
+	mutex_lock(&dev->lock);
+
+	if ((dev->s_cnt == 0) && (enable == 1)) {
+		ret = regmap_multi_reg_write(dev->regmap, \
+				max9286_reg_defaults, \
+				ARRAY_SIZE(max9286_reg_defaults));
+		if (ret < 0) {
+			loge("Fail initializing max9286 device \n");
+		}
+	}
+	else if ((dev->s_cnt == 1) && (enable == 0)) {
+		ret = regmap_write(dev->regmap, 0x15, 0x93);
 	}
 
+	if (enable)
+		dev->s_cnt++;
+	else
+		dev->s_cnt--;
+
+	mutex_unlock(&dev->lock);
 	return ret;
 }
 
 static int max9286_g_dv_timings(struct v4l2_subdev *sd,
 	struct v4l2_dv_timings *timings)
 {
+	struct max9286		* dev	= to_dev(sd);
+	int			ret	= 0;
+	mutex_lock(&dev->lock);
+
 	memcpy((void *)timings, (const void *)&max9286_dv_timings,
 		sizeof(*timings));
+	mutex_unlock(&dev->lock);
+	return ret;
+}
 
-	return 0;
+static int max9286_get_fmt(struct v4l2_subdev *sd,
+			   struct v4l2_subdev_pad_config *cfg,
+			   struct v4l2_subdev_format *format)
+{
+	struct max9286		* dev	= to_dev(sd);
+	int			ret	= 0;
+
+	mutex_lock(&dev->lock);
+
+	memcpy((void *)&format->format, (const void *)&dev->fmt, \
+		sizeof(struct v4l2_mbus_framefmt));
+
+	mutex_unlock(&dev->lock);
+	return ret;
+}
+
+static int max9286_set_fmt(struct v4l2_subdev *sd,
+			   struct v4l2_subdev_pad_config *cfg,
+			   struct v4l2_subdev_format *format)
+{
+	struct max9286		* dev	= to_dev(sd);
+	int			ret	= 0;
+
+	mutex_lock(&dev->lock);
+
+	memcpy((void *)&dev->fmt, (const void *)&format->format, \
+		sizeof(struct v4l2_mbus_framefmt));
+
+	mutex_unlock(&dev->lock);
+	return ret;
 }
 
 /*
  * v4l2_subdev_internal_ops implementations
  */
-static const struct v4l2_ctrl_ops max9286_ctrl_ops = {
-	.s_ctrl			= max9286_s_ctrl,
-};
-
 static const struct v4l2_subdev_core_ops max9286_core_ops = {
 	.s_power		= max9286_set_power,
 };
@@ -316,7 +366,12 @@ static const struct v4l2_subdev_core_ops max9286_core_ops = {
 static const struct v4l2_subdev_video_ops max9286_video_ops = {
 	.g_input_status		= max9286_g_input_status,
 	.s_stream		= max9286_s_stream,
-	.g_dv_timings		= max9286_g_dv_timings,
+	//.g_dv_timings		= max9286_g_dv_timings,
+};
+
+static const struct v4l2_subdev_pad_ops max9286_pad_ops = {
+	.get_fmt		= max9286_get_fmt,
+	.set_fmt		= max9286_set_fmt,
 };
 
 static const struct v4l2_subdev_ops max9286_ops = {
@@ -347,7 +402,7 @@ MODULE_DEVICE_TABLE(of, max9286_of_match);
 int max9286_probe(struct i2c_client *client, const struct i2c_device_id *id)
 {
 	struct max9286		*dev	= NULL;
-	const struct of_device_id	*dev_id	= NULL;
+	struct of_device_id	*dev_id	= NULL; 
 	int			ret	= 0;
 
 	// allocate and clear memory for a device
@@ -356,6 +411,8 @@ int max9286_probe(struct i2c_client *client, const struct i2c_device_id *id)
 		loge("Allocate a device struct.\n");
 		return -ENOMEM;
 	}
+
+	mutex_init(&dev->lock);
 
 	// set the specific information
 	if (client->dev.of_node) {
@@ -376,19 +433,6 @@ int max9286_probe(struct i2c_client *client, const struct i2c_device_id *id)
 	// Register with V4L2 layer as a slave device
 	v4l2_i2c_subdev_init(&dev->sd, client, &max9286_ops);
 
-	// regitster v4l2 control handlers
-	v4l2_ctrl_handler_init(&dev->hdl, 2);
-	v4l2_ctrl_new_std(&dev->hdl, &max9286_ctrl_ops,
-		V4L2_CID_BRIGHTNESS, 0, 255, 1, 128);
-	v4l2_ctrl_new_std_menu(&dev->hdl, &max9286_ctrl_ops,
-		V4L2_CID_DV_RX_IT_CONTENT_TYPE, V4L2_DV_IT_CONTENT_TYPE_NO_ITC,
-		0, V4L2_DV_IT_CONTENT_TYPE_NO_ITC);
-	dev->sd.ctrl_handler = &dev->hdl;
-	if (dev->hdl.error) {
-		loge("v4l2_ctrl_handler_init is wrong\n");
-		ret = dev->hdl.error;
-		goto goto_free_device_data;
-	}
 
 	// register a v4l2 sub device
 	ret = v4l2_async_register_subdev(&dev->sd);
@@ -408,6 +452,9 @@ int max9286_probe(struct i2c_client *client, const struct i2c_device_id *id)
 		goto goto_free_device_data;
 	}
 
+	/* init format info */
+	max9286_init_format(dev);
+
 	goto goto_end;
 
 goto_free_device_data:
@@ -421,15 +468,13 @@ goto_end:
 int max9286_remove(struct i2c_client *client)
 {
 	struct v4l2_subdev	*sd	= i2c_get_clientdata(client);
-	struct max9286		*dev	= to_state(sd);
+	struct max9286		*dev	= to_dev(sd);
 
 	// release regmap
 	regmap_exit(dev->regmap);
 
 	// gree gpio
 	max9286_free_gpio(dev);
-
-	v4l2_ctrl_handler_free(&dev->hdl);
 
 	v4l2_async_unregister_subdev(sd);
 

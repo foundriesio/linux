@@ -1520,6 +1520,7 @@ int tccvin_video_subdevs_streamon(struct tccvin_streaming *stream)
 	struct tccvin_device	*dev		= stream->dev;
 	int			idxSubDev	= 0;
 	struct v4l2_subdev	*subdev		= NULL;
+	struct v4l2_subdev_format *fmt		= NULL;
 	struct v4l2_dv_timings	*timings	= NULL;
 	int			idxTry		= 0;
 	int			nTry		= 3;
@@ -1528,19 +1529,100 @@ int tccvin_video_subdevs_streamon(struct tccvin_streaming *stream)
 
 	// v4l2 sub dev - core functions
 	for (idxSubDev = 0; idxSubDev < dev->bounded_subdevs; idxSubDev++) {
-		subdev = dev->subdevs[idxSubDev];
+		subdev = dev->linked_subdevs[idxSubDev].sd;
 
+		logi("call %s s_power \n", subdev->name);
 		// power-up sequence & initial i2c setting
 		ret = v4l2_subdev_call(subdev, core, s_power, 1);
 
+		logi("call %s init \n", subdev->name);
 		// configure as init status
 		ret = v4l2_subdev_call(subdev, core, init, 0);
 	}
 
+	// get fmt of first subdev in image pipeline
+	subdev = dev->linked_subdevs[dev->bounded_subdevs - 1].sd;
+	fmt = &dev->linked_subdevs[dev->bounded_subdevs - 1].fmt;
+	logi("call %s get format \n", subdev->name);
+	ret = v4l2_subdev_call(subdev, pad, get_fmt, NULL, fmt);
+
+	// set fmt the other subdevs according to the first subdev
+	for(idxSubDev=dev->bounded_subdevs - 2; idxSubDev >= 0; idxSubDev--) {
+		subdev = dev->linked_subdevs[idxSubDev].sd;
+
+		logi("call %s set_fmt \n", subdev->name);
+		ret = v4l2_subdev_call(subdev, pad, set_fmt, NULL, fmt);
+		if(ret) {
+			logi("v4l2_subdev_call(video, set_fmt) is wrong\n");
+			continue;
+		}
+
+		//ret = v4l2_subdev_call(subdev, pad, get_fmt, NULL, fmt);
+	}
+
+	// get dv timing
+	subdev = dev->linked_subdevs[0].sd;
+
+	timings = &stream->dv_timings;
+	logi("call %s g_dv_timings \n", subdev->name);
+	ret = v4l2_subdev_call(subdev, video, g_dv_timings, timings);
+	if (ret) {
+		logd("subdev_call(video, g_dv_timings) is wrong\n");
+	} else {
+		logd("width: %d, height: %d\n",
+			timings->bt.width, timings->bt.height);
+		logd("interalced: %d\n",	timings->bt.interlaced);
+		logd("polarities: 0x%08x\n",	timings->bt.polarities);
+	}
+
+	logi("call %s get_fmt \n", subdev->name);
+	ret = v4l2_subdev_call(subdev, pad, get_fmt, NULL, fmt);
+	if(ret) {
+		logi("v4l2_subdev_call(video, get_fmt) is wrong\n");
+	}
+	else {
+		switch(fmt->format.code) {
+		case MEDIA_BUS_FMT_UYVY8_2X8:
+			logi("MEDIA_BUS_FMT_UYVY8_2X8\n");
+			stream->vs_info.data_format = FMT_YUV422_8BIT;
+			break;
+		default:
+			loge("MEDIA_BUS_FMT is wrong\n");
+			stream->vs_info.data_format = FMT_YUV422_8BIT;
+			break;
+		}
+
+	}
+
+	ret = v4l2_subdev_call(subdev, video, g_mbus_config,
+		&stream->mbus_config);
+	if (ret) {
+		logd("subdev_call(pad, g_mbus_config) is wrong\n");
+	} else {
+		logi("mbus_config.type: 0x%08x\n",
+			stream->mbus_config.type);
+		// conv_en
+		stream->vs_info.conv_en		=
+			(stream->mbus_config.type ==
+				V4L2_MBUS_BT656) ? 1 : 0;
+
+		logi("mbus_config.flags: 0x%08x\n",
+			stream->mbus_config.flags);
+		// pclk_sample
+		stream->vs_info.pclk_polarity	=
+			(stream->mbus_config.flags &
+				V4L2_MBUS_PCLK_SAMPLE_RISING) ? 1 : 0;
+		// data_active
+		stream->vs_info.de_low	=
+			(stream->mbus_config.flags &
+				V4L2_MBUS_DATA_ACTIVE_HIGH) ? 1 : 0;
+	}
+
 	// start stream of all subdevs
 	for (idxSubDev = 0; idxSubDev < dev->bounded_subdevs; idxSubDev++) {
-		subdev = dev->subdevs[dev->bounded_subdevs - 1 - idxSubDev];
+		subdev = dev->linked_subdevs[idxSubDev].sd;
 
+		logi("call %s s_stream \n", subdev->name);
 		// start stream
 		ret = v4l2_subdev_call(subdev, video, s_stream, 1);
 
@@ -1563,81 +1645,8 @@ int tccvin_video_subdevs_streamon(struct tccvin_streaming *stream)
 		}
 	}
 
-	// get dv timing
-	for (idxSubDev = 0; idxSubDev < dev->bounded_subdevs; idxSubDev++) {
-		subdev = dev->subdevs[idxSubDev];
-
-		timings = &stream->dv_timings;
-		ret = v4l2_subdev_call(subdev, video, g_dv_timings, timings);
-		if (ret) {
-			logd("subdev_call(video, g_dv_timings) is wrong\n");
-		} else {
-			logd("width: %d, height: %d\n",
-				timings->bt.width, timings->bt.height);
-			logd("interalced: %d\n",	timings->bt.interlaced);
-			logd("polarities: 0x%08x\n",	timings->bt.polarities);
-			break;
-		}
-	}
-
-	// enum media bus
-	for (idxSubDev = 0; idxSubDev < dev->bounded_subdevs; idxSubDev++) {
-		subdev = dev->subdevs[idxSubDev];
-
-		ret = v4l2_subdev_call(subdev, pad, enum_mbus_code, NULL,
-			&stream->mbus_code);
-		if (ret) {
-			logd("subdev_call(pad, enum_mbus_code) is wrong\n");
-		} else {
-			logi("mbus code: 0x%08x\n", stream->mbus_code.code);
-			switch (stream->mbus_code.code) {
-			case MEDIA_BUS_FMT_UYVY8_2X8:
-				logi("MEDIA_BUS_FMT_UYVY8_2X8\n");
-				stream->vs_info.data_format =
-					FMT_YUV422_8BIT;
-				break;
-			default:
-				loge("MEDIA_BUS_FMT is wrong\n");
-				stream->vs_info.data_format =
-					FMT_YUV422_8BIT;
-				break;
-			}
-			break;
-		}
-	}
-
-	// enum media bus
-	for (idxSubDev = 0; idxSubDev < dev->bounded_subdevs; idxSubDev++) {
-		subdev = dev->subdevs[idxSubDev];
-
-		ret = v4l2_subdev_call(subdev, video, g_mbus_config,
-			&stream->mbus_config);
-		if (ret) {
-			logd("subdev_call(pad, g_mbus_config) is wrong\n");
-		} else {
-			logi("mbus_config.type: 0x%08x\n",
-				stream->mbus_config.type);
-			// conv_en
-			stream->vs_info.conv_en		=
-				(stream->mbus_config.type ==
-					V4L2_MBUS_BT656) ? 1 : 0;
-
-			logi("mbus_config.flags: 0x%08x\n",
-				stream->mbus_config.flags);
-			// pclk_sample
-			stream->vs_info.pclk_polarity	=
-				(stream->mbus_config.flags &
-					V4L2_MBUS_PCLK_SAMPLE_RISING) ? 1 : 0;
-			// data_active
-			stream->vs_info.de_low	=
-				(stream->mbus_config.flags &
-					V4L2_MBUS_DATA_ACTIVE_HIGH) ? 1 : 0;
-
-			break;
-		}
-	}
-
-	return ret;
+	//return ret;
+	return 0;
 }
 
 int tccvin_video_subdevs_streamoff(struct tccvin_streaming *stream)
@@ -1648,16 +1657,18 @@ int tccvin_video_subdevs_streamoff(struct tccvin_streaming *stream)
 	int			ret		= 0;
 
 	for (idxSubDev = 0; idxSubDev < dev->bounded_subdevs; idxSubDev++) {
-		subdev = dev->subdevs[dev->bounded_subdevs - 1 - idxSubDev];
+		subdev = dev->linked_subdevs[idxSubDev].sd;
 
+		logi("call %s s_stream \n", subdev->name);
 		// stop stream
 		ret = v4l2_subdev_call(subdev, video, s_stream, 0);
 	}
 
 	// v4l2 sub dev - core functions
 	for (idxSubDev = 0; idxSubDev < dev->bounded_subdevs; idxSubDev++) {
-		subdev = dev->subdevs[idxSubDev];
+		subdev = dev->linked_subdevs[idxSubDev].sd;
 
+		logi("call %s s_power \n", subdev->name);
 		// power-down sequence
 		ret = v4l2_subdev_call(subdev, core, s_power, 0);
 	}

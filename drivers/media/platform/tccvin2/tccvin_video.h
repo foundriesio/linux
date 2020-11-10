@@ -284,7 +284,13 @@ struct tccvin_streaming {
 	int					cam_streaming;
 };
 
-#define NUM_VIDEOSOURCES			4
+#define TCCVIN_MAX_VIDEOSOURCE 255
+
+struct tccvin_subdev {
+	struct v4l2_async_subdev asd;
+	struct v4l2_subdev *sd;
+	struct v4l2_subdev_format fmt;
+};
 
 struct tccvin_device {
 	struct platform_device			*pdev;
@@ -299,9 +305,13 @@ struct tccvin_device {
 	int					bounded_subdevs;
 	int					current_subdev_idx;
 
-	struct v4l2_fwnode_endpoint		fw_ep[NUM_VIDEOSOURCES];
-	struct v4l2_async_subdev		*asd[NUM_VIDEOSOURCES];
-	struct v4l2_subdev			*subdevs[NUM_VIDEOSOURCES];
+        struct v4l2_fwnode_endpoint	fw_ep[TCCVIN_MAX_VIDEOSOURCE];
+	int				num_ep;
+
+	struct v4l2_async_subdev	*async_subdevs[TCCVIN_MAX_VIDEOSOURCE];
+	struct tccvin_subdev		linked_subdevs[TCCVIN_MAX_VIDEOSOURCE];
+	//struct v4l2_subdev		*subdevs[TCCVIN_MAX_VIDEOSOURCE];
+	int				num_asd;
 	struct v4l2_async_notifier		notifier;
 
 	struct list_head			entities;

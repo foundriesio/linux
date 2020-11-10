@@ -935,15 +935,15 @@ config VIDEO_MAX9275
 	  To compile this driver as a module, choose M here: the
 	  module will be called max9275.
 
-config VIDEO_MAX96705
-	tristate "Maxim MAX96705 Serializer"
+config VIDEO_MAX96701
+	tristate "Maxim MAX96701 Serializer"
 	depends on GPIOLIB && VIDEO_V4L2 && I2C && VIDEO_V4L2_SUBDEV_API
 	select REGMAP_I2C
 	---help---
-	  Support for the Maxim MAX96705 Serializer.
+	  Support for the Maxim MAX96701 Serializer.
 
 	  To compile this driver as a module, choose M here: the
-	  module will be called max96705.
+	  module will be called MAX96701.
 
 config VIDEO_MAX9286
 	tristate "Maxim MAX9286 Deserializer"
