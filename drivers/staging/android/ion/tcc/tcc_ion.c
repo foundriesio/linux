@@ -180,7 +180,7 @@ int tcc_ion_probe(struct platform_device *pdev)
 
 	num_heaps = pdata->nr;
 
-	heaps = kzalloc(sizeof(struct ion_heap *) * pdata->nr, GFP_KERNEL);
+	heaps = kcalloc(pdata->nr, sizeof(struct ion_heap *), GFP_KERNEL);
 
 	/* create the heaps as specified in the board file */
 	for (i = 0; i < num_heaps; i++) {
