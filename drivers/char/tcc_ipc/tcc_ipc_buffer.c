@@ -1,19 +1,7 @@
-/****************************************************************************
- *
- * Copyright (C) 2018 Telechips Inc.
- *
- * This program is free software; you can redistribute it and/or modify it under the terms
- * of the GNU General Public License as published by the Free Software Foundation;
- * either version 2 of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
- * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
- * PURPOSE. See the GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License along with
- * this program; if not, write to the Free Software Foundation, Inc., 59 Temple Place,
- * Suite 330, Boston, MA 02111-1307 USA
- ****************************************************************************/
+// SPDX-License-Identifier: GPL-2.0-or-later
+/*
+ * Copyright (C) Telechips Inc.
+ */
 
 #include <linux/uaccess.h>
 #include <linux/cdev.h>
@@ -28,7 +16,9 @@
 #include "tcc_ipc_typedef.h"
 #include "tcc_ipc_buffer.h"
 
-void	ipc_buffer_init(IPC_RINGBUF *pBufCtrl,IPC_UCHAR* buff,IPC_UINT32 size)
+void ipc_buffer_init(struct IPC_RINGBUF *pBufCtrl,
+						IPC_UCHAR *buff,
+						IPC_UINT32 size)
 {
 	pBufCtrl->_Head = 0;
 	pBufCtrl->_Tail = 0;
@@ -36,23 +26,19 @@ void	ipc_buffer_init(IPC_RINGBUF *pBufCtrl,IPC_UCHAR* buff,IPC_UINT32 size)
 	pBufCtrl->_pBuffer = buff;
 }
 
-IPC_INT32 ipc_push_one_byte(IPC_RINGBUF *pBufCtrl,IPC_UCHAR data)
+IPC_INT32 ipc_push_one_byte(struct IPC_RINGBUF  *pBufCtrl, IPC_UCHAR data)
 {
 	IPC_INT32 ret = IPC_BUFFER_ERROR;
 	IPC_UINT32 temp;
 
-	if(pBufCtrl != NULL)
-	{
+	if (pBufCtrl != NULL) {
 		temp = pBufCtrl->_Tail;
 		temp++;
 		temp %= pBufCtrl->_MaxBufferSize;
 
-		if (temp == pBufCtrl->_Head)
-		{
+		if (temp == pBufCtrl->_Head) {
 			ret = IPC_BUFFER_FULL;
-		}
-		else
-		{
+		} else {
 			pBufCtrl->_pBuffer[pBufCtrl->_Tail] = data;
 			pBufCtrl->_Tail = (IPC_UINT32)temp;
 			ret = IPC_BUFFER_OK;
@@ -61,26 +47,24 @@ IPC_INT32 ipc_push_one_byte(IPC_RINGBUF *pBufCtrl,IPC_UCHAR data)
 	return ret;
 }
 
-IPC_INT32 ipc_push_one_byte_overwrite(IPC_RINGBUF *pBufCtrl,IPC_UCHAR data)
+IPC_INT32 ipc_push_one_byte_overwrite(
+			struct IPC_RINGBUF *pBufCtrl,
+			IPC_UCHAR data)
 {
 	IPC_INT32 ret = IPC_BUFFER_ERROR;
 	IPC_UINT32 temp;
 
-	if(pBufCtrl != NULL)
-	{
+	if (pBufCtrl != NULL) {
 		temp = pBufCtrl->_Tail;
 		temp++;
 		temp %= pBufCtrl->_MaxBufferSize;
 
-		if (temp == pBufCtrl->_Head)
-		{
+		if (temp == pBufCtrl->_Head) {
 			pBufCtrl->_Head++;
 			pBufCtrl->_pBuffer[pBufCtrl->_Tail] = data;
 			pBufCtrl->_Tail = (IPC_UINT32)temp;
 			ret = IPC_BUFFER_OK;
-		}
-		else
-		{
+		} else {
 			pBufCtrl->_pBuffer[pBufCtrl->_Tail] = data;
 			pBufCtrl->_Tail = (IPC_UINT32)temp;
 			ret = IPC_BUFFER_OK;
@@ -89,19 +73,15 @@ IPC_INT32 ipc_push_one_byte_overwrite(IPC_RINGBUF *pBufCtrl,IPC_UCHAR data)
 	return ret;
 }
 
-IPC_INT32 ipc_pop_one_byte(IPC_RINGBUF *pBufCtrl,IPC_UCHAR *data)
+IPC_INT32 ipc_pop_one_byte(struct IPC_RINGBUF  *pBufCtrl, IPC_UCHAR *data)
 {
 	IPC_UINT32 temp;
 	IPC_INT32 ret = IPC_BUFFER_ERROR;
 
-	if((pBufCtrl != NULL)&&(data != NULL))
-	{
-		if (pBufCtrl->_Tail == pBufCtrl->_Head)
-		{
+	if ((pBufCtrl != NULL) && (data != NULL)) {
+		if (pBufCtrl->_Tail == pBufCtrl->_Head) {
 			ret = IPC_BUFFER_EMPTY;
-		}
-		else
-		{
+		} else {
 			temp = pBufCtrl->_Head;
 			temp++;
 			temp %= pBufCtrl->_MaxBufferSize;
@@ -113,160 +93,153 @@ IPC_INT32 ipc_pop_one_byte(IPC_RINGBUF *pBufCtrl,IPC_UCHAR *data)
 	return ret;
 }
 
-void ipc_buffer_flush(IPC_RINGBUF *pBufCtrl)
+void ipc_buffer_flush(struct IPC_RINGBUF  *pBufCtrl)
 {
-	if(pBufCtrl != NULL)
-	{
+	if (pBufCtrl != NULL) {
 		pBufCtrl->_Head = 0;
 		pBufCtrl->_Tail = 0;
 	}
 }
 
-void ipc_buffer_flush_byte(IPC_RINGBUF *pBufCtrl,IPC_UINT32 flushSize)
+void ipc_buffer_flush_byte(struct IPC_RINGBUF  *pBufCtrl, IPC_UINT32 flushSize)
 {
 	IPC_UINT32  temp;
 
-	if(pBufCtrl != NULL)
-	{
-		if (pBufCtrl->_Tail < pBufCtrl->_Head)
-		{
+	if (pBufCtrl != NULL) {
+		if (pBufCtrl->_Tail < pBufCtrl->_Head) {
 			temp = pBufCtrl->_Head + flushSize;
-			if(temp< pBufCtrl->_MaxBufferSize)
-			{
+			if (temp < pBufCtrl->_MaxBufferSize) {
 				pBufCtrl->_Head = temp;
-			}
-			else
-			{
+			} else {
 				temp %= pBufCtrl->_MaxBufferSize;
-				if(pBufCtrl->_Tail <= temp)
-				{
+
+				if (pBufCtrl->_Tail <= temp) {
 					pBufCtrl->_Head = pBufCtrl->_Tail;
-				}
-				else
-				{
+				} else {
 					pBufCtrl->_Head = temp;
 				}
 			}
-		}
-		else
-		{
+		} else {
 			temp = pBufCtrl->_Head + flushSize;
-			if(pBufCtrl->_Tail <= temp)
-			{
+
+			if (pBufCtrl->_Tail <= temp) {
 				pBufCtrl->_Head = pBufCtrl->_Tail;
-			}
-			else
-			{
+			} else {
 				pBufCtrl->_Head = temp;
 			}
 		}
 	}
 }
 
-IPC_INT32 ipc_buffer_data_available(const IPC_RINGBUF *pBufCtrl)
+IPC_INT32 ipc_buffer_data_available(const struct IPC_RINGBUF  *pBufCtrl)
 {
 	IPC_INT32 iRet = 0;
 	IPC_INT32 iRead;
 	IPC_INT32 iWrite;
 
-	if(pBufCtrl != NULL)
-	{
+	if (pBufCtrl != NULL) {
 		iRead = (IPC_INT32)pBufCtrl->_Head;
 		iWrite = (IPC_INT32)pBufCtrl->_Tail;
 
-		if (iWrite >= iRead)
-		{
-			// The read pointer is before the write pointer in the bufer.
+		if (iWrite >= iRead) {
+		// The read pointer is before the write pointer in the bufer.
 			iRet = iWrite -	iRead;
-		}
-		else
-		{
-			// The write pointer is before the read pointer in the buffer.
-			iRet = (IPC_INT32)pBufCtrl->_MaxBufferSize - (iRead - iWrite);
+		} else {
+		// The write pointer is before the read pointer in the buffer.
+			iRet = (IPC_INT32)pBufCtrl->_MaxBufferSize
+					- (iRead - iWrite);
 		}
 	}
 	return iRet;
 }
 
-IPC_INT32	ipc_buffer_free_space(const IPC_RINGBUF *pBufCtrl)
+IPC_INT32 ipc_buffer_free_space(const struct IPC_RINGBUF  *pBufCtrl)
 {
 	IPC_INT32 iRet = 0;
 	IPC_INT32 iRead;
 	IPC_INT32 iWrite;
 
-	if(pBufCtrl != NULL)
-	{
+	if (pBufCtrl != NULL) {
 		iRead = (IPC_INT32)pBufCtrl->_Head;
 		iWrite = (IPC_INT32)pBufCtrl->_Tail;
 
-		if (iWrite < iRead)
-		{
-			// The write pointer is before the read pointer in the buffer.
+		if (iWrite < iRead)	{
+		// The write pointer is before the read pointer in the buffer.
 			iRet = iRead - iWrite - 1;
-		}
-		else
-		{
-			// The read pointer is before the write pointer in the bufer.
-			iRet = (IPC_INT32)pBufCtrl->_MaxBufferSize - (iWrite - iRead) - 1;
+		} else {
+		// The read pointer is before the write pointer in the bufer.
+			iRet = (IPC_INT32)pBufCtrl->_MaxBufferSize
+					- (iWrite - iRead) - 1;
 		}
 	}
 
 	return iRet;
 }
 
-void	ipc_buffer_set_head( IPC_RINGBUF *pBufCtrl, IPC_INT32 head)
+void ipc_buffer_set_head(struct IPC_RINGBUF  *pBufCtrl, IPC_INT32 head)
 {
-	if(pBufCtrl != NULL)
-	{
+	if (pBufCtrl != NULL) {
 		pBufCtrl->_Head = (IPC_UINT32)head;
 	}
 }
 
-void	ipc_buffer_set_tail( IPC_RINGBUF *pBufCtrl, IPC_INT32 tail)
+void ipc_buffer_set_tail(struct IPC_RINGBUF  *pBufCtrl, IPC_INT32 tail)
 {
-	if(pBufCtrl != NULL)
-	{
+	if (pBufCtrl != NULL) {
 		pBufCtrl->_Tail = (IPC_UINT32)tail;
 	}
 }
 
-IPC_INT32 ipc_push_buffer(IPC_RINGBUF *pBufCtrl,IPC_UCHAR * buffer, IPC_UINT32 size)
+IPC_INT32 ipc_push_buffer(struct IPC_RINGBUF  *pBufCtrl,
+							IPC_UCHAR *buffer,
+							IPC_UINT32 size)
 {
 	IPC_INT32 ret = IPC_BUFFER_ERROR;
 	IPC_UINT32 freeSpace;
 
-	if((pBufCtrl != NULL)&&(buffer != NULL))
-	{
+	if ((pBufCtrl != NULL) && (buffer != NULL)) {
 		freeSpace = (IPC_UINT32)ipc_buffer_free_space(pBufCtrl);
-		if(freeSpace >= size)
-		{
+		if (freeSpace >= size) {
 			IPC_UINT32 continuousSize;
-			IPC_INT32 tempRet = ((IPC_INT32)pBufCtrl->_MaxBufferSize - (IPC_INT32)pBufCtrl->_Tail);
+			IPC_INT32 tempRet =
+					((IPC_INT32)pBufCtrl->_MaxBufferSize
+					- (IPC_INT32)pBufCtrl->_Tail);
 
-			if(tempRet >= 0)
-			{
+			if (tempRet >= 0) {
 				continuousSize = (IPC_UINT32)tempRet;
 
-				if(continuousSize > size)
-				{
-					(void)memcpy((void *)&pBufCtrl->_pBuffer[pBufCtrl->_Tail], (const void *)buffer, (size_t)size);
+				if (continuousSize > size) {
+
+					(void)memcpy((void *)
+					&pBufCtrl->_pBuffer[pBufCtrl->_Tail],
+				     (const void *)buffer,
+				     (size_t) size);
+
 					pBufCtrl->_Tail += size;
 					ret = (IPC_INT32)size;
-				}
-				else
-				{
+
+				} else {
 					IPC_UINT32 remainSize;
 
-					(void)memcpy((void *)&pBufCtrl->_pBuffer[pBufCtrl->_Tail], (const void *)buffer, (size_t)continuousSize);
+					(void)memcpy((void *)
+				     &pBufCtrl->_pBuffer[pBufCtrl->_Tail],
+				     (const void *)buffer,
+				     (size_t) continuousSize);
+
 					remainSize = size - continuousSize;
-					(void)memcpy((void *)&pBufCtrl->_pBuffer[0], (const void *)&buffer[continuousSize], (size_t)remainSize);
+
+					(void)memcpy((void *)
+				     &pBufCtrl->_pBuffer[0],
+				     (const void *)
+				     &buffer[continuousSize],
+				     (size_t) remainSize);
+
 					pBufCtrl->_Tail = remainSize;
+
 					ret = (IPC_INT32)size;
 				}
 			}
-		}
-		else
-		{
+		} else {
 			ret = IPC_BUFFER_FULL;
 		}
 	}
@@ -274,32 +247,50 @@ IPC_INT32 ipc_push_buffer(IPC_RINGBUF *pBufCtrl,IPC_UCHAR * buffer, IPC_UINT32 s
 	return ret;
 }
 
-IPC_INT32 ipc_push_buffer_overwrite(IPC_RINGBUF *pBufCtrl,IPC_UCHAR * buffer, IPC_UINT32 size)
+IPC_INT32 ipc_push_buffer_overwrite(struct IPC_RINGBUF  *pBufCtrl,
+					IPC_UCHAR *buffer,
+					IPC_UINT32 size)
 {
-	IPC_INT32 ret= IPC_BUFFER_ERROR;
+	IPC_INT32 ret = IPC_BUFFER_ERROR;
 	IPC_UINT32 continuousSize;
 
-	if((pBufCtrl != NULL)&&(buffer != NULL))
-	{
-		if(pBufCtrl->_MaxBufferSize >= size)
-		{
-			continuousSize = pBufCtrl->_MaxBufferSize - pBufCtrl->_Tail;
-			if(continuousSize > size)
-			{
-				memcpy((void *)&pBufCtrl->_pBuffer[pBufCtrl->_Tail], (const void *)buffer, (size_t)size);
+	if ((pBufCtrl != NULL) && (buffer != NULL)) {
+		if (pBufCtrl->_MaxBufferSize >= size) {
+			continuousSize =
+				(pBufCtrl->_MaxBufferSize - pBufCtrl->_Tail);
+
+			if (continuousSize > size) {
+
+				memcpy((void *)
+				&pBufCtrl->_pBuffer[pBufCtrl->_Tail],
+				(const void *)buffer,
+				(size_t) size);
+
 				pBufCtrl->_Tail += size;
-				pBufCtrl->_Head = (pBufCtrl->_Tail + 1U) % pBufCtrl->_MaxBufferSize;
-				ret = (IPC_INT32)size;
-			}
-			else
-			{
+				pBufCtrl->_Head = ((pBufCtrl->_Tail + 1U)
+						   % pBufCtrl->_MaxBufferSize);
+
+				ret = (IPC_INT32) size;
+
+			} else {
 				IPC_UINT32 remainSize;
 
-				memcpy((void *)&pBufCtrl->_pBuffer[pBufCtrl->_Tail], (const void *)buffer, (size_t)continuousSize);
+				memcpy((void *)
+			       &pBufCtrl->_pBuffer[pBufCtrl->_Tail],
+			       (const void *)buffer,
+			       (size_t) continuousSize);
+
 				remainSize = size - continuousSize;
-				memcpy((void *)&pBufCtrl->_pBuffer[0], (const void *)&buffer[continuousSize], (size_t)remainSize);
+
+				memcpy((void *)
+				&pBufCtrl->_pBuffer[0],
+		       (const void *)&buffer[continuousSize],
+		       (size_t) remainSize);
+
 				pBufCtrl->_Tail = remainSize;
-				pBufCtrl->_Head = (pBufCtrl->_Tail + 1U) % pBufCtrl->_MaxBufferSize;
+				pBufCtrl->_Head = ((pBufCtrl->_Tail + 1U)
+						   % pBufCtrl->_MaxBufferSize);
+
 				ret = (IPC_INT32)size;
 			}
 		}
@@ -308,52 +299,69 @@ IPC_INT32 ipc_push_buffer_overwrite(IPC_RINGBUF *pBufCtrl,IPC_UCHAR * buffer, IP
 	return ret;
 }
 
-IPC_INT32 ipc_pop_buffer(IPC_RINGBUF *pBufCtrl,IPC_UCHAR * buffer, IPC_UINT32 size)
+IPC_INT32 ipc_pop_buffer(struct IPC_RINGBUF  *pBufCtrl,
+							IPC_UCHAR *buffer,
+							IPC_UINT32 size)
 {
 	IPC_INT32 ret = IPC_BUFFER_ERROR;
 
-	if (pBufCtrl->_Tail == pBufCtrl->_Head)
-	{
+	if (pBufCtrl->_Tail == pBufCtrl->_Head) {
 		ret = IPC_BUFFER_EMPTY;
-	}
-	else
-	{
+	} else {
+
 		IPC_UINT32 dataSize;
+
 		dataSize = (IPC_UINT32)ipc_buffer_data_available(pBufCtrl);
-		if(dataSize >= size)
-		{
+
+		if (dataSize >= size) {
 			IPC_UINT32 continuousSize;
-			
-			continuousSize = pBufCtrl->_MaxBufferSize - pBufCtrl->_Head;
-			if(continuousSize > size)
-			{
-				if(copy_to_user((void *)buffer, (const void *)&pBufCtrl->_pBuffer[pBufCtrl->_Head], (IPC_ULONG)size )==0)
-				{
+
+			continuousSize =
+			    pBufCtrl->_MaxBufferSize - pBufCtrl->_Head;
+			if (continuousSize > size) {
+				if (copy_to_user((void *)buffer,
+				 (const void *)
+				 &pBufCtrl->_pBuffer[pBufCtrl->_Head],
+				 (IPC_ULONG) size) == 0) {
+
 					pBufCtrl->_Head += size;
 					ret = IPC_BUFFER_OK;
+				} else {
+					(void)
+				    pr_err
+				    ("[ERROR][%s]%s:W error.cont-%d,size-%d\n",
+				     (const IPC_CHAR *)LOG_TAG,
+				     __func__, continuousSize, size);
 				}
-				else
-				{
-					(void)printk(KERN_ERR "[ERROR][%s]%s: buffer write error. contSize - %d, size - %d\n", (const IPC_CHAR *)LOG_TAG, __FUNCTION__, continuousSize, size);
-				}
-			}
-			else
-			{
+			} else {
 				IPC_UINT32 remainSize;
-				if(copy_to_user((void *)buffer, (const void *)&pBufCtrl->_pBuffer[pBufCtrl->_Head], (IPC_ULONG)continuousSize )==0)
-				{
-					remainSize = size - continuousSize;
-					if(copy_to_user((void *)&buffer[continuousSize], (const void *)&pBufCtrl->_pBuffer[0], (IPC_ULONG)remainSize )==0)
-					{
-						pBufCtrl->_Head= remainSize;
+
+				if (copy_to_user((void *)buffer,
+					 (const void *)
+					 &pBufCtrl->_pBuffer[pBufCtrl->_Head],
+					 (IPC_ULONG) continuousSize)
+				    == 0) {
+
+					remainSize = (size - continuousSize);
+
+					if (copy_to_user((void *)
+					 &buffer[continuousSize],
+					 (const void *)&pBufCtrl->_pBuffer[0],
+					 (IPC_ULONG) remainSize)
+					    == 0) {
+
+						pBufCtrl->_Head = remainSize;
 						ret = IPC_BUFFER_OK;
 					}
 				}
-				if(ret != IPC_BUFFER_OK)
-				{
-					(void)printk(KERN_ERR "[ERROR][%s]%s: buffer write error. contSize - %d, size - %d\n", (const IPC_UCHAR *)LOG_TAG, __FUNCTION__, continuousSize, size);
+				if (ret != IPC_BUFFER_OK) {
 
-				}				
+					(void)
+				    pr_err
+				    ("[ERROR][%s]%s:W error.cont-%d, size-%d\n",
+				     (const IPC_UCHAR *)LOG_TAG,
+				     __func__, continuousSize, size);
+				}
 			}
 		}
 	}

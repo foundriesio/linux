@@ -2,5 +2,8 @@ config TCC_IPC
 	tristate "TCC IPC Driver for TCC803x/TCC805X"
 	default n
 	depends on TCC_MULTI_MAILBOX
-	help 
+	help
 		TCC IPC only supports TCC803x/TCC805X.
+		TCC IPC is a driver that communicates between cores.
+		Supprot Core :
+		Main core <-> Subcore, Main Core <-> MICOM, Sub Core <-> MICOM

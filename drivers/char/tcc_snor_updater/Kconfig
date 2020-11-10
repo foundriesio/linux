@@ -2,5 +2,9 @@ config TCC_SNOR_UPDATER
 	bool "TCC SNOR Update Driver for TCC803x"
 	default n
 	depends on TCC_MULTI_MAILBOX
-	help 
-		TCC driver only supports TCC803x.
+	help
+		This driver only supports TCC803x.
+		This driver is snor updater driver.
+		You need to use this drvier for snor image update.
+		Snor is used by R5 core.
+

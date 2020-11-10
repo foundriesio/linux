@@ -1,19 +1,8 @@
-/****************************************************************************
- *
- * Copyright (C) 2018 Telechips Inc.
- *
- * This program is free software; you can redistribute it and/or modify it under the terms
- * of the GNU General Public License as published by the Free Software Foundation;
- * either version 2 of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
- * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
- * PURPOSE. See the GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License along with
- * this program; if not, write to the Free Software Foundation, Inc., 59 Temple Place,
- * Suite 330, Boston, MA 02111-1307 USA
- ****************************************************************************/
+// SPDX-License-Identifier: GPL-2.0-or-later
+/*
+ * Copyright (C) Telechips Inc.
+ */
+
 #include <linux/module.h>
 #include <linux/delay.h>
 #include <linux/gpio.h>
@@ -28,8 +17,8 @@
 #include <linux/sched.h>
 
 #include <linux/fs.h>
-#include <asm/uaccess.h>
-#include <asm/io.h>
+#include <linux/uaccess.h>
+#include <linux/io.h>
 #include <linux/platform_device.h>
 #include <linux/of_gpio.h>
 #include <linux/kdev_t.h>
@@ -44,7 +33,7 @@
 #endif
 
 #include <linux/cdev.h>
-#include <asm/atomic.h>
+#include <linux/atomic.h>
 
 #include <linux/mailbox/tcc_multi_mbox.h>
 #include <linux/mailbox_client.h>
@@ -59,8 +48,8 @@
 int snor_update_start(struct snor_updater_device *updater_dev)
 {
 	int ret = SNOR_UPDATER_ERR_ARGUMENT;
-	if(updater_dev != NULL)
-	{
+
+	if (updater_dev != NULL) {
 		ret = send_update_start(updater_dev);
 	}
 	return ret;
@@ -69,21 +58,25 @@ int snor_update_start(struct snor_updater_device *updater_dev)
 int snor_update_done(struct snor_updater_device *updater_dev)
 {
 	int ret = SNOR_UPDATER_ERR_ARGUMENT;
-	if(updater_dev != NULL)
-	{
+
+	if (updater_dev != NULL) {
 		ret = send_update_done(updater_dev);
 	}
 	return ret;
 }
 
-int snor_update_fw(struct snor_updater_device *updater_dev, tcc_snor_update_param	*fwInfo)
+int snor_update_fw(struct snor_updater_device *updater_dev,
+		tcc_snor_update_param *fwInfo)
 {
 	int ret = SNOR_UPDATER_ERR_ARGUMENT;
-	if((updater_dev != NULL)&&(fwInfo != NULL))
-	{
-		ret = send_fw_start(updater_dev, fwInfo->start_address, fwInfo->partition_size, fwInfo->image_size);
-		if(ret == SNOR_UPDATER_SUCCESS)
-		{
+
+	if ((updater_dev != NULL) && (fwInfo != NULL))	{
+		ret = send_fw_start(updater_dev,
+			fwInfo->start_address,
+			fwInfo->partition_size,
+			fwInfo->image_size);
+
+		if (ret == SNOR_UPDATER_SUCCESS) {
 			unsigned int imageOffset;
 			unsigned int remainSize;
 			unsigned int currentCount;
@@ -94,39 +87,50 @@ int snor_update_fw(struct snor_updater_device *updater_dev, tcc_snor_update_para
 			imageOffset = 0;
 			currentCount = 0;
 			remainSize = fwInfo->image_size;
-			totalCount = fwInfo->image_size/(unsigned int)MAX_FW_BUF_SIZE;
+			totalCount = fwInfo->image_size/
+				(unsigned int)MAX_FW_BUF_SIZE;
 
-			if(fwInfo->image_size % (unsigned int)MAX_FW_BUF_SIZE != (unsigned int)0)
-			{
+			if (fwInfo->image_size %
+				(unsigned int)MAX_FW_BUF_SIZE != 0) {
 				totalCount++;
 			}
 
-			for(currentCount=0; currentCount < totalCount; currentCount++)
-			{
+			for (currentCount = 0;
+				currentCount < totalCount;
+				currentCount++)	{
+
 				ret = SNOR_UPDATER_SUCCESS;
-				if(remainSize >= (unsigned int)MAX_FW_BUF_SIZE)
-				{
-					fwDataSize = (unsigned int)MAX_FW_BUF_SIZE;
-					remainSize -= (unsigned int)MAX_FW_BUF_SIZE;
-				}
-				else
-				{
+				if (remainSize >=
+					(unsigned int)MAX_FW_BUF_SIZE) {
+
+					fwDataSize =
+						(unsigned int)MAX_FW_BUF_SIZE;
+
+					remainSize -=
+						(unsigned int)MAX_FW_BUF_SIZE;
+				} else {
 					fwDataSize = remainSize;
 					remainSize = 0;
 				}
 
-				fwdataCRC = tcc_snor_calc_crc8(&fwInfo->image[imageOffset], fwDataSize);
-				ret = send_fw_send(updater_dev, (fwInfo->start_address + imageOffset), currentCount+(unsigned int)1, totalCount, &fwInfo->image[imageOffset], fwDataSize, fwdataCRC);
-				if(ret != SNOR_UPDATER_SUCCESS)
-				{
+				fwdataCRC = tcc_snor_calc_crc8(
+					&fwInfo->image[imageOffset],
+					fwDataSize);
+
+				ret = send_fw_send(
+					updater_dev,
+					(fwInfo->start_address + imageOffset),
+					currentCount + 1,
+					totalCount, &fwInfo->image[imageOffset],
+					fwDataSize, fwdataCRC);
+				if (ret != SNOR_UPDATER_SUCCESS) {
 					break;
 				}
 
 				imageOffset += fwDataSize;
 			}
 
-			if(ret == SNOR_UPDATER_SUCCESS)
-			{
+			if (ret == SNOR_UPDATER_SUCCESS) {
 				ret = send_fw_done(updater_dev);
 			}
 		}
