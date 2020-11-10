@@ -547,7 +547,11 @@ static void tcc_mmc_finish_data(struct tcc_mmc_host *host)
 	} else {
 		blocks = mmc_readw(host, TCCSDHC_BLOCK_COUNT);
 	}
-	data->bytes_xfered = data->blksz * (data->blocks - blocks);
+	if (data->error) {
+		data->bytes_xfered = 0;
+	} else {
+		data->bytes_xfered = data->blksz * (data->blocks - blocks);
+	}
 
 	if (!data->error && blocks) {
 		printk(KERN_ERR "[ERROR][SDHC] %s: Controller signalled completion even "
