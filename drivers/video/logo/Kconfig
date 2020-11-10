@@ -30,20 +30,40 @@ config LOGO_LINUX_CLUT224
 config LOGO_TCC_1024X600_CLUT224
 	bool "Telechips 224-color ivi 1024x600 logo"
 	default n
+	help
+		Enable 1024x600 Telechips
+		CI boot logo.
+		This boot logo is added for
+		TCC897x with 1024x600 LCD.
 
 config LOGO_TCC_1280X720_CLUT224
 	bool "Telechips 224-color consumer 1280x720 logo"
 	depends on ANDROID
 	default n
+	help
+		Enable 1280x720 Telechips
+		CI boot logo.
+		This boot logo is added for
+		1280x720 LCD.
 
 config LOGO_TCC_1920X720_CLUT224
 	bool "Telechips 224-color ivi 1920x720 logo"
 	default n
+	help
+		Enable 1920x720 Telechips
+		CI boot logo.
+		This boot logo is added for
+		TCC803x/TCC805x with 1920x720 LCD.
 
 config LOGO_TCC_1920X1080_CLUT224
 	bool "Telechips 224-color consumer 1920x1080 logo"
 	depends on ANDROID
 	default n
+	help
+		Enable 1924x1080 Telechips
+		CI boot logo.
+		This boot logo is added for
+		1924x1080 LCD.
 
 config LOGO_BLACKFIN_VGA16
 	bool "16-colour Blackfin Processor Linux logo"
