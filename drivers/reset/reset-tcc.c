@@ -66,15 +66,13 @@ static int tcc_reset_probe(struct platform_device *pdev)
 	struct tcc_reset_data *priv;
 
 	priv = devm_kzalloc(&pdev->dev, sizeof(*priv), GFP_KERNEL);
-	if (priv == NULL) {
+	if (priv == NULL)
 		return -ENOMEM;
-	}
 	platform_set_drvdata(pdev, priv);
 
 	priv->op = (unsigned long) of_device_get_match_data(&pdev->dev);
-	if (WARN_ON(priv->op == 0UL)) {
+	if (WARN_ON(priv->op == 0UL))
 		return -EINVAL;
-	}
 
 	spin_lock_init(&priv->lock);
 
