@@ -10,6 +10,9 @@ config TCC_AUX_DETECT
 	tristate "TCC Aux detect Driver"
 	default n
 	help
-		Choose this option if you want to use aux detect driver
+		This driver detects the aux jack.
+		This driver creates sysfs to inform you of the aux status.
+		Choose this option if you want to use aux detect driver.
+		This driver only supports Telechips EVM Board.
 
 
