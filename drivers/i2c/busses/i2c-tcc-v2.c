@@ -201,8 +201,6 @@ static int tcc_i2c_bus_busy(struct tcc_i2c *i2c, int start_stop)
 		} else {
 			if ((temp & (1U<<6)) == 0U)
 				break;
-			else
-				;/* Nothing to do */
 		}
 		if (time_after(jiffies, tmo_jiffies)) {
 			dev_warn(&i2c->adap.dev,
