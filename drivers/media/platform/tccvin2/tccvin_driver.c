@@ -1,8 +1,8 @@
-/*******************************************************************************
+/*
  *      tccvin_driver.c  --  Driver management
  *
- *		Copyright (c) 2020-
- *			Telechips Inc.
+ *      Copyright (c) 2020-
+ *          Telechips Inc.
  *      Copyright (C) 2005-2010
  *          Laurent Pinchart (laurent.pinchart@ideasonboard.com)
  *
@@ -11,9 +11,9 @@
  *      the Free Software Foundation; either version 2 of the License, or
  *      (at your option) any later version.
  *
- *		SPDX-license-Identifier : GPL-2.0+
+ *      SPDX-license-Identifier : GPL-2.0+
  *
- *******************************************************************************/
+ */
 
 #include <linux/atomic.h>
 #include <linux/kernel.h>
@@ -22,10 +22,12 @@
 #include <linux/slab.h>
 #include <linux/platform_device.h>
 #include <linux/of.h>
+#include <linux/of_graph.h>
 #include <linux/videodev2.h>
 #include <linux/vmalloc.h>
 #include <linux/wait.h>
 #include <linux/version.h>
+#include <linux/delay.h>
 #include <asm/unaligned.h>
 
 #include <media/v4l2-common.h>
@@ -57,7 +59,7 @@ void tccvin_simplify_fraction(uint32_t *numerator, uint32_t *denominator,
 	uint32_t x, y, r;
 	unsigned int i, n;
 
-	an = kmalloc(n_terms * sizeof *an, GFP_KERNEL);
+	an = kmalloc((n_terms * sizeof(*an)), GFP_KERNEL);
 	if (an == NULL)
 		return;
 
@@ -111,12 +113,13 @@ static int tccvin_parse_format(struct tccvin_device *dev,
 	int idxFormat, idxFrame;
 	int ret = 0;
 
-	for(idxFormat=0; idxFormat<streaming->nformats; idxFormat++) {
+	for (idxFormat = 0; idxFormat < streaming->nformats; idxFormat++) {
 		fmtdesc = &tccvin_fmts[idxFormat];
 
 		streamimg_format = &streaming->format[idxFormat];
 		streamimg_format->index = idxFormat;
-		strlcpy(streamimg_format->name, fmtdesc->name, sizeof streamimg_format->name);
+		strlcpy(streamimg_format->name, fmtdesc->name,
+			sizeof(streamimg_format->name));
 		streamimg_format->fcc = fmtdesc->fcc;
 		streamimg_format->bpp = fmtdesc->bpp;
 		streamimg_format->colorspace = 0;
@@ -124,28 +127,49 @@ static int tccvin_parse_format(struct tccvin_device *dev,
 		streamimg_format->nframes = format->nframes;
 		streamimg_format->frame = format->frame;
 
-		logd("index: %d, bpp: %d, colorspace: 0x%08x, fcc: 0x%08x, flags: 0x%08x, name: %s, nframes: %d\n", \
-			 streamimg_format->index, streamimg_format->bpp, streamimg_format->colorspace, \
-			streamimg_format->fcc, streamimg_format->flags, streamimg_format->name, streamimg_format->nframes);
+		logd("index: %d\n",		streamimg_format->index);
+		logd("bpp: %d\n",		streamimg_format->bpp);
+		logd("colorspace: 0x%08x\n",	streamimg_format->colorspace);
+		logd("fcc: 0x%08x\n",		streamimg_format->fcc);
+		logd("flags: 0x%08x\n",		streamimg_format->flags);
+		logd("name: %s\n",		streamimg_format->name);
+		logd("nframes: %d\n",		streamimg_format->nframes);
 
-		for(idxFrame=0; idxFrame<format->nframes; idxFrame++) {
+		for (idxFrame = 0; idxFrame < format->nframes; idxFrame++) {
 			frame = &format[idxFormat].frame[idxFrame];
-			frame->bFrameIndex					= idxFrame;
-			frame->bmCapabilities				= 0x00000000;
-			frame->wWidth						= framesize_list[idxFrame].width;
-			frame->wHeight						= framesize_list[idxFrame].height;
-			//frame->dwMaxVideoFrameBufferSize	= frame->wWidth * frame->wHeight *  streamimg_format->bpp / 8;
+			frame->bFrameIndex			= idxFrame;
+			frame->bmCapabilities			= 0x00000000;
+			frame->wWidth				=
+				framesize_list[idxFrame].width;
+			frame->wHeight				=
+				framesize_list[idxFrame].height;
+#if 0
+			frame->dwMaxVideoFrameBufferSize	=
+				frame->wWidth * frame->wHeight *
+				streamimg_format->bpp / 8;
+#endif
 			frame->dwDefaultFrameInterval		= 333333;
-			frame->bFrameIntervalType			= 2;
-			frame->dwFrameInterval				= *intervals;
-			frame->dwFrameInterval[0]			= 333333;
-			frame->dwFrameInterval[1]			= 666667;
-			frame->dwDefaultFrameInterval =
+			frame->bFrameIntervalType		= 2;
+			frame->dwFrameInterval			= *intervals;
+			frame->dwFrameInterval[0]		= 333333;
+			frame->dwFrameInterval[1]		= 666667;
+			frame->dwDefaultFrameInterval		=
 				min(frame->dwFrameInterval[1],
-				    max(frame->dwFrameInterval[0],
-					frame->dwDefaultFrameInterval));
-			logd("bFrameIndex: %d, bmCapabilities: 0x%08x, wWidth: %d, wHeight: %d, dwMaxVideoFrameBufferSize: %d, dwDefaultFrameInterval: %d, bFrameIntervalType: %d, dwFrameInterval: %d", \
-				frame->bFrameIndex, frame->bmCapabilities, frame->wWidth, frame->wHeight, frame->dwMaxVideoFrameBufferSize, frame->dwDefaultFrameInterval, frame->bFrameIntervalType, *frame->dwFrameInterval);
+					max(frame->dwFrameInterval[0],
+						frame->dwDefaultFrameInterval));
+
+			logd("index: %d\n",		frame->bFrameIndex);
+			logd("cap: 0x%08x\n",		frame->bmCapabilities);
+			logd("width: %d\n",		frame->wWidth);
+			logd("height: %d\n",		frame->wHeight);
+			logd("max_buf_size: 0x%08x\n",
+				frame->dwMaxVideoFrameBufferSize);
+			logd("default_frame_interval: %d\n",
+				frame->dwDefaultFrameInterval);
+			logd("frame_interval_type: %d\n",
+				frame->bFrameIntervalType);
+			logd("frame_interval: %d\n",
+				*frame->dwFrameInterval);
 		}
 	}
 
@@ -162,10 +186,9 @@ static int tccvin_parse_streaming(struct tccvin_device *dev)
 	__u32 *interval;
 	int ret = -EINVAL;
 
-	streaming = kzalloc(sizeof *streaming, GFP_KERNEL);
-	if (streaming == NULL) {
+	streaming = kzalloc(sizeof(*streaming), GFP_KERNEL);
+	if (streaming == NULL)
 		return -EINVAL;
-	}
 
 	mutex_init(&streaming->mutex);
 	streaming->dev = dev;
@@ -175,18 +198,18 @@ static int tccvin_parse_streaming(struct tccvin_device *dev)
 
 	/* Count the format and frame descriptors. */
 	nformats = tccvin_format_num();
-	nframes = sizeof(framesize_list) / sizeof(framesize_list[0]);
+	nframes = ARRAY_SIZE(framesize_list);
 	nintervals = 2;
 
 	if (nformats == 0) {
-		loge("device videostreaming interface "
-			"has no supported formats defined.\n");
+		loge("no format is supported\n");
 		goto error;
 	}
 
-	logd("nformats: %d, nframes: %d, nintervals: %d", nformats, nframes, nintervals);
-	size = nformats * sizeof *format + nframes * sizeof *frame
-	     + nintervals * sizeof *interval;
+	logd("nformats: %d, nframes: %d, nintervals: %d",
+		nformats, nframes, nintervals);
+	size = nformats * sizeof(*format) + nframes * sizeof(*frame)
+	     + nintervals * sizeof(*interval);
 	format = kzalloc(size, GFP_KERNEL);
 	if (format == NULL) {
 		ret = -ENOMEM;
@@ -227,7 +250,8 @@ static int tccvin_parse_control(struct tccvin_device *dev)
 {
 	int ret;
 
-	if ((ret = tccvin_parse_standard_control(dev)) < 0)
+	ret = tccvin_parse_standard_control(dev);
+	if (ret < 0)
 		return ret;
 
 	return 0;
@@ -238,39 +262,36 @@ static int tccvin_parse_control(struct tccvin_device *dev)
  */
 
 /*
- * Delete the TCCVIN device.
+ * Delete the tccvin device.
  *
  * Called by the kernel when the last reference to the tccvin_device structure
  * is released.
  *
  * As this function is called after or during disconnect(), all URBs have
- * already been canceled by the TCCVIN core. There is no need to kill the
+ * already been canceled by the tccvin core. There is no need to kill the
  * interrupt URB manually.
  */
 static void tccvin_delete(struct kref *kref)
 {
-	struct tccvin_device *dev = container_of(kref, struct tccvin_device, ref);
+	struct tccvin_device *dev =
+		container_of(kref, struct tccvin_device, ref);
 	struct tccvin_streaming *streaming = dev->stream;
-	FUNCTION_IN
 
- 	if (dev->vdev.dev)
- 		v4l2_device_unregister(&dev->vdev);
+	if (dev->vdev.dev)
+		v4l2_device_unregister(&dev->vdev);
 
 	kfree(streaming->format);
 	kfree(streaming);
 
 	kfree(dev);
-	FUNCTION_OUT
 }
 
 static void tccvin_release(struct video_device *vdev)
 {
 	struct tccvin_streaming *stream = video_get_drvdata(vdev);
 	struct tccvin_device *dev = stream->dev;
-	FUNCTION_IN
 
 	kref_put(&dev->ref, tccvin_delete);
-	FUNCTION_OUT
 }
 
 /*
@@ -280,7 +301,6 @@ static void tccvin_unregister_video(struct tccvin_device *dev)
 {
 	struct tccvin_streaming *stream;
 	int ret;
-	FUNCTION_IN
 
 	stream = dev->stream;
 	if (video_is_registered(&stream->vdev))
@@ -290,12 +310,8 @@ static void tccvin_unregister_video(struct tccvin_device *dev)
 	 * parameters.
 	 */
 	ret = tccvin_video_deinit(stream);
-	if (ret < 0) {
-		loge("Failed to initialize the device "
-			"(%d).\n", ret);
-	}
-
-	FUNCTION_OUT
+	if (ret < 0)
+		loge("Failed to initialize the device (%d).\n", ret);
 }
 
 static int tccvin_register_video(struct tccvin_device *dev,
@@ -303,10 +319,10 @@ static int tccvin_register_video(struct tccvin_device *dev,
 {
 	struct video_device *vdev = &stream->vdev;
 	int ret;
-	FUNCTION_IN
 
 	/* Initialize the video buffers queue. */
-	ret = tccvin_queue_init(&stream->queue, stream->type, !tccvin_no_drop_param);
+	ret = tccvin_queue_init(&stream->queue, stream->type,
+		!tccvin_no_drop_param);
 	if (ret) {
 		loge("tccvin_queue_init, ret: %d\n", ret);
 		return ret;
@@ -323,7 +339,7 @@ static int tccvin_register_video(struct tccvin_device *dev,
 	vdev->ioctl_ops = &tccvin_ioctl_ops;
 	vdev->minor = dev->pdev->id;
 	vdev->release = tccvin_release;
-	strlcpy(vdev->name, dev->name, sizeof vdev->name);
+	strlcpy(vdev->name, dev->name, sizeof(vdev->name));
 
 	/* Set the driver data before calling video_register_device, otherwise
 	 * tccvin_v4l2_open might race us.
@@ -332,8 +348,7 @@ static int tccvin_register_video(struct tccvin_device *dev,
 
 	ret = video_register_device(vdev, VFL_TYPE_GRABBER, vdev->minor);
 	if (ret < 0) {
-		loge("Failed to register video device (%d).\n",
-			   ret);
+		loge("Failed to register video device (%d).\n", ret);
 		return ret;
 	}
 
@@ -342,129 +357,220 @@ static int tccvin_register_video(struct tccvin_device *dev,
 	 */
 	ret = tccvin_video_init(stream);
 	if (ret < 0) {
-		loge("Failed to initialize the device "
-			"(%d).\n", ret);
+		loge("Failed to initialize the device (%d).\n", ret);
 		return ret;
 	}
 
 	kref_get(&dev->ref);
-	FUNCTION_OUT
 	return 0;
 }
 
-int subdevs_list_initialized;
-struct tccvin_subdev {
-	struct v4l2_subdev	*subdev;
-	struct list_head	subdev_list;
-};
+int tccvin_async_bound(struct v4l2_async_notifier *notifier,
+	struct v4l2_subdev *subdev,
+	struct v4l2_async_subdev *asd)
+{
+	struct tccvin_device	*dev		= NULL;
+	int			ret		= 0;
 
-struct tccvin_subdev tccvin_subdev_list;
-
-int tccvin_async_bound(struct v4l2_async_notifier *notifier, struct v4l2_subdev *subdev, struct v4l2_async_subdev *asd) {
-	struct tccvin_device * dev = NULL;
-	videosource_t * vs = NULL;
-	int	enable = 1;
-	struct tccvin_subdev * new_subdev;
-	int	ret = 0;
-
-	logd("The callback function is invoked from found node: %s\n", asd->match.device_name.name);
+	logi("a v4l2 sub device %s is bounded\n", subdev->name);
 
 	dev = container_of(notifier, struct tccvin_device, notifier);
 
 	// register subdevice here
-	dev->subdevs[dev->num_registered_subdev++] = subdev;
-
-	new_subdev = kmalloc(sizeof(struct tccvin_subdev), GFP_KERNEL);
-
-	new_subdev->subdev = subdev;
-	INIT_LIST_HEAD(&new_subdev->subdev_list);
-	list_add_tail(&new_subdev->subdev_list, &tccvin_subdev_list.subdev_list);
-	
-	subdevs_list_initialized = 1;
-
-	// get videosource format
-	vs = container_of(subdev, struct videosource, sd);
-	dev->stream->cif.videosource_info		= &vs->format;
-	if(dev->stream->cif.cif_port == -1)
-		dev->stream->cif.cif_port			= vs->format.cif_port;
-
-	// power-up sequence & initial i2c setting
-	ret = v4l2_subdev_call(subdev, core, s_power, enable);
-	ret = v4l2_subdev_call(subdev, video, s_stream, enable);
+	dev->subdevs[dev->bounded_subdevs++] = subdev;
 
 	return ret;
 }
 
 void tccvin_async_unbind(struct v4l2_async_notifier *notifier,
 			struct v4l2_subdev *subdev,
-			struct v4l2_async_subdev *asd) {
-	logd("%s is invoked !! \n", __func__);
+			struct v4l2_async_subdev *asd)
+{
 }
 
-int tccvin_async_complete(struct v4l2_async_notifier *notifier) {
-	// use subdevice at index 0(isl79988) as default
-
+int tccvin_async_complete(struct v4l2_async_notifier *notifier)
+{
 	return 0;
 }
 
-int tccvin_init_subdevices(struct tccvin_device *vdev) {
-	struct v4l2_async_notifier *notifier = &vdev->notifier;
-	struct v4l2_async_subdev *asd = NULL;
-	char *subdev_name = vdev->subdev_name;
-	int idxSubDev = 0;
+void tccvin_parse_fwnode_info(struct tccvin_device *vdev,
+	struct fwnode_handle *fwnode)
+{
+	fwnode_property_read_u32(fwnode, "stream-enable",
+		&vdev->stream->vs_info.stream_enable);
+	fwnode_property_read_u32(fwnode, "gen-field-en",
+		&vdev->stream->vs_info.gen_field_en);
+	fwnode_property_read_u32(fwnode, "field-low",
+		&vdev->stream->vs_info.field_low);
+	fwnode_property_read_u32(fwnode, "vs-mask",
+		&vdev->stream->vs_info.vs_mask);
+	fwnode_property_read_u32(fwnode, "hsde-connect-en",
+		&vdev->stream->vs_info.hsde_connect_en);
+	fwnode_property_read_u32(fwnode, "intpl-en",
+		&vdev->stream->vs_info.intpl_en);
+	fwnode_property_read_u32(fwnode, "flush-vsync",
+		&vdev->stream->vs_info.flush_vsync);
+}
+
+void tccvin_print_fwnode_info(struct v4l2_fwnode_endpoint *fwnode_endpoint)
+{
+	unsigned int	flags;
+
+	logd("bus-type: %d\n", fwnode_endpoint->bus_type);
+	switch (fwnode_endpoint->bus_type) {
+	case V4L2_MBUS_PARALLEL:
+	case V4L2_MBUS_BT656:
+		flags = fwnode_endpoint->bus.parallel.flags;
+
+		logd("flags: 0x%08x\n", flags);
+		// hsync-active
+		logd("hsync-active: %s\n",
+			(flags & V4L2_MBUS_HSYNC_ACTIVE_HIGH) ?
+				"V4L2_MBUS_HSYNC_ACTIVE_HIGH" :
+				"V4L2_MBUS_HSYNC_ACTIVE_LOW");
+		// vsync-active
+		logd("vsync-active: %s\n",
+			(flags & V4L2_MBUS_VSYNC_ACTIVE_HIGH) ?
+				"V4L2_MBUS_VSYNC_ACTIVE_HIGH" :
+				"V4L2_MBUS_VSYNC_ACTIVE_LOW");
+		// pclk-sample
+		logd("pclk-sample: %s\n",
+			(flags & V4L2_MBUS_PCLK_SAMPLE_RISING) ?
+				"V4L2_MBUS_PCLK_SAMPLE_RISING" :
+				"V4L2_MBUS_PCLK_SAMPLE_FALLING");
+		// data-active
+		logd("data-active: %s\n",
+			(flags & V4L2_MBUS_DATA_ACTIVE_HIGH) ?
+				"V4L2_MBUS_DATA_ACTIVE_HIGH" :
+				"V4L2_MBUS_DATA_ACTIVE_LOW");
+		// conv_en
+		logd("conv_en: %s\n",
+			(fwnode_endpoint->bus_type == V4L2_MBUS_BT656) ?
+				"V4L2_MBUS_BT656" :
+				"V4L2_MBUS_PARALLEL");
+		// bus width
+		logd("bus-width: %d\n",
+			fwnode_endpoint->bus.parallel.bus_width);
+		break;
+	case V4L2_MBUS_CSI2:
+		break;
+	default:
+		break;
+	}
+}
+
+int tccvin_create_async_subdev(struct v4l2_async_subdev **asd,
+	struct device_node *node)
+{
 	int	ret = 0;
 
-	vdev->num_registered_subdev = 0;
+	*asd = kmalloc(sizeof(struct v4l2_async_subdev), GFP_KERNEL);
+	if (*asd == NULL)
+		ret = -1;
 
-	if(subdevs_list_initialized == 0) {
-		INIT_LIST_HEAD(&tccvin_subdev_list.subdev_list);
+	(*asd)->match_type		= V4L2_ASYNC_MATCH_FWNODE;
+	(*asd)->match.fwnode.fwnode	= of_fwnode_handle(node);
+
+	return ret;
+}
+
+int idxSd;
+
+int tccvin_init_endpoint_gragh(struct tccvin_device *vdev,
+	struct device_node *base_node)
+{
+	struct fwnode_handle	*base_fwnode	= NULL;	// fwnode of base
+	struct device_node	*remt_node	= NULL;	// remote of base
+	struct device_node	*repa_node	= NULL;	// parent of remote
+	struct device_node	*endp_node	= NULL;
+	int			ret		= 0;
+
+	logd("idxSd: %d, base_node: 0x%08x\n", idxSd, base_node);
+
+	base_fwnode	= of_fwnode_handle(base_node);
+	remt_node	= of_graph_get_remote_endpoint(base_node);
+	if (!remt_node) {
+		loge("to find a remote endpoint of the base endpoint node\n");
+		ret = -ENODEV;
 	} else {
-		struct list_head	* list	= NULL;
-		struct tccvin_subdev * p = NULL;
-		videosource_t * vs = NULL;
+		logd("remt_node: 0x%08x\n", remt_node);
 
-		list_for_each(list, &tccvin_subdev_list.subdev_list) {
-			p = list_entry(list, struct tccvin_subdev, subdev_list);
-			logd("subdev name: %s\n", dev_name(p->subdev->dev));
-			if(!strcmp(subdev_name, dev_name(p->subdev->dev))) {
-				vdev->subdevs[vdev->num_registered_subdev++] = p->subdev;
-	
-				// get videosource format
-				vs = container_of(p->subdev, struct videosource, sd);
-				vdev->stream->cif.videosource_info		= &vs->format;
-				if(vdev->stream->cif.cif_port == -1)
-					vdev->stream->cif.cif_port			= vs->format.cif_port;
+		repa_node = of_graph_get_remote_port_parent(base_node);
+		if (!repa_node) {
+			loge("to find a remote parent node\n");
+			ret = -ENODEV;
+		} else {
+			logd("repa_node: 0x%08x\n", repa_node);
 
-				return ret;
+			while (1) {
+				endp_node = of_graph_get_next_endpoint(
+					repa_node, endp_node);
+				if (!endp_node) {
+					loge("to find parent's ep of remote\n");
+					ret = -ENODEV;
+					break;
+				}
+
+				if (endp_node != remt_node) {
+					logd("endp_node != remt_node\n");
+					tccvin_init_endpoint_gragh(
+						vdev, endp_node);
+					of_node_put(endp_node);
+				} else {
+					logd("endp_node == remt_node\n");
+					ret = v4l2_fwnode_endpoint_parse(
+						base_fwnode,
+						&vdev->fw_ep[idxSd]);
+					if (!ret) {
+						tccvin_print_fwnode_info(
+							&vdev->fw_ep[idxSd]);
+
+						tccvin_parse_fwnode_info(
+							vdev, base_fwnode);
+					}
+
+					ret = tccvin_create_async_subdev(
+						&vdev->asd[idxSd], repa_node);
+					if (ret != -1)
+						idxSd++;
+
+					of_node_put(endp_node);
+					break;
+				}
 			}
+			of_node_put(repa_node);
 		}
+		of_node_put(remt_node);
 	}
 
-	/* Set the number of all sub-devices to 1 temporarily. This
-	 * should be changed according to the working environment */
-	notifier->subdevs = vdev->asd;
-	notifier->num_subdevs = 1;	//V4L2_MAX_SUBDEVS
+	return ret;
+}
 
-	for (idxSubDev = 0; idxSubDev < notifier->num_subdevs; idxSubDev++) {
-		vdev->asd[idxSubDev] = kmalloc(sizeof(struct v4l2_async_subdev), GFP_KERNEL);
+int tccvin_init_subdevices(struct tccvin_device *vdev)
+{
+	struct device_node		*main_node	=
+		vdev->stream->dev->pdev->dev.of_node;
+	struct device_node		*endp_node	= NULL;
+	struct v4l2_async_notifier	*notifier	= &vdev->notifier;
+	int				ret		= 0;
+
+	endp_node = of_graph_get_next_endpoint(main_node, endp_node);
+	if (!endp_node) {
+		loge("to find an endpoint node\n");
+		ret = -ENODEV;
+	} else {
+		tccvin_init_endpoint_gragh(vdev, endp_node);
+		of_node_put(endp_node);
 	}
 
-	/* after allocation, set asd */
-	// check include/media/v4l2-async.h
-	for (idxSubDev = 0; idxSubDev < notifier->num_subdevs; idxSubDev++) {
-		asd = vdev->asd[idxSubDev];
-
-		/* For match type, it could be device name and i2c like; V4L2_ASYNC_MATCH_I2C */
-		asd->match_type = V4L2_ASYNC_MATCH_DEVNAME;
-		asd->match.device_name.name = subdev_name;
-
-		logd("v4l2 sub device - slave address: %s\n", asd->match.device_name.name);
-	}
-
-	notifier->bound = tccvin_async_bound;
-	notifier->complete = tccvin_async_complete;
-	notifier->unbind = tccvin_async_unbind;
-	ret = v4l2_async_notifier_register(vdev->stream->vdev.v4l2_dev, notifier);
+	logd("the num of subdevs to be registered: %d\n", idxSd);
+	notifier->num_subdevs	= idxSd;
+	notifier->subdevs	= vdev->asd;
+	notifier->bound		= tccvin_async_bound;
+	notifier->complete	= tccvin_async_complete;
+	notifier->unbind	= tccvin_async_unbind;
+	ret = v4l2_async_notifier_register(vdev->stream->vdev.v4l2_dev,
+		notifier);
 	if (ret < 0) {
 		loge("Error registering async notifier for tccvin\n");
 		v4l2_device_unregister(vdev->stream->vdev.v4l2_dev);
@@ -480,18 +586,20 @@ int tccvin_init_subdevices(struct tccvin_device *vdev) {
  * Driver initialization and cleanup
  */
 
-static int tccvin_core_probe(struct platform_device * pdev) {
+static int tccvin_core_probe(struct platform_device *pdev)
+{
 	struct tccvin_device *dev;
-	FUNCTION_IN
 
 	// Get the index from its alias
 	pdev->id = of_alias_get_id(pdev->dev.of_node, "videoinput");
 	logd("Platform Device index: %d, name: %s\n", pdev->id, pdev->name);
 
 	/* Allocate memory for the device and initialize it. */
-	if ((dev = kzalloc(sizeof *dev, GFP_KERNEL)) == NULL)
+	dev = kzalloc(sizeof(*dev), GFP_KERNEL);
+	if (dev == NULL)
 		return -ENOMEM;
 
+	dev->bounded_subdevs = 0;
 	dev->current_subdev_idx = 0;
 
 	INIT_LIST_HEAD(&dev->entities);
@@ -500,12 +608,11 @@ static int tccvin_core_probe(struct platform_device * pdev) {
 
 	dev->pdev = pdev;
 
-	strlcpy(dev->name, "video-input path", sizeof dev->name);
+	strlcpy(dev->name, "video-input path", sizeof(dev->name));
 
 	/* Parse the Video Class control descriptor. */
 	if (tccvin_parse_control(dev) < 0) {
-		loge("Unable to parse TCCVIN "
-			"descriptors.\n");
+		loge("Unable to parse tccvin descriptors.\n");
 		goto error;
 	}
 
@@ -519,42 +626,38 @@ static int tccvin_core_probe(struct platform_device * pdev) {
 
 	tccvin_init_subdevices(dev);
 
-	FUNCTION_OUT
 	return 0;
 
 error:
 	tccvin_unregister_video(dev);
 	kref_put(&dev->ref, tccvin_delete);
-	FUNCTION_OUT
 	return -ENODEV;
 }
 
-static int tccvin_core_remove(struct platform_device * pdev) {
+static int tccvin_core_remove(struct platform_device *pdev)
+{
 	struct tccvin_device *dev	= platform_get_drvdata(pdev);
-
-	FUNCTION_IN
 
 	tccvin_unregister_video(dev);
 	kref_put(&dev->ref, tccvin_delete);
 
 	// free the memory for the camera device
 	kfree(dev);
-
-	FUNCTION_OUT
 	return 0;
 }
 
-static struct of_device_id tccvin_of_match[] = {
+const static struct of_device_id tccvin_of_match[] = {
 	{ .compatible = "telechips,video-input" },
 };
+
 MODULE_DEVICE_TABLE(of, tccvin_of_match);
 
 static struct platform_driver tccvin_core_driver = {
 	.probe		= tccvin_core_probe,
 	.remove		= tccvin_core_remove,
 	.driver		= {
-		.name			= DRIVER_NAME,
-		.owner			= THIS_MODULE,
+		.name		= DRIVER_NAME,
+		.owner		= THIS_MODULE,
 		.of_match_table	= of_match_ptr(tccvin_of_match),
 	},
 };
