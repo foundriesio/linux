@@ -48,6 +48,9 @@
 
 / {
 	/* USB 3.0 DRD */
+	dwc3_phy@11D90000 {
+		vbus-gpio = <&da9063_gpio 4 0>;
+	};
 	dwc3_platform {
 		vbus-gpio = <&da9063_gpio 4 0>;
 	};
