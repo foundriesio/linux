@@ -574,7 +574,6 @@ static int scsi_probe_lun(struct scsi_device *sdev, unsigned char *inq_result,
 	int pass, count, result;
 	struct scsi_sense_hdr sshdr;
 	char buffer[18];
-	int i = 0;
 	*bflags = 0;
 
 	memset(scsi_cmd, 0, 6);

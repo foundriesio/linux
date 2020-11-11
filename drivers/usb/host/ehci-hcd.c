@@ -705,8 +705,8 @@ int ehci_set_test_mode(struct ehci_hcd *ehci, int mode)
 	u32 reg;
 
 	reg = ehci_readl(ehci, &ehci->regs->port_status[0]);
-	pr_info("[INFO][USB] @0x%08X: 0x%08X\n",
-			(unsigned int)&ehci->regs->port_status[0], reg);
+	pr_info("[INFO][USB] @0x%08lx: 0x%08X\n",
+			(unsigned long)&ehci->regs->port_status[0], reg);
 	reg &= ~EHCI_PORTPMSC_TESTMODE_MASK;
 
 	switch (mode) {
@@ -725,8 +725,8 @@ int ehci_set_test_mode(struct ehci_hcd *ehci, int mode)
 	ehci_writel(ehci, reg, &ehci->regs->port_status[0]);
 	udelay(100);
 	reg = ehci_readl(ehci, &ehci->regs->port_status[0]);
-	pr_info("[INFO][USB] @0x%08X: 0x%08X\n",
-			(unsigned int)&ehci->regs->port_status[0], reg);
+	pr_info("[INFO][USB] @0x%08lX: 0x%08X\n",
+			(unsigned long)&ehci->regs->port_status[0], reg);
 	return 0;
 }
 EXPORT_SYMBOL_GPL(ehci_set_test_mode);
