@@ -1363,7 +1363,7 @@ int xhci_hub_control(struct usb_hcd *hcd, u16 typeReq, u16 wValue,
 
 #define HHSETP_DBG
 #ifdef HHSETP_DBG
-#define hhsetp_dbg(x) printk(x)
+#define hhsetp_dbg(x) pr_info(x)
 #else
 #define hhsetp_dbg(x)
 #endif
