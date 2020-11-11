@@ -1776,13 +1776,10 @@ void ufshcd_send_command(struct ufs_hba *hba, unsigned int task_tag)
 	ufshcd_writel(hba, ~0, REG_INTERRUPT_STATUS);
 
 	ufshcd_enable_run_stop_reg(hba);
-	/*
-	ufshcd_writel(hba, UTP_TRANSFER_REQ_LIST_RUN_STOP_BIT,
-		      REG_UTP_TRANSFER_REQ_LIST_RUN_STOP);
-			  */
+
 	do {
 		reg = ufshcd_readl(hba, REG_UTP_TRANSFER_REQ_LIST_RUN_STOP);
-	} while(reg == 0);
+	} while (reg == 0);
 
 	hba->lrb[task_tag].issue_time_stamp = ktime_get();
 	ufshcd_clk_scaling_start_busy(hba);
@@ -1791,7 +1788,7 @@ void ufshcd_send_command(struct ufs_hba *hba, unsigned int task_tag)
 
 	do {
 		reg = ufshcd_readl(hba, REG_UTP_TRANSFER_REQ_DOOR_BELL);
-	} while(reg == 1);
+	} while (reg == 1);
 
 	//mdelay(10);
 
@@ -2053,8 +2050,6 @@ static int ufshcd_map_sg(struct ufs_hba *hba, struct ufshcd_lrb *lrbp)
 			prd = (void *)prd + hba->sg_entry_size;
 			base_addr += sg_dma_len(sg);
 			base_addr_virt += sg_dma_len(sg);
-			//printk("%s:%d, base_addr = 0x%llx, sg_dma_len = %d\n", __func__,
-			//			__LINE__, (u64)sg->dma_address, sg_dma_len(sg));
 		}
 	} else {
 		lrbp->utr_descriptor_ptr->prd_table_length = 0;
@@ -2171,7 +2166,8 @@ static void ufshcd_prepare_req_desc_hdr(struct ufshcd_lrb *lrbp,
  * @upiu_flags - flags
  */
 static
-void ufshcd_prepare_utp_scsi_cmd_upiu(struct ufs_hba *hba, struct ufshcd_lrb *lrbp, u32 upiu_flags)
+void ufshcd_prepare_utp_scsi_cmd_upiu(
+		struct ufs_hba *hba, struct ufshcd_lrb *lrbp, u32 upiu_flags)
 {
 	struct utp_upiu_req *ucd_req_ptr = lrbp->ucd_req_ptr;
 	unsigned short cdb_len;
@@ -2189,11 +2185,6 @@ void ufshcd_prepare_utp_scsi_cmd_upiu(struct ufs_hba *hba, struct ufshcd_lrb *lr
 
 	ucd_req_ptr->sc.exp_data_transfer_len =
 		cpu_to_be32(lrbp->cmd->sdb.length);
-	//printk("%s:%d exp_data_transfer_len = %08x sdb.length = %08x\n", __func__, __LINE__, ucd_req_ptr->sc.exp_data_transfer_len, lrbp->cmd->sdb.length);
-	//printk("%s:%d sc.cdb[0] = %x, sc.cdb[1] = %x, sc.cdb[2] = %x, sc.cdb[3] = %x\n", __func__, __LINE__,
-	//				lrbp->cmd->cmnd[0], lrbp->cmd->cmnd[1], lrbp->cmd->cmnd[2], lrbp->cmd->cmnd[3]);
-	//if ((lrbp->cmd->sdb.length < 0x1000) && (lrbp->cmd->cmnd[0] == 0x28))
-	//	ucd_req_ptr->sc.exp_data_transfer_len = 0x00100000;
 
 	cdb_len = min_t(unsigned short, lrbp->cmd->cmd_len, MAX_CDB_SIZE);
 	memset(ucd_req_ptr->sc.cdb, 0, MAX_CDB_SIZE);
@@ -3335,7 +3326,7 @@ static int ufshcd_allocate_bounce_buffer(struct ufs_hba *hba)
 
 	return 0;
 }
-#endif 
+#endif
 
 /**
  * ufshcd_memory_alloc - allocate memory for host memory space data structures
@@ -5679,15 +5670,15 @@ static int ufshcd_issue_tm_cmd(struct ufs_hba *hba, int lun_id, int task_id,
 
 	type = ufshcd_readl(hba, REG_UTMRL_NEXUS_TYPE);
 	switch (tm_function) {
-    case UFS_ABORT_TASK:
-    case UFS_QUERY_TASK:
-        type |= (1 << free_slot);
-        break;
-    case UFS_ABORT_TASK_SET:
-    case UFS_CLEAR_TASK_SET:
-    case UFS_LOGICAL_RESET:
-    case UFS_QUERY_TASK_SET:
-        type &= ~(1 << free_slot);
+	case UFS_ABORT_TASK:
+	case UFS_QUERY_TASK:
+		type |= (1 << free_slot);
+		break;
+	case UFS_ABORT_TASK_SET:
+	case UFS_CLEAR_TASK_SET:
+	case UFS_LOGICAL_RESET:
+	case UFS_QUERY_TASK_SET:
+		type &= ~(1 << free_slot);
 		break;
 	}
 	ufshcd_writel(hba, type, REG_UTMRL_NEXUS_TYPE);
@@ -6233,19 +6224,16 @@ static int ufshcd_scsi_add_wlus(struct ufs_hba *hba)
 	int ret = 0;
 	struct scsi_device *sdev_rpmb;
 	struct scsi_device *sdev_boot;
-	printk("%s:%d\n", __func__, __LINE__);
 
 	hba->sdev_ufs_device = __scsi_add_device(hba->host, 0, 0,
-		0x0/*ufshcd_upiu_wlun_to_scsi_wlun(UFS_UPIU_UFS_DEVICE_WLUN)i*/, NULL);
+		0x0, NULL);
 	if (IS_ERR(hba->sdev_ufs_device)) {
 		ret = PTR_ERR(hba->sdev_ufs_device);
 		hba->sdev_ufs_device = NULL;
 		goto out;
 	}
-	printk("%s:%d\n", __func__, __LINE__);
 	scsi_device_put(hba->sdev_ufs_device);
 
-	printk("%s:%d\n", __func__, __LINE__);
 	ret = ufshcd_send_request_sense(hba, hba->sdev_ufs_device);
 
 	sdev_boot = __scsi_add_device(hba->host, 0, 0,
@@ -6257,7 +6245,6 @@ static int ufshcd_scsi_add_wlus(struct ufs_hba *hba)
 	scsi_device_put(sdev_boot);
 
 	ret = ufshcd_send_request_sense(hba, sdev_boot);
-	printk("%s:%d\n", __func__, __LINE__);
 	sdev_rpmb = __scsi_add_device(hba->host, 0, 0,
 		ufshcd_upiu_wlun_to_scsi_wlun(UFS_UPIU_BOOT_WLUN), NULL);
 	if (IS_ERR(sdev_rpmb)) {
@@ -6267,7 +6254,6 @@ static int ufshcd_scsi_add_wlus(struct ufs_hba *hba)
 	scsi_device_put(sdev_rpmb);
 
 	ret = ufshcd_send_request_sense(hba, sdev_rpmb);
-	printk("%s:%d\n", __func__, __LINE__);
 	goto out;
 
 remove_sdev_boot:
@@ -6658,11 +6644,8 @@ static int ufshcd_probe_hba(struct ufs_hba *hba)
 
 
 		/* Add required well known logical units to scsi mid layer */
-//		ret = ufshcd_scsi_add_wlus(hba);
-//		if (ret)
-//			goto out;
 
-				/* Initialize devfreq after UFS device is detected */
+		/* Initialize devfreq after UFS device is detected */
 		if (ufshcd_is_clkscaling_supported(hba)) {
 			memcpy(&hba->clk_scaling.saved_pwr_info.info,
 				&hba->pwr_info,
@@ -6682,9 +6665,7 @@ static int ufshcd_probe_hba(struct ufs_hba *hba)
 			}
 			hba->clk_scaling.is_allowed = true;
 		}
-		printk("%s:%d\n", __func__, __LINE__);
 		scsi_scan_host(hba->host);
-		printk("%s:%d\n", __func__, __LINE__);
 		pm_runtime_put_sync(hba->dev);
 
 	}
@@ -7268,7 +7249,6 @@ ufshcd_send_request_sense(struct ufs_hba *hba, struct scsi_device *sdp)
 		ret = -ENOMEM;
 		goto out;
 	}
-	printk("%s:%d\n", __func__, __LINE__);
 	ret = scsi_execute(sdp, cmd, DMA_FROM_DEVICE, buffer,
 			18/*UFSHCD_REQ_SENSE_SIZE*/, NULL, NULL,
 			msecs_to_jiffies(1000), 3, 0, RQF_PM, NULL);
@@ -7567,17 +7547,15 @@ static int ufshcd_suspend(struct ufs_hba *hba, enum ufs_pm_op pm_op)
 		/* ensure that bkops is disabled */
 		ufshcd_disable_auto_bkops(hba);
 		ret = ufshcd_set_dev_pwr_mode(hba, req_dev_pwr_mode);
-		if (ret)
-		{
-			if (ret == -ENODEV)
-			{
-				printk(KERN_ERR "%s:%d - scsi is already gone!!\n", __func__, __LINE__);
+		if (ret) {
+			if (ret == -ENODEV) {
+				dev_err(hba->dev,
+						"%s:%d - scsi is already gone!!\n",
+						__func__, __LINE__);
 				ufshcd_set_link_off(hba);
 				goto disable_clks;
-			}
-			else
-			{
-			goto enable_gating;
+			} else {
+				goto enable_gating;
 			}
 		}
 	}
@@ -7685,8 +7663,7 @@ static int ufshcd_resume(struct ufs_hba *hba, enum ufs_pm_op pm_op)
 		      REG_INTERRUPT_STATUS);
 	ufshcd_writel(hba, 0x7FFF, REG_INTERRUPT_ENABLE);
 	ret = ufshcd_enable_irq(hba);
-	if (ret)
-	{
+	if (ret) {
 		goto disable_irq_and_vops_clks;
 	}
 
