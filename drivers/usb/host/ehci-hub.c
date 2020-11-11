@@ -1284,7 +1284,7 @@ int ehci_hub_control(
 			if (selector == 6) {
 #define HHSETP_DBG
 #ifdef HHSETP_DBG
-#define hhsetp_dbg(x) printk(x)
+#define hhsetp_dbg(x) pr_info(x)
 #else
 #define hhsetp_dbg(x)
 #endif
