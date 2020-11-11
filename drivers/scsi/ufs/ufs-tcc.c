@@ -228,7 +228,7 @@ static int tcc_ufs_smu_setting(struct ufs_hba *hba)
 	ufs_fmp_writel(host, 0x10000000, FMP_FMPSCTRL7);
 
 	switch (smu_index) {
-	case 1:
+	case 0:
 		ufs_fmp_writel(host, fmp_bsector, FMP_FMPSBEGIN0);
 		ufs_fmp_writel(host, fmp_esector, FMP_FMPSEND0);
 		ufs_fmp_writel(host, fmp_lun, FMP_FMPSLUN0);
