@@ -852,7 +852,7 @@ static int clk_disable_unused(void)
 late_initcall_sync(clk_disable_unused);
 
 #ifdef CONFIG_ARCH_TCC
-static void __clk_reset(struct clk_core *core, unsigned reset)
+static void __clk_reset(struct clk_core *core, unsigned int reset)
 {
 	if (!core)
 		return;
@@ -869,7 +869,7 @@ static void __clk_reset(struct clk_core *core, unsigned reset)
  * @clk: the clk being gated
  * @reset: 1(reset), 0(non-reset)
  */
-void clk_reset(struct clk *clk, unsigned reset)
+void clk_reset(struct clk *clk, unsigned int reset)
 {
 	unsigned long flags;
 
