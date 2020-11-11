@@ -503,7 +503,7 @@ static void pl011_dma_probe(struct uart_amba_port *uap)
 
 		/* We need platform data */
 		if (!plat || !plat->dma_filter) {
-			printk(KERN_INFO "[INFO][PL011]no DMA platform data\n");
+			pr_info("[INFO][PL011]no DMA platform data\n");
 			return;
 		}
 
@@ -514,7 +514,7 @@ static void pl011_dma_probe(struct uart_amba_port *uap)
 		chan = dma_request_channel(mask, plat->dma_filter,
 						plat->dma_tx_param);
 		if (!chan) {
-			printk(KERN_ERR "[ERROR][PL011]no TX DMA channel!\n");
+			pr_err("[ERROR][PL011]no TX DMA channel!\n");
 			return;
 		}
 	}
@@ -522,8 +522,10 @@ static void pl011_dma_probe(struct uart_amba_port *uap)
 	dmaengine_slave_config(chan, &tx_conf);
 	uap->dmatx.chan = chan;
 
-	/*printk(KERN_INFO "[INFO][PL011]DMA channel TX %s\n",
-		 dma_chan_name(uap->dmatx.chan));*/
+	/*
+	 * pr_info("[INFO][PL011]DMA channel TX %s\n",
+	 *	 dma_chan_name(uap->dmatx.chan));
+	 */
 
 	/* Optionally make use of an RX channel as well */
 	chan = dma_request_slave_channel(dev, "rx");
@@ -532,7 +534,7 @@ static void pl011_dma_probe(struct uart_amba_port *uap)
 		chan = dma_request_channel(mask, plat->dma_filter, plat->dma_rx_param);
 
 		if (!chan) {
-			printk(KERN_ERR "[ERROR][PL011]no RX DMA channel!\n");
+			pr_err("[ERROR][PL011]no RX DMA channel!\n");
 			return;
 		}
 	}
@@ -557,8 +559,7 @@ static void pl011_dma_probe(struct uart_amba_port *uap)
 			if (caps.residue_granularity ==
 					DMA_RESIDUE_GRANULARITY_DESCRIPTOR) {
 				dma_release_channel(chan);
-				printk(KERN_INFO
-					"[INFO][PL011]RX DMA disabled - no residue processing\n");
+				pr_info("[INFO][PL011]RX DMA disabled - no residue processing\n");
 				return;
 			}
 		}
@@ -604,8 +605,10 @@ static void pl011_dma_probe(struct uart_amba_port *uap)
 					uap->dmarx.poll_timeout = 3000;
 			}
 		}
-		/*printk(KERN_INFO "[INFO][PL011]DMA channel RX %s\n",
-			 dma_chan_name(uap->dmarx.chan));*/
+		/*
+		 * pr_info("[INFO][PL011]DMA channel RX %s\n",
+		 * dma_chan_name(uap->dmarx.chan));
+		 */
 	}
 }
 
@@ -725,7 +728,7 @@ static int pl011_dma_tx_refill(struct uart_amba_port *uap)
 
 	if (dma_map_sg(dma_dev->dev, &dmatx->sg, 1, DMA_TO_DEVICE) != 1) {
 		uap->dmatx.queued = false;
-		printk(KERN_DEBUG "[DEBUG][PL011]unable to map TX DMA\n");
+		pr_warn("[WARN][PL011]unable to map TX DMA\n");
 		return -EBUSY;
 	}
 
@@ -738,7 +741,7 @@ static int pl011_dma_tx_refill(struct uart_amba_port *uap)
 		 * If DMA cannot be used right now, we complete this
 		 * transaction via IRQ and let the TTY layer retry.
 		 */
-		printk(KERN_DEBUG "[DEBUG][PL011]TX DMA busy\n");
+		pr_warn("[WARN][PL011]TX DMA busy\n");
 		return -EBUSY;
 	}
 
@@ -988,8 +991,7 @@ static void pl011_dma_rx_chars(struct uart_amba_port *uap,
 
 		uap->port.icount.rx += dma_count;
 		if (dma_count < pending)
-			printk(KERN_WARNING
-				 "[WARN][PL011]couldn't insert all characters (TTY is full?)\n");
+			pr_warn("[WARN][PL011]couldn't insert all characters (TTY is full?)\n");
 	}
 
 	/* Reset the last_residue for Rx DMA poll */
@@ -1020,8 +1022,7 @@ static void pl011_dma_rx_chars(struct uart_amba_port *uap,
 	}
 
 	spin_unlock(&uap->port.lock);
-	printk(KERN_DEBUG
-		 "[DEBUG][PL011]Took %d chars from DMA buffer and %d chars from the FIFO\n",
+	pr_warn("[WARN][PL011]Took %d chars from DMA buffer and %d chars from the FIFO\n",
 		 dma_count, fifotaken);
 	tty_flip_buffer_push(port);
 	spin_lock(&uap->port.lock);
@@ -1043,11 +1044,11 @@ static void pl011_dma_rx_irq(struct uart_amba_port *uap)
 	 * overflow the FIFO.
 	 */
 	if (dmaengine_pause(rxchan))
-		printk(KERN_ERR "[ERROR][PL011]unable to pause DMA transfer\n");
+		pr_err("[ERROR][PL011]unable to pause DMA transfer\n");
 	dmastat = rxchan->device->device_tx_status(rxchan,
 						   dmarx->cookie, &state);
 	if (dmastat != DMA_PAUSED)
-		printk(KERN_ERR "[ERROR][PL011]unable to pause DMA transfer\n");
+		pr_err("[ERROR][PL011]unable to pause DMA transfer\n");
 
 	/* Disable RX DMA - incoming data will wait in the FIFO */
 	uap->dmacr &= ~UART011_RXDMAE;
@@ -1068,8 +1069,7 @@ static void pl011_dma_rx_irq(struct uart_amba_port *uap)
 	/* Switch buffer & re-trigger DMA job */
 	dmarx->use_buf_b = !dmarx->use_buf_b;
 	if (pl011_dma_rx_trigger_dma(uap)) {
-		printk(KERN_DEBUG "[DEBUG][PL011]could not retrigger RX DMA job "
-			"fall back to interrupt mode\n");
+		pr_warn("[WARN][PL011]could not retrigger RX DMA job fall back to interrupt mode\n");
 		uap->im |= UART011_RXIM;
 		pl011_write(uap->im, uap, REG_IMSC);
 	}
@@ -1116,8 +1116,7 @@ static void pl011_dma_rx_callback(void *data)
 	 * get some IRQ immediately from RX.
 	 */
 	if (ret) {
-		printk(KERN_DEBUG "[DEBUG][PL011]could not retrigger RX DMA job "
-			"fall back to interrupt mode\n");
+		pr_warn("[WARN][PL011]could not retrigger RX DMA job fall back to interrupt mode\n");
 		uap->im |= UART011_RXIM;
 		pl011_write(uap->im, uap, REG_IMSC);
 	}
@@ -1200,7 +1199,6 @@ static void pl011_dma_startup(struct uart_amba_port *uap)
 
 	uap->dmatx.buf = kmalloc(PL011_DMA_BUFFER_SIZE, GFP_KERNEL | __GFP_DMA);
 	if (!uap->dmatx.buf) {
-		printk(KERN_ERR "[ERROR][PL011]no memory for DMA TX buffer\n");
 		uap->port.fifosize = uap->fifosize;
 		return;
 	}
@@ -1218,7 +1216,7 @@ static void pl011_dma_startup(struct uart_amba_port *uap)
 	ret = pl011_sgbuf_init(uap->dmarx.chan, &uap->dmarx.sgbuf_a,
 			       DMA_FROM_DEVICE);
 	if (ret) {
-		printk(KERN_ERR "[ERROR][PL011]failed to init DMA %s: %d\n",
+		pr_err("[ERROR][PL011]failed to init DMA %s: %d\n",
 			"RX buffer A", ret);
 		goto skip_rx;
 	}
@@ -1226,7 +1224,7 @@ static void pl011_dma_startup(struct uart_amba_port *uap)
 	ret = pl011_sgbuf_init(uap->dmarx.chan, &uap->dmarx.sgbuf_b,
 			       DMA_FROM_DEVICE);
 	if (ret) {
-		printk(KERN_ERR "[ERROR][PL011]failed to init DMA %s: %d\n",
+		pr_err("[ERROR][PL011]failed to init DMA %s: %d\n",
 			"RX buffer B", ret);
 		pl011_sgbuf_free(uap->dmarx.chan, &uap->dmarx.sgbuf_a,
 				 DMA_FROM_DEVICE);
@@ -1251,8 +1249,7 @@ skip_rx:
 
 	if (uap->using_rx_dma) {
 		if (pl011_dma_rx_trigger_dma(uap))
-			printk(KERN_DEBUG "[DEBUG][PL011]could not trigger initial "
-				"RX DMA job, fall back to interrupt mode\n");
+			pr_warn("[WARN][PL011]could not trigger initial RX DMA job, fall back to interrupt mode\n");
 		if (uap->dmarx.poll_rate) {
 			init_timer(&(uap->dmarx.timer));
 			uap->dmarx.timer.function = pl011_dma_rx_poll;
@@ -1473,8 +1470,7 @@ __acquires(&uap->port.lock)
 	 */
 	if (pl011_dma_rx_available(uap)) {
 		if (pl011_dma_rx_trigger_dma(uap)) {
-			printk(KERN_DEBUG "[DEBUG][PL011]could not trigger RX DMA job "
-				"fall back to interrupt mode again\n");
+			pr_warn("[WARN][PL011]could not trigger RX DMA job fall back to interrupt mode again\n");
 			uap->im |= UART011_RXIM;
 			pl011_write(uap->im, uap, REG_IMSC);
 		} else {
@@ -2083,7 +2079,7 @@ pl011_set_termios(struct uart_port *port, struct ktermios *termios,
 	baud = uart_get_baud_rate(port, termios, old, 0,
 				  port->uartclk / clkdiv);
 #ifdef CONFIG_TCC_SERIAL_UART
-	printk(KERN_DEBUG "[DEBUG][PL011][UART%02d] baud_rate %d, uart_clk %d\n",
+	pr_warn("[WARN][PL011][UART%02d] baud_rate %d, uart_clk %d\n",
 	       port->line, baud, port->uartclk); /* Telechips' Remark */
 #endif
 #ifdef CONFIG_DMA_ENGINE
@@ -2678,13 +2674,14 @@ static int pl011_probe_dt_alias(int index, struct device *dev)
 	} else {
 		seen_dev_with_alias = true;
 		if (ret >= ARRAY_SIZE(amba_ports) || amba_ports[ret] != NULL) {
-			printk(KERN_WARNING "[WARN][PL011]requested serial port %d  not available.\n", ret);
+			pr_warn("[WARN][PL011]requested serial port %d is not available.\n"
+					, ret);
 			ret = index;
 		}
 	}
 
 	if (seen_dev_with_alias && seen_dev_without_alias)
-		printk(KERN_WARNING "[WARN][PL011]aliased and non-aliased serial devices found in device tree. Serial port enumeration may be unpredictable.\n");
+		pr_warn("[WARN][PL011]aliased and non-aliased serial devices found in device tree. Serial port enumeration may be unpredictable.\n");
 
 	return ret;
 }
@@ -2984,14 +2981,14 @@ static int sbsa_uart_probe(struct platform_device *pdev)
 	ret = platform_get_irq(pdev, 0);
 	if (ret < 0) {
 		if (ret != -EPROBE_DEFER)
-			printk(KERN_ERR "[ERROR][PL011]cannot obtain irq\n");
+			pr_err("[ERROR][PL011]cannot obtain irq\n");
 		return ret;
 	}
 	uap->port.irq	= ret;
 
 #ifdef CONFIG_ACPI_SPCR_TABLE
 	if (qdf2400_e44_present) {
-		printk(KERN_INFO "[INFO][PL011]working around QDF2400 SoC erratum 44\n");
+		pr_info("[INFO][PL011]working around QDF2400 SoC erratum 44\n");
 		uap->vendor = &vendor_qdt_qdf2400_e44;
 	} else
 #endif
@@ -3087,10 +3084,10 @@ static struct amba_driver pl011_driver = {
 
 static int __init pl011_init(void)
 {
-	printk(KERN_INFO "[INFO][PL011]Serial: AMBA PL011 UART driver\n");
+	pr_info("[INFO][PL011]Serial: AMBA PL011 UART driver\n");
 
 	if (platform_driver_register(&arm_sbsa_uart_platform_driver))
-		printk(KERN_WARNING "[WARN][PL011]could not register SBSA UART platform driver\n");
+		pr_warn("[WARN][PL011]could not register SBSA UART platform driver\n");
 	return amba_driver_register(&pl011_driver);
 }
 
