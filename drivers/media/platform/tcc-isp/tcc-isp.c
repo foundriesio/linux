@@ -12,7 +12,6 @@
 #include <linux/platform_device.h>
 #include <linux/firmware.h>
 
-#include <video/tcc/videosource_ioctl.h>
 #include "tcc-isp.h"
 #include "tcc-isp-reg.h"
 #include "tcc-isp-settings.h"
@@ -377,17 +376,15 @@ static inline void tcc_isp_additional_setting(struct tcc_isp_state * state)
 	pr_info("[INFO][tcc-isp] finish %s \n", __func__);
 }
 
-void tcc_isp_enable(
-		unsigned int idx, 
-		videosource_format_t * format, unsigned int enable)
+void tcc_isp_enable(unsigned int idx, unsigned int width, unsigned int height, unsigned int enable)
 {
 	/* input */
-	arr_state[idx]->isp->i_state.width = format->width + 16;
-	arr_state[idx]->isp->i_state.height = format->height + 16;
+	arr_state[idx]->isp->i_state.width = width + 16;
+	arr_state[idx]->isp->i_state.height = height + 16;
 
 	/* output */
-	arr_state[idx]->isp->o_state.width = format->width;
-	arr_state[idx]->isp->o_state.height = format->height;
+	arr_state[idx]->isp->o_state.width = width;
+	arr_state[idx]->isp->o_state.height = height;
 
 	if (enable) {
 		tcc_isp_init(arr_state[idx]);
@@ -425,7 +422,7 @@ static int tcc_isp_parse_dt(struct platform_device *pdev,
 
 	pr_info("[INFO][tcc-isp] mem base addr is %px \n", state->mem_base);
 
-#if 0
+#if 1
 	/*
 	 * Get UART pinctrl
 	 *
@@ -492,16 +489,6 @@ static int tcc_isp_probe(struct platform_device *pdev)
 
 	state->hdr = &setting_hdr;
 	state->isp = &setting_isp;
-
-	/*
-	 * set axi bus output disable
-	 */
-	/* set register update control */
-	tcc_isp_set_regster_update_mode(state);
-	/* disable wdma */
-	tcc_isp_set_wdma(state, OFF);
-	/* register update */
-	tcc_isp_update_register(state);
 
 	ret = tcc_isp_request_firmware(state, TCC_ISP_FIRMWARE_NAME);
 	if (ret < 0) {

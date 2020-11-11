@@ -95,7 +95,7 @@ config RESET_SUNXI
 
 config RESET_TCC
 	bool "Telechips SoCs Reset Driver"
-	default ARCH_TCC
+	default ARCH_TCC if !TCC803X_CA7S
 	help
 	  This enables the reset driver for Telechips SoCs.
 

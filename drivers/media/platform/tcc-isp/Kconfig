@@ -9,7 +9,6 @@ config TCC_ISP
 	bool "Telechips ISP driver"
 	default y
         depends on ARCH_TCC805X
-	depends on VIDEO_VIDEOSOURCE || VIDEO_VIDEOSOURCE2
 	---help---
 	  Support for ISP
 
@@ -18,6 +17,5 @@ config TCC_ISP_USE_IOMMU
 	bool "Set IOMMU to access I2C controller 7 from ISP"
 	default y
 	depends on ARCH_TCC805X
-	depends on VIDEO_VIDEOSOURCE || VIDEO_VIDEOSOURCE2
 	---help---
 	  This must be set on the TCC805X ES

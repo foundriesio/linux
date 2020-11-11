@@ -65,7 +65,7 @@ struct tcc_ckc_ops {
 	/* peripheral */
 	int (*ckc_peri_enable)(int id);
 	int (*ckc_peri_disable)(int id);
-	int (*ckc_peri_set_rate)(int id, unsigned long rate);
+	int (*ckc_peri_set_rate)(int id, unsigned long rate, u32 flags);
 	unsigned long (*ckc_peri_get_rate)(int id);
 	int (*ckc_is_peri_enabled)(int id);
 

@@ -194,6 +194,17 @@ config VIDEO_ADV7180
 	  To compile this driver as a module, choose M here: the
 	  module will be called adv7180.
 
+config VIDEO_ADV7182
+	tristate "Analog Devices ADV7182 decoder"
+	depends on GPIOLIB && VIDEO_V4L2 && I2C && VIDEO_V4L2_SUBDEV_API
+	depends on OF
+	select REGMAP_I2C
+	---help---
+	  Support for the Analog Devices ADV7182 video decoder.
+
+	  To compile this driver as a module, choose M here: the
+	  module will be called adv7182.
+
 config VIDEO_ADV7183
 	tristate "Analog Devices ADV7183 decoder"
 	depends on VIDEO_V4L2 && I2C
@@ -259,6 +270,17 @@ config VIDEO_ADV7842_CEC
 	---help---
 	  When selected the adv7842 will support the optional
 	  HDMI CEC feature.
+
+config VIDEO_ISL79988
+	tristate "Analog Devices ISL79988 decoder"
+	depends on GPIOLIB && VIDEO_V4L2 && I2C && VIDEO_V4L2_SUBDEV_API
+	depends on OF
+	select REGMAP_I2C
+	---help---
+	  Support for the Analog Devices ISL79988 video decoder.
+
+	  To compile this driver as a module, choose M here: the
+	  module will be called ISL79988.
 
 config VIDEO_BT819
 	tristate "BT819A VideoStream decoder"
@@ -892,6 +914,56 @@ config VIDEO_M52790
 
 	 To compile this driver as a module, choose M here: the
 	 module will be called m52790.
+comment "Serializers and Deserializers"
+
+config VIDEO_ISPXXX
+	tristate "Sony ISPXXX ISP"
+	depends on GPIOLIB && VIDEO_V4L2 && I2C && VIDEO_V4L2_SUBDEV_API
+	---help---
+	  Support for the Sony ISPXXX ISP.
+
+	  To compile this driver as a module, choose M here: the
+	  module will be called ispxxx.
+
+config VIDEO_MAX9275
+	tristate "Maxim MAX9275 Serializer"
+	depends on GPIOLIB && VIDEO_V4L2 && I2C && VIDEO_V4L2_SUBDEV_API
+	select REGMAP_I2C
+	---help---
+	  Support for the Maxim MAX9275 Serializer.
+
+	  To compile this driver as a module, choose M here: the
+	  module will be called max9275.
+
+config VIDEO_MAX96701
+	tristate "Maxim MAX96701 Serializer"
+	depends on GPIOLIB && VIDEO_V4L2 && I2C && VIDEO_V4L2_SUBDEV_API
+	select REGMAP_I2C
+	---help---
+	  Support for the Maxim MAX96701 Serializer.
+
+	  To compile this driver as a module, choose M here: the
+	  module will be called MAX96701.
+
+config VIDEO_MAX9286
+	tristate "Maxim MAX9286 Deserializer"
+	depends on GPIOLIB && VIDEO_V4L2 && I2C && VIDEO_V4L2_SUBDEV_API
+	select REGMAP_I2C
+	---help---
+	  Support for the Maxim MAX9286 Deserializer.
+
+	  To compile this driver as a module, choose M here: the
+	  module will be called max9286.
+
+config VIDEO_MAX96712
+	tristate "Maxim MAX96712 Deserializer"
+	depends on GPIOLIB && VIDEO_V4L2 && I2C && VIDEO_V4L2_SUBDEV_API
+	select REGMAP_I2C
+	---help---
+	  Support for the Maxim MAX96712 Deserializer.
+
+	  To compile this driver as a module, choose M here: the
+	  module will be called max96712.
 endmenu
 
 menu "Sensors used on soc_camera driver"
