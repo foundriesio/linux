@@ -25,7 +25,7 @@ static const struct file_operations mbox_proc_fops = {
 
 static int __init proc_mbox_init(void)
 {
-	proc_create("mbox_info", 0, NULL, &mbox_proc_fops);
+	proc_create("mbox_info", 0444, NULL, &mbox_proc_fops);
 	return 0;
 }
 fs_initcall(proc_mbox_init);
