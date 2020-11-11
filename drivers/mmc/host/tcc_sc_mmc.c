@@ -143,7 +143,7 @@ static void tcc_sc_mmc_timeout_timer(unsigned long data)
 	struct tcc_sc_mmc_host *host;
 	unsigned long flags;
 
-	host = (struct tcc_sc_mmc_host*)data;
+	host = (struct tcc_sc_mmc_host *)data;
 
 	spin_lock_irqsave((&host->lock), (flags));
 
@@ -216,20 +216,20 @@ static void tcc_sc_mmc_request(struct mmc_host *mmc, struct mmc_request *mrq)
 {
 	struct tcc_sc_mmc_host *host;
 
-	if(mmc == NULL) {
-		printk("[ERROR][TCC_SC_MMC] mmc is null\n");
+	if (mmc == NULL) {
+		pr_err("[ERROR][TCC_SC_MMC] mmc is null\n");
 		return;
 	}
 
 	host = mmc_priv(mmc);
-	if(host == NULL) {
-		printk("%s: [ERROR][TCC_SC_MMC] host is null\n",
+	if (host == NULL) {
+		pr_err("%s: [ERROR][TCC_SC_MMC] host is null\n",
 		       mmc_hostname(mmc));
 		return;
 	}
 
-	if(mrq == NULL) {
-		printk("%s: [ERROR][TCC_SC_MMC] mrq is null\n",
+	if (mrq == NULL) {
+		pr_err("%s: [ERROR][TCC_SC_MMC] mrq is null\n",
 		       mmc_hostname(mmc));
 		return;
 	}
@@ -248,8 +248,8 @@ static void tcc_sc_mmc_request(struct mmc_host *mmc, struct mmc_request *mrq)
 
 static void tcc_sc_mmc_request_work(struct work_struct *work)
 {
-	struct tcc_sc_mmc_host *host = container_of(work, struct tcc_sc_mmc_host,
-			request_work);
+	struct tcc_sc_mmc_host *host =
+		container_of(work, struct tcc_sc_mmc_host, request_work);
 	struct mmc_host *mmc;
 	const struct tcc_sc_fw_handle *handle;
 	struct tcc_sc_fw_mmc_cmd cmd;
@@ -259,27 +259,27 @@ static void tcc_sc_mmc_request_work(struct work_struct *work)
 	struct scatterlist sg;
 	int ret;
 
-	if(host == NULL) {
-		printk("[ERROR][TCC_SC_MMC] host is null\n");
+	if (host == NULL) {
+		pr_err("[ERROR][TCC_SC_MMC] host is null\n");
 		return;
 	}
 
 	mmc = host->mmc;
-	if(mmc == NULL) {
-		printk("[ERROR][TCC_SC_MMC] mmc is null\n");
+	if (mmc == NULL) {
+		pr_err("[ERROR][TCC_SC_MMC] mmc is null\n");
 		return;
 	}
 
 	handle = host->handle;
-	if(handle == NULL) {
-		printk("%s: [ERROR][TCC_SC_MMC] handle is null\n",
+	if (handle == NULL) {
+		pr_err("%s: [ERROR][TCC_SC_MMC] handle is null\n",
 		       mmc_hostname(host->mmc));
 		return;
 	}
 
 	mrq = host->mrq;
-	if(mrq == NULL) {
-		printk("%s: [ERROR][TCC_SC_MMC] mrq is null\n",
+	if (mrq == NULL) {
+		pr_err("%s: [ERROR][TCC_SC_MMC] mrq is null\n",
 		       mmc_hostname(host->mmc));
 		return;
 	}
@@ -288,15 +288,16 @@ static void tcc_sc_mmc_request_work(struct work_struct *work)
 	cmd.opcode = mrq->cmd->opcode;
 	cmd.arg = mrq->cmd->arg;
 	cmd.flags = mmc_resp_type(mrq->cmd);
-	if(mmc->card != NULL) {
-		cmd.part_num = mmc->card->ext_csd.part_config & (u32) EXT_CSD_PART_CONFIG_ACC_MASK;
-	} else {
+	if (mmc->card != NULL)
+		cmd.part_num = mmc->card->ext_csd.part_config &
+			(u32) EXT_CSD_PART_CONFIG_ACC_MASK;
+	else
 		cmd.part_num = 0;
-	}
 
-	if(mrq->cmd->data != NULL) {
-		
-		int sg_cnt = tcc_sc_mmc_pre_dma_transfer(host, mrq->cmd->data, COOKIE_MAPPED);
+	if (mrq->cmd->data != NULL) {
+
+		int sg_cnt = tcc_sc_mmc_pre_dma_transfer(host,
+					mrq->cmd->data, COOKIE_MAPPED);
 
 		if (sg_cnt <= 0) {
 			/*
@@ -315,14 +316,15 @@ static void tcc_sc_mmc_request_work(struct work_struct *work)
 		data.blksz = mrq->cmd->data->blksz;
 		data.blocks = mrq->cmd->data->blocks;
 		data.blk_addr = mrq->cmd->data->blk_addr;
-		if((mrq->cmd->data->flags & MMC_DATA_WRITE) != 0)
+		if ((mrq->cmd->data->flags & MMC_DATA_WRITE) != 0)
 			data.flags = TCC_SC_MMC_DATA_WRITE;
 		else
 			data.flags = TCC_SC_MMC_DATA_READ;
 
-		if((sg_cnt == 1) && (host->bounce_buffer != NULL)) {
+		if ((sg_cnt == 1) && (host->bounce_buffer != NULL)) {
 			data.sg = &sg;
-			sg_init_one(data.sg, host->bounce_buffer, data.blksz * data.blocks);
+			sg_init_one(data.sg, host->bounce_buffer,
+				data.blksz * data.blocks);
 			sg_dma_address(data.sg) = host->bounce_addr;
 			sg_dma_len(data.sg) = data.blksz * data.blocks;
 		} else {
@@ -338,12 +340,15 @@ static void tcc_sc_mmc_request_work(struct work_struct *work)
 
 	timeout = jiffies;
 	if ((mrq->cmd->data == NULL) && (mrq->cmd->busy_timeout > 9000U))
-		timeout += (unsigned long) ((DIV_ROUND_UP(mrq->cmd->busy_timeout, 1000U) * (u32) HZ) + (u32) HZ);
+		timeout += (unsigned long) (
+			(DIV_ROUND_UP(mrq->cmd->busy_timeout, 1000U) *
+			(u32) HZ) + (u32) HZ);
 	else
 		timeout += (unsigned long) (10U * HZ);
+
 	mod_timer(&host->timer, timeout);
 
-	if(ret != 0) {
+	if (ret != 0) {
 		mrq->cmd->error = ret;
 	} else {
 		mrq->cmd->resp[0] = cmd.resp[0];
@@ -352,10 +357,11 @@ static void tcc_sc_mmc_request_work(struct work_struct *work)
 		mrq->cmd->resp[3] = cmd.resp[3];
 		mrq->cmd->error = cmd.error;
 
-		if(mrq->cmd->data != NULL) {
+		if (mrq->cmd->data != NULL) {
 			mrq->cmd->data->error = data.error;
-			if(mrq->cmd->data->error == 0) {
-				mrq->cmd->data->bytes_xfered = data.blksz * data.blocks;
+			if (mrq->cmd->data->error == 0) {
+				mrq->cmd->data->bytes_xfered =
+						data.blksz * data.blocks;
 			}
 		}
 	}
@@ -387,9 +393,8 @@ static void tcc_sc_mmc_pre_req(struct mmc_host *mmc, struct mmc_request *mrq)
 	mrq->data->host_cookie = COOKIE_UNMAPPED;
 	data = mrq->data;
 
-	if (host->bounce_buffer == NULL) {
+	if (host->bounce_buffer == NULL)
 		tcc_sc_mmc_pre_dma_transfer(host, mrq->data, COOKIE_PRE_MAPPED);
-	}
 }
 
 static void tcc_sc_mmc_set_ios(struct mmc_host *mmc, struct mmc_ios *ios)
@@ -409,11 +414,10 @@ static int tcc_sc_mmc_card_busy(struct mmc_host *mmc)
 
 	cmd.opcode = ((u32) 1U << (u32) 7U);
 	ret = handle->ops.mmc_ops->request_command(handle, &cmd, NULL);
-	if(ret != 0) {
+	if (ret != 0)
 		return 0;
-	} else {
+	else
 		return (int)cmd.resp[0];
-	}
 }
 
 static const struct mmc_host_ops tcc_sc_mmc_ops = {
@@ -490,17 +494,17 @@ static int tcc_sc_mmc_probe(struct platform_device *pdev)
 	}
 
 	handle = tcc_sc_fw_get_handle(fw_np);
-	if(handle == NULL) {
+	if (handle == NULL) {
 		dev_err(&pdev->dev, "[ERROR][TCC_SC_MMC] Failed to get handle\n");
 		return -ENODEV;
 	}
 
-	if(handle->ops.mmc_ops->prot_info == NULL) {
+	if (handle->ops.mmc_ops->prot_info == NULL) {
 		dev_err(&pdev->dev, "[ERROR][TCC_SC_MMC] prot_info callback function is not registered\n");
 		return -ENODEV;
 	}
 
-	if(handle->ops.mmc_ops->request_command == NULL) {
+	if (handle->ops.mmc_ops->request_command == NULL) {
 		dev_err(&pdev->dev, "[ERROR][TCC_SC_MMC] request_command callback function is not registered\n");
 		return -ENODEV;
 	}
@@ -518,19 +522,21 @@ static int tcc_sc_mmc_probe(struct platform_device *pdev)
 	host->mmc = mmc;
 
 	ret = handle->ops.mmc_ops->prot_info(handle, &host->mmc_prot_info);
-	if(ret != 0) {
+	if (ret != 0) {
 		dev_err(&pdev->dev, "[ERROR][TCC_SC_MMC] failed to get protocol info\n");
 		return -ENODEV;
 	}
 
-	if(handle->ops.mmc_ops->request_command == NULL) {
+	if (handle->ops.mmc_ops->request_command == NULL) {
 		dev_err(&pdev->dev, "[ERROR][TCC_SC_MMC] request_command is not registered\n");
 		return -ENODEV;
 	}
 
 	ret = mmc_of_parse(host->mmc);
 	if (ret != 0) {
-		dev_err(&pdev->dev, "[ERROR][TCC_SC_MMC] mmc: parsing dt failed (%d)\n", ret);
+		dev_err(&pdev->dev,
+			"[ERROR][TCC_SC_MMC] mmc: parsing dt failed (%d)\n",
+			ret);
 		return ret;
 	}
 
@@ -547,12 +553,14 @@ static int tcc_sc_mmc_probe(struct platform_device *pdev)
 	 */
 	INIT_WORK(&host->request_work, tcc_sc_mmc_request_work);
 	host->mmc_tcc_wq = alloc_workqueue("mmc_tcc_sc", 0, 0);
-	if(host->mmc_tcc_wq == NULL) {
-		dev_err(&pdev->dev, "[ERROR][TCC_SC_MMC] mmc: failed to allocate wq\n");
+	if (host->mmc_tcc_wq == NULL) {
+		dev_err(&pdev->dev,
+			"[ERROR][TCC_SC_MMC] mmc: failed to allocate wq\n");
 		return -ENOMEM;
 	}
 
-	setup_timer(&host->timer, tcc_sc_mmc_timeout_timer, (unsigned long)host);
+	setup_timer(&host->timer,
+			tcc_sc_mmc_timeout_timer, (unsigned long)host);
 
 	mmc->ops = &tcc_sc_mmc_ops;
 	mmc->f_min = 100000;
@@ -562,20 +570,18 @@ static int tcc_sc_mmc_probe(struct platform_device *pdev)
 	mmc->max_blk_size = host->mmc_prot_info.blk_size;
 	mmc->max_req_size = 0x80000;
 	mmc->max_blk_count = 65535;
-	
+
 	/* Allocate bounce buffer */
-	if(mmc->max_segs == 1U) {
+	if (mmc->max_segs == 1U)
 		ret = tcc_sc_mmc_allocate_bounce_buffer(host);
-	}
 
 	platform_set_drvdata(pdev, host);
 
 	spin_lock_init(&host->lock);
 
 	ret = mmc_add_host(mmc);
-	if (ret != 0) {
+	if (ret != 0)
 		dev_err(&pdev->dev, "[ERROR][TCC_SC_MMC] Failed to add mmc host\n");
-	}
 
 	return ret;
 }
