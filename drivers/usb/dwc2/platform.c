@@ -121,7 +121,7 @@ struct USBDEVPHYCFG {
 	volatile unsigned int	USB_VBUSVLD_SEL;
 };
 
-#ifdef CONFIG_USB_DWC2_TCC_MUX
+#if defined(CONFIG_USB_DWC2_TCC_MUX)
 struct USBMHSTPHYCFG {
 	volatile unsigned int	U20DH_HST_BCFG;
 	volatile unsigned int	U20DH_HST_PCFG0;
@@ -135,7 +135,7 @@ struct USBMHSTPHYCFG {
 };
 #endif
 
-#ifdef CONFIG_USB_DWC2_TCC
+#if defined(CONFIG_USB_DWC2_TCC)
 #define TCC_DWC_SOFFN_USE
 #define TCC_DWC_SUSPSTS_USE
 
@@ -172,7 +172,7 @@ static void dwc2_tcc_vbus_exit(struct dwc2_hsotg *hsotg)
 }
 #endif
 
-#ifdef CONFIG_VBUS_CTRL_DEF_ENABLE
+#if defined(CONFIG_VBUS_CTRL_DEF_ENABLE)
 static unsigned int vbus_control_enable = 1;
 #else
 static unsigned int vbus_control_enable;
@@ -350,7 +350,7 @@ static ssize_t dwc2_pcfg1_store(struct device *dev,
 static DEVICE_ATTR(dwc_pcfg1, 0644,
 		dwc2_pcfg1_show, dwc2_pcfg1_store);
 
-#ifdef CONFIG_USB_DWC2_TCC_MUX
+#if defined(CONFIG_USB_DWC2_TCC_MUX)
 /**
  * Show the current value of the USB 2.0 Host
  * in Host/Device MUX PHY Configuration 1 Register
@@ -445,7 +445,7 @@ static DEVICE_ATTR(dwc_host_mux_pcfg1, 0644,
 		dwc2_host_mux_pcfg1_show, dwc2_host_mux_pcfg1_store);
 #endif
 
-#ifdef CONFIG_USB_DWC2_DUAL_ROLE
+#if defined(CONFIG_USB_DWC2_DUAL_ROLE)
 static ssize_t dwc2_tcc_drd_mode_show(struct device *dev,
 			struct device_attribute *attr, char *buf)
 {
@@ -502,7 +502,7 @@ error:
 static DEVICE_ATTR(drdmode, 0644,
 		dwc2_tcc_drd_mode_show, dwc2_tcc_drd_mode_store);
 
-#ifdef TCC_DWC_SUSPSTS_USE
+#if defined(TCC_DWC_SUSPSTS_USE)
 static int dwc2_soffn_monitor_thread(void *w)
 {
 	struct dwc2_hsotg *hsotg = (struct dwc2_hsotg *)w;
@@ -552,7 +552,7 @@ static int dwc2_soffn_monitor_thread(void *w)
 #endif
 #endif
 
-#ifdef CONFIG_USB_DWC2_TCC_MUX
+#if defined(CONFIG_USB_DWC2_TCC_MUX)
 #include <linux/usb/ehci_pdriver.h>
 #include <linux/usb/ohci_pdriver.h>
 #include <linux/usb/hcd.h>
@@ -738,7 +738,7 @@ static int __dwc2_lowlevel_hw_enable(struct dwc2_hsotg *hsotg)
 {
 	struct platform_device *pdev = to_platform_device(hsotg->dev);
 	int ret;
-#ifdef CONFIG_USB_DWC2_TCC
+#if defined(CONFIG_USB_DWC2_TCC)
 	dwc2_tcc_vbus_ctrl(hsotg, 1);
 #else
 	ret = regulator_bulk_enable(ARRAY_SIZE(hsotg->supplies),
@@ -761,7 +761,7 @@ static int __dwc2_lowlevel_hw_enable(struct dwc2_hsotg *hsotg)
 		if (ret == 0)
 			ret = phy_init(hsotg->phy);
 	}
-#ifdef CONFIG_USB_DWC2_TCC_MUX
+#if defined(CONFIG_USB_DWC2_TCC_MUX)
 	if (hsotg->mhst_uphy &&
 		((hsotg->dr_mode == USB_DR_MODE_HOST) ||
 		(hsotg->dr_mode == USB_DR_MODE_OTG)))
@@ -792,7 +792,7 @@ static int __dwc2_lowlevel_hw_disable(struct dwc2_hsotg *hsotg)
 	struct platform_device *pdev = to_platform_device(hsotg->dev);
 	int ret = 0;
 
-#ifdef CONFIG_USB_DWC2_TCC_MUX
+#if defined(CONFIG_USB_DWC2_TCC_MUX)
 	if (hsotg->mhst_uphy)
 		usb_phy_shutdown(hsotg->mhst_uphy);
 #endif
@@ -810,7 +810,7 @@ static int __dwc2_lowlevel_hw_disable(struct dwc2_hsotg *hsotg)
 
 	if (hsotg->clk)
 		clk_disable_unprepare(hsotg->clk);
-#ifdef CONFIG_USB_DWC2_TCC
+#if defined(CONFIG_USB_DWC2_TCC)
 	ret = dwc2_tcc_vbus_ctrl(hsotg, 0);
 #else
 	ret = regulator_bulk_disable(ARRAY_SIZE(hsotg->supplies),
@@ -887,7 +887,7 @@ static int dwc2_lowlevel_hw_init(struct dwc2_hsotg *hsotg)
 		hsotg->uphy = devm_usb_get_phy(hsotg->dev, USB_PHY_TYPE_USB2);
 #else
 		hsotg->uphy = devm_usb_get_phy_by_phandle(hsotg->dev, "phy", 0);
-#ifdef CONFIG_ARCH_TCC803X
+#if defined(CONFIG_ARCH_TCC803X)
 		ret = hsotg->uphy->set_vbus_resource(hsotg->uphy);
 		if (ret)
 			return ret;
@@ -913,7 +913,7 @@ static int dwc2_lowlevel_hw_init(struct dwc2_hsotg *hsotg)
 			}
 		}
 	}
-#ifdef CONFIG_USB_DWC2_TCC_MUX
+#if defined(CONFIG_USB_DWC2_TCC_MUX)
 	hsotg->mhst_uphy =
 		devm_usb_get_phy_by_phandle(hsotg->dev,
 				"telechips,mhst_phy", 0);
@@ -956,7 +956,7 @@ static int dwc2_lowlevel_hw_init(struct dwc2_hsotg *hsotg)
 		hsotg->clk = NULL;
 		dev_err(hsotg->dev, "[ERROR][USB] cannot get otg clock\n");
 	}
-#ifdef CONFIG_USB_DWC2_TCC
+#if defined(CONFIG_USB_DWC2_TCC)
 	/* TCC vbus */
 	ret = dwc2_tcc_vbus_ctrl(hsotg, 1);
 #else
@@ -986,13 +986,13 @@ static void dwc2_change_dr_mode(struct work_struct *w)
 	unsigned long flags;
 
 	if (hsotg->dr_mode == USB_DR_MODE_PERIPHERAL) {
-#ifdef CONFIG_USB_DWC2_TCC_MUX
+#if defined(CONFIG_USB_DWC2_TCC_MUX)
 		dwc2_mux_hcd_remove(hsotg);
 #endif
 	} else {
 		int retry_cnt = 0;
 
-#ifdef TCC_DWC_SOFFN_USE
+#if defined(TCC_DWC_SOFFN_USE)
 		if (hsotg->soffn_thread != NULL) {
 			kthread_stop(hsotg->soffn_thread);
 			hsotg->soffn_thread = NULL;
@@ -1016,7 +1016,7 @@ static void dwc2_change_dr_mode(struct work_struct *w)
 	}
 	dwc2_manual_change(hsotg);
 	if (hsotg->dr_mode == USB_DR_MODE_HOST) {
-#ifdef CONFIG_USB_DWC2_TCC_MUX
+#if defined(CONFIG_USB_DWC2_TCC_MUX)
 		dwc2_mux_hcd_init(hsotg);
 #endif
 	} else {
@@ -1062,7 +1062,7 @@ static int dwc2_driver_remove(struct platform_device *dev)
 
 	dwc2_debugfs_exit(hsotg);
 	if (hsotg->hcd_enabled)
-#ifdef CONFIG_USB_DWC2_TCC_MUX
+#if defined(CONFIG_USB_DWC2_TCC_MUX)
 		if (hsotg->dr_mode == USB_DR_MODE_HOST ||
 				hsotg->dr_mode == USB_DR_MODE_OTG)
 			dwc2_mux_hcd_remove(hsotg);
@@ -1076,8 +1076,8 @@ static int dwc2_driver_remove(struct platform_device *dev)
 		dwc2_lowlevel_hw_disable(hsotg);
 
 	reset_control_assert(hsotg->reset);
-#ifdef CONFIG_USB_DWC2_TCC
-#ifdef CONFIG_USB_DWC2_DUAL_ROLE
+#if defined(CONFIG_USB_DWC2_TCC)
+#if defined(CONFIG_USB_DWC2_DUAL_ROLE)
 	cancel_work_sync(&hsotg->drd_work);
 	destroy_workqueue(hsotg->drd_wq);
 
@@ -1087,7 +1087,7 @@ static int dwc2_driver_remove(struct platform_device *dev)
 #endif
 
 	device_remove_file(&dev->dev, &dev_attr_dwc_pcfg1);
-#ifdef CONFIG_USB_DWC2_TCC_MUX
+#if defined(CONFIG_USB_DWC2_TCC_MUX)
 	device_remove_file(&dev->dev, &dev_attr_dwc_host_mux_pcfg1);
 #endif
 
@@ -1109,7 +1109,7 @@ static int dwc2_driver_remove(struct platform_device *dev)
 static void dwc2_driver_shutdown(struct platform_device *dev)
 {
 	struct dwc2_hsotg *hsotg = platform_get_drvdata(dev);
-#ifdef CONFIG_USB_DWC2_TCC_MUX
+#if defined(CONFIG_USB_DWC2_TCC_MUX)
 	disable_irq(hsotg->ehci_irq);
 #endif
 	dwc2_disable_global_interrupts(hsotg);
@@ -1157,11 +1157,11 @@ static int dwc2_driver_probe(struct platform_device *dev)
 
 	dev_info(&dev->dev, "[INFO][USB] dwc2 controller mapped PA %08lx to VA %p\n",
 			(unsigned long)res->start, hsotg->regs);
-#ifdef CONFIG_USB_DWC2_TCC_MUX
+#if defined(CONFIG_USB_DWC2_TCC_MUX)
 	/*
 	 * Get ehci's register base for MUX
 	 */
-	hsotg->ehci_regs = (void __iomem *)dev->resource[1].start;
+	hsotg->ehci_regs = (void __iomem *)(long int)dev->resource[1].start;
 	hsotg->ehci_regs_size =
 		dev->resource[1].end - dev->resource[1].start + 1;
 	if (IS_ERR(hsotg->ehci_regs))
@@ -1175,7 +1175,7 @@ static int dwc2_driver_probe(struct platform_device *dev)
 	/*
 	 * Get ohci's register base for MUX
 	 */
-	hsotg->ohci_regs = (void __iomem *)dev->resource[2].start;
+	hsotg->ohci_regs = (void __iomem *)(long int)dev->resource[2].start;
 	hsotg->ohci_regs_size =
 		dev->resource[2].end - dev->resource[2].start + 1;
 	if (IS_ERR(hsotg->ohci_regs))
@@ -1206,7 +1206,7 @@ static int dwc2_driver_probe(struct platform_device *dev)
 	dev_info(hsotg->dev,
 			"[INFO][USB] registering common handler for irq%d\n",
 			hsotg->irq);
-#ifdef CONFIG_USB_DWC2_TCC_MUX
+#if defined(CONFIG_USB_DWC2_TCC_MUX)
 	hsotg->ehci_irq = platform_get_irq(dev, 1);
 	if (hsotg->irq < 0) {
 		dev_err(&dev->dev, "[ERROR][USB] missing IRQ resource\n");
@@ -1273,7 +1273,7 @@ static int dwc2_driver_probe(struct platform_device *dev)
 	}
 
 	if (hsotg->dr_mode != USB_DR_MODE_PERIPHERAL) {
-#ifdef CONFIG_USB_DWC2_TCC_MUX
+#if defined(CONFIG_USB_DWC2_TCC_MUX)
 		retval = dwc2_mux_hcd_init(hsotg);
 #else
 		retval = dwc2_hcd_init(hsotg);
@@ -1295,11 +1295,11 @@ static int dwc2_driver_probe(struct platform_device *dev)
 		dwc2_lowlevel_hw_disable(hsotg);
 		goto skip_mode_change;
 	}
-#ifdef CONFIG_USB_DWC2_TCC
+#if defined(CONFIG_USB_DWC2_TCC)
 	retval = device_create_file(&dev->dev, &dev_attr_vbus);
 	if (retval)
 		dev_err(hsotg->dev, "[ERROR][USB] failed to create vbus\n");
-#ifdef CONFIG_USB_DWC2_DUAL_ROLE
+#if defined(CONFIG_USB_DWC2_DUAL_ROLE)
 	hsotg->drd_wq = create_singlethread_workqueue("dwc2");
 	if (!hsotg->drd_wq)
 		goto error;
@@ -1309,8 +1309,8 @@ static int dwc2_driver_probe(struct platform_device *dev)
 	if (retval)
 		dev_err(hsotg->dev, "[ERROR][USB] failed to create dr_mode\n");
 
-#ifdef CONFIG_USB_DWC2_TCC_FIRST_HOST //first host
-#ifdef CONFIG_USB_DWC2_TCC_MUX
+#if defined(CONFIG_USB_DWC2_TCC_FIRST_HOST) //first host
+#if defined(CONFIG_USB_DWC2_TCC_MUX)
 	//NOTHING TO DO!!
 #else
 	hsotg->dr_mode = USB_DR_MODE_PERIPHERAL;
@@ -1318,8 +1318,8 @@ static int dwc2_driver_probe(struct platform_device *dev)
 	hsotg->dr_mode = USB_DR_MODE_HOST;
 	dwc2_manual_change(hsotg);
 #endif
-#elif CONFIG_USB_DWC2_TCC_FIRST_PERIPHERAL
-#ifdef CONFIG_USB_DWC2_TCC_MUX
+#elif defined(CONFIG_USB_DWC2_TCC_FIRST_PERIPHERAL)
+#if defined(CONFIG_USB_DWC2_TCC_MUX)
 	hsotg->dr_mode = USB_DR_MODE_PERIPHERAL;
 
 	struct work_struct *work;
@@ -1345,7 +1345,7 @@ static int dwc2_driver_probe(struct platform_device *dev)
 
 	if (retval)
 		dev_err(hsotg->dev, "[ERROR][USB] failed to create dwc_pcfg1\n");
-#ifdef CONFIG_USB_DWC2_TCC_MUX
+#if defined(CONFIG_USB_DWC2_TCC_MUX)
 	retval = device_create_file(&dev->dev, &dev_attr_dwc_host_mux_pcfg1);
 
 	if (retval)
