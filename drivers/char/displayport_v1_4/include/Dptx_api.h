@@ -150,8 +150,9 @@ struct   DPTX_API_Dtd_Params_t
 
 
 int Dpv14_Tx_API_Get_HPD_State( bool *pbHPD_State );
-int Dpv14_Tx_API_Get_Port_Composition( bool *pbHPD_State );
-int Dpv14_Tx_API_Get_Edid( u8 ucStream_Index );
+int Dpv14_Tx_API_Get_Port_Composition( bool *pbMST_Supported, u8 *pucNumOfPluggedPorts);
+int Dpv14_Tx_API_Get_Edid( u8 ucStream_Index, u8 *pucEDID_Buf, u32 uiBuf_Size );
+int Dpv14_Tx_API_Perform_LinkTraining( bool *pbLinkTraining_Status );
 int Dpv14_Tx_API_Set_Video_Timing( u8 ucStream_Index, struct DPTX_API_Dtd_Params_t *dptx_detailed_timing );
 int Dpv14_Tx_API_Set_Video_Enable( u8 ucStream_Index, bool bEnable );
 

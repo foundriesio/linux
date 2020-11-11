@@ -12,11 +12,9 @@
 #include "Dptx_reg.h"
 #include "Dptx_dbg.h"
 #include "Dptx_drm_dp_addition.h"
-#include "dptx_drm.h"
 
 #if defined( CONFIG_DRM_TCC )
 #include <tcc_drm_dpi.h>
-
 //#define ENABLE_DRM_INTRFACE_TEST
 
 #if defined( ENABLE_DRM_INTRFACE_TEST )
@@ -107,9 +105,11 @@ static int dpv14_api_attach_drm( u8 ucDP_Index )
 
 	if( pstDptx_drm_context->sttcc_drm_dp_callbacks.attach == NULL )
 	{
-		dptx_err("Port %d callback is not registered", ucDP_Index );
+		dptx_err("DP %d attach callback is not registered", ucDP_Index );
 		return ( -ENOMEM );
 	}
+
+	dptx_info("Calling attach() with DP %d to DRM", ucDP_Index);
 
 	pstDrm_encoder = pstDptx_drm_context->pstDrm_encoder;
 	pstDptx_drm_context->sttcc_drm_dp_callbacks.attach( pstDrm_encoder, (int)ucDP_Index, (int)0 );
@@ -130,9 +130,11 @@ static int dpv14_api_detach_drm( u8 ucDP_Index )
 
 	if( pstDptx_drm_context->sttcc_drm_dp_callbacks.detach == NULL )
 	{
-		dptx_err("Port %d callback is not registered", ucDP_Index );
+		dptx_err("DP %d detach callback is not registered", ucDP_Index );
 		return ( -ENOMEM );
 	}
+
+	dptx_info("Calling dettach() with DP %d to DRM", ucDP_Index);
 
 	pstDrm_encoder = pstDptx_drm_context->pstDrm_encoder;
 	pstDptx_drm_context->sttcc_drm_dp_callbacks.detach( pstDrm_encoder, (int)ucDP_Index, (int)0 );
@@ -226,7 +228,7 @@ int dpv14_api_get_hpd_state( int dp_id, unsigned char *hpd_state )
 	Dptx_Intr_Get_HotPlug_Status( pstHandle, &bHPD_State );
 	if( bHPD_State == (bool)HPD_STATUS_UNPLUGGED )
 	{
-		dptx_info("DP %d is not attached", dp_id);
+		dptx_info("DP %d is not plugged", dp_id);
 
 		*hpd_state = (unsigned char)0;
 		return ( 0 );
@@ -234,12 +236,12 @@ int dpv14_api_get_hpd_state( int dp_id, unsigned char *hpd_state )
 
 	if( (u8)dp_id >= pstHandle->ucNumOfPorts )
 	{
-		dptx_info("DP %d is not attached", dp_id);
+		dptx_info("DP %d is not plugged", dp_id);
 		*hpd_state = (unsigned char)0;
 	}
 	else
 	{
-		dptx_info("DP %d is attached", dp_id);
+		dptx_info("DP %d is plugged", dp_id);
 		*hpd_state = (unsigned char)1;
 	}
 	
@@ -282,6 +284,8 @@ int dpv14_api_get_edid( int dp_id, unsigned char *edid, int buf_length )
 	bRetVal = Dptx_Edid_Verify_BaseBlk_Data( pucEDID_Buf );
 	if( bRetVal == DPTX_API_RETURN_FAIL )
 	{
+		dptx_err("DP %d EDID data is not valid", dp_id );
+
 		memset( edid, 0, buf_length );
 		return ( -ENODEV );
 	}
@@ -301,11 +305,10 @@ int dpv14_api_get_edid( int dp_id, unsigned char *edid, int buf_length )
 int dpv14_api_set_video_timing( int dp_id, struct dptx_detailed_timing_t *dptx_detailed_timing )
 {
 	bool					bRetVal;
-	bool					bHPDStatus, bMST_Supported;
-	u8						ucNumOfPorts;
+	bool					bVStream_Enabled;
 	struct Dptx_Params 	*pstHandle;
 	struct Dptx_Dtd_Params	stDtd_Params;
-	struct Dptx_Video_Params	*pstVideoParams;
+	struct Dptx_Dtd_Params	stDtd_Params_Configured;
 
 	if(( dp_id >= PHY_INPUT_STREAM_MAX ) || ( dp_id < PHY_INPUT_STREAM_0 ))
 	{
@@ -326,18 +329,6 @@ int dpv14_api_set_video_timing( int dp_id, struct dptx_detailed_timing_t *dptx_d
 		return ( -ENODEV );
 	}
 
-	bRetVal = Dptx_Intr_Get_HotPlug_Status( pstHandle, &bHPDStatus );
-	if( bRetVal == DPTX_API_RETURN_FAIL )
-	{
-		return ( -ENODEV );
-	}
-	if( bHPDStatus == (bool)HPD_STATUS_UNPLUGGED ) 
-	{
-		return ( -ENODEV );
-	}
-
-	pstVideoParams = &pstHandle->stVideoParams;
-
 	stDtd_Params.pixel_repetition_input = (u16)dptx_detailed_timing->pixel_repetition_input;
 	stDtd_Params.interlaced			= dptx_detailed_timing->interlaced;
 	stDtd_Params.h_active			= (u16)dptx_detailed_timing->h_active;
@@ -354,25 +345,34 @@ int dpv14_api_set_video_timing( int dp_id, struct dptx_detailed_timing_t *dptx_d
 	stDtd_Params.h_image_size		= 16;
 	stDtd_Params.v_image_size		= 9;
 
-	bRetVal = Dptx_Ext_Get_Stream_Mode( pstHandle, &bMST_Supported, &ucNumOfPorts );
-	if( bRetVal == DPTX_API_RETURN_FAIL )
+	Dptx_Avgen_Get_Video_Stream_Enable( pstHandle, &bVStream_Enabled, (u8)dp_id );
+	if( bVStream_Enabled )
 	{
-		return ( -ENODEV );
-	}
+		Dptx_Avgen_Get_Video_Configured_Timing( pstHandle, (u8)dp_id, &stDtd_Params_Configured );
 
-	if( bMST_Supported == (bool)DPTX_STREAM_CAP_SST )
+		if(( stDtd_Params.interlaced			== stDtd_Params_Configured.interlaced ) && 
+			( stDtd_Params.h_sync_polarity		== stDtd_Params_Configured.h_sync_polarity ) && 
+			( stDtd_Params.h_active				== stDtd_Params_Configured.h_active ) && 
+			( stDtd_Params.h_blanking			== stDtd_Params_Configured.h_blanking ) && 
+			( stDtd_Params.h_sync_offset		== stDtd_Params_Configured.h_sync_offset ) && 
+			( stDtd_Params.h_sync_pulse_width	== stDtd_Params_Configured.h_sync_pulse_width ) && 
+			( stDtd_Params.v_sync_polarity		== stDtd_Params_Configured.v_sync_polarity ) && 
+			( stDtd_Params.v_active				== stDtd_Params_Configured.v_active ) && 
+			( stDtd_Params.v_blanking			== stDtd_Params_Configured.v_blanking ) && 
+			( stDtd_Params.v_sync_offset		== stDtd_Params_Configured.v_sync_offset ) && 
+			( stDtd_Params.v_sync_pulse_width	== stDtd_Params_Configured.v_sync_pulse_width ))
 	{
-		dptx_dbg("Set video timing on SST mode..." );
+				dptx_info("[Detailed timing from DRM] : Video timing of DP %d was already configured --> Skip", dp_id);
+				dptx_info("		Pixel clk = %d ", (u32)dptx_detailed_timing->pixel_clock );
+				dptx_info("		%s", ( dptx_detailed_timing->interlaced ) ? "Interlace" : "Progressive" );
+				dptx_info("		H Active(%d), V Active(%d)", (u32)dptx_detailed_timing->h_active, (u32)dptx_detailed_timing->v_active );
+				dptx_info("		H Blanking(%d), V Blanking(%d)", (u32)dptx_detailed_timing->h_blanking, (u32)dptx_detailed_timing->v_blanking);
+				dptx_info("		H Sync offset(%d), V Sync offset(%d) ", (u32)dptx_detailed_timing->h_sync_offset, (u32)dptx_detailed_timing->v_sync_offset);
+				dptx_info("		H Sync plus W(%d), V Sync plus W(%d) ", (u32)dptx_detailed_timing->h_sync_pulse_width, (u32)dptx_detailed_timing->v_sync_pulse_width );
+				dptx_info("		H Sync Polarity(%d), V Sync Polarity(%d)", (u32)dptx_detailed_timing->h_sync_polarity, (u32)dptx_detailed_timing->v_sync_polarity );
 
-		if( dp_id != PHY_INPUT_STREAM_0 )
-		{
-			dptx_err("dp id isn't 0 on SST mode");
-			return ( -ENODEV );
+				return ( 0 );
 		}
-	}
-	else
-	{
-		dptx_dbg("Set video timing on MST mode..." );
 	}
 
 	bRetVal = Dptx_Avgen_Set_Video_Detailed_Timing( pstHandle, (u8)dp_id, &stDtd_Params );
@@ -381,7 +381,7 @@ int dpv14_api_set_video_timing( int dp_id, struct dptx_detailed_timing_t *dptx_d
 		return ( -ENODEV );
 	}
 	
-	dptx_info("[Detailed timing from DRM] : DP %d ", dp_id);
+	dptx_info("[Detailed timing from DRM] : Video timing of DP %d is being aconfigured ", dp_id);
 	dptx_info("		Pixel clk = %d ", (u32)dptx_detailed_timing->pixel_clock );
 	dptx_info("		%s", ( dptx_detailed_timing->interlaced ) ? "Interlace" : "Progressive" );
 	dptx_info("		H Active(%d), V Active(%d)", (u32)dptx_detailed_timing->h_active, (u32)dptx_detailed_timing->v_active );
@@ -396,7 +396,6 @@ int dpv14_api_set_video_timing( int dp_id, struct dptx_detailed_timing_t *dptx_d
 int dpv14_api_set_video_stream_enable( int dp_id, unsigned char enable )
 {
 	bool				bRetVal;
-	bool				bHPDStatus;
 	struct Dptx_Params 	*pstHandle;
 
 	if(( dp_id >= PHY_INPUT_STREAM_MAX ) || ( dp_id < PHY_INPUT_STREAM_0 ))
@@ -412,7 +411,7 @@ int dpv14_api_set_video_stream_enable( int dp_id, unsigned char enable )
 		return ( -ENODEV );
 	}
 
-	dptx_info("Set video %s...",  enable ? "enable":"disable" );
+	dptx_info("Set DP %d video %s...", dp_id, enable ? "enable":"disable" );
 
 	bRetVal = Dptx_Avgen_Set_Video_Stream_Enable( pstHandle, (bool)enable, (u8)dp_id );
 	if( bRetVal == DPTX_API_RETURN_FAIL ) 
@@ -426,7 +425,6 @@ int dpv14_api_set_video_stream_enable( int dp_id, unsigned char enable )
 int dpv14_api_set_audio_stream_enable( int dp_id, unsigned char enable )
 {
 	bool				bRetVal;
-	bool				bHPDStatus;
 	struct Dptx_Params 	*pstHandle;
 
 	if(( dp_id >= PHY_INPUT_STREAM_MAX ) || ( dp_id < PHY_INPUT_STREAM_0 ))
@@ -442,16 +440,7 @@ int dpv14_api_set_audio_stream_enable( int dp_id, unsigned char enable )
 		return ( -ENODEV );
 	}
 
-	bRetVal = Dptx_Intr_Get_HotPlug_Status( pstHandle, &bHPDStatus );
-	if( bRetVal == DPTX_API_RETURN_FAIL )
-	{
-		return ( -ENODEV );
-	}
-	if( bHPDStatus == (bool)HPD_STATUS_UNPLUGGED ) 
-	{
-		dptx_err("HPD is unplugged" );
-		return ( -ENODEV );
-	}
+	dptx_info("Set DP %d audio %s...",	enable ? "enable":"disable" );
 
 	Dptx_Avgen_Set_Audio_Stream_Enable( pstHandle, (u8)dp_id, (bool)enable );
 	
@@ -556,7 +545,7 @@ int Dpv14_Tx_API_Get_HPD_State( bool *pbHPD_State )
 	return ( 0 );
 }
 
-int Dpv14_Tx_API_Get_Port_Composition( bool *pbHPD_State )
+int Dpv14_Tx_API_Get_Port_Composition( bool *pbMST_Supported, u8 *pucNumOfPluggedPorts)
 {
 	bool	bRetVal;
 	bool				bHPD_State, bSink_MST_Supported;
@@ -613,6 +602,8 @@ int Dpv14_Tx_API_Get_Port_Composition( bool *pbHPD_State )
 
 	if( ucNumOfPluggedPorts == 1 )
 	{
+		bSink_MST_Supported = false;
+
 		Dptx_Ext_Set_Stream_Mode( pstHandle, false,     ucNumOfPluggedPorts );
 	}
 	else
@@ -620,15 +611,24 @@ int Dpv14_Tx_API_Get_Port_Composition( bool *pbHPD_State )
 		Dptx_Ext_Set_Stream_Mode( pstHandle, true,     ucNumOfPluggedPorts );
 	}
 	
+	*pbMST_Supported = bSink_MST_Supported;
+	*pucNumOfPluggedPorts = ucNumOfPluggedPorts;
+
 	return ( 0 );
 }
 
-int Dpv14_Tx_API_Get_Edid( u8 ucStream_Index )
+int Dpv14_Tx_API_Get_Edid( u8 ucStream_Index, u8 *pucEDID_Buf, u32 uiBuf_Size )
 {
 	bool				bRetVal;
 	bool				bHPDStatus, bSink_MST_Supported;
 	u8					ucNumOfPorts;
 	struct Dptx_Params 	*pstHandle;
+	
+	if( pucEDID_Buf == NULL )
+	{
+		dptx_err("pucEDID_Buf is NULL");
+		return ( EACCES );
+	}
 	
 	pstHandle = Dptx_Platform_Get_Device_Handle();
 	if( !pstHandle )
@@ -664,7 +664,7 @@ int Dpv14_Tx_API_Get_Edid( u8 ucStream_Index )
 
 	if( bSink_MST_Supported )
 	{
-		bRetVal = Dptx_Edid_Read_EDID_Over_Sideband_Msg( pstHandle, ucStream_Index, false );
+		bRetVal = Dptx_Edid_Read_EDID_Over_Sideband_Msg( pstHandle, ucStream_Index, true );
 		if( bRetVal == DPTX_API_RETURN_FAIL ) 
 		{
 			return ( ENODEV );
@@ -679,15 +679,26 @@ int Dpv14_Tx_API_Get_Edid( u8 ucStream_Index )
 		}
 	}
 
+	if( uiBuf_Size < (int)DPTX_EDID_BUFLEN )
+	{
+		memcpy( pucEDID_Buf, pstHandle->pucEdidBuf, uiBuf_Size );
+	}
+	else
+	{
+		memcpy( pucEDID_Buf, pstHandle->pucEdidBuf, DPTX_EDID_BUFLEN );
+	}
+
 	return ( 0 );
 }
 
-int Dpv14_Tx_API_Perform_LinkTraining( u8 ucStream_Index )
+int Dpv14_Tx_API_Perform_LinkTraining( bool *pbLinkTraining_Status )
 {
 	bool				bRetVal;
 	bool				bHPDStatus, bSink_MST_Supported, bTrainingState;
 	u8					ucNumOfPorts;
 	struct Dptx_Params	*pstHandle;
+
+	*pbLinkTraining_Status = false;
 
 	pstHandle = Dptx_Platform_Get_Device_Handle();
 	if( !pstHandle )
@@ -715,19 +726,16 @@ int Dpv14_Tx_API_Perform_LinkTraining( u8 ucStream_Index )
 		return ( EACCES );
 	}
 
-	if( ucStream_Index >= ucNumOfPorts )
-	{
-		dptx_err("DP %d isn't plugged", ucStream_Index );
-		return ( EACCES );
-	}
-
 	bRetVal = Dptx_Link_Get_LinkTraining_Status( pstHandle, &bTrainingState );
 	if( bRetVal == DPTX_RETURN_FAIL )
 	{
 		return ( ENODEV );
 	}
+	
 	if( bTrainingState )
 	{
+		*pbLinkTraining_Status = true;
+		
 		return ( 0 );
 	}
 
@@ -742,6 +750,8 @@ int Dpv14_Tx_API_Perform_LinkTraining( u8 ucStream_Index )
 	{
 		return ( ENODEV );
 	}
+
+	*pbLinkTraining_Status = true;
 
 	if( bSink_MST_Supported  )
 	{
@@ -759,7 +769,7 @@ int Dpv14_Tx_API_Perform_LinkTraining( u8 ucStream_Index )
 int Dpv14_Tx_API_Set_Video_Timing( u8 ucStream_Index, struct DPTX_API_Dtd_Params_t *dptx_detailed_timing )
 {
 	bool					bRetVal;
-	bool					bHPDStatus, bMST_Supported;
+	bool					bMST_Supported;
 	u8						ucNumOfPorts;
 	struct Dptx_Params 		*pstHandle;
 	struct Dptx_Dtd_Params	stDtd_Params;
@@ -780,16 +790,6 @@ int Dpv14_Tx_API_Set_Video_Timing( u8 ucStream_Index, struct DPTX_API_Dtd_Params
 	if( !pstHandle )
 	{
 		dptx_err("Failed to get handle" );
-		return ( -ENODEV );
-	}
-
-	bRetVal = Dptx_Intr_Get_HotPlug_Status( pstHandle, &bHPDStatus );
-	if( bRetVal == DPTX_API_RETURN_FAIL )
-	{
-		return ( -ENODEV );
-	}
-	if( bHPDStatus == (bool)HPD_STATUS_UNPLUGGED ) 
-	{
 		return ( -ENODEV );
 	}
 
