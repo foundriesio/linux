@@ -46,14 +46,25 @@
 #define TCC_HSM_MBOX1_MAX		(2)
 
 /* MBOX ID length is 3 ~ 6. */
-#define TCC_MBOX_TEST_ID		"TEST01"	/* Test client driver for tcc multi channel mbox test */
-#define TCC_MBOX_IPC_ID			"IPC"		/* client driver for user applicaiton ipc*/
-#define TCC_MBOX_HSM_ID			"HSM"		/* for HSM(Hardware Security Module) */
-#define TCC_MBOX_FWUG_ID		"FWUG"		/* for snor firmware upate */
-#define TCC_MBOX_VIOC_ID		"VIOC"		/* for vioc manager */
-#define TCC_MBOX_SDR_ID			"SDR"		/* for SDR middleware ipc */
-#define TCC_MBOX_POWER_ID		"POWER0"	/* for power event handling */
-#define TCC_MBOX_CAMIPC_ID		"CAMIPC"	/* for RVC status check for T-RVC */
-#define TCC_MBOX_SCRSHARE_ID    "SCRSHR"    /* for screen share */
-#define TCC_MBOX_TCHSHARE_ID    "TCHSHR"    /* for touch share */
+
+/* Test client driver for tcc multi channel mbox test*/
+#define TCC_MBOX_TEST_ID		"TEST01"
+/* client driver for user applicaiton ipc*/
+#define TCC_MBOX_IPC_ID			"IPC"
+/* for HSM(Hardware Security Module) */
+#define TCC_MBOX_HSM_ID			"HSM"
+/* for snor firmware update */
+#define TCC_MBOX_FWUG_ID		"FWUG"
+/* for vioc manager */
+#define TCC_MBOX_VIOC_ID		"VIOC"
+/* for SDR middleware ipc */
+#define TCC_MBOX_SDR_ID			"SDR"
+/* for power event handling */
+#define TCC_MBOX_POWER_ID		"POWER0"
+/* for RVC status check for T-RVC */
+#define TCC_MBOX_CAMIPC_ID		"CAMIPC"
+/* for screen share */
+#define TCC_MBOX_SCRSHARE_ID    "SCRSHR"
+/* for touch share */
+#define TCC_MBOX_TCHSHARE_ID    "TCHSHR"
 #endif
