@@ -629,7 +629,7 @@ static int tcc_mipi_csi2_set_interface(struct tcc_mipi_csi2_state * state,
 		 * Set D-PHY control(Slave)
 		 * Refer to 7.2.5(S_DPHYCTL) in D-PHY datasheet
 		 */
-		MIPI_CSIS_Set_DPHY_S_Control(state, 0x00000000, 0xfd008000);
+		MIPI_CSIS_Set_DPHY_S_Control(state, 0x92, 0xfd008000);
 
 		/*
 		 * Set D-PHY Common control

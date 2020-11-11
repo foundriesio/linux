@@ -44,8 +44,6 @@
 #define ISP_ADDR	(0x30 >> 1)
 #define SER_ADDR	(0x80 >> 1)
 
-#define TEST_2_INPUT_PORTS
-
 union reg_values{
 	struct videosource_reg * list;
 	unsigned char * reg_values;
@@ -199,6 +197,8 @@ end:
 }
 
 static struct videosource_reg des_init_reg[] = {
+	{0x0943, 0x80}, // DE_SKEW_INIT, Enable auto initial de-skew packets with the minimum width 32K UI
+	{0x0944, 0x91}, // DE_SKEW_PER, Enable periodic de-skew packets with width 2K UI every 4 frames
 	/* 
 	 * MAX96712 (0x52) powers up in GMSL1 mode,
 	 * HIM enabled
@@ -231,7 +231,8 @@ static struct videosource_reg des_init_reg[] = {
 	/*
 	 * Phy1 set pll (x 100Mbps)
 	 */
-	{0x0418, 0xEA}, // overide
+	{0x0415, 0xEF}, // Override Enable
+	{0x0418, 0xF1}, // overide
 	{0x041B, 0x2A},
 
 	/*
@@ -243,20 +244,14 @@ static struct videosource_reg des_init_reg[] = {
 	//{0x0239, 0x59},
 
 	/*
-	 * enable GMSL1 link A B C D
-	 */
-#ifndef TEST_2_INPUT_PORTS
-	{0x0006, 0x01},
-#endif
-	/*
 	 * lane ping for 4-lane port A and B
 	 */
 	{0x08A3, 0xE4},
 	{0x08A4, 0xE4},
 	{0x01DA, 0x18},
-#ifdef TEST_2_INPUT_PORTS
 	{0x01FA, 0x18},
-#endif
+	{0x021A, 0x18},
+	{0x023A, 0x18},
 	/* 
 	 * Set DT(0x1E), VC, BPP(0x10)
 	 * FOR PIPE X Y Z U setting for RGB888 
@@ -293,6 +288,24 @@ static struct videosource_reg des_init_reg[] = {
 	{0x0951, 0x01},
 	{0x0952, 0x41},
 
+	// 3 data map en fot pipe x, VC2
+	{0x098B, 0x07},
+	{0x09AD, 0x15},
+	{0x098D, 0x1E},
+	{0x098E, 0x9E},
+	{0x098F, 0x00},
+	{0x0990, 0x80},
+	{0x0991, 0x01},
+	{0x0992, 0x81},
+	// // 3 data map en fot pipe y, VC3
+	{0x09CB, 0x07},
+	{0x09ED, 0x15},
+	{0x09CD, 0x1E},
+	{0x09CE, 0xDE},
+	{0x09CF, 0x00},
+	{0x09D0, 0xC0},
+	{0x09D1, 0x01},
+	{0x09D2, 0xC1},
 	/*
 	 * HIBW=1
 	 */
@@ -337,9 +350,11 @@ static struct videosource_reg des_init_reg[] = {
 	{0x0C0D, 0x80},
 	{0x0D0D, 0x80},
 	{0x0E0D, 0x80},
-#ifdef TEST_2_INPUT_PORTS
-	{0x0006, 0x03},
-#endif
+	/*
+	 * enable GMSL1 link A B C D
+	 */
+	{0x0006, 0x0f},
+
 	{0xFF,  50}, //delay
 	{REG_TERM, VAL_TERM}
 };
@@ -797,7 +812,7 @@ struct videosource videosource_max96712 = {
 	    .width = WIDTH,
 	    .height = HEIGHT - 1,
 	    .interlaced = V4L2_DV_PROGRESSIVE,	// V4L2_DV_INTERLACED
-	    .data_format = FMT_YUV422_8BIT,   // data format
+	    .data_format = FMT_YUV422_16BIT,   // data format
 	    .gen_field_en = OFF,
 	    .de_active_low = ACT_LOW,
 	    .field_bfield_low = OFF,
@@ -828,13 +843,13 @@ struct videosource videosource_max96712 = {
 	    .capture_skip_frame = 0,
 	    .sensor_sizes = sensor_sizes,
 
-	    .des_info.input_ch_num	= 2,
+	    .des_info.input_ch_num	= 4,
 
-	    .des_info.pixel_mode	= PIXEL_MODE_SINGLE,
+	    .des_info.pixel_mode	= PIXEL_MODE_DUAL,
 	    .des_info.interleave_mode	= INTERLEAVE_MODE_VC_DT,
 	    .des_info.data_lane_num 	= 4,
 	    .des_info.data_format	= DATA_FORMAT_YUV422_8BIT,
-	    .des_info.hssettle		= 23,
+	    .des_info.hssettle		= 37,
 	    .des_info.clksettlectl	= 0x00,
 	},
     .driver =
