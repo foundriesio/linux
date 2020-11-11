@@ -71,7 +71,7 @@ struct tcc_sc_fw_ufs_cmd {
 
 struct tcc_sc_fw_mmc_ops {
 	int (*request_command)(const struct tcc_sc_fw_handle *handle,
-			struct tcc_sc_fw_mmc_cmd *cmd, struct tcc_sc_fw_mmc_data *data);
+		struct tcc_sc_fw_mmc_cmd *cmd, struct tcc_sc_fw_mmc_data *data);
 	int (*prot_info)(const struct tcc_sc_fw_handle *handle,
 		struct tcc_sc_fw_prot_mmc *mmc_info);
 };
@@ -83,8 +83,10 @@ struct tcc_sc_fw_ufs_ops {
 
 struct tcc_sc_fw_gpio_ops {
 	int (*request_gpio)(const struct tcc_sc_fw_handle *handle,
-			uint32_t address, uint32_t bit_number, uint32_t width, uint32_t value);
-	int (*request_gpio_multi)(const struct tcc_sc_fw_handle *handle, struct tcc_sc_gpio_req_data* gpio_req_data);
+		uint32_t address, uint32_t bit_number,
+		uint32_t width, uint32_t value);
+	int (*request_gpio_multi)(const struct tcc_sc_fw_handle *handle,
+		struct tcc_sc_gpio_req_data *gpio_req_data);
 };
 
 struct tcc_sc_fw_ops {
