@@ -977,9 +977,22 @@ crtc_set_mode(struct drm_device *dev, struct drm_atomic_state *old_state)
 	for_each_new_crtc_in_state(old_state, crtc, new_crtc_state, i) {
 		const struct drm_crtc_helper_funcs *funcs;
 
-		if (!new_crtc_state->mode_changed)
+		/*
+		 * Telechips
+		 * When received DPMS_ON message, DRM core sets only
+		 * state->active_changed to 1, except state->mode_changed.
+		 * Normally In this case, DRM core does not sets the display
+		 * controller to current mode.
+		 * Because DRM core assumes the display controller being
+		 * maintained previous state.
+		 * But We should be set the display controller to
+		 * current mode, because the display controller was initialize
+		 *  by DRM core.
+		 */
+		if (!new_crtc_state->mode_changed &&
+			!new_crtc_state->active_changed) {
 			continue;
-
+		}
 		funcs = crtc->helper_private;
 
 		if (new_crtc_state->enable && funcs->mode_set_nofb) {
@@ -1004,8 +1017,22 @@ crtc_set_mode(struct drm_device *dev, struct drm_atomic_state *old_state)
 		mode = &new_crtc_state->mode;
 		adjusted_mode = &new_crtc_state->adjusted_mode;
 
-		if (!new_crtc_state->mode_changed)
+		/*
+		 * Telechips
+		 * When received DPMS_ON message, DRM core sets only
+		 * state->active_changed to 1, except state->mode_changed.
+		 * Normally In this case, DRM core does not sets the display
+		 * controller to current mode.
+		 * Because DRM core assumes the display controller being
+		 * maintained previous state.
+		 * But We should be set the display controller to
+		 * current mode, because the display controller was initialize
+		 *  by DRM core.
+		 */
+		if (!new_crtc_state->mode_changed &&
+			!new_crtc_state->active_changed) {
 			continue;
+		}
 
 		DRM_DEBUG_ATOMIC("modeset on [ENCODER:%d:%s]\n",
 				 encoder->base.id, encoder->name);
