@@ -1162,7 +1162,7 @@ dtbo-y += \
 	tcc/overlay-tcc8030-android-dual-lpd4321-ivi_sv0.1.dtbo \
 	tcc/overlay-tcc8030-android-lpd4321_sv0.1-hdmi-ext-output.dtbo \
 	tcc/overlay-tcc8030-android-lpd4321_sv0.1-hdmi-ext-panel.dtbo \
-	tcc/overlay-tcc803xp-android-lpd4321_sv0.1.dts.dtbo
+	tcc/overlay-tcc803xp-android-lpd4321_sv0.1.dtbo
 
 dtb-y += \
 	tcc/tcc9010-soc.dtb
