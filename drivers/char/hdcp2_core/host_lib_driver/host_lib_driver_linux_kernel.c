@@ -443,7 +443,7 @@ static long load_code(struct esm_device *esm, struct esm_ioc_code __user *arg)
 			return res;
 		}
 #endif
-		// printk("Code size of ESM is zero.\n");
+		// pr_info("Code size of ESM is zero.\n");
 		res = -EFAULT;
 	}
 
