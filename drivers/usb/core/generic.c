@@ -44,10 +44,12 @@ static int is_activesync(struct usb_interface_descriptor *desc)
 
 int usb_choose_configuration(struct usb_device *udev)
 {
-	int i;
+	int i, j;
 	int num_configs;
 	int insufficient_power = 0;
 	struct usb_host_config *c, *best;
+	int support_audio_class = 0;
+	int support_hid_class = 0;
 
 	if (usb_device_is_owned(udev))
 		return 0;
@@ -55,6 +57,39 @@ int usb_choose_configuration(struct usb_device *udev)
 	best = NULL;
 	c = udev->config;
 	num_configs = udev->descriptor.bNumConfigurations;
+
+	// For Apple device
+	if (udev->descriptor.idVendor == 0x5ac) {
+		/*
+		 * If you want to attach a USB device that supports only mass
+		 * storage, such as an iPod shuffle, use the code below.
+		 */
+		for (i = 0; i < num_configs; i++) {
+			for (j = 0; j < c[i].desc.bNumInterfaces; j++) {
+				const struct usb_interface_descriptor *intf =
+					&c[i].intf_cache[j]->altsetting->desc;
+
+				if (intf->bInterfaceClass == USB_CLASS_AUDIO)
+					support_audio_class = 1;
+				if (intf->bInterfaceClass == USB_CLASS_HID)
+					support_hid_class = 1;
+			}
+		}
+
+		/*
+		 * When connecting CarPlay, skip the Set Configuration step to
+		 * save time.
+		 */
+		if (support_audio_class != 1 && support_hid_class != 1) {
+			dev_info(&udev->dev, "[INFO][USB] [%s] MASS STORAGE support\n",
+					__func__);
+		} else {
+			dev_info(&udev->dev, "[INFO][USB] [%s] AUDIO/HID support\n",
+					__func__);
+			return -1;
+		}
+	}
+
 	for (i = 0; i < num_configs; (i++, c++)) {
 		struct usb_interface_descriptor	*desc = NULL;
 
@@ -129,6 +164,16 @@ int usb_choose_configuration(struct usb_device *udev)
 						USB_CLASS_VENDOR_SPEC &&
 				(desc && desc->bInterfaceClass !=
 						USB_CLASS_VENDOR_SPEC)) {
+			// For Apple devices that only support mass storage
+			if (i == 0 && num_configs > 1 && desc &&
+					desc->bInterfaceClass ==
+					USB_CLASS_MASS_STORAGE &&
+					udev->descriptor.idVendor == 0x5ac &&
+					support_audio_class == 1 &&
+					support_hid_class == 1) {
+				continue;
+			}
+
 			best = c;
 			break;
 		}
