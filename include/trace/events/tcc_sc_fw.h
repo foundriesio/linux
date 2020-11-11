@@ -2,17 +2,20 @@
  *
  * Copyright (C) 2020 Telechips Inc.
  *
- * This program is free software; you can redistribute it and/or modify it under the terms
- * of the GNU General Public License as published by the Free Software Foundation;
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License as published by
+ * the Free Software Foundation;
  * either version 2 of the License, or (at your option) any later version.
  *
- * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
- * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
- * PURPOSE. See the GNU General Public License for more details.
+ * This program is distributed in the hope that it will be useful, but
+ * WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License along with
- * this program; if not, write to the Free Software Foundation, Inc., 59 Temple Place,
- * Suite 330, Boston, MA 02111-1307 USA
+ * this program; if not, write to the Free Software Foundation, Inc.,
+ * 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
  ****************************************************************************/
 
 #undef TRACE_SYSTEM
@@ -63,11 +66,8 @@ TRACE_EVENT(tcc_sc_fw_start_mmc_req,
 		__entry->data = dat;
 	),
 
-	TP_printk("start mmc_req struct tcc_sc_fw_mmc_cmd[%p]: "
-		  "cmd_opcode=%u cmd_arg=0x%x cmd_flags=0x%x cmd_part_num=%u "
-		  "struct tcc_sc_fw_mmc_data[%p]: "
-		  "blocks=%u block_size=%u blk_addr=%u data_flags=0x%x "
-		  "sg_len=%u sg_count=%u sg=%p",
+	TP_printk(
+		"start mmc_req struct tcc_sc_fw_mmc_cmd[%p]: cmd_opcode=%u cmd_arg=0x%x cmd_flags=0x%x cmd_part_num=%u struct tcc_sc_fw_mmc_data[%p]: blocks=%u block_size=%u blk_addr=%u data_flags=0x%x sg_len=%u sg_count=%u sg=%p",
 		  __entry->cmd,
 		  __entry->cmd_opcode, __entry->cmd_arg,
 		  __entry->cmd_flags, __entry->cmd_part_num,
@@ -90,7 +90,7 @@ TRACE_EVENT(tcc_sc_fw_done_mmc_req,
 		__field(unsigned int,		cmd_flags)
 		__field(unsigned int,		cmd_part_num)
 		__field(unsigned int,		cmd_error)
-		__field(u32, 			cmd_resp0)
+		__field(u32,			cmd_resp0)
 		__field(u32,			cmd_resp1)
 		__field(u32,				cmd_resp2)
 		__field(u32,			cmd_resp3)
@@ -109,13 +109,13 @@ TRACE_EVENT(tcc_sc_fw_done_mmc_req,
 		__entry->cmd_resp3 = cmd ? cmd->resp[3] : 0;
 	),
 
-	TP_printk("end mmc_req struct tcc_sc_fw_mmc_cmd[%p]: "
-		  "cmd_opcode=%u cmd_arg=0x%x cmd_flags=0x%x cmd_part_num=%u "
-		  "cmd_error=%d cmd_resp[0]=%u, cmd_resp[1]=%u, cmd_resp[2]=%u, cmd_resp[3]=%u",
+	TP_printk(
+		"end mmc_req struct tcc_sc_fw_mmc_cmd[%p]: cmd_opcode=%u cmd_arg=0x%x cmd_flags=0x%x cmd_part_num=%u cmd_error=%d cmd_resp[0]=%u, cmd_resp[1]=%u, cmd_resp[2]=%u, cmd_resp[3]=%u",
 		  __entry->cmd,
 		  __entry->cmd_opcode, __entry->cmd_arg,
 		  __entry->cmd_flags, __entry->cmd_part_num, __entry->cmd_error,
-		  __entry->cmd_resp0, __entry->cmd_resp1, __entry->cmd_resp2, __entry->cmd_resp3)
+		  __entry->cmd_resp0, __entry->cmd_resp1, __entry->cmd_resp2,
+		  __entry->cmd_resp3)
 );
 
 TRACE_EVENT(tcc_sc_fw_start_xfer,
@@ -136,11 +136,10 @@ TRACE_EVENT(tcc_sc_fw_start_xfer,
 		__entry->msg = msg;
 	),
 
-	TP_printk("start struct tcc_sc_mbox_msg[%p]: "
-		  "cmd_len %u data_len %u",
+	TP_printk("start struct tcc_sc_mbox_msg[%p]: cmd_len %u data_len %u",
 		  __entry->msg, __entry->cmd_len,  __entry->data_len)
 );
-	
+
 TRACE_EVENT(tcc_sc_fw_done_xfer,
 
 	TP_PROTO(struct tcc_sc_mbox_msg *msg),
@@ -159,8 +158,7 @@ TRACE_EVENT(tcc_sc_fw_done_xfer,
 		__entry->msg = msg;
 	),
 
-	TP_printk("done struct tcc_sc_mbox_msg[%p]: "
-		  "cmd_len %u data_len %u",
+	TP_printk("done struct tcc_sc_mbox_msg[%p]: cmd_len %u data_len %u",
 		  __entry->msg, __entry->cmd_len,  __entry->data_len)
 );
 
@@ -182,8 +180,8 @@ TRACE_EVENT(tcc_sc_fw_rx_complete,
 		__entry->msg = msg;
 	),
 
-	TP_printk("rx_complete struct tcc_sc_mbox_msg[%p]: "
-		  "cmd_len %u data_len %u",
+	TP_printk(
+		"rx_complete struct tcc_sc_mbox_msg[%p]: cmd_len %u data_len %u",
 		  __entry->msg, __entry->cmd_len,  __entry->data_len)
 );
 
