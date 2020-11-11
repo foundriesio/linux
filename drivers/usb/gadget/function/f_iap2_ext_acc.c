@@ -695,7 +695,6 @@ static int iap2_ext_acc_function_bind(struct usb_configuration *c,
 
 	dev->cdev = cdev;
 
-	//printk(KERN_DEBUG "iAP2 External Accessory(EA) Protocol\n");
 	EA_DBG("%s dev : %p\n", __func__, dev);
 
 	/* allocate a string ID for our interface */
