@@ -208,7 +208,6 @@ static long aux_detect_ioctl(
 
 	case AUX_IOCTL_CMD_GET_STATE:
 		state = (long)aux_detect_check_state();
-		dlog("state: %d\n", state);
 
 		if (copy_to_user((void *)arg,
 				(const void *)&state,
