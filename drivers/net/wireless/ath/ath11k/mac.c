@@ -3912,7 +3912,8 @@ static int ath11k_mac_config_mon_status_default(struct ath11k *ar, bool enable)
 
 	if (enable) {
 		tlv_filter = ath11k_mac_mon_status_filter_default;
-		tlv_filter.rx_filter = ath11k_debug_rx_filter(ar);
+		if (ath11k_debug_rx_filter(ar))
+			tlv_filter.rx_filter = ath11k_debug_rx_filter(ar);
 	}
 
 	ring_id = ar->dp.rx_mon_status_refill_ring.refill_buf_ring.ring_id;
