@@ -1075,7 +1075,7 @@ static int tcc_bind(struct thermal_zone_device *thermal,
 		//	level = i;
 		// before cpu freq is not set.
 		// if (level == THERMAL_CSTATE_INVALID) {
-		// printk("cooling level THERMAL_CSTATE_INVALID\n");
+		// pr_info("cooling level THERMAL_CSTATE_INVALID\n");
 		// return 0;
 		// }
 		tcc_get_trip_type(thermal_zone->therm_dev, i, &type);
