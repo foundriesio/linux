@@ -2,17 +2,20 @@
  *
  * Copyright (C) 2020 Telechips Inc.
  *
- * This program is free software; you can redistribute it and/or modify it under the terms
- * of the GNU General Public License as published by the Free Software Foundation;
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License as published by
+ * the Free Software Foundation;
  * either version 2 of the License, or (at your option) any later version.
  *
- * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
- * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
- * PURPOSE. See the GNU General Public License for more details.
+ * This program is distributed in the hope that it will be useful, but
+ * WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License along with
- * this program; if not, write to the Free Software Foundation, Inc., 59 Temple Place,
- * Suite 330, Boston, MA 02111-1307 USA
+ * this program; if not, write to the Free Software Foundation, Inc.,
+ * 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
  ****************************************************************************/
 
 #include <linux/types.h>
@@ -80,8 +83,7 @@
 
 #define MBOX_DAT_TX_TIMEOUT_MS		5U
 
-struct tcc_sc_mbox_device
-{
+struct tcc_sc_mbox_device {
 	struct mbox_controller mbox;
 	void __iomem *mbox_base;
 	int rx_irq;
@@ -96,7 +98,8 @@ struct tcc_sc_mbox_device
 	spinlock_t lock;
 };
 
-static inline void tcc_sc_mbox_writel(struct tcc_sc_mbox_device *mdev, u32 val, u32 reg)
+static inline void tcc_sc_mbox_writel(struct tcc_sc_mbox_device *mdev, u32 val,
+				      u32 reg)
 {
 	writel(val, mdev->mbox_base + reg);
 }
@@ -106,17 +109,20 @@ static inline u32 tcc_sc_mbox_readl(struct tcc_sc_mbox_device *mdev, u32 reg)
 	return readl(mdev->mbox_base + reg);
 }
 
-static inline void tcc_sc_mbox_set_ctrl(struct tcc_sc_mbox_device *mdev, u32 mask)
+static inline void tcc_sc_mbox_set_ctrl(struct tcc_sc_mbox_device *mdev,
+					u32 mask)
 {
 	tcc_sc_mbox_writel(mdev, mask, MBOX_CTRL_SET);
 }
 
-static inline void tcc_sc_mbox_clr_ctrl(struct tcc_sc_mbox_device *mdev, u32 mask)
+static inline void tcc_sc_mbox_clr_ctrl(struct tcc_sc_mbox_device *mdev,
+					u32 mask)
 {
 	tcc_sc_mbox_writel(mdev, ~(mask), MBOX_CTRL_CLR);
 }
 
-static struct tcc_sc_mbox_device *mbox_chan_to_tcc_sc_mbox(struct mbox_chan *chan)
+static struct tcc_sc_mbox_device *mbox_chan_to_tcc_sc_mbox(struct mbox_chan
+							   *chan)
 {
 	if ((chan == NULL) || (chan->con_priv == NULL))
 		return NULL;
@@ -132,61 +138,67 @@ static int tcc_sc_mbox_send_data(struct mbox_chan *chan, void *data)
 	u32 i;
 
 	/* check message */
-	if(msg->cmd_len > MBOX_MAX_CMD_LENGTH) {
-		dev_err(mdev->dev, "[ERROR][TCC_SC_MBOX] Exceed command buffer (%d > %d)\n",
+	if (msg->cmd_len > MBOX_MAX_CMD_LENGTH) {
+		dev_err(mdev->dev,
+			"[ERROR][TCC_SC_MBOX] Exceed command buffer (%d > %d)\n",
 			msg->cmd_len, MBOX_MAX_CMD_LENGTH);
 		return -EINVAL;
-	} else {
-		if(msg->cmd_len == 0U) {
-			dev_err(mdev->dev, "[ERROR][TCC_SC_MBOX] Command length is zero\n");
-			return -EINVAL;
-		}
-
-		if(msg->cmd == NULL) {
-			dev_err(mdev->dev, "[ERROR][TCC_SC_MBOX] Command buffer is null\n");
-			return -EINVAL;
-		}
 	}
 
-	if(msg->data_len > MBOX_MAX_DATA_LENGTH) {
-		dev_err(mdev->dev, "[ERROR][TCC_SC_MBOX] Exceed data buffer (%d > %d)\n",
+	if (msg->cmd_len == 0U) {
+		dev_err(mdev->dev,
+			"[ERROR][TCC_SC_MBOX] Command length is zero\n");
+		return -EINVAL;
+	}
+
+	if (msg->cmd == NULL) {
+		dev_err(mdev->dev,
+			"[ERROR][TCC_SC_MBOX] Command buffer is null\n");
+		return -EINVAL;
+	}
+
+	if (msg->data_len > MBOX_MAX_DATA_LENGTH) {
+		dev_err(mdev->dev,
+			"[ERROR][TCC_SC_MBOX] Exceed data buffer (%d > %d)\n",
 			msg->data_len, MBOX_MAX_DATA_LENGTH);
 		return -EINVAL;
-	} else {
-		if((msg->data_len != 0U) && (msg->data_buf == NULL)) {
-			dev_err(mdev->dev, "[ERROR][TCC_SC_MBOX] Data buffer is null\n");
-			return -EINVAL;
-		} else {
-			/* do nothing */
-		}
 	}
-	
+
+	if ((msg->data_len != 0U) && (msg->data_buf == NULL)) {
+		dev_err(mdev->dev,
+			"[ERROR][TCC_SC_MBOX] Data buffer is null\n");
+		return -EINVAL;
+	}
+
 	spin_lock_irqsave((&mdev->lock), (flags));
 
 	if ((tcc_sc_mbox_readl(mdev, MBOX_CMD_FIFO_STS) &
-			((u32) 0x1U << MBOX_CMD_TX_FIFO_EMPTY)) == 0U) {
-		dev_err(mdev->dev, "[ERROR][TCC_SC_MBOX] Tx command FIFO is not empty\n");
+	     ((u32) 0x1U << MBOX_CMD_TX_FIFO_EMPTY)) == 0U) {
+		dev_err(mdev->dev,
+			"[ERROR][TCC_SC_MBOX] Tx command FIFO is not empty\n");
 		spin_unlock_irqrestore(&mdev->lock, flags);
 		return -EBUSY;
 	}
 
 	if ((tcc_sc_mbox_readl(mdev, MBOX_DAT_FIFO_TX_STS) &
-			((u32) 0x1U << MBOX_DAT_TX_FIFO_EMPTY)) == 0U) {
-		dev_err(mdev->dev, "[ERROR][TCC_SC_MBOX] Tx data FIFO is not empty\n");
+	     ((u32) 0x1U << MBOX_DAT_TX_FIFO_EMPTY)) == 0U) {
+		dev_err(mdev->dev,
+			"[ERROR][TCC_SC_MBOX] Tx data FIFO is not empty\n");
 		spin_unlock_irqrestore(&mdev->lock, flags);
 		return -EBUSY;
 	}
 
 	/* Write command to fifo */
-	for(i=0;i<msg->cmd_len;i++)
-	{
-		tcc_sc_mbox_writel(mdev, msg->cmd[i], (MBOX_CMD_TX_FIFO + (i * 0x4U)));
+	for (i = 0; i < msg->cmd_len; i++) {
+		tcc_sc_mbox_writel(mdev, msg->cmd[i],
+				   (MBOX_CMD_TX_FIFO + (i * 0x4U)));
 	}
 
 	/* Write data if exist */
-	if((msg->data_buf != NULL) && (msg->data_len > 0U)) {
-		for(i = 0U; i < msg->data_len; i++) {
-			tcc_sc_mbox_writel(mdev, msg->data_buf[i], MBOX_DAT_FIFO_TXD);
+	if ((msg->data_buf != NULL) && (msg->data_len > 0U)) {
+		for (i = 0U; i < msg->data_len; i++) {
+			tcc_sc_mbox_writel(mdev, msg->data_buf[i],
+					   MBOX_DAT_FIFO_TXD);
 		}
 	}
 
@@ -214,11 +226,13 @@ static int tcc_sc_mbox_startup(struct mbox_chan *chan)
 
 	/* Flush command and data FIFO */
 	tcc_sc_mbox_set_ctrl(mdev,
-		((u32) 0x1U << MBOX_CTRL_CF_FLUSH) | ((u32) 0x1U << MBOX_CTRL_DF_FLUSH));
+			     ((u32) 0x1U << MBOX_CTRL_CF_FLUSH) |
+				((u32) 0x1U << MBOX_CTRL_DF_FLUSH));
 
 	/* Set rx interrupt */
 	tcc_sc_mbox_set_ctrl(mdev,
-		((u32) 0x1U << MBOX_CTRL_IEN_READ) | (MBOX_ILEVEL_NEMP << MBOX_CTRL_ILEVEL));
+			     ((u32) 0x1U << MBOX_CTRL_IEN_READ) |
+			     (MBOX_ILEVEL_NEMP << MBOX_CTRL_ILEVEL));
 
 	/* Set terminal status register */
 	tcc_sc_mbox_writel(mdev, 0x1U, MBOX_OPPOSITE_STS);
@@ -240,11 +254,11 @@ static void tcc_sc_mbox_shutdown(struct mbox_chan *chan)
 
 	/* Flush command and data FIFO */
 	tcc_sc_mbox_set_ctrl(mdev,
-		((u32) 0x1U << MBOX_CTRL_CF_FLUSH) | ((u32) 0x1U << MBOX_CTRL_DF_FLUSH));
+			     ((u32) 0x1U << MBOX_CTRL_CF_FLUSH) |
+				((u32) 0x1U << MBOX_CTRL_DF_FLUSH));
 
 	/* Disable rx interrupt */
-	tcc_sc_mbox_clr_ctrl(mdev,
-		((u32) 0x1U << MBOX_CTRL_IEN_READ));
+	tcc_sc_mbox_clr_ctrl(mdev, ((u32) 0x1U << MBOX_CTRL_IEN_READ));
 
 	/* Clear terminal status register */
 	tcc_sc_mbox_writel(mdev, 0x0, MBOX_OPPOSITE_STS);
@@ -258,17 +272,21 @@ static irqreturn_t tcc_sc_mbox_rx_irq_handler(int irq, void *data)
 	u32 status = tcc_sc_mbox_readl(mdev, MBOX_CMD_FIFO_STS);
 	irqreturn_t ret = IRQ_NONE;
 
-	if(irq == mdev->rx_irq) {
-		if((status & ((u32) 0x1U << MBOX_CMD_RX_FIFO_EMPTY)) == 0U) {
+	if (irq == mdev->rx_irq) {
+		if ((status & ((u32) 0x1U << MBOX_CMD_RX_FIFO_EMPTY)) == 0U) {
 			/* Disable Rx interrupt */
-			tcc_sc_mbox_clr_ctrl(mdev, ((u32) 0x1U << MBOX_CTRL_IEN_READ));
+			tcc_sc_mbox_clr_ctrl(mdev,
+					     ((u32) 0x1U <<
+					      MBOX_CTRL_IEN_READ));
 
 			ret = IRQ_WAKE_THREAD;
 		} else {
-			dev_err(mdev->dev, "[ERROR][TCC_SC_MBOX] RX command FIFO is empty\n");
+			dev_err(mdev->dev,
+				"[ERROR][TCC_SC_MBOX] RX command FIFO is empty\n");
 		}
 	} else {
-		dev_err(mdev->dev, "[ERROR][TCC_SC_MBOX] Wrong RX_IRQ # (%d)\n", irq);
+		dev_err(mdev->dev, "[ERROR][TCC_SC_MBOX] Wrong RX_IRQ # (%d)\n",
+			irq);
 	}
 
 	return ret;
@@ -282,69 +300,82 @@ static irqreturn_t tcc_sc_mbox_rx_isr_handler(int irq, void *data)
 	unsigned long flags;
 	irqreturn_t ret = IRQ_NONE;
 
-	if(mdev == NULL) {
+	if (mdev == NULL) {
 		dev_err(mdev->dev, "[ERROR][TCC_SC_MBOX] Device is null\n");
 		return ret;
 	}
 
 	msg = &mdev->rx_msg;
 
-	if(irq == mdev->rx_irq) {
-		spin_lock_irqsave((&mdev->lock), (flags));
-
-		status = tcc_sc_mbox_readl(mdev, MBOX_CMD_FIFO_STS);
-		if((status & ((u32) 1U << MBOX_CMD_RX_FIFO_EMPTY)) == 0U) {
-			/* Read command */
-			count = (tcc_sc_mbox_readl(mdev, MBOX_CMD_FIFO_STS) >> MBOX_CMD_RX_FIFO_COUNT)
-				& MBOX_CMD_RX_FIFO_COUNT_MASK;
-			rx_buf_len = mdev->rx_cmd_buf_len;
-			for(i=0U;i<count;i++) {
-				/* if buf len is smaller than fifo cnt, do dummy read */
-				if(rx_buf_len < (i + 0x1U))
-					tcc_sc_mbox_readl(mdev, (MBOX_CMD_RX_FIFO + (i * 0x4U)));
-				else
-					msg->cmd[i] = tcc_sc_mbox_readl(mdev, (MBOX_CMD_RX_FIFO + (i * 0x4U)));
-			}
-			msg->cmd_len = count;
-			msg->data_len = 0U;
-			
-			status = tcc_sc_mbox_readl(mdev, MBOX_DAT_FIFO_RX_STS);
-			if((status & ((u32) 0x1U << MBOX_DAT_RX_FIFO_EMPTY)) == 0U) {
-				/* Read Data */
-				count = (tcc_sc_mbox_readl(mdev, MBOX_DAT_FIFO_RX_STS) >> MBOX_DAT_RX_FIFO_COUNT)
-					& MBOX_DAT_RX_FIFO_COUNT_MASK;
-				rx_buf_len = mdev->rx_data_buf_len;
-				for(i=0;i<count;i++) {
-					/* if buf len is smaller than fifo cnt, do dummy read */
-					if((msg->data_buf == NULL) || (rx_buf_len < (i + 0x1U)))
-						tcc_sc_mbox_readl(mdev, MBOX_DAT_FIFO_RXD);
-					else
-						msg->data_buf[i] = tcc_sc_mbox_readl(mdev, MBOX_DAT_FIFO_RXD);
-				}
-
-				msg->data_len = count;
-			}
-			spin_unlock_irqrestore(&mdev->lock, flags);
-
-			dev_dbg(mdev->dev, "[DEBUG][TCC_SC_MBOX] Receive cmd(%d) and data(%d)\n",
-				msg->cmd_len, msg->data_len);
-
-			mbox_chan_received_data(&mdev->mbox.chans[0], msg);
-
-			spin_lock_irqsave((&mdev->lock), (flags));
-			/* Enable Rx interrupt */
-			tcc_sc_mbox_set_ctrl(mdev, ((u32) 0x1U << MBOX_CTRL_IEN_READ));
-			spin_unlock_irqrestore(&mdev->lock, flags);
-
-			ret = IRQ_HANDLED;
-		} else {
-			spin_unlock_irqrestore(&mdev->lock, flags);
-			dev_err(mdev->dev, "[ERROR][TCC_SC_MBOX] RX command FIFO is empty\n");
-		}
-	} else {
-		dev_err(mdev->dev, "[ERROR][TCC_SC_MBOX] Wrong RX_IRQ # (%d)\n", irq);
+	if (irq != mdev->rx_irq) {
+		dev_err(mdev->dev, "[ERROR][TCC_SC_MBOX] Wrong RX_IRQ # (%d)\n",
+			irq);
+		return ret;
 	}
 
+	spin_lock_irqsave((&mdev->lock), (flags));
+
+	status = tcc_sc_mbox_readl(mdev, MBOX_CMD_FIFO_STS);
+	if ((status & ((u32) 1U << MBOX_CMD_RX_FIFO_EMPTY)) == 0U) {
+		/* Read command */
+		count = (tcc_sc_mbox_readl(mdev, MBOX_CMD_FIFO_STS) >>
+			 MBOX_CMD_RX_FIFO_COUNT) & MBOX_CMD_RX_FIFO_COUNT_MASK;
+		rx_buf_len = mdev->rx_cmd_buf_len;
+		for (i = 0U; i < count; i++) {
+			if (rx_buf_len < (i + 0x1U))
+				tcc_sc_mbox_readl(mdev,
+					(MBOX_CMD_RX_FIFO + (i * 0x4U)));
+			else
+				msg->cmd[i] =
+					tcc_sc_mbox_readl(mdev,
+							  (MBOX_CMD_RX_FIFO
+							   + (i * 0x4U)));
+		}
+		msg->cmd_len = count;
+		msg->data_len = 0U;
+
+		status = tcc_sc_mbox_readl(mdev, MBOX_DAT_FIFO_RX_STS);
+		if ((status & ((u32) 0x1U << MBOX_DAT_RX_FIFO_EMPTY)) == 0U) {
+			/* Read Data */
+			count = (tcc_sc_mbox_readl(mdev, MBOX_DAT_FIFO_RX_STS)
+				>> MBOX_DAT_RX_FIFO_COUNT) &
+				MBOX_DAT_RX_FIFO_COUNT_MASK;
+			rx_buf_len = mdev->rx_data_buf_len;
+			for (i = 0; i < count; i++) {
+			/* if buf len is smaller than fifo cnt, do dummy read */
+				if ((msg->data_buf == NULL)
+				    || (rx_buf_len < (i + 0x1U)))
+					tcc_sc_mbox_readl(mdev,
+							  MBOX_DAT_FIFO_RXD);
+				else
+					msg->data_buf[i] =
+						tcc_sc_mbox_readl(mdev,
+							  MBOX_DAT_FIFO_RXD);
+			}
+
+			msg->data_len = count;
+		}
+		spin_unlock_irqrestore(&mdev->lock, flags);
+
+		dev_dbg(mdev->dev,
+			"[DEBUG][TCC_SC_MBOX] Receive cmd(%d) and data(%d)\n",
+			msg->cmd_len, msg->data_len);
+
+		mbox_chan_received_data(&mdev->mbox.chans[0], msg);
+
+		spin_lock_irqsave((&mdev->lock), (flags));
+		/* Enable Rx interrupt */
+		tcc_sc_mbox_set_ctrl(mdev,
+				     ((u32) 0x1U <<
+				      MBOX_CTRL_IEN_READ));
+		spin_unlock_irqrestore(&mdev->lock, flags);
+
+		ret = IRQ_HANDLED;
+	} else {
+		spin_unlock_irqrestore(&mdev->lock, flags);
+		dev_err(mdev->dev,
+			"[ERROR][TCC_SC_MBOX] RX command FIFO is empty\n");
+	}
 
 	return ret;
 }
@@ -354,24 +385,30 @@ static irqreturn_t tcc_sc_mbox_tx_irq_handler(int irq, void *data)
 	struct tcc_sc_mbox_device *mdev = mbox_chan_to_tcc_sc_mbox(data);
 	irqreturn_t ret = IRQ_NONE;
 
-	if(mdev == NULL) {
+	if (mdev == NULL) {
 		dev_err(mdev->dev, "[ERROR][TCC_SC_MBOX] Device is null\n");
 		return ret;
 	}
 
-	if(irq == mdev->tx_irq) {
+	if (irq == mdev->tx_irq) {
 		/* check transmmit cmd fifo */
-		if ((tcc_sc_mbox_readl(mdev, MBOX_CMD_FIFO_STS) & ((u32) 0x1U << MBOX_CMD_TX_FIFO_EMPTY)) != 0U) {
+		if ((tcc_sc_mbox_readl(mdev, MBOX_CMD_FIFO_STS) &
+		     ((u32) 0x1U << MBOX_CMD_TX_FIFO_EMPTY)) != 0U) {
 			/* Clear interrupt and disable output */
-			tcc_sc_mbox_set_ctrl(mdev, ((u32) 0x1U << MBOX_CTRL_ICLR_WRITE));
-			tcc_sc_mbox_clr_ctrl(mdev, ((u32) 0x1U << MBOX_CTRL_OEN));
+			tcc_sc_mbox_set_ctrl(mdev,
+					     ((u32) 0x1U <<
+					      MBOX_CTRL_ICLR_WRITE));
+			tcc_sc_mbox_clr_ctrl(mdev,
+					     ((u32) 0x1U << MBOX_CTRL_OEN));
 
 			ret = IRQ_WAKE_THREAD;
 		} else {
-			dev_err(mdev->dev, "[ERROR][TCC_SC_MBOX] TX CMD FIFO is not empty\n");
+			dev_err(mdev->dev,
+				"[ERROR][TCC_SC_MBOX] TX CMD FIFO is not empty\n");
 		}
 	} else {
-		dev_err(mdev->dev, "[ERROR][TCC_SC_MBOX] Wrong TX_IRQ # (%d)\n", irq);
+		dev_err(mdev->dev, "[ERROR][TCC_SC_MBOX] Wrong TX_IRQ # (%d)\n",
+			irq);
 	}
 
 	return ret;
@@ -383,20 +420,21 @@ static irqreturn_t tcc_sc_mbox_tx_isr_handler(int irq, void *data)
 	unsigned long flags;
 	struct mbox_chan *chan;
 	irqreturn_t ret = IRQ_NONE;
-	unsigned long timeout = jiffies + msecs_to_jiffies(MBOX_DAT_TX_TIMEOUT_MS);
+	unsigned long timeout =
+	    jiffies + msecs_to_jiffies(MBOX_DAT_TX_TIMEOUT_MS);
 
-	if(mdev == NULL) {
+	if (mdev == NULL) {
 		dev_err(mdev->dev, "[ERROR][TCC_SC_MBOX] Device is null\n");
 		return ret;
 	}
 
-	if(irq == mdev->tx_irq) {
-		while(1) {
+	if (irq == mdev->tx_irq) {
+		while (1) {
 			spin_lock_irqsave((&mdev->lock), (flags));
-			if ((tcc_sc_mbox_readl(mdev, MBOX_DAT_FIFO_TX_STS) & ((u32) 0x1U << MBOX_DAT_TX_FIFO_EMPTY)) != 0U) {
+			if ((tcc_sc_mbox_readl(mdev, MBOX_DAT_FIFO_TX_STS) &
+			     ((u32) 0x1U << MBOX_DAT_TX_FIFO_EMPTY)) != 0U) {
 
 				spin_unlock_irqrestore(&mdev->lock, flags);
-
 
 				/* Notify completion */
 				chan = &mdev->mbox.chans[0];
@@ -404,20 +442,21 @@ static irqreturn_t tcc_sc_mbox_tx_isr_handler(int irq, void *data)
 
 				ret = IRQ_HANDLED;
 
-				dev_dbg(mdev->dev, "[DEBUG][TCC_SC_MBOX] Tx done interrupt occurs\n");
+				dev_dbg(mdev->dev,
+					"[DEBUG][TCC_SC_MBOX] Tx done interrupt occurs\n");
 				break;
 			}
 			spin_unlock_irqrestore(&mdev->lock, flags);
 			udelay(1);
 
-			if(time_after(jiffies, timeout)) {
+			if (time_after(jiffies, timeout))
 				break;
-			}
 		}
 	}
 
-	if(ret != IRQ_HANDLED) {
-		dev_err(mdev->dev, "[ERROR][TCC_SC_MBOX] TX DATA FIFO is not empty\n");
+	if (ret != IRQ_HANDLED) {
+		dev_err(mdev->dev,
+			"[ERROR][TCC_SC_MBOX] TX DATA FIFO is not empty\n");
 	}
 
 	return ret;
@@ -433,34 +472,44 @@ static const struct of_device_id tcc_sc_mbox_of_match[2] = {
 	{.compatible = "telechips,tcc805x-mailbox-sc"},
 	{},
 };
+
 MODULE_DEVICE_TABLE(of, tcc_sc_mbox_of_match);
 
 static int tcc_sc_mbox_probe(struct platform_device *pdev)
 {
 	struct tcc_sc_mbox_device *mdev;
-	struct resource	*regs;
+	struct resource *regs;
 	int ret;
 
 	if (pdev->dev.of_node == NULL)
 		return -ENODEV;
 
-	mdev = devm_kzalloc(&pdev->dev, sizeof(struct tcc_sc_mbox_device), GFP_KERNEL);
+	mdev =
+	    devm_kzalloc(&pdev->dev, sizeof(struct tcc_sc_mbox_device),
+			 GFP_KERNEL);
 	if (mdev == NULL) {
-		dev_err(&pdev->dev, "[ERROR][TCC_SC_MBOX] Failed to allocate memory for device\n");
+		dev_err(&pdev->dev,
+			"[ERROR][TCC_SC_MBOX] Failed to allocate memory for device\n");
 		return -ENOMEM;
 	}
 
 	mdev->rx_cmd_buf_len = MBOX_MAX_CMD_LENGTH;
-	mdev->rx_msg.cmd = devm_kzalloc(&pdev->dev, sizeof(u32) * mdev->rx_cmd_buf_len, GFP_KERNEL);
+	mdev->rx_msg.cmd =
+	    devm_kzalloc(&pdev->dev, sizeof(u32) * mdev->rx_cmd_buf_len,
+			 GFP_KERNEL);
 	if (mdev->rx_msg.cmd == NULL) {
-		dev_err(&pdev->dev, "[ERROR][TCC_SC_MBOX] Failed to allocate memory for cmd buffer\n");
+		dev_err(&pdev->dev,
+			"[ERROR][TCC_SC_MBOX] Failed to allocate memory for cmd buffer\n");
 		return -ENOMEM;
 	}
 
 	mdev->rx_data_buf_len = MBOX_MAX_DATA_LENGTH;
-	mdev->rx_msg.data_buf = devm_kzalloc(&pdev->dev, sizeof(u32) * mdev->rx_data_buf_len, GFP_KERNEL);
+	mdev->rx_msg.data_buf =
+	    devm_kzalloc(&pdev->dev, sizeof(u32) * mdev->rx_data_buf_len,
+			 GFP_KERNEL);
 	if (mdev->rx_msg.data_buf == NULL) {
-		dev_err(&pdev->dev, "[ERROR][TCC_SC_MBOX] Failed to allocate memory for data buffer\n");
+		dev_err(&pdev->dev,
+			"[ERROR][TCC_SC_MBOX] Failed to allocate memory for data buffer\n");
 		return -ENOMEM;
 	}
 
@@ -468,25 +517,30 @@ static int tcc_sc_mbox_probe(struct platform_device *pdev)
 
 	mdev->mbox_base = devm_ioremap_resource(&pdev->dev, regs);
 	if (IS_ERR(mdev->mbox_base)) {
-		dev_err(&pdev->dev, "[ERROR][TCC_SC_MBOX] Failed to get resource\n");
+		dev_err(&pdev->dev,
+			"[ERROR][TCC_SC_MBOX] Failed to get resource\n");
 		return PTR_RET(mdev->mbox_base);
 	}
 
 	mdev->rx_irq = platform_get_irq(pdev, 0);
-	if(mdev->rx_irq < 0) {
-		dev_err(&pdev->dev, "[ERROR][TCC_SC_MBOX] Failed to get RX_IRQ #\n");
+	if (mdev->rx_irq < 0) {
+		dev_err(&pdev->dev,
+			"[ERROR][TCC_SC_MBOX] Failed to get RX_IRQ #\n");
 		return mdev->rx_irq;
 	}
 
 	mdev->tx_irq = platform_get_irq(pdev, 1);
-	if(mdev->tx_irq < 0) {
-		dev_err(&pdev->dev, "[ERROR][TCC_SC_MBOX] Failed to get TX_IRQ #\n");
+	if (mdev->tx_irq < 0) {
+		dev_err(&pdev->dev,
+			"[ERROR][TCC_SC_MBOX] Failed to get TX_IRQ #\n");
 		return mdev->tx_irq;
 	}
 
-	mdev->mbox.chans = devm_kzalloc(&pdev->dev, sizeof(struct mbox_chan), GFP_KERNEL);
+	mdev->mbox.chans =
+	    devm_kzalloc(&pdev->dev, sizeof(struct mbox_chan), GFP_KERNEL);
 	if (mdev->mbox.chans == NULL) {
-		dev_err(&pdev->dev, "[ERROR][TCC_SC_MBOX] Failed to allocate memory for channel\n");
+		dev_err(&pdev->dev,
+			"[ERROR][TCC_SC_MBOX] Failed to allocate memory for channel\n");
 		return -ENOMEM;
 	}
 	mdev->mbox.chans->con_priv = mdev;
@@ -509,38 +563,41 @@ static int tcc_sc_mbox_probe(struct platform_device *pdev)
 
 	/* Disable rx interrupt */
 	tcc_sc_mbox_clr_ctrl(mdev,
-		((u32) 0x1U << MBOX_CTRL_IEN_READ) | (MBOX_ILEVEL_NEMP << MBOX_CTRL_ILEVEL));
+			     ((u32) 0x1U << MBOX_CTRL_IEN_READ) |
+			     (MBOX_ILEVEL_NEMP << MBOX_CTRL_ILEVEL));
 
 	/* Clear and disable tx interrupt */
 	tcc_sc_mbox_set_ctrl(mdev, ((u32) 0x1U << MBOX_CTRL_ICLR_WRITE));
 	tcc_sc_mbox_clr_ctrl(mdev, ((u32) 0x1U << MBOX_CTRL_IEN_WRITE));
 
 	/* Register interrupt handler */
-	ret = devm_request_threaded_irq(
-		&pdev->dev, (unsigned int) mdev->rx_irq,
-		tcc_sc_mbox_rx_irq_handler,
-		tcc_sc_mbox_rx_isr_handler,
-		IRQF_ONESHOT, dev_name(&pdev->dev),
-		mdev->mbox.chans);
+	ret = devm_request_threaded_irq(&pdev->dev, (unsigned int)mdev->rx_irq,
+					tcc_sc_mbox_rx_irq_handler,
+					tcc_sc_mbox_rx_isr_handler,
+					IRQF_ONESHOT, dev_name(&pdev->dev),
+					mdev->mbox.chans);
 	if (ret < 0) {
-		dev_err(&pdev->dev, "[ERROR][TCC_SC_MBOX] Failed to request rx_irq\n");
+		dev_err(&pdev->dev,
+			"[ERROR][TCC_SC_MBOX] Failed to request rx_irq\n");
 		return ret;
 	}
 
-	ret = devm_request_threaded_irq(
-		&pdev->dev, (unsigned int) mdev->tx_irq,
-		tcc_sc_mbox_tx_irq_handler,
-		tcc_sc_mbox_tx_isr_handler,
-		IRQF_ONESHOT, dev_name(&pdev->dev),
-		mdev->mbox.chans);
+	ret = devm_request_threaded_irq(&pdev->dev, (unsigned int)mdev->tx_irq,
+					tcc_sc_mbox_tx_irq_handler,
+					tcc_sc_mbox_tx_isr_handler,
+					IRQF_ONESHOT, dev_name(&pdev->dev),
+					mdev->mbox.chans);
 	if (ret < 0) {
-		dev_err(&pdev->dev, "[ERROR][TCC_SC_MBOX] Failed to request tx_irq\n");
+		dev_err(&pdev->dev,
+			"[ERROR][TCC_SC_MBOX] Failed to request tx_irq\n");
 		return ret;
 	}
 
 	ret = mbox_controller_register(&mdev->mbox);
 	if (ret < 0) {
-		dev_err(&pdev->dev, "[ERROR][TCC_SC_MBOX] Failed to register mailbox: %d\n", ret);
+		dev_err(&pdev->dev,
+			"[ERROR][TCC_SC_MBOX] Failed to register mailbox: %d\n",
+			ret);
 	}
 
 	dev_info(&pdev->dev, "[INFO][TCC_SC_MBOX] register tcc-sc-mbox\n");
@@ -562,7 +619,8 @@ static int tcc_sc_mbox_remove(struct platform_device *pdev)
 
 	/* Disable rx interrupt */
 	tcc_sc_mbox_clr_ctrl(mdev,
-		((u32) 0x1U << MBOX_CTRL_IEN_READ) | (MBOX_ILEVEL_NEMP << MBOX_CTRL_ILEVEL));
+			     ((u32) 0x1U << MBOX_CTRL_IEN_READ) |
+			     (MBOX_ILEVEL_NEMP << MBOX_CTRL_ILEVEL));
 
 	/* Clear and disable tx interrupt */
 	tcc_sc_mbox_set_ctrl(mdev, ((u32) 0x1U << MBOX_CTRL_ICLR_WRITE));
@@ -583,7 +641,8 @@ static int tcc_sc_mbox_suspend(struct device *dev)
 
 	/* Disable rx interrupt */
 	tcc_sc_mbox_clr_ctrl(mdev,
-		((u32) 0x1U << MBOX_CTRL_IEN_READ) | (MBOX_ILEVEL_NEMP << MBOX_CTRL_ILEVEL));
+			     ((u32) 0x1U << MBOX_CTRL_IEN_READ) |
+			     (MBOX_ILEVEL_NEMP << MBOX_CTRL_ILEVEL));
 
 	/* Clear and disable tx interrupt */
 	tcc_sc_mbox_set_ctrl(mdev, ((u32) 0x1U << MBOX_CTRL_ICLR_WRITE));
@@ -609,11 +668,13 @@ static int tcc_sc_mbox_resume(struct device *dev)
 
 	/* Flush command and data FIFO */
 	tcc_sc_mbox_set_ctrl(mdev,
-		((u32) 0x1U << MBOX_CTRL_CF_FLUSH) | ((u32) 0x1U << MBOX_CTRL_DF_FLUSH));
+			     ((u32) 0x1U << MBOX_CTRL_CF_FLUSH) |
+				((u32) 0x1U << MBOX_CTRL_DF_FLUSH));
 
 	/* Set rx interrupt */
 	tcc_sc_mbox_set_ctrl(mdev,
-		((u32) 0x1U << MBOX_CTRL_IEN_READ) | (MBOX_ILEVEL_NEMP << MBOX_CTRL_ILEVEL));
+			     ((u32) 0x1U << MBOX_CTRL_IEN_READ) |
+			     (MBOX_ILEVEL_NEMP << MBOX_CTRL_ILEVEL));
 
 	/* Set terminal status register */
 	tcc_sc_mbox_writel(mdev, 0x1U, MBOX_OPPOSITE_STS);
@@ -622,30 +683,32 @@ static int tcc_sc_mbox_resume(struct device *dev)
 }
 
 static const struct dev_pm_ops tcc_sc_mbox_pm = {
-	SET_LATE_SYSTEM_SLEEP_PM_OPS((tcc_sc_mbox_suspend), (tcc_sc_mbox_resume))
+	SET_LATE_SYSTEM_SLEEP_PM_OPS((tcc_sc_mbox_suspend),
+				     (tcc_sc_mbox_resume))
 };
 
 static struct platform_driver tcc_sc_mbox_driver = {
 	.probe = tcc_sc_mbox_probe,
 	.remove = tcc_sc_mbox_remove,
-	.driver =
-		{
-			.name = "tcc-sc-mailbox",
-			.pm = &tcc_sc_mbox_pm,
-			.of_match_table = of_match_ptr(tcc_sc_mbox_of_match),
-		},
+	.driver = {
+		   .name = "tcc-sc-mailbox",
+		   .pm = &tcc_sc_mbox_pm,
+		   .of_match_table = of_match_ptr(tcc_sc_mbox_of_match),
+		   },
 };
 
 static int __init tcc_sc_mbox_init(void)
 {
 	return platform_driver_register(&tcc_sc_mbox_driver);
 }
+
 core_initcall(tcc_sc_mbox_init);
 
 static void __exit tcc_sc_mbox_exit(void)
 {
 	platform_driver_unregister(&tcc_sc_mbox_driver);
 }
+
 module_exit(tcc_sc_mbox_exit);
 
 MODULE_LICENSE("GPL v2");
