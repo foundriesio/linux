@@ -1,25 +1,13 @@
-/****************************************************************************
- * Copyright (C) 2020 Telechips Inc.
- *
- * This program is free software; you can redistribute it and/or modify it under the terms
- * of the GNU General Public License as published by the Free Software Foundation;
- * either version 2 of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
- * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
- * PURPOSE. See the GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License along with
- * this program; if not, write to the Free Software Foundation, Inc., 59 Temple Place,
- * Suite 330, Boston, MA 02111-1307 USA
- ****************************************************************************/
+// SPDX-License-Identifier: GPL-2.0-or-later
+/*
+ * Copyright (C) Telechips Inc.
+ */
 
 #include <linux/module.h>
 #include <linux/kernel.h>
 #include <linux/platform_device.h>
 #include <linux/interrupt.h>
 #include <linux/io.h>
-
 
 #include <linux/of_gpio.h>
 #include <linux/of.h>
@@ -52,7 +40,6 @@
 #define IRQ_STAT_EFULL		0x4
 #define IRQ_STAT_TOFULL		0x2
 #define IRQ_STAT_NFEDFULL	0x1
-
 
 #define OP_EN_CTRL		(ictc_base+0x0)
 #define OP_MODE_CTRL		(ictc_base+0x4)
@@ -94,7 +81,6 @@
 #define TOFULLINT		((unsigned int)1<<25)
 #define NFEDFULLINT		((unsigned int)1<<24)
 
-
 #define LOCK_EN			((unsigned int)1<<31)
 #define ABS_SEL			((unsigned int)1<<29)
 #define EDGE_SEL		((unsigned int)1<<28)
@@ -117,35 +103,35 @@ struct ictc_dev {
 
 //TCC803x GPIOs
 static int gpio_f_in[] = {
-	0x1,     //GPIO_A
-	0x21,     //GPIO_B
-	0x3e,     //GPIO_C
-	0,     //GPIO_D
-	0x5c,     //GPIO_E
-	0,     //GPIO_F
-	0x70,     //GPIO_G
-	0x7b,     //GPIO_H
-	0,     //GPIO_K
-	0x87,     //GPIO_MA
-	0xa6,     //GPIO_SD0
-	0xb4,     //GPIO_SD1
-	0xc0,     //GPIO_SD2
+	0x1,			//GPIO_A
+	0x21,			//GPIO_B
+	0x3e,			//GPIO_C
+	0,			//GPIO_D
+	0x5c,			//GPIO_E
+	0,			//GPIO_F
+	0x70,			//GPIO_G
+	0x7b,			//GPIO_H
+	0,			//GPIO_K
+	0x87,			//GPIO_MA
+	0xa6,			//GPIO_SD0
+	0xb4,			//GPIO_SD1
+	0xc0,			//GPIO_SD2
 };
 
 static int gpio_num_group[] = {
-	0,	//GPIO_A
-	32,	//GPIO_B
-	61,     //GPIO_C
-	91,     //GPIO_D
-	113,     //GPIO_E
-	133,     //GPIO_F
-	165,     //GPIO_G
-	176,     //GPIO_H
-	188,     //GPIO_K
-	207,     //GPIO_MA
-	237,     //GPIO_SD0
-	252,     //GPIO_SD1
-	263     //GPIO_SD2
+	0,			//GPIO_A
+	32,			//GPIO_B
+	61,			//GPIO_C
+	91,			//GPIO_D
+	113,			//GPIO_E
+	133,			//GPIO_F
+	165,			//GPIO_G
+	176,			//GPIO_H
+	188,			//GPIO_K
+	207,			//GPIO_MA
+	237,			//GPIO_SD0
+	252,			//GPIO_SD1
+	263			//GPIO_SD2
 };
 
 #define RTC_WKUP	0xa5
@@ -226,23 +212,31 @@ static irqreturn_t ictc_interrupt_handler(int irq, void *dev_id)
 {
 	unsigned int int_state = 0;
 
-	int_state = (unsigned int)IRQ_STAT_MASK&ictc_readl(IRQ_CTRL);
+	int_state = (unsigned int)IRQ_STAT_MASK & ictc_readl(IRQ_CTRL);
 
-	if((int_state&(unsigned int)IRQ_STAT_REDGE) == (unsigned int)IRQ_STAT_REDGE)
+	if ((int_state & (unsigned int)IRQ_STAT_REDGE) ==
+	    (unsigned int)IRQ_STAT_REDGE)
 		debug_ictc("rising edge interrupt\n");
-	if((int_state&(unsigned int)IRQ_STAT_FEDGE) == (unsigned int)IRQ_STAT_FEDGE)
+	if ((int_state & (unsigned int)IRQ_STAT_FEDGE) ==
+	    (unsigned int)IRQ_STAT_FEDGE)
 		debug_ictc("falling edge interrupt\n");
-	if((int_state&(unsigned int)IRQ_STAT_DFFULL) == (unsigned int)IRQ_STAT_DFFULL)
+	if ((int_state & (unsigned int)IRQ_STAT_DFFULL) ==
+	    (unsigned int)IRQ_STAT_DFFULL)
 		debug_ictc("duty and frequency counter full interrupt\n");
-	if((int_state&(unsigned int)IRQ_STAT_FCHG) == (unsigned int)IRQ_STAT_FCHG)
+	if ((int_state & (unsigned int)IRQ_STAT_FCHG) ==
+	    (unsigned int)IRQ_STAT_FCHG)
 		debug_ictc("frequency changing interrupt\n");
-	if((int_state&(unsigned int)IRQ_STAT_DCHG) == (unsigned int)IRQ_STAT_DCHG)
+	if ((int_state & (unsigned int)IRQ_STAT_DCHG) ==
+	    (unsigned int)IRQ_STAT_DCHG)
 		debug_ictc("duty changing interrupt\n");
-	if((int_state&(unsigned int)IRQ_STAT_EFULL) == (unsigned int)IRQ_STAT_EFULL)
+	if ((int_state & (unsigned int)IRQ_STAT_EFULL) ==
+	    (unsigned int)IRQ_STAT_EFULL)
 		debug_ictc("edge counter full interrupt\n");
-	if((int_state&(unsigned int)IRQ_STAT_TOFULL) == (unsigned int)IRQ_STAT_TOFULL)
+	if ((int_state & (unsigned int)IRQ_STAT_TOFULL) ==
+	    (unsigned int)IRQ_STAT_TOFULL)
 		debug_ictc("timeout counter full interrupt\n");
-	if((int_state&(unsigned int)IRQ_STAT_NFEDFULL) == (unsigned int)IRQ_STAT_NFEDFULL)
+	if ((int_state & (unsigned int)IRQ_STAT_NFEDFULL) ==
+	    (unsigned int)IRQ_STAT_NFEDFULL)
 		debug_ictc("noise-filter and edge counter full interrupt\n");
 
 	/* to do */
@@ -261,35 +255,40 @@ static int ictc_parse_dt(struct device_node *np)
 {
 
 	int ret = 0;
-	unsigned int node_num=0;
+	unsigned int node_num = 0;
 	unsigned long count = 0;
 
-	count = sizeof(ictc_prop_v_l)/(sizeof(ictc_prop_v_l[0]));
+	count = sizeof(ictc_prop_v_l) / (sizeof(ictc_prop_v_l[0]));
 
-	for(node_num = 0; node_num < (unsigned int)count; node_num++)
-	{
-		if(of_property_read_u32(np, ictc_prop_v_l[node_num],(u32 *)&ictc_prop_v+node_num) != 0)
-		{
-			err_ictc("no property found in DT : %s\n", ictc_prop_v_l[node_num]);
+	for (node_num = 0; node_num < (unsigned int)count; node_num++) {
+		if (of_property_read_u32
+		    (np, ictc_prop_v_l[node_num],
+		     (u32 *)&ictc_prop_v + node_num) != 0) {
+			err_ictc("no property found in DT : %s\n",
+				 ictc_prop_v_l[node_num]);
 			ret = -EINVAL;
 		}
-		debug_ictc("%s -> %x\n", ictc_prop_v_l[node_num], *((u32 *)&ictc_prop_v+node_num));
+		debug_ictc("%s -> %x\n", ictc_prop_v_l[node_num],
+			   *((u32 *)&ictc_prop_v + node_num));
 
 		if(ret!=0)
 			break;
 
 	}
 
-	count = sizeof(ictc_prop_b_l)/(sizeof(ictc_prop_b_l[0]));
+	count = sizeof(ictc_prop_b_l) / (sizeof(ictc_prop_b_l[0]));
 
 	for(node_num = 0; node_num < count; node_num++)
 	{
 
-		*((u32 *)&ictc_prop_b+node_num) = (unsigned int)of_property_read_bool(np, ictc_prop_b_l[node_num]);
+		*((u32 *)&ictc_prop_b + node_num) =
+		    (unsigned int)of_property_read_bool(np,
+							ictc_prop_b_l
+							[node_num]);
 
-		debug_ictc("%s -> %x\n", ictc_prop_b_l[node_num], *((u32 *)&ictc_prop_b+node_num));
+		debug_ictc("%s -> %x\n", ictc_prop_b_l[node_num],
+			   *((u32 *)&ictc_prop_b + node_num));
 	}
-
 
 	return ret;
 
@@ -299,15 +298,15 @@ static void ictc_configure(void)
 {
 	unsigned int config_val = 0;
 
-	if(ictc_prop_v.abs_sel != 0u)
+	if (ictc_prop_v.abs_sel != 0u)
 		config_val |= ABS_SEL;
 	else
 		config_val &= ~ABS_SEL;
 
-	if(ictc_prop_v.edge_sel != 0u)
+	if (ictc_prop_v.edge_sel != 0u)
 		config_val |= EDGE_SEL;
 
-	if(ictc_prop_v.tck_pol != 0u)
+	if (ictc_prop_v.tck_pol != 0u)
 		config_val |= TCLK_POL;
 
 	config_val |= TCK_SEL((ictc_prop_v.tck_sel));
@@ -315,22 +314,18 @@ static void ictc_configure(void)
 	config_val |= FLT_F_MODE((ictc_prop_v.flt_f_mode));
 	config_val |= FLT_R_MODE((ictc_prop_v.flt_r_mode));
 
-	if((ictc_prop_b.d_chg_int != 0u)&&(ictc_prop_b.f_chg_int != 0u))
-	{
+	if ((ictc_prop_b.d_chg_int != 0u) && (ictc_prop_b.f_chg_int != 0u)) {
 		config_val |= CMP_ERR_BOTH;
-	}
-	else
-	{
-		if(ictc_prop_b.d_chg_int != 0u)
+	} else {
+		if (ictc_prop_b.d_chg_int != 0u)
 			config_val |= CMP_ERR_SEL;
-		else if(ictc_prop_b.f_chg_int != 0u)
+		else if (ictc_prop_b.f_chg_int != 0u)
 			config_val &= ~CMP_ERR_SEL;
 		else
 			debug_ictc("no compare error selection\n");
 	}
 
-
-	if(f_in_rtc_wkup == 0u)
+	if (f_in_rtc_wkup == 0u)
 		config_val |= F_IN_SEL((f_in_source));
 	else
 		config_val |= F_IN_SEL((RTC_WKUP));
@@ -357,24 +352,25 @@ static void ictc_clear_interrupt(void)
 
 static void ictc_enable_interrupt(void)
 {
-	if(irq_setting == 0u){
+	if (irq_setting == 0u) {
 
 		unsigned int enable_int = 0;
-		if(ictc_prop_b.r_edge_int != 0u)
+
+		if (ictc_prop_b.r_edge_int != 0u)
 			enable_int |= REDGEINT;
-		if(ictc_prop_b.f_edge_int != 0u)
+		if (ictc_prop_b.f_edge_int != 0u)
 			enable_int |= FEDGEINT;
-		if(ictc_prop_b.df_cnt_full_int != 0u)
+		if (ictc_prop_b.df_cnt_full_int != 0u)
 			enable_int |= DFFULLINT;
-		if(ictc_prop_b.f_chg_int != 0u)
+		if (ictc_prop_b.f_chg_int != 0u)
 			enable_int |= FCHGINT;
-		if(ictc_prop_b.d_chg_int != 0u)
+		if (ictc_prop_b.d_chg_int != 0u)
 			enable_int |= DCHGINT;
-		if(ictc_prop_b.e_cnt_full_int != 0u)
+		if (ictc_prop_b.e_cnt_full_int != 0u)
 			enable_int |= EFULLINT;
-		if(ictc_prop_b.to_cnt_full_int != 0u)
+		if (ictc_prop_b.to_cnt_full_int != 0u)
 			enable_int |= TOFULLINT;
-		if(ictc_prop_b.nf_ed_cnt_full_int != 0u)
+		if (ictc_prop_b.nf_ed_cnt_full_int != 0u)
 			enable_int |= NFEDFULLINT;
 
 		irq_setting = enable_int;
@@ -384,16 +380,15 @@ static void ictc_enable_interrupt(void)
 		ictc_writel(irq_setting, IRQ_CTRL);
 	}
 
-
 }
 
 static void ictc_clear_counter(void)
 {
 	unsigned int val = 0;
 
-	val = ictc_readl(OP_EN_CTRL)|(unsigned int)0x1f;
+	val = ictc_readl(OP_EN_CTRL) | (unsigned int)0x1f;
 	ictc_writel(val, OP_EN_CTRL);
-	val = ictc_readl(OP_EN_CTRL)&(~(unsigned int)0x1f);
+	val = ictc_readl(OP_EN_CTRL) & (~(unsigned int)0x1f);
 	ictc_writel(val, OP_EN_CTRL);
 }
 
@@ -402,16 +397,19 @@ static void ictc_enable_counter(void)
 
 	unsigned int enable_val = 0;
 
-	if(ictc_prop_b.time_stamp_cnt != 0u)
+	if (ictc_prop_b.time_stamp_cnt != 0u)
 		enable_val |= TSCNT_EN;
-	if(ictc_prop_b.to_cnt_full_int != 0u)
+	if (ictc_prop_b.to_cnt_full_int != 0u)
 		enable_val |= TOCNT_EN;
-	if((ictc_prop_b.d_chg_int != 0u)||(ictc_prop_b.f_chg_int != 0u)||(ictc_prop_b.df_cnt_full_int != 0u))
+	if ((ictc_prop_b.d_chg_int != 0u) || (ictc_prop_b.f_chg_int != 0u)
+	    || (ictc_prop_b.df_cnt_full_int != 0u))
 		enable_val |= PDCNT_EN;
-	if((ictc_prop_b.r_edge_int != 0u)||(ictc_prop_b.f_edge_int != 0u)||(ictc_prop_b.e_cnt_full_int != 0u)||(ictc_prop_b.nf_ed_cnt_full_int != 0u))
+	if ((ictc_prop_b.r_edge_int != 0u) || (ictc_prop_b.f_edge_int != 0u)
+	    || (ictc_prop_b.e_cnt_full_int != 0u)
+	    || (ictc_prop_b.nf_ed_cnt_full_int != 0u))
 		enable_val |= ECNT_EN;
 
-	enable_val |= TCLK_EN|FLTCNT_EN;
+	enable_val |= TCLK_EN | FLTCNT_EN;
 
 	ictc_writel(enable_val, OP_EN_CTRL);
 
@@ -420,7 +418,7 @@ static void ictc_enable_counter(void)
 static void ictc_enable(void)
 {
 
-	ictc_writel(ictc_readl(OP_EN_CTRL)|ICTC_EN, OP_EN_CTRL);
+	ictc_writel(ictc_readl(OP_EN_CTRL) | ICTC_EN, OP_EN_CTRL);
 
 }
 
@@ -434,20 +432,21 @@ static int gpio_to_f_in(int gpio_num)
 
 	debug_ictc("gpio group count : %d\n", count);
 
-	for(gpio_group = 1 ; gpio_group < (unsigned int)count ; gpio_group++)
-	{
+	for (gpio_group = 1; gpio_group < (unsigned int)count; gpio_group++) {
 
-		if((gpio_num - gpio_num_group[gpio_group]) < 0){
+		if ((gpio_num - gpio_num_group[gpio_group]) < 0) {
 			gpio_group_val = gpio_group - 1u;
 			break;
 		}
 
 	}
 
-	debug_ictc("gpio_f_in : 0x%x gpio_num_group : %d, gpio_num : %d", gpio_f_in[gpio_group_val], gpio_num_group[gpio_group_val], gpio_num);
+	debug_ictc("gpio_f_in : 0x%x gpio_num_group : %d, gpio_num : %d",
+		   gpio_f_in[gpio_group_val], gpio_num_group[gpio_group_val],
+		   gpio_num);
 
-	return gpio_f_in[gpio_group_val] + (gpio_num - gpio_num_group[gpio_group_val]);
-
+	return gpio_f_in[gpio_group_val] + (gpio_num -
+					    gpio_num_group[gpio_group_val]);
 
 }
 
@@ -465,42 +464,53 @@ static int ictc_probe(struct platform_device *pdev)
 	f_in_rtc_wkup = 0;
 	irq_setting = 0;
 
-	if(np == NULL){
+	if (np == NULL) {
 		err_ictc("device does not exist!\n");
 		ret = -EINVAL;
 	} else {
 
-		idev = devm_kzalloc(&pdev->dev, sizeof(struct ictc_dev), GFP_KERNEL);
+		idev =
+		    devm_kzalloc(&pdev->dev, sizeof(struct ictc_dev),
+				 GFP_KERNEL);
 
-		if(idev == NULL){
+		if (idev == NULL) {
 			ret = -ENXIO;
 		} else {
 
 			ret = clk_prepare_enable(pPClk);
 
-			if(ret == SUCCESS){
-				ret = request_irq(irq, ictc_interrupt_handler, IRQF_SHARED, "ICTC", idev);
+			if (ret == SUCCESS) {
+				ret =
+				    request_irq(irq, ictc_interrupt_handler,
+						IRQF_SHARED, "ICTC", idev);
 
-				if(ret != SUCCESS){
-					err_ictc("Interrupt request fail ret : %d irq : %x\n", ret, irq);
+				if (ret != SUCCESS) {
+					err_ictc("irq req. fail: %d irq: %x\n",
+					     ret, irq);
 				} else {
 
 					ictc_base = of_iomap(np, 0);
 
-					f_in_rtc_wkup = (unsigned int)of_property_read_bool(np, "f-in-rtc-wkup");
+					f_in_rtc_wkup =
+					    (unsigned int)
+					    of_property_read_bool(np,
+								  "f-in-rtc-wkup");
 
-					if(f_in_rtc_wkup == 0u)
-					{
+					if (f_in_rtc_wkup == 0u) {
 
-						f_in_gpio = of_get_named_gpio(np, "f-in-gpio", 0);
-						f_in_source = gpio_to_f_in(f_in_gpio);
+						f_in_gpio =
+						    of_get_named_gpio(np,
+								      "f-in-gpio",
+								      0);
+						f_in_source =
+						    gpio_to_f_in(f_in_gpio);
 
 					}
 
 					ret = ictc_parse_dt(np);
 
-					if(ret != SUCCESS){
-						err_ictc("device node does not exist!\n");
+					if (ret != SUCCESS) {
+						err_ictc("ictc:No dev node\n");
 					} else {
 
 						ictc_configure();
@@ -514,13 +524,13 @@ static int ictc_probe(struct platform_device *pdev)
 					}
 				}
 
-				if(ret != SUCCESS){
+				if (ret != SUCCESS) {
 					clk_disable_unprepare(pPClk);
 				}
 
 			}
 
-			if(ret != SUCCESS){
+			if (ret != SUCCESS) {
 
 				devm_kfree(&pdev->dev, idev);
 
@@ -549,9 +559,9 @@ static int ictc_suspend(struct device *dev)
 	struct ictc_dev *idev = dev_get_drvdata(dev);
 	int ret = 0;
 
-	if(idev == NULL) {
+	if (idev == NULL) {
 		ret = -EINVAL;
-        } else {
+	} else {
 		free_irq(idev->irq, idev);
 		clk_disable_unprepare(idev->pPClk);
 	}
@@ -565,19 +575,23 @@ static int ictc_resume(struct device *dev)
 	struct ictc_dev *idev = dev_get_drvdata(dev);
 	int ret = 0;
 
-	if(idev == NULL){
+	if (idev == NULL) {
 		ret = -EINVAL;
-        } else {
+	} else {
 		ret = clk_prepare_enable(idev->pPClk);
 
-		if(ret == SUCCESS){
+		if (ret == SUCCESS) {
 
-			ret = request_irq(idev->irq, ictc_interrupt_handler, IRQF_SHARED, "ICTC", idev);
+			ret =
+			    request_irq(idev->irq, ictc_interrupt_handler,
+					IRQF_SHARED, "ICTC", idev);
 
-			if(ret != SUCCESS){
+			if (ret != SUCCESS) {
 
 				clk_disable_unprepare(idev->pPClk);
-				err_ictc("Interrupt request fail ret : %d irq : %x\n", ret, idev->irq);
+				err_ictc
+				    ("Interrupt request fail: %d irq: %x\n",
+				     ret, idev->irq);
 
 			} else {
 
@@ -593,13 +607,12 @@ static int ictc_resume(struct device *dev)
 
 		}
 
-		if(ret != SUCCESS) {
+		if (ret != SUCCESS) {
 			devm_kfree(idev->dev, idev);
-                }
+		}
 	}
 
 	return ret;
-
 
 }
 
@@ -608,22 +621,22 @@ static SIMPLE_DEV_PM_OPS(ictc_pm_ops, ictc_suspend, ictc_resume);
 #endif
 
 static const struct of_device_id ictc_match_table[] = {
-	{ .compatible = "telechips,ictc" },
-	{ }
+	{.compatible = "telechips,ictc"},
+	{}
 };
+
 MODULE_DEVICE_TABLE(of, ictc_match_table);
 
 static struct platform_driver ictc_driver = {
-	.probe		= ictc_probe,
-	.driver		= {
-		.name	= "tcc-ictc",
+	.probe = ictc_probe,
+	.driver = {
+		   .name = "tcc-ictc",
 #if defined(CONFIG_PM_SLEEP) && defined(CONFIG_ARCH_TCC805X)
-		.pm	= &ictc_pm_ops,
+		   .pm = &ictc_pm_ops,
 #endif
-		.of_match_table = ictc_match_table,
-	},
+		   .of_match_table = ictc_match_table,
+		   },
 };
-
 
 static int __init ictc_init(void)
 {
