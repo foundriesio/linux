@@ -70,49 +70,49 @@ int tcc_gpio_config(u32 gpio, u32 config)
 	if (!!(config&GPIO_PULLUP)) {
 		config_list[config_num]
 			= tcc_pinconf_pack
-			(TCC_PINCONF_PARAM_PULL_UP, NULL);
+			(TCC_PINCONF_PARAM_PULL_UP, 0);
 		config_num++;
 	}
 
 	if (!!(config&GPIO_PULLDOWN)) {
 		config_list[config_num]
 			= tcc_pinconf_pack
-			(TCC_PINCONF_PARAM_PULL_DOWN, NULL);
+			(TCC_PINCONF_PARAM_PULL_DOWN, 0);
 		config_num++;
 	}
 
 	if (!!(config&GPIO_PULL_DISABLE)) {
 		config_list[config_num]
 			= tcc_pinconf_pack
-			(TCC_PINCONF_PARAM_NO_PULL, NULL);
+			(TCC_PINCONF_PARAM_NO_PULL, 0);
 		config_num++;
 	}
 
 	if (!!(config&GPIO_SCHMITT_INPUT)) {
 		config_list[config_num]
 			= tcc_pinconf_pack
-			(TCC_PINCONF_PARAM_SCHMITT_INPUT, NULL);
+			(TCC_PINCONF_PARAM_SCHMITT_INPUT, 0);
 		config_num++;
 	}
 
 	if (!!(config&GPIO_CMOS_INPUT)) {
 		config_list[config_num]
 			= tcc_pinconf_pack
-			(TCC_PINCONF_PARAM_CMOS_INPUT, NULL);
+			(TCC_PINCONF_PARAM_CMOS_INPUT, 0);
 		config_num++;
 	}
 
 	if (!!(config&GPIO_HIGH)) {
 		config_list[config_num]
 			= tcc_pinconf_pack
-			(TCC_PINCONF_PARAM_OUTPUT_HIGH, NULL);
+			(TCC_PINCONF_PARAM_OUTPUT_HIGH, 0);
 		config_num++;
 	}
 
 	if (!!(config&GPIO_LOW)) {
 		config_list[config_num]
 			= tcc_pinconf_pack
-			(TCC_PINCONF_PARAM_OUTPUT_LOW, NULL);
+			(TCC_PINCONF_PARAM_OUTPUT_LOW, 0);
 		config_num++;
 	}
 
@@ -137,6 +137,8 @@ int tcc_gpio_config(u32 gpio, u32 config)
 		pinctrl_gpio_set_config(gpio, config_list[i]);
 		/* comment for QAC, codesonar, kernel coding style */
 	}
+
+	return 0;
 }
 
 #endif
@@ -205,7 +207,9 @@ static void tcc_pinctrl_gpio_set(struct gpio_chip *chip, u32 offset,
 	struct tcc_pin_bank *bank = gpiochip_to_pin_bank(chip);
 	struct tcc_pinctrl *pctl = bank->pctl;
 	struct tcc_pinctrl_ops *ops = pctl->ops;
+#if !defined(CONFIG_PINCTRL_TCC_SCFW)
 	ulong flags;
+#endif
 
 	if (ops->gpio_set == NULL) {
 		return;
@@ -242,7 +246,9 @@ static int tcc_pinctrl_gpio_to_irq(struct gpio_chip *chip,
 	struct tcc_pin_bank *bank = gpiochip_to_pin_bank(chip);
 	struct tcc_pinctrl *pctl = bank->pctl;
 	struct tcc_pinctrl_ops *ops = pctl->ops;
+#if !defined(CONFIG_PINCTRL_TCC_SCFW)
 	ulong flags;
+#endif
 	int ret;
 
 	if (ops->to_irq == NULL) {

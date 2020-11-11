@@ -170,7 +170,7 @@ static int tcc803x_set_eint(void __iomem *base, u32 bit, int extint)
 	void __iomem *reg
 		= (void __iomem *)(gpio_base + EINTSEL + 4*(extint/4));
 	u32 data, mask, shift, idx;
-	u32 port = (u32)base - (u32)gpio_base;
+	u32 port = base - gpio_base;
 	struct extintr_match_ *match
 		= (struct extintr_match_ *)tcc803x_pinctrl_soc_data.irq->data;
 	int irq_size = tcc803x_pinctrl_soc_data.irq->size;
@@ -355,7 +355,7 @@ static int tcc803x_gpio_set_eclk_sel(void __iomem *base, u32 offset,
 				     int value)
 {
 	void __iomem *reg = (void __iomem *)(gpio_base + ECLKSEL);
-	u32 port = (u32)base - (u32)gpio_base;
+	u32 port = base - gpio_base;
 	u32 idx;
 	int data;
 
