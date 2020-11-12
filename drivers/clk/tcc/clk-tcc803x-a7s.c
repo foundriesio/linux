@@ -1200,7 +1200,6 @@ static int tcc_ckc_clkctrl_set_rate(int id, unsigned long rate)
 		return 0;
 	case FBUS_MEM:
 	case FBUS_MEM_PHY:
-		//printk("memory clock cannot change !!\n");
 		BUG();
 		return 0;
 	}

@@ -195,31 +195,6 @@ static int tcc_wdt_set_pretimeout(struct watchdog_device *wdd, unsigned int pret
 	return 0;
 }
 
-static void tcc_wdt_set_kicktime(struct watchdog_device *wdd, unsigned int kicktime)
-{
-	struct tcc_watchdog_device *tcc_wdd = tcc_wdt_get_device(wdd);
-	unsigned long kick_cnt = 0;
-#ifdef WDT_SIP
-	struct arm_smccc_res res;
-
-	memset(&res, 0x0, sizeof(res));
-#else
-	struct device_node *np = tcc_wdd->wdd_timer.dev->of_node;
-#endif
-	kick_cnt = kicktime * tcc_wdd->pmu.rate;
-
-#ifdef WDT_SIP
-	arm_smccc_smc( SIP_WATCHDOG_SETUP_IRQCNT,
-			0, 0, 0,
-			kick_cnt,
-			0, 0, 0,
-			&res );
-#else
-	tcc_wdt_set_pretimeout(wdd, kicktime);
-#endif
-	return;
-}
-
 static int tcc_wdt_set_timeout(struct watchdog_device *wdd, unsigned int timeout)
 {
 	struct tcc_watchdog_device *tcc_wdd = tcc_wdt_get_device(wdd);
