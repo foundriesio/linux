@@ -411,7 +411,7 @@ static enum bvo_spec_type bvo_get_spec_type(enum bvo_format fmt)
 	return bspec;
 }
 
-void internal_bvo_get_spec(COMPOSITE_MODE_TYPE type, COMPOSITE_SPEC_TYPE *spec)
+void internal_bvo_get_spec(COMPOSITE_MODE_TYPE type, struct COMPOSITE_SPEC_TYPE *spec)
 {
 	enum bvo_format bfmt;
 	enum bvo_spec_type btype;

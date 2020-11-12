@@ -133,7 +133,7 @@ void tca_dtrc_convter_onoff(unsigned int component_num, unsigned int onoff,
 #if defined(CONFIG_VIOC_DOLBY_VISION_EDR)
 	if (get_vioc_index(component_num) == 0) {
 		volatile void __iomem *pDisp_DV =
-			VIOC_DV_GetAddress((DV_DISP_TYPE)EDR_BL);
+			VIOC_DV_GetAddress((enum DV_DISP_TYPE)EDR_BL);
 
 		if (onoff)
 			VIOC_V_DV_Turnon(pDisp_DV, NULL);
@@ -356,7 +356,7 @@ ImageInfo->Frame_height, ImageInfo->private_data.dtrcConv_info.m_iHeight,
 	if (VIOC_CONFIG_DV_GET_EDR_PATH() &&
 	    get_vioc_index(component_num) == tca_get_main_decompressor_num()) {
 		volatile void __iomem *pDisp_DV =
-			VIOC_DV_GetAddress((DV_DISP_TYPE)EDR_BL);
+			VIOC_DV_GetAddress((enum DV_DISP_TYPE)EDR_BL);
 
 		if (ImageInfo->Lcdc_layer == RDMA_VIDEO ||
 				ImageInfo->Lcdc_layer == RDMA_LASTFRM) {

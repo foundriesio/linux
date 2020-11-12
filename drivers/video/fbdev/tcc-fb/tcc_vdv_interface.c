@@ -65,8 +65,8 @@ unsigned int Vback	= 36;    // fswc + 1
 unsigned int VDE_VStart	= 10;
 unsigned int VDE_HStart	= 20;
 
-static OUT_TYPE out_type = DOVI;
-static OUT_FORMAT out_color_format = DV_OUT_FMT_YUV422;
+static enum OUT_TYPE out_type = DOVI;
+static enum OUT_FORMAT out_color_format = DV_OUT_FMT_YUV422;
 
 static struct pmap pmap_dv_regs;
 static void __iomem *pBase_vAddr;
@@ -77,16 +77,16 @@ static char bShadow_context = 1;
 static char bMeta_PrevStatus = 0;
 static char bMeta_changed = 0;
 #if defined(CONFIG_TCC_DV_IN)
-static DV_PATH dv_hdmi_path = DV_PATH_DIRECT_VIN_WDMA;
-static DV_PATH dv_hdmi_noYuv422_path = DV_PATH_VIN_ALL;
-static DV_PATH dv_component_path = DV_PATH_VIN_ALL;
-//static DV_PATH dv_hdmi_path = DV_PATH_VIN; //Can't use it due to DV_IN tunneling bug!!
+static enum DV_PATH dv_hdmi_path = DV_PATH_DIRECT_VIN_WDMA;
+static enum DV_PATH dv_hdmi_noYuv422_path = DV_PATH_VIN_ALL;
+static enum DV_PATH dv_component_path = DV_PATH_VIN_ALL;
+//static enum DV_PATH dv_hdmi_path = DV_PATH_VIN; //Can't use it due to DV_IN tunneling bug!!
 #else
-static DV_PATH dv_hdmi_path = DV_PATH_DIRECT;
+static enum DV_PATH dv_hdmi_path = DV_PATH_DIRECT;
 #endif
-static DV_MODE dv_mode = DV_STD;
-static DV_STAGE dv_stage = DV_OFF;
-static VIDEO_ATTR video_attr = ATTR_SDR;
+static enum DV_MODE dv_mode = DV_STD;
+static enum DV_STAGE dv_stage = DV_OFF;
+static enum VIDEO_ATTR video_attr = ATTR_SDR;
 
 static char DV_HDMI_OUT = 1;
 static unsigned int DV_HDMI_CLK_Khz = 0;
@@ -104,9 +104,9 @@ extern void tca_edr_inc_check_count(unsigned int nInt, unsigned int nTry, unsign
 
 //#define SHADOW_CONTEXT_AT_THE_SAME_TIME
 
-DV_PATH vioc_get_path_type(void)
+enum DV_PATH vioc_get_path_type(void)
 {
-	DV_PATH dv_out_path = 0;
+	enum DV_PATH dv_out_path = 0;
 
 #if defined(CONFIG_TCC_DV_IN)
 	if(DV_HDMI_OUT)
@@ -138,7 +138,7 @@ DV_PATH vioc_get_path_type(void)
 	return dv_out_path;
 }
 
-void vioc_set_out_type(OUT_TYPE type)
+void vioc_set_out_type(enum OUT_TYPE type)
 {
 	out_type = type;
 	if( out_type == DOVI_LL)
@@ -147,12 +147,12 @@ void vioc_set_out_type(OUT_TYPE type)
 		dv_mode = DV_STD;
 }
 
-OUT_TYPE vioc_get_out_type(void)
+enum OUT_TYPE vioc_get_out_type(void)
 {
 	return out_type;
 }
 
-VIDEO_ATTR vioc_get_video_attribute(void)
+enum VIDEO_ATTR vioc_get_video_attribute(void)
 {
 #if 1 // [no-output when playing dolby-contents] In case of analog-output.
 	if(video_attr != ATTR_SDR)
@@ -176,7 +176,7 @@ void __iomem * _get_virtual_address(unsigned int phy_addr)
 	return pBase_vAddr + (phy_addr - (unsigned int)pmap_dv_regs.base);
 }
 
-void vioc_v_dv_set_mode(DV_MODE mode, unsigned char* vsvdb, unsigned int sz_vsvdb)
+void vioc_v_dv_set_mode(enum DV_MODE mode, unsigned char* vsvdb, unsigned int sz_vsvdb)
 {
 	dprintk_dv_sequence("### DV_Mode %d \n", mode);
 	dv_mode = mode;
@@ -186,7 +186,7 @@ void vioc_v_dv_set_mode(DV_MODE mode, unsigned char* vsvdb, unsigned int sz_vsvd
 	}
 }
 
-DV_MODE vioc_v_dv_get_mode(void)
+enum DV_MODE vioc_v_dv_get_mode(void)
 {
 	return dv_mode;
 }
@@ -208,13 +208,13 @@ unsigned int vioc_v_dv_get_vsvdb(unsigned char* vsvdb)
 	return hdmi_sz_vsvdb;
 }
 
-void vioc_v_dv_set_stage(DV_STAGE stage)
+void vioc_v_dv_set_stage(enum DV_STAGE stage)
 {
 	dprintk_dv_sequence("### DV_Stage %d \n", stage);
 	dv_stage = stage;
 }
 
-DV_STAGE vioc_v_dv_get_stage(void)
+enum DV_STAGE vioc_v_dv_get_stage(void)
 {
 	return dv_stage;
 }
@@ -258,7 +258,7 @@ void vioc_v_dv_set_output_color_format(unsigned int pxdw, unsigned int swap)
 
 }
 
-OUT_FORMAT vioc_v_dv_get_output_color_format(void)
+enum OUT_FORMAT vioc_v_dv_get_output_color_format(void)
 {
 	return out_color_format;
 }
@@ -464,7 +464,7 @@ void _vioc_v_dv_prog_done(void) {
 
 }
 
-unsigned int get_register(unsigned int base_addr, VEDR_TYPE type)
+unsigned int get_register(unsigned int base_addr, enum VEDR_TYPE type)
 {
 	unsigned int reg_offset;
 
@@ -1464,7 +1464,7 @@ void vioc_v_dv_block_off(void)
 	__dv_reg_w(value, pVEDR+0x3c000);	
 }
 
-void voic_v_dv_osd_ctrl(DV_DISP_TYPE type, unsigned int on)
+void voic_v_dv_osd_ctrl(enum DV_DISP_TYPE type, unsigned int on)
 {
 	volatile void __iomem *pVPANEL = NULL;
 	unsigned int value;
@@ -1597,7 +1597,7 @@ int vioc_v_dv_prog(unsigned int meta_PhyAddr, unsigned int reg_PhyAddr, unsigned
 		return -1;
 
 	if( frmcnt != 0 )
-		video_attr = (VIDEO_ATTR)video_attribute;
+		video_attr = (enum VIDEO_ATTR)video_attribute;
 
 //	dprintk("%s-%d\n", __func__, __LINE__);
 

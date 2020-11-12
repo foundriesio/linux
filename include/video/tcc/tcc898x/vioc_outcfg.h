@@ -1,10 +1,5 @@
 /*
- * linux/arch/arm/mach-tcc893x/include/mach/vioc_outcfg.h
- * Author:  <linux@telechips.com>
- * Created: June 10, 2008
- * Description: TCC VIOC h/w block 
- *
- * Copyright (C) 2008-2009 Telechips
+ * Copyright (C) Telechips, Inc.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -21,7 +16,6 @@
  * to the Free Software Foundation, Inc.,
  * 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  */
-
 #ifndef __VIOC_CPUIF_H__
 #define	__VIOC_CPUIF_H__
 
@@ -78,8 +72,9 @@
 #define MISC_SDVESEL_MASK		(0x3 << MISC_SDVESEL_SHIFT)
 #define MISC_HDMISEL_MASK		(0x3 << MISC_HDMISEL_SHIFT)
 
-extern void VIOC_OUTCFG_SetOutConfig (unsigned  nType, unsigned nDisp);
-extern volatile void __iomem* VIOC_OUTCONFIG_GetAddress(void);
+extern void VIOC_OUTCFG_SetOutConfig(
+	unsigned int nType, unsigned int nDisp);
+extern volatile void __iomem *VIOC_OUTCONFIG_GetAddress(void);
 extern void VIOC_OUTCONFIG_DUMP(void);
 
 #endif

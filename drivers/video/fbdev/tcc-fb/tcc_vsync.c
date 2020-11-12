@@ -881,7 +881,7 @@ static void tcc_video_change_dolby_out_wq_isr(struct work_struct *work)
 	if(nDolbyTransition_Skipped_Count >= 0)
 	{
 		if(nDolbyTransition_Skipped_Count == (DV_TRANSITION_SKIP_CNT - 2)){
-			OUT_TYPE dv_out_type = vioc_get_out_type();
+			enum OUT_TYPE dv_out_type = vioc_get_out_type();
 			int rgb_tunneling = vioc_v_dv_is_rgb_tunneling();
 			int out_colorimetry = 0, out_ext_colorimetry = 0;
 			int out_quan_val = 0;

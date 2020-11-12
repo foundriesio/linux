@@ -411,7 +411,7 @@ char tc_wdrv_wdma_addr_set(struct tcc_wdma_dev *pwdma_data, unsigned int addrY, 
 char tccxxx_wdma_ctrl(unsigned long argp, struct tcc_wdma_dev *pwdma_data)
 {
 	struct lcd_panel *panel;
-	VIOC_WDMA_IMAGE_INFO_Type ImageCfg;
+	struct VIOC_WDMA_IMAGE_INFO_Type ImageCfg;
 	unsigned int base_addr = 0, Wmix_Height = 0, Wmix_Width = 0, DDevice = 0;
 	int ret = 0, dd_rgb = 0;
 	int addr_Y,  addr_U, addr_V;

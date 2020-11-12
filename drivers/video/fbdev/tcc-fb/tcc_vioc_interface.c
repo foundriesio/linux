@@ -4505,7 +4505,7 @@ extern void VIOC_RDMA_SetImageUpdate_for_CertiTest(volatile void __iomem *reg, u
 #define ALIGNED_WIDTH(w, mul) ( ( (unsigned int)w + (mul-1) ) & ~(mul-1) )
 void tca_edr_vioc_set(unsigned int nRDMA, volatile void __iomem *pRDMA, dolby_layer_str_t stDolby_Layer,
 						struct tcc_dp_device *pdp_data, struct tcc_lcdc_image_update *ImageInfo,
-						unsigned int width, unsigned int height, DV_DISP_TYPE type, unsigned int el_ratio)
+						unsigned int width, unsigned int height, enum DV_DISP_TYPE type, unsigned int el_ratio)
 {
 	unsigned int iSCType;
 	volatile void __iomem *pSC;

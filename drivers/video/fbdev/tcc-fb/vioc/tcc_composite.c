@@ -238,7 +238,7 @@ int tcc_composite_get_started(void)
 /*****************************************************************************
  Function Name : tcc_composite_get_spec()
 ******************************************************************************/
-void tcc_composite_get_spec(COMPOSITE_MODE_TYPE mode, COMPOSITE_SPEC_TYPE *spec)
+void tcc_composite_get_spec(COMPOSITE_MODE_TYPE mode, struct COMPOSITE_SPEC_TYPE *spec)
 {
 #if defined(CONFIG_FB_TCC_COMPOSITE_BVO)
 	internal_bvo_get_spec(mode, spec);
@@ -332,7 +332,7 @@ void tcc_composite_get_spec(COMPOSITE_MODE_TYPE mode, COMPOSITE_SPEC_TYPE *spec)
 ******************************************************************************/
 void tcc_composite_set_lcd2tv(COMPOSITE_MODE_TYPE type)
 {
-	COMPOSITE_SPEC_TYPE spec;
+	struct COMPOSITE_SPEC_TYPE spec;
 	struct LCDTIMING CompositeTiming;
 	struct LCDCTR LcdCtrlParam;
 

@@ -441,7 +441,7 @@ typedef enum{
 	COMPOSITE_LCDC_YUV2RGB_TYPE3
 }COMPOSITE_LCDC_YUV2RGB_TYPE;
 
-typedef enum{
+typedef enum COMPOSITE_LCDC_IMG_FMT_TYPE {
 	COMPOSITE_LCDC_IMG_FMT_1BPP,
 	COMPOSITE_LCDC_IMG_FMT_2BPP,
 	COMPOSITE_LCDC_IMG_FMT_4BPP,
@@ -460,9 +460,9 @@ typedef enum{
 	COMPOSITE_LCDC_IMG_FMT_YUV422ITL0	= 30, 
 	COMPOSITE_LCDC_IMG_FMT_YUV422ITL1	= 31, 
 	COMPOSITE_LCDC_IMG_FMT_MAX
-}COMPOSITE_LCDC_IMG_FMT_TYPE;
+};
 
-typedef struct{
+struct COMPOSITE_LCDC_IMG_CTRL_TYPE {
 	char INTL;							// DMA Interlace Mode
 	char AEN;							// Alpha-blending Function for Each Image
 	char CEN;							// Chroma-keying Function for Each Image
@@ -476,9 +476,9 @@ typedef struct{
 	char Y2R;							// Y2R Conversion Enable bit
 	char BR;							// Bit Reverse
 	COMPOSITE_LCDC_IMG_FMT_TYPE FMT;	// Image Format 
-}COMPOSITE_LCDC_IMG_CTRL_TYPE;
+};
 
-typedef struct{
+struct COMPOSITE_SPEC_TYPE {
 	unsigned int composite_clk; 		// pixel clock
 	unsigned int composite_bus_width;	// data bus width
 	unsigned int composite_lcd_width;	// lcd width
@@ -509,7 +509,7 @@ typedef struct{
 	unsigned int composite_FLC2;		// frmae line count is the number of lines in each frmae on the screen
 	unsigned int composite_FSWC2;		// frmae start wait cycle is the number of lines to insert at the end each frame
 	unsigned int composite_FEWC2; 		// frame start wait cycle is the number of lines to insert at the begining each frame
-}COMPOSITE_SPEC_TYPE;
+};
 
 /* Interface API */
 extern void internal_tve_set_config(unsigned int type);
@@ -522,7 +522,7 @@ extern void internal_tve_set_cgms_helper(unsigned char odd_field_en, unsigned ch
 extern volatile void __iomem* VIOC_TVE_VEN_GetAddress(void);
 extern volatile void __iomem* VIOC_TVE_GetAddress(void);
 #if defined(CONFIG_FB_TCC_COMPOSITE_BVO)
-extern void internal_bvo_get_spec(COMPOSITE_MODE_TYPE type, COMPOSITE_SPEC_TYPE *spec);
+extern void internal_bvo_get_spec(COMPOSITE_MODE_TYPE type, struct COMPOSITE_SPEC_TYPE *spec);
 extern void internal_tve_mv(COMPOSITE_MODE_TYPE type, unsigned int enable);
 #endif
 #endif /* __VIOC_TVE_H__ */

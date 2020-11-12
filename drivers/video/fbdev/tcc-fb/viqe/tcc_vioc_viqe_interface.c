@@ -144,7 +144,7 @@ static int gUse_sDeintls = 0;
 static int gOutputMode = 0;
 atomic_t gFrmCnt_60Hz;
 static int gLcdc_layer_60Hz = -1;
-static VIOC_VIQE_FMT_TYPE gViqe_fmt_60Hz;
+static enum VIOC_VIQE_FMT_TYPE gViqe_fmt_60Hz;
 static int gImg_fmt_60Hz = -1;
 static int gDeintlS_Use_60Hz = 0;
 static int gDeintlS_Use_Plugin = 0;
@@ -158,15 +158,15 @@ static int gUse_DtrcConverter = 0;
 #ifndef USE_DEINTERLACE_S_IN30Hz
 static int gusingDI_S = 0;
 static int gbfield_30Hz =0;
-static VIOC_VIQE_DEINTL_MODE gDI_mode_30Hz = VIOC_VIQE_DEINTL_MODE_2D;
+static enum VIOC_VIQE_DEINTL_MODE gDI_mode_30Hz = VIOC_VIQE_DEINTL_MODE_2D;
 #else
 static int gusingDI_S = 0;
 #endif
 
 #ifndef USE_DEINTERLACE_S_IN60Hz
-static VIOC_VIQE_DEINTL_MODE gDI_mode_60Hz = VIOC_VIQE_DEINTL_MODE_2D;
+static enum VIOC_VIQE_DEINTL_MODE gDI_mode_60Hz = VIOC_VIQE_DEINTL_MODE_2D;
 #else
-static VIOC_VIQE_DEINTL_MODE gDI_mode_60Hz = VIOC_VIQE_DEINTL_S;
+static enum VIOC_VIQE_DEINTL_MODE gDI_mode_60Hz = VIOC_VIQE_DEINTL_S;
 #endif
 
 #ifdef CONFIG_USE_SUB_MULTI_FRAME
@@ -327,7 +327,7 @@ void TCC_VIQE_DI_Init(VIQE_DI_TYPE *viqe_arg)
 	int top_size_dont_use = OFF;		//If this value is OFF, The size information is get from VIOC modules.
 #endif
 	unsigned int framebufWidth, framebufHeight;
-	VIOC_VIQE_FMT_TYPE img_fmt = VIOC_VIQE_FMT_YUV420;
+	enum VIOC_VIQE_FMT_TYPE img_fmt = VIOC_VIQE_FMT_YUV420;
 	volatile void __iomem *pRDMA, *pVIQE;
 	int nRDMA = 0, nVIQE = 0;
 
@@ -677,7 +677,7 @@ void TCC_VIQE_DI_Init60Hz_M2M(TCC_OUTPUT_TYPE outputMode, struct tcc_lcdc_image_
 	int imgSize;
 	int top_size_dont_use = OFF;		//If this value is OFF, The size information is get from VIOC modules.
 	unsigned int framebufWidth, framebufHeight;
-	VIOC_VIQE_FMT_TYPE img_fmt = VIOC_VIQE_FMT_YUV420;
+	enum VIOC_VIQE_FMT_TYPE img_fmt = VIOC_VIQE_FMT_YUV420;
 #ifdef CONFIG_TCC_VIOCMG
 	unsigned int viqe_lock = 0;
 #endif

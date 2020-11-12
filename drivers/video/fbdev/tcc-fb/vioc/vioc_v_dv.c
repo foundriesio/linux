@@ -79,7 +79,7 @@ static volatile void __iomem *get_v_dv_reg(volatile void __iomem *pRDMA)
 	if (nRdma < 0)
 		return NULL;
 	else
-		return VIOC_DV_GetAddress((DV_DISP_TYPE)nRdma);
+		return VIOC_DV_GetAddress((enum DV_DISP_TYPE)nRdma);
 }
 
 static char convert_v_dv_PixelFmt(char rdma_format)
@@ -579,7 +579,7 @@ void VIOC_V_DV_Base_Configure(int sx, int sy, int w, int h)
 	// dprintk_dv_sequence("### All Stream I/F On\n");
 
 	while (nEDR_dma >= 0) {
-		pReg = VIOC_DV_GetAddress((DV_DISP_TYPE)nEDR_dma);
+		pReg = VIOC_DV_GetAddress((enum DV_DISP_TYPE)nEDR_dma);
 		VIOC_V_DV_SetSize(pReg, NULL, sx, sy, w, h);
 		VIOC_V_DV_SetPXDW(pReg, NULL, VIOC_PXDW_FMT_24_RGB888);
 		_Set_BG_Color(pReg);
@@ -619,7 +619,7 @@ volatile void __iomem *VIOC_DNG_GetAddress(void)
 	return pDNG_reg;
 }
 
-volatile void __iomem *VIOC_DV_GetAddress(DV_DISP_TYPE type)
+volatile void __iomem *VIOC_DV_GetAddress(enum DV_DISP_TYPE type)
 {
 	if (pVDV_reg[type] == NULL)
 		pr_err("[ERR][V_DV] %s\n", __func__);
@@ -627,7 +627,7 @@ volatile void __iomem *VIOC_DV_GetAddress(DV_DISP_TYPE type)
 	return pVDV_reg[type];
 }
 
-void VIOC_DV_DUMP(DV_DISP_TYPE type, unsigned int size)
+void VIOC_DV_DUMP(enum DV_DISP_TYPE type, unsigned int size)
 {
 	volatile void __iomem *pReg;
 	unsigned int cnt = 0;
@@ -650,7 +650,7 @@ void VIOC_DV_DUMP(DV_DISP_TYPE type, unsigned int size)
 	}
 }
 
-volatile void __iomem *VIOC_DV_VEDR_GetAddress(VEDR_TYPE type)
+volatile void __iomem *VIOC_DV_VEDR_GetAddress(enum VEDR_TYPE type)
 {
 	if (pVEDR_reg[type] == NULL)
 		pr_err("[ERR][V_DV] %s\n", __func__);
@@ -658,7 +658,7 @@ volatile void __iomem *VIOC_DV_VEDR_GetAddress(VEDR_TYPE type)
 	return pVEDR_reg[type];
 }
 
-void VIOC_DV_VEDR_DUMP(VEDR_TYPE type, unsigned int size)
+void VIOC_DV_VEDR_DUMP(enum VEDR_TYPE type, unsigned int size)
 {
 	volatile void __iomem *pReg;
 	unsigned int cnt = 0;

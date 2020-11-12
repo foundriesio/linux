@@ -1063,8 +1063,8 @@ static int deintl_viqe_setup(struct tcc_vout_device *vout, enum deintl_type dein
 
 	/* viqe config variable */
 	int vmisc_tsdu = 0;									// 0: viqe size is get from vioc module
-	VIOC_VIQE_DEINTL_MODE di_mode;
-	VIOC_VIQE_FMT_TYPE di_fmt = VIOC_VIQE_FMT_YUV420;	// DI_DECn_MISC.FMT, DI_FMT.F422 register
+	enum VIOC_VIQE_DEINTL_MODE di_mode;
+	enum VIOC_VIQE_FMT_TYPE di_fmt = VIOC_VIQE_FMT_YUV420;	// DI_DECn_MISC.FMT, DI_FMT.F422 register
 														//TODO: VIOC_VIQE_FMT_YUV420 = 0, VIOC_VIQE_FMT_YUV422 = 1
 #ifdef MAX_VIQE_FRAMEBUFFER
 	framebufferWidth = 1920;
@@ -1191,7 +1191,7 @@ static int vout_check_syncTime(struct tcc_vout_device *vout, struct v4l2_buffer 
 void vout_onthefly_dv_update(struct tcc_vout_device *vout, struct v4l2_buffer *buf)
 {
 	if(VIOC_CONFIG_DV_GET_EDR_PATH()){
-		volatile void __iomem *pDisp_DV = VIOC_DV_GetAddress((DV_DISP_TYPE)EDR_BL);
+		volatile void __iomem *pDisp_DV = VIOC_DV_GetAddress((enum DV_DISP_TYPE)EDR_BL);
 
 		if(vioc_get_out_type() == buf->m.planes[MPLANE_VID].reserved[VID_DOLBY_REG_OUT_TYPE])
 		{

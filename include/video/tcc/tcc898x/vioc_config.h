@@ -1,10 +1,5 @@
 /*
- * linux/arch/arm/mach-tcc893x/include/mach/vioc_config.h
- * Author:  <linux@telechips.com>
- * Created: June 10, 2008
- * Description: TCC VIOC h/w block
- *
- * Copyright (C) 2008-2009 Telechips
+ * Copyright (C) Telechips, Inc.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -21,7 +16,6 @@
  * to the Free Software Foundation, Inc.,
  * 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  */
-
 #ifndef __VIOC_CONFIG_H__
 #define	__VIOC_CONFIG_H__
 
@@ -106,37 +100,37 @@
  * Interrupt Status 0 Registers
  * @Description: 0 - Normal, 1 - Interrupt
  */
-#define RAWSTATUS0_EDR_EL_SHIFT (31)	// EDR_EL Streaming I/F Interrupt Status
-#define RAWSTATUS0_EDR_BL_SHIFT (30)	// EDR_BL Streaming I/F Interrupt Status
-#define RAWSTATUS0_FIFO1_SHIFT (29)	// ASync. FIFO1 Interrupt Status
-#define RAWSTATUS0_FIFO0_SHIFT (28)	// ASync. FIFO0 Interrupt Status
-#define RAWSTATUS0_V_DV_SHIFT (27)	// V_DV Interrupt Status
-#define RAWSTATUS0_DTRC1_SHIFT (26)	// DTRC1 interrupt Status
-#define RAWSTATUS0_DTRC0_SHIFT (25)	// DTRC0 interrupt Status
-#define RAWSTATUS0_MC1_SHIFT (23)	// Map Conv1 interrupt Status
-#define RAWSTATUS0_MC0_SHIFT (22)	// Map Conv0 interrupt Status
-#define RAWSTATUS0_RD17_SHIFT (21)	// RDMA17 interrupt Status
-#define RAWSTATUS0_RD16_SHIFT (20)	// RDMA16 interrupt Status
-#define RAWSTATUS0_RD15_SHIFT (19)	// RDMA15 interrupt Status
-#define RAWSTATUS0_RD14_SHIFT (18)	// RDMA14 interrupt Status
-#define RAWSTATUS0_RD13_SHIFT (17)	// RDMA13 interrupt Status
-#define RAWSTATUS0_RD12_SHIFT (16)	// RDMA12 interrupt Status
-#define RAWSTATUS0_RD11_SHIFT (15)	// RDMA11 interrupt Status
-#define RAWSTATUS0_RD10_SHIFT (14)	// RDMA10 interrupt Status
-#define RAWSTATUS0_RD9_SHIFT (13)	// RDMA09 interrupt Status
-#define RAWSTATUS0_RD8_SHIFT (12)	// RDMA08 interrupt Status
-#define RAWSTATUS0_RD7_SHIFT (11)	// RDMA07 interrupt Status
-#define RAWSTATUS0_RD6_SHIFT (10)	// RDMA06 interrupt Status
-#define RAWSTATUS0_RD5_SHIFT (9)	// RDMA05 interrupt Status
-#define RAWSTATUS0_RD4_SHIFT (8)	// RDMA04 interrupt Status
-#define RAWSTATUS0_RD3_SHIFT (7)	// RDMA03 interrupt Status
-#define RAWSTATUS0_RD2_SHIFT (6)	// RDMA02 interrupt Status
-#define RAWSTATUS0_RD1_SHIFT (5)	// RDMA01 interrupt Status
-#define RAWSTATUS0_RD0_SHIFT (4)	// RDMA00 interrupt Status
-#define RAWSTATUS0_TIMER_SHIFT (3)	// TIMER interrupt Status
-#define RAWSTATUS0_DEV2_SHIFT (2)	// Display Device 2 interrupt Status
-#define RAWSTATUS0_DEV1_SHIFT (1)	// Display Device 1 interrupt Status
-#define RAWSTATUS0_DEV0_SHIFT (0)	// Display Device 0 interrupt Status
+#define RAWSTATUS0_EDR_EL_SHIFT (31)
+#define RAWSTATUS0_EDR_BL_SHIFT (30)
+#define RAWSTATUS0_FIFO1_SHIFT (29)
+#define RAWSTATUS0_FIFO0_SHIFT (28)
+#define RAWSTATUS0_V_DV_SHIFT (27)
+#define RAWSTATUS0_DTRC1_SHIFT (26)
+#define RAWSTATUS0_DTRC0_SHIFT (25)
+#define RAWSTATUS0_MC1_SHIFT (23)
+#define RAWSTATUS0_MC0_SHIFT (22)
+#define RAWSTATUS0_RD17_SHIFT (21)
+#define RAWSTATUS0_RD16_SHIFT (20)
+#define RAWSTATUS0_RD15_SHIFT (19)
+#define RAWSTATUS0_RD14_SHIFT (18)
+#define RAWSTATUS0_RD13_SHIFT (17)
+#define RAWSTATUS0_RD12_SHIFT (16)
+#define RAWSTATUS0_RD11_SHIFT (15)
+#define RAWSTATUS0_RD10_SHIFT (14)
+#define RAWSTATUS0_RD9_SHIFT (13)
+#define RAWSTATUS0_RD8_SHIFT (12)
+#define RAWSTATUS0_RD7_SHIFT (11)
+#define RAWSTATUS0_RD6_SHIFT (10)
+#define RAWSTATUS0_RD5_SHIFT (9)
+#define RAWSTATUS0_RD4_SHIFT (8)
+#define RAWSTATUS0_RD3_SHIFT (7)
+#define RAWSTATUS0_RD2_SHIFT (6)
+#define RAWSTATUS0_RD1_SHIFT (5)
+#define RAWSTATUS0_RD0_SHIFT (4)
+#define RAWSTATUS0_TIMER_SHIFT (3)
+#define RAWSTATUS0_DEV2_SHIFT (2)
+#define RAWSTATUS0_DEV1_SHIFT (1)
+#define RAWSTATUS0_DEV0_SHIFT (0)
 
 #define RAWSTATUS0_EDR_EL_MASK (0x1 << RAWSTATUS0_EDR_EL_SHIFT)
 #define RAWSTATUS0_EDR_BL_MASK (0x1 <<	RAWSTATUS0_EDR_BL_SHIFT)
@@ -174,35 +168,35 @@
  * Interrupt Status 1 Registers
  * @Description: 0 - Normal, 1 - Interrupt
  */
-#define RAWSTATUS1_SC3_SHIFT (31)	// Scaler3 Interrupt Status
-#define RAWSTATUS1_SC2_SHIFT (30)	// Scaler2 Interrupt Status
-#define RAWSTATUS1_SC1_SHIFT (29)	// Scaler1 Interrupt Status
-#define RAWSTATUS1_SC0_SHIFT (28)	// Scaler0 Interrupt Status
-#define RAWSTATUS1_VIQE0_SHIFT (27)	// VIQE0 Interrupt Status
-#define RAWSTATUS1_VIN3_SHIFT (26)	// VIN3 Interrupt Status
-#define RAWSTATUS1_VIN2_SHIFT (25)	// VIN2 Interrupt Status
-#define RAWSTATUS1_VIN1_SHIFT (24)	// VIN1 Interrupt Status
-#define RAWSTATUS1_VIN0_SHIFT (23)	// VIN0 Interrupt Status
-#define RAWSTATUS1_WMIX6_SHIFT (22)	// WMIX6 Interrupt Status
-#define RAWSTATUS1_WMIX5_SHIFT (21)	// WMIX5 Interrupt Status
-#define RAWSTATUS1_WMIX4_SHIFT (20)	// WMIX4 Interrupt Status
-#define RAWSTATUS1_WMIX3_SHIFT (19)	// WMIX3 Interrupt Status
-#define RAWSTATUS1_WMIX2_SHIFT (18)	// WMIX2 Interrupt Status
-#define RAWSTATUS1_WMIX1_SHIFT (17)	// WMIX1 Interrupt Status
-#define RAWSTATUS1_WMIX0_SHIFT (16)	// WMIX0 Interrupt Status
-#define RAWSTATUS1_OSD1_SHIFT (15)	// EDR OSD1 Interrupt Status
-#define RAWSTATUS1_OSD0_SHIFT (14)	// EDR OSD0 Interrupt Status
-#define RAWSTATUS1_VIQE1_SHIFT (13)	// VIQE1 Interrupt Status
-#define RAWSTATUS1_SC4_SHIFT (11)	// Scaler4 Interrupt Status
-#define RAWSTATUS1_WD8_SHIFT (8)	// WDMA08 Interrupt Status
-#define RAWSTATUS1_WD7_SHIFT (7)	// WDMA07 Interrupt Status
-#define RAWSTATUS1_WD6_SHIFT (6)	// WDMA06 Interrupt Status
-#define RAWSTATUS1_WD5_SHIFT (5)	// WDMA05 Interrupt Status
-#define RAWSTATUS1_WD4_SHIFT (4)	// WDMA04 Interrupt Status
-#define RAWSTATUS1_WD3_SHIFT (3)	// WDMA03 Interrupt Status
-#define RAWSTATUS1_WD2_SHIFT (2)	// WDMA02 Interrupt Status
-#define RAWSTATUS1_WD1_SHIFT (1)	// WDMA01 Interrupt Status
-#define RAWSTATUS1_WD0_SHIFT (0)	// WDMA00 Interrupt Status
+#define RAWSTATUS1_SC3_SHIFT (31)
+#define RAWSTATUS1_SC2_SHIFT (30)
+#define RAWSTATUS1_SC1_SHIFT (29)
+#define RAWSTATUS1_SC0_SHIFT (28)
+#define RAWSTATUS1_VIQE0_SHIFT (27)
+#define RAWSTATUS1_VIN3_SHIFT (26)
+#define RAWSTATUS1_VIN2_SHIFT (25)
+#define RAWSTATUS1_VIN1_SHIFT (24)
+#define RAWSTATUS1_VIN0_SHIFT (23)
+#define RAWSTATUS1_WMIX6_SHIFT (22)
+#define RAWSTATUS1_WMIX5_SHIFT (21)
+#define RAWSTATUS1_WMIX4_SHIFT (20)
+#define RAWSTATUS1_WMIX3_SHIFT (19)
+#define RAWSTATUS1_WMIX2_SHIFT (18)
+#define RAWSTATUS1_WMIX1_SHIFT (17)
+#define RAWSTATUS1_WMIX0_SHIFT (16)
+#define RAWSTATUS1_OSD1_SHIFT (15)
+#define RAWSTATUS1_OSD0_SHIFT (14)
+#define RAWSTATUS1_VIQE1_SHIFT (13)
+#define RAWSTATUS1_SC4_SHIFT (11)
+#define RAWSTATUS1_WD8_SHIFT (8)
+#define RAWSTATUS1_WD7_SHIFT (7)
+#define RAWSTATUS1_WD6_SHIFT (6)
+#define RAWSTATUS1_WD5_SHIFT (5)
+#define RAWSTATUS1_WD4_SHIFT (4)
+#define RAWSTATUS1_WD3_SHIFT (3)
+#define RAWSTATUS1_WD2_SHIFT (2)
+#define RAWSTATUS1_WD1_SHIFT (1)
+#define RAWSTATUS1_WD0_SHIFT (0)
 
 #define RAWSTATUS1_SC3_MASK (0x1 << RAWSTATUS1_SC3_SHIFT)
 #define RAWSTATUS1_SC2_MASK (0x1 << RAWSTATUS1_SC2_SHIFT)
@@ -238,37 +232,37 @@
  * Sync Interrupt Status 0 Registers
  * @Description: 0 - Normal, 1 - Interrupt
  */
-#define SYNCSTATUS0_EDR_EL_SHIFT (31)	// EDR_EL Streaming I/F Sync Interrupt Status
-#define SYNCSTATUS0_EDR_BL_SHIFT (30)	// EDR_BL Streaming I/F Sync Interrupt Status
-#define SYNCSTATUS0_FIFO1_SHIFT (29)	// ASync. FIFO1 Sync Interrupt Status
-#define SYNCSTATUS0_FIFO0_SHIFT (28)	// ASync. FIFO0 Sync Interrupt Status
-#define SYNCSTATUS0_V_DV_SHIFT (27)	// V_DV Sync Interrupt Status
-#define SYNCSTATUS0_DTRC1_SHIFT (26)	// DTRC1 Sync Interrupt Status
-#define SYNCSTATUS0_DTRC0_SHIFT (25)	// DTRC0 Sync Interrupt Status
-#define SYNCSTATUS0_MC1_SHIFT (23)	// Map Conv1 Sync Interrupt Status
-#define SYNCSTATUS0_MC0_SHIFT (22)	// Map Conv0 Sync Interrupt Status
-#define SYNCSTATUS0_RD17_SHIFT (21)	// RDMA17 Sync Interrupt Status
-#define SYNCSTATUS0_RD16_SHIFT (20)	// RDMA16 Sync Interrupt Status
-#define SYNCSTATUS0_RD15_SHIFT (19)	// RDMA15 Sync Interrupt Status
-#define SYNCSTATUS0_RD14_SHIFT (18)	// RDMA14 Sync Interrupt Status
-#define SYNCSTATUS0_RD13_SHIFT (17)	// RDMA13 Sync Interrupt Status
-#define SYNCSTATUS0_RD12_SHIFT (16)	// RDMA12 Sync Interrupt Status
-#define SYNCSTATUS0_RD11_SHIFT (15)	// RDMA11 Sync Interrupt Status
-#define SYNCSTATUS0_RD10_SHIFT (14)	// RDMA10 Sync Interrupt Status
-#define SYNCSTATUS0_RD9_SHIFT (13)	// RDMA09 Sync Interrupt Status
-#define SYNCSTATUS0_RD8_SHIFT (12)	// RDMA08 Sync Interrupt Status
-#define SYNCSTATUS0_RD7_SHIFT (11)	// RDMA07 Sync Interrupt Status
-#define SYNCSTATUS0_RD6_SHIFT (10)	// RDMA06 Sync Interrupt Status
-#define SYNCSTATUS0_RD5_SHIFT (9)	// RDMA05 Sync Interrupt Status
-#define SYNCSTATUS0_RD4_SHIFT (8)	// RDMA04 Sync Interrupt Status
-#define SYNCSTATUS0_RD3_SHIFT (7)	// RDMA03 Sync Interrupt Status
-#define SYNCSTATUS0_RD2_SHIFT (6)	// RDMA02 Sync Interrupt Status
-#define SYNCSTATUS0_RD1_SHIFT (5)	// RDMA01 Sync Interrupt Status
-#define SYNCSTATUS0_RD0_SHIFT (4)	// RDMA00 Sync Interrupt Status
-#define SYNCSTATUS0_TIMER_SHIFT (3)	// TIMER Sync Interrupt Status
-#define SYNCSTATUS0_DEV2_SHIFT (2)	// Display Device 2 Sync Interrupt Status
-#define SYNCSTATUS0_DEV1_SHIFT (1)	// Display Device 1 Sync Interrupt Status
-#define SYNCSTATUS0_DEV0_SHIFT (0)	// Display Device 0 Sync Interrupt Status
+#define SYNCSTATUS0_EDR_EL_SHIFT (31)
+#define SYNCSTATUS0_EDR_BL_SHIFT (30)
+#define SYNCSTATUS0_FIFO1_SHIFT (29)
+#define SYNCSTATUS0_FIFO0_SHIFT (28)
+#define SYNCSTATUS0_V_DV_SHIFT (27)
+#define SYNCSTATUS0_DTRC1_SHIFT (26)
+#define SYNCSTATUS0_DTRC0_SHIFT (25)
+#define SYNCSTATUS0_MC1_SHIFT (23)
+#define SYNCSTATUS0_MC0_SHIFT (22)
+#define SYNCSTATUS0_RD17_SHIFT (21)
+#define SYNCSTATUS0_RD16_SHIFT (20)
+#define SYNCSTATUS0_RD15_SHIFT (19)
+#define SYNCSTATUS0_RD14_SHIFT (18)
+#define SYNCSTATUS0_RD13_SHIFT (17)
+#define SYNCSTATUS0_RD12_SHIFT (16)
+#define SYNCSTATUS0_RD11_SHIFT (15)
+#define SYNCSTATUS0_RD10_SHIFT (14)
+#define SYNCSTATUS0_RD9_SHIFT (13)
+#define SYNCSTATUS0_RD8_SHIFT (12)
+#define SYNCSTATUS0_RD7_SHIFT (11)
+#define SYNCSTATUS0_RD6_SHIFT (10)
+#define SYNCSTATUS0_RD5_SHIFT (9)
+#define SYNCSTATUS0_RD4_SHIFT (8)
+#define SYNCSTATUS0_RD3_SHIFT (7)
+#define SYNCSTATUS0_RD2_SHIFT (6)
+#define SYNCSTATUS0_RD1_SHIFT (5)
+#define SYNCSTATUS0_RD0_SHIFT (4)
+#define SYNCSTATUS0_TIMER_SHIFT (3)
+#define SYNCSTATUS0_DEV2_SHIFT (2)
+#define SYNCSTATUS0_DEV1_SHIFT (1)
+#define SYNCSTATUS0_DEV0_SHIFT (0)
 
 #define SYNCSTATUS0_EDR_EL_MASK (0x1 << SYNCSTATUS0_EDR_EL_SHIFT)
 #define SYNCSTATUS0_EDR_BL_MASK (0x1 <<	SYNCSTATUS0_EDR_BL_SHIFT)
@@ -306,35 +300,35 @@
  * Sync Interrupt Status 1 Registers
  * @Description: 0 - Normal, 1 - Interrupt
  */
-#define SYNCSTATUS1_SC3_SHIFT (31)	// Scaler3 Sync Interrupt Status
-#define SYNCSTATUS1_SC2_SHIFT (30)	// Scaler2 Sync Interrupt Status
-#define SYNCSTATUS1_SC1_SHIFT (29)	// Scaler1 Sync Interrupt Status
-#define SYNCSTATUS1_SC0_SHIFT (28)	// Scaler0 Sync Interrupt Status
-#define SYNCSTATUS1_VIQE0_SHIFT (27)	// VIQE0 Sync Interrupt Status
-#define SYNCSTATUS1_VIN3_SHIFT (26)	// VIN3 Sync Interrupt Status
-#define SYNCSTATUS1_VIN2_SHIFT (25)	// VIN2 Sync Interrupt Status
-#define SYNCSTATUS1_VIN1_SHIFT (24)	// VIN1 Sync Interrupt Status
-#define SYNCSTATUS1_VIN0_SHIFT (23)	// VIN0 Sync Interrupt Status
-#define SYNCSTATUS1_WMIX6_SHIFT (22)	// WMIX6 Sync Interrupt Status
-#define SYNCSTATUS1_WMIX5_SHIFT (21)	// WMIX5 Sync Interrupt Status
-#define SYNCSTATUS1_WMIX4_SHIFT (20)	// WMIX4 Sync Interrupt Status
-#define SYNCSTATUS1_WMIX3_SHIFT (19)	// WMIX3 Sync Interrupt Status
-#define SYNCSTATUS1_WMIX2_SHIFT (18)	// WMIX2 Sync Interrupt Status
-#define SYNCSTATUS1_WMIX1_SHIFT (17)	// WMIX1 Sync Interrupt Status
-#define SYNCSTATUS1_WMIX0_SHIFT (16)	// WMIX0 Sync Interrupt Status
-#define SYNCSTATUS1_OSD1_SHIFT (15)	// EDR OSD1 Sync Interrupt Status
-#define SYNCSTATUS1_OSD0_SHIFT (14)	// EDR OSD0 Sync Interrupt Status
-#define SYNCSTATUS1_VIQE1_SHIFT (13)	// VIQE1 Sync Interrupt Status
-#define SYNCSTATUS1_SC4_SHIFT (11)	// Scaler4 Sync Interrupt Status
-#define SYNCSTATUS1_WD8_SHIFT (8)	// WDMA08 Sync Interrupt Status
-#define SYNCSTATUS1_WD7_SHIFT (7)	// WDMA07 Sync Interrupt Status
-#define SYNCSTATUS1_WD6_SHIFT (6)	// WDMA06 Sync Interrupt Status
-#define SYNCSTATUS1_WD5_SHIFT (5)	// WDMA05 Sync Interrupt Status
-#define SYNCSTATUS1_WD4_SHIFT (4)	// WDMA04 Sync Interrupt Status
-#define SYNCSTATUS1_WD3_SHIFT (3)	// WDMA03 Sync Interrupt Status
-#define SYNCSTATUS1_WD2_SHIFT (2)	// WDMA02 Sync Interrupt Status
-#define SYNCSTATUS1_WD1_SHIFT (1)	// WDMA01 Sync Interrupt Status
-#define SYNCSTATUS1_WD0_SHIFT (0)	// WDMA00 Sync Interrupt Status
+#define SYNCSTATUS1_SC3_SHIFT (31)
+#define SYNCSTATUS1_SC2_SHIFT (30)
+#define SYNCSTATUS1_SC1_SHIFT (29)
+#define SYNCSTATUS1_SC0_SHIFT (28)
+#define SYNCSTATUS1_VIQE0_SHIFT (27)
+#define SYNCSTATUS1_VIN3_SHIFT (26)
+#define SYNCSTATUS1_VIN2_SHIFT (25)
+#define SYNCSTATUS1_VIN1_SHIFT (24)
+#define SYNCSTATUS1_VIN0_SHIFT (23)
+#define SYNCSTATUS1_WMIX6_SHIFT (22)
+#define SYNCSTATUS1_WMIX5_SHIFT (21)
+#define SYNCSTATUS1_WMIX4_SHIFT (20)
+#define SYNCSTATUS1_WMIX3_SHIFT (19)
+#define SYNCSTATUS1_WMIX2_SHIFT (18)
+#define SYNCSTATUS1_WMIX1_SHIFT (17)
+#define SYNCSTATUS1_WMIX0_SHIFT (16)
+#define SYNCSTATUS1_OSD1_SHIFT (15)
+#define SYNCSTATUS1_OSD0_SHIFT (14)
+#define SYNCSTATUS1_VIQE1_SHIFT (13)
+#define SYNCSTATUS1_SC4_SHIFT (11)
+#define SYNCSTATUS1_WD8_SHIFT (8)
+#define SYNCSTATUS1_WD7_SHIFT (7)
+#define SYNCSTATUS1_WD6_SHIFT (6)
+#define SYNCSTATUS1_WD5_SHIFT (5)
+#define SYNCSTATUS1_WD4_SHIFT (4)
+#define SYNCSTATUS1_WD3_SHIFT (3)
+#define SYNCSTATUS1_WD2_SHIFT (2)
+#define SYNCSTATUS1_WD1_SHIFT (1)
+#define SYNCSTATUS1_WD0_SHIFT (0)
 
 #define SYNCSTATUS1_SC3_MASK (0x1 << SYNCSTATUS1_SC3_SHIFT)
 #define SYNCSTATUS1_SC2_MASK (0x1 << SYNCSTATUS1_SC2_SHIFT)
@@ -370,37 +364,37 @@
  * Interrupt Select 0 Registers
  * @Description: 0 - Async Interrupt, 1 - Sync Interrupt
  */
-#define IRQSELECT0_EDR_EL_SHIFT (31)	// EDR_EL Streaming I/F Sync Interrupt Select
-#define IRQSELECT0_EDR_BL_SHIFT (30)	// EDR_BL Streaming I/F Sync Interrupt Select
-#define IRQSELECT0_FIFO1_SHIFT (29)	// ASync. FIFO1 Sync Interrupt Select
-#define IRQSELECT0_FIFO0_SHIFT (28)	// ASync. FIFO0 Sync Interrupt Select
-#define IRQSELECT0_V_DV_SHIFT (27)	// V_DV Sync Interrupt Select
-#define IRQSELECT0_DTRC1_SHIFT (26)	// DTRC1 Sync Interrupt Select
-#define IRQSELECT0_DTRC0_SHIFT (25)	// DTRC0 Sync Interrupt Select
-#define IRQSELECT0_MC1_SHIFT (23)	// Map Conv1 Sync Interrupt Select
-#define IRQSELECT0_MC0_SHIFT (22)	// Map Conv0 Sync Interrupt Select
-#define IRQSELECT0_RD17_SHIFT (21)	// RDMA17 Sync Interrupt Select
-#define IRQSELECT0_RD16_SHIFT (20)	// RDMA16 Sync Interrupt Select
-#define IRQSELECT0_RD15_SHIFT (19)	// RDMA15 Sync Interrupt Select
-#define IRQSELECT0_RD14_SHIFT (18)	// RDMA14 Sync Interrupt Select
-#define IRQSELECT0_RD13_SHIFT (17)	// RDMA13 Sync Interrupt Select
-#define IRQSELECT0_RD12_SHIFT (16)	// RDMA12 Sync Interrupt Select
-#define IRQSELECT0_RD11_SHIFT (15)	// RDMA11 Sync Interrupt Select
-#define IRQSELECT0_RD10_SHIFT (14)	// RDMA10 Sync Interrupt Select
-#define IRQSELECT0_RD9_SHIFT (13)	// RDMA09 Sync Interrupt Select
-#define IRQSELECT0_RD8_SHIFT (12)	// RDMA08 Sync Interrupt Select
-#define IRQSELECT0_RD7_SHIFT (11)	// RDMA07 Sync Interrupt Select
-#define IRQSELECT0_RD6_SHIFT (10)	// RDMA06 Sync Interrupt Select
-#define IRQSELECT0_RD5_SHIFT (9)	// RDMA05 Sync Interrupt Select
-#define IRQSELECT0_RD4_SHIFT (8)	// RDMA04 Sync Interrupt Select
-#define IRQSELECT0_RD3_SHIFT (7)	// RDMA03 Sync Interrupt Select
-#define IRQSELECT0_RD2_SHIFT (6)	// RDMA02 Sync Interrupt Select
-#define IRQSELECT0_RD1_SHIFT (5)	// RDMA01 Sync Interrupt Select
-#define IRQSELECT0_RD0_SHIFT (4)	// RDMA00 Sync Interrupt Select
-#define IRQSELECT0_TIMER_SHIFT (3)	// TIMER Sync Interrupt Select
-#define IRQSELECT0_DEV2_SHIFT (2)	// Display Device 2 Sync Interrupt Select
-#define IRQSELECT0_DEV1_SHIFT (1)	// Display Device 1 Sync Interrupt Select
-#define IRQSELECT0_DEV0_SHIFT (0)	// Display Device 0 Sync Interrupt Select
+#define IRQSELECT0_EDR_EL_SHIFT (31)
+#define IRQSELECT0_EDR_BL_SHIFT (30)
+#define IRQSELECT0_FIFO1_SHIFT (29)
+#define IRQSELECT0_FIFO0_SHIFT (28)
+#define IRQSELECT0_V_DV_SHIFT (27)
+#define IRQSELECT0_DTRC1_SHIFT (26)
+#define IRQSELECT0_DTRC0_SHIFT (25)
+#define IRQSELECT0_MC1_SHIFT (23)
+#define IRQSELECT0_MC0_SHIFT (22)
+#define IRQSELECT0_RD17_SHIFT (21)
+#define IRQSELECT0_RD16_SHIFT (20)
+#define IRQSELECT0_RD15_SHIFT (19)
+#define IRQSELECT0_RD14_SHIFT (18)
+#define IRQSELECT0_RD13_SHIFT (17)
+#define IRQSELECT0_RD12_SHIFT (16)
+#define IRQSELECT0_RD11_SHIFT (15)
+#define IRQSELECT0_RD10_SHIFT (14)
+#define IRQSELECT0_RD9_SHIFT (13)
+#define IRQSELECT0_RD8_SHIFT (12)
+#define IRQSELECT0_RD7_SHIFT (11)
+#define IRQSELECT0_RD6_SHIFT (10)
+#define IRQSELECT0_RD5_SHIFT (9)
+#define IRQSELECT0_RD4_SHIFT (8)
+#define IRQSELECT0_RD3_SHIFT (7)
+#define IRQSELECT0_RD2_SHIFT (6)
+#define IRQSELECT0_RD1_SHIFT (5)
+#define IRQSELECT0_RD0_SHIFT (4)
+#define IRQSELECT0_TIMER_SHIFT (3)
+#define IRQSELECT0_DEV2_SHIFT (2)
+#define IRQSELECT0_DEV1_SHIFT (1)
+#define IRQSELECT0_DEV0_SHIFT (0)
 
 #define IRQSELECT0_EDR_EL_MASK (0x1 << IRQSELECT0_EDR_EL_SHIFT)
 #define IRQSELECT0_EDR_BL_MASK (0x1 <<	IRQSELECT0_EDR_BL_SHIFT)
@@ -438,35 +432,35 @@
  * Sync Interrupt Select 1 Registers
  * @Description: 0 - Normal, 1 - Interrupt
  */
-#define IRQSELECT1_SC3_SHIFT (31)	// Scaler3 Sync Interrupt Select
-#define IRQSELECT1_SC2_SHIFT (30)	// Scaler2 Sync Interrupt Select
-#define IRQSELECT1_SC1_SHIFT (29)	// Scaler1 Sync Interrupt Select
-#define IRQSELECT1_SC0_SHIFT (28)	// Scaler0 Sync Interrupt Select
-#define IRQSELECT1_VIQE0_SHIFT (27)	// VIQE0 Sync Interrupt Select
-#define IRQSELECT1_VIN3_SHIFT (26)	// VIN3 Sync Interrupt Select
-#define IRQSELECT1_VIN2_SHIFT (25)	// VIN2 Sync Interrupt Select
-#define IRQSELECT1_VIN1_SHIFT (24)	// VIN1 Sync Interrupt Select
-#define IRQSELECT1_VIN0_SHIFT (23)	// VIN0 Sync Interrupt Select
-#define IRQSELECT1_WMIX6_SHIFT (22)	// WMIX6 Sync Interrupt Select
-#define IRQSELECT1_WMIX5_SHIFT (21)	// WMIX5 Sync Interrupt Select
-#define IRQSELECT1_WMIX4_SHIFT (20)	// WMIX4 Sync Interrupt Select
-#define IRQSELECT1_WMIX3_SHIFT (19)	// WMIX3 Sync Interrupt Select
-#define IRQSELECT1_WMIX2_SHIFT (18)	// WMIX2 Sync Interrupt Select
-#define IRQSELECT1_WMIX1_SHIFT (17)	// WMIX1 Sync Interrupt Select
-#define IRQSELECT1_WMIX0_SHIFT (16)	// WMIX0 Sync Interrupt Select
-#define IRQSELECT1_OSD1_SHIFT (15)	// EDR OSD1 Sync Interrupt Select
-#define IRQSELECT1_OSD0_SHIFT (14)	// EDR OSD0 Sync Interrupt Select
-#define IRQSELECT1_VIQE1_SHIFT (13)	// VIQE1 Sync Interrupt Select
-#define IRQSELECT1_SC4_SHIFT (11)	// Scaler4 Sync Interrupt Select
-#define IRQSELECT1_WD8_SHIFT (8)	// WDMA08 Sync Interrupt Select
-#define IRQSELECT1_WD7_SHIFT (7)	// WDMA07 Sync Interrupt Select
-#define IRQSELECT1_WD6_SHIFT (6)	// WDMA06 Sync Interrupt Select
-#define IRQSELECT1_WD5_SHIFT (5)	// WDMA05 Sync Interrupt Select
-#define IRQSELECT1_WD4_SHIFT (4)	// WDMA04 Sync Interrupt Select
-#define IRQSELECT1_WD3_SHIFT (3)	// WDMA03 Sync Interrupt Select
-#define IRQSELECT1_WD2_SHIFT (2)	// WDMA02 Sync Interrupt Select
-#define IRQSELECT1_WD1_SHIFT (1)	// WDMA01 Sync Interrupt Select
-#define IRQSELECT1_WD0_SHIFT (0)	// WDMA00 Sync Interrupt Select
+#define IRQSELECT1_SC3_SHIFT (31)
+#define IRQSELECT1_SC2_SHIFT (30)
+#define IRQSELECT1_SC1_SHIFT (29)
+#define IRQSELECT1_SC0_SHIFT (28)
+#define IRQSELECT1_VIQE0_SHIFT (27)
+#define IRQSELECT1_VIN3_SHIFT (26)
+#define IRQSELECT1_VIN2_SHIFT (25)
+#define IRQSELECT1_VIN1_SHIFT (24)
+#define IRQSELECT1_VIN0_SHIFT (23)
+#define IRQSELECT1_WMIX6_SHIFT (22)
+#define IRQSELECT1_WMIX5_SHIFT (21)
+#define IRQSELECT1_WMIX4_SHIFT (20)
+#define IRQSELECT1_WMIX3_SHIFT (19)
+#define IRQSELECT1_WMIX2_SHIFT (18)
+#define IRQSELECT1_WMIX1_SHIFT (17)
+#define IRQSELECT1_WMIX0_SHIFT (16)
+#define IRQSELECT1_OSD1_SHIFT (15)
+#define IRQSELECT1_OSD0_SHIFT (14)
+#define IRQSELECT1_VIQE1_SHIFT (13)
+#define IRQSELECT1_SC4_SHIFT (11)
+#define IRQSELECT1_WD8_SHIFT (8)
+#define IRQSELECT1_WD7_SHIFT (7)
+#define IRQSELECT1_WD6_SHIFT (6)
+#define IRQSELECT1_WD5_SHIFT (5)
+#define IRQSELECT1_WD4_SHIFT (4)
+#define IRQSELECT1_WD3_SHIFT (3)
+#define IRQSELECT1_WD2_SHIFT (2)
+#define IRQSELECT1_WD1_SHIFT (1)
+#define IRQSELECT1_WD0_SHIFT (0)
 
 #define IRQSELECT1_SC3_MASK (0x1 << IRQSELECT1_SC3_SHIFT)
 #define IRQSELECT1_SC2_MASK (0x1 << IRQSELECT1_SC2_SHIFT)
@@ -634,37 +628,37 @@
  * Interrupt Mask Clear 0 Registers
  * @Description: 0 - Normal, 1 - Clear
  */
-#define IRQMASKCLR0_EDR_EL_SHIFT (31)	// EDR_EL Streaming I/F Interrupt Mask Clear
-#define IRQMASKCLR0_EDR_BL_SHIFT (30)	// EDR_BL Streaming I/F Interrupt Mask Clear
-#define IRQMASKCLR0_FIFO1_SHIFT (29)	// ASync. FIFO1 Interrupt Mask Clear
-#define IRQMASKCLR0_FIFO0_SHIFT (28)	// ASync. FIFO0 Interrupt Mask Clear
-#define IRQMASKCLR0_V_DV_SHIFT (27)	// V_DV Interrupt Mask Clear
-#define IRQMASKCLR0_DTRC1_SHIFT (26)	// DTRC1 Interrupt Mask Clear
-#define IRQMASKCLR0_DTRC0_SHIFT (25)	// DTRC0 Interrupt Mask Clear
-#define IRQMASKCLR0_MC1_SHIFT (23)	// Map Conv1 Interrupt Mask Clear
-#define IRQMASKCLR0_MC0_SHIFT (22)	// Map Conv0 Interrupt Mask Clear
-#define IRQMASKCLR0_RD17_SHIFT (21)	// RDMA17 Interrupt Mask Clear
-#define IRQMASKCLR0_RD16_SHIFT (20)	// RDMA16 Interrupt Mask Clear
-#define IRQMASKCLR0_RD15_SHIFT (19)	// RDMA15 Interrupt Mask Clear
-#define IRQMASKCLR0_RD14_SHIFT (18)	// RDMA14 Interrupt Mask Clear
-#define IRQMASKCLR0_RD13_SHIFT (17)	// RDMA13 Interrupt Mask Clear
-#define IRQMASKCLR0_RD12_SHIFT (16)	// RDMA12 Interrupt Mask Clear
-#define IRQMASKCLR0_RD11_SHIFT (15)	// RDMA11 Interrupt Mask Clear
-#define IRQMASKCLR0_RD10_SHIFT (14)	// RDMA10 Interrupt Mask Clear
-#define IRQMASKCLR0_RD9_SHIFT (13)	// RDMA09 Interrupt Mask Clear
-#define IRQMASKCLR0_RD8_SHIFT (12)	// RDMA08 Interrupt Mask Clear
-#define IRQMASKCLR0_RD7_SHIFT (11)	// RDMA07 Interrupt Mask Clear
-#define IRQMASKCLR0_RD6_SHIFT (10)	// RDMA06 Interrupt Mask Clear
-#define IRQMASKCLR0_RD5_SHIFT (9)	// RDMA05 Interrupt Mask Clear
-#define IRQMASKCLR0_RD4_SHIFT (8)	// RDMA04 Interrupt Mask Clear
-#define IRQMASKCLR0_RD3_SHIFT (7)	// RDMA03 Interrupt Mask Clear
-#define IRQMASKCLR0_RD2_SHIFT (6)	// RDMA02 Interrupt Mask Clear
-#define IRQMASKCLR0_RD1_SHIFT (5)	// RDMA01 Interrupt Mask Clear
-#define IRQMASKCLR0_RD0_SHIFT (4)	// RDMA00 Interrupt Mask Clear
-#define IRQMASKCLR0_TIMER_SHIFT (3)	// TIMER Interrupt Mask Clear
-#define IRQMASKCLR0_DEV2_SHIFT (2)	// Display Device 2 Interrupt Mask Clear
-#define IRQMASKCLR0_DEV1_SHIFT (1)	// Display Device 1 Interrupt Mask Clear
-#define IRQMASKCLR0_DEV0_SHIFT (0)	// Display Device 0 Interrupt Mask Clear
+#define IRQMASKCLR0_EDR_EL_SHIFT (31)
+#define IRQMASKCLR0_EDR_BL_SHIFT (30)
+#define IRQMASKCLR0_FIFO1_SHIFT (29)
+#define IRQMASKCLR0_FIFO0_SHIFT (28)
+#define IRQMASKCLR0_V_DV_SHIFT (27)
+#define IRQMASKCLR0_DTRC0_SHIFT (25)
+#define IRQMASKCLR0_DTRC1_SHIFT (26)
+#define IRQMASKCLR0_MC1_SHIFT (23)
+#define IRQMASKCLR0_MC0_SHIFT (22)
+#define IRQMASKCLR0_RD17_SHIFT (21)
+#define IRQMASKCLR0_RD16_SHIFT (20)
+#define IRQMASKCLR0_RD15_SHIFT (19)
+#define IRQMASKCLR0_RD14_SHIFT (18)
+#define IRQMASKCLR0_RD13_SHIFT (17)
+#define IRQMASKCLR0_RD12_SHIFT (16)
+#define IRQMASKCLR0_RD11_SHIFT (15)
+#define IRQMASKCLR0_RD10_SHIFT (14)
+#define IRQMASKCLR0_RD9_SHIFT (13)
+#define IRQMASKCLR0_RD8_SHIFT (12)
+#define IRQMASKCLR0_RD7_SHIFT (11)
+#define IRQMASKCLR0_RD6_SHIFT (10)
+#define IRQMASKCLR0_RD5_SHIFT (9)
+#define IRQMASKCLR0_RD4_SHIFT (8)
+#define IRQMASKCLR0_RD3_SHIFT (7)
+#define IRQMASKCLR0_RD2_SHIFT (6)
+#define IRQMASKCLR0_RD1_SHIFT (5)
+#define IRQMASKCLR0_RD0_SHIFT (4)
+#define IRQMASKCLR0_TIMER_SHIFT (3)
+#define IRQMASKCLR0_DEV2_SHIFT (2)
+#define IRQMASKCLR0_DEV1_SHIFT (1)
+#define IRQMASKCLR0_DEV0_SHIFT (0)
 
 #define IRQMASKCLR0_EDR_EL_MASK (0x1 << IRQMASKCLR0_EDR_EL_SHIFT)
 #define IRQMASKCLR0_EDR_BL_MASK (0x1 <<	IRQMASKCLR0_EDR_BL_SHIFT)
@@ -766,10 +760,10 @@
  * Vector ID Registers
  */
 #define VECTORID_IVALID_SHIFT (31)	// Invalid Interrupt
-#define	VECTORID_INDEX_SHIFT				(0)	// Interrupt Index
+#define	VECTORID_INDEX_SHIFT  (0)	// Interrupt Index
 
 #define VECTORID_IVALID_MASK (0x1 << VECTORID_IVALID_SHIFT)
-#define	VECTORID_INDEX_MASK				(0x3F << VECTORID_INDEX_SHIFT)
+#define	VECTORID_INDEX_MASK  (0x3F << VECTORID_INDEX_SHIFT)
 
 /*
  * Loop for Test Configuration Registers
@@ -796,21 +790,21 @@
 /*
  * Miscellaneous0 Configuration Registers
  */
-#define CFG_MISC0_RD14_SHIFT (31)	// SHOULD BE 0
-#define CFG_MISC0_RD12_SHIFT (30)	// SHOULD BE 0
-#define CFG_MISC0_MIX60_SHIFT (28)	// SHOULD BE 0
-#define CFG_MISC0_MIX50_SHIFT (26)	// WMIX5 Path Control for 0��?th Input Channel
-#define CFG_MISC0_MIX40_SHIFT (24)	// SHOULD BE 0
-#define CFG_MISC0_MIX30_SHIFT (22)	// WMIX3 Path Control for 0��?th Input Channel
-#define CFG_MISC0_MIX23_SHIFT (21)	// WMIX2 Path Control for 3��?rd Input Channel
-#define CFG_MISC0_MIX20_SHIFT (20)	// WMIX2 Path Control for 0��?th Input Channel
-#define CFG_MISC0_MIX13_SHIFT (19)	// WMIX1 Path Control for 3��?rd Input Channel
-#define CFG_MISC0_MIX10_SHIFT (18)	// WMIX1 Path Control for 0��?th Input Channel
-#define CFG_MISC0_MIX03_SHIFT (17)	// WMIX0 Path Control for 3��?rd Input Channel
-#define CFG_MISC0_MIX00_SHIFT (16)	// WMIX0 Path Control for 0��?th Input Channel
-#define CFG_MISC0_L2_EVS_SEL_SHIFT (8)	// Select VS signal for Display Device Output Port 2
-#define CFG_MISC0_L1_EVS_SEL_SHIFT (4)	// Select VS signal for Display Device Output Port 1
-#define CFG_MISC0_L0_EVS_SEL_SHIFT (0)	// Select VS signal for Display Device Output Port 0
+#define CFG_MISC0_RD14_SHIFT (31)  // SHOULD BE 0
+#define CFG_MISC0_RD12_SHIFT (30)  // SHOULD BE 0
+#define CFG_MISC0_MIX60_SHIFT (28) // SHOULD BE 0
+#define CFG_MISC0_MIX50_SHIFT (26) // WMIX5 Path Control for 0th Input Channel
+#define CFG_MISC0_MIX40_SHIFT (24) // SHOULD BE 0
+#define CFG_MISC0_MIX30_SHIFT (22) // WMIX3 Path Control for 0th Input Channel
+#define CFG_MISC0_MIX23_SHIFT (21) // WMIX2 Path Control for 3rd Input Channel
+#define CFG_MISC0_MIX20_SHIFT (20) // WMIX2 Path Control for 0th Input Channel
+#define CFG_MISC0_MIX13_SHIFT (19) // WMIX1 Path Control for 3rd Input Channel
+#define CFG_MISC0_MIX10_SHIFT (18) // WMIX1 Path Control for 0th Input Channel
+#define CFG_MISC0_MIX03_SHIFT (17) // WMIX0 Path Control for 3rd Input Channel
+#define CFG_MISC0_MIX00_SHIFT (16) // WMIX0 Path Control for 0th Input Channel
+#define CFG_MISC0_L2_EVS_SEL_SHIFT (8) // Select VS signal for Display Port 2
+#define CFG_MISC0_L1_EVS_SEL_SHIFT (4) // Select VS signal for Display Port 1
+#define CFG_MISC0_L0_EVS_SEL_SHIFT (0) // Select VS signal for Display Port 0
 
 #define CFG_MISC0_RD14_MASK (0x1 <<  CFG_MISC0_RD14_SHIFT)
 #define CFG_MISC0_RD12_MASK (0x1 <<  CFG_MISC0_RD12_SHIFT)
@@ -924,7 +918,7 @@
 #define PWR_AUTOPD_VIN_SHIFT (12)	// VIDEOIN Auto Power Down Mode
 #define PWR_AUTOPD_L2A_SHIFT (11)	// LCD2AHB Auto Power Down Mode
 #define PWR_AUTOPD_CPUIF_SHIFT (10)	// CPU Interface Auto Power Down Mode
-#define PWR_AUTOPD_FCDEC_SHIFT (9)	// Frame De-compressor Auto Power Down Mode
+#define PWR_AUTOPD_FCDEC_SHIFT (9)// Frame De-compressor Auto Power Down Mode
 #define PWR_AUTOPD_FCENC_SHIFT (8)	// Frame Compressor Auto Power Down Mode
 #define PWR_AUTOPD_FILT2D_SHIFT (7)	// FILT2D Auto Power Down Mode
 #define PWR_AUTOPD_DEINTS_SHIFT (6)	// DEINTL_S Auto Power Down Mode
@@ -932,7 +926,7 @@
 #define PWR_AUTOPD_FDLY_SHIFT (4)	// Frame Delay Auto Power Down Mode
 #define PWR_AUTOPD_WDMA_SHIFT (3)	// WDMA Auto Power Down Mode
 #define PWR_AUTOPD_MIX_SHIFT (2)	// WMIX Auto Power Down Mode
-#define PWR_AUTOPD_SC_SHIFT (1)	// Scaler Auto Power Down Mode
+#define PWR_AUTOPD_SC_SHIFT (1)     // Scaler Auto Power Down Mode
 #define PWR_AUTOPD_RDMA_SHIFT (0)	// RDMA Auto Power Down Mode
 
 #define PWR_AUTOPD_NG_MASK (0x1 << PWR_AUTOPD_NG_SHIFT)
@@ -1409,18 +1403,22 @@ extern int VIOC_CONFIG_WMIXPath(unsigned int component, unsigned int mode);
 extern void VIOC_CONFIG_SWReset(unsigned int component, unsigned int mode);
 extern void VIOC_CONFIG_SWReset_RAW(unsigned int component, unsigned int mode);
 extern int VIOC_CONFIG_CheckPlugInOut(unsigned int nDevice);
-extern int VIOC_CONFIG_Device_PlugState(unsigned int component, struct VIOC_PlugInOutCheck *VIOC_PlugIn);
+extern int VIOC_CONFIG_Device_PlugState(unsigned int component,
+	struct VIOC_PlugInOutCheck *VIOC_PlugIn);
 extern int VIOC_CONFIG_GetScaler_PluginToRDMA(unsigned int RdmaNum);
 extern int VIOC_CONFIG_GetViqeDeintls_PluginToRDMA(unsigned int RdmaNum);
 //map converter vioc config set
-extern int VIOC_CONFIG_GetMcNum_PluginRDMA(unsigned int *MC_NUM, unsigned int RdmaNum);
-extern int VIOC_CONFIG_SetMcNum_PluginRDMA(unsigned int McN, unsigned int RdmaNum, unsigned int SetClr);
+extern int VIOC_CONFIG_GetMcNum_PluginRDMA(unsigned int *MC_NUM,
+	unsigned int RdmaNum);
+extern int VIOC_CONFIG_SetMcNum_PluginRDMA(unsigned int McN,
+	unsigned int RdmaNum, unsigned int SetClr);
 
 #if defined(CONFIG_VIOC_DOLBY_VISION_EDR)
 extern int VIOC_CONFIG_DV_SET_EDR_PATH(unsigned int edr_on);
 extern unsigned int VIOC_CONFIG_DV_GET_EDR_PATH(void);
-extern void VIOC_CONFIG_DV_Metadata_Enable (unsigned int addr, unsigned int endian);
-extern void VIOC_CONFIG_DV_Metadata_Disable (void);
+extern void VIOC_CONFIG_DV_Metadata_Enable(unsigned int addr,
+	unsigned int endian);
+extern void VIOC_CONFIG_DV_Metadata_Disable(void);
 extern void VIOC_CONFIG_DV_EX_VIOC_PROC(unsigned int component);
 #endif
 
@@ -1431,9 +1429,10 @@ extern int VIOC_CONFIG_DMAPath_UnSet(int dma);
 extern int VIOC_CONFIG_DMAPath_Support(void);
 extern void VIOC_CONFIG_StopRequest(unsigned int en);
 
-extern int VIOC_CONFIG_LCDPath_Select(unsigned int lcdx_sel, unsigned int lcdx_if);
+extern int VIOC_CONFIG_LCDPath_Select(unsigned int lcdx_sel,
+unsigned int lcdx_if);
 
-extern volatile void __iomem* VIOC_IREQConfig_GetAddress(void);
+extern volatile void __iomem *VIOC_IREQConfig_GetAddress(void);
 extern void VIOC_IREQConfig_DUMP(unsigned int offset, unsigned int size);
 
 
