@@ -121,7 +121,7 @@ struct tccvin_cif {
 	struct pmap			pmap_preview;
 
 	// framebuffer
-	struct buf_addr			*preview_buf_addr;
+	struct buf_addr			preview_buf_addr[VB2_MAX_FRAME];
 	void __iomem			*vir;
 
 	unsigned int			skip_frame;
@@ -332,6 +332,25 @@ struct tccvin_fh {
 	enum tccvin_handle_state state;
 };
 
+struct tccvin_dmabuf_heap {
+	struct gen_pool *pool;
+	struct device *dev;
+	phys_addr_t base;
+	size_t size;
+};
+
+struct tccvin_dmabuf_alloc_data {
+	size_t len;
+	unsigned int flags;
+	__s32 fd;
+};
+
+struct tccvin_dmabuf_phys_data {
+	__s32 fd;
+	phys_addr_t paddr;
+	size_t len;
+};
+
 /* ------------------------------------------------------------------------
  * Debugging, printing and logging
  */
@@ -398,9 +417,21 @@ extern int tccvin_video_streamon(struct tccvin_streaming *stream,
 	int is_handover_needed);
 extern int tccvin_video_streamoff(struct tccvin_streaming *stream,
 	int is_handover_needed);
+extern int tccvin_allocated_dmabuf(struct tccvin_streaming *stream, int count);
+extern int tccvin_set_buffer_address(struct tccvin_streaming *stream,
+	struct v4l2_buffer *buf);
 
 /* Utility functions */
 extern void tccvin_simplify_fraction(uint32_t *numerator, uint32_t *denominator,
 	unsigned int n_terms, unsigned int threshold);
 
+/* Use dmabuf functions */
+extern struct tccvin_dmabuf_heap *tccvin_dmabuf_heap_create(
+	struct tccvin_streaming *stream);
+extern int tccvin_dmabuf_alloc(struct tccvin_dmabuf_heap *heap, size_t size,
+	unsigned int flags);
+extern void tccvin_dmabuf_dmabuf_release(struct dma_buf *dmabuf);
+extern int tccvin_dmabuf_phys(struct platform_device *pdev, int fd,
+	phys_addr_t *addr, size_t *len);
+extern long tccvin_dmabuf_g_phys(struct tccvin_fh *fh, struct v4l2_buffer *buf);
 #endif
