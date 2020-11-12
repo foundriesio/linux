@@ -1,21 +1,22 @@
 /****************************************************************************
-FileName    : kernel/drivers/video/fbdev/tcc-fb/vioc/vioc_dump.c
-Description : Sigma Design TV encoder driver
+ * FileName    : kernel/drivers/video/fbdev/tcc-fb/vioc/vioc_dump.c
+ * Description : Sigma Design TV encoder driver
 
-Copyright (C) 2018 Telechips Inc.
+ * Copyright (C) 2018 Telechips Inc.
 
-This program is free software; you can redistribute it and/or modify it under the terms
-of the GNU General Public License as published by the Free Software Foundation;
-either version 2 of the License, or (at your option) any later version.
-
-This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
-without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
-PURPOSE. See the GNU General Public License for more details.
-
-You should have received a copy of the GNU General Public License along with
-this program; if not, write to the Free Software Foundation, Inc., 59 Temple Place,
-Suite 330, Boston, MA 02111-1307 USA
-****************************************************************************/
+ * This program is free software;
+ * you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by
+ * the Free Software Foundation;
+ * either version 2 of the License, or (at your option) any later version.
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+ * PARTICULAR PURPOSE. See the GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License along with
+ * this program; if not, write to the Free Software Foundation, Inc., 59 Temple
+ * Place, Suite 330, Boston, MA 02111-1307 USA
+ **************************************************************************/
 #include <linux/io.h>
 #include <linux/delay.h>
 #include <linux/kernel.h>
@@ -64,7 +65,7 @@ struct vioc_dump_irqconfig_t {
 	unsigned int reg[100];
 };
 
-struct vioc_dump_mc_t{
+struct vioc_dump_mc_t {
 	unsigned int reg[100];
 };
 
@@ -82,19 +83,18 @@ static struct work_struct vioc_dump_handle_0;
 static struct work_struct vioc_dump_handle_1;
 static struct work_struct vioc_dump_handle_2;
 
-
-static int capture_vioc_raw(volatile void __iomem *vioc_preg, unsigned int *raw_reg, unsigned int offset_end)
+static int capture_vioc_raw(
+	volatile void __iomem *vioc_preg, unsigned int *raw_reg,
+	unsigned int offset_end)
 {
 	unsigned int i, offset;
 
-	if(vioc_preg == NULL) {
-		for(i = 0, offset = 0; offset < offset_end; i++, offset += 4) {
+	if (vioc_preg == NULL) {
+		for (i = 0, offset = 0; offset < offset_end; i++, offset += 4)
 			raw_reg[i] = 0;
-		}
 	} else {
-		for(i = 0, offset = 0; offset < offset_end; i++, offset += 4) {
+		for (i = 0, offset = 0; offset < offset_end; i++, offset += 4)
 			raw_reg[i] = __raw_readl(vioc_preg + offset);
-		}
 	}
 	return 0;
 }
@@ -107,65 +107,65 @@ static void tca_fb_dump_vioc_status(unsigned int device_id)
 	struct vioc_dump_t *dump_regs = NULL;
 
 	pr_err("[ERR][VIOC_DUMP] %s %d\r\n", __func__, device_id);
-	if(device_id < 3) {
+	if (device_id < 3)
 		dump_regs = vioc_dump_regs[device_id];
-	}
 
-	if(dump_regs != NULL) {
+	if (dump_regs != NULL) {
 		pr_err("Dump vioc status %d'th\r\n", device_id);
 
 		/* VIOC RDMA DUMP 0 - 3 */
 		for (idx = 0; idx < 4; idx++) {
 			pr_err("RDMA :: idx(%d)\n", idx + (device_id * 4));
 			reg = &dump_regs->rdma[idx].reg[0];
-			//for(cnt = 0; cnt < 0x40; cnt += 0x10) {
-			for(i = 0, cnt = 0; cnt < 0x40; i+=4, cnt += 0x10) {
-				pr_err("0x%08x: 0x%08x 0x%08x 0x%08x 0x%08x \n",
-					cnt,
-				       	reg[i], reg[i+1], reg[i+2], reg[i+3]);
+			// for(cnt = 0; cnt < 0x40; cnt += 0x10) {
+			for (i = 0, cnt = 0; cnt < 0x40; i += 4, cnt += 0x10) {
+				pr_err("0x%08x: 0x%08x 0x%08x 0x%08x 0x%08x\n",
+				       cnt, reg[i], reg[i + 1], reg[i + 2],
+				       reg[i + 3]);
 			}
 		}
 
 		/* WMIX DUMP */
 		pr_err("WMIX :: idx(%d)\n", device_id);
 		reg = &dump_regs->wmix.reg[0];
-		for(i = 0, cnt = 0; cnt < 0x70; i+=4, cnt += 0x10) {
-			pr_err("0x%08x: 0x%08x 0x%08x 0x%08x 0x%08x \n", cnt,
-			       reg[i], reg[i+1], reg[i+2], reg[i+3]);
+		for (i = 0, cnt = 0; cnt < 0x70; i += 4, cnt += 0x10) {
+			pr_err("0x%08x: 0x%08x 0x%08x 0x%08x 0x%08x\n", cnt,
+			       reg[i], reg[i + 1], reg[i + 2], reg[i + 3]);
 		}
 
 		/* SCALER DUMP 0 - 4 */
 		for (idx = 0; idx < 6; idx++) {
-			pr_err("SCALER :: idx(%d) \n", idx);
+			pr_err("SCALER :: idx(%d)\n", idx);
 			reg = &dump_regs->scaler[idx].reg[0];
-			for(i = 0, cnt = 0; cnt < 0x20; i+=4, cnt += 0x10) {
-				pr_err("0x%08x: 0x%08x 0x%08x 0x%08x 0x%08x \n", cnt,
-				       reg[i], reg[i+1], reg[i+2], reg[i+3]);
+			for (i = 0, cnt = 0; cnt < 0x20; i += 4, cnt += 0x10) {
+				pr_err("0x%08x: 0x%08x 0x%08x 0x%08x 0x%08x\n",
+				       cnt, reg[i], reg[i + 1], reg[i + 2],
+				       reg[i + 3]);
 			}
 		}
 
-		pr_err("MC0 :: \n");
+		pr_err("MC0 ::\n");
 		reg = &dump_regs->mc[0].reg[0];
-		for(i = 0, cnt = 0; cnt < 0x80; i+=4, cnt += 0x10) {
-			pr_err("0x%08x: 0x%08x 0x%08x 0x%08x 0x%08x \n", cnt,
-			       reg[i], reg[i+1], reg[i+2], reg[i+3]);
+		for (i = 0, cnt = 0; cnt < 0x80; i += 4, cnt += 0x10) {
+			pr_err("0x%08x: 0x%08x 0x%08x 0x%08x 0x%08x\n", cnt,
+			       reg[i], reg[i + 1], reg[i + 2], reg[i + 3]);
 		}
-		pr_err("MC1 :: \n");
+		pr_err("MC1 ::\n");
 		reg = &dump_regs->mc[1].reg[0];
-		for(i = 0, cnt = 0; cnt < 0x80; i+=4, cnt += 0x10) {
-			pr_err("0x%08x: 0x%08x 0x%08x 0x%08x 0x%08x \n", cnt,
-			       reg[i], reg[i+1], reg[i+2], reg[i+3]);
+		for (i = 0, cnt = 0; cnt < 0x80; i += 4, cnt += 0x10) {
+			pr_err("0x%08x: 0x%08x 0x%08x 0x%08x 0x%08x\n", cnt,
+			       reg[i], reg[i + 1], reg[i + 2], reg[i + 3]);
 		}
 
 		/* VIOC_CONFIGURATION DUMP */
-		pr_err("IRQCONFIG :: \n");
+		pr_err("IRQCONFIG ::\n");
 		reg = &dump_regs->irqconfig.reg[0];
-		for(i = 0, cnt = 0; cnt < 0x100; i+=4, cnt += 0x10) {
-			pr_err("0x%08x: 0x%08x 0x%08x 0x%08x 0x%08x \n", cnt,
-			       reg[i], reg[i+1], reg[i+2], reg[i+3]);
+		for (i = 0, cnt = 0; cnt < 0x100; i += 4, cnt += 0x10) {
+			pr_err("0x%08x: 0x%08x 0x%08x 0x%08x 0x%08x\n", cnt,
+			       reg[i], reg[i + 1], reg[i + 2], reg[i + 3]);
 		}
 
-	}else {
+	} else {
 		pr_err("[ERR][VIOC_DUMP] %s dump_regs is NULL\r\n", __func__);
 	}
 }
@@ -202,15 +202,12 @@ void fb_dump_vioc_deinit(void)
 	cancel_work_sync(&vioc_dump_handle_0);
 	cancel_work_sync(&vioc_dump_handle_1);
 	cancel_work_sync(&vioc_dump_handle_2);
-	if(vioc_dump_regs[0] != NULL) {
+	if (vioc_dump_regs[0] != NULL)
 		kfree(vioc_dump_regs[0]);
-	}
-	if(vioc_dump_regs[1] != NULL) {
+	if (vioc_dump_regs[1] != NULL)
 		kfree(vioc_dump_regs[1]);
-	}
-	if(vioc_dump_regs[2] != NULL) {
+	if (vioc_dump_regs[2] != NULL)
 		kfree(vioc_dump_regs[2]);
-	}
 	vioc_dump_regs[0] = NULL;
 	vioc_dump_regs[1] = NULL;
 	vioc_dump_regs[2] = NULL;
@@ -221,92 +218,109 @@ void fb_dump_vioc_status(unsigned int device_id)
 {
 	unsigned int idx = 0;
 	struct vioc_dump_t *dump_regs = NULL;
+
 	volatile void __iomem *vioc_reg;
 
-	if(device_id < 3) {
+	if (device_id < 3)
 		dump_regs = vioc_dump_regs[device_id];
-	}
 
-	if(dump_regs != NULL) {
-
+	if (dump_regs != NULL) {
 		for (idx = 0; idx < 4; idx++) {
-			capture_vioc_raw(VIOC_RDMA_GetAddress(idx + (device_id * 4)), &dump_regs->rdma[idx].reg[0], 0x40);
-		#if 0
+			capture_vioc_raw(
+				VIOC_RDMA_GetAddress(idx + (device_id * 4)),
+				&dump_regs->rdma[idx].reg[0], 0x40);
+#if 0
 			{
 				unsigned int i, cnt;
-				unsigned int *reg = &dump_regs->rdma[idx].reg[0];
-				for(i = 0, cnt = 0; cnt < 0x40; i+=4, cnt += 0x10) {
-					pr_err("0x%08x: 0x%08x 0x%08x 0x%08x 0x%08x \n",
+				unsigned int *reg =
+						&dump_regs->rdma[idx].reg[0];
+				for (i = 0, cnt = 0; cnt < 0x40;
+							i += 4, cnt += 0x10) {
+					pr_err(
+				       "0x%08x: 0x%08x 0x%08x 0x%08x 0x%08x\n",
 						cnt,
-						reg[i], reg[i+1], reg[i+2], reg[i+3]);
+						reg[i], reg[i+1],
+						reg[i+2], reg[i+3]);
 				}
 
 			}
-		#endif
+#endif
 		}
 
 		/* WMIX DUMP */
 		vioc_reg = VIOC_WMIX_GetAddress(device_id);
-		if(vioc_reg != NULL) {
-			capture_vioc_raw(vioc_reg, &dump_regs->wmix.reg[0], 0x70);
-		}else {
-			pr_err("[ERR][VIOC_DUMP] %s wmix is NULL\r\n", __func__);
-			memset(dump_regs->wmix.reg, 0, sizeof(dump_regs->wmix.reg));
+		if (vioc_reg != NULL) {
+			capture_vioc_raw(
+				vioc_reg, &dump_regs->wmix.reg[0], 0x70);
+		} else {
+			pr_err("[ERR][VIOC_DUMP] %s wmix is NULL\r\n",
+			       __func__);
+			memset(dump_regs->wmix.reg, 0,
+			       sizeof(dump_regs->wmix.reg));
 		}
 
 		/* SCALER DUMP 0 - 4 */
-		for (idx = 0; idx < 6; idx++)  {
+		for (idx = 0; idx < 6; idx++) {
 			vioc_reg = VIOC_SC_GetAddress(idx);
-			if(vioc_reg != NULL) {
-				capture_vioc_raw(vioc_reg, &dump_regs->scaler[idx].reg[0], 0x20);
+			if (vioc_reg != NULL) {
+				capture_vioc_raw(
+					vioc_reg,
+					&dump_regs->scaler[idx].reg[0], 0x20);
 			} else {
-				pr_err("[ERR][VIOC_DUMP] %s Scaler id[%d] is NULL\r\n", __func__, idx);
-				memset(dump_regs->scaler[idx].reg, 0, sizeof(dump_regs->scaler[idx].reg));
+				pr_err("[ERR][VIOC_DUMP] %s Scaler id[%d] is NULL\r\n",
+				       __func__, idx);
+				memset(dump_regs->scaler[idx].reg, 0,
+				       sizeof(dump_regs->scaler[idx].reg));
 			}
 		}
 
 		/* VIOC_CONFIGURATION DUMP */
 		vioc_reg = VIOC_IREQConfig_GetAddress();
-		if(vioc_reg != NULL) {
-			capture_vioc_raw(vioc_reg, &dump_regs->irqconfig.reg[0], 0x100);
-		}else {
-			pr_err("[ERR][VIOC_DUMP] %s ireqconfig is NULL\r\n", __func__);
-			memset(dump_regs->irqconfig.reg, 0, sizeof(dump_regs->irqconfig.reg));
+		if (vioc_reg != NULL) {
+			capture_vioc_raw(
+				vioc_reg, &dump_regs->irqconfig.reg[0], 0x100);
+		} else {
+			pr_err("[ERR][VIOC_DUMP] %s ireqconfig is NULL\r\n",
+			       __func__);
+			memset(dump_regs->irqconfig.reg, 0,
+			       sizeof(dump_regs->irqconfig.reg));
 		}
 
 		/* Capture MC */
 		vioc_reg = VIOC_MC_GetAddress(0);
-		if(vioc_reg != NULL) {
-			capture_vioc_raw(vioc_reg,  &dump_regs->mc[0].reg[0], 0x80);
-		}else {
+		if (vioc_reg != NULL) {
+			capture_vioc_raw(
+				vioc_reg, &dump_regs->mc[0].reg[0], 0x80);
+		} else {
 			pr_err("[ERR][VIOC_DUMP] %s mc0 is NULL\r\n", __func__);
-			memset(dump_regs->mc[0].reg, 0, sizeof(dump_regs->mc[0].reg));
+			memset(dump_regs->mc[0].reg, 0,
+			       sizeof(dump_regs->mc[0].reg));
 		}
 
 		vioc_reg = VIOC_MC_GetAddress(1);
-		if(vioc_reg != NULL) {
-			capture_vioc_raw(vioc_reg,  &dump_regs->mc[0].reg[0], 0x80);
-		}else {
+		if (vioc_reg != NULL) {
+			capture_vioc_raw(
+				vioc_reg, &dump_regs->mc[0].reg[0], 0x80);
+		} else {
 			pr_err("[ERR][VIOC_DUMP] %s mc1 is NULL\r\n", __func__);
-			memset(dump_regs->mc[1].reg, 0, sizeof(dump_regs->mc[1].reg));
+			memset(dump_regs->mc[1].reg, 0,
+			       sizeof(dump_regs->mc[1].reg));
 		}
 		pr_err("[ERR][VIOC_DUMP] %s finish\r\n", __func__);
 
-		switch(device_id) {
-			case 0:
-				schedule_work(&vioc_dump_handle_0);
-				break;
-			case 1:
-				schedule_work(&vioc_dump_handle_1);
-				break;
-			case 2:
-				schedule_work(&vioc_dump_handle_2);
-				break;
+		switch (device_id) {
+		case 0:
+			schedule_work(&vioc_dump_handle_0);
+			break;
+		case 1:
+			schedule_work(&vioc_dump_handle_1);
+			break;
+		case 2:
+			schedule_work(&vioc_dump_handle_2);
+			break;
 		}
 	} else {
 		pr_err("[ERR][VIOC_DUMP] %s dump_regs is NULL\r\n", __func__);
 	}
 }
 EXPORT_SYMBOL(fb_dump_vioc_status);
-
-
