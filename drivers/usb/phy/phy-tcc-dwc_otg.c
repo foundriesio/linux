@@ -112,7 +112,7 @@ static int dwc_otg_vbus_set(struct usb_phy *phy, int on_off)
 	}
 
 	/* Request a single VBus GPIO with initial configuration. */
-	retval = gpio_request_one((unsigned)phy_dev->vbus_gpio_num,
+	retval = gpio_request_one((unsigned int)phy_dev->vbus_gpio_num,
 			phy_dev->vbus_gpio_flag, "vbus_gpio_phy");
 	if (retval != 0) {
 		dev_err(dev, "[ERROR][USB] VBus GPIO can't be requested, errno %d.\n",
@@ -124,7 +124,8 @@ static int dwc_otg_vbus_set(struct usb_phy *phy, int on_off)
 	 * Set the direction of the VBus GPIO passed through the phy_dev
 	 * structure to output.
 	 */
-	retval = gpiod_direction_output(gpio_to_desc((unsigned)phy_dev->vbus_gpio_num),
+	retval = gpiod_direction_output(
+			gpio_to_desc((unsigned int)phy_dev->vbus_gpio_num),
 			on_off);
 	if (retval != 0) {
 		dev_err(dev, "[ERROR][USB] VBus GPIO direction can't be set to output, errno %d.\n",
@@ -132,7 +133,7 @@ static int dwc_otg_vbus_set(struct usb_phy *phy, int on_off)
 		return retval;
 	}
 
-	gpio_free((unsigned)phy_dev->vbus_gpio_num);
+	gpio_free((unsigned int)phy_dev->vbus_gpio_num);
 
 	return retval;
 }
@@ -208,8 +209,9 @@ static int tcc_dwc_otg_phy_init(struct usb_phy *phy)
 		container_of(phy, struct tcc_dwc_otg_device, phy);
 	struct dwc_otg_phy_reg *dwc_otg_pcfg =
 		(struct dwc_otg_phy_reg *)dwc_otg_phy_dev->base;
-	int i;
+#if defined(CONFIG_TCC_DWC_OTG_HOST_MUX) || defined(CONFIG_USB_DWC2_TCC_MUX)
 	uint32_t mux_cfg_val;
+#endif
 
 	dev_info(dwc_otg_phy_dev->dev, "[INFO][USB] dwc_otg PHY init\n");
 	clk_reset(dwc_otg_phy_dev->hclk, 1);
@@ -254,6 +256,8 @@ static int tcc_dwc_otg_phy_init(struct usb_phy *phy)
 #if defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X) ||	\
 	defined(CONFIG_ARCH_TCC901X) ||					\
 	defined(CONFIG_ARCH_TCC805X)
+	int i;
+
 	writel(0x00000000, &dwc_otg_pcfg->pcfg3);
 	writel(0x00000000, &dwc_otg_pcfg->pcfg4);
 	writel(0x30000000, &dwc_otg_pcfg->lcfg0);
