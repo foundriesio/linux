@@ -130,24 +130,24 @@ config DA9062_WATCHDOG
 
 	  This driver can be built as a module. The module name is da9062_wdt.
 
-config TCC_WATCHDOG
-	tristate "Telechips Watchdog"
+config TCC_PMU_WATCHDOG
+	tristate "Telechips PMU Watchdog"
 	depends on (ARCH_TCC && ! TCC803X_CA7S)
 	select WATCHDOG_CORE
 	help
 	  Watchdog timer block in the Telechips SoCs. This will reboot
 	  the system when the timer expires with the watchdog enabled.
 
-config TCC_CBUS_WATCHDOG
-	tristate "Telechips CBUS Watchdog"
+config TCC_805X_CBUS_WATCHDOG
+	tristate "Telechips CBUS Watchdog for TCC805x"
 	depends on ARCH_TCC && ARCH_TCC805X
 	select WATCHDOG_CORE
 	help
 	  CBUS Watchdog timer block in the Telechips SoCs. This will reboot
 	  the system when the timer expires with the watchdog enabled.
 
-config TCC_CBUS_803X_WATCHDOG
-        tristate "Telechips 803x A7s CBUS Watchdog"
+config TCC_803X_CBUS_WATCHDOG
+        tristate "Telechips CBUS Watchdog for TCC803x A7s subcore"
 	depends on (ARCH_TCC && TCC803X_CA7S)
 	select WATCHDOG_CORE
 	help
