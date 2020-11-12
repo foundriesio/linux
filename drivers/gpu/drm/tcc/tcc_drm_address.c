@@ -289,6 +289,10 @@ static int tcc_drm_address_dt_parse_v1_0(
 				DRM_PLANE_TYPE_CURSOR;
 		else if (!strcmp(planes_type, "overlay"))
 			hw_data->rdma_plane_type[i] = DRM_PLANE_TYPE_OVERLAY;
+		else if (!strcmp(planes_type, "overlay_skip_yuv"))
+			hw_data->rdma_plane_type[i] =
+				DRM_PLANE_TYPE_OVERLAY |
+				DRM_PLANE_FLAG_SKIP_YUV_FORMAT;
 		else
 			hw_data->rdma_plane_type[i] =
 				DRM_PLANE_FLAG_NOT_DEFINED;

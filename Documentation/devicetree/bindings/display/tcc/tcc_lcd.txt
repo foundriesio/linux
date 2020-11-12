@@ -1,0 +1,87 @@
+This is for 'telechips drm display'.
+
+Required properties for display:
+	-compatible:
+		- PRIMARY : "telechips,tcc-drm-lcd"
+		- PRIMARY_V1.x : "telechips,tcc-drm-lcd-v1.0"
+		- SECOND : "telechips,tcc-drm-ext"
+		- SECOND_V1.x : "telechips,tcc-drm-ext-v1.0"
+		- THIRD : "telechips,tcc-drm-third"
+		- THIRD_V1.x : "telechips,tcc-drm-third-v1.0"
+		- FOURTH : "telechips,tcc-drm-fourth"
+		- FOURTH_V1.x : "telechips,tcc-drm-fourth-v1.0"
+	-reg:
+		physical base address of the controller and length
+		of memory mapped region.
+	-display_device:
+		This property defines the display device of panel.
+			-The first argument is the phandle of vioc_disp.
+			-The second argument is the block number of the display
+		  device, which is specified as VIOC_DISPn.
+	-lcdc-mux-select:
+		This property defines the LCD mux.
+		If TCCDRM has DRM panel LVDS and uses it as one of display
+		output, TCCDRM uses this lcdc-mux-select instead of
+		lcdc-mux-select of TCCDRM. Because, in this case,
+		lcdc-mux-select of DRM panel LVDS takes precedence.
+		Note: This property is valid only in TCCDRM V1.2.0 or higher
+		      on TCC805x SDK.
+	- wmixer:
+		This property defines the WMIX of panel.
+			-The first argument is phandle of vioc_wmix.
+			-The second argument is the block number of wmix, which
+			 is specified as VIOC_WMIXn.
+	-rdma:
+		This property defines the RDMA of plane. Up to 4 RDMA can be
+		specified.
+			-The first argument is the phandle of vioc_rdma.
+			-The second to fourth arguments are the block numbers
+			 of vioc_rdma, which is specified as VIOC_RDMAn.
+	-planes:
+		This property defines the plane property for RDMA defined in
+		RDMA property.
+		Therefore, the number of plane properties must be the same as
+		the number of RDMA properties.
+		The names of plane properties are as follows:
+			-Primary plane: “primary”
+			-Cursor plane: “cursor”
+			-Overlay plane: “overlay”
+		Note: There must be only one primary property.
+	-port:
+		This property defines a panel such as LVDS that can be
+		connected to CRTC.
+		Refer to “Documentation/devicetree/bindings/graph.txt” for more
+		information.
+		Note: This property is valid only in TCCDRM V1.2.0 or higher
+		      on TCC805x SDK.
+
+Optional properties for display:
+	-display-timings:
+		The resolution of panel is set through this display-timing
+		property.
+		For more information for display-timing node, see
+		“Documentation/devicetree/bindings/display/panel/display-timing.txt”
+		in kernel directory.
+
+-------------------------------------------------------------------------------
+
+Example:
+
+tcc-drm-lcd {
+	compatible = "telechips,tcc-drm-xxx-v1.0";
+	display_device = <&vioc_disp VIOC_DISP0>;
+	lcdc-mux-select = <0>;
+	wmixer = <&vioc_wmix VIOC_WMIX0>;
+	rdma = <&vioc_rdma VIOC_RDMA00 VIOC_RDMA01 VIOC_RDMA02 VIOC_RDMA03>;
+	planes = "primary","cursor","overlay","overlay";
+	connector_type = “DP”;
+	status = "okay";
+	port@0 {
+		#address-cells = <1>;
+		#size-cells = <0>;
+		reg = <0>;
+		lcd_display_out: endpoint {
+		//remote-endpoint = <&tm123xdhp90_input_0>;
+		//remote-endpoint = <&fld0800_input_0>;
+	};
+};
