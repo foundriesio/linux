@@ -520,7 +520,7 @@ static int socfpga_a10_fpga_probe(struct platform_device *pdev)
 		return -EBUSY;
 	}
 
-	ret = fpga_mgr_create(dev, "SoCFPGA Arria10 FPGA Manager",
+	mgr = fpga_mgr_create(dev, "SoCFPGA Arria10 FPGA Manager",
 				 &socfpga_a10_fpga_mgr_ops, priv);
 	if (!mgr)
 		return -ENOMEM;

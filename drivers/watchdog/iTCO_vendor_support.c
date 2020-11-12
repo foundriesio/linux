@@ -43,8 +43,10 @@
 /* Broken BIOS */
 #define BROKEN_BIOS		911
 
-static int vendorsupport;
-module_param(vendorsupport, int, 0);
+int iTCO_vendorsupport;
+EXPORT_SYMBOL(iTCO_vendorsupport);
+
+module_param_named(vendorsupport, iTCO_vendorsupport, int, 0);
 MODULE_PARM_DESC(vendorsupport, "iTCO vendor specific support mode, default="
 			"0 (none), 1=SuperMicro Pent3, 2=SuperMicro Pent4+, "
 							"911=Broken SMI BIOS");
@@ -294,7 +296,7 @@ static void broken_bios_stop(struct resource *smires)
 void iTCO_vendor_pre_start(struct resource *smires,
 			   unsigned int heartbeat)
 {
-	switch (vendorsupport) {
+	switch (iTCO_vendorsupport) {
 	case SUPERMICRO_OLD_BOARD:
 		supermicro_old_pre_start(smires);
 		break;
@@ -310,7 +312,7 @@ EXPORT_SYMBOL(iTCO_vendor_pre_start);
 
 void iTCO_vendor_pre_stop(struct resource *smires)
 {
-	switch (vendorsupport) {
+	switch (iTCO_vendorsupport) {
 	case SUPERMICRO_OLD_BOARD:
 		supermicro_old_pre_stop(smires);
 		break;
@@ -326,21 +328,21 @@ EXPORT_SYMBOL(iTCO_vendor_pre_stop);
 
 void iTCO_vendor_pre_keepalive(struct resource *smires, unsigned int heartbeat)
 {
-	if (vendorsupport == SUPERMICRO_NEW_BOARD)
+	if (iTCO_vendorsupport == SUPERMICRO_NEW_BOARD)
 		supermicro_new_pre_set_heartbeat(heartbeat);
 }
 EXPORT_SYMBOL(iTCO_vendor_pre_keepalive);
 
 void iTCO_vendor_pre_set_heartbeat(unsigned int heartbeat)
 {
-	if (vendorsupport == SUPERMICRO_NEW_BOARD)
+	if (iTCO_vendorsupport == SUPERMICRO_NEW_BOARD)
 		supermicro_new_pre_set_heartbeat(heartbeat);
 }
 EXPORT_SYMBOL(iTCO_vendor_pre_set_heartbeat);
 
 int iTCO_vendor_check_noreboot_on(void)
 {
-	switch (vendorsupport) {
+	switch (iTCO_vendorsupport) {
 	case SUPERMICRO_OLD_BOARD:
 		return 0;
 	default:
@@ -351,7 +353,7 @@ EXPORT_SYMBOL(iTCO_vendor_check_noreboot_on);
 
 static int __init iTCO_vendor_init_module(void)
 {
-	pr_info("vendor-support=%d\n", vendorsupport);
+	pr_info("vendor-support=%d\n", iTCO_vendorsupport);
 	return 0;
 }
 

@@ -390,8 +390,13 @@ struct hisi_hba {
 	u32 intr_coal_count;	/* Interrupt count to coalesce */
 
 	/* debugfs memories */
+#ifndef __GENKSYMS__
+	u32 *debugfs_global_reg;
+	u32 *debugfs_port_reg[HISI_SAS_MAX_PHYS];
+#else
 	void *debugfs_global_reg;
 	void *debugfs_port_reg[HISI_SAS_MAX_PHYS];
+#endif
 	void *debugfs_complete_hdr[HISI_SAS_MAX_QUEUES];
 	struct hisi_sas_cmd_hdr	*debugfs_cmd_hdr[HISI_SAS_MAX_QUEUES];
 	struct hisi_sas_iost *debugfs_iost;
@@ -403,6 +408,7 @@ struct hisi_hba {
 #ifndef __GENKSYMS__
 	int cq_nvecs;
 	unsigned int *reply_map;
+	bool debugfs_snapshot;
 #endif
 };
 

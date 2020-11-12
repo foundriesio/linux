@@ -509,7 +509,7 @@ static noinline int create_subvol(struct inode *dir,
 	trans = btrfs_start_transaction(root, 0);
 	if (IS_ERR(trans)) {
 		ret = PTR_ERR(trans);
-		btrfs_subvolume_release_metadata(fs_info, &block_rsv);
+		btrfs_subvolume_release_metadata(root, &block_rsv);
 		goto fail_free;
 	}
 	trans->block_rsv = &block_rsv;
@@ -640,7 +640,7 @@ fail:
 	kfree(root_item);
 	trans->block_rsv = NULL;
 	trans->bytes_reserved = 0;
-	btrfs_subvolume_release_metadata(fs_info, &block_rsv);
+	btrfs_subvolume_release_metadata(root, &block_rsv);
 
 	if (async_transid) {
 		*async_transid = trans->transid;
@@ -785,7 +785,7 @@ static int create_snapshot(struct btrfs_root *root, struct inode *dir,
 	d_instantiate(dentry, inode);
 	ret = 0;
 fail:
-	btrfs_subvolume_release_metadata(fs_info, &pending_snapshot->block_rsv);
+	btrfs_subvolume_release_metadata(root, &pending_snapshot->block_rsv);
 dec_and_free:
 	if (atomic_dec_and_test(&root->will_be_snapshoted))
 		wake_up_atomic_t(&root->will_be_snapshoted);
@@ -2594,7 +2594,7 @@ out_end_trans:
 		err = ret;
 	inode->i_flags |= S_DEAD;
 out_release:
-	btrfs_subvolume_release_metadata(fs_info, &block_rsv);
+	btrfs_subvolume_release_metadata(root, &block_rsv);
 out_up_write:
 	up_write(&fs_info->subvol_sem);
 	if (err) {
@@ -3695,6 +3695,7 @@ process_slot:
 
 		if (key.type == BTRFS_EXTENT_DATA_KEY) {
 			struct btrfs_file_extent_item *extent;
+			u64 extent_gen;
 			int type;
 			u32 size;
 			struct btrfs_key new_key;
@@ -3705,6 +3706,7 @@ process_slot:
 
 			extent = btrfs_item_ptr(leaf, slot,
 						struct btrfs_file_extent_item);
+			extent_gen = btrfs_file_extent_generation(leaf, extent);
 			comp = btrfs_file_extent_compression(leaf, extent);
 			type = btrfs_file_extent_type(leaf, extent);
 			if (type == BTRFS_FILE_EXTENT_REG ||
@@ -3896,6 +3898,19 @@ process_slot:
 
 			btrfs_mark_buffer_dirty(leaf);
 			btrfs_release_path(path);
+
+			/*
+			 * If this is a new extent update the last_reflink_trans of both
+			 * inodes. This is used by fsync to make sure it does not log
+			 * multiple checksum items with overlapping ranges. For older
+			 * extents we don't need to do it since inode logging skips the
+			 * checksums for older extents. Also ignore holes and inline
+			 * extents because they don't have checksums in the csum tree.
+			 */
+			if (extent_gen == trans->transid && disko > 0) {
+				BTRFS_I(src)->last_reflink_trans = trans->transid;
+				BTRFS_I(inode)->last_reflink_trans = trans->transid;
+			}
 
 			last_dest_end = ALIGN(new_key.offset + datal,
 					      fs_info->sectorsize);
