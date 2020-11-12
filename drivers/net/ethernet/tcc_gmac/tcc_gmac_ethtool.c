@@ -178,7 +178,7 @@ static void tcc_gmac_ethtool_gregs(struct net_device *dev,
 {
 	int i;
 	u32 *reg_space = (u32 *) space;
-	void __iomem *baddr = (void __iomem *)dev->base_addr;
+	// void __iomem *baddr = (void __iomem *)dev->base_addr;
 
 	memset(reg_space, 0x0, REG_SPACE_SIZE);
 
@@ -364,9 +364,11 @@ static int tcc_gmac_get_ts_info(struct net_device *dev,
 				struct ethtool_ts_info *info)
 {
 
+#if defined(CONFIG_TCC_GMAC_PTP)
 	struct tcc_gmac_priv *priv = netdev_priv(dev);
+#endif
 
-	printk("%s.\n", __func__);
+	pr_info("%s.\n", __func__);
 	info->so_timestamping =
 	    (unsigned int)SOF_TIMESTAMPING_TX_HARDWARE |
 	    (unsigned int)SOF_TIMESTAMPING_RX_HARDWARE |

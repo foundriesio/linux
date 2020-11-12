@@ -2182,10 +2182,10 @@ struct mac_device_info *tcc_gmac_setup(void __iomem *ioaddr,
 	mac->mac = &tcc_gmac_core_ops;
 	mac->desc = &tcc_gmac_desc_ops;
 	mac->dma[0] = &tcc_gmac_dma_ch0_ops;
-#ifdef CONFIG_TCC_GMAC_FQTSS_SUPPORT
+// #ifdef CONFIG_TCC_GMAC_FQTSS_SUPPORT
 	mac->dma[1] = &tcc_gmac_dma_ch1_ops;
 	mac->dma[2] = &tcc_gmac_dma_ch2_ops;
-#endif
+// #endif
 	mac->ptp = &tcc_gmac_ptp_ops;
 
 	mac->pmt = PMT_SUPPORTED;
