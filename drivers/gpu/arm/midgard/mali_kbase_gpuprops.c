@@ -148,7 +148,7 @@ static void kbase_gpuprops_get_props(base_gpu_props * const gpu_props, struct kb
 
 	gpu_props->raw_props.as_present = regdump.as_present;
 	gpu_props->raw_props.js_present = regdump.js_present;
-#if ONLY_USE_MP2  //TCC
+#ifdef ONLY_USE_MP2  //TCC
 	gpu_props->raw_props.shader_present = 0x1;
 #else
 #if defined(CONFIG_ARCH_TCC803X) && !defined(CONFIG_TCC803X_CA7S)
@@ -158,18 +158,20 @@ static void kbase_gpuprops_get_props(base_gpu_props * const gpu_props, struct kb
  * TCC8033 - MP2/MP1
  * TCC8034, TCC8036 - MP2
  */
-	struct arm_smccc_res res;
+	{
+		struct arm_smccc_res res;
 
-	arm_smccc_smc(SIP_CHIP_NAME, 0, 0, 0, 0, 0, 0, 0, &res);
-    //dev_info("%s %08X\n",__func__, res.a0);    // chip id
-	res.a0 = (res.a0 & 0xFFFF);
-	if (res.a0 == 0x8030 || res.a0 == 0x8031 || res.a0 == 0x8032 ||
+		arm_smccc_smc(SIP_CHIP_NAME, 0, 0, 0, 0, 0, 0, 0, &res);
+		//dev_info("%s %08X\n",__func__, res.a0);    // chip id
+		res.a0 = (res.a0 & 0xFFFF);
+		if (res.a0 == 0x8030 || res.a0 == 0x8031 || res.a0 == 0x8032 ||
 			 res.a0 == 0x8035 || res.a0 == 0x8037)	// MP3
-		gpu_props->raw_props.shader_present =
-			((u64) regdump.shader_present_hi << 32) +
-			regdump.shader_present_lo;
-	else	//TCC8033, TCC8034, TCC8036 - MP2
-		gpu_props->raw_props.shader_present = 0x2;
+			gpu_props->raw_props.shader_present =
+				((u64) regdump.shader_present_hi << 32) +
+				regdump.shader_present_lo;
+		else	//TCC8033, TCC8034, TCC8036 - MP2
+			gpu_props->raw_props.shader_present = 0x2;
+	}
 #elif defined(CONFIG_ARCH_TCC901X)
 	gpu_props->raw_props.shader_present = 0x1;
 #else
