@@ -148,7 +148,7 @@ unsigned int hdmi_phy_get_actual_tmds_bit_ratio(
 			tmds_clock *= 1000;
 	}
 
-	//printf("\r\n >>actual tmds clock is %dHz\r\n", tmds_clock);
+	//pr_info("\r\n >>actual tmds clock is %dHz\r\n", tmds_clock);
 	return tmds_clock;
 }
 
