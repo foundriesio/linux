@@ -566,6 +566,18 @@ static void lcd_update_plane(struct tcc_drm_crtc *crtc,
 			LOG_TAG, __func__, win);
 		return;
 	}
+	if (
+		DRM_PLANE_TYPE(ctx->hw_data.rdma_plane_type[win]) ==
+		DRM_PLANE_TYPE_OVERLAY &&
+		DRM_PLANE_FLAG(ctx->hw_data.rdma_plane_type[win]) ==
+		DRM_PLANE_FLAG(DRM_PLANE_FLAG_SKIP_YUV_FORMAT) &&
+		(
+			fb->format->format == DRM_FORMAT_NV12 ||
+			fb->format->format == DRM_FORMAT_NV21 ||
+			fb->format->format == DRM_FORMAT_YUV420 ||
+			fb->format->format == DRM_FORMAT_YVU420))
+		return;
+
 	pWMIX = ctx->hw_data.wmixer.virt_addr;
 	pRDMA = ctx->hw_data.rdma[win].virt_addr;
 
