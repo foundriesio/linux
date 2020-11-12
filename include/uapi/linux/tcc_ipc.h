@@ -21,7 +21,7 @@ typedef struct _tcc_ipc_ctl_param {
 	unsigned int vMin;
 	/* Minimum number of characters when blocking mode */
 	unsigned int vTime;
-} __packed tcc_ipc_ctl_param;
+} __attribute__((packed))tcc_ipc_ctl_param;
 
 typedef enum {
 	/* Ping success */
@@ -44,7 +44,7 @@ typedef enum {
 typedef struct _tcc_ipc_ping_info {
 	tcc_ipc_ping_error pingResult;
 	unsigned int responseTime;
-} __packed tcc_ipc_ping_info;
+} __attribute__((packed))tcc_ipc_ping_info;
 
 
 #endif /* _UAPI_TCC_IPC_H */

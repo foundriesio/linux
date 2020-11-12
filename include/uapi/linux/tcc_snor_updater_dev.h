@@ -19,6 +19,6 @@ typedef struct _tcc_snor_update_param {
 	unsigned int partition_size;
 	unsigned char *image;
 	unsigned int image_size;
-} __packed tcc_snor_update_param;
+} __attribute__((packed))tcc_snor_update_param;
 
 #endif
