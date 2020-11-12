@@ -20,9 +20,16 @@
 
 #define IS_NONCONTIG_BUFFER(f)		(f & TCC_BO_NONCONTIG)
 
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 4, 0))
-#include <linux/dma-resv.h>
-#else
+/*
+ * This define_a1 valid on kernel version >= 5.4.0 ---------------------
+ *
+ * #include <linux/dma-resv.h>
+ * End code_a1----------------------------------------------------------
+ */
+
+/*
+ * This define_a2 valid on kernel version < 5.4.0 ----------------------
+ */
 #include <linux/reservation.h>
 
 /* Reservation object types */
@@ -40,7 +47,9 @@
 #define dma_resv_reserve_shared         reservation_object_reserve_shared
 #define dma_resv_test_signaled_rcu      reservation_object_test_signaled_rcu
 #define dma_resv_wait_timeout_rcu       reservation_object_wait_timeout_rcu
-#endif
+/*
+ * End code_a1----------------------------------------------------------
+ */
 
 /*
  * tcc drm buffer structure.
@@ -78,9 +87,13 @@ struct tcc_drm_gem {
 	struct page		**pages;
 	struct sg_table		*sgt;
 
-#if (LINUX_VERSION_CODE < KERNEL_VERSION(5, 2, 0))
+	/*
+	 * Below define_b1 is valid on Kernel version < v5.2.0 -------
+	 */
 	struct dma_resv _resv;
-#endif
+	/*
+	 * End define_b1 ----------------------------------------------
+	 */
 	struct dma_resv *resv;
 
 	bool cpu_prep;
@@ -91,14 +104,20 @@ struct dma_resv *tcc_gem_prime_res_obj(struct drm_gem_object *obj);
 /* destroy a buffer with gem object */
 void tcc_drm_gem_destroy(struct tcc_drm_gem *tcc_gem);
 
+/*
+ * kernel version < 5.4
+ *	struct dma_buf *tcc_drm_gem_prime_export(
+ *		struct drm_device *dev, struct drm_gem_object *obj, int flags);
+ * Other
+ *	struct dma_buf *tcc_drm_gem_prime_export(
+ *			struct drm_gem_object *obj, int flags);
+ */
 struct dma_buf *tcc_drm_gem_prime_export(
-#if (LINUX_VERSION_CODE < KERNEL_VERSION(5, 4, 0))
-				     struct drm_device *dev,
-#endif
-				     struct drm_gem_object *obj,
-				     int flags);
+		struct drm_device *dev, struct drm_gem_object *obj,
+		int flags);
 
-struct drm_gem_object *tcc_drm_gem_prime_import(struct drm_device *dev, struct dma_buf *dma_buf);
+struct drm_gem_object *tcc_drm_gem_prime_import(
+	struct drm_device *dev, struct dma_buf *dma_buf);
 
 /* create a new buffer with gem object */
 struct tcc_drm_gem *tcc_drm_gem_create(struct drm_device *dev,
@@ -162,7 +181,7 @@ int tcc_drm_gem_dumb_create(struct drm_file *file_priv,
 int tcc_drm_gem_fault(struct vm_fault *vmf);
 
 /* set vm_flags and we can change the vm attribute to other one at here. */
-int tcc_drm_gem_mmap(struct file *filp, 
+int tcc_drm_gem_mmap(struct file *filp,
 				struct vm_area_struct *vma);
 
 int tcc_drm_gem_prime_mmap(struct dma_buf *dma_buf,

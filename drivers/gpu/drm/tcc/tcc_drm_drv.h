@@ -101,6 +101,7 @@ struct tcc_drm_plane_config {
 	const uint32_t *pixel_formats;
 	unsigned int num_pixel_formats;
 	unsigned int capabilities;
+
 	volatile void __iomem *virt_addr;
 };
 
@@ -183,21 +184,21 @@ struct tcc_drm_clk {
  * @pipe_clk: A pointer to the crtc's pipeline clock.
  */
 struct tcc_drm_crtc {
-	struct drm_crtc			base;
-	enum tcc_drm_output_type	type;
-	const struct tcc_drm_crtc_ops	*ops;
-	void				*ctx;
+	struct drm_crtc base;
+	enum tcc_drm_output_type type;
+	const struct tcc_drm_crtc_ops *ops;
+	void *ctx;
 
 	/* support to fence */
-	atomic_t 			flip_status;
-        struct drm_pending_vblank_event *flip_event;
-        bool 				flip_async;
+	atomic_t flip_status;
+	struct drm_pending_vblank_event *flip_event;
+	bool flip_async;
 	/* Whether the CRTC enabled - 0 disabled, 1 enabled */
-	int 				enabled;
+	int enabled;
 };
 
 struct drm_tcc_file_private {
-	struct device			*ipp_dev;
+	struct device *ipp_dev;
 };
 
 /*
@@ -219,18 +220,18 @@ struct tcc_drm_private {
 	struct device *dma_dev;
 	void *mapping;
 	/*
-         * This is needed for devices that don't already have their own dma
-         * parameters structure, e.g. platform devices, and, if necessary, will
-         * be assigned to the 'struct device' during device initialisation. It
-         * should therefore never be accessed directly via this structure as
-         * this may not be the version of dma parameters in use.
-         */
+	 * This is needed for devices that don't already have their own dma
+	 * parameters structure, e.g. platform devices, and, if necessary, will
+	 * be assigned to the 'struct device' during device initialisation. It
+	 * should therefore never be accessed directly via this structure as
+	 * this may not be the version of dma parameters in use.
+	 */
 	struct device_dma_parameters dma_parms;
 
 	/* for atomic commit */
-	u32			pending;
-	spinlock_t		lock;
-	wait_queue_head_t	wait;
+	u32 pending;
+	spinlock_t lock;
+	wait_queue_head_t wait;
 };
 
 static inline struct device *to_dma_dev(struct drm_device *dev)
@@ -241,18 +242,27 @@ static inline struct device *to_dma_dev(struct drm_device *dev)
 }
 
 #ifdef CONFIG_DRM_TCC_DPI
-struct drm_encoder *tcc_dpi_probe(struct device *dev, struct tcc_hw_device *hw_device);
+struct drm_encoder *tcc_dpi_probe(
+	struct device *dev, struct tcc_hw_device *hw_device);
 int tcc_dpi_remove(struct drm_encoder *encoder);
-int tcc_dpi_bind(struct drm_device *dev, struct drm_encoder *encoder, struct tcc_hw_device *hw_data);
+int tcc_dpi_bind(
+	struct drm_device *dev, struct drm_encoder *encoder,
+	struct tcc_hw_device *hw_data);
 #else
 static inline struct drm_encoder *
-tcc_dpi_probe(struct device *dev, struct tcc_hw_device *hw_device) { return NULL; }
+tcc_dpi_probe(
+	struct device *dev, struct tcc_hw_device *hw_device)
+{
+	return NULL;
+}
+
 static inline int tcc_dpi_remove(struct drm_encoder *encoder)
 {
 	return 0;
 }
-static inline int tcc_dpi_bind(struct drm_device *dev,
-				  struct drm_encoder *encoder, struct tcc_hw_device *hw_data)
+static inline int tcc_dpi_bind(
+	struct drm_device *dev, struct drm_encoder *encoder,
+	struct tcc_hw_device *hw_data)
 {
 	return 0;
 }
@@ -261,7 +271,6 @@ static inline int tcc_dpi_bind(struct drm_device *dev,
 int tcc_atomic_commit(struct drm_device *dev, struct drm_atomic_state *state,
 			 bool nonblock);
 int tcc_atomic_check(struct drm_device *dev, struct drm_atomic_state *state);
-
 
 extern struct platform_driver lcd_driver;
 extern struct platform_driver ext_driver;

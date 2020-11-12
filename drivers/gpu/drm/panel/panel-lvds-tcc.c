@@ -180,6 +180,7 @@ static int panel_lvds_enable(struct drm_panel *panel)
 		if(lvds->lvds_pins.blk_on != NULL)
 			pinctrl_select_state(lvds->lvds_pins.p, lvds->lvds_pins.blk_on);
 		#endif
+		lvds->enabled = 1;
 	}else {
 		dev_dbg(lvds->dev, "[DEBUG][%s] %s with %s - already enabled \r\n", LOG_TAG, __func__, lvds->data->name);
 	}
@@ -414,7 +415,6 @@ err_parse_dt:
 static int panel_lvds_probe(struct platform_device *pdev)
 {
 	struct panel_lvds *lvds;
-	struct device_node *np;
 	int ret;
 	int lvds_status;
 
@@ -530,7 +530,7 @@ MODULE_DEVICE_TABLE(of, panel_lvds_of_table);
 #ifdef CONFIG_PM
 static int panel_lvds_suspend(struct device *dev)
 {
-	struct panel_lvds *lvds = dev_get_drvdata(dev);
+	//struct panel_lvds *lvds = dev_get_drvdata(dev);
 	dev_dbg(dev, "[DEBUG][%s] %s \r\n", LOG_TAG, __func__);
 
 	return 0;
@@ -538,7 +538,7 @@ static int panel_lvds_suspend(struct device *dev)
 static int panel_lvds_resume(struct device *dev)
 {
 	struct panel_lvds *lvds = dev_get_drvdata(dev);
-	int ret;
+
 	dev_dbg(dev, "[DEBUG][%s] %s \r\n", LOG_TAG, __func__);
 
 	/* Set pin status to defualt */

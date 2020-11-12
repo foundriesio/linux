@@ -1,0 +1,23 @@
+// SPDX-License-Identifier: (GPL-2.0-or-later OR MIT)
+/*
+ * Copyright (C) Telechips Inc.
+ * Device tree for Telechips TCC8971 AVN board
+ */
+
+#include "tcc897x-display.dtsi"
+
+/ {
+	lcd_drm_dummy {
+		status = "okay";
+		base_display = <&tcc_drm_lcd>;
+	};
+
+	tcc_drm_lcd:tcc-drm-lcd {
+		status = "okay";
+	};
+
+	tcc-drm-ext {
+		status = "okay";
+	};
+
+};
