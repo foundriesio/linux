@@ -98,8 +98,8 @@ extern void tca_vioc_displayblock_powerOff(struct tcc_dp_device *pDisplayInfo);
 extern void tca_vioc_displayblock_disable(struct tcc_dp_device *pDisplayInfo);
 extern void tca_vioc_displayblock_ctrl_set(unsigned int outDevice,
 					   struct tcc_dp_device *pDisplayInfo,
-					   stLTIMING *pstTiming,
-					   stLCDCTR *pstCtrl);
+					   struct LCDTIMING *pstTiming,
+					   struct LCDCTR *pstCtrl);
 extern void tca_fb_attach_start(struct tccfb_info *info);
 extern int tca_fb_attach_stop(struct tccfb_info *info);
 
@@ -419,8 +419,8 @@ void tcc_component_get_spec(COMPONENT_MODE_TYPE mode, COMPONENT_SPEC_TYPE *spec)
 void tcc_component_set_lcd2tv(COMPONENT_MODE_TYPE mode, TCC_COMPONENT_START_TYPE start)
 {
 	COMPONENT_SPEC_TYPE spec;
-	stLTIMING ComponentTiming;
-	stLCDCTR LcdCtrlParam;
+	struct LCDTIMING ComponentTiming;
+	struct LCDCTR LcdCtrlParam;
 	int ret;
 
 	struct fb_info *info = registered_fb[0];

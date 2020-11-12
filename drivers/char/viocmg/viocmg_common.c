@@ -175,7 +175,7 @@ int viocmg_lock_viqe(unsigned int caller_id)
 	dprintk("caller[0x%x] lock viqe\r\n", caller_id);
 
 	if(caller_id == VIOCMG_CALLERID_REAR_CAM) {
-		VIOC_PlugInOutCheck vioc_plug_in;
+		struct VIOC_PlugInOutCheck vioc_plug_in;
 
 		#ifndef CONFIG_VOUT_KEEP_VIDEO_LAYER
 		tcc_vout_disable_hwlayer(0);

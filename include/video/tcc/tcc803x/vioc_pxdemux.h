@@ -1,10 +1,5 @@
 /*
- * linux/include/video/tcc/vioc_pd.h
- * Author:  <linux@telechips.com>
- * Created: June 10, 2008
- * Description: TCC VIOC h/w block 
- *
- * Copyright (C) 2008-2009 Telechips
+ * Copyright (C) Telechips, Inc.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -21,7 +16,6 @@
  * to the Free Software Foundation, Inc.,
  * 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  */
-
 #ifndef __VIOC_PXDEMUX_H__
 #define	__VIOC_PXDEMUX_H__
 
@@ -246,7 +240,7 @@
 #define TXOUT_SEL8_SEL33_MASK		(0x1F << TXOUT_SEL8_SEL33_SHIFT)
 #define TXOUT_SEL8_SEL32_MASK		(0x1F << TXOUT_SEL8_SEL32_SHIFT)
 
-typedef enum {
+enum PD_TXOUT_SEL {
 	PD_TXOUT_SEL0 = 0,
 	PD_TXOUT_SEL1,
 	PD_TXOUT_SEL2,
@@ -257,49 +251,49 @@ typedef enum {
 	PD_TXOUT_SEL7,
 	PD_TXOUT_SEL8,
 	PD_TXOUT_SEL_MAX
-} PD_TXOUT_SEL;
+};
 
-typedef enum {
+enum PD_IDX {
 	PD_IDX_0 = 0,
 	PD_IDX_1,
 	PD_IDX_MAX
-} PD_IDX;
+};
 
-typedef enum {
+enum PD_SWAP_CH {
 	PD_SWAP_CH0 = 0,
 	PD_SWAP_CH1,
 	PD_SWAP_CH2,
 	PD_SWAP_CH3,
 	PD_SWAP_CH_MAX
-} PD_SWAP_CH;
+};
 
-typedef enum {
+enum PD_MUX_TYPE {
 	PD_MUX3TO1_TYPE = 0,
 	PD_MUX5TO1_TYPE,
 	PD_MUX_TYPE_MAX
-} PD_MUX_TYPE;
+};
 
-typedef enum {
+enum PD_MUX_SEL {
 	PD_MUX_SEL_DISP0 = 0,
 	PD_MUX_SEL_DISP1,
 	PD_MUX_SEL_DISP2,
 	PD_MUX_SEL_DEMUX0,
 	PD_MUX_SEL_MAX
-} PD_MUX_SEL;
+};
 
-typedef enum {
+enum PD_MUX3TO1_IDX {
 	PD_MUX3TO1_IDX0 = 0,
 	PD_MUX3TO1_IDX1,
 	PD_MUX3TO1_IDX_MAX,
-} PD_MUX3TO1_IDX;
+};
 
-typedef enum {
-	PD_MUX5TO1_IDX0 =0,
+enum PD_MUX5TO1_IDX {
+	PD_MUX5TO1_IDX0 = 0,
 	PD_MUX5TO1_IDX1,
 	PD_MUX5TO1_IDX2,
 	PD_MUX5TO1_IDX3,
 	PD_MUX5TO1_IDX_MAX,
-} PD_MUX5TO1_IDX;
+};
 
 #define TXOUT_DUMMY			(0x1F)
 #define TXOUT_DE				(24)
@@ -307,16 +301,29 @@ typedef enum {
 #define TXOUT_VS				(26)
 #define TXOUT_R_D(x)			(x + 0x10)
 #define TXOUT_G_D(x)			(x + 0x8)
-#define TXOUT_B_D(x)			(x )
+#define TXOUT_B_D(x)			(x)
 
 #define TXOUT_MAX_LINE			4
 #define TXOUT_DATA_PER_LINE		7
-#define TXOUT_GET_DATA(i)	((TXOUT_DATA_PER_LINE -1) -((i) % TXOUT_DATA_PER_LINE) + (TXOUT_DATA_PER_LINE * ((i) /TXOUT_DATA_PER_LINE )))
+#define TXOUT_GET_DATA(i) ( \
+	(TXOUT_DATA_PER_LINE - 1) \
+	- ((i) % TXOUT_DATA_PER_LINE) \
+	+ (TXOUT_DATA_PER_LINE * ((i) / TXOUT_DATA_PER_LINE)) \
+	)
 
-extern void VIOC_PXDEMUX_SetConfigure(unsigned int idx, unsigned int lr, unsigned int bypass, unsigned int width);
-extern void VIOC_PXDEMUX_SetDataSwap(unsigned int idx, unsigned int ch, unsigned int set);
-extern void VIOC_PXDEMUX_SetMuxOutput(PD_MUX_TYPE mux, unsigned int ch, unsigned int select,unsigned int enable);
-extern void VIOC_PXDEMUX_SetDataPath(unsigned int ch, unsigned int path,unsigned int set);
-extern void VIOC_PXDEMUX_SetDataArray(unsigned int ch, unsigned int data[TXOUT_MAX_LINE][TXOUT_DATA_PER_LINE]);
-extern volatile void __iomem* VIOC_PXDEMUX_GetAddress(void);
+extern void VIOC_PXDEMUX_SetConfigure(
+	unsigned int idx, unsigned int lr,
+	unsigned int bypass, unsigned int width);
+extern void VIOC_PXDEMUX_SetDataSwap(
+	unsigned int idx, unsigned int ch, unsigned int set);
+extern void VIOC_PXDEMUX_SetMuxOutput(
+	enum PD_MUX_TYPE mux, unsigned int ch,
+	unsigned int select, unsigned int enable);
+extern void VIOC_PXDEMUX_SetDataPath(
+	unsigned int ch, unsigned int path, unsigned int set);
+extern void VIOC_PXDEMUX_SetDataArray(
+	unsigned int ch,
+	unsigned int data[TXOUT_MAX_LINE][TXOUT_DATA_PER_LINE]);
+extern volatile void __iomem *VIOC_PXDEMUX_GetAddress(void);
+
 #endif

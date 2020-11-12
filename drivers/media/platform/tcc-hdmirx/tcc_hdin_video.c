@@ -128,7 +128,7 @@ int hdin_vioc_scaler_set(struct tcc_hdin_device *vdev)
     unsigned int dw, dh; // destination size in SCALER
     struct tcc_hdin_device *dev = 	vdev;
     struct TCC_HDIN *data = &dev->data;
-    VIOC_PlugInOutCheck plug_in_status;
+    struct VIOC_PlugInOutCheck plug_in_status;
     
     dw = data->hdin_cfg.main_set.target_x;
     dh = data->hdin_cfg.main_set.target_y;
@@ -350,7 +350,7 @@ int hdin_video_start_stream(struct tcc_hdin_device *vdev)
 {
     struct tcc_hdin_device *dev = vdev;
     struct TCC_HDIN *data = &dev->data;
-    VIOC_PlugInOutCheck plug_in_status;
+    struct VIOC_PlugInOutCheck plug_in_status;
 	
     logd("Start!! \n");
     VIOC_CONFIG_SWReset(dev->vioc.wdma.index,VIOC_CONFIG_RESET);
@@ -395,7 +395,7 @@ int hdin_video_stop_stream(struct tcc_hdin_device *vdev)
 {	
     struct tcc_hdin_device *dev = vdev;
     struct TCC_HDIN *data = &dev->data;
-    VIOC_PlugInOutCheck plug_in_status;
+    struct VIOC_PlugInOutCheck plug_in_status;
     
     logd("Start!! \n");
     mutex_lock(&data->lock);

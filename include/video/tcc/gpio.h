@@ -1,29 +1,21 @@
 /*
- * linux/arch/arm/mach-tcc893x/include/mach/gpio.h
+ * Copyright (C) Telechips, Inc.
  *
- * Copyright (C) 2010 Telechips, Inc.
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
  *
- * This program is free software; you can redistribute it and/or modify it
- * under the terms of the GNU General Public License as published by the
- * Free Software Foundation; either version 2 of the License, or (at your
- * option) any later version.
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
  *
- * THIS SOFTWARE IS PROVIDED ``AS IS'' AND ANY EXPRESS OR IMPLIED
- * WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
- * MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN
- * NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT,
- * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
- * NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF
- * USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
- * ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
- * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- *
- * You should have received a copy of the GNU General Public License along
- * with this program; if not, write to the Free Software Foundation, Inc.,
- * 675 Mass Ave, Cambridge, MA 02139, USA.
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, see the file COPYING, or write
+ * to the Free Software Foundation, Inc.,
+ * 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  */
-
 #ifndef __ASM_ARCH_TCC897X_GPIO_H
 #define __ASM_ARCH_TCC897X_GPIO_H
 
@@ -31,16 +23,16 @@
 #define GPIO_REG_SHIFT  5
 #define GPIO_BITMASK    0x0000001F
 
-#define GPIO_PORTA    ( 0 << GPIO_REG_SHIFT)
-#define GPIO_PORTB    ( 1 << GPIO_REG_SHIFT)
-#define GPIO_PORTC    ( 2 << GPIO_REG_SHIFT)
-#define GPIO_PORTD    ( 3 << GPIO_REG_SHIFT)
-#define GPIO_PORTE    ( 4 << GPIO_REG_SHIFT)
-#define GPIO_PORTF    ( 5 << GPIO_REG_SHIFT)
-#define GPIO_PORTG    ( 6 << GPIO_REG_SHIFT)
-#define GPIO_PORTHDMI ( 7 << GPIO_REG_SHIFT)
-#define GPIO_PORTSD  ( 8 << GPIO_REG_SHIFT)
-#define GPIO_PORTADC ( 9 << GPIO_REG_SHIFT)
+#define GPIO_PORTA    (0 << GPIO_REG_SHIFT)
+#define GPIO_PORTB    (1 << GPIO_REG_SHIFT)
+#define GPIO_PORTC    (2 << GPIO_REG_SHIFT)
+#define GPIO_PORTD    (3 << GPIO_REG_SHIFT)
+#define GPIO_PORTE    (4 << GPIO_REG_SHIFT)
+#define GPIO_PORTF    (5 << GPIO_REG_SHIFT)
+#define GPIO_PORTG    (6 << GPIO_REG_SHIFT)
+#define GPIO_PORTHDMI (7 << GPIO_REG_SHIFT)
+#define GPIO_PORTSD   (8 << GPIO_REG_SHIFT)
+#define GPIO_PORTADC  (9 << GPIO_REG_SHIFT)
 #define GPIO_PORTEXT1 (10 << GPIO_REG_SHIFT)
 #define GPIO_PORTEXT2 (GPIO_PORTEXT1 + 40)
 #define GPIO_PORTEXT3 (GPIO_PORTEXT2 + 40)
@@ -109,25 +101,25 @@
 #define gpio_cansleep	__gpio_cansleep
 
 enum {
-    EXINT_EI0 = 0,
-    EXINT_EI1,
-    EXINT_EI2,
-    EXINT_EI3,
-    EXINT_EI4,
-    EXINT_EI5,
-    EXINT_EI6,
-    EXINT_EI7,
-    EXINT_EI8,
-    EXINT_EI9,
-    EXINT_EI10,
-    EXINT_EI11,
+	EXINT_EI0 = 0,
+	EXINT_EI1,
+	EXINT_EI2,
+	EXINT_EI3,
+	EXINT_EI4,
+	EXINT_EI5,
+	EXINT_EI6,
+	EXINT_EI7,
+	EXINT_EI8,
+	EXINT_EI9,
+	EXINT_EI10,
+	EXINT_EI11,
 };
 
-int tcc_gpio_config(unsigned gpio, unsigned flags);
+int tcc_gpio_config(unsigned int gpio, unsigned int flags);
 
 struct board_gpio_irq_config {
-	unsigned gpio;
-	unsigned irq;
+	unsigned int gpio;
+	unsigned int irq;
 };
 
 extern struct board_gpio_irq_config *board_gpio_irqs;

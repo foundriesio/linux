@@ -179,7 +179,7 @@ extern void tca_vioc_displayblock_disable(struct tcc_dp_device *pDisplayInfo);
 extern void tca_vioc_displayblock_extra_set(struct tcc_dp_device *pDisplayInfo, struct  tcc_fb_extra_data *tcc_fb_extra_data);
 #endif
 extern void tca_vioc_displayblock_timing_set(unsigned int outDevice, struct tcc_dp_device *pDisplayInfo,  struct lcdc_timimg_parms_t *mode);
-extern void tca_vioc_displayblock_ctrl_set(unsigned int outDevice, struct tcc_dp_device *pDisplayInfo, stLTIMING *pstTiming, stLCDCTR *pstCtrl);
+extern void tca_vioc_displayblock_ctrl_set(unsigned int outDevice, struct tcc_dp_device *pDisplayInfo, struct LCDTIMING *pstTiming, struct LCDCTR *pstCtrl);
 extern int tca_fb_pan_display(struct fb_var_screeninfo *var, struct fb_info *info);
 extern void tca_fb_activate_var(unsigned int dma_addr,  struct fb_var_screeninfo *var, struct tcc_dp_device *pdp_data);
 extern void tca_scale_display_update(struct tcc_dp_device *pdp_data, struct tcc_lcdc_image_update *ImageInfo);
@@ -534,7 +534,7 @@ void tccfb_extoutput_activate(int fb, int stage)
 }
 EXPORT_SYMBOL(tccfb_extoutput_activate);
 
-void tccfb_output_starter(char output_type, char lcdc_num, stLTIMING *pstTiming, stLCDCTR *pstCtrl, int specific_pclk)
+void tccfb_output_starter(char output_type, char lcdc_num, struct LCDTIMING *pstTiming, struct LCDCTR *pstCtrl, int specific_pclk)
 {
 	struct fb_info *info;
 	struct tccfb_info *ptccfb_info =NULL;

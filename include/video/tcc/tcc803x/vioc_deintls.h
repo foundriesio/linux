@@ -2,7 +2,7 @@
  * linux/arch/arm/mach-tcc897x/include/mach/vioc_deintls.h
  * Author:  <linux@telechips.com>
  * Created: June 10, 2008
- * Description: TCC VIOC h/w block 
+ * Description: TCC VIOC h/w block
  *
  * Copyright (C) 2008-2009 Telechips
  *
@@ -24,5 +24,6 @@
 #ifndef __VIOC_DEINTLS_H__
 #define	__VIOC_DEINTLS_H__
 
-extern volatile void __iomem* VIOC_DEINTLS_GetAddress(void);
+extern volatile void __iomem *VIOC_DEINTLS_GetAddress(void);
+
 #endif

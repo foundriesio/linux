@@ -488,7 +488,7 @@ void vioc_display_device_reset(unsigned int device_num, struct tcc_dp_device *pD
 
 	volatile unsigned char WMIXER_N, RDMA_N[RDMA_MAX_NUM];
 
-	VIOC_PlugInOutCheck VIOC_PlugIn[VIOC_VIQE + 1];
+	struct VIOC_PlugInOutCheck VIOC_PlugIn[VIOC_VIQE + 1];
 	volatile unsigned char VIOC_PlugIn_reset[get_vioc_index(VIOC_VIQE0) + 1];
 	volatile void __iomem *pSC_Backup[get_vioc_index(VIOC_SCALER3) + 1];
 	volatile void __iomem *pSC_Addr[get_vioc_index(VIOC_SCALER3) +1];
@@ -1478,8 +1478,8 @@ void tca_vioc_displayblock_timing_set(unsigned int outDevice, struct tcc_dp_devi
 	unsigned int width, height;
 	volatile void __iomem *pDISP = pDisplayInfo->ddc_info.virt_addr;
 	volatile void __iomem *pWMIX = pDisplayInfo->wmixer_info.virt_addr;
-	stLCDCTR stCtrlParam;
-	stLTIMING stTimingParam;
+	struct LCDCTR stCtrlParam;
+	struct LCDTIMING stTimingParam;
 	unsigned int rdma_en = 0;
 	#if defined(CONFIG_LCD_HDMI640X480TU)
 	int lcd_hdmi640x480tu = 0;
@@ -1927,8 +1927,8 @@ int tca_vioc_displayblock_pre_ctrl_set(struct tcc_dp_device *dp_device)
 
 void tca_vioc_displayblock_ctrl_set(unsigned int outDevice,
 								struct tcc_dp_device *pDisplayInfo,
-								stLTIMING *pstTiming,
-								stLCDCTR *pstCtrl)
+								struct LCDTIMING *pstTiming,
+								struct LCDCTR *pstCtrl)
 {
         unsigned int rdma_en;
         int skip_display_device = 0;
@@ -5707,7 +5707,7 @@ void tccfb1_set_par(struct tccfb_info *fbi,  struct fb_var_screeninfo *var)
 		//scaler plug in check
 		if(VIOC_CONFIG_GetScaler_PluginToRDMA(pdp_data->rdma_info[rdmaN].blk_num) < 0)
 		{
-			VIOC_PlugInOutCheck VIOC_PlugIn;
+			struct VIOC_PlugInOutCheck VIOC_PlugIn;
 
 			VIOC_CONFIG_Device_PlugState(VIOC_SCALER0, &VIOC_PlugIn);
 			VIOC_RDMA_GetImageEnable(pdp_data->rdma_info[rdmaN].virt_addr, &en_rdma);

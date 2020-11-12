@@ -89,8 +89,8 @@ extern void tca_vioc_displayblock_powerOff(struct tcc_dp_device *pDisplayInfo);
 extern void tca_vioc_displayblock_disable(struct tcc_dp_device *pDisplayInfo);
 extern void tca_vioc_displayblock_ctrl_set(unsigned int outDevice,
 					   struct tcc_dp_device *pDisplayInfo,
-					   stLTIMING *pstTiming,
-					   stLCDCTR *pstCtrl);
+					   struct LCDTIMING *pstTiming,
+					   struct LCDCTR *pstCtrl);
 extern void tca_fb_attach_start(struct tccfb_info *info);
 extern int tca_fb_attach_stop(struct tccfb_info *info);
 
@@ -333,8 +333,8 @@ void tcc_composite_get_spec(COMPOSITE_MODE_TYPE mode, COMPOSITE_SPEC_TYPE *spec)
 void tcc_composite_set_lcd2tv(COMPOSITE_MODE_TYPE type)
 {
 	COMPOSITE_SPEC_TYPE spec;
-	stLTIMING CompositeTiming;
-	stLCDCTR LcdCtrlParam;
+	struct LCDTIMING CompositeTiming;
+	struct LCDCTR LcdCtrlParam;
 
 	struct fb_info *info = registered_fb[0];
 	struct tccfb_info *tccfb_info = NULL;

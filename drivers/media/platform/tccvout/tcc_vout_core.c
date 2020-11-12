@@ -1898,7 +1898,7 @@ void vout_onthefly_display_update(struct tcc_vout_device *vout, struct v4l2_buff
 				}
 				return;
 			} else {
-				VIOC_PlugInOutCheck plugin_state;
+				struct VIOC_PlugInOutCheck plugin_state;
 				VIOC_CONFIG_Device_PlugState(vioc->viqe.id, &plugin_state);
 				if(!plugin_state.enable || plugin_state.connect_statue != VIOC_PATH_CONNECTED) {
 					if(deintl_viqe_setup(vout, vout->deinterlace, 1) < 0)
@@ -2586,7 +2586,7 @@ void vout_m2m_display_update(struct tcc_vout_device *vout, struct v4l2_buffer *b
 				return;
 				#endif
 			} else {
-				VIOC_PlugInOutCheck plugin_state;
+				struct VIOC_PlugInOutCheck plugin_state;
 
 				#ifdef CONFIG_VOUT_KEEP_VIDEO_LAYER
 				if(vout->is_viqe_shared) {
@@ -2913,7 +2913,7 @@ force_disp:
 						vout->firstFieldFlag = 0;
 					return;
 				} else {
-					VIOC_PlugInOutCheck plugin_state;
+					struct VIOC_PlugInOutCheck plugin_state;
 					VIOC_CONFIG_Device_PlugState(vioc->viqe.id, &plugin_state);
 					if(!plugin_state.enable || plugin_state.connect_statue != VIOC_PATH_CONNECTED) {
 						if(deintl_viqe_setup(vout, vout->deinterlace, 1) < 0)

@@ -452,7 +452,7 @@ void TCC_VIQE_DI_Init(VIQE_DI_TYPE *viqe_arg)
 void TCC_VIQE_DI_Run(VIQE_DI_TYPE *viqe_arg)
 {
 #ifndef USE_DEINTERLACE_S_IN30Hz
-	VIOC_PlugInOutCheck VIOC_PlugIn;
+	struct VIOC_PlugInOutCheck VIOC_PlugIn;
 	unsigned int JudderCnt = 0;
 #endif
 	volatile void __iomem *pRDMA, *pVIQE;
@@ -845,7 +845,7 @@ EXPORT_SYMBOL(TCC_VIQE_DI_Init60Hz_M2M);
 
 void TCC_VIQE_DI_Run60Hz_M2M(struct tcc_lcdc_image_update* input_image, int reset_frmCnt)
 {
-	VIOC_PlugInOutCheck VIOC_PlugIn;
+	struct VIOC_PlugInOutCheck VIOC_PlugIn;
 	unsigned int JudderCnt = 0;
 
 #ifdef CONFIG_TCC_VIOCMG
@@ -2571,7 +2571,7 @@ void TCC_VIQE_DI_Init60Hz(TCC_OUTPUT_TYPE outputMode, int lcdCtrlNum, struct tcc
 
 void TCC_VIQE_DI_Swap60Hz(int mode)
 {
-	VIOC_PlugInOutCheck VIOC_PlugIn;
+	struct VIOC_PlugInOutCheck VIOC_PlugIn;
 	volatile void __iomem *pVIQE_Info = NULL;
 	int nVIOC_VIQE = 0;
 	
@@ -2604,7 +2604,7 @@ void TCC_VIQE_DI_Swap60Hz(int mode)
 
 void TCC_VIQE_DI_SetFMT60Hz(int enable)
 {
-	VIOC_PlugInOutCheck VIOC_PlugIn;
+	struct VIOC_PlugInOutCheck VIOC_PlugIn;
 	volatile void __iomem *pVIQE_Info = NULL;
 	int nVIOC_VIQE = 0;
 	
@@ -2650,7 +2650,7 @@ void TCC_VIQE_DI_Run60Hz(struct tcc_lcdc_image_update *input_image, int reset_fr
 	int nVIOC_VIQE = 0;
 
 #ifndef USE_DEINTERLACE_S_IN60Hz
-	VIOC_PlugInOutCheck VIOC_PlugIn;
+	struct VIOC_PlugInOutCheck VIOC_PlugIn;
 	unsigned int JudderCnt = 0;
 #endif
 
@@ -2753,7 +2753,7 @@ void TCC_VIQE_DI_Run60Hz(struct tcc_lcdc_image_update *input_image, int reset_fr
 		} else {
 			viqe_lock = 1;
 
-			VIOC_PlugInOutCheck plug_status;
+			struct VIOC_PlugInOutCheck plug_status;
 			VIOC_CONFIG_Device_PlugState(nVIOC_VIQE, &plug_status);
 			if(!plug_status.enable || plug_status.connect_statue != VIOC_PATH_CONNECTED)
 				reset_frmCnt = VIQE_RESET_RECOVERY;

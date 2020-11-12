@@ -2029,7 +2029,7 @@ static int tcc_vsync_push_preprocess_deinterlacing(tcc_video_disp *p, struct tcc
 
 		if( pixelmapper_plug >= 0 ){
 			int ret = 0;
-			VIOC_PlugInOutCheck VIOC_PlugIn;
+			struct VIOC_PlugInOutCheck VIOC_PlugIn;
 
 			if(VIOC_CONFIG_Device_PlugState(VIOC_PIXELMAP0, &VIOC_PlugIn) == VIOC_DEVICE_CONNECTED){
 				if(VIOC_PlugIn.connect_device == get_vioc_index(pdp_data->rdma_info[input_image_info->Lcdc_layer].blk_num)&& (VIOC_PlugIn.connect_statue==VIOC_PATH_CONNECTED) &&VIOC_PlugIn.enable)
