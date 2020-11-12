@@ -39,7 +39,7 @@
  * Video formats
  */
 
-struct tccvin_format_desc tccvin_fmts[] = {
+struct tccvin_format_desc tccvin_format_list[] = {
 	/* RGB */
 	{
 		.name		= "RGB 8:8:8 (RGB3)",
@@ -153,25 +153,62 @@ struct tccvin_format_desc tccvin_fmts[] = {
 	},
 };
 
+struct framesize tccvin_framesize_list[] = {
+	{	 320,	 240	},
+	{	 640,	 480	},
+	{	 720,	 480	},
+	{	1280,	 720	},
+	{	1920,	 720	},
+	{	1920,	1080	},
+};
+
+u32 tccvin_framerate_list[] = {
+	15,
+	30,
+};
+
 /* ------------------------------------------------------------------------
  * Utility functions
  */
 
-int tccvin_format_num(void)
+int tccvin_count_supported_formats(void)
 {
-	unsigned int num = ARRAY_SIZE(tccvin_fmts);
+	return ARRAY_SIZE(tccvin_format_list);
+}
 
-	return num;
+struct tccvin_format_desc * tccvin_format_by_index(int index)
+{
+	return &tccvin_format_list[index];
+}
+
+int tccvin_count_supported_framesizes(void)
+{
+	return ARRAY_SIZE(tccvin_framesize_list);
+}
+
+struct framesize * tccvin_framesize_by_index(int index)
+{
+	return &tccvin_framesize_list[index];
+}
+
+int tccvin_count_supported_framerates(void)
+{
+	return ARRAY_SIZE(tccvin_framerate_list);
+}
+
+int tccvin_framerate_by_index(int index)
+{
+	return tccvin_framerate_list[index];
 }
 
 struct tccvin_format_desc *tccvin_format_by_guid(const __u32 guid)
 {
-	unsigned int len = ARRAY_SIZE(tccvin_fmts);
+	unsigned int len = ARRAY_SIZE(tccvin_format_list);
 	unsigned int i;
 
 	for (i = 0; i < len; ++i) {
-		if (guid == tccvin_fmts[i].guid)
-			return &tccvin_fmts[i];
+		if (guid == tccvin_format_list[i].guid)
+			return &tccvin_format_list[i];
 	}
 
 	return NULL;
@@ -179,12 +216,12 @@ struct tccvin_format_desc *tccvin_format_by_guid(const __u32 guid)
 
 struct tccvin_format_desc *tccvin_format_by_fcc(const __u32 fcc)
 {
-	unsigned int len = ARRAY_SIZE(tccvin_fmts);
+	unsigned int len = ARRAY_SIZE(tccvin_format_list);
 	unsigned int i;
 
 	for (i = 0; i < len; ++i) {
-		if (fcc == tccvin_fmts[i].fcc)
-			return &tccvin_fmts[i];
+		if (fcc == tccvin_format_list[i].fcc)
+			return &tccvin_format_list[i];
 	}
 
 	return NULL;
@@ -254,8 +291,6 @@ static int tccvin_parse_device_tree(struct tccvin_streaming *vdev)
 	struct device_node	*main_node	= vdev->dev->pdev->dev.of_node;
 	struct device_node	*vsrc_node	= NULL;
 	struct device_node	*vioc_node	= NULL;
-	struct device_node	*np_fb		= NULL;
-	struct device_node	*np_fb_1st	= NULL;
 	struct vioc_path	*vioc_path	= NULL;
 	void __iomem		*address	= NULL;
 	unsigned int		vioc_id		= 0;
@@ -734,11 +769,10 @@ static int tccvin_set_vin(struct tccvin_streaming *vdev)
 	VIOC_VIN_SetY2RMode(vin, 2);
 
 #if defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC899X) || \
-	defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X)
+    defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X)
 	VIOC_VIN_SetSEEnable(vin, stream_enable);
 	VIOC_VIN_SetFlushBufferEnable(vin, flush_vsync);
-#endif//defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC899X) || \
-	defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X)
+#endif
 
 	logd("v4l2 preview format(fcc): 0x%08x\n", vdev->cur_format->fcc);
 	if (((data_format == FMT_YUV422_16BIT)	||

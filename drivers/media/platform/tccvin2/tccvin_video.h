@@ -177,7 +177,6 @@ struct framesize {
 
 struct tccvin_frame {
 	__u8  bFrameIndex;
-	__u8  bmCapabilities;
 	__u16 wWidth;
 	__u16 wHeight;
 	__u32 dwMaxVideoFrameBufferSize;
@@ -362,8 +361,12 @@ extern const struct v4l2_ioctl_ops tccvin_ioctl_ops;
 extern const struct v4l2_file_operations tccvin_fops;
 
 /* Video */
-extern struct tccvin_format_desc tccvin_fmts[];
-extern int tccvin_format_num(void);
+extern int tccvin_count_supported_formats(void);
+extern struct tccvin_format_desc * tccvin_format_by_index(int index);
+extern int tccvin_count_supported_framesizes(void);
+extern struct framesize * tccvin_framesize_by_index(int index);
+extern int tccvin_count_supported_framerates(void);
+extern int tccvin_framerate_by_index(int index);
 extern struct tccvin_format_desc *tccvin_format_by_guid(const __u32 guid);
 extern int tccvin_video_init(struct tccvin_streaming *stream);
 extern int tccvin_video_deinit(struct tccvin_streaming *stream);
@@ -371,9 +374,5 @@ extern int tccvin_video_streamon(struct tccvin_streaming *stream,
 	int is_handover_needed);
 extern int tccvin_video_streamoff(struct tccvin_streaming *stream,
 	int is_handover_needed);
-
-/* Utility functions */
-extern void tccvin_simplify_fraction(uint32_t *numerator, uint32_t *denominator,
-	unsigned int n_terms, unsigned int threshold);
 
 #endif

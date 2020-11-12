@@ -228,11 +228,8 @@ static int tccvin_v4l2_set_format(struct tccvin_streaming *stream,
 	struct tccvin_frame *frame;
 	int ret;
 
-	if (fmt->type != stream->type) {
-		loge("fmt->type: 0x%08x, stream->type: 0x%08x\n",
-			fmt->type, stream->type);
+	if (fmt->type != stream->type)
 		return -EINVAL;
-	}
 
 	ret = tccvin_v4l2_try_format(stream, fmt, &format, &frame);
 	if (ret < 0)
@@ -250,7 +247,6 @@ static int tccvin_v4l2_set_format(struct tccvin_streaming *stream,
 
 done:
 	mutex_unlock(&stream->mutex);
-
 	return ret;
 }
 
@@ -323,8 +319,9 @@ static int tccvin_v4l2_open(struct file *file)
 
 	/* Create the device handle. */
 	handle = kzalloc(sizeof(*handle), GFP_KERNEL);
-	if (handle == NULL)
+	if (handle == NULL) {
 		return -ENOMEM;
+	}
 
 	mutex_lock(&stream->dev->lock);
 	stream->dev->users++;
@@ -434,11 +431,8 @@ static int tccvin_ioctl_g_fmt_vid_cap(struct file *file, void *fh,
 {
 	struct tccvin_fh *handle = fh;
 	struct tccvin_streaming *stream = handle->stream;
-	int	ret;
 
-	ret = tccvin_v4l2_get_format(stream, fmt);
-
-	return ret;
+	return tccvin_v4l2_get_format(stream, fmt);
 }
 
 static int tccvin_ioctl_s_fmt_vid_cap(struct file *file, void *fh,
@@ -476,9 +470,6 @@ static int tccvin_ioctl_reqbufs(struct file *file, void *fh,
 	struct tccvin_streaming *stream = handle->stream;
 	int ret;
 
-	logd("requested - count: %d, type: 0x%08x, memory: 0x%08x\n",
-		rb->count, rb->type, rb->memory);
-
 	ret = tccvin_acquire_privileges(handle);
 	if (ret < 0)
 		return ret;
@@ -491,9 +482,6 @@ static int tccvin_ioctl_reqbufs(struct file *file, void *fh,
 
 	if (ret == 0)
 		tccvin_dismiss_privileges(handle);
-
-	logd("allocated - count: %d, type: 0x%08x, memory: 0x%08x\n",
-		rb->count, rb->type, rb->memory);
 
 	return 0;
 }
@@ -543,20 +531,11 @@ static int tccvin_ioctl_qbuf(struct file *file, void *fh,
 {
 	struct tccvin_fh *handle = fh;
 	struct tccvin_streaming *stream = handle->stream;
-	int ret;
 
 	if (!tccvin_has_privileges(handle))
 		return -EBUSY;
 
-	if (buf != NULL)
-		dlog("&stream->queue: %p, buf[%d].flags: 0x%08x\n",
-			&stream->queue, buf->index, buf->flags);
-
-	ret = tccvin_queue_buffer(&stream->queue, buf);
-
-	dlog("tccvin_queue_buffer, ret: %d\n", ret);
-
-	return ret;
+	return tccvin_queue_buffer(&stream->queue, buf);
 }
 
 static int tccvin_ioctl_dqbuf(struct file *file, void *fh,
@@ -564,24 +543,12 @@ static int tccvin_ioctl_dqbuf(struct file *file, void *fh,
 {
 	struct tccvin_fh *handle = fh;
 	struct tccvin_streaming *stream = handle->stream;
-	int ret;
 
 	if (!tccvin_has_privileges(handle))
 		return -EBUSY;
 
-	ret = tccvin_dequeue_buffer(&stream->queue, buf,
+	return tccvin_dequeue_buffer(&stream->queue, buf,
 				  file->f_flags & O_NONBLOCK);
-
-	if (buf != NULL) {
-		dlog("&stream->queue: %p\n",	&stream->queue);
-		dlog("buf[%d].flags: 0x%08x\n",	buf->index);
-		dlog("file->f_flags: 0x%08x, O_NONBLOCK: 0x%08x, ret: %d\n",
-			file->f_flags, O_NONBLOCK, ret);
-	}
-
-	dlog("tccvin_dqueue_buffer, ret: %d\n", ret);
-
-	return ret;
 }
 
 static int tccvin_ioctl_streamon(struct file *file, void *fh,
@@ -596,9 +563,6 @@ static int tccvin_ioctl_streamon(struct file *file, void *fh,
 
 	mutex_lock(&stream->mutex);
 	ret = tccvin_queue_streamon(&stream->queue, type);
-	if (ret < 0)
-		loge("tccvin_queue_streamon, v4l2_buf_type: %d, ret: %d\n",
-			type, ret);
 	mutex_unlock(&stream->mutex);
 
 	return ret;
@@ -609,19 +573,15 @@ static int tccvin_ioctl_streamoff(struct file *file, void *fh,
 {
 	struct tccvin_fh *handle = fh;
 	struct tccvin_streaming *stream = handle->stream;
-	int ret;
 
 	if (!tccvin_has_privileges(handle))
 		return -EBUSY;
 
 	mutex_lock(&stream->mutex);
-	ret = tccvin_queue_streamoff(&stream->queue, type);
-	if (ret < 0)
-		loge("tccvin_queue_streamoff, queue->streaming: %d, ret: %d\n",
-			stream->queue.queue.streaming, ret);
+	tccvin_queue_streamoff(&stream->queue, type);
 	mutex_unlock(&stream->mutex);
 
-	return ret;
+	return 0;
 }
 
 static int tccvin_ioctl_enum_input(struct file *file, void *fh,
@@ -645,11 +605,59 @@ static int tccvin_ioctl_enum_input(struct file *file, void *fh,
 static int tccvin_ioctl_g_input(struct file *file, void *fh,
 	unsigned int *input)
 {
-
 	*input = 0;
 	logd("input index: %d\n", *input);
 
 	return 0;
+}
+
+static int tccvin_ioctl_g_parm(struct file *file, void *fh,
+	struct v4l2_streamparm *a)
+{
+	struct tccvin_fh *handle = fh;
+	struct tccvin_streaming *stream = handle->stream;
+	struct v4l2_fract *fract = NULL;
+	int ret = 0;
+
+	memset(a, 0, sizeof(*a));
+	a->type = stream->type;
+	switch (a->type) {
+	case V4L2_BUF_TYPE_VIDEO_CAPTURE:
+		fract = &(a->parm.capture.timeperframe);
+		fract->numerator	= 1;
+		fract->denominator	= stream->cur_frame->dwDefaultFrameInterval;
+		break;
+	default:
+		ret = -1;
+		break;
+	}
+
+	return ret;
+}
+
+static int tccvin_ioctl_s_parm(struct file *file, void *fh,
+	struct v4l2_streamparm *a)
+{
+	struct tccvin_fh *handle = fh;
+	struct tccvin_streaming *stream = handle->stream;
+	int ret = 0;
+
+	switch (stream->type) {
+	case V4L2_BUF_TYPE_VIDEO_CAPTURE:
+		// Does the video-input path support this framerate?
+		// Do all the video sources support this framerate?
+		stream->cur_frame->dwDefaultFrameInterval = 
+			tccvin_try_frame_interval(stream->cur_frame,
+				a->parm.capture.timeperframe.denominator);
+		loge("numerator: %d, denominator: %d\n",
+			1, stream->cur_frame->dwDefaultFrameInterval);
+		break;
+	default:
+		ret = -1;
+		break;
+	}
+
+	return ret;
 }
 
 static int tccvin_ioctl_enum_framesizes(struct file *file, void *fh,
@@ -668,10 +676,8 @@ static int tccvin_ioctl_enum_framesizes(struct file *file, void *fh,
 			break;
 		}
 	}
-	if (format == NULL) {
-		loge("There is no supported format.\n");
+	if (format == NULL)
 		return -EINVAL;
-	}
 
 	if (fsize->index >= format->nframes)
 		return -EINVAL;
@@ -680,10 +686,6 @@ static int tccvin_ioctl_enum_framesizes(struct file *file, void *fh,
 	fsize->type = V4L2_FRMSIZE_TYPE_DISCRETE;
 	fsize->discrete.width = frame->wWidth;
 	fsize->discrete.height = frame->wHeight;
-	logd("index: %d, pixel_format: 0x%08x, type: 0x%08x, size: %d * %d\n",
-		fsize->index, fsize->pixel_format, fsize->type,
-		fsize->discrete.width, fsize->discrete.height);
-
 	return 0;
 }
 
@@ -703,10 +705,8 @@ static int tccvin_ioctl_enum_frameintervals(struct file *file, void *fh,
 			break;
 		}
 	}
-	if (format == NULL) {
-		loge("There is no supported format.\n");
+	if (format == NULL)
 		return -EINVAL;
-	}
 
 	for (i = 0; i < format->nframes; i++) {
 		if (format->frame[i].wWidth == fival->width &&
@@ -715,26 +715,22 @@ static int tccvin_ioctl_enum_frameintervals(struct file *file, void *fh,
 			break;
 		}
 	}
-	if (frame == NULL) {
-		loge("There is no supported frame.\n");
+	if (frame == NULL)
 		return -EINVAL;
-	}
 
 	if (frame->bFrameIntervalType) {
 		if (fival->index >= frame->bFrameIntervalType)
 			return -EINVAL;
 
 		fival->type = V4L2_FRMIVAL_TYPE_DISCRETE;
-		fival->discrete.numerator =
+		fival->discrete.numerator = 1;
+		fival->discrete.denominator = 
 			frame->dwFrameInterval[fival->index];
-		fival->discrete.denominator = 10000000;
-		tccvin_simplify_fraction(&fival->discrete.numerator,
-			&fival->discrete.denominator, 8, 333);
 		logd("index: %d, pixel_format: 0x%08x, width: %d, height: %d\n",
 			fival->index, fival->pixel_format,
 			fival->width, fival->height);
-		logd("type: %d, frameinterval: %d\n",
-			fival->type, fival->discrete.denominator);
+		loge("numerator: %d, denominator: %d\n",
+			fival->discrete.numerator, fival->discrete.denominator);
 	}
 
 	return 0;
@@ -744,13 +740,8 @@ static int tccvin_v4l2_mmap(struct file *file, struct vm_area_struct *vma)
 {
 	struct tccvin_fh *handle = file->private_data;
 	struct tccvin_streaming *stream = handle->stream;
-	int	ret = 0;
 
-	ret = tccvin_queue_mmap(&stream->queue, vma);
-	logd("start: 0x%08lx, end: 0x%08lx, off: 0x%08lx\n",
-		vma->vm_start, vma->vm_end, vma->vm_pgoff);
-
-	return ret;
+	return tccvin_queue_mmap(&stream->queue, vma);
 }
 
 static unsigned int tccvin_v4l2_poll(struct file *file, poll_table *wait)
@@ -768,35 +759,21 @@ static unsigned int tccvin_v4l2_poll(struct file *file, poll_table *wait)
 }
 
 const struct v4l2_ioctl_ops tccvin_ioctl_ops = {
-	/* VIDIOC_QUERYCAP handler */
 	.vidioc_querycap		= tccvin_ioctl_querycap,
-
-	/* VIDIOC_ENUM_FMT handlers */
 	.vidioc_enum_fmt_vid_cap	= tccvin_ioctl_enum_fmt_vid_cap,
-
-	/* VIDIOC_G_FMT handlers */
 	.vidioc_g_fmt_vid_cap		= tccvin_ioctl_g_fmt_vid_cap,
-
-	/* VIDIOC_S_FMT handlers */
 	.vidioc_s_fmt_vid_cap		= tccvin_ioctl_s_fmt_vid_cap,
-
-	/* VIDIOC_TRY_FMT handlers */
 	.vidioc_try_fmt_vid_cap		= tccvin_ioctl_try_fmt_vid_cap,
-
-	/* Buffer handlers */
 	.vidioc_reqbufs			= tccvin_ioctl_reqbufs,
 	.vidioc_querybuf		= tccvin_ioctl_querybuf,
 	.vidioc_qbuf			= tccvin_ioctl_qbuf,
 	.vidioc_dqbuf			= tccvin_ioctl_dqbuf,
-
-	/* Stream on/off */
 	.vidioc_streamon		= tccvin_ioctl_streamon,
 	.vidioc_streamoff		= tccvin_ioctl_streamoff,
-
-	/* Input handling */
 	.vidioc_enum_input		= tccvin_ioctl_enum_input,
 	.vidioc_g_input			= tccvin_ioctl_g_input,
-
+	.vidioc_g_parm			= tccvin_ioctl_g_parm,
+	.vidioc_s_parm			= tccvin_ioctl_s_parm,
 	.vidioc_enum_framesizes		= tccvin_ioctl_enum_framesizes,
 	.vidioc_enum_frameintervals	= tccvin_ioctl_enum_frameintervals,
 };
