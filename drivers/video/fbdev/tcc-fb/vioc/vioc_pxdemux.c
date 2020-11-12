@@ -26,7 +26,7 @@
 #include <linux/of_address.h>
 #include <video/tcc/vioc_pxdemux.h>
 
-static volatile void __iomem *pPXDEMUX_reg = NULL;
+static volatile void __iomem *pPXDEMUX_reg;
 
 /* VIOC_PXDEMUX_SetConfigure
  * Set pixel demuxer configuration
@@ -35,8 +35,9 @@ static volatile void __iomem *pPXDEMUX_reg = NULL;
  * bypass : pixel demuxer bypass mode
  * width : pixel demuxer width - single port: real width, dual port: half width
  */
-void VIOC_PXDEMUX_SetConfigure(unsigned int idx, unsigned int lr,
-			       unsigned int bypass, unsigned int width)
+void VIOC_PXDEMUX_SetConfigure(
+	unsigned int idx, unsigned int lr, unsigned int bypass,
+	unsigned int width)
 {
 	volatile void __iomem *reg = VIOC_PXDEMUX_GetAddress();
 
@@ -45,17 +46,20 @@ void VIOC_PXDEMUX_SetConfigure(unsigned int idx, unsigned int lr,
 
 	if (reg) {
 		unsigned int offset = idx ? PD1_CFG : PD0_CFG;
-		unsigned int val = (__raw_readl(reg + offset) &
-				    ~(PD_CFG_WIDTH_MASK | PD_CFG_MODE_MASK |
-				      PD_CFG_LR_MASK | PD_CFG_BP_MASK));
-		val |= (((width & 0xFFF) << PD_CFG_WIDTH_SHIFT) |
-			((bypass & 0x1) << PD_CFG_BP_SHIFT) |
-			((lr & 0x1) << PD_CFG_LR_SHIFT));
+		unsigned int val =
+			(__raw_readl(reg + offset)
+			 & ~(PD_CFG_WIDTH_MASK | PD_CFG_MODE_MASK
+			     | PD_CFG_LR_MASK | PD_CFG_BP_MASK));
+
+		val |= (((width & 0xFFF) << PD_CFG_WIDTH_SHIFT)
+			| ((bypass & 0x1) << PD_CFG_BP_SHIFT)
+			| ((lr & 0x1) << PD_CFG_LR_SHIFT));
 		__raw_writel(val, reg + offset);
 	}
 	return;
 error_set_cfg:
-	pr_err("[ERR][P_DEMUX] %s in error, invalid parameter(idx: %d) \n", __func__, idx);
+	pr_err("[ERR][P_DEMUX] %s in error, invalid parameter(idx: %d)\n",
+	       __func__, idx);
 }
 
 /* VIOC_PXDEMUX_SetDataSwap
@@ -64,8 +68,8 @@ error_set_cfg:
  * ch : pixel demuxer output channel(0, 1, 2, 3)
  * set : pixel demuxer data swap mode
  */
-void VIOC_PXDEMUX_SetDataSwap(unsigned int idx, unsigned int ch,
-			      unsigned int set)
+void VIOC_PXDEMUX_SetDataSwap(
+	unsigned int idx, unsigned int ch, unsigned int set)
 {
 	volatile void __iomem *reg = VIOC_PXDEMUX_GetAddress();
 
@@ -78,38 +82,38 @@ void VIOC_PXDEMUX_SetDataSwap(unsigned int idx, unsigned int ch,
 		offset = idx ? PD1_CFG : PD0_CFG;
 		switch (ch) {
 		case 0:
-			val = (__raw_readl(reg + offset) &
-			       ~(PD_CFG_SWAP0_MASK));
+			val = (__raw_readl(reg + offset)
+			       & ~(PD_CFG_SWAP0_MASK));
 			val |= ((set & 0x3) << PD_CFG_SWAP0_SHIFT);
 			__raw_writel(val, reg + offset);
 			break;
 		case 1:
-			val = (__raw_readl(reg + offset) &
-			       ~(PD_CFG_SWAP1_MASK));
+			val = (__raw_readl(reg + offset)
+			       & ~(PD_CFG_SWAP1_MASK));
 			val |= ((set & 0x3) << PD_CFG_SWAP1_SHIFT);
 			__raw_writel(val, reg + offset);
 			break;
 		case 2:
-			val = (__raw_readl(reg + offset) &
-			       ~(PD_CFG_SWAP2_MASK));
+			val = (__raw_readl(reg + offset)
+			       & ~(PD_CFG_SWAP2_MASK));
 			val |= ((set & 0x3) << PD_CFG_SWAP2_SHIFT);
 			__raw_writel(val, reg + offset);
 			break;
 		case 3:
-			val = (__raw_readl(reg + offset) &
-			       ~(PD_CFG_SWAP3_MASK));
+			val = (__raw_readl(reg + offset)
+			       & ~(PD_CFG_SWAP3_MASK));
 			val |= ((set & 0x3) << PD_CFG_SWAP3_SHIFT);
 			__raw_writel(val, reg + offset);
 			break;
 		default:
-			pr_err("[ERR][P_DEMUX] %s: invalid parameter(%d, %d)\n", __func__, ch,
-			       set);
+			pr_err("[ERR][P_DEMUX] %s: invalid parameter(%d, %d)\n",
+			       __func__, ch, set);
 			break;
 		}
 	}
 	return;
 error_data_swap:
-	pr_err("[ERR][P_DEMUX] %s: invalid parameter(idx: %d, ch: %d, set: 0x%08x) \n",
+	pr_err("[ERR][P_DEMUX] %s: invalid parameter(idx: %d, ch: %d, set: 0x%08x)\n",
 	       __func__, idx, ch, set);
 }
 
@@ -118,8 +122,9 @@ error_data_swap:
  * mux: the type of mux (PD_MUX3TO1_TYPE, PD_MUX5TO1_TYPE)
  * select : the selecti
  */
-void VIOC_PXDEMUX_SetMuxOutput(PD_MUX_TYPE mux, unsigned int ch,
-			       unsigned int select, unsigned int enable)
+void VIOC_PXDEMUX_SetMuxOutput(
+	PD_MUX_TYPE mux, unsigned int ch, unsigned int select,
+	unsigned int enable)
 {
 	volatile void __iomem *reg = VIOC_PXDEMUX_GetAddress();
 	unsigned int val;
@@ -129,22 +134,22 @@ void VIOC_PXDEMUX_SetMuxOutput(PD_MUX_TYPE mux, unsigned int ch,
 		case PD_MUX3TO1_TYPE:
 			switch (ch) {
 			case 0:
-				val = (__raw_readl(reg + MUX3_1_SEL0) &
-				       ~(MUX3_1_SEL_SEL_MASK));
+				val = (__raw_readl(reg + MUX3_1_SEL0)
+				       & ~(MUX3_1_SEL_SEL_MASK));
 				val |= ((select & 0x3) << MUX3_1_SEL_SEL_SHIFT);
 				__raw_writel(val, reg + MUX3_1_SEL0);
-				val = (__raw_readl(reg + MUX3_1_EN0) &
-				       ~(MUX3_1_EN_EN_MASK));
+				val = (__raw_readl(reg + MUX3_1_EN0)
+				       & ~(MUX3_1_EN_EN_MASK));
 				val |= ((enable & 0x1) << MUX3_1_EN_EN_SHIFT);
 				__raw_writel(val, reg + MUX3_1_EN0);
 				break;
 			case 1:
-				val = (__raw_readl(reg + MUX3_1_SEL1) &
-				       ~(MUX3_1_SEL_SEL_MASK));
+				val = (__raw_readl(reg + MUX3_1_SEL1)
+				       & ~(MUX3_1_SEL_SEL_MASK));
 				val |= ((select & 0x3) << MUX3_1_SEL_SEL_SHIFT);
 				__raw_writel(val, reg + MUX3_1_SEL1);
-				val = (__raw_readl(reg + MUX3_1_EN1) &
-				       ~(MUX3_1_EN_EN_MASK));
+				val = (__raw_readl(reg + MUX3_1_EN1)
+				       & ~(MUX3_1_EN_EN_MASK));
 				val |= ((enable & 0x1) << MUX3_1_EN_EN_SHIFT);
 				__raw_writel(val, reg + MUX3_1_EN1);
 				break;
@@ -155,42 +160,42 @@ void VIOC_PXDEMUX_SetMuxOutput(PD_MUX_TYPE mux, unsigned int ch,
 		case PD_MUX5TO1_TYPE:
 			switch (ch) {
 			case 0:
-				val = (__raw_readl(reg + MUX5_1_SEL0) &
-				       ~(MUX5_1_SEL_SEL_MASK));
+				val = (__raw_readl(reg + MUX5_1_SEL0)
+				       & ~(MUX5_1_SEL_SEL_MASK));
 				val |= ((select & 0x7) << MUX5_1_SEL_SEL_SHIFT);
 				__raw_writel(val, reg + MUX5_1_SEL0);
-				val = (__raw_readl(reg + MUX5_1_EN0) &
-				       ~(MUX5_1_EN_EN_MASK));
+				val = (__raw_readl(reg + MUX5_1_EN0)
+				       & ~(MUX5_1_EN_EN_MASK));
 				val |= ((enable & 0x1) << MUX5_1_EN_EN_SHIFT);
 				__raw_writel(val, reg + MUX5_1_EN0);
 				break;
 			case 1:
-				val = (__raw_readl(reg + MUX5_1_SEL1) &
-				       ~(MUX5_1_SEL_SEL_MASK));
+				val = (__raw_readl(reg + MUX5_1_SEL1)
+				       & ~(MUX5_1_SEL_SEL_MASK));
 				val |= ((select & 0x7) << MUX5_1_SEL_SEL_SHIFT);
 				__raw_writel(val, reg + MUX5_1_SEL1);
-				val = (__raw_readl(reg + MUX5_1_EN1) &
-				       ~(MUX5_1_EN_EN_MASK));
+				val = (__raw_readl(reg + MUX5_1_EN1)
+				       & ~(MUX5_1_EN_EN_MASK));
 				val |= ((enable & 0x1) << MUX5_1_EN_EN_SHIFT);
 				__raw_writel(val, reg + MUX5_1_EN1);
 				break;
 			case 2:
-				val = (__raw_readl(reg + MUX5_1_SEL2) &
-				       ~(MUX5_1_SEL_SEL_MASK));
+				val = (__raw_readl(reg + MUX5_1_SEL2)
+				       & ~(MUX5_1_SEL_SEL_MASK));
 				val |= ((select & 0x7) << MUX5_1_SEL_SEL_SHIFT);
 				__raw_writel(val, reg + MUX5_1_SEL2);
-				val = (__raw_readl(reg + MUX5_1_EN2) &
-				       ~(MUX5_1_EN_EN_MASK));
+				val = (__raw_readl(reg + MUX5_1_EN2)
+				       & ~(MUX5_1_EN_EN_MASK));
 				val |= ((enable & 0x1) << MUX5_1_EN_EN_SHIFT);
 				__raw_writel(val, reg + MUX5_1_EN2);
 				break;
 			case 3:
-				val = (__raw_readl(reg + MUX5_1_SEL3) &
-				       ~(MUX5_1_SEL_SEL_MASK));
+				val = (__raw_readl(reg + MUX5_1_SEL3)
+				       & ~(MUX5_1_SEL_SEL_MASK));
 				val |= ((select & 0x7) << MUX5_1_SEL_SEL_SHIFT);
 				__raw_writel(val, reg + MUX5_1_SEL3);
-				val = (__raw_readl(reg + MUX5_1_EN3) &
-				       ~(MUX5_1_EN_EN_MASK));
+				val = (__raw_readl(reg + MUX5_1_EN3)
+				       & ~(MUX5_1_EN_EN_MASK));
 				val |= ((enable & 0x1) << MUX5_1_EN_EN_SHIFT);
 				__raw_writel(val, reg + MUX5_1_EN3);
 				break;
@@ -205,8 +210,8 @@ void VIOC_PXDEMUX_SetMuxOutput(PD_MUX_TYPE mux, unsigned int ch,
 	}
 	return;
 error_mux_output:
-	pr_err("[ERR][P_DEMUX] %s: invalid parameter(mux: %d, ch: %d) \n", __func__,
-	       mux, ch);
+	pr_err("[ERR][P_DEMUX] %s: invalid parameter(mux: %d, ch: %d)\n",
+	       __func__, mux, ch);
 }
 
 /* VIOC_PXDEMUX_SetDataPath
@@ -215,8 +220,8 @@ error_mux_output:
  * path : path number of pixel demuxer 5x1
  * set : data output format of pixel demuxer 5x1
  */
-void VIOC_PXDEMUX_SetDataPath(unsigned int ch, unsigned int path,
-			      unsigned int set)
+void VIOC_PXDEMUX_SetDataPath(
+	unsigned int ch, unsigned int path, unsigned int set)
 {
 	volatile void __iomem *reg = VIOC_PXDEMUX_GetAddress();
 	unsigned int offset;
@@ -246,8 +251,8 @@ void VIOC_PXDEMUX_SetDataPath(unsigned int ch, unsigned int path,
 	}
 	return;
 error_data_path:
-	pr_err("[ERR][P_DEMUX] %s: invalid parameter(ch: %d, path: %d) \n", __func__,
-	       ch, path);
+	pr_err("[ERR][P_DEMUX] %s: invalid parameter(ch: %d, path: %d)\n",
+	       __func__, ch, path);
 }
 
 /* VIOC_PXDEMUX_SetDataArray
@@ -255,7 +260,8 @@ error_data_path:
  * ch : channel number of pixel demuxer 5x1
  * data : the array included the data output format
  */
-void VIOC_PXDEMUX_SetDataArray(unsigned int ch, unsigned int data[TXOUT_MAX_LINE][TXOUT_DATA_PER_LINE])
+void VIOC_PXDEMUX_SetDataArray(
+	unsigned int ch, unsigned int data[TXOUT_MAX_LINE][TXOUT_DATA_PER_LINE])
 {
 	volatile void __iomem *reg = VIOC_PXDEMUX_GetAddress();
 	unsigned int *lvdsdata = (unsigned int *)data;
@@ -265,29 +271,31 @@ void VIOC_PXDEMUX_SetDataArray(unsigned int ch, unsigned int data[TXOUT_MAX_LINE
 	if ((ch < 0) || (ch >= PD_MUX5TO1_IDX_MAX))
 		goto error_data_array;
 
-	if(reg) {
-		for(idx = 0; idx < (TXOUT_MAX_LINE * TXOUT_DATA_PER_LINE);  idx +=4)
-		{
+	if (reg) {
+		for (idx = 0; idx < (TXOUT_MAX_LINE * TXOUT_DATA_PER_LINE);
+		     idx += 4) {
 			data0 = TXOUT_GET_DATA(idx);
 			data1 = TXOUT_GET_DATA(idx + 1);
 			data2 = TXOUT_GET_DATA(idx + 2);
 			data3 = TXOUT_GET_DATA(idx + 3);
 
 			path = idx / 4;
-			value = ((lvdsdata[data3] << 24) | (lvdsdata[data2] << 16)| (lvdsdata[data1] << 8)| (lvdsdata[data0]));
+			value =
+				((lvdsdata[data3] << 24)
+				 | (lvdsdata[data2] << 16)
+				 | (lvdsdata[data1] << 8) | (lvdsdata[data0]));
 			VIOC_PXDEMUX_SetDataPath(ch, path, value);
 		}
 	}
 	return;
 error_data_array:
-	pr_err("%s in error, invalid parameter(ch: %d) \n",
-			__func__, ch);
+	pr_err("%s in error, invalid parameter(ch: %d)\n", __func__, ch);
 }
 
 volatile void __iomem *VIOC_PXDEMUX_GetAddress(void)
 {
 	if (pPXDEMUX_reg == NULL)
-		pr_err("[ERR][P_DEMUX] %s pPD:%p \n", __func__, pPXDEMUX_reg);
+		pr_err("[ERR][P_DEMUX] %s pPD:%p\n", __func__, pPXDEMUX_reg);
 
 	return pPXDEMUX_reg;
 }
@@ -295,15 +303,19 @@ volatile void __iomem *VIOC_PXDEMUX_GetAddress(void)
 static int __init vioc_pxdemux_init(void)
 {
 	struct device_node *ViocPXDEMUX_np;
-	ViocPXDEMUX_np = of_find_compatible_node(NULL, NULL, "telechips,vioc_pxdemux");
+
+	ViocPXDEMUX_np =
+		of_find_compatible_node(NULL, NULL, "telechips,vioc_pxdemux");
 
 	if (ViocPXDEMUX_np == NULL) {
 		pr_info("[INF][P_DEMUX] vioc-pxdemux: disabled\n");
 	} else {
-		pPXDEMUX_reg = (volatile void __iomem *)of_iomap(ViocPXDEMUX_np, 0);
+		pPXDEMUX_reg =
+			(volatile void __iomem *)of_iomap(ViocPXDEMUX_np, 0);
 
 		if (pPXDEMUX_reg)
-			pr_info("[INF][P_DEMUX] vioc-pxdemux: 0x%p\n", pPXDEMUX_reg);
+			pr_info("[INF][P_DEMUX] vioc-pxdemux: 0x%p\n",
+				pPXDEMUX_reg);
 	}
 	return 0;
 }
