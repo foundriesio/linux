@@ -958,6 +958,7 @@ static int tccvin_set_wdma(struct tccvin_streaming *vdev)
 	unsigned long			addr0		= 0;
 	unsigned long			addr1		= 0;
 	unsigned long			addr2		= 0;
+	unsigned int			buf_index;
 
 	logd("WDMA: 0x%p, size[%d x %d], format[%d]\n",
 		wdma, width, height, format);
@@ -977,8 +978,9 @@ static int tccvin_set_wdma(struct tccvin_streaming *vdev)
 		if (buf != NULL) {
 			switch (buf->buf.vb2_buf.memory) {
 			case VB2_MEMORY_MMAP:
-				plane = &buf->buf.vb2_buf.planes[0];
-				addr0 = plane->m.offset;
+			case V4L2_MEMORY_DMABUF:
+				buf_index = buf->buf.vb2_buf.index;
+				addr0 = cif->preview_buf_addr[buf_index].addr0;
 				break;
 			case VB2_MEMORY_USERPTR:
 				plane = &buf->buf.vb2_buf.planes[0];
@@ -1031,6 +1033,7 @@ static void tccvin_work_thread(struct work_struct *data)
 	unsigned long			addr0		= 0;
 	unsigned long			addr1		= 0;
 	unsigned long			addr2		= 0;
+	unsigned int			buf_index;
 
 	if (stream == NULL) {
 		loge("stream is NULL\n");
@@ -1083,7 +1086,8 @@ static void tccvin_work_thread(struct work_struct *data)
 
 	dlog("VIN[%d] buf->length: 0x%08x\n", stream->vdev.num, buf->length);
 	if (buf->buf.vb2_buf.memory != VB2_MEMORY_MMAP &&
-	   buf->buf.vb2_buf.memory != VB2_MEMORY_USERPTR) {
+	   buf->buf.vb2_buf.memory != VB2_MEMORY_USERPTR &&
+	   buf->buf.vb2_buf.memory != V4L2_MEMORY_DMABUF) {
 		memcpy(buf->mem, cif->vir, buf->length);
 	}
 
@@ -1095,8 +1099,9 @@ update_wdma:
 	if (buf != NULL) {
 		switch (buf->buf.vb2_buf.memory) {
 		case VB2_MEMORY_MMAP:
-			plane = &buf->buf.vb2_buf.planes[0];
-			addr0 = plane->m.offset;
+		case V4L2_MEMORY_DMABUF:
+			buf_index = buf->buf.vb2_buf.index;
+			addr0 = cif->preview_buf_addr[buf_index].addr0;
 			break;
 		case VB2_MEMORY_USERPTR:
 			plane = &buf->buf.vb2_buf.planes[0];
@@ -1742,6 +1747,82 @@ int tccvin_video_streamoff(struct tccvin_streaming *stream,
 	if (ret < 0) {
 		loge("to stop v4l2 sub devices\n");
 		return -1;
+	}
+
+	return ret;
+}
+
+int tccvin_allocated_dmabuf(struct tccvin_streaming *stream, int count)
+{
+	struct vb2_queue *q = &stream->queue.queue;
+	struct tccvin_dmabuf_heap *heap;
+	struct tccvin_dmabuf_alloc_data data;
+	int idxBuf, ret = 0;
+
+	heap = tccvin_dmabuf_heap_create(stream);
+	for (idxBuf = 0; idxBuf < count; idxBuf++) {
+		data.len = q->bufs[idxBuf]->planes[0].length;
+		data.fd = tccvin_dmabuf_alloc(heap, data.len, 0);
+
+		if (data.fd < 0) {
+			loge("Fail allocated memory by dmabuf method\n");
+			ret = -EFAULT;
+		} else {
+			q->bufs[idxBuf]->planes[0].m.fd = data.fd;
+			logd("Successfully allocated memory by dmabuf method - index(%d), fd(%d)\n",
+				idxBuf, data.fd);
+		}
+	}
+
+	return ret;
+}
+
+int tccvin_set_buffer_address(struct tccvin_streaming *stream,
+	struct v4l2_buffer *buf)
+{
+	struct vb2_queue *q = &stream->queue.queue;
+	struct tccvin_dmabuf_phys_data phys;
+	int ret = 0;
+
+	switch (buf->memory) {
+	case V4L2_MEMORY_MMAP:
+		q->bufs[buf->index]->planes[0].m.offset =
+			stream->cif.pmap_preview.base + buf->m.offset;
+		stream->cif.preview_buf_addr[buf->index].addr0 =
+			stream->cif.pmap_preview.base + buf->m.offset;
+		buf->m.offset = stream->cif.pmap_preview.base + buf->m.offset;
+		break;
+	case V4L2_MEMORY_DMABUF:
+		phys.fd = q->bufs[buf->index]->planes[0].m.fd;
+		ret = tccvin_dmabuf_phys(stream->dev->pdev, phys.fd,
+					&phys.paddr, &phys.len);
+
+		if (ret < 0) {
+			loge("Fail conversion of physical address using fd\n");
+			return ret;
+		}
+
+		stream->cif.preview_buf_addr[buf->index].addr0 =
+			phys.paddr;
+		buf->reserved = phys.paddr;
+
+		logd("Successful conversion of physical(0x%lx) address using fd(%d)\n",
+			stream->cif.preview_buf_addr[buf->index].addr0,
+			q->bufs[buf->index]->planes[0].m.fd);
+		break;
+	case VB2_MEMORY_USERPTR:
+		/*
+		 * TODO: Need to implement to handle other memory
+		 * types. Because of the limit of memory address
+		 * between virtual addresses and physical address in
+		 * 64-bit environment, we need to use IOMMU to handle
+		 * this issue.
+		 */
+		logd("Need to be implemented\n");
+		ret = -ENOTTY;
+	default:
+		ret = -EINVAL;
+		break;
 	}
 
 	return ret;
