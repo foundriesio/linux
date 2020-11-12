@@ -120,7 +120,8 @@ extern void tcc_composite_attach(char lcdc_num, char mode, char starter_flag);
 extern int tcc_composite_connect_lcdc(int lcdc_num, int enable);
 #endif
 #if defined(CONFIG_FB_TCC_COMPONENT)
-extern void tcc_component_get_spec(COMPONENT_MODE_TYPE mode, COMPONENT_SPEC_TYPE *spec);
+extern void tcc_component_get_spec(enum COMPONENT_MODE_TYPE mode,
+	struct COMPONENT_SPEC_TYPE *spec);
 #endif
 #if defined(CONFIG_FB_TCC_COMPONENT_THS8200)
 extern void ths8200_enable(int mode, int starter_flag);
@@ -346,7 +347,7 @@ void tcc_output_starter_component(unsigned char lcdc_num, unsigned char type, st
 	int component_io_port_num, ret;
 	struct device_node *np_component;
 
-	COMPONENT_SPEC_TYPE component_spec;
+	struct COMPONENT_SPEC_TYPE component_spec;
 	struct LCDTIMING ComponentTiming;
 	struct LCDCTR LcdCtrlParam;
 

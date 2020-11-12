@@ -223,7 +223,7 @@ extern unsigned int hdmi_get_pixel_clock(void);
 #if defined(CONFIG_TCC_VSYNC_DRV_CONTROL_LUT)
 extern int vsync_process_lastframe_plugin_lut(void);
 #endif
-extern void set_hdmi_drm(HDMI_DRM_MODE mode, struct tcc_lcdc_image_update *pImage, unsigned int layer);
+extern void set_hdmi_drm(enum HDMI_DRM_MODE mode, struct tcc_lcdc_image_update *pImage, unsigned int layer);
 #endif
 #endif
 

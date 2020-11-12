@@ -36,4 +36,7 @@ extern void tca_map_convter_onoff(
 extern void tca_map_convter_swreset(unsigned int component_num);
 extern void tca_map_convter_wait_done(unsigned int component_num);
 
+/* extern function */
+extern unsigned int tca_get_main_decompressor_num(void);
+
 #endif //_TCA_MAP_CONVERTER_H_

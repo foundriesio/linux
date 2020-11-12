@@ -168,7 +168,7 @@ extern void tcc_scrshare_set_sharedBuffer(unsigned int addr, unsigned int frameW
 #endif
 
 #ifdef CONFIG_HDMI_DISPLAY_LASTFRAME
-extern void tcc_video_info_backup(VSYNC_CH_TYPE type, struct tcc_lcdc_image_update *input_image);
+extern void tcc_video_info_backup(enum VSYNC_CH_TYPE type, struct tcc_lcdc_image_update *input_image);
 extern int tcc_video_check_last_frame(struct tcc_lcdc_image_update *ImageInfo);
 #endif
 
@@ -294,7 +294,7 @@ extern void tca_fb_vsync_activate(struct tcc_dp_device *pdata);
 extern int tcc_fb_swap_vpu_frame(struct tcc_dp_device *pdp_data,
 						struct WMIXER_INFO_TYPE *WmixerInfo,
 						struct tcc_lcdc_image_update *TempImage,
-						VSYNC_CH_TYPE type);
+						enum VSYNC_CH_TYPE type);
 
 
 #if defined(CONFIG_SYNC_FB)
