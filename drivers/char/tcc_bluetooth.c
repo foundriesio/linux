@@ -122,9 +122,9 @@ static enum hrtimer_restart enter_lpm(struct hrtimer *timer)
 }
 #endif
 
+#if 0
 void bcm_bt_lpm_exit_lpm_locked(struct uart_port *uport)
 {
-#if 0
 	bt_lpm.uport = uport;
 
 	hrtimer_try_to_cancel(&bt_lpm.enter_lpm_timer);
@@ -133,9 +133,9 @@ void bcm_bt_lpm_exit_lpm_locked(struct uart_port *uport)
 
 	hrtimer_start(&bt_lpm.enter_lpm_timer, bt_lpm.enter_lpm_delay,
 		      HRTIMER_MODE_REL);
-#endif
 }
 EXPORT_SYMBOL(bcm_bt_lpm_exit_lpm_locked);
+#endif
 
 #if 0
 static void update_host_wake_locked(int host_wake)
