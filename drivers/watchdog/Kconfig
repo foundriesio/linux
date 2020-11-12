@@ -140,7 +140,15 @@ config TCC_WATCHDOG
 
 config TCC_CBUS_WATCHDOG
 	tristate "Telechips CBUS Watchdog"
-	depends on ARCH_TCC && (ARCH_TCC805X || TCC803X_CA7S)
+	depends on ARCH_TCC && ARCH_TCC805X
+	select WATCHDOG_CORE
+	help
+	  CBUS Watchdog timer block in the Telechips SoCs. This will reboot
+	  the system when the timer expires with the watchdog enabled.
+
+config TCC_CBUS_803X_WATCHDOG
+        tristate "Telechips 803x A7s CBUS Watchdog"
+	depends on (ARCH_TCC && TCC803X_CA7S)
 	select WATCHDOG_CORE
 	help
 	  CBUS Watchdog timer block in the Telechips SoCs. This will reboot

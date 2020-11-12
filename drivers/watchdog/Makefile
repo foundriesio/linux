@@ -90,6 +90,7 @@ obj-$(CONFIG_STM32_WATCHDOG) += stm32_iwdg.o
 obj-$(CONFIG_UNIPHIER_WATCHDOG) += uniphier_wdt.o
 obj-$(CONFIG_TCC_WATCHDOG) += tcc_wdt.o
 obj-$(CONFIG_TCC_CBUS_WATCHDOG) += tcc805x_cbus_wdt.o
+obj-$(CONFIG_TCC_CBUS_803X_WATCHDOG) += tcc_cb_wdt.o
 
 # AVR32 Architecture
 obj-$(CONFIG_AT32AP700X_WDT) += at32ap700x_wdt.o
