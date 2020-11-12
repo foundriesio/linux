@@ -3360,7 +3360,7 @@ nxp-tja11xx
 nxt200x
 nxt6000
 objagg
-ocelot_board
+ocelot_vsc7514
 ocfb
 ocfs2
 ocfs2_dlm
