@@ -395,7 +395,11 @@ static int tcc_peri_set_rate(struct clk_hw *hw, unsigned long rate,
 
 	if (ckc_ops != NULL) {
 		if ((ckc_ops->ckc_peri_set_rate) != NULL)
+#if defined(CONFIG_ARCH_TCC897X)
+			ckc_ops->ckc_peri_set_rate(tcc->id, rate);
+#else
 			ckc_ops->ckc_peri_set_rate(tcc->id, rate, flags);
+#endif
 	} else {
 		/* We care only about vendor-specific flags */
 		if ((flags & CLK_F_FIXED) != 0UL)
