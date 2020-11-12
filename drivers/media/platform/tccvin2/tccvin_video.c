@@ -659,7 +659,7 @@ static int tccvin_set_vin(struct tccvin_streaming *vdev)
 		!!(bt_timings->polarities & V4L2_DV_HSYNC_POS_POL);
 	unsigned int	pxclk_pol	= vs_info->pclk_polarity;
 	unsigned int	vs_mask		= vs_info->vs_mask;
-	unsigned int	hsde_connect_en	= vs_info->intpl_en;
+	unsigned int	hsde_connect_en	= vs_info->hsde_connect_en;
 	unsigned int	intpl_en	= vs_info->intpl_en;
 	unsigned int	conv_en		= vs_info->conv_en;
 	unsigned int	interlaced	=
