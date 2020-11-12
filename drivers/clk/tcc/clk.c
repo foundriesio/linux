@@ -121,7 +121,7 @@ static long tcc_clk_register(struct device_node *np, const struct clk_ops *ops)
 
 	num_clks =
 	    (unsigned long)of_property_count_strings(np, "clock-output-names");
-	pr_debug("%pOFfp: %s: # of clks = %d\n", np, __func__, num_clks);
+	pr_debug("%pOFfp: %s: # of clks = %ld\n", np, __func__, num_clks);
 
 	clk_data = kzalloc(sizeof(struct clk_onecell_data), GFP_KERNEL);
 	if (clk_data == NULL)
