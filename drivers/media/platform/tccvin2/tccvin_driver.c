@@ -41,23 +41,23 @@ struct framesize framesize_list[] = {
 	{	1920,	 720	},
 	{	1920,	1080	},
 };
-static struct v4l2_subdev * founded_subdev[255] = {0, };
-static int founded_subdev_num = 0;
+static struct v4l2_subdev *founded_subdev[255] = { 0, };
+static int founded_subdev_num;
 static DEFINE_MUTEX(founded_subdev_list_lock);
 
-static inline struct v4l2_subdev * tccvin_search_subdev(struct device_node *e)
+static inline struct v4l2_subdev *tccvin_search_subdev(struct device_node *e)
 {
 	int i = 0;
 
 	if (e == NULL) {
-		loge("input is null \n");
+		loge("input is null\n");
 		return NULL;
 	}
 
 	mutex_lock(&founded_subdev_list_lock);
 
 	for (i = 0; i < founded_subdev_num; i++) {
-		logi("check founded subdev %d \n", i);
+		logi("check founded subdev %d\n", i);
 		if (founded_subdev[i]->dev->of_node == e) {
 			mutex_unlock(&founded_subdev_list_lock);
 			return founded_subdev[i];
@@ -72,7 +72,7 @@ static inline struct v4l2_subdev * tccvin_search_subdev(struct device_node *e)
 static inline void tccvin_add_subdev_list(struct v4l2_subdev *e)
 {
 	mutex_lock(&founded_subdev_list_lock);
-	logi("%s added \n", dev_name(e->dev));
+	logi("%s added\n", dev_name(e->dev));
 	founded_subdev[founded_subdev_num++] = e;
 	mutex_unlock(&founded_subdev_list_lock);
 }
@@ -432,18 +432,19 @@ int tccvin_async_complete(struct v4l2_async_notifier *notifier)
 	return 0;
 }
 
-void tccvin_print_fw_node_info(struct tccvin_device *vdev, struct device_node * ep)
+void tccvin_print_fw_node_info(struct tccvin_device *vdev,
+	struct device_node *ep)
 {
-	struct device_node * parent_node = of_graph_get_port_parent(ep);
-	const char * io = NULL;
+	struct device_node *parent_node = of_graph_get_port_parent(ep);
+	const char *io = NULL;
 	unsigned int	flags;
 
 	of_property_read_string(ep, "io-direction", &io);
 
-	logi("end point is %s %s \n", parent_node->name, io);
+	logi("end point is %s %s\n", parent_node->name, io);
 
 	logi("bus-type: %d\n", vdev->fw_ep[vdev->num_ep].bus_type);
-	switch(vdev->fw_ep[vdev->num_ep].bus_type) {
+	switch (vdev->fw_ep[vdev->num_ep].bus_type) {
 	case V4L2_MBUS_PARALLEL:
 	case V4L2_MBUS_BT656:
 		flags = vdev->fw_ep[vdev->num_ep].bus.parallel.flags;
@@ -471,7 +472,8 @@ void tccvin_print_fw_node_info(struct tccvin_device *vdev, struct device_node * 
 				"V4L2_MBUS_DATA_ACTIVE_LOW");
 		// conv_en
 		logd("conv_en: %s\n",
-			(vdev->fw_ep[vdev->num_ep].bus_type == V4L2_MBUS_BT656) ?
+			(vdev->fw_ep[vdev->num_ep].bus_type ==
+				V4L2_MBUS_BT656) ?
 				"V4L2_MBUS_BT656" :
 				"V4L2_MBUS_PARALLEL");
 		// bus width
@@ -485,16 +487,16 @@ void tccvin_print_fw_node_info(struct tccvin_device *vdev, struct device_node * 
 	}
 }
 
-static void tccvin_fwnode_endpoint_parse(struct tccvin_device * vdev,
-				struct device_node * ep)
+static void tccvin_fwnode_endpoint_parse(struct tccvin_device *vdev,
+				struct device_node *ep)
 {
-	struct fwnode_handle * fwnode = of_fwnode_handle(ep);
+	struct fwnode_handle *fwnode = of_fwnode_handle(ep);
 	int channel = -1;
 
 	v4l2_fwnode_endpoint_parse(fwnode, &vdev->fw_ep[vdev->num_ep++]);
 
 	tccvin_print_fw_node_info(vdev, ep);
-	if(!fwnode_property_read_u32(fwnode, "channel", &channel))
+	if (!fwnode_property_read_u32(fwnode, "channel", &channel))
 		logi("channel: %d\n", channel);
 	fwnode_property_read_u32(fwnode, "stream-enable",
 		&vdev->stream->vs_info.stream_enable);
@@ -525,21 +527,20 @@ static inline void tccvin_add_async_subdev(struct tccvin_device *vdev,
 	vdev->async_subdevs[vdev->num_asd] = asd;
 	vdev->num_asd++;
 
-	logi("alloc async subdev for %s \n", node->name);
+	logi("alloc async subdev for %s\n", node->name);
 }
 
-static int tccvin_traversal_subdevices(struct tccvin_device *vdev, 
-				       struct device_node *node,
-				       int target_ch)
+static int tccvin_traversal_subdevices(struct tccvin_device *vdev,
+	struct device_node *node, int target_ch)
 {
-	struct device_node * local_ep = NULL;
-	struct device_node * remote_ep = NULL;
-	struct device_node * remote_dev = NULL;
-	struct v4l2_subdev * founded_sd = NULL;
+	struct device_node *local_ep = NULL;
+	struct device_node *remote_ep = NULL;
+	struct device_node *remote_dev = NULL;
+	struct v4l2_subdev *founded_sd = NULL;
 	bool skip_traversal = false;
 	int remote_output_ch = 0;
 	int local_input_ch = 0;
-	const char * io = NULL;
+	const char *io = NULL;
 
 	logi("========== current node is %s ==========\n", node->name);
 
@@ -551,7 +552,7 @@ static int tccvin_traversal_subdevices(struct tccvin_device *vdev,
 		tccvin_add_async_subdev(vdev, node);
 	} else {
 		vdev->linked_subdevs[vdev->bounded_subdevs++].sd = founded_sd;
-		logi("already subdev(%s) is founded \n", node->name);
+		logi("already subdev(%s) is founded\n", node->name);
 	}
 
 skip_alloc_async_subdev:
@@ -561,28 +562,27 @@ skip_alloc_async_subdev:
 			remote_dev = of_graph_get_remote_port_parent(local_ep);
 			remote_ep = of_graph_get_remote_endpoint(local_ep);
 
-			if (of_property_read_u32(remote_ep, \
-						"channel", \
-						&(remote_output_ch)) < 0) {
+			if (of_property_read_u32(remote_ep, "channel",
+				&(remote_output_ch)) < 0) {
 				remote_output_ch = -1;
 			}
 
-			if (of_property_read_u32(local_ep, \
-						"channel", \
-						&(local_input_ch)) < 0) {
+			if (of_property_read_u32(local_ep, "channel",
+				&(local_input_ch)) < 0) {
 				local_input_ch = -1;
 			}
 
 			if (target_ch != -1 && target_ch == local_input_ch) {
-				logi("found matched target ch(%d) \n", target_ch);
+				logi("found matched target ch(%d)\n",
+					target_ch);
 				target_ch = -1;
 				skip_traversal = true;
 			}
 
-			if (target_ch != -1 && local_input_ch != -1 && \
+			if (target_ch != -1 && local_input_ch != -1 &&
 				target_ch != local_input_ch) {
-				logi("skip this ep... ch is not matched \n");
-				logi("target_ch(%d), input_ch(%d) \n", \
+				logi("skip this ep... ch is not matched\n");
+				logi("target_ch(%d), input_ch(%d)\n",
 					target_ch, local_input_ch);
 				of_node_put(remote_dev);
 				of_node_put(remote_ep);
@@ -590,9 +590,8 @@ skip_alloc_async_subdev:
 			}
 
 			tccvin_fwnode_endpoint_parse(vdev, local_ep);
-			tccvin_traversal_subdevices(vdev, \
-					remote_dev, \
-					(target_ch) != -1 ? 
+			tccvin_traversal_subdevices(vdev, remote_dev,
+					(target_ch) != -1 ?
 					target_ch : remote_output_ch);
 
 			of_node_put(remote_dev);
@@ -617,7 +616,7 @@ int tccvin_init_subdevices(struct tccvin_device *vdev)
 
 	logi("the nubmer of async subdevices : %d\n", vdev->num_asd);
 	if (vdev->num_asd <= 0) {
-		logi("Nothing to register \n");
+		logi("Nothing to register\n");
 		goto end;
 	}
 

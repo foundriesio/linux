@@ -293,32 +293,32 @@ struct tccvin_subdev {
 };
 
 struct tccvin_device {
-	struct platform_device			*pdev;
-	char					name[32];
+	struct platform_device		*pdev;
+	char				name[32];
 
-	struct mutex				lock;
-	unsigned int				users;
+	struct mutex			lock;
+	unsigned int			users;
 
 	/* Video control interface */
-	struct v4l2_device			vdev;
+	struct v4l2_device		vdev;
 
-	int					bounded_subdevs;
-	int					current_subdev_idx;
+	int				bounded_subdevs;
+	int				current_subdev_idx;
 
-        struct v4l2_fwnode_endpoint	fw_ep[TCCVIN_MAX_VIDEOSOURCE];
+	struct v4l2_fwnode_endpoint	fw_ep[TCCVIN_MAX_VIDEOSOURCE];
 	int				num_ep;
 
 	struct v4l2_async_subdev	*async_subdevs[TCCVIN_MAX_VIDEOSOURCE];
 	struct tccvin_subdev		linked_subdevs[TCCVIN_MAX_VIDEOSOURCE];
 	//struct v4l2_subdev		*subdevs[TCCVIN_MAX_VIDEOSOURCE];
 	int				num_asd;
-	struct v4l2_async_notifier		notifier;
+	struct v4l2_async_notifier	notifier;
 
-	struct list_head			entities;
+	struct list_head		entities;
 
 	/* Video Streaming interfaces */
-	struct tccvin_streaming			*stream;
-	struct kref				ref;
+	struct tccvin_streaming		*stream;
+	struct kref			ref;
 };
 
 enum tccvin_handle_state {
