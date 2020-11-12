@@ -98,6 +98,20 @@
 			     <GIC_PPI 10 (GIC_CPU_MASK_SIMPLE(4) | IRQ_TYPE_LEVEL_LOW)>;
 	};
 
+	tcc_cb_wdt: tcc_cb_wdt@3 {
+		compatible = "telechips,tcc-cb-wdt";
+		reg = <0x17040000 0x10000>, /* watchdog kick timer */
+		    <0x17050000 0x10000>; /* real watchdog */
+		clocks= <&clk_peri PERI_CB_WDT>;
+		clock-frequency = <12000000>;
+		interrupts = <GIC_SPI 121 0>;
+
+		kick-interval = <5>;
+		expire-timeout = <20>;
+
+		status = "okay";
+	};
+
 	reserved-memory {
 		#address-cells = <1>;
 		#size-cells = <1>;
