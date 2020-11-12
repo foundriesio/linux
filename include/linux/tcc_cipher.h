@@ -21,12 +21,13 @@
 #ifndef _TCC_CIPHER_H_
 #define _TCC_CIPHER_H_
 
-#define TCCCIPHER_DEVICE_NAME			"tcc_cipher"
+#define TCCCIPHER_DEVICE_NAME "tcc_cipher"
 
 /**
  * @ingroup cipher_drv
- * The Key Length in AES */
-typedef enum {
+ * The Key Length in AES
+ */
+enum {
 	TCC_CIPHER_KEYLEN_128 = 0,
 	TCC_CIPHER_KEYLEN_192,
 	TCC_CIPHER_KEYLEN_256,
@@ -36,8 +37,9 @@ typedef enum {
 
 /**
  * @ingroup cipher_drv
- * The Mode in DES */
-typedef enum {
+ * The Mode in DES
+ */
+enum {
 	TCC_CIPHER_DESMODE_SINGLE = 0,
 	TCC_CIPHER_DESMODE_DOUBLE,
 	TCC_CIPHER_DESMODE_TRIPLE2,
@@ -47,8 +49,9 @@ typedef enum {
 
 /**
  * @ingroup cipher_drv
- * The Operation Mode */
-typedef enum {
+ * The Operation Mode
+ */
+enum {
 	TCC_CIPHER_OPMODE_ECB = 0,
 	TCC_CIPHER_OPMODE_CBC,
 	TCC_CIPHER_OPMODE_CFB,
@@ -62,9 +65,10 @@ typedef enum {
 
 /**
  * @ingroup cipher_drv
- * The Cipher Algorithm */
-typedef enum {
-	TCC_CIPHER_ALGORITHM_BYPASS = 0,	//Use Like DMA
+ * The Cipher Algorithm
+ */
+enum {
+	TCC_CIPHER_ALGORITHM_BYPASS = 0, // Use Like DMA
 	TCC_CIPHER_ALGORITHM_AES = 1,
 	TCC_CIPHER_ALGORITHM_DES,
 	TCC_CIPHER_ALGORITHM_MULTI2,
@@ -76,8 +80,9 @@ typedef enum {
 
 /**
  * @ingroup cipher_drv
- * The Key Option for Multi2 */
-typedef enum {
+ * The Key Option for Multi2
+ */
+enum {
 	TCC_CIPHER_KEY_MULTI2_DATA = 0,
 	TCC_CIPHER_KEY_MULTI2_SYSTEM,
 	TCC_CIPHER_KEY_MULTI2_MAX
@@ -85,10 +90,11 @@ typedef enum {
 
 /**
  * @ingroup cipher_drv
- * HASH Mode */
-typedef enum {
+ * HASH Mode
+ */
+enum {
 	TCC_CIPHER_HASH_MD5 = 0,
-	TCC_CIPHER_HASH_SHA1 ,
+	TCC_CIPHER_HASH_SHA1,
 	TCC_CIPHER_HASH_SHA224,
 	TCC_CIPHER_HASH_SHA256,
 	TCC_CIPHER_HASH_SHA384,
@@ -99,17 +105,19 @@ typedef enum {
 
 /**
  * @ingroup cipher_drv
- * Crypto Mode */
-typedef enum {                 
-    TCC_CIPHER_DECRYPT = 0,    
-    TCC_CIPHER_ENCRYPT,        
-    TCC_CIPHER_MODE_MAX        
-} eCipherMODE;                 
+ * Crypto Mode
+ */
+enum {
+	TCC_CIPHER_DECRYPT = 0,
+	TCC_CIPHER_ENCRYPT,
+	TCC_CIPHER_MODE_MAX
+} eCipherMODE;
 
 /**
  * @ingroup cipher_drv
- * CIPHER IOCTL Command */
-typedef enum {
+ * CIPHER IOCTL Command
+ */
+enum {
 	TCC_CIPHER_IOCTL_ALGORITHM = 0x100,
 	TCC_CIPHER_IOCTL_KEY,
 	TCC_CIPHER_IOCTL_IV,
@@ -122,59 +130,52 @@ typedef enum {
  * @ingroup cipher_drv
  * Structure contains the configuration for algorithm
  */
-typedef struct {
-	unsigned int	opMode;		/**< Operation Mode, refer to eCipherOPMODE*/
-	unsigned int	algorithm;	/**< Algorithm, refer to eCipherALGORITHM*/
-	unsigned int	arg1;		/**< Argument for algorithm\n
-                                     in AES, refer to #eCipherKEYLEN\n
-                                     in DES, refer to #eCipherDESMODE\n
-                                     in MULTI2, round\n
-                                     in CSA2, round\n
-                                     in CSA3, round\n
-                                     in HASH, refer to #eCipherHASH*/
-	unsigned int	arg2;		/**< Argument for #algorithm\n
-                                     in HASH, round*/
-} tCIPHER_ALGORITHM;
+struct tCIPHER_ALGORITHM {
+	unsigned int opMode;    /**< Operation Mode, refer to eCipherOPMODE*/
+	unsigned int algorithm; /**< Algorithm, refer to eCipherALGORITHM*/
+	unsigned int arg1;      /**< Argument for algorithm*/
+	unsigned int arg2;      /**< Argument for HASH round*/
+};
 
 /**
  * @ingroup cipher_drv
  * Structure contains the configuration for key
  */
-typedef struct {
-	unsigned char	key[40];	/**< Key*/
-	unsigned int	len;		/**< Key length*/
-	unsigned int	option;		/**< option for MULTI2, refer to #eCipherMULTI2*/
-} tCIPHER_KEY;
+struct tCIPHER_KEY {
+	unsigned char key[40]; /**< Key*/
+	unsigned int len;      /**< Key length*/
+	unsigned int option;   /**< option for MULTI2, refer to #eCipherMULTI2*/
+};
 
 /**
  * @ingroup cipher_drv
  * Structure contains the configuration for initial vector
  */
-typedef struct {
-	unsigned char	iv[16];		/**< Initial vector*/
-	unsigned int	len;		/**< Initial vector length*/
-} tCIPHER_IV;
+struct tCIPHER_IV {
+	unsigned char iv[16]; /**< Initial vector*/
+	unsigned int len;     /**< Initial vector length*/
+};
 
 /**
  * @ingroup cipher_drv
  * Structure contains the configuration to establish the cipher
  */
-typedef struct {
-	unsigned int	keyLoad;	/**< Load the key or not*/
-	unsigned int	ivLoad;		/**< Load the initial vector or not*/
-	unsigned int	enc;		/**< Decide encrypt or decrypt*/
-} tCIPHER_SET;
+struct tCIPHER_SET {
+	unsigned int keyLoad; /**< Load the key or not*/
+	unsigned int ivLoad;  /**< Load the initial vector or not*/
+	unsigned int enc;     /**< Decide encrypt or decrypt*/
+};
 
 /**
  * @ingroup cipher_drv
  * Structure contains the configuration for execute the cipher
  */
-typedef struct {
-	unsigned char*	srcAddr;	/**< Source address*/
-	unsigned char*	dstAddr;	/**< Destination address*/
-	unsigned int	len;		/**< Source length*/
-	unsigned int 	isPhy;		/**< It is flag for verify source/destination address is physical*/
-} tCIPHER_RUN;
+struct tCIPHER_RUN {
+	unsigned char *srcAddr; /**< Source address*/
+	unsigned char *dstAddr; /**< Destination address*/
+	unsigned int len;       /**< Source length*/
+	unsigned int isPhy;     /**< address is physical*/
+};
 
 #ifdef __KERNEL__
 
@@ -188,7 +189,7 @@ typedef struct {
  * @return 0 Success
  * @return else Fail
  */
-int tcc_cipher_open( struct inode *inode, struct file *filp );
+int tcc_cipher_open(struct inode *inode, struct file *filp);
 
 /**
  * @ingroup cipher_drv
@@ -200,7 +201,7 @@ int tcc_cipher_open( struct inode *inode, struct file *filp );
  * @return 0 Success
  * @return else Fail
  */
-int tcc_cipher_release( struct inode *inode, struct file *file );
+int tcc_cipher_release(struct inode *inode, struct file *file);
 
 /**
  * @ingroup cipher_drv
@@ -209,7 +210,7 @@ int tcc_cipher_release( struct inode *inode, struct file *file );
  * @parma[in] iv Initial vector pointer
  * @parma[in] len Initial vector length
  */
-void tcc_cipher_iv( unsigned char *iv, unsigned int len );
+void tcc_cipher_iv(unsigned char *iv, unsigned int len);
 
 /**
  * @ingroup cipher_drv
@@ -220,7 +221,7 @@ void tcc_cipher_iv( unsigned char *iv, unsigned int len );
  * @parma[in] option Key option\n
  *                   It is used in MULTI2 algorithm for verify DATA key or not.
  */
-void tcc_cipher_key( unsigned char *key, unsigned int len, unsigned int option );
+void tcc_cipher_key(unsigned char *key, unsigned int len, unsigned int option);
 
 /**
  * @ingroup cipher_drv
@@ -238,7 +239,9 @@ void tcc_cipher_key( unsigned char *key, unsigned int len, unsigned int option )
  * @parma[in] arg2 Argument for algorithm\n
  *                 in HASH, round
  */
-void tcc_cipher_algorithm( unsigned int opmode, unsigned int algorithm, unsigned int arg1, unsigned int arg2 );
+void tcc_cipher_algorithm(
+	unsigned int opmode, unsigned int algorithm, unsigned int arg1,
+	unsigned int arg2);
 
 /**
  * @ingroup cipher_drv
@@ -252,7 +255,8 @@ void tcc_cipher_algorithm( unsigned int opmode, unsigned int algorithm, unsigned
  *                   else : load the initial vector
  * @parma[in] enc Decide encrypt or decrypt
  */
-void tcc_cipher_set( unsigned int keyLoad, unsigned int ivLoad, unsigned int enc );
+void tcc_cipher_set(
+	unsigned int keyLoad, unsigned int ivLoad, unsigned int enc);
 
 /**
  * @ingroup cipher_drv
@@ -266,7 +270,9 @@ void tcc_cipher_set( unsigned int keyLoad, unsigned int ivLoad, unsigned int enc
  * @return 0 Success
  * @return else Fail
  */
-int tcc_cipher_run( unsigned char *srcAddr, unsigned char *dstAddr, unsigned int len, unsigned int isPhy);
+int tcc_cipher_run(
+	unsigned char *srcAddr, unsigned char *dstAddr, unsigned int len,
+	unsigned int isPhy);
 #endif
 
 #endif
