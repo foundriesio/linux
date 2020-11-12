@@ -44,7 +44,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  # define sched_annotate_sleep() do { } while (0)
 --- a/include/linux/preempt.h
 +++ b/include/linux/preempt.h
-@@ -118,7 +118,11 @@
+@@ -121,7 +121,11 @@
  /*
   * The preempt_count offset after spin_lock()
   */
