@@ -2,64 +2,69 @@
  *
  * Copyright (C) 2018 Telechips Inc.
  *
- * This program is free software; you can redistribute it and/or modify it under the terms
- * of the GNU General Public License as published by the Free Software Foundation;
- * either version 2 of the License, or (at your option) any later version.
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by the
+ * Free Software Foundation; either version 2 of the License, or (at your
+ * option) any later version.
  *
- * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
- * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
- * PURPOSE. See the GNU General Public License for more details.
+ * This program is distributed in the hope that it will be useful, but
+ * WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+ * or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for
+ * more details.
  *
- * You should have received a copy of the GNU General Public License along with
- * this program; if not, write to the Free Software Foundation, Inc., 59 Temple Place,
- * Suite 330, Boston, MA 02111-1307 USA
+ * You should have received a copy of the GNU General Public License along
+ * with this program; if not, write to the Free Software Foundation, Inc.,
+ * 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
  ****************************************************************************/
 
 #ifndef TCC_ADMA_H
 #define TCC_ADMA_H
 
-#include <asm/io.h>
+#include <linux/io.h>
 #include "tcc_audio_hw.h"
 
-typedef enum {
+enum TCC_ADMA_DATA_WIDTH {
 	TCC_ADMA_DATA_WIDTH_16 = 0,
 	TCC_ADMA_DATA_WIDTH_24 = 1,
-} TCC_ADMA_DATA_WIDTH;
+};
 
-typedef enum { //2^n * 8
+enum TCC_ADMA_WORD_SIZE { //2^n * 8
 	TCC_ADMA_WORD_SIZE_8 = 0,
 	TCC_ADMA_WORD_SIZE_16 = 1,
 	TCC_ADMA_WORD_SIZE_32 = 2,
-} TCC_ADMA_WORD_SIZE;
+};
 
-typedef enum { // 2^n
+enum TCC_ADMA_BURST_SIZE { // 2^n
 	TCC_ADMA_BURST_CYCLE_1 = 0,
 	TCC_ADMA_BURST_CYCLE_2 = 1,
 	TCC_ADMA_BURST_CYCLE_4 = 2,
 	TCC_ADMA_BURST_CYCLE_8 = 3,
-} TCC_ADMA_BURST_SIZE;
+};
 
-typedef enum { 
+enum TCC_ADMA_MULTI_CH_MODE {
 	TCC_ADMA_MULTI_CH_MODE_3_1 = 0,
 	TCC_ADMA_MULTI_CH_MODE_5_1_012 = 1,
 	TCC_ADMA_MULTI_CH_MODE_5_1_013 = 2,
 	TCC_ADMA_MULTI_CH_MODE_7_1	= 3,
-} TCC_ADMA_MULTI_CH_MODE;
+};
 
-typedef enum { 
-	TCC_ADMA_REPEAT_FROM_CUR_ADDR= 0,
-	TCC_ADMA_REPEAT_FROM_START_ADDR= 1,
-} TCC_ADMA_REPEAT_MODE;
+enum TCC_ADMA_REPEAT_MODE {
+	TCC_ADMA_REPEAT_FROM_CUR_ADDR = 0,
+	TCC_ADMA_REPEAT_FROM_START_ADDR = 1,
+};
 
-typedef enum { 
+enum TCC_ADMA_SPDIF_CDIF_RX_SEL {
 	TCC_ADMA_SPDIF_CDIF_SEL_CDIF = 0,
 	TCC_ADMA_SPDIF_CDIF_SEL_SPDIF = 1,
-} TCC_ADMA_SPDIF_CDIF_RX_SEL;
+};
 
 #if 0 //DEBUG
-#define adma_writel(v,c)		({printk("<ASoC> ADMA_REG(%p) = 0x%08x\n", c, (unsigned int)v); writel(v,c); })
+#define adma_writel(v, c) \
+	({pr_info("<ASoC> ADMA_REG(%p) = 0x%08x\n",\
+	c, (unsigned int)v); writel(v, c); })
 #else
-#define adma_writel(v,c)		writel(v,c)
+#define adma_writel(v, c) \
+	writel(v, c)
 #endif
 
 static inline void tcc_adma_dump(void __iomem *base_addr)
@@ -67,645 +72,783 @@ static inline void tcc_adma_dump(void __iomem *base_addr)
 	ptrdiff_t offset;
 	uint32_t value;
 
-	for (offset=0; offset <= TCC_ADMA_RESET_OFFSET; offset+=4) {
+	for (offset = 0; offset <= TCC_ADMA_RESET_OFFSET; offset += 4) {
 		value = readl(base_addr+offset);
-		(void) printk("ADMA_REG(0x%03x) : 0x%08x\n", (uint32_t)offset, value);
+		pr_info("ADMA_REG(0x%03x) : 0x%08x\n",
+			(uint32_t)offset,
+			value);
 	}
 }
 
-static inline void tcc_adma_tx_reset_enable(void __iomem *base_addr, bool enable)
+static inline void tcc_adma_tx_reset_enable(
+	void __iomem *base_addr,
+	bool enable)
 {
 	uint32_t value = readl(base_addr + TCC_ADMA_RESET_OFFSET);
 
 	value &= ~ADMA_RESET_DMA_TX_Msk;
-	if (enable) {
+	if (enable)
 		value |= ADMA_RESET_DMA_TX_RESET;
-	} else {
+	else
 		value |= ADMA_RESET_DMA_TX_RELEASE;
-	}
 
 	adma_writel(value, base_addr + TCC_ADMA_RESET_OFFSET);
 }
 
-static inline void tcc_adma_rx_reset_enable(void __iomem *base_addr, bool enable)
+static inline void tcc_adma_rx_reset_enable(
+	void __iomem *base_addr,
+	bool enable)
 {
 	uint32_t value = readl(base_addr + TCC_ADMA_RESET_OFFSET);
 
 	value &= ~ADMA_RESET_DMA_RX_Msk;
-	if (enable) {
+	if (enable)
 		value |= ADMA_RESET_DMA_RX_RESET;
-	} else {
+	else
 		value |= ADMA_RESET_DMA_RX_RELEASE;
-	}
 
 	adma_writel(value, base_addr + TCC_ADMA_RESET_OFFSET);
 }
 
-#if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC901X)
-static inline void tcc_adma_dai_tx_reset_enable(void __iomem *base_addr, bool enable)
+#if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X) || \
+	defined(CONFIG_ARCH_TCC806X) || defined(CONFIG_ARCH_TCC899X) || \
+	defined(CONFIG_ARCH_TCC901X)
+static inline void tcc_adma_dai_tx_reset_enable(
+	void __iomem *base_addr,
+	bool enable)
 {
 	uint32_t value = readl(base_addr + TCC_ADMA_RESET_OFFSET);
 
 	value &= ~ADMA_RESET_DMA_DAI_TX_Msk;
-	if (enable) {
+	if (enable)
 		value |= ADMA_RESET_DMA_DAI_TX_RESET;
-	} else {
+	else
 		value |= ADMA_RESET_DMA_DAI_TX_RELEASE;
-	}
 
 	adma_writel(value, base_addr + TCC_ADMA_RESET_OFFSET);
 }
-static inline void tcc_adma_dai_rx_reset_enable(void __iomem *base_addr, bool enable)
+static inline void tcc_adma_dai_rx_reset_enable(
+	void __iomem *base_addr,
+	bool enable)
 {
 	uint32_t value = readl(base_addr + TCC_ADMA_RESET_OFFSET);
 
 	value &= ~ADMA_RESET_DMA_DAI_RX_Msk;
-	if (enable) {
+	if (enable)
 		value |= ADMA_RESET_DMA_DAI_RX_RESET;
-	} else {
+	else
 		value |= ADMA_RESET_DMA_DAI_RX_RELEASE;
-	}
 
 	adma_writel(value, base_addr + TCC_ADMA_RESET_OFFSET);
 }
 
-static inline void tcc_adma_spdif_tx_reset_enable(void __iomem *base_addr, bool enable)
+static inline void tcc_adma_spdif_tx_reset_enable(
+	void __iomem *base_addr,
+	bool enable)
 {
 	uint32_t value = readl(base_addr + TCC_ADMA_RESET_OFFSET);
 
 	value &= ~ADMA_RESET_DMA_SPDIF_TX_Msk;
-	if (enable) {
+	if (enable)
 		value |= ADMA_RESET_DMA_SPDIF_TX_RESET;
-	} else {
+	else
 		value |= ADMA_RESET_DMA_SPDIF_TX_RELEASE;
-	}
 
 	adma_writel(value, base_addr + TCC_ADMA_RESET_OFFSET);
 }
-static inline void tcc_adma_spdif_rx_reset_enable(void __iomem *base_addr, bool enable)
+static inline void tcc_adma_spdif_rx_reset_enable(
+	void __iomem *base_addr,
+	bool enable)
 {
 	uint32_t value = readl(base_addr + TCC_ADMA_RESET_OFFSET);
 
 	value &= ~ADMA_RESET_DMA_SPDIF_RX_Msk;
-	if (enable) {
+	if (enable)
 		value |= ADMA_RESET_DMA_SPDIF_RX_RESET;
-	} else {
+	else
 		value |= ADMA_RESET_DMA_SPDIF_RX_RELEASE;
-	}
 
 	adma_writel(value, base_addr + TCC_ADMA_RESET_OFFSET);
 }
 #endif
 
-static inline void tcc_adma_dai_tx_irq_enable(void __iomem *base_addr, bool enable)
+static inline void tcc_adma_dai_tx_irq_enable(
+	void __iomem *base_addr,
+	bool enable)
 {
 	uint32_t value = readl(base_addr + TCC_ADMA_CHCTRL_OFFSET);
 
 	value &= ~ADMA_CHCTRL_DAI_TX_IRQ_MODE_Msk;
-	if (enable) {
+	if (enable)
 		value |= ADMA_CHCTRL_DAI_TX_IRQ_ENABLE;
-	} else {
+	else
 		value |= ADMA_CHCTRL_DAI_TX_IRQ_DISABLE;
-	}
 
 	adma_writel(value, base_addr + TCC_ADMA_CHCTRL_OFFSET);
 }
 
-static inline void tcc_adma_dai_tx_dma_enable(void __iomem *base_addr, bool enable)
+static inline void tcc_adma_dai_tx_dma_enable(
+	void __iomem *base_addr, bool enable)
 {
 	uint32_t value = readl(base_addr + TCC_ADMA_CHCTRL_OFFSET);
 
 	value &= ~ADMA_CHCTRL_DAI_TX_DMA_MODE_Msk;
-	if (enable) {
+	if (enable)
 		value |= ADMA_CHCTRL_DAI_TX_DMA_ENABLE;
-	} else {
+	else
 		value |= ADMA_CHCTRL_DAI_TX_DMA_DISABLE;
-	}
 
 	adma_writel(value, base_addr + TCC_ADMA_CHCTRL_OFFSET);
 }
 
-static inline bool tcc_adma_dai_tx_dma_enable_check(void __iomem *base_addr)
+static inline bool tcc_adma_dai_tx_dma_enable_check(
+	void __iomem *base_addr)
 {
 	uint32_t int_status = readl(base_addr + TCC_ADMA_CHCTRL_OFFSET);
 
-	if ((int_status & (ADMA_CHCTRL_DAI_TX_DMA_MODE_Msk)) > (uint32_t) 0) {
+	if ((int_status & (ADMA_CHCTRL_DAI_TX_DMA_MODE_Msk)) > (uint32_t) 0)
 		return TRUE;
-	}
 
 	return FALSE;
 }
 
-static inline bool tcc_adma_dai_tx_irq_check(void __iomem *base_addr)
+static inline bool tcc_adma_dai_tx_irq_check(
+	void __iomem *base_addr)
 {
 	uint32_t int_status = readl(base_addr + TCC_ADMA_INTSTATUS_OFFSET);
 
-	if ((int_status & (ADMA_ISTAT_DAI_TX_MASKED_Msk|ADMA_ISTAT_DAI_TX_Msk)) > (uint32_t) 0) {
+	if ((int_status & (ADMA_ISTAT_DAI_TX_MASKED_Msk |
+		ADMA_ISTAT_DAI_TX_Msk)) > 0u)
 		return TRUE;
-	}
 
 	return FALSE;
 }
 
-static inline void tcc_adma_dai_tx_irq_clear(void __iomem *base_addr)
+static inline void tcc_adma_dai_tx_irq_clear(
+	void __iomem *base_addr)
 {
-	adma_writel(ADMA_ISTAT_DAI_TX_MASKED_Msk|ADMA_ISTAT_DAI_TX_Msk, base_addr + TCC_ADMA_INTSTATUS_OFFSET);
+	adma_writel(
+		ADMA_ISTAT_DAI_TX_MASKED_Msk|ADMA_ISTAT_DAI_TX_Msk,
+		base_addr + TCC_ADMA_INTSTATUS_OFFSET);
 }
 
-static inline void tcc_adma_dai_rx_irq_enable(void __iomem *base_addr, bool enable)
+static inline void tcc_adma_dai_rx_irq_enable(
+	void __iomem *base_addr,
+	bool enable)
 {
 	uint32_t value = readl(base_addr + TCC_ADMA_CHCTRL_OFFSET);
 
 	value &= ~ADMA_CHCTRL_DAI_RX_IRQ_MODE_Msk;
-	if (enable) {
+	if (enable)
 		value |= ADMA_CHCTRL_DAI_RX_IRQ_ENABLE;
-	} else {
+	else
 		value |= ADMA_CHCTRL_DAI_RX_IRQ_DISABLE;
-	}
 
 	adma_writel(value, base_addr + TCC_ADMA_CHCTRL_OFFSET);
 }
 
-static inline void tcc_adma_dai_rx_dma_enable(void __iomem *base_addr, bool enable)
+static inline void tcc_adma_dai_rx_dma_enable(
+	void __iomem *base_addr,
+	bool enable)
 {
 	uint32_t value = readl(base_addr + TCC_ADMA_CHCTRL_OFFSET);
 
 	value &= ~ADMA_CHCTRL_DAI_RX_DMA_MODE_Msk;
-	if (enable) {
+	if (enable)
 		value |= ADMA_CHCTRL_DAI_RX_DMA_ENABLE;
-	} else {
+	else
 		value |= ADMA_CHCTRL_DAI_RX_DMA_DISABLE;
-	}
 
 	adma_writel(value, base_addr + TCC_ADMA_CHCTRL_OFFSET);
 }
 
-static inline bool tcc_adma_dai_rx_dma_enable_check(void __iomem *base_addr)
+static inline bool tcc_adma_dai_rx_dma_enable_check(
+	void __iomem *base_addr)
 {
 	uint32_t int_status = readl(base_addr + TCC_ADMA_CHCTRL_OFFSET);
 
-	if ((int_status & (ADMA_CHCTRL_DAI_RX_DMA_MODE_Msk)) > (uint32_t) 0) {
+	if ((int_status & (ADMA_CHCTRL_DAI_RX_DMA_MODE_Msk)) > (uint32_t) 0)
 		return TRUE;
-	}
 
 	return FALSE;
 }
 
-static inline bool tcc_adma_dai_rx_irq_check(void __iomem *base_addr)
+static inline bool tcc_adma_dai_rx_irq_check(
+	void __iomem *base_addr)
 {
 	uint32_t int_status = readl(base_addr + TCC_ADMA_INTSTATUS_OFFSET);
 
-	if ((int_status & (ADMA_ISTAT_DAI_RX_MASKED_Msk|ADMA_ISTAT_DAI_RX_Msk)) > (uint32_t) 0) {
+	if ((int_status & (ADMA_ISTAT_DAI_RX_MASKED_Msk |
+			ADMA_ISTAT_DAI_RX_Msk)) > (uint32_t) 0)
 		return TRUE;
-	}
 
 	return FALSE;
 }
 
-static inline void tcc_adma_dai_rx_irq_clear(void __iomem *base_addr)
+static inline void tcc_adma_dai_rx_irq_clear(
+	void __iomem *base_addr)
 {
-	adma_writel(ADMA_ISTAT_DAI_RX_MASKED_Msk|ADMA_ISTAT_DAI_RX_Msk, base_addr + TCC_ADMA_INTSTATUS_OFFSET);
+	adma_writel(
+		ADMA_ISTAT_DAI_RX_MASKED_Msk|ADMA_ISTAT_DAI_RX_Msk,
+		base_addr + TCC_ADMA_INTSTATUS_OFFSET);
 }
 
-static inline void tcc_adma_spdif_tx_irq_enable(void __iomem *base_addr, bool enable)
+static inline void tcc_adma_spdif_tx_irq_enable(
+	void __iomem *base_addr,
+	bool enable)
 {
 	uint32_t value = readl(base_addr + TCC_ADMA_CHCTRL_OFFSET);
 
 	value &= ~ADMA_CHCTRL_SPDIF_TX_IRQ_MODE_Msk;
-	if (enable) {
+	if (enable)
 		value |= ADMA_CHCTRL_SPDIF_TX_IRQ_ENABLE;
-	} else {
+	else
 		value |= ADMA_CHCTRL_SPDIF_TX_IRQ_DISABLE;
-	}
 
 	adma_writel(value, base_addr + TCC_ADMA_CHCTRL_OFFSET);
 }
 
-static inline void tcc_adma_spdif_tx_dma_enable(void __iomem *base_addr, bool enable)
+static inline void tcc_adma_spdif_tx_dma_enable(
+	void __iomem *base_addr,
+	bool enable)
 {
 	uint32_t value = readl(base_addr + TCC_ADMA_CHCTRL_OFFSET);
 
-	value &= ~ADMA_CHCTRL_SPDIF_TX_DMA_MODE_Msk;
-	if (enable) {
+	value &= ~(ADMA_CHCTRL_SPDIF_TX_DMA_MODE_Msk);
+	if (enable)
 		value |= ADMA_CHCTRL_SPDIF_TX_DMA_ENABLE;
-	} else {
+	else
 		value |= ADMA_CHCTRL_SPDIF_TX_DMA_DISABLE;
-	}
 
 	adma_writel(value, base_addr + TCC_ADMA_CHCTRL_OFFSET);
 }
 
-static inline bool tcc_adma_spdif_tx_dma_enable_check(void __iomem *base_addr)
+static inline bool tcc_adma_spdif_tx_dma_enable_check(
+	void __iomem *base_addr)
 {
 	uint32_t int_status = readl(base_addr + TCC_ADMA_CHCTRL_OFFSET);
 
-	if ((int_status & (ADMA_CHCTRL_SPDIF_TX_DMA_MODE_Msk)) > (uint32_t) 0) {
+	if ((int_status & (ADMA_CHCTRL_SPDIF_TX_DMA_MODE_Msk)) > 0u)
 		return TRUE;
-	}
 
 	return FALSE;
 }
 
-static inline bool tcc_adma_spdif_tx_irq_check(void __iomem *base_addr)
+static inline bool tcc_adma_spdif_tx_irq_check(
+	void __iomem *base_addr)
 {
 	uint32_t int_status = readl(base_addr + TCC_ADMA_INTSTATUS_OFFSET);
 
-	if ((int_status & (ADMA_ISTAT_SPDIF_TX_MASKED_Msk|ADMA_ISTAT_SPDIF_TX_Msk)) > (uint32_t) 0) {
+	if ((int_status &
+		(ADMA_ISTAT_SPDIF_TX_MASKED_Msk | ADMA_ISTAT_SPDIF_TX_Msk))
+		> (uint32_t) 0)
 		return TRUE;
-	}
 
 	return FALSE;
 }
 
-static inline void tcc_adma_spdif_tx_irq_clear(void __iomem *base_addr)
+static inline void tcc_adma_spdif_tx_irq_clear(
+	void __iomem *base_addr)
 {
-	adma_writel(ADMA_ISTAT_SPDIF_TX_MASKED_Msk|ADMA_ISTAT_SPDIF_TX_Msk, base_addr + TCC_ADMA_INTSTATUS_OFFSET);
+	adma_writel(
+		ADMA_ISTAT_SPDIF_TX_MASKED_Msk|ADMA_ISTAT_SPDIF_TX_Msk,
+		base_addr + TCC_ADMA_INTSTATUS_OFFSET);
 }
 
-static inline void tcc_adma_spdif_cdif_rx_irq_enable(void __iomem *base_addr, bool enable)
+static inline void tcc_adma_spdif_cdif_rx_irq_enable(
+	void __iomem *base_addr,
+	bool enable)
 {
 	uint32_t value = readl(base_addr + TCC_ADMA_CHCTRL_OFFSET);
 
 	value &= ~ADMA_CHCTRL_CDIF_RX_IRQ_MODE_Msk;
-	if (enable) {
+	if (enable)
 		value |= ADMA_CHCTRL_CDIF_RX_IRQ_ENABLE;
-	} else {
+	else
 		value |= ADMA_CHCTRL_CDIF_RX_IRQ_DISABLE;
-	}
 
 	adma_writel(value, base_addr + TCC_ADMA_CHCTRL_OFFSET);
 }
 
-static inline void tcc_adma_spdif_cdif_rx_dma_enable(void __iomem *base_addr, bool enable)
+static inline void tcc_adma_spdif_cdif_rx_dma_enable(
+	void __iomem *base_addr,
+	bool enable)
 {
 	uint32_t value = readl(base_addr + TCC_ADMA_CHCTRL_OFFSET);
 
 	value &= ~ADMA_CHCTRL_CDIF_RX_DMA_MODE_Msk;
-	if (enable) {
+	if (enable)
 		value |= ADMA_CHCTRL_CDIF_RX_DMA_ENABLE;
-	} else {
+	else
 		value |= ADMA_CHCTRL_CDIF_RX_DMA_DISABLE;
-	}
 
 	adma_writel(value, base_addr + TCC_ADMA_CHCTRL_OFFSET);
 }
 
-static inline bool tcc_adma_spdif_cdif_rx_dma_enable_check(void __iomem *base_addr)
+static inline bool tcc_adma_spdif_cdif_rx_dma_enable_check(
+	void __iomem *base_addr)
 {
 	uint32_t int_status = readl(base_addr + TCC_ADMA_CHCTRL_OFFSET);
 
-	if ((int_status & (ADMA_CHCTRL_CDIF_RX_DMA_MODE_Msk)) > (uint32_t) 0) {
+	if ((int_status & (ADMA_CHCTRL_CDIF_RX_DMA_MODE_Msk)) > 0u)
 		return TRUE;
-	}
 
 	return FALSE;
 }
 
-static inline bool tcc_adma_spdif_cdif_rx_irq_check(void __iomem *base_addr)
+static inline bool tcc_adma_spdif_cdif_rx_irq_check(
+	void __iomem *base_addr)
 {
 	uint32_t int_status = readl(base_addr + TCC_ADMA_INTSTATUS_OFFSET);
 
-	if ((int_status & (ADMA_ISTAT_CDIF_RX_MASKED_Msk|ADMA_ISTAT_CDIF_RX_Msk)) > (uint32_t) 0) {
+	if ((int_status &
+		(ADMA_ISTAT_CDIF_RX_MASKED_Msk | ADMA_ISTAT_CDIF_RX_Msk))
+		> (uint32_t) 0)
 		return TRUE;
-	}
 
 	return FALSE;
 }
 
-static inline void tcc_adma_spdif_cdif_rx_irq_clear(void __iomem *base_addr)
+static inline void tcc_adma_spdif_cdif_rx_irq_clear(
+	void __iomem *base_addr)
 {
-	adma_writel(ADMA_ISTAT_CDIF_RX_MASKED_Msk|ADMA_ISTAT_CDIF_RX_Msk, base_addr + TCC_ADMA_INTSTATUS_OFFSET);
+	adma_writel(
+		ADMA_ISTAT_CDIF_RX_MASKED_Msk|ADMA_ISTAT_CDIF_RX_Msk,
+		base_addr + TCC_ADMA_INTSTATUS_OFFSET);
 }
 
 
-static inline void tcc_adma_set_dai_tx_lrmode(void __iomem *base_addr, bool enable)
+static inline void tcc_adma_set_dai_tx_lrmode(
+	void __iomem *base_addr,
+	bool enable)
 {
 	uint32_t value = readl(base_addr + TCC_ADMA_CHCTRL_OFFSET);
 
 	value &= ~ADMA_CHCTRL_DAI_TX_LR_MODE_Msk;
-	if (enable) {
+	if (enable)
 		value |= ADMA_CHCTRL_DAI_TX_LR_ENABLE;
-	} else {
+	else
 		value |= ADMA_CHCTRL_DAI_TX_LR_DISABLE;
-	}
 
 	adma_writel(value, base_addr + TCC_ADMA_CHCTRL_OFFSET);
 }
 
-static inline void tcc_adma_set_dai_tx_dma_width(void __iomem *base_addr, TCC_ADMA_DATA_WIDTH width)
+static inline void tcc_adma_set_dai_tx_dma_width(
+	void __iomem *base_addr,
+	enum TCC_ADMA_DATA_WIDTH width)
 {
 	uint32_t value = readl(base_addr + TCC_ADMA_CHCTRL_OFFSET);
 
 	value &= ~ADMA_CHCTRL_DAI_TXD_WIDTH_MODE_Msk;
-	value |= (width==TCC_ADMA_DATA_WIDTH_24) ? ADMA_CHCTRL_DAI_TXD_WIDTH_24BIT : ADMA_CHCTRL_DAI_TXD_WIDTH_16BIT;
+	value |=
+		(width == TCC_ADMA_DATA_WIDTH_24) ?
+		ADMA_CHCTRL_DAI_TXD_WIDTH_24BIT :
+		ADMA_CHCTRL_DAI_TXD_WIDTH_16BIT;
 
 	adma_writel(value, base_addr + TCC_ADMA_CHCTRL_OFFSET);
 }
 
-static inline void tcc_adma_set_dai_tx_transfer_size(void __iomem *base_addr, TCC_ADMA_WORD_SIZE wsize, TCC_ADMA_BURST_SIZE bsize)
+static inline void tcc_adma_set_dai_tx_transfer_size(
+	void __iomem *base_addr,
+	enum TCC_ADMA_WORD_SIZE wsize,
+	enum TCC_ADMA_BURST_SIZE bsize)
 {
 	uint32_t value = readl(base_addr + TCC_ADMA_TRANSCTRL_OFFSET);
 
-	value &= ~(ADMA_TRANSCTRL_DAI_TX_DMA_WSIZE_Msk|ADMA_TRANSCTRL_DAI_TX_DMA_BURST_SIZE_Msk);
+	value &=
+		~(ADMA_TRANSCTRL_DAI_TX_DMA_WSIZE_Msk |
+		ADMA_TRANSCTRL_DAI_TX_DMA_BURST_SIZE_Msk);
 
-	value |= (wsize==TCC_ADMA_WORD_SIZE_8) ? ADMA_TRANSCTRL_DAI_TX_DMA_WSIZE_8 : 
-		(wsize==TCC_ADMA_WORD_SIZE_16) ? ADMA_TRANSCTRL_DAI_TX_DMA_WSIZE_16 : 
+	value |=
+		(wsize == TCC_ADMA_WORD_SIZE_8) ?
+		ADMA_TRANSCTRL_DAI_TX_DMA_WSIZE_8 :
+		(wsize == TCC_ADMA_WORD_SIZE_16) ?
+		ADMA_TRANSCTRL_DAI_TX_DMA_WSIZE_16 :
 		ADMA_TRANSCTRL_DAI_TX_DMA_WSIZE_32;
 
-	value |= (bsize==TCC_ADMA_BURST_CYCLE_1) ? ADMA_TRANSCTRL_DAI_TX_DMA_BURST_CYCLE_1: 
-		(bsize==TCC_ADMA_BURST_CYCLE_2) ? ADMA_TRANSCTRL_DAI_TX_DMA_BURST_CYCLE_2: 
-		(bsize==TCC_ADMA_BURST_CYCLE_4) ? ADMA_TRANSCTRL_DAI_TX_DMA_BURST_CYCLE_4: 
+	value |=
+		(bsize == TCC_ADMA_BURST_CYCLE_1) ?
+		ADMA_TRANSCTRL_DAI_TX_DMA_BURST_CYCLE_1 :
+		(bsize == TCC_ADMA_BURST_CYCLE_2) ?
+		ADMA_TRANSCTRL_DAI_TX_DMA_BURST_CYCLE_2 :
+		(bsize == TCC_ADMA_BURST_CYCLE_4) ?
+		ADMA_TRANSCTRL_DAI_TX_DMA_BURST_CYCLE_4 :
 		ADMA_TRANSCTRL_DAI_TX_DMA_BURST_CYCLE_8;
 
 	adma_writel(value, base_addr + TCC_ADMA_TRANSCTRL_OFFSET);
 }
 
-static inline void tcc_adma_set_dai_tx_dma_repeat_enable(void __iomem *base_addr, bool enable)
+static inline void tcc_adma_set_dai_tx_dma_repeat_enable(
+	void __iomem *base_addr,
+	bool enable)
 {
 	uint32_t value = readl(base_addr + TCC_ADMA_TRANSCTRL_OFFSET);
 
-	if (enable) {
+	if (enable)
 		value |= ADMA_TRANSCTRL_DAI_TX_DMA_REPEAT_ENABLE;
-	} else {
+	else
 		value &= ~ADMA_TRANSCTRL_DAI_TX_DMA_REPEAT_ENABLE;
-	}
 
 	adma_writel(value, base_addr + TCC_ADMA_TRANSCTRL_OFFSET);
 }
 
-static inline void tcc_adma_set_dai_rx_lrmode(void __iomem *base_addr, bool enable)
+static inline void tcc_adma_set_dai_rx_lrmode(
+	void __iomem *base_addr,
+	bool enable)
 {
 	uint32_t value = readl(base_addr + TCC_ADMA_CHCTRL_OFFSET);
 
 	value &= ~ADMA_CHCTRL_DAI_RX_LR_MODE_Msk;
-	if (enable) {
+	if (enable)
 		value |= ADMA_CHCTRL_DAI_RX_LR_ENABLE;
-	} else {
+	else
 		value |= ADMA_CHCTRL_DAI_RX_LR_DISABLE;
-	}
 
 	adma_writel(value, base_addr + TCC_ADMA_CHCTRL_OFFSET);
 }
 
-static inline void tcc_adma_set_dai_rx_dma_width(void __iomem *base_addr, TCC_ADMA_DATA_WIDTH width)
+static inline void tcc_adma_set_dai_rx_dma_width(
+	void __iomem *base_addr,
+	enum TCC_ADMA_DATA_WIDTH width)
 {
 	uint32_t value = readl(base_addr + TCC_ADMA_CHCTRL_OFFSET);
 
 	value &= ~ADMA_CHCTRL_DAI_RXD_WIDTH_MODE_Msk;
-	value |= (width==TCC_ADMA_DATA_WIDTH_24) ? ADMA_CHCTRL_DAI_RXD_WIDTH_24BIT : ADMA_CHCTRL_DAI_RXD_WIDTH_16BIT;
+	value |=
+		(width == TCC_ADMA_DATA_WIDTH_24) ?
+		ADMA_CHCTRL_DAI_RXD_WIDTH_24BIT :
+		ADMA_CHCTRL_DAI_RXD_WIDTH_16BIT;
 
 	adma_writel(value, base_addr + TCC_ADMA_CHCTRL_OFFSET);
 }
 
-static inline void tcc_adma_set_dai_rx_transfer_size(void __iomem *base_addr, TCC_ADMA_WORD_SIZE wsize, TCC_ADMA_BURST_SIZE bsize)
+static inline void tcc_adma_set_dai_rx_transfer_size(
+	void __iomem *base_addr,
+	enum TCC_ADMA_WORD_SIZE wsize,
+	enum TCC_ADMA_BURST_SIZE bsize)
 {
 	uint32_t value = readl(base_addr + TCC_ADMA_TRANSCTRL_OFFSET);
 
-	value &= ~(ADMA_TRANSCTRL_DAI_RX_DMA_WSIZE_Msk|ADMA_TRANSCTRL_DAI_RX_DMA_BURST_SIZE_Msk);
+	value &=
+		~(ADMA_TRANSCTRL_DAI_RX_DMA_WSIZE_Msk |
+		ADMA_TRANSCTRL_DAI_RX_DMA_BURST_SIZE_Msk);
 
-	value |= (wsize==TCC_ADMA_WORD_SIZE_8) ? ADMA_TRANSCTRL_DAI_RX_DMA_WSIZE_8 : 
-		(wsize==TCC_ADMA_WORD_SIZE_16) ? ADMA_TRANSCTRL_DAI_RX_DMA_WSIZE_16 : 
+	value |=
+		(wsize == TCC_ADMA_WORD_SIZE_8) ?
+		ADMA_TRANSCTRL_DAI_RX_DMA_WSIZE_8 :
+		(wsize == TCC_ADMA_WORD_SIZE_16) ?
+		ADMA_TRANSCTRL_DAI_RX_DMA_WSIZE_16 :
 		ADMA_TRANSCTRL_DAI_RX_DMA_WSIZE_32;
 
-	value |= (bsize==TCC_ADMA_BURST_CYCLE_1) ? ADMA_TRANSCTRL_DAI_RX_DMA_BURST_CYCLE_1: 
-		(bsize==TCC_ADMA_BURST_CYCLE_2) ? ADMA_TRANSCTRL_DAI_RX_DMA_BURST_CYCLE_2: 
-		(bsize==TCC_ADMA_BURST_CYCLE_4) ? ADMA_TRANSCTRL_DAI_RX_DMA_BURST_CYCLE_4: 
+	value |=
+		(bsize == TCC_ADMA_BURST_CYCLE_1) ?
+		ADMA_TRANSCTRL_DAI_RX_DMA_BURST_CYCLE_1 :
+		(bsize == TCC_ADMA_BURST_CYCLE_2) ?
+		ADMA_TRANSCTRL_DAI_RX_DMA_BURST_CYCLE_2 :
+		(bsize == TCC_ADMA_BURST_CYCLE_4) ?
+		ADMA_TRANSCTRL_DAI_RX_DMA_BURST_CYCLE_4 :
 		ADMA_TRANSCTRL_DAI_RX_DMA_BURST_CYCLE_8;
 
 	adma_writel(value, base_addr + TCC_ADMA_TRANSCTRL_OFFSET);
 }
 
-static inline void tcc_adma_set_dai_rx_dma_repeat_enable(void __iomem *base_addr, bool enable)
+static inline void tcc_adma_set_dai_rx_dma_repeat_enable(
+	void __iomem *base_addr,
+	bool enable)
 {
 	uint32_t value = readl(base_addr + TCC_ADMA_TRANSCTRL_OFFSET);
 
-	if (enable) {
+	if (enable)
 		value |= ADMA_TRANSCTRL_DAI_RX_DMA_REPEAT_ENABLE;
-	} else {
+	else
 		value &= ~ADMA_TRANSCTRL_DAI_RX_DMA_REPEAT_ENABLE;
-	}
 
 	adma_writel(value, base_addr + TCC_ADMA_TRANSCTRL_OFFSET);
 }
 
-static inline void tcc_adma_set_spdif_tx_dma_width(void __iomem *base_addr, TCC_ADMA_DATA_WIDTH width)
+static inline void tcc_adma_set_spdif_tx_dma_width(
+	void __iomem *base_addr,
+	enum TCC_ADMA_DATA_WIDTH width)
 {
 	uint32_t value = readl(base_addr + TCC_ADMA_CHCTRL_OFFSET);
 
 	value &= ~ADMA_CHCTRL_SPDIF_TXD_WIDTH_MODE_Msk;
-	value |= (width==TCC_ADMA_DATA_WIDTH_24) ? ADMA_CHCTRL_SPDIF_TXD_WIDTH_24BIT : ADMA_CHCTRL_SPDIF_TXD_WIDTH_16BIT;
+	value |=
+		(width == TCC_ADMA_DATA_WIDTH_24) ?
+		ADMA_CHCTRL_SPDIF_TXD_WIDTH_24BIT :
+		ADMA_CHCTRL_SPDIF_TXD_WIDTH_16BIT;
 
 	adma_writel(value, base_addr + TCC_ADMA_CHCTRL_OFFSET);
 }
 
-static inline void tcc_adma_set_spdif_tx_transfer_size(void __iomem *base_addr, TCC_ADMA_WORD_SIZE wsize, TCC_ADMA_BURST_SIZE bsize)
+static inline void tcc_adma_set_spdif_tx_transfer_size(
+	void __iomem *base_addr,
+	enum TCC_ADMA_WORD_SIZE wsize,
+	enum TCC_ADMA_BURST_SIZE bsize)
 {
 	uint32_t value = readl(base_addr + TCC_ADMA_TRANSCTRL_OFFSET);
 
-	value &= ~(ADMA_TRANSCTRL_SPDIF_TX_DMA_WSIZE_Msk|ADMA_TRANSCTRL_SPDIF_TX_DMA_BURST_SIZE_Msk);
+	value &=
+		~(ADMA_TRANSCTRL_SPDIF_TX_DMA_WSIZE_Msk |
+		ADMA_TRANSCTRL_SPDIF_TX_DMA_BURST_SIZE_Msk);
 
-	value |= (wsize==TCC_ADMA_WORD_SIZE_8) ? ADMA_TRANSCTRL_SPDIF_TX_DMA_WSIZE_8 : 
-		(wsize==TCC_ADMA_WORD_SIZE_16) ? ADMA_TRANSCTRL_SPDIF_TX_DMA_WSIZE_16 : 
+	value |=
+		(wsize == TCC_ADMA_WORD_SIZE_8) ?
+		ADMA_TRANSCTRL_SPDIF_TX_DMA_WSIZE_8 :
+		(wsize == TCC_ADMA_WORD_SIZE_16) ?
+		ADMA_TRANSCTRL_SPDIF_TX_DMA_WSIZE_16 :
 		ADMA_TRANSCTRL_SPDIF_TX_DMA_WSIZE_32;
 
-	value |= (bsize==TCC_ADMA_BURST_CYCLE_1) ? ADMA_TRANSCTRL_SPDIF_TX_DMA_BURST_CYCLE_1: 
-		(bsize==TCC_ADMA_BURST_CYCLE_2) ? ADMA_TRANSCTRL_SPDIF_TX_DMA_BURST_CYCLE_2: 
-		(bsize==TCC_ADMA_BURST_CYCLE_4) ? ADMA_TRANSCTRL_SPDIF_TX_DMA_BURST_CYCLE_4: 
+	value |=
+		(bsize == TCC_ADMA_BURST_CYCLE_1) ?
+		ADMA_TRANSCTRL_SPDIF_TX_DMA_BURST_CYCLE_1 :
+		(bsize == TCC_ADMA_BURST_CYCLE_2) ?
+		ADMA_TRANSCTRL_SPDIF_TX_DMA_BURST_CYCLE_2 :
+		(bsize == TCC_ADMA_BURST_CYCLE_4) ?
+		ADMA_TRANSCTRL_SPDIF_TX_DMA_BURST_CYCLE_4 :
 		ADMA_TRANSCTRL_SPDIF_TX_DMA_BURST_CYCLE_8;
 
 	adma_writel(value, base_addr + TCC_ADMA_TRANSCTRL_OFFSET);
 }
 
-static inline void tcc_adma_set_spdif_tx_dma_repeat_enable(void __iomem *base_addr, bool enable)
+static inline void tcc_adma_set_spdif_tx_dma_repeat_enable(
+	void __iomem *base_addr,
+	bool enable)
 {
 	uint32_t value = readl(base_addr + TCC_ADMA_TRANSCTRL_OFFSET);
 
-	if (enable) {
+	if (enable)
 		value |= ADMA_TRANSCTRL_SPDIF_TX_DMA_REPEAT_ENABLE;
-	} else {
+	else
 		value &= ~ADMA_TRANSCTRL_SPDIF_TX_DMA_REPEAT_ENABLE;
-	}
 
 	adma_writel(value, base_addr + TCC_ADMA_TRANSCTRL_OFFSET);
 }
 
-static inline void tcc_adma_set_spdif_cdif_rx_path(void __iomem *base_addr, TCC_ADMA_SPDIF_CDIF_RX_SEL sel)
+static inline void tcc_adma_set_spdif_cdif_rx_path(
+	void __iomem *base_addr,
+	enum TCC_ADMA_SPDIF_CDIF_RX_SEL sel)
 {
 	uint32_t value = readl(base_addr + TCC_ADMA_CHCTRL_OFFSET);
 
 	value &= ~ADMA_CHCTRL_CDIF_SPDIF_SEL_Msk;
-	value |= (sel == TCC_ADMA_SPDIF_CDIF_SEL_CDIF) ? ADMA_CHCTRL_CDIF_SPDIF_SEL_CDIF : ADMA_CHCTRL_CDIF_SPDIF_SEL_SPDIF;
+	value |=
+		(sel == TCC_ADMA_SPDIF_CDIF_SEL_CDIF) ?
+		ADMA_CHCTRL_CDIF_SPDIF_SEL_CDIF :
+		ADMA_CHCTRL_CDIF_SPDIF_SEL_SPDIF;
 
 	adma_writel(value, base_addr + TCC_ADMA_CHCTRL_OFFSET);
 }
 
 
-static inline void tcc_adma_set_spdif_cdif_rx_dma_width(void __iomem *base_addr, TCC_ADMA_DATA_WIDTH width)
+static inline void tcc_adma_set_spdif_cdif_rx_dma_width(
+	void __iomem *base_addr,
+	enum TCC_ADMA_DATA_WIDTH width)
 {
 	uint32_t value = readl(base_addr + TCC_ADMA_CHCTRL_OFFSET);
 
 	value &= ~ADMA_CHCTRL_CDIF_RXD_WIDTH_MODE_Msk;
-	value |= (width==TCC_ADMA_DATA_WIDTH_24) ? ADMA_CHCTRL_CDIF_RXD_WIDTH_24BIT : ADMA_CHCTRL_CDIF_RXD_WIDTH_16BIT;
+	value |=
+		(width == TCC_ADMA_DATA_WIDTH_24) ?
+		ADMA_CHCTRL_CDIF_RXD_WIDTH_24BIT :
+		ADMA_CHCTRL_CDIF_RXD_WIDTH_16BIT;
 
 	adma_writel(value, base_addr + TCC_ADMA_CHCTRL_OFFSET);
 }
 
-static inline void tcc_adma_set_spdif_cdif_rx_transfer_size(void __iomem *base_addr, TCC_ADMA_WORD_SIZE wsize, TCC_ADMA_BURST_SIZE bsize)
+static inline void tcc_adma_set_spdif_cdif_rx_transfer_size(
+	void __iomem *base_addr,
+	enum TCC_ADMA_WORD_SIZE wsize,
+	enum TCC_ADMA_BURST_SIZE bsize)
 {
 	uint32_t value = readl(base_addr + TCC_ADMA_TRANSCTRL_OFFSET);
 
-	value &= ~(ADMA_TRANSCTRL_CDIF_RX_DMA_WSIZE_Msk|ADMA_TRANSCTRL_CDIF_RX_DMA_BURST_SIZE_Msk);
+	value &=
+		~(ADMA_TRANSCTRL_CDIF_RX_DMA_WSIZE_Msk |
+		ADMA_TRANSCTRL_CDIF_RX_DMA_BURST_SIZE_Msk);
 
-	value |= (wsize==TCC_ADMA_WORD_SIZE_8) ? ADMA_TRANSCTRL_CDIF_RX_DMA_WSIZE_8 : 
-		(wsize==TCC_ADMA_WORD_SIZE_16) ? ADMA_TRANSCTRL_CDIF_RX_DMA_WSIZE_16 : 
+	value |=
+		(wsize == TCC_ADMA_WORD_SIZE_8) ?
+		ADMA_TRANSCTRL_CDIF_RX_DMA_WSIZE_8 :
+		(wsize == TCC_ADMA_WORD_SIZE_16) ?
+		ADMA_TRANSCTRL_CDIF_RX_DMA_WSIZE_16 :
 		ADMA_TRANSCTRL_CDIF_RX_DMA_WSIZE_32;
 
-	value |= (bsize==TCC_ADMA_BURST_CYCLE_1) ? ADMA_TRANSCTRL_CDIF_RX_DMA_BURST_CYCLE_1: 
-		(bsize==TCC_ADMA_BURST_CYCLE_2) ? ADMA_TRANSCTRL_CDIF_RX_DMA_BURST_CYCLE_2: 
-		(bsize==TCC_ADMA_BURST_CYCLE_4) ? ADMA_TRANSCTRL_CDIF_RX_DMA_BURST_CYCLE_4: 
+	value |=
+		(bsize == TCC_ADMA_BURST_CYCLE_1) ?
+		ADMA_TRANSCTRL_CDIF_RX_DMA_BURST_CYCLE_1 :
+		(bsize == TCC_ADMA_BURST_CYCLE_2) ?
+		ADMA_TRANSCTRL_CDIF_RX_DMA_BURST_CYCLE_2 :
+		(bsize == TCC_ADMA_BURST_CYCLE_4) ?
+		ADMA_TRANSCTRL_CDIF_RX_DMA_BURST_CYCLE_4 :
 		ADMA_TRANSCTRL_CDIF_RX_DMA_BURST_CYCLE_8;
 
 	adma_writel(value, base_addr + TCC_ADMA_TRANSCTRL_OFFSET);
 }
 
-static inline void tcc_adma_set_spdif_cdif_rx_dma_repeat_enable(void __iomem *base_addr, bool enable)
+static inline void tcc_adma_set_spdif_cdif_rx_dma_repeat_enable(
+	void __iomem *base_addr,
+	bool enable)
 {
 	uint32_t value = readl(base_addr + TCC_ADMA_TRANSCTRL_OFFSET);
 
-	if (enable) {
+	if (enable)
 		value |= ADMA_TRANSCTRL_CDIF_RX_DMA_REPEAT_ENABLE;
-	} else {
+	else
 		value &= ~ADMA_TRANSCTRL_CDIF_RX_DMA_REPEAT_ENABLE;
-	}
 
 	adma_writel(value, base_addr + TCC_ADMA_TRANSCTRL_OFFSET);
 }
 
 
-static inline void tcc_adma_set_dai_tx_multi_ch(void __iomem *base_addr, bool enable, TCC_ADMA_MULTI_CH_MODE mode)
+static inline void tcc_adma_set_dai_tx_multi_ch(
+	void __iomem *base_addr,
+	bool enable,
+	enum TCC_ADMA_MULTI_CH_MODE mode)
 {
 	uint32_t value = readl(base_addr + TCC_ADMA_CHCTRL_OFFSET);
 
-	value &= ~(ADMA_CHCTRL_DAI_TX_MULTI_CH_ENABLE | ADMA_CHCTRL_TX_MULTI_CH_SEL_Msk);
+	value &= ~(ADMA_CHCTRL_DAI_TX_MULTI_CH_ENABLE |
+		ADMA_CHCTRL_TX_MULTI_CH_SEL_Msk);
 
-	value |= (mode==TCC_ADMA_MULTI_CH_MODE_3_1) ? ADMA_CHCTRL_TX_MULTI_CH_3_1 :
-			(mode==TCC_ADMA_MULTI_CH_MODE_5_1_012) ? ADMA_CHCTRL_TX_MULTI_CH_5_1_012 :
-			(mode==TCC_ADMA_MULTI_CH_MODE_5_1_013) ? ADMA_CHCTRL_TX_MULTI_CH_5_1_013 : ADMA_CHCTRL_TX_MULTI_CH_7_1;
+	value |=
+		(mode == TCC_ADMA_MULTI_CH_MODE_3_1) ?
+		ADMA_CHCTRL_TX_MULTI_CH_3_1 :
+		(mode == TCC_ADMA_MULTI_CH_MODE_5_1_012) ?
+		ADMA_CHCTRL_TX_MULTI_CH_5_1_012 :
+		(mode == TCC_ADMA_MULTI_CH_MODE_5_1_013) ?
+		ADMA_CHCTRL_TX_MULTI_CH_5_1_013 :
+		ADMA_CHCTRL_TX_MULTI_CH_7_1;
 
-	if (enable) {
+	if (enable)
 		value |= ADMA_CHCTRL_DAI_TX_MULTI_CH_ENABLE;
-	} else {
+	else
 		value |= ADMA_CHCTRL_DAI_TX_MULTI_CH_DISABLE;
-	}
 
 	adma_writel(value, base_addr + TCC_ADMA_CHCTRL_OFFSET);
 }
 
-static inline void tcc_adma_set_dai_rx_multi_ch(void __iomem *base_addr, bool enable, TCC_ADMA_MULTI_CH_MODE mode)
+static inline void tcc_adma_set_dai_rx_multi_ch(
+	void __iomem *base_addr,
+	bool enable,
+	enum TCC_ADMA_MULTI_CH_MODE mode)
 {
 	uint32_t value = readl(base_addr + TCC_ADMA_CHCTRL_OFFSET);
 
-	value &= ~(ADMA_CHCTRL_DAI_RX_MULTI_CH_ENABLE | ADMA_CHCTRL_RX_MULTI_CH_SEL_Msk);
+	value &=
+		~(ADMA_CHCTRL_DAI_RX_MULTI_CH_ENABLE |
+		ADMA_CHCTRL_RX_MULTI_CH_SEL_Msk);
 
-	value |= (mode==TCC_ADMA_MULTI_CH_MODE_3_1) ? ADMA_CHCTRL_RX_MULTI_CH_3_1 :
-		(mode==TCC_ADMA_MULTI_CH_MODE_5_1_012) ? ADMA_CHCTRL_RX_MULTI_CH_5_1_012 :
-		(mode==TCC_ADMA_MULTI_CH_MODE_5_1_013) ? ADMA_CHCTRL_RX_MULTI_CH_5_1_013 : ADMA_CHCTRL_RX_MULTI_CH_7_1;
+	value |=
+		(mode == TCC_ADMA_MULTI_CH_MODE_3_1) ?
+		ADMA_CHCTRL_RX_MULTI_CH_3_1 :
+		(mode == TCC_ADMA_MULTI_CH_MODE_5_1_012) ?
+		ADMA_CHCTRL_RX_MULTI_CH_5_1_012 :
+		(mode == TCC_ADMA_MULTI_CH_MODE_5_1_013) ?
+		ADMA_CHCTRL_RX_MULTI_CH_5_1_013 :
+		ADMA_CHCTRL_RX_MULTI_CH_7_1;
 
-	if (enable) {
+	if (enable)
 		value |= ADMA_CHCTRL_DAI_RX_MULTI_CH_ENABLE;
-	} else {
+	else
 		value |= ADMA_CHCTRL_DAI_RX_MULTI_CH_DISABLE;
-	}
-
 
 	adma_writel(value, base_addr + TCC_ADMA_CHCTRL_OFFSET);
 }
 
-static inline void tcc_adma_set_dai_tx_dma_trigger_type(void __iomem *base_addr, bool edge)
+static inline void tcc_adma_set_dai_tx_dma_trigger_type(
+	void __iomem *base_addr,
+	bool edge)
 {
 	uint32_t value = readl(base_addr + TCC_ADMA_TRANSCTRL_OFFSET);
 
 	value &= ~ADMA_TRANSCTRL_DAI_TX_DMA_TRIGGER_MODE_Msk;
-	if (edge) {
+	if (edge)
 		value |= ADMA_TRANSCTRL_DAI_TX_DMA_TRIGGER_EDGE;
-	} else {
+	else
 		value |= ADMA_TRANSCTRL_DAI_TX_DMA_TRIGGER_LEVEL;
-	}
 
 	adma_writel(value, base_addr + TCC_ADMA_TRANSCTRL_OFFSET);
 }
 
-static inline void tcc_adma_set_dai_rx_dma_trigger_type(void __iomem *base_addr, bool edge)
+static inline void tcc_adma_set_dai_rx_dma_trigger_type(
+	void __iomem *base_addr,
+	bool edge)
 {
 	uint32_t value = readl(base_addr + TCC_ADMA_TRANSCTRL_OFFSET);
 
 	value &= ~ADMA_TRANSCTRL_DAI_RX_DMA_TRIGGER_MODE_Msk;
-	if (edge) {
+	if (edge)
 		value |= ADMA_TRANSCTRL_DAI_RX_DMA_TRIGGER_EDGE;
-	} else {
+	else
 		value |= ADMA_TRANSCTRL_DAI_RX_DMA_TRIGGER_LEVEL;
-	}
 
 	adma_writel(value, base_addr + TCC_ADMA_TRANSCTRL_OFFSET);
 }
 
-static inline void tcc_adma_set_spdif_tx_dma_trigger_type(void __iomem *base_addr, bool edge)
+static inline void tcc_adma_set_spdif_tx_dma_trigger_type(
+	void __iomem *base_addr,
+	bool edge)
 {
 	uint32_t value = readl(base_addr + TCC_ADMA_TRANSCTRL_OFFSET);
 
 	value &= ~ADMA_TRANSCTRL_SPDIF_TX_DMA_TRIGGER_MODE_Msk;
-	if (edge) {
+	if (edge)
 		value |= ADMA_TRANSCTRL_SPDIF_TX_DMA_TRIGGER_EDGE;
-	} else {
+	else
 		value |= ADMA_TRANSCTRL_SPDIF_TX_DMA_TRIGGER_LEVEL;
-	}
 
 	adma_writel(value, base_addr + TCC_ADMA_TRANSCTRL_OFFSET);
 }
 
-static inline void tcc_adma_set_cdif_rx_dma_trigger_type(void __iomem *base_addr, bool edge)
+static inline void tcc_adma_set_cdif_rx_dma_trigger_type(
+	void __iomem *base_addr,
+	bool edge)
 {
 	uint32_t value = readl(base_addr + TCC_ADMA_TRANSCTRL_OFFSET);
 
 	value &= ~ADMA_TRANSCTRL_CDIF_RX_DMA_TRIGGER_MODE_Msk;
-	if (edge) {
+	if (edge)
 		value |= ADMA_TRANSCTRL_CDIF_RX_DMA_TRIGGER_EDGE;
-	} else {
+	else
 		value |= ADMA_TRANSCTRL_CDIF_RX_DMA_TRIGGER_LEVEL;
-	}
 
 	adma_writel(value, base_addr + TCC_ADMA_TRANSCTRL_OFFSET);
 }
 
-static inline void tcc_adma_set_tx_dma_repeat_type(void __iomem *base_addr, TCC_ADMA_REPEAT_MODE mode)
+static inline void tcc_adma_set_tx_dma_repeat_type(
+	void __iomem *base_addr,
+	enum TCC_ADMA_REPEAT_MODE mode)
 {
 	uint32_t value = readl(base_addr + TCC_ADMA_TRANSCTRL_OFFSET);
 
 	value &= ~ADMA_TRANSCTRL_TX_DMA_CONTINUOUS_MODE_Msk;
-	if (mode == TCC_ADMA_REPEAT_FROM_CUR_ADDR) {
+	if (mode == TCC_ADMA_REPEAT_FROM_CUR_ADDR)
 		value |= ADMA_TRANSCTRL_TX_DMA_CONTINUOUS_CUR_ADDR;
-	} else {
+	else
 		value |= ADMA_TRANSCTRL_TX_DMA_CONTINUOUS_START_ADDR;
-	}
 
 	adma_writel(value, base_addr + TCC_ADMA_TRANSCTRL_OFFSET);
 }
 
-static inline void tcc_adma_set_rx_dma_repeat_type(void __iomem *base_addr, TCC_ADMA_REPEAT_MODE mode)
+static inline void tcc_adma_set_rx_dma_repeat_type(
+	void __iomem *base_addr,
+	enum TCC_ADMA_REPEAT_MODE mode)
 {
 	uint32_t value = readl(base_addr + TCC_ADMA_TRANSCTRL_OFFSET);
 
 	value &= ~ADMA_TRANSCTRL_RX_DMA_CONTINUOUS_MODE_Msk;
-	if (mode == TCC_ADMA_REPEAT_FROM_CUR_ADDR) {
+	if (mode == TCC_ADMA_REPEAT_FROM_CUR_ADDR)
 		value |= ADMA_TRANSCTRL_RX_DMA_CONTINUOUS_CUR_ADDR;
-	} else {
+	else
 		value |= ADMA_TRANSCTRL_RX_DMA_CONTINUOUS_START_ADDR;
-	}
 
 	adma_writel(value, base_addr + TCC_ADMA_TRANSCTRL_OFFSET);
 }
 
-static inline void tcc_adma_dai_threshold(void __iomem *base_addr, uint32_t dai_buf_threshold)
+static inline void tcc_adma_dai_threshold(
+	void __iomem *base_addr,
+	uint32_t dai_buf_threshold)
 {
 	uint32_t value;
 
@@ -716,7 +859,8 @@ static inline void tcc_adma_dai_threshold(void __iomem *base_addr, uint32_t dai_
 	adma_writel(value, base_addr + TCC_ADMA_RPTCTRL_OFFSET);
 }
 
-static inline void tcc_adma_repeat_infinite_mode(void __iomem *base_addr)
+static inline void tcc_adma_repeat_infinite_mode(
+	void __iomem *base_addr)
 {
 	uint32_t value;
 
@@ -726,15 +870,23 @@ static inline void tcc_adma_repeat_infinite_mode(void __iomem *base_addr)
 	adma_writel(value, base_addr + TCC_ADMA_RPTCTRL_OFFSET);
 }
 
-static inline int tcc_adma_set_dai_tx_dma_buffer(void __iomem *base_addr,
-	uint32_t dma_addr, uint32_t mono_dma_addr,
-	int buffer_bytes, int period_bytes, TCC_ADMA_DATA_WIDTH data_width, TCC_ADMA_BURST_SIZE bsize,
-	bool mono_mode, bool adrcnt_mode)
+static inline int tcc_adma_set_dai_tx_dma_buffer(
+	void __iomem *base_addr,
+	uint32_t dma_addr,
+	uint32_t mono_dma_addr,
+	int buffer_bytes,
+	int period_bytes,
+	enum TCC_ADMA_DATA_WIDTH data_width,
+	enum TCC_ADMA_BURST_SIZE bsize,
+	bool mono_mode,
+	bool adrcnt_mode)
 {
-	TCC_ADMA_WORD_SIZE wsize = TCC_ADMA_WORD_SIZE_32;
+	enum TCC_ADMA_WORD_SIZE wsize = TCC_ADMA_WORD_SIZE_32;
 	uint32_t dma_buffer = 0;
 	uint32_t txdaparam, txdatcnt;
-#if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X) || defined(CONFIG_ARCH_TCC806X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC901X)
+#if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X) || \
+	defined(CONFIG_ARCH_TCC806X) || defined(CONFIG_ARCH_TCC899X) || \
+	defined(CONFIG_ARCH_TCC901X)
 	uint32_t txdaadrcnt;
 #endif
 	int buffer_bytes_tmp = buffer_bytes - 1;
@@ -746,27 +898,37 @@ static inline int tcc_adma_set_dai_tx_dma_buffer(void __iomem *base_addr,
 	if (buffer_bytes == 0)
 		return -1;
 
-#if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X) || defined(CONFIG_ARCH_TCC806X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC901X)
+#if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X) || \
+	defined(CONFIG_ARCH_TCC806X) || defined(CONFIG_ARCH_TCC899X) || \
+	defined(CONFIG_ARCH_TCC901X)
 	if (adrcnt_mode) {
-		uint32_t adrcnt = (uint32_t) buffer_bytes / ((uint32_t) 1 << (uint32_t)wsize);
+		uint32_t adrcnt =
+			((uint32_t) buffer_bytes /
+			((uint32_t) 1 << (uint32_t)wsize));
 		int32_t adrcnt_tmp;
 
-		if(adrcnt % (uint32_t) 8 != (uint32_t) 0) {
-			(void) printk(KERN_WARNING "[WARN][DAI][%s][%d] Warning!! adrcnt value should be 8n.\n", __func__, __LINE__);
+		if (adrcnt % (uint32_t) 8 != (uint32_t) 0) {
+			(void) pr_info("[WARN][DAI][%s][%d] Warning!! adrcnt",
+				__func__, __LINE__);
+			(void) pr_info("value should be 8n.\n");
 		}
-		//adrcnt = (mono_mode == TRUE) ? (adrcnt * (uint32_t) 2) : adrcnt;
+		//adrcnt =
+		//(mono_mode == TRUE) ? (adrcnt * (uint32_t) 2) : adrcnt;
 		if (mono_mode == TRUE) {
 			adrcnt_tmp = (int32_t) adrcnt * 2;
 			adrcnt = (uint32_t) adrcnt_tmp;
-		} else {
+		} else
 			adrcnt_tmp = (int32_t) adrcnt;
-		}
+
 		adrcnt_tmp -= 1;
-		txdaadrcnt = VAL2FLD(ADMA_ADRCNT_ADDR_COUNT, (uint32_t) adrcnt_tmp);
+		txdaadrcnt = VAL2FLD(ADMA_ADRCNT_ADDR_COUNT,
+			(uint32_t) adrcnt_tmp);
 		txdaadrcnt |= ADMA_ADRCNT_MODE_ADRCNT;
 	} else {
-		txdaadrcnt = ADMA_ADRCNT_MODE_SMASK | VAL2FLD(ADMA_ADRCNT_ADDR_COUNT, 0x7fffffffU);
-		dma_buffer = VAL2FLD(ADMA_PARAM_ADDR_MASK, ~((uint32_t) (buffer_bytes_tmp)>>4));
+		txdaadrcnt = ADMA_ADRCNT_MODE_SMASK |
+			VAL2FLD(ADMA_ADRCNT_ADDR_COUNT, 0x7fffffffU);
+		dma_buffer = VAL2FLD(ADMA_PARAM_ADDR_MASK,
+			~((uint32_t) (buffer_bytes_tmp)>>4));
 	}
 #else
 	dma_buffer = VAL2FLD(ADMA_PARAM_ADDR_MASK, ~((buffer_bytes-1)>>4));
@@ -775,13 +937,15 @@ static inline int tcc_adma_set_dai_tx_dma_buffer(void __iomem *base_addr,
 	txdatcnt = (uint32_t) period_bytes >> (uint32_t) overall_size;
 	txdatcnt_tmp = (int32_t) txdatcnt - 1;
 	txdatcnt = (uint32_t) txdatcnt_tmp;
-	
-#if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X) || defined(CONFIG_ARCH_TCC806X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC901X)
+
+#if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X) || \
+	defined(CONFIG_ARCH_TCC806X) || defined(CONFIG_ARCH_TCC899X) || \
+	defined(CONFIG_ARCH_TCC901X)
 	adma_writel(txdaadrcnt, base_addr + TCC_ADMA_TXDAADRCNT_OFFSET);
 #endif
 	adma_writel(txdaparam, base_addr + TCC_ADMA_TXDAPARAM_OFFSET);
 	adma_writel(txdatcnt, base_addr + TCC_ADMA_TXDATCNT_OFFSET);
-	
+
 	if (mono_mode) {
 		adma_writel(mono_dma_addr, base_addr + TCC_ADMA_TXDASAR_OFFSET);
 		adma_writel(dma_addr, base_addr + TCC_ADMA_TXDASARL_OFFSET);
@@ -798,15 +962,23 @@ static inline int tcc_adma_set_dai_tx_dma_buffer(void __iomem *base_addr,
 	return 0;
 }
 
-static inline int tcc_adma_set_dai_rx_dma_buffer(void __iomem *base_addr,
-	uint32_t dma_addr, uint32_t mono_dma_addr,
-	int buffer_bytes, int period_bytes, TCC_ADMA_DATA_WIDTH data_width, TCC_ADMA_BURST_SIZE bsize,
-	bool mono_mode, bool adrcnt_mode)
+static inline int tcc_adma_set_dai_rx_dma_buffer(
+	void __iomem *base_addr,
+	uint32_t dma_addr,
+	uint32_t mono_dma_addr,
+	int buffer_bytes,
+	int period_bytes,
+	enum TCC_ADMA_DATA_WIDTH data_width,
+	enum TCC_ADMA_BURST_SIZE bsize,
+	bool mono_mode,
+	bool adrcnt_mode)
 {
-	TCC_ADMA_WORD_SIZE wsize = TCC_ADMA_WORD_SIZE_32;
+	enum TCC_ADMA_WORD_SIZE wsize = TCC_ADMA_WORD_SIZE_32;
 	uint32_t dma_buffer = 0;
 	uint32_t rxdaparam, rxdatcnt;
-#if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X) || defined(CONFIG_ARCH_TCC806X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC901X)
+#if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X) || \
+	defined(CONFIG_ARCH_TCC806X) || defined(CONFIG_ARCH_TCC899X) || \
+	defined(CONFIG_ARCH_TCC901X)
 	uint32_t rxdaadrcnt;
 #endif
 	int buffer_bytes_tmp = buffer_bytes - 1;
@@ -818,13 +990,19 @@ static inline int tcc_adma_set_dai_rx_dma_buffer(void __iomem *base_addr,
 	if (buffer_bytes == 0)
 		return -1;
 
-#if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X) || defined(CONFIG_ARCH_TCC806X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC901X)
+#if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X) || \
+	defined(CONFIG_ARCH_TCC806X) || defined(CONFIG_ARCH_TCC899X) || \
+	defined(CONFIG_ARCH_TCC901X)
 	if (adrcnt_mode) {
-		uint32_t adrcnt = (uint32_t) buffer_bytes / ((uint32_t) 1 << (uint32_t)wsize);
+		uint32_t adrcnt =
+			(uint32_t) buffer_bytes / ((uint32_t) 1 <<
+			(uint32_t) wsize);
 		int32_t adrcnt_tmp;
 
-		if(adrcnt % (uint32_t) 8 != (uint32_t) 0) {
-			(void) printk(KERN_WARNING "[WARN][DAI][%s][%d] Warning!! adrcnt value should be 8n.\n", __func__, __LINE__);
+		if (adrcnt % (uint32_t) 8 != (uint32_t) 0) {
+			(void) pr_info("[WARN][DAI][%s][%d] Warning!!",
+				__func__, __LINE__);
+			(void) pr_info("adrcnt value should be 8n.\n");
 		}
 		//adrcnt = (mono_mode) ? adrcnt * 2 : adrcnt;
 		if (mono_mode == TRUE) {
@@ -834,11 +1012,17 @@ static inline int tcc_adma_set_dai_rx_dma_buffer(void __iomem *base_addr,
 			adrcnt_tmp = (int32_t) adrcnt;
 		}
 		adrcnt_tmp -= 1;
-		rxdaadrcnt = VAL2FLD(ADMA_ADRCNT_ADDR_COUNT, (uint32_t) adrcnt_tmp);
+		rxdaadrcnt =
+			VAL2FLD(ADMA_ADRCNT_ADDR_COUNT, (uint32_t) adrcnt_tmp);
 		rxdaadrcnt |= ADMA_ADRCNT_MODE_ADRCNT;
 	} else {
-		rxdaadrcnt = ADMA_ADRCNT_MODE_SMASK | VAL2FLD(ADMA_ADRCNT_ADDR_COUNT, 0x7fffffffU);
-		dma_buffer = VAL2FLD(ADMA_PARAM_ADDR_MASK, ~((uint32_t) (buffer_bytes_tmp)>>4));
+		rxdaadrcnt =
+			ADMA_ADRCNT_MODE_SMASK |
+			VAL2FLD(ADMA_ADRCNT_ADDR_COUNT, 0x7fffffffU);
+		dma_buffer =
+			VAL2FLD(
+				ADMA_PARAM_ADDR_MASK,
+				~((uint32_t) (buffer_bytes_tmp)>>4));
 	}
 #else
 	dma_buffer = VAL2FLD(ADMA_PARAM_ADDR_MASK, ~((buffer_bytes-1)>>4));
@@ -847,8 +1031,10 @@ static inline int tcc_adma_set_dai_rx_dma_buffer(void __iomem *base_addr,
 	rxdatcnt = (uint32_t) period_bytes >> (uint32_t) overall_size;
 	rxdatcnt_tmp = (int32_t) rxdatcnt - 1;
 	rxdatcnt = (uint32_t) rxdatcnt_tmp;
-	
-#if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X) || defined(CONFIG_ARCH_TCC806X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC901X)
+
+#if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X) || \
+	defined(CONFIG_ARCH_TCC806X) || defined(CONFIG_ARCH_TCC899X) || \
+	defined(CONFIG_ARCH_TCC901X)
 	adma_writel(rxdaadrcnt, base_addr + TCC_ADMA_RXDAADRCNT_OFFSET);
 #endif
 	adma_writel(rxdaparam, base_addr + TCC_ADMA_RXDAPARAM_OFFSET);
@@ -870,14 +1056,21 @@ static inline int tcc_adma_set_dai_rx_dma_buffer(void __iomem *base_addr,
 	return 0;
 }
 
-static inline int tcc_adma_set_spdif_tx_dma_buffer(void __iomem *base_addr, uint32_t dma_addr, 
-	int buffer_bytes, int period_bytes, TCC_ADMA_DATA_WIDTH data_width, TCC_ADMA_BURST_SIZE bsize,
+static inline int tcc_adma_set_spdif_tx_dma_buffer(
+	void __iomem *base_addr,
+	uint32_t dma_addr,
+	int buffer_bytes,
+	int period_bytes,
+	enum TCC_ADMA_DATA_WIDTH data_width,
+	enum TCC_ADMA_BURST_SIZE bsize,
 	bool adrcnt_mode)
 {
-	TCC_ADMA_WORD_SIZE wsize = TCC_ADMA_WORD_SIZE_32;
+	enum TCC_ADMA_WORD_SIZE wsize = TCC_ADMA_WORD_SIZE_32;
 	uint32_t dma_buffer = 0;
 	uint32_t txspparam, txsptcnt;
-#if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X) || defined(CONFIG_ARCH_TCC806X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC901X)
+#if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X) || \
+	defined(CONFIG_ARCH_TCC806X) || defined(CONFIG_ARCH_TCC899X) || \
+	defined(CONFIG_ARCH_TCC901X)
 	uint32_t txspadrcnt;
 #endif
 	int buffer_bytes_tmp = buffer_bytes - 1;
@@ -889,20 +1082,31 @@ static inline int tcc_adma_set_spdif_tx_dma_buffer(void __iomem *base_addr, uint
 	if (buffer_bytes == 0)
 		return -1;
 
-#if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X) || defined(CONFIG_ARCH_TCC806X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC901X)
+#if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X) || \
+	defined(CONFIG_ARCH_TCC806X) || defined(CONFIG_ARCH_TCC899X) || \
+	defined(CONFIG_ARCH_TCC901X)
 	if (adrcnt_mode) {
-		uint32_t adrcnt = (uint32_t) buffer_bytes / ((uint32_t) 1 << (uint32_t)wsize);
+		uint32_t adrcnt = (uint32_t) buffer_bytes /
+			((uint32_t) 1 << (uint32_t)wsize);
 		int32_t adrcnt_tmp;
 
-		if(adrcnt % (uint32_t) 8 != (uint32_t) 0) {
-			(void) printk(KERN_WARNING "[WARN][DAI][%s][%d] Warning!! adrcnt value should be 8n.\n", __func__, __LINE__);
+		if (adrcnt % (uint32_t) 8 != (uint32_t) 0) {
+			(void) pr_info("[WARN][DAI][%s][%d] Warning!!",
+				__func__,
+				__LINE__);
+			(void) pr_info("adrcnt value should be 8n.\n");
 		}
 		adrcnt_tmp = (int32_t) adrcnt - 1;
-		txspadrcnt = VAL2FLD(ADMA_ADRCNT_ADDR_COUNT, (uint32_t) adrcnt_tmp);
+		txspadrcnt = VAL2FLD(ADMA_ADRCNT_ADDR_COUNT,
+			(uint32_t) adrcnt_tmp);
 		txspadrcnt |= ADMA_ADRCNT_MODE_ADRCNT;
 	} else {
-		txspadrcnt = ADMA_ADRCNT_MODE_SMASK | VAL2FLD(ADMA_ADRCNT_ADDR_COUNT, 0x7fffffffU);
-		dma_buffer = VAL2FLD(ADMA_PARAM_ADDR_MASK, ~((uint32_t) (buffer_bytes_tmp)>>4));
+		txspadrcnt =
+			ADMA_ADRCNT_MODE_SMASK |
+			VAL2FLD(ADMA_ADRCNT_ADDR_COUNT, 0x7fffffffU);
+		dma_buffer =
+			VAL2FLD(ADMA_PARAM_ADDR_MASK,
+			~((uint32_t) (buffer_bytes_tmp)>>4));
 	}
 #else
 	dma_buffer = VAL2FLD(ADMA_PARAM_ADDR_MASK, ~((buffer_bytes-1)>>4));
@@ -911,13 +1115,15 @@ static inline int tcc_adma_set_spdif_tx_dma_buffer(void __iomem *base_addr, uint
 	txsptcnt = (uint32_t) period_bytes >> (uint32_t) overall_size;
 	txsptcnt_tmp = (int32_t) txsptcnt - 1;
 	txsptcnt = (uint32_t) txsptcnt_tmp;
-	
-#if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X) || defined(CONFIG_ARCH_TCC806X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC901X)
+
+#if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X) || \
+	defined(CONFIG_ARCH_TCC806X) || defined(CONFIG_ARCH_TCC899X) || \
+	defined(CONFIG_ARCH_TCC901X)
 	adma_writel(txspadrcnt, base_addr + TCC_ADMA_TXSPADRCNT_OFFSET);
 #endif
 	adma_writel(txspparam, base_addr + TCC_ADMA_TXSPPARAM_OFFSET);
 	adma_writel(txsptcnt, base_addr + TCC_ADMA_TXSPTCNT_OFFSET);
-	
+
 	if (adrcnt_mode) {
 		adma_writel(dma_addr, base_addr + TCC_ADMA_TXSPSAR_OFFSET);
 		adma_writel(dma_addr, base_addr + TCC_ADMA_TXSPSARL_OFFSET);
@@ -933,14 +1139,21 @@ static inline int tcc_adma_set_spdif_tx_dma_buffer(void __iomem *base_addr, uint
 	return 0;
 }
 
-static inline int tcc_adma_set_spdif_cdif_rx_dma_buffer(void __iomem *base_addr, uint32_t dma_addr, 
-	int buffer_bytes, int period_bytes, TCC_ADMA_DATA_WIDTH data_width, TCC_ADMA_BURST_SIZE bsize,
+static inline int tcc_adma_set_spdif_cdif_rx_dma_buffer(
+	void __iomem *base_addr,
+	uint32_t dma_addr,
+	int buffer_bytes,
+	int period_bytes,
+	enum TCC_ADMA_DATA_WIDTH data_width,
+	enum TCC_ADMA_BURST_SIZE bsize,
 	bool adrcnt_mode)
 {
-	TCC_ADMA_WORD_SIZE wsize = TCC_ADMA_WORD_SIZE_32;
+	enum TCC_ADMA_WORD_SIZE wsize = TCC_ADMA_WORD_SIZE_32;
 	uint32_t dma_buffer = 0;
 	uint32_t rxspparam, rxsptcnt;
-#if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X) || defined(CONFIG_ARCH_TCC806X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC901X)
+#if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X) || \
+	defined(CONFIG_ARCH_TCC806X) || defined(CONFIG_ARCH_TCC899X) || \
+	defined(CONFIG_ARCH_TCC901X)
 	uint32_t rxspadrcnt;
 #endif
 	int buffer_bytes_tmp = buffer_bytes - 1;
@@ -952,35 +1165,49 @@ static inline int tcc_adma_set_spdif_cdif_rx_dma_buffer(void __iomem *base_addr,
 	if (buffer_bytes == 0)
 		return -1;
 
-#if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X) || defined(CONFIG_ARCH_TCC806X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC901X)
+#if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X) || \
+	defined(CONFIG_ARCH_TCC806X) || defined(CONFIG_ARCH_TCC899X) || \
+	defined(CONFIG_ARCH_TCC901X)
 	if (adrcnt_mode) {
-		uint32_t adrcnt = (uint32_t) buffer_bytes / ((uint32_t) 1 << (uint32_t)wsize);
+		uint32_t adrcnt = (uint32_t) buffer_bytes /
+			((uint32_t) 1 << (uint32_t)wsize);
 		int32_t adrcnt_tmp;
 
-		if(adrcnt % (uint32_t) 8 != (uint32_t) 0) {
-			(void) printk(KERN_WARNING "[WARN][DAI][%s][%d] Warning!! adrcnt value should be 8n.\n", __func__, __LINE__);
+		if (adrcnt % (uint32_t) 8 != (uint32_t) 0) {
+			(void) pr_info("[WARN][DAI][%s][%d] Warning!!",
+				__func__, __LINE__);
+			(void) pr_info("adrcnt value should be 8n.\n");
 		}
 		adrcnt_tmp = (int32_t) adrcnt - 1;
-		rxspadrcnt = VAL2FLD(ADMA_ADRCNT_ADDR_COUNT, (uint32_t) adrcnt_tmp);
+		rxspadrcnt = VAL2FLD(ADMA_ADRCNT_ADDR_COUNT,
+			(uint32_t) adrcnt_tmp);
 		rxspadrcnt |= ADMA_ADRCNT_MODE_ADRCNT;
 	} else {
-		rxspadrcnt = ADMA_ADRCNT_MODE_SMASK | VAL2FLD(ADMA_ADRCNT_ADDR_COUNT, 0x7fffffffU);
-		dma_buffer = VAL2FLD(ADMA_PARAM_ADDR_MASK, ~((uint32_t) (buffer_bytes_tmp)>>4));
+		rxspadrcnt =
+			ADMA_ADRCNT_MODE_SMASK |
+			VAL2FLD(ADMA_ADRCNT_ADDR_COUNT, 0x7fffffffU);
+		dma_buffer =
+			VAL2FLD(
+				ADMA_PARAM_ADDR_MASK,
+				~((uint32_t) (buffer_bytes_tmp)>>4));
 	}
 #else
-	dma_buffer = VAL2FLD(ADMA_PARAM_ADDR_MASK, ~((buffer_bytes-1)>>4));
+	dma_buffer = VAL2FLD(ADMA_PARAM_ADDR_MASK,
+		~((buffer_bytes-1)>>4));
 #endif
 	rxspparam = dma_buffer | ((uint32_t) 1 << (uint32_t) wsize);
 	rxsptcnt = (uint32_t) period_bytes >> (uint32_t) overall_size;
 	rxsptcnt_tmp = (int32_t) rxsptcnt - 1;
 	rxsptcnt = (uint32_t) rxsptcnt_tmp;
-	
-#if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X) || defined(CONFIG_ARCH_TCC806X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC901X)
+
+#if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X) || \
+	defined(CONFIG_ARCH_TCC806X) || defined(CONFIG_ARCH_TCC899X) || \
+	defined(CONFIG_ARCH_TCC901X)
 	adma_writel(rxspadrcnt, base_addr + TCC_ADMA_RXSPADRCNT_OFFSET);
 #endif
 	adma_writel(rxspparam, base_addr + TCC_ADMA_RXCDPARAM_OFFSET);
 	adma_writel(rxsptcnt, base_addr + TCC_ADMA_RXCDTCNT_OFFSET);
-	
+
 	adma_writel(dma_addr, base_addr + TCC_ADMA_RXCDDAR_OFFSET);
 	adma_writel(0, base_addr + TCC_ADMA_RXCDDARL_OFFSET);
 
@@ -1001,22 +1228,26 @@ static inline uint32_t tcc_adma_dai_rx_get_cur_dma_addr(void __iomem *base_addr)
 	return readl(base_addr + TCC_ADMA_RXDACDAR_OFFSET);
 }
 
-static inline uint32_t tcc_adma_spdif_tx_get_cur_dma_addr(void __iomem *base_addr)
+static inline uint32_t tcc_adma_spdif_tx_get_cur_dma_addr(
+	void __iomem *base_addr)
 {
 	return readl(base_addr + TCC_ADMA_TXSPCSAR_OFFSET);
 }
 
-static inline uint32_t tcc_adma_spdif_cdif_rx_get_cur_dma_addr(void __iomem *base_addr)
+static inline uint32_t tcc_adma_spdif_cdif_rx_get_cur_dma_addr(
+	void __iomem *base_addr)
 {
 	return readl(base_addr + TCC_ADMA_RXCDCDAR_OFFSET);
 }
 
-static inline uint32_t tcc_adma_dai_tx_get_cur_mono_dma_addr(void __iomem *base_addr)
+static inline uint32_t tcc_adma_dai_tx_get_cur_mono_dma_addr(
+	void __iomem *base_addr)
 {
 	return readl(base_addr + TCC_ADMA_TXDACSARL_OFFSET);
 }
 
-static inline uint32_t tcc_adma_dai_rx_get_cur_mono_dma_addr(void __iomem *base_addr)
+static inline uint32_t tcc_adma_dai_rx_get_cur_mono_dma_addr(
+	void __iomem *base_addr)
 {
 	return readl(base_addr + TCC_ADMA_RXDACDARL_OFFSET);
 }
@@ -1028,10 +1259,17 @@ static inline void tcc_adma_dai_tx_hopcnt_clear(void __iomem *base_addr)
 
 	value &= ~ADMA_TRANSCTRL_HOP_COUNT_MODE_Msk;
 
-	adma_writel(value | ADMA_TRANSCTRL_HOP_COUNT_CLEAR_MODE, base_addr + TCC_ADMA_TRANSCTRL_OFFSET);
+	adma_writel(
+		value | ADMA_TRANSCTRL_HOP_COUNT_CLEAR_MODE,
+		(base_addr + TCC_ADMA_TRANSCTRL_OFFSET));
 	adma_writel(addr, base_addr + TCC_ADMA_TXDASAR_OFFSET);
-	while((readl(base_addr + TCC_ADMA_TXDATCNT_OFFSET) & ADMA_COUNTER_CUR_COUNT_Msk) != (uint32_t)0);
-	adma_writel(value | ADMA_TRANSCTRL_HOP_COUNT_INCR_MODE, base_addr + TCC_ADMA_TRANSCTRL_OFFSET);
+	while ((readl(base_addr + TCC_ADMA_TXDATCNT_OFFSET) &
+		ADMA_COUNTER_CUR_COUNT_Msk) != 0u) {
+	};
+
+	adma_writel(
+		value | ADMA_TRANSCTRL_HOP_COUNT_INCR_MODE,
+		base_addr + TCC_ADMA_TRANSCTRL_OFFSET);
 }
 
 static inline void tcc_adma_dai_rx_hopcnt_clear(void __iomem *base_addr)
@@ -1041,10 +1279,16 @@ static inline void tcc_adma_dai_rx_hopcnt_clear(void __iomem *base_addr)
 
 	value &= ~ADMA_TRANSCTRL_HOP_COUNT_MODE_Msk;
 
-	adma_writel(value | ADMA_TRANSCTRL_HOP_COUNT_CLEAR_MODE, base_addr + TCC_ADMA_TRANSCTRL_OFFSET);
+	adma_writel(
+		value | ADMA_TRANSCTRL_HOP_COUNT_CLEAR_MODE,
+		base_addr + TCC_ADMA_TRANSCTRL_OFFSET);
 	adma_writel(addr, base_addr + TCC_ADMA_RXDADAR_OFFSET);
-	while((readl(base_addr + TCC_ADMA_RXDATCNT_OFFSET) & ADMA_COUNTER_CUR_COUNT_Msk) != (uint32_t)0);
-	adma_writel(value | ADMA_TRANSCTRL_HOP_COUNT_INCR_MODE, base_addr + TCC_ADMA_TRANSCTRL_OFFSET);
+	while ((readl(base_addr + TCC_ADMA_RXDATCNT_OFFSET) &
+		ADMA_COUNTER_CUR_COUNT_Msk) != 0u) {
+	};
+	adma_writel(
+		value | ADMA_TRANSCTRL_HOP_COUNT_INCR_MODE,
+		base_addr + TCC_ADMA_TRANSCTRL_OFFSET);
 }
 
 static inline void tcc_adma_spdif_tx_hopcnt_clear(void __iomem *base_addr)
@@ -1054,10 +1298,16 @@ static inline void tcc_adma_spdif_tx_hopcnt_clear(void __iomem *base_addr)
 
 	value &= ~ADMA_TRANSCTRL_HOP_COUNT_MODE_Msk;
 
-	adma_writel(value | ADMA_TRANSCTRL_HOP_COUNT_CLEAR_MODE, base_addr + TCC_ADMA_TRANSCTRL_OFFSET);
+	adma_writel(
+		value | ADMA_TRANSCTRL_HOP_COUNT_CLEAR_MODE,
+		base_addr + TCC_ADMA_TRANSCTRL_OFFSET);
 	adma_writel(addr, base_addr + TCC_ADMA_TXSPSAR_OFFSET);
-	while((readl(base_addr + TCC_ADMA_TXSPTCNT_OFFSET) & ADMA_COUNTER_CUR_COUNT_Msk) != (uint32_t)0);
-	adma_writel(value | ADMA_TRANSCTRL_HOP_COUNT_INCR_MODE, base_addr + TCC_ADMA_TRANSCTRL_OFFSET);
+	while ((readl(base_addr + TCC_ADMA_TXSPTCNT_OFFSET) &
+		ADMA_COUNTER_CUR_COUNT_Msk) != 0u) {
+	};
+	adma_writel(
+		value | ADMA_TRANSCTRL_HOP_COUNT_INCR_MODE,
+		base_addr + TCC_ADMA_TRANSCTRL_OFFSET);
 }
 
 static inline void tcc_adma_spdif_cdif_rx_hopcnt_clear(void __iomem *base_addr)
@@ -1067,11 +1317,16 @@ static inline void tcc_adma_spdif_cdif_rx_hopcnt_clear(void __iomem *base_addr)
 
 	value &= ~ADMA_TRANSCTRL_HOP_COUNT_MODE_Msk;
 
-	adma_writel(value | ADMA_TRANSCTRL_HOP_COUNT_CLEAR_MODE, base_addr + TCC_ADMA_TRANSCTRL_OFFSET);
+	adma_writel(
+		value | ADMA_TRANSCTRL_HOP_COUNT_CLEAR_MODE,
+		base_addr + TCC_ADMA_TRANSCTRL_OFFSET);
 	adma_writel(addr, base_addr + TCC_ADMA_RXCDDAR_OFFSET);
-	while((readl(base_addr + TCC_ADMA_RXCDTCNT_OFFSET) & ADMA_COUNTER_CUR_COUNT_Msk) != (uint32_t)0);
-	adma_writel(value | ADMA_TRANSCTRL_HOP_COUNT_INCR_MODE, base_addr + TCC_ADMA_TRANSCTRL_OFFSET);
+	while ((readl(base_addr + TCC_ADMA_RXCDTCNT_OFFSET) &
+		ADMA_COUNTER_CUR_COUNT_Msk) != 0u) {
+	};
+	adma_writel(
+		value | ADMA_TRANSCTRL_HOP_COUNT_INCR_MODE,
+		base_addr + TCC_ADMA_TRANSCTRL_OFFSET);
 }
 
 #endif /*TCC_ADMA_H*/
-
