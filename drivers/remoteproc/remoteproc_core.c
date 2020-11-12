@@ -1687,11 +1687,14 @@ int rproc_trigger_recovery(struct rproc *rproc)
 {
 	const struct firmware *firmware_p;
 	struct device *dev = &rproc->dev;
+	bool detached;
 	int ret;
 
 	ret = mutex_lock_interruptible(&rproc->lock);
 	if (ret)
 		return ret;
+
+	detached = rproc->autonomous && !atomic_read(&rproc->power);
 
 	/* State could have changed before we got the mutex */
 	if (rproc->state != RPROC_CRASHED)
@@ -1699,8 +1702,14 @@ int rproc_trigger_recovery(struct rproc *rproc)
 
 	dev_err(dev, "recovering %s\n", rproc->name);
 
+	if (rproc->autonomous && !detached) {
+		mutex_unlock(&rproc->lock);
+		rproc_shutdown(rproc);
+		return 0;
+	}
+
 	ret = rproc_stop(rproc, true);
-	if (ret)
+	if (ret || detached)
 		goto unlock_mutex;
 
 	/* generate coredump */
