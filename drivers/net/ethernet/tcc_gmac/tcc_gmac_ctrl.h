@@ -41,7 +41,8 @@
 #undef FRAME_FILTER_DEBUG
 /* #define FRAME_FILTER_DEBUG */
 #ifdef TCC_GMAC_DEBUG
-#define CTRL_DBG(fmt, args...)  printk(fmt, ## args)
+// #define CTRL_DBG(fmt, args...)  printk(fmt, ## args)
+// enable printk when debug.
 #else
 #define CTRL_DBG(fmt, args...)  do { } while (0)
 #endif

@@ -242,6 +242,7 @@ static int __init board_mac_setup(char *mac)
 
 __setup("androidboot.wifimac=", board_mac_setup);
 
+#if 0
 static unsigned char char_to_num(char c)
 {
 	unsigned char ret;
@@ -262,7 +263,9 @@ static unsigned char char_to_num(char c)
 
 	return ret;
 }
+#endif
 
+#if 0
 static int get_board_mac(char *mac)
 {
 	int i;
@@ -299,6 +302,7 @@ static int get_board_mac(char *mac)
 
 	return 0;
 }
+#endif
 
   // tcc_gmac_verify_args - verify the driver parameters.
   // Description: it verifies if some wrong parameter is passed to the driver.
@@ -1397,9 +1401,9 @@ static void tcc_gmac_adjust_link(struct net_device *dev)
 
 	if ((unsigned int)temp_flag != (unsigned int)0) {
 
-#ifdef CONFIG_TCC_RTL9000_PHY
+#if defined(CONFIG_TCC_RTL9000_PHY)
 		netif_carrier_on(dev);
-#elif CONFIG_TCC_MARVELL_PHY
+#elif defined(CONFIG_TCC_MARVELL_PHY)
 		netif_carrier_on(dev);
 #else
 #endif
@@ -1494,8 +1498,6 @@ static int tcc_gmac_phy_probe(struct net_device *dev)
 	struct mii_bus *bus = priv->mii;
 	struct phy_device *phy = NULL;
 	int phy_addr;
-	char phy_id[MII_BUS_ID_SIZE + 3];
-	char bus_id[MII_BUS_ID_SIZE];
 
 	pr_info("[INFO][GMAC] --] tcc_gmac_phy_probe: :\n");
 
@@ -1685,11 +1687,13 @@ static irqreturn_t tcc_gmac_irq_handler(int irq, void *dev_id)
 	return IRQ_HANDLED;
 }
 
+#if 0
 static irqreturn_t tcc_gmac_pmt_handler(int irq, void *dev_id)
 {
 	pr_info("GMAC PMT Interrupt happend.\n");
 	return IRQ_HANDLED;
 }
+#endif
 
 #ifdef CONFIG_TCC_GMAC_FQTSS_SUPPORT
 static void tcc_gmac_set_default_avb_opt(struct net_device *dev)
@@ -2174,8 +2178,10 @@ static int tcc_gmac_start_xmit_ch(struct sk_buff *skb, struct net_device *dev,
 	unsigned int txsize = dma->dma_tx_size;
 	struct netdev_queue *txq = netdev_get_tx_queue(dev, ch);
 
+#if defined(TCC_GMAC_XMIT_DEBUG)
 	volatile unsigned int temp;
 	volatile unsigned int temp_r;
+#endif
 
 //      spin_lock_irqsave(&priv->lock, flags);
 
@@ -2196,7 +2202,7 @@ static int tcc_gmac_start_xmit_ch(struct sk_buff *skb, struct net_device *dev,
 
 	entry = dma->cur_tx % txsize;
 
-#ifdef TCC_GMAC_XMIT_DEBUG
+#if defined(TCC_GMAC_XMIT_DEBUG)
 	temp = (unsigned int)skb->len > (unsigned int)ETH_FRAME_LEN;
 	temp_r = ((unsigned int)nfrags != (unsigned int)0);
 	// if ((skb->len > ETH_FRAME_LEN) || nfrags)
@@ -2229,7 +2235,7 @@ static int tcc_gmac_start_xmit_ch(struct sk_buff *skb, struct net_device *dev,
 	desc = dma->dma_tx + entry;
 	first = desc;
 
-#ifdef TCC_GMAC_XMIT_DEBUG
+#if defined(TCC_GMAC_XMIT_DEBUG)
 	temp = (unsigned int)skb->len > (unsigned int)ETH_FRAME_LEN;
 	temp_r = ((unsigned int)nfrags != (unsigned int)0);
 	//if ((nfrags > 0) || (skb->len > ETH_FRAME_LEN))
@@ -2291,7 +2297,7 @@ static int tcc_gmac_start_xmit_ch(struct sk_buff *skb, struct net_device *dev,
 	priv->hw->desc->set_tx_owner(first);
 	dma->cur_tx++;
 
-#ifdef TCC_GMAC_XMIT_DEBUG
+#if defined(TCC_GMAC_XMIT_DEBUG)
 	if ((unsigned int)netif_msg_pktdata(priv) != (unsigned int)0) {
 		pr_info("tcc_gmac xmit(ch:%d): current=%d, dirty=%d, entry=%d, "
 			"first=%p, nfrags=%d\n", ch,
@@ -2310,7 +2316,7 @@ static int tcc_gmac_start_xmit_ch(struct sk_buff *skb, struct net_device *dev,
 		//netif_stop_queue(dev);
 		netif_tx_stop_queue(txq);
 	}
-#ifdef CONFIG_TCC_GMAC_PTP
+#if defined(CONFIG_TCC_GMAC_PTP)
 	if ((unsigned int)
 	    ((unsigned int)skb_shinfo(skb)->
 	     tx_flags & (unsigned int)SKBTX_HW_TSTAMP) != (unsigned int)0) {
@@ -2648,8 +2654,10 @@ static int tcc_gmac_suspend(struct platform_device *pdev, pm_message_t state)
 {
 	struct net_device *dev = platform_get_drvdata(pdev);
 	struct tcc_gmac_priv *priv = netdev_priv(dev);
+#if defined(CONFIG_TCC_WAKE_ON_LAN)
 	int dis_ic = 0;
 	int i;
+#endif
 
 	//if (!dev || !netif_running(dev))
 	if ((dev == NULL))
@@ -2713,8 +2721,8 @@ static int tcc_gmac_resume(struct platform_device *pdev)
 #if 1
 	struct net_device *dev = platform_get_drvdata(pdev);
 	struct tcc_gmac_priv *priv = netdev_priv(dev);
-	void __iomem *ioaddr = (void __iomem *)dev->base_addr;
-	int i;
+	// void __iomem *ioaddr = (void __iomem *)dev->base_addr;
+	// int i;
 
 #if defined(CONFIG_TCC_WAKE_ON_LAN)
 	gmac_suspended = 0;
@@ -2775,16 +2783,16 @@ static long tcc_gmac_misc_ioctl(struct file *flip, unsigned int cmd,
 				unsigned long arg)
 {
 	long ret = 0;
-	unsigned int rev_value;
-	unsigned int send_value;
-	struct miscdevice *misc = (struct miscdevice *)flip->private_data;
+	// unsigned int rev_value;
+	// unsigned int send_value;
+	// struct miscdevice *misc = (struct miscdevice *)flip->private_data;
 	struct tcc_gmac_priv *priv = netdev_priv(netdev);
 
-	struct mii_bus *mii_bus = priv->mii;
+	// struct mii_bus *mii_bus = priv->mii;
 	struct iodata iodata;
 
 	long data = 0;
-	u32 addr;
+	// u32 addr;
 
 	iodata.addr =
 	    (unsigned short)((unsigned int)arg & (unsigned short)0xffff);
@@ -2851,11 +2859,11 @@ static int tcc_gmac_probe(struct platform_device *pdev)
 	unsigned char default_mac_addr[ETH_ALEN] = {
 		0x00, 0x11, 0x22, 0x33, 0x44, 0x55
 	};
-	unsigned char mac_addr[ETH_ALEN] = {
-		0x00, 0x11, 0x22, 0x33, 0x44, 0x55
-	};
+	// unsigned char mac_addr[ETH_ALEN] = {
+		// 0x00, 0x11, 0x22, 0x33, 0x44, 0x55
+	// };
 	int ret = 0;
-	int err = 0;
+	// int err = 0;
 
 	pr_info("[INFO][GMAC] --] tcc_gmac_probe: :\n");
 
