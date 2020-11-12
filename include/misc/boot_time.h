@@ -3,4 +3,4 @@
  * Copyright (C) Telechips Inc.
  */
 
-extern unsigned int basic_setup_done_time
+extern unsigned int basic_setup_done_time;

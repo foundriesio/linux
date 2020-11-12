@@ -23,10 +23,13 @@
 #include <linux/fs.h>
 #include <linux/cdev.h>
 #include <linux/device.h>
+#include <misc/boot_time.h>
 
 #define START_MP_INDEX			1
 
+#if defined(CONFIG_TCC803X_CA7S)
 static int start_mp;
+#endif
 const unsigned int *property_temp;
 unsigned int smc_time_val;
 unsigned int smc_time_num;
@@ -132,23 +135,31 @@ static long boot_time_ioctl(struct file *flip, unsigned int cmd,
 	switch (cmd) {
 	case BOOT_STAMP_DESCRIPTION:
 	case BOOT_STAMP_DESCRIPTION_ALL:
-		copy_from_user(&boot_time_data, (struct boot_time *)arg,
-			       sizeof(struct boot_time));
-		copy_to_user((unsigned char *)((struct boot_time *)arg)->
-			     boot_stamp,
-			     boot_stamp_desc[boot_time_data.boot_stamp_num],
-			     100);
+		if (copy_from_user(&boot_time_data, (struct boot_time *)arg,
+				   sizeof(struct boot_time))) {
+			ret = -EFAULT;
+		} else if (copy_to_user
+			((unsigned char *)((struct boot_time *)arg)->boot_stamp,
+			 boot_stamp_desc[boot_time_data.boot_stamp_num], 100)) {
+			ret = -EFAULT;
+		}
 		break;
 
 	case BOOT_TIME:
-		copy_from_user(&boot_time_data, (struct boot_time *)arg,
-			       sizeof(struct boot_time));
-		arm_smccc_smc(smc_time_val,
-			      (unsigned long)boot_time_data.boot_stamp_num, 0,
-			      0, 0, 0, 0, 0, &res);
-		boot_time_data.time_in_us = (uint32_t) res.a1;
-		copy_to_user((struct boot_time *)arg, &boot_time_data,
-			     sizeof(struct boot_time));
+		if (copy_from_user(&boot_time_data, (struct boot_time *)arg,
+				   sizeof(struct boot_time))) {
+			ret = -EFAULT;
+		} else {
+			arm_smccc_smc(smc_time_val,
+				(unsigned long)boot_time_data.boot_stamp_num,
+				0, 0, 0, 0, 0, 0, &res);
+			boot_time_data.time_in_us = (uint32_t) res.a1;
+			if (copy_to_user
+			    ((struct boot_time *)arg, &boot_time_data,
+			     sizeof(struct boot_time))) {
+				ret = -EFAULT;
+			}
+		}
 		break;
 
 	case GET_BOOT_STAMP_NUM:
@@ -158,8 +169,10 @@ static long boot_time_ioctl(struct file *flip, unsigned int cmd,
 		    sizeof(boot_stamp_desc) / 4;
 		boot_time_data.boot_stamp_time_num = res.a0;
 
-		copy_to_user((struct boot_time *)arg, &boot_time_data,
-			     sizeof(struct boot_time));
+		if (copy_to_user((struct boot_time *)arg, &boot_time_data,
+				 sizeof(struct boot_time))) {
+			ret = -EFAULT;
+		}
 
 		break;
 
@@ -173,8 +186,10 @@ static long boot_time_ioctl(struct file *flip, unsigned int cmd,
 		boot_time_data.current_time_val += (uint32_t) res.a1;
 #endif
 
-		copy_to_user((struct boot_time *)arg, &boot_time_data,
-			     sizeof(struct boot_time));
+		if (copy_to_user((struct boot_time *)arg, &boot_time_data,
+				 sizeof(struct boot_time))) {
+			ret = -EFAULT;
+		}
 		break;
 
 	case GET_INITCALL_DONE:
@@ -187,8 +202,10 @@ static long boot_time_ioctl(struct file *flip, unsigned int cmd,
 		boot_time_data.basic_setup_done_time += (uint32_t) res.a1;
 #endif
 
-		copy_to_user((struct boot_time *)arg, &boot_time_data,
-			     sizeof(struct boot_time));
+		if (copy_to_user((struct boot_time *)arg, &boot_time_data,
+				 sizeof(struct boot_time))) {
+			ret = -EFAULT;
+		}
 		break;
 
 	default:
@@ -273,7 +290,7 @@ static int boot_time_probe(struct platform_device *pdev)
 	}
 
 	pr_warn("Major = %d Minor = %d\n", MAJOR(boot_time_devt),
-	       MINOR(boot_time_devt));
+		MINOR(boot_time_devt));
 
 	cdev_init(&boot_time_cdev, &fops);
 
