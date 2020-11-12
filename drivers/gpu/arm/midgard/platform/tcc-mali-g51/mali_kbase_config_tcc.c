@@ -95,9 +95,10 @@ int kbase_platform_dvfs_event(struct kbase_device *kbdev, u32 utilisation,
 			maliDvfsCurrentStep = nextStep;
 
 			if (kbdev->clock && kbdev->regulator)
-				dev_dbg("%s setting %d, utilisation:%d,
-				  curstep:%d, nextstep:%d, getrate:%d,
-				  getvoltage:%d\n", __func__,
+				dev_dbg(kbdev->dev, 
+				  "%s setting %d, utilisation:%d, curstep:%d,"
+				  " nextstep:%d, getrate:%d, getvoltage:%d\n",
+				   __func__,
 				  gpu_dvfs_table[nextStep].gpu_freq,
 				  utilisation, currStep,
 				  nextStep, clk_get_rate(kbdev->clock),
