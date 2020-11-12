@@ -115,7 +115,7 @@ enum
 extern int set_persist_display_mode(int persist_display_mode);
 #endif
 #if defined(CONFIG_FB_TCC_COMPOSITE)
-extern void tcc_composite_get_spec(COMPOSITE_MODE_TYPE mode, struct COMPOSITE_SPEC_TYPE *spec);
+extern void tcc_composite_get_spec(enum COMPOSITE_MODE_TYPE mode, struct COMPOSITE_SPEC_TYPE *spec);
 extern void tcc_composite_attach(char lcdc_num, char mode, char starter_flag);
 extern int tcc_composite_connect_lcdc(int lcdc_num, int enable);
 #endif
@@ -218,7 +218,7 @@ void tcc_output_starter_memclr(int img_width, int img_height)
 void tcc_output_starter_composite(unsigned char lcdc_num, unsigned char type, struct platform_device *pdev)
 {
 #ifdef CONFIG_FB_TCC_COMPOSITE
-	COMPOSITE_MODE_TYPE mode;
+	enum COMPOSITE_MODE_TYPE mode;
 	struct COMPOSITE_SPEC_TYPE spec;
 	struct LCDTIMING CompositeTiming;
 	struct LCDCTR LcdCtrlParam;

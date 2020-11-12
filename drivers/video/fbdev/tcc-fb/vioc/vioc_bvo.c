@@ -411,7 +411,7 @@ static enum bvo_spec_type bvo_get_spec_type(enum bvo_format fmt)
 	return bspec;
 }
 
-void internal_bvo_get_spec(COMPOSITE_MODE_TYPE type, struct COMPOSITE_SPEC_TYPE *spec)
+void internal_bvo_get_spec(enum COMPOSITE_MODE_TYPE type, struct COMPOSITE_SPEC_TYPE *spec)
 {
 	enum bvo_format bfmt;
 	enum bvo_spec_type btype;
@@ -455,7 +455,7 @@ void internal_bvo_get_spec(COMPOSITE_MODE_TYPE type, struct COMPOSITE_SPEC_TYPE 
 	spec->composite_FEWC2 = bspec->FEWC2;		// frame start wait cycle is the number of lines to insert at the begining each frame
 }
 
-void internal_tve_set_config(COMPOSITE_MODE_TYPE type)
+void internal_tve_set_config(enum COMPOSITE_MODE_TYPE type)
 {
 	enum bvo_format bfmt;
 	struct bvo_regs *regs;
@@ -713,7 +713,7 @@ void internal_tve_clock_onoff(unsigned int onoff)
 	dprintk("%s(%d)\n", __func__, onoff);
 }
 
-void internal_tve_enable(COMPOSITE_MODE_TYPE type, unsigned int onoff)
+void internal_tve_enable(enum COMPOSITE_MODE_TYPE type, unsigned int onoff)
 {
 	/* Warning
 	 * -------
@@ -752,7 +752,7 @@ void internal_tve_init(void)
 	//}
 }
 
-void internal_tve_mv(COMPOSITE_MODE_TYPE type, unsigned int enable)
+void internal_tve_mv(enum COMPOSITE_MODE_TYPE type, unsigned int enable)
 {
 	uint32_t val = 0;
 	uint32_t mv_off = 0;

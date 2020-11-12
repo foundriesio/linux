@@ -1,10 +1,5 @@
 /*
- * linux/include/video/tcc/vioc_v_dv.h
- * Author:  <linux@telechips.com>
- * Created: June 10, 2008
- * Description: TCC VIOC h/w block
- *
- * Copyright (C) 2008-2009 Telechips
+ * Copyright (C) Telechips, Inc.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -37,9 +32,10 @@
 #include "tcc901x/vioc_v_dv.h"
 #include "tcc901x/vioc_dv_in.h"
 #endif
+
 //#define DOLBY_VISION_CHECK_SEQUENCE
 #if defined(DOLBY_VISION_CHECK_SEQUENCE)
-#define dprintk_dv_sequence(msg...) printk("[DBG][DV] " msg);
+#define dprintk_dv_sequence(msg...) pr_info("[DBG][DV] " msg)
 #else
 #define dprintk_dv_sequence(msg...)
 #endif

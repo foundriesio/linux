@@ -1,3 +1,4 @@
+
 /*
  * Copyright (C) 2008-2019 Telechips Inc.
  *
@@ -47,7 +48,7 @@
 #include <video/tcc/tcc_gre2d_type.h>
 #include <video/tcc/tcc_grp_ioctrl.h>
 
-extern G2D_DITHERING_TYPE gG2D_Dithering_type;
+extern enum G2D_DITHERING_TYPE gG2D_Dithering_type;
 extern unsigned char gG2D_Dithering_en;
 
 static int debug  = 0;
@@ -82,11 +83,11 @@ struct g2d_drv_type {
 
 	struct clk		*clk;
 	struct g2d_data	*data;
-//	SCALER_TYPE		*info;
+//	struct SCALER_TYPE		*info;
 };
 
 /* YUV FORMAT의 U, V 의 ADDRESS를 구함 */
-void grp_get_address(G2D_DATA_FM fmt, unsigned int add, short  src_imgx, short  src_imgy,
+void grp_get_address(enum G2D_DATA_FM fmt, unsigned int add, short  src_imgx, short  src_imgy,
 							unsigned int* U,unsigned int* V)
 {
 	if(fmt == GE_YUV420_sp)
@@ -120,7 +121,7 @@ void g2d_drv_response_check(struct g2d_data	*data, unsigned int responsetype)
 	}
 }
 
-int grp_common_ctrl(struct g2d_data	*data, G2D_COMMON_TYPE *g2d_p)
+int grp_common_ctrl(struct g2d_data	*data, struct G2D_COMMON_TYPE *g2d_p)
 {
 	unsigned int srcY = 0, srcU = 0, srcV = 0;
 	unsigned int tgtY = 0, tgtU = 0, tgtV = 0;
@@ -181,7 +182,7 @@ int grp_common_ctrl(struct g2d_data	*data, G2D_COMMON_TYPE *g2d_p)
 			g2d_p->crop_imgy = g2d_p->dst_imgy - g2d_p->dst_off_y;
 		}
 	}
-	
+
 	gre2d_rsp_interrupt(G2D_INTERRUPT_TYPE);
 
 	if((g2d_p->srcfm.format <= GE_YUV422_sq) && (g2d_p->tgtfm.format == GE_RGB565))	
@@ -204,7 +205,7 @@ int grp_common_ctrl(struct g2d_data	*data, G2D_COMMON_TYPE *g2d_p)
 							g2d_p->dst_off_x, g2d_p->dst_off_y, g2d_p->ch_mode, g2d_p->parallel_ch_mode);
 
 
-	result = gre2d_interrupt_ctrl(0, (G2D_INT_TYPE)0, 0, 0);
+	result = gre2d_interrupt_ctrl(0, (enum G2D_INT_TYPE)0, 0, 0);
 	spin_unlock_irq(&(data->g2d_spin_lock));
 
 	if(gG2D_Dithering_en)	{
@@ -217,11 +218,11 @@ int grp_common_ctrl(struct g2d_data	*data, G2D_COMMON_TYPE *g2d_p)
 }
 
 
-int grp_overlaymixer_ctrl(struct g2d_data *data, G2D_BITBLIT_TYPE_1 *g2d_p)
+int grp_overlaymixer_ctrl(struct g2d_data *data, struct G2D_BITBLIT_TYPE_1 *g2d_p)
 {
 
-	G2D_ROP_FUNC rop;
-	G2D_EN	chEn = GRP_DISABLE;
+	struct G2D_ROP_FUNC rop;
+	enum G2D_EN	chEn = GRP_DISABLE;
 	unsigned int result = 0;
 		
 	unsigned int src_addr_comp0 = 0, src_addr_comp1 = 0, src_addr_comp2 = 0;
@@ -279,7 +280,7 @@ int grp_overlaymixer_ctrl(struct g2d_data *data, G2D_BITBLIT_TYPE_1 *g2d_p)
 	GRP_DBG("src_addr0:0x%X, src_addr1:0x%X, src_addr2:0x%X, dest_addr:0x%X\n", \
 				src_addr0, src_addr1, src_addr2, dest_addr);
 
-	memset(&rop, 0x0, sizeof(G2D_ROP_FUNC));
+	memset(&rop, 0x0, sizeof(struct G2D_ROP_FUNC));
 
 	rop.src0.add0			= src_addr0;
 	rop.src0.frame_pix_sx	= g2d_p->src0_imgx;
@@ -378,7 +379,7 @@ int grp_overlaymixer_ctrl(struct g2d_data *data, G2D_BITBLIT_TYPE_1 *g2d_p)
 	
 	gre2d_ImgROP(rop, chEn);
 	
-	result = gre2d_interrupt_ctrl(0,(G2D_INT_TYPE)0,0,0);
+	result = gre2d_interrupt_ctrl(0,(enum G2D_INT_TYPE)0,0,0);
 
 	spin_unlock_irq(&(data->g2d_spin_lock));
 
@@ -388,8 +389,8 @@ int grp_overlaymixer_ctrl(struct g2d_data *data, G2D_BITBLIT_TYPE_1 *g2d_p)
 }
 
 #define G2D_MAX_SIZE	4080
-extern void Gre2d_SetBCh_address(G2D_CHANNEL ch, unsigned int add0, unsigned int add1, unsigned int add2);
-int grp_alphablending_value_set(struct g2d_data *data, G2D_ARITH_OP_TYPE *g2d_p)
+extern void Gre2d_SetBCh_address(enum G2D_CHANNEL ch, unsigned int add0, unsigned int add1, unsigned int add2);
+int grp_alphablending_value_set(struct g2d_data *data, struct G2D_ARITH_OP_TYPE *g2d_p)
 {
 	unsigned int i = 0, loop_cnt = 0, remainder = 0;
 
@@ -449,7 +450,7 @@ int grp_alphablending_value_set(struct g2d_data *data, G2D_ARITH_OP_TYPE *g2d_p)
 	return 0;
 }
 
-int grp_arithmeic_operation_ctrl(struct g2d_data *data, G2D_ARITH_OP_TYPE *g2d_p)
+int grp_arithmeic_operation_ctrl(struct g2d_data *data, struct G2D_ARITH_OP_TYPE *g2d_p)
 {
 	unsigned int result = 0;
 	
@@ -471,7 +472,7 @@ int grp_arithmeic_operation_ctrl(struct g2d_data *data, G2D_ARITH_OP_TYPE *g2d_p
 						g2d_p->arith, g2d_p->R, g2d_p->G, g2d_p->B);
 
 
-	result = gre2d_interrupt_ctrl(0,(G2D_INT_TYPE)0,0,0);
+	result = gre2d_interrupt_ctrl(0,(enum G2D_INT_TYPE)0,0,0);
 	spin_unlock_irq(&(data->g2d_spin_lock));
 	
 	g2d_drv_response_check(data, g2d_p->responsetype);
@@ -479,7 +480,7 @@ int grp_arithmeic_operation_ctrl(struct g2d_data *data, G2D_ARITH_OP_TYPE *g2d_p
 	return 0;
 }
 
-void grp_rotate_ctrl(struct g2d_data *data, G2D_BITBLIT_TYPE *g2d_p)
+void grp_rotate_ctrl(struct g2d_data *data, struct G2D_BITBLIT_TYPE *g2d_p)
 {
 	int result;
 	unsigned int src_addr_comp = 0, dest_addr_comp = 0;
@@ -511,14 +512,14 @@ void grp_rotate_ctrl(struct g2d_data *data, G2D_BITBLIT_TYPE *g2d_p)
 					g2d_p->dst_off_x + dest_addr_comp, g2d_p->dst_off_y, 
 					g2d_p->ch_mode, 0);
 	
-	result = gre2d_interrupt_ctrl(0,(G2D_INT_TYPE)0,0,0);
+	result = gre2d_interrupt_ctrl(0,(enum G2D_INT_TYPE)0,0,0);
 	spin_unlock_irq(&(data->g2d_spin_lock));
 	
 	g2d_drv_response_check(data, g2d_p->responsetype);
 }
 
 #if defined(TCC_OVERLAY_MIXER_CLUT_SUPPORT)
-void grp2d_overlaymixer_clut_ctrl(G2D_CLUT_TYPE *pClut)
+void grp2d_overlaymixer_clut_ctrl(struct G2D_CLUT_TYPE *pClut)
 {
 	int i;
 
@@ -584,15 +585,15 @@ static unsigned int g2d_drv_poll(struct file *filp, struct poll_table_struct *wa
 static irqreturn_t g2d_drv_handler(int irq, void *client_data)
 {  	
 	struct g2d_drv_type *g2d = (struct g2d_drv_type *)client_data;
-	G2D_INT_TYPE IFlag;
+	enum G2D_INT_TYPE IFlag;
 
-	IFlag = gre2d_interrupt_ctrl(0,(G2D_INT_TYPE)0,0,0);	//GE_IREQ
+	IFlag = gre2d_interrupt_ctrl(0,(enum G2D_INT_TYPE)0,0,0);	//GE_IREQ
 
 	dprintk(" g2d_drv_handler irq[%d] %d block[%d]!!!\n", IFlag, g2d->data->block_waiting, g2d->data->block_operating);
 	
 	if(IFlag & G2D_INT_R_FLG)
 	{
-		IFlag = gre2d_interrupt_ctrl(1,(G2D_INT_TYPE)(G2D_INT_R_IRQ|G2D_INT_R_FLG), 0, TRUE);
+		IFlag = gre2d_interrupt_ctrl(1,(enum G2D_INT_TYPE)(G2D_INT_R_IRQ|G2D_INT_R_FLG), 0, TRUE);
 		gre2d_set_dma_interrupt(SET_G2D_DMA_INT_DISABLE);
 
 		wake_up_interruptible(&g2d->data->poll_wq);
@@ -624,17 +625,17 @@ static long g2d_drv_ioctl(struct file *filp, unsigned int cmd, unsigned long arg
 		case TCC_GRP_COMMON_IOCTRL:
 		case TCC_GRP_COMMON_IOCTRL_KERNEL:
 			{
-				G2D_COMMON_TYPE	*g2d_p = (G2D_COMMON_TYPE *)kmalloc(sizeof(G2D_COMMON_TYPE), GFP_KERNEL);
+				struct G2D_COMMON_TYPE	*g2d_p = (struct G2D_COMMON_TYPE *)kmalloc(sizeof(struct G2D_COMMON_TYPE), GFP_KERNEL);
 
 				if(cmd == TCC_GRP_COMMON_IOCTRL) {
-					if(copy_from_user((void *)(g2d_p), (void __user *)arg, sizeof(G2D_COMMON_TYPE))){
+					if(copy_from_user((void *)(g2d_p), (void __user *)arg, sizeof(struct G2D_COMMON_TYPE))){
 						kfree((const void*)g2d_p);
 						ret = -EFAULT;
 						goto Ioctl_Error;
 					}
 				}
 				else {
-					memcpy(g2d_p, (G2D_COMMON_TYPE*)arg ,sizeof(G2D_COMMON_TYPE));
+					memcpy(g2d_p, (struct G2D_COMMON_TYPE*)arg ,sizeof(struct G2D_COMMON_TYPE));
 				}
 
 				if(g2d->data->block_operating >= 1)	 {
@@ -651,7 +652,7 @@ static long g2d_drv_ioctl(struct file *filp, unsigned int cmd, unsigned long arg
 				g2d->data->block_operating++;
 				spin_unlock_irq(&(g2d->data->g2d_spin_lock));
 				
-				grp_common_ctrl(g2d->data, (G2D_COMMON_TYPE *)g2d_p);
+				grp_common_ctrl(g2d->data, (struct G2D_COMMON_TYPE *)g2d_p);
 				
 				kfree((const void*)g2d_p);
 			}
@@ -660,7 +661,7 @@ static long g2d_drv_ioctl(struct file *filp, unsigned int cmd, unsigned long arg
 		case TCC_GRP_ARITH_IOCTRL:
 		case TCC_GRP_ARITH_IOCTRL_KERNEL:			
 			{
-				G2D_ARITH_OP_TYPE g2d_arith;
+				struct G2D_ARITH_OP_TYPE g2d_arith;
 
 				if(cmd == TCC_GRP_ARITH_IOCTRL) {
 					if(copy_from_user((void *)(&g2d_arith), (void __user *)arg, sizeof(g2d_arith))){
@@ -669,7 +670,7 @@ static long g2d_drv_ioctl(struct file *filp, unsigned int cmd, unsigned long arg
 					}
 				}
 				else {
-					memcpy(&g2d_arith, (G2D_ARITH_OP_TYPE*)arg ,sizeof(g2d_arith));
+					memcpy(&g2d_arith, (struct G2D_ARITH_OP_TYPE*)arg ,sizeof(g2d_arith));
 				}
 
 				if(g2d->data->block_operating >= 1)			{
@@ -686,14 +687,14 @@ static long g2d_drv_ioctl(struct file *filp, unsigned int cmd, unsigned long arg
 				g2d->data->block_operating++;
 				spin_unlock_irq(&(g2d->data->g2d_spin_lock));
 				
-				grp_arithmeic_operation_ctrl(g2d->data, (G2D_ARITH_OP_TYPE *)&g2d_arith);
+				grp_arithmeic_operation_ctrl(g2d->data, (struct G2D_ARITH_OP_TYPE *)&g2d_arith);
 			}
 			break;
 
 		case TCC_GRP_ALPHA_VALUE_SET_IOCTRL:
 		case TCC_GRP_ALPHA_VALUE_SET_IOCTRL_KERNEL:			
 			{
-				G2D_ARITH_OP_TYPE g2d_arith;
+				struct G2D_ARITH_OP_TYPE g2d_arith;
 
 				if(cmd == TCC_GRP_ALPHA_VALUE_SET_IOCTRL) {
 					if(copy_from_user((void *)(&g2d_arith), (void __user *)arg, sizeof(g2d_arith))){
@@ -702,7 +703,7 @@ static long g2d_drv_ioctl(struct file *filp, unsigned int cmd, unsigned long arg
 					}
 				}
 				else {
-					memcpy(&g2d_arith, (G2D_ARITH_OP_TYPE*)arg ,sizeof(g2d_arith));
+					memcpy(&g2d_arith, (struct G2D_ARITH_OP_TYPE*)arg ,sizeof(g2d_arith));
 				}
 
 				if(g2d->data->block_operating >= 1)			{
@@ -719,24 +720,24 @@ static long g2d_drv_ioctl(struct file *filp, unsigned int cmd, unsigned long arg
 				g2d->data->block_operating++;
 				spin_unlock_irq(&(g2d->data->g2d_spin_lock));
 
-				grp_alphablending_value_set(g2d->data, (G2D_ARITH_OP_TYPE *)&g2d_arith);
+				grp_alphablending_value_set(g2d->data, (struct G2D_ARITH_OP_TYPE *)&g2d_arith);
 			}
 			break;
 
 		case TCC_OVERLAY_MIXER_IOCTRL:
 		case TCC_OVERLAY_MIXER_IOCTRL_KERNEL:
 			{
-				G2D_BITBLIT_TYPE_1	*g2d_p1 = (G2D_BITBLIT_TYPE_1 *)kmalloc(sizeof(G2D_BITBLIT_TYPE_1), GFP_KERNEL);
+				struct G2D_BITBLIT_TYPE_1	*g2d_p1 = (struct G2D_BITBLIT_TYPE_1 *)kmalloc(sizeof(struct G2D_BITBLIT_TYPE_1), GFP_KERNEL);
 
 				if(cmd == TCC_OVERLAY_MIXER_IOCTRL) {
-					if(copy_from_user((void *)(g2d_p1), (void __user *)arg, sizeof(G2D_BITBLIT_TYPE_1))) {
+					if(copy_from_user((void *)(g2d_p1), (void __user *)arg, sizeof(struct G2D_BITBLIT_TYPE_1))) {
 						kfree((const void*)g2d_p1);
 						ret = -EFAULT;
 						goto Ioctl_Error;
 					}
 				}
 				else {
-					memcpy(g2d_p1, (G2D_BITBLIT_TYPE_1*)arg ,sizeof(G2D_BITBLIT_TYPE_1));
+					memcpy(g2d_p1, (struct G2D_BITBLIT_TYPE_1*)arg ,sizeof(struct G2D_BITBLIT_TYPE_1));
 				}
 
 				if(g2d->data->block_operating >= 1)	{
@@ -762,7 +763,7 @@ static long g2d_drv_ioctl(struct file *filp, unsigned int cmd, unsigned long arg
 		case TCC_GRP_ROTATE_IOCTRL:
 		case TCC_GRP_ROTATE_IOCTRL_KERNEL:
 			{
-				G2D_BITBLIT_TYPE	g2d_p1;
+				struct G2D_BITBLIT_TYPE g2d_p1;
 
 				if(cmd == TCC_GRP_ROTATE_IOCTRL) {
 					if(copy_from_user((void *)(&g2d_p1), (void __user *)arg, sizeof(g2d_p1))){
@@ -771,7 +772,7 @@ static long g2d_drv_ioctl(struct file *filp, unsigned int cmd, unsigned long arg
 					}
 				}
 				else {
-					memcpy(&g2d_p1, (G2D_BITBLIT_TYPE*)arg ,sizeof(g2d_p1));
+					memcpy(&g2d_p1, (struct G2D_BITBLIT_TYPE*)arg ,sizeof(g2d_p1));
 				}
 
 				if(g2d->data->block_operating >= 1)	{
@@ -795,14 +796,14 @@ static long g2d_drv_ioctl(struct file *filp, unsigned int cmd, unsigned long arg
 	#if defined(TCC_OVERLAY_MIXER_CLUT_SUPPORT)
 		case TCC_OVERLAY_MIXER_CLUT_IOCTRL:
 			{
-				G2D_CLUT_TYPE *p_g2d_clut;
-				p_g2d_clut = (G2D_CLUT_TYPE *)kmalloc(PAGE_SIZE, GFP_KERNEL);
+				struct G2D_CLUT_TYPE *p_g2d_clut;
+				p_g2d_clut = (struct G2D_CLUT_TYPE *)kmalloc(PAGE_SIZE, GFP_KERNEL);
 				if(!p_g2d_clut) {
 					WARN_ON(1);
 					return -ENOMEM;
 				}
 
-				if(copy_from_user((void *)(p_g2d_clut), (void __user *)arg, sizeof(G2D_CLUT_TYPE))) {
+				if(copy_from_user((void *)(p_g2d_clut), (void __user *)arg, sizeof(struct G2D_CLUT_TYPE))) {
 					kfree(p_g2d_clut);
 					ret = -EFAULT;
 					goto Ioctl_Error;
@@ -817,7 +818,7 @@ static long g2d_drv_ioctl(struct file *filp, unsigned int cmd, unsigned long arg
 		case TCC_OVERLAY_IOCTRL:
 		case TCC_OVERLAY_IOCTRL_KERNEL:
 			{
-				G2D_OVERY_FUNC	g2d_p1;
+				struct G2D_OVERY_FUNC	g2d_p1;
 
 				if(cmd == TCC_OVERLAY_IOCTRL) {
 					if(copy_from_user((void *)(&g2d_p1), (void __user *)arg, sizeof(g2d_p1))){
@@ -826,7 +827,7 @@ static long g2d_drv_ioctl(struct file *filp, unsigned int cmd, unsigned long arg
 					}
 				}
 				else {
-					memcpy(&g2d_p1, (G2D_OVERY_FUNC*)arg ,sizeof(g2d_p1));
+					memcpy(&g2d_p1, (struct G2D_OVERY_FUNC *)arg ,sizeof(g2d_p1));
 				}
 
 				if(g2d->data->block_operating >= 1)	{

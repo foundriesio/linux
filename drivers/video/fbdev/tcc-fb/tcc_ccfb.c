@@ -95,7 +95,7 @@ DEFINITION OF STATIC VARIABLES
 ****************************************************************************/
 static ccfb_dev_config_t	g_dev_cfg;
 static DEFINE_MUTEX(g_ccfb_mutex);
-static ccfb_config_t g_ccfg_cfg;
+static struct ccfb_config_t g_ccfg_cfg;
 
 
 /****************************************************************************
@@ -224,7 +224,7 @@ static int tccxxx_ccfb_lcdc_disable(ccfb_dev_config_t *dev)
 
 static int tccxxx_ccfb_get_config(ccfb_dev_config_t *dev, void *arg)
 {
-	ccfb_config_t cfg;
+	struct ccfb_config_t cfg;
 	struct lcd_panel *panel = tccfb_get_panel();
 	unsigned long state;
 
@@ -239,20 +239,20 @@ static int tccxxx_ccfb_get_config(ccfb_dev_config_t *dev, void *arg)
 	return 0;
 }
 
-static int tccxxx_ccfb_set_config(ccfb_dev_config_t *dev, ccfb_config_t *arg)
+static int tccxxx_ccfb_set_config(ccfb_dev_config_t *dev, struct ccfb_config_t *arg)
 {
 	int ret = -ENODEV;
-	ccfb_config_t cfg;
+	struct ccfb_config_t cfg;
 
 	dprintk("[DBG][CCFB] %s\n", __func__);
 	
-	if(copy_from_user((void*)&cfg, (void *)arg, sizeof(ccfb_config_t)))
+	if(copy_from_user((void*)&cfg, (void *)arg, sizeof(struct ccfb_config_t)))
 		return -EFAULT;	
 
 	ret = tccxxx_ccfb_act_clock(dev, cfg.curLcdc);
 	if(ret == 0)
 	{
-		memcpy(&g_ccfg_cfg, &cfg, sizeof(ccfb_config_t));
+		memcpy(&g_ccfg_cfg, &cfg, sizeof(struct ccfb_config_t));
 		
 		// position (full screen update)
 		VIOC_WMIX_SetPosition(dev->pCurWMix, 1, cfg.res.disp_x, cfg.res.disp_y);
@@ -368,10 +368,10 @@ static long tccxxx_ccfb_ioctl(struct file *file, unsigned int cmd, unsigned long
 			
 		case CCFB_SET_CONFIG:
 			if(dev->cur_state == CCFB_STATE_OPENED){
-				ret = tccxxx_ccfb_set_config(dev, (ccfb_config_t *)arg);
+				ret = tccxxx_ccfb_set_config(dev, (struct ccfb_config_t *)arg);
 				if(ret == 0) dev->cur_state = CCFB_STATE_PAUSE;
 			}else if((dev->cur_state == CCFB_STATE_PREPARE)||(dev->cur_state == CCFB_STATE_PAUSE)){
-				ret = tccxxx_ccfb_set_config(dev, (ccfb_config_t *)arg);
+				ret = tccxxx_ccfb_set_config(dev, (struct ccfb_config_t *)arg);
 				if(ret == 0) dev->cur_state = CCFB_STATE_RUNNING;
 			}
 			break;
@@ -434,7 +434,7 @@ static int tccxxx_ccfb_release(struct inode *inode, struct file *file)
 		}
 	}
 		
-	memset(&g_ccfg_cfg, 0x0, sizeof(ccfb_config_t));
+	memset(&g_ccfg_cfg, 0x0, sizeof(struct ccfb_config_t));
 
 	dev->cur_state = CCFB_STATE_CLOSED;
 	dev->act_lcdc_idx = -1;
@@ -458,7 +458,7 @@ static int tccxxx_ccfb_open(struct inode *inode, struct file *file)
 		return 0;
 	}
 
-	memset(&g_ccfg_cfg, 0x0, sizeof(ccfb_config_t));
+	memset(&g_ccfg_cfg, 0x0, sizeof(struct ccfb_config_t));
 
 	dev->cur_state = CCFB_STATE_OPENED;
 	dev->act_lcdc_idx = -1;

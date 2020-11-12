@@ -1,10 +1,5 @@
 /*
- * linux/include/video/tcc/vioc_chromainterpolator.h
- * Author:  <linux@telechips.com>
- * Created: June 10, 2008
- * Description: TCC VIOC h/w block 
- *
- * Copyright (C) 2008-2009 Telechips
+ * Copyright (C) Telechips, Inc.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,9 +18,13 @@
  */
 #ifndef __VIOC_CHROMAINTERPOLATOR_H__
 #define	__VIOC_CHROMAINTERPOLATOR_H__
-extern void VIOC_ChromaInterpol_ctrl(volatile void __iomem *reg, unsigned int mode, 
-		unsigned int r2y_en, unsigned int r2y_mode, unsigned int y2r_en, unsigned int y2r_mode);
 
-extern volatile void __iomem *VIOC_ChromaInterpol_GetAddress(unsigned int vioc_id);
+extern void VIOC_ChromaInterpol_ctrl(volatile void __iomem *reg,
+	unsigned int mode,
+	unsigned int r2y_en, unsigned int r2y_mode,
+	unsigned int y2r_en, unsigned int y2r_mode);
+
+extern volatile void __iomem *VIOC_ChromaInterpol_GetAddress(
+	unsigned int vioc_id);
+
 #endif//__VIOC_CHROMAINTERPOLATOR_H__
-

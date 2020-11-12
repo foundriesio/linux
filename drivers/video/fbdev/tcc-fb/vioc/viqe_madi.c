@@ -75,10 +75,10 @@ unsigned int Mx_Vdeint_offset[MADI_VDEINT_MAX] = {
 
 #ifdef USE_REG_EXTRACTOR
 
-stMADI_Info *pCap_Info = NULL;
-stMADI_Info *pVDEInt_1_Info = NULL;
-stMADI_Info *pVDEInt_lut_Info = NULL;
-stMADI_Info *pVDEInt_2_Info = NULL;
+struct stMADI_Info *pCap_Info = NULL;
+struct stMADI_Info *pVDEInt_1_Info = NULL;
+struct stMADI_Info *pVDEInt_lut_Info = NULL;
+struct stMADI_Info *pVDEInt_2_Info = NULL;
 
 static unsigned int _reg_r_ext(volatile void __iomem *reg)
 {
@@ -89,24 +89,24 @@ static unsigned int _reg_r_ext(volatile void __iomem *reg)
 	nReg = (unsigned int)reg;
 
 	if (nReg & ((unsigned int)pMADI_reg[VMADI_CAP_IF])) {
-		szItem = sizeof(Data_Capture_IF) / sizeof(stMADI_Info);
+		szItem = sizeof(Data_Capture_IF) / sizeof(struct stMADI_Info);
 		for (i = 0; i < szItem; i++) {
 			if ((nReg & 0x00FFFFFF) == pCap_Info[i].offset)
 				return pCap_Info[i].value;
 		}
 	} else if (nReg & ((unsigned int)pMADI_reg[VMADI_DEINT])) {
-		szItem = sizeof(CPU_CLK_VDEINT_1) / sizeof(stMADI_Info);
+		szItem = sizeof(CPU_CLK_VDEINT_1) / sizeof(struct stMADI_Info);
 		for (i = 0; i < szItem; i++) {
 			if ((nReg & 0x00FFFFFF) == pVDEInt_1_Info[i].offset)
 				return pVDEInt_1_Info[i].value;
 		}
-		szItem = sizeof(CPU_CLK_VDEINT_2) / sizeof(stMADI_Info);
+		szItem = sizeof(CPU_CLK_VDEINT_2) / sizeof(struct stMADI_Info);
 		for (i = 0; i < szItem; i++) {
 			if ((nReg & 0x00FFFFFF) == pVDEInt_2_Info[i].offset)
 				return pVDEInt_2_Info[i].value;
 		}
 	} else if (nReg & ((unsigned int)pMADI_reg[VMADI_DEINT_LUT])) {
-		szItem = sizeof(CPU_CLK_VDEINT_LUT) / sizeof(stMADI_Info);
+		szItem = sizeof(CPU_CLK_VDEINT_LUT) / sizeof(struct stMADI_Info);
 		for (i = 0; i < szItem; i++) {
 			if ((nReg & 0x00FFFFFF) == pVDEInt_lut_Info[i].offset)
 				return pVDEInt_lut_Info[i].value;
@@ -126,7 +126,7 @@ static void _reg_w_ext(unsigned int value, volatile void __iomem *reg)
 	nReg = (unsigned int)reg;
 
 	if (nReg & ((unsigned int)pMADI_reg[VMADI_CAP_IF])) {
-		szItem = sizeof(Data_Capture_IF) / sizeof(stMADI_Info);
+		szItem = sizeof(Data_Capture_IF) / sizeof(struct stMADI_Info);
 		for (i = 0; i < szItem; i++) {
 			if ((nReg & 0x00FFFFFF) == pCap_Info[i].offset) {
 				pCap_Info[i].value = value;
@@ -135,7 +135,7 @@ static void _reg_w_ext(unsigned int value, volatile void __iomem *reg)
 		}
 	}
 	else if (nReg & ((unsigned int)pMADI_reg[VMADI_DEINT])) {
-		szItem = sizeof(CPU_CLK_VDEINT_1) / sizeof(stMADI_Info);
+		szItem = sizeof(CPU_CLK_VDEINT_1) / sizeof(struct stMADI_Info);
 		for (i = 0; i < szItem; i++) {
 			if ((nReg & 0x00FFFFFF) == pVDEInt_1_Info[i].offset) {
 				pVDEInt_1_Info[i].value = value;
@@ -155,7 +155,7 @@ static void _reg_w_ext(unsigned int value, volatile void __iomem *reg)
 			}
 		}
 
-		szItem = sizeof(CPU_CLK_VDEINT_2) / sizeof(stMADI_Info);
+		szItem = sizeof(CPU_CLK_VDEINT_2) / sizeof(struct stMADI_Info);
 		for (i = 0; i < szItem; i++) {
 			if ((nReg & 0x00FFFFFF) == pVDEInt_2_Info[i].offset) {
 				pVDEInt_2_Info[i].value = value;
@@ -164,7 +164,7 @@ static void _reg_w_ext(unsigned int value, volatile void __iomem *reg)
 		}
 	}
 	else if (nReg & ((unsigned int)pMADI_reg[VMADI_DEINT_LUT])) {
-		szItem = sizeof(CPU_CLK_VDEINT_LUT) / sizeof(stMADI_Info);
+		szItem = sizeof(CPU_CLK_VDEINT_LUT) / sizeof(struct stMADI_Info);
 		for (i = 0; i < szItem; i++) {
 			if ((nReg & 0x00FFFFFF) == pVDEInt_lut_Info[i].offset) {
 				pVDEInt_lut_Info[i].value = value;
@@ -182,7 +182,7 @@ void _reg_print_ext(void)
 	unsigned int i = 0;
 
 msleep(100);
-	szItem = sizeof(Data_Capture_IF) / sizeof(stMADI_Info);
+	szItem = sizeof(Data_Capture_IF) / sizeof(struct stMADI_Info);
 	pr_info("[INF][MADI] V_CAP_IF : %d \n", szItem);
 	for (i = 0; i < szItem; i++) {
 		pr_info(" *(volatile unsigned int *)(V_NR + (0x%04x<<2)) = 0x%08x; \n",
@@ -190,7 +190,7 @@ msleep(100);
 	}
 
 msleep(100);
-	szItem = sizeof(CPU_CLK_VDEINT_1) / sizeof(stMADI_Info);
+	szItem = sizeof(CPU_CLK_VDEINT_1) / sizeof(struct stMADI_Info);
 	pr_info("[INF][MADI] V_DEINT-1 : %d \n", szItem);
 	for (i = 0; i < szItem; i++) {
 		pr_info(" *(volatile unsigned int *)(V_DEINT + (0x%04x<<2)) = 0x%08x; \n",
@@ -198,7 +198,7 @@ msleep(100);
 	}
 
 msleep(100);
-	szItem = sizeof(CPU_CLK_VDEINT_LUT) / sizeof(stMADI_Info);
+	szItem = sizeof(CPU_CLK_VDEINT_LUT) / sizeof(struct stMADI_Info);
 	pr_info("[INF][MADI] V_DEINT_LUT : %d \n", szItem);
 	for (i = 0; i < szItem; i++) {
 		pr_info(" *(volatile unsigned int *)(V_DEINT_LUT + (0x%04x<<2)) = 0x%08x; \n",
@@ -207,7 +207,7 @@ msleep(100);
 	}
 
 msleep(100);
-	szItem = sizeof(CPU_CLK_VDEINT_2) / sizeof(stMADI_Info);
+	szItem = sizeof(CPU_CLK_VDEINT_2) / sizeof(struct stMADI_Info);
 	pr_info("[INF][MADI] V_DEINT-2 : %d \n", szItem);
 	for (i = 0; i < szItem; i++) {
 		printk(" *(volatile unsigned int *)(V_DEINT + (0x%04x<<2)) = 0x%08x; \n",
@@ -619,7 +619,7 @@ void _viqe_madi_set_yuv_mode(unsigned int src_yuv420) // 1: yuv420, 0: yuv422
 
 }
 
-void VIQE_MADI_Ctrl_Enable(MadiEn_Mode mode)
+void VIQE_MADI_Ctrl_Enable(enum MadiEn_Mode mode)
 {
 	unsigned long value;
 	volatile void __iomem *reg = VIQE_MADI_GetAddress(VMADI_CTRL_IF);
@@ -656,28 +656,28 @@ void VIQE_MADI_SetBasicConfiguration(unsigned int odd_first)
 	unsigned int i = 0;
 
 	reg = VIQE_MADI_GetAddress(VMADI_CAP_IF);
-	szItem = sizeof(Data_Capture_IF) / sizeof(stMADI_Info);
+	szItem = sizeof(Data_Capture_IF) / sizeof(struct stMADI_Info);
 	for (i = 0; i < szItem; i++) {
 		__madi_reg_w(Data_Capture_IF[i].value,
 			     reg + Data_Capture_IF[i].offset);
 	}
 
 	reg = VIQE_MADI_GetAddress(VMADI_DEINT);
-	szItem = sizeof(CPU_CLK_VDEINT_1) / sizeof(stMADI_Info);
+	szItem = sizeof(CPU_CLK_VDEINT_1) / sizeof(struct stMADI_Info);
 	for (i = 0; i < szItem; i++) {
 		__madi_reg_w(CPU_CLK_VDEINT_1[i].value,
 			     reg + CPU_CLK_VDEINT_1[i].offset);
 	}
 
 	reg = VIQE_MADI_GetAddress(VMADI_DEINT_LUT);
-	szItem = sizeof(CPU_CLK_VDEINT_LUT) / sizeof(stMADI_Info);
+	szItem = sizeof(CPU_CLK_VDEINT_LUT) / sizeof(struct stMADI_Info);
 	for (i = 0; i < szItem; i++) {
 		__madi_reg_w(CPU_CLK_VDEINT_LUT[i].value,
 			     reg + CPU_CLK_VDEINT_LUT[i].offset);
 	}
 
 	reg = VIQE_MADI_GetAddress(VMADI_DEINT);
-	szItem = sizeof(CPU_CLK_VDEINT_2) / sizeof(stMADI_Info);
+	szItem = sizeof(CPU_CLK_VDEINT_2) / sizeof(struct stMADI_Info);
 	for (i = 0; i < szItem; i++) {
 		__madi_reg_w(CPU_CLK_VDEINT_2[i].value,
 			     reg + CPU_CLK_VDEINT_2[i].offset);
@@ -686,7 +686,7 @@ void VIQE_MADI_SetBasicConfiguration(unsigned int odd_first)
 	if (g_height >= 1080) {
 		pr_info("\e[33m [INF][MADI] src(%dx%d), RES_1080i \e[0m\n", g_width, g_height);
 		reg = VIQE_MADI_GetAddress(VMADI_DEINT);
-		szItem = sizeof(RES_1080i) / sizeof(stMADI_Info);
+		szItem = sizeof(RES_1080i) / sizeof(struct stMADI_Info);
 		for (i = 0; i < szItem; i++) {
 			__madi_reg_w(RES_1080i[i].value,
 				     reg + RES_1080i[i].offset);
@@ -694,7 +694,7 @@ void VIQE_MADI_SetBasicConfiguration(unsigned int odd_first)
 	} else if (g_height >= 576) {
 		pr_info("\e[33m [INF][MADI] src(%dx%d), RES_576i \e[0m\n", g_width, g_height);
 		reg = VIQE_MADI_GetAddress(VMADI_DEINT);
-		szItem = sizeof(RES_576i) / sizeof(stMADI_Info);
+		szItem = sizeof(RES_576i) / sizeof(struct stMADI_Info);
 		for (i = 0; i < szItem; i++) {
 			__madi_reg_w(RES_576i[i].value,
 				     reg + RES_576i[i].offset);
@@ -702,7 +702,7 @@ void VIQE_MADI_SetBasicConfiguration(unsigned int odd_first)
 	} else if (g_height >= 480) {
 		pr_info("\e[33m [INF][MADI] src(%dx%d), RES_480i \e[0m\n", g_width, g_height);
 		reg = VIQE_MADI_GetAddress(VMADI_DEINT);
-		szItem = sizeof(RES_480i) / sizeof(stMADI_Info);
+		szItem = sizeof(RES_480i) / sizeof(struct stMADI_Info);
 		for (i = 0; i < szItem; i++) {
 			__madi_reg_w(RES_480i[i].value,
 				     reg + RES_480i[i].offset);
@@ -716,7 +716,7 @@ void VIQE_MADI_SetBasicConfiguration(unsigned int odd_first)
 
 }
 
-void VIQE_MADI_Set_SrcImgBase(MadiADDR_Type type, unsigned int YAddr,
+void VIQE_MADI_Set_SrcImgBase(enum MadiADDR_Type type, unsigned int YAddr,
 			      unsigned int CAddr)
 {
 	volatile void __iomem *reg = NULL;
@@ -766,7 +766,7 @@ void VIQE_MADI_Set_SrcImgBase(MadiADDR_Type type, unsigned int YAddr,
 				      (type * 0x4));
 }
 
-void VIQE_MADI_Set_TargetImgBase(MadiADDR_Type type, unsigned int Alpha,
+void VIQE_MADI_Set_TargetImgBase(enum MadiADDR_Type type, unsigned int Alpha,
 				 unsigned int YAddr, unsigned int CAddr)
 {
 	volatile void __iomem *reg = NULL;
@@ -805,7 +805,7 @@ void VIQE_MADI_Set_TargetImgBase(MadiADDR_Type type, unsigned int Alpha,
 				      (type * 0x4));
 }
 
-void VIQE_MADI_Get_TargetImgBase(MadiADDR_Type type,
+void VIQE_MADI_Get_TargetImgBase(enum MadiADDR_Type type,
 				 unsigned int *YAddr, unsigned int *CAddr)
 {
 	volatile void __iomem *reg = NULL;
@@ -1377,7 +1377,7 @@ VIQE_MADI_Ctrl_Enable(MADI_ON);
 VIQE_MADI_Change_Cfg();
 */
 
-volatile void __iomem *VIQE_MADI_GetAddress(VMADI_TYPE type)
+volatile void __iomem *VIQE_MADI_GetAddress(enum VMADI_TYPE type)
 {
 	if (type >= VMADI_MAX)
 		goto err;
@@ -1392,7 +1392,7 @@ err:
 	return NULL;
 }
 
-void VIQE_MADI_DUMP(VMADI_TYPE type, unsigned int size)
+void VIQE_MADI_DUMP(enum VMADI_TYPE type, unsigned int size)
 {
 	volatile void __iomem *pReg;
 	unsigned int cnt = 0;
@@ -1415,14 +1415,14 @@ void VIQE_MADI_DUMP(VMADI_TYPE type, unsigned int size)
 static int __init viqe_madi_init(void)
 {
 #ifdef USE_REG_EXTRACTOR
-	pCap_Info = (stMADI_Info *)kzalloc(PAGE_ALIGN(sizeof(Data_Capture_IF)),
+	pCap_Info = (struct stMADI_Info *)kzalloc(PAGE_ALIGN(sizeof(Data_Capture_IF)),
 					   GFP_KERNEL);
 	if (!pCap_Info)
 		pr_err("[ERR][MADI] can not alloc pCap_Info buffer \n");
 	else
 		memcpy(pCap_Info, Data_Capture_IF, sizeof(Data_Capture_IF));
 
-	pVDEInt_1_Info = (stMADI_Info *)kzalloc(
+	pVDEInt_1_Info = (struct stMADI_Info *)kzalloc(
 		PAGE_ALIGN(sizeof(CPU_CLK_VDEINT_1)), GFP_KERNEL);
 	if (!pVDEInt_1_Info)
 		pr_err("[ERR][MADI] can not alloc pVDEInt_1_Info buffer \n");
@@ -1430,7 +1430,7 @@ static int __init viqe_madi_init(void)
 		memcpy(pVDEInt_1_Info, CPU_CLK_VDEINT_1,
 		       sizeof(CPU_CLK_VDEINT_1));
 
-	pVDEInt_lut_Info = (stMADI_Info *)kzalloc(
+	pVDEInt_lut_Info = (struct stMADI_Info *)kzalloc(
 		PAGE_ALIGN(sizeof(CPU_CLK_VDEINT_LUT)), GFP_KERNEL);
 	if (!pVDEInt_lut_Info)
 		pr_err("[ERR][MADI] can not alloc pVDEInt_lut_Info buffer \n");
@@ -1438,7 +1438,7 @@ static int __init viqe_madi_init(void)
 		memcpy(pVDEInt_lut_Info, CPU_CLK_VDEINT_LUT,
 		       sizeof(CPU_CLK_VDEINT_LUT));
 
-	pVDEInt_2_Info = (stMADI_Info *)kzalloc(
+	pVDEInt_2_Info = (struct stMADI_Info *)kzalloc(
 		PAGE_ALIGN(sizeof(CPU_CLK_VDEINT_2)), GFP_KERNEL);
 	if (!pVDEInt_2_Info)
 		pr_err("[ERR][MADI] can not alloc pVDEInt_2_Info buffer \n");

@@ -61,7 +61,7 @@ struct attach_drv_type {
     struct attach_drv_vioc  wdma;
 
     struct clk      *clk;
-    ATTACH_INFO_TYPE    *info;
+    struct ATTACH_INFO_TYPE *info;
 
 	atomic_t buf_idx;
 	atomic_t irq_reged;
@@ -118,7 +118,7 @@ static unsigned int attach_drv_poll(struct file *filp, poll_table *wait)
 
 static void attach_drv_update(struct attach_drv_type *attach)
 {
-	ATTACH_INFO_TYPE    *attach_info = attach->info;
+	struct ATTACH_INFO_TYPE *attach_info = attach->info;
 	unsigned int channel =
 		(attach->rdma.id > VIOC_RDMA03) ? get_vioc_index((attach->rdma.id - VIOC_RDMA04)) : get_vioc_index(attach->rdma.id);
 	unsigned int idx = atomic_read(&attach->buf_idx);
@@ -145,7 +145,7 @@ static void attach_drv_update(struct attach_drv_type *attach)
 
 static void attach_drv_ctrl(struct attach_drv_type *attach)
 {
-	ATTACH_INFO_TYPE    *attach_info = attach->info;
+	struct ATTACH_INFO_TYPE *attach_info = attach->info;
 	unsigned int idx;
 
 	atomic_set(&attach->buf_idx, 0);
@@ -249,9 +249,9 @@ static long attach_drv_ioctl(struct file *filp, unsigned int cmd, unsigned long 
         case TCC_ATTACH_IOCTRL:
         case TCC_ATTACH_IOCTRL_KERNEL:
             if(cmd == TCC_ATTACH_IOCTRL_KERNEL){
-                memcpy(attach->info,(ATTACH_INFO_TYPE*)arg, sizeof(ATTACH_INFO_TYPE));
+                memcpy(attach->info,(struct ATTACH_INFO_TYPE *)arg, sizeof(struct ATTACH_INFO_TYPE));
             }else{
-                if(copy_from_user(attach->info, (ATTACH_INFO_TYPE *)arg, sizeof(ATTACH_INFO_TYPE))) {
+                if(copy_from_user(attach->info, (struct ATTACH_INFO_TYPE *)arg, sizeof(struct ATTACH_INFO_TYPE))) {
                     pr_err("[ERR][ATTACH] %s: Not Supported copy_from_user(%d). \n", __func__, cmd);
                     ret = -EFAULT;
                 }
@@ -472,7 +472,7 @@ static int attach_drv_probe(struct platform_device *pdev)
     if (attach->misc == 0)
         goto err_misc_alloc;
 
-    attach->info = kzalloc(sizeof(ATTACH_INFO_TYPE), GFP_KERNEL);
+    attach->info = kzalloc(sizeof(struct ATTACH_INFO_TYPE), GFP_KERNEL);
     if (attach->info == 0)
         goto err_info_alloc;
 

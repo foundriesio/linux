@@ -401,7 +401,7 @@
 #define CGMS_CGMSC_CGMS16_MASK		(0x1 << CGMS_CGMSC_CGMS16_SHIFT)
 #define CGMS_CGMSC_CGMS15_MASK		(0x1 << CGMS_CGMSC_CGMS15_SHIFT)
 
-typedef enum {
+enum COMPOSITE_MODE_TYPE {
 	NTSC_M			= 0x0000,
 	NTSC_M_J		= 0x0001,
 	NTSC_N			= 0x0010,
@@ -416,7 +416,7 @@ typedef enum {
 	PSEUDO_NTSC		= 0x1000,
 	PSEUDO_PAL		= 0x1010,
 	COMPOSITE_MODE_MAX
-} COMPOSITE_MODE_TYPE;
+};
 
 typedef enum {
 	COMPOSITE_LCDC_AOPT_0,	// 100% ~ 0.39% transparency

@@ -157,10 +157,10 @@ int set_displaying_index(unsigned long arg)
 
     mutex_lock(&buff_io_mutex);
     {
-        vbuffer_manager vBuffSt;
+        struct vbuffer_manager vBuffSt;
         ret = 0;
 
-        if(copy_from_user(&vBuffSt,(int*)arg, sizeof(vbuffer_manager)))
+        if(copy_from_user(&vBuffSt,(int*)arg, sizeof(struct vbuffer_manager)))
             ret = -EFAULT;
         else{
             if( vBuffSt.istance_index < 0 || vBuffSt.istance_index >= VPU_INST_MAX ){
@@ -203,10 +203,10 @@ int set_buff_id(unsigned long arg)
 
     mutex_lock(&buff_io_mutex);
     {
-        vbuffer_manager vBuffSt;
+        struct vbuffer_manager vBuffSt;
         ret = 0;
 
-        if(copy_from_user(&vBuffSt,(int*)arg, sizeof(vbuffer_manager)))
+        if(copy_from_user(&vBuffSt,(int*)arg, sizeof(struct vbuffer_manager)))
             ret = -EFAULT;
         else{
             if( vBuffSt.istance_index < 0 || vBuffSt.istance_index >= VPU_INST_MAX ){
@@ -245,7 +245,7 @@ EXPORT_SYMBOL(get_buff_id);
 
 #ifdef USE_UMP_RESERVED_SW_PMAP
 typedef struct {
-    stIonBuff_info info;
+    struct stIonBuff_info info;
     unsigned int ref_count;
 }stUmp_sw_buffer;
 
@@ -353,7 +353,7 @@ static void ump_sw_mgmt_write_recognition_addr(unsigned int index, unsigned int 
 	plat_priv->gralloc_phy_address = addr;
 }
 
-static void ump_sw_mgmt_register(stIonBuff_info *info)
+static void ump_sw_mgmt_register(struct stIonBuff_info *info)
 {
 	int i = 0;
     int bFound = 0;
@@ -386,7 +386,7 @@ static void ump_sw_mgmt_register(stIonBuff_info *info)
 	ump_printk_info("%s :: [%d] = 0x%x/%d\n", __func__, i, info->phy_addr, ump_sw_buf[i].ref_count);
 
     if(ump_sw_buf[i].ref_count == 0){
-		memcpy(&ump_sw_buf[i].info, info, sizeof(stIonBuff_info));
+		memcpy(&ump_sw_buf[i].info, info, sizeof(struct stIonBuff_info));
     	ump_sw_mgmt_write_recognition_addr(i, info->phy_addr);
 		ump_printk_check("%s :: [%2d] = 0x%x/%d %4dx%4d 0x%x\n", __func__, i,
 				ump_sw_buf[i].info.phy_addr, ump_sw_buf[i].ref_count, ump_sw_buf[i].info.width, ump_sw_buf[i].info.height, ump_sw_buf[i].info.size);
@@ -526,7 +526,7 @@ long tmem_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 
         case TCC_GET_HDMI_INFO:
         {
-            vHdmi_info mInfo_Hdmi;
+            struct vHdmi_info mInfo_Hdmi;
 
         #if defined(CONFIG_VIOC_DOLBY_VISION_EDR)
             if (VIOC_CONFIG_DV_GET_EDR_PATH()) {
@@ -540,7 +540,7 @@ long tmem_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
             else
         #endif
             {
-	            memset(&mInfo_Hdmi, 0x00, sizeof(vHdmi_info));
+	            memset(&mInfo_Hdmi, 0x00, sizeof(struct vHdmi_info));
 
                 mInfo_Hdmi.dv_path = 0;
                 mInfo_Hdmi.out_type = 2;
@@ -557,7 +557,7 @@ long tmem_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 			//			mInfo_Hdmi.dv_path, mInfo_Hdmi.out_type, mInfo_Hdmi.width, mInfo_Hdmi.height,
 			//			mInfo_Hdmi.dv_vsvdb_size, mInfo_Hdmi.dv_ll_mode);
 
-            if (copy_to_user((void *)arg, &mInfo_Hdmi, sizeof(vHdmi_info))) {
+            if (copy_to_user((void *)arg, &mInfo_Hdmi, sizeof(struct vHdmi_info))) {
                 ret = -EFAULT;
             }
         }
@@ -582,10 +582,10 @@ long tmem_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 	case TCC_REGISTER_UMP_SW_INFO:
 	case TCC_REGISTER_UMP_SW_INFO_KERNEL:
 	{
-		stIonBuff_info info;
+		struct stIonBuff_info info;
 
 		if(cmd == TCC_REGISTER_UMP_SW_INFO){
-			if(copy_from_user(&info, (const void*)arg, sizeof(stIonBuff_info)))
+			if(copy_from_user(&info, (const void*)arg, sizeof(struct stIonBuff_info)))
 				ret = -EFAULT;
 			else{
 				ump_sw_mgmt_register(&info);
@@ -593,7 +593,7 @@ long tmem_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 			}
 		}
 		else {
-			if(NULL == memcpy(&info, (const void*)arg, sizeof(stIonBuff_info)))
+			if(NULL == memcpy(&info, (const void*)arg, sizeof(struct stIonBuff_info)))
 				ret = -EFAULT;
 			else{
 				ump_sw_mgmt_register(&info);

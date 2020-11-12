@@ -42,7 +42,7 @@
 #include "tcc_vioc_viqe_interface.h"
 #include "viqe.h"
 
-extern TCC_OUTPUT_TYPE Output_SelectMode;
+extern enum TCC_OUTPUT_TYPE Output_SelectMode;
 viqe_queue_t		g_viqe_render_queue;
 
 int

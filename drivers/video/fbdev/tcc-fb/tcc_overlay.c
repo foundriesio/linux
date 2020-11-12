@@ -101,7 +101,7 @@ struct overlay_drv_type {
 	unsigned int open_cnt;
 
 	//to back up image  infomation.
-	overlay_video_buffer_t overBuffCfg;
+	struct overlay_video_buffer_t overBuffCfg;
 };
 #ifdef CONFIG_DISPLAY_EXT_FRAME
 extern int tcc_ctrl_ext_frame(char enable);
@@ -182,7 +182,7 @@ static unsigned int tcc_overlay_poll(struct file *file, struct poll_table_struct
 }
 
 #if defined (CONFIG_TCC_SCREEN_SHARE)
-static int tcc_overlay_display_shared_screen(overlay_shared_buffer_t buffer_cfg, struct overlay_drv_type *overlay_drv)
+static int tcc_overlay_display_shared_screen(struct overlay_shared_buffer_t buffer_cfg, struct overlay_drv_type *overlay_drv)
 {
 	unsigned int layer = 0;
 	dprintk("%s addr:0x%x  fmt : 0x%x position:%d %d  size: %d %d \n", __func__, buffer_cfg.src_addr, buffer_cfg.fmt, buffer_cfg.dst_x, buffer_cfg.dst_y, buffer_cfg.dst_w, buffer_cfg.dst_h);
@@ -221,7 +221,7 @@ static int tcc_overlay_display_shared_screen(overlay_shared_buffer_t buffer_cfg,
 }
 #endif
 
-static int tcc_overlay_display_video_buffer(overlay_video_buffer_t buffer_cfg, struct overlay_drv_type *overlay_drv)
+static int tcc_overlay_display_video_buffer(struct overlay_video_buffer_t buffer_cfg, struct overlay_drv_type *overlay_drv)
 {
 	unsigned int layer = 0, base0, base1, base2;
 #if defined(CONFIG_VIOC_AFBCDEC)
@@ -356,18 +356,18 @@ static long tcc_overlay_ioctl(struct file *file, unsigned int cmd, unsigned long
 #if defined (CONFIG_TCC_SCREEN_SHARE)
 		case OVERLAY_PUSH_SHARED_BUFFER:
 		{
-			overlay_shared_buffer_t overBuffCfg;
+			struct overlay_shared_buffer_t overBuffCfg;
 
-			memcpy(&overBuffCfg, (overlay_shared_buffer_t *)arg, sizeof(overlay_shared_buffer_t));
+			memcpy(&overBuffCfg, (struct overlay_shared_buffer_t *)arg, sizeof(struct overlay_shared_buffer_t));
 			return tcc_overlay_display_shared_screen(overBuffCfg, overlay_drv);
 		}
 #endif
 
 		case OVERLAY_PUSH_VIDEO_BUFFER:
 		{
-			overlay_video_buffer_t overBuffCfg;
+			struct overlay_video_buffer_t overBuffCfg;
 
-			if(copy_from_user(&overBuffCfg, (overlay_video_buffer_t *)arg, sizeof(overlay_video_buffer_t)))
+			if(copy_from_user(&overBuffCfg, (struct overlay_video_buffer_t *)arg, sizeof(struct overlay_video_buffer_t)))
 				return -EFAULT;
 
 			overlay_drv->overBuffCfg = overBuffCfg;
@@ -377,9 +377,9 @@ static long tcc_overlay_ioctl(struct file *file, unsigned int cmd, unsigned long
 
 		case OVERLAY_SET_CONFIGURE:
 			{
-				overlay_config_t overCfg;
+				struct overlay_config_t overCfg;
 
-				if(copy_from_user(&overCfg, (overlay_config_t *)arg, sizeof(overlay_config_t)))
+				if(copy_from_user(&overCfg, (struct overlay_config_t *)arg, sizeof(struct overlay_config_t)))
 					return -EFAULT;
 
 				return 0;

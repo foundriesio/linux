@@ -1,10 +1,5 @@
 /*
- *   FileName    : tcc_edr_video_v1.h
- *   Author:  <linux@telechips.com>
- *   Created: June 10, 2008
- *   Description: TCC Dolby h/w block
- *
- *   Copyright (C) 2008-2009 Telechips
+ * Copyright (C) Telechips, Inc.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -20,10 +15,7 @@
  * along with this program; if not, see the file COPYING, or write
  * to the Free Software Foundation, Inc.,
  * 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
- *
  */
-
-
 #ifndef __TCC_EDR_VIDEO_V1_H__
 #define __TCC_EDR_VIDEO_V1_H__
 
@@ -32,25 +24,25 @@
 #endif
 
 /**
-  @file tcc_edr_video_v1.h. Adapted from file vp_edr_stb_core_v1.h and vp_edr_stb_source_display_management_v1.h in SMP8760.
-  @brief Definitions of register structures. Modules name: vp_edr_stb_core and vp_edr_stb_source_display_management
-  @author Aurelia Popa-Radu.
-*/
+ * @file tcc_edr_video_v1.h. Adapted from file vp_edr_stb_core_v1.h and vp_edr_stb_source_display_management_v1.h in SMP8760.
+ * @brief Definitions of register structures. Modules name: vp_edr_stb_core and vp_edr_stb_source_display_management
+ * @author Aurelia Popa-Radu.
+ */
 
 /* Known differences:
-   SMP8760 interface is organized as Core = mainly composer and specific SMP8760 interface, and DisplayManagement = DM = video input, graphics input and output.
-   TCC interface is organized as V_EDR = video path including composer, and V_PANEL = graphics and output.
-   Note. SMP8760 register name prefix VsyncRegVpEdrCore was changed to TccEdrCore.
-   Note. SMP8760 register name prefix VsyncRegVpEdrStbSourceDisplayManagement was changed to TccEdrDM.
-   Unclear registers/definitions were marked with //xx.
-*/
+ * SMP8760 interface is organized as Core = mainly composer and specific SMP8760 interface, and DisplayManagement = DM = video input, graphics input and output.
+ * TCC interface is organized as V_EDR = video path including composer, and V_PANEL = graphics and output.
+ * Note. SMP8760 register name prefix VsyncRegVpEdrCore was changed to TccEdrCore.
+ * Note. SMP8760 register name prefix VsyncRegVpEdrStbSourceDisplayManagement was changed to TccEdrDM.
+ * Unclear registers/definitions were marked with //xx.
+ */
 
 union TccEdrCoreGlb0Reg { //xx
 	struct {
-		/** 00 */	RMuint32 glb_pclk_composer_on:2;     // 'b11 enable clock on for composer parts
-		/** 02 */	RMuint32 glb_pclk_dm_on:2;           // 'b11 enable clock on for DM parts
-		/** 04 */	RMuint32 glb_icsc_cvm_clk_on:6;      // 'h3f enable clock on for input mapping and cvm
-		/** 10 */	RMuint32 glb_icsc_cvm_vs_latch_en:1; // nonuse in V_EDR
+		/** 00 */	RMuint32 glb_pclk_composer_on:2;     /* 'b11 enable clock on for composer parts */
+		/** 02 */	RMuint32 glb_pclk_dm_on:2;           /* 'b11 enable clock on for DM parts */
+		/** 04 */	RMuint32 glb_icsc_cvm_clk_on:6;      /* 'h3f enable clock on for input mapping and cvm */
+		/** 10 */	RMuint32 glb_icsc_cvm_vs_latch_en:1; /* nonuse in V_EDR */
 		/** 11 */	RMuint32 rsvd0:21;
 	} bits;
 	RMuint32 value;
@@ -58,9 +50,9 @@ union TccEdrCoreGlb0Reg { //xx
 
 union TccEdrCoreResetReg { //xx
 	struct {
-		/** 00 */	RMuint32 rstn_crtc:1;     // soft reset of edr_crtc, low actived
-		/** 01 */	RMuint32 rstn_dm:1;       // soft reset of dm, low actived
-		/** 02 */	RMuint32 rstn_composer:1; // soft reset of composer, low actived
+		/** 00 */	RMuint32 rstn_crtc:1;     /* soft reset of edr_crtc, low actived */
+		/** 01 */	RMuint32 rstn_dm:1;       /* soft reset of dm, low actived */
+		/** 02 */	RMuint32 rstn_composer:1; /* soft reset of composer, low actived */
 		/** 03 */	RMuint32 rsvd0:29;
 	} bits;
 	RMuint32 value;
@@ -68,22 +60,22 @@ union TccEdrCoreResetReg { //xx
 
 union TccEdrCoreGlb1Reg { //xx
 	struct {
-		/** 00 */	RMuint32 glb_g2lLut_cen:2;     // G2L memory cen control, 2'b01 for normal work mode
-		/** 02 */	RMuint32 glb_g2lLut_pd:1;      // memory power down, low actived
-		/** 03 */	RMuint32 glb_g2lLut_lut_en:1;  // 1'b1 lut program enable
-		/** 04 */	RMuint32 glb_g2lLut_lut_sel:3; // lut read back sel, 0 for R, 1 for G, 2 for B
+		/** 00 */	RMuint32 glb_g2lLut_cen:2;     /* G2L memory cen control, 2'b01 for normal work mode */
+		/** 02 */	RMuint32 glb_g2lLut_pd:1;      /* memory power down, low actived */
+		/** 03 */	RMuint32 glb_g2lLut_lut_en:1;  /* 1'b1 lut program enable */
+		/** 04 */	RMuint32 glb_g2lLut_lut_sel:3; /* lut read back sel, 0 for R, 1 for G, 2 for B */
 		/** 07 */	RMuint32 rsvd0:1;
-		/** 08 */	RMuint32 glb_l2pqLut_cen:2;    // L2PQ
+		/** 08 */	RMuint32 glb_l2pqLut_cen:2;    /* L2PQ */
 		/** 10 */	RMuint32 glb_l2pqLut_pd:1;
 		/** 11 */	RMuint32 glb_l2pqLut_lut_en:1;
 		/** 12 */	RMuint32 glb_l2pqLut_lut_sel:3;
 		/** 15 */	RMuint32 rsvd1:1;
-		/** 16 */	RMuint32 glb_pq2lLut_cen:2;    // PQ2L
+		/** 16 */	RMuint32 glb_pq2lLut_cen:2;    /* PQ2L */
 		/** 18 */	RMuint32 glb_pq2lLut_pd:1;
 		/** 19 */	RMuint32 glb_pq2lLut_lut_en:1;
 		/** 20 */	RMuint32 glb_pq2lLut_lut_sel:3;
 		/** 23 */	RMuint32 rsvd2:1;
-		/** 24 */	RMuint32 glb_cvmLut_cen:2;     // ToneMapping
+		/** 24 */	RMuint32 glb_cvmLut_cen:2;     /* ToneMapping */
 		/** 26 */	RMuint32 glb_cvmLut_pd:1;
 		/** 27 */	RMuint32 glb_cvmLut_lut_en:1;
 		/** 28 */	RMuint32 glb_420to422_cen:2;
@@ -107,10 +99,10 @@ union TccEdrCoreComp1ExtReg { //xx moved here from VsyncRegVpEdrStbCoreComp1Reg
 
 union TccEdrCoreGlb2Reg { //xx
 	struct {
-		/** 00 */	RMuint32 glb_edr_m1_load_en:1; // 1'b1 active all reg setting for page M1 at vsync rising edge
-		/** 01 */	RMuint32 glb_edr_m2_load_en:1; // 1'b1 active all reg setting for page M2 at vsync rising edge
-		/** 02 */	RMuint32 glb_edr_m3_load_en:1; // 1'b1 active all reg setting for page M3 at vsync rising edge
-		/** 03 */	RMuint32 glb_edr_m4_load_en:1; // 1'b1 active all reg setting for page M4 at vsync rising edge
+		/** 00 */	RMuint32 glb_edr_m1_load_en:1; /* 1'b1 active all reg setting for page M1 at vsync rising edge */
+		/** 01 */	RMuint32 glb_edr_m2_load_en:1; /* 1'b1 active all reg setting for page M2 at vsync rising edge */
+		/** 02 */	RMuint32 glb_edr_m3_load_en:1; /* 1'b1 active all reg setting for page M3 at vsync rising edge */
+		/** 03 */	RMuint32 glb_edr_m4_load_en:1; /* 1'b1 active all reg setting for page M4 at vsync rising edge */
 		/** 04 */	RMuint32 rsvd0:28;
 	} bits;
 	RMuint32 value;
@@ -118,15 +110,15 @@ union TccEdrCoreGlb2Reg { //xx
 
 union TccEdrCoreUnknown5Reg { //xx
 	struct {
-		/** 00 */	RMuint32 vswidth_crtc:8;     // vsync width
-		/** 08 */	RMuint32 hswidth_crtc:8;     // hsync width
-		/** 16 */	RMuint32 vs_src_sel_crtc:2;  // 0: vsync from V_PANEL, others nonuse
-		/** 18 */	RMuint32 hs_src_sel_crtc:2;  // 0: hsync from V_PANEL, others nonuse
-		/** 20 */	RMuint32 sel_ext_vs_crtc:1;  // sel external vsync as vs source
-		/** 21 */	RMuint32 sel_ext_hs_crtc:1;  // sel external hsync as hs source
-		/** 22 */	RMuint32 load_en_crtc:1;     // 1'b1 active all new CRTC setting at vsync rising edge, 1'b1 sel exteranl VSYNC after any cycle delay
-		/** 23 */	RMuint32 mclk_dly_en_crtc:1; // 1'b0 sel external VSYNC without delay"
-		/** 24 */	RMuint32 dbus_vpanel_en:1;   // 1'b1 for normal work mode
+		/** 00 */	RMuint32 vswidth_crtc:8;     /* vsync width */
+		/** 08 */	RMuint32 hswidth_crtc:8;     /* hsync width */
+		/** 16 */	RMuint32 vs_src_sel_crtc:2;  /* 0: vsync from V_PANEL, others nonuse */
+		/** 18 */	RMuint32 hs_src_sel_crtc:2;  /* 0: hsync from V_PANEL, others nonuse */
+		/** 20 */	RMuint32 sel_ext_vs_crtc:1;  /* sel external vsync as vs source */
+		/** 21 */	RMuint32 sel_ext_hs_crtc:1;  /* sel external hsync as hs source */
+		/** 22 */	RMuint32 load_en_crtc:1;     /* 1'b1 active all new CRTC setting at vsync rising edge, 1'b1 sel exteranl VSYNC after any cycle delay */
+		/** 23 */	RMuint32 mclk_dly_en_crtc:1; /* 1'b0 sel external VSYNC without delay" */
+		/** 24 */	RMuint32 dbus_vpanel_en:1;   /* 1'b1 for normal work mode */
 		/** 25 */	RMuint32 rsvd0:7;
 	} bits;
 	RMuint32 value;
@@ -134,32 +126,32 @@ union TccEdrCoreUnknown5Reg { //xx
 
 union TccEdrCoreUnknown6Reg { //xx -- related to composerHdeStartCnt, composerVdeStartCnt ?
 	struct {
-		/** 00 */	RMuint32 hstart_crtc:16; // hde start position
-		/** 16 */	RMuint32 hsize_crtc:16;  // hor size
+		/** 00 */	RMuint32 hstart_crtc:16; /* hde start position */
+		/** 16 */	RMuint32 hsize_crtc:16;  /* hor size */
 	} bits;
 	RMuint32 value;
 };
 
 union TccEdrCoreUnknown7Reg { //xx
 	struct {
-		/** 00 */	RMuint32 vstart_crtc:16; // vde start position
-		/** 16 */	RMuint32 vsize_crtc:16;  // ver size
+		/** 00 */	RMuint32 vstart_crtc:16; /* vde start position */
+		/** 16 */	RMuint32 vsize_crtc:16;  /* ver size */
 	} bits;
 	RMuint32 value;
 };
 
 union TccEdrCoreUnknown8Reg { //xx
 	struct {
-		/** 00 */	RMuint32 vtotal_crtc:16; // ver total
-		/** 16 */	RMuint32 htotal_crtc:16; // hor total
+		/** 00 */	RMuint32 vtotal_crtc:16; /* ver total */
+		/** 16 */	RMuint32 htotal_crtc:16; /* hor total */
 	} bits;
 	RMuint32 value;
 };
 
 union TccEdrCoreUnknown9Reg { //xx
 	struct {
-		/** 00 */	RMuint32 ext_vs_width_crtc:16; // vsync width after cycle delay
-		/** 16 */	RMuint32 vs_dly_en_crtc:1;     // enable external VSYNC cycle delay
+		/** 00 */	RMuint32 ext_vs_width_crtc:16; /* vsync width after cycle delay */
+		/** 16 */	RMuint32 vs_dly_en_crtc:1;     /* enable external VSYNC cycle delay */
 		/** 17 */	RMuint32 rsvd0:15;
 	} bits;
 	RMuint32 value;
@@ -167,7 +159,7 @@ union TccEdrCoreUnknown9Reg { //xx
 
 union TccEdrCoreUnknown10Reg { //xx
 	struct {
-		/** 00 */	RMuint32 ext_vs_start_crtc:32; // vsync position after cycle delay
+		/** 00 */	RMuint32 ext_vs_start_crtc:32; /* vsync position after cycle delay */
 	} bits;
 	RMuint32 value;
 };
@@ -818,17 +810,17 @@ union TccEdrDMBioCtrl0Reg {//xx fields from VsyncRegVpEdrStbSourceDisplayManagem
 #if 0 //xx start specific SMP8760 registers
 union VsyncRegVpEdrStbSourceDisplayManagementBioCtrl0Reg { //xx
 	struct {
-		/** 00 */	RMuint32 ksdmctrlAlphamaxpower:1;  // NA
-		/** 01 */	RMuint32 ksdmctrlAlphamaxmode:1;   // moved on bit 0 of TccEdrDMUnknowng14Reg ?
-		/** 02 */	RMuint32 ksdmctrlMainin:1;         // NA
-		/** 03 */	RMuint32 ksdmctrlSecin:1;          // NA
-		/** 04 */	RMuint32 ksdmctrlThirdin:1;        // NA
-		/** 05 */	RMuint32 ksdmctrlVideoalpha:8;     // NA
-		/** 13 */	RMuint32 ksdmctrlShadowcontext:1;  // moved on bit 0 and 1 of TccEdrDMShadowContextReg ?
-		/** 14 */	RMuint32 ksdmctrlBypass420to422:1; // moved on bit 17 of BioCtrl0Tcc
-		/** 15 */	RMuint32 ksdmctrlBypass422to444:1; // moved on bit 16 of BioCtrl0Tcc
-		/** 16 */	RMuint32 ksdmctrlInputalign:4;     // moved on bits 21:18 of BioCtrl0Tcc
-		/** 20 */	RMuint32 ksdmctrlOutputalign:1;    // moved on bit 6 of BioKsuds01Reg
+		/** 00 */	RMuint32 ksdmctrlAlphamaxpower:1;  /* NA */
+		/** 01 */	RMuint32 ksdmctrlAlphamaxmode:1;   /* moved on bit 0 of TccEdrDMUnknowng14Reg ? */
+		/** 03 */	RMuint32 ksdmctrlSecin:1;          /* NA */
+		/** 04 */	RMuint32 ksdmctrlThirdin:1;        /* NA */
+		/** 05 */	RMuint32 ksdmctrlVideoalpha:8;     /* NA */
+		/** 02 */	RMuint32 ksdmctrlMainin:1;         /* NA */
+		/** 13 */	RMuint32 ksdmctrlShadowcontext:1;  /* moved on bit 0 and 1 of TccEdrDMShadowContextReg ? */
+		/** 14 */	RMuint32 ksdmctrlBypass420to422:1; /* moved on bit 17 of BioCtrl0Tcc */
+		/** 15 */	RMuint32 ksdmctrlBypass422to444:1; /* moved on bit 16 of BioCtrl0Tcc */
+		/** 16 */	RMuint32 ksdmctrlInputalign:4;     /* moved on bits 21:18 of BioCtrl0Tcc */
+		/** 20 */	RMuint32 ksdmctrlOutputalign:1;    /* moved on bit 6 of BioKsuds01Reg */
 		/** 21 */	RMuint32 rsvd0:11;
 	} bits;
 	RMuint32 value;
@@ -836,10 +828,10 @@ union VsyncRegVpEdrStbSourceDisplayManagementBioCtrl0Reg { //xx
 
 union VsyncRegVpEdrStbSourceDisplayManagementBioGlb3Reg { //xx
 	struct {
-		/** 00 */	RMuint32 pq2llutVdGlbLutSel:3;     // moved on TccEdrCoreGlb1Reg
+		/** 00 */	RMuint32 pq2llutVdGlbLutSel:3;     /* moved on TccEdrCoreGlb1Reg */
 		/** 03 */	RMuint32 rsvd0:6;
 		/** 09 */	RMuint32 pq2llutOutGlbLutSel:3;
-		/** 12 */	RMuint32 l2pqlutVdGlbLutSel:3;     // moved on TccEdrCoreGlb1Reg
+		/** 12 */	RMuint32 l2pqlutVdGlbLutSel:3;     /* moved on TccEdrCoreGlb1Reg */
 		/** 15 */	RMuint32 l2pqlutGbGlbLutSel:3;
 		/** 18 */	RMuint32 l2pqlutGtGlbLutSel:3;
 		/** 21 */	RMuint32 l2pqlutOutGlbLutSel:3;
@@ -850,7 +842,7 @@ union VsyncRegVpEdrStbSourceDisplayManagementBioGlb3Reg { //xx
 
 union VsyncRegVpEdrStbSourceDisplayManagementBioGlb4Reg { //xx
 	struct {
-		/** 00 */	RMuint32 g2llutVdGlbLutSel:3;      // moved on TccEdrCoreGlb1Reg
+		/** 00 */	RMuint32 g2llutVdGlbLutSel:3;      /* moved on TccEdrCoreGlb1Reg */
 		/** 03 */	RMuint32 g2llutGbGlbLutSel:3;
 		/** 06 */	RMuint32 g2llutGtGlbLutSel:3;
 		/** 09 */	RMuint32 l2glutOutGlbLutSel:3;
@@ -862,11 +854,11 @@ union VsyncRegVpEdrStbSourceDisplayManagementBioGlb4Reg { //xx
 union VsyncRegVpEdrStbSourceDisplayManagementBioKsuds01Reg { //xx
 	struct {
 		/** 00 */	RMuint32 rsvd0:4;
-		/** 04 */	RMuint32 ksudsFilteruvrowusscale2p:5; // moved on bits 12:8 of BioCtrl0Tcc
+		/** 04 */	RMuint32 ksudsFilteruvrowusscale2p:5; /* moved on bits 12:8 of BioCtrl0Tcc */
 		/** 09 */	RMuint32 rsvd1:4;
-		/** 13 */	RMuint32 ksudsFilteruvcolusscale2p:5; // moved on bits 4:0 of BioCtrl0Tcc
+		/** 13 */	RMuint32 ksudsFilteruvcolusscale2p:5; /* moved on bits 4:0 of BioCtrl0Tcc */
 		/** 18 */	RMuint32 rsvd2:4;
-		/** 22 */	RMuint32 ksudsFilteruvcoldsscale2p:5; // NA
+		/** 22 */	RMuint32 ksudsFilteruvcoldsscale2p:5; /* NA */
 		/** 27 */	RMuint32 rsvd3:5;
 	} bits;
 	RMuint32 value;
@@ -1159,8 +1151,8 @@ union TccEdrDMBioKsimap25Reg { // more than swapped fields
 
 union TccEdrDMBioCtrl1Reg { //xx
 	struct {
-		/** 00 */	RMuint32 ksdmctrlShadowcontext_cvm:1; // shadow LUT control for input csc
-		/** 01 */	RMuint32 ksdmctrlShadowcontext_icsc:1;  // shadow LUT control for cvm or tone mapping
+		/** 00 */	RMuint32 ksdmctrlShadowcontext_cvm:1; /* shadow LUT control for input csc */
+		/** 01 */	RMuint32 ksdmctrlShadowcontext_icsc:1;  /* shadow LUT control for cvm or tone mapping */
 		/** 02 */	RMuint32 rsvd0:30;
 	} bits;
 	RMuint32 value;
@@ -1168,21 +1160,21 @@ union TccEdrDMBioCtrl1Reg { //xx
 
 union TccEdrDMUnknown1Reg { //xx ??
 	struct {
-		/** 00 */	RMuint32 win_ext_iwin_r:13;    // manul R of in-win
+		/** 00 */	RMuint32 win_ext_iwin_r:13;    /* manul R of in-win */
 		/** 13 */	RMuint32 rsvd0:3;
-		/** 16 */	RMuint32 win_ext_iwin_alpha:8; // manul alpha of in-win, nonuse in V_EDR
-		/** 24 */	RMuint32 win_ext_iwin_en:1;    // set RGBa which inside of window as manul vaue for debug purpose
+		/** 16 */	RMuint32 win_ext_iwin_alpha:8; /* manul alpha of in-win, nonuse in V_EDR */
+		/** 24 */	RMuint32 win_ext_iwin_en:1;    /* set RGBa which inside of window as manul vaue for debug purpose */
 		/** 25 */	RMuint32 rsvd1:6;
-		/** 31 */	RMuint32 win_ext_prog_en:1;    // enable window extention for video/OSD overlay
+		/** 31 */	RMuint32 win_ext_prog_en:1;    /* enable window extention for video/OSD overlay */
 	} bits;
 	RMuint32 value;
 };
 
 union TccEdrDMUnknown2Reg { //xx ??
 	struct {
-		/** 00 */	RMuint32 win_ext_iwin_b:13;  // manul B of in-win
+		/** 00 */	RMuint32 win_ext_iwin_b:13;  /* manul B of in-win */
 		/** 13 */	RMuint32 rsvd0:3;
-		/** 16 */	RMuint32 win_ext_iwin_g:13;  // manul G of in-win
+		/** 16 */	RMuint32 win_ext_iwin_g:13;  /* manul G of in-win */
 		/** 29 */	RMuint32 rsvd1:3;
 	} bits;
 	RMuint32 value;
@@ -1190,10 +1182,10 @@ union TccEdrDMUnknown2Reg { //xx ??
 
 union TccEdrDMUnknown3Reg { //xx ??
 	struct {
-		/** 00 */	RMuint32 win_ext_owin_r:13;    // manul R of out-win
+		/** 00 */	RMuint32 win_ext_owin_r:13;    /* manul R of out-win */
 		/** 13 */	RMuint32 rsvd0:3;
-		/** 16 */	RMuint32 win_ext_owin_alpha:8; // manul alpha of out-win, nonuse in V_EDR
-		/** 24 */	RMuint32 win_ext_owin_en:1;    // 1'b1 set RGBa which outside of window as manul value for debug purpose
+		/** 16 */	RMuint32 win_ext_owin_alpha:8; /* manul alpha of out-win, nonuse in V_EDR */
+		/** 24 */	RMuint32 win_ext_owin_en:1;    /* 1'b1 set RGBa which outside of window as manul value for debug purpose */
 		/** 25 */	RMuint32 rsvd1:7;
 	} bits;
 	RMuint32 value;
@@ -1201,9 +1193,9 @@ union TccEdrDMUnknown3Reg { //xx ??
 
 union TccEdrDMUnknown4Reg { //xx ??
 	struct {
-		/** 00 */	RMuint32 win_ext_owin_b:13;  // manul B of out-win
+		/** 00 */	RMuint32 win_ext_owin_b:13;  /* manul B of out-win */
 		/** 13 */	RMuint32 rsvd0:3;
-		/** 16 */	RMuint32 win_ext_owin_g:13;  // manul G of out-win
+		/** 16 */	RMuint32 win_ext_owin_g:13;  /* manul G of out-win */
 		/** 29 */	RMuint32 rsvd1:3;
 	} bits;
 	RMuint32 value;
@@ -1215,7 +1207,7 @@ union TccEdrDMUnknown5Reg { //xx ??
 		/** 09 */	RMuint32 g_value:9;
 		/** 18 */	RMuint32 r_value:9;
 		/** 27 */	RMuint32 alpha:4;
-		/** 31 */	RMuint32 border_enable:1; // enable in-win border for debug purpose
+		/** 31 */	RMuint32 border_enable:1; /* enable in-win border for debug purpose */
 	} bits;
 	RMuint32 value;
 };
@@ -1226,23 +1218,23 @@ union TccEdrDMUnknown6Reg { //xx ??
 		/** 09 */	RMuint32 g_value:9;
 		/** 18 */	RMuint32 r_value:9;
 		/** 27 */	RMuint32 alpha:4;
-		/** 31 */	RMuint32 border_enable:1; // enable out-win border for debug purpose
+		/** 31 */	RMuint32 border_enable:1; /* enable out-win border for debug purpose */
 	} bits;
 	RMuint32 value;
 };
 
 union TccEdrDMUnknown7Reg { //xx ??
 	struct {
-		/** 00 */	RMuint32 win_ext_vstart:16; // vde start position for extended window
-		/** 16 */	RMuint32 win_ext_hstart:16; // hde start position for extended window
+		/** 00 */	RMuint32 win_ext_vstart:16; /* vde start position for extended window */
+		/** 16 */	RMuint32 win_ext_hstart:16; /* hde start position for extended window */
 	} bits;
 	RMuint32 value;
 };
 
 union TccEdrDMUnknown8Reg { //xx ??
 	struct {
-		/** 00 */	RMuint32 win_ext_vsize:16; // vde size for extended window
-		/** 16 */	RMuint32 win_ext_hsize:16; // hde size for extended window
+		/** 00 */	RMuint32 win_ext_vsize:16; /* vde size for extended window */
+		/** 16 */	RMuint32 win_ext_hsize:16; /* hde size for extended window */
 	} bits;
 	RMuint32 value;
 };
@@ -1346,4 +1338,3 @@ struct TccEdrVideoV1Reg {
 };
 
 #endif /** #ifndef __TCC_EDR_VIDEO_V1_H__ */
-

@@ -89,7 +89,7 @@ struct viqe_madi_data {
 };
 
 struct viqe_madi_info_type {
-	stVIQE_MADI_INIT_TYPE init;
+	struct stVIQE_MADI_INIT_TYPE init;
 	unsigned int first_frame;
 	unsigned int skip_count;
 	unsigned int max_buffer_cnt;
@@ -224,7 +224,7 @@ static long viqe_madi_ioctl(struct file *filp, unsigned int cmd, unsigned long a
 	switch(cmd) {
 		case TCC_VIQE_MADI_INIT:
 			{
-				if(copy_from_user(&viqe_madi->info->init,(void *)arg, sizeof(stVIQE_MADI_INIT_TYPE))) {
+				if(copy_from_user(&viqe_madi->info->init,(void *)arg, sizeof(struct stVIQE_MADI_INIT_TYPE))) {
 					pr_err("[ERR][MADI] %s(): Error copy_from_user(%d)\n", __func__, cmd);
 					ret = -EFAULT;
 				}
@@ -299,9 +299,9 @@ static long viqe_madi_ioctl(struct file *filp, unsigned int cmd, unsigned long a
 		case TCC_VIQE_MADI_PROC:
 			{
 	#ifndef USE_REG_EXTRACTOR // for testing!!
-				stVIQE_MADI_PROC_TYPE proc_info;
+				struct stVIQE_MADI_PROC_TYPE proc_info;
 
-				if(copy_from_user(&proc_info,(void *)arg, sizeof(stVIQE_MADI_PROC_TYPE))) {
+				if(copy_from_user(&proc_info,(void *)arg, sizeof(struct stVIQE_MADI_PROC_TYPE))) {
 					pr_err("[ERR][MADI] %s(): Error copy_from_user(%d)\n", __func__, cmd);
 					ret = -EFAULT;
 				}
@@ -365,7 +365,7 @@ static long viqe_madi_ioctl(struct file *filp, unsigned int cmd, unsigned long a
 			{
 	#ifndef USE_REG_EXTRACTOR // for testing!!
 				unsigned int cfg_code, cur_alpha_index, cur_yc_index;
-				stVIQE_MADI_RESULT_TYPE result;
+				struct stVIQE_MADI_RESULT_TYPE result;
 				volatile void __iomem *reg = NULL;
 
 				if(viqe_madi->info->first_frame || viqe_madi->info->skip_count > 0)
@@ -383,7 +383,7 @@ static long viqe_madi_ioctl(struct file *filp, unsigned int cmd, unsigned long a
 					cur_alpha_index = (cfg_code+3)&0x3;
 					cur_yc_index = (cur_alpha_index+3)&0x3;
 
-					VIQE_MADI_Get_TargetImgBase((MadiADDR_Type)cur_yc_index, &result.dest_Yaddr, &result.dest_Uaddr);
+					VIQE_MADI_Get_TargetImgBase((enum MadiADDR_Type)cur_yc_index, &result.dest_Yaddr, &result.dest_Uaddr);
 					//result.dest_Yaddr = viqe_madi->info->out_Yaddr[cur_yc_index];
 					//result.dest_Uaddr = viqe_madi->info->out_Caddr[cur_yc_index];
 					result.dest_Vaddr = 0x00;
@@ -397,7 +397,7 @@ static long viqe_madi_ioctl(struct file *filp, unsigned int cmd, unsigned long a
 
 				dprintk("TCC_VIQE_MADI_GET_RESULT(0x%x) :: [%d] = 0x%x/0x%x \n", viqe_madi->irq_status, viqe_madi->info->first_frame, result.dest_Yaddr, result.dest_Uaddr);
 
-				if (copy_to_user((unsigned int*)arg, &result, sizeof(stVIQE_MADI_RESULT_TYPE))) {
+				if (copy_to_user((unsigned int*)arg, &result, sizeof(struct stVIQE_MADI_RESULT_TYPE))) {
 					ret = -EFAULT;
 				}
 	#endif
@@ -409,7 +409,7 @@ static long viqe_madi_ioctl(struct file *filp, unsigned int cmd, unsigned long a
 			{
 				// ioctl /dev/viqe_madi 0x10001 0 8 1920 1080 0 0 256 256 0 8
 				// ioctl /dev/viqe_madi 0x10001 0 8 1920 1080 0 0 1920 1080 0 8
-				if(copy_from_user(&viqe_madi->info->init,(void *)arg, sizeof(stVIQE_MADI_INIT_TYPE))) {
+				if(copy_from_user(&viqe_madi->info->init,(void *)arg, sizeof(struct stVIQE_MADI_INIT_TYPE))) {
 					pr_err("[ERR][MADI] %s(): Error copy_from_user(%d)\n", __func__, cmd);
 					ret = -EFAULT;
 				}

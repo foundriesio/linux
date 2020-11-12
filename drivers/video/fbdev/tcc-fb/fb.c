@@ -430,8 +430,8 @@ static void fbX_m2m_activate_var(unsigned int dma_addr, struct fb_var_screeninfo
 	}
 
 	if(par->pdata.FbUpdateType == FBX_M2M_RDMA_UPDATE) {
-		SCALER_TYPE scaler;
-		memset(&scaler, 0x00, sizeof(SCALER_TYPE));
+		struct SCALER_TYPE scaler;
+		memset(&scaler, 0x00, sizeof(struct SCALER_TYPE));
 
 		scaler.responsetype = SCALER_POLLING;
 
@@ -482,10 +482,10 @@ static void fbX_m2m_activate_var(unsigned int dma_addr, struct fb_var_screeninfo
 
 		VIOC_RDMA_SetImageEnable(par->pdata.rdma_info.virt_addr);
 	} else {		/* FBX_ATTACH_UPDATE */
-		ATTACH_INFO_TYPE attach;
+		struct ATTACH_INFO_TYPE attach;
 		unsigned int idx = 0;
 
-		memset(&attach, 0x0, sizeof(ATTACH_INFO_TYPE));
+		memset(&attach, 0x0, sizeof(struct ATTACH_INFO_TYPE));
 
 		attach.fmt = format;
 		attach.img_width = par->pdata.region.width;

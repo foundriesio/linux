@@ -89,7 +89,7 @@ extern unsigned int dv_reg_phyaddr, dv_md_phyaddr;
 extern int tca_edr_path_configure(void);
 #endif
 
-extern struct tcc_dp_device *tca_fb_get_displayType(TCC_OUTPUT_TYPE check_type);
+extern struct tcc_dp_device *tca_fb_get_displayType(enum TCC_OUTPUT_TYPE check_type);
 extern void tca_scale_display_update(struct tcc_dp_device *pdp_data,
 				     struct tcc_lcdc_image_update *ImageInfo);
 extern void tca_vioc_displayblock_powerOn(struct tcc_dp_device *pDisplayInfo,
@@ -206,7 +206,7 @@ unsigned int component_calc_cgms_crc(unsigned int data)
     return crc_val;
 }
 
-void component_get_cgms(TCC_COMPONENT_CGMS_TYPE *cgms)
+void component_get_cgms(struct TCC_COMPONENT_CGMS_TYPE *cgms)
 {
 	if (component_start) {
 		component_chip_get_cgms(&cgms->enable, &cgms->data);
@@ -215,7 +215,7 @@ void component_get_cgms(TCC_COMPONENT_CGMS_TYPE *cgms)
 	}
 }
 
-void component_set_cgms(TCC_COMPONENT_CGMS_TYPE *cgms)
+void component_set_cgms(struct TCC_COMPONENT_CGMS_TYPE *cgms)
 {
 	if (component_start) {
 		dprintk("%s: %s, 0x%05x\n", __func__, cgms->enable ? "on" : "off", cgms->data);
@@ -230,7 +230,7 @@ void component_set_cgms(TCC_COMPONENT_CGMS_TYPE *cgms)
 
 void component_cgms_helper(unsigned int enable, unsigned int key)
 {
-	TCC_COMPONENT_CGMS_TYPE cgms;
+	struct TCC_COMPONENT_CGMS_TYPE cgms;
 	unsigned int data, crc;
 
 	crc = component_calc_cgms_crc(key);
@@ -416,7 +416,7 @@ void tcc_component_get_spec(COMPONENT_MODE_TYPE mode, COMPONENT_SPEC_TYPE *spec)
 /*****************************************************************************
  Function Name : tcc_component_set_lcd2tv()
 ******************************************************************************/
-void tcc_component_set_lcd2tv(COMPONENT_MODE_TYPE mode, TCC_COMPONENT_START_TYPE start)
+void tcc_component_set_lcd2tv(COMPONENT_MODE_TYPE mode, struct TCC_COMPONENT_START_TYPE start)
 {
 	COMPONENT_SPEC_TYPE spec;
 	struct LCDTIMING ComponentTiming;
@@ -725,7 +725,7 @@ void tcc_component_end(void)
 /*****************************************************************************
  Function Name : tcc_component_start()
 ******************************************************************************/
-void tcc_component_start(TCC_COMPONENT_START_TYPE start)
+void tcc_component_start(struct TCC_COMPONENT_START_TYPE start)
 {
 	printk("%s mode=%d, lcdc_num=%d\n", __func__, start.mode, Component_LCDC_Num);
 
@@ -837,7 +837,7 @@ void tcc_component_attach(char lcdc_num, char mode, char starter_flag)
 {
 	struct fb_info *info = registered_fb[0];
 	struct tccfb_info *tccfb_info = NULL;
-	TCC_COMPONENT_START_TYPE start;
+	struct TCC_COMPONENT_START_TYPE start;
 
 #if defined(CONFIG_VIOC_DOLBY_VISION_EDR) && defined(CONFIG_TCC_DV_IN)
 	start.dv_reg_phyaddr = start.dv_md_phyaddr = 0x00;
@@ -899,8 +899,8 @@ void tcc_component_detach(void)
 static long tcc_component_ioctl(struct file *file, unsigned int cmd,
 				unsigned long arg)
 {
-	TCC_COMPONENT_START_TYPE start;
-	TCC_COMPONENT_CGMS_TYPE cgms;
+	struct TCC_COMPONENT_START_TYPE start;
+	struct TCC_COMPONENT_CGMS_TYPE cgms;
 
 	switch (cmd) {
 	case TCC_COMPONENT_IOCTL_HPD_SWITCH_STATUS: {

@@ -96,9 +96,9 @@ struct wmixer_drv_type {
 
     struct clk      *clk;
     struct wmixer_data  *data;
-    WMIXER_INFO_TYPE    *info;
-    WMIXER_ALPHASCALERING_INFO_TYPE alpha_scalering;
-    WMIXER_ALPHABLENDING_TYPE   alpha_blending;
+    struct WMIXER_INFO_TYPE    *info;
+    struct WMIXER_ALPHASCALERING_INFO_TYPE alpha_scalering;
+    struct WMIXER_ALPHABLENDING_TYPE   alpha_blending;
     unsigned char       scaler_plug_status;
 };
 
@@ -129,7 +129,7 @@ static int wmixer_drv_mmap(struct file *filp, struct vm_area_struct *vma)
 
 static int wmixer_drv_ctrl(struct wmixer_drv_type *wmixer)
 {
-    WMIXER_INFO_TYPE    *wmix_info = wmixer->info;
+    struct WMIXER_INFO_TYPE    *wmix_info = wmixer->info;
     volatile void __iomem   *pWMIX_rdma_base = wmixer->rdma0.reg;
     volatile void __iomem   *pWMIX_wmix_base = wmixer->wmix.reg;
     volatile void __iomem   *pWMIX_wdma_base = wmixer->wdma.reg;
@@ -331,7 +331,7 @@ static int wmixer_drv_ctrl(struct wmixer_drv_type *wmixer)
 
 static int wmixer_drv_alpha_scaling_ctrl(struct wmixer_drv_type *wmixer)
 {
-    WMIXER_ALPHASCALERING_INFO_TYPE *aps_info = &wmixer->alpha_scalering;
+    struct WMIXER_ALPHASCALERING_INFO_TYPE *aps_info = &wmixer->alpha_scalering;
     volatile void __iomem *pWMIX_rdma_base = wmixer->rdma0.reg;
     volatile void __iomem *pWMIX_wmix_base = wmixer->wmix.reg;
     volatile void __iomem *pWMIX_wdma_base = wmixer->wdma.reg;
@@ -530,7 +530,7 @@ static int wmixer_drv_alpha_scaling_ctrl(struct wmixer_drv_type *wmixer)
 
 static int wmixer_drv_alpha_mixing_ctrl(struct wmixer_drv_type *wmixer)
 {
-    WMIXER_ALPHABLENDING_TYPE *apb_info = (WMIXER_ALPHABLENDING_TYPE*)&wmixer->alpha_blending;
+    struct WMIXER_ALPHABLENDING_TYPE *apb_info = (struct WMIXER_ALPHABLENDING_TYPE*)&wmixer->alpha_blending;
     volatile void __iomem *pWMIX_rdma_base = wmixer->rdma0.reg;
     volatile void __iomem *pWMIX_rdma1_base = wmixer->rdma1.reg;
     volatile void __iomem *pWMIX_wmix_base = wmixer->wmix.reg;
@@ -681,9 +681,9 @@ static long wmixer_drv_ioctl(struct file *filp, unsigned int cmd, unsigned long 
 {
     struct miscdevice *misc = (struct miscdevice *)filp->private_data;
     struct wmixer_drv_type *wmixer = dev_get_drvdata(misc->parent);
-    WMIXER_INFO_TYPE *wmix_info = wmixer->info;
-    WMIXER_ALPHASCALERING_INFO_TYPE *alpha_scalering = &wmixer->alpha_scalering;
-    WMIXER_ALPHABLENDING_TYPE *alpha_blending = &wmixer->alpha_blending;
+    struct WMIXER_INFO_TYPE *wmix_info = wmixer->info;
+    struct WMIXER_ALPHASCALERING_INFO_TYPE *alpha_scalering = &wmixer->alpha_scalering;
+    struct WMIXER_ALPHABLENDING_TYPE *alpha_blending = &wmixer->alpha_blending;
 
     int ret = 0;
 
@@ -706,9 +706,9 @@ static long wmixer_drv_ioctl(struct file *filp, unsigned int cmd, unsigned long 
             }
 
             if(cmd == TCC_WMIXER_IOCTRL_KERNEL){
-                memcpy(wmix_info,(WMIXER_INFO_TYPE*)arg, sizeof(WMIXER_INFO_TYPE));
+                memcpy(wmix_info,(struct WMIXER_INFO_TYPE *)arg, sizeof(struct WMIXER_INFO_TYPE));
             }else{
-                if(copy_from_user(wmix_info, (WMIXER_INFO_TYPE *)arg, sizeof(WMIXER_INFO_TYPE))) {
+                if(copy_from_user(wmix_info, (struct WMIXER_INFO_TYPE *)arg, sizeof(struct WMIXER_INFO_TYPE))) {
                     pr_err("[ERR][WMIXER] Not Supported copy_from_user(%d). \n", cmd);
                     ret = -EFAULT;
                 }
@@ -748,10 +748,10 @@ static long wmixer_drv_ioctl(struct file *filp, unsigned int cmd, unsigned long 
             }
 
             if(cmd == TCC_WMIXER_ALPHA_SCALING_KERNEL)
-                memcpy(alpha_scalering,(WMIXER_ALPHASCALERING_INFO_TYPE *)arg, sizeof(WMIXER_ALPHASCALERING_INFO_TYPE));
+                memcpy(alpha_scalering,(struct WMIXER_ALPHASCALERING_INFO_TYPE *)arg, sizeof(struct WMIXER_ALPHASCALERING_INFO_TYPE));
             else
             {
-                if(copy_from_user((void *)alpha_scalering, (const void *)arg, sizeof(WMIXER_ALPHASCALERING_INFO_TYPE))) {
+                if(copy_from_user((void *)alpha_scalering, (const void *)arg, sizeof(struct WMIXER_ALPHASCALERING_INFO_TYPE))) {
                         pr_err("[ERR][WMIXER] Not Supported copy_from_user(%d). \n", cmd);
                         ret = -EFAULT;
                 }
@@ -774,7 +774,7 @@ static long wmixer_drv_ioctl(struct file *filp, unsigned int cmd, unsigned long 
         case TCC_WMIXER_VIOC_INFO:
         case TCC_WMIXER_VIOC_INFO_KERNEL:
             {
-                WMIXER_VIOC_INFO wmixer_id;
+                struct WMIXER_VIOC_INFO wmixer_id;
                 memset(&wmixer_id, 0xFF, sizeof(wmixer_id));
                 wmixer_id.rdma[0] = get_vioc_index(wmixer->rdma0.id);
                 wmixer_id.wdma = get_vioc_index(wmixer->wmix.id);
@@ -807,7 +807,7 @@ static long wmixer_drv_ioctl(struct file *filp, unsigned int cmd, unsigned long 
                 ret = 0;
             }
 
-            if(copy_from_user(alpha_blending, (WMIXER_ALPHABLENDING_TYPE *)arg, sizeof(WMIXER_ALPHABLENDING_TYPE))) {
+            if(copy_from_user(alpha_blending, (struct WMIXER_ALPHABLENDING_TYPE *)arg, sizeof(struct WMIXER_ALPHABLENDING_TYPE))) {
                     pr_err("[ERR][WMIXER] Not Supported copy_from_user(%d). \n", cmd);
                     ret = -EFAULT;
             }
@@ -1034,7 +1034,7 @@ static int wmixer_drv_probe(struct platform_device *pdev)
     if (wmixer->misc == 0)
         goto err_misc_alloc;
 
-    wmixer->info = kzalloc(sizeof(WMIXER_INFO_TYPE), GFP_KERNEL);
+    wmixer->info = kzalloc(sizeof(struct WMIXER_INFO_TYPE), GFP_KERNEL);
     if (wmixer->info == 0)
         goto err_info_alloc;
 

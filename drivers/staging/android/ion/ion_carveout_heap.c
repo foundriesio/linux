@@ -62,7 +62,7 @@ static void ump_reserved_sw_manager(unsigned int cmd, unsigned int paddr,
 
 	if (tccmem_file) {
 		if (cmd == TCC_REGISTER_UMP_SW_INFO_KERNEL) {
-			stIonBuff_info info;
+			struct stIonBuff_info info;
 
 			info.phy_addr = paddr;
 			info.size = size;

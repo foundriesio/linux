@@ -111,7 +111,7 @@ struct scaler_drv_type {
 
 	struct clk		*clk;
 	struct scaler_data	*data;
-	SCALER_TYPE		*info;
+	struct SCALER_TYPE		*info;
 
 	unsigned int		settop_support;
 #if defined(CONFIG_VIOC_SAR)
@@ -407,7 +407,7 @@ static char tcc_scaler_run(struct scaler_drv_type *scaler)
 	return ret;
 }
 
-static char tcc_scaler_data_copy_run(struct scaler_drv_type *scaler, SCALER_DATA_COPY_TYPE *copy_info)
+static char tcc_scaler_data_copy_run(struct scaler_drv_type *scaler, struct SCALER_DATA_COPY_TYPE *copy_info)
 {
 	int ret = 0;
 	volatile void __iomem *pSC_RDMABase = scaler->rdma.reg;
@@ -545,9 +545,9 @@ static long scaler_drv_ioctl(struct file *filp, unsigned int cmd, unsigned long 
 	struct scaler_drv_type	*scaler = dev_get_drvdata(misc->parent);
 
 //	volatile void __iomem *pSC_RDMABase = scaler->rdma.reg;
-//	SCALER_PLUGIN_Type scaler_plugin;
+//	struct SCALER_PLUGIN_Type scaler_plugin;
 
-	SCALER_DATA_COPY_TYPE copy_info;
+	struct SCALER_DATA_COPY_TYPE copy_info;
 	int ret = 0;
 
 	dprintk("%s(): cmd(%d), block_operating(%d), block_waiting(%d), cmd_count(%d), poll_count(%d). \n", __func__, 	\
@@ -568,9 +568,9 @@ static long scaler_drv_ioctl(struct file *filp, unsigned int cmd, unsigned long 
 			}
 
 			if(cmd == TCC_SCALER_IOCTRL_KERENL) {
-				memcpy(scaler->info, (SCALER_TYPE*)arg, sizeof(SCALER_TYPE));
+				memcpy(scaler->info, (struct SCALER_TYPE*)arg, sizeof(struct SCALER_TYPE));
 			} else {
-				if(copy_from_user(scaler->info, (SCALER_TYPE*)arg, sizeof(SCALER_TYPE))) {
+				if(copy_from_user(scaler->info, (struct SCALER_TYPE*)arg, sizeof(struct SCALER_TYPE))) {
 					pr_err("[ERR][SCALER] %s(): Not Supported copy_from_user(%d). \n", __func__, cmd);
 					ret = -EFAULT;
 				}
@@ -594,7 +594,7 @@ static long scaler_drv_ioctl(struct file *filp, unsigned int cmd, unsigned long 
 #if 0
 		case TCC_SCALER_VIOC_PLUGIN:
 			mutex_lock(&scaler->data->io_mutex);
-			if(copy_from_user(&scaler_plugin,(SCALER_PLUGIN_Type *)arg, sizeof(SCALER_PLUGIN_Type))) {
+			if(copy_from_user(&scaler_plugin,(struct SCALER_PLUGIN_Type *)arg, sizeof(struct SCALER_PLUGIN_Type))) {
 				pr_err("[ERR][SCALER] %s():  Not Supported copy_from_user(%d)\n", __func__, cmd);
 				ret = -EFAULT;
 			}
@@ -629,7 +629,7 @@ static long scaler_drv_ioctl(struct file *filp, unsigned int cmd, unsigned long 
 				ret = 0;
 			}
 
-			if(copy_from_user(&copy_info, (SCALER_DATA_COPY_TYPE *)arg, sizeof(SCALER_DATA_COPY_TYPE))) {
+			if(copy_from_user(&copy_info, (struct SCALER_DATA_COPY_TYPE *)arg, sizeof(struct SCALER_DATA_COPY_TYPE))) {
 				pr_err("[ERR][SCALER] %s(): Not Supported copy_from_user(%d)\n", __func__, cmd);
 				ret = -EFAULT;
 			}
@@ -861,7 +861,7 @@ static int scaler_drv_probe(struct platform_device *pdev)
 	if (scaler->misc == 0)
 		goto err_misc_alloc;
 
-	scaler->info = kzalloc(sizeof(SCALER_TYPE), GFP_KERNEL);
+	scaler->info = kzalloc(sizeof(struct SCALER_TYPE), GFP_KERNEL);
 	if (scaler->info == 0)
 		goto err_info_alloc;
 

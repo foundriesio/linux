@@ -80,7 +80,7 @@ Place, Suite 330, Boston, MA 02111-1307 USA
 #include <video/tcc/tca_dtrc_converter.h>
 #endif
 
-extern struct tcc_dp_device *tca_fb_get_displayType(TCC_OUTPUT_TYPE check_type);
+extern struct tcc_dp_device *tca_fb_get_displayType(enum TCC_OUTPUT_TYPE check_type);
 extern void tca_scale_display_update(struct tcc_dp_device *pdp_data,
 				     struct tcc_lcdc_image_update *ImageInfo);
 extern void tca_vioc_displayblock_powerOn(struct tcc_dp_device *pDisplayInfo,
@@ -238,7 +238,7 @@ int tcc_composite_get_started(void)
 /*****************************************************************************
  Function Name : tcc_composite_get_spec()
 ******************************************************************************/
-void tcc_composite_get_spec(COMPOSITE_MODE_TYPE mode, struct COMPOSITE_SPEC_TYPE *spec)
+void tcc_composite_get_spec(enum COMPOSITE_MODE_TYPE mode, struct COMPOSITE_SPEC_TYPE *spec)
 {
 #if defined(CONFIG_FB_TCC_COMPOSITE_BVO)
 	internal_bvo_get_spec(mode, spec);
@@ -330,7 +330,7 @@ void tcc_composite_get_spec(COMPOSITE_MODE_TYPE mode, struct COMPOSITE_SPEC_TYPE
 /*****************************************************************************
  Function Name : tcc_composite_set_lcd2tv()
 ******************************************************************************/
-void tcc_composite_set_lcd2tv(COMPOSITE_MODE_TYPE type)
+void tcc_composite_set_lcd2tv(enum COMPOSITE_MODE_TYPE type)
 {
 	struct COMPOSITE_SPEC_TYPE spec;
 	struct LCDTIMING CompositeTiming;
@@ -518,7 +518,7 @@ EXPORT_SYMBOL(tcc_plugout_for_composite);
 /*****************************************************************************
  Function Name : tcc_composite_get_mode()
 ******************************************************************************/
-TCC_COMPOSITE_MODE_TYPE tcc_composite_get_mode(void)
+enum TCC_COMPOSITE_MODE_TYPE tcc_composite_get_mode(void)
 {
 	return tcc_composite_mode;
 }
@@ -538,7 +538,7 @@ int tcc_composite_enabled(void)
 /*****************************************************************************
   Function Name : tcc_composite_set_cgms()
  ******************************************************************************/
-void tcc_composite_set_cgms(TCC_COMPOSITE_CGMS_TYPE *cgms_cfg)
+void tcc_composite_set_cgms(struct TCC_COMPOSITE_CGMS_TYPE *cgms_cfg)
 {
 	if (tcc_composite_started) {
 		dprintk("%s cgms.vctrl(odd/even)=[%d/%d], cgms=0x%08x(A:0x%02x|B:0x%02x|C:0x%02x)\n",
@@ -554,7 +554,7 @@ void tcc_composite_set_cgms(TCC_COMPOSITE_CGMS_TYPE *cgms_cfg)
 /*****************************************************************************
   Function Name : tcc_composite_get_cgms()
  ******************************************************************************/
-void tcc_composite_get_cgms(TCC_COMPOSITE_CGMS_TYPE *cgms_cfg)
+void tcc_composite_get_cgms(struct TCC_COMPOSITE_CGMS_TYPE *cgms_cfg)
 {
 	if (tcc_composite_started) {
 		internal_tve_get_cgms(&cgms_cfg->odd_field_en, &cgms_cfg->even_field_en,
@@ -622,9 +622,9 @@ void tcc_composite_end(void)
 /*****************************************************************************
  Function Name : tcc_composite_start()
 ******************************************************************************/
-void tcc_composite_start(TCC_COMPOSITE_MODE_TYPE mode)
+void tcc_composite_start(enum TCC_COMPOSITE_MODE_TYPE mode)
 {
-	COMPOSITE_MODE_TYPE composite_mode;
+	enum COMPOSITE_MODE_TYPE composite_mode;
 
 	pr_info("[INF][COMPOSITE] %s mode=%d, lcdc_num=%d\n", __func__, mode, Composite_LCDC_Num);
 
@@ -788,8 +788,8 @@ void tcc_composite_detach(void)
 static long tcc_composite_ioctl(struct file *file, unsigned int cmd,
 				unsigned long arg)
 {
-	TCC_COMPOSITE_START_TYPE start;
-	TCC_COMPOSITE_CGMS_TYPE cgms;
+	struct TCC_COMPOSITE_START_TYPE start;
+	struct TCC_COMPOSITE_CGMS_TYPE cgms;
 
 	dprintk("composite_ioctl IOCTRL[%d]\n", cmd);
 

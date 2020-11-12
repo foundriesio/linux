@@ -85,9 +85,9 @@ extern unsigned int DV_PROC_CHECK;
 extern int tca_edr_el_configure(struct tcc_lcdc_image_update *Src_ImageInfo, struct tcc_lcdc_image_update *El_ImageInfo, unsigned int *ratio);
 #endif
 
-extern TCC_OUTPUT_TYPE Output_SelectMode;
+extern enum TCC_OUTPUT_TYPE Output_SelectMode;
 
-extern struct tcc_dp_device *tca_fb_get_displayType(TCC_OUTPUT_TYPE check_type);
+extern struct tcc_dp_device *tca_fb_get_displayType(enum TCC_OUTPUT_TYPE check_type);
 
 #ifdef CONFIG_TCC_HDMI_DRIVER_V2_0
 extern void set_hdmi_drm(HDMI_DRM_MODE mode, struct tcc_lcdc_image_update *pImage, unsigned int layer);
@@ -319,7 +319,7 @@ void TCC_VIQE_DI_PlugInOut_forAlphablending(int plugIn)
 
 /* VIQE Set */
 //////////////////////////////////////////////////////////////////////////////////////////
-void TCC_VIQE_DI_Init(VIQE_DI_TYPE *viqe_arg)
+void TCC_VIQE_DI_Init(struct VIQE_DI_TYPE *viqe_arg)
 {
 #ifndef USE_DEINTERLACE_S_IN30Hz
 	unsigned int deintl_dma_base0, deintl_dma_base1, deintl_dma_base2, deintl_dma_base3;
@@ -449,7 +449,7 @@ void TCC_VIQE_DI_Init(VIQE_DI_TYPE *viqe_arg)
 	gVIQE_Init_State = 1;
 }
 
-void TCC_VIQE_DI_Run(VIQE_DI_TYPE *viqe_arg)
+void TCC_VIQE_DI_Run(struct VIQE_DI_TYPE *viqe_arg)
 {
 #ifndef USE_DEINTERLACE_S_IN30Hz
 	struct VIOC_PlugInOutCheck VIOC_PlugIn;
@@ -576,7 +576,7 @@ void TCC_VIQE_DI_Run(VIQE_DI_TYPE *viqe_arg)
 	gFrmCnt_30Hz++;	
 }
 
-void TCC_VIQE_DI_DeInit(VIQE_DI_TYPE *viqe_arg)
+void TCC_VIQE_DI_DeInit(struct VIQE_DI_TYPE *viqe_arg)
 {
 	volatile void __iomem *pVIQE = NULL;
 	int nVIQE = 0;
@@ -671,7 +671,7 @@ EXPORT_SYMBOL(TCC_VIQE_DI_Push60Hz_M2M);
 #endif
 
 /////////////////////////////////////////////////////////////////////////////////////////
-void TCC_VIQE_DI_Init60Hz_M2M(TCC_OUTPUT_TYPE outputMode, struct tcc_lcdc_image_update *input_image)
+void TCC_VIQE_DI_Init60Hz_M2M(enum TCC_OUTPUT_TYPE outputMode, struct tcc_lcdc_image_update *input_image)
 {
 	unsigned int deintl_dma_base0, deintl_dma_base1, deintl_dma_base2, deintl_dma_base3;
 	int imgSize;
@@ -1115,7 +1115,7 @@ void TCC_VIQE_DI_DeInit60Hz_M2M(int layer)
 }
 EXPORT_SYMBOL(TCC_VIQE_DI_DeInit60Hz_M2M);
 
-void TCC_VIQE_DI_Sub_Init60Hz_M2M(TCC_OUTPUT_TYPE outputMode, struct tcc_lcdc_image_update *input_image)
+void TCC_VIQE_DI_Sub_Init60Hz_M2M(enum TCC_OUTPUT_TYPE outputMode, struct tcc_lcdc_image_update *input_image)
 {
 #ifdef CONFIG_USE_SUB_MULTI_FRAME
 	int type = VSYNC_MAIN;
@@ -2366,7 +2366,7 @@ void TCC_VIQE_Display_Update60Hz_M2M(struct tcc_lcdc_image_update *input_image)
 */
 
 //////////////////////////////////////////////////////////////////////////////////////////
-void TCC_VIQE_DI_Init60Hz(TCC_OUTPUT_TYPE outputMode, int lcdCtrlNum, struct tcc_lcdc_image_update *input_image)
+void TCC_VIQE_DI_Init60Hz(enum TCC_OUTPUT_TYPE outputMode, int lcdCtrlNum, struct tcc_lcdc_image_update *input_image)
 {
 	unsigned int deintl_dma_base0, deintl_dma_base1, deintl_dma_base2, deintl_dma_base3;
 	int imgSize;

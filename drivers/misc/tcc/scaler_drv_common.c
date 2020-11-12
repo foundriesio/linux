@@ -153,7 +153,7 @@ struct scaler_common_drv_type {
 
 	struct clk		*clk;
 	struct scaler_data	*data;
-	SCALER_TYPE		*info;
+	struct SCALER_TYPE		*info;
 
 };
 
@@ -341,7 +341,7 @@ static void tcc_scaler_drv_configure_AFBCDEC(volatile void __iomem *pAFBC_Dec, u
 	if(!pAFBC_Dec)
 		return;
 
-	VIOC_AFBCDec_SurfaceCfg(pAFBC_Dec, base_addr, fmt, width, height, 0, bSplitMode, bWideMode, VIOC_AFBCDEC_SURFACE_0);
+	VIOC_AFBCDec_SurfaceCfg(pAFBC_Dec, base_addr, fmt, width, height, 0, bSplitMode, bWideMode, VIOC_AFBCDEC_SURFACE_0, 1);
 	VIOC_AFBCDec_SetContiDecEnable(pAFBC_Dec, 0);
 	VIOC_AFBCDec_SetSurfaceN(pAFBC_Dec, VIOC_AFBCDEC_SURFACE_0, 1);
 	VIOC_AFBCDec_SetIrqMask(pAFBC_Dec, 0, AFBCDEC_IRQ_ALL); //disable all
@@ -853,9 +853,9 @@ static long scaler_drv_common_ioctl(struct file *filp, unsigned int cmd, unsigne
 			}
 
 			if(cmd == TCC_SCALER_IOCTRL_KERENL) {
-				memcpy(scaler->info, (SCALER_TYPE*)arg, sizeof(SCALER_TYPE));
+				memcpy(scaler->info, (struct SCALER_TYPE*)arg, sizeof(struct SCALER_TYPE));
 			} else {
-				if(copy_from_user(scaler->info, (SCALER_TYPE*)arg, sizeof(SCALER_TYPE))) {
+				if(copy_from_user(scaler->info, (struct SCALER_TYPE*)arg, sizeof(struct SCALER_TYPE))) {
 					pr_err("[ERR][SCALER] %s(): Not Supported copy_from_user(%d)\n", __func__, cmd);
 					ret = -EFAULT;
 				}
@@ -1055,7 +1055,7 @@ static int scaler_drv_common_probe(struct platform_device *pdev)
 	if (scaler->misc == 0)
 		goto err_misc_alloc;
 
-	scaler->info = kzalloc(sizeof(SCALER_TYPE), GFP_KERNEL);
+	scaler->info = kzalloc(sizeof(struct SCALER_TYPE), GFP_KERNEL);
 	if (scaler->info == 0)
 		goto err_info_alloc;
 

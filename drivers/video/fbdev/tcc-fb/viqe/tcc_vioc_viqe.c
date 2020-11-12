@@ -44,7 +44,7 @@ Suite 330, Boston, MA 02111-1307 USA
 static long tcc_viqe_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 {
 	int ret = 0;
-	VIQE_DI_TYPE viqe_arg;
+	struct VIQE_DI_TYPE viqe_arg;
 
 	dprintk("%s  (0x%x)  \n", __func__, cmd);
 
@@ -52,9 +52,9 @@ static long tcc_viqe_ioctl(struct file *filp, unsigned int cmd, unsigned long ar
 		case IOCTL_VIQE_INITIALIZE:
 		case IOCTL_VIQE_INITIALIZE_KERNEL:
 			if(cmd == IOCTL_VIQE_INITIALIZE_KERNEL) {
-				memcpy(&viqe_arg, (VIQE_DI_TYPE *)arg, sizeof(VIQE_DI_TYPE));
+				memcpy(&viqe_arg, (struct VIQE_DI_TYPE *)arg, sizeof(struct VIQE_DI_TYPE));
 			} else {
-				if(copy_from_user(&viqe_arg, (VIQE_DI_TYPE *)arg, sizeof(VIQE_DI_TYPE))){
+				if(copy_from_user(&viqe_arg, (struct VIQE_DI_TYPE *)arg, sizeof(struct VIQE_DI_TYPE))){
 					printk(KERN_ALERT "%s():  Error copy_from_user(%d). \n", __func__, cmd);
 					return -EINVAL;
 				}
@@ -69,9 +69,9 @@ static long tcc_viqe_ioctl(struct file *filp, unsigned int cmd, unsigned long ar
 		case IOCTL_VIQE_EXCUTE:
 		case IOCTL_VIQE_EXCUTE_KERNEL:
 			if(cmd == IOCTL_VIQE_EXCUTE_KERNEL) {
-				memcpy(&viqe_arg, (VIQE_DI_TYPE *)arg, sizeof(VIQE_DI_TYPE));
+				memcpy(&viqe_arg, (struct VIQE_DI_TYPE *)arg, sizeof(struct VIQE_DI_TYPE));
 			} else {
-				if(copy_from_user(&viqe_arg, (VIQE_DI_TYPE *)arg, sizeof(VIQE_DI_TYPE))){
+				if(copy_from_user(&viqe_arg, (struct VIQE_DI_TYPE *)arg, sizeof(struct VIQE_DI_TYPE))){
 					printk(KERN_ALERT "%s():  Error copy_from_user(%d). \n", __func__, cmd);
 					return -EINVAL;
 				}
@@ -87,9 +87,9 @@ static long tcc_viqe_ioctl(struct file *filp, unsigned int cmd, unsigned long ar
 		case IOCTL_VIQE_DEINITIALIZE:
 		case IOCTL_VIQE_DEINITIALIZE_KERNEL:
 			if(cmd == IOCTL_VIQE_DEINITIALIZE_KERNEL) {
-				memcpy(&viqe_arg, (VIQE_DI_TYPE *)arg, sizeof(VIQE_DI_TYPE));
+				memcpy(&viqe_arg, (struct VIQE_DI_TYPE *)arg, sizeof(struct VIQE_DI_TYPE));
 			} else {
-				if(copy_from_user(&viqe_arg, (VIQE_DI_TYPE *)arg, sizeof(VIQE_DI_TYPE))){
+				if(copy_from_user(&viqe_arg, (struct VIQE_DI_TYPE *)arg, sizeof(struct VIQE_DI_TYPE))){
 					printk(KERN_ALERT "%s():  Error copy_from_user(%d). \n", __func__, cmd);
 					return -EINVAL;
 				}

@@ -1,17 +1,21 @@
-/* linux/arch/arm/mach-tcc89xx/include/mach/tcc_board_composite.h
+/*
+ * Copyright (C) Telechips, Inc.
  *
- * Copyright (C) 2010 Telechips, Inc.
- *
- * This software is licensed under the terms of the GNU General Public
- * License version 2, as published by the Free Software Foundation, and
- * may be copied, distributed, and modified under those terms.
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
  *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, see the file COPYING, or write
+ * to the Free Software Foundation, Inc.,
+ * 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  */
-
 #ifndef __TCC_COMPOSITE_H
 #define __TCC_COMPOSITE_H
 
@@ -27,7 +31,7 @@ struct tcc_composite_platform_data {
 };
 
 struct tcc_composite_hpd_platform_data {
-	unsigned composite_port;
+	unsigned int composite_port;
 };
 
 #if defined(CONFIG_SWITCH_GPIO_COMPOSITE)
@@ -40,7 +44,8 @@ struct composite_gpio_switch_data {
 	const char *state_off;
 	unsigned int state_val;
 	struct work_struct work;
-	void (*send_composite_event)(void *pswitch_data, unsigned int composite_state);
+	void (*send_composite_event)(void *pswitch_data,
+		unsigned int composite_state);
 };
 #endif
 

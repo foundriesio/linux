@@ -39,15 +39,15 @@
 #include <video/tcc/tcc_composite_ioctl.h>
 #include <video/tcc/tcc_component_ioctl.h>
 #if defined(CONFIG_FB_TCC_COMPOSITE)
-extern void tcc_composite_set_cgms(TCC_COMPOSITE_CGMS_TYPE *cgms_cfg);
-extern void tcc_composite_get_cgms(TCC_COMPOSITE_CGMS_TYPE *cgms_cfg);
+extern void tcc_composite_set_cgms(struct TCC_COMPOSITE_CGMS_TYPE *cgms_cfg);
+extern void tcc_composite_get_cgms(struct TCC_COMPOSITE_CGMS_TYPE *cgms_cfg);
 #else
 #define tcc_composite_set_cgms(x) NULL
 #define tcc_composite_get_cgms(x) NULL
 #endif
 #if defined(CONFIG_FB_TCC_COMPONENT)
-extern void component_set_cgms(TCC_COMPONENT_CGMS_TYPE *cgms);
-extern void component_get_cgms(TCC_COMPONENT_CGMS_TYPE *cgms);
+extern void component_set_cgms(struct TCC_COMPONENT_CGMS_TYPE *cgms);
+extern void component_get_cgms(struct TCC_COMPONENT_CGMS_TYPE *cgms);
 #else
 #define component_set_cgms(x) NULL
 #define component_get_cgms(x) NULL
@@ -256,7 +256,7 @@ static void vta_link_protection(struct tee_client_param *composite, struct tee_c
 	DBG("\n");
 
 	if (0xffffffff != composite->tee_client_value.a) {
-		TCC_COMPOSITE_CGMS_TYPE cgms_cfg;
+		struct TCC_COMPOSITE_CGMS_TYPE cgms_cfg;
 		cgms_cfg.data = composite->tee_client_value.b;
 		cgms_cfg.odd_field_en = composite->tee_client_value.a;
 		cgms_cfg.even_field_en = composite->tee_client_value.a;
@@ -268,7 +268,7 @@ static void vta_link_protection(struct tee_client_param *composite, struct tee_c
 
 	#ifndef CONFIG_FB_TCC_COMPONENT_ADV7343
 	if (0xffffffff != component->tee_client_value.a) {
-		TCC_COMPONENT_CGMS_TYPE cgms_cfg;
+		struct TCC_COMPONENT_CGMS_TYPE cgms_cfg;
 		cgms_cfg.data = component->tee_client_value.b;
 		cgms_cfg.enable = component->tee_client_value.a;
 		component_set_cgms(&cgms_cfg);
@@ -412,9 +412,9 @@ exit:
 static void vta_test_link_protection(long onoff)
 {
 	struct tee_client_param composite, component;
-	TCC_COMPOSITE_CGMS_TYPE composite_cgms;
+	struct TCC_COMPOSITE_CGMS_TYPE composite_cgms;
 	#ifndef CONFIG_FB_TCC_COMPONENT_ADV7343
-	TCC_COMPONENT_CGMS_TYPE component_cgms;
+	struct TCC_COMPONENT_CGMS_TYPE component_cgms;
 	#endif
 
 	/* key:0xc0 crc=0x3a (1 1 1 0 1 0) => cgms_data=0xe80c0 */

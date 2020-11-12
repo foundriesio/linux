@@ -1,10 +1,5 @@
 /*
- *   FileName    : tcc_mem_ioctl.h
- *   Author:  <linux@telechips.com>
- *   Created: June 10, 2008
- *   Description: TCC MEM block
- *
- *   Copyright (C) 2008-2009 Telechips
+ * Copyright (C) Telechips, Inc.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -20,9 +15,7 @@
  * along with this program; if not, see the file COPYING, or write
  * to the Free Software Foundation, Inc.,
  * 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
- *
  */
-
 #ifndef _TCC_MEM_IOCTL_H
 #define _TCC_MEM_IOCTL_H
 
@@ -37,7 +30,7 @@
 
 //for DolbyVision
 #define TCC_GET_HDMI_INFO                   0x30
-#define TCC_SET_HDMI_OUT_TYPE				0x31
+#define TCC_SET_HDMI_OUT_TYPE               0x31
 
 #ifdef CONFIG_ANDROID
 #define USE_UMP_RESERVED_SW_PMAP
@@ -50,27 +43,26 @@
 #define TCC_AUTOFREE_DEREGISTER_UMP_SW_INFO_KERNEL 0x44
 #endif
 
-typedef struct {
-    unsigned int    istance_index;
-    int             index;
-} vbuffer_manager;
+struct vbuffer_manager {
+	unsigned int istance_index;
+	int index;
+};
 
-typedef struct {
-    unsigned int    dv_path;
-    unsigned int    out_type;  // DOVI = 0, HDR10 = 1, SDR = 2
-    unsigned int    width;
-    unsigned int    height;
-	unsigned int 	dv_vsvdb[12];
-	unsigned int 	dv_vsvdb_size;
-	unsigned int	dv_ll_mode;
-} vHdmi_info;
+struct vHdmi_info {
+	unsigned int dv_path;
+	unsigned int out_type;  // DOVI = 0, HDR10 = 1, SDR = 2
+	unsigned int width;
+	unsigned int height;
+	unsigned int dv_vsvdb[12];
+	unsigned int dv_vsvdb_size;
+	unsigned int dv_ll_mode;
+};
 
-typedef struct {
-    unsigned int    phy_addr;
-    unsigned int    width;
-    unsigned int    height;
-	unsigned int	size;
-} stIonBuff_info;
+struct stIonBuff_info {
+	unsigned int phy_addr;
+	unsigned int width;
+	unsigned int height;
+	unsigned int size;
+};
 
 #endif //_TCC_MEM_IOCTL_H
-

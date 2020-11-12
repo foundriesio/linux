@@ -43,7 +43,7 @@
 #ifdef CONFIG_VOUT_DISPLAY_LASTFRAME
 static struct pmap lastframe_pbuf;
 static int enable_LastFrame = 0;
-static WMIXER_ALPHASCALERING_INFO_TYPE fbmixer;
+static struct WMIXER_ALPHASCALERING_INFO_TYPE fbmixer;
 #endif
 
 //#define MAX_VIQE_FRAMEBUFFER
@@ -59,7 +59,7 @@ static WMIXER_ALPHASCALERING_INFO_TYPE fbmixer;
 #ifdef CONFIG_VIOC_DOLBY_VISION_EDR
 #include <video/tcc/tccfb.h>
 
-extern struct tcc_dp_device *tca_get_displayType(TCC_OUTPUT_TYPE check_type);
+extern struct tcc_dp_device *tca_get_displayType(enum TCC_OUTPUT_TYPE check_type);
 extern void tca_edr_el_display_update(struct tcc_dp_device *pdp_data, struct tcc_lcdc_image_update *ImageInfo);
 
 #ifdef CONFIG_VIOC_DOLBY_VISION_CERTIFICATION_TEST
@@ -93,7 +93,7 @@ extern unsigned int hdmi_get_refreshrate(void);
 extern unsigned int HDMI_video_hz;
 #endif
 
-extern OUTPUT_SELECT_MODE Output_SelectMode;
+extern enum OUTPUT_SELECT_MODE Output_SelectMode;
 
 // buffer
 static int tcc_get_base_address(

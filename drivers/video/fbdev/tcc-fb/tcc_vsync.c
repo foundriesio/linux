@@ -182,13 +182,13 @@ extern void tca_scale_display_update(struct tcc_dp_device *pdp_data, struct tcc_
 extern void tca_scale_display_update_with_sync(struct tcc_dp_device *pdp_data, struct tcc_lcdc_image_update *ImageInfo);
 
 extern void tca_mvc_display_update(char hdmi_lcdc, struct tcc_lcdc_image_update *ImageInfo);
-extern struct tcc_dp_device *tca_fb_get_displayType(TCC_OUTPUT_TYPE check_type);
+extern struct tcc_dp_device *tca_fb_get_displayType(enum TCC_OUTPUT_TYPE check_type);
 
 #if defined(CONFIG_TCC_VTA)
 extern int vta_cmd_notify_change_status(const char *);
 #endif
 
-extern TCC_OUTPUT_TYPE Output_SelectMode;
+extern enum TCC_OUTPUT_TYPE Output_SelectMode;
 extern unsigned int HDMI_video_hz;
 
 #ifdef TCC_LCD_VIDEO_DISPLAY_BY_VSYNC_INT
@@ -2671,7 +2671,7 @@ static void _tcc_vsync_release_virtaddr(void * target_virtaddr, unsigned int sta
 }
 
 //will be copyed original decoded data itself.
-int tcc_move_video_frame_simple( struct file *file, struct tcc_lcdc_image_update* inFframeInfo, WMIXER_INFO_TYPE* WmixerInfo, unsigned int target_addr, unsigned int target_size, unsigned int target_format)
+int tcc_move_video_frame_simple( struct file *file, struct tcc_lcdc_image_update* inFframeInfo, struct WMIXER_INFO_TYPE* WmixerInfo, unsigned int target_addr, unsigned int target_size, unsigned int target_format)
 {
 	int Frame_height = 0,  ret = 0;
 	unsigned int type = tcc_vsync_get_video_ch_type(inFframeInfo->Lcdc_layer);
@@ -2680,7 +2680,7 @@ int tcc_move_video_frame_simple( struct file *file, struct tcc_lcdc_image_update
 	if(type >= VSYNC_MAX)
 		return -1;
 
-	memset(WmixerInfo, 0x00, sizeof(WMIXER_INFO_TYPE));
+	memset(WmixerInfo, 0x00, sizeof(struct WMIXER_INFO_TYPE));
 
 	Frame_height = inFframeInfo->Frame_height;
 #ifdef CONFIG_VIOC_MAP_DECOMP
@@ -2986,9 +2986,9 @@ int tcc_move_video_last_frame(struct tcc_lcdc_image_update* lastUpdated, char bI
 
 #ifdef USE_SCALER2_FOR_LASTFRAME
 	{
-		SCALER_TYPE LFScaler;
+		struct SCALER_TYPE LFScaler;
 
-		memset(&LFScaler, 0x00, sizeof(SCALER_TYPE));
+		memset(&LFScaler, 0x00, sizeof(struct SCALER_TYPE));
 
 		LFScaler.responsetype	= SCALER_POLLING;
 
@@ -3040,13 +3040,13 @@ int tcc_move_video_last_frame(struct tcc_lcdc_image_update* lastUpdated, char bI
 	}
 #else
 	{
-		WMIXER_ALPHASCALERING_INFO_TYPE fbmixer;
+		struct WMIXER_ALPHASCALERING_INFO_TYPE fbmixer;
 		#if defined(CONFIG_EXT_FRAME_VIDEO_EFFECT)
-		WMIXER_VIOC_INFO wmixer_id_info;
+		struct WMIXER_VIOC_INFO wmixer_id_info;
 		unsigned int lut_plugin, lut_en;
 		#endif
 
-		memset(&fbmixer, 0x00, sizeof(WMIXER_ALPHASCALERING_INFO_TYPE));
+		memset(&fbmixer, 0x00, sizeof(struct WMIXER_ALPHASCALERING_INFO_TYPE));
 
 #ifdef CONFIG_VIOC_10BIT
 		if(lastUpdated->private_data.optional_info[VID_OPT_BIT_DEPTH] == 10){
@@ -3421,7 +3421,7 @@ Screen_off:
 	#endif
 		)
 		{
-			WMIXER_INFO_TYPE WmixerInfo;
+			struct WMIXER_INFO_TYPE WmixerInfo;
 
 			tccvid_lastframe[type].enabled = 1;
 			tccvid_lastframe[type].nCount = 0;
@@ -3787,7 +3787,7 @@ void tcc_video_frame_backup(struct tcc_lcdc_image_update *Image)
 	}
 }
 
-int tcc_video_swap_vpu_frame(tcc_video_disp *p, int idx, WMIXER_INFO_TYPE *WmixerInfo, struct tcc_lcdc_image_update *TempImage, VSYNC_CH_TYPE type)
+int tcc_video_swap_vpu_frame(tcc_video_disp *p, int idx, struct WMIXER_INFO_TYPE *WmixerInfo, struct tcc_lcdc_image_update *TempImage, VSYNC_CH_TYPE type)
 {
 	int ret = 0;
 	struct file *file = NULL;
@@ -3922,7 +3922,7 @@ Error:
 }
 
 int tcc_fb_swap_vpu_frame(struct tcc_dp_device *pdp_data,
-						WMIXER_INFO_TYPE *WmixerInfo,
+						struct WMIXER_INFO_TYPE *WmixerInfo,
 						struct tcc_lcdc_image_update *TempImage,
 						VSYNC_CH_TYPE type)
 {
@@ -4338,7 +4338,7 @@ static long tcc_vsync_do_ioctl(unsigned int cmd, unsigned long arg, VSYNC_CH_TYP
 			case TCC_LCDC_VIDEO_SWAP_VPU_FRAME:
 				{
 #if defined(CONFIG_VIDEO_DISPLAY_SWAP_VPU_FRAME)
-					WMIXER_INFO_TYPE WmixerInfo;
+					struct WMIXER_INFO_TYPE WmixerInfo;
 					struct tcc_lcdc_image_update *TempImage = (struct tcc_lcdc_image_update *)kmalloc(sizeof(struct tcc_lcdc_image_update), GFP_KERNEL);
 
 					if(!TempImage) {

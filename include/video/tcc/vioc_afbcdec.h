@@ -1,9 +1,5 @@
 /*
- * linux/include/video/tcc/vioc_afbcdec.h
- * Author:  <linux@telechips.com>
- * Description: TCC VIOC h/w block 
- *
- * Copyright (C) 2018 Telechips
+ * Copyright (C) Telechips, Inc.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
