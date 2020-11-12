@@ -270,7 +270,7 @@ static int isl79988_g_input_status(struct v4l2_subdev *sd, u32 *status)
 		if ((val & 0x0F) != ISL79988_STATUS_VAL) {
 			*status &= ~V4L2_IN_ST_NO_SIGNAL;
 		} else {
-			logw("V4L2_IN_ST_NO_SIGNAL\n", val);
+			logw("V4L2_IN_ST_NO_SIGNAL\n");
 			*status |= V4L2_IN_ST_NO_SIGNAL;
 		}
 	}
@@ -299,12 +299,12 @@ static int isl79988_s_stream(struct v4l2_subdev *sd, int enable)
 static int isl79988_g_dv_timings(struct v4l2_subdev *sd,
 	struct v4l2_dv_timings *timings)
 {
-	struct isl79988	*dev	= to_state(sd);
-	int				ret	= 0;
+	int ret = 0;
+
 	memcpy((void *)timings, (const void *)&isl79988_dv_timings,
 		sizeof(*timings));
 
-	return 0;
+	return ret;
 }
 
 static int isl79988_g_mbus_config(struct v4l2_subdev *sd,
@@ -337,8 +337,9 @@ static int isl79988_get_fmt(struct v4l2_subdev *sd,
 {
 	struct isl79988		*dev = to_state(sd);
 	int ret	= 0;
-	memcpy((void *)&format->format, \
-		(const void *)&dev->fmt, \
+
+	memcpy((void *)&format->format,
+		(const void *)&dev->fmt,
 		sizeof(struct v4l2_mbus_framefmt));
 
 	return ret;
@@ -348,18 +349,15 @@ static int isl79988_set_fmt(struct v4l2_subdev *sd,
 	struct v4l2_subdev_pad_config *cfg,
 	struct v4l2_subdev_format *format)
 {
-	struct isl79988		*dev = to_state(sd);
+	struct isl79988 *dev = to_state(sd);
 	int ret	= 0;
-	int i = 0;
 
-
-	memcpy((void *)&dev->fmt, \
-		(const void *)&format->format, \
+	memcpy((void *)&dev->fmt,
+		(const void *)&format->format,
 		sizeof(struct v4l2_mbus_framefmt));
-		
+
 	isl79988_dv_timings.bt.width = format->format.width;
 	isl79988_dv_timings.bt.height = format->format.height;
-
 
 	return ret;
 }
@@ -383,7 +381,7 @@ static const struct v4l2_subdev_video_ops isl79988_v4l2_subdev_video_ops = {
 };
 
 static const struct v4l2_subdev_pad_ops isl79988_v4l2_subdev_pad_ops = {
-//	.enum_mbus_code = isl79988_enum_mbus_code,
+	.enum_mbus_code		= isl79988_enum_mbus_code,
 	.get_fmt		= isl79988_get_fmt,
 	.set_fmt		= isl79988_set_fmt,
 };

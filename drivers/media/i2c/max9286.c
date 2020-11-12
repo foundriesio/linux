@@ -38,14 +38,18 @@
 
 #define LOG_TAG			"VSRC:MAX9286"
 
-#define loge(fmt, ...) \
-	pr_err("[ERROR][%s] %s - "	fmt, LOG_TAG, __func__, ##__VA_ARGS__)
-#define logw(fmt, ...) \
-	pr_warn("[WARN][%s] %s - "	fmt, LOG_TAG, __func__, ##__VA_ARGS__)
-#define logd(fmt, ...) \
-	pr_debug("[DEBUG][%s] %s - "	fmt, LOG_TAG, __func__, ##__VA_ARGS__)
-#define logi(fmt, ...) \
-	pr_info("[INFO][%s] %s - "	fmt, LOG_TAG, __func__, ##__VA_ARGS__)
+#define loge(fmt, ...)		\
+		pr_err("[ERROR][%s] %s - "\
+			fmt, LOG_TAG, __func__, ##__VA_ARGS__)
+#define logw(fmt, ...)		\
+		pr_warn("[WARN][%s] %s - "\
+			fmt, LOG_TAG, __func__, ##__VA_ARGS__)
+#define logd(fmt, ...)		\
+		pr_debug("[DEBUG][%s] %s - "\
+			fmt, LOG_TAG, __func__, ##__VA_ARGS__)
+#define logi(fmt, ...)		\
+		pr_info("[INFO][%s] %s - "\
+			fmt, LOG_TAG, __func__, ##__VA_ARGS__)
 
 #define WIDTH			1280
 #define HEIGHT			720
@@ -273,7 +277,7 @@ static int max9286_g_input_status(struct v4l2_subdev *sd, u32 *status)
 		if (val == MAX9286_VAL_STATUS_1) {
 			*status &= ~V4L2_IN_ST_NO_SIGNAL;
 		} else {
-			logw("V4L2_IN_ST_NO_SIGNAL\n", val);
+			logw("V4L2_IN_ST_NO_SIGNAL\n");
 			*status |= V4L2_IN_ST_NO_SIGNAL;
 		}
 	}
@@ -285,20 +289,18 @@ static int max9286_g_input_status(struct v4l2_subdev *sd, u32 *status)
 
 static int max9286_s_stream(struct v4l2_subdev *sd, int enable)
 {
-	struct max9286		* dev	= to_dev(sd);
+	struct max9286		*dev	= to_dev(sd);
 	int			ret	= 0;
 
 	mutex_lock(&dev->lock);
 
 	if ((dev->s_cnt == 0) && (enable == 1)) {
-		ret = regmap_multi_reg_write(dev->regmap, \
-				max9286_reg_defaults, \
+		ret = regmap_multi_reg_write(dev->regmap,
+				max9286_reg_defaults,
 				ARRAY_SIZE(max9286_reg_defaults));
-		if (ret < 0) {
-			loge("Fail initializing max9286 device \n");
-		}
-	}
-	else if ((dev->s_cnt == 1) && (enable == 0)) {
+		if (ret < 0)
+			loge("Fail initializing max9286 device\n");
+	} else if ((dev->s_cnt == 1) && (enable == 0)) {
 		ret = regmap_write(dev->regmap, 0x15, 0x93);
 	}
 
@@ -311,29 +313,16 @@ static int max9286_s_stream(struct v4l2_subdev *sd, int enable)
 	return ret;
 }
 
-static int max9286_g_dv_timings(struct v4l2_subdev *sd,
-	struct v4l2_dv_timings *timings)
-{
-	struct max9286		* dev	= to_dev(sd);
-	int			ret	= 0;
-	mutex_lock(&dev->lock);
-
-	memcpy((void *)timings, (const void *)&max9286_dv_timings,
-		sizeof(*timings));
-	mutex_unlock(&dev->lock);
-	return ret;
-}
-
 static int max9286_get_fmt(struct v4l2_subdev *sd,
 			   struct v4l2_subdev_pad_config *cfg,
 			   struct v4l2_subdev_format *format)
 {
-	struct max9286		* dev	= to_dev(sd);
+	struct max9286		*dev	= to_dev(sd);
 	int			ret	= 0;
 
 	mutex_lock(&dev->lock);
 
-	memcpy((void *)&format->format, (const void *)&dev->fmt, \
+	memcpy((void *)&format->format, (const void *)&dev->fmt,
 		sizeof(struct v4l2_mbus_framefmt));
 
 	mutex_unlock(&dev->lock);
@@ -344,12 +333,12 @@ static int max9286_set_fmt(struct v4l2_subdev *sd,
 			   struct v4l2_subdev_pad_config *cfg,
 			   struct v4l2_subdev_format *format)
 {
-	struct max9286		* dev	= to_dev(sd);
+	struct max9286		*dev	= to_dev(sd);
 	int			ret	= 0;
 
 	mutex_lock(&dev->lock);
 
-	memcpy((void *)&dev->fmt, (const void *)&format->format, \
+	memcpy((void *)&dev->fmt, (const void *)&format->format,
 		sizeof(struct v4l2_mbus_framefmt));
 
 	mutex_unlock(&dev->lock);
@@ -366,7 +355,6 @@ static const struct v4l2_subdev_core_ops max9286_core_ops = {
 static const struct v4l2_subdev_video_ops max9286_video_ops = {
 	.g_input_status		= max9286_g_input_status,
 	.s_stream		= max9286_s_stream,
-	//.g_dv_timings		= max9286_g_dv_timings,
 };
 
 static const struct v4l2_subdev_pad_ops max9286_pad_ops = {
@@ -401,9 +389,9 @@ MODULE_DEVICE_TABLE(of, max9286_of_match);
 
 int max9286_probe(struct i2c_client *client, const struct i2c_device_id *id)
 {
-	struct max9286		*dev	= NULL;
-	struct of_device_id	*dev_id	= NULL; 
-	int			ret	= 0;
+	struct max9286 *dev = NULL;
+	const struct of_device_id *dev_id = NULL;
+	int ret = 0;
 
 	// allocate and clear memory for a device
 	dev = devm_kzalloc(&client->dev, sizeof(struct max9286), GFP_KERNEL);
