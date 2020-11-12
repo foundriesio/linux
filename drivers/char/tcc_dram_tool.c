@@ -154,7 +154,6 @@ static ssize_t cycle_time_write(struct device *dev,
 				size_t count)
 {
 	struct dram_tool_platform_data *pdata = dev_get_drvdata(dev);
-	int ret = 0;
 
 	sscanf(buf, "%d", &pdata->cycle_time);
 

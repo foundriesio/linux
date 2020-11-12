@@ -203,7 +203,7 @@ static int tcc_dwc3_vbus_set(struct usb_phy *phy, int on_off)
 	}
 
 	/* Request a single VBus GPIO with initial configuration. */
-	retval = gpio_request_one((unsigned)phy_dev->vbus_gpio_num,
+	retval = gpio_request_one((unsigned int)phy_dev->vbus_gpio_num,
 			phy_dev->vbus_gpio_flag, "vbus_gpio_phy");
 	if (retval != 0) {
 		dev_err(dev, "[ERROR][USB] VBus GPIO can't be requested, errno %d.\n",
@@ -215,7 +215,8 @@ static int tcc_dwc3_vbus_set(struct usb_phy *phy, int on_off)
 	 * Set the direction of the VBus GPIO passed through the phy_dev
 	 * structure to output.
 	 */
-	retval = gpiod_direction_output(gpio_to_desc((unsigned)phy_dev->vbus_gpio_num),
+	retval = gpiod_direction_output(
+			gpio_to_desc((unsigned int)phy_dev->vbus_gpio_num),
 			on_off);
 	if (retval != 0) {
 		dev_err(dev, "[ERROR][USB] VBus GPIO direction can't be set to output, errno %d.\n",
@@ -223,7 +224,7 @@ static int tcc_dwc3_vbus_set(struct usb_phy *phy, int on_off)
 		return retval;
 	}
 
-	gpio_free((unsigned)phy_dev->vbus_gpio_num);
+	gpio_free((unsigned int)phy_dev->vbus_gpio_num);
 
 	return retval;
 }

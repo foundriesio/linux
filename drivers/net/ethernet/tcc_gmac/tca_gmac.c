@@ -42,7 +42,7 @@ int tca_gmac_init(struct device_node *np, struct gmac_dt_info_t *dt_info)
 {
 	int ret = 0;
 	const char *phy_str;
-	void *dummy_ptr;
+	// void *dummy_ptr;
 
 	if (of_property_read_u32(np, "index", &dt_info->index) != 0) {
 		pr_err("[ERROR][GMAC] gmac index not exist\n");
@@ -557,8 +557,8 @@ int tca_get_mac_addr_from_ecid(unsigned char *mac_addr)
 
 	id_bit = (ecid[0] >> (unsigned int)22) &
 		(unsigned int)ECID_MAC_ID_BIT_MASK;
-	//printk("ECID MAC [23:47] : 0x%x\n", (ecid[0] >> 23) + (ecid[1] << 9));
-	//printk("ECID ID bit[22:23] = %d \n", id_bit);
+	//pr_info("ECID MAC [23:47] : 0x%x\n", (ecid[0] >> 23) + (ecid[1] << 9));
+	//pr_info("ECID ID bit[22:23] = %d \n", id_bit);
 
 	if ((ecid[2] != (unsigned int)0) || (ecid[3] != (unsigned int)0)) {
 #if 0
