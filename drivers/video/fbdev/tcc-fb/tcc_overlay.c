@@ -36,7 +36,7 @@
 #include <linux/fs.h>
 #include <linux/uaccess.h>
 
-#include <asm/io.h>
+#include <linux/io.h>
 #include <asm/div64.h>
 #include <linux/poll.h>
 
@@ -61,6 +61,7 @@
 #include <video/tcc/vioc_disp.h>
 #include <video/tcc/vioc_global.h>
 #include <video/tcc/vioc_config.h>
+#include <video/tcc/tcc_mem_ioctl.h>
 
 #if defined(CONFIG_VIOC_AFBCDEC)
 #include <video/tcc/vioc_afbcdec.h>
@@ -106,7 +107,6 @@ struct overlay_drv_type {
 #ifdef CONFIG_DISPLAY_EXT_FRAME
 extern int tcc_ctrl_ext_frame(char enable);
 #endif
-extern int range_is_allowed(unsigned long pfn, unsigned long size);
 
 #if defined(CONFIG_VIOC_AFBCDEC)
 static void tcc_overlay_configure_AFBCDEC(volatile void __iomem *pAFBC_Dec, unsigned int afbc_dec_id,

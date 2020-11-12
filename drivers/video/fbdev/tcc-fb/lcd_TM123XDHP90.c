@@ -26,7 +26,7 @@
 #ifndef CONFIG_ARM64
 #include <asm/mach-types.h>
 #endif
-#include <asm/io.h>
+#include <linux/io.h>
 
 #ifdef CONFIG_OF
 #include <linux/of.h>

@@ -68,7 +68,7 @@
 #include <linux/console.h>
 #include <linux/uaccess.h>
 
-#include <asm/io.h>
+#include <linux/io.h>
 #include <asm/div64.h>
 #include <asm/system_info.h>
 #ifdef CONFIG_PM

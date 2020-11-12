@@ -34,7 +34,7 @@ Place, Suite 330, Boston, MA 02111-1307 USA
 #include <linux/clk.h>
 #include <linux/cpufreq.h>
 #include <linux/uaccess.h>
-#include <asm/io.h>
+#include <linux/io.h>
 #include <asm/div64.h>
 #ifndef CONFIG_ARM64
 #include <asm/mach/map.h>

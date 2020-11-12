@@ -40,7 +40,7 @@
 #include <linux/clk.h>
 #include <linux/clk-provider.h>
 #include <linux/uaccess.h>
-#include <asm/io.h>
+#include <linux/io.h>
 #include <asm/div64.h>
 
 #include <video/tcc/tcc_types.h>

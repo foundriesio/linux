@@ -41,7 +41,7 @@
 #include <linux/of_address.h>
 #include <linux/of_device.h>
 #include <linux/of_irq.h>
-#include <asm/io.h>
+#include <linux/io.h>
 
 #include <soc/tcc/pmap.h>
 
@@ -53,6 +53,8 @@
 #include <video/tcc/vioc_config.h>
 #include <video/tcc/vioc_ddicfg.h>
 #include <video/tcc/viqe_madi.h>
+#include <video/tcc/tcc_mem_ioctl.h>
+#include <video/tcc/tccfb_address.h>
 
 #if defined(EN_MADI_VERIFICATION)
 static int debug = 1;
@@ -115,10 +117,6 @@ struct viqe_madi_type {
 	struct viqe_madi_data		*data;
 	struct viqe_madi_info_type	*info;
 };
-
-extern void tccxxx_GetAddress(unsigned char format, unsigned int base_Yaddr, unsigned int src_imgx, unsigned int  src_imgy,
-								unsigned int start_x, unsigned int start_y, unsigned int* Y, unsigned int* U,unsigned int* V);
-extern int range_is_allowed(unsigned long pfn, unsigned long size);
 
 static int viqe_madi_mmap(struct file *filp, struct vm_area_struct *vma)
 {

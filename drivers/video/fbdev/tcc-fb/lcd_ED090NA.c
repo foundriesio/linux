@@ -40,7 +40,7 @@
 #endif
 
 #include <asm/mach-types.h>
-#include <asm/io.h>
+#include <linux/io.h>
 
 #include <video/tcc/tccfb.h>
 #include <video/tcc/tcc_fb.h>

@@ -29,7 +29,7 @@
 #include <linux/of_platform.h>
 #endif
 
-#include <asm/io.h>
+#include <linux/io.h>
 #ifndef CONFIG_ARM64
 #include <asm/mach-types.h>
 #endif

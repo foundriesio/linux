@@ -31,7 +31,7 @@
 #include <linux/of_address.h>
 #include <linux/of_device.h>
 #include <linux/of_irq.h>
-#include <asm/io.h>
+#include <linux/io.h>
 
 #include <video/tcc/vioc_rdma.h>
 #include <video/tcc/vioc_wdma.h>
@@ -40,6 +40,7 @@
 #include <video/tcc/vioc_scaler.h>
 #include <video/tcc/vioc_global.h>
 #include <video/tcc/vioc_intr.h>
+#include <video/tcc/tcc_mem_ioctl.h>
 
 #include <video/tcc/tcc_attach_ioctrl.h>
 
@@ -74,7 +75,6 @@ struct attach_drv_type {
     spinlock_t      poll_lock;
 };
 
-extern int range_is_allowed(unsigned long pfn, unsigned long size);
 static int attach_drv_mmap(struct file *filp, struct vm_area_struct *vma)
 {
 	struct miscdevice *misc = (struct miscdevice *)filp->private_data;

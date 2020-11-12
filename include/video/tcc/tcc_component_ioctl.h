@@ -105,4 +105,7 @@ struct TCC_COMPONENT_CGMS_TYPE {
 	unsigned int enable;     // CGMS enable (1: enable, 0: disable)
 };
 
+extern void component_set_cgms(struct TCC_COMPONENT_CGMS_TYPE *cgms);
+extern void component_get_cgms(struct TCC_COMPONENT_CGMS_TYPE *cgms);
+
 #endif

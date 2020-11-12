@@ -99,5 +99,7 @@ struct TCC_COMPOSITE_CGMS_TYPE {
 };
 
 extern enum TCC_COMPOSITE_MODE_TYPE tcc_composite_get_mode(void);
+extern void tcc_composite_set_cgms(struct TCC_COMPOSITE_CGMS_TYPE *cgms_cfg);
+extern void tcc_composite_get_cgms(struct TCC_COMPOSITE_CGMS_TYPE *cgms_cfg);
 
 #endif

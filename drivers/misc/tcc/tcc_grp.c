@@ -39,7 +39,7 @@
 #include <linux/clk.h>
 #include <linux/uaccess.h>
 
-#include <asm/io.h>
+#include <linux/io.h>
 #include <asm/div64.h>
 
 #include "tcc_grp.h"
@@ -47,6 +47,7 @@
 #include <video/tcc/tcc_gre2d_api.h>
 #include <video/tcc/tcc_gre2d_type.h>
 #include <video/tcc/tcc_grp_ioctrl.h>
+#include <video/tcc/tcc_mem_ioctl.h>
 
 extern enum G2D_DITHERING_TYPE gG2D_Dithering_type;
 extern unsigned char gG2D_Dithering_en;
@@ -536,7 +537,6 @@ void grp2d_overlaymixer_clut_ctrl(struct G2D_CLUT_TYPE *pClut)
 }
 #endif /* TCC_OVERLAY_MIXER_CLUT_SUPPORT */
 
-extern int range_is_allowed(unsigned long pfn, unsigned long size);
 static int g2d_drv_mmap(struct file *file, struct vm_area_struct *vma)
 {
 	if(range_is_allowed(vma->vm_pgoff, vma->vm_end - vma->vm_start) < 0){

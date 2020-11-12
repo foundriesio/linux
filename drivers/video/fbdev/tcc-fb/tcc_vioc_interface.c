@@ -46,7 +46,7 @@
 #include <linux/syscalls.h>
 #include <linux/of_address.h>
 #include <linux/clk-provider.h> /* __clk_is_enabled */
-#include <asm/io.h>
+#include <linux/io.h>
 #include <asm/div64.h>
 #include <asm/system_info.h>
 

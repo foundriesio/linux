@@ -54,6 +54,7 @@
 #include <video/tcc/vioc_global.h>
 #include <video/tcc/vioc_vin.h>
 #include <video/tcc/vioc_deintls.h>
+#include <video/tcc/tccfb_address.h>
 
 #ifdef CONFIG_VIOC_MAP_DECOMP
 #include <video/tcc/tca_map_converter.h>
@@ -181,9 +182,6 @@ static int debug = 0;
 #define dprintk(msg...)	 if (debug) { printk("[DBG][VIQE] " msg); }
 #define iprintk(msg...)  if (debug) { printk("[DBG][VIQE] " msg); }
 #define dvprintk(msg...)  if (debug) { printk("[DBG][VIQE] DV_M2M: " msg); }
-
-extern void tccxxx_GetAddress(unsigned char format, unsigned int base_Yaddr, unsigned int src_imgx, unsigned int  src_imgy,
-					unsigned int start_x, unsigned int start_y, unsigned int* Y, unsigned int* U,unsigned int* V);
 
 extern int TCC_VIQE_Scaler_Init_Buffer_M2M(void);
 extern void TCC_VIQE_Scaler_DeInit_Buffer_M2M(void);

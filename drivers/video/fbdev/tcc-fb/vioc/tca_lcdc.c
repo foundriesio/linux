@@ -39,7 +39,7 @@
 #include <linux/clk.h>
 #include <linux/clk-provider.h>
 #include <linux/uaccess.h>
-#include <asm/io.h>
+#include <linux/io.h>
 #include <asm/div64.h>
 #ifdef CONFIG_PM
 #include <linux/pm.h>

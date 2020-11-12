@@ -30,7 +30,7 @@ Suite 330, Boston, MA 02111-1307 USA
  * - DISP.DALIGN.SWAPBF = b100 (SWAPBF b100)
  */
 
-#include <asm/io.h>
+#include <linux/io.h>
 #ifndef CONFIG_ARM64
 #include <asm/mach-types.h>
 #endif

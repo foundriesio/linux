@@ -35,7 +35,7 @@ Suite 330, Boston, MA 02111-1307 USA
 #include <linux/miscdevice.h>
 #include <linux/uaccess.h>
 #include <linux/poll.h>
-#include <asm/io.h>
+#include <linux/io.h>
 #include <asm/div64.h>
 
 #include <video/tcc/tcc_types.h>
@@ -48,6 +48,7 @@ Suite 330, Boston, MA 02111-1307 USA
 #include <video/tcc/vioc_wmix.h>
 #include <video/tcc/vioc_disp.h>
 #include <video/tcc/vioc_global.h>
+#include <video/tcc/tcc_mem_ioctl.h>
 
 /****************************************************************************
 DEFINITION
@@ -101,7 +102,6 @@ static struct ccfb_config_t g_ccfg_cfg;
 /****************************************************************************
 DEFINITION OF EXTERNAL FUNCTIONS
 ****************************************************************************/
-extern int range_is_allowed(unsigned long pfn, unsigned long size);
 
 
 /****************************************************************************

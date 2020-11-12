@@ -1,4 +1,4 @@
-# 
+#
 # Makefile for Telechips VOUT drivers.
 #
 EXTRA_CFLAGS = -I$(src)/..

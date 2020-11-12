@@ -22,7 +22,7 @@
 #include <linux/slab.h>
 #include <linux/module.h>
 #include <linux/gpio.h>
-#include <asm/io.h>
+#include <linux/io.h>
 #ifndef CONFIG_ARM64
 #include <asm/mach-types.h>
 #endif

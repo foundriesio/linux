@@ -31,7 +31,7 @@
 #include <linux/of_address.h>
 #include <linux/of_device.h>
 #include <linux/of_irq.h>
-#include <asm/io.h>
+#include <linux/io.h>
 
 #include <video/tcc/vioc_intr.h>
 #include <video/tcc/tcc_types.h>
@@ -50,6 +50,8 @@
 #include <video/tcc/vioc_lut.h>
 #include <video/tcc/vioc_mc.h>
 #include <video/tcc/vioc_config.h>
+#include <video/tcc/tcc_mem_ioctl.h>
+#include <video/tcc/tccfb_address.h>
 
 #ifdef CONFIG_VIOC_MAP_DECOMP
 #if defined(CONFIG_ARCH_TCC897X) || defined(CONFIG_ARCH_TCC570X) || defined(CONFIG_ARCH_TCC802X)
@@ -156,10 +158,6 @@ struct scaler_common_drv_type {
 	struct SCALER_TYPE		*info;
 
 };
-
-extern void tccxxx_GetAddress(unsigned char format, unsigned int base_Yaddr, unsigned int src_imgx, unsigned int  src_imgy,
-								unsigned int start_x, unsigned int start_y, unsigned int* Y, unsigned int* U,unsigned int* V);
-extern int range_is_allowed(unsigned long pfn, unsigned long size);
 
 static int scaler_drv_common_mmap(struct file *filp, struct vm_area_struct *vma)
 {

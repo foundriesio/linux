@@ -65,4 +65,6 @@ struct stIonBuff_info {
 	unsigned int size;
 };
 
+extern int range_is_allowed(unsigned long pfn, unsigned long size);
+
 #endif //_TCC_MEM_IOCTL_H
