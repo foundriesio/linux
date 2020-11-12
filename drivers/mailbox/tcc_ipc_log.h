@@ -62,7 +62,7 @@
 #define _NLOG(...)                           \
 	do {                                 \
 		if (0) {                     \
-			printk(__VA_ARGS__); \
+			pr_info(__VA_ARGS__); \
 		}                            \
 	} while (0)
 
