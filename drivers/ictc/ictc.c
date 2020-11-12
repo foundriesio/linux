@@ -18,8 +18,8 @@
 
 //#define DEBUG_ICTC
 #ifdef DEBUG_ICTC
-#define debug_ictc(msg...) printk(KERN_DEBUG "[DEBUG][ICTC]" msg);
-#define err_ictc(msg...) printk(KERN_ERR "[ERROR][ICTC]" msg);
+#define debug_ictc(msg...) pr_warn("[DEBUG][ICTC]" msg)
+#define err_ictc(msg...) pr_err("[ERROR][ICTC]" msg)
 #else
 #define debug_ictc(msg...)
 #define err_ictc(msg...)
@@ -143,8 +143,7 @@ static unsigned int f_in_rtc_wkup;
 
 static unsigned int irq_setting;
 
-static char ictc_prop_v_l[][50] =
-{
+static char ictc_prop_v_l[][50] = {
 	"r-edge",
 	"f-edge",
 	"edge-matching-value",
@@ -177,8 +176,7 @@ struct ictc_property_value {
 };
 static struct ictc_property_value ictc_prop_v;
 
-static char ictc_prop_b_l[][50] =
-{
+static char ictc_prop_b_l[][50] = {
 	"f-edge-int",
 	"r-edge-int",
 	"df-cnt-full-int",
@@ -271,15 +269,14 @@ static int ictc_parse_dt(struct device_node *np)
 		debug_ictc("%s -> %x\n", ictc_prop_v_l[node_num],
 			   *((u32 *)&ictc_prop_v + node_num));
 
-		if(ret!=0)
+		if (ret != 0)
 			break;
 
 	}
 
 	count = sizeof(ictc_prop_b_l) / (sizeof(ictc_prop_b_l[0]));
 
-	for(node_num = 0; node_num < count; node_num++)
-	{
+	for (node_num = 0; node_num < count; node_num++) {
 
 		*((u32 *)&ictc_prop_b + node_num) =
 		    (unsigned int)of_property_read_bool(np,
@@ -428,7 +425,7 @@ static int gpio_to_f_in(int gpio_num)
 	unsigned long count = 0;
 	unsigned int gpio_group = 0, gpio_group_val = 0;
 
-	count = sizeof(gpio_num_group)/sizeof(gpio_num_group[0]);
+	count = ARRAY_SIZE(gpio_num_group);
 
 	debug_ictc("gpio group count : %d\n", count);
 
