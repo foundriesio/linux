@@ -38,14 +38,18 @@
 
 #define LOG_TAG			"VSRC:MAX96701"
 
-#define loge(fmt, ...) \
-	pr_err("[ERROR][%s] %s - "	fmt, LOG_TAG, __func__, ##__VA_ARGS__)
-#define logw(fmt, ...) \
-	pr_warn("[WARN][%s] %s - "	fmt, LOG_TAG, __func__, ##__VA_ARGS__)
-#define logd(fmt, ...) \
-	pr_debug("[DEBUG][%s] %s - "	fmt, LOG_TAG, __func__, ##__VA_ARGS__)
-#define logi(fmt, ...) \
-	pr_info("[INFO][%s] %s - "	fmt, LOG_TAG, __func__, ##__VA_ARGS__)
+#define loge(fmt, ...)		\
+		pr_err("[ERROR][%s] %s - "\
+			fmt, LOG_TAG, __func__, ##__VA_ARGS__)
+#define logw(fmt, ...)		\
+		pr_warn("[WARN][%s] %s - "\
+			fmt, LOG_TAG, __func__, ##__VA_ARGS__)
+#define logd(fmt, ...)		\
+		pr_debug("[DEBUG][%s] %s - "\
+			fmt, LOG_TAG, __func__, ##__VA_ARGS__)
+#define logi(fmt, ...)		\
+		pr_info("[INFO][%s] %s - "\
+			fmt, LOG_TAG, __func__, ##__VA_ARGS__)
 
 
 
@@ -126,24 +130,22 @@ static inline struct max96701 *to_dev(struct v4l2_subdev *sd)
  */
 static int max96701_s_stream(struct v4l2_subdev *sd, int enable)
 {
-	struct max96701		* dev	= to_dev(sd);
+	struct max96701		*dev	= to_dev(sd);
 	int			ret	= 0;
 
 	mutex_lock(&dev->lock);
 
 	if ((dev->s_cnt == 0) && (enable == 1)) {
-		ret = regmap_multi_reg_write(dev->regmap, \
-				max96701_reg_defaults, \
+		ret = regmap_multi_reg_write(dev->regmap,
+				max96701_reg_defaults,
 				ARRAY_SIZE(max96701_reg_defaults));
-		if (ret < 0) {
-			loge("Fail initializing max96701 device \n");
-		}
+		if (ret < 0)
+			loge("Fail initializing max96701 device\n");
+
 		ret = regmap_write(dev->regmap, 0x04, 0x87);
-		if (ret < 0) {
-			loge("Fail Serialization max96701 device \n");
-		}
-	}
-	else if ((dev->s_cnt == 1) && (enable == 0)) {
+		if (ret < 0)
+			loge("Fail Serialization max96701 device\n");
+	} else if ((dev->s_cnt == 1) && (enable == 0)) {
 		ret = regmap_write(dev->regmap, 0x04, 0x47);
 	}
 
@@ -160,14 +162,14 @@ static int max96701_get_fmt(struct v4l2_subdev *sd,
 			    struct v4l2_subdev_pad_config *cfg,
 			    struct v4l2_subdev_format *format)
 {
-	struct max96701		* dev	= to_dev(sd);
+	struct max96701		*dev	= to_dev(sd);
 	int			ret	= 0;
 
-	logi("%s call \n", __func__);
+	logi("%s call\n", __func__);
 
 	mutex_lock(&dev->lock);
 
-	memcpy((void *)&format->format, (const void *)&dev->fmt, \
+	memcpy((void *)&format->format, (const void *)&dev->fmt,
 		sizeof(struct v4l2_mbus_framefmt));
 
 	mutex_unlock(&dev->lock);
@@ -178,14 +180,14 @@ static int max96701_set_fmt(struct v4l2_subdev *sd,
 			    struct v4l2_subdev_pad_config *cfg,
 			    struct v4l2_subdev_format *format)
 {
-	struct max96701		* dev	= to_dev(sd);
+	struct max96701		*dev	= to_dev(sd);
 	int			ret	= 0;
 
-	logi("%s call \n", __func__);
+	logi("%s call\n", __func__);
 
 	mutex_lock(&dev->lock);
 
-	memcpy((void *)&dev->fmt, (const void *)&format->format, \
+	memcpy((void *)&dev->fmt, (const void *)&format->format,
 		sizeof(struct v4l2_mbus_framefmt));
 
 	mutex_unlock(&dev->lock);
