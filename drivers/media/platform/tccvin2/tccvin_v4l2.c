@@ -649,7 +649,7 @@ static int tccvin_ioctl_s_parm(struct file *file, void *fh,
 		stream->cur_frame->dwDefaultFrameInterval = 
 			tccvin_try_frame_interval(stream->cur_frame,
 				a->parm.capture.timeperframe.denominator);
-		loge("numerator: %d, denominator: %d\n",
+		logd("numerator: %d, denominator: %d\n",
 			1, stream->cur_frame->dwDefaultFrameInterval);
 		break;
 	default:
@@ -729,7 +729,7 @@ static int tccvin_ioctl_enum_frameintervals(struct file *file, void *fh,
 		logd("index: %d, pixel_format: 0x%08x, width: %d, height: %d\n",
 			fival->index, fival->pixel_format,
 			fival->width, fival->height);
-		loge("numerator: %d, denominator: %d\n",
+		logd("numerator: %d, denominator: %d\n",
 			fival->discrete.numerator, fival->discrete.denominator);
 	}
 
