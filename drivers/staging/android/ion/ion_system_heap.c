@@ -291,7 +291,7 @@ static int ion_system_heap_debug_show(struct ion_heap *heap, struct seq_file *s,
 			   (PAGE_SIZE << pool->order) * pool->low_count);
 		allocted_size += ((PAGE_SIZE << pool->order) * pool->low_count);
 	}
-	seq_printf(s, "total alloced size %lu bytes\n", allocted_size);
+	seq_printf(s, "total alloced size %d bytes\n", allocted_size);
 	return 0;
 }
 
