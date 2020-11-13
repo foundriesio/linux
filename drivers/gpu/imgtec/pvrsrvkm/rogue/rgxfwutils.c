@@ -4532,7 +4532,22 @@ PVRSRV_ERROR RGXScheduleCleanupCommand(PVRSRV_RGXDEV_INFO	*psDevInfo,
 											  0,
 											  ui32PDumpFlags,
 											  &ui32kCCBCommandSlot);
-	PVR_LOG_GOTO_IF_ERROR(eError, "RGXScheduleCommandAndGetKCCBSlot", fail_command);
+	if (eError != PVRSRV_OK)
+	{
+		/* If we hit a temporary KCCB exhaustion, return a RETRY to caller */
+		if (eError == PVRSRV_ERROR_KERNEL_CCB_FULL)
+		{
+			eError = PVRSRV_ERROR_RETRY;
+		}
+		else
+		{
+			PVR_LOG_VA(PVR_DBG_ERROR,
+			           "failed to schedule cleanup command %d for %d",
+			           eCleanupType, eDM);
+		}
+
+		goto fail_command;
+	}
 
 	/* Wait for command kCCB slot to be updated by FW */
 	PDUMPCOMMENT("Wait for the firmware to reply to the cleanup command");
