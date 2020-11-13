@@ -254,7 +254,7 @@ struct tcc_lcdc_image_update {
 	int first_frame_after_seek;
 	unsigned int buffer_unique_id;
 	unsigned int overlay_used_flag;
-	enum OUTPUT_SELECT outputMode;
+	OUTPUT_SELECT outputMode;
 	int output_path;
 
 	int deinterlace_mode;

@@ -124,9 +124,9 @@ typedef struct {
 	// for only TCC898x
 	unsigned int mc_num;
 	unsigned int dst_fmt_ext_info;
-};
+} WMIXER_ALPHASCALERING_INFO_TYPE;
 
-struct WMIXER_ALPHABLENDING_TYPE {
+typedef struct {
 	unsigned char rsp_type;
 	unsigned char region;
 
@@ -197,7 +197,7 @@ typedef struct {
 #define TCC_WMIXER_ALPHA_MIXING         0x10
 #define TCC_WMIXER_ALPHA_MIXING_KERNEL  0x12
 
-#define TCC_WMIXER_VIOC_INFO        _IOR(WMIXER, 0x20, struct WMIXER_VIOC_INFO)
-#define TCC_WMIXER_VIOC_INFO_KERNEL _IOR(WMIXER, 0x40, struct WMIXER_VIOC_INFO)
+#define TCC_WMIXER_VIOC_INFO        _IOR(WMIXER, 0x20, WMIXER_VIOC_INFO)
+#define TCC_WMIXER_VIOC_INFO_KERNEL _IOR(WMIXER, 0x40, WMIXER_VIOC_INFO)
 
 #endif

@@ -37,7 +37,7 @@ extern void GRE_2D_SetInterrupt(char onoff);
  *  graphic engine Front End channel address 0,1,2 setting
  *-------------------------------------------------------------------
  */
-extern void GRE_2D_SetFChAddress(enum G2D_CHANNEL ch,
+extern void GRE_2D_SetFChAddress(G2D_CHANNEL ch,
 	unsigned int add0, unsigned int add1, unsigned int add2);
 
 /*------------------------------------------------------------------
@@ -49,7 +49,7 @@ extern void GRE_2D_SetFChAddress(enum G2D_CHANNEL ch,
  *  winps_x, winps_y : window pixsel offset
  *-------------------------------------------------------------------
  */
-extern void GRE_2D_SetFChPosition(enum G2D_CHANNEL ch,
+extern void GRE_2D_SetFChPosition(G2D_CHANNEL ch,
 	unsigned int frameps_x, unsigned int frameps_y,
 	unsigned int poffset_x, unsigned int poffset_y,
 	unsigned int imageps_x, unsigned int imageps_y,
@@ -62,16 +62,16 @@ extern void GRE_2D_SetFChPosition(enum G2D_CHANNEL ch,
  *  data_form : rgb, yuv, alpha-rgb
  *-------------------------------------------------------------------
  */
-extern void GRE_2D_SetFChControl(enum G2D_CHANNEL ch, enum G2D_MABC_TYPE MABC,
-	unsigned char LUTE, unsigned char SSUV, enum G2D_OP_MODE mode,
-	enum G2D_ZF_TYPE ZF, struct G2D_FMT_CTRL data_form);
+extern void GRE_2D_SetFChControl(G2D_CHANNEL ch, G2D_MABC_TYPE MABC,
+	unsigned char LUTE, unsigned char SSUV, G2D_OP_MODE mode,
+	G2D_ZF_TYPE ZF, G2D_FMT_CTRL data_form);
 
 /*------------------------------------------------------------------
  * GRE_2D_SetFChChromaKey
  *  graphic engine Front channel chroma key Set
  *-------------------------------------------------------------------
  */
-extern void GRE_2D_SetFChChromaKey(enum G2D_CHANNEL ch,
+extern void GRE_2D_SetFChChromaKey(G2D_CHANNEL ch,
 	unsigned char RY, unsigned char GU, unsigned char BV);
 
 /*------------------------------------------------------------------
@@ -79,7 +79,7 @@ extern void GRE_2D_SetFChChromaKey(enum G2D_CHANNEL ch,
  *  graphic engine Front channel Arithmetic parameter setting
  *-------------------------------------------------------------------
  */
-extern void GRE_2D_SetFChArithmeticPar(enum G2D_CHANNEL ch,
+extern void GRE_2D_SetFChArithmeticPar(G2D_CHANNEL ch,
 	unsigned char RY, unsigned char GU, unsigned char BV);
 
 /*------------------------------------------------------------------
@@ -87,7 +87,7 @@ extern void GRE_2D_SetFChArithmeticPar(enum G2D_CHANNEL ch,
  *  graphic engine sorce control
  *-------------------------------------------------------------------
  */
-extern void GRE_2D_SetSrcCtrl(struct G2D_SRC_CTRL g2d_ctrl);
+extern void GRE_2D_SetSrcCtrl(G2D_SRC_CTRL g2d_ctrl);
 
 /*-------- Source Operator pattern set -------*/
 /*------------------------------------------------------------------
@@ -95,7 +95,7 @@ extern void GRE_2D_SetSrcCtrl(struct G2D_SRC_CTRL g2d_ctrl);
  *  graphic engine operator 0, 1 setting
  *-------------------------------------------------------------------
  */
-extern void GRE_2D_SetOperator(enum G2D_OP_TYPE op_set,
+extern void GRE_2D_SetOperator(G2D_OP_TYPE op_set,
 	unsigned short alpha,
 	unsigned char RY, unsigned char GU, unsigned char BV);
 
@@ -104,11 +104,11 @@ extern void GRE_2D_SetOperator(enum G2D_OP_TYPE op_set,
  *  graphic engine operator control register setting
  *-------------------------------------------------------------------
  */
-extern void GRE_2D_SetOperatorCtrl(enum G2D_OP_TYPE op_set,
-	enum G2D_OP_ACON ACON1, enum G2D_OP_ACON ACON0,
-	enum G2D_OP_CCON CCON1, enum G2D_OP_CCON CCON0,
-	enum G2D_OP_ATUNE ATUNE, enum G2D_OP1_CHROMA CSEL,
-	enum GE_ROP_TYPE op);
+extern void GRE_2D_SetOperatorCtrl(G2D_OP_TYPE op_set,
+	G2D_OP_ACON ACON1, G2D_OP_ACON ACON0,
+	G2D_OP_CCON CCON1, G2D_OP_CCON CCON0,
+	G2D_OP_ATUNE ATUNE, G2D_OP1_CHROMA CSEL,
+	GE_ROP_TYPE op);
 
 /*-------- BACK END CHANNEL DESTINATION SETTIG. -------*/
 /*------------------------------------------------------------------
@@ -116,7 +116,7 @@ extern void GRE_2D_SetOperatorCtrl(enum G2D_OP_TYPE op_set,
  *  graphic engine BACK End channel address 0,1,2 setting
  *-------------------------------------------------------------------
  */
-extern void GRE_2D_SetBChAddress(enum G2D_CHANNEL ch, unsigned int add0,
+extern void GRE_2D_SetBChAddress(G2D_CHANNEL ch, unsigned int add0,
 	unsigned int add1, unsigned int add2);
 
 /*------------------------------------------------------------------
@@ -126,7 +126,7 @@ extern void GRE_2D_SetBChAddress(enum G2D_CHANNEL ch, unsigned int add0,
  *  poffset_x, poffset_y : pixsel offset
  *-------------------------------------------------------------------
  */
-extern void GRE_2D_SetBChPosition(enum G2D_CHANNEL ch,
+extern void GRE_2D_SetBChPosition(G2D_CHANNEL ch,
 	unsigned int frameps_x, unsigned int intframeps_y,
 	unsigned int poffset_x, unsigned int poffset_y);
 
@@ -137,7 +137,7 @@ extern void GRE_2D_SetBChPosition(enum G2D_CHANNEL ch,
  *  data_form : rgb, yuv, alpha-rgb
  *-------------------------------------------------------------------
  */
-extern void GRE_2D_SetBChControl(struct G2D_BCH_CTRL_TYPE *g2d_bch_ctrl);
+extern void GRE_2D_SetBChControl(G2D_BCH_CTRL_TYPE *g2d_bch_ctrl);
 
 /*------------------------------------------------------------------
  * GRE_2D_SetDitheringMatrix
@@ -151,7 +151,7 @@ extern void GRE_2D_SetDitheringMatrix(unsigned short *Matrix);
  *  graphic engine channel enable control
  *-------------------------------------------------------------------
  */
-extern void GRE_2D_Enable(enum G2D_EN grp_enalbe, unsigned char int_en);
+extern void GRE_2D_Enable(G2D_EN grp_enalbe, unsigned char int_en);
 
 /*------------------------------------------------------------------
  * GRE_2D_Check
@@ -175,7 +175,7 @@ extern void GRE_2D_IntEnable(unsigned int int_en);
  *  int_flg : flag bit
  *-------------------------------------------------------------------
  */
-extern enum G2D_INT_TYPE GRE_2D_IntCtrl(unsigned char wr, enum G2D_INT_TYPE flag,
+extern G2D_INT_TYPE GRE_2D_IntCtrl(unsigned char wr, G2D_INT_TYPE flag,
 	unsigned char int_irq, unsigned char int_flg);
 
 extern void GRE_2D_ClutCtrl(unsigned int ch, unsigned int index,

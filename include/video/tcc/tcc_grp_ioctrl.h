@@ -63,19 +63,19 @@ typedef enum {
 } G2D_ResponseType;
 
 typedef struct {
-	enum G2D_ResponseType responsetype;
+	G2D_ResponseType responsetype;
 	unsigned int src0_y;
 	unsigned int src0_u;
 	unsigned int src0_v;
-	struct G2D_FMT_CTRL srcfm;
+	G2D_FMT_CTRL srcfm;
 	unsigned int src_imgx;
 	unsigned int src_imgy;
 	char DefaultBuffer; // 1 : defualt G2d buffer
 	unsigned int tgt0_y;
 	unsigned int tgt0_u;
 	unsigned int tgt0_v;
-	struct G2D_FMT_CTRL tgtfm;
-	enum G2D_OP_MODE ch_mode;
+	G2D_FMT_CTRL tgtfm;
+	G2D_OP_MODE ch_mode;
 } G2D_COMMON_TYPE_EXT;
 
 typedef struct {
@@ -83,7 +83,7 @@ typedef struct {
 	unsigned int src0;
 	unsigned int src1;
 	unsigned int src2;
-	struct G2D_FMT_CTRL srcfm; //G2D_DATA_FM
+	G2D_FMT_CTRL srcfm; //G2D_DATA_FM
 	unsigned int src_imgx;
 	unsigned int src_imgy;
 	char DefaultBuffer; // 1 : defualt G2d buffer
@@ -94,7 +94,7 @@ typedef struct {
 	unsigned int tgt0;
 	unsigned int tgt1;
 	unsigned int tgt2;
-	struct G2D_FMT_CTRL tgtfm; //G2D_DATA_FM
+	G2D_FMT_CTRL tgtfm; //G2D_DATA_FM
 	unsigned int dst_imgx;
 	unsigned int dst_imgy;
 	unsigned int dst_off_x;
@@ -108,14 +108,14 @@ typedef struct {
 	unsigned int src0;
 	unsigned int src1;
 	unsigned int src2;
-	struct G2D_FMT_CTRL srcfm; //G2D_DATA_FM
+	G2D_FMT_CTRL srcfm; //G2D_DATA_FM
 	unsigned int src_imgx;
 	unsigned int src_imgy;
 	unsigned int DefaultBuffer; // 1 : defualt G2d buffer
 	unsigned int tgt0;
 	unsigned int tgt1;
 	unsigned int tgt2;
-	struct G2D_FMT_CTRL tgtfm; //G2D_DATA_FM
+	G2D_FMT_CTRL tgtfm; //G2D_DATA_FM
 	unsigned int dst_imgx;
 	unsigned int dst_imgy;
 	unsigned int dst_off_x;
@@ -131,7 +131,7 @@ typedef struct {
 	unsigned int src0;
 	unsigned int src1;
 	unsigned int src2;
-	struct G2D_FMT_CTRL srcfm;		//G2D_DATA_FM
+	G2D_FMT_CTRL srcfm;		//G2D_DATA_FM
 	unsigned int src_imgx;
 	unsigned int src_imgy;
 	unsigned int crop_offx;
@@ -141,7 +141,7 @@ typedef struct {
 	unsigned int tgt0;
 	unsigned int tgt1;
 	unsigned int tgt2;
-	struct G2D_FMT_CTRL tgtfm;		//G2D_DATA_FM
+	G2D_FMT_CTRL tgtfm;		//G2D_DATA_FM
 	unsigned int dst_imgx;
 	unsigned int dst_imgy;
 	unsigned int dst_off_x;
@@ -165,7 +165,7 @@ typedef struct {
 	unsigned int src0_crop_imgx;
 	unsigned int src0_crop_imgy;
 	unsigned int src0_clut_en;
-	struct G2D_FMT_CTRL src0_fmt;
+	G2D_FMT_CTRL src0_fmt;
 
 	unsigned int src1_imgx;
 	unsigned int src1_imgy;
@@ -174,7 +174,7 @@ typedef struct {
 	unsigned int src1_crop_imgx;
 	unsigned int src1_crop_imgy;
 	unsigned int src1_clut_en;
-	struct G2D_FMT_CTRL src1_fmt;
+	G2D_FMT_CTRL src1_fmt;
 
 	unsigned int src2_imgx;
 	unsigned int src2_imgy;
@@ -183,12 +183,12 @@ typedef struct {
 	unsigned int src2_crop_imgx;
 	unsigned int src2_crop_imgy;
 	unsigned int src2_clut_en;
-	struct G2D_FMT_CTRL src2_fmt;
+	G2D_FMT_CTRL src2_fmt;
 
 	unsigned int tgt0;
 	unsigned int tgt1;
 	unsigned int tgt2;
-	struct G2D_FMT_CTRL tgtfm; //G2D_DATA_FM
+	G2D_FMT_CTRL tgtfm; //G2D_DATA_FM
 
 	unsigned int dst_imgx;
 	unsigned int dst_imgy;
