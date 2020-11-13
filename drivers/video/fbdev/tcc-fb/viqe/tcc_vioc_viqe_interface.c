@@ -1171,7 +1171,7 @@ int TCC_VIQE_Scaler_Init_Buffer_M2M(void)
 	}
 
 	if (pmap_info.size) {
-		szBuffer = pmap_info.size / BUFFER_CNT_FOR_M2M_MODE;
+		szBuffer = (u32)pmap_info.size / BUFFER_CNT_FOR_M2M_MODE;
 
 		for (buffer_cnt = 0; buffer_cnt < BUFFER_CNT_FOR_M2M_MODE; buffer_cnt++) {
 			overlay_buffer[0][buffer_cnt] = (unsigned int)pmap_info.base + (szBuffer * buffer_cnt);
@@ -1185,7 +1185,7 @@ int TCC_VIQE_Scaler_Init_Buffer_M2M(void)
 		return -4;
 	}
 	if (pmap_info.size) {
-		szBuffer = pmap_info.size / BUFFER_CNT_FOR_M2M_MODE;
+		szBuffer = (u32)pmap_info.size / BUFFER_CNT_FOR_M2M_MODE;
 
 		for (buffer_cnt = 0; buffer_cnt < BUFFER_CNT_FOR_M2M_MODE; buffer_cnt++) {
 			overlay_buffer[1][buffer_cnt] = (unsigned int)pmap_info.base + (szBuffer * buffer_cnt);
