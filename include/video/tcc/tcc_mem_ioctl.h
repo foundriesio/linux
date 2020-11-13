@@ -43,12 +43,12 @@
 #define TCC_AUTOFREE_DEREGISTER_UMP_SW_INFO_KERNEL 0x44
 #endif
 
-struct vbuffer_manager {
+typedef struct {
 	unsigned int istance_index;
 	int index;
-};
+} vbuffer_manager;
 
-struct vHdmi_info {
+typedef struct {
 	unsigned int dv_path;
 	unsigned int out_type;  // DOVI = 0, HDR10 = 1, SDR = 2
 	unsigned int width;
@@ -56,14 +56,14 @@ struct vHdmi_info {
 	unsigned int dv_vsvdb[12];
 	unsigned int dv_vsvdb_size;
 	unsigned int dv_ll_mode;
-};
+} vHdmi_info;
 
-struct stIonBuff_info {
+typedef struct {
 	unsigned int phy_addr;
 	unsigned int width;
 	unsigned int height;
 	unsigned int size;
-};
+} stIonBuff_info;
 
 extern int range_is_allowed(unsigned long pfn, unsigned long size);
 
