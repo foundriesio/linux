@@ -84,7 +84,6 @@ struct stm32_rproc {
 	struct stm32_rproc_mem *rmems;
 	struct stm32_mbox mb[MBOX_NB_MBX];
 	struct workqueue_struct *workqueue;
-	bool secured_soc;
 	void __iomem *rsc_va;
 };
 
@@ -563,8 +562,6 @@ static int stm32_rproc_parse_dt(struct platform_device *pdev,
 {
 	struct device *dev = &pdev->dev;
 	struct device_node *np = dev->of_node;
-	struct stm32_syscon tz;
-	unsigned int tzen;
 	int err, irq;
 
 	irq = platform_get_irq(pdev, 0);
@@ -604,24 +601,6 @@ static int stm32_rproc_parse_dt(struct platform_device *pdev,
 
 		return PTR_ERR(ddata->hold_boot);
 	}
-
-	/*
-	 * if platform is secured the hold boot bit must be written by
-	 * smc call and read normally.
-	 * if not secure the hold boot bit could be read/write normally
-	 */
-	err = stm32_rproc_get_syscon(np, "st,syscfg-tz", &tz);
-	if (err) {
-		dev_err(dev, "failed to get tz syscfg\n");
-		return err;
-	}
-
-	err = regmap_read(tz.map, tz.reg, &tzen);
-	if (err) {
-		dev_err(dev, "failed to read tzen\n");
-		return err;
-	}
-	ddata->secured_soc = tzen & tz.mask;
 
 	err = stm32_rproc_get_syscon(np, "st,syscfg-pdds", &ddata->pdds);
 	if (err)
