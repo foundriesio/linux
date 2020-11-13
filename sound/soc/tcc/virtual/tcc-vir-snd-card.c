@@ -2,18 +2,21 @@
  *
  * Copyright (C) 2018 Telechips Inc.
  *
- * This program is free software; you can redistribute it and/or modify it under the terms
- * of the GNU General Public License as published by the Free Software Foundation;
- * either version 2 of the License, or (at your option) any later version.
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License as published by the
+ * Free Software Foundation; either version 2 of the License, or (at your
+ * option) any later version.
  *
- * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
- * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
- * PURPOSE. See the GNU General Public License for more details.
+ * This program is distributed in the hope that it will be useful, but
+ * WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+ * or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License
+ * for more details.
  *
- * You should have received a copy of the GNU General Public License along with
- * this program; if not, write to the Free Software Foundation, Inc., 59 Temple Place,
- * Suite 330, Boston, MA 02111-1307 USA
+ * You should have received a copy of the GNU General Public License along
+ * with this program; if not, write to the Free Software Foundation, Inc.,
+ * 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
  ****************************************************************************/
+
 #include <linux/clk.h>
 #include <linux/module.h>
 #include <linux/of.h>
@@ -24,9 +27,12 @@
 #include <sound/soc.h>
 #include <sound/pcm_params.h>
 
-#define DRIVER_NAME			("tcc-vir-snd-card")
-#define DAI_LINK_MAX		(10)
-#define KCONTROL_HDR		"Device"
+#define DRIVER_NAME \
+	("tcc-vir-snd-card")
+#define DAI_LINK_MAX \
+	(10)
+#define KCONTROL_HDR \
+	"Device"
 
 struct tcc_vir_card_info_t {
 	uint32_t num_links;
@@ -34,29 +40,43 @@ struct tcc_vir_card_info_t {
 	struct snd_soc_codec_conf *codec_conf;
 };
 
+#undef vir_snd_card_dbg
+#if 0
+#define vir_snd_card_dbg(f, a...) \
+	pr_info("[DEBUG][VIR_SOUND_CARD] " f, ##a)
+#else
+#define vir_snd_card_dbg(f, a...)
+#endif
+
+#define vir_snd_card_err(f, a...) \
+	pr_info("[ERROR][VIR_SOUND_CARD] " f, ##a)
+
 static inline int atoi(const char *s)
 {
 	int i = 0;
 
 	while (isdigit(*s))
-		i = i*10 + *(s++) - '0';
+		i = i * 10 + *(s++) - '0';
 
 	return i;
 }
 
 static inline int get_device_num_from_control_name(const char *str)
 {
-	return atoi(&str[sizeof(KCONTROL_HDR)-1]);
+	return atoi(&str[sizeof(KCONTROL_HDR) - 1]);
 }
+
 #if 0
-static inline struct snd_soc_pcm_runtime* get_rtd_from_card(struct snd_soc_card *card, int device_num)
+static inline struct snd_soc_pcm_runtime *get_rtd_from_card(
+	struct snd_soc_card
+	*card,
+	int device_num)
 {
 	struct snd_soc_pcm_runtime *rtd;
 
 	list_for_each_entry(rtd, &card->rtd_list, list) {
-		if (rtd->num == device_num) {
+		if (rtd->num == device_num)
 			break;
-		}
 	}
 
 	return rtd;
@@ -77,7 +97,8 @@ static int tcc_vir_snd_card_dai_init(struct snd_soc_pcm_runtime *rtd)
 	return 0;
 }
 
-static int tcc_vir_snd_card_sub_dai_link(struct device_node *node, 
+static int tcc_vir_snd_card_sub_dai_link(
+	struct device_node *node,
 	struct snd_soc_dai_link *dai_link)
 {
 	struct device_node *platform_of_node = NULL;
@@ -87,9 +108,8 @@ static int tcc_vir_snd_card_sub_dai_link(struct device_node *node,
 	const char *codec_dai_name = NULL;
 	const char *stream_name = NULL;
 
-	if ((node == NULL) || (dai_link == NULL)) {
+	if ((node == NULL) || (dai_link == NULL))
 		return -EINVAL;
-	}
 
 	platform_of_node = of_parse_phandle(node, "pcm", 0);
 	dai_of_node = of_parse_phandle(node, "dai", 0);
@@ -98,17 +118,17 @@ static int tcc_vir_snd_card_sub_dai_link(struct device_node *node,
 	of_property_read_string(node, "stream-name", &stream_name);
 	of_property_read_string(node, "codec,dai-name", &codec_dai_name);
 
-	printk(KERN_DEBUG "[DEBUG][VIR_SOUND_CARD] \t\tstream_name : %s\n", stream_name);
-	printk(KERN_DEBUG "[DEBUG][VIR_SOUND_CARD] \t\tcodec_dai_name: %s\n", codec_dai_name);
+	vir_snd_card_dbg("\t\tstream_name : %s\n", stream_name);
+	vir_snd_card_dbg("\t\tcodec_dai_name: %s\n", codec_dai_name);
 
-	if(dai_of_node) {
+	if (dai_of_node) {
 		dai_link->cpu_of_node = dai_of_node;
 
-		if (platform_of_node) {
+		if (platform_of_node)
 			dai_link->platform_of_node = platform_of_node;
-		} else {
+		else
 			dai_link->platform_of_node = dai_of_node;
-		}
+
 	} else {
 		dai_link->cpu_name = "snd-soc-dummy";
 		dai_link->cpu_dai_name = "snd-soc-dummy-dai";
@@ -131,16 +151,15 @@ static int tcc_vir_snd_card_sub_dai_link(struct device_node *node,
 	dai_link->playback_only = false;
 	dai_link->capture_only = false;
 
-	if(of_property_read_bool(node, "playback-only")) {
+	if (of_property_read_bool(node, "playback-only"))
 		dai_link->playback_only = true;
-	}
 
-	if(of_property_read_bool(node, "captrue-only")) {
+	if (of_property_read_bool(node, "captrue-only"))
 		dai_link->capture_only = true;
-	}
 
-	if(dai_link->playback_only && dai_link->capture_only) {
-		printk(KERN_ERR "[ERROR][VIR_SOUND_CARD] no enabled DAI link,  This will activate both.");
+	if (dai_link->playback_only && dai_link->capture_only) {
+		vir_snd_card_err(
+				"no enabled DAI link, This will activate both.");
 		dai_link->playback_only = false;
 		dai_link->capture_only = false;
 	}
@@ -148,30 +167,40 @@ static int tcc_vir_snd_card_sub_dai_link(struct device_node *node,
 	return 0;
 }
 
-int parse_tcc_vir_snd_card_dt(struct platform_device *pdev, struct snd_soc_card *card)
+int parse_tcc_vir_snd_card_dt(
+	struct platform_device *pdev,
+	struct snd_soc_card *card)
 {
 	struct device_node *node = pdev->dev.of_node;
 	struct tcc_vir_card_info_t *card_info = NULL;
 	int i, not_failed_name_count;
 	int ret;
 
-	if ((card_info = kzalloc(sizeof(struct tcc_vir_card_info_t), GFP_KERNEL)) == NULL) {
+	card_info = kzalloc(sizeof(struct tcc_vir_card_info_t), GFP_KERNEL);
+
+	if (card_info == NULL) {
 		ret = -ENOMEM;
 		goto error_1;
 	}
 
 	card_info->num_links = of_get_child_count(node);
-	if (card_info->num_links > DAI_LINK_MAX) {
+	if (card_info->num_links > DAI_LINK_MAX)
 		return -EINVAL;
-	}
-	printk(KERN_DEBUG "[DEBUG][VIR_SOUND_CARD] num_links : %d\n", card_info->num_links);
 
-	if ((card_info->dai_link = kzalloc(sizeof(struct snd_soc_dai_link) * card_info->num_links, GFP_KERNEL)) == NULL) {
+	vir_snd_card_dbg("num_links : %d\n", card_info->num_links);
+
+	card_info->dai_link = kcalloc(card_info->num_links,
+		sizeof(struct snd_soc_dai_link), GFP_KERNEL);
+
+	if (card_info->dai_link == NULL) {
 		ret = -ENOMEM;
 		goto error_2;
 	}
 
-	if ((card_info->codec_conf = kzalloc(sizeof(struct snd_soc_codec_conf) * card_info->num_links, GFP_KERNEL)) == NULL) {
+	card_info->codec_conf = kcalloc(card_info->num_links,
+		sizeof(struct snd_soc_codec_conf), GFP_KERNEL);
+
+	if (card_info->codec_conf == NULL) {
 		ret = -ENOMEM;
 		goto error_4;
 	}
@@ -181,9 +210,11 @@ int parse_tcc_vir_snd_card_dt(struct platform_device *pdev, struct snd_soc_card 
 		int i = 0;
 
 		for_each_child_of_node(node, np) {
-			printk(KERN_DEBUG "[DEBUG][VIR_SOUND_CARD] \tlink %d:\n", i);
+			vir_snd_card_dbg("\tlink %d:\n", i);
 			if (i < card_info->num_links) {
-				ret = tcc_vir_snd_card_sub_dai_link(np, &card_info->dai_link[i]);
+				ret = tcc_vir_snd_card_sub_dai_link(
+					np,
+					&card_info->dai_link[i]);
 				i++;
 			} else {
 				break;
@@ -194,17 +225,22 @@ int parse_tcc_vir_snd_card_dt(struct platform_device *pdev, struct snd_soc_card 
 	card->num_links = card_info->num_links;
 	card->dai_link = card_info->dai_link;
 
-	for (i=0; i<card_info->num_links; i++) {
+	for (i = 0; i < card_info->num_links; i++) {
 		char tmp_name[255];
 
-		sprintf(tmp_name, KCONTROL_HDR"%d", i);
-		if ((card_info->codec_conf[i].name_prefix = kstrdup(tmp_name, GFP_KERNEL)) == NULL) {
+		sprintf(tmp_name, KCONTROL_HDR "%d", i);
+		card_info->codec_conf[i].name_prefix =
+		     kstrdup(tmp_name, GFP_KERNEL);
+		if (card_info->codec_conf[i].name_prefix == NULL) {
 			ret = -ENOMEM;
 			not_failed_name_count = i;
 			goto error_5;
 		}
-		card_info->codec_conf[i].of_node = card_info->dai_link[i].cpu_of_node;
-		printk(KERN_DEBUG "[DEBUG][VIR_SOUND_CARD] name_prefix(%d) : %s\n", i, card_info->codec_conf[i].name_prefix);
+		card_info->codec_conf[i].of_node =
+		    card_info->dai_link[i].cpu_of_node;
+		vir_snd_card_dbg("name_prefix(%d) : %s\n",
+			i,
+			card_info->codec_conf[i].name_prefix);
 	}
 
 	card->codec_conf = card_info->codec_conf;
@@ -215,9 +251,9 @@ int parse_tcc_vir_snd_card_dt(struct platform_device *pdev, struct snd_soc_card 
 	return 0;
 
 error_5:
-	for (i=0; i<not_failed_name_count; i++) {
+	for (i = 0; i < not_failed_name_count; i++)
 		kfree(card_info->codec_conf[i].name_prefix);
-	}
+
 	kfree(card_info->codec_conf);
 error_4:
 	kfree(card_info->dai_link);
@@ -232,13 +268,13 @@ static int tcc_vir_snd_card_probe(struct platform_device *pdev)
 	struct snd_soc_card *card;
 	int ret;
 
-	if (pdev == NULL) {
+	if (pdev == NULL)
 		return -EINVAL;
-	}
 
-	if ((card = kzalloc(sizeof(struct snd_soc_card), GFP_KERNEL)) == NULL) {
+	card = kzalloc(sizeof(struct snd_soc_card), GFP_KERNEL);
+
+	if (card == NULL)
 		return -ENOMEM;
-	}
 
 	card->dev = &pdev->dev;
 	platform_set_drvdata(pdev, card);
@@ -247,7 +283,7 @@ static int tcc_vir_snd_card_probe(struct platform_device *pdev)
 	if (ret)
 		return ret;
 
-	printk(KERN_DEBUG "[DEBUG][VIR_SOUND_CARD] %s %s \n",__func__,card->name);
+	vir_snd_card_dbg("%s %s\n", __func__, card->name);
 
 	parse_tcc_vir_snd_card_dt(pdev, card);
 	card->driver_name = DRIVER_NAME;
@@ -278,21 +314,23 @@ static int tcc_vir_snd_card_remove(struct platform_device *pdev)
 }
 
 static const struct of_device_id tcc_vir_snd_card_of_match[] = {
-	{ .compatible = "telechips,vir-snd-card", },
+	{.compatible = "telechips,vir-snd-card",},
 	{},
 };
+
 MODULE_DEVICE_TABLE(of, tcc_vir_snd_card_of_match);
 
 static struct platform_driver tcc_vir_snd_card_driver = {
 	.driver = {
-		.name = "tcc-soc-vir-card",
-		.owner = THIS_MODULE,
-		.pm = &snd_soc_pm_ops,
-		.of_match_table = tcc_vir_snd_card_of_match,
+	   .name = "tcc-soc-vir-card",
+	   .owner = THIS_MODULE,
+	   .pm = &snd_soc_pm_ops,
+	   .of_match_table = tcc_vir_snd_card_of_match,
 	},
 	.probe = tcc_vir_snd_card_probe,
 	.remove = tcc_vir_snd_card_remove,
 };
+
 module_platform_driver(tcc_vir_snd_card_driver);
 
 MODULE_AUTHOR("Telechips");
