@@ -1,18 +1,20 @@
 /*
- * tcc_vout.h
+ * Copyright (C) Telechips, Inc.
  *
- * Copyright (C) 2013 Telechips, Inc.
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
  *
- * Video-for-Linux (Version 2) video output driver for Telechips SoC.
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
  *
- * This package is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2 as
- * published by the Free Software Foundation.
- *
- * THIS PACKAGE IS PROVIDED ``AS IS'' AND WITHOUT ANY EXPRESS OR
- * IMPLIED WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED
- * WARRANTIES OF MERCHANTIBILITY AND FITNESS FOR A PARTICULAR PURPOSE.
- *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, see the file COPYING, or write
+ * to the Free Software Foundation, Inc.,
+ * 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  */
 #ifndef __TCC_VOUT_H__
 #define __TCC_VOUT_H__
@@ -140,7 +142,7 @@ enum mplane_mapconv_component {
 	VID_HEVC_OFFSET_BASE_C0 = 17,
 	VID_HEVC_OFFSET_BASE_C1 = 18,
 	VID_HEVC_LUMA_STRIDE = 19,
-	VID_HEVC_CHROMA_STRIDE =20,
+	VID_HEVC_CHROMA_STRIDE = 20,
 	VID_HEVC_LUMA_BIT_DEPTH	= 21,
 	VID_HEVC_CHROMA_BIT_DEPTH = 22,
 	VID_HEVC_FRMAE_ENDIAN = 23,
@@ -175,23 +177,23 @@ enum mplane_dtrc_component {
 
 enum dec_vid_format {
 	/* video pixelformat */
-	DEC_FMT_420IL0 = 0,		// yuv420 interleaved type 0 foramt (0x1C)
-	DEC_FMT_422SEP = 1,		// yuv422 seperate format (0x19)
-	DEC_FMT_422V = 2,		// unknown format
-	DEC_FMT_444SEP = 3,		// yuv444 seperate format (0x15)
-	DEC_FMT_400 = 4,		// unknown formatt
-	DEC_FMT_420SEP = 5,		// yuv420 seperate format (0x18)
+	DEC_FMT_420IL0 = 0,	// yuv420 interleaved type 0 foramt (0x1C)
+	DEC_FMT_422SEP = 1,	// yuv422 seperate format (0x19)
+	DEC_FMT_422V = 2,	// unknown format
+	DEC_FMT_444SEP = 3,	// yuv444 seperate format (0x15)
+	DEC_FMT_400 = 4,	// unknown formatt
+	DEC_FMT_420SEP = 5,	// yuv420 seperate format (0x18)
 };
 
 enum mplane_vid_component {
 	/* video information */
-	VID_SRC = 0,			// MPLANE_VID 0x0
-	VID_NUM = 1,			// num of mplanes
-	VID_BASE1 = 2,			// base1 address of video src (U/Cb)
-	VID_BASE2 = 3,			// base1 address of video src (V/Cr)
-	VID_WIDTH = 4,			// width/height of video src
+	VID_SRC = 0,		// MPLANE_VID 0x0
+	VID_NUM = 1,		// num of mplanes
+	VID_BASE1 = 2,		// base1 address of video src (U/Cb)
+	VID_BASE2 = 3,		// base1 address of video src (V/Cr)
+	VID_WIDTH = 4,		// width/height of video src
 	VID_HEIGHT = 5,
-	VID_CROP_LEFT = 6,		// crop-[left/top/width/height] of video src
+	VID_CROP_LEFT = 6,	// crop-[left/top/width/height] of video src
 	VID_CROP_TOP = 7,
 	VID_CROP_WIDTH = 8,
 	VID_CROP_HEIGHT = 9,
@@ -225,14 +227,14 @@ enum mplane_vid_component {
 
 enum mplane_sub_component {
 	/* subtitle information */
-	SUB_SRC = 0,			// MPLANE_SUB 0x1
-	SUB_ON = 1,				// subtitle on(1) or off(0)
-	SUB_BUF_INDEX = 2,		// index of subtitle buf
-	SUB_FOURCC = 3,			// forcc format
-	SUB_WIDTH = 4,			// width
-	SUB_HEIGHT = 5,			// height
-	SUB_OFFSET_X = 6,		// x position
-	SUB_OFFSET_Y = 7,		// y position
+	SUB_SRC = 0,		// MPLANE_SUB 0x1
+	SUB_ON = 1,		// subtitle on(1) or off(0)
+	SUB_BUF_INDEX = 2,	// index of subtitle buf
+	SUB_FOURCC = 3,		// forcc format
+	SUB_WIDTH = 4,		// width
+	SUB_HEIGHT = 5,		// height
+	SUB_OFFSET_X = 6,	// x position
+	SUB_OFFSET_Y = 7,	// y position
 };
 
 #ifdef CONFIG_VIOC_DOLBY_VISION_EDR
@@ -265,8 +267,8 @@ struct vioc_disp {
 	int id;
 	volatile void __iomem *addr;
 	unsigned int irq;
-	unsigned int irq_enable;			// avoid overlapping irq
-	struct vioc_intr_type	*vioc_intr;
+	unsigned int irq_enable;	// avoid overlapping irq
+	struct vioc_intr_type *vioc_intr;
 };
 
 struct vioc_rdma {
@@ -295,7 +297,7 @@ struct vioc_wdma {
 	unsigned int r2ymd;
 	unsigned int cont;
 	unsigned int irq;
-	unsigned int irq_enable;			// avoid overlapping irq
+	unsigned int irq_enable;	// avoid overlapping irq
 	struct vioc_intr_type	*vioc_intr;
 };
 
@@ -304,18 +306,18 @@ struct vioc_wmix {
 	volatile void __iomem *addr;
 	unsigned int width;
 	unsigned int height;
-	unsigned int pos;					// wmix image position
-	unsigned int ovp;					// wmix overlay priority
+	unsigned int pos;		// wmix image position
+	unsigned int ovp;		// wmix overlay priority
 	int left;
 	int top;
 };
 
 struct vioc_alpha {
 	unsigned int src_type;		// v4l2_buffer.m.planes[1].reserved[0]
-	unsigned int on;			// v4l2_buffer.m.planes[1].reserved[1]
+	unsigned int on;		// v4l2_buffer.m.planes[1].reserved[1]
 	unsigned int buf_index;		// v4l2_buffer.m.planes[1].reserved[2]
 	unsigned int fourcc;		// v4l2_buffer.m.planes[1].reserved[3]
-	unsigned int width;			// v4l2_buffer.m.planes[1].reserved[4]
+	unsigned int width;		// v4l2_buffer.m.planes[1].reserved[4]
 	unsigned int height;		// v4l2_buffer.m.planes[1].reserved[5]
 	unsigned int offset_x;		// v4l2_buffer.m.planes[1].reserved[6]
 	unsigned int offset_y;		// v4l2_buffer.m.planes[1].reserved[7]
@@ -373,9 +375,9 @@ struct tcc_v4l2_buffer {
 	int index;
 
 	struct v4l2_buffer buf;
-	unsigned int img_base0;				// RDMABASE0
-	unsigned int img_base1;				// RDMABASE1
-	unsigned int img_base2;				// RDMABASE2
+	unsigned int img_base0;		// RDMABASE0
+	unsigned int img_base1;		// RDMABASE1
+	unsigned int img_base2;		// RDMABASE2
 };
 
 struct tcc_vout_vioc {
@@ -437,7 +439,7 @@ struct tcc_vout_device {
 	struct v4l2_device v4l2_dev;
 	struct video_device *vdev;
 	void __iomem *base;
-	struct mutex lock;					// lock to protect the shared data in ioctl
+	struct mutex lock;	// lock to protect the shared data in ioctl
 
 	struct tcc_vout_vioc *vioc;
 	enum tcc_vout_status status;
@@ -446,33 +448,34 @@ struct tcc_vout_device {
 	int bpp;
 	int pfmt;
 
-	struct v4l2_pix_format src_pix;		// src image format
-	struct v4l2_rect disp_rect;			// display output area
+	struct v4l2_pix_format src_pix;	// src image format
+	struct v4l2_rect disp_rect;	// display output area
 
 #if defined(CONFIG_TCC_DUAL_DISPLAY)
 	int disp_mode;
 	struct v4l2_rect dual_disp_rect;			// dual-display output area
 #endif
 
-	struct v4l2_rect crop_src;			// to crop source video (deintl_rdma crop)
+	struct v4l2_rect crop_src;	// to crop source video (deintl_rdma crop)
 
 	/* vout */
-	unsigned int force_userptr;			// force V4L2_MEMORY_USERPTR
-	struct pmap pmap;				// for only V4L2_MEMORY_MMAP
+	unsigned int force_userptr;	// force V4L2_MEMORY_USERPTR
+	struct pmap pmap;		// for only V4L2_MEMORY_MMAP
 
 	/* reqbuf */
 	struct tcc_v4l2_buffer *qbufs;
 	enum v4l2_memory memory;
 	int nr_qbufs;
 	int mapped;
-	int clearFrameMode;					//
+	int clearFrameMode;
 
 	/* deinterlce */
-	enum v4l2_field previous_field;		// previous field for deinterlace
-	enum deintl_type deinterlace;		// deinterlacer type
+	enum v4l2_field previous_field;	// previous field for deinterlace
+	enum deintl_type deinterlace;	// deinterlacer type
 	struct pmap deintl_pmap;
 	int deintl_nr_bufs, deintl_nr_bufs_count;
-	unsigned int deintl_buf_size;		// full size of deintl_buf, it is depended on panel size.
+	// full size of deintl_buf, it is depended on panel size.
+	unsigned int deintl_buf_size;
 	struct tcc_v4l2_buffer *deintl_bufs;
 	wait_queue_head_t frame_wait;
 	int wakeup_int;
@@ -492,7 +495,7 @@ struct tcc_vout_device {
 #endif
 
 	int frame_count;
-	int deintl_force;					// 0: depend on stream info 1: depend on 'deinterlace'
+	int deintl_force; // 0: depend on stream info 1: depend on 'deinterlace'
 	int first_frame;
 	enum v4l2_field first_field;
 	int firstFieldFlag;
@@ -534,6 +537,8 @@ struct tcc_vout_device {
 	#endif
 };
 
-int tcc_vout_try_bpp(unsigned int pixelformat, enum v4l2_colorspace *colorspace);
+int tcc_vout_try_bpp(unsigned int pixelformat,
+	enum v4l2_colorspace *colorspace);
 int tcc_vout_try_pix(unsigned int pixelformat);
+
 #endif //__TCC_VOUT_H__

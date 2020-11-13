@@ -1,5 +1,5 @@
 /*
- * Copyright (C) Telechips 
+ * Copyright (C) Telechips, Inc.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -17,20 +17,38 @@
  * 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  */
 #ifndef __TCC_FB_ADDRESS__
-#define __TCC_FB_ADDRESS__ 
+#define __TCC_FB_ADDRESS__
 
- #ifndef ADDRESS_ALIGNED
+#ifndef ADDRESS_ALIGNED
 #define ADDRESS_ALIGNED
-#define ALIGN_BIT (0x8-1)
-#define BIT_0 3
-#define GET_ADDR_YUV42X_spY(Base_addr) 		(((((unsigned int)Base_addr) + ALIGN_BIT)>> BIT_0)<<BIT_0)
-#define GET_ADDR_YUV42X_spU(Yaddr, x, y) 		(((((unsigned int)Yaddr+(x*y)) + ALIGN_BIT)>> BIT_0)<<BIT_0)
-#define GET_ADDR_YUV422_spV(Uaddr, x, y) 		(((((unsigned int)Uaddr+(x*y/2)) + ALIGN_BIT) >> BIT_0)<<BIT_0)
-#define GET_ADDR_YUV420_spV(Uaddr, x, y) 		(((((unsigned int)Uaddr+(x*y/4)) + ALIGN_BIT) >> BIT_0)<<BIT_0)
-#endif
 
-									
-extern void tccxxx_GetAddress(unsigned char format, unsigned int base_Yaddr, unsigned int src_imgx, unsigned int  src_imgy,
-									unsigned int start_x, unsigned int start_y, unsigned int* Y, unsigned int* U,unsigned int* V);
+#define ALIGN_BIT (0x8 - 1)
+#define BIT_0     (3)
 
-#endif
+#define GET_ADDR_YUV42X_spY(Base_addr) \
+	(((((unsigned int)Base_addr) + ALIGN_BIT) >> BIT_0) << BIT_0)
+
+#define GET_ADDR_YUV42X_spU(Yaddr, x, y) \
+	(((((unsigned int)Yaddr + (x * y)) + ALIGN_BIT) >> BIT_0) << BIT_0)
+
+#define GET_ADDR_YUV422_spV(Uaddr, x, y) \
+	(((((unsigned int)Uaddr + (x * y / 2)) + ALIGN_BIT) >> BIT_0) << BIT_0)
+
+#define GET_ADDR_YUV420_spV(Uaddr, x, y) \
+	(((((unsigned int)Uaddr + (x * y / 4)) + ALIGN_BIT) >> BIT_0) << BIT_0)
+
+#endif /* ADDRESS_ALIGNED */
+
+
+extern void tccxxx_GetAddress(
+	unsigned char format,
+	unsigned int base_Yaddr,
+	unsigned int src_imgx,
+	unsigned int src_imgy,
+	unsigned int start_x,
+	unsigned int start_y,
+	unsigned int *Y,
+	unsigned int *U,
+	unsigned int *V);
+
+#endif /* __TCC_FB_ADDRESS__ */

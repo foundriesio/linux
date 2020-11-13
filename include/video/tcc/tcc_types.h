@@ -1,5 +1,5 @@
 /*
- * Copyright (C) Telechips Inc.
+ * Copyright (C) Telechips, Inc.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -62,12 +62,16 @@
 #define Hw0		0x00000001
 #define HwZERO	0x00000000
 
-#define BITSET(X, MASK)				((X) |= (unsigned int)(MASK))
-#define BITSCLR(X, SMASK, CMASK)	((X) = ((((unsigned int)(X)) | ((unsigned int)(SMASK))) & ~((unsigned int)(CMASK))) )
-#define BITCSET(X, CMASK, SMASK)	((X) = ((((unsigned int)(X)) & ~((unsigned int)(CMASK))) | ((unsigned int)(SMASK))) )
-#define BITCLR(X, MASK)				((X) &= ~((unsigned int)(MASK)) )
-#define BITXOR(X, MASK)				((X) ^= (unsigned int)(MASK) )
-#define ISZERO(X, MASK)				(!(((unsigned int)(X))&((unsigned int)(MASK))))
-#define	ISSET(X, MASK)				((unsigned long)(X)&((unsigned long)(MASK)))
+#define BITSET(X, MASK) ((X) |= (unsigned int)(MASK))
+#define BITSCLR(X, SMASK, CMASK) \
+	((X) = ((((unsigned int)(X)) | ((unsigned int)(SMASK))) \
+	& ~((unsigned int)(CMASK))))
+#define BITCSET(X, CMASK, SMASK) \
+	((X) = ((((unsigned int)(X)) & ~((unsigned int)(CMASK))) \
+	| ((unsigned int)(SMASK))))
+#define BITCLR(X, MASK) ((X) &= ~((unsigned int)(MASK)))
+#define BITXOR(X, MASK) ((X) ^= (unsigned int)(MASK))
+#define ISZERO(X, MASK) (!(((unsigned int)(X))&((unsigned int)(MASK))))
+#define	ISSET(X, MASK) ((unsigned long)(X)&((unsigned long)(MASK)))
 
 #endif //__TCC_TYPES_H__

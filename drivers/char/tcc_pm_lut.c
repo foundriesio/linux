@@ -60,7 +60,7 @@
 
 #define TCC_PM_LUT_DEBUG	0
 #define dprintk(msg...)		if (TCC_PM_LUT_DEBUG) \
-				({ pr_dbg("[DBG][PM_LUT] " msg); })
+				({ pr_debug("[DBG][PM_LUT] " msg); })
 struct VIOC_PM_LUT_VALUE_SET backup_pm_lut_cmd;
 
 struct pm_lut_drv_type {

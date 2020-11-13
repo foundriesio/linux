@@ -68,7 +68,8 @@ obj-$(CONFIG_SWITCH_REVERSE)        += switch/
 obj-$(CONFIG_VIOC_MGR)              += vioc_mgr.o
 obj-$(CONFIG_CAM_IPC_MGR)           += cam_ipc_mgr.o
 obj-$(CONFIG_TCC_SCREEN_SHARE) += tcc_screen_share.o
-obj-$(CONFIG_TCC_VTA)               += vta.o
+#obj-$(CONFIG_TCC_VTA)               += vta.o
+obj-y              += vta.o
 
 obj-$(CONFIG_MWAVE)		+= mwave/
 obj-y				+= agp/
