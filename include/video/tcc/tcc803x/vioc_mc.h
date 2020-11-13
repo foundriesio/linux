@@ -389,7 +389,7 @@ extern void VIOC_MC_SetDefaultAlpha(
 extern volatile void __iomem *VIOC_MC_GetAddress(
 	unsigned int vioc_id);
 extern int  tvc_mc_get_info(
-	unsigned int component_num, struct mc_info_type *pMC_info);
+	unsigned int component_num, mc_info_type *pMC_info);
 extern void VIOC_MC_DUMP(unsigned int vioc_id);
 
 #endif

@@ -482,10 +482,10 @@ static void fbX_m2m_activate_var(unsigned int dma_addr, struct fb_var_screeninfo
 
 		VIOC_RDMA_SetImageEnable(par->pdata.rdma_info.virt_addr);
 	} else {		/* FBX_ATTACH_UPDATE */
-		struct ATTACH_INFO_TYPE attach;
+		ATTACH_INFO_TYPE attach;
 		unsigned int idx = 0;
 
-		memset(&attach, 0x0, sizeof(struct ATTACH_INFO_TYPE));
+		memset(&attach, 0x0, sizeof(ATTACH_INFO_TYPE));
 
 		attach.fmt = format;
 		attach.img_width = par->pdata.region.width;

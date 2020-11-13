@@ -117,7 +117,7 @@ static int gUse_sDeintls;
 static int gOutputMode;
 atomic_t gFrmCnt_60Hz;
 static int gLcdc_layer_60Hz = -1;
-static enum VIOC_VIQE_FMT_TYPE gViqe_fmt_60Hz;
+static VIOC_VIQE_FMT_TYPE gViqe_fmt_60Hz;
 static int gImg_fmt_60Hz = -1;
 static int gDeintlS_Use_60Hz;
 static int gDeintlS_Use_Plugin;
@@ -131,15 +131,15 @@ static int gUse_DtrcConverter;
 #ifndef USE_DEINTERLACE_S_IN30Hz
 static int gusingDI_S;
 static int gbfield_30Hz;
-static enum VIOC_VIQE_DEINTL_MODE gDI_mode_30Hz = VIOC_VIQE_DEINTL_MODE_2D;
+static VIOC_VIQE_DEINTL_MODE gDI_mode_30Hz = VIOC_VIQE_DEINTL_MODE_2D;
 #else
 static int gusingDI_S;
 #endif
 
 #ifndef USE_DEINTERLACE_S_IN60Hz
-static enum VIOC_VIQE_DEINTL_MODE gDI_mode_60Hz = VIOC_VIQE_DEINTL_MODE_2D;
+static VIOC_VIQE_DEINTL_MODE gDI_mode_60Hz = VIOC_VIQE_DEINTL_MODE_2D;
 #else
-static enum VIOC_VIQE_DEINTL_MODE gDI_mode_60Hz = VIOC_VIQE_DEINTL_S;
+static VIOC_VIQE_DEINTL_MODE gDI_mode_60Hz = VIOC_VIQE_DEINTL_S;
 #endif
 
 #ifdef CONFIG_USE_SUB_MULTI_FRAME
@@ -284,7 +284,7 @@ void TCC_VIQE_DI_Init(struct VIQE_DI_TYPE *viqe_arg)
 	int top_size_dont_use = OFF; //If this value is OFF, The size information is get from VIOC modules.
 #endif
 	unsigned int framebufWidth, framebufHeight;
-	enum VIOC_VIQE_FMT_TYPE img_fmt = VIOC_VIQE_FMT_YUV420;
+	VIOC_VIQE_FMT_TYPE img_fmt = VIOC_VIQE_FMT_YUV420;
 	volatile void __iomem *pRDMA, *pVIQE;
 	int nRDMA = 0, nVIQE = 0;
 
@@ -401,7 +401,7 @@ void TCC_VIQE_DI_Init(struct VIQE_DI_TYPE *viqe_arg)
 void TCC_VIQE_DI_Run(struct VIQE_DI_TYPE *viqe_arg)
 {
 #ifndef USE_DEINTERLACE_S_IN30Hz
-	struct VIOC_PlugInOutCheck VIOC_PlugIn;
+	VIOC_PlugInOutCheck VIOC_PlugIn;
 	unsigned int JudderCnt = 0;
 #endif
 	volatile void __iomem *pRDMA, *pVIQE;
@@ -600,13 +600,13 @@ EXPORT_SYMBOL(TCC_VIQE_DI_Push60Hz_M2M);
 #endif
 
 ///////////////////////////////////////////////////////////////////////////////
-void TCC_VIQE_DI_Init60Hz_M2M(enum TCC_OUTPUT_TYPE outputMode, struct tcc_lcdc_image_update *input_image)
+void TCC_VIQE_DI_Init60Hz_M2M(TCC_OUTPUT_TYPE outputMode, struct tcc_lcdc_image_update *input_image)
 {
 	unsigned int deintl_dma_base0, deintl_dma_base1, deintl_dma_base2, deintl_dma_base3;
 	int imgSize;
 	int top_size_dont_use = OFF;		//If this value is OFF, The size information is get from VIOC modules.
 	unsigned int framebufWidth, framebufHeight;
-	enum VIOC_VIQE_FMT_TYPE img_fmt = VIOC_VIQE_FMT_YUV420;
+	VIOC_VIQE_FMT_TYPE img_fmt = VIOC_VIQE_FMT_YUV420;
 #ifdef CONFIG_TCC_VIOCMG
 	unsigned int viqe_lock = 0;
 #endif
@@ -771,7 +771,7 @@ EXPORT_SYMBOL(TCC_VIQE_DI_Init60Hz_M2M);
 
 void TCC_VIQE_DI_Run60Hz_M2M(struct tcc_lcdc_image_update *input_image, int reset_frmCnt)
 {
-	struct VIOC_PlugInOutCheck VIOC_PlugIn;
+	VIOC_PlugInOutCheck VIOC_PlugIn;
 	unsigned int JudderCnt = 0;
 
 #ifdef CONFIG_TCC_VIOCMG
@@ -1020,7 +1020,7 @@ void TCC_VIQE_DI_DeInit60Hz_M2M(int layer)
 }
 EXPORT_SYMBOL(TCC_VIQE_DI_DeInit60Hz_M2M);
 
-void TCC_VIQE_DI_Sub_Init60Hz_M2M(enum TCC_OUTPUT_TYPE outputMode, struct tcc_lcdc_image_update *input_image)
+void TCC_VIQE_DI_Sub_Init60Hz_M2M(TCC_OUTPUT_TYPE outputMode, struct tcc_lcdc_image_update *input_image)
 {
 #ifdef CONFIG_USE_SUB_MULTI_FRAME
 	int type = VSYNC_MAIN;
@@ -2233,7 +2233,7 @@ void TCC_VIQE_Display_Update60Hz_M2M(struct tcc_lcdc_image_update *input_image)
 #endif
 
 //////////////////////////////////////////////////////////////////////////////////////////
-void TCC_VIQE_DI_Init60Hz(enum TCC_OUTPUT_TYPE outputMode, int lcdCtrlNum, struct tcc_lcdc_image_update *input_image)
+void TCC_VIQE_DI_Init60Hz(TCC_OUTPUT_TYPE outputMode, int lcdCtrlNum, struct tcc_lcdc_image_update *input_image)
 {
 	unsigned int deintl_dma_base0, deintl_dma_base1, deintl_dma_base2, deintl_dma_base3;
 	int imgSize;
@@ -2428,7 +2428,7 @@ void TCC_VIQE_DI_Init60Hz(enum TCC_OUTPUT_TYPE outputMode, int lcdCtrlNum, struc
 
 void TCC_VIQE_DI_Swap60Hz(int mode)
 {
-	struct VIOC_PlugInOutCheck VIOC_PlugIn;
+	VIOC_PlugInOutCheck VIOC_PlugIn;
 	volatile void __iomem *pVIQE_Info = NULL;
 	int nVIOC_VIQE = 0;
 
@@ -2459,7 +2459,7 @@ void TCC_VIQE_DI_Swap60Hz(int mode)
 
 void TCC_VIQE_DI_SetFMT60Hz(int enable)
 {
-	struct VIOC_PlugInOutCheck VIOC_PlugIn;
+	VIOC_PlugInOutCheck VIOC_PlugIn;
 	volatile void __iomem *pVIQE_Info = NULL;
 	int nVIOC_VIQE = 0;
 
@@ -2503,7 +2503,7 @@ void TCC_VIQE_DI_Run60Hz(struct tcc_lcdc_image_update *input_image, int reset_fr
 	int nVIOC_VIQE = 0;
 
 #ifndef USE_DEINTERLACE_S_IN60Hz
-	struct VIOC_PlugInOutCheck VIOC_PlugIn;
+	VIOC_PlugInOutCheck VIOC_PlugIn;
 	unsigned int JudderCnt = 0;
 #endif
 
@@ -2597,7 +2597,7 @@ void TCC_VIQE_DI_Run60Hz(struct tcc_lcdc_image_update *input_image, int reset_fr
 				VIOC_RDMA_SetImageDisable(pViqe_60hz_info->pRDMABase_60Hz);
 			return;
 		} else {
-			struct VIOC_PlugInOutCheck plug_status;
+			VIOC_PlugInOutCheck plug_status;
 
 			viqe_lock = 1;
 

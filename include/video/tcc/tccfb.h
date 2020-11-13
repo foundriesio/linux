@@ -106,7 +106,7 @@ struct display_WaitQ_struct {
 };
 
 struct tcc_dp_device {
-	enum TCC_OUTPUT_TYPE DispDeviceType;
+	TCC_OUTPUT_TYPE DispDeviceType;
 	unsigned int DispOrder;    //DD_MAIN , DD_SUB
 	unsigned int DispNum;      //0 or 1
 	unsigned int FbPowerState; //true or false

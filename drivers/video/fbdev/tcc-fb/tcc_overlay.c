@@ -106,7 +106,7 @@ struct overlay_drv_type {
 	unsigned int open_cnt;
 
 	// to back up image  infomation.
-	struct overlay_video_buffer_t overBuffCfg;
+	overlay_video_buffer_t overBuffCfg;
 };
 #ifdef CONFIG_DISPLAY_EXT_FRAME
 extern int tcc_ctrl_ext_frame(char enable);
@@ -198,7 +198,7 @@ tcc_overlay_poll(struct file *file, struct poll_table_struct *wait)
 
 #if defined(CONFIG_TCC_SCREEN_SHARE)
 static int tcc_overlay_display_shared_screen(
-	struct overlay_shared_buffer_t buffer_cfg,
+	overlay_shared_buffer_t buffer_cfg,
 	struct overlay_drv_type *overlay_drv)
 {
 	unsigned int layer = 0;
@@ -258,7 +258,7 @@ static int tcc_overlay_display_shared_screen(
 #endif
 
 static int tcc_overlay_display_video_buffer(
-	struct overlay_video_buffer_t buffer_cfg,
+	overlay_video_buffer_t buffer_cfg,
 	struct overlay_drv_type *overlay_drv)
 {
 	unsigned int layer = 0, base0, base1, base2;
@@ -432,21 +432,21 @@ tcc_overlay_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 	switch (cmd) {
 #if defined(CONFIG_TCC_SCREEN_SHARE)
 	case OVERLAY_PUSH_SHARED_BUFFER: {
-		struct overlay_shared_buffer_t overBuffCfg;
+		overlay_shared_buffer_t overBuffCfg;
 
-		memcpy(&overBuffCfg, (struct overlay_shared_buffer_t *)arg,
-		       sizeof(struct overlay_shared_buffer_t));
+		memcpy(&overBuffCfg, (overlay_shared_buffer_t *)arg,
+		       sizeof(overlay_shared_buffer_t));
 		return tcc_overlay_display_shared_screen(
 			overBuffCfg, overlay_drv);
 	}
 #endif
 
 	case OVERLAY_PUSH_VIDEO_BUFFER: {
-		struct overlay_video_buffer_t overBuffCfg;
+		overlay_video_buffer_t overBuffCfg;
 
 		if (copy_from_user(
-			    &overBuffCfg, (struct overlay_video_buffer_t *)arg,
-			    sizeof(struct overlay_video_buffer_t)))
+			    &overBuffCfg, (overlay_video_buffer_t *)arg,
+			    sizeof(overlay_video_buffer_t)))
 			return -EFAULT;
 
 		overlay_drv->overBuffCfg = overBuffCfg;
@@ -456,11 +456,11 @@ tcc_overlay_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 	}
 
 	case OVERLAY_SET_CONFIGURE: {
-		struct overlay_config_t overCfg;
+		overlay_config_t overCfg;
 
 		if (copy_from_user(
-			    &overCfg, (struct overlay_config_t *)arg,
-			    sizeof(struct overlay_config_t)))
+			    &overCfg, (overlay_config_t *)arg,
+			    sizeof(overlay_config_t)))
 			return -EFAULT;
 
 		return 0;

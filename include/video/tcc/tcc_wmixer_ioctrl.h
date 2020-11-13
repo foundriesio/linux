@@ -145,6 +145,9 @@ typedef struct {
 	unsigned int src0_Vaddr;
 	unsigned short src0_width;
 	unsigned short src0_height;
+	unsigned short src0_dst_width;
+	unsigned short src0_dst_height;
+	unsigned char src0_use_scaler;
 	unsigned short src0_winLeft;
 	unsigned short src0_winTop;
 	unsigned short src0_winRight;
@@ -174,6 +177,7 @@ typedef struct {
 	unsigned int dst_Yaddr;
 	unsigned int dst_Uaddr;
 	unsigned int dst_Vaddr;
+	unsigned int dst_rgb_swap;
 	unsigned short dst_width;
 	unsigned short dst_height;
 	unsigned short dst_winLeft;

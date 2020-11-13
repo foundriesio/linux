@@ -1227,7 +1227,7 @@
 #define VIOC_CONFIG_RESET 0x1
 #define VIOC_CONFIG_CLEAR 0x0
 
-//enum VIOC_CONFIG_WMIX_PATH {
+//typedef enum {
 //	WMIX00 = 0,
 //	WMIX03,
 //	WMIX10,
@@ -1237,15 +1237,15 @@
 //	WMIX50,
 //	WMIX60,
 //	WMIX_MAX
-//};
+//} VIOC_CONFIG_WMIX_PATH;
 
-enum VIOC_CONFIG_AFBCDEC_PATH {
+typedef enum {
 	AFBCDEC0 = 0,
 	AFBCDEC1,
 	AFBCDEC_MAX
-};
+} VIOC_CONFIG_AFBCDEC_PATH;
 
-enum VIOC_SWRESET_Component {
+typedef enum {
 	VIOC_CONFIG_DEV	= 0,
 	VIOC_CONFIG_WMIXER,
 	VIOC_CONFIG_WDMA,
@@ -1258,13 +1258,13 @@ enum VIOC_SWRESET_Component {
 	VIOC_CONFIG_FCENC,
 	VIOC_CONFIG_FCDEC,
 	VIOC_CONFIG_DTRC
-};
+} VIOC_SWRESET_Component;
 
-struct VIOC_PlugInOutCheck {
+typedef struct {
 	unsigned int enable;
 	unsigned int connect_statue;
 	unsigned int connect_device;
-};
+} VIOC_PlugInOutCheck;
 
 // Power Down
 #define HwDDIC_PWDN_HDMI	Hw2
@@ -1300,7 +1300,7 @@ extern void VIOC_CONFIG_SWReset_RAW(
 extern int VIOC_CONFIG_CheckPlugInOut(unsigned int nDevice);
 extern int VIOC_CONFIG_Device_PlugState(
 		unsigned int component,
-		struct VIOC_PlugInOutCheck *VIOC_PlugIn);
+		VIOC_PlugInOutCheck *VIOC_PlugIn);
 extern int VIOC_CONFIG_GetScaler_PluginToRDMA(
 		unsigned int RdmaNum);
 extern int VIOC_CONFIG_GetViqeDeintls_PluginToRDMA(

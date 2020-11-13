@@ -19,23 +19,23 @@
 #ifndef __VIOC_AFBCDEC_H__
 #define	__VIOC_AFBCDEC_H__
 
-enum VIOC_AFBCDEC_SWAP {
+typedef enum {
 	VIOC_AFBCDEC_SWAP_DIRECT = 0,
 	VIOC_AFBCDEC_SWAP_PENDING,
-};
+} VIOC_AFBCDEC_SWAP;
 
-enum VIOC_AFBCDEC_MODE {
+typedef enum {
 	VIOC_AFBCDEC_MODE_CONTINUOUS = 0,
 	VIOC_AFBCDEC_MODE_FRAMEBYFRAME,
-};
+} VIOC_AFBCDEC_MODE;
 
-enum VIOC_AFBCDEC_SURFACE_NUM {
+typedef enum {
 	VIOC_AFBCDEC_SURFACE_0 = 0,
 	VIOC_AFBCDEC_SURFACE_1,
 	VIOC_AFBCDEC_SURFACE_2,
 	VIOC_AFBCDEC_SURFACE_3,
 	VIOC_AFBCODE_SURFACE_MAX
-};
+} VIOC_AFBCDEC_SURFACE_NUM;
 
 /*
  * Register offset
@@ -238,7 +238,7 @@ extern void VIOC_AFBCDec_SetContiDecEnable(
 	volatile void __iomem *reg, unsigned int enable);
 extern void VIOC_AFBCDec_SetSurfaceN(
 	volatile void __iomem *reg,
-	enum VIOC_AFBCDEC_SURFACE_NUM nSurface, unsigned int enable);
+	VIOC_AFBCDEC_SURFACE_NUM nSurface, unsigned int enable);
 extern void VIOC_AFBCDec_SetAXICacheCfg(
 	volatile void __iomem *reg, unsigned int cache);
 extern void VIOC_AFBCDec_SetAXIQoSCfg(
@@ -285,7 +285,7 @@ extern void VIOC_AFBCDec_ClearIrq(
 extern void VIOC_AFBCDec_TurnOFF(
 	volatile void __iomem *reg);
 extern void VIOC_AFBCDec_TurnOn(
-	volatile void __iomem *reg, enum VIOC_AFBCDEC_SWAP swapmode);
+	volatile void __iomem *reg, VIOC_AFBCDEC_SWAP swapmode);
 extern void VIOC_AFBCDec_SurfaceCfg(
 	volatile void __iomem *reg, unsigned int base,
 	unsigned int fmt, unsigned int width, unsigned int height,

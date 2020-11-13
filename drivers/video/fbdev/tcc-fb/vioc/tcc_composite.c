@@ -317,8 +317,8 @@ void tcc_composite_get_spec(enum COMPOSITE_MODE_TYPE mode,
 void tcc_composite_set_lcd2tv(enum COMPOSITE_MODE_TYPE type)
 {
 	struct COMPOSITE_SPEC_TYPE spec;
-	struct LCDTIMING CompositeTiming;
-	struct LCDCTR LcdCtrlParam;
+	stLTIMING CompositeTiming;
+	stLCDCTR LcdCtrlParam;
 
 	struct fb_info *info = registered_fb[0];
 	struct tccfb_info *tccfb_info = NULL;

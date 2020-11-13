@@ -1327,7 +1327,7 @@ int tccvin_stop_stream(tccvin_dev_t * vdev) {
 #endif//CONFIG_OVERLAY_PGL
 	volatile void __iomem	* pWDMA		= VIOC_WDMA_GetAddress(vdev->cif.vioc_path.wdma);
 	volatile void __iomem	* pRDMA		= VIOC_RDMA_GetAddress(vdev->cif.vioc_path.rdma);
-	struct VIOC_PlugInOutCheck		vioc_plug_state;
+	VIOC_PlugInOutCheck		vioc_plug_state;
 	tccvin_cif_t	* cif	= &vdev->cif;
 
 	int idxLoop;

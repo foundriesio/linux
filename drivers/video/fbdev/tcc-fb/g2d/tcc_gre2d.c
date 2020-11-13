@@ -55,7 +55,7 @@ void GRE_2D_SetInterrupt(char onoff)
 GRE_2D_SetFChAddress
  graphic engine Front End channel address 0,1,2 setting
 -------------------------------------------------------------------*/
-void GRE_2D_SetFChAddress(enum G2D_CHANNEL ch, unsigned int add0, unsigned int add1, unsigned int add2)
+void GRE_2D_SetFChAddress(G2D_CHANNEL ch, unsigned int add0, unsigned int add1, unsigned int add2)
 {
 	//POVERLAYMIXER pHwOVERLAYMIXER;
 	//pHwOVERLAYMIXER  = (volatile POVERLAYMIXER)tcc_p2v(HwOVERLAYMIXER_BASE);
@@ -95,7 +95,7 @@ GRE_2D_SetFChPosition
  imageps_x, imageps_y : imagme pixel size
  winps_x, winps_y : window pixsel offset
 -------------------------------------------------------------------*/
-void GRE_2D_SetFChPosition(enum G2D_CHANNEL ch, unsigned int  frameps_x, unsigned int  frameps_y,
+void GRE_2D_SetFChPosition(G2D_CHANNEL ch, unsigned int  frameps_x, unsigned int  frameps_y,
                                 unsigned int  poffset_x, unsigned int  poffset_y, unsigned int  imageps_x, unsigned int  imageps_y, unsigned int  winps_x, unsigned int  winps_y )
 {
 	//POVERLAYMIXER pHwOVERLAYMIXER;
@@ -162,7 +162,7 @@ GRE_2D_SetFChControl
  mode : flip, rotate
  data_form : rgb, yuv, alpha-rgb
 -------------------------------------------------------------------*/
-void GRE_2D_SetFChControl(enum G2D_CHANNEL ch, enum G2D_MABC_TYPE MABC, unsigned char LUTE, unsigned char SSUV, enum G2D_OP_MODE mode, enum G2D_ZF_TYPE ZF, struct G2D_FMT_CTRL data_form)
+void GRE_2D_SetFChControl(G2D_CHANNEL ch, G2D_MABC_TYPE MABC, unsigned char LUTE, unsigned char SSUV, G2D_OP_MODE mode, G2D_ZF_TYPE ZF, G2D_FMT_CTRL data_form)
 {
 	//POVERLAYMIXER pHwOVERLAYMIXER;
 	//pHwOVERLAYMIXER  = (volatile POVERLAYMIXER)tcc_p2v(HwOVERLAYMIXER_BASE);
@@ -205,7 +205,7 @@ void GRE_2D_SetFChControl(enum G2D_CHANNEL ch, enum G2D_MABC_TYPE MABC, unsigned
 GRE_2D_SetFChChromaKey
  graphic engine Front channel chroma key Set
  -------------------------------------------------------------------*/
-void GRE_2D_SetFChChromaKey(enum G2D_CHANNEL ch, unsigned char RY, unsigned char GU, unsigned char BV)
+void GRE_2D_SetFChChromaKey(G2D_CHANNEL ch, unsigned char RY, unsigned char GU, unsigned char BV)
 {
 	//POVERLAYMIXER pHwOVERLAYMIXER;
 	//pHwOVERLAYMIXER  = (volatile POVERLAYMIXER)tcc_p2v(HwOVERLAYMIXER_BASE);
@@ -233,7 +233,7 @@ void GRE_2D_SetFChChromaKey(enum G2D_CHANNEL ch, unsigned char RY, unsigned char
 GRE_2D_SetFChArithmeticPar
  graphic engine Front channel Arithmetic parameter setting
 -------------------------------------------------------------------*/
-void GRE_2D_SetFChArithmeticPar(enum G2D_CHANNEL ch, unsigned char RY, unsigned char GU, unsigned char BV)
+void GRE_2D_SetFChArithmeticPar(G2D_CHANNEL ch, unsigned char RY, unsigned char GU, unsigned char BV)
 {
 	//POVERLAYMIXER pHwOVERLAYMIXER;
 	//pHwOVERLAYMIXER  = (volatile POVERLAYMIXER)tcc_p2v(HwOVERLAYMIXER_BASE);
@@ -261,7 +261,7 @@ void GRE_2D_SetFChArithmeticPar(enum G2D_CHANNEL ch, unsigned char RY, unsigned 
 GRE_2D_SetSrcCtrl
  graphic engine sorce control
 -------------------------------------------------------------------*/
-void GRE_2D_SetSrcCtrl(struct G2D_SRC_CTRL g2d_ctrl)
+void GRE_2D_SetSrcCtrl(G2D_SRC_CTRL g2d_ctrl)
 {
     unsigned int sf_ctrl_reg = 0, sa_ctrl_reg = 0;
 	//POVERLAYMIXER pHwOVERLAYMIXER;
@@ -304,7 +304,7 @@ void GRE_2D_SetSrcCtrl(struct G2D_SRC_CTRL g2d_ctrl)
 GRE_2D_SetOperator
  graphic engine operator 0, 1 setting
 -------------------------------------------------------------------*/
-void GRE_2D_SetOperator(enum G2D_OP_TYPE op_set, unsigned short alpha , unsigned char RY, unsigned char GU, unsigned char BV)
+void GRE_2D_SetOperator(G2D_OP_TYPE op_set, unsigned short alpha , unsigned char RY, unsigned char GU, unsigned char BV)
 {
 	//POVERLAYMIXER pHwOVERLAYMIXER;
 	//pHwOVERLAYMIXER  = (volatile POVERLAYMIXER)tcc_p2v(HwOVERLAYMIXER_BASE);
@@ -336,11 +336,11 @@ void GRE_2D_SetOperator(enum G2D_OP_TYPE op_set, unsigned short alpha , unsigned
 GRE_2D_SetOperatorCtrl
  graphic engine operator control register setting
 -------------------------------------------------------------------*/
-void GRE_2D_SetOperatorCtrl(enum G2D_OP_TYPE op_set,
-	enum G2D_OP_ACON ACON1, enum G2D_OP_ACON ACON0,
-	enum G2D_OP_CCON CCON1, enum G2D_OP_CCON CCON0,
-	enum G2D_OP_ATUNE ATUNE, enum G2D_OP1_CHROMA CSEL,
-	enum GE_ROP_TYPE op)
+void GRE_2D_SetOperatorCtrl(G2D_OP_TYPE op_set,
+	G2D_OP_ACON ACON1, G2D_OP_ACON ACON0,
+	G2D_OP_CCON CCON1, G2D_OP_CCON CCON0,
+	G2D_OP_ATUNE ATUNE, G2D_OP1_CHROMA CSEL,
+	GE_ROP_TYPE op)
 {
 	//POVERLAYMIXER pHwOVERLAYMIXER;
 	//pHwOVERLAYMIXER  = (volatile POVERLAYMIXER)tcc_p2v(HwOVERLAYMIXER_BASE);
@@ -373,7 +373,7 @@ void GRE_2D_SetOperatorCtrl(enum G2D_OP_TYPE op_set,
 GRE_2D_SetBChAddress
   graphic engine BACK End channel address 0,1,2 setting
 -------------------------------------------------------------------*/
-void GRE_2D_SetBChAddress(enum G2D_CHANNEL ch, unsigned int add0, unsigned int add1, unsigned int add2)
+void GRE_2D_SetBChAddress(G2D_CHANNEL ch, unsigned int add0, unsigned int add1, unsigned int add2)
 {
 	//POVERLAYMIXER pHwOVERLAYMIXER;
 	//pHwOVERLAYMIXER  = (volatile POVERLAYMIXER)tcc_p2v(HwOVERLAYMIXER_BASE);
@@ -398,7 +398,7 @@ GRE_2D_SetBChPosition
  frameps_x, frameps_y : frame pixsel size
  poffset_x, poffset_y : pixsel offset
 -------------------------------------------------------------------*/
-void GRE_2D_SetBChPosition(enum G2D_CHANNEL ch, unsigned int  frameps_x, unsigned int  frameps_y, unsigned int  poffset_x, unsigned int  poffset_y)
+void GRE_2D_SetBChPosition(G2D_CHANNEL ch, unsigned int  frameps_x, unsigned int  frameps_y, unsigned int  poffset_x, unsigned int  poffset_y)
 {
 	//POVERLAYMIXER pHwOVERLAYMIXER;
 	//pHwOVERLAYMIXER  = (volatile POVERLAYMIXER)tcc_p2v(HwOVERLAYMIXER_BASE);
@@ -429,7 +429,7 @@ GRE_2D_SetBChControl
  opmode : flip, rotate
  data_form : rgb, yuv, alpha-rgb
 -------------------------------------------------------------------*/
-void GRE_2D_SetBChControl(struct G2D_BCH_CTRL_TYPE *g2d_bch_ctrl)
+void GRE_2D_SetBChControl(G2D_BCH_CTRL_TYPE *g2d_bch_ctrl)
 {
 	unsigned int BCH_ctrl_reg = 0;
 
@@ -486,7 +486,7 @@ void GRE_2D_SetDitheringMatrix(unsigned short *Matrix)
 GRE_2D_Enable
  graphic engine channel enable control
 -------------------------------------------------------------------*/
-void GRE_2D_Enable(enum G2D_EN grp_enalbe, unsigned char int_en)
+void GRE_2D_Enable(G2D_EN grp_enalbe, unsigned char int_en)
 {
 	//POVERLAYMIXER pHwOVERLAYMIXER;
 	//pHwOVERLAYMIXER  = (volatile POVERLAYMIXER)tcc_p2v(HwOVERLAYMIXER_BASE);
@@ -538,9 +538,9 @@ GRE_2D_IntCtrl
  int_irq : interrupt request
  int_flg : flag bit
 -------------------------------------------------------------------*/
-enum G2D_INT_TYPE GRE_2D_IntCtrl(unsigned char wr, enum G2D_INT_TYPE flag, unsigned char int_irq, unsigned char int_flg)
+G2D_INT_TYPE GRE_2D_IntCtrl(unsigned char wr, G2D_INT_TYPE flag, unsigned char int_irq, unsigned char int_flg)
 {
-	enum G2D_INT_TYPE ret_v = 0;
+	G2D_INT_TYPE ret_v = 0;
 	//POVERLAYMIXER pHwOVERLAYMIXER;
 	//pHwOVERLAYMIXER  = (volatile POVERLAYMIXER)tcc_p2v(HwOVERLAYMIXER_BASE);
 	volatile void __iomem *reg = GRE_2D_GetAddress();
@@ -592,7 +592,8 @@ void GRE_2D_ClutCtrl(unsigned int ch, unsigned int index, unsigned int data)
 
 	if(index > 256)
 	{
-		pr_err("[ERR][G2D] Invalid index value(%d)\n",__func__, __LINE__, index);
+		pr_err("[ERR][G2D] [%s:%d] Invalid index value(%d)\n",
+				__func__, __LINE__, index);
 		return;
 	}
 
@@ -613,7 +614,8 @@ void GRE_2D_ClutCtrl(unsigned int ch, unsigned int index, unsigned int data)
 		//pClut[index] = data;
 	}
 	else {
-		pr_err("[ERR][G2D] [%s:%d] invalid ch for clut\n", __func__, __LINE__);
+		pr_err("[ERR][G2D] [%s:%d] invalid ch for clut\n",
+				__func__, __LINE__);
 	}
 }
 #endif /* TCC_OVERLAY_MIXER_CLUT_SUPPORT */

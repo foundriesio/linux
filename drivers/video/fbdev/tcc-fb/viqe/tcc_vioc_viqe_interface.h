@@ -110,7 +110,7 @@ void TCC_VIQE_DI_Run(struct VIQE_DI_TYPE *viqe_arg);
 void TCC_VIQE_DI_DeInit(struct VIQE_DI_TYPE *viqe_arg);
 void TCC_VIQE_DI_GET_SOURCE_INFO(struct tcc_lcdc_image_update *input_image,
 	unsigned int layer);
-void TCC_VIQE_DI_Init60Hz_M2M(enum TCC_OUTPUT_TYPE outputMode,
+void TCC_VIQE_DI_Init60Hz_M2M(TCC_OUTPUT_TYPE outputMode,
 	struct tcc_lcdc_image_update *input_image);
 void TCC_VIQE_DI_Run60Hz_M2M(struct tcc_lcdc_image_update *input_image,
 	int reset_frmCnt);
@@ -118,7 +118,7 @@ void TCC_VIQE_DI_DeInit60Hz_M2M(int layer);
 void TCC_VIQE_Scaler_Init60Hz_M2M(struct tcc_lcdc_image_update *input_image);
 void TCC_VIQE_Scaler_Run60Hz_M2M(struct tcc_lcdc_image_update *input_image);
 void TCC_VIQE_Scaler_Release60Hz_M2M(void);
-void TCC_VIQE_DI_Sub_Init60Hz_M2M(enum TCC_OUTPUT_TYPE outputMode,
+void TCC_VIQE_DI_Sub_Init60Hz_M2M(TCC_OUTPUT_TYPE outputMode,
 	struct tcc_lcdc_image_update *input_image);
 void TCC_VIQE_DI_Sub_Run60Hz_M2M(struct tcc_lcdc_image_update *input_image,
 	int reset_frmCnt);
@@ -130,7 +130,7 @@ void TCC_VIQE_Scaler_Sub_Release60Hz_M2M(void);
 irqreturn_t TCC_VIQE_Scaler_Handler60Hz_M2M(int irq, void *client_data);
 irqreturn_t TCC_VIQE_Scaler_Sub_Handler60Hz_M2M(int irq, void *client_data);
 void TCC_VIQE_Display_Update60Hz_M2M(struct tcc_lcdc_image_update *input_image);
-void TCC_VIQE_DI_Init60Hz(enum TCC_OUTPUT_TYPE outputMode, int lcdCtrlNum,
+void TCC_VIQE_DI_Init60Hz(TCC_OUTPUT_TYPE outputMode, int lcdCtrlNum,
 	struct tcc_lcdc_image_update *input_image);
 void TCC_VIQE_DI_Swap60Hz(int mode);
 void TCC_VIQE_DI_SetFMT60Hz(int enable);
@@ -150,13 +150,13 @@ extern int tca_edr_el_configure(struct tcc_lcdc_image_update *Src_ImageInfo,
 	struct tcc_lcdc_image_update *El_ImageInfo, unsigned int *ratio);
 #endif
 
-extern enum TCC_OUTPUT_TYPE Output_SelectMode;
+extern TCC_OUTPUT_TYPE Output_SelectMode;
 extern struct tcc_dp_device *tca_fb_get_displayType(
-	enum TCC_OUTPUT_TYPE check_type);
+	TCC_OUTPUT_TYPE check_type);
 
 #ifdef CONFIG_TCC_HDMI_DRIVER_V2_0
 #include "../tcc_vsync.h"
-extern void set_hdmi_drm(enum HDMI_DRM_MODE mode,
+extern void set_hdmi_drm(HDMI_DRM_MODE mode,
 	struct tcc_lcdc_image_update *pImage, unsigned int layer);
 #endif
 

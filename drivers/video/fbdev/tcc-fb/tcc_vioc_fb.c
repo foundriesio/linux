@@ -68,7 +68,7 @@
 #include <linux/console.h>
 #include <linux/uaccess.h>
 
-#include <linux/io.h>
+#include <asm/io.h>
 #include <asm/div64.h>
 #include <asm/system_info.h>
 #ifdef CONFIG_PM
@@ -168,7 +168,7 @@ extern void tcc_scrshare_set_sharedBuffer(unsigned int addr, unsigned int frameW
 #endif
 
 #ifdef CONFIG_HDMI_DISPLAY_LASTFRAME
-extern void tcc_video_info_backup(enum VSYNC_CH_TYPE type, struct tcc_lcdc_image_update *input_image);
+extern void tcc_video_info_backup(VSYNC_CH_TYPE type, struct tcc_lcdc_image_update *input_image);
 extern int tcc_video_check_last_frame(struct tcc_lcdc_image_update *ImageInfo);
 #endif
 
@@ -179,7 +179,7 @@ extern void tca_vioc_displayblock_disable(struct tcc_dp_device *pDisplayInfo);
 extern void tca_vioc_displayblock_extra_set(struct tcc_dp_device *pDisplayInfo, struct  tcc_fb_extra_data *tcc_fb_extra_data);
 #endif
 extern void tca_vioc_displayblock_timing_set(unsigned int outDevice, struct tcc_dp_device *pDisplayInfo,  struct lcdc_timimg_parms_t *mode);
-extern void tca_vioc_displayblock_ctrl_set(unsigned int outDevice, struct tcc_dp_device *pDisplayInfo, struct LCDTIMING *pstTiming, struct LCDCTR *pstCtrl);
+extern void tca_vioc_displayblock_ctrl_set(unsigned int outDevice, struct tcc_dp_device *pDisplayInfo, stLTIMING *pstTiming, stLCDCTR *pstCtrl);
 extern int tca_fb_pan_display(struct fb_var_screeninfo *var, struct fb_info *info);
 extern void tca_fb_activate_var(unsigned int dma_addr,  struct fb_var_screeninfo *var, struct tcc_dp_device *pdp_data);
 extern void tca_scale_display_update(struct tcc_dp_device *pdp_data, struct tcc_lcdc_image_update *ImageInfo);
@@ -188,11 +188,11 @@ extern void tccfb1_set_par(struct tccfb_info *fbi,  struct fb_var_screeninfo *va
 extern unsigned int tca_fb_get_fifo_underrun_count(void);
 
 #ifdef CONFIG_DIRECT_MOUSE_CTRL
-extern void tca_fb_mouse_set_icon(struct tcc_mouse_icon *mouse_icon);
-extern int tca_fb_mouse_move(unsigned int width, unsigned int height, struct tcc_mouse *mouse, struct tcc_dp_device *pdp_data);
+extern void tca_fb_mouse_set_icon(tcc_mouse_icon *mouse_icon);
+extern int tca_fb_mouse_move(unsigned int width, unsigned int height, tcc_mouse *mouse, struct tcc_dp_device *pdp_data);
 #endif
-extern void tca_fb_resize_set_value(struct tcc_display_resize resize_value, enum TCC_OUTPUT_TYPE output);
-extern void tca_fb_output_attach_resize_set_value(struct tcc_display_resize resize_value);
+extern void tca_fb_resize_set_value(tcc_display_resize resize_value, TCC_OUTPUT_TYPE output);
+extern void tca_fb_output_attach_resize_set_value(tcc_display_resize resize_value);
 extern int tca_fb_divide_set_mode(struct tcc_dp_device *pdp_data, char enable, char mode);
 
 extern void tca_fb_attach_start(struct tccfb_info *info);
@@ -272,7 +272,7 @@ static struct lcd_panel *display_ext_panel = NULL;
 
 static int lcd_video_started = 0;
 
-enum TCC_OUTPUT_TYPE	Output_SelectMode =  TCC_OUTPUT_NONE;
+TCC_OUTPUT_TYPE	Output_SelectMode =  TCC_OUTPUT_NONE;
 
 
 static char  HDMI_pause = 0;
@@ -292,9 +292,9 @@ extern void tca_fb_wait_for_vsync(struct tcc_dp_device *pdata);
 extern void tca_fb_vsync_activate(struct tcc_dp_device *pdata);
 
 extern int tcc_fb_swap_vpu_frame(struct tcc_dp_device *pdp_data,
-						struct WMIXER_INFO_TYPE *WmixerInfo,
+						WMIXER_INFO_TYPE *WmixerInfo,
 						struct tcc_lcdc_image_update *TempImage,
-						enum VSYNC_CH_TYPE type);
+						VSYNC_CH_TYPE type);
 
 
 #if defined(CONFIG_SYNC_FB)
@@ -413,7 +413,7 @@ static void ext_fence_handler(struct kthread_work *work)
 }
 #endif
 
-struct tcc_dp_device *tca_fb_get_displayType(enum TCC_OUTPUT_TYPE check_type)
+struct tcc_dp_device *tca_fb_get_displayType(TCC_OUTPUT_TYPE check_type)
 {
 	struct fb_info *info = registered_fb[0];
 	struct tccfb_info *tccfb_info = NULL;
@@ -534,7 +534,7 @@ void tccfb_extoutput_activate(int fb, int stage)
 }
 EXPORT_SYMBOL(tccfb_extoutput_activate);
 
-void tccfb_output_starter(char output_type, char lcdc_num, struct LCDTIMING *pstTiming, struct LCDCTR *pstCtrl, int specific_pclk)
+void tccfb_output_starter(char output_type, char lcdc_num, stLTIMING *pstTiming, stLCDCTR *pstCtrl, int specific_pclk)
 {
 	struct fb_info *info;
 	struct tccfb_info *ptccfb_info =NULL;
@@ -961,10 +961,10 @@ static int tccfb_ioctl(struct fb_info *info, unsigned int cmd,unsigned long arg)
 
 		case TCC_LCDC_SET_OUTPUT_RESIZE_MODE:
 			{
-				struct tcc_display_resize resize_value;
+				tcc_display_resize resize_value;
 				struct tcc_dp_device *pdp_data = NULL;
 
-				if(copy_from_user((void *)&resize_value, (const void *)arg, sizeof(struct tcc_display_resize)))
+				if(copy_from_user((void *)&resize_value, (const void *)arg, sizeof(tcc_display_resize)))
 					return -EFAULT;
 
 				//pr_debug("[DBG][FB] %s : TCC_LCDC_SET_OUTPUT_RESIZE_MODE, mode=%d\n", __func__, mode);
@@ -990,12 +990,12 @@ static int tccfb_ioctl(struct fb_info *info, unsigned int cmd,unsigned long arg)
 
 		case TCC_SECONDARY_OUTPUT_RESIZE_MODE_STB:
 			{
-				struct tcc_display_resize resize_value;
+				tcc_display_resize resize_value;
 				#ifdef CONFIG_PRESENTATION_SECONDAY_DISPLAY_RESIZE_STB
 				struct tcc_dp_device *pdp_data = NULL;
 				#endif
 
-				if(copy_from_user((void *)&resize_value, (const void *)arg, sizeof(struct tcc_display_resize)))
+				if(copy_from_user((void *)&resize_value, (const void *)arg, sizeof(tcc_display_resize)))
 					return -EFAULT;
 
 				#ifdef CONFIG_PRESENTATION_SECONDAY_DISPLAY_RESIZE_STB
@@ -1024,12 +1024,12 @@ static int tccfb_ioctl(struct fb_info *info, unsigned int cmd,unsigned long arg)
 		case TCC_LCDC_SET_OUTPUT_ATTACH_RESIZE_MODE:
 			{
 				int ret = 0;
-				struct tcc_display_resize resize_value;
+				tcc_display_resize resize_value;
 				struct tcc_dp_device *pdp_data = NULL;
 
 				pdp_data = &ptccfb_info->pdata.Mdp_data;
 
-				if(copy_from_user((void *)&resize_value, (const void *)arg, sizeof(struct tcc_display_resize)))
+				if(copy_from_user((void *)&resize_value, (const void *)arg, sizeof(tcc_display_resize)))
 					return -EFAULT;
 
 				//dprintk("%s : TCC_LCDC_SET_OUTPUT_ATTACH_RESIZE_MODE, mode=%d\n", __func__, mode);
@@ -1299,7 +1299,7 @@ static int tccfb_ioctl(struct fb_info *info, unsigned int cmd,unsigned long arg)
 
 		case TCC_LCDC_HDMI_MODE_SET:
  			{
-				enum TCC_HDMI_M uiHdmi;
+				TCC_HDMI_M uiHdmi;
 
 				if(get_user(uiHdmi, (int __user *) arg))
 					return -EFAULT;
@@ -1338,21 +1338,21 @@ static int tccfb_ioctl(struct fb_info *info, unsigned int cmd,unsigned long arg)
 
 		case TCC_LCDC_HDMI_GET_SIZE:
 			{
-				struct tcc_display_size HdmiSize;
+				tcc_display_size HdmiSize;
 				HdmiSize.width = HDMI_video_width;
 				HdmiSize.height = HDMI_video_height;
   				HdmiSize.frame_hz = HDMI_video_hz;
 
 				dprintk("%s: TCC_LCDC_HDMI_GET_SIZE -  HDMI_video_width:%d HDMI_video_height:%d   \n", __func__ , HDMI_video_width, HDMI_video_height);
-				if (copy_to_user((struct tcc_display_size *)arg, &HdmiSize, sizeof(HdmiSize)))		{
+				if (copy_to_user((tcc_display_size *)arg, &HdmiSize, sizeof(HdmiSize)))		{
 					return -EFAULT;
 				}
 			}
 			break;
 		case TCC_LCDC_HDMI_SET_SIZE:
 			{
-				struct tcc_display_size HdmiSize;
-				if (copy_from_user((void *)&HdmiSize, (const void *)arg, sizeof(struct tcc_display_size)))
+				tcc_display_size HdmiSize;
+				if (copy_from_user((void *)&HdmiSize, (const void *)arg, sizeof(tcc_display_size)))
 					return -EFAULT;
 
 				HDMI_video_width = HdmiSize.width;
@@ -1430,7 +1430,7 @@ static int tccfb_ioctl(struct fb_info *info, unsigned int cmd,unsigned long arg)
 			unsigned int BaseAddr = 0;
                         struct fb_var_screeninfo var;
 			struct tcc_dp_device *pdp_data;
-			struct external_fbioput_vscreeninfo sc_info;
+			external_fbioput_vscreeninfo sc_info;
 
                         #if defined(CONFIG_SYNC_FB)
                         int fd;
@@ -1459,7 +1459,7 @@ static int tccfb_ioctl(struct fb_info *info, unsigned int cmd,unsigned long arg)
 				return 0;
 			}
                         pdp_data->DispOrder = DD_SUB;
-			if (copy_from_user((void*)&sc_info, (const void*)arg, sizeof(struct external_fbioput_vscreeninfo))) {
+			if (copy_from_user((void*)&sc_info, (const void*)arg, sizeof(external_fbioput_vscreeninfo))) {
 				return -EFAULT;
 			}
 
@@ -1515,7 +1515,7 @@ static int tccfb_ioctl(struct fb_info *info, unsigned int cmd,unsigned long arg)
                         #endif
 			mutex_unlock(&ptccfb_info->ext_timeline_lock);
 
-			if (copy_to_user((struct external_fbioput_vscreeninfo *)arg, (void*)&sc_info, sizeof(struct external_fbioput_vscreeninfo)))
+			if (copy_to_user((external_fbioput_vscreeninfo *)arg, (void*)&sc_info, sizeof(external_fbioput_vscreeninfo)))
 				return -EFAULT;
 
 			#endif
@@ -1525,11 +1525,11 @@ static int tccfb_ioctl(struct fb_info *info, unsigned int cmd,unsigned long arg)
 	case TCC_SH_DISPLAY_FBIOPUT_VSCREENINFO:
 		{
 			unsigned int BaseAddr = 0;
-			struct external_fbioput_vscreeninfo sc_info;
+			external_fbioput_vscreeninfo sc_info;
 			struct tcc_dp_device *pdp_data = NULL;
 			pdp_data = &ptccfb_info->pdata.Sdp_data;
 
-			if (copy_from_user((void*)&sc_info, (const void*)arg, sizeof(struct external_fbioput_vscreeninfo)))
+			if (copy_from_user((void*)&sc_info, (const void*)arg, sizeof(external_fbioput_vscreeninfo)))
 				return -EFAULT;
 
 		 	BaseAddr = ptccfb_info->map_dma + sc_info.offset;
@@ -1556,9 +1556,9 @@ static int tccfb_ioctl(struct fb_info *info, unsigned int cmd,unsigned long arg)
 		case TCC_LCDC_COMPOSITE_MODE_SET:
 			{
 				struct tcc_dp_device *pdp_data = NULL;
-				enum LCDC_COMPOSITE_MODE composite_mode;
+				LCDC_COMPOSITE_MODE composite_mode;
 
-				if(copy_from_user((void *)&composite_mode, (const void *)arg, sizeof(enum LCDC_COMPOSITE_MODE))){
+				if(copy_from_user((void *)&composite_mode, (const void *)arg, sizeof(LCDC_COMPOSITE_MODE))){
 					return -EFAULT;
 				}
 
@@ -1664,9 +1664,9 @@ static int tccfb_ioctl(struct fb_info *info, unsigned int cmd,unsigned long arg)
 		case TCC_LCDC_COMPONENT_MODE_SET:
 			{
 				struct tcc_dp_device *pdp_data = NULL;
-				enum LCDC_COMPONENT_MODE component_mode;
+				LCDC_COMPONENT_MODE component_mode;
 
-				if(copy_from_user((void *)&component_mode, (const void *)arg, sizeof(enum LCDC_COMPONENT_MODE))){
+				if(copy_from_user((void *)&component_mode, (const void *)arg, sizeof(LCDC_COMPONENT_MODE))){
 					return -EFAULT;
 				}
 
@@ -1824,10 +1824,10 @@ static int tccfb_ioctl(struct fb_info *info, unsigned int cmd,unsigned long arg)
 #ifdef CONFIG_DIRECT_MOUSE_CTRL
 		case TCC_LCDC_MOUSE_MOVE:
 			{
-				struct tcc_mouse mouse;
+				tcc_mouse mouse;
 				struct tcc_dp_device *pdp_data = NULL;
 
-				if (copy_from_user((void *)&mouse, (const void *)arg, sizeof(struct tcc_mouse)))
+				if (copy_from_user((void *)&mouse, (const void *)arg, sizeof(tcc_mouse)))
 					return -EFAULT;
 
 				if((ptccfb_info->pdata.Mdp_data.DispDeviceType == TCC_OUTPUT_HDMI)
@@ -1845,8 +1845,8 @@ static int tccfb_ioctl(struct fb_info *info, unsigned int cmd,unsigned long arg)
 			break;
 		case TCC_LCDC_MOUSE_ICON:
 			{
-				struct tcc_mouse_icon mouse_icon;
-				if (copy_from_user((void *)&mouse_icon, (const void *)arg, sizeof(struct tcc_mouse_icon)))
+				tcc_mouse_icon mouse_icon;
+				if (copy_from_user((void *)&mouse_icon, (const void *)arg, sizeof(tcc_mouse_icon)))
 					return -EFAULT;
 				tca_fb_mouse_set_icon(&mouse_icon);
 			}
@@ -2073,16 +2073,16 @@ static int tccfb_ioctl(struct fb_info *info, unsigned int cmd,unsigned long arg)
 			{
 				struct tcc_dp_device *pdp_data = NULL;
 
-				struct lcdc_chromakey_params chromakey_ctrl;
+				lcdc_chromakey_params chromakey_ctrl;
 				unsigned int chroma_en;
 				unsigned int key_r, key_g, key_b;
 				unsigned int mask_r, mask_g, mask_b;
 
 				if (cmd == TCC_LCDC_FB_CHROMAKEY_CONTROL_KERNEL) {
-					if (NULL == memcpy((void *)&chromakey_ctrl, (const void *)arg, sizeof(struct lcdc_chromakey_params)))
+					if (NULL == memcpy((void *)&chromakey_ctrl, (const void *)arg, sizeof(lcdc_chromakey_params)))
 						return -EFAULT;
 				} else {
-					if (copy_from_user((void *)&chromakey_ctrl, (const void *)arg, sizeof(struct lcdc_chromakey_params)))
+					if (copy_from_user((void *)&chromakey_ctrl, (const void *)arg, sizeof(lcdc_chromakey_params)))
 						return -EFAULT;
 				}
 
@@ -2297,7 +2297,7 @@ static int tccfb_ioctl(struct fb_info *info, unsigned int cmd,unsigned long arg)
 		{
 		#if defined(CONFIG_VIDEO_DISPLAY_SWAP_VPU_FRAME) && defined(CONFIG_TCC_VIDEO_DISPLAY_BY_VSYNC_INT)
 			int ret;
-			struct WMIXER_INFO_TYPE WmixerInfo;
+			WMIXER_INFO_TYPE WmixerInfo;
 			struct tcc_lcdc_image_update *TempImage;
 			struct tcc_dp_device *pdp_data = NULL;
 
@@ -2865,7 +2865,7 @@ static int __init tccfb_map_video_memory(struct tccfb_info *fbi, int plane)
 #endif
 
 	if (fbi->map_cpu) {
-		unsigned int tca_get_scaler_num(enum TCC_OUTPUT_TYPE Output, unsigned int Layer);
+		unsigned int tca_get_scaler_num(TCC_OUTPUT_TYPE Output, unsigned int Layer);
 
 		/* prevent initial garbage on screen */
 		#if defined(CONFIG_LOGO_PRESERVE_WITHOUT_FB_INIT)

@@ -56,7 +56,7 @@ typedef struct {
 } overlay_config_t;
 
 typedef struct {
-	struct overlay_config_t cfg;
+	overlay_config_t cfg;
 	unsigned int addr;
 	unsigned int addr1;
 	unsigned int addr2;

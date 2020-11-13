@@ -96,7 +96,7 @@ extern void vout_m2m_display_update(struct tcc_vout_device *vout,
 extern unsigned int HDMI_video_width;
 extern unsigned int HDMI_video_height;
 extern struct tcc_dp_device *tca_get_displayType(
-	enum TCC_OUTPUT_TYPE check_type);
+	TCC_OUTPUT_TYPE check_type);
 extern void tca_edr_el_display_update(
 	struct tcc_dp_device *pdp_data,
 	struct tcc_lcdc_image_update *ImageInfo);

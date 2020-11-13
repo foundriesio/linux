@@ -20,7 +20,7 @@
 #define	_TCC_COMPOSITE_H_
 
 
-extern struct tcc_dp_device *tca_fb_get_displayType(enum TCC_OUTPUT_TYPE check_type);
+extern struct tcc_dp_device *tca_fb_get_displayType(TCC_OUTPUT_TYPE check_type);
 extern void tca_scale_display_update(struct tcc_dp_device *pdp_data,
 				     struct tcc_lcdc_image_update *ImageInfo);
 extern void tca_vioc_displayblock_powerOn(struct tcc_dp_device *pDisplayInfo,
@@ -29,8 +29,8 @@ extern void tca_vioc_displayblock_powerOff(struct tcc_dp_device *pDisplayInfo);
 extern void tca_vioc_displayblock_disable(struct tcc_dp_device *pDisplayInfo);
 extern void tca_vioc_displayblock_ctrl_set(unsigned int outDevice,
 					   struct tcc_dp_device *pDisplayInfo,
-					   struct LCDTIMING *pstTiming,
-					   struct LCDCTR *pstCtrl);
+					   stLTIMING *pstTiming,
+					   stLCDCTR *pstCtrl);
 extern void tca_fb_attach_start(struct tccfb_info *info);
 extern int tca_fb_attach_stop(struct tccfb_info *info);
 

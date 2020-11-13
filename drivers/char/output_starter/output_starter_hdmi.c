@@ -66,7 +66,7 @@ extern unsigned int hdmi_get_current_output_vic(struct hdmi_tx_dev *dev);
 
 // Output Start API
 extern void tcc_output_starter_memclr(int img_width, int img_height);
-extern void tccfb_output_starter(char output_type, char lcdc_num, struct LCDTIMING *pstTiming, struct LCDCTR *pstCtrl, int specific_pclk);
+extern void tccfb_output_starter(char output_type, char lcdc_num, stLTIMING *pstTiming, stLCDCTR *pstCtrl, int specific_pclk);
 extern void tccfb_output_starter_extra_data(char output_type, struct tcc_fb_extra_data *tcc_fb_extra_data);
 
 // STATIC API----------------------------------------------------------------------------------
@@ -279,8 +279,8 @@ int tcc_output_starter_hdmi_v2_0(unsigned int display_device, volatile void __io
         uint16_t temp_val;
 
         // Timing Param.
-        struct LCDTIMING stHDMI_Timing;
-        struct LCDCTR stHDMI_Ctrl;
+        stLTIMING stHDMI_Timing;
+        stLCDCTR stHDMI_Ctrl;
 
         int hdmi_interlaced_mode;
         unsigned int vactive, displaydevice_width, displaydevice_height;

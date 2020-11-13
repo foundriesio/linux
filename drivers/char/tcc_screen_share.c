@@ -123,7 +123,7 @@ static void tcc_scrshare_get_dstinfo(struct tcc_mbox_data *mssg)
 static void tcc_scrshare_display(struct tcc_mbox_data *mssg)
 {
 	long ret = 0;
-	struct overlay_shared_buffer_t buffer_cfg;
+	overlay_shared_buffer_t buffer_cfg;
 
 	pr_debug("%s shared_enable:%d base:%d, frm_w:%d, frm_h:%d, fmt:%d\n",
 		 __func__, tcc_scrshare_info->share_enable, mssg->data[0],

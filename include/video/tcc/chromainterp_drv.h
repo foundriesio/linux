@@ -24,13 +24,13 @@
 
 #define CITPL_IOC_MAGIC		'c'
 
-enum tcc_citpl_type {
+typedef enum {
 	TCC_CITPL_NONE,
 	TCC_CITPL_X,
 	TCC_CITPL_Y,
 	TCC_CITPL_XY,
 	TCC_CITPL_MAX
-};
+} tcc_citpl_type;
 
 struct VIOC_CITPL_SET {
 	unsigned int citpl_n;	// chroma interpolator number

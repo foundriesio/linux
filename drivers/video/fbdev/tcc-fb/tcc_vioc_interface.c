@@ -199,7 +199,7 @@ extern void fb_quickboot_lastframe_display_release(void);
 extern unsigned int fb_lock;
 #endif
 
-extern enum TCC_OUTPUT_TYPE Output_SelectMode;
+extern TCC_OUTPUT_TYPE Output_SelectMode;
 extern void tcc_plugout_for_composite(int ch_layer);
 extern void tcc_plugout_for_component(int ch_layer);
 #ifdef CONFIG_VIDEO_DISPLAY_SWAP_VPU_FRAME
@@ -223,7 +223,7 @@ extern unsigned int hdmi_get_pixel_clock(void);
 #if defined(CONFIG_TCC_VSYNC_DRV_CONTROL_LUT)
 extern int vsync_process_lastframe_plugin_lut(void);
 #endif
-extern void set_hdmi_drm(enum HDMI_DRM_MODE mode, struct tcc_lcdc_image_update *pImage, unsigned int layer);
+extern void set_hdmi_drm(HDMI_DRM_MODE mode, struct tcc_lcdc_image_update *pImage, unsigned int layer);
 #endif
 #endif
 
@@ -253,11 +253,11 @@ static unsigned int fb_g2d_pbuf0;
 static unsigned int fb_g2d_pbuf1;
 
 #ifdef CONFIG_DIRECT_MOUSE_CTRL
-static struct tcc_display_mouse mouse_data;
+static tcc_display_mouse mouse_data;
 #endif
-static struct tcc_display_resize resize_data;
-static struct tcc_display_divide divide_data;
-static struct tcc_display_resize output_attach_resize_data;
+static tcc_display_resize resize_data;
+static tcc_display_divide divide_data;
+static tcc_display_resize output_attach_resize_data;
 
 unsigned int vsync_rdma_off[VSYNC_MAX];	// RDMA_VIDEO enable/disable
 
@@ -270,11 +270,11 @@ extern void tca_lcdc_interrupt_onoff(char onoff, char lcdc);
 #define ATTACH_SCALER (VIOC_SCALER3)
 #endif//
 
-static struct tcc_display_attach attach_data;
-static struct tcc_display_attach_intr attach_intr;
+static tcc_display_attach attach_data;
+static tcc_display_attach_intr attach_intr;
 
 #ifdef CONFIG_PRESENTATION_SECONDAY_DISPLAY_RESIZE_STB
-static struct tcc_display_resize secondary_display_resize_data;	//composite , component
+static tcc_display_resize secondary_display_resize_data;	//composite , component
 #endif//
 
 //#define CONFIG_DUMP_DISPLAY_UNDERRUN
@@ -364,7 +364,7 @@ void tca_fb_mem_scale_init(void)
 }
 
 
-unsigned int tca_get_scaler_num(enum TCC_OUTPUT_TYPE Output, unsigned int Layer)
+unsigned int tca_get_scaler_num(TCC_OUTPUT_TYPE Output, unsigned int Layer)
 {
 	unsigned int iSCNum = VIOC_SCALER3;
 
@@ -488,7 +488,7 @@ void vioc_display_device_reset(unsigned int device_num, struct tcc_dp_device *pD
 
 	volatile unsigned char WMIXER_N, RDMA_N[RDMA_MAX_NUM];
 
-	struct VIOC_PlugInOutCheck VIOC_PlugIn[VIOC_VIQE + 1];
+	VIOC_PlugInOutCheck VIOC_PlugIn[VIOC_VIQE + 1];
 	volatile unsigned char VIOC_PlugIn_reset[get_vioc_index(VIOC_VIQE0) + 1];
 	volatile void __iomem *pSC_Backup[get_vioc_index(VIOC_SCALER3) + 1];
 	volatile void __iomem *pSC_Addr[get_vioc_index(VIOC_SCALER3) +1];
@@ -1478,8 +1478,8 @@ void tca_vioc_displayblock_timing_set(unsigned int outDevice, struct tcc_dp_devi
 	unsigned int width, height;
 	volatile void __iomem *pDISP = pDisplayInfo->ddc_info.virt_addr;
 	volatile void __iomem *pWMIX = pDisplayInfo->wmixer_info.virt_addr;
-	struct LCDCTR stCtrlParam;
-	struct LCDTIMING stTimingParam;
+	stLCDCTR stCtrlParam;
+	stLTIMING stTimingParam;
 	unsigned int rdma_en = 0;
 	#if defined(CONFIG_LCD_HDMI640X480TU)
 	int lcd_hdmi640x480tu = 0;
@@ -1927,8 +1927,8 @@ int tca_vioc_displayblock_pre_ctrl_set(struct tcc_dp_device *dp_device)
 
 void tca_vioc_displayblock_ctrl_set(unsigned int outDevice,
 								struct tcc_dp_device *pDisplayInfo,
-								struct LCDTIMING *pstTiming,
-								struct LCDCTR *pstCtrl)
+								stLTIMING *pstTiming,
+								stLCDCTR *pstCtrl)
 {
         unsigned int rdma_en;
         int skip_display_device = 0;
@@ -2554,7 +2554,7 @@ void tca_fb_sc_rdma_active_var(unsigned int base_addr, struct fb_var_screeninfo 
 
 	unsigned int alpha_type = 0, alpha_blending_en = 0;
 	unsigned int chromaR, chromaG, chromaB, chroma_en = 0;
-  	struct tcc_display_resize *pResize= &resize_data;
+  	tcc_display_resize *pResize= &resize_data;
 	volatile void __iomem *pSC;
 	unsigned int blk_num=pdp_data->rdma_info[RDMA_FB].blk_num;
 	volatile void __iomem *pRDMA = pdp_data->rdma_info[RDMA_FB].virt_addr;
@@ -2829,7 +2829,7 @@ void tca_fb_sc_m2m_rdma_active_var(unsigned int base_addr, struct fb_var_screeni
 	struct fb_var_screeninfo sc_var;
 	unsigned int lcd_width, lcd_height;
 	unsigned int targetAddr;
-  	struct tcc_display_resize *pResize = &resize_data;
+  	tcc_display_resize *pResize = &resize_data;
 
 	memcpy(&sc_var, var, sizeof(struct fb_var_screeninfo));
 
@@ -2879,9 +2879,9 @@ void tca_fb_sc_m2m_rdma_active_var(unsigned int base_addr, struct fb_var_screeni
 unsigned int tca_fb_g2d_m2m(unsigned int base_addr, struct fb_var_screeninfo * var, unsigned int g2d_rotate)
 {
 	static unsigned int g2d_buf_index;
-	struct G2D_BITBLIT_TYPE g2d_p;
+	G2D_BITBLIT_TYPE g2d_p;
 
-	memset(&g2d_p, 0x00, sizeof(struct G2D_BITBLIT_TYPE));
+	memset(&g2d_p, 0x00, sizeof(G2D_BITBLIT_TYPE));
 
 //	pr_info("[INF][VIOC_I] %s: %d \n", __func__, g2d_rotate);
 
@@ -2939,7 +2939,7 @@ void tca_fb_sc_g2d_rdma_active_var(unsigned int base_addr, struct fb_var_screeni
 {
 	struct fb_var_screeninfo tar_var;
 	unsigned int targetAddr, rotate, lcd_width, lcd_height;
-  	struct tcc_display_resize *pResize = &resize_data;
+  	tcc_display_resize *pResize = &resize_data;
 
 	#ifdef CONFIG_PRESENTATION_SECONDAY_DISPLAY_RESIZE_STB
 	if((pdp_data->DispOrder == DD_SUB) && ((pdp_data->DispDeviceType== TCC_OUTPUT_COMPONENT) || (pdp_data->DispDeviceType== TCC_OUTPUT_COMPOSITE)))
@@ -3442,7 +3442,7 @@ int tca_fb_attach_stop(struct tccfb_info *info)
 	}
 	pmap_release_info("output_attach");
 
-	memset((void*)&attach_data, 0x00, sizeof(struct tcc_display_attach));
+	memset((void*)&attach_data, 0x00, sizeof(tcc_display_attach));
 	return 0;
 }
 
@@ -3486,7 +3486,7 @@ void tca_fb_attach_stop_no_intr(struct tccfb_info *info)
 			attach_data.plugin = 0;
 		}
 
-        memset((void*)&attach_data, 0x00, sizeof(struct tcc_display_attach));
+        memset((void*)&attach_data, 0x00, sizeof(tcc_display_attach));
 }
 
 #ifdef CONFIG_DIRECT_MOUSE_CTRL
@@ -3512,7 +3512,7 @@ unsigned char tca_fb_mouse_data_out(unsigned int data_in, unsigned char yuv, uns
 	return data_out;
 }
 
-void tca_fb_mouse_set_icon(struct tcc_mouse_icon *mouse_icon)
+void tca_fb_mouse_set_icon(tcc_mouse_icon *mouse_icon)
 {
     int i, j, k;
     char *dst, *src = mouse_icon->buf;
@@ -3639,7 +3639,7 @@ void tca_fb_mouse_set_icon(struct tcc_mouse_icon *mouse_icon)
     mouse_data.index = !mouse_data.index;
 }
 
-int tca_fb_mouse_move(unsigned int width, unsigned int height, struct tcc_mouse *mouse, struct tcc_dp_device *pdp_data)
+int tca_fb_mouse_move(unsigned int width, unsigned int height, tcc_mouse *mouse, struct tcc_dp_device *pdp_data)
 {
 	volatile void __iomem *pDISPBase = pdp_data->ddc_info.virt_addr;
 	volatile void __iomem *pWMIXBase = pdp_data->wmixer_info.virt_addr;
@@ -3648,7 +3648,7 @@ int tca_fb_mouse_move(unsigned int width, unsigned int height, struct tcc_mouse 
 	unsigned int lcd_width, lcd_height, lcd_w_pos,lcd_h_pos, mouse_x, mouse_y;
 	unsigned int interlace_output = 0, display_width, display_height;
 	unsigned int wmix_channel = 0;
-  	struct tcc_display_resize *pResize = &resize_data;
+  	tcc_display_resize *pResize = &resize_data;
 
 	if((pDISPBase == NULL) || (pWMIXBase == NULL) || (pRDMABase == NULL)) {
 		//pr_err("[ERR][VIOC_I] %s - VIOC is not valid, RDMA:0x%08x, WMIX:0x%08x, DISP:0x%08x\n", __func__, pDISPBase, pWMIXBase, pRDMABase);
@@ -3750,24 +3750,24 @@ int tca_fb_mouse_move(unsigned int width, unsigned int height, struct tcc_mouse 
 }
 #endif
 
-void tca_fb_resize_set_value(struct tcc_display_resize resize_value, enum TCC_OUTPUT_TYPE output)
+void tca_fb_resize_set_value(tcc_display_resize resize_value, TCC_OUTPUT_TYPE output)
 {
 	pr_info("[INF][VIOC_I] %s : resize_up = %d, resize_down = %d, resize_left = %d, resize_right = %d\n", __func__,
 			resize_value.resize_up, resize_value.resize_down, resize_value.resize_left, resize_value.resize_right );
 #ifdef CONFIG_PRESENTATION_SECONDAY_DISPLAY_RESIZE_STB
 	if((output == TCC_OUTPUT_COMPONENT) || (output == TCC_OUTPUT_COMPOSITE))
-		memcpy((void *)&secondary_display_resize_data, (void *)&resize_value, sizeof(struct tcc_display_resize));
+		memcpy((void *)&secondary_display_resize_data, (void *)&resize_value, sizeof(tcc_display_resize));
 	else
 #endif//CONFIG_PRESENTATION_SECONDAY_DISPLAY_RESIZE_STB
-		memcpy((void *)&resize_data, (void *)&resize_value, sizeof(struct tcc_display_resize));
+		memcpy((void *)&resize_data, (void *)&resize_value, sizeof(tcc_display_resize));
 }
 
-void tca_fb_output_attach_resize_set_value(struct tcc_display_resize resize_value)
+void tca_fb_output_attach_resize_set_value(tcc_display_resize resize_value)
 {
 	pr_info("[INF][VIOC_I] %s : output_attach resize_up = %d, resize_down = %d, resize_left = %d, resize_right = %d\n", __func__,
 			resize_value.resize_up, resize_value.resize_down, resize_value.resize_left, resize_value.resize_right );
 
-	memcpy((void *)&output_attach_resize_data, (void *)&resize_value, sizeof(struct tcc_display_resize));
+	memcpy((void *)&output_attach_resize_data, (void *)&resize_value, sizeof(tcc_display_resize));
 }
 int tca_fb_divide_set_mode(struct tcc_dp_device *pdp_data, char enable, char mode)
 {
@@ -4040,7 +4040,7 @@ int tca_edr_path_configure(void)
 	if(vioc_v_dv_get_stage() != DV_OFF)
 	{
 		unsigned int lcd_pos_x, lcd_pos_y, lcd_width, lcd_height;
-		struct tcc_display_resize *pResize = &resize_data;
+		tcc_display_resize *pResize = &resize_data;
 
 	#ifdef CONFIG_PRESENTATION_SECONDAY_DISPLAY_RESIZE_STB
 		if((pdp_data->DispOrder == DD_SUB) && ((pdp_data->DispDeviceType== TCC_OUTPUT_COMPONENT) || (pdp_data->DispDeviceType== TCC_OUTPUT_COMPOSITE)))
@@ -4941,7 +4941,7 @@ EXPORT_SYMBOL(tca_edr_display_update);
 #endif
 #endif
 
-struct tcc_dp_device *tca_get_displayType(enum TCC_OUTPUT_TYPE check_type)
+struct tcc_dp_device *tca_get_displayType(TCC_OUTPUT_TYPE check_type)
 {
 	struct fb_info *info = registered_fb[0];
 	struct tccfb_info *tccfb_info = NULL;
@@ -5707,7 +5707,7 @@ void tccfb1_set_par(struct tccfb_info *fbi,  struct fb_var_screeninfo *var)
 		//scaler plug in check
 		if(VIOC_CONFIG_GetScaler_PluginToRDMA(pdp_data->rdma_info[rdmaN].blk_num) < 0)
 		{
-			struct VIOC_PlugInOutCheck VIOC_PlugIn;
+			VIOC_PlugInOutCheck VIOC_PlugIn;
 
 			VIOC_CONFIG_Device_PlugState(VIOC_SCALER0, &VIOC_PlugIn);
 			VIOC_RDMA_GetImageEnable(pdp_data->rdma_info[rdmaN].virt_addr, &en_rdma);
@@ -6148,7 +6148,7 @@ int tca_fb_init(struct tccfb_info *fbi)
 	}
 #endif
 
-	memset((void *)&resize_data, 0x00, sizeof(struct tcc_display_resize));
+	memset((void *)&resize_data, 0x00, sizeof(tcc_display_resize));
 
 	attach_intr.vioc_intr = kzalloc(sizeof(struct vioc_intr_type), GFP_KERNEL);
 	if (!attach_intr.vioc_intr)

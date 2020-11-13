@@ -398,8 +398,8 @@ void tcc_component_set_lcd2tv(enum COMPONENT_MODE_TYPE mode,
 	struct TCC_COMPONENT_START_TYPE start)
 {
 	struct COMPONENT_SPEC_TYPE spec;
-	struct LCDTIMING ComponentTiming;
-	struct LCDCTR LcdCtrlParam;
+	stLTIMING ComponentTiming;
+	stLCDCTR LcdCtrlParam;
 	int ret;
 
 	struct fb_info *info = registered_fb[0];

@@ -45,7 +45,7 @@
 #ifdef CONFIG_VOUT_DISPLAY_LASTFRAME
 static struct pmap lastframe_pbuf;
 static int enable_LastFrame;
-static struct WMIXER_ALPHASCALERING_INFO_TYPE fbmixer;
+static WMIXER_ALPHASCALERING_INFO_TYPE fbmixer;
 #endif
 
 //#define MAX_VIQE_FRAMEBUFFER
@@ -1039,8 +1039,8 @@ static int deintl_viqe_setup(struct tcc_vout_device *vout, enum deintl_type dein
 
 	/* viqe config variable */
 	int vmisc_tsdu = 0;									// 0: viqe size is get from vioc module
-	enum VIOC_VIQE_DEINTL_MODE di_mode;
-	enum VIOC_VIQE_FMT_TYPE di_fmt = VIOC_VIQE_FMT_YUV420;	// DI_DECn_MISC.FMT, DI_FMT.F422 register
+	VIOC_VIQE_DEINTL_MODE di_mode;
+	VIOC_VIQE_FMT_TYPE di_fmt = VIOC_VIQE_FMT_YUV420;	// DI_DECn_MISC.FMT, DI_FMT.F422 register
 														//TODO: VIOC_VIQE_FMT_YUV420 = 0, VIOC_VIQE_FMT_YUV422 = 1
 #ifdef MAX_VIQE_FRAMEBUFFER
 	framebufferWidth = 1920;
@@ -1851,7 +1851,7 @@ void vout_onthefly_display_update(struct tcc_vout_device *vout, struct v4l2_buff
 				}
 				return;
 			} else {
-				struct VIOC_PlugInOutCheck plugin_state;
+				VIOC_PlugInOutCheck plugin_state;
 
 				VIOC_CONFIG_Device_PlugState(vioc->viqe.id, &plugin_state);
 				if (!plugin_state.enable || plugin_state.connect_statue != VIOC_PATH_CONNECTED) {
@@ -2521,7 +2521,7 @@ void vout_m2m_display_update(struct tcc_vout_device *vout, struct v4l2_buffer *b
 				return;
 				#endif
 			} else {
-				struct VIOC_PlugInOutCheck plugin_state;
+				VIOC_PlugInOutCheck plugin_state;
 
 				#ifdef CONFIG_VOUT_KEEP_VIDEO_LAYER
 				if (vout->is_viqe_shared) {
@@ -2806,7 +2806,7 @@ force_disp:
 						vout->firstFieldFlag = 0;
 					return;
 				} else {
-					struct VIOC_PlugInOutCheck plugin_state;
+					VIOC_PlugInOutCheck plugin_state;
 
 					VIOC_CONFIG_Device_PlugState(vioc->viqe.id, &plugin_state);
 					if (!plugin_state.enable || plugin_state.connect_statue != VIOC_PATH_CONNECTED) {

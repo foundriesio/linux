@@ -129,7 +129,7 @@ extern void ths8200_enable(int mode, int starter_flag);
 #if defined(CONFIG_OUTPUT_SKIP_KERNEL_LOGO)
 extern char* boot_recovery_mode;
 #endif
-extern void tccfb_output_starter(char output_type, char lcdc_num, struct LCDTIMING *pstTiming, struct LCDCTR *pstCtrl, int specific_pclk);
+extern void tccfb_output_starter(char output_type, char lcdc_num, stLTIMING *pstTiming, stLCDCTR *pstCtrl, int specific_pclk);
 extern void vioc_reset_rdma_on_display_path(int DispNum);
 
 static char default_composite_resolution = STARTER_COMPOSITE_NTSC;
@@ -221,8 +221,8 @@ void tcc_output_starter_composite(unsigned char lcdc_num, unsigned char type, st
 #ifdef CONFIG_FB_TCC_COMPOSITE
 	enum COMPOSITE_MODE_TYPE mode;
 	struct COMPOSITE_SPEC_TYPE spec;
-	struct LCDTIMING CompositeTiming;
-	struct LCDCTR LcdCtrlParam;
+	stLTIMING CompositeTiming;
+	stLCDCTR LcdCtrlParam;
 	volatile void __iomem *pDISP = pOutput_Starter_DISP;
 	volatile void __iomem *pRDMA = pOutput_Starter_RDMA;
 	volatile void __iomem *pDDICfg = pOutput_Starter_DDICFG;
@@ -291,7 +291,7 @@ void tcc_output_starter_composite(unsigned char lcdc_num, unsigned char type, st
 	CompositeTiming.fswc2 = spec.composite_FSWC2;
 	CompositeTiming.fewc2 = spec.composite_FEWC2;
 
-	memset((struct LCDCTR *)&LcdCtrlParam, 0x00, sizeof(struct LCDCTR));
+	memset((stLCDCTR *)&LcdCtrlParam, 0x00, sizeof(stLCDCTRR));
 #if defined(CONFIG_FB_TCC_COMPOSITE_BVO)
 	//LcdCtrlParam.evp = 0;
 	//LcdCtrlParam.evs = 0;
@@ -348,8 +348,8 @@ void tcc_output_starter_component(unsigned char lcdc_num, unsigned char type, st
 	struct device_node *np_component;
 
 	struct COMPONENT_SPEC_TYPE component_spec;
-	struct LCDTIMING ComponentTiming;
-	struct LCDCTR LcdCtrlParam;
+	stLTIMING ComponentTiming;
+	stLCDCTR LcdCtrlParam;
 
 	volatile void __iomem *pDISP;
 	volatile void __iomem *pWMIX;
@@ -439,7 +439,7 @@ void tcc_output_starter_component(unsigned char lcdc_num, unsigned char type, st
 	ComponentTiming.fswc2 = component_spec.component_FSWC2;
 	ComponentTiming.fewc2 = component_spec.component_FEWC2;
 
-	memset((struct LCDCTR *)&LcdCtrlParam, 0x00, sizeof(struct LCDCTR));
+	memset((stLCDCTR *)&LcdCtrlParam, 0x00, sizeof(stLCDCTR));
 
 	switch(type)
 	{
