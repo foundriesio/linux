@@ -178,7 +178,9 @@ static void tcc_gmac_ethtool_gregs(struct net_device *dev,
 {
 	int i;
 	u32 *reg_space = (u32 *) space;
-	// void __iomem *baddr = (void __iomem *)dev->base_addr;
+#if defined(CONFIG_ARM64_TCC_BUILD)
+	void __iomem *baddr = (void __iomem *)dev->base_addr;
+#endif
 
 	memset(reg_space, 0x0, REG_SPACE_SIZE);
 
