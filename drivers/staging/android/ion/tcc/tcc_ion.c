@@ -119,11 +119,10 @@ static struct ion_platform_data *tcc_ion_parse_dt(struct platform_device *pdev)
 			heap->base = pmap_ion_carveout_cam.base;
 			heap->size = pmap_ion_carveout_cam.size;
 			#ifdef CONFIG_PHYS_ADDR_T_64BIT
-			pr_info("ump_reserved base:0x%llx 0x%llx\n", heap->base,
+			pr_info("ion_carveout_cam base:0x%llx\n", heap->base);
 			#else
 			pr_info("ion_carveout_cam base:0x%x\n", heap->base);
 			#endif
-			       pmap_ump_reserved.base);
 		}
 #endif
 		++index;
