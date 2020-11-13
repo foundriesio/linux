@@ -7,8 +7,12 @@
 #include <linux/module.h>
 #include <linux/i2c.h>
 #include <linux/regmap.h>
+#include <linux/input/tcc_tsc_serdes.h>
 
-#include "tcc_tsc_serdes.h"
+#include "max96751.h"
+#include "max96851.h"
+#include "max96878.h"
+
 #define MODULE_NAME "tsc_serdes"
 
 static const struct regmap_config tsc_serdes_regmap_config = {

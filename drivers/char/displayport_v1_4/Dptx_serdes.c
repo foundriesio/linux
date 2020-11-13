@@ -208,85 +208,6 @@ static struct DP_V14_SER_DES_Reg_Data pstDP_Panel_VIC_1027_DesES3_RegVal[] = {
 	{0x98, 0x0005, 0x70, TCC_ALL_EVB_TYPE, SER_REV_ALL}, {0x98, 0x01CE, 0x4E, TCC_ALL_EVB_TYPE, SER_REV_ALL},	/* 3rd LCD */
 	{0xD0, 0x0005, 0x70, TCC_ALL_EVB_TYPE, SER_REV_ALL}, {0xD0, 0x01CE, 0x4E, TCC_ALL_EVB_TYPE, SER_REV_ALL},	/* 4th LCD */
 
-#if 1//defined( CONFIG_TOUCH_THROUGH_SERDES )
-/* Touch IRQ 1 : Ser GPIO #2 RX/TX RX ID 2  <-- TSC IRQ 1 */
-	{0xC0, 0x0210, 0x40, TCC_ALL_EVB_TYPE, SER_REV_ALL},
-	{0xC0, 0x0211, 0x40, TCC_ALL_EVB_TYPE, SER_REV_ALL},
-	{0xC0, 0x0212, 0x42, TCC_ALL_EVB_TYPE, SER_REV_ALL},
-	{0xC0, 0x0213, 0x22, TCC_ALL_EVB_TYPE, SER_REV_ALL},
-	{0xC0, 0x0211, 0x60, TCC_ALL_EVB_TYPE, SER_REV_ES4},
-	{0x90, 0x022E, 0x62, TCC_ALL_EVB_TYPE, SER_REV_ALL},
-	{0x90, 0x022F, 0x2F, TCC_ALL_EVB_TYPE, SER_REV_ALL}, /* Des1 GPIO #15 --> RX/TX TX ID 2 */
-	{0x90, 0x022D, 0x41, TCC_ALL_EVB_TYPE, SER_REV_ALL},
-	{0x90, 0x022D, 0x43, TCC_ALL_EVB_TYPE, SER_REV_ALL}, /* Toggle */
-
-/* Touch IRQ 2( TCC8050 ) : Ser GPIO #13 RX/TX RX ID 13  <-- TSC IRQ 2 */
-	{0xC0, 0x0268, 0x40, TCC8050_EVB_TYPE, SER_REV_ALL},
-	{0xC0, 0x0269, 0x40, TCC8050_EVB_TYPE, SER_REV_ALL},
-	{0xC0, 0x026A, 0x4D, TCC8050_EVB_TYPE, SER_REV_ALL},
-	{0xC0, 0x026B, 0x22, TCC8050_EVB_TYPE, SER_REV_ALL},
-	{0xC0, 0x0269, 0x60, TCC8050_EVB_TYPE, SER_REV_ES4},
-	{0x94, 0x022E, 0x6D, TCC8050_EVB_TYPE, SER_REV_ALL}, /* Pullup, Push-pull, TX ID 13 */
-	{0x94, 0x022F, 0x2F, TCC8050_EVB_TYPE, SER_REV_ALL}, /* RX EN, RX ID 15 */ /* Des2 GPIO #15 --> RX/TX TX ID 13 */
-	{0x94, 0x022D, 0x41, TCC8050_EVB_TYPE, SER_REV_ALL},
-	{0x94, 0x022D, 0x43, TCC8050_EVB_TYPE, SER_REV_ALL}, /* TX PRIO, TX EN, OUT DISABLE *//* Toggle */
-
-/* Touch IRQ 2( TCC8059 ) : Ser GPIO #9 RX/TX RX ID 9  <-- TSC IRQ 2 */
-	{0xC0, 0x0248, 0x40, TCC8059_EVB_TYPE, SER_REV_ALL},
-	{0xC0, 0x0249, 0x40, TCC8059_EVB_TYPE, SER_REV_ALL},
-	{0xC0, 0x024A, 0x49, TCC8059_EVB_TYPE, SER_REV_ALL},
-	{0xC0, 0x024B, 0x22, TCC8059_EVB_TYPE, SER_REV_ALL},
-	{0xC0, 0x0005, 0x80, TCC8059_EVB_TYPE, SER_REV_ALL}, /* disable DPP_ERRB */
-	{0xC0, 0x0249, 0x60, TCC8059_EVB_TYPE, SER_REV_ES4},
-	{0x94, 0x022E, 0x69, TCC8059_EVB_TYPE, SER_REV_ALL},
-	{0x94, 0x022F, 0x2F, TCC8059_EVB_TYPE, SER_REV_ALL}, /* Des2 GPIO #15 --> RX/TX TX ID 9 */
-	{0x94, 0x022D, 0x41, TCC8059_EVB_TYPE, SER_REV_ALL},
-	{0x94, 0x022D, 0x43, TCC8059_EVB_TYPE, SER_REV_ALL}, /* Toggle */
-
-/* Touch IRQ 3 : Ser GPIO #20 RX/TX RX ID 20	<-- TSC IRQ 3 */
-	{0xC0, 0x02A0, 0x40, TCC8050_EVB_TYPE, SER_REV_ALL},
-	{0xC0, 0x02A1, 0x54, TCC8050_EVB_TYPE, SER_REV_ALL},
-	{0xC0, 0x02A2, 0x54, TCC8050_EVB_TYPE, SER_REV_ALL},
-	{0xC0, 0x02A3, 0x22, TCC8050_EVB_TYPE, SER_REV_ALL},
-	{0xC0, 0x02A1, 0x74, TCC8050_EVB_TYPE, SER_REV_ES4},
-	{0x98, 0x022E, 0x74, TCC8050_EVB_TYPE, SER_REV_ALL}, /* Des3 GPIO #15 --> RX/TX TX ID 20 */
-	{0x98, 0x022F, 0x2F, TCC8050_EVB_TYPE, SER_REV_ALL},
-	{0x98, 0x022D, 0x61, TCC8050_EVB_TYPE, SER_REV_ALL},
-	{0x98, 0x022D, 0x63, TCC8050_EVB_TYPE, SER_REV_ALL}, /* Toggle */
-
-/* Touch Reset 1 : Ser GPIO #4 RX/TX RX ID 4  --> TSC Reset 1 */
-	{0xC0, 0x0220, 0x01, TCC_ALL_EVB_TYPE, SER_REV_ALL},
-	{0xC0, 0x0221, 0x04, TCC_ALL_EVB_TYPE, SER_REV_ALL},
-	{0x90, 0x0230, 0x84, TCC_ALL_EVB_TYPE, SER_REV_ALL}, /* RES CFG, RX EN, OUT EN */
-	{0x90, 0x0231, 0xB0, TCC_ALL_EVB_TYPE, SER_REV_ALL}, /* Pulldown, Push-pull, TX ID 16 */
-	{0x90, 0x0232, 0x64, TCC_ALL_EVB_TYPE, SER_REV_ALL}, /* Des1 GPIO #16 <-- RX/TX TX ID 4 *//* RX EN, RX ID 4 */
-
-/* Touch Reset 2( TCC8059 ) : Ser GPIO #4 RX/TX RX ID 4 --> TSC Reset 2 */
-	{0x94, 0x0230, 0x84, TCC8059_EVB_TYPE, SER_REV_ALL},
-	{0x94, 0x0231, 0xB0, TCC8059_EVB_TYPE, SER_REV_ALL},
-	{0x94, 0x0232, 0x64, TCC8059_EVB_TYPE, SER_REV_ALL}, /* Des2 GPIO #16 <-- RX/TX TX ID 4 */
-	{0xC0, 0x0223, 0x20, TCC_ALL_EVB_TYPE, SER_REV_ALL},
-	{0xC0, 0x0223, 0x21, TCC_ALL_EVB_TYPE, SER_REV_ALL}, /* Toggle */
-
-/* Touch Reset 2( TCC8050 ) : Ser GPIO #12 RX/TX RX ID 12	--> TSC Reset 2 */
-	{0xC0, 0x0260, 0x01, TCC8050_EVB_TYPE, SER_REV_ALL},
-	{0xC0, 0x0261, 0x0C, TCC8050_EVB_TYPE, SER_REV_ALL},
-	{0x94, 0x0230, 0x84, TCC8050_EVB_TYPE, SER_REV_ALL},
-	{0x94, 0x0231, 0xB0, TCC8050_EVB_TYPE, SER_REV_ALL},
-	{0x94, 0x0232, 0x6C, TCC8050_EVB_TYPE, SER_REV_ALL}, /* Des2 GPIO #16 <-- RX/TX RX ID 12 */
-	{0xC0, 0x0263, 0x20, TCC8050_EVB_TYPE, SER_REV_ALL},
-	{0xC0, 0x0263, 0x21, TCC8050_EVB_TYPE, SER_REV_ALL},
-
-/* Touch Reset 3 : Ser GPIO #12 RX/TX RX ID 19	--> TSC Reset 3 */
-	{0xC0, 0x0298, 0x01, TCC8050_EVB_TYPE, SER_REV_ALL},
-	{0xC0, 0x0299, 0x13, TCC8050_EVB_TYPE, SER_REV_ALL},
-	{0x98, 0x0230, 0x84, TCC8050_EVB_TYPE, SER_REV_ALL},
-	{0x98, 0x0231, 0xB0, TCC8050_EVB_TYPE, SER_REV_ALL},
-	{0x98, 0x0232, 0x73, TCC8050_EVB_TYPE, SER_REV_ALL}, /* Des3 GPIO #19 <-- RX/TX RX ID 12 */
-	{0xC0, 0x029B, 0x20, TCC8050_EVB_TYPE, SER_REV_ALL},
-	{0xC0, 0x029B, 0x21, TCC8050_EVB_TYPE, SER_REV_ALL}, /* Toggle */
-#endif
-
 /* LCD Reset 1 : Ser GPIO #1 RX/TX RX ID 1  --> LCD Reset #1 */
 	{0xC0, 0x0208, 0x01, TCC_ALL_EVB_TYPE, SER_REV_ALL}, {0xC0, 0x0209, 0x01, TCC_ALL_EVB_TYPE, SER_REV_ALL},
 	{0x90, 0x0233, 0x84, TCC_ALL_EVB_TYPE, SER_REV_ALL},
@@ -389,35 +310,6 @@ static struct DP_V14_SER_DES_Reg_Data pstDP_Panel_VIC_1027_DesES3_RegVal[] = {
 /*	I2C Setting							 */
 /*****************************************/
 /* Des1, 2, 3 GPIO #14 I2C Driving */
-#if 1//defined( CONFIG_TOUCH_THROUGH_SERDES )
-	{0x90, 0x022A, 0x18, TCC_ALL_EVB_TYPE, SER_REV_ALL},
-	{0x94, 0x022A, 0x18, TCC_ALL_EVB_TYPE, SER_REV_ALL},
-	{0x98, 0x022A, 0x18, TCC8050_EVB_TYPE, SER_REV_ALL},
-	{0xC0, 0x0096, 0x4E, TCC_ALL_EVB_TYPE, SER_REV_ES4}, /* ES4 Ser - modify timeout value to 0x4E */
-
-	{0xC0, 0x009E, 0x00, TCC_ALL_EVB_TYPE, SER_REV_ALL}, /* DP SER PT_I2C_AUTO_CFG_1[0] and PT_I2C_AUTO_CFG_2[0] set low */
-	{0xC0, 0x0079, 0x43, TCC8050_EVB_TYPE, SER_REV_ALL}, /* TCC8050 3MST - Enable PT1(1Des), PT2(2 Des)*/
-	{0xC0, 0x0079, 0x11, TCC8059_EVB_TYPE, SER_REV_ALL}, /* TCC8059 2MST - Enable PT1(2Des) */
-
-	{0x90, 0x0006, 0x01, TCC_ALL_EVB_TYPE, SER_REV_ALL},	/* OLDI DES1 PT1 enable */
-	{0x94, 0x0006, 0x02, TCC8050_EVB_TYPE, SER_REV_ALL},	/* OLDI DES2 PT2 enable */
-	{0x98, 0x0006, 0x02, TCC8050_EVB_TYPE, SER_REV_ALL}, /* OLDI DES3 PT2 enable */
-	{0x94, 0x0006, 0x01, TCC8059_EVB_TYPE, SER_REV_ALL}, /* OLDI DES2 PT1 enable */
-
-	{0x90, 0x0071, 0x02, TCC_ALL_EVB_TYPE, SER_REV_ALL}, /* OLDI DES1 ROUTE PT1 pins to GMSLPT1 */
-	{0x94, 0x0071, 0x00, TCC8050_EVB_TYPE, SER_REV_ALL}, /* OLDI DES2 DIS ROUTE PT1 pins to GMSLPT1 */
-	{0x94, 0x0072, 0x02, TCC8050_EVB_TYPE, SER_REV_ALL}, /* OLDI DES2 ROUTE PT1 pins to GMSLPT2 */
-	{0x94, 0x0071, 0x02, TCC8059_EVB_TYPE, SER_REV_ALL}, /* OLDI DES2 ROUTE PT1 pins to GMSLPT1 */
-
-	{0x98, 0x0071, 0x00, TCC8050_EVB_TYPE, SER_REV_ALL}, /* OLDI DES2 DIS ROUTE PT1 pins to GMSLPT1 */
-	{0x98, 0x0072, 0x02, TCC8050_EVB_TYPE, SER_REV_ALL}, /* OLDI DES2 ROUTE PT1 pins to GMSLPT2 */
-
-/*  Touch IC Address Re-Assignment */
-	{0x90, 0x0252, 0x96, TCC_ALL_EVB_TYPE, SER_REV_ALL}, {0x90, 0x0253, 0x94, TCC_ALL_EVB_TYPE, SER_REV_ALL},
-	{0x94, 0x0256, 0x9A, TCC8050_EVB_TYPE, SER_REV_ALL}, {0x94, 0x0257, 0x94, TCC8050_EVB_TYPE, SER_REV_ALL},
-	{0x98, 0x0256, 0x9E, TCC8050_EVB_TYPE, SER_REV_ALL}, {0x98, 0x0257, 0x94, TCC8050_EVB_TYPE, SER_REV_ALL},
-	{0x94, 0x0252, 0x9A, TCC8059_EVB_TYPE, SER_REV_ALL}, {0x94, 0x0253, 0x94, TCC8059_EVB_TYPE, SER_REV_ALL},
-#endif
 
 	{0x90, 0x020C, 0x90, TCC_ALL_EVB_TYPE, SER_REV_ALL},
 	{0x94, 0x020C, 0x90, TCC_ALL_EVB_TYPE, SER_REV_ALL},
@@ -501,31 +393,6 @@ static struct DP_V14_SER_DES_Reg_Data pstDP_Panel_VIC_1027_DesES2_RegVal[] = {
 	{0x90, 0x022D, 0x63, TCC_ALL_EVB_TYPE, SER_REV_ALL}, {0x90, 0x022E, 0x6F, TCC_ALL_EVB_TYPE, SER_REV_ALL}, {0x90, 0x022F, 0x2F, TCC_ALL_EVB_TYPE, SER_REV_ALL},
 	{0x90, 0x022A, 0x18, TCC_ALL_EVB_TYPE, SER_REV_ALL}, {0x90, 0x020C, 0x80, TCC_ALL_EVB_TYPE, SER_REV_ALL},
 	{DP_SER_DES_DELAY_DEV_ADDR, DP_SER_DES_INVALID_REG_ADDR, 100, TCC_ALL_EVB_TYPE, SER_REV_ALL},/*	  delay 100ms	 */
-
-/* Touch IRQ 1 : Ser GPIO #2 RX/TX RX ID 2  <-- TSC IRQ 1 */
-	{0xC0, 0x0210, 0x40, TCC_ALL_EVB_TYPE, SER_REV_ALL},
-	{0xC0, 0x0211, 0x40, TCC_ALL_EVB_TYPE, SER_REV_ALL},
-	{0xC0, 0x0212, 0x42, TCC_ALL_EVB_TYPE, SER_REV_ALL},
-	{0xC0, 0x0213, 0x22, TCC_ALL_EVB_TYPE, SER_REV_ALL},
-	{0xC0, 0x0211, 0x60, TCC_ALL_EVB_TYPE, SER_REV_ES4},
-	{0x90, 0x022E, 0x62, TCC_ALL_EVB_TYPE, SER_REV_ALL},
-	{0x90, 0x022F, 0x2F, TCC_ALL_EVB_TYPE, SER_REV_ALL}, /* Des1 GPIO #15 --> RX/TX TX ID 2 */
-	{0x90, 0x022D, 0x41, TCC_ALL_EVB_TYPE, SER_REV_ALL},
-	{0x90, 0x022D, 0x43, TCC_ALL_EVB_TYPE, SER_REV_ALL}, /* Toggle */
-/* Touch Reset 1 : Ser GPIO #4 RX/TX RX ID 4  --> TSC Reset 1 */
-	{0xC0, 0x0220, 0x01, TCC_ALL_EVB_TYPE, SER_REV_ALL},
-	{0xC0, 0x0221, 0x04, TCC_ALL_EVB_TYPE, SER_REV_ALL},
-	{0x90, 0x0230, 0x84, TCC_ALL_EVB_TYPE, SER_REV_ALL}, /* RES CFG, RX EN, OUT EN */
-	{0x90, 0x0231, 0xB0, TCC_ALL_EVB_TYPE, SER_REV_ALL}, /* Pulldown, Push-pull, TX ID 16 */
-	{0x90, 0x0232, 0x64, TCC_ALL_EVB_TYPE, SER_REV_ALL}, /* Des1 GPIO #16 <-- RX/TX TX ID 4 *//* RX EN, RX ID 4 */
-
-	{0xC0, 0x0079, 0x43, TCC8050_EVB_TYPE, SER_REV_ALL}, /* TCC8050 3MST - Enable PT1(1Des), PT2(2 Des)*/
-	{0xC0, 0x0079, 0x11, TCC8059_EVB_TYPE, SER_REV_ALL}, /* TCC8059 2MST - Enable PT1(2Des) */
-
-	{0x90, 0x0006, 0x01, TCC_ALL_EVB_TYPE, SER_REV_ALL},	/* OLDI DES1 PT1 enable */
-	{0x90, 0x0071, 0x02, TCC_ALL_EVB_TYPE, SER_REV_ALL}, /* OLDI DES1 ROUTE PT1 pins to GMSLPT1 */
-/*  Touch IC Address Re-Assignment */
-	{0x90, 0x0252, 0x96, TCC_ALL_EVB_TYPE, SER_REV_ALL}, {0x90, 0x0253, 0x94, TCC_ALL_EVB_TYPE, SER_REV_ALL},
 
 	{0x90, 0x020C, 0x90, TCC_ALL_EVB_TYPE, SER_REV_ALL},
 	{DP_SER_DES_DELAY_DEV_ADDR, DP_SER_DES_INVALID_REG_ADDR, 100, TCC_ALL_EVB_TYPE, SER_REV_ALL},/*	  delay 100ms	 */
@@ -683,13 +550,42 @@ bool Dptx_Max968XX_Get_TopologyState( u8 *pucNumOfPluggedPorts )
 	return (DPTX_RETURN_SUCCESS);
 }
 
+/* B190164 - Update SerDes Register for Touch Init */
+bool Touch_Max968XX_update_reg(struct Dptx_Params *pstDptx)
+{
+	struct Max968xx_dev *pstMax968xx_dev;
+	int ret;
+
+	pstMax968xx_dev = &stMax968xx_dev[SER_INPUT_INDEX_0];
+	if (pstMax968xx_dev->pstClient == NULL) {
+		dptx_err("There is no Serializer connnected ");
+		return (bool)true;
+	}
+
+#if defined(CONFIG_TOUCHSCREEN_INIT_SERDES)
+	ret = tcc_tsc_serdes_update(
+			pstMax968xx_dev->pstClient,
+			NULL,
+			pstDptx->ucNumOfPorts,
+			pstMax968xx_dev->ucEVB_Type,
+			pstMax968xx_dev->ucSER_Revision_Num
+			);
+	if (ret < 0) {
+		dptx_err("failed to update register for touch");
+		return (bool)true;
+	}
+#endif
+	return (bool)false;
+}
+
 bool Dptx_Max968XX_Reset( struct Dptx_Params *pstDptx )
 {
-	unsigned char					ucSerDes_Index;
-	unsigned char					ucSER_Revision_Num = 0, ucDES_Revision_Num = 0, ucRW_Data;
-	unsigned int					uiElements;
-	int								iRetVal;
-	struct Max968xx_dev				*pstMax968xx_dev;
+	unsigned char	ucSerDes_Index;
+	unsigned char	ucSER_Revision_Num = 0, ucDES_Revision_Num = 0, ucRW_Data;
+	unsigned int	uiElements;
+	int		iRetVal;
+	bool		bRetVal;
+	struct Max968xx_dev		*pstMax968xx_dev;
 	struct DP_V14_SER_DES_Reg_Data	*pstSERDES_Reg_Info;
 
 	pstMax968xx_dev = &stMax968xx_dev[SER_INPUT_INDEX_0];
@@ -768,19 +664,18 @@ bool Dptx_Max968XX_Reset( struct Dptx_Params *pstDptx )
 
 			ucRW_Data = MST_FUNCTION_DISABLE;
 		}
-		
-		if(( pstSERDES_Reg_Info[uiElements].ucDeviceType == TCC8059_EVB_TYPE ) && ( !pstDptx->bMultStreamTransport ) && ( pstSERDES_Reg_Info[uiElements].uiReg_Addr == 0x0079 ))
-		{
-			dptx_dbg("\n[%s:%d] Set to SST - Serializer Enable only I2C PT 1", __func__, __LINE__);
-
-			ucRW_Data = 0x01; /* Ser En PT1 only */
-		}
 
 		iRetVal = Dptx_Max968XX_I2C_Write( pstMax968xx_dev->pstClient, pstSERDES_Reg_Info[uiElements].uiReg_Addr, ucRW_Data );
 		if( iRetVal )
 		{
 			continue;
 		}
+	}
+
+	bRetVal = Touch_Max968XX_update_reg(pstDptx);
+	if (bRetVal) {
+		dptx_err("failed to update Ser/Des Register for Touch");
+		return (bool)true;
 	}
 
 	dptx_info("\n[%s:%d]SerDes I2C Resister update is successfully done !!!.. written %d registers \n", __func__, __LINE__, uiElements );

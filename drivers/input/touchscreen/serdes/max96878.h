@@ -3,71 +3,11 @@
  * Copyright (C) Telechips Inc.
  */
 
-#ifndef TSC_SERDES_H
-#define TSC_SERDES_H
+#ifndef MAX96878_H
+#define MAX96878_H
 
-#include <linux/regmap.h>
+#include <linux/input/tcc_tsc_serdes.h>
 
-#define DEV_REV_REG 0x000E
-
-#define HDMI_SER_ADDR 0x44
-#define HDMI_DES_ADDR 0xD4
-
-#define DP_SER_ADDR   0xC0
-#define DP_DES1_ADDR  0x90
-#define DP_DES2_ADDR  0x94
-#define DP_DES3_ADDR  0x98
-
-#define SER_DES_W_LEN 3 /* byte */
-#define DISPLAY_MAX_NUM 3
-
-#define TCC803X_EVB 0x803
-#define TCC805X_EVB 0xF
-#define TCC8050_EVB 1
-#define TCC8059_EVB 0
-
-/* serializer device revision */
-#define REV_ALL 0x0
-#define REV_ES4 0x3
-
-struct serdes_info {
-	struct i2c_client *client;
-	struct regmap *regmap;
-
-	int board_type;
-	unsigned int revision;
-	u8 des_num;
-};
-
-struct i2c_data {
-	unsigned short addr;
-	unsigned short reg;
-	unsigned char val;
-	int board;
-	int display_num;
-	unsigned revision;
-};
-
-static struct i2c_data hdmi_max96751_ser_regs[] = {
-	/* Touch GPIO------------------------------- */
-	/* Touch IRQ : Ser GPIO 5 RX/TX RX ID 15 */
-	{HDMI_SER_ADDR, 0x020F, 0xE4, TCC803X_EVB, 1, REV_ALL},
-	{HDMI_SER_ADDR, 0x0211, 0x4F, TCC803X_EVB, 1, REV_ALL},
-	/* Touch RST : Ser GPIO 9 RX/TX TX ID 9 */
-	{HDMI_SER_ADDR, 0x021B, 0x41, TCC803X_EVB, 1, REV_ALL},
-	{HDMI_SER_ADDR, 0x021C, 0x49, TCC803X_EVB, 1, REV_ALL},
-	{HDMI_SER_ADDR, 0x021D, 0x40, TCC803X_EVB, 1, REV_ALL},
-	/* Touch RST : Des GPIO 16 RX/TX RX ID 9 */
-	{HDMI_SER_ADDR, 0x021B, 0x43, TCC803X_EVB, 1, REV_ALL},
-	/* Touch GPIO------------------------------- */
-
-	/* set I2C_AUTO_CFG, I2C_SRC_CNT */
-	{HDMI_SER_ADDR, 0x0046, 0x08, TCC803X_EVB, 1, REV_ALL},
-	/* HDMI Ser PT1 Enable */
-	{HDMI_SER_ADDR, 0x0001, 0xD8, TCC803X_EVB, 1, REV_ALL},
-
-	{0, 0, 0, 0, 0, 0},
-};
 static struct i2c_data hdmi_max96878_des_regs[] = {
 	/* Touch IRQ : Des GPIO 15 RX/TX TX ID 15 */
 	{HDMI_DES_ADDR, 0x022D, 0x61, TCC803X_EVB, 1, REV_ALL},
@@ -87,69 +27,6 @@ static struct i2c_data hdmi_max96878_des_regs[] = {
 	{HDMI_DES_ADDR, 0x0071, 0x02, TCC803X_EVB, 1, REV_ALL},
 	/* GPIO14 I2C Driving */
 	{HDMI_DES_ADDR, 0x022A, 0x18, TCC803X_EVB, 1, REV_ALL},
-
-	{0, 0, 0, 0, 0, 0},
-};
-static struct i2c_data dp_max96851_ser_regs[] = {
-	/* Touch GPIO------------------------------- */
-	/* Touch IRQ 1 : Ser  GPIO #2  RX/TX RX ID 2 */
-	{DP_SER_ADDR, 0x0210, 0x40, TCC805X_EVB, 1, REV_ALL},
-	{DP_SER_ADDR, 0x0211, 0x40, TCC805X_EVB, 1, REV_ALL},
-	{DP_SER_ADDR, 0x0212, 0x42, TCC805X_EVB, 1, REV_ALL},
-	{DP_SER_ADDR, 0x0213, 0x22, TCC805X_EVB, 1, REV_ALL},
-	{DP_SER_ADDR, 0x0211, 0x60, TCC805X_EVB, 1, REV_ES4},
-	/* Touch IRQ 2 (TCC8059) : Ser GPIO #9 RX/TX RX ID 9 */
-	{DP_SER_ADDR, 0x0248, 0x40, TCC8059_EVB, 2, REV_ALL},
-	{DP_SER_ADDR, 0x0249, 0x40, TCC8059_EVB, 2, REV_ALL},
-	{DP_SER_ADDR, 0x024A, 0x49, TCC8059_EVB, 2, REV_ALL},
-	{DP_SER_ADDR, 0x024B, 0x22, TCC8059_EVB, 2, REV_ALL},
-	{DP_SER_ADDR, 0x0005, 0x80, TCC8059_EVB, 2, REV_ALL},
-	{DP_SER_ADDR, 0x0249, 0x60, TCC8059_EVB, 2, REV_ES4},
-	/* Touch IRQ 2 (TCC8050) : Ser GPIO #13 RX/TX RX ID 13 */
-	{DP_SER_ADDR, 0x0268, 0x40, TCC8050_EVB, 2, REV_ALL},
-	{DP_SER_ADDR, 0x0269, 0x40, TCC8050_EVB, 2, REV_ALL},
-	{DP_SER_ADDR, 0x026A, 0x4D, TCC8050_EVB, 2, REV_ALL},
-	{DP_SER_ADDR, 0x026B, 0x22, TCC8050_EVB, 2, REV_ALL},
-	{DP_SER_ADDR, 0x0269, 0x60, TCC8050_EVB, 2, REV_ES4},
-	/* Touch IRQ 3 : Ser GPIO #20 RX/TX RX ID 20 */
-	{DP_SER_ADDR, 0x02A0, 0x40, TCC8050_EVB, 3, REV_ALL},
-	{DP_SER_ADDR, 0x02A1, 0x54, TCC8050_EVB, 3, REV_ALL},
-	{DP_SER_ADDR, 0x02A2, 0x54, TCC8050_EVB, 3, REV_ALL},
-	{DP_SER_ADDR, 0x02A3, 0x22, TCC8050_EVB, 3, REV_ALL},
-	{DP_SER_ADDR, 0x02A1, 0x74, TCC8050_EVB, 3, REV_ES4},
-	/* Touch RST 1 : Ser GPIO #4 RX/TX RX ID 4 */
-	{DP_SER_ADDR, 0x0220, 0x01, TCC805X_EVB, 1, REV_ALL},
-	{DP_SER_ADDR, 0x0221, 0x04, TCC805X_EVB, 1, REV_ALL},
-	/* Touch RST 2 (TCC8059) : Ser GPIO #4 RX/TX RX ID 4 */
-	{DP_SER_ADDR, 0x0223, 0x20, TCC805X_EVB, 2, REV_ALL},
-	{DP_SER_ADDR, 0x0223, 0x21, TCC805X_EVB, 2, REV_ALL},
-	/* Touch RST 2 (TCC8050) : Ser GPIO #12 RX/TX RX ID 12 */
-	{DP_SER_ADDR, 0x0260, 0x01, TCC8050_EVB, 2, REV_ALL},
-	{DP_SER_ADDR, 0x0261, 0x0C, TCC8050_EVB, 2, REV_ALL},
-	{DP_SER_ADDR, 0x0263, 0x20, TCC8050_EVB, 2, REV_ALL},
-	{DP_SER_ADDR, 0x0263, 0x21, TCC8050_EVB, 2, REV_ALL},
-	/* Touch RST 3 : Ser GPIO #12 RX/TX RX ID 19 */
-	{DP_SER_ADDR, 0x0298, 0x01, TCC8050_EVB, 3, REV_ALL},
-	{DP_SER_ADDR, 0x0299, 0x13, TCC8050_EVB, 3, REV_ALL},
-	{DP_SER_ADDR, 0x029B, 0x20, TCC8050_EVB, 3, REV_ALL},
-	{DP_SER_ADDR, 0x029B, 0x21, TCC8050_EVB, 3, REV_ALL},
-	/* Touch GPIO------------------------------- */
-
-	/* Ser ES4 : modify timeout value */
-	{DP_SER_ADDR, 0x0096, 0x4B, TCC805X_EVB, 1, REV_ES4},
-
-	{DP_SER_ADDR, 0x009E, 0x00, TCC8050_EVB, 2, REV_ALL},
-
-	/* TCC8059 SST - Enable PT1 */
-	{DP_SER_ADDR, 0x0079, 0x01, TCC8059_EVB, 1, REV_ALL},
-	/* TCC8059 2MST - Enable PT1 */
-	{DP_SER_ADDR, 0x0079, 0x11, TCC8059_EVB, 2, REV_ALL},
-	/* TCC8050 SST/2MST -Enable PT1, PT2 */
-	{DP_SER_ADDR, 0x0079, 0x03, TCC8050_EVB, 1, REV_ALL},
-	/* TCC8050 SST/2MST -Enable PT1, PT2 */
-	{DP_SER_ADDR, 0x0079, 0x03, TCC8050_EVB, 2, REV_ALL},
-	/* TCC8050 3MST - Enable PT1, PT2 */
-	{DP_SER_ADDR, 0x0079, 0x43, TCC8050_EVB, 3, REV_ALL},
 
 	{0, 0, 0, 0, 0, 0},
 };
@@ -236,4 +113,4 @@ static struct i2c_data dp_max96878_des_regs[] = {
 	{0, 0, 0, 0, 0, 0},
 };
 
-#endif
+#endif /* MAX96878_H */

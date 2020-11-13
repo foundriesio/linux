@@ -8,6 +8,8 @@
 
 #include <linux/compat.h>
 #include <linux/irqreturn.h>
+#include <linux/regmap.h>
+#include <linux/input/tcc_tsc_serdes.h>
 
 #define TCC_DPTX_DRV_MAJOR_VER			1
 #define TCC_DPTX_DRV_MINOR_VER			2
@@ -685,5 +687,6 @@ int  Dptx_Aux_Write_AddressOnly_To_I2C( struct Dptx_Params *pstDptx,        		  
 bool Dptx_Max968XX_Reset( struct Dptx_Params *pstDptx );
 bool Dptx_Max968XX_Get_TopologyState( u8 *pucNumOfPluggedPorts );
 //bool Dptx_Max968XX_Get_Des_VideoLocked( bool *pbVideoLocked );
+bool Touch_Max968XX_update_reg(struct Dptx_Params *pstDptx);
 
 #endif /* __DPTX_API_H__  */

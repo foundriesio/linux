@@ -243,6 +243,11 @@ static int Dpv14_Tx_Probe( struct platform_device *pdev)
 
 	pstVideoParams = &pstDptx->stVideoParams;
 
+	bRetVal = Touch_Max968XX_update_reg(pstDptx);
+	if (bRetVal) {
+		dptx_err("failed to update Ser/Des Register for Touch");
+	}
+
 	dptx_notice("TCC-DPTX-V %d.%d.%d", TCC_DPTX_DRV_MAJOR_VER, TCC_DPTX_DRV_MINOR_VER, TCC_DPTX_DRV_SUBTITLE_VER );
 	dptx_notice("	Hot %s ", ( pstDptx->eLast_HPDStatus == HPD_STATUS_PLUGGED ) ? "Plugged":"Unplugged", pstDptx->uiHPD_IRQ );
 	dptx_notice("	%s mode, %d lanes, %s rate", pstDptx->bMultStreamTransport ? "MST":"SST", pstDptx->stDptxLink.ucNumOfLanes, 
