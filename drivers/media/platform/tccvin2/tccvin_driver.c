@@ -32,70 +32,8 @@
 
 #include "tccvin_video.h"
 
-struct framesize framesize_list[] = {
-	{	 320,	 240	},
-	{	 640,	 480	},
-	{	1280,	 720	},
-	{	1920,	 720	},
-	{	1920,	1080	},
-};
-
 unsigned int tccvin_no_drop_param;
 unsigned int tccvin_timeout_param = TCCVIN_CTRL_STREAMING_TIMEOUT;
-
-/* Simplify a fraction using a simple continued fraction decomposition. The
- * idea here is to convert fractions such as 333333/10000000 to 1/30 using
- * 32 bit arithmetic only. The algorithm is not perfect and relies upon two
- * arbitrary parameters to remove non-significative terms from the simple
- * continued fraction decomposition. Using 8 and 333 for n_terms and threshold
- * respectively seems to give nice results.
- */
-void tccvin_simplify_fraction(uint32_t *numerator, uint32_t *denominator,
-		unsigned int n_terms, unsigned int threshold)
-{
-	uint32_t *an;
-	uint32_t x, y, r;
-	unsigned int i, n;
-
-	an = kmalloc((n_terms * sizeof(*an)), GFP_KERNEL);
-	if (an == NULL)
-		return;
-
-	/* Convert the fraction to a simple continued fraction. See
-	 * http://mathforum.org/dr.math/faq/faq.fractions.html
-	 * Stop if the current term is bigger than or equal to the given
-	 * threshold.
-	 */
-	x = *numerator;
-	y = *denominator;
-
-	for (n = 0; n < n_terms && y != 0; ++n) {
-		an[n] = x / y;
-		if (an[n] >= threshold) {
-			if (n < 2)
-				n++;
-			break;
-		}
-
-		r = x - an[n] * y;
-		x = y;
-		y = r;
-	}
-
-	/* Expand the simple continued fraction back to an integer fraction. */
-	x = 0;
-	y = 1;
-
-	for (i = n; i > 0; --i) {
-		r = y;
-		y = an[i-1] * y + x;
-		x = r;
-	}
-
-	*numerator = y;
-	*denominator = x;
-	kfree(an);
-}
 
 /* ------------------------------------------------------------------------
  * Descriptors parsing
@@ -103,16 +41,17 @@ void tccvin_simplify_fraction(uint32_t *numerator, uint32_t *denominator,
 
 static int tccvin_parse_format(struct tccvin_device *dev,
 	struct tccvin_streaming *streaming, struct tccvin_format *format,
-	__u32 **intervals)
+	__u32 **intervals, int nintervals)
 {
 	struct tccvin_format_desc *fmtdesc;
 	struct tccvin_format *streamimg_format;
 	struct tccvin_frame *frame;
-	int idxFormat, idxFrame;
+	struct framesize *framesize;
+	int idxFormat, idxFrame, idxInterval;
 	int ret = 0;
 
 	for (idxFormat = 0; idxFormat < streaming->nformats; idxFormat++) {
-		fmtdesc = &tccvin_fmts[idxFormat];
+		fmtdesc = tccvin_format_by_index(idxFormat);
 
 		streamimg_format = &streaming->format[idxFormat];
 		streamimg_format->index = idxFormat;
@@ -135,31 +74,23 @@ static int tccvin_parse_format(struct tccvin_device *dev,
 
 		for (idxFrame = 0; idxFrame < format->nframes; idxFrame++) {
 			frame = &format[idxFormat].frame[idxFrame];
-			frame->bFrameIndex			= idxFrame;
-			frame->bmCapabilities			= 0x00000000;
-			frame->wWidth				=
-				framesize_list[idxFrame].width;
-			frame->wHeight				=
-				framesize_list[idxFrame].height;
-#if 0
-			frame->dwMaxVideoFrameBufferSize	=
+			frame->bFrameIndex = idxFrame;
+			framesize = tccvin_framesize_by_index(idxFrame);
+			frame->wWidth = framesize->width;
+			frame->wHeight = framesize->height;
+			frame->dwMaxVideoFrameBufferSize =
 				frame->wWidth * frame->wHeight *
 				streamimg_format->bpp / 8;
-#endif
-			frame->dwDefaultFrameInterval		= 333333;
-			frame->bFrameIntervalType		= 2;
-			frame->dwFrameInterval			= *intervals;
-			frame->dwFrameInterval[0]		= 333333;
-			frame->dwFrameInterval[1]		= 666667;
-			frame->dwDefaultFrameInterval		=
-				min(frame->dwFrameInterval[1],
-					max(frame->dwFrameInterval[0],
-						frame->dwDefaultFrameInterval));
+			frame->bFrameIntervalType = nintervals;
+			for (idxInterval = 0; idxInterval < nintervals; idxInterval++) {
+				(*intervals)[idxInterval] = tccvin_framerate_by_index(idxInterval);
+				frame->dwDefaultFrameInterval = (*intervals)[idxInterval];
+			}
+			frame->dwFrameInterval = *intervals;
 
-			logd("index: %d\n",		frame->bFrameIndex);
-			logd("cap: 0x%08x\n",		frame->bmCapabilities);
-			logd("width: %d\n",		frame->wWidth);
-			logd("height: %d\n",		frame->wHeight);
+			logd("index: %d\n",	frame->bFrameIndex);
+			logd("width: %d\n",	frame->wWidth);
+			logd("height: %d\n",	frame->wHeight);
 			logd("max_buf_size: 0x%08x\n",
 				frame->dwMaxVideoFrameBufferSize);
 			logd("default_frame_interval: %d\n",
@@ -195,17 +126,15 @@ static int tccvin_parse_streaming(struct tccvin_device *dev)
 	streaming->type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
 
 	/* Count the format and frame descriptors. */
-	nformats = tccvin_format_num();
-	nframes = ARRAY_SIZE(framesize_list);
-	nintervals = 2;
+	nformats = tccvin_count_supported_formats();
+	nframes = tccvin_count_supported_framesizes();
+	nintervals = tccvin_count_supported_framerates();
 
 	if (nformats == 0) {
 		loge("no format is supported\n");
 		goto error;
 	}
 
-	logd("nformats: %d, nframes: %d, nintervals: %d",
-		nformats, nframes, nintervals);
 	size = nformats * sizeof(*format) + nframes * sizeof(*frame)
 	     + nintervals * sizeof(*interval);
 	format = kzalloc(size, GFP_KERNEL);
@@ -224,7 +153,7 @@ static int tccvin_parse_streaming(struct tccvin_device *dev)
 	format->frame = frame;
 	format->nframes = nframes;
 	ret = tccvin_parse_format(dev, streaming, format,
-		&interval);
+		&interval, nintervals);
 	if (ret < 0)
 		goto error;
 
