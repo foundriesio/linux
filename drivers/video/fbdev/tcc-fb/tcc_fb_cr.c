@@ -60,16 +60,15 @@
 #include <video/tcc/tcc_scaler_ioctrl.h>
 #include <video/tcc/tcc_attach_ioctrl.h>
 
-
 #ifdef CONFIG_OF
-static struct of_device_id fb_cr_of_match[] = {
-	{ .compatible = "telechips,fb_cr" },
+static const struct of_device_id fb_cr_of_match[] = {
+	{.compatible = "telechips,fb_cr"},
 	{}
 };
 MODULE_DEVICE_TABLE(of, fb_cr_of_match);
 #endif
 
-static int __init fb_cr_probe (struct platform_device *pdev)
+static int __init fb_cr_probe(struct platform_device *pdev)
 {
 	struct device_node *np = NULL;
 	unsigned int idx;
@@ -77,38 +76,52 @@ static int __init fb_cr_probe (struct platform_device *pdev)
 	unsigned int num_comp = 0;
 	unsigned int vioc_comp = 0;
 	unsigned int vioc_intr_type;
-	unsigned int irq_sts; //irq_status
-	unsigned int irq_num; //irq_num
+	unsigned int irq_sts; // irq_status
+	unsigned int irq_num; // irq_num
 
-	of_property_read_u32_index(pdev->dev.of_node, "telechips,num_comp", 0, &num_comp);
-	if(num_comp > 0){
-		for(idx = 0 ; idx < num_comp ; idx++){
-			of_property_read_u32_index(pdev->dev.of_node, "telechips,vioc_comp", idx , &vioc_comp);
-			switch(get_vioc_type(vioc_comp)){
-				case get_vioc_type(VIOC_DISP):
-					vioc_intr_type = VIOC_INTR_DEV0;
-					break;
-				case get_vioc_type(VIOC_RDMA):
-					vioc_intr_type = VIOC_INTR_RD0;
-					break;
-				case get_vioc_type(VIOC_WDMA):
-					vioc_intr_type = VIOC_INTR_WD0;
-					break;
-				default:
-					pr_err("[ERR][FB_CR] %s : invalid vioc type\n",__func__);
-					return -EINVAL;
-					break;
+	of_property_read_u32_index(
+		pdev->dev.of_node, "telechips,num_comp", 0, &num_comp);
+	if (num_comp > 0) {
+		for (idx = 0; idx < num_comp; idx++) {
+			of_property_read_u32_index(
+				pdev->dev.of_node, "telechips,vioc_comp", idx,
+				&vioc_comp);
+			switch (get_vioc_type(vioc_comp)) {
+			case get_vioc_type(VIOC_DISP):
+				vioc_intr_type = VIOC_INTR_DEV0;
+				break;
+			case get_vioc_type(VIOC_RDMA):
+				vioc_intr_type = VIOC_INTR_RD0;
+				break;
+			case get_vioc_type(VIOC_WDMA):
+				vioc_intr_type = VIOC_INTR_WD0;
+				break;
+			default:
+				pr_err("[ERR][FB_CR] %s : invalid vioc type\n",
+				       __func__);
+				return -EINVAL;
 			}
-			irq_sts = vioc_intr_get_status(vioc_intr_type + get_vioc_index(vioc_comp));
-			pr_debug("[DBG][FB_CR] %s : vioc component = %d, irq sts = %x\n",__func__,vioc_intr_type + get_vioc_index(vioc_comp), irq_sts);
+			irq_sts = vioc_intr_get_status(
+				vioc_intr_type + get_vioc_index(vioc_comp));
+			pr_debug(
+				"[DBG][FB_CR] %s : vioc component = %d, irq sts = %x\n",
+				__func__,
+				vioc_intr_type + get_vioc_index(vioc_comp),
+				irq_sts);
 
-			//clear interrupt
-			vioc_intr_clear(vioc_intr_type + get_vioc_index(vioc_comp) , irq_sts);
-			irq_sts = vioc_intr_get_status(vioc_intr_type + get_vioc_index(vioc_comp));
-			pr_debug("[DBG][FB_CR] %s : after cleared. irq sts = %x\n",__func__,irq_sts);
+			// clear interrupt
+			vioc_intr_clear(
+				vioc_intr_type + get_vioc_index(vioc_comp),
+				irq_sts);
+			irq_sts = vioc_intr_get_status(
+				vioc_intr_type + get_vioc_index(vioc_comp));
+			pr_debug(
+				"[DBG][FB_CR] %s : after cleared. irq sts = %x\n",
+				__func__, irq_sts);
 		}
-	}else{
-		pr_err("[ERR][FB_CR] %s : invalid VIOC component number\n",__func__);
+	} else {
+		pr_err("[ERR][FB_CR] %s : invalid VIOC component number\n",
+		       __func__);
 		return -EINVAL;
 	}
 
@@ -121,6 +134,7 @@ static int __init fb_cr_probe (struct platform_device *pdev)
 static int fb_cr_remove(struct platform_device *pdev)
 {
 	struct fb_info *info = platform_get_drvdata(pdev);
+
 	return 0;
 }
 
@@ -162,16 +176,17 @@ static struct platform_driver fb_cr_driver = {
 	.suspend = fb_cr_suspend, /* optional but recommended */
 	.resume = fb_cr_resume,   /* optional but recommended */
 	.driver = {
-		.name = "fb_cr",
+			.name = "fb_cr",
 #ifdef CONFIG_OF
-		.of_match_table = of_match_ptr(fb_cr_of_match),
+			.of_match_table = of_match_ptr(fb_cr_of_match),
 #endif
-	},
+		},
 };
 
 static int __init fb_cr_init(void)
 {
 	int ret;
+
 	ret = platform_driver_register(&fb_cr_driver);
 	return ret;
 }
