@@ -3455,9 +3455,10 @@ void dwc2_manual_change(struct dwc2_hsotg *hsotg)
 #ifndef CONFIG_USB_DWC2_TCC_MUX
 		dwc2_hcd_start(hsotg);
 #else
-		if (hsotg->mhst_uphy)
-			//usb_phy_init(hsotg->mhst_uphy);
+		if (hsotg->mhst_uphy) {
+			usb_phy_init(hsotg->mhst_uphy);
 			hsotg->mhst_uphy->set_phy_mux_sel(hsotg->mhst_uphy, 1);
+		}
 #endif
 
 	}
