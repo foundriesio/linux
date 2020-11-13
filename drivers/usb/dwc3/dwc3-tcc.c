@@ -974,6 +974,8 @@ err1:
 
 static int dwc3_tcc_register_our_phy(struct dwc3_tcc *tcc)
 {
+	int ret;
+
 	if (of_find_property(tcc->dev->of_node, "telechips,dwc3_phy", 0)) {
 		tcc->dwc3_phy =
 		    devm_usb_get_phy_by_phandle(tcc->dev, "telechips,dwc3_phy",
@@ -985,6 +987,13 @@ static int dwc3_tcc_register_our_phy(struct dwc3_tcc *tcc)
 			return -1;
 		}
 	}
+#if defined(CONFIG_ARCH_TCC803X) || \
+	defined(CONFIG_ARCH_TCC805X)
+	ret = tcc->dwc3_phy->set_vbus_resource(tcc->dwc3_phy);
+	if (ret != 0) {
+		return ret;
+	}
+#endif
 
 	return tcc->dwc3_phy->init(tcc->dwc3_phy);
 }
