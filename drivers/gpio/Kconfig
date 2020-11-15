@@ -47,6 +47,16 @@ config GPIOLIB_IRQCHIP
 	select IRQ_DOMAIN
 	bool
 
+config GPIOLIB_OOB
+	bool "Out-of-band GPIO calls"
+	depends on EVL
+	select CONFIG_GPIO_CDEV
+	select CONFIG_GPIO_CDEV_V1
+	help
+	  Enable support for out-of-band GPIO line handling requests via
+	  the user-space interface, which are served by the EVL real-time
+	  core.
+
 config DEBUG_GPIO
 	bool "Debug GPIO calls"
 	depends on DEBUG_KERNEL
