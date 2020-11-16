@@ -28,6 +28,7 @@
 #include <linux/delay.h>
 //#include <asm/mach-types.h>
 #include <linux/of_device.h>
+#include <linux/regmap.h>
 
 #include <linux/regulator/rt5028.h>
 //#define DEBUG
@@ -59,6 +60,8 @@ struct rt5028_data {
 	struct input_dev *input_dev;
 	struct timer_list timer;
 	struct regulator_dev *rdev[0];
+	/* for config i2c */
+	struct regmap *regmap;
 };
 
 
@@ -130,7 +133,7 @@ static struct rt5028_voltage_t buck12_voltages[] = {
     { 1800000, 0x34 }, { 1800000, 0x35 }, { 1800000, 0x36 }, { 1800000, 0x37 },
     { 1800000, 0x38 }, { 1800000, 0x39 }, { 1800000, 0x3A }, { 1800000, 0x3B },
     { 1800000, 0x3C }, { 1800000, 0x3D }, { 1800000, 0x3E }, { 1800000, 0x3F }, // 64
-}; 
+};
 #define NUM_BUCK12    ARRAY_SIZE(buck12_voltages) /* 700mV~1800mV */
 
 static struct rt5028_voltage_t buck34_voltages[] = {
@@ -147,10 +150,10 @@ static struct rt5028_voltage_t buck34_voltages[] = {
     { 2700000, 0x28 }, { 2750000, 0x29 }, { 2800000, 0x2A }, { 2850000, 0x2B },
     { 2900000, 0x2C }, { 2950000, 0x2D }, { 3000000, 0x2E }, { 3050000, 0x2F }, // 48
     { 3100000, 0x30 }, { 3150000, 0x31 }, { 3200000, 0x32 }, { 3250000, 0x33 },
-    { 3300000, 0x34 }, { 3350000, 0x35 }, { 3400000, 0x36 }, { 3450000, 0x37 }, 
-    { 3500000, 0x38 }, { 3550000, 0x39 }, { 3600000, 0x3A }, { 3600000, 0x3B }, 
+    { 3300000, 0x34 }, { 3350000, 0x35 }, { 3400000, 0x36 }, { 3450000, 0x37 },
+    { 3500000, 0x38 }, { 3550000, 0x39 }, { 3600000, 0x3A }, { 3600000, 0x3B },
     { 3600000, 0x3C }, { 3600000, 0x3D }, { 3600000, 0x3E }, { 3600000, 0x3F }, // 64
-}; 
+};
 #define NUM_BUCK34    ARRAY_SIZE(buck34_voltages)	 /* 700mV~3600mV */
 
 
@@ -227,6 +230,10 @@ static struct rt5028_voltage_t ldo456_voltages[] = {
     { 3600000, 0x7C }, { 3600000, 0x7D }, { 3600000, 0x7E }, { 3600000, 0x7F },
 };
 
+static const struct regmap_config rt5028_regmap_config = {
+    .reg_bits = 8,
+};
+
 #define NUM_LDO456     ARRAY_SIZE(ldo456_voltages)
 
 
@@ -249,11 +256,22 @@ static void rt5028_work_func(struct work_struct *work)
 {
 	struct rt5028_data* rt5028 = container_of(work, struct rt5028_data, work);
 	unsigned char data[2];
+	int ret;
 	dbg("%s\n", __func__);
 
+#ifdef CONFIG_ARCH_TCC
+	ret = regmap_read(rt5028->regmap, RT5028_IRQ1_STATUS_REG, (unsigned int *)&data[0]);
+	if (ret < 0)
+		dev_err(&rt5028_i2c_client->dev, "[%d]Failed to read REG: %d\n", __LINE__, ret);
+
+	ret = regmap_read(rt5028->regmap, RT5028_IRQ1_STATUS_REG, (unsigned int *)&data[1]);
+	if (ret < 0)
+		dev_err(&rt5028_i2c_client->dev, "[%d]Failed to read REG: %d\n", __LINE__, ret);
+#else
 	data[0] = (unsigned char)i2c_smbus_read_byte_data(rt5028->client, RT5028_IRQ1_STATUS_REG);
 	data[1] = (unsigned char)i2c_smbus_read_byte_data(rt5028->client, RT5028_IRQ2_STATUS_REG);
-	// Reset after read. 
+#endif
+	// Reset after read.
 
 	if (data[0]&RT5028_IR_OT) {
 		dbg("Internal over-temperature was triggered\r\n");
@@ -292,7 +310,7 @@ static void rt5028_work_func(struct work_struct *work)
 	if (data[0]&RT5028_IR_KPSHDN) {
 		dbg("Key-press forced shutdown\r\n");
 	}
-	
+
 	enable_irq(rt5028->client->irq);
 }
 
@@ -323,7 +341,7 @@ static int rt5028_buck_set_voltage(struct regulator_dev *rdev, int min_uV, int m
 	int i, max_num, ret;
 
 	static struct rt5028_voltage_t *buck_voltags;
-	
+
 	if(rt5028_suspend_status)
 		return -EBUSY;
 
@@ -362,11 +380,23 @@ static int rt5028_buck_set_voltage(struct regulator_dev *rdev, int min_uV, int m
 	if (i == max_num)
 		return -EINVAL;
 
+#ifdef CONFIG_ARCH_TCC
+	ret = regmap_read(rt5028->regmap, reg, (unsigned int *)&old_value);
+	if (ret < 0 ) {
+		dev_err(&rt5028_i2c_client->dev, "failed to read register(0x%x)\n", reg);
+		return -EINVAL;
+	}
+#else
 	old_value = i2c_smbus_read_byte_data(rt5028->client, reg);
+#endif
 	value = (old_value & 0x3) | (value << 2);
 
 	dbg("%s: reg:0x%x value:%dmV\n", __func__, reg, buck_voltags[i].uV/1000);
+#ifdef CONFIG_ARCH_TCC
+	ret = regmap_write(rt5028->regmap, reg, value);
+#else
 	ret = i2c_smbus_write_byte_data(rt5028->client, reg, value);
+#endif
 	udelay(50);
 
 	if(ret != 0)
@@ -381,6 +411,7 @@ static int rt5028_buck_get_voltage(struct regulator_dev *rdev)
 	int id = rdev_get_id(rdev);
 	u8 reg;
 	int ret, max_num, i, voltage = 0;
+	int res;
 	static struct rt5028_voltage_t *buck_voltags;
 
 	switch (id) {
@@ -408,10 +439,16 @@ static int rt5028_buck_get_voltage(struct regulator_dev *rdev)
 			return -EINVAL;
 	}
 
+#ifdef CONFIG_ARCH_TCC
+	res = regmap_read(rt5028->regmap, reg, (unsigned int *)&ret);
+	if (res < 0)
+		return -EINVAL;
+#else
 	ret = i2c_smbus_read_byte_data(rt5028->client, reg);
 	if (ret < 0)
 		return -EINVAL;
 
+#endif
 	ret = ((ret & 0xFF) >> 2);
 	for (i = 0; i < max_num; i++) {
 		if (buck_voltags[i].val == ret) {
@@ -430,6 +467,7 @@ static int rt5028_buck_enable(struct regulator_dev *rdev)
 {
 	struct rt5028_data* rt5028 = rdev_get_drvdata(rdev);
 	int id = rdev_get_id(rdev);
+	int ret;
 	u8 value, old_value, bit;
 
 	dbg("%s: id:%d\n", __func__, id);
@@ -444,16 +482,28 @@ static int rt5028_buck_enable(struct regulator_dev *rdev)
 			return -EINVAL;
 	}
 
+#ifdef CONFIG_ARCH_TCC
+	ret = regmap_read(rt5028->regmap, RT5028_BUCK_ON_OFF_REG, (unsigned int *)&old_value);
+	if (ret < 0)
+		return -EINVAL;
+#else
 	old_value = (u8)i2c_smbus_read_byte_data(rt5028->client, RT5028_BUCK_ON_OFF_REG);
+#endif
 	value = old_value | (1 << bit);
 
+#ifdef CONFIG_ARCH_TCC
+	return regmap_write(rt5028->regmap, RT5028_BUCK_ON_OFF_REG, value);
+#else
 	return i2c_smbus_write_byte_data(rt5028->client, RT5028_BUCK_ON_OFF_REG, value);
+#endif
+
 }
 
 static int rt5028_buck_disable(struct regulator_dev *rdev)
 {
 	struct rt5028_data* rt5028 = rdev_get_drvdata(rdev);
 	int id = rdev_get_id(rdev);
+	int ret;
 	u8 value, old_value, bit;
 
 	dbg("%s: id:%d\n", __func__, id);
@@ -468,10 +518,20 @@ static int rt5028_buck_disable(struct regulator_dev *rdev)
 			return -EINVAL;
 	}
 
+#ifdef CONFIG_ARCH_TCC
+	ret = regmap_read(rt5028->regmap, RT5028_BUCK_ON_OFF_REG, (unsigned int *)&old_value);
+	if (ret < 0)
+		return -EINVAL;
+#else
 	old_value = (u8)i2c_smbus_read_byte_data(rt5028->client, RT5028_BUCK_ON_OFF_REG);
+#endif
 	value = old_value & ~(1 << bit);
 
+#ifdef CONFIG_ARCH_TCC
+	return regmap_write(rt5028->regmap, RT5028_BUCK_ON_OFF_REG, value);
+#else
 	return i2c_smbus_write_byte_data(rt5028->client, RT5028_BUCK_ON_OFF_REG, value);
+#endif
 }
 
 static struct regulator_ops rt5028_buck_ops = {
@@ -490,7 +550,7 @@ static int rt5028_ldo_set_voltage(struct regulator_dev *rdev, int min_uV, int ma
 
 	static struct rt5028_voltage_t *ldo_voltags;
 
-		
+
 	switch (id) {
 		case RT5028_ID_LDO2:
 			reg = RT5028_LDO2_CONTROL_REG;
@@ -542,7 +602,11 @@ static int rt5028_ldo_set_voltage(struct regulator_dev *rdev, int min_uV, int ma
 		return -EINVAL;
 
 	dbg("%s: reg:0x%x value: %dmV\n", __func__, reg, ldo_voltags[i].uV/1000);
+#ifdef CONFIG_ARCH_TCC
+	return regmap_write(rt5028->regmap, reg, value);
+#else
 	return i2c_smbus_write_byte_data(rt5028->client, reg, value);
+#endif
 }
 
 static int rt5028_ldo_get_voltage(struct regulator_dev *rdev)
@@ -551,9 +615,10 @@ static int rt5028_ldo_get_voltage(struct regulator_dev *rdev)
 	int id = rdev_get_id(rdev);
 	u8 reg;
 	int ret, i, max_num, voltage = 0;
+	int res;
 
 	static struct rt5028_voltage_t *ldo_voltags;
-	
+
 	switch (id) {
 		case RT5028_ID_LDO1:
 			reg = RT5028_LDO1_CONTROL_REG;
@@ -599,9 +664,15 @@ static int rt5028_ldo_get_voltage(struct regulator_dev *rdev)
 			return -EINVAL;
 	}
 
+#ifdef CONFIG_ARCH_TCC
+	res = regmap_read(rt5028->regmap, reg, (unsigned int *)&ret);
+	if (res < 0)
+		return -EINVAL;
+#else
 	ret = i2c_smbus_read_byte_data(rt5028->client, reg);
 	if (ret < 0)
 		return -EINVAL;
+#endif
 
 	ret &= 0xFF;
 
@@ -623,6 +694,7 @@ static int rt5028_ldo_enable(struct regulator_dev *rdev)
 {
 	struct rt5028_data* rt5028 = rdev_get_drvdata(rdev);
 	int id = rdev_get_id(rdev);
+	int ret;
 	u8 value, old_value, bit;
 
 	dbg("%s: id:%d\n", __func__, id);
@@ -639,17 +711,27 @@ static int rt5028_ldo_enable(struct regulator_dev *rdev)
 		default:
 			return -EINVAL;
 	}
-
+#ifdef CONFIG_ARCH_TCC
+	ret = regmap_read(rt5028->regmap, RT5028_LDO_ON_OFF_REG, (unsigned int *)&old_value);
+	if (ret < 0)
+		return -EINVAL;
+#else
 	old_value = (u8)i2c_smbus_read_byte_data(rt5028->client, RT5028_LDO_ON_OFF_REG);
+#endif
 	value = old_value | (1 << bit);
 
+#ifdef CONFIG_ARCH_TCC
+	return regmap_write(rt5028->regmap, RT5028_LDO_ON_OFF_REG, value);
+#else
 	return i2c_smbus_write_byte_data(rt5028->client, RT5028_LDO_ON_OFF_REG, value);
+#endif
 }
 
 static int rt5028_ldo_disable(struct regulator_dev *rdev)
 {
 	struct rt5028_data* rt5028 = rdev_get_drvdata(rdev);
 	int id = rdev_get_id(rdev);
+	int ret;
 	u8 value, old_value, bit;
 
 	dbg("%s: id:%d\n", __func__, id);
@@ -667,16 +749,27 @@ static int rt5028_ldo_disable(struct regulator_dev *rdev)
 			return -EINVAL;
 	}
 
+#ifdef CONFIG_ARCH_TCC
+	ret = regmap_read(rt5028->regmap, RT5028_LDO_ON_OFF_REG, (unsigned int *)&old_value);
+	if (ret < 0)
+		return -EINVAL;
+#else
 	old_value = (u8)i2c_smbus_read_byte_data(rt5028->client, RT5028_LDO_ON_OFF_REG);
+#endif
 	value = old_value & ~(1 << bit);
 
+#ifdef CONFIG_ARCH_TCC
+	return regmap_write(rt5028->regmap, RT5028_LDO_ON_OFF_REG, value);
+#else
 	return i2c_smbus_write_byte_data(rt5028->client, RT5028_LDO_ON_OFF_REG, value);
+#endif
 }
 
 static int rt5028_ldo_is_enabled(struct regulator_dev *rdev)
 {
 	struct rt5028_data* rt5028 = rdev_get_drvdata(rdev);
 	int id = rdev_get_id(rdev);
+	int ret;
 	u8 old_value, bit;
 
 	dbg("%s: id:%d\n", __func__, id);
@@ -694,7 +787,13 @@ static int rt5028_ldo_is_enabled(struct regulator_dev *rdev)
 			return -EINVAL;
 	}
 
+#ifdef CONFIG_ARCH_TCC
+	ret = regmap_read(rt5028->regmap, RT5028_LDO_ON_OFF_REG, (unsigned int *)&old_value);
+	if (ret < 0)
+		return -EINVAL;
+#else
 	old_value = (u8)i2c_smbus_read_byte_data(rt5028->client, RT5028_LDO_ON_OFF_REG);
+#endif
 
 	return (old_value & (1 << bit))?1:0;
 }
@@ -823,10 +922,10 @@ static int rt5028_pmic_probe(struct i2c_client *client, const struct i2c_device_
 	const struct of_device_id *match;
 	int i=0, id, irq_port, ret = -ENOMEM;
 	struct regulator_config config = { };
-	char i2c_data=0; 
-	
+	char i2c_data=0;
+
 	pmic_np = client->dev.of_node;
-	
+
 	match = of_match_device(rt5028_of_match, &client->dev);
 	if(!match)
 	{
@@ -841,18 +940,18 @@ static int rt5028_pmic_probe(struct i2c_client *client, const struct i2c_device_
 		//client->irq = irq_of_parse_and_map(pmic_np, 0); //it should be added "interrupts" property in device tree
 		dev_dbg(&client->dev, "irq %d\n", client->irq);
 	}
-	
+
 	regulators_np = of_find_node_by_name(pmic_np, "regulators");
 
 	if (!regulators_np) {
 		dev_err(&client->dev, "Regulators(rt5028) device node not found\n");
 		return -ENODEV;
 	}
-	
+
 	rt5028 = kzalloc(sizeof(struct rt5028_data) +
 			sizeof(struct regulator_dev *) * (NUM_OUPUT + 1),
 			GFP_KERNEL);
-	
+
 	if (!rt5028)
 		goto out;
 
@@ -865,9 +964,23 @@ static int rt5028_pmic_probe(struct i2c_client *client, const struct i2c_device_
 	rdev = rt5028->rdev;
 
 	i2c_set_clientdata(client, rdev);
+
+    rt5028->regmap = devm_regmap_init_i2c(client, &rt5028_regmap_config);
+    if (IS_ERR(rt5028->regmap)) {
+        ret = PTR_ERR(rt5028->regmap);
+        dev_err(&client->dev, "failed to initialize regmap: %d\n", ret);
+        return ret;
+    }
+
+#ifdef CONFIG_ARCH_TCC
+	ret = regmap_read(rt5028->regmap, RT5028_DEVICE_ID_REG, (unsigned int *)&i2c_data);
+	if (ret < 0)
+		return -EINVAL;
+#else
 	i2c_data = i2c_smbus_read_byte_data(rt5028_i2c_client, RT5028_DEVICE_ID_REG);
-	dev_dbg(&client->dev, "pmix id 0x%x\n", i2c_data);
-	
+#endif
+	dev_dbg(&client->dev, "pmic id 0x%x\n", i2c_data);
+
 	// gpio & external interrupt ports configuration
 //	if (pdata->init_port) {
 //		pdata->init_port(client->irq);
@@ -906,6 +1019,34 @@ static int rt5028_pmic_probe(struct i2c_client *client, const struct i2c_device_
 		int status=0;
 		/* irq enable */
 		// TODO:
+#ifdef CONFIG_ARCH_TCC
+		ret = regmap_write(rt5028->regmap, RT5028_IRQ1_ENABLE_REG, RT5028_IRQ1);
+		if (ret < 0)
+			dev_err(&client->dev, "failed to write IRQ1 enable (res=%d) !\n", ret);
+
+		ret = regmap_write(rt5028->regmap, RT5028_IRQ2_ENABLE_REG, RT5028_IRQ2);
+		if (ret < 0)
+			dev_err(&client->dev, "failed to write IRQ2 enable (res=%d) !\n", ret);
+
+		/* clear irq status */
+		// TODO:
+		ret = regmap_read(rt5028->regmap, RT5028_IRQ1_STATUS_REG, (unsigned int *)&status);
+		if (ret < 0)
+			dev_err(&client->dev, "failed to read IRQ1 status (res=%d) !\n", ret);
+
+		ret= regmap_read(rt5028->regmap, RT5028_IRQ2_STATUS_REG, (unsigned int *)&status);
+		if (ret < 0)
+			dev_err(&client->dev, "failed to read IRQ2 status(res=%d) !\n", ret);
+		// Reset after read.
+
+		ret = regmap_write(rt5028->regmap, RT5028_IRQ1_STATUS_REG, 0xFF);
+		if (ret < 0)
+			dev_err(&client->dev, "failed to write IRQ1 status (res=%d) !\n", ret);
+
+		ret = regmap_write(rt5028->regmap, RT5028_IRQ2_STATUS_REG, 0xFF);
+		if (ret < 0)
+			dev_err(&client->dev, "failed to write IRQ2 status (res=%d) !\n", ret);
+#else
 		status = i2c_smbus_write_byte_data(rt5028_i2c_client, RT5028_IRQ1_ENABLE_REG, RT5028_IRQ1);
 		if (status < 0)
 			dev_err(&client->dev, "failed to write IRQ1 enable (res=%d) !\n", status);
@@ -923,7 +1064,7 @@ static int rt5028_pmic_probe(struct i2c_client *client, const struct i2c_device_
 		status= i2c_smbus_read_byte_data(rt5028_i2c_client, RT5028_IRQ2_STATUS_REG);
 		if (status < 0)
 			dev_err(&client->dev, "failed to read IRQ2 status(res=%d) !\n", status);
-		// Reset after read. 
+		// Reset after read.
 
 		status = i2c_smbus_write_byte_data(rt5028_i2c_client, RT5028_IRQ1_STATUS_REG, 0xFF);
 		if (status < 0)
@@ -932,7 +1073,7 @@ static int rt5028_pmic_probe(struct i2c_client *client, const struct i2c_device_
 		status = i2c_smbus_write_byte_data(rt5028_i2c_client, RT5028_IRQ2_STATUS_REG, 0xFF);
 		if (status < 0)
 			dev_err(&client->dev, "failed to write IRQ2 status (res=%d) !\n", status);
-
+#endif
 		if (request_irq(client->irq, rt5028_interrupt, IRQ_TYPE_EDGE_FALLING, "rt5028_irq", rt5028)) {
 			dev_err(&client->dev, "could not allocate IRQ_NO(%d) !\n", client->irq);
 			ret = -EBUSY;
@@ -964,7 +1105,7 @@ static int rt5028_pmic_probe(struct i2c_client *client, const struct i2c_device_
 	printk("RT5028 regulator driver loaded\n");
 	return 0;
 
-err_input_register_device_failed:
+//err_input_register_device_failed:
 	input_free_device(rt5028->input_dev);
 err_input_dev_alloc_failed:
 err:
@@ -981,7 +1122,7 @@ static int rt5028_pmic_remove(struct i2c_client *client)
 	struct regulator_dev **rdev = i2c_get_clientdata(client);
 	struct rt5028_data* rt5028 = NULL;
 	int i;
-	
+
 	for (i=0 ; (rdev[i] != NULL) && (i<RT5028_ID_MAX) ; i++)
 		rt5028 = rdev_get_drvdata(rdev[i]);
 
@@ -996,14 +1137,14 @@ static int rt5028_pmic_remove(struct i2c_client *client)
 
 	return 0;
 }
-	
+
 static int rt5028_pmic_suspend(struct device *dev)
 {
 	int i, ret = 0;
 	struct i2c_client *client = to_i2c_client(dev);
 	struct regulator_dev **rdev = i2c_get_clientdata(client);
 	struct rt5028_data* rt5028 = NULL;
-	
+
 	for (i=0 ; (rdev[i] != NULL) && (i<RT5028_ID_MAX) ; i++)
 		rt5028 = rdev_get_drvdata(rdev[i]);
 
@@ -1012,8 +1153,13 @@ static int rt5028_pmic_suspend(struct device *dev)
 
 	/* clear irq status */
 	// TODO:
+#ifdef CONFIG_ARCH_TCC
+	regmap_write(rt5028->regmap, RT5028_IRQ1_STATUS_REG, 0xFF);
+	regmap_write(rt5028->regmap, RT5028_IRQ2_STATUS_REG, 0xFF);
+#else
 	i2c_smbus_write_byte_data(client, RT5028_IRQ1_STATUS_REG, 0xFF);
 	i2c_smbus_write_byte_data(client, RT5028_IRQ2_STATUS_REG, 0xFF);
+#endif
 
 	if (rt5028) {
 		ret = cancel_work_sync(&rt5028->work);
@@ -1035,7 +1181,7 @@ static int rt5028_pmic_resume(struct device *dev)
 	struct regulator_dev **rdev = i2c_get_clientdata(client);
 	struct rt5028_data* rt5028 = NULL;
 
-	
+
 	for (i=0 ; (rdev[i] != NULL) && (i<RT5028_ID_MAX) ; i++)
 		rt5028 = rdev_get_drvdata(rdev[i]);
 
@@ -1049,7 +1195,7 @@ static int rt5028_pmic_resume(struct device *dev)
 	// TODO:
 	i2c_smbus_read_byte_data(rt5028->client, RT5028_IRQ1_STATUS_REG);
 	i2c_smbus_read_byte_data(rt5028->client, RT5028_IRQ2_STATUS_REG);
-	// Reset after read. 
+	// Reset after read.
 	i2c_smbus_write_byte_data(client, RT5028_IRQ1_STATUS_REG, 0xFF);
 	i2c_smbus_write_byte_data(client, RT5028_IRQ2_STATUS_REG, 0xFF);
 #endif
