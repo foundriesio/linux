@@ -1,5 +1,5 @@
 # TCC Audio Mailbox for T-Sound
-EXTRA_CFLAGS += -Isound/soc/tcc/amd/include \
+ccflags-y += -Isound/soc/tcc/amd/include \
 				-Isound/soc/tcc/amd/include/params \
 				-Isound/soc/tcc/amd/include/utils
 

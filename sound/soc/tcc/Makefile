@@ -5,7 +5,7 @@ obj-$(CONFIG_SND_SOC_TCC_AUDIO_CHMUX) += tcc_audio_chmux.o
 obj-y		+= asrc/
 
 ifneq ($(CONFIG_TCC_MULTI_MAILBOX_AUDIO),)
-EXTRA_CFLAGS += -Isound/soc/tcc/amd/include \
+ccflags-y += -Isound/soc/tcc/amd/include \
 				-Isound/soc/tcc/amd/include/params \
 				-Isound/soc/tcc/amd/include/utils
 endif

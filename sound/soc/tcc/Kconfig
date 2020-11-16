@@ -1,3 +1,5 @@
+#'
+
 menu "SoC Audio for Telechips CPUs"
 
 comment "SoC Audio options for TCC CPUs:"

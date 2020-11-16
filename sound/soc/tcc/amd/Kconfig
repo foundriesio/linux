@@ -1,3 +1,5 @@
+#'
+
 config TCC_MULTI_MAILBOX_AUDIO
 	tristate "Telechips Mailbox Audio Client for T-Sound"
 	depends on TCC_MULTI_MAILBOX
