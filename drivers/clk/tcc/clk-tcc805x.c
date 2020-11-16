@@ -66,6 +66,11 @@ struct ckc_backup_reg {
 
 static struct ckc_backup_reg *ckc_backup = NULL;
 
+#define CLOCK_RESUME_READY	((u32)0x01000000)
+#define PMU_USSTATUS(reg)	((reg) + 0x1C)
+
+static void __iomem *pmureg;
+
 extern void tcc_ckc_save(unsigned int clk_down);
 
 void tcc_ckc_save(unsigned int clk_down)
@@ -74,6 +79,8 @@ void tcc_ckc_save(unsigned int clk_down)
 	unsigned long i, j;
 
 	pr_info("[INFO][tcc_clk][%s] Clock driver suspended\n", TCC_SUBCATEGORY);	
+
+	pmureg = ioremap(0x14400000, SZ_4K);
 
 #if !defined(CONFIG_TCC805X_CA53Q)
 	ckc_backup = kzalloc(sizeof(struct ckc_backup_reg), GFP_KERNEL);
@@ -306,6 +313,31 @@ void tcc_ckc_restore(void)
 	kfree(ckc_backup);
 	ckc_backup = NULL;
 #endif
+
+	{
+		/*
+		 * TODO: This code block is a workaround to avoid sync issue
+		 *       between main/subcore.  It will be removed after clock
+		 *       configuration sequence be improved.
+		 */
+#if defined(CONFIG_TCC805X_CA53Q)
+		u32 val = 0;
+
+		do {
+			/* Wait until CA72 set clock resume ready field */
+			val = readl(PMU_USSTATUS(pmureg)) & CLOCK_RESUME_READY;
+		} while (val == 0);
+
+		/* Clear clock resume ready field */
+		writel(val & ~CLOCK_RESUME_READY, PMU_USSTATUS(pmureg));
+#else
+		/* Set clock resume ready field to let CA53 know */
+		u32 val = readl(PMU_USSTATUS(pmureg));
+		writel(val | CLOCK_RESUME_READY, PMU_USSTATUS(pmureg));
+#endif
+		iounmap(pmureg);
+	}
+
 	pr_info("[INFO][tcc_clk][%s] Clock driver restoration Completed.\n", TCC_SUBCATEGORY);
 }
 
