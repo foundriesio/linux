@@ -323,8 +323,9 @@ static int tccvin_v4l2_open(struct file *file)
 
 	/* Create the device handle. */
 	handle = kzalloc(sizeof(*handle), GFP_KERNEL);
-	if (handle == NULL)
+	if (handle == NULL) {
 		return -ENOMEM;
+	}
 
 	mutex_lock(&stream->dev->lock);
 	stream->dev->users++;
@@ -434,11 +435,8 @@ static int tccvin_ioctl_g_fmt_vid_cap(struct file *file, void *fh,
 {
 	struct tccvin_fh *handle = fh;
 	struct tccvin_streaming *stream = handle->stream;
-	int	ret;
 
-	ret = tccvin_v4l2_get_format(stream, fmt);
-
-	return ret;
+	return tccvin_v4l2_get_format(stream, fmt);
 }
 
 static int tccvin_ioctl_s_fmt_vid_cap(struct file *file, void *fh,
@@ -648,6 +646,50 @@ static int tccvin_ioctl_g_input(struct file *file, void *fh,
 
 	return 0;
 }
+static int tccvin_ioctl_g_parm(struct file *file, void *fh,
+	struct v4l2_streamparm *a)
+{
+	struct tccvin_fh *handle = fh;
+	struct tccvin_streaming *stream = handle->stream;
+	struct v4l2_fract *fract = NULL;
+	int ret = 0;
+	memset(a, 0, sizeof(*a));
+	a->type = stream->type;
+	switch (a->type) {
+	case V4L2_BUF_TYPE_VIDEO_CAPTURE:
+		fract = &(a->parm.capture.timeperframe);
+		fract->numerator	= 1;
+		fract->denominator	= stream->cur_frame->dwDefaultFrameInterval;
+		break;
+	default:
+		ret = -1;
+		break;
+	}
+	return ret;
+}
+static int tccvin_ioctl_s_parm(struct file *file, void *fh,
+	struct v4l2_streamparm *a)
+{
+	struct tccvin_fh *handle = fh;
+	struct tccvin_streaming *stream = handle->stream;
+	int ret = 0;
+	switch (stream->type) {
+	case V4L2_BUF_TYPE_VIDEO_CAPTURE:
+		// Does the video-input path support this framerate?
+		// Do all the video sources support this framerate?
+		stream->cur_frame->dwDefaultFrameInterval = 
+			tccvin_try_frame_interval(stream->cur_frame,
+				a->parm.capture.timeperframe.denominator);
+		logd("numerator: %d, denominator: %d\n",
+			1, stream->cur_frame->dwDefaultFrameInterval);
+		break;
+	default:
+		ret = -1;
+		break;
+	}
+
+	return ret;
+}
 
 static int tccvin_ioctl_enum_framesizes(struct file *file, void *fh,
 	struct v4l2_frmsizeenum *fsize)
@@ -722,16 +764,14 @@ static int tccvin_ioctl_enum_frameintervals(struct file *file, void *fh,
 			return -EINVAL;
 
 		fival->type = V4L2_FRMIVAL_TYPE_DISCRETE;
-		fival->discrete.numerator =
+		fival->discrete.numerator = 1;
+		fival->discrete.denominator = 
 			frame->dwFrameInterval[fival->index];
-		fival->discrete.denominator = 10000000;
-		tccvin_simplify_fraction(&fival->discrete.numerator,
-			&fival->discrete.denominator, 8, 333);
 		logd("index: %d, pixel_format: 0x%08x, width: %d, height: %d\n",
 			fival->index, fival->pixel_format,
 			fival->width, fival->height);
-		logd("type: %d, frameinterval: %d\n",
-			fival->type, fival->discrete.denominator);
+		logd("numerator: %d, denominator: %d\n",
+			fival->discrete.numerator, fival->discrete.denominator);
 	}
 
 	return 0;
@@ -741,13 +781,8 @@ static int tccvin_v4l2_mmap(struct file *file, struct vm_area_struct *vma)
 {
 	struct tccvin_fh *handle = file->private_data;
 	struct tccvin_streaming *stream = handle->stream;
-	int	ret = 0;
 
-	ret = tccvin_queue_mmap(&stream->queue, vma);
-	logd("start: 0x%08lx, end: 0x%08lx, off: 0x%08lx\n",
-		vma->vm_start, vma->vm_end, vma->vm_pgoff);
-
-	return ret;
+	return tccvin_queue_mmap(&stream->queue, vma);
 }
 
 static unsigned int tccvin_v4l2_poll(struct file *file, poll_table *wait)
@@ -793,7 +828,8 @@ const struct v4l2_ioctl_ops tccvin_ioctl_ops = {
 	/* Input handling */
 	.vidioc_enum_input		= tccvin_ioctl_enum_input,
 	.vidioc_g_input			= tccvin_ioctl_g_input,
-
+	.vidioc_g_parm			= tccvin_ioctl_g_parm,
+	.vidioc_s_parm			= tccvin_ioctl_s_parm,
 	.vidioc_enum_framesizes		= tccvin_ioctl_enum_framesizes,
 	.vidioc_enum_frameintervals	= tccvin_ioctl_enum_frameintervals,
 };

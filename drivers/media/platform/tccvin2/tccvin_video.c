@@ -300,6 +300,9 @@ static int tccvin_parse_device_tree(struct tccvin_streaming *vdev)
 
 #ifdef CONFIG_OVERLAY_PGL
 	// Parking Guide Line
+	of_property_read_u32_index(main_node, "use_pgl", 0, &vdev->cif.use_pgl);
+	dlog("%10s[%2d]: %d\n", "usage status pgl", vdev->vid_dev.minor,
+		vdev->cif.use_pgl);
 	vioc_path->pgl = -1;
 	// VIDEO_IN04~06 don't have RDMA
 	if (vioc_path->vin >= VIOC_VIN00 && vioc_path->vin <= VIOC_VIN30) {
@@ -315,7 +318,7 @@ static int tccvin_parse_device_tree(struct tccvin_streaming *vdev)
 			}
 		} else {
 			logw("\"rdma\" node is not found.\n");
-//			return -ENODEV;
+			return -ENODEV;
 		}
 	}
 #endif//CONFIG_OVERLAY_PGL
