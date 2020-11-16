@@ -292,14 +292,11 @@ static inline int set_ud_wqe(struct hns_roce_qp *qp,
 			     void *wqe, unsigned int *sge_idx,
 			     unsigned int owner_bit)
 {
-	struct hns_roce_dev *hr_dev = to_hr_dev(qp->ibqp.device);
 	struct hns_roce_ah *ah = to_hr_ah(ud_wr(wr)->ah);
 	struct hns_roce_v2_ud_send_wqe *ud_sq_wqe = wqe;
 	unsigned int curr_idx = *sge_idx;
 	int valid_num_sge;
 	u32 msg_len = 0;
-	bool loopback;
-	u8 *smac;
 
 	valid_num_sge = calc_wr_sge_num(wr, &msg_len);
 	memset(ud_sq_wqe, 0, sizeof(*ud_sq_wqe));
@@ -316,13 +313,6 @@ static inline int set_ud_wqe(struct hns_roce_qp *qp,
 		       V2_UD_SEND_WQE_BYTE_48_DMAC_4_S, ah->av.mac[4]);
 	roce_set_field(ud_sq_wqe->byte_48, V2_UD_SEND_WQE_BYTE_48_DMAC_5_M,
 		       V2_UD_SEND_WQE_BYTE_48_DMAC_5_S, ah->av.mac[5]);
-
-	/* MAC loopback */
-	smac = (u8 *)hr_dev->dev_addr[qp->port];
-	loopback = ether_addr_equal_unaligned(ah->av.mac, smac) ? 1 : 0;
-
-	roce_set_bit(ud_sq_wqe->byte_40,
-		     V2_UD_SEND_WQE_BYTE_40_LBI_S, loopback);
 
 	roce_set_field(ud_sq_wqe->byte_4,
 		       V2_UD_SEND_WQE_BYTE_4_OPCODE_M,
