@@ -55,27 +55,30 @@
 		ak4601: ak4601@10 {
 			compatible = "akm,ak4601";
 			ak4601,pdn-gpio = <&gpe 14 0>;
-			cmute-gpios = <&gpe 15 1>;	//CODEC_MUTE    0: active high, 1: active low
-			amute-gpios = <&gpma 1 0>;	//AMP_MUTE      0: active high, 1: active low
-			stanby-gpios = <&gpma 2 0>;	//AMP_STBY      0: active high, 1: active low
+			//CODEC_MUTE    0: active high, 1: active low
+			cmute-gpios = <&gpe 15 1>;
+			//AMP_MUTE      0: active high, 1: active low
+			amute-gpios = <&gpma 1 0>;
+			//AMP_STBY      0: active high, 1: active low
+			stanby-gpios = <&gpma 2 0>;
 			reg = <0x10>;
 		};
 	};
 
-	/* audio_mailbox (TSND) for A7S */
 	audio_mbox@0 {
 		status = "okay";
 	};
-	
-	/* audio_mailbox (TSND) for R5 */
 	audio_mbox@1 {
 		status = "okay";
 	};
-	
+
 	i2s@16101000 {
 		pinctrl-names = "default", "idle";
-		pinctrl-0 = <&m1dai3_mclk &m1dai3_bclk &m1dai3_lrck &m1dai3_dao0 &m1dai3_dai0 &m1dai3_dao1 &m1dai3_dai1>;
-		pinctrl-1 = <&m1dai3_mclk_idle &m1dai3_bclk_idle &m1dai3_lrck_idle &m1dai3_dao0_idle &m1dai3_dai0_idle &m1dai3_dao1_idle &m1dai3_dai1_idle>;
+		pinctrl-0 = <&m1dai3_mclk &m1dai3_bclk &m1dai3_lrck \
+			&m1dai3_dao0 &m1dai3_dai0 &m1dai3_dao1 &m1dai3_dai1>;
+		pinctrl-1 = <&m1dai3_mclk_idle &m1dai3_bclk_idle \
+			&m1dai3_lrck_idle &m1dai3_dao0_idle &m1dai3_dai0_idle \
+			&m1dai3_dao1_idle &m1dai3_dai1_idle>;
 		status = "okay";
 	};
 

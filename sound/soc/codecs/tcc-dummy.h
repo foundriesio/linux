@@ -17,12 +17,11 @@
 
 #define TCC_DUMMY_SYSCLK	0
 #define TCC_DUMMY_DAI		0
-
 struct tcc_dummy_setup_data {
-	int            spi;
-	int            i2c_bus;
+	int spi;
+	int i2c_bus;
 	unsigned short i2c_address;
 };
 
-#endif
+#endif	/*  */
 

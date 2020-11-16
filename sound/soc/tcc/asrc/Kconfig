@@ -1,3 +1,5 @@
+#'
+
 config SND_SOC_TCC_ASRC
 	tristate "Telechips ASRC Driver"
 	depends on (ARCH_TCC802X || ARCH_TCC803X || ARCH_TCC805X)
