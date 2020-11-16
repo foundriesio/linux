@@ -1,0 +1,5 @@
+* Telechips Ion driver
+
+Required properties:
+- compatible: must be "telechips,tcc-ion"
+- reg: id and type of Ion heap
