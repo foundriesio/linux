@@ -133,7 +133,6 @@ struct tccvin_buf {
 
 typedef struct tccvin_v4l2 {
 	struct v4l2_input			input;			// video input
-	struct v4l2_rect			vin_window;
 	struct v4l2_format			format;			// format
 
 	enum cifoper_mode			oper_mode;		// operation mode

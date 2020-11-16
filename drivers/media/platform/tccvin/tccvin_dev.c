@@ -853,24 +853,33 @@ int tccvin_set_deinterlacer(tccvin_dev_t * vdev) {
  * - RETURNS:
  *	0:		Success
  */
-int tccvin_set_scaler(tccvin_cif_t * cif, struct tccvin_v4l2 * v4l2) {
+int tccvin_set_scaler(tccvin_cif_t * cif, struct v4l2_format * format) {
 	volatile void __iomem	* pSC		= VIOC_SC_GetAddress(cif->vioc_path.scaler);
 
-	unsigned int	width	= v4l2->vin_window.width;
-	unsigned int	height	= v4l2->vin_window.height;
+	unsigned int	width	= format->fmt.pix.width;
+	unsigned int	height	= format->fmt.pix.height;
+
+	unsigned int	crop_x	= cif->videosource_format.crop_x;
+	unsigned int	crop_y	= cif->videosource_format.crop_y;
+
+	unsigned int	crop_w	= cif->videosource_format.crop_w;
+	unsigned int	crop_h	= cif->videosource_format.crop_h;
 
 	FUNCTION_IN
 	dlog("SC: 0x%p, Output Size - width: %d, height: %d\n", pSC, width, height);
 
-	// Plug the scaler in
-	VIOC_CONFIG_PlugIn(cif->vioc_path.scaler, cif->vioc_path.vin);
+	if((cif->videosource_format.width != format->fmt.pix.width || cif->videosource_format.height != format->fmt.pix.height) || \
+			(crop_w != 0 || crop_h != 0)) {
+			// Plug the scaler in
+			VIOC_CONFIG_PlugIn(cif->vioc_path.scaler, cif->vioc_path.vin);
 
-	// Configure the scaler
-	VIOC_SC_SetBypass(pSC, OFF);
-	VIOC_SC_SetDstSize(pSC, width, height);
-	VIOC_SC_SetOutPosition(pSC, 0, 0);
-	VIOC_SC_SetOutSize(pSC, width, height + 1);	// workaround: scaler margin
-	VIOC_SC_SetUpdate(pSC);
+			// Configure the scaler
+			VIOC_SC_SetBypass(pSC, OFF);
+			VIOC_SC_SetDstSize(pSC, width + crop_w, height + crop_h + 1);		// workaround: scaler margin
+			VIOC_SC_SetOutPosition(pSC, crop_x, crop_y);
+			VIOC_SC_SetOutSize(pSC, width, height);
+			VIOC_SC_SetUpdate(pSC);
+	}
 
 	FUNCTION_OUT
 	return 0;
@@ -909,7 +918,6 @@ int tccvin_set_wmixer(tccvin_dev_t * vdev) {
 	// Configure the wmixer
 #ifdef CONFIG_OVERLAY_PGL
 	VIOC_WMIX_SetSize(pWMIXer, width, height);
-	VIOC_WMIX_SetPosition(pWMIXer, 0, vdev->v4l2.vin_window.left, vdev->v4l2.vin_window.top);
 	VIOC_WMIX_SetPosition(pWMIXer, 1, 0, 0);
 	VIOC_WMIX_SetChromaKey(pWMIXer, layer, ON, key_R, key_G, key_B, key_mask_R, key_mask_G, key_mask_B);
 	VIOC_WMIX_SetUpdate(pWMIXer);
@@ -1188,11 +1196,6 @@ int tccvin_cif_set_resolution(tccvin_dev_t * vdev, unsigned int width, unsigned 
 	vdev->v4l2.format.fmt.pix.height		= height;
 	vdev->v4l2.format.fmt.pix.pixelformat	= pixelformat;
 
-	vdev->v4l2.vin_window.left		= 0;
-	vdev->v4l2.vin_window.top		= 0;
-	vdev->v4l2.vin_window.width		= vdev->v4l2.format.fmt.pix.width;
-	vdev->v4l2.vin_window.height		= vdev->v4l2.format.fmt.pix.height;
-
 	return 0;
 }
 
@@ -1289,7 +1292,7 @@ int tccvin_start_stream(tccvin_dev_t * vdev) {
 
 	// set scaler
 	if(cif->vioc_path.vin <= VIOC_VIN30) {
-		tccvin_set_scaler(cif, &vdev->v4l2);
+		tccvin_set_scaler(cif, &vdev->v4l2.format);
 	}
 
 	// set wmixer
@@ -1656,12 +1659,6 @@ int tccvin_v4l2_init(tccvin_dev_t * vdev) {
 	vdev->v4l2.format.fmt.pix.field				= V4L2_FIELD_ANY;
 	vdev->v4l2.format.fmt.pix.sizeimage			= vdev->v4l2.format.fmt.pix.width * vdev->v4l2.format.fmt.pix.height * 4;
 	vdev->v4l2.format.fmt.pix.pixelformat		= V4L2_PIX_FMT_RGB32;	//V4L2_PIX_FMT_YUYV;	// YUV422 is default
-
-	// vin window
-	vdev->v4l2.vin_window.left				= 0;
-	vdev->v4l2.vin_window.top				= 0;
-	vdev->v4l2.vin_window.width				= vdev->v4l2.format.fmt.pix.width;
-	vdev->v4l2.vin_window.height				= vdev->v4l2.format.fmt.pix.height;
 
 	// preview method
 	vdev->v4l2.preview_method				= PREVIEW_V4L2;	//PREVIEW_DD;	// v4l2 buffering is default

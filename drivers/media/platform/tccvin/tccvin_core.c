@@ -217,12 +217,6 @@ long tccvin_core_do_ioctl(struct file * file, unsigned int cmd, void * arg) {
 		dlog("VIDIOC_USER_GET_ZOOM_SUPPORT\n");
 		break;
 
-	case VIDIOC_SET_VIN_WINDOW:
-		dlog("VIDIOC_SET_VIN_WINDOW\n");
-		vdev->v4l2.vin_window	= *(struct v4l2_rect *)arg;
-		ret = 0;
-		break;
-
 	default:
 		loge("VIDIOC command(0x%08x) is WRONG.\n", cmd);
 		ret = -EINVAL;
