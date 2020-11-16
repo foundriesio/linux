@@ -56,8 +56,9 @@ static __u32 tccvin_try_frame_interval(struct tccvin_frame *frame,
 			     ? interval - frame->dwFrameInterval[i]
 			     : frame->dwFrameInterval[i] - interval;
 
-			if (dist > best)
+			if (dist > best) {
 				break;
+			}
 
 			best = dist;
 		}
@@ -114,8 +115,9 @@ static int tccvin_v4l2_try_format(struct tccvin_streaming *stream,
 	 */
 	for (i = 0; i < stream->nformats; ++i) {
 		format = &stream->format[i];
-		if (format->fcc == fmt->fmt.pix.pixelformat)
+		if (format->fcc == fmt->fmt.pix.pixelformat) {
 			break;
+		}
 	}
 
 	if (i == stream->nformats) {
@@ -142,8 +144,9 @@ static int tccvin_v4l2_try_format(struct tccvin_streaming *stream,
 			frame = &format->frame[i];
 		}
 
-		if (maxd == 0)
+		if (maxd == 0) {
 			break;
+		}
 	}
 
 	if (frame == NULL) {
@@ -179,10 +182,12 @@ static int tccvin_v4l2_try_format(struct tccvin_streaming *stream,
 	logd("sizeimage: 0x%08x\n",	fmt->fmt.pix.sizeimage);
 	logd("colorspace: 0x%08x\n",	fmt->fmt.pix.colorspace);
 
-	if (tccvin_format != NULL)
+	if (tccvin_format != NULL) {
 		*tccvin_format = format;
-	if (tccvin_frame != NULL)
+	}
+	if (tccvin_frame != NULL) {
 		*tccvin_frame = frame;
+	}
 
 	return ret;
 }
@@ -194,8 +199,9 @@ static int tccvin_v4l2_get_format(struct tccvin_streaming *stream,
 	struct tccvin_frame *frame;
 	int ret = 0;
 
-	if (fmt->type != stream->type)
+	if (fmt->type != stream->type) {
 		return -EINVAL;
+	}
 
 	mutex_lock(&stream->mutex);
 	format = stream->cur_format;
@@ -228,12 +234,14 @@ static int tccvin_v4l2_set_format(struct tccvin_streaming *stream,
 	struct tccvin_frame *frame;
 	int ret;
 
-	if (fmt->type != stream->type)
+	if (fmt->type != stream->type) {
 		return -EINVAL;
+	}
 
 	ret = tccvin_v4l2_try_format(stream, fmt, &format, &frame);
-	if (ret < 0)
+	if (ret < 0) {
 		return ret;
+	}
 
 	mutex_lock(&stream->mutex);
 
@@ -280,8 +288,9 @@ done:
 static int tccvin_acquire_privileges(struct tccvin_fh *handle)
 {
 	/* Always succeed if the handle is already privileged. */
-	if (handle->state == TCCVIN_HANDLE_ACTIVE)
+	if (handle->state == TCCVIN_HANDLE_ACTIVE) {
 		return 0;
+	}
 
 	/* Check if the device already has a privileged handle. */
 	if (atomic_inc_return(&handle->stream->active) != 1) {
@@ -295,8 +304,9 @@ static int tccvin_acquire_privileges(struct tccvin_fh *handle)
 
 static void tccvin_dismiss_privileges(struct tccvin_fh *handle)
 {
-	if (handle->state == TCCVIN_HANDLE_ACTIVE)
+	if (handle->state == TCCVIN_HANDLE_ACTIVE) {
 		atomic_dec(&handle->stream->active);
+	}
 
 	handle->state = TCCVIN_HANDLE_PASSIVE;
 }
@@ -342,8 +352,9 @@ static int tccvin_v4l2_release(struct file *file)
 	struct tccvin_streaming *stream = handle->stream;
 
 	/* Only free resources if this is a privileged handle. */
-	if (tccvin_has_privileges(handle))
+	if (tccvin_has_privileges(handle)) {
 		tccvin_queue_release(&stream->queue);
+	}
 
 	/* Release the file handle. */
 	tccvin_dismiss_privileges(handle);
@@ -392,8 +403,9 @@ static int tccvin_ioctl_enum_fmt(struct tccvin_streaming *stream,
 	enum v4l2_buf_type type = fmt->type;
 	__u32 index = fmt->index;
 
-	if (fmt->type != stream->type || fmt->index >= stream->nformats)
+	if (fmt->type != stream->type || fmt->index >= stream->nformats) {
 		return -EINVAL;
+	}
 
 	memset(fmt, 0, sizeof(*fmt));
 	fmt->index = index;
@@ -443,8 +455,9 @@ static int tccvin_ioctl_s_fmt_vid_cap(struct file *file, void *fh,
 	int ret;
 
 	ret = tccvin_acquire_privileges(handle);
-	if (ret < 0)
+	if (ret < 0) {
 		return ret;
+	}
 
 	return tccvin_v4l2_set_format(stream, fmt);
 }
@@ -457,8 +470,9 @@ static int tccvin_ioctl_try_fmt_vid_cap(struct file *file, void *fh,
 	int	ret;
 
 	ret = tccvin_v4l2_try_format(stream, fmt, NULL, NULL);
-	if (ret < 0)
+	if (ret < 0) {
 		loge("tccvin_v4l2_try_format, ret: %d\n", ret);
+	}
 
 	return ret;
 }
@@ -471,17 +485,20 @@ static int tccvin_ioctl_reqbufs(struct file *file, void *fh,
 	int ret;
 
 	ret = tccvin_acquire_privileges(handle);
-	if (ret < 0)
+	if (ret < 0) {
 		return ret;
+	}
 
 	mutex_lock(&stream->mutex);
 	ret = tccvin_request_buffers(&stream->queue, rb);
 	mutex_unlock(&stream->mutex);
-	if (ret < 0)
+	if (ret < 0) {
 		return ret;
+	}
 
-	if (ret == 0)
+	if (ret == 0) {
 		tccvin_dismiss_privileges(handle);
+	}
 
 	return 0;
 }
@@ -493,8 +510,9 @@ static int tccvin_ioctl_querybuf(struct file *file, void *fh,
 	struct tccvin_streaming *stream = handle->stream;
 	int ret;
 
-	if (!tccvin_has_privileges(handle))
+	if (!tccvin_has_privileges(handle)) {
 		return -EBUSY;
+	}
 
 	ret = tccvin_query_buffer(&stream->queue, buf);
 	logd("index: %d\n",		buf->index);
@@ -532,8 +550,9 @@ static int tccvin_ioctl_qbuf(struct file *file, void *fh,
 	struct tccvin_fh *handle = fh;
 	struct tccvin_streaming *stream = handle->stream;
 
-	if (!tccvin_has_privileges(handle))
+	if (!tccvin_has_privileges(handle)) {
 		return -EBUSY;
+	}
 
 	return tccvin_queue_buffer(&stream->queue, buf);
 }
@@ -544,8 +563,9 @@ static int tccvin_ioctl_dqbuf(struct file *file, void *fh,
 	struct tccvin_fh *handle = fh;
 	struct tccvin_streaming *stream = handle->stream;
 
-	if (!tccvin_has_privileges(handle))
+	if (!tccvin_has_privileges(handle)) {
 		return -EBUSY;
+	}
 
 	return tccvin_dequeue_buffer(&stream->queue, buf,
 				  file->f_flags & O_NONBLOCK);
@@ -558,8 +578,9 @@ static int tccvin_ioctl_streamon(struct file *file, void *fh,
 	struct tccvin_streaming *stream = handle->stream;
 	int ret;
 
-	if (!tccvin_has_privileges(handle))
+	if (!tccvin_has_privileges(handle)) {
 		return -EBUSY;
+	}
 
 	mutex_lock(&stream->mutex);
 	ret = tccvin_queue_streamon(&stream->queue, type);
@@ -574,8 +595,9 @@ static int tccvin_ioctl_streamoff(struct file *file, void *fh,
 	struct tccvin_fh *handle = fh;
 	struct tccvin_streaming *stream = handle->stream;
 
-	if (!tccvin_has_privileges(handle))
+	if (!tccvin_has_privileges(handle)) {
 		return -EBUSY;
+	}
 
 	mutex_lock(&stream->mutex);
 	tccvin_queue_streamoff(&stream->queue, type);
@@ -589,8 +611,9 @@ static int tccvin_ioctl_enum_input(struct file *file, void *fh,
 {
 	u32 index = input->index;
 
-	if (index != 0)
+	if (index != 0) {
 		return -EINVAL;
+	}
 
 	memset(input, 0, sizeof(*input));
 	input->index = index;
@@ -676,11 +699,13 @@ static int tccvin_ioctl_enum_framesizes(struct file *file, void *fh,
 			break;
 		}
 	}
-	if (format == NULL)
+	if (format == NULL) {
 		return -EINVAL;
+	}
 
-	if (fsize->index >= format->nframes)
+	if (fsize->index >= format->nframes) {
 		return -EINVAL;
+	}
 
 	frame = &format->frame[fsize->index];
 	fsize->type = V4L2_FRMSIZE_TYPE_DISCRETE;
@@ -705,8 +730,9 @@ static int tccvin_ioctl_enum_frameintervals(struct file *file, void *fh,
 			break;
 		}
 	}
-	if (format == NULL)
+	if (format == NULL) {
 		return -EINVAL;
+	}
 
 	for (i = 0; i < format->nframes; i++) {
 		if (format->frame[i].wWidth == fival->width &&
@@ -715,12 +741,14 @@ static int tccvin_ioctl_enum_frameintervals(struct file *file, void *fh,
 			break;
 		}
 	}
-	if (frame == NULL)
+	if (frame == NULL) {
 		return -EINVAL;
+	}
 
 	if (frame->bFrameIntervalType) {
-		if (fival->index >= frame->bFrameIntervalType)
+		if (fival->index >= frame->bFrameIntervalType) {
 			return -EINVAL;
+		}
 
 		fival->type = V4L2_FRMIVAL_TYPE_DISCRETE;
 		fival->discrete.numerator = 1;
@@ -751,9 +779,10 @@ static unsigned int tccvin_v4l2_poll(struct file *file, poll_table *wait)
 	int		ret;
 
 	ret = tccvin_queue_poll(&stream->queue, file, wait);
-	if (ret < 0)
+	if (ret < 0) {
 		logw("_qproc: %p, _key: 0x%08lx, ret: %d\n",
 			wait->_qproc, wait->_key, ret);
+	}
 
 	return ret;
 }

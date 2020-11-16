@@ -207,8 +207,9 @@ struct tccvin_format_desc *tccvin_format_by_guid(const __u32 guid)
 	unsigned int i;
 
 	for (i = 0; i < len; ++i) {
-		if (guid == tccvin_format_list[i].guid)
+		if (guid == tccvin_format_list[i].guid) {
 			return &tccvin_format_list[i];
+		}
 	}
 
 	return NULL;
@@ -220,8 +221,9 @@ struct tccvin_format_desc *tccvin_format_by_fcc(const __u32 fcc)
 	unsigned int i;
 
 	for (i = 0; i < len; ++i) {
-		if (fcc == tccvin_format_list[i].fcc)
+		if (fcc == tccvin_format_list[i].fcc) {
 			return &tccvin_format_list[i];
+		}
 	}
 
 	return NULL;
@@ -573,18 +575,20 @@ err_viocmg:
 
 	// reset
 	for (idxVioc = nVioc - 1; idxVioc >= 0; idxVioc--) {
-		if (viocs[idxVioc] != -1)
+		if (viocs[idxVioc] != -1) {
 			VIOC_CONFIG_SWReset_RAW(
 				(unsigned int)viocs[idxVioc],
 				VIOC_CONFIG_RESET);
+		}
 	}
 
 	// reset clear
 	for (idxVioc = 0; idxVioc < nVioc; idxVioc++) {
-		if (viocs[idxVioc] != -1)
+		if (viocs[idxVioc] != -1) {
 			VIOC_CONFIG_SWReset_RAW(
 				(unsigned int)viocs[idxVioc],
 				VIOC_CONFIG_CLEAR);
+		}
 	}
 
 #if 0//defined(CONFIG_TCC803X_CA7S) && defined(CONFIG_VIOC_MGR)
@@ -887,8 +891,9 @@ static int tccvin_set_deinterlacer(struct tccvin_streaming *vdev)
 			VIOC_VIQE_SetDeintlModeWeave(viqe);
 		}
 	} else if (vioc->deintl_s != -1) {
-		if (vioc->vin <= VIOC_VIN30)
+		if (vioc->vin <= VIOC_VIN30) {
 			VIOC_CONFIG_PlugIn(vioc->deintl_s, vioc->vin);
+		}
 	} else {
 		logi("There is no available deinterlacer\n");
 		ret = -1;
@@ -1035,9 +1040,10 @@ static int tccvin_set_wdma(struct tccvin_streaming *vdev)
 
 	if (vdev->preview_method == PREVIEW_V4L2) {
 		spin_lock_irqsave(&queue->irqlock, flags);
-		if (!list_empty(&queue->irqqueue))
+		if (!list_empty(&queue->irqqueue)) {
 			buf = list_first_entry(&queue->irqqueue,
 				struct tccvin_buffer, queue);
+		}
 		spin_unlock_irqrestore(&queue->irqlock, flags);
 
 		mutex_lock(&cif->lock);
@@ -1195,8 +1201,9 @@ static irqreturn_t tccvin_wdma_isr(int irq, void *client_data)
 
 	ret = is_vioc_intr_activatied(vdev->cif.vioc_intr.id,
 		vdev->cif.vioc_intr.bits);
-	if (ret == false)
+	if (ret == false) {
 		return IRQ_NONE;
+	}
 
 	// preview operation.
 	VIOC_WDMA_GetStatus(wdma, &status);
@@ -1215,10 +1222,11 @@ static int tccvin_allocate_essential_buffers(struct tccvin_streaming *vdev)
 	char		pmap_preview_name[1024];
 	int		ret		= 0;
 
-	if (vdev->vdev.num > 0)
+	if (vdev->vdev.num > 0) {
 		sprintf(pmap_preview_name, "rearcamera%d", vdev->vdev.num);
-	else
+	} else {
 		sprintf(pmap_preview_name, "rearcamera");
+	}
 	strcpy(vdev->cif.pmap_preview.name, pmap_preview_name);
 	ret = pmap_get_info(vdev->cif.pmap_preview.name,
 		&vdev->cif.pmap_preview);
@@ -1299,12 +1307,14 @@ static int tccvin_start_stream(struct tccvin_streaming *vdev)
 	}
 
 	// set scaler
-	if (vioc->scaler != -1)
+	if (vioc->scaler != -1) {
 		tccvin_set_scaler(vdev, vdev->cur_frame);
+	}
 
 	// set wmixer
-	if (vioc->wmixer != -1)
+	if (vioc->wmixer != -1) {
 		tccvin_set_wmixer(vdev);
+	}
 
 	// set wdma
 	tccvin_set_wdma(vdev);
@@ -1338,8 +1348,9 @@ static int tccvin_stop_stream(struct tccvin_streaming *vdev)
 		 */
 		for (idxLoop = 0; idxLoop < 10; idxLoop++) {
 			VIOC_WDMA_GetStatus(wdma, &status);
-			if (status & VIOC_WDMA_IREQ_EOFR_MASK)
+			if (status & VIOC_WDMA_IREQ_EOFR_MASK) {
 				break;
+			}
 			msleep(20);	// 20msec is minimum in msleep()
 		}
 	}
@@ -1468,16 +1479,18 @@ static int tccvin_get_clock(struct tccvin_streaming *vdev)
 
 	vdev->cif.vioc_clk = of_clk_get(main_node, 0);
 	ret = -IS_ERR(vdev->cif.vioc_clk);
-	if (ret != 0)
+	if (ret != 0) {
 		loge("Find the \"clock\" node\n");
+	}
 
 	return ret;
 }
 
 static void tccvin_put_clock(struct tccvin_streaming *vdev)
 {
-	if (!IS_ERR(vdev->cif.vioc_clk))
+	if (!IS_ERR(vdev->cif.vioc_clk)) {
 		clk_put(vdev->cif.vioc_clk);
+	}
 }
 
 static int tccvin_enable_clock(struct tccvin_streaming *vdev)
@@ -1486,8 +1499,9 @@ static int tccvin_enable_clock(struct tccvin_streaming *vdev)
 
 	if (!IS_ERR(vdev->cif.vioc_clk)) {
 		ret = clk_prepare_enable(vdev->cif.vioc_clk);
-		if (ret)
+		if (ret) {
 			loge("clk_prepare_enable returns %d\n", ret);
+		}
 	}
 
 	return ret;
@@ -1495,8 +1509,9 @@ static int tccvin_enable_clock(struct tccvin_streaming *vdev)
 
 static void tccvin_disable_clock(struct tccvin_streaming *vdev)
 {
-	if (!IS_ERR(vdev->cif.vioc_clk))
+	if (!IS_ERR(vdev->cif.vioc_clk)) {
 		clk_disable_unprepare(vdev->cif.vioc_clk);
+	}
 }
 
 int tccvin_video_init(struct tccvin_streaming *stream)

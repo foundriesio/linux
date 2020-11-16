@@ -91,8 +91,9 @@ static int tccvin_queue_setup(struct vb2_queue *vq,
 	 * single planar formats only, and requires buffers to be large enough
 	 * to store a complete frame.
 	 */
-	if (*nplanes)
+	if (*nplanes) {
 		return *nplanes != 1 || sizes[0] < size ? -EINVAL : 0;
+	}
 
 	*nplanes = 1;
 	sizes[0] = size;
@@ -112,17 +113,19 @@ static int tccvin_buffer_prepare(struct vb2_buffer *vb)
 		return -EINVAL;
 	}
 
-	if (unlikely(queue->flags & TCCVIN_QUEUE_DISCONNECTED))
+	if (unlikely(queue->flags & TCCVIN_QUEUE_DISCONNECTED)) {
 		return -ENODEV;
+	}
 
 	buf->state = TCCVIN_BUF_STATE_QUEUED;
 	buf->error = 0;
 	buf->mem = vb2_plane_vaddr(vb, 0);
 	buf->length = vb2_plane_size(vb, 0);
-	if (vb->type == V4L2_BUF_TYPE_VIDEO_CAPTURE)
+	if (vb->type == V4L2_BUF_TYPE_VIDEO_CAPTURE) {
 		buf->bytesused = 0;
-	else
+	} else {
 		buf->bytesused = vb2_get_plane_payload(vb, 0);
+	}
 
 	return 0;
 }
@@ -158,8 +161,9 @@ static int tccvin_start_streaming(struct vb2_queue *vq, unsigned int count)
 	queue->buf_used = 0;
 
 	ret = tccvin_video_streamon(stream, 0);
-	if (ret == 0)
+	if (ret == 0) {
 		return 0;
+	}
 
 	spin_lock_irqsave(&queue->irqlock, flags);
 	tccvin_queue_return_buffers(queue, TCCVIN_BUF_STATE_QUEUED);
@@ -210,8 +214,9 @@ int tccvin_queue_init(struct tccvin_video_queue *queue, enum v4l2_buf_type type,
 	queue->queue.lock = &queue->mutex;
 	queue->queue.dev = &stream->dev->pdev->dev;
 	ret = vb2_queue_init(&queue->queue);
-	if (ret)
+	if (ret) {
 		return ret;
+	}
 
 	mutex_init(&queue->mutex);
 	spin_lock_init(&queue->irqlock);

@@ -116,8 +116,9 @@ static int tccvin_parse_streaming(struct tccvin_device *dev)
 	int ret = -EINVAL;
 
 	streaming = kzalloc(sizeof(*streaming), GFP_KERNEL);
-	if (streaming == NULL)
+	if (streaming == NULL) {
 		return -EINVAL;
+	}
 
 	mutex_init(&streaming->mutex);
 	streaming->dev = dev;
@@ -154,8 +155,9 @@ static int tccvin_parse_streaming(struct tccvin_device *dev)
 	format->nframes = nframes;
 	ret = tccvin_parse_format(dev, streaming, format,
 		&interval, nintervals);
-	if (ret < 0)
+	if (ret < 0) {
 		goto error;
+	}
 
 	dev->stream = streaming;
 	return 0;
@@ -178,8 +180,9 @@ static int tccvin_parse_control(struct tccvin_device *dev)
 	int ret;
 
 	ret = tccvin_parse_standard_control(dev);
-	if (ret < 0)
+	if (ret < 0) {
 		return ret;
+	}
 
 	return 0;
 }
@@ -204,8 +207,9 @@ static void tccvin_delete(struct kref *kref)
 		container_of(kref, struct tccvin_device, ref);
 	struct tccvin_streaming *streaming = dev->stream;
 
-	if (dev->vdev.dev)
+	if (dev->vdev.dev) {
 		v4l2_device_unregister(&dev->vdev);
+	}
 
 	kfree(streaming->format);
 	kfree(streaming);
@@ -230,15 +234,17 @@ static void tccvin_unregister_video(struct tccvin_device *dev)
 	int ret;
 
 	stream = dev->stream;
-	if (video_is_registered(&stream->vdev))
+	if (video_is_registered(&stream->vdev)) {
 		video_unregister_device(&stream->vdev);
+	}
 
 	/* Deitialize the streaming interface with default streaming
 	 * parameters.
 	 */
 	ret = tccvin_video_deinit(stream);
-	if (ret < 0)
+	if (ret < 0) {
 		loge("Failed to initialize the device (%d).\n", ret);
+	}
 }
 
 static int tccvin_register_video(struct tccvin_device *dev,
@@ -330,8 +336,9 @@ int tccvin_async_bound(struct v4l2_async_notifier *notifier,
 	// get videosource format
 	vs = container_of(subdev, struct videosource, sd);
 	dev->stream->cif.videosource_info = &vs->format;
-	if (dev->stream->cif.cif_port == -1)
+	if (dev->stream->cif.cif_port == -1) {
 		dev->stream->cif.cif_port = vs->format.cif_port;
+	}
 
 	// power-up sequence & initial i2c setting
 	ret = v4l2_subdev_call(subdev, core, s_power, enable);
@@ -380,9 +387,10 @@ int tccvin_init_subdevices(struct tccvin_device *vdev)
 					sd);
 				vdev->stream->cif.videosource_info =
 					&vs->format;
-				if (vdev->stream->cif.cif_port == -1)
+				if (vdev->stream->cif.cif_port == -1) {
 					vdev->stream->cif.cif_port =
 						vs->format.cif_port;
+				}
 
 				return ret;
 			}
@@ -444,8 +452,9 @@ static int tccvin_core_probe(struct platform_device *pdev)
 
 	/* Allocate memory for the device and initialize it. */
 	dev = kzalloc(sizeof(*dev), GFP_KERNEL);
-	if (dev == NULL)
+	if (dev == NULL) {
 		return -ENOMEM;
+	}
 
 	dev->current_subdev_idx = 0;
 
@@ -464,8 +473,9 @@ static int tccvin_core_probe(struct platform_device *pdev)
 	}
 
 	/* Initialize the media device and register the V4L2 device. */
-	if (v4l2_device_register(&pdev->dev, &dev->vdev) < 0)
+	if (v4l2_device_register(&pdev->dev, &dev->vdev) < 0) {
 		goto error;
+	}
 
 	tccvin_register_video(dev, dev->stream);
 

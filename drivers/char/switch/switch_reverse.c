@@ -51,7 +51,7 @@ static int			debug;
 #define log \
 	logi
 #define dlog(fmt, ...) \
-	do { if (debug) logd(fmt, ##__VA_ARGS__); } while (0)
+	do { if (debug) { logd(fmt, ##__VA_ARGS__); } } while (0)
 
 struct switch_dev {
 	struct device		*dev_plt;
@@ -96,8 +96,9 @@ ssize_t switch_type_store(struct device *dev, struct device_attribute *attr,
 	int			error	= 0;
 
 	error = kstrtouint(buf, 10, &data);
-	if (error)
+	if (error) {
 		return error;
+	}
 
 	switch_set_type(vdev, data);
 
@@ -127,10 +128,11 @@ int switch_get_status(struct switch_dev *vdev)
 		if (gpio != -1) {
 			gpio_value	= !!gpio_get_value(gpio);
 			gpio_active	= vdev->switch_active;
-			if (gpio_active == -1)
+			if (gpio_active == -1) {
 				status = gpio_value;
-			else
+			} else {
 				status = (gpio_value == gpio_active);
+			}
 			logd("gpio: %d, value: %d, active: %d, status: %d\n",
 				gpio, gpio_value, gpio_active, status);
 		} else {
@@ -191,8 +193,9 @@ ssize_t switch_status_store(struct device *dev, struct device_attribute *attr,
 	int			error	= 0;
 
 	error = kstrtouint(buf, 10, &data);
-	if (error)
+	if (error) {
 		return error;
+	}
 
 	switch_set_status(vdev, data);
 
@@ -220,8 +223,9 @@ ssize_t loglevel_store(struct device *dev, struct device_attribute *attr,
 	int			error	= 0;
 
 	error = kstrtouint(buf, 10, &data);
-	if (error)
+	if (error) {
 		return error;
+	}
 
 	atomic_set(&vdev->loglevel, data);
 	debug = data;
@@ -320,10 +324,11 @@ int switch_probe(struct platform_device *pdev)
 	index = of_alias_get_id(pdev->dev.of_node, /*MODULE_NAME*/"switch");
 
 	// set the character device name
-	if ((index == -ENODEV) || (index == 0))
+	if ((index == -ENODEV) || (index == 0)) {
 		sprintf(name, "%s", MODULE_NAME);
-	else
+	} else {
 		sprintf(name, "%s%d", MODULE_NAME, index);
+	}
 
 	// allocate a character device region
 	ret = alloc_chrdev_region(&vdev->cdev_region, 0, 1, name);
@@ -361,10 +366,11 @@ int switch_probe(struct platform_device *pdev)
 
 	// pinctrl
 	pinctrl = pinctrl_get_select(&pdev->dev, "default");
-	if (IS_ERR(pinctrl))
+	if (IS_ERR(pinctrl)) {
 		logd("\"pinctrl\" node is not found.\n");
-	else
+	} else {
 		pinctrl_put(pinctrl);
+	}
 
 	vdev->switch_gpio	= -1;
 	vdev->switch_active	= -1;
@@ -381,22 +387,26 @@ int switch_probe(struct platform_device *pdev)
 
 	// Create the type sysfs
 	ret = device_create_file(&pdev->dev, &dev_attr_switch_type);
-	if (ret < 0)
+	if (ret < 0) {
 		loge("failed create sysfs, type\r\n");
+	}
 
 	// Set type as 1 if there is a hw switch node
-	if (vdev->switch_gpio != -1)
+	if (vdev->switch_gpio != -1) {
 		switch_set_type(vdev, 1);
+	}
 
 	// Create the status sysfs
 	ret = device_create_file(&pdev->dev, &dev_attr_switch_status);
-	if (ret < 0)
+	if (ret < 0) {
 		loge("failed create sysfs, status\r\n");
+	}
 
 	// Create the loglevel sysfs
 	ret = device_create_file(&pdev->dev, &dev_attr_loglevel);
-	if (ret < 0)
+	if (ret < 0) {
 		loge("failed create sysfs, loglevel\r\n");
+	}
 
 	goto goto_end;
 
