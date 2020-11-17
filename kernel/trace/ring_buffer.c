@@ -443,14 +443,16 @@ struct rb_event_info {
 
 /*
  * Used for which event context the event is in.
- *  NMI     = 0
- *  IRQ     = 1
- *  SOFTIRQ = 2
- *  NORMAL  = 3
+ *  TRANSITION = 0
+ *  NMI     = 1
+ *  IRQ     = 2
+ *  SOFTIRQ = 3
+ *  NORMAL  = 4
  *
  * See trace_recursive_lock() comment below for more details.
  */
 enum {
+	RB_CTX_TRANSITION,
 	RB_CTX_NMI,
 	RB_CTX_IRQ,
 	RB_CTX_SOFTIRQ,
@@ -2603,7 +2605,7 @@ rb_wakeups(struct ring_buffer *buffer, struct ring_buffer_per_cpu *cpu_buffer)
  * If for some reason the ring buffer starts to recurse, we only allow
  * that to happen at most 6 times (one for each context, plus possibly
  * two levels of synthetic event generation). If it happens 7 times,
- * then we consider this a recusive loop and do not let it go further.
+ * then we consider this a recursive loop and do not let it go further.
  */
 
 static __always_inline int
