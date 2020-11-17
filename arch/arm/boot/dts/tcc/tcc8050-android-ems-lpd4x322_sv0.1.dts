@@ -8,8 +8,8 @@
 /dts-v1/;
 #endif
 
-#include "tcc8050-android-avn.dtsi"
-#include "tcc8050-android-avn-display.dtsi"
+#include "tcc8050-android-ems.dtsi"
+#include "tcc8050-android-ems-display.dtsi"
 
 / {
 	/* Describe here after remove this statement if you have something to be override. */

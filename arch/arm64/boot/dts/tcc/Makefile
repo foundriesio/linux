@@ -21,7 +21,7 @@ dtb-$(CONFIG_ARCH_TCC805X) += \
 	tcc8053-android-lpd4x322_sv0.1.dtb \
 	tcc8059-android-lpd4x321_sv0.1.dtb \
 	tcc8060-android-board-xxx.dtb \
-	tcc8050-android-ems.dtb
+	tcc8050-android-ems-lpd4x322_sv0.1.dtb
 else
 dtb-$(CONFIG_ARCH_TCC899X) += \
 	tcc8990-linux-lpd4322-v0.1.dtb \
@@ -53,7 +53,7 @@ dtb-$(CONFIG_ARCH_TCC805X) += \
 	tcc8053-linux-lpd4x322_sv0.1.dtb \
 	tcc8059-linux-lpd4x321_sv0.1.dtb \
 	tcc8060-linux-board-xxx.dtb \
-	tcc8050-linux-ems.dtb
+	tcc8050-linux-ems-lpd4x322_sv0.1.dtb
 endif
 endif
 
@@ -76,7 +76,7 @@ dtbo-y += \
 	overlay-tcc8053-android-lpd4x322_sv0.1.dtbo \
 	overlay-tcc8059-android-lpd4x321_sv0.1.dtbo \
 	overlay-tcc8060-android-board-xxx.dtbo \
-	overlay-tcc8050-android-ems.dtbo
+	overlay-tcc8050-android-ems-lpd4x322_sv0.1.dtbo
 endif
 
 always         := $(dtb-y)

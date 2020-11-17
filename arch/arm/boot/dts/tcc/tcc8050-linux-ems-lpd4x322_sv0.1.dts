@@ -8,8 +8,8 @@
 /dts-v1/;
 #endif
 
-#include "tcc8050-linux-avn.dtsi"
-#include "tcc8050-linux-avn-display.dtsi"
+#include "tcc8050-linux-ems.dtsi"
+#include "tcc8050-linux-ems-display.dtsi"
 
 / {
 	/* Describe here after remove this statement if you have something to be override. */
