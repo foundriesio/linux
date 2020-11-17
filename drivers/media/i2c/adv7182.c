@@ -73,6 +73,8 @@ struct adv7182 {
 
 	struct power_sequence		gpio;
 
+	struct v4l2_mbus_framefmt fmt;
+
 	/* Regmaps */
 	struct regmap			*regmap;
 };
@@ -274,6 +276,7 @@ static int adv7182_s_stream(struct v4l2_subdev *sd, int enable)
 	} else {
 		ret = regmap_multi_reg_write(dev->regmap, adv7182_reg_defaults,
 			ARRAY_SIZE(adv7182_reg_defaults));
+		msleep(50);
 	}
 
 	return ret;
@@ -316,14 +319,29 @@ static int adv7182_get_fmt(struct v4l2_subdev *sd,
 	struct v4l2_subdev_pad_config *cfg,
 	struct v4l2_subdev_format *format)
 {
-	return 0;
+	struct adv7182		*dev = to_state(sd);
+	int ret	= 0;
+	memcpy((void *)&format->format,
+		(const void *)&dev->fmt,
+		sizeof(struct v4l2_mbus_framefmt));
+	return ret;
 }
 
 static int adv7182_set_fmt(struct v4l2_subdev *sd,
 	struct v4l2_subdev_pad_config *cfg,
 	struct v4l2_subdev_format *format)
 {
-	return 0;
+	struct adv7182 *dev = to_state(sd);
+	int ret	= 0;
+
+	memcpy((void *)&dev->fmt,
+		(const void *)&format->format,
+		sizeof(struct v4l2_mbus_framefmt));
+
+	adv7182_dv_timings.bt.width = format->format.width;
+	adv7182_dv_timings.bt.height = format->format.height;
+
+	return ret;
 }
 
 /*
