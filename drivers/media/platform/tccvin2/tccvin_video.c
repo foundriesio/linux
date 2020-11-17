@@ -922,31 +922,22 @@ static int tccvin_set_scaler(struct tccvin_streaming *vdev,
 	void __iomem		*sc		=
 		VIOC_SC_GetAddress(cif->vioc_path.scaler);
 
-	unsigned int	width	= frame->wWidth;
-	unsigned int	height	= frame->wHeight;
-
-	unsigned int	crop_x	= cif->videosource_info->crop_x;
-	unsigned int	crop_y	= cif->videosource_info->crop_y;
-	unsigned int	crop_w	= cif->videosource_info->crop_w;
-	unsigned int	crop_h	= cif->videosource_info->crop_h;
+	unsigned int	width	= (vdev->selection.r.width  != 0) ? vdev->selection.r.width  : frame->wWidth;
+	unsigned int	height	= (vdev->selection.r.height != 0) ? vdev->selection.r.height : frame->wHeight;
 
 	logd("SC: 0x%p, Output Size - width: %d, height: %d\n",
 		sc, width, height);
 
-	if ((cif->videosource_info->width != frame->wWidth ||
-		cif->videosource_info->height != frame->wHeight) ||
-		(crop_w != 0 || crop_h != 0)) {
-		// Plug the scaler in
-		VIOC_CONFIG_PlugIn(cif->vioc_path.scaler, cif->vioc_path.vin);
+	// Plug the scaler in
+	VIOC_CONFIG_PlugIn(cif->vioc_path.scaler, cif->vioc_path.vin);
 
-		// Configure the scaler
-		VIOC_SC_SetBypass(sc, OFF);
-		// workaround: scaler margin
-		VIOC_SC_SetDstSize(sc, width + crop_w, height + crop_h + 2);
-		VIOC_SC_SetOutPosition(sc, crop_x, crop_y);
-		VIOC_SC_SetOutSize(sc, width, height);
-		VIOC_SC_SetUpdate(sc);
-	}
+	// Configure the scaler
+	VIOC_SC_SetBypass(sc, OFF);
+	VIOC_SC_SetDstSize(sc, width, height);
+	VIOC_SC_SetOutPosition(sc, 0, 0);
+	// workaround: scaler margin
+	VIOC_SC_SetOutSize(sc, width, height + 1);
+	VIOC_SC_SetUpdate(sc);
 
 	return 0;
 }
@@ -984,16 +975,16 @@ static int tccvin_set_wmixer(struct tccvin_streaming *vdev)
 		wmixer, width, height);
 
 	// Configure the wmixer
-#ifdef CONFIG_OVERLAY_PGL
 	VIOC_WMIX_SetSize(wmixer, width, height);
+	VIOC_WMIX_SetPosition(wmixer, 0,
+		vdev->selection.r.left, vdev->selection.r.top);
+#ifdef CONFIG_OVERLAY_PGL
 	VIOC_WMIX_SetPosition(wmixer, 1, 0, 0);
 	VIOC_WMIX_SetChromaKey(wmixer, layer, ON, key_R, key_G, key_B,
 		mask_R, mask_G, mask_B);
+#endif
 	VIOC_WMIX_SetUpdate(wmixer);
 	VIOC_CONFIG_WMIXPath(vdev->cif.vioc_path.vin, ON);
-#else
-	VIOC_CONFIG_WMIXPath(vdev->cif.vioc_path.vin, OFF);
-#endif
 
 	return 0;
 }
@@ -1555,6 +1546,12 @@ int tccvin_video_init(struct tccvin_streaming *stream)
 #endif//CONFIG_VIDEO_VIDEOsOURCE
 
 	stream->is_handover_needed	= 0;
+
+	// vin window
+	stream->selection.r.left	= 0;
+	stream->selection.r.top		= 0;
+	stream->selection.r.width	= 0;
+	stream->selection.r.height	= 0;
 
 	// preview method
 	stream->preview_method		= PREVIEW_V4L2;

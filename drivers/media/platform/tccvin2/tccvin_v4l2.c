@@ -634,6 +634,29 @@ static int tccvin_ioctl_g_input(struct file *file, void *fh,
 	return 0;
 }
 
+static int tccvin_ioctl_g_selection(struct file *file, void *fh,
+	struct v4l2_selection *s)
+{
+	struct tccvin_fh *handle = fh;
+	struct tccvin_streaming *stream = handle->stream;
+
+	memset(s, 0, sizeof(*s));
+	*s = stream->selection;
+
+	return 0;
+}
+
+static int tccvin_ioctl_s_selection(struct file *file, void *fh,
+	struct v4l2_selection *s)
+{
+	struct tccvin_fh *handle = fh;
+	struct tccvin_streaming *stream = handle->stream;
+
+	stream->selection = *s;
+
+	return 0;
+}
+
 static int tccvin_ioctl_g_parm(struct file *file, void *fh,
 	struct v4l2_streamparm *a)
 {
@@ -801,6 +824,8 @@ const struct v4l2_ioctl_ops tccvin_ioctl_ops = {
 	.vidioc_streamoff		= tccvin_ioctl_streamoff,
 	.vidioc_enum_input		= tccvin_ioctl_enum_input,
 	.vidioc_g_input			= tccvin_ioctl_g_input,
+	.vidioc_g_selection		= tccvin_ioctl_g_selection,
+	.vidioc_s_selection		= tccvin_ioctl_s_selection,
 	.vidioc_g_parm			= tccvin_ioctl_g_parm,
 	.vidioc_s_parm			= tccvin_ioctl_s_parm,
 	.vidioc_enum_framesizes		= tccvin_ioctl_enum_framesizes,

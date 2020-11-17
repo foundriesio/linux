@@ -240,6 +240,8 @@ struct tccvin_streaming {
 
 	enum v4l2_buf_type			type;
 
+	struct v4l2_selection			selection;
+
 	unsigned int				nformats;
 	struct tccvin_format			*format;
 
