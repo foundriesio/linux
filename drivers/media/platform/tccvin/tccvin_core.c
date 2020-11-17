@@ -197,6 +197,15 @@ long tccvin_core_do_ioctl(struct file * file, unsigned int cmd, void * arg) {
 	case VIDIOC_G_ENC_INDEX:
 	case VIDIOC_ENCODER_CMD:
 	case VIDIOC_TRY_ENCODER_CMD:
+		ret = -EINVAL;
+		break;
+	
+	case VIDIOC_S_SELECTION:
+		dlog("VIDIOC_S_SELECTION\n");
+		vdev->v4l2.selection	= *(struct v4l2_selection *)arg;
+		ret = 0;
+		break;
+		
 	case VIDIOC_USER_JPEG_CAPTURE:
 		ret = -EINVAL;
 		break;
