@@ -1744,6 +1744,7 @@ static void __ufshcd_release(struct ufs_hba *hba)
 		|| hba->ufshcd_state != UFSHCD_STATE_OPERATIONAL
 		|| ufshcd_any_tag_in_use(hba) || hba->outstanding_tasks
 		|| hba->active_uic_cmd || hba->uic_async_done
+	    	|| hba->clk_gating.state == CLKS_OFF
 		|| ufshcd_eh_in_progress(hba))
 		return;
 
