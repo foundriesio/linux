@@ -540,7 +540,7 @@ static int tcc_sc_mmc_probe(struct platform_device *pdev)
 		return ret;
 	}
 
-	host->mmc->caps |= (MMC_CAP_CMD23 | MMC_CAP_ERASE);
+	host->mmc->caps |= MMC_CAP_CMD23;
 
 	/*
 	 * Init tasklets.
