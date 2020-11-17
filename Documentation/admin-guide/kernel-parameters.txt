@@ -2464,9 +2464,8 @@
 				expose users to several CPU vulnerabilities.
 				Equivalent to: nopti [X86,PPC]
 					       kpti=0 [ARM64]
-					       nospectre_v1 [PPC]
+					       nospectre_v1 [X86,PPC]
 					       nobp=0 [S390]
-					       nospectre_v1 [X86]
 					       nospectre_v2 [X86,PPC,S390,ARM64]
 					       spectre_v2_user=off [X86]
 					       spec_store_bypass_disable=off [X86,PPC]
@@ -2810,9 +2809,9 @@
 				     cannot be undone. Depending on the CPU
 				     type this might have a performance impact.
 
-	nospectre_v1	[PPC] Disable mitigations for Spectre Variant 1 (bounds
-			check bypass). With this option data leaks are possible
-			in the system.
+	nospectre_v1	[X86,PPC] Disable mitigations for Spectre Variant 1
+			(bounds check bypass). With this option data leaks are
+			possible in the system.
 
 	nospectre_v2	[X86,ARM64] Disable all mitigations for
 			the Spectre variant 2 (indirect branch prediction)
