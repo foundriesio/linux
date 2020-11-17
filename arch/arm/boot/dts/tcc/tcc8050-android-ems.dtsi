@@ -150,9 +150,9 @@
 
 &i2c0 {
 	status = "okay";
-	port-mux = <22>;
+	port-mux = <6>;
 	pinctrl-names = "default";
-	pinctrl-0 = <&i2c22_bus>;
+	pinctrl-0 = <&i2c6_bus>;
 /*
 	pmic@58 {
 		compatible = "dlg,da9062";
@@ -220,42 +220,6 @@
 		};
 	};
 */ /* pmic da9062 */
-};
-
-&i2c1 {
-	status = "okay";
-	port-mux = <10>; /* [0]SCL [1]SDA */
-	pinctrl-names = "default";
-	pinctrl-0 = <&i2c10_bus>;
-};
-
-&i2c2 {
-	status = "okay";
-	port-mux = <30>; /* [0]SCL [1]SDA */
-	pinctrl-names = "default";
-	pinctrl-0 = <&i2c30_bus>;
-	ak4601: ak4601@10 {
-		compatible = "akm,ak4601";
-		ak4601,pdn-gpio = <&gpmb 29 0>;
-		cmute-gpios = <&gpmc 5 1>;     //CODEC_MUTE    0: active high, 1: active low
-		//amute-gpios = <&gpma 1 1>;       //AMP_MUTE      0: active high, 1: active low
-		//stanby-gpios = <&gpma 2 0>;     //AMP_STBY      0: active high, 1: active low
-		reg = <0x10>;
-	};
-};
-
-&i2c3 {
-	status = "okay";
-	port-mux = <11>; /* [0]SCL [1]SDA */
-	pinctrl-names = "default";
-	pinctrl-0 = <&i2c11_bus>;
-};
-
-&i2c4 {
-	status = "okay";
-	port-mux = <6>; /* [0]SCL [1]SDA */
-	pinctrl-names = "default";
-	pinctrl-0 = <&i2c6_bus>;
 
 	mxt_touch@4b {
 		compatible = "atmel,maxtouch";
@@ -268,11 +232,70 @@
 	};
 };
 
+&i2c1 {
+	status = "okay";
+	port-mux = <22>; /* [0]SCL [1]SDA */
+	pinctrl-names = "default";
+	pinctrl-0 = <&i2c22_bus>;
+};
+
+&i2c2 {
+	status = "okay";
+	port-mux = <13>; /* [0]SCL [1]SDA */
+	pinctrl-names = "default";
+	pinctrl-0 = <&i2c13_bus>;
+	ak4601: ak4601@10 {
+		compatible = "akm,ak4601";
+		ak4601,pdn-gpio = <&gpb 27 0>;
+		cmute-gpios = <&gpb 28 1>;     //CODEC_MUTE    0: active high, 1: active low
+		//amute-gpios = <&gpmb 27 1>;       //AMP_MUTE      0: active high, 1: active low
+		//stanby-gpios = <&gpmb 26 0>;     //AMP_STBY      0: active high, 1: active low
+		reg = <0x10>;
+	};
+};
+
+&i2c3 {
+	status = "okay";
+	port-mux = <11>; /* [0]SCL [1]SDA */
+	pinctrl-names = "default";
+	pinctrl-0 = <&i2c11_bus>;
+
+	dp_serializer:max96851@60 {
+		compatible	= "maxim,serdes";
+		reg		= <0x60>;
+	};
+
+	dp_deserializer0:max96878@48 {
+		compatible	= "maxim,serdes";
+		reg		= <0x48>;
+	};
+
+	dp_deserializer1:max96878@4A {
+		compatible	= "maxim,serdes";
+		reg		= <0x4A>;
+	};
+
+	dp_deserializer2:max96878@4C {
+		compatible	= "maxim,serdes";
+		reg		= <0x4C>;
+	};
+
+	dp_deserializer3:max96878@68 {
+		compatible	= "maxim,serdes";
+		reg		= <0x68>;
+	};
+
+	serdes_path:serdes_path@1{
+	compatible = "telechips,serdes_path_configuration";
+	serdes_path_configuration = <1>; /* 0 TCC8059, 1 TCC8050/3 */
+	};
+};
+
 &i2c5 {
 	status = "okay";
-	port-mux = <33>; /* [0]SCL [1]SDA */
+	port-mux = <37>; /* [0]SCL [1]SDA */
 	pinctrl-names = "default";
-	pinctrl-0 = <&i2c33_bus>;
+	pinctrl-0 = <&i2c37_bus>;
 
 	mxt_touch@4d {
 		compatible = "atmel,maxtouch";
@@ -280,8 +303,8 @@
 		reg = <0x4d>;
 		pinctrl-names = "default";
 		pinctrl-0 = <&tsc1_default>;
-		irq-gpios = <&gpa 21 0x0>;
-		reset-gpios = <&gpmd 8 0x0>;
+		irq-gpios = <&gpmc 19 0x0>;
+		reset-gpios = <&gpmc 22 0x0>;
 	};
 
 	mxt_touch@4f {
@@ -290,47 +313,10 @@
 		reg = <0x4f>;
 		pinctrl-names = "default";
 		pinctrl-0 = <&tsc2_default>;
-		irq-gpios = <&gpc 13 0x0>;
-		reset-gpios = <&gpc 12 0x0>;
+		irq-gpios = <&gpmc 18 0x0>;
+		reset-gpios = <&gpmc 24 0x0>;
 	};
 };
-
-&i2c6 {
-		status = "okay";
-		port-mux = <37>;
-		pinctrl-names = "default";
-		pinctrl-0 = <&i2c37_bus>;
-
-		dp_serializer:max96851@60 {
-			compatible	= "maxim,serdes";
-			reg		= <0x60>;
-		};
-		
-		dp_deserializer0:max96878@48 {
-			compatible	= "maxim,serdes";
-			reg		= <0x48>;
-		};
-		
-		dp_deserializer1:max96878@4A {
-			compatible	= "maxim,serdes";
-			reg		= <0x4A>;
-		};
-		
-		dp_deserializer2:max96878@4C {
-			compatible	= "maxim,serdes";
-			reg		= <0x4C>;
-		};
-		
-		dp_deserializer3:max96878@68 {
-			compatible	= "maxim,serdes";
-			reg		= <0x68>;
-		};
-		
-		serdes_path:serdes_path@1{
-		compatible = "telechips,serdes_path_configuration";
-		serdes_path_configuration = <1>; /* 0 TCC8059, 1 TCC8050/3 */
-		};
-	};
 
 &i2c7 {
 	status = "okay";
