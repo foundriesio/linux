@@ -20,7 +20,7 @@ config USB_OTG_WAKELOCK
 #
 config TCC_EHCI_PHY
     bool "TCC EHCI Transceiver Driver"
-    depends on USB_EHCI_TCC || TCC_DWC_OTG_HOST_MUX
+    depends on USB_SUPPORT
     select USB_PHY
     help
       Enable this to support the ehci transceiver in TCC chip.
