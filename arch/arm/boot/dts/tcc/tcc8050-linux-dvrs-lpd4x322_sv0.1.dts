@@ -1,14 +1,14 @@
 // SPDX-License-Identifier: (GPL-2.0-or-later OR MIT)
 /*
 * Copyright (C) Telechips Inc.
-* Device tree for Telechips TCC8050 AVN board
+* Device tree for Telechips TCC8050 DVRS board
 */
 
 #ifndef DT_OVERLAY
 /dts-v1/;
 #endif
 
-#include "tcc8050-linux-avn.dtsi"
+#include "tcc8050-linux-dvrs.dtsi"
 #include "tcc8050-linux-avn-display.dtsi"
 
 / {
