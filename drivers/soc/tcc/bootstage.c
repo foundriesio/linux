@@ -81,11 +81,11 @@ static inline unsigned long get_boot_timestamp_num(void)
 	return res.a0;
 }
 
-static inline void validate_boot_timestamp_num(u32 num)
+static inline void validate_boot_timestamp_num(struct seq_file *m, u32 num)
 {
 	if (num != NR_BOOT_STAGES) {
-		pr_warn("[WARN][bootstage] Number of stages does not match. (actual: %u, expected: %u)\n",
-			num, NR_BOOT_STAGES);
+		seq_printf(m, "WARNING: Number of stages does not match. (actual: %u, expected: %u)\n\n",
+			   num, NR_BOOT_STAGES);
 	}
 }
 
@@ -126,7 +126,7 @@ static int bootstage_report_show(struct seq_file *m, void *v)
 	const char *stamp_fmt, *desc;
 
 	num = get_boot_timestamp_num();
-	validate_boot_timestamp_num(num);
+	validate_boot_timestamp_num(m, num);
 
 	seq_printf(m, "Timer summary in microseconds (%u records):\n", num);
 
@@ -180,7 +180,7 @@ static int bootstage_data_show(struct seq_file *m, void *v)
 	const char *desc;
 
 	num = get_boot_timestamp_num();
-	validate_boot_timestamp_num(num);
+	validate_boot_timestamp_num(m, num);
 
 	seq_puts(m, "reset,0\n");
 
