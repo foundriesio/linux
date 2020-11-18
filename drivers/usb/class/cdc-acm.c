@@ -1240,9 +1240,6 @@ static int acm_probe(struct usb_interface *intf,
 		return -EINVAL;
 	}
 
-	if (!intf->cur_altsetting)
-		return -EINVAL;
-
 	if (!buflen) {
 		if (intf->cur_altsetting->endpoint &&
 				intf->cur_altsetting->endpoint->extralen &&
@@ -1308,8 +1305,6 @@ static int acm_probe(struct usb_interface *intf,
 		dev_dbg(&intf->dev, "no interfaces\n");
 		return -ENODEV;
 	}
-	if (!data_interface->cur_altsetting || !control_interface->cur_altsetting)
-		return -ENODEV;
 
 	if (data_intf_num != call_intf_num)
 		dev_dbg(&intf->dev, "Separate call control interface. That is not fully supported.\n");

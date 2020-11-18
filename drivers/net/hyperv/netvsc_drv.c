@@ -980,7 +980,10 @@ struct netvsc_device_info *netvsc_devinfo_get(struct netvsc_device *nvdev)
 
 		prog = netvsc_xdp_get(nvdev);
 		if (prog) {
+			prog =
 			bpf_prog_inc(prog);
+			if (IS_ERR(prog))
+				return NULL;
 			dev_info->bprog = prog;
 		}
 	} else {
@@ -1070,7 +1073,12 @@ static int netvsc_attach(struct net_device *ndev,
 
 	prog = dev_info->bprog;
 	if (prog) {
+		prog =
 		bpf_prog_inc(prog);
+		if (IS_ERR(prog)) {
+			ret = PTR_ERR(prog);
+			goto err1;
+		}
 		ret = netvsc_xdp_set(ndev, prog, NULL, nvdev);
 		if (ret) {
 			bpf_prog_put(prog);
