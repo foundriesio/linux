@@ -46,6 +46,7 @@ static inline void __flush_dcache_icache_phys(unsigned long physaddr)
 }
 #endif
 
+#define flush_dcache_range flush_dcache_range_inline
 /*
  * Write any modified data cache blocks out to memory and invalidate them.
  * Does not invalidate the corresponding instruction cache blocks.
