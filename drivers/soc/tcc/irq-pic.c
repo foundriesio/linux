@@ -56,9 +56,9 @@ static int tcc_pic_set_polarity(struct irq_data *irqd, u32 type)
 	irq = (u32)irqd->hwirq - (u32)32;
 
 	if (irq > (picinfo->max_irq - (u32)1)) {
-		(void)pr_err("[ERROR][%s] %s: Wrong IRQ:%d\n",
-			     TCC_PIC_NAME, __func__, irq);
-		return -EFAULT;
+		(void)pr_info("[INFO][%s] %s: GIC will be set IRQ:%d\n",
+			      TCC_PIC_NAME, __func__, irq);
+		return ret;
 	}
 
 	if (irq < picinfo->demarcation) {
