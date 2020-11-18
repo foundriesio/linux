@@ -36,7 +36,7 @@
 #include <media/v4l2-subdev.h>
 #include <video/tcc/vioc_vin.h>
 
-#define LOG_TAG			"VSRC:MAX9275"
+#define LOG_TAG			"VSRC:cxd5700"
 
 #define loge(fmt, ...)		\
 		pr_err("[ERROR][%s] %s - "\
@@ -55,7 +55,7 @@
  * This object contains essential v4l2 objects
  * such as sub-device and ctrl_handler
  */
-struct max9275 {
+struct cxd5700 {
 	struct v4l2_subdev		sd;
 	struct v4l2_mbus_framefmt	fmt;
 
@@ -63,15 +63,21 @@ struct max9275 {
 	struct regmap			*regmap;
 };
 
-const struct reg_sequence max9275_reg_init[] = {
-	{0x04, 0x43, 50},
+#if 0
+const struct reg_sequence cxd5700_reg_init[] = {
+	{0x0A, 0x01, 0},
+	{0x07, 0x02, 0},
+	{0x01, 0x00, 0},
+	{0x00, 0x30, 0},
+	{0x80, 0xC5, 0},
 };
-
-const struct reg_sequence max9275_reg_s_stream[] = {
-	{0x04, 0x83, 50},
+#else
+const char cxd5700_reg_init[] = {
+	/*{0x0A},*/ {0x01}, {0x07}, {0x02}, {0x01},
+	{0x00}, {0x00}, {0x30}, {0x80}, {0xC5}
 };
-
-static const struct regmap_config max9275_regmap = {
+#endif
+static const struct regmap_config cxd5700_regmap = {
 	.reg_bits		= 8,
 	.val_bits		= 8,
 
@@ -79,25 +85,38 @@ static const struct regmap_config max9275_regmap = {
 	.cache_type		= REGCACHE_NONE,
 };
 
+static void cxd5700_init_format(struct cxd5700 *dev)
+{
+	dev->fmt.width = 1920;
+	dev->fmt.height	= 1079,
+	dev->fmt.code = MEDIA_BUS_FMT_UYVY8_1X16;//MEDIA_BUS_FMT_UYVY8_2X8;
+	dev->fmt.field = V4L2_FIELD_NONE;
+	dev->fmt.colorspace = V4L2_COLORSPACE_SMPTE170M;
+}
 /*
  * Helper fuctions for reflection
  */
-static inline struct max9275 *to_dev(struct v4l2_subdev *sd)
+static inline struct cxd5700 *to_dev(struct v4l2_subdev *sd)
 {
-	return container_of(sd, struct max9275, sd);
+	return container_of(sd, struct cxd5700, sd);
 }
 
 /*
  * v4l2_subdev_core_ops implementations
  */
-static int max9275_init(struct v4l2_subdev *sd, u32 val)
+static int cxd5700_init(struct v4l2_subdev *sd, u32 val)
 {
-	struct max9275		*dev	= to_dev(sd);
+	struct cxd5700		*dev	= to_dev(sd);
 	int			ret	= 0;
 
+	ret = regmap_bulk_write(dev->regmap,
+			0x0a,
+			cxd5700_reg_init, ARRAY_SIZE(cxd5700_reg_init));
+#if 0
 	ret = regmap_multi_reg_write(dev->regmap,
-			max9275_reg_init,
-			ARRAY_SIZE(max9275_reg_init));
+			cxd5700_reg_init,
+			ARRAY_SIZE(cxd5700_reg_init));
+#endif
 	if (ret)
 		loge("regmap_multi_reg_write returned %d\n", ret);
 
@@ -107,39 +126,37 @@ static int max9275_init(struct v4l2_subdev *sd, u32 val)
 /*
  * v4l2_subdev_video_ops implementations
  */
-static int max9275_s_stream(struct v4l2_subdev *sd, int enable)
+static int cxd5700_s_stream(struct v4l2_subdev *sd, int enable)
 {
-	struct max9275		*dev	= to_dev(sd);
+	struct cxd5700		*dev	= to_dev(sd);
 	int			ret	= 0;
 
-	ret = regmap_multi_reg_write(dev->regmap,
-			max9275_reg_s_stream,
-			ARRAY_SIZE(max9275_reg_s_stream));
-	if (ret)
-		loge("regmap_multi_reg_write returned %d\n", ret);
+	logi("call !!\n");
 
 	return ret;
 }
 
-static int max9275_get_fmt(struct v4l2_subdev *sd,
-			    struct v4l2_subdev_pad_config *cfg,
-			    struct v4l2_subdev_format *format)
+
+static int cxd5700_get_fmt(struct v4l2_subdev *sd,
+			   struct v4l2_subdev_pad_config *cfg,
+			   struct v4l2_subdev_format *format)
 {
-	struct max9275		*dev	= to_dev(sd);
+	struct cxd5700		*dev	= to_dev(sd);
 	int			ret	= 0;
 
 	logi("%s call\n", __func__);
 
 	memcpy((void *)&format->format, (const void *)&dev->fmt,
 		sizeof(struct v4l2_mbus_framefmt));
+
 	return ret;
 }
 
-static int max9275_set_fmt(struct v4l2_subdev *sd,
+static int cxd5700_set_fmt(struct v4l2_subdev *sd,
 			    struct v4l2_subdev_pad_config *cfg,
 			    struct v4l2_subdev_format *format)
 {
-	struct max9275		*dev	= to_dev(sd);
+	struct cxd5700		*dev	= to_dev(sd);
 	int			ret	= 0;
 
 	logi("%s call\n", __func__);
@@ -153,53 +170,53 @@ static int max9275_set_fmt(struct v4l2_subdev *sd,
 /*
  * v4l2_subdev_internal_ops implementations
  */
-static const struct v4l2_subdev_core_ops max9275_core_ops = {
-	.init			= max9275_init,
+static const struct v4l2_subdev_core_ops cxd5700_core_ops = {
+	.init			= cxd5700_init,
 };
 
-static const struct v4l2_subdev_video_ops max9275_video_ops = {
-	.s_stream		= max9275_s_stream,
+static const struct v4l2_subdev_video_ops cxd5700_video_ops = {
+	.s_stream		= cxd5700_s_stream,
 };
 
-static const struct v4l2_subdev_pad_ops max9275_pad_ops = {
-	.get_fmt		= max9275_get_fmt,
-	.set_fmt		= max9275_set_fmt,
+static const struct v4l2_subdev_pad_ops cxd5700_pad_ops = {
+	.get_fmt		= cxd5700_get_fmt,
+	.set_fmt		= cxd5700_set_fmt,
 };
 
-static const struct v4l2_subdev_ops max9275_ops = {
-	.core			= &max9275_core_ops,
-	.video			= &max9275_video_ops,
-	.pad			= &max9275_pad_ops,
+static const struct v4l2_subdev_ops cxd5700_ops = {
+	.core			= &cxd5700_core_ops,
+	.video			= &cxd5700_video_ops,
+	.pad			= &cxd5700_pad_ops,
 };
 
-struct max9275 max9275_data = {
+struct cxd5700 cxd5700_data = {
 };
 
-static const struct i2c_device_id max9275_id[] = {
-	{ "max9275", 0, },
+static const struct i2c_device_id cxd5700_id[] = {
+	{ "cxd5700", 0, },
 	{ }
 };
-MODULE_DEVICE_TABLE(i2c, max9275_id);
+MODULE_DEVICE_TABLE(i2c, cxd5700_id);
 
 #if IS_ENABLED(CONFIG_OF)
-static const struct of_device_id max9275_of_match[] = {
+static const struct of_device_id cxd5700_of_match[] = {
 	{
-		.compatible	= "maxim,max9275",
-		.data		= &max9275_data,
+		.compatible	= "sony,cxd5700",
+		.data		= &cxd5700_data,
 	},
 	{}
 };
-MODULE_DEVICE_TABLE(of, max9275_of_match);
+MODULE_DEVICE_TABLE(of, cxd5700_of_match);
 #endif
 
-int max9275_probe(struct i2c_client *client, const struct i2c_device_id *id)
+int cxd5700_probe(struct i2c_client *client, const struct i2c_device_id *id)
 {
-	struct max9275 *dev = NULL;
+	struct cxd5700 *dev = NULL;
 	const struct of_device_id *dev_id = NULL;
 	int ret = 0;
 
 	// allocate and clear memory for a device
-	dev = devm_kzalloc(&client->dev, sizeof(struct max9275), GFP_KERNEL);
+	dev = devm_kzalloc(&client->dev, sizeof(struct cxd5700), GFP_KERNEL);
 	if (dev == NULL) {
 		loge("Allocate a device struct.\n");
 		return -ENOMEM;
@@ -207,7 +224,7 @@ int max9275_probe(struct i2c_client *client, const struct i2c_device_id *id)
 
 	// set the specific information
 	if (client->dev.of_node) {
-		dev_id = of_match_node(max9275_of_match, client->dev.of_node);
+		dev_id = of_match_node(cxd5700_of_match, client->dev.of_node);
 		memcpy(dev, (const void *)dev_id->data, sizeof(*dev));
 	}
 
@@ -215,7 +232,7 @@ int max9275_probe(struct i2c_client *client, const struct i2c_device_id *id)
 		client->name, (client->addr)<<1, client);
 
 	// Register with V4L2 layer as a slave device
-	v4l2_i2c_subdev_init(&dev->sd, client, &max9275_ops);
+	v4l2_i2c_subdev_init(&dev->sd, client, &cxd5700_ops);
 
 	// register a v4l2 sub device
 	ret = v4l2_async_register_subdev(&dev->sd);
@@ -225,12 +242,15 @@ int max9275_probe(struct i2c_client *client, const struct i2c_device_id *id)
 		logi("%s is registered as a v4l2 sub device.\n", dev->sd.name);
 
 	// init regmap
-	dev->regmap = devm_regmap_init_i2c(client, &max9275_regmap);
+	dev->regmap = devm_regmap_init_i2c(client, &cxd5700_regmap);
 	if (IS_ERR(dev->regmap)) {
 		loge("devm_regmap_init_i2c is wrong\n");
 		ret = -1;
 		goto goto_free_device_data;
 	}
+
+	/* init format info */
+	cxd5700_init_format(dev);
 
 	goto goto_end;
 
@@ -242,10 +262,10 @@ goto_end:
 	return ret;
 }
 
-int max9275_remove(struct i2c_client *client)
+int cxd5700_remove(struct i2c_client *client)
 {
 	struct v4l2_subdev	*sd	= i2c_get_clientdata(client);
-	struct max9275		*dev	= to_dev(sd);
+	struct cxd5700		*dev	= to_dev(sd);
 
 	// release regmap
 	regmap_exit(dev->regmap);
@@ -258,15 +278,14 @@ int max9275_remove(struct i2c_client *client)
 	return 0;
 }
 
-static struct i2c_driver max9275_driver = {
-	.probe		= max9275_probe,
-	.remove		= max9275_remove,
+static struct i2c_driver cxd5700_driver = {
+	.probe		= cxd5700_probe,
+	.remove		= cxd5700_remove,
 	.driver		= {
-		.name		= "max9275",
-		.of_match_table	= of_match_ptr(max9275_of_match),
+		.name		= "cxd5700",
+		.of_match_table	= of_match_ptr(cxd5700_of_match),
 	},
-	.id_table	= max9275_id,
+	.id_table	= cxd5700_id,
 };
 
-module_i2c_driver(max9275_driver);
-
+module_i2c_driver(cxd5700_driver);

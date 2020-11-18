@@ -1523,40 +1523,41 @@ int tccvin_video_deinit(struct tccvin_streaming *stream)
 	return ret;
 }
 
-int tccvin_video_subdevs_streamon(struct tccvin_streaming *stream)
+static int tccvin_video_subdevs_s_power(struct tccvin_streaming *stream,
+					u32 onOff)
 {
 	struct tccvin_device	*dev		= stream->dev;
-	int			idxSubDev	= 0;
+	int			idx		= 0;
 	struct v4l2_subdev	*subdev		= NULL;
-	struct v4l2_subdev_format *fmt		= NULL;
-	struct v4l2_dv_timings	*timings	= NULL;
-	int			idxTry		= 0;
-	int			nTry		= 3;
-	unsigned int		status		= 0;
-	int			ret		= 0;
+	int ret = 0;
 
-	// v4l2 sub dev - core functions
-	for (idxSubDev = 0; idxSubDev < dev->bounded_subdevs; idxSubDev++) {
-		subdev = dev->linked_subdevs[idxSubDev].sd;
+	for (idx = 0; idx < dev->bounded_subdevs; idx++) {
+		subdev = dev->linked_subdevs[idx].sd;
 
 		logi("call %s s_power\n", subdev->name);
 		// power-up sequence & initial i2c setting
-		ret = v4l2_subdev_call(subdev, core, s_power, 1);
-
-		logi("call %s init\n", subdev->name);
-		// configure as init status
-		ret = v4l2_subdev_call(subdev, core, init, 0);
+		ret = v4l2_subdev_call(subdev, core, s_power, onOff);
 	}
 
-	// get fmt of first subdev in image pipeline
+	return ret;
+}
+
+static int tccvin_video_subdevs_set_fmt(struct tccvin_streaming *stream)
+{
+	struct tccvin_device	*dev		= stream->dev;
+	int			idx		= 0;
+	struct v4l2_subdev	*subdev		= NULL;
+	struct v4l2_subdev_format *fmt		= NULL;
+	int ret = 0;
+
 	subdev = dev->linked_subdevs[dev->bounded_subdevs - 1].sd;
 	fmt = &dev->linked_subdevs[dev->bounded_subdevs - 1].fmt;
 	logi("call %s get format\n", subdev->name);
 	ret = v4l2_subdev_call(subdev, pad, get_fmt, NULL, fmt);
 
 	// set fmt the other subdevs according to the first subdev
-	for (idxSubDev = dev->bounded_subdevs-2; idxSubDev >= 0; idxSubDev--) {
-		subdev = dev->linked_subdevs[idxSubDev].sd;
+	for (idx = dev->bounded_subdevs-2; idx >= 0; idx--) {
+		subdev = dev->linked_subdevs[idx].sd;
 
 		logi("call %s set_fmt\n", subdev->name);
 		ret = v4l2_subdev_call(subdev, pad, set_fmt, NULL, fmt);
@@ -1564,12 +1565,42 @@ int tccvin_video_subdevs_streamon(struct tccvin_streaming *stream)
 			logi("v4l2_subdev_call(video, set_fmt) is wrong\n");
 			continue;
 		}
-
 		//ret = v4l2_subdev_call(subdev, pad, get_fmt, NULL, fmt);
 	}
+	return ret;
+}
 
-	// get dv timing
+static int tccvin_video_subdevs_init(struct tccvin_streaming *stream,
+				     u32 onOff)
+{
+	struct tccvin_device	*dev		= stream->dev;
+	int			idx		= 0;
+	struct v4l2_subdev	*subdev		= NULL;
+	struct v4l2_subdev_format *fmt		= NULL;
+	int ret = 0;
+
+	for (idx = 0; idx < dev->bounded_subdevs; idx++) {
+		subdev = dev->linked_subdevs[idx].sd;
+
+		logi("call %s init\n", subdev->name);
+		// configure as init status
+		ret = v4l2_subdev_call(subdev, core, init, onOff);
+	}
+
+	return ret;
+}
+
+static int tccvin_video_subdevs_get_config(struct tccvin_streaming *stream)
+{
+	struct tccvin_device	*dev		= stream->dev;
+	int			idx		= 0;
+	struct v4l2_subdev	*subdev		= NULL;
+	struct v4l2_subdev_format *fmt		= NULL;
+	struct v4l2_dv_timings	*timings	= NULL;
+	int ret = 0;
+
 	subdev = dev->linked_subdevs[0].sd;
+	fmt = &dev->linked_subdevs[0].fmt;
 
 	timings = &stream->dv_timings;
 	logi("call %s g_dv_timings\n", subdev->name);
@@ -1592,6 +1623,10 @@ int tccvin_video_subdevs_streamon(struct tccvin_streaming *stream)
 		case MEDIA_BUS_FMT_UYVY8_2X8:
 			logi("MEDIA_BUS_FMT_UYVY8_2X8\n");
 			stream->vs_info.data_format = FMT_YUV422_8BIT;
+			break;
+		case MEDIA_BUS_FMT_UYVY8_1X16:
+			logi("MEDIA_BUS_FMT_UYVY8_1X16\n");
+			stream->vs_info.data_format = FMT_YUV422_16BIT;
 			break;
 		default:
 			loge("MEDIA_BUS_FMT is wrong\n");
@@ -1625,32 +1660,104 @@ int tccvin_video_subdevs_streamon(struct tccvin_streaming *stream)
 				V4L2_MBUS_DATA_ACTIVE_HIGH) ? 1 : 0;
 	}
 
-	// start stream of all subdevs
-	for (idxSubDev = 0; idxSubDev < dev->bounded_subdevs; idxSubDev++) {
-		subdev = dev->linked_subdevs[idxSubDev].sd;
+	return ret;
+}
 
-		logi("call %s s_stream\n", subdev->name);
-		// start stream
-		ret = v4l2_subdev_call(subdev, video, s_stream, 1);
+static int tccvin_video_subdevs_s_stream(struct tccvin_streaming *stream,
+					 u32 onOff)
+{
+	struct tccvin_device	*dev		= stream->dev;
+	int			idx		= 0;
+	struct v4l2_subdev	*subdev		= NULL;
+	struct v4l2_subdev_format *fmt		= NULL;
+	int			idxTry		= 0;
+	int			nTry		= 3;
+	unsigned int		status		= 0;
 
-		// signal check
-		for (idxTry = 0; idxTry < nTry; idxTry++) {
-			ret = v4l2_subdev_call(subdev, video, g_input_status,
-				&status);
-			if (ret < 0) {
-				logd("subdev is unavaliable\n");
-				break;
+	int ret = 0;
+
+	if (onOff) {
+		for (idx = dev->bounded_subdevs - 1; idx >= 0; idx--) {
+			subdev = dev->linked_subdevs[idx].sd;
+
+			logi("call %s s_stream\n", subdev->name);
+			// start stream
+			ret = v4l2_subdev_call(subdev, video, s_stream, onOff);
+
+			// signal check
+			for (idxTry = 0; idxTry < nTry; idxTry++) {
+				ret = v4l2_subdev_call(subdev, video, 
+						g_input_status,
+						&status);
+				if (ret < 0) {
+					logd("subdev is unavaliable\n");
+					break;
+				}
+
+				if (status & V4L2_IN_ST_NO_SIGNAL) {
+					logd("subdev is not stable\n");
+				} else {
+					logd("subdev is stable\n");
+					break;
+				}
+				msleep(20); // 20msec is minimum in msleep()
 			}
+		}
+	} else {
+		for (idx = 0; idx < dev->bounded_subdevs; idx++) {
+			subdev = dev->linked_subdevs[idx].sd;
 
-			if (status & V4L2_IN_ST_NO_SIGNAL) {
-				logd("subdev is not stable\n");
-			} else {
-				logd("subdev is stable\n");
-				break;
-			}
-			msleep(20);	// 20msec is minimum in msleep()
+			logi("call %s s_stream\n", subdev->name);
+			// stop stream
+			ret = v4l2_subdev_call(subdev, video, s_stream, 0);
 		}
 	}
+	return ret;
+}
+
+int tccvin_video_subdevs_streamon(struct tccvin_streaming *stream)
+{
+	struct tccvin_device	*dev		= stream->dev;
+	int			idx		= 0;
+	struct v4l2_subdev	*subdev		= NULL;
+	struct v4l2_subdev_format *fmt		= NULL;
+	struct v4l2_dv_timings	*timings	= NULL;
+	int			idxTry		= 0;
+	int			nTry		= 3;
+	unsigned int		status		= 0;
+	int			ret		= 0;
+
+	/*
+	 * step 1
+	 * v4l2 sub dev - s_power
+	 */
+	tccvin_video_subdevs_s_power(stream, 1);
+
+	/*
+	 * step 2
+	 * get fmt of first subdev in image pipeline
+	 * and set the other subdevices using fmt ofr first subdev
+	 */
+	tccvin_video_subdevs_set_fmt(stream);
+
+	/*
+	 * step 3
+	 * v4l2 sub dev - init
+	 */
+	tccvin_video_subdevs_init(stream, 1);
+
+	/*
+	 * step 4
+	 * call g_dv_timings, get_fmt and g_mbus_config of subdevice
+	 * which is in front of video-in
+	 */
+	tccvin_video_subdevs_get_config(stream);
+
+	/*
+	 * step 5
+	 * call start stream of all subdevs
+	 */
+	tccvin_video_subdevs_s_stream(stream, 1);
 
 	//return ret;
 	return 0;
@@ -1659,26 +1766,15 @@ int tccvin_video_subdevs_streamon(struct tccvin_streaming *stream)
 int tccvin_video_subdevs_streamoff(struct tccvin_streaming *stream)
 {
 	struct tccvin_device	*dev		= stream->dev;
-	int			idxSubDev	= 0;
+	int			idx		= 0;
 	struct v4l2_subdev	*subdev		= NULL;
 	int			ret		= 0;
 
-	for (idxSubDev = 0; idxSubDev < dev->bounded_subdevs; idxSubDev++) {
-		subdev = dev->linked_subdevs[idxSubDev].sd;
+	tccvin_video_subdevs_s_stream(stream, 0);
 
-		logi("call %s s_stream\n", subdev->name);
-		// stop stream
-		ret = v4l2_subdev_call(subdev, video, s_stream, 0);
-	}
+	tccvin_video_subdevs_init(stream, 0);
 
-	// v4l2 sub dev - core functions
-	for (idxSubDev = 0; idxSubDev < dev->bounded_subdevs; idxSubDev++) {
-		subdev = dev->linked_subdevs[idxSubDev].sd;
-
-		logi("call %s s_power\n", subdev->name);
-		// power-down sequence
-		ret = v4l2_subdev_call(subdev, core, s_power, 0);
-	}
+	tccvin_video_subdevs_s_power(stream, 0);
 
 	return ret;
 }

@@ -3199,7 +3199,7 @@
 	};
 
 	/* MIPI 0 */
-	mipi_csi2_0:mipi_csi@1bc00800 {
+	mipi_csi2_0:mipi_csi2_0@1bc00800 {
 		compatible = "telechips,tcc805x-mipi-csi2";
 		status = "disabled";
 		reg =	<0x0 0x1bc00800 0x0 0x120>,	/* csi0_base */
@@ -3215,7 +3215,7 @@
 	};
 
 	/* MIPI 1 */
-	mipi_csi2_1:mipi_csi@1bc00c00 {
+	mipi_csi2_1:mipi_csi2_1@1bc00c00 {
 		compatible = "telechips,tcc805x-mipi-csi2";
 		status = "disabled";
 		reg =	<0x0 0x1bc00c00 0x0 0x120>,	/* csi0_base */

@@ -741,7 +741,7 @@ static int tcc_mipi_csi2_set_interface(struct tcc_mipi_csi2_state *state,
 		 * Set D-PHY control(Slave)
 		 * Refer to 7.2.5(S_DPHYCTL) in D-PHY datasheet
 		 */
-		MIPI_CSIS_Set_DPHY_S_Control(state, 0x00000000, 0xfd008000);
+		MIPI_CSIS_Set_DPHY_S_Control(state, 0x92, 0xfd008000);
 
 		/*
 		 * Set D-PHY Common control
@@ -1157,7 +1157,7 @@ static void tcc_mipi_csi2_init_format(struct tcc_mipi_csi2_state *state)
 	for (i = 0; i < MAX_VC; i++) {
 		state->isp_info[i].fmt.width = DEFAULT_WIDTH;
 		state->isp_info[i].fmt.height = DEFAULT_HEIGHT;
-		state->isp_info[i].fmt.code = MEDIA_BUS_FMT_YUYV8_2X8;
+		state->isp_info[i].fmt.code = MEDIA_BUS_FMT_YUYV8_1X16;
 		state->isp_info[i].fmt.field = V4L2_FIELD_NONE;
 		state->isp_info[i].fmt.colorspace = V4L2_COLORSPACE_SMPTE170M;
 		state->isp_info[i].data_format =
@@ -1202,14 +1202,12 @@ static int tcc_mipi_csi2_s_power(struct v4l2_subdev *sd, int on)
 
 	return ret;
 }
-
-/*
- * v4l2_subdev_video_ops implementations
- */
-static int tcc_mipi_csi2_s_stream(struct v4l2_subdev *sd, int enable)
+static int tcc_mipi_csi2_init(struct v4l2_subdev *sd, u32 enable)
 {
 	struct tcc_mipi_csi2_state	*state	= sd_to_state(sd);
 	int				ret	= 0;
+
+	logi(&(state->pdev->dev), "call\n");
 
 	mutex_lock(&state->lock);
 
@@ -1226,6 +1224,18 @@ static int tcc_mipi_csi2_s_stream(struct v4l2_subdev *sd, int enable)
 	logi(&(state->pdev->dev), "use_cnt is %d\n", state->use_cnt);
 
 	mutex_unlock(&state->lock);
+
+
+	return ret;
+}
+
+/*
+ * v4l2_subdev_video_ops implementations
+ */
+static int tcc_mipi_csi2_s_stream(struct v4l2_subdev *sd, int enable)
+{
+	struct tcc_mipi_csi2_state	*state	= sd_to_state(sd);
+	int				ret	= 0;
 
 	return ret;
 }
@@ -1329,6 +1339,7 @@ static int tcc_mipi_csi2_set_fmt(struct v4l2_subdev *sd,
  */
 static const struct v4l2_subdev_core_ops tcc_mipi_csi2_core_ops = {
 	.s_power		= tcc_mipi_csi2_s_power,
+	.init			= tcc_mipi_csi2_init,
 };
 
 static const struct v4l2_subdev_pad_ops tcc_mipi_csi2_pad_ops = {

@@ -51,13 +51,11 @@
 		pr_info("[INFO][%s] %s - "\
 			fmt, LOG_TAG, __func__, ##__VA_ARGS__)
 
-#define WIDTH			1920
-#define HEIGHT			(1080 - 2)
+#define DEFAULT_WIDTH			1920
+#define DEFAULT_HEIGHT			(1080 - 1)
 
 #define MAX96712_REG_STATUS_1	0x1E
 #define MAX96712_VAL_STATUS_1	0x40
-
-#define TEST_2_INPUT_PORTS
 
 struct power_sequence {
 	int			pwr_port;
@@ -77,15 +75,32 @@ struct power_sequence {
  */
 struct max96712 {
 	struct v4l2_subdev		sd;
-	struct v4l2_ctrl_handler	hdl;
+	struct v4l2_mbus_framefmt	fmt;
 
 	struct power_sequence		gpio;
 
 	/* Regmaps */
 	struct regmap			*regmap;
+
+	struct mutex lock;
+	unsigned int p_cnt;
+	unsigned int s_cnt;
+	unsigned int i_cnt;
 };
 
-const struct reg_sequence max96712_reg_init[] = {
+const struct reg_sequence max96712_reg_defaults[] = {
+	/*
+	 * DE_SKEW_INIT
+	 * Enable auto initial de-skew packets
+	 * with the minimum width 32K UI
+	 */
+	{0x0943, 0x80, 0},
+	/*
+	 * DE_SKEW_PER
+	 * Enable periodic de-skew packets
+	 * with width 2K UI every 4 frames
+	 */
+	{0x0944, 0x91, 0},
 	/*
 	 * MAX96712 (0x52) powers up in GMSL1 mode,
 	 * HIM enabled
@@ -118,7 +133,8 @@ const struct reg_sequence max96712_reg_init[] = {
 	/*
 	 * Phy1 set pll (x 100Mbps)
 	 */
-	{0x0418, 0xEA, 0}, // overide
+	{0x0415, 0xEF, 0}, // Override Enable
+	{0x0418, 0xF1, 0}, // overide
 	{0x041B, 0x2A, 0},
 
 	/*
@@ -130,27 +146,22 @@ const struct reg_sequence max96712_reg_init[] = {
 	//{0x0239, 0x59, 0},
 
 	/*
-	 * enable GMSL1 link A B C D
-	 */
-#ifndef TEST_2_INPUT_PORTS
-	{0x0006, 0x01, 0},
-#endif
-	/*
 	 * lane ping for 4-lane port A and B
 	 */
 	{0x08A3, 0xE4, 0},
 	{0x08A4, 0xE4, 0},
 	{0x01DA, 0x18, 0},
-#ifdef TEST_2_INPUT_PORTS
 	{0x01FA, 0x18, 0},
-#endif
+	{0x021A, 0x18, 0},
+	{0x023A, 0x18, 0},
 	/*
 	 * Set DT(0x1E), VC, BPP(0x10)
 	 * FOR PIPE X Y Z U setting for RGB888
 	 */
 	{0x0411, 0x90, 0}, // 100 1_0000
 	{0x0412, 0x40, 0}, // 0 100_00 00
-	{0x040B, 0x82, 0}, // 1000_0 010
+	//{0x040B, 0x82, 0}, // 1000_0 010 CSI OUTPUT ENABLE
+	{0x040B, 0x80, 0}, // 1000_0 010 CSI OUTPUT DISABLE
 	{0x040E, 0x5E, 0}, // 01 01_1110
 	{0x040F, 0x7E, 0}, // 0111 1110
 	{0x0410, 0x7A, 0}, // 0111_10 10
@@ -180,6 +191,24 @@ const struct reg_sequence max96712_reg_init[] = {
 	{0x0951, 0x01, 0},
 	{0x0952, 0x41, 0},
 
+	// 3 data map en fot pipe x, VC2
+	{0x098B, 0x07, 0},
+	{0x09AD, 0x15, 0},
+	{0x098D, 0x1E, 0},
+	{0x098E, 0x9E, 0},
+	{0x098F, 0x00, 0},
+	{0x0990, 0x80, 0},
+	{0x0991, 0x01, 0},
+	{0x0992, 0x81, 0},
+	// // 3 data map en fot pipe y, VC3
+	{0x09CB, 0x07, 0},
+	{0x09ED, 0x15, 0},
+	{0x09CD, 0x1E, 0},
+	{0x09CE, 0xDE, 0},
+	{0x09CF, 0x00, 0},
+	{0x09D0, 0xC0, 0},
+	{0x09D1, 0x01, 0},
+	{0x09D2, 0xC1, 0},
 	/*
 	 * HIBW=1
 	 */
@@ -223,10 +252,11 @@ const struct reg_sequence max96712_reg_init[] = {
 	{0x0B0D, 0x80, 0},
 	{0x0C0D, 0x80, 0},
 	{0x0D0D, 0x80, 0},
-	{0x0E0D, 0x80, 50},
-#ifdef TEST_2_INPUT_PORTS
-	{0x0006, 0x03, 50},
-#endif
+	{0x0E0D, 0x80, 0},
+	/*
+	 * enable GMSL1 link A B C D
+	 */
+	{0x0006, 0x0f, 50},
 };
 
 const struct reg_sequence max96712_reg_s_stream[] = {
@@ -242,16 +272,6 @@ static const struct regmap_config max96712_regmap = {
 
 	.max_register		= 0xFFFF,
 	.cache_type		= REGCACHE_NONE,
-};
-
-struct v4l2_dv_timings max96712_dv_timings = {
-	.type	= V4L2_DV_BT_656_1120,
-	.bt	= {
-		.width		= WIDTH,
-		.height		= HEIGHT,
-		.interlaced	= V4L2_DV_PROGRESSIVE,
-		.polarities	= 0,//V4L2_DV_XSYNC_POS_POL,
-	},
 };
 
 /*
@@ -326,70 +346,67 @@ void max96712_free_gpio(struct max96712 *dev)
 /*
  * Helper fuctions for reflection
  */
-static inline struct max96712 *to_state(struct v4l2_subdev *sd)
+static inline struct max96712 *to_dev(struct v4l2_subdev *sd)
 {
 	return container_of(sd, struct max96712, sd);
 }
 
 /*
- * v4l2_ctrl_ops implementations
- */
-static int max96712_s_ctrl(struct v4l2_ctrl *ctrl)
-{
-	int	ret = 0;
-
-	switch (ctrl->id) {
-	case V4L2_CID_BRIGHTNESS:
-	case V4L2_CID_CONTRAST:
-	case V4L2_CID_SATURATION:
-	case V4L2_CID_HUE:
-	case V4L2_CID_DO_WHITE_BALANCE:
-	default:
-		loge("V4L2_CID_BRIGHTNESS is not implemented yet.\n");
-		ret = -EINVAL;
-	}
-
-	return ret;
-}
-
-/*
  * v4l2_subdev_core_ops implementations
  */
-static int max96712_init(struct v4l2_subdev *sd, u32 val)
+static int max96712_init(struct v4l2_subdev *sd, u32 enable)
 {
-	struct max96712		*dev	= NULL;
+	struct max96712		*dev	= to_dev(sd);
 	int			ret	= 0;
 
-	dev = to_state(sd);
-	if (!dev) {
-		loge("Failed to get video source object by subdev\n");
-		ret = -EINVAL;
-	} else {
+	mutex_lock(&dev->lock);
+
+	if ((dev->i_cnt == 0) && (enable == 1)) {
 		ret = regmap_multi_reg_write(dev->regmap,
-				max96712_reg_init,
-				ARRAY_SIZE(max96712_reg_init));
-		if (ret)
+				max96712_reg_defaults,
+				ARRAY_SIZE(max96712_reg_defaults));
+		if (ret < 0)
 			loge("regmap_multi_reg_write returned %d\n", ret);
+	} else if ((dev->i_cnt == 1) && (enable == 0)) {
+		//ret = regmap_write(dev->regmap, 0x15, 0x93);
 	}
+
+	if (enable)
+		dev->i_cnt++;
+	else
+		dev->i_cnt--;
+
+	mutex_unlock(&dev->lock);
 
 	return ret;
 }
 
 static int max96712_set_power(struct v4l2_subdev *sd, int on)
 {
-	struct max96712		*dev	= to_state(sd);
+	struct max96712		*dev	= to_dev(sd);
 	struct power_sequence	*gpio	= &dev->gpio;
 
+	mutex_lock(&dev->lock);
+
 	if (on) {
-		if (dev->gpio.pwd_port > 0) {
-			gpio_set_value_cansleep(gpio->pwd_port, 1);
-			msleep(20);
+		if (dev->p_cnt == 0) {
+			if (dev->gpio.pwd_port > 0) {
+				gpio_set_value_cansleep(gpio->pwd_port, 1);
+				msleep(20);
+			}
 		}
+		dev->p_cnt++;
 	} else {
-		if (dev->gpio.pwd_port > 0)
-			gpio_set_value_cansleep(gpio->pwd_port, 0);
-		usleep_range(1000, 2000);
+		if (dev->p_cnt == 1) {
+			if (dev->gpio.pwd_port > 0) {
+				gpio_set_value_cansleep(gpio->pwd_port, 0);
+				msleep(20);
+			}
+		}
+		dev->p_cnt--;
 	}
+
+	mutex_unlock(&dev->lock);
 
 	return 0;
 }
@@ -399,62 +416,92 @@ static int max96712_set_power(struct v4l2_subdev *sd, int on)
  */
 static int max96712_g_input_status(struct v4l2_subdev *sd, u32 *status)
 {
-	struct max96712		*dev	= to_state(sd);
+	struct max96712		*dev	= to_dev(sd);
 	unsigned int		val	= 0;
 	int			ret	= 0;
 
+	/* TODO */
+	mutex_lock(&dev->lock);
+
 	// check V4L2_IN_ST_NO_SIGNAL
-	ret = regmap_read(dev->regmap, MAX96712_REG_STATUS_1, &val);
+	//ret = regmap_read(dev->regmap, MAX96712_REG_STATUS_1, &val);
 	if (ret < 0) {
 		loge("failure to check V4L2_IN_ST_NO_SIGNAL\n");
 	} else {
 		logd("status: 0x%08x\n", val);
-		if (val == MAX96712_VAL_STATUS_1)
+		//if (val == MAX96712_VAL_STATUS_1)
+		if (1)
 			*status &= ~V4L2_IN_ST_NO_SIGNAL;
 		else
 			*status |= V4L2_IN_ST_NO_SIGNAL;
 	}
+
+	mutex_unlock(&dev->lock);
 
 	return ret;
 }
 
 static int max96712_s_stream(struct v4l2_subdev *sd, int enable)
 {
-	struct max96712		*dev	= NULL;
+	struct max96712		*dev	= to_dev(sd);
 	int			ret	= 0;
 
-	dev = to_state(sd);
-	if (!dev) {
-		loge("Failed to get video source object by subdev\n");
-		ret = -EINVAL;
-	} else {
-		ret = regmap_multi_reg_write(dev->regmap,
-				max96712_reg_s_stream,
-				ARRAY_SIZE(max96712_reg_s_stream));
-		if (ret)
-			loge("regmap_multi_reg_write returned %d\n", ret);
+	mutex_lock(&dev->lock);
+
+	if ((dev->s_cnt == 0) && (enable == 1)) {
+		ret = regmap_write(dev->regmap, 0x040B, 0x82);
+		if (ret < 0)
+			loge("Fail enable output of max96712 device\n");
+	} else if ((dev->s_cnt == 1) && (enable == 0)) {
+		ret = regmap_write(dev->regmap, 0x040B, 0x80);
+		if (ret < 0)
+			loge("Fail disable output of max96712 device\n");
 	}
 
+	if (enable)
+		dev->s_cnt++;
+	else
+		dev->s_cnt--;
+
+	mutex_unlock(&dev->lock);
 	return ret;
 }
 
-static int max96712_g_dv_timings(struct v4l2_subdev *sd,
-				 struct v4l2_dv_timings *timings)
+static int max96712_get_fmt(struct v4l2_subdev *sd,
+			    struct v4l2_subdev_pad_config *cfg,
+			    struct v4l2_subdev_format *format)
 {
-	memcpy((void *)timings,
-		(const void *)&max96712_dv_timings,
-		sizeof(*timings));
+	struct max96712		*dev	= to_dev(sd);
+	int			ret	= 0;
 
-	return 0;
+	mutex_lock(&dev->lock);
+
+	memcpy((void *)&format->format, (const void *)&dev->fmt,
+		sizeof(struct v4l2_mbus_framefmt));
+
+	mutex_unlock(&dev->lock);
+	return ret;
+}
+
+static int max96712_set_fmt(struct v4l2_subdev *sd,
+			    struct v4l2_subdev_pad_config *cfg,
+			    struct v4l2_subdev_format *format)
+{
+	struct max96712		*dev	= to_dev(sd);
+	int			ret	= 0;
+
+	mutex_lock(&dev->lock);
+
+	memcpy((void *)&dev->fmt, (const void *)&format->format,
+		sizeof(struct v4l2_mbus_framefmt));
+
+	mutex_unlock(&dev->lock);
+	return ret;
 }
 
 /*
  * v4l2_subdev_internal_ops implementations
  */
-static const struct v4l2_ctrl_ops max96712_ctrl_ops = {
-	.s_ctrl			= max96712_s_ctrl,
-};
-
 static const struct v4l2_subdev_core_ops max96712_core_ops = {
 	.init			= max96712_init,
 	.s_power		= max96712_set_power,
@@ -463,12 +510,17 @@ static const struct v4l2_subdev_core_ops max96712_core_ops = {
 static const struct v4l2_subdev_video_ops max96712_video_ops = {
 	.g_input_status		= max96712_g_input_status,
 	.s_stream		= max96712_s_stream,
-	.g_dv_timings		= max96712_g_dv_timings,
+};
+
+static const struct v4l2_subdev_pad_ops max96712_pad_ops = {
+	.get_fmt		= max96712_get_fmt,
+	.set_fmt		= max96712_set_fmt,
 };
 
 static const struct v4l2_subdev_ops max96712_ops = {
 	.core			= &max96712_core_ops,
 	.video			= &max96712_video_ops,
+	.pad			= &max96712_pad_ops,
 };
 
 struct max96712 max96712_data = {
@@ -504,6 +556,8 @@ int max96712_probe(struct i2c_client *client, const struct i2c_device_id *id)
 		return -ENOMEM;
 	}
 
+	mutex_init(&dev->lock);
+
 	// set the specific information
 	if (client->dev.of_node) {
 		dev_id = of_match_node(max96712_of_match, client->dev.of_node);
@@ -522,25 +576,6 @@ int max96712_probe(struct i2c_client *client, const struct i2c_device_id *id)
 
 	// Register with V4L2 layer as a slave device
 	v4l2_i2c_subdev_init(&dev->sd, client, &max96712_ops);
-
-	// regitster v4l2 control handlers
-	v4l2_ctrl_handler_init(&dev->hdl, 2);
-	v4l2_ctrl_new_std(&dev->hdl,
-			&max96712_ctrl_ops,
-			V4L2_CID_BRIGHTNESS,
-			0, 255, 1, 128);
-	v4l2_ctrl_new_std_menu(&dev->hdl,
-			&max96712_ctrl_ops,
-			V4L2_CID_DV_RX_IT_CONTENT_TYPE,
-			V4L2_DV_IT_CONTENT_TYPE_NO_ITC,
-			0,
-			V4L2_DV_IT_CONTENT_TYPE_NO_ITC);
-	dev->sd.ctrl_handler = &dev->hdl;
-	if (dev->hdl.error) {
-		loge("v4l2_ctrl_handler_init is wrong\n");
-		ret = dev->hdl.error;
-		goto goto_free_device_data;
-	}
 
 	// register a v4l2 sub device
 	ret = v4l2_async_register_subdev(&dev->sd);
@@ -573,15 +608,13 @@ goto_end:
 int max96712_remove(struct i2c_client *client)
 {
 	struct v4l2_subdev	*sd	= i2c_get_clientdata(client);
-	struct max96712		*dev	= to_state(sd);
+	struct max96712		*dev	= to_dev(sd);
 
 	// release regmap
 	regmap_exit(dev->regmap);
 
 	// gree gpio
 	max96712_free_gpio(dev);
-
-	v4l2_ctrl_handler_free(&dev->hdl);
 
 	v4l2_async_unregister_subdev(sd);
 
@@ -602,4 +635,3 @@ static struct i2c_driver max96712_driver = {
 };
 
 module_i2c_driver(max96712_driver);
-
