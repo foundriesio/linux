@@ -13,7 +13,7 @@
 #include <dt-bindings/gpio/gpio.h>
 #include <dt-bindings/mailbox/tcc803x_multi_mailbox/tcc_mbox_ch.h>
 #include <dt-bindings/input/input.h>
-#include <dt-bindings/video/tcc803x-tccvin.h>
+#include <dt-bindings/pmap/pmap-tcc803x-ivi-common.h>
 #include "tcc-pmap-common.dtsi"
 
 / {
@@ -502,7 +502,7 @@
 			compatible = "telechips,pmap";
 			telechips,pmap-name = "rearcamera_viqe";
 			alloc-ranges = <EARLY_REARCAM_BASE EARLY_REARCAM_SIZE>;
-			size = <PMAP_REARCAMERA_VIQE_SIZE>;
+			size = <PMAP_SIZE_REARCAMERA_VIQE>;
 			no-map;
 		};
 
@@ -510,7 +510,7 @@
 			compatible = "telechips,pmap";
 			telechips,pmap-name = "rearcamera";
 			alloc-ranges = <EARLY_REARCAM_BASE EARLY_REARCAM_SIZE>;
-			size = <PMAP_REARCAMERA_SIZE>;
+			size = <PMAP_SIZE_REARCAMERA>;
 			no-map;
 		};
 
@@ -518,7 +518,7 @@
 			compatible = "telechips,pmap";
 			telechips,pmap-name = "parking_gui";
 			alloc-ranges = <EARLY_REARCAM_BASE EARLY_REARCAM_SIZE>;
-			size = <PMAP_PARKING_GUI_SIZE>;
+			size = <PMAP_SIZE_PARKING_GUI>;
 			no-map;
 		};
 

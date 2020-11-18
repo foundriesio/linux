@@ -84,11 +84,6 @@
 #define SUPPORT_DISPLAY_MAX_HEIGHT      SECONDARY_TARGET_HEIGHT
 #endif
 
-//****************************** Camera ******************************/
-#define CAMERA_INPUT_WIDTH              (720)
-#define CAMERA_INPUT_HEIGHT             (480)
-
-
 //***************************** VPU/HEVC ******************************/
 //Should sync with hardware/telechips/omx/omx_videodec_interface/include/vdec.h
 

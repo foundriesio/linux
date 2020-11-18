@@ -11,7 +11,7 @@
 #include <dt-bindings/gpio/gpio.h>
 #include <dt-bindings/mailbox/tcc803x_multi_mailbox/tcc_mbox_ch.h>
 
-#include "tcc-pmap-803x-linux-a7s.dtsi"
+#include <dt-bindings/pmap/pmap-tcc803x-ivi-common-subcore-a7s.h>
 
 / {
 	compatible = "telechips,tcc803x";
@@ -173,25 +173,50 @@
 			compatible = "telechips,pmap";
 			telechips,pmap-name = "rearcamera1";
 			alloc-ranges = <REARCAMERA_MEM_BASE REARCAMERA_MEM_SIZE>;
-			size = <PMAP_SIZE_REARCAMERA>;
+			size = <PMAP_SIZE_REARCAMERA1>;
 			no-map;
 		};
-		
+
 		rearcamera2: rearcamera2 {
 			compatible = "telechips,pmap";
 			telechips,pmap-name = "rearcamera2";
 			alloc-ranges = <REARCAMERA_MEM_BASE REARCAMERA_MEM_SIZE>;
-			size = <PMAP_SIZE_REARCAMERA>;
+			size = <PMAP_SIZE_REARCAMERA2>;
 			no-map;
 		};
-		
+
 		rearcamera3: rearcamera3 {
 			compatible = "telechips,pmap";
 			telechips,pmap-name = "rearcamera3";
 			alloc-ranges = <REARCAMERA_MEM_BASE REARCAMERA_MEM_SIZE>;
-			size = <PMAP_SIZE_REARCAMERA>;
+			size = <PMAP_SIZE_REARCAMERA3>;
 			no-map;
 		};
+
+		rearcamera4: rearcamera4 {
+			compatible = "telechips,pmap";
+			telechips,pmap-name = "rearcamera4";
+			alloc-ranges = <REARCAMERA_MEM_BASE REARCAMERA_MEM_SIZE>;
+			size = <PMAP_SIZE_REARCAMERA4>;
+			no-map;
+		};
+
+		rearcamera5: rearcamera5 {
+			compatible = "telechips,pmap";
+			telechips,pmap-name = "rearcamera5";
+			alloc-ranges = <REARCAMERA_MEM_BASE REARCAMERA_MEM_SIZE>;
+			size = <PMAP_SIZE_REARCAMERA5>;
+			no-map;
+		};
+
+		rearcamera6: rearcamera6 {
+			compatible = "telechips,pmap";
+			telechips,pmap-name = "rearcamera6";
+			alloc-ranges = <REARCAMERA_MEM_BASE REARCAMERA_MEM_SIZE>;
+			size = <PMAP_SIZE_REARCAMERA6>;
+			no-map;
+		};
+
 		parking_gui: parking_gui {
 			compatible = "telechips,pmap";
 			telechips,pmap-name = "parking_gui";
@@ -1269,7 +1294,7 @@
 			 * input port.
 			 *
 			 * 4
-			 * output ports. The number is matched with VC 
+			 * output ports. The number is matched with VC
 			 */
 			port@0 {
 				reg = <0>;
