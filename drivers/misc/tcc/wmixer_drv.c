@@ -545,10 +545,11 @@ static int wmixer_drv_alpha_mixing_ctrl(struct wmixer_drv_type *wmixer)
     VIOC_RDMA_SetImageAlphaEnable(pWMIX_rdma_base, 1);
     VIOC_RDMA_SetImageAlphaSelect(pWMIX_rdma_base, 1);
     VIOC_RDMA_SetImageFormat(pWMIX_rdma_base, apb_info->src0_fmt);
-    if ((apb_info->src0_fmt > VIOC_IMG_FMT_COMP) && (apb_info->dst_fmt < VIOC_IMG_FMT_COMP)) {	//와드
+    if ((apb_info->src0_fmt > VIOC_IMG_FMT_COMP) && (apb_info->dst_fmt < VIOC_IMG_FMT_COMP)) {
         VIOC_RDMA_SetImageY2REnable(pWMIX_rdma_base, 1);
     } else {
         VIOC_RDMA_SetImageY2REnable(pWMIX_rdma_base, 0);
+        VIOC_RDMA_SetImageR2YEnable(pWMIX_rdma_base, 1);
     }
     VIOC_RDMA_SetImageSize(pWMIX_rdma_base, apb_info->src0_width, apb_info->src0_height);
     VIOC_RDMA_SetImageOffset(pWMIX_rdma_base, apb_info->src0_fmt, apb_info->src0_width);
@@ -557,7 +558,7 @@ static int wmixer_drv_alpha_mixing_ctrl(struct wmixer_drv_type *wmixer)
     VIOC_RDMA_SetImageAlphaEnable(pWMIX_rdma1_base, 1);
     VIOC_RDMA_SetImageAlphaSelect(pWMIX_rdma1_base, 1);
     VIOC_RDMA_SetImageFormat(pWMIX_rdma1_base, apb_info->src1_fmt);
-    if ((apb_info->src1_fmt > VIOC_IMG_FMT_COMP) && (apb_info->dst_fmt < VIOC_IMG_FMT_COMP)) {	//와드
+    if ((apb_info->src1_fmt > VIOC_IMG_FMT_COMP) && (apb_info->dst_fmt < VIOC_IMG_FMT_COMP)) {
         VIOC_RDMA_SetImageY2REnable(pWMIX_rdma1_base, 1);
     } else {
         VIOC_RDMA_SetImageY2REnable(pWMIX_rdma1_base, 0);
@@ -617,7 +618,7 @@ static int wmixer_drv_alpha_mixing_ctrl(struct wmixer_drv_type *wmixer)
     VIOC_WDMA_SetImageSize(pWMIX_wdma_base, apb_info->dst_width, apb_info->dst_height);
     VIOC_WDMA_SetImageOffset(pWMIX_wdma_base, apb_info->dst_fmt, apb_info->dst_width);
     VIOC_WDMA_SetImageBase(pWMIX_wdma_base, apb_info->dst_Yaddr, apb_info->dst_Uaddr, apb_info->dst_Vaddr);
-    if ((apb_info->src0_fmt < VIOC_IMG_FMT_COMP) && (apb_info->dst_fmt > VIOC_IMG_FMT_COMP)) {
+    if ((apb_info->src1_fmt < VIOC_IMG_FMT_COMP) && (apb_info->dst_fmt > VIOC_IMG_FMT_COMP)) {
 		VIOC_WDMA_SetImageR2YEnable(pWMIX_wdma_base, 1);
 	} else {
 		VIOC_WDMA_SetImageR2YEnable(pWMIX_wdma_base, 0);
