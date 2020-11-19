@@ -82,9 +82,7 @@
 		videoinput5 = &videoinput5;
 		videoinput6 = &videoinput6;
 		videoinput7 = &videoinput7;
-#if defined(CONFIG_FB_NEW_FB0)
 		fb0 = &fb0;
-#endif
 #if defined(CONFIG_FB_NEW_FB1)
 		fb1 = &fb1;
 #endif
@@ -1520,7 +1518,6 @@
 	};
 #endif
 
-#if defined(CONFIG_FB_NEW_FB0)
 	fb0: fb@0 { //Cluster
 		compatible = "telechips,fb";
 		status = "okay";
@@ -1535,7 +1532,6 @@
 		telechips,wmixer = <&vioc_wmix VIOC_WMIX2>;
 		telechips,rdma = <&vioc_rdma VIOC_RDMA08>;
 	};
-#endif
 
 #if defined(CONFIG_FB_NEW_FB1)
 	fb1: fb@1 { //SVM
