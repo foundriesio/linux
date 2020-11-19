@@ -51,8 +51,8 @@
 		pr_info("[INFO][%s] %s - "\
 			fmt, LOG_TAG, __func__, ##__VA_ARGS__)
 
-#define WIDTH			1280
-#define HEIGHT			720
+#define DEFAULT_WIDTH			1280
+#define DEFAULT_HEIGHT			720
 
 #define MAX9286_REG_STATUS_1	0x1E
 #define MAX9286_VAL_STATUS_1	0x40
@@ -85,6 +85,7 @@ struct max9286 {
 	struct mutex lock;
 	unsigned int p_cnt;
 	unsigned int s_cnt;
+	unsigned int i_cnt;
 };
 
 const struct reg_sequence max9286_reg_defaults[] = {
@@ -111,9 +112,9 @@ const struct reg_sequence max9286_reg_defaults[] = {
 //	{0x0c, 0x91},
 //	{0xff, 5},		/* 5mS */
 #if defined(CONFIG_MIPI_OUTPUT_TYPE_LINE_CONCAT)
-	{0X15, 0X0B, 0},	/* Enable MIPI output (line concatenation) */
+	{0X15, 0X03, 0},	/* (line concatenation) */
 #else
-	{0X15, 0X9B, 0},	/* Enable MIPI output (line interleave) */
+	{0X15, 0X93, 0},	/* (line interleave) */
 #endif
 	{0X69, 0XF0, 0},	/* Auto mask & comabck enable */
 	{0x01, 0x00, 0},
@@ -127,25 +128,6 @@ static const struct regmap_config max9286_regmap = {
 	.max_register		= 0xFF,
 	.cache_type		= REGCACHE_NONE,
 };
-
-struct v4l2_dv_timings max9286_dv_timings = {
-	.type	= V4L2_DV_BT_656_1120,
-	.bt	= {
-		.width		= WIDTH,
-		.height		= HEIGHT,
-		.interlaced	= V4L2_DV_PROGRESSIVE,
-		.polarities	= 0,//V4L2_DV_XSYNC_POS_POL,
-	},
-};
-
-static void max9286_init_format(struct max9286 *dev)
-{
-	dev->fmt.width = 1280;
-	dev->fmt.height	= 720,
-	dev->fmt.code = MEDIA_BUS_FMT_YUYV8_2X8;
-	dev->fmt.field = V4L2_FIELD_NONE;
-	dev->fmt.colorspace = V4L2_COLORSPACE_SMPTE170M;
-}
 
 /*
  * gpio fuctions
@@ -227,6 +209,33 @@ static inline struct max9286 *to_dev(struct v4l2_subdev *sd)
 /*
  * v4l2_subdev_core_ops implementations
  */
+static int max9286_init(struct v4l2_subdev *sd, u32 enable)
+{
+	struct max9286		*dev	= to_dev(sd);
+	int			ret	= 0;
+
+	mutex_lock(&dev->lock);
+
+	if ((dev->i_cnt == 0) && (enable == 1)) {
+		ret = regmap_multi_reg_write(dev->regmap,
+				max9286_reg_defaults,
+				ARRAY_SIZE(max9286_reg_defaults));
+		if (ret < 0)
+			loge("Fail initializing max9286 device\n");
+	} else if ((dev->i_cnt == 1) && (enable == 0)) {
+		//ret = regmap_write(dev->regmap, 0x15, 0x93);
+	}
+
+	if (enable)
+		dev->i_cnt++;
+	else
+		dev->i_cnt--;
+
+	mutex_unlock(&dev->lock);
+
+	return ret;
+}
+
 static int max9286_set_power(struct v4l2_subdev *sd, int on)
 {
 	struct max9286		*dev	= to_dev(sd);
@@ -295,13 +304,21 @@ static int max9286_s_stream(struct v4l2_subdev *sd, int enable)
 	mutex_lock(&dev->lock);
 
 	if ((dev->s_cnt == 0) && (enable == 1)) {
-		ret = regmap_multi_reg_write(dev->regmap,
-				max9286_reg_defaults,
-				ARRAY_SIZE(max9286_reg_defaults));
+#if defined(CONFIG_MIPI_OUTPUT_TYPE_LINE_CONCAT)
+		ret = regmap_write(dev->regmap, 0x15, 0x0B);
+#else
+		ret = regmap_write(dev->regmap, 0x15, 0x9B);
+#endif
 		if (ret < 0)
-			loge("Fail initializing max9286 device\n");
+			loge("Fail enable output of max9286 device\n");
 	} else if ((dev->s_cnt == 1) && (enable == 0)) {
+#if defined(CONFIG_MIPI_OUTPUT_TYPE_LINE_CONCAT)
+		ret = regmap_write(dev->regmap, 0x15, 0x03);
+#else
 		ret = regmap_write(dev->regmap, 0x15, 0x93);
+#endif
+		if (ret < 0)
+			loge("Fail disable output of max9286 device\n");
 	}
 
 	if (enable)
@@ -349,6 +366,7 @@ static int max9286_set_fmt(struct v4l2_subdev *sd,
  * v4l2_subdev_internal_ops implementations
  */
 static const struct v4l2_subdev_core_ops max9286_core_ops = {
+	.init			= max9286_init,
 	.s_power		= max9286_set_power,
 };
 
@@ -365,6 +383,7 @@ static const struct v4l2_subdev_pad_ops max9286_pad_ops = {
 static const struct v4l2_subdev_ops max9286_ops = {
 	.core			= &max9286_core_ops,
 	.video			= &max9286_video_ops,
+	.pad			= &max9286_pad_ops,
 };
 
 struct max9286 max9286_data = {
@@ -421,7 +440,6 @@ int max9286_probe(struct i2c_client *client, const struct i2c_device_id *id)
 	// Register with V4L2 layer as a slave device
 	v4l2_i2c_subdev_init(&dev->sd, client, &max9286_ops);
 
-
 	// register a v4l2 sub device
 	ret = v4l2_async_register_subdev(&dev->sd);
 	if (ret)
@@ -439,9 +457,6 @@ int max9286_probe(struct i2c_client *client, const struct i2c_device_id *id)
 		ret = -1;
 		goto goto_free_device_data;
 	}
-
-	/* init format info */
-	max9286_init_format(dev);
 
 	goto goto_end;
 

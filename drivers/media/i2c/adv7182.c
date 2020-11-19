@@ -256,7 +256,7 @@ static int adv7182_g_input_status(struct v4l2_subdev *sd, u32 *status)
 		if (val & ADV7182_VAL_STATUS_1) {
 			*status &= ~V4L2_IN_ST_NO_SIGNAL;
 		} else {
-			logw("V4L2_IN_ST_NO_SIGNAL\n", val);
+			logw("V4L2_IN_ST_NO_SIGNAL\n");
 			*status |= V4L2_IN_ST_NO_SIGNAL;
 		}
 	}
@@ -285,10 +285,12 @@ static int adv7182_s_stream(struct v4l2_subdev *sd, int enable)
 static int adv7182_g_dv_timings(struct v4l2_subdev *sd,
 	struct v4l2_dv_timings *timings)
 {
+	int ret = 0;
+
 	memcpy((void *)timings, (const void *)&adv7182_dv_timings,
 		sizeof(*timings));
 
-	return 0;
+	return ret;
 }
 
 static int adv7182_g_mbus_config(struct v4l2_subdev *sd,
@@ -321,9 +323,11 @@ static int adv7182_get_fmt(struct v4l2_subdev *sd,
 {
 	struct adv7182		*dev = to_state(sd);
 	int ret	= 0;
+
 	memcpy((void *)&format->format,
 		(const void *)&dev->fmt,
 		sizeof(struct v4l2_mbus_framefmt));
+
 	return ret;
 }
 

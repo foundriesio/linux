@@ -916,14 +916,14 @@ config VIDEO_M52790
 	 module will be called m52790.
 comment "Serializers and Deserializers"
 
-config VIDEO_ISPXXX
-	tristate "Sony ISPXXX ISP"
+config VIDEO_CXD5700
+	tristate "Sony CXD5700 ISP"
 	depends on GPIOLIB && VIDEO_V4L2 && I2C && VIDEO_V4L2_SUBDEV_API
 	---help---
-	  Support for the Sony ISPXXX ISP.
+	  Support for the Sony CXD5700 ISP.
 
 	  To compile this driver as a module, choose M here: the
-	  module will be called ispxxx.
+	  module will be called cxd5700.
 
 config VIDEO_MAX9275
 	tristate "Maxim MAX9275 Serializer"

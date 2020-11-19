@@ -113,7 +113,7 @@ static void max96701_init_format(struct max96701 *dev)
 {
 	dev->fmt.width = 1280;
 	dev->fmt.height	= 720,
-	dev->fmt.code = MEDIA_BUS_FMT_UYVY8_2X8;
+	dev->fmt.code = MEDIA_BUS_FMT_UYVY8_1X16;
 	dev->fmt.field = V4L2_FIELD_NONE;
 	dev->fmt.colorspace = V4L2_COLORSPACE_SMPTE170M;
 }

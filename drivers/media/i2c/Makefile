@@ -98,6 +98,8 @@ obj-$(CONFIG_VIDEO_TC358743)	+= tc358743.o
 
 obj-$(CONFIG_SDR_MAX2175) += max2175.o
 
+# External ISP(in camera module)
+obj-$(CONFIG_VIDEO_CXD5700)	+= cxd5700.o
 # deserializer
 obj-$(CONFIG_VIDEO_MAX9275)	+= max9275.o
 obj-$(CONFIG_VIDEO_MAX9286)	+= max9286.o
