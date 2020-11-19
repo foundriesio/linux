@@ -9,7 +9,6 @@
 #include <dt-bindings/interrupt-controller/arm-gic.h>
 #include <dt-bindings/clock/telechips,tcc805x-clks.h>
 #include <dt-bindings/reset/telechips,tcc805x-reset.h>
-#include <dt-bindings/staging/android/ion/ion.h>
 #include <dt-bindings/display/tcc805x-vioc.h>
 #include <dt-bindings/power/tcc805x,boot-mode.h>
 #include <dt-bindings/gpio/gpio.h>
@@ -1119,20 +1118,18 @@
 		//access-control3 = <0x00000000 0x00000000>;
 	};
 
-	ion: ion {
+	telechips,ion {
 		compatible = "telechips,tcc-ion";
-		#address-cells = <2>;
+		#address-cells = <1>;
 		#size-cells = <0>;
 
 		ion-heap@2 {
-			reg = <2 ION_HEAP_TYPE_CARVEOUT>;
+			reg = <2>;
 			telechips,ion-heap-name = "ion_carveout_heap";
-			memory-region = <&pmap_ump_reserved>;
 		};
 		ion-heap@3 {
-			reg = <3 ION_HEAP_TYPE_CARVEOUT_CAM>;
+			reg = <3>;
 			telechips,ion-heap-name = "ion_carveout_cam_heap";
-			memory-region = <&pmap_ion_carveout_cam>;
 		};
 	};
 

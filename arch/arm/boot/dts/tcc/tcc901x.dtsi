@@ -8,7 +8,6 @@
 #include <dt-bindings/interrupt-controller/arm-gic.h>
 #include <dt-bindings/clock/telechips,tcc901x-clks.h>
 #include <dt-bindings/reset/telechips,tcc901x-reset.h>
-#include <dt-bindings/staging/android/ion/ion.h>
 #include <dt-bindings/soc/tcc901x-pm.h>
 #include <dt-bindings/display/tcc901x-vioc.h>
 #include <dt-bindings/power/telechips,boot-mode.h>
@@ -1811,25 +1810,24 @@
 		compatible = "operating-points-v2", "operating-points-v2-mali";
 	};
 
-	ion: ion {
+	telechips,ion {
 		compatible = "telechips,tcc-ion";
-		#address-cells = <2>;
+		#address-cells = <1>;
 		#size-cells = <0>;
 /*
 		ion-heap@0 {
-			reg = <0 ION_HEAP_TYPE_SYSTEM>;
+			reg = <0>;
 			telechips,ion-heap-name = "ion_noncontig_heap";
 		};
 
 		ion-heap@1 {
-			reg = <1 ION_HEAP_TYPE_SYSTEM_CONTIG>;
+			reg = <1>;
 			telechips,ion-heap-name = "ion_contig_heap";
 		};
 */
 		ion-heap@2 {
-			reg = <2 ION_HEAP_TYPE_CARVEOUT>;
+			reg = <2>;
 			telechips,ion-heap-name = "ion_carveout_heap";
-			memory-region = <&pmap_ump_reserved>;
 		};
 	};
 
