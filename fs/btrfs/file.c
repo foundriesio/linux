@@ -1585,7 +1585,6 @@ static noinline int check_can_nocow(struct btrfs_inode *inode, loff_t pos,
 			NULL, NULL, NULL);
 	if (ret <= 0) {
 		ret = 0;
-		btrfs_end_write_no_snapshoting(root);
 		if (!nowait)
 			btrfs_end_write_no_snapshoting(root);
 	} else {
