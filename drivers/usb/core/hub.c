@@ -2317,7 +2317,7 @@ void usb_disconnect(struct usb_device **pdev)
 	struct usb_hub *hub = NULL;
 	int port1 = 1;
 #if defined(CONFIG_DYNAMIC_DC_LEVEL_ADJUSTMENT)
-	struct usb_hcd *hcd = bus_to_hcd(udev->bus);
+	struct usb_hcd *hcd;
 #endif
 
 	/* mark the device as inactive, so any further urb submissions for
@@ -2398,6 +2398,8 @@ void usb_disconnect(struct usb_device **pdev)
 	hub_free_dev(udev);
 	put_device(&udev->dev);
 #if defined(CONFIG_DYNAMIC_DC_LEVEL_ADJUSTMENT)
+	hcd = bus_to_hcd(udev->bus);
+
 	set_port_dc_level(hcd, CONFIG_USB_HS_DC_VOLTAGE_LEVEL);
 #endif
 #if defined(CONFIG_TCC_BC_12)
@@ -5089,7 +5091,7 @@ static void hub_port_connect(struct usb_hub *hub, int port1, u16 portstatus,
 	struct usb_device *udev = port_dev->child;
 	static int unreliable_port = -1;
 #if defined(CONFIG_DYNAMIC_DC_LEVEL_ADJUSTMENT)
-	int dclevel = get_port_dc_level(hcd);
+	int dclevel;
 #endif
 
 	/* Disconnect any existing devices under this port */
@@ -5180,6 +5182,8 @@ static void hub_port_connect(struct usb_hub *hub, int port1, u16 portstatus,
 		status = hub_port_init(hub, udev, port1, i);
 		usb_unlock_port(port_dev);
 #if defined(CONFIG_DYNAMIC_DC_LEVEL_ADJUSTMENT)
+		dclevel = get_port_dc_level(hcd);
+
 		if (status < 0) {
 			dev_dbg(&udev->dev,
 				"[DEBUG][USB] \x1b[1;34m[%s:%d]port init fail:dc level=0x%x\x1b[0m\n",
