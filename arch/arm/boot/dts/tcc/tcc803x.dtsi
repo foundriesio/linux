@@ -13,7 +13,7 @@
 #include <dt-bindings/gpio/gpio.h>
 #include <dt-bindings/mailbox/tcc803x_multi_mailbox/tcc_mbox_ch.h>
 #include <dt-bindings/input/input.h>
-#include <dt-bindings/pmap/pmap-tcc803x-ivi-common.h>
+#include <dt-bindings/pmap/pmap-tcc803x-android-ivi.h>
 #include "tcc-pmap-common.dtsi"
 
 / {
