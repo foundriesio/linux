@@ -67,25 +67,6 @@ config FB_NEW
 		than UI control function are provided. Therefore, in this frame buffer driver,
 		unnecessary functions other than the UI control function are removed.
 
-config FB_NEW_FB0
-	bool "TCC805X New Frame buffer Subcore linux fb0 device"
-	depends on FB_NEW && (ARCH_TCC805X)
-	default y
-	help
-		To activate fb0 via new_fb driver.
-
-config FB_NEW_FB1
-	bool "TCC805X New Frame buffer Subcore linux fb1 device"
-	depends on FB_NEW && (ARCH_TCC805X)
-	help
-		To activate fb1 via new_fb driver.
-
-config FB_NEW_FB2
-	bool "TCC805X New Frame buffer Subcore linux fb2 device"
-	depends on FB_NEW && (ARCH_TCC805X)
-	help
-		To activate fb2 via new_fb driver.
-
 choice
 	depends on FB_NEW && (ARCH_TCC803X)
 	prompt "FB0 DISP path selection"
