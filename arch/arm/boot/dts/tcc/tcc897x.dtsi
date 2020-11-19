@@ -7,7 +7,6 @@
 
 #include <dt-bindings/interrupt-controller/arm-gic.h>
 #include <dt-bindings/clock/telechips,tcc897x-clks.h>
-#include <dt-bindings/staging/android/ion/ion.h>
 #include <dt-bindings/soc/tcc897x-pm.h>
 #include <dt-bindings/display/tcc897x-vioc.h>
 #include <dt-bindings/power/telechips,boot-mode.h>
@@ -1223,31 +1222,29 @@
 		clock-names = "mali_clk";
 	};
 
-	ion: ion {
+	telechips,ion {
 		compatible = "telechips,tcc-ion";
-		#address-cells = <2>;
+		#address-cells = <1>;
 		#size-cells = <0>;
 /*
 		ion-heap@0 {
-			reg = <0 ION_HEAP_TYPE_SYSTEM>;
+			reg = <0>;
 			telechips,ion-heap-name = "ion_noncontig_heap";
 		};
 
 		ion-heap@1 {
-			reg = <1 ION_HEAP_TYPE_SYSTEM_CONTIG>;
+			reg = <1>;
 			telechips,ion-heap-name = "ion_contig_heap";
 		};
 */
 		ion-heap@2 {
-			reg = <2 ION_HEAP_TYPE_CARVEOUT>;
+			reg = <2>;
 			telechips,ion-heap-name = "ion_carveout_heap";
-			memory-region = <&pmap_ump_reserved>;
 		};
 
 		ion-heap@3 {
-                        reg = <3 ION_HEAP_TYPE_CARVEOUT_CAM>;
+                        reg = <3>;
                         telechips,ion-heap-name = "ion_carveout_cam_heap";
-			memory-region = <&pmap_ion_carveout_cam>;
 		};
 
 	};
