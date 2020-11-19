@@ -72,5 +72,11 @@ typedef struct {
 	unsigned int	size;
 } stIonBuff_info;
 
+extern int range_is_allowed(unsigned long pfn, unsigned long size);
+extern int set_displaying_index(unsigned long arg);
+extern int get_displaying_index(int nInst);
+extern int set_buff_id(unsigned long arg);
+extern int get_buff_id(int nInst);
+
 #endif //_TCC_MEM_IOCTL_H
 
