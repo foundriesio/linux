@@ -624,8 +624,8 @@ struct videosource videosource_adv7182 = {
 	    // remain
 	    .crop_x = 30,
 	    .crop_y = 5,
-	    .crop_w = 30,
-	    .crop_h = 5,
+	    .crop_w = WIDTH - 60,
+	    .crop_h = HEIGHT - 10,
 	    .data_order = ORDER_RGB,
 	    .bit_per_pixel = 8, // bit per pixel
 

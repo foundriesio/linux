@@ -716,14 +716,15 @@ int tccvin_set_vin(tccvin_dev_t * vdev) {
 	unsigned int	fvs 				= vs_info->fvs;
 #endif//defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X)
 
-	unsigned int    crop_x			= vdev->cif.videosource_format.crop_x;
-	unsigned int    crop_y			= vdev->cif.videosource_format.crop_y;
+	unsigned int    crop_x			= vs_info->crop_x;
+	unsigned int    crop_y			= vs_info->crop_y;
 
-	unsigned int    crop_w			= (vdev->cif.videosource_format.crop_w != 0) ? vdev->cif.videosource_format.crop_w : width;
-	unsigned int    crop_h			= (vdev->cif.videosource_format.crop_h != 0) ? vdev->cif.videosource_format.crop_h : height;
+	unsigned int    crop_w			= (vs_info->crop_w != 0) ? vs_info->crop_w : width;
+	unsigned int    crop_h			= (vs_info->crop_h != 0) ? vs_info->crop_h >> interlaced : height;
 
 	FUNCTION_IN
 	dlog("VIN: 0x%p, Source Size - width: %d, height: %d\n", pVIN, width, height);
+	dlog("VIN: 0x%p, Crop Size - (%d, %d) %d * %d\n", pVIN, crop_x, crop_y, crop_w, crop_h);
 
 	VIOC_VIN_SetSyncPolarity(pVIN, hs_active_low, vs_active_low, field_bfield_low, de_active_low, gen_field_en, pxclk_pol);
 	VIOC_VIN_SetCtrl(pVIN, conv_en, hsde_connect_en, vs_mask, data_format, data_order);
