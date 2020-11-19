@@ -282,7 +282,8 @@ static irqreturn_t tcc_sc_mbox_rx_irq_handler(int irq, void *data)
 			ret = IRQ_WAKE_THREAD;
 		} else {
 			dev_err(mdev->dev,
-				"[ERROR][TCC_SC_MBOX] RX command FIFO is empty\n");
+				"[ERROR][TCC_SC_MBOX] RX command FIFO is empty at irq\n"
+			       );
 		}
 	} else {
 		dev_err(mdev->dev, "[ERROR][TCC_SC_MBOX] Wrong RX_IRQ # (%d)\n",
@@ -372,9 +373,14 @@ static irqreturn_t tcc_sc_mbox_rx_isr_handler(int irq, void *data)
 
 		ret = IRQ_HANDLED;
 	} else {
+		/* Enable Rx interrupt */
+		tcc_sc_mbox_set_ctrl(mdev,
+				     ((u32) 0x1U <<
+				      MBOX_CTRL_IEN_READ));
 		spin_unlock_irqrestore(&mdev->lock, flags);
 		dev_err(mdev->dev,
-			"[ERROR][TCC_SC_MBOX] RX command FIFO is empty\n");
+			"[ERROR][TCC_SC_MBOX] RX command FIFO is empty at isr, Re-enable Rx Interrupt.\n"
+			);
 	}
 
 	return ret;
