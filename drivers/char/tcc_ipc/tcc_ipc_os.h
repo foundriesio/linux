@@ -9,7 +9,6 @@
 #define TICK_PER_MS		(1U)
 
 IPC_INT32 ipc_get_usec(void);
-IPC_UINT64 ipc_get_msec(void);
 IPC_INT32 ipc_get_sec(void);
 void ipc_mdelay(IPC_UINT32 dly);
 void ipc_udelay(IPC_UINT32 dly);

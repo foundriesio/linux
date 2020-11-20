@@ -38,20 +38,6 @@ IPC_INT32 ipc_get_usec(void)
 	return usec;
 }
 
-IPC_UINT64 ipc_get_msec(void)
-{
-	IPC_UINT64 milliseconds;
-	struct timeval ts;
-
-	do_gettimeofday(&ts);
-
-	milliseconds =
-		((IPC_UINT64)ts.tv_sec*(IPC_UINT64)1000L) +
-		((IPC_UINT64)ts.tv_usec/(IPC_UINT64)1000L);
-
-	return milliseconds;
-}
-
 IPC_INT32 ipc_get_sec(void)
 {
 	IPC_INT32 sec;
