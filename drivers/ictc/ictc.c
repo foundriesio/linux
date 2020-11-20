@@ -94,11 +94,15 @@
 #define DMA_SEL(x)		((unsigned int)(x)<<12)
 #define F_IN_SEL(x)		((unsigned int)(x)<<0)
 
+LIST_HEAD(ictc_list);
+
 struct ictc_dev {
 	struct device_node *np;
 	unsigned int irq;
+	unsigned int int_state;
 	struct clk *pPClk;
 	struct device *dev;
+	struct list_head list;
 };
 
 //TCC803x GPIOs
@@ -136,7 +140,8 @@ static int gpio_num_group[] = {
 
 #define RTC_WKUP	0xa5
 
-static unsigned int *ictc_base;
+static struct tasklet_struct ictc_tasklet;
+static void __iomem *ictc_base;
 static int f_in_gpio;
 static int f_in_source;
 static unsigned int f_in_rtc_wkup;
@@ -206,46 +211,74 @@ static void ictc_clear_interrupt(void);
 static void ictc_clear_counter(void);
 static void ictc_enable_interrupt(void);
 
-static irqreturn_t ictc_interrupt_handler(int irq, void *dev_id)
+static void ictc_tasklet_handler(unsigned long data)
 {
-	unsigned int int_state = 0;
 
-	int_state = (unsigned int)IRQ_STAT_MASK & ictc_readl(IRQ_CTRL);
+	struct ictc_dev *idev = (struct ictc_dev *)data;
+	struct ictc_dev *idev_pos, *idev_pos_safe;
+	unsigned int int_state;
 
-	if ((int_state & (unsigned int)IRQ_STAT_REDGE) ==
-	    (unsigned int)IRQ_STAT_REDGE)
-		debug_ictc("rising edge interrupt\n");
-	if ((int_state & (unsigned int)IRQ_STAT_FEDGE) ==
-	    (unsigned int)IRQ_STAT_FEDGE)
-		debug_ictc("falling edge interrupt\n");
-	if ((int_state & (unsigned int)IRQ_STAT_DFFULL) ==
-	    (unsigned int)IRQ_STAT_DFFULL)
-		debug_ictc("duty and frequency counter full interrupt\n");
-	if ((int_state & (unsigned int)IRQ_STAT_FCHG) ==
-	    (unsigned int)IRQ_STAT_FCHG)
-		debug_ictc("frequency changing interrupt\n");
-	if ((int_state & (unsigned int)IRQ_STAT_DCHG) ==
-	    (unsigned int)IRQ_STAT_DCHG)
-		debug_ictc("duty changing interrupt\n");
-	if ((int_state & (unsigned int)IRQ_STAT_EFULL) ==
-	    (unsigned int)IRQ_STAT_EFULL)
-		debug_ictc("edge counter full interrupt\n");
-	if ((int_state & (unsigned int)IRQ_STAT_TOFULL) ==
-	    (unsigned int)IRQ_STAT_TOFULL)
-		debug_ictc("timeout counter full interrupt\n");
-	if ((int_state & (unsigned int)IRQ_STAT_NFEDFULL) ==
-	    (unsigned int)IRQ_STAT_NFEDFULL)
-		debug_ictc("noise-filter and edge counter full interrupt\n");
+	list_for_each_entry_safe(idev_pos, idev_pos_safe, &ictc_list, list) {
+		int_state = idev_pos->int_state;
+		list_del(&idev_pos->list);
+
+		if ((int_state & (unsigned int)IRQ_STAT_REDGE) ==
+		    (unsigned int)IRQ_STAT_REDGE)
+			debug_ictc("rising edge interrupt\n");
+		if ((int_state & (unsigned int)IRQ_STAT_FEDGE) ==
+		    (unsigned int)IRQ_STAT_FEDGE)
+			debug_ictc("falling edge interrupt\n");
+		if ((int_state & (unsigned int)IRQ_STAT_DFFULL) ==
+		    (unsigned int)IRQ_STAT_DFFULL)
+			debug_ictc
+			    ("duty and frequency counter full interrupt\n");
+		if ((int_state & (unsigned int)IRQ_STAT_FCHG) ==
+		    (unsigned int)IRQ_STAT_FCHG)
+			debug_ictc("frequency changing interrupt\n");
+		if ((int_state & (unsigned int)IRQ_STAT_DCHG) ==
+		    (unsigned int)IRQ_STAT_DCHG)
+			debug_ictc("duty changing interrupt\n");
+		if ((int_state & (unsigned int)IRQ_STAT_EFULL) ==
+		    (unsigned int)IRQ_STAT_EFULL)
+			debug_ictc("edge counter full interrupt\n");
+		if ((int_state & (unsigned int)IRQ_STAT_TOFULL) ==
+		    (unsigned int)IRQ_STAT_TOFULL)
+			debug_ictc("timeout counter full interrupt\n");
+		if ((int_state & (unsigned int)IRQ_STAT_NFEDFULL) ==
+		    (unsigned int)IRQ_STAT_NFEDFULL)
+			debug_ictc
+			    ("noise-filter and edge counter full interrupt\n");
+
+		devm_kfree(idev->dev, idev_pos);
+	}
 
 	/* to do */
 
-	//////////
+	/* ///// */
+
+}
+
+static irqreturn_t ictc_interrupt_handler(int irq, void *dev)
+{
+	struct ictc_dev *idev = dev_get_drvdata(dev);
+	struct ictc_dev *idev_new;
+
+	idev_new = devm_kzalloc(idev->dev, sizeof(struct ictc_dev), GFP_KERNEL);
+	idev_new->int_state =
+	    (unsigned int)IRQ_STAT_MASK & ictc_readl(IRQ_CTRL);
+	list_add_tail(&idev_new->list, &ictc_list);
+
+	tasklet_schedule(&ictc_tasklet);
+
+	/* to do */
+
+	/* ///// */
 
 	ictc_clear_interrupt();
 	ictc_clear_counter();
 	ictc_enable_interrupt();
 
-	return IRQ_NONE;
+	return IRQ_HANDLED;
 
 }
 
@@ -256,7 +289,7 @@ static int ictc_parse_dt(struct device_node *np)
 	unsigned int node_num = 0;
 	unsigned long count = 0;
 
-	count = sizeof(ictc_prop_v_l) / (sizeof(ictc_prop_v_l[0]));
+	count = ARRAY_SIZE(ictc_prop_v_l);
 
 	for (node_num = 0; node_num < (unsigned int)count; node_num++) {
 		if (of_property_read_u32
@@ -274,7 +307,7 @@ static int ictc_parse_dt(struct device_node *np)
 
 	}
 
-	count = sizeof(ictc_prop_b_l) / (sizeof(ictc_prop_b_l[0]));
+	count = ARRAY_SIZE(ictc_prop_b_l);
 
 	for (node_num = 0; node_num < count; node_num++) {
 
@@ -427,7 +460,7 @@ static int gpio_to_f_in(int gpio_num)
 
 	count = ARRAY_SIZE(gpio_num_group);
 
-	debug_ictc("gpio group count : %d\n", count);
+	debug_ictc("gpio group count : %ld\n", count);
 
 	for (gpio_group = 1; gpio_group < (unsigned int)count; gpio_group++) {
 
@@ -461,6 +494,8 @@ static int ictc_probe(struct platform_device *pdev)
 	f_in_rtc_wkup = 0;
 	irq_setting = 0;
 
+	debug_ictc("ICTC probe ictc irq : %d\n", irq);
+
 	if (np == NULL) {
 		err_ictc("device does not exist!\n");
 		ret = -EINVAL;
@@ -474,22 +509,33 @@ static int ictc_probe(struct platform_device *pdev)
 			ret = -ENXIO;
 		} else {
 
+			INIT_LIST_HEAD(&idev->list);
+
+			idev->np = np;
+			idev->irq = irq;
+			idev->pPClk = pPClk;
+			idev->dev = &pdev->dev;
+			platform_set_drvdata(pdev, idev);
+
 			ret = clk_prepare_enable(pPClk);
 
 			if (ret == SUCCESS) {
 				ret =
 				    request_irq(irq, ictc_interrupt_handler,
-						IRQF_SHARED, "ICTC", idev);
+						IRQF_SHARED, "ICTC",
+						&pdev->dev);
+				tasklet_init(&ictc_tasklet,
+					     ictc_tasklet_handler,
+					     (unsigned long)idev);
 
 				if (ret != SUCCESS) {
 					err_ictc("irq req. fail: %d irq: %x\n",
-					     ret, irq);
+						 ret, irq);
 				} else {
 
 					ictc_base = of_iomap(np, 0);
 
-					f_in_rtc_wkup =
-					    (unsigned int)
+					f_in_rtc_wkup = (unsigned int)
 					    of_property_read_bool(np,
 								  "f-in-rtc-wkup");
 
@@ -530,15 +576,6 @@ static int ictc_probe(struct platform_device *pdev)
 			if (ret != SUCCESS) {
 
 				devm_kfree(&pdev->dev, idev);
-
-			} else {
-
-				idev->np = np;
-				idev->irq = irq;
-				idev->pPClk = pPClk;
-				idev->dev = &pdev->dev;
-				platform_set_drvdata(pdev, idev);
-
 			}
 
 		}
