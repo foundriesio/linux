@@ -10,7 +10,6 @@
 #include "../vpu_type.h"
 
 typedef long codec_handle_t; //!< handle
-typedef int codec_result_t; //!< return value
 
 int tcc_vpu_dec(int Op, codec_handle_t *pHandle, void *pParam1, void *pParam2)
 {

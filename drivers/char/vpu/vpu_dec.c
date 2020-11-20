@@ -31,6 +31,7 @@
 #include <asm/div64.h>
 
 #include "vpu_buffer.h"
+#include "vpu_dec.h"
 #include "vpu_mgr.h"
 
 #ifdef CONFIG_SUPPORT_TCC_JPU

@@ -30,8 +30,15 @@
 
 #include "vpu_comm.h"
 #include "vpu_devices.h"
+#include "vpu_mem.h"
 #include "vpu_mgr.h"
 
+#if DEFINED_CONFIG_VENC_CNT_12345
+#include "vpu_enc.h"
+#endif
+#if DEFINED_CONFIG_VDEC_CNT_12345
+#include "vpu_dec.h"
+#endif
 
 #ifdef CONFIG_OF
 static const struct of_device_id vpu_mgr_of_match[] = {
@@ -56,9 +63,6 @@ static struct platform_driver vmgr_driver = {
 #endif
 	},
 };
-
-extern int vmem_probe(struct platform_device *pdev);
-extern int vmem_remove(struct platform_device *pdev);
 
 static struct platform_device vmem_device = {
 	.name = MEM_NAME,
@@ -87,9 +91,6 @@ static struct platform_driver vmem_driver = {
 };
 
 #if DEFINED_CONFIG_VDEC_CNT_12345
-extern int vdec_probe(struct platform_device *pdev);
-extern int vdec_remove(struct platform_device *pdev);
-
 static struct platform_device vdec_device = {
 	.name = DEC_NAME,
 	.dev = {},
@@ -230,9 +231,6 @@ static struct platform_driver vdec_ext4_driver = {
 #endif
 
 #if DEFINED_CONFIG_VENC_CNT_12345
-extern int venc_probe(struct platform_device *pdev);
-extern int venc_remove(struct platform_device *pdev);
-
 static struct platform_device venc_device = {
 	.name = ENC_NAME,
 	.dev = {},
