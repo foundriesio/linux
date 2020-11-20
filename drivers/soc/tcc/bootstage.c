@@ -189,11 +189,11 @@ static int bootstage_data_show(struct seq_file *m, void *v)
 		stamp = get_boot_timestamp(n);
 
 		if (stamp == 0) {
-			seq_printf(m, "%s,0\n", bootstage_desc[n]);
+			seq_printf(m, "%s,0\n", desc);
 			continue;
 		}
 
-		seq_printf(m, "%s,%u\n", bootstage_desc[n], stamp - prev);
+		seq_printf(m, "%s,%u\n", desc, stamp - prev);
 		prev = stamp;
 	}
 
