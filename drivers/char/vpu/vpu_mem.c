@@ -31,6 +31,7 @@
 #include "vpu_comm.h"
 #include "vpu_devices.h"
 #include "vpu_buffer.h"
+#include "vpu_mem.h"
 
 #include <video/tcc/tcc_mem_ioctl.h>
 #include <video/tcc/tccfb_ioctrl.h>
