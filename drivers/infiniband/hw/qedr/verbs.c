@@ -253,20 +253,6 @@ int qedr_query_port(struct ib_device *ibdev, u8 port, struct ib_port_attr *attr)
 	return 0;
 }
 
-int qedr_modify_port(struct ib_device *ibdev, u8 port, int mask,
-		     struct ib_port_modify *props)
-{
-	struct qedr_dev *dev;
-
-	dev = get_qedr_dev(ibdev);
-	if (port > 1) {
-		DP_ERR(dev, "invalid_port=0x%x\n", port);
-		return -EINVAL;
-	}
-
-	return 0;
-}
-
 static int qedr_add_mmap(struct qedr_ucontext *uctx, u64 phy_addr,
 			 unsigned long len)
 {
