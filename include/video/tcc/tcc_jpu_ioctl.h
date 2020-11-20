@@ -1,26 +1,8 @@
+// SPDX-License-Identifier: GPL-2.0-or-later
 /*
- *   FileName    : tcc_jpu_ioctl.h
- *   Author:  <linux@telechips.com>
- *   Created: June 10, 2008
- *   Description: TCC VPU h/w block
- *
- *   Copyright (C) 2008-2009 Telechips
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, see the file COPYING, or write
- * to the Free Software Foundation, Inc.,
- * 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
- *
+ * Copyright (C) Telechips Inc.
+ * FileName   : tcc_jpu_ioctl.h
+ * Description: TCC VPU h/w block
  */
 
 #include "tcc_video_common.h"
@@ -30,76 +12,87 @@
 
 #define JPU_MAX (VPU_MAX)
 
-///////////////////////////////////////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////////////////////////////
+//------------------------------------------------------------------------------
 // [JPU DECODER] Definition of binary structures exchanged by jpu ioctl
-/* 32/64 userspace and 32/64 kernel space */
+//------------------------------------------------------------------------------
+
+/*!
+ * 32/64 userspace and 32/64 kernel space
+ */
+
 typedef struct {
-    int result;
-    codec_handle_t gsJpuDecHandle;
-    jpu_dec_init_t gsJpuDecInit;
+	int result;
+	codec_handle_t gsJpuDecHandle;
+	jpu_dec_init_t gsJpuDecInit;
 } JDEC_INIT_t;
 
 typedef struct {
-    int result;
-    unsigned int stream_size;
-    jpu_dec_initial_info_t gsJpuDecInitialInfo;
+	int result;
+	unsigned int stream_size;
+	jpu_dec_initial_info_t gsJpuDecInitialInfo;
 } JDEC_SEQ_HEADER_t;
 
 typedef struct {
-    int result;
-    jpu_dec_buffer_t gsJpuDecBuffer;
+	int result;
+	jpu_dec_buffer_t gsJpuDecBuffer;
 } JPU_SET_BUFFER_t;
 
 typedef struct {
-    int result;
-    jpu_dec_input_t     gsJpuDecInput;
-    jpu_dec_output_t    gsJpuDecOutput;
-    jpu_dec_initial_info_t gsJpuDecInitialInfo;
+	int result;
+	jpu_dec_input_t     gsJpuDecInput;
+	jpu_dec_output_t    gsJpuDecOutput;
+	jpu_dec_initial_info_t gsJpuDecInitialInfo;
 } JPU_DECODE_t;
 
 typedef struct {
-    int result;
-    char *pszVersion;
-    char *pszBuildData;
+	int result;
+	char *pszVersion;
+	char *pszBuildData;
 } JPU_GET_VERSION_t;
 
 #ifdef _JPU_C6_INCLUDE_
-///////////////////////////////////////////////////////////////////////////////////////////////////
-/* binaray structure bearer for 32/64 userspace and 64/32 kernel space environment */
+//------------------------------------------------------------------------------
+// binaray structure bearer for 32/64 userspace
+//  and 64/32 kernel space environment
+//------------------------------------------------------------------------------
+
 typedef struct {
-    int result;
-    codec_handle_t          gsJpuDecHandle;
-    jpu_dec_init_64bit_t    gsJpuDecInitEx;
+	int result;
+	codec_handle_t          gsJpuDecHandle;
+	jpu_dec_init_64bit_t    gsJpuDecInitEx;
 } JDEC_INIT_BEARER_t;
 
 typedef struct {
-    int result;
-    jpu_dec_input_t         gsJpuDecInput;
-    jpu_dec_output_64bit_t  gsJpuDecOutputEx;
+	int result;
+	jpu_dec_input_t         gsJpuDecInput;
+	jpu_dec_output_64bit_t  gsJpuDecOutputEx;
 } JPU_DECODE_BEARER_t;
 
 typedef struct {
-    int result;
-    unsigned long long cVersionAddr;
-    unsigned long long cBuildDataAddr;
+	int result;
+	unsigned long long cVersionAddr;
+	unsigned long long cBuildDataAddr;
 } JPU_GET_VERSION_BEARER_t;
 #endif
 
-///////////////////////////////////////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////////////////////////////
+//------------------------------------------------------------------------------
 // [JPU ENCODER] Definition of binary structures exchanged by jpu ioctl
-/* 32/64 userspace and 32/64 kernel space */
+//------------------------------------------------------------------------------
+
+/*!
+ * 32/64 userspace and 32/64 kernel space
+ */
+
 typedef struct {
-    int result;
-    codec_handle_t gsJpuEncHandle;
-    jpu_enc_init_t gsJpuEncInit;
+	int result;
+	codec_handle_t gsJpuEncHandle;
+	jpu_enc_init_t gsJpuEncInit;
 } JENC_INIT_t;
 
 typedef struct {
-    int result;
-    jpu_enc_input_t gsJpuEncInput;
-    jpu_enc_output_t gsJpuEncOutput;
+	int result;
+	jpu_enc_input_t gsJpuEncInput;
+	jpu_enc_output_t gsJpuEncOutput;
 } JPU_ENCODE_t;
 
 #endif // _JPU_IOCTL_H_

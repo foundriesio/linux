@@ -9,19 +9,22 @@
 typedef long codec_handle_t; //!< handle
 typedef int codec_result_t; //!< return value
 
-int tcc_vpu_hevc_enc(int Op, codec_handle_t* pHandle, void* pParam1, void* pParam2)
+int tcc_vpu_hevc_enc(int Op, codec_handle_t *pHandle, void *pParam1,
+			 void *pParam2)
 {
 	return 1;
 }
 EXPORT_SYMBOL(tcc_vpu_hevc_enc);
 
-int tcc_vpu_hevc_enc_esc(int Op, codec_handle_t* pHandle, void* pParam1, void* pParam2)
+int tcc_vpu_hevc_enc_esc(int Op, codec_handle_t *pHandle, void *pParam1,
+			 void *pParam2)
 {
 	return 1;
 }
 EXPORT_SYMBOL(tcc_vpu_hevc_enc_esc);
 
-int tcc_vpu_hevc_enc_ext(int Op, codec_handle_t* pHandle, void* pParam1, void* pParam2)
+int tcc_vpu_hevc_enc_ext(int Op, codec_handle_t *pHandle, void *pParam1,
+			 void *pParam2)
 {
 	return 1;
 }

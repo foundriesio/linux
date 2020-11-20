@@ -1,57 +1,47 @@
+// SPDX-License-Identifier: GPL-2.0-or-later
 /*
- * Copyright (C) Telechips, Inc.
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, see the file COPYING, or write
- * to the Free Software Foundation, Inc.,
- * 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+ * Copyright (C) Telechips Inc.
+ * FileName   : tcc_jpeg_ioctl.h
+ * Description: TCC VPU h/w block
  */
+
+
 #ifndef _JPEG_IOCTL_H_
 #define _JPEG_IOCTL_H_
 
 #define TCC_JPEGDEC_INT_POLL //int poll
 
 // For Decode!!
-#define TCC_JPEGD_IOCTL_DEC         100
-#define TCC_JPEGD_IOCTL_HEADER_INFO 101
-#define TCC_JPEGD_IOCTL_USABLE      102
+#define TCC_JPEGD_IOCTL_DEC          100
+#define TCC_JPEGD_IOCTL_HEADER_INFO  101
+#define TCC_JPEGD_IOCTL_USABLE       102
 
 // For Encode!!
-#define TCC_JPEGE_IOCTL_ENC       201
-#define TCC_JPEGE_IOCTL_MAKE_EXIF 202
-#define TCC_JPEGE_IOCTL_USABLE    203
+#define TCC_JPEGE_IOCTL_ENC          201
+#define TCC_JPEGE_IOCTL_MAKE_EXIF    202
+#define TCC_JPEGE_IOCTL_USABLE       203
 
 // for ENC / DEC
-#define TCC_JPU_IOCTL_GET_BASE_ADDR 301
+#define TCC_JPU_IOCTL_GET_BASE_ADDR  301
 
 
-enum JpegOperationType {
+typedef enum {
 	JPEG_ENCODE_MODE = 0,
 	JPEG_DECODE_MODE,
 	JPEG_DECODE_THUMB_MODE,
 	JPEG_UNKNOWN_MODE
-};
+} JpegOperationType;
 
 /* Decoder Output Scale Ratio */
-enum Decode_Scale_Type {
+typedef enum {
 	NO_SCALE,
 	HALF_SCALE,
 	QUARTER_SCALE,
-};
+} Decode_Scale_Type;
 
 enum jpeg_quantisation_val {
 	JPEG_SUPERFINE = 3,
-	JPEG_FINE	   = 4,
+	JPEG_FINE      = 4,
 	JPEG_MEDIUM    = 5,
 	JPEG_DEFAULT   = 4
 };
@@ -62,7 +52,7 @@ struct jpeg_file_info {
 	int jpeg_data_addr;
 };
 
-enum ImageFormatType {
+typedef enum {
 	IMAGE_CHROMA_YONLY,
 	IMAGE_CHROMA_420,
 	IMAGE_CHROMA_422,
@@ -70,44 +60,44 @@ enum ImageFormatType {
 	IMAGE_CHROMA_422S,
 	IMAGE_CHROMA_440,
 	IMAGE_CHROMA_UNKNOWN
-};
+} ImageFormatType;
 
-enum EncodeInputType {
+typedef enum {
 	ENC_INPUT_420,
 	ENC_INPUT_422
-};
+} EncodeInputType;
 
-struct TCCXXX_JPEG_TIMESTAMP_TYPE {
+typedef struct {
 	unsigned short year;
 	unsigned short month;
 	unsigned short date;
 	unsigned short hour;
 	unsigned short min;
 	unsigned short sec;
-};
+} TCCXXX_JPEG_TIMESTAMP_TYPE;
 
-struct GPS_LATITUDE_TYPE {
+typedef struct {
 	int degrees;
 	int minutes;
 	int seconds;
-};
+} GPS_LATITUDE_TYPE;
 
-struct GPS_LONGITUDE_TYPE {
+typedef struct {
 	int degrees;
 	int minutes;
 	int seconds;
-};
+} GPS_LONGITUDE_TYPE;
 
-struct TCCXXX_JPEG_GPS_INFO {
-	int Supported;
-	struct GPS_LATITUDE_TYPE Latitude;
-	struct GPS_LONGITUDE_TYPE Longitude;
-	int Altitude;
-	struct TCCXXX_JPEG_TIMESTAMP_TYPE time_stamp;
-	char Processing_Method[128];
-};
+typedef struct {
+	int			Supported;
+	GPS_LATITUDE_TYPE	Latitude;
+	GPS_LONGITUDE_TYPE	Longitude;
+	int			Altitude;
+	TCCXXX_JPEG_TIMESTAMP_TYPE time_stamp;
+	char	Processing_Method[128];
+} TCCXXX_JPEG_GPS_INFO;
 
-struct TCCXXX_JPEG_ENC_DATA {
+typedef struct {
 	//input
 	unsigned int source_addr; //physical-address
 	unsigned int width;
@@ -126,9 +116,9 @@ struct TCCXXX_JPEG_ENC_DATA {
 	unsigned int bitstream_size;
 
 	unsigned int normal_op;
-};
+} TCCXXX_JPEG_ENC_DATA;
 
-struct TCCXXX_JPEG_ENC_EXIF_DATA {
+typedef struct {
 	//input
 	unsigned int thumbjpg_addr; //physical-address
 	unsigned int thumbjpg_size;
@@ -143,12 +133,12 @@ struct TCCXXX_JPEG_ENC_EXIF_DATA {
 	unsigned int header_size;
 
 	unsigned int rotation;
-	struct TCCXXX_JPEG_TIMESTAMP_TYPE time_stamp;
+	TCCXXX_JPEG_TIMESTAMP_TYPE time_stamp;
 
-	struct TCCXXX_JPEG_GPS_INFO gps_info;
-};
+	TCCXXX_JPEG_GPS_INFO gps_info;
+} TCCXXX_JPEG_ENC_EXIF_DATA;
 
-struct TCCXXX_JPEG_DEC_DATA {
+typedef struct {
 	//input
 	unsigned int source_addr; //physical-address
 	unsigned int file_length;
@@ -171,7 +161,6 @@ struct TCCXXX_JPEG_DEC_DATA {
 	unsigned int ratio; //Decode_Scale_Type ratio;
 
 	unsigned int normal_op;
-};
+} TCCXXX_JPEG_DEC_DATA;
 
 #endif
-

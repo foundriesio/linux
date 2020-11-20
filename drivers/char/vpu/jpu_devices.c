@@ -24,44 +24,37 @@
 #include <linux/wait.h>
 #include <linux/uaccess.h>
 
-#include <asm/io.h>
+#include <linux/io.h>
+//#include <asm/io.h>
 #include <asm/div64.h>
 
 #ifdef CONFIG_SUPPORT_TCC_JPU
 
 #include "vpu_comm.h"
 #include "vpu_devices.h"
+#include "jpu_mgr.h"
 
-extern int jmgr_probe(struct platform_device* pdev);
-extern int jmgr_remove(struct platform_device* pdev);
-#if defined(CONFIG_PM)
-extern int jmgr_suspend(struct platform_device* pdev, pm_message_t state);
-extern int jmgr_resume(struct platform_device* pdev);
-#endif
 
 #ifdef CONFIG_OF
-static struct of_device_id jmgr_of_match[] =
-{
-	{ .compatible = "telechips,jpu_dev_mgr" }, //JMGR_NAME
+static const struct of_device_id jmgr_of_match[] = {
+	{.compatible = "telechips,jpu_dev_mgr"},	//JMGR_NAME
 	{}
 };
 MODULE_DEVICE_TABLE(of, jmgr_of_match);
 #endif
 
-static struct platform_driver jmgr_driver =
-{
-	.probe          = jmgr_probe,
-	.remove         = jmgr_remove,
+static struct platform_driver jmgr_driver = {
+	.probe = jmgr_probe,
+	.remove = jmgr_remove,
 #if defined(CONFIG_PM)
-	.suspend        = jmgr_suspend,
-	.resume         = jmgr_resume,
+	.suspend = jmgr_suspend,
+	.resume = jmgr_resume,
 #endif
-	.driver         =
-	{
-		 .name   	= JMGR_NAME,
-		 .owner  	= THIS_MODULE,
+	.driver = {
+		   .name = JMGR_NAME,
+		   .owner = THIS_MODULE,
 #ifdef CONFIG_OF
-		 .of_match_table = of_match_ptr(jmgr_of_match),
+		   .of_match_table = of_match_ptr(jmgr_of_match),
 #endif
 	},
 };
@@ -73,11 +66,11 @@ static void __exit jmgr_cleanup(void)
 
 static int jmgr_init(void)
 {
-	printk("============> JPU Devices drivers initializing!!  Start ------- ");
+	pr_info("============> JPU Devices drivers initializing!!  Start ------");
 
 	platform_driver_register(&jmgr_driver);
 
-	printk("Done!! \n");
+	pr_info("Done!!\n");
 	return 0;
 }
 
