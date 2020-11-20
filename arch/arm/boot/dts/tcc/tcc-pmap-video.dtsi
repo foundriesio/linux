@@ -36,7 +36,7 @@
 	#define CONFIG_VDEC_CNT_5
 #endif
 
-#ifdef defined(CONF_VENC_CNT_1) && !defined(CONFIG_VENC_CNT_1)
+#if defined(CONF_VENC_CNT_1) && !defined(CONFIG_VENC_CNT_1)
 	#define CONFIG_VENC_CNT_1
 #elif defined(CONF_VENC_CNT_2)  && !defined(CONFIG_VENC_CNT_2)
 	#define CONFIG_VENC_CNT_2
