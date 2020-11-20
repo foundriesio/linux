@@ -212,19 +212,6 @@ int ocrdma_query_port(struct ib_device *ibdev,
 	return 0;
 }
 
-int ocrdma_modify_port(struct ib_device *ibdev, u8 port, int mask,
-		       struct ib_port_modify *props)
-{
-	struct ocrdma_dev *dev;
-
-	dev = get_ocrdma_dev(ibdev);
-	if (port > 1) {
-		pr_err("%s(%d) invalid_port=0x%x\n", __func__, dev->id, port);
-		return -EINVAL;
-	}
-	return 0;
-}
-
 static int ocrdma_add_mmap(struct ocrdma_ucontext *uctx, u64 phy_addr,
 			   unsigned long len)
 {
