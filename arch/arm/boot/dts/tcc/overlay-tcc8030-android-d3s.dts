@@ -16,6 +16,8 @@
 #include <dt-bindings/power/telechips,boot-mode.h>
 #include <dt-bindings/gpio/gpio.h>
 
+#include "tcc-pmap-803x-android-customized.dtsi"
+
 #include "tcc-pmap-common.dtsi"
 
 #include "tcc8030-android-lpd4321_sv0.1.dts"

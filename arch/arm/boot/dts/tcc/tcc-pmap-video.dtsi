@@ -1,97 +1,71 @@
+// SPDX-License-Identifier: (GPL-2.0+ OR MIT)
 /*
- * Device tree for Telechips TCC899x family SoC
- *
- * Copyright (C) 2018 Telechips Inc. - http://www.telechips.com
- *
- * This file is dual-licensed: you can use it either under the terms
- * of the GPL or the X11 license, at your option. Note that this dual
- * licensing only applies to this file, and not this project as a
- * whole.
- *
- *  a) This file is free software; you can redistribute it and/or
- *     modify it under the terms of the GNU General Public License as
- *     published by the Free Software Foundation; either version 2 of the
- *     License, or (at your option) any later version.
- *
- *     This file is distributed in the hope that it will be useful,
- *     but WITHOUT ANY WARRANTY; without even the implied warranty of
- *     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *     GNU General Public License for more details.
- *
- * Or, alternatively,
- *
- *  b) Permission is hereby granted, free of charge, to any person
- *     obtaining a copy of this software and associated documentation
- *     files (the "Software"), to deal in the Software without
- *     restriction, including without limitation the rights to use,
- *     copy, modify, merge, publish, distribute, sublicense, and/or
- *     sell copies of the Software, and to permit persons to whom the
- *     Software is furnished to do so, subject to the following
- *     conditions:
- *
- *     The above copyright notice and this permission notice shall be
- *     included in all copies or substantial portions of the Software.
- *
- *     THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
- *     EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
- *     OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
- *     NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
- *     HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
- *     WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
- *     FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
- *     OTHER DEALINGS IN THE SOFTWARE.
+ * Copyright (C) Telechips Inc.
  */
 
-#include "../../../../../include/generated/autoconf.h"
+////////////////////////////////////////////////////////////////////////////////
+#ifndef TCC_PMAP_VIDEO_DTSI
+#define TCC_PMAP_VIDEO_DTSI
+////////////////////////////////////////////////////////////////////////////////
 
-#ifdef CONFIG_ANDROID
-	#if defined(CONFIG_ARCH_TCC899X)
-	#include "tcc-pmap-899x-android-customized.dtsi"
-	#elif defined(CONFIG_ARCH_TCC803X)
-	#include "tcc-pmap-803x-android-customized.dtsi"
-	#elif defined(CONFIG_ARCH_TCC897X)
-	#include "tcc-pmap-897x-android-customized.dtsi"
-	#elif defined(CONFIG_ARCH_TCC901X)
-	#include "tcc-pmap-901x-android-customized.dtsi"
-	#elif defined(CONFIG_ARCH_TCC805X)
-	#include "tcc-pmap-805x-android-customized.dtsi"
-	#else
-	#error1
-	#endif
-#else
-	#if defined(CONFIG_ARCH_TCC899X)
-	#include "tcc-pmap-899x-linux-customized.dtsi"
-	#elif defined(CONFIG_ARCH_TCC803X)
-	#include "tcc-pmap-803x-linux-customized.dtsi"
-	#elif defined(CONFIG_ARCH_TCC897X)
-	#include "tcc-pmap-897x-linux-customized.dtsi"
-	#elif defined(CONFIG_ARCH_TCC901X)
-	#include "tcc-pmap-901x-linux-customized.dtsi"
-	#elif defined(CONFIG_ARCH_TCC805X)
-	#include "tcc-pmap-805x-linux-customized.dtsi"
-	#else
-	#error2
-	#endif
+#if defined(CONF_ANDROID) && !defined(CONFIG_ANDROID)
+	#define CONFIG_ANDROID
 #endif
 
-/************************* SYNC WITH tcc_vpu_wbuffer.h *****************************/
+#if defined(CONF_ARCH_TCC803X) && !defined(CONFIG_ARCH_TCC803X)
+	#define CONFIG_ARCH_TCC803X
+#endif
+
+#if defined(CONF_SUPPORT_TCC_WAVE410_HEVC) && !defined(CONFIG_SUPPORT_TCC_WAVE410_HEVC)
+	#define CONFIG_SUPPORT_TCC_WAVE410_HEVC
+#endif
+
+#if defined(CONF_SUPPORT_TCC_JPU) && !defined(CONFIG_SUPPORT_TCC_JPU)
+	#define CONFIG_SUPPORT_TCC_JPU
+#endif
+
+#if defined(CONF_VDEC_CNT_1) && !defined(CONFIG_VDEC_CNT_1)
+	#define CONFIG_VDEC_CNT_1
+#elif defined(CONF_VDEC_CNT_2) && !defined(CONFIG_VDEC_CNT_2)
+	#define CONFIG_VDEC_CNT_2
+#elif defined(CONF_VDEC_CNT_3) && !defined(CONFIG_VDEC_CNT_3)
+	#define CONFIG_VDEC_CNT_3
+#elif defined(CONF_VDEC_CNT_4) && !defined(CONFIG_VDEC_CNT_4)
+	#define CONFIG_VDEC_CNT_4
+#elif defined(CONF_VDEC_CNT_5) && !defined(CONFIG_VDEC_CNT_5)
+	#define CONFIG_VDEC_CNT_5
+#endif
+
+#ifdef defined(CONF_VENC_CNT_1) && !defined(CONFIG_VENC_CNT_1)
+	#define CONFIG_VENC_CNT_1
+#elif defined(CONF_VENC_CNT_2)  && !defined(CONFIG_VENC_CNT_2)
+	#define CONFIG_VENC_CNT_2
+#elif defined(CONF_VENC_CNT_3) && !defined(CONFIG_VENC_CNT_3)
+	#define CONFIG_VENC_CNT_3
+#elif defined(CONF_VENC_CNT_4) && !defined(CONFIG_VENC_CNT_4)
+	#define CONFIG_VENC_CNT_4
+#elif defined(CONF_VENC_CNT_5) && !defined(CONFIG_VENC_CNT_5)
+	#define CONFIG_VENC_CNT_5
+#endif
+
+/************************* SYNC WITH tcc_vpu_wbuffer.h ************************/
 #ifndef _VPU_WBUFFER_DTSI_
 #define _VPU_WBUFFER_DTSI_
 
 #define VPU_INST_MAX 5
 
 #if defined(CONFIG_VENC_CNT_5)
-#define VPU_ENC_MAX_CNT 5
+	#define VPU_ENC_MAX_CNT 5
 #elif defined(CONFIG_VENC_CNT_4)
-#define VPU_ENC_MAX_CNT 4
+	#define VPU_ENC_MAX_CNT 4
 #elif defined(CONFIG_VENC_CNT_3)
-#define VPU_ENC_MAX_CNT 3
+	#define VPU_ENC_MAX_CNT 3
 #elif defined(CONFIG_VENC_CNT_2)
-#define VPU_ENC_MAX_CNT 2
+	#define VPU_ENC_MAX_CNT 2
 #elif defined(CONFIG_VENC_CNT_1)
-#define VPU_ENC_MAX_CNT 1
+	#define VPU_ENC_MAX_CNT 1
 #else
-#define VPU_ENC_MAX_CNT 0
+	#define VPU_ENC_MAX_CNT 0
 #endif
 
 #define _CODEC_HANDLE_T_
@@ -107,6 +81,7 @@
 #else
 #include "../../../../../include/video/tcc/TCC_VPU_CODEC.h" // VPU video codec
 #endif
+
 #ifdef CONFIG_SUPPORT_TCC_JPU
 	#if defined(JPU_C5)
 	#include "../../../../../include/video/tcc/TCC_JPU_CODEC.h"
@@ -114,21 +89,25 @@
 	#include "../../../../../include/video/tcc/TCC_JPU_C6.h"
 	#endif
 #endif
+
 #ifdef CONFIG_SUPPORT_TCC_WAVE410_HEVC
 #include "../../../../../include/video/tcc/TCC_HEVC_CODEC.h"
 #endif
+
 #ifdef CONFIG_SUPPORT_TCC_G2V2_VP9
 #include "../../../../../include/video/tcc/TCC_VP9_CODEC.h"
 #endif
+
 #ifdef CONFIG_SUPPORT_TCC_WAVE512_4K_D2
 #include "../../../../../include/video/tcc/TCC_VPU_4K_D2_CODEC.h"
 #endif
+
 #ifdef CONFIG_SUPPORT_TCC_WAVE420L_VPU_HEVC_ENC
 #include "../../../../../include/video/tcc/TCC_VPU_HEVC_ENC_CODEC.h"
 #endif
 
-#define NUM_OF_MAIN_INSTANCE            (INST_1ST_USE + INST_2ND_USE)
-#define NUM_OF_SUB_INSTANCE             (INST_3RD_USE + INST_4TH_USE)
+#define NUM_OF_MAIN_INSTANCE	(INST_1ST_USE + INST_2ND_USE)
+#define NUM_OF_SUB_INSTANCE 	(INST_3RD_USE + INST_4TH_USE)
 
 #define VPU_WORK_BUF_SIZE	(WORK_CODE_PARA_BUF_SIZE)
 
@@ -137,36 +116,37 @@
 #elif CONFIG_SUPPORT_TCC_WAVE410_HEVC // HEVC
 #define WAVExxx_WORK_BUF_SIZE	(WAVE4_WORK_CODE_BUF_SIZE)
 #else
-#define WAVExxx_WORK_BUF_SIZE	0
+#define WAVExxx_WORK_BUF_SIZE	(0)
 #endif
 
 #ifdef CONFIG_SUPPORT_TCC_G2V2_VP9 // VP9
-#define G2V2_VP9_WORK_BUF_SIZE	0//(PAGE_ALIGN(VP9_WORK_CODE_BUF_SIZE))
+#define G2V2_VP9_WORK_BUF_SIZE	(0) //(PAGE_ALIGN(VP9_WORK_CODE_BUF_SIZE))
 #else
-#define G2V2_VP9_WORK_BUF_SIZE	0
+#define G2V2_VP9_WORK_BUF_SIZE	(0)
 #endif
 
 #ifdef CONFIG_SUPPORT_TCC_JPU
-#define JPU_WORK_BUF_SIZE	0//(PAGE_ALIGN(JPU_WORK_CODE_BUF_SIZE))
+#define JPU_WORK_BUF_SIZE	(0) //(PAGE_ALIGN(JPU_WORK_CODE_BUF_SIZE))
 #else
-#define JPU_WORK_BUF_SIZE	0
+#define JPU_WORK_BUF_SIZE	(0)
 #endif
 
 #ifdef CONFIG_SUPPORT_TCC_WAVE420L_VPU_HEVC_ENC
 #define VPU_HEVC_ENC_WORK_BUF_SIZE	(VPU_HEVC_ENC_WORK_CODE_BUF_SIZE)
 #else
-#define VPU_HEVC_ENC_WORK_BUF_SIZE	0
+#define VPU_HEVC_ENC_WORK_BUF_SIZE	(0)
 #endif
 
-#if defined(CONFIG_VENC_CNT_1) || defined(CONFIG_VENC_CNT_2) || defined(CONFIG_VENC_CNT_3) \
-	|| defined(CONFIG_VENC_CNT_4) || defined(CONFIG_VENC_CNT_5)
+#if defined(CONFIG_VENC_CNT_1) || defined(CONFIG_VENC_CNT_2) || \
+	defined(CONFIG_VENC_CNT_3) || defined(CONFIG_VENC_CNT_4) || \
+	defined(CONFIG_VENC_CNT_5)
 #if defined(CONFIG_SUPPORT_TCC_WAVE420L_VPU_HEVC_ENC)
 #define ENC_HEADER_BUF_SIZE	(VPU_HEVC_ENC_HEADER_BUF_SIZE)
 #else
 #define ENC_HEADER_BUF_SIZE	(VPU_ENC_PUT_HEADER_SIZE)
 #endif
 #else
-#define ENC_HEADER_BUF_SIZE	0
+#define ENC_HEADER_BUF_SIZE	(0)
 #endif
 
 #ifdef CONFIG_SUPPORT_TCC_WAVE512_4K_D2 // HEVC/VP9
@@ -183,19 +163,18 @@
 #define VPU_SW_ACCESS_REGION_SIZE (ARRAY_MBYTE(VPU_WORK_BUF_SIZE + WAVExxx_WORK_BUF_SIZE + G2V2_VP9_WORK_BUF_SIZE + JPU_WORK_BUF_SIZE + VPU_HEVC_ENC_WORK_BUF_SIZE + (ENC_HEADER_BUF_SIZE*VPU_ENC_MAX_CNT) + (USER_DATA_BUF_SIZE*VPU_INST_MAX)))
 #endif
 #endif //_VPU_WBUFFER_DTSI_
-/************************* SYNC WITH tcc_vpu_wbuffer.h *****************************/
-
+/************************* SYNC WITH tcc_vpu_wbuffer.h ************************/
 
 #if (INST_1ST_IS_HEVC_TYPE > 0)
-#define INST_1ST_PROC_SIZE			WAVE_CAL_PROCBUFFER(INST_1ST_USE, INST_1ST_VIDEO_WIDTH, INST_1ST_VIDEO_HEIGHT, INST_1ST_MAX_FRAMEBUFFERS)
+#define INST_1ST_PROC_SIZE		WAVE_CAL_PROCBUFFER(INST_1ST_USE, INST_1ST_VIDEO_WIDTH, INST_1ST_VIDEO_HEIGHT, INST_1ST_MAX_FRAMEBUFFERS)
 #else
-#define INST_1ST_PROC_SIZE			VPU_CAL_PROCBUFFER(INST_1ST_USE, INST_1ST_VIDEO_WIDTH, INST_1ST_VIDEO_HEIGHT, INST_1ST_MAX_FRAMEBUFFERS)
+#define INST_1ST_PROC_SIZE		VPU_CAL_PROCBUFFER(INST_1ST_USE, INST_1ST_VIDEO_WIDTH, INST_1ST_VIDEO_HEIGHT, INST_1ST_MAX_FRAMEBUFFERS)
 #endif
 
 #if (INST_2ND_IS_HEVC_TYPE > 0)
-#define INST_2ND_PROC_SIZE			WAVE_CAL_PROCBUFFER(INST_2ND_USE, INST_2ND_VIDEO_WIDTH, INST_2ND_VIDEO_HEIGHT, INST_2ND_MAX_FRAMEBUFFERS)
+#define INST_2ND_PROC_SIZE		WAVE_CAL_PROCBUFFER(INST_2ND_USE, INST_2ND_VIDEO_WIDTH, INST_2ND_VIDEO_HEIGHT, INST_2ND_MAX_FRAMEBUFFERS)
 #else
-#define INST_2ND_PROC_SIZE			VPU_CAL_PROCBUFFER(INST_2ND_USE, INST_2ND_VIDEO_WIDTH, INST_2ND_VIDEO_HEIGHT, INST_2ND_MAX_FRAMEBUFFERS)
+#define INST_2ND_PROC_SIZE		VPU_CAL_PROCBUFFER(INST_2ND_USE, INST_2ND_VIDEO_WIDTH, INST_2ND_VIDEO_HEIGHT, INST_2ND_MAX_FRAMEBUFFERS)
 #endif
 
 #if ((INST_1ST_IS_HEVC_TYPE > 0 && INST_1ST_USE) | (INST_2ND_IS_HEVC_TYPE > 0 && INST_2ND_USE))
@@ -209,7 +188,6 @@
 #else
 #define SUPPORT_VPU_OF_MAIN_INSTANCE	(0)
 #endif
-
 
 // to support 3rd and 4th decoder with 1st and 2nd at the same time.
 #if defined(CONFIG_VDEC_CNT_3) || defined(CONFIG_VDEC_CNT_4) || defined(CONFIG_VDEC_CNT_5)
@@ -236,7 +214,6 @@
 	#else
 	#define SUPPORT_VPU_OF_SUB_INSTANCE	(0)
 	#endif
-
 #else // defined(CONFIG_VDEC_CNT_3) || defined(CONFIG_VDEC_CNT_4)  || defined(CONFIG_VDEC_CNT_5)
 	#define INST_3RD_PROC_SIZE				(0)
 	#define INST_4TH_PROC_SIZE				(0)
@@ -245,31 +222,31 @@
 #endif
 
 #if (NUM_OF_MAIN_INSTANCE > 1)
-#define VIDEO_MAIN_SIZE					ARRAY_MBYTE(INST_1ST_PROC_SIZE + INST_2ND_PROC_SIZE)
+#define VIDEO_MAIN_SIZE		ARRAY_MBYTE(INST_1ST_PROC_SIZE + INST_2ND_PROC_SIZE)
 #else
-	#if (INST_1ST_PROC_SIZE > INST_2ND_PROC_SIZE)
-	#define VIDEO_MAIN_SIZE			ARRAY_MBYTE(INST_1ST_PROC_SIZE)
-	#else
-	#define VIDEO_MAIN_SIZE			ARRAY_MBYTE(INST_2ND_PROC_SIZE)
-	#endif
+#if (INST_1ST_PROC_SIZE > INST_2ND_PROC_SIZE)
+#define VIDEO_MAIN_SIZE		ARRAY_MBYTE(INST_1ST_PROC_SIZE)
+#else
+#define VIDEO_MAIN_SIZE		ARRAY_MBYTE(INST_2ND_PROC_SIZE)
+#endif
 #endif
 
 #if defined(CONFIG_VDEC_CNT_3) || defined(CONFIG_VDEC_CNT_4) || defined(CONFIG_VDEC_CNT_5)
-#define VIDEO_SUB_SIZE					ARRAY_MBYTE(INST_3RD_PROC_SIZE + INST_4TH_PROC_SIZE)
+#define VIDEO_SUB_SIZE		ARRAY_MBYTE(INST_3RD_PROC_SIZE + INST_4TH_PROC_SIZE)
 #else
-#define VIDEO_SUB_SIZE					ARRAY_MBYTE(0)
+#define VIDEO_SUB_SIZE		ARRAY_MBYTE(0)
 #endif
 
 #if defined(CONFIG_VDEC_CNT_5)
 	#if (INST_5TH_IS_HEVC_TYPE > 0)
-	#define INST_5TH_PROC_SIZE		WAVE_CAL_PROCBUFFER(INST_5TH_USE, INST_5TH_VIDEO_WIDTH, INST_5TH_VIDEO_HEIGHT, INST_5TH_MAX_FRAMEBUFFERS)
+	#define INST_5TH_PROC_SIZE	WAVE_CAL_PROCBUFFER(INST_5TH_USE, INST_5TH_VIDEO_WIDTH, INST_5TH_VIDEO_HEIGHT, INST_5TH_MAX_FRAMEBUFFERS)
 	#else
-	#define INST_5TH_PROC_SIZE		VPU_CAL_PROCBUFFER(INST_5TH_USE, INST_5TH_VIDEO_WIDTH, INST_5TH_VIDEO_HEIGHT, INST_5TH_MAX_FRAMEBUFFERS)
+	#define INST_5TH_PROC_SIZE	VPU_CAL_PROCBUFFER(INST_5TH_USE, INST_5TH_VIDEO_WIDTH, INST_5TH_VIDEO_HEIGHT, INST_5TH_MAX_FRAMEBUFFERS)
 	#endif
 
-#define VIDEO_SUB2_SIZE				ARRAY_MBYTE(INST_5TH_PROC_SIZE)
+#define VIDEO_SUB2_SIZE		ARRAY_MBYTE(INST_5TH_PROC_SIZE)
 #else
-#define VIDEO_SUB2_SIZE				ARRAY_MBYTE(0)
+#define VIDEO_SUB2_SIZE		ARRAY_MBYTE(0)
 #endif
 
 // Encoder
@@ -333,3 +310,7 @@
 #define ENC_EXT3_SIZE   VPU_CAL_ENC_PROCBUFFER(INST_ENC_4TH_USE, INST_ENC_4TH_VIDEO_WIDTH, INST_ENC_4TH_VIDEO_HEIGHT, INST_ENC_4TH_MAX_FRAMEBUFFERS)
 #define ENC_EXT4_SIZE   VPU_CAL_ENC_PROCBUFFER(INST_ENC_5TH_USE, INST_ENC_5TH_VIDEO_WIDTH, INST_ENC_5TH_VIDEO_HEIGHT, INST_ENC_5TH_MAX_FRAMEBUFFERS)
 #endif //CONFIG_SUPPORT_TCC_WAVE420L_VPU_HEVC_ENC
+
+////////////////////////////////////////////////////////////////////////////////
+#endif // TCC_PMAP_VIDEO_DTSI
+////////////////////////////////////////////////////////////////////////////////

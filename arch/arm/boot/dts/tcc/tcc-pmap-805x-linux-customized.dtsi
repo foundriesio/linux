@@ -1,7 +1,10 @@
 // SPDX-License-Identifier: (GPL-2.0+ OR MIT)
 /*
- * Copyright (C) 2020 Telechips Inc.
+ * Copyright (C) Telechips Inc.
  */
+
+#include "../../../../../include/generated/autoconf.h"
+
 #undef SZ_1MB
 #define SZ_1MB				(1024*1024)
 #define ARRAY_16MBYTE(x)	((((x) + ((16*SZ_1MB)-1))>> 24) << 24)

@@ -6,6 +6,8 @@
 
  */
 
+#include "tcc-pmap-803x-android-customized.dtsi"
+
 #ifndef DT_OVERLAY
 #include "tcc8031.dtsi"
 #endif
