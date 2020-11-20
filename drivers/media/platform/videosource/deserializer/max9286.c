@@ -142,7 +142,7 @@ static int read_reg(struct i2c_client * client, unsigned int addr, int addr_byte
 		loge("i2c device name: %s, slave addr: 0x%x, addr: 0x%08x, read error!!!!\n", client->name, client->addr, addr);
 		ret = -1;
 	}
-	
+
 	// convert data to big / little endia
 	* data = 0;
 	for(idxBuf=0; idxBuf<data_bytes; idxBuf++)
@@ -229,7 +229,7 @@ static int write_regs(struct i2c_client * client, const struct videosource_reg *
 	addr_bytes	= 1;
 	data_bytes	= 1;
 	while (!((list->reg == REG_TERM) && (list->val == VAL_TERM))) {
-		if(list->reg == 0x00) {
+		if(list->reg == 0xFF) {
 			msleep(list->val);
 		} else {
 			ret = write_reg(client, list->reg, addr_bytes, list->val, data_bytes);
@@ -403,4 +403,3 @@ videosource_t videosource_max9286 = {
 		.check_status				= check_status,
 	},
 };
-
