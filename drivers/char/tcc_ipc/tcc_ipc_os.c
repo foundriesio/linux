@@ -45,7 +45,9 @@ IPC_UINT64 ipc_get_msec(void)
 
 	do_gettimeofday(&ts);
 
-	milliseconds = ts.tv_sec*1000LL + ts.tv_usec/1000LL;
+	milliseconds =
+		((IPC_UINT64)ts.tv_sec*(IPC_UINT64)1000L) +
+		((IPC_UINT64)ts.tv_usec/(IPC_UINT64)1000L);
 
 	return milliseconds;
 }
@@ -64,12 +66,12 @@ IPC_INT32 ipc_get_sec(void)
 
 void ipc_mdelay(IPC_UINT32 dly)
 {
-	mdelay(dly);
+	mdelay((IPC_ULONG)dly);
 }
 
 void ipc_udelay(IPC_UINT32 dly)
 {
-	udelay(dly);
+	udelay((IPC_ULONG)dly);
 }
 
 static void ipc_cmd_event_create(struct ipc_device *ipc_dev)
@@ -91,10 +93,10 @@ static void ipc_cmd_event_delete(struct ipc_device *ipc_dev)
 {
 	if (ipc_dev != NULL) {
 		struct IpcHandler *ipc_handler = &ipc_dev->ipc_handler;
-		int cmd_id;
+		IPC_INT32 cmd_id;
 
-		for (cmd_id = 0; cmd_id < MAX_CMD_TYPE; cmd_id++) {
-			ipc_handler->ipcWaitQueue[cmd_id]._seqID = 0xFFFFFFFF;
+		for (cmd_id = 0; cmd_id < (IPC_INT32)MAX_CMD_TYPE; cmd_id++) {
+			ipc_handler->ipcWaitQueue[cmd_id]._seqID = 0xFFFFFFFFU;
 			ipc_handler->ipcWaitQueue[cmd_id]._condition = 0;
 		}
 	}
@@ -110,13 +112,17 @@ IPC_INT32 ipc_cmd_wait_event_timeout(
 
 	if (ipc_dev != NULL) {
 		struct IpcHandler *ipc_handle = &ipc_dev->ipc_handler;
+		struct ipc_wait_queue *waitQueue;
+
+		waitQueue = &ipc_handle->ipcWaitQueue[cmdType];
 
 		ret = wait_event_interruptible_timeout(
-			ipc_handle->ipcWaitQueue[cmdType]._cmdQueue,
-			ipc_handle->ipcWaitQueue[cmdType]._condition == 0,
+			waitQueue->_cmdQueue,
+			waitQueue->_condition == (IPC_UINT32)0,
 			msecs_to_jiffies(timeOut));
-		if ((ipc_handle->ipcWaitQueue[cmdType]._condition == 1) ||
-			(ret <= 0)) {
+
+		if ((waitQueue->_condition == (IPC_UINT32)1)
+			|| (ret <= 0)) {
 			/* timeout */
 			ret = IPC_ERR_TIMEOUT;
 		} else {
@@ -201,10 +207,11 @@ IPC_INT32 ipc_read_wait_event_timeout(
 		ipc_handle->ipcReadQueue._condition = 1;
 		ret = wait_event_interruptible_timeout(
 			ipc_handle->ipcReadQueue._cmdQueue,
-			ipc_handle->ipcReadQueue._condition == 0,
+			ipc_handle->ipcReadQueue._condition == (IPC_UINT32)0,
 			msecs_to_jiffies(timeOut));
 
-		if ((ipc_handle->ipcReadQueue._condition == 1) || (ret <= 0)) {
+		if ((ipc_handle->ipcReadQueue._condition == (IPC_UINT32)1)
+			|| (ret <= 0)) {
 			/* timeout */
 			ret = IPC_ERR_TIMEOUT;
 		} else {

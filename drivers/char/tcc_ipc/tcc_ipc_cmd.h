@@ -6,8 +6,8 @@
 #ifndef TCC_IPC_CMD_H
 #define TCC_IPC_CMD_H
 
-#define CMD_TYPE_MASK (0xFFFF0000)
-#define CMD_ID_MASK (0xFFFF)
+#define CMD_TYPE_MASK (0xFFFF0000U)
+#define CMD_ID_MASK (0xFFFFU)
 
 IPC_UINT32 get_sequential_ID(struct ipc_device *ipc_dev);
 IPC_INT32 ipc_send_open(struct ipc_device *ipc_dev);

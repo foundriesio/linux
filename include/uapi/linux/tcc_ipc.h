@@ -18,9 +18,9 @@
 
 typedef struct _tcc_ipc_ctl_param {
 	/* Timeout in deciseconds, when blocking mode*/
-	unsigned int vMin;
+	uint32_t vMin;
 	/* Minimum number of characters when blocking mode */
-	unsigned int vTime;
+	uint32_t vTime;
 } __attribute__((packed))tcc_ipc_ctl_param;
 
 typedef enum {
@@ -43,7 +43,7 @@ typedef enum {
 
 typedef struct _tcc_ipc_ping_info {
 	tcc_ipc_ping_error pingResult;
-	unsigned int responseTime;
+	uint32_t responseTime;
 } __attribute__((packed))tcc_ipc_ping_info;
 
 

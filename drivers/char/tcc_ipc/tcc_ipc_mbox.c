@@ -54,7 +54,7 @@ IPC_INT32 ipc_mailbox_send(
 #endif
 		mutex_unlock(&ipc_handle->mboxMutex);
 	} else {
-		pr_err("[ERROR][%s]%s: Invalid Arguements\n",
+		(void)pr_err("[ERROR][%s]%s: Invalid Arguements\n",
 			(const IPC_CHAR *)LOG_TAG,
 			__func__);
 		ret = IPC_ERR_ARGUMENT;
@@ -74,9 +74,7 @@ struct mbox_chan *ipc_request_channel(
 	if ((pdev != NULL) && (name != NULL) && (handler != NULL)) {
 		client = devm_kzalloc(&pdev->dev,
 				sizeof(struct mbox_client), GFP_KERNEL);
-		if (!client) {
-			channel = NULL;
-		} else {
+		if (client != NULL) {
 			client->dev = &pdev->dev;
 			client->rx_callback = handler;
 			client->tx_done = NULL;

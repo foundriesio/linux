@@ -3,7 +3,9 @@
  * Copyright (C) Telechips Inc.
  */
 
-static const unsigned long int CRC32_TABLE[256] = {
+#include <linux/types.h>
+
+static const uint32_t CRC32_TABLE[256] = {
 	0x00000000U, 0x90910101U, 0x91210201U, 0x01B00300U,
 	0x92410401U, 0x02D00500U, 0x03600600U, 0x93F10701U,
 	0x94810801U, 0x04100900U, 0x05A00A00U, 0x95310B01U,
@@ -70,17 +72,17 @@ static const unsigned long int CRC32_TABLE[256] = {
 	0x71C0FC00U, 0xE151FD01U, 0xE0E1FE01U, 0x7070FF00U
 };
 
-unsigned int tcc_snor_calc_crc8(unsigned char *base, unsigned int length)
+uint32_t tcc_snor_calc_crc8(u8 *base, uint32_t length)
 {
-	unsigned int crcout = 0;
-	unsigned int cnt;
-	unsigned char code;
-	unsigned char tmp;
+	uint32_t crcout = 0;
+	uint32_t cnt;
+	u8 code;
+	u8 tmp;
 
 	for (cnt = 0; cnt < length; cnt++) {
 		code = base[cnt];
 		tmp = code^crcout;
-		crcout = (crcout >> 8) ^ CRC32_TABLE[tmp&0xFF];
+		crcout = (crcout >> (uint32_t)8) ^ CRC32_TABLE[tmp & (u8)0xFF];
 	}
 
 	return crcout;
