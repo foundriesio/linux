@@ -39,31 +39,6 @@
 // If there's rotation h/w block and video rotation (90/180/270) is required.
 //#define SUPPORT_ROTATION
 
-/*********************************** DISPLAY **********************************/
-#define PRIMARY_FRAMEBUFFER_WIDTH       (1920)
-#define PRIMARY_FRAMEBUFFER_HEIGHT      (720)
-#define SECONDARY_FRAMEBUFFER_WIDTH     (1920)
-#define SECONDARY_FRAMEBUFFER_HEIGHT    (720)
-#define TERTIARY_FRAMEBUFFER_WIDTH      (0)
-#define TERTIARY_FRAMEBUFFER_HEIGHT     (0)
-
-// Choose bigger resolution between Primary and Secondary display device.
-// and Should sync with hardware/telechips/common/hwcomposer/Hwrenderer.h
-#define PRIMARY_TARGET_WIDTH            (1920)
-#define PRIMARY_TARGET_HEIGHT           (720)
-#define SECONDARY_TARGET_WIDTH          (0)
-#define SECONDARY_TARGET_HEIGHT         (0)
-#define TERTIARY_TARGET_WIDTH           (0)
-#define TERTIARY_TARGET_HEIGHT          (0)
-
-#if ((PRIMARY_TARGET_WIDTH*PRIMARY_TARGET_HEIGHT) > (SECONDARY_TARGET_WIDTH*SECONDARY_TARGET_HEIGHT))
-#define SUPPORT_DISPLAY_MAX_WIDTH       (PRIMARY_TARGET_WIDTH)
-#define SUPPORT_DISPLAY_MAX_HEIGHT      (PRIMARY_TARGET_HEIGHT)
-#else
-#define SUPPORT_DISPLAY_MAX_WIDTH       (SECONDARY_TARGET_WIDTH)
-#define SUPPORT_DISPLAY_MAX_HEIGHT      (SECONDARY_TARGET_HEIGHT)
-#endif
-
 //********************************* VPU/HEVC **********************************/
 //Should sync with hardware/telechips/omx/omx_videodec_interface/include/vdec.h
 
@@ -139,4 +114,4 @@
 #define INST_ENC_5TH_IS_HEVC_TYPE       (0)
 #define INST_ENC_5TH_VIDEO_WIDTH        (640)
 #define INST_ENC_5TH_VIDEO_HEIGHT       (480)
-#define INST_ENC_5TH_MAX_FRAMEBUFFERS   (8)    
+#define INST_ENC_5TH_MAX_FRAMEBUFFERS   (8)

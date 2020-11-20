@@ -5,6 +5,95 @@
 #ifndef DT_BINDINGS_PMAP_TCC803X_LINUX_IVI_DISPLAY_H
 #define DT_BINDINGS_PMAP_TCC803X_LINUX_IVI_DISPLAY_H
 
+#define FCE_NEW_PMAP_SUPPORT
+
+/*********************************** DISPLAY **********************************/
+#define PRIMARY_FRAMEBUFFER_WIDTH       (1920)
+#define PRIMARY_FRAMEBUFFER_HEIGHT      (720)
+#define SECONDARY_FRAMEBUFFER_WIDTH     (1920)
+#define SECONDARY_FRAMEBUFFER_HEIGHT    (720)
+#define TERTIARY_FRAMEBUFFER_WIDTH      (0)
+#define TERTIARY_FRAMEBUFFER_HEIGHT     (0)
+
+// Choose bigger resolution between Primary and Secondary display device.
+// and Should sync with hardware/telechips/common/hwcomposer/Hwrenderer.h
+#define PRIMARY_TARGET_WIDTH            (1920)
+#define PRIMARY_TARGET_HEIGHT           (720)
+#define SECONDARY_TARGET_WIDTH          (0)
+#define SECONDARY_TARGET_HEIGHT         (0)
+#define TERTIARY_TARGET_WIDTH           (0)
+#define TERTIARY_TARGET_HEIGHT          (0)
+
+#if ((PRIMARY_TARGET_WIDTH*PRIMARY_TARGET_HEIGHT) > (SECONDARY_TARGET_WIDTH*SECONDARY_TARGET_HEIGHT))
+#define SUPPORT_DISPLAY_MAX_WIDTH       (PRIMARY_TARGET_WIDTH)
+#define SUPPORT_DISPLAY_MAX_HEIGHT      (PRIMARY_TARGET_HEIGHT)
+#else
+#define SUPPORT_DISPLAY_MAX_WIDTH       (SECONDARY_TARGET_WIDTH)
+#define SUPPORT_DISPLAY_MAX_HEIGHT      (SECONDARY_TARGET_HEIGHT)
+#endif
+
+/*-----------------------------------------------------------
+ * Secure Area 1 (CPU R/W, VPU X, GPU R/W, VIOC R)
+ *-----------------------------------------------------------
+ */
+#define SIZE_FB_VIDEO			0x02000000
+#define SIZE_FB1_VIDEO			0x00000000
+#define SIZE_FB2_VIDEO			0x00000000
+#define SIZE_FB3_VIDEO			0x00000000
+
+#define CMA_SIZE_FB_VIDEO			0x00000000
+#define CMA_SIZE_FB1_VIDEO			0x00000000
+#define CMA_SIZE_FB2_VIDEO			0x00000000
+#define CMA_SIZE_FB3_VIDEO			0x00000000
+#define PMAP_SIZE_FB_VIDEO			(SIZE_FB_VIDEO)
+#define PMAP_SIZE_FB1_VIDEO			(SIZE_FB1_VIDEO)
+#define PMAP_SIZE_FB2_VIDEO			(SIZE_FB2_VIDEO)
+#define PMAP_SIZE_FB3_VIDEO			(SIZE_FB3_VIDEO)
+
+/*-----------------------------------------------------------
+ * Secure Area 2 (CPU X, VPU X, GPU X, VIOC R/W)
+ *-----------------------------------------------------------
+ */
+
+#define SIZE_OVERLAY			0x00800000
+#define SIZE_OVERLAY1			0x00000000
+
+#define SIZE_OVERLAY_ROT		0x00000000
+
+#define SIZE_VIQE0				0x01800000
+#define SIZE_VIQE1				0x00000000
+
+#define SIZE_OUTPUT_ATTACH		0x00000000
+
+#define SIZE_V4L2_VOUT0			0x00000000
+#define SIZE_V4L2_VOUT1			0x00000000
+
+#define SIZE_FB_WMIXER 			0x00600000
+#define SIZE_VIDEO_DUAL			0x00000000
+#define SIZE_DUAL_DISPLAY		0x00000000
+
+////////////////////////////////////////////////////////////////////////////////
+#define CMA_SIZE_OVERLAY			0x00000000
+#define CMA_SIZE_OVERLAY1			0x00000000
+#define CMA_SIZE_OVERLAY_ROT		0x00000000
+#define CMA_SIZE_VIQE0				0x00000000
+#define CMA_SIZE_VIQE1				0x00000000
+#define CMA_SIZE_OUTPUT_ATTACH		0x00000000
+#define CMA_SIZE_V4L2_VOUT0			0x00000000
+#define CMA_SIZE_V4L2_VOUT1			0x00000000
+#define CMA_SIZE_VIDEO_DUAL			0x00000000
+#define CMA_SIZE_FB_WMIXER			0x00000000
+#define PMAP_SIZE_OVERLAY			(SIZE_OVERLAY)
+#define PMAP_SIZE_OVERLAY1			(SIZE_OVERLAY1)
+#define PMAP_SIZE_OVERLAY_ROT		(SIZE_OVERLAY_ROT)
+#define PMAP_SIZE_VIQE0				(SIZE_VIQE0)
+#define PMAP_SIZE_VIQE1				(SIZE_VIQE1)
+#define PMAP_SIZE_OUTPUT_ATTACH		(SIZE_OUTPUT_ATTACH)
+#define PMAP_SIZE_V4L2_VOUT0		(SIZE_V4L2_VOUT0)
+#define PMAP_SIZE_V4L2_VOUT1		(SIZE_V4L2_VOUT1)
+#define PMAP_SIZE_VIDEO_DUAL		(SIZE_VIDEO_DUAL)
+#define PMAP_SIZE_DUAL_DISPLAY		(SIZE_DUAL_DISPLAY)
+#define PMAP_SIZE_FB_WMIXER			(SIZE_FB_WMIXER)
 //****************************** Camera ******************************/
 #define CAMERA_INPUT_WIDTH		720
 #define CAMERA_INPUT_HEIGHT		480
@@ -36,18 +125,6 @@
 #define ARRAY_MBYTE(x)			((((x) + (SZ_1MB-1))>> 20) << 20)
 #define ARRAY_256KBYTE(x)		((((x) + ((SZ_1MB/4)-1))>> 18) << 18)
 
-#define PMAP_SIZE_FB_VIDEO		\
-	ARRAY_MBYTE(PRIMARY_FRAMEBUFFER_WIDTH * \
-		PRIMARY_FRAMEBUFFER_HEIGHT * 4 * 3)
-#define PMAP_SIZE_FB1_VIDEO		\
-	ARRAY_MBYTE(SECONDARY_FRAMEBUFFER_WIDTH * \
-		SECONDARY_FRAMEBUFFER_HEIGHT * 4 * 3)
-#define PMAP_SIZE_FB2_VIDEO		\
-	ARRAY_MBYTE(TERTIARY_FRAMEBUFFER_WIDTH * \
-		TERTIARY_FRAMEBUFFER_HEIGHT * 4 * 3)
-#define PMAP_SIZE_OVERLAY_ROT		\
-	ARRAY_MBYTE(PRIMARY_FRAMEBUFFER_WIDTH * \
-		PRIMARY_FRAMEBUFFER_HEIGHT * 4 * FRAMES_OVERLAY_ROT)
 #define PMAP_SIZE_UMP_RESERVED		\
 	ARRAY_MBYTE((PRIMARY_FRAMEBUFFER_WIDTH * 4) * \
 		PRIMARY_FRAMEBUFFER_HEIGHT * 4 * 4)
