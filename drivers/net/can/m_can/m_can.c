@@ -1349,6 +1349,9 @@ static void m_can_stop(struct net_device *dev)
 	clk_disable_unprepare(priv->hclk);
 	clk_disable_unprepare(priv->cclk);
 
+	/* Set init mode to disengage from the network */
+	m_can_config_endisable(priv, true);
+
 	/* set the state as STOPPED */
 	priv->can.state = CAN_STATE_STOPPED;
 }
