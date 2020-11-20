@@ -16,14 +16,14 @@
 #include "tcc_snor_updater_mbox.h"
 
 
-int snor_updater_mailbox_send(
+int32_t snor_updater_mailbox_send(
 	struct snor_updater_device *updater_dev,
 	struct tcc_mbox_data *ipc_msg)
 {
-	int ret = SNOR_UPDATER_ERR_NOTREADY;
+	int32_t ret = SNOR_UPDATER_ERR_NOTREADY;
 
 	if ((updater_dev != NULL) && (ipc_msg != NULL)) {
-		int i;
+		int32_t i;
 
 		dprintk(updater_dev->dev,
 		"snor updaer msg(0x%p)\n", (void *)ipc_msg);
@@ -59,7 +59,7 @@ int snor_updater_mailbox_send(
 
 struct mbox_chan *snor_updater_request_channel(
 				struct platform_device *pdev,
-				const char *name,
+				const char_t *name,
 				snor_updater_mbox_receive handler)
 {
 	struct mbox_client *client;
@@ -73,11 +73,11 @@ struct mbox_chan *snor_updater_request_channel(
 		client->rx_callback = handler;
 		client->tx_done = NULL;
 #ifdef CONFIG_ARCH_TCC803X
-		client->tx_block = false;
+		client->tx_block = (bool)false;
 #else
-		client->tx_block = true;
+		client->tx_block = (bool)true;
 #endif
-		client->knows_txdone = false;
+		client->knows_txdone = (bool)false;
 		client->tx_tout = 100;
 
 		channel = mbox_request_channel_byname(client, name);

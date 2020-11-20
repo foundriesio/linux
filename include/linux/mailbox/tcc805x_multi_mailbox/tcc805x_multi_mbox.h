@@ -6,10 +6,10 @@
 #ifndef TCC805X_MULTI_MBOX_H
 #define TCC805X_MULTI_MBOX_H
 
-#define MBOX_TX_TIMEOUT  10		/*msec*/
+#define MBOX_TX_TIMEOUT  (10)		/*msec*/
 
 #define MBOX_CMD_FIFO_SIZE		(6)
-#define MBOX_DATA_FIFO_SIZE		(128)
+#define MBOX_DATA_FIFO_SIZE		(128U)
 
 /*
  * MBOX has 8 cmd fifo but user can only use 7 cmd fifo.
@@ -26,9 +26,10 @@
  * cmd fifo[7]:use mbox driver only
  */
 struct tcc_mbox_data {
-	unsigned int	cmd[MBOX_CMD_FIFO_SIZE];
-	unsigned int	data[MBOX_DATA_FIFO_SIZE];
-	unsigned int	data_len;
+	uint32_t	cmd[MBOX_CMD_FIFO_SIZE];
+	uint32_t	data[MBOX_DATA_FIFO_SIZE];
+	uint32_t	data_len;
 };
 
+extern int32_t show_mbox_channel_info(struct seq_file *p, void *v);
 #endif

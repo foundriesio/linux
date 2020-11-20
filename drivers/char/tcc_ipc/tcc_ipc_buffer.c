@@ -201,12 +201,13 @@ IPC_INT32 ipc_push_buffer(struct IPC_RINGBUF  *pBufCtrl,
 		freeSpace = (IPC_UINT32)ipc_buffer_free_space(pBufCtrl);
 		if (freeSpace >= size) {
 			IPC_UINT32 continuousSize;
-			IPC_INT32 tempRet =
-					((IPC_INT32)pBufCtrl->_MaxBufferSize
-					- (IPC_INT32)pBufCtrl->_Tail);
 
-			if (tempRet >= 0) {
-				continuousSize = (IPC_UINT32)tempRet;
+			if (pBufCtrl->_MaxBufferSize >
+				pBufCtrl->_Tail) {
+
+				continuousSize = 
+					((IPC_UINT32)pBufCtrl->_MaxBufferSize
+					- (IPC_UINT32)pBufCtrl->_Tail);
 
 				if (continuousSize > size) {
 
@@ -224,7 +225,7 @@ IPC_INT32 ipc_push_buffer(struct IPC_RINGBUF  *pBufCtrl,
 					(void)memcpy((void *)
 				     &pBufCtrl->_pBuffer[pBufCtrl->_Tail],
 				     (const void *)buffer,
-				     (size_t) continuousSize);
+				     (size_t)continuousSize);
 
 					remainSize = size - continuousSize;
 
@@ -322,7 +323,7 @@ IPC_INT32 ipc_pop_buffer(struct IPC_RINGBUF  *pBufCtrl,
 				if (copy_to_user((void *)buffer,
 				 (const void *)
 				 &pBufCtrl->_pBuffer[pBufCtrl->_Head],
-				 (IPC_ULONG) size) == 0) {
+				 (IPC_ULONG) size) == (IPC_ULONG)0) {
 
 					pBufCtrl->_Head += size;
 					ret = IPC_BUFFER_OK;
@@ -339,16 +340,16 @@ IPC_INT32 ipc_pop_buffer(struct IPC_RINGBUF  *pBufCtrl,
 				if (copy_to_user((void *)buffer,
 					 (const void *)
 					 &pBufCtrl->_pBuffer[pBufCtrl->_Head],
-					 (IPC_ULONG) continuousSize)
-				    == 0) {
+					 (IPC_ULONG)continuousSize)
+				    == (IPC_ULONG)0) {
 
 					remainSize = (size - continuousSize);
 
 					if (copy_to_user((void *)
 					 &buffer[continuousSize],
 					 (const void *)&pBufCtrl->_pBuffer[0],
-					 (IPC_ULONG) remainSize)
-					    == 0) {
+					 (IPC_ULONG)remainSize)
+					    == (IPC_ULONG)0) {
 
 						pBufCtrl->_Head = remainSize;
 						ret = IPC_BUFFER_OK;

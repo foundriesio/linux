@@ -7,9 +7,18 @@
 #ifndef TCC_SNOR_UPDATER_TYPEDEF_H
 #define TCC_SNOR_UPDATER_TYPEDEF_H
 
+#ifndef char_t
+typedef char char_t;
+#endif
+
+#ifndef long_t
+typedef long long_t;
+#endif
+
+
 #define LOG_TAG ("SNOR_UPDATE_DRV")
 
-#define MAX_FW_BUF_SIZE		(256)
+#define MAX_FW_BUF_SIZE		(256U)
 
 #define SNOR_UPDATER_SUCCESS					(0)
 #define SNOR_UPDATER_ERR_COMMON					(-1)
@@ -39,8 +48,8 @@ enum {
 
 struct snor_updater_wait_queue {
 	wait_queue_head_t _cmdQueue;
-	int _condition;
-	unsigned int reqeustCMD;
+	int32_t _condition;
+	uint32_t reqeustCMD;
 	struct tcc_mbox_data receiveMsg;
 };
 
@@ -50,28 +59,27 @@ struct snor_updater_device {
 	struct cdev cdev;
 	struct class *class;
 	dev_t devnum;
-	const char *mbox_name;
+	const char_t *mbox_name;
 	struct mbox_chan *mbox_ch;
-	int	isOpened;
+	int32_t	isOpened;
 	struct mutex devMutex;
 	struct snor_updater_wait_queue waitQueue;
 };
 
-extern int updater_verbose_mode;
+extern int32_t updater_verbose_mode;
 
 #define eprintk(dev, msg, ...)	\
-	dev_err(dev, "[ERROR][%s]%s: " pr_fmt(msg), \
-	(const char *)LOG_TAG, __func__, ##__VA_ARGS__)
+	(dev_err(dev, "[ERROR][%s]%s: " pr_fmt(msg), \
+	(const char_t *)LOG_TAG, __func__, ##__VA_ARGS__))
 #define wprintk(dev, msg, ...)	\
-	dev_warn(dev, "[WARN][%s]%s: " pr_fmt(msg), \
-	(const char *)LOG_TAG, __func__, ##__VA_ARGS__)
+	(dev_warn(dev, "[WARN][%s]%s: " pr_fmt(msg), \
+	(const char_t *)LOG_TAG, __func__, ##__VA_ARGS__))
 #define iprintk(dev, msg, ...)	\
-	dev_info(dev, "[INFO][%s]%s: " pr_fmt(msg), \
-	(const char *)LOG_TAG, __func__, ##__VA_ARGS__)
+	(dev_info(dev, "[INFO][%s]%s: " pr_fmt(msg), \
+	(const char_t *)LOG_TAG, __func__, ##__VA_ARGS__))
 #define dprintk(dev, msg, ...)	\
-	do { if (updater_verbose_mode == 1) \
-		{ dev_info(dev, "[INFO][%s]%s: " pr_fmt(msg), \
-		(const char *)LOG_TAG, __func__, ##__VA_ARGS__); \
-		} } while (0)
+	{ if (updater_verbose_mode == 1) \
+	{ dev_info(dev, "[INFO][%s]%s: " pr_fmt(msg), \
+	(const char_t *)LOG_TAG, __func__, ##__VA_ARGS__); } }
 
 #endif

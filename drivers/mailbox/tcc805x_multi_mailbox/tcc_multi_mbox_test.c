@@ -233,7 +233,7 @@ static int mbox_test_receive_queue_init(struct mbox_test_receiveQueue *mbox, mbo
 			&mbox->kworker,
 			name);
 	if (IS_ERR(mbox->kworker_task)) {
-		pr_err("[ERROR][MBOX_TEST] %s : failed to create message pump task\n", __func__);
+		(void)pr_err("[ERROR][MBOX_TEST] %s : failed to create message pump task\n", __func__);
 		ret = -ENOMEM;
 	} else {
 		kthread_init_work(&mbox->pump_messages, &mbox_test_pump_messages);
@@ -480,7 +480,8 @@ static int mbox_test_send_message(struct mbox_test_device *mbox_test_dev, struct
 		mutex_unlock(&mbox_test_dev->mboxMutex);
 
 	} else {
-		pr_err("[ERROR][MBOX_TEST]%s: Invalid Arguements\n", __func__);
+		(void)pr_err("[ERROR][MBOX_TEST]%s: Invalid Arguements\n",
+			__func__);
 		ret = -1;
 	}
 
