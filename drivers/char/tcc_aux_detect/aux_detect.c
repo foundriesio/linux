@@ -21,6 +21,14 @@
 
 static int32_t aux_verbose_mode;
 
+#ifndef char_t
+typedef char char_t;
+#endif
+
+#ifndef long_t
+typedef long long_t;
+#endif
+
 #define elog(fmt, ...) \
 	((void)pr_err("[ERROR][AUX_DET_DRV]%s : " \
 		pr_fmt(fmt), __func__, ##__VA_ARGS__))
@@ -65,7 +73,7 @@ static atomic_t aux_detect_status;
 
 static int32_t aux_detect_get_state(void)
 {
-	int32_t	state = (int)atomic_read(&aux_detect_status);
+	int32_t	state = (int32_t)atomic_read(&aux_detect_status);
 
 	dlog("state: %d\n", state);
 	return state;
@@ -84,7 +92,7 @@ static int32_t pre_aux_status;
 static ssize_t aux_detect_status_show(
 		struct device *dev,
 		struct device_attribute *attr,
-		char *buf)
+		char_t *buf)
 {
 	struct aux_detect_data *aux_data = pdata;
 	int32_t	aux_value = -1;
@@ -92,7 +100,7 @@ static ssize_t aux_detect_status_show(
 
 	if ((aux_data->aux_detect_gpio != -1) &&
 		(aux_data->aux_active != -1)) {
-		aux_value = gpio_get_value(aux_data->aux_detect_gpio);
+		aux_value = gpio_get_value((uint32_t)aux_data->aux_detect_gpio);
 		if (aux_value == aux_data->aux_active) {
 			ret = 1;
 		} else {
@@ -126,7 +134,7 @@ static ssize_t aux_detect_status_show(
 static ssize_t aux_detect_status_store(
 			struct device *dev,
 			struct device_attribute *attr,
-			const char *buf,
+			const char_t *buf,
 			size_t count)
 {
 	(void)dev;
@@ -161,7 +169,7 @@ static int32_t aux_detect_check_state(void)
 	if ((aux_data->aux_detect_gpio != -1) &&
 		(aux_data->aux_active != -1)) {
 
-		aux_value = gpio_get_value(aux_data->aux_detect_gpio);
+		aux_value = gpio_get_value((uint32_t)aux_data->aux_detect_gpio);
 
 		if (aux_value == aux_data->aux_active) {
 			ret = 1;
@@ -192,27 +200,28 @@ static int32_t aux_detect_check_state(void)
 	return ret;
 }
 
-static long aux_detect_ioctl(
+static long_t aux_detect_ioctl(
 			struct file *filp,
-			unsigned int cmd,
-			unsigned long arg)
+			uint32_t cmd,
+			ulong arg)
 {
 
 	struct aux_detect_data *aux_data = pdata;
-	int state = 0;
-	int ret = 0;
+	int32_t state = 0;
+	int32_t ret = 0;
 
+	(void)filp;
 	(void)aux_data;
 
 	switch (cmd) {
 
 	case AUX_IOCTL_CMD_GET_STATE:
-		state = (long)aux_detect_check_state();
+		state = (int32_t)aux_detect_check_state();
 
-		if (copy_to_user((void *)arg,
+		if (copy_to_user((void __user *)arg,
 				(const void *)&state,
-				(unsigned long)sizeof(state))
-				!= 0) {
+				(ulong)sizeof(state))
+				!= (ulong)0) {
 			elog("FAILED: copy_to_user\n");
 			ret = -1;
 			break;
@@ -227,17 +236,23 @@ static long aux_detect_ioctl(
 	return ret;
 }
 
-static int aux_detect_open(struct inode *inode, struct file *filp)
+static int32_t aux_detect_open(struct inode *inode, struct file *filp)
 {
+	(void)inode;
+	(void)filp;
+
 	return 0;
 }
 
-static int aux_detect_release(struct inode *inode, struct file *filp)
+static int32_t aux_detect_release(struct inode *inode, struct file *filp)
 {
+	(void)inode;
+	(void)filp;
+
 	return 0;
 }
 
-const struct file_operations aux_detect_fops = {
+static const struct file_operations aux_detect_fops = {
 	.owner			= THIS_MODULE,
 	.compat_ioctl	= aux_detect_ioctl,
 	.unlocked_ioctl	= aux_detect_ioctl,
@@ -245,11 +260,11 @@ const struct file_operations aux_detect_fops = {
 	.release		= aux_detect_release,
 };
 
-static int aux_detect_create_cdev(struct platform_device *pdev)
+static int32_t aux_detect_create_cdev(struct platform_device *pdev)
 {
 	struct aux_detect_data	*aux_data	= NULL;
 	struct pinctrl *pinctrl = NULL;
-	int ret = 0;
+	int32_t ret = 0;
 
 	if (pdev != NULL) {
 
@@ -261,7 +276,7 @@ static int aux_detect_create_cdev(struct platform_device *pdev)
 
 		if (ret < 0) {
 			elog("Register the %s device as a charactor device\n",
-				(const char *)MODULE_NAME);
+				(const char_t *)MODULE_NAME);
 		} else {
 			/* Allocate memory for aux detect Platform Data.*/
 			aux_data = kzalloc(sizeof(struct aux_detect_data),
@@ -271,7 +286,7 @@ static int aux_detect_create_cdev(struct platform_device *pdev)
 			}
 		}
 
-		if ((ret > -1) && (aux_data != NULL)) {
+		if (ret > -1) {
 
 			pdata = aux_data;
 
@@ -281,7 +296,7 @@ static int aux_detect_create_cdev(struct platform_device *pdev)
 			pinctrl = pinctrl_get_select(&pdev->dev, "default");
 			if (IS_ERR(pinctrl)) {
 				elog("%s: pinctrl select failed\n",
-					(const char *)MODULE_NAME);
+					(const char_t *)MODULE_NAME);
 				ret = -1;
 			} else {
 				pinctrl_put(pinctrl);
@@ -330,9 +345,9 @@ static int aux_detect_create_cdev(struct platform_device *pdev)
 	return ret;
 }
 
-static int aux_detect_probe(struct platform_device *pdev)
+static int32_t aux_detect_probe(struct platform_device *pdev)
 {
-	int ret = 0;
+	int32_t ret = 0;
 
 	FUNCTION_IN;
 
@@ -344,7 +359,7 @@ static int aux_detect_probe(struct platform_device *pdev)
 
 		if (ret < 0) {
 			elog("Allocate a cdev for \"%s\"\n",
-				(const char *)MODULE_NAME);
+				(const char_t *)MODULE_NAME);
 		} else {
 			/* Create class */
 			aux_detect_class = class_create(
@@ -353,7 +368,7 @@ static int aux_detect_probe(struct platform_device *pdev)
 
 			if (aux_detect_class == NULL) {
 				elog("Create the %s class\n",
-					(const char *)MODULE_NAME);
+					(const char_t *)MODULE_NAME);
 				ret = -1;
 			} else {
 			/* Create the Reverse Switch device file system */
@@ -361,11 +376,11 @@ static int aux_detect_probe(struct platform_device *pdev)
 						NULL,
 						aux_detect_dev_region,
 						NULL,
-						(const char *)MODULE_NAME)
+						(const char_t *)MODULE_NAME)
 						== NULL) {
 
 					elog("Create the %s device file\n",
-						(const char *) MODULE_NAME);
+						(const char_t *) MODULE_NAME);
 					ret = -1;
 				} else {
 
@@ -395,7 +410,7 @@ static int aux_detect_probe(struct platform_device *pdev)
 	return ret;
 }
 
-static int aux_detect_remove(struct platform_device *pdev)
+static int32_t aux_detect_remove(struct platform_device *pdev)
 {
 	FUNCTION_IN;
 
@@ -412,13 +427,13 @@ static int aux_detect_remove(struct platform_device *pdev)
 }
 
 #if defined(CONFIG_PM)
-static int aux_detect_suspend(struct platform_device *pdev, pm_message_t state)
+static int32_t aux_detect_suspend(struct platform_device *pdev, pm_message_t state)
 {
 
 	return 0;
 }
 
-static int aux_detect_resume(struct platform_device *pdev)
+static int32_t aux_detect_resume(struct platform_device *pdev)
 {
 
 	return 0;
@@ -429,14 +444,14 @@ static int aux_detect_resume(struct platform_device *pdev)
 
 
 #ifdef CONFIG_OF
-const struct of_device_id aux_detect_of_match[] = {
+static const struct of_device_id aux_detect_of_match[] = {
 	{ .compatible = "telechips,aux_detect", },
 	{ },
 };
 MODULE_DEVICE_TABLE(of, aux_detect_of_match);
 #endif
 
-struct platform_driver aux_detect_driver = {
+static struct platform_driver aux_detect_driver = {
 	.probe		= aux_detect_probe,
 	.remove		= aux_detect_remove,
 #if defined(CONFIG_PM)

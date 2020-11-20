@@ -6,13 +6,9 @@
 #ifndef TCC_IPC_TYPE_DEF_H
 #define TCC_IPC_TYPE_DEF_H
 
-#ifndef NULL
-#define NULL	(0)
-#endif
-
 #define LOG_TAG    ("TCC_IPC")
 
-#define IPC_RXBUFFER_SIZE	(512U * 1024)
+#define IPC_RXBUFFER_SIZE	(524288U) //(512U * 1024U)
 #define IPC_TXBUFFER_SIZE	(512U)
 #define IPC_MAX_WRITE_SIZE	(4096U)
 
@@ -56,26 +52,35 @@
 #define Hw0			(0x00000001U)
 #define HwZERO		(0x00000000U)
 
+
+typedef	char IPC_CHAR;
+typedef	unsigned char IPC_UCHAR;
+typedef	unsigned int IPC_UINT32;
+typedef	int IPC_INT32;
+typedef	unsigned long long IPC_UINT64;
+typedef	unsigned long IPC_ULONG;
+typedef	long IPC_LONG;
+
 #ifndef	BITSET
 #define BITSET(X, MASK)	\
-	((X) |= (unsigned int)(MASK))
+	((X) |= (IPC_UINT32)(MASK))
 #endif
 
 #ifndef	BITSCLR
 #define BITSCLR(X, SMASK, CMASK) \
-	((X) = ((((unsigned int)(X)) | ((unsigned int)(SMASK))) & \
-		~((unsigned int)(CMASK))))
+	((X) = ((((IPC_UINT32)(X)) | ((IPC_UINT32)(SMASK))) & \
+		~((IPC_UINT32)(CMASK))))
 #endif
 
 #ifndef	BITCSET
 #define BITCSET(X, CMASK, SMASK) \
-	((X) = ((((unsigned int)(X)) & ~((unsigned int)(CMASK))) | \
-		((unsigned int)(SMASK))))
+	((X) = ((((IPC_UINT32)(X)) & ~((IPC_UINT32)(CMASK))) | \
+		((IPC_UINT32)(SMASK))))
 #endif
 
 #ifndef	BITCLR
 #define	BITCLR(X, MASK)	\
-	((X) &= ~((unsigned int)(MASK)))
+	((X) &= ~((IPC_UINT32)(MASK)))
 #endif
 
 #define IPC_SUCCESS					(0)
@@ -90,16 +95,8 @@
 #define IPC_ERR_RECEIVER_NOT_SET	(-9)
 #define IPC_ERR_RECEIVER_DOWN		(-10)
 
-typedef	char IPC_CHAR;
-typedef	unsigned char IPC_UCHAR;
-typedef	unsigned int IPC_UINT32;
-typedef	signed int IPC_INT32;
-typedef	unsigned long long IPC_UINT64;
-typedef signed long long IPC_INT64;
-typedef	unsigned long IPC_ULONG;
-
 typedef enum {
-	CTL_CMD = 0,
+	CTL_CMD = 0x0001U,
 	WRITE_CMD,
 	MAX_CMD_TYPE,
 } IpcCmdType;

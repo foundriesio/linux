@@ -127,17 +127,13 @@ IPC_INT32 ipc_set_buffer(struct ipc_device *ipc_dev)
 					ipcHandle->readBuffer.startAddr,
 					ipcHandle->readBuffer.bufferSize);
 
-				ipcHandle->readBuffer.status = IPC_BUF_READY;
-
 				mutex_unlock(&ipcHandle->rbufMutex);
 				ret = 0;
 			} else {
 				eprintk(ipc_dev->dev, "memory alloc fail\n");
-				ret = -1;
 			}
 		} else {
 			eprintk(ipc_dev->dev, "memory alloc fail\n");
-			ret = -1;
 		}
 	}
 	return ret;
@@ -178,6 +174,7 @@ void receive_message(struct mbox_client *client, void *message)
 		IpcCmdType cmdType;
 		IpcCmdID cmdID;
 		IPC_INT32 i;
+		IPC_UINT32 maskedID;
 
 		for (i = 0; i < 7; i++) {
 			dprintk(ipc_dev->dev,
@@ -189,9 +186,12 @@ void receive_message(struct mbox_client *client, void *message)
 				"data size (%d)\n",
 				msg->data_len);
 
-		cmdType = (IpcCmdType)((msg->cmd[1] & CMD_TYPE_MASK) >>
-				(IPC_UINT32)16);
-		cmdID = (IpcCmdID)(msg->cmd[1] & (IPC_UINT32)CMD_ID_MASK);
+		maskedID = ((msg->cmd[1] & (IPC_UINT32)CMD_TYPE_MASK)
+			>> (IPC_UINT32)16);
+		cmdType = (IpcCmdType)maskedID;
+
+		maskedID = msg->cmd[1] & (IPC_UINT32)CMD_ID_MASK;
+		cmdID = (IpcCmdID)maskedID;
 
 		if (cmdType < MAX_CMD_TYPE) {
 			if (cmdID == IPC_ACK) {
@@ -230,7 +230,6 @@ void receive_message(struct mbox_client *client, void *message)
 							msg->cmd[i];
 					}
 
-
 					if (msg->data_len <=
 						MBOX_DATA_FIFO_SIZE) {
 						ipc_list->data.data_len =
@@ -244,7 +243,7 @@ void receive_message(struct mbox_client *client, void *message)
 						(void *)ipc_list->data.data,
 						(const void *)msg->data,
 						(size_t)(ipc_list->data.data_len
-						* 4));
+						* (size_t)4));
 
 					ipc_add_queue_and_work(
 						&handler->receiveQueue[cmdType],
@@ -288,20 +287,23 @@ static void ipc_pump_messages(struct kthread_work *work)
 					pump_messages);
 	struct ipc_receive_list *ipc_list;
 	struct ipc_receive_list *ipc_list_tmp;
-	unsigned long flags;
+	IPC_ULONG flags;
 
 	if (ipc != NULL) {
 		spin_lock_irqsave(&ipc->rx_queue_lock, flags);
 
 		list_for_each_entry_safe(ipc_list,
-								ipc_list_tmp,
-								&ipc->rx_queue,
-								queue) {
-			if (ipc->handler != NULL) {
+			ipc_list_tmp, &ipc->rx_queue, queue) {
+
+			if ((ipc->handler != NULL) &&
+				(ipc_list != NULL)) {
+
 				spin_unlock_irqrestore(
 					&ipc->rx_queue_lock, flags);
+
 				ipc->handler((void *)ipc_list->ipc_dev,
 							&ipc_list->data);
+
 				spin_lock_irqsave(
 					&ipc->rx_queue_lock, flags);
 			}
@@ -332,7 +334,7 @@ static IPC_INT32 ipc_receive_queue_init(
 			&ipc->kworker,
 			name);
 	if (IS_ERR(ipc->kworker_task)) {
-		pr_err("[ERROR][%s]%s:failed to create message pump task\n",
+		(void)pr_err("[ERROR][%s]%s:failed to create message pump task\n",
 			(const IPC_CHAR *)LOG_TAG, __func__);
 		ret = -ENOMEM;
 	} else {
@@ -356,10 +358,14 @@ static void ipc_receive_ctlcmd(void *device_info, struct tcc_mbox_data  *pMsg)
 
 	if ((pMsg != NULL) && (ipc_dev != NULL)) {
 		struct IpcHandler *ipc_handle = &ipc_dev->ipc_handler;
+		IPC_UINT32 maskedID;
+		IpcCmdID cmdID;
+		IPC_UINT32 seqID;
 
-		IpcCmdID cmdID = (IpcCmdID)(pMsg->cmd[1] &
-						(IPC_UINT32)CMD_ID_MASK);
-		IPC_UINT32 seqID = pMsg->cmd[0];
+		maskedID = pMsg->cmd[1] & (IPC_UINT32)CMD_ID_MASK;
+		cmdID = (IpcCmdID)maskedID;
+
+		seqID = pMsg->cmd[0];
 
 		switch (cmdID) {
 		case IPC_OPEN:
@@ -404,9 +410,11 @@ static void ipc_receive_writecmd(void *device_info, struct tcc_mbox_data  *pMsg)
 
 		struct IpcHandler *ipc_handle = &ipc_dev->ipc_handler;
 		IPC_UINT32 seqID = pMsg->cmd[0];
-		IpcCmdID cmdID = (IpcCmdID)(pMsg->cmd[1] &
-						(IPC_UINT32)CMD_ID_MASK);
+		IpcCmdID cmdID;
+		IPC_UINT32 maskedID = (pMsg->cmd[1] & (IPC_UINT32)CMD_ID_MASK);
 		IPC_INT32 ovfSize = 0;
+
+		cmdID = (IpcCmdID)maskedID;
 
 		if (cmdID == IPC_WRITE)	{
 			IPC_UINT32 readSize;
@@ -499,12 +507,10 @@ static void ipc_receive_writecmd(void *device_info, struct tcc_mbox_data  *pMsg)
 
 IPC_INT32 ipc_workqueue_initialize(struct ipc_device *ipc_dev)
 {
-	IPC_INT32 ret = 0;
+	IPC_INT32 ret = IPC_ERR_COMMON;
 
 	if (ipc_dev != NULL) {
 		struct IpcHandler *ipc_handle =  &ipc_dev->ipc_handler;
-
-		ret = IPC_SUCCESS;
 
 		ret = ipc_receive_queue_init(
 			&ipc_handle->receiveQueue[CTL_CMD],
@@ -519,11 +525,9 @@ IPC_INT32 ipc_workqueue_initialize(struct ipc_device *ipc_dev)
 				NULL,
 				"tc_ipc_write_recevie_handler");
 
-			if (ret == 0) {
-				ret = IPC_SUCCESS;
-			} else {
+			if (ret != 0) {
 				(void)deregister_receive_queue(
-					CTL_CMD);
+					&ipc_handle->receiveQueue[CTL_CMD]);
 			}
 		}
 	}
@@ -647,8 +651,6 @@ static IPC_INT32 ipc_read_data(struct ipc_device *ipc_dev,
 {
 	IPC_INT32 ret = 0;	//return read size
 
-	d2printk(ipc_dev, ipc_dev->dev, "\n");
-
 	if ((ipc_dev != NULL) &&
 		(buff != NULL) &&
 		(size > (IPC_UINT32)0)) {
@@ -658,16 +660,21 @@ static IPC_INT32 ipc_read_data(struct ipc_device *ipc_dev,
 		IPC_UINT32 isWait;
 		IPC_UINT32 isReadAll = 0;
 
+		d2printk(ipc_dev, ipc_dev->dev, "\n");
+
 		spin_lock(&ipc_handle->spinLock);
 		ipc_handle->vTime = ipc_handle->setParam.vTime;
 		ipc_handle->vMin = ipc_handle->setParam.vMin;
 		spin_unlock(&ipc_handle->spinLock);
 
-		if (!(flag & (IPC_UINT32)IPC_O_BLOCK)) {
+		if ((flag & (IPC_UINT32)IPC_O_BLOCK) !=
+			(IPC_UINT32)IPC_O_BLOCK) {
+
 			isWait = 0;
+
 		} else {
 			if ((ipc_handle->vTime == (IPC_UINT32)0) &&
-				(ipc_handle->vMin == (IPC_UINT32)0))	{
+				(ipc_handle->vMin == (IPC_UINT32)0)) {
 
 				ipc_handle->vTime = MAX_READ_TIMEOUT;
 				ipc_handle->vMin = size;
@@ -676,6 +683,8 @@ static IPC_INT32 ipc_read_data(struct ipc_device *ipc_dev,
 				ipc_handle->vTime = MAX_READ_TIMEOUT;
 			} else if (ipc_handle->vMin == (IPC_UINT32)0) {
 				ipc_handle->vMin = 1;
+			} else {
+				;
 			}
 
 			isWait = 1;
@@ -687,13 +696,13 @@ static IPC_INT32 ipc_read_data(struct ipc_device *ipc_dev,
 		mutex_unlock(&ipc_handle->rbufMutex);
 
 		if (dataSize < size) {
-			if (isWait == 1)	{
+			if (isWait == (IPC_UINT32)1)	{
 				(void)ipc_read_wait_event_timeout(
 					ipc_dev,
 					ipc_handle->vTime * (IPC_UINT32)100);
 
 				mutex_lock(&ipc_handle->rbufMutex);
-				dataSize = ipc_buffer_data_available
+				dataSize = (IPC_UINT32)ipc_buffer_data_available
 					(&ipc_handle->readRingBuffer);
 				mutex_unlock(&ipc_handle->rbufMutex);
 
@@ -775,11 +784,10 @@ IPC_INT32 ipc_ping_test(
 
 		ret = IPC_SUCCESS;
 		/* Check IPC */
-		if (pIPCHandler->ipcStatus <= IPC_INIT) {
-			pingInfo->pingResult = IPC_PING_ERR_INIT;
+		if (pIPCHandler->ipcStatus < IPC_INIT) {
+			//pingInfo->pingResult = IPC_PING_ERR_INIT;
 			ret = IPC_ERR_COMMON;
 			eprintk(ipc_dev->dev, "ipc not init\n");
-
 		}
 
 		if (ret == IPC_SUCCESS) {
@@ -788,8 +796,6 @@ IPC_INT32 ipc_ping_test(
 				pingInfo->pingResult = IPC_PING_ERR_NOT_READY;
 				ret = IPC_ERR_NOTREADY;
 				eprintk(ipc_dev->dev, "ipc not ready\n");
-			} else {
-				ret = IPC_SUCCESS;
 			}
 		}
 
@@ -812,15 +818,6 @@ IPC_INT32 ipc_ping_test(
 				if (ret == IPC_ERR_TIMEOUT) {
 					pingInfo->pingResult =
 						IPC_PING_ERR_RESPOND;
-				} else if (ret == IPC_ERR_RECEIVER_NOT_SET) {
-					pingInfo->pingResult =
-						IPC_PING_ERR_RECEIVER_MBOX;
-				} else if (ret == IPC_ERR_RECEIVER_DOWN) {
-					pingInfo->pingResult =
-						IPC_PING_ERR_SEND;
-				} else if (ret == IPC_ERR_NOTREADY)	{
-					pingInfo->pingResult =
-						IPC_PING_ERR_NOT_READY;
 				} else {
 					pingInfo->pingResult =
 						IPC_PING_ERR_SENDER_MBOX;
@@ -835,24 +832,27 @@ IPC_INT32 ipc_ping_test(
 
 			if (end_usec >=  start_usec) {
 				pingInfo->responseTime =
-					(IPC_UINT32)(end_usec - start_usec);
+					(IPC_UINT32)end_usec
+					- (IPC_UINT32)start_usec;
 
 				if (end_sec > start_sec) {
 					pingInfo->responseTime +=
-						(IPC_UINT32)((end_sec -
-							start_sec)
-						* 1000000);
+						(((IPC_UINT32)end_sec
+						- (IPC_UINT32)start_sec)
+						* (IPC_UINT32)1000000);
 				}
 			} else {
 				pingInfo->responseTime =
-				(IPC_UINT32)((1000000 - start_usec) +
-					end_usec);
+					(IPC_UINT32)1000000
+					- (IPC_UINT32)start_usec
+					+ (IPC_UINT32)end_usec;
 
 				if (end_sec > (start_sec + 1)) {
 					pingInfo->responseTime +=
-						(IPC_UINT32)((end_sec -
-							(start_sec+1))
-						* 1000000);
+						(((IPC_UINT32)end_sec
+						- (IPC_UINT32)start_sec
+						+ (IPC_UINT32)1)
+						* (IPC_UINT32)1000000);
 				}
 			}
 		}

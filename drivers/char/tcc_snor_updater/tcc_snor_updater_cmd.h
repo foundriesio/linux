@@ -26,23 +26,23 @@ void snor_updater_event_create
 	(struct snor_updater_device *updater_dev);
 void snor_updater_event_delete
 	(struct snor_updater_device *updater_dev);
-int snor_updater_wait_event_timeout
+int32_t snor_updater_wait_event_timeout
 	(struct snor_updater_device *updater_dev,
-	unsigned int reqeustCMD,
+	uint32_t reqeustCMD,
 	struct tcc_mbox_data *receiveMsg,
-	unsigned int timeOut);
+	uint32_t timeOut);
 void snor_updater_wake_up(
 	struct snor_updater_device *updater_dev,
 	struct tcc_mbox_data *receiveMsg);
-int send_update_start(struct snor_updater_device *updater_dev);
-int send_update_done(struct snor_updater_device *updater_dev);
-int send_fw_start(struct snor_updater_device *updater_dev,
-	unsigned int fwStartAddress, unsigned int fwPartitionSize,
-	unsigned int fwDataSize);
-int send_fw_send(struct snor_updater_device *updater_dev,
-	unsigned int fwStartAddress, unsigned int currentCount,
-	unsigned int totalCount, char *fwData,
-	unsigned int fwDataSize, unsigned int fwdataCRC);
-int send_fw_done(struct snor_updater_device *updater_dev);
+int32_t send_update_start(struct snor_updater_device *updater_dev);
+int32_t send_update_done(struct snor_updater_device *updater_dev);
+int32_t send_fw_start(struct snor_updater_device *updater_dev,
+	uint32_t fwStartAddress, uint32_t fwPartitionSize,
+	uint32_t fwDataSize);
+int32_t send_fw_send(struct snor_updater_device *updater_dev,
+	uint32_t fwStartAddress, uint32_t currentCount,
+	uint32_t totalCount, char_t *fwData,
+	uint32_t fwDataSize, uint32_t fwdataCRC);
+int32_t send_fw_done(struct snor_updater_device *updater_dev);
 
 #endif
