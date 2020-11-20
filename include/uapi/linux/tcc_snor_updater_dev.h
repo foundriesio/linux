@@ -15,10 +15,10 @@
 #define IOCTL_FW_UPDATE			_IO(TCC_UPDATE_MAGIC, 3)
 
 typedef struct _tcc_snor_update_param {
-	unsigned int start_address;
-	unsigned int partition_size;
-	unsigned char *image;
-	unsigned int image_size;
+	uint32_t start_address;
+	uint32_t partition_size;
+	u8 *image;
+	uint32_t image_size;
 } __attribute__((packed))tcc_snor_update_param;
 
 #endif
