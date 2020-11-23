@@ -239,6 +239,16 @@ int btrfs_can_overcommit(struct btrfs_fs_info *fs_info,
 	return 0;
 }
 
+static void remove_ticket(struct btrfs_space_info *space_info,
+			  struct reserve_ticket *ticket)
+{
+	if (!list_empty(&ticket->list)) {
+		list_del_init(&ticket->list);
+		ASSERT(space_info->reclaim_size >= ticket->bytes);
+		space_info->reclaim_size -= ticket->bytes;
+	}
+}
+
 /*
  * This is for space we already have accounted in space_info->bytes_may_use, so
  * basically when we're returning space from block_rsv's.
@@ -265,9 +275,7 @@ again:
 			btrfs_space_info_update_bytes_may_use(fs_info,
 							      space_info,
 							      ticket->bytes);
-			list_del_init(&ticket->list);
-			ASSERT(space_info->reclaim_size >= ticket->bytes);
-			space_info->reclaim_size -= ticket->bytes;
+			remove_ticket(space_info, ticket);
 			ticket->bytes = 0;
 			space_info->tickets_id++;
 			wake_up(&ticket->wait);
@@ -805,7 +813,7 @@ static bool maybe_fail_all_tickets(struct btrfs_fs_info *fs_info,
 			btrfs_info(fs_info, "failing ticket with %llu bytes",
 				   ticket->bytes);
 
-		list_del_init(&ticket->list);
+		remove_ticket(space_info, ticket);
 		ticket->error = -ENOSPC;
 		wake_up(&ticket->wait);
 
@@ -974,7 +982,7 @@ static void wait_reserve_ticket(struct btrfs_fs_info *fs_info,
 			 * despite getting an error, resulting in a space leak
 			 * (bytes_may_use counter of our space_info).
 			 */
-			list_del_init(&ticket->list);
+			remove_ticket(space_info, ticket);
 			ticket->error = -EINTR;
 			break;
 		}
@@ -1036,10 +1044,9 @@ static int handle_reserve_ticket(struct btrfs_fs_info *fs_info,
 		 * now be made.
 		 */
 		if (!list_empty(&ticket->list)) {
-			list_del_init(&ticket->list);
+			remove_ticket(space_info, ticket);
 			btrfs_try_granting_tickets(fs_info, space_info);
 		}
-
 		if (!ret)
 			ret = -ENOSPC;
 	}
