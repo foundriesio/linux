@@ -1328,7 +1328,7 @@
 					 * 2: Quad pixel mode (RAW8/10/12)
 					 * 3: Invalid
 					 */
-					pixel-mode = <0>;
+					pixel-mode = <1>;
 		                };
 			};
 			port@2 {
@@ -1337,7 +1337,7 @@
 					remote-endpoint	= <&videoinput1_in>;
 					io-direction	= "output";
 					channel		= <1>;
-					pixel-mode = <0>;
+					pixel-mode = <1>;
 				};
 			};
 			port@3 {
@@ -1346,7 +1346,7 @@
 					remote-endpoint	= <&videoinput2_in>;
 					io-direction	= "output";
 					channel		= <2>;
-					pixel-mode = <0>;
+					pixel-mode = <1>;
 
 				};
 			};
@@ -1356,7 +1356,7 @@
 					remote-endpoint	= <&videoinput3_in>;
 					io-direction	= "output";
 					channel		= <3>;
-					pixel-mode = <0>;
+					pixel-mode = <1>;
 				};
 			};
 		};
