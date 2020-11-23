@@ -182,5 +182,6 @@ extern bool is_vioc_intr_activatied(int id, unsigned mask);
 extern int vioc_intr_clear(int id, unsigned mask);
 extern void vioc_intr_initialize(void);
 extern bool is_vioc_intr_unmasked(int id, unsigned mask);
+bool is_vioc_display_device_intr_masked(int id, unsigned int mask);
 
 #endif /* __VIOC_DISP_INTR__H__ */
