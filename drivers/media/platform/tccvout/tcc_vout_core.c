@@ -397,6 +397,15 @@ int vout_set_m2m_path(int deintl_default, struct tcc_vout_device *vout)
 		vioc->m2m_subplane_wmix.pos = 0;
 		vioc->m2m_wmix.ovp = vioc->m2m_subplane_wmix.ovp = 24;
 		break;
+
+	#if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X)
+	case VIOC_RDMA17:
+		vioc->m2m_wmix.pos = 1;
+		vioc->m2m_subplane_wmix.pos = 0;
+		vioc->m2m_wmix.ovp = vioc->m2m_subplane_wmix.ovp = 24;
+		break;
+	#endif
+
 	default:
 		pr_err("[ERR][VOUT] invalid m2m_rdma(%d) index\n", vioc->m2m_rdma.id);
 		return -1;
