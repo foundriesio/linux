@@ -2039,6 +2039,24 @@ void btrfs_assign_next_active_device(struct btrfs_fs_info *fs_info,
 		fs_info->fs_devices->latest_bdev = next_device->bdev;
 }
 
+/*
+ * Return btrfs_fs_devices::num_devices excluding the device that's being
+ * currently replaced.
+ */
+static u64 btrfs_num_devices(struct btrfs_fs_info *fs_info)
+{
+	u64 num_devices = fs_info->fs_devices->num_devices;
+
+	btrfs_dev_replace_read_lock(&fs_info->dev_replace);
+	if (btrfs_dev_replace_is_ongoing(&fs_info->dev_replace)) {
+		ASSERT(num_devices > 1);
+		num_devices--;
+	}
+	btrfs_dev_replace_read_unlock(&fs_info->dev_replace);
+
+	return num_devices;
+}
+
 int btrfs_rm_device(struct btrfs_fs_info *fs_info, const char *device_path,
 		u64 devid)
 {
@@ -2050,13 +2068,11 @@ int btrfs_rm_device(struct btrfs_fs_info *fs_info, const char *device_path,
 
 	mutex_lock(&uuid_mutex);
 
-	num_devices = fs_info->fs_devices->num_devices;
-	btrfs_dev_replace_lock(&fs_info->dev_replace, 0);
-	if (btrfs_dev_replace_is_ongoing(&fs_info->dev_replace)) {
-		WARN_ON(num_devices < 1);
-		num_devices--;
-	}
-	btrfs_dev_replace_unlock(&fs_info->dev_replace, 0);
+	/*
+	 * rw_devices will not change at the moment, device add/delete/replace
+	 * are excluded by EXCL_OP
+	 */
+	num_devices = fs_info->fs_devices->rw_devices;
 
 	ret = btrfs_check_raid_min_devices(fs_info, num_devices - 1);
 	if (ret)
@@ -4064,13 +4080,7 @@ int btrfs_balance(struct btrfs_balance_control *bctl,
 		}
 	}
 
-	num_devices = fs_info->fs_devices->num_devices;
-	btrfs_dev_replace_lock(&fs_info->dev_replace, 0);
-	if (btrfs_dev_replace_is_ongoing(&fs_info->dev_replace)) {
-		BUG_ON(num_devices < 1);
-		num_devices--;
-	}
-	btrfs_dev_replace_unlock(&fs_info->dev_replace, 0);
+	num_devices = btrfs_num_devices(fs_info);
 	allowed = BTRFS_AVAIL_ALLOC_BIT_SINGLE | BTRFS_BLOCK_GROUP_DUP;
 	if (num_devices > 1)
 		allowed |= (BTRFS_BLOCK_GROUP_RAID0 | BTRFS_BLOCK_GROUP_RAID1);
@@ -5429,11 +5439,11 @@ int btrfs_num_copies(struct btrfs_fs_info *fs_info, u64 logical, u64 len)
 		ret = 1;
 	free_extent_map(em);
 
-	btrfs_dev_replace_lock(&fs_info->dev_replace, 0);
+	btrfs_dev_replace_read_lock(&fs_info->dev_replace);
 	if (btrfs_dev_replace_is_ongoing(&fs_info->dev_replace) &&
 	    fs_info->dev_replace.tgtdev)
 		ret++;
-	btrfs_dev_replace_unlock(&fs_info->dev_replace, 0);
+	btrfs_dev_replace_read_unlock(&fs_info->dev_replace);
 
 	return ret;
 }
@@ -6001,10 +6011,10 @@ static int __btrfs_map_block(struct btrfs_fs_info *fs_info,
 	if (!bbio_ret)
 		goto out;
 
-	btrfs_dev_replace_lock(dev_replace, 0);
+	btrfs_dev_replace_read_lock(dev_replace);
 	dev_replace_is_ongoing = btrfs_dev_replace_is_ongoing(dev_replace);
 	if (!dev_replace_is_ongoing)
-		btrfs_dev_replace_unlock(dev_replace, 0);
+		btrfs_dev_replace_read_unlock(dev_replace);
 	else
 		btrfs_dev_replace_set_lock_blocking(dev_replace);
 
@@ -6210,7 +6220,7 @@ static int __btrfs_map_block(struct btrfs_fs_info *fs_info,
 out:
 	if (dev_replace_is_ongoing) {
 		btrfs_dev_replace_clear_lock_blocking(dev_replace);
-		btrfs_dev_replace_unlock(dev_replace, 0);
+		btrfs_dev_replace_read_unlock(dev_replace);
 	}
 	free_extent_map(em);
 	return ret;
