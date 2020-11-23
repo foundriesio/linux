@@ -1447,13 +1447,35 @@ void VIOC_CONFIG_SWReset_RAW(unsigned int component, unsigned int mode)
 		break;
 
 	case get_vioc_type(VIOC_WMIX):
+#if defined(CONFIG_ARCH_TCC805X)
+		// read Bypass mode / Mix mode
+		value = (__raw_readl(reg + CFG_MISC0_OFFSET) &
+			(0x1 << (CFG_MISC0_MIX00_SHIFT + (get_vioc_index(component)*2))));
+		pr_info("[INF][VIOC_CONFIG] WMIX%d Path Control on MISC0 is [%d]\n", get_vioc_index(component), value);
+		if(value){ // Mix Path reset
+			value = (__raw_readl(reg + PWR_BLK_SWR1_OFFSET) &
+			 ~(PWR_BLK_SWR1_WMIX_MASK));
+			value |= (mode << (PWR_BLK_SWR1_WMIX_SHIFT +
+				   get_vioc_index(component)));
+			__raw_writel(value, (reg + PWR_BLK_SWR1_OFFSET));
+			pr_info("[INF][VIOC_CONFIG] WMIX%d Mixing Path reset\n", get_vioc_index(component));
+			break;
+		}else{ // Bypass Path reset
+			value = (__raw_readl(reg + CFG_WMIX_PATH_SWR_OFFSET) &
+			 ~(0x1 << (get_vioc_index(component)*2)));
+			value |= (mode << (get_vioc_index(component)*2));
+			__raw_writel(value, (reg + CFG_WMIX_PATH_SWR_OFFSET));
+			pr_info("[INF][VIOC_CONFIG] WMIX%d Bypass Path reset\n", get_vioc_index(component));
+			break;
+		}
+#else
 		value = (__raw_readl(reg + PWR_BLK_SWR1_OFFSET) &
 			 ~(PWR_BLK_SWR1_WMIX_MASK));
 		value |= (mode << (PWR_BLK_SWR1_WMIX_SHIFT +
 				   get_vioc_index(component)));
 		__raw_writel(value, (reg + PWR_BLK_SWR1_OFFSET));
 		break;
-
+#endif
 	case get_vioc_type(VIOC_WDMA):
 #if !defined(CONFIG_ARCH_TCC803X) && !defined(CONFIG_ARCH_TCC805X)
 		value = (__raw_readl(reg + PWR_BLK_SWR1_OFFSET) &
