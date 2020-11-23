@@ -102,8 +102,6 @@
 
 
 //****************************** Camera ******************************/
-#define CAMERA_INPUT_WIDTH              (720)
-#define CAMERA_INPUT_HEIGHT             (480)
 #define SVM_CAMERA_INPUT_WIDTH          (5120)
 #define SVM_CAMERA_INPUT_HEIGHT         (720)
 
