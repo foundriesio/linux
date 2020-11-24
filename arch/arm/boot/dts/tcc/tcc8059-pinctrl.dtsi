@@ -896,233 +896,279 @@
 	uart0_data: uart0_data {
 		telechips,pins = "gpsd0-11", "gpsd0-12";
 		telechips,pin-function = <7>;
+		telechips,input_buffer_enable;
 	};
 
 	uart0_rtscts: uart0_rtscts {
 		telechips,pins = "gpsd0-13", "gpsd0-14";
 		telechips,pin-function = <7>;
+		telechips,input_buffer_enable;
 	};
 
 	uart1_data: uart1_data {
 		telechips,pins = "gpsd1-0", "gpsd1-1";
 		telechips,pin-function = <7>;
+		telechips,input_buffer_enable;
 	};
 
 	uart1_rtscts: uart1_rtscts {
 		telechips,pins = "gpsd1-2", "gpsd1-3";
 		telechips,pin-function = <7>;
+		telechips,input_buffer_enable;
 	};
 
 	uart2_data: uart2_data {
 		telechips,pins = "gpsd1-6", "gpsd1-7";
 		telechips,pin-function = <7>;
+		telechips,input_buffer_enable;
 	};
 
 	uart2_rtscts: uart2_rtscts {
 		telechips,pins = "gpsd1-8", "gpsd1-9";
 		telechips,pin-function = <7>;
+		telechips,input_buffer_enable;
 	};
 
 	uart3_data: uart3_data {
 		telechips,pins = "gpsd2-0", "gpsd2-1";
 		telechips,pin-function = <7>;
+		telechips,input_buffer_enable;
 	};
 
 	uart3_rtscts: uart3_rtscts {
 		telechips,pins = "gpsd2-2", "gpsd2-3";
 		telechips,pin-function = <7>;
+		telechips,input_buffer_enable;
 	};
 
 	uart4_data: uart4_data {
 		telechips,pins = "gpsd2-6", "gpsd2-7";
 		telechips,pin-function = <7>;
+		telechips,input_buffer_enable;
 	};
 
 	uart4_rtscts: uart4_rtscts {
 		telechips,pins = "gpsd2-8", "gpsd2-9";
 		telechips,pin-function = <7>;
+		telechips,input_buffer_enable;
 	};
 
 	uart5_data: uart5_data {
 		telechips,pins = "gpa-0", "gpa-1";
 		telechips,pin-function = <7>;
+		telechips,input_buffer_enable;
 	};
 
 	uart5_rtscts: uart5_rtscts {
 		telechips,pins = "gpa-2", "gpa-3";
 		telechips,pin-function = <7>;
+		telechips,input_buffer_enable;
 	};
 
 	uart6_data: uart6_data {
 		telechips,pins = "gpa-6", "gpa-7";
 		telechips,pin-function = <7>;
+		telechips,input_buffer_enable;
 	};
 
 	uart6_rtscts: uart6_rtscts {
 		telechips,pins = "gpa-8", "gpa-9";
 		telechips,pin-function = <7>;
+		telechips,input_buffer_enable;
 	};
 
 	uart7_data: uart7_data {
 		telechips,pins = "gpa-12", "gpa-13";
 		telechips,pin-function = <7>;
+		telechips,input_buffer_enable;
 	};
 
 	uart7_rtscts: uart7_rtscts {
 		telechips,pins = "gpa-14", "gpa-15";
 		telechips,pin-function = <7>;
+		telechips,input_buffer_enable;
 	};
 
 	uart8_data: uart8_data {
 		telechips,pins = "gpa-18", "gpa-19";
 		telechips,pin-function = <7>;
+		telechips,input_buffer_enable;
 	};
 
 	uart8_rtscts: uart8_rtscts {
 		telechips,pins = "gpa-20", "gpa-21";
 		telechips,pin-function = <7>;
+		telechips,input_buffer_enable;
 	};
 
 	uart9_data: uart9_data {
 		telechips,pins = "gpa-24", "gpa-25";
 		telechips,pin-function = <7>;
+		telechips,input_buffer_enable;
 	};
 
 	uart9_rtscts: uart9_rtscts {
 		telechips,pins = "gpa-26", "gpa-27";
 		telechips,pin-function = <7>;
+		telechips,input_buffer_enable;
 	};
 
 	uart10_data: uart10_data {
 		telechips,pins = "gpb-0", "gpb-1";
 		telechips,pin-function = <7>;
+		telechips,input_buffer_enable;
 	};
 
 	uart10_rtscts: uart10_rtscts {
 		telechips,pins = "gpb-2", "gpb-3";
 		telechips,pin-function = <7>;
+		telechips,input_buffer_enable;
 	};
 
 	uart11_data: uart11_data {
 		telechips,pins = "gpb-6", "gpb-7";
 		telechips,pin-function = <7>;
+		telechips,input_buffer_enable;
 	};
 
 	uart11_rtscts: uart11_rtscts {
 		telechips,pins = "gpb-8", "gpb-9";
 		telechips,pin-function = <7>;
+		telechips,input_buffer_enable;
 	};
 
 	uart12_data: uart12_data {
 		telechips,pins = "gpb-12", "gpb-13";
 		telechips,pin-function = <7>;
+		telechips,input_buffer_enable;
 	};
 
 	uart12_rtscts: uart12_rtscts {
 		telechips,pins = "gpb-14", "gpb-15";
 		telechips,pin-function = <7>;
+		telechips,input_buffer_enable;
 	};
 
 	uart13_data: uart13_data {
 		telechips,pins = "gpb-19", "gpb-20";
 		telechips,pin-function = <7>;
+		telechips,input_buffer_enable;
 	};
 
 	uart13_rtscts: uart13_rtscts {
 		telechips,pins = "gpb-21", "gpb-22";
 		telechips,pin-function = <7>;
+		telechips,input_buffer_enable;
 	};
 
 	uart14_data: uart14_data {
 		telechips,pins = "gpb-25", "gpb-26";
 		telechips,pin-function = <7>;
+		telechips,input_buffer_enable;
 	};
 
 	uart14_rtscts: uart14_rtscts {
 		telechips,pins = "gpb-27", "gpb-28";
 		telechips,pin-function = <7>;
+		telechips,input_buffer_enable;
 	};
 
 	uart15_data: uart15_data {
 		telechips,pins = "gpc-0", "gpc-1";
 		telechips,pin-function = <7>;
+		telechips,input_buffer_enable;
 	};
 
 	uart15_rtscts: uart15_rtscts {
 		telechips,pins = "gpc-2", "gpc-3";
 		telechips,pin-function = <7>;
+		telechips,input_buffer_enable;
 	};
 
 	uart16_data: uart16_data {
 		telechips,pins = "gpc-4", "gpc-5";
 		telechips,pin-function = <7>;
+		telechips,input_buffer_enable;
 	};
 
 	uart16_rtscts: uart16_rtscts {
 		telechips,pins = "gpc-6", "gpc-7";
 		telechips,pin-function = <7>;
+		telechips,input_buffer_enable;
 	};
 
 	uart17_data: uart17_data {
 		telechips,pins = "gpc-8", "gpc-9";
 		telechips,pin-function = <7>;
+		telechips,input_buffer_enable;
 	};
 
 	uart17_rtscts: uart17_rtscts {
 		telechips,pins = "gpc-10", "gpc-11";
 		telechips,pin-function = <7>;
+		telechips,input_buffer_enable;
 	};
 
 	uart18_data: uart18_data {
 		telechips,pins = "gpc-10", "gpc-11";
 		telechips,pin-function = <8>;
+		telechips,input_buffer_enable;
 	};
 
 	uart18_rtscts: uart18_rtscts {
 		telechips,pins = "gpc-12", "gpb-13";
 		telechips,pin-function = <8>;
+		telechips,input_buffer_enable;
 	};
 
 	uart19_data: uart19_data {
 		telechips,pins = "gpc-12", "gpc-13";
 		telechips,pin-function = <7>;
+		telechips,input_buffer_enable;
 	};
 
 	uart19_rtscts: uart19_rtscts {
 		telechips,pins = "gpc-14", "gpc-15";
 		telechips,pin-function = <7>;
+		telechips,input_buffer_enable;
 	};
 
 	uart20_data: uart20_data {
 		telechips,pins = "gpc-16", "gpc-17";
 		telechips,pin-function = <7>;
 		telechips,pull-up;
+		telechips,input_buffer_enable;
 	};
 
 	uart20_rtscts: uart20_rtscts {
 		telechips,pins = "gpc-18", "gpc-19";
 		telechips,pin-function = <7>;
 		telechips,pull-up;
+		telechips,input_buffer_enable;
 	};
 
 	uart21_data: uart21_data {
 		telechips,pins = "gpc-20", "gpc-21";
 		telechips,pin-function = <7>;
+		telechips,input_buffer_enable;
 	};
 
 	uart21_rtscts: uart21_rtscts {
 		telechips,pins = "gpc-22", "gpc-23";
 		telechips,pin-function = <7>;
+		telechips,input_buffer_enable;
 	};
 
 	uart22_data: uart22_data {
 		telechips,pins = "gpc-26", "gpc-27";
 		telechips,pin-function = <7>;
+		telechips,input_buffer_enable;
 	};
 
 	uart22_rtscts: uart22_rtscts {
 		telechips,pins = "gpc-28", "gpc-29";
 		telechips,pin-function = <7>;
+		telechips,input_buffer_enable;
 	};
 
 	smartcard_bus: smartcard_bus {
