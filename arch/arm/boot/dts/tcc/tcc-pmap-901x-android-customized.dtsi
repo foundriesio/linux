@@ -97,6 +97,10 @@
 #define SUPPORT_PIP_MAX_HEIGHT  1080
 #endif
 
+//****************************** Camera ******************************/
+#define CAMERA_INPUT_WIDTH                      0
+#define CAMERA_INPUT_HEIGHT                     0
+
 
 //***************************** VPU/HEVC ******************************/
 //Should sync with hardware/telechips/omx/omx_videodec_interface/include/vdec.h

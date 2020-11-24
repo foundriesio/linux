@@ -101,6 +101,8 @@
 #endif
 
 //****************************** Camera ******************************/
+#define CAMERA_INPUT_WIDTH                      0
+#define CAMERA_INPUT_HEIGHT                     0
 #if defined(CONFIG_TCC_VIDEO_S_FEATURE)
 #define SUPPORT_CAMERA_CAPTURE          0
 #endif
