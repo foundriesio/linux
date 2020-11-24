@@ -129,9 +129,7 @@
 		asrc-m2m-pcm1 = &asrc_m2m_pcm1;
 		asrc-m2m-pcm2 = &asrc_m2m_pcm2;
 		asrc-m2m-pcm3 = &asrc_m2m_pcm3;
-#if defined(CONFIG_OVERLAY1)
 		tcc-overlay-drv1 = &tcc_overlay_drv1;
-#endif
 
 	};
 
@@ -361,7 +359,16 @@
 			compatible = "telechips,pmap";
 			telechips,pmap-name = "overlay1";
 			alloc-ranges = <0x0 SECURE_AREA_2_BASE 0x0 SECURE_AREA_2_SIZE>;
-			size = <0x0 PMAP_SIZE_OVERLAY1>; // Max-Displayed-Output(w*h*2) * 3
+			size = <0x0 0x0>; // Max-Displayed-Output(w*h*2) * 3
+			telechips,pmap-secured = <2>;
+			no-map;
+		};
+
+		pmap_osd: osd {
+			compatible = "telechips,pmap";
+			telechips,pmap-name = "osd";
+			alloc-ranges = <0x0 SECURE_AREA_2_BASE 0x0 SECURE_AREA_2_SIZE>;
+			size = <0x0 0x0>;
 			telechips,pmap-secured = <2>;
 			no-map;
 		};
@@ -433,7 +440,7 @@
 			compatible = "telechips,pmap";
 			telechips,pmap-name = "fb_wmixer";
 			alloc-ranges = <0x0 SECURE_AREA_2_BASE 0x0 SECURE_AREA_2_SIZE>;
-			size = <0x0 PMAP_SIZE_FB_WMIXER>; // Max-Video-Resolution(w*h*2)
+			size = <0x0 PMAP_SIZE_FB_WMIXER>; //
 			telechips,pmap-secured = <2>;
 			no-map;
 		};
@@ -3399,17 +3406,14 @@
 		status = "okay";
 	};
 
-#if defined(CONFIG_OVERLAY1)
-tcc_overlay_drv1: tcc_overlay_drv@1 { //for DVRS
+	tcc_overlay_drv1: tcc_overlay_drv@1 { //for DVRS
 		compatible = "telechips,tcc_overlay";
 		display_num = <0>;
 		rdmas = <&vioc_rdma VIOC_RDMA00 VIOC_RDMA01 VIOC_RDMA02 VIOC_RDMA03 VIOC_RDMA04 VIOC_RDMA05 VIOC_RDMA06 VIOC_RDMA07>;
 		wmixs = <&vioc_wmix VIOC_WMIX0 VIOC_WMIX1>;
 		rdma_init_layer = <2>;
-		status = "okay";
+		status = "disabled";
 	};
-#endif
-
 
 	tcc_vsync: tcc_vsync_drv {};
 
