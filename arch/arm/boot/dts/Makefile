@@ -1099,6 +1099,7 @@ dtb-$(CONFIG_ARCH_TCC805X) += \
 	tcc/tcc8053-android-lpd4x322_sv0.1.dtb \
 	tcc/tcc8059-android-lpd4x321_sv0.1.dtb \
 	tcc/tcc8050-android-lpd4x322_sv1.0.dtb \
+	tcc/tcc8053-android-lpd4x322_sv1.0.dtb \
 	tcc/tcc8060-android-board-xxx.dtb
 else
 dtb-$(CONFIG_ARCH_TCC899X) += \
@@ -1130,15 +1131,18 @@ dtb-$(CONFIG_ARCH_TCC901X) += \
 ifeq ($(CONFIG_TCC805X_CA53Q),y)
 dtb-$(CONFIG_ARCH_TCC805X) += \
 	tcc/tcc8050-linux-subcore-a53q_sv0.1.dtb \
-	tcc/tcc8053-linux-subcore-a53q.dtb \
-	tcc/tcc8059-linux-subcore-a53q.dtb \
-	tcc/tcc8050-linux-subcore-a53q_sv1.0.dtb
+	tcc/tcc8053-linux-subcore-a53q_sv0.1.dtb \
+	tcc/tcc8059-linux-subcore-a53q_sv0.1.dtb \
+	tcc/tcc8050-linux-subcore-a53q_sv1.0.dtb \
+	tcc/tcc8053-linux-subcore-a53q_sv1.0.dtb
+
 else
 dtb-$(CONFIG_ARCH_TCC805X) += \
 	tcc/tcc8050-linux-lpd4x322_sv0.1.dtb \
 	tcc/tcc8053-linux-lpd4x322_sv0.1.dtb \
 	tcc/tcc8059-linux-lpd4x321_sv0.1.dtb \
 	tcc/tcc8050-linux-lpd4x322_sv1.0.dtb \
+	tcc/tcc8053-linux-lpd4x322_sv1.0.dtb \
 	tcc/tcc8060-linux-board-xxx.dtb
 endif
 endif
@@ -1180,6 +1184,7 @@ dtbo-y += \
 	tcc/overlay-tcc8053-android-lpd4x322_sv0.1.dtbo \
 	tcc/overlay-tcc8059-android-lpd4x321_sv0.1.dtbo \
 	tcc/overlay-tcc8050-android-lpd4x322_sv1.0.dtbo \
+	tcc/overlay-tcc8053-android-lpd4x322_sv1.0.dtbo \
 	tcc/overlay-tcc8060-android-board-xxx.dtbo
 endif
 

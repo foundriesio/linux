@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: (GPL-2.0-or-later OR MIT)
 /*
  * Copyright (C) Telechips Inc.
- * Device tree for Telechips TCC8050 Linux Subcore platform
+ * Device tree for Telechips TCC8053 Linux Subcore platform
  */
 
 /dts-v1/;
@@ -98,6 +98,16 @@
 	cpus {
 		#address-cells = <1>;
 		#size-cells = <0>;
+		cpu-map {
+			cluster1 {
+				core0 {
+					cpu = <&A53_0>;
+				};
+				core1 {
+					cpu = <&A53_1>;
+				};
+			};
+		};
 
 		A53_0: cpu@0 {
 			device_type = "cpu";
@@ -108,7 +118,7 @@
 			cpu-idle-states = <&CPU_SLEEP_0_0>;
 			operating-points-v2 = <&cpu_opp_table>;
 			clocks = <&clk_fbus FBUS_CPU1>;
-			clock-names = "cpu1";
+			clock-names = "cpu0";
 		};
 
 		A53_1: cpu@1 {
@@ -121,42 +131,9 @@
 			operating-points-v2 = <&cpu_opp_table>;
 		};
 
-		A53_2: cpu@2 {
-			device_type = "cpu";
-			compatible = "arm,cortex-a53";
-			reg = <0x2>;
-			enable-method = "psci";
-			next-level-cache = <&A53_L2>;
-			cpu-idle-states = <&CPU_SLEEP_0_0>;
-			operating-points-v2 = <&cpu_opp_table>;
-		};
-
-		A53_3: cpu@3 {
-			device_type = "cpu";
-			compatible = "arm,cortex-a53";
-			reg = <0x3>;
-			enable-method = "psci";
-			next-level-cache = <&A53_L2>;
-			cpu-idle-states = <&CPU_SLEEP_0_0>;
-			operating-points-v2 = <&cpu_opp_table>;
-		};
-
 		A53_L2: l2-cache {
 			compatible = "cache";
 			cache-level = <2>;
-		};
-
-		idle-states {
-			entry-method = "arm,psci";
-
-			CPU_SLEEP_0_0: cpu-sleep-0-0 {
-				compatible = "arm,idle-state";
-				local-timer-stop;
-				arm,psci-suspend-param = <0x0010000>;
-				entry-latency-us = <250>;
-				exit-latency-us = <500>;
-				min-residency-us = <950>;
-			};
 		};
 
 		cpu_opp_table: cpu_opp_table {
@@ -182,6 +159,19 @@
 				opp-hz = /bits/ 64 <1000000000>;
 				opp-microvolt = <800000>;
 				clock-latency-ns = <300000>;
+			};
+		};
+
+		idle-states {
+			entry-method = "arm,psci";
+
+			CPU_SLEEP_0_0: cpu-sleep-0-0 {
+				compatible = "arm,idle-state";
+				local-timer-stop;
+				arm,psci-suspend-param = <0x0010000>;
+				entry-latency-us = <250>;
+				exit-latency-us = <500>;
+				min-residency-us = <950>;
 			};
 		};
 	};
@@ -265,6 +255,7 @@
 			alloc-ranges = <RESERVED_MEM_BASE RESERVED_MEM_SIZE>;
 			size = <PMAP_SIZE_UMP_RESERVED>; // Max-Video-Resolution(Aligned_256KB(w*h*3/2)) * 12 + 1MB
 		};
+
 		pmap_ion_carveout_cam: ion_carveout_cam {
  			compatible = "telechips,pmap";
 			telechips,pmap-name = "ion_carveout_cam";
@@ -845,7 +836,7 @@
                 max_irq = <480>;
         };
 
-	uart0: serial@16600000 {
+        uart0: serial@16600000 {
                 compatible = "arm,pl011", "arm,primecell";
                 reg = <0x16600000 0x1000>;
                 config-reg = <0x16689000 0x8>;
@@ -916,7 +907,7 @@
         uart5: serial@16650000 {
                 compatible = "arm,pl011", "arm,primecell";
                 reg = <0x16650000 0x1000>;
-                config-reg = <0x16689000 0x8>;
+		config-reg = <0x16689000 0x8>;
                 arm,primecell-periphid = <0x001feff7>;
                 sc-firmware = <&tcc_sc_fw>;
                 interrupts = <GIC_SPI 111 IRQ_TYPE_LEVEL_HIGH>;
@@ -930,7 +921,7 @@
         uart6: serial@16660000 {
                 compatible = "arm,pl011", "arm,primecell";
                 reg = <0x16660000 0x1000>;
-                config-reg = <0x16689000 0x8>;
+		config-reg = <0x16689000 0x8>;
                 arm,primecell-periphid = <0x001feff7>;
                 sc-firmware = <&tcc_sc_fw>;
                 interrupts = <GIC_SPI 112 IRQ_TYPE_LEVEL_HIGH>;
@@ -944,7 +935,7 @@
         uart7: serial@16670000 {
                 compatible = "arm,pl011", "arm,primecell";
                 reg = <0x16670000 0x1000>;
-                config-reg = <0x16689000 0x8>;
+		config-reg = <0x16689000 0x8>;
                 arm,primecell-periphid = <0x001feff7>;
                 sc-firmware = <&tcc_sc_fw>;
                 interrupts = <GIC_SPI 113 IRQ_TYPE_LEVEL_HIGH>;
@@ -1721,21 +1712,6 @@
 		status		= "okay";
 	};
 
-	cb_watchdog: cb_watchdog4@0x17050000 {
-		compatible = "telechips,tcc-cb-wdt";
-		reg = <0x17050000 0x10>,
-			<0x14300010 0xC>,
-			<0x14300060 0x4>;
-		interrupts = <GIC_SPI 34 0>;
-		clock-names = "clk_wdt", "clk_kick";
-		clocks = <&clk_peri PERI_CB_WDT>, <&clk_peri PERI_TCT>;
-		clock-frequency = <24000000>;
-
-		kick-timer-id = <1>;
-		pretimeout-sec = <1>;
-		timeout-sec = <5>;
-	};
-
 	/* A53 <-> HSM core */
 	hsm_mbox: mbox@0x1E110000 {
 		compatible = "telechips,multichannel-mailbox";
@@ -1955,12 +1931,6 @@
 
 		mmc-hs400-1_8v;
 		vqmmc-supply = <&vqmmc_emmc>;
-	};
-
-	tcc_sc_ufs: tcc_sc_ufs {
-		compatible = "telechips,tcc805x-sc-ufs";
-		status = "okay";
-		sc-firmware = <&tcc_sc_fw>;
 	};
 
 	ehci_phy: ehci_phy@11DA0010 {
@@ -2815,7 +2785,6 @@
 		telechips,pin-function = <0>;
 		telechips,input-enable;
 		telechips,input_buffer_enable;
-		telechips,pull-up;
 	};
 
 	mc_ctr: mc_ctr {
@@ -2824,7 +2793,6 @@
 		telechips,pin-function = <0>;
 		telechips,input-enable;
 		telechips,input_buffer_enable;
-		telechips,pull-up;
 	};
 };
 
@@ -2963,7 +2931,7 @@
 
 &rotary_encoder0 {
 	compatible = "rotary-encoder";
-	status = "disable";					//To use it, change the status from disable to okay
+	status = "disable";                  //To use it, change the status from disable to okay
 	//pinctrl-names = "default";
 	//pinctrl-0 = <&mc_vol>;			//Set gpio to match device
 										//Interruptable gpio should be used
@@ -2976,7 +2944,7 @@
 &rotary_encoder1 {
 	compatible = "rotary-encoder";
 	status = "disable";                 //To use it, change the status from disable to okay
-	//pinctrl-names = "default";
+	pinctrl-names = "default";
 	//pinctrl-0 = <&mc_ctr>;			//Set gpio to match device
 										//Interruptable gpio should be used
 	//gpios = <&gpma 7 1>, <&gpma 8 1>;	//Set gpio to match device
