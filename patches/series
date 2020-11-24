@@ -32,6 +32,10 @@
 0018-sched-Deny-self-issued-__set_cpus_allowed_ptr-when-m.patch
 0019-sched-Comment-affine_move_task.patch
 sched-Unlock-the-rq-in-affine_move_task-error-path.patch
+# tip 1293771e4353c148d5f6908fb32d1c1cfd653e47
+sched-Fix-migration_cpu_stop-WARN.patch
+# tip d707faa64d03d26b529cc4aea59dab1b016d4d3
+sched-core-Add-missing-completion-for-affine_move_ta.patch
 
 # 2020-11-03 10:27 Thomas Gleixner [patch V3 00/37] mm/highmem: Preemptible variant of kmap_atomic & friends
 # 20201103092712.714480842@linutronix.de
@@ -98,6 +102,9 @@ timers-Don-t-block-on-expiry_lock-for-TIMER_IRQSAFE.patch
 # 20201110113848.801379-1-bigeasy@linutronix.de
 0001-kthread-Move-prio-affinite-change-into-the-newly-cre.patch
 0002-genirq-Move-prio-assignment-into-the-newly-created-t.patch
+
+# 20201124121740.ytag7rm53umi2qvm@linutronix.de
+clk-imx8qxp-Unbreak-auto-module-building-for-MXC_CLK.patch
 
 ############################################################
 # Ready for posting

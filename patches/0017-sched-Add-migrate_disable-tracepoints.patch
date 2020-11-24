@@ -63,7 +63,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
 --- a/kernel/sched/deadline.c
 +++ b/kernel/sched/deadline.c
-@@ -2272,6 +2272,7 @@ static void pull_dl_task(struct rq *this
+@@ -2278,6 +2278,7 @@ static void pull_dl_task(struct rq *this
  				goto skip;
  
  			if (is_migration_disabled(p)) {

@@ -57,7 +57,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
 --- a/drivers/gpu/drm/i915/i915_gem.c
 +++ b/drivers/gpu/drm/i915/i915_gem.c
-@@ -379,22 +379,15 @@ gtt_user_read(struct io_mapping *mapping
+@@ -355,22 +355,15 @@ gtt_user_read(struct io_mapping *mapping
  	      char __user *user_data, int length)
  {
  	void __iomem *vaddr;
@@ -87,7 +87,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  }
  
  static int
-@@ -557,21 +550,14 @@ ggtt_write(struct io_mapping *mapping,
+@@ -539,21 +532,14 @@ ggtt_write(struct io_mapping *mapping,
  	   char __user *user_data, int length)
  {
  	void __iomem *vaddr;

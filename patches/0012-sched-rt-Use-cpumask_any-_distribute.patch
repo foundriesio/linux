@@ -40,7 +40,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
   * for_each_cpu - iterate over every cpu in a mask
 --- a/kernel/sched/deadline.c
 +++ b/kernel/sched/deadline.c
-@@ -2002,8 +2002,8 @@ static int find_later_rq(struct task_str
+@@ -2008,8 +2008,8 @@ static int find_later_rq(struct task_str
  				return this_cpu;
  			}
  
@@ -51,7 +51,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  			/*
  			 * Last chance: if a CPU being in both later_mask
  			 * and current sd span is valid, that becomes our
-@@ -2025,7 +2025,7 @@ static int find_later_rq(struct task_str
+@@ -2031,7 +2031,7 @@ static int find_later_rq(struct task_str
  	if (this_cpu != -1)
  		return this_cpu;
  
