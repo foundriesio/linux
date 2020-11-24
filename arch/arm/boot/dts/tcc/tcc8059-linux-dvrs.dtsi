@@ -108,6 +108,26 @@
 		status ="okay";
 	};
 
+        /* Temporarily added */
+	reserved-memory {
+		pmap_overlay1: overlay1 {
+			size = <0x0 PMAP_SIZE_OVERLAY1>; // Max-Displayed-Output(w*h*2) * 3
+		};
+
+		pmap_osd: osd {
+			size = <0x0 PMAP_SIZE_OSD>;
+		};
+
+		pmap_fb_wmixer: fb_wmixer {
+			size = <0x0 PMAP_SIZE_FB_WMIXER>;
+		};
+	};
+
+	tcc_overlay_drv1: tcc_overlay_drv@1 {
+		status="okay";
+	};
+
+
 	cpu-id@14200290{
 		compatible = "telechips,tcc-cpu-id";
 		reg = <0x0 0x14200290 0x0 0x4>,
