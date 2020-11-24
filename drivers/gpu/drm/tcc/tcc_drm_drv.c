@@ -38,8 +38,8 @@
 #define DRIVER_DESC	"Telechips SoC DRM"
 #define DRIVER_DATE	"20201028"
 #define DRIVER_MAJOR	1
-#define DRIVER_MINOR	2
-#define DRIVER_PATCH	8
+#define DRIVER_MINOR	3
+#define DRIVER_PATCH	0
 
 static struct device *tcc_drm_get_dma_device(void);
 
@@ -425,9 +425,8 @@ static const struct component_master_ops tcc_drm_ops = {
 
 static int tcc_drm_platform_probe(struct platform_device *pdev)
 {
-	struct component_match *match;
-
-	match = tcc_drm_match_add(&pdev->dev);
+	struct component_match *match =
+			tcc_drm_match_add(&pdev->dev);
 	if (IS_ERR(match))
 		return PTR_ERR(match);
 
@@ -504,7 +503,7 @@ static int tcc_drm_register_devices(void)
 			!(info->flags & DRM_VIRTUAL_DEVICE))
 			continue;
 
-		pr_debug("[DEBUG][%s] %s device register for %s \r\n",
+		pr_info("[INFO][%s] %s device register for %s \r\n",
 				LOG_TAG, __func__, info->driver->driver.name);
 		pdev = platform_device_register_simple(
 					info->driver->driver.name, -1, NULL, 0);

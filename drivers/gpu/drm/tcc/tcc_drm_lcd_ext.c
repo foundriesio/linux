@@ -12,11 +12,43 @@
  * option) any later version.
  *
  */
-#include <tcc_drm_lcd_base.c>
+#include <drm/drmP.h>
+
+#include <linux/kernel.h>
+#include <linux/platform_device.h>
+#include <linux/of.h>
+#include <linux/of_device.h>
+#include <linux/pm_runtime.h>
+
+#include <tcc_drm_address.h>
+#include <tcc_drm_drv.h>
+#include <tcc_drm_lcd_base.h>
+
+static struct tcc_drm_device_data ext_old_data = {
+	.version = TCC_DRM_DT_VERSION_OLD,
+	.output_type = TCC_DISPLAY_TYPE_EXT,
+};
+static struct tcc_drm_device_data ext_v1_x_data = {
+	.version = TCC_DRM_DT_VERSION_1_0,
+	.output_type = TCC_DISPLAY_TYPE_EXT,
+};
+
+static const struct of_device_id ext_driver_dt_match[] = {
+	#if defined(CONFIG_DRM_TCC_EXT)
+	{
+		.compatible = "telechips,tcc-drm-ext",
+		.data = (const void *)&ext_old_data,
+	}, {
+		.compatible = "telechips,tcc-drm-ext-v1.0",
+		.data = (const void *)&ext_v1_x_data,
+	},
+	#endif
+}
+MODULE_DEVICE_TABLE(of, ext_driver_dt_match);
 
 struct platform_driver ext_driver = {
-	.probe		= lcd_probe,
-	.remove		= lcd_remove,
+	.probe		= tcc_drm_lcd_probe,
+	.remove		= tcc_drm_lcd_remove,
 	.driver		= {
 		.name	= "tcc-drm-ext",
 		.owner	= THIS_MODULE,

@@ -41,6 +41,7 @@
 #include <tcc_drm_fb.h>
 #include <tcc_drm_crtc.h>
 #include <tcc_drm_plane.h>
+#include <tcc_drm_lcd_base.h>
 
 #define LOG_TAG "DRMLCD"
 
@@ -58,10 +59,9 @@ struct lcd_chromakeys {
 	struct drm_chromakey_t mask;
 };
 #endif
-
 struct lcd_context {
 	struct device *dev;
-	struct drm_device *drm_dev;
+	struct drm_device *drm;
 	struct tcc_drm_crtc *crtc;
 	struct drm_encoder *encoder;
 	struct tcc_drm_plane planes[CRTC_WIN_NR_MAX];
@@ -98,103 +98,6 @@ struct lcd_context {
 	/* H/W data */
 	struct tcc_hw_device hw_data;
 };
-
-#if defined(CONFIG_DRM_TCC_LCD)
-static struct tcc_drm_device_data lcd_old_data = {
-	.version = TCC_DRM_DT_VERSION_OLD,
-	.output_type = TCC_DISPLAY_TYPE_LCD,
-};
-static struct tcc_drm_device_data lcd_v1_x_data = {
-	.version = TCC_DRM_DT_VERSION_1_0,
-	.output_type = TCC_DISPLAY_TYPE_LCD,
-};
-#endif
-
-#if defined(CONFIG_DRM_TCC_EXT)
-static struct tcc_drm_device_data ext_old_data = {
-	.version = TCC_DRM_DT_VERSION_OLD,
-	.output_type = TCC_DISPLAY_TYPE_EXT,
-};
-static struct tcc_drm_device_data ext_v1_x_data = {
-	.version = TCC_DRM_DT_VERSION_1_0,
-	.output_type = TCC_DISPLAY_TYPE_EXT,
-};
-#endif
-
-#if defined(CONFIG_DRM_TCC_THIRD)
-static struct tcc_drm_device_data third_old_data = {
-	.version = TCC_DRM_DT_VERSION_OLD,
-	.output_type = TCC_DISPLAY_TYPE_THIRD,
-};
-static struct tcc_drm_device_data third_v1_x_data = {
-	.version = TCC_DRM_DT_VERSION_1_0,
-	.output_type = TCC_DISPLAY_TYPE_THIRD,
-};
-#endif
-
-#if defined(CONFIG_DRM_TCC_FOURTH)
-static struct tcc_drm_device_data fourth_old_data = {
-	.version = TCC_DRM_DT_VERSION_OLD,
-	.output_type = TCC_DISPLAY_TYPE_FOURTH,
-};
-static struct tcc_drm_device_data fourth_v1_x_data = {
-	.version = TCC_DRM_DT_VERSION_1_0,
-	.output_type = TCC_DISPLAY_TYPE_FOURTH,
-};
-#endif
-
-static const struct of_device_id lcd_driver_dt_match[] = {
-	#if defined(CONFIG_DRM_TCC_LCD)
-	{
-		.compatible = "telechips,tcc-drm-lcd",
-		.data = (const void *)&lcd_old_data,
-	}, {
-		.compatible = "telechips,tcc-drm-lcd-v1.0",
-		.data = (const void *)&lcd_v1_x_data,
-	},
-	#endif
-}
-MODULE_DEVICE_TABLE(of, lcd_driver_dt_match);
-
-static const struct of_device_id ext_driver_dt_match[] = {
-	#if defined(CONFIG_DRM_TCC_EXT)
-	{
-		.compatible = "telechips,tcc-drm-ext",
-		.data = (const void *)&ext_old_data,
-	}, {
-		.compatible = "telechips,tcc-drm-ext-v1.0",
-		.data = (const void *)&ext_v1_x_data,
-	},
-	#endif
-}
-MODULE_DEVICE_TABLE(of, ext_driver_dt_match);
-
-static const struct of_device_id third_driver_dt_match[] = {
-	#if defined(CONFIG_DRM_TCC_THIRD)
-	{
-		.compatible = "telechips,tcc-drm-third",
-		.data = (const void *)&third_old_data,
-	}, {
-		.compatible = "telechips,tcc-drm-third-v1.0",
-		.data = (const void *)&third_v1_x_data,
-	},
-	#endif
-}
-MODULE_DEVICE_TABLE(of, third_driver_dt_match);
-
-static const struct of_device_id fourth_driver_dt_match[] = {
-	#if defined(CONFIG_DRM_TCC_FOURTH)
-	{
-		.compatible = "telechips,tcc-drm-fourth",
-		.data = (const void *)&fourth_old_data,
-	}, {
-		.compatible = "telechips,tcc-drm-fourth-v1.0",
-		.data = (const void *)&fourth_v1_x_data,
-	},
-	#endif
-	{},
-};
-MODULE_DEVICE_TABLE(of, fourth_driver_dt_match);
 
 static const uint32_t lcd_formats[] = {
 	DRM_FORMAT_BGR565,
@@ -239,6 +142,16 @@ static irqreturn_t lcd_irq_handler(int irq, void *dev_id)
 	display_device_blk_num =
 		get_vioc_index(ctx->hw_data.display_device.blk_num);
 
+	if (
+		is_vioc_display_device_intr_masked(
+			ctx->hw_data.display_device.blk_num,
+			VIOC_DISP_INTR_DISPLAY)) {
+		dev_warn(ctx->dev,
+				"[WARN][%s] interrupt was not enabled\r\n",
+				LOG_TAG, __func__);
+		return IRQ_HANDLED;
+	}
+
 	/* Get TCC VIOC block status register */
 	dispblock_status = vioc_intr_get_status(display_device_blk_num);
 
@@ -247,10 +160,10 @@ static irqreturn_t lcd_irq_handler(int irq, void *dev_id)
 			display_device_blk_num, (1 << VIOC_DISP_INTR_RU));
 
 		/* check the crtc is detached already from encoder */
-		if (ctx->drm_dev == NULL) {
+		if (!ctx->drm) {
 			dev_warn(
 				ctx->dev,
-				"[WARN][%s] %s drm_dev is not binded\r\n",
+				"[WARN][%s] %s drm is not binded\r\n",
 				LOG_TAG, __func__);
 			goto out;
 		}
@@ -429,11 +342,10 @@ static int lcd_atomic_check(struct tcc_drm_crtc *crtc,
 
 		lcd_rate = clk_get_rate(ctx->hw_data.ddc_clock);
 		if (2 * lcd_rate < ideal_clk) {
-			dev_err(
+			dev_warn(
 				ctx->dev,
-				"[ERROR][%s] %s sclk_lcd clock too low(%lu) for requested pixel clock(%lu)\n",
+				"[WARN][%s] %s sclk_lcd clock too low(%lu) for requested pixel clock(%lu)\n",
 				LOG_TAG, __func__, lcd_rate, ideal_clk);
-			return -EINVAL;
 		}
 
 		/*
@@ -442,10 +354,9 @@ static int lcd_atomic_check(struct tcc_drm_crtc *crtc,
 		 */
 		clkdiv = DIV_ROUND_CLOSEST(lcd_rate, ideal_clk);
 		if (clkdiv >= 0x200) {
-			dev_err(ctx->dev,
-				"[ERROR][%s] %s requested pixel clock(%lu) too low\n",
+			dev_warn(ctx->dev,
+				"[WARN][%s] %s requested pixel clock(%lu) too low\n",
 				LOG_TAG, __func__, ideal_clk);
-			return -EINVAL;
 		}
 	}
 
@@ -541,6 +452,7 @@ static void lcd_update_plane(struct tcc_drm_crtc *crtc,
 	unsigned int cpp = fb->format->cpp[0];
 	unsigned int pitch = fb->pitches[0];
 	unsigned int enabled;
+
 	/* TCC specific structure */
 	volatile void __iomem *pWMIX;
 	volatile void __iomem *pRDMA;
@@ -873,116 +785,44 @@ static const struct tcc_drm_crtc_ops lcd_crtc_ops = {
 
 static int lcd_bind(struct device *dev, struct device *master, void *data)
 {
-	struct lcd_context *ctx = dev_get_drvdata(dev);
-	struct drm_device *drm_dev = data;
+	struct platform_device *pdev = to_platform_device(dev);
+	struct drm_device *drm = dev_get_drvdata(master);
 	struct drm_plane *primary = NULL;
 	struct drm_plane *cursor = NULL;
+	struct lcd_context *ctx;
+
 	const uint32_t *formats_list;
 	int formats_list_size;
-	int i, ret = 0;
-
-	ctx->drm_dev = drm_dev;
-	/* Activate CRTC clocks */
-	if (!test_and_set_bit(CRTC_FLAGS_VCLK_BIT, &ctx->crtc_flags)) {
-		ret = clk_prepare_enable(ctx->hw_data.vioc_clock);
-		if (ret < 0) {
-			dev_err(
-				dev,
-				"[ERROR][%s] %s failed to enable the bus clk\n",
-				LOG_TAG, __func__);
-			return -1;
-		}
-	}
-	for (i = 0; i < ctx->hw_data.rdma_counts; i++) {
-		if (VIOC_RDMA_IsVRDMA(ctx->hw_data.rdma[i].blk_num)) {
-			formats_list = lcd_formats_vrdma;
-			formats_list_size = ARRAY_SIZE(lcd_formats_vrdma);
-		} else {
-			formats_list = lcd_formats;
-			formats_list_size = ARRAY_SIZE(lcd_formats);
-		}
-
-		ret = tcc_plane_init(
-			drm_dev,
-			&ctx->planes[i].base,
-			DRM_PLANE_TYPE(ctx->hw_data.rdma_plane_type[i]),
-			formats_list, formats_list_size);
-		if (ret) {
-			dev_err(
-				dev,
-				"[ERROR][%s] %s failed to initizliaed the planes\n",
-				LOG_TAG, __func__);
-			return ret;
-		}
-
-		ctx->planes[i].win = i;
-		if (
-			DRM_PLANE_TYPE(ctx->hw_data.rdma_plane_type[i]) ==
-			DRM_PLANE_TYPE_PRIMARY)
-			primary = &ctx->planes[i].base;
-		if (
-			DRM_PLANE_TYPE(ctx->hw_data.rdma_plane_type[i]) ==
-			DRM_PLANE_TYPE_CURSOR)
-			cursor = &ctx->planes[i].base;
-	}
-
-	ctx->crtc = tcc_drm_crtc_create(drm_dev, primary, cursor,
-			ctx->data->output_type, &lcd_crtc_ops, ctx);
-	if (IS_ERR(ctx->crtc))
-		return PTR_ERR(ctx->crtc);
-
-	if (ctx->encoder)
-		tcc_dpi_bind(drm_dev, ctx->encoder, &ctx->hw_data);
-
-	return ret;
-}
-
-static void lcd_unbind(struct device *dev, struct device *master,
-			void *data)
-{
-	struct lcd_context *ctx = dev_get_drvdata(dev);
-
-	if (ctx->encoder)
-		tcc_dpi_remove(ctx->encoder);
-
-	/* Deactivate CRTC clock */
-	if (test_and_clear_bit(CRTC_FLAGS_VCLK_BIT, &ctx->crtc_flags))
-		clk_disable_unprepare(ctx->hw_data.vioc_clock);
-}
-
-static const struct component_ops lcd_component_ops = {
-	.bind	= lcd_bind,
-	.unbind = lcd_unbind,
-};
-
-static int lcd_probe(struct platform_device *pdev)
-{
-	struct device *dev = &pdev->dev;
-	struct lcd_context *ctx;
-	int ret = 0;
+	int ret;
+	int i;
 
 	if (!dev->of_node) {
 		dev_err(
 			dev,
 			"[ERROR][%s] %s failed to get the device node\n",
 			LOG_TAG, __func__);
-		return -ENODEV;
+		ret = -ENODEV;
+		goto out;
 	}
+	/* Create device context */
 	ctx = devm_kzalloc(dev, sizeof(*ctx), GFP_KERNEL);
-	if (ctx == NULL)
-		return -ENOMEM;
-
+	if (!ctx) {
+		ret = -ENOMEM;
+		goto out;
+	}
 	ctx->dev = dev;
 	ctx->data =
 		(struct tcc_drm_device_data *)of_device_get_match_data(
 			&pdev->dev);
-	if (ctx->data == NULL) {
+	if (!ctx->data) {
 		dev_err(
 			dev,
 			"[ERROR][%s] %s failed to get match data\r\n",
 			LOG_TAG, __func__);
-		return -ENOMEM;
+		ret = -ENOMEM;
+		goto out;
 	}
+	ctx->drm = drm;
 	if (
 		tcc_drm_address_dt_parse(
 			pdev, &ctx->hw_data, ctx->data->version) < 0) {
@@ -990,7 +830,8 @@ static int lcd_probe(struct platform_device *pdev)
 			dev,
 			"[ERROR][%s] %s failed to parse device tree\n",
 			LOG_TAG, __func__);
-		return ret;
+		ret = -ENODEV;
+		goto out;
 	}
 	switch (ctx->data->output_type) {
 	case TCC_DISPLAY_TYPE_LCD:
@@ -1018,13 +859,13 @@ static int lcd_probe(struct platform_device *pdev)
 		#endif
 		break;
 	default:
-		return -ENODEV;
+		ret = -ENODEV;
+		goto out;
 	}
-
-	dev_dbg(
-		dev, "[DEBUG][%s] %s %s start probe with pdev(%p)\r\n",
-		LOG_TAG, __func__, ctx->data->name, pdev);
-
+	dev_info(
+		dev,
+		"[INFO][%s] %s %s start probe with pdev(%p), dev(%p)\r\n",
+		LOG_TAG, __func__, ctx->data->name, pdev, dev);
 	spin_lock_init(&ctx->irq_lock);
 
 	/* Disable & clean interrupt */
@@ -1038,17 +879,9 @@ static int lcd_probe(struct platform_device *pdev)
 	atomic_set(&ctx->wait_vsync_event, 0);
 	platform_set_drvdata(pdev, ctx);
 	ctx->encoder = tcc_dpi_probe(dev, &ctx->hw_data);
-	if (IS_ERR(ctx->encoder))
-		return PTR_ERR(ctx->encoder);
-	#if defined(CONFIG_PM)
-	pm_runtime_enable(dev);
-	#endif
-	ret = component_add(dev, &lcd_component_ops);
-	if (ret) {
-		dev_err(
-			dev, "[ERROR][%s] %s failed to component_add\r\n",
-			LOG_TAG, __func__);
-		goto err_disable_pm_runtime;
+	if (IS_ERR(ctx->encoder)) {
+		ret = PTR_ERR(ctx->encoder);
+		goto out;
 	}
 	#if defined(CONFIG_DRM_TCC_KEEP_LOGO)
 	#if defined(CONFIG_DRM_FBDEV_EMULATION)
@@ -1066,31 +899,109 @@ static int lcd_probe(struct platform_device *pdev)
 	mutex_init(&ctx->chromakey_mutex);
 	#endif
 
-	return ret;
+	/* Activate CRTC clocks */
+	if (!test_and_set_bit(CRTC_FLAGS_VCLK_BIT, &ctx->crtc_flags)) {
+		ret = clk_prepare_enable(ctx->hw_data.vioc_clock);
+		if (ret < 0) {
+			dev_err(
+				dev,
+				"[ERROR][%s] %s failed to enable the bus clk\n",
+				LOG_TAG, __func__);
+			goto out;
+		}
+	}
+	for (i = 0; i < ctx->hw_data.rdma_counts; i++) {
+		if (VIOC_RDMA_IsVRDMA(ctx->hw_data.rdma[i].blk_num)) {
+			formats_list = lcd_formats_vrdma;
+			formats_list_size = ARRAY_SIZE(lcd_formats_vrdma);
+		} else {
+			formats_list = lcd_formats;
+			formats_list_size = ARRAY_SIZE(lcd_formats);
+		}
 
-err_disable_pm_runtime:
+		ret = tcc_plane_init(
+			drm,
+			&ctx->planes[i].base,
+			DRM_PLANE_TYPE(ctx->hw_data.rdma_plane_type[i]),
+			formats_list, formats_list_size);
+		if (ret) {
+			dev_err(
+				dev,
+				"[ERROR][%s] %s failed to initizliaed the planes\n",
+				LOG_TAG, __func__);
+			goto out;
+		}
+
+		ctx->planes[i].win = i;
+		if (
+			DRM_PLANE_TYPE(ctx->hw_data.rdma_plane_type[i]) ==
+			DRM_PLANE_TYPE_PRIMARY)
+			primary = &ctx->planes[i].base;
+		if (
+			DRM_PLANE_TYPE(ctx->hw_data.rdma_plane_type[i]) ==
+			DRM_PLANE_TYPE_CURSOR)
+			cursor = &ctx->planes[i].base;
+	}
+
+	ctx->crtc = tcc_drm_crtc_create(
+		drm, primary, cursor, ctx->data->output_type, &lcd_crtc_ops,
+		ctx);
+	if (IS_ERR(ctx->crtc)) {
+		ret = PTR_ERR(ctx->crtc);
+		goto out;
+	}
+	if (ctx->encoder)
+		ret = tcc_dpi_bind(drm, ctx->encoder, &ctx->hw_data);
+
+	if (ret)
+		goto out;
+
+	#if defined(CONFIG_PM)
+	pm_runtime_enable(dev);
+	#endif
+
+	return 0;
+out:
+	return ret;
+}
+
+static void lcd_unbind(struct device *dev, struct device *master,
+			void *data)
+{
+	struct lcd_context *ctx = dev_get_drvdata(dev);
+
+	if (ctx->encoder)
+		tcc_dpi_remove(ctx->encoder);
+
+	/* Deactivate CRTC clock */
+	if (test_and_clear_bit(CRTC_FLAGS_VCLK_BIT, &ctx->crtc_flags))
+		clk_disable_unprepare(ctx->hw_data.vioc_clock);
+
 	#if defined(CONFIG_PM)
 	pm_runtime_disable(dev);
 	#endif
 
-	return ret;
+	kfree(ctx->data->name);
+	devm_kfree(dev, ctx);
 }
 
-static int lcd_remove(struct platform_device *pdev)
+static const struct component_ops lcd_component_ops = {
+	.bind	= lcd_bind,
+	.unbind = lcd_unbind,
+};
+
+int tcc_drm_lcd_probe(struct platform_device *pdev)
 {
-	struct lcd_context *ctx = platform_get_drvdata(pdev);
+	return component_add(&pdev->dev, &lcd_component_ops);
+}
+EXPORT_SYMBOL(tcc_drm_lcd_probe);
 
-	#if defined(CONFIG_PM)
-	pm_runtime_disable(&pdev->dev);
-	#endif
-
+int tcc_drm_lcd_remove(struct platform_device *pdev)
+{
 	component_del(&pdev->dev, &lcd_component_ops);
-
-	kfree(ctx->data->name);
-	devm_kfree(&pdev->dev, ctx);
-
 	return 0;
 }
+EXPORT_SYMBOL(tcc_drm_lcd_remove);
 
 #ifdef CONFIG_PM
 static int tcc_lcd_suspend(struct device *dev)
@@ -1126,6 +1037,8 @@ static int tcc_lcd_resume(struct device *dev)
 }
 #endif
 
-static const struct dev_pm_ops tcc_lcd_pm_ops = {
+const struct dev_pm_ops tcc_lcd_pm_ops = {
 	SET_SYSTEM_SLEEP_PM_OPS(tcc_lcd_suspend, tcc_lcd_resume)
 };
+EXPORT_SYMBOL(tcc_lcd_pm_ops);
+

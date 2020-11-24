@@ -262,7 +262,7 @@ tcc_dpi_detect(struct drm_connector *connector, bool force)
 	#if defined(CONFIG_TCC_DP_DRIVER_V1_4)
 	if (ctx->hw_device->connector_type == DRM_MODE_CONNECTOR_DisplayPort) {
 		if (ctx->dp == NULL)
-			goto go_out;
+			goto out;
 		#if defined(CONFIG_TCC_DRM_SUPPORT_REAL_HPD)
 		/**
 		 * The HAL(Hardware Abstraction layer) must be able to handle
@@ -286,7 +286,7 @@ tcc_dpi_detect(struct drm_connector *connector, bool force)
 			connector_status_connected ?
 			"connected" : "disconnected");
 	#endif
-go_out:
+out:
 	return connector_status;
 }
 
