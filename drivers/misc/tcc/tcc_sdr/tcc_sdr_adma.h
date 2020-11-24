@@ -83,6 +83,24 @@ static inline void tcc_adma_dump(void __iomem *base_addr)
 	}
 }
 
+static inline void tcc_audio_sw_reset_enable(void __iomem *base_addr, uint32_t reg_offset, uint32_t bit_offset, bool enable)
+{
+	uint32_t value = readl(base_addr + reg_offset);
+	uint32_t mask_bit = 0;
+	
+	//printk("iocfg reset before(0x%03x) : 0x%08x\n", (uint32_t)reg_offset, value);
+	mask_bit = 0x1 << bit_offset;
+
+	if (enable) {
+		value &= ~mask_bit;
+	} else {
+		value |= mask_bit;
+	}
+
+	//printk("iocfg reset after(0x%03x) : 0x%08x\n", (uint32_t)reg_offset, value);
+	adma_writel(value, base_addr + reg_offset);
+}
+
 static inline void tcc_adma_rx_reset_enable(
 	void __iomem *base_addr,
 	bool enable)

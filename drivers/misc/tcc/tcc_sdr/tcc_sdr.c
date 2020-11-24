@@ -77,6 +77,7 @@
 #define SDR_READ_TIMEOUT 1000
 #define OVERRUN_NOTIFY_INTERVAL 100 //ms
 
+#define HRSTEN_ENABLE
 struct tcc_sdr_port_t {
 	void *dma_vaddr;
 	dma_addr_t dma_paddr;
@@ -93,6 +94,11 @@ struct tcc_sdr_t {
 	struct platform_device *pdev;
 	void __iomem *dai_reg;
 	void __iomem *adma_reg;
+#ifdef HRSTEN_ENABLE
+	void __iomem *iocfg_reg;
+	uint32_t hrsten_reg_offset;
+	uint32_t hrsten_bit_offset;
+#endif
 	struct clk *dai_pclk;
 	struct clk *dai_hclk;
 	struct clk *dai_filter_clk;	//This is for normal I2S slave mode
@@ -443,7 +449,7 @@ int tcc_sdr_set_param(struct tcc_sdr_t *sdr, struct HS_I2S_PARAM *p)
 		if ((p->eChannel > 4) || (p->eChannel <= 0)) {
 			SDR_WARN("eChannel[%d] should be 1/2/4.",
 				p->eChannel);
-			pr_info("So, it is changed by defualt[%d]\n",
+			pr_info("So, it is changed by default[%d]\n",
 			    RADIO_MODE_DEFAULT_CHANNEL);
 			p->eChannel = RADIO_MODE_DEFAULT_CHANNEL;
 			ret = 1;
@@ -456,7 +462,7 @@ int tcc_sdr_set_param(struct tcc_sdr_t *sdr, struct HS_I2S_PARAM *p)
 		    (p->eBitMode != 64) && (p->eBitMode != 80)) {
 			SDR_WARN("eBitMode[%d] is wrong.",
 				p->eBitMode);
-			pr_info("So, it is changed by defualt[%d]\n",
+			pr_info("So, it is changed by default[%d]\n",
 				RADIO_MODE_DEFAULT_BITMODE);
 			p->eBitMode = RADIO_MODE_DEFAULT_BITMODE;
 			ret = 1;
@@ -467,7 +473,7 @@ int tcc_sdr_set_param(struct tcc_sdr_t *sdr, struct HS_I2S_PARAM *p)
 		    && (p->eChannel != 8)) {
 			SDR_WARN("eChannel[%d] should be 2 or 8.",
 				p->eChannel);
-			pr_info("So, it is changed by defualt[%d]\n",
+			pr_info("So, it is changed by default[%d]\n",
 				I2S_MODE_DEFAULT_CHANNEL);
 			p->eChannel = I2S_MODE_DEFAULT_CHANNEL;
 			ret = 1;
@@ -476,7 +482,7 @@ int tcc_sdr_set_param(struct tcc_sdr_t *sdr, struct HS_I2S_PARAM *p)
 		if ((p->eBitMode != 16) && (p->eBitMode != 24)) {
 			SDR_WARN("eBitMode[%d] is wrong.",
 				p->eBitMode);
-			pr_info("So, it is changed by defualt[%d]\n",
+			pr_info("So, it is changed by default[%d]\n",
 				RADIO_MODE_DEFAULT_BITMODE);
 			p->eBitMode = I2S_MODE_DEFAULT_BITMODE;
 			ret = 1;
@@ -1102,6 +1108,13 @@ int tcc_sdr_release(struct inode *inode, struct file *flip)
 	sdr->opened = false;
 	sdr->started = false;
 
+#ifdef HRSTEN_ENABLE
+	if (sdr->iocfg_reg != NULL) {
+		tcc_audio_sw_reset_enable(sdr->iocfg_reg, sdr->hrsten_reg_offset, sdr->hrsten_bit_offset, true);
+		mdelay(5);
+		tcc_audio_sw_reset_enable(sdr->iocfg_reg, sdr->hrsten_reg_offset, sdr->hrsten_bit_offset, false);
+	}
+#endif
 	return 0;
 }
 
@@ -1172,6 +1185,24 @@ static int parse_sdr_dt(struct platform_device *pdev, struct tcc_sdr_t *sdr)
 				sdr->blk_no);
 			pr_err("doesn't support.\n",
 				sdr->adrcnt_mode);
+		}
+#endif
+#ifdef HRSTEN_ENABLE
+		sdr->iocfg_reg = of_iomap(of_node_adma, 1);
+		if (IS_ERR((void *)sdr->iocfg_reg)) {
+			sdr->iocfg_reg = NULL;
+			SDR_DBG("iocfg_reg is NULL\n");
+		} else {
+			SDR_DBG("iocfg_reg=%p\n", sdr->iocfg_reg);
+			sdr->hrsten_reg_offset = 0;
+			of_property_read_u32(of_node_adma, "hrsten-reg-offset", &sdr->hrsten_reg_offset);
+			if (sdr->hrsten_reg_offset != 0) {
+				SDR_DBG("hrsten_reg_offset : 0x%08x\n", sdr->hrsten_reg_offset);
+			}
+			of_property_read_u32(of_node_adma, "hrsten-bit-offset", &sdr->hrsten_bit_offset);
+			if (sdr->hrsten_bit_offset != 0) {
+				SDR_DBG("hrsten_bit_offset : %u\n", sdr->hrsten_bit_offset);
+			}
 		}
 #endif
 	} else {
