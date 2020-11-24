@@ -96,7 +96,7 @@ typedef	long IPC_LONG;
 #define IPC_ERR_RECEIVER_DOWN		(-10)
 
 typedef enum {
-	CTL_CMD = 0x0001U,
+	CTL_CMD = 0x0000U,
 	WRITE_CMD,
 	MAX_CMD_TYPE,
 } IpcCmdType;
