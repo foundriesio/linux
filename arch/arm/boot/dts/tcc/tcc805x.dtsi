@@ -579,6 +579,38 @@
 			no-map;
 		};
 
+		pmap_rearcamera4: rearcamera4 {
+			compatible = "telechips,pmap";
+			telechips,pmap-name = "rearcamera4";
+			alloc-ranges = <0x0 EARLY_REARCAM_BASE 0x0 EARLY_REARCAM_SIZE>;
+			size = <0x0 PMAP_REARCAMERA4_SIZE>;
+			no-map;
+		};
+
+		pmap_rearcamera5: rearcamera5 {
+			compatible = "telechips,pmap";
+			telechips,pmap-name = "rearcamera5";
+			alloc-ranges = <0x0 EARLY_REARCAM_BASE 0x0 EARLY_REARCAM_SIZE>;
+			size = <0x0 PMAP_REARCAMERA5_SIZE>;
+			no-map;
+		};
+
+		pmap_rearcamera6: rearcamera6 {
+			compatible = "telechips,pmap";
+			telechips,pmap-name = "rearcamera6";
+			alloc-ranges = <0x0 EARLY_REARCAM_BASE 0x0 EARLY_REARCAM_SIZE>;
+			size = <0x0 PMAP_REARCAMERA6_SIZE>;
+			no-map;
+		};
+
+		pmap_rearcamera7: rearcamera7 {
+			compatible = "telechips,pmap";
+			telechips,pmap-name = "rearcamera7";
+			alloc-ranges = <0x0 EARLY_REARCAM_BASE 0x0 EARLY_REARCAM_SIZE>;
+			size = <0x0 PMAP_REARCAMERA7_SIZE>;
+			no-map;
+		};
+
 		pmap_parking_gui: parking_gui {
 			compatible = "telechips,pmap";
 			telechips,pmap-name = "parking_gui";

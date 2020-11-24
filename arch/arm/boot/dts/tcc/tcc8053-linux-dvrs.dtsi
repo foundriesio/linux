@@ -500,24 +500,30 @@
 	};
 
 	videoinput@0 {
+		status = "disabled";
+		cifport		= <&cifport		0>;
+		videosource	= <&videosource0>;
+	};
+
+	videoinput@4 {
 		status = "okay";
 		cifport		= <&cifport		5>;
 		videosource	= <&videosource1>;
 	};
 
-	videoinput@1 {
+	videoinput@5 {
 		status = "okay";
 		cifport		= <&cifport		6>;
 		videosource	= <&videosource1>;
 	};
 
-	videoinput@2 {
+	videoinput@6 {
 		status = "okay";
 		cifport		= <&cifport		7>;
 		videosource	= <&videosource1>;
 	};
 
-	videoinput@3 {
+	videoinput@7 {
 		status = "okay";
 		cifport		= <&cifport		8>;
 		videosource	= <&videosource1>;
