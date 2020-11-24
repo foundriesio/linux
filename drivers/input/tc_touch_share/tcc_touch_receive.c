@@ -18,10 +18,11 @@
 #define TOUCH_RECEIVE_NAME      ("tcc_touch_receive")
 #define TOUCH_RECEIVE_MINOR		(0)
 
+
 static struct input_dev *virt_tr_dev;
 
 static ssize_t touch_state_show(struct device *dev,
-		struct device_attribute *attr, char *buf)
+		struct device_attribute *attr, char_t *buf)
 {
 	ssize_t count = 0;
 
@@ -35,12 +36,12 @@ static ssize_t touch_state_show(struct device *dev,
 	return count;
 }
 static ssize_t touch_state_store(struct device *dev,
-		struct device_attribute *attr, const char *buf, size_t count)
+		struct device_attribute *attr, const char_t *buf, size_t count)
 {
 	if ((dev != NULL) && (attr != NULL) && (buf != NULL)) {
-		int32_t data;
+		uint32_t data;
 		struct touch_mbox *mdev = dev_get_drvdata(dev);
-		int32_t error = kstrtoint(buf, 10, &data);
+		int32_t error = kstrtouint(buf, 10, &data);
 
 		if (error == 0) {
 			mdev->touch_state = data;
@@ -67,8 +68,8 @@ static void receive_message(struct mbox_client *client, void *message)
 		uint32_t cmd = (uint32_t)msg->cmd[0];
 
 		switch (cmd) {
-		case TOUCH_DATA:
-			if (msg->cmd[1] == (int32_t)TOUCH_SINGLE) {
+		case (uint32_t)TOUCH_DATA:
+			if (msg->cmd[1] == (uint32_t)TOUCH_SINGLE) {
 				if ((int32_t)msg->data[2] < 0) {
 					input_report_key(virt_tr_dev,
 							BTN_TOUCH, 0);
@@ -84,10 +85,10 @@ static void receive_message(struct mbox_client *client, void *message)
 				}
 			}
 		break;
-		case TOUCH_INIT:
-			touch_send_ack(dev, TOUCH_INIT, dev->touch_state);
+		case (uint32_t)TOUCH_INIT:
+			touch_send_ack(dev, (uint32_t)TOUCH_INIT, dev->touch_state);
 		break;
-		case TOUCH_ACK:
+		case (uint32_t)TOUCH_ACK:
 			touch_wake_up(&dev->touch_mbox_wait);
 		break;
 		default:
@@ -96,13 +97,14 @@ static void receive_message(struct mbox_client *client, void *message)
 	}
 }
 
-static int tcc_touch_receive_probe(struct platform_device *pdev)
+static int32_t tcc_touch_receive_probe(struct platform_device *pdev)
 {
 	if (pdev != NULL) {
-		uint32_t ret = 0;
-		uint32_t xMax;
-		uint32_t yMax;
 		struct touch_mbox *tr_dev;
+		int32_t ret = 0;
+		int32_t xMax;
+		int32_t yMax;
+		struct mbox_chan *mbox_channel = NULL;
 
 		tr_dev = devm_kzalloc(&pdev->dev,
 				sizeof(struct touch_mbox), GFP_KERNEL);
@@ -113,10 +115,10 @@ static int tcc_touch_receive_probe(struct platform_device *pdev)
 
 		of_property_read_string(pdev->dev.of_node, "mbox-names",
 				&tr_dev->touch_mbox_name);
-		of_property_read_u32(pdev->dev.of_node, "xmax", &xMax);
-		of_property_read_u32(pdev->dev.of_node, "ymax", &yMax);
+		of_property_read_s32(pdev->dev.of_node, "xmax", &xMax);
+		of_property_read_s32(pdev->dev.of_node, "ymax", &yMax);
 		tr_dev->touch_mbox_client.dev = &pdev->dev;
-		tr_dev->touch_mbox_client.rx_callback = receive_message;
+		tr_dev->touch_mbox_client.rx_callback = &receive_message;
 		tr_dev->touch_mbox_client.tx_done = NULL;
 #ifdef CONFIG_ARCH_TCC803X
 		tr_dev->touch_mbox_client.tx_block = false;
@@ -125,9 +127,10 @@ static int tcc_touch_receive_probe(struct platform_device *pdev)
 #endif
 		tr_dev->touch_mbox_client.knows_txdone = (bool)false;
 		tr_dev->touch_mbox_client.tx_tout = 10;
-		tr_dev->touch_mbox_channel =
-			mbox_request_channel_byname(&tr_dev->touch_mbox_client,
+		mbox_channel = mbox_request_channel_byname(&tr_dev->touch_mbox_client,
 					tr_dev->touch_mbox_name);
+		if (mbox_channel != NULL)
+			tr_dev->touch_mbox_channel = mbox_channel;
 
 		init_waitqueue_head(&tr_dev->touch_mbox_wait._cmdQueue);
 		tr_dev->touch_mbox_wait._condition = 1;
@@ -151,6 +154,7 @@ static int tcc_touch_receive_probe(struct platform_device *pdev)
 			virt_tr_dev->phys = "dev/input/virt_touch_receive";
 
 			ret = input_register_device(virt_tr_dev);
+			pr_info("[INFO][TR]Register Input Device %d\n", ret);
 		}
 		device_create_file(&pdev->dev, &dev_attr_touch_state);
 		mutex_init(&tr_dev->lock);
@@ -177,14 +181,14 @@ static int32_t tcc_touch_receive_remove(struct platform_device *pdev)
 	return 0;
 }
 #if defined(CONFIG_PM)
-static int tcc_touch_receive_suspend(struct platform_device *pdev,
+static int32_t tcc_touch_receive_suspend(struct platform_device *pdev,
 		pm_message_t state)
 {
 	(void)pdev;
 	(void)state;
 	return 0;
 }
-static int tcc_touch_receive_resume(struct platform_device *pdev)
+static int32_t tcc_touch_receive_resume(struct platform_device *pdev)
 {
 	struct touch_mbox *tr_dev = platform_get_drvdata(pdev);
 
@@ -193,7 +197,7 @@ static int tcc_touch_receive_resume(struct platform_device *pdev)
 }
 #endif
 
-const struct of_device_id ttr_of_match[] = {
+static const struct of_device_id ttr_of_match[] = {
 	{.compatible = "telechips,tcc_touch_receive",},
 	{ },
 };
@@ -212,7 +216,7 @@ static struct platform_driver tcc_touch_receive = {
 	},
 };
 
-static int __init tcc_touch_receive_init(void)
+static int32_t __init tcc_touch_receive_init(void)
 {
 	return platform_driver_register(&tcc_touch_receive);
 }

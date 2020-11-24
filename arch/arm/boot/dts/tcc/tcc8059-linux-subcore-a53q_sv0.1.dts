@@ -1845,6 +1845,8 @@
 	    mbox-names ="tr-mbox";
 		mboxes = <&cb_mbox TCC_CB_MBOX_TCHSHARE>;
 		mbox-id = TCC_MBOX_TCHSHARE_ID;
+		xmax = <1920>;
+		ymax = <720>;
 	};
 
 	trng: trng {

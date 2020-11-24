@@ -14,13 +14,14 @@ static void touch_mbox_send(struct mbox_chan *chan,
 		struct tcc_mbox_data *msg, struct mutex lock)
 {
 	if ((chan != NULL) && (msg != NULL)) {
-		mutex_lock(&lock);
+		struct mutex tmp = lock;
+		mutex_lock(&tmp);
 		(void)mbox_send_message(chan, msg);
-		mutex_unlock(&lock);
+		mutex_unlock(&tmp);
 	}
 }
 
-void touch_send_init(struct touch_mbox *ts_dev, int32_t touch_state)
+void touch_send_init(struct touch_mbox *ts_dev, uint32_t touch_state)
 {
 	if (ts_dev != NULL) {
 		struct tcc_mbox_data sendMsg;
@@ -33,7 +34,7 @@ void touch_send_init(struct touch_mbox *ts_dev, int32_t touch_state)
 	}
 }
 
-void touch_send_change(struct touch_mbox *ts_dev, int32_t touch_state)
+void touch_send_change(struct touch_mbox *ts_dev, uint32_t touch_state)
 {
 	if (ts_dev != NULL) {
 		struct tcc_mbox_data sendMsg;
@@ -54,7 +55,7 @@ void touch_send_data(struct touch_mbox *ts_dev, struct tcc_mbox_data *msg)
 }
 
 void touch_send_ack(struct touch_mbox *ts_dev, uint32_t cmd,
-		int32_t touch_state)
+		uint32_t touch_state)
 {
 	if (ts_dev != NULL) {
 		struct tcc_mbox_data sendMsg;

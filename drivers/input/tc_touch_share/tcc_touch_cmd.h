@@ -11,6 +11,10 @@
 #define TOUCH_PRESSED		(57)
 #define TOUCH_DATA_SIZE		(3)
 
+#ifndef char
+typedef char char_t;
+#endif
+
 enum {
 	TOUCH_INIT = 1,
 	TOUCH_STATE,
@@ -43,21 +47,21 @@ struct mbox_queue {
 };
 
 struct touch_mbox {
-	const char *touch_mbox_name;
+	const char_t *touch_mbox_name;
 	struct mbox_chan *touch_mbox_channel;
 	struct mbox_client touch_mbox_client;
 	struct mbox_queue touch_mbox_queue;
 	struct mbox_wait_queue touch_mbox_wait;
 	struct mutex lock;
 	int32_t touch_data[3];
-	int32_t touch_state;
+	uint32_t touch_state;
 };
 
-void touch_send_init(struct touch_mbox *ts_dev, int32_t touch_state);
-void touch_send_change(struct touch_mbox *ts_dev, int32_t touch_state);
+void touch_send_init(struct touch_mbox *ts_dev, uint32_t touch_state);
+void touch_send_change(struct touch_mbox *ts_dev, uint32_t touch_state);
 void touch_send_data(struct touch_mbox *ts_dev, struct tcc_mbox_data *msg);
 void touch_send_ack(struct touch_mbox *ts_dev, uint32_t cmd,
-		int32_t touch_state);
+		uint32_t touch_state);
 void touch_wait_event_timeout(struct mbox_wait_queue *wait,
 		int32_t condition, int32_t msec);
 void touch_wake_up(struct mbox_wait_queue *wait);
