@@ -183,6 +183,9 @@ enum {
 	 * during the hdev->setup vendor callback.
 	 */
 	HCI_QUIRK_NON_PERSISTENT_DIAG,
+	HCI_QUIRK_WIDEBAND_SPEECH_SUPPORTED,
+	HCI_QUIRK_VALID_LE_STATES,
+	HCI_QUIRK_BROKEN_ERR_DATA_REPORTING,
 };
 
 /* HCI device flags */

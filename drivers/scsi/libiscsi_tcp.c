@@ -130,7 +130,7 @@ static void iscsi_tcp_segment_map(struct iscsi_segment *segment, int recv)
 	 * have to go the slow sendmsg path. We always map for the
 	 * recv path.
 	 */
-	if (page_count(sg_page(sg)) >= 1 && !recv)
+	if (!recv && sendpage_ok(sg_page(sg)))
 		return;
 
 	if (recv) {

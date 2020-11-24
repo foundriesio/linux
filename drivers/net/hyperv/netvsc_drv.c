@@ -804,6 +804,7 @@ static struct sk_buff *netvsc_alloc_recv_skb(struct net_device *net,
 	const struct ndis_pkt_8021q_info *vlan = nvchan->rsc.vlan;
 	const struct ndis_tcp_ip_checksum_info *csum_info =
 						nvchan->rsc.csum_info;
+	const u32 *hash_info = nvchan->rsc.hash_info;
 	struct sk_buff *skb;
 	void *xbuf = xdp->data_hard_start;
 	int i;
@@ -858,6 +859,9 @@ static struct sk_buff *netvsc_alloc_recv_skb(struct net_device *net,
 		    csum_info->receive.udp_checksum_succeeded)
 			skb->ip_summed = CHECKSUM_UNNECESSARY;
 	}
+
+	if (hash_info && (net->features & NETIF_F_RXHASH))
+		skb_set_hash(skb, *hash_info, PKT_HASH_TYPE_L4);
 
 	if (vlan) {
 		u16 vlan_tci = vlan->vlanid | (vlan->pri << VLAN_PRIO_SHIFT) |
@@ -980,7 +984,10 @@ struct netvsc_device_info *netvsc_devinfo_get(struct netvsc_device *nvdev)
 
 		prog = netvsc_xdp_get(nvdev);
 		if (prog) {
+			prog =
 			bpf_prog_inc(prog);
+			if (IS_ERR(prog))
+				return NULL;
 			dev_info->bprog = prog;
 		}
 	} else {
@@ -1070,7 +1077,12 @@ static int netvsc_attach(struct net_device *ndev,
 
 	prog = dev_info->bprog;
 	if (prog) {
+		prog =
 		bpf_prog_inc(prog);
+		if (IS_ERR(prog)) {
+			ret = PTR_ERR(prog);
+			goto err1;
+		}
 		ret = netvsc_xdp_set(ndev, prog, NULL, nvdev);
 		if (ret) {
 			bpf_prog_put(prog);
