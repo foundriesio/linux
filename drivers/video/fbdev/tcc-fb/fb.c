@@ -726,28 +726,28 @@ static void *fb_ion_dma_buf_kmap(struct dma_buf *dmabuf, unsigned long offset)
 }
 
 
-struct dma_buf_ops fb_dma_buf_ops = {
+struct dma_buf_ops new_fb_dma_buf_ops = {
 	.map_dma_buf = fb_ion_map_dma_buf,
 	.unmap_dma_buf = fb_ion_unmap_dma_buf,
 	.mmap = fb_ion_mmap,
 	.release = fb_ion_dma_buf_release,
-	.kmap_atomic = fb_ion_dma_buf_kmap,
-	.kmap = fb_ion_dma_buf_kmap,
+	.map_atomic = fb_ion_dma_buf_kmap,
+	.map = fb_ion_dma_buf_kmap,
 };
 
-struct dma_buf* tccfb_dmabuf_export(struct fb_info *info)
+struct dma_buf* new_tccfb_dmabuf_export(struct fb_info *info)
 {
 	struct dma_buf *dmabuf;
 
 	#if LINUX_VERSION_CODE > KERNEL_VERSION(4,0,9)
 	DEFINE_DMA_BUF_EXPORT_INFO(exp_info);
-	exp_info.ops = &fb_dma_buf_ops;
+	exp_info.ops = &new_fb_dma_buf_ops;
 	exp_info.size = info->fix.smem_len;
 	exp_info.flags = O_RDWR;
 	exp_info.priv = info;
 	dmabuf = dma_buf_export(&exp_info);
 	#else
-	dmabuf = dma_buf_export(info, &fb_dma_buf_ops, info->fix.smem_len, O_RDWR, NULL);
+	dmabuf = dma_buf_export(info, &new_fb_dma_buf_ops, info->fix.smem_len, O_RDWR, NULL);
 	#endif
 
 	return dmabuf;
@@ -1369,6 +1369,7 @@ static int __init fbX_probe (struct platform_device *pdev)
 		fb_register_isr(info);
 
 	fb_info(info, "%s frame buffer device\n", info->fix.id);
+	pr_err("%s : update_type = %d ",__func__, par->pdata.FbUpdateType);
 	if(sysfs_create_group(&pdev->dev.kobj, &fbX_dev_attgrp) != 0)
 		fb_warn(info, "failed to register attributes\n");
 
