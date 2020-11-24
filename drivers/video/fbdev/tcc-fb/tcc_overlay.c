@@ -123,7 +123,7 @@ static void tcc_overlay_configure_AFBCDEC(volatile void __iomem *pAFBC_Dec, unsi
 	{
 		if(bFirst){
 			VIOC_RDMA_SetImageDisable(pRDMA);
-			VIOC_CONFIG_AFBCDECPath(afbc_dec_id, rdmaPath, 1);
+			VIOC_CONFIG_FBCDECPath(afbc_dec_id, rdmaPath, 1);
 			VIOC_AFBCDec_SurfaceCfg(pAFBC_Dec, base_addr, fmt, width, height, 0, bSplitMode, bWideMode, VIOC_AFBCDEC_SURFACE_0, 1);
 			VIOC_AFBCDec_SetContiDecEnable(pAFBC_Dec, onthefly);
 			VIOC_AFBCDec_SetSurfaceN(pAFBC_Dec, VIOC_AFBCDEC_SURFACE_0, 1);
@@ -146,7 +146,7 @@ static void tcc_overlay_configure_AFBCDEC(volatile void __iomem *pAFBC_Dec, unsi
 	else {
 		VIOC_RDMA_SetImageDisable(pRDMA);
 		VIOC_AFBCDec_TurnOFF(pAFBC_Dec);
-		VIOC_CONFIG_AFBCDECPath(afbc_dec_id, rdmaPath, 0);
+		VIOC_CONFIG_FBCDECPath(afbc_dec_id, rdmaPath, 0);
 
 		//VIOC_CONFIG_SWReset(VIOC_AFBCDEC + dec_num, VIOC_CONFIG_RESET);
 		//VIOC_CONFIG_SWReset(VIOC_AFBCDEC + dec_num, VIOC_CONFIG_CLEAR);
@@ -310,7 +310,7 @@ static int tcc_overlay_display_video_buffer(overlay_video_buffer_t buffer_cfg, s
 				afbc_changed = 1;
 
 			if(afbc_changed) {
-				overlay_drv->afbc_dec.id = VIOC_AFBCDEC0 + buffer_cfg.afbc_dec_num;
+				overlay_drv->afbc_dec.id = VIOC_FBCDEC0 + buffer_cfg.afbc_dec_num;
 				overlay_drv->afbc_dec.reg = VIOC_AFBCDec_GetAddress(overlay_drv->afbc_dec.id);
 			}
 
@@ -684,6 +684,7 @@ static int tcc_overlay_resume(struct platform_device *pdev)
 	{
 		pr_info("[INF][OVERLAY] tcc_overlay_resume %d opened\n", overlay_drv->open_cnt);
 		clk_prepare_enable(overlay_drv->clk);
+		tcc_overlay_display_video_buffer(overlay_drv->overBuffCfg, overlay_drv);
 	}
 	return 0;
 }

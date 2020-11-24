@@ -869,7 +869,6 @@ typedef struct{
 extern int VIOC_CONFIG_PlugIn(unsigned int component, unsigned int select);
 extern int VIOC_CONFIG_PlugOut(unsigned int component);
 extern int VIOC_CONFIG_WMIXPath(unsigned int component_num, unsigned int mode);
-extern int VIOC_CONFIG_AFBCDECPath(unsigned int AFBCDecPath, unsigned int rdmaPath, unsigned on);
 extern int VIOC_CONFIG_MCPath(unsigned int component, unsigned int type);
 extern void VIOC_CONFIG_SWReset(unsigned int component, unsigned int mode);
 extern void VIOC_CONFIG_SWReset_RAW(unsigned int component, unsigned int mode);

@@ -183,7 +183,7 @@ struct device_node *ViocConfig_np;
 
 #if defined(CONFIG_VIOC_AFBCDEC)
 static unsigned int afbc_dec_1st_cfg = 0;
-static unsigned int afbc_dec_vioc_id = VIOC_AFBCDEC0;
+static unsigned int afbc_dec_vioc_id = VIOC_FBCDEC0;
 static unsigned int afbc_wdma_need_on = 0; /* 0: no, 1: need */
 #define AFBC_MAX_SURFACE (2)
 #endif
@@ -2191,7 +2191,7 @@ tca_vioc_configure_AFBCDEC(unsigned int vioc_dec_id, unsigned int base_addr,
 				VIOC_WDMA_SetImageDisable(pWDMA);
 			}
 			VIOC_RDMA_SetImageDisable(pRDMA);
-			VIOC_CONFIG_AFBCDECPath(vioc_dec_id, rdmaPath, 1);
+			VIOC_CONFIG_FBCDECPath(vioc_dec_id, rdmaPath, 1);
 			VIOC_AFBCDec_SurfaceCfg(pAFBC_Dec, base_addr, fmt, width, height, 0, bSplitMode, bWideMode, VIOC_AFBCDEC_SURFACE_0, 1);
 			VIOC_AFBCDec_SetContiDecEnable(pAFBC_Dec, 1);
 			VIOC_AFBCDec_SetSurfaceN(pAFBC_Dec, VIOC_AFBCDEC_SURFACE_0, 1);
@@ -2215,7 +2215,7 @@ tca_vioc_configure_AFBCDEC(unsigned int vioc_dec_id, unsigned int base_addr,
 			}
 			VIOC_RDMA_SetImageDisable(pRDMA);
 			VIOC_AFBCDec_TurnOFF(pAFBC_Dec);
-			VIOC_CONFIG_AFBCDECPath(vioc_dec_id, rdmaPath, 0);
+			VIOC_CONFIG_FBCDECPath(vioc_dec_id, rdmaPath, 0);
 
 			//VIOC_CONFIG_SWReset(vioc_dec_id, VIOC_CONFIG_RESET);
 			//VIOC_CONFIG_SWReset(vioc_dec_id, VIOC_CONFIG_CLEAR);

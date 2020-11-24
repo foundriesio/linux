@@ -196,10 +196,10 @@
 #define VIOC_V_DV_CFG			(0x1700)
 
 /* AFBC_DEC : 0x18XX */
-#define VIOC_AFBCDEC			(0x1800)
-#define VIOC_AFBCDEC0			(0x1800)
-#define VIOC_AFBCDEC1			(0x1801)
-#define VIOC_AFBCDEC_MAX		(0x0002)
+#define VIOC_FBCDEC			(0x1800)
+#define VIOC_FBCDEC0			(0x1800)
+#define VIOC_FBCDEC1			(0x1801)
+#define VIOC_FBCDEC_MAX		(0x0002)
 
 /* PIXEL_MAP : 0x19XX */
 #define VIOC_PIXELMAP			(0x1900)
