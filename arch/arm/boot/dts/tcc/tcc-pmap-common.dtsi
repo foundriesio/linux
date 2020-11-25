@@ -185,7 +185,7 @@
 	#endif
 #endif
 
-#ifdef CONFIG_PLAYFORM_AVN
+#ifdef CONFIG_PLATFORM_AVN
 	#ifdef CONFIG_ANDROID
 	#define SIZE_OSD		0x00000000
 	#else
