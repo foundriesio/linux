@@ -43,7 +43,7 @@
 #define REGISTER_OUT_MODE  	(2U)
 
 #define PWM_DIVID_MAX	3U 	// clock divide max value 3(divide 16)
-#define PWM_PERI_CLOCK 	(400U * 1000U * 1000U) // 400Mhz
+#define PWM_PERI_CLOCK 	(400U * 1000U * 1000U) // 400Mhz, Must be over 300Mhz(SOC constraint)
 
 #if defined(CONFIG_ARCH_TCC802X) || defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X)
 #define TCC_USE_GFB_PORT
@@ -110,7 +110,6 @@ static void tcc_pwm_disable(struct pwm_chip *chip, struct pwm_device *pwm)
 	local_irq_save((flags));
 
 	pwm_writel(pwm_readl(tcc->pwm_base + PWMEN) & ~((unsigned int)1 << (pwm->hwpwm)), tcc->pwm_base + PWMEN);
-	pwm_writel(pwm_readl(tcc->pwm_base + PWMEN) | ((unsigned int)0x10010 << (pwm->hwpwm)) , tcc->pwm_base + PWMEN);
 
 	local_irq_restore(flags);
 
