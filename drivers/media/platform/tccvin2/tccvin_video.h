@@ -79,17 +79,17 @@
 struct tccvin_device;
 
 struct vioc_path {
-	int				vin;
-	int				viqe;
-	int				deintl_s;
-	int				scaler;
-	int				pgl;
-	int				wmixer;
-	int				wdma;
-	int				fifo;
-	int				rdma;
-	int				wmixer_out;
-	int				disp;
+	int32_t				vin;
+	int32_t				viqe;
+	int32_t				deintl_s;
+	int32_t				scaler;
+	int32_t				pgl;
+	int32_t				wmixer;
+	int32_t				wdma;
+	int32_t				fifo;
+	int32_t				rdma;
+	int32_t				wmixer_out;
+	int32_t				disp;
 };
 
 struct buf_addr {
@@ -100,7 +100,7 @@ struct buf_addr {
 
 struct tccvin_cif {
 	// cif port
-	unsigned int			cif_port;
+	int32_t				cif_port;
 
 	void __iomem			*cifport_addr;
 
