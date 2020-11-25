@@ -605,7 +605,7 @@
 
 	cec@72370000 {
 		status ="okay";
-	}
+	};
 
 	overlaymixer:overlaymixer@72400000 {
 		//status ="okay";
