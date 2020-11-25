@@ -61,7 +61,7 @@ static int32_t			debug;
 		pr_info("[INFO][%s] %s - " fmt, LOG_TAG, __func__, \
 			##__VA_ARGS__);                            \
 	}
-#define log (logi)
+#define log logi
 #define dlog(fmt, ...)                                    \
 	{                                                 \
 		do {                                      \
@@ -386,7 +386,6 @@ static int32_t switch_release(struct inode *inode, struct file *filp)
 	}
 
 	vdev = container_of(inode->i_cdev, struct switch_dev, cdev);
-	kzfree(vdev);
 
 	return 0;
 }
