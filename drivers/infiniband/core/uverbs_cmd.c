@@ -1522,7 +1522,6 @@ static int create_qp(struct ib_uverbs_file *file,
 		if (ret)
 			goto err_cb;
 
-		qp->real_qp	  = qp;
 		qp->pd		  = pd;
 		qp->send_cq	  = attr.send_cq;
 		qp->recv_cq	  = attr.recv_cq;
