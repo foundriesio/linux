@@ -63,20 +63,11 @@ struct cxd5700 {
 	struct regmap			*regmap;
 };
 
-#if 0
-const struct reg_sequence cxd5700_reg_init[] = {
-	{0x0A, 0x01, 0},
-	{0x07, 0x02, 0},
-	{0x01, 0x00, 0},
-	{0x00, 0x30, 0},
-	{0x80, 0xC5, 0},
-};
-#else
 const char cxd5700_reg_init[] = {
 	/*{0x0A},*/ {0x01}, {0x07}, {0x02}, {0x01},
 	{0x00}, {0x00}, {0x30}, {0x80}, {0xC5}
 };
-#endif
+
 static const struct regmap_config cxd5700_regmap = {
 	.reg_bits		= 8,
 	.val_bits		= 8,
@@ -135,7 +126,6 @@ static int cxd5700_s_stream(struct v4l2_subdev *sd, int enable)
 
 	return ret;
 }
-
 
 static int cxd5700_get_fmt(struct v4l2_subdev *sd,
 			   struct v4l2_subdev_pad_config *cfg,

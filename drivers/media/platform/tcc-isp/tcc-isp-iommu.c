@@ -47,7 +47,6 @@ int tcc_isp_iommu_remove(struct platform_device *pdev)
 
 	iommu_unmap(domain, 0, 0x10000);
 
-END:
 	return ret;
 }
 

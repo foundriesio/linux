@@ -40,16 +40,6 @@ struct hdr_state setting_hdr = {
 	.dcpdx[7]			= 0x03ff,
 };
 
-struct isp_state setting_isp = {
-	.i_state.rgb_order		= IMGIN_ORDER_CTL_GR_FIRST,
-
-	.o_state.x			= 8,
-	.o_state.y			= 8,
-
-	.o_state.format			= IMGOUT_WINDOW_CFG_FORMAT_YUV422,
-	.o_state.data_order		= IMGOUT_WINDOW_CFG_DATA_ORDER_P0P2P1,
-};
-
 /* base setting for chip verification (isp block on/off) */
 struct reg_setting settings[] = {
 	{0x1300,  0x00f10010},

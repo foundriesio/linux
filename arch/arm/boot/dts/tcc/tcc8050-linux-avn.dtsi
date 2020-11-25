@@ -332,6 +332,23 @@
 			};
 		};
 
+		/*
+		 * ISPless camera module.
+		 * It includes max9601 and is used with des(max9286)
+		 */
+		ar0147: ar0147 {
+			/* Camera Image Sensor */
+			status		= "disabled";
+			compatible	= "onsemiconductor,ar0147";
+			//rst-gpios	= <&gpb 15 1>;  /* mcnex module sensor */
+			reg		= <0x10>;
+			port {
+				ar0147_out: endpoint {
+					remote-endpoint = <&max96701_in>;
+					io-direction	= "output";
+				};
+			};
+		};
 		/* HD camera module & max9286 using MIPI CSI2 output */
 		max96701: max96701 {
 			/* serializer */
@@ -339,15 +356,13 @@
 			compatible	= "maxim,max96701";
 			reg		= <0x40>;
 			ports {
-#if 0
 			        port@0 {
 					reg = <0>;
 					max96701_in: endpoint {
-						remote-endpoint = <&ar0147_out>;
-						io-direction	= "input";
+						//remote-endpoint = <&ar0147_out>;
+						//io-direction	= "input";
 					};
 				};
-#endif
 			        port@1 {
 					reg = <1>;
 					max96701_out: endpoint {
@@ -621,7 +636,8 @@
 		        port@1 {
 				reg = <1>;
 		                mipi_csi2_0_out0: endpoint {
-		                        remote-endpoint = <&videoinput0_in>;
+		                        //remote-endpoint = <&isp0_in>;
+					remote-endpoint	= <&videoinput0_in>;
 					io-direction	= "output";
 					channel		= <0>;
 					/*
@@ -697,10 +713,8 @@
 
 	isp0@1bc80000 {
 		status = "okay";
-/* for isp mcu debugging
 		pinctrl-names = "default";
 		pinctrl-0 = <&isp0_uart_tx &isp0_uart_rx>;
-*/
 		ports {
 		        port@0 {
 				reg = <0>;
@@ -720,7 +734,7 @@
 	};
 
 	isp1@1bca0000 {
-		status = "okay";
+		status = "disabled";
 /* for isp mcu debugging
 		pinctrl-names = "default";
 		pinctrl-0 = <&isp1_uart_tx &isp1_uart_rx>;
@@ -744,7 +758,7 @@
 	};
 
 	isp2@1bcc0000 {
-		status = "okay";
+		status = "disabled";
 /* for isp mcu debugging
 		pinctrl-names = "default";
 		pinctrl-0 = <&isp2_uart_tx &isp2_uart_rx>;
@@ -768,7 +782,7 @@
 	};
 
 	isp3@1bce0000 {
-		status = "okay";
+		status = "disabled";
 /* for isp mcu debugging
 		pinctrl-names = "default";
 		pinctrl-0 = <&isp3_uart_tx &isp3_uart_rx>;
@@ -793,24 +807,17 @@
 
 	videoinput@0 {
 		status = "okay";
-		cifport	= <&cifport 0>;
-/* for MIPI CSI2 input
-		cifport = <&cifport 5>;
-*/
+		cifport = <&cifport 0>;
+
 		port {
 			videoinput0_in: endpoint {
+				//remote-endpoint	= <&isp0_out>;
+				//remote-endpoint	= <&mipi_csi2_0_out0>;
 				remote-endpoint	= <&adv7182_out>;
 				io-direction	= "input";
 				bus-type	= <0>;
 				stream-enable	= <0>;	// VIN_CTRL.SE
 				flush-vsync	= <0>;	// VIN_MISC.FVS
-/* for MIPI CSI2 input
-				remote-endpoint	= <&mipi_csi2_0_out0>;
-				io-direction	= "input";
-				bus-type	= <0>;
-				stream-enable	= <1>;	// VIN_CTRL.SE
-				flush-vsync	= <1>;	// VIN_MISC.FVS
-*/
 			};
 		};
 	};

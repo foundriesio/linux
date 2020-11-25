@@ -92,32 +92,48 @@ const struct reg_sequence max9286_reg_defaults[] = {
 	// init
 	// enable 4ch
 	{0X0A, 0X0F, 0},	/* Disable all Forward control channel */
+#ifdef CONFIG_VIDEO_AR0147
+	{0X34, 0Xb5, 0},	 //    Write   Enable auto acknowledge
+#else
 	{0X34, 0X35, 0},	/* Disable auto acknowledge */
+#endif
 	{0X15, 0X83, 0},	/*
 				 * Select the combined camera line format
 				 * for CSI2 output
 				 */
-	{0X12, 0XF3, 5},	/* MIPI Output setting */
-//	{0xff, 5},		/* 5mS */
+#ifdef CONFIG_VIDEO_AR0147
+	{0X12, 0Xc7, 0},	 //    Write   DBL OFF, MIPI Output setting(RAW12)
+	{0X1C, 0xf6, 5},	 //    BWS: 27bit
+#else
+	{0X12, 0XF3, 5},	/* MIPI Output setting(DBL ON, YUV422) */
+#endif
 	{0X63, 0X00, 0},	/* Widows off */
 	{0X64, 0X00, 0},	/* Widows off */
 	{0X62, 0X1F, 0},	/* FRSYNC Diff off */
-#if 1
+
+#ifdef CONFIG_VIDEO_AR0147
+	{0x01, 0xe0, 0}, // manual mode, enable gpi(des) - gpo(ser) transmission
+	//{0x01, 0xc0}, // manual mode, enable gpi(des) - gpo(ser) transmission
+	{0X00, 0XE1, 0}, // Port 0 used
+	{0x0c, 0x11, 5}, // disable HS/VS encoding
+#else
 	{0x01, 0xc0, 0},	/* manual mode */
 	{0X08, 0X25, 0},	/* FSYNC-period-High */
 	{0X07, 0XC3, 0},	/* FSYNC-period-Mid */
 	{0X06, 0XF8, 5},	/* FSYNC-period-Low */
-#endif
 	{0X00, 0XEF, 5},	/* Port 0~3 used */
-//	{0x0c, 0x91},
-//	{0xff, 5},		/* 5mS */
+#endif
 #if defined(CONFIG_MIPI_OUTPUT_TYPE_LINE_CONCAT)
 	{0X15, 0X03, 0},	/* (line concatenation) */
 #else
 	{0X15, 0X93, 0},	/* (line interleave) */
 #endif
 	{0X69, 0XF0, 0},	/* Auto mask & comabck enable */
+#ifdef CONFIG_VIDEO_AR0147
+	{0x01, 0xe0, 0}, 	// enable gpi(des) - gpo(ser) transmission
+#else
 	{0x01, 0x00, 0},
+#endif
 	{0X0A, 0XFF, 0},	/* All forward channel enable */
 };
 
@@ -249,10 +265,18 @@ static int max9286_set_power(struct v4l2_subdev *sd, int on)
 				gpio_set_value_cansleep(gpio->pwd_port, 1);
 				msleep(20);
 			}
+			if(dev->gpio.rst_port > 0) {
+				gpio_set_value_cansleep(gpio->rst_port, 1);
+				msleep(20);
+			}
 		}
 		dev->p_cnt++;
 	} else {
 		if (dev->p_cnt == 1) {
+			if(dev->gpio.rst_port > 0) {
+				gpio_set_value_cansleep(gpio->rst_port, 0);
+				msleep(20);
+			}
 			if (dev->gpio.pwd_port > 0) {
 				gpio_set_value_cansleep(gpio->pwd_port, 0);
 				msleep(20);
