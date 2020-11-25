@@ -18,11 +18,11 @@
  * Place, Suite 330, Boston, MA 02111-1307 USA
  ****************************************************************************/
 
-#ifndef __VIOC_MGR_H__
-#define __VIOC_MGR_H__
+#ifndef VIOC_MGR_H
+#define VIOC_MGR_H
 
-#define VIOC_MGR_SEND		0x1
-#define VIOC_MGR_ACK		0x10
+#define VIOC_MGR_SEND		(0x1)
+#define VIOC_MGR_ACK		(0x10)
 
 /* control commands */
 enum {
@@ -43,14 +43,14 @@ enum {
 };
 
 
-#define VIOC_MGR_MAGIC 'I'
-#define IOCTL_VIOC_MGR_SET_OVP	_IO(VIOC_MGR_MAGIC, 1)
-#define IOCTL_VIOC_MGR_SET_POS	_IO(VIOC_MGR_MAGIC, 2)
-#define IOCTL_VIOC_MGR_SET_RESET	_IO(VIOC_MGR_MAGIC, 3)
-#define IOCTL_VIOC_MGR_SET_READY	_IO(VIOC_MGR_MAGIC, 4)
+#define VIOC_MGR_MAGIC ('I')
+#define IOCTL_VIOC_MGR_SET_OVP	(_IO(VIOC_MGR_MAGIC, 1))
+#define IOCTL_VIOC_MGR_SET_POS	(_IO(VIOC_MGR_MAGIC, 2))
+#define IOCTL_VIOC_MGR_SET_RESET	(_IO(VIOC_MGR_MAGIC, 3))
+#define IOCTL_VIOC_MGR_SET_READY	(_IO(VIOC_MGR_MAGIC, 4))
 
-#define IOCTL_VIOC_MGR_SET_OVP_KERNEL		0x100
-#define IOCTL_VIOC_MGR_SET_POS_KERNEL		0x101
-#define IOCTL_VIOC_MGR_SET_RESET_KERNEL		0x102
-#define IOCTL_VIOC_MGR_SET_READY_KERNEL		0x103
+#define IOCTL_VIOC_MGR_SET_OVP_KERNEL		(0x100)
+#define IOCTL_VIOC_MGR_SET_POS_KERNEL		(0x101)
+#define IOCTL_VIOC_MGR_SET_RESET_KERNEL		(0x102)
+#define IOCTL_VIOC_MGR_SET_READY_KERNEL		(0x103)
 #endif
