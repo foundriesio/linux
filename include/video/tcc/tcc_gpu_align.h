@@ -19,15 +19,25 @@
 #ifndef GPU_ALIGN_H_
 #define GPU_ALIGN_H_
 
+#include "autoconf.h" // for checking chipset
+
 //Pixel unit
+#ifdef CONFIG_ARCH_TCC805X // PowerVR GPU
+	// luminance
+	#define L_STRIDE_ALIGN 64
+	#define L_REGION_ALIGN 64
 
-// luminance
-#define L_STRIDE_ALIGN 64 // Arm: 16, Pvr: 64
-#define L_REGION_ALIGN 64 // Arm: 64, Pvr: 64
+	// Chrominance
+	#define C_STRIDE_ALIGN 64
+	#define C_REGION_ALIGN 64
+#else // Mali GPU
+	// luminance
+	#define L_STRIDE_ALIGN 16
+	#define L_REGION_ALIGN 64
 
-// Chrominance
-#define C_STRIDE_ALIGN 32 // Arm: 16, Pvr: 32?
-#define C_REGION_ALIGN 64 // Arm: 64, Pvr: 64
-
+	// Chrominance
+	#define C_STRIDE_ALIGN 16
+	#define C_REGION_ALIGN 64
+#endif
 
 #endif
