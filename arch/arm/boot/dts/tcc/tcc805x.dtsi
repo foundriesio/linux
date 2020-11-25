@@ -3845,6 +3845,12 @@
 		gpios = <&gpc 14 0>;
 	};
 
+	hdcp-dp {
+		compatible = "dwc,hdcp-dp";
+		reg = <0x0 0x12400000 0x0 0x10000>;
+		interrupts = <GIC_SPI 294 IRQ_TYPE_LEVEL_HIGH>;
+	};
+
 	adc: adc@1b700000 {
 		compatible = "telechips,tcc805x-adc";
 		reg = <0x0 0x1b700000 0x0 0xAC>,

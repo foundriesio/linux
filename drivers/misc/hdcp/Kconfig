@@ -1,0 +1,13 @@
+#
+# HDCP Configuration
+#
+
+config HDCP_DWC_DP
+	bool "HDCP for DesignWare Cores DisplayPort"
+	depends on TCC_DP_DRIVER_V1_4
+	default y
+	help
+	  Say Y here if you want to support the /dev/dwc-hdcp device.
+	  The /dev/dwc-hdcp device is used to control Synopsys HDCP IP.
+	  It supports HDCP1.3.
+	  When in doubt, say "Y".
