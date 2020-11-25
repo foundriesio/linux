@@ -954,7 +954,7 @@ static void stm32_usart_shutdown(struct uart_port *port)
 
 	/* Send the TC error message only when ISR_TC is not set */
 	if (ret)
-		dev_err(port->dev, "transmission complete not set\n");
+		dev_err(port->dev, "Transmission is not complete\n");
 
 	/* flush RX & TX FIFO */
 	if (ofs->rqr != UNDEF_REG)
@@ -1025,7 +1025,7 @@ static void stm32_usart_set_termios(struct uart_port *port,
 
 	/* Send the TC error message only when ISR_TC is not set. */
 	if (ret)
-		dev_err(port->dev, "transmission complete not set\n");
+		dev_err(port->dev, "Transmission is not complete\n");
 
 	/* Stop serial port and reset value */
 	writel_relaxed(0, port->membase + ofs->cr1);
