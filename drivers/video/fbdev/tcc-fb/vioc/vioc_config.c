@@ -1110,7 +1110,6 @@ int VIOC_CONFIG_WMIXPath(unsigned int component_num, unsigned int mode)
 		{
 #if defined(CONFIG_ARCH_TCC805X)
 			VIOC_CONFIG_WMIXPathReset(component_num, 1);
-			pr_info("[INF][VIOC_CONFIG] WMIX%d Path reset before changing mode\n", get_vioc_index(component_num));
 #endif
 			value = __raw_readl(config_reg + CFG_MISC0_OFFSET) & ~(1<<shift_mix_path);
 			if (mode)
@@ -1118,7 +1117,6 @@ int VIOC_CONFIG_WMIXPath(unsigned int component_num, unsigned int mode)
 			__raw_writel(value, config_reg + CFG_MISC0_OFFSET);
 #if defined(CONFIG_ARCH_TCC805X)
 			VIOC_CONFIG_WMIXPathReset(component_num, 0);
-			pr_info("[INF][VIOC_CONFIG] WMIX%d Path reset release - changing mode done\n", get_vioc_index(component_num));
 #endif
 		}
 
