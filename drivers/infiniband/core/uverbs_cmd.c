@@ -4005,7 +4005,6 @@ int ib_uverbs_ex_query_device(struct ib_uverbs_file *file,
 	if (ucore->outlen < resp.response_length + sizeof(resp.odp_caps))
 		goto end;
 
-#ifdef CONFIG_INFINIBAND_ON_DEMAND_PAGING
 	resp.odp_caps.general_caps = attr.odp_caps.general_caps;
 	resp.odp_caps.per_transport_caps.rc_odp_caps =
 		attr.odp_caps.per_transport_caps.rc_odp_caps;
@@ -4013,7 +4012,6 @@ int ib_uverbs_ex_query_device(struct ib_uverbs_file *file,
 		attr.odp_caps.per_transport_caps.uc_odp_caps;
 	resp.odp_caps.per_transport_caps.ud_odp_caps =
 		attr.odp_caps.per_transport_caps.ud_odp_caps;
-#endif
 	resp.response_length += sizeof(resp.odp_caps);
 
 	if (ucore->outlen < resp.response_length + sizeof(resp.timestamp_mask))
