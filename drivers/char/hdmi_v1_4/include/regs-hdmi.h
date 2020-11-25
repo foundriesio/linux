@@ -1,13 +1,26 @@
-// SPDX-License-Identifier: GPL-2.0-or-later
-/*
- * Copyright (C) Telechips Inc.
- */
+/****************************************************************************
+Copyright (C) 2018 Telechips Inc.
 
+This program is free software; you can redistribute it and/or modify it under the terms
+of the GNU General Public License as published by the Free Software Foundation;
+either version 2 of the License, or (at your option) any later version.
+
+This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
+PURPOSE. See the GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License along with
+this program; if not, write to the Free Software Foundation, Inc., 59 Temple Place,
+Suite 330, Boston, MA 02111-1307 USA
+
+@note Tab size is 8
+****************************************************************************/
 #ifndef __ASM_ARCH_REGS_HDMI_H__
 #define __ASM_ARCH_REGS_HDMI_H__
 
 #define HDMI_LINK_CLK_FREQ                      24000000
 #define HDMI_PCLK_FREQ                          50000000
+#define HDMI_APB_CLK_FREQ			50000000
 
 #define DDICFG_REG(x)                           (x)
 
@@ -19,6 +32,8 @@
 #define HDMICTRL_RESET_HDMI			(1<<0)
 #define HDMICTRL_RESET_SPDIF			(1<<1)
 #define HDMICTRL_RESET_TMDS			(1<<2)
+#define HDMICTRL_SPDIF_SEL_SHIFT		(0x4)
+#define HDMICTRL_SPDIF_MASK			(0x3)
 #define HDMICTRL_HDMI_ENABLE			(1<<15)		//!! CLK EN ??
 
 //@{
@@ -380,13 +395,13 @@
 #define HDMI_SPD_HEADER1            		HDMIDP_HDMIREG(0x0a14)
 #define HDMI_SPD_HEADER2            		HDMIDP_HDMIREG(0x0a18)
 #define HDMI_SPD_CHECK_SUM          		HDMIDP_HDMIREG(0x0a20) //HDMI_SPD_BYTE0
-#define HDMI_SPD_DATA1				HDMIDP_HDMIREG(0x0a24)
-#define HDMI_SPD_DATA2              		HDMIDP_HDMIREG(0x0a28)
-#define HDMI_SPD_DATA3              		HDMIDP_HDMIREG(0x0a2c)
-#define HDMI_SPD_DATA4             		HDMIDP_HDMIREG(0x0a30)
-#define HDMI_SPD_DATA5              		HDMIDP_HDMIREG(0x0a34)
-#define HDMI_SPD_DATA6              		HDMIDP_HDMIREG(0x0a38)
-#define HDMI_SPD_DATA7              		HDMIDP_HDMIREG(0x0a3c)
+#define HDMI_SPD_DATA01				HDMIDP_HDMIREG(0x0a24)
+#define HDMI_SPD_DATA02              		HDMIDP_HDMIREG(0x0a28)
+#define HDMI_SPD_DATA03              		HDMIDP_HDMIREG(0x0a2c)
+#define HDMI_SPD_DATA04             		HDMIDP_HDMIREG(0x0a30)
+#define HDMI_SPD_DATA05              		HDMIDP_HDMIREG(0x0a34)
+#define HDMI_SPD_DATA06              		HDMIDP_HDMIREG(0x0a38)
+#define HDMI_SPD_DATA07              		HDMIDP_HDMIREG(0x0a3c)
 #define HDMI_SPD_DATA08	        		HDMIDP_HDMIREG(0x0a40)
 #define HDMI_SPD_DATA09		        	HDMIDP_HDMIREG(0x0a44)
 #define HDMI_SPD_DATA10		        	HDMIDP_HDMIREG(0x0a48)
@@ -495,102 +510,108 @@
 #define HDCP_AN_SEED_2		        	HDMIDP_HDMIREG(0x0E60)
 #define HDCP_AN_SEED_3		        	HDMIDP_HDMIREG(0x0E64)
 
-#define HDCP_SHA1_00    			HDMIDP_HDMIREG(0x7000)
-#define HDCP_SHA1_01	        		HDMIDP_HDMIREG(0x7004)
-#define HDCP_SHA1_02		        	HDMIDP_HDMIREG(0x7008)
-#define HDCP_SHA1_03    			HDMIDP_HDMIREG(0x700c)
-#define HDCP_SHA1_04	        		HDMIDP_HDMIREG(0x7010)
-#define HDCP_SHA1_05		        	HDMIDP_HDMIREG(0x7014)
-#define HDCP_SHA1_06	        		HDMIDP_HDMIREG(0x7018)
-#define HDCP_SHA1_07		        	HDMIDP_HDMIREG(0x701c)
-#define HDCP_SHA1_08	        		HDMIDP_HDMIREG(0x7020)
-#define HDCP_SHA1_09		        	HDMIDP_HDMIREG(0x7024)
-#define HDCP_SHA1_10		        	HDMIDP_HDMIREG(0x7028)
-#define HDCP_SHA1_11		        	HDMIDP_HDMIREG(0x702c)
-#define HDCP_SHA1_12		        	HDMIDP_HDMIREG(0x7030)
-#define HDCP_SHA1_13	        		HDMIDP_HDMIREG(0x7034)
-#define HDCP_SHA1_14	        		HDMIDP_HDMIREG(0x7038)
-#define HDCP_SHA1_15	        		HDMIDP_HDMIREG(0x703c)
-#define HDCP_SHA1_16	        		HDMIDP_HDMIREG(0x7040)
-#define HDCP_SHA1_17	        		HDMIDP_HDMIREG(0x7044)
-#define HDCP_SHA1_18	        		HDMIDP_HDMIREG(0x7048)
-#define HDCP_SHA1_19	        		HDMIDP_HDMIREG(0x704c)
+/* HDCP registers
+ */
+#define HDMIDP_HDCPREG(x)                       (0x17000+(x))
 
-#define HDCP_KSV_LIST_0 			HDMIDP_HDMIREG(0x7050)
-#define HDCP_KSV_LIST_1	        		HDMIDP_HDMIREG(0x7054)
-#define HDCP_KSV_LIST_2		        	HDMIDP_HDMIREG(0x7058)
-#define HDCP_KSV_LIST_3			        HDMIDP_HDMIREG(0x705c)
-#define HDCP_KSV_LIST_4		        	HDMIDP_HDMIREG(0x7060)
-#define HDCP_KSV_LIST_CON		        HDMIDP_HDMIREG(0x7064)
+#define HDCP_SHA1_00    			HDMIDP_HDCPREG(0x000)
+#define HDCP_SHA1_01	        		HDMIDP_HDCPREG(0x004)
+#define HDCP_SHA1_02		        	HDMIDP_HDCPREG(0x008)
+#define HDCP_SHA1_03    			HDMIDP_HDCPREG(0x00c)
+#define HDCP_SHA1_04	        		HDMIDP_HDCPREG(0x010)
+#define HDCP_SHA1_05		        	HDMIDP_HDCPREG(0x014)
+#define HDCP_SHA1_06	        		HDMIDP_HDCPREG(0x018)
+#define HDCP_SHA1_07		        	HDMIDP_HDCPREG(0x01c)
+#define HDCP_SHA1_08	        		HDMIDP_HDCPREG(0x020)
+#define HDCP_SHA1_09		        	HDMIDP_HDCPREG(0x024)
+#define HDCP_SHA1_10		        	HDMIDP_HDCPREG(0x028)
+#define HDCP_SHA1_11		        	HDMIDP_HDCPREG(0x02c)
+#define HDCP_SHA1_12		        	HDMIDP_HDCPREG(0x030)
+#define HDCP_SHA1_13	        		HDMIDP_HDCPREG(0x034)
+#define HDCP_SHA1_14	        		HDMIDP_HDCPREG(0x038)
+#define HDCP_SHA1_15	        		HDMIDP_HDCPREG(0x03c)
+#define HDCP_SHA1_16	        		HDMIDP_HDCPREG(0x040)
+#define HDCP_SHA1_17	        		HDMIDP_HDCPREG(0x044)
+#define HDCP_SHA1_18	        		HDMIDP_HDCPREG(0x048)
+#define HDCP_SHA1_19	        		HDMIDP_HDCPREG(0x04c)
 
-#define HDCP_SHA_RESULT	        		HDMIDP_HDMIREG(0x7070)
+#define HDCP_KSV_LIST_0 			HDMIDP_HDCPREG(0x050)
+#define HDCP_KSV_LIST_1	        		HDMIDP_HDCPREG(0x054)
+#define HDCP_KSV_LIST_2		        	HDMIDP_HDCPREG(0x058)
+#define HDCP_KSV_LIST_3			        HDMIDP_HDCPREG(0x05c)
+#define HDCP_KSV_LIST_4		        	HDMIDP_HDCPREG(0x060)
+#define HDCP_KSV_LIST_CON		        HDMIDP_HDCPREG(0x064)
 
-#define HDCP_CTRL1		        	HDMIDP_HDMIREG(0x7080)
-#define HDCP_CTRL2			        HDMIDP_HDMIREG(0x7084)
+#define HDCP_SHA_RESULT	        		HDMIDP_HDCPREG(0x070)
 
-#define HDCP_CHECK_RESULT		        HDMIDP_HDMIREG(0x7090)
+#define HDCP_CTRL1		        	HDMIDP_HDCPREG(0x080)
+#define HDCP_CTRL2			        HDMIDP_HDCPREG(0x084)
 
-#define HDCP_BKSV_0		        	HDMIDP_HDMIREG(0x70a0)
-#define HDCP_BKSV_1			        HDMIDP_HDMIREG(0x70a4)
-#define HDCP_BKSV_2	        		HDMIDP_HDMIREG(0x70a8)
-#define HDCP_BKSV_3		        	HDMIDP_HDMIREG(0x70ac)
-#define HDCP_BKSV_4			        HDMIDP_HDMIREG(0x70b0)
+#define HDCP_CHECK_RESULT		        HDMIDP_HDCPREG(0x090)
 
-#define HDCP_AKSV_0	        		HDMIDP_HDMIREG(0x70c0)
-#define HDCP_AKSV_1		        	HDMIDP_HDMIREG(0x70c4)
-#define HDCP_AKSV_2			        HDMIDP_HDMIREG(0x70c8)
-#define HDCP_AKSV_3     			HDMIDP_HDMIREG(0x70cc)
-#define HDCP_AKSV_4	        		HDMIDP_HDMIREG(0x70d0)
+#define HDCP_BKSV_0		        	HDMIDP_HDCPREG(0x0a0)
+#define HDCP_BKSV_1			        HDMIDP_HDCPREG(0x0a4)
+#define HDCP_BKSV_2	        		HDMIDP_HDCPREG(0x0a8)
+#define HDCP_BKSV_3		        	HDMIDP_HDCPREG(0x0ac)
+#define HDCP_BKSV_4			        HDMIDP_HDCPREG(0x0b0)
 
-#define HDCP_AN_0       			HDMIDP_HDMIREG(0x70e0)
-#define HDCP_AN_1	        		HDMIDP_HDMIREG(0x70e4)
-#define HDCP_AN_2		        	HDMIDP_HDMIREG(0x70e8)
-#define HDCP_AN_3	        		HDMIDP_HDMIREG(0x70ec)
-#define HDCP_AN_4		        	HDMIDP_HDMIREG(0x70f0)
-#define HDCP_AN_5	        		HDMIDP_HDMIREG(0x70f4)
-#define HDCP_AN_6	        		HDMIDP_HDMIREG(0x70f8)
-#define HDCP_AN_7	        		HDMIDP_HDMIREG(0x70fc)
+#define HDCP_AKSV_0	        		HDMIDP_HDCPREG(0x0c0)
+#define HDCP_AKSV_1		        	HDMIDP_HDCPREG(0x0c4)
+#define HDCP_AKSV_2			        HDMIDP_HDCPREG(0x0c8)
+#define HDCP_AKSV_3     			HDMIDP_HDCPREG(0x0cc)
+#define HDCP_AKSV_4	        		HDMIDP_HDCPREG(0x0d0)
 
-#define HDCP_BCAPS		        	HDMIDP_HDMIREG(0x7100)
+#define HDCP_AN_0       			HDMIDP_HDCPREG(0x0e0)
+#define HDCP_AN_1	        		HDMIDP_HDCPREG(0x0e4)
+#define HDCP_AN_2		        	HDMIDP_HDCPREG(0x0e8)
+#define HDCP_AN_3	        		HDMIDP_HDCPREG(0x0ec)
+#define HDCP_AN_4		        	HDMIDP_HDCPREG(0x0f0)
+#define HDCP_AN_5	        		HDMIDP_HDCPREG(0x0f4)
+#define HDCP_AN_6	        		HDMIDP_HDCPREG(0x0f8)
+#define HDCP_AN_7	        		HDMIDP_HDCPREG(0x0fc)
 
-#define HDCP_BSTATUS_0	        		HDMIDP_HDMIREG(0x7110)
-#define HDCP_BSTATUS_1		        	HDMIDP_HDMIREG(0x7114)
+#define HDCP_BCAPS		        	HDMIDP_HDCPREG(0x100)
 
-#define HDCP_RI_0	        		HDMIDP_HDMIREG(0x7140)
-#define HDCP_RI_1		        	HDMIDP_HDMIREG(0x7144)
+#define HDCP_BSTATUS_0	        		HDMIDP_HDCPREG(0x110)
+#define HDCP_BSTATUS_1		        	HDMIDP_HDCPREG(0x114)
 
-#define HDCP_OFFSET_TX_0			HDMIDP_HDMIREG(0x7160)
-#define HDCP_OFFSET_TX_1			HDMIDP_HDMIREG(0x7164)
-#define HDCP_OFFSET_TX_2			HDMIDP_HDMIREG(0x7168)
-#define HDCP_OFFSET_TX_3			HDMIDP_HDMIREG(0x716C)
+#define HDCP_RI_0	        		HDMIDP_HDCPREG(0x140)
+#define HDCP_RI_1		        	HDMIDP_HDCPREG(0x144)
 
-#define HDCP_CYCLE_AA				HDMIDP_HDMIREG(0x7170)
+#define HDCP_OFFSET_TX_0			HDMIDP_HDCPREG(0x160)
+#define HDCP_OFFSET_TX_1			HDMIDP_HDCPREG(0x164)
+#define HDCP_OFFSET_TX_2			HDMIDP_HDCPREG(0x168)
+#define HDCP_OFFSET_TX_3			HDMIDP_HDCPREG(0x16C)
 
-#define HDCP_I2C_INT    			HDMIDP_HDMIREG(0x7180)
-#define HDCP_AN_INT	        		HDMIDP_HDMIREG(0x7190)
-#define HDCP_WDT_INT		        	HDMIDP_HDMIREG(0x71a0)
-#define HDCP_RI_INT			        HDMIDP_HDMIREG(0x71b0)
+#define HDCP_CYCLE_AA				HDMIDP_HDCPREG(0x170)
 
-#define HDCP_RI_COMPARE_0       		HDMIDP_HDMIREG(0x71d0)
-#define HDCP_RI_COMPARE_1	        	HDMIDP_HDMIREG(0x71d4)
-#define HDCP_FRAME_COUNT		        HDMIDP_HDMIREG(0x71e0)
+#define HDCP_I2C_INT    			HDMIDP_HDCPREG(0x180)
+#define HDCP_AN_INT	        		HDMIDP_HDCPREG(0x190)
+#define HDCP_WDT_INT		        	HDMIDP_HDCPREG(0x1a0)
+#define HDCP_RI_INT			        HDMIDP_HDCPREG(0x1b0)
+
+#define HDCP_RI_COMPARE_0       		HDMIDP_HDCPREG(0x1d0)
+#define HDCP_RI_COMPARE_1	        	HDMIDP_HDCPREG(0x1d4)
+#define HDCP_FRAME_COUNT		        HDMIDP_HDCPREG(0x1e0)
 //@}
 
 #define HDMI_IP_VER                             HDMIDP_HDMIREG(0xD000)
 
-#define HDMI_RGB_ROUND_EN               	HDMIDP_HDMIREG(0xD500)
-#define HDMI_VACT_SPACE_R_0	                HDMIDP_HDMIREG(0xD504)
-#define HDMI_VACT_SPACE_R_1             	HDMIDP_HDMIREG(0xD508)
-#define HDMI_VACT_SPACE_G_0     	        HDMIDP_HDMIREG(0xD50C)
-#define HDMI_VACT_SPACE_G_1             	HDMIDP_HDMIREG(0xD510)
-#define HDMI_VACT_SPACE_B_0     	        HDMIDP_HDMIREG(0xD514)
-#define HDMI_VACT_SPACE_B_1              	HDMIDP_HDMIREG(0xD518)
-#define HDMI_BLUE_SCREEN_R_0	                HDMIDP_HDMIREG(0xD520)
-#define HDMI_BLUE_SCREEN_R_1                 	HDMIDP_HDMIREG(0xD524)
-#define HDMI_BLUE_SCREEN_G_0	                HDMIDP_HDMIREG(0xD528)
-#define HDMI_BLUE_SCREEN_G_1            	HDMIDP_HDMIREG(0xD52C)
-#define HDMI_BLUE_SCREEN_B_0    	        HDMIDP_HDMIREG(0xD530)
-#define HDMI_BLUE_SCREEN_B_1	                HDMIDP_HDMIREG(0xD534)
+#define HDMIDP_RGBREG(x)        		(0x1D500 + (x))
+
+#define HDMI_RGB_ROUND_EN               	HDMIDP_RGBREG(0x00)
+#define HDMI_VACT_SPACE_R_0	                HDMIDP_RGBREG(0x04)
+#define HDMI_VACT_SPACE_R_1             	HDMIDP_RGBREG(0x08)
+#define HDMI_VACT_SPACE_G_0     	        HDMIDP_RGBREG(0x0C)
+#define HDMI_VACT_SPACE_G_1             	HDMIDP_RGBREG(0x10)
+#define HDMI_VACT_SPACE_B_0     	        HDMIDP_RGBREG(0x14)
+#define HDMI_VACT_SPACE_B_1              	HDMIDP_RGBREG(0x18)
+#define HDMI_BLUE_SCREEN_R_0	                HDMIDP_RGBREG(0x20)
+#define HDMI_BLUE_SCREEN_R_1                 	HDMIDP_RGBREG(0x24)
+#define HDMI_BLUE_SCREEN_G_0	                HDMIDP_RGBREG(0x28)
+#define HDMI_BLUE_SCREEN_G_1            	HDMIDP_RGBREG(0x2C)
+#define HDMI_BLUE_SCREEN_B_0    	        HDMIDP_RGBREG(0x30)
+#define HDMI_BLUE_SCREEN_B_1	                HDMIDP_RGBREG(0x34)
 
 
 //@{
@@ -614,8 +635,8 @@
 /**
  * @name AES config registers
  */
-#define HDMI_SS_AES_START  	        	HDMIDP_AESREG(0x00)
-#define HDMI_SS_AES_DATA       	        	HDMIDP_AESREG(0x40)
+#define HDMI_SS_AES_START  	        	HDMIDP_AESREG(0x0000)
+#define HDMI_SS_AES_DATA       	        	HDMIDP_AESREG(0x0040)
 //@}
 
 //@{
@@ -706,26 +727,58 @@
 #define AVI_HEADER_BYTE2			0xD
 
 #define AVI_PACKET_BYTE_LENGTH      		(13)
-#define AVI_CS_RGB                  		(0)
-#define AVI_CS_Y422                 		(1<<5)
-#define AVI_CS_Y444                 		(1<<6)
+
+/* Byte 1 */
+#define AVI_ACTIVE_ASPECT_RATIO_PRESENT		(1 << 4)
+
+#define AVI_CS_RGB                  		(0 << 5)
+#define AVI_CS_Y422                 		(1 << 5)
+#define AVI_CS_Y444                 		(2 << 5)
+#define AVI_CS_MASK				(AVI_CS_RGB | AVI_CS_Y422 | AVI_CS_Y444)
+
+#define AVI_SCAN_INFO_MASK			(3 << 0)
+
+#if 0
 #define AVI_QUANTIZATION_MASK       		(1<<2|1<<3)
 #define AVI_QUANTIZATION_DEFAULT    		(0)
 #define AVI_QUANTIZATION_LIMITED    		(1<<2)
 #define AVI_QUANTIZATION_FULL       		(1<<3)
-#define AVI_PIXEL_REPETITION_DOUBLE 		(1<<0)
+#endif
+
 #define AVI_FORMAT_MASK             		(0x0F)
 #define AVI_FORMAT_ASPECT_AS_PICTURE    	(1<<3)
-#define AVI_PICTURE_ASPECT_RATIO_4_3    	(1<<4)
-#define AVI_PICTURE_ASPECT_RATIO_16_9   	(1<<5)
-#define AVI_COLORIMETRY_MASK			0xC0 // 0b11000000
-#define AVI_COLORIMETRY_NO_DATA			0
-#define AVI_COLORIMETRY_ITU601			0x40 // SMPTE170M, ITU601
-#define AVI_COLORIMETRY_ITU709			0x80 // ITU709
-#define AVI_COLORIMETRY_EXTENDED		0xC0 // Extended Colorimetry
-#define AVI_COLORIMETRY_EXT_MASK		0x70 // 0b01110000
-#define AVI_COLORIMETRY_EXT_xvYCC601		(0<<4)
-#define AVI_COLORIMETRY_EXT_xvYCC709		(1<<4)
+
+
+/* Byte 2 */
+#define AVI_COLORIMETRY_EXTENDED		(3 << 6)
+#define AVI_COLORIMETRY_ITU709			(2 << 6)
+#define AVI_COLORIMETRY_ITU601			(1 << 6)
+#define AVI_COLORIMETRY_NO_DATA			(0 << 6)
+#define AVI_COLORIMETRY_MASK			AVI_COLORIMETRY_EXTENDED
+#define AVI_PICTURE_ASPECT_RATIO_16_9   	(1 << 5)
+#define AVI_PICTURE_ASPECT_RATIO_4_3    	(1 << 4)
+#define AVI_ACTIVE_ASPECT_RATIO_MASK		(0xF << 0)
+
+/* Byte 3 */
+#define AVI_COLORIMETRY_EXT_MASK		(0x7 << 4)
+#define AVI_RGB_QUANTIZATION_MASK		(3 << 2)
+#define AVI_RGB_QUANTIZATION_FULL       	(1 << 3)
+#define AVI_RGB_QUANTIZATION_LIMITED    	(1 << 2)
+#define AVI_RGB_QUANTIZATION_DEFAULT    	(0 << 2)
+#define AVI_NON_UNIFORM_SCALING_MASK		(3 << 0)
+
+/* Byte 4 - Video Ideitification code */
+
+
+/* Byte 5 */
+#define AVI_YUV_QUANTIZATION_MASK		(3 << 6)
+#define AVI_YUV_QUANTIZATION_LIMITED    	(0 << 6)
+#define AVI_YUV_QUANTIZATION_FULL       	(1 << 6)
+
+#define AVI_PIXEL_REPETITION_DOUBLE 		(1 << 0)
+#define AVI_PIXEL_REPETITION_MASK 		(0xF << 0)
+
+
 
 #define AUI_HEADER                  		(0x84 + 0x01 + 0x0A)
 
@@ -753,6 +806,7 @@
 #define SPD_PACKET_TYPE				(0x81)
 #define SPD_PACKET_VERSION			(0x01)
 #define SPD_PACKET_BYTE_LENGTH			(0x07)
+
 #define SPD_HEADER                  		(SPD_PACKET_TYPE + SPD_PACKET_VERSION + SPD_PACKET_BYTE_LENGTH)
 #define SPD_PACKET_ID0				(0x03)
 #define SPD_PACKET_ID1				(0x0c)

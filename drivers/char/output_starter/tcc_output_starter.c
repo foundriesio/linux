@@ -55,7 +55,14 @@ Suite 330, Boston, MA 02111-1307 USA
 #include <video/tcc/tcc_component_ioctl.h>
 #include <video/tcc/tcc_scaler_ctrl.h>
 
+
+#if defined(CONFIG_TCC_HDMI_DRIVER_V1_4)
+#include "output_starter_hdmi_v1_4.h"
+#endif
+#if defined(CONFIG_TCC_HDMI_DRIVER_V2_0)
 #include "output_starter_hdmi.h"
+#endif
+
 
 #include <vioc/tcc_component.h>
 #include <video/tcc/vioc_tve.h>
@@ -132,7 +139,7 @@ extern void tccfb_output_starter(char output_type, char lcdc_num, stLTIMING *pst
 extern void vioc_reset_rdma_on_display_path(int DispNum);
 
 static char default_composite_resolution = STARTER_COMPOSITE_NTSC;
-#if defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC901X)
+#if defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC897X) || defined(CONFIG_ARCH_TCC901X)
 char default_component_resolution = STARTER_COMPONENT_1080I;
 #else
 char default_component_resolution = STARTER_COMPONENT_720P;
@@ -698,7 +705,12 @@ static int tcc_output_starter_probe(struct platform_device *pdev)
 	case 1:
 		if (hdmi_detect == true) {
 			pr_info("[INF][O_STARTER] AUTO_HDMI_CVBS: hdmi\n");
+                        #if defined(CONFIG_TCC_HDMI_DRIVER_V1_4)
+                        tcc_output_starter_hdmi_v1_4(lcdc_1st, pOutput_Starter_RDMA, pOutput_Starter_DISP);
+                        #endif
+                        #if defined(CONFIG_TCC_HDMI_DRIVER_V2_0)
 			tcc_output_starter_hdmi_v2_0(lcdc_1st, pOutput_Starter_RDMA, pOutput_Starter_DISP);
+                        #endif
 		} else {
 			pr_info("[INF][O_STARTER] AUTO_HDMI_CVBS: composite\n");
 			tcc_output_starter_hdmi_disable();
@@ -711,7 +723,12 @@ static int tcc_output_starter_probe(struct platform_device *pdev)
 		 * 1st output - HDMI
 		 */
 		pr_info("[INF][O_STARTER] ATTACH_HDMI_CVBS: hdmi\n");
+		#if defined(CONFIG_TCC_HDMI_DRIVER_V1_4)
+                tcc_output_starter_hdmi_v1_4(lcdc_1st, pOutput_Starter_RDMA, pOutput_Starter_DISP);
+                #endif
+                #if defined(CONFIG_TCC_HDMI_DRIVER_V2_0)
 		tcc_output_starter_hdmi_v2_0(lcdc_1st, pOutput_Starter_RDMA, pOutput_Starter_DISP);
+                #endif
 
 		/*
 		 * 2nd output - CVBS
@@ -728,7 +745,12 @@ static int tcc_output_starter_probe(struct platform_device *pdev)
 		 */
 		if (hdmi_detect == true) {
 			pr_info("[INF][O_STARTER] ATTACH_DUAL_AUTO: hdmi\n");
+			#if defined(CONFIG_TCC_HDMI_DRIVER_V1_4)
+                        tcc_output_starter_hdmi_v1_4(lcdc_1st, pOutput_Starter_RDMA, pOutput_Starter_DISP);
+                        #endif
+                        #if defined(CONFIG_TCC_HDMI_DRIVER_V2_0)
 			tcc_output_starter_hdmi_v2_0(lcdc_1st, pOutput_Starter_RDMA, pOutput_Starter_DISP);
+                        #endif
 		} else {
 			pr_info("[INF][O_STARTER] ATTACH_DUAL_AUTO: component\n");
 			#if defined(CONFIG_TCC_HDMI_DRIVER_V2_0)
@@ -753,7 +775,12 @@ static int tcc_output_starter_probe(struct platform_device *pdev)
 		 */
 
 		pr_info("[INF][O_STARTER] OUTPUT_STARTER_NORMAL: hdmi\n");
+		#if defined(CONFIG_TCC_HDMI_DRIVER_V1_4)
+                tcc_output_starter_hdmi_v1_4(lcdc_1st, pOutput_Starter_RDMA, pOutput_Starter_DISP);
+                #endif
+                #if defined(CONFIG_TCC_HDMI_DRIVER_V2_0)
 		tcc_output_starter_hdmi_v2_0(lcdc_1st, pOutput_Starter_RDMA, pOutput_Starter_DISP);
+                #endif
 
 		/* Disable sub disp (composite) */
 		pr_info("[INF][O_STARTER] OUTPUT_STARTER_NORMAL: turn off sub display\n");

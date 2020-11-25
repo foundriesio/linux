@@ -1,8 +1,20 @@
-// SPDX-License-Identifier: GPL-2.0-or-later
-/*
- * Copyright (C) Telechips Inc.
- */
+/****************************************************************************
+Copyright (C) 2018 Telechips Inc.
 
+This program is free software; you can redistribute it and/or modify it under the terms
+of the GNU General Public License as published by the Free Software Foundation;
+either version 2 of the License, or (at your option) any later version.
+
+This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
+PURPOSE. See the GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License along with
+this program; if not, write to the Free Software Foundation, Inc., 59 Temple Place,
+Suite 330, Boston, MA 02111-1307 USA
+
+@note Tab size is 8
+****************************************************************************/
 #include <linux/module.h>
 #include <linux/kernel.h>
 #include <linux/interrupt.h>
@@ -30,6 +42,7 @@
 #include <asm/uaccess.h>
 
 #include <hdmi_1_4_hpd.h>
+#include <hpd_internal.h>
 
 #define HPD_DEBUG 	0
 #define HPD_DEBUG_GPIO 	0
@@ -39,63 +52,26 @@
 #define DPRINTK(args...)
 #endif
 
-#define VERSION "4.14_1.0.6"
-
-struct hpd_dev {
-        struct device *pdev;
-
-        /** Misc Device */
-        struct miscdevice *misc;
-        struct work_struct tx_hotplug_handler;
-        
-        /** Hot Plug */        
-        int hotplug_gpio;
-        int hotplug_irq;
-        int hotplug_irq_enable;
-        int hotplug_irq_enabled;
-
-        /* This variable represent real hotplug status */
-        int hotplug_real_status;
-        /* This variable represent virtual hotplug status 
-         * If hotplug_locked was 0, It represent hotplug_real_status
-         * On the other hand, If hotplug_locked was 1, it represent 
-         * hotplug_real_status at the time of hotplug_locked was set to 1 */
-        int hotplug_status;
-        
-
-        int hotplug_locked;
-
-        int suspend;
-        int runtime_suspend;
-
-        /** support poll */
-        wait_queue_head_t poll_wq;
-        int prev_hotplug_status; 
-
-        struct mutex mutex;
-
-};        
-
 static void hpd_set_hotplug_interrupt(struct hpd_dev *dev, int enable)
 {
         int flag;
 
         if(dev != NULL) {
-                if(enable) {                                
+                if(enable) {
                         flag = (dev->hotplug_real_status?IRQ_TYPE_LEVEL_LOW:IRQ_TYPE_LEVEL_HIGH)|IRQF_ONESHOT;
                         irq_set_irq_type(dev->hotplug_irq, flag);
                         if(!dev->hotplug_irq_enabled) {
                                 dev->hotplug_irq_enabled = 1;
                                 enable_irq(dev->hotplug_irq);
                         } else {
-                                printk(KERN_INFO "[INFO][HDMI_V14] %s already enable irq\r\n", __func__);
+                                printk(KERN_INFO "[INFO][HDMI_V14]%s already enable irq\r\n", __func__);
                         }
                 } else {
                         if(dev->hotplug_irq_enabled) {
                                 dev->hotplug_irq_enabled = 0;
                                 disable_irq(dev->hotplug_irq);
                         } else {
-                                printk(KERN_INFO "[INFO][HDMI_V14] %s disable irq\r\n", __func__);
+                                printk(KERN_INFO "[INFO][HDMI_V14]%s disable irq\r\n", __func__);
                         }
                         cancel_work_sync(&dev->tx_hotplug_handler);
                 }
@@ -111,9 +87,9 @@ static void hpd_hotplug_thread(struct work_struct *work)
 
         dev = (work!=NULL)?container_of(work, struct hpd_dev, tx_hotplug_handler):NULL;
 
-        if(dev != NULL) {   
+        if(dev != NULL) {
                 prev_hpd = gpio_get_value(dev->hotplug_gpio);
-                  
+
                 /* Check HPD */
                 for(i=0;i<4;i++) {
                         current_hpd = gpio_get_value(dev->hotplug_gpio);
@@ -125,13 +101,13 @@ static void hpd_hotplug_thread(struct work_struct *work)
 
                 /* If match is less than 4, it is assumed to be noise. */
                 if(match >= 4) {
-			printk(KERN_INFO "[INFO][HDMI_V14] \e[33mhotplug_real_status=%d \e[0m\r\n", current_hpd);      
+			printk(KERN_INFO "[INFO][HDMI_V14]\e[33mhotplug_real_status=%d \e[0m\r\n", current_hpd);
 
                         dev->hotplug_real_status = current_hpd;
                         if(dev->hotplug_locked == 0) {
                                 dev->hotplug_status = dev->hotplug_real_status;
                         }
-                        wake_up_interruptible(&dev->poll_wq);        
+                        wake_up_interruptible(&dev->poll_wq);
                 }
                 mutex_lock(&dev->mutex);
                 hpd_set_hotplug_interrupt(dev, 1);
@@ -142,14 +118,14 @@ static void hpd_hotplug_thread(struct work_struct *work)
 static irqreturn_t hpd_irq_handler(int irq, void *dev_id)
 {
         struct hpd_dev *dev =  (struct hpd_dev *)dev_id;
-        
+
         if(dev != NULL) {
                 /* disable hpd irq */
                 disable_irq_nosync(dev->hotplug_irq);
                 dev->hotplug_irq_enabled = 0;
-                schedule_work(&dev->tx_hotplug_handler);     
+                schedule_work(&dev->tx_hotplug_handler);
         }
-        
+
         return IRQ_HANDLED;
 }
 
@@ -195,39 +171,33 @@ static int hpd_init_interrupts(struct hpd_dev *dev)
                         }
                 }
         }
-        
+
         return ret;
 }
 
 
 
-int hpd_open(struct inode *inode, struct file *file)
+static int hpd_open(struct inode *inode, struct file *file)
 {
         int ret = -1;
         struct miscdevice *misc = (struct miscdevice *)(file!=NULL)?file->private_data:NULL;
         struct hpd_dev *hpd_dev = (struct hpd_dev *)(misc!=NULL)?dev_get_drvdata(misc->parent):NULL;
-        
+
         if(hpd_dev != NULL) {
-                file->private_data = hpd_dev;        
+                file->private_data = hpd_dev;
                 ret = 0;
         }
         return ret;
 }
 
-int hpd_release(struct inode *inode, struct file *file)
+static int hpd_release(struct inode *inode, struct file *file)
 {
         return 0;
 }
 
-ssize_t hpd_read(struct file *file, char __user *buffer, size_t count, loff_t *ppos)
+static ssize_t hpd_read(struct file *file, char __user *buffer, size_t count, loff_t *ppos)
 {
-        ssize_t retval = 0;
-        struct hpd_dev *dev = (struct hpd_dev *)(file!=NULL)?(struct hpd_dev *)file->private_data:NULL;
-
-        if(dev != NULL) {
-                retval = put_user(dev->hotplug_status, (int __user *) buffer);
-        }
-        return retval;
+        return 0;
 }
 
 /**
@@ -252,7 +222,7 @@ static int hpd_blank(struct hpd_dev *dev, int blank_mode)
 	int ret = -EINVAL;
         struct device *pdev = (dev!=NULL)?dev->pdev:NULL;
 
-        printk(KERN_INFO "[INFO][HDMI_V14] %s : blank(mode=%d)\n",__func__, blank_mode);
+        printk(KERN_INFO "[INFO][HDMI_V14]%s : blank(mode=%d)\n",__func__, blank_mode);
         if(pdev != NULL) {
                 #ifdef CONFIG_PM
         	switch(blank_mode)
@@ -264,8 +234,8 @@ static int hpd_blank(struct hpd_dev *dev, int blank_mode)
         			break;
         		case FB_BLANK_UNBLANK:
                                 if(pdev->power.usage_count.counter == 1) {
-                                /* 
-                                 * usage_count = 1 ( resume ), blank_mode = 0 ( FB_BLANK_UNBLANK ) means that 
+                                /*
+                                 * usage_count = 1 ( resume ), blank_mode = 0 ( FB_BLANK_UNBLANK ) means that
                                  * this driver is stable state when booting. don't call runtime_suspend or resume state  */
                                 } else {
                 	                pm_runtime_get_sync(dev->pdev);
@@ -283,40 +253,7 @@ static int hpd_blank(struct hpd_dev *dev, int blank_mode)
 	return ret;
 }
 
-
-int hpd_start(struct hpd_dev *dev)
-{
-        if(dev != NULL) {
-                dev->hotplug_irq_enable = 1;
-                if(dev->suspend) {
-                        printk(KERN_ERR "[ERROR][HDMI_V14]%s hpd is suspended\r\n", __func__);
-                } else {
-                        mutex_lock(&dev->mutex);
-                        dev->hotplug_real_status = gpio_get_value(dev->hotplug_gpio)?1:0;
-                        hpd_set_hotplug_interrupt(dev, dev->hotplug_irq_enable);
-                        mutex_unlock(&dev->mutex);
-                }
-        }
-        return 0;
-}
-
-int hpd_stop(struct hpd_dev *dev)
-{
-        if(dev != NULL) {
-                dev->hotplug_irq_enable = 0;
-                if(dev->suspend) {
-                        printk(KERN_ERR "[ERROR][HDMI_V14]%s hpd is suspended\r\n", __func__);
-                } else {
-                        mutex_lock(&dev->mutex);
-                        dev->hotplug_real_status = gpio_get_value(dev->hotplug_gpio)?1:0;
-                        hpd_set_hotplug_interrupt(dev, dev->hotplug_irq_enable);
-                        mutex_unlock(&dev->mutex);
-                }
-        }
-        return 0;
-}
-
-long hpd_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
+static long hpd_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 {
         long ret = -EINVAL;
 
@@ -324,12 +261,14 @@ long hpd_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 
         if(dev != NULL) {
                 switch (cmd) {
-                        case HPD_IOC_START:
-                        	ret = hpd_start(dev);
-                        	break;
-                        case HPD_IOC_STOP:
-                        	ret = hpd_stop(dev);
-                        	break;
+			case HPD_IOC_GET_STATUS:
+		                if(copy_to_user((void __user *)arg, &dev->hotplug_status, sizeof(int))) {
+		                        printk(KERN_ERR "[ERROR][HDMI_V14]%s failed copy_to_user at line(%d)\r\n", __func__, __LINE__);
+		                        break;
+		                }
+		                ret = 0;
+		                break;
+
                         case HPD_IOC_BLANK:
                                 {
                                 	unsigned int cmd;
@@ -346,6 +285,16 @@ long hpd_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 }
 
 
+int hpd_get_status(struct hpd_dev *dev)
+{
+        int hotplug_status = 0;
+        if(dev != NULL) {
+		hotplug_status = dev->hotplug_status;
+	}
+        return hotplug_status;
+}
+EXPORT_SYMBOL(hpd_get_status);
+
 
 #ifdef CONFIG_PM
 static int hpd_suspend(struct device *dev)
@@ -354,9 +303,9 @@ static int hpd_suspend(struct device *dev)
 
         if(hpd_dev != NULL) {
                 if(hpd_dev->runtime_suspend) {
-                        printk(KERN_INFO "[INFO][HDMI_V14] hpd_runtime_suspend\r\n");
+                        printk(KERN_INFO "[INFO][HDMI_V14]hpd_runtime_suspend\r\n");
                 } else {
-                        printk(KERN_INFO "[INFO][HDMI_V14] hpd_suspend\r\n");
+                        printk(KERN_INFO "[INFO][HDMI_V14]hpd_suspend\r\n");
                 }
 	        hpd_set_hotplug_interrupt(hpd_dev, 0);
         }
@@ -366,11 +315,11 @@ static int hpd_suspend(struct device *dev)
 static int hpd_resume(struct device *dev)
 {
         struct hpd_dev *hpd_dev = (struct hpd_dev *)(dev!=NULL)?dev_get_drvdata(dev):NULL;
-        printk(KERN_INFO "[INFO][HDMI_V14] hpd_resume\r\n");                        
+        printk(KERN_INFO "[INFO][HDMI_V14]hpd_resume\r\n");
         if(hpd_dev != NULL) {
                 hpd_dev->hotplug_real_status = gpio_get_value(hpd_dev->hotplug_gpio);
                 if(!hpd_dev->runtime_suspend) {
-                        hpd_set_hotplug_interrupt(hpd_dev, hpd_dev->hotplug_irq_enable);
+                        hpd_set_hotplug_interrupt(hpd_dev, 1);
                 }
         }
         return 0;
@@ -379,7 +328,7 @@ static int hpd_resume(struct device *dev)
 int hpd_runtime_suspend(struct device *dev)
 {
         struct hpd_dev *hpd_dev = (struct hpd_dev *)(dev!=NULL)?dev_get_drvdata(dev):NULL;
-        
+
         if(hpd_dev != NULL) {
                 hpd_dev->runtime_suspend = 1;
                 mutex_lock(&hpd_dev->mutex);
@@ -432,7 +381,7 @@ static const struct file_operations hpd_fops =
 static int hpd_remove(struct platform_device *pdev)
 {
         struct hpd_dev *dev = (struct hpd_dev *)(pdev!=NULL)?dev_get_drvdata(pdev->dev.parent):NULL;
-                        
+
         if(pdev != NULL) {
                 if(dev != NULL) {
                         hpd_deinit_interrupts(dev);
@@ -442,7 +391,7 @@ static int hpd_remove(struct platform_device *pdev)
                         }
                 }
                 devm_kfree(dev->pdev, dev);
-        }        
+        }
         return 0;
 }
 
@@ -451,7 +400,7 @@ static int hpd_probe(struct platform_device *pdev)
         int ret = -ENOMEM;
         struct hpd_dev *dev = NULL;
         do {
-                printk(KERN_INFO "[INFO][HDMI_V14] %s: HDMI HPD driver %s\n", __func__, VERSION);
+                printk(KERN_INFO "[INFO][HDMI_V14]%s: HDMI HPD driver %s\n", __func__, VERSION);
                 dev = devm_kzalloc(&pdev->dev, sizeof(struct hpd_dev), GFP_KERNEL);
                 if (dev == NULL) {
                         break;
@@ -461,7 +410,7 @@ static int hpd_probe(struct platform_device *pdev)
 
                 mutex_init(&dev->mutex);
                 dev_set_drvdata(dev->pdev, dev);
-                
+
                 // wait queue of poll
                 init_waitqueue_head(&dev->poll_wq);
 
@@ -481,23 +430,24 @@ static int hpd_probe(struct platform_device *pdev)
                         break;
                 }
                 #ifdef CONFIG_PM
-                pm_runtime_set_active(dev->pdev);	
-                pm_runtime_enable(dev->pdev);  
-                pm_runtime_get_noresume(dev->pdev);  //increase usage_count 
+                pm_runtime_set_active(dev->pdev);
+                pm_runtime_enable(dev->pdev);
+                pm_runtime_get_noresume(dev->pdev);  //increase usage_count
                 #endif
 
+                hpd_api_register_dev(dev);
                 ret = 0;
         } while(0);
 
         if(ret < 0) {
                 hpd_remove(pdev);
         }
-        
+
         return ret;
 }
 
 
-/** 
+/**
  * @short of_device_id structure
  */
  static const struct of_device_id hdp_dev_match[] = {
@@ -515,7 +465,7 @@ static const struct dev_pm_ops hpd_pm_ops = {
 };
 #endif
 
-/** 
+/**
  * @short Platform driver structure
  */
 static struct platform_driver __refdata tcc_hdmi_hpd = {

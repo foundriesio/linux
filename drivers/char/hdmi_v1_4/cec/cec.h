@@ -1,8 +1,20 @@
-// SPDX-License-Identifier: GPL-2.0-or-later
-/*
- * Copyright (C) Telechips Inc.
- */
+/****************************************************************************
+Copyright (C) 2018 Telechips Inc.
 
+This program is free software; you can redistribute it and/or modify it under the terms
+of the GNU General Public License as published by the Free Software Foundation;
+either version 2 of the License, or (at your option) any later version.
+
+This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
+PURPOSE. See the GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License along with
+this program; if not, write to the Free Software Foundation, Inc., 59 Temple Place,
+Suite 330, Boston, MA 02111-1307 USA
+
+@note Tab size is 8
+****************************************************************************/
 #ifndef __TCC_HDMI_CEC_H__
 #define __TCC_HDMI_CEC_H__
 
@@ -30,34 +42,28 @@ struct cec_tx_struct {
 };
 
 struct tcc_hdmi_cec_dev {
-        unsigned int open_cnt;
         struct device *pdev;
 
         /* HDMI CEC Clock */
         struct clk *pclk;
-        struct clk *hclk;
-        struct clk *ipclk;
+	unsigned int pclk_freq;
 
         struct miscdevice *misc;
 
         int cec_irq;
-        
+
         unsigned int suspend;
         unsigned int runtime_suspend;
         /* it is indicate to cec driver was resume */
         unsigned int resume;
-       
-        /** Register interface */
-        volatile void __iomem   *hdmi_ctrl_io;
-        volatile void __iomem   *hdmi_cec_io;
 
-        volatile unsigned long  status;
+        /** Register interface */
+        volatile void __iomem   *hdmi_cec_io;
 
         struct cec_rx_struct rx;
         struct cec_tx_struct tx;
 
-        /* CEC Input Device Interface */
-        struct input_dev *fake_ir_dev;  
+        int enable_cnt;
 };
 
 #endif /* __TCC_HDMI_CEC_H__ */

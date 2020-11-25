@@ -15,13 +15,21 @@ Suite 330, Boston, MA 02111-1307 USA
 
 @note Tab size is 8
 ****************************************************************************/
-#ifndef _LINUX_HPD_H_
-#define _LINUX_HPD_H_
+#ifndef __OUTPUT_STARTER_HDMI_H__
+#define __OUTPUT_STARTER_HDMI_H__
 
-#define HPD_IOC_MAGIC        'p'
+#define HDMI_VIDEO_MODE_VIC     16
+#define HDMI_VIDEO_MODE_HZ      60000
+#define HDMI_VIDEO_DEPTH        8
 
-#define HPD_IOC_GET_STATUS	_IOR(HPD_IOC_MAGIC,0x00, int)
-#define HPD_IOC_BLANK	 	_IOW(HPD_IOC_MAGIC,0x50, unsigned int)
+#define HDMI_IMG_WIDTH          1920
+#define HDMI_IMG_HEIGHT         1080
+#define HDMI_VIDEO_FORMAT       YCC444
 
+int tcc_output_starter_parse_hdmi_dt(struct device_node *np);
+int tcc_output_starter_hdmi_v1_4(unsigned int display_device, volatile void __iomem *pRDMA, volatile void __iomem *pDISP);
+int tcc_output_starter_hdmi_disable(void);
+int tcc_hdmi_detect_cable(void);
 
-#endif /* _LINUX_HPD_H_ */
+#endif //__OUTPUT_STARTER_HDMI_H__
+

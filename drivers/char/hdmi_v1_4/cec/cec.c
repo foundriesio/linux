@@ -1,7 +1,21 @@
-// SPDX-License-Identifier: GPL-2.0-or-later
-/*
- * Copyright (C) Telechips Inc.
- */
+/****************************************************************************
+Copyright (C) 2018 Telechips Inc.
+
+This program is free software; you can redistribute it and/or modify it under the terms
+of the GNU General Public License as published by the Free Software Foundation;
+either version 2 of the License, or (at your option) any later version.
+
+This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
+PURPOSE. See the GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License along with
+this program; if not, write to the Free Software Foundation, Inc., 59 Temple Place,
+Suite 330, Boston, MA 02111-1307 USA
+
+@note Tab size is 8
+****************************************************************************/
+#define pr_fmt(fmt) "\x1b[1;38m CEC: \x1b[0m" fmt
 
 #include <linux/module.h>
 #include <linux/kernel.h>
@@ -37,26 +51,15 @@
 #include <regs-cec.h>
 #include <cec.h>
 #include <hdmi_1_4_cec.h>
-#include <tcc_cec_interface.h>
 
-#define CEC_DEBUG 0
+#define HDMI_CEC_DEBUG 0
+#define dpr_info(msg, ...) if(HDMI_CEC_DEBUG) { printk(KERN_INFO "[INFO][HDMI_V14] " msg, ##__VA_ARGS__); }
 
-#if CEC_DEBUG
-#define DPRINTK(...) printk(KERN_INFO "[INFO][HDMI_V14]" __VA_ARGS__)
-#else
-#define DPRINTK(...)
-#endif
-
-#define HDMI_MSG_DEBUG 1
-
+#define HDMI_MSG_DEBUG 0
 #define HDMI_IOCTL_DEBUG 0
-#if HDMI_IOCTL_DEBUG 
-#define io_debug(...) printk(KERN_INFO "[INFO][HDMI_V14]" __VA_ARGS__)
-#else
-#define io_debug(...)
-#endif
+#define dpr_io_info(msg, ...) if(HDMI_IOCTL_DEBUG) { printk(KERN_INFO "[INFO][HDMI_V14] "msg, ##__VA_ARGS__); }
 
-#define SRC_VERSION                     "4.14_1.0.1" /* Driver version number */
+#define SRC_VERSION                     "4.4_1.0.2b" /* Driver version number */
 
 #define CEC_MESSAGE_BROADCAST_MASK      0x0F
 #define CEC_MESSAGE_BROADCAST           0x0F
@@ -79,77 +82,96 @@ enum cec_state {
 static char msg_debug[200];
 #endif
 
-extern int hdmi_api_get_power_status(void);
-
 static unsigned int cec_reg_read(struct tcc_hdmi_cec_dev *dev, unsigned offset){
         unsigned int val = 0;
         volatile void __iomem *hdmi_io = NULL;
-        
-        if(offset & 0x3){
-                return val;
-        }
-       
-        if(dev != NULL) {
-                if(offset >= HDMIDP_PHYREG(0)) {
-                        printk(KERN_ERR "[ERROR][HDMI_V14]%s output range at line(%d)\r\n", __func__, __LINE__);
-                } else if(offset >= HDMIDP_CECREG(0)) {
-                        hdmi_io = (volatile void __iomem *)dev->hdmi_cec_io;
-                        offset -= HDMIDP_CECREG(0);
-                } else if(offset >= HDMIDP_I2SREG(0)) {
-                        printk(KERN_ERR "[ERROR][HDMI_V14]%s output range at line(%d)\r\n", __func__, __LINE__);
-                } else if(offset >= HDMIDP_SPDIFREG(0)) {
-                        printk(KERN_ERR "[ERROR][HDMI_V14]%s output range at line(%d)\r\n", __func__, __LINE__);
-                } else if(offset >= HDMIDP_AESREG(0)) {
-                        printk(KERN_ERR "[ERROR][HDMI_V14]%s output range at line(%d)\r\n", __func__, __LINE__);
-                } else if(offset >= HDMIDP_HDMIREG(0)) {
-                        printk(KERN_ERR "[ERROR][HDMI_V14]%s output range at line(%d)\r\n", __func__, __LINE__);
-                } else if(offset >= HDMIDP_HDMI_SSREG(0)) { 
-                        hdmi_io = (volatile void __iomem *)dev->hdmi_ctrl_io;
-                        offset -= HDMIDP_HDMI_SSREG(0);
-                }
-        }
 
-        if(hdmi_io == NULL) {
-                printk(KERN_ERR "[ERROR][HDMI_V14]%s hdmi_io is NULL at offset(0x%x)\r\n", __func__, offset);
-        } else {
-                //printk(KERN_INFO "[INFO][HDMI_V14]  >> Read (%p)\r\n", (void*)(hdmi_io + offset));
+	do {
+		if(offset & 0x3){
+                	break;
+		}
+
+		if(dev == NULL) {
+			printk(KERN_ERR "[ERROR][HDMI_V14]%s dev is NULL\r\n", __func__);
+			break;
+		}
+
+		if(dev->enable_cnt == 0) {
+			//printk(KERN_ERR "[ERROR][HDMI_V14]%s cec is not started(%d)\r\n", __func__, __LINE__);
+	                break;
+		}
+
+		if(offset >= HDMIDP_PHYREG(0)) {
+			printk(KERN_ERR "[ERROR][HDMI_V14]%s output range at line(%d)\r\n", __func__, __LINE__);
+		} else if(offset >= HDMIDP_CECREG(0)) {
+			hdmi_io = (volatile void __iomem *)dev->hdmi_cec_io;
+			offset -= HDMIDP_CECREG(0);
+		} else if(offset >= HDMIDP_I2SREG(0)) {
+			printk(KERN_ERR "[ERROR][HDMI_V14]%s output range at line(%d)\r\n", __func__, __LINE__);
+		} else if(offset >= HDMIDP_SPDIFREG(0)) {
+			printk(KERN_ERR "[ERROR][HDMI_V14]%s output range at line(%d)\r\n", __func__, __LINE__);
+		} else if(offset >= HDMIDP_AESREG(0)) {
+			printk(KERN_ERR "[ERROR][HDMI_V14]%s output range at line(%d)\r\n", __func__, __LINE__);
+		} else if(offset >= HDMIDP_HDMIREG(0)) {
+			printk(KERN_ERR "[ERROR][HDMI_V14]%s output range at line(%d)\r\n", __func__, __LINE__);
+		} else if(offset >= HDMIDP_HDMI_SSREG(0)) {
+			printk(KERN_ERR "[ERROR][HDMI_V14]%s output range at line(%d)\r\n", __func__, __LINE__);
+		}
+
+		if(hdmi_io == NULL) {
+			printk(KERN_ERR "[ERROR][HDMI_V14]%s hdmi_io is NULL at offset(0x%x)\r\n", __func__, offset);
+			break;
+		}
+
+                //printk(KERN_INFO "[INFO][HDMI_V14] >> Read (%p)\r\n", (void*)(hdmi_io + offset));
                 val = ioread32((void*)(hdmi_io + offset));
-        }
+	}while(0);
         return val;
 }
 
 static void cec_reg_write(struct tcc_hdmi_cec_dev *dev, unsigned int data, unsigned offset){
         volatile void __iomem *hdmi_io = NULL;
 
-        if(offset & 0x3){
-                return;
-        }
-       
-        if(dev != NULL) {
-                if(offset >= HDMIDP_PHYREG(0)) {
-                        printk(KERN_ERR "[ERROR][HDMI_V14]%s output range at line(%d)\r\n", __func__, __LINE__);
-                } else if(offset >= HDMIDP_CECREG(0)) {
-                        hdmi_io = (volatile void __iomem *)dev->hdmi_cec_io;
-                        offset -= HDMIDP_CECREG(0);
-                } else if(offset >= HDMIDP_I2SREG(0)) {
-                        printk(KERN_ERR "[ERROR][HDMI_V14]%s output range at line(%d)\r\n", __func__, __LINE__);
-                } else if(offset >= HDMIDP_SPDIFREG(0)) {
-                        printk(KERN_ERR "[ERROR][HDMI_V14]%s output range at line(%d)\r\n", __func__, __LINE__);
-                } else if(offset >= HDMIDP_AESREG(0)) {
-                        printk(KERN_ERR "[ERROR][HDMI_V14]%s output range at line(%d)\r\n", __func__, __LINE__);
-                } else if(offset >= HDMIDP_HDMIREG(0)) {
-                        printk(KERN_ERR "[ERROR][HDMI_V14]%s output range at line(%d)\r\n", __func__, __LINE__);
-                } else if(offset >= HDMIDP_HDMI_SSREG(0)) { 
-                        hdmi_io = (volatile void __iomem *)dev->hdmi_ctrl_io;
-                        offset -= HDMIDP_HDMI_SSREG(0);
-                }
-        }
-        if(hdmi_io == NULL) {
-                printk(KERN_ERR "[ERROR][HDMI_V14]%s hdmi_io is NULL at offset(0x%x)\r\n", __func__, offset);
-        } else {
-                //printk(KERN_INFO "[INFO][HDMI_V14]  >> Write(%p) = 0x%x\r\n", (void*)(hdmi_io + offset), data);
+	do {
+		if(offset & 0x3){
+                	break;
+		}
+
+		if(dev == NULL) {
+			printk(KERN_ERR "[ERROR][HDMI_V14]%s dev is NULL\r\n", __func__);
+			break;
+		}
+
+		if(dev->enable_cnt == 0) {
+			//printk(KERN_ERR "[ERROR][HDMI_V14]%s cec is not started(%d)\r\n", __func__, __LINE__);
+	                break;
+		}
+
+		if(offset >= HDMIDP_PHYREG(0)) {
+			printk(KERN_ERR "[ERROR][HDMI_V14]%s output range at line(%d)\r\n", __func__, __LINE__);
+		} else if(offset >= HDMIDP_CECREG(0)) {
+			hdmi_io = (volatile void __iomem *)dev->hdmi_cec_io;
+			offset -= HDMIDP_CECREG(0);
+		} else if(offset >= HDMIDP_I2SREG(0)) {
+			printk(KERN_ERR "[ERROR][HDMI_V14]%s output range at line(%d)\r\n", __func__, __LINE__);
+		} else if(offset >= HDMIDP_SPDIFREG(0)) {
+			printk(KERN_ERR "[ERROR][HDMI_V14]%s output range at line(%d)\r\n", __func__, __LINE__);
+		} else if(offset >= HDMIDP_AESREG(0)) {
+			printk(KERN_ERR "[ERROR][HDMI_V14]%s output range at line(%d)\r\n", __func__, __LINE__);
+		} else if(offset >= HDMIDP_HDMIREG(0)) {
+			printk(KERN_ERR "[ERROR][HDMI_V14]%s output range at line(%d)\r\n", __func__, __LINE__);
+		} else if(offset >= HDMIDP_HDMI_SSREG(0)) {
+			printk(KERN_ERR "[ERROR][HDMI_V14]%s output range at line(%d)\r\n", __func__, __LINE__);
+		}
+
+		if(hdmi_io == NULL) {
+			printk(KERN_ERR "[ERROR][HDMI_V14]%s hdmi_io is NULL at offset(0x%x)\r\n", __func__, offset);
+			break;
+		}
+
+                //printk(KERN_INFO "[INFO][HDMI_V14] >> Write(%p) = 0x%x\r\n", (void*)(hdmi_io + offset), data);
                 iowrite32(data, (void*)(hdmi_io + offset));
-        }
+        }while(0);
 }
 
 
@@ -173,13 +195,13 @@ static int cec_blank(struct tcc_hdmi_cec_dev *dev, int blank_mode)
 {
         int ret = -EINVAL;
         struct device *pdev = NULL;
-        
-        printk(KERN_INFO "[INFO][HDMI_V14] %s : blank(mode=%d)\n",__func__, blank_mode);
-        
+
+        printk(KERN_INFO "[INFO][HDMI_V14]%s : blank(mode=%d)\n",__func__, blank_mode);
+
         if(dev != NULL) {
                 pdev = dev->pdev;
         }
-        
+
         if(pdev != NULL) {
         #ifdef CONFIG_PM
                 switch(blank_mode) {
@@ -190,8 +212,8 @@ static int cec_blank(struct tcc_hdmi_cec_dev *dev, int blank_mode)
                                 break;
                         case FB_BLANK_UNBLANK:
                                 if(pdev->power.usage_count.counter == 1) {
-                                /* 
-                                 * usage_count = 1 ( resume ), blank_mode = 0 ( FB_BLANK_UNBLANK ) means that 
+                                /*
+                                 * usage_count = 1 ( resume ), blank_mode = 0 ( FB_BLANK_UNBLANK ) means that
                                  * this driver is stable state when booting. don't call runtime_suspend or resume state  */
                                 } else {
                                         pm_runtime_get_sync(dev->pdev);
@@ -229,47 +251,23 @@ static void cec_set_divider(struct tcc_hdmi_cec_dev *dev)
                         printk(KERN_ERR "[ERROR][HDMI_V14]%s dev is NULL\r\n", __func__);
                         break;
                 }
-                if(dev->ipclk == NULL) {
-                        printk(KERN_ERR "[ERROR][HDMI_V14]%s ipclk is NULL\r\n", __func__);
+                if(dev->pclk == NULL) {
+                        printk(KERN_ERR "[ERROR][HDMI_V14]%s pclk is NULL\r\n", __func__);
                         break;
                 }
-        	source_bus_clk = clk_get_rate(dev->ipclk);
-        	DPRINTK("cec src clk = %dmhz\n", source_bus_clk);
-                
+        	source_bus_clk = clk_get_rate(dev->pclk);
+        	dpr_info("cec src clk = %dmhz\n", source_bus_clk);
+
         	source_bus_clk = source_bus_clk/(1000*1000);
         	div = source_bus_clk * 50 - 1;
 
-        	DPRINTK("cec divisor = %d\n", div);
+        	dpr_info("cec divisor = %d\n", div);
 
         	cec_reg_write(dev, ((div>>24) & 0xff), CEC_DIVISOR_3);
         	cec_reg_write(dev, ((div>>16) & 0xff), CEC_DIVISOR_2);
         	cec_reg_write(dev, ((div>> 8) & 0xff), CEC_DIVISOR_1);
         	cec_reg_write(dev, ((div>> 0) & 0xff), CEC_DIVISOR_0);
         }while(0);
-}
-
-/**
- * Enable CEC interrupts
- */
-static void cec_enable_interrupts(struct tcc_hdmi_cec_dev *dev)
-{
-        unsigned int reg;
-        if(dev != NULL) {
-                reg = cec_reg_read(dev, HDMI_SS_INTC_CON);
-                cec_reg_write(dev, reg | (1<<HDMI_IRQ_CEC) | (1<<HDMI_IRQ_GLOBAL), HDMI_SS_INTC_CON);
-        }
-}
-
-/**
- * Disable CEC interrupts
- */
-static void cec_disable_interrupts(struct tcc_hdmi_cec_dev *dev)
-{
-        unsigned int reg;
-        if(dev != NULL) {
-                reg = cec_reg_read(dev, HDMI_SS_INTC_CON);
-                cec_reg_write(dev, reg & ~(1<<HDMI_IRQ_CEC), HDMI_SS_INTC_CON);
-        }
 }
 
 /**
@@ -369,55 +367,96 @@ static void cec_set_rx_state(struct tcc_hdmi_cec_dev *dev, enum cec_state state)
                 atomic_set(&dev->rx.state, state);
         }
 }
-static void cec_start(struct tcc_hdmi_cec_dev *dev)
+static int cec_start(struct tcc_hdmi_cec_dev *dev)
 {
-        DPRINTK( "%s\n", __func__);
+	int ret = -1;
 
-        if(dev != NULL) { 
-                cec_reg_write(dev, CEC_RX_CTRL_RESET, CEC_RX_CTRL); // reset CEC Rx
-                cec_reg_write(dev, CEC_TX_CTRL_RESET, CEC_TX_CTRL); // reset CEC Tx
+        dpr_info( "%s\n", __func__);
 
-                cec_set_divider(dev);
+	do {
+		if(dev == NULL) {
+			printk(KERN_ERR "[ERROR][HDMI_V14]%s dev is NULL\r\n", __func__);
+			break;
+		}
+		if(IS_ERR_OR_NULL(dev->pclk)) {
+			printk(KERN_ERR "[ERROR][HDMI_V14]%s cec clock is NULL\r\n", __func__);
+			break;
+		}
 
-                //enable filter
-                cec_reg_write(dev, CEC_FILTER_THRESHOLD, CEC_RX_FILTER_TH); // setup filter
-                cec_reg_write(dev, CEC_FILTER_EN, CEC_RX_FILTER_CTRL);
+		if(++dev->enable_cnt == 1) {
+			if(dev->suspend) {
+				printk(KERN_INFO "[INFO][HDMI_V14]%s cec is suspend .. skip \r\n", __func__);
+				break;
+			}
+			dpr_info("%s start..!!\r\n", __func__);
+			clk_set_rate(dev->pclk, dev->pclk_freq);
+        		clk_prepare_enable(dev->pclk);
 
-                cec_enable_interrupts(dev);
+	                cec_reg_write(dev, CEC_RX_CTRL_RESET, CEC_RX_CTRL); // reset CEC Rx
+	                cec_reg_write(dev, CEC_TX_CTRL_RESET, CEC_TX_CTRL); // reset CEC Tx
 
-                cec_unmask_tx_interrupts(dev);
+	                cec_set_divider(dev);
 
-                cec_set_rx_state(dev, STATE_RX);
-                cec_unmask_rx_interrupts(dev);
-                cec_enable_rx(dev);
+	                //enable filter
+	                cec_reg_write(dev, CEC_FILTER_THRESHOLD, CEC_RX_FILTER_TH); // setup filter
+	                cec_reg_write(dev, CEC_FILTER_EN, CEC_RX_FILTER_CTRL);
 
-                dev->rx.flag = 0;
-        }
+	                cec_unmask_tx_interrupts(dev);
+
+	                cec_set_rx_state(dev, STATE_RX);
+	                cec_unmask_rx_interrupts(dev);
+	                cec_enable_rx(dev);
+
+	                dev->rx.flag = 0;
+		}
+		ret = 0;
+        }while(0);
+
+	return ret;
 }
 
-static void cec_stop(struct tcc_hdmi_cec_dev *dev)
+static int cec_stop(struct tcc_hdmi_cec_dev *dev)
 {
-        u32 status;
+	int ret = -1;
+        unsigned int status;
         unsigned int wait_cnt = 0;
 
-        DPRINTK( "%s\n", __func__);
-        if(dev != NULL) {
-                do {
-                        status = cec_reg_read(dev, CEC_STATUS_0);
-                        status |= cec_reg_read(dev, CEC_STATUS_1) << 8;
-                        status |= cec_reg_read(dev, CEC_STATUS_2) << 16;
-                        status |= cec_reg_read(dev, CEC_STATUS_3) << 24;
+        dpr_info( "%s\n", __func__);
+	do {
+		if(dev == NULL) {
+			printk(KERN_ERR "[ERROR][HDMI_V14]%s dev is NULL\r\n", __func__);
+			break;
+		}
+		if(IS_ERR_OR_NULL(dev->pclk)) {
+			printk(KERN_ERR "[ERROR][HDMI_V14]%s cec clock is NULL\r\n", __func__);
+			break;
+		}
 
-                        udelay(1000);
-                        wait_cnt++;
-                }while(status & CEC_STATUS_TX_RUNNING);
+		if(dev->enable_cnt == 1) {
+			do {
+	                        status = cec_reg_read(dev, CEC_STATUS_0);
+	                        status |= cec_reg_read(dev, CEC_STATUS_1) << 8;
+	                        status |= cec_reg_read(dev, CEC_STATUS_2) << 16;
+	                        status |= cec_reg_read(dev, CEC_STATUS_3) << 24;
 
-                cec_mask_tx_interrupts(dev);
-                cec_mask_rx_interrupts(dev);
-                cec_disable_interrupts(dev);
-        }
-        printk(KERN_INFO "[INFO][HDMI_V14] %s : wait_cnt = %d\n", __func__, wait_cnt);
+	                        udelay(1000);
+	                        wait_cnt++;
+	                }while(status & CEC_STATUS_TX_RUNNING);
 
+			dpr_info("%s : wait_cnt = %d\n", __func__, wait_cnt);
+	                cec_mask_tx_interrupts(dev);
+	                cec_mask_rx_interrupts(dev);
+
+			clk_disable_unprepare(dev->pclk);
+			dev->enable_cnt = 0;
+		} else {
+			if(dev->enable_cnt > 1) {
+				dev->enable_cnt--;
+			}
+		}
+		ret = 0;
+	} while(0);
+	return ret;
 }
 
 /**
@@ -428,25 +467,15 @@ static void cec_stop(struct tcc_hdmi_cec_dev *dev)
  */
 static irqreturn_t cec_irq_handler(int irq, void *dev_id)
 {
-        unsigned int flag, val, status;
-    
-        #if (CEC_DEBUG)
+        unsigned int val, status;
+
+        #if (HDMI_CEC_DEBUG)
         unsigned int tx_stat, rx_stat;
         #endif
 
         struct tcc_hdmi_cec_dev *dev =  (struct tcc_hdmi_cec_dev *)dev_id;
 
         if(dev != NULL) {
-                /* read flag register */
-                flag = cec_reg_read(dev, HDMI_SS_INTC_FLAG);
-
-                DPRINTK( "%s flag = 0x%08x\n", __func__, flag);
-
-                /* is this our interrupt? */
-                if (!(flag & (1<<HDMI_IRQ_CEC))) {
-                        return IRQ_NONE;
-                }
-
                 val = cec_reg_read(dev, CEC_STATUS_0);
                 status = val & 0xFF;
                 val = cec_reg_read(dev, CEC_STATUS_1);
@@ -456,24 +485,23 @@ static irqreturn_t cec_irq_handler(int irq, void *dev_id)
                 val = cec_reg_read(dev, CEC_STATUS_3);
                 status |= ((val & 0xFF) << 24);
 
-                #if (CEC_DEBUG)
+                #if (HDMI_CEC_DEBUG)
                 val = cec_reg_read(dev, CEC_TX_STAT0);
                 tx_stat = val & 0xFF;
                 val = cec_reg_read(dev, CEC_TX_STAT1);
                 tx_stat |= ((val & 0xFF) << 8);
 
-                //      DPRINTK( "CEC: status = 0x%x!\n", status);
-                DPRINTK( "CEC: status = 0x%x! [0x%x] \n", status, tx_stat);
+                dpr_info( "IRQ status = 0x%x! [0x%x] \n", status, tx_stat);
                 #endif
 
                 if (status & CEC_STATUS_TX_DONE) {
                         if (status & CEC_STATUS_TX_ERROR) {
-                                DPRINTK( "CEC: CEC_STATUS_TX_ERROR!\n");
+                                dpr_info( "IRQ CEC_STATUS_TX_ERROR!\n");
                                 cec_reg_write(dev, CEC_TX_CTRL_RESET, CEC_TX_CTRL); // reset CEC Tx
 
                                 cec_set_tx_state(dev, STATE_ERROR);
                         } else {
-                                DPRINTK( "CEC: CEC_STATUS_TX_DONE!\n");
+                                dpr_info( "IRQ CEC_STATUS_TX_DONE!\n");
                                 cec_set_tx_state(dev, STATE_DONE);
                         }
                         /* clear interrupt pending bit */
@@ -484,17 +512,17 @@ static irqreturn_t cec_irq_handler(int irq, void *dev_id)
 
                 if (status & CEC_STATUS_RX_ERROR) {
                         if (status & CEC_STATUS_RX_DONE) {
-                                DPRINTK( "CEC: CEC_STATUS_RX_DONE!\n");
+                                dpr_info( "IRQ CEC_STATUS_RX_DONE!\n");
                         }
-                        DPRINTK( "CEC: CEC_STATUS_RX_ERROR!\n");
+                        dpr_info( "IRQ CEC_STATUS_RX_ERROR!\n");
 
-                        #if (CEC_DEBUG)
+                        #if (HDMI_CEC_DEBUG)
                         val = cec_reg_read(dev, CEC_RX_STAT0);
                         rx_stat = val & 0xFF;
                         val = cec_reg_read(dev, CEC_RX_STAT1);
                         rx_stat |= ((val & 0xFF) << 8);
 
-                        DPRINTK( "CEC: rx_status = 0x%x\n", rx_stat);
+                        dpr_info( "IRQ rx_status = 0x%x\n", rx_stat);
                         #endif
 
                         cec_set_rx_state(dev, STATE_ERROR);
@@ -502,11 +530,11 @@ static irqreturn_t cec_irq_handler(int irq, void *dev_id)
                         /* clear interrupt pending bit */
                         cec_reg_write(dev, CEC_IRQ_RX_ERROR, CEC_IRQ_CLEAR);
                 }
-                
+
                 if (status & CEC_STATUS_RX_DONE) {
                         unsigned int size, i = 0;
 
-                        DPRINTK( "CEC: CEC_STATUS_RX_DONE!\n");
+                        dpr_info( "IRQ CEC_STATUS_RX_DONE!\n");
 
                         /* copy data from internal buffer */
                         size = status >> 24;
@@ -519,15 +547,13 @@ static irqreturn_t cec_irq_handler(int irq, void *dev_id)
                         }
 
                         if (size > 0) {
-                                DPRINTK( "fsize: %d ", size);
-                                DPRINTK( "frame: ");
+                                dpr_info( "fsize: %d ", size);
+                                dpr_info( "frame: ");
                                 for (i = 0; i < size; i++) {
-                                        DPRINTK( "0x%02x ", dev->rx.buffer[i]);
+                                        dpr_info( "0x%02x ", dev->rx.buffer[i]);
                                 }
-                                DPRINTK( "End ~\n");
+                                dpr_info( "End ~\n");
                         }
-
-                        TccCECInterface_ParseMessage(dev, size);
 
                         dev->rx.size = size;
                         cec_set_rx_state(dev, STATE_DONE);
@@ -542,7 +568,7 @@ static irqreturn_t cec_irq_handler(int irq, void *dev_id)
                         wake_up_interruptible(&dev->rx.waitq);
                 }
 
-                
+
         }
         return IRQ_HANDLED;
 }
@@ -550,40 +576,25 @@ static irqreturn_t cec_irq_handler(int irq, void *dev_id)
 
 static int cec_open(struct inode *inode, struct file *file)
 {
-
-        int ret = -1;
-        
         struct miscdevice *misc = (struct miscdevice *)(file!=NULL)?file->private_data:NULL;
         struct tcc_hdmi_cec_dev *dev = (struct tcc_hdmi_cec_dev *)(misc!=NULL)?dev_get_drvdata(misc->parent):NULL;
-        if(dev != NULL) {
-                file->private_data = dev;  
-        
-                if(dev->hclk != NULL)
-                        clk_prepare_enable(dev->hclk);
-                if(dev->pclk != NULL)
-                        clk_prepare_enable(dev->pclk);
-                ret = 0;
-        }
-        
-        return ret;
+
+	if(file != NULL) {
+		file->private_data = dev;
+	}
+
+	return 0;
 }
 
 int cec_release(struct inode *inode, struct file *file)
 {
+	/*
         int ret = -1;
         struct tcc_hdmi_cec_dev *dev = (struct tcc_hdmi_cec_dev *)(file!=NULL)?file->private_data:NULL;
-
-        if(dev != NULL) {
-                if(dev->pclk != NULL)
-                        clk_disable_unprepare(dev->pclk);
-                if(dev->hclk != NULL)
-                        clk_disable_unprepare(dev->hclk);
-                ret = 0;
-        }
-
-        return ret;
+	*/
+	return 0;
 }
-        
+
 ssize_t cec_read(struct file *file, char __user *buffer, size_t count, loff_t *ppos)
 {
         ssize_t ret = -1;
@@ -595,8 +606,13 @@ ssize_t cec_read(struct file *file, char __user *buffer, size_t count, loff_t *p
                         break;
                 }
 
+		if(dev->enable_cnt == 0) {
+			printk(KERN_ERR "[ERROR][HDMI_V14]%s cec is not started(%d)\r\n", __func__, __LINE__);
+                        break;
+		}
+
                 if (atomic_read(&dev->rx.state) == STATE_ERROR) {
-                        pr_err( "%s end, because of RX error\n", __func__);
+                        printk(KERN_ERR "[ERROR][HDMI_V14] %s end, because of RX error\n", __func__);
                         break;
                 }
 
@@ -632,11 +648,11 @@ ssize_t cec_read(struct file *file, char __user *buffer, size_t count, loff_t *p
                                 len+= sprintf(msg_debug+len, "[%02x] ", dev->rx.buffer[loop]);
                         }
                         msg_debug[len] = 0;
-                        printk(KERN_INFO "[INFO][HDMI_V14] %s\r\n", msg_debug);
+                        printk(KERN_INFO "[INFO][HDMI_V14]%s\r\n", msg_debug);
                 }
                 #endif
 
-                DPRINTK( "%s end\n", __func__);
+                dpr_info( "%s end\n", __func__);
         } while(0);
 
         return ret;
@@ -645,6 +661,7 @@ ssize_t cec_read(struct file *file, char __user *buffer, size_t count, loff_t *p
 ssize_t cec_write(struct file *file, const char __user *buffer, size_t count, loff_t *ppos)
 {
         int i;
+	int timeout_ms;
         unsigned int reg;
 
         struct tcc_hdmi_cec_dev *dev = (struct tcc_hdmi_cec_dev *)(file !=NULL)?file->private_data:NULL;
@@ -656,15 +673,23 @@ ssize_t cec_write(struct file *file, const char __user *buffer, size_t count, lo
                         break;
                 }
 
-                /* check data size */
-                if (count > CEC_TX_BUFF_SIZE || count == 0) {
-                        printk(KERN_ERR "[ERROR][HDMI_V14]%s count is inavlid at line(%d)\r\n", __func__, __LINE__);
+		if(dev->enable_cnt == 0) {
+			printk(KERN_ERR "[ERROR][HDMI_V14]%s cec is not started(%d)\r\n", __func__, __LINE__);
                         count = 0;
+                        break;
+		}
+
+		/* check data size */
+                if (count == 0) {
+                        printk(KERN_ERR "[ERROR][HDMI_V14]%s count is inavlid at line(%d)\r\n", __func__, __LINE__);
                         break;
                 }
 
-                if (copy_from_user(dev->tx.buffer, buffer, count))
-                {
+                if (count > CEC_TX_BUFF_SIZE) {
+			count = CEC_TX_BUFF_SIZE;
+                }
+
+                if (copy_from_user(dev->tx.buffer, buffer, count)) {
                         printk(KERN_ERR "[ERROR][HDMI_V14]%s copy_from_user is failed at line(%d)\r\n", __func__, __LINE__);
                         count = 0;
                         break;
@@ -678,14 +703,14 @@ ssize_t cec_write(struct file *file, const char __user *buffer, size_t count, lo
                                 len += sprintf(msg_debug+len, "[%02x] ", dev->tx.buffer[loop]);
                         }
                         msg_debug[len] = 0;
-                        printk(KERN_INFO "[INFO][HDMI_V14] %s\r\n", msg_debug);
+                        printk(KERN_INFO "[INFO][HDMI_V14]%s\r\n", msg_debug);
                 }
                 #endif
 
                 /* clear interrupt pending bit */
                 reg = CEC_IRQ_TX_DONE | CEC_IRQ_TX_ERROR;
                 cec_reg_write(dev, reg, CEC_IRQ_CLEAR);
-                
+
                 /* copy packet to hardware buffer */
                 for(i = 0; i < count; i++) {
                         reg = (unsigned int)(dev->tx.buffer[i] & 0xFF);
@@ -699,35 +724,43 @@ ssize_t cec_write(struct file *file, const char __user *buffer, size_t count, lo
                 cec_set_tx_state(dev, STATE_TX);
 
                 /* start transfer */
-                reg = cec_reg_read(dev, CEC_TX_CTRL);
-                reg |= CEC_TX_CTRL_START;
-                
+		reg = CEC_TX_CTRL_START;
+
                 /* if message is broadcast message - set corresponding bit */
                 if ((dev->tx.buffer[0] & CEC_MESSAGE_BROADCAST_MASK) == CEC_MESSAGE_BROADCAST)
                         reg |= CEC_TX_CTRL_BCAST;
-                else
-                        reg &= ~CEC_TX_CTRL_BCAST;
 
                 /* set number of retransmissions */
-                reg &= ~(7 << 4);
-                reg |= (5 << 4); 
+                reg |= (5 << 4);
 
                 cec_reg_write(dev, reg, CEC_TX_CTRL);
 
                 /* wait for interrupt */
-                if (0 == wait_event_interruptible_timeout(dev->tx.waitq, atomic_read(&dev->tx.state) != STATE_TX, msecs_to_jiffies(10))) {
+
+
+
+		/* CEC Frame
+		 *  Start    4.7ms
+		 *  Heaader  2.75ms
+		 *  Data_n   2.75ms *n
+		 * S(4.7ms) + H (27.5ms) + D ((27.5ms) * (count -1)) + 15ms margin
+		 * Max 485ms */
+		timeout_ms = 20 + (30 * count);
+		dpr_info("%s wait %dms \r\n", __func__, timeout_ms);
+                if (0 == wait_event_interruptible_timeout(dev->tx.waitq,
+			atomic_read(&dev->tx.state) != STATE_TX, msecs_to_jiffies(timeout_ms))) {
                         //printk(KERN_ERR "[ERROR][HDMI_V14]%s wait failed at line (%d)\r\n", __func__, __LINE__);
                         count = 0;
                         break;
                 }
 
                 if (atomic_read(&dev->tx.state) == STATE_ERROR) {
-                        //pr_err( "%s end, because of TX error\n", __func__);
+                        printk(KERN_ERR "[ERROR][HDMI_V14] %s end, because of TX error\n", __func__);
                         count = 0;
                         break;
                 }
 
-                DPRINTK( "%s end\n", __func__);
+                dpr_info( "%s end\n", __func__);
         } while(0);
         return count;
 }
@@ -735,64 +768,66 @@ ssize_t cec_write(struct file *file, const char __user *buffer, size_t count, lo
 
 long  cec_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 {
-                        
+
         long ret = -EINVAL;
         struct tcc_hdmi_cec_dev *dev = (struct tcc_hdmi_cec_dev *)(file != NULL)?file->private_data:NULL;
 
         if(dev != NULL) {
                 switch (cmd) {
                         case CEC_IOC_START:
-                                io_debug("CEC: ioctl(CEC_IOC_START)\r\n");
-                                cec_start(dev);
-                                ret = 0;
+                                dpr_io_info("CEC: ioctl(CEC_IOC_START)\r\n");
+                                ret = cec_start(dev);
                                 break;
-                                
+
                         case CEC_IOC_STOP:
-                                io_debug("CEC: ioctl(CEC_IOC_STOP)\r\n");
-                                cec_stop(dev);
-                                ret = 0;
+                                dpr_io_info("CEC: ioctl(CEC_IOC_STOP)\r\n");
+                                ret = cec_stop(dev);
                                 break;
-                                
+
                         case CEC_IOC_SETLADDR:
                                 {
                                         unsigned int laddr;
-                                        io_debug( "CEC: ioctl(CEC_IOC_SETLADDR)\n");
-                                
+                                        dpr_io_info( "CEC: ioctl(CEC_IOC_SETLADDR)\n");
+
                                         if(copy_from_user(&laddr, (void __user *)arg, sizeof(unsigned int))) {
                                                 printk(KERN_ERR "[ERROR][HDMI_V14]%s failed copy_from_user at line(%d)\r\n", __func__, __LINE__);
                                                 break;
                                         }
 
-                                        io_debug( "CEC: logical address = 0x%02x\n", laddr);
+					if(dev->enable_cnt == 0) {
+						printk(KERN_ERR "[ERROR][HDMI_V14]%s cec is not started(%d)\r\n", __func__, __LINE__);
+			                        break;
+					}
+
+                                        dpr_io_info( "CEC: logical address = 0x%02x\n", laddr);
                                         cec_reg_write(dev, laddr & 0x0F, CEC_LOGIC_ADDR);
                                         ret = 0;
-                                }       
+                                }
                                 break;
-                                
+
                         case CEC_IOC_SENDDATA:
                                 {
                                         /* It will be deprecated */
                                         #if 0
                                         unsigned int uiData;
-                                        io_debug( "CEC: ioctl(CEC_IOC_SENDDATA)\n");
+                                        dpr_io_info( "CEC: ioctl(CEC_IOC_SENDDATA)\n");
                                         if(copy_from_user(&uiData, (void __user *)arg, sizeof(unsigned int))) {
                                                 printk(KERN_ERR "[ERROR][HDMI_V14]%s failed copy_from_user at line(%d)\r\n", __func__, __LINE__);
                                                 break;
                                         }
-                                        DPRINTK( "CEC: SendData = 0x%02x\n", uiData);
-                                        ret = TccCECInterface_SendData(dev, 0, uiData);
+                                        dpr_info( "CEC: SendData = 0x%02x\n", uiData);
                                         #endif
                                 }
                                 break;
-                                
+
                         case CEC_IOC_RECVDATA:
                                 /* It will be deprecated */
-                                io_debug("CEC: ioctl(CEC_IOC_RECVDATA)\r\n");
+                                dpr_io_info("CEC: ioctl(CEC_IOC_RECVDATA)\r\n");
                                 ret = 0;
                                 break;
 
                         case CEC_IOC_GETRESUMESTATUS:
-                                io_debug( "CEC: ioctl(CEC_IOC_GETRESUMESTATUS)\n");
+                                dpr_io_info( "CEC: ioctl(CEC_IOC_GETRESUMESTATUS)\n");
                                 if(copy_to_user((void __user *)arg, &dev->resume, sizeof(unsigned int))) {
                                         printk(KERN_ERR "[ERROR][HDMI_V14]%s failed copy_to_user at line(%d)\r\n", __func__, __LINE__);
                                         break;
@@ -802,7 +837,7 @@ long  cec_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
                         case CEC_IOC_CLRRESUMESTATUS:
                                 {
                                         unsigned int resume_status;
-                                        io_debug( "CEC: ioctl(CEC_IOC_SENDDATA)\n");
+                                        dpr_io_info( "CEC: ioctl(CEC_IOC_SENDDATA)\n");
                                         if(copy_from_user(&resume_status, (void __user *)arg, sizeof(unsigned int))) {
                                                 printk(KERN_ERR "[ERROR][HDMI_V14]%s failed copy_from_user at line(%d)\r\n", __func__, __LINE__);
                                                 break;
@@ -814,12 +849,12 @@ long  cec_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
                         case CEC_IOC_BLANK:
                                 {
                                         unsigned int cmd;
-                                        io_debug("CEC: ioctl(CEC_IOC_BLANK)\r\n");
+                                        dpr_io_info("CEC: ioctl(CEC_IOC_BLANK)\r\n");
                                         if(copy_from_user(&cmd, (void __user *)arg, sizeof(unsigned int))) {
                                                 printk(KERN_ERR "[ERROR][HDMI_V14]%s failed copy_from_user at line(%d)\r\n", __func__, __LINE__);
                                                 break;
                                         }
-                      
+
                                         ret = cec_blank(dev, cmd);
                                 }
                                 break;
@@ -835,7 +870,7 @@ static unsigned int cec_poll(struct file *file, poll_table *wait)
         unsigned int mask = 0;
         struct tcc_hdmi_cec_dev *dev = NULL;
         if(file != NULL) {
-                dev = (struct tcc_hdmi_cec_dev *)file->private_data; 
+                dev = (struct tcc_hdmi_cec_dev *)file->private_data;
         }
 
         if(dev != NULL) {
@@ -845,7 +880,7 @@ static unsigned int cec_poll(struct file *file, poll_table *wait)
                         mask = POLLIN | POLLRDNORM;
                 }
         }
-        
+
     return mask;
 }
 
@@ -864,17 +899,21 @@ static const struct file_operations cec_fops =
 #ifdef CONFIG_PM
 static int cec_suspend(struct device *dev)
 {
+	int backup_enable_cnt;
         struct tcc_hdmi_cec_dev *tcc_hdmi_cec_dev;
-        
-        printk(KERN_INFO "[INFO][HDMI_V14] ### %s \n", __func__);
-        
+
+        printk(KERN_INFO "[INFO][HDMI_V14]### %s \n", __func__);
+
         if(dev != NULL) {
                 tcc_hdmi_cec_dev = (struct tcc_hdmi_cec_dev *)dev_get_drvdata(dev);
                 if(tcc_hdmi_cec_dev != NULL) {
                         if(!tcc_hdmi_cec_dev->suspend) {
-                                if(hdmi_api_get_power_status()) {
-                                        cec_stop(tcc_hdmi_cec_dev);
-                                }
+				backup_enable_cnt = tcc_hdmi_cec_dev->enable_cnt;
+				if(tcc_hdmi_cec_dev->enable_cnt > 0) {
+					tcc_hdmi_cec_dev->enable_cnt = 1;
+				}
+                                cec_stop(tcc_hdmi_cec_dev);
+				tcc_hdmi_cec_dev->enable_cnt = backup_enable_cnt;
                                 tcc_hdmi_cec_dev->suspend = 1;
                         }
                         tcc_hdmi_cec_dev->resume = 0;
@@ -886,27 +925,30 @@ static int cec_suspend(struct device *dev)
 
 static int cec_resume(struct device *dev)
 {
+	int backup_enable_cnt;
         struct tcc_hdmi_cec_dev *tcc_hdmi_cec_dev;
-        
-        printk(KERN_INFO "[INFO][HDMI_V14] ### %s \n", __func__);
-        
+
+        printk(KERN_INFO "[INFO][HDMI_V14]### %s \n", __func__);
+
         if(dev != NULL) {
                 tcc_hdmi_cec_dev = (struct tcc_hdmi_cec_dev *)dev_get_drvdata(dev);
                 if(tcc_hdmi_cec_dev != NULL) {
                         if(tcc_hdmi_cec_dev->suspend  && !tcc_hdmi_cec_dev->runtime_suspend) {
-                                if(hdmi_api_get_power_status()) {
-                                        cec_start(tcc_hdmi_cec_dev);
-                                }
-                                tcc_hdmi_cec_dev->suspend = 0;
-                                tcc_hdmi_cec_dev->resume = 1;
-                        }
-                }
+				if(tcc_hdmi_cec_dev->enable_cnt > 0) {
+					backup_enable_cnt = tcc_hdmi_cec_dev->enable_cnt;
+					tcc_hdmi_cec_dev->enable_cnt = 0;
+					cec_start(tcc_hdmi_cec_dev);
+					tcc_hdmi_cec_dev->enable_cnt = backup_enable_cnt;
+				}
+	                        tcc_hdmi_cec_dev->suspend = 0;
+	                        tcc_hdmi_cec_dev->resume = 1;
+			}
+		}
         }
         return 0;
-
 }
 
-static int cec_runtime_suspend(struct device *dev) 
+static int cec_runtime_suspend(struct device *dev)
 {
         int ret = 0;
         struct tcc_hdmi_cec_dev * tcc_hdmi_cec_dev;
@@ -939,7 +981,7 @@ static int cec_runtime_resume(struct device *dev)
 static int cec_remove(struct platform_device *pdev)
 {
         struct tcc_hdmi_cec_dev *dev = NULL;
-                                
+
         if(pdev != NULL) {
                 dev = (struct tcc_hdmi_cec_dev *)dev_get_drvdata(pdev->dev.parent);
 
@@ -963,39 +1005,32 @@ static int cec_remove(struct platform_device *pdev)
 
 static int cec_probe(struct platform_device *pdev)
 {
-        int ret = -1;
-        struct tcc_hdmi_cec_dev *dev = devm_kzalloc(&pdev->dev, sizeof(struct tcc_hdmi_cec_dev), GFP_KERNEL);        
-        do {
-                if (dev == NULL) {
-                    ret = -ENOMEM;
-                    break;
+	int ret = -1;
+	struct tcc_hdmi_cec_dev *dev = devm_kzalloc(&pdev->dev, sizeof(struct tcc_hdmi_cec_dev), GFP_KERNEL);
+	do {
+		if (dev == NULL) {
+			ret = -ENOMEM;
+                    	break;
                 }
+		memset(dev, 0, sizeof(struct tcc_hdmi_cec_dev ));
+
                 dev->pdev = &pdev->dev;
-                
+
                 dev->pclk = of_clk_get(pdev->dev.of_node, 0);
                 if (IS_ERR_OR_NULL(dev->pclk)) {
-                    printk(KERN_ERR "[ERROR][HDMI_V14]HDMI: failed to get hdmi hclk\n");
-                    dev->pclk = NULL;
-                    break;
+                    	printk(KERN_ERR "[ERROR][HDMI_V14]HDMI: failed to get hdmi pclk\n");
+                    	dev->pclk = NULL;
+                    	break;
                 }
-                dev->hclk = of_clk_get(pdev->dev.of_node, 1);
-                if (IS_ERR_OR_NULL(dev->hclk)) {
-                    printk(KERN_ERR "[ERROR][HDMI_V14]HDMI: failed to get hdmi hclk\n");
-                    dev->hclk = NULL;
-                    break;
-                }
-                dev->ipclk = of_clk_get(pdev->dev.of_node, 2);
-                if (IS_ERR_OR_NULL(dev->ipclk)) {
-                    printk(KERN_ERR "[ERROR][HDMI_V14]HDMI: failed to get hdmi ipclk\n");
-                    dev->ipclk = NULL;
-                    break;
-                }
-                clk_set_rate(dev->ipclk, HDMI_LINK_CLK_FREQ);
+
+		ret = of_property_read_u32(pdev->dev.of_node, "clock-frequency", &dev->pclk_freq);
+	        if(ret < 0) {
+	                printk(KERN_ERR "[ERROR][HDMI_V14]HDMI: failed to get cec pclk frequency\n");
+			break;
+	        }
+
+                clk_set_rate(dev->pclk, dev->pclk_freq);
                 clk_prepare_enable(dev->pclk);
-                
-                clk_prepare_enable(dev->hclk);
-                clk_set_rate(dev->ipclk, HDMI_PCLK_FREQ);
-                clk_prepare_enable(dev->ipclk);
 
                 dev->cec_irq = of_irq_to_resource(pdev->dev.of_node, 0, NULL);
                 if (dev->cec_irq < 0) {
@@ -1003,18 +1038,13 @@ static int cec_probe(struct platform_device *pdev)
                         break;
                 }
 
-                dev->hdmi_ctrl_io = of_iomap(pdev->dev.of_node, 0);
-                if(dev->hdmi_ctrl_io == NULL){
-                        printk(KERN_ERR "[ERROR][HDMI_V14]%s:Unable to map hdmi ctrl resource at line(%d)\n", __func__, __LINE__);
-                        break;
-                }
-                dev->hdmi_cec_io = of_iomap(pdev->dev.of_node, 1);
+                dev->hdmi_cec_io = of_iomap(pdev->dev.of_node, 0);
                 if(dev->hdmi_cec_io == NULL){
                         printk(KERN_ERR "[ERROR][HDMI_V14]%s:Unable to map hdmi ctrl resource at line(%d)\n", __func__, __LINE__);
                         break;
                 }
 
-                dev->misc = devm_kzalloc(&pdev->dev, sizeof(struct miscdevice), GFP_KERNEL); 
+                dev->misc = devm_kzalloc(&pdev->dev, sizeof(struct miscdevice), GFP_KERNEL);
                 if(dev->misc == NULL) {
                         printk(KERN_ERR "[ERROR][HDMI_V14]%s:Unable to createe hdmi misc at line(%d)\n", __func__, __LINE__);
                         ret = -ENOMEM;
@@ -1031,18 +1061,17 @@ static int cec_probe(struct platform_device *pdev)
                 }
                 dev_set_drvdata(dev->pdev, dev);
 
-                printk(KERN_INFO "[INFO][HDMI_V14] %s:HDMI CEC driver %s\n", __func__, SRC_VERSION);
+                printk(KERN_INFO "[INFO][HDMI_V14]%s:HDMI CEC driver %s\n", __func__, SRC_VERSION);
 
                 init_waitqueue_head(&dev->tx.waitq);
                 init_waitqueue_head(&dev->rx.waitq);
                 spin_lock_init(&dev->rx.lock);
-                                
-                cec_disable_interrupts(dev);
+
                 ret = devm_request_irq(dev->pdev, dev->cec_irq, cec_irq_handler, IRQF_SHARED, "hdmi-cec", dev);
                 if(ret < 0) {
                         printk(KERN_ERR "[ERROR][HDMI_V14]%s failed request interrupt for cec\r\n", __func__);
                 }
-                
+
                 dev->rx.buffer = devm_kmalloc(&pdev->dev, CEC_RX_BUFF_SIZE, GFP_KERNEL);
                 if (dev->rx.buffer == NULL) {
                         printk(KERN_ERR "[ERROR][HDMI_V14]%s failed kmalloc \r\n", __func__);
@@ -1057,25 +1086,21 @@ static int cec_probe(struct platform_device *pdev)
                         ret = -1;
                         break;
                 }
-                TccCECInterface_Init(dev);
 
                 #ifdef CONFIG_PM
-                pm_runtime_set_active(dev->pdev);        
-                pm_runtime_enable(dev->pdev);  
-                pm_runtime_get_noresume(dev->pdev);  //increase usage_count 
+                pm_runtime_set_active(dev->pdev);
+                pm_runtime_enable(dev->pdev);
+                pm_runtime_get_noresume(dev->pdev);  //increase usage_count
                 #endif
 
                 /* disable the clocks */
                 clk_disable(dev->pclk);
-                clk_disable(dev->hclk);
         } while(0);
         if(ret < 0) {
                 cec_remove(pdev);
         }
         return ret;
 }
-
-
 
 static struct of_device_id cec_of_match[] = {
 	{ .compatible = "telechips,tcc897x-hdmi-cec" },
@@ -1104,7 +1129,6 @@ static struct platform_driver tcc_hdmi_cec = {
 		.of_match_table = of_match_ptr(cec_of_match),
 	},
 };
-
 
 static __init int cec_init(void)
 {

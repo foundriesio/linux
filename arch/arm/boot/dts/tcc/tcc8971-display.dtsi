@@ -7,6 +7,35 @@
 #include "tcc897x-display.dtsi"
 
 / {
+	/* LVDS panel for Framebuffer driver*/
+	lvds: lvds@72380040{
+		status = "okay";
+	};
+
+	fld0800 {
+		compatible = "telechips,lvds-fld0800";
+		status = "okay";
+		lvds0 = <&lvds>;
+		//power-on-gpios	= ;
+		display-on-gpios	= <&gpd 6 0>;
+		reset-gpios		= <&gpf 19 0>;
+		lvds-stby-gpios		= <&gpb 19 0>;
+		//lvds-power-gpios	= ;
+		//lvds-power-gpios1	= ;
+	};
+
+	/* HDMI 1920x720 panel */
+	panel_1920x720 {
+		status = "disable";
+		compatible = "telechips,hdmi1920x720";
+		clocks = <&clk_peri PERI_LCD0>, <&clk_peri PERI_LCD1>,
+			<&clk_peri PERI_HDMI>, <&clk_ddi DDIBUS_HDMI>,
+			<&clk_isoip_top ISOIP_TOP_HDMI>;
+		clock-names = "lcdc0-clk", "lcdc1-clk", "hdmi-pclk",
+				"hdmi-hclk", "hdmi-phy";
+	};
+
+	/* DRM dummy panel */
 	lcd_drm_dummy {
 		status = "okay";
 		base_display = <&tcc_drm_lcd>;
@@ -19,5 +48,4 @@
 	tcc-drm-ext {
 		status = "okay";
 	};
-
 };

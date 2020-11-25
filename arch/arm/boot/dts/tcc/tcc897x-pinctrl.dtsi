@@ -1121,7 +1121,8 @@
 
 	hdmi_cec: hdmi_cec {
 		telechips,pins = "gphdmi-0";
-		telechips,pin-function = <1>;
+		/* iob cec */
+		telechips,pin-function = <5>;
 		telechips,pull-enable;
 		telechips,pull-up;
 	};

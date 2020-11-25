@@ -1396,12 +1396,40 @@
 
 	hdmi@72300000 {
 		compatible = "telechips,tcc897x-hdmi";
-		reg = <0x72300000 0x100 0x72310000 0x7000 0x72360000 0x100>;
-		reg-names = "hdmi_ctrl", "hdmi_core";
+		reg = < 0x72300000 0x100 	/* Controller register base address */
+			0x72310000 0x7000	/* HDMI register base address */
+			0x72360000 0x100	/* HDMI PHY configuration register base address */
+			0x72317000 0x200	/* HDCP register base address */
+			0x7231D500 0x100	/* RGB register base address */
+			0x72320000 0x100	/* AES register base address */
+			0x72330000 0x100	/* SPDIF Receiver register base address */
+			0x72340000 0x100 >;	/* I2S Receiver register base address */
+		reg-names = "hdmi_ctrl",
+			"hdmi_core",
+			"hdmi_phy",
+			"hdmi_hdcp",
+			"hdmi_rgb",
+			"hdmi_aes",
+			"hdmi_spdif",
+			"hdmi_i2s";
 		interrupt-parent = <&gic>;
 		interrupts = <GIC_SPI 34 IRQ_TYPE_LEVEL_HIGH>;
-		clocks = <&clk_peri PERI_HDMI &clk_ddi DDIBUS_HDMI &clk_peri PERI_HDMI_PCLK>;
-		clock-frequency = <24000000>;
+		clocks = <&clk_peri PERI_HDMI
+			  &clk_ddi DDIBUS_HDMI
+			  &clk_peri PERI_HDMI_PCLK
+			  &clk_isoip_top ISOIP_TOP_HDMI
+			  &clk_peri PERI_HDMIA
+			  >;
+		clock-names = 	"hdmi_ref_clk",
+				"hdmi_ddibus",
+				"hdmi_phy_apb",
+				"hdmi_pmu_iso",
+				"hdmi_audio";
+		/* spdif block */
+		spdif-audio = <3>;  /* 0: audio0, 3: audio3 - default*/
+		spdif-block0 = <&spdif0>; /* spdif0 is map to audio0 */
+		spdif-block1 = <&spdif1>; /* spdif1 is map to audio3 */
+
 		vioc-frequency = <27>;
 		status = "disabled";
 	};
@@ -1414,25 +1442,16 @@
 		status = "disabled";
 	};
 
-	audio@72330000 {
-		compatible = "telechips,tcc897x-hdmi-audio";
-		reg = <0x72300000 0x100 0x72330000 0x100 0x72340000 0x100>;
-		reg-names = "hdmi_ctrl", "hdmi_spdif", "hdmi_i2s";
-		interrupt-parent = <&gic>;
-		interrupts = <GIC_SPI 34 IRQ_TYPE_LEVEL_HIGH>;
-		clocks = <&clk_peri PERI_HDMIA &clk_ddi DDIBUS_HDMI>;
-		status = "disabled";
-	};
-
 	cec@72370000 {
 		compatible = "telechips,tcc897x-hdmi-cec";
-		reg = <0x72300000 0x100 0x72350000 0x200>;
+		reg = <0x76061000 0x200>;
 		reg-names = "hdmi_ctrl", "hdmi_cec";
 		pinctrl-names = "default";
 		pinctrl-0 = <&hdmi_cec>;
 		interrupt-parent = <&gic>;
-		interrupts = <GIC_SPI 34 IRQ_TYPE_LEVEL_HIGH>;
-		clocks = <&clk_peri PERI_HDMI &clk_ddi DDIBUS_HDMI &clk_peri PERI_HDMI_PCLK>;
+		interrupts = <GIC_SPI 55 IRQ_TYPE_LEVEL_HIGH>;
+		clocks = <&clk_peri PERI_IOB_CEC>;
+		clock-names = "cec_core_clock";
 		clock-frequency = <24000000>;
 		status = "disabled";
 	};

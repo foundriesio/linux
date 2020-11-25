@@ -46,6 +46,7 @@
 
 #include "tcc8971.dtsi"
 #include "tcc8971-display.dtsi"
+
 / {
 	model = "Telechips TCC8971 LCN Board SV3.0";
 	compatible = "telechips,tcc8971", "telechips,tcc897x";
@@ -593,6 +594,18 @@
 		};
 	};
 */
+
+	hdmi@7230000 {
+		status ="okay";
+	};
+
+	hpd@7230000 {
+		status ="okay";
+	};
+
+	cec@72370000 {
+		status ="okay";
+	}
 
 	overlaymixer:overlaymixer@72400000 {
 		//status ="okay";
