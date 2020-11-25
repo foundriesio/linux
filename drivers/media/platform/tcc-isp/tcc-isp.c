@@ -491,7 +491,7 @@ static int tcc_isp_parse_dt(struct platform_device *pdev,
 	}
 	pr_info("[INFO][tcc-isp] mem base addr is %px \n", state->mem_base);
 
-#if 1
+#if 0
 	/*
 	 * Get UART pinctrl
 	 *

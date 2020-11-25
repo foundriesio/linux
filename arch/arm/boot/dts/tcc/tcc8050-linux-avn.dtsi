@@ -340,7 +340,6 @@
 			/* Camera Image Sensor */
 			status		= "disabled";
 			compatible	= "onsemiconductor,ar0147";
-			//rst-gpios	= <&gpb 15 1>;  /* mcnex module sensor */
 			reg		= <0x10>;
 			port {
 				ar0147_out: endpoint {
@@ -713,8 +712,10 @@
 
 	isp0@1bc80000 {
 		status = "okay";
+/* for isp mcu debugging
 		pinctrl-names = "default";
 		pinctrl-0 = <&isp0_uart_tx &isp0_uart_rx>;
+*/
 		ports {
 		        port@0 {
 				reg = <0>;
@@ -734,7 +735,7 @@
 	};
 
 	isp1@1bca0000 {
-		status = "disabled";
+		status = "okay";
 /* for isp mcu debugging
 		pinctrl-names = "default";
 		pinctrl-0 = <&isp1_uart_tx &isp1_uart_rx>;
@@ -758,7 +759,7 @@
 	};
 
 	isp2@1bcc0000 {
-		status = "disabled";
+		status = "okay";
 /* for isp mcu debugging
 		pinctrl-names = "default";
 		pinctrl-0 = <&isp2_uart_tx &isp2_uart_rx>;
@@ -782,7 +783,7 @@
 	};
 
 	isp3@1bce0000 {
-		status = "disabled";
+		status = "okay";
 /* for isp mcu debugging
 		pinctrl-names = "default";
 		pinctrl-0 = <&isp3_uart_tx &isp3_uart_rx>;
@@ -807,17 +808,25 @@
 
 	videoinput@0 {
 		status = "okay";
-		cifport = <&cifport 0>;
-
+		cifport	= <&cifport 0>;
+/* for MIPI CSI2 input
+		cifport = <&cifport 5>;
+*/
 		port {
 			videoinput0_in: endpoint {
-				//remote-endpoint	= <&isp0_out>;
-				//remote-endpoint	= <&mipi_csi2_0_out0>;
 				remote-endpoint	= <&adv7182_out>;
 				io-direction	= "input";
 				bus-type	= <0>;
 				stream-enable	= <0>;	// VIN_CTRL.SE
 				flush-vsync	= <0>;	// VIN_MISC.FVS
+/* for MIPI CSI2 input
+				//remote-endpoint	= <&isp0_out>;
+				remote-endpoint	= <&mipi_csi2_0_out0>;
+				io-direction	= "input";
+				bus-type	= <0>;
+				stream-enable	= <1>;	// VIN_CTRL.SE
+				flush-vsync	= <1>;	// VIN_MISC.FVS
+*/
 			};
 		};
 	};
