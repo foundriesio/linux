@@ -160,8 +160,8 @@ int vioc_config_chroma_interpolator_rdma_sel[] = {
 
 #endif//CONFIG_VIOC_CHROMA_INTERPOLATOR
 
-#if !defined(CONFIG_ARCH_TCC805X)
-int vioc_config_AFBCDec_rdma_sel[] = {
+#if defined(CONFIG_VIOC_AFBCDEC) || defined(CONFIG_VIOC_PVRIC_FBDC)
+int vioc_config_FBCDec_rdma_sel[] = {
 	0x0, 0x1, 0x2, 0x3, 0x4, 0x5, 0x6, 0x7,  0x8,
 	0x9, 0xA, 0xB, 0xC, 0xD, 0xE, 0xF, 0x10, 0x11,
 };
@@ -516,13 +516,13 @@ static int CheckChromaInterpolatorPathSelection(unsigned int component)
 }
 #endif//CONFIG_VIOC_CHROMA_INTERPOLATOR
 
-#if defined(CONFIG_VIOC_AFBCDEC)
-static int CheckAFBCDecPathSelection(unsigned int component)
+#if defined(CONFIG_VIOC_AFBCDEC) || defined(CONFIG_VIOC_PVRIC_FBDC)
+static int CheckFBCDecPathSelection(unsigned int component)
 {
 	int ret = 0;
 	switch (get_vioc_type(component)) {
 	case get_vioc_type(VIOC_RDMA):
-		ret = vioc_config_AFBCDec_rdma_sel[get_vioc_index(component)];
+		ret = vioc_config_FBCDec_rdma_sel[get_vioc_index(component)];
 		break;
 	default:
 		pr_err("[ERR][VIOC_CONFIG] %s, wrong path parameter(0x%08x)\n", __func__,
@@ -1227,61 +1227,61 @@ void VIOC_CONFIG_WMIXPathReset(unsigned int component_num, unsigned int mode)
 }
 #endif
 
-#if defined(CONFIG_VIOC_AFBCDEC)
-int VIOC_CONFIG_AFBCDECPath(unsigned int AFBCDecPath, unsigned int rdmaPath, unsigned on)
+#if defined(CONFIG_VIOC_AFBCDEC) || defined(CONFIG_VIOC_PVRIC_FBDC)
+int VIOC_CONFIG_FBCDECPath(unsigned int FBCDecPath, unsigned int rdmaPath, unsigned on)
 {
 	unsigned long value = 0;
 	unsigned int select = 0;
-	volatile void __iomem *reg = (pIREQ_reg + CFG_AFBC_DEC_SEL_OFFSET);
+	volatile void __iomem *reg = (pIREQ_reg + CFG_FBC_DEC_SEL_OFFSET);
 
 	/* Check selection has type value. If has, select value is invalid */
-	select = CheckAFBCDecPathSelection(rdmaPath);
+	select = CheckFBCDecPathSelection(rdmaPath);
 	if (select < 0)
 		goto error;
 
 	/*Check RDMA and AFBC_DEC operations.*/
 	if(on)
-		value = (__raw_readl(reg) & ~((0x1 << select) << CFG_AFBC_DEC_SEL_AXSM_SEL_SHIFT));
+		value = (__raw_readl(reg) & ~((0x1 << select) << CFG_FBC_DEC_SEL_AXSM_SEL_SHIFT));
 	else
-		value = (__raw_readl(reg) | ((0x1 << select) << CFG_AFBC_DEC_SEL_AXSM_SEL_SHIFT));
+		value = (__raw_readl(reg) | ((0x1 << select) << CFG_FBC_DEC_SEL_AXSM_SEL_SHIFT));
 
-	switch (AFBCDecPath) {
-	case VIOC_AFBCDEC0:
+	switch (FBCDecPath) {
+	case VIOC_FBCDEC0:
 		if(on)
 		{
-			value &= ~CFG_AFBC_DEC_SEL_AD_PATH_SEL00_MASK;
-			value |= (select << CFG_AFBC_DEC_SEL_AD_PATH_SEL00_SHIFT);
+			value &= ~CFG_FBC_DEC_SEL_AD_PATH_SEL00_MASK;
+			value |= (select << CFG_FBC_DEC_SEL_AD_PATH_SEL00_SHIFT);
 		}
 		else
 		{
-			value |= (0x1F << CFG_AFBC_DEC_SEL_AD_PATH_SEL00_SHIFT);
+			value |= (0x1F << CFG_FBC_DEC_SEL_AD_PATH_SEL00_SHIFT);
 		}
 		break;
-	case VIOC_AFBCDEC1:
+	case VIOC_FBCDEC1:
 		if(on)
 		{
-			value &= ~CFG_AFBC_DEC_SEL_AD_PATH_SEL01_MASK;
-			value |= (select << CFG_AFBC_DEC_SEL_AD_PATH_SEL01_SHIFT);
+			value &= ~CFG_FBC_DEC_SEL_AD_PATH_SEL01_MASK;
+			value |= (select << CFG_FBC_DEC_SEL_AD_PATH_SEL01_SHIFT);
 		}
 		else
 		{
-			value |= (0x1F << CFG_AFBC_DEC_SEL_AD_PATH_SEL01_SHIFT);
+			value |= (0x1F << CFG_FBC_DEC_SEL_AD_PATH_SEL01_SHIFT);
 		}
 		break;
 	default :
 		goto error;
 	};
-	//pr_debug("[DBG][VIOC_CONFIG] %s RDMA(%d) with AFBC(%d) :: On(%d)- 0x%08lx \n", __func__, get_vioc_index(rdmaPath), get_vioc_index(AFBCDecPath), on, value);
+	//pr_debug("[DBG][VIOC_CONFIG] %s RDMA(%d) with FBC(%d) :: On(%d)- 0x%08lx \n", __func__, get_vioc_index(rdmaPath), get_vioc_index(FBCDecPath), on, value);
 	__raw_writel(value, reg);
 	return VIOC_PATH_CONNECTED;
 
 error:
-	pr_err("[ERR][VIOC_CONFIG] %s, in error, AFBCDecPath(%d) :0x%x rdmaPath:0x%x cfg_reg:0x%x \n",
-	       __func__, on, get_vioc_index(AFBCDecPath), rdmaPath, __raw_readl(reg));
+	pr_err("[ERR][VIOC_CONFIG] %s, in error, FBCDecPath(%d) :0x%x rdmaPath:0x%x cfg_reg:0x%x \n",
+	       __func__, on, get_vioc_index(FBCDecPath), rdmaPath, __raw_readl(reg));
 	WARN_ON(1);
 	return VIOC_DEVICE_INVALID;
 }
-EXPORT_SYMBOL(VIOC_CONFIG_AFBCDECPath);
+EXPORT_SYMBOL(VIOC_CONFIG_FBCDECPath);
 #endif
 
 #ifdef CONFIG_VIOC_MAP_DECOMP
@@ -1623,20 +1623,27 @@ void VIOC_CONFIG_SWReset_RAW(unsigned int component, unsigned int mode)
 		break;
 #endif
 
-#if defined(CONFIG_VIOC_AFBCDEC)
-	case get_vioc_type(VIOC_AFBCDEC):
+#if defined(CONFIG_VIOC_AFBCDEC) || defined(CONFIG_VIOC_PVRIC_FBDC)
+	case get_vioc_type(VIOC_FBCDEC):
 #if defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC901X)
 		value = (__raw_readl(reg + PWR_BLK_SWR4_OFFSET) &
 			 ~(PWR_BLK_SWR4_AD_MASK));
 		value |= (mode << (PWR_BLK_SWR4_AD_SHIFT +
 				   get_vioc_index(component)));
 		__raw_writel(value, (reg + PWR_BLK_SWR4_OFFSET));
-#else /* CONFIG_ARCH_TCC803X */
+#elif defined(CONFIG_ARCH_TCC803X)
 		value = (__raw_readl(reg + PWR_BLK_SWR2_OFFSET) &
 			 ~(PWR_BLK_SWR2_AD_MASK));
 		value |= (mode << (PWR_BLK_SWR2_AD_SHIFT +
 				   get_vioc_index(component)));
 		__raw_writel(value, (reg + PWR_BLK_SWR2_OFFSET));
+#else /* CONFIG_ARCH_TCC805X */
+		value = (__raw_readl(reg + CFG_WMIX_PATH_SWR_OFFSET) &
+			 ~(WMIX_PATH_SWR_PF_MASK));
+		value |= (mode << (WMIX_PATH_SWR_PF_SHIFT +
+				   get_vioc_index(component)));
+		__raw_writel(value, (reg + CFG_WMIX_PATH_SWR_OFFSET));
+
 #endif
 		break;
 #endif

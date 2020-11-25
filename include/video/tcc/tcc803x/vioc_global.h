@@ -200,10 +200,10 @@
 //#define VIOC_V_DV_CFG			(0x1700)
 
 /* AFBCDEC : 0x18XX */
-#define VIOC_AFBCDEC			(0x1800)
-#define VIOC_AFBCDEC0			(0x1800)
-#define VIOC_AFBCDEC1			(0x1801)
-#define VIOC_AFBCDEC_MAX		(0x0002)
+#define VIOC_FBCDEC			(0x1800)
+#define VIOC_FBCDEC0			(0x1800)
+#define VIOC_FBCDEC1			(0x1801)
+#define VIOC_FBCDEC_MAX		(0x0002)
 
 /* VIOC Interrupt sources */
 #define VIOC0_IRQI			(119)

@@ -31,3 +31,4 @@ obj-$(CONFIG_VIOC_SAR) += vioc_sar.o
 obj-$(CONFIG_TCC_VIQE_MADI)   += viqe_madi.o
 obj-$(CONFIG_TCC_DV_IN)   += vioc_dv_in.o
 obj-$(CONFIG_VIOC_AFBCDEC) += vioc_afbcdec.o
+obj-$(CONFIG_VIOC_PVRIC_FBDC) += vioc_pvric_fbdc.o

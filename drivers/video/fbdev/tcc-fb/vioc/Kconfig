@@ -50,6 +50,14 @@ config VIOC_AFBCDEC
     help
         TCC AFBC Decoder
 
+config VIOC_PVRIC_FBDC
+    bool "Enable PVRIC_FBDC"
+    depends on (ARCH_TCC805X) && POWERVR_ROGUE
+    default n
+    help
+        TCC PVRIC Framebuffer decompressor
+
+
 config VIOC_PIXEL_MAPPER
     bool "Support VIOC PIXEL MAPPER(3D LUT)"
     depends on (ARCH_TCC899X || ARCH_TCC901X)
