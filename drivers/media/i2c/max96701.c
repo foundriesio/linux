@@ -67,9 +67,39 @@ struct max96701 {
 	struct mutex lock;
 	unsigned int p_cnt;
 	unsigned int s_cnt;
+	unsigned int i_cnt;
 };
 
 const struct reg_sequence max96701_reg_defaults[] = {
+#ifdef CONFIG_VIDEO_AR0147
+	{0x04, 0x47, 0}, // configuration mode(in the case of pclk detection fail)
+	{0x07, 0x40, 0}, // dbl off, hs/vs encoding off, 27bit
+	{0x0f, 0xbe, 300}, // GPO output low to reset sensor
+	{0x0f, 0xbf, 100}, // GPO output hight to reset release of sensor
+
+	/* test */
+	//{0x07, 0xa4, 0},
+	//{0x4d, 0xc0, 0},
+//	{0x07, 0xc0, 0}, // high bandwidth mode when BWS, HS/VS encoding disable
+	//{0xff,  100, 0},
+
+	// cross bar(Sensor Data Dout7 -> DIN0)
+	{0x20, 0x0b, 0},
+	{0x21, 0x0a, 0},
+	{0x22, 0x09, 0},
+	{0x23, 0x08, 0},
+	{0x24, 0x07, 0},
+	{0x25, 0x06, 0},
+	{0x26, 0x05, 0},
+	{0x27, 0x04, 0},
+	{0x28, 0x03, 0},
+	{0x29, 0x02, 0},
+	{0x2a, 0x01, 0},
+	{0x2b, 0x00, 0},
+
+
+#else /* for HD camera module */
+	{0x04, 0x47, 0},
 	// Sensor Data Dout7 -> DIN0
 	{0x20, 0x07, 0},
 	{0x21, 0x06, 0},
@@ -99,6 +129,7 @@ const struct reg_sequence max96701_reg_defaults[] = {
 	{0x4B, 0x83, 0},
 	{0x4C, 0x84, 0},
 	{0x43, 0x21, 0},
+#endif
 };
 
 static const struct regmap_config max96701_regmap = {
@@ -126,6 +157,36 @@ static inline struct max96701 *to_dev(struct v4l2_subdev *sd)
 }
 
 /*
+ * v4l2_subdev_core_ops implementations
+ */
+static int max96701_init(struct v4l2_subdev *sd, u32 enable)
+{
+	struct max96701		*dev	= to_dev(sd);
+	int			ret	= 0;
+
+	mutex_lock(&dev->lock);
+
+	if ((dev->i_cnt == 0) && (enable == 1)) {
+		ret = regmap_multi_reg_write(dev->regmap,
+				max96701_reg_defaults,
+				ARRAY_SIZE(max96701_reg_defaults));
+		if (ret < 0)
+			loge("Fail initializing max96701 device\n");
+	} else if ((dev->i_cnt == 1) && (enable == 0)) {
+		//ret = regmap_write(dev->regmap, 0x15, 0x93);
+	}
+
+	if (enable)
+		dev->i_cnt++;
+	else
+		dev->i_cnt--;
+
+	mutex_unlock(&dev->lock);
+
+	return ret;
+}
+
+/*
  * v4l2_subdev_video_ops implementations
  */
 static int max96701_s_stream(struct v4l2_subdev *sd, int enable)
@@ -136,12 +197,6 @@ static int max96701_s_stream(struct v4l2_subdev *sd, int enable)
 	mutex_lock(&dev->lock);
 
 	if ((dev->s_cnt == 0) && (enable == 1)) {
-		ret = regmap_multi_reg_write(dev->regmap,
-				max96701_reg_defaults,
-				ARRAY_SIZE(max96701_reg_defaults));
-		if (ret < 0)
-			loge("Fail initializing max96701 device\n");
-
 		ret = regmap_write(dev->regmap, 0x04, 0x87);
 		if (ret < 0)
 			loge("Fail Serialization max96701 device\n");
@@ -197,6 +252,10 @@ static int max96701_set_fmt(struct v4l2_subdev *sd,
 /*
  * v4l2_subdev_internal_ops implementations
  */
+static const struct v4l2_subdev_core_ops max96701_core_ops = {
+	.init			= max96701_init,
+};
+
 static const struct v4l2_subdev_video_ops max96701_video_ops = {
 	.s_stream		= max96701_s_stream,
 };
@@ -207,6 +266,7 @@ static const struct v4l2_subdev_pad_ops max96701_pad_ops = {
 };
 
 static const struct v4l2_subdev_ops max96701_ops = {
+	.core			= &max96701_core_ops,
 	.video			= &max96701_video_ops,
 	.pad			= &max96701_pad_ops,
 };

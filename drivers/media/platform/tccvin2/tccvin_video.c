@@ -1565,7 +1565,8 @@ static int tccvin_video_subdevs_set_fmt(struct tccvin_streaming *stream)
 			logi("v4l2_subdev_call(video, set_fmt) is wrong\n");
 			continue;
 		}
-		//ret = v4l2_subdev_call(subdev, pad, get_fmt, NULL, fmt);
+		ret = v4l2_subdev_call(subdev, pad, get_fmt, NULL, fmt);
+		logi("fmt: 0x%x \n", fmt->format.code);
 	}
 	return ret;
 }

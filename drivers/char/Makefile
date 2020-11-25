@@ -56,7 +56,7 @@ obj-$(CONFIG_TCC_HDCP2_CORE_DRIVER) += hdcp2_core/
 
 obj-$(CONFIG_TCC_DP_DRIVER_V1_4) += displayport_v1_4/
 
-obj-$(CONFIG_TCC_WDMA)              += tcc_wdma.o
+#obj-$(CONFIG_TCC_WDMA)              += tcc_wdma.o
 obj-$(CONFIG_TCC_LUT_DRV)           += tcc_lut.o
 obj-$(CONFIG_TCC_PM_LUT_DRV)        += tcc_pm_lut.o
 obj-$(CONFIG_TCC_VPU_DRV)           += vpu/

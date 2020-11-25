@@ -111,8 +111,10 @@ static u32 code_to_csi_dt(u32 mbus_code)
 	case MEDIA_BUS_FMT_SGBRG8_1X8:
 	case MEDIA_BUS_FMT_SGRBG8_1X8:
 	case MEDIA_BUS_FMT_SRGGB8_1X8:
-		dt = DATA_FORMAT_RAW8;
-		break;
+		/*
+		 * internal isp does not support RAW8
+		 * so, padding 2 bits is done using ISP_FMT_CFG register
+		 */
 	case MEDIA_BUS_FMT_SBGGR10_1X10:
 	case MEDIA_BUS_FMT_SGBRG10_1X10:
 	case MEDIA_BUS_FMT_SGRBG10_1X10:

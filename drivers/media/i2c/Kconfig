@@ -809,6 +809,24 @@ config VIDEO_S5C73M3
 	  This is a V4L2 sensor-level driver for Samsung S5C73M3
 	  8 Mpixel camera.
 
+config VIDEO_AR0147
+	tristate "Onsemiconductor AR0147 CIS"
+	depends on GPIOLIB && VIDEO_V4L2 && I2C && VIDEO_V4L2_SUBDEV_API
+	---help---
+	  Support for Onsemiconductor AR0147 CIS.
+
+	  To compile this driver as a module, choose M here: the
+	  module will be called ar0147.
+
+config VIDEO_CXD5700
+	tristate "Sony CXD5700 ISP"
+	depends on GPIOLIB && VIDEO_V4L2 && I2C && VIDEO_V4L2_SUBDEV_API
+	---help---
+	  Support for the Sony CXD5700 ISP.
+
+	  To compile this driver as a module, choose M here: the
+	  module will be called cxd5700.
+
 comment "Flash devices"
 
 config VIDEO_ADP1653
@@ -914,6 +932,7 @@ config VIDEO_M52790
 
 	 To compile this driver as a module, choose M here: the
 	 module will be called m52790.
+
 comment "Serializers and Deserializers"
 
 config VIDEO_CXD5700
