@@ -90,6 +90,13 @@ struct vioc_mgr_device {
 	struct _vioc_mgr_rx_t rx;
 };
 
+struct vioc_mgr_data {
+	uint32_t	cmd;
+	uint32_t	wmix_ch;
+	uint32_t	ovp;
+	uint32_t	data_len;
+};
+
 static struct vioc_mgr_device *vioc_mgr_dev;
 static wait_queue_head_t mbox_waitq;
 static int mbox_done;
@@ -202,7 +209,7 @@ static void vioc_mgr_cmd_handler(struct vioc_mgr_device *vioc_mgr,
 	if (data && vioc_mgr) {
 		uint32_t cmd = (uint32_t)((data->cmd[1] >> 16) & 0xFFFF);
 
-		if (data->cmd[0] < 0) {
+		if (data->cmd[0]) {
 			int32_t status = (int32_t)atomic_read(&vioc_mgr->rx.seq);
 			if (status > (int32_t)data->cmd[0]) {
 				loge("already processed command(%d,%d)\n",
@@ -232,7 +239,7 @@ static void vioc_mgr_cmd_handler(struct vioc_mgr_device *vioc_mgr,
 		}
 
 		/* Update rx-sequence ID */
-		if (data->cmd[0] < 0) {
+		if (data->cmd[0]) {
 			data->cmd[1] |= (uint32_t)VIOC_MGR_ACK;
 			vioc_mgr_send_message(vioc_mgr, data);
 			atomic_set(&vioc_mgr->rx.seq, data->cmd[0]);
@@ -262,7 +269,6 @@ static void vioc_mgr_receive_message(struct mbox_client *client, void *mssg)
 				wake_up_interruptible(&mbox_waitq);
 				return;
 			}
-
 			mutex_lock(&vioc_mgr->rx.lock);
 			vioc_mgr_cmd_handler(vioc_mgr, msg);
 			mutex_unlock(&vioc_mgr->rx.lock);
@@ -297,6 +303,7 @@ static long vioc_mgr_ioctl(struct file *filp,
 
 	struct vioc_mgr_device *vioc_mgr = filp->private_data;
 	struct tcc_mbox_data data;
+	struct vioc_mgr_data vm_data;
 	long ret = 0;
 	uint32_t status;
 
@@ -313,13 +320,19 @@ static long vioc_mgr_ioctl(struct file *filp,
 	case IOCTL_VIOC_MGR_SET_OVP:
 	case IOCTL_VIOC_MGR_SET_OVP_KERNEL:
 		if (cmd == IOCTL_VIOC_MGR_SET_OVP) {
-			ret = copy_from_user(&data, (void *)arg,
-				sizeof(struct tcc_mbox_data));
+			ret = copy_from_user(&vm_data, (void *)arg,
+				sizeof(struct vioc_mgr_data));
 			if (ret < 0) {
 				loge("Unable to copy the parameter(%ld)\n",
 					ret);
 				goto err_ioctl;
 			}
+
+			memset(&data, 0x0, sizeof(struct tcc_mbox_data));
+			data.cmd[1] = vm_data.cmd;
+			data.data[0] = vm_data.wmix_ch;
+			data.data[1] = vm_data.ovp;
+			data.data_len = vm_data.data_len;
 		} else if (cmd == IOCTL_VIOC_MGR_SET_OVP_KERNEL) {
 			memcpy(&data, (struct tcc_mbox_data *)arg,
 				sizeof(struct tcc_mbox_data));
@@ -501,7 +514,7 @@ static int vioc_mgr_probe(struct platform_device *pdev)
 
 	ret = alloc_chrdev_region(&vioc_mgr->devt, VIOC_MGR_DEV_MINOR,
 			1, vioc_mgr->name);
-	if (ret < 0) {
+	if (ret) {
 		loge("Fail alloc_chrdev_region(%d)\n", ret);
 		return ret;
 	}
@@ -509,7 +522,7 @@ static int vioc_mgr_probe(struct platform_device *pdev)
 	cdev_init(&vioc_mgr->cdev, &vioc_mgr_fops);
 	vioc_mgr->cdev.owner = THIS_MODULE;
 	ret = cdev_add(&vioc_mgr->cdev, vioc_mgr->devt, 1);
-	if (ret < 0) {
+	if (ret) {
 		loge("Fail cdev_add(%d)\n", ret);
 		return ret;
 	}
@@ -535,7 +548,7 @@ static int vioc_mgr_probe(struct platform_device *pdev)
 
 	vioc_mgr_tx_init(vioc_mgr);
 	ret = vioc_mgr_rx_init(vioc_mgr);
-	if (ret < 0) {
+	if (ret) {
 		loge("Fail vioc_mgr_rx_init\n");
 		return -EFAULT;
 	}
