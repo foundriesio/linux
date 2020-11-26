@@ -269,7 +269,8 @@ static int32_t tccvin_parse_device_tree(struct tccvin_streaming *vdev)
 	struct device_node	*np_fb_1st	= NULL;
 	struct vioc_path	*vioc_path	= NULL;
 	void __iomem		*address	= NULL;
-	int32_t			vioc_id		= 0;
+	unsigned int		vin_id		= vdev->dev->pdev->id;
+	unsigned int		vioc_id		= 0;
 
 	if (main_node == NULL) {
 		logd("tcc_camera device node is not found.\n");
@@ -290,7 +291,7 @@ static int32_t tccvin_parse_device_tree(struct tccvin_streaming *vdev)
 			logd("%10s[%2d]: 0x%p\n", "VIN", vioc_id, address);
 		}
 	} else {
-		loge("\"vin\" node is not found.\n");
+		loge("VIN[%d] - \"vin\" node is not found.\n", vin_id);
 		return -ENODEV;
 	}
 
@@ -306,7 +307,7 @@ static int32_t tccvin_parse_device_tree(struct tccvin_streaming *vdev)
 				vdev->cif.cif_port, vdev->cif.cifport_addr);
 		}
 	} else {
-		loge("The CIF port node is NULL\n");
+		loge("VIN[%d] - The CIF port node is NULL\n", vin_id);
 	}
 
 #ifdef CONFIG_OVERLAY_PGL
@@ -328,7 +329,7 @@ static int32_t tccvin_parse_device_tree(struct tccvin_streaming *vdev)
 					vioc_id, address);
 			}
 		} else {
-			logw("\"rdma\" node is not found.\n");
+			logw("VIN[%d] - \"rdma\" node is not found.\n", vin_id);
 			return -ENODEV;
 		}
 	}
@@ -347,7 +348,7 @@ static int32_t tccvin_parse_device_tree(struct tccvin_streaming *vdev)
 			logd("%10s[%2d]: 0x%p\n", "VIQE", vioc_id, address);
 		}
 	} else {
-		logw("\"viqe\" node is not found.\n");
+		logw("VIN[%d] - \"viqe\" node is not found.\n", vin_id);
 
 		// DEINTL_S
 		vioc_node = of_parse_phandle(main_node, "deintls", 0);
@@ -362,7 +363,8 @@ static int32_t tccvin_parse_device_tree(struct tccvin_streaming *vdev)
 					vioc_id, address);
 			}
 		} else {
-			logw("\"deintls\" node is not found.\n");
+			logw("VIN[%d] - \"deintls\" node is not found.\n",
+			     vin_id);
 		}
 	}
 
@@ -378,7 +380,7 @@ static int32_t tccvin_parse_device_tree(struct tccvin_streaming *vdev)
 			logd("%10s[%2d]: 0x%p\n", "SCALER", vioc_id, address);
 		}
 	} else {
-		logw("\"scaler\" node is not found.\n");
+		logw("VIN[%d] - \"scaler\" node is not found.\n", vin_id);
 	}
 
 	// WMIXER
@@ -393,7 +395,7 @@ static int32_t tccvin_parse_device_tree(struct tccvin_streaming *vdev)
 			logd("%10s[%2d]: 0x%p\n", "WMIXER", vioc_id, address);
 		}
 	} else {
-		logw("\"wmixer\" node is not found.\n");
+		logw("VIN[%d] - \"wmixer\" node is not found.\n", vin_id);
 	}
 
 	// WDMA
@@ -414,7 +416,7 @@ static int32_t tccvin_parse_device_tree(struct tccvin_streaming *vdev)
 			logd("irq_num: %d\n", vdev->cif.vioc_irq_num);
 		}
 	} else {
-		loge("\"wdma\" node is not found.\n");
+		loge("VIN[%d] - \"wdma\" node is not found.\n", vin_id);
 		return -ENODEV;
 	}
 
