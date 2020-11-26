@@ -3937,7 +3937,7 @@ void tca_lcdc_set_onthefly(struct tcc_dp_device *pdp_data, struct tcc_lcdc_image
 					#endif
 					VIOC_CONFIG_DMAPath_Set(pdp_data->rdma_info[ImageInfo->Lcdc_layer].blk_num, pdp_data->rdma_info[ImageInfo->Lcdc_layer].blk_num);
 				} else {
-					#if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X)
+					#if defined(CONFIG_VIOC_MAP_DECOMP) && (defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X))
 					VIOC_CONFIG_MCPath(pdp_data->wmixer_info.blk_num, pdp_data->rdma_info[ImageInfo->Lcdc_layer].blk_num);
 					#endif
 				}
@@ -3984,7 +3984,7 @@ void tca_lcdc_set_onthefly(struct tcc_dp_device *pdp_data, struct tcc_lcdc_image
 
 				VIOC_CONFIG_DMAPath_Set(pdp_data->rdma_info[ImageInfo->Lcdc_layer].blk_num, pdp_data->rdma_info[ImageInfo->Lcdc_layer].blk_num);
 			} else {
-				#if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X)
+				#if defined(CONFIG_VIOC_MAP_DECOMP) && (defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X))
 				VIOC_CONFIG_MCPath(pdp_data->wmixer_info.blk_num, pdp_data->rdma_info[ImageInfo->Lcdc_layer].blk_num);
 				#endif
 			}
@@ -5082,7 +5082,7 @@ static void tca_scale_display_update_internal(struct tcc_dp_device *pdp_data, st
 			// It is default path selection(VRDMA)
 			VIOC_CONFIG_DMAPath_Set(pdp_data->rdma_info[ImageInfo->Lcdc_layer].blk_num, pdp_data->rdma_info[ImageInfo->Lcdc_layer].blk_num);
 		} else {
-			#if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X)
+			#if defined(CONFIG_VIOC_MAP_DECOMP) && (defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X))
 			VIOC_CONFIG_MCPath(pdp_data->wmixer_info.blk_num, pdp_data->rdma_info[ImageInfo->Lcdc_layer].blk_num);
 			#endif
 		}
@@ -5299,7 +5299,7 @@ static void tca_scale_display_update_internal(struct tcc_dp_device *pdp_data, st
 			VIOC_CONFIG_DMAPath_Set(pdp_data->rdma_info[ImageInfo->Lcdc_layer].blk_num, pdp_data->rdma_info[ImageInfo->Lcdc_layer].blk_num);
 			#endif
 		} else {
-			#if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X)
+			#if defined(CONFIG_VIOC_MAP_DECOMP) && (defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X))
 			VIOC_CONFIG_MCPath(pdp_data->wmixer_info.blk_num, pdp_data->rdma_info[ImageInfo->Lcdc_layer].blk_num);
 			#endif
 		}
@@ -5762,7 +5762,7 @@ void tcc_video_rdma_off(struct tcc_dp_device *pdp_data, struct tcc_lcdc_image_up
 		// It is default path selection(VRDMA)
 		VIOC_CONFIG_DMAPath_Set(pdp_data->rdma_info[ImageInfo->Lcdc_layer].blk_num, pdp_data->rdma_info[ImageInfo->Lcdc_layer].blk_num);
 	} else {
-		#if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X)
+		#if defined(CONFIG_VIOC_MAP_DECOMP) && (defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X))
 		if(ImageInfo->private_data.optional_info[VID_OPT_HAVE_MC_INFO] != 0) {
 			pr_info("[INF][VIOC_I] tcc_video_rdma[%d]_off for last-frame :: Map convter plug out \n", ImageInfo->Lcdc_layer);
 			tca_map_convter_onoff(VIOC_MC0 + nDeCompressor_Main, 0, 1);

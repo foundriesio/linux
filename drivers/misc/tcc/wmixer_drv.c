@@ -901,7 +901,7 @@ static int wmixer_drv_release(struct inode *inode, struct file *filp)
             }
             #endif
         } else {
-            #if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X)
+            #if defined(CONFIG_VIOC_MAP_DECOMP) && (defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X))
             VIOC_CONFIG_MCPath(wmixer->wmix.id, wmixer->rdma0.id);
             #endif
         }

@@ -2077,7 +2077,7 @@ static int tcc_vsync_push_preprocess_deinterlacing(tcc_video_disp *p, struct tcc
 					VIOC_CONFIG_DMAPath_Set(pdp_data->rdma_info[input_image_info->Lcdc_layer].blk_num, pdp_data->rdma_info[input_image_info->Lcdc_layer].blk_num);
 					#endif
 				} else {
-					#if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X)
+					#if defined(CONFIG_VIOC_MAP_DECOMP) && (defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X))
 					VIOC_CONFIG_MCPath(pdp_data->wmixer_info.blk_num, pdp_data->rdma_info[input_image_info->Lcdc_layer].blk_num);
 					#endif
 				}

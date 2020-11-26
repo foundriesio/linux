@@ -1696,7 +1696,7 @@ void TCC_VIQE_Scaler_Release60Hz_M2M(void)
 		if(VIOC_CONFIG_DMAPath_Support()) {
 			VIOC_CONFIG_DMAPath_Set(scaler->rdma->id, scaler->rdma->id);
 		} else {
-			#if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X)
+			#if defined(CONFIG_VIOC_MAP_DECOMP) && (defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X))
 			VIOC_CONFIG_MCPath(scaler->wmix->id, scaler->rdma->id);
 			#endif
 		}

@@ -531,7 +531,7 @@ static irqreturn_t scaler_drv_handler(int irq, void *client_data)
 		}
 		#endif
 	} else {
-		#if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X)
+		#if defined(CONFIG_VIOC_MAP_DECOMP) && (defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X))
 		VIOC_CONFIG_MCPath(scaler->wmix.id, scaler->rdma.id);
 		#endif
 	}
@@ -740,7 +740,7 @@ static int scaler_drv_release(struct inode *inode, struct file *filp)
 
 			VIOC_CONFIG_DMAPath_Set(scaler->rdma.id, scaler->rdma.id);
 		} else {
-			#if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X)
+			#if defined(CONFIG_VIOC_MAP_DECOMP) && (defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X))
 			VIOC_CONFIG_MCPath(scaler->wmix.id, scaler->rdma.id);
 			#endif
 		}
@@ -817,7 +817,7 @@ static int scaler_drv_open(struct inode *inode, struct file *filp)
 			// It is default path selection(VRDMA)
 			VIOC_CONFIG_DMAPath_Set(scaler->rdma.id, scaler->rdma.id);
 		} else {
-			#if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X)
+			#if defined(CONFIG_VIOC_MAP_DECOMP) && (defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X))
 			VIOC_CONFIG_MCPath(scaler->wmix.id, scaler->rdma.id);
 			#endif
 		}
