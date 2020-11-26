@@ -426,12 +426,12 @@ void vioc_reset_rdma_on_display_path(int DispNum)
 		if(info == NULL) {
 			break;
 		}
-		
+
 		tccfb_info = info->par;
 		if(tccfb_info == NULL) {
 			break;
 		}
-		
+
 		if(tccfb_info->pdata.Mdp_data.DispNum == DispNum) {
 			dp_device = &tccfb_info->pdata.Mdp_data;
 		}
@@ -440,7 +440,7 @@ void vioc_reset_rdma_on_display_path(int DispNum)
 		} else {
 			break;
 		}
-		
+
 		for(i = 0; i < RDMA_MAX_NUM; i++) {
 			if(dp_device->rdma_info[i].virt_addr == NULL) {
 				continue;
@@ -453,14 +453,14 @@ void vioc_reset_rdma_on_display_path(int DispNum)
 
 				VIOC_CONFIG_SWReset(dp_device->rdma_info[i].blk_num, VIOC_CONFIG_RESET);
 				VIOC_CONFIG_SWReset(dp_device->rdma_info[i].blk_num, VIOC_CONFIG_CLEAR);
-				printk(KERN_DEBUG "[DBG][FBIF] reset rdma_%d with Scaler-%d\n", 
+				printk(KERN_DEBUG "[DBG][FBIF] reset rdma_%d with Scaler-%d\n",
 					i + (get_vioc_index(dp_device->ddc_info.blk_num) << 2), get_vioc_index(scnum));
 			} else {
-				printk(KERN_DEBUG "[DBG][FBIF] reset rdma_%d\n", 
+				printk(KERN_DEBUG "[DBG][FBIF] reset rdma_%d\n",
 					i + (get_vioc_index(dp_device->ddc_info.blk_num) << 2));
 				VIOC_CONFIG_SWReset(dp_device->rdma_info[i].blk_num, VIOC_CONFIG_RESET);
 				VIOC_CONFIG_SWReset(dp_device->rdma_info[i].blk_num, VIOC_CONFIG_CLEAR);
-			}	
+			}
 		}
 	} while(0);
 }
@@ -732,7 +732,7 @@ irqreturn_t tca_main_display_handler(int irq, void *dev_id)
 		//pr_info("[INF][VIOC_I] AFBC(%d) INT(0x%x) ------ \n", afbc_dec_1st_cfg, afbcDec_status);
 		if( afbcDec_status & AFBCDEC_IRQ_SURF_COMPLETED_MASK) {
 			VIOC_AFBCDec_ClearIrq(VIOC_AFBCDec_GetAddress(afbc_dec_vioc_id), AFBCDEC_IRQ_SURF_COMPLETED_MASK);
-		}		
+		}
 		if( afbcDec_status & AFBCDEC_IRQ_CONFIG_SWAPPED_MASK) {
 			VIOC_AFBCDec_ClearIrq(VIOC_AFBCDec_GetAddress(afbc_dec_vioc_id), AFBCDEC_IRQ_CONFIG_SWAPPED_MASK);
 			//VIOC_AFBCDec_TurnOn(VIOC_AFBCDec_GetAddress(afbc_dec_vioc_id), VIOC_AFBCDEC_SWAP_PENDING);
@@ -1488,7 +1488,7 @@ void tca_vioc_displayblock_timing_set(unsigned int outDevice, struct tcc_dp_devi
 	#if defined(CONFIG_VIOC_AFBCDEC)
 	afbc_dec_1st_cfg = 0;
 	#endif
-	
+
         #if defined(CONFIG_TCC_HDMI_DRIVER_V2_0)
         tca_vioc_displayblock_clock_select(pDisplayInfo, 0);
         #endif
@@ -1870,7 +1870,7 @@ int tca_vioc_displayblock_pre_ctrl_set(struct tcc_dp_device *dp_device)
 			#if defined(CONFIG_TCC_VIOC_DISP_PATH_INTERNAL_CS_YUV)
 			dp_device->FbUpdateType = FB_SC_RDMA_UPDATE;
 			/* CONFIG_TCC_VIOC_DISP_PATH_INTERNAL_CS_YUV- */
-			#else 
+			#else
 			dp_device->FbUpdateType = FB_SC_M2M_RDMA_UPDATE; /* YUV output */
 			/* !CONFIG_TCC_VIOC_DISP_PATH_INTERNAL_CS_YUV- */
 			#endif
@@ -2009,7 +2009,7 @@ void tca_vioc_displayblock_ctrl_set(unsigned int outDevice,
         }
 	// prevent display under-run
 	vioc_reset_rdma_on_display_path(pDisplayInfo->DispNum);
-	
+
 	VIOC_CONFIG_SWReset(pDisplayInfo->wdma_info.blk_num, VIOC_CONFIG_RESET);
 	VIOC_CONFIG_SWReset(pDisplayInfo->wdma_info.blk_num, VIOC_CONFIG_CLEAR);
 
@@ -2357,7 +2357,7 @@ void tca_fb_rdma_active_var(unsigned int base_addr, struct fb_var_screeninfo *va
         VIOC_RDMA_SetImageBase(pRDMA, base_addr, 0, 0);
 #if !defined(CONFIG_ANDROID) && defined(CONFIG_PLATFORM_STB)
     if(var->reserved[3] != 0 )
-        VIOC_RDMA_SetImageRGBSwapMode(pRDMA, 0x5);//BGR	
+        VIOC_RDMA_SetImageRGBSwapMode(pRDMA, 0x5);//BGR
     else
 	VIOC_RDMA_SetImageRGBSwapMode(pRDMA, 0x0);//RGB
 #endif
@@ -3897,7 +3897,7 @@ void tca_lcdc_set_onthefly(struct tcc_dp_device *pdp_data, struct tcc_lcdc_image
 						//pr_info("[INF][VIOC_I] %s Map converter  %d Plugged-In\n",__func__,pdp_data->ddc_info.blk_num);
 					}
 				} else {
-					#ifdef CONFIG_ARCH_TCC803X
+					#if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X)
 					VIOC_CONFIG_MCPath(pdp_data->wmixer_info.blk_num, VIOC_MC0 + nDeCompressor_Main);
 					#endif
 				}
@@ -3937,7 +3937,7 @@ void tca_lcdc_set_onthefly(struct tcc_dp_device *pdp_data, struct tcc_lcdc_image
 					#endif
 					VIOC_CONFIG_DMAPath_Set(pdp_data->rdma_info[ImageInfo->Lcdc_layer].blk_num, pdp_data->rdma_info[ImageInfo->Lcdc_layer].blk_num);
 				} else {
-					#ifdef CONFIG_ARCH_TCC803X
+					#if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X)
 					VIOC_CONFIG_MCPath(pdp_data->wmixer_info.blk_num, pdp_data->rdma_info[ImageInfo->Lcdc_layer].blk_num);
 					#endif
 				}
@@ -3984,7 +3984,7 @@ void tca_lcdc_set_onthefly(struct tcc_dp_device *pdp_data, struct tcc_lcdc_image
 
 				VIOC_CONFIG_DMAPath_Set(pdp_data->rdma_info[ImageInfo->Lcdc_layer].blk_num, pdp_data->rdma_info[ImageInfo->Lcdc_layer].blk_num);
 			} else {
-				#ifdef CONFIG_ARCH_TCC803X
+				#if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X)
 				VIOC_CONFIG_MCPath(pdp_data->wmixer_info.blk_num, pdp_data->rdma_info[ImageInfo->Lcdc_layer].blk_num);
 				#endif
 			}
@@ -5082,7 +5082,7 @@ static void tca_scale_display_update_internal(struct tcc_dp_device *pdp_data, st
 			// It is default path selection(VRDMA)
 			VIOC_CONFIG_DMAPath_Set(pdp_data->rdma_info[ImageInfo->Lcdc_layer].blk_num, pdp_data->rdma_info[ImageInfo->Lcdc_layer].blk_num);
 		} else {
-			#ifdef CONFIG_ARCH_TCC803X
+			#if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X)
 			VIOC_CONFIG_MCPath(pdp_data->wmixer_info.blk_num, pdp_data->rdma_info[ImageInfo->Lcdc_layer].blk_num);
 			#endif
 		}
@@ -5238,7 +5238,7 @@ static void tca_scale_display_update_internal(struct tcc_dp_device *pdp_data, st
 			if(component_num != (VIOC_MC0 + nDeCompressor_Main))
 				VIOC_CONFIG_DMAPath_Set(pdp_data->rdma_info[ImageInfo->Lcdc_layer].blk_num, VIOC_MC0 + nDeCompressor_Main);
 		} else {
-			#ifdef CONFIG_ARCH_TCC803X
+			#if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X)
 			VIOC_CONFIG_MCPath(pdp_data->wmixer_info.blk_num, VIOC_MC0 + nDeCompressor_Main);
 			#endif
 		}
@@ -5299,7 +5299,7 @@ static void tca_scale_display_update_internal(struct tcc_dp_device *pdp_data, st
 			VIOC_CONFIG_DMAPath_Set(pdp_data->rdma_info[ImageInfo->Lcdc_layer].blk_num, pdp_data->rdma_info[ImageInfo->Lcdc_layer].blk_num);
 			#endif
 		} else {
-			#ifdef CONFIG_ARCH_TCC803X
+			#if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X)
 			VIOC_CONFIG_MCPath(pdp_data->wmixer_info.blk_num, pdp_data->rdma_info[ImageInfo->Lcdc_layer].blk_num);
 			#endif
 		}
@@ -5762,7 +5762,7 @@ void tcc_video_rdma_off(struct tcc_dp_device *pdp_data, struct tcc_lcdc_image_up
 		// It is default path selection(VRDMA)
 		VIOC_CONFIG_DMAPath_Set(pdp_data->rdma_info[ImageInfo->Lcdc_layer].blk_num, pdp_data->rdma_info[ImageInfo->Lcdc_layer].blk_num);
 	} else {
-		#ifdef CONFIG_ARCH_TCC803X
+		#if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X)
 		if(ImageInfo->private_data.optional_info[VID_OPT_HAVE_MC_INFO] != 0) {
 			pr_info("[INF][VIOC_I] tcc_video_rdma[%d]_off for last-frame :: Map convter plug out \n", ImageInfo->Lcdc_layer);
 			tca_map_convter_onoff(VIOC_MC0 + nDeCompressor_Main, 0, 1);

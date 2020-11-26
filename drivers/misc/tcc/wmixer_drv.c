@@ -185,7 +185,7 @@ static int wmixer_drv_ctrl(struct wmixer_drv_type *wmixer)
 
             VIOC_CONFIG_DMAPath_Set(wmixer->rdma0.id, (VIOC_MC0 + gMC_NUM));
         } else {
-            #ifdef CONFIG_ARCH_TCC803X
+            #if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X)
             VIOC_CONFIG_MCPath(wmixer->wmix.id, (VIOC_MC0 + gMC_NUM));
             #endif
         }
@@ -390,7 +390,7 @@ static int wmixer_drv_alpha_scaling_ctrl(struct wmixer_drv_type *wmixer)
 
             VIOC_CONFIG_DMAPath_Set(wmixer->rdma0.id, (VIOC_MC0 + gMC_NUM));
         } else {
-            #ifdef CONFIG_ARCH_TCC803X
+            #if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X)
             VIOC_CONFIG_MCPath(wmixer->wmix.id, (VIOC_MC0 + gMC_NUM));
             #endif
         }
@@ -901,7 +901,7 @@ static int wmixer_drv_release(struct inode *inode, struct file *filp)
             }
             #endif
         } else {
-            #ifdef CONFIG_ARCH_TCC803X
+            #if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X)
             VIOC_CONFIG_MCPath(wmixer->wmix.id, wmixer->rdma0.id);
             #endif
         }

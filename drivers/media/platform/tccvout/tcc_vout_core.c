@@ -1688,7 +1688,7 @@ void vout_onthefly_display_update(struct tcc_vout_device *vout, struct v4l2_buff
 				VIOC_CONFIG_DMAPath_Set(vioc->rdma.id, vioc->map_converter.id);
 			}
 		} else {
-			#ifdef CONFIG_ARCH_TCC803X
+			#if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X)
 			tca_map_convter_swreset(VIOC_MC0);
 			if(VIOC_CONFIG_MCPath(vioc->wmix.id, VIOC_MC0) < 0) {
 				pr_err("[ERR][VOUT] %s[%d]: HW Decompresser can not be connected on %s\n",
@@ -1843,7 +1843,7 @@ void vout_onthefly_display_update(struct tcc_vout_device *vout, struct v4l2_buff
 			// It is default path selection(VRDMA)
 			VIOC_CONFIG_DMAPath_Set(vioc->rdma.id, vioc->rdma.id);
 		} else {
-			#ifdef CONFIG_ARCH_TCC803X
+			#if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X)
 			VIOC_CONFIG_MCPath(vioc->wmix.id, vioc->rdma.id);
 			#endif
 		}
@@ -2411,7 +2411,7 @@ void vout_m2m_display_update(struct tcc_vout_device *vout, struct v4l2_buffer *b
 				VIOC_CONFIG_DMAPath_Set(vioc->m2m_rdma.id, vioc->map_converter.id);
 			}
 		} else {
-			#ifdef CONFIG_ARCH_TCC803X
+			#if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X)
 			tca_map_convter_swreset(VIOC_MC1);
 			if(VIOC_CONFIG_MCPath(vioc->m2m_wmix.id, VIOC_MC1) < 0) {
 				pr_err("[ERR][VOUT] %s[%d]: HW Decompresser can not be connected on %s\n",
@@ -2555,7 +2555,7 @@ void vout_m2m_display_update(struct tcc_vout_device *vout, struct v4l2_buffer *b
 			// It is default path selection(VRDMA)
 			VIOC_CONFIG_DMAPath_Set(vioc->m2m_rdma.id, vioc->m2m_rdma.id);
 		} else {
-			#ifdef CONFIG_ARCH_TCC803X
+			#if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X)
 			VIOC_CONFIG_MCPath(vioc->m2m_wmix.id, vioc->m2m_rdma.id);
 			#endif
 		}
@@ -3844,7 +3844,7 @@ void vout_otf_deinit(struct tcc_vout_device *vout)
 				break;
 		}
 	} else {
-		#ifdef CONFIG_ARCH_TCC803X
+		#if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X)
 		VIOC_CONFIG_MCPath(vioc->wmix.id, vioc->rdma.id);
 		#endif
 	}
@@ -3950,7 +3950,7 @@ void vout_m2m_deinit(struct tcc_vout_device *vout)
 				break;
 		}
 	} else {
-		#ifdef CONFIG_ARCH_TCC803X
+		#if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X)
 		VIOC_CONFIG_MCPath(vioc->m2m_wmix.id, vioc->m2m_rdma.id);
 		#endif
 	}

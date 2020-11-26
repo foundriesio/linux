@@ -508,7 +508,7 @@ VSYNC_CH_TYPE tcc_vsync_get_video_ch_type(unsigned int lcdc_layer)
 		dprintk("error :: strange lcdc_layer(%d) \n", lcdc_layer);
 		type = VSYNC_MAX;
 	}
-	return type;	
+	return type;
 }
 #endif
 
@@ -629,7 +629,7 @@ inline static int tcc_vsync_buffer_check(tcc_video_disp *p, unsigned int ref_buf
 	{
 		pr_info("[INF][VSYNC] [%d] : Buffer_ID[%d] - TS[%d] SyncTS[%d] \n", p->type,
 				buffer_t->stImage[readIdx].buffer_unique_id, buffer_t->stImage[readIdx].time_stamp, buffer_t->stImage[readIdx].sync_time);
-	
+
 		if(++readIdx >= buffer_t->max_buff_num)
 			readIdx = 0;
 		readable_count--;
@@ -651,7 +651,7 @@ inline static int tcc_vsync_clean_buffer(tcc_vsync_buffer_t * buffer_t)
 	{
 		if(++buffer_t->clearIdx >= buffer_t->max_buff_num)
 			buffer_t->clearIdx = 0;
-		
+
 		if(buffer_t->last_cleared_buff_id < buffer_t->stImage[buffer_t->clearIdx].buffer_unique_id)
 			buffer_t->last_cleared_buff_id = buffer_t->stImage[buffer_t->clearIdx].buffer_unique_id;
 
@@ -665,7 +665,7 @@ inline static int tcc_vsync_clean_buffer(tcc_vsync_buffer_t * buffer_t)
 	}while(buffer_t->readIdx != buffer_t->clearIdx);
 	wake_up_interruptible( &wq_consume ) ;
 	vprintk("tcc_vsync_clean_buffer valid_buff_count %d  \n", atomic_read(&buffer_t->valid_buff_count));
-	
+
 	return atomic_read(&buffer_t->valid_buff_count);
 }
 
@@ -697,7 +697,7 @@ static int tcc_vsync_pop_all_buffer(tcc_video_disp *p, int caller_line)
 
 	buffer_t->writeIdx = buffer_t->readIdx = buffer_t->clearIdx;
 	atomic_set( &buffer_t->readable_buff_count,0);
-	
+
 	dprintk("[%d] who:%d pop_all_buffer readIdx %d writeIdx %d clearIdx %d valid %d readable %d \n", p->type, caller_line,
 				buffer_t->readIdx,buffer_t->writeIdx,buffer_t->clearIdx, atomic_read(&buffer_t->valid_buff_count), atomic_read( &buffer_t->readable_buff_count));
 	return 0;
@@ -792,12 +792,12 @@ static int tcc_vsync_bypass_frame(tcc_video_disp *p, struct tcc_dp_device *pdp_d
 {
 	unsigned int lstatus = 0;
 	int ret = 0;
-	
+
 	if (pdp_data->ddc_info.virt_addr == NULL) {
 		pr_err("[ERR][VSYNC] %s: pdp_data->ddc_info.virt_addr is null\n", __func__);
 		return PTR_ERR((void*)pdp_data->ddc_info.virt_addr);
 	}
-	
+
 	lstatus = __raw_readl(pdp_data->ddc_info.virt_addr+DSTATUS);
 	if(pImage->odd_first_flag==0){
 		if(p->nDeinterProcCount ==0){
@@ -828,12 +828,12 @@ static int tcc_vsync_bypass_frame(tcc_video_disp *p, struct tcc_dp_device *pdp_d
 			}
 		}
 	}
-	
+
 	if(ret == 1){
 		//pr_warn("[WAN][VSYNC]  nDeinterProcCount(%d), odd_first_flag(%d)\n", tccvid_vsync.nDeinterProcCount, pImage->odd_first_flag) ;
 		return ret;
 	}
-	
+
 	switch(Output_SelectMode)
 	{
 		case TCC_OUTPUT_NONE:
@@ -1035,7 +1035,7 @@ static void tcc_vsync_display_update(tcc_video_disp *p)
 				//2.1 send command so that HDMI can change VSIF.
 				if (schedule_work(&dolby_out_change_work_q) == 0 ) {
 					pr_err("[ERR][VSYNC] dolby_out :cannot schedule work !!!\n");
-				}	
+				}
 			}
 
 			if(nDolbyTransition_Skipped_Count >= 2)
@@ -1076,8 +1076,8 @@ static void tcc_vsync_display_update(tcc_video_disp *p)
 #endif
 
 #ifdef DEBUG_VSYNC_FRAME
-	if((pNextImage->buffer_unique_id % GAP_CNT) == 0)	
-		pr_info("[INF][VSYNC] @-%d :: ID[%d] pNextImage->time_stamp : %d %d, Count(%d/%d), Out(%d/%d)\n", 
+	if((pNextImage->buffer_unique_id % GAP_CNT) == 0)
+		pr_info("[INF][VSYNC] @-%d :: ID[%d] pNextImage->time_stamp : %d %d, Count(%d/%d), Out(%d/%d)\n",
 	#if defined(USE_VSYNC_TIMER_INT_FOR_UNPLUGED_OUTPUT)
 			g_is_unplugged_int_enabled,
 	#else
@@ -1131,7 +1131,7 @@ static void tcc_vsync_display_update(tcc_video_disp *p)
 			} else
 				pNextImage->bSize_Changed = 1;
 		} else {
-			dprintk(" POP(%d) ====> [%d/%d] ID[%d] pNextImage->time_stamp : %d / %d, Gap = %d\n", popped_count, i, readable_buff_cnt, pNextImage->buffer_unique_id, pNextImage->time_stamp, current_time, pNextImage->time_stamp - current_time);	
+			dprintk(" POP(%d) ====> [%d/%d] ID[%d] pNextImage->time_stamp : %d / %d, Gap = %d\n", popped_count, i, readable_buff_cnt, pNextImage->buffer_unique_id, pNextImage->time_stamp, current_time, pNextImage->time_stamp - current_time);
 		}
 
 #if defined(CONFIG_VIOC_DOLBY_VISION_CERTIFICATION_TEST) && defined(DV_PREVENT_FRAME_DROP_AND_DUPLICATION)
@@ -1157,7 +1157,7 @@ static void tcc_vsync_display_update(tcc_video_disp *p)
 		if(testToggleBit)
 		{
 			PGPION hwGPIOC;
-			testToggleBit = 0; 
+			testToggleBit = 0;
 
 			hwGPIOC = (volatile PGPION)tcc_p2v(HwGPIOC_BASE);
 			//hwGPIOC->GPEN.nREG|= (unsigned int)(0x00004000);
@@ -1166,7 +1166,7 @@ static void tcc_vsync_display_update(tcc_video_disp *p)
 			hwGPIOC->GPEN.bREG.GP14 = 1;
 			hwGPIOC->GPDAT.bREG.GP14 = 1;
 
-			
+
 		}
 		else
 		{
@@ -1375,7 +1375,7 @@ static void tcc_vsync_display_update_forDeinterlaced(tcc_video_disp *p)
 				reset_frmCnt = VIQE_RESET_RECOVERY;
 			}
 
-			dprintk("Readable[%d] ID[%d] pNextImage->time_stamp : %d / %d, Gap = %d\n", readable_buff_cnt, p->pIntlNextImage->buffer_unique_id, p->pIntlNextImage->time_stamp, current_time, p->pIntlNextImage->time_stamp - current_time);	
+			dprintk("Readable[%d] ID[%d] pNextImage->time_stamp : %d / %d, Gap = %d\n", readable_buff_cnt, p->pIntlNextImage->buffer_unique_id, p->pIntlNextImage->time_stamp, current_time, p->pIntlNextImage->time_stamp - current_time);
 
 			if(pPrevImage->addr0 == p->pIntlNextImage->addr0)
 				p->pIntlNextImage->bSize_Changed = 1;
@@ -1700,7 +1700,7 @@ inline static void tcc_vsync_set_time(tcc_video_disp *p, int time)
 	p->baseTime = time;
 #endif
 }
-	
+
 inline static int tcc_vsync_get_time(tcc_video_disp *p)
 {
 #ifdef USE_VSYNC_TIMER
@@ -1717,7 +1717,7 @@ static void tcc_vsync_reset_syncTime(tcc_video_disp *p, int currentTime, VSYNC_C
 	p->timeGapBufferFullFlag = 0;
 	p->timeGapIdx = 0;
 	p->timeGapTotal = 0;
-	
+
 	spin_lock_irq(&vsync_lock) ;
 	tcc_vsync_set_time(p, currentTime);
 	p->unVsyncCnt=0;
@@ -1741,7 +1741,7 @@ static int tcc_vsync_calculate_syncTime(tcc_video_disp *p, int currentTime, VSYN
 	spin_lock_irq(&vsync_lock) ;
 	base_time = tcc_vsync_get_time(p);
 	spin_unlock_irq(&vsync_lock) ;
-	
+
 	diffTime =	currentTime - base_time;
 
 	p->timeGapTotal -= p->timeGap[p->timeGapIdx];
@@ -1765,7 +1765,7 @@ static int tcc_vsync_calculate_syncTime(tcc_video_disp *p, int currentTime, VSYN
 	#if 0//def USE_VSYNC_TIMER
 	if( p->timeGapBufferFullFlag && (avgTime > p->updateGapTime || avgTime < -(p->updateGapTime)))
 	#else
-	if( (p->timeGapBufferFullFlag || p->unVsyncCnt < 100) 
+	if( (p->timeGapBufferFullFlag || p->unVsyncCnt < 100)
 		&& (avgTime > p->updateGapTime || avgTime < -(p->updateGapTime)))
 	#endif
 	{
@@ -1773,7 +1773,7 @@ static int tcc_vsync_calculate_syncTime(tcc_video_disp *p, int currentTime, VSYN
 		p->timeGapBufferFullFlag = 0;
 		p->timeGapIdx = 0;
 		p->timeGapTotal = 0;
-		
+
 		//pr_info("[INF][VSYNC]  changed time base time %d kernel time %d time %d \n",
 		//	p->baseTime,tcc_get_timer_count(vsync_timer),currentTime);
 		spin_lock_irq(&vsync_lock) ;
@@ -1785,7 +1785,7 @@ static int tcc_vsync_calculate_syncTime(tcc_video_disp *p, int currentTime, VSYN
 			pr_info("[INF][VSYNC] [%d] changed base time : %d, add time: %d diffTime %d fps(%d)\n", type, base_time+avgTime, avgTime,diffTime, p->video_frame_rate);
 #endif
 	}
-	
+
 	return 0;
 }
 
@@ -1862,17 +1862,17 @@ static int tcc_vsync_push_preprocess(tcc_video_disp *p, struct tcc_dp_device *pd
 		input_image_info->sync_time = tcc_vsync_get_time(p);
 	else
 		check_time = abs(tcc_vsync_get_time(p) - input_image_info->sync_time);
-	
+
 	spin_unlock_irq(&vsync_lock) ;
 
 	if(p->player_no_sync_time)
 	{
 		int check_index=0;
-		
+
 		input_image_info->output_path=0;
 		p->skipFrameStatus = 0;
 		check_index = input_image_info->buffer_unique_id -p->prev_buffer_unique_id;
-		
+
 		//pr_info("[INF][VSYNC]  id:%d/%d vts:%d/%d t:%d valid:%d  \n",input_image_info->buffer_unique_id,p->prev_buffer_unique_id,
 		//	input_image_info->time_stamp,p->prev_time_stamp,input_image_info->sync_time,tcc_video_get_valid_count(p));
 		//this is for seek, fast play(except x2) and inline <-> full screen
@@ -1900,10 +1900,10 @@ static int tcc_vsync_push_preprocess(tcc_video_disp *p, struct tcc_dp_device *pd
 
 		p->prev_time_stamp = input_image_info->time_stamp;
 		p->prev_buffer_unique_id = input_image_info->buffer_unique_id;
-		
+
 		p->player_seek= 0;
 	}
-	
+
 	if(check_time > GAP_FOR_RESET_SYNC_TIME)
 	{
 #ifdef USE_VSYNC_TIMER
@@ -1912,7 +1912,7 @@ static int tcc_vsync_push_preprocess(tcc_video_disp *p, struct tcc_dp_device *pd
 #endif
 		tcc_vsync_reset_syncTime(p, 0, type);
 	}
-	
+
 	tcc_vsync_calculate_syncTime(p, input_image_info->sync_time, type);
 
 	return ret;
@@ -1935,7 +1935,7 @@ static void tcc_vsync_push_set_outputMode(tcc_video_disp *p, struct tcc_dp_devic
 			#ifdef TCC_LCD_VIDEO_DISPLAY_BY_VSYNC_INT
 			p->outputMode = TCC_OUTPUT_LCD;
 			#else
-			p->outputMode = TCC_OUTPUT_NONE;			
+			p->outputMode = TCC_OUTPUT_NONE;
 			#endif
 			break;
 		case OUTPUT_HDMI:
@@ -1943,18 +1943,18 @@ static void tcc_vsync_push_set_outputMode(tcc_video_disp *p, struct tcc_dp_devic
 			tcc_vsync_check_interlace_output(p, pdp_data);
 			break;
 		case OUTPUT_COMPOSITE:
-			p->outputMode = TCC_OUTPUT_COMPOSITE; 		
+			p->outputMode = TCC_OUTPUT_COMPOSITE;
 			tcc_vsync_check_interlace_output(p, pdp_data);
 			break;
 		case OUTPUT_COMPONENT:
-			p->outputMode = TCC_OUTPUT_COMPONENT; 		
+			p->outputMode = TCC_OUTPUT_COMPONENT;
 			tcc_vsync_check_interlace_output(p, pdp_data);
 			break;
 		default:
-			p->outputMode = TCC_OUTPUT_NONE;									
+			p->outputMode = TCC_OUTPUT_NONE;
 	}
-	
-	pr_info("[INF][VSYNC]  set_outputMode input->outputMode:%d SelectMode:%d \n", input_image_info->outputMode,Output_SelectMode);			
+
+	pr_info("[INF][VSYNC]  set_outputMode input->outputMode:%d SelectMode:%d \n", input_image_info->outputMode,Output_SelectMode);
 
 	return;
 }
@@ -1966,23 +1966,23 @@ static int tcc_vsync_push_preprocess_deinterlacing(tcc_video_disp *p, struct tcc
 
 	if(p->deinterlace_mode < 0)
 	{
-		
+
 		pDISPBase = pdp_data->ddc_info.virt_addr;
-				
+
 		VIOC_DISP_GetSize(pDISPBase, &lcd_width, &lcd_height);
-		
+
 		p->deinterlace_mode = input_image_info->deinterlace_mode;
 		p->frameInfo_interlace = input_image_info->frameInfo_interlace;
 		p->output_toMemory = input_image_info->output_toMemory;
 		pr_info("[INF][VSYNC] ### deinterlace_mode(%d), output_toMemory(%d)\n", p->deinterlace_mode, p->output_toMemory);
-		
+
 		p->interlace_bypass_lcdc = 0;
 		p->mvcMode = input_image_info->MVCframeView;
 
 		p->m2m_mode =  input_image_info->m2m_mode;
-	
-		if( (p->deinterlace_mode == 1) && 
-			(p->interlace_output == 1) && 
+
+		if( (p->deinterlace_mode == 1) &&
+			(p->interlace_output == 1) &&
 			(p->output_toMemory == 0) &&
 			(input_image_info->Frame_width == input_image_info->Image_width) && (input_image_info->Frame_height == input_image_info->Image_height) )
 		{
@@ -1991,9 +1991,9 @@ static int tcc_vsync_push_preprocess_deinterlacing(tcc_video_disp *p, struct tcc
 		}
 
 		#if defined(CONFIG_TCC_OUTPUT_COLOR_SPACE_YUV) || defined(CONFIG_TCC_COMPOSITE_COLOR_SPACE_YUV)
-		if( (p->outputMode == TCC_OUTPUT_COMPOSITE) && 
-			(p->deinterlace_mode == 1) && 
-			(p->interlace_output == 1) && 
+		if( (p->outputMode == TCC_OUTPUT_COMPOSITE) &&
+			(p->deinterlace_mode == 1) &&
+			(p->interlace_output == 1) &&
 			(p->output_toMemory == 0) &&
 			(input_image_info->Frame_width == input_image_info->Image_width) )
 		{
@@ -2011,7 +2011,7 @@ static int tcc_vsync_push_preprocess_deinterlacing(tcc_video_disp *p, struct tcc
 	}
 
 
-	
+
 	#if defined(CONFIG_TCC_OUTPUT_COLOR_SPACE_YUV) || defined(CONFIG_TCC_COMPOSITE_COLOR_SPACE_YUV)
 	if((p->outputMode == TCC_OUTPUT_COMPOSITE) && (p->interlace_bypass_lcdc))
 	{
@@ -2057,7 +2057,7 @@ static int tcc_vsync_push_preprocess_deinterlacing(tcc_video_disp *p, struct tcc
 		if(p->outputMode == TCC_OUTPUT_LCD ||p->outputMode == TCC_OUTPUT_NONE )
 			lcdCtrlNum = LCD_LCDC_NUM;
 		else
-			lcdCtrlNum = EX_OUT_LCDC;	
+			lcdCtrlNum = EX_OUT_LCDC;
 
 		p->nDeinterProcCount = 0;
 
@@ -2077,7 +2077,7 @@ static int tcc_vsync_push_preprocess_deinterlacing(tcc_video_disp *p, struct tcc
 					VIOC_CONFIG_DMAPath_Set(pdp_data->rdma_info[input_image_info->Lcdc_layer].blk_num, pdp_data->rdma_info[input_image_info->Lcdc_layer].blk_num);
 					#endif
 				} else {
-					#ifdef CONFIG_ARCH_TCC803X
+					#if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X)
 					VIOC_CONFIG_MCPath(pdp_data->wmixer_info.blk_num, pdp_data->rdma_info[input_image_info->Lcdc_layer].blk_num);
 					#endif
 				}
@@ -2131,7 +2131,7 @@ static int tcc_vsync_push_bypass_frame(tcc_video_disp *p, struct tcc_dp_device *
 		if(p->deinterlace_mode && !p->interlace_bypass_lcdc)
 		{
 			p->nDeinterProcCount = 0;
-			
+
 			if(Output_SelectMode != TCC_OUTPUT_NONE && !p->duplicateUseFlag)
 			{
 				if(!p->output_toMemory) {
@@ -2173,7 +2173,7 @@ static int tcc_vsync_push_bypass_frame(tcc_video_disp *p, struct tcc_dp_device *
 					else
 						tca_scale_display_update(pdp_data, input_image_info);
 					break;
-					
+
 				case TCC_OUTPUT_COMPONENT:
 				case TCC_OUTPUT_COMPOSITE:
 					tca_scale_display_update(pdp_data, input_image_info);
@@ -2184,7 +2184,7 @@ static int tcc_vsync_push_bypass_frame(tcc_video_disp *p, struct tcc_dp_device *
 		}
 
 		input_image_info->time_stamp = 0;
-		
+
 		return 1;
 	}
 
@@ -2193,9 +2193,9 @@ static int tcc_vsync_push_bypass_frame(tcc_video_disp *p, struct tcc_dp_device *
 
 static int tcc_vsync_push_check_error(tcc_video_disp *p, struct tcc_dp_device *pdp_data, struct tcc_lcdc_image_update *input_image_info)
 {
-	
+
 	int error_type = 0;
-	
+
 	if(p->skipFrameStatus)
 	{
 		error_type = -21;
@@ -2216,7 +2216,7 @@ static int tcc_vsync_push_check_error(tcc_video_disp *p, struct tcc_dp_device *p
 				p->vsync_buffer.available_buffer_id_on_vpu, input_image_info->buffer_unique_id);
 		error_type = -23;
 	}
-	
+
 	if(error_type < 0)
 	{
 		vprintk("vsync push error : %d buffer_unique_id %d\n", error_type,input_image_info->buffer_unique_id);
@@ -2231,7 +2231,7 @@ static int tcc_vsync_push_check_error(tcc_video_disp *p, struct tcc_dp_device *p
 
 static int tcc_vsync_push_process(tcc_video_disp *p, struct tcc_dp_device *pdp_data, struct tcc_lcdc_image_update *input_image_info, VSYNC_CH_TYPE type)
 {
-	vprintk("tcc_vsync_push_process :[%d] %d %d\n", input_image_info->buffer_unique_id, input_image_info->time_stamp, input_image_info->sync_time);	
+	vprintk("tcc_vsync_push_process :[%d] %d %d\n", input_image_info->buffer_unique_id, input_image_info->time_stamp, input_image_info->sync_time);
 	if(input_image_info->time_stamp < input_image_info->sync_time)
 	{
 		input_image_info->time_stamp = TIME_MARK_SKIP;
@@ -2240,11 +2240,11 @@ static int tcc_vsync_push_process(tcc_video_disp *p, struct tcc_dp_device *pdp_d
 	if(tcc_vsync_is_full_buffer(&p->vsync_buffer))
 	{
 		int timeout = wait_event_interruptible_timeout( wq_consume,
-										tcc_vsync_is_full_buffer(&p->vsync_buffer) == 0, 
+										tcc_vsync_is_full_buffer(&p->vsync_buffer) == 0,
 										msecs_to_jiffies(500)) ;
 		vprintk("mio push wait(%d ms) due to buffer-full \n", 500-jiffies_to_msecs(timeout));
 	}
-	
+
 	spin_lock_irq(&vsync_lock) ;
 	input_image_info->viqe_queued = 0;
 	if(tcc_vsync_push_buffer(p, &p->vsync_buffer, input_image_info) < 0)
@@ -2325,7 +2325,7 @@ static int tcc_vsync_start(tcc_video_disp *p, struct tcc_lcdc_image_update *inpu
 				#endif
 				break;
 			} else {
-				if(!dp_device->FbPowerState) {					
+				if(!dp_device->FbPowerState) {
 					#if defined(CONFIG_VSYNC_DRV_ALWAYS_ACCEPT_START_VSYNC)
 					if(prepare_input_image_info[type] != NULL) {
 						memcpy(prepare_input_image_info[type], input_image_info, sizeof(struct tcc_lcdc_image_update));
@@ -2352,10 +2352,10 @@ static int tcc_vsync_start(tcc_video_disp *p, struct tcc_lcdc_image_update *inpu
 			set_hdmi_drm(DRM_INIT, input_image_info, input_image_info->Lcdc_layer);
 			#endif
 			tcc_video_set_framerate(p, input_image_info->fps);
-			
-			backup_time = p->nTimeGapToNextField; 
+
+			backup_time = p->nTimeGapToNextField;
 			backup_frame_rate = p->video_frame_rate;
-			memset( p, 0, sizeof( tcc_video_disp) ) ; 
+			memset( p, 0, sizeof( tcc_video_disp) ) ;
 			p->overlayUsedFlag = -1;
 			p->outputMode = -1;
 			p->firstFrameFlag = 1;
@@ -2375,11 +2375,11 @@ static int tcc_vsync_start(tcc_video_disp *p, struct tcc_lcdc_image_update *inpu
 			else {
 				p->player_no_sync_time = 0;
 			}
-			
+
 			p->prev_time_stamp = 0;
 			p->prev_buffer_unique_id= 0;
 			p->wait_too_long_indicate= 0;
-			
+
 
 			if (type == VSYNC_MAIN)
 				viqe_render_init();
@@ -2404,7 +2404,7 @@ static int tcc_vsync_start(tcc_video_disp *p, struct tcc_lcdc_image_update *inpu
 			if(type ==0 && (p->video_frame_rate > 0) && (p->video_frame_rate <= display_hz/2))
 				p->duplicateUseFlag =1;
 
-			
+
 			//spin_lock_init(&vsync_lock);
 			//spin_lock_init(&vsync_lockDisp);
 
@@ -2423,7 +2423,7 @@ static int tcc_vsync_start(tcc_video_disp *p, struct tcc_lcdc_image_update *inpu
 
 			tca_vsync_video_display_enable();
 			tcc_vsync_set_max_buffer(&p->vsync_buffer, input_image_info->max_buffer);
-			
+
 			tccvid_lastframe[type].CurrImage.enable = 0;
 			tccvid_lastframe[type].CurrImage.buffer_unique_id = 0xFFFFFFFF;
 
@@ -2583,34 +2583,34 @@ static void print_vsync_input(char *str, struct tcc_lcdc_image_update *pIn)
 {
 #if 0
 	printk("\n %s :: %d\n", str, pIn->private_data.optional_info[VID_OPT_BUFFER_ID]);
-	printk("Layer(%d), Enable(%d), Frame(%d x %d), Image(%d x %d), Offset(%d x %d) \n", 
+	printk("Layer(%d), Enable(%d), Frame(%d x %d), Image(%d x %d), Offset(%d x %d) \n",
 				pIn->Lcdc_layer, pIn->enable, pIn->Frame_width, pIn->Frame_height, pIn->Image_width, pIn->Image_height, pIn->offset_x, pIn->offset_y);
 	printk("Addr(0x%x / 0x%x / 0x%x), Fmt(%d), on_the_fly(%d) Crop(%d-%d-%d-%d) \n", pIn->addr0, pIn->addr1, pIn->addr2, pIn->fmt, pIn->on_the_fly,
 				pIn->crop_top, pIn->crop_bottom, pIn->crop_left, pIn->crop_right);
-	printk("Time(%d-%d), First(%d), Buffer_id(%d), overlay_used(%d), outMode(%d), outPath(%d) \n", 
+	printk("Time(%d-%d), First(%d), Buffer_id(%d), overlay_used(%d), outMode(%d), outPath(%d) \n",
 				pIn->time_stamp, pIn->sync_time, pIn->first_frame_after_seek, pIn->buffer_unique_id, pIn->overlay_used_flag, pIn->outputMode, pIn->output_path);
-	printk("DeIntl(%d), Odd_First(%d), m2m(%d), output_toM(%d), frm_intl(%d), one_field_only(%d) \n", 
+	printk("DeIntl(%d), Odd_First(%d), m2m(%d), output_toM(%d), frm_intl(%d), one_field_only(%d) \n",
 				pIn->deinterlace_mode, pIn->odd_first_flag, pIn->m2m_mode, pIn->output_toMemory, pIn->frameInfo_interlace, pIn->one_field_only_interlace);
-	printk("MVC(%d), base_Addr(0x%x / 0x%x / 0x%x), dest_Addr(0x%x / 0x%x / 0x%x) \n", 
+	printk("MVC(%d), base_Addr(0x%x / 0x%x / 0x%x), dest_Addr(0x%x / 0x%x / 0x%x) \n",
 				pIn->MVCframeView, pIn->MVC_Base_addr0, pIn->MVC_Base_addr1, pIn->MVC_Base_addr2, pIn->dst_addr0, pIn->dst_addr1, pIn->dst_addr2);
-	printk("Max_buff(%d), ex_out(%d), fps(%d), bit_depth(%d), codec_id(%d), bSize_Change(%d) \n", 
+	printk("Max_buff(%d), ex_out(%d), fps(%d), bit_depth(%d), codec_id(%d), bSize_Change(%d) \n",
 				pIn->max_buffer, pIn->ex_output, pIn->fps, pIn->bit_depth, pIn->codec_id, pIn->bSize_Changed);
 
-	printk("Priv[ %d x %d, fmt %d, offset(0x%x / 0x%x / 0x%x), name(%s), unique_addr(%d), copied(%d) \n", 
+	printk("Priv[ %d x %d, fmt %d, offset(0x%x / 0x%x / 0x%x), name(%s), unique_addr(%d), copied(%d) \n",
 				pIn->private_data.width, pIn->private_data.height, pIn->private_data.format, pIn->private_data.offset[0], pIn->private_data.offset[1], pIn->private_data.offset[2],
 				pIn->private_data.name, pIn->private_data.unique_addr, pIn->private_data.copied);
-	printk("optional_info[%d/%d/%d/%d/%d - %d/%d/%d/%d/%d - %d/%d/%d/%d/%d - %d/%d/%d/%d/%d - %d/%d/%d/%d/%d - %d/%d/%d/%d/%d \n", 
+	printk("optional_info[%d/%d/%d/%d/%d - %d/%d/%d/%d/%d - %d/%d/%d/%d/%d - %d/%d/%d/%d/%d - %d/%d/%d/%d/%d - %d/%d/%d/%d/%d \n",
 				pIn->private_data.optional_info[VID_OPT_BUFFER_WIDTH], pIn->private_data.optional_info[VID_OPT_BUFFER_HEIGHT],
-				pIn->private_data.optional_info[VID_OPT_FRAME_WIDTH], pIn->private_data.optional_info[VID_OPT_FRAME_HEIGHT], 
+				pIn->private_data.optional_info[VID_OPT_FRAME_WIDTH], pIn->private_data.optional_info[VID_OPT_FRAME_HEIGHT],
 				pIn->private_data.optional_info[VID_OPT_BUFFER_ID], pIn->private_data.optional_info[VID_OPT_TIMESTAMP],
-				pIn->private_data.optional_info[VID_OPT_SYNC_TIME], pIn->private_data.optional_info[VID_OPT_FLAGS], 
-				pIn->private_data.optional_info[VID_OPT_FPS], pIn->private_data.optional_info[VID_OPT_MVC_DISP_IDX], 
+				pIn->private_data.optional_info[VID_OPT_SYNC_TIME], pIn->private_data.optional_info[VID_OPT_FLAGS],
+				pIn->private_data.optional_info[VID_OPT_FPS], pIn->private_data.optional_info[VID_OPT_MVC_DISP_IDX],
 				pIn->private_data.optional_info[VID_OPT_MVC_ADDR_0], pIn->private_data.optional_info[VID_OPT_MVC_ADDR_1], pIn->private_data.optional_info[VID_OPT_MVC_ADDR_2],
 				pIn->private_data.optional_info[VID_OPT_MVC_ADDR_0], pIn->private_data.optional_info[VID_OPT_DISP_OUT_IDX], pIn->private_data.optional_info[VID_OPT_VPU_INST_IDX],
-				pIn->private_data.optional_info[VID_OPT_HAVE_MC_INFO], pIn->private_data.optional_info[VID_OPT_LOCAL_PLAYBACK], 
+				pIn->private_data.optional_info[VID_OPT_HAVE_MC_INFO], pIn->private_data.optional_info[VID_OPT_LOCAL_PLAYBACK],
 				pIn->private_data.optional_info[VID_OPT_PLAYER_IDX], pIn->private_data.optional_info[VID_OPT_WIDTH_STRIDE], pIn->private_data.optional_info[VID_OPT_HEIGHT_STRIDE],
-				pIn->private_data.optional_info[VID_OPT_BIT_DEPTH], pIn->private_data.optional_info[VID_OPT_HAVE_USERDATA], pIn->private_data.optional_info[VID_OPT_HAVE_DTRC_INFO], 
-				pIn->private_data.optional_info[VID_OPT_HAVE_DOLBYVISION_INFO], pIn->private_data.optional_info[VID_OPT_CONTENT_TYPE], pIn->private_data.optional_info[26], pIn->private_data.optional_info[27], 
+				pIn->private_data.optional_info[VID_OPT_BIT_DEPTH], pIn->private_data.optional_info[VID_OPT_HAVE_USERDATA], pIn->private_data.optional_info[VID_OPT_HAVE_DTRC_INFO],
+				pIn->private_data.optional_info[VID_OPT_HAVE_DOLBYVISION_INFO], pIn->private_data.optional_info[VID_OPT_CONTENT_TYPE], pIn->private_data.optional_info[26], pIn->private_data.optional_info[27],
 				pIn->private_data.optional_info[28], pIn->private_data.optional_info[29]);
 
 	printk("^@New^^^^^^^^^^^^^ @@@ %d/%d, %03d :: TS: %04d / %04d  %d bpp Attr(%d), #BL(0x%x, %dx%d (%dx%d), 0x%x fmt) #EL(0x%x, %dx%d (%dx%d)) #OSD(0x%x/0x%x) #Reg(0x%x) #Meta(0x%x)\n",
@@ -2689,7 +2689,7 @@ int tcc_move_video_frame_simple( struct file *file, struct tcc_lcdc_image_update
 			Frame_height = Frame_height * 250 / 100;
 		}
 	}
-	else  
+	else
 #endif
 #ifdef CONFIG_VIOC_DTRC_DECOMP
 	if(inFframeInfo->private_data.optional_info[VID_OPT_HAVE_DTRC_INFO] != 0) {
@@ -2697,12 +2697,12 @@ int tcc_move_video_frame_simple( struct file *file, struct tcc_lcdc_image_update
 			Frame_height = Frame_height * 125 / 100;
 		}
 	}
-	else  
+	else
 #endif
 #ifdef CONFIG_VIOC_10BIT
 	if(inFframeInfo->private_data.optional_info[VID_OPT_BIT_DEPTH] == 10) {
 		Frame_height = Frame_height * 2;
-	} 
+	}
 	else if(inFframeInfo->private_data.optional_info[VID_OPT_BIT_DEPTH] == 11) {
 		Frame_height = Frame_height * 125 / 100;
 	}
@@ -2711,7 +2711,7 @@ int tcc_move_video_frame_simple( struct file *file, struct tcc_lcdc_image_update
 	WmixerInfo->rsp_type		= WMIXER_POLLING;
 
 	//source info
-	WmixerInfo->src_fmt			= inFframeInfo->fmt;	
+	WmixerInfo->src_fmt			= inFframeInfo->fmt;
 	WmixerInfo->src_img_width 	= inFframeInfo->Frame_width;
 	WmixerInfo->src_img_height	= Frame_height;
 	WmixerInfo->src_win_left	= 0;
@@ -2785,7 +2785,7 @@ int tcc_move_video_frame_simple( struct file *file, struct tcc_lcdc_image_update
 		pr_info("[INF][VSYNC] ### tcc_move_video_frame_simple pre-processing(%dx%d - BitDepth(%d) Y(0x%x-0x%x / 0x%x), Cb(0x%x-0x%x / 0x%x)\n",
 					inFframeInfo->Frame_width, inFframeInfo->Frame_height, inFframeInfo->private_data.mapConv_info.m_uiLumaBitDepth,
 					inFframeInfo->addr0, inFframeInfo->private_data.mapConv_info.m_CompressedY[PA], inFframeInfo->private_data.mapConv_info.m_FbcYOffsetAddr[PA],
-					inFframeInfo->addr1, inFframeInfo->private_data.mapConv_info.m_CompressedCb[PA], inFframeInfo->private_data.mapConv_info.m_FbcCOffsetAddr[PA]);				
+					inFframeInfo->addr1, inFframeInfo->private_data.mapConv_info.m_CompressedCb[PA], inFframeInfo->private_data.mapConv_info.m_FbcCOffsetAddr[PA]);
 
 		vDst_addr = (unsigned char *)_tcc_vsync_get_virtaddr(pDst_addr, PAGE_ALIGN(LumaTblSize) + PAGE_ALIGN(ChromaTblSize));
 		if(vDst_addr != NULL)
@@ -2837,7 +2837,7 @@ int tcc_move_video_frame_simple( struct file *file, struct tcc_lcdc_image_update
 		dprintk("### tcc_move_video_frame_simple pre-processing(%dx%d - BitDepth(%d) Y(0x%x-0x%x / 0x%x), Cb(0x%x-0x%x / 0x%x)\n",
 					inFframeInfo->Frame_width, inFframeInfo->Frame_height, inFframeInfo->private_data.dtrcConv_info.m_iBitDepthLuma,
 					inFframeInfo->addr0, inFframeInfo->private_data.dtrcConv_info.m_CompressedY[PA], inFframeInfo->private_data.dtrcConv_info.m_CompressionTableLuma[PA],
-					inFframeInfo->addr1, inFframeInfo->private_data.dtrcConv_info.m_CompressedCb[PA], inFframeInfo->private_data.dtrcConv_info.m_CompressionTableChroma[PA]);				
+					inFframeInfo->addr1, inFframeInfo->private_data.dtrcConv_info.m_CompressedCb[PA], inFframeInfo->private_data.dtrcConv_info.m_CompressionTableChroma[PA]);
 
 		vDst_addr = (unsigned char *)_tcc_vsync_get_virtaddr(pDst_addr, PAGE_ALIGN(512*1024));
 		if(vDst_addr != NULL)
@@ -2886,7 +2886,7 @@ int tcc_move_video_frame_simple( struct file *file, struct tcc_lcdc_image_update
 void tcc_video_info_backup(VSYNC_CH_TYPE type, struct tcc_lcdc_image_update *input_image)
 {
 #if 0
-	if( (input_image->codec_id != tccvid_lastframe[type].LastImage.codec_id) 
+	if( (input_image->codec_id != tccvid_lastframe[type].LastImage.codec_id)
 			|| (input_image->time_stamp < tccvid_lastframe[type].LastImage.time_stamp)
 			|| ((input_image->sync_time + 200) < tccvid_lastframe[type].LastImage.sync_time)
 			|| (input_image->buffer_unique_id < tccvid_lastframe[type].LastImage.buffer_unique_id)
@@ -2908,7 +2908,7 @@ void tcc_video_info_backup(VSYNC_CH_TYPE type, struct tcc_lcdc_image_update *inp
 				tccvid_lastframe[temp_type].LastImage.sync_time,
 				tccvid_lastframe[temp_type].LastImage.buffer_unique_id,
 				tccvid_lastframe[temp_type].LastImage.Image_width, tccvid_lastframe[temp_type].LastImage.Image_height);
-				
+
 		if((input_image->sync_time + 200) < tccvid_lastframe[type].LastImage.sync_time)
 		{
 			tcc_video_disp *p = &tccvid_vsync[type];
@@ -3013,7 +3013,7 @@ int tcc_move_video_last_frame(struct tcc_lcdc_image_update* lastUpdated, char bI
 		LFScaler.dest_winTop     = 0;
 		LFScaler.dest_winRight   = lastUpdated->Image_width;
 		LFScaler.dest_winBottom  = lastUpdated->Image_height;
-		
+
 		if(bInterlaced > 0 || lastUpdated->one_field_only_interlace)
 			LFScaler.interlaced= true;
 		else
@@ -3068,7 +3068,7 @@ int tcc_move_video_last_frame(struct tcc_lcdc_image_update* lastUpdated, char bI
 		fbmixer.dst_fmt_ext_info = 8;
 #endif
 		fbmixer.rsp_type        = WMIXER_POLLING;
-		
+
 		fbmixer.src_img_width   = lastUpdated->Frame_width;
 		fbmixer.src_img_height  = lastUpdated->Frame_height;
 
@@ -3156,7 +3156,7 @@ int tcc_move_video_last_frame(struct tcc_lcdc_image_update* lastUpdated, char bI
 			return -100;
 		}
 
-		lastUpdated->addr0       = (unsigned int)fbmixer.dst_y_addr;				
+		lastUpdated->addr0       = (unsigned int)fbmixer.dst_y_addr;
 	}
 #endif
 
@@ -3295,7 +3295,7 @@ int tcc_video_last_frame(void *pVSyncDisp, struct stTcc_last_frame iLastFrame, s
 	{
 		if( p->outputMode == TCC_OUTPUT_HDMI || p->outputMode== TCC_OUTPUT_COMPOSITE || p->outputMode == TCC_OUTPUT_COMPONENT
 #ifdef TCC_LCD_VIDEO_DISPLAY_BY_VSYNC_INT
-				|| p->outputMode == TCC_OUTPUT_LCD 
+				|| p->outputMode == TCC_OUTPUT_LCD
 #endif
 		)
 		{
@@ -3308,7 +3308,7 @@ int tcc_video_last_frame(void *pVSyncDisp, struct stTcc_last_frame iLastFrame, s
 				msleep(p->vsync_interval*2);
 				spin_lock_irq(&vsync_lock);
 				tcc_vsync_pop_all_buffer(p, __LINE__);
-				spin_unlock_irq(&vsync_lock);				
+				spin_unlock_irq(&vsync_lock);
 			}
 			else{
 				msleep(40);
@@ -3364,7 +3364,7 @@ int tcc_video_last_frame(void *pVSyncDisp, struct stTcc_last_frame iLastFrame, s
 			}
 
 			lastUpdated->Frame_width  	= lastUpdated->Image_width;
-			lastUpdated->Frame_height 	= lastUpdated->Image_height;	
+			lastUpdated->Frame_height 	= lastUpdated->Image_height;
 			lastUpdated->fmt	 		= LAST_FRAME_FORMAT; // W x H * 2 = Max 4Mb
 
        	#ifdef CONFIG_VIOC_MAP_DECOMP
@@ -3391,14 +3391,14 @@ int tcc_video_last_frame(void *pVSyncDisp, struct stTcc_last_frame iLastFrame, s
 				lastUpdated->one_field_only_interlace = 0;
 				lastUpdated->crop_left 		= lastUpdated->crop_top = 0;
 				lastUpdated->crop_right 	= lastUpdated->Frame_width;
-				lastUpdated->crop_bottom 	= lastUpdated->Frame_height;			
+				lastUpdated->crop_bottom 	= lastUpdated->Frame_height;
 				lastUpdated->Lcdc_layer 	= RDMA_LASTFRM;
 				tccvid_lastframe[type].pRDMA = dp_device->rdma_info[RDMA_LASTFRM].virt_addr;
 
 				#if defined(CONFIG_TCC_VSYNC_DRV_CONTROL_PIXEL_MAPPER)
 				pm_lut_drv_set_last_frame();
 				#endif
-				spin_lock_irq(&LastFrame_lockDisp);				
+				spin_lock_irq(&LastFrame_lockDisp);
 				tca_scale_display_update_with_sync(dp_device, lastUpdated);
 				spin_unlock_irq(&LastFrame_lockDisp);
 			}
@@ -3415,7 +3415,7 @@ Screen_off:
 	}
 	else
 	{
-		if(p->outputMode == TCC_OUTPUT_HDMI ||p->outputMode == TCC_OUTPUT_COMPOSITE || p->outputMode == TCC_OUTPUT_COMPONENT 
+		if(p->outputMode == TCC_OUTPUT_HDMI ||p->outputMode == TCC_OUTPUT_COMPOSITE || p->outputMode == TCC_OUTPUT_COMPONENT
 	#ifdef TCC_LCD_VIDEO_DISPLAY_BY_VSYNC_INT
 			|| p->outputMode ==  TCC_OUTPUT_LCD
 	#endif
@@ -3447,7 +3447,7 @@ Screen_off:
 			}
 
 			if(0)//type == VSYNC_SUB0 && tccvid_lastframe[type].support && (p->output_toMemory && p->m2m_mode))
-			{				
+			{
 				if(0 <= tcc_fill_black_lastframe(lastUpdated, target_address, target_size, type))
 				{
 					lastUpdated->enable 		= 1;
@@ -3457,9 +3457,9 @@ Screen_off:
 					lastUpdated->one_field_only_interlace = 0;
 					lastUpdated->crop_left 		= lastUpdated->crop_top = 0;
 					lastUpdated->crop_right 	= lastUpdated->Image_width;
-					lastUpdated->crop_bottom 	= lastUpdated->Image_height;			
+					lastUpdated->crop_bottom 	= lastUpdated->Image_height;
 					lastUpdated->Frame_width  	= lastUpdated->Image_width;
-					lastUpdated->Frame_height 	= lastUpdated->Image_height;	
+					lastUpdated->Frame_height 	= lastUpdated->Image_height;
 					lastUpdated->fmt	 		= TCC_LCDC_IMG_FMT_YUV420ITL0; // W x H * 2 = Max 4Mb
 					lastUpdated->private_data.optional_info[VID_OPT_HAVE_MC_INFO] = 0;
 					lastUpdated->private_data.optional_info[VID_OPT_BIT_DEPTH] = 0;
@@ -3475,7 +3475,7 @@ Screen_off:
 
 					pr_info("[INF][VSYNC] &&&&&&&&& ---->[%d]  black TCC_LCDC_VIDEO_KEEP_LASTFRAME. info(%dx%d), resolution_changed(%d), codec_changed(%d) \n", type,
 								lastUpdated->Frame_width, lastUpdated->Frame_height, tccvid_lastframe[type].reason.Resolution, tccvid_lastframe[type].reason.Codec);
-					return 0;		
+					return 0;
 				}
 				else {
 					//do not process anythings!!
@@ -3588,11 +3588,11 @@ void tcc_video_clear_last_frame(unsigned int lcdc_layer, bool reset)
 		tccvid_lastframe[type].enabled = tccvid_lastframe[type].reason.Resolution = tccvid_lastframe[type].reason.Codec = 0;
 		tccvid_lastframe[type].LastImage.enable = 0;
 	}
-	
+
 }
 
 int tcc_video_ctrl_last_frame(int type, int enable)
-{	
+{
 	#if defined(CONFIG_HDMI_DISPLAY_LASTFRAME_STB_ENABLE)
 	tccvid_lastframe[type].support = 1;
 	#else
@@ -3839,7 +3839,7 @@ int tcc_video_swap_vpu_frame(tcc_video_disp *p, int idx, WMIXER_INFO_TYPE *Wmixe
 				if(p->duplicateUseFlag)
 				{
 					int current_time;
-					
+
 					viqe_render_init();
 
 					current_time = tcc_vsync_get_time(p);
@@ -4024,7 +4024,7 @@ static int tcc_vsync_push_main_process(unsigned int cmd, tcc_video_disp *p, stru
 	if(!p->deinterlace_mode && !p->output_toMemory )
 	{
 	#if 0
-		if(p->outputMode == Output_SelectMode && 
+		if(p->outputMode == Output_SelectMode &&
 			(p->outputMode == TCC_OUTPUT_HDMI || p->outputMode == TCC_OUTPUT_LCD))
 			tca_set_onthefly(pdp_data,&input_image);
 	#else
@@ -4038,7 +4038,7 @@ static int tcc_vsync_push_main_process(unsigned int cmd, tcc_video_disp *p, stru
 	if((err_type = tcc_vsync_push_check_error(p, dp_device, input_image)) < 0)
 		goto TCC_VSYNC_PUSH_ERROR;
 
-PUSH_VIDEO_FORCE : 
+PUSH_VIDEO_FORCE :
 	tcc_vsync_push_process(p, dp_device, input_image, type);
 
 TCC_VSYNC_PUSH_ERROR:
@@ -4070,7 +4070,7 @@ static long tcc_vsync_do_ioctl(unsigned int cmd, unsigned long arg, VSYNC_CH_TYP
 	mutex_lock(&vsync_io_mutex[type]);
 	{
 		switch (cmd) {
-		
+
 			case TCC_LCDC_VIDEO_START_VSYNC:
 			case TCC_LCDC_VIDEO_START_VSYNC_KERNEL:
 				{
@@ -4081,7 +4081,7 @@ static long tcc_vsync_do_ioctl(unsigned int cmd, unsigned long arg, VSYNC_CH_TYP
 						ret = -EFAULT;
 						goto Error;
 					}
-		
+
 					#if 0//defined(CONFIG_TCC_DISPLAY_MODE_USE)
 					if(Output_SelectMode == TCC_OUTPUT_NONE)
 					{
@@ -4107,7 +4107,7 @@ static long tcc_vsync_do_ioctl(unsigned int cmd, unsigned long arg, VSYNC_CH_TYP
 
 					if(!vsync_power_state)
 					{
-						pr_err("[ERR][VSYNC]  ##### Error ### vsync_power_state \n"); 			
+						pr_err("[ERR][VSYNC]  ##### Error ### vsync_power_state \n");
 						ret = -EFAULT;
 						goto TCC_VSYNC_OPEN_ERROR;
 					}
@@ -4170,7 +4170,7 @@ static long tcc_vsync_do_ioctl(unsigned int cmd, unsigned long arg, VSYNC_CH_TYP
 				dprintk("%s-%d :: TCC_LCDC_VIDEO_SET_FRAMERATE ========= %d \n", __func__, __LINE__, (int)arg);
 				tcc_video_set_framerate(p, (int)arg);
 				break ;
-		
+
 			case TCC_LCDC_VIDEO_SET_MVC_STATUS:
 				{
 					int status;
@@ -4262,7 +4262,7 @@ static long tcc_vsync_do_ioctl(unsigned int cmd, unsigned long arg, VSYNC_CH_TYP
 					kfree((const void*)input_image);
 				}
 				break;
-				
+
 			case TCC_LCDC_VIDEO_GET_DISPLAYED:
 			case TCC_LCDC_VIDEO_GET_DISPLAYED_KERNEL:
 				ret = tcc_video_get_displayed(p, type);
@@ -4289,29 +4289,29 @@ static long tcc_vsync_do_ioctl(unsigned int cmd, unsigned long arg, VSYNC_CH_TYP
 						ret = tcc_vsync_buffer_check(p, ref_buffer_id);
 				}
 				break ;
-				
+
 			case TCC_LCDC_VIDEO_GET_VALID_COUNT:
 				ret = tcc_video_get_readable_count(p);
 				if (copy_to_user((int *)arg, &ret, sizeof(int))){
 					ret = -EFAULT;
 				}
 				break ;
-				
+
 			case TCC_LCDC_VIDEO_CLEAR_FRAME:
 			case TCC_LCDC_VIDEO_CLEAR_FRAME_KERNEL:
 				dprintk("%s-%d :: TCC_LCDC_VIDEO_CLEAR_FRAME ========= %d \n", __func__, __LINE__, (int)arg);
 				tcc_video_clear_frame(p, (int)arg, 5);
 				break ;
-		
+
 			case TCC_LCDC_VIDEO_SKIP_FRAME_START:
 			case TCC_LCDC_VIDEO_SKIP_FRAME_START_KERNEL:
 				tcc_video_skip_frame_start(p, type);
 				break ;
-		
+
 			case TCC_LCDC_VIDEO_SKIP_FRAME_END:
 				tcc_video_skip_frame_end(p, type);
 				break ;
-				
+
 			case TCC_LCDC_VIDEO_SKIP_ONE_FRAME:
 				dprintk("%s-%d :: TCC_LCDC_VIDEO_SKIP_ONE_FRAME ========= %d \n", __func__, __LINE__, (int)arg);
 				tcc_video_skip_one_frame(p, (int)arg);
@@ -4362,10 +4362,10 @@ static long tcc_vsync_do_ioctl(unsigned int cmd, unsigned long arg, VSYNC_CH_TYP
 
 			case TCC_LCDC_VIDEO_KEEP_LASTFRAME:
 #if defined(CONFIG_HDMI_DISPLAY_LASTFRAME)
-				//if (!g_is_vsync1_opened) 
+				//if (!g_is_vsync1_opened)
 				{
 					struct stTcc_last_frame lastframe_info;
-					
+
 					if (copy_from_user((void*)&lastframe_info, (const void*)arg, sizeof(struct stTcc_last_frame)))
 						ret = -EFAULT;
 					else
@@ -4394,7 +4394,7 @@ static long tcc_vsync_do_ioctl(unsigned int cmd, unsigned long arg, VSYNC_CH_TYP
 #endif
 					ret = -EFAULT;
 				break;
-				
+
 			case TCC_LCDC_VIDEO_CTRL_LAST_FRAME:
 				{
 #if defined(CONFIG_HDMI_DISPLAY_LASTFRAME)
@@ -4415,7 +4415,7 @@ static long tcc_vsync_do_ioctl(unsigned int cmd, unsigned long arg, VSYNC_CH_TYP
 #endif
 				}
 				break;
-		  
+
 			case TCC_LCDC_SET_M2M_LASTFRAME:
 				{
 #if defined(CONFIG_HDMI_DISPLAY_LASTFRAME)
@@ -4572,7 +4572,7 @@ static long tcc_vsync_do_ioctl(unsigned int cmd, unsigned long arg, VSYNC_CH_TYP
 				{
 					struct tcc_lcdc_image_update *input_image = &p->push_ext_infoframe;
 					struct tcc_dp_device *dp_device = tca_fb_get_displayType(Output_SelectMode);
-					
+
 					input_image->addr0 = tccvid_lastframe[type].LastImage.private_data.offset[0];
 					input_image->addr1 = tccvid_lastframe[type].LastImage.private_data.offset[1];
 					input_image->addr2 = tccvid_lastframe[type].LastImage.private_data.offset[2];
@@ -4620,7 +4620,7 @@ static long tcc_vsync_do_ioctl(unsigned int cmd, unsigned long arg, VSYNC_CH_TYP
 				break;
 
 			default:
-				pr_err("[ERR][VSYNC]  unrecognized ioctl (0x%x)\n", cmd); 
+				pr_err("[ERR][VSYNC]  unrecognized ioctl (0x%x)\n", cmd);
 				ret = -EINVAL;
 				break;
 		}
@@ -4628,19 +4628,19 @@ static long tcc_vsync_do_ioctl(unsigned int cmd, unsigned long arg, VSYNC_CH_TYP
 
 Error:
 	mutex_unlock(&vsync_io_mutex[type]);
-	
+
 	return ret;
 }
 
 static void _tca_vsync_intr_onoff(char on, char vsync_disp_num)
 {
 	char lcdc_num = EX_OUT_LCDC;
-	
+
 #ifdef TCC_LCD_VIDEO_DISPLAY_BY_VSYNC_INT
 	if(vsync_started_device == LCD_START_VSYNC)
 		lcdc_num = LCD_LCDC_NUM;
 #endif
-	
+
 #if defined(CONFIG_VIOC_DOLBY_VISION_EDR)
 	if(VIOC_CONFIG_DV_GET_EDR_PATH())
 	{
@@ -4693,11 +4693,11 @@ void tca_vsync_video_display_enable(void)
 		lcdc_num = LCD_LCDC_NUM;
 	#endif
 
-	
+
 	if(lcdc_interrupt_onoff == 0)
 	{
 		if(lcdc_num){
-			
+
 		#ifdef TCC_LCD_VIDEO_DISPLAY_BY_VSYNC_INT
 			if(vsync_started_device == LCD_START_VSYNC)
 			{
@@ -4716,7 +4716,7 @@ void tca_vsync_video_display_enable(void)
 			{
 				// TODO:
 				BUG();
-				
+
 			}
 		}
 		else{
@@ -4747,9 +4747,9 @@ void tca_vsync_video_display_enable(void)
 				_tca_vsync_intr_onoff(1, lcdc_num);
 			}
 		}
-		
+
 		dprintk("%s: onoff(%d) request_irq(%d) ret(%d) \n",__func__,lcdc_interrupt_onoff,lcdc_num,ret);
-		
+
 #ifdef CONFIG_VIOC_DOLBY_VISION_CERTIFICATION_TEST
 		INIT_WORK(&dolby_out_change_work_q, tcc_video_change_dolby_out_wq_isr);
 #endif
@@ -4779,7 +4779,7 @@ void tca_vsync_video_display_disable(void)
 #else
 	pr_info("[INF][VSYNC] %s: onoff(%d) lcdc_num(%d) \n",__func__,lcdc_interrupt_onoff, lcdc_num);
 #endif
-	
+
 	if(lcdc_interrupt_onoff == 1)
 	{
 		if(lcdc_num){
@@ -4848,9 +4848,9 @@ int tcc_video_get_displayed(tcc_video_disp *p, VSYNC_CH_TYPE type)
 
 	//pr_info("[INF][VSYNC] # last disp num(%d) \n", p->vsync_buffer.last_cleared_buff_id ) ;
 	if(p->mvcMode == 1)
-		buffer_id = p->vsync_buffer.last_cleared_buff_id >= 2 ? (p->vsync_buffer.last_cleared_buff_id-2): -100; 
+		buffer_id = p->vsync_buffer.last_cleared_buff_id >= 2 ? (p->vsync_buffer.last_cleared_buff_id-2): -100;
 	else
-		buffer_id = p->vsync_buffer.last_cleared_buff_id >= 1 ? (p->vsync_buffer.last_cleared_buff_id-1): -100; 
+		buffer_id = p->vsync_buffer.last_cleared_buff_id >= 1 ? (p->vsync_buffer.last_cleared_buff_id-1): -100;
 
 	vprintk("%s_[%d] : cleared buffer (%d -> %d) \n", __func__, type, p->vsync_buffer.last_cleared_buff_id, buffer_id);
 
@@ -4877,7 +4877,7 @@ void tcc_vsync_set_firstFrameFlag_all(int firstFrameFlag)
 void tcc_video_clear_frame(tcc_video_disp *p, int idx, int who_call)
 {
 	int syncBufferIdx;
-	
+
 	syncBufferIdx = idx;
 
 	pr_info("[INF][VSYNC]  video frame clear %d called by %d\n", syncBufferIdx, who_call) ;
@@ -4912,7 +4912,7 @@ void tcc_video_set_framerate(tcc_video_disp *p, int fps)
 		media_time_gap = 1000/fps;
 	else
 		media_time_gap = 32;
-	
+
 	p->updateGapTime = p->nTimeGapToNextField = media_time_gap;
 
 	dprintk("### video_frame_rate(%d), media_time_gap(%d) updateGapTime(%d)\n",p->video_frame_rate, media_time_gap, p->updateGapTime);
@@ -4924,7 +4924,7 @@ int tcc_video_check_framerate(tcc_video_disp *p, int fps)
 
 	if(p->player_no_sync_time && fps ==0)
 		return 0;
-	
+
 	if(!(fps < 1000))
 	{
 		fps += 500;
@@ -4992,7 +4992,7 @@ void tcc_video_skip_one_frame(tcc_video_disp *p, int frame_id)
 
 int tcc_video_get_readable_count(tcc_video_disp *p)
 {
-	return atomic_read( & p->vsync_buffer.readable_buff_count); 
+	return atomic_read( & p->vsync_buffer.readable_buff_count);
 }
 
 int tcc_video_get_valid_count(tcc_video_disp *p)
@@ -5064,14 +5064,14 @@ void tcc_vsync_hdmi_start(struct tcc_dp_device *pdp_data,int* lcd_video_started)
 			tca_scale_display_update(pdp_data, &ImageInfo);
 		}
 	}
-				
+
 #else
 	pr_info("[INF][VSYNC]  %s: SelectMode(%d) lcd_started(%d)\n",__func__,Output_SelectMode,*lcd_video_started);
 
 	if(*lcd_video_started)
 	{
 		struct tcc_lcdc_image_update ImageInfo;
-		
+
 		pr_info("[INF][VSYNC]  TCC_LCDC_HDMI_TIMING => TCC_LCDC_DISPLAY_END \n");
 
 		memset(&ImageInfo, 0x00, sizeof(struct tcc_lcdc_image_update));
@@ -5126,7 +5126,7 @@ void tcc_vsync_hdmi_end(struct tcc_dp_device *pdp_data)
 {
 #ifdef TCC_LCD_VIDEO_DISPLAY_BY_VSYNC_INT
 	pr_info("[INF][VSYNC]  %s: out %d start %d \n",__func__,Output_SelectMode,vsync_started_device);
-	if(Output_SelectMode == TCC_OUTPUT_HDMI) 
+	if(Output_SelectMode == TCC_OUTPUT_HDMI)
 	{
 		struct tcc_lcdc_image_update lcdc_image;
 
@@ -5135,7 +5135,7 @@ void tcc_vsync_hdmi_end(struct tcc_dp_device *pdp_data)
 			Output_SelectMode = TCC_OUTPUT_LCD;
 		else
 			Output_SelectMode = TCC_OUTPUT_NONE;
-		
+
 		memset(&lcdc_image, 0x00, sizeof(struct tcc_lcdc_image_update));
 		lcdc_image.enable = 0;
 		lcdc_image.Lcdc_layer = RDMA_VIDEO;
@@ -5144,12 +5144,12 @@ void tcc_vsync_hdmi_end(struct tcc_dp_device *pdp_data)
 	}
 
 	tcc_vsync_set_firstFrameFlag_all(1);
-	
+
 #else
 	pr_info("[INF][VSYNC]  %s: SelectMode %d \n",__func__,Output_SelectMode);
 
-	if(Output_SelectMode == TCC_OUTPUT_HDMI) 
-	{				
+	if(Output_SelectMode == TCC_OUTPUT_HDMI)
+	{
 		struct tcc_lcdc_image_update lcdc_image;
 
 		if(!video_display_disable_check)
@@ -5202,7 +5202,7 @@ void tcc_vsync_hdmi_end(struct tcc_dp_device *pdp_data)
 	//tcc_vsync_pop_all_buffer(&tccvid_vsync[1], __LINE__);
 #endif
 
-#if defined(CONFIG_HDMI_DISPLAY_LASTFRAME) 
+#if defined(CONFIG_HDMI_DISPLAY_LASTFRAME)
 	tcc_video_clear_last_frame(RDMA_VIDEO, false);
 	tcc_video_clear_last_frame(RDMA_VIDEO_SUB, false);
 #endif
@@ -5215,7 +5215,7 @@ void tcc_vsync_hdmi_end(struct tcc_dp_device *pdp_data)
 void tcc_vsync_reset_all(void)
 {
 	int i;
-	
+
 	for (i=0; i<VSYNC_MAX; i++) {
 		memset( &tccvid_vsync[i], 0, sizeof( tcc_video_disp) );
 		tccvid_vsync[i].firstFrameFlag = 1;
@@ -5589,7 +5589,7 @@ static int tcc_vsync_parse_dt(struct device_node *np)
 {
 	struct device_node *vioc0_node,*vioc1_node;
 	int index;
-	
+
 	if (np) {
 		memset(&vsync_vioc1_disp,0x00,sizeof(struct tcc_vsync_display_info_t));
 		vioc1_node = of_parse_phandle(np,"display-vioc1", 0);
@@ -5604,7 +5604,7 @@ static int tcc_vsync_parse_dt(struct device_node *np)
 				vsync_vioc1_disp.lcdc_num,
 				vsync_vioc1_disp.irq_num);
 		}
-		
+
 		memset(&vsync_vioc0_disp,0x00,sizeof(struct tcc_vsync_display_info_t));
 		vioc0_node = of_parse_phandle(np,"display-vioc0", 0);
 		if (!vioc0_node) {
@@ -5634,7 +5634,7 @@ err:
 static int tcc_vsync_suspend(struct device *dev)
 {
 	pr_info("[INF][VSYNC] %s \n", __FUNCTION__);
-	
+
 	return 0;
 }
 
@@ -5753,12 +5753,12 @@ static struct miscdevice vsync3_misc_device =
 static int tcc_vsync_probe(struct platform_device *pdev)
 {
 	int ret=0;
-	
+
 	spin_lock_init(&vsync_lock) ;
 	spin_lock_init(&vsync_lockDisp ) ;
-	
+
 	vsync_power_state = 1;
-	
+
 	if(tcc_vsync_parse_dt(pdev->dev.of_node) < 0){
 		return -ENODEV;
 	}
@@ -5783,7 +5783,7 @@ static int tcc_vsync_probe(struct platform_device *pdev)
 
 	vsync_vioc1_disp.vioc_intr->id = vsync_vioc1_disp.lcdc_num;
 	vsync_vioc1_disp.vioc_intr->bits = (1<<VIOC_DISP_INTR_VSF);
-	
+
 #ifdef USE_VSYNC_TIMER
 	vsync_timer = tcc_register_timer(NULL, 1000/*msec*/, NULL);
 	if (IS_ERR(vsync_timer)) {
@@ -5798,7 +5798,7 @@ static int tcc_vsync_probe(struct platform_device *pdev)
 		dprintk(KERN_WARNING "Couldn't register device .\n");
 		return -EBUSY;
 	}
-	
+
 	if (misc_register(&vsync1_misc_device))
 	{
 		dprintk(KERN_WARNING "Couldn't register device .\n");
@@ -5835,7 +5835,7 @@ static int tcc_vsync_probe(struct platform_device *pdev)
 static int tcc_vsync_remove(struct platform_device *pdev)
 {
 	int ret=0;
-	
+
 	misc_deregister(&vsync0_misc_device);
 	misc_deregister(&vsync1_misc_device);
 #ifdef CONFIG_USE_SUB_MULTI_FRAME
@@ -5877,7 +5877,7 @@ static int dump_vioc_regs(struct notifier_block *this, unsigned long event,
 		      void *ptr)
 {
 	if(panic_disp0)
-		pr_err("[ERR][VSYNC] [vioc disp0] M:0x%08x S:0x%08x\n", __raw_readl(panic_disp0+DIM), __raw_readl(panic_disp0+DSTATUS));	
+		pr_err("[ERR][VSYNC] [vioc disp0] M:0x%08x S:0x%08x\n", __raw_readl(panic_disp0+DIM), __raw_readl(panic_disp0+DSTATUS));
 	if(panic_disp1)
 		pr_err("[ERR][VSYNC] [vioc disp1] M:0x%08x S:0x%08x\n",  __raw_readl(panic_disp1+DIM), __raw_readl(panic_disp1+DSTATUS));
 	if(panic_wdma)
@@ -5938,14 +5938,14 @@ static int __init tcc_vsync_init(void)
 		pr_debug("[DBG][VSYNC]  %s: device failed widh %d\n", __func__, DevMajorNum);
 		err = -ENODEV;
 	}
-	
+
 	vsync_class = class_create(THIS_MODULE, DEVICE_NAME);
 	if (IS_ERR(vsync_class)) {
 		err = PTR_ERR(vsync_class);
 	}
-	
+
 	pr_info("[INF][VSYNC] %s Major(%d)\n", __FUNCTION__,DevMajorNum);
-	
+
 	device_create(vsync_class,NULL,MKDEV(DevMajorNum, 0),NULL,DEVICE_NAME);
 	*/
 
@@ -5958,7 +5958,7 @@ static int __init tcc_vsync_init(void)
 
 static void __exit tcc_vsync_exit(void)
 {
-	
+
 	pr_info("[INF][VSYNC] %s\n", __FUNCTION__);
 	platform_driver_unregister(&tcc_vsync_driver);
 }

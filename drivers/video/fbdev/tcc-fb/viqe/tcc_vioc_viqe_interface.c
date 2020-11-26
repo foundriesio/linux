@@ -297,7 +297,7 @@ void TCC_VIQE_DI_PlugInOut_forAlphablending(int plugIn)
 		{
 			VIOC_CONFIG_PlugOut(viqe_common_info.gVIOC_Deintls);
 			VIOC_RDMA_SetImageIntl(main_m2m_info.pRDMABase_m2m, 0);
-		}			
+		}
 	}
 	else
 	{
@@ -357,9 +357,9 @@ void TCC_VIQE_DI_Init(VIQE_DI_TYPE *viqe_arg)
 #endif
 
 	pr_info("[INF][VIQE] TCC_VIQE_DI_Init, W:%d, H:%d, FMT:%s, OddFirst:%d, %s-%d\n",
-			framebufWidth, framebufHeight, (img_fmt?"YUV422":"YUV420"), viqe_arg->OddFirst, 
+			framebufWidth, framebufHeight, (img_fmt?"YUV422":"YUV420"), viqe_arg->OddFirst,
 			viqe_arg->use_sDeintls ? "S-Deintls" : "VIQE", viqe_arg->use_Viqe0 ? 0:1);
-	
+
 	if(viqe_common_info.gBoard_stb == 1) {
 		VIOC_RDMA_SetImageDisable(pRDMA);
 		//TCC_OUTPUT_FB_ClearVideoImg();
@@ -369,7 +369,7 @@ void TCC_VIQE_DI_Init(VIQE_DI_TYPE *viqe_arg)
 	VIOC_RDMA_SetImageY2RMode(pRDMA, 0x02); /* Y2RMode Default 0 (Studio Color) */
 	VIOC_RDMA_SetImageIntl(pRDMA, 1);
 	VIOC_RDMA_SetImageBfield(pRDMA, viqe_arg->OddFirst);
-	
+
 	if(viqe_arg->use_sDeintls)
 	{
 		gUse_sDeintls = 1;
@@ -573,7 +573,7 @@ void TCC_VIQE_DI_Run(VIQE_DI_TYPE *viqe_arg)
 	#endif
 	}
 
-	gFrmCnt_30Hz++;	
+	gFrmCnt_30Hz++;
 }
 
 void TCC_VIQE_DI_DeInit(VIQE_DI_TYPE *viqe_arg)
@@ -1273,7 +1273,7 @@ int TCC_VIQE_Scaler_Init_Buffer_M2M(void)
 	if(pmap_info.size)
 	{
 		szBuffer = (unsigned int)pmap_info.size / BUFFER_CNT_FOR_M2M_MODE;
-		
+
 		for(buffer_cnt=0; buffer_cnt < BUFFER_CNT_FOR_M2M_MODE; buffer_cnt++)
 		{
 			overlay_buffer[0][buffer_cnt] = (unsigned int)pmap_info.base + (szBuffer * buffer_cnt);
@@ -1484,7 +1484,7 @@ void TCC_VIQE_Scaler_Run60Hz_M2M(struct tcc_lcdc_image_update* input_image)
 			VIOC_CONFIG_DMAPath_UnSet(scaler->rdma->id);
 			VIOC_CONFIG_DMAPath_Set(scaler->rdma->id, VIOC_MC1);
 		} else {
-			#ifdef CONFIG_ARCH_TCC803X
+			#if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X)
 			VIOC_CONFIG_MCPath(scaler->wmix->id, VIOC_MC1);
 			#endif
 		}
@@ -1528,7 +1528,7 @@ void TCC_VIQE_Scaler_Run60Hz_M2M(struct tcc_lcdc_image_update* input_image)
 				VIOC_CONFIG_DMAPath_UnSet(VIOC_MC1);
 				VIOC_CONFIG_DMAPath_Set(scaler->rdma->id, scaler->rdma->id);
 			} else {
-				#ifdef CONFIG_ARCH_TCC803X
+				#if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X)
 				VIOC_CONFIG_MCPath(scaler->wmix->id, scaler->rdma->id);
 				#endif
 			}
@@ -1563,7 +1563,7 @@ void TCC_VIQE_Scaler_Run60Hz_M2M(struct tcc_lcdc_image_update* input_image)
 		else if(scaler->info->private_data.optional_info[VID_OPT_BIT_DEPTH] == 10){
 			VIOC_RDMA_SetImageSize(pSC_RDMABase, (scaler->info->crop_right - scaler->info->crop_left), (scaler->info->crop_bottom - scaler->info->crop_top));
 			VIOC_RDMA_SetImageOffset(pSC_RDMABase, scaler->info->fmt, scaler->info->Frame_width * 2);
-		} 
+		}
 		else if(scaler->info->private_data.optional_info[VID_OPT_BIT_DEPTH] == 11) {
 			VIOC_RDMA_SetImageSize(pSC_RDMABase, (scaler->info->crop_right - scaler->info->crop_left), (scaler->info->crop_bottom - scaler->info->crop_top));
 			VIOC_RDMA_SetImageOffset(pSC_RDMABase, scaler->info->fmt, scaler->info->Frame_width*125/100);
@@ -1679,7 +1679,7 @@ void TCC_VIQE_Scaler_Release60Hz_M2M(void)
 				VIOC_CONFIG_DMAPath_UnSet(VIOC_MC1);
 				VIOC_CONFIG_DMAPath_Set(scaler->rdma->id, scaler->rdma->id);
 			} else {
-				#ifdef CONFIG_ARCH_TCC803X
+				#if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X)
 				VIOC_CONFIG_MCPath(scaler->wmix->id, scaler->rdma->id);
 				#endif
 			}
@@ -1696,11 +1696,11 @@ void TCC_VIQE_Scaler_Release60Hz_M2M(void)
 		if(VIOC_CONFIG_DMAPath_Support()) {
 			VIOC_CONFIG_DMAPath_Set(scaler->rdma->id, scaler->rdma->id);
 		} else {
-			#ifdef CONFIG_ARCH_TCC803X
+			#if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X)
 			VIOC_CONFIG_MCPath(scaler->wmix->id, scaler->rdma->id);
 			#endif
 		}
-	
+
 		VIOC_CONFIG_PlugOut(scaler->sc->id);
 
 		VIOC_CONFIG_SWReset(scaler->wdma->id, VIOC_CONFIG_RESET);
@@ -1724,7 +1724,7 @@ void TCC_VIQE_Scaler_Release60Hz_M2M(void)
 			tca_dtrc_convter_swreset(VIOC_DTRC1);
 			gUse_DtrcConverter &= ~(MAIN_USED);
 		}
-	#endif	
+	#endif
 	}
 
 	dprintk("%s() : Out - open(%d). \n", __func__, scaler->data->dev_opened);
@@ -1948,7 +1948,7 @@ void TCC_VIQE_Scaler_Sub_Run60Hz_M2M(struct tcc_lcdc_image_update* input_image)
            VIOC_CONFIG_DMAPath_UnSet(scaler_sub->rdma->id);
            VIOC_CONFIG_DMAPath_Set(scaler_sub->rdma->id, VIOC_MC1);
 		} else {
-			#ifdef CONFIG_ARCH_TCC803X
+			#if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X)
 			VIOC_CONFIG_MCPath(scaler_sub->wmix->id, VIOC_MC1);
 			#endif
 		}
@@ -1991,7 +1991,7 @@ void TCC_VIQE_Scaler_Sub_Run60Hz_M2M(struct tcc_lcdc_image_update* input_image)
 				 VIOC_CONFIG_DMAPath_UnSet(VIOC_MC1);
 				 VIOC_CONFIG_DMAPath_Set(scaler_sub->rdma->id, scaler_sub->rdma->id);
 			} else {
-				#ifdef CONFIG_ARCH_TCC803X
+				#if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X)
 				VIOC_CONFIG_MCPath(scaler_sub->wmix->id, scaler_sub->rdma->id);
 				#endif
 			}
@@ -2009,7 +2009,7 @@ void TCC_VIQE_Scaler_Sub_Run60Hz_M2M(struct tcc_lcdc_image_update* input_image)
 #endif//
 		if(VIOC_CONFIG_DMAPath_Support())
 			VIOC_CONFIG_DMAPath_Set(scaler_sub->rdma->id, scaler_sub->rdma->id);
-	
+
 		if (scaler_sub->settop_support) {
 			VIOC_RDMA_SetImageAlphaSelect(pSC_RDMABase, 1);
 			VIOC_RDMA_SetImageAlphaEnable(pSC_RDMABase, 1);
@@ -2178,7 +2178,7 @@ void TCC_VIQE_Scaler_Sub_Release60Hz_M2M(void)
 				VIOC_CONFIG_DMAPath_UnSet(VIOC_MC1);
 				VIOC_CONFIG_DMAPath_Set(scaler_sub->rdma->id, scaler_sub->rdma->id);
 			} else {
-				#ifdef CONFIG_ARCH_TCC803X
+				#if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X)
 				VIOC_CONFIG_MCPath(scaler_sub->wmix->id, scaler_sub->rdma->id);
 				#endif
 			}
@@ -2194,7 +2194,7 @@ void TCC_VIQE_Scaler_Sub_Release60Hz_M2M(void)
 #endif//
 		if(VIOC_CONFIG_DMAPath_Support())
            VIOC_CONFIG_DMAPath_Set(scaler_sub->rdma->id, scaler_sub->rdma->id);
-	
+
 		VIOC_CONFIG_PlugOut(scaler_sub->sc->id);
 
 		VIOC_CONFIG_SWReset(scaler_sub->wdma->id, VIOC_CONFIG_RESET);
@@ -2352,17 +2352,17 @@ void TCC_VIQE_Display_Update60Hz_M2M(struct tcc_lcdc_image_update *input_image)
 }
 /////////////////////////////////////////////////////////////////////////////////////////
 
-/* 
+/*
 	//img_fmt
-	TCC_LCDC_IMG_FMT_YUV420SP = 24,	
-	TCC_LCDC_IMG_FMT_YUV422SP = 25, 
-	TCC_LCDC_IMG_FMT_YUYV = 26, 
+	TCC_LCDC_IMG_FMT_YUV420SP = 24,
+	TCC_LCDC_IMG_FMT_YUV422SP = 25,
+	TCC_LCDC_IMG_FMT_YUYV = 26,
 	TCC_LCDC_IMG_FMT_YVYU = 27,
-	
-	TCC_LCDC_IMG_FMT_YUV420ITL0 = 28, 
-	TCC_LCDC_IMG_FMT_YUV420ITL1 = 29, 
-	TCC_LCDC_IMG_FMT_YUV422ITL0 = 30, 
-	TCC_LCDC_IMG_FMT_YUV422ITL1 = 31, 
+
+	TCC_LCDC_IMG_FMT_YUV420ITL0 = 28,
+	TCC_LCDC_IMG_FMT_YUV420ITL1 = 29,
+	TCC_LCDC_IMG_FMT_YUV422ITL0 = 30,
+	TCC_LCDC_IMG_FMT_YUV422ITL1 = 31,
 */
 
 //////////////////////////////////////////////////////////////////////////////////////////
@@ -2494,7 +2494,7 @@ void TCC_VIQE_DI_Init60Hz(TCC_OUTPUT_TYPE outputMode, int lcdCtrlNum, struct tcc
 	if(gDeintlS_Use_60Hz)
 	{
 		dprintk("%s, DeinterlacerS is used!!\n", __func__);
-		
+
 		deintl_dma_base0	= 0;
 		deintl_dma_base1	= 0;
 		deintl_dma_base2	= 0;
@@ -2506,7 +2506,7 @@ void TCC_VIQE_DI_Init60Hz(TCC_OUTPUT_TYPE outputMode, int lcdCtrlNum, struct tcc
 	else
 	{
 		dprintk("%s, VIQE%d is used!!\n", __func__, get_vioc_index(nVIOC_VIQE));
-		
+
 		// If you use 3D(temporal) De-interlace mode, you have to set physical address for using DMA register.
 		//If 2D(spatial) mode, these registers are ignored
 		imgSize = (framebufWidth * (framebufHeight / 2 ) * 4 * 3 / 2);
@@ -2519,7 +2519,7 @@ void TCC_VIQE_DI_Init60Hz(TCC_OUTPUT_TYPE outputMode, int lcdCtrlNum, struct tcc
 
 		deintl_dma_base1	= deintl_dma_base0 + imgSize;
 		deintl_dma_base2	= deintl_dma_base1 + imgSize;
-		deintl_dma_base3	= deintl_dma_base2 + imgSize;	
+		deintl_dma_base3	= deintl_dma_base2 + imgSize;
 
 		VIOC_VIQE_IgnoreDecError(pVIQE_Info, ON, ON, ON);
 		VIOC_VIQE_SetControlRegister(pVIQE_Info, framebufWidth, framebufHeight, gViqe_fmt_60Hz);
@@ -2574,7 +2574,7 @@ void TCC_VIQE_DI_Swap60Hz(int mode)
 	VIOC_PlugInOutCheck VIOC_PlugIn;
 	volatile void __iomem *pVIQE_Info = NULL;
 	int nVIOC_VIQE = 0;
-	
+
 	if(gOutputMode == TCC_OUTPUT_LCD){
 		pVIQE_Info = viqe_common_info.pVIQE0;
 		nVIOC_VIQE = viqe_common_info.gVIOC_VIQE0;
@@ -2607,7 +2607,7 @@ void TCC_VIQE_DI_SetFMT60Hz(int enable)
 	VIOC_PlugInOutCheck VIOC_PlugIn;
 	volatile void __iomem *pVIQE_Info = NULL;
 	int nVIOC_VIQE = 0;
-	
+
 	if(gOutputMode == TCC_OUTPUT_LCD){
 		pVIQE_Info = viqe_common_info.pVIQE0;
 		nVIOC_VIQE = viqe_common_info.gVIOC_VIQE0;
@@ -2683,7 +2683,7 @@ void TCC_VIQE_DI_Run60Hz(struct tcc_lcdc_image_update *input_image, int reset_fr
 		#endif
 			pViqe_60hz_info = &viqe_60hz_external_sub_info;
 		}
-	}		
+	}
 
 #ifdef CONFIG_TCC_HDMI_DRIVER_V2_0
 	set_hdmi_drm(DRM_ON, input_image, input_image->Lcdc_layer);
@@ -2715,7 +2715,7 @@ void TCC_VIQE_DI_Run60Hz(struct tcc_lcdc_image_update *input_image, int reset_fr
 				dprintk("%s VIQE block isn't initailized\n", __func__);
 				return;
 			}
-		} 
+		}
 		#ifdef CONFIG_TCC_VIQE_FOR_SUB_M2M
 		else if(input_image->Lcdc_layer == RDMA_VIDEO_SUB) {
 			if(gVIQE1_Init_State == 0)
@@ -2731,7 +2731,7 @@ void TCC_VIQE_DI_Run60Hz(struct tcc_lcdc_image_update *input_image, int reset_fr
 	VIOC_CONFIG_Device_PlugState(nVIOC_VIQE, &VIOC_PlugIn);
 	if(VIOC_PlugIn.enable == 0) {
 		dprintk("%s VIQE block isn't pluged!!!\n", __func__);
-		return;		
+		return;
 	}
 #endif
 
@@ -2878,7 +2878,7 @@ void TCC_VIQE_DI_Run60Hz(struct tcc_lcdc_image_update *input_image, int reset_fr
 				VIOC_CONFIG_PlugOut(viqe_common_info.gVIOC_Deintls);
 				gDeintlS_Use_Plugin = 0;
 			}
-		}		
+		}
 	}
 	else
 	{
@@ -2980,7 +2980,7 @@ void TCC_VIQE_DI_Run60Hz(struct tcc_lcdc_image_update *input_image, int reset_fr
 				VIOC_RDMA_SetImageY2REnable(pViqe_60hz_info->pRDMABase_60Hz, true);
 				VIOC_RDMA_SetImageY2RMode(pViqe_60hz_info->pRDMABase_60Hz, 0x2);
 			}
-			
+
 			if(vioc_get_out_type() == input_image->private_data.dolbyVision_info.reg_out_type)
 			{
 				VIOC_V_DV_SetSize(NULL, pViqe_60hz_info->pRDMABase_60Hz, input_image->offset_x, input_image->offset_y, Hactive, Vactive);

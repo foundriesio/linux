@@ -161,13 +161,13 @@ static char tcc_scaler_run(struct scaler_drv_type *scaler)
 
 	spin_lock_irq(&(scaler->data->cmd_lock));
 
-	dprintk("scaler %d src   add : 0x%x 0x%x 0x%x, fmt :0x%x IMG:(%d %d )%d %d %d %d \n", scaler->sc.id, 
-		scaler->info->src_Yaddr, scaler->info->src_Uaddr, scaler->info->src_Vaddr, scaler->info->src_fmt, 
-		scaler->info->src_ImgWidth, scaler->info->src_ImgHeight, 
+	dprintk("scaler %d src   add : 0x%x 0x%x 0x%x, fmt :0x%x IMG:(%d %d )%d %d %d %d \n", scaler->sc.id,
+		scaler->info->src_Yaddr, scaler->info->src_Uaddr, scaler->info->src_Vaddr, scaler->info->src_fmt,
+		scaler->info->src_ImgWidth, scaler->info->src_ImgHeight,
 		scaler->info->src_winLeft, scaler->info->src_winTop, scaler->info->src_winRight, scaler->info->src_winBottom);
-	dprintk("scaler %d dest  add : 0x%x 0x%x 0x%x, fmt :0x%x IMG:(%d %d )%d %d %d %d \n", scaler->sc.id, 
-		scaler->info->dest_Yaddr, scaler->info->dest_Uaddr, scaler->info->dest_Vaddr, scaler->info->dest_fmt, 
-		scaler->info->dest_ImgWidth, scaler->info->dest_ImgHeight, 
+	dprintk("scaler %d dest  add : 0x%x 0x%x 0x%x, fmt :0x%x IMG:(%d %d )%d %d %d %d \n", scaler->sc.id,
+		scaler->info->dest_Yaddr, scaler->info->dest_Uaddr, scaler->info->dest_Vaddr, scaler->info->dest_fmt,
+		scaler->info->dest_ImgWidth, scaler->info->dest_ImgHeight,
 		scaler->info->dest_winLeft, scaler->info->dest_winTop, scaler->info->dest_winRight, scaler->info->dest_winBottom);
 	dprintk("scaler %d interlace:%d \n", scaler->sc.id,  scaler->info->interlaced);
 
@@ -178,9 +178,9 @@ static char tcc_scaler_run(struct scaler_drv_type *scaler)
 	{
 		int y2r = 0;
 		dprintk("scaler %d path-id(rdma:%d) \n", scaler->sc.id, scaler->rdma.id);
-		dprintk("scaler %d src  map converter: size: %d %d pos:%d %d\n", scaler->sc.id, scaler->info->src_winRight - scaler->info->src_winLeft, 
-									scaler->info->src_winBottom - scaler->info->src_winTop, 
-									scaler->info->src_winLeft, scaler->info->src_winTop);	
+		dprintk("scaler %d src  map converter: size: %d %d pos:%d %d\n", scaler->sc.id, scaler->info->src_winRight - scaler->info->src_winLeft,
+									scaler->info->src_winBottom - scaler->info->src_winTop,
+									scaler->info->src_winLeft, scaler->info->src_winTop);
 
 		if (VIOC_CONFIG_DMAPath_Support()) {
 			int component_num = VIOC_CONFIG_DMAPath_Select(scaler->rdma.id);
@@ -190,7 +190,7 @@ static char tcc_scaler_run(struct scaler_drv_type *scaler)
 			}
 			VIOC_CONFIG_DMAPath_Set(scaler->rdma.id, VIOC_MC1);
 		} else {
-			#ifdef CONFIG_ARCH_TCC803X
+			#if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X)
 			VIOC_CONFIG_MCPath(scaler->wmix.id, VIOC_MC1);
 			#endif
 		}
@@ -198,22 +198,22 @@ static char tcc_scaler_run(struct scaler_drv_type *scaler)
 		if( scaler->info->dest_fmt < SCLAER_COMPRESS_DATA )
 			y2r = 1;
 
-		// scaler limitation 
+		// scaler limitation
 		tca_map_convter_driver_set(VIOC_MC1, scaler->info->src_ImgWidth, scaler->info->src_ImgHeight,
 									scaler->info->src_winLeft, scaler->info->src_winTop, scaler->info->src_winRight - scaler->info->src_winLeft, scaler->info->src_winBottom - scaler->info->src_winTop,
 									y2r, &scaler->info->mapConv_info);
 		tca_map_convter_onoff(VIOC_MC1, 1, 0);
 	}
 	else
-	#endif//	
+	#endif//
 	#ifdef CONFIG_VIOC_DTRC_DECOMP
 	if(scaler->info->dtrcConv_info.m_CompressedY[0] != 0)
 	{
 		int y2r = 0;
 
-		dprintk("scaler %d src  dtrc converter: size: %d %d pos:%d %d\n", scaler->sc.id, scaler->info->src_winRight - scaler->info->src_winLeft, 
-									scaler->info->src_winBottom - scaler->info->src_winTop, 
-									scaler->info->src_winLeft, scaler->info->src_winTop);	
+		dprintk("scaler %d src  dtrc converter: size: %d %d pos:%d %d\n", scaler->sc.id, scaler->info->src_winRight - scaler->info->src_winLeft,
+									scaler->info->src_winBottom - scaler->info->src_winTop,
+									scaler->info->src_winLeft, scaler->info->src_winTop);
 
 		if (VIOC_CONFIG_DMAPath_Support()) {
 			int component_num = VIOC_CONFIG_DMAPath_Select(scaler->rdma.id);
@@ -227,14 +227,14 @@ static char tcc_scaler_run(struct scaler_drv_type *scaler)
 		if( scaler->info->dest_fmt < SCLAER_COMPRESS_DATA )
 			y2r = 1;
 
-		// scaler limitation 
-		tca_dtrc_convter_driver_set(VIOC_DTRC1, scaler->info->src_winRight - scaler->info->src_winLeft, scaler->info->src_winBottom - scaler->info->src_winTop, 
+		// scaler limitation
+		tca_dtrc_convter_driver_set(VIOC_DTRC1, scaler->info->src_winRight - scaler->info->src_winLeft, scaler->info->src_winBottom - scaler->info->src_winTop,
 									scaler->info->src_winLeft, scaler->info->src_winTop, y2r,
 									&scaler->info->dtrcConv_info);
 		tca_dtrc_convter_onoff(VIOC_DTRC1, 1, 0);
 	}
 	else
-	#endif//		
+	#endif//
 	{
 		if (scaler->settop_support) {
 			VIOC_RDMA_SetImageAlphaSelect(pSC_RDMABase, 1);
@@ -242,7 +242,7 @@ static char tcc_scaler_run(struct scaler_drv_type *scaler)
 		} else {
 			VIOC_RDMA_SetImageAlphaEnable(pSC_RDMABase, 1);
 		}
-		
+
 		VIOC_RDMA_SetImageFormat(pSC_RDMABase, scaler->info->src_fmt);
 
 		#ifdef CONFIG_VIOC_10BIT
@@ -253,12 +253,12 @@ static char tcc_scaler_run(struct scaler_drv_type *scaler)
 		else
 			VIOC_RDMA_SetDataFormat(pSC_RDMABase, 0x0, 0x0);
 		#endif
-		
+
 		//interlaced frame process ex) MPEG2
 		if (scaler->info->interlaced) {
 			VIOC_RDMA_SetImageSize(pSC_RDMABase, (scaler->info->src_winRight - scaler->info->src_winLeft), (scaler->info->src_winBottom - scaler->info->src_winTop)/2);
 			VIOC_RDMA_SetImageOffset(pSC_RDMABase, scaler->info->src_fmt, scaler->info->src_ImgWidth*2);
-		} 
+		}
 		else {
 			VIOC_RDMA_SetImageSize(pSC_RDMABase, (scaler->info->src_winRight - scaler->info->src_winLeft), (scaler->info->src_winBottom - scaler->info->src_winTop));
 
@@ -266,7 +266,7 @@ static char tcc_scaler_run(struct scaler_drv_type *scaler)
 			if(scaler->info->src_bit_depth == 10)
 				VIOC_RDMA_SetImageOffset(pSC_RDMABase, scaler->info->src_fmt, scaler->info->src_ImgWidth*2);
 			else
-			#endif//	
+			#endif//
 			{
 				VIOC_RDMA_SetImageOffset(pSC_RDMABase, scaler->info->src_fmt, scaler->info->src_ImgWidth);
 			}
@@ -289,7 +289,7 @@ static char tcc_scaler_run(struct scaler_drv_type *scaler)
 		if ((scaler->info->src_fmt > VIOC_IMG_FMT_COMP) && (scaler->info->dest_fmt < VIOC_IMG_FMT_COMP)) {
 			VIOC_RDMA_SetImageY2REnable(pSC_RDMABase, 1);
 		}
-		else{		
+		else{
 			VIOC_RDMA_SetImageY2REnable(pSC_RDMABase, 0);
 		}
 
@@ -317,13 +317,13 @@ static char tcc_scaler_run(struct scaler_drv_type *scaler)
 
 		ret = CheckSarPathSelection(scaler->rdma.id);
 
-//		printk("SAR on in ret:%d  enable :%d  strength:%d src fmt:%x   %x\n", 
+//		printk("SAR on in ret:%d  enable :%d  strength:%d src fmt:%x   %x\n",
 //			ret, scaler->info->sar.enable, scaler->info->sar.strength,
 //			scaler->info->src_fmt, scaler->info->dest_fmt);
-		
+
 		if(ret >= 0) {
 			VIOC_SAR_POWER_ONOFF(1);
-			VIOC_CONFIG_PlugIn(VIOC_SAR, scaler->rdma.id);			
+			VIOC_CONFIG_PlugIn(VIOC_SAR, scaler->rdma.id);
 
 			VIOC_CONFIG_SWReset(VIOC_SAR, VIOC_CONFIG_RESET);
 			VIOC_CONFIG_SWReset(VIOC_SAR, VIOC_CONFIG_CLEAR);
@@ -354,8 +354,8 @@ static char tcc_scaler_run(struct scaler_drv_type *scaler)
 	if(get_vioc_index(scaler->rdma.id) == get_vioc_index(VIOC_RDMA07))
 		VIOC_CONFIG_WMIXPath(scaler->rdma.id, 0); // wmixer op is bypass mode.
 	else
-		VIOC_CONFIG_WMIXPath(scaler->rdma.id, 1); // wmixer op is mixing mode.	
-		
+		VIOC_CONFIG_WMIXPath(scaler->rdma.id, 1); // wmixer op is mixing mode.
+
 	VIOC_WMIX_SetSize(pSC_WMIXBase, (scaler->info->dest_winRight - scaler->info->dest_winLeft), (scaler->info->dest_winBottom - scaler->info->dest_winTop));
 	VIOC_WMIX_SetUpdate(pSC_WMIXBase);
 
@@ -376,7 +376,7 @@ static char tcc_scaler_run(struct scaler_drv_type *scaler)
 #else
 	VIOC_WDMA_SetImageOffset(pSC_WDMABase, scaler->info->dest_fmt, scaler->info->dest_ImgWidth);
 #endif//
-	
+
 	VIOC_WDMA_SetImageBase(pSC_WDMABase, (unsigned int)scaler->info->dest_Yaddr, (unsigned int)scaler->info->dest_Uaddr, (unsigned int)scaler->info->dest_Vaddr);
 	if ((scaler->info->src_fmt < VIOC_IMG_FMT_COMP) && (scaler->info->dest_fmt > VIOC_IMG_FMT_COMP)) {
 		VIOC_WDMA_SetImageR2YEnable(pSC_WDMABase, 1);
@@ -440,8 +440,8 @@ static char tcc_scaler_data_copy_run(struct scaler_drv_type *scaler, SCALER_DATA
 	if(get_vioc_index(scaler->rdma.id) == get_vioc_index(VIOC_RDMA07))
 		VIOC_CONFIG_WMIXPath(scaler->rdma.id, 0); // wmixer op is bypass mode.
 	else
-		VIOC_CONFIG_WMIXPath(scaler->rdma.id, 1); // wmixer op is mixing mode.	
-		
+		VIOC_CONFIG_WMIXPath(scaler->rdma.id, 1); // wmixer op is mixing mode.
+
 	VIOC_WMIX_SetSize(pSC_WMIXBase, copy_info->img_width, copy_info->img_height);
 	VIOC_WMIX_SetUpdate(pSC_WMIXBase);
 
@@ -492,7 +492,7 @@ static irqreturn_t scaler_drv_handler(int irq, void *client_data)
 	vioc_intr_clear(scaler->vioc_intr->id, scaler->vioc_intr->bits);
 
 	dprintk("%s(): block_operating(%d), block_waiting(%d), cmd_count(%d), poll_count(%d). \n", __func__, 	\
-			scaler->data->block_operating, scaler->data->block_waiting, scaler->data->cmd_count, scaler->data->poll_count);		
+			scaler->data->block_operating, scaler->data->block_waiting, scaler->data->cmd_count, scaler->data->poll_count);
 
 	if(scaler->data->block_operating >= 1)
 		scaler->data->block_operating = 0;
@@ -531,7 +531,7 @@ static irqreturn_t scaler_drv_handler(int irq, void *client_data)
 		}
 		#endif
 	} else {
-		#ifdef CONFIG_ARCH_TCC803X
+		#if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X)
 		VIOC_CONFIG_MCPath(scaler->wmix.id, scaler->rdma.id);
 		#endif
 	}
@@ -554,7 +554,7 @@ static long scaler_drv_ioctl(struct file *filp, unsigned int cmd, unsigned long 
 			cmd, scaler->data->block_operating, scaler->data->block_waiting, scaler->data->cmd_count, scaler->data->poll_count);
 
 	switch(cmd) {
-		case TCC_SCALER_IOCTRL:			
+		case TCC_SCALER_IOCTRL:
 		case TCC_SCALER_IOCTRL_KERENL:
 			mutex_lock(&scaler->data->io_mutex);
 			if(scaler->data->block_operating) {
@@ -650,7 +650,7 @@ static long scaler_drv_ioctl(struct file *filp, unsigned int cmd, unsigned long 
 
 		default:
 			pr_err("[ERR][SCALER] %s(): Not Supported SCALER0_IOCTL(%d). \n", __func__, cmd);
-			break;			
+			break;
 	}
 
 	return 0;
@@ -740,7 +740,7 @@ static int scaler_drv_release(struct inode *inode, struct file *filp)
 
 			VIOC_CONFIG_DMAPath_Set(scaler->rdma.id, scaler->rdma.id);
 		} else {
-			#ifdef CONFIG_ARCH_TCC803X
+			#if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X)
 			VIOC_CONFIG_MCPath(scaler->wmix.id, scaler->rdma.id);
 			#endif
 		}
@@ -817,7 +817,7 @@ static int scaler_drv_open(struct inode *inode, struct file *filp)
 			// It is default path selection(VRDMA)
 			VIOC_CONFIG_DMAPath_Set(scaler->rdma.id, scaler->rdma.id);
 		} else {
-			#ifdef CONFIG_ARCH_TCC803X
+			#if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X)
 			VIOC_CONFIG_MCPath(scaler->wmix.id, scaler->rdma.id);
 			#endif
 		}
@@ -873,7 +873,7 @@ static int scaler_drv_probe(struct platform_device *pdev)
 	if (scaler->vioc_intr == 0)
 		goto err_vioc_intr_alloc;
 
-	scaler->id = of_alias_get_id(pdev->dev.of_node, "scaler-drv");	
+	scaler->id = of_alias_get_id(pdev->dev.of_node, "scaler-drv");
 
  	/* register scaler discdevice */
 	scaler->misc->minor = MISC_DYNAMIC_MINOR;
@@ -934,7 +934,7 @@ static int scaler_drv_probe(struct platform_device *pdev)
 	spin_lock_init(&(scaler->data->cmd_lock));
 
 	mutex_init(&(scaler->data->io_mutex));
-	
+
 	init_waitqueue_head(&(scaler->data->poll_wq));
 	init_waitqueue_head(&(scaler->data->cmd_wq));
 
