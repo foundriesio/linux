@@ -4,7 +4,9 @@
 
 #ifndef __ASSEMBLY__
 
+#ifndef __GENKSYMS__
 #include <asm/pgtable.h>
+#endif
 
 static inline void allow_user_access(void __user *to, const void __user *from,
 				     unsigned long size) { }
