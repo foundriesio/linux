@@ -70,6 +70,7 @@ struct bcm_device {
 	u32			init_speed;
 	int			irq;
 	bool			irq_active_low;
+	bool			irq_acquired;
 
 #ifdef CONFIG_PM
 	struct hci_uart		*hu;
@@ -205,6 +206,8 @@ static int bcm_request_irq(struct bcm_data *bcm)
 			       "host_wake", bdev);
 	if (err)
 		goto unlock;
+
+	bdev->irq_acquired = true;
 
 	device_init_wakeup(&bdev->pdev->dev, true);
 
@@ -345,7 +348,7 @@ static int bcm_close(struct hci_uart *hu)
 		pm_runtime_disable(&bdev->pdev->dev);
 		pm_runtime_set_suspended(&bdev->pdev->dev);
 
-		if (device_can_wakeup(&bdev->pdev->dev)) {
+		if (device_can_wakeup(&bdev->pdev->dev) && bdev->irq_acquired) {
 			devm_free_irq(&bdev->pdev->dev, bdev->irq, bdev);
 			device_init_wakeup(&bdev->pdev->dev, false);
 		}
