@@ -12,8 +12,7 @@
 #include <dt-bindings/gpio/gpio.h>
 #include <dt-bindings/mailbox/tcc805x_multi_mailbox/tcc_mbox_ch.h>
 #include <dt-bindings/input/input.h>
-#include <dt-bindings/video/tcc805x-tccvin.h>
-
+#include <dt-bindings/pmap/tcc805x/pmap-tcc805x.h>
 #if defined(CONFIG_TCC805X_CA53Q)
 #include "tcc-pmap-805x-subcore-a53q.dtsi"
 #else
@@ -543,14 +542,14 @@
 		};
 
 		/*-----------------------------------------------------------
-		 * Early/RearCamera Area
+		 * Camera Memory
 		 *-----------------------------------------------------------
 		 */
 		pmap_rearcamera_viqe: rearcamera_viqe {
 			compatible = "telechips,pmap";
 			telechips,pmap-name = "rearcamera_viqe";
 			alloc-ranges = <0x0 EARLY_REARCAM_BASE 0x0 EARLY_REARCAM_SIZE>;
-			size = <0x0 PMAP_REARCAMERA_VIQE_SIZE>;
+			size = <0x0 PMAP_SIZE_CAMERA_VIQE>;
 			no-map;
 		};
 
@@ -558,7 +557,7 @@
 			compatible = "telechips,pmap";
 			telechips,pmap-name = "rearcamera";
 			alloc-ranges = <0x0 EARLY_REARCAM_BASE 0x0 EARLY_REARCAM_SIZE>;
-			size = <0x0 PMAP_REARCAMERA_SIZE>;
+			size = <0x0 PMAP_SIZE_CAMERA_PREVIEW0>;
 			no-map;
 		};
 
@@ -566,7 +565,7 @@
 			compatible = "telechips,pmap";
 			telechips,pmap-name = "rearcamera1";
 			alloc-ranges = <0x0 EARLY_REARCAM_BASE 0x0 EARLY_REARCAM_SIZE>;
-			size = <0x0 PMAP_REARCAMERA1_SIZE>;
+			size = <0x0 PMAP_SIZE_CAMERA_PREVIEW1>;
 			no-map;
 		};
 
@@ -574,7 +573,7 @@
 			compatible = "telechips,pmap";
 			telechips,pmap-name = "rearcamera2";
 			alloc-ranges = <0x0 EARLY_REARCAM_BASE 0x0 EARLY_REARCAM_SIZE>;
-			size = <0x0 PMAP_REARCAMERA2_SIZE>;
+			size = <0x0 PMAP_SIZE_CAMERA_PREVIEW2>;
 			no-map;
 		};
 
@@ -582,7 +581,7 @@
 			compatible = "telechips,pmap";
 			telechips,pmap-name = "rearcamera3";
 			alloc-ranges = <0x0 EARLY_REARCAM_BASE 0x0 EARLY_REARCAM_SIZE>;
-			size = <0x0 PMAP_REARCAMERA3_SIZE>;
+			size = <0x0 PMAP_SIZE_CAMERA_PREVIEW3>;
 			no-map;
 		};
 
@@ -590,7 +589,7 @@
 			compatible = "telechips,pmap";
 			telechips,pmap-name = "rearcamera4";
 			alloc-ranges = <0x0 EARLY_REARCAM_BASE 0x0 EARLY_REARCAM_SIZE>;
-			size = <0x0 PMAP_REARCAMERA4_SIZE>;
+			size = <0x0 PMAP_SIZE_CAMERA_PREVIEW4>;
 			no-map;
 		};
 
@@ -598,7 +597,7 @@
 			compatible = "telechips,pmap";
 			telechips,pmap-name = "rearcamera5";
 			alloc-ranges = <0x0 EARLY_REARCAM_BASE 0x0 EARLY_REARCAM_SIZE>;
-			size = <0x0 PMAP_REARCAMERA5_SIZE>;
+			size = <0x0 PMAP_SIZE_CAMERA_PREVIEW5>;
 			no-map;
 		};
 
@@ -606,7 +605,7 @@
 			compatible = "telechips,pmap";
 			telechips,pmap-name = "rearcamera6";
 			alloc-ranges = <0x0 EARLY_REARCAM_BASE 0x0 EARLY_REARCAM_SIZE>;
-			size = <0x0 PMAP_REARCAMERA6_SIZE>;
+			size = <0x0 PMAP_SIZE_CAMERA_PREVIEW6>;
 			no-map;
 		};
 
@@ -614,7 +613,7 @@
 			compatible = "telechips,pmap";
 			telechips,pmap-name = "rearcamera7";
 			alloc-ranges = <0x0 EARLY_REARCAM_BASE 0x0 EARLY_REARCAM_SIZE>;
-			size = <0x0 PMAP_REARCAMERA7_SIZE>;
+			size = <0x0 PMAP_SIZE_CAMERA_PREVIEW7>;
 			no-map;
 		};
 
@@ -622,7 +621,7 @@
 			compatible = "telechips,pmap";
 			telechips,pmap-name = "parking_gui";
 			alloc-ranges = <0x0 EARLY_REARCAM_BASE 0x0 EARLY_REARCAM_SIZE>;
-			size = <0x0 PMAP_PARKING_GUI_SIZE>;
+			size = <0x0 PMAP_SIZE_CAMERA_PGL>;
 			no-map;
 		};
 

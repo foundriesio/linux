@@ -49,11 +49,6 @@
 #endif
 
 
-//****************************** Camera ******************************/
-#define CAMERA_INPUT_WIDTH			720
-#define CAMERA_INPUT_HEIGHT			480
-
-
 //***************************** VPU/HEVC ******************************/
 //Should sync with hardware/telechips/omx/omx_videodec_interface/include/vdec.h
 #if defined(CONFIG_SUPPORT_4K_VIDEO) || defined(CONFIG_SUPPORT_TCC_HEVC_4K) || defined(CONFIG_SUPPORT_TCC_VP9_4K)

@@ -12,7 +12,7 @@
 #include <dt-bindings/display/tcc901x-vioc.h>
 #include <dt-bindings/power/telechips,boot-mode.h>
 #include <dt-bindings/gpio/gpio.h>
-#include <dt-bindings/video/tcc901x-tccvin.h>
+#include <dt-bindings/pmap/tcc901x/pmap-tcc901x.h>
 
 #include "tcc-pmap-common.dtsi"
 
