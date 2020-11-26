@@ -11,7 +11,7 @@
 #include <dt-bindings/display/tcc897x-vioc.h>
 #include <dt-bindings/power/telechips,boot-mode.h>
 #include <dt-bindings/input/input.h>
-#include <dt-bindings/video/tcc897x-tccvin.h>
+#include <dt-bindings/pmap/tcc897x/pmap-tcc897x.h>
 
 #include "tcc-pmap-common.dtsi"
 
@@ -763,30 +763,38 @@
 		};
 
 		/*-----------------------------------------------------------
-		 * Early/RearCamera Area
+		 * Camera Memory
 		 *-----------------------------------------------------------
 		 */
-		rearcamera_viqe: rearcamera_viqe {
+		pmap_rearcamera_viqe: rearcamera_viqe {
 			compatible = "telechips,pmap";
 			telechips,pmap-name = "rearcamera_viqe";
 			alloc-ranges = <EARLY_REARCAM_BASE EARLY_REARCAM_SIZE>;
-			size = <PMAP_REARCAMERA_VIQE_SIZE>;
+			size = <PMAP_SIZE_CAMERA_VIQE>;
 			no-map;
 		};
 
-		rearcamera: rearcamera {
+		pmap_rearcamera: rearcamera {
 			compatible = "telechips,pmap";
 			telechips,pmap-name = "rearcamera";
 			alloc-ranges = <EARLY_REARCAM_BASE EARLY_REARCAM_SIZE>;
-			size = <PMAP_REARCAMERA_SIZE>;
+			size = <PMAP_SIZE_CAMERA_PREVIEW0>;
 			no-map;
 		};
 
-		parking_gui: parking_gui {
+		pmap_rearcamera3: rearcamera3 {
+			compatible = "telechips,pmap";
+			telechips,pmap-name = "rearcamera3";
+			alloc-ranges = <EARLY_REARCAM_BASE EARLY_REARCAM_SIZE>;
+			size = <PMAP_SIZE_CAMERA_PREVIEW3>;
+			no-map;
+		};
+
+		pmap_parking_gui: parking_gui {
 			compatible = "telechips,pmap";
 			telechips,pmap-name = "parking_gui";
 			alloc-ranges = <EARLY_REARCAM_BASE EARLY_REARCAM_SIZE>;
-			size = <PMAP_PARKING_GUI_SIZE>;
+			size = <PMAP_SIZE_CAMERA_PGL>;
 			no-map;
 		};
 

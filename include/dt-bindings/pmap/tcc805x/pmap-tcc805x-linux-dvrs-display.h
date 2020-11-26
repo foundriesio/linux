@@ -6,8 +6,8 @@
 #define DT_BINDINGS_PMAP_TCC805X_LINUX_DVRS_DISPLAY_H
 
 //****************************** Camera ******************************/
-#define CAMERA_INPUT_WIDTH		720
-#define CAMERA_INPUT_HEIGHT		480
+#define CAMERA_INPUT_WIDTH		1280
+#define CAMERA_INPUT_HEIGHT		720
 #define CAMERA_OUTPUT_WIDTH		1920
 #define CAMERA_OUTPUT_HEIGHT		1080
 
@@ -20,7 +20,7 @@
 #define FRAMES_CAMERA_PREVIEW5		4
 #define FRAMES_CAMERA_PREVIEW6		4
 #define FRAMES_CAMERA_PREVIEW7		4
-#define FRAMES_CAMERA_PGL		1
+#define FRAMES_CAMERA_PGL		0
 
 
 //****************************** Calculation ******************************/
@@ -30,6 +30,7 @@
 #define ARRAY_MBYTE(x)			((((x) + (SZ_1MB-1))>> 20) << 20)
 #define ARRAY_256KBYTE(x)		((((x) + ((SZ_1MB/4)-1))>> 18) << 18)
 
+#if 0
 #define PMAP_SIZE_FB_VIDEO		\
 	ARRAY_MBYTE(PRIMARY_FRAMEBUFFER_WIDTH * \
 		PRIMARY_FRAMEBUFFER_HEIGHT * 4 * 3)
@@ -45,6 +46,7 @@
 #define PMAP_SIZE_UMP_RESERVED		\
 	ARRAY_MBYTE((PRIMARY_FRAMEBUFFER_WIDTH * 4) * \
 		PRIMARY_FRAMEBUFFER_HEIGHT * 4 * 4)
+#endif
 #define PMAP_SIZE_CAMERA_VIQE		\
 	ARRAY_MBYTE((CAMERA_INPUT_WIDTH * (CAMERA_INPUT_HEIGHT / 2 ) * 4 * \
 		FRAMES_CAMERA_VIQE) * 3 / 2)
