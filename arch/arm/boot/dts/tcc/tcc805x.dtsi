@@ -3850,6 +3850,11 @@
 		interrupts = <GIC_SPI 294 IRQ_TYPE_LEVEL_HIGH>;
 	};
 
+	dwc-hld {
+		compatible = "dwc,hld";
+		reg = <0x0 0x12440000 0x0 0x1000>;
+	};
+
 	adc: adc@1b700000 {
 		compatible = "telechips,tcc805x-adc";
 		reg = <0x0 0x1b700000 0x0 0xAC>,
