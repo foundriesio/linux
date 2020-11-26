@@ -390,6 +390,8 @@ raw_copy_to_user_allowed(void __user *to, const void *from, unsigned long n)
 	return __copy_tofrom_user(to, (__force const void __user *)from, n);
 }
 
+extern unsigned long __clear_user(void __user *addr, unsigned long size);
+
 static inline unsigned long
 raw_copy_to_user(void __user *to, const void *from, unsigned long n)
 {
@@ -413,11 +415,6 @@ static inline unsigned long clear_user(void __user *addr, unsigned long size)
 		prevent_write_to_user(addr, size);
 	}
 	return ret;
-}
-
-static inline unsigned long __clear_user(void __user *addr, unsigned long size)
-{
-	return clear_user(addr, size);
 }
 
 extern long strncpy_from_user(char *dst, const char __user *src, long count);
