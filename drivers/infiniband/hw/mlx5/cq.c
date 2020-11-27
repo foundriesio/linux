@@ -330,50 +330,6 @@ static void mlx5_handle_error_cqe(struct mlx5_ib_dev *dev,
 		dump_cqe(dev, cqe);
 }
 
-static int is_atomic_response(struct mlx5_ib_qp *qp, uint16_t idx)
-{
-	/* TBD: waiting decision
-	*/
-	return 0;
-}
-
-static void *mlx5_get_atomic_laddr(struct mlx5_ib_qp *qp, uint16_t idx)
-{
-	struct mlx5_wqe_data_seg *dpseg;
-	void *addr;
-
-	dpseg = mlx5_get_send_wqe(qp, idx) + sizeof(struct mlx5_wqe_ctrl_seg) +
-		sizeof(struct mlx5_wqe_raddr_seg) +
-		sizeof(struct mlx5_wqe_atomic_seg);
-	addr = (void *)(unsigned long)be64_to_cpu(dpseg->addr);
-	return addr;
-}
-
-static void handle_atomic(struct mlx5_ib_qp *qp, struct mlx5_cqe64 *cqe64,
-			  uint16_t idx)
-{
-	void *addr;
-	int byte_count;
-	int i;
-
-	if (!is_atomic_response(qp, idx))
-		return;
-
-	byte_count = be32_to_cpu(cqe64->byte_cnt);
-	addr = mlx5_get_atomic_laddr(qp, idx);
-
-	if (byte_count == 4) {
-		*(uint32_t *)addr = be32_to_cpu(*((__be32 *)addr));
-	} else {
-		for (i = 0; i < byte_count; i += 8) {
-			*(uint64_t *)addr = be64_to_cpu(*((__be64 *)addr));
-			addr += 8;
-		}
-	}
-
-	return;
-}
-
 static void handle_atomics(struct mlx5_ib_qp *qp, struct mlx5_cqe64 *cqe64,
 			   u16 tail, u16 head)
 {
@@ -381,7 +337,6 @@ static void handle_atomics(struct mlx5_ib_qp *qp, struct mlx5_cqe64 *cqe64,
 
 	do {
 		idx = tail & (qp->sq.wqe_cnt - 1);
-		handle_atomic(qp, cqe64, idx);
 		if (idx == head)
 			break;
 
@@ -428,16 +383,15 @@ static void get_sig_err_item(struct mlx5_sig_err_cqe *cqe,
 	item->key = be32_to_cpu(cqe->mkey);
 }
 
-static void sw_send_comp(struct mlx5_ib_qp *qp, int num_entries,
-			 struct ib_wc *wc, int *npolled)
+static void sw_comp(struct mlx5_ib_qp *qp, int num_entries, struct ib_wc *wc,
+		    int *npolled, bool is_send)
 {
 	struct mlx5_ib_wq *wq;
 	unsigned int cur;
-	unsigned int idx;
 	int np;
 	int i;
 
-	wq = &qp->sq;
+	wq = (is_send) ? &qp->sq : &qp->rq;
 	cur = wq->head - wq->tail;
 	np = *npolled;
 
@@ -445,39 +399,16 @@ static void sw_send_comp(struct mlx5_ib_qp *qp, int num_entries,
 		return;
 
 	for (i = 0;  i < cur && np < num_entries; i++) {
-		idx = wq->last_poll & (wq->wqe_cnt - 1);
+		unsigned int idx;
+
+		idx = (is_send) ? wq->last_poll : wq->tail;
+		idx &= (wq->wqe_cnt - 1);
 		wc->wr_id = wq->wrid[idx];
 		wc->status = IB_WC_WR_FLUSH_ERR;
 		wc->vendor_err = MLX5_CQE_SYNDROME_WR_FLUSH_ERR;
 		wq->tail++;
-		np++;
-		wc->qp = &qp->ibqp;
-		wc++;
-		wq->last_poll = wq->w_list[idx].next;
-	}
-	*npolled = np;
-}
-
-static void sw_recv_comp(struct mlx5_ib_qp *qp, int num_entries,
-			 struct ib_wc *wc, int *npolled)
-{
-	struct mlx5_ib_wq *wq;
-	unsigned int cur;
-	int np;
-	int i;
-
-	wq = &qp->rq;
-	cur = wq->head - wq->tail;
-	np = *npolled;
-
-	if (cur == 0)
-		return;
-
-	for (i = 0;  i < cur && np < num_entries; i++) {
-		wc->wr_id = wq->wrid[wq->tail & (wq->wqe_cnt - 1)];
-		wc->status = IB_WC_WR_FLUSH_ERR;
-		wc->vendor_err = MLX5_CQE_SYNDROME_WR_FLUSH_ERR;
-		wq->tail++;
+		if (is_send)
+			wq->last_poll = wq->w_list[idx].next;
 		np++;
 		wc->qp = &qp->ibqp;
 		wc++;
@@ -493,13 +424,13 @@ static void mlx5_ib_poll_sw_comp(struct mlx5_ib_cq *cq, int num_entries,
 	*npolled = 0;
 	/* Find uncompleted WQEs belonging to that cq and return mmics ones */
 	list_for_each_entry(qp, &cq->list_send_qp, cq_send_list) {
-		sw_send_comp(qp, num_entries, wc + *npolled, npolled);
+		sw_comp(qp, num_entries, wc + *npolled, npolled, true);
 		if (*npolled >= num_entries)
 			return;
 	}
 
 	list_for_each_entry(qp, &cq->list_recv_qp, cq_recv_list) {
-		sw_recv_comp(qp, num_entries, wc + *npolled, npolled);
+		sw_comp(qp, num_entries, wc + *npolled, npolled, false);
 		if (*npolled >= num_entries)
 			return;
 	}

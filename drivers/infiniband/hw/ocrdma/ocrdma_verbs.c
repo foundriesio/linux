@@ -55,7 +55,7 @@
 
 int ocrdma_query_pkey(struct ib_device *ibdev, u8 port, u16 index, u16 *pkey)
 {
-	if (index > 1)
+	if (index > 0)
 		return -EINVAL;
 
 	*pkey = 0xffff;
@@ -209,19 +209,6 @@ int ocrdma_query_port(struct ib_device *ibdev,
 				 &props->active_width);
 	props->max_msg_sz = 0x80000000;
 	props->max_vl_num = 4;
-	return 0;
-}
-
-int ocrdma_modify_port(struct ib_device *ibdev, u8 port, int mask,
-		       struct ib_port_modify *props)
-{
-	struct ocrdma_dev *dev;
-
-	dev = get_ocrdma_dev(ibdev);
-	if (port > 1) {
-		pr_err("%s(%d) invalid_port=0x%x\n", __func__, dev->id, port);
-		return -EINVAL;
-	}
 	return 0;
 }
 
