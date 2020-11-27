@@ -81,6 +81,9 @@ mm-highmem-Take-kmap_high_get-properly-into-account.patch
 #
 highmem-Don-t-disable-preemption-on-RT-in-kmap_atomi.patch
 
+# 20201125105037.22079-1-aisheng.dong@nxp.com
+clk-imx-scu-fix-MXC_CLK_SCU-module-build-break.patch
+
 ############################################################
 # POSTED
 ############################################################
@@ -102,9 +105,6 @@ timers-Don-t-block-on-expiry_lock-for-TIMER_IRQSAFE.patch
 # 20201110113848.801379-1-bigeasy@linutronix.de
 0001-kthread-Move-prio-affinite-change-into-the-newly-cre.patch
 0002-genirq-Move-prio-assignment-into-the-newly-created-t.patch
-
-# 20201124121740.ytag7rm53umi2qvm@linutronix.de
-clk-imx8qxp-Unbreak-auto-module-building-for-MXC_CLK.patch
 
 ############################################################
 # Ready for posting
