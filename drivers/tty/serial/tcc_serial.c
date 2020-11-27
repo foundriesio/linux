@@ -334,8 +334,10 @@ static void *tcc_malloc_dma_buf(tcc_dma_buf_t *dma_buf, int buf_size)
 		dma_buf->buf_size = buf_size;
 		dma_buf->addr = dma_alloc_writecombine(0, dma_buf->buf_size,
 				&dma_buf->dma_addr, GFP_KERNEL);
-		for(i=0; i<buf_size;i++){
-			dma_buf->addr[i]=0;
+		if(dma_buf->addr != NULL) {
+			for(i=0; i<buf_size;i++){
+				dma_buf->addr[i]=0;
+			}
 		}
 		dbg("Malloc DMA buffer @0x%X(Phy=0x%X), size:%d\n",
 				(unsigned int)dma_buf->addr,
@@ -755,14 +757,15 @@ static int tcc_serial_dma_tx(struct uart_port *port)
 	unsigned long count;
 	unsigned int count_fst;
 	unsigned int count_snd;
+	int ret = 0;
 
 	if(tp->tx_dma_working == true) {
-		return 0;
+		return ret;
 	}
 
 	count = uart_circ_chars_pending(xmit);
 	if(!count) {
-		return 0;
+		return ret;
 	}
 
 	if(xmit->tail < xmit->head) {
@@ -787,15 +790,19 @@ static int tcc_serial_dma_tx(struct uart_port *port)
 	desc = dmaengine_prep_slave_single(tp->chan_tx, tp->tx_dma_buffer.dma_addr, 
 			count, DMA_MEM_TO_DEV, DMA_PREP_INTERRUPT);
 
-	desc->callback = tcc_dma_tx_callback;
-	desc->callback_param = port;
+	if(desc != NULL) {
+		desc->callback = tcc_dma_tx_callback;
+		desc->callback_param = port;
 
-	tp->tx_cookie = dmaengine_submit(desc);
-	dma_async_issue_pending(tp->chan_tx);
+		tp->tx_cookie = dmaengine_submit(desc);
+		dma_async_issue_pending(tp->chan_tx);
 
-	tp->tx_dma_working = true;
-
-	return 0;
+		tp->tx_dma_working = true;
+	} else {
+		ret = -ENODEV;
+	}
+	
+	return ret;
 }
 
 static int tcc_serial_tx_dma_probe(struct uart_port *port)
@@ -879,20 +886,25 @@ static int tcc_run_rx_dma(struct uart_port *port)
 		container_of(port, struct tcc_uart_port, port);
 	struct dma_async_tx_descriptor *desc;
 	struct scatterlist *sg = &tp->rx_sg;
+	int ret = 0;
 
-	desc = dmaengine_prep_slave_sg(tp->chan_rx, sg, 1,
-			DMA_DEV_TO_MEM, DMA_PREP_INTERRUPT | DMA_CTRL_ACK);
+		desc = dmaengine_prep_slave_sg(tp->chan_rx, sg, 1,
+				DMA_DEV_TO_MEM, DMA_PREP_INTERRUPT | DMA_CTRL_ACK);
 
-	desc->callback = tcc_dma_rx_callback;
-	desc->callback_param = port;
-	tp->rx_cookie = dmaengine_submit(desc);
-	dma_async_issue_pending(tp->chan_rx);
+	if(desc != NULL) {
+		desc->callback = tcc_dma_rx_callback;
+		desc->callback_param = port;
+		tp->rx_cookie = dmaengine_submit(desc);
+		dma_async_issue_pending(tp->chan_rx);
 
-	wr_regl(port, OFFSET_UCR, rd_regl(port, OFFSET_UCR) | UCR_RxDE);
+		wr_regl(port, OFFSET_UCR, rd_regl(port, OFFSET_UCR) | UCR_RxDE);
 
-	tp->rx_dma_working = true;
-
-	return 0;
+		tp->rx_dma_working = true;
+	} else {
+		ret = -ENODEV;
+	}
+	
+	return ret;
 }
 
 static int tcc_serial_rx_dma_probe(struct uart_port *port)
@@ -934,7 +946,6 @@ static int tcc_serial_rx_dma_probe(struct uart_port *port)
 			SERIAL_RX_DMA_BUF_SIZE,
 			offset_in_page(tp->rx_dma_buffer.dma_addr));
 	sg_dma_address(sg) = tp->rx_dma_buffer.dma_addr;
-	sg_dma_len(sg) = SERIAL_RX_DMA_BUF_SIZE;
 
 	tp->timer_state = 1;
 
@@ -1226,7 +1237,7 @@ static int tcc_serial_request_port(struct uart_port *port)
 
 static void tcc_serial_config_port(struct uart_port *port, int flags)
 {
-	if (flags & UART_CONFIG_TYPE && tcc_serial_request_port(port) == 0)
+	if (flags & UART_CONFIG_TYPE)
 		port->type = PORT_TCC;
 }
 
@@ -1254,7 +1265,7 @@ int tcc_uart_enable(int port_num )
 
 	pm_dbg("%s ret : %d\n", __func__, ret);
 
-	return 0;
+	return ret;
 }
 
 int tcc_uart_disable(int port_num)
@@ -1265,7 +1276,7 @@ int tcc_uart_disable(int port_num)
 
 	pm_dbg("%s ret : %d\n", __func__, ret);
 
-	return 0;
+	return ret;
 }
 EXPORT_SYMBOL(tcc_uart_disable);
 EXPORT_SYMBOL(tcc_uart_enable);
@@ -1321,36 +1332,31 @@ static int tcc_serial_remove(struct platform_device *dev)
 	struct tcc_uart_port *tp =
 		container_of(port, struct tcc_uart_port, port);
 
-	if (port)
+	if (port) {
 		uart_remove_one_port(&tcc_uart_drv, port);
 
-	if (tp->tx_dma_probed){
-		tcc_free_dma_buf(&(tp->tx_dma_buffer));
-		dma_release_channel(tp->chan_tx);
-		tp->chan_tx=NULL;
-	}
+		if (tp->tx_dma_probed){
+			tcc_free_dma_buf(&(tp->tx_dma_buffer));
+			dma_release_channel(tp->chan_tx);
+		}
 
-	if (tp->rx_dma_probed) {
-		tcc_free_dma_buf(&(tp->rx_dma_buffer));
-		dma_release_channel(tp->chan_rx);
-		tp->chan_rx=NULL;
-		wr_regl(port, OFFSET_UCR, rd_regl(port, OFFSET_UCR) & ~Hw1);
+		if (tp->rx_dma_probed) {
+			tcc_free_dma_buf(&(tp->rx_dma_buffer));
+			dma_release_channel(tp->chan_rx);
+			wr_regl(port, OFFSET_UCR, rd_regl(port, OFFSET_UCR) & ~Hw1);
+		}
 
-		// DMA channel is disabled.
-		//tca_dma_clren(tp->rx_dma_buffer.dma_ch,
-		//      (unsigned long *)tp->rx_dma_buffer.dma_core);
-	}
+		if (tp->fclk) {
+			clk_disable_unprepare(tp->fclk);
+			clk_put(tp->fclk);
+			tp->fclk = NULL;
+		}
 
-	if (tp->fclk) {
-		clk_disable_unprepare(tp->fclk);
-		clk_put(tp->fclk);
-		tp->fclk = NULL;
-	}
-
-	if(tp->hclk) {
-		clk_disable_unprepare(tp->hclk);
-		clk_put(tp->hclk);
-		tp->hclk = NULL;
+		if(tp->hclk) {
+			clk_disable_unprepare(tp->hclk);
+			clk_put(tp->hclk);
+			tp->hclk = NULL;
+		}
 	}
 
 	return 0;
@@ -1417,13 +1423,11 @@ static int tcc_serial_resume(struct device *dev)
 	*(volatile unsigned long *) (portcfg_base) = uartPortCFG0;
 	*(volatile unsigned long *) (portcfg_base + 0x4) = uartPortCFG1;
 
-	if (port) {
-		if (port->suspended) {
+	if (port->suspended) {
 
-			uart_resume_port(&tcc_uart_drv, port);
+		uart_resume_port(&tcc_uart_drv, port);
 
-			port->suspended = 0;
-		}
+		port->suspended = 0;
 	}
 
 	dbg("%s out...\n", __func__);
@@ -1467,9 +1471,6 @@ static int tcc_serial_portcfg(struct device_node *np, struct uart_port *port)
 				| (port_mux << ((port->line -4) * 8));
 			writel(portcfg, portcfg_base + 0x4);
 		}
-
-		if(!portcfg_base)
-			iounmap(portcfg_base);
 	}
 	else {
 		dbg_err("UART%d failed port cofiguration\n", port->line);
@@ -1498,7 +1499,13 @@ static int tcc_serial_probe(struct platform_device *dev)
 	dbg("%s: id = %d\n", __func__, id);
 
 	tp = &tcc_serial_ports[id];
-	port = &tp->port;
+
+	if (tp == NULL) {
+		ret = -ENODEV;
+		goto probe_err;
+	}
+	else
+		port = &tp->port;
 
 	mem = platform_get_resource(dev, IORESOURCE_MEM, 0);
 	if (!mem) {
@@ -1593,18 +1600,18 @@ probe_err:
 
 	dbg("probe_err\n");
 
-	if (tp == NULL)
-		return ret;
+	if(tp != NULL) {
 
-	if (tp->fclk) {
-		clk_disable_unprepare(tp->fclk);
-		clk_put(tp->fclk);
-		tp->fclk = NULL;
-	}
-	if (tp->hclk) {
-		clk_disable_unprepare(tp->hclk);
-		clk_put(tp->hclk);
-		tp->hclk = NULL;
+		if (tp->fclk != NULL) {
+			clk_disable_unprepare(tp->fclk);
+			clk_put(tp->fclk);
+			tp->fclk = NULL;
+		}
+		if (tp->hclk != NULL) {
+			clk_disable_unprepare(tp->hclk);
+			clk_put(tp->hclk);
+			tp->hclk = NULL;
+		}
 	}
 
 	return ret;
