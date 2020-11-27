@@ -286,7 +286,7 @@ static int ictc_parse_dt(struct device_node *np)
 {
 
 	int ret = 0;
-	unsigned int node_num = 0;
+	unsigned int node_num;
 	unsigned long count = 0;
 
 	count = ARRAY_SIZE(ictc_prop_v_l);
@@ -330,8 +330,6 @@ static void ictc_configure(void)
 
 	if (ictc_prop_v.abs_sel != 0u)
 		config_val |= ABS_SEL;
-	else
-		config_val &= ~ABS_SEL;
 
 	if (ictc_prop_v.edge_sel != 0u)
 		config_val |= EDGE_SEL;
