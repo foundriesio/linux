@@ -761,9 +761,9 @@ struct drm_encoder *tcc_dpi_probe(
 			ret = -ENOMEM;
 			goto err_resolution;
 		}
-		//ctx->dp->dp_id =
-		//	tcc_dp_register_drm(&ctx->encoder,
-		//				&tcc_drm_dp_callback_funcs);
+		ctx->dp->dp_id =
+			tcc_dp_register_drm(&ctx->encoder,
+						&tcc_drm_dp_callback_funcs);
 	}
 	#endif
 
