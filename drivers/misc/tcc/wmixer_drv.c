@@ -547,6 +547,7 @@ static int wmixer_drv_alpha_mixing_ctrl(struct wmixer_drv_type *wmixer)
     VIOC_RDMA_SetImageFormat(pWMIX_rdma_base, apb_info->src0_fmt);
     if (apb_info->src0_fmt > VIOC_IMG_FMT_COMP) {
         VIOC_RDMA_SetImageY2REnable(pWMIX_rdma_base, 1);
+        VIOC_RDMA_SetImageR2YEnable(pWMIX_rdma_base, 0);
     } else {
         VIOC_RDMA_SetImageY2REnable(pWMIX_rdma_base, 0);
     }
@@ -559,6 +560,7 @@ static int wmixer_drv_alpha_mixing_ctrl(struct wmixer_drv_type *wmixer)
     VIOC_RDMA_SetImageFormat(pWMIX_rdma1_base, apb_info->src1_fmt);
     if ((apb_info->src1_fmt > VIOC_IMG_FMT_COMP)) {
         VIOC_RDMA_SetImageY2REnable(pWMIX_rdma1_base, 1);
+        VIOC_RDMA_SetImageR2YEnable(pWMIX_rdma1_base, 0);
     } else {
         VIOC_RDMA_SetImageY2REnable(pWMIX_rdma1_base, 0);
     }
@@ -589,6 +591,7 @@ static int wmixer_drv_alpha_mixing_ctrl(struct wmixer_drv_type *wmixer)
 
     VIOC_CONFIG_WMIXPath(wmixer->rdma0.id, 1); // wmixer op is mixing mode.
     VIOC_WMIX_SetSize(pWMIX_wmix_base, apb_info->dst_width, apb_info->dst_height);
+    VIOC_WMIX_SetOverlayPriority(pWMIX_wmix_base, 24);
     // set to layer0 of WMIX.
     VIOC_WMIX_ALPHA_SetColorControl(pWMIX_wmix_base, apb_info->src0_layer, apb_info->region, apb_info->src0_ccon0, apb_info->src0_ccon1);
     VIOC_WMIX_ALPHA_SetAlphaValueControl(pWMIX_wmix_base, apb_info->src0_layer, apb_info->region, apb_info->src0_acon0, apb_info->src0_acon1);
@@ -619,6 +622,7 @@ static int wmixer_drv_alpha_mixing_ctrl(struct wmixer_drv_type *wmixer)
     VIOC_WDMA_SetImageBase(pWMIX_wdma_base, apb_info->dst_Yaddr, apb_info->dst_Uaddr, apb_info->dst_Vaddr);
     if (apb_info->dst_fmt > VIOC_IMG_FMT_COMP) {
 		VIOC_WDMA_SetImageR2YEnable(pWMIX_wdma_base, 1);
+		VIOC_WDMA_SetImageY2REnable(pWMIX_wdma_base, 0);
 	} else {
 		VIOC_WDMA_SetImageR2YEnable(pWMIX_wdma_base, 0);
 	}
