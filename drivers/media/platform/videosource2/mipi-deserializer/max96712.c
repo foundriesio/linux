@@ -810,7 +810,7 @@ struct videosource videosource_max96712 = {
 	{
 	    // deprecated
 	    .width = WIDTH,
-	    .height = HEIGHT - 1,
+	    .height = HEIGHT,
 	    .interlaced = V4L2_DV_PROGRESSIVE,	// V4L2_DV_INTERLACED
 	    .data_format = FMT_YUV422_16BIT,   // data format
 	    .gen_field_en = OFF,
