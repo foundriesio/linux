@@ -628,14 +628,14 @@ bool Dptx_Max968XX_Reset( struct Dptx_Params *pstDptx )
 		ucSerDes_Index = Dptx_Max968XX_Convert_DevAdd_To_Index( (unsigned char)pstSERDES_Reg_Info[uiElements].uiDev_Addr );
 		if( ucSerDes_Index >= SER_DES_INPUT_INDEX_MAX )
 		{
-			dptx_info("Can't find SerDes Index returned %d as device address 0x%x", ucSerDes_Index, pstSERDES_Reg_Info[uiElements].uiDev_Addr);
+			//dptx_info("Can't find SerDes Index returned %d as device address 0x%x", ucSerDes_Index, pstSERDES_Reg_Info[uiElements].uiDev_Addr);
 			continue;
 		}
 
 		pstMax968xx_dev = &stMax968xx_dev[ucSerDes_Index];
 		if( pstMax968xx_dev->pstClient == NULL )
 		{
-			dptx_dbg("I2C Handle is NULL");
+			//dptx_dbg("I2C Handle is NULL");
 			continue;
 		}
 
