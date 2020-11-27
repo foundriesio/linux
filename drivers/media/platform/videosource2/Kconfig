@@ -10,3 +10,11 @@ config VIDEO_VIDEOSOURCE2
 	bool "Video Source V2"
 	default n
 
+config MAX96712_USE_2_INPUT
+	bool "Use 2 input of max96712"
+	depends on VIDEO_VIDEOSOURCE2
+	default n
+	---help---
+	MAX96712 has 4 input ports and default setting is for 4ch FHD input.
+
+	If only 2 input ports are used, enable this configuration.
