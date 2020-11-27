@@ -44,6 +44,7 @@
 #define ISP_ADDR	(0x30 >> 1)
 #define SER_ADDR	(0x80 >> 1)
 
+
 union reg_values{
 	struct videosource_reg * list;
 	unsigned char * reg_values;
@@ -197,8 +198,10 @@ end:
 }
 
 static struct videosource_reg des_init_reg[] = {
+#ifndef CONFIG_MAX96712_USE_2_INPUT
 	{0x0943, 0x80}, // DE_SKEW_INIT, Enable auto initial de-skew packets with the minimum width 32K UI
 	{0x0944, 0x91}, // DE_SKEW_PER, Enable periodic de-skew packets with width 2K UI every 4 frames
+#endif
 	/* 
 	 * MAX96712 (0x52) powers up in GMSL1 mode,
 	 * HIM enabled
@@ -231,8 +234,12 @@ static struct videosource_reg des_init_reg[] = {
 	/*
 	 * Phy1 set pll (x 100Mbps)
 	 */
+#ifdef CONFIG_MAX96712_USE_2_INPUT
+	{0x0418, 0xEA}, // overide
+#else
 	{0x0415, 0xEF}, // Override Enable
 	{0x0418, 0xF1}, // overide
+#endif
 	{0x041B, 0x2A},
 
 	/*
@@ -353,8 +360,11 @@ static struct videosource_reg des_init_reg[] = {
 	/*
 	 * enable GMSL1 link A B C D
 	 */
+#ifdef CONFIG_MAX96712_USE_2_INPUT
+	{0x0006, 0x03},
+#else
 	{0x0006, 0x0f},
-
+#endif
 	{0xFF,  50}, //delay
 	{REG_TERM, VAL_TERM}
 };
@@ -842,14 +852,21 @@ struct videosource videosource_max96712 = {
 	    .framerate = 30,
 	    .capture_skip_frame = 0,
 	    .sensor_sizes = sensor_sizes,
-
+#ifdef CONFIG_MAX96712_USE_2_INPUT
+	    .des_info.input_ch_num	= 2,
+#else
 	    .des_info.input_ch_num	= 4,
+#endif
 
 	    .des_info.pixel_mode	= PIXEL_MODE_DUAL,
 	    .des_info.interleave_mode	= INTERLEAVE_MODE_VC_DT,
 	    .des_info.data_lane_num 	= 4,
 	    .des_info.data_format	= DATA_FORMAT_YUV422_8BIT,
+#ifdef CONFIG_MAX96712_USE_2_INPUT
+	    .des_info.hssettle		= 23,
+#else
 	    .des_info.hssettle		= 37,
+#endif
 	    .des_info.clksettlectl	= 0x00,
 	},
     .driver =
