@@ -81,7 +81,7 @@
 #define MBOX_MAX_CMD_LENGTH		8U
 #define MBOX_MAX_DATA_LENGTH	128U
 
-#define MBOX_DAT_TX_TIMEOUT_MS		5U
+#define MBOX_DAT_TX_TIMEOUT_MS		600000U /* 10 minute timeout */
 
 struct tcc_sc_mbox_device {
 	struct mbox_controller mbox;
