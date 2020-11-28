@@ -27,7 +27,7 @@
 		 */
 		mode = <1>;   /* 0: single 1: dual */
 		ports = <2 3>;
-		mux-select = <2>;
+		mux_select = <2>;
 	};
 
 	vqmmc_emmc: vqmmc_emmc {
