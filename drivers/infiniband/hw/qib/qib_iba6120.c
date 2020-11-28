@@ -1416,7 +1416,6 @@ static void qib_6120_quiet_serdes(struct qib_pportdata *ppd)
  *
  * The exact combo of LEDs if on is true is determined by looking
  * at the ibcstatus.
-
  * These LEDs indicate the physical and logical state of IB link.
  * For this chip (at least with recommended board pinouts), LED1
  * is Yellow (logical state) and LED2 is Green (physical state),
@@ -3234,7 +3233,6 @@ static int init_6120_variables(struct qib_devdata *dd)
 	/* we always allocate at least 2048 bytes for eager buffers */
 	ret = ib_mtu_enum_to_int(qib_ibmtu);
 	dd->rcvegrbufsize = ret != -1 ? max(ret, 2048) : QIB_DEFAULT_MTU;
-	BUG_ON(!is_power_of_2(dd->rcvegrbufsize));
 	dd->rcvegrbufsize_shift = ilog2(dd->rcvegrbufsize);
 
 	qib_6120_tidtemplate(dd);

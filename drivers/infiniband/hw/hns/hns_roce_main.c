@@ -320,12 +320,6 @@ static int hns_roce_modify_device(struct ib_device *ib_dev, int mask,
 	return 0;
 }
 
-static int hns_roce_modify_port(struct ib_device *ib_dev, u8 port_num, int mask,
-				struct ib_port_modify *props)
-{
-	return 0;
-}
-
 static struct ib_ucontext *hns_roce_alloc_ucontext(struct ib_device *ib_dev,
 						   struct ib_udata *udata)
 {
@@ -484,7 +478,6 @@ static int hns_roce_register_device(struct hns_roce_dev *hr_dev)
 	ib_dev->modify_device		= hns_roce_modify_device;
 	ib_dev->query_device		= hns_roce_query_device;
 	ib_dev->query_port		= hns_roce_query_port;
-	ib_dev->modify_port		= hns_roce_modify_port;
 	ib_dev->get_link_layer		= hns_roce_get_link_layer;
 	ib_dev->get_netdev		= hns_roce_get_netdev;
 	ib_dev->add_gid			= hns_roce_add_gid;
