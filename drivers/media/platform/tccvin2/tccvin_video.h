@@ -363,6 +363,7 @@ extern const struct v4l2_ioctl_ops tccvin_ioctl_ops;
 extern const struct v4l2_file_operations tccvin_fops;
 
 /* Video */
+extern int tccvin_create_attr_recovery_trigger(struct device * dev);
 extern int tccvin_count_supported_formats(void);
 extern struct tccvin_format_desc * tccvin_format_by_index(int index);
 extern int tccvin_count_supported_framesizes(void);

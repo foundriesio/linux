@@ -19,6 +19,7 @@
 #include <linux/list.h>
 #include <linux/module.h>
 #include <linux/slab.h>
+#include <linux/platform_device.h>
 #include <linux/videodev2.h>
 #include <linux/clk.h>
 #include <linux/of_irq.h>
@@ -166,6 +167,54 @@ u32 tccvin_framerate_list[] = {
 	15,
 	30,
 };
+
+/* ------------------------------------------------------------------------
+ * sysfs
+ */
+
+atomic_t	tccvin_attr_recovery_trigger;
+
+ssize_t tccvin_attr_recovery_trigger_store(struct device *dev,
+	struct device_attribute *attr, const char *buf, size_t count)
+{
+	struct platform_device		*pdev	=
+		container_of(dev, struct platform_device, dev);
+	struct tccvin_device		*vdev	=
+		(struct tccvin_device *)platform_get_drvdata(pdev);
+	struct tccvin_cif		*cif	= &vdev->stream->cif;
+	void __iomem			*wdma	=
+		VIOC_WDMA_GetAddress(cif->vioc_path.wdma);
+
+	long val;
+	int error = kstrtoul(buf, 10, &val);
+	if(error)
+		return error;
+
+	if (val == 1) {
+		mutex_lock(&cif->lock);
+		VIOC_WDMA_SetImageSize(wdma, 0, 0);
+		VIOC_WDMA_SetImageEnable(wdma, OFF);
+		mutex_unlock(&cif->lock);
+	}
+
+	return count;
+}
+
+static DEVICE_ATTR(tccvin_attr_recovery_trigger, S_IRUGO|S_IWUSR|S_IWGRP,
+	NULL, tccvin_attr_recovery_trigger_store);
+
+int tccvin_create_attr_recovery_trigger(struct device * dev) {
+	int		ret = 0;
+
+	ret = device_create_file(dev, &dev_attr_tccvin_attr_recovery_trigger);
+	if(ret < 0)
+		loge("failed create sysfs: tccvin_attr_recovery_trigger\n");
+
+	// set recovery trigger as default
+	atomic_set(&tccvin_attr_recovery_trigger, 0);
+
+	return ret;
+}
 
 /* ------------------------------------------------------------------------
  * Utility functions

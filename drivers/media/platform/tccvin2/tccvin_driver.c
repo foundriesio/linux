@@ -483,6 +483,9 @@ static int tccvin_core_probe(struct platform_device *pdev)
 
 	tccvin_init_subdevices(dev);
 
+	// Create the tccvin_attr_recovery_trigger sysfs
+	tccvin_create_attr_recovery_trigger(&dev->pdev->dev);
+
 	return 0;
 
 error:
