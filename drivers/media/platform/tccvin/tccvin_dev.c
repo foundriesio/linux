@@ -862,21 +862,51 @@ int tccvin_set_deinterlacer(tccvin_dev_t * vdev) {
  */
 int tccvin_set_scaler(tccvin_cif_t * cif, struct tccvin_v4l2 * v4l2) {
 	volatile void __iomem	* pSC		= VIOC_SC_GetAddress(cif->vioc_path.scaler);
+	unsigned int		width		= v4l2->format.fmt.pix.width;
+	unsigned int		height		= v4l2->format.fmt.pix.height;
+	unsigned int		crop_ratio_hor	= 100;
+	unsigned int		crop_ratio_ver	= 100;
+	unsigned int		dst_width	= width;
+	unsigned int		dst_height	= height;
+	unsigned int		out_posx	= 0;
+	unsigned int		out_posy	= 0;
+	unsigned int		out_width	= width;
+	unsigned int		out_height	= height;
 
-	unsigned int	width	= (v4l2->selection.r.width  != 0) ? v4l2->selection.r.width  : v4l2->format.fmt.pix.width;
-	unsigned int	height	= (v4l2->selection.r.height != 0) ? v4l2->selection.r.height : v4l2->format.fmt.pix.height;
+	if (!((v4l2->selection.r.left == 0) &&
+	      (v4l2->selection.r.top == 0) &&
+	      (v4l2->selection.r.width == 0) &&
+	      (v4l2->selection.r.height == 0))) {
+		if (v4l2->selection.flags == V4L2_SEL_FLAG_GE) {
+			crop_ratio_hor	= width * 100 /	v4l2->selection.r.width;
+			crop_ratio_ver	= height * 100 / v4l2->selection.r.height;
+			dst_width	= width * crop_ratio_hor / 100;
+			dst_height	= height * crop_ratio_ver / 100;
+			out_posx	= v4l2->selection.r.left * crop_ratio_hor / 100;
+			out_posy	= v4l2->selection.r.top * crop_ratio_ver / 100;
+			out_width	= /*v4l2->selection.r.width * crop_ratio_hor / 100*/width;
+			out_height	= /*v4l2->selection.r.height * crop_ratio_ver / 100*/height;
+		} else {
+			out_posx	= v4l2->selection.r.left;
+			out_posy	= v4l2->selection.r.top;
+			out_width	= v4l2->selection.r.width;
+			out_height	= v4l2->selection.r.height;
+		}
+	}
 
 	FUNCTION_IN
-	dlog("SC: 0x%p, Output Size - width: %d, height: %d\n", pSC, width, height);
+	logd("SC: 0x%p, DST: %d * %d\n", pSC, dst_width, dst_height);
+	logd("SC: 0x%p, OUT: (%d, %d) %d * %d\n", pSC, out_posx, out_posy, out_width, out_height);
 
 	// Plug the scaler in
 	VIOC_CONFIG_PlugIn(cif->vioc_path.scaler, cif->vioc_path.vin);
 
 	// Configure the scaler
 	VIOC_SC_SetBypass(pSC, OFF);
-	VIOC_SC_SetDstSize(pSC, width, height);
-	VIOC_SC_SetOutPosition(pSC, 0, 0);
-	VIOC_SC_SetOutSize(pSC, width, height + 1);	// workaround: scaler margin
+	VIOC_SC_SetDstSize(pSC, dst_width, dst_height);
+	VIOC_SC_SetOutPosition(pSC, out_posx, out_posy);
+	// workaround: scaler margin
+	VIOC_SC_SetOutSize(pSC, out_width, out_height + 1);
 	VIOC_SC_SetUpdate(pSC);
 
 	FUNCTION_OUT
@@ -898,32 +928,45 @@ int tccvin_set_scaler(tccvin_cif_t * cif, struct tccvin_v4l2 * v4l2) {
 int tccvin_set_wmixer(tccvin_dev_t * vdev) {
 	volatile void __iomem	* pWMIXer	= VIOC_WMIX_GetAddress(vdev->cif.vioc_path.wmixer);
 
-	unsigned int	width	= vdev->v4l2.format.fmt.pix.width;
-	unsigned int	height	= vdev->v4l2.format.fmt.pix.height;
+	unsigned int		width		= vdev->v4l2.format.fmt.pix.width;
+	unsigned int		height		= vdev->v4l2.format.fmt.pix.height;
+	unsigned int		out_posx	= 0;
+	unsigned int		out_posy	= 0;
+	unsigned int		ovp		= 5;
+	unsigned int		vs_ch		= 0;
 #ifdef CONFIG_OVERLAY_PGL
-	unsigned int layer		= 0x0;
-	unsigned int key_R		= PGL_BG_R;
-	unsigned int key_G		= PGL_BG_G;
-	unsigned int key_B		= PGL_BG_B;
-	unsigned int key_mask_R	= ((PGL_BGM_R >> 3) << 3 );
-	unsigned int key_mask_G	= ((PGL_BGM_G >> 3) << 3 );
-	unsigned int key_mask_B	= ((PGL_BGM_B >> 3) << 3 );
+	unsigned int		pgl_ch		= 1;
+	unsigned int		chrom_layer	= 0;
+	unsigned int		key_R		= PGL_BG_R;
+	unsigned int		key_G		= PGL_BG_G;
+	unsigned int		key_B		= PGL_BG_B;
+	unsigned int		mask_R		= ((PGL_BGM_R >> 3) << 3 );
+	unsigned int		mask_G		= ((PGL_BGM_G >> 3) << 3 );
+	unsigned int		mask_B		= ((PGL_BGM_B >> 3) << 3 );
 #endif//CONFIG_OVERLAY_PGL
 
+	if (!((vdev->v4l2.selection.r.left == 0) && (vdev->v4l2.selection.r.top == 0))) {
+		if (vdev->v4l2.selection.flags != V4L2_SEL_FLAG_GE) {
+			out_posx	= vdev->v4l2.selection.r.left;
+			out_posy	= vdev->v4l2.selection.r.top;
+		}
+	}
+
 	FUNCTION_IN
-	dlog("WMIXer: 0x%p, Size - width: %d, height: %d\n", pWMIXer, width, height);
+	logd("WMIXer: 0x%p, Size - width: %d, height: %d\n", pWMIXer, width, height);
+	logd("WMIXer: 0x%p, CH0: (%d, %d)\n", pWMIXer, out_posx, out_posy);
 
 	// Configure the wmixer
-#ifdef CONFIG_OVERLAY_PGL
 	VIOC_WMIX_SetSize(pWMIXer, width, height);
-	VIOC_WMIX_SetPosition(pWMIXer, 0, vdev->v4l2.selection.r.left, vdev->v4l2.selection.r.top);
-	VIOC_WMIX_SetPosition(pWMIXer, 1, 0, 0);
-	VIOC_WMIX_SetChromaKey(pWMIXer, layer, ON, key_R, key_G, key_B, key_mask_R, key_mask_G, key_mask_B);
-	VIOC_WMIX_SetUpdate(pWMIXer);
-	VIOC_CONFIG_WMIXPath(vdev->cif.vioc_path.vin, ON);	// ON: Mixing mode / OFF: Bypass mode
-#else
-	VIOC_CONFIG_WMIXPath(vdev->cif.vioc_path.vin, OFF);	// ON: Mixing mode / OFF: Bypass mode
+	VIOC_WMIX_SetOverlayPriority(pWMIXer, ovp);
+	VIOC_WMIX_SetPosition(pWMIXer, vs_ch, out_posx, out_posy);
+#ifdef CONFIG_OVERLAY_PGL
+	VIOC_WMIX_SetPosition(pWMIXer, pgl_ch, 0, 0);
+	VIOC_WMIX_SetChromaKey(pWMIXer, chrom_layer, ON, key_R, key_G, key_B,
+		mask_R, mask_G, mask_B);
 #endif
+	VIOC_WMIX_SetUpdate(pWMIXer);
+	VIOC_CONFIG_WMIXPath(vdev->cif.vioc_path.vin, ON);
 
 	FUNCTION_OUT
 	return 0;
