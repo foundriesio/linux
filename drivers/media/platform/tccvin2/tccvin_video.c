@@ -172,9 +172,23 @@ u32 tccvin_framerate_list[] = {
  * sysfs
  */
 
-atomic_t	tccvin_attr_recovery_trigger;
+ssize_t recovery_trigger_show(struct device *dev,
+	struct device_attribute *attr, char *buf)
+{
+	struct platform_device		*pdev	=
+		container_of(dev, struct platform_device, dev);
+	struct tccvin_device		*vdev	=
+		(struct tccvin_device *)platform_get_drvdata(pdev);
+	struct tccvin_cif		*cif	= &vdev->stream->cif;
 
-ssize_t tccvin_attr_recovery_trigger_store(struct device *dev,
+	long val = atomic_read(&cif->recovery_trigger);
+
+	sprintf(buf, "%ld\n", val);
+
+	return val;
+}
+
+ssize_t recovery_trigger_store(struct device *dev,
 	struct device_attribute *attr, const char *buf, size_t count)
 {
 	struct platform_device		*pdev	=
@@ -190,6 +204,8 @@ ssize_t tccvin_attr_recovery_trigger_store(struct device *dev,
 	if(error)
 		return error;
 
+	atomic_set(&cif->recovery_trigger, val);
+
 	if (val == 1) {
 		mutex_lock(&cif->lock);
 		VIOC_WDMA_SetImageSize(wdma, 0, 0);
@@ -200,18 +216,23 @@ ssize_t tccvin_attr_recovery_trigger_store(struct device *dev,
 	return count;
 }
 
-static DEVICE_ATTR(tccvin_attr_recovery_trigger, S_IRUGO|S_IWUSR|S_IWGRP,
-	NULL, tccvin_attr_recovery_trigger_store);
+static DEVICE_ATTR(recovery_trigger, S_IRUGO|S_IWUSR|S_IWGRP,
+	recovery_trigger_show, recovery_trigger_store);
 
-int tccvin_create_attr_recovery_trigger(struct device * dev) {
+int tccvin_create_recovery_trigger(struct device * dev) {
+	struct platform_device		*pdev	=
+		container_of(dev, struct platform_device, dev);
+	struct tccvin_device		*vdev	=
+		(struct tccvin_device *)platform_get_drvdata(pdev);
+	struct tccvin_cif		*cif	= &vdev->stream->cif;
 	int		ret = 0;
 
-	ret = device_create_file(dev, &dev_attr_tccvin_attr_recovery_trigger);
+	ret = device_create_file(dev, &dev_attr_recovery_trigger);
 	if(ret < 0)
-		loge("failed create sysfs: tccvin_attr_recovery_trigger\n");
+		loge("failed create sysfs: recovery_trigger\n");
 
 	// set recovery trigger as default
-	atomic_set(&tccvin_attr_recovery_trigger, 0);
+	atomic_set(&cif->recovery_trigger, 0);
 
 	return ret;
 }
@@ -793,8 +814,8 @@ static int tccvin_set_vin(struct tccvin_streaming *vdev)
 	defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X)
 	unsigned int	stream_enable	= vs_info->se;
 	unsigned int	flush_vsync	= vs_info->fvs;
-#endif//defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC899X) || \
-	defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X)
+#endif/*defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC899X) || \
+	defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X)*/
 
 	logd("VIN: 0x%p, Source Size - width: %d, height: %d\n",
 		vin, width, height);
@@ -1365,7 +1386,7 @@ static int tccvin_allocate_essential_buffers(struct tccvin_streaming *vdev)
 static int tccvin_start_stream(struct tccvin_streaming *vdev)
 {
 	struct tccvin_cif	*cif		= &vdev->cif;
-	struct vioc_path	*vioc		= &vdev->cif.vioc_path;
+	struct vioc_path	*vioc		= &cif->vioc_path;
 
 	// size info
 	logd("preview size: %d * %d\n",
@@ -1386,7 +1407,7 @@ static int tccvin_start_stream(struct tccvin_streaming *vdev)
 	tccvin_set_vin(vdev);
 
 	// set deinterlacer
-	if (!!(vdev->cif.videosource_info->interlaced & V4L2_DV_INTERLACED)) {
+	if (!!(cif->videosource_info->interlaced & V4L2_DV_INTERLACED)) {
 		// set Deinterlacer
 		tccvin_set_deinterlacer(vdev);
 	}
