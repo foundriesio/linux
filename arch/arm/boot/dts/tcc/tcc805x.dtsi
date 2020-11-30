@@ -713,17 +713,6 @@
 			no-map;
 		};
 
-		pmap_prot_tztee: prot_tztee {
-			compatible = "telechips,pmap";
-			telechips,pmap-name = "prot_tztee";
-			alloc-ranges = <0x0 RESERVED_MEM_BASE 0x0 RESERVED_MEM_SIZE>;
-			/* Calculate start address based on 0x30000000.
-			 * Base address will be (0x30000000 - prot_tztee_size).
-			 */
-			size = <0x0 0x0>;
-			no-map;
-		};
-
 		reserved_ramoops: ramoops {
 			compatible = "telechips,pmap";
 			telechips,pmap-name = "ramoops";
@@ -815,14 +804,6 @@
 			no-map;
 			status = "disabled";
 		};
-
-		reserved_dw_esm: dw_esm {
-			compatible = "dw.esm";
-			reg = <0x0 PMAP_BASE_PROT_ESM_FW 0x0 PMAP_SIZE_PROT_ESM_FW>;
-			no-map;
-			status = "disabled";
-		};
-
 	};
 
 	ramblk: ramblk {
