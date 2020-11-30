@@ -83,6 +83,8 @@ struct dai_reg_t {
 #define dai_writel(v, c)			writel(v, c)
 #endif
 
+#define PCM_INTERFACE
+
 static inline void tcc_dai_dump(void __iomem *base_addr)
 {
 	pr_info("DAMR : 0x%08x\n", readl(base_addr + TCC_DAI_DAMR_OFFSET));
@@ -371,6 +373,63 @@ static inline void tcc_dai_set_i2s_tdm_mode(
 	dai_writel(mccr0, base_addr + TCC_DAI_MCCR0_OFFSET);
 }
 
+#if defined(PCM_INTERFACE)
+static inline void tcc_dai_set_dsp_pcm_word_len(
+	void __iomem *base_addr, 
+	uint32_t bit_width)
+{
+	uint32_t value = readl(base_addr + TCC_DAI_DAMR_OFFSET);
+
+	value &= ~(DAMR_DSP_WORD_LEN_Msk);
+
+	value |= (bit_width == (uint32_t)24) ? 
+		((uint32_t) DAMR_DSP_WORD_LEN_24BIT) : ((uint32_t) DAMR_DSP_WORD_LEN_16BIT);
+
+	dai_writel(value, base_addr + TCC_DAI_DAMR_OFFSET);
+}
+
+static inline void tcc_dai_set_dsp_pcm_mode(
+	void __iomem *base_addr, 
+	uint32_t slots, 
+	uint32_t slot_width, bool late)
+{
+	uint32_t damr = readl(base_addr + TCC_DAI_DAMR_OFFSET);
+	uint32_t mccr0 = readl(base_addr + TCC_DAI_MCCR0_OFFSET);
+
+	damr &= ~(DAMR_RX_JUSTIFIED_MODE_Msk
+			| DAMR_TX_JUSTIFIED_MODE_Msk
+			| DAMR_DAI_SYNC_MODE_Msk
+			| DAMR_DSP_MODE_Msk);
+
+	mccr0 &= ~(MCCR0_FRAME_SIZE_Msk
+			 | MCCR0_FRAME_CLK_DIV_Msk
+			 | MCCR0_TDM_MODE_Msk
+			 | MCCR0_CIRRUS_LATE_Msk
+			 | MCCR0_MODE_SELECT_Msk
+			 | MCCR0_FRAME_INVERT_Msk
+			 | MCCR0_FRAME_BEGIN_POSITION_Msk
+			 | MCCR0_FRAME_END_POSTION_Msk);
+
+	damr |= (DAMR_DAI_SYNC_IIS_DSP_TDM | DAMR_DSP_OR_TDM_MODE);
+
+	mccr0 |= ((slots*slot_width-1) << MCCR0_FRAME_SIZE_Pos);
+	mccr0 |= ((uint32_t) 0 << (uint32_t) MCCR0_FRAME_END_POSTION_Pos);
+	mccr0 |= MCCR0_FRAME_CLK_DIV_USE;
+
+	mccr0 |= MCCR0_FRAME_INVERT_DISABLE;
+	
+	if(slot_width == (uint32_t)32)
+		mccr0 |= MCCR0_TDM_MODE_0;
+	else
+		mccr0 |= MCCR0_TDM_MODE_1;
+
+	if(late == TRUE)
+		mccr0 |= MCCR0_MODE_SELECT_ENABLE; //DSP-B
+
+	dai_writel(damr, base_addr + TCC_DAI_DAMR_OFFSET);
+	dai_writel(mccr0, base_addr + TCC_DAI_MCCR0_OFFSET);
+}
+#endif //PCM_INTERFACE
 #define CIRRUS_TDM_MODE_SLOT_WIDTH	(32)
 
 static inline void tcc_dai_set_cirrus_tdm_mode(
@@ -476,63 +535,6 @@ static inline void tcc_dai_set_dsp_tdm_mode(
 			mccr0 |= MCCR0_FRAME_BEGIN_EARLY_MODE;	//DSP-A
 	} else {
 		mccr0 |= MCCR0_TDM_MODE_0;
-		if (late == TRUE)
-			mccr0 |= MCCR0_MODE_SELECT_ENABLE;	//DSP-B
-	}
-
-	dai_writel(damr, base_addr + TCC_DAI_DAMR_OFFSET);
-	dai_writel(mccr0, base_addr + TCC_DAI_MCCR0_OFFSET);
-}
-
-#define DSP_PCM_MODE_FRAME_LENGTH \
-	(32)
-
-static inline void tcc_dai_set_dsp_pcm_mode(
-	void __iomem *base_addr,
-	uint32_t slot_width,
-	bool late)
-{
-	uint32_t damr = readl(base_addr + TCC_DAI_DAMR_OFFSET);
-	uint32_t mccr0 = readl(base_addr + TCC_DAI_MCCR0_OFFSET);
-
-	damr &=
-		~(DAMR_RX_JUSTIFIED_MODE_Msk
-		| DAMR_TX_JUSTIFIED_MODE_Msk
-		| DAMR_DAI_SYNC_MODE_Msk
-		| DAMR_DSP_MODE_Msk
-		| DAMR_DSP_WORD_LEN_Msk);
-
-	mccr0 &=
-		~(MCCR0_FRAME_SIZE_Msk
-		| MCCR0_FRAME_CLK_DIV_Msk
-		| MCCR0_TDM_MODE_Msk
-		| MCCR0_CIRRUS_LATE_Msk
-		| MCCR0_MODE_SELECT_Msk
-		| MCCR0_FRAME_INVERT_Msk
-		| MCCR0_FRAME_BEGIN_POSITION_Msk
-		| MCCR0_FRAME_END_POSTION_Msk);
-
-	damr |= (DAMR_DAI_SYNC_IIS_DSP_TDM | DAMR_DSP_OR_TDM_MODE);
-	damr |=
-	    (slot_width ==
-	     (uint32_t) 24) ? ((uint32_t) DAMR_DSP_WORD_LEN_24BIT) :
-	     ((uint32_t) DAMR_DSP_WORD_LEN_16BIT);
-
-	mccr0 |=
-	    ((uint32_t) (DSP_PCM_MODE_FRAME_LENGTH - 1) <<
-	    (uint32_t) MCCR0_FRAME_SIZE_Pos);
-	mccr0 |= ((uint32_t) 0 << (uint32_t) MCCR0_FRAME_END_POSTION_Pos);
-	mccr0 |= MCCR0_FRAME_CLK_DIV_USE;
-
-	mccr0 |= MCCR0_FRAME_INVERT_DISABLE;
-	if (system_rev == (uint32_t) 0) {	//ES
-		mccr0 |= MCCR0_TDM_MODE_1;
-		if (late == TRUE)
-			mccr0 |= MCCR0_FRAME_BEGIN_MODE2;	//DSP-B
-		else
-			mccr0 |= MCCR0_FRAME_BEGIN_EARLY_MODE;	//DSP-A
-	} else {
-		mccr0 |= MCCR0_TDM_MODE_1;
 		if (late == TRUE)
 			mccr0 |= MCCR0_MODE_SELECT_ENABLE;	//DSP-B
 	}
