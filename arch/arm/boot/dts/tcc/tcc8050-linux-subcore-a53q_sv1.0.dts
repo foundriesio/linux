@@ -2945,7 +2945,7 @@
 &ehci_phy {
 	status = "okay";
 	vbus-ctrl-able;
-	vbus-gpio = <&gpmc 7 0>; /* 0 : GPIO_ACTIVE_HIGH, 1 : GPIO_ACTIVE_LOW */
+	vbus-gpio = <&gpmd 15 0>; /* 0 : GPIO_ACTIVE_HIGH, 1 : GPIO_ACTIVE_LOW */
 };
 
 &ehci {

@@ -37,53 +37,6 @@
 	//status = "okay";
 };
 
-/* USB 2.0 Host */
-&ehci_phy {
-	status = "disabled";
-	vbus-ctrl-able;
-	vbus-gpio = <&gpmc 7 0>; /* 0 : GPIO_ACTIVE_HIGH, 1 : GPIO_ACTIVE_LOW */
-};
-
-&ehci {
-	status = "disabled";
-	hcd_id = <0>;
-	phy-type = <1>;	    //pico phy = 1, nano phy = 0
-	TXVRT = <0xB>;
-	TXRISET = <0x3>;
-	TXAT = <0x1>;
-};
-
-&ohci {
-	status = "disabled";
-};
-
-/* USB 2.0 DRD */
-&dwc_otg_phy {
-	status = "okay";
-	vbus-ctrl-able;
-	vbus-gpio = <&gpmc 6 0>; /* 0 : GPIO_ACTIVE_HIGH, 1 : GPIO_ACTIVE_LOW */
-};
-
-&mhst_phy {
-	status = "okay";
-};
-
-&dwc_otg {
-	status = "okay";
-	phy-type = <1>;     //pico phy = 1, nano phy = 0
-};
-
-/* USB 3.0 DRD */
-&dwc3_phy {
-	status = "okay";
-	vbus-ctrl-able;
-	vbus-gpio = <&gpmc 8 0>; /* 0 : GPIO_ACTIVE_HIGH, 1 : GPIO_ACTIVE_LOW */
-};
-
-&dwc3 {
-	status = "okay";
-};
-
 &tcc_ufs {
 	status = "disabled";
 };

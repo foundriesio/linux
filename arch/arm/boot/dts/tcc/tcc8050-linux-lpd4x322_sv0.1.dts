@@ -89,7 +89,52 @@
                 gpios = <&gpa 1 0>;
         };
 
+	/* USB 2.0 Host */
+	ehci_phy@11DA0010 {
+		status = "disabled";
+		vbus-ctrl-able;
+		vbus-gpio = <&gpmc 7 0>; /* 0 : GPIO_ACTIVE_HIGH, 1 : GPIO_ACTIVE_LOW */
+	};
 
+	ehci@11A00000 {
+		status = "disabled";
+		hcd_id = <0>;
+		phy-type = <1>; /* 0 : Nano PHY, 1 : Pico PHY */
+		TXVRT = <0xB>;
+		TXRISET = <0x3>;
+		TXAT = <0x1>;
+	};
+
+	ohci@11A80000 {
+		status = "disabled";
+	};
+
+	/* USB 2.0 DRD */
+	dwc_otg_phy@11DA0100 {
+		status = "okay";
+		vbus-ctrl-able;
+		vbus-gpio = <&gpmc 6 0>; /* 0 : GPIO_ACTIVE_HIGH, 1 : GPIO_ACTIVE_LOW */
+	};
+
+	mux_host_phy@11DA00DC {
+		status = "okay";
+	};
+
+	dwc_otg@11980000 {
+		status = "okay";
+		phy-type = <1>; /* 0 : Nano PHY, 1 : Pico PHY */
+	};
+
+	/* USB 3.0 DRD */
+	dwc3_phy@11D90000 {
+		status = "okay";
+		vbus-ctrl-able;
+		vbus-gpio = <&gpmc 8 0>; /* 0 : GPIO_ACTIVE_HIGH, 1 : GPIO_ACTIVE_LOW */
+	};
+
+	dwc3_platform {
+		status = "okay";
+	};
 };
 
 &a72_sc_mbox {

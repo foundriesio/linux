@@ -434,5 +434,49 @@
 	};
 };
 
+/* USB 2.0 Host */
+&ehci_phy {
+	status = "disabled";
+	vbus-ctrl-able;
+	vbus-gpio = <&gpmd 15 0>; /* 0 : GPIO_ACTIVE_HIGH, 1 : GPIO_ACTIVE_LOW */
+};
 
+&ehci {
+	status = "disabled";
+	hcd_id = <0>;
+	phy-type = <1>; /* 0 : Nano PHY, 1 : Pico PHY */
+	TXVRT = <0xB>;
+	TXRISET = <0x3>;
+	TXAT = <0x1>;
+};
 
+&ohci {
+	status = "disabled";
+};
+
+/* USB 2.0 DRD */
+&dwc_otg_phy {
+	status = "okay";
+	vbus-ctrl-able;
+	vbus-gpio = <&gpmd 14 0>; /* 0 : GPIO_ACTIVE_HIGH, 1 : GPIO_ACTIVE_LOW */
+};
+
+&mhst_phy {
+	status = "okay";
+};
+
+&dwc_otg {
+	status = "okay";
+	phy-type = <1>; /* 0 : Nano PHY, 1 : Pico PHY */
+};
+
+/* USB 3.0 DRD */
+&dwc3_phy {
+	status = "okay";
+	vbus-ctrl-able;
+	vbus-gpio = <&gpmd 16 0>; /* 0 : GPIO_ACTIVE_HIGH, 1 : GPIO_ACTIVE_LOW */
+};
+
+&dwc3 {
+	status = "okay";
+};
