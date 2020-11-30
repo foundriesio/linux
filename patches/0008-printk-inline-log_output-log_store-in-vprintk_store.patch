@@ -57,8 +57,8 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 -	if (dev_info)
 -		memcpy(&r.info->dev_info, dev_info, sizeof(r.info->dev_info));
 -
--	/* insert message */
--	if ((flags & LOG_CONT) || !(flags & LOG_NEWLINE))
+-	/* A message without a trailing newline can be continued. */
+-	if (!(flags & LOG_NEWLINE))
 -		prb_commit(&e);
 -	else
 -		prb_final_commit(&e);
@@ -146,7 +146,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 +			goto out;
 +		}
 +	}
- 
++
 +	/* Store it in the record log */
 +
 +	prb_rec_init_wr(&r, text_len);
@@ -174,7 +174,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 +	r.info->caller_id = caller_id;
 +	if (dev_info)
 +		memcpy(&r.info->dev_info, dev_info, sizeof(r.info->dev_info));
-+
+ 
 +	/* insert message */
 +	if ((lflags & LOG_CONT) || !(lflags & LOG_NEWLINE)) {
 +		prb_commit(&e);
