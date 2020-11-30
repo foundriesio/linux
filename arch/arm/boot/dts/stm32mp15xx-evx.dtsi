@@ -90,7 +90,7 @@
 
 	sound {
 		compatible = "audio-graph-card";
-		label = "STM32MP1-EV";
+		label = "STM32MP15-EV";
 		routing =
 			"AIF1CLK" , "MCLK1",
 			"AIF2CLK" , "MCLK1",
