@@ -121,7 +121,9 @@ struct tcc_i2s_t {
 	bool tdm_mode;
 	bool frame_invert; //for TDM I2S mode
 	bool tdm_late_mode;
+#if defined(PCM_INTERFACE)
 	bool tdm_pcm_mode;
+#endif
 	bool is_updated;
 	int32_t tdm_slots;
 	int32_t tdm_slot_width;
@@ -177,47 +179,21 @@ static inline uint32_t calc_dsp_tdm_mclk(
 	return (uint32_t)ret;
 }
 
-static int tcc_i2s_tx_rx_check(struct tcc_i2s_t *i2s, char *set_change)
-{
-	uint32_t tx_en = 0, rx_en = 0;
-	int ret = 0;
-
-	if (!i2s)
-		goto tx_rx_check_end;
-
-	tx_en = tcc_dai_tx_check(i2s->dai_reg);
-	rx_en = tcc_dai_rx_check(i2s->dai_reg);
-	if ((tx_en == 0) && (rx_en == 0)) {
-		tcc_dai_enable(i2s->dai_reg, FALSE);
-	} else {
-		if (rx_en) {
-			i2s_dai_err("%s doesn't change while capture by I2S-%d\n",
-				set_change,
-				i2s->blk_no);
-		} else {
-			i2s_dai_err("%s doesn't change while playback by I2S-%d\n",
-				set_change,
-				i2s->blk_no);
-		}
-		ret = -EINVAL;
-	}
-tx_rx_check_end:
-	return ret;
-}
-
+#if defined(PCM_INTERFACE)
 static inline uint32_t calc_dsp_pcm_mclk(
-	struct tcc_i2s_t *i2s,
-	unsigned int sample_rate)
+	struct tcc_i2s_t *i2s, 
+	int32_t sample_rate)
 {
 	int32_t ret;
-
 	sample_rate = (sample_rate == 44100) ? 44100 :
 				  (sample_rate == 22000) ? 22050 :
 				  (sample_rate == 11000) ? 11025 : sample_rate;
 
-	ret = sample_rate * i2s->mclk_div * 2 * i2s->tdm_slot_width;
+	ret = sample_rate *  i2s->mclk_div * 
+		i2s->tdm_slots * i2s->tdm_slot_width;
 	return (uint32_t)ret;
 }
+#endif //PCM_INTERFACE
 
 static int tcc_i2s_set_dai_fmt(struct snd_soc_dai *dai, unsigned int fmt)
 {
@@ -229,15 +205,8 @@ static int tcc_i2s_set_dai_fmt(struct snd_soc_dai *dai, unsigned int fmt)
 
 	spin_lock(&i2s->lock);
 
-	if (i2s->clk_continuous == TRUE)
-		ret = tcc_i2s_tx_rx_check(i2s, "dai_fmt");
-
-	if (ret != 0) {
-		goto dai_fmt_end;
-	} else {
-		i2s->dai_fmt = 0;
-		i2s->is_updated = TRUE;
-	}
+	i2s->dai_fmt = 0;
+	i2s->is_updated = TRUE;
 
 	switch (fmt & (uint32_t)SND_SOC_DAIFMT_INV_MASK) {
 	case SND_SOC_DAIFMT_NB_NF:
@@ -338,46 +307,85 @@ static int tcc_i2s_set_dai_fmt(struct snd_soc_dai *dai, unsigned int fmt)
 		break;
 	case SND_SOC_DAIFMT_DSP_A:
 		i2s_dai_dbg("[%d] DSP_A DAIFMT\n", i2s->blk_no);
-		if (i2s->tdm_mode == TRUE) {
-			if ((i2s->tdm_slot_width == 16) ||
-				(i2s->tdm_slot_width == 24)) {
-				tcc_dai_set_dsp_tdm_mode(
-					i2s->dai_reg,
-					(uint32_t) i2s->tdm_slot_width,
-					FALSE);
+#if defined(PCM_INTERFACE)
+		if (i2s->tdm_pcm_mode == TRUE) {
+			if ((i2s->tdm_slot_width == 16) 
+					|| (i2s->tdm_slot_width == 24) 
+					|| (i2s->tdm_slot_width == 32)) {
+				tcc_dai_set_dsp_pcm_mode(
+						i2s->dai_reg, 
+						(uint32_t) i2s->tdm_slots, 
+						(uint32_t) i2s->tdm_slot_width, FALSE);
 			} else {
-				i2s_dai_err("[%d] DSP_A TDM supports",
-					i2s->blk_no);
-				pr_err("nly 16bit or 24bit slotwidth\n");
+				i2s_dai_err("[%d] PCM supports ", i2s->blk_no);
+				pr_err("only 16bit or 24bit or 32bit slotwidth\n");
 				ret = -ENOTSUPP;
 			}
 		} else {
-			i2s_dai_err("[%d] DSP_A", i2s->blk_no);
-			pr_err(" supports only TDM Mode\n");
-			ret = -ENOTSUPP;
+#endif	//PCM_INTERFACE
+			if (i2s->tdm_mode == TRUE) {
+				if ((i2s->tdm_slot_width == 16) ||
+						(i2s->tdm_slot_width == 24)) {
+					tcc_dai_set_dsp_tdm_mode(
+							i2s->dai_reg,
+							(uint32_t) i2s->tdm_slot_width,
+							FALSE);
+				} else {
+					i2s_dai_err("[%d] DSP_A TDM supports",
+							i2s->blk_no);
+					pr_err("nly 16bit or 24bit slotwidth\n");
+					ret = -ENOTSUPP;
+				}
+			} else {
+				i2s_dai_err("[%d] DSP_A", i2s->blk_no);
+				pr_err(" supports only TDM Mode\n");
+				ret = -ENOTSUPP;
+			}
+#if defined(PCM_INTERFACE)
 		}
+#endif	//PCM_INTERFACE
 		break;
 	case SND_SOC_DAIFMT_DSP_B:
 #if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X) || \
 	defined(CONFIG_ARCH_TCC806X) || defined(CONFIG_ARCH_TCC899X) || \
 	defined(CONFIG_ARCH_TCC901X)
 		i2s_dai_dbg("[%d] DSP_B DAIFMT\n", i2s->blk_no);
-		if (i2s->tdm_mode == TRUE) {
-			if ((i2s->tdm_slot_width == 16) ||
-				(i2s->tdm_slot_width == 24)) {
-				tcc_dai_set_dsp_tdm_mode(i2s->dai_reg,
-					(uint32_t) i2s->tdm_slot_width, TRUE);
+#if defined(PCM_INTERFACE)
+		if (i2s->tdm_pcm_mode == TRUE) {
+			if ((i2s->tdm_slot_width == 16) 
+					|| (i2s->tdm_slot_width == 24) 
+					|| (i2s->tdm_slot_width == 32)) {
+				tcc_dai_set_dsp_pcm_mode(
+						i2s->dai_reg, 
+						(uint32_t) i2s->tdm_slots, 
+						(uint32_t) i2s->tdm_slot_width, 
+						TRUE);
 			} else {
-				i2s_dai_err("[%d] DSP_B TDM supports only 16bit",
-					i2s->blk_no);
-				pr_err("or 24bit slotwidth\n");
+				i2s_dai_err("[%d] PCM supports ", i2s->blk_no);
+				pr_err("only 16bit or 24bit or 32bit slotwidth\n");
 				ret = -ENOTSUPP;
 			}
 		} else {
-			i2s_dai_err("[%d] DSP_B supports only TDM Mode\n",
-				i2s->blk_no);
-			ret = -ENOTSUPP;
+#endif	//PCM_INTERFACE
+			if (i2s->tdm_mode == TRUE) {
+				if ((i2s->tdm_slot_width == 16) ||
+						(i2s->tdm_slot_width == 24)) {
+					tcc_dai_set_dsp_tdm_mode(i2s->dai_reg,
+							(uint32_t) i2s->tdm_slot_width, TRUE);
+				} else {
+					i2s_dai_err("[%d] DSP_B TDM supports only 16bit",
+							i2s->blk_no);
+					pr_err("or 24bit slotwidth\n");
+					ret = -ENOTSUPP;
+				}
+			} else {
+				i2s_dai_err("[%d] DSP_B supports only TDM Mode\n",
+						i2s->blk_no);
+				ret = -ENOTSUPP;
+			}
+#if defined(PCM_INTERFACE)
 		}
+#endif	//PCM_INTERFACE
 		break;
 #endif
 	default:
@@ -721,9 +729,8 @@ static int tcc_i2s_hw_params(
 	int channels = (int)params_channels(params);
 	snd_pcm_format_t format = params_format(params);
 	int32_t sample_rate = (int32_t)params_rate(params);
-	uint32_t mclk = 0, check0 = 0, check1 = 0;
+	uint32_t mclk = 0;
 	int ret = 0;
-	int slots = 0, slot_width = 0;
 	bool pcm_mode = 0;
 
 	enum TCC_DAI_FMT tcc_fmt;
@@ -770,74 +777,6 @@ static int tcc_i2s_hw_params(
 		goto hw_params_end;
 	}
 
-	if (i2s->tdm_pcm_mode) {
-		i2s_dai_dbg("[%d] %s PCM mode Enable\n", i2s->blk_no, __func__);
-
-		slots = channels;
-		slot_width =
-			(format == SNDRV_PCM_FORMAT_S16_LE) ? 16 :
-			(format == SNDRV_PCM_FORMAT_S24_LE) ? 24 : 32;
-
-		i2s_dai_dbg("[%d] %s - slot:%d, slot_width:%d\n",
-			i2s->blk_no,
-			__func__,
-			slots,
-			slot_width);
-
-		i2s->tdm_mode =
-			((slots != 0) && (slot_width != 0)) ? TRUE : FALSE;
-		i2s->tdm_slots = slots;
-		i2s->tdm_slot_width = slot_width;
-		i2s->dma_info.tdm_mode = i2s->tdm_mode;
-
-		if (i2s->tdm_mode == TRUE) {
-			if ((i2s->tdm_slot_width == 16) ||
-				(i2s->tdm_slot_width == 24)) {
-				tcc_dai_set_dsp_pcm_mode(
-					i2s->dai_reg,
-					i2s->tdm_slot_width,
-					FALSE);
-			} else {
-				i2s_dai_err("[%d] DSP_A TDM supports only 16bit or 24bit slotwidth\n",
-					i2s->blk_no);
-				ret = -ENOTSUPP;
-				goto hw_params_end;
-			}
-		} else {
-			i2s_dai_dbg("[%d] DSP_A supports only TDM Mode\n",
-				i2s->blk_no);
-			ret = -ENOTSUPP;
-			goto hw_params_end;
-		}
-
-		tcc_dai_set_bitclk_polarity(i2s->dai_reg, FALSE);
-		pcm_mode = TRUE;
-	} else {
-		i2s_dai_dbg("[%d] %s PCM mode Disable\n",
-			i2s->blk_no,
-			__func__);
-
-		slots = 0;
-		slot_width = 0;
-
-		i2s_dai_dbg("[%d] %s - slot:%d, slot_width:%d\n",
-			i2s->blk_no,
-			__func__,
-			slots,
-			slot_width);
-
-		i2s->tdm_mode =
-			((slots != 0) && (slot_width != 0)) ? TRUE : FALSE;
-		i2s->tdm_slots = slots;
-		i2s->tdm_slot_width = slot_width;
-		i2s->dma_info.tdm_mode = i2s->tdm_mode;
-
-		tcc_dai_set_bitclk_polarity(i2s->dai_reg, TRUE);
-		tcc_dai_set_i2s_mode(i2s->dai_reg);
-
-		pcm_mode = FALSE;
-	}
-
 	/* Rx2Tx loopback Disable */
 	i2s_dai_dbg("[%d] %s Rx2Tx mode Disable\n", i2s->blk_no, __func__);
 	tcc_dai_rx2tx_loopback_enable(i2s->dai_reg, FALSE);
@@ -881,7 +820,7 @@ static int tcc_i2s_hw_params(
 		case SND_SOC_DAIFMT_DSP_A:
 		case SND_SOC_DAIFMT_DSP_B:
 			{
-				uint32_t fmt_bitwdith =
+				uint32_t fmt_bitwidth =
 					(format == SNDRV_PCM_FORMAT_S24_LE) ?
 					24 : 16;
 
@@ -890,22 +829,37 @@ static int tcc_i2s_hw_params(
 					ret = -EINVAL;
 					break;
 				}
+#if defined(PCM_INTERFACE)
+				if(i2s->tdm_pcm_mode) {
+					tcc_dai_set_dsp_pcm_word_len(
+							i2s->dai_reg, 
+							fmt_bitwidth);
+					tcc_dai_set_dsp_tdm_mode_valid_data(
+							i2s->dai_reg, 
+							i2s->tdm_slots, 
+							i2s->tdm_slot_width);
+					mclk = calc_dsp_pcm_mclk(i2s, sample_rate);
+				} else {
+#endif //PCM_INTERFACE
 
-				if (fmt_bitwdith !=
-					(uint32_t)i2s->tdm_slot_width) {
-					i2s_dai_err("DSP A or B TDM Mode, slotwidth(%d) != format(%d)\n",
-						i2s->tdm_slot_width,
-						fmt_bitwdith);
-					ret = -EINVAL;
-					break;
+					if (fmt_bitwidth !=
+							(uint32_t)i2s->tdm_slot_width) {
+						i2s_dai_err("DSP A or B TDM Mode, slotwidth(%d) != format(%d)\n",
+								i2s->tdm_slot_width,
+								fmt_bitwidth);
+						ret = -EINVAL;
+						break;
+					}
+					tcc_dai_set_dsp_tdm_mode_valid_data(
+							i2s->dai_reg, 
+							channels, 
+							i2s->tdm_slot_width);
+					mclk = calc_dsp_tdm_mclk(i2s, sample_rate);
+#if defined(PCM_INTERFACE)
+					}
+#endif //PCM_INTERFACE
 				}
-				tcc_dai_set_dsp_tdm_mode_valid_data(
-					i2s->dai_reg,
-					channels,
-					i2s->tdm_slot_width);
-			}
-			mclk = calc_dsp_tdm_mclk(i2s, sample_rate);
-			break;
+				break;
 		default:
 			i2s_dai_warn("[%d] does not supported\n", i2s->blk_no);
 			ret = -ENOTSUPP;
@@ -925,85 +879,31 @@ static int tcc_i2s_hw_params(
 		}
 	}
 
-	tcc_fmt =
-		(format == SNDRV_PCM_FORMAT_S24_LE) ?
-		TCC_DAI_LSB_24 :
-		TCC_DAI_LSB_16;
+	tcc_fmt = (format == SNDRV_PCM_FORMAT_S24_LE) ?
+		TCC_DAI_LSB_24 : TCC_DAI_LSB_16;
 	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK)
 		tcc_dai_set_tx_format(i2s->dai_reg, tcc_fmt);
 	else
 		tcc_dai_set_rx_format(i2s->dai_reg, tcc_fmt);
-
-	check0 = tcc_dai_multiport_mode_check(i2s->dai_reg);
-	if ((((channels > 2) && (i2s->tdm_mode == FALSE))
-		&& (check0 == 0))
-		|| (((channels <= 2) || (i2s->tdm_mode == TRUE))
-		&& (check0 == 1))) {
-		if (i2s->clk_continuous == TRUE)
-			ret = tcc_i2s_tx_rx_check(i2s, "multiport");
-
-		if (ret != 0)
-			goto hw_params_end;
-	}
+	
 
 	if (i2s->tdm_mode == TRUE) {
-	/* D-Audio tcc803x support */
-		if (pcm_mode == TRUE)
+#if defined(PCM_INTERFACE)
+		if ((i2s->tdm_pcm_mode == TRUE)
+				&&(channels == 8)
+				&&(i2s->tdm_slots == 2)) {
 			tcc_dai_set_multiport_mode(i2s->dai_reg, TRUE);
-		else
+		} else {
 			tcc_dai_set_multiport_mode(i2s->dai_reg, FALSE);
+		}
+#else
+		tcc_dai_set_multiport_mode(i2s->dai_reg, FALSE);
+#endif //PCM_INTERFACE
 	} else  {
 		if (channels > 2)
 			tcc_dai_set_multiport_mode(i2s->dai_reg, TRUE);
 		else
 			tcc_dai_set_multiport_mode(i2s->dai_reg, FALSE);
-	}
-
-/* Workaround Code for TCC803X, TCC899X and TCC901X
- * Stereo & 9.1ch Audio IPs cannot read DCLKDIV register (0x54)
- * So, we should always restore DCLKDIV value while write that
- * value to register
- */
-#if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC899X) || \
-	defined(CONFIG_ARCH_TCC901X)
-	if (i2s->block_type == (uint32_t)DAI_BLOCK_STEREO_TYPE ||
-		i2s->block_type == (uint32_t)DAI_BLOCK_9_1CH_TYPE) {
-		check0 =
-			tcc_dai_get_bclk_ratio(
-				i2s->dai_reg,
-				i2s->regs_backup.dclkdiv,
-				i2s->tdm_mode,
-				TRUE);
-		check1 =
-			tcc_dai_get_mclk_div(
-				i2s->dai_reg,
-				i2s->regs_backup.dclkdiv,
-				i2s->tdm_mode,
-				TRUE);
-	} else {
-		check0 =
-			tcc_dai_get_bclk_ratio(
-				i2s->dai_reg,
-				i2s->regs_backup.dclkdiv,
-				i2s->tdm_mode,
-				FALSE);
-		check1 =
-			tcc_dai_get_mclk_div(
-				i2s->dai_reg,
-				i2s->regs_backup.dclkdiv,
-				i2s->tdm_mode,
-				FALSE);
-	}
-#else
-	check0 = tcc_dai_get_bclk_ratio(i2s->dai_reg, i2s->tdm_mode);
-	check1 = tcc_dai_get_mclk_div(i2s->dai_reg, i2s->tdm_mode);
-#endif
-	if ((i2s->bclk_ratio != check0) || (i2s->mclk_div != check1)) {
-		if (i2s->clk_continuous == TRUE)
-			ret = tcc_i2s_tx_rx_check(i2s, "clkdiv");
-
-		if (ret != 0)
-			goto hw_params_end;
 	}
 
 /* Workaround Code for TCC803X, TCC899X and TCC901X
@@ -1059,12 +959,6 @@ static int tcc_i2s_hw_params(
 	if (i2s->clk_rate != mclk) {
 		uint32_t cur_rate = 0;
 
-		if (i2s->clk_continuous == TRUE)
-			ret = tcc_i2s_tx_rx_check(i2s, "peri-clk");
-
-		if (ret != 0)
-			goto hw_params_end;
-
 		(void) clk_disable_unprepare(i2s->dai_pclk);
 		(void) clk_set_rate(i2s->dai_pclk, mclk);
 		(void) clk_prepare_enable(i2s->dai_pclk);
@@ -1104,8 +998,8 @@ static int tcc_i2s_hw_params(
 		i2s->is_updated = FALSE;
 	}
 
-	if (tcc_dai_enable_check(i2s->dai_reg) == 0) {
-		if ((system_rev == 0u) && (i2s->tdm_mode == TRUE)) { //ES
+	if (i2s->clk_continuous == FALSE) {
+		if((system_rev == 0u) && (i2s->tdm_mode == TRUE)) { //ES
 			goto hw_params_end;
 		}
 		tcc_dai_enable(i2s->dai_reg, TRUE);
@@ -1652,8 +1546,10 @@ static const struct snd_kcontrol_new tcc_i2s_snd_controls[] = {
 		(get_rx2tx_loopback_mode), (set_rx2tx_loopback_mode)),
 	SOC_SINGLE_BOOL_EXT(("TDM Late Mode"), (0),
 		(get_tdm_late_mode), (set_tdm_late_mode)),
+#if defined(PCM_INTERFACE)
 	SOC_SINGLE_BOOL_EXT(("TDM PCM Mode"), (0),
 		(get_tdm_pcm_mode), (set_tdm_pcm_mode)),
+#endif
 };
 
 static const struct snd_soc_component_driver tcc_i2s_component_drv = {
@@ -1914,6 +1810,9 @@ static void set_default_configrations(struct tcc_i2s_t *i2s)
 	i2s->is_updated = FALSE;
 	i2s->tdm_slots = 0;
 	i2s->tdm_slot_width = 0;
+#if defined(PCM_INTERFACE)
+	i2s->tdm_pcm_mode = FALSE;
+#endif //PCM_INTERFACE
 }
 
 static int parse_i2s_dt(struct platform_device *pdev, struct tcc_i2s_t *i2s)
@@ -2048,11 +1947,13 @@ static int parse_i2s_dt(struct platform_device *pdev, struct tcc_i2s_t *i2s)
 	else
 		i2s->tdm_late_mode = FALSE;
 
-	if (of_get_property(pdev->dev.of_node, "tdm-pcm-mode", NULL))
-		i2s->tdm_pcm_mode = TRUE;
-	else
-		i2s->tdm_pcm_mode = FALSE;
-
+#if defined(PCM_INTERFACE)
+	if (of_get_property(pdev->dev.of_node, "tdm-pcm-mode", NULL)) {
+		i2s->tdm_pcm_mode = true;
+	} else {
+		i2s->tdm_pcm_mode = false;
+	}
+#endif //PCM_INTERFACE
 	return 0;
 }
 
