@@ -51,6 +51,10 @@
 #include <linux/of_mdio.h>
 #include "dwmac1000.h"
 
+#if defined(CONFIG_TCC_GMAC)
+#include "dwmac-tcc.h"
+#endif
+#include "dwmac4_dma.h"
 #define	STMMAC_ALIGN(x)		__ALIGN_KERNEL(x, SMP_CACHE_BYTES)
 #define	TSO_MAX_BUFF_SIZE	(SZ_16K - 1)
 
@@ -2575,6 +2579,7 @@ static int stmmac_open(struct net_device *dev)
 {
 	struct stmmac_priv *priv = netdev_priv(dev);
 	int ret;
+	int i;
 
 	if (priv->hw->pcs != STMMAC_PCS_RGMII &&
 	    priv->hw->pcs != STMMAC_PCS_TBI &&
@@ -2591,6 +2596,11 @@ static int stmmac_open(struct net_device *dev)
 	/* Extra statistics */
 	memset(&priv->xstats, 0, sizeof(struct stmmac_extra_stats));
 	priv->xstats.threshold = tc;
+
+	// tca_gmac_portinit(priv->plat, priv->ioaddr);
+
+	// phy reset
+	// tca_gmac_phy_reset(priv->plat);
 
 	priv->dma_buf_sz = STMMAC_ALIGN(buf_sz);
 	priv->rx_copybreak = STMMAC_RX_COPYBREAK;
@@ -2632,6 +2642,7 @@ static int stmmac_open(struct net_device *dev)
 	}
 
 	/* Request the Wake IRQ in case of another line is used for WoL */
+#if 0
 	if (priv->wol_irq != dev->irq) {
 		ret = request_irq(priv->wol_irq, stmmac_interrupt,
 				  IRQF_SHARED, dev->name, dev);
@@ -2654,6 +2665,10 @@ static int stmmac_open(struct net_device *dev)
 			goto lpiirq_error;
 		}
 	}
+#endif
+
+	// for(i=0;i<3;i++)
+		// stmmac_enable_dma_irq(priv, i);
 
 	stmmac_enable_all_queues(priv);
 	stmmac_start_all_queues(priv);
@@ -3677,7 +3692,7 @@ static irqreturn_t stmmac_interrupt(int irq, void *dev_id)
 	u32 queue;
 
 	queues_count = (rx_cnt > tx_cnt) ? rx_cnt : tx_cnt;
-
+	
 	if (priv->irq_wake)
 		pm_wakeup_event(priv->device, 0);
 
@@ -4057,6 +4072,17 @@ static int stmmac_hw_init(struct stmmac_priv *priv)
 	if (!mac)
 		return -ENOMEM;
 
+#if defined(CONFIG_TCC_GMAC)
+	if ((unsigned)(priv->synopsys_id) != 0x51){
+		printk("%s.[WARN] Exit gmac probe due to version mismatch\n",
+				__func__);
+		printk("%s.[WARN] device driver : 5.1a version.\n", __func__);
+		printk("%s.[WARN] version read: %08x\n", __func__,
+				priv->synopsys_id);
+		return -ENODEV;
+	}
+#endif
+
 	priv->hw = mac;
 
 	/* dwmac-sun8i only work in chain mode */
@@ -4155,9 +4181,12 @@ int stmmac_dvr_probe(struct device *device,
 	int ret = 0;
 	u32 queue;
 
+	struct pinctrl *pin;
+
 	ndev = alloc_etherdev_mqs(sizeof(struct stmmac_priv),
 				  MTL_MAX_TX_QUEUES,
 				  MTL_MAX_RX_QUEUES);
+
 	if (!ndev)
 		return -ENOMEM;
 
@@ -4172,6 +4201,14 @@ int stmmac_dvr_probe(struct device *device,
 	priv->plat = plat_dat;
 	priv->ioaddr = res->addr;
 	priv->dev->base_addr = (unsigned long)res->addr;
+
+#if defined(CONFIG_TCC_GMAC)
+	// TCC specific function.
+	pin = devm_pinctrl_get_select(priv->device, "rgmii");
+	dwmac_tcc_clk_enable(plat_dat);
+	dwmac_tcc_portinit(NULL, priv->ioaddr);
+	dwmac_tcc_tunning_timing(NULL, priv->ioaddr);
+#endif
 
 	priv->dev->irq = res->irq;
 	priv->wol_irq = res->wol_irq;
