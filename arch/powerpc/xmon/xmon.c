@@ -1376,6 +1376,7 @@ static long check_bp_loc(unsigned long addr)
 	return 1;
 }
 
+#ifndef CONFIG_PPC_8xx
 static int find_free_data_bpt(void)
 {
 	int i;
@@ -1387,6 +1388,7 @@ static int find_free_data_bpt(void)
 	printf("Couldn't find free breakpoint register\n");
 	return -1;
 }
+#endif
 
 static void print_data_bpts(void)
 {
