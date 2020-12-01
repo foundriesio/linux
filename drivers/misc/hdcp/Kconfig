@@ -7,7 +7,17 @@ config HDCP_DWC_DP
 	depends on TCC_DP_DRIVER_V1_4
 	default y
 	help
-	  Say Y here if you want to support the /dev/dwc-hdcp device.
-	  The /dev/dwc-hdcp device is used to control Synopsys HDCP IP.
+	  Say Y here if you want to support the /dev/hdcp device.
+	  The /dev/hdcp device is used to control Synopsys HDCP IP.
 	  It supports HDCP1.3.
+	  When in doubt, say "Y".
+
+config HDCP_DWC_HLD
+	bool "Host Library Driver for DesignWare Cores"
+	depends on HDCP_DWC_DP
+	default y
+	help
+	  Say Y here if you want to support the /dev/hl_dev device.
+	  The /dev/hl_dev device is used to support Host Library API.
+	  It supports HDCP2.2.
 	  When in doubt, say "Y".
