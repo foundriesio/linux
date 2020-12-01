@@ -247,69 +247,70 @@ static int hdmi_audio_set_samplingfreq(struct tcc_hdmi_dev *dev)
 
 static int hdmi_audio_set_channel(struct tcc_hdmi_dev *dev)
 {
-    int ret = -1;
-    unsigned int i2s_val, asp_con_val, aui_byte1_val, aui_byte4_val, hdmi_reg;
+    	int ret;
+	unsigned int i2s_val, aui_byte1_val, hdmi_reg;
+	unsigned int asp_con_val = 0;
+	unsigned int aui_byte4_val = 0;
 
-    do {
-	    	if(dev == NULL) {
-		    	printk(KERN_ERR "[ERROR][HDMI_V14]%s dev is NULL\r\n", __func__);
-		    	break;
-	    	}
+	if(!dev) {
+		pr_err("[ERROR][HDMI_V14] dev is NULL\r\n", __func__);
+		ret = -1;
+		goto out;
+	}
+	if(
+		dev->audioParam.mChannelAllocation < 2 &&
+		dev->audioParam.mChannelAllocation > 8) {
+		pr_err(
+			"[ERROR][HDMI_V14]%s channel is invalid\r\n",
+			__func__);
+		ret = -1;
+		goto out;
+	}
+	i2s_val = dev->audioParam.mChannelAllocation << 4;
 
-		if(dev->audioParam.mChannelAllocation < 2 && dev->audioParam.mChannelAllocation > 8) {
-			printk(KERN_ERR "[ERROR][HDMI_V14]%s channel is invalid\r\n", __func__);
-			break;
-		}
+	/* AUI BYTEx */
+	aui_byte1_val = dev->audioParam.mChannelAllocation-1;
+	switch (dev->audioParam.mChannelAllocation) {
+	case 2:
+		/* Nothing to do */
+		break;
+	case 3:
+	case 4:
+		asp_con_val = (ASP_LAYOUT_1|ASP_SP_1);
+		break;
+	case 5:
+	case 6:
+		aui_byte4_val = 0x0A;
+		asp_con_val = (ASP_LAYOUT_1|ASP_SP_1|ASP_SP_2);
+		break;
+	case 7:
+	case 8:
+		aui_byte4_val = 0x12;
+		asp_con_val = (ASP_LAYOUT_1|ASP_SP_1|ASP_SP_2|ASP_SP_3);
+		break;
+	default:
+		ret = -1;
+		break;
+	}
 
+	if(ret < 0)
+		goto out;
 
-    		i2s_val = dev->audioParam.mChannelAllocation << 4;
+	hdmi_reg = hdmi_reg_read(dev, HDMI_SS_I2S_CH_ST_2);
+	hdmi_reg &= ~I2S_CH_ST_2_CHANNEL_MASK;
+	hdmi_reg |= i2s_val;
 
-		/* AUI BYTEx */
-		aui_byte1_val = dev->audioParam.mChannelAllocation-1;
+	hdmi_reg_write(dev, hdmi_reg, HDMI_SS_I2S_CH_ST_2);
 
-		ret = 0;
-        	switch (dev->audioParam.mChannelAllocation) {
-			case 2:
-				break;
-        		case 3:
-        		case 4:
-        			asp_con_val = (ASP_LAYOUT_1|ASP_SP_1);
-        			break;
-        		case 5:
-        		case 6:
-        			aui_byte4_val = 0x0A;
-        			asp_con_val = (ASP_LAYOUT_1|ASP_SP_1|ASP_SP_2);
-        			break;
-        		case 7:
-			case 8:
-        			aui_byte4_val = 0x12;
-        			asp_con_val = (ASP_LAYOUT_1|ASP_SP_1|ASP_SP_2|ASP_SP_3);
-        			break;
-        		default:
-				ret = -1;
-        			break;
-        	}
+	hdmi_reg = hdmi_reg_read(dev, HDMI_ASP_CON);
+	hdmi_reg &= ~(ASP_MODE_MASK|ASP_SP_MASK);
+	hdmi_reg |= asp_con_val;
 
-		if(ret < 0) {
-			break;
-		}
-
-		hdmi_reg = hdmi_reg_read(dev, HDMI_SS_I2S_CH_ST_2);
-		hdmi_reg &= ~I2S_CH_ST_2_CHANNEL_MASK;
-		hdmi_reg |= i2s_val;
-
-		hdmi_reg_write(dev, hdmi_reg, HDMI_SS_I2S_CH_ST_2);
-
-		hdmi_reg = hdmi_reg_read(dev, HDMI_ASP_CON);
-		hdmi_reg &= ~(ASP_MODE_MASK|ASP_SP_MASK);
-		hdmi_reg |= asp_con_val;
-
-		hdmi_reg_write(dev, aui_byte1_val, HDMI_AUI_BYTE1);
-		hdmi_reg_write(dev, aui_byte4_val, HDMI_AUI_BYTE4);
-		hdmi_reg_write(dev, hdmi_reg, HDMI_ASP_CON);
-
-        }while(0);
-
+	hdmi_reg_write(dev, aui_byte1_val, HDMI_AUI_BYTE1);
+	hdmi_reg_write(dev, aui_byte4_val, HDMI_AUI_BYTE4);
+	hdmi_reg_write(dev, hdmi_reg, HDMI_ASP_CON);
+	return 0;
+out:
         return ret;
 }
 
