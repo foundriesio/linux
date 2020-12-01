@@ -1051,6 +1051,7 @@ static int dwc3_tcc_ss_phy_ctrl_native(struct usb_phy *phy, int on_off)
 		/* Set 2.0phy REXT */
 		tmp_cnt = 0;
 
+#if 0
 		do
 		{
 			//Read calculated value
@@ -1092,6 +1093,7 @@ static int dwc3_tcc_ss_phy_ctrl_native(struct usb_phy *phy, int on_off)
 
 			tmp_cnt ++;
 		} while (((uTmp & 0x0000F000U) == 0U) && (tmp_cnt < 5));
+#endif
 
 #if defined (CONFIG_TCC_BC_12)
 		writel(readl(&USBPHYCFG->FPHY_PCFG4) | (1<<31), &USBPHYCFG->FPHY_PCFG4);//clear irq
@@ -1178,10 +1180,7 @@ static int dwc3_tcc_ss_phy_ctrl_native(struct usb_phy *phy, int on_off)
 static int tcc_dwc3_init_phy(struct usb_phy *phy)
 {
 #if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X)
-	if (system_rev == 0U)
-		return dwc3_tcc_phy_ctrl_native(phy, ON);
-	else
-		return dwc3_tcc_ss_phy_ctrl_native(phy, ON);
+	return dwc3_tcc_ss_phy_ctrl_native(phy, ON);
 #else
 	return dwc3_tcc_phy_ctrl_native(phy, ON);
 #endif
