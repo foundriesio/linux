@@ -25,6 +25,7 @@
 #include <linux/io.h>
 #include "pinctrl-tcc.h"
 #include <linux/soc/telechips/tcc_sc_protocol.h>
+#include <soc/tcc/chipinfo.h>
 
 /* Register Offset */
 #define GPA		0x000
@@ -41,6 +42,9 @@
 #define ECLKSEL		0x2B0
 #define GPH			0x640
 #define GPMA		0x6C0
+#define GPMB		0x700
+#define GPMC		0x740
+#define GPMD		0x780
 
 #define GPIO_DATA					0x0
 #define GPIO_OUTPUT_ENABLE			0x4
@@ -142,6 +146,27 @@ static struct extintr_ extintr[] = {
 	//192 ~ 201
 	{GPSD2, 0}, {GPSD2, 1}, {GPSD2, 2}, {GPSD2, 3}, {GPSD2, 4},
 	{GPSD2, 5}, {GPSD2, 6}, {GPSD2, 7}, {GPSD2, 8}, {GPSD2, 9},
+
+	//202 ~ 227
+	{GPMB, 0}, {GPMB, 1}, {GPMB, 2}, {GPMB, 3}, {GPMB, 4},
+	{GPMB, 5}, {GPMB, 6}, {GPMB, 7}, {GPMB, 8}, {GPMB, 9},
+	{GPMB, 10}, {GPMB, 11}, {GPMB, 12}, {GPMB, 13}, {GPMB, 14},
+	{GPMB, 15}, {GPMB, 16}, {GPMB, 17}, {GPMB, 18}, {GPMB, 19},
+	{GPMB, 20}, {GPMB, 21}, {GPMB, 22}, {GPMB, 23}, {GPMB, 24},
+	{GPMB, 25},
+
+	//228 ~ 251
+	{GPMC, 0}, {GPMC, 1}, {GPMC, 2}, {GPMC, 3}, {GPMC, 4},
+	{GPMC, 5}, {GPMC, 6}, {GPMC, 7}, {GPMC, 8}, {GPMC, 9},
+	{GPMC, 10}, {GPMC, 11}, {GPMC, 12}, {GPMC, 13}, {GPMC, 14},
+	{GPMC, 15}, {GPMC, 16}, {GPMC, 17}, {GPMC, 18}, {GPMC, 19},
+	{GPMC, 20}, {GPMC, 21}, {GPMC, 22}, {GPMC, 23},
+
+	//252 ~ 253
+	{GPMD, 8}, {GPMD, 9},
+
+	//254 ~ 255
+	{GPMD, 16}, {GPMD, 17},
 };
 
 static struct tcc_pinctrl_soc_data tcc805x_pinctrl_soc_data;
@@ -499,7 +524,17 @@ static int tcc805x_gpio_to_irq(void __iomem *base, u32 offset)
 	u32 irq_size = tcc805x_pinctrl_soc_data.irq->size;
 	u32 eint_sel_value = 0U;
 	void __iomem *reg;
-	u32 shift = 0U;
+	u32 shift = 0U, port, rev;
+
+	port = (u32)base - (u32)gpio_base;
+	rev = get_chip_rev();
+
+
+	if((port >= GPMB) && (rev == 0)) {
+		pr_err("[EXTI] %s: GPMB, MC and MD are not allowed for ES\n", __func__);
+		return -ENODEV;
+	}
+
 
 /*
  * irq_size is sum of normal
