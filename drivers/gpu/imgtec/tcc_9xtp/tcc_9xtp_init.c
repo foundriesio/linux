@@ -64,10 +64,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <linux/devfreq_cooling.h>
 #include <linux/thermal.h>
 #include "rgxdevice.h"
+#include <soc/tcc/chipinfo.h>
 
 #include <linux/dma-mapping.h>
 
 static struct tcc_context *g_platform = NULL;
+static u32 gRev;
 //#define CLK_CONTROL_IN_TF-A_ROM
 
 static void RgxEnableClock(struct tcc_context *platform)
@@ -127,15 +129,18 @@ static void RgxDisablePower(struct tcc_context *platform)
 
 void RgxResume(struct tcc_context *platform)
 {
-	RgxEnablePower(platform);
-	RgxEnableClock(platform);
+	if( gRev == 0 ) {
+		RgxEnablePower(platform);
+		RgxEnableClock(platform);
+	}
  }
 
 void RgxSuspend(struct tcc_context *platform)
 {
-	RgxDisableClock(platform);
-	RgxDisablePower(platform);
-
+        if( gRev == 0 ) {
+		RgxDisableClock(platform);
+		RgxDisablePower(platform);
+	}		
 }
 
 PVRSRV_ERROR TccPrePowerState(IMG_HANDLE hSysData,
@@ -213,6 +218,10 @@ struct tcc_context *RgxTccInit(PVRSRV_DEVICE_CONFIG* psDevConfig)
 
 	PVR_DPF((PVR_DBG_MESSAGE, "%s: dma_mask = %llx", __func__, dev->coherent_dma_mask));
 
+	gRev = get_chip_rev();
+
+        if( gRev == 0 ) {
+ 
 #ifndef SUPPORT_AUTOVZ
 	//To support core-reset in native-mode
 	struct resource *psDevMemRes = NULL;
@@ -233,6 +242,7 @@ struct tcc_context *RgxTccInit(PVRSRV_DEVICE_CONFIG* psDevConfig)
 	OSWriteHWReg32(platform->pv3DBusConfReg, 4, 7);
 	OSWriteHWReg32(platform->pv3DBusConfReg, 0, 7);
 #endif
+	}
 	platform->dev_config = psDevConfig;
 	platform->gpu_active = IMG_FALSE;
 
