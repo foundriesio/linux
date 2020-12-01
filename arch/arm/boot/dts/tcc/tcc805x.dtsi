@@ -3852,7 +3852,9 @@
 
 	dwc-hld {
 		compatible = "dwc,hld";
-		reg = <0x0 0x12440000 0x0 0x1000>;
+		reg = <0x0 0x12440000 0x0 0x80>;
+		firmware-size = <0x40000>;
+		data-size = <0x20000>;
 	};
 
 	adc: adc@1b700000 {

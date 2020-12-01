@@ -14,11 +14,13 @@
 #include <linux/uaccess.h>
 #include <linux/fs.h>
 
+#include <linux/slab.h>
 #include <linux/platform_device.h>
 #include <linux/of_address.h>
 
 
-#define HL_DRIVER_ALLOCATE_DYNAMIC_MEM 0xffffffff
+#define HDCP_FW_SIZE			0x40000
+#define HDCP_DATA_SIZE			0x20000
 
 
 //#include "HostLibDriver.h"
@@ -80,14 +82,11 @@ MODULE_PARM_DESC(noverify, "Wipe memory allocations on startup (for debug)");
 // HL Device
 //
 struct hl_device {
-	int32_t allocated, initialized;
 	int32_t code_loaded;
 
-	uint32_t code_is_phys_mem;
 	dma_addr_t code_base;
 	uint32_t code_size;
 	uint8_t *code;
-	uint32_t data_is_phys_mem;
 	dma_addr_t data_base;
 	uint32_t data_size;
 	uint8_t *data;
@@ -96,7 +95,7 @@ struct hl_device {
 	uint8_t __iomem *hpi;
 };
 
-static struct hl_device hl_devices[MAX_HL_DEVICES];
+static struct hl_device **hl_devices;
 
 /* HL_DRV_IOC_MEMINFO implementation */
 static long get_meminfo(struct hl_device *hl_dev, void __user *arg)
@@ -278,93 +277,24 @@ static long hpi_write(struct hl_device *hl_dev, void __user *arg)
 	return 0;
 }
 
-static struct hl_device *alloc_hl_dev_slot(
+static struct hl_device *find_hl_dev_slot(
 				const struct hl_drv_ioc_meminfo *info)
 {
 	int32_t i;
 
-	if (info == 0) {
+	if (info == 0 || !hl_devices) {
 		return 0;
 	}
 
 	/* Check if we have a matching device (same HPI base) */
 	for (i = 0; i < MAX_HL_DEVICES; i++) {
-		struct hl_device *slot = &hl_devices[i];
+		struct hl_device *slot = hl_devices[i];
 
-		if (slot->allocated &&
-		    (info->hpi_base == slot->hpi_resource->start))
+		if (!slot)
+			break;
+
+		if (info->hpi_base == slot->hpi_resource->start)
 			return slot;
-	}
-
-	/* Find unused slot */
-	for (i = 0; i < MAX_HL_DEVICES; i++) {
-		struct hl_device *slot = &hl_devices[i];
-
-		if (!slot->allocated) {
-			slot->allocated = 1;
-			return slot;
-		}
-	}
-
-	return 0;
-}
-
-static void free_dma_areas(struct hl_device *hl_dev)
-{
-	if (hl_dev == 0) {
-		return;
-	}
-
-	if (!hl_dev->code_is_phys_mem && hl_dev->code) {
-		dma_free_coherent(0, hl_dev->code_size, hl_dev->code,
-				  hl_dev->code_base);
-		hl_dev->code = 0;
-	}
-
-	if (!hl_dev->data_is_phys_mem && hl_dev->data) {
-		dma_free_coherent(0, hl_dev->data_size, hl_dev->data,
-				  hl_dev->data_base);
-		hl_dev->data = 0;
-	}
-}
-
-static int alloc_dma_areas(struct hl_device *hl_dev,
-			   const struct hl_drv_ioc_meminfo *info)
-{
-	if ((hl_dev == 0) || (info == 0)) {
-		return -EFAULT;
-	}
-
-	hl_dev->code_size = info->code_size;
-	hl_dev->code_is_phys_mem =
-			(info->code_base != HL_DRIVER_ALLOCATE_DYNAMIC_MEM);
-
-	if (hl_dev->code_is_phys_mem && (hl_dev->code == 0)) {
-		/* TODO: support highmem */
-		hl_dev->code_base = info->code_base;
-		hl_dev->code = phys_to_virt(hl_dev->code_base);
-	} else {
-		hl_dev->code = dma_alloc_coherent(0, hl_dev->code_size,
-						&hl_dev->code_base, GFP_KERNEL);
-		if (!hl_dev->code) {
-			return -ENOMEM;
-		}
-	}
-
-	hl_dev->data_size = info->data_size;
-	hl_dev->data_is_phys_mem =
-			(info->data_base != HL_DRIVER_ALLOCATE_DYNAMIC_MEM);
-
-	if (hl_dev->data_is_phys_mem && (hl_dev->data == 0)) {
-		hl_dev->data_base = info->data_base;
-		hl_dev->data = phys_to_virt(hl_dev->data_base);
-	} else {
-		hl_dev->data = dma_alloc_coherent(0, hl_dev->data_size,
-						&hl_dev->data_base, GFP_KERNEL);
-		if (!hl_dev->data) {
-			free_dma_areas(hl_dev);
-			return -ENOMEM;
-		}
 	}
 
 	return 0;
@@ -373,10 +303,8 @@ static int alloc_dma_areas(struct hl_device *hl_dev,
 /* HL_DRV_IOC_INIT implementation */
 static long init(struct file *f, void __user *arg)
 {
-	struct resource *hpi_mem;
 	struct hl_drv_ioc_meminfo info;
 	struct hl_device *hl_dev;
-	int rc;
 
 	if ((f == 0) || (arg == 0)) {
 		return -EFAULT;
@@ -385,71 +313,13 @@ static long init(struct file *f, void __user *arg)
 	if (copy_from_user(&info, arg, sizeof(info)) != 0)
 		return -EFAULT;
 
-	hl_dev = alloc_hl_dev_slot(&info);
-	if (!hl_dev)
+	hl_dev = find_hl_dev_slot(&info);
+	if (!hl_dev) {
 		return -EMFILE;
-
-	if (!hl_dev->initialized) {
-		rc = alloc_dma_areas(hl_dev, &info);
-		if (rc < 0)
-			goto err_free;
-
-		hpi_mem = request_mem_region(info.hpi_base, 128, "hl_dev-hpi");
-		if (!hpi_mem) {
-			rc = -EADDRNOTAVAIL;
-			goto err_free;
-		}
-
-		hl_dev->hpi = ioremap_nocache(hpi_mem->start,
-					      resource_size(hpi_mem));
-		if (!hl_dev->hpi) {
-			rc = -ENOMEM;
-			goto err_release_region;
-		}
-		hl_dev->hpi_resource = hpi_mem;
-		hl_dev->initialized = 1;
 	}
 
 	f->private_data = hl_dev;
 	return 0;
-
-err_release_region:
-	release_resource(hpi_mem);
-err_free:
-	free_dma_areas(hl_dev);
-	hl_dev->initialized   = 0;
-	hl_dev->allocated     = 0;
-	hl_dev->hpi_resource  = 0;
-	hl_dev->hpi           = 0;
-
-	return rc;
-}
-
-static void free_hl_dev_slot(struct hl_device *slot)
-{
-	if (slot == 0) {
-		return;
-	}
-
-	if (!slot->allocated)
-		return;
-
-	if (slot->initialized) {
-		if (slot->hpi) {
-			iounmap(slot->hpi);
-			slot->hpi = 0;
-		}
-
-		if (slot->hpi_resource) {
-			release_mem_region(slot->hpi_resource->start, 128);
-			slot->hpi_resource = 0;
-		}
-
-		free_dma_areas(slot);
-	}
-
-	slot->initialized  = 0;
-	slot->allocated    = 0;
 }
 
 static long hld_ioctl(struct file *f, unsigned int cmd, unsigned long arg)
@@ -505,17 +375,74 @@ static struct miscdevice hld_device = {
 
 static int hld_probe(struct platform_device *pdev)
 {
+	int32_t fw_size, data_size;
 	int32_t i;
 
-	for (i = 0; i < MAX_HL_DEVICES; i++) {
-		hl_devices[i].allocated    = 0;
-		hl_devices[i].initialized  = 0;
-		hl_devices[i].code_loaded  = 0;
-		hl_devices[i].code         = 0;
-		hl_devices[i].data         = 0;
-		hl_devices[i].hpi_resource = 0;
-		hl_devices[i].hpi          = 0;
+	if (of_property_read_u32(pdev->dev.of_node, "firmware-size", &fw_size))
+		fw_size = HDCP_FW_SIZE;
+	if (of_property_read_u32(pdev->dev.of_node, "data-size", &data_size))
+		data_size = HDCP_DATA_SIZE;
+
+	hl_devices = kzalloc(sizeof(struct hl_device *) * (MAX_HL_DEVICES + 1),
+			     GFP_KERNEL);
+	if (!hl_devices)
+		return -ENOMEM;
+
+	for (i = 0 ; i < MAX_HL_DEVICES ; i++) {
+		struct hl_device *hld =
+				kzalloc(sizeof(struct hl_device), GFP_KERNEL);
+
+		if (!hld)
+			break;
+		hl_devices[i] = hld;
+
+		hld->hpi_resource =
+			platform_get_resource(pdev, IORESOURCE_MEM, i);
+		if (!hld->hpi_resource)
+			break;
+
+		/* get hpi resources */
+		hld->hpi = ioremap(hld->hpi_resource->start,
+				   resource_size(hld->hpi_resource));
+
+		/* dma alloc for code */
+		hld->code_size = fw_size;
+		hld->code = dma_alloc_coherent(&pdev->dev, hld->code_size,
+					       &hld->code_base, GFP_KERNEL);
+		if (!hld->code)
+			break;
+
+		/* dma alloc for data */
+		hld->data_size = data_size;
+		hld->data = dma_alloc_coherent(&pdev->dev, hld->data_size,
+					       &hld->data_base, GFP_KERNEL);
+		if (!hld->data)
+			break;
+
+		dev_info(&pdev->dev, "slot %d is registered\n", i);
 	}
+
+	if (i == 0) {
+		kfree(hl_devices);
+		hl_devices = NULL;
+		return -ENXIO;
+	} else if (hl_devices[i]) {
+		struct hl_device *hld = hl_devices[i];
+
+		if (hld->data)
+			dma_free_coherent(&pdev->dev, hld->data_size, hld->data,
+					  hld->data_base);
+		if (hld->code)
+			dma_free_coherent(&pdev->dev, hld->code_size, hld->code,
+					  hld->code_base);
+		if (hld->hpi)
+			iounmap(hld->hpi);
+		if (hld->hpi_resource)
+			release_resource(hld->hpi_resource);
+		kfree(hld);
+		hl_devices[i] = NULL;
+	}
+
 	return misc_register(&hld_device);
 }
 
@@ -523,11 +450,32 @@ static int hld_remove(struct platform_device *pdev)
 {
 	int32_t i;
 
+	misc_deregister(&hld_device);
+
 	for (i = 0; i < MAX_HL_DEVICES; i++) {
-		free_hl_dev_slot(&hl_devices[i]);
+		struct hl_device *hld = hl_devices[i];
+
+		if (!hld)
+			break;
+
+		if (hld->data) {
+			dma_free_coherent(&pdev->dev, hld->data_size,
+					  hld->data, hld->data_base);
+		}
+		if (hld->code) {
+			dma_free_coherent(&pdev->dev, hld->code_size,
+					  hld->code, hld->code_base);
+		}
+		if (hld->hpi)
+			iounmap(hld->hpi);
+		if (hld->hpi_resource)
+			release_resource(hld->hpi_resource);
+		kfree(hld);
+		hl_devices[i] = NULL;
 	}
 
-	misc_deregister(&hld_device);
+	kfree(hl_devices);
+	hl_devices = NULL;
 
 	return 0;
 }
