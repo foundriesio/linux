@@ -595,11 +595,11 @@
 	};
 */
 
-	hdmi@7230000 {
+	hdmi@72300000 {
 		status ="okay";
 	};
 
-	hpd@7230000 {
+	hpd@72310000 {
 		status ="okay";
 	};
 
