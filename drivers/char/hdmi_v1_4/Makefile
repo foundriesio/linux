@@ -4,4 +4,4 @@
 obj-y	+= hpd/
 obj-y	+= hdmi/
 obj-y	+= cec/
-
+obj-y	+= hdcp/
