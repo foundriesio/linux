@@ -684,7 +684,6 @@ static int tcc_overlay_resume(struct platform_device *pdev)
 	{
 		pr_info("[INF][OVERLAY] tcc_overlay_resume %d opened\n", overlay_drv->open_cnt);
 		clk_prepare_enable(overlay_drv->clk);
-		tcc_overlay_display_video_buffer(overlay_drv->overBuffCfg, overlay_drv);
 	}
 	return 0;
 }
