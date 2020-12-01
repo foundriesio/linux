@@ -30,7 +30,9 @@
 #include <linux/cred.h>
 #include <linux/file.h>
 #include <linux/fdtable.h>
+#ifndef __GENKSYMS__
 #include <linux/fs_struct.h>
+#endif
 #include <linux/workqueue.h>
 #include <linux/security.h>
 #include <linux/mount.h>
