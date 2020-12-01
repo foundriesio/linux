@@ -612,7 +612,7 @@
 		status = "okay";
 		compatible = "telechips,gmac";
 //		phyon-gpio	= <&gpc 27 0>;
-		phyrst-gpio = <&gpa 24 0>;
+		phyrst-gpio = <&gpc 15 0>;
 		phy-interface = "rgmii";
 		//ecid-mac-addr;
 		txclk-o-dly = <18>;
