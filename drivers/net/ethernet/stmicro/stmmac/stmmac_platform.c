@@ -29,6 +29,7 @@
 #include "stmmac.h"
 #include "stmmac_platform.h"
 
+#include "dwmac-tcc.h"
 #ifdef CONFIG_OF
 
 /**
@@ -384,6 +385,10 @@ stmmac_probe_config_dt(struct platform_device *pdev, const char **mac)
 	if (!plat)
 		return ERR_PTR(-ENOMEM);
 
+#if defined(CONFIG_TCC_GMAC)
+	dwmac_tcc_init(np, NULL);
+#endif
+
 	*mac = of_get_mac_address(np);
 	plat->interface = of_get_phy_mode(np);
 
@@ -513,10 +518,16 @@ stmmac_probe_config_dt(struct platform_device *pdev, const char **mac)
 	}
 	clk_prepare_enable(plat->stmmac_clk);
 
+
+#if defined(CONFIG_TCC_GMAC)
+	plat->pclk = devm_clk_get(&pdev->dev, "gmac-pclk");
+#else
 	plat->pclk = devm_clk_get(&pdev->dev, "pclk");
+#endif
 	if (IS_ERR(plat->pclk)) {
-		if (PTR_ERR(plat->pclk) == -EPROBE_DEFER)
+		if (PTR_ERR(plat->pclk) == -EPROBE_DEFER){
 			goto error_pclk_get;
+		}
 
 		plat->pclk = NULL;
 	}

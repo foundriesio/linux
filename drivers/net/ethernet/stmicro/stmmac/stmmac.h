@@ -19,7 +19,12 @@
 #ifndef __STMMAC_H__
 #define __STMMAC_H__
 
-#define STMMAC_RESOURCE_NAME   "stmmaceth"
+
+#if defined(CONFIG_TCC_GMAC)
+#define STMMAC_RESOURCE_NAME   "hsio-clk"
+#else
+#define STMMAC_RESOURCE_NAME	"stmmaceth"
+#endif
 #define DRV_MODULE_VERSION	"Jan_2016"
 
 #include <linux/clk.h>
@@ -29,6 +34,10 @@
 #include "common.h"
 #include <linux/ptp_clock_kernel.h>
 #include <linux/reset.h>
+
+#if defined(CONFIG_TCC_GMAC)
+#include "dwmac-tcc.h"
+#endif
 
 struct stmmac_resources {
 	void __iomem *addr;
@@ -145,6 +154,7 @@ struct stmmac_priv {
 	struct dentry *dbgfs_rings_status;
 	struct dentry *dbgfs_dma_cap;
 #endif
+	struct gmac_dt_info_t dt_info;
 };
 
 int stmmac_mdio_unregister(struct net_device *ndev);
