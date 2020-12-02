@@ -64,12 +64,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <linux/devfreq_cooling.h>
 #include <linux/thermal.h>
 #include "rgxdevice.h"
-#include <soc/tcc/chipinfo.h>
 
 #include <linux/dma-mapping.h>
 
 static struct tcc_context *g_platform = NULL;
-static u32 gRev;
 //#define CLK_CONTROL_IN_TF-A_ROM
 
 static void RgxEnableClock(struct tcc_context *platform)
@@ -85,7 +83,7 @@ static void RgxEnableClock(struct tcc_context *platform)
 		clk_prepare_enable(platform->gpu_clk);
 		#else
 		//CLKMASK unmask
-		OSWriteHWReg32(platform->pv3DBusConfReg, 0, 7);
+		OSWriteHWReg32(platform->pv3DBusConfReg, GPU_3DENGINE_CLKMASK, (IMG_UINT32)GPU_3DENGINE_CLKMASK_FULL_MASK);
 		#endif
 		platform->gpu_active = IMG_TRUE;
 	}
@@ -103,7 +101,8 @@ static void RgxDisableClock(struct tcc_context *platform)
 		clk_disable_unprepare(platform->gpu_clk);
 		#else
 		//CLKMASK mask
-		OSWriteHWReg32(platform->pv3DBusConfReg, 0, 2);
+		IMG_UINT32 value = OSReadHWReg32(platform->pv3DBusConfReg, GPU_3DENGINE_CLKMASK);
+	        OSWriteHWReg32(platform->pv3DBusConfReg, GPU_3DENGINE_CLKMASK, (value & ~((IMG_UINT32)GPU_3DENGINE_CLKMASK_3D_MASK)));
 		#endif
 		platform->gpu_active = IMG_FALSE;
 	}
@@ -129,7 +128,8 @@ static void RgxDisablePower(struct tcc_context *platform)
 
 void RgxResume(struct tcc_context *platform)
 {
-	if( gRev == 0 ) {
+//	if( gRev == 0 ) 
+	{
 		RgxEnablePower(platform);
 		RgxEnableClock(platform);
 	}
@@ -137,7 +137,8 @@ void RgxResume(struct tcc_context *platform)
 
 void RgxSuspend(struct tcc_context *platform)
 {
-        if( gRev == 0 ) {
+//        if( gRev == 0 ) 
+	{
 		RgxDisableClock(platform);
 		RgxDisablePower(platform);
 	}		
@@ -218,31 +219,33 @@ struct tcc_context *RgxTccInit(PVRSRV_DEVICE_CONFIG* psDevConfig)
 
 	PVR_DPF((PVR_DBG_MESSAGE, "%s: dma_mask = %llx", __func__, dev->coherent_dma_mask));
 
-	gRev = get_chip_rev();
-
-        if( gRev == 0 ) {
- 
 #ifndef SUPPORT_AUTOVZ
 	//To support core-reset in native-mode
 	struct resource *psDevMemRes = NULL;
+	IMG_UINT32 value;
 
 	psDevMemRes = platform_get_resource(to_platform_device(dev), IORESOURCE_MEM, 1);
 	platform->pv3DBusConfReg = (void __iomem *)ioremap(psDevMemRes->start, resource_size(psDevMemRes));
-	OSWriteHWReg32(platform->pv3DBusConfReg, 8, 2);
-	OSWriteHWReg32(platform->pv3DBusConfReg, 4, 7);
-	OSWriteHWReg32(platform->pv3DBusConfReg, 0, 7);
-	
-	//PWRDOWN, SWRESET, CLKMASK
-	OSWriteHWReg32(platform->pv3DBusConfReg, 8, 0);
-	OSWriteHWReg32(platform->pv3DBusConfReg, 4, 2);
-	OSWriteHWReg32(platform->pv3DBusConfReg, 0, 2);
-	
+
+        OSWriteHWReg32(platform->pv3DBusConfReg, GPU_3DENGINE_PWRDOWN, (IMG_UINT32)GPU_3DENGINE_PWRDOWN_FULL_MASK);
+	OSWriteHWReg32(platform->pv3DBusConfReg, GPU_3DENGINE_SWRESET, (IMG_UINT32)GPU_3DENGINE_SWRESET_FULL_MASK);
+	OSWriteHWReg32(platform->pv3DBusConfReg, GPU_3DENGINE_CLKMASK, (IMG_UINT32)GPU_3DENGINE_CLKMASK_FULL_MASK);
+
+	 //PWRDOWN, SWRESET, CLKMASK
+        value = OSReadHWReg32(platform->pv3DBusConfReg, GPU_3DENGINE_PWRDOWN);
+        OSWriteHWReg32(platform->pv3DBusConfReg, GPU_3DENGINE_PWRDOWN, (value & ~((IMG_UINT32)GPU_3DENGINE_PWRDOWN_PWRDNREQN_MASK)));
+	value = OSReadHWReg32(platform->pv3DBusConfReg, GPU_3DENGINE_SWRESET);
+        OSWriteHWReg32(platform->pv3DBusConfReg, GPU_3DENGINE_SWRESET, (value & ~((IMG_UINT32)GPU_3DENGINE_SWRESET_3D_MASK)));
+	value = OSReadHWReg32(platform->pv3DBusConfReg, GPU_3DENGINE_CLKMASK);
+        OSWriteHWReg32(platform->pv3DBusConfReg, GPU_3DENGINE_CLKMASK, (value & ~((IMG_UINT32)GPU_3DENGINE_CLKMASK_3D_MASK)));
+
+
 	//pwrdown not request, not reset, unmask
-	OSWriteHWReg32(platform->pv3DBusConfReg, 8, 2);
-	OSWriteHWReg32(platform->pv3DBusConfReg, 4, 7);
-	OSWriteHWReg32(platform->pv3DBusConfReg, 0, 7);
+	OSWriteHWReg32(platform->pv3DBusConfReg, GPU_3DENGINE_PWRDOWN, (IMG_UINT32)GPU_3DENGINE_PWRDOWN_FULL_MASK);
+        OSWriteHWReg32(platform->pv3DBusConfReg, GPU_3DENGINE_SWRESET, (IMG_UINT32)GPU_3DENGINE_SWRESET_FULL_MASK);
+        OSWriteHWReg32(platform->pv3DBusConfReg, GPU_3DENGINE_CLKMASK, (IMG_UINT32)GPU_3DENGINE_CLKMASK_FULL_MASK);
 #endif
-	}
+
 	platform->dev_config = psDevConfig;
 	platform->gpu_active = IMG_FALSE;
 
