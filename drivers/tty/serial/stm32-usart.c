@@ -402,17 +402,22 @@ static void stm32_usart_receive_chars(struct uart_port *port,
 		tty_flip_buffer_push(tport);
 }
 
+static void stm32_usart_tx_dma_terminate(struct stm32_port *stm32_port)
+{
+	dmaengine_terminate_async(stm32_port->tx_ch);
+	stm32_port->tx_dma_busy = false;
+}
+
 static bool stm32_usart_tx_dma_started(struct stm32_port *stm32_port)
 {
-	enum dma_status tx_dma_status;
-
-	if (!stm32_port->tx_ch)
-		return false;
-
-	tx_dma_status = dmaengine_tx_status(stm32_port->tx_ch,
-					    stm32_port->tx_ch->cookie, NULL);
-
-	return tx_dma_status == DMA_IN_PROGRESS;
+	/*
+	 * We cannot use the function "dmaengine_tx_status" to know the
+	 * status of DMA. This function does not show if the "dma complete"
+	 * callback of the DMA transaction have been called. So we prefer
+	 * to use "tx_dma_busy" flag to prevent dual dma transaction at the
+	 * same time.
+	 */
+	return stm32_port->tx_dma_busy;
 }
 
 static bool stm32_usart_tx_dma_enabled(struct stm32_port *stm32_port)
@@ -431,7 +436,7 @@ static void stm32_usart_tx_dma_complete(void *arg)
 	unsigned long flags;
 
 	stm32_usart_clr_bits(port, ofs->cr3, USART_CR3_DMAT);
-	dmaengine_terminate_async(stm32port->tx_ch);
+	stm32_usart_tx_dma_terminate(stm32port);
 
 	/* Let's see if we have pending data to send */
 	spin_lock_irqsave(&port->lock, flags);
@@ -544,6 +549,14 @@ static void stm32_usart_transmit_chars_dma(struct uart_port *port)
 	if (!desc)
 		goto fallback_err;
 
+	/*
+	 * Take "tx_dma_busy" flag. This flag will be release when
+	 * dmaengine_terminate_async will be called. This flag helps
+	 * transmit_chars_dma to doesn't start another dma transaction
+	 * if the callback of the previous is not called.
+	 */
+	stm32port->tx_dma_busy = true;
+
 	desc->callback = stm32_usart_tx_dma_complete;
 	desc->callback_param = port;
 
@@ -552,7 +565,7 @@ static void stm32_usart_transmit_chars_dma(struct uart_port *port)
 	ret = dma_submit_error(cookie);
 	if (ret) {
 		/* dma no yet started, safe to free resources */
-		dmaengine_terminate_async(stm32port->tx_ch);
+		stm32_usart_tx_dma_terminate(stm32port);
 		goto fallback_err;
 	}
 
@@ -760,7 +773,7 @@ static void stm32_usart_flush_buffer(struct uart_port *port)
 	if (stm32_port->tx_ch) {
 		/* Avoid deadlock with the DMA engine callback */
 		spin_unlock(&port->lock);
-		dmaengine_terminate_async(stm32_port->tx_ch);
+		stm32_usart_tx_dma_terminate(stm32_port);
 		spin_lock(&port->lock);
 
 		stm32_usart_clr_bits(port, ofs->cr3, USART_CR3_DMAT);
@@ -924,7 +937,7 @@ static void stm32_usart_shutdown(struct uart_port *port)
 		stm32_usart_clr_bits(port, ofs->cr3, USART_CR3_DMAT);
 
 	if (stm32_usart_tx_dma_started(stm32_port))
-		dmaengine_terminate_async(stm32_port->tx_ch);
+		stm32_usart_tx_dma_terminate(stm32_port);
 
 	/* Disable modem control interrupts */
 	stm32_usart_disable_ms(port);
@@ -1634,7 +1647,7 @@ static int stm32_usart_serial_remove(struct platform_device *pdev)
 	writel_relaxed(cr3, port->membase + ofs->cr3);
 
 	if (stm32_port->tx_ch) {
-		dmaengine_terminate_async(stm32_port->tx_ch);
+		stm32_usart_tx_dma_terminate(stm32_port);
 		stm32_usart_of_dma_tx_remove(stm32_port, pdev);
 		dma_release_channel(stm32_port->tx_ch);
 	}
