@@ -1,32 +1,56 @@
 /*
- * linux/drivers/char/tcc_hsm.c
- *
- * Author:  <linux@telechips.com>
- * Created: March 18, 2010
- * Description: TCC Cipher driver
- *
- * Copyright (C) 20010-2011 Telechips
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, see the file COPYING, or write
- * to the Free Software Foundation, Inc.,
- * 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
- */
+*********************************************************************************
+*
+*   FileName : tcc_hsm.c
+*
+*   Copyright (c) Telechips Inc.
+*
+*   Description : TCC HSM
+*
+*
+*********************************************************************************
+*
+*   TCC Version 1.0
+*
+*   This source code contains confidential information of Telechips.
+*
+*   Any unauthorized use without a written permission of Telechips including not
+*limited to re-distribution in source or binary form is strictly prohibited.
+*
+*   This source code is provided "AS IS" and nothing contained in this source
+*code shall constitute any express or implied warranty of any kind, including
+*without limitation, any warranty of merchantability, fitness for a
+*particular purpose or non-infringement of any patent, copyright or other
+*third party intellectual property right. No warranty is made, express or
+*implied, regarding the information's accuracy,completeness, or performance.
+*
+*   In no event shall Telechips be liable for any claim, damages or other
+*liability arising from, out of or in connection with this source code or the
+*use in the source code.
+*
+*   This source code is provided subject to the terms of a Mutual Non-Disclosure
+*Agreement between Telechips and Company. This source code is provided "AS IS"
+*and nothing contained in this source code shall constitute any express or
+*implied warranty of any kind, including without limitation, any warranty (of
+*merchantability, fitness for a particular purpose or non-infringement of any
+*patent, copyright or other third party intellectual property right. No warranty
+*is made, express or implied, regarding the information's accuracy,
+*completeness, or performance. In no event shall Telechips be liable for any
+*claim, damages or other liability arising from, out of or in connection with
+*this source code or the use in the source code. This source code is provided
+*subject to the terms of a Mutual Non-Disclosure Agreement between Telechips
+*and Company.
+*
+*********************************************************************************
+*/
 
-//#define NDEBUG
-#define TLOG_LEVEL TLOG_DEBUG
+#if 0
+#define NDEBUG
+#endif
+#define TLOG_LEVEL (TLOG_DEBUG)
 #include "tcc_hsm_log.h"
 
+#include <linux/types.h>
 #include <linux/module.h>
 #include <linux/kernel.h>
 #include <linux/errno.h>
@@ -71,7 +95,7 @@
 /****************************************************************************
  * DEFINITiON
  ****************************************************************************/
-#define TCC_HSM_DMA_BUF_SIZE 4096
+#define TCC_HSM_DMA_BUF_SIZE (4096U)
 
 /****************************************************************************
  * DEFINITION OF LOCAL VARIABLES
@@ -84,194 +108,206 @@ static struct tcc_hsm_dma_buf {
 	uint8_t *srcVir;
 	dma_addr_t dstPhy;
 	uint8_t *dstVir;
-} *dma_buf;
+} * dma_buf;
 
 /****************************************************************************
  * DEFINITION OF LOCAL FUNCTIONS
  ****************************************************************************/
-static long tcc_hsm_ioctl_set_key(unsigned int cmd, unsigned long arg)
+/* To reduce codesonar warning message */
+static int32_t tcc_copy_from_user(void *param, ulong arg, uint32_t size)
 {
-	struct tcc_hsm_ioctl_set_key_param param = {0};
+	if (copy_from_user((void *)param, (const void *)arg, (ulong)size)
+	    != (ulong)0) {
+		ELOG("copy_from_user failed\n");
+		return -ENOMEM;
+	}
+
+	return HSM_OK;
+}
+
+/* To reduce codesonar warning message */
+static int32_t tcc_copy_to_user(ulong arg, void *param, uint32_t size)
+{
+	if (copy_to_user((void *)arg, (const void *)param, (ulong)size)
+	    != (ulong)0) {
+		ELOG("copy_to_user failed\n");
+		return -ENOMEM;
+	}
+
+	return HSM_OK;
+}
+
+static int32_t tcc_hsm_ioctl_set_key(uint32_t cmd, ulong arg)
+{
+	struct tcc_hsm_ioctl_set_key_param param;
 	uint32_t req = 0;
-	int32_t ret = -EFAULT;
+	int32_t ret = HSM_GENERAL_FAIL;
 
 	if (cmd == HSM_SET_KEY_FROM_OTP_CMD) {
 		req = REQ_HSM_SET_KEY_FROM_OTP;
 	} else if (cmd == HSM_SET_KEY_FROM_SNOR_CMD) {
 		req = REQ_HSM_SET_KEY_FROM_SNOR;
 	} else {
-		ELOG("cmd is invalid\n");
+		ELOG("Invalid CMD\n");
 		return ret;
 	}
 
-	if (copy_from_user(
-		    &param, (const struct tcc_hsm_ioctl_set_key_param *)arg,
-		    sizeof(param))) {
+	if (tcc_copy_from_user((void *)&param, arg, sizeof(param)) != HSM_OK) {
 		ELOG("copy_from_user failed\n");
+		return -ENOMEM;
+	}
+
+	ret = tcc_hsm_cmd_set_key(MBOX_DEV_HSM, req, &param);
+	if (ret != HSM_OK) {
+		ELOG("tcc_hsm_cmd_set_key failed\n");
 		return ret;
 	}
 
-	ret = tcc_hsm_cmd_set_key(
-		MBOX_DEV_HSM, req, param.addr, param.data_size,
-		param.key_index);
-	if (ret) {
-		ELOG("tcc_hsm_cmd_set_key failed\n");
-		return -EFAULT;
-	}
 	return ret;
 }
 
-static long tcc_hsm_ioctl_run_aes(unsigned int cmd, unsigned long arg)
+static int32_t tcc_hsm_ioctl_run_aes(uint32_t cmd, ulong arg)
 {
-	struct tcc_hsm_ioctl_aes_param param = {0};
+	struct tcc_hsm_ioctl_aes_param param;
 	uint32_t req = 0;
-	int32_t ret = -EFAULT;
+	ulong user_dst = 0;
+	int32_t ret = HSM_GENERAL_FAIL;
 
 	if (cmd == HSM_RUN_AES_CMD) {
 		req = REQ_HSM_RUN_AES;
 	} else if (cmd == HSM_RUN_SM4_CMD) {
 		req = REQ_HSM_RUN_SM4;
 	} else {
-		ELOG("cmd is invalid\n");
+		ELOG("Invalid CMD\n");
 		return ret;
 	}
 
-	if (copy_from_user(
-		    &param, (const struct tcc_hsm_ioctl_aes_param *)arg,
-		    sizeof(param))) {
+	if (tcc_copy_from_user((void *)&param, arg, sizeof(param)) != HSM_OK) {
 		ELOG("copy_from_user failed\n");
-		return ret;
+		return -ENOMEM;
 	}
-	if (param.dma) {
-		ret = tcc_hsm_cmd_run_aes(
-			MBOX_DEV_HSM, req, param.obj_id, param.key,
-			param.key_size, param.iv, param.iv_size, param.tag,
-			param.tag_size, param.aad, param.aad_size, param.src,
-			param.src_size, param.dst, param.dst_size);
-		if (ret != 0) {
-			ELOG("tcc_hsm_cmd_run_aes fail(%d)\n", ret);
-		} else {
-			if (copy_to_user(
-				    (void *)arg, (void *)&param,
-				    sizeof(param))) {
-				ELOG("copy_to_user failed\n");
-				return -EFAULT;
-			}
-		}
-	} else {
-		if (copy_from_user(
-			    (void *)dma_buf->srcVir, (void *)param.src,
-			    param.src_size)) {
-			ELOG("copy_from_user failed(%d)\n", ret);
+
+	if (param.dma == HSM_DMA) {
+		ret = tcc_hsm_cmd_run_aes(MBOX_DEV_HSM, req, &param);
+		if (ret != HSM_OK) {
+			ELOG("tcc_hsm_cmd_run_aes fail\n");
 			return ret;
 		}
+		if (tcc_copy_to_user(arg, (void *)&param, sizeof(param))
+		    != HSM_OK) {
+			ELOG("copy_to_user failed\n");
+			return -ENOMEM;
+		}
+	} else {
+		if (tcc_copy_from_user(
+			    (void *)dma_buf->srcVir, (ulong)param.src,
+			    param.src_size)
+		    != HSM_OK) {
+			ELOG("copy_from_user failed\n");
+			return -ENOMEM;
+		}
 
-		ret = tcc_hsm_cmd_run_aes(
-			MBOX_DEV_HSM, req, param.obj_id, param.key,
-			param.key_size, param.iv, param.iv_size, param.tag,
-			param.tag_size, param.aad, param.aad_size,
-			(uint32_t)dma_buf->srcPhy, param.src_size,
-			(uint32_t)dma_buf->dstPhy, param.dst_size);
+		user_dst = param.dst;
+		param.src = (ulong)dma_buf->srcPhy;
+		param.dst = (ulong)dma_buf->dstPhy;
+		ret = tcc_hsm_cmd_run_aes(MBOX_DEV_HSM, req, &param);
+		if (ret != HSM_OK) {
+			ELOG("tcc_hsm_cmd_run_aes fail(%d)\n", ret);
+			return ret;
+		}
 
 		dma_sync_single_for_cpu(
 			dma_buf->dev, dma_buf->dstPhy, param.dst_size,
 			DMA_FROM_DEVICE);
-		if (ret != 0) {
-			ELOG("tcc_hsm_cmd_run_aes fail(%d)\n", ret);
-		} else {
-			if (copy_to_user(
-				    (void *)arg, (void *)&param,
-				    sizeof(param))) {
-				ELOG("copy_to_user failed\n");
-				return -EFAULT;
-			}
-			if (copy_to_user(
-				    (void *)param.dst, (void *)dma_buf->dstVir,
-				    param.dst_size)) {
-				ELOG("copy_to_user failed\n");
-				return ret;
-			}
+
+		if (tcc_copy_to_user(arg, (void *)&param, sizeof(param))
+		    != HSM_OK) {
+			ELOG("copy_to_user failed\n");
+			return -ENOMEM;
+		}
+		if (tcc_copy_to_user(
+			    user_dst, (void *)dma_buf->dstVir, param.dst_size)
+		    != HSM_OK) {
+			ELOG("copy_to_user failed\n");
+			return -ENOMEM;
 		}
 	}
 
 	return ret;
 }
 
-static long tcc_hsm_ioctl_run_aes_by_kt(unsigned int cmd, unsigned long arg)
+static int32_t tcc_hsm_ioctl_run_aes_by_kt(uint32_t cmd, ulong arg)
 {
-	struct tcc_hsm_ioctl_aes_by_kt_param param = {0};
+	struct tcc_hsm_ioctl_aes_by_kt_param param;
 	uint32_t req = 0;
-	int32_t ret = -EFAULT;
+	ulong user_dst = 0;
+	int32_t ret = HSM_GENERAL_FAIL;
 
 	if (cmd == HSM_RUN_AES_BY_KT_CMD) {
 		req = REQ_HSM_RUN_AES_BY_KT;
 	} else if (cmd == HSM_RUN_SM4_BY_KT_CMD) {
 		req = REQ_HSM_RUN_SM4_BY_KT;
 	} else {
-		ELOG("cmd is invalid\n");
+		ELOG("Invalid CMD\n");
 		return ret;
 	}
 
-	if (copy_from_user(
-		    &param, (const struct tcc_hsm_ioctl_aes_by_kt_param *)arg,
-		    sizeof(param))) {
+	if (tcc_copy_from_user((void *)&param, arg, sizeof(param)) != HSM_OK) {
 		ELOG("copy_from_user failed\n");
-		return ret;
+		return -ENOMEM;
 	}
 
-	if (param.dma) {
-		ret = tcc_hsm_cmd_run_aes_by_kt(
-			MBOX_DEV_HSM, req, param.obj_id, param.key_index,
-			param.iv, param.iv_size, param.tag, param.tag_size,
-			param.aad, param.aad_size, param.src, param.src_size,
-			param.dst, param.dst_size);
-		if (ret != 0) {
+	if (param.dma == HSM_DMA) {
+		ret = tcc_hsm_cmd_run_aes_by_kt(MBOX_DEV_HSM, req, &param);
+		if (ret != HSM_OK) {
 			ELOG("tcc_hsm_cmd_run_ecdsa fail(%d)\n", ret);
-			return -EFAULT;
-		}
-		if (copy_to_user((void *)arg, (void *)&param, sizeof(param))) {
-			ELOG("copy_to_user failed\n");
-			return -EFAULT;
-		}
-	} else {
-		if (copy_from_user(
-			    dma_buf->srcVir, (const uint8_t *)param.src,
-			    param.src_size)) {
-			ELOG("copy_from_user failed\n");
 			return ret;
 		}
+		if (tcc_copy_to_user(arg, (void *)&param, sizeof(param))
+		    != HSM_OK) {
+			ELOG("copy_to_user failed\n");
+			return -ENOMEM;
+		}
+	} else {
+		if (tcc_copy_from_user(
+			    (void *)dma_buf->srcVir, param.src, param.src_size)
+		    != HSM_OK) {
+			ELOG("copy_from_user failed\n");
+			return -ENOMEM;
+		}
 
-		ret = tcc_hsm_cmd_run_aes_by_kt(
-			MBOX_DEV_HSM, req, param.obj_id, param.key_index,
-			param.iv, param.iv_size, param.tag, param.tag_size,
-			param.aad, param.aad_size, dma_buf->srcPhy,
-			param.src_size, dma_buf->dstPhy, param.dst_size);
+		user_dst = param.dst;
+		param.src = (ulong)dma_buf->srcPhy;
+		param.dst = (ulong)dma_buf->dstPhy;
+		ret = tcc_hsm_cmd_run_aes_by_kt(MBOX_DEV_HSM, req, &param);
+		if (ret != HSM_OK) {
+			ELOG("tcc_hsm_cmd_run_aes_by_kt fail(%d)\n", ret);
+			return ret;
+		}
 
 		dma_sync_single_for_cpu(
 			dma_buf->dev, dma_buf->dstPhy, param.dst_size,
 			DMA_FROM_DEVICE);
-		if (ret != 0) {
-			ELOG("tcc_hsm_cmd_run_aes_by_kt fail(%d)\n", ret);
-			return -EFAULT;
-		}
-		if (copy_to_user(
-			    (void *)param.dst, (void *)dma_buf->dstVir,
-			    param.dst_size)) {
+
+		if (tcc_copy_to_user(arg, (void *)&param, sizeof(param))
+		    != HSM_OK) {
 			ELOG("copy_to_user failed\n");
-			return ret;
+			return -ENOMEM;
 		}
-		if (copy_to_user((void *)arg, (void *)&param, sizeof(param))) {
+		if (tcc_copy_to_user(
+			    user_dst, (void *)dma_buf->dstVir, param.dst_size)
+		    != HSM_OK) {
 			ELOG("copy_to_user failed\n");
-			return -EFAULT;
+			return -ENOMEM;
 		}
 	}
 
 	return ret;
 }
 
-static long tcc_hsm_ioctl_gen_mac(unsigned int cmd, unsigned long arg)
+static int32_t tcc_hsm_ioctl_gen_mac(uint32_t cmd, ulong arg)
 {
-	struct tcc_hsm_ioctl_mac_param param = {0};
+	struct tcc_hsm_ioctl_mac_param param;
 	uint32_t req = 0;
 	int32_t ret = -EFAULT;
 
@@ -284,54 +320,47 @@ static long tcc_hsm_ioctl_gen_mac(unsigned int cmd, unsigned long arg)
 	} else if (cmd == HSM_GEN_SM3_HMAC_CMD) {
 		req = REQ_HSM_GEN_SM3_HMAC;
 	} else {
-		ELOG("cmd is invalid\n");
+		ELOG("Invalid CMD\n");
 		return ret;
 	}
 
-	if (copy_from_user(
-		    &param, (const struct tcc_hsm_ioctl_mac_param *)arg,
-		    sizeof(param))) {
+	if (tcc_copy_from_user((void *)&param, arg, sizeof(param)) != HSM_OK) {
 		ELOG("copy_from_user failed\n");
-		return ret;
+		return -ENOMEM;
 	}
 
-	if (param.dma) {
-		ret = tcc_hsm_cmd_gen_mac(
-			MBOX_DEV_HSM, req, param.obj_id, param.key,
-			param.key_size, param.src, param.src_size, param.mac,
-			param.mac_size);
+	if (param.dma == HSM_DMA) {
+		ret = tcc_hsm_cmd_gen_mac(MBOX_DEV_HSM, req, &param);
 	} else {
-		if (copy_from_user(
-			    dma_buf->srcVir, (const uint8_t *)param.src,
-			    param.src_size)) {
+		if (tcc_copy_from_user(
+			    (void *)dma_buf->srcVir, param.src, param.src_size)
+		    != HSM_OK) {
 			ELOG("copy_from_user failed\n");
-			return ret;
+			return -ENOMEM;
 		}
-
-		ret = tcc_hsm_cmd_gen_mac(
-			MBOX_DEV_HSM, req, param.obj_id, param.key,
-			param.key_size, dma_buf->srcPhy, param.src_size,
-			param.mac, param.mac_size);
+		param.src = (ulong)dma_buf->srcPhy;
+		ret = tcc_hsm_cmd_gen_mac(MBOX_DEV_HSM, req, &param);
+		dma_sync_single_for_cpu(
+			dma_buf->dev, dma_buf->dstPhy, param.mac_size,
+			DMA_FROM_DEVICE);
 	}
 
-	dma_sync_single_for_cpu(
-		dma_buf->dev, dma_buf->dstPhy, param.mac_size, DMA_FROM_DEVICE);
-
-	if (ret != 0) {
+	if (ret != HSM_OK) {
 		ELOG("tcc_hsm_cmd_gen_mac fail(%d)\n", ret);
 		return -EFAULT;
 	}
-	if (copy_to_user((void *)arg, (void *)&param, sizeof(param))) {
+
+	if (tcc_copy_to_user(arg, (void *)&param, sizeof(param)) != HSM_OK) {
 		ELOG("copy_to_user failed\n");
-		return ret;
+		return -ENOMEM;
 	}
 
 	return ret;
 }
 
-static long tcc_hsm_ioctl_gen_mac_by_kt(unsigned int cmd, unsigned long arg)
+static int32_t tcc_hsm_ioctl_gen_mac_by_kt(uint32_t cmd, ulong arg)
 {
-	struct tcc_hsm_ioctl_mac_by_kt_param param = {0};
+	struct tcc_hsm_ioctl_mac_by_kt_param param;
 	uint32_t req = 0;
 	int32_t ret = -EFAULT;
 
@@ -344,52 +373,48 @@ static long tcc_hsm_ioctl_gen_mac_by_kt(unsigned int cmd, unsigned long arg)
 	} else if (cmd == HSM_GEN_SM3_HMAC_BY_KT_CMD) {
 		req = REQ_HSM_GEN_SM3_HMAC_BY_KT;
 	} else {
-		ELOG("cmd is invalid\n");
+		ELOG("Invalid CMD\n");
 		return ret;
 	}
 
-	if (copy_from_user(
-		    &param, (const struct tcc_hsm_ioctl_mac_by_kt_param *)arg,
-		    sizeof(param))) {
+	if (tcc_copy_from_user((void *)&param, arg, sizeof(param)) != HSM_OK) {
 		ELOG("copy_from_user failed\n");
-		return ret;
+		return -ENOMEM;
 	}
 
-	if (param.dma) {
-		ret = tcc_hsm_cmd_gen_mac_by_kt(
-			MBOX_DEV_HSM, req, param.obj_id, param.key_index,
-			param.src, param.src_size, param.mac, param.mac_size);
+	if (param.dma == HSM_DMA) {
+		ret = tcc_hsm_cmd_gen_mac_by_kt(MBOX_DEV_HSM, req, &param);
 	} else {
-		if (copy_from_user(
-			    dma_buf->srcVir, (const uint8_t *)param.src,
-			    param.src_size)) {
+		if (tcc_copy_from_user(
+			    (void *)dma_buf->srcVir, param.src, param.src_size)
+		    != HSM_OK) {
 			ELOG("copy_from_user failed\n");
-			return ret;
+			return -ENOMEM;
 		}
+		param.src = (ulong)dma_buf->srcPhy;
+		ret = tcc_hsm_cmd_gen_mac_by_kt(MBOX_DEV_HSM, req, &param);
 
-		ret = tcc_hsm_cmd_gen_mac_by_kt(
-			MBOX_DEV_HSM, req, param.obj_id, param.key_index,
-			(uint32_t)dma_buf->srcPhy, param.src_size, param.mac,
-			param.mac_size);
+		dma_sync_single_for_cpu(
+			dma_buf->dev, dma_buf->dstPhy, param.mac_size,
+			DMA_FROM_DEVICE);
 	}
 
-	dma_sync_single_for_cpu(
-		dma_buf->dev, dma_buf->dstPhy, param.mac_size, DMA_FROM_DEVICE);
-	if (ret != 0) {
+	if (ret != HSM_OK) {
 		ELOG("tcc_hsm_cmd_gen_mac_by_kt fail(%d)\n", ret);
-		return -EFAULT;
-	}
-	if (copy_to_user((void *)arg, (void *)&param, sizeof(param))) {
-		ELOG("copy_to_user failed\n");
 		return ret;
+	}
+
+	if (tcc_copy_to_user(arg, (void *)&param, sizeof(param)) != HSM_OK) {
+		ELOG("copy_to_user failed\n");
+		return -ENOMEM;
 	}
 
 	return ret;
 }
 
-static long tcc_hsm_ioctl_gen_hash(unsigned int cmd, unsigned long arg)
+static int32_t tcc_hsm_ioctl_gen_hash(uint32_t cmd, ulong arg)
 {
-	struct tcc_hsm_ioctl_hash_param param = {0};
+	struct tcc_hsm_ioctl_hash_param param;
 	uint32_t req = 0;
 	int32_t ret = -EFAULT;
 
@@ -398,107 +423,92 @@ static long tcc_hsm_ioctl_gen_hash(unsigned int cmd, unsigned long arg)
 	} else if (cmd == HSM_GEN_SM3_CMD) {
 		req = REQ_HSM_GEN_SM3;
 	} else {
-		ELOG("cmd is invalid\n");
+		ELOG("Invalid CMD\n");
 		return ret;
 	}
 
-	if (copy_from_user(
-		    &param, (const struct tcc_hsm_ioctl_hash_param *)arg,
-		    sizeof(param))) {
+	if (tcc_copy_from_user((void *)&param, arg, sizeof(param)) != HSM_OK) {
 		ELOG("copy_from_user failed\n");
-		return ret;
+		return -ENOMEM;
 	}
 
-	if (param.dma) {
-		ret = tcc_hsm_cmd_gen_hash(
-			MBOX_DEV_HSM, req, param.obj_id, param.src,
-			param.src_size, (uint8_t *)dma_buf->dstPhy,
-			param.digest_size);
+	if (param.dma == HSM_DMA) {
+		ret = tcc_hsm_cmd_gen_hash(MBOX_DEV_HSM, req, &param);
 	} else {
-		if (copy_from_user(
-			    dma_buf->srcVir, (const uint8_t *)param.src,
-			    param.src_size)) {
+		if (tcc_copy_from_user(
+			    (void *)dma_buf->srcVir, param.src, param.src_size)
+		    != HSM_OK) {
 			ELOG("copy_from_user failed\n");
-			return ret;
+			return -ENOMEM;
 		}
 
-		ret = tcc_hsm_cmd_gen_hash(
-			MBOX_DEV_HSM, req, param.obj_id, dma_buf->srcPhy,
-			param.src_size, param.digest, param.digest_size);
+		param.src = (ulong)dma_buf->srcPhy;
+		ret = tcc_hsm_cmd_gen_hash(MBOX_DEV_HSM, req, &param);
+
+		dma_sync_single_for_cpu(
+			dma_buf->dev, dma_buf->dstPhy, param.digest_size,
+			DMA_FROM_DEVICE);
 	}
 
-	dma_sync_single_for_cpu(
-		dma_buf->dev, dma_buf->dstPhy, param.digest_size,
-		DMA_FROM_DEVICE);
-	if (ret != 0) {
+	if (ret != HSM_OK) {
 		ELOG("tcc_hsm_cmd_run_aes fail(%d)\n", ret);
-		return -EFAULT;
-	}
-	if (copy_to_user((void *)arg, (void *)&param, sizeof(param))) {
-		ELOG("copy_to_user failed\n");
 		return ret;
+	}
+
+	if (tcc_copy_to_user(arg, (void *)&param, sizeof(param)) != HSM_OK) {
+		ELOG("copy_to_user failed\n");
+		return -ENOMEM;
 	}
 
 	return ret;
 }
 
-static long tcc_hsm_ioctl_run_ecdsa(unsigned int cmd, unsigned long arg)
+static int32_t tcc_hsm_ioctl_run_ecdsa(uint32_t cmd, ulong arg)
 {
-	struct tcc_hsm_ioctl_ecdsa_param param = {0};
+	struct tcc_hsm_ioctl_ecdsa_param param;
 	uint32_t req = 0;
 	int32_t ret = -EFAULT;
 
-	if (copy_from_user(
-		    &param, (const struct tcc_hsm_ioctl_ecdsa_param *)arg,
-		    sizeof(param))) {
+	if (tcc_copy_from_user((void *)&param, arg, sizeof(param)) != HSM_OK) {
 		ELOG("copy_from_user failed\n");
-		return ret;
+		return -ENOMEM;
 	}
 
 	switch (cmd) {
 	case HSM_RUN_ECDSA_SIGN_CMD:
 		req = REQ_HSM_RUN_ECDSA_SIGN;
-		ret = tcc_hsm_cmd_run_ecdsa(
-			MBOX_DEV_HSM, req, param.obj_id, param.key,
-			param.key_size, param.digest, param.digest_size,
-			param.sig, param.sig_size);
-		if (ret != 0) {
+		ret = tcc_hsm_cmd_run_ecdsa(MBOX_DEV_HSM, req, &param);
+		if (ret != HSM_OK) {
 			ELOG("tcc_hsm_cmd_run_ecdsa fail(%d)\n", ret);
-		} else {
-			if (copy_to_user(
-				    (void *)arg, (void *)&param,
-				    sizeof(param))) {
-				ELOG("copy_to_user failed\n");
-				return -EFAULT;
-			}
+			break;
 		}
-
+		if (tcc_copy_to_user(arg, (void *)&param, sizeof(param))
+		    != HSM_OK) {
+			ELOG("copy_to_user failed\n");
+			break;
+		}
 		break;
 
 	case HSM_RUN_ECDSA_VERIFY_CMD:
 		req = REQ_HSM_RUN_ECDSA_VERIFY;
-		ret = tcc_hsm_cmd_run_ecdsa(
-			MBOX_DEV_HSM, req, param.obj_id, param.key,
-			param.key_size, param.digest, param.digest_size,
-			param.sig, param.sig_size);
+		ret = tcc_hsm_cmd_run_ecdsa(MBOX_DEV_HSM, req, &param);
+		if (ret != HSM_OK) {
+			ELOG("tcc_hsm_cmd_run_ecdsa Err(0x%x)\n", ret);
+			return ret;
+		}
 		break;
 
 	default:
-		ELOG("cmd is invalid\n");
-		return ret;
-	}
-
-	if (ret) {
-		ELOG("tcc_hsm_cmd_run_ecdsa Err(0x%x)\n", ret);
-		return ret;
+		ELOG("Invalid CMD\n");
+		break;
 	}
 
 	return ret;
 }
 
-static long tcc_hsm_ioctl_run_rsa(unsigned int cmd, unsigned long arg)
+static int32_t tcc_hsm_ioctl_run_rsa(uint32_t cmd, ulong arg)
 {
-	struct tcc_hsm_ioctl_rsassa_param param = {0};
+	struct tcc_hsm_ioctl_rsassa_param param;
 	uint32_t req = 0;
 	int32_t ret = -EFAULT;
 
@@ -511,67 +521,38 @@ static long tcc_hsm_ioctl_run_rsa(unsigned int cmd, unsigned long arg)
 	} else if (cmd == HSM_RUN_RSASSA_PSS_VERIFY_CMD) {
 		req = REQ_HSM_RUN_RSASSA_PSS_VERIFY;
 	} else {
-		ELOG("cmd is invalid\n");
+		ELOG("Invalid CMD\n");
 		return ret;
 	}
 
-	if (copy_from_user(
-		    &param, (const struct tcc_hsm_ioctl_rsassa_param *)arg,
-		    sizeof(param))) {
+	if (tcc_copy_from_user((void *)&param, arg, sizeof(param)) != HSM_OK) {
 		ELOG("copy_from_user failed\n");
-		return ret;
+		return -ENOMEM;
 	}
 
 	/* To handle key size exceeding 512 byte */
-	if (copy_from_user(
-		    dma_buf->srcVir, (const uint8_t *)param.key,
-		    param.key_size)) {
+	if (tcc_copy_from_user(
+		    (void *)dma_buf->srcVir, param.key, param.key_size)
+	    != HSM_OK) {
 		ELOG("copy_from_user failed\n");
-		return ret;
+		return -ENOMEM;
 	}
-	ret = tcc_hsm_cmd_run_rsa(
-		MBOX_DEV_HSM, req, param.obj_id, param.modN, param.modN_size,
-		dma_buf->srcPhy, param.key_size, (uint8_t *)param.digest,
-		param.digest_size, (uint8_t *)param.sign, param.sign_size);
 
-	if (ret != 0) {
+	param.key = (ulong)dma_buf->srcPhy;
+	ret = tcc_hsm_cmd_run_rsa(MBOX_DEV_HSM, req, &param);
+	if (ret != HSM_OK) {
 		ELOG("tcc_hsm_cmd_run_rsa fail(%d)\n", ret);
-	} else {
-		if (copy_to_user((void *)arg, (void *)&param, sizeof(param))) {
-			ELOG("copy_to_user failed\n");
-			return -EFAULT;
-		}
-	}
-
-	return ret;
-}
-
-static long tcc_hsm_ioctl_get_rng(unsigned int cmd, unsigned long arg)
-{
-	struct tcc_hsm_ioctl_rng_param param;
-	uint32_t req = REQ_HSM_GET_RNG;
-	int32_t ret = -EFAULT;
-
-	if (copy_from_user(
-		    &param, (const struct tcc_hsm_ioctl_rng_param *)arg,
-		    sizeof(param))) {
-		ELOG("copy_from_user failed\n");
 		return ret;
 	}
-
-	ret = tcc_hsm_cmd_get_rand(
-		MBOX_DEV_HSM, req, dma_buf->dstPhy, param.rng_size);
-	if (copy_to_user(
-		    (void *)param.rng, (void *)dma_buf->dstVir,
-		    param.rng_size)) {
+	if (tcc_copy_to_user(arg, (void *)&param, sizeof(param)) != HSM_OK) {
 		ELOG("copy_to_user failed\n");
-		return -EFAULT;
+		return -ENOMEM;
 	}
 
 	return ret;
 }
 
-static long tcc_hsm_ioctl_write(unsigned int cmd, unsigned long arg)
+static int32_t tcc_hsm_ioctl_write(uint32_t cmd, ulong arg)
 {
 	struct tcc_hsm_ioctl_write_param param;
 	uint32_t req = REQ_HSM_WRITE_OTP;
@@ -582,60 +563,81 @@ static long tcc_hsm_ioctl_write(unsigned int cmd, unsigned long arg)
 	} else if (cmd == HSM_WRITE_SNOR_CMD) {
 		req = REQ_HSM_WRITE_SNOR;
 	} else {
-		ELOG("cmd is invalid\n");
+		ELOG("Invalid CMD\n");
 		return ret;
 	}
 
-	if (copy_from_user(
-		    &param, (const struct tcc_hsm_ioctl_write_param *)arg,
-		    sizeof(param))) {
+	if (tcc_copy_from_user((void *)&param, arg, sizeof(param)) != HSM_OK) {
 		ELOG("copy_from_user failed\n");
-		return ret;
+		return -ENOMEM;
 	}
 
-	if (copy_from_user(
-		    dma_buf->srcVir, (const uint8_t *)param.data,
-		    param.data_size)) {
+	if (tcc_copy_from_user(
+		    (void *)dma_buf->srcVir, param.data, param.data_size)
+	    != HSM_OK) {
 		ELOG("copy_from_user failed\n");
-		return ret;
+		return -ENOMEM;
 	}
 
-	ret = tcc_hsm_cmd_write(
-		MBOX_DEV_HSM, req, param.addr, dma_buf->srcVir,
-		param.data_size);
-	if (ret) {
+	param.data = (ulong)dma_buf->srcVir;
+	ret = tcc_hsm_cmd_write(MBOX_DEV_HSM, req, &param);
+	if (ret != HSM_OK) {
 		ELOG("tcc_hsm_cmd_write failed\n");
-		return -EFAULT;
+		return ret;
 	}
+
 	return ret;
 }
 
-static long tcc_hsm_ioctl_get_version(unsigned int cmd, unsigned long arg)
+static int32_t tcc_hsm_ioctl_get_version(uint32_t cmd, ulong arg)
 {
 	struct tcc_hsm_ioctl_version_param param;
 	uint32_t req = REQ_HSM_GET_VER;
 	int32_t ret = -EFAULT;
 
-	ret = tcc_hsm_cmd_get_version(
-		MBOX_DEV_HSM, req, &param.x, &param.y, &param.z);
-	if (ret != 0) {
+	ret = tcc_hsm_cmd_get_version(MBOX_DEV_HSM, req, &param);
+	if (ret != HSM_OK) {
 		ELOG("failed to get version\n");
-		return -EFAULT;
+		return ret;
 	}
-	if (copy_to_user((void *)arg, (void *)&param, sizeof(param))) {
+
+	if (tcc_copy_to_user(arg, (void *)&param, sizeof(param)) != HSM_OK) {
 		ELOG("copy_to_user failed\n");
-		return -EFAULT;
+		return -ENOMEM;
 	}
 
 	return ret;
 }
 
-static long
-tcc_hsm_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
+static int32_t tcc_hsm_ioctl_get_rng(uint32_t cmd, ulong arg)
 {
+	struct tcc_hsm_ioctl_rng_param param;
+	uint32_t req = REQ_HSM_GET_RNG;
 	int32_t ret = -EFAULT;
 
-	DLOG("cmd=0x%x\n", cmd);
+	if (tcc_copy_from_user((void *)&param, arg, sizeof(param)) != HSM_OK) {
+		ELOG("copy_from_user failed\n");
+		return -ENOMEM;
+	}
+
+	ret = tcc_hsm_cmd_get_rand(
+		MBOX_DEV_HSM, req, (uint32_t)dma_buf->dstPhy, param.rng_size);
+	if (ret != HSM_OK) {
+		ELOG("failed to get random number\n");
+		return ret;
+	}
+	if (tcc_copy_to_user(param.rng, (void *)dma_buf->dstVir, param.rng_size)
+	    != HSM_OK) {
+		ELOG("copy_to_user failed\n");
+		return -ENOMEM;
+	}
+
+	return ret;
+}
+
+static long tcc_hsm_ioctl(struct file *file, uint32_t cmd, ulong arg)
+{
+	int32_t ret = -EFAULT;
 
 	mutex_lock(&tcc_hsm_mutex);
 
@@ -691,12 +693,12 @@ tcc_hsm_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 		ret = tcc_hsm_ioctl_write(cmd, arg);
 		break;
 
-	case HSM_GET_RNG_CMD:
-		ret = tcc_hsm_ioctl_get_rng(cmd, arg);
-		break;
-
 	case HSM_GET_VER_CMD:
 		ret = tcc_hsm_ioctl_get_version(cmd, arg);
+		break;
+
+	case HSM_GET_RNG_CMD:
+		ret = tcc_hsm_ioctl_get_rng(cmd, arg);
 		break;
 
 	default:
@@ -709,17 +711,13 @@ tcc_hsm_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 	return ret;
 }
 
-int tcc_hsm_open(struct inode *inode, struct file *filp)
+int32_t tcc_hsm_open(struct inode *inode, struct file *filp)
 {
-	DLOG("\n");
-
 	return 0;
 }
 
-int tcc_hsm_release(struct inode *inode, struct file *file)
+int32_t tcc_hsm_release(struct inode *inode, struct file *file)
 {
-	DLOG("\n");
-
 	return 0;
 }
 
@@ -737,10 +735,8 @@ static struct miscdevice tcc_hsm_miscdevice = {
 	.fops = &tcc_hsm_fops,
 };
 
-static int tcc_hsm_probe(struct platform_device *pdev)
+static int32_t tcc_hsm_probe(struct platform_device *pdev)
 {
-	DLOG("\n");
-
 	dma_buf = devm_kzalloc(
 		&pdev->dev, sizeof(struct tcc_hsm_dma_buf), GFP_KERNEL);
 	if (dma_buf == NULL) {
@@ -769,7 +765,7 @@ static int tcc_hsm_probe(struct platform_device *pdev)
 		return -ENOMEM;
 	}
 
-	if (misc_register(&tcc_hsm_miscdevice)) {
+	if (misc_register(&tcc_hsm_miscdevice) != HSM_OK) {
 		ELOG("register device err\n");
 		dma_free_coherent(
 			&pdev->dev, TCC_HSM_DMA_BUF_SIZE, dma_buf->srcVir,
@@ -784,10 +780,8 @@ static int tcc_hsm_probe(struct platform_device *pdev)
 	return 0;
 }
 
-static int tcc_hsm_remove(struct platform_device *pdev)
+static int32_t tcc_hsm_remove(struct platform_device *pdev)
 {
-	DLOG("\n");
-
 	misc_deregister(&tcc_hsm_miscdevice);
 
 	dma_free_coherent(
@@ -806,20 +800,18 @@ static int tcc_hsm_remove(struct platform_device *pdev)
 }
 
 #ifdef CONFIG_PM
-static int tcc_hsm_suspend(struct platform_device *pdev, pm_message_t state)
+static int32_t tcc_hsm_suspend(struct platform_device *pdev, pm_message_t state)
 {
-	DLOG("\n");
 	return 0;
 }
 
-static int tcc_hsm_resume(struct platform_device *pdev)
+static int32_t tcc_hsm_resume(struct platform_device *pdev)
 {
-	DLOG("\n");
 	return 0;
 }
 #else
-#define tcc_hsm_suspend NULL
-#define tcc_hsm_resume NULL
+#define tcc_hsm_suspend (NULL)
+#define tcc_hsm_resume (NULL)
 #endif
 
 #ifdef CONFIG_OF
@@ -846,14 +838,12 @@ static struct platform_driver tcc_hsm_driver = {
 #endif
 };
 
-static int __init tcc_hsm_init(void)
+static int32_t __init tcc_hsm_init(void)
 {
-	int ret = 0;
-
-	DLOG("\n");
+	int32_t ret = HSM_GENERAL_FAIL;
 
 	ret = platform_driver_register(&tcc_hsm_driver);
-	if (ret) {
+	if (ret != HSM_OK) {
 		ELOG("platform_driver_register err(%d)\n", ret);
 		return 0;
 	}
@@ -863,8 +853,6 @@ static int __init tcc_hsm_init(void)
 
 static void __exit tcc_hsm_exit(void)
 {
-	DLOG("\n");
-
 	platform_driver_unregister(&tcc_hsm_driver);
 }
 

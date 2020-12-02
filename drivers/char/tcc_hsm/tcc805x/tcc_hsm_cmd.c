@@ -1,29 +1,53 @@
 /*
- * linux/drivers/char/tcc_hsm_cmd.c
- *
- * Author:  <linux@telechips.com>
- * Created: March 18, 2010
- * Description: TCC Cipher driver
- *
- * Copyright (C) 20010-2011 Telechips
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, see the file COPYING, or write
- * to the Free Software Foundation, Inc.,
- * 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
- */
-//#define NDEBUG
-#define TLOG_LEVEL TLOG_DEBUG
+*********************************************************************************
+*
+*   FileName : tcc_hsm_cmd.c
+*
+*   Copyright (c) Telechips Inc.
+*
+*   Description : TCC HSM CMD
+*
+*
+*********************************************************************************
+*
+*   TCC Version 1.0
+*
+*   This source code contains confidential information of Telechips.
+*
+*   Any unauthorized use without a written permission of Telechips including not
+*limited to re-distribution in source or binary form is strictly prohibited.
+*
+*   This source code is provided "AS IS" and nothing contained in this source
+*code shall constitute any express or implied warranty of any kind, including
+*without limitation, any warranty of merchantability, fitness for a
+*particular purpose or non-infringement of any patent, copyright or other
+*third party intellectual property right. No warranty is made, express or
+*implied, regarding the information's accuracy,completeness, or performance.
+*
+*   In no event shall Telechips be liable for any claim, damages or other
+*liability arising from, out of or in connection with this source code or the
+*use in the source code.
+*
+*   This source code is provided subject to the terms of a Mutual Non-Disclosure
+*Agreement between Telechips and Company. This source code is provided "AS IS"
+*and nothing contained in this source code shall constitute any express or
+*implied warranty of any kind, including without limitation, any warranty (of
+*merchantability, fitness for a particular purpose or non-infringement of any
+*patent, copyright or other third party intellectual property right. No warranty
+*is made, express or implied, regarding the information's accuracy,
+*completeness, or performance. In no event shall Telechips be liable for any
+*claim, damages or other liability arising from, out of or in connection with
+*this source code or the use in the source code. This source code is provided
+*subject to the terms of a Mutual Non-Disclosure Agreement between Telechips
+*and Company.
+*
+*********************************************************************************
+*/
+
+#if 0
+#define NDEBUG
+#endif
+#define TLOG_LEVEL (TLOG_DEBUG)
 #include "tcc_hsm_log.h"
 
 #include <linux/clk.h>
@@ -43,25 +67,39 @@
 
 #include "tcc_hsm_cmd.h"
 
-#define DMA_MAX_RSIZE (1 * 1024 * 1024)
-#define MBOX_LOCATION_DATA 0x0400
-#define MBOX_LOCATION_CMD 0x0000
+/****************************************************************************
+ * DEFINITiON
+ ****************************************************************************/
+#define DMA_MAX_RSIZE (1U * 1024U * 1024U)
+#define MBOX_LOCATION_DATA (0x0400U)
+#define MBOX_LOCATION_CMD (0x0000U)
 
+/****************************************************************************
+ * DEFINITION OF LOCAL FUNCTIONS
+ ****************************************************************************/
 int32_t tcc_hsm_cmd_set_key(
-	uint32_t device_id, uint32_t req, uint32_t addr, uint32_t key_size,
-	uint32_t key_index)
+	uint32_t device_id, uint32_t req,
+	struct tcc_hsm_ioctl_set_key_param *param)
 {
 	uint32_t data[128] = {0};
 	uint32_t index = 0;
 	int32_t rdata = 0;
-	int32_t data_size = 0, rdata_size = 0;
-	int32_t result = -1;
+	uint32_t data_size = 0;
+	int32_t rdata_size = 0;
+	int32_t result = HSM_GENERAL_FAIL;
 
-	data[index++] = addr;
-	data[index++] = key_size;
-	data[index++] = key_index;
+	if (param == NULL) {
+		return HSM_INVALID_PARAM;
+	}
 
-	data_size = (sizeof(uint32_t) * index);
+	data[index] = param->addr;
+	index++;
+	data[index] = param->data_size;
+	index++;
+	data[index] = param->key_index;
+	index++;
+
+	data_size = (uint32_t)(sizeof(uint32_t) * index);
 
 	rdata_size = sec_sendrecv_cmd(
 		device_id, (req | MBOX_LOCATION_DATA), data, data_size, &rdata,
@@ -72,7 +110,7 @@ int32_t tcc_hsm_cmd_set_key(
 	}
 
 	result = rdata;
-	if (result != 0) {
+	if (result != HSM_OK) {
 		ELOG("Error: 0x%x\n", result);
 		return result;
 	}
@@ -81,43 +119,61 @@ int32_t tcc_hsm_cmd_set_key(
 }
 
 int32_t tcc_hsm_cmd_run_aes(
-	uint32_t device_id, uint32_t req, uint32_t obj_id, uint8_t *key,
-	uint32_t key_size, uint8_t *iv, uint32_t iv_size, uint8_t *tag,
-	uint32_t tag_size, uint8_t *aad, uint32_t aad_size, uint32_t src,
-	uint32_t src_size, uint32_t dst, uint32_t dst_size)
+	uint32_t device_id, uint32_t req, struct tcc_hsm_ioctl_aes_param *param)
 {
 	uint32_t data[128] = {0};
 	uint32_t index = 0;
 	int32_t rdata[12] = {0};
-	int32_t data_size = 0, rdata_size = 0;
-	int32_t result = -1;
+	uint32_t data_size = 0;
+	int32_t rdata_size = 0;
+	int32_t result = HSM_GENERAL_FAIL;
 
-	data[index++] = obj_id;
-	data[index++] = HSM_DMA;
-	data[index++] = key_size;
-	if (key != NULL && key_size > 0) {
-		memcpy(&data[index], (uint32_t *)key, key_size);
-		index += (key_size + 3) / sizeof(uint32_t);
+	if (param == NULL) {
+		ELOG("Invalid parameter!\n");
+		return HSM_INVALID_PARAM;
 	}
 
-	data[index++] = iv_size;
-	if (iv != NULL && iv_size > 0) {
-		memcpy(&data[index], (uint32_t *)iv, iv_size);
-		index += (iv_size + 3) / sizeof(uint32_t);
+	data[index] = param->obj_id;
+	index++;
+	data[index] = HSM_DMA;
+	index++;
+	data[index] = param->key_size;
+	index++;
+
+	if (param->key_size > 0U) {
+		memcpy((void *)&data[index], (const void *)param->key,
+		       param->key_size);
+		index += ((param->key_size + 3U) / (uint32_t)sizeof(uint32_t));
+	}
+
+	data[index] = param->iv_size;
+	index++;
+	if (param->iv_size > 0U) {
+		memcpy((void *)&data[index], (const void *)param->iv,
+		       param->iv_size);
+		index += ((param->iv_size + 3U) / (uint32_t)sizeof(uint32_t));
 	}
 
 	if (req == REQ_HSM_RUN_AES) {
-		data[index++] = tag_size;
-		data[index++] = aad_size;
-		memcpy(&data[index], (uint32_t *)aad, aad_size);
-		index += (aad_size + 3) / sizeof(uint32_t);
+		data[index] = param->tag_size;
+		index++;
+		data[index] = param->aad_size;
+		index++;
+		memcpy((void *)&data[index], (const void *)param->aad,
+		       param->aad_size);
+		index += ((param->aad_size + 3U) / (uint32_t)sizeof(uint32_t));
 	}
-	data[index++] = src_size;
-	data[index++] = (uint32_t)src;
-	data[index++] = dst_size;
-	data[index++] = dst;
 
-	data_size = (sizeof(uint32_t) * index);
+	data[index] = param->src_size;
+	index++;
+	data[index] = (uint32_t)param->src;
+	index++;
+	data[index] = param->dst_size;
+	index++;
+	data[index] = (uint32_t)param->dst;
+	index++;
+
+	data_size = (uint32_t)(sizeof(uint32_t) * index);
 
 	rdata_size = sec_sendrecv_cmd(
 		device_id, (req | MBOX_LOCATION_DATA), data, data_size, rdata,
@@ -128,14 +184,15 @@ int32_t tcc_hsm_cmd_run_aes(
 	}
 
 	result = rdata[0];
-	if (result != 0) {
+	if (result != HSM_OK) {
 		ELOG("Error: 0x%x\n", result);
 		return result;
 	}
 
-	if ((req == REQ_HSM_RUN_AES) && (tag_size > 0)) {
-		if (rdata[1] == tag_size) {
-			memcpy(tag, (uint8_t *)&rdata[2], tag_size);
+	if ((req == REQ_HSM_RUN_AES) && (param->tag_size > 0U)) {
+		if (rdata[1] == (int32_t)param->tag_size) {
+			memcpy((void *)param->tag, (const void *)&rdata[2],
+			       param->tag_size);
 		} else {
 			ELOG("wrong tag_size(%d)\n", rdata[1]);
 			return -EBADR;
@@ -146,39 +203,56 @@ int32_t tcc_hsm_cmd_run_aes(
 }
 
 int32_t tcc_hsm_cmd_run_aes_by_kt(
-	uint32_t device_id, uint32_t req, uint32_t obj_id, uint32_t key_index,
-	uint8_t *iv, uint32_t iv_size, uint8_t *tag, uint32_t tag_size,
-	uint8_t *aad, uint32_t aad_size, uint32_t src, uint32_t src_size,
-	uint32_t dst, uint32_t dst_size)
+	uint32_t device_id, uint32_t req,
+	struct tcc_hsm_ioctl_aes_by_kt_param *param)
 {
 	uint32_t data[128] = {0};
 	uint32_t index = 0;
 	int32_t rdata[12] = {0};
-	int32_t data_size = 0, rdata_size = 0;
-	int32_t result = -1;
+	uint32_t data_size = 0;
+	int32_t rdata_size = 0;
+	int32_t result = HSM_GENERAL_FAIL;
 
-	data[index++] = obj_id;
-	data[index++] = HSM_DMA;
-	data[index++] = key_index;
-
-	data[index++] = iv_size;
-	if (iv != NULL && iv_size > 0) {
-		memcpy(&data[index], iv, iv_size);
+	if (param == NULL) {
+		ELOG("Invalid parameter!\n");
+		return HSM_INVALID_PARAM;
 	}
-	index += (iv_size + 3) / sizeof(uint32_t);
+
+	data[index] = param->obj_id;
+	index++;
+	data[index] = HSM_DMA;
+	index++;
+	data[index] = param->key_index;
+	index++;
+
+	data[index] = param->iv_size;
+	index++;
+	if (param->iv_size > 0U) {
+		memcpy((void *)&data[index], (const void *)param->iv,
+		       param->iv_size);
+	}
+	index += ((param->iv_size + 3U) / (uint32_t)sizeof(uint32_t));
 
 	if (req == REQ_HSM_RUN_AES_BY_KT) {
-		data[index++] = tag_size;
-		data[index++] = aad_size;
-		memcpy(&data[index], (uint32_t *)aad, aad_size);
-		index += (aad_size + 3) / sizeof(uint32_t);
+		data[index] = param->tag_size;
+		index++;
+		data[index] = param->aad_size;
+		index++;
+		memcpy((void *)&data[index], (const void *)param->aad,
+		       param->aad_size);
+		index += ((param->aad_size + 3U) / (uint32_t)sizeof(uint32_t));
 	}
-	data[index++] = src_size;
-	data[index++] = src;
-	data[index++] = dst_size;
-	data[index++] = dst;
 
-	data_size = (sizeof(uint32_t) * index);
+	data[index] = param->src_size;
+	index++;
+	data[index] = (uint32_t)param->src;
+	index++;
+	data[index] = param->dst_size;
+	index++;
+	data[index] = (uint32_t)param->dst;
+	index++;
+
+	data_size = ((uint32_t)sizeof(uint32_t) * index);
 
 	rdata_size = sec_sendrecv_cmd(
 		device_id, (req | MBOX_LOCATION_DATA), data, data_size, rdata,
@@ -189,13 +263,14 @@ int32_t tcc_hsm_cmd_run_aes_by_kt(
 	}
 
 	result = rdata[0];
-	if (result != 0) {
+	if (result != HSM_OK) {
 		ELOG("Error: 0x%x\n", result);
 		return result;
 	}
-	if ((req == REQ_HSM_RUN_AES_BY_KT) && (tag_size > 0)) {
-		if (rdata[1] == tag_size) {
-			memcpy(tag, (uint8_t *)&rdata[2], tag_size);
+	if ((req == REQ_HSM_RUN_AES_BY_KT) && (param->tag_size > 0U)) {
+		if (rdata[1] == (int32_t)param->tag_size) {
+			memcpy((void *)param->tag, (const void *)&rdata[2],
+			       param->tag_size);
 		} else {
 			ELOG("wrong tag_size(%d)\n", rdata[1]);
 			return -EBADR;
@@ -206,35 +281,48 @@ int32_t tcc_hsm_cmd_run_aes_by_kt(
 }
 
 int32_t tcc_hsm_cmd_gen_mac(
-	uint32_t device_id, uint32_t req, uint32_t obj_id, uint8_t *key,
-	uint32_t key_size, uint32_t src, uint32_t src_size, uint8_t *mac,
-	uint32_t mac_size)
+	uint32_t device_id, uint32_t req, struct tcc_hsm_ioctl_mac_param *param)
 {
 	uint32_t data[128] = {0};
 	uint32_t index = 0;
 	int32_t rdata[128] = {0};
-	int32_t data_size = 0, rdata_size = 0;
-	int32_t result = 0;
+	uint32_t data_size = 0;
+	int32_t rdata_size = 0;
+	int32_t result = HSM_GENERAL_FAIL;
+
+	if (param == NULL) {
+		ELOG("Invalid parameter!\n");
+		return HSM_INVALID_PARAM;
+	}
 
 	if ((req == REQ_HSM_GEN_HMAC) || (req == REQ_HSM_GEN_SM3_HMAC)) {
-		data[index++] = obj_id;
+		data[index] = param->obj_id;
+		index++;
 	}
-	data[index++] = HSM_DMA;
-	data[index++] = key_size;
-	if (key != NULL && key_size > 0) {
-		memcpy(&data[index], key, key_size);
+	data[index] = HSM_DMA;
+	index++;
+	data[index] = param->key_size;
+	index++;
+	if (param->key_size > 0U) {
+		memcpy((void *)&data[index], (const void *)param->key,
+		       param->key_size);
 	}
-	index += (key_size + 3) / sizeof(uint32_t);
+	index += ((param->key_size + 3U) / (uint32_t)sizeof(uint32_t));
 
-	data[index++] = src_size;
-	data[index++] = src;
-	data[index++] = mac_size;
+	data[index] = param->src_size;
+	index++;
+	data[index] = (uint32_t)param->src;
+	index++;
+	data[index] = param->mac_size;
+	index++;
+
 	if (req == REQ_HSM_VERIFY_CMAC) {
-		memcpy(&data[index], mac, mac_size);
-		index += (mac_size + 3) / sizeof(uint32_t);
+		memcpy((void *)&data[index], (const void *)param->mac,
+		       param->mac_size);
+		index += ((param->mac_size + 3U) / (uint32_t)sizeof(uint32_t));
 	}
 
-	data_size = (sizeof(uint32_t) * index);
+	data_size = ((uint32_t)sizeof(uint32_t) * index);
 	rdata_size = sec_sendrecv_cmd(
 		device_id, (req | MBOX_LOCATION_DATA), data, data_size, rdata,
 		DMA_MAX_RSIZE);
@@ -244,13 +332,14 @@ int32_t tcc_hsm_cmd_gen_mac(
 	}
 
 	result = rdata[0];
-	if (result != 0) {
+	if (result != HSM_OK) {
 		ELOG("Error: 0x%x\n", result);
 		return result;
 	}
 	if (req != REQ_HSM_VERIFY_CMAC) {
-		if (rdata[1] == mac_size) {
-			memcpy(mac, (uint8_t *)&rdata[2], mac_size);
+		if (rdata[1] == (int32_t)param->mac_size) {
+			memcpy((void *)param->mac, (const void *)&rdata[2],
+			       param->mac_size);
 		} else {
 			ELOG("wrong mac_size(%d)\n", rdata[1]);
 			return -EBADR;
@@ -261,30 +350,44 @@ int32_t tcc_hsm_cmd_gen_mac(
 }
 
 int32_t tcc_hsm_cmd_gen_mac_by_kt(
-	uint32_t device_id, uint32_t req, uint32_t obj_id, uint32_t key_index,
-	uint32_t src, uint32_t src_size, uint8_t *mac, uint32_t mac_size)
+	uint32_t device_id, uint32_t req,
+	struct tcc_hsm_ioctl_mac_by_kt_param *param)
 {
 	uint32_t data[128] = {0};
 	uint32_t index = 0;
 	int32_t rdata[128] = {0};
-	int32_t data_size = 0, rdata_size = 0;
-	int32_t result = 0;
+	uint32_t data_size = 0;
+	int32_t rdata_size = 0;
+	int32_t result = HSM_GENERAL_FAIL;
+
+	if (param == NULL) {
+		ELOG("Invalid parameter!\n");
+		return HSM_INVALID_PARAM;
+	}
 
 	if ((req == REQ_HSM_GEN_HMAC_BY_KT)
 	    || (req == REQ_HSM_GEN_SM3_HMAC_BY_KT)) {
-		data[index++] = obj_id;
+		data[index] = param->obj_id;
+		index++;
 	}
-	data[index++] = HSM_DMA;
-	data[index++] = key_index;
-	data[index++] = src_size;
-	data[index++] = src;
-	data[index++] = mac_size;
+	data[index] = HSM_DMA;
+	index++;
+	data[index] = param->key_index;
+	index++;
+	data[index] = param->src_size;
+	index++;
+	data[index] = (uint32_t)param->src;
+	index++;
+	data[index] = param->mac_size;
+	index++;
+
 	if (req == REQ_HSM_VERIFY_CMAC_BY_KT) {
-		memcpy(&data[index], mac, mac_size);
-		index += (mac_size + 3) / sizeof(uint32_t);
+		memcpy((void *)&data[index], (const void *)param->mac,
+		       param->mac_size);
+		index += ((param->mac_size + 3U) / (uint32_t)sizeof(uint32_t));
 	}
 
-	data_size = (sizeof(uint32_t) * index);
+	data_size = ((uint32_t)sizeof(uint32_t) * index);
 	rdata_size = sec_sendrecv_cmd(
 		device_id, (req | MBOX_LOCATION_DATA), data, data_size, rdata,
 		DMA_MAX_RSIZE);
@@ -294,14 +397,15 @@ int32_t tcc_hsm_cmd_gen_mac_by_kt(
 	}
 
 	result = rdata[0];
-	if (result != 0) {
+	if (result != HSM_OK) {
 		ELOG("Error: 0x%x\n", result);
 		return result;
 	}
 
 	if (req != REQ_HSM_VERIFY_CMAC_BY_KT) {
-		if (rdata[1] == mac_size) {
-			memcpy(mac, (uint8_t *)&rdata[2], mac_size);
+		if (rdata[1] == (int32_t)param->mac_size) {
+			memcpy((void *)param->mac, (const void *)&rdata[2],
+			       param->mac_size);
 		} else {
 			ELOG("wrong mac_size(%d)\n", rdata[1]);
 			return -EBADR;
@@ -312,22 +416,33 @@ int32_t tcc_hsm_cmd_gen_mac_by_kt(
 }
 
 int32_t tcc_hsm_cmd_gen_hash(
-	uint32_t device_id, uint32_t req, uint32_t obj_id, uint32_t src,
-	uint32_t src_size, uint8_t *dig, uint32_t dig_size)
+	uint32_t device_id, uint32_t req,
+	struct tcc_hsm_ioctl_hash_param *param)
 {
 	uint32_t data[128] = {0};
 	uint32_t index = 0;
 	int32_t rdata[128] = {0};
-	int32_t data_size = 0, rdata_size = 0;
-	int32_t result = 0;
+	uint32_t data_size = 0;
+	int32_t rdata_size = 0;
+	int32_t result = HSM_GENERAL_FAIL;
 
-	data[index++] = obj_id;
-	data[index++] = HSM_DMA;
-	data[index++] = src_size;
-	data[index++] = src;
-	data[index++] = dig_size;
+	if (param == NULL) {
+		ELOG("Invalid parameter!\n");
+		return HSM_INVALID_PARAM;
+	}
 
-	data_size = (sizeof(uint32_t) * index);
+	data[index] = param->obj_id;
+	index++;
+	data[index] = HSM_DMA;
+	index++;
+	data[index] = param->src_size;
+	index++;
+	data[index] = (uint32_t)param->src;
+	index++;
+	data[index] = param->digest_size;
+	index++;
+
+	data_size = ((uint32_t)sizeof(uint32_t) * index);
 
 	rdata_size = sec_sendrecv_cmd(
 		device_id, (req | MBOX_LOCATION_DATA), data, data_size, rdata,
@@ -338,13 +453,14 @@ int32_t tcc_hsm_cmd_gen_hash(
 	}
 
 	result = rdata[0];
-	if (result) {
+	if (result != HSM_OK) {
 		ELOG("Error: 0x%x\n", result);
 		return result;
 	}
 
-	if (rdata[1] == dig_size) {
-		memcpy(dig, (uint8_t *)&rdata[2], dig_size);
+	if (rdata[1] == (int32_t)param->digest_size) {
+		memcpy((void *)param->digest, (const void *)&rdata[2],
+		       param->digest_size);
 	} else {
 		ELOG("wrong sig_size(%d)\n", rdata[1]);
 		return -EBADR;
@@ -354,33 +470,45 @@ int32_t tcc_hsm_cmd_gen_hash(
 }
 
 int32_t tcc_hsm_cmd_run_ecdsa(
-	uint32_t device_id, uint32_t req, uint32_t obj_id, uint8_t *key,
-	uint32_t key_size, uint8_t *digest, uint32_t digest_size, uint8_t *sig,
-	uint32_t sig_size)
+	uint32_t device_id, uint32_t req,
+	struct tcc_hsm_ioctl_ecdsa_param *param)
 {
 	uint32_t data[128] = {0};
 	uint32_t index = 0;
 	int32_t rdata[128] = {0};
-	int32_t data_size = 0, rdata_size = 0;
-	int32_t result = 0;
+	uint32_t data_size = 0;
+	int32_t rdata_size = 0;
+	int32_t result = HSM_GENERAL_FAIL;
 
-	data[index++] = obj_id;
-	data[index++] = key_size;
-	if (key != NULL && key_size > 0) {
-		memcpy(&data[index], key, key_size);
-		index += (key_size + 3) / sizeof(uint32_t);
+	if (param == NULL) {
+		ELOG("Invalid parameter!\n");
+		return HSM_INVALID_PARAM;
 	}
-	data[index++] = digest_size;
-	memcpy(&data[index], digest, digest_size);
-	index += (digest_size + 3) / sizeof(uint32_t);
 
-	data[index++] = sig_size;
+	data[index] = param->obj_id;
+	index++;
+	data[index] = param->key_size;
+	index++;
+
+	if (param->key_size > 0U) {
+		memcpy((void *)&data[index], (const void *)param->key,
+		       param->key_size);
+		index += ((param->key_size + 3U) / (uint32_t)sizeof(uint32_t));
+	}
+	data[index] = param->digest_size;
+	index++;
+	memcpy((void *)&data[index], (const void *)param->digest,
+	       param->digest_size);
+	index += ((param->digest_size + 3U) / (uint32_t)sizeof(uint32_t));
+
+	data[index] = param->sig_size;
+	index++;
 	if (req == REQ_HSM_RUN_ECDSA_VERIFY) {
-		memcpy(&data[index], sig, sig_size);
-		index += (sig_size + 3) / sizeof(uint32_t);
+		memcpy(&data[index], param->sig, param->sig_size);
+		index += ((param->sig_size + 3U) / (uint32_t)sizeof(uint32_t));
 	}
 
-	data_size = (sizeof(uint32_t) * index);
+	data_size = ((uint32_t)sizeof(uint32_t) * index);
 
 	rdata_size = sec_sendrecv_cmd(
 		device_id, (req | MBOX_LOCATION_DATA), data, data_size, rdata,
@@ -391,15 +519,15 @@ int32_t tcc_hsm_cmd_run_ecdsa(
 	}
 
 	result = rdata[0];
-	if (result) {
+	if (result != HSM_OK) {
 		ELOG("Error: 0x%x\n", result);
 		return result;
 	}
-	if (req == REQ_HSM_RUN_ECDSA_VERIFY) {
-		return result;
-	} else if (req == REQ_HSM_RUN_ECDSA_SIGN) {
-		if (rdata[1] == sig_size) {
-			memcpy(sig, (uint8_t *)&rdata[2], sig_size);
+
+	if (req == REQ_HSM_RUN_ECDSA_SIGN) {
+		if (rdata[1] == (int32_t)param->sig_size) {
+			memcpy((void *)param->sig, (const void *)&rdata[2],
+			       param->sig_size);
 		} else {
 			ELOG("wrong sig_size(%d)\n", rdata[1]);
 			return -EBADR;
@@ -410,38 +538,53 @@ int32_t tcc_hsm_cmd_run_ecdsa(
 }
 
 int32_t tcc_hsm_cmd_run_rsa(
-	uint32_t device_id, uint32_t req, uint32_t obj_id, uint8_t *modN,
-	uint32_t modN_size, uint32_t key, uint32_t key_size, uint8_t *digest,
-	uint32_t digest_size, uint8_t *sig, uint32_t sig_size)
+	uint32_t device_id, uint32_t req,
+	struct tcc_hsm_ioctl_rsassa_param *param)
 {
 	uint32_t data[128] = {0};
 	uint32_t index = 0;
 	int32_t rdata[128] = {0};
-	int32_t data_size = 0, rdata_size = 0;
-	int32_t result = 0;
+	uint32_t data_size = 0;
+	int32_t rdata_size = 0;
+	int32_t result = HSM_GENERAL_FAIL;
 
-	data[index++] = obj_id;
-	data[index++] = HSM_DMA;
-	data[index++] = modN_size;
-	memcpy(&data[index], modN, modN_size);
-	index += (modN_size + 3) / sizeof(uint32_t);
+	if (param == NULL) {
+		ELOG("Invalid parameter!\n");
+		return HSM_INVALID_PARAM;
+	}
 
-	data[index++] = key_size;
-	data[index++] = key;
+	data[index] = param->obj_id;
+	index++;
+	data[index] = HSM_DMA;
+	index++;
+	data[index] = param->modN_size;
+	index++;
+	memcpy((void *)&data[index], (const void *)param->modN,
+	       param->modN_size);
+	index += ((param->modN_size + 3U) / (uint32_t)sizeof(uint32_t));
 
-	data[index++] = digest_size;
-	memcpy(&data[index], digest, digest_size);
-	index += (digest_size + 3) / sizeof(uint32_t);
+	data[index] = param->key_size;
+	index++;
+	data[index] = (uint32_t)param->key;
+	index++;
 
-	data[index++] = sig_size;
+	data[index] = param->digest_size;
+	index++;
+	memcpy((void *)&data[index], (const void *)param->digest,
+	       param->digest_size);
+	index += ((param->digest_size + 3U) / (uint32_t)sizeof(uint32_t));
+
+	data[index] = param->sign_size;
+	index++;
 	if ((req == REQ_HSM_RUN_RSASSA_PKCS_VERIFY)
 	    || (req == REQ_HSM_RUN_RSASSA_PSS_VERIFY)) {
-		memcpy(&data[index], sig, sig_size);
-		index += (sig_size + 3) / sizeof(uint32_t);
+		memcpy((void *)&data[index], (const void *)param->sign,
+		       param->sign_size);
+		index += ((param->sign_size + 3U) / (uint32_t)sizeof(uint32_t));
 	}
-	data_size = (sizeof(uint32_t) * index);
-	// ELOG("data_size=%d %d %d %d\n", data_size, modN_size, digest_size,
-	// sig_size);
+
+	data_size = ((uint32_t)sizeof(uint32_t) * index);
+
 	rdata_size = sec_sendrecv_cmd(
 		device_id, (req | MBOX_LOCATION_DATA), data, data_size, rdata,
 		DMA_MAX_RSIZE);
@@ -451,18 +594,15 @@ int32_t tcc_hsm_cmd_run_rsa(
 	}
 
 	result = rdata[0];
-	if (result) {
+	if (result != HSM_OK) {
 		ELOG("Error: 0x%x\n", result);
 		return result;
 	}
-	if ((req == REQ_HSM_RUN_RSASSA_PKCS_VERIFY)
-	    || (req == REQ_HSM_RUN_RSASSA_PSS_VERIFY)) {
-		return result;
-	} else if (
-		(req == REQ_HSM_RUN_RSASSA_PKCS_SIGN)
-		|| (req == REQ_HSM_RUN_RSASSA_PSS_SIGN)) {
-		if (rdata[1] == sig_size) {
-			memcpy(sig, (uint8_t *)&rdata[2], sig_size);
+	if ((req == REQ_HSM_RUN_RSASSA_PKCS_SIGN)
+	    || (req == REQ_HSM_RUN_RSASSA_PSS_SIGN)) {
+		if (rdata[1] == (int32_t)param->sign_size) {
+			memcpy((void *)param->sign, (const void *)&rdata[2],
+			       param->sign_size);
 		} else {
 			ELOG("wrong sig_size(%d)\n", rdata[1]);
 			return -EBADR;
@@ -472,57 +612,34 @@ int32_t tcc_hsm_cmd_run_rsa(
 	return result;
 }
 
-int32_t tcc_hsm_cmd_get_rand(
-	uint32_t device_id, uint32_t req, uint32_t rng, int32_t rng_size)
-{
-	uint32_t data[128] = {0};
-	uint32_t index = 0;
-	int32_t rdata = 0;
-	int32_t data_size = 0, rdata_size = 0;
-	int32_t result = 0;
-
-	data[index++] = HSM_DMA;
-	data[index++] = rng_size;
-	data[index++] = rng;
-
-	data_size = (sizeof(uint32_t) * index);
-
-	rdata_size = sec_sendrecv_cmd(
-		device_id, (req | MBOX_LOCATION_DATA), data, data_size, &rdata,
-		DMA_MAX_RSIZE);
-	if (rdata_size < 0) {
-		ELOG("sec_sendrecv_cmd error(%d)\n", rdata_size);
-		return -EBADR;
-	}
-
-	result = rdata;
-	if (result != 0) {
-		ELOG("Error: 0x%x\n", result);
-		return result;
-	}
-
-	return result;
-}
-
 int32_t tcc_hsm_cmd_write(
-	uint32_t device_id, uint32_t req, uint32_t addr, uint8_t *buf,
-	uint32_t buf_size)
+	uint32_t device_id, uint32_t req,
+	struct tcc_hsm_ioctl_write_param *param)
 {
 	uint32_t data[128] = {0};
 	uint32_t index = 0;
 	int32_t rdata = 0;
-	int32_t data_size = 0, rdata_size = 0;
-	int32_t result = 0;
+	uint32_t data_size = 0;
+	int32_t rdata_size = 0;
+	int32_t result = HSM_GENERAL_FAIL;
 
-	data[index++] = addr;
-	data[index++] = buf_size;
-
-	if (buf != NULL && buf_size > 0) {
-		memcpy((uint8_t *)&data[index], buf, buf_size);
-		index += (buf_size + 3) / sizeof(uint32_t);
+	if (param == NULL) {
+		ELOG("Invalid parameter!\n");
+		return HSM_INVALID_PARAM;
 	}
 
-	data_size = (sizeof(uint32_t) * index);
+	data[index] = param->addr;
+	index++;
+	data[index] = param->data_size;
+	index++;
+
+	if (param->data_size > 0U) {
+		memcpy((void *)&data[index], (const void *)param->data,
+		       param->data_size);
+		index += ((param->data_size + 3U) / (uint32_t)sizeof(uint32_t));
+	}
+
+	data_size = (uint32_t)(sizeof(uint32_t) * index);
 
 	rdata_size = sec_sendrecv_cmd(
 		device_id, (req | MBOX_LOCATION_DATA), data, data_size, &rdata,
@@ -533,34 +650,31 @@ int32_t tcc_hsm_cmd_write(
 	}
 
 	result = rdata;
-	if (result != 0) {
+	if (result != HSM_OK) {
 		ELOG("Error: 0x%x\n", result);
 		return result;
 	}
-
-	return result;
-}
-
-int32_t tcc_hsm_cmd_write_snor(
-	uint32_t device_id, uint32_t req, uint32_t snor_addr, uint8_t *buf,
-	uint32_t buf_Size)
-{
-	int32_t result = -1;
-	//      req |= MBOX_LOCATION_DATA;
 
 	return result;
 }
 
 int32_t tcc_hsm_cmd_get_version(
-	uint32_t device_id, uint32_t req, uint32_t *x, uint32_t *y, uint32_t *z)
+	uint32_t device_id, uint32_t req,
+	struct tcc_hsm_ioctl_version_param *param)
 {
 	uint32_t data[128] = {0};
 	uint32_t index = 0;
 	int32_t rdata[128] = {0};
-	int32_t data_size = 0, rdata_size = 0;
-	int32_t result = -1;
+	uint32_t data_size = 0;
+	int32_t rdata_size = 0;
+	int32_t result = HSM_GENERAL_FAIL;
 
-	data_size = (sizeof(uint32_t) * index);
+	if (param == NULL) {
+		ELOG("Invalid parameter!\n");
+		return HSM_INVALID_PARAM;
+	}
+
+	data_size = ((uint32_t)sizeof(uint32_t) * index);
 
 	rdata_size = sec_sendrecv_cmd(
 		device_id, (req | MBOX_LOCATION_DATA), data, data_size, rdata,
@@ -571,17 +685,54 @@ int32_t tcc_hsm_cmd_get_version(
 	}
 
 	result = rdata[0];
-	if (result) {
+	if (result != HSM_OK) {
 		ELOG("Error: 0x%x\n", result);
 		return result;
 	}
-	if (rdata[1] == sizeof(uint32_t) * 3) {
-		*x = rdata[2];
-		*y = rdata[3];
-		*z = rdata[4];
+
+	if ((uint32_t)rdata[1] == ((uint32_t)sizeof(uint32_t) * 3U)) {
+		param->x = (uint32_t)rdata[2];
+		param->y = (uint32_t)rdata[3];
+		param->z = (uint32_t)rdata[4];
 	} else {
 		ELOG("wrong sig_size(%d)\n", rdata[1]);
 		return -EBADR;
+	}
+
+	return result;
+}
+
+int32_t tcc_hsm_cmd_get_rand(
+	uint32_t device_id, uint32_t req, uint32_t rng, uint32_t rng_size)
+{
+	uint32_t data[128] = {0};
+	uint32_t index = 0;
+	int32_t rdata = 0;
+	uint32_t data_size = 0;
+	int32_t rdata_size = 0;
+	int32_t result = 0;
+
+	data[index] = HSM_DMA;
+	index++;
+	data[index] = rng_size;
+	index++;
+	data[index] = rng;
+	index++;
+
+	data_size = ((uint32_t)sizeof(uint32_t) * index);
+
+	rdata_size = sec_sendrecv_cmd(
+		device_id, (req | MBOX_LOCATION_DATA), data, data_size, &rdata,
+		DMA_MAX_RSIZE);
+	if (rdata_size < 0) {
+		ELOG("sec_sendrecv_cmd error(%d)\n", rdata_size);
+		return -EBADR;
+	}
+
+	result = rdata;
+	if (result != HSM_OK) {
+		ELOG("Error: 0x%x\n", result);
+		return result;
 	}
 
 	return result;
