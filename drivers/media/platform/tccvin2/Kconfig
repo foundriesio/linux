@@ -8,9 +8,10 @@
 
 config VIDEO_TCCVIN2
 	bool "Telechips Video-Input Path Driver V2"
-        depends on VIDEO_V4L2
+	depends on VIDEO_V4L2 && VIDEO_V4L2_SUBDEV_API && OF
 	default n
 	select VIDEOBUF2_VMALLOC
+	select V4L2_FWNODE
 	---help---
 	Support v4l2 capture interface
 

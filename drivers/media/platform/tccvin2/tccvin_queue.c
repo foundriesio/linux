@@ -267,8 +267,13 @@ int tccvin_queue_buffer(struct tccvin_video_queue *queue,
 	struct v4l2_buffer *buf)
 {
 	int ret;
+	struct vb2_buffer *vb;
 
 	mutex_lock(&queue->mutex);
+	if (buf->memory == V4L2_MEMORY_DMABUF) {
+		vb = queue->queue.bufs[buf->index];
+		vb->state = VB2_BUF_STATE_PREPARED;
+	}
 	ret = vb2_qbuf(&queue->queue, buf);
 	mutex_unlock(&queue->mutex);
 

@@ -154,14 +154,21 @@
 		pinctrl-names = "default";
 		pinctrl-0 = <&i2c18_bus>;
 
-		videosource@adv7182 {
-			compatible = "videosource,adv7182";
-			reg = <0x21>;	// 0x42 >> 1
-		};
-
-		videosource@dm5886 {
-			compatible = "videosource,dm5886";
-			reg = <0x60>;	// 0xC0 >> 1
+		/* video decoder using parallel interface output */
+		adv7182: adv7182 {
+			status		= "okay";
+			compatible	= "adi,adv7182";
+			pinctrl-names	= "default";
+			pinctrl-0	= <&cam4_clk &cam4_data>;
+			rst-gpios	= <&gpe  4 1>;
+			reg		= <0x21>;	// 0x42 >> 1
+			port {
+				adv7182_out: endpoint {
+					remote-endpoint = <&videoinput0_in>;
+					io-direction	= "output";
+					bus-width	= <8>;
+				};
+			};
 		};
 	};
 
@@ -270,6 +277,21 @@
 					regulator-max-microvolt = <3600000>;
 					regulator-always-on;
 				};
+			};
+		};
+	};
+
+	videoinput@0 {
+		status = "okay";
+		cifport         = <&cifport             4>;
+		use_pgl		= <0>;
+		port {
+			videoinput0_in: endpoint {
+				remote-endpoint	= <&adv7182_out>;
+				io-direction	= "input";
+				bus-type	= <0>;
+				stream-enable	= <0>;	// VIN_CTRL.SE
+				flush-vsync	= <0>;	// VIN_MISC.FVS
 			};
 		};
 	};
@@ -549,12 +571,15 @@
 		status="okay";
 	};
 
-	tcc_switchmanager: tcc_switchmanager {
+	switch_reverse {
+		compatible = "telechips,switch";
+		status = "okay";
+
 		pinctrl-names = "default";
 		pinctrl-0 = <&switch_reverse2>;
+
 		switch-gpios = <&gpd 4 0>;
 		switch-active = <1>;
-		status = "okay";
 	};
 
 /*

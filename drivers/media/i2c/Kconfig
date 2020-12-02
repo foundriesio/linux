@@ -3,11 +3,103 @@
 #
 
 if VIDEO_V4L2
+if VIDEO_TCCVIN2
 
+menu "I2C Encoders, decoders, sensors and other helper chips"
+	visible if !MEDIA_SUBDRV_AUTOSELECT || COMPILE_TEST
+
+comment "Video decoders"
+
+config VIDEO_ADV7182
+	tristate "Analog Devices ADV7182 decoder"
+	depends on GPIOLIB && VIDEO_V4L2 && I2C && VIDEO_V4L2_SUBDEV_API
+	depends on OF
+	select REGMAP_I2C
+	---help---
+	  Support for the Analog Devices ADV7182 video decoder.
+
+	  To compile this driver as a module, choose M here: the
+	  module will be called adv7182.
+
+config VIDEO_ISL79988
+	tristate "Analog Devices ISL79988 decoder"
+	depends on GPIOLIB && VIDEO_V4L2 && I2C && VIDEO_V4L2_SUBDEV_API
+	depends on OF
+	select REGMAP_I2C
+	---help---
+	  Support for the Analog Devices ISL79988 video decoder.
+
+	  To compile this driver as a module, choose M here: the
+	  module will be called ISL79988.
+
+comment "CIS and ISP"
+
+config VIDEO_AR0147
+	tristate "Onsemiconductor AR0147 CIS"
+	depends on GPIOLIB && VIDEO_V4L2 && I2C && VIDEO_V4L2_SUBDEV_API
+	---help---
+	  Support for Onsemiconductor AR0147 CIS.
+
+	  To compile this driver as a module, choose M here: the
+	  module will be called ar0147.
+
+config VIDEO_CXD5700
+	tristate "Sony CXD5700 ISP"
+	depends on GPIOLIB && VIDEO_V4L2 && I2C && VIDEO_V4L2_SUBDEV_API
+	---help---
+	  Support for the Sony CXD5700 ISP.
+
+	  To compile this driver as a module, choose M here: the
+	  module will be called cxd5700.
+comment "Serializers and Deserializers"
+
+config VIDEO_MAX9275
+	tristate "Maxim MAX9275 Serializer"
+	depends on GPIOLIB && VIDEO_V4L2 && I2C && VIDEO_V4L2_SUBDEV_API
+	select REGMAP_I2C
+	---help---
+	  Support for the Maxim MAX9275 Serializer.
+
+	  To compile this driver as a module, choose M here: the
+	  module will be called max9275.
+
+config VIDEO_MAX96701
+	tristate "Maxim MAX96701 Serializer"
+	depends on GPIOLIB && VIDEO_V4L2 && I2C && VIDEO_V4L2_SUBDEV_API
+	select REGMAP_I2C
+	---help---
+	  Support for the Maxim MAX96701 Serializer.
+
+	  To compile this driver as a module, choose M here: the
+	  module will be called MAX96701.
+
+config VIDEO_MAX9286
+	tristate "Maxim MAX9286 Deserializer"
+	depends on GPIOLIB && VIDEO_V4L2 && I2C && VIDEO_V4L2_SUBDEV_API
+	select REGMAP_I2C
+	---help---
+	  Support for the Maxim MAX9286 Deserializer.
+
+	  To compile this driver as a module, choose M here: the
+	  module will be called max9286.
+
+config VIDEO_MAX96712
+	tristate "Maxim MAX96712 Deserializer"
+	depends on GPIOLIB && VIDEO_V4L2 && I2C && VIDEO_V4L2_SUBDEV_API
+	select REGMAP_I2C
+	---help---
+	  Support for the Maxim MAX96712 Deserializer.
+
+	  To compile this driver as a module, choose M here: the
+	  module will be called max96712.
+endmenu
+endif
+
+if !VIDEO_TCCVIN2
 config VIDEO_IR_I2C
 	tristate "I2C module for IR" if !MEDIA_SUBDRV_AUTOSELECT
 	depends on I2C && RC_CORE
-	default y
+	default n
 	---help---
 	  Most boards have an IR chip directly connected via GPIO. However,
 	  some video boards have the IR connected via I2C bus.
@@ -787,6 +879,7 @@ config VIDEO_S5C73M3
 	  This is a V4L2 sensor-level driver for Samsung S5C73M3
 	  8 Mpixel camera.
 
+
 comment "Flash devices"
 
 config VIDEO_ADP1653
@@ -892,6 +985,7 @@ config VIDEO_M52790
 
 	 To compile this driver as a module, choose M here: the
 	 module will be called m52790.
+
 endmenu
 
 menu "Sensors used on soc_camera driver"
@@ -902,4 +996,5 @@ endif
 
 endmenu
 
+endif
 endif

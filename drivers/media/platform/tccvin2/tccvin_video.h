@@ -26,11 +26,8 @@
 #include <media/v4l2-device.h>
 #include <media/v4l2-event.h>
 #include <media/v4l2-fh.h>
+#include <media/v4l2-fwnode.h>
 #include <media/videobuf2-v4l2.h>
-
-// video source
-#include "../videosource2/videosource_types.h"
-#include "../../../../include/video/tcc/videosource_ioctl.h"
 
 // vioc path
 #include <video/tcc/vioc_global.h>
@@ -82,17 +79,17 @@
 struct tccvin_device;
 
 struct vioc_path {
-	int				vin;
-	int				viqe;
-	int				deintl_s;
-	int				scaler;
-	int				pgl;
-	int				wmixer;
-	int				wdma;
-	int				fifo;
-	int				rdma;
-	int				wmixer_out;
-	int				disp;
+	int32_t				vin;
+	int32_t				viqe;
+	int32_t				deintl_s;
+	int32_t				scaler;
+	int32_t				pgl;
+	int32_t				wmixer;
+	int32_t				wdma;
+	int32_t				fifo;
+	int32_t				rdma;
+	int32_t				wmixer_out;
+	int32_t				disp;
 };
 
 struct buf_addr {
@@ -102,11 +99,8 @@ struct buf_addr {
 };
 
 struct tccvin_cif {
-	// videosource
-	videosource_format_t		*videosource_info;
-
 	// cif port
-	unsigned int			cif_port;
+	int32_t				cif_port;
 
 	void __iomem			*cifport_addr;
 
@@ -127,7 +121,7 @@ struct tccvin_cif {
 	struct pmap			pmap_preview;
 
 	// framebuffer
-	struct buf_addr			*preview_buf_addr;
+	struct buf_addr			preview_buf_addr[VB2_MAX_FRAME];
 	void __iomem			*vir;
 
 	unsigned int			skip_frame;
@@ -165,6 +159,25 @@ struct tccvin_format_desc {
  * direction (either TCCVIN_TERM_INPUT or TCCVIN_TERM_OUTPUT). The type field
  * should always be accessed with the TCCVIN_ENTITY_* macros and never directly.
  */
+
+struct tccvin_vs_info {
+	/* VIN_CTRL */
+	unsigned int		data_order;
+	unsigned int		data_format;
+	unsigned int		stream_enable;
+	unsigned int		gen_field_en;
+	unsigned int		de_low;
+	unsigned int		pclk_polarity;
+	unsigned int		field_low;
+	unsigned int		vs_mask;
+	unsigned int		hsde_connect_en;
+	unsigned int		intpl_en;
+	unsigned int		interlaced;
+	unsigned int		conv_en;
+
+	/* VIN_MISC */
+	unsigned int		flush_vsync;
+};
 
 struct tccvin_entity {
 	/* Media controller-related fields. */
@@ -240,6 +253,10 @@ struct tccvin_streaming {
 	struct video_device			vdev;
 	atomic_t				active;
 
+	struct v4l2_dv_timings			dv_timings;
+	struct tccvin_vs_info			vs_info;
+	struct v4l2_subdev_mbus_code_enum	mbus_code;
+	struct v4l2_mbus_config			mbus_config;
 	enum v4l2_buf_type			type;
 
 	struct v4l2_selection			selection;
@@ -270,7 +287,13 @@ struct tccvin_streaming {
 	int					cam_streaming;
 };
 
-#define TCCVIN_MAX_VIDEOSOURCE 3
+#define TCCVIN_MAX_VIDEOSOURCE 255
+
+struct tccvin_subdev {
+	struct v4l2_async_subdev asd;
+	struct v4l2_subdev *sd;
+	struct v4l2_subdev_format fmt;
+};
 
 struct tccvin_device {
 	struct platform_device		*pdev;
@@ -282,12 +305,16 @@ struct tccvin_device {
 	/* Video control interface */
 	struct v4l2_device		vdev;
 
-	int				num_registered_subdev;
+	int				bounded_subdevs;
 	int				current_subdev_idx;
 
-	char				subdev_name[1024];
-	struct v4l2_async_subdev	*asd[TCCVIN_MAX_VIDEOSOURCE];
-	struct v4l2_subdev		*subdevs[TCCVIN_MAX_VIDEOSOURCE];
+	struct v4l2_fwnode_endpoint	fw_ep[TCCVIN_MAX_VIDEOSOURCE];
+	int				num_ep;
+
+	struct v4l2_async_subdev	*async_subdevs[TCCVIN_MAX_VIDEOSOURCE];
+	struct tccvin_subdev		linked_subdevs[TCCVIN_MAX_VIDEOSOURCE];
+	//struct v4l2_subdev		*subdevs[TCCVIN_MAX_VIDEOSOURCE];
+	int				num_asd;
 	struct v4l2_async_notifier	notifier;
 
 	struct list_head		entities;
@@ -306,6 +333,25 @@ struct tccvin_fh {
 	struct v4l2_fh vfh;
 	struct tccvin_streaming *stream;
 	enum tccvin_handle_state state;
+};
+
+struct tccvin_dmabuf_heap {
+	struct gen_pool *pool;
+	struct device *dev;
+	phys_addr_t base;
+	size_t size;
+};
+
+struct tccvin_dmabuf_alloc_data {
+	size_t len;
+	unsigned int flags;
+	__s32 fd;
+};
+
+struct tccvin_dmabuf_phys_data {
+	__s32 fd;
+	phys_addr_t paddr;
+	size_t len;
 };
 
 /* ------------------------------------------------------------------------
@@ -379,5 +425,17 @@ extern int tccvin_video_streamon(struct tccvin_streaming *stream,
 	int is_handover_needed);
 extern int tccvin_video_streamoff(struct tccvin_streaming *stream,
 	int is_handover_needed);
+extern int tccvin_allocated_dmabuf(struct tccvin_streaming *stream, int count);
+extern int tccvin_set_buffer_address(struct tccvin_streaming *stream,
+	struct v4l2_buffer *buf);
 
+/* Use dmabuf functions */
+extern struct tccvin_dmabuf_heap *tccvin_dmabuf_heap_create(
+	struct tccvin_streaming *stream);
+extern int tccvin_dmabuf_alloc(struct tccvin_dmabuf_heap *heap, size_t size,
+	unsigned int flags);
+extern void tccvin_dmabuf_dmabuf_release(struct dma_buf *dmabuf);
+extern int tccvin_dmabuf_phys(struct platform_device *pdev, int fd,
+	phys_addr_t *addr, size_t *len);
+extern long tccvin_dmabuf_g_phys(struct tccvin_fh *fh, struct v4l2_buffer *buf);
 #endif

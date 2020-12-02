@@ -11,10 +11,10 @@
 #define CAMERA_OUTPUT_WIDTH		1920
 #define CAMERA_OUTPUT_HEIGHT		1080
 
-#define FRAMES_CAMERA_VIQE		0
-#define FRAMES_CAMERA_PREVIEW0		0
+#define FRAMES_CAMERA_VIQE		4
+#define FRAMES_CAMERA_PREVIEW0		4
 #define FRAMES_CAMERA_PREVIEW3		0
-#define FRAMES_CAMERA_PGL		0
+#define FRAMES_CAMERA_PGL		1
 
 
 //****************************** Calculation ******************************/

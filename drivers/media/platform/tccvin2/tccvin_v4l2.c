@@ -500,6 +500,14 @@ static int tccvin_ioctl_reqbufs(struct file *file, void *fh,
 		tccvin_dismiss_privileges(handle);
 	}
 
+	if (rb->memory == V4L2_MEMORY_DMABUF) {
+		ret = tccvin_allocated_dmabuf(stream, rb->count);
+		if (ret < 0) {
+			loge("fail to allocated dmabuf\n");
+			return ret;
+		}
+	}
+
 	return 0;
 }
 
@@ -524,21 +532,10 @@ static int tccvin_ioctl_querybuf(struct file *file, void *fh,
 	logd("m.offset: 0x%08x\n",	buf->m.offset);
 	logd("lengh: 0x%08x\n",		buf->length);
 
-	if (buf->memory == V4L2_MEMORY_MMAP) {
-		struct vb2_queue *q = &stream->queue.queue;
-
-		q->bufs[buf->index]->planes[0].m.offset =
-			stream->cif.pmap_preview.base + buf->m.offset;
-		buf->m.offset = stream->cif.pmap_preview.base + buf->m.offset;
-	} else {
-		/*
-		 * TODO: Need to implement to handle other memory
-		 * types. Because of the limit of memory address
-		 * between virtual addresses and physical address in
-		 * 64-bit environment, we need to use IOMMU to handle
-		 * this issue.
-		 */
-		logd("%s - Need to be implemented\n", __func__);
+	ret = tccvin_set_buffer_address(stream, buf);
+	if (ret < 0) {
+		loge("Fail to set buffer address, buffer index %d\n",
+			buf->index);
 	}
 
 	return ret;

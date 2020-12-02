@@ -12,7 +12,7 @@
 #include <linux/platform_device.h>
 #include <linux/iommu.h>
 
-static struct iommu_domain * domain;
+static struct iommu_domain *domain;
 
 static int tcc_isp_iommu_probe(struct platform_device *pdev)
 {
@@ -22,21 +22,21 @@ static int tcc_isp_iommu_probe(struct platform_device *pdev)
 	domain = iommu_get_domain_for_dev(dev);
 	if (!domain) {
 		ret = PTR_ERR(domain);
-		pr_err("[ERR][tcc-isp-iommu] FAIL iommu_get_domain_for_dev \n");
+		pr_err("[ERR][tcc-isp-iommu] FAIL iommu_get_domain_for_dev\n");
 		goto END;
 	}
 
 	/*
 	 * Add mapping for IOVA xxxx => PA 0x1637xxxx.
 	 */
-	ret = iommu_map(domain, 0, 0x16370000, \
+	ret = iommu_map(domain, 0, 0x16370000,
 		0x10000, IOMMU_READ | IOMMU_WRITE);
 	if (ret) {
-		pr_err("[ERR][tcc-isp-iommu] Cannot add IOMMU mapping \n"); 
+		pr_err("[ERR][tcc-isp-iommu] Cannot add IOMMU mapping\n");
 		goto END;
 	}
 
-	pr_info("[INFO][tcc-isp-iommu] success setting iommu for isp \n");
+	pr_info("[INFO][tcc-isp-iommu] success setting iommu for isp\n");
 END:
 	return ret;
 }
@@ -47,16 +47,15 @@ int tcc_isp_iommu_remove(struct platform_device *pdev)
 
 	iommu_unmap(domain, 0, 0x10000);
 
-END:
 	return ret;
 }
 
-static struct of_device_id tcc_isp_iommu_of_match[] = {
+static const struct of_device_id tcc_isp_iommu_of_match[] = {
 	{
 		.compatible = "telechips,tcc-isp-iommu",
 	},
 };
-MODULE_DEVICE_TABLE(of,tcc_isp_iommu_of_match);
+MODULE_DEVICE_TABLE(of, tcc_isp_iommu_of_match);
 
 
 static struct platform_driver tcc_isp_iommu_driver = {

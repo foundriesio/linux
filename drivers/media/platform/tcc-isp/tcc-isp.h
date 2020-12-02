@@ -6,6 +6,8 @@
 #ifndef __TCC_ISP_H__
 #define __TCC_ISP_H__
 
+#include "tcc-isp-reg.h"
+
 #ifndef ON
 #define ON		1
 #endif
@@ -16,7 +18,7 @@
 
 #define TCC_ISP_DRIVER_NAME	"tcc-isp"
 #define TCC_ISP_SUBDEV_NAME	TCC_ISP_DRIVER_NAME
-#define TCC_ISP_FIRMWARE_NAME	"isp_firmware"
+#define TCC_ISP_FIRMWARE_NAME	"tcc-isp-fw"
 
 struct hdr_state {
 	/* hdr input and output */
@@ -53,20 +55,23 @@ struct isp_state {
 
 struct tcc_isp_state {
 	struct platform_device *pdev;
+	struct v4l2_subdev	sd;
 
+	char isp_fw_name[20];
 	/* register base addr */
 	volatile void __iomem * isp_base;
-	volatile void __iomem * mem_base;
+	void __iomem * mem_base;
 	volatile void __iomem * cfg_base;
 
 	/* uart pinctrl */
 	struct pinctrl * uart_pinctrl;
 
+	struct v4l2_mbus_framefmt fmt;
 	/* oak setting */
 	struct hdr_state * hdr;
 
 	/* zelcova(isp) setting */
-	struct isp_state * isp;
+	struct isp_state isp;
 
 	int irq;
 
