@@ -734,7 +734,6 @@ static ssize_t dwc3_eyep_store(struct device *dev,
     }
 
 #if defined(CONFIG_ARCH_TCC803X)
-	PUSBSSPHYCFG pUSBPHYCFG = (PUSBSSPHYCFG)pvUSBPHYCFG;
 	BITCSET(reg, 0xF, val); // val range is 0x0 ~ 0xF
 	writel(reg, &pUSBPHYCFG->FPHY_PCFG1);
 #elif defined(CONFIG_ARCH_TCC805X)
