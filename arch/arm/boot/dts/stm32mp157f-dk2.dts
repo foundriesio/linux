@@ -117,7 +117,6 @@
 	mmc-pwrseq = <&wifi_pwrseq>;
 	#address-cells = <1>;
 	#size-cells = <0>;
-	keep-power-in-suspend;
 	status = "okay";
 
 	brcmf: bcrmf@1 {
