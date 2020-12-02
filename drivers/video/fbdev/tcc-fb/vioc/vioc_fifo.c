@@ -1,10 +1,5 @@
 /*
- * linux/arch/arm/mach-tcc893x/vioc_fifo.c
- * Author:  <linux@telechips.com>
- * Created: June 10, 2008
- * Description: TCC VIOC h/w block
- *
- * Copyright (C) 2008-2009 Telechips
+ * Copyright (C) Telechips Inc.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -21,7 +16,6 @@
  * to the Free Software Foundation, Inc.,
  * 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  */
-
 #include <linux/io.h>
 #include <linux/kernel.h>
 #include <linux/of_address.h>
