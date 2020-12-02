@@ -1235,6 +1235,7 @@
     m1dai0_dai0: m1dai0_dai0{
         telechips,pins = "gpa-28";
         telechips,pin-function = <5>;
+		telechips,input_buffer_enable;
     };
 
     m1dai0_dai0_idle: m1dai0_dai0_idle{
@@ -1257,6 +1258,7 @@
     m1dai0_dai1: m1dai0_dai1{
         telechips,pins = "gpa-29";
         telechips,pin-function = <5>;
+		telechips,input_buffer_enable;
     };
 
     m1dai0_dai1_idle: m1dai0_dai1_idle{
@@ -1279,6 +1281,7 @@
     m1dai0_dai2: m1dai0_dai2{
         telechips,pins = "gpa-30";
         telechips,pin-function = <5>;
+		telechips,input_buffer_enable;
     };
 
     m1dai0_dai2_idle: m1dai0_dai2_idle{
@@ -1301,6 +1304,7 @@
     m1dai0_dai3: m1dai0_dai3{
         telechips,pins = "gpa-31";
         telechips,pin-function = <5>;
+		telechips,input_buffer_enable;
     };
 
     m1dai0_dai3_idle: m1dai0_dai3_idle{
@@ -1360,6 +1364,7 @@
     m1dai1_dai0: m1dai1_dai0{
         telechips,pins = "gpc-22";
         telechips,pin-function = <1>;
+		telechips,input_buffer_enable;
     };
 
     m1dai1_dai0_idle: m1dai1_dai0_idle{
@@ -1382,6 +1387,7 @@
     m1dai1_dai1: m1dai1_dai1{
         telechips,pins = "gpc-23";
         telechips,pin-function = <1>;
+		telechips,input_buffer_enable;
     };
 
     m1dai1_dai1_idle: m1dai1_dai1_idle{
@@ -1404,6 +1410,7 @@
     m1dai1_dai2: m1dai1_dai2{
         telechips,pins = "gpc-24";
         telechips,pin-function = <1>;
+		telechips,input_buffer_enable;
     };
 
     m1dai1_dai2_idle: m1dai1_dai2_idle{
@@ -1426,6 +1433,7 @@
     m1dai1_dai3: m1dai1_dai3{
         telechips,pins = "gpc-25";
         telechips,pin-function = <1>;
+		telechips,input_buffer_enable;
     };
 
     m1dai1_dai3_idle: m1dai1_dai3_idle{
@@ -1485,6 +1493,7 @@
     m1dai2_dai0: m1dai2_dai0{
         telechips,pins = "gpg-4";
         telechips,pin-function = <1>;
+		telechips,input_buffer_enable;
     };
 
     m1dai2_dai0_idle: m1dai2_dai0_idle{
@@ -1507,6 +1516,7 @@
     m1dai2_dai1: m1dai2_dai1{
         telechips,pins = "gpg-6";
         telechips,pin-function = <1>;
+		telechips,input_buffer_enable;
     };
 
     m1dai2_dai1_idle: m1dai2_dai1_idle{
@@ -1529,6 +1539,7 @@
     m1dai2_dai2: m1dai2_dai2{
         telechips,pins = "gpg-8";
         telechips,pin-function = <1>;
+		telechips,input_buffer_enable;
     };
 
     m1dai2_dai2_idle: m1dai2_dai2_idle{
@@ -1551,6 +1562,7 @@
     m1dai2_dai3: m1dai2_dai3{
         telechips,pins = "gpg-10";
         telechips,pin-function = <1>;
+		telechips,input_buffer_enable;
     };
 
     m1dai2_dai3_idle: m1dai2_dai3_idle{
@@ -1611,6 +1623,7 @@
     m1dai3_dai0: m1dai3_dai0{
         telechips,pins = "gpe-4";
         telechips,pin-function = <1>;
+		telechips,input_buffer_enable;
     };
 
     m1dai3_dai0_idle: m1dai3_dai0_idle{
@@ -1633,6 +1646,7 @@
     m1dai3_dai1: m1dai3_dai1{
         telechips,pins = "gpe-6";
         telechips,pin-function = <1>;
+		telechips,input_buffer_enable;
     };
 
     m1dai3_dai1_idle: m1dai3_dai1_idle{
@@ -1655,6 +1669,7 @@
     m1dai3_dai2: m1dai3_dai2{
         telechips,pins = "gpe-8";
         telechips,pin-function = <1>;
+		telechips,input_buffer_enable;
     };
 
     m1dai3_dai2_idle: m1dai3_dai2_idle{
@@ -1677,6 +1692,7 @@
     m1dai3_dai3: m1dai3_dai3{
         telechips,pins = "gpe-10";
         telechips,pin-function = <1>;
+		telechips,input_buffer_enable;
     };
 
     m1dai3_dai3_idle: m1dai3_dai3_idle{
@@ -1735,6 +1751,7 @@
     m1dai4_dai0: m1dai4_dai0{
         telechips,pins = "gpmb-16";
         telechips,pin-function = <1>;
+		telechips,input_buffer_enable;
     };
 
     m1dai4_dai0_idle: m1dai4_dai0_idle{
@@ -1757,6 +1774,7 @@
     m1dai4_dai1: m1dai4_dai1{
         telechips,pins = "gpmb-18";
         telechips,pin-function = <1>;
+		telechips,input_buffer_enable;
     };
 
     m1dai4_dai1_idle: m1dai4_dai1_idle{
@@ -1779,6 +1797,7 @@
     m1dai4_dai2: m1dai4_dai2{
         telechips,pins = "gpmb-20";
         telechips,pin-function = <1>;
+		telechips,input_buffer_enable;
     };
 
     m1dai4_dai2_idle: m1dai4_dai2_idle{
@@ -1801,6 +1820,7 @@
     m1dai4_dai3: m1dai4_dai3{
         telechips,pins = "gpmb-22";
         telechips,pin-function = <1>;
+		telechips,input_buffer_enable;
     };
 
     m1dai4_dai3_idle: m1dai4_dai3_idle{
@@ -1860,6 +1880,7 @@
     m0dai0_dai0: m0dai0_dai0{
         telechips,pins = "gpc-29";
         telechips,pin-function = <2>;
+		telechips,input_buffer_enable;
     };
 
     m0dai0_dai0_idle: m0dai0_dai0_idle{
@@ -1919,6 +1940,7 @@
     m0dai1_dai0: m0dai1_dai0{
         telechips,pins = "gpg-4";
         telechips,pin-function = <2>;
+		telechips,input_buffer_enable;
     };
 
     m0dai1_dai0_idle: m0dai1_dai0_idle{
@@ -1978,6 +2000,7 @@
     m0dai2_dai0: m0dai2_dai0{
         telechips,pins = "gpg-10";
         telechips,pin-function = <2>;
+		telechips,input_buffer_enable;
     };
 
     m0dai2_dai0_idle: m0dai2_dai0_idle{
@@ -2037,6 +2060,7 @@
     m0dai3_dai0: m0dai3_dai0{
         telechips,pins = "gpe-4";
         telechips,pin-function = <2>;
+		telechips,input_buffer_enable;
     };
 
     m0dai3_dai0_idle: m0dai3_dai0_idle{
@@ -2096,6 +2120,7 @@
     m0dai4_dai0: m0dai4_dai0{
         telechips,pins = "gpe-14";
         telechips,pin-function = <2>;
+		telechips,input_buffer_enable;
     };
 
     m0dai4_dai0_idle: m0dai4_dai0_idle{
@@ -2155,6 +2180,7 @@
     m0dai5_dai0: m0dai5_dai0{
         telechips,pins = "gpe-19";
         telechips,pin-function = <2>;
+		telechips,input_buffer_enable;
     };
 
     m0dai5_dai0_idle: m0dai5_dai0_idle{
@@ -2181,6 +2207,7 @@
     spdif0_rx: spdif0_rx{
         telechips,pins = "gpe-5";
         telechips,pin-function = <4>;
+		telechips,input_buffer_enable;
     };
 
     spdif0_rx_idle: spdif0_rx_idle{
@@ -2203,6 +2230,7 @@
     spdif1_rx: spdif1_rx{
         telechips,pins = "gpe-6";
         telechips,pin-function = <4>;
+		telechips,input_buffer_enable;
     };
 
     spdif1_rx_idle: spdif1_rx_idle{
@@ -2225,6 +2253,7 @@
     spdif2_rx: spdif2_rx{
         telechips,pins = "gpe-7";
         telechips,pin-function = <4>;
+		telechips,input_buffer_enable;
     };
 
     spdif2_rx_idle: spdif2_rx_idle{
@@ -2247,6 +2276,7 @@
     spdif3_rx: spdif3_rx{
         telechips,pins = "gpe-8";
         telechips,pin-function = <4>;
+		telechips,input_buffer_enable;
     };
 
     spdif3_rx_idle: spdif3_rx_idle{
@@ -2269,6 +2299,7 @@
     spdif4_rx: spdif4_rx{
         telechips,pins = "gpe-9";
         telechips,pin-function = <4>;
+		telechips,input_buffer_enable;
     };
 
     spdif4_rx_idle: spdif4_rx_idle{
@@ -2291,6 +2322,7 @@
     spdif5_rx: spdif5_rx{
         telechips,pins = "gpe-10";
         telechips,pin-function = <4>;
+		telechips,input_buffer_enable;
     };
 
     spdif5_rx_idle: spdif5_rx_idle{
@@ -2313,6 +2345,7 @@
     spdif6_rx: spdif6_rx{
         telechips,pins = "gpe-15";
         telechips,pin-function = <4>;
+		telechips,input_buffer_enable;
     };
 
     spdif6_rx_idle: spdif6_rx_idle{

@@ -22,6 +22,9 @@
 
 #include <linux/io.h>
 #include <asm/system_info.h>	//for chip revision info
+#if defined(CONFIG_ARCH_TCC805X) || defined(CONFIG_ARCH_TCC806X)
+#include <soc/tcc/chipinfo.h>	//for TCC805x revision info
+#endif
 #include "tcc_audio_hw.h"
 
 enum TCC_DAI_FMT {
@@ -84,6 +87,22 @@ struct dai_reg_t {
 #endif
 
 #define PCM_INTERFACE
+
+#if defined(CONFIG_ARCH_TCC803X)
+#define TCC803x_ES_SND
+#elif defined(CONFIG_ARCH_TCC805X) || defined(CONFIG_ARCH_TCC806X)
+#define TCC805x_CS_SND
+#endif
+
+#if defined(TCC805x_CS_SND)
+enum TCC_DAI_TDM_RX_CH {
+	TCC_DAI_TDM_RX_2CH = 2,	
+	TCC_DAI_TDM_RX_4CH = 4,	
+	TCC_DAI_TDM_RX_8CH = 8,	
+	TCC_DAI_TDM_RX_16CH = 16,	
+	TCC_DAI_TDM_RX_32CH = 32	
+};
+#endif
 
 static inline void tcc_dai_dump(void __iomem *base_addr)
 {
@@ -442,6 +461,8 @@ static inline void tcc_dai_set_cirrus_tdm_mode(
 
 	int32_t frame_len = (int32_t) slots * CIRRUS_TDM_MODE_SLOT_WIDTH;
 	int32_t half_frame_len = frame_len / 2;
+	uint32_t chip_rev = (uint32_t)get_chip_rev();
+	uint32_t chip_name = (uint32_t)get_chip_name();
 
 	damr &=
 		~(DAMR_RX_JUSTIFIED_MODE_Msk
@@ -449,15 +470,32 @@ static inline void tcc_dai_set_cirrus_tdm_mode(
 		| DAMR_DAI_SYNC_MODE_Msk
 		| DAMR_DSP_MODE_Msk);
 
-	mccr0 &=
-		~(MCCR0_FRAME_SIZE_Msk
-		| MCCR0_FRAME_CLK_DIV_Msk
-		| MCCR0_TDM_MODE_Msk
-		| MCCR0_CIRRUS_LATE_Msk
-		| MCCR0_MODE_SELECT_Msk
-		| MCCR0_FRAME_INVERT_Msk
-		| MCCR0_FRAME_BEGIN_POSITION_Msk
-		| MCCR0_FRAME_END_POSTION_Msk);
+#if defined(TCC805x_CS_SND)
+	if((chip_rev == 1)&&(chip_name == 0x8050)) {
+		mccr0 &=
+			~(MCCR0_FRAME_SIZE_Msk
+				| MCCR0_FRAME_CLK_DIV_Msk
+				| MCCR0_TDM_MODE_Msk
+				| MCCR0_MODE_SELECT_Msk
+				| MCCR0_FRAME_INVERT_Msk
+				| MCCR0_FRAME_BEGIN_POSITION_Msk
+				| MCCR0_FRAME_END_POSTION_Msk);
+	} else {
+#endif
+		mccr0 &=
+			~(MCCR0_FRAME_SIZE_Msk
+				| MCCR0_FRAME_CLK_DIV_Msk
+				| MCCR0_TDM_MODE_Msk
+				| MCCR0_CIRRUS_LATE_Msk
+				| MCCR0_MODE_SELECT_Msk
+				| MCCR0_FRAME_INVERT_Msk
+				| MCCR0_FRAME_BEGIN_POSITION_Msk
+				| MCCR0_FRAME_END_POSTION_Msk);
+#if defined(TCC805x_CS_SND)
+	} 
+#endif
+
+
 
 	damr |= (DAMR_DAI_SYNC_IIS_DSP_TDM | DAMR_DSP_OR_TDM_MODE);
 
@@ -471,16 +509,30 @@ static inline void tcc_dai_set_cirrus_tdm_mode(
 	mccr0 |= MCCR0_TDM_MODE_0;
 
 	mccr0 |= MCCR0_FRAME_INVERT_DISABLE;
+
+#if defined(TCC803x_ES_SND)
 	if (system_rev == (uint32_t) 0) {	//ES
 		mccr0 |= MCCR0_FRAME_BEGIN_NORMAL_MODE;
 	} else {
+#endif
 		mccr0 |= MCCR0_FRAME_BEGIN_EARLY_MODE;
 
-		if (late == TRUE)
-			mccr0 |= MCCR0_CIRRUS_LATE_ENABLE;
-		else
-			mccr0 |= MCCR0_MODE_SELECT_ENABLE;
+#if defined(TCC805x_CS_SND)
+		if((chip_rev == 1)&&(chip_name == 0x8050)) {
+			if (late == TRUE)
+				mccr0 |= MCCR0_MODE_SELECT_ENABLE;
+		} else {
+#endif
+			if (late == TRUE)
+				mccr0 |= MCCR0_CIRRUS_LATE_ENABLE;
+			else
+				mccr0 |= MCCR0_MODE_SELECT_ENABLE;
+#if defined(TCC805x_CS_SND)
+		} 
+#endif
+#if defined(TCC803x_ES_SND)
 	}
+#endif
 
 	dai_writel(damr, base_addr + TCC_DAI_DAMR_OFFSET);
 	dai_writel(mccr0, base_addr + TCC_DAI_MCCR0_OFFSET);
@@ -527,6 +579,7 @@ static inline void tcc_dai_set_dsp_tdm_mode(
 	mccr0 |= MCCR0_FRAME_CLK_DIV_USE;
 
 	mccr0 |= MCCR0_FRAME_INVERT_DISABLE;
+#if defined(TCC803x_ES_SND)
 	if (system_rev == (uint32_t) 0) {	//ES
 		mccr0 |= MCCR0_TDM_MODE_1;
 		if (late == TRUE)
@@ -534,10 +587,13 @@ static inline void tcc_dai_set_dsp_tdm_mode(
 		else
 			mccr0 |= MCCR0_FRAME_BEGIN_EARLY_MODE;	//DSP-A
 	} else {
+#endif
 		mccr0 |= MCCR0_TDM_MODE_0;
 		if (late == TRUE)
 			mccr0 |= MCCR0_MODE_SELECT_ENABLE;	//DSP-B
+#if defined(TCC803x_ES_SND)
 	}
+#endif
 
 	dai_writel(damr, base_addr + TCC_DAI_DAMR_OFFSET);
 	dai_writel(mccr0, base_addr + TCC_DAI_MCCR0_OFFSET);
@@ -557,6 +613,67 @@ static inline void tcc_dai_set_dsp_tdm_mode_valid_data(
 
 	dai_writel(mccr1, base_addr + TCC_DAI_MCCR1_OFFSET);
 }
+
+#if defined(TCC805x_CS_SND)
+static inline void tcc_dai_set_dsp_tdm_mode_rx_channel(
+	void __iomem *base_addr,
+	int32_t channels)
+{
+	uint32_t mccr1 = readl(base_addr + TCC_DAI_MCCR1_OFFSET);
+	int32_t value = 
+		(channels == TCC_DAI_TDM_RX_2CH)?
+			MCCR1_TDM_RX_CH_2CH :
+		(channels == TCC_DAI_TDM_RX_4CH)?
+			MCCR1_TDM_RX_CH_4CH :
+		(channels == TCC_DAI_TDM_RX_8CH)?
+			MCCR1_TDM_RX_CH_8CH :
+		(channels == TCC_DAI_TDM_RX_16CH)?
+			MCCR1_TDM_RX_CH_16CH :
+		(channels == TCC_DAI_TDM_RX_32CH)?
+			MCCR1_TDM_RX_CH_32CH :
+			MCCR1_TDM_RX_CH_2CH;
+
+	mccr1 &= ~MCCR1_TDM_RX_CH_Msk;
+
+	mccr1 |= (uint32_t) value;
+
+	dai_writel(mccr1, base_addr + TCC_DAI_MCCR1_OFFSET);
+}
+
+#define TDM_RX_FEEDBACK_BCLK (17000000)
+static inline void tcc_dai_set_dsp_tdm_mode_rx_early(
+	void __iomem *base_addr,
+	bool enable)
+{
+	uint32_t mccr1 = readl(base_addr + TCC_DAI_MCCR1_OFFSET);
+
+	mccr1 &= ~MCCR1_TDM_RX_EARLY_Msk;
+
+	if(enable)
+		mccr1 |= MCCR1_TDM_RX_EARLY_ENABLE;
+	else
+		mccr1 |= MCCR1_TDM_RX_EARLY_DISABLE;
+
+	dai_writel(mccr1, base_addr + TCC_DAI_MCCR1_OFFSET);
+}
+
+static inline void tcc_dai_set_dsp_tdm_mode_rx_feedback(
+	void __iomem *base_addr,
+	bool enable)
+{
+	uint32_t mccr1 = readl(base_addr + TCC_DAI_MCCR1_OFFSET);
+
+	mccr1 &= ~MCCR1_TDM_RX_FDBK_Msk;
+
+	if(enable)
+		mccr1 |= MCCR1_TDM_RX_FDBK_ENABLE;
+	else
+		mccr1 |= MCCR1_TDM_RX_FDBK_DISABLE;
+
+	dai_writel(mccr1, base_addr + TCC_DAI_MCCR1_OFFSET);
+}
+#endif
+
 
 static inline void tcc_dai_set_master_mode(
 	void __iomem *base_addr,

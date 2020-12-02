@@ -1585,6 +1585,41 @@
 #define MCCR1_DAO3_PATH_ASRC \
 	((uint32_t)1U << MCCR1_DAO3_PATH_Pos)
 
+#if defined(CONFIG_ARCH_TCC805X) || defined(CONFIG_ARCH_TCC806X)
+#define MCCR1_TDM_RX_CH_Pos \
+	(13)
+#define MCCR1_TDM_RX_CH_Msk \
+	((uint32_t)7U << MCCR1_TDM_RX_CH_Pos)
+#define MCCR1_TDM_RX_CH_2CH \
+	((uint32_t)0U << MCCR1_TDM_RX_CH_Pos)
+#define MCCR1_TDM_RX_CH_4CH \
+	((uint32_t)1U << MCCR1_TDM_RX_CH_Pos)
+#define MCCR1_TDM_RX_CH_8CH \
+	((uint32_t)2U << MCCR1_TDM_RX_CH_Pos)
+#define MCCR1_TDM_RX_CH_16CH \
+	((uint32_t)3U << MCCR1_TDM_RX_CH_Pos)
+#define MCCR1_TDM_RX_CH_32CH \
+	((uint32_t)4U << MCCR1_TDM_RX_CH_Pos)
+
+#define MCCR1_TDM_RX_FDBK_Pos \
+	(17)
+#define MCCR1_TDM_RX_FDBK_Msk \
+	((uint32_t)1U << MCCR1_TDM_RX_FDBK_Pos)
+#define MCCR1_TDM_RX_FDBK_DISABLE \
+	((uint32_t)0U << MCCR1_TDM_RX_FDBK_Pos)
+#define MCCR1_TDM_RX_FDBK_ENABLE \
+	((uint32_t)1U << MCCR1_TDM_RX_FDBK_Pos)
+
+#define MCCR1_TDM_RX_EARLY_Pos \
+	(18)
+#define MCCR1_TDM_RX_EARLY_Msk \
+	((uint32_t)1U << MCCR1_TDM_RX_EARLY_Pos)
+#define MCCR1_TDM_RX_EARLY_DISABLE \
+	((uint32_t)0U << MCCR1_TDM_RX_EARLY_Pos)
+#define MCCR1_TDM_RX_EARLY_ENABLE \
+	((uint32_t)1U << MCCR1_TDM_RX_EARLY_Pos)
+#endif
+
 /****** DAI Digital Radio Mode Register (DRMR), Offset:0x1050 ******/
 #define DRMR_RX_FIFO_CLEAR_Pos \
 	(21)
