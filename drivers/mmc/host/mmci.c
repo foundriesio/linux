@@ -2096,9 +2096,6 @@ static int mmci_probe(struct amba_device *dev,
 	host->stop_abort.arg = 0;
 	host->stop_abort.flags = MMC_RSP_R1B | MMC_CMD_AC;
 
-	/* We support these PM capabilities. */
-	mmc->pm_caps |= MMC_PM_KEEP_POWER;
-
 	/*
 	 * We can do SGIO
 	 */
