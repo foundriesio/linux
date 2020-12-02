@@ -2495,6 +2495,13 @@
 		telechips,no-pull;
 	};
 
+	switch_c13: switch_c13 {
+		telechips,pins = "gpc-13";
+		telechips,pin-function = <0>;
+		telechips,input-enable;
+		telechips,no-pull;
+	};
+
 	cam0_8bit_idle: cam0_8bit_idle {
 		telechips,pins = "gpa-0",  "gpa-1",  "gpa-2",  "gpa-11",  "gpa-12",
 				 "gpa-3",  "gpa-4",  "gpa-5",  "gpa-6",  "gpa-7",  "gpa-8",  "gpa-9",  "gpa-10";
