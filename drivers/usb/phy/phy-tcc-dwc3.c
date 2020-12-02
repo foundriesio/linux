@@ -1051,7 +1051,7 @@ static int dwc3_tcc_ss_phy_ctrl_native(struct usb_phy *phy, int on_off)
 		/* Set 2.0phy REXT */
 		tmp_cnt = 0;
 
-#if 0
+#if defined(CONFIG_ARCH_TCC803X)
 		do
 		{
 			//Read calculated value
