@@ -365,7 +365,7 @@
 		/* HD camera module & max9286 using MIPI CSI2 output */
 		max96701: max96701 {
 			/* serializer */
-			status		= "disabled";
+			status		= "okay";
 			compatible	= "maxim,max96701";
 			reg		= <0x40>;
 			ports {
@@ -388,7 +388,7 @@
 
 		max9286: max9286 {
 			/* deserializer */
-			status		= "disabled";
+			status		= "okay";
 			compatible	= "maxim,max9286";
 			pwd-gpios	= <&gpg 5 1>;
 			intb-gpios	= <&gph 11 1>;
