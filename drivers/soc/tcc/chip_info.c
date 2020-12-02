@@ -25,11 +25,13 @@ u32 get_chip_rev(void)
 {
 	return chip_rev;
 }
+EXPORT_SYMBOL(get_chip_rev);
 
 u32 get_chip_name(void)
 {
 	return chip_name;
 }
+EXPORT_SYMBOL(get_chip_name);
 
 static inline u32 tcc_chip_ops(ulong cmd, ulong arg)
 {
