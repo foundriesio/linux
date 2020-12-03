@@ -129,11 +129,11 @@ static int pci_n1sdp_init(struct pci_config_window *cfg, unsigned int segment)
 
 
 	if (segment > 1)
-		rc_remapped_addr[segment] = devm_ioremap_nocache(dev,
+		rc_remapped_addr[segment] = devm_ioremap(dev,
 						shared_data->rc_base_addr + REMOTE_CHIP_ADDR_OFFSET,
 						PCI_CFG_SPACE_EXP_SIZE);
 	else
-		rc_remapped_addr[segment] = devm_ioremap_nocache(dev,
+		rc_remapped_addr[segment] = devm_ioremap(dev,
 						shared_data->rc_base_addr,
 						PCI_CFG_SPACE_EXP_SIZE);
 	if (!rc_remapped_addr[segment]) {
@@ -161,7 +161,32 @@ static int pci_n1sdp_remote_pcie_init(struct pci_config_window *cfg)
 	return pci_n1sdp_init(cfg, 2);
 }
 
-struct pci_ecam_ops pci_n1sdp_pcie_ecam_ops = {
+static int pci_n1sdp_of_init(struct pci_config_window *cfg)
+{
+	struct device *dev = cfg->parent;
+	struct device_node *np = dev->of_node;
+	u32 segment;
+
+	if (of_property_read_u32(np, "linux,pci-domain", &segment))
+		return -EINVAL;
+
+	if (segment >= MAX_SEGMENTS)
+		return -ENODEV;
+
+	return pci_n1sdp_init(cfg, segment);
+}
+
+const struct pci_ecam_ops pci_n1sdp_of_ecam_ops = {
+	.bus_shift	= 20,
+	.init		= pci_n1sdp_of_init,
+	.pci_ops	= {
+		.map_bus        = pci_n1sdp_map_bus,
+		.read           = pci_generic_config_read32,
+		.write          = pci_generic_config_write32,
+	}
+};
+
+const struct pci_ecam_ops pci_n1sdp_pcie_ecam_ops = {
 	.bus_shift	= 20,
 	.init		= pci_n1sdp_pcie_init,
 	.pci_ops	= {
@@ -171,7 +196,7 @@ struct pci_ecam_ops pci_n1sdp_pcie_ecam_ops = {
 	}
 };
 
-struct pci_ecam_ops pci_n1sdp_ccix_ecam_ops = {
+const struct pci_ecam_ops pci_n1sdp_ccix_ecam_ops = {
 	.bus_shift	= 20,
 	.init		= pci_n1sdp_ccix_init,
 	.pci_ops	= {
@@ -181,7 +206,7 @@ struct pci_ecam_ops pci_n1sdp_ccix_ecam_ops = {
 	}
 };
 
-struct pci_ecam_ops pci_n1sdp_remote_pcie_ecam_ops = {
+const struct pci_ecam_ops pci_n1sdp_remote_pcie_ecam_ops = {
 	.bus_shift	= 20,
 	.init		= pci_n1sdp_remote_pcie_init,
 	.pci_ops	= {
@@ -192,35 +217,13 @@ struct pci_ecam_ops pci_n1sdp_remote_pcie_ecam_ops = {
 };
 
 static const struct of_device_id n1sdp_pcie_of_match[] = {
-	{ .compatible = "arm,n1sdp-pcie" },
+	{
+		.compatible = "arm,n1sdp-pcie",
+		.data = &pci_n1sdp_of_ecam_ops,
+	},
 	{ },
 };
 MODULE_DEVICE_TABLE(of, n1sdp_pcie_of_match);
-
-static int n1sdp_pcie_probe(struct platform_device *pdev)
-{
-	const struct device_node *of_node = pdev->dev.of_node;
-	u32 segment;
-
-	if (of_property_read_u32(of_node, "linux,pci-domain", &segment)) {
-		dev_err(&pdev->dev, "N1SDP PCI controllers require linux,pci-domain property\n");
-		return -EINVAL;
-	}
-
-	switch (segment) {
-	case 0:
-		return pci_host_common_probe(pdev, &pci_n1sdp_pcie_ecam_ops);
-	case 1:
-		return pci_host_common_probe(pdev, &pci_n1sdp_ccix_ecam_ops);
-	case 2:
-		return pci_host_common_probe(pdev, &pci_n1sdp_remote_pcie_ecam_ops);
-	}
-
-	dev_err(&pdev->dev, "Invalid segment number, must be smaller than %d\n",
-		MAX_SEGMENTS);
-
-	return -EINVAL;
-}
 
 static struct platform_driver n1sdp_pcie_driver = {
 	.driver = {
@@ -228,6 +231,6 @@ static struct platform_driver n1sdp_pcie_driver = {
 		.of_match_table = n1sdp_pcie_of_match,
 		.suppress_bind_attrs = true,
 	},
-	.probe = n1sdp_pcie_probe,
+	.probe = pci_host_common_probe,
 };
 builtin_platform_driver(n1sdp_pcie_driver);
