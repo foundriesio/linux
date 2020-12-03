@@ -43,6 +43,14 @@
 		reset-gpios = <&gpsd1 8 GPIO_ACTIVE_LOW>;
 	};
 
+	vqmmc_sdslot: vqmmc_sdslot {
+		compatible = "regulator-fixed";
+		regulator-name = "vqmmc_sdslot";
+		regulator-min-microvolt = <3300000>;
+		regulator-max-microvolt = <3300000>;
+		regulator-always-on;
+	};
+
 	vqmmc_sdio: vqmmc_sdio {
 		compatible = "regulator-fixed";
 		regulator-name = "vqmmc_sdio";
@@ -168,7 +176,7 @@
 	cd-gpios = <&gpsd1 6 0>;
 
 	mmc-pwrseq = <&sdhc2_pwrseq>;
-	vqmmc-supply = <&DA9062_LDO4>;
+	vqmmc-supply = <&vqmmc_sdslot>;
 };
 
 &sd2_clk {
