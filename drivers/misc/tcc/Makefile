@@ -19,6 +19,10 @@ obj-$(CONFIG_TCC_SDR)   += tcc_sdr/tcc_sdr.o
 endif
 endif
 
+ifdef CONFIG_ARCH_TCC805X
+obj-$(CONFIG_TCC_GPIO_TEST) += tcc_gpio_test.o
+endif
+
 obj-y				+= tcc_dsp/
 
 obj-$(CONFIG_VIOC_CHROMA_INTERPOLATOR) += chromainterpolator_drv.o

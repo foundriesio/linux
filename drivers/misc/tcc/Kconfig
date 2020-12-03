@@ -41,10 +41,16 @@ config SCALER_TEST
 		Telechips testscaler driver
 
 config GPIO_TCC_SAMPLE
-        default n
-        bool "TCC gpio sample driver"
-        help
-		Telechips gpio sample driver.
+	default n
+	depends on PINCTRL_TCC
+	depends on ARCH_TCC
+	bool "TCC gpio sample driver"
+
+config TCC_GPIO_TEST
+	default n
+	depends on PINCTRL_TCC
+	depends on ARCH_TCC
+	bool "TCC gpio test driver"
 
 config CLKOUT_TCC_SAMPLE
         default n
