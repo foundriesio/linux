@@ -74,10 +74,6 @@
 
 #define MAX_HL_DEVICES		16
 
-static bool randomize_mem;
-module_param(randomize_mem, bool, 0755);
-MODULE_PARM_DESC(noverify, "Wipe memory allocations on startup (for debug)");
-
 //
 // HL Device
 //
@@ -138,11 +134,6 @@ static long load_code(struct hl_device *hl_dev,
 
 	if (hl_dev->code_loaded)
 		return -EBUSY;
-
-	if (randomize_mem) {
-		prandom_bytes(hl_dev->code, hl_dev->code_size);
-		prandom_bytes(hl_dev->data, hl_dev->data_size);
-	}
 
 	if (copy_from_user(hl_dev->code, &arg->data, head.len) != 0)
 		return -EFAULT;
