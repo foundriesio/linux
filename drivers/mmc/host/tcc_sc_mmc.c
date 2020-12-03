@@ -134,8 +134,7 @@ static void tcc_sc_mmc_tasklet_finish(unsigned long param)
 {
 	struct tcc_sc_mmc_host *host = (struct tcc_sc_mmc_host *)param;
 
-	while (!tcc_sc_mmc_request_done(host))
-		;
+	tcc_sc_mmc_request_done(host);
 }
 
 static void tcc_sc_mmc_timeout_timer(unsigned long data)
