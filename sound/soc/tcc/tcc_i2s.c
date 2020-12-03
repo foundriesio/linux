@@ -287,19 +287,19 @@ static int tcc_i2s_set_dai_fmt(struct snd_soc_dai *dai, unsigned int fmt)
 #if defined(TCC803x_ES_SND)
 				if ((i2s->frame_invert == TRUE) &&
 					(system_rev != 0u)) {
+#else
+				if (i2s->frame_invert == TRUE) {
 #endif
 					tcc_dai_set_i2s_tdm_mode(
 						i2s->dai_reg,
 						(uint32_t) i2s->tdm_slots,
 						(bool) i2s->tdm_late_mode);
-#if defined(TCC803x_ES_SND)
 				} else{
 					tcc_dai_set_cirrus_tdm_mode(
 						i2s->dai_reg,
 						(uint32_t) i2s->tdm_slots,
 						(bool) i2s->tdm_late_mode);
 				}
-#endif
 			} else {
 				i2s_dai_err("TDM mode is enabled, but i2s");
 				pr_err("tdm mode supports only slots 8,");
@@ -544,10 +544,19 @@ static int tcc_i2s_set_dai_fmt(struct snd_soc_dai *dai, unsigned int fmt)
 			} else
 #endif
 			{
+#if defined(TCC805x_CS_SND)
+				(void) tcc_dai_set_clk_mode(
+					i2s->dai_reg,
+					(enum TCC_DAI_MCLK_DIV)i2s->mclk_div,
+					(enum TCC_DAI_BCLK_RATIO)i2s->bclk_ratio,
+					(enum TCC_DAI_TDM_SLOT_SIZE)i2s->tdm_slot_width,
+					i2s->tdm_mode);
+#else
 				(void) tcc_dai_set_clk_mode(i2s->dai_reg,
-				(enum TCC_DAI_MCLK_DIV)i2s->mclk_div,
-				(enum TCC_DAI_BCLK_RATIO)i2s->bclk_ratio,
-				i2s->tdm_mode);
+					(enum TCC_DAI_MCLK_DIV)i2s->mclk_div,
+					(enum TCC_DAI_BCLK_RATIO)i2s->bclk_ratio,
+					i2s->tdm_mode);
+#endif
 			}
 		} else {
 			struct dai_reg_t regs = {0};
@@ -997,11 +1006,20 @@ static int tcc_i2s_hw_params(
 	} else
 #endif
 	{
+#if defined(TCC805x_CS_SND)
+		(void) tcc_dai_set_clk_mode(
+			i2s->dai_reg,
+			(enum TCC_DAI_MCLK_DIV)i2s->mclk_div,
+			(enum TCC_DAI_BCLK_RATIO)i2s->bclk_ratio,
+			(enum TCC_DAI_TDM_SLOT_SIZE)i2s->tdm_slot_width,
+			i2s->tdm_mode);
+#else
 		(void) tcc_dai_set_clk_mode(
 			i2s->dai_reg,
 			(enum TCC_DAI_MCLK_DIV)i2s->mclk_div,
 			(enum TCC_DAI_BCLK_RATIO)i2s->bclk_ratio,
 			i2s->tdm_mode);
+#endif
 	}
 
 	i2s_dai_dbg("[%d] %s - mclk : %d\n", i2s->blk_no, __func__, mclk);
@@ -1847,11 +1865,20 @@ static void i2s_initialize(struct tcc_i2s_t *i2s)
 	} else
 #endif
 	{
+#if defined(TCC805x_CS_SND)
+		(void) tcc_dai_set_clk_mode(
+			i2s->dai_reg,
+			(enum TCC_DAI_MCLK_DIV)i2s->mclk_div,
+			(enum TCC_DAI_BCLK_RATIO)i2s->bclk_ratio,
+			(enum TCC_DAI_TDM_SLOT_SIZE)i2s->tdm_slot_width,
+			i2s->tdm_mode);
+#else
 		(void) tcc_dai_set_clk_mode(
 			i2s->dai_reg,
 			(enum TCC_DAI_MCLK_DIV)i2s->mclk_div,
 			(enum TCC_DAI_BCLK_RATIO)i2s->bclk_ratio,
 			i2s->tdm_mode);
+#endif
 	}
 	tcc_dai_set_tx_format(i2s->dai_reg, TCC_DAI_LSB_16);
 	tcc_dai_set_rx_format(i2s->dai_reg, TCC_DAI_LSB_16);

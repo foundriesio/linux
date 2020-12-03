@@ -1666,9 +1666,18 @@
 	((uint32_t)3U << DCLKDIV_DAI_FRAME_CLK_DIV_Pos)
 
 #if defined(CONFIG_ARCH_TCC805X) || defined(CONFIG_ARCH_TCC806X)
+///< TDM slot size: 32bit
+#define DCLKDIV_DAI_TDM_SLOT_SIZE_32 \
+	((uint32_t)3U << DCLKDIV_DAI_FRAME_CLK_DIV_Pos)
+///< 512fs->fs (only for DP)
 #define DCLKDIV_DAI_FRAME_CLK_DIV_512 \
 	((uint32_t)4U << DCLKDIV_DAI_FRAME_CLK_DIV_Pos)
-	//< 512fs->fs (only for DP)
+///< TDM slot size: 16bit
+#define DCLKDIV_DAI_TDM_SLOT_SIZE_16 \
+	((uint32_t)5U << DCLKDIV_DAI_FRAME_CLK_DIV_Pos)
+///< TDM slot size: 24bit
+#define DCLKDIV_DAI_TDM_SLOT_SIZE_24 \
+	((uint32_t)6U << DCLKDIV_DAI_FRAME_CLK_DIV_Pos)
 #endif
 
 #define DCLKDIV_DAI_BIT_CLK_DIV_Pos \

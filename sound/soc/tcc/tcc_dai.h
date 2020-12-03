@@ -102,6 +102,12 @@ enum TCC_DAI_TDM_RX_CH {
 	TCC_DAI_TDM_RX_16CH = 16,	
 	TCC_DAI_TDM_RX_32CH = 32	
 };
+
+enum TCC_DAI_TDM_SLOT_SIZE {
+	TCC_DAI_TDM_SLOT_32BIT = 32u,
+	TCC_DAI_TDM_SLOT_16BIT = 16u,
+	TCC_DAI_TDM_SLOT_24BIT = 24u
+};
 #endif
 
 static inline void tcc_dai_dump(void __iomem *base_addr)
@@ -461,8 +467,10 @@ static inline void tcc_dai_set_cirrus_tdm_mode(
 
 	int32_t frame_len = (int32_t) slots * CIRRUS_TDM_MODE_SLOT_WIDTH;
 	int32_t half_frame_len = frame_len / 2;
+#if defined(TCC805x_CS_SND)
 	uint32_t chip_rev = (uint32_t)get_chip_rev();
 	uint32_t chip_name = (uint32_t)get_chip_name();
+#endif
 
 	damr &=
 		~(DAMR_RX_JUSTIFIED_MODE_Msk
@@ -873,13 +881,22 @@ static inline uint32_t tcc_dai_set_clk_mode(
 	enum TCC_DAI_MCLK_DIV mclk_div,
 	enum TCC_DAI_BCLK_RATIO bclk_ratio,
 	bool tdm_mode)
-#else
+#else	// defined(CONFIG_ARCH_TCC803X, CONFIG_ARCH_TCC899X, CONFIG_ARCH_TCC901X)
+#if defined(TCC805x_CS_SND)
+static inline void tcc_dai_set_clk_mode(
+	void __iomem *base_addr,
+	enum TCC_DAI_MCLK_DIV mclk_div,
+	enum TCC_DAI_BCLK_RATIO bclk_ratio,
+	enum TCC_DAI_TDM_SLOT_SIZE slot_size,
+	bool tdm_mode)
+#else // defined(TCC805x_CS_SND)
 static inline void tcc_dai_set_clk_mode(
 	void __iomem *base_addr,
 	enum TCC_DAI_MCLK_DIV mclk_div,
 	enum TCC_DAI_BCLK_RATIO bclk_ratio,
 	bool tdm_mode)
-#endif
+#endif // defined(TCC805x_CS_SND)
+#endif // defined(CONFIG_ARCH_TCC803X, CONFIG_ARCH_TCC899X, CONFIG_ARCH_TCC901X)
 {
 	uint32_t mccr0 = readl(base_addr + TCC_DAI_MCCR0_OFFSET);
 #if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X) || \
@@ -906,7 +923,17 @@ static inline void tcc_dai_set_clk_mode(
 #if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X) || \
 	defined(CONFIG_ARCH_TCC806X) || defined(CONFIG_ARCH_TCC899X) || \
 	defined(CONFIG_ARCH_TCC901X)
+
+#if defined(TCC805x_CS_SND)
+		dclkdiv |=
+		    (slot_size == TCC_DAI_TDM_SLOT_16BIT) ?
+			DCLKDIV_DAI_TDM_SLOT_SIZE_16 :
+		    (slot_size == TCC_DAI_TDM_SLOT_24BIT) ?
+			DCLKDIV_DAI_TDM_SLOT_SIZE_24 :
+			DCLKDIV_DAI_TDM_SLOT_SIZE_32;
+#else
 		dclkdiv |= DCLKDIV_DAI_FRAME_CLK_DIV_X;	// xfs->fs
+#endif
 		dclkdiv |=
 		    (mclk_div == TCC_DAI_MCLK_TO_BCLK_DIV_4) ?
 			DCLKDIV_DAI_BIT_CLK_DIV_4 :
