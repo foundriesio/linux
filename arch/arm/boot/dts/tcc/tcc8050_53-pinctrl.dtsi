@@ -9,84 +9,98 @@
 		gpio-controller;
 		#gpio-cells = <2>;
 		reg = <0x0 0 32>;
+		source-num = <1>;
 	};
 
 	gpb: gpb {
 		gpio-controller;
 		#gpio-cells = <2>;
 		reg = <0x40 0 29>;
+		source-num = <33>;
 	};
 
 	gpc: gpc {
 		gpio-controller;
 		#gpio-cells = <2>;
 		reg = <0x80 0 30>;
+		source-num = <62>;
 	};
 
 	gpe: gpe {
 		gpio-controller;
 		#gpio-cells = <2>;
 		reg = <0x100 0 20>;
+		source-num = <92>;
 	};
 
 	gpg: gpg {
 		gpio-controller;
 		#gpio-cells = <2>;
 		reg = <0x180 0 11>;
+		source-num = <112>;
 	};
 
 	gph: gph {
 		gpio-controller;
 		#gpio-cells = <2>;
 		reg = <0x640 0 12>;
+		source-num = <123>;
 	};
 
 	gpk: gpk {
 		gpio-controller;
 		#gpio-cells = <2>;
 		reg = <0x800 0 19>;
+		source-num = <0xff>;
 	};
 
 	gpma: gpma {
 		gpio-controller;
 		#gpio-cells = <2>;
 		reg = <0x6C0 0 30>;
+		source-num = <135>;
 	};
 
 	gpmb: gpmb {
 		gpio-controller;
 		#gpio-cells = <2>;
 		reg = <0x700 0 32>;
+		source-num = <202>;
 	};
 
 	gpmc: gpmc {
 		gpio-controller;
 		#gpio-cells = <2>;
 		reg = <0x740 0 30>;
+		source-num = <228>;
 	};
 
 	gpmd: gpmd {
 		gpio-controller;
 		#gpio-cells = <2>;
 		reg = <0x780 0 18>;
+		source-num = <252>;
 	};
 
 	gpsd0: gpsd0 {
 		gpio-controller;
 		#gpio-cells = <2>;
 		reg = <0x200 0 15>;
+		source-num = <166>;
 	};
 
 	gpsd1: gpsd1 {
 		gpio-controller;
 		#gpio-cells = <2>;
 		reg = <0x240 0 11>;
+		source-num = <181>;
 	};
 
 	gpsd2: gpsd2 {
 		gpio-controller;
 		#gpio-cells = <2>;
 		reg = <0x600 0 10>;
+		source-num = <192>;
 	};
 
 	/* GPIO SD0 */

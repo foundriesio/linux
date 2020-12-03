@@ -95,6 +95,11 @@
 
 static LIST_HEAD(ictc_list);
 
+struct ictc_pin_map {
+	int pin_num;
+	int config_num;
+};
+
 struct ictc_dev {
         struct device_node *np;
         uint32_t irq;
@@ -102,40 +107,10 @@ struct ictc_dev {
         struct clk *pPClk;
         struct device *dev;
         struct list_head list;
+	struct ictc_pin_map *ictc_pin_map_val;
+	uint32_t num_gpio;
 };
 
-//TCC803x GPIOs
-static int32_t gpio_f_in[] = {
-        0x1,                    //GPIO_A
-        0x21,                   //GPIO_B
-        0x3e,                   //GPIO_C
-        0,                      //GPIO_D
-        0x5c,                   //GPIO_E
-        0,                      //GPIO_F
-        0x70,                   //GPIO_G
-        0x7b,                   //GPIO_H
-        0,                      //GPIO_K
-        0x87,                   //GPIO_MA
-        0xa6,                   //GPIO_SD0
-        0xb4,                   //GPIO_SD1
-        0xc0,                   //GPIO_SD2
-};
-
-static int32_t gpio_num_group[] = {
-        0,                      //GPIO_A
-        32,                     //GPIO_B
-        61,                     //GPIO_C
-        91,                     //GPIO_D
-        113,                    //GPIO_E
-        133,                    //GPIO_F
-        165,                    //GPIO_G
-        176,                    //GPIO_H
-        188,                    //GPIO_K
-        207,                    //GPIO_MA
-        237,                    //GPIO_SD0
-        252,                    //GPIO_SD1
-        263                     //GPIO_SD2
-};
 
 #define RTC_WKUP        0xa5
 
@@ -275,7 +250,6 @@ static irqreturn_t ictc_interrupt_handler(int irq, void *dev)
         struct ictc_dev *idev = dev_get_drvdata(dev);
         struct ictc_dev *idev_new;
 
-        disable_irq((uint32_t)irq);
         idev_new = devm_kzalloc(idev->dev, sizeof(struct ictc_dev), GFP_KERNEL);
         idev_new->int_state =
             (uint32_t)IRQ_STAT_MASK & ictc_readl(IRQ_CTRL);
@@ -289,20 +263,46 @@ static irqreturn_t ictc_interrupt_handler(int irq, void *dev)
         ictc_clear_interrupt();
         ictc_clear_counter();
         ictc_enable_interrupt();
-        enable_irq((uint32_t)irq);
 
         return IRQ_HANDLED;
 
 }
 
-static int32_t ictc_parse_dt(struct device_node *np)
+static int32_t ictc_parse_dt(struct device_node *np, struct device *dev)
 {
 
-        int32_t  temp, ret = 0;
-        uint32_t node_num;
-        uint64_t count;
-        bool temp_bool;
+	int32_t  temp, ret=0, pinctrl_num=0;
+	uint64_t count = 0;
+	struct device_node *gpio_node;
+	struct ictc_dev *idev = dev_get_drvdata(dev);
+	uint32_t num_gpio, i, node_num;
+	u32 num_val = 0, accum_num = 0;
+	bool temp_bool;
 
+
+	of_get_property(np, "pinctrl-map", &pinctrl_num);
+
+	num_gpio = pinctrl_num/4u;
+
+	idev->num_gpio = num_gpio;
+
+	idev->ictc_pin_map_val = kzalloc(sizeof(struct ictc_pin_map)*num_gpio, GFP_KERNEL);
+
+	for(i =0; i < num_gpio; i++) {
+
+		idev->ictc_pin_map_val[i].pin_num = accum_num;
+		gpio_node = of_parse_phandle(np, "pinctrl-map", i);
+		of_property_read_u32_index(gpio_node, "reg", 2, &num_val);
+		accum_num += num_val;
+		of_property_read_u32_index(gpio_node, "source-num", 0, &num_val);
+		idev->ictc_pin_map_val[i].config_num = num_val;
+
+		err_ictc("%d : 0x%x, 0x%x\n", i, idev->ictc_pin_map_val[i].pin_num, idev->ictc_pin_map_val[i].config_num);
+
+	}
+
+	if(ret)
+		err_ictc("fail pinctrl parse\n");
         count = ARRAY_SIZE(ictc_prop_v_l);
 
         for (node_num = 0; node_num < (uint32_t)count; node_num++) {
@@ -484,31 +484,30 @@ static void ictc_enable(void)
 
 }
 
-static int32_t gpio_to_f_in(int32_t gpio_num)
+static int32_t gpio_to_f_in(int32_t gpio_num, struct device *dev)
 {
 
         int32_t count;
         int32_t gpio_group, gpio_group_val = 0;
+		struct ictc_dev *idev = dev_get_drvdata(dev);
 
-        count = ARRAY_SIZE(gpio_num_group);
+        count = idev->num_gpio;
 
-        debug_ictc("gpio group count : %ld\n", count);
+        debug_ictc("gpio group count : %d\n", count);
 
         for (gpio_group = 1; gpio_group < count; gpio_group++) {
 
-                if ((gpio_num - gpio_num_group[gpio_group]) < 0) {
+		debug_ictc("pin_num : %d", idev->ictc_pin_map_val[gpio_group].pin_num);
+                if ((gpio_num - idev->ictc_pin_map_val[gpio_group].pin_num) < 0) {
                         gpio_group_val = gpio_group - 1;
                         break;
                 }
 
         }
 
-        debug_ictc("gpio_f_in : 0x%x gpio_num_group : %d, gpio_num : %d",
-                   gpio_f_in[gpio_group_val], gpio_num_group[gpio_group_val],
-                   gpio_num);
+	debug_ictc("gpio_group_val : %d, gpio_pin_num : %d, gpio_config_val : 0x%x, gpio_num :%d\n", gpio_group_val, idev->ictc_pin_map_val[gpio_group_val].pin_num, idev->ictc_pin_map_val[gpio_group_val].config_num, gpio_num);
 
-        return gpio_f_in[gpio_group_val] + (gpio_num -
-                                            gpio_num_group[gpio_group_val]);
+	return idev->ictc_pin_map_val[gpio_group_val].config_num + (gpio_num - idev->ictc_pin_map_val[gpio_group_val].pin_num);
 
 }
 
@@ -568,7 +567,13 @@ static int32_t ictc_probe(struct platform_device *pdev)
                                                  ret, irq);
                                 } else {
 
-                                        ictc_base = of_iomap(np, 0);
+					ret = ictc_parse_dt(np, &pdev->dev);
+
+					if (ret != SUCCESS) {
+						err_ictc("ictc:No dev node\n");
+					} else {
+
+					ictc_base = of_iomap(np, 0);
 
                                         f_in_rtc_wkup = of_property_read_bool(np,
                                                                   "f-in-rtc-wkup");
@@ -580,18 +585,9 @@ static int32_t ictc_probe(struct platform_device *pdev)
                                                                       "f-in-gpio",
                                                                       0);
                                                 f_in_source =
-                                                    gpio_to_f_in(f_in_gpio);
+						    gpio_to_f_in(f_in_gpio, &pdev->dev);
 
-
-                                        }
-
-                                        ret = ictc_parse_dt(np);
-
-                                        if (ret != SUCCESS) {
-                                                free_irq(irq, (void *)&pdev->dev);
-                                                tasklet_kill(&ictc_tasklet);
-                                                err_ictc("ictc:No dev node\n");
-                                        } else {
+					}
 
                                                 ictc_configure();
 
