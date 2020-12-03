@@ -13,27 +13,10 @@
  *
  */
 
-#ifndef _TCC_HSM_H_
-#define _TCC_HSM_H_
+#ifndef TCC_HSM_H
+#define TCC_HSM_H
 
-#define TCCHSM_DEVICE_NAME "tcc_hsm"
-
-#define TCC_HSM_AES_KEY_SIZE 32
-#define TCC_HSM_AES_IV_SIZE 32
-#define TCC_HSM_AES_TAG_SIZE 32
-#define TCC_HSM_AES_AAD_SIZE 32
-
-#define TCC_HSM_MAC_KEY_SIZE 32
-#define TCC_HSM_MAC_MSG_SIZE 32
-
-#define TCC_HSM_HASH_DIGEST_SIZE 64
-#define TCC_HSM_ECDSA_KEY_SIZE 64
-#define TCC_HSM_ECDSA_DIGEST_SIZE 64
-#define TCC_HSM_ECDSA_SIGN_SIZE 64
-
-#define TCC_HSM_MODE_N_SIZE 128
-#define TCC_HSM_RSA_DIG_SIZE 128
-#define TCC_HSM_RSA_SIG_SIZE 128
+#define TCCHSM_DEVICE_NAME ("tcc_hsm")
 
 enum tcc_hsm_ioctl_obj_id_aes {
 	OID_AES_ENCRYPT = 0x00000000,
@@ -99,142 +82,34 @@ enum tcc_hsm_ioctl_obj_id_ecc {
 	OID_SM2_256_SM3_256 = 0x010023A3,
 };
 
-struct tcc_hsm_ioctl_set_key_param {
-	uint32_t addr;
-	uint32_t data_size;
-	uint32_t key_index;
-};
-
-struct tcc_hsm_ioctl_aes_param {
-	uint32_t obj_id;
-	uint8_t key[TCC_HSM_AES_KEY_SIZE];
-	uint32_t key_size;
-	uint8_t iv[TCC_HSM_AES_IV_SIZE];
-	uint32_t iv_size;
-	uint8_t tag[TCC_HSM_AES_TAG_SIZE];
-	uint32_t tag_size;
-	uint8_t aad[TCC_HSM_AES_AAD_SIZE];
-	uint32_t aad_size;
-	uint64_t src;
-	uint32_t src_size;
-	uint64_t dst;
-	uint32_t dst_size;
-	uint32_t dma;
-};
-
-struct tcc_hsm_ioctl_aes_by_kt_param {
-	uint32_t obj_id;
-	uint32_t key_index;
-	uint8_t iv[TCC_HSM_AES_IV_SIZE];
-	uint32_t iv_size;
-	uint8_t tag[TCC_HSM_AES_TAG_SIZE];
-	uint32_t tag_size;
-	uint8_t aad[TCC_HSM_AES_AAD_SIZE];
-	uint32_t aad_size;
-	uint64_t src;
-	uint32_t src_size;
-	uint64_t dst;
-	uint32_t dst_size;
-	uint32_t dma;
-};
-
-struct tcc_hsm_ioctl_mac_param {
-	uint32_t obj_id;
-	uint8_t key[TCC_HSM_MAC_KEY_SIZE];
-	uint32_t key_size;
-	uint64_t src;
-	uint32_t src_size;
-	uint8_t mac[TCC_HSM_MAC_MSG_SIZE];
-	uint32_t mac_size;
-	uint32_t dma;
-};
-
-struct tcc_hsm_ioctl_mac_by_kt_param {
-	uint32_t obj_id;
-	uint32_t key_index;
-	uint64_t src;
-	uint32_t src_size;
-	uint8_t mac[TCC_HSM_MAC_MSG_SIZE];
-	uint32_t mac_size;
-	uint32_t dma;
-};
-
-struct tcc_hsm_ioctl_hash_param {
-	uint32_t obj_id;
-	uint64_t src;
-	uint32_t src_size;
-	uint8_t digest[TCC_HSM_HASH_DIGEST_SIZE];
-	uint32_t digest_size;
-	uint32_t dma;
-};
-
-struct tcc_hsm_ioctl_ecdsa_param {
-	uint32_t obj_id;
-	uint8_t key[TCC_HSM_ECDSA_KEY_SIZE];
-	uint32_t key_size;
-	uint8_t digest[TCC_HSM_ECDSA_DIGEST_SIZE];
-	uint32_t digest_size;
-	uint8_t sig[TCC_HSM_ECDSA_SIGN_SIZE];
-	uint32_t sig_size;
-};
-
-struct tcc_hsm_ioctl_rsassa_param {
-	uint32_t obj_id;
-	uint8_t modN[TCC_HSM_MODE_N_SIZE];
-	uint32_t modN_size;
-	uint64_t key;
-	uint32_t key_size;
-	uint8_t digest[TCC_HSM_RSA_DIG_SIZE];
-	uint32_t digest_size;
-	uint8_t sign[TCC_HSM_RSA_SIG_SIZE];
-	uint32_t sign_size;
-};
-
-struct tcc_hsm_ioctl_write_param {
-	uint32_t addr;
-	uint64_t data;
-	uint32_t data_size;
-};
-
-struct tcc_hsm_ioctl_rng_param {
-	uint64_t rng;
-	uint32_t rng_size;
-};
-
-struct tcc_hsm_ioctl_version_param {
-	uint32_t x;
-	uint32_t y;
-	uint32_t z;
-};
-
 // clang-format off
-#define HSM_IOCTL_MAGIC 'H'
-#define	HSM_SET_KEY_FROM_OTP_CMD		_IOWR(HSM_IOCTL_MAGIC, 0, unsigned int)
-#define	HSM_SET_KEY_FROM_SNOR_CMD		_IOWR(HSM_IOCTL_MAGIC, 1, unsigned int)
-#define	HSM_RUN_AES_CMD					_IOWR(HSM_IOCTL_MAGIC, 2, unsigned int)
-#define	HSM_RUN_AES_BY_KT_CMD			_IOWR(HSM_IOCTL_MAGIC, 3, unsigned int)
-#define	HSM_RUN_SM4_CMD					_IOWR(HSM_IOCTL_MAGIC, 4, unsigned int)
-#define	HSM_RUN_SM4_BY_KT_CMD			_IOWR(HSM_IOCTL_MAGIC, 5, unsigned int)
-#define	HSM_GEN_CMAC_VERIFY_CMD			_IOWR(HSM_IOCTL_MAGIC, 6, unsigned int)
-#define	HSM_GEN_CMAC_VERIFY_BY_KT_CMD	_IOWR(HSM_IOCTL_MAGIC, 7, unsigned int)
-#define	HSM_GEN_GMAC_CMD				_IOWR(HSM_IOCTL_MAGIC, 8, unsigned int)
-#define	HSM_GEN_GMAC_BY_KT_CMD			_IOWR(HSM_IOCTL_MAGIC, 9, unsigned int)
-#define	HSM_GEN_HMAC_CMD				_IOWR(HSM_IOCTL_MAGIC, 10, unsigned int)
-#define	HSM_GEN_HMAC_BY_KT_CMD			_IOWR(HSM_IOCTL_MAGIC, 11, unsigned int)
-#define	HSM_GEN_SM3_HMAC_CMD			_IOWR(HSM_IOCTL_MAGIC, 12, unsigned int)
-#define	HSM_GEN_SM3_HMAC_BY_KT_CMD		_IOWR(HSM_IOCTL_MAGIC, 13, unsigned int)
-#define	HSM_GEN_SHA_CMD					_IOWR(HSM_IOCTL_MAGIC, 14, unsigned int)
-#define	HSM_GEN_SM3_CMD					_IOWR(HSM_IOCTL_MAGIC, 15, unsigned int)
-#define	HSM_RUN_ECDSA_SIGN_CMD			_IOWR(HSM_IOCTL_MAGIC, 16, unsigned int)
-#define	HSM_RUN_ECDSA_VERIFY_CMD		_IOWR(HSM_IOCTL_MAGIC, 17, unsigned int)
-#define	HSM_RUN_RSASSA_PKCS_SIGN_CMD	_IOWR(HSM_IOCTL_MAGIC, 18, unsigned int)
-#define	HSM_RUN_RSASSA_PKCS_VERIFY_CMD	_IOWR(HSM_IOCTL_MAGIC, 19, unsigned int)
-#define	HSM_RUN_RSASSA_PSS_SIGN_CMD		_IOWR(HSM_IOCTL_MAGIC, 20, unsigned int)
-#define	HSM_RUN_RSASSA_PSS_VERIFY_CMD	_IOWR(HSM_IOCTL_MAGIC, 21, unsigned int)
-#define	HSM_GET_RNG_CMD					_IOWR(HSM_IOCTL_MAGIC, 22, unsigned int)
-#define	HSM_WRITE_OTP_CMD				_IOWR(HSM_IOCTL_MAGIC, 23, unsigned int)
-#define	HSM_WRITE_SNOR_CMD				_IOWR(HSM_IOCTL_MAGIC, 24, unsigned int)
-#define	HSM_GET_VER_CMD					_IOWR(HSM_IOCTL_MAGIC, 25, unsigned int)
+#define HSM_IOCTL_MAGIC (0x48U)
+#define	HSM_SET_KEY_FROM_OTP_CMD		(_IOWR(HSM_IOCTL_MAGIC, 0U, uint32_t))
+#define	HSM_SET_KEY_FROM_SNOR_CMD		(_IOWR(HSM_IOCTL_MAGIC, 1U, uint32_t))
+#define	HSM_RUN_AES_CMD					(_IOWR(HSM_IOCTL_MAGIC, 2U, uint32_t))
+#define	HSM_RUN_AES_BY_KT_CMD			(_IOWR(HSM_IOCTL_MAGIC, 3U, uint32_t))
+#define	HSM_RUN_SM4_CMD					(_IOWR(HSM_IOCTL_MAGIC, 4U, uint32_t))
+#define	HSM_RUN_SM4_BY_KT_CMD			(_IOWR(HSM_IOCTL_MAGIC, 5U, uint32_t))
+#define	HSM_GEN_CMAC_VERIFY_CMD			(_IOWR(HSM_IOCTL_MAGIC, 6U, uint32_t))
+#define	HSM_GEN_CMAC_VERIFY_BY_KT_CMD	(_IOWR(HSM_IOCTL_MAGIC, 7U, uint32_t))
+#define	HSM_GEN_GMAC_CMD				(_IOWR(HSM_IOCTL_MAGIC, 8U, uint32_t))
+#define	HSM_GEN_GMAC_BY_KT_CMD			(_IOWR(HSM_IOCTL_MAGIC, 9U, uint32_t))
+#define	HSM_GEN_HMAC_CMD				(_IOWR(HSM_IOCTL_MAGIC, 10U, uint32_t))
+#define	HSM_GEN_HMAC_BY_KT_CMD			(_IOWR(HSM_IOCTL_MAGIC, 11U, uint32_t))
+#define	HSM_GEN_SM3_HMAC_CMD			(_IOWR(HSM_IOCTL_MAGIC, 12U, uint32_t))
+#define	HSM_GEN_SM3_HMAC_BY_KT_CMD		(_IOWR(HSM_IOCTL_MAGIC, 13U, uint32_t))
+#define	HSM_GEN_SHA_CMD					(_IOWR(HSM_IOCTL_MAGIC, 14U, uint32_t))
+#define	HSM_GEN_SM3_CMD					(_IOWR(HSM_IOCTL_MAGIC, 15U, uint32_t))
+#define	HSM_RUN_ECDSA_SIGN_CMD			(_IOWR(HSM_IOCTL_MAGIC, 16U, uint32_t))
+#define	HSM_RUN_ECDSA_VERIFY_CMD		(_IOWR(HSM_IOCTL_MAGIC, 17U, uint32_t))
+#define	HSM_RUN_RSASSA_PKCS_SIGN_CMD	(_IOWR(HSM_IOCTL_MAGIC, 18U, uint32_t))
+#define	HSM_RUN_RSASSA_PKCS_VERIFY_CMD	(_IOWR(HSM_IOCTL_MAGIC, 19U, uint32_t))
+#define	HSM_RUN_RSASSA_PSS_SIGN_CMD		(_IOWR(HSM_IOCTL_MAGIC, 20U, uint32_t))
+#define	HSM_RUN_RSASSA_PSS_VERIFY_CMD	(_IOWR(HSM_IOCTL_MAGIC, 21U, uint32_t))
+#define	HSM_GET_RNG_CMD					(_IOWR(HSM_IOCTL_MAGIC, 22U, uint32_t))
+#define	HSM_WRITE_OTP_CMD				(_IOWR(HSM_IOCTL_MAGIC, 23U, uint32_t))
+#define	HSM_WRITE_SNOR_CMD				(_IOWR(HSM_IOCTL_MAGIC, 24U, uint32_t))
+#define	HSM_GET_VER_CMD					(_IOWR(HSM_IOCTL_MAGIC, 25U, uint32_t))
 // clang-format on
 
-#endif /*_TCC_HSM_H_*/
+#endif /* TCC_HSM_H */

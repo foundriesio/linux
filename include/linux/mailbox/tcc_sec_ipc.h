@@ -24,24 +24,27 @@
  * Syntatic structure used for commnication with A53 <-> M4, A7, R5.
  */
 struct sec_segment {
-	int cmd;		/**< Multi ipc command */
-	uint64_t data_addr;	/**< Data to send */
-	int size;		/**< Size of data */
-	uint64_t rdata_addr;	/**< Data to receive */
-	int rsize;		/**< Size of rdata */
-	unsigned int device_id;	/**< Type A53, A7, R5, M4  */
+	uint32_t cmd;       /**< Multi ipc command */
+	ulong data_addr;    /**< Data to send */
+	uint32_t size;      /**< Size of data */
+	ulong rdata_addr;   /**< Data to receive */
+	uint32_t rsize;     /**< Size of rdata */
+	uint32_t device_id; /**< Type A53, A7, R5, M4  */
 };
 
 /** Mailbox driver instance. */
-enum mbox_dev {
-	MBOX_DEV_M4 = 0,
-	MBOX_DEV_A7,
-	MBOX_DEV_R5,
-	MBOX_DEV_A53,
-	MBOX_DEV_A72,
-	MBOX_DEV_HSM,
-	MBOX_DEV_MAX
-};
+#define MBOX_DEV_M4 (0U)
+#define MBOX_DEV_A7 (1U)
+#define MBOX_DEV_R5 (2U)
+#define MBOX_DEV_A53 (3U)
+#define MBOX_DEV_A72 (4U)
+#define MBOX_DEV_HSM (5U)
+#define MBOX_DEV_MAX (6U)
+
+#define TCC_MBOX_MAX_SIZE (512U)
+
+#define MBOX_NONE_DMA (0U)
+#define MBOX_DMA (1U)
 
 /**
  * @defgroup spdrv Multi IPC Device Driver
@@ -92,9 +95,11 @@ enum mbox_dev {
 #define SEC_IPC_EVENT(magic_num, event) \
 	((1 << (event + 15)) | ((magic_num & 0xF) << 12))
 
-void sec_set_callback(int (*dmx_callback) (int cmd, void *rdata, int size));
-int sec_sendrecv_cmd(unsigned int device_id, int cmd, void *data, int size,
-		     void *rdata, int rsize);
+void sec_set_callback(
+	int32_t (*dmx_cb)(int32_t cmd, void *rdata, int32_t size));
+int32_t sec_sendrecv_cmd(
+	uint32_t device_id, uint32_t cmd, void *data, uint32_t size,
+	void *rdata, uint32_t rsize);
 
 /** @} */
 

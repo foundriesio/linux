@@ -14,9 +14,10 @@
  * this program; if not, write to the Free Software Foundation, Inc., 59 Temple
  * Place, Suite 330, Boston, MA 02111-1307 USA
  */
-
-//#define NDEBUG
-#define TLOG_LEVEL TLOG_WARNING
+#if 0
+#define NDEBUG
+#endif
+#define TLOG_LEVEL (TLOG_WARNING)
 #include "tcc_ipc_log.h"
 
 #include <linux/mailbox/tcc_sec_ipc.h>
@@ -44,24 +45,27 @@
  *	communicating with a72 <-> A53, R5, M4. (for TCC805x)
  */
 
-#define DEVICE_NAME "sec-ipc"
+#define DEVICE_NAME ("sec-ipc")
 
 /** Used when R2R/M2M data is transfered to SP. */
-#define MBOX_DMA_SIZE (1 * 1024 * 1024)
+#define MBOX_DMA_SIZE (1U * 1024U * 1024U)
 
 /** Time to wait for SP to respond. */
-#define CMD_TIMEOUT msecs_to_jiffies(10000)
+#define CMD_TIMEOUT (msecs_to_jiffies(10000))
 
 /** Returns a demux event from a mailbox command. The demux event can be
  * distinguished by cmd[15:12], i.e. magic number 0 for demux event.
  */
-#define IS_DMX_EVENT(cmd) (((cmd)&0xFFFF0000) && (0 == (((cmd)&0xF000) >> 12)))
+#define IS_DMX_EVENT(cmd)                     \
+	((0U != (((cmd)&0xFFFF0000U) >> 16U)) \
+	 && (0U == (((cmd)&0xF000U) >> 12U)))
 
 /** Returns an event from a mailbox command. The event can be
  * distinguished by cmd[15:12], magic number of THSM is 5
  */
-#define IS_THSM_EVENT(cmd) (5 == (((cmd)&0xF000) >> 12))
-#define HSM_EVENT_FLAG(cmd) (1 << cmd)
+#define IS_THSM_EVENT(cmd) (5U == (((cmd)&0xF000U) >> 12U))
+#define HSM_EVENT_FLAG(cmd) (1U << (cmd))
+
 //#define DEBUG_TIME_MEASUREMENT 1
 
 static const struct of_device_id sec_ipc_dt_id[7] = {
@@ -82,16 +86,16 @@ struct sec_device {
 	struct cdev cdev;
 	dev_t devnum;
 	struct class *class;
-	int mbox_received;
+	int32_t mbox_received;
 	struct mbox_chan *mbox_ch;
 	uint32_t recv_event;
-	unsigned char *vaddr;	// Holds a virtual address to DMA.
-	dma_addr_t paddr;	// Holds a physical address to DMA.
+	uint8_t *vaddr;   // Holds a virtual address to DMA.
+	dma_addr_t paddr; // Holds a physical address to DMA.
 };
 
 static struct sec_device *sec_device[MBOX_DEV_MAX];
 
-static int (*dmx_callback)(int cmd, void *rdata, int size);
+static int32_t (*dmx_callback)(int32_t cmd, void *rdata, int32_t size);
 static DECLARE_WAIT_QUEUE_HEAD(waitq);
 static DECLARE_WAIT_QUEUE_HEAD(event_waitq);
 
@@ -112,7 +116,7 @@ static void __iomem *codebase;
  */
 static void __iomem *cfgbase;
 
-static int sec_set_device(int device_id, struct sec_device *sec_dev)
+static int32_t sec_set_device(uint32_t device_id, struct sec_device *sec_dev)
 {
 	if (device_id == MBOX_DEV_M4) {
 		sec_device[MBOX_DEV_M4] = sec_dev;
@@ -133,7 +137,7 @@ static int sec_set_device(int device_id, struct sec_device *sec_dev)
 	return 0;
 }
 
-static struct sec_device *sec_get_device(int device_id)
+static struct sec_device *sec_get_device(uint32_t device_id)
 {
 	if (device_id == MBOX_DEV_M4) {
 		return sec_device[MBOX_DEV_M4];
@@ -152,23 +156,47 @@ static struct sec_device *sec_get_device(int device_id)
 	}
 }
 
-static int sec_get_device_id(const char *dev_name)
+static uint32_t sec_get_device_id(const int8_t *dev_name)
 {
-	if (!strcmp(dev_name, "sec-ipc-m4")) {
+	if (strcmp(dev_name, (const int8_t *)"sec-ipc-m4") == 0) {
 		return MBOX_DEV_M4;
-	} else if (!strcmp(dev_name, "sec-ipc-a7")) {
+	} else if (strcmp(dev_name, (const int8_t *)"sec-ipc-a7") == 0) {
 		return MBOX_DEV_A7;
-	} else if (!strcmp(dev_name, "sec-ipc-a53")) {
+	} else if (strcmp(dev_name, (const int8_t *)"sec-ipc-a53") == 0) {
 		return MBOX_DEV_A53;
-	} else if (!strcmp(dev_name, "sec-ipc-a72")) {
+	} else if (strcmp(dev_name, (const int8_t *)"sec-ipc-a72") == 0) {
 		return MBOX_DEV_A72;
-	} else if (!strcmp(dev_name, "sec-ipc-r5")) {
+	} else if (strcmp(dev_name, (const int8_t *)"sec-ipc-r5") == 0) {
 		return MBOX_DEV_R5;
-	} else if (!strcmp(dev_name, "sec-ipc-hsm")) {
+	} else if (strcmp(dev_name, (const int8_t *)"sec-ipc-hsm") == 0) {
 		return MBOX_DEV_HSM;
 	} else {
-		return -EINVAL;
+		return EINVAL;
 	}
+}
+
+/* To reduce codesonar warning message */
+static int32_t tcc_copy_from_user(void *param, ulong arg, uint32_t size)
+{
+	if (copy_from_user((void *)param, (const void *)arg, (ulong)size)
+	    != (ulong)0) {
+		ELOG("copy_from_user failed\n");
+		return -ENOMEM;
+	}
+
+	return 0;
+}
+
+/* To reduce codesonar warning message */
+static int32_t tcc_copy_to_user(ulong arg, void *param, uint32_t size)
+{
+	if (copy_to_user((void *)arg, (const void *)param, (ulong)size)
+	    != (ulong)0) {
+		ELOG("copy_to_user failed\n");
+		return -ENOMEM;
+	}
+
+	return 0;
 }
 
 /**
@@ -183,17 +211,19 @@ static int sec_get_device_id(const char *dev_name)
  * @return On success, it returns received byte size and a errno, e.g.
  *-EXXX,otherwise.
  */
-int sec_sendrecv_cmd(unsigned int device_id, int cmd, void *data, int size,
-		     void *rdata, int rsize)
+int32_t sec_sendrecv_cmd(
+	uint32_t device_id, uint32_t cmd, void *data, uint32_t size,
+	void *rdata, uint32_t rsize)
 {
-	struct tcc_mbox_data mbox_data = { 0 };
-	int result = 0, mbox_result = 0;
-	unsigned int data_size = 0;
+	struct tcc_mbox_data mbox_data;
+	int32_t result = 0;
+	int32_t mbox_result = 0;
+	uint32_t data_size = 0;
 	struct sec_device *sec_dev = NULL;
+
 #ifdef DEBUG_TIME_MEASUREMENT
-	struct timeval t1 = { 0 }, t2 = {
-	0};
-	int time_gap_ms = 0;
+	struct timeval t1 = {0}, t2 = {0};
+	int32_t time_gap_ms = 0;
 #endif
 
 	sec_dev = sec_get_device(device_id);
@@ -202,12 +232,8 @@ int sec_sendrecv_cmd(unsigned int device_id, int cmd, void *data, int size,
 		return -EINVAL;
 	}
 
-	if (size < 0 || MBOX_DMA_SIZE < size) {
-		ELOG("size is %d\n", size);
-		return -EINVAL;
-	}
-	if (rsize < 0 || MBOX_DMA_SIZE < rsize) {
-		ELOG("rsize is %d\n", size);
+	if ((MBOX_DMA_SIZE < size) || (MBOX_DMA_SIZE < rsize)) {
+		ELOG("size=%d rsize=%d\n", size, rsize);
 		return -EINVAL;
 	}
 	if (!sec_dev->mbox_ch) {
@@ -216,21 +242,21 @@ int sec_sendrecv_cmd(unsigned int device_id, int cmd, void *data, int size,
 	}
 	mutex_lock(&mutex);
 	mbox_data.cmd[0] = cmd;
-	mbox_data.cmd[1] = sec_dev->paddr;
+	mbox_data.cmd[1] = (uint32_t)sec_dev->paddr;
 	mbox_data.cmd[3] = size;
-	mbox_data.data_len = ((size + 3) / sizeof(unsigned int));
+	mbox_data.data_len = ((size + 3U) / (uint32_t)sizeof(uint32_t));
 	data_size = size;
 
 	// size 0 is included on purpose to send a command without data
-	if (size <= TCC_MBOX_MAX_MSG) {
+	if (size <= TCC_MBOX_MAX_SIZE) {
 		memcpy(mbox_data.data, data, size);
-		mbox_data.cmd[2] = DATA_MBOX;
+		mbox_data.cmd[2] = MBOX_NONE_DMA;
 		DLOG("cmd %X, size %d\n", cmd, size);
 		// print_hex_dump_bytes("Sending message: ",
 		// DUMP_PREFIX_ADDRESS, mbox_msg.message, size);
 	} else {
 		memcpy(sec_dev->vaddr, data, size);
-		mbox_data.cmd[2] = DMA;
+		mbox_data.cmd[2] = MBOX_DMA;
 	}
 
 	// Init condition to wait
@@ -243,13 +269,13 @@ int sec_sendrecv_cmd(unsigned int device_id, int cmd, void *data, int size,
 		result = -EINVAL;
 		goto out;
 	}
-	// Awaiting mbox_msg_received to be called.
+		// Awaiting mbox_msg_received to be called.
 #ifdef DEBUG_TIME_MEASUREMENT
 	do_gettimeofday(&t1);
 #endif
-	result =
-	    wait_event_timeout(waitq, sec_dev->mbox_received == 1, CMD_TIMEOUT);
-	if (result == 0 && (sec_dev->mbox_received != 1)) {
+	result = wait_event_timeout(
+		waitq, sec_dev->mbox_received == 1, CMD_TIMEOUT);
+	if ((result == 0) && (sec_dev->mbox_received != 1)) {
 		ELOG("Cmd: %d Timeout\n", cmd);
 		result = -EINVAL;
 		goto out;
@@ -257,27 +283,28 @@ int sec_sendrecv_cmd(unsigned int device_id, int cmd, void *data, int size,
 #ifdef DEBUG_TIME_MEASUREMENT
 	do_gettimeofday(&t2);
 	time_gap_ms = ((t2.tv_sec - t1.tv_sec) * 1000)
-	    + ((t2.tv_usec - t1.tv_usec) / 1000);
+		+ ((t2.tv_usec - t1.tv_usec) / 1000);
 	DLOG("SendRecv gap time = %d ms\n", time_gap_ms)
 #endif
-	    // mbox_rmsg.msg_len is set at this point by sec_msg_received
-	    // Nothing to read
-	if (rdata == NULL || rsize == 0) {
+	// mbox_rmsg.msg_len is set at this point by sec_msg_received
+	// Nothing to read
+	if ((rdata == NULL) || (rsize == 0U)) {
 		result = 0;
 		goto out;
 	}
-	if (sec_dev->mbox_rmsg.msg_len > rsize) {
+	if (sec_dev->mbox_rmsg.msg_len > (int32_t)rsize) {
 		result = -EPERM;
 		ELOG("received msg size(0x%x) is larger than rsize(0x%x)\n",
 		     sec_dev->mbox_rmsg.msg_len, rsize);
 		goto out;
 	}
 	// Copy received data
-	if (sec_dev->mbox_rmsg.trans_type == DATA_MBOX) {
+	if (sec_dev->mbox_rmsg.trans_type == (int32_t)MBOX_NONE_DMA) {
 		memcpy(rdata, sec_dev->mbox_rmsg.message,
-		       sec_dev->mbox_rmsg.msg_len);
+		       (uint32_t)sec_dev->mbox_rmsg.msg_len);
 	} else {
-		memcpy(rdata, sec_dev->vaddr, sec_dev->mbox_rmsg.msg_len);
+		memcpy(rdata, sec_dev->vaddr,
+		       (uint32_t)sec_dev->mbox_rmsg.msg_len);
 	}
 	result = sec_dev->mbox_rmsg.msg_len;
 out:
@@ -295,57 +322,40 @@ EXPORT_SYMBOL(sec_sendrecv_cmd);
  *	When the demux driver is refactored, this function will be removed.
  * @param dmx_cb  a pointer to a callback function.
  */
-void sec_set_callback(int (*dmx_cb) (int cmd, void *rdata, int size))
+void sec_set_callback(int32_t (*dmx_cb)(int32_t cmd, void *rdata, int32_t size))
 {
 	dmx_callback = dmx_cb;
 }
 EXPORT_SYMBOL(sec_set_callback);
 
-static int sec_open(struct inode *inode, struct file *filp)
+static int32_t sec_open(struct inode *inode, struct file *filp)
 {
 	return 0;
 }
 
-static int sec_release(struct inode *inode, struct file *filp)
+static int32_t sec_release(struct inode *inode, struct file *filp)
 {
 	return 0;
 }
 
-static int sec_reset_ioctl(unsigned long arg)
+static int32_t sec_send_cmd_ioctl(ulong arg)
 {
-	int ret = 0;
-	unsigned int reg;
-
-	reg = readl_relaxed(cfgbase + 0x18);
-	writel_relaxed(reg | 0x6, cfgbase + 0x18);	// SP Reset
-	msleep(1000);
-	reg = readl_relaxed(cfgbase + 0x18);
-	if (copy_from_user(codebase, (void *)arg, 0x10000) != 0) {
-		ELOG("copy_from_user failed.\n");
-		return -EFAULT;
-	}
-	writel_relaxed(reg & ~(0x6), cfgbase + 0x18);	// SP Reset
-	reg = readl_relaxed(cfgbase + 0x18);
-	return ret;
-}
-
-static int sec_send_cmd_ioctl(unsigned long arg)
-{
-	struct tcc_mbox_data mbox_data = { 0 };
-	int result = 0, mbox_result = 0;
-	unsigned int data_size = 0;
+	struct tcc_mbox_data mbox_data;
+	int32_t result = 0;
+	int32_t mbox_result = 0;
+	uint32_t data_size = 0;
 	struct sec_device *sec_dev = NULL;
 	struct sec_segment segment;
 
 	// Copy data from user space to kernel space
-	result =
-	    copy_from_user(&segment, (void *)arg, sizeof(struct sec_segment));
+	result = tcc_copy_from_user(
+		(void *)&segment, arg, sizeof(struct sec_segment));
 	if (result != 0) {
 		ELOG("copy_from_user failed: %d\n", result);
 		return result;
 	}
 
-	if (segment.size < 0 || MBOX_DMA_SIZE < segment.size) {
+	if (MBOX_DMA_SIZE < segment.size) {
 		ELOG("size is %d\n", segment.size);
 		return -EINVAL;
 	}
@@ -361,20 +371,20 @@ static int sec_send_cmd_ioctl(unsigned long arg)
 		return -EINVAL;
 	}
 	data_size = segment.size;
-	mbox_data.cmd[0] = 0;	// To be handled by a normal command
-	mbox_data.cmd[1] = (unsigned int)sec_dev->paddr;
+	mbox_data.cmd[0] = 0; // To be handled by a normal command
+	mbox_data.cmd[1] = (uint32_t)sec_dev->paddr;
 	mbox_data.cmd[3] = data_size;
-	mbox_data.data_len = ((data_size + 3) / sizeof(unsigned int));
+	mbox_data.data_len = ((data_size + 3U) / (uint32_t)sizeof(uint32_t));
 	// size 0 is included on purpose to send a command without data
-	if (data_size <= TCC_MBOX_MAX_MSG) {
-		memcpy(mbox_data.data, (unsigned int *)segment.data_addr,
+	if (data_size <= TCC_MBOX_MAX_SIZE) {
+		memcpy((void *)mbox_data.data, (const void *)segment.data_addr,
 		       data_size);
-		mbox_data.cmd[2] = DATA_MBOX;
+		mbox_data.cmd[2] = MBOX_NONE_DMA;
 		DLOG("cmd=0x%X, data size=0x%x\n", segment.cmd, data_size);
 	} else {
-		memcpy(sec_dev->vaddr, (unsigned int *)segment.data_addr,
+		memcpy((void *)sec_dev->vaddr, (const void *)segment.data_addr,
 		       data_size);
-		mbox_data.cmd[2] = DMA;
+		mbox_data.cmd[2] = MBOX_DMA;
 	}
 	DLOG("SEND cmd[0]=0x%x dma addr=0x%x dma type=0x%x data_len=0x%x\n",
 	     mbox_data.cmd[0], mbox_data.cmd[1], mbox_data.cmd[2],
@@ -393,11 +403,11 @@ out:
 	return result;
 }
 
-static int sec_get_evt_ioctl(unsigned long arg)
+static int32_t sec_get_evt_ioctl(ulong arg)
 {
-	int result = -1;
+	int32_t result = -1;
 
-	result = copy_to_user((void *)arg, &recv_event, sizeof(uint32_t));
+	result = tcc_copy_to_user(arg, (void *)&recv_event, sizeof(uint32_t));
 	if (result != 0) {
 		ELOG("copy_to_user failed: %d\n", result);
 	}
@@ -405,15 +415,14 @@ static int sec_get_evt_ioctl(unsigned long arg)
 	return result;
 }
 
-static int sec_get_evt_info_ioctl(unsigned long arg)
+static int32_t sec_get_evt_info_ioctl(ulong arg)
 {
-	int result = 0;
+	int32_t result = 0;
 	struct sec_segment segment_user;
 	struct sec_device *sec_dev = NULL;
 
-	result =
-	    copy_from_user(&segment_user, (void *)arg,
-			   sizeof(struct sec_segment));
+	result = tcc_copy_from_user(
+		(void *)&segment_user, arg, sizeof(struct sec_segment));
 	if (result != 0) {
 		ELOG("copy_from_user failed: %d\n", result);
 		return result;
@@ -426,14 +435,15 @@ static int sec_get_evt_info_ioctl(unsigned long arg)
 	}
 
 	/* Send received data */
-	if (sec_dev->mbox_rmsg.trans_type == DATA_MBOX) {
-		result = copy_to_user((void *)segment_user.rdata_addr,
-				      (void *)&sec_dev->mbox_rmsg.message,
-				      sec_dev->mbox_rmsg.msg_len);
+	if (sec_dev->mbox_rmsg.trans_type == (int32_t)MBOX_NONE_DMA) {
+		result = tcc_copy_to_user(
+			segment_user.rdata_addr,
+			(void *)&sec_dev->mbox_rmsg.message,
+			(uint32_t)sec_dev->mbox_rmsg.msg_len);
 	} else {
-		result = copy_to_user((void *)segment_user.rdata_addr,
-				      (void *)&sec_dev->vaddr,
-				      sec_dev->mbox_rmsg.msg_len);
+		result = tcc_copy_to_user(
+			segment_user.rdata_addr, (void *)&sec_dev->vaddr,
+			(uint32_t)sec_dev->mbox_rmsg.msg_len);
 	}
 	if (result != 0) {
 		ELOG("copy_to_user failed: %d\n", result);
@@ -441,30 +451,27 @@ static int sec_get_evt_info_ioctl(unsigned long arg)
 	}
 
 	/* Send cmd and rsize */
-	segment_user.cmd = sec_dev->mbox_rmsg.cmd;
-	segment_user.rsize = sec_dev->mbox_rmsg.msg_len;
-	result = copy_to_user((void *)arg, &segment_user,
-			      sizeof(struct sec_segment));
+	segment_user.cmd = (uint32_t)sec_dev->mbox_rmsg.cmd;
+	segment_user.rsize = (uint32_t)sec_dev->mbox_rmsg.msg_len;
+	result = tcc_copy_to_user(
+		arg, (void *)&segment_user, sizeof(struct sec_segment));
 	if (result != 0) {
 		ELOG("copy_to_user failed: %d\n", result);
 		return result;
 	}
 	recv_event &= ~(HSM_EVENT_FLAG(segment_user.device_id));
-	memset(sec_dev->mbox_rmsg.message, 0, sec_dev->mbox_rmsg.msg_len);
+	memset(sec_dev->mbox_rmsg.message, 0,
+	       (uint32_t)sec_dev->mbox_rmsg.msg_len);
 	sec_dev->mbox_rmsg.msg_len = 0;
 
 	return result;
 }
 
-static long sec_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
+static long sec_ioctl(struct file *filp, uint32_t cmd, ulong arg)
 {
-	int result = 0;
+	int32_t result = 0;
 
 	switch (cmd) {
-	case SEC_RESET:	/* For debugging */
-		result = sec_reset_ioctl(arg);
-		break;
-
 	case SEC_SEND_CMD:
 		result = sec_send_cmd_ioctl(arg);
 		break;
@@ -486,25 +493,25 @@ static long sec_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 	return result;
 }
 
-static unsigned int sec_poll(struct file *filp, poll_table *wait)
+static uint32_t sec_poll(struct file *filp, poll_table *wait)
 {
 	poll_wait(filp, &event_waitq, wait);
 
-	if (recv_event != 0) {
+	if (recv_event != 0U) {
 		return POLLPRI;
 	} else {
 		return 0;
 	}
 }
 
-#if 0				// Test code
-static int sec_send_cmd(int cmd, void *data, int size, int device_id)
+#if 0 // Test code
+static int32_t sec_send_cmd(int32_t cmd, void *data, int32_t size, int32_t device_id)
 {
 	struct tcc_mbox_data mbox_data = {
 		0,
 	};
-	int result = 0, mbox_result = 0;
-	unsigned int data_size = 0;
+	int32_t result = 0, mbox_result = 0;
+	uint32_t data_size = 0;
 	struct sec_device *sec_dev = NULL;
 
 	sec_dev = sec_get_device(device_id);
@@ -524,15 +531,15 @@ static int sec_send_cmd(int cmd, void *data, int size, int device_id)
 	mbox_data.cmd[0] = cmd;
 	mbox_data.cmd[1] = (unsigned int)sec_dev->paddr;
 	mbox_data.cmd[3] = size;
-	mbox_data.data_len = ((size + 3) / sizeof(unsigned int));
+	mbox_data.data_len = ((size + 3) / (uint32_t)sizeof(uint32_t));
 	data_size = size;
 	// size 0 is included on purpose to send a command without data
-	if (size <= TCC_MBOX_MAX_MSG) {
+	if (size <= TCC_MBOX_MAX_SIZE) {
 		memcpy(mbox_data.data, data, size);
-		mbox_data.cmd[2] = DATA_MBOX;
-	} else if (size > TCC_MBOX_MAX_MSG) {
+		mbox_data.cmd[2] = MBOX_NONE_DMA;
+	} else if (size > TCC_MBOX_MAX_SIZE) {
 		memcpy(sec_dev->vaddr, data, size);
-		mbox_data.cmd[2] = DMA;
+		mbox_data.cmd[2] = MBOX_DMA;
 	}
 	DLOG("SEND cmd[0]=0x%x cmd[1]=0x%x cmd[2]=0x%x len=0x%x\n",
 	     mbox_data.cmd[0], mbox_data.cmd[1], mbox_data.cmd[2],
@@ -551,10 +558,10 @@ out:
 	return result;
 }
 
-static void test_send_mbox(int cmd)
+static void test_send_mbox(int32_t cmd)
 {
-	int device_id = MBOX_DEV_R5;
-	unsigned char buffer[40] = {
+	int32_t device_id = MBOX_DEV_R5;
+	uint8_t buffer[40] = {
 		0x00, 0x00, 0x00, 0x00, 0x20, 0x00, 0x00, 0x00, 0x28, 0x21,
 		0x0f, 0xde, 0x1f, 0x51, 0xc0, 0x0b, 0x59, 0x68, 0x33, 0x6a,
 		0x4a, 0x87, 0x83, 0x12, 0x7a, 0x33, 0x56, 0xca, 0xfc, 0xfd,
@@ -573,11 +580,14 @@ static void sec_msg_received(struct mbox_client *client, void *message)
 {
 	struct tcc_mbox_data *mbox_data = NULL;
 	struct sec_device *sec_dev = NULL;
-	int msg_len = -1, cmd = -1, trans_type = -1, dma_addr = -1;
-	int device_id = -1;
+	uint32_t msg_len = 0;
+	uint32_t cmd = 0;
+	uint32_t trans_type = 0;
+	uint32_t dma_addr = 0;
+	uint32_t device_id = 0;
 
 	mbox_data = (struct tcc_mbox_data *)message;
-	device_id = sec_get_device_id(client->dev->init_name);
+	device_id = sec_get_device_id((const int8_t *)client->dev->init_name);
 	sec_dev = sec_get_device(device_id);
 	if (sec_dev == NULL) {
 		ELOG("Can't find device\n");
@@ -590,46 +600,48 @@ static void sec_msg_received(struct mbox_client *client, void *message)
 	trans_type = mbox_data->cmd[2];
 	msg_len = mbox_data->cmd[3];
 
-	if (IS_DMX_EVENT(cmd)) {	/* Demux event */
+	if (IS_DMX_EVENT(cmd) != (bool)0) { /* Demux event */
 		if (dmx_callback != NULL) {
 			dmx_callback(cmd, mbox_data->data, msg_len);
 		}
-	} else if (IS_THSM_EVENT(cmd)) {
-		if (trans_type == DATA_MBOX)
+	} else if (IS_THSM_EVENT(cmd) != (bool)0) {
+		if (trans_type == MBOX_NONE_DMA)
 			memcpy(sec_dev->mbox_rmsg.message, mbox_data->data,
 			       msg_len);
-		else
+		else {
 			sec_dev->mbox_rmsg.dma_addr = dma_addr;
+		}
 
-		sec_dev->mbox_rmsg.trans_type = trans_type;
-		sec_dev->mbox_rmsg.msg_len = msg_len;
-		sec_dev->mbox_rmsg.cmd = _IOC_NR(cmd);
-		recv_event |= HSM_EVENT_FLAG(device_id);
+		sec_dev->mbox_rmsg.trans_type = (int32_t)trans_type;
+		sec_dev->mbox_rmsg.msg_len = (int32_t)msg_len;
+		sec_dev->mbox_rmsg.cmd = (int32_t)_IOC_NR(cmd);
+		recv_event |= (uint32_t)HSM_EVENT_FLAG(device_id);
 		wake_up(&event_waitq);
 		// test_send_mbox(cmd);
-	} else {		/* For normal SP commands */
-		if (trans_type == DATA_MBOX)
+	} else { /* For normal SP commands */
+		if (trans_type == MBOX_NONE_DMA)
 			memcpy(sec_dev->mbox_rmsg.message, mbox_data->data,
 			       msg_len);
-		else
+		else {
 			sec_dev->mbox_rmsg.dma_addr = dma_addr;
-		sec_dev->mbox_rmsg.trans_type = trans_type;
-		sec_dev->mbox_rmsg.msg_len = msg_len;
+		}
+		sec_dev->mbox_rmsg.trans_type = (int32_t)trans_type;
+		sec_dev->mbox_rmsg.msg_len = (int32_t)msg_len;
 		sec_dev->mbox_received = 1;
 		wake_up(&waitq);
 	}
 }
 
 #if defined(CONFIG_ARCH_TCC803X)
-static void sec_msg_sent(struct mbox_client *client, void *message, int r)
+static void sec_msg_sent(struct mbox_client *client, void *message, int32_t r)
 {
 	if (r) {
 		ELOG("Message could not be sent: %d\n", r);
 	}
 }
 #endif
-static struct mbox_chan *sec_request_channel(struct platform_device *pdev,
-					     const char *name)
+static struct mbox_chan *
+sec_request_channel(struct platform_device *pdev, const int8_t *name)
 {
 	struct mbox_client *client;
 	struct mbox_chan *channel;
@@ -671,19 +683,19 @@ static const struct file_operations fops = {
 	.llseek = generic_file_llseek,
 };
 
-static int sec_probe(struct platform_device *pdev)
+static int32_t sec_probe(struct platform_device *pdev)
 {
-	int result = 0;
+	int32_t result = 0;
 	struct sec_device *sec_dev = NULL;
 
 	sec_dev =
-	    devm_kzalloc(&pdev->dev, sizeof(struct sec_device), GFP_KERNEL);
+		devm_kzalloc(&pdev->dev, sizeof(struct sec_device), GFP_KERNEL);
 	if (!sec_dev) {
 		ELOG("Cannot alloc sec device..\n");
 		return -ENOMEM;
 	}
 	result = alloc_chrdev_region(&sec_dev->devnum, 0, 1, DEVICE_NAME);
-	if (result) {
+	if (result != 0) {
 		ELOG("alloc_chrdev_region error %d\n", result);
 		return result;
 	}
@@ -691,23 +703,22 @@ static int sec_probe(struct platform_device *pdev)
 	cdev_init(&sec_dev->cdev, &fops);
 	sec_dev->cdev.owner = THIS_MODULE;
 	result = cdev_add(&sec_dev->cdev, sec_dev->devnum, 1);
-	if (result) {
+	if (result != 0) {
 		ELOG("cdev_add error %d\n", result);
 		goto cdev_add_error;
 	}
 
 	sec_dev->class = class_create(THIS_MODULE, pdev->name);
 	if (IS_ERR(sec_dev->class)) {
-		result = PTR_ERR(sec_dev->class);
+		result = -EPROBE_DEFER;
 		ELOG("class_create error %d\n", result);
 		goto class_create_error;
 	}
 
-	sec_dev->device =
-	    device_create(sec_dev->class, &pdev->dev, sec_dev->devnum, NULL,
-			  DEVICE_NAME);
+	sec_dev->device = device_create(
+		sec_dev->class, &pdev->dev, sec_dev->devnum, NULL, DEVICE_NAME);
 	if (IS_ERR(sec_dev->device)) {
-		result = PTR_ERR(sec_dev->device);
+		result = -EPROBE_DEFER;
 		ELOG("device_create error %d\n", result);
 		goto device_create_error;
 	}
@@ -722,9 +733,8 @@ static int sec_probe(struct platform_device *pdev)
 	cfgbase = of_iomap(pdev->dev.of_node, 1);
 	DLOG("code(%p) cfg(%p)\n", codebase, cfgbase);
 
-	sec_dev->vaddr =
-	    dma_alloc_coherent(&pdev->dev, MBOX_DMA_SIZE, &sec_dev->paddr,
-			       GFP_KERNEL);
+	sec_dev->vaddr = dma_alloc_coherent(
+		&pdev->dev, MBOX_DMA_SIZE, &sec_dev->paddr, GFP_KERNEL);
 	if (sec_dev->vaddr == NULL) {
 		result = PTR_ERR(sec_dev->vaddr);
 		ELOG("DMA alloc fail: %d\n", result);
@@ -756,14 +766,14 @@ cdev_add_error:
 	return result;
 }
 
-static int sec_remove(struct platform_device *pdev)
+static int32_t sec_remove(struct platform_device *pdev)
 {
 	struct sec_device *sec_dev = NULL;
 
 	sec_dev = sec_get_device(sec_get_device_id(pdev->name));
 
-	dma_free_coherent(&pdev->dev, MBOX_DMA_SIZE, sec_dev->vaddr,
-			  sec_dev->paddr);
+	dma_free_coherent(
+		&pdev->dev, MBOX_DMA_SIZE, sec_dev->vaddr, sec_dev->paddr);
 	mbox_free_channel(sec_dev->mbox_ch);
 	device_destroy(sec_dev->class, sec_dev->devnum);
 	class_destroy(sec_dev->class);
@@ -784,14 +794,14 @@ static struct platform_driver secdriver = {
 
 // clang-format on
 
-static int __init sec_init(void)
+static int32_t __init sec_init(void)
 {
 	return platform_driver_register(&secdriver);
 }
 
 fs_initcall(sec_init)
 
-static void __exit sec_exit(void)
+	static void __exit sec_exit(void)
 {
 	platform_driver_unregister(&secdriver);
 }
@@ -802,5 +812,3 @@ MODULE_DESCRIPTION("Telechips SEC IPC interface");
 MODULE_AUTHOR("Telechips co.");
 MODULE_LICENSE("GPL");
 MODULE_VERSION("0.1");
-
-/** @} */

@@ -13,98 +13,208 @@
  *
  */
 
-#ifndef _TCC_HSM_CMD_H_
-#define _TCC_HSM_CMD_H_
+#ifndef TCC_HSM_CMD_H
+#define TCC_HSM_CMD_H
 
 // clang-format off
-#define REQ_HSM_RUN_AES                     0x10010000
-#define REQ_HSM_RUN_AES_BY_KT               0x10020000
-#define REQ_HSM_RUN_SM4                     0x10030000
-#define REQ_HSM_RUN_SM4_BY_KT               0x10040000
+#define HSM_OK							(0)
+#define HSM_GENERAL_FAIL				(-1)
+#define HSM_INVALID_PARAM				(-2)
 
-#define REQ_HSM_VERIFY_CMAC                 0x10110000
-#define REQ_HSM_VERIFY_CMAC_BY_KT           0x10120000
-#define REQ_HSM_GEN_GMAC                    0x10130000
-#define REQ_HSM_GEN_GMAC_BY_KT              0x10140000
-#define REQ_HSM_GEN_HMAC                    0x10150000
-#define REQ_HSM_GEN_HMAC_BY_KT              0x10160000
-#define REQ_HSM_GEN_SM3_HMAC                0x10170000
-#define REQ_HSM_GEN_SM3_HMAC_BY_KT          0x10180000
+#define REQ_HSM_RUN_AES                     (0x10010000U)
+#define REQ_HSM_RUN_AES_BY_KT               (0x10020000U)
+#define REQ_HSM_RUN_SM4                     (0x10030000U)
+#define REQ_HSM_RUN_SM4_BY_KT               (0x10040000U)
 
-#define REQ_HSM_GEN_SHA                     0x10210000
-#define REQ_HSM_GEN_SM3                     0x10220000
+#define REQ_HSM_VERIFY_CMAC                 (0x10110000U)
+#define REQ_HSM_VERIFY_CMAC_BY_KT           (0x10120000U)
+#define REQ_HSM_GEN_GMAC                    (0x10130000U)
+#define REQ_HSM_GEN_GMAC_BY_KT              (0x10140000U)
+#define REQ_HSM_GEN_HMAC                    (0x10150000U)
+#define REQ_HSM_GEN_HMAC_BY_KT              (0x10160000U)
+#define REQ_HSM_GEN_SM3_HMAC                (0x10170000U)
+#define REQ_HSM_GEN_SM3_HMAC_BY_KT          (0x10180000U)
 
-#define REQ_HSM_RUN_ECDSA_SIGN              0x10310000
-#define REQ_HSM_RUN_ECDSA_VERIFY            0x10320000
+#define REQ_HSM_GEN_SHA                     (0x10210000U)
+#define REQ_HSM_GEN_SM3                     (0x10220000U)
 
-#define REQ_HSM_RUN_RSASSA_PKCS_SIGN        0x10550000
-#define REQ_HSM_RUN_RSASSA_PKCS_VERIFY      0x10560000
-#define REQ_HSM_RUN_RSASSA_PSS_SIGN         0x10570000
-#define REQ_HSM_RUN_RSASSA_PSS_VERIFY       0x10580000
+#define REQ_HSM_RUN_ECDSA_SIGN              (0x10310000U)
+#define REQ_HSM_RUN_ECDSA_VERIFY            (0x10320000U)
 
-#define REQ_HSM_GET_RNG                     0x10610000
+#define REQ_HSM_RUN_RSASSA_PKCS_SIGN        (0x10550000U)
+#define REQ_HSM_RUN_RSASSA_PKCS_VERIFY      (0x10560000U)
+#define REQ_HSM_RUN_RSASSA_PSS_SIGN         (0x10570000U)
+#define REQ_HSM_RUN_RSASSA_PSS_VERIFY       (0x10580000U)
 
-#define REQ_HSM_WRITE_OTP                   0x10710000
-#define REQ_HSM_WRITE_SNOR                  0x10720000
+#define REQ_HSM_GET_RNG                   	(0x10610000U)
 
-#define REQ_HSM_SET_KEY_FROM_OTP            0x10810000
-#define REQ_HSM_SET_KEY_FROM_SNOR           0x10820000
+#define REQ_HSM_WRITE_OTP                   (0x10710000U)
+#define REQ_HSM_WRITE_SNOR                  (0x10720000U)
 
-#define REQ_HSM_GET_VER                     0x20010000
+#define REQ_HSM_SET_KEY_FROM_OTP            (0x10810000U)
+#define REQ_HSM_SET_KEY_FROM_SNOR           (0x10820000U)
 
-enum dma_type {
-	HSM_NONE_DMA = 0,
-	HSM_DMA
-};
+#define REQ_HSM_GET_VER                     (0x20010000U)
 
+#define HSM_NONE_DMA				(0U)
+#define HSM_DMA						(1U)
+
+#define TCC_HSM_AES_KEY_SIZE 		(32U)
+#define TCC_HSM_AES_IV_SIZE 		(32U)
+#define TCC_HSM_AES_TAG_SIZE 		(32U)
+#define TCC_HSM_AES_AAD_SIZE 		(32U)
+
+#define TCC_HSM_MAC_KEY_SIZE 		(32U)
+#define TCC_HSM_MAC_MSG_SIZE 		(32U)
+
+#define TCC_HSM_HASH_DIGEST_SIZE	(64U)
+#define TCC_HSM_ECDSA_KEY_SIZE		(64U)
+#define TCC_HSM_ECDSA_DIGEST_SIZE	(64U)
+#define TCC_HSM_ECDSA_SIGN_SIZE		(64U)
+
+#define TCC_HSM_MODE_N_SIZE			(128U)
+#define TCC_HSM_RSA_DIG_SIZE		(128U)
+#define TCC_HSM_RSA_SIG_SIZE		(128U)
 // clang-format on
 
+struct tcc_hsm_ioctl_set_key_param {
+	uint32_t addr;
+	uint32_t data_size;
+	uint32_t key_index;
+};
+
+struct tcc_hsm_ioctl_aes_param {
+	uint32_t obj_id;
+	uint8_t key[TCC_HSM_AES_KEY_SIZE];
+	uint32_t key_size;
+	uint8_t iv[TCC_HSM_AES_IV_SIZE];
+	uint32_t iv_size;
+	uint8_t tag[TCC_HSM_AES_TAG_SIZE];
+	uint32_t tag_size;
+	uint8_t aad[TCC_HSM_AES_AAD_SIZE];
+	uint32_t aad_size;
+	ulong src;
+	uint32_t src_size;
+	ulong dst;
+	uint32_t dst_size;
+	uint32_t dma;
+};
+
+struct tcc_hsm_ioctl_aes_by_kt_param {
+	uint32_t obj_id;
+	uint32_t key_index;
+	uint8_t iv[TCC_HSM_AES_IV_SIZE];
+	uint32_t iv_size;
+	uint8_t tag[TCC_HSM_AES_TAG_SIZE];
+	uint32_t tag_size;
+	uint8_t aad[TCC_HSM_AES_AAD_SIZE];
+	uint32_t aad_size;
+	ulong src;
+	uint32_t src_size;
+	ulong dst;
+	uint32_t dst_size;
+	uint32_t dma;
+};
+
+struct tcc_hsm_ioctl_mac_param {
+	uint32_t obj_id;
+	uint8_t key[TCC_HSM_MAC_KEY_SIZE];
+	uint32_t key_size;
+	ulong src;
+	uint32_t src_size;
+	uint8_t mac[TCC_HSM_MAC_MSG_SIZE];
+	uint32_t mac_size;
+	uint32_t dma;
+};
+
+struct tcc_hsm_ioctl_mac_by_kt_param {
+	uint32_t obj_id;
+	uint32_t key_index;
+	ulong src;
+	uint32_t src_size;
+	uint8_t mac[TCC_HSM_MAC_MSG_SIZE];
+	uint32_t mac_size;
+	uint32_t dma;
+};
+
+struct tcc_hsm_ioctl_hash_param {
+	uint32_t obj_id;
+	ulong src;
+	uint32_t src_size;
+	uint8_t digest[TCC_HSM_HASH_DIGEST_SIZE];
+	uint32_t digest_size;
+	uint32_t dma;
+};
+
+struct tcc_hsm_ioctl_ecdsa_param {
+	uint32_t obj_id;
+	uint8_t key[TCC_HSM_ECDSA_KEY_SIZE];
+	uint32_t key_size;
+	uint8_t digest[TCC_HSM_ECDSA_DIGEST_SIZE];
+	uint32_t digest_size;
+	uint8_t sig[TCC_HSM_ECDSA_SIGN_SIZE];
+	uint32_t sig_size;
+};
+
+struct tcc_hsm_ioctl_rsassa_param {
+	uint32_t obj_id;
+	uint8_t modN[TCC_HSM_MODE_N_SIZE];
+	uint32_t modN_size;
+	ulong key;
+	uint32_t key_size;
+	uint8_t digest[TCC_HSM_RSA_DIG_SIZE];
+	uint32_t digest_size;
+	uint8_t sign[TCC_HSM_RSA_SIG_SIZE];
+	uint32_t sign_size;
+};
+
+struct tcc_hsm_ioctl_write_param {
+	uint32_t addr;
+	ulong data;
+	uint32_t data_size;
+};
+
+struct tcc_hsm_ioctl_rng_param {
+	ulong rng;
+	uint32_t rng_size;
+};
+
+struct tcc_hsm_ioctl_version_param {
+	uint32_t x;
+	uint32_t y;
+	uint32_t z;
+};
+
 int32_t tcc_hsm_cmd_set_key(
-	uint32_t device_id, uint32_t req, uint32_t addr, uint32_t key_size,
-	uint32_t key_index);
-
+	uint32_t device_id, uint32_t req,
+	struct tcc_hsm_ioctl_set_key_param *param);
 int32_t tcc_hsm_cmd_run_aes(
-	uint32_t device_id, uint32_t req, uint32_t objID, uint8_t *key,
-	uint32_t keySize, uint8_t *iv, uint32_t ivSize, uint8_t *tag,
-	uint32_t tag_size, uint8_t *aad, uint32_t aad_size, uint32_t src,
-	uint32_t srcSize, uint32_t dst, uint32_t dstSize);
+	uint32_t device_id, uint32_t req,
+	struct tcc_hsm_ioctl_aes_param *param);
 int32_t tcc_hsm_cmd_run_aes_by_kt(
-	uint32_t device_id, uint32_t req, uint32_t obj_id, uint32_t key_index,
-	uint8_t *iv, uint32_t iv_size, uint8_t *tag, uint32_t tag_size,
-	uint8_t *aad, uint32_t aad_size, uint32_t src, uint32_t src_size,
-	uint32_t dst, uint32_t dst_size);
-
+	uint32_t device_id, uint32_t req,
+	struct tcc_hsm_ioctl_aes_by_kt_param *param);
 int32_t tcc_hsm_cmd_gen_mac(
-	uint32_t device_id, uint32_t req, uint32_t obj_id, uint8_t *key,
-	uint32_t key_size, uint32_t src, uint32_t src_size, uint8_t *mac,
-	uint32_t mac_size);
+	uint32_t device_id, uint32_t req,
+	struct tcc_hsm_ioctl_mac_param *param);
 int32_t tcc_hsm_cmd_gen_mac_by_kt(
-	uint32_t device_id, uint32_t req, uint32_t obj_id, uint32_t key_index,
-	uint32_t src, uint32_t src_size, uint8_t *mac, uint32_t mac_size);
-
+	uint32_t device_id, uint32_t req,
+	struct tcc_hsm_ioctl_mac_by_kt_param *param);
 int32_t tcc_hsm_cmd_gen_hash(
-	uint32_t device_id, uint32_t req, uint32_t obj_id, uint32_t src,
-	uint32_t src_size, uint8_t *dig, uint32_t dig_size);
-
+	uint32_t device_id, uint32_t req,
+	struct tcc_hsm_ioctl_hash_param *param);
 int32_t tcc_hsm_cmd_run_ecdsa(
-	uint32_t device_id, uint32_t req, uint32_t objID, uint8_t *key,
-	uint32_t keySize, uint8_t *digest, uint32_t digesteSize, uint8_t *sign,
-	uint32_t signSize);
-
+	uint32_t device_id, uint32_t req,
+	struct tcc_hsm_ioctl_ecdsa_param *aram);
 int32_t tcc_hsm_cmd_run_rsa(
-	uint32_t device_id, uint32_t req, uint32_t obj_id, uint8_t *modN,
-	uint32_t modN_size, uint32_t key, uint32_t key_size, uint8_t *digest,
-	uint32_t digest_size, uint8_t *sig, uint32_t sig_size);
-
-int32_t tcc_hsm_cmd_get_rand(
-	uint32_t device_id, uint32_t req, uint32_t rng, int32_t rng_size);
-
+	uint32_t device_id, uint32_t req,
+	struct tcc_hsm_ioctl_rsassa_param *param);
 int32_t tcc_hsm_cmd_write(
-	uint32_t device_id, uint32_t req, uint32_t addr, uint8_t *buf,
-	uint32_t buf_size);
-
+	uint32_t device_id, uint32_t req,
+	struct tcc_hsm_ioctl_write_param *param);
 int32_t tcc_hsm_cmd_get_version(
-	uint32_t device_id, uint32_t req, uint32_t *x, uint32_t *y,
-	uint32_t *z);
-
-#endif /*_TCC_HSM_CMD_H_*/
+	uint32_t device_id, uint32_t req,
+	struct tcc_hsm_ioctl_version_param *param);
+int32_t tcc_hsm_cmd_get_rand(
+	uint32_t device_id, uint32_t req, uint32_t rng, uint32_t rng_size);
+#endif /* TCC_HSM_CMD_H */

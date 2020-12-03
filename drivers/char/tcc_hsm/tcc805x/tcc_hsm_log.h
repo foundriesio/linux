@@ -3,8 +3,8 @@
  * Copyright (C) Telechips Inc.
  */
 
-#ifndef _T_LOG_H
-#define _T_LOG_H
+#ifndef T_LOG_H
+#define T_LOG_H
 
 #ifndef NDEBUG
 #define DEBUG
@@ -12,19 +12,21 @@
 
 #include <linux/printk.h>
 
-#define TLOG_VERBOS 5
-#define TLOG_DEBUG 4
-#define TLOG_INFO 3
-#define TLOG_WARNING 2
-#define TLOG_ERROR 1
+#define TLOG_VERBOS (5)
+#define TLOG_DEBUG (4)
+#define TLOG_INFO (3)
+#define TLOG_WARNING (2)
+#define TLOG_ERROR (1)
 
 #ifndef TLOG_LEVEL
 #define TLOG_LEVEL TLOG_INFO
 #endif
 
 #ifndef TLOG_TAG
-#define TLOG_TAG __func__
+#define TLOG_TAG (__func__)
 #endif
+
+// #define COLOR_TAG	(1)
 
 /* clang-format off */
 #define GRAY_COLOR             "\033[1;30m"
@@ -48,11 +50,11 @@
 /* clang-format on */
 
 /* no logging */
-#define _NLOG(...)                           \
-	do {                                 \
-		if (0) {                     \
+#define _NLOG(...)                            \
+	do {                                  \
+		if (0) {                      \
 			pr_info(__VA_ARGS__); \
-		}                            \
+		}                             \
 	} while (0)
 
 /* logging */
@@ -87,7 +89,7 @@
 #else
 #define _ELOG(...) _NLOG(__VA_ARGS__)
 #endif
-
+#ifdef COLOR_TAG
 /* color tagging */
 #define TRACE _DLOG(NORMAL_COLOR "[%s:%d]\n", TLOG_TAG, __LINE__)
 #define DLOG(fmt, ...)                                                      \
@@ -105,5 +107,32 @@
 #define ELOG(fmt, ...)                                                         \
 	_ELOG(COLORERR_COLOR "[ERROR][%s][%d]" NORMAL_COLOR " " fmt, TLOG_TAG, \
 	      __LINE__, ##__VA_ARGS__)
+#else
+/* No color tagging (To avoid Codesonar warning )*/
+#define TRACE _DLOG("[%s:%d]\n", TLOG_TAG, __LINE__)
+#define VLOG(fmt, ...)            \
+	_VLOG("[VERBOSE][%s][%d]" \
+	      " " fmt,            \
+	      TLOG_TAG, __LINE__, ##__VA_ARGS__)
 
+#define DLOG(fmt, ...)          \
+	_DLOG("[DEBUG][%s][%d]" \
+	      " " fmt,          \
+	      TLOG_TAG, __LINE__, ##__VA_ARGS__)
+
+#define ILOG(fmt, ...)         \
+	_ILOG("[INFO][%s][%d]" \
+	      " " fmt,         \
+	      TLOG_TAG, __LINE__, ##__VA_ARGS__)
+
+#define WLOG(fmt, ...)         \
+	_WLOG("[WARN][%s][%d]" \
+	      " " fmt,         \
+	      TLOG_TAG, __LINE__, ##__VA_ARGS__)
+
+#define ELOG(fmt, ...)          \
+	_ELOG("[ERROR][%s][%d]" \
+	      " " fmt,          \
+	      TLOG_TAG, __LINE__, ##__VA_ARGS__)
+#endif
 #endif
