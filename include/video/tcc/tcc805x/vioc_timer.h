@@ -24,6 +24,7 @@
 #ifndef __VIOC_TIMER_H__
 #define	__VIOC_TIMER_H__
 
+#include <clk-tcc805x.h>
 /*
  * Register offset
  */
@@ -100,3 +101,18 @@
 
 #endif
 
+enum vioc_timer_irq_id {
+        VIOC_TIMER_IRQ_TIMER0 = 0,
+        VIOC_TIMER_IRQ_TIMER1,
+        VIOC_TIMER_IRQ_TIREQ0,
+        VIOC_TIMER_IRQ_TIREQ1
+};
+
+unsigned int vioc_timer_get_curtime(void __iomem *reg);
+unsigned int vioc_timer_get_curtime(void __iomem *reg);
+int vioc_timer_set_timer(enum vioc_timer_irq_id id, int enable, int timer_hz);
+int vioc_timer_set_timer_req(
+	enum vioc_timer_irq_id id,  int enable,  int units);
+int vioc_timer_set_irq_mask(enum vioc_timer_irq_id id, unsigned int enable);
+unsigned int vioc_timer_get_irq_status(void);
+int vioc_timer_clear_irq_status(unsigned int mask);

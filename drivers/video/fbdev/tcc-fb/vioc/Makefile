@@ -1,3 +1,7 @@
+ifneq (,$(filter y,$(CONFIG_ARCH_TCC805X)))
+EXTRA_CFLAGS += -Idrivers/clk/tcc
+endif
+
 obj-$(CONFIG_ARCH_TCC) += vioc_rdma.o vioc_wdma.o vioc_wmix.o
 obj-$(CONFIG_ARCH_TCC) += vioc_vin.o
 obj-$(CONFIG_ARCH_TCC) += vioc_scaler.o vioc_viqe.o vioc_lut.o
@@ -10,7 +14,7 @@ obj-$(CONFIG_ARCH_TCC803X) += vioc_pxdemux.o vioc_lvds.o
 obj-$(CONFIG_ARCH_TCC805X) += vioc_pxdemux.o vioc_lvds.o
 obj-$(CONFIG_ARCH_TCC897X) += vioc_lvds_t.o
 #obj-$(CONFIG_ARCH_TCC898X) += vioc_power.o
-
+obj-$(CONFIG_ARCH_TCC805X) += vioc_timer.o
 obj-$(CONFIG_FB_TCC)			+= tca_lcdc.o
 
 obj-$(CONFIG_FB_TCC_COMPOSITE) += tcc_composite.o

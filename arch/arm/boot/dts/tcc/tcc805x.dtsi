@@ -3217,6 +3217,17 @@
 			  <0x0 0x12051000 0x0 0x100>;
 	};
 
+	vioc_timer:vioc_timer@12004000{
+		compatible = "telechips,vioc_timer";
+		reg = <0x0 0x1200C000 0x0 0x100>,
+			/* VIOC_REMAP*/
+			<0x0 0x12004A00 0x0 0x600>;
+		interrupts = <GIC_SPI VIOC1_IRQI IRQ_TYPE_LEVEL_HIGH>;
+		clocks = <&clk_peri PERI_LCDTIMER>;
+		clock-names = "timer-clk";
+		status = "okay";
+	};
+
 	/* MIPI 0 */
 	mipi_csi2_0:mipi_csi2_0@1bc00800 {
 		compatible = "telechips,tcc805x-mipi-csi2";
