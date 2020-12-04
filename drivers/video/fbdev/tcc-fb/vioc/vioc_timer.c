@@ -76,7 +76,7 @@ out:
 static int vioc_timer_get_usec_enable(void)
 {
 	int enable = 0;
-	unsigned long reg_val;
+	unsigned int reg_val;
 
 	if (!ctx.reg)
 		goto out;
@@ -90,7 +90,7 @@ out:
 
 unsigned int vioc_timer_get_unit_us(void)
 {
-	unsigned long reg_val;
+	unsigned int reg_val;
 	unsigned int unit_us = 0;
 
 	if (!ctx.reg)
@@ -106,24 +106,24 @@ out:
 }
 EXPORT_SYMBOL_GPL(vioc_timer_get_unit_us);
 
-unsigned int vioc_timer_get_curtime(void __iomem *reg)
+unsigned int vioc_timer_get_curtime(void)
 {
-	unsigned long curtime = 0;
+	unsigned int curtime = 0;
 
 	if (!ctx.reg)
 		goto out;
 	curtime = readl(ctx.reg + CURTIME);
 out:
-	return (unsigned int)curtime;
+	return curtime;
 }
 EXPORT_SYMBOL_GPL(vioc_timer_get_curtime);
 
-int vioc_timer_set_timer(enum vioc_timer_irq_id id, int enable, int timer_hz)
+int vioc_timer_set_timer(enum vioc_timer_id id, int enable, int timer_hz)
 {
 	int ret;
 	int xin_mhz;
-	unsigned long timer_offset;
-	unsigned long reg_val;
+	unsigned int timer_offset;
+	unsigned int reg_val;
 
 	if (!ctx.reg) {
 		ret = -ENODEV;
@@ -131,10 +131,10 @@ int vioc_timer_set_timer(enum vioc_timer_irq_id id, int enable, int timer_hz)
 	}
 
 	switch (id) {
-	case VIOC_TIMER_IRQ_TIMER0:
+	case VIOC_TIMER_TIMER0:
 		timer_offset = TIMER0;
 		break;
-	case VIOC_TIMER_IRQ_TIMER1:
+	case VIOC_TIMER_TIMER1:
 		timer_offset = TIMER1;
 		break;
 	default:
@@ -159,10 +159,10 @@ out:
 EXPORT_SYMBOL_GPL(vioc_timer_set_timer);
 
 int vioc_timer_set_timer_req(
-	enum vioc_timer_irq_id id,  int enable,  int units)
+	enum vioc_timer_id id,  int enable,  int units)
 {
-	unsigned long tireq_offset;
-	unsigned long reg_val;
+	unsigned int tireq_offset;
+	unsigned int reg_val;
 	int ret;
 
 	if (!ctx.reg) {
@@ -171,10 +171,10 @@ int vioc_timer_set_timer_req(
 	}
 
 	switch (id) {
-	case VIOC_TIMER_IRQ_TIREQ0:
+	case VIOC_TIMER_TIREQ0:
 		tireq_offset = TIREQ0;
 		break;
-	case VIOC_TIMER_IRQ_TIREQ1:
+	case VIOC_TIMER_TIREQ1:
 		tireq_offset = TIREQ1;
 		break;
 	default:
@@ -196,9 +196,9 @@ out:
 }
 EXPORT_SYMBOL_GPL(vioc_timer_set_timer_req);
 
-int vioc_timer_set_irq_mask(enum vioc_timer_irq_id id, unsigned int enable)
+int vioc_timer_set_irq_mask(enum vioc_timer_id id)
 {
-	unsigned long reg_val;
+	unsigned int reg_val;
 	int ret;
 
 	if (!ctx.reg) {
@@ -206,14 +206,13 @@ int vioc_timer_set_irq_mask(enum vioc_timer_irq_id id, unsigned int enable)
 		goto out;
 	}
 
-	if (id > VIOC_TIMER_IRQ_TIREQ1) {
+	if (id > VIOC_TIMER_TIREQ1) {
 		ret = -EINVAL;
 		goto out;
 	}
 
 	reg_val = readl(ctx.reg + IRQMASK);
-	reg_val &= ~(1 << id);
-	reg_val |= ((enable ? 1 : 0) << id);
+	reg_val |= (1 << id);
 
 	writel(reg_val, ctx.reg + IRQMASK);
 	return 0;
@@ -222,23 +221,67 @@ out:
 }
 EXPORT_SYMBOL_GPL(vioc_timer_set_irq_mask);
 
-unsigned int vioc_timer_get_irq_status(void)
+
+int vioc_timer_clear_irq_mask(enum vioc_timer_id id)
 {
-	unsigned long reg_val;
+	unsigned int reg_val;
 	int ret;
 
 	if (!ctx.reg) {
 		ret = -ENODEV;
 		goto out;
 	}
-	reg_val = readl(ctx.reg + IRQSTAT);
-	return (unsigned int)reg_val;
+
+	if (id > VIOC_TIMER_TIREQ1) {
+		ret = -EINVAL;
+		goto out;
+	}
+
+	reg_val = readl(ctx.reg + IRQMASK);
+	reg_val &= ~(1 << id);
+
+	writel(reg_val, ctx.reg + IRQMASK);
+	return 0;
 out:
 	return ret;
 }
+EXPORT_SYMBOL_GPL(vioc_timer_clear_irq_mask);
+
+unsigned int vioc_timer_get_irq_status(void)
+{
+	unsigned int reg_val;
+
+	if (!ctx.reg) {
+		goto out;
+	}
+	reg_val = readl(ctx.reg + IRQSTAT);
+	return reg_val;
+out:
+	return 0;
+}
 EXPORT_SYMBOL_GPL(vioc_timer_get_irq_status);
 
-int vioc_timer_clear_irq_status(unsigned int mask)
+int vioc_timer_is_interrupted(enum vioc_timer_id id)
+{
+	unsigned int reg_val;
+	int interrupted = 0;
+
+	if (!ctx.reg) {
+		goto out;
+	}
+
+	if (id > VIOC_TIMER_TIREQ1) {
+		goto out;
+	}
+	reg_val = readl(ctx.reg + IRQSTAT);
+	return (reg_val & (1 << id)) ? 1 : 0;
+out:
+	return interrupted;
+}
+EXPORT_SYMBOL_GPL(vioc_timer_is_interrupted);
+
+
+int vioc_timer_clear_irq_status(enum vioc_timer_id id)
 {
 	int ret;
 
@@ -246,7 +289,13 @@ int vioc_timer_clear_irq_status(unsigned int mask)
 		ret = -ENODEV;
 		goto out;
 	}
-	writel(mask, ctx.reg + IRQSTAT);
+
+	if (id > VIOC_TIMER_TIREQ1) {
+		ret = -EINVAL;
+		goto out;
+	}
+
+	writel(1 << id, ctx.reg + IRQSTAT);
 
 	return 0;
 out:
@@ -292,6 +341,13 @@ static int __init vioc_timer_init(void)
 	ctx.clk  = of_clk_get_by_name(np, "timer-clk");
 	if (IS_ERR(ctx.clk))
 		pr_err("[ERROR][TIMER] Please check timer-clk on DT\r\n");
+
+	/* Set interrupt mask for all interrupt source */
+	vioc_timer_set_irq_mask(VIOC_TIMER_TIMER0);
+	vioc_timer_set_irq_mask(VIOC_TIMER_TIMER1);
+	vioc_timer_set_irq_mask(VIOC_TIMER_TIREQ0);
+	vioc_timer_set_irq_mask(VIOC_TIMER_TIREQ1);
+
 	if (!vioc_timer_get_usec_enable()) {
 		vioc_timer_set_usec_enable(1, 100);
 	} else {
