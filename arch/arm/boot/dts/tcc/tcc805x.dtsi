@@ -3988,7 +3988,7 @@
 
 		threshold_high_temp = <85>;
 		threshold_low_temp = <(-15)>;
-		interval_time = <120>;
+		interval_time = <260000>;
 
 		throttle_table {
 			throttle_tab_0 {
