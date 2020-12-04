@@ -284,7 +284,7 @@
 	videoinput@0 {
 		status = "okay";
 		cifport         = <&cifport             4>;
-		use_pgl		= <0>;
+		use_pgl		= <1>;
 		port {
 			videoinput0_in: endpoint {
 				remote-endpoint	= <&adv7182_out>;
