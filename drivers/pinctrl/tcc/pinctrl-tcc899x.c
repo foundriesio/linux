@@ -89,49 +89,11 @@ struct extintr_ {
 
 static void __iomem *gpio_base = NULL;
 
-static struct extintr_ extintr [] = {
-	{ GPMAX,0 }, { GPA,  1 }, { GPA,  2 }, { GPA,  3 }, { GPA,  4 }, { GPA,  5 }, { GPA,  6 }, { GPA,  7 },	// 0 ~ 31
-	{ GPA,  8 }, { GPA,  9 }, { GPA, 10 }, { GPA, 11 }, { GPA, 12 }, { GPA, 13 }, { GPA, 14 }, { GPA, 15 }, 
-	{ GPA, 16 }, { GPA, 17 }, { GPA, 18 }, { GPA, 19 }, { GPA, 20 }, { GPA, 21 }, { GPA, 22 }, { GPA, 23 },
-	{ GPA, 24 }, { GPA, 25 }, { GPA, 26 }, { GPA, 27 }, { GPA, 28 }, { GPA, 29 }, { GPA, 30 }, { GPA, 31 },
 
-	{ GPB,  0 }, { GPB,  1 }, { GPB,  2 }, { GPB,  3 }, { GPB,  4 }, { GPB,  5 }, { GPB,  6 }, { GPB,  7 }, //32 ~ 63
-	{ GPB,  8 }, { GPB,  9 }, { GPB, 10 }, { GPB, 11 }, { GPB, 12 }, { GPB, 13 }, { GPB, 14 }, { GPB, 15 },
-	{ GPB, 16 }, { GPB, 17 }, { GPB, 18 }, { GPB, 19 }, { GPB, 20 }, { GPB, 21 }, { GPB, 22 }, { GPB, 23 },
-	{ GPB, 24 }, { GPB, 25 }, { GPB, 26 }, { GPB, 27 }, { GPB, 28 }, { GPB, 29 }, { GPB, 30 }, { GPB, 31 },
-
-	{ GPC,  0 }, { GPC,  1 }, { GPC,  2 }, { GPC,  3 }, { GPC,  4 }, { GPC,  5 }, { GPC,  6 }, { GPC,  7 }, //64 ~ 95
-	{ GPC,  8 }, { GPC,  9 }, { GPC, 10 }, { GPC, 11 }, { GPC, 12 }, { GPC, 13 }, { GPC, 14 }, { GPC, 15 },
-	{ GPC, 16 }, { GPC, 17 }, { GPC, 18 }, { GPC, 19 }, { GPC, 20 }, { GPC, 21 }, { GPC, 22 }, { GPC, 23 },
-	{ GPC, 24 }, { GPC, 25 }, { GPC, 26 }, { GPC, 27 }, { GPC, 28 }, { GPC, 29 }, { GPC, 30 }, { GPC, 31 },
-
-	{ GPD,  0 }, { GPD,  1 }, { GPD,  2 }, { GPD,  3 }, { GPD,  4 }, { GPD,  5 }, { GPD,  6 }, { GPD,  7 }, //96 ~ 127
-	{ GPD,  8 }, { GPD,  9 }, { GPD, 10 }, { GPD, 11 }, { GPD, 12 }, { GPD, 13 }, { GPD, 14 }, { GPD, 15 },
-	{ GPD, 16 }, { GPD, 17 }, { GPD, 18 }, { GPD, 19 }, { GPD, 20 }, { GPD, 21 }, { GPD, 22 }, { GPD, 23 },
-	{ GPD, 24 }, { GPD, 25 }, { GPD, 26 }, { GPD, 27 }, { GPD, 28 }, { GPD, 29 }, { GPD, 30 }, { GPD, 31 },
-
-	{ GPE,  0 }, { GPE,  1 }, { GPE,  2 }, { GPE,  3 }, { GPE,  4 }, { GPE,  5 }, { GPE,  6 }, { GPE,  7 }, //128 ~ 159
-	{ GPE,  8 }, { GPE,  9 }, { GPE, 10 }, { GPE, 11 }, { GPE, 12 }, { GPE, 13 }, { GPE, 14 }, { GPE, 15 },
-	{ GPE, 16 }, { GPE, 17 }, { GPE, 18 }, { GPE, 19 }, { GPE, 20 }, { GPE, 21 }, { GPE, 22 }, { GPE, 23 },
-	{ GPE, 24 }, { GPE, 25 }, { GPE, 26 }, { GPE, 27 }, { GPE, 28 }, { GPE, 29 }, { GPE, 30 }, { GPE, 31 },
-
-	{ GPF,  0 }, { GPG,  1 }, { GPF,  2 }, { GPF,  3 }, { GPF,  4 }, { GPF,  5 }, { GPF,  6 }, { GPF,  7 }, //160 ~ 191
-	{ GPF,  8 }, { GPF,  9 }, { GPF, 10 }, { GPF, 11 }, { GPF, 12 }, { GPF, 13 }, { GPF, 14 }, { GPF, 15 },
-	{ GPF, 16 }, { GPF, 17 }, { GPF, 18 }, { GPF, 19 }, { GPF, 20 }, { GPF, 21 }, { GPF, 22 }, { GPF, 23 },
-	{ GPF, 24 }, { GPF, 25 }, { GPF, 26 }, { GPF, 27 }, { GPF, 28 }, { GPF, 29 }, { GPF, 30 }, { GPF, 31 },
-
-	{ GPG,  0 }, { GPG,  1 }, { GPG,  2 }, { GPG,  3 }, { GPG,  4 }, { GPG,  5 }, { GPG,  6 }, { GPG,  7 }, //192 ~ 211
-	{ GPG,  8 }, { GPG,  9 }, { GPG, 10 }, { GPG, 11 }, { GPG, 12 }, { GPG, 13 }, { GPG, 14 }, { GPG, 15 },
-	{ GPG, 16 }, { GPG, 17 }, { GPG, 18 }, { GPG, 19 }, { GPMAX,0 }, { GPMAX,0 }, { GPMAX,0 }, { GPMAX,0 },
-	{ GPMAX,0 }, { GPMAX,0 }, { GPMAX,0 }, { GPMAX,0 }, { GPMAX,0 }, { GPMAX,0 }, { GPMAX,0 }, { GPMAX,0 },
-
-	{ GPHDMI, 0 }, { GPHDMI, 1 }, { GPHDMI, 2 }, { GPHDMI, 3 }, 	
-	//{ GPADC,  6 }, { GPADC,  7 }, { GPADC,  8 }, { GPADC,  9 } 		// 228~231
-};
 
 static struct tcc_pinctrl_soc_data tcc899x_pinctrl_soc_data;
 
-inline static int tcc899x_set_eint(void __iomem *base, unsigned bit, int extint)
+inline static int tcc899x_set_eint(void __iomem *base, unsigned bit, int extint, struct tcc_pinctrl *pctl)
 {
 	void __iomem *reg = (void __iomem *)(gpio_base + EINTSEL + 4*(extint/4));
 	unsigned int data, mask, shift, idx;
@@ -142,6 +104,8 @@ inline static int tcc899x_set_eint(void __iomem *base, unsigned bit, int extint)
 #else
 	unsigned port = (unsigned)base - (unsigned)gpio_base;
 #endif
+	struct tcc_pin_bank *bank = pctl->pin_banks;
+	int i, pin_valid;
 
 	if (!gpio_base)
 		return -1;
@@ -149,11 +113,36 @@ inline static int tcc899x_set_eint(void __iomem *base, unsigned bit, int extint)
 	if (extint >= irq_size/2)
 		return -1;
 
-	for (idx = 0 ; idx < ARRAY_SIZE(extintr) ; idx++)
-		if ((extintr[idx].port_base == port) && (extintr[idx].port_num == bit))
-			break;
-	if (idx >= ARRAY_SIZE(extintr))
-		return -1;
+	for(i = 0; i < pctl->nbanks ; i++) {
+
+		if(bank->reg_base == port) {
+			if(bank->source_section == 0xff) {
+
+				pr_err("[EXTI][ERROR] %s: %s is not supported for external interrupt\n"
+						, __func__, bank->name);
+				return -EINVAL;
+
+			} else {
+
+				for(i = 0; i < bank->source_section; i++){
+					if((bit >= bank->source_offset_base[i]) && (bit < (bank->source_offset_base[i]+bank->source_range[i]))) {
+						idx = bank->source_base[i] + (bit - bank->source_offset_base[i]);
+						pin_valid = 1; //true
+						break;
+					} else {
+						pin_valid = 0; //false
+					}
+				}
+
+			}
+		}
+		bank++;
+	}
+
+	if(!pin_valid) {
+		pr_err("[EXTI][ERROR] %s: %d(%d) is out of range of pin number of %s group\n",__func__, bit, idx, bank->name);
+		return -EINVAL;
+	}
 
 	match[extint].used = 1;
 	match[extint].port_base = base;
@@ -292,7 +281,7 @@ static void tcc899x_gpio_slew_rate(void __iomem *base, unsigned offset, int valu
 	tcc899x_gpio_pinconf_extra(base, offset, value, (unsigned)GPIO_SLEW_RATE);
 }
 
-static int tcc899x_gpio_to_irq(void __iomem *base, unsigned offset)
+static int tcc899x_gpio_to_irq(void __iomem *base, unsigned offset, struct tcc_pinctrl *pctl)
 {
 	int i;
 	struct extintr_match_ *match = (struct extintr_match_ *)tcc899x_pinctrl_soc_data.irq->data;
@@ -312,7 +301,7 @@ static int tcc899x_gpio_to_irq(void __iomem *base, unsigned offset)
 	/* checking unused external interrupt */
 	for (i=0; i < irq_size/2 ; i++) {
 		if (!match[i].used) {
-			if (tcc899x_set_eint(base, offset, i) == 0)
+			if (tcc899x_set_eint(base, offset, i, pctl) == 0)
 				goto set_gpio_to_irq_finish;
 			else
 				break;
@@ -390,7 +379,7 @@ static int tcc899x_pinconf_get(void __iomem *base, unsigned offset, int param)
 }
 
 int tcc899x_pinconf_set(void __iomem *base, unsigned offset, int param,
-			int config)
+			int config, struct tcc_pinctrl *pctl)
 {
 	switch (param) {
 	case TCC_PINCONF_PARAM_DRIVE_STRENGTH:

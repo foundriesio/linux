@@ -168,7 +168,33 @@ struct tcc_pin_group {
 	u32 func;
 };
 
-struct tcc_pinctrl;
+struct tcc_pinctrl {
+    struct device *dev;
+
+    void __iomem *base;
+    void __iomem *pmgpio_base;
+
+    struct pinctrl_desc pinctrl_desc;
+
+    struct pinctrl_dev *pctldev;
+
+    struct tcc_pinconf *pin_configs;
+    int nconfigs;
+
+    struct tcc_pinctrl_ops *ops;
+
+    struct pinctrl_pin_desc *pins;
+    u32 npins;
+
+    struct tcc_pin_bank *pin_banks;
+    u32 nbanks;
+
+    struct tcc_pin_group *groups;
+    u32 ngroups;
+
+    struct tcc_pinmux_function *functions;
+    u32 nfunctions;
+};
 
 struct tcc_pin_bank {
 	char *name;
@@ -177,6 +203,10 @@ struct tcc_pin_bank {
 	u32 npins;
 
 	u32 reg_base;
+	u32 source_section;
+	u32 *source_offset_base;
+	u32 *source_base;
+	u32 *source_range;
 
 	struct gpio_chip gpio_chip;
 	struct pinctrl_gpio_range gpio_range;
@@ -206,8 +236,8 @@ struct tcc_pinctrl_ops {
 				 int func);
 	int (*pinconf_get)(void __iomem *base, u32 offset, int param);
 	int (*pinconf_set)(void __iomem *base, u32 offset,
-			   int param, int config);
-	int (*to_irq)(void __iomem *base, u32 offset);
+			   int param, int config, struct tcc_pinctrl *pctl);
+	int (*to_irq)(void __iomem *base, u32 offset, struct tcc_pinctrl *pctl);
 };
 
 struct tcc_pinconf {

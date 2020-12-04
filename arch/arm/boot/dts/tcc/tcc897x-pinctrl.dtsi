@@ -47,60 +47,70 @@
 		gpio-controller;
 		#gpio-cells = <2>;
 		reg = <0x0 0 32>;
+		source-num = <1 0 188 32>;
 	};
 
 	gpb: gpb {
 		gpio-controller;
 		#gpio-cells = <2>;
 		reg = <0x40 0 32>;
+		source-num = <1 0 156 32>;
 	};
 
 	gpc: gpc {
 		gpio-controller;
 		#gpio-cells = <2>;
 		reg = <0x80 0 32>;
+		source-num = <1 0 124 32>;
 	};
 
 	gpd: gpd {
 		gpio-controller;
 		#gpio-cells = <2>;
 		reg = <0xc0 0 32>;
+		source-num = <1 0 92 32>;
 	};
 
 	gpe: gpe {
 		gpio-controller;
 		#gpio-cells = <2>;
 		reg = <0x100 0 32>;
+		source-num = <1 0 60 32>;
 	};
 
 	gpf: gpf {
 		gpio-controller;
 		#gpio-cells = <2>;
 		reg = <0x140 0 32>;
+		source-num = <1 0 28 32>;
 	};
 
 	gpg: gpg {
 		gpio-controller;
 		#gpio-cells = <2>;
 		reg = <0x180 0 32>;
+		source-num = <1 0 8 20>;
 	};
 
 	gphdmi: gphdmi {
 		gpio-controller;
 		#gpio-cells = <2>;
 		reg = <0x1c0 0 32>;
+		source-num = <1 0 0 4>;
 	};
 
 	gpsd: gpsd { /*GPSD3*/
 		gpio-controller;
 		#gpio-cells = <2>;
 		reg = <0x240 0 32>;
+		source-num = <1 0 224 11>;
 	};
 
 	gpadc: gpadc {	/* dummy regs. */
 		gpio-controller;
 		#gpio-cells = <2>;
 		reg = <0x2C0 2 32>;	/* use 2~9 pins */
+		source-num = <2 2 4 4 6 220 4>;
 	};
 
 	tco_0_0: tco_0_0 {
