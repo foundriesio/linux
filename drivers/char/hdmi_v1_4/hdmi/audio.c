@@ -247,7 +247,7 @@ static int hdmi_audio_set_samplingfreq(struct tcc_hdmi_dev *dev)
 
 static int hdmi_audio_set_channel(struct tcc_hdmi_dev *dev)
 {
-    	int ret;
+    	int ret = 0;
 	unsigned int i2s_val, aui_byte1_val, hdmi_reg;
 	unsigned int asp_con_val = 0;
 	unsigned int aui_byte4_val = 0;
