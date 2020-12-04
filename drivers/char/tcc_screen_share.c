@@ -70,6 +70,7 @@ struct tcc_scrshare_device {
 	dev_t devt;
 	const char *name;
 	const char *mbox_name;
+	const char *overlay_driver_name;
 #if defined(CONFIG_ARCH_TCC805X)
 	const char *mbox_id;
 #endif
@@ -89,14 +90,14 @@ static struct tcc_scrshare_info *tcc_scrshare_info;
 
 static struct file *overlay_file;
 
-static void tcc_scrshare_on(void)
+static void tcc_scrshare_on(struct tcc_scrshare_device *tcc_scrshare)
 {
 	tcc_scrshare_info->share_enable = 1;
 
-	if (overlay_file == NULL) {
-		overlay_file = filp_open(OVERLAY_DRIVER, O_RDWR, 0666);
-		if (overlay_file == NULL)
-			pr_err("open fail (%s)\n", OVERLAY_DRIVER);
+	if (IS_ERR_OR_NULL(overlay_file)) {
+		overlay_file = filp_open(tcc_scrshare->overlay_driver_name, O_RDWR, 0666);
+		if (IS_ERR_OR_NULL(overlay_file))
+			pr_err("open fail (%s)\n", tcc_scrshare->overlay_driver_name);
 	}
 }
 
@@ -104,7 +105,7 @@ static void tcc_scrshare_off(void)
 {
 	tcc_scrshare_info->share_enable = 0;
 
-	if (overlay_file) {
+	if (!IS_ERR_OR_NULL(overlay_file)) {
 		filp_close(overlay_file, 0);
 		overlay_file = NULL;
 	}
@@ -123,7 +124,7 @@ static void tcc_scrshare_get_dstinfo(struct tcc_mbox_data *mssg)
 		 mssg->data[3], mssg->data[4]);
 }
 
-static void tcc_scrshare_display(struct tcc_mbox_data *mssg)
+static void tcc_scrshare_display(struct tcc_scrshare_device *tcc_scrshare, struct tcc_mbox_data *mssg)
 {
 	long ret = 0;
 	overlay_shared_buffer_t buffer_cfg;
@@ -137,10 +138,12 @@ static void tcc_scrshare_display(struct tcc_mbox_data *mssg)
 		 tcc_scrshare_info->dstinfo->width,
 		 tcc_scrshare_info->dstinfo->height);
 	if (tcc_scrshare_info->share_enable) {
-		if (overlay_file == NULL) {
-			overlay_file = filp_open(OVERLAY_DRIVER, O_RDWR, 0666);
-			if (overlay_file == NULL)
-				pr_err("open fail (%s)\n", OVERLAY_DRIVER);
+		if (IS_ERR_OR_NULL(overlay_file)) {
+			overlay_file = filp_open(tcc_scrshare->overlay_driver_name, O_RDWR, 0666);
+			if (IS_ERR_OR_NULL(overlay_file)) {
+				ret = -ENODEV;
+				pr_err("open fail (%s)\n", tcc_scrshare->overlay_driver_name);
+			}
 		}
 
 		buffer_cfg.src_addr = mssg->data[0];
@@ -153,7 +156,8 @@ static void tcc_scrshare_display(struct tcc_mbox_data *mssg)
 		buffer_cfg.dst_h = tcc_scrshare_info->dstinfo->height;
 		buffer_cfg.layer = tcc_scrshare_info->dstinfo->img_num;
 
-		ret = overlay_file->f_op->unlocked_ioctl(overlay_file,
+		if (!IS_ERR_OR_NULL(overlay_file))
+			ret = overlay_file->f_op->unlocked_ioctl(overlay_file,
 						 OVERLAY_PUSH_SHARED_BUFFER,
 						 (unsigned long)&buffer_cfg);
 		if (ret < 0)
@@ -199,10 +203,10 @@ static void tcc_scrshare_cmd_handler(struct tcc_scrshare_device *tcc_scrshare,
 			tcc_scrshare_get_dstinfo(data);
 			break;
 		case SCRSHARE_CMD_SET_SRCINFO:
-			tcc_scrshare_display(data);
+			tcc_scrshare_display(tcc_scrshare, data);
 			break;
 		case SCRSHARE_CMD_ON:
-			tcc_scrshare_on();
+			tcc_scrshare_on(tcc_scrshare);
 			break;
 		case SCRSHARE_CMD_OFF:
 			tcc_scrshare_off();
@@ -567,7 +571,13 @@ static int tcc_scrshare_probe(struct platform_device *pdev)
 #if defined(CONFIG_ARCH_TCC805X)
 	of_property_read_string(pdev->dev.of_node, "mbox-id",
 				&tcc_scrshare->mbox_id);
+	of_property_read_string(pdev->dev.of_node, "overlay_driver_names",
+				&tcc_scrshare->overlay_driver_name);
 #endif
+	if(!tcc_scrshare->overlay_driver_name)
+		tcc_scrshare->overlay_driver_name =
+			devm_kstrdup(&pdev->dev, OVERLAY_DRIVER, GFP_KERNEL);
+
 	ret = alloc_chrdev_region(&tcc_scrshare->devt, TCC_SCRSHARE_DEV_MINOR,
 				  1, tcc_scrshare->name);
 	if (ret) {
@@ -654,6 +664,8 @@ static int tcc_scrshare_remove(struct platform_device *pdev)
 	class_destroy(tcc_scrshare->class);
 	cdev_del(&tcc_scrshare->cdev);
 	unregister_chrdev_region(tcc_scrshare->devt, 1);
+
+	devm_kfree(&pdev->dev, tcc_scrshare);
 	return 0;
 }
 

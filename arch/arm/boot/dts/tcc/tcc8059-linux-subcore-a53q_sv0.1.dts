@@ -1791,10 +1791,11 @@
                 device-name ="tcc_scrshare_sub";
                 mbox-names ="sub-scrshare";
                 mboxes = <&cb_mbox TCC_CB_MBOX_SCRSHARE>;
-		mbox-id = TCC_MBOX_SCRSHARE_ID;		
+		mbox-id = TCC_MBOX_SCRSHARE_ID;
+		overlay_driver_names = "/dev/overalay";
                 status = "okay";
         };
-	
+
 	/* vioc_mgr for A53 */
 	vioc_mgr0: vioc_mgr@0 {
 		compatible = "telechips,vioc_mgr";
