@@ -2674,18 +2674,21 @@
 		telechips,pins = "gpsd1-9", "gpb-16";
 		telechips,pin-function = <0>;
 		telechips,no-pull;
+		telechips,input_buffer_enable;
 	};
 
 	tsc1_default: tsc1_default {
 		telechips,pins = "gpa-21", "gpmd-8";
 		telechips,pin-function = <0>;
 		telechips,no-pull;
+		telechips,input_buffer_enable;
 	};
 
 	tsc2_default: tsc2_default {
 		telechips,pins = "gpc-13", "gpc-12";
 		telechips,pin-function = <0>;
 		telechips,no-pull;
+		telechips,input_buffer_enable;
 	};
 
 	pmic_irq: pmic_irq {

@@ -2440,12 +2440,14 @@
 		telechips,pins = "gpsd1-9", "gpb-16";
 		telechips,pin-function = <0>;
 		telechips,no-pull;
+		telechips,input_buffer_enable;
 	};
 
 	tsc1_default: tsc1_default {
 		telechips,pins = "gpe-19";
 		telechips,pin-function = <0>;
 		telechips,no-pull;
+		telechips,input_buffer_enable;
 	};
 
 	pmic_irq: pmic_irq {
