@@ -39,7 +39,7 @@
 #define DRIVER_DATE	"20201028"
 #define DRIVER_MAJOR	1
 #define DRIVER_MINOR	3
-#define DRIVER_PATCH	1
+#define DRIVER_PATCH	2
 
 static struct device *tcc_drm_get_dma_device(void);
 
@@ -248,6 +248,9 @@ static struct tcc_drm_driver_info tcc_drm_drivers[] = {
 		DRM_COMPONENT_DRIVER | DRM_DMA_DEVICE
 	}, {
 		DRV_PTR(fourth_driver, CONFIG_DRM_TCC_FOURTH),
+		DRM_COMPONENT_DRIVER | DRM_DMA_DEVICE
+	}, {
+		DRV_PTR(screen_share_driver, CONFIG_DRM_TCC_SCREEN_SHARE),
 		DRM_COMPONENT_DRIVER | DRM_DMA_DEVICE
 	}, {
 		&tcc_drm_platform_driver,

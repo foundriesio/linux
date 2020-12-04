@@ -38,6 +38,8 @@ enum tcc_drm_output_type {
 	TCC_DISPLAY_TYPE_THIRD,
 	/* Foutrh display Interface. */
 	TCC_DISPLAY_TYPE_FOURTH,
+	/* Screen shared display Interface. */
+	TCC_DISPLAY_TYPE_SCREEN_SHARE,
 };
 
 struct tcc_drm_device_data {

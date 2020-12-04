@@ -175,7 +175,8 @@
 
 	drm_dpv14_0 {
 		status = "okay";
-		pinctrl-names = "pwr_port", "power_on", "reset_off", "blk_on", "blk_off", "power_off";
+		pinctrl-names = "pwr_port", "power_on", "reset_off", "blk_on",
+				"blk_off", "power_off";
 		pinctrl-0 = <&lcd_port_default0>;
 		pinctrl-1 = <&lcd_port_power_on0>;
 		pinctrl-2 = <&lcd_port_reset_off0>;
@@ -186,37 +187,40 @@
 
 	drm_dpv14_1 {
 		status = "okay";
-		pinctrl-names = "pwr_port", "power_on", "reset_off", "blk_on", "blk_off", "power_off";
-    pinctrl-0 = <&lcd_port_default1>;
+		pinctrl-names = "pwr_port", "power_on", "reset_off", "blk_on",
+				"blk_off", "power_off";
+		pinctrl-0 = <&lcd_port_default1>;
 		pinctrl-1 = <&lcd_port_power_on1>;
 		pinctrl-2 = <&lcd_port_reset_off1>;
 		pinctrl-3 = <&lcd_port_blk_on1>;
 		pinctrl-4 = <&lcd_port_blk_off1>;
 		pinctrl-5 = <&lcd_port_reset_on1 &lcd_port_power_off1>;
 	};
-	
+
 	drm_dpv14_2 {
 		status = "disabled";
-		pinctrl-names = "pwr_port", "power_on", "reset_off", "blk_on", "blk_off", "power_off";
-    pinctrl-0 = <&lcd_port_default2>;
+		pinctrl-names = "pwr_port", "power_on", "reset_off", "blk_on",
+				"blk_off", "power_off";
+		pinctrl-0 = <&lcd_port_default2>;
 		pinctrl-1 = <&lcd_port_power_on2>;
 		pinctrl-2 = <&lcd_port_reset_off2>;
 		pinctrl-3 = <&lcd_port_blk_on2>;
 		pinctrl-4 = <&lcd_port_blk_off2>;
 		pinctrl-5 = <&lcd_port_reset_on2 &lcd_port_power_off2>;
 	};
-	
+
 	drm_dpv14_3 {
 		status = "disabled";
-		pinctrl-names = "pwr_port", "power_on", "reset_off", "blk_on", "blk_off", "power_off";
-    pinctrl-0 = <&lcd_port_default3>;
+		pinctrl-names = "pwr_port", "power_on", "reset_off", "blk_on",
+				"blk_off", "power_off";
+		pinctrl-0 = <&lcd_port_default3>;
 		pinctrl-1 = <&lcd_port_power_on3>;
 		pinctrl-2 = <&lcd_port_reset_off3>;
 		pinctrl-3 = <&lcd_port_blk_on3>;
 		pinctrl-4 = <&lcd_port_blk_off3>;
 		pinctrl-5 = <&lcd_port_reset_on3 &lcd_port_power_off3>;
 	};
-	
+
 	drm_tm123xdhp90 {
 		status = "disabled";
 
@@ -258,5 +262,8 @@
 		status = "okay";
 	};
 
+	tcc-drm-screen-share {
+		status = "okay";
+	};
 };
 

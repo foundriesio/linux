@@ -276,4 +276,5 @@ extern struct platform_driver lcd_driver;
 extern struct platform_driver ext_driver;
 extern struct platform_driver third_driver;
 extern struct platform_driver fourth_driver;
+extern struct platform_driver screen_share_driver;
 #endif

@@ -182,5 +182,9 @@
 	tcc-drm-third {
 		status = "okay";
 	};
+	
+	tcc-drm-screen-share {
+		status = "okay";
+	};
 };
 

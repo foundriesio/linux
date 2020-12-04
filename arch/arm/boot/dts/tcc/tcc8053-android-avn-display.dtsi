@@ -249,6 +249,13 @@
 
 	tcc-drm-lcd {
 		status = "okay";
+		connector_type = "DP";
+		port@0 {
+			reg = <0>;
+			lcd_display_out: endpoint {
+				remote-endpoint = <&dpv14_0_input_0>;
+			};
+		};
 	};
 
 	tcc-drm-ext {
@@ -262,5 +269,8 @@
 		status = "okay";
 	};
 
+	tcc-drm-screen-share {
+		status = "okay";
+	};
 };
 

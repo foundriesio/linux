@@ -411,5 +411,36 @@
 			};
 		};
 	};
+
+	tcc-drm-screen-share {
+		#address-cells = <1>;
+		#size-cells = <0>;
+		compatible = "telechips,tcc-drm-screen-share";
+		timer_device = <&vioc_timer>;
+		status = "disabled";
+		display-timings {
+			native-mode = <&timing_screen_share>;
+			timing_screen_share: 1920x720p30 {
+				clock-frequency = <44100000>;
+				hactive = <1920>;
+				vactive = <720>;
+				hfront-porch = <30>;
+				hback-porch = <30>;
+				hsync-len = <4>;
+				hsync-active = <0>;
+				vback-porch = <9>;
+				vfront-porch = <10>;
+				vsync-len = <2>;
+				vsync-active = <0>;
+				de-active = <1>;
+				pixelclk-active = <1>;
+			};
+		};
+		port@0 {
+			reg = <0>;
+			screen_share_display_out: endpoint {
+			};
+		};
+	};
 };
 

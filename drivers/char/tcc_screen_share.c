@@ -47,6 +47,7 @@
 #include <video/tcc/tccfb_ioctrl.h>
 #include <video/tcc/tcc_overlay_ioctl.h>
 #include <video/tcc/tccfb_address.h>
+#include "tcc_screen_share.h"
 
 #define TCC_SCRSHARE_DEV_MINOR		0
 #define OVERLAY_DRIVER "/dev/overlay"

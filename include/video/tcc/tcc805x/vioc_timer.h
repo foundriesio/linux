@@ -123,3 +123,5 @@ int vioc_timer_clear_irq_mask(enum vioc_timer_id id);
 unsigned int vioc_timer_get_irq_status(void);
 int vioc_timer_is_interrupted(enum vioc_timer_id id);
 int vioc_timer_clear_irq_status(enum vioc_timer_id id);
+int vioc_timer_suspend(void);
+int vioc_timer_resume(void);

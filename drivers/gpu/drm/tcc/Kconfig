@@ -58,6 +58,7 @@ config DRM_TCC_EXT_VIC
 
 config DRM_TCC_THIRD
         bool "TCC third display type"
+	depends on (ARCH_TCC803X || ARCH_TCC805X)
         help
           Choose this option if you want to use third display for DRM.
 
@@ -71,6 +72,7 @@ config DRM_TCC_THIRD_VIC
 
 config DRM_TCC_FOURTH
         bool "TCC fourth display type"
+	depends on (ARCH_TCC803X || ARCH_TCC805X)
         help
           Choose this option if you want to use third display for DRM.
 
@@ -82,6 +84,20 @@ config DRM_TCC_FOURTH_VIC
 	help
 	  Video Identification Code for fourth-Display
 
+
+config DRM_TCC_SCREEN_SHARE
+	bool "TCC Screen shared display type"
+	depends on DRM_TCC && TCC_SCREEN_SHARE
+	help
+		Choose this option if you want to use Screen shared function.
+
+config DRM_TCC_SCREEN_SHARE_VIC
+	int "Video Identification Code for FOURTH"
+	depends on DRM_TCC_SCREEN_SHARE
+	default 1024
+	range 1 DRM_TCC_VIC_MAX
+	help
+		Video Identification Code for Screen share Display
 
 comment "Encoders and Bridges"
 

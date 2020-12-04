@@ -590,12 +590,15 @@ int tcc_dpi_bind(
 	int encoder_type;
 	int i;
 
-	if (
-		hw_data->connector_type == DRM_MODE_CONNECTOR_DisplayPort ||
-		hw_data->connector_type == DRM_MODE_CONNECTOR_HDMIA ||
-		hw_data->connector_type == DRM_MODE_CONNECTOR_HDMIB){
+	switch (hw_data->connector_type) {
+	case DRM_MODE_CONNECTOR_DisplayPort:
+	case DRM_MODE_CONNECTOR_HDMIA:
+	case DRM_MODE_CONNECTOR_HDMIB:
 		encoder_type = DRM_MODE_ENCODER_TMDS;
-	} else {
+		break;
+	case DRM_MODE_CONNECTOR_VIRTUAL:
+		encoder_type = DRM_MODE_ENCODER_VIRTUAL;
+	default:
 		encoder_type = DRM_MODE_ENCODER_LVDS;
 	}
 	dev_dbg(
@@ -608,7 +611,9 @@ int tcc_dpi_bind(
 
 	drm_encoder_helper_add(encoder, &tcc_dpi_encoder_helper_funcs);
 
-	for (i = TCC_DISPLAY_TYPE_FOURTH; i > TCC_DISPLAY_TYPE_NONE ; i--) {
+	for (
+		i = TCC_DISPLAY_TYPE_SCREEN_SHARE;
+		i > TCC_DISPLAY_TYPE_NONE ; i--) {
 		if (
 			tcc_drm_set_possible_crtcs(
 				encoder, (enum tcc_drm_output_type)i) == 0)
@@ -622,6 +627,7 @@ int tcc_dpi_bind(
 	dev_info(
 		dev->dev, "[INFO][%s] %s %s- possible_crtcs=0x%08x, dev=%d\r\n",
 		LOG_TAG, __func__,
+		i == TCC_DISPLAY_TYPE_SCREEN_SHARE ? "screen_share" :
 		i == TCC_DISPLAY_TYPE_FOURTH ? "fourth" :
 		i == TCC_DISPLAY_TYPE_THIRD ? "triple" :
 		i == TCC_DISPLAY_TYPE_EXT ? "ext" :
