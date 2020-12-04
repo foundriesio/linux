@@ -116,6 +116,11 @@ enum{
 	SIP_DRAM_TOOL_WIMP,
 	SIP_DRAM_TOOL_TM_INIT,
 	SIP_DRAM_TOOL_TM_SET,
+        SIP_DRAM_TOOL_CLK,
+        SIP_DRAM_TOOL_CA,
+        SIP_GET_DRAM_SIZE,
+	SIP_DDR_ERROR_CNT,
+        SIP_ECC_ERROR_REASON,
 };
 
 /* TCC SiP Service for chip info */
