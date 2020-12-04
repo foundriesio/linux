@@ -27,6 +27,8 @@
 #define ISP_BYPASS		(0X20C)
 #define ISP_X2X_CFG		(0X210)
 #define ISP_FMT_CFG		(0X214)
+#define ISP_APBADDR_CFG0	(0X218)
+#define ISP_APBADDR_CFG1	(0X21C)
 
 /*
  * CSI_CFG

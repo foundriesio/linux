@@ -14,8 +14,8 @@ config TCC_ISP
 
 # only for TCC805X ES(TCS CV8050C-618)
 config TCC_ISP_USE_IOMMU
-	bool "Set IOMMU to access I2C controller 7 from ISP"
-	default y
+	bool "FOR 805X ES, Set IOMMU to access I2C controller 7 from ISP"
+	default n
 	depends on ARCH_TCC805X && VIDEO_TCCVIN2
 	---help---
 	  This must be set on the TCC805X ES

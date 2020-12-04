@@ -700,6 +700,16 @@ static void MIPI_WRAP_Set_MIPI_Output_RAW12(struct tcc_mipi_csi2_state *state,
 
 }
 
+static void MIPI_WRAP_Set_ISP_APBADDR(struct tcc_mipi_csi2_state *state)
+{
+	void __iomem *reg = 0;
+
+	/* TCS: CV8050C-658 */
+	reg = state->cfg_base + ISP_APBADDR_CFG0;
+	__raw_writel(0x16371637, reg);
+	reg = state->cfg_base + ISP_APBADDR_CFG1;
+	__raw_writel(0x16371637, reg);
+}
 #endif
 
 static int tcc_mipi_csi2_set_interface(struct tcc_mipi_csi2_state *state,
@@ -728,6 +738,7 @@ static int tcc_mipi_csi2_set_interface(struct tcc_mipi_csi2_state *state,
 			MIPI_WRAP_Set_ISP_BYPASS(state,
 				idx, state->isp_bypass[idx]);
 		}
+		MIPI_WRAP_Set_ISP_APBADDR(state);
 #endif
 		// S/W reset CSI2
 		MIPI_CSIS_Set_CSIS_Reset(state, ON);
