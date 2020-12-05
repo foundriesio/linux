@@ -12,10 +12,14 @@
 #include <linux/miscdevice.h>
 #include <linux/uaccess.h>
 #include <linux/slab.h>
+#include <linux/delay.h>
 
 #include "hdcp_interface.h"
 
 #define HDCP_DRV_VERSION		("0.1.0")
+
+#define SWRESET				(0x0204)
+#define SWRESET_HDCP			(1<<2)
 
 /* Register offsets */
 #define HDCPCFG				(0x0E00)
@@ -204,7 +208,8 @@ static int hdcp_set_protocal(struct hdcp_device *hdcp, uint32_t protocal)
 		hdcp->status = HDCP_STATUS_IDLE;
 		break;
 	case HDCP_PROTOCAL_HDCP_2_2:
-		iowrite32(0x00, hdcp->reg + HDCPCFG);
+		/* must be eanble hdcp */
+		iowrite32(HDCPCFG_ENABLE_HDCP /* 0x0 */, hdcp->reg + HDCPCFG);
 		hdcp->protocal = HDCP_PROTOCAL_HDCP_2_2;
 		hdcp->status = HDCP_STATUS_IDLE;
 		break;
@@ -340,13 +345,27 @@ static int hdcp_open(struct inode *inode, struct file *file)
 	struct hdcp_device *hdcp = dev_get_drvdata(dev->parent);
 
 	if (!hdcp->open_cs) {
+		uint32_t soft_reset;
+
 		dev_info(dev->parent, "%s\n", __func__);
+
+		/* software reset */
+		soft_reset = ioread32(hdcp->reg + SWRESET);
+		iowrite32(soft_reset | SWRESET_HDCP, hdcp->reg + SWRESET);
+		udelay(10); /* at least 5usec to insure a successful reset. */
+		iowrite32(soft_reset & ~SWRESET_HDCP, hdcp->reg + SWRESET);
 
 		/* clear interrupts */
 		iowrite32(INT_MASK_VALUE, hdcp->reg + HDCPAPIINTCLR);
 
 		/* unmask insterrupt */
 		iowrite32(0, hdcp->reg + HDCPAPIINTMSK);
+
+		/*
+		 * Switch to HDCP2.2 and enable hdcp.
+		 * HDCP2.2 can be enabled only with '/dev/hd_dev'
+		 */
+		iowrite32(HDCPCFG_ENABLE_HDCP /* 0x0 */, hdcp->reg + HDCPCFG);
 	}
 
 	hdcp->open_cs++;
