@@ -119,6 +119,9 @@ static int tcc805x_set_eint(void __iomem *base, u32 bit, u32 extint, struct tcc_
 {
 	void __iomem *reg
 		= (void __iomem *)(gpio_base + EINTSEL + (4U*(extint/4U)));
+#if !defined(CONFIG_PINCTRL_TCC_SCFW)
+	u32 data, mask;
+#endif
 	u32 shift, idx, i, pin_valid;
 	u32 port = (u32)base - (u32)gpio_base;
 	struct extintr_match_ *match
@@ -204,6 +207,9 @@ static int tcc805x_gpio_get(void __iomem *base, u32 offset)
 
 static void tcc805x_gpio_set(void __iomem *base, u32 offset, int value)
 {
+#if !defined(CONFIG_PINCTRL_TCC_SCFW)
+	u32 data;
+#endif
 	if (value != 0) {
 		writel((u32)1U<<offset,
 				base + GPIO_DATA_OR);
@@ -216,6 +222,9 @@ static void tcc805x_gpio_set(void __iomem *base, u32 offset, int value)
 static void tcc805x_gpio_pinconf_extra
 	(void __iomem *base, u32 offset, int value, u32 addr_offset)
 {
+#if !defined(CONFIG_PINCTRL_TCC_SCFW)
+	u32 data;
+#endif
 	void __iomem *reg = base + addr_offset;
 
 #if defined(CONFIG_PINCTRL_TCC_SCFW)
@@ -247,6 +256,9 @@ static void tcc805x_gpio_input_buffer_set
 static int tcc805x_gpio_set_direction(void __iomem *base, u32 offset,
 				      int input)
 {
+#if !defined(CONFIG_PINCTRL_TCC_SCFW)
+	u32 data;
+#endif
 	void __iomem *reg = base + GPIO_OUTPUT_ENABLE;
 
 #if defined(CONFIG_PINCTRL_TCC_SCFW)
@@ -278,6 +290,8 @@ static int tcc805x_gpio_set_function(void __iomem *base, u32 offset,
 	u32 mask, shift;
 #if defined(CONFIG_PINCTRL_TCC_SCFW)
 	u32 width = 1U;
+#else
+	u32 data;
 #endif
 	if (func < 0) {
 		return -EINVAL;
@@ -333,6 +347,9 @@ static int tcc805x_gpio_get_drive_strength(void __iomem *base, u32 offset)
 static int tcc805x_gpio_set_drive_strength(void __iomem *base, u32 offset,
 					   int value)
 {
+#if !defined(CONFIG_PINCTRL_TCC_SCFW)
+	u32 data;
+#endif
 	void __iomem *reg;
 
 	if (value > 3) {
@@ -401,6 +418,9 @@ static int tcc805x_gpio_set_eclk_sel(void __iomem *base, u32 offset,
 	struct tcc_pin_bank *bank = pctl->pin_banks;
 	u32 port = (u32)base - (u32)gpio_base;
 	u32 idx, i, pin_valid;
+#if !defined(CONFIG_PINCTRL_TCC_SCFW)
+	u32 data;
+#endif
 
 	if (value > 3) {
 		return -EINVAL;
