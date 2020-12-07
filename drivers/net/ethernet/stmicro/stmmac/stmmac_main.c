@@ -5160,6 +5160,12 @@ int stmmac_resume(struct device *dev)
 			return ret;
 	}
 
+	if (!device_may_wakeup(priv->device)) {
+		rtnl_lock();
+		phylink_start(priv->phylink);
+		rtnl_unlock();
+	}
+
 	rtnl_lock();
 	mutex_lock(&priv->lock);
 
@@ -5177,12 +5183,6 @@ int stmmac_resume(struct device *dev)
 
 	mutex_unlock(&priv->lock);
 	rtnl_unlock();
-
-	if (!device_may_wakeup(priv->device)) {
-		rtnl_lock();
-		phylink_start(priv->phylink);
-		rtnl_unlock();
-	}
 
 	phylink_mac_change(priv->phylink, true);
 
