@@ -244,16 +244,16 @@ pgprot_t vmem_get_pgprot(pgprot_t ulOldProt, unsigned long ulPageOffset)
 			case 6:
 			default:
 			{
-				dprintk("_vmem_get_pgprot (default: non-cached) \r\n");
-				newProt = pgprot_noncached(ulOldProt);
+				dprintk("_vmem_get_pgprot (write-combine) \r\n");
+				newProt = pgprot_writecombine(ulOldProt);
 			}
 			break;
 		}
 	}
 	else
 	{
-		dprintk("_vmem_get_pgprot (default: non-cached) \r\n");
-		newProt = pgprot_noncached(ulOldProt);
+		dprintk("_vmem_get_pgprot (write-combine) \r\n");
+		newProt = pgprot_writecombine(ulOldProt);
 	}
 
 	mutex_unlock(&mem_mutex);
