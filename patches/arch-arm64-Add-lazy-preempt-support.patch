@@ -21,7 +21,7 @@ Signed-off-by: Anders Roxell <anders.roxell@linaro.org>
 
 --- a/arch/arm64/Kconfig
 +++ b/arch/arm64/Kconfig
-@@ -172,6 +172,7 @@ config ARM64
+@@ -173,6 +173,7 @@ config ARM64
  	select HAVE_PERF_EVENTS
  	select HAVE_PERF_REGS
  	select HAVE_PERF_USER_STACK_DUMP
@@ -115,7 +115,7 @@ Signed-off-by: Anders Roxell <anders.roxell@linaro.org>
    DEFINE(TSK_TI_TTBR0,		offsetof(struct task_struct, thread_info.ttbr0));
 --- a/arch/arm64/kernel/entry.S
 +++ b/arch/arm64/kernel/entry.S
-@@ -660,9 +660,18 @@ alternative_if ARM64_HAS_IRQ_PRIO_MASKIN
+@@ -649,9 +649,18 @@ alternative_if ARM64_HAS_IRQ_PRIO_MASKIN
  	mrs	x0, daif
  	orr	x24, x24, x0
  alternative_else_nop_endif
@@ -135,7 +135,7 @@ Signed-off-by: Anders Roxell <anders.roxell@linaro.org>
 +2:
  #endif
  
- #ifdef CONFIG_ARM64_PSEUDO_NMI
+ 	mov	x0, sp
 --- a/arch/arm64/kernel/signal.c
 +++ b/arch/arm64/kernel/signal.c
 @@ -925,7 +925,7 @@ asmlinkage void do_notify_resume(struct
