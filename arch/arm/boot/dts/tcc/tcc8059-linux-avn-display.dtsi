@@ -116,20 +116,7 @@
 
 	drm_dpv14_0 {
 		status = "okay";
-		pinctrl-names = "pwr_port", "power_on", "reset_off", "blk_on",
-				"blk_off", "power_off";
-		pinctrl-0 = <&lcd_port_default0>;
-		pinctrl-1 = <&lcd_port_power_on0>;
-		pinctrl-2 = <&lcd_port_reset_off0>;
-		pinctrl-3 = <&lcd_port_blk_on0>;
-		pinctrl-4 = <&lcd_port_blk_off0>;
-		pinctrl-5 = <&lcd_port_reset_on0 &lcd_port_power_off0>;
-	};
-
-	drm_dpv14_1 {
-		status = "okay";
-		pinctrl-names = "pwr_port", "power_on", "reset_off", "blk_on",
-				"blk_off", "power_off";
+		pinctrl-names = "default", "power_on", "reset_off", "blk_on", "blk_off", "power_off";
 		pinctrl-0 = <&lcd_port_default0>;
 		pinctrl-1 = <&lcd_port_power_on0>;
 		pinctrl-2 = <&lcd_port_reset_off0>;

@@ -66,6 +66,7 @@ struct Panel_Pins_t {
 	struct pinctrl_state *blk_off;
 	struct pinctrl_state *pwr_off;
 };
+
 struct Panel_Dpv14_Param_t {
 	struct drm_panel			stDrm_Panel;
 	struct device				*dev;
@@ -85,7 +86,6 @@ struct Panel_Dpv14_Param_t {
 
 static inline struct Panel_Dpv14_Param_t *To_DP_Drv_Panel( struct drm_panel *pstPanel )
 {
-	unsigned char				ucPanel_Index;
 	struct Panel_Dpv14_Param_t	*pstPanel_Dpv14_Param;
 
 	pstPanel_Dpv14_Param = container_of( pstPanel, struct Panel_Dpv14_Param_t, stDrm_Panel );
@@ -253,7 +253,7 @@ static int panel_dpv14_parse_dt( struct Panel_Dpv14_Param_t *pstPanel_Dpv14_Para
 		goto err_parse_dt;
 	}
 	
-	pstPanel_Dpv14_Param->stPanel_Pins.pwr_port = pinctrl_lookup_state( pstPanel_Dpv14_Param->stPanel_Pins.p, "pwr_port" );
+	pstPanel_Dpv14_Param->stPanel_Pins.pwr_port = pinctrl_lookup_state( pstPanel_Dpv14_Param->stPanel_Pins.p, "default" );
 	if( IS_ERR(pstPanel_Dpv14_Param->stPanel_Pins.pwr_port) ) 
 	{
 		pr_err("[ERROR][%s:%s] failed to find pwr_port\r\n", LOG_DPV14_TAG, __func__);
@@ -261,42 +261,42 @@ static int panel_dpv14_parse_dt( struct Panel_Dpv14_Param_t *pstPanel_Dpv14_Para
 		
 		goto err_parse_dt;
 	}
-	
+
 	pstPanel_Dpv14_Param->stPanel_Pins.pwr_on = pinctrl_lookup_state( pstPanel_Dpv14_Param->stPanel_Pins.p, "power_on" );
 	if( IS_ERR(pstPanel_Dpv14_Param->stPanel_Pins.pwr_on) ) 
 	{
 		pr_warning("[WARN][%s:%s]failed to find power_on \r\n",	LOG_DPV14_TAG, __func__);
 		pstPanel_Dpv14_Param->stPanel_Pins.pwr_on = NULL;
 	}
-	
+
 	pstPanel_Dpv14_Param->stPanel_Pins.reset_off = pinctrl_lookup_state( pstPanel_Dpv14_Param->stPanel_Pins.p, "reset_off"  );
 	if( IS_ERR(pstPanel_Dpv14_Param->stPanel_Pins.reset_off) ) 
 	{
 		pr_warning("[WARN][%s:%s]failed to find reset_off \r\n",	LOG_DPV14_TAG, __func__);
 		pstPanel_Dpv14_Param->stPanel_Pins.reset_off = NULL;
 	}
-	
+
 	pstPanel_Dpv14_Param->stPanel_Pins.blk_on = pinctrl_lookup_state( pstPanel_Dpv14_Param->stPanel_Pins.p, "blk_on" );
 	if( IS_ERR(pstPanel_Dpv14_Param->stPanel_Pins.blk_on) ) 
 	{
 		pr_warning("[WARN][%s:%s]failed to find blk_on \r\n",	LOG_DPV14_TAG, __func__);
 		pstPanel_Dpv14_Param->stPanel_Pins.blk_on = NULL;
 	}
-	
+
 	pstPanel_Dpv14_Param->stPanel_Pins.blk_off = pinctrl_lookup_state( pstPanel_Dpv14_Param->stPanel_Pins.p, "blk_off" );
 	if( IS_ERR(pstPanel_Dpv14_Param->stPanel_Pins.blk_off) ) 
 	{
 		pr_warning("[WARN][%s:%s]failed to find blk_off \r\n",	LOG_DPV14_TAG, __func__);
 		pstPanel_Dpv14_Param->stPanel_Pins.blk_off = NULL;
 	}
-	
+
 	pstPanel_Dpv14_Param->stPanel_Pins.pwr_off = pinctrl_lookup_state( pstPanel_Dpv14_Param->stPanel_Pins.p, "power_off" );
 	if( IS_ERR(pstPanel_Dpv14_Param->stPanel_Pins.pwr_off) ) 
 	{
 		pr_warning("[WARN][%s:%s]failed to find power_off \r\n",	LOG_DPV14_TAG, __func__);
 		pstPanel_Dpv14_Param->stPanel_Pins.pwr_off = NULL;
 	}
-	
+
 err_parse_dt:
 	return iRetVal;
 }
@@ -304,7 +304,6 @@ err_parse_dt:
 static int panel_dpv14_probe( struct platform_device *pdev )
 {
 	int				iRetVal;
-	unsigned char	ucPanel_Index;
 	struct Panel_Dpv14_Param_t	*pstPanel_Dpv14_Param;
 
 	pstPanel_Dpv14_Param = devm_kzalloc(&pdev->dev, sizeof(*pstPanel_Dpv14_Param), GFP_KERNEL);
@@ -314,7 +313,7 @@ static int panel_dpv14_probe( struct platform_device *pdev )
 		iRetVal = -ENODEV;
 		goto err_init;
 	}
-	
+
 	pstPanel_Dpv14_Param->dev = &pdev->dev;
 
 	iRetVal = panel_dpv14_parse_dt( pstPanel_Dpv14_Param );
@@ -345,7 +344,7 @@ static int panel_dpv14_probe( struct platform_device *pdev )
 		pr_err("[ERROR][%s:%s]%s-> failed to drm_panel_init\r\n",	LOG_DPV14_TAG, __func__, pstPanel_Dpv14_Param->data->name);
 		goto err_put_dev;
 	}
-	
+
 	dev_set_drvdata( pstPanel_Dpv14_Param->dev, pstPanel_Dpv14_Param );
 
 	pr_info("[INFO][%s:%s] Name as %s \r\n", LOG_DPV14_TAG, __func__, pstPanel_Dpv14_Param->data->name);
@@ -416,8 +415,6 @@ static int panel_dpv14_resume(struct device *dev)
 	struct Panel_Dpv14_Param_t	*pstPanel_Dpv14_Param = dev_get_drvdata( dev );
 
 	pr_info("[INFO][%s:%s]To %s \r\n", LOG_DPV14_TAG, __func__, pstPanel_Dpv14_Param->data->name);
-
-	dev_dbg(dev, "[DEBUG][%s] %s \r\n", LOG_DPV14_TAG, __func__);
 
 	if( pstPanel_Dpv14_Param->stPanel_Pins.pwr_port != NULL) 	/* Set pin status to defualt */
 	{
