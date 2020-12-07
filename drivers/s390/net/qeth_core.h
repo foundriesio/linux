@@ -427,8 +427,6 @@ enum qeth_qdio_buffer_states {
 	 * outbound: filled by driver; owned by hardware in order to be sent
 	 */
 	QETH_QDIO_BUF_PRIMED,
-	/*
-	 * inbound: not applicable
 	/* Discovered by the TX completion code: */
 	QETH_QDIO_BUF_PENDING,
 	/* Finished by the TX completion code: */
