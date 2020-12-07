@@ -237,6 +237,14 @@
 			no-map;
 		};
 
+		pmap_fb3_video: fb3_video {
+			compatible = "telechips,pmap";
+			telechips,pmap-name = "fb3_video";
+			alloc-ranges = <RESERVED_MEM_BASE RESERVED_MEM_SIZE>;
+			size = <PMAP_SIZE_FB3_VIDEO>;
+			no-map;
+		};
+
 		pmap_overlay_rot: overlay_rot {
 			compatible = "telechips,pmap";
 			telechips,pmap-name = "overlay_rot";
@@ -1551,6 +1559,22 @@
 		telechips,disp = <&vioc_disp VIOC_DISP2>;
 		telechips,wmixer = <&vioc_wmix VIOC_WMIX2>;
 		telechips,rdma = <&vioc_rdma VIOC_RDMA09>;
+	};
+
+	fb3: fb@3 { //DPGL
+		compatible = "telechips,fb";
+		status = "disabled";
+		memory-region = <&pmap_fb3_video>;
+		xres = <1920>;
+		yres = <720>;
+		bpp = <32>;
+		mode = <FBX_TRIPLE>;
+		update-type = <FBX_NOWAIT_UPDATE>;
+		device-priority = <FBX_DEVICE_NONE>;
+		no-kernel-logo =<1>;
+		telechips,disp = <&vioc_wdma VIOC_WDMA05>;
+		telechips,wmixer = <&vioc_wmix VIOC_WMIX5>;
+		telechips,rdma = <&vioc_rdma VIOC_RDMA16>;
 	};
 
 	tcc_overlay_drv {
