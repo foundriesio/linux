@@ -1974,14 +1974,16 @@ static int cpsw_ndo_vlan_rx_add_vid(struct net_device *ndev,
 		int i;
 
 		for (i = 0; i < cpsw->data.slaves; i++) {
-			if (vid == cpsw->slaves[i].port_vlan)
-				return -EINVAL;
+			if (vid == cpsw->slaves[i].port_vlan) {
+				ret = -EINVAL;
+				goto err;
+			}
 		}
 	}
 
 	dev_info(priv->dev, "Adding vlanid %d to vlan filter\n", vid);
 	ret = cpsw_add_vlan_ale_entry(priv, vid);
-
+err:
 	pm_runtime_put(cpsw->dev);
 	return ret;
 }
@@ -2007,7 +2009,7 @@ static int cpsw_ndo_vlan_rx_kill_vid(struct net_device *ndev,
 
 		for (i = 0; i < cpsw->data.slaves; i++) {
 			if (vid == cpsw->slaves[i].port_vlan)
-				return -EINVAL;
+				goto err;
 		}
 	}
 
@@ -2017,6 +2019,7 @@ static int cpsw_ndo_vlan_rx_kill_vid(struct net_device *ndev,
 				  HOST_PORT_NUM, ALE_VLAN, vid);
 	ret |= cpsw_ale_del_mcast(cpsw->ale, priv->ndev->broadcast,
 				  0, ALE_VLAN, vid);
+err:
 	pm_runtime_put(cpsw->dev);
 	return ret;
 }
