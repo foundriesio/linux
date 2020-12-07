@@ -429,7 +429,7 @@ static int qcom_qspi_probe(struct platform_device *pdev)
 
 	dev = &pdev->dev;
 
-	master = spi_alloc_master(dev, sizeof(*ctrl));
+	master = devm_spi_alloc_master(dev, sizeof(*ctrl));
 	if (!master)
 		return -ENOMEM;
 
@@ -440,32 +440,28 @@ static int qcom_qspi_probe(struct platform_device *pdev)
 	spin_lock_init(&ctrl->lock);
 	ctrl->dev = dev;
 	ctrl->base = devm_platform_ioremap_resource(pdev, 0);
-	if (IS_ERR(ctrl->base)) {
-		ret = PTR_ERR(ctrl->base);
-		goto exit_probe_master_put;
-	}
+	if (IS_ERR(ctrl->base))
+		return PTR_ERR(ctrl->base);
 
 	ctrl->clks = devm_kcalloc(dev, QSPI_NUM_CLKS,
 				  sizeof(*ctrl->clks), GFP_KERNEL);
-	if (!ctrl->clks) {
-		ret = -ENOMEM;
-		goto exit_probe_master_put;
-	}
+	if (!ctrl->clks)
+		return -ENOMEM;
 
 	ctrl->clks[QSPI_CLK_CORE].id = "core";
 	ctrl->clks[QSPI_CLK_IFACE].id = "iface";
 	ret = devm_clk_bulk_get(dev, QSPI_NUM_CLKS, ctrl->clks);
 	if (ret)
-		goto exit_probe_master_put;
+		return ret;
 
 	ret = platform_get_irq(pdev, 0);
 	if (ret < 0)
-		goto exit_probe_master_put;
+		return ret;
 	ret = devm_request_irq(dev, ret, qcom_qspi_irq,
 			IRQF_TRIGGER_HIGH, dev_name(dev), ctrl);
 	if (ret) {
 		dev_err(dev, "Failed to request irq %d\n", ret);
-		goto exit_probe_master_put;
+		return ret;
 	}
 
 	master->max_speed_hz = 300000000;
@@ -488,9 +484,6 @@ static int qcom_qspi_probe(struct platform_device *pdev)
 		return 0;
 
 	pm_runtime_disable(dev);
-
-exit_probe_master_put:
-	spi_master_put(master);
 
 	return ret;
 }
