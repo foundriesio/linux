@@ -143,35 +143,6 @@ int tcc_gpio_config(u32 gpio, u32 config)
 
 #endif
 
-struct tcc_pinctrl {
-	struct device *dev;
-
-	void __iomem *base;
-	void __iomem *pmgpio_base;
-
-	struct pinctrl_desc pinctrl_desc;
-
-	struct pinctrl_dev *pctldev;
-
-	struct tcc_pinconf *pin_configs;
-	int nconfigs;
-
-	struct tcc_pinctrl_ops *ops;
-
-	struct pinctrl_pin_desc *pins;
-	u32 npins;
-
-	struct tcc_pin_bank *pin_banks;
-	u32 nbanks;
-
-	struct tcc_pin_group *groups;
-	u32 ngroups;
-
-	struct tcc_pinmux_function *functions;
-	u32 nfunctions;
-};
-
-
 static inline struct tcc_pin_bank *gpiochip_to_pin_bank(struct gpio_chip *gc)
 {
 	return container_of(gc, struct tcc_pin_bank, gpio_chip);
@@ -259,10 +230,10 @@ static int tcc_pinctrl_gpio_to_irq(struct gpio_chip *chip,
 #if defined(CONFIG_PINCTRL_TCC_SCFW)
 	//Since SCFW is used, spin_lock is not required
 	//And if spin_lock is present, a kernel panic occurs.
-	ret = ops->to_irq(pctl->base + bank->reg_base, offset);
+	ret = ops->to_irq(pctl->base + bank->reg_base, offset, pctl);
 #else
 	spin_lock_irqsave(&bank->lock, (flags));
-	ret = ops->to_irq(pctl->base + bank->reg_base, offset);
+	ret = ops->to_irq(pctl->base + bank->reg_base, offset, pctl);
 	spin_unlock_irqrestore(&bank->lock, flags);
 #endif
 
@@ -607,7 +578,7 @@ static int tcc_pinconf_set(struct pinctrl_dev *pctldev, u32 pin,
 	for (i = 0U; i < num_configs; i++) {
 		param = (int)tcc_pinconf_unpack_param((u32)(configs[i]));
 		value = (int)tcc_pinconf_unpack_value((u32)(configs[i]));
-		ret = pctl->ops->pinconf_set(reg, offset, param, value);
+		ret = pctl->ops->pinconf_set(reg, offset, param, value, pctl);
 		if (ret < 0)
 			return ret;
 	}
@@ -943,6 +914,41 @@ int tcc_pinctrl_probe(struct platform_device *pdev,
 			dev_err(&(pdev->dev),
 				"[ERROR][PINCTRL] failed to get pin numbers\n");
 			return -EINVAL;
+		}
+
+		ret = of_property_read_u32_index(np, "source-num", 0, &bank->source_section);
+		if(ret > 0) {
+			dev_err(&(pdev->dev),
+					"[ERROR][PINCTRL] failed to get source offset base\n");
+			return -EINVAL;
+		}
+
+		if(bank->source_section != 0xff) {
+
+			bank->source_offset_base = kzalloc(sizeof(u32)*bank->source_section, GFP_KERNEL);
+			bank->source_base = kzalloc(sizeof(u32)*bank->source_section, GFP_KERNEL);
+			bank->source_range = kzalloc(sizeof(u32)*bank->source_section, GFP_KERNEL);
+
+			for(i = 0U ; i < bank->source_section ; i++) {
+				ret = of_property_read_u32_index(np, "source-num", ((i*3)+1), &bank->source_offset_base[i]);
+				if(ret > 0) {
+					dev_err(&(pdev->dev),
+							"[ERROR][PINCTRL] failed to get source offset base\n");
+					return -EINVAL;
+				}
+				ret = of_property_read_u32_index(np, "source-num", ((i*3)+2), &bank->source_base[i]);
+				if(ret > 0) {
+					dev_err(&(pdev->dev),
+							"[ERROR][PINCTRL] failed to get source base\n");
+					return -EINVAL;
+				}
+				ret = of_property_read_u32_index(np, "source-num", ((i*3)+3), &bank->source_range[i]);
+				if(ret > 0) {
+					dev_err(&(pdev->dev),
+							"[ERROR][PINCTRL] failed to get source range\n");
+					return -EINVAL;
+				}
+			}
 		}
 
 		spin_lock_init(&bank->lock);
