@@ -31,6 +31,8 @@
 
 #define fh2ctx(__fh) container_of(__fh, struct g2d_ctx, fh)
 
+#define VFL_TYPE_VIDEO VFL_TYPE_GRABBER
+
 static struct g2d_fmt formats[] = {
 	{
 		.name	= "XRGB_8888",
