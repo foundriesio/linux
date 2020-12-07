@@ -163,56 +163,6 @@
 		};
 	};
 	
-	drm_dpv14_3:drm_dpv14_3 {
-		#address-cells = <1>;
-		#size-cells = <0>;
-		compatible = "telechips,drm-lvds-dpv14-3";
-		status = "disabled";
-
-		display-timings {
-			native-mode = <&timing_dpv14_3>;
-			timing_dpv14_3: 1920x720p60 {
-				clock-frequency = <88200000>;
-				hactive = <1920>;
-				vactive = <720>;
-				hfront-porch = <30>;
-				hback-porch = <30>;
-				hsync-len = <4>;
-				hsync-active = <0>;
-				vback-porch = <9>;
-				vfront-porch = <10>;
-				vsync-len = <2>;
-				vsync-active = <0>;
-				de-active = <1>;
-				pixelclk-active = <1>;
-			};
-		};
-		port@0 {
-			reg = <0>;
-			dpv14_3_input_0: endpoint {
-				remote-endpoint = <&lcd_display_out>;
-			};
-		};
-		port@1 {
-			reg = <1>;
-			dpv14_3_input_1: endpoint {
-				remote-endpoint = <&ext_display_out>;
-			};
-		};
-		port@2 {
-			reg = <2>;
-			dpv14_3_input_2: endpoint {
-				remote-endpoint = <&third_display_out>;
-			};
-		};
-		port@3 {
-			reg = <3>;
-			dpv14_3_input_3: endpoint {
-				remote-endpoint = <&fourth_display_out>;
-			};
-		};
-	};
-	
 	drm_tm123xdhp90:drm_tm123xdhp90 {
 		#address-cells = <1>;
 		#size-cells = <0>;
