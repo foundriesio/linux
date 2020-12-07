@@ -609,7 +609,7 @@ static int mtk_nor_probe(struct platform_device *pdev)
 		buffer = (u8 *)(((ulong)buffer + MTK_NOR_DMA_ALIGN) &
 				~MTK_NOR_DMA_ALIGN_MASK);
 
-	ctlr = spi_alloc_master(&pdev->dev, sizeof(*sp));
+	ctlr = devm_spi_alloc_master(&pdev->dev, sizeof(*sp));
 	if (!ctlr) {
 		dev_err(&pdev->dev, "failed to allocate spi controller\n");
 		return -ENOMEM;
