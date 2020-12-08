@@ -1833,8 +1833,10 @@
 		reg = <0x0 0x16480000 0x0 0x50>;
 		clocks = <&clk_io IOBUS_RTC>;
 		interrupts = <GIC_SPI 73 0>;
-		/* rtc_clock, 1: XTAL, 2: OSC */
+		/* Clocksource for RTC, 1: XTAL, 2: OSC */
 		rtc_clock = <1>;
+		/* RTC timeout in seconds for Suspend-To-RAM */
+		rtc_timeout = <172800>;
 	};
 
 	/*

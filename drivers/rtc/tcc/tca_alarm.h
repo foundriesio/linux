@@ -3,59 +3,23 @@
  * Copyright (C) Telechips Inc.
  */
 
-/*****************************************************************************
-*
-* Defines
-*
-******************************************************************************/
-#ifndef __TCA_ALARAM_H__
-#define __TCA_ALARAM_H__
+#ifndef TCA_ALARAM_H
+#define TCA_ALARAM_H
 
 #include "tca_rtc.h"
 
-/*****************************************************************************
-*
-* Enum
-*
-******************************************************************************/
-
-
-/*****************************************************************************
-*
-* Type Defines
-*
-******************************************************************************/
-
-/*****************************************************************************
-*
-* Structures
-*
-******************************************************************************/
-
-
-/*****************************************************************************
-*
-* External Variables
-*
-******************************************************************************/
-
-/*****************************************************************************
-*
-* External Functions
-*
-******************************************************************************/
 #ifdef __cplusplus
-extern 
-"C" { 
+extern
+"C" {
 #endif
 
-volatile int tca_alarm_gettime(void __iomem *rtcbaseaddress, rtctime *pTime);
-volatile int tca_alarm_settime(void __iomem *rtcbaseaddress, rtctime *pTime);
-volatile int tca_alarm_setint(void __iomem *rtcbaseaddress);
-volatile int tca_alarm_disable(void __iomem *rtcbaseaddress);
+int tca_alarm_gettime(void __iomem *rtcbaseaddress, struct rtctime *pTime);
+int tca_alarm_settime(void __iomem *rtcbaseaddress, struct rtctime *pTime);
+int tca_alarm_setint(void __iomem *rtcbaseaddress);
+int tca_alarm_disable(void __iomem *rtcbaseaddress);
 
 #ifdef __cplusplus
- } 
+}
 #endif
 
 #endif //__TCA_ALARAM_H__

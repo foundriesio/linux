@@ -2,34 +2,9 @@
 /*
  * Copyright (C) Telechips Inc.
  */
+#ifndef TCA_RTC_H
+#define TCA_RTC_H
 
-/*****************************************************************************
-*
-* Defines
-*
-******************************************************************************/
-
-
-/*****************************************************************************
-*
-* Enum
-*
-******************************************************************************/
-#ifndef __TCA_RTC_H__
-#define __TCA_RTC_H__
-
-//#if defined(_LINUX_)
-//#include <mach/bsp.h>
-//#else
-//#include "bsp.h"
-//#endif
-
-
-/*****************************************************************************
-*
-* Type Defines
-*
-******************************************************************************/
 #define FROM_BCD(n)     ((((n) >> 4) * 10) + ((n) & 0xf))
 #define TO_BCD(n)       ((((n) / 10) << 4) | ((n) % 10))
 #define RTC_YEAR_DATUM  1980
@@ -88,87 +63,42 @@
 #define RTCPEND     0x48
 #define RTCSTR      0x4C
 
-#define BITSET(X, MASK)			((X) |= (unsigned int)(MASK))
-#define BITSCLR(X, SMASK, CMASK)	((X) = ((((unsigned int)(X)) | ((unsigned int)(SMASK))) & ~((unsigned int)(CMASK))) )
-#define BITCSET(X, CMASK, SMASK)	((X) = ((((unsigned int)(X)) & ~((unsigned int)(CMASK))) | ((unsigned int)(SMASK))) )
-#define BITCLR(X, MASK)			((X) &= ~((unsigned int)(MASK)) )
-#define BITXOR(X, MASK)			((X) ^= (unsigned int)(MASK) )
-#define ISZERO(X, MASK)			(!(((unsigned int)(X))&((unsigned int)(MASK))))
-#define	ISSET(X, MASK)			((unsigned long)(X)&((unsigned long)(MASK)))
+#define BITSET(X, MASK)			((X) |= (u32)(MASK))
+#define BITSCLR(X, SMASK, CMASK)	\
+	((X) = ((((u32)(X)) | ((u32)(SMASK))) & ~((u32)(CMASK))))
+#define BITCSET(X, CMASK, SMASK)	\
+	((X) = ((((u32)(X)) & ~((u32)(CMASK))) | ((u32)(SMASK))))
+#define BITCLR(X, MASK)			((X) &= ~((u32)(MASK)))
+#define BITXOR(X, MASK)			((X) ^= (u32)(MASK))
+#define ISZERO(X, MASK)			(!(((u32)(X)) & ((u32)(MASK))))
+#define	ISSET(X, MASK)			((u32)(X) & ((u32)(MASK)))
 
 //#define rtc_readl	__raw_readl
 //#define rtc_writel	__raw_writel
 
-/*****************************************************************************
-*
-* Structures
-*
-******************************************************************************/
+struct rtctime {
+	unsigned int wYear;
+	unsigned int wMonth;
+	unsigned int wDayOfWeek;
+	unsigned int wDay;
+	unsigned int wHour;
+	unsigned int wMinute;
+	unsigned int wSecond;
+	unsigned int wMilliseconds;
+};
 
-typedef struct _rtctime {
-  unsigned int wYear;
-  unsigned int wMonth;
-  unsigned int wDayOfWeek;
-  unsigned int wDay;
-  unsigned int wHour;
-  unsigned int wMinute;
-  unsigned int wSecond;
-  unsigned int wMilliseconds;
-} rtctime;
-
-void tca_rtc_gettime(void *pRTC, rtctime *pTime);
-void tca_rtc_settime(void *pRTC, rtctime *pTime);
+void tca_rtc_gettime(void *pRTC, struct rtctime *pTime);
+void tca_rtc_settime(void *pRTC, struct rtctime *pTime);
 unsigned int	tca_rtc_checkvalidtime(void *devbaseaddresss);
 
-#if 0
-typedef struct _RTC{
-    volatile unsigned int  RTCCON;                  // 0x00 R/W 0x00 RTC Control Register
-    volatile unsigned int  INTCON;                  // 0x04 R/W -    RTC Interrupt Control Register
-    volatile unsigned int  RTCALM;                  // 0x08 R/W -    RTC Alarm Control Register
-    volatile unsigned int  ALMSEC;                  // 0x0C R/W -    Alarm Second Data Register
-
-    volatile unsigned int  ALMMIN;                  // 0x10 R/W -    Alarm Minute Data Register
-    volatile unsigned int  ALMHOUR;                 // 0x14 R/W -    Alarm Hour Data Register
-    volatile unsigned int  ALMDATE;                 // 0x18 R/W -    Alarm Date Data Register
-    volatile unsigned int  ALMDAY;                  // 0x1C R/W -    Alarm Day of Week Data Register
-
-    volatile unsigned int  ALMMON;                  // 0x20 R/W -    Alarm Month Data Register
-    volatile unsigned int  ALMYEAR;                 // 0x24 R/W -    Alarm Year Data Register
-    volatile unsigned int  BCDSEC;                  // 0x28 R/W -    BCD Second Register
-    volatile unsigned int  BCDMIN;                  // 0x2C R/W -    BCD Minute Register
-
-    volatile unsigned int  BCDHOUR;                 // 0x30 R/W -    BCD Hour Register
-    volatile unsigned int  BCDDATE;                 // 0x34 R/W -    BCD Date Register
-    volatile unsigned int  BCDDAY;                  // 0x38 R/W -    BCD Day of Week Register
-    volatile unsigned int  BCDMON;                  // 0x3C R/W -    BCD Month Register
-
-    volatile unsigned int  BCDYEAR;                 // 0x40 R/W -    BCD Year Register
-    volatile unsigned int  RTCIM;                   // 0x44 R/W -    RTC Interrupt Mode Register
-    volatile unsigned int  RTCPEND;                 // 0x48 R/W -    RTC Interrupt Pending Register
-    volatile unsigned int  RTCSTR;                  // 0x4C R/W -    RTC Interrupt Status Register
-}RTC, *PRTC;
-#endif
-/*****************************************************************************
-*
-* External Variables
-*
-******************************************************************************/
-
-
-/*****************************************************************************
-*
-* External Functions
-*
-******************************************************************************/
 #ifdef __cplusplus
-extern 
-"C" { 
+extern
+"C" {
 #endif
 
 #ifdef __cplusplus
- } 
+}
 #endif
 
-
-#endif //__TCA_RTC_H__
+#endif /* TCA_RTC_H */
 
