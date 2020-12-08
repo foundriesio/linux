@@ -76,6 +76,7 @@ struct tcc_rtc_data {
 };
 
 static int g_aie_enabled;
+static u32 rtc_timeout;
 
 /* IRQ Handlers */
 static irqreturn_t tcc_rtc_alarmirq(int irq, void *class_dev)
@@ -365,7 +366,7 @@ static int tcc_rtc_setalarm(struct device *dev, struct rtc_wkalrm *alrm)
 	/* Interrupt Block Write Enable bit - Disable */
 	BITCLR(rtc_reg(RTCCON), Hw1);
 
-	if (g_aie_enabled)
+	if (!g_aie_enabled)
 		tcc_rtc_setaie(dev, 1);
 #else
 /* Changed Alarm Set Code to avoid changed RTC Time problem. */
@@ -789,6 +790,13 @@ static int tcc_rtc_probe(struct platform_device *pdev)
 	if (ret == 0) {
 		tcc_rtc_setclock(tcc_rtc, rtc_clock);
 	}
+
+	ret = of_property_read_u32(pdev->dev.of_node, "rtc_timeout", &rtc_timeout);
+	if (ret != 0) {
+		dev_warn(&pdev->dev, "[WARN][%s] Failted to get rtc_timeout.\n", DRV_NAME);
+		rtc_timeout = 0;
+	}
+
 	/* Check Valid Time */
 	if (tca_rtc_checkvalidtime(tcc_rtc->regs)) {
 		/* Invalied Time */
@@ -870,6 +878,28 @@ err_get_dt_property:
 	return ret;
 }
 
+static void tcc_rtc_set_timeout(struct device *dev)
+{
+	struct rtc_wkalrm alrm;
+	unsigned long now, timeout;
+	int res;
+
+	res = tcc_rtc_gettime(dev, &alrm.time);
+	if (res != 0) {
+		dev_warn(dev, "[WARN][%s] Failted to gettime.\n", DRV_NAME);
+	}
+	rtc_tm_to_time(&alrm.time, &now);
+
+	/* set alarm time based on now */
+	timeout = now + rtc_timeout;
+
+	rtc_time_to_tm(timeout, &alrm.time);
+	res = tcc_rtc_setalarm(dev, &alrm);
+	if (res != 0) {
+		dev_warn(dev, "[WARN][%s] Failted to setalarm.\n", DRV_NAME);
+	}
+}
+
 #ifdef CONFIG_PM
 
 /* RTC Power management control */
@@ -880,6 +910,10 @@ static int tcc_rtc_suspend(struct device *dev)
 //      if (device_may_wakeup(dev)) {
 //              enable_irq_wake(tcc_rtc->irq);
 //      }
+
+	if (rtc_timeout > (u32)0) {
+		tcc_rtc_set_timeout(dev);
+	}
 
 	BITSET(rtc_reg(RTCCON), Hw1);
 	BITSET(rtc_reg(INTCON), Hw0);
