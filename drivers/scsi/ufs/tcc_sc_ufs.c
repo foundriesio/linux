@@ -114,8 +114,7 @@ static void tcc_sc_ufs_tasklet_finish(unsigned long param)
 {
 	struct tcc_sc_ufs_host *host = (struct tcc_sc_ufs_host *)param;
 
-	while (!tcc_sc_ufs_transfer_req_compl(host))
-		;
+	tcc_sc_ufs_transfer_req_compl(host);
 }
 
 static inline u8 tcc_sc_ufs_scsi_to_upiu_lun(unsigned int scsi_lun)
