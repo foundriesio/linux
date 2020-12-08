@@ -6,7 +6,6 @@
  */
 
 &firmware_android {
-#if !defined(CONFIG_SCSI_TCC_SC_UFS) /* temp code, It will be removed when the avb implementation for ufs is complete. */
 	compatible = "android,firmware";
 	vbmeta {
 		compatible = "android,vbmeta";
@@ -16,7 +15,11 @@
 		compatible = "android,fstab";
 		system {
 			compatible = "android,system";
+#if !defined(CONFIG_SCSI_TCC_SC_UFS)
 			dev = "/dev/block/platform/tcc_sc_mmc/by-name/system";
+#else
+			dev = "/dev/block/platform/tcc_sc_ufs/by-name/system";
+#endif
 			type = "ext4";
 			mnt_flags = "ro,barrier=1";
 #if !defined(CONFIG_ANDROID_AB_UPDATE)
@@ -27,7 +30,11 @@
 		};
 		vendor {
 			compatible = "android,vendor";
+#if !defined(CONFIG_SCSI_TCC_SC_UFS)
 			dev = "/dev/block/platform/tcc_sc_mmc/by-name/vendor";
+#else
+			dev = "/dev/block/platform/tcc_sc_ufs/by-name/vendor";
+#endif
 			type = "ext4";
 			mnt_flags = "ro,barrier=1";
 #if !defined(CONFIG_ANDROID_AB_UPDATE)
@@ -37,36 +44,4 @@
 #endif
 		};
 	};
-#else /* CONFIG_SCSI_TCC_SC_UFS */
-        compatible = "android,firmware";
-        vbmeta {
-                compatible = "android,vbmeta";
-                parts = "vbmeta,boot,system,vendor";
-        };
-        fstab {
-                compatible = "android,fstab";
-                system {
-                        compatible = "android,system";
-                        dev = "/dev/block/platform/tcc_sc_ufs/by-name/system";
-                        type = "ext4";
-                        mnt_flags = "ro,barrier=1";
-#if !defined(CONFIG_ANDROID_AB_UPDATE)
-                        fsmgr_flags = "wait";
-#else
-                        fsmgr_flags = "wait,slotselect";
-#endif
-                };
-                vendor {
-                        compatible = "android,vendor";
-                        dev = "/dev/block/platform/tcc_sc_ufs/by-name/vendor";
-                        type = "ext4";
-                        mnt_flags = "ro,barrier=1";
-#if !defined(CONFIG_ANDROID_AB_UPDATE)
-                        fsmgr_flags = "wait";
-#else
-                        fsmgr_flags = "wait,slotselect";
-#endif
-                };
-        };
-#endif /* CONFIG_SCSI_TCC_SC_UFS */
 };
