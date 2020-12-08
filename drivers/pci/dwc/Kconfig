@@ -74,6 +74,18 @@ config PCI_TCC
 	  and therefore the driver re-uses the DesignWare core functions to
 	  implement the driver.
 
+config PCI_DOLPHIN3
+        bool "Telechips PCIe controller, Dolphin3"
+        depends on SOC_TCC
+        select PCIEPORTBUS
+        select PCIE_DW
+        help
+          This selects the TCC PCIe controller/PHY support.
+          Select this if you have a PCIe interface on platform.
+          The PCI controller on TCC is based on DesignWare hardware
+          and therefore the driver re-uses the DesignWare core functions to
+          implement the driver.
+
 config PCI_EXYNOS
 	bool "Samsung Exynos PCIe controller"
 	depends on PCI
