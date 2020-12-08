@@ -729,15 +729,21 @@
 
 	thermal@74700000 {
 		compatible = "telechips,tcc-thermal";
-		reg = <0x74700000 0x4 0x74700030 0x4 0x74200290 0x4 0x7420029C 0x4>;
 
-		throttle_count = <5>;
-		throttle_active_count = <0>;
-		throttle_passive_count = <5>;
+                reg = <0x74700000 0x4 0x74700030 0x4 0x74200290 0x4
+                        0x7420029c 0x4 0x74200298 0x4 0x7470000C 0x4
+                        0x74700010 0x4>;
 
-		cal_type = "TYPE_ONE_POINT_TRIMMING";
-		polling-delay-idle = <0>;
-		polling-delay-passive = <0>;
+                status = "okay";
+
+                throttle_count = <5>;
+                throttle_active_count = <0>;
+                throttle_passive_count = <5>;
+                cal_type = "TYPE_ONE_POINT_TRIMMING";
+                polling-delay-idle = <0>;
+                polling-delay-passive = <0>;
+
+                threshold_temp = <85>;
 
 		throttle_table {
 			throttle_tab_0 {
