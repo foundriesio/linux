@@ -74,6 +74,9 @@ struct ipvl_dev {
 	DECLARE_BITMAP(mac_filters, IPVLAN_MAC_FILTER_SIZE);
 	netdev_features_t	sfeatures;
 	u32			msg_enable;
+#ifndef __GENKSYMS__
+	spinlock_t              addrs_lock;
+#endif
 };
 
 struct ipvl_addr {
