@@ -556,34 +556,37 @@ static int hdmi_set_color_depth(struct tcc_hdmi_dev *dev)
 {
 	int ret = -1;
 
-	if(dev != NULL) {
-		switch (dev->videoParam.mColorResolution) {
-			case COLOR_DEPTH_12:
-				// set GCP CD
-				hdmi_reg_write(dev, GCP_CD_36BPP,HDMI_GCP_BYTE2);
-				// set DC_CTRL
-				hdmi_reg_write(dev, HDMI_DC_CTL_12,HDMI_DC_CONTROL);
-				ret = 0;
-				break;
-			case COLOR_DEPTH_10:
-				// set GCP CD
-				hdmi_reg_write(dev, GCP_CD_30BPP,HDMI_GCP_BYTE2);
-				// set DC_CTRL
-				hdmi_reg_write(dev, HDMI_DC_CTL_10,HDMI_DC_CONTROL);
-				ret = 0;
-				break;
-			case COLOR_DEPTH_8:
-				// set GCP CD
-				hdmi_reg_write(dev, GCP_CD_24BPP,HDMI_GCP_BYTE2);
-				// set DC_CTRL
-				hdmi_reg_write(dev, HDMI_DC_CTL_8,HDMI_DC_CONTROL);
-				ret = 0;
-				break;
-			default:
-				pr_err("[ERROR][HDMI_V14]%s invalid color depth\r\n", __func__);
-				break;
-		}
+	if(!dev)
+		goto out;
+
+	switch (dev->videoParam.mColorResolution) {
+	case COLOR_DEPTH_12:
+		// set GCP CD
+		hdmi_reg_write(dev, GCP_CD_36BPP, HDMI_GCP_BYTE2);
+		// set DC_CTRL
+		hdmi_reg_write(dev, HDMI_DC_CTL_12, HDMI_DC_CONTROL);
+		ret = 0;
+		break;
+	case COLOR_DEPTH_10:
+		// set GCP CD
+		hdmi_reg_write(dev, GCP_CD_30BPP, HDMI_GCP_BYTE2);
+		// set DC_CTRL
+		hdmi_reg_write(dev, HDMI_DC_CTL_10, HDMI_DC_CONTROL);
+		ret = 0;
+		break;
+	case COLOR_DEPTH_8:
+		// set GCP CD
+		hdmi_reg_write(dev, GCP_CD_NOT_INDICATED, HDMI_GCP_BYTE2);
+		// set DC_CTRL
+		hdmi_reg_write(dev, HDMI_DC_CTL_8, HDMI_DC_CONTROL);
+		ret = 0;
+		break;
+	default:
+		pr_err("[ERROR][HDMI_V14]%s invalid color depth\r\n", __func__);
+		break;
 	}
+	return 0;
+out:
 	return ret;
 }
 
