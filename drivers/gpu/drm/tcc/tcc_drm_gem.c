@@ -713,7 +713,7 @@ int tcc_drm_gem_dumb_create(struct drm_file *file_priv,
 	 * - this callback would be called by user application
 	 *	with DRM_IOCTL_MODE_CREATE_DUMB command.
 	 */
-	args->pitch = args->width * ((args->bpp + 7) / 8);
+	args->pitch = ALIGN(args->width * DIV_ROUND_UP(args->bpp, 8), 8);
 	args->size = args->pitch * args->height;
 
 	/*
