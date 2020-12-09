@@ -175,6 +175,9 @@
 
 	drm_dpv14_0 {
 		status = "okay";
+
+		lcdc-mux-select = <0>;
+
 		pinctrl-names = "default", "power_on", "reset_off", "blk_on", "blk_off", "power_off";
 		pinctrl-0 = <&lcd_port_default0>;
 		pinctrl-1 = <&lcd_port_power_on0>;
@@ -186,6 +189,9 @@
 
 	drm_dpv14_1 {
 		status = "okay";
+
+		lcdc-mux-select = <1>;
+
 		pinctrl-names = "default", "power_on", "reset_off", "blk_on", "blk_off", "power_off";
 		pinctrl-0 = <&lcd_port_default1>;
 		pinctrl-1 = <&lcd_port_power_on1>;

@@ -19,6 +19,8 @@
 		compatible = "telechips,drm-lvds-dpv14-0";
 		status = "okay";
 
+		lcdc-mux-select = <0>;
+
 		display-timings {
 			native-mode = <&timing_dpv14_0>;
 			timing_dpv14_0: 1920x720p60 {
@@ -69,6 +71,8 @@
 		compatible = "telechips,drm-lvds-dpv14-1";
 		status = "okay";
 
+		lcdc-mux-select = <1>;
+
 		display-timings {
 			native-mode = <&timing_dpv14_1>;
 			timing_dpv14_1: 1920x720p60 {
@@ -118,6 +122,8 @@
 		#size-cells = <0>;
 		compatible = "telechips,drm-lvds-dpv14-2";
 		status = "disabled";
+
+		lcdc-mux-select = <2>;
 
 		display-timings {
 			native-mode = <&timing_dpv14_2>;
