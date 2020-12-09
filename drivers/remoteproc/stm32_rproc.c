@@ -515,8 +515,13 @@ static int stm32_rproc_request_mbox(struct rproc *rproc)
 
 		ddata->mb[i].chan = mbox_request_channel_byname(cl, name);
 		if (IS_ERR(ddata->mb[i].chan)) {
-			if (PTR_ERR(ddata->mb[i].chan) == -EPROBE_DEFER)
+			if (PTR_ERR(ddata->mb[i].chan) == -EPROBE_DEFER) {
+				dev_err_probe(dev->parent,
+					      PTR_ERR(ddata->mb[i].chan),
+					      "failed to request mailbox %s\n",
+					      name);
 				goto err_probe;
+			}
 			dev_warn(dev, "cannot get %s mbox\n", name);
 			ddata->mb[i].chan = NULL;
 		}
@@ -712,15 +717,14 @@ static int stm32_rproc_parse_dt(struct platform_device *pdev,
 
 	irq = platform_get_irq(pdev, 0);
 	if (irq == -EPROBE_DEFER)
-		return -EPROBE_DEFER;
+		return dev_err_probe(dev, irq, "failed to get interrupt\n");
 
 	if (irq > 0) {
 		err = devm_request_irq(dev, irq, stm32_rproc_wdg, 0,
 				       dev_name(dev), pdev);
-		if (err) {
-			dev_err(dev, "failed to request wdg irq\n");
-			return err;
-		}
+		if (err)
+			return dev_err_probe(dev, err,
+					     "failed to request wdg irq\n");
 
 		ddata->wdg_irq = irq;
 
@@ -733,20 +737,14 @@ static int stm32_rproc_parse_dt(struct platform_device *pdev,
 	}
 
 	ddata->rst = devm_reset_control_get(dev, "mcu_rst");
-	if (IS_ERR(ddata->rst)) {
-		if (PTR_ERR(ddata->rst) != -EPROBE_DEFER)
-			dev_err(dev, "failed to get mcu reset\n");
-
-		return PTR_ERR(ddata->rst);
-	}
+	if (IS_ERR(ddata->rst))
+		return dev_err_probe(dev, PTR_ERR(ddata->rst),
+				     "failed to get mcu_reset\n");
 
 	ddata->hold_boot = devm_reset_control_get(dev, "hold_boot");
-	if (IS_ERR(ddata->hold_boot)) {
-		if (PTR_ERR(ddata->hold_boot) != -EPROBE_DEFER)
-			dev_err(dev, "failed to get mcu reset\n");
-
-		return PTR_ERR(ddata->hold_boot);
-	}
+	if (IS_ERR(ddata->hold_boot))
+		return dev_err_probe(dev, PTR_ERR(ddata->hold_boot),
+				      "failed to get mcu reset\n");
 
 	err = stm32_rproc_get_syscon(np, "st,syscfg-pdds", &ddata->pdds);
 	if (err)
@@ -936,8 +934,9 @@ static int stm32_rproc_probe(struct platform_device *pdev)
 	if (ddata->secured_fw) {
 		ddata->trproc = tee_rproc_register(dev, rproc,
 						   STM32_MP1_FW_ID);
-		if (IS_ERR_OR_NULL(ddata->trproc)) {
-			ret = -EPROBE_DEFER;
+		if (IS_ERR(ddata->trproc)) {
+			ret = PTR_ERR(ddata->trproc);
+			dev_err_probe(dev, ret, "TEE rproc device not found\n");
 			goto free_mb;
 		}
 	}
