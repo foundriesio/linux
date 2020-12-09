@@ -1573,7 +1573,7 @@
 		update-type = <FBX_NOWAIT_UPDATE>;
 		device-priority = <FBX_DEVICE_NONE>;
 		no-kernel-logo =<1>;
-		telechips,disp = <&vioc_wdma VIOC_WDMA05>;
+		telechips,wdma = <&vioc_wdma VIOC_WDMA05>;
 		telechips,wmixer = <&vioc_wmix VIOC_WMIX5>;
 		telechips,rdma = <&vioc_rdma VIOC_RDMA16>;
 	};
