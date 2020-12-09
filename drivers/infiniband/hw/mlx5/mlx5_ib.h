@@ -257,6 +257,7 @@ enum mlx5_ib_rq_flags {
 };
 
 struct mlx5_ib_wq {
+	struct mlx5_frag_buf_ctrl fbc;
 	u64		       *wrid;
 	u32		       *wr_data;
 	struct wr_list	       *w_list;
@@ -275,7 +276,7 @@ struct mlx5_ib_wq {
 	unsigned		tail;
 	u16			cur_post;
 	u16			last_poll;
-	void		       *qend;
+	void			*cur_edge;
 };
 
 enum mlx5_ib_wq_flags {
@@ -472,6 +473,7 @@ struct mlx5_umr_wr {
 	u64				length;
 	int				access_flags;
 	u32				mkey;
+	u8				ignore_free_state:1;
 };
 
 static inline const struct mlx5_umr_wr *umr_wr(const struct ib_send_wr *wr)
@@ -1054,7 +1056,6 @@ int mlx5_ib_post_send(struct ib_qp *ibqp, const struct ib_send_wr *wr,
 		      const struct ib_send_wr **bad_wr);
 int mlx5_ib_post_recv(struct ib_qp *ibqp, const struct ib_recv_wr *wr,
 		      const struct ib_recv_wr **bad_wr);
-void *mlx5_get_send_wqe(struct mlx5_ib_qp *qp, int n);
 int mlx5_ib_read_user_wqe(struct mlx5_ib_qp *qp, int send, int wqe_index,
 			  void *buffer, u32 length,
 			  struct mlx5_ib_qp_base *base);

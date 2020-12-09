@@ -145,8 +145,8 @@ err1:
 	return -ENOMEM;
 }
 
-int rxe_mem_init_dma(struct rxe_pd *pd,
-		     int access, struct rxe_mem *mem)
+void rxe_mem_init_dma(struct rxe_pd *pd,
+		      int access, struct rxe_mem *mem)
 {
 	rxe_mem_init(access, mem);
 
@@ -154,19 +154,16 @@ int rxe_mem_init_dma(struct rxe_pd *pd,
 	mem->access		= access;
 	mem->state		= RXE_MEM_STATE_VALID;
 	mem->type		= RXE_MEM_TYPE_DMA;
-
-	return 0;
 }
 
 int rxe_mem_init_user(struct rxe_pd *pd, u64 start,
 		      u64 length, u64 iova, int access, struct ib_udata *udata,
 		      struct rxe_mem *mem)
 {
-	int			entry;
 	struct rxe_map		**map;
 	struct rxe_phys_buf	*buf = NULL;
 	struct ib_umem		*umem;
-	struct scatterlist	*sg;
+	struct sg_page_iter	sg_iter;
 	int			num_buf;
 	void			*vaddr;
 	int err;
@@ -191,32 +188,34 @@ int rxe_mem_init_user(struct rxe_pd *pd, u64 start,
 		goto err1;
 	}
 
-	mem->page_shift		= umem->page_shift;
-	mem->page_mask		= BIT(umem->page_shift) - 1;
+	mem->page_shift		= PAGE_SHIFT;
+	mem->page_mask = PAGE_SIZE - 1;
 
 	num_buf			= 0;
 	map			= mem->map;
 	if (length > 0) {
 		buf = map[0]->buf;
 
-		for_each_sg(umem->sg_head.sgl, sg, umem->nmap, entry) {
-			vaddr = page_address(sg_page(sg));
-			if (!vaddr) {
-				pr_warn("null vaddr\n");
-				err = -ENOMEM;
-				goto err1;
-			}
-
-			buf->addr = (uintptr_t)vaddr;
-			buf->size = BIT(umem->page_shift);
-			num_buf++;
-			buf++;
-
+		for_each_sg_page(umem->sg_head.sgl, &sg_iter, umem->nmap, 0) {
 			if (num_buf >= RXE_BUF_PER_MAP) {
 				map++;
 				buf = map[0]->buf;
 				num_buf = 0;
 			}
+
+			vaddr = page_address(sg_page_iter_page(&sg_iter));
+			if (!vaddr) {
+				pr_warn("null vaddr\n");
+				ib_umem_release(umem);
+				err = -ENOMEM;
+				goto err1;
+			}
+
+			buf->addr = (uintptr_t)vaddr;
+			buf->size = PAGE_SIZE;
+			num_buf++;
+			buf++;
+
 		}
 	}
 
@@ -587,48 +586,4 @@ struct rxe_mem *lookup_mem(struct rxe_pd *pd, int access, u32 key,
 	}
 
 	return mem;
-}
-
-int rxe_mem_map_pages(struct rxe_dev *rxe, struct rxe_mem *mem,
-		      u64 *page, int num_pages, u64 iova)
-{
-	int i;
-	int num_buf;
-	int err;
-	struct rxe_map **map;
-	struct rxe_phys_buf *buf;
-	int page_size;
-
-	if (num_pages > mem->max_buf) {
-		err = -EINVAL;
-		goto err1;
-	}
-
-	num_buf		= 0;
-	page_size	= 1 << mem->page_shift;
-	map		= mem->map;
-	buf		= map[0]->buf;
-
-	for (i = 0; i < num_pages; i++) {
-		buf->addr = *page++;
-		buf->size = page_size;
-		buf++;
-		num_buf++;
-
-		if (num_buf == RXE_BUF_PER_MAP) {
-			map++;
-			buf = map[0]->buf;
-			num_buf = 0;
-		}
-	}
-
-	mem->iova	= iova;
-	mem->va		= iova;
-	mem->length	= num_pages << mem->page_shift;
-	mem->state	= RXE_MEM_STATE_VALID;
-
-	return 0;
-
-err1:
-	return err;
 }

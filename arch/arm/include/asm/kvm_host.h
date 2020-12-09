@@ -61,6 +61,11 @@ struct kvm_arch {
 	/* The last vcpu id that ran on each physical CPU */
 	int __percpu *last_vcpu_ran;
 
+#ifndef __GENKSYMS__
+	/* Mandated version of PSCI */
+	u32 psci_version;
+#endif
+
 	/*
 	 * Anything that is not used directly from assembly code goes
 	 * here.

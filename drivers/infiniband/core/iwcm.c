@@ -158,8 +158,10 @@ static void dealloc_work_entries(struct iwcm_id_private *cm_id_priv)
 {
 	struct list_head *e, *tmp;
 
-	list_for_each_safe(e, tmp, &cm_id_priv->work_free_list)
+	list_for_each_safe(e, tmp, &cm_id_priv->work_free_list) {
+		list_del(e);
 		kfree(list_entry(e, struct iwcm_work, free_list));
+	}
 }
 
 static int alloc_work_entries(struct iwcm_id_private *cm_id_priv, int count)
@@ -371,6 +373,7 @@ EXPORT_SYMBOL(iw_cm_disconnect);
 static void destroy_cm_id(struct iw_cm_id *cm_id)
 {
 	struct iwcm_id_private *cm_id_priv;
+	struct ib_qp *qp;
 	unsigned long flags;
 
 	cm_id_priv = container_of(cm_id, struct iwcm_id_private, id);
@@ -388,6 +391,9 @@ static void destroy_cm_id(struct iw_cm_id *cm_id)
 	set_bit(IWCM_F_DROP_EVENTS, &cm_id_priv->flags);
 
 	spin_lock_irqsave(&cm_id_priv->lock, flags);
+	qp = cm_id_priv->qp;
+	cm_id_priv->qp = NULL;
+
 	switch (cm_id_priv->state) {
 	case IW_CM_STATE_LISTEN:
 		cm_id_priv->state = IW_CM_STATE_DESTROYING;
@@ -400,7 +406,7 @@ static void destroy_cm_id(struct iw_cm_id *cm_id)
 		cm_id_priv->state = IW_CM_STATE_DESTROYING;
 		spin_unlock_irqrestore(&cm_id_priv->lock, flags);
 		/* Abrupt close of the connection */
-		(void)iwcm_modify_qp_err(cm_id_priv->qp);
+		(void)iwcm_modify_qp_err(qp);
 		spin_lock_irqsave(&cm_id_priv->lock, flags);
 		break;
 	case IW_CM_STATE_IDLE:
@@ -425,11 +431,9 @@ static void destroy_cm_id(struct iw_cm_id *cm_id)
 		BUG();
 		break;
 	}
-	if (cm_id_priv->qp) {
-		cm_id_priv->id.device->iwcm->rem_ref(cm_id_priv->qp);
-		cm_id_priv->qp = NULL;
-	}
 	spin_unlock_irqrestore(&cm_id_priv->lock, flags);
+	if (qp)
+		cm_id_priv->id.device->iwcm->rem_ref(qp);
 
 	if (cm_id->mapped) {
 		iwpm_remove_mapinfo(&cm_id->local_addr, &cm_id->m_local_addr);
@@ -667,11 +671,11 @@ int iw_cm_accept(struct iw_cm_id *cm_id,
 		BUG_ON(cm_id_priv->state != IW_CM_STATE_CONN_RECV);
 		cm_id_priv->state = IW_CM_STATE_IDLE;
 		spin_lock_irqsave(&cm_id_priv->lock, flags);
-		if (cm_id_priv->qp) {
-			cm_id->device->iwcm->rem_ref(qp);
-			cm_id_priv->qp = NULL;
-		}
+		qp = cm_id_priv->qp;
+		cm_id_priv->qp = NULL;
 		spin_unlock_irqrestore(&cm_id_priv->lock, flags);
+		if (qp)
+			cm_id->device->iwcm->rem_ref(qp);
 		clear_bit(IWCM_F_CONNECT_WAIT, &cm_id_priv->flags);
 		wake_up_all(&cm_id_priv->connect_wait);
 	}
@@ -692,7 +696,7 @@ int iw_cm_connect(struct iw_cm_id *cm_id, struct iw_cm_conn_param *iw_param)
 	struct iwcm_id_private *cm_id_priv;
 	int ret;
 	unsigned long flags;
-	struct ib_qp *qp;
+	struct ib_qp *qp = NULL;
 
 	cm_id_priv = container_of(cm_id, struct iwcm_id_private, id);
 
@@ -726,13 +730,13 @@ int iw_cm_connect(struct iw_cm_id *cm_id, struct iw_cm_conn_param *iw_param)
 		return 0;	/* success */
 
 	spin_lock_irqsave(&cm_id_priv->lock, flags);
-	if (cm_id_priv->qp) {
-		cm_id->device->iwcm->rem_ref(qp);
-		cm_id_priv->qp = NULL;
-	}
+	qp = cm_id_priv->qp;
+	cm_id_priv->qp = NULL;
 	cm_id_priv->state = IW_CM_STATE_IDLE;
 err:
 	spin_unlock_irqrestore(&cm_id_priv->lock, flags);
+	if (qp)
+		cm_id->device->iwcm->rem_ref(qp);
 	clear_bit(IWCM_F_CONNECT_WAIT, &cm_id_priv->flags);
 	wake_up_all(&cm_id_priv->connect_wait);
 	return ret;
@@ -874,6 +878,7 @@ static int cm_conn_est_handler(struct iwcm_id_private *cm_id_priv,
 static int cm_conn_rep_handler(struct iwcm_id_private *cm_id_priv,
 			       struct iw_cm_event *iw_event)
 {
+	struct ib_qp *qp = NULL;
 	unsigned long flags;
 	int ret;
 
@@ -892,11 +897,13 @@ static int cm_conn_rep_handler(struct iwcm_id_private *cm_id_priv,
 		cm_id_priv->state = IW_CM_STATE_ESTABLISHED;
 	} else {
 		/* REJECTED or RESET */
-		cm_id_priv->id.device->iwcm->rem_ref(cm_id_priv->qp);
+		qp = cm_id_priv->qp;
 		cm_id_priv->qp = NULL;
 		cm_id_priv->state = IW_CM_STATE_IDLE;
 	}
 	spin_unlock_irqrestore(&cm_id_priv->lock, flags);
+	if (qp)
+		cm_id_priv->id.device->iwcm->rem_ref(qp);
 	ret = cm_id_priv->id.cm_handler(&cm_id_priv->id, iw_event);
 
 	if (iw_event->private_data_len)
@@ -938,21 +945,18 @@ static void cm_disconnect_handler(struct iwcm_id_private *cm_id_priv,
 static int cm_close_handler(struct iwcm_id_private *cm_id_priv,
 				  struct iw_cm_event *iw_event)
 {
+	struct ib_qp *qp;
 	unsigned long flags;
-	int ret = 0;
+	int ret = 0, notify_event = 0;
 	spin_lock_irqsave(&cm_id_priv->lock, flags);
+	qp = cm_id_priv->qp;
+	cm_id_priv->qp = NULL;
 
-	if (cm_id_priv->qp) {
-		cm_id_priv->id.device->iwcm->rem_ref(cm_id_priv->qp);
-		cm_id_priv->qp = NULL;
-	}
 	switch (cm_id_priv->state) {
 	case IW_CM_STATE_ESTABLISHED:
 	case IW_CM_STATE_CLOSING:
 		cm_id_priv->state = IW_CM_STATE_IDLE;
-		spin_unlock_irqrestore(&cm_id_priv->lock, flags);
-		ret = cm_id_priv->id.cm_handler(&cm_id_priv->id, iw_event);
-		spin_lock_irqsave(&cm_id_priv->lock, flags);
+		notify_event = 1;
 		break;
 	case IW_CM_STATE_DESTROYING:
 		break;
@@ -961,6 +965,10 @@ static int cm_close_handler(struct iwcm_id_private *cm_id_priv,
 	}
 	spin_unlock_irqrestore(&cm_id_priv->lock, flags);
 
+	if (qp)
+		cm_id_priv->id.device->iwcm->rem_ref(qp);
+	if (notify_event)
+		ret = cm_id_priv->id.cm_handler(&cm_id_priv->id, iw_event);
 	return ret;
 }
 

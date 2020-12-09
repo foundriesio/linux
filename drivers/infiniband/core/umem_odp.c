@@ -80,10 +80,6 @@ static int ib_umem_notifier_release_trampoline(struct ib_umem_odp *umem_odp,
 	 * prevent any further fault handling on this MR.
 	 */
 	ib_umem_notifier_start_account(umem_odp);
-	umem_odp->dying = 1;
-	/* Make sure that the fact the umem is dying is out before we release
-	 * all pending page faults. */
-	smp_wmb();
 	complete_all(&umem_odp->notifier_completion);
 	umem->context->invalidate_range(umem_odp, ib_umem_start(umem),
 					ib_umem_end(umem));
@@ -641,8 +637,13 @@ int ib_umem_odp_map_dma_pages(struct ib_umem_odp *umem_odp, u64 user_virt,
 				flags, local_page_list, NULL, NULL);
 		up_read(&owning_mm->mmap_sem);
 
-		if (npages < 0)
+		if (npages < 0) {
+			if (npages != -EAGAIN)
+				pr_warn("fail to get %zu user pages with error %d\n", gup_num_pages, npages);
+			else
+				pr_debug("fail to get %zu user pages with error %d\n", gup_num_pages, npages);
 			break;
+		}
 
 		bcnt -= min_t(size_t, npages << PAGE_SHIFT, bcnt);
 		mutex_lock(&umem_odp->umem_mutex);
@@ -660,8 +661,13 @@ int ib_umem_odp_map_dma_pages(struct ib_umem_odp *umem_odp, u64 user_virt,
 			ret = ib_umem_odp_map_dma_single_page(
 					umem_odp, k, local_page_list[j],
 					access_mask, current_seq);
-			if (ret < 0)
+			if (ret < 0) {
+				if (ret != -EAGAIN)
+					pr_warn("ib_umem_odp_map_dma_single_page failed with error %d\n", ret);
+				else
+					pr_debug("ib_umem_odp_map_dma_single_page failed with error %d\n", ret);
 				break;
+			}
 
 			p = page_to_phys(local_page_list[j]);
 			k++;

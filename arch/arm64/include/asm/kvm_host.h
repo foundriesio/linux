@@ -71,8 +71,13 @@ struct kvm_arch {
 	/* The maximum number of vCPUs depends on the used GIC model */
 	int max_vcpus;
 
+#ifndef __GENKSYMS__
+	/* Mandated version of PSCI */
+	u32 psci_version;
+#endif
 	/* Interrupt controller */
 	struct vgic_dist	vgic;
+
 };
 
 #define KVM_NR_MEM_OBJS     40
