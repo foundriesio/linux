@@ -26,15 +26,10 @@
 #define RTL821x_EXT_PAGE_SELECT			0x1e
 #define RTL821x_PAGE_SELECT			0x1f
 
-#define RTL8211F_PHYCR1				0x18
 #define RTL8211F_INSR				0x1d
 
 #define RTL8211F_TX_DELAY			BIT(8)
 #define RTL8211F_RX_DELAY			BIT(3)
-
-#define RTL8211F_ALDPS_PLL_OFF			BIT(1)
-#define RTL8211F_ALDPS_ENABLE			BIT(2)
-#define RTL8211F_ALDPS_XTAL_OFF			BIT(12)
 
 #define RTL8211E_CTRL_DELAY			BIT(13)
 #define RTL8211E_TX_DELAY			BIT(12)
@@ -182,16 +177,12 @@ static int rtl8211f_config_init(struct phy_device *phydev)
 {
 	struct device *dev = &phydev->mdio.dev;
 	u16 val_txdly, val_rxdly;
-	u16 val;
 	int ret;
 
 	/* Set green LED for Link, yellow LED for Active */
 	phy_write(phydev, RTL821x_PAGE_SELECT, 0xd04);
 	phy_write(phydev, 0x10, 0x617f);
 	phy_write(phydev, RTL821x_PAGE_SELECT, 0x0);
-
-	val = RTL8211F_ALDPS_ENABLE | RTL8211F_ALDPS_PLL_OFF | RTL8211F_ALDPS_XTAL_OFF;
-	phy_modify_paged_changed(phydev, 0xa43, RTL8211F_PHYCR1, val, val);
 
 	switch (phydev->interface) {
 	case PHY_INTERFACE_MODE_RGMII:
