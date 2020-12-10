@@ -1327,6 +1327,7 @@ static const struct edid_quirk edid_quirk_list[] = {
 	 * PSR being enabled.
 	 */
 	{ MFG(0x0d, 0xae), PROD_ID(0x19, 0x15), BIT(DP_QUIRK_FORCE_PSR_CHIP_DEFAULT) },
+	{ MFG(0x09, 0xe5), PROD_ID(0xde, 0x08), BIT(DP_QUIRK_FORCE_DPCD_BACKLIGHT) },
 };
 
 #undef MFG
