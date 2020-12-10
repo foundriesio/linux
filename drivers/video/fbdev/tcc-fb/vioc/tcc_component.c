@@ -1,23 +1,21 @@
-/****************************************************************************
-FileName    : kernel/drivers/video/tcc/vioc/tcc_component.c
-Description :
-
-Copyright (C) 2013 Telechips Inc.
-
-This program is free software; you can redistribute it and/or modify it under
-the terms of the GNU General Public License as published by the Free Software
-Foundation; either version 2 of the License, or (at your option) any later
-version.
-
-This program is distributed in the hope that it will be useful, but WITHOUT ANY
-WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
-PARTICULAR PURPOSE. See the GNU General Public License for more details.
-
-You should have received a copy of the GNU General Public License along with
-this program; if not, write to the Free Software Foundation, Inc., 59 Temple
-Place, Suite 330, Boston, MA 02111-1307 USA
-****************************************************************************/
-
+/*
+ * Copyright (C) Telechips, Inc.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, see the file COPYING, or write
+ * to the Free Software Foundation, Inc.,
+ * 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+ */
 #include <linux/module.h>
 #include <linux/kernel.h>
 #include <linux/errno.h>
@@ -34,7 +32,7 @@ Place, Suite 330, Boston, MA 02111-1307 USA
 #include <linux/clk.h>
 #include <linux/cpufreq.h>
 #include <linux/uaccess.h>
-#include <asm/io.h>
+#include <linux/io.h>
 #include <asm/div64.h>
 #ifndef CONFIG_ARM64
 #include <asm/mach/map.h>
@@ -82,43 +80,19 @@ Place, Suite 330, Boston, MA 02111-1307 USA
 #endif
 #include "tcc_component.h"
 
-#if defined(CONFIG_VIOC_DOLBY_VISION_EDR) && defined(CONFIG_TCC_DV_IN)
-#include <video/tcc/vioc_v_dv.h>
-#include <video/tcc/vioc_dv_cfg.h>
-extern unsigned int dv_reg_phyaddr, dv_md_phyaddr;
-extern int tca_edr_path_configure(void);
-#endif
-
-extern struct tcc_dp_device *tca_fb_get_displayType(TCC_OUTPUT_TYPE check_type);
-extern void tca_scale_display_update(struct tcc_dp_device *pdp_data,
-				     struct tcc_lcdc_image_update *ImageInfo);
-extern void tca_vioc_displayblock_powerOn(struct tcc_dp_device *pDisplayInfo,
-					  int specific_pclk);
-extern void tca_vioc_displayblock_powerOff(struct tcc_dp_device *pDisplayInfo);
-extern void tca_vioc_displayblock_disable(struct tcc_dp_device *pDisplayInfo);
-extern void tca_vioc_displayblock_ctrl_set(unsigned int outDevice,
-					   struct tcc_dp_device *pDisplayInfo,
-					   stLTIMING *pstTiming,
-					   stLCDCTR *pstCtrl);
-extern void tca_fb_attach_start(struct tccfb_info *info);
-extern int tca_fb_attach_stop(struct tccfb_info *info);
-
-#if defined(CONFIG_TCC_VTA)
-extern int vta_cmd_notify_change_status(const char *);
-#endif
-
-/*****************************************************************************
-
- VARIABLES
-
-******************************************************************************/
-
-extern char fb_power_state;
-
 /* Debugging stuff */
-static int debug = 0;
-#define dprintk(msg...) if(debug){printk("[DBG][COMPONENT] " msg);}
+//#define DBG_COMPONENT
+#ifdef DBG_COMPONENT
+#define dprintk(msg...) pr_info("[DBG][COMPONENT] " msg)
+#else
+#define dprintk(msg...)
+#endif
 
+/*
+ *
+ * VARIABLES
+ *
+ */
 #define TCC_LCDC1_USE
 
 static int Component_LCDC_Num = -1;
@@ -149,17 +123,17 @@ static struct clk *component_lcdc0_clk;
 static struct clk *component_lcdc1_clk;
 
 static char tcc_component_mode = COMPONENT_MAX;
-static char tcc_component_attached = 0;
-static char tcc_component_starter = 0;
+static char tcc_component_attached;
+static char tcc_component_starter;
 
-static char component_start = 0;
-static char component_plugout = 0;
-static unsigned int gComponentSuspendStatus = 0;
-static unsigned int gLinuxComponentSuspendStatus = 0;
+static char component_start;
+static char component_plugout;
+static unsigned int gComponentSuspendStatus;
+static unsigned int gLinuxComponentSuspendStatus;
 
 static struct device *pdev_component;
 
-static int component_io_port_num = 0;
+static int component_io_port_num;
 
 #define RDMA_UVI_MAX_WIDTH 3072
 
@@ -169,68 +143,71 @@ extern int hdmi_get_hotplug_status(void);
 #error "display dual auto mode needs hdmi v2.0"
 #endif
 
-/*****************************************************************************
-
- CGMS-A FUNCTIONs
-
-******************************************************************************/
+/*
+ *
+ * CGMS-A FUNCTIONs
+ *
+ */
 unsigned int component_calc_cgms_crc(unsigned int data)
 {
-    int i;
-    unsigned int org = data;//0x000c0;
-    unsigned int dat;
-    unsigned int tmp;
-    unsigned int crc[6] = {1,1,1,1,1,1};
-    unsigned int crc_val;
+	int i;
+	unsigned int org = data;//0x000c0;
+	unsigned int dat;
+	unsigned int tmp;
+	unsigned int crc[6] = {1, 1, 1, 1, 1, 1};
+	unsigned int crc_val;
 
-    dat = org;
-    for (i= 0; i < 14; i++) {
-        tmp = crc[5];
-        crc[5] = crc[4];
-        crc[4] = crc[3];
-        crc[3] = crc[2];
-        crc[2] = crc[1];
-        crc[1] = ((dat & 0x01)) ^ crc[0] ^ tmp;
-        crc[0] = ((dat & 0x01)) ^ tmp;
-        dat = (dat >> 1);
-    }
+	dat = org;
+	for (i = 0; i < 14; i++) {
+		tmp = crc[5];
+		crc[5] = crc[4];
+		crc[4] = crc[3];
+		crc[3] = crc[2];
+		crc[2] = crc[1];
+		crc[1] = ((dat & 0x01)) ^ crc[0] ^ tmp;
+		crc[0] = ((dat & 0x01)) ^ tmp;
+		dat = (dat >> 1);
+	}
 
-    crc_val = 0;
-    for (i = 0; i < 6; i++) {
-        crc_val |= crc[i] << (5 - i);
-    }
+	crc_val = 0;
+	for (i = 0; i < 6; i++) {
+		crc_val |= crc[i] << (5 - i);
+	}
 
-    dprintk("%s: key=0x%x crc=0x%x (%d %d %d %d %d %d)\n", __func__,
-        org, crc_val, crc[0], crc[1], crc[2], crc[3], crc[4], crc[5]);
+	dprintk("%s: key=0x%x crc=0x%x (%d %d %d %d %d %d)\n", __func__,
+		org, crc_val, crc[0], crc[1], crc[2], crc[3], crc[4], crc[5]);
 
-    return crc_val;
+	return crc_val;
 }
 
-void component_get_cgms(TCC_COMPONENT_CGMS_TYPE *cgms)
+void component_get_cgms(struct TCC_COMPONENT_CGMS_TYPE *cgms)
 {
 	if (component_start) {
 		component_chip_get_cgms(&cgms->enable, &cgms->data);
 
-		dprintk("%s: %s, 0x%05x\n", __func__, cgms->enable ? "on" : "off", cgms->data);
+		dprintk("%s: %s, 0x%05x\n", __func__,
+			cgms->enable ? "on" : "off", cgms->data);
 	}
 }
 
-void component_set_cgms(TCC_COMPONENT_CGMS_TYPE *cgms)
+void component_set_cgms(struct TCC_COMPONENT_CGMS_TYPE *cgms)
 {
 	if (component_start) {
-		dprintk("%s: %s, 0x%05x\n", __func__, cgms->enable ? "on" : "off", cgms->data);
+		dprintk("%s: %s, 0x%05x\n", __func__,
+			cgms->enable ? "on" : "off", cgms->data);
 
 		component_chip_set_cgms(cgms->enable, cgms->data);
 
-		if (unlikely(debug))
-			component_get_cgms(cgms);
+		#ifdef DBG_COMPONENT
+		component_get_cgms(cgms);
+		#endif
 		dprintk("CGMS-A %s - Component\n", cgms->enable ? "on" : "off");
 	}
 }
 
 void component_cgms_helper(unsigned int enable, unsigned int key)
 {
-	TCC_COMPONENT_CGMS_TYPE cgms;
+	struct TCC_COMPONENT_CGMS_TYPE cgms;
 	unsigned int data, crc;
 
 	crc = component_calc_cgms_crc(key);
@@ -240,38 +217,38 @@ void component_cgms_helper(unsigned int enable, unsigned int key)
 	cgms.data = data;
 	component_chip_set_cgms(cgms.enable, cgms.data);
 
-	if (unlikely(debug))
-		component_chip_get_cgms(&cgms.enable, &cgms.data);
-
-	printk("CGMS-A %s - Component\n", cgms.enable ? "ON" : "OFF");
+	#ifdef DBG_COMPONENT
+	component_chip_get_cgms(&cgms.enable, &cgms.data);
+	#endif
+	pr_info("CGMS-A %s - Component\n", cgms.enable ? "ON" : "OFF");
 }
 
 
-/*****************************************************************************
-
- FUNCTIONS
-
-******************************************************************************/
+/*
+ *
+ * FUNCTIONS
+ *
+ */
 #if defined(CONFIG_SWITCH_GPIO_COMPONENT)
 static struct platform_device tcc_component_detect_device = {
 	.name = "switch-gpio-component-detect",
 	.id = -1,
-	.dev =
-		{
-			.platform_data = NULL,
-		},
+	.dev = {
+		.platform_data = NULL,
+	},
 };
 #endif
 
 
-/*****************************************************************************
- Function Name : tcc_component_detect()
-******************************************************************************/
+/*
+ * Function Name : tcc_component_detect()
+ */
 int tcc_component_detect(void)
 {
 	int detect = true;
 
-#if defined(CONFIG_TCC_DISPLAY_MODE_AUTO_DETECT) || defined(CONFIG_TCC_DISPLAY_MODE_DUAL_HDMI_CVBS)
+#if defined(CONFIG_TCC_DISPLAY_MODE_AUTO_DETECT)
+	|| defined(CONFIG_TCC_DISPLAY_MODE_DUAL_HDMI_CVBS)
 	detect = false;
 #elif defined(CONFIG_TCC_DISPLAY_MODE_DUAL_AUTO)
 	/* Check the HDMI detection */
@@ -282,10 +259,11 @@ int tcc_component_detect(void)
 	return detect;
 }
 
-/*****************************************************************************
- Function Name : tcc_component_get_spec()
-******************************************************************************/
-void tcc_component_get_spec(COMPONENT_MODE_TYPE mode, COMPONENT_SPEC_TYPE *spec)
+/*
+ * Function Name : tcc_component_get_spec()
+ */
+void tcc_component_get_spec(enum COMPONENT_MODE_TYPE mode, 
+	struct COMPONENT_SPEC_TYPE *spec)
 {
 	switch (mode) {
 	case COMPONENT_MODE_NTSC_M:
@@ -413,12 +391,13 @@ void tcc_component_get_spec(COMPONENT_MODE_TYPE mode, COMPONENT_SPEC_TYPE *spec)
 	}
 }
 
-/*****************************************************************************
- Function Name : tcc_component_set_lcd2tv()
-******************************************************************************/
-void tcc_component_set_lcd2tv(COMPONENT_MODE_TYPE mode, TCC_COMPONENT_START_TYPE start)
+/*
+ * Function Name : tcc_component_set_lcd2tv()
+ */
+void tcc_component_set_lcd2tv(enum COMPONENT_MODE_TYPE mode,
+	struct TCC_COMPONENT_START_TYPE start)
 {
-	COMPONENT_SPEC_TYPE spec;
+	struct COMPONENT_SPEC_TYPE spec;
 	stLTIMING ComponentTiming;
 	stLCDCTR LcdCtrlParam;
 	int ret;
@@ -434,13 +413,15 @@ void tcc_component_set_lcd2tv(COMPONENT_MODE_TYPE mode, TCC_COMPONENT_START_TYPE
 	tcc_component_get_spec(mode, &spec);
 
 	/* set io ports for component output */
-	ret = VIOC_CONFIG_LCDPath_Select(Component_LCDC_Num, component_io_port_num);
+	ret = VIOC_CONFIG_LCDPath_Select(Component_LCDC_Num,
+		component_io_port_num);
 	if (ret < 0) {
-		pr_err("[ERR][COMPONENT] %s: invalid lcd(%d) lcd_if(%d)\n", __func__,
-				Component_LCDC_Num, component_io_port_num);
+		pr_err("[ERR][COMPONENT] %s: invalid lcd(%d) lcd_if (%d)\n",
+			__func__,
+			Component_LCDC_Num, component_io_port_num);
 	}
 
-	dprintk("%s : component_io_port_num = %d, spec.component_bus_width = %d\n",
+	dprintk("%s: component_io_port_num=%d, spec.component_bus_width=%d\n",
 		__func__, component_io_port_num, spec.component_bus_width);
 
 	ComponentTiming.lpw = spec.component_LPW;
@@ -528,7 +509,8 @@ void tcc_component_set_lcd2tv(COMPONENT_MODE_TYPE mode, TCC_COMPONENT_START_TYPE
 	case OUTPUT_FORMAT_YCbCr_24bit:
 		LcdCtrlParam.r2ymd = 3;
 		LcdCtrlParam.r2y = 1;
-		LcdCtrlParam.pxdw = 12; // 24bit RGB888 with r2y enable = 24bit (fake) YCbCr
+		// 24bit RGB888 with r2y enable = 24bit (fake) YCbCr
+		LcdCtrlParam.pxdw = 12;
 		// dctrl_swap = 0x0; //0x4;
 		align_swap = 0x4; // 0x0;
 		break;
@@ -584,12 +566,23 @@ void tcc_component_set_lcd2tv(COMPONENT_MODE_TYPE mode, TCC_COMPONENT_START_TYPE
 
 		#ifdef CONFIG_PRESENTATION_SECONDAY_DISPLAY_RESIZE_STB
 		if (dp_device->FbUpdateType == FB_SC_RDMA_UPDATE) {
-			if (VIOC_CONFIG_PlugOut(dp_device->sc_num0) == VIOC_PATH_DISCONNECTED) {
-				VIOC_CONFIG_SWReset(dp_device->sc_num0, VIOC_CONFIG_RESET);
-				VIOC_CONFIG_SWReset(dp_device->sc_num0, VIOC_CONFIG_CLEAR);
-				VIOC_CONFIG_SWReset(dp_device->rdma_info[RDMA_FB].blk_num, VIOC_CONFIG_RESET);
-				VIOC_CONFIG_SWReset(dp_device->rdma_info[RDMA_FB].blk_num, VIOC_CONFIG_CLEAR);
-				VIOC_CONFIG_PlugIn(dp_device->sc_num0, dp_device->rdma_info[RDMA_FB].blk_num);
+			if (VIOC_CONFIG_PlugOut(dp_device->sc_num0)
+				== VIOC_PATH_DISCONNECTED) {
+				VIOC_CONFIG_SWReset(
+					dp_device->sc_num0,
+					VIOC_CONFIG_RESET);
+				VIOC_CONFIG_SWReset(
+					dp_device->sc_num0,
+					VIOC_CONFIG_CLEAR);
+				VIOC_CONFIG_SWReset(
+					dp_device->rdma_info[RDMA_FB].blk_num,
+					VIOC_CONFIG_RESET);
+				VIOC_CONFIG_SWReset(
+					dp_device->rdma_info[RDMA_FB].blk_num,
+					VIOC_CONFIG_CLEAR);
+				VIOC_CONFIG_PlugIn(
+					dp_device->sc_num0,
+					dp_device->rdma_info[RDMA_FB].blk_num);
 			}
 		}
 		#endif
@@ -600,53 +593,58 @@ void tcc_component_set_lcd2tv(COMPONENT_MODE_TYPE mode, TCC_COMPONENT_START_TYPE
 	#if defined(CONFIG_VIOC_DOLBY_VISION_EDR) && defined(CONFIG_TCC_DV_IN)
 		dv_reg_phyaddr = dv_md_phyaddr = 0x00;
 		//pr_info("[INF][COMPONENT] #### DV EDR Mode ? format(%d), reg(0x%x)/meta(0x%x), outDevice(%d)/Disp_0(%p =? %p)\n",
-		//			mode->format, mode->dv_reg_phyaddr, mode->dv_md_phyaddr,
-		//			outDevice, pDISP, VIOC_DISP_GetAddress(0));
-		if( (!tcc_component_attached) && (dp_device->ddc_info.virt_addr == VIOC_DISP_GetAddress(0)) )
-		{
-			if(start.dv_reg_phyaddr)
-			{
+		//	mode->format,
+		//	mode->dv_reg_phyaddr, mode->dv_md_phyaddr,
+		//	outDevice, pDISP, VIOC_DISP_GetAddress(0));
+		if ((!tcc_component_attached)
+			&& (dp_device->ddc_info.virt_addr
+				== VIOC_DISP_GetAddress(0))) {
+			if (start.dv_reg_phyaddr) {
 				struct lcdc_timimg_parms_t component_timing;
-				pr_info("[INF][COMPONENT] #### DV EDR Mode!!! SDR with Component 0x%x \n", start.dv_reg_phyaddr);
+
+				pr_info("[INF][COMPONENT] #### DV EDR Mode!!! SDR with Component 0x%x\n",
+					start.dv_reg_phyaddr);
 
 				component_timing.format = 0;
 
-				component_timing.lpc 	= spec.component_LPC;
-				component_timing.flc 	= spec.component_FLC1;
-				component_timing.lewc 	= spec.component_LEWC;
-				component_timing.lpw 	= spec.component_LPW;
-				component_timing.lswc 	= spec.component_LSWC;
-				component_timing.fewc 	= spec.component_FEWC1;
-				component_timing.fpw 	= spec.component_FPW1;
-				component_timing.fswc 	= spec.component_FSWC1;
+				component_timing.lpc  = spec.component_LPC;
+				component_timing.flc  = spec.component_FLC1;
+				component_timing.lewc = spec.component_LEWC;
+				component_timing.lpw  = spec.component_LPW;
+				component_timing.lswc = spec.component_LSWC;
+				component_timing.fewc = spec.component_FEWC1;
+				component_timing.fpw  = spec.component_FPW1;
+				component_timing.fswc = spec.component_FSWC1;
 
 				component_timing.dv_noYUV422_SDR = 0;
 
-				voic_v_dv_set_hdmi_timming(&component_timing, 0, 0);
+				voic_v_dv_set_hdmi_timming(
+					&component_timing, 0, 0);
 				vioc_v_dv_set_stage(DV_STANDBY);
 				vioc_v_dv_set_mode(DV_STD, NULL, 0);
 				VIOC_V_DV_Power(1);
-			}
-			else
-			{
+			} else {
 				VIOC_CONFIG_DV_SET_EDR_PATH(0);
 			}
 		}
 	#endif
 
 		tca_vioc_displayblock_ctrl_set(VIOC_OUTCFG_HDVENC, dp_device,
-					       &ComponentTiming, &LcdCtrlParam);
+			&ComponentTiming, &LcdCtrlParam);
 
 	#if defined(CONFIG_FB_TCC_COMPONENT_ADV7343)
-		VIOC_DISP_SetSwapbf(VIOC_DISP_GetAddress(get_vioc_index(dp_device->ddc_info.blk_num)),
-						align_swap); // overwrite swap reg. after tca_vioc_displayblock_ctrl_set()
+	// overwrite swap reg. after tca_vioc_displayblock_ctrl_set()
+		VIOC_DISP_SetSwapbf(
+			VIOC_DISP_GetAddress(
+				get_vioc_index(dp_device->ddc_info.blk_num)),
+				align_swap);
 	#endif
 	}
 }
 
-/*****************************************************************************
- Function Name : tcc_component_get_lcdsize()
-******************************************************************************/
+/*
+ * Function Name : tcc_component_get_lcdsize()
+ */
 void tcc_component_get_lcdsize(unsigned int *width, unsigned int *height)
 {
 	unsigned int lcdsize;
@@ -673,9 +671,9 @@ void tcc_plugout_for_component(int ch_layer)
 }
 EXPORT_SYMBOL(tcc_plugout_for_component);
 
-/*****************************************************************************
- Function Name : tcc_component_end()
-******************************************************************************/
+/*
+ * Function Name : tcc_component_end()
+ */
 void tcc_component_end(void)
 {
 	struct fb_info *info = registered_fb[0];
@@ -704,7 +702,7 @@ void tcc_component_end(void)
 		component_plugout = 0;
 
 	tccfb_info = info->par;
-	
+
 	if (tccfb_info->pdata.Mdp_data.DispNum == Component_LCDC_Num)
 		dp_device = &tccfb_info->pdata.Mdp_data;
 	else if (tccfb_info->pdata.Sdp_data.DispNum == Component_LCDC_Num)
@@ -719,15 +717,16 @@ void tcc_component_end(void)
 	tca_vioc_displayblock_disable(dp_device);
 	tca_vioc_displayblock_powerOff(dp_device);
 	dp_device->DispDeviceType = TCC_OUTPUT_NONE;
-           
+
 }
 
-/*****************************************************************************
- Function Name : tcc_component_start()
-******************************************************************************/
-void tcc_component_start(TCC_COMPONENT_START_TYPE start)
+/*
+ * Function Name : tcc_component_start()
+ */
+void tcc_component_start(struct TCC_COMPONENT_START_TYPE start)
 {
-	printk("%s mode=%d, lcdc_num=%d\n", __func__, start.mode, Component_LCDC_Num);
+	pr_info("%s mode=%d, lcdc_num=%d\n", __func__, start.mode,
+		Component_LCDC_Num);
 
 	tcc_component_mode = start.mode;
 
@@ -751,7 +750,8 @@ void tcc_component_start(TCC_COMPONENT_START_TYPE start)
 	tcc_component_set_lcd2tv(Component_Mode, start);
 
 	#if defined(CONFIG_FB_TCC_COMPONENT_ADV7343)
-	adv7343_enable(Component_Mode, ADV7343_DEFAULT_OUTPUT_FORMAT, tcc_component_starter);
+	adv7343_enable(Component_Mode, ADV7343_DEFAULT_OUTPUT_FORMAT,
+		tcc_component_starter);
 	#elif defined(CONFIG_FB_TCC_COMPONENT_THS8200)
 	ths8200_enable(Component_Mode, tcc_component_starter);
 	#endif
@@ -766,18 +766,18 @@ void tcc_component_start(TCC_COMPONENT_START_TYPE start)
 	component_start = 1;
 }
 
-/*****************************************************************************
- Function Name : tcc_component_clock_onoff()
-******************************************************************************/
+/*
+ * Function Name : tcc_component_clock_onoff()
+ */
 void tcc_component_clock_onoff(char OnOff)
 {
-	dprintk("%s, Onoff = %d \n", __func__, OnOff);
+	dprintk("%s, Onoff = %d\n", __func__, OnOff);
 }
 
 #ifdef CONFIG_PM
 static int component_enable(void)
 {
-	printk("%s\n", __func__);
+	dprintk("%s\n", __func__);
 
 	pm_runtime_get_sync(pdev_component);
 
@@ -786,7 +786,7 @@ static int component_enable(void)
 
 static int component_disable(void)
 {
-	printk("%s\n", __func__);
+	dprintk("%s\n", __func__);
 
 	pm_runtime_put_sync(pdev_component);
 
@@ -798,7 +798,7 @@ static int component_blank(int blank_mode)
 {
 	int ret = 0;
 
-	printk("%s : blank(mode=%d)\n", __func__, blank_mode);
+	pr_info("%s : blank(mode=%d)\n", __func__, blank_mode);
 
 	#ifdef CONFIG_PM
 	if ((pdev_component->power.usage_count.counter == 1) &&
@@ -806,8 +806,8 @@ static int component_blank(int blank_mode)
 		// usage_count = 1 ( resume ), blank_mode = 0 ( FB_BLANK_UNBLANK
 		// ) is stable state when booting don't call runtime_suspend or
 		// resume state
-		// printk("%s ### state = [%d] count =[%d] power_cnt=[%d]
-		// \n",__func__,blank_mode, pdev_component->power.usage_count,
+		// dprintk("%s ### state = [%d] count =[%d] power_cnt=[%d]
+		//\n",__func__,blank_mode, pdev_component->power.usage_count,
 		// pdev_component->power.usage_count.counter);
 		return 0;
 	}
@@ -830,14 +830,14 @@ static int component_blank(int blank_mode)
 	return ret;
 }
 
-/*****************************************************************************
- Function Name : tcc_component_attach()
-******************************************************************************/
+/*
+ * Function Name : tcc_component_attach()
+ */
 void tcc_component_attach(char lcdc_num, char mode, char starter_flag)
 {
 	struct fb_info *info = registered_fb[0];
 	struct tccfb_info *tccfb_info = NULL;
-	TCC_COMPONENT_START_TYPE start;
+	struct TCC_COMPONENT_START_TYPE start;
 
 #if defined(CONFIG_VIOC_DOLBY_VISION_EDR) && defined(CONFIG_TCC_DV_IN)
 	start.dv_reg_phyaddr = start.dv_md_phyaddr = 0x00;
@@ -871,15 +871,15 @@ void tcc_component_attach(char lcdc_num, char mode, char starter_flag)
 	tca_fb_attach_start(tccfb_info);
 }
 
-/*****************************************************************************
- Function Name : tcc_component_detach()
-******************************************************************************/
+/*
+ * Function Name : tcc_component_detach()
+ */
 void tcc_component_detach(void)
 {
 	struct fb_info *info = registered_fb[0];
 	struct tccfb_info *tccfb_info = NULL;
 
-	printk("%s\n", __func__);
+	dprintk("%s\n", __func__);
 
 	tccfb_info = info->par;
 
@@ -893,14 +893,14 @@ void tcc_component_detach(void)
 	Component_LCDC_Num = Component_Disp_Num;
 }
 
-/*****************************************************************************
- Function Name : tcc_component_ioctl()
-******************************************************************************/
+/*
+ * Function Name : tcc_component_ioctl()
+ */
 static long tcc_component_ioctl(struct file *file, unsigned int cmd,
 				unsigned long arg)
 {
-	TCC_COMPONENT_START_TYPE start;
-	TCC_COMPONENT_CGMS_TYPE cgms;
+	struct TCC_COMPONENT_START_TYPE start;
+	struct TCC_COMPONENT_CGMS_TYPE cgms;
 
 	switch (cmd) {
 	case TCC_COMPONENT_IOCTL_HPD_SWITCH_STATUS: {
@@ -917,18 +917,20 @@ static long tcc_component_ioctl(struct file *file, unsigned int cmd,
 			if (enable) {
 				switch_data->send_component_event(
 					switch_data, TCC_COMPONENT_ON);
-				pr_info("[INF][COMPONENT] TCC_COMPONENT_IOCTL_HPD_SWITCH_STATUS: enable(%d)\n", enable);
+				pr_info("[INF][COMPONENT] TCC_COMPONENT_IOCTL_HPD_SWITCH_STATUS: enable(%d)\n",
+					enable);
 			} else {
 				switch_data->send_component_event(
 					switch_data, TCC_COMPONENT_OFF);
-				pr_info("[INF][COMPONENT] TCC_COMPONENT_IOCTL_HPD_SWITCH_STATUS: enable(%d)\n", enable);
+				pr_info("[INF][COMPONENT] TCC_COMPONENT_IOCTL_HPD_SWITCH_STATUS: enable(%d)\n",
+					enable);
 			}
 		}
 		#endif
 		break;
 	}
 	case TCC_COMPONENT_IOCTL_START:
-		dprintk("%s [TCC_COMPONENT_IOCTL_START] \n", __func__);
+		dprintk("%s [TCC_COMPONENT_IOCTL_START]\n", __func__);
 		if (copy_from_user(&start, (void *)arg, sizeof(start)))
 			return -EFAULT;
 
@@ -942,6 +944,7 @@ static long tcc_component_ioctl(struct file *file, unsigned int cmd,
 		struct tcc_dp_device *dp_device =
 			tca_fb_get_displayType(TCC_OUTPUT_COMPONENT);
 		struct tcc_lcdc_image_update update;
+
 		if (copy_from_user(&update, (void *)arg, sizeof(update)))
 			return -EFAULT;
 
@@ -950,12 +953,13 @@ static long tcc_component_ioctl(struct file *file, unsigned int cmd,
 	} break;
 
 	case TCC_COMPONENT_IOCTL_END:
-		dprintk("%s [TCC_COMPONENT_IOCTL_END] \n", __func__);
+		dprintk("%s [TCC_COMPONENT_IOCTL_END]\n", __func__);
 		#if defined(CONFIG_SWITCH_GPIO_COMPONENT)
 		if (tcc_component_detect_device.dev.platform_data != NULL) {
 			struct component_gpio_switch_data *switch_data =
 				tcc_component_detect_device.dev.platform_data;
-			switch_data->send_component_event(switch_data, TCC_COMPONENT_OFF);
+			switch_data->send_component_event(switch_data,
+				TCC_COMPONENT_OFF);
 		}
 		#endif
 		if (component_start)
@@ -1002,16 +1006,18 @@ static long tcc_component_ioctl(struct file *file, unsigned int cmd,
 
 	case TCC_COPONENT_IOCTL_GET_SUSPEND_STATUS: {
 		if (gLinuxComponentSuspendStatus) {
-			put_user(gLinuxComponentSuspendStatus, (unsigned int __user *)arg);
+			put_user(gLinuxComponentSuspendStatus,
+				(unsigned int __user *)arg);
 			gLinuxComponentSuspendStatus = 0;
 		} else {
-			put_user(gComponentSuspendStatus, (unsigned int __user *)arg);
+			put_user(gComponentSuspendStatus,
+				(unsigned int __user *)arg);
 		}
 		break;
 	}
 
 	case TCC_COMPONENT_IOCTL_SET_CGMS:
-		if (copy_from_user(&cgms, (void __user*)arg, sizeof(cgms)))
+		if (copy_from_user(&cgms, (void __user *)arg, sizeof(cgms)))
 			return -EFAULT;
 		component_set_cgms(&cgms);
 		break;
@@ -1023,29 +1029,29 @@ static long tcc_component_ioctl(struct file *file, unsigned int cmd,
 		break;
 
 	default:
-		printk("%d, Unsupported IOCTL!!!\n", cmd);
+		pr_err("%d, Unsupported IOCTL!!!\n", cmd);
 		break;
 	}
 
 	return 0;
 }
 
-/*****************************************************************************
- Function Name : tcc_component_open()
-******************************************************************************/
+/*
+ * Function Name : tcc_component_open()
+ */
 static int tcc_component_open(struct inode *inode, struct file *filp)
 {
-	dprintk("%s  \n", __func__);
+	dprintk("%s\n", __func__);
 
 	return 0;
 }
 
-/*****************************************************************************
- Function Name : tcc_component_release()
-******************************************************************************/
+/*
+ * Function Name : tcc_component_release()
+ */
 static int tcc_component_release(struct inode *inode, struct file *file)
 {
-	dprintk("%s  \n", __func__);
+	dprintk("%s\n", __func__);
 
 	return 0;
 }
@@ -1057,7 +1063,7 @@ int component_runtime_suspend(struct device *dev)
 	struct tccfb_info *tccfb_info = NULL;
 	struct tcc_dp_device *dp_device = NULL;
 
-	printk("%s+++\n", __func__);
+	dprintk("%s+++\n", __func__);
 
 	if (component_start) {
 		tcc_component_end();
@@ -1065,13 +1071,13 @@ int component_runtime_suspend(struct device *dev)
 
 	gComponentSuspendStatus = 1;
 
-	printk("%s---\n", __func__);
+	dprintk("%s---\n", __func__);
 	return 0;
 }
 
 int component_runtime_resume(struct device *dev)
 {
-	printk("%s:  \n", __func__);
+	dprintk("%s:\n", __func__);
 
 	gComponentSuspendStatus = 0;
 
@@ -1132,15 +1138,17 @@ static int component_parse_dt(struct device_node *np)
 		pComponent_SCALER = VIOC_SC_GetAddress(index);
 		Component_Scaler_Num = index;
 	} else {
-		printk("%s, could not find scaler node\n", __func__);
+		pr_err("%s, could not find scaler node\n", __func__);
 		ret = -ENODEV;
 	}
 
 	/* get the information of vioc-fb device node */
 	np_fb = of_find_compatible_node(NULL, NULL, "telechips,vioc-fb");
 
-	if (of_property_read_u32(np_fb, "telechips,fbdisplay_num", &Component_Disp_Num)) {
-		pr_err("[ERR][COMPONENT] %s, could not find fbdisplay_num\n", __func__);
+	if (of_property_read_u32(np_fb, "telechips,fbdisplay_num",
+		&Component_Disp_Num)) {
+		pr_err("[ERR][COMPONENT] %s, could not find fbdisplay_num\n",
+			__func__);
 		ret = -ENODEV;
 	}
 
@@ -1162,64 +1170,78 @@ static int component_parse_dt(struct device_node *np)
 	/* get register address for main output */
 	np_fb_child = of_parse_phandle(np_fb_1st, "telechips,disp", 0);
 	if (np_fb_child) {
-		of_property_read_u32_index(np_fb_1st, "telechips,disp", 1, &index);
+		of_property_read_u32_index(np_fb_1st, "telechips,disp", 1,
+			&index);
 		pComponent_DISP = VIOC_DISP_GetAddress(index);
 	} else {
-		pr_err("[ERR][COMPONENT] %s, could not find disp node\n", __func__);
+		pr_err("[ERR][COMPONENT] %s, could not find disp node\n",
+			__func__);
 		ret = -ENODEV;
 	}
 
 	np_fb_child = of_parse_phandle(np_fb_1st, "telechips,wmixer", 0);
 	if (np_fb_child) {
-		of_property_read_u32_index(np_fb_1st, "telechips,wmixer", 1, &index);
+		of_property_read_u32_index(np_fb_1st, "telechips,wmixer", 1,
+			&index);
 		pComponent_WMIX = VIOC_WMIX_GetAddress(index);
 	} else {
-		pr_err("[ERR][COMPONENT] %s, could not find disp wmixer\n", __func__);
+		pr_err("[ERR][COMPONENT] %s, could not find disp wmixer\n",
+			__func__);
 		ret = -ENODEV;
 	}
 
 	np_fb_child = of_parse_phandle(np_fb_1st, "telechips,rdma", 0);
 	if (np_fb_child) {
-		of_property_read_u32_index(np_fb_1st, "telechips,rdma", 1 + 0, &index);
+		of_property_read_u32_index(np_fb_1st, "telechips,rdma", 1 + 0,
+			&index);
 		pComponent_RDMA_UI = VIOC_RDMA_GetAddress(index);
-		of_property_read_u32_index(np_fb_1st, "telechips,rdma", 1 + 3, &index);
+		of_property_read_u32_index(np_fb_1st, "telechips,rdma", 1 + 3,
+			&index);
 		pComponent_RDMA_VIDEO = VIOC_RDMA_GetAddress(index);
 		Component_RDMA_VIDEO_Num = index;
 	} else {
-		pr_err("[ERR][COMPONENT] %s, could not find disp rdma\n", __func__);
+		pr_err("[ERR][COMPONENT] %s, could not find disp rdma\n",
+			__func__);
 		ret = -ENODEV;
 	}
 
 	/* get register address for attached output */
 	np_fb_child = of_parse_phandle(np_fb_2nd, "telechips,disp", 0);
 	if (np_fb_child) {
-		of_property_read_u32_index(np_fb_2nd, "telechips,disp", 1, &index);
+		of_property_read_u32_index(np_fb_2nd, "telechips,disp", 1,
+			&index);
 		pComponent_Attach_DISP = VIOC_DISP_GetAddress(index);
 	} else {
-		pr_err("[ERR][COMPONENT] %s, could not find disp node for attached output\n", __func__);
+		pr_err("[ERR][COMPONENT] %s, could not find disp node for attached output\n",
+			__func__);
 		ret = -ENODEV;
 	}
 
 	np_fb_child = of_parse_phandle(np_fb_2nd, "telechips,wmixer", 0);
 	if (np_fb_child) {
-		of_property_read_u32_index(np_fb_2nd, "telechips,wmixer", 1, &index);
+		of_property_read_u32_index(np_fb_2nd, "telechips,wmixer", 1,
+			&index);
 		pComponent_Attach_WMIX = VIOC_WMIX_GetAddress(index);
 	} else {
-		pr_err("[ERR][COMPONENT] %s, could not find disp wmixer for attached output\n", __func__);
+		pr_err("[ERR][COMPONENT] %s, could not find disp wmixer for attached output\n",
+			__func__);
 		ret = -ENODEV;
 	}
 
 	np_fb_child = of_parse_phandle(np_fb_2nd, "telechips,rdma", 0);
 	if (np_fb_child) {
-		of_property_read_u32_index(np_fb_2nd, "telechips,rdma", 1 + 0, &index);
+		of_property_read_u32_index(np_fb_2nd, "telechips,rdma", 1 + 0,
+			&index);
 		pComponent_Attach_RDMA_UI = VIOC_RDMA_GetAddress(index);
-		of_property_read_u32_index(np_fb_2nd, "telechips,rdma", 1 + 3, &index);
+		of_property_read_u32_index(np_fb_2nd, "telechips,rdma", 1 + 3,
+			&index);
 		pComponent_Attach_RDMA_VIDEO = VIOC_RDMA_GetAddress(index);
 	} else {
-		pr_err("[ERR][COMPONENT] %s, could not find disp rdma for attached output\n", __func__);
+		pr_err("[ERR][COMPONENT] %s, could not find disp rdma for attached output\n",
+			__func__);
 		ret = -ENODEV;
 	}
-	printk("%s, Component_LCDC_Num = %d \n", __func__, Component_Disp_Num);
+	pr_info("%s, Component_LCDC_Num = %d\n", __func__, Component_Disp_Num);
 
 	return ret;
 }
@@ -1239,8 +1261,7 @@ static int component_probe(struct platform_device *pdev)
 	component_parse_dt(pdev->dev.of_node);
 
 	if (misc_register(&tcc_component_misc_device)) {
-		printk(KERN_WARNING
-		       "COMPONENT: Couldn't register device 10, %d.\n",
+		pr_warn("COMPONENT: Couldn't register device 10, %d.\n",
 		       COMPONENT_MINOR);
 		return -EBUSY;
 	}
@@ -1260,7 +1281,7 @@ static int component_probe(struct platform_device *pdev)
 
 static int component_remove(struct platform_device *pdev)
 {
-	printk("%s LCDC:%d \n", __func__, Component_LCDC_Num);
+	dprintk("%s LCDC:%d\n", __func__, Component_LCDC_Num);
 
 	misc_deregister(&tcc_component_misc_device);
 
@@ -1284,7 +1305,8 @@ static const struct dev_pm_ops component_pm_ops = {
 #ifdef CONFIG_OF
 static struct of_device_id component_of_match[] = {
 	{.compatible = "telechips,tcc-component"},
-	{}};
+	{}
+};
 MODULE_DEVICE_TABLE(of, component_of_match);
 #endif
 
@@ -1303,17 +1325,17 @@ static struct platform_driver tcc_component_driver = {
 	},
 };
 
-/*****************************************************************************
- Function Name : tcc_component_init()
-******************************************************************************/
+/*
+ * Function Name : tcc_component_init()
+ */
 int __init tcc_component_init(void)
 {
 	return platform_driver_register(&tcc_component_driver);
 }
 
-/*****************************************************************************
- Function Name : tcc_component_cleanup()
-******************************************************************************/
+/*
+ * Function Name : tcc_component_cleanup()
+ */
 void __exit tcc_component_exit(void)
 {
 	platform_driver_unregister(&tcc_component_driver);

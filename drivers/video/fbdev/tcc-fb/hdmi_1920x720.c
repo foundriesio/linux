@@ -33,27 +33,29 @@
 #include <linux/clk.h>
 static struct mutex panel_lock;
 
-static struct clk *hdmi_peri_clk = NULL;
-static struct clk *hdmi_ddi_clk = NULL;
-static struct clk  *hdmi_isoip_clk = NULL;
-static struct clk  *hdmi_lcdc0_clk = NULL;
-static struct clk  *hdmi_lcdc1_clk = NULL;
+static struct clk *hdmi_peri_clk;
+static struct clk *hdmi_ddi_clk;
+static struct clk  *hdmi_isoip_clk;
+static struct clk  *hdmi_lcdc0_clk;
+static struct clk  *hdmi_lcdc1_clk;
 
-static int hdmi1920x720_panel_init(struct lcd_panel *panel, struct tcc_dp_device *fb_pdata)
+static int hdmi1920x720_panel_init(struct lcd_panel *panel,
+					struct tcc_dp_device *fb_pdata)
 {
-	if(fb_pdata->DispNum)
+	if (fb_pdata->DispNum)
 		clk_prepare_enable(hdmi_lcdc1_clk);
 	else
 		clk_prepare_enable(hdmi_lcdc0_clk);
-	
+
 	clk_prepare_enable(hdmi_peri_clk);
 	clk_prepare_enable(hdmi_ddi_clk);
 	clk_prepare_enable(hdmi_isoip_clk);
-        
+
 	return 0;
 }
 
-static int hdmi1920x720_set_power(struct lcd_panel *panel, int on, struct tcc_dp_device *fb_pdata)
+static int hdmi1920x720_set_power(struct lcd_panel *panel, int on,
+					struct tcc_dp_device *fb_pdata)
 {
 	return 0;
 }
@@ -91,14 +93,14 @@ static struct lcd_panel hdmi1920x720_panel = {
 
 static int hdmi1920x720_probe(struct platform_device *pdev)
 {
-	printk("%s\n", __func__);
-	
+	pr_info("%s\n", __func__);
+
 	hdmi_lcdc0_clk = of_clk_get_by_name(pdev->dev.of_node, "lcdc0-clk");
 	hdmi_lcdc1_clk = of_clk_get_by_name(pdev->dev.of_node, "lcdc1-clk");
 	hdmi_peri_clk = of_clk_get_by_name(pdev->dev.of_node, "hdmi-pclk");
 	hdmi_ddi_clk = of_clk_get_by_name(pdev->dev.of_node, "hdmi-hclk");
 	hdmi_isoip_clk = of_clk_get_by_name(pdev->dev.of_node, "hdmi-phy");
-	
+
 	mutex_init(&panel_lock);
 
 	hdmi1920x720_panel.dev = &pdev->dev;
@@ -116,7 +118,7 @@ static int hdmi1920x720_remove(struct platform_device *pdev)
 }
 
 #ifdef CONFIG_OF
-static struct of_device_id hdmi1920x720_of_match[] = {
+static const struct of_device_id hdmi1920x720_of_match[] = {
 	{ .compatible = "telechips,hdmi1920x720" },
 	{}
 };

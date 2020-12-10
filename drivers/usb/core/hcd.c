@@ -1007,13 +1007,13 @@ static void usb_bus_init (struct usb_bus *bus)
 	mutex_init(&bus->devnum_next_mutex);
 
 #ifdef CONFIG_TCC_DWC_HS_ELECT_TST
-    bus->hnp_wq = create_workqueue("hnp_queue");
-    bus->hnp_work = (hnp_work_t *)kmalloc(sizeof(hnp_work_t), GFP_KERNEL);
-    if(bus->hnp_work)
-    {
-    	INIT_DELAYED_WORK( (struct delayed_work *)bus->hnp_work, usb_hnp_work);
-    }
-       // TODO: free memory of work queue related values.
+	bus->hnp_wq = create_workqueue("hnp_queue");
+	bus->hnp_work = kmalloc(sizeof(struct hnp_work_t), GFP_KERNEL);
+	if (bus->hnp_work) {
+		INIT_DELAYED_WORK((struct delayed_work *)bus->hnp_work,
+				usb_hnp_work);
+	}
+	// TODO: free memory of work queue related values.
 #endif
 }
 
@@ -1037,7 +1037,8 @@ static int usb_register_bus(struct usb_bus *bus)
 	mutex_lock(&usb_bus_idr_lock);
 	busnum = idr_alloc(&usb_bus_idr, bus, 1, USB_MAXBUS, GFP_KERNEL);
 	if (busnum < 0) {
-		pr_err("[ERROR][USB] %s: failed to get bus number\n", usbcore_name);
+		pr_err("[ERROR][USB] %s: failed to get bus number\n",
+				usbcore_name);
 		goto error_find_busnum;
 	}
 	bus->busnum = busnum;
@@ -2271,7 +2272,8 @@ int hcd_bus_suspend(struct usb_device *rhdev, pm_message_t msg)
 			(PMSG_IS_AUTO(msg) ? "auto-" : ""),
 			rhdev->do_remote_wakeup);
 	if (HCD_DEAD(hcd)) {
-		dev_dbg(&rhdev->dev, "[DEBUG][USB] skipped %s of dead bus\n", "suspend");
+		dev_dbg(&rhdev->dev, "[DEBUG][USB] skipped %s of dead bus\n",
+				"suspend");
 		return 0;
 	}
 
@@ -2319,7 +2321,8 @@ int hcd_bus_resume(struct usb_device *rhdev, pm_message_t msg)
 	dev_dbg(&rhdev->dev, "[DEBUG][USB] usb %sresume\n",
 			(PMSG_IS_AUTO(msg) ? "auto-" : ""));
 	if (HCD_DEAD(hcd)) {
-		dev_dbg(&rhdev->dev, "[DEBUG][USB] skipped %s of dead bus\n", "resume");
+		dev_dbg(&rhdev->dev, "[DEBUG][USB] skipped %s of dead bus\n",
+				"resume");
 		return 0;
 	}
 	if (!hcd->driver->bus_resume)
@@ -2710,10 +2713,11 @@ static int usb_hcd_request_irqs(struct usb_hcd *hcd,
 			return retval;
 		}
 		hcd->irq = irqnum;
-		dev_info(hcd->self.controller, "[INFO][USB] irq %d, %s 0x%08llx\n", irqnum,
+		dev_info(hcd->self.controller,
+				"[INFO][USB] irq %d, %s 0x%08llx\n", irqnum,
 				(hcd->driver->flags & HCD_MEMORY) ?
-					"io mem" : "io base",
-					(unsigned long long)hcd->rsrc_start);
+				"io mem" : "io base",
+				(unsigned long long)hcd->rsrc_start);
 	} else {
 		hcd->irq = 0;
 		if (hcd->rsrc_start)
@@ -2908,7 +2912,8 @@ int usb_add_hcd(struct usb_hcd *hcd,
 	hcd->state = HC_STATE_RUNNING;
 	retval = hcd->driver->start(hcd);
 	if (retval < 0) {
-		dev_err(hcd->self.controller, "[ERROR][USB] startup error %d\n", retval);
+		dev_err(hcd->self.controller, "[ERROR][USB] startup error %d\n",
+				retval);
 		goto err_hcd_driver_start;
 	}
 
@@ -2919,7 +2924,7 @@ int usb_add_hcd(struct usb_hcd *hcd,
 
 	retval = sysfs_create_group(&rhdev->dev.kobj, &usb_bus_attr_group);
 	if (retval < 0) {
-		printk(KERN_ERR "[ERROR][USB] Cannot register USB bus sysfs attributes: %d\n",
+		pr_err("[ERROR][USB] Cannot register USB bus sysfs attributes: %d\n",
 		       retval);
 		goto error_create_attr_group;
 	}
@@ -2927,9 +2932,10 @@ int usb_add_hcd(struct usb_hcd *hcd,
 		usb_hcd_poll_rh_status(hcd);
 #if 0
 #if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X)
-	if(system_rev == 0) { /* MPW 1 case*/
-		if ((unsigned long long)hcd->rsrc_start == 0x11b00000){
-			void * addr = ioremap(0x11d90010, 0x4);
+	if (system_rev == 0) { /* MPW 1 case*/
+		if ((unsigned long long)hcd->rsrc_start == 0x11b00000) {
+			void *addr = ioremap(0x11d90010, 0x4);
+
 			writel((readl(addr) | 0x02000000), addr);
 			iounmap(addr);
 			dev_info(hcd->self.controller, "[INFO][USB] power down SS circit\n");
@@ -3001,7 +3007,8 @@ void usb_remove_hcd(struct usb_hcd *hcd)
 {
 	struct usb_device *rhdev = hcd->self.root_hub;
 
-	dev_info(hcd->self.controller, "[INFO][USB] remove, state %x\n", hcd->state);
+	dev_info(hcd->self.controller, "[INFO][USB] remove, state %x\n",
+			hcd->state);
 
 	usb_get_dev(rhdev);
 	sysfs_remove_group(&rhdev->dev.kobj, &usb_bus_attr_group);
@@ -3117,7 +3124,7 @@ void usb_mon_deregister (void)
 {
 
 	if (mon_ops == NULL) {
-		printk(KERN_ERR "[ERROR][USB] USB: monitor was not registered\n");
+		pr_err("[ERROR][USB] USB: monitor was not registered\n");
 		return;
 	}
 	mon_ops = NULL;

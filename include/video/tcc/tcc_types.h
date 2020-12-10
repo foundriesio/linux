@@ -1,21 +1,10 @@
+// SPDX-License-Identifier: GPL-2.0-or-later
 /*
  * Copyright (C) Telechips Inc.
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, see the file COPYING, or write
- * to the Free Software Foundation, Inc.,
- * 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+ * FileName   : tcc_type.h
+ * Description: TCC VPU h/w block
  */
+
 #ifndef __TCC_TYPES_H__
 #define __TCC_TYPES_H__
 
@@ -62,12 +51,16 @@
 #define Hw0		0x00000001
 #define HwZERO	0x00000000
 
-#define BITSET(X, MASK)				((X) |= (unsigned int)(MASK))
-#define BITSCLR(X, SMASK, CMASK)	((X) = ((((unsigned int)(X)) | ((unsigned int)(SMASK))) & ~((unsigned int)(CMASK))) )
-#define BITCSET(X, CMASK, SMASK)	((X) = ((((unsigned int)(X)) & ~((unsigned int)(CMASK))) | ((unsigned int)(SMASK))) )
-#define BITCLR(X, MASK)				((X) &= ~((unsigned int)(MASK)) )
-#define BITXOR(X, MASK)				((X) ^= (unsigned int)(MASK) )
-#define ISZERO(X, MASK)				(!(((unsigned int)(X))&((unsigned int)(MASK))))
-#define	ISSET(X, MASK)				((unsigned long)(X)&((unsigned long)(MASK)))
+#define BITSET(X, MASK)	((X) |= (unsigned int)(MASK))
+#define BITSCLR(X, SMASK, CMASK)	\
+	((X) = ((((unsigned int)(X)) | ((unsigned int)(SMASK)))\
+	& ~((unsigned int)(CMASK))))
+#define BITCSET(X, CMASK, SMASK)	\
+	((X) = ((((unsigned int)(X)) & ~((unsigned int)(CMASK)))\
+	| ((unsigned int)(SMASK))))
+#define BITCLR(X, MASK)	((X) &= ~((unsigned int)(MASK)))
+#define BITXOR(X, MASK)	((X) ^= (unsigned int)(MASK))
+#define ISZERO(X, MASK)	(!(((unsigned int)(X))&((unsigned int)(MASK))))
+#define	ISSET(X, MASK)	((unsigned long)(X)&((unsigned long)(MASK)))
 
 #endif //__TCC_TYPES_H__

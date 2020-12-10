@@ -1,10 +1,11 @@
 
 /*
  * linux/driver/net/tcc_gmac/tcc_gmac_ptp.c
- * 	
+ *
  * Author : Telechips <linux@telechips.com>
  * Created : Jan 28, 2013
- * Description : This is the driver for the Telechips MAC 10/100/1000 on-chip Ethernet controllers.  
+ * Description : This is the driver for the
+ * Telechips MAC 10/100/1000 on-chip Ethernet controllers.
  *               Telechips Ethernet IPs are built around a Synopsys IP Core.
  *
  * Copyright (C) 2013 Telechips
@@ -24,7 +25,7 @@
  *
  * The full GNU General Public License is included in this distribution in
  * the file called "COPYING".
- */ 
+ */
 
 #include <linux/module.h>
 #include <linux/ptp_clock_kernel.h>

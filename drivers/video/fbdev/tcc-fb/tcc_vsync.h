@@ -1,29 +1,33 @@
-/****************************************************************************
-tcc_vsync.h
-Description: TCC Vsync Driver 
+/*
+ * Copyright (C) Telechips, Inc.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, see the file COPYING, or write
+ * to the Free Software Foundation, Inc.,
+ * 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+ */
+#ifndef __TCC_VSYNC_H__
+#define __TCC_VSYNC_H__
 
-Copyright (C) 2013 Telechips Inc.
-
-This program is free software; you can redistribute it and/or modify it under the terms
-of the GNU General Public License as published by the Free Software Foundation;
-either version 2 of the License, or (at your option) any later version.
-
-This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
-without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
-PURPOSE. See the GNU General Public License for more details.
-
-You should have received a copy of the GNU General Public License along with
-this program; if not, write to the Free Software Foundation, Inc., 59 Temple Place,
-Suite 330, Boston, MA 02111-1307 USA
-****************************************************************************/
-
-/*****************************************************************************
-*
-* structures
-*
-******************************************************************************/
+/*==============================================================================
+ *
+ * structures
+ *
+ *==============================================================================
+ */
 #include <video/tcc/vioc_intr.h>
 #include <video/tcc/tcc_video_private.h>
+#include <soc/tcc/pmap.h>
 
 #ifdef CONFIG_USE_SUB_MULTI_FRAME
 typedef enum {
@@ -42,61 +46,60 @@ typedef enum {
 } VSYNC_CH_TYPE;
 #endif
 
-typedef enum
-{
+typedef enum {
 	DRM_INIT = 0,
 	DRM_ON,
 	DRM_OFF
-}HDMI_DRM_MODE;
+} HDMI_DRM_MODE;
 
 #if defined(CONFIG_VSYNC_DRV_ALWAYS_ACCEPT_START_VSYNC)
 typedef enum {
 	EM_VSYNC_DISABLED = 0,
 	EM_VSYNC_PREPARE,
 	EM_VSYNC_RUNNING
-}VSYNC_RUN_STATUS;
+} VSYNC_RUN_STATUS;
 #else
 typedef enum {
 	EM_VSYNC_DISABLED = 0,
 	EM_VSYNC_RUNNING
-}VSYNC_RUN_STATUS;
+} VSYNC_RUN_STATUS;
 #endif
 
-typedef struct{
-	int readIdx ;
-	int writeIdx ;
+typedef struct {
+	int readIdx;
+	int writeIdx;
 	int clearIdx;
 
 	atomic_t valid_buff_count;
 	atomic_t readable_buff_count;
 
-	int max_buff_num ;
+	int max_buff_num;
 	int last_cleared_buff_id;
 	int available_buffer_id_on_vpu;
-	struct tcc_lcdc_image_update stImage[VPU_BUFFER_MANAGE_COUNT] ;
+	struct tcc_lcdc_image_update stImage[VPU_BUFFER_MANAGE_COUNT];
 	struct tcc_lcdc_image_update curr_displaying_imgInfo;
-}tcc_vsync_buffer_t;
+} tcc_vsync_buffer_t;
 
-#define TIME_BUFFER_COUNT			30
+#define TIME_BUFFER_COUNT  30
 
 typedef struct {
 	int Resolution; // resolution changed..
-	int Codec; 		//codec changed..
-}tcc_lastframe_reason;
+	int Codec;      // codec changed..
+} tcc_lastframe_reason;
 
 typedef struct {
 	int support;
 
-	struct tcc_lcdc_image_update 		CurrImage;
-	struct tcc_lcdc_image_update		LastImage;
+	struct tcc_lcdc_image_update CurrImage;
+	struct tcc_lcdc_image_update LastImage;
 	int enabled;
 	struct pmap pmapBuff;
 
-	volatile void __iomem * pRDMA;
+	volatile void __iomem *pRDMA;
 
 	tcc_lastframe_reason reason;
 	unsigned int nCount;
-}tcc_video_lastframe;
+} tcc_video_lastframe;
 
 typedef struct {
 	tcc_vsync_buffer_t vsync_buffer;
@@ -104,9 +107,9 @@ typedef struct {
 
 	int isVsyncRunning;
 	// for time sync
-	unsigned int unVsyncCnt ;
+	unsigned int unVsyncCnt;
 	int baseTime;
-	unsigned int timeGapIdx ;
+	unsigned int timeGapIdx;
 	unsigned int timeGapBufferFullFlag;
 	int timeGap[TIME_BUFFER_COUNT];
 	int timeGapTotal;
@@ -148,11 +151,11 @@ typedef struct {
 	struct tcc_lcdc_image_update push_ext_infoframe;
 	int push_ext_status_paused;
 	int push_ext_count;
-	
-}tcc_video_disp ;
 
-struct tcc_vsync_display_info_t{
-	struct vioc_intr_type	*vioc_intr;
+} tcc_video_disp;
+
+struct tcc_vsync_display_info_t {
+	struct vioc_intr_type *vioc_intr;
 
 	int lcdc_num;
 	int irq_num;
@@ -167,11 +170,12 @@ enum {
 };
 #endif
 
-/*****************************************************************************
-*
-* functions
-*
-******************************************************************************/
+/*==============================================================================
+ *
+ * functions
+ *
+ *==============================================================================
+ */
 void tca_vsync_video_display_enable(void);
 void tca_vsync_video_display_disable(void);
 void tcc_vsync_set_firstFrameFlag_all(int firstFrameFlag);
@@ -194,10 +198,12 @@ int tcc_vsync_get_output_toMemory(tcc_video_disp *p);
 int tcc_vsync_get_interlace_bypass_lcdc(tcc_video_disp *p);
 int tcc_vsync_get_deinterlace_mode(tcc_video_disp *p);
 int is_deinterlace_enabled(VSYNC_CH_TYPE type);
-void tcc_vsync_hdmi_start(struct tcc_dp_device *pdp_data,int* lcd_video_started);
+void tcc_vsync_hdmi_start(struct tcc_dp_device *pdp_data,
+	int *lcd_video_started);
 void tcc_vsync_hdmi_end(struct tcc_dp_device *pdp_data);
 
 void tcc_video_clear_last_frame(unsigned int lcdc_layer, bool reset);
 VSYNC_CH_TYPE tcc_vsync_get_video_ch_type(unsigned int lcdc_layer);
 int tcc_video_check_last_frame(struct tcc_lcdc_image_update *ImageInfo);
 
+#endif /*__TCC_VSYNC_H__*/

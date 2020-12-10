@@ -94,14 +94,18 @@ static struct ion_platform_data *tcc_ion_parse_dt(struct platform_device *pdev)
 				pr_err("ump_reserved alloc. is failed.\n");
 				return ERR_PTR(-ENOMEM);
 			}
-			pr_info("%s - 0x%x - 0x%x - %d - %d - %d\n",
+			pr_info("%s - 0x%llx - 0x%llx - %x - %d - %d\n",
 			     pmap_ump_reserved.name, pmap_ump_reserved.base,
 			     pmap_ump_reserved.size, pmap_ump_reserved.groups,
 			     pmap_ump_reserved.rc, pmap_ump_reserved.flags);
 
 			heap->base = pmap_ump_reserved.base;
 			heap->size = pmap_ump_reserved.size;
-			pr_info("ump_reserved base:0x%x 0x%x\n", heap->base,
+			#ifdef CONFIG_PHYS_ADDR_T_64BIT
+			pr_info("ump_reserved base:0x%llx 0x%llx\n", heap->base,
+			#else
+			pr_info("ump_reserved base:0x%x 0x%llx\n", heap->base,
+			#endif
 			       pmap_ump_reserved.base);
 		}
 #ifdef CONFIG_ION_CARVEOUT_CAM_HEAP
@@ -114,7 +118,11 @@ static struct ion_platform_data *tcc_ion_parse_dt(struct platform_device *pdev)
 			}
 			heap->base = pmap_ion_carveout_cam.base;
 			heap->size = pmap_ion_carveout_cam.size;
+			#ifdef CONFIG_PHYS_ADDR_T_64BIT
+			pr_info("ion_carveout_cam base:0x%llx\n", heap->base);
+			#else
 			pr_info("ion_carveout_cam base:0x%x\n", heap->base);
+			#endif
 		}
 #endif
 		++index;
@@ -151,7 +159,11 @@ struct ion_heap *ion_heap_create(struct ion_platform_heap *heap_data)
 	}
 
 	if (IS_ERR_OR_NULL(heap)) {
+		#ifdef CONFIG_PHYS_ADDR_T_64BIT
+		pr_err("%s: error creating heap %s type %d base %llu size %zu\n",
+		#else
 		pr_err("%s: error creating heap %s type %d base %lu size %zu\n",
+		#endif
 		       __func__, heap_data->name, heap_data->type,
 		       heap_data->base, heap_data->size);
 		return ERR_PTR(-EINVAL);
@@ -180,7 +192,7 @@ int tcc_ion_probe(struct platform_device *pdev)
 
 	num_heaps = pdata->nr;
 
-	heaps = kzalloc(sizeof(struct ion_heap *) * pdata->nr, GFP_KERNEL);
+	heaps = kcalloc(pdata->nr, sizeof(struct ion_heap *), GFP_KERNEL);
 
 	/* create the heaps as specified in the board file */
 	for (i = 0; i < num_heaps; i++) {

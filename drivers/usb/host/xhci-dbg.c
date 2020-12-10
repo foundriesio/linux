@@ -27,12 +27,11 @@
 #define XHCI_INIT_VALUE 0x0
 
 /* Add verbose debugging later, just print everything for now */
-
 static int xhci_testmode_show(struct seq_file *s, void *unused)
 {
-	struct xhci_hcd         *xhci = s->private;
-	unsigned long           flags;
-	u32                     reg;
+	struct xhci_hcd *xhci = s->private;
+	unsigned long flags;
+	u32 reg;
 
 	spin_lock_irqsave(&xhci->lock, flags);
 	reg = readl(&xhci->op_regs->port_power_base);
@@ -41,26 +40,26 @@ static int xhci_testmode_show(struct seq_file *s, void *unused)
 	spin_unlock_irqrestore(&xhci->lock, flags);
 
 	switch (reg) {
-		case 0:
-			seq_printf(s, "no test\n");
-			break;
-		case TEST_J:
-			seq_printf(s, "test_j\n");
-			break;
-		case TEST_K:
-			seq_printf(s, "test_k\n");
-			break;
-		case TEST_SE0_NAK:
-			seq_printf(s, "test_se0_nak\n");
-			break;
-		case TEST_PACKET:
-			seq_printf(s, "test_packet\n");
-			break;
-		case TEST_FORCE_EN:
-			seq_printf(s, "test_force_enable\n");
-			break;
-		default:
-			seq_printf(s, "UNKNOWN %d\n", reg);
+	case 0:
+		seq_puts(s, "no test\n");
+		break;
+	case TEST_J:
+		seq_puts(s, "test_j\n");
+		break;
+	case TEST_K:
+		seq_puts(s, "test_k\n");
+		break;
+	case TEST_SE0_NAK:
+		seq_puts(s, "test_se0_nak\n");
+		break;
+	case TEST_PACKET:
+		seq_puts(s, "test_packet\n");
+		break;
+	case TEST_FORCE_EN:
+		seq_puts(s, "test_force_enable\n");
+		break;
+	default:
+		seq_puts(s, "UNKNOWN test mode\n");
 	}
 
 	return 0;
@@ -126,8 +125,9 @@ int xhci_debugfs_init(struct xhci_hcd *xhci)
 	if (!xhci->debug_dir)
 		return -ENOMEM;
 
-	file = debugfs_create_file("testmode", S_IRUGO | S_IWUSR, xhci->debug_dir,
-			xhci, &xhci_testmode_fops);
+	file = debugfs_create_file("testmode", 0644, xhci->debug_dir, xhci,
+			&xhci_testmode_fops);
+
 	if (!file) {
 		ret = -ENOMEM;
 		debugfs_remove_recursive(xhci->debug_dir);
@@ -140,7 +140,7 @@ EXPORT_SYMBOL(xhci_debugfs_init);
 
 void xhci_debugfs_exit(struct xhci_hcd *xhci)
 {
-       debugfs_remove_recursive(xhci->debug_dir);
+	debugfs_remove_recursive(xhci->debug_dir);
 }
 
 

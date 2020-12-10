@@ -276,28 +276,37 @@ int dwc3_send_gadget_ep_cmd(struct dwc3_ep *dep, unsigned cmd,
 {
 	const struct usb_endpoint_descriptor *desc = dep->endpoint.desc;
 	struct dwc3		*dwc = dep->dwc;
-	u32			timeout = 1000;
+	u32			timeout = 5000;
+	u32			saved_config = 0;
 	u32			reg;
 
 	int			cmd_status = 0;
-	int			susphy = false;
 	int			ret = -EINVAL;
 
 	/*
-	 * Synopsys Databook 2.60a states, on section 6.3.2.5.[1-8], that if
-	 * we're issuing an endpoint command, we must check if
-	 * GUSB2PHYCFG.SUSPHY bit is set. If it is, then we need to clear it.
+	 * When operating in USB 2.0 speeds (HS/FS), if GUSB2PHYCFG.ENBLSLPM or
+	 * GUSB2PHYCFG.SUSPHY is set, it must be cleared before issuing an
+	 * endpoint command.
 	 *
-	 * We will also set SUSPHY bit to what it was before returning as stated
-	 * by the same section on Synopsys databook.
+	 * Save and clear both GUSB2PHYCFG.ENBLSLPM and GUSB2PHYCFG.SUSPHY
+	 * settings. Restore them after the command is completed.
+	 *
+	 * DWC_usb3 3.30a and DWC_usb31 1.90a programming guide section 3.2.2
 	 */
 	if (dwc->gadget.speed <= USB_SPEED_HIGH) {
 		reg = dwc3_readl(dwc->regs, DWC3_GUSB2PHYCFG(0));
 		if (unlikely(reg & DWC3_GUSB2PHYCFG_SUSPHY)) {
-			susphy = true;
+			saved_config |= DWC3_GUSB2PHYCFG_SUSPHY;
 			reg &= ~DWC3_GUSB2PHYCFG_SUSPHY;
-			dwc3_writel(dwc->regs, DWC3_GUSB2PHYCFG(0), reg);
 		}
+
+		if (reg & DWC3_GUSB2PHYCFG_ENBLSLPM) {
+			saved_config |= DWC3_GUSB2PHYCFG_ENBLSLPM;
+			reg &= ~DWC3_GUSB2PHYCFG_ENBLSLPM;
+		}
+
+		if (saved_config)
+			dwc3_writel(dwc->regs, DWC3_GUSB2PHYCFG(0), reg);
 	}
 
 	if (DWC3_DEPCMD_CMD(cmd) == DWC3_DEPCMD_STARTTRANSFER) {
@@ -395,9 +404,9 @@ int dwc3_send_gadget_ep_cmd(struct dwc3_ep *dep, unsigned cmd,
 		}
 	}
 
-	if (unlikely(susphy)) {
+	if (saved_config) {
 		reg = dwc3_readl(dwc->regs, DWC3_GUSB2PHYCFG(0));
-		reg |= DWC3_GUSB2PHYCFG_SUSPHY;
+		reg |= saved_config;
 		dwc3_writel(dwc->regs, DWC3_GUSB2PHYCFG(0), reg);
 	}
 
@@ -1505,7 +1514,9 @@ int __dwc3_gadget_ep_set_halt(struct dwc3_ep *dep, int value, int protocol)
 	int					ret;
 
 	if (usb_endpoint_xfer_isoc(dep->endpoint.desc)) {
-		dev_err(dwc->dev, "[ERROR][USB] %s is of Isochronous type\n", dep->name);
+		dev_err(dwc->dev,
+				"[ERROR][USB] %s is of Isochronous type\n",
+				dep->name);
 		return -EINVAL;
 	}
 
@@ -1632,7 +1643,6 @@ static int __dwc3_gadget_wakeup(struct dwc3 *dwc)
 	u32			reg;
 
 	u8			link_state;
-	u8			speed;
 
 	/*
 	 * According to the Databook Remote wakeup request should
@@ -1642,16 +1652,13 @@ static int __dwc3_gadget_wakeup(struct dwc3 *dwc)
 	 */
 	reg = dwc3_readl(dwc->regs, DWC3_DSTS);
 
-	speed = reg & DWC3_DSTS_CONNECTSPD;
-	if ((speed == DWC3_DSTS_SUPERSPEED) ||
-	    (speed == DWC3_DSTS_SUPERSPEED_PLUS))
-		return 0;
-
 	link_state = DWC3_DSTS_USBLNKST(reg);
 
 	switch (link_state) {
+	case DWC3_LINK_STATE_RESET:
 	case DWC3_LINK_STATE_RX_DET:	/* in HS, means Early Suspend */
 	case DWC3_LINK_STATE_U3:	/* in HS, means SUSPEND */
+	case DWC3_LINK_STATE_RESUME:
 		break;
 	default:
 		return -EINVAL;
@@ -1897,14 +1904,18 @@ static int __dwc3_gadget_start(struct dwc3 *dwc)
 	dep = dwc->eps[0];
 	ret = __dwc3_gadget_ep_enable(dep, false, false);
 	if (ret) {
-		dev_err(dwc->dev, "[ERROR][USB] failed to enable %s\n", dep->name);
+		dev_err(dwc->dev,
+				"[ERROR][USB] failed to enable %s\n",
+				dep->name);
 		goto err0;
 	}
 
 	dep = dwc->eps[1];
 	ret = __dwc3_gadget_ep_enable(dep, false, false);
 	if (ret) {
-		dev_err(dwc->dev, "[ERROR][USB] failed to enable %s\n", dep->name);
+		dev_err(dwc->dev,
+				"[ERROR][USB] failed to enable %s\n",
+				dep->name);
 		goto err1;
 	}
 
@@ -2034,7 +2045,8 @@ static void dwc3_gadget_set_speed(struct usb_gadget *g,
 	 * STAR#9000525659: Clock Domain Crossing on DCTL in
 	 * USB 2.0 Mode
 	 */
-	if (dwc->revision < DWC3_REVISION_220A) {
+	if (dwc->revision < DWC3_REVISION_220A &&
+	    !dwc->dis_metastability_quirk) {
 		reg |= DWC3_DCFG_SUPERSPEED;
 	} else {
 		switch (speed) {
@@ -2054,7 +2066,9 @@ static void dwc3_gadget_set_speed(struct usb_gadget *g,
 			reg |= DWC3_DCFG_SUPERSPEED_PLUS;
 			break;
 		default:
-			dev_err(dwc->dev, "[ERROR][USB] invalid speed (%d)\n", speed);
+			dev_err(dwc->dev,
+					"[ERROR][USB] invalid speed (%d)\n",
+					speed);
 
 			if (dwc->revision & DWC3_REVISION_IS_DWC31)
 				reg |= DWC3_DCFG_SUPERSPEED_PLUS;
@@ -2822,14 +2836,18 @@ static void dwc3_gadget_conndone_interrupt(struct dwc3 *dwc)
 	dep = dwc->eps[0];
 	ret = __dwc3_gadget_ep_enable(dep, true, false);
 	if (ret) {
-		dev_err(dwc->dev, "[ERROR][USB] failed to enable %s\n", dep->name);
+		dev_err(dwc->dev,
+				"[ERROR][USB] failed to enable %s\n",
+				dep->name);
 		return;
 	}
 
 	dep = dwc->eps[1];
 	ret = __dwc3_gadget_ep_enable(dep, true, false);
 	if (ret) {
-		dev_err(dwc->dev, "[ERROR][USB] failed to enable %s\n", dep->name);
+		dev_err(dwc->dev,
+				"[ERROR][USB] failed to enable %s\n",
+				dep->name);
 		return;
 	}
 
@@ -3047,7 +3065,9 @@ static void dwc3_process_event_entry(struct dwc3 *dwc,
 	else if (event->type.type == DWC3_EVENT_TYPE_DEV)
 		dwc3_gadget_interrupt(dwc, &event->devt);
 	else
-		dev_err(dwc->dev, "[ERROR][USB] UNKNOWN IRQ type %d\n", event->raw);
+		dev_err(dwc->dev,
+				"[ERROR][USB] UNKNOWN IRQ type %d\n",
+				event->raw);
 }
 
 static irqreturn_t dwc3_process_event_buf(struct dwc3_event_buffer *evt)
@@ -3247,7 +3267,6 @@ int dwc3_gadget_init(struct dwc3 *dwc)
 	dwc->gadget.speed		= USB_SPEED_UNKNOWN;
 	dwc->gadget.sg_supported	= true;
 	dwc->gadget.name		= "dwc3-gadget";
-	dwc->gadget.is_otg		= false;
 
 	/*
 	 * FIXME We might be setting max_speed to <SUPER, however versions
@@ -3265,7 +3284,8 @@ int dwc3_gadget_init(struct dwc3 *dwc)
 	 * is less than super speed because we don't have means, yet, to tell
 	 * composite.c that we are USB 2.0 + LPM ECN.
 	 */
-	if (dwc->revision < DWC3_REVISION_220A)
+	if (dwc->revision < DWC3_REVISION_220A &&
+	    !dwc->dis_metastability_quirk)
 		dev_info(dwc->dev, "[INFO][USB] changing max_speed on rev %08x\n",
 				dwc->revision);
 

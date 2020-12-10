@@ -78,7 +78,9 @@ WHOAMI=$(whoami)
 #echo "$KERNEL_VERSION"
 
 #echo -en "initramfs use o.k. [Y/n] ? "
-#echo -en "Choose Ramdisk Type: (\x1b[1;34mRAMDISK Use: 1 / Initramfs: 2 / nandfs: 3\x1b[0m) ? (default: Initramfs)  "
+#echo -en "Choose Ramdisk Type: \
+#	(\x1b[1;34mRAMDISK Use: 1 / Initramfs: 2 / nandfs: 3\x1b[0m) \
+#	? (default: Initramfs)  "
 #read USERINPUT
 #if [ "$USERINPUT" == 1 ] || [ "$USERINPUT" == 2 ] || [ "$USERINPUT" == 3 ]
 #then
@@ -104,7 +106,7 @@ else
 		RAMDISK_IMG_PATH="$WORK_ROOT/ramdisk/ramdisk_dummy.rom"
 		then
 		echo "Using initramfs"
-		else 
+		else
 		echo -en "\x1b[1;31mno ramdisk_dummy.rom !! \n\x1b[0m"
 		$BUILDRETURN 1
 		fi
@@ -114,7 +116,7 @@ else
 		RAMDISK_IMG_PATH="$WORK_ROOT/ramdisk/ramdisk_dummy.rom"
 		then
 		echo "nandfs Use"
-		else 
+		else
 		echo -en "\x1b[1;31mno ramdisk_dummy.rom !! \n\x1b[0m"
 		$BUILDRETURN 1
 		fi
@@ -127,8 +129,10 @@ fi
 #===================================
 # Add Kernel CRC
 #===================================
-#cat $WORK_ROOT/util/tcc_crc/head.bin arch/arm/boot/cImage > arch/arm/boot/head_cImage
-#$WORK_ROOT/util/tcc_crc/tcc_crc -o arch/arm/boot/cImage.rom -v 1700 arch/arm/boot/head_cImage
+#cat $WORK_ROOT/util/tcc_crc/head.bin arch/arm/boot/cImage > \
+#	arch/arm/boot/head_cImage
+#$WORK_ROOT/util/tcc_crc/tcc_crc -o arch/arm/boot/cImage.rom \
+#	-v 1700 arch/arm/boot/head_cImage
 #KERNEL_IMG_PATH="arch/arm/boot/cImage"
 KERNEL_IMG_PATH="arch/arm/boot/zImage"
 KERNEL_UNCOMPRESSED_IMG_PATH="arch/arm/boot/Image"
@@ -145,19 +149,24 @@ echo -e "BASE Address : $BASE_ADDR"
 echo -e "Kernel offset: $KERNEL_OFFSET"
 echo -e "boot cmdline : $CMDLINE"
 
-# compressed image not used 
+# compressed image not use
 $MKBOOTIMG --kernel $KERNEL_IMG_PATH --ramdisk $RAMDISK_IMG_PATH \
 	--base $BASE_ADDR --kernel_offset $KERNEL_OFFSET --cmdline "$CMDLINE" \
 	--output "$KERNEL_OUT_DIR/$TCC_TARGET"_boot.img
 $MKBOOTIMG --kernel $KERNEL_UNCOMPRESSED_IMG_PATH --ramdisk $RAMDISK_IMG_PATH \
 	--base $BASE_ADDR --kernel_offset $KERNEL_OFFSET --cmdline "$CMDLINE" \
 	--output "$KERNEL_OUT_DIR/$TCC_TARGET"_uncompressed_boot.img
-#$WORK_ROOT/util/mkimage/mkmtdimg --boot "$KERNEL_OUT_DIR/$TCC_TARGET"_boot.img --output "$KERNEL_OUT_DIR/$TCC_TARGET"_mtd.rom
+#$WORK_ROOT/util/mkimage/mkmtdimg \
+#	--boot "$KERNEL_OUT_DIR/$TCC_TARGET"_boot.img \
+#	--output "$KERNEL_OUT_DIR/$TCC_TARGET"_mtd.rom
 
 echo
-echo -e "[\x1b[1;33mMAKE\x1b[0m] \x1b[1;31m"$KERNEL_OUT_DIR/$TCC_TARGET"_boot.img\x1b[0m"
-echo -e "[\x1b[1;33mMAKE\x1b[0m] \x1b[1;31m"$KERNEL_OUT_DIR/$TCC_TARGET"_uncompressed_boot.img\x1b[0m"
-#echo -e "[\x1b[1;33mMAKE\x1b[0m] \x1b[1;31m"$KERNEL_OUT_DIR/$TCC_TARGET"_mtd.rom\x1b[0m"
+echo -e "[\x1b[1;33mMAKE\x1b[0m] \
+	\x1b[1;31m"$KERNEL_OUT_DIR/$TCC_TARGET"_boot.img\x1b[0m"
+echo -e "[\x1b[1;33mMAKE\x1b[0m] \
+	\x1b[1;31m"$KERNEL_OUT_DIR/$TCC_TARGET"_uncompressed_boot.img\x1b[0m"
+#echo -e "[\x1b[1;33mMAKE\x1b[0m] \
+#	\x1b[1;31m"$KERNEL_OUT_DIR/$TCC_TARGET"_mtd.rom\x1b[0m"
 echo
 echo "========================================================="
 echo

@@ -1,10 +1,5 @@
 /*
- * linux/include/video/tcc/vioc_global.h
- * Author:  <linux@telechips.com>
- * Created: June 10, 2008
- * Description: TCC VIOC h/w block
- *
- * Copyright (C) 2008-2009 Telechips
+ * Copyright (C) Telechips, Inc.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -21,7 +16,6 @@
  * to the Free Software Foundation, Inc.,
  * 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  */
-
 #ifndef __VIOC_GLOBAL_H__
 #define	__VIOC_GLOBAL_H__
 
@@ -40,7 +34,7 @@
 #define get_vioc_type(x)		(x >> 8)
 #define get_vioc_index(x)		(x & 0xFF)
 
-/* DISP : 0x00XX */
+/* DISP : 0x01XX */
 #define VIOC_DISP			(0x0100)
 #define VIOC_DISP0			(0x0100)
 #define VIOC_DISP1			(0x0101)
@@ -248,31 +242,31 @@
 #define VIOC_SWAP_BGR				(5)
 
 /* RDMA/WDMA : Image Format */
-#define VIOC_IMG_FMT_BPP1			(0)		// 1bit
-#define VIOC_IMG_FMT_BPP2			(1)		// 2bits
-#define VIOC_IMG_FMT_BPP4			(2)		// 4bits
-#define VIOC_IMG_FMT_BPP8			(3)		// 1byte
-#define VIOC_IMG_FMT_RGB332			(8) 		// 1byte
-#define VIOC_IMG_FMT_ARGB4444			(9)		// 2bytes
-#define VIOC_IMG_FMT_RGB565			(10)		// 2bytes
-#define VIOC_IMG_FMT_ARGB1555			(11)		// 2bytes
-#define VIOC_IMG_FMT_ARGB8888			(12)		// 4bytes
-#define VIOC_IMG_FMT_ARGB6666_4			(13)		// 4bytes
-#define	VIOC_IMG_FMT_RGB888			(14)		// 3bytes	: newly supported : 3 bytes format
-#define VIOC_IMG_FMT_ARGB6666_3			(15)		// 3bytes	: newly supported : 3 bytes format
-#define	VIOC_IMG_FMT_COMP			(16)		// 4bytes
-#define	VIOC_IMG_FMT_DECOMP			(VIOC_IMG_FMT_COMP)
-#define VIOC_IMG_FMT_444SEP			(21)		// 3bytes
-#define	VIOC_IMG_FMT_UYVY			(22)		// 2bytes	: LSB [Y/U/Y/V] MSB : newly supported : 2 bytes format
-#define	VIOC_IMG_FMT_VYUY			(23)		// 2bytes	: LSB [Y/V/Y/U] MSB : newly supported : 2 bytes format
-#define VIOC_IMG_FMT_YUV420SEP			(24)		// 1,1byte
-#define	VIOC_IMG_FMT_YUV422SEP			(25)		// 1,1byte
-#define	VIOC_IMG_FMT_YUYV			(26)		// 2bytes	: LSB [Y/U/Y/V] MSB : previous SEQ
-#define	VIOC_IMG_FMT_YVYU			(27)		// 2bytes	: LSB [Y/V/Y/U] MSB : newly supported : 2 bytes format
-#define	VIOC_IMG_FMT_YUV420IL0			(28)		// 1,2byte
-#define	VIOC_IMG_FMT_YUV420IL1			(29)		// 1,2byte
-#define	VIOC_IMG_FMT_YUV422IL0			(30)		// 1,2bytes
-#define	VIOC_IMG_FMT_YUV422IL1			(31)		// 1,2bytes
+#define VIOC_IMG_FMT_BPP1		(0)  // 1bit
+#define VIOC_IMG_FMT_BPP2		(1)  // 2bits
+#define VIOC_IMG_FMT_BPP4		(2)  // 4bits
+#define VIOC_IMG_FMT_BPP8		(3)  // 1byte
+#define VIOC_IMG_FMT_RGB332		(8)  // 1byte
+#define VIOC_IMG_FMT_ARGB4444	(9)  // 2bytes
+#define VIOC_IMG_FMT_RGB565		(10) // 2bytes
+#define VIOC_IMG_FMT_ARGB1555	(11) // 2bytes
+#define VIOC_IMG_FMT_ARGB8888	(12) // 4bytes
+#define VIOC_IMG_FMT_ARGB6666_4	(13) // 4bytes
+#define	VIOC_IMG_FMT_RGB888		(14) // 3bytes
+#define VIOC_IMG_FMT_ARGB6666_3	(15) // 3bytes
+#define	VIOC_IMG_FMT_COMP		(16) // 4bytes
+#define	VIOC_IMG_FMT_DECOMP		(VIOC_IMG_FMT_COMP)
+#define VIOC_IMG_FMT_444SEP		(21) // 3bytes
+#define	VIOC_IMG_FMT_UYVY		(22) // 2bytes
+#define	VIOC_IMG_FMT_VYUY		(23) // 2bytes
+#define VIOC_IMG_FMT_YUV420SEP	(24) // 1,1byte
+#define	VIOC_IMG_FMT_YUV422SEP	(25) // 1,1byte
+#define	VIOC_IMG_FMT_YUYV		(26) // 2bytes
+#define	VIOC_IMG_FMT_YVYU		(27) // 2bytes
+#define	VIOC_IMG_FMT_YUV420IL0	(28) // 1,2byte
+#define	VIOC_IMG_FMT_YUV420IL1	(29) // 1,2byte
+#define	VIOC_IMG_FMT_YUV422IL0	(30) // 1,2bytes
+#define	VIOC_IMG_FMT_YUV422IL1	(31) // 1,2bytes
 
 /* Configuration & Interrupt */
 #define VIOC_EDR_WMIX0				(0)
@@ -457,21 +451,21 @@
 //
 //	WDMA SYNC SELECTION
 //
-#define	VIOC_WDMA_SYNC_ABSOLUTE		(0<<0)	// SYNCMD_ADDR
-#define	VIOC_WDMA_SYNC_RELATIVE		(1<<0)	// SYNCMD_ADDR
-#define	VIOC_WDMA_SYNC_START_EDGE 	(0<<0)	// SYNCMD_SENS
-#define	VIOC_WDMA_SYNC_START_LEVEL	(1<<0)	// SYNCMD_SENS
+#define	VIOC_WDMA_SYNC_ABSOLUTE		(0<<0) // SYNCMD_ADDR
+#define	VIOC_WDMA_SYNC_RELATIVE		(1<<0) // SYNCMD_ADDR
+#define	VIOC_WDMA_SYNC_START_EDGE	(0<<0) // SYNCMD_SENS
+#define	VIOC_WDMA_SYNC_START_LEVEL	(1<<0) // SYNCMD_SENS
 
-#define	VIOC_WDMA_SYNC_RDMA00		( 0)
-#define	VIOC_WDMA_SYNC_RDMA01		( 1)
-#define	VIOC_WDMA_SYNC_RDMA02		( 2)
-#define	VIOC_WDMA_SYNC_RDMA03		( 3)
-#define	VIOC_WDMA_SYNC_RDMA04		( 4)
-#define	VIOC_WDMA_SYNC_RDMA05		( 5)
-#define	VIOC_WDMA_SYNC_RDMA06		( 6)
-#define	VIOC_WDMA_SYNC_RDMA07		( 7)
-#define	VIOC_WDMA_SYNC_RDMA08		( 8)
-#define	VIOC_WDMA_SYNC_RDMA09		( 9)
+#define	VIOC_WDMA_SYNC_RDMA00		(0)
+#define	VIOC_WDMA_SYNC_RDMA01		(1)
+#define	VIOC_WDMA_SYNC_RDMA02		(2)
+#define	VIOC_WDMA_SYNC_RDMA03		(3)
+#define	VIOC_WDMA_SYNC_RDMA04		(4)
+#define	VIOC_WDMA_SYNC_RDMA05		(5)
+#define	VIOC_WDMA_SYNC_RDMA06		(6)
+#define	VIOC_WDMA_SYNC_RDMA07		(7)
+#define	VIOC_WDMA_SYNC_RDMA08		(8)
+#define	VIOC_WDMA_SYNC_RDMA09		(9)
 #define	VIOC_WDMA_SYNC_RDMA10		(10)
 #define	VIOC_WDMA_SYNC_RDMA11		(11)
 #define	VIOC_WDMA_SYNC_RDMA12		(12)
@@ -486,21 +480,21 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 /* VIOC DRIVER STATUS TYPE */
-#define	VIOC_DEVICE_INVALID      	(-2)
-#define	VIOC_DEVICE_BUSY 		(-1)
-#define	VIOC_DEVICE_CONNECTED 		( 0)
+#define	VIOC_DEVICE_INVALID			(-2)
+#define	VIOC_DEVICE_BUSY			(-1)
+#define	VIOC_DEVICE_CONNECTED		(0)
 
 /* VIOC DRIVER ERROR TYPE */
-#define VIOC_DRIVER_ERR_INVALID 	(-3)
-#define VIOC_DRIVER_ERR_BUSY 		(-2)
-#define VIOC_DRIVER_ERR 		(-1)
-#define VIOC_DRIVER_NOERR 		( 0)
+#define VIOC_DRIVER_ERR_INVALID		(-3)
+#define VIOC_DRIVER_ERR_BUSY		(-2)
+#define VIOC_DRIVER_ERR				(-1)
+#define VIOC_DRIVER_NOERR			(0)
 
 /* VIOC PATH STATUS TYPE */
-#define VIOC_PATH_DISCONNECTED			(0)
-#define VIOC_PATH_CONNECTING  			(1)
-#define VIOC_PATH_CONNECTED   			(2)
-#define VIOC_PATH_DISCONNECTING			(3)
+#define VIOC_PATH_DISCONNECTED		(0)
+#define VIOC_PATH_CONNECTING		(1)
+#define VIOC_PATH_CONNECTED			(2)
+#define VIOC_PATH_DISCONNECTING		(3)
 
 #define FBX_MODE(x)			(x)
 #define FBX_SINGLE			FBX_MODE(0x0)

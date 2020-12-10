@@ -1332,8 +1332,8 @@
 		telechips,pin-function = <1>;
 	};
 
-	m1dai2_bclk_idle: m1dai2_bclk_idle{
-		telechips,pins = "gpg-1";
+	switch_ma15: switch_ma15 {
+		telechips,pins = "gpma-15";
 		telechips,pin-function = <0>;
 		telechips,output-low = <0>;
 	};

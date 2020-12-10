@@ -430,8 +430,8 @@ static void fbX_m2m_activate_var(unsigned int dma_addr, struct fb_var_screeninfo
 	}
 
 	if(par->pdata.FbUpdateType == FBX_M2M_RDMA_UPDATE) {
-		SCALER_TYPE scaler;
-		memset(&scaler, 0x00, sizeof(SCALER_TYPE));
+		struct SCALER_TYPE scaler;
+		memset(&scaler, 0x00, sizeof(struct SCALER_TYPE));
 
 		scaler.responsetype = SCALER_POLLING;
 

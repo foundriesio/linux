@@ -1,5 +1,5 @@
 /*
- * Copyright (C) Telechips Inc.
+ * Copyright (C) Telechips, Inc.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -21,115 +21,126 @@
 
 #include <video/tcc/tcc_gre2d_type.h>
 
-/*-------------- Graphice engine special application function -------------------------*/
+/*------------ Graphice engine special application function --------------*/
+
 #define SET_G2D_DMA_INT_ENABLE         0x00000001
 #define SET_G2D_DMA_INT_DISABLE        0x00000002
-extern void gre2d_set_dma_interrupt(unsigned int uiFlag);
 
-typedef enum{
-	G2D_POLLING_TYPE 	= 0,
-	G2D_INTERRUPT_TYPE 	= 0x1,
-	G2D_CHECK_TYPE 		= 0x2,
+typedef enum {
+	G2D_POLLING_TYPE = 0,
+	G2D_INTERRUPT_TYPE,
+	G2D_CHECK_TYPE,
 	G2D_RSP_MAX
-}G2D_RSP_TYPE;
+} G2D_RSP_TYPE;
 
+extern void gre2d_set_dma_interrupt(unsigned int uiFlag);
 extern void gre2d_rsp_interrupt(G2D_RSP_TYPE rsp_type);
 
-/*------------------------------------------------------------------
-gre2d_interrupt_ctrl
- graphic engine interrupt control 
- wr : 1 : write   0 : read
- int_irq : interrupt request 
- int_flg : flag bit
--------------------------------------------------------------------*/
-G2D_INT_TYPE gre2d_interrupt_ctrl(unsigned char wr, G2D_INT_TYPE flag, unsigned char int_irq, unsigned char int_flg);
 
-/*-----------------------------------------------------------------------------
-gre2d_ChImgSize
- graphic engine image SIZE converter
- 
-Graphic engine ÀÇ image SIZE ¸¦ º¯°æ ÇØ ÁØ´Ù.
------------------------------------------------------------------------------*/
-extern unsigned char gre2d_ChImgSize(unsigned int src0,unsigned int src1, unsigned int src2,
-						unsigned int src_w, unsigned int src_h, unsigned int str_x, unsigned int str_y, G2D_FMT_CTRL src_fmt,
-						unsigned int tgt0, unsigned int tgt1, unsigned int tgt2, 
-						unsigned int tgt_w, unsigned int tgt_h, G2D_FMT_CTRL fmt);
+/*
+ * gre2d_interrupt_ctrl
+ *  graphic engine interrupt control
+ *  wr : 1 : write   0 : read
+ *  int_irq : interrupt request
+ * int_flg : flag bit
+ */
+G2D_INT_TYPE gre2d_interrupt_ctrl(
+	unsigned char wr, G2D_INT_TYPE flag,
+	unsigned char int_irq, unsigned char int_flg);
 
-/*-----------------------------------------------------------------------------
-gre2d_ChImgFmt
- graphic engine image format converter
- 
-Graphic engine ÀÇ image format¸¦ º¯°æ ÇØ ÁØ´Ù.
-------------------------------------------------------------------------------*/
-extern unsigned char gre2d_ChImgFmt(unsigned int src0, unsigned int src1, unsigned int src2, G2D_FMT_CTRL srcfm,
-		        unsigned int tgt0, unsigned int tgt1, unsigned int tgt2, G2D_FMT_CTRL tgtfm,
-			unsigned int imgh, unsigned int imgv);
+/*
+ * gre2d_ChImgSize
+ *  graphic engine image SIZE converter
+ *
+ * Graphic engine ï¿½ï¿½ image SIZE ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ ï¿½Ø´ï¿½.
+ */
+extern unsigned char gre2d_ChImgSize(
+	unsigned int src0, unsigned int src1, unsigned int src2,
+	unsigned int src_w, unsigned int src_h,
+	unsigned int str_x, unsigned int str_y, G2D_FMT_CTRL src_fmt,
+	unsigned int tgt0, unsigned int tgt1, unsigned int tgt2,
+	unsigned int tgt_w, unsigned int tgt_h, G2D_FMT_CTRL fmt);
 
-/*------------------------------------------------------------------------------
-gre2d_ImgArith
- graphic engine image arithmetic operation
- 
-Graphic engine ÀÇ image arithmetic ¿¬»ê ÇØ ÁØ´Ù.
-RGB888 type ·Î ¿¬»êµÊ
-------------------------------------------------------------------------------*/
-extern unsigned char gre2d_ImgArithmetic(unsigned int src0, unsigned int src1, unsigned int src2, 
-								G2D_FMT_CTRL srcfm, unsigned int  src_w, unsigned int  src_h ,
-						        unsigned int tgt0, unsigned int tgt1, unsigned int tgt2, G2D_FMT_CTRL tgtfm,
-								unsigned int  dest_w, unsigned int  dest_h , unsigned int dest_off_x, unsigned int  dest_off_y, 
-								G2D_ARITH_TYPE arith, unsigned char R, unsigned char G, unsigned char B);
+/*
+ * gre2d_ChImgFmt
+ *  graphic engine image format converter
+ *
+ * Graphic engine ï¿½ï¿½ image formatï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ ï¿½Ø´ï¿½.
+ */
+extern unsigned char gre2d_ChImgFmt(
+	unsigned int src0, unsigned int src1, unsigned int src2,
+	G2D_FMT_CTRL srcfm, unsigned int tgt0, unsigned int tgt1,
+	unsigned int tgt2, G2D_FMT_CTRL tgtfm,
+	unsigned int imgh, unsigned int imgv);
 
+/*
+ * gre2d_ImgArith
+ *  graphic engine image arithmetic operation
+ *
+ * Graphic engine ï¿½ï¿½ image arithmetic ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ ï¿½Ø´ï¿½.
+ * RGB888 type ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½
+ */
+extern unsigned char gre2d_ImgArithmetic(
+	unsigned int src0, unsigned int src1, unsigned int src2,
+	G2D_FMT_CTRL srcfm, unsigned int  src_w, unsigned int  src_h,
+	unsigned int tgt0, unsigned int tgt1, unsigned int tgt2,
+	G2D_FMT_CTRL tgtfm, unsigned int  dest_w, unsigned int  dest_h,
+	unsigned int dest_off_x, unsigned int  dest_off_y,
+	G2D_ARITH_TYPE arith,
+	unsigned char R, unsigned char G, unsigned char B);
 
-
-/*------------------------------------------------------------------------------
-gre2d_ImgOverlay
- graphic engine overlay function
- 
-Graphic engine ÀÇ 2 channel alpha-blending ¹× chroam-key ±â´ÉÀ» ¼öÇà ÇÑ´Ù.
-
-alpha_en ÀÌ disable ÀÏ¶§´Â 2 channel¸¦ add ¿¬»ê ÇÑ´Ù. 
-------------------------------------------------------------------------------*/
+/*
+ * gre2d_ImgOverlay
+ *  graphic engine overlay function
+ *
+ * Graphic engine ï¿½ï¿½ 2 channel alpha-blending ï¿½ï¿½ chroam-key ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½Ñ´ï¿½.
+ *
+ * alpha_en ï¿½ï¿½ disable ï¿½Ï¶ï¿½ï¿½ï¿½ 2 channelï¿½ï¿½ add ï¿½ï¿½ï¿½ï¿½ ï¿½Ñ´ï¿½.
+ */
 extern unsigned char gre2d_ImgOverlay(G2D_OVERY_FUNC *overlay);
 
+/*
+ * re2d_ImgROP
+ * graphic engine ROP(Raster operation) function
+ *
+ * raphic engine ï¿½ï¿½ 1~3ï¿½ï¿½ï¿½ï¿½ Input imageï¿½ï¿½ image size, offset, window offset ï¿½ï¿½
+ * rotate, flip, format change ï¿½ï¿½ï¿½ï¿½ Ã³ï¿½ï¿½ ï¿½Ä¿ï¿½ Rop ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+ *
+ * GB888 type ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½
+ */
+extern unsigned char gre2d_ImgROP(
+	G2D_ROP_FUNC rop, G2D_EN en_channel);
+
+/*
+ * gre2d_ImgRotate
+ *  graphic engine image rotate function
+ *
+ * Graphic engine ï¿½ï¿½ image rotate ï¿½ï¿½ Flip ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½Ñ´ï¿½.
+ */
+extern unsigned char gre2d_ImgRotate(
+	unsigned int src0, unsigned int src1, unsigned int src2,
+	G2D_FMT_CTRL srcfm, unsigned int src_imgx, unsigned int src_imgy,
+	unsigned int tgt0, unsigned int tgt1, unsigned int tgt2,
+	G2D_FMT_CTRL tgtfm, unsigned int des_imgx,
+	unsigned int des_imgy, G2D_OP_MODE ch_mode);
 
 
-/*------------------------------------------------------------------------------
-gre2d_ImgROP
- graphic engine ROP(Raster operation) function
- 
-Graphic engine ÀÇ 1~3°³ÀÇ Input imageÀÇ image size, offset, window offset ¹×
-rotate, flip, format change µîÀÇ Ã³¸® ÈÄ¿¡ Rop ¿¬»ê ±â´ÉÀ» ¼öÇàÇÔ
-
-RGB888 type ·Î ¿¬»êµÊ
-------------------------------------------------------------------------------*/
-extern unsigned char gre2d_ImgROP(G2D_ROP_FUNC rop , G2D_EN en_channel);
-
-
-
-/*-----------------------------------------------------------------------------
-gre2d_ImgRotate
- graphic engine image rotate function
- 
-Graphic engine ÀÇ image rotate ¹× Flip ±â´ÉÀ» ¼öÇà ÇÑ´Ù.
------------------------------------------------------------------------------*/
-extern unsigned char gre2d_ImgRotate(unsigned int src0, unsigned int src1, unsigned int src2,
-                        G2D_FMT_CTRL srcfm, unsigned int  src_imgx, unsigned int  src_imgy,
-		        unsigned int tgt0, unsigned int tgt1, unsigned int tgt2,
-		        G2D_FMT_CTRL tgtfm, unsigned int  des_imgx, unsigned int  des_imgy, G2D_OP_MODE ch_mode);
-
-
-/*-----------------------------------------------------------------------------
-gre2d_ImgRotate_Ex
- graphic engine image rotate function
- 
-Graphic engine ÀÇ image rotate ¹× Flip ±â´ÉÀ» ¼öÇà ÇÑ´Ù.
-extension ³»¿ë : source offset ¹× destination offset Ãß°¡ 
------------------------------------------------------------------------------*/
-extern unsigned char gre2d_ImgRotate_Ex(unsigned int src0, unsigned int src1, unsigned int src2,
-					                        G2D_FMT_CTRL srcfm, unsigned int  src_imgx, unsigned int  src_imgy,
-					                        unsigned int img_off_x, unsigned int img_off_y, unsigned int Rimg_x, unsigned int Rimg_y,
-							        unsigned int tgt0, unsigned int tgt1, unsigned int tgt2,
-							        G2D_FMT_CTRL tgtfm, unsigned int  des_imgx, unsigned int  des_imgy, 
-							        unsigned int dest_off_x, unsigned int dest_off_y, G2D_OP_MODE ch_mode, G2D_OP_MODE parallel_ch_mode);
+/*
+ * gre2d_ImgRotate_Ex
+ *  graphic engine image rotate function
+ *
+ * Graphic engine ï¿½ï¿½ image rotate ï¿½ï¿½ Flip ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½Ñ´ï¿½.
+ * extension ï¿½ï¿½ï¿½ï¿½ : source offset ï¿½ï¿½ destination offset ï¿½ß°ï¿½
+ */
+extern unsigned char gre2d_ImgRotate_Ex(
+	unsigned int src0, unsigned int src1, unsigned int src2,
+	G2D_FMT_CTRL srcfm, unsigned int  src_imgx, unsigned int  src_imgy,
+	unsigned int img_off_x, unsigned int img_off_y,
+	unsigned int Rimg_x, unsigned int Rimg_y,
+	unsigned int tgt0, unsigned int tgt1, unsigned int tgt2,
+	G2D_FMT_CTRL tgtfm, unsigned int  des_imgx, unsigned int  des_imgy,
+	unsigned int dest_off_x, unsigned int dest_off_y,
+	G2D_OP_MODE ch_mode, G2D_OP_MODE parallel_ch_mode);
 
 
 
@@ -139,56 +150,63 @@ extern void gre2d_waiting_result(G2D_EN grp_enalbe);
 /* ------------------ SOFTWARE APPLICATION  FUNCTION  ----------------------- */
 
 
-/*------------------------------------------------------------------------------
-gre2d_RGBxxx2RGB888
- 
-Graphic engine¿¡¼­ »ç¿ëÇÒ RGB888 º¯È¯À» ÇØÁØ´Ù. 
-ZF ÀÇ °ªÀ» ÂüÁ¶ ÇØ¼­ ÇÏÀ§ ºñÆ®¸¦ Ã¤¿î´Ù.
-------------------------------------------------------------------------------*/
-//extern unsigned char  gre2d_RGBxxx2RGB888(G2D_DATA_FM form, unsigned char Red, unsigned char Green, unsigned char Blue, unsigned char *r_Red, unsigned char *r_Green, unsigned char *r_Blue);
+/*
+ * gre2d_RGBxxx2RGB888
+ *
+ * Graphic engineï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ RGB888 ï¿½ï¿½È¯ï¿½ï¿½ ï¿½ï¿½ï¿½Ø´ï¿½.
+ * ZF ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½Ø¼ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½Æ®ï¿½ï¿½ Ã¤ï¿½ï¿½ï¿½.
+ */
+//extern unsigned char  gre2d_RGBxxx2RGB888(
+//	G2D_DATA_FM form, unsigned char Red, unsigned char Green,
+//	unsigned char Blue, unsigned char *r_Red,
+//	unsigned char *r_Green, unsigned char *r_Blue);
 
 
-/*------------------------------------------------------------------------------
-gre2d_YUVtoRGB888
- 
-Graphic engine¿¡¼­ »ç¿ëÇÒ YUV to RGB888·Î º¯È¯À» ÇØÁØ´Ù. 
-gre2d_Y2R_type ÀÇ °ªÀ» ÂüÁ¶ º¯È¯ ½ÄÀÌ ¼±ÅÃµÈ´Ù.
-------------------------------------------------------------------------------*/
-extern void gre2d_YUVtoRGB888(unsigned char Y, unsigned char U, unsigned char V, unsigned char *R, unsigned char *G, unsigned char *B);
+/*
+ * gre2d_YUVtoRGB888
+ *
+ * Graphic engineï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ YUV to RGB888ï¿½ï¿½ ï¿½ï¿½È¯ï¿½ï¿½ ï¿½ï¿½ï¿½Ø´ï¿½.
+ * gre2d_Y2R_type ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½È¯ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ÃµÈ´ï¿½.
+ */
+extern void gre2d_YUVtoRGB888(
+	unsigned char Y, unsigned char U, unsigned char V,
+	unsigned char *R, unsigned char *G, unsigned char *B);
 
 
-/*------------------------------------------------------------------------------
-gre2d_RGB888toYUV_y
- 
-Graphic engine¿¡¼­ »ç¿ëÇÒ RGB888 to YUVÀÇ Y °ªÀ» °è»ê ÇÑ´Ù. º¯È¯À» ÇØÁØ´Ù. 
-gre2d_R2Y_type ÀÇ °ªÀ» ÂüÁ¶ º¯È¯ ½ÄÀÌ ¼±ÅÃµÈ´Ù.
-------------------------------------------------------------------------------*/
-extern unsigned int  gre2d_RGB888toYUV_y(  unsigned int  rgb );
+/*
+ * gre2d_RGB888toYUV_y
+ *
+ * Graphic engineï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ RGB888 to YUVï¿½ï¿½ Y ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ ï¿½Ñ´ï¿½. ï¿½ï¿½È¯ï¿½ï¿½ ï¿½ï¿½ï¿½Ø´ï¿½.
+ * gre2d_R2Y_type ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½È¯ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ÃµÈ´ï¿½.
+ */
+extern unsigned int gre2d_RGB888toYUV_y(unsigned int  rgb);
 
 
-/*------------------------------------------------------------------------------
-gre2d_RGB888toYUV_cb
- 
-Graphic engine¿¡¼­ »ç¿ëÇÒ RGB888 to YUVÀÇ U °ªÀ» °è»ê ÇÑ´Ù. º¯È¯À» ÇØÁØ´Ù. 
-gre2d_R2Y_type ÀÇ °ªÀ» ÂüÁ¶ º¯È¯ ½ÄÀÌ ¼±ÅÃµÈ´Ù.
-------------------------------------------------------------------------------*/
-extern unsigned int  gre2d_RGB888toYUV_cb(  unsigned int rgb );
+/*
+ * gre2d_RGB888toYUV_cb
+ *
+ * Graphic engineï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ RGB888 to YUVï¿½ï¿½ U ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ ï¿½Ñ´ï¿½. ï¿½ï¿½È¯ï¿½ï¿½ ï¿½ï¿½ï¿½Ø´ï¿½.
+ * gre2d_R2Y_type ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½È¯ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ÃµÈ´ï¿½.
+ */
+extern unsigned int gre2d_RGB888toYUV_cb(unsigned int rgb);
 
-/*------------------------------------------------------------------------------
-gre2d_RGB888toYUV_cr
- 
-Graphic engine¿¡¼­ »ç¿ëÇÒ RGB888 to YUVÀÇ V °ªÀ» °è»ê ÇÑ´Ù. º¯È¯À» ÇØÁØ´Ù. 
-gre2d_R2Y_type ÀÇ °ªÀ» ÂüÁ¶ º¯È¯ ½ÄÀÌ ¼±ÅÃµÈ´Ù.
-------------------------------------------------------------------------------*/
-extern unsigned int  gre2d_RGB888toYUV_cr(  unsigned int  rgb );
+/*
+ * gre2d_RGB888toYUV_cr
+ *
+ * Graphic engineï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ RGB888 to YUVï¿½ï¿½ V ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ ï¿½Ñ´ï¿½. ï¿½ï¿½È¯ï¿½ï¿½ ï¿½ï¿½ï¿½Ø´ï¿½.
+ * gre2d_R2Y_type ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½È¯ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ÃµÈ´ï¿½.
+ */
+extern unsigned int gre2d_RGB888toYUV_cr(unsigned int rgb);
 
-/*------------------------------------------------------------------------------
-gre2d_RGBxxx2RGB888
- 
-Graphic engine¿¡¼­ »ç¿ëÇÒ RGB888 º¯È¯À» ÇØÁØ´Ù. 
-ZF ÀÇ °ªÀ» ÂüÁ¶ ÇØ¼­ ÇÏÀ§ ºñÆ®¸¦ Ã¤¿î´Ù.
-------------------------------------------------------------------------------*/
-extern unsigned char  gre2d_RGBxxx2RGB888(G2D_DATA_FM form, unsigned char Red, unsigned char Green, unsigned char Blue,
-                        								unsigned char *r_Red, unsigned char *r_Green, unsigned char *r_Blue);
+/*
+ * gre2d_RGBxxx2RGB888
+ *
+ * Graphic engineï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ RGB888 ï¿½ï¿½È¯ï¿½ï¿½ ï¿½ï¿½ï¿½Ø´ï¿½.
+ * ZF ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½Ø¼ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½Æ®ï¿½ï¿½ Ã¤ï¿½ï¿½ï¿½.
+ */
+extern unsigned char gre2d_RGBxxx2RGB888(G2D_DATA_FM form,
+	unsigned char Red, unsigned char Green, unsigned char Blue,
+	unsigned char *r_Red, unsigned char *r_Green, unsigned char *r_Blue);
 
-#endif// __GRE2D_API_H__
+#endif // __GRE2D_API_H__
+

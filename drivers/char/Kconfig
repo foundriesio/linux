@@ -553,8 +553,9 @@ config TCC_TCM_LPO
 	  If you say Y here, you can contorl LPO clock of the TCM38XX H/W Module
 
 config TCC_ECID
-        bool "Support CPU ECID"
-        default y
+	bool "Support CPU ECID"
+	default ARCH_TCC if !TCC803X_CA7S
+
 config HANGCHECK_TIMER
 	tristate "Hangcheck timer"
 	depends on X86 || IA64 || PPC64 || S390
@@ -672,9 +673,9 @@ config TCC_VTA
 config TCC_DRAM_TOOL
     tristate "TCC DRAM Tool Driver"
     default y
-    depends on (ARCH_TCC899X) || (ARCH_TCC803X) || (ARCH_TCC901X)
+    depends on (ARCH_TCC899X) || (ARCH_TCC803X && !TCC803X_CA7S) || (ARCH_TCC901X)
     help
-      TCC DRAM Tool Driver : DRAM Traffic Monitor 
+      TCC DRAM Tool Driver : DRAM Traffic Monitor
 
 
 source "drivers/char/tcc_ipc/Kconfig"

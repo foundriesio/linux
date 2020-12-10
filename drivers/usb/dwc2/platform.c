@@ -91,14 +91,13 @@ enum {
 };
 
 struct pcfg1_unit {
-	char*		reg_name;
+	char *reg_name;
 	uint32_t	offset;
 	uint32_t	mask;
 	char		str[256];
 };
 
-struct pcfg1_unit USB_PCFG1[] =
-{
+struct pcfg1_unit USB_PCFG1[] = {
 	/*name,     offset, mask*/
 	{"TXVRT  ", 0,      (0xF<<0)},
 	{"CDT    ", 4,      (0x7<<4)},
@@ -109,75 +108,76 @@ struct pcfg1_unit USB_PCFG1[] =
 	{"TXHSXVT", 14,     (0x3<<14)},
 };
 
-typedef struct _USBDEVPHYCFG	// Base : 0x11DA0100
-{
-	volatile unsigned int	U20DH_DEV_PCFG0;    // 0x00  USB 2.0 Host/Device PHY Configuration 0 Register
-	volatile unsigned int	U20DH_DEV_PCFG1;    // 0x04  USB 2.0 Host/Device PHY Configuration 1 Register
-	volatile unsigned int	U20DH_DEV_PCFG2;    // 0x08  USB 2.0 Host/Device PHY Configuration 2 Register
-	volatile unsigned int	U20DH_DEV_PCFG3;    // 0x0C  USB 2.0 Host/Device PHY Configuration 3 Register
-	volatile unsigned int	U20DH_DEV_PCFG4;    // 0x10  USB 2.0 Host/Device PHY Configuration 4 Register
-	volatile unsigned int	U20DH_DEV_LSTS;     // 0x14  USB 2.0 Host/Device Status Register
-	volatile unsigned int	U20DH_DEV_LCFG0;    // 0x18  USB 2.0 Host/Device LINK Configuration 0 Register
-	volatile unsigned int	reserved[3];        // 0x1C~24
-	volatile unsigned int	U20DH_SEL;          // 0x28  USB 2.0 Host/Device MUX Selection
-	volatile unsigned int	USB_VBUSVLD_SEL;    // 0x2C  USB 2.0 Host/Device VBUS Valid Signal Selection
-} USBDEVPHYCFG, *PUSBDEVPHYCFG;
+struct USBDEVPHYCFG {
+	volatile unsigned int	U20DH_DEV_PCFG0;
+	volatile unsigned int	U20DH_DEV_PCFG1;
+	volatile unsigned int	U20DH_DEV_PCFG2;
+	volatile unsigned int	U20DH_DEV_PCFG3;
+	volatile unsigned int	U20DH_DEV_PCFG4;
+	volatile unsigned int	U20DH_DEV_LSTS;
+	volatile unsigned int	U20DH_DEV_LCFG0;
+	volatile unsigned int	reserved[3];
+	volatile unsigned int	U20DH_SEL;
+	volatile unsigned int	USB_VBUSVLD_SEL;
+};
 
-#ifdef CONFIG_USB_DWC2_TCC_MUX
-typedef struct _USBMHSTPHYCFG	// Base : 0x11DA00DC
-{
-	volatile unsigned int	U20DH_HST_BCFG;     // 0xDC  USB 2.0 Host in Host/Device MUX Bus Configuration Register
-	volatile unsigned int	U20DH_HST_PCFG0;    // 0xE0  USB 2.0 Host in Host/Device MUX PHY Configuration 0 Register
-	volatile unsigned int	U20DH_HST_PCFG1;    // 0xE4  USB 2.0 Host in Host/Device MUX PHY Configuration 1 Register
-	volatile unsigned int	U20DH_HST_PCFG2;    // 0xE8  USB 2.0 Host in Host/Device MUX PHY Configuration 2 Register
-	volatile unsigned int	U20DH_HST_PCFG3;    // 0xEC  USB 2.0 Host in Host/Device MUX PHY Configuration 3 Register
-	volatile unsigned int	U20DH_HST_PCFG4;    // 0xF0  USB 2.0 Host in Host/Device MUX PHY Configuration 4 Register
-	volatile unsigned int	U20DH_HST_STS;      // 0xF4  USB 2.0 Host in Host/Device MUX Status Register
-	volatile unsigned int	U20DH_HST_LCFG0;    // 0xF8  USB 2.0 Host in Host/Device MUX LINK Configuration 0 Register
-	volatile unsigned int	U20DH_HST_LCFG1;    // 0xFC  USB 2.0 Host in Host/Device MUX LINK Configuration 1 Register
-} USBMHSTPHYCFG, *PUSBMHSTPHYCFG;
+#if defined(CONFIG_USB_DWC2_TCC_MUX)
+struct USBMHSTPHYCFG {
+	volatile unsigned int	U20DH_HST_BCFG;
+	volatile unsigned int	U20DH_HST_PCFG0;
+	volatile unsigned int	U20DH_HST_PCFG1;
+	volatile unsigned int	U20DH_HST_PCFG2;
+	volatile unsigned int	U20DH_HST_PCFG3;
+	volatile unsigned int	U20DH_HST_PCFG4;
+	volatile unsigned int	U20DH_HST_STS;
+	volatile unsigned int	U20DH_HST_LCFG0;
+	volatile unsigned int	U20DH_HST_LCFG1;
+};
 #endif
 
-#ifdef CONFIG_USB_DWC2_TCC
+#if defined(CONFIG_USB_DWC2_TCC)
 #define TCC_DWC_SOFFN_USE
 #define TCC_DWC_SUSPSTS_USE
 
 int dwc2_tcc_power_ctrl(struct dwc2_hsotg *hsotg, int on_off)
 {
-    int err = 0;
+	int err = 0;
 
-    if ((hsotg->vbus_source_ctrl == 1) && (hsotg->vbus_source)) {
-        if(on_off == 1) {
-            err = regulator_enable(hsotg->vbus_source);
-            if(err) {
-                printk("[INFO][USB] dwc_otg: can't enable vbus source\n");
-                return err;
-            }
-            mdelay(1);
-        } else if(on_off == 0) {
-            regulator_disable(hsotg->vbus_source);
-        }
-    }
+	if ((hsotg->vbus_source_ctrl == 1) && (hsotg->vbus_source)) {
+		if (on_off == 1) {
+			err = regulator_enable(hsotg->vbus_source);
+			if (err) {
+				dev_err(hsotg->dev,
+					"[INFO][USB] dwc_otg: can't enable vbus source\n");
+				return err;
+			}
+			mdelay(1);
+		} else if (on_off == 0) {
+			regulator_disable(hsotg->vbus_source);
+		}
+	}
 
-    return err;
+	return err;
 }
 
+#if 0
 static void dwc2_tcc_vbus_init(struct dwc2_hsotg *hsotg)
 {
-    dwc2_tcc_power_ctrl(hsotg, 1);
+	dwc2_tcc_power_ctrl(hsotg, 1);
 }
 
 static void dwc2_tcc_vbus_exit(struct dwc2_hsotg *hsotg)
 {
-    dwc2_tcc_power_ctrl(hsotg, 0);
+	dwc2_tcc_power_ctrl(hsotg, 0);
 }
+#endif
 
-#ifdef CONFIG_VBUS_CTRL_DEF_ENABLE
+#if defined(CONFIG_VBUS_CTRL_DEF_ENABLE)
 static unsigned int vbus_control_enable = 1;
 #else
-static unsigned int vbus_control_enable = 0;
+static unsigned int vbus_control_enable;
 #endif /* CONFIG_VBUS_CTRL_DEF_ENABLE */
-module_param(vbus_control_enable, uint, S_IRUGO | S_IWUSR);
+module_param(vbus_control_enable, uint, 0644);
 MODULE_PARM_DESC(vbus_control_enable, "dwc2 vbus control enable");
 
 
@@ -190,53 +190,66 @@ int dwc2_tcc_vbus_ctrl(struct dwc2_hsotg *hsotg, int on_off)
 		return 0;
 	}
 	if (!phy) {
-		dev_err(hsotg->dev, "[ERROR][USB] [%s:%d]PHY driver is needed\n", __func__, __LINE__);
+		dev_err(hsotg->dev,
+			"[ERROR][USB] [%s:%d]PHY driver is needed\n",
+			__func__, __LINE__);
 		return -1;
 	}
-	dev_info(hsotg->dev, "[INFO][USB] %s : %s\n", __func__, on_off ? "on" : "off");
+	dev_info(hsotg->dev,
+		"[INFO][USB] %s : %s\n",
+		__func__, on_off ? "on" : "off");
 	hsotg->vbus_status = on_off;
 
 	return phy->set_vbus(phy, on_off);
 }
 
-static ssize_t dwc2_tcc_vbus_show(struct device *dev, struct device_attribute *attr, char *buf)
+static ssize_t dwc2_tcc_vbus_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
 {
-    struct dwc2_hsotg *hsotg = dev_get_drvdata(dev);
+	struct dwc2_hsotg *hsotg = dev_get_drvdata(dev);
 
-    return sprintf(buf, "dwc2 vbus - %s\n",(hsotg->vbus_status) ? "on" : "off");
+	return sprintf(buf,
+			"dwc2 vbus - %s\n",
+			(hsotg->vbus_status) ? "on" : "off");
 }
 
-static ssize_t dwc2_tcc_vbus_store(struct device *dev, struct device_attribute *attr,
-    const char *buf, size_t count)
+static ssize_t dwc2_tcc_vbus_store(struct device *dev,
+		struct device_attribute *attr,
+		const char *buf, size_t count)
 {
-    struct dwc2_hsotg *hsotg = dev_get_drvdata(dev);
+	struct dwc2_hsotg *hsotg = dev_get_drvdata(dev);
 
-    if (!strncmp(buf, "on", 2)) {
-        dwc2_tcc_vbus_ctrl(hsotg, 1);
-    }
+	if (!strncmp(buf, "on", 2))
+		dwc2_tcc_vbus_ctrl(hsotg, 1);
 
-    if (!strncmp(buf, "off", 3)) {
-        dwc2_tcc_vbus_ctrl(hsotg, 0);
-    }
+	if (!strncmp(buf, "off", 3))
+		dwc2_tcc_vbus_ctrl(hsotg, 0);
 
-    return count;
+	return count;
 }
-static DEVICE_ATTR(vbus, S_IRUGO | S_IWUSR, dwc2_tcc_vbus_show, dwc2_tcc_vbus_store);
+static DEVICE_ATTR(vbus, 0644,
+		dwc2_tcc_vbus_show, dwc2_tcc_vbus_store);
 
-static char* dwc2_pcfg1_display(uint32_t old_reg, uint32_t new_reg, char* str)
+static char *dwc2_pcfg1_display(uint32_t old_reg, uint32_t new_reg, char *str)
 {
 	uint32_t new_val, old_val;
 	int i;
 
 	for (i = 0; i < PCFG1_MAX; i++) {
-		old_val = (ISSET(old_reg, USB_PCFG1[i].mask)) >> (USB_PCFG1[i].offset);
-		new_val = (ISSET(new_reg, USB_PCFG1[i].mask)) >> (USB_PCFG1[i].offset);
+		old_val = (ISSET(old_reg, USB_PCFG1[i].mask)) >>
+			(USB_PCFG1[i].offset);
+		new_val = (ISSET(new_reg, USB_PCFG1[i].mask)) >>
+			(USB_PCFG1[i].offset);
 
 		if (old_val != new_val) {
-			sprintf(USB_PCFG1[i].str, "%s = 0x%X -> \x1b[1;33m0x%X\x1b[1;0m*\n",
-					USB_PCFG1[i].reg_name, old_val, new_val);
+			sprintf(USB_PCFG1[i].str,
+					"%s = 0x%X -> \x1b[1;33m0x%X\x1b[1;0m*\n",
+					USB_PCFG1[i].reg_name,
+					old_val, new_val);
 		} else {
-			sprintf(USB_PCFG1[i].str, "%s = 0x%X\n", USB_PCFG1[i].reg_name, old_val);
+			sprintf(USB_PCFG1[i].str,
+					"%s = 0x%X\n",
+					USB_PCFG1[i].reg_name, old_val);
 		}
 
 		strcat(str, USB_PCFG1[i].str);
@@ -246,12 +259,15 @@ static char* dwc2_pcfg1_display(uint32_t old_reg, uint32_t new_reg, char* str)
 }
 
 /**
- * Show the current value of the USB 2.0 Host/Device PHY Configuration 1 Register (U20DH_DEV_PCFG1)
+ * Show the current value of the USB 2.0 Host/Device
+ * PHY Configuration 1 Register (U20DH_DEV_PCFG1)
  */
-static ssize_t dwc2_pcfg1_show(struct device *dev, struct device_attribute *attr, char *buf)
+static ssize_t dwc2_pcfg1_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
 {
 	struct dwc2_hsotg *hsotg = dev_get_drvdata(dev);
-	PUSBDEVPHYCFG pUSBDEVPHYCFG = (PUSBDEVPHYCFG)(hsotg->uphy->get_base(hsotg->uphy));
+	struct USBDEVPHYCFG *pUSBDEVPHYCFG =
+		(struct USBDEVPHYCFG *)(hsotg->uphy->get_base(hsotg->uphy));
 	uint32_t pcfg1_val = readl(&pUSBDEVPHYCFG->U20DH_DEV_PCFG1);
 	char str[256] = {0};
 
@@ -260,65 +276,93 @@ static ssize_t dwc2_pcfg1_show(struct device *dev, struct device_attribute *attr
 }
 
 /**
- * Configure the current value of the USB 2.0 Host/Device PHY Configuration 1 Register (U20DH_DEV_PCFG1)
+ * Configure the current value of the USB 2.0
+ * Host/Device PHY Configuration 1 Register
+ * (U20DH_DEV_PCFG1)
  */
-static ssize_t dwc2_pcfg1_store(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
+static ssize_t dwc2_pcfg1_store(struct device *dev,
+		struct device_attribute *attr,
+		const char *buf, size_t count)
 {
 	struct dwc2_hsotg *hsotg = dev_get_drvdata(dev);
-	PUSBDEVPHYCFG pUSBDEVPHYCFG = (PUSBDEVPHYCFG)(hsotg->uphy->get_base(hsotg->uphy));
+	struct USBDEVPHYCFG *pUSBDEVPHYCFG =
+		(struct USBDEVPHYCFG *)(hsotg->uphy->get_base(hsotg->uphy));
 	uint32_t old_reg = readl(&pUSBDEVPHYCFG->U20DH_DEV_PCFG1);
-	uint32_t new_reg = simple_strtoul(buf, NULL, 16);
+	uint32_t new_reg = kstrtoul(buf, 0, (unsigned long *)16);
 	char str[256] = {0};
 	int i;
 
-	if (count - 1 < 10 || 10 < count - 1 ) {
-		printk("[INFO][USB] \nThis argument length is \x1b[1;33mnot 10\x1b[0m\n\n");
-		printk("[INFO][USB] \tUsage : echo \x1b[1;31m0xXXXXXXXX\x1b[0m > dwc_pcfg1\n\n");
-		printk("[INFO][USB] \t\t1) length of \x1b[1;32m0xXXXXXXXX\x1b[0m is 10\n");
-		printk("[INFO][USB] \t\t2) \x1b[1;32mX\x1b[0m is hex number(\x1b[1;31m0\x1b[0m to \x1b[1;31mf\x1b[0m)\n\n");
+	if (count - 1 < 10 || 10 < count - 1) {
+		dev_info(hsotg->dev,
+			"[INFO][USB]\nThis argument length is \x1b[1;33mnot 10\x1b[0m\n\n");
+		dev_info(hsotg->dev,
+			"[INFO][USB]\tUsage : echo \x1b[1;31m0xXXXXXXXX\x1b[0m > dwc_pcfg1\n\n");
+		dev_info(hsotg->dev,
+			"[INFO][USB]\t\t1) length of \x1b[1;32m0xXXXXXXXX\x1b[0m is 10\n");
+		dev_info(hsotg->dev,
+			"[INFO][USB]\t\t2) \x1b[1;32mX\x1b[0m is hex number(\x1b[1;31m0\x1b[0m to \x1b[1;31mf\x1b[0m)\n\n");
 		return count;
 	}
 
 	if ((buf[0] != '0') || (buf[1] != 'x')) {
-		printk("[INFO][USB] \n\techo \x1b[1;32m%c%c\x1b[1;0mXXXXXXXX is \x1b[1;33mnot Ox\x1b[0m\n\n", buf[0], buf[1]);
-		printk("[INFO][USB] \tUsage : echo \x1b[1;32m0x\x1b[1;31mXXXXXXXX\x1b[0m > dwc_pcfg1\n\n");
-		printk("[INFO][USB] \t\t1) \x1b[1;32m0\x1b[0m is binary number\x1b[0m)\n\n");
+		dev_info(hsotg->dev,
+				"[INFO][USB]\n\techo \x1b[1;32m%c%c\x1b[1;0mXXXXXXXX is \x1b[1;33mnot Ox\x1b[0m\n\n",
+				buf[0], buf[1]);
+		dev_info(hsotg->dev,
+				"[INFO][USB]\tUsage : echo \x1b[1;32m0x\x1b[1;31mXXXXXXXX\x1b[0m > dwc_pcfg1\n\n");
+		dev_info(hsotg->dev,
+				"[INFO][USB]\t\t1) \x1b[1;32m0\x1b[0m is binary number\x1b[0m)\n\n");
 		return count;
 	}
 
 	for (i = 2; i < 10; i++) {
-		if ( (buf[i] >= '0' && buf[i] <= '9') ||
+		if ((buf[i] >= '0' && buf[i] <= '9') ||
 				(buf[i] >= 'a' && buf[i] <= 'f') ||
-				(buf[i] >= 'A' && buf[i] <= 'F') )
+				(buf[i] >= 'A' && buf[i] <= 'F'))
 			continue;
 		else {
-			printk("[INFO][USB] \necho 0x%c%c%c%c%c%c%c%c is \x1b[1;33mnot hex\x1b[0m\n\n",
-					buf[2], buf[3], buf[4], buf[5], buf[6], buf[7], buf[8], buf[9]);
-			printk("[INFO][USB] \tUsage : echo \x1b[1;31m0xXXXXXXXX\x1b[0m > dwc_pcfg1\n\n");
-			printk("[INFO][USB] \t\t2) \x1b[1;32mX\x1b[0m is hex number(\x1b[1;31m0\x1b[0m to \x1b[1;31mf\x1b[0m)\n\n");
+			dev_info(hsotg->dev,
+					"[INFO][USB]\necho 0x%c%c%c%c%c%c%c%c is \x1b[1;33mnot hex\x1b[0m\n\n",
+					buf[2], buf[3], buf[4],
+					buf[5], buf[6], buf[7],
+					buf[8], buf[9]);
+			dev_info(hsotg->dev,
+					"[INFO][USB]\tUsage : echo \x1b[1;31m0xXXXXXXXX\x1b[0m > dwc_pcfg1\n\n");
+			dev_info(hsotg->dev,
+					"[INFO][USB]\t\t2) \x1b[1;32mX\x1b[0m is hex number(\x1b[1;31m0\x1b[0m to \x1b[1;31mf\x1b[0m)\n\n");
 			return count;
 		}
 	}
 
-	printk("[INFO][USB] U20DH_DEV_PCFG1 = 0x%08X\n", old_reg);
+	dev_info(hsotg->dev,
+			"[INFO][USB] U20DH_DEV_PCFG1 = 0x%08X\n",
+			old_reg);
 	writel(new_reg, &pUSBDEVPHYCFG->U20DH_DEV_PCFG1);
 	new_reg = readl(&pUSBDEVPHYCFG->U20DH_DEV_PCFG1);
 
 	dwc2_pcfg1_display(old_reg, new_reg, str);
-	printk("[INFO][USB] %sU20DH_DEV_PCFG1 = \x1b[1;33m0x%08X\x1b[1;0m\n", str, new_reg);
+	dev_info(hsotg->dev,
+			"[INFO][USB] %sU20DH_DEV_PCFG1 = \x1b[1;33m0x%08X\x1b[1;0m\n",
+			str, new_reg);
 
 	return count;
 }
-static DEVICE_ATTR(dwc_pcfg1, S_IRUGO | S_IWUSR, dwc2_pcfg1_show, dwc2_pcfg1_store);
+static DEVICE_ATTR(dwc_pcfg1, 0644,
+		dwc2_pcfg1_show, dwc2_pcfg1_store);
 
-#ifdef CONFIG_USB_DWC2_TCC_MUX
+#if defined(CONFIG_USB_DWC2_TCC_MUX)
 /**
- * Show the current value of the USB 2.0 Host in Host/Device MUX PHY Configuration 1 Register (U20DH_HST_PCFG1)
+ * Show the current value of the USB 2.0 Host
+ * in Host/Device MUX PHY Configuration 1 Register
+ * (U20DH_HST_PCFG1)
  */
-static ssize_t dwc2_host_mux_pcfg1_show(struct device *dev, struct device_attribute *attr, char *buf)
+static ssize_t dwc2_host_mux_pcfg1_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
 {
 	struct dwc2_hsotg *hsotg = dev_get_drvdata(dev);
-	PUSBMHSTPHYCFG pUSBMHSTPHYCFG = (PUSBMHSTPHYCFG)(hsotg->mhst_uphy->get_base(hsotg->mhst_uphy));
+	struct USBMHSTPHYCFG *pUSBMHSTPHYCFG =
+		(struct USBMHSTPHYCFG *)
+		(hsotg->mhst_uphy->get_base(hsotg->mhst_uphy));
 	uint32_t pcfg1_val = readl(&pUSBMHSTPHYCFG->U20DH_HST_PCFG1);
 	char str[256] = {0};
 
@@ -327,77 +371,103 @@ static ssize_t dwc2_host_mux_pcfg1_show(struct device *dev, struct device_attrib
 }
 
 /**
- * Configure the current value of the USB 2.0 Host in Host/Device MUX PHY Configuration 1 Register (U20DH_HST_PCFG1)
+ * Configure the current value of the USB 2.0 Host
+ * in Host/Device MUX PHY Configuration 1 Register
+ * (U20DH_HST_PCFG1)
  */
-static ssize_t dwc2_host_mux_pcfg1_store(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
+static ssize_t dwc2_host_mux_pcfg1_store(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t count)
 {
 	struct dwc2_hsotg *hsotg = dev_get_drvdata(dev);
-	PUSBMHSTPHYCFG pUSBMHSTPHYCFG = (PUSBMHSTPHYCFG)(hsotg->mhst_uphy->get_base(hsotg->mhst_uphy));
+	struct USBMHSTPHYCFG *pUSBMHSTPHYCFG =
+		(struct USBMHSTPHYCFG *)
+		(hsotg->mhst_uphy->get_base(hsotg->mhst_uphy));
 	uint32_t old_reg = readl(&pUSBMHSTPHYCFG->U20DH_HST_PCFG1);
-	uint32_t new_reg = simple_strtoul(buf, NULL, 16);
+	uint32_t new_reg = kstrtoul(buf, 0, (unsigned long *)16);
 	char str[256] = {0};
 	int i;
 
-	if (count - 1 < 10 || 10 < count - 1 ) {
-		printk("[INFO][USB] \nThis argument length is \x1b[1;33mnot 10\x1b[0m\n\n");
-		printk("[INFO][USB] \tUsage : echo \x1b[1;31m0xXXXXXXXX\x1b[0m > dwc_host_mux_pcfg1\n\n");
-		printk("[INFO][USB] \t\t1) length of \x1b[1;32m0xXXXXXXXX\x1b[0m is 10\n");
-		printk("[INFO][USB] \t\t2) \x1b[1;32mX\x1b[0m is hex number(\x1b[1;31m0\x1b[0m to \x1b[1;31mf\x1b[0m)\n\n");
+	if (count - 1 < 10 || 10 < count - 1) {
+		dev_info(hsotg->dev,
+				"[INFO][USB]\nThis argument length is \x1b[1;33mnot 10\x1b[0m\n\n");
+		dev_info(hsotg->dev,
+				"[INFO][USB]\tUsage : echo \x1b[1;31m0xXXXXXXXX\x1b[0m > dwc_host_mux_pcfg1\n\n");
+		dev_info(hsotg->dev,
+				"[INFO][USB]\t\t1) length of \x1b[1;32m0xXXXXXXXX\x1b[0m is 10\n");
+		dev_info(hsotg->dev,
+				"[INFO][USB]\t\t2) \x1b[1;32mX\x1b[0m is hex number(\x1b[1;31m0\x1b[0m to \x1b[1;31mf\x1b[0m)\n\n");
 		return count;
 	}
 
 	if ((buf[0] != '0') || (buf[1] != 'x')) {
-		printk("[INFO][USB] \n\techo \x1b[1;32m%c%c\x1b[1;0mXXXXXXXX is \x1b[1;33mnot Ox\x1b[0m\n\n", buf[0], buf[1]);
-		printk("[INFO][USB] \tUsage : echo \x1b[1;32m0x\x1b[1;31mXXXXXXXX\x1b[0m > dwc_host_mux_pcfg1\n\n");
-		printk("[INFO][USB] \t\t1) \x1b[1;32m0\x1b[0m is binary number\x1b[0m)\n\n");
+		dev_info(hsotg->dev,
+				"[INFO][USB]\n\techo \x1b[1;32m%c%c\x1b[1;0mXXXXXXXX is \x1b[1;33mnot Ox\x1b[0m\n\n",
+				buf[0], buf[1]);
+		dev_info(hsotg->dev,
+				"[INFO][USB]\tUsage : echo \x1b[1;32m0x\x1b[1;31mXXXXXXXX\x1b[0m > dwc_host_mux_pcfg1\n\n");
+		dev_info(hsotg->dev,
+				"[INFO][USB]\t\t1) \x1b[1;32m0\x1b[0m is binary number\x1b[0m)\n\n");
 		return count;
 	}
 
 	for (i = 2; i < 10; i++) {
-		if ( (buf[i] >= '0' && buf[i] <= '9') ||
+		if ((buf[i] >= '0' && buf[i] <= '9') ||
 				(buf[i] >= 'a' && buf[i] <= 'f') ||
-				(buf[i] >= 'A' && buf[i] <= 'F') )
+				(buf[i] >= 'A' && buf[i] <= 'F'))
 			continue;
 		else {
-			printk("[INFO][USB] \necho 0x%c%c%c%c%c%c%c%c is \x1b[1;33mnot hex\x1b[0m\n\n",
-					buf[2], buf[3], buf[4], buf[5], buf[6], buf[7], buf[8], buf[9]);
-			printk("[INFO][USB] \tUsage : echo \x1b[1;31m0xXXXXXXXX\x1b[0m > dwc_host_mux_pcfg1\n\n");
-			printk("[INFO][USB] \t\t2) \x1b[1;32mX\x1b[0m is hex number(\x1b[1;31m0\x1b[0m to \x1b[1;31mf\x1b[0m)\n\n");
+			dev_info(hsotg->dev,
+					"[INFO][USB]\necho 0x%c%c%c%c%c%c%c%c is \x1b[1;33mnot hex\x1b[0m\n\n",
+					buf[2], buf[3], buf[4], buf[5],
+					buf[6], buf[7], buf[8], buf[9]);
+			dev_info(hsotg->dev,
+					"[INFO][USB]\tUsage : echo \x1b[1;31m0xXXXXXXXX\x1b[0m > dwc_host_mux_pcfg1\n\n");
+			dev_info(hsotg->dev,
+					"[INFO][USB]\t\t2) \x1b[1;32mX\x1b[0m is hex number(\x1b[1;31m0\x1b[0m to \x1b[1;31mf\x1b[0m)\n\n");
 			return count;
 		}
 	}
 
-	printk("[INFO][USB] U20DH_HST_PCFG1 = 0x%08X\n", old_reg);
+	dev_info(hsotg->dev,
+			"[INFO][USB] U20DH_HST_PCFG1 = 0x%08X\n",
+			old_reg);
 	writel(new_reg, &pUSBMHSTPHYCFG->U20DH_HST_PCFG1);
 	new_reg = readl(&pUSBMHSTPHYCFG->U20DH_HST_PCFG1);
 
 	dwc2_pcfg1_display(old_reg, new_reg, str);
-	printk("[INFO][USB] %sU20DH_HST_PCFG1 = \x1b[1;33m0x%08X\x1b[1;0m\n", str, new_reg);
+	dev_info(hsotg->dev,
+			"[INFO][USB] %sU20DH_HST_PCFG1 = \x1b[1;33m0x%08X\x1b[1;0m\n",
+			str, new_reg);
 
 	return count;
 }
-static DEVICE_ATTR(dwc_host_mux_pcfg1, S_IRUGO | S_IWUSR, dwc2_host_mux_pcfg1_show, dwc2_host_mux_pcfg1_store);
+static DEVICE_ATTR(dwc_host_mux_pcfg1, 0644,
+		dwc2_host_mux_pcfg1_show, dwc2_host_mux_pcfg1_store);
 #endif
 
-#ifdef CONFIG_USB_DWC2_DUAL_ROLE
-static ssize_t dwc2_tcc_drd_mode_show(struct device *dev, struct device_attribute *attr, char *buf)
+#if defined(CONFIG_USB_DWC2_DUAL_ROLE)
+static ssize_t dwc2_tcc_drd_mode_show(struct device *dev,
+			struct device_attribute *attr, char *buf)
 {
 	struct dwc2_hsotg *hsotg = dev_get_drvdata(dev);
 
-	return sprintf(buf, "dwc2 dr_mode - %s\n", hsotg->dr_mode == USB_DR_MODE_PERIPHERAL ? "DEVICE":"HOST");
+	return sprintf(buf, "dwc2 dr_mode - %s\n",
+			hsotg->dr_mode == USB_DR_MODE_PERIPHERAL ?
+			"DEVICE":"HOST");
 }
 
 static void dwc2_change_dr_mode(struct work_struct *);
-static ssize_t dwc2_tcc_drd_mode_store(struct device *dev, struct device_attribute *attr,
-	const char *buf, size_t count)
+static ssize_t dwc2_tcc_drd_mode_store(struct device *dev,
+		struct device_attribute *attr,
+		const char *buf, size_t count)
 {
 	struct dwc2_hsotg *hsotg = dev_get_drvdata(dev);
 	struct work_struct *work;
 	enum usb_dr_mode tmp_mode;
- 
-	int retval = 0;
+
 	if (!strncmp(buf, "host", 4)) {
-		if (hsotg->dr_mode == USB_DR_MODE_HOST || hsotg->dr_mode == USB_DR_MODE_OTG) {
+		if (hsotg->dr_mode == USB_DR_MODE_HOST ||
+			hsotg->dr_mode == USB_DR_MODE_OTG) {
 			dev_warn(hsotg->dev, "[WARN][USB] Already host mode!\n");
 			goto error;
 		}
@@ -417,8 +487,7 @@ error:
 	hsotg->dr_mode = tmp_mode;
 	work = &hsotg->drd_work;
 
-	if (work_pending(work))
-	{
+	if (work_pending(work)) {
 		dev_warn(hsotg->dev, "[WARN][USB] [drd_store pending]\n");
 		return count;
 	}
@@ -430,9 +499,10 @@ error:
 
 	return count;
 }
-static DEVICE_ATTR(drdmode, S_IRUGO | S_IWUSR, dwc2_tcc_drd_mode_show, dwc2_tcc_drd_mode_store);
+static DEVICE_ATTR(drdmode, 0644,
+		dwc2_tcc_drd_mode_show, dwc2_tcc_drd_mode_store);
 
-#ifdef TCC_DWC_SUSPSTS_USE
+#if defined(TCC_DWC_SUSPSTS_USE)
 static int dwc2_soffn_monitor_thread(void *w)
 {
 	struct dwc2_hsotg *hsotg = (struct dwc2_hsotg *)w;
@@ -440,13 +510,16 @@ static int dwc2_soffn_monitor_thread(void *w)
 	int retry = 100;	//wait for a sec until iPhone role-switching
 	unsigned long flags;
 
-	while(!kthread_should_stop() && retry > 0) {
+	while (!kthread_should_stop() && retry > 0) {
 		usleep_range(10000, 10020);
-		/* Monitoring starts when soffn is not NULL and not in suspend state
-           If host is not connected for 1 second after role-switch, disconnect is judged.
-         */
+		/* Monitoring starts when soffn is
+		 * not NULL and not in suspend state
+		 * If host is not connected for 1 second
+		 * after role-switch, disconnect is judged
+		 */
 
-		if (!dwc2_hsotg_read_frameno(hsotg) || dwc2_hsotg_read_suspend_state(hsotg)) {
+		if (!dwc2_hsotg_read_frameno(hsotg) ||
+				dwc2_hsotg_read_suspend_state(hsotg)) {
 			retry--;
 			if (discon_chk == true && retry <= 0)
 				break;
@@ -465,22 +538,26 @@ static int dwc2_soffn_monitor_thread(void *w)
 			hsotg->driver->disconnect_tcc();
 	} else {
 		dev_warn(hsotg->dev,
-			"[WARN][USB] %s - mode changed (host)", __func__);
+				"[WARN][USB] %s - mode changed (host)",
+				__func__);
 	}
 	hsotg->soffn_thread = NULL;
 
 	msleep(200);
-	dev_warn(hsotg->dev, "[WARN][USB] dwc2 device - Host Disconnected\n");	
+	dev_warn(hsotg->dev,
+			"[WARN][USB] dwc2 device - Host Disconnected\n");
+
+	return 0;
 }
 #endif
 #endif
 
-#ifdef CONFIG_USB_DWC2_TCC_MUX
+#if defined(CONFIG_USB_DWC2_TCC_MUX)
 #include <linux/usb/ehci_pdriver.h>
 #include <linux/usb/ohci_pdriver.h>
 #include <linux/usb/hcd.h>
 
-struct usb_mux_hcd_device{
+struct usb_mux_hcd_device {
 	struct platform_device *ehci_dev;
 	struct platform_device *ohci_dev;
 	u32 enable_flags;
@@ -492,7 +569,9 @@ static const struct usb_ehci_pdata ehci_pdata = {
 static const struct usb_ohci_pdata ohci_pdata = {
 };
 
-static struct platform_device *dwc2_create_mux_hcd_pdev(struct dwc2_hsotg *hsotg, bool ohci, u32 res_start, u32 size)
+static struct platform_device *dwc2_create_mux_hcd_pdev
+		(struct dwc2_hsotg *hsotg, bool ohci,
+		unsigned long int res_start, u32 size)
 {
 	struct platform_device *hci_dev;
 	struct resource hci_res[2];
@@ -502,14 +581,14 @@ static struct platform_device *dwc2_create_mux_hcd_pdev(struct dwc2_hsotg *hsotg
 	memset(hci_res, 0, sizeof(hci_res));
 
 	hci_res[0].start = res_start;
-	hci_res[0].end 	= res_start + size - 1;
+	hci_res[0].end = res_start + size - 1;
 	hci_res[0].flags = IORESOURCE_MEM;
 
 	hci_res[1].start = hsotg->ehci_irq;
 	hci_res[1].flags = IORESOURCE_IRQ;
 
 	hci_dev = platform_device_alloc(ohci ? "ohci-mux" :
-					"ehci-mux" , 0);
+			"ehci-mux", 0);
 
 	if (!hci_dev)
 		return NULL;
@@ -518,15 +597,15 @@ static struct platform_device *dwc2_create_mux_hcd_pdev(struct dwc2_hsotg *hsotg
 	hci_dev->dev.dma_mask = &hci_dev->dev.coherent_dma_mask;
 
 	ret = platform_device_add_resources(hci_dev, hci_res,
-					    ARRAY_SIZE(hci_res));
+			ARRAY_SIZE(hci_res));
 	if (ret)
 		goto err_alloc;
 	if (ohci)
 		ret = platform_device_add_data(hci_dev, &ohci_pdata,
-					       sizeof(ohci_pdata));
+				sizeof(ohci_pdata));
 	else
 		ret = platform_device_add_data(hci_dev, &ehci_pdata,
-					       sizeof(ehci_pdata));
+				sizeof(ehci_pdata));
 	if (ret)
 		goto err_alloc;
 	ret = platform_device_add(hci_dev);
@@ -535,8 +614,11 @@ static struct platform_device *dwc2_create_mux_hcd_pdev(struct dwc2_hsotg *hsotg
 
 	hcd = dev_get_drvdata(&hci_dev->dev);
 	if (hcd == NULL) {
-		printk("[INFO][USB] \x1b[1;31m[%s:%d](hcd == NULL)\x1b[0m\n", __func__, __LINE__);
-		while(1);
+		dev_info(hsotg->dev,
+				"[INFO][USB] \x1b[1;31m[%s:%d](hcd == NULL)\x1b[0m\n",
+				__func__, __LINE__);
+		while (1)
+			;
 	}
 	//hcd->tpl_support = hsotg->hcd_tpl_support;
 
@@ -554,13 +636,14 @@ static int dwc2_mux_hcd_init(struct dwc2_hsotg *hsotg)
 {
 	struct usb_mux_hcd_device *usb_dev;
 	int err;
-	int start, size;
+	unsigned long int start;
+	int	size;
 
 	usb_dev = kzalloc(sizeof(struct usb_mux_hcd_device), GFP_KERNEL);
 	if (!usb_dev)
 		return -ENOMEM;
 
-	start = (int)hsotg->ohci_regs;
+	start = (unsigned long int)hsotg->ohci_regs;
 	size = (int)hsotg->ohci_regs_size;
 	usb_dev->ohci_dev = dwc2_create_mux_hcd_pdev(hsotg, true, start, size);
 	if (IS_ERR(usb_dev->ohci_dev)) {
@@ -568,7 +651,7 @@ static int dwc2_mux_hcd_init(struct dwc2_hsotg *hsotg)
 		goto err_free_usb_dev;
 	}
 
-	start = (int)hsotg->ehci_regs;
+	start = (unsigned long int)hsotg->ehci_regs;
 	size = hsotg->ehci_regs_size;
 	usb_dev->ehci_dev = dwc2_create_mux_hcd_pdev(hsotg, false, start, size);
 	if (IS_ERR(usb_dev->ehci_dev)) {
@@ -620,14 +703,14 @@ static int dwc2_get_dr_mode(struct dwc2_hsotg *hsotg)
 	if (dwc2_hw_is_device(hsotg)) {
 		if (IS_ENABLED(CONFIG_USB_DWC2_HOST)) {
 			dev_err(hsotg->dev,
-				"[ERROR][USB] Controller does not support host mode.\n");
+					"[ERROR][USB] Controller does not support host mode.\n");
 			return -EINVAL;
 		}
 		mode = USB_DR_MODE_PERIPHERAL;
 	} else if (dwc2_hw_is_host(hsotg)) {
 		if (IS_ENABLED(CONFIG_USB_DWC2_PERIPHERAL)) {
 			dev_err(hsotg->dev,
-				"[ERROR][USB] Controller does not support device mode.\n");
+					"[ERROR][USB] Controller does not support device mode.\n");
 			return -EINVAL;
 		}
 		mode = USB_DR_MODE_HOST;
@@ -639,12 +722,14 @@ static int dwc2_get_dr_mode(struct dwc2_hsotg *hsotg)
 	}
 	if (mode != hsotg->dr_mode) {
 		dev_warn(hsotg->dev,
-			 "[WARN][USB] Configuration mismatch. dr_mode forced to %s\n",
-			mode == USB_DR_MODE_HOST ? "host" : "device");
+				"[WARN][USB] Configuration mismatch. dr_mode forced to %s\n",
+				mode == USB_DR_MODE_HOST ? "host" : "device");
 
 		hsotg->dr_mode = mode;
 	}
-	dev_warn(hsotg->dev, "[WARN][USB] %s : dr_mode = %d\n", __func__, hsotg->dr_mode);
+	dev_warn(hsotg->dev,
+		"[WARN][USB] %s : dr_mode = %d\n", __func__,
+		hsotg->dr_mode);
 
 	return 0;
 }
@@ -653,11 +738,11 @@ static int __dwc2_lowlevel_hw_enable(struct dwc2_hsotg *hsotg)
 {
 	struct platform_device *pdev = to_platform_device(hsotg->dev);
 	int ret;
-#ifdef CONFIG_USB_DWC2_TCC
+#if defined(CONFIG_USB_DWC2_TCC)
 	dwc2_tcc_vbus_ctrl(hsotg, 1);
 #else
 	ret = regulator_bulk_enable(ARRAY_SIZE(hsotg->supplies),
-				    hsotg->supplies);
+			hsotg->supplies);
 	if (ret)
 		return ret;
 #endif
@@ -676,8 +761,10 @@ static int __dwc2_lowlevel_hw_enable(struct dwc2_hsotg *hsotg)
 		if (ret == 0)
 			ret = phy_init(hsotg->phy);
 	}
-#ifdef CONFIG_USB_DWC2_TCC_MUX
-	if (hsotg->mhst_uphy && ((hsotg->dr_mode == USB_DR_MODE_HOST) || (hsotg->dr_mode == USB_DR_MODE_OTG)))
+#if defined(CONFIG_USB_DWC2_TCC_MUX)
+	if (hsotg->mhst_uphy &&
+		((hsotg->dr_mode == USB_DR_MODE_HOST) ||
+		(hsotg->dr_mode == USB_DR_MODE_OTG)))
 		ret = usb_phy_init(hsotg->mhst_uphy);
 #endif
 	return ret;
@@ -705,7 +792,7 @@ static int __dwc2_lowlevel_hw_disable(struct dwc2_hsotg *hsotg)
 	struct platform_device *pdev = to_platform_device(hsotg->dev);
 	int ret = 0;
 
-#ifdef CONFIG_USB_DWC2_TCC_MUX
+#if defined(CONFIG_USB_DWC2_TCC_MUX)
 	if (hsotg->mhst_uphy)
 		usb_phy_shutdown(hsotg->mhst_uphy);
 #endif
@@ -723,11 +810,11 @@ static int __dwc2_lowlevel_hw_disable(struct dwc2_hsotg *hsotg)
 
 	if (hsotg->clk)
 		clk_disable_unprepare(hsotg->clk);
-#ifdef CONFIG_USB_DWC2_TCC
+#if defined(CONFIG_USB_DWC2_TCC)
 	ret = dwc2_tcc_vbus_ctrl(hsotg, 0);
 #else
 	ret = regulator_bulk_disable(ARRAY_SIZE(hsotg->supplies),
-				     hsotg->supplies);
+			hsotg->supplies);
 #endif
 	return ret;
 }
@@ -756,7 +843,9 @@ static int dwc2_lowlevel_hw_init(struct dwc2_hsotg *hsotg)
 	hsotg->reset = devm_reset_control_get_optional(hsotg->dev, "dwc2");
 	if (IS_ERR(hsotg->reset)) {
 		ret = PTR_ERR(hsotg->reset);
-		dev_err(hsotg->dev, "[ERROR][USB] error getting reset control %d\n", ret);
+		dev_err(hsotg->dev,
+			"[ERROR][USB] error getting reset control %d\n",
+			ret);
 		return ret;
 	}
 
@@ -771,36 +860,43 @@ static int dwc2_lowlevel_hw_init(struct dwc2_hsotg *hsotg)
 	 */
 	hsotg->phy = devm_phy_get(hsotg->dev, "usb2-phy");
 	if (IS_ERR(hsotg->phy)) {
-		dev_warn(hsotg->dev, "[WARN][USB] [dwc2]usb-2phy is ERR %s\n", __func__);	
+		dev_warn(hsotg->dev,
+				"[WARN][USB] [dwc2]usb-2phy is ERR %s\n",
+				__func__);
 		ret = PTR_ERR(hsotg->phy);
 		switch (ret) {
 		case -ENODEV:
-		case -ENOSYS:
+		case -EINVAL:
 			hsotg->phy = NULL;
 			break;
 		case -EPROBE_DEFER:
 			return ret;
 		default:
-			dev_err(hsotg->dev, "[ERROR][USB] error getting phy %d\n", ret);
-			return ret;
+			hsotg->phy = NULL;
+			dev_err(hsotg->dev,
+					"[ERROR][USB] error getting phy %d\n",
+					ret);
 		}
 	}
 
 	if (!hsotg->phy) {
-		dev_warn(hsotg->dev, "[WARN][USB] [dwc2]hsotg->phy is NULL %s\n", __func__);
+		dev_warn(hsotg->dev,
+			"[WARN][USB] [dwc2]hsotg->phy is NULL %s\n",
+			__func__);
 #ifndef CONFIG_USB_DWC2_TCC
 		hsotg->uphy = devm_usb_get_phy(hsotg->dev, USB_PHY_TYPE_USB2);
 #else
 		hsotg->uphy = devm_usb_get_phy_by_phandle(hsotg->dev, "phy", 0);
 #if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X)
 		ret = hsotg->uphy->set_vbus_resource(hsotg->uphy);
-		if (ret) {
+		if (ret)
 			return ret;
-		}
-#endif 
+#endif
 #endif
 		if (IS_ERR(hsotg->uphy)) {
-			dev_warn(hsotg->dev, "[WARN][USB] [dwc2]hsotg->uphy is NULL %s\n", __func__);
+			dev_warn(hsotg->dev,
+				"[WARN][USB] [dwc2]hsotg->uphy is NULL %s\n",
+				__func__);
 			ret = PTR_ERR(hsotg->uphy);
 			switch (ret) {
 			case -ENODEV:
@@ -810,17 +906,22 @@ static int dwc2_lowlevel_hw_init(struct dwc2_hsotg *hsotg)
 			case -EPROBE_DEFER:
 				return ret;
 			default:
-				dev_err(hsotg->dev, "[ERROR][USB] error getting usb phy %d\n",
-					ret);
+				dev_err(hsotg->dev,
+						"[ERROR][USB] error getting usb phy %d\n",
+						ret);
 				return ret;
 			}
 		}
 	}
-#ifdef CONFIG_USB_DWC2_TCC_MUX
-	hsotg->mhst_uphy = devm_usb_get_phy_by_phandle(hsotg->dev, "telechips,mhst_phy", 0);
+#if defined(CONFIG_USB_DWC2_TCC_MUX)
+	hsotg->mhst_uphy =
+		devm_usb_get_phy_by_phandle(hsotg->dev,
+				"telechips,mhst_phy", 0);
 
 	if (IS_ERR(hsotg->mhst_uphy)) {
-		dev_warn(hsotg->dev, "[WARN][USB] [dwc2]hsotg->mhst_uphy is NULL %s\n", __func__);
+		dev_warn(hsotg->dev,
+				"[WARN][USB] [dwc2]hsotg->mhst_uphy is NULL %s\n",
+				__func__);
 		ret = PTR_ERR(hsotg->uphy);
 		switch (ret) {
 		case -ENODEV:
@@ -836,7 +937,8 @@ static int dwc2_lowlevel_hw_init(struct dwc2_hsotg *hsotg)
 		}
 	}
 
-	hsotg->mhst_uphy->otg->mux_cfg_addr = hsotg->uphy->base + 0x28; //otg phy's mux switching register
+	hsotg->mhst_uphy->otg->mux_cfg_addr =
+		hsotg->uphy->base + 0x28; //otg phy's mux switching register
 #endif
 	hsotg->plat = dev_get_platdata(hsotg->dev);
 
@@ -854,7 +956,7 @@ static int dwc2_lowlevel_hw_init(struct dwc2_hsotg *hsotg)
 		hsotg->clk = NULL;
 		dev_err(hsotg->dev, "[ERROR][USB] cannot get otg clock\n");
 	}
-#ifdef CONFIG_USB_DWC2_TCC
+#if defined(CONFIG_USB_DWC2_TCC)
 	/* TCC vbus */
 	ret = dwc2_tcc_vbus_ctrl(hsotg, 1);
 #else
@@ -863,32 +965,34 @@ static int dwc2_lowlevel_hw_init(struct dwc2_hsotg *hsotg)
 		hsotg->supplies[i].supply = dwc2_hsotg_supply_names[i];
 
 	ret = devm_regulator_bulk_get(hsotg->dev, ARRAY_SIZE(hsotg->supplies),
-				      hsotg->supplies);
+			hsotg->supplies);
 	if (ret) {
-		dev_err(hsotg->dev, "[ERROR][USB] failed to request supplies: %d\n", ret);
+		dev_err(hsotg->dev,
+				"[ERROR][USB] failed to request supplies: %d\n",
+				ret);
 		return ret;
 	}
 #endif
 	return 0;
 }
-#if defined (CONFIG_USB_DWC2_TCC) && defined (CONFIG_USB_DWC2_DUAL_ROLE)
+#if defined(CONFIG_USB_DWC2_TCC) && defined(CONFIG_USB_DWC2_DUAL_ROLE)
 #define VBUS_CTRL_MAX 10
 
 static void dwc2_change_dr_mode(struct work_struct *w)
 {
 	struct dwc2_hsotg *hsotg = container_of(w, struct dwc2_hsotg,
-						drd_work);
+			drd_work);
 	unsigned int	res = 0;
 	unsigned long flags;
 
 	if (hsotg->dr_mode == USB_DR_MODE_PERIPHERAL) {
-#ifdef CONFIG_USB_DWC2_TCC_MUX
+#if defined(CONFIG_USB_DWC2_TCC_MUX)
 		dwc2_mux_hcd_remove(hsotg);
 #endif
 	} else {
 		int retry_cnt = 0;
 
-#ifdef TCC_DWC_SOFFN_USE
+#if defined(TCC_DWC_SOFFN_USE)
 		if (hsotg->soffn_thread != NULL) {
 			kthread_stop(hsotg->soffn_thread);
 			hsotg->soffn_thread = NULL;
@@ -897,23 +1001,22 @@ static void dwc2_change_dr_mode(struct work_struct *w)
 			spin_unlock_irqrestore(&hsotg->lock, flags);
 		}
 
-		do
-		{
-			if (dwc2_tcc_vbus_ctrl(hsotg, 1) == 0)
+		do {
+			if (dwc2_tcc_vbus_ctrl(hsotg, 1) == 0 ||
+				!vbus_control_enable)
 				break;
-			else if (!vbus_control_enable)
-				break;
-			else {
-				retry_cnt++;
-				msleep(50);
-				dev_warn(hsotg->dev, "[WARN][USB] [%s]Retry to control vbus(%d)!\n", __func__, retry_cnt);
-			}
+
+			retry_cnt++;
+			msleep(50);
+			dev_warn(hsotg->dev,
+					"[WARN][USB] [%s]Retry to control vbus(%d)!\n",
+					__func__, retry_cnt);
 		} while (retry_cnt < VBUS_CTRL_MAX);
 #endif
 	}
 	dwc2_manual_change(hsotg);
 	if (hsotg->dr_mode == USB_DR_MODE_HOST) {
-#ifdef CONFIG_USB_DWC2_TCC_MUX
+#if defined(CONFIG_USB_DWC2_TCC_MUX)
 		dwc2_mux_hcd_init(hsotg);
 #endif
 	} else {
@@ -922,15 +1025,22 @@ static void dwc2_change_dr_mode(struct work_struct *w)
 				kthread_stop(hsotg->soffn_thread);
 				hsotg->soffn_thread = NULL;
 			}
-		
 
-			hsotg->soffn_thread = kthread_run(dwc2_soffn_monitor_thread, (void *)hsotg, "dwc2-soffn");
+
+			hsotg->soffn_thread =
+				kthread_run(dwc2_soffn_monitor_thread,
+						(void *)hsotg, "dwc2-soffn");
 			if (IS_ERR(hsotg->soffn_thread)) {
-				dev_warn(hsotg->dev, "[WARN][USB] \x1b[1;33m[%s:%d]\x1b[0m thread error\n", __func__, __LINE__);
+				dev_warn(hsotg->dev,
+						"[WARN][USB] \x1b[1;33m[%s:%d]\x1b[0m thread error\n",
+						__func__, __LINE__);
 				res = PTR_ERR(hsotg->soffn_thread);
 			}
 		}
-		dev_warn(hsotg->dev, "[WARN][USB] Current mode is %s \n", (hsotg->dr_mode == USB_DR_MODE_HOST) ? "Host" : "Device");
+		dev_warn(hsotg->dev,
+				"[WARN][USB] Current mode is %s\n",
+				(hsotg->dr_mode == USB_DR_MODE_HOST) ?
+				"Host" : "Device");
 	}
 }
 #endif
@@ -952,11 +1062,12 @@ static int dwc2_driver_remove(struct platform_device *dev)
 
 	dwc2_debugfs_exit(hsotg);
 	if (hsotg->hcd_enabled)
-#ifdef CONFIG_USB_DWC2_TCC_MUX
-	if (hsotg->dr_mode == USB_DR_MODE_HOST || hsotg->dr_mode == USB_DR_MODE_OTG)
-		dwc2_mux_hcd_remove(hsotg);
+#if defined(CONFIG_USB_DWC2_TCC_MUX)
+		if (hsotg->dr_mode == USB_DR_MODE_HOST ||
+				hsotg->dr_mode == USB_DR_MODE_OTG)
+			dwc2_mux_hcd_remove(hsotg);
 #else
-		dwc2_hcd_remove(hsotg);
+	dwc2_hcd_remove(hsotg);
 #endif
 	if (hsotg->gadget_enabled)
 		dwc2_hsotg_remove(hsotg);
@@ -965,8 +1076,8 @@ static int dwc2_driver_remove(struct platform_device *dev)
 		dwc2_lowlevel_hw_disable(hsotg);
 
 	reset_control_assert(hsotg->reset);
-#ifdef CONFIG_USB_DWC2_TCC
-#ifdef CONFIG_USB_DWC2_DUAL_ROLE
+#if defined(CONFIG_USB_DWC2_TCC)
+#if defined(CONFIG_USB_DWC2_DUAL_ROLE)
 	cancel_work_sync(&hsotg->drd_work);
 	destroy_workqueue(hsotg->drd_wq);
 
@@ -976,7 +1087,7 @@ static int dwc2_driver_remove(struct platform_device *dev)
 #endif
 
 	device_remove_file(&dev->dev, &dev_attr_dwc_pcfg1);
-#ifdef CONFIG_USB_DWC2_TCC_MUX
+#if defined(CONFIG_USB_DWC2_TCC_MUX)
 	device_remove_file(&dev->dev, &dev_attr_dwc_host_mux_pcfg1);
 #endif
 
@@ -998,10 +1109,11 @@ static int dwc2_driver_remove(struct platform_device *dev)
 static void dwc2_driver_shutdown(struct platform_device *dev)
 {
 	struct dwc2_hsotg *hsotg = platform_get_drvdata(dev);
-#ifdef CONFIG_USB_DWC2_TCC_MUX
+#if defined(CONFIG_USB_DWC2_TCC_MUX)
 	disable_irq(hsotg->ehci_irq);
 #endif
-	disable_irq(hsotg->irq);
+	dwc2_disable_global_interrupts(hsotg);
+	synchronize_irq(hsotg->irq);
 }
 
 /**
@@ -1021,6 +1133,7 @@ static int dwc2_driver_probe(struct platform_device *dev)
 	struct dwc2_hsotg *hsotg;
 	struct resource *res;
 	int retval;
+	unsigned int cpu;
 
 	hsotg = devm_kzalloc(&dev->dev, sizeof(*hsotg), GFP_KERNEL);
 	if (!hsotg)
@@ -1043,37 +1156,45 @@ static int dwc2_driver_probe(struct platform_device *dev)
 		return PTR_ERR(hsotg->regs);
 
 	dev_info(&dev->dev, "[INFO][USB] dwc2 controller mapped PA %08lx to VA %p\n",
-		(unsigned long)res->start, hsotg->regs);
-#ifdef CONFIG_USB_DWC2_TCC_MUX
+			(unsigned long)res->start, hsotg->regs);
+#if defined(CONFIG_USB_DWC2_TCC_MUX)
 	/*
 	 * Get ehci's register base for MUX
 	 */
-	hsotg->ehci_regs = dev->resource[1].start;
-	hsotg->ehci_regs_size = dev->resource[1].end - dev->resource[1].start + 1;
+	hsotg->ehci_regs = (void __iomem *)(long int)dev->resource[1].start;
+	hsotg->ehci_regs_size =
+		dev->resource[1].end - dev->resource[1].start + 1;
 	if (IS_ERR(hsotg->ehci_regs))
 		return PTR_ERR(hsotg->ehci_regs);
 
-	dev_info(&dev->dev, "[INFO][USB] ehci controller mapped PA %08lx to VA %p SIZE %d\n",
-		(unsigned long)res->start, hsotg->ehci_regs, hsotg->ehci_regs_size);
+	dev_info(&dev->dev,
+			"[INFO][USB] ehci controller mapped PA %08lx to VA %p SIZE %d\n",
+			(unsigned long)res->start,
+			hsotg->ehci_regs, hsotg->ehci_regs_size);
 
 	/*
 	 * Get ohci's register base for MUX
 	 */
-	hsotg->ohci_regs = dev->resource[2].start;
-	hsotg->ohci_regs_size = dev->resource[2].end - dev->resource[2].start + 1;
+	hsotg->ohci_regs = (void __iomem *)(long int)dev->resource[2].start;
+	hsotg->ohci_regs_size =
+		dev->resource[2].end - dev->resource[2].start + 1;
 	if (IS_ERR(hsotg->ohci_regs))
 		return PTR_ERR(hsotg->ohci_regs);
 
-	dev_info(&dev->dev, "[INFO][USB] ohci controller mapped PA %08lx to VA %p SIZE %d\n",
-		(unsigned long)res->start, hsotg->ohci_regs, hsotg->ohci_regs_size);
+	dev_info(&dev->dev,
+			"[INFO][USB] ohci controller mapped PA %08lx to VA %p SIZE %d\n",
+			(unsigned long)res->start,
+			hsotg->ohci_regs, hsotg->ohci_regs_size);
 
 #endif
 	retval = dwc2_lowlevel_hw_init(hsotg);
 	if (retval) {
-		dev_err(hsotg->dev, "[ERROR][USB] dwc2_lowlevel_hw_init() failed, errno %d.\n", retval);
+		dev_err(hsotg->dev,
+			"[ERROR][USB] dwc2_lowlevel_hw_init() failed, errno %d.\n",
+			retval);
 		return retval;
 	}
-	
+
 	spin_lock_init(&hsotg->lock);
 
 	hsotg->irq = platform_get_irq(dev, 0);
@@ -1082,28 +1203,35 @@ static int dwc2_driver_probe(struct platform_device *dev)
 		return hsotg->irq;
 	}
 
-	dev_info(hsotg->dev, "[INFO][USB] registering common handler for irq%d\n",
-		hsotg->irq);
-
-#ifdef CONFIG_USB_DWC2_TCC_MUX
+	dev_info(hsotg->dev,
+			"[INFO][USB] registering common handler for irq%d\n",
+			hsotg->irq);
+#if defined(CONFIG_USB_DWC2_TCC_MUX)
 	hsotg->ehci_irq = platform_get_irq(dev, 1);
 	if (hsotg->irq < 0) {
 		dev_err(&dev->dev, "[ERROR][USB] missing IRQ resource\n");
 		return hsotg->ehci_irq;
 	}
-	dev_dbg(hsotg->dev, "[DEBUG][USB] ehci_irq's number is %d\n", hsotg->ehci_irq);	
+	dev_dbg(hsotg->dev,
+			"[DEBUG][USB] ehci_irq's number is %d\n",
+			hsotg->ehci_irq);
 #endif
 
 	/* Set the irq affinity in order to handle the irq more stably */
 
-	unsigned int cpu = 1;
-	retval = irq_set_affinity_hint(hsotg->irq, cpumask_of(cpu));
-	if(retval) {
-		dev_err(hsotg->dev, "[ERROR][USB] failed to set the irq affinity irq %d cpu %d err %d\n",
+	cpu = 1;
+
+	retval =
+		irq_set_affinity_hint(hsotg->irq, cpumask_of(cpu));
+	if (retval) {
+		dev_err(hsotg->dev,
+				"[ERROR][USB] failed to set the irq affinity irq %d cpu %d err %d\n",
 				hsotg->irq, cpu, retval);
 		return retval;
 	}
-	dev_info(hsotg->dev, "[INFO][USB] set the irq(%d) affinity to cpu(%d)\n", hsotg->irq, cpu);
+	dev_info(hsotg->dev,
+			"[INFO][USB] set the irq(%d) affinity to cpu(%d)\n",
+			hsotg->irq, cpu);
 
 	retval = dwc2_get_dr_mode(hsotg);
 	if (retval)
@@ -1125,19 +1253,18 @@ static int dwc2_driver_probe(struct platform_device *dev)
 	if (retval)
 		goto error;
 
-	dwc2_force_dr_mode(hsotg);
-
 	retval = devm_request_irq(hsotg->dev, hsotg->irq,
-				  dwc2_handle_common_intr, IRQF_SHARED,
-				  dev_name(hsotg->dev), hsotg);
-
+			dwc2_handle_common_intr, IRQF_SHARED,
+			dev_name(hsotg->dev), hsotg);
 	if (retval)
 		return retval;
+
+	dwc2_force_dr_mode(hsotg);
 
 	retval = dwc2_init_params(hsotg);
 	if (retval)
 		goto error;
-	
+
 	if (hsotg->dr_mode != USB_DR_MODE_HOST) {
 		retval = dwc2_gadget_init(hsotg);
 		if (retval)
@@ -1146,7 +1273,7 @@ static int dwc2_driver_probe(struct platform_device *dev)
 	}
 
 	if (hsotg->dr_mode != USB_DR_MODE_PERIPHERAL) {
-#ifdef CONFIG_USB_DWC2_TCC_MUX
+#if defined(CONFIG_USB_DWC2_TCC_MUX)
 		retval = dwc2_mux_hcd_init(hsotg);
 #else
 		retval = dwc2_hcd_init(hsotg);
@@ -1168,57 +1295,57 @@ static int dwc2_driver_probe(struct platform_device *dev)
 		dwc2_lowlevel_hw_disable(hsotg);
 		goto skip_mode_change;
 	}
-#ifdef CONFIG_USB_DWC2_TCC
+#if defined(CONFIG_USB_DWC2_TCC)
 	retval = device_create_file(&dev->dev, &dev_attr_vbus);
-	if (retval) 
+	if (retval)
 		dev_err(hsotg->dev, "[ERROR][USB] failed to create vbus\n");
-	#ifdef CONFIG_USB_DWC2_DUAL_ROLE
+#if defined(CONFIG_USB_DWC2_DUAL_ROLE)
 	hsotg->drd_wq = create_singlethread_workqueue("dwc2");
-	if (!hsotg->drd_wq) {
+	if (!hsotg->drd_wq)
 		goto error;
-	}
+
 	INIT_WORK(&hsotg->drd_work, dwc2_change_dr_mode);
 	retval = device_create_file(&dev->dev, &dev_attr_drdmode);
 	if (retval)
 		dev_err(hsotg->dev, "[ERROR][USB] failed to create dr_mode\n");
 
-		#ifdef CONFIG_USB_DWC2_TCC_FIRST_HOST //first host
-			#ifdef CONFIG_USB_DWC2_TCC_MUX
+#if defined(CONFIG_USB_DWC2_TCC_FIRST_HOST) //first host
+#if defined(CONFIG_USB_DWC2_TCC_MUX)
 	//NOTHING TO DO!!
-			#else
+#else
 	hsotg->dr_mode = USB_DR_MODE_PERIPHERAL;
 	dwc2_manual_change(hsotg);
 	hsotg->dr_mode = USB_DR_MODE_HOST;
 	dwc2_manual_change(hsotg);
-			#endif
-		#elif CONFIG_USB_DWC2_TCC_FIRST_PERIPHERAL
-			#ifdef CONFIG_USB_DWC2_TCC_MUX
+#endif
+#elif defined(CONFIG_USB_DWC2_TCC_FIRST_PERIPHERAL)
+#if defined(CONFIG_USB_DWC2_TCC_MUX)
 	hsotg->dr_mode = USB_DR_MODE_PERIPHERAL;
+
 	struct work_struct *work;
+
 	work = &hsotg->drd_work;
 
 	if (work_pending(work))
-	{
 		dev_warn(hsotg->dev, "[WARN][USB] [drd_store pending]\n");
-	}
 
 	queue_work(hsotg->drd_wq, work);
 	/* wait for operation to complete */
 	flush_work(work);
-			#else
+#else
 	hsotg->dr_mode = USB_DR_MODE_PERIPHERAL;
 	dwc2_manual_change(hsotg);
-			#endif
+#endif
 
-		#endif //CONFIG_USB_DWC2_TCC_FIRST
-	#endif //CONFIG_USB_DWC2_DUAL_ROLE
+#endif //CONFIG_USB_DWC2_TCC_FIRST
+#endif //CONFIG_USB_DWC2_DUAL_ROLE
 #endif //CONFIG_USB_DWC2_TCC
 
 	retval = device_create_file(&dev->dev, &dev_attr_dwc_pcfg1);
 
 	if (retval)
 		dev_err(hsotg->dev, "[ERROR][USB] failed to create dwc_pcfg1\n");
-#ifdef CONFIG_USB_DWC2_TCC_MUX
+#if defined(CONFIG_USB_DWC2_TCC_MUX)
 	retval = device_create_file(&dev->dev, &dev_attr_dwc_host_mux_pcfg1);
 
 	if (retval)
@@ -1226,9 +1353,23 @@ static int dwc2_driver_probe(struct platform_device *dev)
 #endif
 
 skip_mode_change:
+#if IS_ENABLED(CONFIG_USB_DWC2_PERIPHERAL) || \
+	IS_ENABLED(CONFIG_USB_DWC2_DUAL_ROLE)
+	/* Postponed adding a new gadget to the udc class driver list */
+	if (hsotg->gadget_enabled) {
+		retval = usb_add_gadget_udc(hsotg->dev, &hsotg->gadget);
+		if (retval) {
+			hsotg->gadget.udc = NULL;
+			dwc2_hsotg_remove(hsotg);
+			goto error;
+		}
+	}
+#endif /* CONFIG_USB_DWC2_PERIPHERAL || CONFIG_USB_DWC2_DUAL_ROLE */
+
 	return 0;
 error:
-	dwc2_lowlevel_hw_disable(hsotg);
+	if (hsotg->dr_mode != USB_DR_MODE_PERIPHERAL)
+		dwc2_lowlevel_hw_disable(hsotg);
 	return retval;
 }
 

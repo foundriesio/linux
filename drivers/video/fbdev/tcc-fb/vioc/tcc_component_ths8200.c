@@ -1,30 +1,28 @@
-/****************************************************************************
-FileName    : kernel/drivers/video/tcc/vioc/tcc_component_ths8200.c
-Description :
-
-Copyright (C) 2013 Telechips Inc.
-
-This program is free software; you can redistribute it and/or modify it under
-the terms of the GNU General Public License as published by the Free Software
-Foundation; either version 2 of the License, or (at your option) any later
-version.
-
-This program is distributed in the hope that it will be useful, but WITHOUT ANY
-WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
-PARTICULAR PURPOSE. See the GNU General Public License for more details.
-
-You should have received a copy of the GNU General Public License along with
-this program; if not, write to the Free Software Foundation, Inc., 59 Temple
-Place, Suite 330, Boston, MA 02111-1307 USA
-****************************************************************************/
-
+/*
+ * Copyright (C) Telechips, Inc.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, see the file COPYING, or write
+ * to the Free Software Foundation, Inc.,
+ * 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+ */
 #include <linux/errno.h>
 #include <linux/i2c.h>
 #include <linux/delay.h>
 #include <linux/slab.h>
 #include <linux/module.h>
 #include <linux/gpio.h>
-#include <asm/io.h>
+#include <linux/io.h>
 #ifndef CONFIG_ARM64
 #include <asm/mach-types.h>
 #endif
@@ -38,92 +36,86 @@ Place, Suite 330, Boston, MA 02111-1307 USA
 #include "tcc_component_ths8200.h"
 
 /* Debugging stuff */
-static int debug = 0;
+//#define DBG_THS8200
+#ifdef DBG_THS8200
+#define dprintk(msg...) pr_info("[DBG][ths8200] " msg)
+#else
+#define dprintk(msg...)
+#endif
 
-#define dprintk(msg...)                                                        \
-	if (debug) {                                                           \
-		printk("[DBG][ths8200] " msg);                                       \
-	}
 
 static struct ths8200_std_info ths8200_video_720p_info[] = {
 	/*720p*/
-	{THS8200_DTG2_CNTL, THS8200_DTG2_CNTL_720P_DEFAULT},
-	{THS8200_DTG1_SPEC_A, THS8200_DTG1_SPEC_A_720P_DEFAULT},
-	{THS8200_DTG1_SPEC_B, THS8200_DTG1_SPEC_B_720P_DEFAULT},
-	{THS8200_DTG1_SPEC_C, THS8200_DTG1_SPEC_C_720P_DEFAULT},
-	{THS8200_DTG1_SPEC_D_LSB, THS8200_DTG1_SPEC_D_LSB_720P_DEFAULT},
-	{THS8200_DTG1_SPEC_E_LSB, THS8200_DTG1_SPEC_E_LSB_720P_DEFAULT},
-	{THS8200_DTG1_SPEC_DEH_MSB, THS8200_DTG1_SPEC_DEH_MSB_720P_DEFAULT},
-	{THS8200_DTG1_SPEC_K_LSB, THS8200_DTG1_SPEC_K_LSB_720P_DEFAULT},
-	{THS8200_DTG1_TOT_PIXELS_MSB, THS8200_DTG1_TOT_PIXELS_MSB_720P_DEFAULT},
-	{THS8200_DTG1_TOT_PIXELS_LSB, THS8200_DTG1_TOT_PIXELS_LSB_720P_DEFAULT},
-	{THS8200_DTG1_MODE, THS8200_DTG1_MODE_720P_DEFAULT},
-	{THS8200_DTG1_FRAME_FIELD_SZ_MSB,
-	 THS8200_DTG1_FRAME_FIELD_SZ_MSB_720P_DEFAULT},
-	{THS8200_DTG1_FRAME_SZ_LSB, THS8200_DTG1_FRAME_SZ_LSB_720P_DEFAULT},
-	{THS8200_DTG1_FIELD_SZ_LSB, THS8200_DTG1_FIELD_SZ_LSB_720P_DEFAULT},
-	{THS8200_DTG2_HS_IN_DLY_LSB, THS8200_DTG2_HS_IN_DLY_LSB_720P_DEFAULT},
-	{THS8200_DTG2_VS_IN_DLY_MSB, THS8200_DTG2_VS_IN_DLY_MSB_720P_DEFAULT},
-	{THS8200_DTG2_VS_IN_DLY_LSB, THS8200_DTG2_VS_IN_DLY_LSB_720P_DEFAULT},
+	{THS8200_DTG2_CNTL,               THS8200_DTG2_CNTL_720P_DEFAULT},
+	{THS8200_DTG1_SPEC_A,             THS8200_DTG1_SPEC_A_720P_DEFAULT},
+	{THS8200_DTG1_SPEC_B,             THS8200_DTG1_SPEC_B_720P_DEFAULT},
+	{THS8200_DTG1_SPEC_C,             THS8200_DTG1_SPEC_C_720P_DEFAULT},
+	{THS8200_DTG1_SPEC_D_LSB,         THS8200_DTG1_SPEC_D_LSB_720P_DEFAULT},
+	{THS8200_DTG1_SPEC_E_LSB,         THS8200_DTG1_SPEC_E_LSB_720P_DEFAULT},
+	{THS8200_DTG1_SPEC_DEH_MSB,       THS8200_DTG1_SPEC_DEH_MSB_720P_DEFAULT},
+	{THS8200_DTG1_SPEC_K_LSB,         THS8200_DTG1_SPEC_K_LSB_720P_DEFAULT},
+	{THS8200_DTG1_TOT_PIXELS_MSB,     THS8200_DTG1_TOT_PIXELS_MSB_720P_DEFAULT},
+	{THS8200_DTG1_TOT_PIXELS_LSB,     THS8200_DTG1_TOT_PIXELS_LSB_720P_DEFAULT},
+	{THS8200_DTG1_MODE,               THS8200_DTG1_MODE_720P_DEFAULT},
+	{THS8200_DTG1_FRAME_FIELD_SZ_MSB, THS8200_DTG1_FRAME_FIELD_SZ_MSB_720P_DEFAULT},
+	{THS8200_DTG1_FRAME_SZ_LSB,       THS8200_DTG1_FRAME_SZ_LSB_720P_DEFAULT},
+	{THS8200_DTG1_FIELD_SZ_LSB,       THS8200_DTG1_FIELD_SZ_LSB_720P_DEFAULT},
+	{THS8200_DTG2_HS_IN_DLY_LSB,      THS8200_DTG2_HS_IN_DLY_LSB_720P_DEFAULT},
+	{THS8200_DTG2_VS_IN_DLY_MSB,      THS8200_DTG2_VS_IN_DLY_MSB_720P_DEFAULT},
+	{THS8200_DTG2_VS_IN_DLY_LSB,      THS8200_DTG2_VS_IN_DLY_LSB_720P_DEFAULT},
 	{0, 0},
 };
 
-static struct ths8200_std_info ths8200_video_1080i_info[] =
-	{/*1080I*/
-	 {THS8200_TST_CNTL1, THS8200_TST_CNTL1_1080I_DEFAULT},
-	 {THS8200_TST_CNTL2, THS8200_TST_CNTL2_1080I_DEFAULT},
-	 {THS8200_CSM_GY_CNTL_MULT_MSB,
-	  THS8200_CSM_GY_CNTL_MULT_MSB_1080I_DEFAULT},
-	 {THS8200_DTG2_CNTL, THS8200_DTG2_CNTL_1080I_DEFAULT},
-	 {THS8200_DTG1_SPEC_A, THS8200_DTG1_SPEC_A_1080I_DEFAULT},
-	 {THS8200_DTG1_SPEC_B, THS8200_DTG1_SPEC_B_1080I_DEFAULT},
-	 {THS8200_DTG1_SPEC_C, THS8200_DTG1_SPEC_C_1080I_DEFAULT},
-	 {THS8200_DTG1_SPEC_D1, THS8200_DTG1_SPEC_D1_1080I_DEFAULT},
-	 {THS8200_DTG1_SPEC_D_LSB, THS8200_DTG1_SPEC_D_LSB_1080I_DEFAULT},
-	 {THS8200_DTG1_SPEC_E_LSB, THS8200_DTG1_SPEC_E_LSB_1080I_DEFAULT},
-	 {THS8200_DTG1_SPEC_DEH_MSB, THS8200_DTG1_SPEC_DEH_MSB_1080I_DEFAULT},
-	 {THS8200_DTG1_SPEC_K_LSB, THS8200_DTG1_SPEC_K_LSB_1080I_DEFAULT},
-	 {THS8200_DTG1_SPEC_G_LSB, THS8200_DTG1_SPEC_G_LSB_1080I_DEFAULT},
-	 {THS8200_DTG1_SPEC_G_MSB, THS8200_DTG1_SPEC_G_MSB_1080I_DEFAULT},
-	 {THS8200_DTG1_TOT_PIXELS_MSB,
-	  THS8200_DTG1_TOT_PIXELS_MSB_1080I_DEFAULT},
-	 {THS8200_DTG1_TOT_PIXELS_LSB,
-	  THS8200_DTG1_TOT_PIXELS_LSB_1080I_DEFAULT},
-	 {THS8200_DTG1_MODE, THS8200_DTG1_MODE_1080I_DEFAULT},
-	 {THS8200_DTG1_FRAME_FIELD_SZ_MSB,
-	  THS8200_DTG1_FRAME_FIELD_SZ_MSB_1080I_DEFAULT},
-	 {THS8200_DTG1_FRAME_SZ_LSB, THS8200_DTG1_FRAME_SZ_LSB_1080I_DEFAULT},
-	 {THS8200_DTG1_FIELD_SZ_LSB, THS8200_DTG1_FIELD_SZ_LSB_1080I_DEFAULT},
-	 {THS8200_DTG2_HLENGTH_LSB, THS8200_DTG2_HLENGTH_LSB_1080I_DEFAULT},
-	 {THS8200_DTG2_HLENGTH_LSB_HDLY_MSB,
-	  THS8200_DTG2_HLENGTH_LSB_HDLY_MSB_1080I_DEFAULT},
-	 {THS8200_DTG2_HLENGTH_HDLY_LSB,
-	  THS8200_DTG2_HLENGTH_HDLY_LSB_1080I_DEFAULT},
-	 {THS8200_DTG2_VLENGTH1_LSB, THS8200_DTG2_VLENGTH1_LSB_1080I_DEFAULT},
-	 {THS8200_DTG2_VLENGTH1_MSB_VDLY1_MSB,
-	  THS8200_DTG2_VLENGTH1_MSB_VDLY1_MSB_1080I_DEFAULT},
-	 {THS8200_DTG2_VDLY1_LSB, THS8200_DTG2_VDLY1_LSB_1080I_DEFAULT},
-	 {THS8200_DTG2_VLENGTH2_LSB, THS8200_DTG2_VLENGTH2_LSB_1080I_DEFAULT},
-	 {THS8200_DTG2_VDLY2_LSB, THS8200_DTG2_VDLY2_LSB_1080I_DEFAULT},
-	 {THS8200_DTG2_VLENGTH2_MSB_VDLY2_MSB,
-	  THS8200_DTG2_VLENGTH2_MSB_VDLY2_MSB_1080I_DEFAULT},
-	 {THS8200_DTG2_VDLY1_LSB, THS8200_DTG2_VDLY1_LSB_1080I_DEFAULT},
-	 {THS8200_DTG2_HS_IN_DLY_LSB, THS8200_DTG2_HS_IN_DLY_LSB_1080I_DEFAULT},
-	 {THS8200_DTG2_VS_IN_DLY_MSB, THS8200_DTG2_VS_IN_DLY_MSB_1080I_DEFAULT},
-	 {THS8200_DTG2_VS_IN_DLY_LSB, THS8200_DTG2_VS_IN_DLY_LSB_1080I_DEFAULT},
-	 {0, 0}};
+/* 1080I */
+static struct ths8200_std_info ths8200_video_1080i_info[] = {
+	{THS8200_TST_CNTL1,                   THS8200_TST_CNTL1_1080I_DEFAULT},
+	{THS8200_TST_CNTL2,                   THS8200_TST_CNTL2_1080I_DEFAULT},
+	{THS8200_CSM_GY_CNTL_MULT_MSB,        THS8200_CSM_GY_CNTL_MULT_MSB_1080I_DEFAULT},
+	{THS8200_DTG2_CNTL,                   THS8200_DTG2_CNTL_1080I_DEFAULT},
+	{THS8200_DTG1_SPEC_A,                 THS8200_DTG1_SPEC_A_1080I_DEFAULT},
+	{THS8200_DTG1_SPEC_B,                 THS8200_DTG1_SPEC_B_1080I_DEFAULT},
+	{THS8200_DTG1_SPEC_C,                 THS8200_DTG1_SPEC_C_1080I_DEFAULT},
+	{THS8200_DTG1_SPEC_D1,                THS8200_DTG1_SPEC_D1_1080I_DEFAULT},
+	{THS8200_DTG1_SPEC_D_LSB,             THS8200_DTG1_SPEC_D_LSB_1080I_DEFAULT},
+	{THS8200_DTG1_SPEC_E_LSB,             THS8200_DTG1_SPEC_E_LSB_1080I_DEFAULT},
+	{THS8200_DTG1_SPEC_DEH_MSB,           THS8200_DTG1_SPEC_DEH_MSB_1080I_DEFAULT},
+	{THS8200_DTG1_SPEC_K_LSB,             THS8200_DTG1_SPEC_K_LSB_1080I_DEFAULT},
+	{THS8200_DTG1_SPEC_G_LSB,             THS8200_DTG1_SPEC_G_LSB_1080I_DEFAULT},
+	{THS8200_DTG1_SPEC_G_MSB,             THS8200_DTG1_SPEC_G_MSB_1080I_DEFAULT},
+	{THS8200_DTG1_TOT_PIXELS_MSB,         THS8200_DTG1_TOT_PIXELS_MSB_1080I_DEFAULT},
+	{THS8200_DTG1_TOT_PIXELS_LSB,         THS8200_DTG1_TOT_PIXELS_LSB_1080I_DEFAULT},
+	{THS8200_DTG1_MODE,                   THS8200_DTG1_MODE_1080I_DEFAULT},
+	{THS8200_DTG1_FRAME_FIELD_SZ_MSB,     THS8200_DTG1_FRAME_FIELD_SZ_MSB_1080I_DEFAULT},
+	{THS8200_DTG1_FRAME_SZ_LSB,           THS8200_DTG1_FRAME_SZ_LSB_1080I_DEFAULT},
+	{THS8200_DTG1_FIELD_SZ_LSB,           THS8200_DTG1_FIELD_SZ_LSB_1080I_DEFAULT},
+	{THS8200_DTG2_HLENGTH_LSB,            THS8200_DTG2_HLENGTH_LSB_1080I_DEFAULT},
+	{THS8200_DTG2_HLENGTH_LSB_HDLY_MSB,   THS8200_DTG2_HLENGTH_LSB_HDLY_MSB_1080I_DEFAULT},
+	{THS8200_DTG2_HLENGTH_HDLY_LSB,       THS8200_DTG2_HLENGTH_HDLY_LSB_1080I_DEFAULT},
+	{THS8200_DTG2_VLENGTH1_LSB,           THS8200_DTG2_VLENGTH1_LSB_1080I_DEFAULT},
+	{THS8200_DTG2_VLENGTH1_MSB_VDLY1_MSB, THS8200_DTG2_VLENGTH1_MSB_VDLY1_MSB_1080I_DEFAULT},
+	{THS8200_DTG2_VDLY1_LSB,              THS8200_DTG2_VDLY1_LSB_1080I_DEFAULT},
+	{THS8200_DTG2_VLENGTH2_LSB,           THS8200_DTG2_VLENGTH2_LSB_1080I_DEFAULT},
+	{THS8200_DTG2_VDLY2_LSB,              THS8200_DTG2_VDLY2_LSB_1080I_DEFAULT},
+	{THS8200_DTG2_VLENGTH2_MSB_VDLY2_MSB, THS8200_DTG2_VLENGTH2_MSB_VDLY2_MSB_1080I_DEFAULT},
+	{THS8200_DTG2_VDLY1_LSB,              THS8200_DTG2_VDLY1_LSB_1080I_DEFAULT},
+	{THS8200_DTG2_HS_IN_DLY_LSB,          THS8200_DTG2_HS_IN_DLY_LSB_1080I_DEFAULT},
+	{THS8200_DTG2_VS_IN_DLY_MSB,          THS8200_DTG2_VS_IN_DLY_MSB_1080I_DEFAULT},
+	{THS8200_DTG2_VS_IN_DLY_LSB,          THS8200_DTG2_VS_IN_DLY_LSB_1080I_DEFAULT},
+	{0, 0}
+};
 
 static int ths8200_reset_port;
 static int ths8200_field_port;
 
-static struct i2c_client *ths8200_i2c_client = NULL;
+static struct i2c_client *ths8200_i2c_client;
 
 static const struct i2c_device_id ths8200_i2c_id[] = {
 	{
 		"component-ths8200",
 		0,
 	},
-	{}};
+	{}
+};
 
 static int ths8200_i2c_probe(struct i2c_client *client,
 			     const struct i2c_device_id *id)
@@ -137,22 +129,25 @@ static int ths8200_i2c_probe(struct i2c_client *client,
 	if (np) {
 		ths8200_reset_port = of_get_named_gpio(np, "rst-gpios", 0);
 		if (gpio_is_valid(ths8200_reset_port)) {
-			pr_info("[INF][ths8200] %s, reset port: 0x%02x\n", __func__,
-			       ths8200_reset_port);
+			pr_info("[INF][ths8200] %s, reset port: 0x%02x\n",
+				__func__, ths8200_reset_port);
 			gpio_request(ths8200_reset_port, "ths8200-reset");
 			gpio_direction_output(ths8200_reset_port, 0);
 		} else {
-			pr_err("[ERR][ths8200] %s, err to get rst-gpios\n", __func__);
+			pr_err("[ERR][ths8200] %s, err to get rst-gpios\n",
+				__func__);
 			ths8200_reset_port = -1;
 		}
 
 		ths8200_field_port = of_get_named_gpio(np, "field-gpios", 0);
 		if (gpio_is_valid(ths8200_field_port)) {
-			pr_debug("[DBG][ths8200] %s, field port: 0x%02x\n", __func__,
+			pr_debug("[DBG][ths8200] %s, field port: 0x%02x\n",
+				__func__,
 			       ths8200_field_port);
 			gpio_request(ths8200_field_port, "ths8200-field");
 		} else {
-			pr_err("[ERR][ths8200] %s, err to get field-gpios\n", __func__);
+			pr_err("[ERR][ths8200] %s, err to get field-gpios\n",
+				__func__);
 			ths8200_field_port = -1;
 		}
 	}
@@ -182,14 +177,14 @@ int ths8200_i2c_write(unsigned char reg, unsigned char val)
 	bytes = 2;
 
 	if (ths8200_i2c_client == NULL)
-		return ENODEV;
+		return -ENODEV;
 
 	if (i2c_master_send(ths8200_i2c_client, data, bytes) != bytes) {
 		dprintk("%s, error!!!!\n", __func__);
 		return -EIO;
 	}
 
-	// dprintk("ths8200_i2c_write success!!!! \n");
+	//dprintk("ths8200_i2c_write success!!!!\n");
 
 	return 0;
 }
@@ -199,7 +194,7 @@ int ths8200_i2c_read(unsigned char reg, unsigned char *val)
 	unsigned char bytes;
 
 	if (ths8200_i2c_client == NULL)
-		return ENODEV;
+		return -ENODEV;
 
 	bytes = 1;
 	if (i2c_master_send(ths8200_i2c_client, &reg, bytes) != bytes) {
@@ -249,11 +244,11 @@ static int ths8200_soft_reset(int mode)
 	err |= ths8200_i2c_write(THS8200_CHIP_CTL, val);
 
 #if 0
-	if(mode == COMPONENT_MODE_1080I)
+	if (mode == COMPONENT_MODE_1080I)
 		val |= 0x11;
 	else
 #endif
-	val |= 0x1;
+		val |= 0x1;
 
 	err |= ths8200_i2c_write(THS8200_CHIP_CTL, val);
 
@@ -283,16 +278,19 @@ void ths8200_set_mode(int mode, int starter_flag)
 	ths8200_soft_reset(mode);
 
 #if 0
-    for (i = THS8200_CSC_R11; i <= THS8200_CSC_OFFS3; i++) {
-	    /* reset color space conversion registers */
-	    err |= ths8200_i2c_write(i, 0x0);
-    }
+	for (i = THS8200_CSC_R11; i <= THS8200_CSC_OFFS3; i++) {
+		/* reset color space conversion registers */
+		err |= ths8200_i2c_write(i, 0x0);
+	}
 
-    /* CSC bypassed and Under overflow protection ON */
-    err |= ths8200_i2c_write(THS8200_CSC_OFFS3, ((THS8200_CSC_BYPASS << THS8200_CSC_BYPASS_SHIFT) | THS8200_CSC_UOF_CNTL));
+	/* CSC bypassed and Under overflow protection ON */
+	err |= ths8200_i2c_write(THS8200_CSC_OFFS3,
+		((THS8200_CSC_BYPASS << THS8200_CSC_BYPASS_SHIFT)
+		| THS8200_CSC_UOF_CNTL));
 
 	/* 20bit YCbCr 4:2:2 input data format */
-    err |= ths8200_i2c_write(THS8200_DATA_CNTL,THS8200_DATA_CNTL_MODE_20BIT_YCBCR);
+	err |= ths8200_i2c_write(THS8200_DATA_CNTL,
+		THS8200_DATA_CNTL_MODE_20BIT_YCBCR);
 #else
 #if defined(CONFIG_TCC_OUTPUT_COLOR_SPACE_YUV)
 	if (starter_flag == 0) {
@@ -402,13 +400,11 @@ void ths8200_set_mode(int mode, int starter_flag)
 		}
 		dprintk("\n\n");
 	}
-
-	return;
 }
 
 void ths8200_enable(int mode, int stater_flag)
 {
-	dprintk("ths8200_enable() : type=%d, stater_flag=%d\n", mode,
+	dprintk("%s: type=%d, stater_flag=%d\n", __func__, mode,
 		stater_flag);
 
 	ths8200_reset();
@@ -429,14 +425,13 @@ static struct i2c_driver ths8200_i2c_driver = {
 	.probe = ths8200_i2c_probe,
 	.remove = ths8200_i2c_remove,
 	.id_table = ths8200_i2c_id,
-	.driver =
-		{
-			.name = "component-ths8200",
-			.owner = THIS_MODULE,
+	.driver = {
+		.name = "component-ths8200",
+		.owner = THIS_MODULE,
 #ifdef CONFIG_OF
-			.of_match_table = ths8200_of_match,
+		.of_match_table = ths8200_of_match,
 #endif
-		},
+	},
 };
 
 static int ths8200_init(void)

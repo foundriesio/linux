@@ -34,6 +34,7 @@ static int lb080wv6_panel_init(struct lcd_panel *panel)
 static int lb080wv6_set_power(struct lcd_panel *panel, int on)
 {
 	struct lcd_platform_data *pdata = panel->dev->platform_data;
+
 	if (on) {
 		gpio_set_value(pdata->power_on, 1);
 		msleep(10);
@@ -46,39 +47,39 @@ static int lb080wv6_set_power(struct lcd_panel *panel, int on)
 		gpio_set_value(pdata->reset, 0);
 		gpio_set_value(pdata->power_on, 0);
 
-		//LCDC_IO_Disable(0, pdata->bus_width);
+		// LCDC_IO_Disable(0, pdata->bus_width);
 	}
 	return 0;
 }
 
 static struct lcd_panel lb080wv6_panel = {
-	.name		= "LB080WV6",
-	.manufacturer	= "LG PHILIPS",
-	.xres		= 800,
-	.yres		= 480,
-	.width		= 181,
-	.height		= 104,
-	.bpp		= 32,
-	.clk_freq	= 23000000,
-	.clk_div	= 2,
-	.bus_width	= 24,
-	.lpw		= 2,
-	.lpc		= 800,
-	.lswc		= 12,
-	.lewc		= 7,
-	.vdb		= 0,
-	.vdf		= 0,
-	.fpw1		= 0,
-	.flc1		= 480,
-	.fswc1		= 6,
-	.fewc1		= 4,
-	.fpw2		= 0,
-	.flc2		= 480,
-	.fswc2		= 6,
-	.fewc2		= 4,
-	.sync_invert	= IV_INVERT | IH_INVERT,
-	.init		= lb080wv6_panel_init,
-	.set_power	= lb080wv6_set_power,
+	.name = "LB080WV6",
+	.manufacturer = "LG PHILIPS",
+	.xres = 800,
+	.yres = 480,
+	.width = 181,
+	.height = 104,
+	.bpp = 32,
+	.clk_freq = 23000000,
+	.clk_div = 2,
+	.bus_width = 24,
+	.lpw = 2,
+	.lpc = 800,
+	.lswc = 12,
+	.lewc = 7,
+	.vdb = 0,
+	.vdf = 0,
+	.fpw1 = 0,
+	.flc1 = 480,
+	.fswc1 = 6,
+	.fewc1 = 4,
+	.fpw2 = 0,
+	.flc2 = 480,
+	.fswc2 = 6,
+	.fewc2 = 4,
+	.sync_invert = IV_INVERT | IH_INVERT,
+	.init = lb080wv6_panel_init,
+	.set_power = lb080wv6_set_power,
 };
 
 static int lb080wv6_probe(struct platform_device *pdev)
@@ -96,12 +97,12 @@ static int lb080wv6_remove(struct platform_device *pdev)
 }
 
 static struct platform_driver lb080wv6_lcd = {
-	.probe	= lb080wv6_probe,
-	.remove	= lb080wv6_remove,
-	.driver	= {
-		.name	= "lb080wv6_lcd",
-		.owner	= THIS_MODULE,
-	},
+	.probe = lb080wv6_probe,
+	.remove = lb080wv6_remove,
+	.driver = {
+			.name = "lb080wv6_lcd",
+			.owner = THIS_MODULE,
+		},
 };
 
 static __init int lb080wv6_init(void)

@@ -125,7 +125,8 @@ static void ehci_platform_power_off(struct platform_device *dev)
 	for (phy_num = 0; phy_num < priv->num_phys; phy_num++) {
 		phy_power_off(priv->phys[phy_num]);
 		phy_exit(priv->phys[phy_num]);
-		dev_info(&dev->dev, "[INFO][USB] phy_exit(priv->phys[%d]\n", phy_num);
+		dev_info(&dev->dev, "[INFO][USB] phy_exit(priv->phys[%d]\n",
+				phy_num);
 	}
 
 	for (clk = EHCI_MAX_CLKS - 1; clk >= 0; clk--)
@@ -165,7 +166,8 @@ static int ehci_platform_probe(struct platform_device *dev)
 	if (!pdata)
 		pdata = &ehci_platform_defaults;
 
-	of_dma_configure(&dev->dev, NULL); //fix issue - failed to alloc dma buffer
+	//fix issue - failed to alloc dma buffer
+	of_dma_configure(&dev->dev, NULL);
 
 	err = dma_coerce_mask_and_coherent(&dev->dev,
 		pdata->dma_mask_64 ? DMA_BIT_MASK(64) : DMA_BIT_MASK(32));
@@ -300,7 +302,7 @@ static int ehci_platform_probe(struct platform_device *dev)
 	hcd->rsrc_start = res_mem->start;
 	hcd->rsrc_len = resource_size(res_mem);
 	#ifdef CONFIG_TCC_DWC_HS_ELECT_TST
-	printk("[INFO][USB] %s : tpl_support!!\n", __func__);
+	pr_info("[INFO][USB] %s : tpl_support!!\n", __func__);
 	hcd->tpl_support = 1;
 	#endif
 
@@ -391,10 +393,9 @@ static int ehci_platform_resume(struct device *dev)
 			return err;
 	}
 
-#if defined (CONFIG_TCC_DWC_OTG_HOST_MUX) || defined (CONFIG_USB_DWC2_TCC_MUX)
-	if (hcd->usb_phy) {
+#if defined(CONFIG_TCC_DWC_OTG_HOST_MUX) || defined(CONFIG_USB_DWC2_TCC_MUX)
+	if (hcd->usb_phy)
 		hcd->usb_phy->init(hcd->usb_phy);
-	}
 #endif
 	companion_dev = usb_of_get_companion_dev(hcd->self.controller);
 	if (companion_dev) {

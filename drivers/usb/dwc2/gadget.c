@@ -157,7 +157,9 @@ static void dwc2_hsotg_en_gsint(struct dwc2_hsotg *hsotg, u32 ints)
 	new_gsintmsk = gsintmsk | ints;
 
 	if (new_gsintmsk != gsintmsk) {
-		dev_dbg(hsotg->dev, "[DEBUG][USB] gsintmsk now 0x%08x\n", new_gsintmsk);
+		dev_dbg(hsotg->dev,
+			"[DEBUG][USB] gsintmsk now 0x%08x\n",
+			new_gsintmsk);
 		dwc2_writel(new_gsintmsk, hsotg->regs + GINTMSK);
 	}
 }
@@ -217,13 +219,12 @@ int dwc2_hsotg_tx_fifo_count(struct dwc2_hsotg *hsotg)
 	if (hsotg->hw_params.en_multiple_tx_fifo)
 		/* In dedicated FIFO mode we need count of IN EPs */
 		return hsotg->hw_params.num_dev_in_eps;
-	else
-		/* In shared FIFO mode we need count of Periodic IN EPs */
-		return hsotg->hw_params.num_dev_perio_in_ep;
+
+	/* In shared FIFO mode we need count of Periodic IN EPs */
+	return hsotg->hw_params.num_dev_perio_in_ep;
 }
 
 /**
-
  * dwc2_hsotg_tx_fifo_total_depth - return total FIFO depth available for
  * device mode TX FIFOs
  */
@@ -344,7 +345,9 @@ static void dwc2_hsotg_init_fifo(struct dwc2_hsotg *hsotg)
 		udelay(1);
 	}
 
-	dev_dbg(hsotg->dev, "[DEBUG][USB] FIFOs reset, timeout at %d\n", timeout);
+	dev_dbg(hsotg->dev,
+		"[DEBUG][USB] FIFOs reset, timeout at %d\n",
+		timeout);
 }
 
 /**
@@ -880,7 +883,9 @@ static int dwc2_gadget_fill_isoc_desc(struct dwc2_hsotg_ep *hs_ep,
 	/* Check if descriptor chain full */
 	if ((desc->status >> DEV_DMA_BUFF_STS_SHIFT) ==
 	    DEV_DMA_BUFF_STS_HREADY) {
-		dev_dbg(hsotg->dev, "[DEBUG][USB] %s: desc chain full\n", __func__);
+		dev_dbg(hsotg->dev,
+			"[DEBUG][USB] %s: desc chain full\n",
+			__func__);
 		return 1;
 	}
 
@@ -948,7 +953,9 @@ static void dwc2_gadget_start_isoc_ddma(struct dwc2_hsotg_ep *hs_ep)
 
 	if (list_empty(&hs_ep->queue)) {
 		hs_ep->target_frame = TARGET_FRAME_INITIAL;
-		dev_dbg(hsotg->dev, "[DEBUG][USB] %s: No requests in queue\n", __func__);
+		dev_dbg(hsotg->dev,
+			"[DEBUG][USB] %s: No requests in queue\n",
+			__func__);
 		return;
 	}
 
@@ -1015,12 +1022,15 @@ static void dwc2_hsotg_start_req(struct dwc2_hsotg *hsotg,
 
 	if (index != 0) {
 		if (hs_ep->req && !continuing) {
-			dev_err(hsotg->dev, "[ERROR][USB] %s: active request\n", __func__);
+			dev_err(hsotg->dev,
+				"[ERROR][USB] %s: active request\n",
+				__func__);
 			WARN_ON(1);
 			return;
 		} else if (hs_ep->req != hs_req && continuing) {
 			dev_err(hsotg->dev,
-				"[ERROR][USB] %s: continue different req\n", __func__);
+				"[ERROR][USB] %s: continue different req\n",
+				__func__);
 			WARN_ON(1);
 			return;
 		}
@@ -1038,7 +1048,9 @@ static void dwc2_hsotg_start_req(struct dwc2_hsotg *hsotg,
 	ctrl = dwc2_readl(hsotg->regs + epctrl_reg);
 
 	if (index && ctrl & DXEPCTL_STALL) {
-		dev_warn(hsotg->dev, "[WARN][USB] %s: ep%d is stalled\n", __func__, index);
+		dev_warn(hsotg->dev,
+			"[WARN][USB] %s: ep%d is stalled\n",
+			__func__, index);
 		return;
 	}
 
@@ -1167,7 +1179,9 @@ static void dwc2_hsotg_start_req(struct dwc2_hsotg *hsotg,
 	if (!(index == 0 && hsotg->ep0_state == DWC2_EP0_SETUP))
 		ctrl |= DXEPCTL_CNAK;	/* clear NAK set by core */
 
-	dev_dbg(hsotg->dev, "[DEBUG][USB] %s: DxEPCTL=0x%08x\n", __func__, ctrl);
+	dev_dbg(hsotg->dev,
+		"[DEBUG][USB] %s: DxEPCTL=0x%08x\n",
+		__func__, ctrl);
 	dwc2_writel(ctrl, hsotg->regs + epctrl_reg);
 
 	/*
@@ -1275,7 +1289,9 @@ dwc2_hsotg_handle_unaligned_buf_complete(struct dwc2_hsotg *hsotg,
 	if (!using_dma(hsotg) || !hs_req->saved_req_buf)
 		return;
 
-	dev_dbg(hsotg->dev, "[DEBUG][USB] %s: %s: status=%d actual-length=%d\n", __func__,
+	dev_dbg(hsotg->dev,
+		"[DEBUG][USB] %s: %s: status=%d actual-length=%d\n",
+		__func__,
 		hs_ep->ep.name, hs_req->req.status, hs_req->req.actual);
 
 	/* Copy data from bounce buffer on successful out transfer */
@@ -1431,7 +1447,7 @@ static int dwc2_hsotg_ep_queue(struct usb_ep *ep, struct usb_request *req,
 			}
 			dwc2_gadget_fill_isoc_desc(hs_ep, dma_addr,
 						   hs_req->req.length);
-		}	
+		}
 		return 0;
 	}
 
@@ -1494,7 +1510,9 @@ static void dwc2_hsotg_complete_oursetup(struct usb_ep *ep,
 	struct dwc2_hsotg_ep *hs_ep = our_ep(ep);
 	struct dwc2_hsotg *hsotg = hs_ep->parent;
 
-	dev_dbg(hsotg->dev, "[DEBUG][USB] %s: ep %p, req %p\n", __func__, ep, req);
+	dev_dbg(hsotg->dev,
+		"[DEBUG][USB] %s: ep %p, req %p\n",
+		__func__, ep, req);
 
 	dwc2_hsotg_ep_free_request(ep, req);
 }
@@ -1538,7 +1556,9 @@ int dwc2_hsotg_set_test_mode(struct dwc2_hsotg *hsotg, int testmode)
 {
 	int dctl = dwc2_readl(hsotg->regs + DCTL);
 
-	printk("[INFO][USB] @0x%08X: 0x%08X\n", (unsigned int)(hsotg->regs + DCTL), dctl);
+	dev_info(hsotg->dev,
+		"[INFO][USB] @0x%lX: 0x%08X\n",
+		(unsigned long)(hsotg->regs + DCTL), dctl);
 	dctl &= ~DCTL_TSTCTL_MASK;
 	switch (testmode) {
 	case TEST_J:
@@ -1554,7 +1574,9 @@ int dwc2_hsotg_set_test_mode(struct dwc2_hsotg *hsotg, int testmode)
 	dwc2_writel(dctl, hsotg->regs + DCTL);
 	udelay(100);
 	dctl = dwc2_readl(hsotg->regs + DCTL);
-	printk("[INFO][USB] @0x%08X: 0x%08X\n", (unsigned int)(hsotg->regs + DCTL), dctl);
+	dev_info(hsotg->dev,
+		"[INFO][USB] @0x%lX: 0x%08X\n",
+		(unsigned long)(hsotg->regs + DCTL), dctl);
 
 	return 0;
 }
@@ -1577,12 +1599,16 @@ static int dwc2_hsotg_send_reply(struct dwc2_hsotg *hsotg,
 	struct usb_request *req;
 	int ret;
 
-	dev_dbg(hsotg->dev, "[DEBUG][USB] %s: buff %p, len %d\n", __func__, buff, length);
+	dev_dbg(hsotg->dev,
+		"[DEBUG][USB] %s: buff %p, len %d\n",
+		__func__, buff, length);
 
 	req = dwc2_hsotg_ep_alloc_request(&ep->ep, GFP_ATOMIC);
 	hsotg->ep0_reply = req;
 	if (!req) {
-		dev_warn(hsotg->dev, "[WARN][USB] %s: cannot alloc req\n", __func__);
+		dev_warn(hsotg->dev,
+			"[WARN][USB] %s: cannot alloc req\n",
+			__func__);
 		return -ENOMEM;
 	}
 
@@ -1600,7 +1626,9 @@ static int dwc2_hsotg_send_reply(struct dwc2_hsotg *hsotg,
 
 	ret = dwc2_hsotg_ep_queue(&ep->ep, req, GFP_ATOMIC);
 	if (ret) {
-		dev_warn(hsotg->dev, "[WARN][USB] %s: cannot queue req\n", __func__);
+		dev_warn(hsotg->dev,
+			"[WARN][USB] %s: cannot queue req\n",
+			__func__);
 		return ret;
 	}
 
@@ -1620,10 +1648,14 @@ static int dwc2_hsotg_process_req_status(struct dwc2_hsotg *hsotg,
 	__le16 reply;
 	int ret;
 
-	dev_dbg(hsotg->dev, "[DEBUG][USB] %s: USB_REQ_GET_STATUS\n", __func__);
+	dev_dbg(hsotg->dev,
+		"[DEBUG][USB] %s: USB_REQ_GET_STATUS\n",
+		__func__);
 
 	if (!ep0->dir_in) {
-		dev_warn(hsotg->dev, "[WARN][USB] %s: direction out?\n", __func__);
+		dev_warn(hsotg->dev,
+			"[WARN][USB] %s: direction out?\n",
+			__func__);
 		return -EINVAL;
 	}
 
@@ -1656,7 +1688,9 @@ static int dwc2_hsotg_process_req_status(struct dwc2_hsotg *hsotg,
 		return -EINVAL;
 	ret = dwc2_hsotg_send_reply(hsotg, ep0, &reply, 2);
 	if (ret) {
-		dev_err(hsotg->dev, "[ERROR][USB] %s: failed to send reply\n", __func__);
+		dev_err(hsotg->dev,
+			"[ERROR][USB] %s: failed to send reply\n",
+			__func__);
 		return ret;
 	}
 
@@ -1751,7 +1785,8 @@ static int dwc2_hsotg_process_req_feature(struct dwc2_hsotg *hsotg,
 			ret = dwc2_hsotg_send_reply(hsotg, ep0, NULL, 0);
 			if (ret) {
 				dev_err(hsotg->dev,
-					"[ERROR][USB] %s: failed to send reply\n", __func__);
+					"[ERROR][USB] %s: failed to send reply\n",
+					__func__);
 				return ret;
 			}
 			break;
@@ -1777,7 +1812,8 @@ static int dwc2_hsotg_process_req_feature(struct dwc2_hsotg *hsotg,
 			ret = dwc2_hsotg_send_reply(hsotg, ep0, NULL, 0);
 			if (ret) {
 				dev_err(hsotg->dev,
-					"[ERROR][USB] %s: failed to send reply\n", __func__);
+					"[ERROR][USB] %s: failed to send reply\n",
+					__func__);
 				return ret;
 			}
 
@@ -1900,7 +1936,9 @@ static void dwc2_hsotg_process_control(struct dwc2_hsotg *hsotg,
 				 DCFG_DEVADDR_SHIFT) & DCFG_DEVADDR_MASK;
 			dwc2_writel(dcfg, hsotg->regs + DCFG);
 
-			dev_info(hsotg->dev, "[INFO][USB] new address %d\n", ctrl->wValue);
+			dev_info(hsotg->dev,
+				"[INFO][USB] new address %d\n",
+				ctrl->wValue);
 
 			ret = dwc2_hsotg_send_reply(hsotg, ep0, NULL, 0);
 			return;
@@ -1923,7 +1961,9 @@ static void dwc2_hsotg_process_control(struct dwc2_hsotg *hsotg,
 		ret = hsotg->driver->setup(&hsotg->gadget, ctrl);
 		spin_lock(&hsotg->lock);
 		if (ret < 0)
-			dev_dbg(hsotg->dev, "[DEBUG][USB] driver->setup() ret %d\n", ret);
+			dev_dbg(hsotg->dev,
+				"[DEBUG][USB] driver->setup() ret %d\n",
+				ret);
 	}
 
 	/*
@@ -1950,7 +1990,9 @@ static void dwc2_hsotg_complete_setup(struct usb_ep *ep,
 	struct dwc2_hsotg *hsotg = hs_ep->parent;
 
 	if (req->status < 0) {
-		dev_dbg(hsotg->dev, "[DEBUG][USB] %s: failed %d\n", __func__, req->status);
+		dev_dbg(hsotg->dev,
+			"[DEBUG][USB] %s: failed %d\n", __func__,
+			req->status);
 		return;
 	}
 
@@ -1975,7 +2017,9 @@ static void dwc2_hsotg_enqueue_setup(struct dwc2_hsotg *hsotg)
 	struct dwc2_hsotg_req *hs_req = our_req(req);
 	int ret;
 
-	dev_dbg(hsotg->dev, "[DEBUG][USB] %s: queueing setup request\n", __func__);
+	dev_dbg(hsotg->dev,
+		"[DEBUG][USB] %s: queueing setup request\n",
+		__func__);
 
 	req->zero = 0;
 	req->length = 8;
@@ -1983,7 +2027,9 @@ static void dwc2_hsotg_enqueue_setup(struct dwc2_hsotg *hsotg)
 	req->complete = dwc2_hsotg_complete_setup;
 
 	if (!list_empty(&hs_req->queue)) {
-		dev_dbg(hsotg->dev, "[DEBUG][USB] %s already queued???\n", __func__);
+		dev_dbg(hsotg->dev,
+			"[DEBUG][USB] %s already queued???\n",
+			__func__);
 		return;
 	}
 
@@ -1993,7 +2039,9 @@ static void dwc2_hsotg_enqueue_setup(struct dwc2_hsotg *hsotg)
 
 	ret = dwc2_hsotg_ep_queue(&hsotg->eps_out[0]->ep, req, GFP_ATOMIC);
 	if (ret < 0) {
-		dev_err(hsotg->dev, "[ERROR][USB] %s: failed queue (%d)\n", __func__, ret);
+		dev_err(hsotg->dev,
+			"[ERROR][USB] %s: failed queue (%d)\n",
+			__func__, ret);
 		/*
 		 * Don't think there's much we can do other than watch the
 		 * driver fail.
@@ -2017,7 +2065,7 @@ static void dwc2_hsotg_program_zlp(struct dwc2_hsotg *hsotg,
 			index);
 	if (using_desc_dma(hsotg)) {
 		if (!index)
-		dwc2_gadget_set_ep0_desc_chain(hsotg, hs_ep);
+			dwc2_gadget_set_ep0_desc_chain(hsotg, hs_ep);
 
 		/* Not specific buffer needed for ep0 ZLP */
 		dwc2_gadget_fill_nonisoc_xfer_ddma_one(hs_ep, &hs_ep->desc_list,
@@ -2054,7 +2102,9 @@ static void dwc2_hsotg_complete_request(struct dwc2_hsotg *hsotg,
 				       int result)
 {
 	if (!hs_req) {
-		dev_dbg(hsotg->dev, "[DEBUG][USB] %s: nothing to complete?\n", __func__);
+		dev_dbg(hsotg->dev,
+			"[DEBUG][USB] %s: nothing to complete?\n",
+			__func__);
 		return;
 	}
 
@@ -2127,7 +2177,9 @@ static void dwc2_gadget_complete_isoc_request_ddma(struct dwc2_hsotg_ep *hs_ep)
 		dev_dbg(hsotg->dev, "[DEBUG][USB] %s: In while!\n", __func__);
 		hs_req = get_ep_head(hs_ep);
 		if (!hs_req) {
-			dev_warn(hsotg->dev, "[WARN][USB] %s: ISOC EP queue empty\n", __func__);
+			dev_warn(hsotg->dev,
+				"[WARN][USB] %s: ISOC EP queue empty\n",
+				__func__);
 			return;
 		}
 		ureq = &hs_req->req;
@@ -2168,6 +2220,7 @@ static void dwc2_gadget_complete_isoc_request_ddma(struct dwc2_hsotg_ep *hs_ep)
 static void dwc2_gadget_handle_isoc_bna(struct dwc2_hsotg_ep *hs_ep)
 {
 	struct dwc2_hsotg *hsotg = hs_ep->parent;
+
 	if (!hs_ep->dir_in)
 		dwc2_flush_rx_fifo(hsotg);
 	dwc2_hsotg_complete_request(hsotg, hs_ep, get_ep_head(hs_ep), 0);
@@ -2297,6 +2350,7 @@ static unsigned int dwc2_gadget_get_xfersize_ddma(struct dwc2_hsotg_ep *hs_ep)
 		if (status & DEV_DMA_STS_MASK)
 			dev_err(hsotg->dev, "[ERROR][USB] descriptor %d closed with %x\n",
 				i, status & DEV_DMA_STS_MASK);
+		desc++;
 	}
 
 	return bytes_rem;
@@ -2321,7 +2375,9 @@ static void dwc2_hsotg_handle_outdone(struct dwc2_hsotg *hsotg, int epnum)
 	int result = 0;
 
 	if (!hs_req) {
-		dev_dbg(hsotg->dev, "[DEBUG][USB] %s: no request active\n", __func__);
+		dev_dbg(hsotg->dev,
+			"[DEBUG][USB] %s: no request active\n",
+			__func__);
 		return;
 	}
 
@@ -2696,7 +2752,9 @@ static void dwc2_hsotg_complete_in(struct dwc2_hsotg *hsotg,
 		hs_req->req.length, hs_req->req.actual, hs_req->req.zero);
 
 	if (!size_left && hs_req->req.actual < hs_req->req.length) {
-		dev_dbg(hsotg->dev, "[DEBUG][USB] %s trying more for req...\n", __func__);
+		dev_dbg(hsotg->dev,
+			"[DEBUG][USB] %s trying more for req...\n",
+			__func__);
 		dwc2_hsotg_start_req(hsotg, hs_ep, hs_req, true);
 		return;
 	}
@@ -2833,13 +2891,8 @@ static void dwc2_gadget_handle_out_token_ep_disabled(struct dwc2_hsotg_ep *ep)
 	int dir_in = ep->dir_in;
 	u32 doepmsk;
 
-	if (dir_in || !ep->isochronous) {
-		//u32 doepint = 0;
-		//dev_dbg(hsotg->dev, "[DEBUG][USB] [KJS] dir_in : %d isoc : %d idx : %d\n", ep->dir_in, ep->isochronous, ep->index);
-		//doepint |= DXEPINT_OUTTKNEPDIS;
-		//dwc2_writel(doepint, hsotg->regs + DOEPINT(ep->index)); 
+	if (dir_in || !ep->isochronous)
 		return;
-	}
 
 	if (using_desc_dma(hsotg)) {
 		if (ep->target_frame == TARGET_FRAME_INITIAL) {
@@ -2995,7 +3048,9 @@ static void dwc2_hsotg_epint(struct dwc2_hsotg *hsotg, unsigned int idx,
 		if (using_desc_dma(hsotg) && hs_ep->isochronous) {
 			/* XferCompl set along with BNA */
 			if (!(ints & DXEPINT_BNAINTR)) {
-				dev_dbg(hsotg->dev, "[DEBUG][USB] %s: XferCompl in IF\n", __func__);
+				dev_dbg(hsotg->dev,
+					"[DEBUG][USB] %s: XferCompl in IF\n",
+					__func__);
 				dwc2_gadget_complete_isoc_request_ddma(hs_ep);
 			}
 		} else if (dir_in) {
@@ -3038,7 +3093,9 @@ static void dwc2_hsotg_epint(struct dwc2_hsotg *hsotg, unsigned int idx,
 		dev_dbg(hsotg->dev, "[DEBUG][USB] %s: AHBErr\n", __func__);
 
 	if (ints & DXEPINT_SETUP) {  /* Setup or Timeout */
-		dev_dbg(hsotg->dev, "[DEBUG][USB] %s: Setup/Timeout\n",  __func__);
+		dev_dbg(hsotg->dev,
+			"[DEBUG][USB] %s: Setup/Timeout\n",
+			__func__);
 
 		if (using_dma(hsotg) && idx == 0) {
 			/*
@@ -3068,10 +3125,14 @@ static void dwc2_hsotg_epint(struct dwc2_hsotg *hsotg, unsigned int idx,
 	}
 
 	if (ints & DXEPINT_BACK2BACKSETUP)
-		dev_dbg(hsotg->dev, "[DEBUG][USB] %s: B2BSetup/INEPNakEff\n", __func__);
+		dev_dbg(hsotg->dev,
+			"[DEBUG][USB] %s: B2BSetup/INEPNakEff\n",
+			__func__);
 
 	if (ints & DXEPINT_BNAINTR) {
-		dev_dbg(hsotg->dev, "[DEBUG][USB] %s: BNA interrupt\n", __func__);
+		dev_dbg(hsotg->dev,
+			"[DEBUG][USB] %s: BNA interrupt\n",
+			__func__);
 		if (hs_ep->isochronous)
 			dwc2_gadget_handle_isoc_bna(hs_ep);
 	}
@@ -3229,7 +3290,7 @@ void dwc2_hsotg_disconnect(struct dwc2_hsotg *hsotg)
 		return;
 
 	dev_info(hsotg->dev, "[INFO][USB] %s : %d\n", __func__, __LINE__);
-	
+
 	hsotg->connected = 0;
 	hsotg->test_mode = 0;
 
@@ -3374,8 +3435,10 @@ void dwc2_hsotg_core_init_disconnected(struct dwc2_hsotg *hsotg,
 		GINTSTS_ENUMDONE | GINTSTS_OTGINT |
 		GINTSTS_USBSUSP | GINTSTS_WKUPINT;
 
+#if 0
 	if (!using_desc_dma(hsotg))
-		//intmsk |= GINTSTS_INCOMPL_SOIN | GINTSTS_INCOMPL_SOOUT;
+		intmsk |= GINTSTS_INCOMPL_SOIN | GINTSTS_INCOMPL_SOOUT;
+#endif
 
 	if (!hsotg->params.external_id_pin_ctl)
 		intmsk |= GINTSTS_CONIDSTSCHNG;
@@ -3457,7 +3520,9 @@ void dwc2_hsotg_core_init_disconnected(struct dwc2_hsotg *hsotg,
 		__bic32(hsotg->regs + DCTL, DCTL_PWRONPRGDONE);
 	}
 
-	dev_dbg(hsotg->dev, "[DEBUG][USB] DCTL=0x%08x\n", dwc2_readl(hsotg->regs + DCTL));
+	dev_dbg(hsotg->dev,
+		"[DEBUG][USB] DCTL=0x%08x\n",
+		dwc2_readl(hsotg->regs + DCTL));
 
 	/*
 	 * DxEPCTL_USBActEp says RO in manual, but seems to be set by
@@ -3572,7 +3637,9 @@ static void dwc2_gadget_handle_incomplete_isoc_out(struct dwc2_hsotg *hsotg)
 	struct dwc2_hsotg_ep *hs_ep;
 	int idx;
 
-	dev_dbg(hsotg->dev, "[DEBUG][USB] %s: GINTSTS_INCOMPL_SOOUT\n", __func__);
+	dev_dbg(hsotg->dev,
+		"[DEBUG][USB] %s: GINTSTS_INCOMPL_SOOUT\n",
+		__func__);
 #if 1
 	daintmsk = dwc2_readl(hsotg->regs + DAINTMSK);
 	daintmsk >>= DAINT_OUTEP_SHIFT;
@@ -3590,10 +3657,14 @@ static void dwc2_gadget_handle_incomplete_isoc_out(struct dwc2_hsotg *hsotg)
 			gintmsk = dwc2_readl(hsotg->regs + GINTMSK);
 			gintmsk |= GINTSTS_GOUTNAKEFF;
 			dwc2_writel(gintmsk, hsotg->regs + GINTMSK);
-			dev_dbg(hsotg->dev, "[DEBUG][USB] %s: GINTSTS_INCOMPL_SOUT +\n", __func__);
+			dev_dbg(hsotg->dev,
+				"[DEBUG][USB] %s: GINTSTS_INCOMPL_SOUT +\n",
+				__func__);
 			gintsts = dwc2_readl(hsotg->regs + GINTSTS);
 			if (!(gintsts & GINTSTS_GOUTNAKEFF)) {
-				dev_dbg(hsotg->dev, "[DEBUG][USB] %s: GINTSTS_INCOMPL_SOOUT ++\n", __func__);
+				dev_dbg(hsotg->dev,
+					"[DEBUG][USB] %s: GINTSTS_INCOMPL_SOOUT ++\n",
+					__func__);
 				__orr32(hsotg->regs + DCTL, DCTL_SGOUTNAK);
 				break;
 			}
@@ -3631,6 +3702,7 @@ static irqreturn_t dwc2_hsotg_irq(int irq, void *pw)
 	int retry_count = 8;
 	u32 gintsts;
 	u32 gintmsk;
+	u32 gotgint;
 
 	if (!dwc2_is_device_mode(hsotg))
 		return IRQ_NONE;
@@ -3693,7 +3765,9 @@ irq_retry:
 		daint_out = daint >> DAINT_OUTEP_SHIFT;
 		daint_in = daint & ~(daint_out << DAINT_OUTEP_SHIFT);
 
-		dev_dbg(hsotg->dev, "[DEBUG][USB] %s: daint=%08x\n", __func__, daint);
+		dev_dbg(hsotg->dev,
+			"[DEBUG][USB] %s: daint=%08x\n", __func__,
+			daint);
 
 		for (ep = 0; ep < hsotg->num_of_eps && daint_out;
 						ep++, daint_out >>= 1) {
@@ -3776,7 +3850,7 @@ irq_retry:
 
 			epctrl = dwc2_readl(hsotg->regs + DOEPCTL(idx));
 
-			if (epctrl & DXEPCTL_EPENA) {	
+			if (epctrl & DXEPCTL_EPENA) {
 				epctrl |= DXEPCTL_SNAK;
 				epctrl |= DXEPCTL_EPDIS;
 				dwc2_writel(epctrl, hsotg->regs + DOEPCTL(idx));
@@ -3793,12 +3867,7 @@ irq_retry:
 
 		dwc2_hsotg_dump(hsotg);
 	}
-/*
-	if (gintsts & GINTSTS_ISOUTDROP) {
-		dev_dbg(hsotg->dev, "[DEBUG][USB] ISOUTDROP treggered\n");
-		dwc2_writel(GINTSTS_ISOUTDROP, hsotg->regs + GINTSTS);	
-	}
-*/
+
 	if (gintsts & GINTSTS_INCOMPL_SOIN)
 		dwc2_gadget_handle_incomplete_isoc_in(hsotg);
 
@@ -3814,8 +3883,6 @@ irq_retry:
 		goto irq_retry;
 
 #ifdef CONFIG_USB_DWC2_TCC
-	u32 gotgint;
-
 	gotgint = dwc2_readl(hsotg->regs + GOTGINT);
 	if (gotgint & GOTGINT_MVC) {
 		dev_dbg(hsotg->dev,
@@ -3824,7 +3891,7 @@ irq_retry:
 		gotgint |= GOTGINT_MVC;
 		dwc2_writel(gotgint, hsotg->regs + GOTGINT);
 	}
-#endif 
+#endif
 
 	spin_unlock(&hsotg->lock);
 
@@ -3842,7 +3909,8 @@ static void dwc2_hsotg_ep_stop_xfr(struct dwc2_hsotg *hsotg,
 	epint_reg = hs_ep->dir_in ? DIEPINT(hs_ep->index) :
 		DOEPINT(hs_ep->index);
 
-	dev_dbg(hsotg->dev, "[DEBUG][USB] %s: stopping transfer on %s\n", __func__,
+	dev_dbg(hsotg->dev,
+		"[DEBUG][USB] %s: stopping transfer on %s\n", __func__,
 		hs_ep->name);
 
 	if (hs_ep->dir_in) {
@@ -3880,7 +3948,8 @@ static void dwc2_hsotg_ep_stop_xfr(struct dwc2_hsotg *hsotg,
 	/* Wait for ep to be disabled */
 	if (dwc2_hsotg_wait_bit_set(hsotg, epint_reg, DXEPINT_EPDISBLD, 100))
 		dev_warn(hsotg->dev,
-			 "[WARN][USB] %s: timeout DOEPCTL.EPDisable\n", __func__);
+			 "[WARN][USB] %s: timeout DOEPCTL.EPDisable\n",
+			__func__);
 
 	/* Clear EPDISBLD interrupt */
 	__orr32(hsotg->regs + epint_reg, DXEPINT_EPDISBLD);
@@ -3937,13 +4006,17 @@ static int dwc2_hsotg_ep_enable(struct usb_ep *ep,
 
 	/* not to be called for EP0 */
 	if (index == 0) {
-		dev_err(hsotg->dev, "[ERROR][USB] %s: called for EP 0\n", __func__);
+		dev_err(hsotg->dev,
+			"[ERROR][USB] %s: called for EP 0\n",
+			__func__);
 		return -EINVAL;
 	}
 
 	dir_in = (desc->bEndpointAddress & USB_ENDPOINT_DIR_MASK) ? 1 : 0;
 	if (dir_in != hs_ep->dir_in) {
-		dev_err(hsotg->dev, "[ERROR][USB] %s: direction mismatch!\n", __func__);
+		dev_err(hsotg->dev,
+			"[ERROR][USB] %s: direction mismatch!\n",
+			__func__);
 		return -EINVAL;
 	}
 
@@ -3955,7 +4028,8 @@ static int dwc2_hsotg_ep_enable(struct usb_ep *ep,
 	if (using_desc_dma(hsotg) && ep_type == USB_ENDPOINT_XFER_ISOC &&
 	    dir_in && desc->bInterval > 10) {
 		dev_err(hsotg->dev,
-			"[ERROR][USB] %s: ISOC IN, DDMA: bInterval>10 not supported!\n", __func__);
+			"[ERROR][USB] %s: ISOC IN, DDMA: bInterval>10 not supported!\n",
+			__func__);
 		return -EINVAL;
 	}
 
@@ -3963,7 +4037,8 @@ static int dwc2_hsotg_ep_enable(struct usb_ep *ep,
 	if (using_desc_dma(hsotg) && ep_type == USB_ENDPOINT_XFER_ISOC &&
 	    !dir_in && mc > 1) {
 		dev_err(hsotg->dev,
-			"[ERROR][USB] %s: ISOC OUT, DDMA: HB not supported!\n", __func__);
+			"[ERROR][USB] %s: ISOC OUT, DDMA: HB not supported!\n",
+			__func__);
 		return -EINVAL;
 	}
 
@@ -4052,11 +4127,12 @@ static int dwc2_hsotg_ep_enable(struct usb_ep *ep,
 	 * a unique tx-fifo even if it is non-periodic.
 	 */
 	if (dir_in && hsotg->dedicated_fifos) {
+		unsigned fifo_count = dwc2_hsotg_tx_fifo_count(hsotg);
 		u32 fifo_index = 0;
 		u32 fifo_size = UINT_MAX;
 
 		size = hs_ep->ep.maxpacket * hs_ep->mc;
-		for (i = 1; i < hsotg->num_of_eps; ++i) {
+		for (i = 1; i <= fifo_count; ++i) {
 			if (hsotg->fifo_map & (1 << i))
 				continue;
 			val = dwc2_readl(hsotg->regs + DPTXFSIZN(i));
@@ -4071,7 +4147,8 @@ static int dwc2_hsotg_ep_enable(struct usb_ep *ep,
 		}
 		if (!fifo_index) {
 			dev_err(hsotg->dev,
-				"[ERROR][USB] %s: No suitable fifo found\n", __func__);
+				"[ERROR][USB] %s: No suitable fifo found\n",
+				__func__);
 			ret = -ENOMEM;
 			goto error1;
 		}
@@ -4147,12 +4224,16 @@ static int dwc2_hsotg_ep_disable(struct usb_ep *ep)
 	dev_dbg(hsotg->dev, "[DEBUG][USB] %s(ep %p)\n", __func__, ep);
 
 	if (ep == &hsotg->eps_out[0]->ep) {
-		dev_err(hsotg->dev, "[ERROR][USB] %s: called for ep0\n", __func__);
+		dev_err(hsotg->dev,
+			"[ERROR][USB] %s: called for ep0\n",
+			__func__);
 		return -EINVAL;
 	}
 
 	if (hsotg->op_state != OTG_STATE_B_PERIPHERAL) {
-		dev_err(hsotg->dev, "[ERROR][USB] %s: called in host mode?\n", __func__);
+		dev_err(hsotg->dev,
+			"[ERROR][USB] %s: called in host mode?\n",
+			__func__);
 		return -EINVAL;
 	}
 
@@ -4167,7 +4248,9 @@ static int dwc2_hsotg_ep_disable(struct usb_ep *ep)
 	ctrl &= ~DXEPCTL_USBACTEP;
 	ctrl |= DXEPCTL_SNAK;
 
-	dev_dbg(hsotg->dev, "[DEBUG][USB] %s: DxEPCTL=0x%08x\n", __func__, ctrl);
+	dev_dbg(hsotg->dev,
+			"[DEBUG][USB] %s: DxEPCTL=0x%08x\n",
+			__func__, ctrl);
 	dwc2_writel(ctrl, hsotg->regs + epctrl_reg);
 
 	/* disable endpoint interrupts */
@@ -4263,19 +4346,24 @@ static int dwc2_hsotg_ep_sethalt(struct usb_ep *ep, int value, bool now)
 	u32 epctl;
 	u32 xfertype;
 
-	dev_info(hs->dev, "[INFO][USB] %s(ep %p %s, %d)\n", __func__, ep, ep->name, value);
+	dev_info(hs->dev,
+		"[INFO][USB] %s(ep %p %s, %d)\n",
+		__func__, ep, ep->name, value);
 
 	if (index == 0) {
 		if (value)
 			dwc2_hsotg_stall_ep0(hs);
 		else
 			dev_warn(hs->dev,
-				 "[WARN][USB] %s: can't clear halt on ep0\n", __func__);
+				 "[WARN][USB] %s: can't clear halt on ep0\n",
+				__func__);
 		return 0;
 	}
 
 	if (hs_ep->isochronous) {
-		dev_err(hs->dev, "[ERROR][USB] %s is Isochronous Endpoint\n", ep->name);
+		dev_err(hs->dev,
+			"[ERROR][USB] %s is Isochronous Endpoint\n",
+			ep->name);
 		return -EINVAL;
 	}
 
@@ -4427,7 +4515,9 @@ static int dwc2_hsotg_udc_start(struct usb_gadget *gadget,
 		dev_err(hsotg->dev, "[ERROR][USB] %s: bad speed\n", __func__);
 
 	if (!driver->setup) {
-		dev_err(hsotg->dev, "[ERROR][USB] %s: missing entry points\n", __func__);
+		dev_err(hsotg->dev,
+			"[ERROR][USB] %s: missing entry points\n",
+			__func__);
 		return -EINVAL;
 	}
 
@@ -4458,11 +4548,16 @@ static int dwc2_hsotg_udc_start(struct usb_gadget *gadget,
 	spin_unlock_irqrestore(&hsotg->lock, flags);
 
 	gadget->sg_supported = using_desc_dma(hsotg);
-	dev_info(hsotg->dev, "[INFO][USB] bound driver %s\n", driver->driver.name);
+	dev_info(hsotg->dev,
+		"[INFO][USB] bound driver %s\n",
+		driver->driver.name);
 
 	return 0;
 
+#ifndef CONFIG_USB_DWC2_DUAL_ROLE
 err:
+#endif
+
 	hsotg->driver = NULL;
 	return ret;
 }
@@ -4532,7 +4627,9 @@ static int dwc2_hsotg_pullup(struct usb_gadget *gadget, int is_on)
 	struct dwc2_hsotg *hsotg = to_hsotg(gadget);
 	unsigned long flags = 0;
 
-	dev_dbg(hsotg->dev, "[DEBUG][USB] %s: is_on: %d op_state: %d\n", __func__, is_on,
+	dev_dbg(hsotg->dev,
+		"[DEBUG][USB] %s: is_on: %d op_state: %d\n",
+		__func__, is_on,
 		hsotg->op_state);
 
 	/* Don't modify pullup state while in host mode */
@@ -4563,7 +4660,9 @@ static int dwc2_hsotg_vbus_session(struct usb_gadget *gadget, int is_active)
 	struct dwc2_hsotg *hsotg = to_hsotg(gadget);
 	unsigned long flags;
 
-	dev_dbg(hsotg->dev, "[DEBUG][USB] %s: is_active: %d\n", __func__, is_active);
+	dev_dbg(hsotg->dev,
+		"[DEBUG][USB] %s: is_active: %d\n",
+		__func__, is_active);
 	spin_lock_irqsave(&hsotg->lock, flags);
 
 	/*
@@ -4771,17 +4870,20 @@ static void dwc2_hsotg_dump(struct dwc2_hsotg *hsotg)
 
 	for (idx = 1; idx < hsotg->num_of_eps; idx++) {
 		val = dwc2_readl(regs + DPTXFSIZN(idx));
-		dev_info(dev, "[INFO][USB] DPTx[%d] FSize=%d, StAddr=0x%08x\n", idx,
-			 val >> FIFOSIZE_DEPTH_SHIFT,
-			 val & FIFOSIZE_STARTADDR_MASK);
+		dev_info(dev,
+			"[INFO][USB] DPTx[%d] FSize=%d, StAddr=0x%08x\n",
+			idx,
+			val >> FIFOSIZE_DEPTH_SHIFT,
+			val & FIFOSIZE_STARTADDR_MASK);
 	}
 
 	for (idx = 0; idx < hsotg->num_of_eps; idx++) {
 		dev_info(dev,
-			 "[INFO][USB] ep%d-in: EPCTL=0x%08x, SIZ=0x%08x, DMA=0x%08x\n", idx,
-			 dwc2_readl(regs + DIEPCTL(idx)),
-			 dwc2_readl(regs + DIEPTSIZ(idx)),
-			 dwc2_readl(regs + DIEPDMA(idx)));
+			"[INFO][USB] ep%d-in: EPCTL=0x%08x, SIZ=0x%08x, DMA=0x%08x\n",
+			idx,
+			dwc2_readl(regs + DIEPCTL(idx)),
+			dwc2_readl(regs + DIEPTSIZ(idx)),
+			dwc2_readl(regs + DIEPDMA(idx)));
 
 		val = dwc2_readl(regs + DOEPCTL(idx));
 		dev_info(dev,
@@ -4810,7 +4912,8 @@ int dwc2_gadget_init(struct dwc2_hsotg *hsotg)
 	/* Dump fifo information */
 	dev_dbg(dev, "[DEBUG][USB] NonPeriodic TXFIFO size: %d\n",
 		hsotg->params.g_np_tx_fifo_size);
-	dev_dbg(dev, "[DEBUG][USB] RXFIFO size: %d\n", hsotg->params.g_rx_fifo_size);
+	dev_dbg(dev, "[DEBUG][USB] RXFIFO size: %d\n",
+		hsotg->params.g_rx_fifo_size);
 
 	hsotg->gadget.max_speed = USB_SPEED_HIGH;
 	hsotg->gadget.ops = &dwc2_hsotg_gadget_ops;
@@ -4822,7 +4925,9 @@ int dwc2_gadget_init(struct dwc2_hsotg *hsotg)
 
 	ret = dwc2_hsotg_hw_cfg(hsotg);
 	if (ret) {
-		dev_err(hsotg->dev, "[ERROR][USB] Hardware configuration failed: %d\n", ret);
+		dev_err(hsotg->dev,
+			"[ERROR][USB] Hardware configuration failed: %d\n",
+			ret);
 		return ret;
 	}
 
@@ -4880,12 +4985,6 @@ int dwc2_gadget_init(struct dwc2_hsotg *hsotg)
 					  epnum, 0);
 	}
 
-	ret = usb_add_gadget_udc(dev, &hsotg->gadget);
-	if (ret) {
-		dwc2_hsotg_ep_free_request(&hsotg->eps_out[0]->ep,
-					   hsotg->ctrl_req);
-		return ret;
-	}
 	dwc2_hsotg_dump(hsotg);
 
 	return 0;

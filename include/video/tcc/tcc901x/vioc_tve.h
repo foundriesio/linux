@@ -1,10 +1,5 @@
 /*
- * linux/include/video/tcc/vioc_cvbs.h
- * Author:  <linux@telechips.com>
- * Created: June 10, 2008
- * Description: TCC VIOC h/w block 
- *
- * Copyright (C) 2008-2009 Telechips
+ * Copyright (C) Telechips, Inc.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -21,13 +16,14 @@
  * to the Free Software Foundation, Inc.,
  * 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  */
-
 #ifndef __VIOC_TVE_H__
 #define __VIOC_TVE_H__
 
-/*==============================================================================
-				NTSC/PAL Encoder
-  ==============================================================================*/
+/*
+ *==============================================================================
+ *				NTSC/PAL Encoder
+ *==============================================================================
+ */
 #define	LCD_CH	1
 #define	IMG_CH0	2
 #define	IMG_CH1	4
@@ -35,9 +31,9 @@
 
 // flag
 #define SET_IMAGE_INTL	((0x1)<<12)	// DMA Interlace Mode
-#define SET_IMAGE_AEN	((0x1)<<11)	// Alpha-blending Function for Each Image
-#define SET_IMAGE_CEN	((0x1)<<10)	// Chroma-keying Function for Each Image
-#define SET_IMAGE_IEN	((0x1)<<9)	// Image Displaying Function for Each Image
+#define SET_IMAGE_AEN	((0x1)<<11)	// Alpha-blending for Each Image
+#define SET_IMAGE_CEN	((0x1)<<10)	// Chroma-keying for Each Image
+#define SET_IMAGE_IEN	((0x1)<<9)	// Image Displaying for Each Image
 #define SET_IMAGE_SRC	((0x1)<<8)	// Image Source Select
 #define SET_IMAGE_AOPT	((0x1)<<7)	// Alpha-blending Option selection
 #define SET_IMAGE_ASEL	((0x1)<<6)	// Alpha-blending Alpha type
@@ -46,7 +42,7 @@
 #define SET_IMAGE_Y2RMD	((0x1)<<3)	// Y2R mode set
 #define SET_IMAGE_Y2R	((0x1)<<2)	// Y2R Conversion Enable bit
 #define SET_IMAGE_BR	((0x1)<<1)	// Bit Reverse
-#define SET_IMAGE_FMT	(0x1)		// Image Format 
+#define SET_IMAGE_FMT	(0x1)		// Image Format
 
 // type
 #define SET_IMAGE_SIZE			0x00000001
@@ -178,14 +174,14 @@
  */
 #define TVE_FSC_ADJM_FSC_ADJ_SHIFT		(0)
 
-#define TVE_FSC_ADJM_FSC_ADJ_MASK		(0xFF << TVE_FSC_ADJM_FSC_ADJ_SHIFT)
+#define TVE_FSC_ADJM_FSC_ADJ_MASK (0xFF << TVE_FSC_ADJM_FSC_ADJ_SHIFT)
 
 /*
  * FSC_ADJL
  */
 #define TVE_FSC_ADJL_FSC_ADJ_SHIFT		(0)
 
-#define TVE_FSC_ADJL_FSC_ADJ_MASK		(0xFF << TVE_FSC_ADJL_FSC_ADJ_SHIFT)
+#define TVE_FSC_ADJL_FSC_ADJ_MASK (0xFF << TVE_FSC_ADJL_FSC_ADJ_SHIFT)
 
 /*
  * ECMDC
@@ -236,16 +232,16 @@
 #define TVE_HVOFFSET_VOFFST_SHIFT		(3)
 #define TVE_HVOFFSET_HOFFSET_SHIFT		(0)
 
-#define TVE_HVOFFSET_INSEL_MASK		(0x3 << TVE_HVOFFSET_INSEL_SHIFT)
-#define TVE_HVOFFSET_VOFFST_MASK		(0x1 << TVE_HVOFFSET_VOFFST_SHIFT)
-#define TVE_HVOFFSET_HOFFSET_MASK		(0x7 << TVE_HVOFFSET_HOFFSET_SHIFT)
+#define TVE_HVOFFSET_INSEL_MASK   (0x3 << TVE_HVOFFSET_INSEL_SHIFT)
+#define TVE_HVOFFSET_VOFFST_MASK  (0x1 << TVE_HVOFFSET_VOFFST_SHIFT)
+#define TVE_HVOFFSET_HOFFSET_MASK (0x7 << TVE_HVOFFSET_HOFFSET_SHIFT)
 
 /*
  * HOFFST
  */
 #define TVE_HOFFSET_HOFFSET_SHIFT		(0)
 
-#define TVE_HOFFSET_HOFFSET_MASK		(0xFF << TVE_HOFFSET_HOFFSET_SHIFT)
+#define TVE_HOFFSET_HOFFSET_MASK  (0xFF << TVE_HOFFSET_HOFFSET_SHIFT)
 
 
 /*
@@ -253,7 +249,7 @@
  */
 #define TVE_VOFFSET_VOFFSET_SHIFT		(0)
 
-#define TVE_VOFFSET_VOFFSET_MASK		(0xFF << TVE_VOFFSET_VOFFSET_SHIFT)
+#define TVE_VOFFSET_VOFFSET_MASK  (0xFF << TVE_VOFFSET_VOFFSET_SHIFT)
 
 /*
  * HSVSO
@@ -405,7 +401,7 @@
 #define CGMS_CGMSC_CGMS16_MASK		(0x1 << CGMS_CGMSC_CGMS16_SHIFT)
 #define CGMS_CGMSC_CGMS15_MASK		(0x1 << CGMS_CGMSC_CGMS15_SHIFT)
 
-typedef enum{
+enum COMPOSITE_MODE_TYPE {
 	NTSC_M			= 0x0000,
 	NTSC_M_J		= 0x0001,
 	NTSC_N			= 0x0010,
@@ -420,28 +416,28 @@ typedef enum{
 	PSEUDO_NTSC		= 0x1000,
 	PSEUDO_PAL		= 0x1010,
 	COMPOSITE_MODE_MAX
-}COMPOSITE_MODE_TYPE;
+};
 
-typedef enum{
+typedef enum {
 	COMPOSITE_LCDC_AOPT_0,	// 100% ~ 0.39% transparency
 	COMPOSITE_LCDC_AOPT_1,	// 100% ~ 0.39% transparency
 	COMPOSITE_LCDC_AOPT_2,	// 100% ~ 0% transparency
 	COMPOSITE_LCDC_AOPT_MAX
-}COMPOSITE_LCDC_AOPT_TYPE;
+} COMPOSITE_LCDC_AOPT_TYPE;
 
-typedef enum{
-	COMPOSITE_LCDC_ALPHA_VALUE 	= 0,
-	COMPOSITE_LCDC_ALPHA_PIXVALUE = 1	//alpha RGB
-}COMPOSITE_LCDC_ASEL_TYPE;
+typedef enum {
+	COMPOSITE_LCDC_ALPHA_VALUE = 0,
+	COMPOSITE_LCDC_ALPHA_PIXVALUE = 1  //alpha RGB
+} COMPOSITE_LCDC_ASEL_TYPE;
 
-typedef enum{
+typedef enum {
 	COMPOSITE_LCDC_YUV2RGB_TYPE0,
 	COMPOSITE_LCDC_YUV2RGB_TYPE1,
 	COMPOSITE_LCDC_YUV2RGB_TYPE2,
 	COMPOSITE_LCDC_YUV2RGB_TYPE3
-}COMPOSITE_LCDC_YUV2RGB_TYPE;
+} COMPOSITE_LCDC_YUV2RGB_TYPE;
 
-typedef enum{
+typedef enum {
 	COMPOSITE_LCDC_IMG_FMT_1BPP,
 	COMPOSITE_LCDC_IMG_FMT_2BPP,
 	COMPOSITE_LCDC_IMG_FMT_4BPP,
@@ -452,37 +448,37 @@ typedef enum{
 	COMPOSITE_LCDC_IMG_FMT_RGB555		= 11,
 	COMPOSITE_LCDC_IMG_FMT_RGB888		= 12,
 	COMPOSITE_LCDC_IMG_FMT_RGB666		= 13,
-	COMPOSITE_LCDC_IMG_FMT_YUV420SP		= 24,	
-	COMPOSITE_LCDC_IMG_FMT_YUV422SP		= 25, 
-	COMPOSITE_LCDC_IMG_FMT_YUV422SQ		= 26, 
-	COMPOSITE_LCDC_IMG_FMT_YUV420ITL0	= 28, 
-	COMPOSITE_LCDC_IMG_FMT_YUV420ITL1	= 29, 
-	COMPOSITE_LCDC_IMG_FMT_YUV422ITL0	= 30, 
-	COMPOSITE_LCDC_IMG_FMT_YUV422ITL1	= 31, 
+	COMPOSITE_LCDC_IMG_FMT_YUV420SP		= 24,
+	COMPOSITE_LCDC_IMG_FMT_YUV422SP		= 25,
+	COMPOSITE_LCDC_IMG_FMT_YUV422SQ		= 26,
+	COMPOSITE_LCDC_IMG_FMT_YUV420ITL0	= 28,
+	COMPOSITE_LCDC_IMG_FMT_YUV420ITL1	= 29,
+	COMPOSITE_LCDC_IMG_FMT_YUV422ITL0	= 30,
+	COMPOSITE_LCDC_IMG_FMT_YUV422ITL1	= 31,
 	COMPOSITE_LCDC_IMG_FMT_MAX
-}COMPOSITE_LCDC_IMG_FMT_TYPE;
+} COMPOSITE_LCDC_IMG_FMT_TYPE;
 
-typedef struct{
-	char INTL;							// DMA Interlace Mode
-	char AEN;							// Alpha-blending Function for Each Image
-	char CEN;							// Chroma-keying Function for Each Image
-	char IEN;							// Image Displaying Function for Each Image
-	char SRC;							// Image Source Select
-	COMPOSITE_LCDC_AOPT_TYPE AOPT;		// Alpha-blending Option selection
-	COMPOSITE_LCDC_ASEL_TYPE ASEL;		// Alpha-blending Alpha type
-	char UPD;							// Data Update Enable
-	char PD;							// Bit padding
-	COMPOSITE_LCDC_YUV2RGB_TYPE Y2RMD;	// Y2R mode set
-	char Y2R;							// Y2R Conversion Enable bit
-	char BR;							// Bit Reverse
-	COMPOSITE_LCDC_IMG_FMT_TYPE FMT;	// Image Format 
-}COMPOSITE_LCDC_IMG_CTRL_TYPE;
+struct COMPOSITE_LCDC_IMG_CTRL_TYPE {
+	char INTL;  // DMA Interlace Mode
+	char AEN;   // Alpha-blending Function for Each Image
+	char CEN;   // Chroma-keying Function for Each Image
+	char IEN;   // Image Displaying Function for Each Image
+	char SRC;   // Image Source Select
+	COMPOSITE_LCDC_AOPT_TYPE AOPT; // Alpha-blending Option selection
+	COMPOSITE_LCDC_ASEL_TYPE ASEL; // Alpha-blending Alpha type
+	char UPD;   // Data Update Enable
+	char PD;    // Bit padding
+	COMPOSITE_LCDC_YUV2RGB_TYPE Y2RMD;// Y2R mode set
+	char Y2R;   // Y2R Conversion Enable bit
+	char BR;    // Bit Reverse
+	COMPOSITE_LCDC_IMG_FMT_TYPE FMT; // Image Format
+};
 
-typedef struct{
-	unsigned int composite_clk; 		// pixel clock
-	unsigned int composite_bus_width;	// data bus width
-	unsigned int composite_lcd_width;	// lcd width
-	unsigned int composite_lcd_height;	// lcd height
+struct COMPOSITE_SPEC_TYPE {
+	unsigned int composite_clk;         // pixel clock
+	unsigned int composite_bus_width;   // data bus width
+	unsigned int composite_lcd_width;   // lcd width
+	unsigned int composite_lcd_height;  // lcd height
 
 	int pxdw;
 	int clkdiv;
@@ -493,36 +489,46 @@ typedef struct{
 	int ni;
 	int tv;
 
-	unsigned int composite_LPW; 		// line pulse width
-	unsigned int composite_LPC; 		// line pulse count (active horizontal pixel - 1)
-	unsigned int composite_LSWC;		// line start wait clock (the number of dummy pixel clock - 1)
-	unsigned int composite_LEWC;		// line end wait clock (the number of dummy pixel clock - 1)
-	unsigned int composite_VDB; 		// Back porch Vsync delay
-	unsigned int composite_VDF; 		// front porch of Vsync delay
+	unsigned int composite_LPW;
+	unsigned int composite_LPC;
+	unsigned int composite_LSWC;
+	unsigned int composite_LEWC;
+	unsigned int composite_VDB;
+	unsigned int composite_VDF;
 
-	unsigned int composite_FPW1;		// TFT/TV : Frame pulse width is the pulse width of frmae clock
-	unsigned int composite_FLC1;		// frmae line count is the number of lines in each frmae on the screen
-	unsigned int composite_FSWC1;		// frmae start wait cycle is the number of lines to insert at the end each frame
-	unsigned int composite_FEWC1;		// frame start wait cycle is the number of lines to insert at the begining each frame
+	unsigned int composite_FPW1;
+	unsigned int composite_FLC1;
+	unsigned int composite_FSWC1;
+	unsigned int composite_FEWC1;
 
-	unsigned int composite_FPW2;		// TFT/TV : Frame pulse width is the pulse width of frmae clock
-	unsigned int composite_FLC2;		// frmae line count is the number of lines in each frmae on the screen
-	unsigned int composite_FSWC2;		// frmae start wait cycle is the number of lines to insert at the end each frame
-	unsigned int composite_FEWC2; 		// frame start wait cycle is the number of lines to insert at the begining each frame
-}COMPOSITE_SPEC_TYPE;
+	unsigned int composite_FPW2;
+	unsigned int composite_FLC2;
+	unsigned int composite_FSWC2;
+	unsigned int composite_FEWC2;
+};
 
 /* Interface API */
 extern void internal_tve_set_config(unsigned int type);
 extern void internal_tve_clock_onoff(unsigned int onoff);
 extern void internal_tve_enable(unsigned int type, unsigned int onoff);
 extern void internal_tve_init(void);
-extern void internal_tve_set_cgms(unsigned char odd_field_en, unsigned char even_field_en, unsigned int data);
-extern void internal_tve_get_cgms(unsigned char *odd_field_en, unsigned char *even_field_en, unsigned int *data, unsigned char *status);
-extern void internal_tve_set_cgms_helper(unsigned char odd_field_en, unsigned char even_field_en, unsigned int key);
-extern volatile void __iomem* VIOC_TVE_VEN_GetAddress(void);
-extern volatile void __iomem* VIOC_TVE_GetAddress(void);
+extern void internal_tve_set_cgms(
+	unsigned char odd_field_en, unsigned char even_field_en,
+	unsigned int data);
+extern void internal_tve_get_cgms(
+	unsigned char *odd_field_en, unsigned char *even_field_en,
+	unsigned int *data, unsigned char *status);
+extern void internal_tve_set_cgms_helper(
+	unsigned char odd_field_en, unsigned char even_field_en,
+	unsigned int key);
+extern volatile void __iomem *VIOC_TVE_VEN_GetAddress(void);
+extern volatile void __iomem *VIOC_TVE_GetAddress(void);
+
 #if defined(CONFIG_FB_TCC_COMPOSITE_BVO)
-extern void internal_bvo_get_spec(COMPOSITE_MODE_TYPE type, COMPOSITE_SPEC_TYPE *spec);
-extern void internal_tve_mv(COMPOSITE_MODE_TYPE type, unsigned int enable);
+extern void internal_bvo_get_spec(
+	enum COMPOSITE_MODE_TYPE type, struct COMPOSITE_SPEC_TYPE *spec);
+extern void internal_tve_mv(
+	enum COMPOSITE_MODE_TYPE type, unsigned int enable);
 #endif
+
 #endif /* __VIOC_TVE_H__ */

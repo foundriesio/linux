@@ -236,8 +236,9 @@ config INPUT_MMA8450
 
 config INPUT_TCC_REMOTE
 	tristate "Telechips Remote Controller"
-    help 
-        Say Y here if you want to support the built-in remote contoller from telechips 
+
+	help
+	  Say Y here if you want to support the built-in remote contoller from telechips
 
 
 if INPUT_TCC_REMOTE
@@ -245,7 +246,7 @@ if INPUT_TCC_REMOTE
 choice
 	prompt "Platform Select for Key table."
 	depends on INPUT_TCC_REMOTE
-	help 
+	help
 
 config LINUX_KEY_TABLE
 	bool "Linux Platform Key map table."
@@ -264,15 +265,15 @@ choice
 
 config DARE_IR
 	bool "Dare"
-    help 
+    help
 
 config CS_2000_IR_X_CANVAS
 	bool "CS2000 X Canvas"
-    help 
+    help
 
 config UEI_RCU
 	bool "UEI Remote"
-    help 
+    help
 
 config VERIZON
 	bool "Verizon Remote"
@@ -280,23 +281,23 @@ config VERIZON
 
 config NOVATEK_IR
 	bool "Novatek"
-    help 
+    help
 
 config JH_4202_1011_03
 	bool "JH-4202"
-    help 
+    help
 
 config SAMSUNG_42BIT
 	bool "SAMSUNG 42"
-    help 
+    help
 
 config HDS892S
 	bool "HDS892S"
-    help 
+    help
 
 config PREMIER_IR
 	bool "PREMIER"
-    help 
+    help
 
 config YAOJIN_IR
 	bool "YAOJIN"
@@ -317,15 +318,15 @@ choice
 
 config PBUS_DIVIDE_CLOCK_WITH_XTIN
 	bool "PBUS divide Clock(with XTIN)"
-    help 
+    help
 
 config PBUS_DIVIDE_CLOCK_WITHOUT_XTIN
 	bool "PBUS divide Clock(without XTIN)"
-    help 
+    help
 
 config XTIN_CLOCK
 	bool "XTIN Clock"
-    help 
+    help
 
 endchoice
 

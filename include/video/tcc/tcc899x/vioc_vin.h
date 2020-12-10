@@ -1,10 +1,5 @@
 /*
- * linux/arch/arm/mach-tcc893x/include/mach/vioc_vin.h
- * Author:  <linux@telechips.com>
- * Created: June 10, 2008
- * Description: TCC VIOC h/w block 
- *
- * Copyright (C) 2008-2009 Telechips
+ * Copyright (C) Telechips, Inc.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -21,44 +16,43 @@
  * to the Free Software Foundation, Inc.,
  * 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  */
-
 #ifndef _VIOC_VIN_H_
 #define	_VIOC_VIN_H_
 
-#define 	ORDER_RGB 			(0)
-#define 	ORDER_RBG 			(1)
-#define 	ORDER_GRB 			(2)
-#define 	ORDER_GBR 			(3)
-#define 	ORDER_BRG 			(4)
-#define 	ORDER_BGR 			(5)
+#define ORDER_RGB (0)
+#define ORDER_RBG (1)
+#define ORDER_GRB (2)
+#define ORDER_GBR (3)
+#define ORDER_BRG (4)
+#define ORDER_BGR (5)
 
-#define 	FMT_YUV422_16BIT 		(0)
-#define 	FMT_YUV422_8BIT 		(1)
-#define 	FMT_YUVK4444_16BIT 		(2)
-#define 	FMT_YUVK4224_24BIT 		(3)
-#define 	FMT_RGBK4444_16BIT 		(4)
-#define 	FMT_RGB444_24BIT 		(9)
-#define 	FMT_SD_PROG 			(12) // NOT USED
+#define FMT_YUV422_16BIT   (0)
+#define FMT_YUV422_8BIT    (1)
+#define FMT_YUVK4444_16BIT (2)
+#define FMT_YUVK4224_24BIT (3)
+#define FMT_RGBK4444_16BIT (4)
+#define FMT_RGB444_24BIT   (9)
+#define FMT_SD_PROG        (12) // NOT USED
 
-#define 	EXT_PORT0 			(0)
-#define 	EXT_PORT1 			(1)
-#define 	EXT_PORT2 			(2)
-#define 	EXT_PORT3 			(3)
-#define 	MUL_PORT0 			(4)
-#define 	MUL_PORT1 			(5)
-#define 	MUL_PORT2 			(6)
-#define 	MUL_PORT3 			(7)
+#define EXT_PORT0 (0)
+#define EXT_PORT1 (1)
+#define EXT_PORT2 (2)
+#define EXT_PORT3 (3)
+#define MUL_PORT0 (4)
+#define MUL_PORT1 (5)
+#define MUL_PORT2 (6)
+#define MUL_PORT3 (7)
 
-#define 	CLK_DOUBLE_EDGE 			(0)
-#define 	CLK_DOUBLE_FREQ 			(1)
-#define 	CLK_DOUBLE_EDGE_FREQ 		(2)
-#define 	CLK_DOUBLE_4TIME_FREQ 		(3)
+#define CLK_DOUBLE_EDGE       (0)
+#define CLK_DOUBLE_FREQ       (1)
+#define CLK_DOUBLE_EDGE_FREQ  (2)
+#define CLK_DOUBLE_4TIME_FREQ (3)
 
 #ifndef ON
-#define 	ON 				(1)
+#define ON (1)
 #endif
 #ifndef OFF
-#define 	OFF 			(0)
+#define OFF (0)
 #endif
 
 /*
@@ -182,15 +176,15 @@
 #define VIN_OFFS_OFS_HEIGHT_SHIFT		(16)
 #define VIN_OFFS_OFS_WIDTH_SHIFT		(0)
 
-#define VIN_OFFS_OFS_HEIGHT_MASK		(0xFFFF << VIN_OFFS_OFS_HEIGHT_SHIFT)
-#define VIN_OFFS_OFS_WIDTH_MASK			(0xFFFF << VIN_OFFS_OFS_WIDTH_SHIFT)
+#define VIN_OFFS_OFS_HEIGHT_MASK (0xFFFF << VIN_OFFS_OFS_HEIGHT_SHIFT)
+#define VIN_OFFS_OFS_WIDTH_MASK  (0xFFFF << VIN_OFFS_OFS_WIDTH_SHIFT)
 
 /*
  * VIN Offset in Interlaced Register
  */
 #define VIN_OFFS_INTL_OFS_HEIGHT_SHIFT		(16)
 
-#define VIN_OFFS_INTL_OFS_HEIGHT_MASK		(0xFFFF << VIN_OFFS_OFS_HEIGHT_SHIFT)
+#define VIN_OFFS_INTL_OFS_HEIGHT_MASK (0xFFFF << VIN_OFFS_OFS_HEIGHT_SHIFT)
 
 /*
  * VIN Crop Size Register
@@ -198,8 +192,8 @@
 #define VIN_CROP_SIZE_HEIGHT_SHIFT		(16)
 #define VIN_CROP_SIZE_WIDTH_SHIFT		(0)
 
-#define VIN_CROP_SIZE_HEIGHT_MASK		(0xFFFF << VIN_CROP_SIZE_HEIGHT_SHIFT)
-#define VIN_CROP_SIZE_WIDTH_MASK			(0xFFFF << VIN_CROP_SIZE_WIDTH_SHIFT)
+#define VIN_CROP_SIZE_HEIGHT_MASK (0xFFFF << VIN_CROP_SIZE_HEIGHT_SHIFT)
+#define VIN_CROP_SIZE_WIDTH_MASK  (0xFFFF << VIN_CROP_SIZE_WIDTH_SHIFT)
 
 /*
  * VIN Crop Offset Register
@@ -207,8 +201,8 @@
 #define VIN_CROP_OFFS_OFS_HEIGHT_SHIFT		(16)
 #define VIN_CROP_OFFS_OFS_WIDTH_SHIFT		(0)
 
-#define VIN_CROP_OFFS_OFS_HEIGHT_MASK		(0xFFFF << VIN_CROP_OFFS_OFS_HEIGHT_SHIFT)
-#define VIN_CROP_OFFS_OFS_WIDTH_MASK			(0xFFFF << VIN_CROP_OFFS_OFS_WIDTH_SHIFT)
+#define VIN_CROP_OFFS_OFS_HEIGHT_MASK (0xFFFF << VIN_CROP_OFFS_OFS_HEIGHT_SHIFT)
+#define VIN_CROP_OFFS_OFS_WIDTH_MASK  (0xFFFF << VIN_CROP_OFFS_OFS_WIDTH_SHIFT)
 
 /*
  * VIN Look-up table control Register
@@ -249,9 +243,9 @@
 #define VIN_LUT_C_VALUE_K_CH1_SHIFT		(10)
 #define VIN_LUT_C_VALUE_K_CH0_SHIFT		(0)
 
-#define VIN_LUT_C_VALUE_K_CH2_MASK		(0x3FF << VIN_LUT_C_VALUE_K_CH2_SHIFT)
-#define VIN_LUT_C_VALUE_K_CH1_MASK		(0x3FF << VIN_LUT_C_VALUE_K_CH1_SHIFT)
-#define VIN_LUT_C_VALUE_K_CH0_MASK		(0x3FF << VIN_LUT_C_VALUE_K_CH0_SHIFT)
+#define VIN_LUT_C_VALUE_K_CH2_MASK (0x3FF << VIN_LUT_C_VALUE_K_CH2_SHIFT)
+#define VIN_LUT_C_VALUE_K_CH1_MASK (0x3FF << VIN_LUT_C_VALUE_K_CH1_SHIFT)
+#define VIN_LUT_C_VALUE_K_CH0_MASK (0x3FF << VIN_LUT_C_VALUE_K_CH0_SHIFT)
 
 /*
  * Register offset
@@ -335,27 +329,50 @@
 
 
 /* Interface APIs. */
-extern void VIOC_VIN_SetSyncPolarity (volatile void __iomem *reg, unsigned int hs_active_low, unsigned int vs_active_low, unsigned int field_bfield_low, unsigned int de_active_low, unsigned int gen_field_en, unsigned int pxclk_pol);
-extern void VIOC_VIN_SetCtrl (volatile void __iomem *reg, unsigned int conv_en, unsigned int hsde_connect_en, unsigned int vs_mask, unsigned int fmt, unsigned int data_order);
-extern void VIOC_VIN_SetInterlaceMode (volatile void __iomem *reg, unsigned int intl_en, unsigned int intpl_en);
-extern void VIOC_VIN_SetCaptureModeEnable(volatile void __iomem *reg, unsigned int cap_en);
-extern void VIOC_VIN_SetEnable (volatile void __iomem *reg, unsigned int vin_en);
-extern void VIOC_VIN_SetImageSize (volatile void __iomem *reg, unsigned int width, unsigned int height);
-extern void VIOC_VIN_SetImageOffset (volatile void __iomem *reg, unsigned int offs_width, unsigned int offs_height, unsigned int offs_height_intl);
-extern void VIOC_VIN_SetImageCropSize(volatile void __iomem *reg, unsigned int width, unsigned int height);
-extern void VIOC_VIN_SetImageCropOffset(volatile void __iomem *reg, unsigned int offs_width, unsigned int offs_height);
-extern void VIOC_VIN_SetY2RMode (volatile void __iomem *reg, unsigned int y2r_mode);
-extern void VIOC_VIN_SetY2REnable (volatile void __iomem *reg, unsigned int y2r_en);
-extern void VIOC_VIN_SetLUT(volatile void __iomem *reg, unsigned int *pLUT);
-extern void VIOC_VIN_SetLUTEnable(volatile void __iomem *reg, unsigned int lut0_en, unsigned int lut1_en, unsigned int lut2_en);
+extern void VIOC_VIN_SetSyncPolarity(volatile void __iomem *reg,
+	unsigned int hs_active_low, unsigned int vs_active_low,
+	unsigned int field_bfield_low, unsigned int de_active_low,
+	unsigned int gen_field_en, unsigned int pxclk_pol);
+extern void VIOC_VIN_SetCtrl(volatile void __iomem *reg,
+	unsigned int conv_en, unsigned int hsde_connect_en,
+	unsigned int vs_mask, unsigned int fmt, unsigned int data_order);
+extern void VIOC_VIN_SetInterlaceMode(volatile void __iomem *reg,
+	unsigned int intl_en, unsigned int intpl_en);
+extern void VIOC_VIN_SetCaptureModeEnable(
+	volatile void __iomem *reg, unsigned int cap_en);
+extern void VIOC_VIN_SetEnable(volatile void __iomem *reg,
+	unsigned int vin_en);
+extern void VIOC_VIN_SetImageSize(volatile void __iomem *reg,
+	unsigned int width, unsigned int height);
+extern void VIOC_VIN_SetImageOffset(volatile void __iomem *reg,
+	unsigned int offs_width, unsigned int offs_height,
+	unsigned int offs_height_intl);
+extern void VIOC_VIN_SetImageCropSize(volatile void __iomem *reg,
+	unsigned int width, unsigned int height);
+extern void VIOC_VIN_SetImageCropOffset(volatile void __iomem *reg,
+	unsigned int offs_width, unsigned int offs_height);
+extern void VIOC_VIN_SetY2RMode(volatile void __iomem *reg,
+	unsigned int y2r_mode);
+extern void VIOC_VIN_SetY2REnable(volatile void __iomem *reg,
+	unsigned int y2r_en);
+extern void VIOC_VIN_SetLUT(volatile void __iomem *reg,
+	unsigned int *pLUT);
+extern void VIOC_VIN_SetLUTEnable(volatile void __iomem *reg,
+	unsigned int lut0_en, unsigned int lut1_en, unsigned int lut2_en);
 extern void VIOC_VIN_IreqHandler(unsigned int vectorID);
 extern unsigned int VIOC_VIN_IsEnable(volatile void __iomem *reg);
 
-extern void VIOC_VIN_SetDemuxPort(volatile void __iomem *reg, unsigned int p0, unsigned int p1, unsigned int p2, unsigned int p3);
-extern void VIOC_VIN_SetDemuxClock(volatile void __iomem *reg, unsigned int mode);
-extern void VIOC_VIN_SetDemuxEnable(volatile void __iomem *reg, unsigned int enable);
-extern void VIOC_VIN_SetSEEnable(volatile void __iomem *reg, unsigned int se);
-extern void VIOC_VIN_SetFlushBufferEnable(volatile void __iomem *reg, unsigned int fvs);
+extern void VIOC_VIN_SetDemuxPort(volatile void __iomem *reg,
+	unsigned int p0, unsigned int p1, unsigned int p2, unsigned int p3);
+extern void VIOC_VIN_SetDemuxClock(volatile void __iomem *reg,
+	unsigned int mode);
+extern void VIOC_VIN_SetDemuxEnable(volatile void __iomem *reg,
+	unsigned int enable);
+extern void VIOC_VIN_SetSEEnable(volatile void __iomem *reg,
+	unsigned int se);
+extern void VIOC_VIN_SetFlushBufferEnable(
+	volatile void __iomem *reg, unsigned int fvs);
 
-extern volatile void __iomem* VIOC_VIN_GetAddress(unsigned int Num);
+extern volatile void __iomem *VIOC_VIN_GetAddress(unsigned int Num);
+
 #endif

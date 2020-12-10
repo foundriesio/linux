@@ -46,7 +46,7 @@
 #include <linux/syscalls.h>
 #include <linux/of_address.h>
 #include <linux/clk-provider.h> /* __clk_is_enabled */
-#include <asm/io.h>
+#include <linux/io.h>
 #include <asm/div64.h>
 #include <asm/system_info.h>
 
@@ -270,8 +270,8 @@ extern void tca_lcdc_interrupt_onoff(char onoff, char lcdc);
 #define ATTACH_SCALER (VIOC_SCALER3)
 #endif//
 
-static tcc_display_attach		attach_data;
-static tcc_display_attach_intr	attach_intr;
+static tcc_display_attach attach_data;
+static tcc_display_attach_intr attach_intr;
 
 #ifdef CONFIG_PRESENTATION_SECONDAY_DISPLAY_RESIZE_STB
 static tcc_display_resize secondary_display_resize_data;	//composite , component
@@ -2778,12 +2778,12 @@ void tca_fb_sc_rdma_active_var(unsigned int base_addr, struct fb_var_screeninfo 
 
 unsigned int tca_fb_sc_m2m(unsigned int base_addr, struct fb_var_screeninfo *var, unsigned int dest_x, unsigned int dest_y)
 {
-	SCALER_TYPE fbscaler;
+	struct SCALER_TYPE fbscaler;
 	static char sc_buf_index = 0;
 
 //	pr_info("[INF][VIOC_I] %s: base_addr:0x%x w:%d h:%d offset:%d lcd:%d - %d \n", __FUNCTION__, base_addr, var->xres, var->yres, var->yoffset, dest_x, dest_y);
 
-	memset(&fbscaler, 0x00, sizeof(SCALER_TYPE));
+	memset(&fbscaler, 0x00, sizeof(struct SCALER_TYPE));
 	fbscaler.responsetype = SCALER_POLLING;
 	fbscaler.viqe_onthefly = 0;
 
@@ -3000,11 +3000,11 @@ void tca_fb_mvc_active_var(unsigned int base_addr, struct fb_var_screeninfo *var
 	unsigned int chroma_en = 0, alpha_blending_en = 0, alpha_type = 0;
 	unsigned int iVBlank = 0;
 
-	SCALER_TYPE fbscaler;
+	struct SCALER_TYPE fbscaler;
 	volatile void __iomem *pSC0 = VIOC_SC_GetAddress(AnD_FB_SC);
 	volatile void __iomem *pSC1 = VIOC_SC_GetAddress(DIV_FB_SC);
 
-	memset(&fbscaler, 0x00, sizeof(SCALER_TYPE));
+	memset(&fbscaler, 0x00, sizeof(struct SCALER_TYPE));
 
 	VIOC_DISP_GetSize(pdp_data->ddc_info.virt_addr, &lcd_width, &lcd_height);
 
@@ -4505,7 +4505,7 @@ extern void VIOC_RDMA_SetImageUpdate_for_CertiTest(volatile void __iomem *reg, u
 #define ALIGNED_WIDTH(w, mul) ( ( (unsigned int)w + (mul-1) ) & ~(mul-1) )
 void tca_edr_vioc_set(unsigned int nRDMA, volatile void __iomem *pRDMA, dolby_layer_str_t stDolby_Layer,
 						struct tcc_dp_device *pdp_data, struct tcc_lcdc_image_update *ImageInfo,
-						unsigned int width, unsigned int height, DV_DISP_TYPE type, unsigned int el_ratio)
+						unsigned int width, unsigned int height, enum DV_DISP_TYPE type, unsigned int el_ratio)
 {
 	unsigned int iSCType;
 	volatile void __iomem *pSC;

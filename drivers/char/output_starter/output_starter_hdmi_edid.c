@@ -20,7 +20,7 @@ Suite 330, Boston, MA 02111-1307 USA
 #include <linux/delay.h>
 #include <linux/fb.h>
 #include <linux/device.h> // dev_xet_drv_data
-#include <asm/io.h>
+#include <linux/io.h>
 #include <linux/clk.h>  // clk (example clk_set_rate)
 #include <asm/bitops.h> // bit macros
 

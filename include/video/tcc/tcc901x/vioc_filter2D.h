@@ -1,10 +1,5 @@
 /*
- * linux/video/tcc/vioc_filter2D.h
- * Author:  <linux@telechips.com>
- * Created: June 10, 2018
- * Description: TCC VIOC h/w block 
- *
- * Copyright (C) 2018-2019 Telechips
+ * Copyright (C) Telechips, Inc.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -21,13 +16,10 @@
  * to the Free Software Foundation, Inc.,
  * 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  */
-
 #ifndef __VIOC_FILTER2D_H__
 #define	__VIOC_FILTER2D_H__
 
-
-
-typedef struct {
+struct F2D_MODE_PARAM {
 	/* set detecting directon filter mode */
 	// 0: LPF mode
 	// 1: HPF mode
@@ -48,7 +40,7 @@ typedef struct {
 	unsigned int simple0_mode;	// channel.0
 	unsigned int simple1_mode;	// channel.1
 	unsigned int simple2_mode;	// channel.2
-} F2D_MODE_PARAM;
+};
 
 
 #define PLANE0 0
@@ -63,7 +55,6 @@ enum F2D_SMODE_TYPE {
 	SMODE_02 = 2,
 };
 
-
 enum F2D_STRENGTH_TYPE {
 	STRENGTH_1 = 0,
 	STRENGTH_2 = 1,
@@ -73,22 +64,22 @@ enum F2D_STRENGTH_TYPE {
 	STRENGTH_0 = 5,	// bypass
 };
 
-typedef struct {
+struct F2D_FILT_STRENGTH_PARM {
 	enum F2D_STRENGTH_TYPE ch0;
 	enum F2D_STRENGTH_TYPE ch1;
 	enum F2D_STRENGTH_TYPE ch2;
-} F2D_FILT_STRENGTH_PARM;
+};
 
-typedef struct {
+struct F2D_SCOEFF_PARAM {
 	unsigned int para[9];	// [0]-P00, [1]-P01, ..., [7]-P21, [8]-P22
 	unsigned int cb;
-} F2D_SCOEFF_PARAM;
+};
 
-typedef struct {
+struct F2D_DIV_PARAM {
 	unsigned int pos;
 	unsigned int dtog;
 	unsigned int den;
-} F2D_DIV_PARAM;
+};
 
 #define TCC_F2D_SET_MODE				0x301
 #define TCC_F2D_SET_LPF_STRENGTH		0x302
@@ -100,16 +91,17 @@ typedef struct {
 #define TCC_F2D_SET_ENABLE				0x3FF
 
 
-
-extern volatile void __iomem *VIOC_Filter2D_GetAddress(unsigned int vioc_filter2d_id);
-extern void filt2d_mode(unsigned int F2D_N, uint hpf0_en, uint hpf1_en, uint hpf2_en,
-		 uint bypass0_en, uint bypass1_en, uint bypass2_en,
-		 uint simple0_mode, uint simple1_mode, uint simple2_mode);
-extern void filt2d_coeff_hpf(unsigned int F2D_N, uint strength0, uint strength1,
-		      uint strength2);
-extern void filt2d_coeff_lpf(unsigned int F2D_N, uint strength0, uint strength1,
-		      uint strength2);
-extern void filt2d_coeff_set(unsigned int F2D_N, enum F2D_SMODE_TYPE smode);
+extern volatile void __iomem *VIOC_Filter2D_GetAddress(
+	unsigned int vioc_filter2d_id);
+extern void filt2d_mode(unsigned int F2D_N, uint hpf0_en, uint hpf1_en,
+	uint hpf2_en, uint bypass0_en, uint bypass1_en, uint bypass2_en,
+	uint simple0_mode, uint simple1_mode, uint simple2_mode);
+extern void filt2d_coeff_hpf(unsigned int F2D_N, uint strength0,
+	uint strength1, uint strength2);
+extern void filt2d_coeff_lpf(unsigned int F2D_N, uint strength0,
+	uint strength1, uint strength2);
+extern void filt2d_coeff_set(unsigned int F2D_N,
+	enum F2D_SMODE_TYPE smode);
 
 extern void filt2d_enable(unsigned int F2D_N, uint enable);
 

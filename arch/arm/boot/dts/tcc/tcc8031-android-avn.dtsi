@@ -6,6 +6,8 @@
 
  */
 
+#include "tcc-pmap-803x-android-customized.dtsi"
+
 #ifndef DT_OVERLAY
 #include "tcc8031.dtsi"
 #endif
@@ -114,11 +116,11 @@
  */
 
 &switch_reverse {
-	compatible = "telechips,switch_reverse";
+	compatible = "telechips,switch";
 	status = "disabled";
 
 	pinctrl-names = "default";
-	pinctrl-0 = <&switch_reverse_ma15>;
+	pinctrl-0 = <&switch_ma15>;
 
 	switch-gpios = <&gpma 15 1>;
 	switch-active = <0>;
@@ -126,10 +128,8 @@
 
 &thermal {
 	compatible = "telechips,tcc-thermal";
-		reg = <0x14700000 0x4 0x14700030 0x4 0x14200290 0x4 0x1420029C 0x4
-		0x14200298 0x4
-		0x1470000C 0x4
-		0x14700010 0x4>;
+	reg = <0x14700000 0x4 0x14700030 0x4 0x14200290 0x4 0x1420029C 0x4
+	       0x14200298 0x4 0x1470000C 0x4 0x14700010 0x4>;
 
 	status = "okay";
 
@@ -683,20 +683,28 @@
 	col-dly = <0>;
 	pinctrl-names = "default", "mii", "rmii", "gmii", "rgmii";
 	pinctrl-0 = <>;
-	pinctrl-1 = <&gmac1_mdc &gmac1_mdio &gmac1_col &gmac1_crs &gmac1_txer &gmac1_rxer
-		     &gmac1_txclk &gmac1_txen &gmac1_txd0 &gmac1_txd1 &gmac1_txd2 &gmac1_txd3
-		     &gmac1_rxclk &gmac1_rxdv &gmac1_rxd0 &gmac1_rxd1 &gmac1_rxd2 &gmac1_rxd3>;
+	pinctrl-1 = <&gmac1_mdc &gmac1_mdio &gmac1_col
+		     &gmac1_crs &gmac1_txer &gmac1_rxer
+		     &gmac1_txclk &gmac1_txen &gmac1_txd0
+		     &gmac1_txd1 &gmac1_txd2 &gmac1_txd3
+		     &gmac1_rxclk &gmac1_rxdv &gmac1_rxd0
+		     &gmac1_rxd1 &gmac1_rxd2 &gmac1_rxd3>;
 	pinctrl-2 = <&gmac1_mdc &gmac1_mdio
 		     &gmac1_txclk &gmac1_txen &gmac1_txd0 &gmac1_txd1
 		     &gmac1_rxer &gmac1_rxdv &gmac1_rxd0 &gmac1_rxd1>;
-	pinctrl-3 = <&gmac1_mdc &gmac1_mdio &gmac1_col &gmac1_crs &gmac1_txer &gmac1_rxer
-		     &gmac1_txclk &gmac1_txen &gmac1_txd0 &gmac1_txd1 &gmac1_txd2 &gmac1_txd3
+	pinctrl-3 = <&gmac1_mdc &gmac1_mdio &gmac1_col
+		     &gmac1_crs &gmac1_txer &gmac1_rxer
+		     &gmac1_txclk &gmac1_txen &gmac1_txd0
+		     &gmac1_txd1 &gmac1_txd2 &gmac1_txd3
 		     &gmac1_txd4 &gmac1_txd5 &gmac1_txd6 &gmac1_txd7
-		     &gmac1_rxclk &gmac1_rxdv &gmac1_rxd0 &gmac1_rxd1 &gmac1_rxd2 &gmac1_rxd3
+		     &gmac1_rxclk &gmac1_rxdv &gmac1_rxd0
+		     &gmac1_rxd1 &gmac1_rxd2 &gmac1_rxd3
 		     &gmac1_rxd4 &gmac1_rxd5 &gmac1_rxd6 &gmac1_rxd7>;
 	pinctrl-4 = <&gmac1_mdc &gmac1_mdio
-		     &gmac1_txclk &gmac1_txen &gmac1_txd0 &gmac1_txd1 &gmac1_txd2 &gmac1_txd3
-		     &gmac1_rxclk &gmac1_rxdv &gmac1_rxd0 &gmac1_rxd1 &gmac1_rxd2 &gmac1_rxd3>;
+		     &gmac1_txclk &gmac1_txen &gmac1_txd0
+		     &gmac1_txd1 &gmac1_txd2 &gmac1_txd3
+		     &gmac1_rxclk &gmac1_rxdv &gmac1_rxd0
+		     &gmac1_rxd1 &gmac1_rxd2 &gmac1_rxd3>;
 };
 
 /* CP */

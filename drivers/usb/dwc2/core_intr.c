@@ -116,7 +116,9 @@ static void dwc2_handle_otg_intr(struct dwc2_hsotg *hsotg)
 
 	gotgint = dwc2_readl(hsotg->regs + GOTGINT);
 	gotgctl = dwc2_readl(hsotg->regs + GOTGCTL);
-	dev_dbg(hsotg->dev, "[DEBUG][USB] ++OTG Interrupt gotgint=%0x [%s]\n", gotgint,
+	dev_dbg(hsotg->dev,
+		"[DEBUG][USB] ++OTG Interrupt gotgint=%0x [%s]\n",
+		gotgint,
 		dwc2_op_state_str(hsotg));
 
 	if (gotgint & GOTGINT_SES_END_DET) {
@@ -349,7 +351,9 @@ static void dwc2_handle_wakeup_detected_intr(struct dwc2_hsotg *hsotg)
 	dwc2_writel(GINTSTS_WKUPINT, hsotg->regs + GINTSTS);
 
 	dev_dbg(hsotg->dev, "[DEBUG][USB] ++Resume or Remote Wakeup Detected Interrupt++\n");
-	dev_dbg(hsotg->dev, "[DEBUG][USB] %s lxstate = %d\n", __func__, hsotg->lx_state);
+	dev_dbg(hsotg->dev,
+		"[DEBUG][USB] %s lxstate = %d\n",
+		__func__, hsotg->lx_state);
 
 	if (dwc2_is_device_mode(hsotg)) {
 		dev_dbg(hsotg->dev, "[DEBUG][USB] DSTS=0x%0x\n",
@@ -364,10 +368,13 @@ static void dwc2_handle_wakeup_detected_intr(struct dwc2_hsotg *hsotg)
 			if (ret && (ret != -ENOTSUPP))
 				dev_err(hsotg->dev, "[ERROR][USB] exit hibernation failed\n");
 
+			/* Change to L0 state */
+			hsotg->lx_state = DWC2_L0;
 			call_gadget(hsotg, resume);
+		} else {
+			/* Change to L0 state */
+			hsotg->lx_state = DWC2_L0;
 		}
-		/* Change to L0 state */
-		hsotg->lx_state = DWC2_L0;
 	} else {
 		if (hsotg->params.hibernation)
 			return;
@@ -526,6 +533,7 @@ irqreturn_t dwc2_handle_common_intr(int irq, void *dev)
 	struct dwc2_hsotg *hsotg = dev;
 	u32 gintsts;
 	irqreturn_t retval = IRQ_NONE;
+	u32 gotgint;
 
 	spin_lock(&hsotg->lock);
 
@@ -571,27 +579,8 @@ irqreturn_t dwc2_handle_common_intr(int irq, void *dev)
 			dwc2_handle_usb_port_intr(hsotg);
 			retval = IRQ_HANDLED;
 		}
-#if 0
-#ifdef CONFIG_USB_DWC2_TCC
-		else if (dwc2_is_host_mode(hsotg)) {
-			u32 hprt0 = dwc2_readl(hsotg->regs + HPRT0);
-			dev_dbg(hsotg->dev,
-				"[DEBUG][USB]  --Port interrupt received in Host mode, hprt0 : %08X--\n", hprt0);
-			if(!(hprt0 & HPRT0_PWR)) {
-				hprt0 |= HPRT0_PWR;
-				dev_dbg(hsotg->dev,
-					"[DEBUG][USB]  --HPRT0_PWR is %08X\n", hprt0);
-				dwc2_writel(hprt0, hsotg->regs + HPRT0);
-				retval = IRQ_HANDLED;
-			}
-		}
-#endif
-#endif
 	}
 #ifdef CONFIG_USB_DWC2_TCC
-	u32 gotgint;
-	u32 gintmsk;
-
 	gotgint = dwc2_readl(hsotg->regs + GOTGINT);
 	if (gotgint & GOTGINT_MVC) {
 		dev_dbg(hsotg->dev,
@@ -600,7 +589,7 @@ irqreturn_t dwc2_handle_common_intr(int irq, void *dev)
 		gotgint |= GOTGINT_MVC;
 		dwc2_writel(gotgint, hsotg->regs + GOTGINT);
 	}
-#endif 
+#endif
 
 out:
 	spin_unlock(&hsotg->lock);

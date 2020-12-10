@@ -40,7 +40,7 @@
 #endif
 
 #include <asm/mach-types.h>
-#include <asm/io.h>
+#include <linux/io.h>
 
 #include <video/tcc/tccfb.h>
 #include <video/tcc/tcc_fb.h>
@@ -50,9 +50,11 @@
 
 static struct mutex panel_lock;
 
-static int ccir656lcd_panel_init(struct lcd_panel *panel, struct tcc_dp_device *fb_pdata)
+static int
+ccir656lcd_panel_init(struct lcd_panel *panel, struct tcc_dp_device *fb_pdata)
 {
-	pr_info("[INF][LCD] %s lcdc:%d DispOrder:%d \n", __func__, fb_pdata->ddc_info.blk_num, fb_pdata->DispOrder);
+	pr_info("[INF][LCD] %s lcdc:%d DispOrder:%d\n", __func__,
+		fb_pdata->ddc_info.blk_num, fb_pdata->DispOrder);
 
 	fb_pdata->FbPowerState = true;
 	fb_pdata->FbUpdateType = FB_RDMA_UPDATE;
@@ -60,19 +62,17 @@ static int ccir656lcd_panel_init(struct lcd_panel *panel, struct tcc_dp_device *
 	return 0;
 }
 
-static int ccir656lcd_set_power(struct lcd_panel *panel, int on, struct tcc_dp_device *fb_pdata)
+static int ccir656lcd_set_power(
+	struct lcd_panel *panel, int on, struct tcc_dp_device *fb_pdata)
 {
-
 	mutex_lock(&panel_lock);
 
 	fb_pdata->FbPowerState = panel->state = on;
 
-	if (on) {
-
-	}
-	else 	{
-
-	}
+//	if (on)
+//		todo
+//	else
+//		todo
 
 	mutex_unlock(&panel_lock);
 
@@ -80,37 +80,37 @@ static int ccir656lcd_set_power(struct lcd_panel *panel, int on, struct tcc_dp_d
 }
 
 static struct lcd_panel ccir656lcd_ccir_panel = {
-	.name       = "CCIR656(800x480)",
-	.manufacturer   = "Telechips",
-	.id     = PANEL_ID_CCIR656,
-	.xres       = 800,
-	.yres       = 480,
-	.width      = 0,
-	.height     = 0,
-	.bpp        = 24,
-	.clk_freq   = 62000000,
-	.clk_div    = 2,
-	.bus_width  = 8,
+	.name = "CCIR656(800x480)",
+	.manufacturer = "Telechips",
+	.id = PANEL_ID_CCIR656,
+	.xres = 800,
+	.yres = 480,
+	.width = 0,
+	.height = 0,
+	.bpp = 24,
+	.clk_freq = 62000000,
+	.clk_div = 2,
+	.bus_width = 8,
 
-	.lpw        = 10,
-	.lpc        = (800*2),
-	.lswc       = 4,
-	.lewc       = 160,
-	.vdb        = 0,
-	.vdf        = 0,
+	.lpw = 10,
+	.lpc = (800 * 2),
+	.lswc = 4,
+	.lewc = 160,
+	.vdb = 0,
+	.vdf = 0,
 
-	.fpw1       = 1,
-	.flc1       = 480 -1,
-	.fswc1      = 20,
-	.fewc1      = 21,
+	.fpw1 = 1,
+	.flc1 = 480 - 1,
+	.fswc1 = 20,
+	.fewc1 = 21,
 
-	.fpw2       = 1,
-	.flc2       = 480 -1,
-	.fswc2      = 20,
-	.fewc2      = 21,
-	.sync_invert    = IV_INVERT | IH_INVERT | IP_INVERT,
-	.init       = ccir656lcd_panel_init,
-	.set_power  = ccir656lcd_set_power,
+	.fpw2 = 1,
+	.flc2 = 480 - 1,
+	.fswc2 = 20,
+	.fewc2 = 21,
+	.sync_invert = IV_INVERT | IH_INVERT | IP_INVERT,
+	.init = ccir656lcd_panel_init,
+	.set_power = ccir656lcd_set_power,
 };
 
 static struct lcd_panel *ccir656lcd_panel;
@@ -138,21 +138,21 @@ static int ccir656lcd_remove(struct platform_device *pdev)
 }
 
 #ifdef CONFIG_OF
-static struct of_device_id ccir656lcd_of_match[] = {
-	{ .compatible = "telechips,ccirlcd" },
+static const struct of_device_id ccir656lcd_of_match[] = {
+	{.compatible = "telechips,ccirlcd"},
 	{}
 };
 MODULE_DEVICE_TABLE(of, ccir656lcd_of_match);
 #endif
 
 static struct platform_driver ccir656lcd_driver = {
-	.probe	= ccir656lcd_probe,
-	.remove	= ccir656lcd_remove,
-	.driver	= {
-		.name	= "ccir656_lcd",
-		.owner	= THIS_MODULE,
-		.of_match_table = of_match_ptr(ccir656lcd_of_match),
-	},
+	.probe = ccir656lcd_probe,
+	.remove = ccir656lcd_remove,
+	.driver = {
+			.name = "ccir656_lcd",
+			.owner = THIS_MODULE,
+			.of_match_table = of_match_ptr(ccir656lcd_of_match),
+		},
 };
 
 static __init int ccir656lcd_init(void)

@@ -23,16 +23,16 @@
 #define GPIO_REG_SHIFT  5
 #define GPIO_BITMASK    0x0000001F
 
-#define GPIO_PORTA    ( 0 << GPIO_REG_SHIFT)
-#define GPIO_PORTB    ( 1 << GPIO_REG_SHIFT)
-#define GPIO_PORTC    ( 2 << GPIO_REG_SHIFT)
-#define GPIO_PORTD    ( 3 << GPIO_REG_SHIFT)
-#define GPIO_PORTE    ( 4 << GPIO_REG_SHIFT)
-#define GPIO_PORTF    ( 5 << GPIO_REG_SHIFT)
-#define GPIO_PORTG    ( 6 << GPIO_REG_SHIFT)
-#define GPIO_PORTHDMI ( 7 << GPIO_REG_SHIFT)
-#define GPIO_PORTSD  ( 8 << GPIO_REG_SHIFT)
-#define GPIO_PORTADC ( 9 << GPIO_REG_SHIFT)
+#define GPIO_PORTA    (0 << GPIO_REG_SHIFT)
+#define GPIO_PORTB    (1 << GPIO_REG_SHIFT)
+#define GPIO_PORTC    (2 << GPIO_REG_SHIFT)
+#define GPIO_PORTD    (3 << GPIO_REG_SHIFT)
+#define GPIO_PORTE    (4 << GPIO_REG_SHIFT)
+#define GPIO_PORTF    (5 << GPIO_REG_SHIFT)
+#define GPIO_PORTG    (6 << GPIO_REG_SHIFT)
+#define GPIO_PORTHDMI (7 << GPIO_REG_SHIFT)
+#define GPIO_PORTSD   (8 << GPIO_REG_SHIFT)
+#define GPIO_PORTADC  (9 << GPIO_REG_SHIFT)
 #define GPIO_PORTEXT1 (10 << GPIO_REG_SHIFT)
 #define GPIO_PORTEXT2 (GPIO_PORTEXT1 + 40)
 #define GPIO_PORTEXT3 (GPIO_PORTEXT2 + 40)
@@ -101,25 +101,25 @@
 #define gpio_cansleep	__gpio_cansleep
 
 enum {
-    EXINT_EI0 = 0,
-    EXINT_EI1,
-    EXINT_EI2,
-    EXINT_EI3,
-    EXINT_EI4,
-    EXINT_EI5,
-    EXINT_EI6,
-    EXINT_EI7,
-    EXINT_EI8,
-    EXINT_EI9,
-    EXINT_EI10,
-    EXINT_EI11,
+	EXINT_EI0 = 0,
+	EXINT_EI1,
+	EXINT_EI2,
+	EXINT_EI3,
+	EXINT_EI4,
+	EXINT_EI5,
+	EXINT_EI6,
+	EXINT_EI7,
+	EXINT_EI8,
+	EXINT_EI9,
+	EXINT_EI10,
+	EXINT_EI11,
 };
 
-int tcc_gpio_config(unsigned gpio, unsigned flags);
+int tcc_gpio_config(unsigned int gpio, unsigned int flags);
 
 struct board_gpio_irq_config {
-	unsigned gpio;
-	unsigned irq;
+	unsigned int gpio;
+	unsigned int irq;
 };
 
 extern struct board_gpio_irq_config *board_gpio_irqs;

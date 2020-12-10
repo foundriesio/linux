@@ -1,20 +1,22 @@
 /*
- * tcc_vout_core.c
+ * Copyright (C) Telechips, Inc.
  *
- * Copyright (C) 2013 Telechips, Inc.
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
  *
- * Video-for-Linux (Version 2) video output driver for Telechips SoC.
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
  *
- * This package is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2 as
- * published by the Free Software Foundation.
- *
- * THIS PACKAGE IS PROVIDED ``AS IS'' AND WITHOUT ANY EXPRESS OR
- * IMPLIED WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED
- * WARRANTIES OF MERCHANTIBILITY AND FITNESS FOR A PARTICULAR PURPOSE.
- *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, see the file COPYING, or write
+ * to the Free Software Foundation, Inc.,
+ * 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  */
-#include <asm/io.h>
+#include <linux/io.h>
 #include <linux/clk.h>
 #include <linux/irq.h>
 #include <linux/sched.h>
@@ -42,7 +44,7 @@
 
 #ifdef CONFIG_VOUT_DISPLAY_LASTFRAME
 static struct pmap lastframe_pbuf;
-static int enable_LastFrame = 0;
+static int enable_LastFrame;
 static WMIXER_ALPHASCALERING_INFO_TYPE fbmixer;
 #endif
 
@@ -59,41 +61,25 @@ static WMIXER_ALPHASCALERING_INFO_TYPE fbmixer;
 #ifdef CONFIG_VIOC_DOLBY_VISION_EDR
 #include <video/tcc/tccfb.h>
 
-extern struct tcc_dp_device *tca_get_displayType(TCC_OUTPUT_TYPE check_type);
-extern void tca_edr_el_display_update(struct tcc_dp_device *pdp_data, struct tcc_lcdc_image_update *ImageInfo);
-
 #ifdef CONFIG_VIOC_DOLBY_VISION_CERTIFICATION_TEST
-
 #define RDMA_UVI_MAX_WIDTH             3072
-extern void tca_edr_display_update(struct tcc_dp_device *pdp_data, struct tcc_lcdc_image_update *ImageInfo);
 #endif
 
 #include <video/tcc/vioc_v_dv.h>
 #include <video/tcc/vioc_dv_cfg.h>
 #define DEF_DV_CHECK_NUM 1 //2
 static int bStep_Check = DEF_DV_CHECK_NUM;
-static unsigned int nFrame = 0;
-static unsigned int nFrame_t0 = 0;
-static unsigned int nFrame_t1 = 0;
-static unsigned int nFrame_t2 = 0;
-extern unsigned int HDMI_video_width;
-extern unsigned int HDMI_video_height;
+static unsigned int nFrame;
+static unsigned int nFrame_t0;
+static unsigned int nFrame_t1;
+static unsigned int nFrame_t2;
 #define dvprintk(msg...) //printk("[WAR][VOUT-DV] " msg);
 #endif
 
 #ifdef CONFIG_TCC_HDMI_DRIVER_V2_0
-#include "../../../char/hdmi_v2_0/include/hdmi_ioctls.h"
-
 DRM_Packet_t gDRM_packet;
-extern void hdmi_set_drm(DRM_Packet_t * drmparm);
-extern void hdmi_clear_drm(void);
-
-extern unsigned int hdmi_get_refreshrate(void);
-#else
-extern unsigned int HDMI_video_hz;
 #endif
 
-extern OUTPUT_SELECT_MODE Output_SelectMode;
 
 // buffer
 static int tcc_get_base_address(
@@ -115,11 +101,11 @@ static int tcc_get_base_address(
 	if ((viocfmt >= VIOC_IMG_FMT_RGB332) && (viocfmt <= VIOC_IMG_FMT_ARGB6666_3)) {
 		int bpp;
 
-		if(viocfmt == VIOC_IMG_FMT_RGB332)
+		if (viocfmt == VIOC_IMG_FMT_RGB332)
 			bpp = 1;
-		else if((viocfmt >= VIOC_IMG_FMT_ARGB4444) && (viocfmt <= VIOC_IMG_FMT_ARGB1555))
+		else if ((viocfmt >= VIOC_IMG_FMT_ARGB4444) && (viocfmt <= VIOC_IMG_FMT_ARGB1555))
 			bpp = 2;
-		else if((viocfmt >= VIOC_IMG_FMT_ARGB8888) && (viocfmt <= VIOC_IMG_FMT_ARGB6666_3))
+		else if ((viocfmt >= VIOC_IMG_FMT_ARGB8888) && (viocfmt <= VIOC_IMG_FMT_ARGB6666_3))
 			bpp = 4;
 		else
 			bpp = 2;
@@ -130,12 +116,11 @@ static int tcc_get_base_address(
 	if ((viocfmt == VIOC_IMG_FMT_UYVY)
 		|| (viocfmt == VIOC_IMG_FMT_VYUY)
 		|| (viocfmt == VIOC_IMG_FMT_YUYV)
-		|| (viocfmt == VIOC_IMG_FMT_YVYU))
-	{
+		|| (viocfmt == VIOC_IMG_FMT_YVYU)) {
 		y_offset = y_offset * 2;
 	}
 
-	*base0 = base0_addr + y_offset; 	// Set base0 address for image
+	*base0 = base0_addr + y_offset; // Set base0 address for image
 
 	/*
 	 * Calculation of base1 and base2 address
@@ -154,15 +139,12 @@ static int tcc_get_base_address(
 
 	if ((viocfmt == VIOC_IMG_FMT_YUV420SEP)
 		|| (viocfmt == VIOC_IMG_FMT_YUV420IL0)
-		|| (viocfmt == VIOC_IMG_FMT_YUV420IL1))
-	{
+		|| (viocfmt == VIOC_IMG_FMT_YUV420IL1)) {
 		if (viocfmt == VIOC_IMG_FMT_YUV420SEP)
 			uv_offset = ((width * pos_y) / 4) + (pos_x / 2);
 		else
 			uv_offset = ((width * pos_y) / 2) + (pos_x);
-	}
-	else
-	{
+	} else {
 		if (viocfmt == VIOC_IMG_FMT_YUV422IL1)
 			uv_offset = (width * pos_y) + (pos_x);
 		else
@@ -222,7 +204,7 @@ static void vout_check_format(struct vioc_rdma *rdma, unsigned int fmt)
 {
 	int pixelformat = -1;
 
-	switch(fmt) {
+	switch (fmt) {
 	case DEC_FMT_420IL0:
 		pixelformat = VIOC_IMG_FMT_YUV420IL0;
 		break;
@@ -238,12 +220,12 @@ static void vout_check_format(struct vioc_rdma *rdma, unsigned int fmt)
 	case DEC_FMT_422V:
 	case DEC_FMT_400:
 	default:
-		pr_err("[ERR][VOUT] unknown format(%d) \n", fmt);
+		pr_err("[ERR][VOUT] unknown format(%d)\n", fmt);
 		break;
 	}
 
-	if((pixelformat > 0) && (rdma->fmt != pixelformat)) {
-		dprintk("DEC_FMT 0x%x -> 0x%x \n", rdma->fmt, pixelformat);
+	if ((pixelformat > 0) && (rdma->fmt != pixelformat)) {
+		dprintk("DEC_FMT 0x%x -> 0x%x\n", rdma->fmt, pixelformat);
 		rdma->fmt = (unsigned int)pixelformat;
 		VIOC_RDMA_SetImageFormat(rdma->addr, rdma->fmt);
 		VIOC_RDMA_SetImageOffset(rdma->addr, rdma->fmt, rdma->width);
@@ -257,7 +239,7 @@ void vout_pop_all_buffer(struct tcc_vout_device *vout)
 	atomic_add(atomic_read(&vout->readable_buff_count), &vout->displayed_buff_count);
 	atomic_set(&vout->readable_buff_count, 0);
 
-	if(atomic_read(&vout->displayed_buff_count) == 0)
+	if (atomic_read(&vout->displayed_buff_count) == 0)
 		vout->clearFrameMode = OFF;	// disable clear frame mode
 
 	// for interlace
@@ -265,22 +247,21 @@ void vout_pop_all_buffer(struct tcc_vout_device *vout)
 	vout->frame_count = 0;
 
 	dprintk("\n");
-	return;
 }
 
 #ifdef CONFIG_VOUT_USE_VSYNC_INT
-static struct v4l2_buffer* vout_get_buffer(struct tcc_vout_device *vout)
+static struct v4l2_buffer *vout_get_buffer(struct tcc_vout_device *vout)
 {
 	return (struct v4l2_buffer *)(&vout->qbufs[vout->popIdx].buf);
 }
 
 static void vout_pop_buffer(struct tcc_vout_device *vout)
 {
-	if(++vout->popIdx >= vout->nr_qbufs)
+	if (++vout->popIdx >= vout->nr_qbufs)
 		vout->popIdx = 0;
 
 	atomic_dec(&vout->readable_buff_count);
-	if(atomic_read(&vout->readable_buff_count) < 0)
+	if (atomic_read(&vout->readable_buff_count) < 0)
 		atomic_set(&vout->readable_buff_count, 0);
 //	pr_debug("[DBG][VOUT] %s: popIdx: %d readable_buff_count: %d\n", __func__,vout->popIdx, atomic_read(&vout->readable_buff_count));
 }
@@ -290,15 +271,14 @@ static void vout_clear_buffer(struct tcc_vout_device *vout, struct v4l2_buffer *
 	/* update last displayed buffer index */
 	vout->last_displayed_buf_idx = buf->index;
 	atomic_inc(&vout->displayed_buff_count);
-	return;
 }
 #endif
 
 int vout_get_pmap(struct pmap *pmap)
 {
-    if (pmap_get_info(pmap->name, pmap) == 1) {
-	    dprintk("[PMAP] %s: 0x%08x ~ 0x%08x (0x%08x)\n",
-	        pmap->name, pmap->base, pmap->base + pmap->size, pmap->size);
+	if (pmap_get_info(pmap->name, pmap) == 1) {
+		dprintk("[PMAP] %s: 0x%08x ~ 0x%08x (0x%08x)\n",
+		pmap->name, pmap->base, pmap->base + pmap->size, pmap->size);
 		return 0;
 	}
 	return -1;
@@ -331,24 +311,24 @@ int vout_set_m2m_path(int deintl_default, struct tcc_vout_device *vout)
 
 		// set m2m rdma
 		dev_np = of_parse_phandle(vout->v4l2_np, "m2m_rdma", 0);
-		if(dev_np) {
+		if (dev_np) {
 			/* swreser bit */
 			of_property_read_u32_index(vout->v4l2_np, "m2m_rdma", 1, &vioc->m2m_rdma.id);
 			vioc->m2m_rdma.addr = VIOC_RDMA_GetAddress(get_vioc_index(vioc->m2m_rdma.id));
-			dprintk("[M2M] RDMA < vir_addr = 0x%p , id = %d , \n", vioc->m2m_rdma.addr, get_vioc_index(vioc->m2m_rdma.id));
+			dprintk("[M2M] RDMA < vir_addr = 0x%p , id = %d ,\n", vioc->m2m_rdma.addr, get_vioc_index(vioc->m2m_rdma.id));
 		} else {
-			dprintk("[M2M] could not find rdma node of vout driver. \n");
+			dprintk("[M2M] could not find rdma node of vout driver.\n");
 		}
 
 		// set scaler
 		dev_np = of_parse_phandle(vout->v4l2_np, "scaler", 0);
-		if(dev_np) {
+		if (dev_np) {
 			/* swreser bit */
 			of_property_read_u32_index(vout->v4l2_np, "scaler", 1, &vioc->sc.id);
 			vioc->sc.addr = VIOC_SC_GetAddress(get_vioc_index(vioc->sc.id));
-			dprintk("[M2M] SCALER < vir_addr = 0x%p , id = %d \n", vioc->sc.addr, get_vioc_index(vioc->sc.id));
+			dprintk("[M2M] SCALER < vir_addr = 0x%p , id = %d\n", vioc->sc.addr, get_vioc_index(vioc->sc.id));
 		} else {
-			dprintk("[M2M] could not find scaler node of vout driver. \n");
+			dprintk("[M2M] could not find scaler node of vout driver.\n");
 		}
 	} else {
 		if (!vout->opened) {
@@ -413,45 +393,45 @@ int vout_set_m2m_path(int deintl_default, struct tcc_vout_device *vout)
 
 	// set m2m wmix
 	dev_np = of_parse_phandle(vout->v4l2_np, "m2m_wmix", 0);
-	if(dev_np) {
+	if (dev_np) {
 		/* swreser bit */
 		of_property_read_u32_index(vout->v4l2_np, "m2m_wmix", 1, &vioc->m2m_wmix.id);
 		vioc->m2m_wmix.addr = VIOC_WMIX_GetAddress(get_vioc_index(vioc->m2m_wmix.id));
-		dprintk("[M2M] WMIX < vir_addr = 0x%p , id = %d \n", vioc->m2m_wmix.addr, get_vioc_index(vioc->m2m_wmix.id));
+		dprintk("[M2M] WMIX < vir_addr = 0x%p , id = %d\n", vioc->m2m_wmix.addr, get_vioc_index(vioc->m2m_wmix.id));
 	} else {
-		dprintk("[M2M] could not find wmix node of vout driver. \n");
+		dprintk("[M2M] could not find wmix node of vout driver.\n");
 	}
 
 	// set m2m wdma
 	dev_np = of_parse_phandle(vout->v4l2_np, "m2m_wdma", 0);
-	if(dev_np) {
+	if (dev_np) {
 		/* swreser bit */
 		of_property_read_u32_index(vout->v4l2_np, "m2m_wdma", 1, &vioc->m2m_wdma.id);
 		vioc->m2m_wdma.addr = VIOC_WDMA_GetAddress(get_vioc_index(vioc->m2m_wdma.id));
 		vioc->m2m_wdma.irq = irq_of_parse_and_map(dev_np, get_vioc_index(vioc->m2m_wdma.id));
 
 		vioc->m2m_wdma.vioc_intr = kzalloc(sizeof(struct vioc_intr_type), GFP_KERNEL);
-		if(vioc->m2m_wdma.vioc_intr == 0) {
+		if (vioc->m2m_wdma.vioc_intr == 0) {
 			pr_err("[ERR][VOUT] memory allocation faiil (vioc->m2m_wdma)\n");
 			return -ENOMEM;
 		}
 		vioc->m2m_wdma.vioc_intr->id = VIOC_INTR_WD0 + get_vioc_index(vioc->m2m_wdma.id);
 		vioc->m2m_wdma.vioc_intr->bits = VIOC_WDMA_IREQ_EOFR_MASK;
-		dprintk("[M2M] WDMA < vir_addr = 0x%p , id = %d, irq = %d \n", vioc->m2m_wdma.addr, get_vioc_index(vioc->m2m_wdma.id), vioc->m2m_wdma.irq);
+		dprintk("[M2M] WDMA < vir_addr = 0x%p , id = %d, irq = %d\n", vioc->m2m_wdma.addr, get_vioc_index(vioc->m2m_wdma.id), vioc->m2m_wdma.irq);
 	} else {
-		dprintk("[M2M] could not find wdma node of vout driver. \n");
+		dprintk("[M2M] could not find wdma node of vout driver.\n");
 	}
 
 	#ifdef CONFIG_VOUT_USE_SUB_PLANE
 	// set m2m subplane rdma
 	dev_np = of_parse_phandle(vout->v4l2_np, "m2m_subplane_rdma", 0);
-	if(dev_np) {
+	if (dev_np) {
 		/* swreser bit */
 		of_property_read_u32_index(vout->v4l2_np, "m2m_subplane_rdma", 1, &vioc->m2m_subplane_rdma.id);
 		vioc->m2m_subplane_rdma.addr = VIOC_RDMA_GetAddress(get_vioc_index(vioc->m2m_subplane_rdma.id));
-		dprintk("[M2M] SUB_RDMA < vir_addr = 0x%p , id = %d \n", vioc->m2m_subplane_rdma.addr, get_vioc_index(vioc->m2m_subplane_rdma.id));
+		dprintk("[M2M] SUB_RDMA < vir_addr = 0x%p , id = %d\n", vioc->m2m_subplane_rdma.addr, get_vioc_index(vioc->m2m_subplane_rdma.id));
 	} else {
-		dprintk("[M2M] could not find rdma node of vout driver. \n");
+		dprintk("[M2M] could not find rdma node of vout driver.\n");
 	}
 
 	// set m2m subtitle wmixer
@@ -460,18 +440,16 @@ int vout_set_m2m_path(int deintl_default, struct tcc_vout_device *vout)
 	#endif
 
 	// set deinterlacer information
-	if(!of_property_read_u32_index(vout->v4l2_np, "deintl_block", 1, &deinterlacer)) {
-		if(get_vioc_type(deinterlacer) == get_vioc_type(VIOC_DEINTLS)) {
+	if (!of_property_read_u32_index(vout->v4l2_np, "deintl_block", 1, &deinterlacer)) {
+		if (get_vioc_type(deinterlacer) == get_vioc_type(VIOC_DEINTLS)) {
 			vout->deinterlace = VOUT_DEINTL_S;
 
 			/* path plugin */
 			vioc->deintl_s.id = deinterlacer;
-			dprintk("DEINTL_S < id = %d \n", vioc->deintl_s.id);
-		}
-		else if(get_vioc_type(deinterlacer) == get_vioc_type(VIOC_VIQE))
-		{
+			dprintk("DEINTL_S < id = %d\n", vioc->deintl_s.id);
+		} else if (get_vioc_type(deinterlacer) == get_vioc_type(VIOC_VIQE)) {
 			dev_np = of_parse_phandle(vout->v4l2_np, "deintl_block", 0);
-			if(dev_np) {
+			if (dev_np) {
 				vout->deinterlace = VOUT_DEINTL_VIQE_3D;
 
 				vioc->viqe.id = deinterlacer;
@@ -479,16 +457,14 @@ int vout_set_m2m_path(int deintl_default, struct tcc_vout_device *vout)
 				#ifdef CONFIG_VOUT_KEEP_VIDEO_LAYER
 				vioc->deintl_s.id = VIOC_DEINTLS0
 				#endif
-				dprintk("VIQE < vir_addr = 0x%p , id = %d \n", vioc->viqe.addr, get_vioc_index(vioc->viqe.id));
+				dprintk("VIQE < vir_addr = 0x%p , id = %d\n", vioc->viqe.addr, get_vioc_index(vioc->viqe.id));
 			} else {
-				pr_err("[ERR][VOUT] could not find viqe node of vout driver. \n");
+				pr_err("[ERR][VOUT] could not find viqe node of vout driver.\n");
 			}
 		}
-	}
-	else
-	{
+	} else {
 		vout->deinterlace = VOUT_DEINTL_NONE;
-		dprintk("Does not support deinterlacing (v4l2_vout%d device) \n", vout->id);
+		dprintk("Does not support deinterlacing (v4l2_vout%d device)\n", vout->id);
 	}
 
 	dprintk("RDMA%d%s - WMIX%d - SC%d - WDMA%d\n", get_vioc_index(vioc->m2m_rdma.id),
@@ -497,17 +473,17 @@ int vout_set_m2m_path(int deintl_default, struct tcc_vout_device *vout)
 
 	#ifdef CONFIG_VIOC_MAP_DECOMP
 	dev_np = of_find_compatible_node(NULL, NULL, "telechips,vioc_mc");
-	if(dev_np) {
+	if (dev_np) {
 		vioc->map_converter.id = VIOC_MC + vout->id;
-		dprintk("MC < id = %d \n", get_vioc_index(vioc->map_converter.id));
+		dprintk("MC < id = %d\n", get_vioc_index(vioc->map_converter.id));
 	}
 	#endif
 
 	#ifdef CONFIG_VIOC_DTRC_DECOMP
 	dev_np = of_find_compatible_node(NULL, NULL, "telechips,vioc_dtrc");
-	if(dev_np) {
+	if (dev_np) {
 		vioc->dtrc.id = VIOC_DTRC + vout->id;
-		dprintk("DTRC < id = %d \n", get_vioc_index(vioc->dtrc.id));
+		dprintk("DTRC < id = %d\n", get_vioc_index(vioc->dtrc.id));
 	}
 	#endif
 
@@ -706,7 +682,7 @@ int vout_set_vout_path(struct tcc_vout_device *vout)
 
 	// set display rdma
 	dev_np = of_parse_phandle(vout->v4l2_np, "rdma", 0);
-	if(dev_np) {
+	if (dev_np) {
 		/* swreser bit */
 		of_property_read_u32_index(vout->v4l2_np, "rdma", 1, &vioc->rdma.id);
 		vioc->rdma.addr = VIOC_RDMA_GetAddress(get_vioc_index(vioc->rdma.id));
@@ -717,7 +693,7 @@ int vout_set_vout_path(struct tcc_vout_device *vout)
 
 	// set display wmix
 	dev_np = of_parse_phandle(vout->v4l2_np, "wmix", 0);
-	if(dev_np) {
+	if (dev_np) {
 		/* swreser bit */
 		of_property_read_u32_index(vout->v4l2_np, "wmix", 1, &vioc->wmix.id);
 		vioc->wmix.addr = VIOC_WMIX_GetAddress(get_vioc_index(vioc->wmix.id));
@@ -751,12 +727,12 @@ int vout_set_vout_path(struct tcc_vout_device *vout)
 	}
 
 	dev_np = of_parse_phandle(vout->v4l2_np, "disp", 0);
-	if(dev_np) {
+	if (dev_np) {
 		of_property_read_u32_index(vout->v4l2_np, "disp", 1, &vioc->disp.id);
 		vioc->disp.addr = VIOC_DISP_GetAddress(get_vioc_index(vioc->disp.id));
 		#ifdef CONFIG_VOUT_USE_VSYNC_INT
 		vioc->disp.vioc_intr = kzalloc(sizeof(struct vioc_intr_type), GFP_KERNEL);
-		if(vioc->disp.vioc_intr == 0) {
+		if (vioc->disp.vioc_intr == 0) {
 			pr_err("[ERR][VOUT] memory allocation faiil (vioc->disp)\n");
 			return -ENOMEM;
 		}
@@ -765,20 +741,20 @@ int vout_set_vout_path(struct tcc_vout_device *vout)
 		vioc->disp.vioc_intr->bits = (1<<VIOC_DISP_INTR_VSF);
 		#endif
 
-		dprintk("[DISP] DISP < vir_addr = 0x%p , id = %d \n", vioc->disp.addr, get_vioc_index(vioc->disp.id));
+		dprintk("[DISP] DISP < vir_addr = 0x%p , id = %d\n", vioc->disp.addr, get_vioc_index(vioc->disp.id));
 	} else {
-		dprintk("[DISP] could not find disp node of vout driver. \n");
+		dprintk("[DISP] could not find disp node of vout driver.\n");
 	}
 
 	#ifdef CONFIG_VOUT_DISPLAY_LASTFRAME
 	dev_np = of_parse_phandle(vout->v4l2_np, "lastframe_rdma", 0);
-	if(dev_np) {
+	if (dev_np) {
 		/* swreser bit */
 		of_property_read_u32_index(vout->v4l2_np, "lastframe_rdma", 1, &vioc->lastframe_rdma.id);
 		vioc->lastframe_rdma.addr = VIOC_RDMA_GetAddress(get_vioc_index(vioc->lastframe_rdma.id));
-		dprintk("[DISP] LASTFRAME_RDMA < vir_addr = 0x%p , id = %d \n", vioc->lastframe_rdma.addr, get_vioc_index(vioc->lastframe_rdma.id));
+		dprintk("[DISP] LASTFRAME_RDMA < vir_addr = 0x%p , id = %d\n", vioc->lastframe_rdma.addr, get_vioc_index(vioc->lastframe_rdma.id));
 	} else {
-		dprintk("[DISP] could not find lastframe_rdma node of vout driver. \n");
+		dprintk("[DISP] could not find lastframe_rdma node of vout driver.\n");
 	}
 	#endif
 
@@ -947,7 +923,7 @@ void m2m_rdma_setup(struct vioc_rdma *rdma)
 	VIOC_RDMA_SetImageFormat(rdma->addr, rdma->fmt);
 
 	if (rdma->y_stride) {
-		if(rdma->fmt > VIOC_IMG_FMT_ARGB6666_3)
+		if (rdma->fmt > VIOC_IMG_FMT_ARGB6666_3)
 			VIOC_RDMA_SetImageOffset(rdma->addr, rdma->fmt, rdma->y_stride);
 		else
 			VIOC_RDMA_SetImageOffset(rdma->addr, TCC_LCDC_IMG_FMT_RGB332, rdma->y_stride);
@@ -958,9 +934,9 @@ void m2m_rdma_setup(struct vioc_rdma *rdma)
 
 static void m2m_wmix_setup(struct vioc_wmix *wmix)
 {
-    #ifdef CONFIG_TCC_VIOCMG
-    viocmg_set_wmix_ovp(VIOCMG_CALLERID_VOUT, get_vioc_index(wmix->id), wmix->ovp);
-    #else
+	#ifdef CONFIG_TCC_VIOCMG
+	viocmg_set_wmix_ovp(VIOCMG_CALLERID_VOUT, get_vioc_index(wmix->id), wmix->ovp);
+	#else
 	VIOC_WMIX_SetOverlayPriority(wmix->addr, wmix->ovp);
 	#endif
 	VIOC_WMIX_SetSize(wmix->addr, wmix->width, wmix->height);
@@ -1027,7 +1003,7 @@ static void scaler_setup(struct tcc_vout_device *vout)
 		vout->disp_rect.top < 0 ? abs(vout->disp_rect.top) : 0);			// set output position
 	VIOC_SC_SetOutSize(vioc->sc.addr, dw, dh);								// set output size in scaler
 
-	if(vout->onthefly_mode)
+	if (vout->onthefly_mode)
 		VIOC_CONFIG_PlugIn(vioc->sc.id, vioc->rdma.id);	// plugin position in scaler
 	else
 		VIOC_CONFIG_PlugIn(vioc->sc.id, vioc->m2m_wdma.id);	// plugin position in scaler
@@ -1056,7 +1032,7 @@ static int deintl_s_setup(struct tcc_vout_device *vout)
 	VIOC_CONFIG_SWReset(vioc->deintl_s.id, VIOC_CONFIG_RESET);
 	VIOC_CONFIG_SWReset(vioc->deintl_s.id, VIOC_CONFIG_CLEAR);
 
-	if(vout->onthefly_mode)
+	if (vout->onthefly_mode)
 		ret = VIOC_CONFIG_PlugIn(vioc->deintl_s.id, vioc->rdma.id);
 	else
 		ret = VIOC_CONFIG_PlugIn(vioc->deintl_s.id, vioc->m2m_rdma.id);
@@ -1088,7 +1064,7 @@ static int deintl_viqe_setup(struct tcc_vout_device *vout, enum deintl_type dein
 #endif
 
 #ifdef CONFIG_VIOC_DOLBY_VISION_EDR
-	if(VIOC_CONFIG_DV_GET_EDR_PATH())
+	if (VIOC_CONFIG_DV_GET_EDR_PATH())
 		deintl_en = OFF;
 #endif
 
@@ -1120,7 +1096,7 @@ static int deintl_viqe_setup(struct tcc_vout_device *vout, enum deintl_type dein
 		di_mode = VIOC_VIQE_DEINTL_MODE_BYPASS;
 	}
 
-	if(vmisc_tsdu == OFF) {
+	if (vmisc_tsdu == OFF) {
 		framebufferWidth = 0;
 		framebufferHeight = 0;
 	}
@@ -1141,7 +1117,7 @@ static int deintl_viqe_setup(struct tcc_vout_device *vout, enum deintl_type dein
 	VIOC_VIQE_SetImageY2RMode(vioc->viqe.addr, vioc->viqe.y2rmd);
 
 	if (plugin) {
-		if(vout->onthefly_mode)
+		if (vout->onthefly_mode)
 			ret = VIOC_CONFIG_PlugIn(vioc->viqe.id, vioc->rdma.id);
 		else
 			ret = VIOC_CONFIG_PlugIn(vioc->viqe.id, vioc->m2m_rdma.id);
@@ -1171,9 +1147,9 @@ static int vout_check_syncTime(struct tcc_vout_device *vout, struct v4l2_buffer 
 	unsigned int display_hz = HDMI_video_hz ? HDMI_video_hz : 60;
 	#endif
 
-	if(display_hz == 59)
+	if (display_hz == 59)
 		display_hz = 60;
-	else if(display_hz == 23)
+	else if (display_hz == 23)
 		display_hz = 24;
 	vout->update_gap_time = 1000/(display_hz ? display_hz : 60);
 	time_zone = vout->update_gap_time / 2;
@@ -1181,12 +1157,12 @@ static int vout_check_syncTime(struct tcc_vout_device *vout, struct v4l2_buffer 
 	current_time = ((buf->timestamp.tv_sec*1000)+(buf->timestamp.tv_usec/1000));
 	diff_time = (int)(current_time - base_time);
 
-	if(abs(diff_time) <= time_zone/*max time gap*/) {
-		dbprintk("[%d]buf->timestamp(%ld msec) base_time(%ld msec) diff_time(%d)\n", buf->index,current_time, base_time, diff_time);
+	if (abs(diff_time) <= time_zone/*max time gap*/) {
+		dbprintk("[%d]buf->timestamp(%ld msec) base_time(%ld msec) diff_time(%d)\n", buf->index, current_time, base_time, diff_time);
 	} else {
-		if(diff_time <= -(time_zone)/*limit delay time*/) {
+		if (diff_time <= -(time_zone)/*limit delay time*/) {
 			dprintk("exception status!!! frame drop(%dmsec)\n", diff_time);
-			if(diff_time <= -(vout->update_gap_time * 2))
+			if (diff_time <= -(vout->update_gap_time * 2))
 				vout->force_sync = ON;	// to recalculate kernel time
 		#if defined(CONFIG_VIOC_DOLBY_VISION_CERTIFICATION_TEST)
 			return VOUT_DRV_NOERR;
@@ -1203,11 +1179,10 @@ static int vout_check_syncTime(struct tcc_vout_device *vout, struct v4l2_buffer 
 #if defined(CONFIG_VIOC_DOLBY_VISION_EDR)
 void vout_onthefly_dv_update(struct tcc_vout_device *vout, struct v4l2_buffer *buf)
 {
-	if(VIOC_CONFIG_DV_GET_EDR_PATH()){
-		volatile void __iomem *pDisp_DV = VIOC_DV_GetAddress((DV_DISP_TYPE)EDR_BL);
+	if (VIOC_CONFIG_DV_GET_EDR_PATH()) {
+		volatile void __iomem *pDisp_DV = VIOC_DV_GetAddress((enum DV_DISP_TYPE)EDR_BL);
 
-		if(vioc_get_out_type() == buf->m.planes[MPLANE_VID].reserved[VID_DOLBY_REG_OUT_TYPE])
-		{
+		if (vioc_get_out_type() == buf->m.planes[MPLANE_VID].reserved[VID_DOLBY_REG_OUT_TYPE]) {
 			vioc_v_dv_prog(buf->m.planes[MPLANE_VID].reserved[VID_DOLBY_MD_HDMI_ADDR],
 							buf->m.planes[MPLANE_VID].reserved[VID_DOLBY_REG_ADDR],
 							buf->m.planes[MPLANE_VID].reserved[VID_DOLBY_CONTENT_TYPE],
@@ -1216,9 +1191,7 @@ void vout_onthefly_dv_update(struct tcc_vout_device *vout, struct v4l2_buffer *b
 			VIOC_V_DV_SetPXDW(pDisp_DV, NULL, VIOC_PXDW_FMT_24_RGB888);
 			VIOC_V_DV_SetSize(pDisp_DV, NULL, vout->disp_rect.left, vout->disp_rect.top, Hactive, Vactive);
 			VIOC_V_DV_Turnon(pDisp_DV, NULL);
-		}
-		else
-		{
+		} else {
 			pr_err("[ERR][VOUT] %s-%d type mismatch(%d != %d)\n", __func__, __LINE__, vioc_get_out_type(), buf->m.planes[MPLANE_VID].reserved[VID_DOLBY_REG_OUT_TYPE]);
 		}
 	}
@@ -1228,39 +1201,38 @@ void vout_onthefly_convert_video_info(struct tcc_vout_device *vout, struct v4l2_
 {
 	memset(ImageInfo, 0x00, sizeof(struct tcc_lcdc_image_update));
 
-	ImageInfo->enable 		= 1;
+	ImageInfo->enable	= 1;
 	ImageInfo->on_the_fly	= 1;
-	ImageInfo->Lcdc_layer 	= RDMA_VIDEO;
+	ImageInfo->Lcdc_layer	= RDMA_VIDEO;
 
-	ImageInfo->Frame_width 	= buf->m.planes[MPLANE_VID].reserved[VID_WIDTH];
-	ImageInfo->Frame_height = buf->m.planes[MPLANE_VID].reserved[VID_HEIGHT];
-	ImageInfo->crop_left 	= 0;
-	ImageInfo->crop_top 	= 0;
-	ImageInfo->crop_right 	= ImageInfo->Frame_width;
-	ImageInfo->crop_bottom 	= ImageInfo->Frame_height;
+	ImageInfo->Frame_width	= buf->m.planes[MPLANE_VID].reserved[VID_WIDTH];
+	ImageInfo->Frame_height	= buf->m.planes[MPLANE_VID].reserved[VID_HEIGHT];
+	ImageInfo->crop_left	= 0;
+	ImageInfo->crop_top	= 0;
+	ImageInfo->crop_right	= ImageInfo->Frame_width;
+	ImageInfo->crop_bottom	= ImageInfo->Frame_height;
 
 	if ((ImageInfo->crop_left != buf->m.planes[MPLANE_VID].reserved[VID_CROP_LEFT]
 			|| ImageInfo->crop_top != buf->m.planes[MPLANE_VID].reserved[VID_CROP_TOP]
 			|| (ImageInfo->crop_right - ImageInfo->crop_left) != buf->m.planes[MPLANE_VID].reserved[VID_CROP_WIDTH]
 			|| (ImageInfo->crop_bottom - ImageInfo->crop_top) != buf->m.planes[MPLANE_VID].reserved[VID_CROP_HEIGHT])
 			&& (buf->m.planes[MPLANE_VID].reserved[VID_CROP_WIDTH] && buf->m.planes[MPLANE_VID].reserved[VID_CROP_HEIGHT])
-			&& (ImageInfo->Frame_width >= buf->m.planes[MPLANE_VID].reserved[VID_CROP_WIDTH] && ImageInfo->Frame_height >= buf->m.planes[MPLANE_VID].reserved[VID_CROP_HEIGHT]))
-	{
-		ImageInfo->crop_left 	= buf->m.planes[MPLANE_VID].reserved[VID_CROP_LEFT];
-		ImageInfo->crop_top 	= buf->m.planes[MPLANE_VID].reserved[VID_CROP_TOP];
-		ImageInfo->crop_right 	= ImageInfo->crop_left + buf->m.planes[MPLANE_VID].reserved[VID_CROP_WIDTH];
-		ImageInfo->crop_bottom 	= ImageInfo->crop_top + buf->m.planes[MPLANE_VID].reserved[VID_CROP_HEIGHT];
+			&& (ImageInfo->Frame_width >= buf->m.planes[MPLANE_VID].reserved[VID_CROP_WIDTH] && ImageInfo->Frame_height >= buf->m.planes[MPLANE_VID].reserved[VID_CROP_HEIGHT])) {
+		ImageInfo->crop_left	= buf->m.planes[MPLANE_VID].reserved[VID_CROP_LEFT];
+		ImageInfo->crop_top	= buf->m.planes[MPLANE_VID].reserved[VID_CROP_TOP];
+		ImageInfo->crop_right	= ImageInfo->crop_left + buf->m.planes[MPLANE_VID].reserved[VID_CROP_WIDTH];
+		ImageInfo->crop_bottom	= ImageInfo->crop_top + buf->m.planes[MPLANE_VID].reserved[VID_CROP_HEIGHT];
 	}
 
-	ImageInfo->offset_x 	= vout->disp_rect.left;
-	ImageInfo->offset_y 	= vout->disp_rect.top;
-	ImageInfo->Image_width 	= vout->disp_rect.width;
-	ImageInfo->Image_height = vout->disp_rect.height;
+	ImageInfo->offset_x	= vout->disp_rect.left;
+	ImageInfo->offset_y	= vout->disp_rect.top;
+	ImageInfo->Image_width	= vout->disp_rect.width;
+	ImageInfo->Image_height	= vout->disp_rect.height;
 
 #ifdef CONFIG_VIOC_10BIT
-	if(buf->flags & V4L2_BUFFER_FLAG_YUV_10BIT_MODE0) {
+	if (buf->flags & V4L2_BUFFER_FLAG_YUV_10BIT_MODE0) {
 		ImageInfo->private_data.optional_info[VID_OPT_BIT_DEPTH]	= 10;
-	} else if(buf->flags & V4L2_BUFFER_FLAG_YUV_10BIT_MODE1) {
+	} else if (buf->flags & V4L2_BUFFER_FLAG_YUV_10BIT_MODE1) {
 		ImageInfo->private_data.optional_info[VID_OPT_BIT_DEPTH]	= 11;
 	} else {
 		ImageInfo->private_data.optional_info[VID_OPT_BIT_DEPTH]	= 0;
@@ -1268,9 +1240,8 @@ void vout_onthefly_convert_video_info(struct tcc_vout_device *vout, struct v4l2_
 #endif
 
 	ImageInfo->private_data.optional_info[VID_OPT_HAVE_MC_INFO] = buf->m.planes[MPLANE_VID].reserved[VID_CONVERTER_EN];
-	//dvprintk("############# MC Info(%d) \n", ImageInfo->private_data.optional_info[VID_OPT_HAVE_MC_INFO]);
-	if(buf->m.planes[MPLANE_VID].reserved[VID_CONVERTER_EN] == 1)
-	{
+	//dvprintk("############# MC Info(%d)\n", ImageInfo->private_data.optional_info[VID_OPT_HAVE_MC_INFO]);
+	if (buf->m.planes[MPLANE_VID].reserved[VID_CONVERTER_EN] == 1) {
 		ImageInfo->private_data.mapConv_info.m_uiLumaStride = buf->m.planes[MPLANE_VID].reserved[VID_HEVC_LUMA_STRIDE];
 		ImageInfo->private_data.mapConv_info.m_uiChromaStride = buf->m.planes[MPLANE_VID].reserved[VID_HEVC_CHROMA_STRIDE];
 		ImageInfo->private_data.mapConv_info.m_uiLumaBitDepth = buf->m.planes[MPLANE_VID].reserved[VID_HEVC_LUMA_BIT_DEPTH];
@@ -1308,19 +1279,19 @@ void vout_onthefly_convert_video_info(struct tcc_vout_device *vout, struct v4l2_
 				buf->m.planes[MPLANE_VID].reserved[VID_DOLBY_REG_ADDR], buf->m.planes[MPLANE_VID].reserved[VID_DOLBY_MD_HDMI_ADDR]);
 
 	ImageInfo->fmt = ImageInfo->private_data.format = buf->m.planes[MPLANE_VID].reserved[VID_MJPEG_FORMAT] == DEC_FMT_420IL0 ? TCC_LCDC_IMG_FMT_YUV420ITL0 : TCC_LCDC_IMG_FMT_YUV420SP;//vioc->rdma.fmt;
-	ImageInfo->addr0 = ImageInfo->private_data.offset[0] 		= buf->m.planes[MPLANE_VID].m.userptr;
-	ImageInfo->addr1 = ImageInfo->private_data.offset[1] 		= buf->m.planes[MPLANE_VID].reserved[VID_BASE1];
-	ImageInfo->addr2 = ImageInfo->private_data.offset[2] 		= buf->m.planes[MPLANE_VID].reserved[VID_BASE2];
-	ImageInfo->private_data.optional_info[VID_OPT_BUFFER_WIDTH] 	= buf->m.planes[MPLANE_VID].reserved[VID_WIDTH];
-	ImageInfo->private_data.optional_info[VID_OPT_BUFFER_HEIGHT] 	= buf->m.planes[MPLANE_VID].reserved[VID_HEIGHT];
-	ImageInfo->private_data.optional_info[VID_OPT_FRAME_WIDTH] 		= buf->m.planes[MPLANE_VID].reserved[VID_CROP_WIDTH];
-	ImageInfo->private_data.optional_info[VID_OPT_FRAME_HEIGHT] 	= buf->m.planes[MPLANE_VID].reserved[VID_CROP_HEIGHT];
+	ImageInfo->addr0 = ImageInfo->private_data.offset[0]		= buf->m.planes[MPLANE_VID].m.userptr;
+	ImageInfo->addr1 = ImageInfo->private_data.offset[1]		= buf->m.planes[MPLANE_VID].reserved[VID_BASE1];
+	ImageInfo->addr2 = ImageInfo->private_data.offset[2]		= buf->m.planes[MPLANE_VID].reserved[VID_BASE2];
+	ImageInfo->private_data.optional_info[VID_OPT_BUFFER_WIDTH]	= buf->m.planes[MPLANE_VID].reserved[VID_WIDTH];
+	ImageInfo->private_data.optional_info[VID_OPT_BUFFER_HEIGHT]	= buf->m.planes[MPLANE_VID].reserved[VID_HEIGHT];
+	ImageInfo->private_data.optional_info[VID_OPT_FRAME_WIDTH]	= buf->m.planes[MPLANE_VID].reserved[VID_CROP_WIDTH];
+	ImageInfo->private_data.optional_info[VID_OPT_FRAME_HEIGHT]	= buf->m.planes[MPLANE_VID].reserved[VID_CROP_HEIGHT];
 
-	ImageInfo->private_data.optional_info[VID_OPT_HAVE_DTRC_INFO] 			= 0;
-	ImageInfo->private_data.optional_info[VID_OPT_HAVE_DOLBYVISION_INFO] 	= buf->m.planes[MPLANE_VID].reserved[VID_DOLBY_EN];
-	ImageInfo->private_data.optional_info[VID_OPT_CONTENT_TYPE] 			= buf->m.planes[MPLANE_VID].reserved[VID_DOLBY_CONTENT_TYPE];
+	ImageInfo->private_data.optional_info[VID_OPT_HAVE_DTRC_INFO]		= 0;
+	ImageInfo->private_data.optional_info[VID_OPT_HAVE_DOLBYVISION_INFO]	= buf->m.planes[MPLANE_VID].reserved[VID_DOLBY_EN];
+	ImageInfo->private_data.optional_info[VID_OPT_CONTENT_TYPE]		= buf->m.planes[MPLANE_VID].reserved[VID_DOLBY_CONTENT_TYPE];
 
-	ImageInfo->private_data.dolbyVision_info.reg_addr			= buf->m.planes[MPLANE_VID].reserved[VID_DOLBY_REG_ADDR];
+	ImageInfo->private_data.dolbyVision_info.reg_addr		= buf->m.planes[MPLANE_VID].reserved[VID_DOLBY_REG_ADDR];
 	ImageInfo->private_data.dolbyVision_info.md_hdmi_addr		= buf->m.planes[MPLANE_VID].reserved[VID_DOLBY_MD_HDMI_ADDR];
 	ImageInfo->private_data.dolbyVision_info.el_offset[0]		= buf->m.planes[MPLANE_VID].reserved[VID_DOLBY_EL_OFFSET0];
 	ImageInfo->private_data.dolbyVision_info.el_offset[1]		= buf->m.planes[MPLANE_VID].reserved[VID_DOLBY_EL_OFFSET1];
@@ -1328,8 +1299,8 @@ void vout_onthefly_convert_video_info(struct tcc_vout_device *vout, struct v4l2_
 	ImageInfo->private_data.dolbyVision_info.el_buffer_width	= buf->m.planes[MPLANE_VID].reserved[VID_DOLBY_EL_BUFF_WIDTH];
 	ImageInfo->private_data.dolbyVision_info.el_buffer_height	= buf->m.planes[MPLANE_VID].reserved[VID_DOLBY_EL_BUFF_HEIGHT];
 
-	ImageInfo->private_data.dolbyVision_info.el_frame_width 	= buf->m.planes[MPLANE_VID].reserved[VID_DOLBY_EL_FRAME_WIDTH];
-	ImageInfo->private_data.dolbyVision_info.el_frame_height 	= buf->m.planes[MPLANE_VID].reserved[VID_DOLBY_EL_FRAME_HEIGHT];
+	ImageInfo->private_data.dolbyVision_info.el_frame_width		= buf->m.planes[MPLANE_VID].reserved[VID_DOLBY_EL_FRAME_WIDTH];
+	ImageInfo->private_data.dolbyVision_info.el_frame_height	= buf->m.planes[MPLANE_VID].reserved[VID_DOLBY_EL_FRAME_HEIGHT];
 	ImageInfo->private_data.dolbyVision_info.osd_addr[0]		= NULL;
 	ImageInfo->private_data.dolbyVision_info.osd_addr[1]		= NULL;
 	ImageInfo->private_data.dolbyVision_info.reg_out_type		= buf->m.planes[MPLANE_VID].reserved[VID_DOLBY_REG_OUT_TYPE];
@@ -1347,8 +1318,8 @@ void vout_onthefly_el_update(struct tcc_vout_device *vout, struct v4l2_buffer *b
 #ifdef CONFIG_VIOC_DOLBY_VISION_CERTIFICATION_TEST
 static struct tcc_lcdc_image_update nCopy_ImageInfo[150];
 static unsigned long nTS_Prev = 0x999;
-static unsigned int nIdx_copy = 0;
-static unsigned int bl_w = 0, bl_h = 0, el_w = 0, el_h = 0;
+static unsigned int nIdx_copy;
+static unsigned int bl_w, bl_h, el_w, el_h;
 void vout_edr_certification_display(struct tcc_vout_device *vout, struct v4l2_buffer *buf)
 {
 	struct tcc_lcdc_image_update ImageInfo;
@@ -1357,7 +1328,7 @@ void vout_edr_certification_display(struct tcc_vout_device *vout, struct v4l2_bu
 
 	unsigned long current_time = ((buf->timestamp.tv_sec*1000)+(buf->timestamp.tv_usec/1000));
 
-	//dvprintk("############# Output_SelectMode(%d), Real(%d) \n", Output_SelectMode, TCC_OUTPUT_HDMI);
+	//dvprintk("############# Output_SelectMode(%d), Real(%d)\n", Output_SelectMode, TCC_OUTPUT_HDMI);
 	{
 		vout_onthefly_convert_video_info(vout, buf, &ImageInfo);
 
@@ -1365,31 +1336,27 @@ void vout_edr_certification_display(struct tcc_vout_device *vout, struct v4l2_bu
 		ImageInfo.offset_x = 0;
 		ImageInfo.offset_y = 0;
 
-		if( ImageInfo.private_data.optional_info[VID_OPT_FRAME_WIDTH] == 0 || ImageInfo.private_data.optional_info[VID_OPT_FRAME_HEIGHT] == 0 )
-		{
-			ImageInfo.private_data.optional_info[VID_OPT_FRAME_WIDTH]	= bl_w;
-			ImageInfo.private_data.optional_info[VID_OPT_FRAME_HEIGHT]	= bl_h;
-		}
-		else {
+		if (ImageInfo.private_data.optional_info[VID_OPT_FRAME_WIDTH] == 0 || ImageInfo.private_data.optional_info[VID_OPT_FRAME_HEIGHT] == 0) {
+			ImageInfo.private_data.optional_info[VID_OPT_FRAME_WIDTH]  = bl_w;
+			ImageInfo.private_data.optional_info[VID_OPT_FRAME_HEIGHT] = bl_h;
+		} else {
 			bl_w = ImageInfo.private_data.optional_info[VID_OPT_FRAME_WIDTH];
 			bl_h = ImageInfo.private_data.optional_info[VID_OPT_FRAME_HEIGHT];
 		}
 
-		if( ImageInfo.private_data.dolbyVision_info.el_frame_width == 0 || ImageInfo.private_data.dolbyVision_info.el_frame_height == 0 )
-		{
-			ImageInfo.private_data.dolbyVision_info.el_frame_width 	= el_w;
+		if (ImageInfo.private_data.dolbyVision_info.el_frame_width == 0 || ImageInfo.private_data.dolbyVision_info.el_frame_height == 0) {
+			ImageInfo.private_data.dolbyVision_info.el_frame_width  = el_w;
 			ImageInfo.private_data.dolbyVision_info.el_frame_height = el_h;
-		}
-		else {
+		} else {
 			el_w = ImageInfo.private_data.dolbyVision_info.el_frame_width;
 			el_h = ImageInfo.private_data.dolbyVision_info.el_frame_height;
 		}
 		ImageInfo.private_data.dolbyVision_info.osd_addr[0] = buf->m.planes[MPLANE_VID].reserved[VID_DOLBY_OSD_OFFSET0];
 		ImageInfo.private_data.dolbyVision_info.osd_addr[1] = 0x00;
 
-		if(nIdx_copy < 120){//nTS_Prev != current_time){
-			ImageInfo.private_data.optional_info[VID_OPT_TIMESTAMP] 	= (unsigned int)current_time;
-			ImageInfo.private_data.optional_info[VID_OPT_PLAYER_IDX] 	= atomic_read(&vout->readable_buff_count);
+		if (nIdx_copy < 120) {//nTS_Prev != current_time) {
+			ImageInfo.private_data.optional_info[VID_OPT_TIMESTAMP]  = (unsigned int)current_time;
+			ImageInfo.private_data.optional_info[VID_OPT_PLAYER_IDX] = atomic_read(&vout->readable_buff_count);
 			memcpy(&nCopy_ImageInfo[nIdx_copy], &ImageInfo, sizeof(struct tcc_lcdc_image_update));
 			nIdx_copy++;
 			nTS_Prev = current_time;
@@ -1411,12 +1378,10 @@ void vout_edr_certification_display(struct tcc_vout_device *vout, struct v4l2_bu
 	#ifdef CONFIG_VIOC_DOLBY_VISION_CERTIFICATION_TEST_UI // No UI-Blending
 	VIOC_RDMA_PreventEnable_for_UI(1, ImageInfo.private_data.dolbyVision_info.osd_addr[0] == 0x00 ? 1 : 0);
 	#endif
-	if(nFrame != 1) {
+	if (nFrame != 1) {
 		vout->display_done = ON;
 		vout->last_cleared_buffer = buf;
 	}
-
-	return;
 }
 #endif
 #endif
@@ -1424,7 +1389,7 @@ void vout_edr_certification_display(struct tcc_vout_device *vout, struct v4l2_bu
 void vout_onthefly_display_update(struct tcc_vout_device *vout, struct v4l2_buffer *buf)
 {
 	struct tcc_vout_vioc *vioc = vout->vioc;
-	unsigned int base0=0, base1=0, base2=0;
+	unsigned int base0 = 0, base1 = 0, base2 = 0;
 	int res_change = OFF;
 	unsigned int bY2R = ON;
 
@@ -1434,12 +1399,12 @@ void vout_onthefly_display_update(struct tcc_vout_device *vout, struct v4l2_buff
 	#endif
 
 	#ifdef CONFIG_VOUT_USE_SUB_PLANE
-	if(2 == buf->m.planes[MPLANE_VID].reserved[VID_NUM]) {
+	if (buf->m.planes[MPLANE_VID].reserved[VID_NUM] == 2) {
 		memcpy(&vioc->subplane_alpha, buf->m.planes[MPLANE_SUB].reserved, sizeof(struct vioc_alpha));
 		vioc->subplane_rdma.img.base0 = buf->m.planes[MPLANE_SUB].m.mem_offset;
 		vout_subplane_onthefly_qbuf(vout);
 	} else {
-		if(vioc->subplane_enable) {
+		if (vioc->subplane_enable) {
 			VIOC_RDMA_SetImageDisableNW(vioc->subplane_rdma.addr);
 			vioc->subplane_enable = OFF;
 		}
@@ -1447,8 +1412,8 @@ void vout_onthefly_display_update(struct tcc_vout_device *vout, struct v4l2_buff
 	#endif
 
 	/* get base address */
-	if (V4L2_MEMORY_USERPTR == vout->memory) {
-		if (STILL_IMGAGE != buf->timecode.type) {
+	if (vout->memory == V4L2_MEMORY_USERPTR) {
+		if (buf->timecode.type != STILL_IMGAGE) {
 			base0 = buf->m.planes[MPLANE_VID].m.userptr;
 			base1 = buf->m.planes[MPLANE_VID].reserved[VID_BASE1];
 			base2 = buf->m.planes[MPLANE_VID].reserved[VID_BASE2];
@@ -1459,14 +1424,14 @@ void vout_onthefly_display_update(struct tcc_vout_device *vout, struct v4l2_buff
 			/*
 			 * If the input is YUV format.
 			 */
-			if (TCC_PFMT_RGB != vout->pfmt) {
+			if (vout->pfmt != TCC_PFMT_RGB) {
 				tcc_get_base_address_of_image(
 					vout->src_pix.pixelformat, base0,
 					vout->src_pix.width, vout->src_pix.height,
 					&base0, &base1, &base2);
 			}
 		}
-	} else if (V4L2_MEMORY_MMAP == vout->memory) {
+	} else if (vout->memory == V4L2_MEMORY_MMAP) {
 		base0 = vout->qbufs[buf->index].img_base0;
 		base1 = vout->qbufs[buf->index].img_base1;
 		base2 = vout->qbufs[buf->index].img_base2;
@@ -1474,7 +1439,7 @@ void vout_onthefly_display_update(struct tcc_vout_device *vout, struct v4l2_buff
 		pr_err("[ERR][VOUT] invalid qbuf v4l2_memory\n");
 	}
 
-	if (V4L2_FIELD_INTERLACED_BT == vout->src_pix.field)
+	if (vout->src_pix.field == V4L2_FIELD_INTERLACED_BT)
 		vioc->rdma.bf = 1;
 	else
 		vioc->rdma.bf = 0;
@@ -1487,34 +1452,33 @@ void vout_onthefly_display_update(struct tcc_vout_device *vout, struct v4l2_buff
 	}
 
 	#ifdef CONFIG_VIOC_DOLBY_VISION_EDR
-	if(buf->m.planes[MPLANE_VID].reserved[VID_DOLBY_EN] != 0)
-	{
+	if (buf->m.planes[MPLANE_VID].reserved[VID_DOLBY_EN] != 0) {
 		//dvprintk("@@@@ Dolby Vision %d[0x%08x 0x%08x]\n", buf->m.planes[MPLANE_VID].reserved[VID_DOLBY_EN], buf->m.planes[MPLANE_VID].reserved[VID_DOLBY_REG_ADDR], buf->m.planes[MPLANE_VID].reserved[VID_DOLBY_MD_HDMI_ADDR]);
-		if(!bStep_Check) {
+		if (!bStep_Check) {
 			nFrame++;
 			vout->dolby_frame_count = nFrame;
 		#if 0//defined(CONFIG_VIOC_DOLBY_VISION_CERTIFICATION_TEST) // To display 1st frame only.
 			return;
 		#endif
 		} else {
-			if(bStep_Check == DEF_DV_CHECK_NUM) {
+			if (bStep_Check == DEF_DV_CHECK_NUM) {
 				vout->dolby_frame_count = nFrame = 1;//0;
 				bStep_Check--;
 			} else {
 				bStep_Check--;
-				if (V4L2_FIELD_INTERLACED_TB == vout->src_pix.field
-					|| V4L2_FIELD_INTERLACED_BT == vout->src_pix.field
-					|| V4L2_FIELD_INTERLACED == vout->src_pix.field) {
+				if (vout->src_pix.field == V4L2_FIELD_INTERLACED_TB
+					|| vout->src_pix.field == V4L2_FIELD_INTERLACED_BT
+					|| vout->src_pix.field == V4L2_FIELD_INTERLACED) {
 					vout->firstFieldFlag = 0;
 				}
 				vout->display_done = ON;
 				vout->last_cleared_buffer = buf;
-				//dvprintk("2^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ @@@@@@@@@@@@@@@ \n");
+				//dvprintk("2^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ @@@@@@@@@@@@@@@\n");
 				return;
 			}
 		}
 
-		if(VIOC_CONFIG_DV_GET_EDR_PATH()) {
+		if (VIOC_CONFIG_DV_GET_EDR_PATH()) {
 		#if defined(CONFIG_VIOC_DOLBY_VISION_CERTIFICATION_TEST)
 			vout_edr_certification_display(vout, buf);
 			return;
@@ -1527,8 +1491,9 @@ void vout_onthefly_display_update(struct tcc_vout_device *vout, struct v4l2_buff
 
 	/* HDR support */
 	#ifdef CONFIG_TCC_HDMI_DRIVER_V2_0
-	if(buf->m.planes[MPLANE_VID].reserved[VID_HDR_TC] == 16) {
+	if (buf->m.planes[MPLANE_VID].reserved[VID_HDR_TC] == 16) {
 		DRM_Packet_t drmparm;
+
 		memset(&drmparm, 0x0, sizeof(DRM_Packet_t));
 
 		drmparm.mInfoFrame.version = buf->m.planes[MPLANE_VID].reserved[VID_HDR_VERSION];
@@ -1549,7 +1514,7 @@ void vout_onthefly_display_update(struct tcc_vout_device *vout, struct v4l2_buff
 		drmparm.mDescriptor_type1.max_content_light_level = buf->m.planes[MPLANE_VID].reserved[VID_HDR_MAX_CONTENT];
 		drmparm.mDescriptor_type1.max_frame_avr_light_level = buf->m.planes[MPLANE_VID].reserved[VID_HDR_MAX_PIC_AVR];
 
-		if(memcmp(&gDRM_packet, &drmparm, sizeof(DRM_Packet_t))) {
+		if (memcmp(&gDRM_packet, &drmparm, sizeof(DRM_Packet_t))) {
 			hdmi_set_drm(&drmparm);
 			memcpy(&gDRM_packet, &drmparm, sizeof(DRM_Packet_t));
 		}
@@ -1559,10 +1524,9 @@ void vout_onthefly_display_update(struct tcc_vout_device *vout, struct v4l2_buff
 	/*
 	 *	Change source info
 	 */
-	if(((vout->src_pix.width != buf->m.planes[MPLANE_VID].reserved[VID_WIDTH])
+	if (((vout->src_pix.width != buf->m.planes[MPLANE_VID].reserved[VID_WIDTH])
 				|| (vout->src_pix.height != buf->m.planes[MPLANE_VID].reserved[VID_HEIGHT]))
-			&& (buf->m.planes[MPLANE_VID].reserved[VID_WIDTH] && buf->m.planes[MPLANE_VID].reserved[VID_HEIGHT]))
-	{
+			&& (buf->m.planes[MPLANE_VID].reserved[VID_WIDTH] && buf->m.planes[MPLANE_VID].reserved[VID_HEIGHT])) {
 		dprintk("changing source (%dx%d)->(%dx%d)\n",
 				vout->src_pix.width, vout->src_pix.height,
 				buf->m.planes[MPLANE_VID].reserved[VID_WIDTH], buf->m.planes[MPLANE_VID].reserved[VID_HEIGHT]);
@@ -1577,24 +1541,24 @@ void vout_onthefly_display_update(struct tcc_vout_device *vout, struct v4l2_buff
 		vout->crop_src.width = vout->src_pix.width;
 		vout->crop_src.height = vout->src_pix.height;
 
-		switch(tcc_vout_try_pix(vout->src_pix.pixelformat)){
-			case TCC_PFMT_YUV422:
-				vout->src_pix.sizeimage = vout->src_pix.width * vout->src_pix.height * 2;
-				break;
-			case TCC_PFMT_YUV420:
-				vout->src_pix.sizeimage = vout->src_pix.width * vout->src_pix.height * 3 / 2;
-				break;
-			case TCC_PFMT_RGB:
-			default:
-				vout->src_pix.sizeimage = vout->src_pix.bytesperline * vout->src_pix.height;
-				break;
+		switch (tcc_vout_try_pix(vout->src_pix.pixelformat)) {
+		case TCC_PFMT_YUV422:
+			vout->src_pix.sizeimage = vout->src_pix.width * vout->src_pix.height * 2;
+			break;
+		case TCC_PFMT_YUV420:
+			vout->src_pix.sizeimage = vout->src_pix.width * vout->src_pix.height * 3 / 2;
+			break;
+		case TCC_PFMT_RGB:
+		default:
+			vout->src_pix.sizeimage = vout->src_pix.bytesperline * vout->src_pix.height;
+			break;
 		}
 		vout->src_pix.sizeimage = PAGE_ALIGN(vout->src_pix.sizeimage);
 
 		vioc->rdma.width = vout->src_pix.width;
-		if(vout->src_pix.height % 4) {
+		if (vout->src_pix.height % 4) {
 			vioc->rdma.height = ROUND_UP_4(vout->src_pix.height);
-			dprintk(" 4-line align: %d -> %d \n", vout->src_pix.height, vioc->rdma.height);
+			dprintk(" 4-line align: %d -> %d\n", vout->src_pix.height, vioc->rdma.height);
 		} else {
 			vioc->rdma.height = vout->src_pix.height;
 		}
@@ -1615,8 +1579,7 @@ void vout_onthefly_display_update(struct tcc_vout_device *vout, struct v4l2_buff
 				|| vout->crop_src.height != buf->m.planes[MPLANE_VID].reserved[VID_CROP_HEIGHT])
 			&& (buf->m.planes[MPLANE_VID].reserved[VID_CROP_WIDTH] && buf->m.planes[MPLANE_VID].reserved[VID_CROP_HEIGHT])
 			&& ((vout->src_pix.width >= buf->m.planes[MPLANE_VID].reserved[VID_CROP_WIDTH])
-			&& (vout->src_pix.height >= buf->m.planes[MPLANE_VID].reserved[VID_CROP_HEIGHT])))
-	{
+			&& (vout->src_pix.height >= buf->m.planes[MPLANE_VID].reserved[VID_CROP_HEIGHT]))) {
 		dprintk("changing crop (%d,%d)(%dx%d)->(%d,%d)(%dx%d)\n",
 				vout->crop_src.left, vout->crop_src.top, vout->crop_src.width, vout->crop_src.height,
 				buf->m.planes[MPLANE_VID].reserved[VID_CROP_LEFT], buf->m.planes[MPLANE_VID].reserved[VID_CROP_TOP],
@@ -1634,18 +1597,16 @@ void vout_onthefly_display_update(struct tcc_vout_device *vout, struct v4l2_buff
 				&base0, &base1, &base2);
 
 		vioc->rdma.width = vout->crop_src.width;
-		if(vout->crop_src.height % 4) {
+		if (vout->crop_src.height % 4) {
 			vioc->rdma.height = ROUND_UP_4(vout->crop_src.height);
-			dprintk(" 4-line align: %d -> %d \n", vout->crop_src.height, vioc->rdma.height);
+			dprintk(" 4-line align: %d -> %d\n", vout->crop_src.height, vioc->rdma.height);
 		} else {
 			vioc->rdma.height = vout->crop_src.height;
 		}
 
 		VIOC_RDMA_SetImageSize(vioc->rdma.addr, vioc->rdma.width, vioc->rdma.height);
 		res_change = ON;
-	}
-	else if((vout->src_pix.width != vout->crop_src.width) || (vout->src_pix.height != vout->crop_src.height))
-	{
+	} else if ((vout->src_pix.width != vout->crop_src.width) || (vout->src_pix.height != vout->crop_src.height)) {
 		tcc_get_base_address(vioc->m2m_rdma.fmt, base0,
 				vioc->rdma.y_stride ? vioc->rdma.y_stride : vioc->rdma.width,
 				vioc->rdma.height,
@@ -1654,7 +1615,7 @@ void vout_onthefly_display_update(struct tcc_vout_device *vout, struct v4l2_buff
 	}
 
 	/* rdma stride */
-	if(buf->m.planes[MPLANE_VID].bytesused && (vioc->rdma.y_stride != buf->m.planes[MPLANE_VID].bytesused)) {
+	if (buf->m.planes[MPLANE_VID].bytesused && (vioc->rdma.y_stride != buf->m.planes[MPLANE_VID].bytesused)) {
 		dprintk("update rdma stride(%d -> %d)\n", vioc->rdma.y_stride, buf->m.planes[MPLANE_VID].bytesused);
 
 		/*  change rdma stride */
@@ -1662,16 +1623,15 @@ void vout_onthefly_display_update(struct tcc_vout_device *vout, struct v4l2_buff
 		VIOC_RDMA_SetImageOffset(vioc->rdma.addr, vioc->rdma.fmt, vioc->rdma.y_stride);
 	}
 
-	if(buf->m.planes[MPLANE_VID].reserved[VID_CONVERTER_EN] == 1)
-	{
+	if (buf->m.planes[MPLANE_VID].reserved[VID_CONVERTER_EN] == 1) {
 		#ifdef CONFIG_VIOC_MAP_DECOMP
 		VIOC_RDMA_SetImageDisable(vioc->rdma.addr);
 
-		if((vout->deinterlace == VOUT_DEINTL_VIQE_3D) || (vout->deinterlace == VOUT_DEINTL_VIQE_2D)) {
+		if ((vout->deinterlace == VOUT_DEINTL_VIQE_3D) || (vout->deinterlace == VOUT_DEINTL_VIQE_2D)) {
 			VIOC_CONFIG_PlugOut(vioc->viqe.id);
 			VIOC_CONFIG_SWReset(vioc->viqe.id, VIOC_CONFIG_RESET);
 			VIOC_CONFIG_SWReset(vioc->viqe.id, VIOC_CONFIG_CLEAR);
-		} else if(vout->deinterlace == VOUT_DEINTL_S) {
+		} else if (vout->deinterlace == VOUT_DEINTL_S) {
 			VIOC_CONFIG_PlugOut(vioc->deintl_s.id);
 			VIOC_CONFIG_SWReset(vioc->deintl_s.id, VIOC_CONFIG_RESET);
 			VIOC_CONFIG_SWReset(vioc->deintl_s.id, VIOC_CONFIG_CLEAR);
@@ -1682,7 +1642,7 @@ void vout_onthefly_display_update(struct tcc_vout_device *vout, struct v4l2_buff
 		VIOC_CONFIG_SWReset(vioc->sc.id, VIOC_CONFIG_CLEAR);
 
 		if (VIOC_CONFIG_DMAPath_Support()) {
-			if(VIOC_CONFIG_DMAPath_Select(vioc->rdma.id) != vioc->map_converter.id) {
+			if (VIOC_CONFIG_DMAPath_Select(vioc->rdma.id) != vioc->map_converter.id) {
 				VIOC_CONFIG_DMAPath_UnSet(vioc->rdma.id);
 				tca_map_convter_swreset(vioc->map_converter.id);
 				VIOC_CONFIG_DMAPath_Set(vioc->rdma.id, vioc->map_converter.id);
@@ -1690,7 +1650,7 @@ void vout_onthefly_display_update(struct tcc_vout_device *vout, struct v4l2_buff
 		} else {
 			#if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X)
 			tca_map_convter_swreset(VIOC_MC0);
-			if(VIOC_CONFIG_MCPath(vioc->wmix.id, VIOC_MC0) < 0) {
+			if (VIOC_CONFIG_MCPath(vioc->wmix.id, VIOC_MC0) < 0) {
 				pr_err("[ERR][VOUT] %s[%d]: HW Decompresser can not be connected on %s\n",
 						__func__, __LINE__, vout->vdev->name);
 				return;
@@ -1714,7 +1674,7 @@ void vout_onthefly_display_update(struct tcc_vout_device *vout, struct v4l2_buff
 		vioc->map_converter.mapConv_info.m_FbcCOffsetAddr[0] = buf->m.planes[MPLANE_VID].reserved[VID_HEVC_OFFSET_BASE_C0];
 		vioc->map_converter.mapConv_info.m_FbcCOffsetAddr[1] = buf->m.planes[MPLANE_VID].reserved[VID_HEVC_OFFSET_BASE_C1];
 
-//		dprintk(" m_uiLumaStride %d m_uiChromaStride %d\n m_uiLumaBitDepth %d m_uiChromaBitDepth %d m_uiFrameEndian %d \n m_CompressedY[0] 0x%08x m_CompressedCb[0] 0x%08x m_CompressedY[1] 0x%08x m_CompressedCb[1] 0x%08x\n m_FbcYOffsetAddr[0] 0x%08x m_FbcCOffsetAddr[0] 0x%08x m_FbcYOffsetAddr[1] 0x%08x m_FbcCOffsetAddr[1] 0x%08x \n",
+//		dprintk(" m_uiLumaStride %d m_uiChromaStride %d\n m_uiLumaBitDepth %d m_uiChromaBitDepth %d m_uiFrameEndian %d\n m_CompressedY[0] 0x%08x m_CompressedCb[0] 0x%08x m_CompressedY[1] 0x%08x m_CompressedCb[1] 0x%08x\n m_FbcYOffsetAddr[0] 0x%08x m_FbcCOffsetAddr[0] 0x%08x m_FbcYOffsetAddr[1] 0x%08x m_FbcCOffsetAddr[1] 0x%08x\n",
 //			vioc->map_converter.mapConv_info.m_uiLumaStride, vioc->map_converter.mapConv_info.m_uiChromaStride,
 //			vioc->map_converter.mapConv_info.m_uiLumaBitDepth, vioc->map_converter.mapConv_info.m_uiChromaBitDepth, vioc->map_converter.mapConv_info.m_uiFrameEndian,
 //			vioc->map_converter.mapConv_info.m_CompressedY[0], vioc->map_converter.mapConv_info.m_CompressedCb[0],
@@ -1722,13 +1682,13 @@ void vout_onthefly_display_update(struct tcc_vout_device *vout, struct v4l2_buff
 //			vioc->map_converter.mapConv_info.m_FbcYOffsetAddr[0], vioc->map_converter.mapConv_info.m_FbcCOffsetAddr[0],
 //			vioc->map_converter.mapConv_info.m_FbcYOffsetAddr[1], vioc->map_converter.mapConv_info.m_FbcCOffsetAddr[1]);
 
-//		dprintk("%s map converter: size: %dx%d  \n", __func__, vout->src_pix.width, vout->src_pix.height);
+//		dprintk("%s map converter: size: %dx%d\n", __func__, vout->src_pix.width, vout->src_pix.height);
 
-		if(VIOC_CONFIG_GetScaler_PluginToRDMA(vioc->rdma.id) != vioc->sc.id)
+		if (VIOC_CONFIG_GetScaler_PluginToRDMA(vioc->rdma.id) != vioc->sc.id)
 			scaler_setup(vout);
 
 		#if defined(CONFIG_VIOC_DOLBY_VISION_EDR)
-		if(VIOC_CONFIG_DV_GET_EDR_PATH())
+		if (VIOC_CONFIG_DV_GET_EDR_PATH())
 			bY2R = OFF;
 		#elif defined(CONFIG_TCC_VIOC_DISP_PATH_INTERNAL_CS_YUV)
 		bY2R = OFF;
@@ -1747,24 +1707,22 @@ void vout_onthefly_display_update(struct tcc_vout_device *vout, struct v4l2_buff
 		tca_map_convter_onoff(vioc->map_converter.id, 1, 0);
 		#endif
 		#if defined(CONFIG_VIOC_DOLBY_VISION_EDR)
-		if(VIOC_CONFIG_DV_GET_EDR_PATH()){
+		if (VIOC_CONFIG_DV_GET_EDR_PATH()) {
 			vout_onthefly_dv_update(vout, buf);
 		}
 		#endif
 		#endif
-	}
-	else if(buf->m.planes[MPLANE_VID].reserved[VID_CONVERTER_EN] == 2)
-	{
+	} else if (buf->m.planes[MPLANE_VID].reserved[VID_CONVERTER_EN] == 2) {
 		#ifdef CONFIG_VIOC_DTRC_DECOMP
 		if (VIOC_CONFIG_DMAPath_Support()) {
-			if(VIOC_CONFIG_DMAPath_Select(vioc->rdma.id) != vioc->dtrc.id) {
+			if (VIOC_CONFIG_DMAPath_Select(vioc->rdma.id) != vioc->dtrc.id) {
 				VIOC_RDMA_SetImageDisable(vioc->rdma.addr);
 
-				if((vout->deinterlace == VOUT_DEINTL_VIQE_3D) || (vout->deinterlace == VOUT_DEINTL_VIQE_2D)) {
+				if ((vout->deinterlace == VOUT_DEINTL_VIQE_3D) || (vout->deinterlace == VOUT_DEINTL_VIQE_2D)) {
 					VIOC_CONFIG_PlugOut(vioc->viqe.id);
 					VIOC_CONFIG_SWReset(vioc->viqe.id, VIOC_CONFIG_RESET);
 					VIOC_CONFIG_SWReset(vioc->viqe.id, VIOC_CONFIG_CLEAR);
-				} else if(vout->deinterlace == VOUT_DEINTL_S) {
+				} else if (vout->deinterlace == VOUT_DEINTL_S) {
 					VIOC_CONFIG_PlugOut(vioc->deintl_s.id);
 					VIOC_CONFIG_SWReset(vioc->deintl_s.id, VIOC_CONFIG_RESET);
 					VIOC_CONFIG_SWReset(vioc->deintl_s.id, VIOC_CONFIG_CLEAR);
@@ -1804,11 +1762,11 @@ void vout_onthefly_display_update(struct tcc_vout_device *vout, struct v4l2_buff
 	//			vioc->dtrc.dtrcConv_info.m_CompressionTableLuma[0], vioc->dtrc.dtrcConv_info.m_CompressionTableLuma[1],
 	//			vioc->dtrc.dtrcConv_info.m_CompressionTableChroma[0], vioc->dtrc.dtrcConv_info.m_CompressionTableChroma[1]);
 
-			if(VIOC_CONFIG_GetScaler_PluginToRDMA(vioc->rdma.id) != vioc->sc.id)
+			if (VIOC_CONFIG_GetScaler_PluginToRDMA(vioc->rdma.id) != vioc->sc.id)
 				scaler_setup(vout);
 
 			#if defined(CONFIG_VIOC_DOLBY_VISION_EDR)
-			if(VIOC_CONFIG_DV_GET_EDR_PATH())
+			if (VIOC_CONFIG_DV_GET_EDR_PATH())
 				bY2R = OFF;
 			#elif defined(CONFIG_TCC_VIOC_DISP_PATH_INTERNAL_CS_YUV)
 			bY2R = OFF;
@@ -1819,25 +1777,22 @@ void vout_onthefly_display_update(struct tcc_vout_device *vout, struct v4l2_buff
 					vout->crop_src.left, vout->crop_src.top, bY2R, &vioc->dtrc.dtrcConv_info);
 			tca_dtrc_convter_onoff(vioc->dtrc.id, ON, 0);
 			#if defined(CONFIG_VIOC_DOLBY_VISION_EDR)
-			if(VIOC_CONFIG_DV_GET_EDR_PATH()){
+			if (VIOC_CONFIG_DV_GET_EDR_PATH()) {
 				vout_onthefly_dv_update(vout, buf);
 			}
 			#endif
-		}
-		else {
-			pr_err("[ERR][VOUT] Not support for DTRC on this chipset type!! \n");
+		} else {
+			pr_err("[ERR][VOUT] Not support for DTRC on this chipset type!!\n");
 		}
 		#endif
-	}
-	else
-	{
+	} else {
 		#if defined(CONFIG_VIOC_MAP_DECOMP) || defined(CONFIG_VIOC_DTRC_DECOMP)
-		if(VIOC_CONFIG_DMAPath_Support()) {
+		if (VIOC_CONFIG_DMAPath_Support()) {
 			int component_num = VIOC_CONFIG_DMAPath_Select(vioc->rdma.id);
 
-			if((int)component_num < 0)
+			if ((int)component_num < 0)
 				pr_info("[INF][VOUT] %s  : RDMA :%d dma path selection none\n", __func__, vioc->rdma.id);
-			else if((component_num < VIOC_RDMA00) && (component_num > (VIOC_RDMA00 + VIOC_RDMA_MAX)))
+			else if ((component_num < VIOC_RDMA00) && (component_num > (VIOC_RDMA00 + VIOC_RDMA_MAX)))
 				VIOC_CONFIG_DMAPath_UnSet(component_num);
 
 			// It is default path selection(VRDMA)
@@ -1850,14 +1805,14 @@ void vout_onthefly_display_update(struct tcc_vout_device *vout, struct v4l2_buff
 		#endif
 
 		/* dec output format */
-		if (V4L2_MEMORY_USERPTR == vout->memory) {
+		if (vout->memory == V4L2_MEMORY_USERPTR) {
 			vout_check_format(&vioc->rdma, buf->m.planes[MPLANE_VID].reserved[VID_MJPEG_FORMAT]);
 		}
 
 		#ifdef CONFIG_VIOC_10BIT
-		if(buf->flags & V4L2_BUFFER_FLAG_YUV_10BIT_MODE0) {
+		if (buf->flags & V4L2_BUFFER_FLAG_YUV_10BIT_MODE0) {
 			VIOC_RDMA_SetDataFormat(vioc->rdma.addr, 0x1, 0x1);	/* YUV 10bit support(16bit format type) */
-		} else if(buf->flags & V4L2_BUFFER_FLAG_YUV_10BIT_MODE1) {
+		} else if (buf->flags & V4L2_BUFFER_FLAG_YUV_10BIT_MODE1) {
 			VIOC_RDMA_SetDataFormat(vioc->rdma.addr, 0x3, 0x0);	/* YUV 10bit support(10bit format type) */
 			VIOC_RDMA_SetImageOffset(vioc->rdma.addr, vioc->rdma.fmt, (vioc->rdma.width*125)/100);
 		} else {
@@ -1868,53 +1823,52 @@ void vout_onthefly_display_update(struct tcc_vout_device *vout, struct v4l2_buff
 		/*
 		 * Onthefly Scaler
 		 */
-		if(res_change)
-		{
-			if (V4L2_FIELD_INTERLACED_TB == vout->src_pix.field
-				|| V4L2_FIELD_INTERLACED_BT == vout->src_pix.field
-				|| V4L2_FIELD_INTERLACED == vout->src_pix.field)
+		if (res_change) {
+			if (vout->src_pix.field == V4L2_FIELD_INTERLACED_TB
+				|| vout->src_pix.field == V4L2_FIELD_INTERLACED_BT
+				|| vout->src_pix.field == V4L2_FIELD_INTERLACED)
 				vout->frame_count = 0;
 
-			if(vioc->wmix.width == vioc->rdma.width && vioc->wmix.height == vioc->rdma.height) {
-				dprintk("BYPASS 	src(%dx%d) -> dst(%dx%d) \n", vioc->rdma.width, vioc->rdma.height, vioc->wmix.width, vioc->wmix.height);
+			if (vioc->wmix.width == vioc->rdma.width && vioc->wmix.height == vioc->rdma.height) {
+				dprintk("BYPASS         src(%dx%d) -> dst(%dx%d)\n", vioc->rdma.width, vioc->rdma.height, vioc->wmix.width, vioc->wmix.height);
 				VIOC_SC_SetBypass(vioc->sc.addr, ON);
-				if(VIOC_CONFIG_GetScaler_PluginToRDMA(vioc->rdma.id) != vioc->sc.id)
+				if (VIOC_CONFIG_GetScaler_PluginToRDMA(vioc->rdma.id) != vioc->sc.id)
 					VIOC_CONFIG_PlugIn(vioc->sc.id, vioc->rdma.id); // plugin position in scaler
 				VIOC_SC_SetUpdate(vioc->sc.addr);
 			} else {
-				dprintk("SCALING 	src(%dx%d) -> dst(%dx%d) \n", vioc->rdma.width, vioc->rdma.height, vioc->wmix.width, vioc->wmix.height);
+				dprintk("SCALING        src(%dx%d) -> dst(%dx%d)\n", vioc->rdma.width, vioc->rdma.height, vioc->wmix.width, vioc->wmix.height);
 				VIOC_SC_SetBypass(vioc->sc.addr, OFF);
-				VIOC_SC_SetDstSize(vioc->sc.addr, vioc->wmix.width, vioc->wmix.height);	// set destination size in scaler
-				VIOC_SC_SetOutSize(vioc->sc.addr, vioc->wmix.width, vioc->wmix.height);	// set output size in scaler
-				if(VIOC_CONFIG_GetScaler_PluginToRDMA(vioc->rdma.id) != vioc->sc.id)
+				VIOC_SC_SetDstSize(vioc->sc.addr, vioc->wmix.width, vioc->wmix.height); // set destination size in scaler
+				VIOC_SC_SetOutSize(vioc->sc.addr, vioc->wmix.width, vioc->wmix.height); // set output size in scaler
+				if (VIOC_CONFIG_GetScaler_PluginToRDMA(vioc->rdma.id) != vioc->sc.id)
 					VIOC_CONFIG_PlugIn(vioc->sc.id, vioc->rdma.id); // plugin position in scaler
 				VIOC_SC_SetUpdate(vioc->sc.addr);
 			}
 		}
 
 		#ifdef CONFIG_TCC_VIOCMG
-		if(vout->deinterlace == VOUT_DEINTL_VIQE_3D || vout->deinterlace == VOUT_DEINTL_VIQE_2D)
-		{
-			if(viocmg_lock_viqe(VIOCMG_CALLERID_VOUT) < 0) {
+		if (vout->deinterlace == VOUT_DEINTL_VIQE_3D || vout->deinterlace == VOUT_DEINTL_VIQE_2D) {
+			if (viocmg_lock_viqe(VIOCMG_CALLERID_VOUT) < 0) {
 				// VIQE may be used for rear camera !!
 				viqe_locked = 0;
 				vout->last_cleared_buffer = buf;
 				vout->display_done = ON;
-				if (V4L2_FIELD_INTERLACED_TB == vout->src_pix.field
-						|| V4L2_FIELD_INTERLACED_BT == vout->src_pix.field
-						|| V4L2_FIELD_INTERLACED == vout->src_pix.field)
+				if (vout->src_pix.field == V4L2_FIELD_INTERLACED_TB
+						|| vout->src_pix.field == V4L2_FIELD_INTERLACED_BT
+						|| vout->src_pix.field == V4L2_FIELD_INTERLACED)
 					vout->firstFieldFlag = 0;
 
-				if(vioc->rdma.addr->uCTRL.nREG & Hw28) {
+				if (vioc->rdma.addr->uCTRL.nREG & Hw28) {
 					VIOC_RDMA_SetImageDisable(vioc->rdma.addr);
 					dprintk("RDMA%d is disabled by force\n", vioc->rdma.id);
 				}
 				return;
 			} else {
 				VIOC_PlugInOutCheck plugin_state;
+
 				VIOC_CONFIG_Device_PlugState(vioc->viqe.id, &plugin_state);
-				if(!plugin_state.enable || plugin_state.connect_statue != VIOC_PATH_CONNECTED) {
-					if(deintl_viqe_setup(vout, vout->deinterlace, 1) < 0)
+				if (!plugin_state.enable || plugin_state.connect_statue != VIOC_PATH_CONNECTED) {
+					if (deintl_viqe_setup(vout, vout->deinterlace, 1) < 0)
 						pr_err("[ERR][VOUT] failed VIQE%d reconnection\n", vioc->viqe.id);
 					dprintk("reconnect VIQE%d\n", vioc->viqe.id);
 					vout->frame_count = 0;
@@ -1932,20 +1886,20 @@ void vout_onthefly_display_update(struct tcc_vout_device *vout, struct v4l2_buff
 		#endif
 		{
 			vout->previous_field = vout->src_pix.field;
-			if (V4L2_FIELD_INTERLACED_TB == vout->src_pix.field
-				|| V4L2_FIELD_INTERLACED_BT == vout->src_pix.field
-				|| V4L2_FIELD_INTERLACED == vout->src_pix.field) {
+			if (vout->src_pix.field == V4L2_FIELD_INTERLACED_TB
+				|| vout->src_pix.field == V4L2_FIELD_INTERLACED_BT
+				|| vout->src_pix.field == V4L2_FIELD_INTERLACED) {
 				switch (vout->deinterlace) {
 				case VOUT_DEINTL_VIQE_3D:
 				case VOUT_DEINTL_VIQE_2D:
-					if(res_change) {
+					if (res_change) {
 						deintl_viqe_setup(vout, vout->deinterlace, 0);
 					} else {
 						VIOC_VIQE_SetDeintlMode(vioc->viqe.addr, VIOC_VIQE_DEINTL_MODE_2D);
 						VIOC_VIQE_SetControlMode(vioc->viqe.addr, OFF, OFF, OFF, OFF, ON);
 					}
 
-					if(vout->src_pix.colorspace == V4L2_COLORSPACE_JPEG)
+					if (vout->src_pix.colorspace == V4L2_COLORSPACE_JPEG)
 						VIOC_RDMA_SetImageY2REnable(vioc->rdma.addr, 0);	// force disable y2r
 					break;
 				case VOUT_DEINTL_S:
@@ -1964,7 +1918,7 @@ void vout_onthefly_display_update(struct tcc_vout_device *vout, struct v4l2_buff
 					VIOC_VIQE_SetControlMode(vioc->viqe.addr, OFF, OFF, OFF, OFF, OFF);
 					vout->frame_count = 0;
 
-					if(vout->src_pix.colorspace == V4L2_COLORSPACE_JPEG) {
+					if (vout->src_pix.colorspace == V4L2_COLORSPACE_JPEG) {
 						#if defined(CONFIG_TCC_VIOC_DISP_PATH_INTERNAL_CS_YUV)
 						VIOC_RDMA_SetImageY2REnable(vioc->rdma.addr, 0); // disable y2r @stomlee
 						#else
@@ -1984,10 +1938,10 @@ void vout_onthefly_display_update(struct tcc_vout_device *vout, struct v4l2_buff
 		}
 
 		#ifdef CONFIG_VIOC_DOLBY_VISION_EDR
-		if(VIOC_CONFIG_DV_GET_EDR_PATH()) {
-			if (V4L2_FIELD_INTERLACED_TB == vout->src_pix.field
-				|| V4L2_FIELD_INTERLACED_BT == vout->src_pix.field
-				|| V4L2_FIELD_INTERLACED == vout->src_pix.field) {
+		if (VIOC_CONFIG_DV_GET_EDR_PATH()) {
+			if (vout->src_pix.field == V4L2_FIELD_INTERLACED_TB
+				|| vout->src_pix.field == V4L2_FIELD_INTERLACED_BT
+				|| vout->src_pix.field == V4L2_FIELD_INTERLACED) {
 				switch (vout->deinterlace) {
 				case VOUT_DEINTL_VIQE_3D:
 				case VOUT_DEINTL_VIQE_2D:
@@ -2004,13 +1958,12 @@ void vout_onthefly_display_update(struct tcc_vout_device *vout, struct v4l2_buff
 		VIOC_RDMA_SetImageBase(vioc->rdma.addr, base0, base1, base2);
 		VIOC_SC_SetUpdate(vioc->sc.addr);
 		#ifdef CONFIG_VOUT_USE_VSYNC_INT
-		if(vout->clearFrameMode == OFF)
+		if (vout->clearFrameMode == OFF)
 		#endif
 		{
 			VIOC_RDMA_SetImageEnable(vioc->rdma.addr);
 			#if defined(CONFIG_VIOC_DOLBY_VISION_EDR)
-			if(VIOC_CONFIG_DV_GET_EDR_PATH())
-			{
+			if (VIOC_CONFIG_DV_GET_EDR_PATH()) {
 				VIOC_RDMA_SetImageUVIEnable(vioc->rdma.addr, 0);
 				VIOC_RDMA_SetImageY2REnable(vioc->rdma.addr, 0);
 				VIOC_RDMA_SetImageR2YEnable(vioc->rdma.addr, 0);
@@ -2022,10 +1975,9 @@ void vout_onthefly_display_update(struct tcc_vout_device *vout, struct v4l2_buff
 		}
 	}
 
-	if (V4L2_FIELD_INTERLACED_TB == vout->src_pix.field
-		|| V4L2_FIELD_INTERLACED_BT == vout->src_pix.field
-		|| V4L2_FIELD_INTERLACED == vout->src_pix.field)
-	{
+	if (vout->src_pix.field == V4L2_FIELD_INTERLACED_TB
+		|| vout->src_pix.field == V4L2_FIELD_INTERLACED_BT
+		|| vout->src_pix.field == V4L2_FIELD_INTERLACED) {
 		dtprintk("%s-field done\n", vioc->rdma.bf ? "bot" : "top");
 
 		if ((vout->deinterlace == VOUT_DEINTL_VIQE_3D) && (vout->frame_count != -1)) {
@@ -2037,6 +1989,7 @@ void vout_onthefly_display_update(struct tcc_vout_device *vout, struct v4l2_buff
 				/* enhancement de-interlace */
 				{
 					int deintl_judder_cnt = (vioc->rdma.width + 64) / 64 - 1;
+
 					VIOC_VIQE_SetDeintlJudderCnt(vioc->viqe.addr, deintl_judder_cnt);
 				}
 			} else {
@@ -2047,7 +2000,7 @@ void vout_onthefly_display_update(struct tcc_vout_device *vout, struct v4l2_buff
 		vout->last_cleared_buffer = buf;
 
 		#ifdef CONFIG_VOUT_USE_VSYNC_INT
-		if(vout->clearFrameMode) {
+		if (vout->clearFrameMode) {
 			vout->firstFieldFlag = 0;
 			vout_clear_buffer(vout, vout->last_cleared_buffer);
 
@@ -2055,15 +2008,13 @@ void vout_onthefly_display_update(struct tcc_vout_device *vout, struct v4l2_buff
 			vout->display_done = OFF;
 		}
 		#endif
-	}
-	else
-	{
+	} else {
 		// update DD flag
 		vout->display_done = ON;
 		vout->last_cleared_buffer = buf;
 
 		#ifdef CONFIG_VOUT_USE_VSYNC_INT
-		if(vout->clearFrameMode) {
+		if (vout->clearFrameMode) {
 			vout_clear_buffer(vout, vout->last_cleared_buffer);
 
 			/* update DD flag */
@@ -2073,22 +2024,20 @@ void vout_onthefly_display_update(struct tcc_vout_device *vout, struct v4l2_buff
 	}
 
 	#ifdef CONFIG_TCC_VIOCMG
-	if(viqe_locked)
+	if (viqe_locked)
 		viocmg_free_viqe(VIOCMG_CALLERID_VOUT);
 	#endif
 
 	#ifdef CONFIG_VOUT_DISPLAY_LASTFRAME
 	vout_video_post_process(vout);
 	#endif
-
-	return;
 }
 
 void vout_m2m_display_update(struct tcc_vout_device *vout, struct v4l2_buffer *buf)
 {
 	struct tcc_vout_vioc *vioc = vout->vioc;
-	unsigned int base0=0, base1=0, base2=0;
-	int index=0, res_change = OFF;
+	unsigned int base0 = 0, base1 = 0, base2 = 0;
+	int index = 0, res_change = OFF;
 
 	#ifdef CONFIG_TCC_VIOCMG
 	unsigned int viqe_locked = 0;
@@ -2101,24 +2050,24 @@ void vout_m2m_display_update(struct tcc_vout_device *vout, struct v4l2_buffer *b
 
 	#ifndef CONFIG_VOUT_USE_VSYNC_INT
 	/* This is the code for only m2m path without vsync */
-	if(!vout->deintl_force)
+	if (!vout->deintl_force)
 		vout->src_pix.field = buf->field;
 
-	if(vout->firstFieldFlag == 0) {		// first field
-		if (V4L2_FIELD_INTERLACED_TB == vout->src_pix.field
-			|| V4L2_FIELD_INTERLACED_BT == vout->src_pix.field
-			|| V4L2_FIELD_INTERLACED == vout->src_pix.field)
+	if (vout->firstFieldFlag == 0) {		// first field
+		if (vout->src_pix.field == V4L2_FIELD_INTERLACED_TB
+			|| vout->src_pix.field == V4L2_FIELD_INTERLACED_BT
+			|| vout->src_pix.field == V4L2_FIELD_INTERLACED)
 			vout->firstFieldFlag++;
 	}
 	#endif
 
 	#ifdef CONFIG_VOUT_USE_SUB_PLANE
-	if(2 == buf->m.planes[MPLANE_VID].reserved[VID_NUM]) {
+	if (buf->m.planes[MPLANE_VID].reserved[VID_NUM] == 2) {
 		memcpy(&vioc->subplane_alpha, buf->m.planes[MPLANE_SUB].reserved, sizeof(struct vioc_alpha));
 		vioc->m2m_subplane_rdma.img.base0 = buf->m.planes[MPLANE_SUB].m.mem_offset;
 		vout_subplane_m2m_qbuf(vout, &vioc->subplane_alpha);
 	} else {
-		if(vioc->subplane_enable) {
+		if (vioc->subplane_enable) {
 			VIOC_RDMA_SetImageDisableNW(vioc->m2m_subplane_rdma.addr);
 			vioc->subplane_enable = OFF;
 		}
@@ -2126,8 +2075,8 @@ void vout_m2m_display_update(struct tcc_vout_device *vout, struct v4l2_buffer *b
 	#endif
 
 	/* get base address */
-	if (V4L2_MEMORY_USERPTR == vout->memory) {
-		if (STILL_IMGAGE != buf->timecode.type) {
+	if (vout->memory  == V4L2_MEMORY_USERPTR) {
+		if (buf->timecode.type != STILL_IMGAGE) {
 			base0 = buf->m.planes[MPLANE_VID].m.userptr;
 			base1 = buf->m.planes[MPLANE_VID].reserved[VID_BASE1];
 			base2 = buf->m.planes[MPLANE_VID].reserved[VID_BASE2];
@@ -2138,7 +2087,7 @@ void vout_m2m_display_update(struct tcc_vout_device *vout, struct v4l2_buffer *b
 			/*
 			 * If the input is YUV format.
 			 */
-			if (TCC_PFMT_RGB != vout->pfmt) {
+			if (vout->pfmt != TCC_PFMT_RGB) {
 				/*
 				 * Re-store src_pix.height from "The VIQE need 4-line align"
 				 */
@@ -2153,7 +2102,7 @@ void vout_m2m_display_update(struct tcc_vout_device *vout, struct v4l2_buffer *b
 					&base0, &base1, &base2);
 			}
 		}
-	} else if (V4L2_MEMORY_MMAP == vout->memory) {
+	} else if (vout->memory == V4L2_MEMORY_MMAP) {
 		base0 = vout->qbufs[buf->index].img_base0;
 		base1 = vout->qbufs[buf->index].img_base1;
 		base2 = vout->qbufs[buf->index].img_base2;
@@ -2161,7 +2110,7 @@ void vout_m2m_display_update(struct tcc_vout_device *vout, struct v4l2_buffer *b
 		pr_err("[ERR][VOUT] invalid qbuf v4l2_memory\n");
 	}
 
-	if (V4L2_FIELD_INTERLACED_BT == vout->src_pix.field)
+	if (vout->src_pix.field == V4L2_FIELD_INTERLACED_BT)
 		vioc->m2m_rdma.bf = 1;
 	else
 		vioc->m2m_rdma.bf = 0;
@@ -2180,10 +2129,9 @@ void vout_m2m_display_update(struct tcc_vout_device *vout, struct v4l2_buffer *b
 	/*
 	 *	Change source info
 	 */
-	if((vout->src_pix.width != buf->m.planes[MPLANE_VID].reserved[VID_WIDTH]
+	if ((vout->src_pix.width != buf->m.planes[MPLANE_VID].reserved[VID_WIDTH]
 		|| vout->src_pix.height != buf->m.planes[MPLANE_VID].reserved[VID_HEIGHT])
-		&& (buf->m.planes[MPLANE_VID].reserved[VID_WIDTH] && buf->m.planes[MPLANE_VID].reserved[VID_HEIGHT]))
-	{
+		&& (buf->m.planes[MPLANE_VID].reserved[VID_WIDTH] && buf->m.planes[MPLANE_VID].reserved[VID_HEIGHT])) {
 		dprintk("changing source (%dx%d)->(%dx%d)\n",
 			vout->src_pix.width, vout->src_pix.height,
 			buf->m.planes[MPLANE_VID].reserved[VID_WIDTH], buf->m.planes[MPLANE_VID].reserved[VID_HEIGHT]);
@@ -2198,7 +2146,7 @@ void vout_m2m_display_update(struct tcc_vout_device *vout, struct v4l2_buffer *b
 		vout->crop_src.width = vout->src_pix.width;
 		vout->crop_src.height = vout->src_pix.height;
 
-		switch(tcc_vout_try_pix(vout->src_pix.pixelformat)){
+		switch (tcc_vout_try_pix(vout->src_pix.pixelformat)) {
 		case TCC_PFMT_YUV422:
 			vout->src_pix.sizeimage = vout->src_pix.width * vout->src_pix.height * 2;
 			break;
@@ -2213,9 +2161,9 @@ void vout_m2m_display_update(struct tcc_vout_device *vout, struct v4l2_buffer *b
 		vout->src_pix.sizeimage = PAGE_ALIGN(vout->src_pix.sizeimage);
 
 		vioc->m2m_rdma.width = vout->src_pix.width;
-		if(vout->src_pix.height % 4) {
+		if (vout->src_pix.height % 4) {
 			vioc->m2m_rdma.height = ROUND_UP_4(vout->src_pix.height);
-			dprintk(" 4-line align: %d -> %d \n", vout->src_pix.height, vioc->m2m_rdma.height);
+			dprintk(" 4-line align: %d -> %d\n", vout->src_pix.height, vioc->m2m_rdma.height);
 		} else {
 			vioc->m2m_rdma.height = vout->src_pix.height;
 		}
@@ -2238,8 +2186,7 @@ void vout_m2m_display_update(struct tcc_vout_device *vout, struct v4l2_buffer *b
 		|| vout->crop_src.width != buf->m.planes[MPLANE_VID].reserved[VID_CROP_WIDTH]
 		|| vout->crop_src.height != buf->m.planes[MPLANE_VID].reserved[VID_CROP_HEIGHT])
 		&& (buf->m.planes[MPLANE_VID].reserved[VID_CROP_WIDTH] && buf->m.planes[MPLANE_VID].reserved[VID_CROP_HEIGHT])
-		&& (vout->src_pix.width >= buf->m.planes[MPLANE_VID].reserved[VID_CROP_WIDTH] && vout->src_pix.height >= buf->m.planes[MPLANE_VID].reserved[VID_CROP_HEIGHT]))
-	{
+		&& (vout->src_pix.width >= buf->m.planes[MPLANE_VID].reserved[VID_CROP_WIDTH] && vout->src_pix.height >= buf->m.planes[MPLANE_VID].reserved[VID_CROP_HEIGHT])) {
 		dprintk("changing crop (%d,%d)(%dx%d)->(%d,%d)(%dx%d)\n",
 			vout->crop_src.left, vout->crop_src.top, vout->crop_src.width, vout->crop_src.height,
 			buf->m.planes[MPLANE_VID].reserved[VID_CROP_LEFT], buf->m.planes[MPLANE_VID].reserved[VID_CROP_TOP],
@@ -2272,9 +2219,7 @@ void vout_m2m_display_update(struct tcc_vout_device *vout, struct v4l2_buffer *b
 		VIOC_WMIX_SetSize(vioc->m2m_wmix.addr, vioc->m2m_wmix.width, vioc->m2m_wmix.height);
 
 		res_change = ON;
-	}
-	else if((vout->src_pix.width != vout->crop_src.width) || (vout->src_pix.height != vout->crop_src.height))
-	{
+	} else if ((vout->src_pix.width != vout->crop_src.width) || (vout->src_pix.height != vout->crop_src.height)) {
 		tcc_get_base_address(vioc->m2m_rdma.fmt, base0,
 			vioc->m2m_rdma.y_stride ? vioc->m2m_rdma.y_stride : vioc->m2m_rdma.width,
 			vioc->m2m_rdma.height,
@@ -2282,22 +2227,20 @@ void vout_m2m_display_update(struct tcc_vout_device *vout, struct v4l2_buffer *b
 			&base0, &base1, &base2);
 	}
 
-	if(res_change)
-	{
-		if (V4L2_FIELD_INTERLACED_TB == vout->src_pix.field
-			|| V4L2_FIELD_INTERLACED_BT == vout->src_pix.field
-			|| V4L2_FIELD_INTERLACED == vout->src_pix.field)
+	if (res_change) {
+		if (vout->src_pix.field == V4L2_FIELD_INTERLACED_TB
+			|| vout->src_pix.field == V4L2_FIELD_INTERLACED_BT
+			|| vout->src_pix.field == V4L2_FIELD_INTERLACED)
 			vout->frame_count = 0;
 
 		VIOC_WMIX_SetUpdate(vioc->m2m_wmix.addr);
 
-		if(vioc->m2m_wmix.width == vioc->m2m_wdma.width && vioc->m2m_wmix.height == vioc->m2m_wdma.height)
-		{
-			dprintk("BYPASS 	src(%dx%d) -> dst(%dx%d) \n", vioc->m2m_wmix.width, vioc->m2m_wmix.height, vioc->m2m_wdma.width, vioc->m2m_wdma.height);
+		if (vioc->m2m_wmix.width == vioc->m2m_wdma.width && vioc->m2m_wmix.height == vioc->m2m_wdma.height) {
+			dprintk("BYPASS         src(%dx%d) -> dst(%dx%d)\n", vioc->m2m_wmix.width, vioc->m2m_wmix.height, vioc->m2m_wdma.width, vioc->m2m_wdma.height);
 			VIOC_SC_SetBypass(vioc->sc.addr, ON);
 			VIOC_SC_SetUpdate(vioc->sc.addr);
 		} else {
-			dprintk("SCALING	src(%dx%d) -> dst(%dx%d) \n", vioc->m2m_wmix.width, vioc->m2m_wmix.height, vioc->m2m_wdma.width, vioc->m2m_wdma.height);
+			dprintk("SCALING        src(%dx%d) -> dst(%dx%d)\n", vioc->m2m_wmix.width, vioc->m2m_wmix.height, vioc->m2m_wdma.width, vioc->m2m_wdma.height);
 			VIOC_SC_SetBypass(vioc->sc.addr, OFF);
 			VIOC_SC_SetDstSize(vioc->sc.addr, vioc->m2m_wdma.width, vioc->m2m_wdma.height);	// set destination size in scaler
 			VIOC_SC_SetOutSize(vioc->sc.addr, vioc->m2m_wdma.width, vioc->m2m_wdma.height);	// set output size in scaler
@@ -2314,7 +2257,7 @@ void vout_m2m_display_update(struct tcc_vout_device *vout, struct v4l2_buffer *b
 	}
 
 	/* rdma stride */
-	if(buf->m.planes[MPLANE_VID].bytesused && (vioc->m2m_rdma.y_stride != buf->m.planes[MPLANE_VID].bytesused)) {
+	if (buf->m.planes[MPLANE_VID].bytesused && (vioc->m2m_rdma.y_stride != buf->m.planes[MPLANE_VID].bytesused)) {
 		dprintk("update rdma stride(%d -> %d)\n", vioc->m2m_rdma.y_stride, buf->m.planes[MPLANE_VID].bytesused);
 
 		/*  change rdma stride */
@@ -2323,13 +2266,13 @@ void vout_m2m_display_update(struct tcc_vout_device *vout, struct v4l2_buffer *b
 	}
 
 	/* dec output format */
-	if (V4L2_MEMORY_USERPTR == vout->memory)
+	if (vout->memory == V4L2_MEMORY_USERPTR)
 		vout_check_format(&vioc->m2m_rdma, buf->m.planes[MPLANE_VID].reserved[VID_MJPEG_FORMAT]);
 
 	#ifdef CONFIG_VIOC_10BIT
-	if(buf->flags & V4L2_BUFFER_FLAG_YUV_10BIT_MODE0) {
+	if (buf->flags & V4L2_BUFFER_FLAG_YUV_10BIT_MODE0) {
 		VIOC_RDMA_SetDataFormat(vioc->m2m_rdma.addr, 0x1, 0x1);	/* YUV 10bit support(16bit format type) */
-	} else if(buf->flags & V4L2_BUFFER_FLAG_YUV_10BIT_MODE1) {
+	} else if (buf->flags & V4L2_BUFFER_FLAG_YUV_10BIT_MODE1) {
 		VIOC_RDMA_SetDataFormat(vioc->m2m_rdma.addr, 0x3, 0x0);	/* YUV 10bit support(10bit format type) */
 		VIOC_RDMA_SetImageOffset(vioc->m2m_rdma.addr, vioc->m2m_rdma.fmt, (vioc->m2m_rdma.width*125)/100);
 	} else {
@@ -2339,8 +2282,9 @@ void vout_m2m_display_update(struct tcc_vout_device *vout, struct v4l2_buffer *b
 
 	/* HDR support */
 	#ifdef CONFIG_TCC_HDMI_DRIVER_V2_0
-	if(buf->m.planes[MPLANE_VID].reserved[VID_HDR_TC] == 16) {
+	if (buf->m.planes[MPLANE_VID].reserved[VID_HDR_TC] == 16) {
 		DRM_Packet_t drmparm;
+
 		memset(&drmparm, 0x0, sizeof(DRM_Packet_t));
 
 		drmparm.mInfoFrame.version = buf->m.planes[MPLANE_VID].reserved[VID_HDR_VERSION];
@@ -2361,7 +2305,7 @@ void vout_m2m_display_update(struct tcc_vout_device *vout, struct v4l2_buffer *b
 		drmparm.mDescriptor_type1.max_content_light_level = buf->m.planes[MPLANE_VID].reserved[VID_HDR_MAX_CONTENT];
 		drmparm.mDescriptor_type1.max_frame_avr_light_level = buf->m.planes[MPLANE_VID].reserved[VID_HDR_MAX_PIC_AVR];
 
-		if(memcmp(&gDRM_packet, &drmparm, sizeof(DRM_Packet_t))) {
+		if (memcmp(&gDRM_packet, &drmparm, sizeof(DRM_Packet_t))) {
 			hdmi_set_drm(&drmparm);
 			memcpy(&gDRM_packet, &drmparm, sizeof(DRM_Packet_t));
 		}
@@ -2386,16 +2330,15 @@ void vout_m2m_display_update(struct tcc_vout_device *vout, struct v4l2_buffer *b
 	vioc->m2m_dual_wdma[M2M_DUAL_1].img.base1 = vout->m2m_dual_bufs_hdmi[index].img_base1;
 	vioc->m2m_dual_wdma[M2M_DUAL_1].img.base2 = vout->m2m_dual_bufs_hdmi[index].img_base2;
 #endif
-	if(buf->m.planes[MPLANE_VID].reserved[VID_CONVERTER_EN] == 1) {
+	if (buf->m.planes[MPLANE_VID].reserved[VID_CONVERTER_EN] == 1) {
 		#ifdef CONFIG_VIOC_MAP_DECOMP
 		VIOC_RDMA_SetImageDisable(vioc->m2m_rdma.addr);
 
-		if((vout->deinterlace == VOUT_DEINTL_VIQE_3D) || (vout->deinterlace == VOUT_DEINTL_VIQE_2D))
-		{
+		if ((vout->deinterlace == VOUT_DEINTL_VIQE_3D) || (vout->deinterlace == VOUT_DEINTL_VIQE_2D)) {
 			VIOC_CONFIG_PlugOut(vioc->viqe.id);
 			VIOC_CONFIG_SWReset(vioc->viqe.id, VIOC_CONFIG_RESET);
 			VIOC_CONFIG_SWReset(vioc->viqe.id, VIOC_CONFIG_CLEAR);
-		} else if(vout->deinterlace == VOUT_DEINTL_S) {
+		} else if (vout->deinterlace == VOUT_DEINTL_S) {
 			VIOC_CONFIG_PlugOut(vioc->deintl_s.id);
 			VIOC_CONFIG_SWReset(vioc->deintl_s.id, VIOC_CONFIG_RESET);
 			VIOC_CONFIG_SWReset(vioc->deintl_s.id, VIOC_CONFIG_CLEAR);
@@ -2405,7 +2348,7 @@ void vout_m2m_display_update(struct tcc_vout_device *vout, struct v4l2_buffer *b
 		VIOC_CONFIG_SWReset(vioc->sc.id, VIOC_CONFIG_RESET);
 		VIOC_CONFIG_SWReset(vioc->sc.id, VIOC_CONFIG_CLEAR);
 		if (VIOC_CONFIG_DMAPath_Support()) {
-			if(VIOC_CONFIG_DMAPath_Select(vioc->m2m_rdma.id) != vioc->map_converter.id) {
+			if (VIOC_CONFIG_DMAPath_Select(vioc->m2m_rdma.id) != vioc->map_converter.id) {
 				VIOC_CONFIG_DMAPath_UnSet(vioc->m2m_rdma.id);
 				tca_map_convter_swreset(vioc->map_converter.id);
 				VIOC_CONFIG_DMAPath_Set(vioc->m2m_rdma.id, vioc->map_converter.id);
@@ -2413,7 +2356,7 @@ void vout_m2m_display_update(struct tcc_vout_device *vout, struct v4l2_buffer *b
 		} else {
 			#if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X)
 			tca_map_convter_swreset(VIOC_MC1);
-			if(VIOC_CONFIG_MCPath(vioc->m2m_wmix.id, VIOC_MC1) < 0) {
+			if (VIOC_CONFIG_MCPath(vioc->m2m_wmix.id, VIOC_MC1) < 0) {
 				pr_err("[ERR][VOUT] %s[%d]: HW Decompresser can not be connected on %s\n",
 						__func__, __LINE__, vout->vdev->name);
 				return;
@@ -2438,9 +2381,9 @@ void vout_m2m_display_update(struct tcc_vout_device *vout, struct v4l2_buffer *b
 		vioc->map_converter.mapConv_info.m_FbcCOffsetAddr[0] = buf->m.planes[MPLANE_VID].reserved[VID_HEVC_OFFSET_BASE_C0];
 		vioc->map_converter.mapConv_info.m_FbcCOffsetAddr[1] = buf->m.planes[MPLANE_VID].reserved[VID_HEVC_OFFSET_BASE_C1];
 
-//		dprintk(" m_uiLumaStride %d m_uiChromaStride %d\n m_uiLumaBitDepth %d m_uiChromaBitDepth %d m_uiFrameEndian %d \n
+//		dprintk(" m_uiLumaStride %d m_uiChromaStride %d\n m_uiLumaBitDepth %d m_uiChromaBitDepth %d m_uiFrameEndian %d\n
 //			m_CompressedY[0] 0x%08x m_CompressedCb[0] 0x%08x m_CompressedY[1] 0x%08x m_CompressedCb[1] 0x%08x\n
-//			m_FbcYOffsetAddr[0] 0x%08x m_FbcCOffsetAddr[0] 0x%08x m_FbcYOffsetAddr[1] 0x%08x m_FbcCOffsetAddr[1] 0x%08x \n",
+//			m_FbcYOffsetAddr[0] 0x%08x m_FbcCOffsetAddr[0] 0x%08x m_FbcYOffsetAddr[1] 0x%08x m_FbcCOffsetAddr[1] 0x%08x\n",
 //			vioc->map_converter.mapConv_info.m_uiLumaStride, vioc->map_converter.mapConv_info.m_uiChromaStride,
 //			vioc->map_converter.mapConv_info.m_uiLumaBitDepth, vioc->map_converter.mapConv_info.m_uiChromaBitDepth,
 //			vioc->map_converter.mapConv_info.m_uiFrameEndian,
@@ -2448,7 +2391,7 @@ void vout_m2m_display_update(struct tcc_vout_device *vout, struct v4l2_buffer *b
 //			vioc->map_converter.mapConv_info.m_CompressedY[1], vioc->map_converter.mapConv_info.m_CompressedCb[1],
 //			vioc->map_converter.mapConv_info.m_FbcYOffsetAddr[0], vioc->map_converter.mapConv_info.m_FbcCOffsetAddr[0],
 //			vioc->map_converter.mapConv_info.m_FbcYOffsetAddr[1], vioc->map_converter.mapConv_info.m_FbcCOffsetAddr[1]);
-//		dprintk("%s map converter: size: %dx%d pos: (0,0) \n", __func__, vout->src_pix.width, vout->src_pix.height);
+//		dprintk("%s map converter: size: %dx%d pos: (0,0)\n", __func__, vout->src_pix.width, vout->src_pix.height);
 
 		#ifdef CONFIG_ARCH_TCC803X
 		tca_map_convter_driver_set(VIOC_MC1, vout->src_pix.width, vout->src_pix.height,
@@ -2468,20 +2411,17 @@ void vout_m2m_display_update(struct tcc_vout_device *vout, struct v4l2_buffer *b
 			vioc->m2m_wdma.img.base0, vioc->m2m_wdma.img.base1, vioc->m2m_wdma.img.base2);
 		vout_m2m_ctrl(vioc, 1);
 		#endif
-	}
-	else if (buf->m.planes[MPLANE_VID].reserved[VID_CONVERTER_EN] == 2)
-	{
+	} else if (buf->m.planes[MPLANE_VID].reserved[VID_CONVERTER_EN] == 2) {
 		#ifdef CONFIG_VIOC_DTRC_DECOMP
 		if (VIOC_CONFIG_DMAPath_Support()) {
-			if(VIOC_CONFIG_DMAPath_Select(vioc->m2m_rdma.id) != vioc->dtrc.id) {
+			if (VIOC_CONFIG_DMAPath_Select(vioc->m2m_rdma.id) != vioc->dtrc.id) {
 				VIOC_RDMA_SetImageDisable(vioc->m2m_rdma.addr);
 
-				if((vout->deinterlace == VOUT_DEINTL_VIQE_3D) || (vout->deinterlace == VOUT_DEINTL_VIQE_2D))
-				{
+				if ((vout->deinterlace == VOUT_DEINTL_VIQE_3D) || (vout->deinterlace == VOUT_DEINTL_VIQE_2D)) {
 					VIOC_CONFIG_PlugOut(vioc->viqe.id);
 					VIOC_CONFIG_SWReset(vioc->viqe.id, VIOC_CONFIG_RESET);
 					VIOC_CONFIG_SWReset(vioc->viqe.id, VIOC_CONFIG_CLEAR);
-				} else if(vout->deinterlace == VOUT_DEINTL_S) {
+				} else if (vout->deinterlace == VOUT_DEINTL_S) {
 					VIOC_CONFIG_PlugOut(vioc->deintl_s.id);
 					VIOC_CONFIG_SWReset(vioc->deintl_s.id, VIOC_CONFIG_RESET);
 					VIOC_CONFIG_SWReset(vioc->deintl_s.id, VIOC_CONFIG_CLEAR);
@@ -2528,28 +2468,25 @@ void vout_m2m_display_update(struct tcc_vout_device *vout, struct v4l2_buffer *b
 					vout->crop_src.left, vout->crop_src.top, ON, &vioc->dtrc.dtrcConv_info);
 			tca_dtrc_convter_onoff(vioc->dtrc.id, ON, 0);
 
-			if(VIOC_CONFIG_GetScaler_PluginToRDMA(vioc->m2m_rdma.id) != vioc->sc.id)
+			if (VIOC_CONFIG_GetScaler_PluginToRDMA(vioc->m2m_rdma.id) != vioc->sc.id)
 				scaler_setup(vout);
 
 			/* update wdma base address */
 			VIOC_WDMA_SetImageBase(vioc->m2m_wdma.addr,
 					vioc->m2m_wdma.img.base0, vioc->m2m_wdma.img.base1, vioc->m2m_wdma.img.base2);
 			vout_m2m_ctrl(vioc, 1);
-		}
-		else {
-			pr_err("[ERR][VOUT] Not support for DTRC on this chipset type!! \n");
+		} else {
+			pr_err("[ERR][VOUT] Not support for DTRC on this chipset type!!\n");
 		}
 		#endif
-	}
-	else
-	{
+	} else {
 		#if defined(CONFIG_VIOC_MAP_DECOMP) || defined(CONFIG_VIOC_DTRC_DECOMP)
-		if(VIOC_CONFIG_DMAPath_Support()) {
+		if (VIOC_CONFIG_DMAPath_Support()) {
 			int component_num = VIOC_CONFIG_DMAPath_Select(vioc->m2m_rdma.id);
 
-			if(component_num < 0)
+			if (component_num < 0)
 				pr_info("[INF][VOUT] %s  : RDMA :%d dma path selection none\n", __func__, vioc->m2m_rdma.id);
-			else if((component_num < VIOC_RDMA00) && (component_num > (VIOC_RDMA00 + VIOC_RDMA_MAX)))
+			else if ((component_num < VIOC_RDMA00) && (component_num > (VIOC_RDMA00 + VIOC_RDMA_MAX)))
 				VIOC_CONFIG_DMAPath_UnSet(component_num);
 
 			// It is default path selection(VRDMA)
@@ -2562,17 +2499,15 @@ void vout_m2m_display_update(struct tcc_vout_device *vout, struct v4l2_buffer *b
 		#endif
 
 		#ifdef CONFIG_TCC_VIOCMG
-		if(vout->deinterlace == VOUT_DEINTL_VIQE_3D || vout->deinterlace == VOUT_DEINTL_VIQE_2D)
-		{
-			if(viocmg_lock_viqe(VIOCMG_CALLERID_VOUT) < 0) {
+		if (vout->deinterlace == VOUT_DEINTL_VIQE_3D || vout->deinterlace == VOUT_DEINTL_VIQE_2D) {
+			if (viocmg_lock_viqe(VIOCMG_CALLERID_VOUT) < 0) {
 				// VIQE may be used for rear camera !!
 				viqe_locked = 0;
 
 				#ifdef CONFIG_VOUT_KEEP_VIDEO_LAYER
-				if (V4L2_FIELD_INTERLACED_TB == vout->src_pix.field
-						|| V4L2_FIELD_INTERLACED_BT == vout->src_pix.field
-						|| V4L2_FIELD_INTERLACED == vout->src_pix.field)
-				{
+				if (vout->src_pix.field == V4L2_FIELD_INTERLACED_TB
+						|| vout->src_pix.field == V4L2_FIELD_INTERLACED_BT
+						|| vout->src_pix.field == V4L2_FIELD_INTERLACED) {
 					// backup the deinterlace mode
 					previous_deinterlace = vout->deinterlace;
 					vout->deinterlace = VOUT_DEINTL_S;
@@ -2581,7 +2516,7 @@ void vout_m2m_display_update(struct tcc_vout_device *vout, struct v4l2_buffer *b
 					VIOC_WDMA_SetImageR2YEnable(vioc->m2m_wdma.addr, OFF);
 
 					// fill information..!
-					if(vout->is_viqe_shared == OFF) {
+					if (vout->is_viqe_shared == OFF) {
 						vout->is_viqe_shared = ON;
 						force_process = 1;
 						dprintk(" force_process = 1\r\n");
@@ -2602,7 +2537,7 @@ void vout_m2m_display_update(struct tcc_vout_device *vout, struct v4l2_buffer *b
 				VIOC_PlugInOutCheck plugin_state;
 
 				#ifdef CONFIG_VOUT_KEEP_VIDEO_LAYER
-				if(vout->is_viqe_shared) {
+				if (vout->is_viqe_shared) {
 					vout->is_viqe_shared = OFF;
 
 					/* reset deintl_s */
@@ -2613,8 +2548,8 @@ void vout_m2m_display_update(struct tcc_vout_device *vout, struct v4l2_buffer *b
 				#endif
 
 				VIOC_CONFIG_Device_PlugState(vioc->viqe.id, &plugin_state);
-				if(!plugin_state.enable || plugin_state.connect_statue != VIOC_PATH_CONNECTED) {
-					if(deintl_viqe_setup(vout, vout->deinterlace, 1) < 0)
+				if (!plugin_state.enable || plugin_state.connect_statue != VIOC_PATH_CONNECTED) {
+					if (deintl_viqe_setup(vout, vout->deinterlace, 1) < 0)
 						pr_err("[ERR][VOUT] failed VIQE%d reconnection\n", vioc->viqe.id);
 					dprintk("reconnect VIQE%d\n", vioc->viqe.id);
 					vout->frame_count = 0;
@@ -2636,20 +2571,20 @@ void vout_m2m_display_update(struct tcc_vout_device *vout, struct v4l2_buffer *b
 		#endif
 		{
 			vout->previous_field = vout->src_pix.field;
-			if (V4L2_FIELD_INTERLACED_TB == vout->src_pix.field
-				|| V4L2_FIELD_INTERLACED_BT == vout->src_pix.field
-				|| V4L2_FIELD_INTERLACED == vout->src_pix.field) {
+			if (vout->src_pix.field == V4L2_FIELD_INTERLACED_TB
+				|| vout->src_pix.field == V4L2_FIELD_INTERLACED_BT
+				|| vout->src_pix.field == V4L2_FIELD_INTERLACED) {
 				switch (vout->deinterlace) {
 				case VOUT_DEINTL_VIQE_3D:
 				case VOUT_DEINTL_VIQE_2D:
-					if(res_change) {
+					if (res_change) {
 						deintl_viqe_setup(vout, vout->deinterlace, 0);
 					} else {
 						VIOC_VIQE_SetDeintlMode(vioc->viqe.addr, VIOC_VIQE_DEINTL_MODE_2D);
 						VIOC_VIQE_SetControlMode(vioc->viqe.addr, OFF, OFF, OFF, OFF, ON);
 					}
 
-					if(vout->src_pix.colorspace == V4L2_COLORSPACE_JPEG)
+					if (vout->src_pix.colorspace == V4L2_COLORSPACE_JPEG)
 						VIOC_RDMA_SetImageY2REnable(vioc->m2m_rdma.addr, 0);	// force disable y2r
 					break;
 				case VOUT_DEINTL_S:
@@ -2665,14 +2600,14 @@ void vout_m2m_display_update(struct tcc_vout_device *vout, struct v4l2_buffer *b
 				case VOUT_DEINTL_VIQE_3D:
 				case VOUT_DEINTL_VIQE_2D:
 					#ifdef CONFIG_TCC_VIOCMG
-					if(viqe_locked)
+					if (viqe_locked)
 					#endif
 					{
 						VIOC_VIQE_SetDeintlMode(vioc->viqe.addr, VIOC_VIQE_DEINTL_MODE_BYPASS);
 						VIOC_VIQE_SetControlMode(vioc->viqe.addr, OFF, OFF, OFF, OFF, OFF);
 						vout->frame_count = 0;
 
-						if(vout->src_pix.colorspace == V4L2_COLORSPACE_JPEG)
+						if (vout->src_pix.colorspace == V4L2_COLORSPACE_JPEG)
 							VIOC_RDMA_SetImageY2REnable(vioc->m2m_rdma.addr, 1); // force enable y2r
 					}
 					break;
@@ -2689,7 +2624,7 @@ void vout_m2m_display_update(struct tcc_vout_device *vout, struct v4l2_buffer *b
 
 		/* update rdma (bfield and src addr.).
 		 */
-		if(vioc->m2m_rdma.width <= 3072 )
+		if (vioc->m2m_rdma.width <= 3072)
 			VIOC_RDMA_SetImageUVIEnable(vioc->m2m_rdma.addr, true);
 		else
 			VIOC_RDMA_SetImageUVIEnable(vioc->m2m_rdma.addr, false);
@@ -2698,10 +2633,10 @@ void vout_m2m_display_update(struct tcc_vout_device *vout, struct v4l2_buffer *b
 			vioc->m2m_rdma.img.base0, vioc->m2m_rdma.img.base1, vioc->m2m_rdma.img.base2);
 
 		#ifdef CONFIG_VIOC_DOLBY_VISION_EDR
-		if(VIOC_CONFIG_DV_GET_EDR_PATH()) {
-			if (V4L2_FIELD_INTERLACED_TB == vout->src_pix.field
-				|| V4L2_FIELD_INTERLACED_BT == vout->src_pix.field
-				|| V4L2_FIELD_INTERLACED == vout->src_pix.field) {
+		if (VIOC_CONFIG_DV_GET_EDR_PATH()) {
+			if (vout->src_pix.field == V4L2_FIELD_INTERLACED_TB
+				|| vout->src_pix.field == V4L2_FIELD_INTERLACED_BT
+				|| vout->src_pix.field == V4L2_FIELD_INTERLACED) {
 				switch (vout->deinterlace) {
 				case VOUT_DEINTL_VIQE_3D:
 				case VOUT_DEINTL_VIQE_2D:
@@ -2727,20 +2662,20 @@ void vout_m2m_display_update(struct tcc_vout_device *vout, struct v4l2_buffer *b
 	vout->last_cleared_buffer = buf;
 
 	#ifndef CONFIG_VOUT_USE_VSYNC_INT
-	if (V4L2_FIELD_INTERLACED_TB == vout->src_pix.field
-				|| V4L2_FIELD_INTERLACED_BT == vout->src_pix.field
-				|| V4L2_FIELD_INTERLACED == vout->src_pix.field)
-	{
+	if (vout->src_pix.field == V4L2_FIELD_INTERLACED_TB
+				|| vout->src_pix.field == V4L2_FIELD_INTERLACED_BT
+				|| vout->src_pix.field == V4L2_FIELD_INTERLACED) {
 next_field:
 		if (wait_event_interruptible_timeout(vout->frame_wait, vout->wakeup_int == 1, msecs_to_jiffies(200)) <= 0) {
 			pr_err("[ERR][VOUT] [interlace] handler timeout\n");
-			if(!vout->firstFieldFlag)
+			if (!vout->firstFieldFlag)
 				atomic_inc(&vout->displayed_buff_count);
 		}
 		vout->wakeup_int = 0;
 
-		if(vout->firstFieldFlag) {
+		if (vout->firstFieldFlag) {
 			int index = (vout->deintl_nr_bufs_count++ % vout->deintl_nr_bufs);
+
 			if (vout->deintl_nr_bufs_count == vout->deintl_nr_bufs)
 				vout->deintl_nr_bufs_count = 0;
 
@@ -2760,72 +2695,32 @@ next_field:
 			vout_m2m_ctrl(vioc, 1);
 			goto next_field;
 		}
-	}
-	else
-	{
+	} else {
 		if (wait_event_interruptible_timeout(vout->frame_wait, vout->wakeup_int == 1, msecs_to_jiffies(200)) <= 0) {
 			pr_err("[ERR][VOUT] [progressive] handler timeout\n");
 			atomic_inc(&vout->displayed_buff_count);
 		}
 		vout->wakeup_int = 0;
 	}
-
-#if defined(CONFIG_TCC_DUAL_DISPLAY)
-	VIOC_WDMA_SetImageBase(vioc->m2m_dual_wdma[M2M_DUAL_1].addr,
-		vioc->m2m_dual_wdma[M2M_DUAL_1].img.base0, vioc->m2m_dual_wdma[M2M_DUAL_1].img.base1, vioc->m2m_dual_wdma[M2M_DUAL_1].img.base2);
-
-	VIOC_WDMA_SetImageFormat(vioc->m2m_dual_wdma[M2M_DUAL_1].addr, vioc->m2m_wdma.fmt);
-	VIOC_WDMA_SetImageOffset(vioc->m2m_dual_wdma[M2M_DUAL_1].addr, vioc->m2m_wdma.fmt, vioc->m2m_dual_wmix[M2M_DUAL_1].width);
-
-	VIOC_WDMA_SetImageSize(vioc->m2m_dual_wdma[M2M_DUAL_1].addr, vioc->m2m_dual_wmix[M2M_DUAL_1].width, vioc->m2m_dual_wmix[M2M_DUAL_1].height);
-	vout_m2m_dual_ctrl(vioc, 1, M2M_DUAL_1);
-
-	if (wait_event_interruptible_timeout(vout->hdmi_frame_wait, vout->hdmi_wakeup_int == 1, msecs_to_jiffies(200)) <= 0) {
-		pr_err("[ERR][VOUT] [hdmi] handler timeout\n");
-		if(!vout->firstFieldFlag)
-			atomic_inc(&vout->displayed_buff_count);
-	}
-	vout->hdmi_wakeup_int = 0;
-
-	VIOC_WDMA_SetImageBase(vioc->m2m_dual_wdma[M2M_DUAL_0].addr,
-		vioc->m2m_dual_wdma[M2M_DUAL_0].img.base0, vioc->m2m_dual_wdma[M2M_DUAL_0].img.base1, vioc->m2m_dual_wdma[M2M_DUAL_0].img.base2);
-
-	VIOC_WDMA_SetImageFormat(vioc->m2m_dual_wdma[M2M_DUAL_0].addr, vioc->m2m_wdma.fmt);
-	VIOC_WDMA_SetImageOffset(vioc->m2m_dual_wdma[M2M_DUAL_0].addr, vioc->m2m_wdma.fmt, vioc->m2m_dual_wmix[M2M_DUAL_0].width);
-
-	VIOC_WDMA_SetImageSize(vioc->m2m_dual_wdma[M2M_DUAL_0].addr, vioc->m2m_dual_wmix[M2M_DUAL_0].width, vioc->m2m_dual_wmix[M2M_DUAL_0].height);
-	vout_m2m_dual_ctrl(vioc, 1, M2M_DUAL_0);
-
-	if (wait_event_interruptible_timeout(vout->ext_frame_wait, vout->ext_wakeup_int == 1, msecs_to_jiffies(200)) <= 0) {
-		pr_err("[ERR][VOUT] [ext] handler timeout\n");
-		if(!vout->firstFieldFlag)
-			atomic_inc(&vout->displayed_buff_count);
-	}
-	vout->ext_wakeup_int = 0;
-#endif
-
 	#endif
 
 	#ifdef CONFIG_TCC_VIOCMG
 	#ifdef CONFIG_VOUT_KEEP_VIDEO_LAYER
-	if(vout->is_viqe_shared) {
+	if (vout->is_viqe_shared) {
 		// restore interlace
 		vout->deinterlace = previous_deinterlace;
 
-		if (V4L2_FIELD_INTERLACED_TB == vout->src_pix.field
-				|| V4L2_FIELD_INTERLACED_BT == vout->src_pix.field
-				|| V4L2_FIELD_INTERLACED == vout->src_pix.field)
-		{
+		if (vout->src_pix.field == V4L2_FIELD_INTERLACED_TB
+				|| vout->src_pix.field == V4L2_FIELD_INTERLACED_BT
+				|| vout->src_pix.field == V4L2_FIELD_INTERLACED) {
 			// restore wdma r2y
 			VIOC_WDMA_SetImageR2YEnable(vioc->m2m_wdma.addr, vioc->m2m_wdma.r2y);
 		}
 	}
 	#endif
-	if(viqe_locked)
+	if (viqe_locked)
 		viocmg_free_viqe(VIOCMG_CALLERID_VOUT);
 	#endif
-
-	return;
 }
 
 #ifdef CONFIG_VOUT_USE_VSYNC_INT
@@ -2839,31 +2734,31 @@ static void display_update(struct tcc_vout_device *vout)
 	int ret = 0;
 
 search_nextfrm:
-	if(vout->display_done && vout->last_cleared_buffer) {
+	if (vout->display_done && vout->last_cleared_buffer) {
 		vout_clear_buffer(vout, vout->last_cleared_buffer);
 
 		/* update DD flag */
 		vout->display_done = OFF;
 	}
 	#ifdef CONFIG_VIOC_DOLBY_VISION_CERTIFICATION_TEST
-	if(vout->last_cleared_buffer == NULL && (HDMI_video_width == 720 && HDMI_video_height == 480) && atomic_read(&vout->readable_buff_count) < 7)
+	if (vout->last_cleared_buffer == NULL && (HDMI_video_width == 720 && HDMI_video_height == 480) && atomic_read(&vout->readable_buff_count) < 7)
 		return;
 	#endif
 
-	if((atomic_read(&vout->readable_buff_count) > 0) || vout->firstFieldFlag) {
+	if ((atomic_read(&vout->readable_buff_count) > 0) || vout->firstFieldFlag) {
 		pNextBuffer = vout_get_buffer(vout);	/* get next buffer */
-		if(vout->firstFieldFlag == 0)		/* first field */
-		{
-			if(pNextBuffer->reserved2 || vout->force_sync) {
-				if(vout->force_sync)
+		if (vout->firstFieldFlag == 0) {
+			/* first field */
+			if (pNextBuffer->reserved2 || vout->force_sync) {
+				if (vout->force_sync)
 					vout->force_sync = OFF;
 				tcc_vout_set_time(vout, ((pNextBuffer->timestamp.tv_sec*1000)+(pNextBuffer->timestamp.tv_usec/1000)));
 			}
 
 			/* check video time */
 			ret = vout_check_syncTime(vout, pNextBuffer, tcc_vout_get_time(vout));
-			if(ret == VOUT_DRV_ERR_DROPFRM) {
-				if((atomic_read(&vout->readable_buff_count)-1) == 0)
+			if (ret == VOUT_DRV_ERR_DROPFRM) {
+				if ((atomic_read(&vout->readable_buff_count)-1) == 0)
 					goto force_disp;
 
 				vout_pop_buffer(vout);
@@ -2871,9 +2766,9 @@ search_nextfrm:
 				vout->last_cleared_buffer = pNextBuffer;
 				vout->display_done = ON;
 				goto search_nextfrm;
-			} else if(ret == VOUT_DRV_ERR_WAITFRM) {
+			} else if (ret == VOUT_DRV_ERR_WAITFRM) {
 				#ifdef CONFIG_VIOC_DOLBY_VISION_CERTIFICATION_TEST
-				if(nFrame > 1) {
+				if (nFrame > 1) {
 					nFrame_t1++;
 					if (vout->onthefly_mode)
 						vout_onthefly_display_update(vout, vout->last_cleared_buffer);
@@ -2886,12 +2781,12 @@ search_nextfrm:
 force_disp:
 			dbprintk("d(%d %d)(%d %d)\n", vout->popIdx, atomic_read(&vout->readable_buff_count), pNextBuffer->index, pNextBuffer->reserved2);
 
-			if(!vout->deintl_force)
+			if (!vout->deintl_force)
 				vout->src_pix.field = pNextBuffer->field;
 
-			if (V4L2_FIELD_INTERLACED_TB == vout->src_pix.field
-				|| V4L2_FIELD_INTERLACED_BT == vout->src_pix.field
-				|| V4L2_FIELD_INTERLACED == vout->src_pix.field)
+			if (vout->src_pix.field == V4L2_FIELD_INTERLACED_TB
+				|| vout->src_pix.field == V4L2_FIELD_INTERLACED_BT
+				|| vout->src_pix.field == V4L2_FIELD_INTERLACED)
 				vout->firstFieldFlag++;
 
 			if (vout->onthefly_mode)
@@ -2901,35 +2796,34 @@ force_disp:
 
 			#ifdef CONFIG_VIOC_DOLBY_VISION_CERTIFICATION_TEST
 			nFrame_t0++;
-			if(nFrame != 1)
+			if (nFrame != 1)
 			#endif
 			{
 				vout_pop_buffer(vout);
 			}
-		}
-		else	/* next field */
-		{
+		} else {
+			/* next field */
 			vout->firstFieldFlag = 0;
 
 			#ifdef CONFIG_TCC_VIOCMG
-			if(vout->deinterlace == VOUT_DEINTL_VIQE_3D || vout->deinterlace == VOUT_DEINTL_VIQE_2D)
-			{
-				if(viocmg_lock_viqe(VIOCMG_CALLERID_VOUT) < 0) {
+			if (vout->deinterlace == VOUT_DEINTL_VIQE_3D || vout->deinterlace == VOUT_DEINTL_VIQE_2D) {
+				if (viocmg_lock_viqe(VIOCMG_CALLERID_VOUT) < 0) {
 					// VIQE may be used for rear camera !!
 					viqe_locked = 0;
 
 					// buffer release
 					vout->display_done = ON;
-					if (V4L2_FIELD_INTERLACED_TB == vout->src_pix.field
-							|| V4L2_FIELD_INTERLACED_BT == vout->src_pix.field
-							|| V4L2_FIELD_INTERLACED == vout->src_pix.field)
+					if (vout->src_pix.field == V4L2_FIELD_INTERLACED_TB
+							|| vout->src_pix.field == V4L2_FIELD_INTERLACED_BT
+							|| vout->src_pix.field == V4L2_FIELD_INTERLACED)
 						vout->firstFieldFlag = 0;
 					return;
 				} else {
 					VIOC_PlugInOutCheck plugin_state;
+
 					VIOC_CONFIG_Device_PlugState(vioc->viqe.id, &plugin_state);
-					if(!plugin_state.enable || plugin_state.connect_statue != VIOC_PATH_CONNECTED) {
-						if(deintl_viqe_setup(vout, vout->deinterlace, 1) < 0)
+					if (!plugin_state.enable || plugin_state.connect_statue != VIOC_PATH_CONNECTED) {
+						if (deintl_viqe_setup(vout, vout->deinterlace, 1) < 0)
 							pr_err("[ERR][VOUT] failed VIQE%d reconnection\n", vioc->viqe.id);
 						dprintk("reconnect VIQE%d\n", vioc->viqe.id);
 						vout->frame_count = 0;
@@ -2939,11 +2833,10 @@ force_disp:
 			}
 			#endif
 
-			if(vout->onthefly_mode) {
-				if (V4L2_FIELD_INTERLACED_TB == vout->src_pix.field
-					|| V4L2_FIELD_INTERLACED_BT == vout->src_pix.field
-					|| V4L2_FIELD_INTERLACED == vout->src_pix.field)
-				{
+			if (vout->onthefly_mode) {
+				if (vout->src_pix.field == V4L2_FIELD_INTERLACED_TB
+					|| vout->src_pix.field == V4L2_FIELD_INTERLACED_BT
+					|| vout->src_pix.field == V4L2_FIELD_INTERLACED) {
 					/* change rdma bfield */
 					VIOC_RDMA_SetImageBfield(vioc->rdma.addr, !(vioc->rdma.bf));
 					VIOC_RDMA_SetImageUpdate(vioc->rdma.addr);
@@ -2959,6 +2852,7 @@ force_disp:
 							/* enhancement de-interlace */
 							{
 								int deintl_judder_cnt = (vioc->rdma.width + 64) / 64 - 1;
+
 								VIOC_VIQE_SetDeintlJudderCnt(vioc->viqe.addr, deintl_judder_cnt);
 							}
 						} else {
@@ -2967,10 +2861,10 @@ force_disp:
 						}
 					}
 
-					if(vout->firstFieldFlag == 0)
+					if (vout->firstFieldFlag == 0)
 						vout->display_done = ON;
 
-					if(vout->clearFrameMode) {
+					if (vout->clearFrameMode) {
 						vout_clear_buffer(vout, vout->last_cleared_buffer);
 
 						/* update DD flag */
@@ -2979,6 +2873,7 @@ force_disp:
 				}
 			} else {
 				int index = (vout->deintl_nr_bufs_count++ % vout->deintl_nr_bufs);
+
 				if (vout->deintl_nr_bufs_count == vout->deintl_nr_bufs)
 					vout->deintl_nr_bufs_count = 0;
 
@@ -2997,16 +2892,14 @@ force_disp:
 				vout_m2m_ctrl(vioc, 1);
 			}
 			#ifdef CONFIG_TCC_VIOCMG
-			if(viqe_locked)
+			if (viqe_locked)
 				viocmg_free_viqe(VIOCMG_CALLERID_VOUT);
 			#endif
 		}
 	}
 #ifdef CONFIG_VIOC_DOLBY_VISION_CERTIFICATION_TEST
-	else
-	{
-		if(!vout->firstFieldFlag && nFrame > 1 && vout->last_cleared_buffer != NULL)
-		{
+	else {
+		if (!vout->firstFieldFlag && nFrame > 1 && vout->last_cleared_buffer != NULL) {
 			nFrame_t2++;
 			if (vout->onthefly_mode)
 				vout_onthefly_display_update(vout, vout->last_cleared_buffer);
@@ -3015,7 +2908,6 @@ force_disp:
 		}
 	}
 #endif
-	return;
 }
 
 static irqreturn_t vsync_irq_handler(int irq, void *client_data)
@@ -3023,19 +2915,17 @@ static irqreturn_t vsync_irq_handler(int irq, void *client_data)
 	struct tcc_vout_device *vout = (struct tcc_vout_device *)client_data;
 	struct tcc_vout_vioc *vioc = vout->vioc;
 #ifdef CONFIG_VIOC_DOLBY_VISION_EDR
-	if(VIOC_CONFIG_DV_GET_EDR_PATH())
-	{
+	if (VIOC_CONFIG_DV_GET_EDR_PATH()) {
 		volatile volatile void __iomem *pDV_Cfg = VIOC_DV_VEDR_GetAddress(VDV_CFG);
 		unsigned int status = 0;
 
 		VIOC_V_DV_GetInterruptPending(pDV_Cfg, &status);
 
-		if(status & INT_PEND_F_TX_VS_MASK)
+		if (status & INT_PEND_F_TX_VS_MASK)
 			VIOC_V_DV_ClearInterrupt(pDV_Cfg, INT_CLR_F_TX_VS_MASK);
 		else
 			return IRQ_NONE;
-	}
-	else
+	} else
 #endif
 	{
 		if (!is_vioc_intr_activatied(vioc->disp.vioc_intr->id, vioc->disp.vioc_intr->bits))
@@ -3043,7 +2933,7 @@ static irqreturn_t vsync_irq_handler(int irq, void *client_data)
 		vioc_intr_clear(vioc->disp.vioc_intr->id, vioc->disp.vioc_intr->bits);
 	}
 
-	if(vout->clearFrameMode)
+	if (vout->clearFrameMode)
 		return IRQ_HANDLED;
 
 	if (vout->status == TCC_VOUT_RUNNING)
@@ -3160,14 +3050,14 @@ static irqreturn_t wdma_irq_handler(int irq, void *client_data)
 		vioc_intr_clear(vioc->m2m_wdma.vioc_intr->id, vioc->m2m_wdma.vioc_intr->bits);
 
 	#if defined(CONFIG_TCC_DUAL_DISPLAY)
-		if(VIOC_DISP_Get_TurnOnOff(vioc->disp.addr)) {
+		if (VIOC_DISP_Get_TurnOnOff(vioc->disp.addr)) {
 			VIOC_WMIX_SetPosition(vioc->m2m_dual_wmix[M2M_DUAL_0].addr, vioc->m2m_dual_wmix[M2M_DUAL_0].pos, vioc->m2m_dual_wmix[M2M_DUAL_0].left, vioc->m2m_dual_wmix[M2M_DUAL_0].top);
 			VIOC_WMIX_SetUpdate(vioc->m2m_dual_wmix[M2M_DUAL_0].addr);
 
 			VIOC_RDMA_SetImageSize(vioc->m2m_dual_rdma[M2M_DUAL_0].addr, vioc->m2m_wdma.width, vioc->m2m_wdma.height);
 			VIOC_RDMA_SetImageOffset(vioc->m2m_dual_rdma[M2M_DUAL_0].addr, vioc->m2m_wdma.fmt, vioc->m2m_wdma.width);
 			VIOC_RDMA_SetImageBase(vioc->m2m_dual_rdma[M2M_DUAL_0].addr, vioc->m2m_wdma.img.base0, vioc->m2m_wdma.img.base1, vioc->m2m_wdma.img.base2);
-			if(vout->clearFrameMode == OFF)
+			if (vout->clearFrameMode == OFF)
 				VIOC_RDMA_SetImageEnable(vioc->m2m_dual_rdma[M2M_DUAL_0].addr);
 
 			VIOC_WMIX_SetPosition(vioc->m2m_dual_wmix[M2M_DUAL_1].addr, vioc->m2m_dual_wmix[M2M_DUAL_0].pos, vioc->m2m_dual_wmix[M2M_DUAL_0].left, vioc->m2m_dual_wmix[M2M_DUAL_0].top);
@@ -3176,26 +3066,25 @@ static irqreturn_t wdma_irq_handler(int irq, void *client_data)
 			VIOC_RDMA_SetImageSize(vioc->m2m_dual_rdma[M2M_DUAL_1].addr, vioc->m2m_wdma.width, vioc->m2m_wdma.height);
 			VIOC_RDMA_SetImageOffset(vioc->m2m_dual_rdma[M2M_DUAL_1].addr, vioc->m2m_wdma.fmt, vioc->m2m_wdma.width);
 			VIOC_RDMA_SetImageBase(vioc->m2m_dual_rdma[M2M_DUAL_1].addr, vioc->m2m_wdma.img.base0, vioc->m2m_wdma.img.base1, vioc->m2m_wdma.img.base2);
-			if(vout->clearFrameMode == OFF)
+			if (vout->clearFrameMode == OFF)
 				VIOC_RDMA_SetImageEnable(vioc->m2m_dual_rdma[M2M_DUAL_1].addr);
 		}
 	#else
-		if(VIOC_DISP_Get_TurnOnOff(vioc->disp.addr)) {
+		if (VIOC_DISP_Get_TurnOnOff(vioc->disp.addr)) {
 			VIOC_WMIX_SetPosition(vioc->wmix.addr, vioc->wmix.pos, vioc->wmix.left, vioc->wmix.top);
 			VIOC_WMIX_SetUpdate(vioc->wmix.addr);
 
 			VIOC_RDMA_SetImageSize(vioc->rdma.addr, vioc->rdma.width, vioc->rdma.height);
 			VIOC_RDMA_SetImageOffset(vioc->rdma.addr, vioc->rdma.fmt, vioc->rdma.width);
 			VIOC_RDMA_SetImageBase(vioc->rdma.addr, vioc->m2m_wdma.img.base0, vioc->m2m_wdma.img.base1, vioc->m2m_wdma.img.base2);
-			if(vout->clearFrameMode == OFF)
+			if (vout->clearFrameMode == OFF)
 				VIOC_RDMA_SetImageEnable(vioc->rdma.addr);
 		}
 	#endif
 
-		if (V4L2_FIELD_INTERLACED_TB == vout->src_pix.field
-			|| V4L2_FIELD_INTERLACED_BT == vout->src_pix.field
-			|| V4L2_FIELD_INTERLACED == vout->src_pix.field)
-		{
+		if (vout->src_pix.field == V4L2_FIELD_INTERLACED_TB
+			|| vout->src_pix.field == V4L2_FIELD_INTERLACED_BT
+			|| vout->src_pix.field == V4L2_FIELD_INTERLACED) {
 			dtprintk("%s-field done\n", vioc->m2m_rdma.bf ? "bot" : "top");
 
 			if ((vout->deinterlace == VOUT_DEINTL_VIQE_3D) && (vout->frame_count != -1)) {
@@ -3207,6 +3096,7 @@ static irqreturn_t wdma_irq_handler(int irq, void *client_data)
 					/* enhancement de-interlace */
 					{
 						int deintl_judder_cnt = (vioc->m2m_rdma.width + 64) / 64 - 1;
+
 						VIOC_VIQE_SetDeintlJudderCnt(vioc->viqe.addr, deintl_judder_cnt);
 					}
 				} else {
@@ -3216,10 +3106,10 @@ static irqreturn_t wdma_irq_handler(int irq, void *client_data)
 			}
 
 			#ifdef CONFIG_VOUT_USE_VSYNC_INT
-			if(vout->firstFieldFlag == 0)
+			if (vout->firstFieldFlag == 0)
 				vout->display_done = ON;
 
-			if(vout->clearFrameMode) {
+			if (vout->clearFrameMode) {
 				vout->firstFieldFlag = 0;
 				vout_clear_buffer(vout, vout->last_cleared_buffer);
 
@@ -3227,7 +3117,7 @@ static irqreturn_t wdma_irq_handler(int irq, void *client_data)
 				vout->display_done = OFF;
 			}
 			#else
-			if(vout->firstFieldFlag == 0)
+			if (vout->firstFieldFlag == 0)
 				atomic_inc(&vout->displayed_buff_count);
 			vout->wakeup_int = 1;
 			wake_up_interruptible(&vout->frame_wait);
@@ -3236,7 +3126,7 @@ static irqreturn_t wdma_irq_handler(int irq, void *client_data)
 			#ifdef CONFIG_VOUT_USE_VSYNC_INT
 			/* update DD flag */
 			vout->display_done = ON;
-			if(vout->clearFrameMode) {
+			if (vout->clearFrameMode) {
 				vout_clear_buffer(vout, vout->last_cleared_buffer);
 
 				/* update DD flag */
@@ -3261,20 +3151,19 @@ void vout_intr_onoff(char on, struct tcc_vout_device *vout)
 	struct tcc_vout_vioc *vioc = vout->vioc;
 
 #if defined(CONFIG_VIOC_DOLBY_VISION_EDR)
-	if(VIOC_CONFIG_DV_GET_EDR_PATH())
-	{
-		if(on) {
+	if (VIOC_CONFIG_DV_GET_EDR_PATH()) {
+		if (on) {
 			vioc_intr_enable(VIOC_INTR_TYPE0, VIOC_INTR_V_DV, 1<<FALL_HDMITX_VS);
 		} else {
 			volatile void __iomem *pDV_Cfg = VIOC_DV_VEDR_GetAddress(VDV_CFG);
+
 			vioc_intr_disable(vioc->disp.irq, VIOC_INTR_V_DV, 1<<FALL_HDMITX_VS);
 			VIOC_V_DV_ClearInterrupt(pDV_Cfg, INT_CLR_F_TX_VS_MASK);
 		}
-	}
-	else
+	} else
 #endif
 	{
-		if(on)
+		if (on)
 			vioc_intr_enable(vioc->disp.irq, vioc->disp.vioc_intr->id, vioc->disp.vioc_intr->bits);
 		else
 			vioc_intr_disable(vioc->disp.irq, vioc->disp.vioc_intr->id, vioc->disp.vioc_intr->bits);
@@ -3288,18 +3177,18 @@ static int vout_video_display_enable(struct tcc_vout_device *vout)
 	#ifdef CONFIG_VOUT_USE_VSYNC_INT
 	struct tcc_vout_vioc *vioc = vout->vioc;
 
-	if(vioc->disp.irq_enable == 0) {
+	if (vioc->disp.irq_enable == 0) {
 		vioc->disp.irq_enable++;        // set interrupt flag
 		vout_intr_onoff(0, vout);
 		ret = request_irq(vioc->disp.irq, vsync_irq_handler, IRQF_SHARED, vout->vdev->name, vout);
-		if(ret)
+		if (ret)
 			pr_err("[ERR][VOUT] vsync_irq_handler failed\n");
 		vout_intr_onoff(1, vout);
 	} else {
-		dprintk("disp%d interrupt has already been enabled \n", get_vioc_index(vioc->disp.id));
+		dprintk("disp%d interrupt has already been enabled\n", get_vioc_index(vioc->disp.id));
 	}
 
-	if(vout->vout_timer)
+	if (vout->vout_timer)
 		tcc_timer_enable(vout->vout_timer);
 	#endif
 	return ret;
@@ -3309,14 +3198,15 @@ static void vout_video_display_disable(struct tcc_vout_device *vout)
 {
 	#ifdef CONFIG_VOUT_USE_VSYNC_INT
 	struct tcc_vout_vioc *vioc = vout->vioc;
-	if(vioc->disp.irq_enable) {
+
+	if (vioc->disp.irq_enable) {
 		vioc->disp.irq_enable--;
 		vout_intr_onoff(0, vout);
 		free_irq(vioc->disp.irq, vout);
 	} else {
-		dprintk("disp%d interrupt has already been disabled \n", vioc->disp.id);
+		dprintk("disp%d interrupt has already been disabled\n", vioc->disp.id);
 	}
-	if(vout->vout_timer)
+	if (vout->vout_timer)
 		tcc_timer_disable(vout->vout_timer);
 	#endif
 }
@@ -3325,14 +3215,15 @@ static void vout_video_display_disable(struct tcc_vout_device *vout)
 void vout_video_set_output_mode(struct tcc_vout_device *vout, int mode)
 {
 	struct tcc_vout_vioc *vioc = vout->vioc;
-	if(vout->onthefly_mode == (unsigned int)mode) {
+
+	if (vout->onthefly_mode == (unsigned int)mode) {
 		dprintk("Same display output mode (%d == %d)\n", vout->onthefly_mode, mode);
 	} else {
 		/* interrupt disable */
 		vout_video_display_disable(vout);
 
 		/* deinit display path */
-		if(vout->onthefly_mode)		/* onthefly mode */
+		if (vout->onthefly_mode)		/* onthefly mode */
 			vout_otf_deinit(vout);
 		else						/* m-to-m mode */
 			vout_m2m_deinit(vout);
@@ -3341,13 +3232,13 @@ void vout_video_set_output_mode(struct tcc_vout_device *vout, int mode)
 		vout->onthefly_mode = (unsigned int)mode;
 
 		/* reinit display path */
-		if(vout->onthefly_mode) {
+		if (vout->onthefly_mode) {
 			vioc->rdma.y2r = 0;
 			vioc->rdma.y2rmd = 2;    // 2 = Studio Color
 			vioc->viqe.y2r = 1;
 			vioc->viqe.y2rmd = 2;    // 2 = Studio Color
 
-			if((vout->deinterlace == VOUT_DEINTL_S) || (vout->deinterlace == VOUT_DEINTL_NONE))
+			if ((vout->deinterlace == VOUT_DEINTL_S) || (vout->deinterlace == VOUT_DEINTL_NONE))
 				vioc->rdma.y2r = 1;
 			vout_otf_init(vout);
 		} else {
@@ -3390,12 +3281,12 @@ void vout_m2m_dual_ctrl(struct tcc_vout_vioc *vioc, int enable, int m2m_dual_ind
 
 void vout_m2m_ctrl(struct tcc_vout_vioc *vioc, int enable)
 {
-	if (enable){
+	if (enable) {
 		VIOC_SC_SetUpdate(vioc->sc.addr);
 		VIOC_WDMA_SetImageEnable(vioc->m2m_wdma.addr, vioc->m2m_wdma.cont);
-	}
-	else
+	} else {
 		VIOC_WDMA_SetImageDisable(vioc->m2m_wdma.addr);
+	}
 }
 
 void vout_video_overlay(struct tcc_vout_device *vout)
@@ -3418,7 +3309,7 @@ void vout_video_overlay(struct tcc_vout_device *vout)
 		bypass = 1;
 	VIOC_SC_SetBypass(vioc->sc.addr, bypass);
 
-	if(vout->onthefly_mode) {	// onthefly_mode
+	if (vout->onthefly_mode) {	// onthefly_mode
 		VIOC_SC_SetDstSize(vioc->sc.addr,
 			vout->disp_rect.left < 0 ? vout->disp_rect.width + abs(vout->disp_rect.left) : dw,
 			vout->disp_rect.top < 0 ? vout->disp_rect.height + abs(vout->disp_rect.top) : dh);	// set destination size in scaler
@@ -3718,7 +3609,6 @@ int vout_m2m_init(struct tcc_vout_device *vout)
 		break;
 	default:
 		return -EINVAL;
-		break;
 	}
 
 	/* 3. wmixer */
@@ -3754,7 +3644,7 @@ int vout_m2m_init(struct tcc_vout_device *vout)
 		synchronize_irq(vioc->m2m_wdma.irq);
 		vioc_intr_clear(vioc->m2m_wdma.vioc_intr->id, vioc->m2m_wdma.vioc_intr->bits);
 		ret = request_irq(vioc->m2m_wdma.irq, wdma_irq_handler, IRQF_SHARED, vout->vdev->name, vout);
-		if(ret)
+		if (ret)
 			pr_err("[ERR][VOUT] wdma_irq_handler failed(%d)\n", ret);
 		vioc_intr_enable(vioc->m2m_wdma.irq, vioc->m2m_wdma.vioc_intr->id, vioc->m2m_wdma.vioc_intr->bits);
 	}
@@ -3772,9 +3662,9 @@ void vout_otf_deinit(struct tcc_vout_device *vout)
 	bStep_Check = DEF_DV_CHECK_NUM;
 
 	#if defined(CONFIG_VIOC_DOLBY_VISION_CERTIFICATION_TEST)
-	pr_debug("[DBG][VOUT] &&&&&&&&&&&&&&&&&&&&&& [[[%d = %d/%d/%d]]] \n", nFrame, nFrame_t0, nFrame_t1, nFrame_t2);
+	pr_debug("[DBG][VOUT] &&&&&&&&&&&&&&&&&&&&&& [[[%d = %d/%d/%d]]]\n", nFrame, nFrame_t0, nFrame_t1, nFrame_t2);
 
-	for(nFrame = 0; nFrame < nIdx_copy; nFrame++){
+	for (nFrame = 0; nFrame < nIdx_copy; nFrame++) {
 		pr_debug("[DBG][VOUT] ^@New^^^^^^^^^^^^^ @@@ available(%d), %03d :: TS: %04ld  %d bpp #BL(0x%x, %dx%d (%dx%d), 0x%x fmt) #EL(0x%x, %dx%d (%dx%d)) #OSD(0x%x/0x%x) #Reg(0x%x) #Meta(0x%x)\n",
 				nCopy_ImageInfo[nFrame].private_data.optional_info[VID_OPT_PLAYER_IDX], nFrame, nCopy_ImageInfo[nFrame].private_data.optional_info[VID_OPT_TIMESTAMP],
 				nCopy_ImageInfo[nFrame].private_data.optional_info[VID_OPT_BIT_DEPTH],
@@ -3790,7 +3680,7 @@ void vout_otf_deinit(struct tcc_vout_device *vout)
 	nIdx_copy = 0;
 	nTS_Prev = 0x999;
 
-	if(VIOC_CONFIG_DV_GET_EDR_PATH()){
+	if (VIOC_CONFIG_DV_GET_EDR_PATH()) {
 		struct tcc_lcdc_image_update ImageInfo;
 		struct tcc_dp_device *pdp_data = tca_get_displayType(TCC_OUTPUT_HDMI);
 
@@ -3813,35 +3703,35 @@ void vout_otf_deinit(struct tcc_vout_device *vout)
 
 	#if defined(CONFIG_VIOC_MAP_DECOMP) || defined(CONFIG_VIOC_DTRC_DECOMP)
 	if (VIOC_CONFIG_DMAPath_Support()) {
-		switch(VIOC_CONFIG_DMAPath_Select(vioc->rdma.id)) {
-			#ifdef CONFIG_VIOC_MAP_DECOMP
-			case VIOC_MC0:
-			case VIOC_MC1:
-				dprintk("MAP_CONV%d plug-out \n", get_vioc_index(vioc->map_converter.id));
+		switch (VIOC_CONFIG_DMAPath_Select(vioc->rdma.id)) {
+		#ifdef CONFIG_VIOC_MAP_DECOMP
+		case VIOC_MC0:
+		case VIOC_MC1:
+			dprintk("MAP_CONV%d plug-out\n", get_vioc_index(vioc->map_converter.id));
 
-				tca_map_convter_onoff(vioc->map_converter.id, 0, 1);
-				VIOC_CONFIG_DMAPath_UnSet(vioc->map_converter.id);
-				VIOC_CONFIG_DMAPath_Set(vioc->rdma.id,vioc->rdma.id);
+			tca_map_convter_onoff(vioc->map_converter.id, 0, 1);
+			VIOC_CONFIG_DMAPath_UnSet(vioc->map_converter.id);
+			VIOC_CONFIG_DMAPath_Set(vioc->rdma.id, vioc->rdma.id);
 
-				VIOC_CONFIG_SWReset(vioc->map_converter.id, VIOC_CONFIG_RESET);
-				VIOC_CONFIG_SWReset(vioc->map_converter.id, VIOC_CONFIG_CLEAR);
-				break;
-			#endif
-			#ifdef CONFIG_VIOC_DTRC_DECOMP
-			case VIOC_DTRC0:
-			case VIOC_DTRC1:
-				dprintk("DTRC_CONV%d plug-out \n", get_vioc_index(vioc->dtrc.id));
+			VIOC_CONFIG_SWReset(vioc->map_converter.id, VIOC_CONFIG_RESET);
+			VIOC_CONFIG_SWReset(vioc->map_converter.id, VIOC_CONFIG_CLEAR);
+			break;
+		#endif
+		#ifdef CONFIG_VIOC_DTRC_DECOMP
+		case VIOC_DTRC0:
+		case VIOC_DTRC1:
+			dprintk("DTRC_CONV%d plug-out\n", get_vioc_index(vioc->dtrc.id));
 
-				tca_dtrc_convter_onoff(vioc->dtrc.id, 0, 1);
-				VIOC_CONFIG_DMAPath_UnSet(vioc->dtrc.id);
-				VIOC_CONFIG_DMAPath_Set(vioc->rdma.id,vioc->rdma.id);
+			tca_dtrc_convter_onoff(vioc->dtrc.id, 0, 1);
+			VIOC_CONFIG_DMAPath_UnSet(vioc->dtrc.id);
+			VIOC_CONFIG_DMAPath_Set(vioc->rdma.id, vioc->rdma.id);
 
-				VIOC_CONFIG_SWReset(vioc->dtrc.id, VIOC_CONFIG_RESET);
-				VIOC_CONFIG_SWReset(vioc->dtrc.id, VIOC_CONFIG_CLEAR);
-				break;
-			#endif
-			default:
-				break;
+			VIOC_CONFIG_SWReset(vioc->dtrc.id, VIOC_CONFIG_RESET);
+			VIOC_CONFIG_SWReset(vioc->dtrc.id, VIOC_CONFIG_CLEAR);
+			break;
+		#endif
+		default:
+			break;
 		}
 	} else {
 		#if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X)
@@ -3873,7 +3763,7 @@ void vout_otf_deinit(struct tcc_vout_device *vout)
 	}
 
 #ifdef CONFIG_VIOC_DOLBY_VISION_EDR
-	if(VIOC_CONFIG_DV_GET_EDR_PATH()){
+	if (VIOC_CONFIG_DV_GET_EDR_PATH()) {
 		struct tcc_lcdc_image_update ImageInfo;
 		struct tcc_dp_device *pdp_data = tca_get_displayType(TCC_OUTPUT_HDMI);
 
@@ -3919,35 +3809,35 @@ void vout_m2m_deinit(struct tcc_vout_device *vout)
 
 	#if defined(CONFIG_VIOC_MAP_DECOMP) || defined(CONFIG_VIOC_DTRC_DECOMP)
 	if (VIOC_CONFIG_DMAPath_Support()) {
-		switch(VIOC_CONFIG_DMAPath_Select(vioc->m2m_rdma.id)) {
-			#ifdef CONFIG_VIOC_MAP_DECOMP
-			case VIOC_MC0:
-			case VIOC_MC1:
-				dprintk("MAP_CONV%d plug-out \n", get_vioc_index(vioc->map_converter.id));
+		switch (VIOC_CONFIG_DMAPath_Select(vioc->m2m_rdma.id)) {
+		#ifdef CONFIG_VIOC_MAP_DECOMP
+		case VIOC_MC0:
+		case VIOC_MC1:
+			dprintk("MAP_CONV%d plug-out\n", get_vioc_index(vioc->map_converter.id));
 
-				tca_map_convter_onoff(vioc->map_converter.id, 0, 1);
-				VIOC_CONFIG_DMAPath_UnSet(vioc->map_converter.id);
-				VIOC_CONFIG_DMAPath_Set(vioc->m2m_rdma.id,vioc->m2m_rdma.id);
+			tca_map_convter_onoff(vioc->map_converter.id, 0, 1);
+			VIOC_CONFIG_DMAPath_UnSet(vioc->map_converter.id);
+			VIOC_CONFIG_DMAPath_Set(vioc->m2m_rdma.id, vioc->m2m_rdma.id);
 
-				VIOC_CONFIG_SWReset(vioc->map_converter.id, VIOC_CONFIG_RESET);
-				VIOC_CONFIG_SWReset(vioc->map_converter.id, VIOC_CONFIG_CLEAR);
-				break;
-			#endif
-			#ifdef CONFIG_VIOC_DTRC_DECOMP
-			case VIOC_DTRC0:
-			case VIOC_DTRC1:
-				dprintk("DTRC_CONV%d plug-out \n", get_vioc_index(vioc->dtrc.id));
+			VIOC_CONFIG_SWReset(vioc->map_converter.id, VIOC_CONFIG_RESET);
+			VIOC_CONFIG_SWReset(vioc->map_converter.id, VIOC_CONFIG_CLEAR);
+			break;
+		#endif
+		#ifdef CONFIG_VIOC_DTRC_DECOMP
+		case VIOC_DTRC0:
+		case VIOC_DTRC1:
+			dprintk("DTRC_CONV%d plug-out\n", get_vioc_index(vioc->dtrc.id));
 
-				tca_dtrc_convter_onoff(vioc->dtrc.id, 0, 1);
-				VIOC_CONFIG_DMAPath_UnSet(vioc->dtrc.id);
-				VIOC_CONFIG_DMAPath_Set(vioc->m2m_rdma.id,vioc->m2m_rdma.id);
+			tca_dtrc_convter_onoff(vioc->dtrc.id, 0, 1);
+			VIOC_CONFIG_DMAPath_UnSet(vioc->dtrc.id);
+			VIOC_CONFIG_DMAPath_Set(vioc->m2m_rdma.id, vioc->m2m_rdma.id);
 
-				VIOC_CONFIG_SWReset(vioc->dtrc.id, VIOC_CONFIG_RESET);
-				VIOC_CONFIG_SWReset(vioc->dtrc.id, VIOC_CONFIG_CLEAR);
-				break;
-			#endif
-			default:
-				break;
+			VIOC_CONFIG_SWReset(vioc->dtrc.id, VIOC_CONFIG_RESET);
+			VIOC_CONFIG_SWReset(vioc->dtrc.id, VIOC_CONFIG_CLEAR);
+			break;
+		#endif
+		default:
+			break;
 		}
 	} else {
 		#if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X)
@@ -3956,16 +3846,14 @@ void vout_m2m_deinit(struct tcc_vout_device *vout)
 	}
 	#endif
 
-	#if !defined(CONFIG_TCC_DUAL_DISPLAY)
 	VIOC_CONFIG_PlugOut(vioc->sc.id);
-	#endif
 
 	switch (vout->deinterlace) {
 	case VOUT_DEINTL_VIQE_2D:
 	case VOUT_DEINTL_VIQE_3D:
 	case VOUT_DEINTL_VIQE_BYPASS:
 		#ifdef CONFIG_TCC_VIOCMG
-		if(viocmg_lock_viqe(VIOCMG_CALLERID_VOUT) == 0) {
+		if (viocmg_lock_viqe(VIOCMG_CALLERID_VOUT) == 0) {
 			VIOC_CONFIG_PlugOut(vioc->viqe.id);
 			viocmg_free_viqe(VIOCMG_CALLERID_VOUT);
 		}
@@ -3986,7 +3874,7 @@ void vout_m2m_deinit(struct tcc_vout_device *vout)
 		vioc_intr_disable(vioc->m2m_wdma.irq, vioc->m2m_wdma.vioc_intr->id, vioc->m2m_wdma.vioc_intr->bits);
 		free_irq(vioc->m2m_wdma.irq, vout);
 	} else {
-		dprintk("wdma%d interrupt has already been disabled \n", get_vioc_index(vioc->m2m_wdma.id));
+		dprintk("wdma%d interrupt has already been disabled\n", get_vioc_index(vioc->m2m_wdma.id));
 	}
 }
 
@@ -4007,29 +3895,29 @@ int vout_capture_last_frame(struct tcc_vout_device *vout, struct v4l2_buffer *bu
 {
 	int ret = 0;
 
-	if(buf) {
+	if (buf) {
 		struct tcc_vout_vioc *vioc = vout->vioc;
 		struct file    *file;
 		unsigned int base0, base1, base2;
 
 		/* get destination address */
 		ret = pmap_get_info("fb_wmixer", &lastframe_pbuf);
-		if(ret <= 0) {
-			pr_err("[ERR][VOUT] %s - Does not exist fb_wmixer pmap \n", __func__);
+		if (ret <= 0) {
+			pr_err("[ERR][VOUT] %s - Does not exist fb_wmixer pmap\n", __func__);
 			ret = -1;
 			goto ERR_CAPTURE_PROCESS;
 		}
 		dprintk("wmixer base:0x%08x size:%d\n", lastframe_pbuf.base, lastframe_pbuf.size);
 
-		if(buf->m.planes == NULL) {
-			pr_err("[ERR][VOUT] %s - Does not allocate lastframe memory \n", __func__);
+		if (buf->m.planes == NULL) {
+			pr_err("[ERR][VOUT] %s - Does not allocate lastframe memory\n", __func__);
 			ret = -1;
 			goto ERR_CAPTURE_PROCESS;
 		}
 
 		/* get base address */
-		if (V4L2_MEMORY_USERPTR == vout->memory) {
-			if (STILL_IMGAGE != buf->timecode.type) {
+		if (vout->memory == V4L2_MEMORY_USERPTR) {
+			if (buf->timecode.type != STILL_IMGAGE) {
 				base0 = buf->m.planes[MPLANE_VID].m.userptr;
 				base1 = buf->m.planes[MPLANE_VID].reserved[VID_BASE1];
 				base2 = buf->m.planes[MPLANE_VID].reserved[VID_BASE2];
@@ -4039,14 +3927,14 @@ int vout_capture_last_frame(struct tcc_vout_device *vout, struct v4l2_buffer *bu
 				/*
 				 * If the input is YUV format.
 				 */
-				if (TCC_PFMT_RGB != vout->pfmt) {
+				if (vout->pfmt != TCC_PFMT_RGB) {
 					tcc_get_base_address_of_image(
 							vout->src_pix.pixelformat, base0,
 							vout->src_pix.width, vout->src_pix.height,
 							&base0, &base1, &base2);
 				}
 			}
-		} else if (V4L2_MEMORY_MMAP == vout->memory) {
+		} else if (vout->memory == V4L2_MEMORY_MMAP) {
 			base0 = vout->qbufs[buf->index].img_base0;
 			base1 = vout->qbufs[buf->index].img_base1;
 			base2 = vout->qbufs[buf->index].img_base2;
@@ -4078,15 +3966,15 @@ int vout_capture_last_frame(struct tcc_vout_device *vout, struct v4l2_buffer *bu
 		fbmixer.dst_win_right   = vout->disp_rect.width;
 		fbmixer.dst_win_bottom  = vout->disp_rect.height;
 
-		if (V4L2_FIELD_INTERLACED_BT == vout->src_pix.field ||
-				V4L2_FIELD_INTERLACED_TB == vout->src_pix.field ||
-				V4L2_FIELD_INTERLACED == vout->src_pix.field)
+		if (vout->src_pix.field == V4L2_FIELD_INTERLACED_BT ||
+				vout->src_pix.field == V4L2_FIELD_INTERLACED_TB ||
+				vout->src_pix.field == V4L2_FIELD_INTERLACED)
 			fbmixer.interlaced	= true;
 		else
 			fbmixer.interlaced	= false;
 
-		if(lastframe_pbuf.size < (fbmixer.dst_img_width*fbmixer.dst_img_height*2)) {
-			pr_err("[ERR][VOUT] Not enough wmixer memory(addr:0x%08x size:%d) \n", lastframe_pbuf.base, lastframe_pbuf.size);
+		if (lastframe_pbuf.size < (fbmixer.dst_img_width*fbmixer.dst_img_height*2)) {
+			pr_err("[ERR][VOUT] Not enough wmixer memory(addr:0x%08x size:%d)\n", lastframe_pbuf.base, lastframe_pbuf.size);
 			ret = -100;
 			goto ERR_CAPTURE_PROCESS;
 		}
@@ -4098,16 +3986,16 @@ int vout_capture_last_frame(struct tcc_vout_device *vout, struct v4l2_buffer *bu
 				, fbmixer.src_fmt, fbmixer.src_y_addr, fbmixer.src_u_addr, fbmixer.src_v_addr, fbmixer.dst_img_width, fbmixer.dst_img_height, fbmixer.dst_fmt, fbmixer.dst_y_addr);
 
 		file = filp_open(WMIXER_PATH, O_RDWR, 0666);
-		if(IS_ERR(file)) {
-			pr_err("[ERR][VOUT] Can not open %s device \n", WMIXER_PATH);
+		if (IS_ERR(file)) {
+			pr_err("[ERR][VOUT] Can not open %s device\n", WMIXER_PATH);
 			ret = -100;
 			goto ERR_CAPTURE_PROCESS;
 		}
 
 		ret = file->f_op->unlocked_ioctl(file, TCC_WMIXER_ALPHA_SCALING_KERNEL, (unsigned long)&fbmixer);
 		filp_close(file, 0);
-		if(ret <= 0) {
-			pr_err("[ERR][VOUT] Fail TCC_WMIXER_ALPHA_SCALING_KERNEL(%d) \n", ret);
+		if (ret <= 0) {
+			pr_err("[ERR][VOUT] Fail TCC_WMIXER_ALPHA_SCALING_KERNEL(%d)\n", ret);
 			enable_LastFrame = OFF;
 			ret = -100;
 			goto ERR_CAPTURE_PROCESS;
@@ -4115,7 +4003,7 @@ int vout_capture_last_frame(struct tcc_vout_device *vout, struct v4l2_buffer *bu
 
 		enable_LastFrame = ON;
 	} else {
-		pr_err("[ERR][VOUT] Null argument \n");
+		pr_err("[ERR][VOUT] Null argument\n");
 		ret = -100;
 		enable_LastFrame = OFF;
 	}
@@ -4128,8 +4016,8 @@ void vout_disp_last_frame(struct tcc_vout_device *vout)
 {
 	struct tcc_vout_vioc *vioc = vout->vioc;
 
-	if(enable_LastFrame) {
-		if(vioc->lastframe_rdma.addr) {
+	if (enable_LastFrame) {
+		if (vioc->lastframe_rdma.addr) {
 			VIOC_RDMA_SetImageSize(vioc->lastframe_rdma.addr, fbmixer.dst_img_width, fbmixer.dst_img_height);
 			VIOC_RDMA_SetImageFormat(vioc->lastframe_rdma.addr, fbmixer.dst_fmt);
 			VIOC_RDMA_SetImageOffset(vioc->lastframe_rdma.addr, fbmixer.dst_fmt, fbmixer.dst_img_width);
@@ -4156,10 +4044,11 @@ void vout_video_post_process(struct tcc_vout_device *vout)
 {
 	struct tcc_vout_vioc *vioc = vout->vioc;
 
-	if(vioc->lastframe_rdma.addr) {
+	if (vioc->lastframe_rdma.addr) {
 		unsigned int enable;
+
 		VIOC_RDMA_GetImageEnable(vioc->lastframe_rdma.addr, &enable);
-		if(enable) {
+		if (enable) {
 			/* disable hw last-frame layer */
 			VIOC_RDMA_SetImageDisableNW(vioc->lastframe_rdma.addr);
 
@@ -4192,17 +4081,17 @@ void vout_subplane_onthefly_init(struct tcc_vout_device *vout)
 	VIOC_WMIX_GetOverlayPriority(vioc->subplane_wmix.addr, &vioc->subplane_wmix.ovp);
 }
 
-int vout_subplane_onthefly_qbuf(struct tcc_vout_device * vout)
+int vout_subplane_onthefly_qbuf(struct tcc_vout_device *vout)
 {
 	struct tcc_vout_vioc *vioc = vout->vioc;
 
 	/* check alpha on/off */
-	if (0 == vioc->subplane_alpha.on) {
+	if (vioc->subplane_alpha.on == 0) {
 		vout_subplane_ctrl(vout, 0);
 		return 1;
 	}
 
-	if(vioc->subplane_init == 0) {
+	if (vioc->subplane_init == 0) {
 		vioc->subplane_init = 1;
 		vout_subplane_onthefly_init(vout);
 	}
@@ -4232,7 +4121,7 @@ int vout_subplane_onthefly_qbuf(struct tcc_vout_device * vout)
 		VIOC_WMIX_SetPosition(vioc->subplane_wmix.addr, vioc->subplane_wmix.pos, vioc->subplane_wmix.left, vioc->subplane_wmix.top);
 		VIOC_WMIX_SetUpdate(vioc->subplane_wmix.addr);
 	}
-	dprintk("(%d, %d)(%dx%d)\n",vioc->subplane_wmix.left, vioc->subplane_wmix.top, vioc->subplane_rdma.width, vioc->subplane_rdma.height);
+	dprintk("(%d, %d)(%dx%d)\n", vioc->subplane_wmix.left, vioc->subplane_wmix.top, vioc->subplane_rdma.width, vioc->subplane_rdma.height);
 
 	vout_subplane_ctrl(vout, 1);	// on
 	return 0;
@@ -4269,12 +4158,12 @@ int vout_subplane_m2m_qbuf(struct tcc_vout_device *vout, struct vioc_alpha *alph
 	struct tcc_vout_vioc *vioc = vout->vioc;
 
 	/* check alpha on/off */
-	if (0 == alpha->on) {
+	if (alpha->on == 0) {
 		vout_subplane_ctrl(vout, 0);
 		return 1;
 	}
 
-	if(vioc->subplane_init == 0) {
+	if (vioc->subplane_init == 0) {
 		vioc->subplane_init = 1;
 		vout_subplane_m2m_init(vout);
 	}
@@ -4303,7 +4192,7 @@ int vout_subplane_m2m_qbuf(struct tcc_vout_device *vout, struct vioc_alpha *alph
 		vioc->m2m_subplane_wmix.top = alpha->offset_y;
 		m2m_wmix_setup(&vioc->m2m_subplane_wmix);
 	}
-	dprintk("(%d, %d)(%dx%d)\n",vioc->m2m_subplane_wmix.left, vioc->m2m_subplane_wmix.top, vioc->m2m_subplane_rdma.width, vioc->m2m_subplane_rdma.height);
+	dprintk("(%d, %d)(%dx%d)\n", vioc->m2m_subplane_wmix.left, vioc->m2m_subplane_wmix.top, vioc->m2m_subplane_rdma.width, vioc->m2m_subplane_rdma.height);
 
 	vout_subplane_ctrl(vout, 1);	// on
 	return 0;
@@ -4312,6 +4201,7 @@ int vout_subplane_m2m_qbuf(struct tcc_vout_device *vout, struct vioc_alpha *alph
 void vout_subplane_deinit(struct tcc_vout_device *vout)
 {
 	struct tcc_vout_vioc *vioc = vout->vioc;
+
 	VIOC_RDMA_SetImageDisable(vout->onthefly_mode ? vioc->subplane_rdma.addr : vioc->m2m_subplane_rdma.addr);
 	vioc->subplane_init = 0;
 	vioc->subplane_buf_index = -1;
@@ -4320,6 +4210,7 @@ void vout_subplane_deinit(struct tcc_vout_device *vout)
 void vout_subplane_ctrl(struct tcc_vout_device *vout, int enable)
 {
 	struct tcc_vout_vioc *vioc = vout->vioc;
+
 	vioc->subplane_enable = enable;
 	if (enable)
 		VIOC_RDMA_SetImageEnable(vout->onthefly_mode ? vioc->subplane_rdma.addr : vioc->m2m_subplane_rdma.addr);
@@ -4337,25 +4228,24 @@ void ktimer_handler(unsigned long arg)
 	struct tcc_vout_device *vout = (struct tcc_vout_device *)arg;
 
 next_frame:
-	if(vout->firstFieldFlag) {
+	if (vout->firstFieldFlag) {
 		vout->firstFieldFlag = 0;
 		vout->display_done = ON;
 	}
 
-	if(vout->display_done && vout->last_cleared_buffer) {
+	if (vout->display_done && vout->last_cleared_buffer) {
 		vout_clear_buffer(vout, vout->last_cleared_buffer);
 
 		/* update DD flag */
 		vout->display_done = OFF;
 	}
 
-	if((atomic_read(&vout->readable_buff_count) > 0))
-	{
+	if ((atomic_read(&vout->readable_buff_count) > 0)) {
 		int ret = 0;
 		struct v4l2_buffer *pNextBuffer = vout_get_buffer(vout);
 
-		if(pNextBuffer->reserved2 || vout->force_sync) {
-			if(vout->force_sync)
+		if (pNextBuffer->reserved2 || vout->force_sync) {
+			if (vout->force_sync)
 				vout->force_sync = OFF;
 			tcc_vout_set_time(vout, ((pNextBuffer->timestamp.tv_sec*1000)+(pNextBuffer->timestamp.tv_usec/1000)));
 		}
@@ -4363,15 +4253,15 @@ next_frame:
 		/* check video time */
 		ret = vout_check_syncTime(vout, pNextBuffer, tcc_vout_get_time(vout));
 
-		if(ret == VOUT_DRV_ERR_DROPFRM) {
-			if((atomic_read(&vout->readable_buff_count)-1) == 0)
+		if (ret == VOUT_DRV_ERR_DROPFRM) {
+			if ((atomic_read(&vout->readable_buff_count)-1) == 0)
 				goto force_clear;
 
 			vout_pop_buffer(vout);
 			vout->last_cleared_buffer = pNextBuffer;
 			vout->display_done = ON;
 			goto next_frame;
-		} else if(ret == VOUT_DRV_ERR_WAITFRM) {
+		} else if (ret == VOUT_DRV_ERR_WAITFRM) {
 			goto end_ktimer;
 		}
 force_clear:
@@ -4380,7 +4270,7 @@ force_clear:
 		vout->display_done = ON;
 	}
 end_ktimer:
-	if(vout->ktimer_enable) {
+	if (vout->ktimer_enable) {
 		vout->ktimer.expires = get_jiffies_64() + 3*HZ/1000;
 		add_timer(&vout->ktimer);
 	}
@@ -4388,8 +4278,7 @@ end_ktimer:
 
 void vout_ktimer_ctrl(struct tcc_vout_device *vout, unsigned int onoff)
 {
-	if(onoff)
-	{
+	if (onoff) {
 		memset(&vout->ktimer, 0x0, sizeof(struct timer_list));
 
 		init_timer(&vout->ktimer);
@@ -4402,9 +4291,7 @@ void vout_ktimer_ctrl(struct tcc_vout_device *vout, unsigned int onoff)
 
 		// for interlace
 		vout->frame_count = 0;
-	}
-	else
-	{
+	} else {
 		vout->ktimer_enable = OFF;
 		msleep(10);
 		del_timer(&vout->ktimer);
@@ -4425,7 +4312,7 @@ int vout_vioc_init(struct tcc_vout_device *vout)
 	if (ret < 0)
 		goto err_device_off;
 
-	if(VIOC_DISP_Get_TurnOnOff(vioc->disp.addr) == OFF) {
+	if (VIOC_DISP_Get_TurnOnOff(vioc->disp.addr) == OFF) {
 		dprintk("Please turn on the output device.\n");
 		ret = -EBUSY;
 		goto err_device_off;
@@ -4437,9 +4324,9 @@ int vout_vioc_init(struct tcc_vout_device *vout)
 	vout->disp_rect.left = vioc->wmix.left = 0;
 	vout->disp_rect.top = vioc->wmix.top = 0;
 	vout->disp_rect.width = vioc->wmix.width;
-	vout->disp_rect.height= vioc->wmix.height;
-	if(vout->disp_rect.width == 0 || vout->disp_rect.height == 0) {
-		dprintk("output device size(%dx%d) \n", vout->disp_rect.width, vout->disp_rect.height);
+	vout->disp_rect.height = vioc->wmix.height;
+	if (vout->disp_rect.width == 0 || vout->disp_rect.height == 0) {
+		dprintk("output device size(%dx%d)\n", vout->disp_rect.width, vout->disp_rect.height);
 		ret = -EBUSY;
 		goto err_device_off;
 	}
@@ -4454,7 +4341,7 @@ int vout_vioc_init(struct tcc_vout_device *vout)
 	vout->display_done = OFF;
 	vout->last_displayed_buf_idx = 0;
 
-	if(vout_video_display_enable(vout) < 0) {
+	if (vout_video_display_enable(vout) < 0) {
 		ret = -EBUSY;
 		goto err_buf_init;
 	}
@@ -4475,7 +4362,7 @@ err_buf_init:
 
 err_device_off:
 	#ifdef CONFIG_VOUT_USE_VSYNC_INT
-	if(vout->vout_timer) {
+	if (vout->vout_timer) {
 		tcc_unregister_timer(vout->vout_timer);
 		vout->vout_timer = NULL;
 	}
@@ -4491,12 +4378,8 @@ void vout_deinit(struct tcc_vout_device *vout)
 
 	VIOC_RDMA_SetImageSize(vioc->rdma.addr, 0, 0);
 	VIOC_RDMA_SetImageDisable(vioc->rdma.addr);
-	#if defined(CONFIG_TCC_DUAL_DISPLAY)
-	VIOC_RDMA_SetImageSize(vioc->rdma_dual.addr, 0, 0);
-	VIOC_RDMA_SetImageDisable(vioc->rdma_dual.addr);
-	#endif
 	#ifdef CONFIG_VOUT_USE_VSYNC_INT
-	if(vout->ktimer_enable) {
+	if (vout->ktimer_enable) {
 		vout->ktimer_enable = OFF;
 		del_timer(&vout->ktimer);
 	}
@@ -4505,7 +4388,7 @@ void vout_deinit(struct tcc_vout_device *vout)
 	vout_video_display_disable(vout);
 
 	#ifdef CONFIG_VOUT_USE_VSYNC_INT
-	if(vout->vout_timer) {
+	if (vout->vout_timer) {
 		tcc_unregister_timer(vout->vout_timer);
 		vout->vout_timer = NULL;
 	}
@@ -4514,6 +4397,7 @@ void vout_deinit(struct tcc_vout_device *vout)
 #ifdef CONFIG_TCC_HDMI_DRIVER_V2_0
 	{
 		DRM_Packet_t drmparm;
+
 		memset(&drmparm, 0x0, sizeof(DRM_Packet_t));
 		hdmi_set_drm(&drmparm);
 	}

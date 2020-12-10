@@ -209,7 +209,7 @@ static void vioc_mgr_cmd_handler(struct vioc_mgr_device *vioc_mgr,
 	if (data && vioc_mgr) {
 		uint32_t cmd = (uint32_t)((data->cmd[1] >> 16) & 0xFFFF);
 
-		if (data->cmd[0]) {
+		if (data->cmd[0] < 0) {
 			int32_t status = (int32_t)atomic_read(&vioc_mgr->rx.seq);
 			if (status > (int32_t)data->cmd[0]) {
 				loge("already processed command(%d,%d)\n",
@@ -239,7 +239,7 @@ static void vioc_mgr_cmd_handler(struct vioc_mgr_device *vioc_mgr,
 		}
 
 		/* Update rx-sequence ID */
-		if (data->cmd[0]) {
+		if (data->cmd[0] < 0) {
 			data->cmd[1] |= (uint32_t)VIOC_MGR_ACK;
 			vioc_mgr_send_message(vioc_mgr, data);
 			atomic_set(&vioc_mgr->rx.seq, data->cmd[0]);
@@ -514,7 +514,7 @@ static int vioc_mgr_probe(struct platform_device *pdev)
 
 	ret = alloc_chrdev_region(&vioc_mgr->devt, VIOC_MGR_DEV_MINOR,
 			1, vioc_mgr->name);
-	if (ret) {
+	if (ret < 0) {
 		loge("Fail alloc_chrdev_region(%d)\n", ret);
 		return ret;
 	}
@@ -522,7 +522,7 @@ static int vioc_mgr_probe(struct platform_device *pdev)
 	cdev_init(&vioc_mgr->cdev, &vioc_mgr_fops);
 	vioc_mgr->cdev.owner = THIS_MODULE;
 	ret = cdev_add(&vioc_mgr->cdev, vioc_mgr->devt, 1);
-	if (ret) {
+	if (ret < 0) {
 		loge("Fail cdev_add(%d)\n", ret);
 		return ret;
 	}
@@ -548,7 +548,7 @@ static int vioc_mgr_probe(struct platform_device *pdev)
 
 	vioc_mgr_tx_init(vioc_mgr);
 	ret = vioc_mgr_rx_init(vioc_mgr);
-	if (ret) {
+	if (ret < 0) {
 		loge("Fail vioc_mgr_rx_init\n");
 		return -EFAULT;
 	}

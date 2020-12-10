@@ -1,10 +1,5 @@
 /*
- * linux/include/video/tcc/vioc_ddicfg.h
- * Author:  <linux@telechips.com>
- * Created: June 10, 2008
- * Description: TCC VIOC h/w block 
- *
- * Copyright (C) 2008-2009 Telechips
+ * Copyright (C) Telechips, Inc.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -21,7 +16,6 @@
  * to the Free Software Foundation, Inc.,
  * 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  */
-
 #ifndef __VIOC_DDI_CONFIG_H__
 #define	__VIOC_DDI_CONFIG_H__
 
@@ -42,7 +36,7 @@
 #define SWRESET					(0x04)
 #define	CIFPORT					(0x0C)
 #define	HDMI_CTRL				(0x10)
-#define DAC_CONFIG				(0x2C)	// dac configuration register
+#define DAC_CONFIG				(0x2C)
 #define NTSCPAL_EN				(0x30)
 #define BVOVENC_EN				(0x3C)
 #define HDMI_I2C_FILTER			(0x7C)
@@ -172,25 +166,25 @@
 #define HDMI_CTRL_RESET_LINK_SHIFT		(0)
 #define HDMI_CTRL_RESET_SHIFT			(0)
 
-#define HDMI_CTRL_PHY_REFCLK_MASK		(0x1 << HDMI_CTRL_PHY_REFCLK_SHIFT)
-#define HDMI_CTRL_PHYCLK_MASK			(0x1 << HDMI_CTRL_PHY_CLK_SHIFT)
-#define HDMI_CTRL_PHY_MOD_CODE_MASK		(0x1F << HDMI_CTRL_PHY_MON_CODE_SHIFT)
-#define HDMI_CTRL_EN_MASK				(0x1 << HDMI_CTRL_EN_SHIFT)
-#define HDMI_CTRL_PRNG_MASK				(0x1 << HDMI_CTRL_PRNG_SHIFT)
-#define HDMI_CTRL_REF_MASK				(0x7 << HDMI_CTRL_REF_SHIFT)
-#define HDMI_CTRL_TB_MASK				(0x3 << HDMI_CTRL_TB_SHIFT)
-#define HDMI_CTRL_PHY_ST_MASK			(0x7 << HDMI_CTRL_PHY_ST_SHIFT)
-#define HDMI_CTRL_HPD_SEL_MASK			(0x1 << HDMI_CTRL_HPD_SEL_SHIFT)
-#define HDMI_CTRL_RESET_PHY_MASK		(0x1 << HDMI_CTRL_RESET_PHY_SHIFT)
-#define HDMI_CTRL_RESET_LINK_MASK		(0x1 << HDMI_CTRL_RESET_LINK_SHIFT)
-#define HDMI_CTRL_RESET_MASK			(0xF << HDMI_CTRL_RESET_SHIFT)
-#define HDMI_CTRL_TB_VAL                        (0x3 << HDMI_CTRL_TB_SHIFT)
+#define HDMI_CTRL_PHY_REFCLK_MASK   (0x1 << HDMI_CTRL_PHY_REFCLK_SHIFT)
+#define HDMI_CTRL_PHYCLK_MASK       (0x1 << HDMI_CTRL_PHY_CLK_SHIFT)
+#define HDMI_CTRL_PHY_MOD_CODE_MASK (0x1F << HDMI_CTRL_PHY_MON_CODE_SHIFT)
+#define HDMI_CTRL_EN_MASK           (0x1 << HDMI_CTRL_EN_SHIFT)
+#define HDMI_CTRL_PRNG_MASK         (0x1 << HDMI_CTRL_PRNG_SHIFT)
+#define HDMI_CTRL_REF_MASK          (0x7 << HDMI_CTRL_REF_SHIFT)
+#define HDMI_CTRL_TB_MASK           (0x3 << HDMI_CTRL_TB_SHIFT)
+#define HDMI_CTRL_PHY_ST_MASK       (0x7 << HDMI_CTRL_PHY_ST_SHIFT)
+#define HDMI_CTRL_HPD_SEL_MASK      (0x1 << HDMI_CTRL_HPD_SEL_SHIFT)
+#define HDMI_CTRL_RESET_PHY_MASK    (0x1 << HDMI_CTRL_RESET_PHY_SHIFT)
+#define HDMI_CTRL_RESET_LINK_MASK   (0x1 << HDMI_CTRL_RESET_LINK_SHIFT)
+#define HDMI_CTRL_RESET_MASK        (0xF << HDMI_CTRL_RESET_SHIFT)
+#define HDMI_CTRL_TB_VAL            (0x3 << HDMI_CTRL_TB_SHIFT)
 /*
  * DAC Configuration register (0x2C)
  */
 enum dac_pwdn_status {
-	DAC_OFF = 0,					// 0: power down on (dac off)
-	DAC_ON = 1,						// 1: power down off (dac on)
+	DAC_OFF = 0, // 0: power down on (dac off)
+	DAC_ON = 1,  // 1: power down off (dac on)
 };
 
 #define DAC_CONFIG_PWDN_SHIFT		(23)
@@ -207,31 +201,31 @@ enum dac_pwdn_status {
 /*
  * BVO TV encoder enable register
  */
-#define BVOVENC_RESET_BIT_REG		(0x1)
-#define BVOVENC_RESET_BIT_SYNC		(0x2)
-#define BVOVENC_RESET_BIT_ALL		(BVOVENC_RESET_BIT_SYNC | BVOVENC_RESET_BIT_REG)
+#define BVOVENC_RESET_BIT_REG (0x1)
+#define BVOVENC_RESET_BIT_SYNC (0x2)
+#define BVOVENC_RESET_BIT_ALL (BVOVENC_RESET_BIT_SYNC | BVOVENC_RESET_BIT_REG)
 
 #define BVOVENC_EN_SEL_SHIFT		(16)
 #define BVOVENC_EN_BVO_RST_SHIFT	(4)
 #define BVOVENC_EN_EN_SHIFT			(0)
 
-#define BVOVENC_EN_SEL_MASK			(0x1 << BVOVENC_EN_SEL_SHIFT)
-#define BVOVENC_EN_BVO_RST_MASK		(0x3 << BVOVENC_EN_BVO_RST_SHIFT)
-#define BVOVENC_EN_EN_MASK			(0x1 << BVOVENC_EN_EN_SHIFT)
+#define BVOVENC_EN_SEL_MASK     (0x1 << BVOVENC_EN_SEL_SHIFT)
+#define BVOVENC_EN_BVO_RST_MASK (0x3 << BVOVENC_EN_BVO_RST_SHIFT)
+#define BVOVENC_EN_EN_MASK      (0x1 << BVOVENC_EN_EN_SHIFT)
 
-/* 
+/*
  * HDMI Control Register - REF
  */
-#define HDMI_CTRL_REF_PHY_24M           (0x2 << HDMI_CTRL_REF_SHIFT)
-//#define HDMI_CTRL_REF_HDMI_XIN          (0x1 << HDMI_CTRL_REF_SHIFT)
-#define HDMI_CTRL_REF_PAD_XIN           (0x0 << HDMI_CTRL_REF_SHIFT)
+#define HDMI_CTRL_REF_PHY_24M    (0x2 << HDMI_CTRL_REF_SHIFT)
+//#define HDMI_CTRL_REF_HDMI_XIN (0x1 << HDMI_CTRL_REF_SHIFT)
+#define HDMI_CTRL_REF_PAD_XIN    (0x0 << HDMI_CTRL_REF_SHIFT)
 
-/* 
+/*
  * HDMI Control Register - PLL_SEL
  */
-#define HDMI_CTRL_ST_PHY_READY         (0x1 << HDMI_CTRL_PHY_ST_SHIFT)
-#define HDMI_CTRL_ST_PHY_CLK_READY     (0x2 << HDMI_CTRL_PHY_ST_SHIFT)
-#define HDMI_CTRL_ST_PLL_LOCK          (0x4 << HDMI_CTRL_PHY_ST_SHIFT)
+#define HDMI_CTRL_ST_PHY_READY     (0x1 << HDMI_CTRL_PHY_ST_SHIFT)
+#define HDMI_CTRL_ST_PHY_CLK_READY (0x2 << HDMI_CTRL_PHY_ST_SHIFT)
+#define HDMI_CTRL_ST_PLL_LOCK      (0x4 << HDMI_CTRL_PHY_ST_SHIFT)
 
 /*
  * HDMI I2C Filter Register
@@ -241,10 +235,10 @@ enum dac_pwdn_status {
 #define HDMI_I2C_FILTER_F1_EN_SHIFT		(1)
 #define HDMI_I2C_FILTER_F0_EN_SHIFT		(0)
 
-#define HDMI_I2C_FILTER_F1_DIV_MASK		(0xF << HDMI_I2C_FILTER_F1_DIV_SHIFT)
-#define HDMI_I2C_FILTER_F0_DIV_MASK		(0xF << HDMI_I2C_FILTER_F0_DIV_SHIFT)
-#define HDMI_I2C_FILTER_F1_EN_MASK		(0x1 << HDMI_I2C_FILTER_F1_EN_SHIFT)
-#define HDMI_I2C_FILTER_F0_EN_MASK		(0x1 << HDMI_I2C_FILTER_F0_EN_SHIFT)
+#define HDMI_I2C_FILTER_F1_DIV_MASK (0xF << HDMI_I2C_FILTER_F1_DIV_SHIFT)
+#define HDMI_I2C_FILTER_F0_DIV_MASK (0xF << HDMI_I2C_FILTER_F0_DIV_SHIFT)
+#define HDMI_I2C_FILTER_F1_EN_MASK  (0x1 << HDMI_I2C_FILTER_F1_EN_SHIFT)
+#define HDMI_I2C_FILTER_F0_EN_MASK  (0x1 << HDMI_I2C_FILTER_F0_EN_SHIFT)
 
 
 /*
@@ -261,7 +255,7 @@ enum dac_pwdn_status {
  */
 #define DISP_DLY_00_LPXCLK_SHIFT		(0)
 
-#define DISP_DLY_00_LPXCLK_MASK			(0x1F << DISP_DLY_00_LPXCLK_SHIFT)
+#define DISP_DLY_00_LPXCLK_MASK (0x1F << DISP_DLY_00_LPXCLK_SHIFT)
 
 /*
  * DISP k DLY_01 Register
@@ -272,11 +266,11 @@ enum dac_pwdn_status {
 #define DISP_DLY_01_LVSYNC_SHIFT		(4)
 #define DISP_DLY_01_EVSYNC_SHIFT		(0)
 
-#define DISP_DLY_01_LFIELD_MASK			(0xF << DISP_DLY_01_LFIELD_SHIFT)
-#define DISP_DLY_01_LDE_MASK			(0xF << DISP_DLY_01_LDE_SHIFT)
-#define DISP_DLY_01_LHSYNC_MASK			(0xF << DISP_DLY_01_LHSYNC_SHIFT)
-#define DISP_DLY_01_LVSYNC_MASK			(0xF << DISP_DLY_01_LVSYNC_SHIFT)
-#define DISP_DLY_01_EVSYNC_MASK			(0xF << DISP_DLY_01_EVSYNC_SHIFT)
+#define DISP_DLY_01_LFIELD_MASK (0xF << DISP_DLY_01_LFIELD_SHIFT)
+#define DISP_DLY_01_LDE_MASK    (0xF << DISP_DLY_01_LDE_SHIFT)
+#define DISP_DLY_01_LHSYNC_MASK (0xF << DISP_DLY_01_LHSYNC_SHIFT)
+#define DISP_DLY_01_LVSYNC_MASK (0xF << DISP_DLY_01_LVSYNC_SHIFT)
+#define DISP_DLY_01_EVSYNC_MASK (0xF << DISP_DLY_01_EVSYNC_SHIFT)
 
 /*
  * DISP k DLY_02 Register
@@ -290,14 +284,14 @@ enum dac_pwdn_status {
 #define DISP_DLY_02_LPXDATA_01_SHIFT	(4)
 #define DISP_DLY_02_LPXDATA_00_SHIFT	(0)
 
-#define DISP_DLY_02_LPXDATA_07_MASK		(0xF << DISP_DLY_02_LPXDATA_07_SHIFT)
-#define DISP_DLY_02_LPXDATA_06_MASK		(0xF << DISP_DLY_02_LPXDATA_06_SHIFT)
-#define DISP_DLY_02_LPXDATA_05_MASK		(0xF << DISP_DLY_02_LPXDATA_05_SHIFT)
-#define DISP_DLY_02_LPXDATA_04_MASK		(0xF << DISP_DLY_02_LPXDATA_04_SHIFT)
-#define DISP_DLY_02_LPXDATA_03_MASK		(0xF << DISP_DLY_02_LPXDATA_03_SHIFT)
-#define DISP_DLY_02_LPXDATA_02_MASK		(0xF << DISP_DLY_02_LPXDATA_02_SHIFT)
-#define DISP_DLY_02_LPXDATA_01_MASK		(0xF << DISP_DLY_02_LPXDATA_01_SHIFT)
-#define DISP_DLY_02_LPXDATA_00_MASK		(0xF << DISP_DLY_02_LPXDATA_00_SHIFT)
+#define DISP_DLY_02_LPXDATA_07_MASK (0xF << DISP_DLY_02_LPXDATA_07_SHIFT)
+#define DISP_DLY_02_LPXDATA_06_MASK (0xF << DISP_DLY_02_LPXDATA_06_SHIFT)
+#define DISP_DLY_02_LPXDATA_05_MASK (0xF << DISP_DLY_02_LPXDATA_05_SHIFT)
+#define DISP_DLY_02_LPXDATA_04_MASK (0xF << DISP_DLY_02_LPXDATA_04_SHIFT)
+#define DISP_DLY_02_LPXDATA_03_MASK (0xF << DISP_DLY_02_LPXDATA_03_SHIFT)
+#define DISP_DLY_02_LPXDATA_02_MASK (0xF << DISP_DLY_02_LPXDATA_02_SHIFT)
+#define DISP_DLY_02_LPXDATA_01_MASK (0xF << DISP_DLY_02_LPXDATA_01_SHIFT)
+#define DISP_DLY_02_LPXDATA_00_MASK (0xF << DISP_DLY_02_LPXDATA_00_SHIFT)
 
 /*
  * DISP k DLY_03 Register
@@ -311,14 +305,14 @@ enum dac_pwdn_status {
 #define DISP_DLY_03_LPXDATA_09_SHIFT	(4)
 #define DISP_DLY_03_LPXDATA_08_SHIFT	(0)
 
-#define DISP_DLY_03_LPXDATA_15_MASK		(0xF << DISP_DLY_03_LPXDATA_15_SHIFT)
-#define DISP_DLY_03_LPXDATA_14_MASK		(0xF << DISP_DLY_03_LPXDATA_14_SHIFT)
-#define DISP_DLY_03_LPXDATA_13_MASK		(0xF << DISP_DLY_03_LPXDATA_13_SHIFT)
-#define DISP_DLY_03_LPXDATA_12_MASK		(0xF << DISP_DLY_03_LPXDATA_12_SHIFT)
-#define DISP_DLY_03_LPXDATA_11_MASK		(0xF << DISP_DLY_03_LPXDATA_11_SHIFT)
-#define DISP_DLY_03_LPXDATA_10_MASK		(0xF << DISP_DLY_03_LPXDATA_10_SHIFT)
-#define DISP_DLY_03_LPXDATA_09_MASK		(0xF << DISP_DLY_03_LPXDATA_07_SHIFT)
-#define DISP_DLY_03_LPXDATA_08_MASK		(0xF << DISP_DLY_03_LPXDATA_08_SHIFT)
+#define DISP_DLY_03_LPXDATA_15_MASK (0xF << DISP_DLY_03_LPXDATA_15_SHIFT)
+#define DISP_DLY_03_LPXDATA_14_MASK (0xF << DISP_DLY_03_LPXDATA_14_SHIFT)
+#define DISP_DLY_03_LPXDATA_13_MASK (0xF << DISP_DLY_03_LPXDATA_13_SHIFT)
+#define DISP_DLY_03_LPXDATA_12_MASK (0xF << DISP_DLY_03_LPXDATA_12_SHIFT)
+#define DISP_DLY_03_LPXDATA_11_MASK (0xF << DISP_DLY_03_LPXDATA_11_SHIFT)
+#define DISP_DLY_03_LPXDATA_10_MASK (0xF << DISP_DLY_03_LPXDATA_10_SHIFT)
+#define DISP_DLY_03_LPXDATA_09_MASK (0xF << DISP_DLY_03_LPXDATA_07_SHIFT)
+#define DISP_DLY_03_LPXDATA_08_MASK (0xF << DISP_DLY_03_LPXDATA_08_SHIFT)
 
 /*
  * DISP k DLY_04 Register
@@ -332,14 +326,14 @@ enum dac_pwdn_status {
 #define DISP_DLY_04_LPXDATA_17_SHIFT	(4)
 #define DISP_DLY_04_LPXDATA_16_SHIFT	(0)
 
-#define DISP_DLY_04_LPXDATA_23_MASK		(0xF << DISP_DLY_04_LPXDATA_23_SHIFT)
-#define DISP_DLY_04_LPXDATA_22_MASK		(0xF << DISP_DLY_04_LPXDATA_22_SHIFT)
-#define DISP_DLY_04_LPXDATA_21_MASK		(0xF << DISP_DLY_04_LPXDATA_21_SHIFT)
-#define DISP_DLY_04_LPXDATA_20_MASK		(0xF << DISP_DLY_04_LPXDATA_20_SHIFT)
-#define DISP_DLY_04_LPXDATA_19_MASK		(0xF << DISP_DLY_04_LPXDATA_19_SHIFT)
-#define DISP_DLY_04_LPXDATA_18_MASK		(0xF << DISP_DLY_04_LPXDATA_18_SHIFT)
-#define DISP_DLY_04_LPXDATA_17_MASK		(0xF << DISP_DLY_04_LPXDATA_17_SHIFT)
-#define DISP_DLY_04_LPXDATA_16_MASK		(0xF << DISP_DLY_04_LPXDATA_16_SHIFT)
+#define DISP_DLY_04_LPXDATA_23_MASK (0xF << DISP_DLY_04_LPXDATA_23_SHIFT)
+#define DISP_DLY_04_LPXDATA_22_MASK (0xF << DISP_DLY_04_LPXDATA_22_SHIFT)
+#define DISP_DLY_04_LPXDATA_21_MASK (0xF << DISP_DLY_04_LPXDATA_21_SHIFT)
+#define DISP_DLY_04_LPXDATA_20_MASK (0xF << DISP_DLY_04_LPXDATA_20_SHIFT)
+#define DISP_DLY_04_LPXDATA_19_MASK (0xF << DISP_DLY_04_LPXDATA_19_SHIFT)
+#define DISP_DLY_04_LPXDATA_18_MASK (0xF << DISP_DLY_04_LPXDATA_18_SHIFT)
+#define DISP_DLY_04_LPXDATA_17_MASK (0xF << DISP_DLY_04_LPXDATA_17_SHIFT)
+#define DISP_DLY_04_LPXDATA_16_MASK (0xF << DISP_DLY_04_LPXDATA_16_SHIFT)
 
 /*
  * DISP k DLY_05 Register
@@ -351,12 +345,12 @@ enum dac_pwdn_status {
 #define DISP_DLY_05_LPXDATA_25_SHIFT	(4)
 #define DISP_DLY_05_LPXDATA_24_SHIFT	(0)
 
-#define DISP_DLY_05_LPXDATA_29_MASK		(0xF << DISP_DLY_05_LPXDATA_29_SHIFT)
-#define DISP_DLY_05_LPXDATA_28_MASK		(0xF << DISP_DLY_05_LPXDATA_28_SHIFT)
-#define DISP_DLY_05_LPXDATA_27_MASK		(0xF << DISP_DLY_05_LPXDATA_27_SHIFT)
-#define DISP_DLY_05_LPXDATA_26_MASK		(0xF << DISP_DLY_05_LPXDATA_26_SHIFT)
-#define DISP_DLY_05_LPXDATA_25_MASK		(0xF << DISP_DLY_05_LPXDATA_25_SHIFT)
-#define DISP_DLY_05_LPXDATA_24_MASK		(0xF << DISP_DLY_05_LPXDATA_24_SHIFT)
+#define DISP_DLY_05_LPXDATA_29_MASK (0xF << DISP_DLY_05_LPXDATA_29_SHIFT)
+#define DISP_DLY_05_LPXDATA_28_MASK (0xF << DISP_DLY_05_LPXDATA_28_SHIFT)
+#define DISP_DLY_05_LPXDATA_27_MASK (0xF << DISP_DLY_05_LPXDATA_27_SHIFT)
+#define DISP_DLY_05_LPXDATA_26_MASK (0xF << DISP_DLY_05_LPXDATA_26_SHIFT)
+#define DISP_DLY_05_LPXDATA_25_MASK (0xF << DISP_DLY_05_LPXDATA_25_SHIFT)
+#define DISP_DLY_05_LPXDATA_24_MASK (0xF << DISP_DLY_05_LPXDATA_24_SHIFT)
 
 /*
  * CAM k DLY _00 Register
@@ -390,14 +384,14 @@ enum dac_pwdn_status {
 #define CAM_DLY_02_CAMDATA_01_SHIFT	(4)
 #define CAM_DLY_02_CAMDATA_00_SHIFT	(0)
 
-#define CAM_DLY_02_CAMDATA_07_MASK		(0xF << DISP_DLY_02_CAMDATA_07_SHIFT)
-#define CAM_DLY_02_CAMDATA_06_MASK		(0xF << DISP_DLY_02_CAMDATA_06_SHIFT)
-#define CAM_DLY_02_CAMDATA_05_MASK		(0xF << DISP_DLY_02_CAMDATA_05_SHIFT)
-#define CAM_DLY_02_CAMDATA_04_MASK		(0xF << DISP_DLY_02_CAMDATA_04_SHIFT)
-#define CAM_DLY_02_CAMDATA_03_MASK		(0xF << DISP_DLY_02_CAMDATA_03_SHIFT)
-#define CAM_DLY_02_CAMDATA_02_MASK		(0xF << DISP_DLY_02_CAMDATA_02_SHIFT)
-#define CAM_DLY_02_CAMDATA_01_MASK		(0xF << DISP_DLY_02_CAMDATA_01_SHIFT)
-#define CAM_DLY_02_CAMDATA_00_MASK		(0xF << DISP_DLY_02_CAMDATA_00_SHIFT)
+#define CAM_DLY_02_CAMDATA_07_MASK (0xF << DISP_DLY_02_CAMDATA_07_SHIFT)
+#define CAM_DLY_02_CAMDATA_06_MASK (0xF << DISP_DLY_02_CAMDATA_06_SHIFT)
+#define CAM_DLY_02_CAMDATA_05_MASK (0xF << DISP_DLY_02_CAMDATA_05_SHIFT)
+#define CAM_DLY_02_CAMDATA_04_MASK (0xF << DISP_DLY_02_CAMDATA_04_SHIFT)
+#define CAM_DLY_02_CAMDATA_03_MASK (0xF << DISP_DLY_02_CAMDATA_03_SHIFT)
+#define CAM_DLY_02_CAMDATA_02_MASK (0xF << DISP_DLY_02_CAMDATA_02_SHIFT)
+#define CAM_DLY_02_CAMDATA_01_MASK (0xF << DISP_DLY_02_CAMDATA_01_SHIFT)
+#define CAM_DLY_02_CAMDATA_00_MASK (0xF << DISP_DLY_02_CAMDATA_00_SHIFT)
 
 /*
  * CAM k DLY_03 Register
@@ -411,14 +405,14 @@ enum dac_pwdn_status {
 #define CAM_DLY_03_CAMDATA_09_SHIFT	(4)
 #define CAM_DLY_03_CAMDATA_08_SHIFT	(0)
 
-#define CAM_DLY_03_CAMDATA_15_MASK		(0xF << CAM_DLY_03_CAMDATA_15_SHIFT)
-#define CAM_DLY_03_CAMDATA_14_MASK		(0xF << CAM_DLY_03_CAMDATA_14_SHIFT)
-#define CAM_DLY_03_CAMDATA_13_MASK		(0xF << CAM_DLY_03_CAMDATA_13_SHIFT)
-#define CAM_DLY_03_CAMDATA_12_MASK		(0xF << CAM_DLY_03_CAMDATA_12_SHIFT)
-#define CAM_DLY_03_CAMDATA_11_MASK		(0xF << CAM_DLY_03_CAMDATA_11_SHIFT)
-#define CAM_DLY_03_CAMDATA_10_MASK		(0xF << CAM_DLY_03_CAMDATA_10_SHIFT)
-#define CAM_DLY_03_CAMDATA_09_MASK		(0xF << CAM_DLY_03_CAMDATA_07_SHIFT)
-#define CAM_DLY_03_CAMDATA_08_MASK		(0xF << CAM_DLY_03_CAMDATA_08_SHIFT)
+#define CAM_DLY_03_CAMDATA_15_MASK (0xF << CAM_DLY_03_CAMDATA_15_SHIFT)
+#define CAM_DLY_03_CAMDATA_14_MASK (0xF << CAM_DLY_03_CAMDATA_14_SHIFT)
+#define CAM_DLY_03_CAMDATA_13_MASK (0xF << CAM_DLY_03_CAMDATA_13_SHIFT)
+#define CAM_DLY_03_CAMDATA_12_MASK (0xF << CAM_DLY_03_CAMDATA_12_SHIFT)
+#define CAM_DLY_03_CAMDATA_11_MASK (0xF << CAM_DLY_03_CAMDATA_11_SHIFT)
+#define CAM_DLY_03_CAMDATA_10_MASK (0xF << CAM_DLY_03_CAMDATA_10_SHIFT)
+#define CAM_DLY_03_CAMDATA_09_MASK (0xF << CAM_DLY_03_CAMDATA_07_SHIFT)
+#define CAM_DLY_03_CAMDATA_08_MASK (0xF << CAM_DLY_03_CAMDATA_08_SHIFT)
 
 /*
  * CAM k DLY_04 Register
@@ -432,14 +426,14 @@ enum dac_pwdn_status {
 #define CAM_DLY_04_CAMDATA_17_SHIFT	(4)
 #define CAM_DLY_04_CAMDATA_16_SHIFT	(0)
 
-#define CAM_DLY_04_CAMDATA_23_MASK		(0xF << CAM_DLY_04_CAMDATA_23_SHIFT)
-#define CAM_DLY_04_CAMDATA_22_MASK		(0xF << CAM_DLY_04_CAMDATA_22_SHIFT)
-#define CAM_DLY_04_CAMDATA_21_MASK		(0xF << CAM_DLY_04_CAMDATA_21_SHIFT)
-#define CAM_DLY_04_CAMDATA_20_MASK		(0xF << CAM_DLY_04_CAMDATA_20_SHIFT)
-#define CAM_DLY_04_CAMDATA_19_MASK		(0xF << CAM_DLY_04_CAMDATA_19_SHIFT)
-#define CAM_DLY_04_CAMDATA_18_MASK		(0xF << CAM_DLY_04_CAMDATA_18_SHIFT)
-#define CAM_DLY_04_CAMDATA_17_MASK		(0xF << CAM_DLY_04_CAMDATA_17_SHIFT)
-#define CAM_DLY_04_CAMDATA_16_MASK		(0xF << CAM_DLY_04_CAMDATA_16_SHIFT)
+#define CAM_DLY_04_CAMDATA_23_MASK (0xF << CAM_DLY_04_CAMDATA_23_SHIFT)
+#define CAM_DLY_04_CAMDATA_22_MASK (0xF << CAM_DLY_04_CAMDATA_22_SHIFT)
+#define CAM_DLY_04_CAMDATA_21_MASK (0xF << CAM_DLY_04_CAMDATA_21_SHIFT)
+#define CAM_DLY_04_CAMDATA_20_MASK (0xF << CAM_DLY_04_CAMDATA_20_SHIFT)
+#define CAM_DLY_04_CAMDATA_19_MASK (0xF << CAM_DLY_04_CAMDATA_19_SHIFT)
+#define CAM_DLY_04_CAMDATA_18_MASK (0xF << CAM_DLY_04_CAMDATA_18_SHIFT)
+#define CAM_DLY_04_CAMDATA_17_MASK (0xF << CAM_DLY_04_CAMDATA_17_SHIFT)
+#define CAM_DLY_04_CAMDATA_16_MASK (0xF << CAM_DLY_04_CAMDATA_16_SHIFT)
 
 /*
  * CAM k DLY_05 Register
@@ -451,28 +445,41 @@ enum dac_pwdn_status {
 #define CAM_DLY_05_CAMDATA_25_SHIFT	(4)
 #define CAM_DLY_05_CAMDATA_24_SHIFT	(0)
 
-#define CAM_DLY_05_CAMDATA_29_MASK		(0xF << CAM_DLY_05_CAMDATA_29_SHIFT)
-#define CAM_DLY_05_CAMDATA_28_MASK		(0xF << CAM_DLY_05_CAMDATA_28_SHIFT)
-#define CAM_DLY_05_CAMDATA_27_MASK		(0xF << CAM_DLY_05_CAMDATA_27_SHIFT)
-#define CAM_DLY_05_CAMDATA_26_MASK		(0xF << CAM_DLY_05_CAMDATA_26_SHIFT)
-#define CAM_DLY_05_CAMDATA_25_MASK		(0xF << CAM_DLY_05_CAMDATA_25_SHIFT)
-#define CAM_DLY_05_CAMDATA_24_MASK		(0xF << CAM_DLY_05_CAMDATA_24_SHIFT)
+#define CAM_DLY_05_CAMDATA_29_MASK (0xF << CAM_DLY_05_CAMDATA_29_SHIFT)
+#define CAM_DLY_05_CAMDATA_28_MASK (0xF << CAM_DLY_05_CAMDATA_28_SHIFT)
+#define CAM_DLY_05_CAMDATA_27_MASK (0xF << CAM_DLY_05_CAMDATA_27_SHIFT)
+#define CAM_DLY_05_CAMDATA_26_MASK (0xF << CAM_DLY_05_CAMDATA_26_SHIFT)
+#define CAM_DLY_05_CAMDATA_25_MASK (0xF << CAM_DLY_05_CAMDATA_25_SHIFT)
+#define CAM_DLY_05_CAMDATA_24_MASK (0xF << CAM_DLY_05_CAMDATA_24_SHIFT)
 
-extern void VIOC_DDICONFIG_SetSWRESET(volatile void __iomem *reg, unsigned int type, unsigned int set);
-extern void VIOC_DDICONFIG_SetPWDN(volatile void __iomem *reg, unsigned int type, unsigned int set);
-extern int VIOC_DDICONFIG_GetPeriClock(volatile void __iomem *reg, unsigned int num);
-extern void VIOC_DDICONFIG_SetPeriClock(volatile void __iomem *reg, unsigned int num, unsigned int set);
-extern void VIOC_DDICONFIG_Set_hdmi_enable(volatile void __iomem *reg, unsigned int enable);
-extern void VIOC_DDICONFIG_Set_prng(volatile void __iomem *reg, unsigned int enable);
-extern void VIOC_DDICONFIG_Set_refclock(volatile void __iomem *reg, unsigned int ref_clock);
-extern int VIOC_DDICONFIG_get_phy_status(volatile void __iomem *reg, unsigned int phy_mode);
-extern void VIOC_DDICONFIG_Set_tmds_bit_order(volatile void __iomem *reg, unsigned int phy_mode);
-extern void VIOC_DDICONFIG_reset_hdmi_phy(volatile void __iomem *reg, unsigned int reset_enable);
-extern void VIOC_DDICONFIG_reset_hdmi_link(volatile void __iomem *reg, unsigned int reset_enable);
-extern void VIOC_DDICONFIG_DAC_PWDN_Control(volatile void __iomem *reg, enum dac_pwdn_status dac_status);
-extern void VIOC_DDICONFIG_NTSCPAL_SetEnable(volatile void __iomem *reg, unsigned int enable, unsigned int lcdc_num);
+extern void VIOC_DDICONFIG_SetSWRESET(volatile void __iomem *reg,
+	unsigned int type, unsigned int set);
+extern void VIOC_DDICONFIG_SetPWDN(volatile void __iomem *reg,
+	unsigned int type, unsigned int set);
+extern int VIOC_DDICONFIG_GetPeriClock(volatile void __iomem *reg,
+	unsigned int num);
+extern void VIOC_DDICONFIG_SetPeriClock(volatile void __iomem *reg,
+	unsigned int num, unsigned int set);
+extern void VIOC_DDICONFIG_Set_hdmi_enable(volatile void __iomem *reg,
+	unsigned int enable);
+extern void VIOC_DDICONFIG_Set_prng(volatile void __iomem *reg,
+	unsigned int enable);
+extern void VIOC_DDICONFIG_Set_refclock(volatile void __iomem *reg,
+	unsigned int ref_clock);
+extern int VIOC_DDICONFIG_get_phy_status(volatile void __iomem *reg,
+	unsigned int phy_mode);
+extern void VIOC_DDICONFIG_Set_tmds_bit_order(volatile void __iomem *reg,
+	unsigned int phy_mode);
+extern void VIOC_DDICONFIG_reset_hdmi_phy(volatile void __iomem *reg,
+	unsigned int reset_enable);
+extern void VIOC_DDICONFIG_reset_hdmi_link(volatile void __iomem *reg,
+	unsigned int reset_enable);
+extern void VIOC_DDICONFIG_DAC_PWDN_Control(volatile void __iomem *reg,
+	enum dac_pwdn_status dac_status);
+extern void VIOC_DDICONFIG_NTSCPAL_SetEnable(volatile void __iomem *reg,
+	unsigned int enable, unsigned int lcdc_num);
 extern void VIOC_DDICONFIG_DUMP(void);
-extern volatile void __iomem* VIOC_DDICONFIG_GetAddress(void);
+extern volatile void __iomem *VIOC_DDICONFIG_GetAddress(void);
 
 #if defined(CONFIG_FB_TCC_COMPOSITE_BVO)
 extern void VIOC_DDICONFIG_BVOVENC_Reset_ctrl(int reset_bit);

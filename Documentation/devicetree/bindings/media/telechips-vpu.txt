@@ -1,0 +1,27 @@
+* Telechips Video Processor Unit
+
+Video Processor Unit is a HW video controller. It controls HW Codec including
+JPEG/MPEG4/H.264/VP8/VP9/HEVC Decode, JPEG/H.264/HEVC Encode.
+
+Required properties:
+  - compatible: "telechips,hevc_dev_mgr", //HMGR_NAME
+                "telechips,jpu_dev_mgr",  //JMGR_NAME
+                "telechips,vp9_dev_mgr",  //VP9MGR_NAME
+                "telechips,vpu_4k_d2_dev_mgr", //VPU_4K_D2_MGR_NAME
+                "telechips,vpu_dev_mgr",  //MGR_NAME
+                "telechips,vpu_vmem", //MEM_NAME
+                "telechips,vpu_vdec",
+                "telechips,vpu_vdec_ext",
+                "telechips,vpu_vdec_ext2",
+                "telechips,vpu_vdec_ext3",
+                "telechips,vpu_vdec_ext4",
+                "telechips,vpu_venc",
+                "telechips,vpu_venc_ext",
+                "telechips,vpu_venc_ext2",
+                "telechips,vpu_venc_ext3",
+                "telechips,vpu_venc_ext4",
+                "telechips,vpu_hevc_enc_dev_mgr
+
+Optional properties:
+
+Example:

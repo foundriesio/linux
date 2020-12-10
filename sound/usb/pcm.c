@@ -47,9 +47,9 @@ struct snd_usb_work_q {
 	struct snd_usb_substream *subs;
 };
 
-struct snd_usb_work_q *snd_wq = NULL;
+struct snd_usb_work_q *snd_wq;
 
-void tc_snd_set_cur(struct work_struct *work);
+static void tc_snd_set_cur(struct work_struct *work);
 #endif
 
 
@@ -485,6 +485,7 @@ static int set_sync_endpoint(struct snd_usb_substream *subs,
 	}
 	ep = get_endpoint(alts, 1)->bEndpointAddress;
 	if (get_endpoint(alts, 0)->bLength >= USB_DT_ENDPOINT_AUDIO_SIZE &&
+	    get_endpoint(alts, 0)->bSynchAddress != 0 &&
 	    ((is_playback && ep != (unsigned int)(get_endpoint(alts, 0)->bSynchAddress | USB_DIR_IN)) ||
 	     (!is_playback && ep != (unsigned int)(get_endpoint(alts, 0)->bSynchAddress & ~USB_DIR_IN)))) {
 		dev_err(&dev->dev,
@@ -1261,7 +1262,8 @@ rep_err:
 #if defined(__TC_IPOD_ERR__)
 void tc_snd_set_cur(struct work_struct *work)
 {
-	struct snd_usb_work_q *wq = container_of(work, struct snd_usb_work_q, wq);
+	struct snd_usb_work_q *wq =
+		container_of(work, struct snd_usb_work_q, wq);
 	struct snd_usb_substream *subs = wq->subs;
 	struct usb_host_interface *alts;
 	struct usb_interface *iface;
@@ -1269,7 +1271,8 @@ void tc_snd_set_cur(struct work_struct *work)
 	unsigned char data[3];
 	int err;
 
-	printk("\x1b[1;36m[%s:%d] \x1b[0m\n", __func__, __LINE__);
+	dev_info(&subs->dev->dev,
+		"\x1b[1;36m[%s:%d] \x1b[0m\n", __func__, __LINE__);
 
 	iface = usb_ifnum_to_if(subs->dev, subs->cur_audiofmt->iface);
 	alts = &iface->altsetting[subs->cur_audiofmt->altset_idx];
@@ -1280,12 +1283,14 @@ void tc_snd_set_cur(struct work_struct *work)
 	data[1] = subs->cur_rate >> 8;
 	data[2] = subs->cur_rate >> 16;
 
-	err = snd_usb_ctl_msg(subs->dev, usb_sndctrlpipe(subs->dev, 0), UAC_SET_CUR,
+	err = snd_usb_ctl_msg(subs->dev,
+			usb_sndctrlpipe(subs->dev, 0), UAC_SET_CUR,
 			USB_TYPE_CLASS | USB_RECIP_ENDPOINT | USB_DIR_OUT,
 			UAC_EP_CS_ATTR_SAMPLE_RATE << 8, ep,
 			data, sizeof(data));
 	if (err)
-		dev_err(&subs->dev->dev, "%s : snd_usb_ctl_msg FAIL!!\n", __func__);
+		dev_err(&subs->dev->dev,
+			"%s : snd_usb_ctl_msg FAIL!!\n", __func__);
 }
 #endif
 
@@ -1304,7 +1309,9 @@ static int snd_usb_pcm_open(struct snd_pcm_substream *substream, int direction)
 #if defined(__TC_IPOD_ERR__)
 
 	if (snd_wq == NULL) {
-		snd_wq = (struct snd_usb_work_q *)kzalloc(sizeof(struct snd_usb_work_q), GFP_KERNEL);
+		snd_wq = kzalloc(
+					sizeof(struct snd_usb_work_q),
+					GFP_KERNEL);
 		if (snd_wq != NULL)
 			INIT_WORK(&snd_wq->wq, tc_snd_set_cur);
 	}
@@ -1352,7 +1359,7 @@ static void retire_capture_urb(struct snd_usb_substream *subs,
 	unsigned char *cp;
 	int current_frame_number;
 #if defined(__TC_IPOD_ERR__)
-    static unsigned int no_data_count = 0;
+	static unsigned int no_data_count;
 #endif
 
 	/* read frame number here, update pointer in critical section */
@@ -1368,16 +1375,19 @@ static void retire_capture_urb(struct snd_usb_substream *subs,
 			// continue;
 		}
 #if defined(__TC_IPOD_ERR__)
-		if(urb->iso_frame_desc[i].actual_length == 0)
-		{
-			//printk("\x1b[1;33m[%s:%d]no_data_count: %d\x1b[0m\n", __func__, __LINE__, no_data_count);
+		if (urb->iso_frame_desc[i].actual_length == 0)
 			no_data_count++;
-		}
 		else
 			no_data_count = 0;
 #endif
 
 		bytes = urb->iso_frame_desc[i].actual_length;
+		if (subs->stream_offset_adj > 0) {
+			unsigned int adj = min(subs->stream_offset_adj, bytes);
+			cp += adj;
+			bytes -= adj;
+			subs->stream_offset_adj -= adj;
+		}
 		frames = bytes / stride;
 		if (!subs->txfr_quirk)
 			bytes = frames * stride;
@@ -1422,16 +1432,16 @@ static void retire_capture_urb(struct snd_usb_substream *subs,
 	}
 
 #if defined(__TC_IPOD_ERR__)
-	if(no_data_count >= 1000)
-	{
-		printk("\x1b[1;36m[%s:%d] no_data_count: %d\x1b[0m\n", __func__, __LINE__, no_data_count);
+	if (no_data_count >= 1000) {
+		dev_dbg(&subs->dev->dev,
+				"\x1b[1;36m[%s:%d] no_data_count: %d\x1b[0m\n",
+				__func__, __LINE__, no_data_count);
 		//snd_usb_pcm_prepare(subs->pcm_substream);
 		snd_wq->subs = subs;
 		schedule_work(&snd_wq->wq);
 		no_data_count = 0;
 	}
 #endif
-
 
 	if (period_elapsed)
 		snd_pcm_period_elapsed(subs->pcm_substream);

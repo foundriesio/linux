@@ -34,16 +34,18 @@
 
 static struct mutex panel_lock;
 
-static struct clk *hdmi_peri_clk = NULL;
-static struct clk *hdmi_ddi_clk = NULL;
-static struct clk  *hdmi_isoip_clk = NULL;
-static struct clk  *hdmi_lcdc0_clk = NULL;
-static struct clk  *hdmi_lcdc1_clk = NULL;
+static struct clk *hdmi_peri_clk;
+static struct clk *hdmi_ddi_clk;
+static struct clk  *hdmi_isoip_clk;
+static struct clk  *hdmi_lcdc0_clk;
+static struct clk  *hdmi_lcdc1_clk;
 
-static int hdmi1280x720_panel_init(struct lcd_panel *panel, struct tcc_dp_device *fb_pdata)
+static int hdmi1280x720_panel_init(struct lcd_panel *panel,
+					struct tcc_dp_device *fb_pdata)
 {
 #if defined(CONFIG_TCC_DISPLAY_HDMI_LVDS)
-	pr_info("%s lcdc:%d DispOrder:%d \n", __func__, fb_pdata->ddc_info.blk_num, fb_pdata->DispOrder);
+	pr_info("%s lcdc:%d DispOrder:%d\n", __func__,
+		fb_pdata->ddc_info.blk_num, fb_pdata->DispOrder);
 	fb_pdata->FbPowerState = true;
 	fb_pdata->FbUpdateType = FB_RDMA_UPDATE;
 	fb_pdata->DispDeviceType = TCC_OUTPUT_HDMI;
@@ -51,7 +53,8 @@ static int hdmi1280x720_panel_init(struct lcd_panel *panel, struct tcc_dp_device
 	return 0;
 }
 
-static int hdmi1280x720_set_power(struct lcd_panel *panel, int on, struct tcc_dp_device *fb_pdata)
+static int hdmi1280x720_set_power(struct lcd_panel *panel, int on,
+					struct tcc_dp_device *fb_pdata)
 {
 	return 0;
 }
@@ -89,14 +92,14 @@ static struct lcd_panel hdmi1280x720_panel = {
 
 static int hdmi1280x720_probe(struct platform_device *pdev)
 {
-	printk("%s\n", __func__);
+	pr_info("%s\n", __func__);
 
 	hdmi_lcdc0_clk = of_clk_get_by_name(pdev->dev.of_node, "lcdc0-clk");
 	hdmi_lcdc1_clk = of_clk_get_by_name(pdev->dev.of_node, "lcdc1-clk");
 	hdmi_peri_clk = of_clk_get_by_name(pdev->dev.of_node, "hdmi-pclk");
 	hdmi_ddi_clk = of_clk_get_by_name(pdev->dev.of_node, "hdmi-hclk");
 	hdmi_isoip_clk = of_clk_get_by_name(pdev->dev.of_node, "hdmi-phy");
-	
+
 	mutex_init(&panel_lock);
 
 	hdmi1280x720_panel.dev = &pdev->dev;
@@ -114,7 +117,7 @@ static int hdmi1280x720_remove(struct platform_device *pdev)
 }
 
 #ifdef CONFIG_OF
-static struct of_device_id hdmi1280x720_of_match[] = {
+static const struct of_device_id hdmi1280x720_of_match[] = {
 	{ .compatible = "telechips,hdmi1280x720" },
 	{}
 };

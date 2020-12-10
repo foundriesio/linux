@@ -30,7 +30,7 @@
 #endif
 #include "tca_hwdemux_test_pkt.h"
 
-#define HWDMX_NUM (2) // 4
+#define HWDMX_NUM (2)		// 4
 #define TS_PACKET_SIZE (188)
 #define SEND_TS_CNT (3)
 #define RECEIVE_SIZE (TS_PACKET_SIZE * 30)
@@ -51,56 +51,63 @@ static unsigned int PrevOffset[HWDMX_NUM];
 
 static unsigned int SystemTime[HWDMX_NUM];
 
-static int tcc_hwdmx_test_callback(
-	unsigned int dmxid, unsigned int ftype, unsigned int fid, unsigned int value1,
-	unsigned int value2, unsigned int bErrCRC)
+static int tcc_hwdmx_test_callback(unsigned int dmxid, unsigned int ftype,
+				   unsigned int fid, unsigned int value1,
+				   unsigned int value2, unsigned int bErrCRC)
 {
 	unsigned char *p;
 
 	switch (ftype) {
-	case 0: // HW_DEMUX_SECTION
-	{
-		if (pReceive && bErrCRC == 0) {
-			p = SERev_VAddr + RECEIVE_SIZE * dmxid + value1;
-			memcpy(pReceive, p, value2 - value1);
-			p[0] = 0xff;
-			pReceive += value2 - value1;
-		}
-		break;
-	}
-	case 1: // HW_DEMUX_TS
-	{
-		if (pReceive) {
-			p = TSRev_VAddr + RECEIVE_SIZE * dmxid + PrevOffset[dmxid];
-			while (PrevOffset[dmxid] != value1) {
-				memcpy(pReceive, p, TS_PACKET_SIZE);
+	case 0:		// HW_DEMUX_SECTION
+		{
+			if (pReceive && bErrCRC == 0) {
+				p = SERev_VAddr + RECEIVE_SIZE * dmxid + value1;
+				memcpy(pReceive, p, value2 - value1);
 				p[0] = 0xff;
-				pReceive += TS_PACKET_SIZE;
-				p += TS_PACKET_SIZE;
-				PrevOffset[dmxid] += TS_PACKET_SIZE;
-				if (PrevOffset[dmxid] == value2) {
-					PrevOffset[dmxid] = 0;
-					p = TSRev_VAddr + RECEIVE_SIZE * dmxid;
+				pReceive += value2 - value1;
+			}
+			break;
+		}
+	case 1:		// HW_DEMUX_TS
+		{
+			if (pReceive) {
+				p = TSRev_VAddr + RECEIVE_SIZE * dmxid +
+				    PrevOffset[dmxid];
+				while (PrevOffset[dmxid] != value1) {
+					memcpy(pReceive, p, TS_PACKET_SIZE);
+					p[0] = 0xff;
+					pReceive += TS_PACKET_SIZE;
+					p += TS_PACKET_SIZE;
+					PrevOffset[dmxid] += TS_PACKET_SIZE;
+					if (PrevOffset[dmxid] == value2) {
+						PrevOffset[dmxid] = 0;
+						p = TSRev_VAddr +
+						    RECEIVE_SIZE * dmxid;
+					}
 				}
 			}
+			break;
 		}
-		break;
-	}
-	case 2: // HW_DEMUX_PES
-	{
-		break;
-	}
-	case 3: // HW_DEMUX_PCR
-	{
-		unsigned int uiSTC = (unsigned int)value2 & 0x80000000;
-		uiSTC |= (unsigned int)value1 >> 1;
-		SystemTime[dmxid] = uiSTC;
-		break;
-	}
-	default: {
-		printk("Invalid parameter: Filter Type : %d\n", ftype);
-		break;
-	}
+	case 2:		// HW_DEMUX_PES
+		{
+			break;
+		}
+	case 3:		// HW_DEMUX_PCR
+		{
+			unsigned int uiSTC = (unsigned int)value2 & 0x80000000;
+
+			uiSTC |= (unsigned int)value1 >> 1;
+			SystemTime[dmxid] = uiSTC;
+			break;
+		}
+	default:{
+			pr_err
+			    ("[ERROR][HWDMX]
+			    Invalid parameter:
+			    Filter Type : %d\n",
+			     ftype);
+			break;
+		}
 	}
 	return 0;
 }
@@ -108,6 +115,7 @@ static int tcc_hwdmx_test_callback(
 static void PacketInitialize(unsigned char *p)
 {
 	int i;
+
 	memset(p, 0x0, TS_PACKET_SIZE * SEND_TS_CNT);
 	for (i = 0; i < SEND_TS_CNT; i++) {
 		memcpy(p, PKT_NULL, sizeof(PKT_NULL));
@@ -130,15 +138,15 @@ static void MakePCRPacket(unsigned char *p, int i)
 static int CheckTSPacket(unsigned char *p)
 {
 	char cc;
+
 	for (cc = 0; cc < 16; cc++) {
-		if (cc != (p[3] & 0xf)) {
+		if (cc != (p[3] & 0xf))
 			break;
-		}
 
 		p[3] &= 0xf0;
-		if (memcmp(p, PKT_TS, sizeof(PKT_TS)) != 0) {
+		if (memcmp(p, PKT_TS, sizeof(PKT_TS)) != 0)
 			break;
-		}
+
 		p += TS_PACKET_SIZE;
 	}
 	return (int)cc;
@@ -156,7 +164,7 @@ static int TSFilterTest(struct tcc_tsif_handle *h)
 	memset(ReceivePacket, 0xff, sizeof(ReceivePacket));
 
 	// Add Filter
-	param.f_type = 1; // HW_DEMUX_TS
+	param.f_type = 1;	// HW_DEMUX_TS
 	param.f_pid = 0x333;
 	tca_tsif_add_filter(h, &param);
 	tca_tsif_set_pcrpid(h, 0x1ffe);
@@ -166,7 +174,8 @@ static int TSFilterTest(struct tcc_tsif_handle *h)
 		// Send Packet
 		MakeTSPacket(Input_VAddr, cc);
 		MakePCRPacket(Input_VAddr + TS_PACKET_SIZE, cc);
-		tca_tsif_input_internal(h->dmx_id, (unsigned int)Input_PAddr, TS_PACKET_SIZE * SEND_TS_CNT);
+		tca_tsif_input_internal(h->dmx_id, (unsigned int)Input_PAddr,
+					TS_PACKET_SIZE * SEND_TS_CNT);
 	}
 	msleep(1000);
 	pReceive = 0;
@@ -189,10 +198,11 @@ static void MakePATPacket(unsigned char *p, char cc)
 static int CheckSectionPacket(unsigned char *p)
 {
 	char cc;
+
 	for (cc = 0; cc < 16; cc++) {
-		if (memcmp(p, &PKT_PAT[5], 32) != 0) {
+		if (memcmp(p, &PKT_PAT[5], 32) != 0)
 			break;
-		}
+
 		p += 32;
 	}
 	return (int)cc;
@@ -213,7 +223,7 @@ static int SectionFilterTest(struct tcc_tsif_handle *h)
 	memset(ReceivePacket, 0xff, sizeof(ReceivePacket));
 
 	// Add Filter
-	param.f_type = 0; // HW_DEMUX_SECTION
+	param.f_type = 0;	// HW_DEMUX_SECTION
 	param.f_id = 0;
 	param.f_pid = 0x0;
 	param.f_comp = &ucValue;
@@ -226,7 +236,8 @@ static int SectionFilterTest(struct tcc_tsif_handle *h)
 	for (cc = 0; cc < 16; cc++) {
 		// Send Packet
 		MakePATPacket(Input_VAddr + TS_PACKET_SIZE, cc);
-		tca_tsif_input_internal(h->dmx_id, (unsigned int)Input_PAddr, TS_PACKET_SIZE * SEND_TS_CNT);
+		tca_tsif_input_internal(h->dmx_id, (unsigned int)Input_PAddr,
+					TS_PACKET_SIZE * SEND_TS_CNT);
 	}
 	msleep(1000);
 	pReceive = 0;
@@ -244,16 +255,19 @@ static int __init tca_hwdemux_test_start(void)
 	struct tcc_tsif_handle *h;
 	int i, iRet;
 
-	printk("%s\n", __FUNCTION__);
+	pr_info("[INFO][HWDMX] %s\n", __func__);
 
-	Input_VAddr = (unsigned char *)dma_alloc_coherent(
-		0, TS_PACKET_SIZE * SEND_TS_CNT, &Input_PAddr, GFP_KERNEL);
+	Input_VAddr =
+	    (unsigned char *)dma_alloc_coherent(0, TS_PACKET_SIZE * SEND_TS_CNT,
+						&Input_PAddr, GFP_KERNEL);
 	TSRev_VAddr =
-		(unsigned char *)dma_alloc_coherent(0, RECEIVE_SIZE * HWDMX_NUM, &TSRev_PAddr, GFP_KERNEL);
+	    (unsigned char *)dma_alloc_coherent(0, RECEIVE_SIZE * HWDMX_NUM,
+						&TSRev_PAddr, GFP_KERNEL);
 	SERev_VAddr =
-		(unsigned char *)dma_alloc_coherent(0, RECEIVE_SIZE * HWDMX_NUM, &SERev_PAddr, GFP_KERNEL);
+	    (unsigned char *)dma_alloc_coherent(0, RECEIVE_SIZE * HWDMX_NUM,
+						&SERev_PAddr, GFP_KERNEL);
 
-	tca_tsif_set_interface(-1, 2); // Set File Input
+	tca_tsif_set_interface(-1, 2);	// Set File Input
 
 	for (i = 0; i < HWDMX_NUM; i++) {
 		PrevOffset[i] = 0;
@@ -286,14 +300,17 @@ static int __init tca_hwdemux_test_start(void)
 	for (i = 0; i < HWDMX_NUM; i++) {
 		SystemTime[i] = 0;
 
-		printk("\n\x1b[1;32m[[[[[ HWDMX#%d TS/PCR Filter Check... ]]]]]\x1b[0m\n", i);
+		pr_info("[INFO][HWDMX] HWDMX#%d TS/PCR Filter Check...\n", i);
 		iRet = TSFilterTest(&tTSIF[i]);
-		printk(" ===> HWDMX#%d TS Filter Result(%d)\n", i, iRet);
-		printk(" ===> HWDMX#%d PCR Filter Result(%d)\n", i, SystemTime[i]);
+		pr_info("[INFO][HWDMX] HWDMX#%d TS Filter Result(%d)\n", i,
+			iRet);
+		pr_info("[INFO][HWDMX] HWDMX#%d PCR Filter Result(%d)\n", i,
+			SystemTime[i]);
 
-		printk("\n\x1b[1;32m[[[[[ HWDMX#%d Section Filter Check... ]]]]]\x1b[0m\n", i);
+		pr_info("[INFO][HWDMX] HWDMX#%d Section Filter Check...\n", i);
 		iRet = SectionFilterTest(&tTSIF[i]);
-		printk(" ===> HWDMX#%d Section Filter Result(%d)\n", i, iRet);
+		pr_info("[INFO][HWDMX] HWDMX#%d Section Filter Result(%d)\n", i,
+			iRet);
 
 		tca_tsif_clean(&tTSIF[i]);
 	}
@@ -305,17 +322,20 @@ static void __exit tca_hwdemux_test_stop(void)
 {
 	int i;
 
-	printk("%s\n", __FUNCTION__);
+	pr_info("[INFO][HWDMX] %s\n", __func__);
 
-	for (i = HWDMX_NUM - 1; i >= 0; i--) {
+	for (i = HWDMX_NUM - 1; i >= 0; i--)
 		tca_tsif_clean(&tTSIF[i]);
-	}
+
 	if (Input_VAddr)
-		dma_free_coherent(0, TS_PACKET_SIZE * SEND_TS_CNT, Input_VAddr, Input_PAddr);
+		dma_free_coherent(0, TS_PACKET_SIZE * SEND_TS_CNT, Input_VAddr,
+				  Input_PAddr);
 	if (TSRev_VAddr)
-		dma_free_coherent(0, RECEIVE_SIZE * HWDMX_NUM, TSRev_VAddr, TSRev_PAddr);
+		dma_free_coherent(0, RECEIVE_SIZE * HWDMX_NUM, TSRev_VAddr,
+				  TSRev_PAddr);
 	if (SERev_VAddr)
-		dma_free_coherent(0, RECEIVE_SIZE * HWDMX_NUM, SERev_VAddr, SERev_PAddr);
+		dma_free_coherent(0, RECEIVE_SIZE * HWDMX_NUM, SERev_VAddr,
+				  SERev_PAddr);
 }
 
 module_init(tca_hwdemux_test_start);

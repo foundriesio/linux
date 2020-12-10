@@ -38,7 +38,7 @@
 #include <linux/platform_device.h>
 #include <linux/clk.h>
 #include <linux/uaccess.h>
-#include <asm/io.h>
+#include <linux/io.h>
 #include <asm/div64.h>
 #include <linux/fs.h> 
 #include <linux/of.h>

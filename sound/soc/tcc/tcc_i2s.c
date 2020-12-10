@@ -201,6 +201,7 @@ static inline uint32_t calc_dsp_pcm_mclk(
 	int32_t sample_rate)
 {
 	int32_t ret;
+
 	sample_rate = (sample_rate == 44100) ? 44100 :
 				  (sample_rate == 22000) ? 22050 :
 				  (sample_rate == 11000) ? 11025 : sample_rate;

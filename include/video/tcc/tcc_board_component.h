@@ -1,6 +1,5 @@
-/* linux/arch/arm/mach-tcc89xx/include/mach/tcc_board_COMPONENT.h
- *
- * Copyright (C) 2010 Telechips, Inc.
+/*
+ * Copyright (C) Telechips, Inc.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -32,7 +31,7 @@ struct tcc_component_platform_data {
 };
 
 struct tcc_component_hpd_platform_data {
-	unsigned component_port;
+	unsigned int component_port;
 };
 
 #if defined(CONFIG_SWITCH_GPIO_COMPONENT)
@@ -45,7 +44,8 @@ struct component_gpio_switch_data {
 	const char *state_off;
 	unsigned int state_val;
 	struct work_struct work;
-	void (*send_component_event)(void *pswitch_data, unsigned int component_state);
+	void (*send_component_event)(void *pswitch_data,
+		unsigned int component_state);
 };
 #endif
 

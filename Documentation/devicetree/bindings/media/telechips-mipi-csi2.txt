@@ -1,0 +1,8 @@
+Telechips Random Number Generator
+
+Required properties:
+
+- compatible  : "telechips,tcc803x-mipi-csi2" for TCC803x
+		"telechips,tcc805x-mipi-csi2" for TCC805x
+- reg         : Specifies base physical address and size of the registers map.
+

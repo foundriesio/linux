@@ -108,8 +108,7 @@
 #define HwCIPHER_Hash_Mode_SHA512_256 HwCIPHER_Hash_Mode(6)
 
 /* The Key Length in AES */
-enum
-{
+enum {
 	TCC_CIPHER_KEYLEN_128 = 0,
 	TCC_CIPHER_KEYLEN_192,
 	TCC_CIPHER_KEYLEN_256,
@@ -118,8 +117,7 @@ enum
 };
 
 /* The Mode in DES */
-enum
-{
+enum {
 	TCC_CIPHER_DESMODE_SINGLE = 0,
 	TCC_CIPHER_DESMODE_DOUBLE,
 	TCC_CIPHER_DESMODE_TRIPLE2,
@@ -128,8 +126,7 @@ enum
 };
 
 /* The Operation Mode */
-enum
-{
+enum {
 	TCC_CIPHER_OPMODE_ECB = 0,
 	TCC_CIPHER_OPMODE_CBC,
 	TCC_CIPHER_OPMODE_CFB,
@@ -142,9 +139,8 @@ enum
 };
 
 /* The Algorithm of the Encryption */
-enum
-{
-	TCC_CIPHER_ALGORITM_BYPASS = 0, // Use Like DMA
+enum {
+	TCC_CIPHER_ALGORITM_BYPASS = 0,	// Use Like DMA
 	TCC_CIPHER_ALGORITM_AES = 1,
 	TCC_CIPHER_ALGORITM_DES,
 	TCC_CIPHER_ALGORITM_MULTI2,
@@ -155,32 +151,28 @@ enum
 };
 
 /* The Key Select Mode */
-enum
-{
+enum {
 	TCC_CIPHER_KEY_NORMAL = 0,
 	TCC_CIPHER_KEY_FROM_OTP,
 	TCC_CIPHER_KEY_MAX
 };
 
 /* The Base Address */
-enum
-{
+enum {
 	TCC_CIPHER_BASEADDR_TX = 0,
 	TCC_CIPHER_BASEADDR_RX,
 	TCC_CIPHER_BASEADDR_MAX
 };
 
 /* The Key Option for Multi2 */
-enum
-{
+enum {
 	TCC_CIPHER_KEY_MULTI2_DATA = 0,
 	TCC_CIPHER_KEY_MULTI2_SYSTEM,
 	TCC_CIPHER_KEY_MULTI2_MAX
 };
 
 /* CIPHER IOCTL Command */
-enum
-{
+enum {
 	TCC_CIPHER_IOCTL_SET_ALGORITHM = 0x100,
 	TCC_CIPHER_IOCTL_SET_KEY,
 	TCC_CIPHER_IOCTL_SET_VECTOR,
@@ -190,7 +182,7 @@ enum
 };
 
 /*DMA Control Channel */
-typedef enum {
+enum CIPHER_DCTRL_CH_TYPE {
 	CH0 = 0x00000,
 	CH1 = 0x00001,
 	CH2 = 0x00010,
@@ -207,11 +199,10 @@ typedef enum {
 	CH13 = 0x01101,
 	CH14 = 0x01110,
 	CH15 = 0x01111,
-} CIPHER_DCTRL_CH_TYPE;
+};
 
 /*HASH Mode */
-enum
-{
+enum {
 	MD5 = 0,
 	SHA_1,
 	SHA_224,
@@ -223,118 +214,95 @@ enum
 };
 
 /* DMA TYPE :  Not used in TCC896x & TCC897x*/
-enum
-{
+enum {
 	TCC_CIPHER_DMA_INTERNAL = 0,
 	TCC_CIPHER_DMA_DMAX,
 	TCC_CIPHER_DMA_MAX
 };
 
-/************************************************************************************************
-uDmaMode		: HWDEMUX not used
-uOperationMode	: ECB, CBC, ... 		refer to OPERATION_MODE_TYPE
-uAlgorithm		: AES, DES, Multi2 	refer to ALGORITHM_TYPE
-uArgument1		: AES	-> refer to AES_MODE_TYPE(key lenght)
-										DES	-> refer to DES_MODE_TYPE
-(single, double,..) Multi2-> not used
-uArgument2		: Multi2	-> round_count (Variable)
-										AES, DES  -> not  used
-*************************************************************************************************/
-typedef struct
-{
+struct stCIPHER_ALGORITHM {
 	unsigned int uDmaMode;
 	unsigned int uOperationMode;
 	unsigned int uAlgorithm;
 	unsigned int uArgument1;
 	unsigned int uArgument2;
-} stCIPHER_ALGORITHM;
+};
 
-typedef struct
-{
+struct stCIPHER_KEY {
 	unsigned char *pucData;
 	unsigned int uLength;
 	unsigned int uOption;
-} stCIPHER_KEY;
+};
 
-typedef struct
-{
+struct stCIPHER_VECTOR {
 	unsigned char *pucData;
 	unsigned int uLength;
-} stCIPHER_VECTOR;
+};
 
-typedef struct
-{
+struct stCIPHER_ENCRYPTION {
 	unsigned char *pucSrcAddr;
 	unsigned char *pucDstAddr;
 	unsigned int uLength;
-} stCIPHER_ENCRYPTION;
+};
 
-typedef struct
-{
+struct stCIPHER_DECRYPTION {
 	unsigned char *pucSrcAddr;
 	unsigned char *pucDstAddr;
 	unsigned int uLength;
-} stCIPHER_DECRYPTION;
+};
 
-#if 1 // for HWDEMUX Cipher
-typedef struct
-{
+#if 1				// for HWDEMUX Cipher
+struct stHWDEMUXCIPHER_ALGORITHM {
 	unsigned int uDemuxId;
-	unsigned int uOperationMode; // op Mode (ex: ecb,cbc,...)
-	unsigned int uAlgorithm;     // algorithm (ex: AES,DES,..)
-	unsigned int uResidual;      // for AES = Key length, DES = des mode, Multi2 = round Cnt
-	unsigned int uSmsg;          // PRT (for DES : Select the parity bit location of the key)
-} stHWDEMUXCIPHER_ALGORITHM;
+	unsigned int uOperationMode;
+	unsigned int uAlgorithm;
+	unsigned int uResidual;
+	unsigned int uSmsg;
+};
 
-typedef struct
-{
+struct stHWDEMUXCIPHER_KEY {
 	unsigned int uDemuxId;
 	unsigned char *pucData;
 	unsigned int uLength;
 	unsigned int uKeyType;
 	unsigned int uKeyMode;
-} stHWDEMUXCIPHER_KEY;
+};
 
-typedef struct
-{
+struct stHWDEMUXCIPHER_VECTOR {
 	unsigned int uDemuxId;
 	unsigned char *pucData;
 	unsigned int uLength;
-	unsigned int uOption; // 0:init vector, 1:residual init vector
-} stHWDEMUXCIPHER_VECTOR;
+	unsigned int uOption;// 0:init vector, 1:residual init vector
+};
 
-typedef struct
-{
+struct stHWDEMUXCIPHER_EXECUTE {
 	unsigned int uDemuxId;
-	unsigned int uExecuteOption; // 0:decryption, 1:encryption
+	unsigned int uExecuteOption;// 0:decryption, 1:encryption
 	unsigned int uCWsel;
 	unsigned int uKLIdx;
-	unsigned int uKeyMode; // 0:HWDEMUX Cipher not used, 1:HWDEMUX Cipher used
-} stHWDEMUXCIPHER_EXECUTE;
+	unsigned int uKeyMode;
+};
 
-typedef struct
-{
+struct stHWDEMUXCIPHER_ENCRYPTION {
 	unsigned int uDemuxId;
 	unsigned char *pucSrcAddr;
 	unsigned char *pucDstAddr;
 	unsigned int uLength;
-} stHWDEMUXCIPHER_ENCRYPTION;
+};
 
-typedef struct
-{
+struct stHWDEMUXCIPHER_SENDDATA {
 	unsigned int uDemuxId;
 	unsigned char *pucSrcAddr;
 	unsigned char *pucDstAddr;
 	unsigned int uLength;
-} stHWDEMUXCIPHER_SENDDATA;
+};
 
-typedef struct
-{
+struct stHWDEMUXCIPHER_DECRYPTION {
 	unsigned int uDemuxId;
 	unsigned char *pucSrcAddr;
 	unsigned char *pucDstAddr;
 	unsigned int uLength;
-} stHWDEMUXCIPHER_DECRYPTION;
+};
 #endif
 
 #endif

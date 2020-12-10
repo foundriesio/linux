@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2019 Telechips Inc.
+ * Copyright (C) Telechips, Inc.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -104,7 +104,7 @@ void tccxxx_GetAddress(unsigned char format, unsigned int base_Yaddr,
 	*U = Uaddr + UVoffset;
 	*V = Vaddr + UVoffset;
 
-	// printk(" ### %s Yoffset = [%d] \n",__func__,Yoffset);
+	//pr_debug("### %s Yoffset = [%d]\n", __func__, Yoffset);
 }
 EXPORT_SYMBOL(tccxxx_GetAddress);
 
@@ -153,7 +153,8 @@ unsigned int tcc_vioc_display_dt_parse(struct device_node *np,
 		dp_data->wmixer_info.irq_num = irq_of_parse_and_map(
 			wmixer_node, get_vioc_index(index));
 		dp_data->wmixer_info.blk_num = index;
-		pr_info("[INF][FB_ADDR] wmixer %d 0x%p  irq:%d\n", get_vioc_index(index),
+		pr_info("[INF][FB_ADDR] wmixer %d 0x%p  irq:%d\n",
+			get_vioc_index(index),
 			dp_data->wmixer_info.virt_addr,
 			dp_data->wmixer_info.irq_num);
 	}
@@ -185,7 +186,8 @@ unsigned int tcc_vioc_display_dt_parse(struct device_node *np,
 		dp_data->wdma_info.irq_num =
 			irq_of_parse_and_map(wdma_node, get_vioc_index(index));
 		dp_data->wdma_info.blk_num = index;
-		pr_info("[INF][FB_ADDR] wdma %d 0x%p  irq:%d\n", get_vioc_index(index),
+		pr_info("[INF][FB_ADDR] wdma %d 0x%p  irq:%d\n",
+			get_vioc_index(index),
 			dp_data->wdma_info.virt_addr,
 			dp_data->wdma_info.irq_num);
 	}

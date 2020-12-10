@@ -149,7 +149,8 @@ int usb_choose_configuration(struct usb_device *udev)
 		 */
 		if (i == 0 && num_configs > 1 && desc &&
 				(is_rndis(desc) || is_activesync(desc))) {
-#if !defined(CONFIG_USB_NET_RNDIS_HOST) && !defined(CONFIG_USB_NET_RNDIS_HOST_MODULE)
+#if !defined(CONFIG_USB_NET_RNDIS_HOST) && \
+	!defined(CONFIG_USB_NET_RNDIS_HOST_MODULE)
 			continue;
 #else
 			best = c;
@@ -185,8 +186,7 @@ int usb_choose_configuration(struct usb_device *udev)
 	}
 
 	if (insufficient_power > 0)
-		dev_info(&udev->dev, "[INFO][USB] rejected %d configuration%s "
-			"due to insufficient available bus power\n",
+		dev_info(&udev->dev, "[INFO][USB] rejected %d configuration%s due to insufficient available bus power\n",
 			insufficient_power, plural(insufficient_power));
 
 	if (best) {
@@ -217,10 +217,11 @@ static int generic_probe(struct usb_device *udev)
 		c = usb_choose_configuration(udev);
 		if (c >= 0) {
 			err = usb_set_configuration(udev, c);
-			while (err && err != -ENODEV && i <= 5 ) {
+			while (err && err != -ENODEV && i <= 5) {
 				dev_err(&udev->dev, "[ERROR][USB] can't set config #%d, error %d\n",
 					c, err);
-				dev_err(&udev->dev, "[ERROR][USB] retrying %d ... usb_set_configuration()\n", i);
+				dev_err(&udev->dev, "[ERROR][USB] retrying %d ... usb_set_configuration()\n",
+					i);
 				/* This need not be fatal.  The user can try to
 				 * set other configurations. */
 				err = usb_set_configuration(udev, c);

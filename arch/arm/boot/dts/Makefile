@@ -1148,7 +1148,7 @@ endif
 endif
 
 ifeq ($(CONFIG_BUILD_ARM_DT_OVERLAY),y)
-dtb-y += \
+#dtb-y += \
 	tcc/tcc8990-soc.dtb
 
 dtbo-y += \
@@ -1169,7 +1169,7 @@ dtbo-y += \
 	tcc/overlay-tcc8030-android-lpd4321_sv0.1-hdmi-ext-panel.dtbo \
 	tcc/overlay-tcc803xp-android-lpd4321_sv0.1.dtbo
 
-dtb-y += \
+#dtb-y += \
 	tcc/tcc9010-soc.dtb
 
 dtbo-y += \

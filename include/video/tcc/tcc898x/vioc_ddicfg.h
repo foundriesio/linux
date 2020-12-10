@@ -1,10 +1,5 @@
 /*
- * linux/include/video/tcc/vioc_ddicfg.h
- * Author:  <linux@telechips.com>
- * Created: June 10, 2008
- * Description: TCC VIOC h/w block 
- *
- * Copyright (C) 2008-2009 Telechips
+ * Copyright (C) Telechips, Inc.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -21,7 +16,6 @@
  * to the Free Software Foundation, Inc.,
  * 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  */
-
 #ifndef __VIOC_DDI_CONFIG_H__
 #define	__VIOC_DDI_CONFIG_H__
 
@@ -123,8 +117,8 @@
 #define HDMI_CTRL_TB_SHIFT			(10)
 #define HDMI_CTRL_PLL_SEL_SHIFT		(8)
 #define HDMI_CTRL_SPDIF_SHIFT		(4)
-#define HDMI_CTRL_RESET_PHY_SHIFT		(1)
-#define HDMI_CTRL_RESET_LINK_SHIFT		(0)
+#define HDMI_CTRL_RESET_PHY_SHIFT	(1)
+#define HDMI_CTRL_RESET_LINK_SHIFT	(0)
 #define HDMI_CTRL_RESET_SHIFT		(0)
 
 
@@ -134,17 +128,17 @@
 #define HDMI_CTRL_TB_MASK			(0x1 << HDMI_CTRL_TB_SHIFT)
 #define HDMI_CTRL_PLL_SEL_MASK		(0x3 << HDMI_CTRL_PLL_SEL_SHIFT)
 #define HDMI_CTRL_SPDIF_MASK		(0x3 << HDMI_CTRL_SPDIF_SHIFT)
-#define HDMI_CTRL_RESET_PHY_MASK		(0x1 << HDMI_CTRL_RESET_PHY_SHIFT)
-#define HDMI_CTRL_RESET_LINK_MASK		(0x1 << HDMI_CTRL_RESET_LINK_SHIFT)
+#define HDMI_CTRL_RESET_PHY_MASK	(0x1 << HDMI_CTRL_RESET_PHY_SHIFT)
+#define HDMI_CTRL_RESET_LINK_MASK	(0x1 << HDMI_CTRL_RESET_LINK_SHIFT)
 #define HDMI_CTRL_RESET_MASK		(0xF << HDMI_CTRL_RESET_SHIFT)
 
-/* 
+/*
  * HDMI Control Register - REF
  */
 #define HDMI_CTRL_REF_PHY_24M           (0x6 << HDMI_CTRL_PLL_SEL_SHIFT)
 #define HDMI_CTRL_REF_PAD_XIN           (0x0 << HDMI_CTRL_PLL_SEL_SHIFT)
 
-/* 
+/*
  * HDMI Control Register - PLL_SEL
  */
 #define HDMI_CTRL_SEL_PHY_READY         (0x2 << HDMI_CTRL_REF_SHIFT)
@@ -189,10 +183,10 @@
 #define LVDS_TXO_SEL_SEL_1_SHIFT		(8)
 #define LVDS_TXO_SEL_SEL_0_SHIFT		(0)
 
-#define LVDS_TXO_SEL_SEL_3_MASK			(0xFF << LVDS_TXO_SEL_SEL_3_SHIFT)
-#define LVDS_TXO_SEL_SEL_2_MASK			(0xFF << LVDS_TXO_SEL_SEL_2_SHIFT)
-#define LVDS_TXO_SEL_SEL_1_MASK			(0xFF << LVDS_TXO_SEL_SEL_1_SHIFT)
-#define LVDS_TXO_SEL_SEL_0_MASK			(0xFF << LVDS_TXO_SEL_SEL_0_SHIFT)
+#define LVDS_TXO_SEL_SEL_3_MASK    (0xFF << LVDS_TXO_SEL_SEL_3_SHIFT)
+#define LVDS_TXO_SEL_SEL_2_MASK    (0xFF << LVDS_TXO_SEL_SEL_2_SHIFT)
+#define LVDS_TXO_SEL_SEL_1_MASK    (0xFF << LVDS_TXO_SEL_SEL_1_SHIFT)
+#define LVDS_TXO_SEL_SEL_0_MASK    (0xFF << LVDS_TXO_SEL_SEL_0_SHIFT)
 
 /*
  * VIOC Control Register
@@ -206,14 +200,14 @@
 #define CACHECTRL_AWCACHEM0_SHIFT		(4)
 #define CACHECTRL_AWCACHEM0_SEL_SHIFT	(0)
 
-#define CACHECTRL_ARCACHEM1_MASK		(0xFF << CACHECTRL_ARCACHEM1_SHIFT)
-#define CACHECTRL_ARCACHEM1_SEL_MASK	(0xFF << CACHECTRL_ARCACHEM1_SEL_SHIFT)
-#define CACHECTRL_AWCACHEM1_MASK		(0xFF << CACHECTRL_AWCACHEM1_SHIFT)
-#define CACHECTRL_AWCACHEM1_SEL_MASK	(0xFF << CACHECTRL_AWCACHEM1_SEL_SHIFT)
-#define CACHECTRL_ARCACHEM0_MASK		(0xFF << CACHECTRL_ARCACHEM0_SHIFT)
-#define CACHECTRL_ARCACHEM0_SEL_MASK	(0xFF << CACHECTRL_ARCACHEM0_SEL_SHIFT)
-#define CACHECTRL_AWCACHEM0_MASK		(0xFF << CACHECTRL_AWCACHEM0_SHIFT)
-#define CACHECTRL_AWCACHEM0_SEL_MASK	(0xFF << CACHECTRL_AWCACHEM0_SEL_SHIFT)
+#define CACHECTRL_ARCACHEM1_MASK     (0xFF << CACHECTRL_ARCACHEM1_SHIFT)
+#define CACHECTRL_ARCACHEM1_SEL_MASK (0xFF << CACHECTRL_ARCACHEM1_SEL_SHIFT)
+#define CACHECTRL_AWCACHEM1_MASK     (0xFF << CACHECTRL_AWCACHEM1_SHIFT)
+#define CACHECTRL_AWCACHEM1_SEL_MASK (0xFF << CACHECTRL_AWCACHEM1_SEL_SHIFT)
+#define CACHECTRL_ARCACHEM0_MASK     (0xFF << CACHECTRL_ARCACHEM0_SHIFT)
+#define CACHECTRL_ARCACHEM0_SEL_MASK (0xFF << CACHECTRL_ARCACHEM0_SEL_SHIFT)
+#define CACHECTRL_AWCACHEM0_MASK     (0xFF << CACHECTRL_AWCACHEM0_SHIFT)
+#define CACHECTRL_AWCACHEM0_SEL_MASK (0xFF << CACHECTRL_AWCACHEM0_SEL_SHIFT)
 
 /*
  * LVDS Miscellaneous 0 Register
@@ -343,32 +337,51 @@
 #define HDMI_BM_AWCACHE_SHIFT			(4)
 #define HDMI_BM_AWCACHE_SEL_SHIFT		(0)
 
-#define HDMI_BM_CFG_MB2X1_MASK			(0xFF << HDMI_BM_CFG_MB2X1_SHIFT)
-#define HDMI_BM_ARCACHE_MASK			(0xF << HDMI_BM_ARCACHE_SHIFT)
-#define HDMI_BM_ARCACHE_SEL_MASK		(0xF << HDMI_BM_ARCACHE_SEL_SHIFT)
-#define HDMI_BM_AWCACHE_MASK			(0xF << HDMI_BM_AWCACHE_SHIFT)
-#define HDMI_BM_AWCACHE_SEL_MASK		(0xF << HDMI_BM_AWCACHE_SEL_SHIFT)
+#define HDMI_BM_CFG_MB2X1_MASK   (0xFF << HDMI_BM_CFG_MB2X1_SHIFT)
+#define HDMI_BM_ARCACHE_MASK     (0xF << HDMI_BM_ARCACHE_SHIFT)
+#define HDMI_BM_ARCACHE_SEL_MASK (0xF << HDMI_BM_ARCACHE_SEL_SHIFT)
+#define HDMI_BM_AWCACHE_MASK     (0xF << HDMI_BM_AWCACHE_SHIFT)
+#define HDMI_BM_AWCACHE_SEL_MASK (0xF << HDMI_BM_AWCACHE_SEL_SHIFT)
 
-extern void VIOC_DDICONFIG_SetSWRESET(volatile void __iomem *reg, unsigned int type, unsigned int set);
-extern void VIOC_DDICONFIG_SetPWDN(volatile void __iomem *reg, unsigned int type, unsigned int set);
-extern int VIOC_DDICONFIG_GetPeriClock(volatile void __iomem *reg, unsigned int num);
-extern void VIOC_DDICONFIG_SetPeriClock(volatile void __iomem *reg, unsigned int num, unsigned int set);
-extern void VIOC_DDICONFIG_Set_hdmi_enable(volatile void __iomem *reg, unsigned int enable);
-extern void VIOC_DDICONFIG_Set_prng(volatile void __iomem *reg, unsigned int enable);
-extern void VIOC_DDICONFIG_Set_refclock(volatile void __iomem *reg, unsigned int ref_clock);
-extern void VIOC_DDICONFIG_Set_pll_sel(volatile void __iomem *reg, unsigned int pll_sel);
-extern void VIOC_DDICONFIG_Set_tmds_bit_order(volatile void __iomem *reg, unsigned int phy_mode);
-extern void VIOC_DDICONFIG_reset_hdmi_phy(volatile void __iomem *reg, unsigned int reset_enable);
-extern void VIOC_DDICONFIG_reset_hdmi_link(volatile void __iomem *reg, unsigned int reset_enable);
-extern void VIOC_DDICONFIG_NTSCPAL_SetEnable(volatile void __iomem *reg, unsigned int enable, unsigned int lcdc_num);
-extern void VIOC_DDICONFIG_LVDS_SetEnable(volatile void __iomem *reg, unsigned int enable);
-extern void VIOC_DDICONFIG_LVDS_SetReset(volatile void __iomem *reg, unsigned int reset);
-extern void VIOC_DDICONFIG_LVDS_SetConnectivity(volatile void __iomem *reg, unsigned int voc, unsigned int cms, unsigned int cc, unsigned int lc);
-extern void VIOC_DDICONFIG_LVDS_SetPLL(volatile void __iomem * reg, unsigned int vsel, unsigned int p, unsigned int m, unsigned int s, unsigned int tc);
-extern void VIOC_DDICONFIG_LVDS_SetPort(volatile void __iomem *reg, unsigned int select);
-extern void VIOC_DDICONFIG_LVDS_SetPath(volatile void __iomem *reg, int path, unsigned int bit);
+extern void VIOC_DDICONFIG_SetSWRESET(volatile void __iomem *reg,
+	unsigned int type, unsigned int set);
+extern void VIOC_DDICONFIG_SetPWDN(volatile void __iomem *reg,
+	unsigned int type, unsigned int set);
+extern int VIOC_DDICONFIG_GetPeriClock(volatile void __iomem *reg,
+	unsigned int num);
+extern void VIOC_DDICONFIG_SetPeriClock(volatile void __iomem *reg,
+	unsigned int num, unsigned int set);
+extern void VIOC_DDICONFIG_Set_hdmi_enable(volatile void __iomem *reg,
+	unsigned int enable);
+extern void VIOC_DDICONFIG_Set_prng(volatile void __iomem *reg,
+	unsigned int enable);
+extern void VIOC_DDICONFIG_Set_refclock(volatile void __iomem *reg,
+	unsigned int ref_clock);
+extern void VIOC_DDICONFIG_Set_pll_sel(volatile void __iomem *reg,
+	unsigned int pll_sel);
+extern void VIOC_DDICONFIG_Set_tmds_bit_order(volatile void __iomem *reg,
+	unsigned int phy_mode);
+extern void VIOC_DDICONFIG_reset_hdmi_phy(volatile void __iomem *reg,
+	unsigned int reset_enable);
+extern void VIOC_DDICONFIG_reset_hdmi_link(volatile void __iomem *reg,
+	unsigned int reset_enable);
+extern void VIOC_DDICONFIG_NTSCPAL_SetEnable(volatile void __iomem *reg,
+	unsigned int enable, unsigned int lcdc_num);
+extern void VIOC_DDICONFIG_LVDS_SetEnable(volatile void __iomem *reg,
+	unsigned int enable);
+extern void VIOC_DDICONFIG_LVDS_SetReset(volatile void __iomem *reg,
+	unsigned int reset);
+extern void VIOC_DDICONFIG_LVDS_SetConnectivity(volatile void __iomem *reg,
+	unsigned int voc, unsigned int cms, unsigned int cc, unsigned int lc);
+extern void VIOC_DDICONFIG_LVDS_SetPLL(volatile void __iomem *reg,
+	unsigned int vsel, unsigned int p, unsigned int m,
+	unsigned int s, unsigned int tc);
+extern void VIOC_DDICONFIG_LVDS_SetPort(volatile void __iomem *reg,
+	unsigned int select);
+extern void VIOC_DDICONFIG_LVDS_SetPath(volatile void __iomem *reg,
+	int path, unsigned int bit);
 extern void VIOC_DDICONFIG_DUMP(void);
-extern volatile void __iomem* VIOC_DDICONFIG_GetAddress(void);
+extern volatile void __iomem *VIOC_DDICONFIG_GetAddress(void);
 
 /*
  * VIOC_REMAP (VIOC Register Address Remap Enable Register)

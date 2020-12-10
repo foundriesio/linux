@@ -27,7 +27,6 @@
  */
 
 /*-------------------------------------------------------------------------*/
-#include <linux/usb/otg.h>
 
 #define	PORT_WAKE_BITS	(PORT_WKOC_E|PORT_WKDISC_E|PORT_WKCONN_E)
 
@@ -1274,70 +1273,81 @@ int ehci_hub_control(
 				break;
 			}
 #endif
-/* TCC Embedded Host Electrical Test */
+			/* TCC Embedded Host Electrical Test */
 #ifdef CONFIG_TCC_EH_ELECT_TST
-            printk("[INFO][USB] \x1b[1;33m[%s:%d] selector : %d\x1b[0m\n", __func__, __LINE__,selector);
-            if (!selector || selector > 6)
+			pr_info("[INFO][USB] \x1b[1;33m[%s:%d] selector : %d\x1b[0m\n",
+					__func__, __LINE__, selector);
+
+			if (!selector || selector > 6)
 				goto error;
-            if (selector == 6) {
+
+			if (selector == 6) {
 #define HHSETP_DBG
 #ifdef HHSETP_DBG
-#define hhsetp_dbg(x) printk(x)
+#define hhsetp_dbg(x) pr_info(x)
 #else
 #define hhsetp_dbg(x)
-#endif		
+#endif
 				spin_unlock_irqrestore(&ehci->lock, flags);
-                ehci_quiesce(ehci);
-                /* HS_HOST_PORT_SUSPEND_RESUME */
-                printk("[INFO][USB] EHCI HS_HOST_PORT_SUSPEND_RESUME 0x%x\n", selector);
+				ehci_quiesce(ehci);
+
+				/* HS_HOST_PORT_SUSPEND_RESUME */
+				pr_info("[INFO][USB] EHCI HS_HOST_PORT_SUSPEND_RESUME 0x%x\n",
+						selector);
 
 				/* Save current interrupt mask */
-                hostpc_reg = &ehci->regs->intr_enable;
-                temp1 = ehci_readl(ehci, hostpc_reg);
+				hostpc_reg = &ehci->regs->intr_enable;
+				temp1 = ehci_readl(ehci, hostpc_reg);
 
-                /* Disalbe all interrupts */
-                ehci_writel(ehci, 0x0, hostpc_reg);
+				/* Disalbe all interrupts */
+				ehci_writel(ehci, 0x0, hostpc_reg);
 
-                /* Delay 15secs */
-                mdelay(15000);
+				/* Delay 15secs */
+				mdelay(15000);
 
-                /* Drive suspend on the root port */
-                while (ports--) {
-                	u32 __iomem *sreg = &ehci->regs->port_status[ports];
-                    temp = ehci_readl(ehci, sreg) & ~PORT_RWC_BITS;
-                    if (temp & PORT_PE)
-                    	ehci_writel(ehci, temp | PORT_SUSPEND, sreg);
-                }
-                hhsetp_dbg(" 1.Drive suspend on the root port\n");
-                temp = ehci_readl(ehci, status_reg);
-                temp |= PORT_SUSPEND;
-                temp &= ~PORT_RESUME;
-                ehci_writel(ehci, temp, status_reg);
+				/* Drive suspend on the root port */
+				while (ports--) {
+					u32 __iomem *sreg =
+						&ehci->regs->port_status[ports];
+					temp = ehci_readl(ehci, sreg) &
+						~PORT_RWC_BITS;
+					if (temp & PORT_PE)
+						ehci_writel(ehci,
+								temp |
+								PORT_SUSPEND,
+								sreg);
+				}
 
-                /* Delay 15secs */
-                mdelay(15000);
+				hhsetp_dbg(" 1.Drive suspend on the root port\n");
+				temp = ehci_readl(ehci, status_reg);
+				temp |= PORT_SUSPEND;
+				temp &= ~PORT_RESUME;
+				ehci_writel(ehci, temp, status_reg);
 
-                /* Drive resume on the root port */
-                hhsetp_dbg(" 2.Drive resume on the root port\n");
-                temp = ehci_readl(ehci, status_reg);
-                temp &= ~PORT_SUSPEND;
-                temp |= PORT_RESUME;
-                ehci_writel(ehci, temp, status_reg);
+				/* Delay 15secs */
+				mdelay(15000);
 
-                /* Delay 100ms */
-                mdelay(100);
-                /* Clear the resume bit */
-                temp = ehci_readl(ehci, status_reg);
-                temp &= ~PORT_RESUME;
-                ehci_writel(ehci, temp, status_reg);
+				/* Drive resume on the root port */
+				hhsetp_dbg(" 2.Drive resume on the root port\n");
+				temp = ehci_readl(ehci, status_reg);
+				temp &= ~PORT_SUSPEND;
+				temp |= PORT_RESUME;
+				ehci_writel(ehci, temp, status_reg);
 
-                /* Restore interrupts */
-                ehci_writel(ehci, temp1, hostpc_reg);
+				/* Delay 100ms */
+				mdelay(100);
+				/* Clear the resume bit */
+				temp = ehci_readl(ehci, status_reg);
+				temp &= ~PORT_RESUME;
+				ehci_writel(ehci, temp, status_reg);
 
-                hhsetp_dbg("End of HS_HOST_PORT_SUSPEND_RESUME\n");
-                spin_lock_irqsave(&ehci->lock, flags);
+				/* Restore interrupts */
+				ehci_writel(ehci, temp1, hostpc_reg);
 
-                break;
+				hhsetp_dbg("End of HS_HOST_PORT_SUSPEND_RESUME\n");
+				spin_lock_irqsave(&ehci->lock, flags);
+
+				break;
 			}
 
 			spin_unlock_irqrestore(&ehci->lock, flags);

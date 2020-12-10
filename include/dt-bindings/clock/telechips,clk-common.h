@@ -31,7 +31,8 @@
 #define CLK_F_SKIP_SSCG		(1UL << 28UL)
 #define CLK_F_SRC_CLK_MASK	0x3fUL
 #define CLK_F_SRC_CLK_SHIFT	16UL
-#define CLK_F_SRC_CLK(x)	((((x) & CLK_F_SRC_CLK_MASK) << CLK_F_SRC_CLK_SHIFT) | CLK_F_FIXED)
+#define CLK_F_SRC_CLK(x)	((((x) & CLK_F_SRC_CLK_MASK) << \
+					CLK_F_SRC_CLK_SHIFT) | CLK_F_FIXED)
 #define CLK_F_FIXED		(1UL << 29UL)	/* Use fixed source clock */
 #define CLK_F_DCO_MODE		(1UL << 30UL)	/* Set DCO mode */
 #define CLK_F_DIV_MODE		(1UL << 31UL)	/* Set divide mode */

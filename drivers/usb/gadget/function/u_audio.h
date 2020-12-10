@@ -97,7 +97,7 @@ void u_audio_stop_playback(struct g_audio *g_audio);
 extern int complete_count;
 extern unsigned int ringbuff_offset;
 extern int capture_pcm;
-extern char* pdump_path;
+extern char *pdump_path;
 #endif
 
 #endif /* __U_AUDIO_H */

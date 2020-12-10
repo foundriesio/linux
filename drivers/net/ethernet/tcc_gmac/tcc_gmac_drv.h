@@ -1,10 +1,11 @@
 /*
  * linux/driver/net/tcc_gmac/tcc_gmac_drv.h
- * 	
+ *
  * Based on : STMMAC of STLinux 2.4
  * Author : Telechips <linux@telechips.com>
  * Created : June 22, 2010
- * Description : This is the driver for the Telechips MAC 10/100/1000 on-chip Ethernet controllers.  
+ * Description : This is the driver
+ * for the Telechips MAC 10/100/1000 on-chip Ethernet controllers.
  *               Telechips Ethernet IPs are built around a Synopsys IP Core.
  *
  * Copyright (C) 2010 Telechips
@@ -24,7 +25,7 @@
  *
  * The full GNU General Public License is included in this distribution in
  * the file called "COPYING".
- */ 
+ */
 
 #ifndef _TCC_GMAC_DRV_H_
 #define _TCC_GMAC_DRV_H_
@@ -40,18 +41,20 @@
 #include <linux/netdevice.h>
 #include <linux/phy.h>
 
-#if defined (CONFIG_ARCH_TCC897X) || defined(CONFIG_ARCH_TCC570X)
-	#include <mach/tca_gmac.h>
-#elif defined (CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC802X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC901X) || defined(CONFIG_ARCH_TCC805X)
-	#include "tca_gmac.h"
+#if defined(CONFIG_ARCH_TCC897X) || defined(CONFIG_ARCH_TCC570X)
+#include <mach/tca_gmac.h>
+#elif defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC802X) ||\
+	defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X) ||\
+defined(CONFIG_ARCH_TCC901X) || defined(CONFIG_ARCH_TCC805X)
+#include "tca_gmac.h"
 #else
 #endif
 
-#define IOCTL_AVB_CONFIG	SIOCDEVPRIVATE+1
+#define IOCTL_AVB_CONFIG	(SIOCDEVPRIVATE+1)
 
 enum gmac_misc_cmd {
-	CMD_PHY_READ	=	0x10,
-	CMD_PHY_WRITE	=	0x11,
+	CMD_PHY_READ = 0x10,
+	CMD_PHY_WRITE = 0x11,
 };
 
 enum avb_cmd_t {
@@ -62,7 +65,7 @@ enum avb_cmd_t {
 	AVB_CMD_GET_CLASS_B_PRIORITY = 0x00000004,
 
 	AVB_CMD_SET_CLASS_A_BANDWIDTH = 0x00000005,
-	AVB_CMD_SET_CLASS_B_BANDWIDTH = 0x00000006, 
+	AVB_CMD_SET_CLASS_B_BANDWIDTH = 0x00000006,
 
 	AVB_CMD_GET_CLASS_A_BANDWIDTH = 0x00000007,
 	AVB_CMD_GET_CLASS_B_BANDWIDTH = 0x00000008,
@@ -136,13 +139,13 @@ struct tcc_gmac_extra_stats {
 #define FLOW_OFF	0
 #define FLOW_RX		1
 #define FLOW_TX		2
-#define FLOW_AUTO	((unsigned)FLOW_TX | (unsigned)FLOW_RX)
+#define FLOW_AUTO	((unsigned int)FLOW_TX | (unsigned int)FLOW_RX)
 
-#define SF_DMA_MODE 1 /* DMA STORE-AND-FORWARD Operation Mode */
+#define SF_DMA_MODE 1		/* DMA STORE-AND-FORWARD Operation Mode */
 
 #define HW_CSUM 1
 #define NO_HW_CSUM 0
-enum rx_frame_status { /* IPC status */
+enum rx_frame_status {		/* IPC status */
 	good_frame = 0,
 	discard_frame = 1,
 	csum_none = 2,
@@ -182,94 +185,95 @@ enum tx_dma_irq_status {
 
 struct tcc_gmac_desc_ops {
 	/* DMA RX descriptor ring initialization */
-	void (*init_rx_desc) (struct dma_desc *p, unsigned int ring_size,
+	void (*init_rx_desc)(struct dma_desc *p, unsigned int ring_size,
 			      int disable_rx_ic);
 	/* DMA TX descriptor ring initialization */
-	void (*init_tx_desc) (struct dma_desc *p, unsigned int ring_size);
+	void (*init_tx_desc)(struct dma_desc *p, unsigned int ring_size);
 
 	/* Invoked by the xmit function to prepare the tx descriptor */
-	void (*prepare_tx_desc) (struct dma_desc *p, int is_fs, int len,
+	void (*prepare_tx_desc)(struct dma_desc *p, int is_fs, int len,
 				 int csum_flag);
 	/* Set/get the owner of the descriptor */
-	void (*set_tx_owner) (struct dma_desc *p);
-	int (*get_tx_owner) (struct dma_desc *p);
+	void (*set_tx_owner)(struct dma_desc *p);
+	int (*get_tx_owner)(struct dma_desc *p);
 	/* Invoked by the xmit function to close the tx descriptor */
-	void (*close_tx_desc) (struct dma_desc *p);
+	void (*close_tx_desc)(struct dma_desc *p);
 	/* Clean the tx descriptor as soon as the tx irq is received */
-	void (*release_tx_desc) (struct dma_desc *p);
-	/* Clear interrupt on tx frame completion. When this bit is
-	 * set an interrupt happens as soon as the frame is transmitted */
-	void (*clear_tx_ic) (struct dma_desc *p);
+	void (*release_tx_desc)(struct dma_desc *p);
+	void (*clear_tx_ic)(struct dma_desc *p);
 	/* Last tx segment reports the transmit status */
-	int (*get_tx_ls) (struct dma_desc *p);
+	int (*get_tx_ls)(struct dma_desc *p);
 	/* Return the transmit status looking at the TDES1 */
-	int (*tx_status) (void *data, struct tcc_gmac_extra_stats *x,
+	int (*tx_status)(void *data, struct tcc_gmac_extra_stats *x,
 			  struct dma_desc *p, void __iomem *ioaddr);
 	/* Get the buffer size from the descriptor */
-	int (*get_tx_len) (struct dma_desc *p);
+	int (*get_tx_len)(struct dma_desc *p);
 	/* Handle extra events on specific interrupts hw dependent */
-	int (*get_rx_owner) (struct dma_desc *p);
-	void (*set_rx_owner) (struct dma_desc *p);
+	int (*get_rx_owner)(struct dma_desc *p);
+	void (*set_rx_owner)(struct dma_desc *p);
 	/* Get the receive frame size */
-	int (*get_rx_frame_len) (struct dma_desc *p);
+	int (*get_rx_frame_len)(struct dma_desc *p);
 	/* Return the reception status looking at the RDES1 */
-	int (*rx_status) (void *data, struct tcc_gmac_extra_stats *x,
+	int (*rx_status)(void *data, struct tcc_gmac_extra_stats *x,
 			  struct dma_desc *p);
 };
 
 struct tcc_gmac_dma_ops {
 	/* DMA core initialization */
-	int (*init) (void __iomem *ioaddr, int pbl, u32 dma_tx, u32 dma_rx);
-	void (*set_bus_mode)(void __iomem *ioaddr, u32 prwg, u32 txpr, u32 pr, u32 da);
+	int (*init)(void __iomem *ioaddr, int pbl, u32 dma_tx, u32 dma_rx);
+	void (*set_bus_mode)(void __iomem *ioaddr, u32 prwg, u32 txpr, u32 pr,
+			      u32 da);
 	/* Dump DMA registers */
-	void (*dump_regs) (void __iomem *ioaddr);
-	/* Set tx/rx threshold in the csr6 register
-	 * An invalid value enables the store-and-forward mode */
-	void (*dma_mode) (void __iomem *ioaddr, int txmode, int rxmode);
+	void (*dump_regs)(void __iomem *ioaddr);
+	void (*dma_mode)(void __iomem *ioaddr, int txmode, int rxmode);
 	/* To track extra statistic (if supported) */
-	void (*dma_diagnostic_fr) (void *data, struct tcc_gmac_extra_stats *x,
+	void (*dma_diagnostic_fr)(void *data, struct tcc_gmac_extra_stats *x,
 				   void __iomem *ioaddr);
-	void (*enable_dma_transmission) (void __iomem *ioaddr);
-	void (*enable_dma_irq) (void __iomem *ioaddr);
-	void (*disable_dma_irq) (void __iomem *ioaddr);
-	void (*start_tx) (void __iomem *ioaddr);
-	void (*stop_tx) (void __iomem *ioaddr);
-	void (*start_rx) (void __iomem *ioaddr);
-	void (*stop_rx) (void __iomem *ioaddr);
-	int (*dma_interrupt) (void __iomem *ioaddr,
+	void (*enable_dma_transmission)(void __iomem *ioaddr);
+	void (*enable_dma_irq)(void __iomem *ioaddr);
+	void (*disable_dma_irq)(void __iomem *ioaddr);
+	void (*start_tx)(void __iomem *ioaddr);
+	void (*stop_tx)(void __iomem *ioaddr);
+	void (*start_rx)(void __iomem *ioaddr);
+	void (*stop_rx)(void __iomem *ioaddr);
+	int (*dma_interrupt)(void __iomem *ioaddr,
 			      struct tcc_gmac_extra_stats *x);
 	void (*enable_slot_interrupt)(void __iomem *ioaddr);
 	void (*disable_slot_interrupt)(void __iomem *ioaddr);
 	void (*slot_control)(void __iomem *ioaddr, bool enable, bool advance);
 	void (*cbs_control)(void __iomem *ioaddr,
-					bool enable, bool credit_control, unsigned int slot_count, bool abpssie);
+			     bool enable, bool credit_control,
+			     unsigned int slot_count, bool abpssie);
 	unsigned int (*cbs_status)(void __iomem *ioaddr);
-	void (*idle_slope_credit)(void __iomem *ioaddr, unsigned int bits_per_cycle);
-	void (*send_slope_credit)(void __iomem *ioaddr, unsigned int bits_per_cycle);
+	void (*idle_slope_credit)(void __iomem *ioaddr,
+				   unsigned int bits_per_cycle);
+	void (*send_slope_credit)(void __iomem *ioaddr,
+				   unsigned int bits_per_cycle);
 	void (*hi_credit)(void __iomem *ioaddr, unsigned int credit);
 	void (*lo_credit)(void __iomem *ioaddr, unsigned int credit);
 };
 
 struct tcc_gmac_core_ops {
 	/* MAC core initialization */
-	void (*core_init) (void __iomem *ioaddr) ____cacheline_aligned;
+	void (*core_init)(void __iomem *ioaddr)____cacheline_aligned;
 	/* Dump MAC registers */
-	void (*dump_regs) (void __iomem *ioaddr);
+	void (*dump_regs)(void __iomem *ioaddr);
 	/* Handle extra events on specific interrupts hw dependent */
-	void (*host_irq_status) (void __iomem *ioaddr);
+	void (*host_irq_status)(void __iomem *ioaddr);
 	/* Multicast filter setting */
-	void (*set_filter) (struct net_device *dev);
+	void (*set_filter)(struct net_device *dev);
 	/* Flow control setting */
-	void (*flow_ctrl) (void __iomem *ioaddr, unsigned int duplex,
+	void (*flow_ctrl)(void __iomem *ioaddr, unsigned int duplex,
 			   unsigned int fc, unsigned int pause_time);
 	/* Set power management mode (e.g. magic frame) */
-	void (*pmt) (void __iomem *ioaddr, unsigned long mode);
+	void (*pmt)(void __iomem *ioaddr, unsigned long mode);
 	/* Set/Get Unicast MAC addresses */
-	void (*set_umac_addr) (void __iomem *ioaddr, unsigned char *addr,
+	void (*set_umac_addr)(void __iomem *ioaddr, unsigned char *addr,
 			       unsigned int reg_n);
-	void (*get_umac_addr) (void __iomem *ioaddr, unsigned char *addr,
+	void (*get_umac_addr)(void __iomem *ioaddr, unsigned char *addr,
 			       unsigned int reg_n);
-	void (*set_av_ethertype)(void __iomem *ioaddr, unsigned int ethertype);
+	void (*set_av_ethertype)(void __iomem *ioaddr,
+				  unsigned int ethertype);
 	void (*set_av_priority)(void __iomem *ioaddr, unsigned int priority);
 	void (*set_av_avch)(void __iomem *ioaddr, unsigned int avch);
 	void (*set_av_ptpch)(void __iomem *ioaddr, unsigned int ptpch);
@@ -295,9 +299,11 @@ struct tcc_gmac_ptp_ops {
 	void (*pps0_set_time)(void __iomem *ioaddr, u32 sec, u32 nsec);
 	void (*pps0_trig_enable)(void __iomem *ioaddr);
 	void (*pps0_trig_disable)(void __iomem *ioaddr);
-	int (*update_system_time)(void __iomem *ioaddr, u32 sec, u32 nsec, bool addsub);
+	int (*update_system_time)(void __iomem *ioaddr, u32 sec, u32 nsec,
+				   bool addsub);
 	int (*set_system_time)(void __iomem *ioaddr, u32 sec, u32 nsec);
-	int (*get_system_time)(void __iomem *ioaddr, struct timespec64 *time);
+	int (*get_system_time)(void __iomem *ioaddr,
+				struct timespec64 *time);
 	int (*snapshot_mode)(void __iomem *ioaddr, u32 rx_filter);
 };
 
@@ -313,10 +319,10 @@ struct mii_regs {
 };
 
 struct mac_device_info {
-	struct tcc_gmac_core_ops	*mac;
-	struct tcc_gmac_desc_ops	*desc;
-	struct tcc_gmac_dma_ops		*dma[NUMS_OF_DMA_CH];
-	struct tcc_gmac_ptp_ops		*ptp;
+	struct tcc_gmac_core_ops *mac;
+	struct tcc_gmac_desc_ops *desc;
+	struct tcc_gmac_dma_ops *dma[NUMS_OF_DMA_CH];
+	struct tcc_gmac_ptp_ops *ptp;
 	unsigned int pmt;	/* support Power-Down */
 	struct mii_regs mii;	/* MII register Addresses */
 	unsigned int clk_rate;
@@ -344,10 +350,10 @@ struct rx_dma_ch_t {
 
 #define ETH_P_AVTP		(0x22F0)
 
-//#define MAX_FRAME_SIZE			(1514 * 8) //bits
-//#define MAX_INTERFERENCE_SIZE	(1514 * 8) //bits
-#define MAX_FRAME_SIZE			((unsigned)1514 * (unsigned)8) //bits
-#define MAX_INTERFERENCE_SIZE	(16384 * 8) //bits
+//#define MAX_FRAME_SIZE                        (1514 * 8) //bits
+//#define MAX_INTERFERENCE_SIZE (1514 * 8) //bits
+#define MAX_FRAME_SIZE			((unsigned int)1514 * (unsigned int)8)
+#define MAX_INTERFERENCE_SIZE	(16384 * 8)	//bits
 
 #define SR_CLASS_A_DEFAULT_PRIORITY		(3)
 #define SR_CLASS_B_DEFAULT_PRIORITY		(2)
@@ -355,10 +361,10 @@ struct rx_dma_ch_t {
 #define SR_CLASS_B_DEFAULT_BANDWIDTH	(10)
 
 struct tcc_gmac_avb_opt_t {
-	u8 	class_a_priority; // 0~7, 3bit
-	u32 class_a_bandwidth; // Mbps
-	u8  class_b_priority; // 0~7, 3bit
-	u32 class_b_bandwidth; // Mbps
+	u8 class_a_priority;	// 0~7, 3bit
+	u32 class_a_bandwidth;	// Mbps
+	u8 class_b_priority;	// 0~7, 3bit
+	u32 class_b_bandwidth;	// Mbps
 };
 
 struct tcc_gmac_priv {
@@ -384,11 +390,11 @@ struct tcc_gmac_priv {
 	int phy_addr;
 	int bus_id;
 	int is_mdio_registered;
-	int (*phy_reset) (void *priv);
+	int (*phy_reset)(void *priv);
 
 	int phy_irq;
 	int pmt_irq;
-	
+
 	struct phy_device *phydev;
 	int oldlink;
 	int speed;
@@ -416,4 +422,3 @@ struct tcc_gmac_priv {
 };
 
 #endif /*_TCC_GMAC_DRV_H_*/
-

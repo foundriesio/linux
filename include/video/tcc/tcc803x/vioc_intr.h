@@ -1,5 +1,5 @@
 /*
- * Copyright (C) Telechips Inc.
+ * Copyright (C) Telechips, Inc.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -112,17 +112,21 @@ enum {
 
 /* VIOC DEV0/1/2 irqs */
 enum vioc_disp_intr_src {
-	VIOC_DISP_INTR_FU = 0,	/* LCD output fifo under-run */
-	VIOC_DISP_INTR_VSR,	/* VS Rising */
-	VIOC_DISP_INTR_VSF,	/* VS Falling */
-	VIOC_DISP_INTR_RU,	/* Register Update */
-	VIOC_DISP_INTR_DD,	/* Disable Done */
-	VIOC_DISP_INTR_SREQ,	/* Device Stop Request */
+	VIOC_DISP_INTR_FU = 0, /* LCD output fifo under-run */
+	VIOC_DISP_INTR_VSR,    /* VS Rising */
+	VIOC_DISP_INTR_VSF,    /* VS Falling */
+	VIOC_DISP_INTR_RU,     /* Register Update */
+	VIOC_DISP_INTR_DD,     /* Disable Done */
+	VIOC_DISP_INTR_SREQ,   /* Device Stop Request */
 	VIOC_DISP_INTR_MAX
 };
 
-#define VIOC_DISP_INTR_DISPLAY	(/*(1<<VIOC_DISP_INTR_FU)|*/(1<<VIOC_DISP_INTR_RU)|(1<<VIOC_DISP_INTR_DD))
-#define VIOC_DISP_INT_MASK	((1<<VIOC_DISP_INTR_MAX)-1)
+#define VIOC_DISP_INTR_DISPLAY \
+	(/*(1<<VIOC_DISP_INTR_FU)|*/ \
+	(1<<VIOC_DISP_INTR_RU) | \
+	(1<<VIOC_DISP_INTR_DD))
+
+#define VIOC_DISP_INT_MASK ((1 << VIOC_DISP_INTR_MAX) - 1)
 
 /* VIOC RDMA irqs */
 enum vioc_rdma_intr_src {
@@ -140,20 +144,21 @@ enum vioc_rdma_intr_src {
 /* VIOC WDMA irqs */
 enum vioc_wdma_intr_src {
 	VIOC_WDMA_INTR_UPD = 0,	/* Register Update */
-	VIOC_WDMA_INTR_SREQ,	/* VIOC_WDMA_INTR_EOFF, */
-	VIOC_WDMA_INTR_ROL,	/* Rolling */
-	VIOC_WDMA_INTR_ENR,	/* Synchronized Enable Rising */
-	VIOC_WDMA_INTR_ENF,	/* Synchronized Enable Falling */
+	VIOC_WDMA_INTR_SREQ,	/* VIOC_WDMA_INTR_EOFF */
+	VIOC_WDMA_INTR_ROL,		/* Rolling */
+	VIOC_WDMA_INTR_ENR,		/* Synchronized Enable Rising */
+	VIOC_WDMA_INTR_ENF,		/* Synchronized Enable Falling */
 	VIOC_WDMA_INTR_EOFR,	/* EOF Rising */
 	VIOC_WDMA_INTR_EOFF,	/* EOF Falling */
-	VIOC_WDMA_INTR_SEOFR, 	/* Sync EOF Rising */
-	VIOC_WDMA_INTR_SEOFF, 	/* Sync EOF Falling */
+	VIOC_WDMA_INTR_SEOFR,	/* Sync EOF Rising */
+	VIOC_WDMA_INTR_SEOFF,	/* Sync EOF Falling */
 	VIOC_WDMA_INTR_RESERVED,
 	VIOC_WDMA_INTR_MAX
 };
 #define VIOC_WDMA_INT_MASK	((1<<VIOC_WDMA_INTR_MAX)-1)
 
 #define VIOC_INTR_WD_OFFSET (VIOC_INTR_WD9 - (VIOC_INTR_WD8 + 1))
+
 /* VIOC VIN irqs */
 enum vioc_vin_intr_src {
 	VIOC_VIN_INTR_UPD = 0,
@@ -184,14 +189,14 @@ enum vioc_v_dv_intr_src {
 /* VIOC WMIX irqs */
 #define VIOC_WMIX_INT_MASK	0x1F
 
-extern int vioc_intr_enable(int irq, int id, unsigned mask);
-extern int vioc_intr_disable(int irq, int id, unsigned mask);
+extern int vioc_intr_enable(int irq, int id, unsigned int mask);
+extern int vioc_intr_disable(int irq, int id, unsigned int mask);
 extern unsigned int vioc_intr_get_status(int id);
 extern bool check_vioc_irq_status(volatile void __iomem *reg, int id);
-extern bool is_vioc_intr_activatied(int id, unsigned mask);
-extern int vioc_intr_clear(int id, unsigned mask);
+extern bool is_vioc_intr_activatied(int id, unsigned int mask);
+extern int vioc_intr_clear(int id, unsigned int mask);
 extern void vioc_intr_initialize(void);
-extern bool is_vioc_intr_unmasked(int id, unsigned mask);
+extern bool is_vioc_intr_unmasked(int id, unsigned int mask);
 bool is_vioc_display_device_intr_masked(int id, unsigned int mask);
 
 #endif /* __VIOC_DISP_INTR__H__ */

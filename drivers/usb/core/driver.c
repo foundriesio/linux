@@ -845,7 +845,8 @@ static int usb_uevent(struct device *dev, struct kobj_uevent_env *env)
 
 	if (usb_dev->devnum < 0) {
 		/* driver is often null here; dev_dbg() would oops */
-		pr_debug("[DEBUG][USB] usb %s: already deleted?\n", dev_name(dev));
+		pr_debug("[DEBUG][USB] usb %s: already deleted?\n",
+				dev_name(dev));
 		return -ENODEV;
 	}
 	if (!usb_dev->bus) {
@@ -902,7 +903,7 @@ int usb_register_device_driver(struct usb_device_driver *new_udriver,
 		pr_info("[INFO][USB] %s: registered new device driver %s\n",
 			usbcore_name, new_udriver->name);
 	else
-		printk(KERN_ERR "[ERROR][USB] %s: error %d registering device "
+		pr_err("[ERROR][USB] %s: error %d registering device "
 			"	driver %s\n",
 			usbcore_name, retval, new_udriver->name);
 
@@ -977,8 +978,7 @@ out:
 out_newid:
 	driver_unregister(&new_driver->drvwrap.driver);
 
-	printk(KERN_ERR "[ERROR][USB] %s: error %d registering interface "
-			"	driver %s\n",
+	pr_err("[ERROR][USB] %s: error %d registering interface driver %s\n",
 			usbcore_name, retval, new_driver->name);
 	goto out;
 }
@@ -1066,7 +1066,8 @@ static void usb_rebind_intf(struct usb_interface *intf)
 		intf->needs_binding = 0;
 		rc = device_attach(&intf->dev);
 		if (rc < 0)
-			dev_warn(&intf->dev, "[WARN][USB] rebind failed: %d\n", rc);
+			dev_warn(&intf->dev, "[WARN][USB] rebind failed: %d\n",
+					rc);
 	}
 }
 
@@ -1254,7 +1255,8 @@ static int usb_resume_interface(struct usb_device *udev,
 	} else {
 		status = driver->resume(intf);
 		if (status)
-			dev_err(&intf->dev, "[ERROR][USB] resume error %d\n", status);
+			dev_err(&intf->dev, "[ERROR][USB] resume error %d\n",
+					status);
 	}
 
 done:
@@ -1916,28 +1918,14 @@ int usb_disable_usb2_hardware_lpm(struct usb_device *udev)
 #ifdef CONFIG_TCC_DWC_HS_ELECT_TST
 void usb_hnp_work(struct work_struct *work)
 {
-       int err;
-       hnp_work_t *w = (hnp_work_t *)work;
-       struct usb_device *udev = w->udev;
+	int err;
+	struct hnp_work_t *w = (struct hnp_work_t *)work;
+	struct usb_device *udev = w->udev;
 
-       err = usb_port_suspend(udev, PMSG_AUTO_SUSPEND);
-       if(err < 0)
-               printk("[INFO][USB] \x1b[1;33m[%s:%d] port suspend fail!! (%d)\x1b[0m\n", __func__, __LINE__,err);
-
-#if 0
-       struct device *dev;
-       dev = &udev->dev;
-       if (dev->parent)        /* Needed for USB */
-               device_lock(dev->parent);
-       device_release_driver(dev);
-       if (dev->parent)
-               device_unlock(dev->parent);
-       //printk("\x1b[1;35m[%s:%d]Unbind driver interface before suspending for HNP.\x1b[0m\n", __func__, __LINE__);
-
-       pm_runtime_set_autosuspend_delay(dev,0);
-       usb_runtime_suspend(dev);
-       //printk("\x1b[1;35m[%s:%d]Suspend for initiating HNP.\x1b[0m\n", __func__, __LINE__);
-#endif
+	err = usb_port_suspend(udev, PMSG_AUTO_SUSPEND);
+	if (err < 0)
+		pr_info("[INFO][USB] \x1b[1;33m[%s:%d] port suspend fail!! (%d)\x1b[0m\n",
+				__func__, __LINE__, err);
 }
 #endif /*CONFIG_TCC_DWC_HS_ELECT_TST*/
 

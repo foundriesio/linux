@@ -1,21 +1,21 @@
-/****************************************************************************
-FileName    : kernel/drivers/video/fbdev/tcc-fb/vioc/vioc_bvo.c
-Description : Sigma Design TV encoder driver
-
-Copyright (C) 2018 Telechips Inc.
-
-This program is free software; you can redistribute it and/or modify it under the terms
-of the GNU General Public License as published by the Free Software Foundation;
-either version 2 of the License, or (at your option) any later version.
-
-This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
-without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
-PURPOSE. See the GNU General Public License for more details.
-
-You should have received a copy of the GNU General Public License along with
-this program; if not, write to the Free Software Foundation, Inc., 59 Temple Place,
-Suite 330, Boston, MA 02111-1307 USA
-****************************************************************************/
+/*
+ * Copyright (C) Telechips, Inc.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, see the file COPYING, or write
+ * to the Free Software Foundation, Inc.,
+ * 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+ */
 
 /* README
  * ======
@@ -30,7 +30,7 @@ Suite 330, Boston, MA 02111-1307 USA
  * - DISP.DALIGN.SWAPBF = b100 (SWAPBF b100)
  */
 
-#include <asm/io.h>
+#include <linux/io.h>
 #ifndef CONFIG_ARM64
 #include <asm/mach-types.h>
 #endif
@@ -42,73 +42,77 @@ Suite 330, Boston, MA 02111-1307 USA
 #include <video/tcc/vioc_ddicfg.h>
 
 /* Debugging stuff */
-static int debug = 0;
-#define dprintk(msg...)	if (debug) { printk( "\e[33m[DBG][BVO]\e[0m " msg); }
+//#define DBG_BVO
+#ifdef DBG_BVO
+#define dprintk(msg...)	pr_info("\e[33m[DBG][BVO]\e[0m " msg)
+#else
+#define dprintk(msg...)
+#endif
 
 /*
  * Registers offset
  */
-#define BVO_XOFF			(0x18)	// 3
-#define BVO_YOFF			(0x1C)	// 4
-#define BVO_conv0			(0x20)	// 12
-#define BVO_conv1			(0x24)	// 13
-#define BVO_conv2			(0x28)	// 14
-#define BVO_conv3			(0x2C)	// 15
-#define BVO_conv4			(0x30)	// 16
-#define BVO_conv5			(0x34)	// 17
-#define BVO_SCPHASE			(0x38)	// 18
-#define BVO_nothing			(0x3C)	// N/A
-#define BVO_CONFIG1			(0x40)	// 19
-#define BVO_SIZE			(0x44)	// 5
-#define BVO_HS				(0x48)	// 6
-#define BVO_VSOL			(0x4C)	// 7
-#define BVO_VSOH			(0x50)	// 8
-#define BVO_SEL				(0x54)	// 9
-#define BVO_SEH				(0x58)	// 10
-#define BVO_HD_hsync		(0x5C)
-#define BVO_HD_vsync		(0x60)
-#define BVO_CGMS			(0x64)	// 20
-#define BVO_CC_AGC			(0x68)	// 21
-#define BVO_TCONFIG			(0x6C)
-#define BVO_txt_cfg			(0x70)
-#define BVO_CONFIG2			(0x74)	// 22
-#define BVO_CHROMA			(0x78)
-#define BVO_timing_sync		(0x7C)
-#define BVO_N0_N22			(0x80)	// 23
-#define BVO_N1_N2_N3_N4		(0x84)	// 24
-#define BVO_N5_N6_N7_N8		(0x88)	// 25
-#define BVO_N9_N10_N11		(0x8C)	// 26
-#define BVO_N12_N13_N14		(0x90)	// 27
-#define BVO_N15_N16_N17		(0x94)	// 28
-#define BVO_N19_N20_N21		(0x98)	// 29
-#define BVO_ROUNDSTEP		(0x9C)
-#define BVO_ext_rst_dr0		(0xA0)
-#define BVO_ext_rst_dr1		(0xA4)
-#define BVO_ext_rst_dr2		(0xA8)
-#define BVO_ext_rst_dr3		(0xAC)
-#define BVO_STARV0			(0xB0)	// 30
-#define BVO_STARV1			(0xB4)	// 11
-#define BVO_STARV2			(0xB8)	// 1
-#define BVO_STARV3			(0xBC)	// 2
-#define BVO_VBICTRL			(0xC0)
-#define BVO_VBIDATA0		(0xC4)
-#define BVO_VBIDATA1		(0xC8)
-#define BVO_VBIDATA2		(0xCC)
-#define BVO_VBIDATA3		(0xD0)
-#define BVO_SIGDATA			(0xD4)
+#define BVO_XOFF             (0x18)  // 3
+#define BVO_YOFF             (0x1C)  // 4
+#define BVO_conv0            (0x20)  // 12
+#define BVO_conv1            (0x24)  // 13
+#define BVO_conv2            (0x28)  // 14
+#define BVO_conv3            (0x2C)  // 15
+#define BVO_conv4            (0x30)  // 16
+#define BVO_conv5            (0x34)  // 17
+#define BVO_SCPHASE          (0x38)  // 18
+#define BVO_nothing          (0x3C)  // N/A
+#define BVO_CONFIG1          (0x40)  // 19
+#define BVO_SIZE             (0x44)  // 5
+#define BVO_HS               (0x48)  // 6
+#define BVO_VSOL             (0x4C)  // 7
+#define BVO_VSOH             (0x50)  // 8
+#define BVO_SEL              (0x54)  // 9
+#define BVO_SEH              (0x58)  // 10
+#define BVO_HD_hsync         (0x5C)
+#define BVO_HD_vsync         (0x60)
+#define BVO_CGMS             (0x64)  // 20
+#define BVO_CC_AGC           (0x68)  // 21
+#define BVO_TCONFIG          (0x6C)
+#define BVO_txt_cfg          (0x70)
+#define BVO_CONFIG2          (0x74)  // 22
+#define BVO_CHROMA           (0x78)
+#define BVO_timing_sync      (0x7C)
+#define BVO_N0_N22           (0x80)  // 23
+#define BVO_N1_N2_N3_N4      (0x84)  // 24
+#define BVO_N5_N6_N7_N8      (0x88)  // 25
+#define BVO_N9_N10_N11       (0x8C)  // 26
+#define BVO_N12_N13_N14      (0x90)  // 27
+#define BVO_N15_N16_N17      (0x94)  // 28
+#define BVO_N19_N20_N21      (0x98)  // 29
+#define BVO_ROUNDSTEP        (0x9C)
+#define BVO_ext_rst_dr0      (0xA0)
+#define BVO_ext_rst_dr1      (0xA4)
+#define BVO_ext_rst_dr2      (0xA8)
+#define BVO_ext_rst_dr3      (0xAC)
+#define BVO_STARV0           (0xB0)  // 30
+#define BVO_STARV1           (0xB4)  // 11
+#define BVO_STARV2           (0xB8)  // 1
+#define BVO_STARV3           (0xBC)  // 2
+#define BVO_VBICTRL          (0xC0)
+#define BVO_VBIDATA0         (0xC4)
+#define BVO_VBIDATA1         (0xC8)
+#define BVO_VBIDATA2         (0xCC)
+#define BVO_VBIDATA3         (0xD0)
+#define BVO_SIGDATA          (0xD4)
 
-#define BVO_CONFIG1_DAC_ENABLE_SHIFT	(31)
-#define BVO_CONFIG1_DAC_ENABLE_MASK		(0x1 << BVO_CONFIG1_DAC_ENABLE_SHIFT)
+#define BVO_CONFIG1_DAC_ENABLE_SHIFT (31)
+#define BVO_CONFIG1_DAC_ENABLE_MASK  (0x1 << BVO_CONFIG1_DAC_ENABLE_SHIFT)
 
-#define BVO_CGMS_ODD_SHIFT		(23)
-#define BVO_CGMS_EVEN_SHIFT		(22)
-#define BVO_CGMS_CRC_SHIFT		(21)
-#define BVO_CGMS_DATA_SHIFT		(0)
+#define BVO_CGMS_ODD_SHIFT   (23)
+#define BVO_CGMS_EVEN_SHIFT  (22)
+#define BVO_CGMS_CRC_SHIFT   (21)
+#define BVO_CGMS_DATA_SHIFT  (0)
 
-#define BVO_CGMS_ODD_MASK		(0x1 << BVO_CGMS_ODD_SHIFT)
-#define BVO_CGMS_EVEN_MASK		(0x1 << BVO_CGMS_EVEN_SHIFT)
-#define BVO_CGMS_CRC_MASK		(0x1 << BVO_CGMS_CRC_SHIFT)
-#define BVO_CGMS_DATA_MASK		(0xfffff << BVO_CGMS_DATA_SHIFT)
+#define BVO_CGMS_ODD_MASK    (0x1 << BVO_CGMS_ODD_SHIFT)
+#define BVO_CGMS_EVEN_MASK   (0x1 << BVO_CGMS_EVEN_SHIFT)
+#define BVO_CGMS_CRC_MASK    (0x1 << BVO_CGMS_CRC_SHIFT)
+#define BVO_CGMS_DATA_MASK   (0xfffff << BVO_CGMS_DATA_SHIFT)
 
 /*
  * bvo supported formats
@@ -172,8 +176,8 @@ struct bvo_spec {
 };
 
 struct bvo_spec bvo_spec_val[BVO_TIMING_MAX] = {
-    /*    bvo_timing, HSIZE, VSIZE, PXDW, CLKDIV, IV, IH, IP, DP, NI, TV, LPW, LPC, LSWC, LEWC, FPW, FLC, FSWC, FEWC, FPW2, FLC2, FSWC2, FEWC2*/
-    {BVO_TIMING_NTSC,   720,   480,   12,      0,  1,  1,  0,  0,  0,  1, 247, 2879, 227,   75,   5, 479,   29,    8,    5,  479,    30,     7}, /* Datasheet */
+	/*    bvo_timing, HSIZE, VSIZE, PXDW, CLKDIV, IV, IH, IP, DP, NI, TV, LPW, LPC, LSWC, LEWC, FPW, FLC, FSWC, FEWC, FPW2, FLC2, FSWC2, FEWC2*/
+	{BVO_TIMING_NTSC,   720,   480,   12,      0,  1,  1,  0,  0,  0,  1, 247, 2879, 227,   75,   5, 479,   29,    8,    5,  479,    30,     7}, /* Datasheet */
 	{BVO_TIMING_PAL ,   720,   576,   12,      0,  1,  1,  0,  0,  0,  1, 251, 2879, 275,   57,   0, 575,   42,    4,    0,  575,    43,     3}, /* Datasheet */
 };
 
@@ -182,55 +186,55 @@ struct bvo_spec bvo_spec_val[BVO_TIMING_MAX] = {
  * struct bvo registers
  */
 struct bvo_regs {
-	enum bvo_format bfmt;	// enum bvo_foramt
-	uint32_t XOFF;				// 1
-	uint32_t YOFF;				// 2
-	uint32_t conv0;				// 3
-	uint32_t conv1;				// 4
-	uint32_t conv2;				// 5
-	uint32_t conv3;				// 6
-	uint32_t conv4;				// 7
-	uint32_t conv5;				// 8
-	uint32_t SCPHASE;			// 9
-	uint32_t nothing;			// 10
-	uint32_t CONFIG1;			// 11
-	uint32_t SIZE;				// 12
-	uint32_t HS;				// 13
-	uint32_t VSOL;				// 14
-	uint32_t VSOH;				// 15
-	uint32_t SEL;				// 16
-	uint32_t SEH;				// 17
-	uint32_t HD_hsync;			// 18
-	uint32_t HD_vsync;			// 19
-	uint32_t CGMS;				// 20
-	uint32_t CC_AGC;			// 21
-	uint32_t TCONFIG;			// 22
-	uint32_t txt_cfg;			// 23
-	uint32_t CONFIG2;			// 24
-	uint32_t CHROMA;			// 25
-	uint32_t timing_sync;		// 26
-	uint32_t N0_N22;			// 27
-	uint32_t N1_N2_N3_N4;		// 28
-	uint32_t N5_N6_N7_N8;		// 29
-	uint32_t N9_N10_N11;		// 30
-	uint32_t N12_N13_N14;		// 31
-	uint32_t N15_N16_N17;		// 32
-	uint32_t N19_N20_N21;		// 33
-	uint32_t ROUNDSTEP;			// 34
-	uint32_t ext_rst_dr0;		// 35
-	uint32_t ext_rst_dr1;		// 36
-	uint32_t ext_rst_dr2;		// 37
-	uint32_t ext_rst_dr3;		// 38
-	uint32_t STARV0;			// 39
-	uint32_t STARV1;			// 40
-	uint32_t STARV2;			// 41
-	uint32_t STARV3;			// 42
-	uint32_t VBICTRL;			// 43
-	uint32_t VBIDATA0;			// 44
-	uint32_t VBIDATA1;			// 45
-	uint32_t VBIDATA2;			// 46
-	uint32_t VBIDATA3;			// 47
-	uint32_t SIGDATA;			// 48
+	enum bvo_format bfmt;    // enum bvo_foramt
+	uint32_t XOFF;           // 1
+	uint32_t YOFF;           // 2
+	uint32_t conv0;          // 3
+	uint32_t conv1;          // 4
+	uint32_t conv2;          // 5
+	uint32_t conv3;          // 6
+	uint32_t conv4;          // 7
+	uint32_t conv5;          // 8
+	uint32_t SCPHASE;        // 9
+	uint32_t nothing;        // 10
+	uint32_t CONFIG1;        // 11
+	uint32_t SIZE;           // 12
+	uint32_t HS;             // 13
+	uint32_t VSOL;           // 14
+	uint32_t VSOH;           // 15
+	uint32_t SEL;            // 16
+	uint32_t SEH;            // 17
+	uint32_t HD_hsync;       // 18
+	uint32_t HD_vsync;       // 19
+	uint32_t CGMS;           // 20
+	uint32_t CC_AGC;         // 21
+	uint32_t TCONFIG;        // 22
+	uint32_t txt_cfg;        // 23
+	uint32_t CONFIG2;        // 24
+	uint32_t CHROMA;         // 25
+	uint32_t timing_sync;    // 26
+	uint32_t N0_N22;         // 27
+	uint32_t N1_N2_N3_N4;    // 28
+	uint32_t N5_N6_N7_N8;    // 29
+	uint32_t N9_N10_N11;     // 30
+	uint32_t N12_N13_N14;    // 31
+	uint32_t N15_N16_N17;    // 32
+	uint32_t N19_N20_N21;    // 33
+	uint32_t ROUNDSTEP;      // 34
+	uint32_t ext_rst_dr0;    // 35
+	uint32_t ext_rst_dr1;    // 36
+	uint32_t ext_rst_dr2;    // 37
+	uint32_t ext_rst_dr3;    // 38
+	uint32_t STARV0;         // 39
+	uint32_t STARV1;         // 40
+	uint32_t STARV2;         // 41
+	uint32_t STARV3;         // 42
+	uint32_t VBICTRL;        // 43
+	uint32_t VBIDATA0;       // 44
+	uint32_t VBIDATA1;       // 45
+	uint32_t VBIDATA2;       // 46
+	uint32_t VBIDATA3;       // 47
+	uint32_t SIGDATA;        // 48
 };
 
 /*
@@ -267,8 +271,8 @@ struct bvo_regs bvo_regs_val[BVO_FMT_MAX] = {
 #define bvo_read(val, base, off) \
 	do { \
 		uint32_t r = __raw_readl(base + off); \
-		printk("0x%02x: 0x%08x -> 0x%08x %s\n", off, val, r, \
-			(val!=r)?((val==REG_VAL_NA)?"Don't care":"mismatch"):""); \
+		pr_info("0x%02x: 0x%08x -> 0x%08x %s\n", off, val, r, \
+		(val != r)?((val == REG_VAL_NA)?"Don't care":"mismatch"):""); \
 	} while (0)
 
 /*
@@ -276,11 +280,12 @@ struct bvo_regs bvo_regs_val[BVO_FMT_MAX] = {
  */
 static struct clk *tve_clk_ntscpal;
 static struct clk *tve_clk_dac;
-static volatile void __iomem *pbvo = NULL;
+static volatile void __iomem *pbvo;
 
 static void bvo_regs_dump(enum bvo_format bfmt)
 {
 	struct bvo_regs *regs;
+
 	regs = &bvo_regs_val[bfmt];
 	dprintk("%s - bvo_fmt(%d)\n", __func__, bfmt);
 
@@ -370,7 +375,8 @@ static enum bvo_format bvo_get_format(unsigned int type)
 		break;
 
 	default:
-		pr_err("[ERR][BVO] %s: not supported tve format(0x%x)\n", __func__, type);
+		pr_err("[ERR][BVO] %s: not supported tve format(0x%x)\n",
+			__func__, type);
 		bfmt = BVO_FMT_NTSC_M;
 		break;
 	}
@@ -403,7 +409,8 @@ static enum bvo_spec_type bvo_get_spec_type(enum bvo_format fmt)
 		break;
 
 	default:
-		pr_err("[ERR][BVO] %s: not supported tve format(0x%x)\n", __func__, fmt);
+		pr_err("[ERR][BVO] %s: not supported tve format(0x%x)\n",
+			__func__, fmt);
 		bspec = BVO_TIMING_NTSC;
 		break;
 	}
@@ -411,7 +418,8 @@ static enum bvo_spec_type bvo_get_spec_type(enum bvo_format fmt)
 	return bspec;
 }
 
-void internal_bvo_get_spec(COMPOSITE_MODE_TYPE type, COMPOSITE_SPEC_TYPE *spec)
+void internal_bvo_get_spec(enum COMPOSITE_MODE_TYPE type,
+	struct COMPOSITE_SPEC_TYPE *spec)
 {
 	enum bvo_format bfmt;
 	enum bvo_spec_type btype;
@@ -423,7 +431,7 @@ void internal_bvo_get_spec(COMPOSITE_MODE_TYPE type, COMPOSITE_SPEC_TYPE *spec)
 
 	dprintk("%s(%d->%d)\n", __func__, type, btype);
 
-	spec->composite_clk = 54 * 1000 * 1000;		// 54 Mhz for BVO
+	spec->composite_clk = 54 * 1000 * 1000;  // 54 Mhz for BVO
 	spec->composite_bus_width = 8;
 	spec->composite_lcd_width = bspec->HSIZE;
 	spec->composite_lcd_height = bspec->VSIZE;
@@ -437,25 +445,25 @@ void internal_bvo_get_spec(COMPOSITE_MODE_TYPE type, COMPOSITE_SPEC_TYPE *spec)
 	spec->ni = bspec->NI;
 	spec->tv = bspec->TV;
 
-	spec->composite_LPW = bspec->LPW;			// line pulse width
-	spec->composite_LPC = bspec->LPC;			// line pulse count (active horizontal pixel - 1)
-	spec->composite_LSWC = bspec->LSWC;			// line start wait clock (the number of dummy pixel clock - 1)
-	spec->composite_LEWC = bspec->LEWC;			// line end wait clock (the number of dummy pixel clock - 1)
+	spec->composite_LPW = bspec->LPW;
+	spec->composite_LPC = bspec->LPC;
+	spec->composite_LSWC = bspec->LSWC;
+	spec->composite_LEWC = bspec->LEWC;
 
-	spec->composite_VDB = 0;					// Back porch Vsync delay
-	spec->composite_VDF = 0;					// front porch of Vsync delay
+	spec->composite_VDB = 0;
+	spec->composite_VDF = 0;
 
-	spec->composite_FPW1 = bspec->FPW;			// TFT/TV : Frame pulse width is the pulse width of frmae clock
-	spec->composite_FLC1 = bspec->FLC;			// frame line count is the number of lines in each frmae on the screen
-	spec->composite_FSWC1 = bspec->FSWC;		// frame start wait cycle is the number of lines to insert at the end each frame
-	spec->composite_FEWC1 = bspec->FEWC;		// frame start wait cycle is the number of lines to insert at the begining each frame
-	spec->composite_FPW2 = bspec->FPW2;			// TFT/TV : Frame pulse width is the pulse width of frmae clock
-	spec->composite_FLC2 = bspec->FLC2;			// frame line count is the number of lines in each frmae on the screen
-	spec->composite_FSWC2 = bspec->FSWC2;		// frame start wait cycle is the number of lines to insert at the end each frame
-	spec->composite_FEWC2 = bspec->FEWC2;		// frame start wait cycle is the number of lines to insert at the begining each frame
+	spec->composite_FPW1 = bspec->FPW;
+	spec->composite_FLC1 = bspec->FLC;
+	spec->composite_FSWC1 = bspec->FSWC;
+	spec->composite_FEWC1 = bspec->FEWC;
+	spec->composite_FPW2 = bspec->FPW2;
+	spec->composite_FLC2 = bspec->FLC2;
+	spec->composite_FSWC2 = bspec->FSWC2;
+	spec->composite_FEWC2 = bspec->FEWC2;
 }
 
-void internal_tve_set_config(COMPOSITE_MODE_TYPE type)
+void internal_tve_set_config(enum COMPOSITE_MODE_TYPE type)
 {
 	enum bvo_format bfmt;
 	struct bvo_regs *regs;
@@ -575,7 +583,8 @@ void internal_tve_set_config(COMPOSITE_MODE_TYPE type)
 	__raw_writel(regs->STARV3,      pbvo + BVO_STARV3);
 	__raw_writel(regs->SIGDATA,     pbvo + BVO_SIGDATA);
 
-	__raw_writel(regs->CONFIG1,     pbvo + BVO_CONFIG1);	// CONFIG1 is set at the end.
+	/* CONFIG1 is set at the end. */
+	__raw_writel(regs->CONFIG1,     pbvo + BVO_CONFIG1);
 #else
 #if 1
 	bvo_write(regs->XOFF,        pbvo + BVO_XOFF);
@@ -588,7 +597,10 @@ void internal_tve_set_config(COMPOSITE_MODE_TYPE type)
 	bvo_write(regs->conv5,       pbvo + BVO_conv5);
 	bvo_write(regs->SCPHASE,     pbvo + BVO_SCPHASE);
 	bvo_write(regs->nothing,     pbvo + BVO_nothing);
-	//bvo_write(regs->CONFIG1,     pbvo + BVO_CONFIG1);		// CONFIG1 is set at the end.
+
+	/* CONFIG1 is set at the end. */
+//	bvo_write(regs->CONFIG1,     pbvo + BVO_CONFIG1);
+
 	bvo_write(regs->SIZE,        pbvo + BVO_SIZE);
 	bvo_write(regs->HS,          pbvo + BVO_HS);
 	bvo_write(regs->VSOL,        pbvo + BVO_VSOL);
@@ -627,53 +639,56 @@ void internal_tve_set_config(COMPOSITE_MODE_TYPE type)
 	bvo_write(regs->VBIDATA3,    pbvo + BVO_VBIDATA3);
 	bvo_write(regs->SIGDATA,     pbvo + BVO_SIGDATA);
 
-	bvo_write(regs->CONFIG1,     pbvo + BVO_CONFIG1);		// CONFIG1 is set at the end.
+	// CONFIG1 is set at the end.
+	bvo_write(regs->CONFIG1,     pbvo + BVO_CONFIG1);
 #else
 	/* SoC code */
 	/* default out value */
-	bvo_write(regs->STARV2,      pbvo + BVO_STARV2);		// 1
-	bvo_write(regs->STARV3,      pbvo + BVO_STARV3);		// 2
+	bvo_write(regs->STARV2,      pbvo + BVO_STARV2);       // 1
+	bvo_write(regs->STARV3,      pbvo + BVO_STARV3);       // 2
 	/* x_offset, y_offset, height, width, sync, starvation */
-	bvo_write(regs->XOFF,        pbvo + BVO_XOFF);			// 3
-	bvo_write(regs->YOFF,        pbvo + BVO_YOFF);			// 4
-	bvo_write(regs->SIZE,        pbvo + BVO_SIZE);			// 5
-	bvo_write(regs->HS,          pbvo + BVO_HS);			// 6
-	bvo_write(regs->VSOL,        pbvo + BVO_VSOL);			// 7
-	bvo_write(regs->VSOH,        pbvo + BVO_VSOH);			// 8
-	bvo_write(regs->SEL,         pbvo + BVO_SEL);			// 9
-	bvo_write(regs->SEH,         pbvo + BVO_SEH);			// 10
-	bvo_write(regs->STARV1,      pbvo + BVO_STARV1);		// 11
+	bvo_write(regs->XOFF,        pbvo + BVO_XOFF);         // 3
+	bvo_write(regs->YOFF,        pbvo + BVO_YOFF);         // 4
+	bvo_write(regs->SIZE,        pbvo + BVO_SIZE);         // 5
+	bvo_write(regs->HS,          pbvo + BVO_HS);           // 6
+	bvo_write(regs->VSOL,        pbvo + BVO_VSOL);         // 7
+	bvo_write(regs->VSOH,        pbvo + BVO_VSOH);         // 8
+	bvo_write(regs->SEL,         pbvo + BVO_SEL);          // 9
+	bvo_write(regs->SEH,         pbvo + BVO_SEH);          // 10
+	bvo_write(regs->STARV1,      pbvo + BVO_STARV1);       // 11
 	/* CVBS matrix (not used) */
-	bvo_write(regs->conv0,       pbvo + BVO_conv0);			// 12
-	bvo_write(regs->conv1,       pbvo + BVO_conv1);			// 13
-	bvo_write(regs->conv2,       pbvo + BVO_conv2);			// 14
-	bvo_write(regs->conv3,       pbvo + BVO_conv3);			// 15
-	bvo_write(regs->conv4,       pbvo + BVO_conv4);			// 16
-	bvo_write(regs->conv5,       pbvo + BVO_conv5);			// 17
+	bvo_write(regs->conv0,       pbvo + BVO_conv0);        // 12
+	bvo_write(regs->conv1,       pbvo + BVO_conv1);        // 13
+	bvo_write(regs->conv2,       pbvo + BVO_conv2);        // 14
+	bvo_write(regs->conv3,       pbvo + BVO_conv3);        // 15
+	bvo_write(regs->conv4,       pbvo + BVO_conv4);        // 16
+	bvo_write(regs->conv5,       pbvo + BVO_conv5);        // 17
 	/* scphase init */
-	bvo_write(regs->SCPHASE,     pbvo + BVO_SCPHASE);		// 18
+	bvo_write(regs->SCPHASE,     pbvo + BVO_SCPHASE);      // 18
 	/* config1 */
-	bvo_write(regs->CONFIG1,     pbvo + BVO_CONFIG1);		// 19
+	bvo_write(regs->CONFIG1,     pbvo + BVO_CONFIG1);      // 19
 	/* CGMS, WSS data */
-	bvo_write(regs->CGMS,        pbvo + BVO_CGMS);			// 20
+	bvo_write(regs->CGMS,        pbvo + BVO_CGMS);         // 20
 	/* ACG amp */
-	bvo_write(regs->CC_AGC,      pbvo + BVO_CC_AGC);		// 21
+	bvo_write(regs->CC_AGC,      pbvo + BVO_CC_AGC);       // 21
 	/* config2 */
-	bvo_write(regs->CONFIG2,     pbvo + BVO_CONFIG2);		// 22
+	bvo_write(regs->CONFIG2,     pbvo + BVO_CONFIG2);      // 22
 	/* Macrovision */
-	bvo_write(regs->N0_N22,      pbvo + BVO_N0_N22);		// 23
-	bvo_write(regs->N1_N2_N3_N4, pbvo + BVO_N1_N2_N3_N4);	// 24
-	bvo_write(regs->N5_N6_N7_N8, pbvo + BVO_N5_N6_N7_N8);	// 25
-	bvo_write(regs->N9_N10_N11,  pbvo + BVO_N9_N10_N11);	// 26
-	bvo_write(regs->N12_N13_N14, pbvo + BVO_N12_N13_N14);	// 27
-	bvo_write(regs->N15_N16_N17, pbvo + BVO_N15_N16_N17);	// 28
-	bvo_write(regs->N19_N20_N21, pbvo + BVO_N19_N20_N21);	// 29
+	bvo_write(regs->N0_N22,      pbvo + BVO_N0_N22);       // 23
+	bvo_write(regs->N1_N2_N3_N4, pbvo + BVO_N1_N2_N3_N4);  // 24
+	bvo_write(regs->N5_N6_N7_N8, pbvo + BVO_N5_N6_N7_N8);  // 25
+	bvo_write(regs->N9_N10_N11,  pbvo + BVO_N9_N10_N11);   // 26
+	bvo_write(regs->N12_N13_N14, pbvo + BVO_N12_N13_N14);  // 27
+	bvo_write(regs->N15_N16_N17, pbvo + BVO_N15_N16_N17);  // 28
+	bvo_write(regs->N19_N20_N21, pbvo + BVO_N19_N20_N21);  // 29
 	/* pixel number */
-	bvo_write(regs->STARV0,      pbvo + BVO_STARV0);		// 30
+	bvo_write(regs->STARV0,      pbvo + BVO_STARV0);       // 30
 #endif
 #endif
 
-	/* To prevent receiving the wrong sync signal, only the sync signal is reset. */
+	/* To prevent receiving the wrong sync signal,
+	 * only the sync signal is reset.
+	 */
 	VIOC_DDICONFIG_BVOVENC_Reset_ctrl(BVOVENC_RESET_BIT_SYNC);
 	/* You need to wait (60ms) */
 	//msleep(60);
@@ -697,27 +712,34 @@ void internal_tve_set_config(COMPOSITE_MODE_TYPE type)
 void internal_tve_clock_onoff(unsigned int onoff)
 {
 	if (onoff) {
-		clk_prepare_enable(tve_clk_dac);				// vdac on, display bus isolation
-		clk_prepare_enable(tve_clk_ntscpal);			// tve on, ddi_config
+		// vdac on, display bus isolation
+		clk_prepare_enable(tve_clk_dac);
+		// tve on, ddi_config
+		clk_prepare_enable(tve_clk_ntscpal);
 		#if defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC901X)
-		VIOC_DDICONFIG_DAC_PWDN_Control(NULL, DAC_ON);	// dac on, ddi_config
+		// dac on, ddi_config
+		VIOC_DDICONFIG_DAC_PWDN_Control(NULL, DAC_ON);
 		#endif
 	} else {
-		clk_disable_unprepare(tve_clk_dac);				// vdac off, display bus isolation
-		clk_disable_unprepare(tve_clk_ntscpal);			// tve off, ddi_config
+		// vdac off, display bus isolation
+		clk_disable_unprepare(tve_clk_dac);
+		// tve off, ddi_config
+		clk_disable_unprepare(tve_clk_ntscpal);
 		#if defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC901X)
-		VIOC_DDICONFIG_DAC_PWDN_Control(NULL, DAC_OFF);	// dac off, ddi_config
+		// dac off, ddi_config
+		VIOC_DDICONFIG_DAC_PWDN_Control(NULL, DAC_OFF);
 		#endif
 	}
 
 	dprintk("%s(%d)\n", __func__, onoff);
 }
 
-void internal_tve_enable(COMPOSITE_MODE_TYPE type, unsigned int onoff)
+void internal_tve_enable(enum COMPOSITE_MODE_TYPE type, unsigned int onoff)
 {
 	/* Warning
 	 * -------
-	 * Don't add any delay in hear, such as print messages or delay something.
+	 * Don't add any delay in hear, such as print messages or
+	 * delay something.
 	 * [clk -> DISP -(No delay)-> BVO]
 	 */
 
@@ -725,7 +747,8 @@ void internal_tve_enable(COMPOSITE_MODE_TYPE type, unsigned int onoff)
 		internal_tve_set_config(type);
 	} else {
 		uint32_t val;
-		//val = (__raw_readl(pbvo + BVO_CONFIG1) & ~(BVO_CONFIG1_DAC_ENABLE_MASK));
+		//val = (__raw_readl(pbvo + BVO_CONFIG1)
+		//	& ~(BVO_CONFIG1_DAC_ENABLE_MASK));
 		val = 0x30000000;	// dac off, bvo
 		__raw_writel(val, pbvo + BVO_CONFIG1);
 	}
@@ -748,11 +771,11 @@ void internal_tve_init(void)
 	//	internal_tve_enable(0, 0);
 	//	internal_tve_clock_onoff(0);
 	//} else {
-	//	pr_err("[ERR][BVO] %s: can't find vioc bvo \n", __func__);
+	//	pr_err("[ERR][BVO] %s: can't find vioc bvo\n", __func__);
 	//}
 }
 
-void internal_tve_mv(COMPOSITE_MODE_TYPE type, unsigned int enable)
+void internal_tve_mv(enum COMPOSITE_MODE_TYPE type, unsigned int enable)
 {
 	uint32_t val = 0;
 	uint32_t mv_off = 0;
@@ -777,7 +800,8 @@ void internal_tve_mv(COMPOSITE_MODE_TYPE type, unsigned int enable)
 	case BVO_FMT_PAL_BG_MV:
 	case BVO_FMT_PAL_BG_WSS:
 	case BVO_FMT_PAL_BG_WSS_MV:
-		val = (__raw_readl(pbvo + BVO_CGMS) & (BVO_CGMS_ODD_MASK | BVO_CGMS_EVEN_MASK));
+		val = (__raw_readl(pbvo + BVO_CGMS)
+			& (BVO_CGMS_ODD_MASK | BVO_CGMS_EVEN_MASK));
 		if (val)
 			fmt = BVO_FMT_PAL_BG_WSS_MV; // cgms on
 		else
@@ -790,14 +814,18 @@ void internal_tve_mv(COMPOSITE_MODE_TYPE type, unsigned int enable)
 	case BVO_FMT_NTSC_J:
 	case BVO_FMT_PAL_NC_WSS:
 	default:
-		pr_err("[ERR][BVO] %s: This format(%d) doesn't support MacroVison\n", __func__, fmt);
+		pr_err("[ERR][BVO] %s: This format(%d) doesn't support MacroVison\n",
+			__func__, fmt);
 		break;
 	}
 
 	regs = &bvo_regs_val[fmt];
 
-	bvo_write(enable ? regs->CC_AGC      : mv_off, pbvo + BVO_CC_AGC);		// AGC_amp
-	bvo_write(enable ? regs->N0_N22      : mv_off, pbvo + BVO_N0_N22);		// MacroVision
+	// AGC_amp
+	bvo_write(enable ? regs->CC_AGC      : mv_off, pbvo + BVO_CC_AGC);
+	// MacroVision
+	bvo_write(enable ? regs->N0_N22      : mv_off, pbvo + BVO_N0_N22);
+
 	bvo_write(enable ? regs->N1_N2_N3_N4 : mv_off, pbvo + BVO_N1_N2_N3_N4);
 	bvo_write(enable ? regs->N5_N6_N7_N8 : mv_off, pbvo + BVO_N5_N6_N7_N8);
 	bvo_write(enable ? regs->N9_N10_N11  : mv_off, pbvo + BVO_N9_N10_N11);
@@ -843,7 +871,8 @@ void internal_tve_set_cgms(unsigned char odd_field_en,
 {
 	uint32_t val;
 
-	val = (__raw_readl(pbvo + BVO_CGMS) & ~(BVO_CGMS_ODD_MASK | BVO_CGMS_EVEN_MASK | BVO_CGMS_DATA_MASK));
+	val = (__raw_readl(pbvo + BVO_CGMS)
+	& ~(BVO_CGMS_ODD_MASK | BVO_CGMS_EVEN_MASK | BVO_CGMS_DATA_MASK));
 
 	val |= data;
 	if (odd_field_en)
@@ -859,13 +888,17 @@ void internal_tve_set_cgms(unsigned char odd_field_en,
 	 */
 	if (odd_field_en || even_field_en) {
 		val = __raw_readl(pbvo + BVO_N0_N22);
-		if (val == bvo_regs_val[BVO_FMT_PAL_BG_MV].N0_N22) {	// If mv values are pal_bg_mv
-			internal_tve_mv(BVO_FMT_PAL_BG_WSS_MV, 1);			// then mv should be pal_bg_wss_mv.
+
+		// If mv values are pal_bg_mv then mv should be pal_bg_wss_mv.
+		if (val == bvo_regs_val[BVO_FMT_PAL_BG_MV].N0_N22) {
+			internal_tve_mv(BVO_FMT_PAL_BG_WSS_MV, 1);
 		}
 	} else {
 		val = __raw_readl(pbvo + BVO_N0_N22);
-		if (val == bvo_regs_val[BVO_FMT_PAL_BG_WSS_MV].N0_N22) {// If mv values are pal_bg_wss_mv
-			internal_tve_mv(BVO_FMT_PAL_BG_MV, 1);				// then mv should be pal_gb_mv.
+
+		// If mv values are pal_bg_wss_mv then mv should be pal_gb_mv.
+		if (val == bvo_regs_val[BVO_FMT_PAL_BG_WSS_MV].N0_N22) {
+			internal_tve_mv(BVO_FMT_PAL_BG_MV, 1);
 		}
 	}
 }
@@ -885,7 +918,7 @@ void internal_tve_get_cgms(unsigned char *odd_field_en,
 
 /*
  * internal_tve_set_cgms_helper(1, 1, 0x00c0);	// force set cgms-a
-*/
+ */
 void internal_tve_set_cgms_helper(unsigned char odd_field_en,
 				unsigned char even_field_en, unsigned int key)
 {
@@ -895,7 +928,8 @@ void internal_tve_set_cgms_helper(unsigned char odd_field_en,
 	data = (crc << 14) | key;
 	internal_tve_set_cgms(odd_field_en, even_field_en, data);
 
-	printk("CGMS-A %s - Composite\n", (odd_field_en | even_field_en) ? "ON" : "OFF");
+	pr_info("CGMS-A %s - Composite\n",
+		(odd_field_en | even_field_en) ? "ON" : "OFF");
 }
 
 
@@ -924,17 +958,22 @@ static int __init vioc_tve_init(void)
 		pr_info("[INF][BVO] disabled\n");
 	} else {
 		pbvo = (volatile void __iomem *)of_iomap(ViocTve_np, 2);
-		if (pbvo)
+		if (pbvo) {
 			pr_info("[INF][BVO] 0x%p\n", pbvo);
+		}
 
 		/* get clock information */
 		tve_clk_ntscpal = of_clk_get(ViocTve_np, 0);
-		if (tve_clk_ntscpal == NULL)
-			pr_err("[ERR][BVO] %s: can not get ntscpal clock\n", __func__);
+		if (tve_clk_ntscpal == NULL) {
+			pr_err("[ERR][BVO] %s: can not get ntscpal clock\n",
+				__func__);
+		}
 
 		tve_clk_dac = of_clk_get(ViocTve_np, 1);
-		if (tve_clk_dac == NULL)
-			pr_err("[ERR][BVO] %s: can not get dac clock\n", __func__);
+		if (tve_clk_dac == NULL) {
+			pr_err("[ERR][BVO] %s: can not get dac clock\n",
+				__func__);
+		}
 	}
 	return 0;
 }

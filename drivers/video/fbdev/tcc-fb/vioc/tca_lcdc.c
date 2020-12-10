@@ -1,5 +1,5 @@
 /*
-*   tca_lcdc.c
+ *   tca_lcdc.c
  *   Author:  <linux@telechips.com>
  *   Created: June 10, 2008
  *   Description: TCC lcd Driver
@@ -20,7 +20,7 @@
  * along with this program; if not, see the file COPYING, or write
  * to the Free Software Foundation, Inc.,
  * 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
-*/
+ */
 
 #include <linux/module.h>
 #include <linux/kernel.h>
@@ -39,7 +39,7 @@
 #include <linux/clk.h>
 #include <linux/clk-provider.h>
 #include <linux/uaccess.h>
-#include <asm/io.h>
+#include <linux/io.h>
 #include <asm/div64.h>
 #ifdef CONFIG_PM
 #include <linux/pm.h>
@@ -89,11 +89,9 @@ void tca_lcdc_interrupt_onoff(char onoff, char lcdc)
 	mask |= (VIOC_DISP_IREQ_FU_MASK | VIOC_DISP_IREQ_DD_MASK);
 #endif
 
-	if (onoff) // VIOC INT en
-	{
+	if (onoff) { // VIOC INT en
 		VIOC_DISP_SetIreqMask(pDISPBase, mask, 0);
-	} else // VIOC INT dis
-	{
+	} else { // VIOC INT dis
 		VIOC_DISP_SetIreqMask(pDISPBase, mask, mask);
 	}
 }
@@ -106,9 +104,8 @@ void lcdc_initialize(struct lcd_panel *lcd_spec, struct tcc_dp_device *pdata)
 	unsigned int default_ovp = 24;
 	unsigned long val;
 
-	if (pdata->DispOrder == DD_SUB) {
-                /* Nothing */
-	}
+	if (pdata->DispOrder == DD_SUB)
+		;/* Nothing */
 #if defined(CONFIG_TCC_VIOCMG)
 	else
 		default_ovp = viocmg_get_main_display_ovp();
@@ -137,9 +134,12 @@ void lcdc_initialize(struct lcd_panel *lcd_spec, struct tcc_dp_device *pdata)
 	else
 		VIOC_DISP_SetPXDW(pDISPBase, 0x3);
 
-#if defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC901X)
+#if defined(CONFIG_ARCH_TCC898X) ||	\
+	defined(CONFIG_ARCH_TCC899X) ||	\
+	defined(CONFIG_ARCH_TCC901X)
 	if (lcd_spec->bus_width <= 24)
-		VIOC_DISP_SetAlign(pDISPBase, 0x1); // Convert to 10-to-8 bits bus
+		VIOC_DISP_SetAlign(pDISPBase, 0x1);
+		// Convert to 10-to-8 bits bus
 	else
 		VIOC_DISP_SetAlign(pDISPBase, 0x0);
 #endif
@@ -170,7 +170,8 @@ void lcdc_initialize(struct lcd_panel *lcd_spec, struct tcc_dp_device *pdata)
 
 	val = (__raw_readl(pDISPBase + DCTRL) &
 	       ~(DCTRL_Y2RMD_MASK | DCTRL_DP_MASK | DCTRL_NI_MASK));
-	val |= ((0x1 << DCTRL_Y2RMD_SHIFT) | (0x0 << DCTRL_DP_SHIFT) | (0x1 << DCTRL_NI_SHIFT));
+	val |= ((0x1 << DCTRL_Y2RMD_SHIFT) | (0x0 << DCTRL_DP_SHIFT) |
+		(0x1 << DCTRL_NI_SHIFT));
 
 	__raw_writel(val, pDISPBase + DCTRL);
 
@@ -178,7 +179,9 @@ void lcdc_initialize(struct lcd_panel *lcd_spec, struct tcc_dp_device *pdata)
 	__raw_writel((lcd_spec->clk_div / 2) << DCLKDIV_PXCLKDIV_SHIFT,
 		     pDISPBase + DCLKDIV);
 
-	#if defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC901X)
+	#if defined(CONFIG_ARCH_TCC898X) ||	\
+		defined(CONFIG_ARCH_TCC899X) ||	\
+		defined(CONFIG_ARCH_TCC901X)
 	__raw_writel(0x00000000, pDISPBase + DBG0);
 	__raw_writel(0x00000000, pDISPBase + DBG1);
 	#else
@@ -219,7 +222,6 @@ void lcdc_initialize(struct lcd_panel *lcd_spec, struct tcc_dp_device *pdata)
 	val |= (0x1 << DCTRL_LEN_SHIFT);
 	__raw_writel(val, pDISPBase+DCTRL);
 }
-
 EXPORT_SYMBOL(lcdc_initialize);
 
 void tcc_lcdc_dithering_setting(struct tcc_dp_device *pdata)

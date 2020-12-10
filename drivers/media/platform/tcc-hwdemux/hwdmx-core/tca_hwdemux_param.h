@@ -26,8 +26,7 @@
 #define FILTER_TYPE_PES 2
 #define FILTER_TYPE_PCR 3
 
-struct tcc_tsif_filter
-{
+struct tcc_tsif_filter {
 	unsigned int f_id;
 	unsigned int f_type;
 	unsigned int f_pid;

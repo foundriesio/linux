@@ -8,7 +8,7 @@ obj-$(CONFIG_LCDlcd_PVLBJT020) += lcd_PVLBJT020.o
 obj-$(CONFIG_DRM_TCC) += lcd_drm_dummy.o
 obj-$(CONFIG_FB_TCC_OVERLAY)	+= tcc_overlay.o
 ifdef CONFIG_ANDROID
-EXTRA_CFLAGS += -Idrivers/staging/android
+ccflags-y += -Idrivers/staging/android
 obj-$(CONFIG_TCC_VIOC_CONTROLLER)	 += tcc_displayblock.o
 endif
 obj-$(CONFIG_LCD_HDMI1920X720_ADV7613)	+= hdmi_1920x720_adv7613.o
@@ -25,7 +25,7 @@ obj-$(CONFIG_LCD_HDMI1280X720)	+= hdmi_1280x720.o
 obj-$(CONFIG_LCD_HDMI1920X1080)	+= hdmi_1920x1080.o
 obj-$(CONFIG_LCD_HDMI4K)		+= hdmi_4k.o
 obj-$(CONFIG_TCC_VIDEO_DISPLAY_DEINTERLACE_MODE)	+= viqe.o viqe/
-EXTRA_CFLAGS += -Idrivers/video/fbdev/tcc-fb/viqe
+ccflags-y += -Idrivers/video/fbdev/tcc-fb/viqe
 #obj-$(CONFIG_HIBERNATION)	+= tcc_qb_fb.o
 
 obj-$(CONFIG_TCC_MIPI)	      += tcc_mipi_dsi.o

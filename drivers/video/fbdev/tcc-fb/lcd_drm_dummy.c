@@ -28,7 +28,7 @@
 #ifndef CONFIG_ARM64
 #include <asm/mach-types.h>
 #endif
-#include <asm/io.h>
+#include <linux/io.h>
 
 #include <video/of_videomode.h>
 #include <video/videomode.h>
@@ -42,11 +42,12 @@
 
 #define LOG_TAG "LCDDUMMY"
 
-static int lcd_drm_dummy_panel_init(struct lcd_panel *panel,
-				struct tcc_dp_device *fb_pdata)
+static int lcd_drm_dummy_panel_init(
+	struct lcd_panel *panel, struct tcc_dp_device *fb_pdata)
 {
-	pr_debug("[DEBUG][%s] %s lcdc:%d DispOrder:%d \n",
-		LOG_TAG, __func__, fb_pdata->ddc_info.blk_num, fb_pdata->DispOrder);
+	pr_debug(
+		"[DEBUG][%s] %s lcdc:%d DispOrder:%d\n", LOG_TAG, __func__,
+		fb_pdata->ddc_info.blk_num, fb_pdata->DispOrder);
 	fb_pdata->FbPowerState = true;
 	fb_pdata->FbUpdateType = FB_RDMA_UPDATE;
 	fb_pdata->DispDeviceType = TCC_OUTPUT_LCD;
@@ -54,8 +55,8 @@ static int lcd_drm_dummy_panel_init(struct lcd_panel *panel,
 	return 0;
 }
 
-static int lcd_drm_dummy_set_power(struct lcd_panel *panel,
-			int on, struct tcc_dp_device *fb_pdata)
+static int lcd_drm_dummy_set_power(
+	struct lcd_panel *panel, int on, struct tcc_dp_device *fb_pdata)
 {
 	pr_debug("[DEBUG][%s] %s : %d\n", LOG_TAG, __func__, on);
 
@@ -71,9 +72,9 @@ static int tcc_dpi_parse_dt(struct device_node *np, struct lcd_panel *panel)
 	int ret;
 
 	memset(&vm, 0, sizeof(vm));
-	#ifdef CONFIG_OF
+#ifdef CONFIG_OF
 	np_base = of_parse_phandle(np, "base_display", 0);
-	if(np_base == NULL) {
+	if (np_base == NULL) {
 		ret = -ENODEV;
 		goto err_failed_vm;
 	}
@@ -83,25 +84,24 @@ static int tcc_dpi_parse_dt(struct device_node *np, struct lcd_panel *panel)
 		ret = of_get_videomode(np_base, &vm, 0);
 		if (ret < 0) {
 			pr_err("[ERROR][%s] %s failed to of_get_videomode\n",
-								LOG_TAG, __func__);
+			       LOG_TAG, __func__);
 			goto err_failed_vm;
 		}
 	} else {
 		pr_err("[ERROR][%s] %s failed to find display-timings node\n",
-								LOG_TAG, __func__);
+		       LOG_TAG, __func__);
 		ret = -1;
 		goto err_failed_vm;
 	}
-	#else
+#else
 	ret = -1;
 	goto err_failed_vm;
-	#endif
+#endif
 
 	/* Update Timing Informations */
 	panel->xres = vm.hactive;
 	panel->yres = vm.vactive;
-	panel->clk_freq = vm.pixelclock,
-	panel->lpc = vm.hactive;
+	panel->clk_freq = vm.pixelclock, panel->lpc = vm.hactive;
 	panel->lewc = vm.hfront_porch;
 	panel->lpw = vm.hsync_len;
 	panel->lswc = vm.hback_porch;
@@ -122,23 +122,22 @@ err_failed_vm:
 }
 
 static struct lcd_panel lcd_drm_dummy_panel = {
-	.name		= "LCD_DRM_DUMMY",
-	.manufacturer	= "telechips",
-	.id		= PANEL_ID_DRM_DUMMY,
-	.bpp		= 24,
-	.clk_div	= 2,
-	.bus_width	= 24,
-	.init		= lcd_drm_dummy_panel_init,
-	.set_power	= lcd_drm_dummy_set_power,
+	.name = "LCD_DRM_DUMMY",
+	.manufacturer = "telechips",
+	.id = PANEL_ID_DRM_DUMMY,
+	.bpp = 24,
+	.clk_div = 2,
+	.bus_width = 24,
+	.init = lcd_drm_dummy_panel_init,
+	.set_power = lcd_drm_dummy_set_power,
 };
 static int lcd_drm_dummy_probe(struct platform_device *pdev)
 {
-	if(tcc_dpi_parse_dt(pdev->dev.of_node, &lcd_drm_dummy_panel) < 0) {
+	if (tcc_dpi_parse_dt(pdev->dev.of_node, &lcd_drm_dummy_panel) < 0)
 		goto err_parse_dt;
-	}
-	#ifdef CONFIG_FB_VIOC
-        tccfb_register_panel(&lcd_drm_dummy_panel);
-	#endif
+#ifdef CONFIG_FB_VIOC
+	tccfb_register_panel(&lcd_drm_dummy_panel);
+#endif
 
 	return 0;
 
@@ -151,25 +150,24 @@ static int lcd_drm_dummy_remove(struct platform_device *pdev)
 	return 0;
 }
 
-
 #ifdef CONFIG_OF
-static struct of_device_id lcd_drm_dummy_of_match[] = {
-       { .compatible = "telechips,lcd_drm_dummy" },
-       {}
+static const struct of_device_id lcd_drm_dummy_of_match[] = {
+	{.compatible = "telechips,lcd_drm_dummy"},
+	{}
 };
 MODULE_DEVICE_TABLE(of, lcd_drm_dummy_of_match);
 #endif
 
 static struct platform_driver lcd_drm_dummy_lcd = {
-	.probe	= lcd_drm_dummy_probe,
-	.remove	= lcd_drm_dummy_remove,
-	.driver	= {
-		.name	= "lcd_drm_dummy_lcd",
-		.owner	= THIS_MODULE,
-		#ifdef CONFIG_OF
-		.of_match_table = of_match_ptr(lcd_drm_dummy_of_match),
-		#endif
-	},
+	.probe = lcd_drm_dummy_probe,
+	.remove = lcd_drm_dummy_remove,
+	.driver = {
+			.name = "lcd_drm_dummy_lcd",
+			.owner = THIS_MODULE,
+#ifdef CONFIG_OF
+			.of_match_table = of_match_ptr(lcd_drm_dummy_of_match),
+#endif
+		},
 };
 
 static __init int lcd_drm_dummy_init(void)

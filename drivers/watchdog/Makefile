@@ -88,8 +88,9 @@ obj-$(CONFIG_ASPEED_WATCHDOG) += aspeed_wdt.o
 obj-$(CONFIG_ZX2967_WATCHDOG) += zx2967_wdt.o
 obj-$(CONFIG_STM32_WATCHDOG) += stm32_iwdg.o
 obj-$(CONFIG_UNIPHIER_WATCHDOG) += uniphier_wdt.o
-obj-$(CONFIG_TCC_WATCHDOG) += tcc_wdt.o
-obj-$(CONFIG_TCC_CBUS_WATCHDOG) += tcc805x_cbus_wdt.o
+obj-$(CONFIG_TCC_PMU_WATCHDOG) += tcc_pmu_wdt.o
+obj-$(CONFIG_TCC_805X_CBUS_WATCHDOG) += tcc805x_cbus_wdt.o
+obj-$(CONFIG_TCC_803X_CBUS_WATCHDOG) += tcc803x_cbus_wdt.o
 
 # AVR32 Architecture
 obj-$(CONFIG_AT32AP700X_WDT) += at32ap700x_wdt.o

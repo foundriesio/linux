@@ -40,7 +40,7 @@
 #include <linux/clk.h>
 #include <linux/clk-provider.h>
 #include <linux/uaccess.h>
-#include <asm/io.h>
+#include <linux/io.h>
 #include <asm/div64.h>
 
 #include <video/tcc/tcc_types.h>
@@ -96,7 +96,7 @@ void tca_dtrc_convter_wait_done(unsigned int component_num)
 
 
 	if (loop >= MAX_WAIT_TIEM) {
-		pr_info("[INF][DTRC] %s wait max count stauts info :  uCTRL:0x%08x loop: %08x  STATUS %08x \n",
+		pr_info("[INF][DTRC] %s wait max count stauts info :  uCTRL:0x%08x loop: %08x  STATUS %08x\n",
 		       __func__, __raw_readl(HwVIOC_DTRC_RDMA + DTRC_CTRL),
 		       loop, __raw_readl(HwVIOC_DTRC_RDMA + DTRC_IRQ));
 	}
@@ -108,7 +108,7 @@ void tca_dtrc_convter_wait_done(unsigned int component_num)
 	}
 
 	if (loop >= MAX_WAIT_TIEM) {
-		pr_info("[INF][DTRC] %s UPD wait max count stauts info :  uCTRL:0x%08x loop: %08x  STATUS %08x \n",
+		pr_info("[INF][DTRC] %s UPD wait max count stauts info :  uCTRL:0x%08x loop: %08x  STATUS %08x\n",
 		       __func__, __raw_readl(HwVIOC_DTRC_RDMA + DTRC_CTRL),
 		       loop, __raw_readl(HwVIOC_DTRC_RDMA + DTRC_IRQ));
 	}
@@ -133,7 +133,7 @@ void tca_dtrc_convter_onoff(unsigned int component_num, unsigned int onoff,
 #if defined(CONFIG_VIOC_DOLBY_VISION_EDR)
 	if (get_vioc_index(component_num) == 0) {
 		volatile void __iomem *pDisp_DV =
-			VIOC_DV_GetAddress((DV_DISP_TYPE)EDR_BL);
+			VIOC_DV_GetAddress((enum DV_DISP_TYPE)EDR_BL);
 
 		if (onoff)
 			VIOC_V_DV_Turnon(pDisp_DV, NULL);
@@ -145,14 +145,14 @@ void tca_dtrc_convter_onoff(unsigned int component_num, unsigned int onoff,
 	if (!onoff && wait_done) {
 		tca_dtrc_convter_wait_done(
 			component_num); // no need to wait because
-				   // VIOC_CONFIG_DMAPath_UnSet() will check it.
-		// pr_info("[INF][DTRC] %s-%d :: OFF done \n", __func__, __LINE__);
+			// VIOC_CONFIG_DMAPath_UnSet() will check it.
+	//pr_info("[INF][DTRC] %s-%d :: OFF done\n", __func__, __LINE__);
 	}
 }
 
 void tca_dtrc_convter_swreset(unsigned int component_num)
 {
-	// pr_info("[INF][DTRC] %s-%d :: %d\n", __func__, __LINE__, component_num);
+// pr_info("[INF][DTRC] %s-%d :: %d\n", __func__, __LINE__, component_num);
 	VIOC_CONFIG_SWReset(component_num, VIOC_CONFIG_RESET);
 	VIOC_CONFIG_SWReset(component_num, VIOC_CONFIG_CLEAR);
 }
@@ -204,24 +204,34 @@ void tca_dtrc_convter_set(unsigned int component_num,
 
 #if 0  // debug log
 	{
-		pr_info("[INF][DTRC] DTRC[%d] >> R[0x%x/0x%x/0x%x] M[%d] idx[%d], ID[%d] W:%d(%d) H:%d(%d) S(%d/%d) C:0x%8x/0x%8x T:0x%8x/0x%8x Str(%d) bpp(%d/%d) crop(%d/%d~%dx%d)\n", dtrc_num,
-			__raw_readl(HwVIOC_DTRC_RDMA+DTRC_CTRL), __raw_readl(HwVIOC_DTRC_RDMA+DTRC_BASE0), __raw_readl(HwVIOC_DTRC_RDMA+DTRC_IRQ),
-			ImageInfo->private_data.optional_info[VID_OPT_HAVE_DTRC_INFO], ImageInfo->private_data.optional_info[VID_OPT_DISP_OUT_IDX],
-			ImageInfo->private_data.optional_info[VID_OPT_BUFFER_ID], ImageInfo->Frame_width, ImageInfo->private_data.dtrcConv_info.m_iWidth,
-			ImageInfo->Frame_height, ImageInfo->private_data.dtrcConv_info.m_iHeight,
-			ImageInfo->private_data.dtrcConv_info.m_iCompressionTableLumaSize, ImageInfo->private_data.dtrcConv_info.m_iCompressionTableChromaSize,
-			ImageInfo->private_data.dtrcConv_info.m_CompressedY[0], ImageInfo->private_data.dtrcConv_info.m_CompressedCb[0],
-			ImageInfo->private_data.dtrcConv_info.m_CompressionTableLuma[0], ImageInfo->private_data.dtrcConv_info.m_CompressionTableChroma[0],
-			ImageInfo->private_data.dtrcConv_info.m_iPicStride,
-			ImageInfo->private_data.dtrcConv_info.m_iBitDepthLuma,
-			ImageInfo->private_data.dtrcConv_info.m_iBitDepthChroma,
-			ImageInfo->crop_left, ImageInfo->crop_top, (ImageInfo->crop_right-ImageInfo->crop_left),(ImageInfo->crop_bottom-ImageInfo->crop_top));
+	pr_info("[INF][DTRC] DTRC[%d] >> R[0x%x/0x%x/0x%x] M[%d] idx[%d],
+	ID[%d] W:%d(%d) H:%d(%d) S(%d/%d) C:0x%8x/0x%8x T:0x%8x/0x%8x Str(%d) bpp(%d/%d) crop(%d/%d~%dx%d)\n", dtrc_num,
+			__raw_readl(HwVIOC_DTRC_RDMA+DTRC_CTRL),
+			__raw_readl(HwVIOC_DTRC_RDMA+DTRC_BASE0),
+			__raw_readl(HwVIOC_DTRC_RDMA+DTRC_IRQ),
+		ImageInfo->private_data.optional_info[VID_OPT_HAVE_DTRC_INFO],
+		ImageInfo->private_data.optional_info[VID_OPT_DISP_OUT_IDX],
+		ImageInfo->private_data.optional_info[VID_OPT_BUFFER_ID],
+	ImageInfo->Frame_width, ImageInfo->private_data.dtrcConv_info.m_iWidth,
+ImageInfo->Frame_height, ImageInfo->private_data.dtrcConv_info.m_iHeight,
+	ImageInfo->private_data.dtrcConv_info.m_iCompressionTableLumaSize,
+	ImageInfo->private_data.dtrcConv_info.m_iCompressionTableChromaSize,
+		ImageInfo->private_data.dtrcConv_info.m_CompressedY[0],
+		ImageInfo->private_data.dtrcConv_info.m_CompressedCb[0],
+	ImageInfo->private_data.dtrcConv_info.m_CompressionTableLuma[0],
+	ImageInfo->private_data.dtrcConv_info.m_CompressionTableChroma[0],
+		ImageInfo->private_data.dtrcConv_info.m_iPicStride,
+		ImageInfo->private_data.dtrcConv_info.m_iBitDepthLuma,
+		ImageInfo->private_data.dtrcConv_info.m_iBitDepthChroma,
+			ImageInfo->crop_left, ImageInfo->crop_top,
+			(ImageInfo->crop_right-ImageInfo->crop_left),
+			(ImageInfo->crop_bottom-ImageInfo->crop_top));
 	}
 #endif //
 
 	// pr_info("[INF][DTRC] D-Unique[%d] :: %d[0x%x] Curr[0x%x/0x%x]\n",
 	// ImageInfo->private_data.optional_info[VID_OPT_BUFFER_ID],
-	//		ImageInfo->private_data.optional_info[VID_OPT_DISP_OUT_IDX],
+	//	ImageInfo->private_data.optional_info[VID_OPT_DISP_OUT_IDX],
 	//ImageInfo->private_data.dtrcConv_info.m_CompressedY[0],
 	//__raw_readl(HwVIOC_DTRC_RDMA+DTRC_BASE0),
 	//__raw_readl(HwVIOC_DTRC_RDMA+DTRC_CUR));
@@ -251,7 +261,7 @@ void tca_dtrc_convter_set(unsigned int component_num,
 		YCmp = ImageInfo->private_data.offset[0];
 		UVCmp = ImageInfo->private_data.offset[1];
 	} else {
-		pr_warn("[WAR][DTRC] do not support this kind of data format \n");
+		pr_warn("[WAR][DTRC] do not support this kind of format\n");
 		return;
 	}
 
@@ -309,9 +319,11 @@ void tca_dtrc_convter_set(unsigned int component_num,
 	VIOC_DTRC_RDMA_SetY2R(HwVIOC_DTRC_RDMA, y2r, 0x2);
 	VIOC_DTRC_RDMA_SetIDSEL(HwVIOC_DTRC_RDMA, 0x101, 0, 0);
 
-	VIOC_DTRC_RDMA_DTCTRL(HwVIOC_DTRC_RDMA, 0, 0x0, 0, 0, 0xff, 0, 0, 0, 0);
-	VIOC_DTRC_RDM_CTRL(HwVIOC_DTRC_RDMA, arid_reg_ctrl, clk_dis, soft_reset,
-			   detile_by_addr_en, pf_cnt_en);
+	VIOC_DTRC_RDMA_DTCTRL(HwVIOC_DTRC_RDMA,
+				0, 0x0, 0, 0, 0xff, 0, 0, 0, 0);
+	VIOC_DTRC_RDM_CTRL(HwVIOC_DTRC_RDMA, arid_reg_ctrl,
+				clk_dis, soft_reset,
+				detile_by_addr_en, pf_cnt_en);
 	VIOC_DTRC_RDMA_F0_ADDR(HwVIOC_DTRC_RDMA, YCmp, YTable, UVCmp, UVTable);
 	VIOC_DTRC_RDMA_F0_SIZE(HwVIOC_DTRC_RDMA, frm0_cbsr_width,
 			       frm0_cbsr_height);
@@ -325,12 +337,12 @@ void tca_dtrc_convter_set(unsigned int component_num,
 	//frm0_uv_byp_detile_addr_s, frm0_uv_byp_detile_addr_e);
 	VIOC_DTRC_RDMA_ARIDR(HwVIOC_DTRC_RDMA, ARID_REG);
 	VIOC_DTRC_RDMA_FETCH_ARID(HwVIOC_DTRC_RDMA, 0, 1);
-	//	VIOC_DTRC_RDMA_DCTL			        (HwVIOC_DTRC_RDMA,
+	//	VIOC_DTRC_RDMA_DCTL	(HwVIOC_DTRC_RDMA,
 	//frm0_data_rdy, frm0_main8, frm0_vinv, frm0_byp, frm1_data_rdy,
-	//frm1_main8, frm1_vinv, frm1_byp); 	VIOC_DTRC_RDMA_F1_ADDR
+	//frm1_main8, frm1_vinv, frm1_byp);	VIOC_DTRC_RDMA_F1_ADDR
 	//(HwVIOC_DTRC_RDMA, YCmp, YTable, UVCmp, UVTable);
 	//	VIOC_DTRC_RDMA_F1_SIZE		        (HwVIOC_DTRC_RDMA,
-	//frm1_cbsr_width, frm1_cbsr_height); 	VIOC_DTRC_RDMA_FRM1_CROP
+	//frm1_cbsr_width, frm1_cbsr_height);	VIOC_DTRC_RDMA_FRM1_CROP
 	//(HwVIOC_DTRC_RDMA, 1, 0, 0, width, height);
 	//	VIOC_DTRC_RDMA_F1_BYP_DETILE_ADDR   (HwVIOC_DTRC_RDMA,
 	//frm1_y_byp_detile_addr_s, frm1_y_byp_detile_addr_e,
@@ -344,21 +356,27 @@ void tca_dtrc_convter_set(unsigned int component_num,
 	if (VIOC_CONFIG_DV_GET_EDR_PATH() &&
 	    get_vioc_index(component_num) == tca_get_main_decompressor_num()) {
 		volatile void __iomem *pDisp_DV =
-			VIOC_DV_GetAddress((DV_DISP_TYPE)EDR_BL);
+			VIOC_DV_GetAddress((enum DV_DISP_TYPE)EDR_BL);
 
-		if (ImageInfo->Lcdc_layer == RDMA_VIDEO || ImageInfo->Lcdc_layer == RDMA_LASTFRM) {
-			if (vioc_get_out_type() == ImageInfo->private_data.dolbyVision_info.reg_out_type) {
-				vioc_v_dv_prog(	ImageInfo->private_data.dolbyVision_info.md_hdmi_addr,
-								ImageInfo->private_data.dolbyVision_info.reg_addr,
-								ImageInfo->private_data.optional_info[VID_OPT_CONTENT_TYPE],
+		if (ImageInfo->Lcdc_layer == RDMA_VIDEO ||
+				ImageInfo->Lcdc_layer == RDMA_LASTFRM) {
+			if (vioc_get_out_type() ==
+		       ImageInfo->private_data.dolbyVision_info.reg_out_type) {
+				vioc_v_dv_prog(
+			ImageInfo->private_data.dolbyVision_info.md_hdmi_addr,
+			ImageInfo->private_data.dolbyVision_info.reg_addr,
+		   ImageInfo->private_data.optional_info[VID_OPT_CONTENT_TYPE],
 								1);
 
-				VIOC_V_DV_SetPXDW(pDisp_DV, NULL, VIOC_PXDW_FMT_24_RGB888);
-				VIOC_V_DV_SetSize(pDisp_DV, NULL, ImageInfo->offset_x, ImageInfo->offset_y, Hactive, Vactive);
+				VIOC_V_DV_SetPXDW(pDisp_DV, NULL,
+						VIOC_PXDW_FMT_24_RGB888);
+				VIOC_V_DV_SetSize(pDisp_DV, NULL,
+					ImageInfo->offset_x,
+					ImageInfo->offset_y, Hactive, Vactive);
 				VIOC_V_DV_Turnon(pDisp_DV, NULL);
 			}
 		} else {
-			pr_err("[ERR][DTRC] @@@@@@@@@@ 2 @@@@@@@@@ Should be implement other layer configuration. \n");
+			pr_err("[ERR][DTRC] @@@@@@@@@@ 2 @@@@@@@@@ Should be implement other layer configuration.\n");
 			return;
 		}
 	}
@@ -366,10 +384,11 @@ void tca_dtrc_convter_set(unsigned int component_num,
 }
 EXPORT_SYMBOL(tca_dtrc_convter_set);
 
-void tca_dtrc_convter_driver_set(unsigned int component_num, unsigned int Fwidth,
-				 unsigned int Fheight, unsigned int pos_x,
-				 unsigned int pos_y, unsigned int y2r,
-				 vp9_compressed_info_t *dtrcConv_info)
+void tca_dtrc_convter_driver_set(unsigned int component_num,
+				unsigned int Fwidth,
+				unsigned int Fheight, unsigned int pos_x,
+				unsigned int pos_y, unsigned int y2r,
+				vp9_compressed_info_t *dtrcConv_info)
 {
 	unsigned int YTable;
 	unsigned int UVTable;
@@ -408,18 +427,20 @@ void tca_dtrc_convter_driver_set(unsigned int component_num, unsigned int Fwidth
 		VIOC_DTRC_GetAddress(component_num);
 
 #if 0  // debug log
-	printk("[DBG][DTRC] >>>>[%d] DTRC width: %d(%d) height: %d(%d) Compressed: 0x%8x / 0x%8x   Table: 0x%8x / 0x%8x \n",
+	pr_info("[DBG][DTRC] >>>>[%d] DTRC width: %d(%d) height: %d(%d) Compressed: 0x%8x / 0x%8x   Table: 0x%8x / 0x%8x\n",
 		dtrc_num, Fwidth, dtrcConv_info->m_iWidth,
 		Fheight, dtrcConv_info->m_iHeight,
-		dtrcConv_info->m_CompressedY[0], dtrcConv_info->m_CompressedCb[0],
-		dtrcConv_info->m_CompressionTableLuma[0], dtrcConv_info->m_CompressionTableChroma[0]);
+		dtrcConv_info->m_CompressedY[0],
+					dtrcConv_info->m_CompressedCb[0],
+		dtrcConv_info->m_CompressionTableLuma[0],
+				dtrcConv_info->m_CompressionTableChroma[0]);
 
-	printk("[DBG][DTRC] Stride (%d) bitDepth (Luma:%d Croma:%d) \n",
+	pr_info("[DBG][DTRC] Stride (%d) bitDepth (Luma:%d Croma:%d)\n",
 		dtrcConv_info->m_iPicStride,
 		dtrcConv_info->m_iBitDepthLuma,
 		dtrcConv_info->m_iBitDepthChroma);
 
-	printk("[DBG][DTRC] * dtrc converter info end  *  \n");
+	pr_info("[DBG][DTRC] * dtrc converter info end  *\n");
 #endif //
 	width = dtrcConv_info->m_iWidth;
 	height = dtrcConv_info->m_iHeight;
@@ -440,8 +461,8 @@ void tca_dtrc_convter_driver_set(unsigned int component_num, unsigned int Fwidth
 
 	frm0_cbsr_width = width / 8;
 	frm0_cbsr_height = height / 8;
-	//	frm1_cbsr_width 	= width/8;
-	//	frm1_cbsr_height 	= height/8;
+	//	frm1_cbsr_width		= width/8;
+	//	frm1_cbsr_height	= height/8;
 
 	frm0_data_rdy = 0x0;
 	if (bpp == 8) {
@@ -497,12 +518,12 @@ void tca_dtrc_convter_driver_set(unsigned int component_num, unsigned int Fwidth
 	//frm0_uv_byp_detile_addr_s, frm0_uv_byp_detile_addr_e);
 	VIOC_DTRC_RDMA_ARIDR(HwVIOC_DTRC_RDMA, ARID_REG);
 	VIOC_DTRC_RDMA_FETCH_ARID(HwVIOC_DTRC_RDMA, 0, 1);
-	//	VIOC_DTRC_RDMA_DCTL			        (HwVIOC_DTRC_RDMA,
+	//	VIOC_DTRC_RDMA_DCTL	(HwVIOC_DTRC_RDMA,
 	//frm0_data_rdy, frm0_main8, frm0_vinv, frm0_byp, frm1_data_rdy,
-	//frm1_main8, frm1_vinv, frm1_byp); 	VIOC_DTRC_RDMA_F1_ADDR
+	//frm1_main8, frm1_vinv, frm1_byp);	VIOC_DTRC_RDMA_F1_ADDR
 	//(HwVIOC_DTRC_RDMA, YCmp, YTable, UVCmp, UVTable);
 	//	VIOC_DTRC_RDMA_F1_SIZE		        (HwVIOC_DTRC_RDMA,
-	//frm1_cbsr_width, frm1_cbsr_height); 	VIOC_DTRC_RDMA_FRM1_CROP
+	//frm1_cbsr_width, frm1_cbsr_height);	VIOC_DTRC_RDMA_FRM1_CROP
 	//(HwVIOC_DTRC_RDMA, 1, 0, 0, width, height);
 	//	VIOC_DTRC_RDMA_F1_BYP_DETILE_ADDR   (HwVIOC_DTRC_RDMA,
 	//frm1_y_byp_detile_addr_s, frm1_y_byp_detile_addr_e,

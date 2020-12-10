@@ -1,27 +1,10 @@
+// SPDX-License-Identifier: GPL-2.0-or-later
 /*
- *   FileName    : TCCxxxx_VPU_CODEC_COMMON.h
- *   Author:  <linux@telechips.com>
- *   Created: June 10, 2008
- *   Description: TCC VPU h/w block
- *
- *   Copyright (C) 2008-2009 Telechips
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, see the file COPYING, or write
- * to the Free Software Foundation, Inc.,
- * 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
- *
+ * Copyright (C) Telechips Inc.
+ * FileName   : TCCxxxx_VPU_CODEC_COMMON.h
+ * Description: TCC VPU h/w block
  */
+
 #ifndef _TCCXXXX_VPU_CODEC_COMMON_H_
 #define _TCCXXXX_VPU_CODEC_COMMON_H_
 
@@ -68,7 +51,7 @@
 #define RETCODE_CALLED_BEFORE               12
 #define RETCODE_NOT_INITIALIZED             13
 #define RETCODE_USERDATA_BUF_NOT_SET        14
-#define RETCODE_CODEC_FINISH                15      //the end of decoding
+#define RETCODE_CODEC_FINISH                15	//the end of decoding
 #define RETCODE_CODEC_EXIT                  16
 #define RETCODE_CODEC_SPECOUT               17
 #define RETCODE_MEM_ACCESS_VIOLATION        18
@@ -94,7 +77,10 @@
 //
 //------------------------------------------------------------------------------
 
-// Interrupt Status
+/*!
+ * Interrupt Status
+ */
+
 #define RETCODE_INTR_DETECTION_NOT_ENABLED    512
 
 
@@ -128,18 +114,25 @@ typedef unsigned long codec_addr_t;     //!< address - 32 bit
 #define COMP_V 2
 
 #ifndef ALIGNED_BUFF
-#define ALIGNED_BUFF(buf, mul) ( ( (unsigned int)buf + (mul-1) ) & ~(mul-1) )
+#define ALIGNED_BUFF(buf, mul) (((unsigned int)buf + (mul-1)) & ~(mul-1))
 #endif
 
 //------------------------------------------------------------------------------
 // Definition of decoding process
 //------------------------------------------------------------------------------
 
-// Output Status
+/*!
+ * Output Status
+ */
+
 #define VPU_DEC_OUTPUT_FAIL         0
 #define VPU_DEC_OUTPUT_SUCCESS      1
 
-// Decoding Status
+
+/*!
+ * Decoding Status
+ */
+
 #define VPU_DEC_SUCCESS                             1
 #define VPU_DEC_INFO_NOT_SUFFICIENT_SPS_PPS_BUFF    2
 #define VPU_DEC_INFO_NOT_SUFFICIENT_SLICE_BUFF      3
@@ -153,7 +146,10 @@ typedef unsigned long codec_addr_t;     //!< address - 32 bit
 #define VPU_DEC_CQ_EMPTY                            11
 #define VPU_DEC_REPORT_NOT_READY                    12
 
-// Decoder Op Code
+/*!
+ * Decoder Op Code
+ */
+
 #define VPU_BASE_OP_KERNEL          0x10000
 #define VPU_DEC_INIT                0x00    //!< init
 #define VPU_DEC_SEQ_HEADER          0x01    //!< decode sequence header
@@ -171,35 +167,59 @@ typedef unsigned long codec_addr_t;     //!< address - 32 bit
 #define VPU_DEC_SWRESET             0x19    //!< decoder sw reset
 #define VPU_DEC_CLOSE               0x20    //!< close
 #define VPU_CODEC_GET_VERSION       0x3000
-/**
+
+/*!
  * Decoder Op Code for kernel
  */
-#define VPU_DEC_INIT_KERNEL					(VPU_BASE_OP_KERNEL	+ VPU_DEC_INIT)
-#define VPU_DEC_SEQ_HEADER_KERNEL			(VPU_BASE_OP_KERNEL	+ VPU_DEC_SEQ_HEADER)
-#define VPU_DEC_GET_INFO_KERNEL				(VPU_BASE_OP_KERNEL	+ VPU_DEC_GET_INFO)
-#define VPU_DEC_REG_FRAME_BUFFER_KERNEL		(VPU_BASE_OP_KERNEL	+ VPU_DEC_REG_FRAME_BUFFER)
-#define VPU_DEC_REG_FRAME_BUFFER2_KERNEL	(VPU_BASE_OP_KERNEL	+ VPU_DEC_REG_FRAME_BUFFER2)
-#define VPU_DEC_REG_FRAME_BUFFER3_KERNEL	(VPU_BASE_OP_KERNEL	+ VPU_DEC_REG_FRAME_BUFFER3)
-#define VPU_DEC_GET_OUTPUT_INFO_KERNEL		(VPU_BASE_OP_KERNEL	+ VPU_DEC_GET_OUTPUT_INFO)
-#define VPU_DEC_DECODE_KERNEL				(VPU_BASE_OP_KERNEL	+ VPU_DEC_DECODE)
-#define VPU_DEC_BUF_FLAG_CLEAR_KERNEL		(VPU_BASE_OP_KERNEL	+ VPU_DEC_BUF_FLAG_CLEAR)
-#define VPU_DEC_FLUSH_OUTPUT_KERNEL			(VPU_BASE_OP_KERNEL	+ VPU_DEC_FLUSH_OUTPUT)
-#define VPU_GET_RING_BUFFER_STATUS_KERNEL	(VPU_BASE_OP_KERNEL	+ VPU_GET_RING_BUFFER_STATUS)
-#define VPU_FILL_RING_BUFFER_AUTO_KERNEL	(VPU_BASE_OP_KERNEL	+ VPU_FILL_RING_BUFFER_AUTO)
-#define VPU_UPDATE_WRITE_BUFFER_PTR_KERNEL	(VPU_BASE_OP_KERNEL	+ VPU_UPDATE_WRITE_BUFFER_PTR)
-#define VPU_DEC_SWRESET_KERNEL				(VPU_BASE_OP_KERNEL	+ VPU_DEC_SWRESET)
-#define VPU_DEC_CLOSE_KERNEL				(VPU_BASE_OP_KERNEL	+ VPU_DEC_CLOSE)
 
-#define VPU_CODEC_GET_VERSION_KERNEL		(VPU_BASE_OP_KERNEL	+ VPU_CODEC_GET_VERSION)
+#define VPU_DEC_INIT_KERNEL			(VPU_BASE_OP_KERNEL +\
+						 VPU_DEC_INIT)
+#define VPU_DEC_SEQ_HEADER_KERNEL		(VPU_BASE_OP_KERNEL + \
+						 VPU_DEC_SEQ_HEADER)
+#define VPU_DEC_GET_INFO_KERNEL		(VPU_BASE_OP_KERNEL + \
+						 VPU_DEC_GET_INFO)
+#define VPU_DEC_REG_FRAME_BUFFER_KERNEL	(VPU_BASE_OP_KERNEL + \
+						 VPU_DEC_REG_FRAME_BUFFER)
+#define VPU_DEC_REG_FRAME_BUFFER2_KERNEL	(VPU_BASE_OP_KERNEL + \
+						 VPU_DEC_REG_FRAME_BUFFER2)
+#define VPU_DEC_REG_FRAME_BUFFER3_KERNEL	(VPU_BASE_OP_KERNEL + \
+						 VPU_DEC_REG_FRAME_BUFFER3)
+#define VPU_DEC_GET_OUTPUT_INFO_KERNEL	(VPU_BASE_OP_KERNEL + \
+						 VPU_DEC_GET_OUTPUT_INFO)
+#define VPU_DEC_DECODE_KERNEL			(VPU_BASE_OP_KERNEL + \
+						 VPU_DEC_DECODE)
+#define VPU_DEC_BUF_FLAG_CLEAR_KERNEL		(VPU_BASE_OP_KERNEL + \
+						 VPU_DEC_BUF_FLAG_CLEAR)
+#define VPU_DEC_FLUSH_OUTPUT_KERNEL		(VPU_BASE_OP_KERNEL + \
+						 VPU_DEC_FLUSH_OUTPUT)
+#define VPU_GET_RING_BUFFER_STATUS_KERNEL	(VPU_BASE_OP_KERNEL + \
+						 VPU_GET_RING_BUFFER_STATUS)
+#define VPU_FILL_RING_BUFFER_AUTO_KERNEL	(VPU_BASE_OP_KERNEL + \
+						 VPU_FILL_RING_BUFFER_AUTO)
+#define VPU_UPDATE_WRITE_BUFFER_PTR_KERNEL	(VPU_BASE_OP_KERNEL + \
+						 VPU_UPDATE_WRITE_BUFFER_PTR)
+#define VPU_DEC_SWRESET_KERNEL		(VPU_BASE_OP_KERNEL + \
+						 VPU_DEC_SWRESET)
+#define VPU_DEC_CLOSE_KERNEL			(VPU_BASE_OP_KERNEL + \
+						 VPU_DEC_CLOSE)
 
-#define GET_RING_BUFFER_STATUS		VPU_GET_RING_BUFFER_STATUS
-#define FILL_RING_BUFFER_AUTO		VPU_FILL_RING_BUFFER_AUTO
-#define GET_INITIAL_INFO_FOR_STREAMING_MODE_ONLY			0x15    //!< Get initial Info for ring buffer use
+#define VPU_CODEC_GET_VERSION_KERNEL	(VPU_BASE_OP_KERNEL + \
+					 VPU_CODEC_GET_VERSION)
+
+#define GET_RING_BUFFER_STATUS	VPU_GET_RING_BUFFER_STATUS
+#define FILL_RING_BUFFER_AUTO	VPU_FILL_RING_BUFFER_AUTO
+
+// Get initial Info for ring buffer use
+#define GET_INITIAL_INFO_FOR_STREAMING_MODE_ONLY	0x15
 
 
-#define GET_RING_BUFFER_STATUS_KERNEL		(VPU_BASE_OP_KERNEL	+ GET_RING_BUFFER_STATUS)
-#define FILL_RING_BUFFER_AUTO_KERNEL		(VPU_BASE_OP_KERNEL	+ FILL_RING_BUFFER_AUTO)
-#define GET_INITIAL_INFO_FOR_STREAMING_MODE_ONLY_KERNEL (VPU_BASE_OP_KERNEL + GET_INITIAL_INFO_FOR_STREAMING_MODE_ONLY)
+#define GET_RING_BUFFER_STATUS_KERNEL		(VPU_BASE_OP_KERNEL + \
+						 GET_RING_BUFFER_STATUS)
+#define FILL_RING_BUFFER_AUTO_KERNEL		(VPU_BASE_OP_KERNEL + \
+						 FILL_RING_BUFFER_AUTO)
+#define GET_INITIAL_INFO_FOR_STREAMING_MODE_ONLY_KERNEL	\
+				(VPU_BASE_OP_KERNEL + \
+				 GET_INITIAL_INFO_FOR_STREAMING_MODE_ONLY)
 
 //------------------------------------------------------------------------------
 // Definition of encoding process
@@ -211,7 +231,10 @@ typedef unsigned long codec_addr_t;     //!< address - 32 bit
 #define AVC_SPS_RBSP        0x10
 #define AVC_PPS_RBSP        0x11
 
-// Encoder Op Code
+/*!
+ * Encoder Op Code
+ */
+
 #define VPU_ENC_INIT                0x00    //!< init
 #define VPU_ENC_REG_FRAME_BUFFER    0x01    //!< register frame buffer
 #define VPU_ENC_PUT_HEADER          0x10
@@ -221,6 +244,6 @@ typedef unsigned long codec_addr_t;     //!< address - 32 bit
 #define VPU_RESET_SW                0x40
 
 
-#define VPU_RESET_SW_KERNEL			(VPU_BASE_OP_KERNEL	+ VPU_RESET_SW)
+#define VPU_RESET_SW_KERNEL	(VPU_BASE_OP_KERNEL + VPU_RESET_SW)
 
 #endif //_TCCXXXX_VPU_CODEC_COMMON_H_

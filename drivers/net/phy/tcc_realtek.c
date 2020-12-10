@@ -59,8 +59,7 @@ static int rtl8211b_config_intr(struct phy_device *phydev)
 	int err;
 
 	if (phydev->interrupts == PHY_INTERRUPT_ENABLED)
-		err = phy_write(phydev, RTL821x_INER,
-				RTL821x_INER_INIT);
+		err = phy_write(phydev, RTL821x_INER, RTL821x_INER_INIT);
 	else
 		err = phy_write(phydev, RTL821x_INER, 0);
 
@@ -106,8 +105,8 @@ static int rtl8211f_config_init(struct phy_device *phydev)
 	reg = (unsigned short)phy_read(phydev, 0x11);
 
 	/* enable TX-delay for rgmii-id and rgmii-txid, otherwise disable it */
-	if ( (phydev->interface == PHY_INTERFACE_MODE_RGMII_ID) ||
-	    (phydev->interface == PHY_INTERFACE_MODE_RGMII_TXID) )
+	if ((phydev->interface == PHY_INTERFACE_MODE_RGMII_ID) ||
+	    (phydev->interface == PHY_INTERFACE_MODE_RGMII_TXID))
 		reg |= (unsigned short)RTL8211F_TX_DELAY;
 	else
 		reg &= (unsigned short)(~(unsigned short)RTL8211F_TX_DELAY);
@@ -121,71 +120,71 @@ static int rtl8211f_config_init(struct phy_device *phydev)
 
 static struct phy_driver realtek_drvs[5] = {
 	{
-		.phy_id         = 0x00008201,
-		.name           = "RTL8201CP Ethernet",
-		.phy_id_mask    = 0x0000ffff,
-		.features       = (unsigned int)PHY_BASIC_FEATURES,
-		.flags          = PHY_HAS_INTERRUPT,
-		.config_aneg    = &genphy_config_aneg,
-		.read_status    = &genphy_read_status,
-	}, {
-		.phy_id		= 0x001cc912,
-		.name		= "RTL8211B Gigabit Ethernet",
-		.phy_id_mask	= 0x001fffff,
-		.features	= (unsigned int)PHY_GBIT_FEATURES,
-		.flags		= PHY_HAS_INTERRUPT,
-		.config_aneg	= &genphy_config_aneg,
-		.read_status	= &genphy_read_status,
-		.ack_interrupt	= &rtl821x_ack_interrupt,
-		.config_intr	= &rtl8211b_config_intr,
-	}, {
-		.phy_id		= 0x001cc914,
-		.name		= "RTL8211DN Gigabit Ethernet",
-		.phy_id_mask	= 0x001fffff,
-		.features	= (unsigned int)PHY_GBIT_FEATURES,
-		.flags		= PHY_HAS_INTERRUPT,
-		.config_aneg	= genphy_config_aneg,
-		.read_status	= genphy_read_status,
-		.ack_interrupt	= rtl821x_ack_interrupt,
-		.config_intr	= rtl8211e_config_intr,
-		.suspend	= genphy_suspend,
-		.resume		= genphy_resume,
-	}, {
-		.phy_id		= 0x001cc915,
-		.name		= "RTL8211E Gigabit Ethernet",
-		.phy_id_mask	= 0x001fffff,
-		.features	= (unsigned int)PHY_GBIT_FEATURES,
-		.flags		= PHY_HAS_INTERRUPT,
-		.config_aneg	= &genphy_config_aneg,
-		.read_status	= &genphy_read_status,
-		.ack_interrupt	= &rtl821x_ack_interrupt,
-		.config_intr	= &rtl8211e_config_intr,
-		.suspend	= genphy_suspend,
-		.resume		= genphy_resume,
-	}, {
-		.phy_id		= 0x001cc916,
-		.name		= "RTL8211F Gigabit Ethernet",
-		.phy_id_mask	= 0x001fffff,
-		.features	= (unsigned int)PHY_GBIT_FEATURES,
-		.flags		= PHY_HAS_INTERRUPT,
-		.config_aneg	= &genphy_config_aneg,
-		.config_init	= &rtl8211f_config_init,
-		.read_status	= &genphy_read_status,
-		.ack_interrupt	= &rtl8211f_ack_interrupt,
-		.config_intr	= &rtl8211f_config_intr,
-		.suspend	= genphy_suspend,
-		.resume		= genphy_resume,
-	},
+	 .phy_id = 0x00008201,
+	 .name = "RTL8201CP Ethernet",
+	 .phy_id_mask = 0x0000ffff,
+	 .features = (unsigned int)PHY_BASIC_FEATURES,
+	 .flags = PHY_HAS_INTERRUPT,
+	 .config_aneg = &genphy_config_aneg,
+	 .read_status = &genphy_read_status,
+	 }, {
+	     .phy_id = 0x001cc912,
+	     .name = "RTL8211B Gigabit Ethernet",
+	     .phy_id_mask = 0x001fffff,
+	     .features = (unsigned int)PHY_GBIT_FEATURES,
+	     .flags = PHY_HAS_INTERRUPT,
+	     .config_aneg = &genphy_config_aneg,
+	     .read_status = &genphy_read_status,
+	     .ack_interrupt = &rtl821x_ack_interrupt,
+	     .config_intr = &rtl8211b_config_intr,
+	     }, {
+		 .phy_id = 0x001cc914,
+		 .name = "RTL8211DN Gigabit Ethernet",
+		 .phy_id_mask = 0x001fffff,
+		 .features = (unsigned int)PHY_GBIT_FEATURES,
+		 .flags = PHY_HAS_INTERRUPT,
+		 .config_aneg = genphy_config_aneg,
+		 .read_status = genphy_read_status,
+		 .ack_interrupt = rtl821x_ack_interrupt,
+		 .config_intr = rtl8211e_config_intr,
+		 .suspend = genphy_suspend,
+		 .resume = genphy_resume,
+		 }, {
+		     .phy_id = 0x001cc915,
+		     .name = "RTL8211E Gigabit Ethernet",
+		     .phy_id_mask = 0x001fffff,
+		     .features = (unsigned int)PHY_GBIT_FEATURES,
+		     .flags = PHY_HAS_INTERRUPT,
+		     .config_aneg = &genphy_config_aneg,
+		     .read_status = &genphy_read_status,
+		     .ack_interrupt = &rtl821x_ack_interrupt,
+		     .config_intr = &rtl8211e_config_intr,
+		     .suspend = genphy_suspend,
+		     .resume = genphy_resume,
+		     }, {
+			 .phy_id = 0x001cc916,
+			 .name = "RTL8211F Gigabit Ethernet",
+			 .phy_id_mask = 0x001fffff,
+			 .features = (unsigned int)PHY_GBIT_FEATURES,
+			 .flags = PHY_HAS_INTERRUPT,
+			 .config_aneg = &genphy_config_aneg,
+			 .config_init = &rtl8211f_config_init,
+			 .read_status = &genphy_read_status,
+			 .ack_interrupt = &rtl8211f_ack_interrupt,
+			 .config_intr = &rtl8211f_config_intr,
+			 .suspend = genphy_suspend,
+			 .resume = genphy_resume,
+			 },
 };
 
 module_phy_driver(realtek_drvs);
 
 static struct mdio_device_id __maybe_unused realtek_tbl[] = {
-	{ 0x001cc912, 0x001fffff },
-	{ 0x001cc914, 0x001fffff },
-	{ 0x001cc915, 0x001fffff },
-	{ 0x001cc916, 0x001fffff },
-	{ }
+	{0x001cc912, 0x001fffff},
+	{0x001cc914, 0x001fffff},
+	{0x001cc915, 0x001fffff},
+	{0x001cc916, 0x001fffff},
+	{}
 };
 
 MODULE_DEVICE_TABLE(mdio, realtek_tbl);

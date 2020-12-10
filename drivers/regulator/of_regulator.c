@@ -127,7 +127,8 @@ static void of_get_regulation_constraints(struct device_node *np,
 		if (desc && desc->of_map_mode) {
 			mode = desc->of_map_mode(pval);
 			if (mode == REGULATOR_MODE_INVALID)
-				pr_err("[ERROR][Regulator]%s: invalid mode %u\n", np->name, pval);
+				pr_err("[ERROR][Regulator]%s: invalid mode %u\n",
+						np->name, pval);
 			else
 				constraints->initial_mode = mode;
 		} else {

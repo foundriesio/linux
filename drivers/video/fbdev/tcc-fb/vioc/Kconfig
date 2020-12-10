@@ -4,7 +4,7 @@ config TCC_VIOC_CONTROLLER
 	default y
 
 	help
-	  TCC VIOC controller 
+	  TCC VIOC controller
 
 	  If unsure, say N.
 
@@ -21,7 +21,7 @@ config VIOC_MAP_DECOMP
 	default y
 
 	help
-	  TCC VIOC MAP CONVERTER Block. 
+	  TCC VIOC MAP CONVERTER Block.
 	  Decompress  HEVC compressed data.
 
 	  If unsure, say N.

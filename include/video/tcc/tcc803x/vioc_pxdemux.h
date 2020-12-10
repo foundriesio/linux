@@ -1,10 +1,5 @@
 /*
- * linux/include/video/tcc/vioc_pd.h
- * Author:  <linux@telechips.com>
- * Created: June 10, 2008
- * Description: TCC VIOC h/w block 
- *
- * Copyright (C) 2008-2009 Telechips
+ * Copyright (C) Telechips, Inc.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -21,7 +16,6 @@
  * to the Free Software Foundation, Inc.,
  * 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  */
-
 #ifndef __VIOC_PXDEMUX_H__
 #define	__VIOC_PXDEMUX_H__
 
@@ -294,7 +288,7 @@ typedef enum {
 } PD_MUX3TO1_IDX;
 
 typedef enum {
-	PD_MUX5TO1_IDX0 =0,
+	PD_MUX5TO1_IDX0 = 0,
 	PD_MUX5TO1_IDX1,
 	PD_MUX5TO1_IDX2,
 	PD_MUX5TO1_IDX3,
@@ -307,16 +301,29 @@ typedef enum {
 #define TXOUT_VS				(26)
 #define TXOUT_R_D(x)			(x + 0x10)
 #define TXOUT_G_D(x)			(x + 0x8)
-#define TXOUT_B_D(x)			(x )
+#define TXOUT_B_D(x)			(x)
 
 #define TXOUT_MAX_LINE			4
 #define TXOUT_DATA_PER_LINE		7
-#define TXOUT_GET_DATA(i)	((TXOUT_DATA_PER_LINE -1) -((i) % TXOUT_DATA_PER_LINE) + (TXOUT_DATA_PER_LINE * ((i) /TXOUT_DATA_PER_LINE )))
+#define TXOUT_GET_DATA(i) ( \
+	(TXOUT_DATA_PER_LINE - 1) \
+	- ((i) % TXOUT_DATA_PER_LINE) \
+	+ (TXOUT_DATA_PER_LINE * ((i) / TXOUT_DATA_PER_LINE)) \
+	)
 
-extern void VIOC_PXDEMUX_SetConfigure(unsigned int idx, unsigned int lr, unsigned int bypass, unsigned int width);
-extern void VIOC_PXDEMUX_SetDataSwap(unsigned int idx, unsigned int ch, unsigned int set);
-extern void VIOC_PXDEMUX_SetMuxOutput(PD_MUX_TYPE mux, unsigned int ch, unsigned int select,unsigned int enable);
-extern void VIOC_PXDEMUX_SetDataPath(unsigned int ch, unsigned int path,unsigned int set);
-extern void VIOC_PXDEMUX_SetDataArray(unsigned int ch, unsigned int data[TXOUT_MAX_LINE][TXOUT_DATA_PER_LINE]);
-extern volatile void __iomem* VIOC_PXDEMUX_GetAddress(void);
+extern void VIOC_PXDEMUX_SetConfigure(
+	unsigned int idx, unsigned int lr,
+	unsigned int bypass, unsigned int width);
+extern void VIOC_PXDEMUX_SetDataSwap(
+	unsigned int idx, unsigned int ch, unsigned int set);
+extern void VIOC_PXDEMUX_SetMuxOutput(
+	PD_MUX_TYPE mux, unsigned int ch,
+	unsigned int select, unsigned int enable);
+extern void VIOC_PXDEMUX_SetDataPath(
+	unsigned int ch, unsigned int path, unsigned int set);
+extern void VIOC_PXDEMUX_SetDataArray(
+	unsigned int ch,
+	unsigned int data[TXOUT_MAX_LINE][TXOUT_DATA_PER_LINE]);
+extern volatile void __iomem *VIOC_PXDEMUX_GetAddress(void);
+
 #endif

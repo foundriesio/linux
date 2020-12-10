@@ -30,8 +30,8 @@ Suite 330, Boston, MA 02111-1307 USA
 #include <linux/of_address.h>
 #include <linux/clk-provider.h>
 
-#include <asm/io.h>
-#include <asm/uaccess.h>
+#include <linux/io.h>
+#include <linux/uaccess.h>
 #include <asm/delay.h>
 #ifndef CONFIG_ARM64
 #include <asm/mach-types.h>
@@ -122,12 +122,13 @@ enum
 extern int set_persist_display_mode(int persist_display_mode);
 #endif
 #if defined(CONFIG_FB_TCC_COMPOSITE)
-extern void tcc_composite_get_spec(COMPOSITE_MODE_TYPE mode, COMPOSITE_SPEC_TYPE *spec);
+extern void tcc_composite_get_spec(enum COMPOSITE_MODE_TYPE mode, struct COMPOSITE_SPEC_TYPE *spec);
 extern void tcc_composite_attach(char lcdc_num, char mode, char starter_flag);
 extern int tcc_composite_connect_lcdc(int lcdc_num, int enable);
 #endif
 #if defined(CONFIG_FB_TCC_COMPONENT)
-extern void tcc_component_get_spec(COMPONENT_MODE_TYPE mode, COMPONENT_SPEC_TYPE *spec);
+extern void tcc_component_get_spec(enum COMPONENT_MODE_TYPE mode,
+	struct COMPONENT_SPEC_TYPE *spec);
 #endif
 #if defined(CONFIG_FB_TCC_COMPONENT_THS8200)
 extern void ths8200_enable(int mode, int starter_flag);
@@ -225,8 +226,8 @@ void tcc_output_starter_memclr(int img_width, int img_height)
 void tcc_output_starter_composite(unsigned char lcdc_num, unsigned char type, struct platform_device *pdev)
 {
 #ifdef CONFIG_FB_TCC_COMPOSITE
-	COMPOSITE_MODE_TYPE mode;
-	COMPOSITE_SPEC_TYPE spec;
+	enum COMPOSITE_MODE_TYPE mode;
+	struct COMPOSITE_SPEC_TYPE spec;
 	stLTIMING CompositeTiming;
 	stLCDCTR LcdCtrlParam;
 	volatile void __iomem *pDISP = pOutput_Starter_DISP;
@@ -297,7 +298,7 @@ void tcc_output_starter_composite(unsigned char lcdc_num, unsigned char type, st
 	CompositeTiming.fswc2 = spec.composite_FSWC2;
 	CompositeTiming.fewc2 = spec.composite_FEWC2;
 
-	memset((stLCDCTR *)&LcdCtrlParam, 0x00, sizeof(stLCDCTR));
+	memset((stLCDCTR *)&LcdCtrlParam, 0x00, sizeof(stLCDCTRR));
 #if defined(CONFIG_FB_TCC_COMPOSITE_BVO)
 	//LcdCtrlParam.evp = 0;
 	//LcdCtrlParam.evs = 0;
@@ -353,7 +354,7 @@ void tcc_output_starter_component(unsigned char lcdc_num, unsigned char type, st
 	int component_io_port_num, ret;
 	struct device_node *np_component;
 
-	COMPONENT_SPEC_TYPE component_spec;
+	struct COMPONENT_SPEC_TYPE component_spec;
 	stLTIMING ComponentTiming;
 	stLCDCTR LcdCtrlParam;
 

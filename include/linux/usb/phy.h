@@ -165,25 +165,30 @@ struct usb_phy {
 	void (*set_phy_mux_sel)(struct usb_phy *phy, int is_mux);
 	/* For PMIC gpio, Need to configuration after da9063 intializing */
 	int (*set_vbus_resource)(struct usb_phy *phy);
-#if defined (CONFIG_DYNAMIC_DC_LEVEL_ADJUSTMENT)
+#if defined(CONFIG_DYNAMIC_DC_LEVEL_ADJUSTMENT)
 	/* USB HS DC voltage level adjustment function */
 	int (*get_dc_voltage_level)(struct usb_phy *phy);
 	int (*set_dc_voltage_level)(struct usb_phy *phy, unsigned int level);
 #endif
-#if defined (CONFIG_TCC_BC_12)
+#if defined(CONFIG_TCC_BC_12)
 	void (*set_chg_det)(struct usb_phy *phy);
 #endif
 	void __iomem *(*get_base)(struct usb_phy *phy);
-#if defined (CONFIG_TCC_DWC3_PHY)
-	unsigned int (*read_u30phy_reg)(struct usb_phy *phy, unsigned int address);
+#if defined(CONFIG_TCC_DWC3_PHY)
+	unsigned int (*read_u30phy_reg)(struct usb_phy *phy,
+			unsigned int address);
 	void (*read_u30phy_reg_all)(struct usb_phy *phy);
-	unsigned int (*write_u30phy_reg)(struct usb_phy *phy, unsigned int address, unsigned int write_data);
+	unsigned int (*write_u30phy_reg)(struct usb_phy *phy,
+			unsigned int address, unsigned int write_data);
 	void (*bit_set_phy)(void __iomem *base, u32 offset, u32 value);
 	void (*bit_clear_phy)(void __iomem *base, u32 offset, u32 value);
-#if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC805X)
-	unsigned int (*read_ss_u30phy_reg)(struct usb_phy *phy, unsigned int address);
+#if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC899X) ||	\
+	defined(CONFIG_ARCH_TCC805X)
+	unsigned int (*read_ss_u30phy_reg)(struct usb_phy *phy,
+			unsigned int address);
 	void (*read_ss_u30phy_reg_all)(struct usb_phy *phy);
-	unsigned int (*write_ss_u30phy_reg)(struct usb_phy *phy, unsigned int address, unsigned int write_data);	
+	unsigned int (*write_ss_u30phy_reg)(struct usb_phy *phy,
+			unsigned int address, unsigned int write_data);
 	void __iomem		*ref_base;
 #endif
 #endif

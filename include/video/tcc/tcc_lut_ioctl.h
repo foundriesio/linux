@@ -25,9 +25,7 @@
 
 #define CONFIG_LUT_SUPPORT_CSC_PRESET_SET
 
-
 #define LUT_IOC_MAGIC		'l'
-
 
 enum{
 	LUT_DEV0 = 0,
@@ -39,7 +37,6 @@ enum{
 	LUT_COMP3 = 6,
 	LUT_DEV3 = 7,
 };
-
 
 enum{
         LUT_CSC_PRESET_SDR_TO_HDR10 = 0,
@@ -68,15 +65,19 @@ enum {
         LUT_CSC_COEFF_MAX
 };
 
-struct VIOC_LUT_VALUE_SET
-{
-#if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC897X) || defined(CONFIG_ARCH_TCC805X)
-	unsigned int Gamma[256];	 //vioc componet : RGB ,  disp component : BGR
+struct VIOC_LUT_VALUE_SET {
+#if defined(CONFIG_ARCH_TCC803X) ||\
+		defined(CONFIG_ARCH_TCC897X) ||\
+			defined(CONFIG_ARCH_TCC805X)
+	unsigned int Gamma[256];
+	//vioc componet : RGB ,  disp component : BGR
 #else
 	// 10bit RGB
-	unsigned int Gamma[1024];	 //vioc componet : RGB ,  disp component : BGR
+	unsigned int Gamma[1024];
+	//vioc componet : RGB ,  disp component : BGR
 #endif//
-	unsigned int lut_number; 	//enum VIOC_LUT_NUM
+	unsigned int lut_number;
+	//enum VIOC_LUT_NUM
 };
 
 /**
@@ -84,8 +85,7 @@ struct VIOC_LUT_VALUE_SET
  * This is an extension of VIOC_LUT_VALUE_SET, It has the additional
  * variable to provides information of lut_size
  */
-struct VIOC_LUT_VALUE_SET_EX
-{
+struct VIOC_LUT_VALUE_SET_EX {
         /** lookup table size */
         unsigned int lut_size;
         /** lookup table id */
@@ -96,21 +96,18 @@ struct VIOC_LUT_VALUE_SET_EX
         unsigned int Gamma[1024];
 };
 
-struct VIOC_LUT_PLUG_IN_SET
-{
+struct VIOC_LUT_PLUG_IN_SET {
 	unsigned int enable;
 	unsigned int lut_number;  		//enum VIOC_LUT_NUM
 	unsigned int lut_plug_in_ch; 	//ex :VIOC_LUT_RDMA_00
 };
 
-struct VIOC_LUT_ONOFF_SET
-{
+struct VIOC_LUT_ONOFF_SET {
 	unsigned int lut_onoff;
 	unsigned int lut_number; 	//enum VIOC_LUT_NUM
 };
 
-struct VIOC_LUT_SET_Type
-{
+struct VIOC_LUT_SET_Type {
 	unsigned int lut_value;
 	int sin_value;
 	int cos_value;
@@ -118,28 +115,24 @@ struct VIOC_LUT_SET_Type
 	int saturation;
 };
 
-struct VIOC_LUT_CSC_PRESET_SET
-{
+struct VIOC_LUT_CSC_PRESET_SET {
         unsigned int lut_number;
         unsigned int preset_id;
         unsigned int enable;
 };
 
-struct VIOC_LUT_CSC_COEFF
-{
+struct VIOC_LUT_CSC_COEFF {
 	unsigned short csc_coeff_1[3];
 	unsigned short csc_coeff_2[3];
 	unsigned short csc_coeff_3[3];
 };
 
-struct VIOC_LUT_MIX_CONFIG
-{
+struct VIOC_LUT_MIX_CONFIG {
 	int r2y_sel;
 	int bypass;
 };
 
-struct VIOC_LUT_UPDATE_PEND
-{
+struct VIOC_LUT_UPDATE_PEND {
 	unsigned int lut_number;
 
 	/** lookup parameter bit[ :0] table 0: rgb-table, 1: y-table */
@@ -147,29 +140,42 @@ struct VIOC_LUT_UPDATE_PEND
 	int update_pend;
 };
 
-#define TCC_LUT_SET		_IOW(LUT_IOC_MAGIC, 2, struct VIOC_LUT_VALUE_SET) //hw vioc lut set
-#define TCC_LUT_PLUG_IN		_IOW(LUT_IOC_MAGIC, 3, struct VIOC_LUT_PLUG_IN_SET)
-#define TCC_LUT_ONOFF		_IOW(LUT_IOC_MAGIC, 4, struct VIOC_LUT_ONOFF_SET)
+#define TCC_LUT_SET\
+	_IOW(LUT_IOC_MAGIC, 2, struct VIOC_LUT_VALUE_SET) //hw vioc lut set
+#define TCC_LUT_PLUG_IN\
+	_IOW(LUT_IOC_MAGIC, 3, struct VIOC_LUT_PLUG_IN_SET)
+#define TCC_LUT_ONOFF\
+	_IOW(LUT_IOC_MAGIC, 4, struct VIOC_LUT_ONOFF_SET)
 
-#define TCC_LUT_PLUG_IN_INFO    _IOWR(LUT_IOC_MAGIC, 10, struct VIOC_LUT_PLUG_IN_SET)
-#define TCC_LUT_CSC_PRESET_SET  _IOW(LUT_IOC_MAGIC, 11, struct VIOC_LUT_CSC_PRESET_SET)
+#define TCC_LUT_PLUG_IN_INFO\
+	_IOWR(LUT_IOC_MAGIC, 10, struct VIOC_LUT_PLUG_IN_SET)
+#define TCC_LUT_CSC_PRESET_SET\
+	_IOW(LUT_IOC_MAGIC, 11, struct VIOC_LUT_CSC_PRESET_SET)
 
-#define TCC_LUT_GET_DEPTH       _IOR(LUT_IOC_MAGIC, 20, unsigned int)
-#define TCC_LUT_SET_EX          _IOW(LUT_IOC_MAGIC, 21, struct VIOC_LUT_VALUE_SET_EX)
+#define TCC_LUT_GET_DEPTH\
+	_IOR(LUT_IOC_MAGIC, 20, unsigned int)
+#define TCC_LUT_SET_EX\
+	_IOW(LUT_IOC_MAGIC, 21, struct VIOC_LUT_VALUE_SET_EX)
 
-#define TCC_LUT_SET_CSC_COEFF  	_IOW(LUT_IOC_MAGIC, 22, struct VIOC_LUT_CSC_COEFF)
-#define TCC_LUT_SET_MIX_CONIG	_IOW(LUT_IOC_MAGIC, 24, struct VIOC_LUT_MIX_CONFIG)
-#define TCC_LUT_GET_UPDATE_PEND _IOW(LUT_IOC_MAGIC, 25, struct VIOC_LUT_UPDATE_PEND)
+#define TCC_LUT_SET_CSC_COEFF\
+	_IOW(LUT_IOC_MAGIC, 22, struct VIOC_LUT_CSC_COEFF)
+#define TCC_LUT_SET_MIX_CONIG\
+	_IOW(LUT_IOC_MAGIC, 24, struct VIOC_LUT_MIX_CONFIG)
+#define TCC_LUT_GET_UPDATE_PEND\
+	_IOW(LUT_IOC_MAGIC, 25, struct VIOC_LUT_UPDATE_PEND)
 
 #ifndef ADDRESS_ALIGNED
 #define ADDRESS_ALIGNED
 #define ALIGN_BIT 			        (0x8-1)
 #define BIT_0 					3
-#define GET_ADDR_YUV42X_spY(Base_addr) 	        (((((unsigned int)Base_addr) + ALIGN_BIT)>> BIT_0)<<BIT_0)
-#define GET_ADDR_YUV42X_spU(Yaddr, x, y) 	(((((unsigned int)Yaddr+(x*y)) + ALIGN_BIT)>> BIT_0)<<BIT_0)
-#define GET_ADDR_YUV422_spV(Uaddr, x, y) 	(((((unsigned int)Uaddr+(x*y/2)) + ALIGN_BIT) >> BIT_0)<<BIT_0)
-#define GET_ADDR_YUV420_spV(Uaddr, x, y) 	(((((unsigned int)Uaddr+(x*y/4)) + ALIGN_BIT) >> BIT_0)<<BIT_0)
+#define GET_ADDR_YUV42X_spY(Base_addr)\
+	(((((unsigned int)Base_addr) + ALIGN_BIT) >> BIT_0)<<BIT_0)
+#define GET_ADDR_YUV42X_spU(Yaddr, x, y)\
+	(((((unsigned int)Yaddr+(x*y)) + ALIGN_BIT) >> BIT_0)<<BIT_0)
+#define GET_ADDR_YUV422_spV(Uaddr, x, y)\
+	(((((unsigned int)Uaddr+(x*y/2)) + ALIGN_BIT) >> BIT_0)<<BIT_0)
+#define GET_ADDR_YUV420_spV(Uaddr, x, y)\
+	(((((unsigned int)Uaddr+(x*y/4)) + ALIGN_BIT) >> BIT_0)<<BIT_0)
 #endif
 
 #endif//
-

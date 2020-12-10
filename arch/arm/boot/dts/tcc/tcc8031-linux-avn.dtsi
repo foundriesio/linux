@@ -142,11 +142,11 @@
 	};
 
 	switch_reverse {
-		compatible = "telechips,switch_reverse";
+		compatible = "telechips,switch";
 		status = "disabled";
 
 		pinctrl-names = "default";
-		pinctrl-0 = <&switch_reverse_ma15>;
+		pinctrl-0 = <&switch_ma15>;
 
 		switch-gpios = <&gpma 15 1>;
 		switch-active = <0>;
@@ -587,15 +587,20 @@
 
 	i2s@16101000 {
 		pinctrl-names = "default", "idle";
-		pinctrl-0 = <&m1dai3_mclk &m1dai3_bclk &m1dai3_lrck &m1dai3_dao0 &m1dai3_dai0>;
-		pinctrl-1 = <&m1dai3_mclk_idle &m1dai3_bclk_idle &m1dai3_lrck_idle &m1dai3_dao0_idle &m1dai3_dai0_idle>;
+		pinctrl-0 = <&m1dai3_mclk &m1dai3_bclk &m1dai3_lrck
+			     &m1dai3_dao0 &m1dai3_dai0>;
+		pinctrl-1 = <&m1dai3_mclk_idle &m1dai3_bclk_idle
+			     &m1dai3_lrck_idle &m1dai3_dao0_idle
+			     &m1dai3_dai0_idle>;
 		status = "okay";
 	};
 
 	i2s@16201000 {
 		pinctrl-names = "default", "idle";
-		pinctrl-0 = <&m0dai0_bclk &m0dai0_lrck &m0dai0_dao0 &m0dai0_dai0>;
-		pinctrl-1 = <&m0dai0_bclk_idle &m0dai0_lrck_idle &m0dai0_dao0_idle &m0dai0_dai0_idle>;
+		pinctrl-0 = <&m0dai0_bclk &m0dai0_lrck
+			     &m0dai0_dao0 &m0dai0_dai0>;
+		pinctrl-1 = <&m0dai0_bclk_idle &m0dai0_lrck_idle
+			     &m0dai0_dao0_idle &m0dai0_dai0_idle>;
 		status = "okay";
 	};
 
@@ -726,20 +731,28 @@
 		col-dly = <0>;
 		pinctrl-names = "default", "mii", "rmii", "gmii", "rgmii";
 		pinctrl-0 = <>;
-		pinctrl-1 = <&gmac1_mdc &gmac1_mdio &gmac1_col &gmac1_crs &gmac1_txer &gmac1_rxer
-			     &gmac1_txclk &gmac1_txen &gmac1_txd0 &gmac1_txd1 &gmac1_txd2 &gmac1_txd3
-			     &gmac1_rxclk &gmac1_rxdv &gmac1_rxd0 &gmac1_rxd1 &gmac1_rxd2 &gmac1_rxd3>;
+		pinctrl-1 = <&gmac1_mdc &gmac1_mdio &gmac1_col
+			     &gmac1_crs &gmac1_txer &gmac1_rxer
+			     &gmac1_txclk &gmac1_txen &gmac1_txd0
+			     &gmac1_txd1 &gmac1_txd2 &gmac1_txd3
+			     &gmac1_rxclk &gmac1_rxdv &gmac1_rxd0
+			     &gmac1_rxd1 &gmac1_rxd2 &gmac1_rxd3>;
 		pinctrl-2 = <&gmac1_mdc &gmac1_mdio
 			     &gmac1_txclk &gmac1_txen &gmac1_txd0 &gmac1_txd1
 			     &gmac1_rxer &gmac1_rxdv &gmac1_rxd0 &gmac1_rxd1>;
-		pinctrl-3 = <&gmac1_mdc &gmac1_mdio &gmac1_col &gmac1_crs &gmac1_txer &gmac1_rxer
-			     &gmac1_txclk &gmac1_txen &gmac1_txd0 &gmac1_txd1 &gmac1_txd2 &gmac1_txd3
+		pinctrl-3 = <&gmac1_mdc &gmac1_mdio &gmac1_col
+			     &gmac1_crs &gmac1_txer &gmac1_rxer
+			     &gmac1_txclk &gmac1_txen &gmac1_txd0
+			     &gmac1_txd1 &gmac1_txd2 &gmac1_txd3
 			     &gmac1_txd4 &gmac1_txd5 &gmac1_txd6 &gmac1_txd7
-			     &gmac1_rxclk &gmac1_rxdv &gmac1_rxd0 &gmac1_rxd1 &gmac1_rxd2 &gmac1_rxd3
+			     &gmac1_rxclk &gmac1_rxdv &gmac1_rxd0
+			     &gmac1_rxd1 &gmac1_rxd2 &gmac1_rxd3
 			     &gmac1_rxd4 &gmac1_rxd5 &gmac1_rxd6 &gmac1_rxd7>;
 		pinctrl-4 = <&gmac1_mdc &gmac1_mdio
-			     &gmac1_txclk &gmac1_txen &gmac1_txd0 &gmac1_txd1 &gmac1_txd2 &gmac1_txd3
-			     &gmac1_rxclk &gmac1_rxdv &gmac1_rxd0 &gmac1_rxd1 &gmac1_rxd2 &gmac1_rxd3>;
+			     &gmac1_txclk &gmac1_txen &gmac1_txd0
+			     &gmac1_txd1 &gmac1_txd2 &gmac1_txd3
+			     &gmac1_rxclk &gmac1_rxdv &gmac1_rxd0
+			     &gmac1_rxd1 &gmac1_rxd2 &gmac1_rxd3>;
 	};
 
 	/* CP */

@@ -269,10 +269,8 @@ static int gpio_regulator_probe(struct platform_device *pdev)
 	}
 
 	drvdata->desc.name = kstrdup(config->supply_name, GFP_KERNEL);
-	if (drvdata->desc.name == NULL) {
-		dev_err(&pdev->dev, "[ERROR][Regulator]Failed to allocate supply name\n");
+	if (drvdata->desc.name == NULL)
 		return -ENOMEM;
-	}
 
 	if (config->nr_gpios != 0) {
 		drvdata->gpios = kmemdup(config->gpios,
@@ -359,7 +357,8 @@ static int gpio_regulator_probe(struct platform_device *pdev)
 	drvdata->dev = regulator_register(&drvdata->desc, &cfg);
 	if (IS_ERR(drvdata->dev)) {
 		ret = PTR_ERR(drvdata->dev);
-		dev_err(&pdev->dev, "[ERROR][Regulator]Failed to register regulator: %d\n", ret);
+		dev_err(&pdev->dev, "[ERROR][Regulator]Failed to register regulator: %d\n",
+				ret);
 		goto err_memstate;
 	}
 

@@ -71,7 +71,9 @@ static bool match_int_class(struct usb_device_id *id, struct usb_device *udev)
 		if (c->desc.bNumInterfaces > 0)
 			desc = &c->intf_cache[0]->altsetting->desc;
 
-		printk("%s : desc->bInterfaceClass = 0x%x / id->bInterfaceClass = 0x%x\n", __func__, desc->bInterfaceClass, id->bInterfaceClass);
+		dev_info(&udev->dev,
+			"%s : desc->bInterfaceClass = 0x%x / id->bInterfaceClass = 0x%x\n",
+			__func__, desc->bInterfaceClass, id->bInterfaceClass);
 		if (desc && (desc->bInterfaceClass == id->bInterfaceClass))
 			return true;
 	}
@@ -87,7 +89,7 @@ static bool match_int_class(struct usb_device_id *id, struct usb_device *udev)
 static int is_targeted(struct usb_device *dev)
 {
 	struct usb_device_id	*id = whitelist_table;
-	
+
 #ifdef CONFIG_TCC_DWC_HS_ELECT_TST
 	dev->bus->otg_vbus_off = 0;
 #endif
@@ -99,36 +101,34 @@ static int is_targeted(struct usb_device *dev)
 
 	/* OTG PET device is always targeted (see OTG 2.0 ECN 6.4.2) */
 	if ((le16_to_cpu(dev->descriptor.idVendor) == 0x1a0a &&
-	     le16_to_cpu(dev->descriptor.idProduct) == 0x0200))
-	{
-
+	     le16_to_cpu(dev->descriptor.idProduct) == 0x0200)) {
 #ifdef CONFIG_TCC_DWC_HS_ELECT_TST
-		if(dev->descriptor.bcdDevice & 0x1)
-		{
-			printk("\x1b[1;33m[%s:%d] 'otg_vbus_off' is set (bcdDevice : %x)\x1b[0m\n", __func__, __LINE__,dev->descriptor.bcdDevice);
+		if (dev->descriptor.bcdDevice & 0x1) {
+			dev_info(&dev->dev,
+				"\x1b[1;33m[%s:%d] 'otg_vbus_off' is set (bcdDevice : %x)\x1b[0m\n",
+				__func__, __LINE__, dev->descriptor.bcdDevice);
 			dev->bus->otg_vbus_off = 1;
-		}
-		else
-		{
+		} else {
 			dev->bus->otg_vbus_off = 0;
 		}
 #endif /* CONFIG_TCC_DWC_HS_ELECT_TST */
-		printk("%s:%d\n", __func__, __LINE__);
+		dev_info(&dev->dev, "%s:%d\n", __func__, __LINE__);
 		return 1;
 	}
 
 // For OPT Test
 #ifdef CONFIG_TCC_DWC_HS_ELECT_TST
-        if (le16_to_cpu(dev->descriptor.idVendor) == 0x1a0a)
-        {
-			unsigned int pid =0;
-            pid = le16_to_cpu(dev->descriptor.idProduct);
-            if(pid >= 0x0101 && pid <= 0x0108)
-            {
-            	printk("\x1b[1;33m[%s:%d] USB OPT Test Device!!!\x1b[0m\n", __func__, __LINE__);
-                return 1;
-            }
-        }
+	if (le16_to_cpu(dev->descriptor.idVendor) == 0x1a0a) {
+		unsigned int pid = 0;
+
+		pid = le16_to_cpu(dev->descriptor.idProduct);
+		if (pid >= 0x0101 && pid <= 0x0108) {
+			dev_info(&dev->dev,
+				"\x1b[1;33m[%s:%d] USB OPT Test Device!!!\x1b[0m\n",
+				__func__, __LINE__);
+			return 1;
+		}
+	}
 
 #endif
 
@@ -171,9 +171,10 @@ static int is_targeted(struct usb_device *dev)
 		    (!match_int_class(id, dev)))
 			continue;
 #ifdef CONFIG_TCC_DWC_HS_ELECT_TST
-        dev_emerg(&dev->dev, "Attached device (v%04x p%04x)\n",
-        	le16_to_cpu(dev->descriptor.idVendor),
-            le16_to_cpu(dev->descriptor.idProduct));
+		dev_emerg(&dev->dev,
+				"Attached device (v%04x p%04x)\n",
+				le16_to_cpu(dev->descriptor.idVendor),
+				le16_to_cpu(dev->descriptor.idProduct));
 #endif /* CONFIG_TCC_DWC_HS_ELECT_TST */
 
 		return 1;
@@ -184,9 +185,10 @@ static int is_targeted(struct usb_device *dev)
 
 	/* OTG MESSAGE: report errors here, customize to match your product */
 #ifdef CONFIG_TCC_DWC_HS_ELECT_TST
-        dev_emerg(&dev->dev, "\x1b[1;31mdevice v%04x p%04x is not supported\x1b[0m\n",
+	dev_emerg(&dev->dev,
+			"\x1b[1;31mdevice v%04x p%04x is not supported\x1b[0m\n",
 			le16_to_cpu(dev->descriptor.idVendor),
-            le16_to_cpu(dev->descriptor.idProduct));
+			le16_to_cpu(dev->descriptor.idProduct));
 #else
 
 	dev_err(&dev->dev, "device v%04x p%04x is not supported\n",

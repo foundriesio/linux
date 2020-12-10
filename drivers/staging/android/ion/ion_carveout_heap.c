@@ -70,12 +70,12 @@ static void ump_reserved_sw_manager(unsigned int cmd, unsigned int paddr,
 			info.height = height;
 
 			if (tccmem_file->f_op->unlocked_ioctl(tccmem_file,
-						 cmd, &info) < 0)
+						 cmd, (unsigned long)&info) < 0)
 				pr_err("REGISTER fail paddr:0x%x\n", paddr);
 		} else if ((cmd == TCC_DEREGISTER_UMP_SW_INFO_KERNEL) ||
 			 (cmd == TCC_AUTOFREE_DEREGISTER_UMP_SW_INFO_KERNEL)) {
 			if (tccmem_file->f_op->unlocked_ioctl(tccmem_file,
-						cmd, &paddr) < 0)
+						cmd, (unsigned long)&paddr) < 0)
 				pr_err("DEREGISTER fail paddr:0x%x\n", paddr);
 		} else
 			pr_err("UnKnown command 0x%x\n", cmd);
@@ -378,7 +378,7 @@ static int ion_carveout_heap_debug_show(struct ion_heap *heap,
 	struct ion_carveout_heap *carveout_heap =
 		container_of(heap, struct ion_carveout_heap, heap);
 
-	seq_printf(s, "total_mem:%lu bytes, free_mem:%lu bytes\n",
+	seq_printf(s, "total_mem:%zu bytes, free_mem:%zu bytes\n",
 				gen_pool_size(carveout_heap->pool),
 				gen_pool_avail(carveout_heap->pool));
 	return 0;

@@ -22,41 +22,46 @@
 #ifndef __TCC_COMPONENT_ADV7343_H__
 #define __TCC_COMPONENT_ADV7343_H__
 
-extern void adv7343_enable(int mode, unsigned int output_format, int starter_flag);
+extern void adv7343_enable(int mode, unsigned int output_format,
+	int starter_flag);
 
 enum {
-	OUTPUT_FORMAT_RGB888,		/* N/A */
-	OUTPUT_FORMAT_YCbCr_16bit,	/* default */
-	OUTPUT_FORMAT_YCbCr_24bit	/* Test only: 24bit RGB888 with r2y enable = 24bit (fake) YCbCr */
+	/* N/A */
+	OUTPUT_FORMAT_RGB888,
+	/* default */
+	OUTPUT_FORMAT_YCbCr_16bit,
+	/* Test only: 24bit RGB888 with r2y enable = 24bit (fake) YCbCr */
+	OUTPUT_FORMAT_YCbCr_24bit
 };
 
 /*
  * Select output format & resolution
- * - output_format is output format of VIOC_DISP and input format of Component Chip.
+ * - output_format is output format of VIOC_DISP and
+ *    input format of Component Chip.
  */
 #define ADV7343_DEFAULT_OUTPUT_FORMAT	OUTPUT_FORMAT_YCbCr_16bit
 
-typedef struct{
-	unsigned int component_clock; 		// pixel clock
-	unsigned int component_divider; 	// pixel clock
-	unsigned int component_bus_width;	// data bus width
-	unsigned int component_width;		// lcd width
-	unsigned int component_height;		// lcd height
-	unsigned int component_LPW; 		// line pulse width
-	unsigned int component_LPC; 		// line pulse count (active horizontal pixel - 1)
-	unsigned int component_LSWC;		// line start wait clock (the number of dummy pixel clock - 1)
-	unsigned int component_LEWC;		// line end wait clock (the number of dummy pixel clock - 1)
-	unsigned int component_VDB; 		// Back porch Vsync delay
-	unsigned int component_VDF; 		// front porch of Vsync delay
-	unsigned int component_FPW1;		// TFT/TV : Frame pulse width is the pulse width of frmae clock
-	unsigned int component_FLC1;		// frmae line count is the number of lines in each frmae on the screen
-	unsigned int component_FSWC1;		// frmae start wait cycle is the number of lines to insert at the end each frame
-	unsigned int component_FEWC1;		// frame start wait cycle is the number of lines to insert at the begining each frame
-	unsigned int component_FPW2;		// TFT/TV : Frame pulse width is the pulse width of frmae clock
-	unsigned int component_FLC2;		// frmae line count is the number of lines in each frmae on the screen
-	unsigned int component_FSWC2;		// frmae start wait cycle is the number of lines to insert at the end each frame
-	unsigned int component_FEWC2; 		// frame start wait cycle is the number of lines to insert at the begining each frame
-}stCOMPONENT_SPEC;
+struct stCOMPONENT_SPEC {
+	unsigned int component_clock;
+	unsigned int component_divider;
+	unsigned int component_bus_width;
+	unsigned int component_width;
+	unsigned int component_height;
+	unsigned int component_LPW;
+	unsigned int component_LPC;
+	unsigned int component_LSWC;
+	unsigned int component_LEWC;
+	unsigned int component_VDB;
+	unsigned int component_VDF;
+	unsigned int component_FPW1;
+	unsigned int component_FLC1;
+	unsigned int component_FSWC1;
+	unsigned int component_FEWC1;
+	unsigned int component_FPW2;
+	unsigned int component_FLC2;
+	unsigned int component_FSWC2;
+	unsigned int component_FEWC2;
+};
 
 struct adv7343_std_info {
 	int reg;
@@ -104,12 +109,15 @@ struct adv7343_std_info {
 
 /* Default values for the registers */
 #define ADV7343_POWER_MODE_REG_DEFAULT		(0x10)
-#define ADV7343_HD_MODE_REG1_DEFAULT		(0x3C)	/* Changed Default
-							   720p EAVSAV code*/
-#define ADV7343_HD_MODE_REG2_DEFAULT		(0x01)	/* Changed Pixel data
-							   valid */
-#define ADV7343_HD_MODE_REG3_DEFAULT		(0x00)	/* Color delay 0 clks */
-#define ADV7343_HD_MODE_REG4_DEFAULT		(0xE8)	/* Changed */
+
+/* Changed Default 720p EAVSAV code*/
+#define ADV7343_HD_MODE_REG1_DEFAULT		(0x3C)
+
+/* Changed Pixel data valid */
+#define ADV7343_HD_MODE_REG2_DEFAULT		(0x01)
+
+#define ADV7343_HD_MODE_REG3_DEFAULT		(0x00) /* Color delay 0 clks */
+#define ADV7343_HD_MODE_REG4_DEFAULT		(0xE8) /* Changed */
 #define ADV7343_HD_MODE_REG5_DEFAULT		(0x08)
 #define ADV7343_HD_MODE_REG6_DEFAULT		(0x00)
 #define ADV7343_HD_MODE_REG7_DEFAULT		(0x00)
@@ -124,7 +132,7 @@ struct adv7343_std_info {
 #define ADV7343_SD_CGMS_WSS0_DEFAULT		(0x00)
 #define ADV7343_SD_CGMS_WSS1_DEFAULT		(0x00)
 #define ADV7343_SD_CGMS_WSS2_DEFAULT		(0x00)
-#define ADV7343_SD_CGMS_WSS0_ENABLE			(0x70)
+#define ADV7343_SD_CGMS_WSS0_ENABLE		(0x70)
 
 #define ADV7343_SD_MODE_REG1_DEFAULT		(0x00)
 #define ADV7343_SD_MODE_REG2_DEFAULT		(0xC9)
