@@ -468,7 +468,7 @@ static struct tcc_dma_desc *tcc_dma_alloc_descriptor(struct dma_chan *chan)
 	if (desc == NULL) {
 		dev_err(tdmac->dev,
 			"[ERROR][GDMA] failed to allocate descriptor pool\n");
-		return ERR_PTR(-ENOMEM);
+		return NULL;
 	}
 	memset(desc, 0, sizeof(struct tcc_dma_desc));
 
