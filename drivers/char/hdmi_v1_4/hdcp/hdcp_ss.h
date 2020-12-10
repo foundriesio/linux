@@ -108,8 +108,7 @@ struct hdcp_ri_info {
 	int result;
 };
 
-#define HDCP_IOC_BLANK _IOW(HDCP_IOC_MAGIC, 50, unsigned int)
-
+/*** IOW ***/
 /**
  * Device requset code to enable/disable HDCP H/W @n
  * 1 to enable, 0 to disable
@@ -143,6 +142,12 @@ struct hdcp_ri_info {
 /** Device requset code to set Rx SHA1 calculated result  */
 #define HDCP_IOC_SET_SHA1 _IOW(HDCP_IOC_MAGIC, 17, struct hdcp_sha1)
 
+#define HDCP_IOC_BLANK _IOW(HDCP_IOC_MAGIC, 50, unsigned int)
+
+#define HDCP_SEC_IOCTL_SET_KEY	_IOW(HDCP_IOC_MAGIC,101,void *)
+
+
+/*** IOR ***/
 /** Device requset code to get hdcp_event */
 #define HDCP_IOC_GET_HDCP_EVENT _IOR(HDCP_IOC_MAGIC, 1, enum hdcp_event)
 
@@ -180,6 +185,8 @@ struct hdcp_ri_info {
 
 #define HDCP_IOC_GET_RI_REG _IOR(HDCP_IOC_MAGIC, 100, int)
 
+
+/*** IO ***/
 /** Device requset code to start processing HDCP */
 #define HDCP_IOC_START_HDCP _IO(HDCP_IOC_MAGIC, 2)
 
@@ -201,7 +208,6 @@ struct hdcp_ri_info {
  */
 #define HDCP_IOC_SET_KSV_LIST_EMPTY _IO(HDCP_IOC_MAGIC, 7)
 
-#define HDCP_IOC_CHECK_FRAME_COUNT _IO(HDCP_IOC_MAGIC, 8)
 
 #define hdcp_readb hdmi_api_reg_read
 #define hdcp_writeb hdmi_api_reg_write
