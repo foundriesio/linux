@@ -16,7 +16,7 @@
  * to the Free Software Foundation, Inc.,
  * 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  */
-
+#include "tcc_hdcp_log.h"
 #include <linux/module.h>
 #include <linux/kernel.h>
 #include <linux/interrupt.h>
@@ -33,6 +33,7 @@
 #include <linux/uaccess.h>
 
 #include <dt-bindings/display/tcc897x-vioc.h>
+#include <linux/slab.h>
 
 #include <hdmi_1_4_video.h>
 #include <hdmi_1_4_audio.h>
@@ -42,15 +43,10 @@
 #include <hdmi.h>
 #include <regs-hdmi.h>
 
-#include "tcc_hdcp_log.h"
 #include "hdcp_api.h"
 #include "hdcp_ss.h"
 
-#define HDCP_API_DEBUG_TIME 0
 #define HDCP_API_DEBUG_IRQ 0
-
-// Old: HPD Interrupt controlled by HDCP driver
-//#define HDCP_API_CTRL_HPD_INT
 
 /** I2C device address of HDCP Rx port*/
 #define HDCP_RX_DEV_ADDR 0x74
@@ -74,9 +70,6 @@ struct hdcp_struct {
 
 	/** Contains event that occurs */
 	enum hdcp_event event;
-
-	/** Work queue for processing 3rd authentication */
-	struct work_struct work;
 };
 
 struct hdcp_struct hdcp_struct;
@@ -93,101 +86,10 @@ static void hdcp_set_result(unsigned char enable);
 static int hdcp_read_ri(void);
 
 /**
- * When 'SIMPLAYHD' is 1, contains Ri match result on 127th frame. @n
- * if match, 1;Otherwise, 0.
- */
-static unsigned int result127;
-/**
- * Flags that contains if this is on 3rd auth or not. @n
- * if it is on 3rd auth, 1;Otherwise, 0.
- */
-static unsigned int thirdAuth;
-
-/**
- * Process 3rd authentication. @n
- * Read Ri' from Rx. then, compare it with Ri and set comparision result. @n
- * On 3rd authentication process, we have to read Ri' within 1 frame period. @n
- * Because of that, we process 3rd auth process by using linux work queue.
- */
-static void hdcp_api_work(struct work_struct *work)
-{
-	int matched;
-	unsigned int result;
-	unsigned char offset;
-	unsigned char ri0, ri1;
-
-	if (thirdAuth) {
-#if HDCP_API_DEBUG_TIME
-		ji2cstart = jiffies;
-#endif
-
-		result = hdcp_read_ri();
-
-#if HDCP_API_DEBUG_TIME
-		ji2cend = jiffies;
-#endif
-		ri0 = hdcp_readb(HDCP_RI_0);
-		ri1 = hdcp_readb(HDCP_RI_1);
-
-		offset = hdcp_readb(HDCP_FRAME_COUNT);
-
-		ILOG("frame count = %d\n", offset);
-
-#if HDCP_API_DEBUG_TIME
-		jend = jiffies;
-#endif
-
-		if (offset != 0) {
-			// if 127th
-			if (((result >> 8) & 0xFF) == ri0
-			    && (result & 0xFF) == ri1) {
-				result127 = result;
-				matched = 1;
-			} else {
-				ILOG("Rj = 0x%04x\n", result);
-				ILOG("Ri not Matched!!!!\n");
-				ILOG("Ri = 0x%02x%02x\n", ri0, ri1);
-				matched = 0;
-			}
-		} else {
-			// if 128th
-			if (((result >> 8) & 0xFF) == ri0
-			    && (result & 0xFF) == ri1 && result127 != result) {
-				matched = 1;
-			} else {
-				ILOG("Rj = 0x%04x\n", result);
-				ILOG("Ri not Matched!!!!\n");
-				ILOG("Ri = 0x%02x%02x\n", ri0, ri1);
-#ifdef SIMPLAYHD
-				ILOG("127th = 0x%04x\n", result127);
-#endif
-				matched = 0;
-			}
-		}
-
-#if HDCP_API_DEBUG_TIME
-		ILOG("i2c time = %lu msec\n",
-		     (ji2cend - ji2cstart) * 1000 / HZ);
-		ILOG("total time = %lu msec\n", (jend - jstart) * 1000 / HZ);
-#endif
-
-		if (!matched) {
-			// 3rd auth failed!!!
-			hdcp_set_result(0);
-			hdcp_writeb(0x00, HDCP_ENC_EN);
-		}
-	}
-}
-
-/**
  * Reset the HDCP H/W state machine.
  */
 static void hdcp_reset(void)
 {
-#if defined(HDCP_API_CTRL_HPD_INT)
-	unsigned char reg;
-#endif
-
 	ILOG("reset !!\n");
 
 	// disable HDCP
@@ -195,46 +97,16 @@ static void hdcp_reset(void)
 	hdcp_writeb(0x00, HDCP_CTRL1);
 	hdcp_writeb(0x00, HDCP_CTRL2);
 
-#if defined(HDCP_API_CTRL_HPD_INT)
-	// disable HPD_INT
-	reg = hdcp_readb(HDMI_SS_INTC_CON);
-	hdcp_writeb(
-		reg & ~((1 << HDMI_IRQ_HPD_PLUG) | (1 << HDMI_IRQ_HPD_UNPLUG)),
-		HDMI_SS_INTC_CON);
-
-	// set SW HPD OFF and ON to initialize HDCP state machine
-	hdcp_writeb(HPD_SW_ENABLE | HPD_OFF, HDMI_HPD);
-	hdcp_writeb(HPD_SW_ENABLE | HPD_ON, HDMI_HPD);
-
-	// disable SW HPD
-	hdcp_writeb(HPD_SW_DISABLE, HDMI_HPD);
-
-	// restore HDMI_SS_INTC_CON
-	hdcp_writeb(reg, HDMI_SS_INTC_CON);
-#endif
-
 	// set blue screen
 	hdcp_enable_bluescreen(1);
-
 	// enable HDCP
 	hdcp_writeb(HDCP_ENABLE, HDCP_CTRL1);
 	ILOG("hdcp_writeb(HDCP_ENABLE,HDCP_CTRL1);\n");
-
-#if defined(HDCP_API_CTRL_HPD_INT)
-	// enable HPD_INT
-	reg = hdcp_readb(HDMI_SS_INTC_CON);
-	hdcp_writeb(
-		reg | (1 << HDMI_IRQ_HPD_PLUG) | (1 << HDMI_IRQ_HPD_UNPLUG)
-			| (1 << HDMI_IRQ_GLOBAL),
-		HDMI_SS_INTC_CON);
-#endif
 }
 
 static void hdcp_disable(void)
 {
 	unsigned char reg;
-
-	thirdAuth = 0;
 
 	// disable HDCP INT
 	reg = hdcp_readb(HDMI_SS_INTC_CON);
@@ -320,8 +192,6 @@ static void hdcp_set_result(unsigned char match)
 		hdcp_writeb(HDCP_RI_NOT_MATCH, HDCP_CHECK_RESULT);
 		// clear
 		hdcp_writeb(0x00, HDCP_CHECK_RESULT);
-		// clear
-		thirdAuth = 0;
 	}
 }
 
@@ -367,12 +237,9 @@ static int hdcp_read_ri(void)
 	// adap = i2c_get_adapter(1); // i2c-1: telechips ALS
 	// adap = i2c_get_adapter(2); // i2c-2: pioneer
 	// adap = i2c_get_adapter(3); // i2c-3: telechips CLS
-#if defined(ALS_897x)
 	// Modify the value as the number corresponding with support company
 	adap = i2c_get_adapter(1); // i2c-1 : telechips ALS
-#else
-	adap = i2c_get_adapter(3); // i2c-3 : telechips CLS
-#endif
+	//adap = i2c_get_adapter(3); // i2c-3 : telechips CLS
 	if (!adap) {
 		ILOG("i2c_get_adapter(3) error \n");
 		return 0;
@@ -430,6 +297,67 @@ static void hdcp_enable_bluescreen(unsigned char enable)
 	}
 
 	hdcp_writeb(reg, HDMI_CON_0);
+}
+
+#define AES_KEY_SIZE 16
+#define HDCP_KEY_SIZE 288
+static void set_aeskey_to_reg(unsigned char *pkey)
+{
+	unsigned char data[AES_KEY_SIZE];
+	unsigned int *plkey;
+	unsigned int regl[5] = {
+		0,
+	};
+	int ii;
+	unsigned char tmpch;
+
+	memcpy(data, pkey, AES_KEY_SIZE);
+	for (ii = 0; ii < (AES_KEY_SIZE / 2); ii++) {
+		tmpch = data[ii];
+		data[ii] = data[AES_KEY_SIZE - ii - 1];
+		data[AES_KEY_SIZE - ii - 1] = tmpch;
+	}
+
+	plkey = (unsigned int *)data;
+
+	regl[AESKEY_DATA0] = plkey[0];
+	regl[AESKEY_DATA1] = plkey[1] & 0x01;
+	regl[AESKEY_HW_0] = plkey[1] >> 1 | (plkey[2] << 31 & 0x80000000);
+	regl[AESKEY_HW_1] = plkey[2] >> 1 | (plkey[3] << 31 & 0x80000000);
+	regl[AESKEY_HW_2] = plkey[3] >> 1 & 0x7FFFFFFF;
+
+	hdcp_writel(regl[AESKEY_DATA0], DDICFG_HDMI_AESKEY_DATA0);
+	hdcp_writel(regl[AESKEY_DATA1], DDICFG_HDMI_AESKEY_DATA1);
+	hdcp_writel(regl[AESKEY_HW_0], DDICFG_HDMI_AESKEY_HW0);
+	hdcp_writel(regl[AESKEY_HW_1], DDICFG_HDMI_AESKEY_HW1);
+	hdcp_writel(regl[AESKEY_HW_2], DDICFG_HDMI_AESKEY_HW2);
+
+	// HDMI AES KEY valid
+	hdcp_writel(0x1, DDICFG_HDMI_AESKEY_VALID);
+}
+
+/*
+ * Set HDCP Device Private Keys. @n
+ * To activate HDCP H/W, user should set AES-encrypted HDCP Device Private Keys.@n
+ * If user does not set this, HDCP H/W does not work.
+ */
+static void hdcp_load_data(unsigned char *AES_key, unsigned char *HDCP_key)
+{
+	int index;
+	unsigned char reg;
+
+	set_aeskey_to_reg(AES_key);
+	mdelay(10);
+	for (index = 0; index < HDCP_KEY_SIZE; index++) {
+		hdcp_writeb(HDCP_key[index], HDMI_SS_AES_DATA);
+	}
+	hdcp_writeb(AES_START, HDMI_SS_AES_START);
+	do {
+		reg = hdcp_readb(HDMI_SS_AES_START);
+		if ((reg & 0x01) == 0)
+			break;
+	} while (1);
+	TRACE;
 }
 
 int hdcp_api_cmd_process(unsigned int cmd, unsigned long arg)
@@ -749,15 +677,11 @@ int hdcp_api_cmd_process(unsigned int cmd, unsigned long arg)
 
 			// enable encryption
 			hdcp_enable_encryption(1);
-
-			// thirdAuth = 1;
 		} else {
 			// disable encryption
 			hdcp_enable_encryption(0);
 
-			// thirdAuth = 0;
 		}
-
 		break;
 	}
 	case HDCP_IOC_SET_BSTATUS: {
@@ -876,10 +800,28 @@ int hdcp_api_cmd_process(unsigned int cmd, unsigned long arg)
 		hdcp_writeb(HDCP_KSV_LIST_EMPTY, HDCP_KSV_LIST_CON);
 		break;
 	}
-	case HDCP_IOC_CHECK_FRAME_COUNT: {
+	case HDCP_SEC_IOCTL_SET_KEY: {
+		int ret;
+		unsigned char *regData;
+		TRACE;
+		regData = kmalloc(16+288, GFP_KERNEL); //288+16 means keycontents plus key size
+		if (regData == NULL) {
+			return -ENOMEM;
+		}
+		if (copy_from_user(
+			    regData, (const void *)arg,
+			    16+288)) {
+			return -EFAULT;
+		}
+		//print_hex_dump_bytes("DATA1: ", DUMP_PREFIX_NONE, &regData[0], 16);
+		//print_hex_dump_bytes("DATA2: ", DUMP_PREFIX_NONE, &regData[16], 288);
+		hdcp_load_data(&regData[0], &regData[16]);
+		kfree(regData);
 		break;
 	}
+	
 	default:
+		TRACE;
 		return -EINVAL;
 	}
 
@@ -1021,8 +963,6 @@ int hdcp_api_close(void)
 int hdcp_api_initialize(void)
 {
 	init_waitqueue_head(&hdcp_struct.waitq);
-	// set up work queue struct
-	INIT_WORK(&hdcp_struct.work, hdcp_api_work /*, NULL*/); //@storm::modify
 	spin_lock_init(&hdcp_struct.lock);
 
 	hdmi_api_reg_hdcp_callback((hdcp_callback)&hdcp_api_status_chk);

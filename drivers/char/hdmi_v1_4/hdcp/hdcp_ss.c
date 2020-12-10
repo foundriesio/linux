@@ -17,6 +17,7 @@
  * 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
+#include "tcc_hdcp_log.h"
 #include <linux/module.h>
 #include <linux/kernel.h>
 #include <linux/interrupt.h>
@@ -32,14 +33,14 @@
 #include <linux/io.h>
 #include <linux/uaccess.h>
 
-#include "tcc_hdcp_log.h"
 #include "hdcp_api.h"
 #include "hdcp_ss.h"
+
 
 //#define HDCP_IRQ_HANDLING		// kernel 3.18
 
 #define HDCP_DEV_NAME "hdcp"
-#define HDCP_DEV_MAJOR 233
+//#define HDCP_DEV_MAJOR 233
 #define HDCP_DEV_MINOR 0
 
 // int hdcp_api_initialize(void) { return 0; }
@@ -51,11 +52,7 @@
 
 static long hdcp_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 {
-	ILOG("ioctl(cmd:0x%X) - Start\n", cmd);
 	hdcp_api_cmd_process(cmd, arg);
-
-	ILOG("ioctl(cmd:0x%X) - End\n", cmd);
-
 	return 0;
 }
 
@@ -118,9 +115,10 @@ const struct file_operations hdcp_fops = {
 };
 
 static struct miscdevice hdcp_misc_device = {
-	HDCP_DEV_MAJOR,
-	HDCP_DEV_NAME,
-	&hdcp_fops,
+	.name = HDCP_DEV_NAME,
+	//.major = HDCP_DEV_MAJOR,
+	.minor = HDCP_DEV_MINOR,
+	.fops = &hdcp_fops,
 };
 
 static __init int hdcp_init(void)
@@ -129,8 +127,8 @@ static __init int hdcp_init(void)
 
 	ret = misc_register(&hdcp_misc_device);
 	if (ret < 0) {
-		ILOG("%s: Couldn't register device 10, %d. - (ret: 0x%X)\n",
-		     HDCP_DEV_NAME, HDCP_DEV_MAJOR, ret);
+		ILOG("%s: Couldn't register device - (ret: 0x%X)\n",
+		     HDCP_DEV_NAME, ret);
 		return -EBUSY;
 	}
 

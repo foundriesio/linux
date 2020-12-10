@@ -19,7 +19,7 @@
 #define TLOG_ERROR 1
 
 #ifndef TLOG_LEVEL
-#define TLOG_LEVEL TLOG_INFO
+#define TLOG_LEVEL TLOG_DEBUG
 #endif
 
 #ifndef TLOG_TAG

@@ -20,6 +20,24 @@
 #ifndef HDCP_API_H
 #define HDCP_API_H
 
+#define DDICFG_AESKEYREG(x) (x)
+#define DDICFG_HDMI_AESKEY_VALID DDICFG_AESKEYREG(0x0014)
+#define DDICFG_HDMI_AESKEY_DATA0 DDICFG_AESKEYREG(0x0018)
+#define DDICFG_HDMI_AESKEY_DATA1 DDICFG_AESKEYREG(0x001c)
+#define DDICFG_HDMI_AESKEY_HW0 DDICFG_AESKEYREG(0x0020)
+#define DDICFG_HDMI_AESKEY_HW1 DDICFG_AESKEYREG(0x0024)
+#define DDICFG_HDMI_AESKEY_HW2 DDICFG_AESKEYREG(0x0028)
+
+// clang-format off
+typedef enum {
+	AESKEY_DATA0,
+	AESKEY_DATA1,
+	AESKEY_HW_0,
+	AESKEY_HW_1,
+	AESKEY_HW_2
+} _AESKEY_;
+// clang-format on
+
 extern int hdcp_api_initialize(void);
 extern int hdcp_api_cmd_process(unsigned int cmd, unsigned long arg);
 extern int hdcp_api_status_chk(unsigned char flag);
