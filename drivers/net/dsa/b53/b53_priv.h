@@ -70,6 +70,7 @@ enum {
 
 struct b53_port {
 	u16		vlan_ctl_mask;
+	u16		pvid;
 };
 
 struct b53_vlan {
@@ -115,6 +116,8 @@ struct b53_device {
 
 	unsigned int num_vlans;
 	struct b53_vlan *vlans;
+	bool vlan_enabled;
+	bool vlan_filtering_enabled;
 	unsigned int num_ports;
 	struct b53_port *ports;
 };
