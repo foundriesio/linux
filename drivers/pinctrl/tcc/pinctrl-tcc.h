@@ -223,6 +223,7 @@ struct tcc_pin_bank {
  * @gpio_get: get gpio value
  * @gpio_set: set gpio value
  * @gpio_set_direction: set gpio direction input or output
+ * @gpio_get_direction: get gpio direction input or output
  * @gpio_set_function: set gpio function
  * @pinconf_get: get configurations for a pin
  * @pinconf_set: configure a pin
@@ -232,6 +233,7 @@ struct tcc_pinctrl_ops {
 	void (*gpio_set)(void __iomem *base, u32 offset, int value);
 	int (*gpio_set_direction)(void __iomem *base, u32 offset,
 				  int input);
+	int (*gpio_get_direction)(void __iomem *base, u32 offset);
 	int (*gpio_set_function)(void __iomem *base, u32 offset,
 				 int func);
 	int (*pinconf_get)(void __iomem *base, u32 offset, int param);

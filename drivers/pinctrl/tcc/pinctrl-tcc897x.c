@@ -197,6 +197,20 @@ static int tcc897x_gpio_set_direction(void __iomem *base, unsigned offset,
 	return 0;
 }
 
+static int tcc897x_gpio_get_direction(void __iomem *base, u32 offset)
+{
+    void __iomem *reg = base + GPIO_OUTPUT_ENABLE;
+    u32 data;
+
+    data = readl(reg) & ((u32)1U << offset);
+
+    if(data == 0) {
+        return 1;
+    } else {
+        return 0;
+    }
+}
+
 static int tcc897x_gpio_set_function(void __iomem *base, unsigned offset,
 				      int func)
 {
@@ -430,6 +444,7 @@ static struct tcc_pinconf tcc897x_pin_configs[] = {
 static struct tcc_pinctrl_ops tcc897x_ops = {
 	.gpio_get = tcc897x_gpio_get,
 	.gpio_set = tcc897x_gpio_set,
+	.gpio_get_direction = tcc897x_gpio_get_direction,
 	.gpio_set_function = tcc897x_gpio_set_function,
 	.gpio_set_direction = tcc897x_gpio_set_direction,
 	.pinconf_get = tcc897x_pinconf_get,

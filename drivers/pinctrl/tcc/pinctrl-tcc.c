@@ -198,6 +198,17 @@ static void tcc_pinctrl_gpio_set(struct gpio_chip *chip, u32 offset,
 #endif
 }
 
+int tcc_pinctrl_gpio_get_direction(struct gpio_chip *chip,
+			                        unsigned offset) {
+
+	struct tcc_pin_bank *bank = gpiochip_to_pin_bank(chip);
+	struct tcc_pinctrl *pctl = bank->pctl;
+	struct tcc_pinctrl_ops *ops = pctl->ops;
+
+	return ops->gpio_get_direction(pctl->base + bank->reg_base, offset);
+
+}
+
 static int tcc_pinctrl_gpio_direction_input(struct gpio_chip *chip,
 		u32 offset)
 {
@@ -244,6 +255,7 @@ static struct gpio_chip tcc_pinctrl_gpio_chip = {
 	.owner			= THIS_MODULE,
 	.request		= tcc_pinctrl_gpio_request,
 	.free			= tcc_pinctrl_gpio_free,
+	.get_direction		= tcc_pinctrl_gpio_get_direction,
 	.direction_input	= tcc_pinctrl_gpio_direction_input,
 	.direction_output	= tcc_pinctrl_gpio_direction_output,
 	.get			= tcc_pinctrl_gpio_get,
