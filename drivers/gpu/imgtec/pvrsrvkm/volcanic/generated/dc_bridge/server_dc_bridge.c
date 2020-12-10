@@ -60,7 +60,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "handle.h"
 
 #include <linux/slab.h>
-
+#include <linux/fb.h>
 /* ***************************************************************************
  * Server-side bridge entry points
  */
@@ -103,7 +103,7 @@ PVRSRVBridgeDCDevicesEnumerate(IMG_UINT32 ui32DispatchTableEntry,
 	    (psDCDevicesEnumerateIN->ui32DeviceArraySize * sizeof(IMG_UINT32)) +
 	    0;
 
-	if (psDCDevicesEnumerateIN->ui32DeviceArraySize > DC_MAX_DEVICE_COUNT)
+	if (psDCDevicesEnumerateIN->ui32DeviceArraySize > num_registered_fb)
 	{
 		psDCDevicesEnumerateOUT->eError =
 		    PVRSRV_ERROR_BRIDGE_ARRAY_SIZE_TOO_BIG;
