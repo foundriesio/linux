@@ -16,6 +16,7 @@ inet_unhash() conditionally acquires listening_hash->lock.
 Reported-by: Mike Galbraith <efault@gmx.de>
 Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 Link: https://lore.kernel.org/linux-rt-users/12d6f9879a97cd56c09fb53dee343cbb14f7f1f7.camel@gmx.de/
+Link: https://lkml.kernel.org/r/X9CheYjuXWc75Spa@hirez.programming.kicks-ass.net
 ---
  net/ipv4/inet_hashtables.c  |   19 ++++++++++++-------
  net/ipv6/inet6_hashtables.c |    5 +----

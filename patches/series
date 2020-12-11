@@ -84,6 +84,9 @@ highmem-Don-t-disable-preemption-on-RT-in-kmap_atomi.patch
 # 20201125105037.22079-1-aisheng.dong@nxp.com
 clk-imx-scu-fix-MXC_CLK_SCU-module-build-break.patch
 
+# 87lfea7gw8.fsf@nanos.tec.linutronix.de
+timers-Move-clearing-of-base-timer_running-under-bas.patch
+
 ############################################################
 # POSTED
 ############################################################
@@ -308,10 +311,6 @@ x86-kvm-require-const-tsc-for-rt.patch
 # SIMPLE WAITQUEUE
 # Revisit
 wait.h-include-atomic.h.patch
-
-# HRTIMERS
-# Check whether schedule_hrtimeout() could be hard always
-hrtimer-Allow-raw-wakeups-during-boot.patch
 
 # SCHEDULER
 # PUSH IPI?
