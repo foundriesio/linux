@@ -26,42 +26,35 @@
 #include <linux/wait.h>
 #include <linux/uaccess.h>
 
-#include <asm/io.h>
+#include <linux/io.h>
+//#include <asm/io.h>
 #include <asm/div64.h>
 
 #include "vpu_comm.h"
 #include "vpu_devices.h"
+#include "vpu_4k_d2_mgr.h"
 
-extern int vmgr_4k_d2_probe(struct platform_device* pdev);
-extern int vmgr_4k_d2_remove(struct platform_device* pdev);
-#if defined(CONFIG_PM)
-extern int vmgr_4k_d2_suspend(struct platform_device* pdev, pm_message_t state);
-extern int vmgr_4k_d2_resume(struct platform_device* pdev);
-#endif
 
 #ifdef CONFIG_OF
-static struct of_device_id vpu_4k_d2_of_match[] =
-{
-	{ .compatible = "telechips,vpu_4k_d2_dev_mgr" },//VPU_4K_D2_MGR_NAME
+static const struct of_device_id vpu_4k_d2_of_match[] = {
+	{.compatible = "telechips,vpu_4k_d2_dev_mgr"},	//VPU_4K_D2_MGR_NAME
 	{}
 };
 MODULE_DEVICE_TABLE(of, vpu_4k_d2_of_match);
 #endif
 
-static struct platform_driver vpu_4k_d2_driver =
-{
-	.probe          = vmgr_4k_d2_probe,
-	.remove         = vmgr_4k_d2_remove,
+static struct platform_driver vpu_4k_d2_driver = {
+	.probe = vmgr_4k_d2_probe,
+	.remove = vmgr_4k_d2_remove,
 #if defined(CONFIG_PM)
-	.suspend        = vmgr_4k_d2_suspend,
-	.resume         = vmgr_4k_d2_resume,
+	.suspend = vmgr_4k_d2_suspend,
+	.resume = vmgr_4k_d2_resume,
 #endif
-	.driver         =
-	{
-		 .name      = VPU_4K_D2_MGR_NAME,
-		 .owner     = THIS_MODULE,
+	.driver = {
+		   .name = VPU_4K_D2_MGR_NAME,
+		   .owner = THIS_MODULE,
 #ifdef CONFIG_OF
-		 .of_match_table = of_match_ptr(vpu_4k_d2_of_match),
+		   .of_match_table = of_match_ptr(vpu_4k_d2_of_match),
 #endif
 	},
 };
@@ -73,11 +66,11 @@ static void __exit vpu_4k_d2_cleanup(void)
 
 static int vpu_4k_d2_init(void)
 {
-	printk("============> 4K-D2 VP9/HEVC Devices drivers initializing!!  Start ------- ");
+	pr_info("==========> 4K-D2 VP9/HEVC Devices drivers initializing!!  Start");
 
 	platform_driver_register(&vpu_4k_d2_driver);
 
-	printk("Done!! \n");
+	pr_info("Done!!\n");
 	return 0;
 }
 
