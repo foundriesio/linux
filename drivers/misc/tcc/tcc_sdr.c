@@ -759,7 +759,7 @@ int tcc_sdr_stop(struct tcc_sdr_t *sdr)
 	adma_rxdadar = readl(sdr->adma_reg + ADMA_RxDaDar);
 	writel(adma_rxdadar, sdr->adma_reg + ADMA_RxDaDar);
 
-	usleep(1000);
+	msleep(1);
 
 	adma_transctrl &= ~ADMA_TRANS_HCNT_CLR;
 	writel(adma_transctrl, sdr->adma_reg + ADMA_TransCtrl);
@@ -778,7 +778,7 @@ int tcc_sdr_stop(struct tcc_sdr_t *sdr)
 	dai_drmr = readl(sdr->dai_reg + I2S_DRMR);
 	dai_drmr |= DRMR_FIFO_RX_CLR;
 	writel(dai_drmr, sdr->dai_reg + I2S_DRMR);
-	usleep(1000);
+	msleep(1);
 	dai_drmr &= ~DRMR_FIFO_RX_CLR;
 	writel(dai_drmr, sdr->dai_reg + I2S_DRMR);
 
