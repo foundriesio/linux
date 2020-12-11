@@ -276,6 +276,18 @@ irqreturn_t Dptx_Intr_IRQ( int irq, void *dev )
 
 	if( uiInterrupt_Status & DPTX_ISTS_HPD )
 	{
+#ifdef CONFIG_HDCP_DWC_HLD
+		/*
+		 * == Workaround : Toggling CP_IRQ by software ==
+		 * Sending CP_IRQ to ESM when processing HPD interrups.
+		 */
+		u32 uiHdcpCfg;
+		if (Dptx_Reg_Readl( pstDptx, DPTX_HDCP_OBS ) | DPTX_HDCP22_BOOTED ) {
+			uiHdcpCfg = Dptx_Reg_Readl( pstDptx, DPTX_HDCP_CFG );
+			Dptx_Reg_Writel( pstDptx, DPTX_HDCP_CFG, uiHdcpCfg | DPTX_CFG_CP_IRQ );
+			Dptx_Reg_Writel( pstDptx, DPTX_HDCP_CFG, uiHdcpCfg & ~DPTX_CFG_CP_IRQ );
+		}
+#endif
 		uiHpdStatus = Dptx_Reg_Readl( pstDptx, DPTX_HPDSTS );
 
 		dptx_dbg("Read GENERAL_INTERRUPT[0x%08x]: 0x%08x, HPD_STATUS[0x%08x]: 0x%08x", DPTX_ISTS, uiInterrupt_Status, DPTX_HPDSTS, uiHpdStatus );
