@@ -261,6 +261,8 @@ static int tcc805x_gpio_set_direction(void __iomem *base, u32 offset,
 #endif
 	void __iomem *reg = base + GPIO_OUTPUT_ENABLE;
 
+	tcc805x_gpio_input_buffer_set(base, offset, input);
+
 #if defined(CONFIG_PINCTRL_TCC_SCFW)
 	reg = reg - base_offset;
 	if (input == 0) {
