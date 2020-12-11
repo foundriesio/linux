@@ -570,6 +570,12 @@ static int tcc_sc_mmc_probe(struct platform_device *pdev)
 	mmc->max_req_size = 0x80000;
 	mmc->max_blk_count = 65535;
 
+	/* 32-bit mask as default */
+	ret = dma_set_mask_and_coherent(&pdev->dev, DMA_BIT_MASK(32));
+	if (ret) {
+		dev_warn(&pdev->dev, "[WARN][TCC_SC_MMC] Failed to set 32-bit DMA mask.\n");
+	}
+
 	/* Allocate bounce buffer */
 	if (mmc->max_segs == 1U)
 		ret = tcc_sc_mmc_allocate_bounce_buffer(host);
