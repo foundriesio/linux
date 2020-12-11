@@ -343,17 +343,25 @@ static int tcc_drm_address_dt_parse_v1_0(
 	if (current_node != NULL) {
 		if (of_property_read_u32(
 			current_node,
-			"lcdc-mux-select", &hw_data->lcdc_mux) == 0)
+			"lcdc-mux-select", &hw_data->lcdc_mux) == 0) {
 			dev_dbg(
 				&pdev->dev,
 				"[DEBUG][%s] %s lcdc-mux-select=%d from remote node\r\n",
 				LOG_TAG, __func__, hw_data->lcdc_mux);
+		} else {
+			dev_err(
+				&pdev->dev,
+				"[ERROR][%s] %s can not found lcdc-mux-select from remote node\r\n",
+				LOG_TAG, __func__);
+			ret = -ENODEV;
+			goto out;
+		}
 	} else {
 		if (of_property_read_u32(
 			np, "lcdc-mux-select", &hw_data->lcdc_mux) == 0) {
 			dev_dbg(
 				&pdev->dev,
-				"[DEBUG][%s] %s lcdc-mux-select=%d from local panel\r\n",
+				"[DEBUG][%s] %s lcdc-mux-select=%d\r\n",
 				LOG_TAG, __func__, hw_data->lcdc_mux);
 		} else {
 			dev_err(
