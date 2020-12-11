@@ -258,7 +258,8 @@ int hns_roce_create_cq(struct ib_cq *ib_cq, const struct ib_cq_init_attr *attr,
 	INIT_LIST_HEAD(&hr_cq->rq_list);
 
 	if (udata) {
-		ret = ib_copy_from_udata(&ucmd, udata, sizeof(ucmd));
+		ret = ib_copy_from_udata(&ucmd, udata,
+					 min(udata->inlen, sizeof(ucmd)));
 		if (ret) {
 			ibdev_err(ibdev, "Failed to copy CQ udata, err %d\n",
 				  ret);
@@ -295,7 +296,8 @@ int hns_roce_create_cq(struct ib_cq *ib_cq, const struct ib_cq_init_attr *attr,
 
 	if (udata) {
 		resp.cqn = hr_cq->cqn;
-		ret = ib_copy_to_udata(udata, &resp, sizeof(resp));
+		ret = ib_copy_to_udata(udata, &resp,
+				       min(udata->outlen, sizeof(resp)));
 		if (ret)
 			goto err_cqc;
 	}
