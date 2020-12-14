@@ -3271,7 +3271,9 @@ static int mxt_probe(struct i2c_client *client, const struct i2c_device_id *id)
 		dev_err(&client->dev, "failed to initialize regmap: %d\n", error);
 		return error;
 	}
-
+#ifdef CONFIG_ARCH_TCC
+	i2c_set_clientdata(client, data);
+#endif
 	if (data->reset_gpio) {
 		data->in_bootloader = true;
 		msleep(MXT_RESET_TIME);
@@ -3346,8 +3348,21 @@ static int __maybe_unused mxt_resume(struct device *dev)
 	if (!input_dev)
 		return 0;
 
-	mutex_lock(&input_dev->mutex);
+#ifdef CONFIG_ARCH_TCC
+	int error;
 
+	error = pinctrl_pm_select_default_state(dev);
+	if (error) {
+		return error;
+	}
+	if (data->reset_gpio) {
+		error = gpiod_direction_output(data->reset_gpio, 1);
+		if (error) {
+			return error;
+		}
+	}
+#endif
+	mutex_lock(&input_dev->mutex);
 	if (input_dev->users)
 		mxt_start(data);
 
