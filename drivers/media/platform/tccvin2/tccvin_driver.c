@@ -486,7 +486,8 @@ static int tccvin_traversal_subdevices(struct tccvin_device *vdev,
 	if (founded_sd == NULL) {
 		tccvin_add_async_subdev(vdev, node);
 	} else {
-		vdev->linked_subdevs[vdev->bounded_subdevs++].sd = founded_sd;
+		vdev->linked_subdevs[vdev->num_asd + vdev->bounded_subdevs].sd = founded_sd;
+		vdev->bounded_subdevs++;
 		logi("already subdev(%s) is founded\n", node->name);
 	}
 
