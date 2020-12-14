@@ -11,6 +11,7 @@ config VIDEO_TCCVIN
 	select VIDEOBUF_GEN
 	select VIDEOBUF_DMA_SG
 	select VIDEOBUF_VMALLOC
+	select V4L2_FWNODE
 	depends on VIDEO_DEV
 	default n
 
