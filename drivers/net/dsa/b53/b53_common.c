@@ -712,6 +712,7 @@ static int b53_reset_switch(struct b53_device *priv)
 
 	memset(priv->vlans, 0, sizeof(*priv->vlans) * priv->num_vlans);
 	memset(priv->ports, 0, sizeof(*priv->ports) * priv->num_ports);
+	memset(priv->port_pvid, 0, sizeof(u16) * priv->num_ports);
 
 	return b53_switch_reset(priv);
 }
@@ -1005,11 +1006,11 @@ int b53_vlan_filtering(struct dsa_switch *ds, int port, bool vlan_filtering)
 		/* Filtering is currently enabled, use the default PVID since
 		 * the bridge does not expect tagging anymore
 		 */
-		dev->ports[port].pvid = pvid;
+		dev->port_pvid[port] = pvid;
 		new_pvid = b53_default_pvid(dev);
 	} else if (!dev->vlan_filtering_enabled && vlan_filtering) {
 		/* Filtering is currently disabled, restore the previous PVID */
-		new_pvid = dev->ports[port].pvid;
+		new_pvid = dev->port_pvid[port];
 	}
 
 	if (pvid != new_pvid)
@@ -1938,6 +1939,12 @@ static int b53_switch_init(struct b53_device *dev)
 				  sizeof(struct b53_port) * dev->num_ports,
 				  GFP_KERNEL);
 	if (!dev->ports)
+		return -ENOMEM;
+
+	dev->port_pvid = devm_kzalloc(dev->dev,
+				  sizeof(u16) * dev->num_ports,
+				  GFP_KERNEL);
+	if (!dev->port_pvid)
 		return -ENOMEM;
 
 	dev->vlans = devm_kzalloc(dev->dev,
