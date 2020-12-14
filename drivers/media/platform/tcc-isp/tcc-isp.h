@@ -73,6 +73,8 @@ struct tcc_isp_state {
 	/* zelcova(isp) setting */
 	struct isp_state isp;
 
+	int mem_share;
+
 	int irq;
 
 	struct clk *clock;

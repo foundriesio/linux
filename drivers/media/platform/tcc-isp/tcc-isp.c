@@ -214,6 +214,13 @@ static int tcc_isp_request_firmware(
 	return ret;
 }
 
+static inline void tcc_isp_mem_share(struct tcc_isp_state *state, int onOff)
+{
+	volatile void __iomem *isp_base = state->isp_base;
+
+	write_isp(isp_base + reg_mem_swt_en, onOff);
+}
+
 static inline void tcc_isp_set_regster_update_mode(struct tcc_isp_state *state)
 {
 	volatile void __iomem *isp_base = state->isp_base;
@@ -410,6 +417,9 @@ static void tcc_isp_init_local(struct tcc_isp_state *state)
 	/* set register update control */
 	tcc_isp_set_regster_update_mode(state);
 
+	/* memory sharing */
+	tcc_isp_mem_share(state, state->mem_share);
+
 	/* disable wdma */
 	tcc_isp_set_wdma(state, OFF);
 
@@ -467,6 +477,7 @@ static int tcc_isp_parse_dt(struct platform_device *pdev,
 {
 	struct device *dev = &pdev->dev;
 	struct resource *mem_res;
+	struct device_node *node = pdev->dev.of_node;
 	int ret = 0;
 
 	/* Get ISP base address */
@@ -514,6 +525,9 @@ static int tcc_isp_parse_dt(struct platform_device *pdev,
 	}
 #endif
 
+	of_property_read_u32_index(node,
+		"mem_share", 0, &(state->mem_share));
+	logi(&(state->pdev->dev), "mem_share %d\n", state->mem_share);
 err:
 
 	return ret;
