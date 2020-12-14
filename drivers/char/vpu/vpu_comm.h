@@ -6,41 +6,41 @@
 #ifndef VPU_COMM_H
 #define VPU_COMM_H
 
-/*****************************************************************************
+/*****************************************************************************************
  * VIDEO DECODER COUNT DEFINITION
  */
 #define DEFINED_CONFIG_VDEC_CNT_5 defined(CONFIG_VDEC_CNT_5)
 
 #define DEFINED_CONFIG_VDEC_CNT_45 \
-	(defined(CONFIG_VDEC_CNT_4) || DEFINED_CONFIG_VDEC_CNT_5)
+	defined(CONFIG_VDEC_CNT_4) || DEFINED_CONFIG_VDEC_CNT_5
 
 #define DEFINED_CONFIG_VDEC_CNT_345 \
-	(defined(CONFIG_VDEC_CNT_3) || DEFINED_CONFIG_VDEC_CNT_45)
+	defined(CONFIG_VDEC_CNT_3) || DEFINED_CONFIG_VDEC_CNT_45
 
 #define DEFINED_CONFIG_VDEC_CNT_2345 \
-	(defined(CONFIG_VDEC_CNT_2) || DEFINED_CONFIG_VDEC_CNT_345)
+	defined(CONFIG_VDEC_CNT_2) || DEFINED_CONFIG_VDEC_CNT_345
 
 #define DEFINED_CONFIG_VDEC_CNT_12345 \
-	(defined(CONFIG_VDEC_CNT_1) || DEFINED_CONFIG_VDEC_CNT_2345)
+	defined(CONFIG_VDEC_CNT_1) || DEFINED_CONFIG_VDEC_CNT_2345
 
-/*****************************************************************************
+/*****************************************************************************************
  * VIDEO ENCODER COUNT DEFINITION
  */
 #define DEFINED_CONFIG_VENC_CNT_5 defined(CONFIG_VENC_CNT_5)
 
 #define DEFINED_CONFIG_VENC_CNT_45 \
-	(defined(CONFIG_VENC_CNT_4) || DEFINED_CONFIG_VENC_CNT_5)
+	defined(CONFIG_VENC_CNT_4) || DEFINED_CONFIG_VENC_CNT_5
 
 #define DEFINED_CONFIG_VENC_CNT_345 \
-	(defined(CONFIG_VENC_CNT_3) || DEFINED_CONFIG_VENC_CNT_45)
+	defined(CONFIG_VENC_CNT_3) || DEFINED_CONFIG_VENC_CNT_45
 
 #define DEFINED_CONFIG_VENC_CNT_2345 \
-	(defined(CONFIG_VENC_CNT_2) || DEFINED_CONFIG_VENC_CNT_345)
+	defined(CONFIG_VENC_CNT_2) || DEFINED_CONFIG_VENC_CNT_345
 
 #define DEFINED_CONFIG_VENC_CNT_12345 \
-	(defined(CONFIG_VENC_CNT_1) || DEFINED_CONFIG_VENC_CNT_2345)
+	defined(CONFIG_VENC_CNT_1) || DEFINED_CONFIG_VENC_CNT_2345
 
-/*****************************************************************************/
+/****************************************************************************************/
 
 #include "vpu_structure.h"
 #include "vpu_etc.h"
@@ -51,9 +51,9 @@
 #endif
 
 #if defined(CONFIG_TYPE_C5)
-#include <video/tcc/TCC_VPUs_CODEC.h>
+#include <video/tcc/TCC_VPUs_CODEC.h> // VPU video codec
 #else
-#include <video/tcc/TCC_VPU_CODEC.h>
+#include <video/tcc/TCC_VPU_CODEC.h> // VPU video codec
 #endif
 #include <video/tcc/tcc_vpu_ioctl.h>
 
@@ -69,7 +69,7 @@
 #include <video/tcc/TCC_HEVC_CODEC.h>
 #include <video/tcc/tcc_hevc_ioctl.h>
 #endif
-#ifdef CONFIG_SUPPORT_TCC_WAVE512_4K_D2	// HEVC/VP9
+#ifdef CONFIG_SUPPORT_TCC_WAVE512_4K_D2
 #include <video/tcc/TCC_VPU_4K_D2_CODEC.h>
 #include <video/tcc/tcc_4k_d2_ioctl.h>
 #endif
@@ -83,8 +83,7 @@
 #include <video/tcc/tcc_vpu_hevc_enc_ioctl.h>
 #endif
 
-//In case of kernel operation (open/close in the kernel level)
-// like TMS, open/close works asynchronosly.
+//In case of kernel operation (open/close in the kernel level) like TMS, open/close works asynchronosly.
 #if 0
 #define USE_DEV_OPEN_CLOSE_IOCTL
 #endif
@@ -100,14 +99,24 @@
 #define RET1        0x00002000
 #define RET0        0x00001000
 
-enum list_cmd_type {
+typedef enum
+{
 	LIST_ADD = 0,
 	LIST_DEL,
 	LIST_IS_EMPTY,
 	LIST_GET_ENTRY
-};
+} list_cmd_type;
 
-struct _vpu_dec_data_t {
+typedef enum
+{
+	INTR_INIT = 0,
+	INTR_GET,
+	INTR_MINUS,
+	INTR_WAKEUP
+} intr_func_type;
+
+typedef struct _vpu_dec_data_t
+{
 	wait_queue_head_t wq;
 	spinlock_t lock;
 	unsigned int count;
@@ -115,20 +124,23 @@ struct _vpu_dec_data_t {
 #ifdef USE_DEV_OPEN_CLOSE_IOCTL
 	unsigned char dev_file_opened;
 #endif
-};
+} vpu_comm_data_t;
 
-struct VpuList {
+typedef struct VpuList
+{
 	struct list_head list;
 
-	unsigned int type;	//encode or decode ?
-	int cmd_type;		//vpu command
+	unsigned int type; //encode or decode ?
+	int cmd_type;      //vpu command
 	long handle;
-	void *args;		//vpu argument!!
-	struct _vpu_dec_data_t *comm_data;
-	int *vpu_result;
-};
+	void* args;        //vpu argument!!
 
-struct MgrCommData {
+	vpu_comm_data_t* comm_data;
+	int* vpu_result;
+} VpuList_t;
+
+typedef struct MgrCommData
+{
 	struct list_head main_list;
 	struct list_head wait_list;
 	struct mutex list_mutex;
@@ -136,34 +148,35 @@ struct MgrCommData {
 	struct mutex file_mutex;
 	unsigned int thread_intr;
 	wait_queue_head_t thread_wq;
-};
+} Mgr_CommData_t;
 
 #ifdef CONFIG_VPU_TIME_MEASUREMENT
-struct TimeInfo {
+typedef struct TimeInfo
+{
 	unsigned int print_out_index;
 	unsigned int proc_time[30];
-	unsigned int proc_base_cnt;	// 0~29
+	unsigned int proc_base_cnt;         // 0~29
 	unsigned int proc_time_30frames;
-	// between 1st frame and last one.
-	unsigned int accumulated_proc_time;
+	unsigned int accumulated_proc_time; // between 1st frame and last one.
 	unsigned int accumulated_frame_cnt;
-};
+} TimeInfo_t;
 #endif
 
-struct _mgr_data_t {
-//IRQ number and IP base
+typedef struct _mgr_data_t
+{
+	//IRQ number and IP base
 	unsigned int irq;
-	void __iomem *base_addr;
+	void __iomem* base_addr;
 	int check_interrupt_detection;
 	int closed[VPU_MAX];
 	long handle[VPU_MAX];
 	int fileplay_mode[VPU_MAX];
 
 #if defined(CONFIG_PM)
-	struct VpuList vList[VPU_MAX];
+	VpuList_t vList[VPU_MAX];
 #endif
 
-	struct MgrCommData comm_data;
+	Mgr_CommData_t comm_data;
 
 	atomic_t oper_intr;
 	wait_queue_head_t oper_wq;
@@ -193,67 +206,68 @@ struct _mgr_data_t {
 
 	bool bDiminishInputCopy;
 #ifdef CONFIG_VPU_TIME_MEASUREMENT
-	struct TimeInfo iTime[VPU_MAX];
+	TimeInfo_t iTime[VPU_MAX];
 #endif
 
 	bool bVpu_already_proc_force_closed;
-};
+} mgr_data_t;
 
 #if DEFINED_CONFIG_VDEC_CNT_12345
-struct _vpu_decoder_data {
-	struct miscdevice *misc;
-	struct _vpu_dec_data_t vComm_data;
+typedef struct _vpu_decoder_data
+{
+	struct miscdevice* misc;
+	vpu_comm_data_t vComm_data;
 	int gsDecType;
 	int gsCodecType;
 
 	int gsIsDiminishedCopy;
 
-	VDEC_INIT_t gsVpuDecInit_Info;
-	VDEC_SEQ_HEADER_t gsVpuDecSeqHeader_Info;
-	VDEC_SET_BUFFER_t gsVpuDecBuffer_Info;
-	VDEC_DECODE_t gsVpuDecInOut_Info;
-	VDEC_RINGBUF_GETINFO_t gsVpuDecBufStatus;
-	VDEC_RINGBUF_SETBUF_t gsVpuDecBufFill;
+	VDEC_INIT_t             gsVpuDecInit_Info;
+	VDEC_SEQ_HEADER_t       gsVpuDecSeqHeader_Info;
+	VDEC_SET_BUFFER_t       gsVpuDecBuffer_Info;
+	VDEC_DECODE_t           gsVpuDecInOut_Info;
+	VDEC_RINGBUF_GETINFO_t  gsVpuDecBufStatus;
+	VDEC_RINGBUF_SETBUF_t   gsVpuDecBufFill;
 	VDEC_RINGBUF_SETBUF_PTRONLY_t gsVpuDecUpdateWP;
-	VDEC_GET_VERSION_t gsVpuDecVersion;
+	VDEC_GET_VERSION_t      gsVpuDecVersion;
 
 #ifdef CONFIG_SUPPORT_TCC_JPU
-	JDEC_INIT_t gsJpuDecInit_Info;
+	JDEC_INIT_t             gsJpuDecInit_Info;
 #if defined(JPU_C6)
-	JDEC_SEQ_HEADER_t gsJpuDecSeqHeader_Info;
+	JDEC_SEQ_HEADER_t       gsJpuDecSeqHeader_Info;
 #endif
-	JPU_SET_BUFFER_t gsJpuDecBuffer_Info;
-	JPU_DECODE_t gsJpuDecInOut_Info;
-	JPU_GET_VERSION_t gsJpuDecVersion;
+	JPU_SET_BUFFER_t        gsJpuDecBuffer_Info;
+	JPU_DECODE_t            gsJpuDecInOut_Info;
+	JPU_GET_VERSION_t       gsJpuDecVersion;
 #endif
 
 #ifdef CONFIG_SUPPORT_TCC_WAVE512_4K_D2
-	VPU_4K_D2_INIT_t gsV4kd2DecInit_Info;
-	VPU_4K_D2_SEQ_HEADER_t gsV4kd2DecSeqHeader_Info;
-	VPU_4K_D2_SET_BUFFER_t gsV4kd2DecBuffer_Info;
-	VPU_4K_D2_DECODE_t gsV4kd2DecInOut_Info;
+	VPU_4K_D2_INIT_t            gsV4kd2DecInit_Info;
+	VPU_4K_D2_SEQ_HEADER_t      gsV4kd2DecSeqHeader_Info;
+	VPU_4K_D2_SET_BUFFER_t      gsV4kd2DecBuffer_Info;
+	VPU_4K_D2_DECODE_t          gsV4kd2DecInOut_Info;
 	VPU_4K_D2_RINGBUF_GETINFO_t gsV4kd2DecBufStatus;
-	VPU_4K_D2_RINGBUF_SETBUF_t gsV4kd2DecBufFill;
+	VPU_4K_D2_RINGBUF_SETBUF_t  gsV4kd2DecBufFill;
 	VPU_4K_D2_RINGBUF_SETBUF_PTRONLY_t gsV4kd2DecUpdateWP;
-	VPU_4K_D2_GET_VERSION_t gsV4kd2DecVersion;
+	VPU_4K_D2_GET_VERSION_t     gsV4kd2DecVersion;
 #endif
 
 #ifdef CONFIG_SUPPORT_TCC_WAVE410_HEVC
-	HEVC_INIT_t gsHevcDecInit_Info;
-	HEVC_SEQ_HEADER_t gsHevcDecSeqHeader_Info;
-	HEVC_SET_BUFFER_t gsHevcDecBuffer_Info;
-	HEVC_DECODE_t gsHevcDecInOut_Info;
-	HEVC_RINGBUF_GETINFO_t gsHevcDecBufStatus;
-	HEVC_RINGBUF_SETBUF_t gsHevcDecBufFill;
+	HEVC_INIT_t             gsHevcDecInit_Info;
+	HEVC_SEQ_HEADER_t       gsHevcDecSeqHeader_Info;
+	HEVC_SET_BUFFER_t       gsHevcDecBuffer_Info;
+	HEVC_DECODE_t           gsHevcDecInOut_Info;
+	HEVC_RINGBUF_GETINFO_t  gsHevcDecBufStatus;
+	HEVC_RINGBUF_SETBUF_t   gsHevcDecBufFill;
 	HEVC_RINGBUF_SETBUF_PTRONLY_t gsHevcDecUpdateWP;
-	HEVC_GET_VERSION_t gsHevcDecVersion;
+	HEVC_GET_VERSION_t      gsHevcDecVersion;
 #endif
 
 #ifdef CONFIG_SUPPORT_TCC_G2V2_VP9
-	VP9_INIT_t gsVp9DecInit_Info;
-	VP9_SEQ_HEADER_t gsVp9DecSeqHeader_Info;
-	VP9_SET_BUFFER_t gsVp9DecBuffer_Info;
-	VP9_DECODE_t gsVp9DecInOut_Info;
+	VP9_INIT_t              gsVp9DecInit_Info;
+	VP9_SEQ_HEADER_t        gsVp9DecSeqHeader_Info;
+	VP9_SET_BUFFER_t        gsVp9DecBuffer_Info;
+	VP9_DECODE_t            gsVp9DecInOut_Info;
 	VP9_GET_VERSION_t gsVp9DecVersion;
 #endif
 
@@ -261,14 +275,15 @@ struct _vpu_decoder_data {
 	int gsCommDecResult;
 	unsigned char list_idx;
 
-	struct VpuList vdec_list[LIST_MAX];
-};
+	VpuList_t vdec_list[LIST_MAX];
+} vpu_decoder_data;
 #endif
 
 #if DEFINED_CONFIG_VENC_CNT_12345
-struct _vpu_encoder_data {
-	struct miscdevice *misc;
-	struct _vpu_dec_data_t vComm_data;
+typedef struct _vpu_encoder_data
+{
+	struct miscdevice* misc;
+	vpu_comm_data_t vComm_data;
 	int gsEncType;
 	int gsCodecType;
 
@@ -292,8 +307,8 @@ struct _vpu_encoder_data {
 	int gsCommEncResult;
 	unsigned char list_idx;
 
-	struct VpuList venc_list[LIST_MAX];
-};
+	VpuList_t venc_list[LIST_MAX];
+} vpu_encoder_data;
 #endif
 
 #endif /*VPU_COMM_H*/
