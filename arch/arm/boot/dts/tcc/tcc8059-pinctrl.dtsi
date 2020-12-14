@@ -94,12 +94,14 @@
 		telechips,pins = "gpsd0-0";
 		telechips,pin-function = <1>;
 		telechips,drive-strength = <3>;
+		telechips,input_buffer_enable;
 	};
 
 	sd0_cmd: sd0_cmd {
 		telechips,pins = "gpsd0-1";
 		telechips,pin-function = <1>;
 		telechips,drive-strength = <3>;
+		telechips,input_buffer_enable;
 	};
 
 	sd0_strb: sd0_strb {
@@ -107,18 +109,21 @@
 		telechips,pin-function = <1>;
 		telechips,drive-strength = <3>;
 		telechips,pull-down;
+		telechips,input_buffer_enable;
 	};
 
 	sd0_bus1: sd0_bus1 {
 		telechips,pins = "gpsd0-2";
 		telechips,pin-function = <1>;
 		telechips,drive-strength = <3>;
+		telechips,input_buffer_enable;
 	};
 
 	sd0_bus4: sd0_bus4 {
 		telechips,pins = "gpsd0-2", "gpsd0-3", "gpsd0-4", "gpsd0-5";
 		telechips,pin-function = <1>;
 		telechips,drive-strength = <3>;
+		telechips,input_buffer_enable;
 	};
 
 	sd0_bus8: sd0_bus8 {
@@ -126,6 +131,7 @@
 		                 "gpsd0-6", "gpsd0-7", "gpsd0-8", "gpsd0-9";
 		telechips,pin-function = <1>;
 		telechips,drive-strength = <3>;
+		telechips,input_buffer_enable;
 	};
 
 	/* GPIO SD1 */
@@ -133,30 +139,36 @@
 		telechips,pins = "gpsd1-0";
 		telechips,pin-function = <1>;
 		telechips,drive-strength = <3>;
+		telechips,input_buffer_enable;
 	};
 
 	sd1_cmd: sd1_cmd {
 		telechips,pins = "gpsd1-1";
 		telechips,pin-function = <1>;
 		telechips,drive-strength = <3>;
+		telechips,input_buffer_enable;
 	};
 
 	sd1_bus1: sd1_bus1 {
 		telechips,pins = "gpsd1-2";
 		telechips,pin-function = <1>;
 		telechips,drive-strength = <3>;
+		telechips,input_buffer_enable;
 	};
 
 	sd1_bus4: sd1_bus4 {
 		telechips,pins = "gpsd1-2", "gpsd1-3", "gpsd1-4", "gpsd1-5";
 		telechips,pin-function = <1>;
 		telechips,drive-strength = <3>;
+		telechips,input_buffer_enable;
 	};
 
 	sd1_bus4_wp_cd: sd1_bus4_wp_cd {
 		telechips,pins = "gpsd1-6", "gpsd1-7";
 		telechips,pin-function = <0>;
 		telechips,pull-up;
+		telechips,input-enable;
+		telechips,input_buffer_enable;
 	};
 
 	sd1_bus8: sd1_bus8 {
@@ -164,6 +176,7 @@
 		                 "gpsd1-6", "gpsd1-7", "gpsd1-8", "gpsd1-9";
 		telechips,pin-function = <1>;
 		telechips,drive-strength = <3>;
+		telechips,input_buffer_enable;
 	};
 
 	sd1_pwr: sd1_pwr {
@@ -179,24 +192,28 @@
 		telechips,drive-strength = <3>;
 		telechips,pull-up;
 		telechips,output-low;
+		telechips,input_buffer_enable;
 	};
 
 	sd2_cmd: sd2_cmd {
 		telechips,pins = "gpsd2-1";
 		telechips,pin-function = <1>;
 		telechips,drive-strength = <3>;
+		telechips,input_buffer_enable;
 	};
 
 	sd2_bus1: sd2_bus1 {
 		telechips,pins = "gpsd2-2";
 		telechips,pin-function = <1>;
 		telechips,drive-strength = <3>;
+		telechips,input_buffer_enable;
 	};
 
 	sd2_bus4: sd2_bus4 {
 		telechips,pins = "gpsd2-2", "gpsd2-3", "gpsd2-4", "gpsd2-5";
 		telechips,pin-function = <1>;
 		telechips,drive-strength = <3>;
+		telechips,input_buffer_enable;
 	};
 
 	sd2_bus8: sd2_bus8 {
@@ -204,6 +221,7 @@
 		                 "gpsd2-6", "gpsd2-7", "gpsd2-8", "gpsd2-9";
 		telechips,pin-function = <1>;
 		telechips,drive-strength = <3>;
+		telechips,input_buffer_enable;
 	};
 
 	out0_clk: out0_clk {
