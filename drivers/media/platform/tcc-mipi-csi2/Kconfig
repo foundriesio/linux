@@ -9,7 +9,7 @@ config TCC_MIPI_CSI2
 	bool "Telechips MIPI CSI-2 driver"
 	default y
         depends on ARCH_TCC803X || ARCH_TCC805X
-        depends on VIDEO_TCCVIN2
+        depends on VIDEO_TCCVIN2 || VIDEO_TCCVIN
 	---help---
 	  This is a V4L2 driver for TCC803X and TCC805X SoC MIPI-CSI2
 	  receiver devices.
