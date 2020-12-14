@@ -7305,9 +7305,11 @@ int nfs4_proc_secinfo(struct inode *dir, const struct qstr *name,
  * both PNFS and NON_PNFS flags set, and not having one of NON_PNFS, PNFS, or
  * DS flags set.
  */
-static int nfs4_check_cl_exchange_flags(u32 flags)
+static int nfs4_check_cl_exchange_flags(u32 flags, u32 version)
 {
-	if (flags & ~EXCHGID4_FLAG_MASK_R)
+	if (version >= 2 && (flags & ~EXCHGID4_2_FLAG_MASK_R))
+		goto out_inval;
+	else if (version < 2 && (flags & ~EXCHGID4_FLAG_MASK_R))
 		goto out_inval;
 	if ((flags & EXCHGID4_FLAG_USE_PNFS_MDS) &&
 	    (flags & EXCHGID4_FLAG_USE_NON_PNFS))
@@ -7584,7 +7586,8 @@ static void nfs4_exchange_id_done(struct rpc_task *task, void *data)
 	trace_nfs4_exchange_id(clp, status);
 
 	if (status == 0)
-		status = nfs4_check_cl_exchange_flags(cdata->res.flags);
+		status = nfs4_check_cl_exchange_flags(cdata->res.flags,
+						      clp->cl_mvops->minor_version);
 
 	if (cdata->xprt && status == 0) {
 		status = nfs4_detect_session_trunking(clp, &cdata->res,
