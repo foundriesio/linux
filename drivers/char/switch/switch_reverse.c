@@ -172,6 +172,8 @@ static int32_t switch_get_status(struct switch_dev *vdev)
 			}
 			logd("gpio: %d, value: %d, active: %d, status: %d\n",
 				gpio, gpio_value, gpio_active, status);
+
+			atomic_set(&vdev->status, status);
 		} else {
 			loge("HW Switch is not supported, gpio: %d\n", gpio);
 			status = atomic_read(&vdev->status);
