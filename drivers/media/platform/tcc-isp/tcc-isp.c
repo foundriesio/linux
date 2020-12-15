@@ -180,7 +180,7 @@ static void tcc_isp_callback_load_firmware(
 
 
 	if (fw == NULL) {
-		pr_err("[ERR][tcc-isp] FAIL - firmware loading\n");
+		pr_warn("[WARN][tcc-isp] Timeout - firmware loading\n");
 		return;
 	}
 

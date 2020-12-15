@@ -992,7 +992,7 @@ static int tcc_mipi_csi2_parse_dt(struct platform_device *pdev,
 	 * Get MIPI CSI-2 base address
 	 */
 	mem_res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "csi");
-	loge(&(state->pdev->dev), "mem_res = %px\n", mem_res);
+	logi(&(state->pdev->dev), "mem_res = %px\n", mem_res);
 	state->csi_base = devm_ioremap_resource(dev, mem_res);
 	if (IS_ERR((const void *)state->csi_base))
 		return PTR_ERR((const void *)state->csi_base);

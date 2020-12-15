@@ -61,14 +61,16 @@ struct max9275 {
 
 	/* Regmaps */
 	struct regmap			*regmap;
+
+	struct mutex lock;
+	unsigned int p_cnt;
+	unsigned int s_cnt;
+	unsigned int i_cnt;
 };
 
-const struct reg_sequence max9275_reg_init[] = {
+const struct reg_sequence max9275_reg_defaults[] = {
 	{0x04, 0x43, 50},
-};
 
-const struct reg_sequence max9275_reg_s_stream[] = {
-	{0x04, 0x83, 50},
 };
 
 static const struct regmap_config max9275_regmap = {
@@ -90,16 +92,28 @@ static inline struct max9275 *to_dev(struct v4l2_subdev *sd)
 /*
  * v4l2_subdev_core_ops implementations
  */
-static int max9275_init(struct v4l2_subdev *sd, u32 val)
+static int max9275_init(struct v4l2_subdev *sd, u32 enable)
 {
 	struct max9275		*dev	= to_dev(sd);
 	int			ret	= 0;
 
-	ret = regmap_multi_reg_write(dev->regmap,
-			max9275_reg_init,
-			ARRAY_SIZE(max9275_reg_init));
-	if (ret)
-		loge("regmap_multi_reg_write returned %d\n", ret);
+	mutex_lock(&dev->lock);
+
+	if ((dev->i_cnt == 0) && (enable == 1)) {
+		ret = regmap_multi_reg_write(dev->regmap,
+				max9275_reg_defaults,
+				ARRAY_SIZE(max9275_reg_defaults));
+		if (ret < 0)
+			loge("Fail initializing max9275 device\n");
+	} else if ((dev->i_cnt == 1) && (enable == 0)) {
+	}
+
+	if (enable)
+		dev->i_cnt++;
+	else
+		dev->i_cnt--;
+
+	mutex_unlock(&dev->lock);
 
 	return ret;
 }
@@ -112,12 +126,22 @@ static int max9275_s_stream(struct v4l2_subdev *sd, int enable)
 	struct max9275		*dev	= to_dev(sd);
 	int			ret	= 0;
 
-	ret = regmap_multi_reg_write(dev->regmap,
-			max9275_reg_s_stream,
-			ARRAY_SIZE(max9275_reg_s_stream));
-	if (ret)
-		loge("regmap_multi_reg_write returned %d\n", ret);
+	mutex_lock(&dev->lock);
 
+	if ((dev->s_cnt == 0) && (enable == 1)) {
+		ret = regmap_write(dev->regmap, 0x04, 0x83);
+		if (ret < 0)
+			loge("Fail Serialization max9275 device\n");
+	} else if ((dev->s_cnt == 1) && (enable == 0)) {
+		ret = regmap_write(dev->regmap, 0x04, 0x43);
+	}
+
+	if (enable)
+		dev->s_cnt++;
+	else
+		dev->s_cnt--;
+
+	mutex_unlock(&dev->lock);
 	return ret;
 }
 
@@ -130,8 +154,12 @@ static int max9275_get_fmt(struct v4l2_subdev *sd,
 
 	logi("%s call\n", __func__);
 
+	mutex_lock(&dev->lock);
+
 	memcpy((void *)&format->format, (const void *)&dev->fmt,
 		sizeof(struct v4l2_mbus_framefmt));
+
+	mutex_unlock(&dev->lock);
 	return ret;
 }
 
@@ -144,9 +172,12 @@ static int max9275_set_fmt(struct v4l2_subdev *sd,
 
 	logi("%s call\n", __func__);
 
+	mutex_lock(&dev->lock);
+
 	memcpy((void *)&dev->fmt, (const void *)&format->format,
 		sizeof(struct v4l2_mbus_framefmt));
 
+	mutex_unlock(&dev->lock);
 	return ret;
 }
 

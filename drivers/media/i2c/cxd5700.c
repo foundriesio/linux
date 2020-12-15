@@ -61,9 +61,14 @@ struct cxd5700 {
 
 	/* Regmaps */
 	struct regmap			*regmap;
+
+	struct mutex lock;
+	unsigned int p_cnt;
+	unsigned int s_cnt;
+	unsigned int i_cnt;
 };
 
-const char cxd5700_reg_init[] = {
+const char cxd5700_reg_defaults[] = {
 	/*{0x0A},*/ {0x01}, {0x07}, {0x02}, {0x01},
 	{0x00}, {0x00}, {0x30}, {0x80}, {0xC5}
 };
@@ -95,21 +100,28 @@ static inline struct cxd5700 *to_dev(struct v4l2_subdev *sd)
 /*
  * v4l2_subdev_core_ops implementations
  */
-static int cxd5700_init(struct v4l2_subdev *sd, u32 val)
+static int cxd5700_init(struct v4l2_subdev *sd, u32 enable)
 {
 	struct cxd5700		*dev	= to_dev(sd);
 	int			ret	= 0;
 
-	ret = regmap_bulk_write(dev->regmap,
-			0x0a,
-			cxd5700_reg_init, ARRAY_SIZE(cxd5700_reg_init));
-#if 0
-	ret = regmap_multi_reg_write(dev->regmap,
-			cxd5700_reg_init,
-			ARRAY_SIZE(cxd5700_reg_init));
-#endif
-	if (ret)
-		loge("regmap_multi_reg_write returned %d\n", ret);
+	mutex_lock(&dev->lock);
+
+	if ((dev->i_cnt == 0) && (enable == 1)) {
+		ret = regmap_bulk_write(dev->regmap,
+				0x0a,
+				cxd5700_reg_defaults, ARRAY_SIZE(cxd5700_reg_defaults));
+		if (ret < 0)
+			loge("regmap_multi_reg_write returned %d\n", ret);
+	} else if ((dev->i_cnt == 1) && (enable == 0)) {
+	}
+
+	if (enable)
+		dev->i_cnt++;
+	else
+		dev->i_cnt--;
+
+	mutex_unlock(&dev->lock);
 
 	return ret;
 }
@@ -122,8 +134,10 @@ static int cxd5700_s_stream(struct v4l2_subdev *sd, int enable)
 	struct cxd5700		*dev	= to_dev(sd);
 	int			ret	= 0;
 
-	logi("call !!\n");
+	mutex_lock(&dev->lock);
 
+
+	mutex_unlock(&dev->lock);
 	return ret;
 }
 
@@ -136,9 +150,12 @@ static int cxd5700_get_fmt(struct v4l2_subdev *sd,
 
 	logi("%s call\n", __func__);
 
+	mutex_lock(&dev->lock);
+
 	memcpy((void *)&format->format, (const void *)&dev->fmt,
 		sizeof(struct v4l2_mbus_framefmt));
 
+	mutex_unlock(&dev->lock);
 	return ret;
 }
 
@@ -151,9 +168,12 @@ static int cxd5700_set_fmt(struct v4l2_subdev *sd,
 
 	logi("%s call\n", __func__);
 
+	mutex_lock(&dev->lock);
+
 	memcpy((void *)&dev->fmt, (const void *)&format->format,
 		sizeof(struct v4l2_mbus_framefmt));
 
+	mutex_unlock(&dev->lock);
 	return ret;
 }
 
