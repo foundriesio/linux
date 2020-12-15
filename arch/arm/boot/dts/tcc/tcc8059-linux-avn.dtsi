@@ -116,7 +116,7 @@
 		<0x0 0x14400014 0x0 0x4>;
 		status = "okay";
 	};
-	
+
 	graphic2d:graphic2d@1A400000 {
 		status ="okay";
 	};
@@ -133,9 +133,9 @@
 			rst-gpios = <&gpma 12 0>;
 
 			da9062_gpio: gpio {
-			    compatible = "dlg,da9062-gpio";
-			    gpio-controller;
-			    #gpio-cells = <2>;
+				compatible = "dlg,da9062-gpio";
+				gpio-controller;
+				#gpio-cells = <2>;
 			};
 
 			regulators {
@@ -163,22 +163,22 @@
 					regulator-boot-on;
 				};
 
-				DA9062_BUCK4: BUCK4 {
+				DA9062_BUCK4: buck4 {
 					regulator-name = "memq_0p6";
 					regulator-min-microvolt = <555000>;
 					regulator-max-microvolt = <600000>;
 					regulator-always-on;
 					regulator-boot-on;
 				};
-
-				// DA9062_LDO2: ldo2 {
-					// regulator-name = "mem_1p8";
-					// regulator-min-microvolt = <1700000>;
-					// regulator-max-microvolt = <1800000>;
-					// regulator-always-on;
-					// regulator-boot-on;
-				// };
-
+#if 0
+				DA9062_LDO2: ldo2 {
+					regulator-name = "mem_1p8";
+					regulator-min-microvolt = <1700000>;
+					regulator-max-microvolt = <1800000>;
+					regulator-always-on;
+					regulator-boot-on;
+				};
+#endif
 				DA9062_LDO3: ldo3 {
 					regulator-name = "mipi_1p2";
 					regulator-min-microvolt = <1145000>;
@@ -197,53 +197,27 @@
 				};
 			};
 		}; /* pmic da9062 */
-/*
-        pmic@69 {
-          compatible = "mps,mpq7920";
-          reg = <0x69>;
 
-          mps,switch-freq = <1>;
-          mps,buck-softstart = /bits/ 8 <1 2 1 3>;
-          mps,buck-ovp = /bits/ 8 <1 0 1 1>;
-
-          regulators {
-            buck1 {
-             regulator-name = "buck1";
-             regulator-min-microvolt = <400000>;
-             regulator-max-microvolt = <3587500>;
-             regulator-min-microamp  = <460000>;
-             regulator-max-microamp  = <7600000>;
-             regulator-boot-on;
-            };
-
-            ldo2 {
-             regulator-name = "ldo2";
-             regulator-min-microvolt = <650000>;
-             regulator-max-microvolt = <3587500>;
-            };
-          };
-        }; // pmic mpq7920
-*/
 		dp_serializer:max96851@60 {
 			compatible	= "maxim,serdes";
 			reg		= <0x60>;
 		};
-	
+
 		dp_deserializer0:max96878@48 {
 			compatible	= "maxim,serdes";
 			reg		= <0x48>;
 		};
-	
+
 		dp_deserializer1:max96878@4A {
 			compatible	= "maxim,serdes";
 			reg		= <0x4A>;
 		};
-	
+
 		dp_deserializer2:max96878@4C {
 			compatible	= "maxim,serdes";
 			reg		= <0x4C>;
 		};
-	
+
 		serdes_path:serdes_path@0{
 			compatible = "telechips,serdes_path_configuration";
 			serdes_path_configuration = <0>; /* 0 TCC8059, 1 TCC8050/3 */

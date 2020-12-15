@@ -287,77 +287,78 @@
 	pinctrl-names = "default";
 	pinctrl-0 = <&i2c6_bus>;
 
-/* pmic da9062 */
+	/* pmic da9062 */
 	pmic@58 {
-		 compatible = "dlg,da9062";
-		 reg = <0x58>;
-		 rst-gpios = <&gpma 12 0>;
+		compatible = "dlg,da9062";
+		reg = <0x58>;
+		rst-gpios = <&gpma 12 0>;
 
-		 da9062_gpio: gpio {
-			 compatible = "dlg,da9062-gpio";
-			 gpio-controller;
-			 #gpio-cells = <2>;
-		 };
+		da9062_gpio: gpio {
+			compatible = "dlg,da9062-gpio";
+			gpio-controller;
+			#gpio-cells = <2>;
+		};
 
-		 regulators {
-			 DA9062_BUCK1: buck1 {
-				 regulator-name = "memq_1p1";
-				 regulator-min-microvolt = <1045000>;
-				 regulator-max-microvolt = <1100000>;
-				 regulator-always-on;
-				 regulator-boot-on;
-			 };
+		regulators {
+			DA9062_BUCK1: buck1 {
+				regulator-name = "memq_1p1";
+				regulator-min-microvolt = <1045000>;
+				regulator-max-microvolt = <1100000>;
+				regulator-always-on;
+				regulator-boot-on;
+			};
 
-			 DA9062_BUCK2: buck2 {
-				 regulator-name = "cpu_0p9v";
-				 regulator-min-microvolt = <855000>;
-				 regulator-max-microvolt = <900000>;
-				 regulator-always-on;
-				 regulator-boot-on;
-			 };
+			DA9062_BUCK2: buck2 {
+				regulator-name = "cpu_0p9v";
+				regulator-min-microvolt = <855000>;
+				regulator-max-microvolt = <900000>;
+				regulator-always-on;
+				regulator-boot-on;
+			};
 
-			 DA9062_BUCK3: buck3 {
-				 regulator-name = "io_1p8";
-				 regulator-min-microvolt = <1700000>;
-				 regulator-max-microvolt = <1800000>;
-				 regulator-always-on;
-				 regulator-boot-on;
-			 };
+			DA9062_BUCK3: buck3 {
+				regulator-name = "io_1p8";
+				regulator-min-microvolt = <1700000>;
+				regulator-max-microvolt = <1800000>;
+				regulator-always-on;
+				regulator-boot-on;
+			};
 
-			 DA9062_BUCK4: BUCK4 {
-				 regulator-name = "memq_0p6";
-				 regulator-min-microvolt = <555000>;
-				 regulator-max-microvolt = <600000>;
-				 regulator-always-on;
-				 regulator-boot-on;
-			 };
+			DA9062_BUCK4: buck4 {
+				regulator-name = "memq_0p6";
+				regulator-min-microvolt = <555000>;
+				regulator-max-microvolt = <600000>;
+				regulator-always-on;
+				regulator-boot-on;
+			};
+#if 0
+			/* Temp block for LDO2. Block min-microvolt of LDO2 */
+			DA9062_LDO2: ldo2 {
+				regulator-name = "mem_1p8";
+				regulator-min-microvolt = <1700000>;
+				regulator-max-microvolt = <1800000>;
+				regulator-always-on;
+				regulator-boot-on;
+			};
+#endif
+			DA9062_LDO3: ldo3 {
+				regulator-name = "mipi_1p2";
+				regulator-min-microvolt = <1145000>;
+				regulator-max-microvolt = <1200000>;
+				regulator-always-on;
+				regulator-boot-on;
+			};
 
-			   /* Temp block for LDO2. Block min-microvolt of LDO2 */
-			 // DA9062_LDO2: ldo2 {
-				 // regulator-name = "mem_1p8";
-				 // regulator-min-microvolt = <1700000>;
-				 // regulator-max-microvolt = <1800000>;
-				 // regulator-always-on;
-				 // regulator-boot-on;
-			 // };
-			 DA9062_LDO3: ldo3 {
-				 regulator-name = "mipi_1p2";
-				 regulator-min-microvolt = <1145000>;
-				 regulator-max-microvolt = <1200000>;
-				 regulator-always-on;
-				 regulator-boot-on;
-			 };
+			DA9062_LDO4: ldo4 {
+				regulator-name = "sdio_pwr";
+				regulator-min-microvolt = <1800000>;
+				regulator-max-microvolt = <3300000>;
+				regulator-always-on;
+				regulator-boot-on;
+			};
+		};
+	}; /* pmic da9062 */
 
-			 DA9062_LDO4: ldo4 {
-				 regulator-name = "sdio_pwr";
-				 regulator-min-microvolt = <1800000>;
-				 regulator-max-microvolt = <3300000>;
-				 regulator-always-on;
-				 regulator-boot-on;
-			 };
-		 };
-	 };
-/* pmic da9062 */
 	mxt_touch@4b {
 		compatible = "atmel,maxtouch";
 		status = "okay";
@@ -367,7 +368,6 @@
 		irq-gpios = <&gpsd1 9 0x0>;
 		reset-gpios = <&gpb 16 0x0>;
 	};
-
 };
 
 &i2c1 {
