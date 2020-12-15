@@ -1296,7 +1296,7 @@
 		arbitor_num = <4>;
 	};
 
-	mipi_csi2_0:mipi_csi@1bc00800 {
+	mipi_csi2_0: mipi_csi2_0@1bc00800 {
 		compatible = "telechips,tcc805x-mipi-csi2";
 		status = "okay";
 		reg = 	<0x1bc00800 0x120>,	/* csi0_base */
@@ -1335,16 +1335,37 @@
 		isp2-bypass = <1>;
 		isp3-bypass = <1>;
 
-		/*
-		 * the number of isp to use
-		 */
-		isp-number = <0>;
+		ports {
+			/*
+			 * 0 ~ 3
+			 * input port.
+			 *
+			 * 4
+			 * output ports. The number is matched with VC
+			 */
+			port@0 {
+				reg = <0>;
+				mipi_csi2_0_in: endpoint {
+					num-channel = <4>;
+
+					/*
+					 * 0: CH0 only, no data interleave
+					 * 1: DT only
+					 * 2: VC only
+					 * 3: VC and DT
+					 */
+					interleave-mode = <3>;
+					hs-settle = <17>; // for HD 4ch
+					data-lanes = <1 2 3 4>;
+				};
+			};
+		};
 	};
 
 	/* MIPI 1 */
-	mipi_csi2_1:mipi_csi@1bc00c00 {
+	mipi_csi2_1: mipi_csi2_1@1bc00c00 {
 		compatible = "telechips,tcc805x-mipi-csi2";
-		status = "okay";
+		status = "disabled";
 		reg =	<0x1bc00c00 0x120>,	/* csi0_base */
 			<0x1bc00e00 0x05c>,	/* gdb0_base */
 			<0x1bc00000 0x014>,	/* ckc_base */
