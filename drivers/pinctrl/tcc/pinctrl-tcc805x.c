@@ -71,6 +71,20 @@ static struct tcc_pinctrl_soc_data tcc805x_pinctrl_soc_data;
 static const struct tcc_sc_fw_handle *sc_fw_handle_for_gpio;
 #endif
 
+static u32 reg_readl
+	(void __iomem *base, u32 pin_num, u32 width)
+{
+	u32 mask = ((u32)1U << width) - 1U;
+	u32 reg_data;
+	u32 bit_shift = (pin_num % (32U / width)) * width;
+	void __iomem *address = base
+		+ ((pin_num / (32U / width)) * 0x4U);
+
+	reg_data = readl(address);
+
+	return (reg_data >> bit_shift) & mask;
+}
+
 #if defined(CONFIG_PINCTRL_TCC_SCFW)
 static int request_gpio_to_sc(u32 address, u32 bit_number, u32 width, u32 value)
 {
@@ -603,12 +617,50 @@ static int tcc805x_pinconf_get(void __iomem *base, u32 offset, int param)
 	switch (param) {
 	case TCC_PINCONF_DRIVE_STRENGTH:
 		ret = tcc805x_gpio_get_drive_strength(base, offset);
+		//ret = reg_readl(base, offset, 2U);
+		break;
+
+	case TCC_PINCONF_NO_PULL:
+		ret = reg_readl(base + GPIO_PULL_ENABLE, offset, 1U);
+		break;
+
+	case TCC_PINCONF_PULL_UP:
+	case TCC_PINCONF_PULL_DOWN:
+		ret = reg_readl(base + GPIO_PULL_SELECT, offset, 1U);
+		break;
+
+	case TCC_PINCONF_INPUT_ENABLE:
+		//direction(output enbale)
+		ret = 1 - reg_readl(base + GPIO_OUTPUT_ENABLE, offset, 1U);
+		break;
+
+	case TCC_PINCONF_OUTPUT_LOW:
+	case TCC_PINCONF_OUTPUT_HIGH:
+		ret = reg_readl(base, offset, 1U);
+		break;
+
+	case TCC_PINCONF_INPUT_BUFFER_ENABLE:
+	case TCC_PINCONF_INPUT_BUFFER_DISABLE:
+		ret = reg_readl(base + GPIO_INPUT_BUFFER_ENABLE, offset, 1U);
+		break;
+
+	case TCC_PINCONF_SCHMITT_INPUT:
+	case TCC_PINCONF_CMOS_INPUT:
+		ret = reg_readl(base + GPIO_INPUT_TYPE, offset, 1U);
+		break;
+
+	case TCC_PINCONF_SLOW_SLEW:
+	case TCC_PINCONF_FAST_SLEW:
+		ret = reg_readl(base + GPIO_SLEW_RATE, offset, 1U);
+		break;
+
+	case TCC_PINCONF_FUNC:
+		ret = reg_readl(base + GPIO_FUNC, offset, 4U);
 		break;
 
 	default:
 		ret = -EINVAL;
 		break;
-
 	}
 
 	return ret;
@@ -737,7 +789,7 @@ static int tcc805x_pinctrl_probe(struct platform_device *pdev)
 			&& (sc_fw_handle_for_gpio->version.minor == 0U)
 			&& (sc_fw_handle_for_gpio->version.patch < 7U)) {
 		dev_err(&(pdev->dev),
-				"[ERROR][PINCTRL] The version of SCFW is low. Since gpio cannot be set through SCFW, registers are set directly from kernel\n"
+				"[ERROR][PINCTRL] The version of SCFW is low. So, register cannot be set through SCFW.\n"
 				);
 		dev_err(&(pdev->dev),
 				"[ERROR][PINCTRL] SCFW Version : %d.%d.%d\n",

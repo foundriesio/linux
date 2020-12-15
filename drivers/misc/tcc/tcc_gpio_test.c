@@ -24,36 +24,6 @@
 #include "../../pinctrl/tcc/pinctrl-tcc.h"
 #include "../../pinctrl/pinconf.h"
 
-#ifndef tcc_pinctrl
-struct tcc_pinctrl {
-	struct device *dev;
-
-	void __iomem *base;
-	void __iomem *pmgpio_base;
-
-	struct pinctrl_desc pinctrl_desc;
-
-	struct pinctrl_dev *pctldev;
-
-	struct tcc_pinconf *pin_configs;
-	int nconfigs;
-
-	struct tcc_pinctrl_ops *ops;
-
-	struct pinctrl_pin_desc *pins;
-	u32 npins;
-
-	struct tcc_pin_bank *pin_banks;
-	u32 nbanks;
-
-	struct tcc_pin_group *groups;
-	u32 ngroups;
-
-	struct tcc_pinmux_function *functions;
-	u32 nfunctions;
-};
-#endif
-
 #if defined(DEBUG_GPIO_TEST)
 #define debug_gpio(msg...) printk(msg);
 #else
@@ -100,6 +70,42 @@ static int set_pinconf_value(struct pinctrl_dev *pctldev,
 	return ret;
 }
 
+static int gpio_test_input(struct pinctrl_dev *pctldev,
+		u32 pin_num, u32 req_value, u32 gpio_num)
+{
+	u32 result, result2;
+	char buf[1024];
+	u32 origin_value = get_pinconf_value(pctldev, TCC_PINCONF_INPUT_BUFFER_ENABLE, gpio_num);
+
+	printk("\tbefore : %u\n", origin_value);
+	printk("\trequest : %u\n", req_value);
+	set_pinconf_value(pctldev, TCC_PINCONF_INPUT_ENABLE, pin_num, req_value, gpio_num);
+
+	result = get_pinconf_value(pctldev, TCC_PINCONF_INPUT_BUFFER_ENABLE, gpio_num);
+	printk("\tafter : %u\n", result);
+
+	if (req_value != result) {
+		error_gpio("Failed to test  request(%u) != result(%u)\n",
+				req_value, result);
+		return -1;
+	}
+
+	req_value = 0;
+	printk("\tbefore2 : %u\n", result);
+	printk("\trequest2 : %u\n", req_value);
+	set_pinconf_value(pctldev, TCC_PINCONF_OUTPUT_LOW, pin_num, origin_value, gpio_num);
+	result = get_pinconf_value(pctldev, TCC_PINCONF_INPUT_BUFFER_ENABLE, gpio_num);
+	printk("\tafter2 : %u\n", result);
+
+	if (req_value != result) {
+		error_gpio("Failed to test  request(%u) != result(%u)\n",
+				req_value, result);
+		return -1;
+	}
+
+	return 0;
+}
+
 static int gpio_param_test(struct pinctrl_dev *pctldev,
 		u32 param, u32 pin_num, u32 req_value, u32 gpio_num)
 {
@@ -114,6 +120,7 @@ static int gpio_param_test(struct pinctrl_dev *pctldev,
 	result = get_pinconf_value(pctldev, param, gpio_num);
 	debug_gpio("\tafter : %u\n", result);
 
+	/* restore to origin value */
 	set_pinconf_value(pctldev, param, pin_num, origin_value, gpio_num);
 
 	if (req_value != result) {
@@ -134,10 +141,6 @@ ssize_t gpio_test(struct device *dev, struct device_attribute *attr, char *buf)
 	char name[1024];
 	int ret = 0;
 	int buff_offset = 0;
-
-	u32 breg;
-	ulong save_reg[34];
-	void __iomem *bit_address = ioremap(0x14200800UL, 0x88UL);
 
 	// get pinctrl
 	pinctrl = pinctrl_get(dev);
@@ -170,14 +173,12 @@ ssize_t gpio_test(struct device *dev, struct device_attribute *attr, char *buf)
 			printk("\033[33mbank - %s\033[0m\n", pin_banks[bank_num].name);
 			printk("\033[33mbanks[%u].npins = %u\033[0m\n", bank_num, pin_banks[bank_num].npins);
 
-			// save bit ctrl reg
-			for (breg = 0U; breg < 34; breg++) {
-				save_reg[breg] = readl(bit_address + (4U * breg));
-			}
-
 			for (pin_num = 0U; pin_num < pin_banks[bank_num].npins; pin_num++, gpio_num++) {
 				debug_gpio("pin_num - %u\n", pin_num);
 				debug_gpio("gpio_num - %u\n", gpio_num);
+
+				/* set direction test */
+				//gpio_test_input(pctldev, pin_num, 1U/*not use*/, gpio_num);
 
 				if ((pin_num == 10 || pin_num == 11)// || pin_num == 12 || pin_num == 13)
 						&&	strcmp(pin_banks[bank_num].name, "gpc") == 0) {
@@ -228,45 +229,13 @@ ssize_t gpio_test(struct device *dev, struct device_attribute *attr, char *buf)
 				gpio_param_test(pctldev, TCC_PINCONF_SCHMITT_INPUT, pin_num, 1U/*don't care*/, gpio_num);
 				gpio_param_test(pctldev, TCC_PINCONF_CMOS_INPUT, pin_num, 0U/*don't care*/, gpio_num);
 			}
-				// restore bit ctrl reg
-				for (breg = 0U; breg < 34; breg++) {
-					writel(save_reg[breg], bit_address + (4U * breg));
-				}
 
 			debug_gpio("\n");
 		}
 
 		return 0;
 	}
-/*
-		debug_gpio("pctl->ngroups: %u\n", pctl->ngroups);
-		debug_gpio("pctl->pins: %u\n", pctl->pins);
-		printk("pctl->nbanks: %u\n", pctl->nbanks);
 
-		for (i = 0U; i < pctl->nbanks; i++) {
-			printk("pctl->pin_banks[%d].name: %s\n",
-					i, pctl->pin_banks[i].name);
-			printk("pctl->pin_banks[%d].base: %u(0x%X)\n",
-					i, pctl->pin_banks[i].base, pctl->pin_banks[i].base);
-			printk("pctl->pin_banks[%d].pin_base: %u\n",
-					i, pctl->pin_banks[i].pin_base, pctl->pin_banks[i].pin_base);
-			printk("pctl->pin_banks[%d].reg_base: %u\n",
-					i, pctl->pin_banks[i].reg_base, pctl->pin_banks[i].reg_base);
-		}
-
-		for (i = 0U; i < pctl->ngroups; i++) {
-			printk("pctl->groups[%d].name: %s\n",
-					i, pctl->groups[i].name);
-			printk("pctl->groups[%d].pins: %u(0x%X)\n",
-					i, pctl->groups[i].pins, pctl->groups[i].pins);
-			printk("pctl->groups[%d].npins: %u\n",
-					i, pctl->groups[i].npins);
-			printk("pctl->groups[%d].func: %u\n",
-					i, pctl->groups[i].func);
-		}
-
-	}
-*/
 	return buff_offset;
 	//return sprintf(buf,"gpio_test\n");
 }

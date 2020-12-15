@@ -80,14 +80,23 @@
 		sc-firmware = <&tcc_sc_fw>;
 	};
 
-        tcc-gpio-sample {
-                compatible = "gpio-sample";
-                leble = "TCC GPIO";
-                /*EDGE_RISING : 0, EDGE_FALLING : 1, EDGE_BOTH : 2,
-                LEVEL_HIGH : 3, LEVEL_LOW : 4*/
-                irq-type = <2>;
-                gpios = <&gpa 1 0>;
-        };
+	tcc-gpio-sample {
+		compatible = "gpio-sample";
+		leble = "TCC GPIO";
+		/*EDGE_RISING : 0, EDGE_FALLING : 1, EDGE_BOTH : 2,
+		LEVEL_HIGH : 3, LEVEL_LOW : 4*/
+		irq-type = <2>;
+		gpios = <&gpa 1 0>;
+	};
+
+	tcc_gpio_test {
+		compatible = "gpio_test";
+		leble = "TCC GPIO";
+		gpios = <&gpa 2 0>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&uart7_data>;
+		status = "disabled";
+	};
 
 	/* USB 2.0 Host */
 	ehci_phy@11DA0010 {
