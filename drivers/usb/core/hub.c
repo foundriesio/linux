@@ -32,7 +32,7 @@
 #include <linux/uaccess.h>
 #include <asm/byteorder.h>
 
-#ifdef CONFIG_TCC_DWC_HS_ELECT_TST
+#ifdef CONFIG_TCC_EH_ELECT_TST
 #include <linux/kmod.h>
 #endif
 
@@ -2341,7 +2341,7 @@ void usb_disconnect(struct usb_device **pdev)
 	 * this quiesces everything except pending urbs.
 	 */
 	usb_set_device_state(udev, USB_STATE_NOTATTACHED);
-#ifdef CONFIG_TCC_DWC_HS_ELECT_TST
+#ifdef CONFIG_TCC_EH_ELECT_TST
     if (udev->bus->b_hnp_enable && udev->portnum == udev->bus->otg_port) {
     	cancel_delayed_work_sync((struct delayed_work *)(udev->bus->hnp_work));
         udev->bus->b_hnp_enable = 0;
@@ -2352,7 +2352,7 @@ void usb_disconnect(struct usb_device **pdev)
 
 	dev_info(&udev->dev, "[INFO][USB] USB disconnect, device number %d\n",
 			udev->devnum);
-#endif /* CONFIG_TCC_DWC_HS_ELECT_TST */
+#endif /* CONFIG_TCC_EH_ELECT_TST */
 	/*
 	 * Ensure that the pm runtime code knows that the USB device
 	 * is in the process of being disconnected.
@@ -2467,7 +2467,7 @@ static int usb_enumerate_device_otg(struct usb_device *udev)
 	int err = 0;
 
 //#ifdef	CONFIG_USB_OTG
-#if defined(CONFIG_USB_OTG) || (defined(CONFIG_TCC_DWC_HS_ELECT_TST) && defined(HCI_TPL_SUPPORT))
+#if defined(CONFIG_USB_OTG) || (defined(CONFIG_TCC_EH_ELECT_TST) && defined(HCI_TPL_SUPPORT))
 	/*
 	 * OTG-aware devices on OTG-capable root hubs may be able to use SRP,
 	 * to wake us after we've powered off VBUS; and HNP, switching roles
@@ -2504,7 +2504,7 @@ static int usb_enumerate_device_otg(struct usb_device *udev)
 				 * OTG MESSAGE: report errors here,
 				 * customize to match your product.
 				 */
-#ifdef CONFIG_TCC_DWC_HS_ELECT_TST
+#ifdef CONFIG_TCC_EH_ELECT_TST
                 dev_info(&udev->dev,
 	                "[INFO][USB] \x1b[1;31mcan't set HNP mode: %d\x1b[0m\n",
                     err);
@@ -2515,7 +2515,7 @@ static int usb_enumerate_device_otg(struct usb_device *udev)
 #endif
 				bus->b_hnp_enable = 0;
 			}
-#ifdef CONFIG_TCC_DWC_HS_ELECT_TST
+#ifdef CONFIG_TCC_EH_ELECT_TST
             else {
 	            err = usb_control_msg(udev,
                 usb_sndctrlpipe(udev, 0),

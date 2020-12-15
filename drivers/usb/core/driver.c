@@ -1913,7 +1913,7 @@ int usb_disable_usb2_hardware_lpm(struct usb_device *udev)
 #endif /* CONFIG_PM */
 
 // For OTG HNP Protocol
-#ifdef CONFIG_TCC_DWC_HS_ELECT_TST
+#ifdef CONFIG_TCC_EH_ELECT_TST
 void usb_hnp_work(struct work_struct *work)
 {
        int err;
@@ -1939,7 +1939,7 @@ void usb_hnp_work(struct work_struct *work)
        //printk("\x1b[1;35m[%s:%d]Suspend for initiating HNP.\x1b[0m\n", __func__, __LINE__);
 #endif
 }
-#endif /*CONFIG_TCC_DWC_HS_ELECT_TST*/
+#endif /*CONFIG_TCC_EH_ELECT_TST*/
 
 
 struct bus_type usb_bus_type = {

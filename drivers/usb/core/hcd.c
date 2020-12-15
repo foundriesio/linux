@@ -989,7 +989,7 @@ static const struct attribute_group usb_bus_attr_group = {
  * separately managed.
  */
 
-#ifdef CONFIG_TCC_DWC_HS_ELECT_TST
+#ifdef CONFIG_TCC_EH_ELECT_TST
 extern void usb_hnp_work(struct work_struct *work);
 #endif
 
@@ -1006,7 +1006,7 @@ static void usb_bus_init (struct usb_bus *bus)
 	bus->bandwidth_isoc_reqs = 0;
 	mutex_init(&bus->devnum_next_mutex);
 
-#ifdef CONFIG_TCC_DWC_HS_ELECT_TST
+#ifdef CONFIG_TCC_EH_ELECT_TST
     bus->hnp_wq = create_workqueue("hnp_queue");
     bus->hnp_work = (hnp_work_t *)kmalloc(sizeof(hnp_work_t), GFP_KERNEL);
     if(bus->hnp_work)

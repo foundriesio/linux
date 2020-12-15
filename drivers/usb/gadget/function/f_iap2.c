@@ -35,7 +35,7 @@
 #include "f_iap2.h"
 
 #if defined(CONFIG_CHIP_TCC8935S) || defined(CONFIG_ARCH_TCC892X)
-#if defined(CONFIG_TCC_DWC_HS_ELECT_TST)
+#if defined(CONFIG_TCC_EH_ELECT_TST)
 #undef DMA_MODE
 #else
 //#define DMA_MODE

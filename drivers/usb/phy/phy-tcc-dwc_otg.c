@@ -165,7 +165,7 @@ static int tcc_dwc_otg_set_dc_level(struct usb_phy *phy, unsigned int level)
 #define MUX_MODE_DEVICE		1
 #endif /* CONFIG_TCC_DWC_OTG_HOST_MUX */
 	
-#ifndef CONFIG_TCC_DWC_HS_ELECT_TST
+#ifndef CONFIG_TCC_EH_ELECT_TST
 #define USBPHY_IGNORE_VBUS_COMPARATOR
 #else
 #define USBOTG_PCFG2_ACAENB			(1<<13) // ACA ID_ID_OTG Pin Resistance Detection Enable; (1:enable)(0:disable)
@@ -201,7 +201,7 @@ static int tcc_dwc_otg_phy_init(struct usb_phy *phy)
 	dwc_otg_pcfg->pcfg1 = 0x0330d645;
 #endif
 
-#ifdef CONFIG_TCC_DWC_HS_ELECT_TST
+#ifdef CONFIG_TCC_EH_ELECT_TST
 	dwc_otg_pcfg->pcfg2 = 0x00000004 | USBOTG_PCFG2_ACAENB;
 #else
 #if defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC901X) || defined(CONFIG_ARCH_TCC805X)
@@ -209,7 +209,7 @@ static int tcc_dwc_otg_phy_init(struct usb_phy *phy)
 #else
 	dwc_otg_pcfg->pcfg2 = 0x00000004;
 #endif
-#endif /* CONFIG_TCC_DWC_HS_ELECT_TST */
+#endif /* CONFIG_TCC_EH_ELECT_TST */
 #if defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC901X) || defined(CONFIG_ARCH_TCC805X)
 	writel(0x00000000, &dwc_otg_pcfg->pcfg3);
 	writel(0x00000000, &dwc_otg_pcfg->pcfg4);

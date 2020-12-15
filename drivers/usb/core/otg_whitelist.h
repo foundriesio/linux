@@ -47,7 +47,7 @@ static struct usb_device_id whitelist_table[] = {
 /* gadget zero, for testing */
 { USB_DEVICE(0x0525, 0xa4a0), },
 #endif
-#ifdef CONFIG_TCC_DWC_HS_ELECT_TST
+#ifdef CONFIG_TCC_EH_ELECT_TST
 { USB_INTERFACE_CLASS_INFO(USB_CLASS_MASS_STORAGE) },
 { USB_INTERFACE_CLASS_INFO(USB_CLASS_HID) },
 { USB_INTERFACE_CLASS_INFO(USB_CLASS_VENDOR_SPEC) },
@@ -80,15 +80,15 @@ static bool match_int_class(struct usb_device_id *id, struct usb_device *udev)
 }
 
 
-#ifdef CONFIG_TCC_DWC_HS_ELECT_TST
+#ifdef CONFIG_TCC_EH_ELECT_TST
 #include <linux/usb.h>
-#endif /* CONFIG_TCC_DWC_HS_ELECT_TST */
+#endif /* CONFIG_TCC_EH_ELECT_TST */
 
 static int is_targeted(struct usb_device *dev)
 {
 	struct usb_device_id	*id = whitelist_table;
 	
-#ifdef CONFIG_TCC_DWC_HS_ELECT_TST
+#ifdef CONFIG_TCC_EH_ELECT_TST
 	dev->bus->otg_vbus_off = 0;
 #endif
 
@@ -102,7 +102,7 @@ static int is_targeted(struct usb_device *dev)
 	     le16_to_cpu(dev->descriptor.idProduct) == 0x0200))
 	{
 
-#ifdef CONFIG_TCC_DWC_HS_ELECT_TST
+#ifdef CONFIG_TCC_EH_ELECT_TST
 		if(dev->descriptor.bcdDevice & 0x1)
 		{
 			printk("\x1b[1;33m[%s:%d] 'otg_vbus_off' is set (bcdDevice : %x)\x1b[0m\n", __func__, __LINE__,dev->descriptor.bcdDevice);
@@ -112,13 +112,13 @@ static int is_targeted(struct usb_device *dev)
 		{
 			dev->bus->otg_vbus_off = 0;
 		}
-#endif /* CONFIG_TCC_DWC_HS_ELECT_TST */
+#endif /* CONFIG_TCC_EH_ELECT_TST */
 		printk("%s:%d\n", __func__, __LINE__);
 		return 1;
 	}
 
 // For OPT Test
-#ifdef CONFIG_TCC_DWC_HS_ELECT_TST
+#ifdef CONFIG_TCC_EH_ELECT_TST
         if (le16_to_cpu(dev->descriptor.idVendor) == 0x1a0a)
         {
 			unsigned int pid =0;
@@ -170,11 +170,11 @@ static int is_targeted(struct usb_device *dev)
 		if ((id->match_flags & USB_DEVICE_ID_MATCH_INT_CLASS) &&
 		    (!match_int_class(id, dev)))
 			continue;
-#ifdef CONFIG_TCC_DWC_HS_ELECT_TST
+#ifdef CONFIG_TCC_EH_ELECT_TST
         dev_emerg(&dev->dev, "Attached device (v%04x p%04x)\n",
         	le16_to_cpu(dev->descriptor.idVendor),
             le16_to_cpu(dev->descriptor.idProduct));
-#endif /* CONFIG_TCC_DWC_HS_ELECT_TST */
+#endif /* CONFIG_TCC_EH_ELECT_TST */
 
 		return 1;
 	}
@@ -183,7 +183,7 @@ static int is_targeted(struct usb_device *dev)
 
 
 	/* OTG MESSAGE: report errors here, customize to match your product */
-#ifdef CONFIG_TCC_DWC_HS_ELECT_TST
+#ifdef CONFIG_TCC_EH_ELECT_TST
         dev_emerg(&dev->dev, "\x1b[1;31mdevice v%04x p%04x is not supported\x1b[0m\n",
 			le16_to_cpu(dev->descriptor.idVendor),
             le16_to_cpu(dev->descriptor.idProduct));
@@ -192,7 +192,7 @@ static int is_targeted(struct usb_device *dev)
 	dev_err(&dev->dev, "device v%04x p%04x is not supported\n",
 		le16_to_cpu(dev->descriptor.idVendor),
 		le16_to_cpu(dev->descriptor.idProduct));
-#endif /* CONFIG_TCC_DWC_HS_ELECT_TST */
+#endif /* CONFIG_TCC_EH_ELECT_TST */
 
 
 

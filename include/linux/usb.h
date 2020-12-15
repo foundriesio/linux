@@ -413,7 +413,7 @@ int __usb_get_extra_descriptor(char *buffer, unsigned size,
 
 /* ----------------------------------------------------------------------- */
 /* OTG HNP Related Structures*/
-#ifdef CONFIG_TCC_DWC_HS_ELECT_TST
+#ifdef CONFIG_TCC_EH_ELECT_TST
 
 #define THOST_REQ_POLL          1500    /* msec (1000 - 2000) */
 #define OTG_TTST_SUSP           70  /* msec (0 - 100) */
@@ -423,7 +423,7 @@ struct _hnp_work_t{
     struct usb_device *udev;
 };
 typedef struct _hnp_work_t hnp_work_t;
-#endif /* CONFIG_TCC_DWC_HS_ELECT_TST */
+#endif /* CONFIG_TCC_EH_ELECT_TST */
 
 /* USB device number allocation bitmap */
 struct usb_devmap {
@@ -480,7 +480,7 @@ struct usb_bus {
 #endif
 
 /* OTG HNP Related Variables */
-#ifdef CONFIG_TCC_DWC_HS_ELECT_TST
+#ifdef CONFIG_TCC_EH_ELECT_TST
     unsigned otg_vbus_off:1;    /* OTG Test Mode Feature Bit 'otg_vubs_off'*/
     struct workqueue_struct *hnp_wq;    /* OTG: HNP work */
     hnp_work_t *hnp_work;
