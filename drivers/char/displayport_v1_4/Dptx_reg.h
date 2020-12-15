@@ -517,11 +517,6 @@
 *							CLK									*
 *																*
 ****************************************************************/
-#define DPTX_CLKCTRL0 			        0x0000
-#define DPTX_CLKCTRL1 			        0x0004
-#define DPTX_CLKCTRL2 			        0x0008
-#define DPTX_CLKCTRL3 			        0x000C
-
 #define	DPTX_CLKCTRL0_PLL_DIRECT_OUTPUT			0x01
 #define	DPTX_CLKCTRL0_PLL_DIVIDER_OUTPUT		0x02
 
@@ -592,8 +587,31 @@
 #define	DP_REGISTER_BANK_REG_17					0x00000044
 #define	DP_REGISTER_BANK_REG_20					0x00000050
 #define	DP_REGISTER_BANK_REG_21					0x00000054
+
 #define	DP_REGISTER_BANK_REG_22					0x00000058
+#define PHY_SOFT_RST_MASK						BIT( 11 )
+#define AXI_ASYNC_BRIDGE_RST_MASK				BIT( 10 )
+#define CKC_SOFT_RST_MASK						BIT( 9 )
+#define APB_ASYNC_BRIDGE_RST_DDI_MASK			BIT( 5 )
+#define APB_ASYNC_BRIDGE_RST_MIC_MASK			BIT( 4 )
+#define AXI_SLAVE_BRIDGE_RST_MASK				BIT( 3 )
+#define TCA_RST_MASK							BIT( 1 )
+#define LINK_RST_MASK							BIT( 0 )
+
 #define	DP_REGISTER_BANK_REG_23					0x0000005C
+
+#define	DP_REGISTER_BANK_REG_24					0x00000060
+#define STD_EN_MASK								BIT( 16 )
+#define SRVC_BYPASS_MASK						BIT( 9 )
+#define SDM_BYPASS_MASK							BIT( 8 )
+#define SOURCE3_MUX_SEL_MASK					GENMASK( 7, 6 )
+#define SOURCE2_MUX_SEL_MASK					GENMASK( 5, 4 )
+#define SOURCE1_MUX_SEL_MASK					GENMASK( 3, 2 )
+#define SOURCE0_MUX_SEL_MASK					GENMASK( 1, 0 )
+#define SOURCE3_MUX_SEL_SHIFT					6
+#define SOURCE2_MUX_SEL_SHIFT					4
+#define SOURCE1_MUX_SEL_SHIFT					2
+#define SOURCE0_MUX_SEL_SHIFT					0
 
 /****************************************************************
 *																*

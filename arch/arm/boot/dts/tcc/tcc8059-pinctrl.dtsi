@@ -517,6 +517,13 @@
 		telechips,pull-down;
 	};
 	
+	serdes_intb_qd:serdes_intb_qd {
+		telechips,pins = "gpe-19";
+		telechips,pin-function = <0>;
+		telechips,input-enable;
+		telechips,no-pull;
+	};
+
 	hdmi_cec: hdmi_cec {
 		telechips,pins = "gpc-15";
 		telechips,pin-function = <1>;

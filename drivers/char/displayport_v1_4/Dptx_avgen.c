@@ -40,9 +40,9 @@ static bool dptx_avgen_set_video_sampler( struct Dptx_Params *pstDptx, u8 ucStre
 	 *								  When the external logic which drives the pixel data doesn't generate the video data enable, then enabling this biit forces the controller to generate the video enable internally.	
 	 * -.VIDEO_STREAM_ENABLE[Bit5]( 0: Video stream disable, 1: Video stream enable ) 
 	 * -.VIDEO_MAPPING[Bit20:16]( 0: RGB 6bits, 1: RGB 8bits, 2: RGB 10bits, 3: RGB 12bits, 4: RGB 16bits ) 
-	 *							 ( 5: YCbCr444 8bits, 6: YCbCr444 10bits, 7: YCbCr444 12bits, 8: YCbCr444 16bits ) 	
-	 *							 ( 9: YCbCr422 8bits, 10: YCbCr422 10bits, 11: YCbCr422 12bits, 12: YCbCr422 16bits ) 		
-	 *							 ( 13: YCbCr420 8bits, 14: YCbCr420 10bits, 15: YCbCr420 12bits, 16: YCbCr420 16bits ) 	
+	 *							 ( 5: YCbCr444 8bits, 6: YCbCr444 10bits, 7: YCbCr444 12bits, 8: YCbCr444 16bits )
+	 *							 ( 9: YCbCr422 8bits, 10: YCbCr422 10bits, 11: YCbCr422 12bits, 12: YCbCr422 16bits )
+	 *							 ( 13: YCbCr420 8bits, 14: YCbCr420 10bits, 15: YCbCr420 12bits, 16: YCbCr420 16bits )
 	 *							 ( 17: YOnly 8bits, 18: YOnly 10bits, 19: YOnly 12bits, 20: YOnly 16bits )
 	 *							 ( 23: RAW 8bits, 24: RAW 10bits, 25: RAW 12bits, 27: RAW 16bits )
 	 * -.PIXEL_MODE_SELECT[Bit22:21]( 0: Single pixel mode, 1:Dual pixel mode, 2: Quad pixel mode, 3: Reserved ) 
@@ -94,10 +94,10 @@ static bool dptx_avgen_set_video_sampler( struct Dptx_Params *pstDptx, u8 ucStre
 			return ( DPTX_RETURN_FAIL );
 			break;
 	}
-	
+
 	uiRegMap_VidSampleCtrl |= ( ucVideoMapping << DPTX_VSAMPLE_CTRL_VMAP_BPC_SHIFT );
 	uiRegMap_VidSampleCtrl |= ( pstVideoParams->ucMultiPixel << DPTX_VSAMPLE_CTRL_MULTI_PIXEL_SHIFT );
-	
+
 	Dptx_Reg_Writel( pstDptx, DPTX_VSAMPLE_CTRL_N( ucStream_Index ), uiRegMap_VidSampleCtrl );
 
 	return ( DPTX_RETURN_SUCCESS );
@@ -150,7 +150,7 @@ static bool dptx_avgen_set_video_config( struct Dptx_Params *pstDptx, u8 ucStrea
 	*/
 
 	uiRegMap_VidConfig = 0;
-	
+
 	uiRegMap_VidConfig |= ( pstDtd->v_active << DPTX_VIDEO_V_ACTIVE_SHIFT );
 	uiRegMap_VidConfig |= ( pstDtd->v_blanking << DPTX_VIDEO_V_BLANK_SHIFT );
 
@@ -165,7 +165,7 @@ static bool dptx_avgen_set_video_config( struct Dptx_Params *pstDptx, u8 ucStrea
 	*/
 
 	uiRegMap_VidConfig = 0;
-	
+
 	uiRegMap_VidConfig |= ( pstDtd->h_sync_offset << DPTX_VIDEO_H_FRONT_PORCH_SHIFT );
 	uiRegMap_VidConfig |= ( pstDtd->h_sync_pulse_width << DPTX_VIDEO_H_SYNC_WIDTH_SHIFT );
 
@@ -180,7 +180,7 @@ static bool dptx_avgen_set_video_config( struct Dptx_Params *pstDptx, u8 ucStrea
 	*/
 
 	uiRegMap_VidConfig = 0;
-	
+
 	uiRegMap_VidConfig |= ( pstDtd->v_sync_offset << DPTX_VIDEO_V_FRONT_PORCH_SHIFT );
 	uiRegMap_VidConfig |= ( pstDtd->v_sync_pulse_width << DPTX_VIDEO_V_SYNC_WIDTH_SHIFT );
 
@@ -214,7 +214,7 @@ static bool dptx_avgen_set_video_config( struct Dptx_Params *pstDptx, u8 ucStrea
 		uiRegMap_VidConfig &= ( ~DPTX_VIDEO_CONFIG5_TU_FRAC_MASK_SST );
 		uiRegMap_VidConfig |= ( pstVideoParams->ucAver_BytesPer_Tu_Frac << DPTX_VIDEO_CONFIG5_TU_FRAC_SHIFT_SST );
 	}
-	
+
 	uiRegMap_VidConfig &= ( ~DPTX_VIDEO_CONFIG5_INIT_THRESHOLD_MASK );
 	uiRegMap_VidConfig |= ( pstVideoParams->ucInit_Threshold << DPTX_VIDEO_CONFIG5_INIT_THRESHOLD_SHIFT );
 
@@ -238,7 +238,7 @@ static bool dptx_avgen_set_video_msa( struct Dptx_Params *pstDptx, u8 ucStream_I
 	*	-.HSTART[Bit15:0] : Horizontal active start from leading edge of Hsync measured in pixel count, This is same as Hsync width + Vertical back porch.
 	*	-.VSTART[Bit31:16] : Vertical active start from leading edge of Hsync measured in pixel count, This is same as Vsync width + Vertical back porch
 	*/
-	
+
 	uiRegMap_Msa1 |= (( pstDtd->h_blanking - pstDtd->h_sync_offset ) << DPTX_VIDEO_MSA1_H_START_SHIFT );  // 160( 640 + 160 = 800 => Real width ) - 16 = 144
 	uiRegMap_Msa1 |= (( pstDtd->v_blanking - pstDtd->v_sync_offset ) << DPTX_VIDEO_MSA1_V_START_SHIFT );
 	
@@ -398,7 +398,7 @@ static bool dptx_avgen_set_video_hblank_interval( struct Dptx_Params *pstDptx, u
 	uiRegMap_VidHblankInterval |= ( DPTX_VIDEO_HBLANK_INTERVAL_ENABLE << DPTX_VIDEO_HBLANK_INTERVAL_SHIFT );
 
 	Dptx_Reg_Writel( pstDptx, DPTX_VIDEO_HBLANK_INTERVAL_N( ucStream_Index ), uiRegMap_VidHblankInterval );
-	
+
 	return ( DPTX_RETURN_SUCCESS );
 }
 
@@ -489,7 +489,7 @@ static void dptx_avgen_active_audio_input_data( struct Dptx_Params *dptx, int iN
 		}
 		uiRegMap_EnableAudioChannels &= ( uiEnabledChannels << DPTX_AUD_CONFIG1_DATA_EN_IN_SHIFT );
 	}
-	
+
 	for( ucElements = 0; ucElements < dptx->ucNumOfStreams; ucElements++ ) { 
 		Dptx_Reg_Writel( dptx, DPTX_AUD_CONFIG1_N( ucElements ), uiRegMap_EnableAudioChannels );
 	}
@@ -531,14 +531,14 @@ static bool dptx_avgen_config_video_input( struct Dptx_Params *pstDptx, u8 ucStr
 	if( bRetVal == DPTX_RETURN_FAIL )
 	{
 		return ( DPTX_RETURN_FAIL );
-	}	
+	}
 
 	bRetVal = dptx_avgen_set_video_msa( pstDptx, ucStream_Index );
 	if( bRetVal == DPTX_RETURN_FAIL )
 	{
 		return ( DPTX_RETURN_FAIL );
 	}
-	
+
 	bRetVal = dptx_avgen_set_video_hblank_interval( pstDptx, ucStream_Index );
 	if( bRetVal == DPTX_RETURN_FAIL )
 	{
@@ -554,10 +554,10 @@ static void dptx_avgen_config_audio_input( struct Dptx_Params *pstDptx )
 
 	Dptx_Avgen_Set_Audio_Input_InterfaceType( pstDptx, pstAudioParams->ucInput_InterfaceType );
 	Dptx_Avgen_Set_Audio_HBR_Mode( pstDptx, pstAudioParams->ucInput_HBR_Mode );
-	
+
 	Dptx_Avgen_Set_Audio_MaxNumOfChannels( pstDptx, pstAudioParams->ucInput_Max_NumOfchannels );
 	Dptx_Avgen_Set_Audio_DataWidth( pstDptx, pstAudioParams->ucInput_DataWidth );
-	
+
 	dptx_avgen_set_audio_timestamp_version( pstDptx, pstAudioParams->ucInput_TimestampVersion );
 	dptx_avgen_active_audio_input_data( pstDptx, pstAudioParams->ucInput_Max_NumOfchannels, true );
 
@@ -568,7 +568,7 @@ static void dptx_avgen_config_audio_input( struct Dptx_Params *pstDptx )
 	dptx_dbg( "  -.Max num of input channels : %d", (u32)pstAudioParams->ucInput_Max_NumOfchannels );
 	dptx_dbg( "  -.Input data width : %d", (u32)pstAudioParams->ucInput_DataWidth );
 	dptx_dbg( "  -.Input version of time stamp : %d", (u32)pstAudioParams->ucInput_TimestampVersion );
-#endif	
+#endif
 }
 
 static void dptx_avgen_reset_dtd( struct Dptx_Dtd_Params *pstDtd )
@@ -707,8 +707,8 @@ bool Dptx_Avgen_Set_Video_Detailed_Timing( struct Dptx_Params *pstDptx, u8 ucStr
 	dptx_dbg("Refresh rate: %d", pstVideoParams->uiRefresh_Rate );
 	dptx_dbg("DTD format: %s", pstVideoParams->ucVideo_Format == VIDEO_FORMAT_CEA_861 ? "CEA_861":"Others" );
 	dptx_dbg("Pixel Clk: %d", pstVideoParams->stDtdParams[ucStream_Index].uiPixel_Clock);
-	
-	bRetVal = Dptx_Avgen_Calculate_Video_Average_TU_Symbols(	pstDptx, 	
+
+	bRetVal = Dptx_Avgen_Calculate_Video_Average_TU_Symbols(	pstDptx,
 																	pstDptx->stDptxLink.ucNumOfLanes, 
 																	pstDptx->stDptxLink.ucLinkRate, 
 																	pstVideoParams->ucBitPerComponent, 
@@ -719,7 +719,7 @@ bool Dptx_Avgen_Set_Video_Detailed_Timing( struct Dptx_Params *pstDptx, u8 ucStr
 	{
 		return ( DPTX_RETURN_FAIL );
 	}
-	
+
 	Dptx_Avgen_Set_Video_Stream_Enable( pstDptx, false, ucStream_Index );
 
 	bRetVal = dptx_avgen_config_video_input( pstDptx, (u8)ucStream_Index );
@@ -780,7 +780,7 @@ bool Dptx_Avgen_Get_Video_Stream_Enable( struct Dptx_Params *pstDptx, bool *pbEn
 bool Dptx_Avgen_Set_Video_Timing( struct Dptx_Params *pstDptx, u8 ucStream_Index )
 {
 	bool	bRetVal;
-	
+
 	Dptx_Avgen_Set_Video_Stream_Enable( pstDptx, false, ucStream_Index );
 
 	bRetVal = dptx_avgen_config_video_input( pstDptx, (u8)ucStream_Index );
@@ -790,7 +790,7 @@ bool Dptx_Avgen_Set_Video_Timing( struct Dptx_Params *pstDptx, u8 ucStream_Index
 	}
 
 	Dptx_Avgen_Set_Video_Stream_Enable( pstDptx, true, ucStream_Index );
-	
+
 	return ( DPTX_RETURN_SUCCESS );
 }
 
@@ -870,7 +870,7 @@ bool Dptx_Avgen_Get_Video_Configured_Timing( struct Dptx_Params *pstDptx, u8 ucS
 {
 	u32 	uiRegMap_VidConfig1, uiRegMap_VidConfig2, uiRegMap_VidConfig3, uiRegMap_VidConfig4;
 	u32		uiRegMap_VidPolarityCtrl; 
-	
+
 	uiRegMap_VidPolarityCtrl = Dptx_Reg_Readl( pstDptx, DPTX_VSAMPLE_POLARITY_CTRL_N( ucStream_Index ) );
 	uiRegMap_VidConfig1 = Dptx_Reg_Readl( pstDptx, DPTX_VIDEO_CONFIG1_N( ucStream_Index ) );
 	uiRegMap_VidConfig2 = Dptx_Reg_Readl( pstDptx, DPTX_VIDEO_CONFIG2_N( ucStream_Index ) );
@@ -891,7 +891,7 @@ bool Dptx_Avgen_Get_Video_Configured_Timing( struct Dptx_Params *pstDptx, u8 ucS
 	{
 		pstDtd->h_sync_polarity = 0;
 	}
-	
+
 	if( uiRegMap_VidPolarityCtrl &  DPTX_POL_CTRL_V_SYNC_POL_EN )
 	{
 		pstDtd->v_sync_polarity = 1;
@@ -953,7 +953,7 @@ bool Dptx_Avgen_Calculate_Video_Average_TU_Symbols( struct Dptx_Params *pstDptx,
 		default:    
 			dptx_err("Invalid rate param = %d", iLinkRate );
 			return ( DPTX_RETURN_FAIL );
-	        break;
+			break;
 	}
 
 	switch( (enum VIDEO_PIXEL_COLOR_DEPTH)iBpc ) 
@@ -995,7 +995,7 @@ bool Dptx_Avgen_Calculate_Video_Average_TU_Symbols( struct Dptx_Params *pstDptx,
 	if( iAverageSymbol_Per_TU > DPTX_MAX_LINK_SYMBOLS ) 
 	{
 		dptx_err("iTransfer_Unit(%d) > DPTX_MAX_LINK_SYMBOLS", iAverageSymbol_Per_TU);
- 		return ( DPTX_RETURN_FAIL );
+		return ( DPTX_RETURN_FAIL );
 	}
 
 	iTransfer_Unit_Fraction = ( ( iH_AverageSymbol_Per_TU / 100 ) - ( iAverageSymbol_Per_TU * 10 ) ); // ( 24340 / 100 ) - ( 24 * 10 ) = 243 - 240 = '3'
@@ -1003,26 +1003,26 @@ bool Dptx_Avgen_Calculate_Video_Average_TU_Symbols( struct Dptx_Params *pstDptx,
 	pstVideoParams->ucAverage_BytesPerTu	= iAverageSymbol_Per_TU;
 	pstVideoParams->ucAver_BytesPer_Tu_Frac = iTransfer_Unit_Fraction;
 
-    if( pstVideoParams->ucMultiPixel == MULTI_PIXEL_TYPE_SINGLE ) 
+	if( pstVideoParams->ucMultiPixel == MULTI_PIXEL_TYPE_SINGLE )
 	{
-        if( iAverageSymbol_Per_TU < 6 )
-        {
-            pstVideoParams->ucInit_Threshold = 32;
-        }
+		if( iAverageSymbol_Per_TU < 6 )
+		{
+			pstVideoParams->ucInit_Threshold = 32;
+		}
 		else if( pstDtd->h_blanking <= 80 )
 		{
 			pstVideoParams->ucInit_Threshold = 12;
 		}
-        else
-        {
-            pstVideoParams->ucInit_Threshold = 16;
-        }
+		else
+		{
+			pstVideoParams->ucInit_Threshold = 16;
+		}
 	} 
 	else //Multiple Pixel Mode
 	{
-	    switch( (enum VIDEO_PIXEL_COLOR_DEPTH)iBpc ) 
+		switch( (enum VIDEO_PIXEL_COLOR_DEPTH)iBpc )
 		{
-            case PIXEL_COLOR_DEPTH_8:
+			case PIXEL_COLOR_DEPTH_8:
 				if(( iEncodingType == PIXEL_ENCODING_TYPE_RGB ) || ( iEncodingType == PIXEL_ENCODING_TYPE_YCBCR444 ))
 				{
 					if( pstVideoParams->ucMultiPixel == MULTI_PIXEL_TYPE_DUAL )
@@ -1044,19 +1044,19 @@ bool Dptx_Avgen_Calculate_Video_Average_TU_Symbols( struct Dptx_Params *pstDptx,
 					return ( DPTX_RETURN_FAIL );
 				}
 				break;
-            default:
+			default:
 				dptx_err( "Invalid param iBpc = %d", iBpc );
-                return ( DPTX_RETURN_FAIL );
-                break;
-        }
+				return ( DPTX_RETURN_FAIL );
+				break;
+		}
 
-        iT2 = (( iLink_Clock * 1000 ) / iPixel_Clock);
+		iT2 = (( iLink_Clock * 1000 ) / iPixel_Clock);
 
-        pstVideoParams->ucInit_Threshold = ( iT1 * iT2 * iAverageSymbol_Per_TU / ( 1000 * 1000 ));
+		pstVideoParams->ucInit_Threshold = ( iT1 * iT2 * iAverageSymbol_Per_TU / ( 1000 * 1000 ));
 	}
 
 	iH_AverageSymbol_Per_TU = (( 8 * iColor_Depth * iPixel_Clock ) / ( iNumOfLane * iLink_Rate )); 
-	
+
 	if( !pstDptx->bMultStreamTransport ) 
 	{
 		dptx_info("SST %s Pixel => ", pstVideoParams->ucMultiPixel == MULTI_PIXEL_TYPE_SINGLE ? "Single":pstVideoParams->ucMultiPixel == MULTI_PIXEL_TYPE_DUAL ? "Dual":"Quad" );
@@ -1097,7 +1097,7 @@ bool Dptx_Avgen_Calculate_Video_Average_TU_Symbols( struct Dptx_Params *pstDptx,
 		}
 		else
 		{
-		    iNumerator	 = (  iPixel_Clock * 3 * 64 );
+			iNumerator	 = (  iPixel_Clock * 3 * 64 );
 		}
 		
 		iDenominator = ( iLink_Rate * iNumOfLane );
@@ -1347,12 +1347,12 @@ void Dptx_Avgen_Set_Audio_SDP_InforFrame( struct Dptx_Params *pstDptx , bool bEn
 #endif
 
 	pstDptx->astSdp_List[0].auiPayload[0] = uiAudio_SdpInfoframe_header;
-	
+
 	Dptx_Reg_Writel( pstDptx, DPTX_SDP_BANK, uiAudio_SdpInfoframe_header );
 	Dptx_Reg_Writel( pstDptx, DPTX_SDP_BANK + 4, auiAudio_SdpInfoframe_data[0] );
 	Dptx_Reg_Writel( pstDptx, DPTX_SDP_BANK + 8, auiAudio_SdpInfoframe_data[1] );
 	Dptx_Reg_Writel( pstDptx, DPTX_SDP_BANK + 12, auiAudio_SdpInfoframe_data[2] );
-	
+
 	uiRegMap_SdpCtrl = Dptx_Reg_Readl( pstDptx, DPTX_SDP_VERTICAL_CTRL );
 	if(bEnable) {
 		uiRegMap_SdpCtrl |= DPTX_EN_AUDIO_INFOFRAME_SDP;
@@ -1370,7 +1370,7 @@ void Dptx_Avgen_Set_Audio_SDP_InforFrame( struct Dptx_Params *pstDptx , bool bEn
 	 */
 	uiRegMap_SdpCtrl = Dptx_Reg_Readl( pstDptx, DPTX_SDP_HORIZONTAL_CTRL );
 	uiRegMap_SdpCtrl |= DPTX_FIXED_PRIORITY_ARBITRATION;
-	
+
 	for( ucElements = 0; ucElements < pstDptx->ucNumOfStreams; ucElements++ ) { 
 		Dptx_Reg_Writel( pstDptx, DPTX_SDP_HORIZONTAL_CTRL_N( ucElements ), uiRegMap_SdpCtrl );
 	}
@@ -1394,7 +1394,7 @@ void Dptx_Avgen_Set_Audio_Mute( struct Dptx_Params *pstDptx, bool bMute )
 	{
 		uiRegMap_AudioMute &= ~DPTX_AUDIO_MUTE;
 	}
-	
+
 	for( ucElements = 0; ucElements < pstDptx->ucNumOfStreams; ucElements++ ) { 
 		Dptx_Reg_Writel( pstDptx, DPTX_AUD_CONFIG1_N( ucElements ), uiRegMap_AudioMute );
 	}
@@ -1430,7 +1430,6 @@ void Dptx_Avgen_Enable_Audio_SDP( struct Dptx_Params *pstDptx )
 		Dptx_Reg_Writel( pstDptx, DPTX_SDP_VERTICAL_CTRL_N( ucElements ), uiRegMap_AudEnableSDP );
 	}
 
-
 	uiRegMap_AudEnableSDP = Dptx_Reg_Readl( pstDptx, DPTX_SDP_HORIZONTAL_CTRL );
 	uiRegMap_AudEnableSDP |= DPTX_EN_AUDIO_STREAM_SDP;
 	for( ucElements = 0; ucElements < pstDptx->ucNumOfStreams; ucElements++ ) { 
@@ -1442,7 +1441,7 @@ void Dptx_Avgen_Disable_Audio_SDP( struct Dptx_Params *pstDptx )
 {
 	u32				uiRegMap_AudEnableSDP;
 	u8				ucElements = 0;
-	
+
 	uiRegMap_AudEnableSDP = Dptx_Reg_Readl( pstDptx, DPTX_SDP_VERTICAL_CTRL );
 	uiRegMap_AudEnableSDP &= ~DPTX_EN_AUDIO_STREAM_SDP;
 	for( ucElements = 0; ucElements < pstDptx->ucNumOfStreams; ucElements++ ) { 
@@ -1463,7 +1462,7 @@ void Dptx_Avgen_Enable_Audio_Timestamp( struct Dptx_Params *dptx )
 
 	uiRegMap_AudEnableTimestamp = Dptx_Reg_Readl( dptx, DPTX_SDP_VERTICAL_CTRL );
 	uiRegMap_AudEnableTimestamp |= DPTX_EN_AUDIO_TIMESTAMP_SDP;
-	
+
 	for( ucElements = 0; ucElements < dptx->ucNumOfStreams; ucElements++ ) { 
 		Dptx_Reg_Writel( dptx, DPTX_SDP_VERTICAL_CTRL_N( ucElements ), uiRegMap_AudEnableTimestamp );
 	}
@@ -1520,7 +1519,7 @@ bool Dptx_Avgen_Get_VIC_From_Dtd( struct Dptx_Params *pstDptx, u8 ucStream_Index
 	dptx_info("		H Sync offset(%d), V Sync offset(%d) ", (u32)stDtd_Timing.h_sync_offset, (u32)stDtd_Timing.v_sync_offset);
 	dptx_info("		H Sync plus W(%d), V Sync plus W(%d) ", (u32)stDtd_Timing.h_sync_pulse_width, (u32)stDtd_Timing.v_sync_pulse_width );
 	*/
-	
+
 	for( uiVideoCode = 0; uiVideoCode < (u32)DP_CUSTOM_MAX_DTD_VIC;  uiVideoCode++ )
 	{
 		bRetVal = Dptx_Avgen_Fill_Dtd( &stDtd_Params, uiVideoCode, 60000, (u8)VIDEO_FORMAT_CEA_861 );

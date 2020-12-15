@@ -28,23 +28,23 @@
 #if 0
 static irqreturn_t dptx_intr_HPD_IRQ_Handler( int iIRQ, void *pvDev_id )
 {
-    struct Dptx_Params *pstDev =   (struct Dptx_Params *)pvDev_id;
+	struct Dptx_Params *pstDev =   (struct Dptx_Params *)pvDev_id;
 
-    if( pstDev == NULL ) 
+	if( pstDev == NULL ) 
 	{
-        dptx_err("IRQ Dev is NULL\r\n", __func__);
-        goto end_handler;
-    }
+		dptx_err("IRQ Dev is NULL\r\n", __func__);
+		goto end_handler;
+	}
 	
-    /* disable hpd irq */
-    disable_irq_nosync( pstDev->uiHPD_IRQ );
+	    /* disable hpd irq */
+	disable_irq_nosync( pstDev->uiHPD_IRQ );
 	
-    schedule_work( &pstDev->stDPTx_HPD_Handler );
+	schedule_work( &pstDev->stDPTx_HPD_Handler );
 
-    return IRQ_HANDLED;
+	return IRQ_HANDLED;
 
 end_handler:
-        return IRQ_NONE;
+	return IRQ_NONE;
 }
 #endif
 
@@ -121,7 +121,7 @@ static int dptx_intr_handle_drm_interface( struct Dptx_Params *pstDptx, bool bHo
 		{
 			dptx_err("HPD callback isn't registered");
 			return ( ENODEV );
-        }
+		}
 		
 		pstDptx->pvHPD_Intr_CallBack( ucDP_Index, (bool)HPD_STATUS_PLUGGED );
 	}
@@ -171,23 +171,25 @@ irqreturn_t Dptx_Intr_Threaded_IRQ( int irq, void *dev )
 				if( pstDptx->bUsed_TCC_DRM_Interface )
 				{
 					dptx_intr_handle_drm_interface( pstDptx, (bool)HPD_STATUS_PLUGGED );
-		}
+				}
 				else
 				{
 					for( ucStream_Index = 0; ucStream_Index < pstDptx->ucNumOfStreams; ucStream_Index++ )
-		{
+					{
 						pstDptx->pvHPD_Intr_CallBack( ucStream_Index, (bool)HPD_STATUS_PLUGGED );
 					}
 				}
-		}
-		else
-		{
-				if( pstDptx->bUsed_TCC_DRM_Interface )
-			{
-					dptx_intr_handle_drm_interface( pstDptx, (bool)HPD_STATUS_UNPLUGGED );
 			}
 			else
 			{
+				if( pstDptx->bUsed_TCC_DRM_Interface )
+				{
+					dptx_intr_handle_drm_interface( pstDptx, (bool)HPD_STATUS_UNPLUGGED );
+				}
+				else
+				{
+					Dptx_Intr_Handle_HotUnplug( pstDptx );
+
 					for( ucStream_Index = 0; ucStream_Index < pstDptx->ucNumOfStreams; ucStream_Index++ )
 					{
 						pstDptx->pvHPD_Intr_CallBack( ucStream_Index, (bool)HPD_STATUS_UNPLUGGED );
@@ -421,15 +423,6 @@ bool Dptx_Intr_Get_Port_Composition( struct Dptx_Params *pstDptx )
 
 	pstDptx->ucNumOfPorts = ucNumOfPluggedPorts;
 	pstDptx->bMultStreamTransport = ( ucNumOfPluggedPorts == 1 ) ? false:true;
-
-	if( pstDptx->bMultStreamTransport )
-	{
-		pstDptx->ucMax_Rate = DPTX_PHYIF_CTRL_RATE_HBR3;
-	}
-	else
-	{
-		pstDptx->ucMax_Rate = DPTX_PHYIF_CTRL_RATE_HBR2;
-	}
 
 	return ( DPTX_RETURN_SUCCESS );
 }

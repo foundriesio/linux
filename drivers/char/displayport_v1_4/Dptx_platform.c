@@ -5,16 +5,12 @@
 #include <asm/io.h>
 #include <linux/delay.h>
 #include <linux/slab.h>
+#include <soc/tcc/chipinfo.h>
 
 #include "Dptx_v14.h"
 #include "Dptx_reg.h"
 #include "Dptx_drm_dp_addition.h"
 #include "Dptx_dbg.h"
-
-
-//#define ENABLE_CTS_TEST
-//#define CTS_HBR2_TEST		/* HBR2 -> vboost 3 */
-//#define CTS_HBR3_TEST		/* HBR3 -> vboost 3 */
 
 #define MAX_TRY_PLL_LOCK				10
 
@@ -41,22 +37,20 @@ bool Dptx_Platform_Init_Params( struct Dptx_Params	*pstDptx, struct device	*pstP
 	pstDptx->uiCKC_RegAddr_Offset		= DP_CKC_OFFSET;
 	pstDptx->uiProtect_RegAddr_Offset	= DP_PROTECT_OFFSET;
 
+	pstDptx->ucMax_Lanes				= DPTX_MAX_LINK_LANES;
+
 	pstDptx->pvHPD_Intr_CallBack		= NULL;
 
 	for( ucStream_Index = 0; ucStream_Index < PHY_INPUT_STREAM_MAX; ucStream_Index++ )
 	{
 		pstDptx->aucVCP_Id[ucStream_Index]	= ( ucStream_Index + 1 );
 
-#if defined( CONFIG_DP_INPUT_PORT )
-		pstDptx->aucDP_InputPort[ucStream_Index] = ucStream_Index;
-#endif
-	
 		pstDptx->paucEdidBuf_Entry[ucStream_Index] = kzalloc( DPTX_EDID_BUFLEN, GFP_KERNEL );
 		if( pstDptx->paucEdidBuf_Entry[ucStream_Index] == NULL ) 
-        	{
-		      dptx_err("failed to alloc EDID memory" );
-		      return ( DPTX_RETURN_FAIL );
-         	}
+		{
+			dptx_err("failed to alloc EDID memory" );
+			return ( DPTX_RETURN_FAIL );
+		}
 
 		memset( pstDptx->paucEdidBuf_Entry[ucStream_Index], 0, DPTX_EDID_BUFLEN );
 	}
@@ -68,6 +62,16 @@ bool Dptx_Platform_Init_Params( struct Dptx_Params	*pstDptx, struct device	*pstP
 		return ( DPTX_RETURN_FAIL );
 	}
 
+	pstDptx->uiTCC805X_Revision = get_chip_rev();
+
+	if( pstDptx->uiTCC805X_Revision == TCC805X_REVISION_CS )
+	{
+		Dptx_Platform_Get_PHY_StandardLane_PinConfig( pstDptx );
+		Dptx_Platform_Get_SDMBypass_Ctrl( pstDptx );
+		Dptx_Platform_Get_SRVCBypass_Ctrl( pstDptx );
+		Dptx_Platform_Get_MuxSelect( pstDptx );
+	}
+
 	return ( DPTX_RETURN_SUCCESS );
 }
 
@@ -75,7 +79,7 @@ bool Dptx_Platform_Init( struct Dptx_Params	*pstDptx )
 {	
 	bool				bRetVal, bPLL_LockStatus;
 
-	bRetVal = Dptx_Platform_Set_PLL_Divisor( pstDptx, DIV_CFG_CLK_200HMZ, DIV_CFG_CLK_160HMZ, DIV_CFG_CLK_100HMZ, DIV_CFG_CLK_40HMZ );
+	bRetVal = Dptx_Platform_Set_PLL_Divisor( pstDptx );
 	if( bRetVal == DPTX_RETURN_FAIL )
 	{
 		dptx_err("from Dptx_Platform_Set_PLL_Divisor()" );
@@ -113,7 +117,7 @@ bool Dptx_Platform_Deinit( struct Dptx_Params	*pstDptx )
 	Dptx_Platform_Free_Handle( pstDptx );
 
 	pstHandle = NULL;
-	
+
 	return (DPTX_RETURN_SUCCESS);
 }
 
@@ -152,16 +156,16 @@ bool Dptx_Platform_Set_ProtectRegister_CfgLock( struct Dptx_Params	*pstDptx, boo
 	return ( DPTX_RETURN_SUCCESS );
 }
 
-bool Dptx_Platform_Set_PLL_Divisor(	struct Dptx_Params	*pstDptx, u32 uiBLK0_Divisor, u32 uiBLK1_Divisor, u32 uiBLK2_Divisor, u32 uiBLK3_Divisor )
+bool Dptx_Platform_Set_PLL_Divisor(	struct Dptx_Params	*pstDptx )
 {
 	Dptx_Reg_Writel( pstDptx, ( pstDptx->uiCKC_RegAddr_Offset + DPTX_CKC_CFG_PLLCON ), 0x00000FC0 );
 	Dptx_Reg_Writel( pstDptx, ( pstDptx->uiCKC_RegAddr_Offset + DPTX_CKC_CFG_PLLMON ), 0x00008800 );
-	
-	Dptx_Reg_Writel( pstDptx, ( pstDptx->uiCKC_RegAddr_Offset + DPTX_CKC_CFG_CLKDIVC0 ), uiBLK0_Divisor );
-	Dptx_Reg_Writel( pstDptx, ( pstDptx->uiCKC_RegAddr_Offset + DPTX_CKC_CFG_CLKDIVC1 ), uiBLK1_Divisor );
-	Dptx_Reg_Writel( pstDptx, ( pstDptx->uiCKC_RegAddr_Offset + DPTX_CKC_CFG_CLKDIVC2 ), uiBLK2_Divisor );
-	Dptx_Reg_Writel( pstDptx, ( pstDptx->uiCKC_RegAddr_Offset + DPTX_CKC_CFG_CLKDIVC3 ), uiBLK3_Divisor );
-	
+
+	Dptx_Reg_Writel( pstDptx, ( pstDptx->uiCKC_RegAddr_Offset + DPTX_CKC_CFG_CLKDIVC0 ), DIV_CFG_CLK_200HMZ );
+	Dptx_Reg_Writel( pstDptx, ( pstDptx->uiCKC_RegAddr_Offset + DPTX_CKC_CFG_CLKDIVC1 ), DIV_CFG_CLK_160HMZ );
+	Dptx_Reg_Writel( pstDptx, ( pstDptx->uiCKC_RegAddr_Offset + DPTX_CKC_CFG_CLKDIVC2 ), DIV_CFG_CLK_100HMZ );
+	Dptx_Reg_Writel( pstDptx, ( pstDptx->uiCKC_RegAddr_Offset + DPTX_CKC_CFG_CLKDIVC3 ), DIV_CFG_CLK_40HMZ );
+
 	Dptx_Reg_Writel( pstDptx, ( pstDptx->uiCKC_RegAddr_Offset + DPTX_CKC_CFG_PLLPMS ), 0x05026403 );
 	Dptx_Reg_Writel( pstDptx, ( pstDptx->uiCKC_RegAddr_Offset + DPTX_CKC_CFG_PLLPMS ), 0x85026403 );
 
@@ -173,11 +177,11 @@ bool Dptx_Platform_Set_PLL_ClockSource( struct Dptx_Params	*pstDptx, u8 ucClockS
 	u32		uiRegMap_Val = 0;
 
 	uiRegMap_Val |= ( ucClockSource );
-	
-	Dptx_Reg_Writel( pstDptx, ( pstDptx->uiCKC_RegAddr_Offset + DPTX_CLKCTRL0 ), uiRegMap_Val );
-	Dptx_Reg_Writel( pstDptx, ( pstDptx->uiCKC_RegAddr_Offset + DPTX_CLKCTRL1 ), uiRegMap_Val );
-	Dptx_Reg_Writel( pstDptx, ( pstDptx->uiCKC_RegAddr_Offset + DPTX_CLKCTRL2 ), uiRegMap_Val );
-	Dptx_Reg_Writel( pstDptx, ( pstDptx->uiCKC_RegAddr_Offset + DPTX_CLKCTRL3 ), uiRegMap_Val );
+
+	Dptx_Reg_Writel( pstDptx, ( pstDptx->uiCKC_RegAddr_Offset + DPTX_CKC_CFG_CLKCTRL0 ), uiRegMap_Val );
+	Dptx_Reg_Writel( pstDptx, ( pstDptx->uiCKC_RegAddr_Offset + DPTX_CKC_CFG_CLKCTRL1 ), uiRegMap_Val );
+	Dptx_Reg_Writel( pstDptx, ( pstDptx->uiCKC_RegAddr_Offset + DPTX_CKC_CFG_CLKCTRL2 ), uiRegMap_Val );
+	Dptx_Reg_Writel( pstDptx, ( pstDptx->uiCKC_RegAddr_Offset + DPTX_CKC_CFG_CLKCTRL3 ), uiRegMap_Val );
 
 	return ( DPTX_RETURN_SUCCESS );
 }
@@ -187,7 +191,7 @@ bool Dptx_Platform_Get_PLLLock_Status( struct Dptx_Params	*pstDptx, bool *pbPll_
 	bool	bPllLock;
 	u8		ucCount = 0;
 	u32		uiRegMap_PllPMS;
-	
+
 	do{
 		uiRegMap_PllPMS = Dptx_Reg_Readl( pstDptx, ( pstDptx->uiCKC_RegAddr_Offset + DPTX_CKC_CFG_PLLPMS ) );
 
@@ -208,103 +212,98 @@ bool Dptx_Platform_Get_PLLLock_Status( struct Dptx_Params	*pstDptx, bool *pbPll_
 	}
 
 	*pbPll_Locked = bPllLock;
-	
+
 	return ( DPTX_RETURN_SUCCESS );
 }
 
 bool Dptx_Platform_Set_RegisterBank(	struct Dptx_Params	*pstDptx, enum PHY_LINK_RATE eLinkRate )
 {
+	u32		uiReg_R_data, uiReg_W_data;
 	/*
 	 *  Register bank settings can be changed by application
 	 */
 
+	uiReg_R_data = Dptx_Reg_Readl( pstDptx, (u32)( pstDptx->uiRegBank_RegAddr_Offset + DP_REGISTER_BANK_REG_22 ));
+	if( uiReg_R_data & AXI_SLAVE_BRIDGE_RST_MASK )
+	{
+		uiReg_W_data = (u32)0x00000008;
+	}
+	else
+	{
+		uiReg_W_data = (u32)0x00000000;
+	}
+	dptx_dbg("Writing DP_REGISTER_BANK_REG_22[0x12480058] : 0x%x -> 0x%x", uiReg_R_data, uiReg_W_data);
+
 	switch( eLinkRate )
 	{
 		case LINK_RATE_RBR:
-	Dptx_Reg_Writel( pstDptx, (u32)( pstDptx->uiRegBank_RegAddr_Offset + DP_REGISTER_BANK_REG_0 ), (u32)0x004D0000 );	
-	Dptx_Reg_Writel( pstDptx, (u32)( pstDptx->uiRegBank_RegAddr_Offset + DP_REGISTER_BANK_REG_20 ), (u32)0x00002501 );	
-			// SoC guild for HDCP
-			//Dptx_Reg_Writel( pstDptx, (u32)( pstDptx->uiRegBank_RegAddr_Offset + DP_REGISTER_BANK_REG_11 ), (u32)0x00000001 );	
-			Dptx_Reg_Writel( pstDptx, (u32)( pstDptx->uiRegBank_RegAddr_Offset + DP_REGISTER_BANK_REG_11 ), (u32)0x00000401 );	
-	Dptx_Reg_Writel( pstDptx, (u32)( pstDptx->uiRegBank_RegAddr_Offset + DP_REGISTER_BANK_REG_12 ), (u32)0x00000000 );	
-	Dptx_Reg_Writel( pstDptx, (u32)( pstDptx->uiRegBank_RegAddr_Offset + DP_REGISTER_BANK_REG_13 ), (u32)0x00000000 );	
-	Dptx_Reg_Writel( pstDptx, (u32)( pstDptx->uiRegBank_RegAddr_Offset + DP_REGISTER_BANK_REG_14 ), (u32)0x00000000 );	
-			Dptx_Reg_Writel( pstDptx, (u32)( pstDptx->uiRegBank_RegAddr_Offset + DP_REGISTER_BANK_REG_16 ), (u32)0x00000000 );	
-	Dptx_Reg_Writel( pstDptx, (u32)( pstDptx->uiRegBank_RegAddr_Offset + DP_REGISTER_BANK_REG_15 ), (u32)0x08080808 );	
-	Dptx_Reg_Writel( pstDptx, (u32)( pstDptx->uiRegBank_RegAddr_Offset + DP_REGISTER_BANK_REG_17 ), (u32)0x10000000 );	
-	Dptx_Reg_Writel( pstDptx, (u32)( pstDptx->uiRegBank_RegAddr_Offset + DP_REGISTER_BANK_REG_20 ), (u32)0x00002501 );	
-
+			Dptx_Reg_Writel( pstDptx, (u32)( pstDptx->uiRegBank_RegAddr_Offset + DP_REGISTER_BANK_REG_0 ), (u32)0x004D0000 );
+			Dptx_Reg_Writel( pstDptx, (u32)( pstDptx->uiRegBank_RegAddr_Offset + DP_REGISTER_BANK_REG_20 ), (u32)0x00002501 );
+			Dptx_Reg_Writel( pstDptx, (u32)( pstDptx->uiRegBank_RegAddr_Offset + DP_REGISTER_BANK_REG_11 ), (u32)0x00000401 );
+			Dptx_Reg_Writel( pstDptx, (u32)( pstDptx->uiRegBank_RegAddr_Offset + DP_REGISTER_BANK_REG_12 ), (u32)0x00000000 );
+			Dptx_Reg_Writel( pstDptx, (u32)( pstDptx->uiRegBank_RegAddr_Offset + DP_REGISTER_BANK_REG_13 ), (u32)0x00000000 );
+			Dptx_Reg_Writel( pstDptx, (u32)( pstDptx->uiRegBank_RegAddr_Offset + DP_REGISTER_BANK_REG_14 ), (u32)0x00000000 );
+			Dptx_Reg_Writel( pstDptx, (u32)( pstDptx->uiRegBank_RegAddr_Offset + DP_REGISTER_BANK_REG_16 ), (u32)0x00000000 );
+			Dptx_Reg_Writel( pstDptx, (u32)( pstDptx->uiRegBank_RegAddr_Offset + DP_REGISTER_BANK_REG_15 ), (u32)0x08080808 );
+			Dptx_Reg_Writel( pstDptx, (u32)( pstDptx->uiRegBank_RegAddr_Offset + DP_REGISTER_BANK_REG_17 ), (u32)0x10000000 );
+			Dptx_Reg_Writel( pstDptx, (u32)( pstDptx->uiRegBank_RegAddr_Offset + DP_REGISTER_BANK_REG_20 ), (u32)0x00002501 );
 			Dptx_Reg_Writel( pstDptx, (u32)( pstDptx->uiRegBank_RegAddr_Offset + DP_REGISTER_BANK_REG_21 ), (u32)0x00000000 );
 			Dptx_Reg_Writel( pstDptx, (u32)( pstDptx->uiRegBank_RegAddr_Offset + DP_REGISTER_BANK_REG_23 ), (u32)0x00000008 );
-	                Dptx_Reg_Writel( pstDptx, (u32)( pstDptx->uiRegBank_RegAddr_Offset + DP_REGISTER_BANK_REG_22 ), (u32)0x00000801 );
-			Dptx_Reg_Writel( pstDptx, (u32)( pstDptx->uiRegBank_RegAddr_Offset + DP_REGISTER_BANK_REG_22 ), (u32)0x00000000 );
+			Dptx_Reg_Writel( pstDptx, (u32)( pstDptx->uiRegBank_RegAddr_Offset + DP_REGISTER_BANK_REG_22 ), (u32)0x00000801 );
+			Dptx_Reg_Writel( pstDptx, (u32)( pstDptx->uiRegBank_RegAddr_Offset + DP_REGISTER_BANK_REG_22 ), (u32)uiReg_W_data );
 			break;
 		case LINK_RATE_HBR:
 		case LINK_RATE_HBR2:
-	                Dptx_Reg_Writel( pstDptx, (u32)( pstDptx->uiRegBank_RegAddr_Offset + DP_REGISTER_BANK_REG_0 ),  (u32)0x002D0000 );	
-	                Dptx_Reg_Writel( pstDptx, (u32)( pstDptx->uiRegBank_RegAddr_Offset + DP_REGISTER_BANK_REG_21 ), (u32)0x00000000 );	
-	                Dptx_Reg_Writel( pstDptx, (u32)( pstDptx->uiRegBank_RegAddr_Offset + DP_REGISTER_BANK_REG_20 ), (u32)0x00002501 );	
-	                Dptx_Reg_Writel( pstDptx, (u32)( pstDptx->uiRegBank_RegAddr_Offset + DP_REGISTER_BANK_REG_1 ),  (u32)0xA00F0001 );
-	                Dptx_Reg_Writel( pstDptx, (u32)( pstDptx->uiRegBank_RegAddr_Offset + DP_REGISTER_BANK_REG_2 ),  (u32)0x00A80122 );
-	                Dptx_Reg_Writel( pstDptx, (u32)( pstDptx->uiRegBank_RegAddr_Offset + DP_REGISTER_BANK_REG_3 ),  (u32)0x001E8A00 );
-	                Dptx_Reg_Writel( pstDptx, (u32)( pstDptx->uiRegBank_RegAddr_Offset + DP_REGISTER_BANK_REG_4 ),  (u32)0x00000004 );
-	                Dptx_Reg_Writel( pstDptx, (u32)( pstDptx->uiRegBank_RegAddr_Offset + DP_REGISTER_BANK_REG_7 ),  (u32)0x00000C0C );
-	                Dptx_Reg_Writel( pstDptx, (u32)( pstDptx->uiRegBank_RegAddr_Offset + DP_REGISTER_BANK_REG_8 ),  (u32)0x05460546 );
-	                Dptx_Reg_Writel( pstDptx, (u32)( pstDptx->uiRegBank_RegAddr_Offset + DP_REGISTER_BANK_REG_9 ),  (u32)0x00000011 );
-			
-			//Dptx_Reg_Writel( pstDptx, (u32)( pstDptx->uiRegBank_RegAddr_Offset + DP_REGISTER_BANK_REG_10 ), (u32)0x00300000 );
+			Dptx_Reg_Writel( pstDptx, (u32)( pstDptx->uiRegBank_RegAddr_Offset + DP_REGISTER_BANK_REG_0 ),  (u32)0x002D0000 );
+			Dptx_Reg_Writel( pstDptx, (u32)( pstDptx->uiRegBank_RegAddr_Offset + DP_REGISTER_BANK_REG_21 ), (u32)0x00000000 );
+			Dptx_Reg_Writel( pstDptx, (u32)( pstDptx->uiRegBank_RegAddr_Offset + DP_REGISTER_BANK_REG_20 ), (u32)0x00002501 );
+			Dptx_Reg_Writel( pstDptx, (u32)( pstDptx->uiRegBank_RegAddr_Offset + DP_REGISTER_BANK_REG_1 ),  (u32)0xA00F0001 );
+			Dptx_Reg_Writel( pstDptx, (u32)( pstDptx->uiRegBank_RegAddr_Offset + DP_REGISTER_BANK_REG_2 ),  (u32)0x00A80122 );
+			Dptx_Reg_Writel( pstDptx, (u32)( pstDptx->uiRegBank_RegAddr_Offset + DP_REGISTER_BANK_REG_3 ),  (u32)0x001E8A00 );
+			Dptx_Reg_Writel( pstDptx, (u32)( pstDptx->uiRegBank_RegAddr_Offset + DP_REGISTER_BANK_REG_4 ),  (u32)0x00000004 );
+			Dptx_Reg_Writel( pstDptx, (u32)( pstDptx->uiRegBank_RegAddr_Offset + DP_REGISTER_BANK_REG_7 ),  (u32)0x00000C0C );
+			Dptx_Reg_Writel( pstDptx, (u32)( pstDptx->uiRegBank_RegAddr_Offset + DP_REGISTER_BANK_REG_8 ),  (u32)0x05460546 );
+			Dptx_Reg_Writel( pstDptx, (u32)( pstDptx->uiRegBank_RegAddr_Offset + DP_REGISTER_BANK_REG_9 ),  (u32)0x00000011 );
 			Dptx_Reg_Writel( pstDptx, (u32)( pstDptx->uiRegBank_RegAddr_Offset + DP_REGISTER_BANK_REG_10 ), (u32)0x00700000 );
-	
-	                Dptx_Reg_Writel( pstDptx, (u32)( pstDptx->uiRegBank_RegAddr_Offset + DP_REGISTER_BANK_REG_11 ), (u32)0x00000401 );	
-	                Dptx_Reg_Writel( pstDptx, (u32)( pstDptx->uiRegBank_RegAddr_Offset + DP_REGISTER_BANK_REG_13 ), (u32)0xA8000122 );	
-	                Dptx_Reg_Writel( pstDptx, (u32)( pstDptx->uiRegBank_RegAddr_Offset + DP_REGISTER_BANK_REG_14 ), (u32)0x418A001E );	
-
-			Dptx_Reg_Writel( pstDptx, (u32)( pstDptx->uiRegBank_RegAddr_Offset + DP_REGISTER_BANK_REG_16 ), (u32)0x00004000 );	
+			Dptx_Reg_Writel( pstDptx, (u32)( pstDptx->uiRegBank_RegAddr_Offset + DP_REGISTER_BANK_REG_11 ), (u32)0x00000401 );
+			Dptx_Reg_Writel( pstDptx, (u32)( pstDptx->uiRegBank_RegAddr_Offset + DP_REGISTER_BANK_REG_13 ), (u32)0xA8000122 );
+			Dptx_Reg_Writel( pstDptx, (u32)( pstDptx->uiRegBank_RegAddr_Offset + DP_REGISTER_BANK_REG_14 ), (u32)0x418A001E );
+			Dptx_Reg_Writel( pstDptx, (u32)( pstDptx->uiRegBank_RegAddr_Offset + DP_REGISTER_BANK_REG_16 ), (u32)0x00004000 );
 			Dptx_Reg_Writel( pstDptx, (u32)( pstDptx->uiRegBank_RegAddr_Offset + DP_REGISTER_BANK_REG_15 ), (u32)0x0B000000 );
-			
-	                Dptx_Reg_Writel( pstDptx, (u32)( pstDptx->uiRegBank_RegAddr_Offset + DP_REGISTER_BANK_REG_17 ), (u32)0x10000000 );	
-	                Dptx_Reg_Writel( pstDptx, (u32)( pstDptx->uiRegBank_RegAddr_Offset + DP_REGISTER_BANK_REG_20 ), (u32)0x00002501 );
-
-			//Dptx_Reg_Writel( pstDptx, (u32)( pstDptx->uiRegBank_RegAddr_Offset + DP_REGISTER_BANK_REG_10 ), (u32)0x08300000 );
+			Dptx_Reg_Writel( pstDptx, (u32)( pstDptx->uiRegBank_RegAddr_Offset + DP_REGISTER_BANK_REG_17 ), (u32)0x10000000 );
+			Dptx_Reg_Writel( pstDptx, (u32)( pstDptx->uiRegBank_RegAddr_Offset + DP_REGISTER_BANK_REG_20 ), (u32)0x00002501 );
 			Dptx_Reg_Writel( pstDptx, (u32)( pstDptx->uiRegBank_RegAddr_Offset + DP_REGISTER_BANK_REG_10 ), (u32)0x08700000 );
 			Dptx_Reg_Writel( pstDptx, (u32)( pstDptx->uiRegBank_RegAddr_Offset + DP_REGISTER_BANK_REG_12 ), (u32)0xA00F0003 );
-			Dptx_Reg_Writel( pstDptx, (u32)( pstDptx->uiRegBank_RegAddr_Offset + DP_REGISTER_BANK_REG_23 ), (u32)0x00000008 );	
-	                Dptx_Reg_Writel( pstDptx, (u32)( pstDptx->uiRegBank_RegAddr_Offset + DP_REGISTER_BANK_REG_22 ), (u32)0x00000801 );
-			Dptx_Reg_Writel( pstDptx, (u32)( pstDptx->uiRegBank_RegAddr_Offset + DP_REGISTER_BANK_REG_22 ), (u32)0x00000000 );
+			Dptx_Reg_Writel( pstDptx, (u32)( pstDptx->uiRegBank_RegAddr_Offset + DP_REGISTER_BANK_REG_23 ), (u32)0x00000008 );
+			Dptx_Reg_Writel( pstDptx, (u32)( pstDptx->uiRegBank_RegAddr_Offset + DP_REGISTER_BANK_REG_22 ), (u32)0x00000801 );
+			Dptx_Reg_Writel( pstDptx, (u32)( pstDptx->uiRegBank_RegAddr_Offset + DP_REGISTER_BANK_REG_22 ), (u32)uiReg_W_data );
 			break;
 		case LINK_RATE_HBR3:
-                   	Dptx_Reg_Writel( pstDptx, (u32)( pstDptx->uiRegBank_RegAddr_Offset + DP_REGISTER_BANK_REG_0 ),  (u32)0x002D0000 );	
-	                Dptx_Reg_Writel( pstDptx, (u32)( pstDptx->uiRegBank_RegAddr_Offset + DP_REGISTER_BANK_REG_21 ), (u32)0x00000000 );	
-	                Dptx_Reg_Writel( pstDptx, (u32)( pstDptx->uiRegBank_RegAddr_Offset + DP_REGISTER_BANK_REG_20 ), (u32)0x00002501 );	
-	                Dptx_Reg_Writel( pstDptx, (u32)( pstDptx->uiRegBank_RegAddr_Offset + DP_REGISTER_BANK_REG_1 ),  (u32)0xA00F0001 );
-	                Dptx_Reg_Writel( pstDptx, (u32)( pstDptx->uiRegBank_RegAddr_Offset + DP_REGISTER_BANK_REG_2 ),  (u32)0x00A80122 );
-	                Dptx_Reg_Writel( pstDptx, (u32)( pstDptx->uiRegBank_RegAddr_Offset + DP_REGISTER_BANK_REG_3 ),  (u32)0x001E8A00 );
-                	Dptx_Reg_Writel( pstDptx, (u32)( pstDptx->uiRegBank_RegAddr_Offset + DP_REGISTER_BANK_REG_4 ),  (u32)0x00000004 );
-                 	Dptx_Reg_Writel( pstDptx, (u32)( pstDptx->uiRegBank_RegAddr_Offset + DP_REGISTER_BANK_REG_7 ),  (u32)0x00000C0C );
-                 	Dptx_Reg_Writel( pstDptx, (u32)( pstDptx->uiRegBank_RegAddr_Offset + DP_REGISTER_BANK_REG_8 ),  (u32)0x05460546 );
-                    	Dptx_Reg_Writel( pstDptx, (u32)( pstDptx->uiRegBank_RegAddr_Offset + DP_REGISTER_BANK_REG_9 ),  (u32)0x00000011 );
-			
-			//Dptx_Reg_Writel( pstDptx, (u32)( pstDptx->uiRegBank_RegAddr_Offset + DP_REGISTER_BANK_REG_10 ), (u32)0x00300000 );
+			Dptx_Reg_Writel( pstDptx, (u32)( pstDptx->uiRegBank_RegAddr_Offset + DP_REGISTER_BANK_REG_0 ),  (u32)0x002D0000 );
+			Dptx_Reg_Writel( pstDptx, (u32)( pstDptx->uiRegBank_RegAddr_Offset + DP_REGISTER_BANK_REG_21 ), (u32)0x00000000 );
+			Dptx_Reg_Writel( pstDptx, (u32)( pstDptx->uiRegBank_RegAddr_Offset + DP_REGISTER_BANK_REG_20 ), (u32)0x00002501 );
+			Dptx_Reg_Writel( pstDptx, (u32)( pstDptx->uiRegBank_RegAddr_Offset + DP_REGISTER_BANK_REG_1 ),  (u32)0xA00F0001 );
+			Dptx_Reg_Writel( pstDptx, (u32)( pstDptx->uiRegBank_RegAddr_Offset + DP_REGISTER_BANK_REG_2 ),  (u32)0x00A80122 );
+			Dptx_Reg_Writel( pstDptx, (u32)( pstDptx->uiRegBank_RegAddr_Offset + DP_REGISTER_BANK_REG_3 ),  (u32)0x001E8A00 );
+			Dptx_Reg_Writel( pstDptx, (u32)( pstDptx->uiRegBank_RegAddr_Offset + DP_REGISTER_BANK_REG_4 ),  (u32)0x00000004 );
+			Dptx_Reg_Writel( pstDptx, (u32)( pstDptx->uiRegBank_RegAddr_Offset + DP_REGISTER_BANK_REG_7 ),  (u32)0x00000C0C );
+			Dptx_Reg_Writel( pstDptx, (u32)( pstDptx->uiRegBank_RegAddr_Offset + DP_REGISTER_BANK_REG_8 ),  (u32)0x05460546 );
+			Dptx_Reg_Writel( pstDptx, (u32)( pstDptx->uiRegBank_RegAddr_Offset + DP_REGISTER_BANK_REG_9 ),  (u32)0x00000011 );
 			Dptx_Reg_Writel( pstDptx, (u32)( pstDptx->uiRegBank_RegAddr_Offset + DP_REGISTER_BANK_REG_10 ), (u32)0x00700000 );
-                  	Dptx_Reg_Writel( pstDptx, (u32)( pstDptx->uiRegBank_RegAddr_Offset + DP_REGISTER_BANK_REG_11 ), (u32)0x00000401 );	
-                     	Dptx_Reg_Writel( pstDptx, (u32)( pstDptx->uiRegBank_RegAddr_Offset + DP_REGISTER_BANK_REG_13 ), (u32)0xA8000616 );	
-                	Dptx_Reg_Writel( pstDptx, (u32)( pstDptx->uiRegBank_RegAddr_Offset + DP_REGISTER_BANK_REG_14 ), (u32)0x115C0045 );	
-
-			Dptx_Reg_Writel( pstDptx, (u32)( pstDptx->uiRegBank_RegAddr_Offset + DP_REGISTER_BANK_REG_16 ), (u32)0x00004000 );	
+			Dptx_Reg_Writel( pstDptx, (u32)( pstDptx->uiRegBank_RegAddr_Offset + DP_REGISTER_BANK_REG_11 ), (u32)0x00000401 );
+			Dptx_Reg_Writel( pstDptx, (u32)( pstDptx->uiRegBank_RegAddr_Offset + DP_REGISTER_BANK_REG_13 ), (u32)0xA8000616 );
+			Dptx_Reg_Writel( pstDptx, (u32)( pstDptx->uiRegBank_RegAddr_Offset + DP_REGISTER_BANK_REG_14 ), (u32)0x115C0045 );
+			Dptx_Reg_Writel( pstDptx, (u32)( pstDptx->uiRegBank_RegAddr_Offset + DP_REGISTER_BANK_REG_16 ), (u32)0x00004000 );
 			Dptx_Reg_Writel( pstDptx, (u32)( pstDptx->uiRegBank_RegAddr_Offset + DP_REGISTER_BANK_REG_15 ), (u32)0x8B000000 );
-                   	Dptx_Reg_Writel( pstDptx, (u32)( pstDptx->uiRegBank_RegAddr_Offset + DP_REGISTER_BANK_REG_17 ), (u32)0x10000000 );	
-                      	Dptx_Reg_Writel( pstDptx, (u32)( pstDptx->uiRegBank_RegAddr_Offset + DP_REGISTER_BANK_REG_20 ), (u32)0x00002501 );
-			
-			//Dptx_Reg_Writel( pstDptx, (u32)( pstDptx->uiRegBank_RegAddr_Offset + DP_REGISTER_BANK_REG_10 ), (u32)0x08300000 );
+			Dptx_Reg_Writel( pstDptx, (u32)( pstDptx->uiRegBank_RegAddr_Offset + DP_REGISTER_BANK_REG_17 ), (u32)0x10000000 );
+			Dptx_Reg_Writel( pstDptx, (u32)( pstDptx->uiRegBank_RegAddr_Offset + DP_REGISTER_BANK_REG_20 ), (u32)0x00002501 );
 			Dptx_Reg_Writel( pstDptx, (u32)( pstDptx->uiRegBank_RegAddr_Offset + DP_REGISTER_BANK_REG_10 ), (u32)0x08700000 );
-                      	Dptx_Reg_Writel( pstDptx, (u32)( pstDptx->uiRegBank_RegAddr_Offset + DP_REGISTER_BANK_REG_12 ), (u32)0xA00F0003 );
-			Dptx_Reg_Writel( pstDptx, (u32)( pstDptx->uiRegBank_RegAddr_Offset + DP_REGISTER_BANK_REG_23 ), (u32)0x00000008 );	
+			Dptx_Reg_Writel( pstDptx, (u32)( pstDptx->uiRegBank_RegAddr_Offset + DP_REGISTER_BANK_REG_12 ), (u32)0xA00F0003 );
+			Dptx_Reg_Writel( pstDptx, (u32)( pstDptx->uiRegBank_RegAddr_Offset + DP_REGISTER_BANK_REG_23 ), (u32)0x00000008 );
 			Dptx_Reg_Writel( pstDptx, (u32)( pstDptx->uiRegBank_RegAddr_Offset + DP_REGISTER_BANK_REG_22 ), (u32)0x00000801 );
-                        Dptx_Reg_Writel( pstDptx, (u32)( pstDptx->uiRegBank_RegAddr_Offset + DP_REGISTER_BANK_REG_22 ), (u32)0x00000000 );	
-
-		        //    mdelay( 30 );
+			Dptx_Reg_Writel( pstDptx, (u32)( pstDptx->uiRegBank_RegAddr_Offset + DP_REGISTER_BANK_REG_22 ), (u32)uiReg_W_data );
 			break;
-		default:	
+		default:
 			dptx_err("Invalid PHY rate %d\n", eLinkRate);
 			break;
 	}
@@ -338,11 +337,187 @@ bool Dptx_Platform_Set_PMU_ColdReset_Release(	struct Dptx_Params	*pstDptx )
 
 		dptx_dbg("DP Cold reset mask release...0x%08x -> 0x%08x", uiRegMap_R_HsmRst_Msk, uiRegMap_W_HsmRst_Msk);
 	}
-	
+
 	return ( DPTX_RETURN_SUCCESS );
 }
 
-bool Dptx_Platform_ClkPath_To_XIN(	struct Dptx_Params	*pstDptx )
+bool Dptx_Platform_Set_PHY_StandardLane_PinConfig( struct Dptx_Params	*pstDptx )
+{
+	u32		uiRegMap_R_Reg24, uiRegMap_W_Reg24;
+
+	uiRegMap_R_Reg24 = Dptx_Reg_Readl( pstDptx, (u32)( pstDptx->uiRegBank_RegAddr_Offset + DP_REGISTER_BANK_REG_24 ));
+
+	uiRegMap_W_Reg24 = ( pstDptx->bPHY_Lane_Reswap ) ? ( uiRegMap_R_Reg24 | STD_EN_MASK ):( uiRegMap_R_Reg24 & ~STD_EN_MASK );
+
+	Dptx_Reg_Writel( pstDptx, (u32)( pstDptx->uiRegBank_RegAddr_Offset + DP_REGISTER_BANK_REG_24 ), uiRegMap_W_Reg24);
+
+	dptx_dbg("Set PHY lane swap %s...Reg[0x%x]: 0x%08x -> 0x%08x ",
+					( pstDptx->bPHY_Lane_Reswap ) ? "On":"Off",
+					(u32)( pstDptx->uiRegBank_RegAddr_Offset + DP_REGISTER_BANK_REG_24 ), uiRegMap_R_Reg24, uiRegMap_W_Reg24 );
+
+	return ( DPTX_RETURN_SUCCESS );
+}
+
+bool Dptx_Platform_Get_PHY_StandardLane_PinConfig( struct Dptx_Params	*pstDptx )
+{
+	u32		uiRegMap_R_Reg24;
+
+	uiRegMap_R_Reg24 = Dptx_Reg_Readl( pstDptx, (u32)( pstDptx->uiRegBank_RegAddr_Offset + DP_REGISTER_BANK_REG_24 ));
+
+	pstDptx->bPHY_Lane_Reswap = ( uiRegMap_R_Reg24 & STD_EN_MASK ) ? true:false;
+
+	return ( DPTX_RETURN_SUCCESS );
+}
+
+bool Dptx_Platform_Set_SDMBypass_Ctrl( struct Dptx_Params	*pstDptx )
+{
+	u32		uiRegMap_R_Reg24, uiRegMap_W_Reg24;
+
+	uiRegMap_R_Reg24 = Dptx_Reg_Readl( pstDptx, (u32)( pstDptx->uiRegBank_RegAddr_Offset + DP_REGISTER_BANK_REG_24 ));
+
+	uiRegMap_W_Reg24 = ( pstDptx->bSDM_Bypass ) ? ( uiRegMap_R_Reg24 | SDM_BYPASS_MASK ):( uiRegMap_R_Reg24 & ~SDM_BYPASS_MASK );
+
+	Dptx_Reg_Writel( pstDptx, (u32)( pstDptx->uiRegBank_RegAddr_Offset + DP_REGISTER_BANK_REG_24 ), uiRegMap_W_Reg24);
+
+	dptx_dbg("Set SDM Bypass %s...Reg[0x%x]: 0x%08x -> 0x%08x ",
+					( pstDptx->bSDM_Bypass ) ? "On":"Off",
+					(u32)( pstDptx->uiRegBank_RegAddr_Offset + DP_REGISTER_BANK_REG_24 ), uiRegMap_R_Reg24, uiRegMap_W_Reg24 );
+
+	return ( DPTX_RETURN_SUCCESS );
+}
+
+bool Dptx_Platform_Get_SDMBypass_Ctrl( struct Dptx_Params	*pstDptx )
+{
+	u32			uiRegMap_R_Reg24;
+
+	uiRegMap_R_Reg24 = Dptx_Reg_Readl( pstDptx, (u32)( pstDptx->uiRegBank_RegAddr_Offset + DP_REGISTER_BANK_REG_24 ));
+
+	pstDptx->bSDM_Bypass = ( uiRegMap_R_Reg24 & SDM_BYPASS_MASK ) ? true:false;
+
+	return ( DPTX_RETURN_SUCCESS );
+}
+
+bool Dptx_Platform_Set_SRVCBypass_Ctrl( struct Dptx_Params	*pstDptx )
+{
+	u32		uiRegMap_R_Reg24, uiRegMap_W_Reg24;
+
+	uiRegMap_R_Reg24 = Dptx_Reg_Readl( pstDptx, (u32)( pstDptx->uiRegBank_RegAddr_Offset + DP_REGISTER_BANK_REG_24 ));
+
+	uiRegMap_W_Reg24 = ( pstDptx->bSRVC_Bypass ) ? ( uiRegMap_R_Reg24 | SRVC_BYPASS_MASK ):( uiRegMap_R_Reg24 & ~SRVC_BYPASS_MASK );
+
+	Dptx_Reg_Writel( pstDptx, (u32)( pstDptx->uiRegBank_RegAddr_Offset + DP_REGISTER_BANK_REG_24 ), uiRegMap_W_Reg24);
+
+	dptx_dbg("Set SRVC Bypass %s...Reg[0x%x]: 0x%08x -> 0x%08x ",
+					( pstDptx->bSRVC_Bypass ) ? "On":"Off",
+					(u32)( pstDptx->uiRegBank_RegAddr_Offset + DP_REGISTER_BANK_REG_24 ), uiRegMap_R_Reg24, uiRegMap_W_Reg24 );
+
+	return ( DPTX_RETURN_SUCCESS );
+}
+
+bool Dptx_Platform_Get_SRVCBypass_Ctrl( struct Dptx_Params	*pstDptx )
+{
+	u32			uiRegMap_R_Reg24;
+
+	uiRegMap_R_Reg24 = Dptx_Reg_Readl( pstDptx, (u32)( pstDptx->uiRegBank_RegAddr_Offset + DP_REGISTER_BANK_REG_24 ));
+
+	pstDptx->bSRVC_Bypass = ( uiRegMap_R_Reg24 & SRVC_BYPASS_MASK ) ? true:false;
+
+	return ( DPTX_RETURN_SUCCESS );
+}
+
+bool Dptx_Platform_Set_MuxSelect( struct Dptx_Params	*pstDptx )
+{
+	u8		ucRegMap_MuxSel_Shift = 0;
+	u8		ucDP_Index;
+	u32		uiRegMap_R_Reg24, uiRegMap_W_Reg24;
+	u32		uiRegMap_MuxSel_Mask;
+
+	if( pstDptx->ucNumOfPorts >= PHY_INPUT_STREAM_MAX )
+	{
+		dptx_err("The number of ports( %d ) is larger than maximum(%d)", pstDptx->ucNumOfPorts, PHY_INPUT_STREAM_MAX );
+		return ( DPTX_RETURN_FAIL );
+	}
+
+	for( ucDP_Index = 0; ucDP_Index < pstDptx->ucNumOfPorts; ucDP_Index++ )
+	{
+		switch( ucDP_Index )
+		{
+			case PHY_INPUT_STREAM_0:
+				uiRegMap_MuxSel_Mask = (u32)SOURCE0_MUX_SEL_MASK;
+				ucRegMap_MuxSel_Shift = (u8)SOURCE0_MUX_SEL_SHIFT;
+				break;
+			case PHY_INPUT_STREAM_1:
+				uiRegMap_MuxSel_Mask = (u32)SOURCE1_MUX_SEL_MASK;
+				ucRegMap_MuxSel_Shift = (u8)SOURCE1_MUX_SEL_SHIFT;
+				break;
+			case PHY_INPUT_STREAM_2:
+				uiRegMap_MuxSel_Mask = (u32)SOURCE2_MUX_SEL_MASK;
+				ucRegMap_MuxSel_Shift = (u8)SOURCE2_MUX_SEL_SHIFT;
+				break;
+			case PHY_INPUT_STREAM_3:
+			default:
+				uiRegMap_MuxSel_Mask = (u32)SOURCE3_MUX_SEL_MASK;
+				ucRegMap_MuxSel_Shift = (u8)SOURCE3_MUX_SEL_SHIFT;
+				break;
+		}
+
+		uiRegMap_R_Reg24 = Dptx_Reg_Readl( pstDptx, (u32)( pstDptx->uiRegBank_RegAddr_Offset + DP_REGISTER_BANK_REG_24 ));
+
+		uiRegMap_W_Reg24 = ( uiRegMap_R_Reg24 & ~uiRegMap_MuxSel_Mask );
+		uiRegMap_W_Reg24 |= ( pstDptx->aucMuxInput_Index[ucDP_Index] << ucRegMap_MuxSel_Shift );
+
+		Dptx_Reg_Writel( pstDptx, (u32)( pstDptx->uiRegBank_RegAddr_Offset + DP_REGISTER_BANK_REG_24 ), uiRegMap_W_Reg24);
+
+		dptx_dbg("Set Mux select[0x%x]( 0x%x -> 0x%x ): Mux %d -> DP %d ",
+			(u32)( pstDptx->uiRegBank_RegAddr_Offset + DP_REGISTER_BANK_REG_24 ), uiRegMap_R_Reg24, uiRegMap_W_Reg24, pstDptx->aucMuxInput_Index[ucDP_Index], ucDP_Index );
+	}
+
+	return ( DPTX_RETURN_SUCCESS );
+}
+
+bool Dptx_Platform_Get_MuxSelect( struct Dptx_Params	*pstDptx )
+{
+	u8		ucRegMap_MuxSel_Shift = 0;
+	u8		ucDP_Index;
+	u32		uiRegMap_R_Reg24;
+	u32		uiRegMap_MuxSel_Mask;
+
+	for( ucDP_Index = 0; ucDP_Index < PHY_INPUT_STREAM_MAX; ucDP_Index++ )
+	{
+		switch( ucDP_Index )
+		{
+			case PHY_INPUT_STREAM_0:
+				uiRegMap_MuxSel_Mask = (u32)SOURCE0_MUX_SEL_MASK;
+				ucRegMap_MuxSel_Shift = (u8)SOURCE0_MUX_SEL_SHIFT;
+				break;
+			case PHY_INPUT_STREAM_1:
+				uiRegMap_MuxSel_Mask = (u32)SOURCE1_MUX_SEL_MASK;
+				ucRegMap_MuxSel_Shift = (u8)SOURCE1_MUX_SEL_SHIFT;
+				break;
+			case PHY_INPUT_STREAM_2:
+				uiRegMap_MuxSel_Mask = (u32)SOURCE2_MUX_SEL_MASK;
+				ucRegMap_MuxSel_Shift = (u8)SOURCE2_MUX_SEL_SHIFT;
+				break;
+			case PHY_INPUT_STREAM_3:
+			default:
+				uiRegMap_MuxSel_Mask = (u32)SOURCE3_MUX_SEL_MASK;
+				ucRegMap_MuxSel_Shift = (u8)SOURCE3_MUX_SEL_SHIFT;
+				break;
+		}
+
+		uiRegMap_R_Reg24 = Dptx_Reg_Readl( pstDptx, (u32)( pstDptx->uiRegBank_RegAddr_Offset + DP_REGISTER_BANK_REG_24 ));
+
+		pstDptx->aucMuxInput_Index[ucDP_Index] = (( uiRegMap_R_Reg24 & uiRegMap_MuxSel_Mask ) >> ucRegMap_MuxSel_Shift );
+
+		dptx_notice("Get Mux select[0x%x](0x%x): Mux %d <-> DP %d ", 
+					(u32)( pstDptx->uiRegBank_RegAddr_Offset + DP_REGISTER_BANK_REG_24 ), uiRegMap_R_Reg24, pstDptx->aucMuxInput_Index[ucDP_Index], ucDP_Index );
+	}
+
+	return ( DPTX_RETURN_SUCCESS );
+}
+
+
+bool Dptx_Platform_Set_ClkPath_To_XIN(	struct Dptx_Params	*pstDptx )
 {
 	u32			uiRegMap_PLLPMS;
 
@@ -364,7 +539,7 @@ bool Dptx_Platform_ClkPath_To_XIN(	struct Dptx_Params	*pstDptx )
 	Dptx_Reg_Writel( pstDptx, (u32)( pstDptx->uiCKC_RegAddr_Offset + DP_REGISTER_BANK_REG_4 ), (u32)uiRegMap_PLLPMS );
 
 	dptx_dbg("Clk path to XIN...Reg[0x%x] -> 0x%08x", (u32)( pstDptx->uiCKC_RegAddr_Offset + DP_REGISTER_BANK_REG_4 ), uiRegMap_PLLPMS);
-	
+
 	return ( DPTX_RETURN_SUCCESS );
 }
 
@@ -405,37 +580,4 @@ struct Dptx_Params *Dptx_Platform_Get_Device_Handle( void )
 {
 	return ( pstHandle );
 }
-
-bool Dptx_Platform_DirectWrite_Reg( struct Dptx_Params	*pstDptx )
-{
-//	u32 	uiRead_RegVal;
-//	enum  HPD_Detection_Status	eHPD_Status;
-
- 	dptx_dbg("Starting Dptx_Platform_DirectWrite_Reg()... ");
-
-	Dptx_Reg_Writel( pstDptx, 0x400, 0x12001302 );
-	Dptx_Reg_Writel( pstDptx, 0x300, 0x00010000 );
-	Dptx_Reg_Writel( pstDptx, 0x324, 0x001400C0 );
-	Dptx_Reg_Writel( pstDptx, 0x500, 0xC0000000 );
-	Dptx_Reg_Writel( pstDptx, 0x504, 0x00000000 );
-	Dptx_Reg_Writel( pstDptx, 0x30C, 0x00000003 );
-	Dptx_Reg_Writel( pstDptx, 0x328, 0x20000000 );
-	Dptx_Reg_Writel( pstDptx, 0x310, 0x07800460 );
-	Dptx_Reg_Writel( pstDptx, 0x32C, 0x00008000 );
-	Dptx_Reg_Writel( pstDptx, 0x314, 0x002D0438 );
-	Dptx_Reg_Writel( pstDptx, 0x318, 0x002C0058 );
-	Dptx_Reg_Writel( pstDptx, 0x31C, 0x00050004 );
-	Dptx_Reg_Writel( pstDptx, 0x330, 0x0000017E );
-	Dptx_Reg_Writel( pstDptx, 0x320, 0x000207a3 );
-	mdelay( 1000 );	
-
-	writel( 0x004C0141,  (void *) 0x12000000 );
-	Dptx_Reg_Writel( pstDptx, 0x300, 0x00010020 );
-
-	dptx_dbg("Done Dptx_Platform_DirectWrite_Reg()... ");
-
-	return (DPTX_RETURN_SUCCESS);
-}
-
-
 

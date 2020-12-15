@@ -11,9 +11,11 @@
 #include <linux/regmap.h>
 #include <linux/input/tcc_tsc_serdes.h>
 
-#define TCC_DPTX_DRV_MAJOR_VER			1
-#define TCC_DPTX_DRV_MINOR_VER			2
+#define TCC_DPTX_DRV_MAJOR_VER			2
+#define TCC_DPTX_DRV_MINOR_VER			0
 #define TCC_DPTX_DRV_SUBTITLE_VER		0
+
+#define TCC805X_REVISION_CS				0x01
 
 #define DP_DDIBUS_BASE_REG_ADDRESS		0x12400000
 #define DP_MICOM_BASE_REG_ADDRESS		0x1BD00000
@@ -59,6 +61,14 @@
 #define PREDETERMINED_PRE_EMP_ON_EQ			0 // PRE_EMPHASIS_LEVEL_0
 #define PREDETERMINED_VSW_ON_EQ				0 // VOLTAGE_SWING_LEVEL_0
 #endif
+
+enum TCC805X_EVB_TYPE
+{
+	TCC8059_EVB_01			= 0,
+	TCC8050_SV_01			= 1,
+	TCC8050_SV_10			= 2,
+	TCC805X_EVB_UNKNOWN		= 0xFE
+};
 
 enum REG_DIV_CFG
 {
@@ -118,20 +128,20 @@ enum PHY_LANE_INDEX
 	PHY_LANE_0		= 0,
 	PHY_LANE_1		= 1,
 	PHY_LANE_2		= 2,
-	PHY_LANE_3		= 3,
-	PHY_LANE_MAX	= 4
+	PHY_LANE_4		= 4,
+	PHY_LANE_MAX	= 5
 };
 
 enum MST_INPUT_PORT_TYPE
 {
-	INPUT_PORT_TYPE_TX			= 0,	
+	INPUT_PORT_TYPE_TX			= 0,
 	INPUT_PORT_TYPE_RX			= 1,
 	INPUT_PORT_TYPE_INVALID		= 2
 };
 
 enum MST_BRANCH_UNIT_INDEX
 {
-	FIRST_MST_BRANCH_UNIT			= 0,	
+	FIRST_MST_BRANCH_UNIT			= 0,
 	SECOND_MST_BRANCH_UNIT			= 1,
 	THIRRD_MST_BRANCH_UNIT			= 2,
 	INVALID_MST_BRANCH_UNIT			= 3
@@ -139,7 +149,7 @@ enum MST_BRANCH_UNIT_INDEX
 
 enum MST_PEER_DEV_TYPE
 {
-	PEER_NO_DEV_CONNECTED			= 0,	
+	PEER_NO_DEV_CONNECTED			= 0,
 	PEER_SOURCE_DEV					= 1,
 	PEER_BRANCHING_DEV				= 2,
 	PEER_STREAM_SINK_DEV			= 3,
@@ -180,15 +190,15 @@ enum VIDEO_PIXEL_COLOR_DEPTH
 
 enum VIDEO_LINK_BPP
 {
-	VIDEO_LINK_BPP_INVALID		= 0,	
+	VIDEO_LINK_BPP_INVALID		= 0,
 	VIDEO_LINK_BPP_YCbCr422				= 2, 
 	VIDEO_LINK_BPP_RGB_YCbCr444			= 3
 };
 
 enum VIDEO_SINK_DPCD_BPC
 {
-	VIDEO_SINK_DPCD_8BPC		= 0,	
-	VIDEO_SINK_DPCD_10BPC		= 1,	
+	VIDEO_SINK_DPCD_8BPC		= 0,
+	VIDEO_SINK_DPCD_10BPC		= 1,
 	VIDEO_SINK_DPCD_12BPC		= 2,
 	VIDEO_SINK_DPCD_16BPC		= 3
 };
@@ -320,7 +330,7 @@ enum AUDIO_IEC60958_3_SAMPLE_FREQ
 	IEC60958_3_SAMPLE_FREQ_24			= 6,
 	IEC60958_3_SAMPLE_FREQ_192			= 7,
 	IEC60958_3_SAMPLE_FREQ_32			= 12,
-	IEC60958_3_SAMPLE_FREQ_INVALID		= 13		
+	IEC60958_3_SAMPLE_FREQ_INVALID		= 13
 };
 
 enum AUDIO_IEC60958_3_ORIGINAL_SAMPLE_FREQ
@@ -480,11 +490,16 @@ struct Dptx_Params
 	atomic_t		HPD_IRQ_State;
 	atomic_t		Sink_request;
 
-	u32             uiHPD_GPIO;
-    u32             uiHPD_IRQ;
+	u32				uiHPD_IRQ;
+	u32				uiTCC805X_Revision;
 
 	bool			bUsed_TCC_DRM_Interface;
 	bool			bSideBand_MSG_Supported;
+	bool			bSerDes_Reset_STR;
+	bool			bPHY_Lane_Reswap;
+	bool			bSDM_Bypass;
+	bool			bSRVC_Bypass;
+
 	char			*pcDevice_Name;
 
 	void __iomem	*pioDPLink_BaseAddr;/* DP register base address */
@@ -497,7 +512,7 @@ struct Dptx_Params
 	u32 			uiProtect_RegAddr_Offset;
 
 	bool			bSpreadSpectrum_Clock;	
-	bool			bMultStreamTransport; 		/* Multi Stream Transport */				
+	bool			bMultStreamTransport; 		/* Multi Stream Transport */
 
 	u8				ucNumOfStreams;
 	u8				ucNumOfPorts;
@@ -508,9 +523,10 @@ struct Dptx_Params
     u8				aucStreamSink_PortNumber[PHY_INPUT_STREAM_MAX];
 	u8				aucRAD_PortNumber[PHY_INPUT_STREAM_MAX];
 	u8				aucVCP_Id[PHY_INPUT_STREAM_MAX];
+	u8				aucMuxInput_Index[PHY_INPUT_STREAM_MAX];
 	u8				aucDPCD_Caps[DPTX_SINK_CAP_SIZE];
 	u8				aucNumOfSlots[PHY_INPUT_STREAM_MAX];
-    u16				ausPayloadBandwidthNumber[PHY_INPUT_STREAM_MAX];
+	u16				ausPayloadBandwidthNumber[PHY_INPUT_STREAM_MAX];
 
 	enum HPD_Detection_Status eLast_HPDStatus;
 	enum DMT_ESTABLISHED_TIMING			eEstablished_Timing;
@@ -535,11 +551,6 @@ struct Dptx_Params
 };
 
 
-
-int Dpv14_Tx_Attach_DRM( u8 ucDP_Index );
-int Dpv14_Tx_Deatach_DRM( u8 ucDP_Index );
-
-
 bool Dptx_Platform_Init_Params( struct Dptx_Params	*pstDptx, struct device	*pstParentDev );
 bool Dptx_Platform_Init( struct Dptx_Params	*pstDptx );
 bool Dptx_Platform_Deinit( struct Dptx_Params	*pstDptx );
@@ -547,16 +558,23 @@ bool Dptx_Platform_Set_ProtectRegister_PW( struct Dptx_Params	*pstDptx, u32 uiPr
 bool Dptx_Platform_Set_ProtectRegister_CfgAccess( struct Dptx_Params	*pstDptx, bool bAccessable );
 bool Dptx_Platform_Set_ProtectRegister_CfgLock( struct Dptx_Params	*pstDptx, bool bAccessable );
 bool Dptx_Platform_Set_RegisterBank(	struct Dptx_Params	*pstDptx, enum PHY_LINK_RATE eLinkRate );
-bool Dptx_Platform_Set_PLL_Divisor(	struct Dptx_Params	*pstDptx, u32 uiBLK0_Divisor, u32 uiBLK1_Divisor, u32 uiBLK2_Divisor, u32 uiBLK3_Divisor );
+bool Dptx_Platform_Set_PLL_Divisor(	struct Dptx_Params	*pstDptx );
 bool Dptx_Platform_Set_PLL_ClockSource( struct Dptx_Params	*pstDptx, u8 ucClockSource );
-bool Dptx_Platform_Get_PLLLock_Status( struct Dptx_Params	*pstDptx, bool *pbPll_Locked );
 bool Dptx_Platform_Set_APAccess_Mode( struct Dptx_Params *pstDptx );
 bool Dptx_Platform_Set_PMU_ColdReset_Release(	struct Dptx_Params	*pstDptx );
-bool Dptx_Platform_ClkPath_To_XIN(	struct Dptx_Params	*pstDptx );
+bool Dptx_Platform_Set_ClkPath_To_XIN(	struct Dptx_Params	*pstDptx );
+bool Dptx_Platform_Set_PHY_StandardLane_PinConfig( struct Dptx_Params	*pstDptx );
+bool Dptx_Platform_Set_SDMBypass_Ctrl( struct Dptx_Params	*pstDptx );
+bool Dptx_Platform_Set_SRVCBypass_Ctrl( struct Dptx_Params	*pstDptx );
+bool Dptx_Platform_Set_MuxSelect( struct Dptx_Params	*pstDptx );
+bool Dptx_Platform_Get_PLLLock_Status( struct Dptx_Params	*pstDptx, bool *pbPll_Locked );
+bool Dptx_Platform_Get_PHY_StandardLane_PinConfig( struct Dptx_Params	*pstDptx );
+bool Dptx_Platform_Get_SDMBypass_Ctrl( struct Dptx_Params	*pstDptx );
+bool Dptx_Platform_Get_SRVCBypass_Ctrl( struct Dptx_Params	*pstDptx );
+bool Dptx_Platform_Get_MuxSelect( struct Dptx_Params	*pstDptx );
 void Dptx_Platform_Set_Device_Handle( struct Dptx_Params	*pstDptx );
 struct Dptx_Params *Dptx_Platform_Get_Device_Handle( void );
 bool Dptx_Platform_Free_Handle( struct Dptx_Params	*pstDptx_Handle );
-bool Dptx_Platform_DirectWrite_Reg( struct Dptx_Params	*pstDptx );
 
 
 
@@ -681,6 +699,10 @@ bool Dptx_Aux_Write_Bytes_To_DPCD( struct Dptx_Params *pstDptx, u32 uiAddr, u8 *
 int  Dptx_Aux_Read_Bytes_From_I2C( struct Dptx_Params *pstDptx, u32 uiDevice_Addr, u8 *pucBuffer, u32 uiLength );
 int  Dptx_Aux_Write_Bytes_To_I2C( struct Dptx_Params *pstDptx, u32 uiDevice_Addr, u8 *pucBuffer, u32 uiLength );
 int  Dptx_Aux_Write_AddressOnly_To_I2C( struct Dptx_Params *pstDptx,        		          unsigned int uiDevice_Addr );
+
+
+int Dpv14_Tx_Suspend_T( struct Dptx_Params	*pstDptx );
+int Dpv14_Tx_Resume_T( struct Dptx_Params	*pstDptx );
 
 
 /* Dptx SerDes */

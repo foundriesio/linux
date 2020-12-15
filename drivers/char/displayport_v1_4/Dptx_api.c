@@ -15,12 +15,6 @@
 
 #if defined(CONFIG_DRM_TCC)
 #include <tcc_drm_dpi.h>
-//#define ENABLE_DRM_INTRFACE_TEST
-
-#if defined( ENABLE_DRM_INTRFACE_TEST )
-#define RAW_DATA_DUMP
-#define PRINT_RAW_DATA_BUF_SIZE				DPTX_EDID_BUFLEN
-#endif
 #endif
 
 #define MAX_CHECK_HPD_NUM					200
@@ -43,7 +37,7 @@ static int dpv14_api_set_video_stream_enable( int dp_id, unsigned char enable );
 static int dpv14_api_set_audio_stream_enable( int dp_id, unsigned char enable );
 
 static struct dptx_drm_helper_funcs dptx_drm_ops = {
-    .get_hpd_state = dpv14_api_get_hpd_state,
+	.get_hpd_state = dpv14_api_get_hpd_state,
 	.get_edid = dpv14_api_get_edid,
 	.set_video = dpv14_api_set_video_timing,
 	.set_enable_video = dpv14_api_set_video_stream_enable,
@@ -59,38 +53,6 @@ struct Dptx_drm_context_t {
 
 static struct Dptx_drm_context_t	stDptx_drm_context[PHY_INPUT_STREAM_MAX] = {0, };
 
-
-#if defined( RAW_DATA_DUMP )
-static void dptx_Print_U8_Buf( u8 *pucBuf, u32 uiStart_RegOffset, u32 uiLength  )
-{
-	int			iOffset;
-	char		acStr[PRINT_RAW_DATA_BUF_SIZE];
-	int			iNumOfWritten = 0;
-	
-	iNumOfWritten += snprintf( &acStr[iNumOfWritten], PRINT_RAW_DATA_BUF_SIZE - iNumOfWritten, "\n" );
-
-	for( iOffset = 0; iOffset < uiLength; iOffset++ ) 
-	{
-		if( !( iOffset % 16 ) ) 
-		{
-			iNumOfWritten += snprintf( &acStr[iNumOfWritten], PRINT_RAW_DATA_BUF_SIZE - iNumOfWritten, "\n%02x:", ( uiStart_RegOffset + iOffset ));
-			if( iNumOfWritten >= PRINT_RAW_DATA_BUF_SIZE )
-			{
-				break;
-			}
-		}
-
-		iNumOfWritten += snprintf( &acStr[iNumOfWritten],  PRINT_RAW_DATA_BUF_SIZE - iNumOfWritten, " %02x", pucBuf[iOffset] );
-		if( iNumOfWritten >= PRINT_RAW_DATA_BUF_SIZE )
-		{
-			break;
-		}
-	}
-
-	printk("%s", acStr);
-	return;
-}
-#endif
 
 static int dpv14_api_attach_drm( u8 ucDP_Index )
 {
@@ -244,7 +206,7 @@ int dpv14_api_get_hpd_state( int dp_id, unsigned char *hpd_state )
 		dptx_info("DP %d is plugged", dp_id);
 		*hpd_state = (unsigned char)1;
 	}
-	
+
 	return ( 0 );
 }
 
@@ -380,7 +342,7 @@ int dpv14_api_set_video_timing( int dp_id, struct dptx_detailed_timing_t *dptx_d
 	{
 		return ( -ENODEV );
 	}
-	
+
 	dptx_info("[Detailed timing from DRM] : Video timing of DP %d is being aconfigured ", dp_id);
 	dptx_info("		Pixel clk = %d ", (u32)dptx_detailed_timing->pixel_clock );
 	dptx_info("		%s", ( dptx_detailed_timing->interlaced ) ? "Interlace" : "Progressive" );
@@ -389,7 +351,7 @@ int dpv14_api_set_video_timing( int dp_id, struct dptx_detailed_timing_t *dptx_d
 	dptx_info("		H Sync offset(%d), V Sync offset(%d) ", (u32)dptx_detailed_timing->h_sync_offset, (u32)dptx_detailed_timing->v_sync_offset);
 	dptx_info("		H Sync plus W(%d), V Sync plus W(%d) ", (u32)dptx_detailed_timing->h_sync_pulse_width, (u32)dptx_detailed_timing->v_sync_pulse_width );
 	dptx_info("		H Sync Polarity(%d), V Sync Polarity(%d)", (u32)dptx_detailed_timing->h_sync_polarity, (u32)dptx_detailed_timing->v_sync_polarity );
-	
+
 	return ( 0 );
 }
 
@@ -443,7 +405,7 @@ int dpv14_api_set_audio_stream_enable( int dp_id, unsigned char enable )
 	dptx_info("Set DP %d audio %s...",	enable ? "enable":"disable" );
 
 	Dptx_Avgen_Set_Audio_Stream_Enable( pstHandle, (u8)dp_id, (bool)enable );
-	
+
 	return ( 0 );
 }
 
@@ -456,54 +418,7 @@ void Dpv14_Tx_API_Hpd_Intr_CB( u8 ucDP_Index, bool bHPD_State )
 #if defined( CONFIG_DRM_TCC )
 	if( bHPD_State == (bool)HPD_STATUS_PLUGGED )
 	{
-#if defined( ENABLE_DRM_INTRFACE_TEST )
-		u8		ucHDP_State;
-		u8		aucEDID_Data[DPTX_EDID_BUFLEN];
-		struct dptx_detailed_timing_t 		stDptx_detailed_timing;
-		struct Dptx_Params			*pstHandle;
-		struct Dptx_Video_Params	*pstVideoParams;
-		struct Dptx_Dtd_Params		stDtd;
-			
-		pstHandle = Dptx_Platform_Get_Device_Handle();
-		if( !pstHandle )
-		{
-			dptx_err("Failed to get DP handle" );
-			return ( -ENODEV );
-		}
-
-		dpv14_api_get_hpd_state( ucDP_Index, &ucHDP_State );
-		dptx_info("DP %d: HPD %s from dpv14_api_get_hpd_state()", ucDP_Index, bHPD_State ? "Plugged":"Unplugged" );
-
-		dpv14_api_get_edid( ucDP_Index, aucEDID_Data, (int)DPTX_EDID_BUFLEN);
-		dptx_Print_U8_Buf( aucEDID_Data, 0, (u32)DPTX_EDID_BUFLEN );
-
-		pstVideoParams = &pstHandle->stVideoParams;
-		Dptx_Avgen_Fill_Dtd( &stDtd, pstVideoParams->auiVideo_Code[ucDP_Index], (u32)VIDEO_REFRESHRATE_60_00HZ, (u8)VIDEO_FORMAT_CEA_861 );
-
-		stDptx_detailed_timing.interlaced = stDtd.interlaced;
-		stDptx_detailed_timing.pixel_repetition_input = stDtd.pixel_repetition_input;
-		stDptx_detailed_timing.h_active = stDtd.h_active;
-		stDptx_detailed_timing.v_active = stDtd.v_active;
-		stDptx_detailed_timing.h_blanking = stDtd.h_blanking;
-		stDptx_detailed_timing.v_blanking = stDtd.v_blanking;
-		stDptx_detailed_timing.h_sync_offset = stDtd.h_sync_offset;
-		stDptx_detailed_timing.v_sync_offset = stDtd.v_sync_offset;
-		stDptx_detailed_timing.h_sync_pulse_width = stDtd.h_sync_pulse_width;
-		stDptx_detailed_timing.v_sync_pulse_width = stDtd.v_sync_pulse_width;
-		stDptx_detailed_timing.h_sync_polarity = stDtd.h_sync_polarity;
-		stDptx_detailed_timing.v_sync_polarity = stDtd.v_sync_polarity;
-		stDptx_detailed_timing.pixel_clock = pstVideoParams->uiPeri_Pixel_Clock[ucDP_Index];
-
-		dpv14_api_set_video_timing( ucDP_Index, &stDptx_detailed_timing );
-
-		mdelay( 3000 );
-
-		dptx_info("Delay 3 Sec. before enabling video", ucDP_Index, bHPD_State ? "Plugged":"Unplugged" );
-
-		dpv14_api_set_video_stream_enable( ucDP_Index, (u8)1 );
-#else
 		dpv14_api_attach_drm( ucDP_Index );
-#endif
 	}
 	else
 	{
@@ -535,13 +450,13 @@ int Dpv14_Tx_API_Get_HPD_State( bool *pbHPD_State )
 		dptx_err("Failed to get handle" );
 		return ( EACCES );
 	}
-	
+
 	bRetVal = Dptx_Intr_Get_HotPlug_Status( pstHandle, pbHPD_State );
 	if( bRetVal == DPTX_API_RETURN_FAIL ) 
 	{
 		return ( ENODEV );
 	}
-	
+
 	return ( 0 );
 }
 
@@ -558,7 +473,7 @@ int Dpv14_Tx_API_Get_Port_Composition( bool *pbMST_Supported, u8 *pucNumOfPlugge
 		dptx_err("Failed to get handle" );
 		return ( EACCES );
 	}
-	
+
 	bRetVal = Dptx_Intr_Get_HotPlug_Status( pstHandle, &bHPD_State );
 	if( bRetVal == DPTX_API_RETURN_FAIL ) 
 	{
@@ -610,7 +525,7 @@ int Dpv14_Tx_API_Get_Port_Composition( bool *pbMST_Supported, u8 *pucNumOfPlugge
 	{
 		Dptx_Ext_Set_Stream_Mode( pstHandle, true,     ucNumOfPluggedPorts );
 	}
-	
+
 	*pbMST_Supported = bSink_MST_Supported;
 	*pucNumOfPluggedPorts = ucNumOfPluggedPorts;
 
@@ -629,7 +544,7 @@ int Dpv14_Tx_API_Get_Edid( u8 ucStream_Index, u8 *pucEDID_Buf, u32 uiBuf_Size )
 		dptx_err("pucEDID_Buf is NULL");
 		return ( EACCES );
 	}
-	
+
 	pstHandle = Dptx_Platform_Get_Device_Handle();
 	if( !pstHandle )
 	{
@@ -826,7 +741,7 @@ int Dpv14_Tx_API_Set_Video_Enable( u8 ucStream_Index, bool bEnable )
 	bool				bRetVal;
 	bool				bHPDStatus;
 	struct Dptx_Params 	*pstHandle;
-	
+
 	pstHandle = Dptx_Platform_Get_Device_Handle();
 	if( !pstHandle )
 	{
@@ -873,7 +788,7 @@ int Dpv14_Tx_API_Set_Video_Enable( u8 ucStream_Index, bool bEnable )
 bool Dpv14_Tx_API_Set_Audio_Mute( bool bMute )
 {
 	struct Dptx_Params 		*pstHandle;
-	
+
 	pstHandle = Dptx_Platform_Get_Device_Handle();
 	if( !pstHandle )
 	{
@@ -941,7 +856,7 @@ bool Dpv14_Tx_API_Get_Audio_InterfaceType( u8 *pucAudio_InfType )
 bool Dpv14_Tx_API_Set_Audio_DataWidth( enum DPTX_AUDIO_DATA_WIDTH eAudio_DataWidth )
 {
 	struct Dptx_Params 		*pstHandle;
-	
+
 	pstHandle = Dptx_Platform_Get_Device_Handle();
 	if( !pstHandle )
 	{
@@ -959,7 +874,7 @@ bool Dpv14_Tx_API_Set_Audio_DataWidth( enum DPTX_AUDIO_DATA_WIDTH eAudio_DataWid
 bool Dpv14_Tx_API_Get_Audio_DataWidth( u8 *pucAudio_DataWidth )
 {
 	struct Dptx_Params 		*pstHandle;
-	
+
 	pstHandle = Dptx_Platform_Get_Device_Handle();
 	if( !pstHandle )
 	{
@@ -977,7 +892,7 @@ bool Dpv14_Tx_API_Get_Audio_DataWidth( u8 *pucAudio_DataWidth )
 bool Dpv14_Tx_API_Set_Audio_HBR_Mode( bool bEnable )
 {
 	struct Dptx_Params 		*pstHandle;
-	
+
 	pstHandle = Dptx_Platform_Get_Device_Handle();
 	if( !pstHandle )
 	{
@@ -995,7 +910,7 @@ bool Dpv14_Tx_API_Set_Audio_HBR_Mode( bool bEnable )
 bool Dpv14_Tx_API_Get_Audio_HBR_Mode( bool *pbEnable )
 {
 	struct Dptx_Params 		*pstHandle;
-	
+
 	pstHandle = Dptx_Platform_Get_Device_Handle();
 	if( !pstHandle )
 	{
@@ -1013,7 +928,7 @@ bool Dpv14_Tx_API_Get_Audio_HBR_Mode( bool *pbEnable )
 bool Dpv14_Tx_API_Set_Audio_Max_NumOfCh( enum  DPTX_AUDIO_NUM_OF_CHANNELS eAudio_NumOfCh )
 {
 	struct Dptx_Params 		*pstHandle;
-	
+
 	pstHandle = Dptx_Platform_Get_Device_Handle();
 	if( !pstHandle )
 	{
@@ -1031,7 +946,7 @@ bool Dpv14_Tx_API_Set_Audio_Max_NumOfCh( enum  DPTX_AUDIO_NUM_OF_CHANNELS eAudio
 bool Dpv14_Tx_API_Get_Audio_Max_NumOfCh( u8 *pucAudio_NumOfCh )
 {
 	struct Dptx_Params 		*pstHandle;
-	
+
 	pstHandle = Dptx_Platform_Get_Device_Handle();
 	if( !pstHandle )
 	{
@@ -1050,14 +965,14 @@ bool Dpv14_Tx_API_Set_Audio_Freq( enum AUDIO_IEC60958_3_SAMPLE_FREQ  eIEC_Sampli
 {
 	struct Dptx_Params 		*pstHandle;
 	u8 eIEC_OriginSamplingFreq = 0;
-	
+
 	pstHandle = Dptx_Platform_Get_Device_Handle();
 	if( !pstHandle )
 	{
 		dptx_err("Failed to get handle" );
 		return ( DPTX_API_RETURN_FAIL );
 	}
-	
+
 	switch( eIEC_SamplingFreq ) 
 	{
 		case SAMPLE_FREQ_32:      
@@ -1095,7 +1010,7 @@ bool Dpv14_Tx_API_Set_Audio_Freq( enum AUDIO_IEC60958_3_SAMPLE_FREQ  eIEC_Sampli
 bool Dpv14_Tx_API_Get_Audio_Freq( u8 *pucIEC_SamplingFreq )
 {
 	struct Dptx_Params 		*pstHandle;
-	
+
 	pstHandle = Dptx_Platform_Get_Device_Handle();
 	if( !pstHandle )
 	{
@@ -1114,7 +1029,7 @@ bool Dpv14_Tx_API_Get_Audio_Freq( u8 *pucIEC_SamplingFreq )
 bool Dpv14_Tx_API_Enable_Audio_SDP_InfoFrame( bool bEnable )
 {
 	struct Dptx_Params 		*pstHandle;
-	
+
 	pstHandle = Dptx_Platform_Get_Device_Handle();
 	if( !pstHandle )
 	{

@@ -3836,7 +3836,13 @@
 			
 		pinctrl-names = "default";
 		pinctrl-0 = <&dp_hpd_gpio>;
-		gpios = <&gpc 14 0>;
+
+		serdes_reset_str = <1>;
+
+		vcp_id_1st_sink = <1>;
+		vcp_id_2nd_sink = <2>;
+		vcp_id_3rd_sink = <3>;
+		vcp_id_4th_sink = <4>;
 	};
 
 	hdcp-dp {

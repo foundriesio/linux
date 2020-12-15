@@ -365,9 +365,14 @@
 		reg		= <0x68>;
 	};
 
-	serdes_path:serdes_path@1{
-	compatible = "telechips,serdes_path_configuration";
-	serdes_path_configuration = <1>; /* 0 TCC8059, 1 TCC8050/3 */
+	max968xx_config:max968xx_config@1{
+		compatible = "telechips,max968xx_configuration";
+		max968xx_evb_type = <2>; /* 0: TCC8059 EVB, 1: TCC8050/3 sv0.1, 2:TCC8050/3 sv1.0 */
+		max96851_lane_02_13_swap = <1>;
+
+		pinctrl-names = "default", "default";
+		pinctrl-0 = <&serdes_intb_sv10>;
+		pinctrl-1 = <&serdes_lock>;
 	};
 };
 

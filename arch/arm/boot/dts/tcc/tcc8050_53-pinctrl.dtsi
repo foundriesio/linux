@@ -529,6 +529,27 @@
 		telechips,pull-down;
 	};
 
+	serdes_intb_sv01:serdes_intb_sv01 {
+		telechips,pins = "gpe-19";
+		telechips,pin-function = <0>;
+		telechips,input-enable;
+		telechips,no-pull;
+	};
+
+	serdes_lock:serdes_lock {
+		telechips,pins = "gpmc-0";
+		telechips,pin-function = <0>;
+		telechips,input-enable;
+		telechips,no-pull;
+	};
+
+	serdes_intb_sv10:serdes_intb_sv10 {
+		telechips,pins = "gpsd0-11";
+		telechips,pin-function = <0>;
+		telechips,input-enable;
+		telechips,no-pull;
+	};
+
 	gpsb0_bus: gpsb0_bus {
 		telechips,pins = "gpsd0-11", "gpsd0-12", "gpsd0-14", "gpsd0-13";
 		telechips,pin-function = <6>;

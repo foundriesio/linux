@@ -62,20 +62,19 @@ bool Dptx_Core_Init_Params( struct Dptx_Params *pstDptx )
 {
 	bool		bRetVal;
 	
-	pstDptx->ucMax_Rate	  = DPTX_DEFAULT_LINK_RATE;
-	pstDptx->ucMax_Lanes = DPTX_MAX_LINK_LANES;
-	
-	bRetVal = Dptx_Core_Get_PHY_NumOfLanes( pstDptx, &pstDptx->stDptxLink.ucNumOfLanes );
+	bRetVal = Dptx_Core_Get_PHY_NumOfLanes( pstDptx, &pstDptx->ucMax_Lanes );
 	if( bRetVal )
 	{
-		pstDptx->stDptxLink.ucNumOfLanes = pstDptx->ucMax_Rate;
+		pstDptx->ucMax_Lanes = (u8)PHY_LANE_4;
 	}
+	pstDptx->stDptxLink.ucNumOfLanes = pstDptx->ucMax_Lanes;
 
-	bRetVal = Dptx_Core_Get_PHY_Rate( pstDptx, &pstDptx->stDptxLink.ucLinkRate );
+	bRetVal = Dptx_Core_Get_PHY_Rate( pstDptx, &pstDptx->ucMax_Rate );
 	if( bRetVal )
 	{
-		pstDptx->stDptxLink.ucLinkRate  = pstDptx->ucMax_Rate;
+		pstDptx->ucMax_Rate  = (u8)LINK_RATE_HBR3;
 	}
+	pstDptx->stDptxLink.ucLinkRate  = (u8)pstDptx->ucMax_Rate;
 
 	bRetVal = Dptx_Core_Get_Stream_Mode( pstDptx, &pstDptx->bMultStreamTransport );
 	if( bRetVal )
@@ -143,7 +142,7 @@ bool Dptx_Core_Init( struct Dptx_Params *pstDptx )
 	*	-.HPD_UNPLUG_ERR_EN[Bit 3]: Set to '1' to enable HPD_UNPLUG_ERR_EN.
 	*/
 	uiRegMap_HPD_IEN = Dptx_Reg_Readl( pstDptx, DPTX_HPD_IEN );
-	
+
 	//uiRegMap_HPD_IEN |= ( DPTX_HPD_IEN_IRQ_EN | DPTX_HPD_IEN_HOT_PLUG_EN | DPTX_HPD_IEN_HOT_UNPLUG_EN );
 	uiRegMap_HPD_IEN |= ( DPTX_HPD_IEN_IRQ_EN | DPTX_HPD_IEN_HOT_PLUG_EN | DPTX_HPD_IEN_HOT_UNPLUG_EN | DPTX_HPDSTS_UNPLUG_ERR_EN ); /* Guild from SoC driver development guild document */
 	Dptx_Reg_Writel( pstDptx, DPTX_HPD_IEN, uiRegMap_HPD_IEN );
@@ -155,7 +154,7 @@ bool Dptx_Core_Init( struct Dptx_Params *pstDptx )
 
 	//Dptx_Core_Enable_Global_Intr( pstDptx, ( DPTX_IEN_HPD | DPTX_IEN_HDCP | DPTX_IEN_SDP | DPTX_IEN_AUDIO_FIFO_OVERFLOW | DPTX_IEN_VIDEO_FIFO_OVERFLOW | DPTX_IEN_TYPE_C ) );
 	Dptx_Core_Enable_Global_Intr( pstDptx, ( DPTX_IEN_HPD | DPTX_IEN_HDCP | DPTX_IEN_SDP | DPTX_IEN_TYPE_C ) ); /* Enable all top-level interrupts */
-	
+
 	/* 
 	* TYPEC[0xC08 + ( i*10000 ), i = DPTX_NUM_STREAMS - 1] This register has controls for Type-C crossbar switch and for controlling the flip input to the cross bar and the Aux phy.
 	*					 Please see section Type-C mode Usage for more details.
@@ -180,11 +179,11 @@ bool Dptx_Core_Init( struct Dptx_Params *pstDptx )
 	*										   Configure this bit when enabling FEC on Sink ie before setting
 	*/
 	uiRegMap_Cctl = Dptx_Reg_Readl( pstDptx, DPTX_CCTL );
-	
+
 	uiRegMap_Cctl |= DPTX_CCTL_ENH_FRAME_EN;
 	uiRegMap_Cctl &= ~DPTX_CCTL_SCALE_DOWN_MODE;
 	uiRegMap_Cctl &= ~DPTX_CCTL_FAST_LINK_TRAINED_EN;
-	
+
 	Dptx_Reg_Writel( pstDptx, DPTX_CCTL, uiRegMap_Cctl);
 
 	return ( DPTX_RETURN_SUCCESS );
@@ -196,7 +195,7 @@ bool Dptx_Core_Deinit( struct Dptx_Params *pstDptx )
 {
 	Dptx_Core_Disable_Global_Intr( pstDptx );
 	Dptx_Core_Soft_Reset( pstDptx, DPTX_SRST_CTRL_ALL );	/* #define DPTX_SRST_CTRL_ALL ( DPTX_SRST_CTRL_CONTROLLER | DPTX_SRST_CTRL_HDCP | DPTX_SRST_CTRL_AUDIO_SAMPLER |	 DPTX_SRST_CTRL_AUX ) */
-	
+
 	return ( DPTX_RETURN_SUCCESS );
 }
 
@@ -231,7 +230,7 @@ void Dptx_Core_Init_PHY( struct Dptx_Params *pstDptx )
 
 	ucRegMap_PhyCtrl = Dptx_Reg_Readl( pstDptx, DPTX_PHYIF_CTRL );
 	ucRegMap_PhyCtrl &= ~DPTX_PHYIF_CTRL_WIDTH;
-	
+
 	Dptx_Reg_Writel( pstDptx, DPTX_PHYIF_CTRL, ucRegMap_PhyCtrl );
 }
 
@@ -290,7 +289,7 @@ void Dptx_Core_Enable_Global_Intr( struct Dptx_Params *pstDptx, u32 uiEnable_Bit
 void Dptx_Core_Disable_Global_Intr( struct Dptx_Params *pstDptx )
 {
 	u32			uiIntEnable;
-	
+
 	uiIntEnable = Dptx_Reg_Readl( pstDptx, DPTX_IEN );
 	uiIntEnable &= ~DPTX_IEN_ALL_INTR;
 	Dptx_Reg_Writel( pstDptx, DPTX_IEN, uiIntEnable );
@@ -299,7 +298,7 @@ void Dptx_Core_Disable_Global_Intr( struct Dptx_Params *pstDptx )
 bool Dptx_Core_Clear_General_Interrupt( struct Dptx_Params *pstDptx, u32 uiClear_Bits )
 {
 	u32		ucRegMap_GeneralIntr;
-	
+
 	/* 
 	* GENERAL_INTERRUPT[0xD00 + ( i*10000 ), i = DPTX_NUM_STREAMS - 1] This register notifies the software of any pending interrrupts. Write 1 to clear the interrupt.
 	*																In MST mode, even though this is visible for each streams this should be accessed with respect to Stream 0 address only. 
@@ -331,7 +330,7 @@ bool Dptx_Core_Clear_General_Interrupt( struct Dptx_Params *pstDptx, u32 uiClear
 	ucRegMap_GeneralIntr = Dptx_Reg_Readl( pstDptx, DPTX_ISTS );
 
 	ucRegMap_GeneralIntr |= uiClear_Bits; 
-	
+
 	Dptx_Reg_Writel( pstDptx, DPTX_ISTS, ucRegMap_GeneralIntr );
 
 	return ( DPTX_RETURN_SUCCESS );
@@ -390,10 +389,10 @@ bool Dptx_Core_Set_PHY_SSC( struct Dptx_Params *pstDptx, bool bSink_Supports_SSC
 	 * -.PHY_WIDTH[Bit25]( 0: 20-bit inteface, 1: 40-bit inteface ): This bit is used to configure the data width of the main link interface to the PHY.
 	 */
 	uiRegMap_PhyIfCtrl = Dptx_Reg_Readl( pstDptx, DPTX_PHYIF_CTRL );
-    if( pstDptx->bSpreadSpectrum_Clock && bSink_Supports_SSC )
-    {
+	if( pstDptx->bSpreadSpectrum_Clock && bSink_Supports_SSC )
+	{
 		uiRegMap_PhyIfCtrl &= ~DPTX_PHYIF_CTRL_SSC_DIS;
-    }
+	    }
 	else
 	{
 		uiRegMap_PhyIfCtrl |= DPTX_PHYIF_CTRL_SSC_DIS;
@@ -451,7 +450,7 @@ bool Dptx_Core_Get_Sink_SSC_Capability( struct Dptx_Params *pstDptx, bool *pbSSC
 	if( bRetVal ==  DPTX_RETURN_FAIL )
 	{
 		return ( DPTX_RETURN_FAIL );
-        }
+	}
 
 	if( ucDCDPValue & SINK_TDOWNSPREAD_MASK )
 	{
@@ -463,7 +462,7 @@ bool Dptx_Core_Get_Sink_SSC_Capability( struct Dptx_Params *pstDptx, bool *pbSSC
 		dptx_dbg("SSC disabled on the sink side" );  
 		*pbSSC_Profiled = false;
 	}
-	
+
 	return ( DPTX_RETURN_SUCCESS );
 }
 
@@ -491,7 +490,7 @@ bool Dptx_Core_Get_Stream_Mode( struct Dptx_Params *pstDptx, bool *pbMST_Mode )
 	{
 		*pbMST_Mode = false;
 	}
-	
+
 	return ( DPTX_RETURN_SUCCESS );
 }
 
@@ -524,7 +523,7 @@ bool Dptx_Core_Get_PHY_NumOfLanes( struct Dptx_Params *pstDptx, u8 *pucNumOfLane
 	 * -.PHY_WIDTH[Bit25]( 0: 20-bit inteface, 1: 40-bit inteface ): This bit is used to configure the data width of the main link interface to the PHY.
 	 */ 
 	uiRagMap_PhyIfCtrl = Dptx_Reg_Readl( pstDptx, DPTX_PHYIF_CTRL);
-	
+
 	ucNumOfLanes = (u8)( ( uiRagMap_PhyIfCtrl & DPTX_PHYIF_CTRL_LANES_MASK ) >> DPTX_PHYIF_CTRL_LANES_SHIFT );
 
 	*pucNumOfLanes = ( 1 << ucNumOfLanes );
@@ -582,7 +581,7 @@ bool Dptx_Core_Set_PHY_NumOfLanes( struct Dptx_Params *pstDptx, u8 ucNumOfLanes 
 	uiRegMap_PhyIfCtrl = Dptx_Reg_Readl( pstDptx, DPTX_PHYIF_CTRL );
 	uiRegMap_PhyIfCtrl &= ~DPTX_PHYIF_CTRL_LANES_MASK;
 	uiRegMap_PhyIfCtrl |= ( ucPHY_Lanes << DPTX_PHYIF_CTRL_LANES_SHIFT );
-	
+
 	Dptx_Reg_Writel( pstDptx, DPTX_PHYIF_CTRL, uiRegMap_PhyIfCtrl );
 
 	return ( DPTX_RETURN_SUCCESS );
@@ -676,7 +675,7 @@ bool Dptx_Core_Set_PHY_Rate( struct Dptx_Params *pstDptx, enum PHY_LINK_RATE eRa
 	uiPhyIfCtrl = Dptx_Reg_Readl( pstDptx, DPTX_PHYIF_CTRL );
 	uiPhyIfCtrl &= ~DPTX_PHYIF_CTRL_RATE_MASK;
 	uiPhyIfCtrl |= (u32)eRate << DPTX_PHYIF_CTRL_RATE_SHIFT;
-	
+
 	Dptx_Reg_Writel( pstDptx, DPTX_PHYIF_CTRL, uiPhyIfCtrl );
 
 	return ( DPTX_RETURN_SUCCESS );
@@ -738,7 +737,7 @@ bool Dptx_Core_Get_PHY_BUSY_Status( struct Dptx_Params *pstDptx, u8 ucNumOfLanes
 
 	do{
 		uiRegMap_PhyIfCtrl  = Dptx_Reg_Readl( pstDptx, DPTX_PHYIF_CTRL );
-		
+
 		if( !( uiRegMap_PhyIfCtrl & uiBitMask ) )
 		{
 			dptx_dbg("PHY status droped to 0, lanes = %d, count = %d, mask = 0x%x ", ucNumOfLanes, uiCount, uiBitMask );

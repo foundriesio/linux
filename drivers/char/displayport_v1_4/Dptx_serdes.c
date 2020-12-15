@@ -40,6 +40,8 @@
 #define MST_FUNCTION_DISABLE		    0x00
 #define MST_FUNCTION_ENABLE		   	 	0x01
 
+#define	SER_LANE_REMAP_B0				0x7030
+#define	SER_LANE_REMAP_B1				0x7031
 
 #define	DES_DEV_REV						0x000E
 #define DES_REV_ES2						0x01
@@ -62,6 +64,7 @@
 struct Max968xx_dev {
 	bool				bActivated;
 	bool				bDes_VidLocked;
+	bool				bSer_LaneSwap;
 	unsigned char		ucSER_Revision_Num;
 	unsigned char		ucDES_Revision_Num;
 	unsigned char		ucEVB_Type;
@@ -80,7 +83,7 @@ struct DP_V14_SER_DES_Reg_Data {
 static struct Max968xx_dev	stMax968xx_dev[SER_DES_INPUT_INDEX_MAX] = {0, };
 
 static struct DP_V14_SER_DES_Reg_Data pstDP_Panel_VIC_1027_DesES3_RegVal[] = {
-    {0xD0, 0x0010, 0x80, TCC_ALL_EVB_TYPE, SER_REV_ALL},
+{0xD0, 0x0010, 0x80, TCC_ALL_EVB_TYPE, SER_REV_ALL},
 	{0x98, 0x0010, 0x80, TCC_ALL_EVB_TYPE, SER_REV_ALL},
 	{0x94, 0x0010, 0x80, TCC_ALL_EVB_TYPE, SER_REV_ALL},
 	{0x90, 0x0010, 0x80, TCC_ALL_EVB_TYPE, SER_REV_ALL},
@@ -119,10 +122,8 @@ static struct DP_V14_SER_DES_Reg_Data pstDP_Panel_VIC_1027_DesES3_RegVal[] = {
 	{0xC0, 0x7074, 0x0A, TCC_ALL_EVB_TYPE, SER_REV_ES2},
 	{0xC0, 0x7070, 0x04, TCC_ALL_EVB_TYPE, SER_REV_ALL}, /* Max lane count to 4 */
 	
-#if 1//defined( CONFIG_DP_LANE02_13_SWAP )
-	{0xC0, 0x7030, 0x4E, TCC_ALL_EVB_TYPE, SER_REV_ALL},{0xC0, 0x7031, 0x01, TCC_ALL_EVB_TYPE, SER_REV_ALL},	// Swap = 0 <-> 2, 1 <-> 3
+	{0xC0, SER_LANE_REMAP_B0, 0x4E, TCC_ALL_EVB_TYPE, SER_REV_ALL},{0xC0, SER_LANE_REMAP_B1, 0x01, TCC_ALL_EVB_TYPE, SER_REV_ALL},	// Swap = 0 <-> 2, 1 <-> 3
 	{DP_SER_DES_DELAY_DEV_ADDR, DP_SER_DES_INVALID_REG_ADDR, 1, TCC_ALL_EVB_TYPE, SER_REV_ALL},/*	  1ms delay 	 */
-#endif
 
 	{0xC0, 0x7000, 0x01, TCC_ALL_EVB_TYPE, SER_REV_ALL}, /* Enable LINK_ENABLE */
 
@@ -167,29 +168,10 @@ static struct DP_V14_SER_DES_Reg_Data pstDP_Panel_VIC_1027_DesES3_RegVal[] = {
 	{0x98, DES_DROP_VIDEO, 0x00, TCC_ALL_EVB_TYPE, SER_REV_ALL},
 	{0xD0, DES_DROP_VIDEO, 0x00, TCC_ALL_EVB_TYPE, SER_REV_ALL},
 
-#if defined( CONFIG_LCD0_DP_MST_VCP_ID )
-	{0x90, DES_STREAM_SELECT, ( CONFIG_LCD0_DP_MST_VCP_ID - 1 ), TCC_ALL_EVB_TYPE, SER_REV_ALL},
-#else
 	{0x90, DES_STREAM_SELECT, 0x00, TCC_ALL_EVB_TYPE, SER_REV_ALL},
-#endif
-
-#if defined( CONFIG_LCD1_DP_MST_VCP_ID )
-	{0x94, DES_STREAM_SELECT, ( CONFIG_LCD1_DP_MST_VCP_ID - 1 ), TCC_ALL_EVB_TYPE, SER_REV_ALL},
-#else
 	{0x94, DES_STREAM_SELECT, 0x01, TCC_ALL_EVB_TYPE, SER_REV_ALL},
-#endif
-
-#if defined( CONFIG_LCD2_DP_MST_VCP_ID )
-	{0x98, DES_STREAM_SELECT, ( CONFIG_LCD2_DP_MST_VCP_ID - 1 ), TCC_ALL_EVB_TYPE, SER_REV_ALL},
-#else
 	{0x98, DES_STREAM_SELECT, 0x02, TCC_ALL_EVB_TYPE, SER_REV_ALL},
-#endif
-
-#if defined( CONFIG_LCD3_DP_MST_VCP_ID )
-	{0xD0, DES_STREAM_SELECT, ( CONFIG_LCD3_DP_MST_VCP_ID - 1 ), TCC_ALL_EVB_TYPE, SER_REV_ALL},
-#else
 	{0xD0, DES_STREAM_SELECT, 0x03, TCC_ALL_EVB_TYPE, SER_REV_ALL},
-#endif
 
 	{0xC0, 0x6420, 0x10, TCC_ALL_EVB_TYPE, SER_REV_ALL}, /* EDP_VIDEO_CTRL0_VIDEO_OUT_EN of SER will be written 0000  */
 	{0xC0, 0x6420, 0x1F, TCC_ALL_EVB_TYPE, SER_REV_ALL}, /* EDP_VIDEO_CTRL0_VIDEO_OUT_EN of SER will be written 1111  */
@@ -359,10 +341,8 @@ static struct DP_V14_SER_DES_Reg_Data pstDP_Panel_VIC_1027_DesES2_RegVal[] = {
 	{0xC0, 0x7074, 0x0A, TCC_ALL_EVB_TYPE, SER_REV_ALL}, /* Max rate : 1E -> 8.1Gbps, 14 -> 5.4Gbps, 0A -> 2.7Gbps */
 	{0xC0, 0x7070, 0x04, TCC_ALL_EVB_TYPE, SER_REV_ALL}, /* Max lane count to 4*/
 
-#if 1//defined( CONFIG_DP_LANE02_13_SWAP )
 	{0xC0, 0x7030, 0x4E, TCC_ALL_EVB_TYPE, SER_REV_ALL},{0xC0, 0x7031, 0x01, TCC_ALL_EVB_TYPE, SER_REV_ALL}, 	// Swap = 0 <-> 2, 1 <-> 3
 	{DP_SER_DES_DELAY_DEV_ADDR, DP_SER_DES_INVALID_REG_ADDR, 1, TCC_ALL_EVB_TYPE, SER_REV_ALL},/*	  1ms delay 	 */
-#endif
 
 	{0xC0, 0x7000, 0x01, TCC_ALL_EVB_TYPE, SER_REV_ALL},
 	{DP_SER_DES_DELAY_DEV_ADDR, DP_SER_DES_INVALID_REG_ADDR, 1, TCC_ALL_EVB_TYPE, SER_REV_ALL},/*	  1ms delay 	 */
@@ -404,23 +384,34 @@ static struct DP_V14_SER_DES_Reg_Data pstDP_Panel_VIC_1027_DesES2_RegVal[] = {
 	{0x0, 0x0, 0x0, 0, SER_REV_ALL}
 };
 
-static int of_parse_serdes_dt( unsigned char *pucEVB_Type )
+static int of_parse_serdes_dt( struct Max968xx_dev		*pstDev )
 {
-	u32						uiEVB_Type;
+	int						iRetVal;
+	u32						uiEVB_Type, uiLane_Swap;
 	struct device_node 		*pstSerDes_DN;
 	
-	pstSerDes_DN = of_find_compatible_node( NULL, NULL, "telechips,serdes_path_configuration");
-	if( !pstSerDes_DN ) 
+	pstSerDes_DN = of_find_compatible_node( NULL, NULL, "telechips,max968xx_configuration" );
+	if( pstSerDes_DN == NULL )
 	{
-		dptx_err("Can't find SerDes node \n");
+		dptx_warn("Can't find SerDes node \n");
 	}
 
-	if( of_property_read_u32( pstSerDes_DN, "serdes_path_configuration", &uiEVB_Type ) < 0) 
+	iRetVal = of_property_read_u32( pstSerDes_DN, "max968xx_evb_type", &uiEVB_Type );
+	if( iRetVal < 0)
 	{
-		dptx_err("Can't get EVB type");
+		dptx_warn("Can't get EVB type.. set to 'TCC8050_SV_01' by default");
+		uiEVB_Type = (u32)TCC8050_SV_01;
 	}
 
-	*pucEVB_Type = (unsigned char)uiEVB_Type;
+	iRetVal = of_property_read_u32( pstSerDes_DN, "max96851_lane_02_13_swap", &uiLane_Swap );
+	if( iRetVal < 0)
+	{
+		dptx_warn("Can't max96851 lane swap option.. set to 'Enable by default");
+		uiLane_Swap = (u32)1;
+	}
+
+	pstDev->ucEVB_Type = (unsigned char)uiEVB_Type;
+	pstDev->bSer_LaneSwap = (bool)uiLane_Swap;
 
 	return (0);
 }
@@ -449,41 +440,6 @@ static int Dptx_Max968XX_I2C_Write( struct i2c_client *client, unsigned short us
 	return (0);
 }
 
-#if 0
-static int Dptx_Max968XX_I2C_Read( struct i2c_client *client, unsigned short usRegAdd, unsigned char *pucBuf )
-{
-	unsigned char			aucRBuf[3]	= {0,};
-	unsigned char			ucData_buf;
-	int						iRW_Len;
-	struct Max968xx_dev		*pstMax968xx_dev;
-
-	pstMax968xx_dev = i2c_get_clientdata( client );
-
-	aucRBuf[0] = (unsigned char)( usRegAdd >> 8 );
-	aucRBuf[1] = (unsigned char)( usRegAdd & 0xFF );
-
-	iRW_Len = i2c_master_send((const struct i2c_client *)client, (const char *)aucRBuf, (int)SER_DES_I2C_REG_ADD_LEN );
-	if( iRW_Len != (int)SER_DES_I2C_REG_ADD_LEN ) 
-	{
-		dptx_err("i2c device %s: error to write register address as 0x%x.. w len %d !!!!", client->name, client->addr, iRW_Len );
-		return -EIO;
-	}
-	
-	iRW_Len = i2c_master_recv((const struct i2c_client *)client, &ucData_buf, (int)SER_DES_I2C_DATA_LEN );
-	if( iRW_Len != (int)SER_DES_I2C_DATA_LEN ) 
-	{
-		dptx_err("i2c device %s: error to read value from register address as 0x%x.. R read %d !!!!\n", client->name, client->addr, iRW_Len );
-		return -EIO;
-	}
-
-	*pucBuf = ucData_buf;
-
-	dptx_info("Read I2C %s address 0x%x -> 0x%x", client->name, usRegAdd, ucData_buf );
-
-	return (0);
-}
-#endif
-
 static unsigned char Dptx_Max968XX_Convert_DevAdd_To_Index( unsigned char ucI2C_DevAdd )
 {
 	u8						ucElements;
@@ -500,28 +456,6 @@ static unsigned char Dptx_Max968XX_Convert_DevAdd_To_Index( unsigned char ucI2C_
 
 	return (ucElements);
 }
-
-#if 0
-bool Dptx_Max968XX_Get_Des_VideoLocked( bool *pbVideoLocked )
-{
-	struct Max968xx_dev 	*pstMax968xx_dev;
-
-	pstMax968xx_dev = &stMax968xx_dev[DES_INPUT_INDEX_0];
-
-	dptx_info("Activated: %d, Vid Lock: %d", pstMax968xx_dev->bActivated, pstMax968xx_dev->bDes_VidLocked);
-
-	if( !pstMax968xx_dev->bActivated )
-	{
-		*pbVideoLocked = false;
-	}
-	else
-	{
-		*pbVideoLocked = pstMax968xx_dev->bDes_VidLocked;
-	}
-	
-	return (DPTX_RETURN_SUCCESS);
-}
-#endif
 
 bool Dptx_Max968XX_Get_TopologyState( u8 *pucNumOfPluggedPorts )
 {
@@ -546,7 +480,7 @@ bool Dptx_Max968XX_Get_TopologyState( u8 *pucNumOfPluggedPorts )
 	{
 		*pucNumOfPluggedPorts = ( ucElements - 1 );
 	}
-	
+
 	return (DPTX_RETURN_SUCCESS);
 }
 
@@ -581,10 +515,10 @@ bool Touch_Max968XX_update_reg(struct Dptx_Params *pstDptx)
 bool Dptx_Max968XX_Reset( struct Dptx_Params *pstDptx )
 {
 	unsigned char	ucSerDes_Index;
-	unsigned char	ucSER_Revision_Num = 0, ucDES_Revision_Num = 0, ucRW_Data;
+	unsigned char	ucSER_Revision_Num = 0, ucDES_Revision_Num = 0, ucRW_Data, ucEVB_Tpye;
 	unsigned int	uiElements;
-	int		iRetVal;
-	bool		bRetVal;
+	int				iRetVal;
+	bool			bRetVal;
 	struct Max968xx_dev		*pstMax968xx_dev;
 	struct DP_V14_SER_DES_Reg_Data	*pstSERDES_Reg_Info;
 
@@ -604,8 +538,6 @@ bool Dptx_Max968XX_Reset( struct Dptx_Params *pstDptx )
 	}
 	ucDES_Revision_Num = pstMax968xx_dev->ucDES_Revision_Num;
 
-	//dptx_info("Ser revision: %d, Des revision: %d", ucSER_Revision_Num, ucDES_Revision_Num);
-
 	if( ucDES_Revision_Num == DES_REV_ES2 )
 	{
 		pstSERDES_Reg_Info = pstDP_Panel_VIC_1027_DesES2_RegVal;
@@ -615,6 +547,12 @@ bool Dptx_Max968XX_Reset( struct Dptx_Params *pstDptx )
 	{
 		pstSERDES_Reg_Info = pstDP_Panel_VIC_1027_DesES3_RegVal;
 		dptx_info("Updating DES ES3 Tables... Revision Num.( %d ) <-> Ser Rev(%d) ", ucDES_Revision_Num, ucSER_Revision_Num );
+	}
+
+	ucEVB_Tpye = pstMax968xx_dev->ucEVB_Type;
+	if( ucEVB_Tpye != (u8)TCC8059_EVB_01 )
+	{
+		ucEVB_Tpye = (u8)TCC8050_SV_01;
 	}
 
 	for( uiElements = 0; !( pstSERDES_Reg_Info[uiElements].uiDev_Addr == 0 && pstSERDES_Reg_Info[uiElements].uiReg_Addr == 0 && pstSERDES_Reg_Info[uiElements].uiReg_Val == 0 ); uiElements++ )
@@ -628,41 +566,54 @@ bool Dptx_Max968XX_Reset( struct Dptx_Params *pstDptx )
 		ucSerDes_Index = Dptx_Max968XX_Convert_DevAdd_To_Index( (unsigned char)pstSERDES_Reg_Info[uiElements].uiDev_Addr );
 		if( ucSerDes_Index >= SER_DES_INPUT_INDEX_MAX )
 		{
-			//dptx_info("Can't find SerDes Index returned %d as device address 0x%x", ucSerDes_Index, pstSERDES_Reg_Info[uiElements].uiDev_Addr);
+			dptx_dbg("Invalid SerDes Index returned %d as device address 0x%x", ucSerDes_Index, pstSERDES_Reg_Info[uiElements].uiDev_Addr);
 			continue;
 		}
 
 		pstMax968xx_dev = &stMax968xx_dev[ucSerDes_Index];
 		if( pstMax968xx_dev->pstClient == NULL )
 		{
-			//dptx_dbg("I2C Handle is NULL");
 			continue;
 		}
 
-		if(( pstSERDES_Reg_Info[uiElements].ucDeviceType != TCC_ALL_EVB_TYPE ) && ( pstMax968xx_dev->ucEVB_Type != pstSERDES_Reg_Info[uiElements].ucDeviceType ))
+		if(( pstSERDES_Reg_Info[uiElements].ucDeviceType != TCC_ALL_EVB_TYPE ) && ( ucEVB_Tpye != pstSERDES_Reg_Info[uiElements].ucDeviceType ))
 		{
-			//dptx_info("[%d]EVB Type %d isn't matched with %d", uiElements, pstMax968xx_dev->ucEVB_Type, pstSERDES_Reg_Info[uiElements].ucDeviceType );
+			dptx_dbg("[%d]EVB Type %d isn't matched with %d", uiElements, ucEVB_Tpye, pstSERDES_Reg_Info[uiElements].ucDeviceType );
 			continue;
 		}
 
 		if(( pstSERDES_Reg_Info[uiElements].ucSER_Revision != SER_REV_ALL ) && ( ucSER_Revision_Num != pstSERDES_Reg_Info[uiElements].ucSER_Revision ))
 		{
-			//dptx_info("[%d]Ser Revision %d isn't matched with %d", uiElements, ucSER_Revision_Num, pstSERDES_Reg_Info[uiElements].ucSER_Revision );
+			dptx_dbg("[%d]Ser Revision %d isn't matched with %d", uiElements, ucSER_Revision_Num, pstSERDES_Reg_Info[uiElements].ucSER_Revision );
 			continue;
 		}
 
-		if(( !pstDptx->bMultStreamTransport ) && (( pstSERDES_Reg_Info[uiElements].uiReg_Addr == DES_DROP_VIDEO ) || ( pstSERDES_Reg_Info[uiElements].uiReg_Addr == DES_STREAM_SELECT )))
+		if(( pstDptx->bMultStreamTransport == false ) &&
+			(( pstSERDES_Reg_Info[uiElements].uiReg_Addr == DES_DROP_VIDEO ) ||
+			( pstSERDES_Reg_Info[uiElements].uiReg_Addr == DES_STREAM_SELECT )))
+		{
+			continue;
+		}
+
+		if(( pstMax968xx_dev->bSer_LaneSwap == false ) &&
+			(( pstSERDES_Reg_Info[uiElements].uiReg_Addr == SER_LANE_REMAP_B0 ) ||
+			( pstSERDES_Reg_Info[uiElements].uiReg_Addr == SER_LANE_REMAP_B1 )))
 		{
 			continue;
 		}
 
 		ucRW_Data = (unsigned char)pstSERDES_Reg_Info[uiElements].uiReg_Val;
 
-		if(( !pstDptx->bMultStreamTransport ) && ( pstSERDES_Reg_Info[uiElements].uiReg_Addr == SER_MISC_CONFIG_B1 ))
+		if(( pstDptx->bMultStreamTransport == false ) && ( pstSERDES_Reg_Info[uiElements].uiReg_Addr == SER_MISC_CONFIG_B1 ))
 		{
 			dptx_dbg("Set to SST...");
-
 			ucRW_Data = MST_FUNCTION_DISABLE;
+		}
+
+		if( pstSERDES_Reg_Info[uiElements].uiReg_Addr == DES_STREAM_SELECT )
+		{
+			ucRW_Data = ( pstDptx->aucVCP_Id[( ucSerDes_Index - 1 )] - 1 );
+			dptx_notice("Set VCP id %d to device 0x%x", ucRW_Data, pstSERDES_Reg_Info[uiElements].uiDev_Addr );
 		}
 
 		iRetVal = Dptx_Max968XX_I2C_Write( pstMax968xx_dev->pstClient, pstSERDES_Reg_Info[uiElements].uiReg_Addr, ucRW_Data );
@@ -738,13 +689,23 @@ static int Dptx_Max968XX_probe( struct i2c_client *client, const struct i2c_devi
 	}
 
 	pstMax968xx_dev->pstClient = client;
-	
-    i2c_set_clientdata( client, pstMax968xx_dev );
 
-	of_parse_serdes_dt( &pstMax968xx_dev->ucEVB_Type );
+	i2c_set_clientdata( client, pstMax968xx_dev );
 
-	dptx_notice("[%d]%s I2C %s address 0x%x -> %s revision is %d", 
-					ucElements, pstMax968xx_dev->ucEVB_Type == 0 ? "TCC8059":"TCC8050", client->name, (( client->addr ) << 1 ), ( client->addr << 1 ) == DP0_PANEL_SER_I2C_DEV_ADD ? "Ser":"Des", ucData_buf );
+	of_parse_serdes_dt( pstMax968xx_dev );
+
+	dptx_notice("[%d]%s(%d) I2C %s address 0x%x : %s revision is %d.. SerDes Lane %s",
+					ucElements,
+					( pstMax968xx_dev->ucEVB_Type == TCC8059_EVB_01 ) ? "TCC8059 EVB":( pstMax968xx_dev->ucEVB_Type == TCC8050_SV_01 ) ? "TCC8050/3 sv0.1":( pstMax968xx_dev->ucEVB_Type == TCC8050_SV_10 ) ? "TCC8050/3 sv1.0":"Unknown",
+					pstMax968xx_dev->ucEVB_Type,
+					client->name, (( client->addr ) << 1 ),
+					( client->addr << 1 ) == DP0_PANEL_SER_I2C_DEV_ADD ? "Ser":"Des", ucData_buf,
+					( pstMax968xx_dev->bSer_LaneSwap ) ? "is swapped":"is not swapped");
+
+	if( pstMax968xx_dev->ucEVB_Type != TCC8059_EVB_01 )
+	{
+		pstMax968xx_dev->ucEVB_Type = TCC8050_SV_01;
+	}
 
 	return (0);
 }
@@ -765,23 +726,23 @@ MODULE_DEVICE_TABLE(of, max_96851_78_match);
 
 static const struct i2c_device_id max_96851_78_id[] = {
 	{ "Max968XX", 0 },
-    {}
+	{}
 };
 MODULE_DEVICE_TABLE(i2c, max_96851_78_id);
 
 
 static struct i2c_driver stMax96851_78_drv = {
 	.probe = Dptx_Max968XX_probe,
-    .remove = Dptx_Max968XX_remove,
-    .id_table = max_96851_78_id,
-    .driver = {
-            .name = "telechips,Max96851_78",
-            .owner = THIS_MODULE,
-                
+	.remove = Dptx_Max968XX_remove,
+	.id_table = max_96851_78_id,
+	.driver = {
+			.name = "telechips,Max96851_78",
+			.owner = THIS_MODULE,
+
 #if defined(CONFIG_OF)
-            .of_match_table = of_match_ptr( max_96851_78_match ),
-#endif                
-        },
+			.of_match_table = of_match_ptr( max_96851_78_match ),
+#endif
+		},
 };
 
 static int __init Max968XX_Drv_init( void ) 
