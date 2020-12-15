@@ -36,9 +36,9 @@
 	dev_dbg(dev_ptr, "[DEBUG][%s] %s - " \
 		fmt, LOG_TAG, __func__, ##__VA_ARGS__)
 
-#define DEFAULT_WIDTH		0x8000
-#define DEFAULT_HEIGHT		0x8000
-//DATA_FORMAT_RAW12
+/* To support legacy SVM application */
+#define DEFAULT_WIDTH		(1280 * 4)
+#define DEFAULT_HEIGHT		(720)
 
 #define DEFAULT_CSIS_FREQ 300000000UL
 
@@ -1465,6 +1465,10 @@ static int tcc_mipi_csi2_probe(struct platform_device *pdev)
 
 	tcc_mipi_csi2_init_format(state);
 
+#ifdef CONFIG_VIDEO_TCCVIN
+	/* To support legacy SVM application */
+	tcc_mipi_csi2_init(&(state->sd), ON);
+#endif
 	logi(&(state->pdev->dev), "Success proving MIPI-CSI2-%d\n", pdev->id);
 
 	goto end;
@@ -1489,6 +1493,11 @@ static int tcc_mipi_csi2_remove(struct platform_device *pdev)
 	int ret = 0;
 
 	logi(&(state->pdev->dev), "%s in\n", __func__);
+
+#ifdef CONFIG_VIDEO_TCCVIN
+	/* To support legacy SVM application */
+	tcc_mipi_csi2_init(&(state->sd), OFF);
+#endif
 
 #if defined(CONFIG_ARCH_TCC803X)
 	clk_disable(state->clock);

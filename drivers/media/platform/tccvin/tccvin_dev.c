@@ -872,6 +872,12 @@ int tccvin_set_scaler(tccvin_cif_t * cif, struct tccvin_v4l2 * v4l2) {
 	unsigned int		out_posy	= 0;
 	unsigned int		out_width	= width;
 	unsigned int		out_height	= height;
+	videosource_format_t	* vs_info	= &cif->videosource_format;
+
+	if (vs_info->width > 4096) {
+		logd("input size does not supported in scaler\n");
+		goto end;
+	}
 
 	if (!((v4l2->selection.r.left == 0) &&
 	      (v4l2->selection.r.top == 0) &&
@@ -908,7 +914,7 @@ int tccvin_set_scaler(tccvin_cif_t * cif, struct tccvin_v4l2 * v4l2) {
 	// workaround: scaler margin
 	VIOC_SC_SetOutSize(pSC, out_width, out_height + 1);
 	VIOC_SC_SetUpdate(pSC);
-
+end:
 	FUNCTION_OUT
 	return 0;
 }
@@ -944,6 +950,13 @@ int tccvin_set_wmixer(tccvin_dev_t * vdev) {
 	unsigned int		mask_G		= ((PGL_BGM_G >> 3) << 3 );
 	unsigned int		mask_B		= ((PGL_BGM_B >> 3) << 3 );
 #endif//CONFIG_OVERLAY_PGL
+	videosource_format_t	* vs_info	= &vdev->cif.videosource_format;
+
+	if (vs_info->width > 4096) {
+		logd("input size does not supported in wmixer\n");
+		VIOC_CONFIG_WMIXPath(vdev->cif.vioc_path.vin, OFF);	// ON: Mixing mode / OFF: Bypass mode
+		goto end;
+	}
 
 	if (!((vdev->v4l2.selection.r.left == 0) && (vdev->v4l2.selection.r.top == 0))) {
 		if (vdev->v4l2.selection.flags != V4L2_SEL_FLAG_GE) {
@@ -967,6 +980,7 @@ int tccvin_set_wmixer(tccvin_dev_t * vdev) {
 #endif
 	VIOC_WMIX_SetUpdate(pWMIXer);
 	VIOC_CONFIG_WMIXPath(vdev->cif.vioc_path.vin, ON);
+end:
 
 	FUNCTION_OUT
 	return 0;

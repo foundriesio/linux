@@ -37,8 +37,6 @@
 
 #define NUM_OVERLAY_FORMATS 2
 
-extern int tcc_mipi_csi2_enable(unsigned int idx, videosource_format_t * format, unsigned int enable);
-
 struct tcc_pinctrl {
 	struct device *dev;
 
@@ -268,14 +266,6 @@ int videosource_if_initialize(videosource_t * vdev) {
 
 	FUNCTION_IN
 
-#ifdef CONFIG_TCC_MIPI_CSI2
-	if(vdev->interface == VIDEOSOURCE_INTERFACE_MIPI) {
-		tcc_mipi_csi2_enable(vdev->mipi_csi2_port,\
-			&vdev->format, \
-			1);
-	}
-#endif
-
 	if(vdev->enabled == ENABLE) {
 		// open port
 		videosource_set_port(vdev, ENABLE);
@@ -322,12 +312,6 @@ int videosource_if_deinitialize(videosource_t * vdev) {
 
 	if(vdev->enabled == ENABLE) {
 		if(vdev->interface == VIDEOSOURCE_INTERFACE_MIPI) {
-#ifdef CONFIG_TCC_MIPI_CSI2
-			tcc_mipi_csi2_enable(vdev->mipi_csi2_port,\
-				&vdev->format, \
-				0);
-#endif
-
 #if 0
 			// disable deserializer interrupt
 			vdev->driver.set_irq_handler(&vdev->gpio, OFF);

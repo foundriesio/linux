@@ -1359,6 +1359,41 @@
 					data-lanes = <1 2 3 4>;
 				};
 			};
+
+		        port@1 {
+				reg = <1>;
+		                mipi_csi2_0_out0: endpoint {
+					channel		= <0>;
+					/*
+					 * 0: Single pixel mode
+					 * 1: Dual pixel mode (RAW8/10/12, YUV422)
+					 * 2: Quad pixel mode (RAW8/10/12)
+					 * 3: Invalid
+					 */
+					pixel-mode = <1>;
+		                };
+			};
+			port@2 {
+				reg = <2>;
+				mipi_csi2_0_out1: endpoint {
+					channel		= <1>;
+					pixel-mode = <1>;
+				};
+			};
+			port@3 {
+				reg = <3>;
+				mipi_csi2_0_out2: endpoint {
+					channel		= <2>;
+					pixel-mode = <1>;
+				};
+			};
+			port@4 {
+				reg = <4>;
+				mipi_csi2_0_out3: endpoint {
+					channel		= <3>;
+					pixel-mode = <1>;
+				};
+			};
 		};
 	};
 
