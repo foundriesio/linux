@@ -849,11 +849,11 @@ enum VIOC_SWRESET_Component {
 	VIOC_CONFIG_DTRC
 };
 
-struct VIOC_PlugInOutCheck {
+typedef struct VIOC_PlugInOutCheck {
 	unsigned int enable;
 	unsigned int connect_statue;
 	unsigned int connect_device;
-};
+} VIOC_PlugInOutCheck;
 
 // Power Down
 #define HwDDIC_PWDN_HDMI	Hw2

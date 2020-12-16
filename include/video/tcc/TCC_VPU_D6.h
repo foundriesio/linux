@@ -447,7 +447,7 @@ typedef struct Vp8DecScaleInfo_t {
 	unsigned int m_iPicHeight;
 } Vp8DecScaleInfo_t;
 
-	ypedef struct Vp8DecPicInfo_t {
+typedef struct Vp8DecPicInfo_t {
 	unsigned int m_iShowFrame;
 	unsigned int m_iVersionNumber;
 	unsigned int m_iRefIdxLast;

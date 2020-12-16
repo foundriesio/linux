@@ -34,8 +34,7 @@
 #define		R2YMD_HDTV_LR	2
 #define		R2YMD_HDTV_FR	3
 
-typedef struct
-{
+struct VIOC_WDMA_IMAGE_INFO_Type {
 	unsigned int ImgSizeWidth;
 	unsigned int ImgSizeHeight;
 	unsigned int TargetWidth;
@@ -47,11 +46,11 @@ typedef struct
 	unsigned int Interlaced;
 	unsigned int ContinuousMode;
 	unsigned int SyncMode;
-	unsigned int AlphaValue;	// not used.
-	unsigned int Hue;			// not used.
-	unsigned int Bright;		// not used.
-	unsigned int Contrast;		// not used.
-} VIOC_WDMA_IMAGE_INFO_Type;
+	unsigned int AlphaValue;
+	unsigned int Hue;
+	unsigned int Bright;
+	unsigned int Contrast;
+};
 
 /*
  * register offset

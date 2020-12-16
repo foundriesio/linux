@@ -1,5 +1,10 @@
 /*
- * Copyright (C) Telechips, Inc.
+ * linux/arch/arm/mach-tcc893x/include/mach/vioc_disp.h
+ * Author:  <linux@telechips.com>
+ * Created: June 10, 2008
+ * Description: TCC VIOC h/w block
+ *
+ * Copyright (C) 2008-2009 Telechips
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -401,7 +406,7 @@ struct VIOC_TIMING_INFO {
 #define DDMAT1_DITH21_MASK (0x7 << DDMAT1_DITH21_SHIFT)
 #define DDMAT1_DITH20_MASK (0x7 << DDMAT1_DITH20_SHIFT)
 
-struct LCDCTR {
+typedef struct LCDCTR {
 	unsigned int evp;     // External VSYNC Polarity
 	unsigned int evs;     // External VSYNC Enable
 	unsigned int r2ymd;   // RGB to YCbCr Conversion Option
@@ -422,9 +427,9 @@ struct LCDCTR {
 	unsigned int ni;      // Non-Interlaced
 	unsigned int tv;      // TV Mode
 	unsigned int y2r;     // YUV to RGB Converter Enable
-};
+} stLCDCTR;
 
-struct LCDTIMING {
+typedef struct LCDTIMING {
 	// LHTIME1
 	unsigned int lpw;	// Line Pulse Width, HSync width
 	unsigned int lpc;	// Line Pulse Count, HActive width
@@ -445,7 +450,7 @@ struct LCDTIMING {
 	// LVTIME4
 	unsigned int fswc2;	 // Frame Start Wait Cycle
 	unsigned int fewc2;	 // Frame End Wait Cycle
-};
+} stLTIMING;
 
 #define VIOC_DISP_IREQ_FU_MASK		0x00000001UL /* fifo underrun */
 #define VIOC_DISP_IREQ_VSR_MASK		0x00000002UL /* VSYNC rising */
@@ -491,10 +496,10 @@ enum {
 	DCTRL_FMT_MAX
 };
 
-struct LCDC_PARAM {
+typedef struct LCDC_PARAM {
 	struct LCDCTR LCDCTRL;
 	struct LCDTIMING LCDCTIMING;
-};
+} stLCDCPARAM;
 
 struct DisplayBlock_Info {
 	unsigned int enable;
