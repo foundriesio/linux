@@ -3,6 +3,8 @@
  * Copyright (C) Telechips Inc.
  */
 
+#include <dt-bindings/pmap/tcc803x/pmap-tcc803x-linux-ivi.h>
+
 ////////////////////////////////////////////////////////////////////////////////
 #define CONF_ARCH_TCC803X
 
