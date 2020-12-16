@@ -54,8 +54,13 @@ dtb-$(CONFIG_ARCH_TCC805X) += \
 	tcc8050-linux-lpd4x322_sv0.1.dtb \
 	tcc8053-linux-lpd4x322_sv0.1.dtb \
 	tcc8059-linux-lpd4x321_sv0.1.dtb \
+	tcc8050-linux-dvrs-lpd4x322_sv0.1.dtb \
+	tcc8053-linux-dvrs-lpd4x322_sv0.1.dtb \
+	tcc8059-linux-dvrs-lpd4x321_sv0.1.dtb \
 	tcc8050-linux-lpd4x322_sv1.0.dtb \
 	tcc8053-linux-lpd4x322_sv1.0.dtb \
+	tcc8050-linux-dvrs-lpd4x322_sv1.0.dtb \
+	tcc8053-linux-dvrs-lpd4x322_sv1.0.dtb \
 	tcc8060-linux-board-xxx.dtb
 endif
 endif
