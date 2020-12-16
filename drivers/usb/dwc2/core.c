@@ -405,7 +405,9 @@ static bool dwc2_force_mode(struct dwc2_hsotg *hsotg, bool host)
 	u32 set;
 	u32 clear;
 
-	dev_dbg(hsotg->dev, "[DEBUG][USB] Forcing mode to %s\n", host ? "host" : "device");
+	dev_dbg(hsotg->dev,
+		"[DEBUG][USB] Forcing mode to %s\n",
+		host ? "host" : "device");
 
 	/*
 	 * Force mode has no effect if the hardware is not OTG.
@@ -552,7 +554,9 @@ void dwc2_dump_host_registers(struct dwc2_hsotg *hsotg)
 		(unsigned long)addr, dwc2_readl(addr));
 
 	for (i = 0; i < hsotg->params.host_channels; i++) {
-		dev_dbg(hsotg->dev, "[DEBUG][USB] Host Channel %d Specific Registers\n", i);
+		dev_dbg(hsotg->dev,
+			"[DEBUG][USB] Host Channel %d Specific Registers\n",
+			i);
 		addr = hsotg->regs + HCCHAR(i);
 		dev_dbg(hsotg->dev, "[DEBUG][USB] HCCHAR	 @0x%08lX : 0x%08X\n",
 			(unsigned long)addr, dwc2_readl(addr));
@@ -682,7 +686,6 @@ void dwc2_dump_global_registers(struct dwc2_hsotg *hsotg)
 void dwc2_flush_tx_fifo(struct dwc2_hsotg *hsotg, const int num)
 {
 	u32 greset;
-	int count = 0;
 
 	dev_vdbg(hsotg->dev, "[DEBUG][USB] Flush Tx FIFO %d\n", num);
 

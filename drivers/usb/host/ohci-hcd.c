@@ -79,7 +79,7 @@ static const char	hcd_name [] = "ohci_hcd";
 #include "pci-quirks.h"
 
 static void ohci_dump(struct ohci_hcd *ohci);
-static void ohci_stop(struct usb_hcd *hcd);
+//static void ohci_stop(struct usb_hcd *hcd);
 static void io_watchdog_func(unsigned long _ohci);
 
 #include "ohci-hub.c"
@@ -417,8 +417,7 @@ static void ohci_usb_reset (struct ohci_hcd *ohci)
  * other cases where the next software may expect clean state from the
  * "firmware".  this is bus-neutral, unlike shutdown() methods.
  */
-static void
-ohci_shutdown (struct usb_hcd *hcd)
+static void _ohci_shutdown(struct usb_hcd *hcd)
 {
 	struct ohci_hcd *ohci;
 
@@ -434,13 +433,23 @@ ohci_shutdown (struct usb_hcd *hcd)
 	ohci->rh_state = OHCI_RH_HALTED;
 }
 
+static void ohci_shutdown(struct usb_hcd *hcd)
+{
+	struct ohci_hcd	*ohci = hcd_to_ohci(hcd);
+	unsigned long flags;
+
+	spin_lock_irqsave(&ohci->lock, flags);
+	_ohci_shutdown(hcd);
+	spin_unlock_irqrestore(&ohci->lock, flags);
+}
+
 /*-------------------------------------------------------------------------*
  * HC functions
  *-------------------------------------------------------------------------*/
 
 /* init memory, and kick BIOS/SMM off */
 
-int ohci_init (struct ohci_hcd *ohci)
+int ohci_init(struct ohci_hcd *ohci)
 {
 	int ret;
 	struct usb_hcd *hcd = ohci_to_hcd(ohci);
@@ -526,7 +535,7 @@ EXPORT_SYMBOL_GPL(ohci_init);
  * resets USB and controller
  * enable interrupts
  */
-int ohci_run (struct ohci_hcd *ohci)
+int ohci_run(struct ohci_hcd *ohci)
 {
 	u32			mask, val;
 	int			first = ohci->fminterval == 0;
@@ -754,7 +763,7 @@ static void io_watchdog_func(unsigned long _ohci)
  died:
 			usb_hc_died(ohci_to_hcd(ohci));
 			ohci_dump(ohci);
-			ohci_shutdown(ohci_to_hcd(ohci));
+			_ohci_shutdown(ohci_to_hcd(ohci));
 			goto done;
 		} else {
 			/* No write back because the done queue was empty */
@@ -970,7 +979,7 @@ static irqreturn_t ohci_irq (struct usb_hcd *hcd)
 
 /*-------------------------------------------------------------------------*/
 
-void ohci_stop (struct usb_hcd *hcd)
+void ohci_stop(struct usb_hcd *hcd)
 {
 	struct ohci_hcd		*ohci = hcd_to_ohci (hcd);
 
@@ -1202,7 +1211,8 @@ static const struct hc_driver ohci_hc_driver = {
 	.start_port_reset =	ohci_start_port_reset,
 };
 
-const struct hc_driver* get_ohci_hcd_driver(void) {
+const struct hc_driver *get_ohci_hcd_driver(void)
+{
 	return &ohci_hc_driver;
 }
 EXPORT_SYMBOL_GPL(get_ohci_hcd_driver);
@@ -1265,7 +1275,7 @@ static int __init ohci_hcd_mod_init(void)
 	if (usb_disabled())
 		return -ENODEV;
 
-	printk(KERN_INFO "[INFO][USB] %s: " DRIVER_DESC "\n", hcd_name);
+	pr_info("[INFO][USB] %s: " DRIVER_DESC "\n", hcd_name);
 	pr_debug ("%s: block sizes: ed %zd td %zd\n", hcd_name,
 		sizeof (struct ed), sizeof (struct td));
 	set_bit(USB_OHCI_LOADED, &usb_hcds_loaded);

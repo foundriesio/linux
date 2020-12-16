@@ -33,7 +33,7 @@ MKTCSB=$LINUX_PLATFORM_ROOTDIR/bsp/util/tcsb/tcsb_mkimg
 
 
 #######################################
-# KEY Definition 
+# KEY Definition
 #######################################
 DEF_KEYDIR=$LINUX_PLATFORM_ROOTDIR/bsp/sign_key
 SIGN=sign
@@ -45,30 +45,36 @@ WRAPKEYFILE=$DEF_KEYDIR/tcsb_sbcr.bin
 #######################################
 
 
-if [ ! -e $DEF_KEYDIR ]; then 
+if [ ! -e $DEF_KEYDIR ]; then
  echo " there is not exist the $DEF_KEYDIR dir"
  echo " please create default key store directory and key files for signing"
  exit 4
 fi
 
-if [ ! -f $PRIKEYFILE -o ! -f $WRAPKEYFILE ]; then 
+if [ ! -f $PRIKEYFILE -o ! -f $WRAPKEYFILE ]; then
  echo " there is missing key files check key store !! "
  exit 7
 fi
 
-if [ ! -f $BOOTFILE ]; then 
+if [ ! -f $BOOTFILE ]; then
  echo " there is not exist none secure boot image  in $KERNEL_OUT_DIR dir !!"
  echo " before using this signing script,  please build whole system first !!"
  exit 10
 fi
 
-CMD_MAKE_SIGNED_IMAGE="$SIGNTOOL $SIGN -type $TYPE -signalgo $SIGNALGO -hashalgo $HASHALGO
-			-prikey $PRIKEYFILE -wrapkey $WRAPKEYFILE -infile $NONE_SECURE_IMAGE -outfile $SIGNED_IMAGE"
+CMD_MAKE_SIGNED_IMAGE="$SIGNTOOL $SIGN -type $TYPE -signalgo $SIGNALGO \
+			-hashalgo $HASHALGO -prikey $PRIKEYFILE \
+			-wrapkey $WRAPKEYFILE -infile $NONE_SECURE_IMAGE \
+			-outfile $SIGNED_IMAGE"
 CMD_MAKE_SBOOT_IMAGE="$MKTCSB $SIGNED_IMAGE $SECURE_IMAGE "
 
-CMD_MAKE_COMPRESSED_SIGNED_IMAGE="$SIGNTOOL $SIGN -type $TYPE -signalgo $SIGNALGO -hashalgo $HASHALGO
-			-prikey $PRIKEYFILE -wrapkey $WRAPKEYFILE -infile $COMPRESSED_NONE_SECURE_IMAGE -outfile $COMPRESSED_SIGNED_IMAGE"
-CMD_MAKE_COMPRESSED_SBOOT_IMAGE="$MKTCSB $COMPRESSED_SIGNED_IMAGE $COMPRESSED_SECURE_IMAGE "
+CMD_MAKE_COMPRESSED_SIGNED_IMAGE="$SIGNTOOL $SIGN -type $TYPE \
+				  -signalgo $SIGNALGO -hashalgo $HASHALGO \
+				  -prikey $PRIKEYFILE -wrapkey $WRAPKEYFILE \
+				  -infile $COMPRESSED_NONE_SECURE_IMAGE \
+				  -outfile $COMPRESSED_SIGNED_IMAGE"
+CMD_MAKE_COMPRESSED_SBOOT_IMAGE="$MKTCSB $COMPRESSED_SIGNED_IMAGE \
+				 $COMPRESSED_SECURE_IMAGE "
 
 echo $CMD_MAKE_SIGNED_IMAGE
 $CMD_MAKE_SIGNED_IMAGE

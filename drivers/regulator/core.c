@@ -48,7 +48,8 @@
 #define rdev_info(rdev, fmt, ...)					\
 	pr_info("[INFO][Regulator]%s: " fmt, rdev_get_name(rdev), ##__VA_ARGS__)
 #define rdev_dbg(rdev, fmt, ...)					\
-	pr_debug("[DEBUG][Regulator]%s: " fmt, rdev_get_name(rdev), ##__VA_ARGS__)
+	pr_debug("[DEBUG][Regulator]%s: " fmt, rdev_get_name(rdev),\
+	##__VA_ARGS__)
 
 static DEFINE_MUTEX(regulator_list_mutex);
 static LIST_HEAD(regulator_map_list);
@@ -1192,7 +1193,7 @@ static int set_consumer_device_supply(struct regulator_dev *rdev,
 				      const char *consumer_dev_name,
 				      const char *supply)
 {
-	struct regulator_map *node;
+	struct regulator_map *node, *new_node;
 	int has_dev;
 
 	if (supply == NULL)
@@ -1203,6 +1204,22 @@ static int set_consumer_device_supply(struct regulator_dev *rdev,
 	else
 		has_dev = 0;
 
+	new_node = kzalloc(sizeof(struct regulator_map), GFP_KERNEL);
+	if (new_node == NULL)
+		return -ENOMEM;
+
+	new_node->regulator = rdev;
+	new_node->supply = supply;
+
+	if (has_dev) {
+		new_node->dev_name = kstrdup(consumer_dev_name, GFP_KERNEL);
+		if (new_node->dev_name == NULL) {
+			kfree(new_node);
+			return -ENOMEM;
+		}
+	}
+
+	mutex_lock(&regulator_list_mutex);
 	list_for_each_entry(node, &regulator_map_list, list) {
 		if (node->dev_name && consumer_dev_name) {
 			if (strcmp(node->dev_name, consumer_dev_name) != 0)
@@ -1220,26 +1237,19 @@ static int set_consumer_device_supply(struct regulator_dev *rdev,
 			 node->regulator->desc->name,
 			 supply,
 			 dev_name(&rdev->dev), rdev_get_name(rdev));
-		return -EBUSY;
+		goto fail;
 	}
 
-	node = kzalloc(sizeof(struct regulator_map), GFP_KERNEL);
-	if (node == NULL)
-		return -ENOMEM;
+	list_add(&new_node->list, &regulator_map_list);
+	mutex_unlock(&regulator_list_mutex);
 
-	node->regulator = rdev;
-	node->supply = supply;
-
-	if (has_dev) {
-		node->dev_name = kstrdup(consumer_dev_name, GFP_KERNEL);
-		if (node->dev_name == NULL) {
-			kfree(node);
-			return -ENOMEM;
-		}
-	}
-
-	list_add(&node->list, &regulator_map_list);
 	return 0;
+
+fail:
+	mutex_unlock(&regulator_list_mutex);
+	kfree(new_node->dev_name);
+	kfree(new_node);
+	return -EBUSY;
 }
 
 static void unset_regulator_supplies(struct regulator_dev *rdev)
@@ -3650,8 +3660,8 @@ int regulator_bulk_enable(int num_consumers,
 err:
 	for (i = 0; i < num_consumers; i++) {
 		if (consumers[i].ret < 0)
-			pr_err("[ERROR][Regulator]Failed to enable %s: %d\n", consumers[i].supply,
-			       consumers[i].ret);
+			pr_err("[ERROR][Regulator]Failed to enable %s: %d\n",
+					consumers[i].supply, consumers[i].ret);
 		else
 			regulator_disable(consumers[i].consumer);
 	}
@@ -3687,7 +3697,8 @@ int regulator_bulk_disable(int num_consumers,
 	return 0;
 
 err:
-	pr_err("[ERROR][Regulator]Failed to disable %s: %d\n", consumers[i].supply, ret);
+	pr_err("[ERROR][Regulator]Failed to disable %s: %d\n",
+		consumers[i].supply, ret);
 	for (++i; i < num_consumers; ++i) {
 		r = regulator_enable(consumers[i].consumer);
 		if (r != 0)
@@ -4095,19 +4106,16 @@ regulator_register(const struct regulator_desc *regulator_desc,
 
 	/* add consumers devices */
 	if (init_data) {
-		mutex_lock(&regulator_list_mutex);
 		for (i = 0; i < init_data->num_consumer_supplies; i++) {
 			ret = set_consumer_device_supply(rdev,
 				init_data->consumer_supplies[i].dev_name,
 				init_data->consumer_supplies[i].supply);
 			if (ret < 0) {
-				mutex_unlock(&regulator_list_mutex);
 				dev_err(dev, "Failed to set supply %s\n",
 					init_data->consumer_supplies[i].supply);
 				goto unset_supplies;
 			}
 		}
-		mutex_unlock(&regulator_list_mutex);
 	}
 
 	if (!rdev->desc->ops->get_voltage &&
@@ -4179,32 +4187,34 @@ static int _regulator_suspend_prepare(struct device *dev, void *data)
 	struct regulator_dev *rdev = dev_to_rdev(dev);
 	const suspend_state_t *state = data;
 	int ret;
-	//printk("\x1b[1;33m[%s:%d]\x1b[0m\n", __func__, __LINE__);
 	mutex_lock(&rdev->mutex);
-	#if defined(CONFIG_ARCH_TCC803X)
+#if defined(CONFIG_ARCH_TCC803X)
 	if (!rdev->desc->ops->set_mode || !rdev->desc->ops->set_current_limit)
-		printk("set_mode is not implemented\n");
-	else
-	{
+		pr_err("set_mode is not implemented\n");
+	else {
 		//ret = rdev->desc->ops->get_mode(rdev);
-		//printk("\x1b[1;33m[%s:ret=%d]\x1b[0m\n", __func__, ret);
 		ret = rdev->desc->ops->set_mode(rdev, REGULATOR_MODE_NORMAL);
-		//printk("\x1b[1;33m[%s:ret=%d]\x1b[0m\n", __func__, ret);
-		if(ret)
-			printk("[%s:%d]failed to set mode of pmic\n", __func__, __LINE__);
+		if (ret) {
+			pr_err("[%s:%d]failed to set mode of pmic\n",
+					__func__, __LINE__);
+		}
 
-		ret = rdev->desc->ops->set_suspend_mode(rdev, REGULATOR_MODE_NORMAL);
-		//printk("\x1b[1;33m[%s:ret=%d]\x1b[0m\n", __func__, ret);
-		if(ret)
-			printk("[%s:%d]failed to set mode of pmic\n", __func__, __LINE__);
+		ret = rdev->desc->ops->set_suspend_mode(rdev,
+				REGULATOR_MODE_NORMAL);
+		if (ret) {
+			pr_err("[%s:%d]failed to set mode of pmic\n",
+					__func__, __LINE__);
+		}
 
-		//printk("Set Voltage =%d\n", rdev->constraints->min_uV);
-		ret = _regulator_do_set_voltage(rdev, rdev->constraints->min_uV, rdev->constraints->min_uV);
-		if(ret)
-			printk("[%s:%d]failed to set voltage(min) of pmic\n", __func__, __LINE__);
-		//printk("Get Voltage = %d\n", _regulator_get_voltage(rdev));
+		ret = _regulator_do_set_voltage(rdev,
+				rdev->constraints->min_uV,
+				rdev->constraints->min_uV);
+		if (ret) {
+			pr_err("[%s:%d]failed to set voltage(min) of pmic\n",
+					__func__, __LINE__);
+		}
 	}
-	#endif
+#endif
 	mutex_unlock(&rdev->mutex);
 
 	mutex_lock(&rdev->mutex);
@@ -4258,26 +4268,33 @@ static int _regulator_suspend_finish(struct device *dev, void *data)
 	}
 	#if defined(CONFIG_ARCH_TCC803X)
 	if (!rdev->desc->ops->set_mode || !rdev->desc->ops->set_current_limit)
-		printk("set_mode is not implemented\n");
-	else
-	{
+		pr_err("set_mode is not implemented\n");
+	else {
 		//ret = rdev->desc->ops->get_mode(rdev);
-		//printk("\x1b[1;33m[%s:ret=%d]\x1b[0m\n", __func__, ret);
+		//pr_info("\x1b[1;33m[%s:ret=%d]\x1b[0m\n", __func__, ret);
 		ret = rdev->desc->ops->set_mode(rdev, REGULATOR_MODE_FAST);
-		if(ret)
-			printk("[%s:%d]failed to set mode of pmic\n", __func__, __LINE__);
+		if (ret) {
+			pr_err("[%s:%d]failed to set mode of pmic\n",
+					__func__, __LINE__);
+		}
 
-		ret = rdev->desc->ops->set_suspend_mode(rdev, REGULATOR_MODE_FAST);
-		if(ret)
-			printk("[%s:%d]failed to set mode of pmic\n", __func__, __LINE__);
+		ret = rdev->desc->ops->set_suspend_mode(rdev,
+				REGULATOR_MODE_FAST);
+		if (ret) {
+			pr_err("[%s:%d]failed to set mode of pmic\n",
+					__func__, __LINE__);
+		}
 		//ret = rdev->desc->ops->get_mode(rdev);
-		
-		printk("Get Voltage = %d\n", _regulator_get_voltage(rdev));
-		ret = _regulator_do_set_voltage(rdev, rdev->constraints->max_uV, rdev->constraints->max_uV);
-		if(ret)
-			printk("[%s:%d]failed to set voltage(max) of pmic\n", __func__, __LINE__);
-		//printk("Get Voltage = %d\n", _regulator_get_voltage(rdev));
 
+		pr_info("Get Voltage = %d\n", _regulator_get_voltage(rdev));
+		ret = _regulator_do_set_voltage(rdev,
+				rdev->constraints->max_uV,
+				rdev->constraints->max_uV);
+		if (ret) {
+			pr_err("[%s:%d]failed to set voltage(max) of pmic\n",
+					__func__, __LINE__);
+		}
+		//pr_info("Get Voltage = %d\n", _regulator_get_voltage(rdev));
 	}
 	#endif
 unlock:

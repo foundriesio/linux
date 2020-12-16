@@ -53,16 +53,14 @@ struct tcc_sc_ufs_host {
 
 	/* Internal data */
 	struct scsi_cmnd *cmd;
-	struct ufs_host *ufs;	/* ufs structure */
-	u64 dma_mask;		/* custom DMA mask */
-
+	struct ufs_host *ufs;
+	u64 dma_mask;
 	struct workqueue_struct *ufs_tcc_wq;
 	struct work_struct request_work;
-	struct tasklet_struct finish_tasklet;	/* Tasklet structures */
-	struct timer_list timer;	/* Timer for timeouts */
+	struct tasklet_struct finish_tasklet;
 
 	int	nutrs;
-	spinlock_t lock;	/* Mutex */
+	spinlock_t lock;
 	struct rw_semaphore clk_scaling_lock;
 	char *scsi_cdb_base_addr;
 	dma_addr_t scsi_cdb_dma_addr;
@@ -83,9 +81,10 @@ static bool tcc_sc_ufs_transfer_req_compl(struct tcc_sc_ufs_host *host)
 		spin_unlock_irqrestore(&host->lock, flags);
 		return true;
 	}
-	
+
 	//result = get ocs data
-	dev_dbg(host->dev, "%s : sg_count = %d\n", __func__, cmd->sdb.table.nents); 
+	dev_dbg(host->dev, "%s : sg_count = %d\n", __func__,
+			cmd->sdb.table.nents);
 	scsi_dma_unmap(cmd);
 	cmd->result = 0;//result;
 	/* Mark completed command as NULL in LRB */
@@ -93,18 +92,6 @@ static bool tcc_sc_ufs_transfer_req_compl(struct tcc_sc_ufs_host *host)
 	/* Do not touch lrbp after scsi done */
 	cmd->scsi_done(cmd);
 
-#if 0
-	if (ufshcd_is_clkscaling_supported(hba))
-		hba->clk_scaling.active_reqs--;
-
-	/* clear corresponding bits of completed commands */
-	hba->outstanding_reqs ^= completed_reqs;
-
-	ufshcd_clk_scaling_update_busy(hba);
-
-	/* we might have free'd some tags above */
-	wake_up(&hba->dev_cmd.tag_wq);
-#endif
 	spin_unlock_irqrestore(&host->lock, flags);
 
 	return false;
@@ -128,8 +115,9 @@ static inline u8 tcc_sc_ufs_scsi_to_upiu_lun(unsigned int scsi_lun)
 
 static void tcc_sc_ufs_queuecommand(struct work_struct *work)
 {
-	struct tcc_sc_ufs_host *sc_host = container_of(work, struct tcc_sc_ufs_host,
-             request_work);
+	struct tcc_sc_ufs_host *sc_host =
+		container_of(work, struct tcc_sc_ufs_host,
+				request_work);
 	struct Scsi_Host *scsi_host = sc_host->scsi_host;
 	struct scsi_cmnd *scsi_cmd = sc_host->cmd;
 	unsigned long flags;
@@ -152,9 +140,12 @@ static void tcc_sc_ufs_queuecommand(struct work_struct *work)
 
 	sc_cmd.blocks = 4096;
 	sc_cmd.datsz = scsi_cmd->sdb.length;
-	sc_cmd.lba = scsi_cmd->cmnd[2] << 24 | scsi_cmd->cmnd[3] << 16 | scsi_cmd->cmnd[4] << 8 | scsi_cmd->cmnd[5] <<0;
+	sc_cmd.lba = scsi_cmd->cmnd[2] << 24 |
+				scsi_cmd->cmnd[3] << 16 |
+				scsi_cmd->cmnd[4] << 8 |
+				scsi_cmd->cmnd[5] << 0;
 	sc_cmd.op = scsi_cmd->cmnd[0];
-	
+
 	if (scsi_cmd->sc_data_direction == DMA_FROM_DEVICE) {
 		direction = 1;
 	} else if (scsi_cmd->sc_data_direction == DMA_TO_DEVICE) {
@@ -177,51 +168,34 @@ static void tcc_sc_ufs_queuecommand(struct work_struct *work)
 	memcpy(&sc_cmd.cdb2, &scsi_cmd->cmnd[8], 4);
 	memcpy(&sc_cmd.cdb3, &scsi_cmd->cmnd[12], 4);
 
-#if 0
-	dev_dbg(sc_host->dev, "sg_count = %d, datsz = 0x%x, lba = 0x%x, lun = %d, op = %x, direction = %d, tag = %d\n", sc_cmd.sg_count, sc_cmd.datsz, sc_cmd.lba, tcc_sc_ufs_scsi_to_upiu_lun(scsi_cmd->device->lun),sc_cmd.op, direction, tag);
-#endif
-
 	ret = handle->ops.ufs_ops->request_command(handle, &sc_cmd);
-#if 0
-	if(ret != 0) {
-		mrq->cmd->error = ret;
-	} else {
-		mrq->cmd->resp[0] = cmd.resp[0];
-		mrq->cmd->resp[1] = cmd.resp[1];
-		mrq->cmd->resp[2] = cmd.resp[2];
-		mrq->cmd->resp[3] = cmd.resp[3];
-		mrq->cmd->error = cmd.error;
-
-		if(mrq->cmd->data != NULL) {
-			mrq->cmd->data->error = data.error;
-			if(mrq->cmd->data->error == 0) {
-				mrq->cmd->data->bytes_xfered = data.datsz * data.blocks;
-			}
-		}
-	}
-#endif
 	/* Finish request */
 	tasklet_schedule(&sc_host->finish_tasklet);
 }
 
-static int tcc_sc_ufs_queuecommand_sc(struct Scsi_Host *host, struct scsi_cmnd *cmd)
+static int tcc_sc_ufs_queuecommand_sc(struct Scsi_Host *host,
+		struct scsi_cmnd *cmd)
 {
 	struct tcc_sc_ufs_host *sc_host;
 
-	if(host == NULL) {
-		printk("[ERROR][TCC_SC_UFS] scsi_host is null\n");
+	sc_host = shost_priv(host);
+
+	if (host == NULL) {
+		dev_err(sc_host->dev,
+			"[ERROR][TCC_SC_UFS] scsi_host is null\n");
 		return -ENODEV;
 	}
 
-	sc_host = shost_priv(host);
-	if(sc_host == NULL) {
-		printk("%s: [ERROR][TCC_SC_UFS] sc_host is null\n",
+	if (sc_host == NULL) {
+		dev_err(sc_host->dev,
+			"%s: [ERROR][TCC_SC_UFS] sc_host is null\n",
 		       __func__);
 		return -ENODEV;
 	}
 
-	if(cmd == NULL) {
-		printk("%s: [ERROR][TCC_SC_UFS] scsi_cmd is null\n",
+	if (cmd == NULL) {
+		dev_err(sc_host->dev,
+			"%s: [ERROR][TCC_SC_UFS] scsi_cmd is null\n",
 		       __func__);
 		return -ENODEV;
 	}
@@ -242,7 +216,8 @@ static int tcc_sc_ufs_set_dma_mask(struct tcc_sc_ufs_host *host)
 static int tcc_sc_ufs_slave_alloc(struct scsi_device *sdev)
 {
 	struct tcc_sc_ufs_host *sc_host;
-	sc_host = shost_priv(sdev->host);	
+
+	sc_host = shost_priv(sdev->host);
 	/* Mode sense(6) is not supported by UFS, so use Mode sense(10) */
 	sdev->use_10_for_ms = 1;
 
@@ -272,7 +247,6 @@ static int tcc_sc_ufs_slave_configure(struct scsi_device *sdev)
 static void tcc_sc_ufs_slave_destroy(struct scsi_device *sdev)
 {
 	//do nothing.
-	return ;
 }
 
 static int tcc_sc_ufs_change_queue_depth(struct scsi_device *sdev, int depth)
@@ -282,6 +256,11 @@ static int tcc_sc_ufs_change_queue_depth(struct scsi_device *sdev, int depth)
 	if (depth > sc_host->nutrs)
 		depth = sc_host->nutrs;
 	return scsi_change_queue_depth(sdev, depth);
+}
+
+static int tcc_sc_ufs_eh_device_reset_handler(struct scsi_cmnd *cmd)
+{
+	return SUCCESS;
 }
 
 static int tcc_sc_ufs_eh_device_reset_handler(struct scsi_cmnd *cmd)
@@ -328,26 +307,30 @@ static int tcc_sc_ufs_probe(struct platform_device *pdev)
 	int ret = 0;
 	struct device_node *fw_np;
 	const struct tcc_sc_fw_handle *handle;
-	struct Scsi_Host *scsi_host;;
+	struct Scsi_Host *scsi_host;
 	struct tcc_sc_ufs_host *host;
 
 	fw_np = of_parse_phandle(pdev->dev.of_node, "sc-firmware", 0);
 	if (fw_np == NULL) {
-		dev_err(&pdev->dev, "[ERROR][TCC_SC_ufs] No sc-firmware node\n");
+		dev_err(&pdev->dev,
+			"[ERROR][TCC_SC_ufs] No sc-firmware node\n");
 		return -ENODEV;
 	}
 
 	handle = tcc_sc_fw_get_handle(fw_np);
-	if(handle == NULL) {
-		dev_err(&pdev->dev, "[ERROR][TCC_SC_ufs] Failed to get handle\n");
+	if (handle == NULL) {
+		dev_err(&pdev->dev,
+			"[ERROR][TCC_SC_ufs] Failed to get handle\n");
 		return -ENODEV;
 	}
 
-	if(handle->ops.ufs_ops->request_command == NULL) {
-		dev_err(&pdev->dev, "[ERROR][TCC_SC_ufs] request_command callback function is not registered\n");
+	if (handle->ops.ufs_ops->request_command == NULL) {
+		dev_err(&pdev->dev,
+			"[ERROR][TCC_SC_ufs] request_command callback function is not registered\n");
 		return -ENODEV;
 	}
-	dev_info(&pdev->dev, "[INFO][TCC_SC_ufs] regitser tcc-sc-ufs\n");\
+	dev_info(&pdev->dev,
+			"[INFO][TCC_SC_ufs] regitser tcc-sc-ufs\n");
 
 	scsi_host = scsi_host_alloc(&tcc_sc_ufs_driver_template,
 				sizeof(struct tcc_sc_ufs_host));
@@ -364,8 +347,9 @@ static int tcc_sc_ufs_probe(struct platform_device *pdev)
 	host->nutrs = 1;
 	init_rwsem(&host->clk_scaling_lock);
 
-	if(handle->ops.ufs_ops->request_command == NULL) {
-		dev_err(&pdev->dev, "[ERROR][TCC_SC_ufs] request_command is not registered\n");
+	if (handle->ops.ufs_ops->request_command == NULL) {
+		dev_err(&pdev->dev,
+			"[ERROR][TCC_SC_ufs] request_command is not registered\n");
 		return -ENODEV;
 	}
 
@@ -393,12 +377,11 @@ static int tcc_sc_ufs_probe(struct platform_device *pdev)
 	 */
 	INIT_WORK(&host->request_work, tcc_sc_ufs_queuecommand);
 	host->ufs_tcc_wq = alloc_workqueue("ufs_tcc_sc", 0, 0);
-	if(host->ufs_tcc_wq == NULL) {
-		dev_err(&pdev->dev, "[ERROR][TCC_SC_ufs] ufs: failed to allocate wq\n");
+	if (host->ufs_tcc_wq == NULL) {
+		dev_err(&pdev->dev,
+		"[ERROR][TCC_SC_ufs] ufs: failed to allocate wq\n");
 		return -ENOMEM;
 	}
-
-	//setup_timer(&host->timer, tcc_sc_ufs_timeout_timer, (unsigned long)host);
 
 	platform_set_drvdata(pdev, host);
 

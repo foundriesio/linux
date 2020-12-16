@@ -66,6 +66,7 @@ struct vioc_rdma_device {
 extern void vioc_rdma_set_image(struct vioc_rdma_device *rdma, unsigned int en);
 extern void vioc_rdma_swreset(struct vioc_rdma_device *rdma, int reset);
 extern int get_count_vioc_rdma(struct device *dev);
-extern struct vioc_rdma_device *devm_vioc_rdma_get(struct device *dev, int index);
+extern struct vioc_rdma_device *devm_vioc_rdma_get(
+	struct device *dev, int index);
 
 #endif

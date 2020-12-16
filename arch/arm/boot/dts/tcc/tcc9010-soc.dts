@@ -7,6 +7,8 @@
 
 /dts-v1/;
 
+#include "tcc-pmap-901x-android-customized.dtsi"
+
 #include "tcc9010.dtsi"
 
 / {

@@ -24,45 +24,39 @@
 #include <linux/wait.h>
 #include <linux/uaccess.h>
 
-#include <asm/io.h>
+#include <linux/io.h>
+//#include <asm/io.h>
 #include <asm/div64.h>
 
 #ifdef CONFIG_SUPPORT_TCC_WAVE410_HEVC
 
 #include "vpu_comm.h"
 #include "vpu_devices.h"
+#include "hevc_mgr.h"
 
-extern int hmgr_probe(struct platform_device* pdev);
-extern int hmgr_remove(struct platform_device* pdev);
-#if defined(CONFIG_PM)
-extern int hmgr_suspend(struct platform_device* pdev, pm_message_t state);
-extern int hmgr_resume(struct platform_device* pdev);
-#endif
 
 #ifdef CONFIG_OF
-static struct of_device_id hmgr_of_match[] =
-{
-	{ .compatible = "telechips,hevc_dev_mgr" }, //HMGR_NAME
+static const struct of_device_id hmgr_of_match[] = {
+	{.compatible = "telechips,hevc_dev_mgr"},	//HMGR_NAME
 	{}
 };
 MODULE_DEVICE_TABLE(of, hmgr_of_match);
 #endif
 
-static struct platform_driver hmgr_driver =
-{
-	.probe          = hmgr_probe,
-	.remove         = hmgr_remove,
+static struct platform_driver hmgr_driver = {
+	.probe = hmgr_probe,
+	.remove = hmgr_remove,
 #if defined(CONFIG_PM)
-	.suspend        = hmgr_suspend,
-	.resume         = hmgr_resume,
+	.suspend = hmgr_suspend,
+	.resume = hmgr_resume,
 #endif
-	.driver         = {
-		 .name   	= HMGR_NAME,
-		 .owner  	= THIS_MODULE,
+	.driver = {
+		   .name = HMGR_NAME,
+		   .owner = THIS_MODULE,
 #ifdef CONFIG_OF
-		 .of_match_table = of_match_ptr(hmgr_of_match),
+		   .of_match_table = of_match_ptr(hmgr_of_match),
 #endif
-	},
+		   },
 };
 
 static void __exit hmgr_cleanup(void)
@@ -72,11 +66,11 @@ static void __exit hmgr_cleanup(void)
 
 static int hmgr_init(void)
 {
-	printk("============> HEVC Devices drivers initializing!!  Start ------- ");
+	pr_info("============> HEVC Devices drivers initializing!!  Start ----- ");
 
 	platform_driver_register(&hmgr_driver);
 
-	printk("Done!! \n");
+	pr_info("Done!!\n");
 	return 0;
 }
 

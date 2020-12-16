@@ -32,7 +32,7 @@
 #include <linux/platform_device.h>
 #include <linux/clk.h>
 #include <linux/uaccess.h>
-#include <asm/io.h>
+#include <linux/io.h>
 #include <asm/div64.h>
 
 #include <video/tcc/tcc_gre2d_api.h>
@@ -51,7 +51,7 @@ static G2D_Y2R_TYPE gre2d_Y2R_type = Y2R_TYP0;
 // Back channel YUV to RGB converter type
 static G2D_Y2R_TYPE gre2d_R2Y_type = R2Y_TYP0;
 
-// ZF : 0:MSB Fill Mode Enable  1:Zero Fill Mode Enable  
+// ZF : 0:MSB Fill Mode Enable  1:Zero Fill Mode Enable
 G2D_ZF_TYPE gZF = ZF_HOB_FILL;
 
 G2D_ASEL_TYPE gG2D_ASEL0 = ASEL_2;
@@ -88,9 +88,9 @@ unsigned char gG2D_SRC2_LUTE = 0;
 G2D_DITHERING_TYPE gG2D_Dithering_type = BIT_TOGGLE_OP;
 unsigned char gG2D_Dithering_en = 0;
 unsigned short DitheringMatrix[4 * 4] = {0, 8, 2, 10,
-						                12, 4, 14, 6,
-						                3, 11, 1, 9,
-						                15, 7, 13, 5};
+										12, 4, 14, 6,
+										3, 11, 1, 9,
+										15, 7, 13, 5};
 
 static G2D_RSP_TYPE gre2d_rsp_type;
 
@@ -111,12 +111,12 @@ void gre2d_set_dma_interrupt(unsigned int uiFlag)
 	if(uiFlag & SET_G2D_DMA_INT_ENABLE)
 	{
 		GRE_2D_SetInterrupt(1);
-	}  
-	
+	}
+
 	if(uiFlag & SET_G2D_DMA_INT_DISABLE)
 	{
-		GRE_2D_SetInterrupt(0);	
-	}  
+		GRE_2D_SetInterrupt(0);
+	}
 }
 
 void gre2d_enable(G2D_EN grp_enalbe, unsigned char int_en)
@@ -131,26 +131,26 @@ void gre2d_waiting_result(G2D_EN grp_enalbe)
 	{
 		GRE_2D_IntCtrl(TRUE,(G2D_INT_TYPE)(G2D_INT_R_FLG|G2D_INT_R_IRQ),FALSE, TRUE);//    regw(GE_IREQ, 0x10000)  // IREQ FLG Clear
 
-		gre2d_set_dma_interrupt(SET_G2D_DMA_INT_ENABLE);	
+		gre2d_set_dma_interrupt(SET_G2D_DMA_INT_ENABLE);
 		g2d_working = 1;
-		/*-- interrupt type --*/	
+		/*-- interrupt type --*/
 		GRE_2D_Enable(grp_enalbe, TRUE);	//channel enable : Front End Channel 0, 1, 2 enable
 	}
 	else if(gre2d_rsp_type == G2D_CHECK_TYPE)
 	{
 		/*-- check  type --*/
-		gre2d_set_dma_interrupt(SET_G2D_DMA_INT_ENABLE);	
-		GRE_2D_Enable(grp_enalbe, 0); 	//channel enable : Front End Channel 0, 1, 2 enable	
+		gre2d_set_dma_interrupt(SET_G2D_DMA_INT_ENABLE);
+		GRE_2D_Enable(grp_enalbe, 0); 	//channel enable : Front End Channel 0, 1, 2 enable
 	}
 	else
-	{	
+	{
 		/*-- polling type --*/
-		gre2d_set_dma_interrupt(SET_G2D_DMA_INT_DISABLE);	
+		gre2d_set_dma_interrupt(SET_G2D_DMA_INT_DISABLE);
 		GRE_2D_Enable(grp_enalbe, 0); 	//channel enable : Front End Channel 0, 1, 2 enable
 
 		// waiting for transfer
 		while (!(grp_isr & G2D_INT_R_FLG)) {
-		    grp_isr = GRE_2D_IntCtrl(0,(G2D_INT_TYPE)0,0,0);	//GE_IREQ
+			grp_isr = GRE_2D_IntCtrl(0,(G2D_INT_TYPE)0,0,0);	//GE_IREQ
 		}
 
 		GRE_2D_IntCtrl(TRUE,(G2D_INT_TYPE)(G2D_INT_R_FLG|G2D_INT_R_IRQ),FALSE, TRUE);//    regw(GE_IREQ, 0x10000)  // IREQ FLG Clear
@@ -161,189 +161,189 @@ void gre2d_waiting_result(G2D_EN grp_enalbe)
 /*-----------------------------------------------------------------------------
 gre2d_3ch_dma_main_func
  graphic engine main function
- 
-Graphic engine °ü·Ã ¸ðµç ±â´ÉÀ» »ç¿ëÇÒ¼ö ÀÖÀ½
+
+Graphic engine ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½Ò¼ï¿½ ï¿½ï¿½ï¿½ï¿½
 -----------------------------------------------------------------------------*/
 unsigned char gre2d_3ch_dma_main_func(G2D_FUNC_TYPE gre2d_value, G2D_EN grp_enalbe)
 {
-    unsigned char ret = TRUE;
+	unsigned char ret = TRUE;
 	G2D_BCH_CTRL_TYPE dest_ctrl;
 
-    G2D_SRC_CTRL src_ctrl;
-    
-    int Window_size_x = 0, Window_size_y = 0; // ³»ºÎ¿¡¼­ »ç¿ëµÇ´Â window size
+	G2D_SRC_CTRL src_ctrl;
 
-    if((gre2d_value.src0.op_mode == ROTATE_90) || (gre2d_value.src0.op_mode == ROTATE_270))
-    {
-        Window_size_x = gre2d_value.src0.img_pix_sy;
-        Window_size_y = gre2d_value.src0.img_pix_sx;
-    }
-    else
-    {
-        Window_size_x = gre2d_value.src0.img_pix_sx;
-        Window_size_y = gre2d_value.src0.img_pix_sy;
-    }
+	int Window_size_x = 0, Window_size_y = 0; // ï¿½ï¿½ï¿½Î¿ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½Ç´ï¿½ window size
 
-    if((Window_size_y < gre2d_value.src1.win_off_sy) || (Window_size_x < gre2d_value.src1.win_off_sx)) 
-        return FALSE;
+	if((gre2d_value.src0.op_mode == ROTATE_90) || (gre2d_value.src0.op_mode == ROTATE_270))
+	{
+		Window_size_x = gre2d_value.src0.img_pix_sy;
+		Window_size_y = gre2d_value.src0.img_pix_sx;
+	}
+	else
+	{
+		Window_size_x = gre2d_value.src0.img_pix_sx;
+		Window_size_y = gre2d_value.src0.img_pix_sy;
+	}
 
-    if((Window_size_y < gre2d_value.src2.win_off_sy) || (Window_size_x < gre2d_value.src2.win_off_sx)) 
-        return FALSE;
+	if((Window_size_y < gre2d_value.src1.win_off_sy) || (Window_size_x < gre2d_value.src1.win_off_sx))
+		return FALSE;
 
-    if((gre2d_value.src1.op_mode == ROTATE_90) |(gre2d_value.src1.op_mode == ROTATE_270))
-    {
-        if((Window_size_y < gre2d_value.src1.win_off_sy) || (Window_size_x < gre2d_value.src1.win_off_sx)) 
-            return FALSE;
-        
-        if((gre2d_value.src1.img_pix_sx + gre2d_value.src1.win_off_sy) > Window_size_y)
-            gre2d_value.src1.img_pix_sx = Window_size_y - gre2d_value.src1.win_off_sy;
+	if((Window_size_y < gre2d_value.src2.win_off_sy) || (Window_size_x < gre2d_value.src2.win_off_sx))
+		return FALSE;
 
-        if((gre2d_value.src1.img_pix_sy + gre2d_value.src1.win_off_sx) > Window_size_x)
-            gre2d_value.src1.img_pix_sy = Window_size_x - gre2d_value.src1.win_off_sx;
-    }
-    else
-    {
-        if((gre2d_value.src1.img_pix_sx + gre2d_value.src1.win_off_sx) > Window_size_x)
-            gre2d_value.src1.img_pix_sx = Window_size_x - gre2d_value.src1.win_off_sx;
+	if((gre2d_value.src1.op_mode == ROTATE_90) |(gre2d_value.src1.op_mode == ROTATE_270))
+	{
+		if((Window_size_y < gre2d_value.src1.win_off_sy) || (Window_size_x < gre2d_value.src1.win_off_sx))
+			return FALSE;
 
-        if((gre2d_value.src1.img_pix_sy + gre2d_value.src1.win_off_sy) > Window_size_y)
-            gre2d_value.src1.img_pix_sy = Window_size_y - gre2d_value.src1.win_off_sy;
-    }
+		if((gre2d_value.src1.img_pix_sx + gre2d_value.src1.win_off_sy) > Window_size_y)
+			gre2d_value.src1.img_pix_sx = Window_size_y - gre2d_value.src1.win_off_sy;
 
-    if((gre2d_value.src2.op_mode == ROTATE_90) ||(gre2d_value.src2.op_mode == ROTATE_270))
-    {
-        if((gre2d_value.src2.img_pix_sx + gre2d_value.src2.win_off_sy) > Window_size_y)
-            gre2d_value.src2.img_pix_sx = Window_size_y - gre2d_value.src2.win_off_sy;
+		if((gre2d_value.src1.img_pix_sy + gre2d_value.src1.win_off_sx) > Window_size_x)
+			gre2d_value.src1.img_pix_sy = Window_size_x - gre2d_value.src1.win_off_sx;
+	}
+	else
+	{
+		if((gre2d_value.src1.img_pix_sx + gre2d_value.src1.win_off_sx) > Window_size_x)
+			gre2d_value.src1.img_pix_sx = Window_size_x - gre2d_value.src1.win_off_sx;
 
-        if((gre2d_value.src2.img_pix_sy + gre2d_value.src2.win_off_sx) > Window_size_x)
-            gre2d_value.src2.img_pix_sy = Window_size_x - gre2d_value.src2.win_off_sx;
-    }
-    else
-    {
-        if((gre2d_value.src2.img_pix_sx + gre2d_value.src2.win_off_sx) > Window_size_x)
-            gre2d_value.src2.img_pix_sx = Window_size_x - gre2d_value.src2.win_off_sx;
+		if((gre2d_value.src1.img_pix_sy + gre2d_value.src1.win_off_sy) > Window_size_y)
+			gre2d_value.src1.img_pix_sy = Window_size_y - gre2d_value.src1.win_off_sy;
+	}
 
-        if((gre2d_value.src2.img_pix_sy + gre2d_value.src2.win_off_sy) > Window_size_y)
-            gre2d_value.src2.img_pix_sy = Window_size_y - gre2d_value.src2.win_off_sy;
-    }    
+	if((gre2d_value.src2.op_mode == ROTATE_90) ||(gre2d_value.src2.op_mode == ROTATE_270))
+	{
+		if((gre2d_value.src2.img_pix_sx + gre2d_value.src2.win_off_sy) > Window_size_y)
+			gre2d_value.src2.img_pix_sx = Window_size_y - gre2d_value.src2.win_off_sy;
+
+		if((gre2d_value.src2.img_pix_sy + gre2d_value.src2.win_off_sx) > Window_size_x)
+			gre2d_value.src2.img_pix_sy = Window_size_x - gre2d_value.src2.win_off_sx;
+	}
+	else
+	{
+		if((gre2d_value.src2.img_pix_sx + gre2d_value.src2.win_off_sx) > Window_size_x)
+			gre2d_value.src2.img_pix_sx = Window_size_x - gre2d_value.src2.win_off_sx;
+
+		if((gre2d_value.src2.img_pix_sy + gre2d_value.src2.win_off_sy) > Window_size_y)
+			gre2d_value.src2.img_pix_sy = Window_size_y - gre2d_value.src2.win_off_sy;
+	}
 
 // front end channel address setting.
 
-//////////////// 
+////////////////
 // channel 0
-//////////////// 
+////////////////
 
-	GRE_2D_SetFChAddress(FCH0_CH, 
-				gre2d_value.src0.add0, 
-				gre2d_value.src0.add1, 
+	GRE_2D_SetFChAddress(FCH0_CH,
+				gre2d_value.src0.add0,
+				gre2d_value.src0.add1,
 				gre2d_value.src0.add2);
 
-	GRE_2D_SetFChPosition(FCH0_CH, 
-				gre2d_value.src0.frame_pix_sx, 
-				gre2d_value.src0.frame_pix_sy, 
-				gre2d_value.src0.src_off_sx, 
+	GRE_2D_SetFChPosition(FCH0_CH,
+				gre2d_value.src0.frame_pix_sx,
+				gre2d_value.src0.frame_pix_sy,
+				gre2d_value.src0.src_off_sx,
 				gre2d_value.src0.src_off_sy,
-	                        gre2d_value.src0.img_pix_sx, 
+							gre2d_value.src0.img_pix_sx,
 				gre2d_value.src0.img_pix_sy,
 				gre2d_value.src0.win_off_sx,
 				gre2d_value.src0.win_off_sy);
 
-	GRE_2D_SetFChControl(FCH0_CH, 
-				gG2D_SRC0_MABC, 
+	GRE_2D_SetFChControl(FCH0_CH,
+				gG2D_SRC0_MABC,
 			#if defined(TCC_OVERLAY_MIXER_CLUT_SUPPORT)
 				(gre2d_value.src0.clut_en)?1:0,
 			#else
-				gG2D_SRC0_LUTE, 				
+				gG2D_SRC0_LUTE,
 			#endif /* CLUE_ENABLE */
-				gre2d_value.src0.src_form.uv_order, 
-				gre2d_value.src0.op_mode,  
-				gZF, 
+				gre2d_value.src0.src_form.uv_order,
+				gre2d_value.src0.op_mode,
+				gZF,
 				gre2d_value.src0.src_form);
 
 	GRE_2D_SetFChChromaKey(FCH0_CH, gre2d_value.src0.chroma_RY, gre2d_value.src0.chroma_GU, gre2d_value.src0.chroma_BV);
 
 	GRE_2D_SetFChArithmeticPar(FCH0_CH, gre2d_value.src0.arith_RY, gre2d_value.src0.arith_GU, gre2d_value.src0.arith_BV);
 
-//////////////// 
+////////////////
 // channel 1
-//////////////// 
+////////////////
 
-	GRE_2D_SetFChAddress(FCH1_CH, 
-				gre2d_value.src1.add0, 
-				gre2d_value.src1.add1, 
+	GRE_2D_SetFChAddress(FCH1_CH,
+				gre2d_value.src1.add0,
+				gre2d_value.src1.add1,
 				gre2d_value.src1.add2);
 
-	GRE_2D_SetFChPosition(FCH1_CH, 
-				gre2d_value.src1.frame_pix_sx, 
-				gre2d_value.src1.frame_pix_sy, 
-				gre2d_value.src1.src_off_sx, 
+	GRE_2D_SetFChPosition(FCH1_CH,
+				gre2d_value.src1.frame_pix_sx,
+				gre2d_value.src1.frame_pix_sy,
+				gre2d_value.src1.src_off_sx,
 				gre2d_value.src1.src_off_sy,
-	                        gre2d_value.src1.img_pix_sx, 
-				gre2d_value.src1.img_pix_sy, 
-				gre2d_value.src1.win_off_sx, 
+							gre2d_value.src1.img_pix_sx,
+				gre2d_value.src1.img_pix_sy,
+				gre2d_value.src1.win_off_sx,
 				gre2d_value.src1.win_off_sy);
-	GRE_2D_SetFChControl(FCH1_CH, 
-				gG2D_SRC1_MABC, 
+	GRE_2D_SetFChControl(FCH1_CH,
+				gG2D_SRC1_MABC,
 			#if defined(TCC_OVERLAY_MIXER_CLUT_SUPPORT)
 				(gre2d_value.src1.clut_en)?1:0,
 			#else
-				gG2D_SRC1_LUTE, 				
+				gG2D_SRC1_LUTE,
 			#endif /* CLUE_ENABLE */
-				gre2d_value.src1.src_form.uv_order, 
+				gre2d_value.src1.src_form.uv_order,
 				gre2d_value.src1.op_mode, gZF, gre2d_value.src1.src_form);
 
 
-	GRE_2D_SetFChChromaKey(FCH1_CH, 
-				gre2d_value.src1.chroma_RY, 
-				gre2d_value.src1.chroma_GU, 
+	GRE_2D_SetFChChromaKey(FCH1_CH,
+				gre2d_value.src1.chroma_RY,
+				gre2d_value.src1.chroma_GU,
 				gre2d_value.src1.chroma_BV);
 
-	GRE_2D_SetFChArithmeticPar(FCH1_CH, 
-				gre2d_value.src1.arith_RY, 
-				gre2d_value.src1.arith_GU, 
+	GRE_2D_SetFChArithmeticPar(FCH1_CH,
+				gre2d_value.src1.arith_RY,
+				gre2d_value.src1.arith_GU,
 				gre2d_value.src1.arith_BV);
 
-//////////////// 
+////////////////
 // channel 2
-//////////////// 
+////////////////
 
-	GRE_2D_SetFChAddress(FCH2_CH, 
-				gre2d_value.src2.add0, 
-				gre2d_value.src2.add1, 
+	GRE_2D_SetFChAddress(FCH2_CH,
+				gre2d_value.src2.add0,
+				gre2d_value.src2.add1,
 				gre2d_value.src2.add2);
 
-	GRE_2D_SetFChPosition(FCH2_CH, 
-				gre2d_value.src2.frame_pix_sx, 
-				gre2d_value.src2.frame_pix_sy, 
-				gre2d_value.src2.src_off_sx, 
+	GRE_2D_SetFChPosition(FCH2_CH,
+				gre2d_value.src2.frame_pix_sx,
+				gre2d_value.src2.frame_pix_sy,
+				gre2d_value.src2.src_off_sx,
 				gre2d_value.src2.src_off_sy,
-	                        gre2d_value.src2.img_pix_sx, 
-				gre2d_value.src2.img_pix_sy, 
-				gre2d_value.src2.win_off_sx, 
+							gre2d_value.src2.img_pix_sx,
+				gre2d_value.src2.img_pix_sy,
+				gre2d_value.src2.win_off_sx,
 				gre2d_value.src2.win_off_sy);
 
-	GRE_2D_SetFChControl(FCH2_CH, 
-				gG2D_SRC2_MABC, 
+	GRE_2D_SetFChControl(FCH2_CH,
+				gG2D_SRC2_MABC,
 			#if defined(TCC_OVERLAY_MIXER_CLUT_SUPPORT)
 				(gre2d_value.src2.clut_en)?1:0,
 			#else
-				gG2D_SRC2_LUTE, 				
+				gG2D_SRC2_LUTE,
 			#endif /* CLUE_ENABLE */
-				gre2d_value.src2.src_form.uv_order, 
+				gre2d_value.src2.src_form.uv_order,
 				gre2d_value.src2.op_mode, gZF, gre2d_value.src2.src_form);
 
 
-	GRE_2D_SetFChChromaKey(FCH2_CH, 
-				gre2d_value.src2.chroma_RY, 
-				gre2d_value.src2.chroma_GU, 
+	GRE_2D_SetFChChromaKey(FCH2_CH,
+				gre2d_value.src2.chroma_RY,
+				gre2d_value.src2.chroma_GU,
 				gre2d_value.src2.chroma_BV);
 
-	GRE_2D_SetFChArithmeticPar(FCH2_CH, 
-				gre2d_value.src1.arith_RY, 
-				gre2d_value.src2.arith_GU, 
+	GRE_2D_SetFChArithmeticPar(FCH2_CH,
+				gre2d_value.src1.arith_RY,
+				gre2d_value.src2.arith_GU,
 				gre2d_value.src2.arith_BV);
 
-	//channel control 
+	//channel control
 	src_ctrl.src0_arith = gre2d_value.src0.arith_mode;
 	src_ctrl.src0_chroma_en = gre2d_value.src0.src_chroma_en;
 	src_ctrl.src_sel_0 = FCH0_CH;
@@ -366,37 +366,37 @@ unsigned char gre2d_3ch_dma_main_func(G2D_FUNC_TYPE gre2d_value, G2D_EN grp_enal
 
 
 	// operator 0 pattern setting
-	GRE_2D_SetOperator(OP_0, 
-				gre2d_value.op_pat_0.op_alpha, 
-				gre2d_value.op_pat_0.op_pat_RY, 
-				gre2d_value.op_pat_0.op_pat_GU, 
+	GRE_2D_SetOperator(OP_0,
+				gre2d_value.op_pat_0.op_alpha,
+				gre2d_value.op_pat_0.op_pat_RY,
+				gre2d_value.op_pat_0.op_pat_GU,
 				gre2d_value.op_pat_0.op_pat_BV);
 	// operator 1 pattern setting
-	GRE_2D_SetOperator(OP_1, 
-				gre2d_value.op_pat_1.op_alpha, 
-				gre2d_value.op_pat_1.op_pat_RY, 
-				gre2d_value.op_pat_1.op_pat_GU, 
+	GRE_2D_SetOperator(OP_1,
+				gre2d_value.op_pat_1.op_alpha,
+				gre2d_value.op_pat_1.op_pat_RY,
+				gre2d_value.op_pat_1.op_pat_GU,
 				gre2d_value.op_pat_1.op_pat_BV);
 
 
-	
+
 
 	GRE_2D_SetOperatorCtrl(OP_0, gG2D_ACON1,gG2D_ACON0,
-							gG2D_CCON1,gG2D_CCON0,gG2D_ATUNE, 
+							gG2D_CCON1,gG2D_CCON0,gG2D_ATUNE,
 							gre2d_value.op_ctrl.csel0, gre2d_value.op_ctrl.op_mode0);
 
 	GRE_2D_SetOperatorCtrl(OP_1, gG2D_ACON1,gG2D_ACON0,
-							gG2D_CCON1,gG2D_CCON0,gG2D_ATUNE, 
+							gG2D_CCON1,gG2D_CCON0,gG2D_ATUNE,
 							gre2d_value.op_ctrl.csel1, gre2d_value.op_ctrl.op_mode1);
 
 
-	//back end channel 
+	//back end channel
 	GRE_2D_SetBChAddress(DEST_CH,  gre2d_value.dest.add0, gre2d_value.dest.add1, gre2d_value.dest.add2);
 
-	GRE_2D_SetBChPosition(DEST_CH, 
-				gre2d_value.dest.frame_pix_sx, 
-				gre2d_value.dest.frame_pix_sy, 
-				gre2d_value.dest.dest_off_sx, 
+	GRE_2D_SetBChPosition(DEST_CH,
+				gre2d_value.dest.frame_pix_sx,
+				gre2d_value.dest.frame_pix_sy,
+				gre2d_value.dest.dest_off_sx,
 				gre2d_value.dest.dest_off_sy);
 
 	dest_ctrl.MABC = gG2D_DEST_MABC;
@@ -416,140 +416,140 @@ unsigned char gre2d_3ch_dma_main_func(G2D_FUNC_TYPE gre2d_value, G2D_EN grp_enal
 
 	gre2d_waiting_result(grp_enalbe);
 
-    return ret;
+	return ret;
 }
 
 /*-----------------------------------------------------------------------------
 gre2d_2ch_dma_main_func
  graphic engine 2 channel main function
- 
- ch_0, ch_1, dest, operator 0 »ç¿ë ½Ã Graphic engine °ü·Ã ±â´ÉÀ» »ç¿ëÇÒ¼ö ÀÖÀ½
+
+ ch_0, ch_1, dest, operator 0 ï¿½ï¿½ï¿½ ï¿½ï¿½ Graphic engine ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½Ò¼ï¿½ ï¿½ï¿½ï¿½ï¿½
 
 ------------------------------------------------------------------------------*/
 unsigned char gre2d_2ch_dma_main_func(G2d_2CH_FUNC gre2d_value)
 {
-    unsigned char ret = TRUE;
-    G2D_SRC_CTRL src_ctrl;
+	unsigned char ret = TRUE;
+	G2D_SRC_CTRL src_ctrl;
 	G2D_BCH_CTRL_TYPE dest_ctrl;
 
-    int Window_size_x = 0, Window_size_y = 0; // ³»ºÎ¿¡¼­ »ç¿ëµÇ´Â window size
+	int Window_size_x = 0, Window_size_y = 0; // ï¿½ï¿½ï¿½Î¿ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½Ç´ï¿½ window size
 
-    if((gre2d_value.src0.op_mode == ROTATE_90) ||(gre2d_value.src0.op_mode == ROTATE_270))
-    {
-        Window_size_x = gre2d_value.src0.img_pix_sy;
-        Window_size_y = gre2d_value.src0.img_pix_sx;
-    }
-    else
-    {
-        Window_size_x = gre2d_value.src0.img_pix_sx;
-        Window_size_y = gre2d_value.src0.img_pix_sy;
-    }
-    
-    if((Window_size_y < gre2d_value.src1.win_off_sy) || (Window_size_x < gre2d_value.src1.win_off_sx)) 
-        return FALSE;
+	if((gre2d_value.src0.op_mode == ROTATE_90) ||(gre2d_value.src0.op_mode == ROTATE_270))
+	{
+		Window_size_x = gre2d_value.src0.img_pix_sy;
+		Window_size_y = gre2d_value.src0.img_pix_sx;
+	}
+	else
+	{
+		Window_size_x = gre2d_value.src0.img_pix_sx;
+		Window_size_y = gre2d_value.src0.img_pix_sy;
+	}
+
+	if((Window_size_y < gre2d_value.src1.win_off_sy) || (Window_size_x < gre2d_value.src1.win_off_sx))
+		return FALSE;
 
 
    if((gre2d_value.src1.op_mode == ROTATE_90) ||(gre2d_value.src1.op_mode == ROTATE_270))
-    {
-        if((gre2d_value.src1.img_pix_sx + gre2d_value.src1.win_off_sy) > Window_size_y)
-            gre2d_value.src1.img_pix_sx = Window_size_y - gre2d_value.src1.win_off_sy;
+	{
+		if((gre2d_value.src1.img_pix_sx + gre2d_value.src1.win_off_sy) > Window_size_y)
+			gre2d_value.src1.img_pix_sx = Window_size_y - gre2d_value.src1.win_off_sy;
 
-        if((gre2d_value.src1.img_pix_sy + gre2d_value.src1.win_off_sx) > Window_size_x)
-            gre2d_value.src1.img_pix_sy = Window_size_x - gre2d_value.src1.win_off_sx;
-    }
-    else
-    {
-        if((gre2d_value.src1.img_pix_sx + gre2d_value.src1.win_off_sx) > Window_size_x)
-            gre2d_value.src1.img_pix_sx = Window_size_x - gre2d_value.src1.win_off_sx;
+		if((gre2d_value.src1.img_pix_sy + gre2d_value.src1.win_off_sx) > Window_size_x)
+			gre2d_value.src1.img_pix_sy = Window_size_x - gre2d_value.src1.win_off_sx;
+	}
+	else
+	{
+		if((gre2d_value.src1.img_pix_sx + gre2d_value.src1.win_off_sx) > Window_size_x)
+			gre2d_value.src1.img_pix_sx = Window_size_x - gre2d_value.src1.win_off_sx;
 
-        if((gre2d_value.src1.img_pix_sy + gre2d_value.src1.win_off_sy) > Window_size_y)
-            gre2d_value.src1.img_pix_sy = Window_size_y - gre2d_value.src1.win_off_sy;
-    }
+		if((gre2d_value.src1.img_pix_sy + gre2d_value.src1.win_off_sy) > Window_size_y)
+			gre2d_value.src1.img_pix_sy = Window_size_y - gre2d_value.src1.win_off_sy;
+	}
 
 // front end channel address setting.
 
 // channel 0
-    GRE_2D_SetFChAddress(FCH0_CH, gre2d_value.src0.add0, gre2d_value.src0.add1, gre2d_value.src0.add2);
+	GRE_2D_SetFChAddress(FCH0_CH, gre2d_value.src0.add0, gre2d_value.src0.add1, gre2d_value.src0.add2);
 
-    GRE_2D_SetFChPosition(FCH0_CH, gre2d_value.src0.frame_pix_sx, gre2d_value.src0.frame_pix_sy, gre2d_value.src0.src_off_sx, gre2d_value.src0.src_off_sy,
-                                    gre2d_value.src0.img_pix_sx, gre2d_value.src0.img_pix_sy, gre2d_value.src0.win_off_sx, gre2d_value.src0.win_off_sy);
+	GRE_2D_SetFChPosition(FCH0_CH, gre2d_value.src0.frame_pix_sx, gre2d_value.src0.frame_pix_sy, gre2d_value.src0.src_off_sx, gre2d_value.src0.src_off_sy,
+									gre2d_value.src0.img_pix_sx, gre2d_value.src0.img_pix_sy, gre2d_value.src0.win_off_sx, gre2d_value.src0.win_off_sy);
 
 	GRE_2D_SetFChControl(FCH0_CH, gG2D_SRC0_MABC, gG2D_SRC0_LUTE, gre2d_value.src0.src_form.uv_order, gre2d_value.src0.op_mode,	gZF, gre2d_value.src0.src_form);
 
-    GRE_2D_SetFChChromaKey(FCH0_CH, gre2d_value.src0.chroma_RY, gre2d_value.src0.chroma_GU, gre2d_value.src0.chroma_BV);
+	GRE_2D_SetFChChromaKey(FCH0_CH, gre2d_value.src0.chroma_RY, gre2d_value.src0.chroma_GU, gre2d_value.src0.chroma_BV);
 
-    GRE_2D_SetFChArithmeticPar(FCH0_CH, gre2d_value.src0.arith_RY, gre2d_value.src0.arith_GU, gre2d_value.src0.arith_BV);
+	GRE_2D_SetFChArithmeticPar(FCH0_CH, gre2d_value.src0.arith_RY, gre2d_value.src0.arith_GU, gre2d_value.src0.arith_BV);
 
 //channel 1
-    GRE_2D_SetFChAddress(FCH1_CH, gre2d_value.src1.add0, gre2d_value.src1.add1, gre2d_value.src1.add2);
+	GRE_2D_SetFChAddress(FCH1_CH, gre2d_value.src1.add0, gre2d_value.src1.add1, gre2d_value.src1.add2);
 
-    GRE_2D_SetFChPosition(FCH1_CH, gre2d_value.src1.frame_pix_sx, gre2d_value.src1.frame_pix_sy, gre2d_value.src1.src_off_sx, gre2d_value.src1.src_off_sy,
-                                    gre2d_value.src1.img_pix_sx, gre2d_value.src1.img_pix_sy, gre2d_value.src1.win_off_sx, gre2d_value.src1.win_off_sy);
+	GRE_2D_SetFChPosition(FCH1_CH, gre2d_value.src1.frame_pix_sx, gre2d_value.src1.frame_pix_sy, gre2d_value.src1.src_off_sx, gre2d_value.src1.src_off_sy,
+									gre2d_value.src1.img_pix_sx, gre2d_value.src1.img_pix_sy, gre2d_value.src1.win_off_sx, gre2d_value.src1.win_off_sy);
 	GRE_2D_SetFChControl(FCH1_CH, gG2D_SRC1_MABC, gG2D_SRC1_LUTE, gre2d_value.src1.src_form.uv_order, gre2d_value.src1.op_mode, gZF, gre2d_value.src1.src_form);
 
-    GRE_2D_SetFChChromaKey(FCH1_CH, gre2d_value.src1.chroma_RY, gre2d_value.src1.chroma_GU, gre2d_value.src1.chroma_BV);
+	GRE_2D_SetFChChromaKey(FCH1_CH, gre2d_value.src1.chroma_RY, gre2d_value.src1.chroma_GU, gre2d_value.src1.chroma_BV);
 
-    GRE_2D_SetFChArithmeticPar(FCH1_CH, gre2d_value.src1.arith_RY, gre2d_value.src1.arith_GU, gre2d_value.src1.arith_BV);
+	GRE_2D_SetFChArithmeticPar(FCH1_CH, gre2d_value.src1.arith_RY, gre2d_value.src1.arith_GU, gre2d_value.src1.arith_BV);
 
 #if 0
 //channel 2
-    GRE_2D_SetFChAddress(FCH2_CH, gre2d_value.src2.add0, gre2d_value.src2.add1, gre2d_value.src2.add2);
+	GRE_2D_SetFChAddress(FCH2_CH, gre2d_value.src2.add0, gre2d_value.src2.add1, gre2d_value.src2.add2);
 
-    GRE_2D_SetFChPosition(FCH2_CH, gre2d_value.src2.frame_pix_sx, gre2d_value.src2.frame_pix_sy, gre2d_value.src2.src_off_sx, gre2d_value.src2.src_off_sy,
-                                    gre2d_value.src2.img_pix_sx, gre2d_value.src2.img_pix_sy, gre2d_value.src2.win_off_sx, gre2d_value.src2.win_off_sy);
+	GRE_2D_SetFChPosition(FCH2_CH, gre2d_value.src2.frame_pix_sx, gre2d_value.src2.frame_pix_sy, gre2d_value.src2.src_off_sx, gre2d_value.src2.src_off_sy,
+									gre2d_value.src2.img_pix_sx, gre2d_value.src2.img_pix_sy, gre2d_value.src2.win_off_sx, gre2d_value.src2.win_off_sy);
 
-    GRE_2D_SetFChControl(FCH2_CH, gre2d_value.src2.op_mode, ZF, gre2d_value.src2.src_form);
+	GRE_2D_SetFChControl(FCH2_CH, gre2d_value.src2.op_mode, ZF, gre2d_value.src2.src_form);
 
-    GRE_2D_SetFChChromaKey(FCH2_CH, gre2d_value.src2.chroma_RY, gre2d_value.src2.chroma_GU, gre2d_value.src2.chroma_BV);
+	GRE_2D_SetFChChromaKey(FCH2_CH, gre2d_value.src2.chroma_RY, gre2d_value.src2.chroma_GU, gre2d_value.src2.chroma_BV);
 
-    GRE_2D_SetFChArithmeticPar(FCH2_CH, gre2d_value.src1.arith_RY, gre2d_value.src2.arith_GU, gre2d_value.src2.arith_BV);
+	GRE_2D_SetFChArithmeticPar(FCH2_CH, gre2d_value.src1.arith_RY, gre2d_value.src2.arith_GU, gre2d_value.src2.arith_BV);
 #endif//
 
-//channel control 
-    src_ctrl.src0_arith = gre2d_value.src0.arith_mode;
-    src_ctrl.src0_chroma_en = gre2d_value.src0.src_chroma_en;
-    src_ctrl.src_sel_0 = FCH0_CH;
-    src_ctrl.src0_y2r.src_y2r = gre2d_value.src0.src_y2r;
-    src_ctrl.src0_y2r.src_y2r_type = gre2d_value.src0.src_y2r_type;
-    
-    src_ctrl.src1_arith = gre2d_value.src1.arith_mode;
-    src_ctrl.src1_chroma_en = gre2d_value.src1.src_chroma_en;
-    src_ctrl.src_sel_1 = FCH1_CH;
-    src_ctrl.src1_y2r.src_y2r = gre2d_value.src1.src_y2r;
-    src_ctrl.src1_y2r.src_y2r_type = gre2d_value.src1.src_y2r_type;
+//channel control
+	src_ctrl.src0_arith = gre2d_value.src0.arith_mode;
+	src_ctrl.src0_chroma_en = gre2d_value.src0.src_chroma_en;
+	src_ctrl.src_sel_0 = FCH0_CH;
+	src_ctrl.src0_y2r.src_y2r = gre2d_value.src0.src_y2r;
+	src_ctrl.src0_y2r.src_y2r_type = gre2d_value.src0.src_y2r_type;
 
-    src_ctrl.src2_arith = AR_NOOP;
-    src_ctrl.src2_chroma_en = 0;
-    src_ctrl.src_sel_2 = FCH2_CH;
-    src_ctrl.src2_y2r.src_y2r = 0;
-    src_ctrl.src2_y2r.src_y2r_type = 0;
-    src_ctrl.src_sel_3 = FCH3_CH;
+	src_ctrl.src1_arith = gre2d_value.src1.arith_mode;
+	src_ctrl.src1_chroma_en = gre2d_value.src1.src_chroma_en;
+	src_ctrl.src_sel_1 = FCH1_CH;
+	src_ctrl.src1_y2r.src_y2r = gre2d_value.src1.src_y2r;
+	src_ctrl.src1_y2r.src_y2r_type = gre2d_value.src1.src_y2r_type;
 
-    GRE_2D_SetSrcCtrl(src_ctrl);
+	src_ctrl.src2_arith = AR_NOOP;
+	src_ctrl.src2_chroma_en = 0;
+	src_ctrl.src_sel_2 = FCH2_CH;
+	src_ctrl.src2_y2r.src_y2r = 0;
+	src_ctrl.src2_y2r.src_y2r_type = 0;
+	src_ctrl.src_sel_3 = FCH3_CH;
+
+	GRE_2D_SetSrcCtrl(src_ctrl);
 
 
 // operator 0 pattern setting
-    GRE_2D_SetOperator(OP_0, gre2d_value.op_pat_0.op_alpha, gre2d_value.op_pat_0.op_pat_RY, gre2d_value.op_pat_0.op_pat_GU, gre2d_value.op_pat_0.op_pat_BV);
+	GRE_2D_SetOperator(OP_0, gre2d_value.op_pat_0.op_alpha, gre2d_value.op_pat_0.op_pat_RY, gre2d_value.op_pat_0.op_pat_GU, gre2d_value.op_pat_0.op_pat_BV);
 // operator 1 pattern setting
-    GRE_2D_SetOperator(OP_1, 0, 0, 0, 0);
-	
+	GRE_2D_SetOperator(OP_1, 0, 0, 0, 0);
+
 
 	GRE_2D_SetOperatorCtrl(OP_0, gG2D_ACON1,gG2D_ACON0,
-							gG2D_CCON1,gG2D_CCON0,gG2D_ATUNE, 
+							gG2D_CCON1,gG2D_CCON0,gG2D_ATUNE,
 							gre2d_value.csel0, gre2d_value.op_mode0);
 
 
 	GRE_2D_SetOperatorCtrl(OP_1, gG2D_ACON1,gG2D_ACON0,
-							gG2D_CCON1,gG2D_CCON0,gG2D_ATUNE, 
+							gG2D_CCON1,gG2D_CCON0,gG2D_ATUNE,
 							CHROMA_OP1_NOOP,GE_ROP_SRC_COPY);
 	GRE_2D_SetOperatorCtrl(OP_2, gG2D_ACON1,gG2D_ACON0,
-							gG2D_CCON1, gG2D_CCON0,gG2D_ATUNE, 
-							CHROMA_OP1_NOOP,GE_ROP_SRC_COPY);	
+							gG2D_CCON1, gG2D_CCON0,gG2D_ATUNE,
+							CHROMA_OP1_NOOP,GE_ROP_SRC_COPY);
 
-//back end channel 
-    GRE_2D_SetBChAddress(DEST_CH,  gre2d_value.dest.add0, gre2d_value.dest.add1, gre2d_value.dest.add2);
+//back end channel
+	GRE_2D_SetBChAddress(DEST_CH,  gre2d_value.dest.add0, gre2d_value.dest.add1, gre2d_value.dest.add2);
 
-    GRE_2D_SetBChPosition(DEST_CH, gre2d_value.dest.frame_pix_sx, gre2d_value.dest.frame_pix_sy, gre2d_value.dest.dest_off_sx, gre2d_value.dest.dest_off_sy);
+	GRE_2D_SetBChPosition(DEST_CH, gre2d_value.dest.frame_pix_sx, gre2d_value.dest.frame_pix_sy, gre2d_value.dest.dest_off_sx, gre2d_value.dest.dest_off_sy);
 
 
 	dest_ctrl.MABC = gG2D_DEST_MABC;
@@ -569,110 +569,110 @@ unsigned char gre2d_2ch_dma_main_func(G2d_2CH_FUNC gre2d_value)
 
 	//channel enable : Front End Channel 0 ,1 enable
 	gre2d_waiting_result(GRP_F0F1);
- 
-    return ret;
+
+	return ret;
 }
 
 
 /*-----------------------------------------------------------------------------
 gre2d_1ch_dma_main_func
  graphic engine 1 channel main function
- 
-  ch_0,  dest »ç¿ë ½Ã Graphic engine °ü·Ã ±â´ÉÀ» »ç¿ëÇÒ¼ö ÀÖÀ½
+
+  ch_0,  dest ï¿½ï¿½ï¿½ ï¿½ï¿½ Graphic engine ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½Ò¼ï¿½ ï¿½ï¿½ï¿½ï¿½
 
 -----------------------------------------------------------------------------*/
 unsigned char gre2d_1ch_dma_main_func(G2d_1CH_FUNC gre2d_value)
 {
 
-    unsigned char ret = TRUE;
+	unsigned char ret = TRUE;
 	G2D_SRC_CTRL src_ctrl;
 	G2D_BCH_CTRL_TYPE dest_ctrl;
 
 // front end channel address setting.
 
 // channel 0
-    GRE_2D_SetFChAddress(FCH0_CH, gre2d_value.src0.add0, gre2d_value.src0.add1, gre2d_value.src0.add2);
+	GRE_2D_SetFChAddress(FCH0_CH, gre2d_value.src0.add0, gre2d_value.src0.add1, gre2d_value.src0.add2);
 
-    GRE_2D_SetFChPosition(FCH0_CH, gre2d_value.src0.frame_pix_sx, gre2d_value.src0.frame_pix_sy, gre2d_value.src0.src_off_sx, gre2d_value.src0.src_off_sy,
-                                    gre2d_value.src0.img_pix_sx, gre2d_value.src0.img_pix_sy, gre2d_value.src0.win_off_sx, gre2d_value.src0.win_off_sy);
+	GRE_2D_SetFChPosition(FCH0_CH, gre2d_value.src0.frame_pix_sx, gre2d_value.src0.frame_pix_sy, gre2d_value.src0.src_off_sx, gre2d_value.src0.src_off_sy,
+									gre2d_value.src0.img_pix_sx, gre2d_value.src0.img_pix_sy, gre2d_value.src0.win_off_sx, gre2d_value.src0.win_off_sy);
 
 	GRE_2D_SetFChControl(FCH0_CH, gG2D_SRC0_MABC, gG2D_SRC0_LUTE, gre2d_value.src0.src_form.uv_order, gre2d_value.src0.op_mode,	gZF, gre2d_value.src0.src_form);
 
-    GRE_2D_SetFChChromaKey(FCH0_CH, gre2d_value.src0.chroma_RY, gre2d_value.src0.chroma_GU, gre2d_value.src0.chroma_BV);
+	GRE_2D_SetFChChromaKey(FCH0_CH, gre2d_value.src0.chroma_RY, gre2d_value.src0.chroma_GU, gre2d_value.src0.chroma_BV);
 
-    GRE_2D_SetFChArithmeticPar(FCH0_CH, gre2d_value.src0.arith_RY, gre2d_value.src0.arith_GU, gre2d_value.src0.arith_BV);
+	GRE_2D_SetFChArithmeticPar(FCH0_CH, gre2d_value.src0.arith_RY, gre2d_value.src0.arith_GU, gre2d_value.src0.arith_BV);
 
 #if 0
 //channel 1
-    GRE_2D_SetFChAddress(FCH1_CH, gre2d_value.src1.add0, gre2d_value.src1.add1, gre2d_value.src1.add2);
+	GRE_2D_SetFChAddress(FCH1_CH, gre2d_value.src1.add0, gre2d_value.src1.add1, gre2d_value.src1.add2);
 
-    GRE_2D_SetFChPosition(FCH1_CH, gre2d_value.src1.frame_pix_sx, gre2d_value.src1.frame_pix_sy, gre2d_value.src1.src_off_sx, gre2d_value.src1.src_off_sy,
-                                    gre2d_value.src1.img_pix_sx, gre2d_value.src1.img_pix_sy, gre2d_value.src1.win_off_sx, gre2d_value.src1.win_off_sy);
+	GRE_2D_SetFChPosition(FCH1_CH, gre2d_value.src1.frame_pix_sx, gre2d_value.src1.frame_pix_sy, gre2d_value.src1.src_off_sx, gre2d_value.src1.src_off_sy,
+									gre2d_value.src1.img_pix_sx, gre2d_value.src1.img_pix_sy, gre2d_value.src1.win_off_sx, gre2d_value.src1.win_off_sy);
 
-    GRE_2D_SetFChControl(FCH1_CH, gre2d_value.src1.op_mode, ZF, gre2d_value.src1.src_form);
+	GRE_2D_SetFChControl(FCH1_CH, gre2d_value.src1.op_mode, ZF, gre2d_value.src1.src_form);
 
-    GRE_2D_SetFChChromaKey(FCH1_CH, gre2d_value.src1.chroma_RY, gre2d_value.src1.chroma_GU, gre2d_value.src1.chroma_BV);
+	GRE_2D_SetFChChromaKey(FCH1_CH, gre2d_value.src1.chroma_RY, gre2d_value.src1.chroma_GU, gre2d_value.src1.chroma_BV);
 
-    GRE_2D_SetFChArithmeticPar(FCH1_CH, gre2d_value.src1.arith_RY, gre2d_value.src1.arith_GU, gre2d_value.src1.arith_BV);
+	GRE_2D_SetFChArithmeticPar(FCH1_CH, gre2d_value.src1.arith_RY, gre2d_value.src1.arith_GU, gre2d_value.src1.arith_BV);
 
 
 //channel 2
-    GRE_2D_SetFChAddress(FCH2_CH, gre2d_value.src2.add0, gre2d_value.src2.add1, gre2d_value.src2.add2);
+	GRE_2D_SetFChAddress(FCH2_CH, gre2d_value.src2.add0, gre2d_value.src2.add1, gre2d_value.src2.add2);
 
-    GRE_2D_SetFChPosition(FCH2_CH, gre2d_value.src2.frame_pix_sx, gre2d_value.src2.frame_pix_sy, gre2d_value.src2.src_off_sx, gre2d_value.src2.src_off_sy,
-                                    gre2d_value.src2.img_pix_sx, gre2d_value.src2.img_pix_sy, gre2d_value.src2.win_off_sx, gre2d_value.src2.win_off_sy);
+	GRE_2D_SetFChPosition(FCH2_CH, gre2d_value.src2.frame_pix_sx, gre2d_value.src2.frame_pix_sy, gre2d_value.src2.src_off_sx, gre2d_value.src2.src_off_sy,
+									gre2d_value.src2.img_pix_sx, gre2d_value.src2.img_pix_sy, gre2d_value.src2.win_off_sx, gre2d_value.src2.win_off_sy);
 
-    GRE_2D_SetFChControl(FCH2_CH, gre2d_value.src2.op_mode, ZF, gre2d_value.src2.src_form);
+	GRE_2D_SetFChControl(FCH2_CH, gre2d_value.src2.op_mode, ZF, gre2d_value.src2.src_form);
 
-    GRE_2D_SetFChChromaKey(FCH2_CH, gre2d_value.src2.chroma_RY, gre2d_value.src2.chroma_GU, gre2d_value.src2.chroma_BV);
+	GRE_2D_SetFChChromaKey(FCH2_CH, gre2d_value.src2.chroma_RY, gre2d_value.src2.chroma_GU, gre2d_value.src2.chroma_BV);
 
-    GRE_2D_SetFChArithmeticPar(FCH2_CH, gre2d_value.src1.arith_RY, gre2d_value.src2.arith_GU, gre2d_value.src2.arith_BV);
+	GRE_2D_SetFChArithmeticPar(FCH2_CH, gre2d_value.src1.arith_RY, gre2d_value.src2.arith_GU, gre2d_value.src2.arith_BV);
 #endif//
 
-//channel control 
-    src_ctrl.src0_arith = gre2d_value.src0.arith_mode;
-    src_ctrl.src0_chroma_en = gre2d_value.src0.src_chroma_en;
-    src_ctrl.src_sel_0 = FCH0_CH;
-    src_ctrl.src0_y2r.src_y2r = gre2d_value.src0.src_y2r;
-    src_ctrl.src0_y2r.src_y2r_type = gre2d_value.src0.src_y2r_type;
-  
-    src_ctrl.src1_arith = AR_NOOP;
-    src_ctrl.src1_chroma_en = 0;
-    src_ctrl.src_sel_1 = FCH1_CH;
-    src_ctrl.src1_y2r.src_y2r = 0;
-    src_ctrl.src1_y2r.src_y2r_type = 0;
+//channel control
+	src_ctrl.src0_arith = gre2d_value.src0.arith_mode;
+	src_ctrl.src0_chroma_en = gre2d_value.src0.src_chroma_en;
+	src_ctrl.src_sel_0 = FCH0_CH;
+	src_ctrl.src0_y2r.src_y2r = gre2d_value.src0.src_y2r;
+	src_ctrl.src0_y2r.src_y2r_type = gre2d_value.src0.src_y2r_type;
 
-    src_ctrl.src2_arith = AR_NOOP;
-    src_ctrl.src2_chroma_en = 0;
-    src_ctrl.src_sel_2 = FCH2_CH;
-    src_ctrl.src2_y2r.src_y2r = 0;
-    src_ctrl.src2_y2r.src_y2r_type = 0;
-    src_ctrl.src_sel_3 = FCH3_CH;
-    GRE_2D_SetSrcCtrl(src_ctrl);
+	src_ctrl.src1_arith = AR_NOOP;
+	src_ctrl.src1_chroma_en = 0;
+	src_ctrl.src_sel_1 = FCH1_CH;
+	src_ctrl.src1_y2r.src_y2r = 0;
+	src_ctrl.src1_y2r.src_y2r_type = 0;
+
+	src_ctrl.src2_arith = AR_NOOP;
+	src_ctrl.src2_chroma_en = 0;
+	src_ctrl.src_sel_2 = FCH2_CH;
+	src_ctrl.src2_y2r.src_y2r = 0;
+	src_ctrl.src2_y2r.src_y2r_type = 0;
+	src_ctrl.src_sel_3 = FCH3_CH;
+	GRE_2D_SetSrcCtrl(src_ctrl);
 
 
 // operator 0 pattern setting
-    GRE_2D_SetOperator(OP_0, 0, 0, 0, 0);
+	GRE_2D_SetOperator(OP_0, 0, 0, 0, 0);
 // operator 1 pattern setting
-    GRE_2D_SetOperator(OP_1, 0, 0, 0, 0);
-	
+	GRE_2D_SetOperator(OP_1, 0, 0, 0, 0);
+
 	// operator 1 pattern setting
 	GRE_2D_SetOperator(OP_2, 0, 0, 0, 0);
 	GRE_2D_SetOperatorCtrl(OP_0, gG2D_ACON1,gG2D_ACON0,
-							gG2D_CCON1,gG2D_CCON0,gG2D_ATUNE, 
+							gG2D_CCON1,gG2D_CCON0,gG2D_ATUNE,
 							CHROMA_OP0_NOOP, GE_ROP_SRC_COPY);
 
 	GRE_2D_SetOperatorCtrl(OP_1, gG2D_ACON1,gG2D_ACON0,
-							gG2D_CCON1,gG2D_CCON0,gG2D_ATUNE, 
+							gG2D_CCON1,gG2D_CCON0,gG2D_ATUNE,
 							CHROMA_OP1_NOOP,GE_ROP_SRC_COPY);
 	GRE_2D_SetOperatorCtrl(OP_2, gG2D_ACON1,gG2D_ACON0,
-							gG2D_CCON1,gG2D_CCON0,gG2D_ATUNE, 
+							gG2D_CCON1,gG2D_CCON0,gG2D_ATUNE,
 							CHROMA_OP1_NOOP,GE_ROP_SRC_COPY);
 
-//back end channel 
-    GRE_2D_SetBChAddress(DEST_CH,  gre2d_value.dest.add0, gre2d_value.dest.add1, gre2d_value.dest.add2);
+//back end channel
+	GRE_2D_SetBChAddress(DEST_CH,  gre2d_value.dest.add0, gre2d_value.dest.add1, gre2d_value.dest.add2);
 
-    GRE_2D_SetBChPosition(DEST_CH, gre2d_value.dest.frame_pix_sx, gre2d_value.dest.frame_pix_sy, gre2d_value.dest.dest_off_sx, gre2d_value.dest.dest_off_sy);
+	GRE_2D_SetBChPosition(DEST_CH, gre2d_value.dest.frame_pix_sx, gre2d_value.dest.frame_pix_sy, gre2d_value.dest.dest_off_sx, gre2d_value.dest.dest_off_sy);
 
 	dest_ctrl.MABC = gG2D_DEST_MABC;
 	dest_ctrl.ysel =  gre2d_value.dest.ysel;
@@ -685,29 +685,29 @@ unsigned char gre2d_1ch_dma_main_func(G2d_1CH_FUNC gre2d_value)
 	dest_ctrl.dithering_en = gG2D_Dithering_en;
 	dest_ctrl.data_form = gre2d_value.dest.dest_form;
 	GRE_2D_SetBChControl(&dest_ctrl);
-	
+
 	if(gG2D_Dithering_en)
 		GRE_2D_SetDitheringMatrix(DitheringMatrix);
-	
+
 	//channel enable : Front End Channel 0 enable
 	gre2d_waiting_result(GRP_F0);
 
-    return ret;
+	return ret;
 }
 
 
 /* -------------- GRAPHIC ENGINE APPLICATION  FUNCTION  ------------ */
 /*------------------------------------------------------------------
 gre2d_interrupt_ctrl
- graphic engine interrupt control 
+ graphic engine interrupt control
  wr : 1 : write   0 : read
- int_irq : interrupt request 
+ int_irq : interrupt request
  int_flg : flag bit
 -------------------------------------------------------------------*/
 G2D_INT_TYPE gre2d_interrupt_ctrl(unsigned char wr, G2D_INT_TYPE flag, unsigned char int_irq, unsigned char int_flg)
 {
 	G2D_INT_TYPE ret_v = 0;
-	
+
 	ret_v = GRE_2D_IntCtrl(wr, flag, int_irq, int_flg);
 
 	return ret_v;
@@ -718,90 +718,90 @@ G2D_INT_TYPE gre2d_interrupt_ctrl(unsigned char wr, G2D_INT_TYPE flag, unsigned 
 /*-----------------------------------------------------------------------------
 gre2d_ChImgSize
  graphic engine image SIZE converter
- 
-Graphic engine ÀÇ image SIZE ¸¦ º¯°æ ÇØ ÁØ´Ù.
+
+Graphic engine ï¿½ï¿½ image SIZE ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ ï¿½Ø´ï¿½.
 -----------------------------------------------------------------------------*/
 unsigned char gre2d_ChImgSize(unsigned int src0,unsigned int src1, unsigned int src2,
 						unsigned int src_w, unsigned int src_h, unsigned int str_x, unsigned int str_y, G2D_FMT_CTRL src_fmt,
-						unsigned int tgt0, unsigned int tgt1, unsigned int tgt2, 
+						unsigned int tgt0, unsigned int tgt1, unsigned int tgt2,
 						unsigned int tgt_w, unsigned int tgt_h, G2D_FMT_CTRL dest_fmt)
 {
-    unsigned char ret = FALSE;
-    G2d_1CH_FUNC gre2d_value;
-    IMGFMT_CONV_TYPE change_type = NONE;
+	unsigned char ret = FALSE;
+	G2d_1CH_FUNC gre2d_value;
+	IMGFMT_CONV_TYPE change_type = NONE;
 
-#if ALPHA_RGB_DIABLE        
-// alpha - RGB ´Â °á°ú °ªÀ¸·Î ¼³Á¤ ÇÒ¼ö ¾ø´Ù.
-	if((fmt == GE_RGB444_A) || (fmt == GE_RGB454_A) || (fmt == GE_RGB555_A) || 
+#if ALPHA_RGB_DIABLE
+// alpha - RGB ï¿½ï¿½ ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½Ò¼ï¿½ ï¿½ï¿½ï¿½ï¿½.
+	if((fmt == GE_RGB444_A) || (fmt == GE_RGB454_A) || (fmt == GE_RGB555_A) ||
 		(fmt == GE_RGB666_A) || (fmt == GE_RGB888_A))
 	{
-        return FALSE;
+		return FALSE;
 	}
 #endif//
-        
+
 	memset((char*)&gre2d_value, 0x00, sizeof(G2d_1CH_FUNC));
 
-    if((src_fmt.format >= GE_RGB444) && (dest_fmt.format < GE_RGB444)) 
-        change_type = R2Y_TYPE;
-    else if((src_fmt.format < GE_RGB444) && (dest_fmt.format >= GE_RGB444)) 
-        change_type = Y2R_TYPE;
+	if((src_fmt.format >= GE_RGB444) && (dest_fmt.format < GE_RGB444))
+		change_type = R2Y_TYPE;
+	else if((src_fmt.format < GE_RGB444) && (dest_fmt.format >= GE_RGB444))
+		change_type = Y2R_TYPE;
 
 // front channel setting
-    gre2d_value.src0.add0 = src0;
-    gre2d_value.src0.add1 = src1;
-    gre2d_value.src0.add2 = src2;
-    gre2d_value.src0.frame_pix_sx = src_w;
-    gre2d_value.src0.frame_pix_sy = src_h;        
-    gre2d_value.src0.src_off_sx = str_x;
-    gre2d_value.src0.src_off_sy = str_y;        
-    gre2d_value.src0.img_pix_sx = tgt_w;
-    gre2d_value.src0.img_pix_sy = tgt_h;  
-    gre2d_value.src0.win_off_sx = 0;
-    gre2d_value.src0.win_off_sy = 0;  
+	gre2d_value.src0.add0 = src0;
+	gre2d_value.src0.add1 = src1;
+	gre2d_value.src0.add2 = src2;
+	gre2d_value.src0.frame_pix_sx = src_w;
+	gre2d_value.src0.frame_pix_sy = src_h;
+	gre2d_value.src0.src_off_sx = str_x;
+	gre2d_value.src0.src_off_sy = str_y;
+	gre2d_value.src0.img_pix_sx = tgt_w;
+	gre2d_value.src0.img_pix_sy = tgt_h;
+	gre2d_value.src0.win_off_sx = 0;
+	gre2d_value.src0.win_off_sy = 0;
 
-    gre2d_value.src0.op_mode = NOOP;
-    gre2d_value.src0.src_form = src_fmt;
+	gre2d_value.src0.op_mode = NOOP;
+	gre2d_value.src0.src_form = src_fmt;
 
-    gre2d_value.src0.chroma_RY = 0;
-    gre2d_value.src0.chroma_GU = 0;        
-    gre2d_value.src0.chroma_BV = 0;
+	gre2d_value.src0.chroma_RY = 0;
+	gre2d_value.src0.chroma_GU = 0;
+	gre2d_value.src0.chroma_BV = 0;
 
-    gre2d_value.src0.src_chroma_en = FALSE;
-    gre2d_value.src0.arith_mode = AR_NOOP;
-    gre2d_value.src0.arith_RY = 0;
-    gre2d_value.src0.arith_GU = 0;        
-    gre2d_value.src0.arith_BV = 0;
+	gre2d_value.src0.src_chroma_en = FALSE;
+	gre2d_value.src0.arith_mode = AR_NOOP;
+	gre2d_value.src0.arith_RY = 0;
+	gre2d_value.src0.arith_GU = 0;
+	gre2d_value.src0.arith_BV = 0;
 
-// YUV to RGB ´Â front image format coverter 
-    if(change_type == Y2R_TYPE){
-        gre2d_value.src0.src_y2r = TRUE;        
-        gre2d_value.src0.src_y2r_type = gre2d_Y2R_type;
-    }
+// YUV to RGB ï¿½ï¿½ front image format coverter
+	if(change_type == Y2R_TYPE){
+		gre2d_value.src0.src_y2r = TRUE;
+		gre2d_value.src0.src_y2r_type = gre2d_Y2R_type;
+	}
 
 
 // back end channel setting
-    gre2d_value.dest.add0 = tgt0;
-    gre2d_value.dest.add1 = tgt1;
-    gre2d_value.dest.add2 = tgt2;
-    gre2d_value.dest.frame_pix_sx = tgt_w;
-    gre2d_value.dest.frame_pix_sy = tgt_h;
-    gre2d_value.dest.dest_off_sx = 0;
-    gre2d_value.dest.dest_off_sy = 0;
-    gre2d_value.dest.ysel = 0;
-    gre2d_value.dest.xsel = 0;
+	gre2d_value.dest.add0 = tgt0;
+	gre2d_value.dest.add1 = tgt1;
+	gre2d_value.dest.add2 = tgt2;
+	gre2d_value.dest.frame_pix_sx = tgt_w;
+	gre2d_value.dest.frame_pix_sy = tgt_h;
+	gre2d_value.dest.dest_off_sx = 0;
+	gre2d_value.dest.dest_off_sy = 0;
+	gre2d_value.dest.ysel = 0;
+	gre2d_value.dest.xsel = 0;
 
 
-// RGB to YUV ´Â back end image format coverter 
-    if(change_type == R2Y_TYPE){
-        gre2d_value.dest.converter_en = TRUE;
-        gre2d_value.dest.converter_mode = gre2d_R2Y_type;
-    }
+// RGB to YUV ï¿½ï¿½ back end image format coverter
+	if(change_type == R2Y_TYPE){
+		gre2d_value.dest.converter_en = TRUE;
+		gre2d_value.dest.converter_mode = gre2d_R2Y_type;
+	}
 
-    
-    gre2d_value.dest.op_mode = NOOP;
-    gre2d_value.dest.dest_form = dest_fmt;
-   
-    ret = gre2d_1ch_dma_main_func(gre2d_value);
+
+	gre2d_value.dest.op_mode = NOOP;
+	gre2d_value.dest.dest_form = dest_fmt;
+
+	ret = gre2d_1ch_dma_main_func(gre2d_value);
 
 	return ret;
 }
@@ -809,88 +809,88 @@ unsigned char gre2d_ChImgSize(unsigned int src0,unsigned int src1, unsigned int 
 /*-----------------------------------------------------------------------------
 gre2d_ChImgFmt
  graphic engine image format converter
- 
-Graphic engine ÀÇ image format¸¦ º¯°æ ÇØ ÁØ´Ù.
+
+Graphic engine ï¿½ï¿½ image formatï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ ï¿½Ø´ï¿½.
 -----------------------------------------------------------------------------*/
 unsigned char gre2d_ChImgFmt(unsigned int src0,unsigned int src1, unsigned int src2, G2D_FMT_CTRL srcfm,
-		        unsigned int tgt0, unsigned int tgt1, unsigned int tgt2, G2D_FMT_CTRL tgtfm,
+				unsigned int tgt0, unsigned int tgt1, unsigned int tgt2, G2D_FMT_CTRL tgtfm,
 				unsigned int imgx, unsigned int imgy)
 
 {
-    unsigned char ret = FALSE;
-    G2d_1CH_FUNC gre2d_value;
-    IMGFMT_CONV_TYPE change_type = NONE;
+	unsigned char ret = FALSE;
+	G2d_1CH_FUNC gre2d_value;
+	IMGFMT_CONV_TYPE change_type = NONE;
 
-#if ALPHA_RGB_DIABLE        
-// alpha - RGB ´Â °á°ú °ªÀ¸·Î ¼³Á¤ ÇÒ¼ö ¾ø´Ù.
-	if((srcfm.format == tgtfm) || (tgtfm.format == GE_RGB444_A) || (tgtfm.format == GE_RGB454_A) || (tgtfm.format == GE_RGB555_A) || 
+#if ALPHA_RGB_DIABLE
+// alpha - RGB ï¿½ï¿½ ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½Ò¼ï¿½ ï¿½ï¿½ï¿½ï¿½.
+	if((srcfm.format == tgtfm) || (tgtfm.format == GE_RGB444_A) || (tgtfm.format == GE_RGB454_A) || (tgtfm.format == GE_RGB555_A) ||
 	(tgtfm.format == GE_RGB666_A) || (tgtfm.format == GE_RGB888_A))
 	{
-        return FALSE;
+		return FALSE;
 	}
 #endif//
 
-    if((srcfm.format >= GE_RGB444) && (tgtfm.format < GE_RGB444)) 
-        change_type = R2Y_TYPE;
-    else if((srcfm.format < GE_RGB444) && (tgtfm.format >= GE_RGB444)) 
-        change_type = Y2R_TYPE;
+	if((srcfm.format >= GE_RGB444) && (tgtfm.format < GE_RGB444))
+		change_type = R2Y_TYPE;
+	else if((srcfm.format < GE_RGB444) && (tgtfm.format >= GE_RGB444))
+		change_type = Y2R_TYPE;
 
 	memset((char *)&gre2d_value,(int) 0x00, sizeof(G2d_1CH_FUNC));
 
 // front channel setting
-    gre2d_value.src0.add0 = src0;
-    gre2d_value.src0.add1 = src1;
-    gre2d_value.src0.add2 = src2;
-    gre2d_value.src0.frame_pix_sx = imgx;
-    gre2d_value.src0.frame_pix_sy = imgy;        
-    gre2d_value.src0.src_off_sx = 0;
-    gre2d_value.src0.src_off_sy = 0;        
-    gre2d_value.src0.img_pix_sx = imgx;
-    gre2d_value.src0.img_pix_sy = imgy;  
-    gre2d_value.src0.win_off_sx = 0;
-    gre2d_value.src0.win_off_sy = 0;  
+	gre2d_value.src0.add0 = src0;
+	gre2d_value.src0.add1 = src1;
+	gre2d_value.src0.add2 = src2;
+	gre2d_value.src0.frame_pix_sx = imgx;
+	gre2d_value.src0.frame_pix_sy = imgy;
+	gre2d_value.src0.src_off_sx = 0;
+	gre2d_value.src0.src_off_sy = 0;
+	gre2d_value.src0.img_pix_sx = imgx;
+	gre2d_value.src0.img_pix_sy = imgy;
+	gre2d_value.src0.win_off_sx = 0;
+	gre2d_value.src0.win_off_sy = 0;
 
-    gre2d_value.src0.op_mode = NOOP;
-    gre2d_value.src0.src_form = srcfm;
+	gre2d_value.src0.op_mode = NOOP;
+	gre2d_value.src0.src_form = srcfm;
 
-    gre2d_value.src0.chroma_RY = 0;
-    gre2d_value.src0.chroma_GU = 0;        
-    gre2d_value.src0.chroma_BV = 0;
+	gre2d_value.src0.chroma_RY = 0;
+	gre2d_value.src0.chroma_GU = 0;
+	gre2d_value.src0.chroma_BV = 0;
 
-    gre2d_value.src0.src_chroma_en = FALSE;
-    gre2d_value.src0.arith_mode = AR_NOOP;
-    gre2d_value.src0.arith_RY = 0;
-    gre2d_value.src0.arith_GU = 0;        
-    gre2d_value.src0.arith_BV = 0;
+	gre2d_value.src0.src_chroma_en = FALSE;
+	gre2d_value.src0.arith_mode = AR_NOOP;
+	gre2d_value.src0.arith_RY = 0;
+	gre2d_value.src0.arith_GU = 0;
+	gre2d_value.src0.arith_BV = 0;
 
 
-// YUV to RGB ´Â front image format coverter 
-    if(change_type == Y2R_TYPE){
-        gre2d_value.src0.src_y2r = TRUE;        
-        gre2d_value.src0.src_y2r_type = gre2d_Y2R_type;
-    }
+// YUV to RGB ï¿½ï¿½ front image format coverter
+	if(change_type == Y2R_TYPE){
+		gre2d_value.src0.src_y2r = TRUE;
+		gre2d_value.src0.src_y2r_type = gre2d_Y2R_type;
+	}
 
 // back end channel setting
-    gre2d_value.dest.add0 = tgt0;
-    gre2d_value.dest.add1 = tgt1;
-    gre2d_value.dest.add2 = tgt2;
-    gre2d_value.dest.frame_pix_sx = imgx;
-    gre2d_value.dest.frame_pix_sy = imgy;
-    gre2d_value.dest.dest_off_sx = 0;
-    gre2d_value.dest.dest_off_sy = 0;
-    gre2d_value.dest.ysel = 0;
-    gre2d_value.dest.xsel = 0;
+	gre2d_value.dest.add0 = tgt0;
+	gre2d_value.dest.add1 = tgt1;
+	gre2d_value.dest.add2 = tgt2;
+	gre2d_value.dest.frame_pix_sx = imgx;
+	gre2d_value.dest.frame_pix_sy = imgy;
+	gre2d_value.dest.dest_off_sx = 0;
+	gre2d_value.dest.dest_off_sy = 0;
+	gre2d_value.dest.ysel = 0;
+	gre2d_value.dest.xsel = 0;
 
-// RGB to YUV ´Â back end image format coverter 
-    if(change_type == R2Y_TYPE){
-        gre2d_value.dest.converter_en = TRUE;
-        gre2d_value.dest.converter_mode = gre2d_R2Y_type;
-    }
+// RGB to YUV ï¿½ï¿½ back end image format coverter
+	if(change_type == R2Y_TYPE){
+		gre2d_value.dest.converter_en = TRUE;
+		gre2d_value.dest.converter_mode = gre2d_R2Y_type;
+	}
 
-    gre2d_value.dest.op_mode = NOOP;
-    gre2d_value.dest.dest_form = tgtfm;
-   
-    ret = gre2d_1ch_dma_main_func(gre2d_value);
+	gre2d_value.dest.op_mode = NOOP;
+	gre2d_value.dest.dest_form = tgtfm;
+
+	ret = gre2d_1ch_dma_main_func(gre2d_value);
 
 	return ret;
 }
@@ -898,32 +898,32 @@ unsigned char gre2d_ChImgFmt(unsigned int src0,unsigned int src1, unsigned int s
 /*-----------------------------------------------------------------------------
 gre2d_ImgRotate
  graphic engine image rotate function
- 
-Graphic engine ÀÇ image rotate ¹× Flip ±â´ÉÀ» ¼öÇà ÇÑ´Ù.
+
+Graphic engine ï¿½ï¿½ image rotate ï¿½ï¿½ Flip ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½Ñ´ï¿½.
 -----------------------------------------------------------------------------*/
 unsigned char gre2d_ImgRotate(unsigned int src0, unsigned int src1, unsigned int src2,
-                        G2D_FMT_CTRL srcfm, unsigned int  src_imgx, unsigned int  src_imgy,
-				        unsigned int tgt0, unsigned int tgt1, unsigned int tgt2,
-				        G2D_FMT_CTRL tgtfm, unsigned int  des_imgx, unsigned int  des_imgy, G2D_OP_MODE ch_mode)
+						G2D_FMT_CTRL srcfm, unsigned int  src_imgx, unsigned int  src_imgy,
+						unsigned int tgt0, unsigned int tgt1, unsigned int tgt2,
+						G2D_FMT_CTRL tgtfm, unsigned int  des_imgx, unsigned int  des_imgy, G2D_OP_MODE ch_mode)
 {
-    unsigned char ret = FALSE;
-    G2d_1CH_FUNC gre2d_value;
-    IMGFMT_CONV_TYPE change_type = NONE;
+	unsigned char ret = FALSE;
+	G2d_1CH_FUNC gre2d_value;
+	IMGFMT_CONV_TYPE change_type = NONE;
 
-#if ALPHA_RGB_DIABLE        
-// alpha - RGB ´Â °á°ú °ªÀ¸·Î ¼³Á¤ ÇÒ¼ö ¾ø´Ù.
-	if((tgtfm == GE_RGB444_A) || (tgtfm == GE_RGB454_A) || (tgtfm == GE_RGB555_A) || 
+#if ALPHA_RGB_DIABLE
+// alpha - RGB ï¿½ï¿½ ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½Ò¼ï¿½ ï¿½ï¿½ï¿½ï¿½.
+	if((tgtfm == GE_RGB444_A) || (tgtfm == GE_RGB454_A) || (tgtfm == GE_RGB555_A) ||
 	(tgtfm == GE_RGB666_A) || (tgtfm == GE_RGB888_A))
 	{
-        return FALSE;
+		return FALSE;
 	}
 #endif//
 
-	if((srcfm.format >= GE_RGB444) && (tgtfm.format < GE_RGB444)) 
-	    change_type = R2Y_TYPE;
-	else if((srcfm.format < GE_RGB444) && (tgtfm.format >= GE_RGB444)) 
-	    change_type = Y2R_TYPE;
-        
+	if((srcfm.format >= GE_RGB444) && (tgtfm.format < GE_RGB444))
+		change_type = R2Y_TYPE;
+	else if((srcfm.format < GE_RGB444) && (tgtfm.format >= GE_RGB444))
+		change_type = Y2R_TYPE;
+
 	memset(&gre2d_value, 0x00, sizeof(G2d_1CH_FUNC));
 
 	// front channel setting
@@ -931,35 +931,35 @@ unsigned char gre2d_ImgRotate(unsigned int src0, unsigned int src1, unsigned int
 	gre2d_value.src0.add1 = src1;
 	gre2d_value.src0.add2 = src2;
 	gre2d_value.src0.frame_pix_sx = src_imgx;
-	gre2d_value.src0.frame_pix_sy = src_imgy;        
+	gre2d_value.src0.frame_pix_sy = src_imgy;
 	gre2d_value.src0.src_off_sx = 0;
-	gre2d_value.src0.src_off_sy = 0;        
+	gre2d_value.src0.src_off_sy = 0;
 	gre2d_value.src0.img_pix_sx = src_imgx;
-	gre2d_value.src0.img_pix_sy = src_imgy;  
+	gre2d_value.src0.img_pix_sy = src_imgy;
 	gre2d_value.src0.win_off_sx = 0;
-	gre2d_value.src0.win_off_sy = 0;  
+	gre2d_value.src0.win_off_sy = 0;
 
-	// rotate option Àû¿ë
+	// rotate option ï¿½ï¿½ï¿½ï¿½
 	gre2d_value.src0.op_mode = ch_mode;
 
 	gre2d_value.src0.src_form = srcfm;
 
 	gre2d_value.src0.chroma_RY = 0;
-	gre2d_value.src0.chroma_GU = 0;        
+	gre2d_value.src0.chroma_GU = 0;
 	gre2d_value.src0.chroma_BV = 0;
 
 	gre2d_value.src0.src_chroma_en = FALSE;
 	gre2d_value.src0.arith_mode = AR_NOOP;
 	gre2d_value.src0.arith_RY = 0;
-	gre2d_value.src0.arith_GU = 0;        
+	gre2d_value.src0.arith_GU = 0;
 	gre2d_value.src0.arith_BV = 0;
 
 
-	// YUV to RGB ´Â front image format coverter 
+	// YUV to RGB ï¿½ï¿½ front image format coverter
 	if(change_type == Y2R_TYPE)
 	{
-        gre2d_value.src0.src_y2r = TRUE;        
-        gre2d_value.src0.src_y2r_type = gre2d_Y2R_type;
+		gre2d_value.src0.src_y2r = TRUE;
+		gre2d_value.src0.src_y2r_type = gre2d_Y2R_type;
 	}
 
 	// back end channel setting
@@ -974,115 +974,115 @@ unsigned char gre2d_ImgRotate(unsigned int src0, unsigned int src1, unsigned int
 	gre2d_value.dest.xsel = 0;
 
 
-	// RGB to YUV ´Â back end image format coverter 
+	// RGB to YUV ï¿½ï¿½ back end image format coverter
 	if(change_type == R2Y_TYPE)
 	{
-        gre2d_value.dest.converter_en = TRUE;
-        gre2d_value.dest.converter_mode = gre2d_R2Y_type;
+		gre2d_value.dest.converter_en = TRUE;
+		gre2d_value.dest.converter_mode = gre2d_R2Y_type;
 	}
 
-    gre2d_value.dest.op_mode = NOOP;
-    gre2d_value.dest.dest_form = tgtfm;
-   
-    ret = gre2d_1ch_dma_main_func(gre2d_value);
+	gre2d_value.dest.op_mode = NOOP;
+	gre2d_value.dest.dest_form = tgtfm;
+
+	ret = gre2d_1ch_dma_main_func(gre2d_value);
 
 	return ret;
 }
 
 unsigned char gre2d_ImgRotate_Ex(unsigned int src0, unsigned int src1, unsigned int src2,
-                        G2D_FMT_CTRL srcfm, unsigned int  src_imgx, unsigned int  src_imgy,
-                        unsigned int img_off_x, unsigned int img_off_y, unsigned int Rimg_x, unsigned int Rimg_y,
-		        unsigned int tgt0, unsigned int tgt1, unsigned int tgt2,
-		        G2D_FMT_CTRL tgtfm, unsigned int  des_imgx, unsigned int  des_imgy, 
-		        unsigned int dest_off_x, unsigned int dest_off_y, G2D_OP_MODE ch_mode, G2D_OP_MODE parallel_ch_mode)
+						G2D_FMT_CTRL srcfm, unsigned int  src_imgx, unsigned int  src_imgy,
+						unsigned int img_off_x, unsigned int img_off_y, unsigned int Rimg_x, unsigned int Rimg_y,
+				unsigned int tgt0, unsigned int tgt1, unsigned int tgt2,
+				G2D_FMT_CTRL tgtfm, unsigned int  des_imgx, unsigned int  des_imgy,
+				unsigned int dest_off_x, unsigned int dest_off_y, G2D_OP_MODE ch_mode, G2D_OP_MODE parallel_ch_mode)
 {
 	unsigned char ret = FALSE;
 	G2d_1CH_FUNC gre2d_value;
 	IMGFMT_CONV_TYPE change_type = NONE;
 
-#if ALPHA_RGB_DIABLE        
-// alpha - RGB ´Â °á°ú °ªÀ¸·Î ¼³Á¤ ÇÒ¼ö ¾ø´Ù.
-	if((tgtfm == GE_RGB444_A) || (tgtfm == GE_RGB454_A) || (tgtfm == GE_RGB555_A) || 
+#if ALPHA_RGB_DIABLE
+// alpha - RGB ï¿½ï¿½ ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½Ò¼ï¿½ ï¿½ï¿½ï¿½ï¿½.
+	if((tgtfm == GE_RGB444_A) || (tgtfm == GE_RGB454_A) || (tgtfm == GE_RGB555_A) ||
 	(tgtfm == GE_RGB666_A) || (tgtfm == GE_RGB888_A))
 	{
-        return FALSE;
+		return FALSE;
 	}
 #endif//
 
-	if((srcfm.format >= GE_RGB444) && (tgtfm.format < GE_RGB444)) 
+	if((srcfm.format >= GE_RGB444) && (tgtfm.format < GE_RGB444))
 		change_type = R2Y_TYPE;
-	else if((srcfm.format < GE_RGB444) && (tgtfm.format >= GE_RGB444)) 
+	else if((srcfm.format < GE_RGB444) && (tgtfm.format >= GE_RGB444))
 		change_type = Y2R_TYPE;
-        
+
 	memset(&gre2d_value, 0x00, sizeof(G2d_1CH_FUNC));
 
 // front channel setting
-    gre2d_value.src0.add0 = src0;
-    gre2d_value.src0.add1 = src1;
-    gre2d_value.src0.add2 = src2;
-    gre2d_value.src0.frame_pix_sx = src_imgx;
-    gre2d_value.src0.frame_pix_sy = src_imgy;        
-    gre2d_value.src0.src_off_sx = img_off_x;
-    gre2d_value.src0.src_off_sy = img_off_y;        
-    gre2d_value.src0.img_pix_sx = Rimg_x;
-    gre2d_value.src0.img_pix_sy = Rimg_y;  
-    gre2d_value.src0.win_off_sx = 0;
-    gre2d_value.src0.win_off_sy = 0;  
+	gre2d_value.src0.add0 = src0;
+	gre2d_value.src0.add1 = src1;
+	gre2d_value.src0.add2 = src2;
+	gre2d_value.src0.frame_pix_sx = src_imgx;
+	gre2d_value.src0.frame_pix_sy = src_imgy;
+	gre2d_value.src0.src_off_sx = img_off_x;
+	gre2d_value.src0.src_off_sy = img_off_y;
+	gre2d_value.src0.img_pix_sx = Rimg_x;
+	gre2d_value.src0.img_pix_sy = Rimg_y;
+	gre2d_value.src0.win_off_sx = 0;
+	gre2d_value.src0.win_off_sy = 0;
 
-// rotate option Àû¿ë
-    gre2d_value.src0.op_mode = ch_mode;
-    
-    gre2d_value.src0.src_form = srcfm;
+// rotate option ï¿½ï¿½ï¿½ï¿½
+	gre2d_value.src0.op_mode = ch_mode;
 
-    gre2d_value.src0.chroma_RY = 0;
-    gre2d_value.src0.chroma_GU = 0;        
-    gre2d_value.src0.chroma_BV = 0;
+	gre2d_value.src0.src_form = srcfm;
 
-    gre2d_value.src0.src_chroma_en = FALSE;
-    gre2d_value.src0.arith_mode = AR_NOOP;
-    gre2d_value.src0.arith_RY = 0;
-    gre2d_value.src0.arith_GU = 0;        
-    gre2d_value.src0.arith_BV = 0;
+	gre2d_value.src0.chroma_RY = 0;
+	gre2d_value.src0.chroma_GU = 0;
+	gre2d_value.src0.chroma_BV = 0;
+
+	gre2d_value.src0.src_chroma_en = FALSE;
+	gre2d_value.src0.arith_mode = AR_NOOP;
+	gre2d_value.src0.arith_RY = 0;
+	gre2d_value.src0.arith_GU = 0;
+	gre2d_value.src0.arith_BV = 0;
 
 
-// YUV to RGB ´Â front image format coverter 
-    if(change_type == Y2R_TYPE)
+// YUV to RGB ï¿½ï¿½ front image format coverter
+	if(change_type == Y2R_TYPE)
 	{
-        gre2d_value.src0.src_y2r = TRUE;        
-        gre2d_value.src0.src_y2r_type = gre2d_Y2R_type;
-    }
-        
+		gre2d_value.src0.src_y2r = TRUE;
+		gre2d_value.src0.src_y2r_type = gre2d_Y2R_type;
+	}
+
 // back end channel setting
-    gre2d_value.dest.add0 = tgt0;
-    gre2d_value.dest.add1 = tgt1;
-    gre2d_value.dest.add2 = tgt2;
-    gre2d_value.dest.frame_pix_sx = des_imgx;
-    gre2d_value.dest.frame_pix_sy = des_imgy;
-    gre2d_value.dest.dest_off_sx = dest_off_x;
-    gre2d_value.dest.dest_off_sy = dest_off_y;
-    gre2d_value.dest.ysel = 0;
-    gre2d_value.dest.xsel = 0;
+	gre2d_value.dest.add0 = tgt0;
+	gre2d_value.dest.add1 = tgt1;
+	gre2d_value.dest.add2 = tgt2;
+	gre2d_value.dest.frame_pix_sx = des_imgx;
+	gre2d_value.dest.frame_pix_sy = des_imgy;
+	gre2d_value.dest.dest_off_sx = dest_off_x;
+	gre2d_value.dest.dest_off_sy = dest_off_y;
+	gre2d_value.dest.ysel = 0;
+	gre2d_value.dest.xsel = 0;
 
 
-// RGB to YUV ´Â back end image format coverter 
-    if(change_type == R2Y_TYPE)
+// RGB to YUV ï¿½ï¿½ back end image format coverter
+	if(change_type == R2Y_TYPE)
 	{
-         gre2d_value.dest.converter_en = TRUE;
-         gre2d_value.dest.converter_mode = gre2d_R2Y_type;
-    }
+		 gre2d_value.dest.converter_en = TRUE;
+		 gre2d_value.dest.converter_mode = gre2d_R2Y_type;
+	}
 
 	// Exception Handling of parallel_ch_mode
 	if(parallel_ch_mode < NOOP || parallel_ch_mode > ROTATE_270)
 		parallel_ch_mode = NOOP;
-    
+
    	if(parallel_ch_mode)
 		gre2d_value.dest.op_mode = parallel_ch_mode;
 	else
 		gre2d_value.dest.op_mode = NOOP;
 
 	gre2d_value.dest.dest_form = tgtfm;
-   
-    ret = gre2d_1ch_dma_main_func(gre2d_value);
+
+	ret = gre2d_1ch_dma_main_func(gre2d_value);
 
 	return ret;
 }
@@ -1090,95 +1090,95 @@ unsigned char gre2d_ImgRotate_Ex(unsigned int src0, unsigned int src1, unsigned 
 /*------------------------------------------------------------------------------
 gre2d_ImgArith
  graphic engine image arithmetic operation
- 
-Graphic engine ÀÇ image arithmetic ¿¬»ê ÇØ ÁØ´Ù.
-RGB888 type ·Î ¿¬»êµÊ
+
+Graphic engine ï¿½ï¿½ image arithmetic ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ ï¿½Ø´ï¿½.
+RGB888 type ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½
 ------------------------------------------------------------------------------*/
-unsigned char gre2d_ImgArithmetic(unsigned int src0, unsigned int src1, unsigned int src2, 
+unsigned char gre2d_ImgArithmetic(unsigned int src0, unsigned int src1, unsigned int src2,
 								G2D_FMT_CTRL srcfm, unsigned int  src_w, unsigned int  src_h ,
-						        unsigned int tgt0, unsigned int tgt1, unsigned int tgt2, G2D_FMT_CTRL tgtfm,
-								unsigned int  dest_w, unsigned int  dest_h , unsigned int dest_off_x, unsigned int  dest_off_y, 
+								unsigned int tgt0, unsigned int tgt1, unsigned int tgt2, G2D_FMT_CTRL tgtfm,
+								unsigned int  dest_w, unsigned int  dest_h , unsigned int dest_off_x, unsigned int  dest_off_y,
 								G2D_ARITH_TYPE arith, unsigned char R, unsigned char G, unsigned char B)
 {
-    unsigned char ret = FALSE;
-    G2d_1CH_FUNC gre2d_value;
-    IMGFMT_CONV_TYPE src0_fmt_ch = NONE; //format change option
-    IMGFMT_CONV_TYPE dst_fmt_ch = NONE; //format change option
+	unsigned char ret = FALSE;
+	G2d_1CH_FUNC gre2d_value;
+	IMGFMT_CONV_TYPE src0_fmt_ch = NONE; //format change option
+	IMGFMT_CONV_TYPE dst_fmt_ch = NONE; //format change option
 
-#if ALPHA_RGB_DIABLE        
-// alpha - RGB ´Â °á°ú °ªÀ¸·Î ¼³Á¤ ÇÒ¼ö ¾ø´Ù.
-	if((tgtfm == GE_RGB444_A) || (tgtfm == GE_RGB454_A) || (tgtfm == GE_RGB555_A) || 
+#if ALPHA_RGB_DIABLE
+// alpha - RGB ï¿½ï¿½ ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½Ò¼ï¿½ ï¿½ï¿½ï¿½ï¿½.
+	if((tgtfm == GE_RGB444_A) || (tgtfm == GE_RGB454_A) || (tgtfm == GE_RGB555_A) ||
 	(tgtfm == GE_RGB666_A) || (tgtfm == GE_RGB888_A))
 	{
-        return FALSE;
+		return FALSE;
 	}
 #endif//
 
-    if(srcfm.format < GE_RGB332) 
-        src0_fmt_ch = Y2R_TYPE;
+	if(srcfm.format < GE_RGB332)
+		src0_fmt_ch = Y2R_TYPE;
 
-    if(tgtfm.format < GE_RGB332) 
-        dst_fmt_ch = R2Y_TYPE;
-        
+	if(tgtfm.format < GE_RGB332)
+		dst_fmt_ch = R2Y_TYPE;
+
 	memset(&gre2d_value, 0x00, sizeof(G2d_1CH_FUNC));
 
 // front channel setting
-    gre2d_value.src0.add0 = src0;
-    gre2d_value.src0.add1 = src1;
-    gre2d_value.src0.add2 = src2;
-    gre2d_value.src0.frame_pix_sx = src_w;
-    gre2d_value.src0.frame_pix_sy = src_h;        
-    gre2d_value.src0.src_off_sx = 0;
-    gre2d_value.src0.src_off_sy = 0;        
-    gre2d_value.src0.img_pix_sx = src_w;
-    gre2d_value.src0.img_pix_sy = src_h;  
-    gre2d_value.src0.win_off_sx = 0;
-    gre2d_value.src0.win_off_sy = 0;  
+	gre2d_value.src0.add0 = src0;
+	gre2d_value.src0.add1 = src1;
+	gre2d_value.src0.add2 = src2;
+	gre2d_value.src0.frame_pix_sx = src_w;
+	gre2d_value.src0.frame_pix_sy = src_h;
+	gre2d_value.src0.src_off_sx = 0;
+	gre2d_value.src0.src_off_sy = 0;
+	gre2d_value.src0.img_pix_sx = src_w;
+	gre2d_value.src0.img_pix_sy = src_h;
+	gre2d_value.src0.win_off_sx = 0;
+	gre2d_value.src0.win_off_sy = 0;
 
-    gre2d_value.src0.op_mode = NOOP;
-    gre2d_value.src0.src_form = srcfm;
-
-
-    gre2d_value.src0.src_chroma_en = FALSE;
-    gre2d_value.src0.chroma_RY = 0;
-    gre2d_value.src0.chroma_GU = 0;
-    gre2d_value.src0.chroma_BV = 0;
-
-    gre2d_value.src0.arith_mode = arith;
-    gre2d_value.src0.arith_RY = R;
-    gre2d_value.src0.arith_GU = G;        
-    gre2d_value.src0.arith_BV = B;
+	gre2d_value.src0.op_mode = NOOP;
+	gre2d_value.src0.src_form = srcfm;
 
 
-// YUV to RGB ´Â front image format coverter 
-    if(src0_fmt_ch == Y2R_TYPE){
-        gre2d_value.src0.src_y2r = TRUE;        
-        gre2d_value.src0.src_y2r_type = gre2d_Y2R_type;
-    }
+	gre2d_value.src0.src_chroma_en = FALSE;
+	gre2d_value.src0.chroma_RY = 0;
+	gre2d_value.src0.chroma_GU = 0;
+	gre2d_value.src0.chroma_BV = 0;
+
+	gre2d_value.src0.arith_mode = arith;
+	gre2d_value.src0.arith_RY = R;
+	gre2d_value.src0.arith_GU = G;
+	gre2d_value.src0.arith_BV = B;
+
+
+// YUV to RGB ï¿½ï¿½ front image format coverter
+	if(src0_fmt_ch == Y2R_TYPE){
+		gre2d_value.src0.src_y2r = TRUE;
+		gre2d_value.src0.src_y2r_type = gre2d_Y2R_type;
+	}
 
 
 // back end channel setting
-    gre2d_value.dest.add0 = tgt0;
-    gre2d_value.dest.add1 = tgt1;
-    gre2d_value.dest.add2 = tgt2;
-    gre2d_value.dest.frame_pix_sx = dest_w;
-    gre2d_value.dest.frame_pix_sy = dest_h;
-    gre2d_value.dest.dest_off_sx = dest_off_x;
-    gre2d_value.dest.dest_off_sy = dest_off_y;
-    gre2d_value.dest.ysel = 0;
-    gre2d_value.dest.xsel = 0;
+	gre2d_value.dest.add0 = tgt0;
+	gre2d_value.dest.add1 = tgt1;
+	gre2d_value.dest.add2 = tgt2;
+	gre2d_value.dest.frame_pix_sx = dest_w;
+	gre2d_value.dest.frame_pix_sy = dest_h;
+	gre2d_value.dest.dest_off_sx = dest_off_x;
+	gre2d_value.dest.dest_off_sy = dest_off_y;
+	gre2d_value.dest.ysel = 0;
+	gre2d_value.dest.xsel = 0;
 
 
-// RGB to YUV ´Â back end image format coverter 
-    if(dst_fmt_ch == R2Y_TYPE){
-        gre2d_value.dest.converter_en = TRUE;
-        gre2d_value.dest.converter_mode = gre2d_R2Y_type;
-    }
-    
-    gre2d_value.dest.op_mode = NOOP;
-    gre2d_value.dest.dest_form = tgtfm;
-   
-    ret = gre2d_1ch_dma_main_func(gre2d_value);
+// RGB to YUV ï¿½ï¿½ back end image format coverter
+	if(dst_fmt_ch == R2Y_TYPE){
+		gre2d_value.dest.converter_en = TRUE;
+		gre2d_value.dest.converter_mode = gre2d_R2Y_type;
+	}
+
+	gre2d_value.dest.op_mode = NOOP;
+	gre2d_value.dest.dest_form = tgtfm;
+
+	ret = gre2d_1ch_dma_main_func(gre2d_value);
 
 	return ret;
 }
@@ -1187,161 +1187,161 @@ unsigned char gre2d_ImgArithmetic(unsigned int src0, unsigned int src1, unsigned
 /*------------------------------------------------------------------------------
 gre2d_ImgOverlay
  graphic engine overlay function
- 
-Graphic engine ÀÇ 2 channel alpha-blending ¹× chroam-key ±â´ÉÀ» ¼öÇà ÇÑ´Ù.
 
-alpha_en ÀÌ disable ÀÏ¶§´Â 2 channel¸¦ add ¿¬»ê ÇÑ´Ù. 
+Graphic engine ï¿½ï¿½ 2 channel alpha-blending ï¿½ï¿½ chroam-key ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½Ñ´ï¿½.
+
+alpha_en ï¿½ï¿½ disable ï¿½Ï¶ï¿½ï¿½ï¿½ 2 channelï¿½ï¿½ add ï¿½ï¿½ï¿½ï¿½ ï¿½Ñ´ï¿½.
 ------------------------------------------------------------------------------*/
 unsigned char gre2d_ImgOverlay(G2D_OVERY_FUNC *overlay)
 {
-    unsigned char ret = FALSE;
-    G2d_2CH_FUNC gre2d_value;
-    IMGFMT_CONV_TYPE src0_fmt_ch = NONE, src1_fmt_ch = NONE, dest_fmt_ch = NONE; // format change option
+	unsigned char ret = FALSE;
+	G2d_2CH_FUNC gre2d_value;
+	IMGFMT_CONV_TYPE src0_fmt_ch = NONE, src1_fmt_ch = NONE, dest_fmt_ch = NONE; // format change option
 
-#if ALPHA_RGB_DIABLE                
-// alpha - RGB ´Â °á°ú °ªÀ¸·Î ¼³Á¤ ÇÒ¼ö ¾ø´Ù.
-	if((overlay->dest.dest_form== GE_RGB444_A) || (overlay->dest.dest_form == GE_RGB454_A) || (overlay->dest.dest_form == GE_RGB555_A) || 
+#if ALPHA_RGB_DIABLE
+// alpha - RGB ï¿½ï¿½ ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½Ò¼ï¿½ ï¿½ï¿½ï¿½ï¿½.
+	if((overlay->dest.dest_form== GE_RGB444_A) || (overlay->dest.dest_form == GE_RGB454_A) || (overlay->dest.dest_form == GE_RGB555_A) ||
 	(overlay->dest.dest_form == GE_RGB666_A) || (overlay->dest.dest_form == GE_RGB888_A))
 	{
-        return FALSE;
+		return FALSE;
 	}
 
 
-    if(overlay->alpha_en == G2d_ALAPH_RGB)  
-    {
-        if ((overlay->dest.dest_form== GE_RGB444_A) || (overlay->dest.dest_form == GE_RGB454_A) 
-            || (overlay->dest.dest_form == GE_RGB555_A) || (overlay->dest.dest_form == GE_RGB666_A) || (overlay->dest.dest_form == GE_RGB888_A))
-            return FALSE;
-    }
+	if(overlay->alpha_en == G2d_ALAPH_RGB)
+	{
+		if ((overlay->dest.dest_form== GE_RGB444_A) || (overlay->dest.dest_form == GE_RGB454_A)
+			|| (overlay->dest.dest_form == GE_RGB555_A) || (overlay->dest.dest_form == GE_RGB666_A) || (overlay->dest.dest_form == GE_RGB888_A))
+			return FALSE;
+	}
 #endif//
 
-// format change 
-    if(!(((overlay->dest.dest_form.format >= GE_RGB444) && (overlay->src0.src_form.format >= GE_RGB444) && (overlay->src1.src_form.format >= GE_RGB444))
-            || ((overlay->dest.dest_form.format < GE_RGB444) && (overlay->src0.src_form.format < GE_RGB444) && (overlay->src1.src_form.format < GE_RGB444))))
-    {
-        if(overlay->src0.src_form.format < GE_RGB444)      src0_fmt_ch = Y2R_TYPE;
-        
-        if(overlay->src1.src_form.format < GE_RGB444)      src1_fmt_ch = Y2R_TYPE;
+// format change
+	if(!(((overlay->dest.dest_form.format >= GE_RGB444) && (overlay->src0.src_form.format >= GE_RGB444) && (overlay->src1.src_form.format >= GE_RGB444))
+			|| ((overlay->dest.dest_form.format < GE_RGB444) && (overlay->src0.src_form.format < GE_RGB444) && (overlay->src1.src_form.format < GE_RGB444))))
+	{
+		if(overlay->src0.src_form.format < GE_RGB444)      src0_fmt_ch = Y2R_TYPE;
 
-        if(overlay->dest.dest_form.format < GE_RGB444)     dest_fmt_ch = R2Y_TYPE;
-    }
-   
+		if(overlay->src1.src_form.format < GE_RGB444)      src1_fmt_ch = Y2R_TYPE;
+
+		if(overlay->dest.dest_form.format < GE_RGB444)     dest_fmt_ch = R2Y_TYPE;
+	}
+
 	memset(&gre2d_value, 0x00, sizeof(G2d_2CH_FUNC));
-        
+
 /*         front channel setting          */
 // FRONT CHANNEL 0 SETTING
-    gre2d_value.src0.add0 = overlay->src0.add0;
-    gre2d_value.src0.add1 = overlay->src0.add1;
-    gre2d_value.src0.add2 = overlay->src0.add2;
-    gre2d_value.src0.frame_pix_sx = overlay->src0.frame_pix_sx;
-    gre2d_value.src0.frame_pix_sy = overlay->src0.frame_pix_sy;        
-    gre2d_value.src0.src_off_sx = overlay->src0.src_off_sx;
-    gre2d_value.src0.src_off_sy = overlay->src0.src_off_sy;        
-    gre2d_value.src0.img_pix_sx = overlay->src0.img_pix_sx;
-    gre2d_value.src0.img_pix_sy = overlay->src0.img_pix_sy;  
-    gre2d_value.src0.win_off_sx = 0; 
-    gre2d_value.src0.win_off_sy = 0;  
+	gre2d_value.src0.add0 = overlay->src0.add0;
+	gre2d_value.src0.add1 = overlay->src0.add1;
+	gre2d_value.src0.add2 = overlay->src0.add2;
+	gre2d_value.src0.frame_pix_sx = overlay->src0.frame_pix_sx;
+	gre2d_value.src0.frame_pix_sy = overlay->src0.frame_pix_sy;
+	gre2d_value.src0.src_off_sx = overlay->src0.src_off_sx;
+	gre2d_value.src0.src_off_sy = overlay->src0.src_off_sy;
+	gre2d_value.src0.img_pix_sx = overlay->src0.img_pix_sx;
+	gre2d_value.src0.img_pix_sy = overlay->src0.img_pix_sy;
+	gre2d_value.src0.win_off_sx = 0;
+	gre2d_value.src0.win_off_sy = 0;
 
-// rotate option Àû¿ë
-    gre2d_value.src0.op_mode = overlay->src0.op_mode;
-    
-    gre2d_value.src0.src_form = overlay->src0.src_form;
+// rotate option ï¿½ï¿½ï¿½ï¿½
+	gre2d_value.src0.op_mode = overlay->src0.op_mode;
 
-
-    gre2d_value.src0.src_chroma_en = FALSE;
-    gre2d_value.src0.arith_mode = AR_NOOP;
+	gre2d_value.src0.src_form = overlay->src0.src_form;
 
 
-// YUV to RGB ´Â front image format coverter 
-    if(src0_fmt_ch == Y2R_TYPE){
-        gre2d_value.src0.src_y2r = TRUE;        
-        gre2d_value.src0.src_y2r_type = gre2d_Y2R_type;
-    }
-
-// FRONT CHANNEL 1 SETTING        
-    gre2d_value.src1.add0 = overlay->src1.add0;
-    gre2d_value.src1.add1 = overlay->src1.add1;
-    gre2d_value.src1.add2 = overlay->src1.add2;
-    gre2d_value.src1.frame_pix_sx = overlay->src1.frame_pix_sx;
-    gre2d_value.src1.frame_pix_sy = overlay->src1.frame_pix_sy;        
-    gre2d_value.src1.src_off_sx = overlay->src1.src_off_sx;
-    gre2d_value.src1.src_off_sy = overlay->src1.src_off_sy;        
-    gre2d_value.src1.img_pix_sx = overlay->src1.img_pix_sx;
-    gre2d_value.src1.img_pix_sy = overlay->src1.img_pix_sy;  
-    gre2d_value.src1.win_off_sx = overlay->src1.win_off_sx; 
-    gre2d_value.src1.win_off_sy = overlay->src1.win_off_sy;  
-
-// rotate option Àû¿ë
-    gre2d_value.src1.op_mode = overlay->src1.op_mode;
-    
-    gre2d_value.src1.src_form = overlay->src1.src_form;
-
-    gre2d_value.src1.src_chroma_en = FALSE;
-    gre2d_value.src1.arith_mode = AR_NOOP;
-
-// YUV to RGB ´Â front image format coverter 
-    if(src1_fmt_ch == Y2R_TYPE){
-        gre2d_value.src1.src_y2r = TRUE;        
-        gre2d_value.src1.src_y2r_type = gre2d_Y2R_type;
-    }
+	gre2d_value.src0.src_chroma_en = FALSE;
+	gre2d_value.src0.arith_mode = AR_NOOP;
 
 
-// chroma-key Àû¿ë   
-    if(overlay->op_ctrl_scel0 == CHROMA_S0)
-    {
-        // S0_CHROMA        
-        gre2d_value.src0.chroma_RY = overlay->chroma_RY;
-        gre2d_value.src0.chroma_GU = overlay->chroma_GU;        
-        gre2d_value.src0.chroma_BV = overlay->chroma_BV;
+// YUV to RGB ï¿½ï¿½ front image format coverter
+	if(src0_fmt_ch == Y2R_TYPE){
+		gre2d_value.src0.src_y2r = TRUE;
+		gre2d_value.src0.src_y2r_type = gre2d_Y2R_type;
+	}
 
-    }
-    else if(overlay->op_ctrl_scel0 == CHROMA_S1)
-    {
-        // S1_CHROMA        
-        gre2d_value.src1.chroma_RY = overlay->chroma_RY;
-        gre2d_value.src1.chroma_GU = overlay->chroma_GU;        
-        gre2d_value.src1.chroma_BV = overlay->chroma_BV;
-    }
-    gre2d_value.csel0 = overlay->op_ctrl_scel0;
+// FRONT CHANNEL 1 SETTING
+	gre2d_value.src1.add0 = overlay->src1.add0;
+	gre2d_value.src1.add1 = overlay->src1.add1;
+	gre2d_value.src1.add2 = overlay->src1.add2;
+	gre2d_value.src1.frame_pix_sx = overlay->src1.frame_pix_sx;
+	gre2d_value.src1.frame_pix_sy = overlay->src1.frame_pix_sy;
+	gre2d_value.src1.src_off_sx = overlay->src1.src_off_sx;
+	gre2d_value.src1.src_off_sy = overlay->src1.src_off_sy;
+	gre2d_value.src1.img_pix_sx = overlay->src1.img_pix_sx;
+	gre2d_value.src1.img_pix_sy = overlay->src1.img_pix_sy;
+	gre2d_value.src1.win_off_sx = overlay->src1.win_off_sx;
+	gre2d_value.src1.win_off_sy = overlay->src1.win_off_sy;
+
+// rotate option ï¿½ï¿½ï¿½ï¿½
+	gre2d_value.src1.op_mode = overlay->src1.op_mode;
+
+	gre2d_value.src1.src_form = overlay->src1.src_form;
+
+	gre2d_value.src1.src_chroma_en = FALSE;
+	gre2d_value.src1.arith_mode = AR_NOOP;
+
+// YUV to RGB ï¿½ï¿½ front image format coverter
+	if(src1_fmt_ch == Y2R_TYPE){
+		gre2d_value.src1.src_y2r = TRUE;
+		gre2d_value.src1.src_y2r_type = gre2d_Y2R_type;
+	}
+
+
+// chroma-key ï¿½ï¿½ï¿½ï¿½
+	if(overlay->op_ctrl_scel0 == CHROMA_S0)
+	{
+		// S0_CHROMA
+		gre2d_value.src0.chroma_RY = overlay->chroma_RY;
+		gre2d_value.src0.chroma_GU = overlay->chroma_GU;
+		gre2d_value.src0.chroma_BV = overlay->chroma_BV;
+
+	}
+	else if(overlay->op_ctrl_scel0 == CHROMA_S1)
+	{
+		// S1_CHROMA
+		gre2d_value.src1.chroma_RY = overlay->chroma_RY;
+		gre2d_value.src1.chroma_GU = overlay->chroma_GU;
+		gre2d_value.src1.chroma_BV = overlay->chroma_BV;
+	}
+	gre2d_value.csel0 = overlay->op_ctrl_scel0;
 
 
 //operator setting
-    if(overlay->alpha_en == G2d_ALPHA_NONE)
-    {
-        gre2d_value.op_mode0 = GE_ROP_SRC_AND;
-    }
-    else if(overlay->alpha_en == G2d_ALPHA_VALUE)
-    {
-        gre2d_value.op_pat_0.op_alpha = overlay->alpha_value;
-        gre2d_value.op_mode0 = GE_ROP_ALPHA_0;
-    }
-    else
-    {
-        gre2d_value.op_mode0 = GE_ROP_ALPHA_1;
-    }
+	if(overlay->alpha_en == G2d_ALPHA_NONE)
+	{
+		gre2d_value.op_mode0 = GE_ROP_SRC_AND;
+	}
+	else if(overlay->alpha_en == G2d_ALPHA_VALUE)
+	{
+		gre2d_value.op_pat_0.op_alpha = overlay->alpha_value;
+		gre2d_value.op_mode0 = GE_ROP_ALPHA_0;
+	}
+	else
+	{
+		gre2d_value.op_mode0 = GE_ROP_ALPHA_1;
+	}
 
 
 // back end channel setting
-    gre2d_value.dest.add0 = overlay->dest.add0;
-    gre2d_value.dest.add1 = overlay->dest.add1;
-    gre2d_value.dest.add2 = overlay->dest.add2;
-    gre2d_value.dest.frame_pix_sx = overlay->dest.frame_pix_sx;
-    gre2d_value.dest.frame_pix_sy = overlay->dest.frame_pix_sy;
-    gre2d_value.dest.dest_off_sx = overlay->dest.dest_off_sx;
-    gre2d_value.dest.dest_off_sy = overlay->dest.dest_off_sy;
-    gre2d_value.dest.ysel = 0;
-    gre2d_value.dest.xsel = 0;
+	gre2d_value.dest.add0 = overlay->dest.add0;
+	gre2d_value.dest.add1 = overlay->dest.add1;
+	gre2d_value.dest.add2 = overlay->dest.add2;
+	gre2d_value.dest.frame_pix_sx = overlay->dest.frame_pix_sx;
+	gre2d_value.dest.frame_pix_sy = overlay->dest.frame_pix_sy;
+	gre2d_value.dest.dest_off_sx = overlay->dest.dest_off_sx;
+	gre2d_value.dest.dest_off_sy = overlay->dest.dest_off_sy;
+	gre2d_value.dest.ysel = 0;
+	gre2d_value.dest.xsel = 0;
 
-    gre2d_value.dest.op_mode = overlay->dest.op_mode;
-    gre2d_value.dest.dest_form = overlay->dest.dest_form;
-    
-// RGB to YUV ´Â back end image format coverter 
-    if(dest_fmt_ch == R2Y_TYPE){
-        gre2d_value.dest.converter_en = TRUE;
-        gre2d_value.dest.converter_mode = gre2d_R2Y_type;
-    }
-   
-    ret = gre2d_2ch_dma_main_func(gre2d_value);
+	gre2d_value.dest.op_mode = overlay->dest.op_mode;
+	gre2d_value.dest.dest_form = overlay->dest.dest_form;
+
+// RGB to YUV ï¿½ï¿½ back end image format coverter
+	if(dest_fmt_ch == R2Y_TYPE){
+		gre2d_value.dest.converter_en = TRUE;
+		gre2d_value.dest.converter_mode = gre2d_R2Y_type;
+	}
+
+	ret = gre2d_2ch_dma_main_func(gre2d_value);
 
 	return ret;
 }
@@ -1351,186 +1351,186 @@ unsigned char gre2d_ImgOverlay(G2D_OVERY_FUNC *overlay)
 /*------------------------------------------------------------------------------
 gre2d_ImgROP
  graphic engine ROP(Raster operation) function
- 
-Graphic engine ÀÇ 1~3°³ÀÇ Input imageÀÇ image size, offset, window offset ¹×
-rotate, flip, format change µîÀÇ Ã³¸® ÈÄ¿¡ Rop ¿¬»ê ±â´ÉÀ» ¼öÇàÇÔ
 
-RGB888 type ·Î ¿¬»êµÊ
+Graphic engine ï¿½ï¿½ 1~3ï¿½ï¿½ï¿½ï¿½ Input imageï¿½ï¿½ image size, offset, window offset ï¿½ï¿½
+rotate, flip, format change ï¿½ï¿½ï¿½ï¿½ Ã³ï¿½ï¿½ ï¿½Ä¿ï¿½ Rop ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+
+RGB888 type ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½
 ------------------------------------------------------------------------------*/
 unsigned char gre2d_ImgROP(G2D_ROP_FUNC rop , G2D_EN en_channel)
 {
-    unsigned char ret = FALSE;
-    G2D_FUNC_TYPE gre2d_value;
-    IMGFMT_CONV_TYPE src0_fmt_ch = NONE, src1_fmt_ch = NONE, src2_fmt_ch = NONE, dest_fmt_ch = NONE; // format change option
+	unsigned char ret = FALSE;
+	G2D_FUNC_TYPE gre2d_value;
+	IMGFMT_CONV_TYPE src0_fmt_ch = NONE, src1_fmt_ch = NONE, src2_fmt_ch = NONE, dest_fmt_ch = NONE; // format change option
 
-#if ALPHA_RGB_DIABLE        
-    // alpha - RGB ´Â °á°ú °ªÀ¸·Î ¼³Á¤ ÇÒ¼ö ¾ø´Ù.
-	if((rop.dest.dest_form== GE_RGB444_A) || (rop.dest.dest_form == GE_RGB454_A) || (rop.dest.dest_form == GE_RGB555_A) || 
+#if ALPHA_RGB_DIABLE
+	// alpha - RGB ï¿½ï¿½ ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½Ò¼ï¿½ ï¿½ï¿½ï¿½ï¿½.
+	if((rop.dest.dest_form== GE_RGB444_A) || (rop.dest.dest_form == GE_RGB454_A) || (rop.dest.dest_form == GE_RGB555_A) ||
 		(rop.dest.dest_form == GE_RGB666_A) || (rop.dest.dest_form == GE_RGB888_A))
 	{
-        return FALSE;
+		return FALSE;
 	}
 #endif//
 
-// YUV image¸¦ rop ¿¬»ê ÇÏ¸é color°¡ ÀÌ»óÇØ Áø´Ù.
-//       format change 
+// YUV imageï¿½ï¿½ rop ï¿½ï¿½ï¿½ï¿½ ï¿½Ï¸ï¿½ colorï¿½ï¿½ ï¿½Ì»ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½.
+//       format change
 //        if(!(((rop.dest.dest_form >= GE_RGB444) && (rop.src0.src_form >= GE_RGB444) && (rop.src1.src_form >= GE_RGB444) && (rop.src2.src_form >= GE_RGB444))
 //        || ((rop.dest.dest_form < GE_RGB444) && (rop.src0.src_form < GE_RGB444) && (rop.src1.src_form < GE_RGB444) && (rop.src2.src_form < GE_RGB444)))
-//        )
+//       )
 
 	if(rop.src0.src_form.format < GE_RGB332)      src0_fmt_ch = Y2R_TYPE;
 	if(rop.src1.src_form.format < GE_RGB332)      src1_fmt_ch = Y2R_TYPE;
 	if(rop.src2.src_form.format < GE_RGB332)      src2_fmt_ch = Y2R_TYPE;
 	if(rop.dest.dest_form.format < GE_RGB332)     dest_fmt_ch = R2Y_TYPE;
-   
+
 	memset(&gre2d_value, 0x00, sizeof(G2D_FUNC_TYPE));
 
 /*         Front channel setting          */
 
 // FRONT CHANNEL 0 SETTING
-    gre2d_value.src0.add0 = rop.src0.add0;
-    gre2d_value.src0.add1 = rop.src0.add1;
-    gre2d_value.src0.add2 = rop.src0.add2;
-    gre2d_value.src0.frame_pix_sx = rop.src0.frame_pix_sx;
-    gre2d_value.src0.frame_pix_sy = rop.src0.frame_pix_sy;        
-    gre2d_value.src0.src_off_sx = rop.src0.src_off_sx;
-    gre2d_value.src0.src_off_sy = rop.src0.src_off_sy;        
-    gre2d_value.src0.img_pix_sx = rop.src0.img_pix_sx;
-    gre2d_value.src0.img_pix_sy = rop.src0.img_pix_sy;  
-    gre2d_value.src0.win_off_sx = 0; 
-    gre2d_value.src0.win_off_sy = 0;  
+	gre2d_value.src0.add0 = rop.src0.add0;
+	gre2d_value.src0.add1 = rop.src0.add1;
+	gre2d_value.src0.add2 = rop.src0.add2;
+	gre2d_value.src0.frame_pix_sx = rop.src0.frame_pix_sx;
+	gre2d_value.src0.frame_pix_sy = rop.src0.frame_pix_sy;
+	gre2d_value.src0.src_off_sx = rop.src0.src_off_sx;
+	gre2d_value.src0.src_off_sy = rop.src0.src_off_sy;
+	gre2d_value.src0.img_pix_sx = rop.src0.img_pix_sx;
+	gre2d_value.src0.img_pix_sy = rop.src0.img_pix_sy;
+	gre2d_value.src0.win_off_sx = 0;
+	gre2d_value.src0.win_off_sy = 0;
 
-    // rotate option Àû¿ë
-    gre2d_value.src0.op_mode = rop.src0.op_mode;
-    
-    gre2d_value.src0.src_form = rop.src0.src_form;
+	// rotate option ï¿½ï¿½ï¿½ï¿½
+	gre2d_value.src0.op_mode = rop.src0.op_mode;
 
-    gre2d_value.src0.chroma_RY = rop.src0.chroma_R; 
-    gre2d_value.src0.chroma_GU = rop.src0.chroma_G; 
-    gre2d_value.src0.chroma_BV = rop.src0.chroma_B; 
+	gre2d_value.src0.src_form = rop.src0.src_form;
 
-    gre2d_value.src0.src_chroma_en = FALSE;
-    gre2d_value.src0.arith_mode = rop.src0.arith_mode;
+	gre2d_value.src0.chroma_RY = rop.src0.chroma_R;
+	gre2d_value.src0.chroma_GU = rop.src0.chroma_G;
+	gre2d_value.src0.chroma_BV = rop.src0.chroma_B;
+
+	gre2d_value.src0.src_chroma_en = FALSE;
+	gre2d_value.src0.arith_mode = rop.src0.arith_mode;
 	gre2d_value.src0.arith_RY = rop.src0.arith_RY;
 	gre2d_value.src0.arith_GU = rop.src0.arith_GU;
 	gre2d_value.src0.arith_BV = rop.src0.arith_BV;
 
-    // YUV to RGB ´Â front image format coverter 
-    if(src0_fmt_ch == Y2R_TYPE){
-        gre2d_value.src0.src_y2r = TRUE;        
-        gre2d_value.src0.src_y2r_type = gre2d_Y2R_type;
-    }
+	// YUV to RGB ï¿½ï¿½ front image format coverter
+	if(src0_fmt_ch == Y2R_TYPE){
+		gre2d_value.src0.src_y2r = TRUE;
+		gre2d_value.src0.src_y2r_type = gre2d_Y2R_type;
+	}
 #if defined(TCC_OVERLAY_MIXER_CLUT_SUPPORT)
 	gre2d_value.src0.clut_en = rop.src0.clut_en;
 #endif /* TCC_OVERLAY_MIXER_CLUT_SUPPORT */
 
 
-// FRONT CHANNEL 1 SETTING        
-    gre2d_value.src1.add0 = rop.src1.add0;
-    gre2d_value.src1.add1 = rop.src1.add1;
-    gre2d_value.src1.add2 = rop.src1.add2;
-    gre2d_value.src1.frame_pix_sx = rop.src1.frame_pix_sx;
-    gre2d_value.src1.frame_pix_sy = rop.src1.frame_pix_sy;        
-    gre2d_value.src1.src_off_sx = rop.src1.src_off_sx;
-    gre2d_value.src1.src_off_sy = rop.src1.src_off_sy;        
-    gre2d_value.src1.img_pix_sx = rop.src1.img_pix_sx;
-    gre2d_value.src1.img_pix_sy = rop.src1.img_pix_sy;  
-    gre2d_value.src1.win_off_sx = rop.src1.win_off_sx; 
-    gre2d_value.src1.win_off_sy = rop.src1.win_off_sy;  
+// FRONT CHANNEL 1 SETTING
+	gre2d_value.src1.add0 = rop.src1.add0;
+	gre2d_value.src1.add1 = rop.src1.add1;
+	gre2d_value.src1.add2 = rop.src1.add2;
+	gre2d_value.src1.frame_pix_sx = rop.src1.frame_pix_sx;
+	gre2d_value.src1.frame_pix_sy = rop.src1.frame_pix_sy;
+	gre2d_value.src1.src_off_sx = rop.src1.src_off_sx;
+	gre2d_value.src1.src_off_sy = rop.src1.src_off_sy;
+	gre2d_value.src1.img_pix_sx = rop.src1.img_pix_sx;
+	gre2d_value.src1.img_pix_sy = rop.src1.img_pix_sy;
+	gre2d_value.src1.win_off_sx = rop.src1.win_off_sx;
+	gre2d_value.src1.win_off_sy = rop.src1.win_off_sy;
 
-    // rotate option Àû¿ë
-    gre2d_value.src1.op_mode = rop.src1.op_mode;
-    
-    gre2d_value.src1.src_form = rop.src1.src_form;
+	// rotate option ï¿½ï¿½ï¿½ï¿½
+	gre2d_value.src1.op_mode = rop.src1.op_mode;
 
-    gre2d_value.src1.chroma_RY = rop.src1.chroma_R; 
-    gre2d_value.src1.chroma_GU = rop.src1.chroma_G; 
-    gre2d_value.src1.chroma_BV = rop.src1.chroma_B; 
+	gre2d_value.src1.src_form = rop.src1.src_form;
 
-    gre2d_value.src1.src_chroma_en = FALSE;
-    gre2d_value.src1.arith_mode = rop.src1.arith_mode;
+	gre2d_value.src1.chroma_RY = rop.src1.chroma_R;
+	gre2d_value.src1.chroma_GU = rop.src1.chroma_G;
+	gre2d_value.src1.chroma_BV = rop.src1.chroma_B;
+
+	gre2d_value.src1.src_chroma_en = FALSE;
+	gre2d_value.src1.arith_mode = rop.src1.arith_mode;
 	gre2d_value.src1.arith_RY = rop.src1.arith_RY;
 	gre2d_value.src1.arith_GU = rop.src1.arith_GU;
 	gre2d_value.src1.arith_BV = rop.src1.arith_BV;
 
-    // YUV to RGB ´Â front image format coverter 
-    if(src1_fmt_ch == Y2R_TYPE){
-        gre2d_value.src1.src_y2r = TRUE;        
-        gre2d_value.src1.src_y2r_type = gre2d_Y2R_type;
-    }
+	// YUV to RGB ï¿½ï¿½ front image format coverter
+	if(src1_fmt_ch == Y2R_TYPE){
+		gre2d_value.src1.src_y2r = TRUE;
+		gre2d_value.src1.src_y2r_type = gre2d_Y2R_type;
+	}
 #if defined(TCC_OVERLAY_MIXER_CLUT_SUPPORT)
 	gre2d_value.src1.clut_en = rop.src1.clut_en;
 #endif /* TCC_OVERLAY_MIXER_CLUT_SUPPORT */
 
 
-// FRONT CHANNEL 1 SETTING        
-    gre2d_value.src2.add0 = rop.src2.add0;
-    gre2d_value.src2.add1 = rop.src2.add1;
-    gre2d_value.src2.add2 = rop.src2.add2;
-    gre2d_value.src2.frame_pix_sx = rop.src2.frame_pix_sx;
-    gre2d_value.src2.frame_pix_sy = rop.src2.frame_pix_sy;        
-    gre2d_value.src2.src_off_sx = rop.src2.src_off_sx;
-    gre2d_value.src2.src_off_sy = rop.src2.src_off_sy;        
-    gre2d_value.src2.img_pix_sx = rop.src2.img_pix_sx;
-    gre2d_value.src2.img_pix_sy = rop.src2.img_pix_sy;  
-    gre2d_value.src2.win_off_sx = rop.src2.win_off_sx; 
-    gre2d_value.src2.win_off_sy = rop.src2.win_off_sy;  
+// FRONT CHANNEL 1 SETTING
+	gre2d_value.src2.add0 = rop.src2.add0;
+	gre2d_value.src2.add1 = rop.src2.add1;
+	gre2d_value.src2.add2 = rop.src2.add2;
+	gre2d_value.src2.frame_pix_sx = rop.src2.frame_pix_sx;
+	gre2d_value.src2.frame_pix_sy = rop.src2.frame_pix_sy;
+	gre2d_value.src2.src_off_sx = rop.src2.src_off_sx;
+	gre2d_value.src2.src_off_sy = rop.src2.src_off_sy;
+	gre2d_value.src2.img_pix_sx = rop.src2.img_pix_sx;
+	gre2d_value.src2.img_pix_sy = rop.src2.img_pix_sy;
+	gre2d_value.src2.win_off_sx = rop.src2.win_off_sx;
+	gre2d_value.src2.win_off_sy = rop.src2.win_off_sy;
 
-// rotate option Àû¿ë
-    gre2d_value.src2.op_mode = rop.src2.op_mode;
-    
-    gre2d_value.src2.src_form = rop.src2.src_form;
+// rotate option ï¿½ï¿½ï¿½ï¿½
+	gre2d_value.src2.op_mode = rop.src2.op_mode;
 
-    gre2d_value.src2.chroma_RY = rop.src2.chroma_R; 
-    gre2d_value.src2.chroma_GU = rop.src2.chroma_G; 
-    gre2d_value.src2.chroma_BV = rop.src2.chroma_B; 
-    gre2d_value.src2.src_chroma_en = FALSE;
-	
+	gre2d_value.src2.src_form = rop.src2.src_form;
+
+	gre2d_value.src2.chroma_RY = rop.src2.chroma_R;
+	gre2d_value.src2.chroma_GU = rop.src2.chroma_G;
+	gre2d_value.src2.chroma_BV = rop.src2.chroma_B;
+	gre2d_value.src2.src_chroma_en = FALSE;
+
 	gre2d_value.src2.arith_mode = rop.src2.arith_mode;
 	gre2d_value.src2.arith_RY = rop.src2.arith_RY;
 	gre2d_value.src2.arith_GU = rop.src2.arith_GU;
 	gre2d_value.src2.arith_BV = rop.src2.arith_BV;
 
-// YUV to RGB ´Â front image format coverter 
-    if(src2_fmt_ch == Y2R_TYPE){
-        gre2d_value.src2.src_y2r = TRUE;        
-        gre2d_value.src2.src_y2r_type = gre2d_Y2R_type;
-    }
+// YUV to RGB ï¿½ï¿½ front image format coverter
+	if(src2_fmt_ch == Y2R_TYPE){
+		gre2d_value.src2.src_y2r = TRUE;
+		gre2d_value.src2.src_y2r_type = gre2d_Y2R_type;
+	}
 #if defined(TCC_OVERLAY_MIXER_CLUT_SUPPORT)
 	gre2d_value.src2.clut_en = rop.src2.clut_en;
 #endif /* TCC_OVERLAY_MIXER_CLUT_SUPPORT */
-    
-// operator Á¤ÀÇ
-    gre2d_value.op_ctrl.csel0 = rop.op_ctrl.csel0;
-    gre2d_value.op_ctrl.op_mode0 = rop.op_ctrl.op_mode0;
-    gre2d_value.op_ctrl.csel1 = rop.op_ctrl.csel1;
-    gre2d_value.op_ctrl.op_mode1 = rop.op_ctrl.op_mode1;
-    
-    memcpy(&gre2d_value.op_pat_0, &rop.op_pat_0, sizeof(G2D_OPERATOR_PATT));
-    memcpy(&gre2d_value.op_pat_1, &rop.op_pat_1, sizeof(G2D_OPERATOR_PATT));
-    
+
+// operator ï¿½ï¿½ï¿½ï¿½
+	gre2d_value.op_ctrl.csel0 = rop.op_ctrl.csel0;
+	gre2d_value.op_ctrl.op_mode0 = rop.op_ctrl.op_mode0;
+	gre2d_value.op_ctrl.csel1 = rop.op_ctrl.csel1;
+	gre2d_value.op_ctrl.op_mode1 = rop.op_ctrl.op_mode1;
+
+	memcpy(&gre2d_value.op_pat_0, &rop.op_pat_0, sizeof(G2D_OPERATOR_PATT));
+	memcpy(&gre2d_value.op_pat_1, &rop.op_pat_1, sizeof(G2D_OPERATOR_PATT));
+
 
 // Back end channel setting
-    gre2d_value.dest.add0 = rop.dest.add0;
-    gre2d_value.dest.add1 = rop.dest.add1;
-    gre2d_value.dest.add2 = rop.dest.add2;
-    gre2d_value.dest.frame_pix_sx = rop.dest.frame_pix_sx;
-    gre2d_value.dest.frame_pix_sy = rop.dest.frame_pix_sy;
-    gre2d_value.dest.dest_off_sx = rop.dest.dest_off_sx;
-    gre2d_value.dest.dest_off_sy = rop.dest.dest_off_sy;
-    gre2d_value.dest.ysel = 0;
-    gre2d_value.dest.xsel = 0;
+	gre2d_value.dest.add0 = rop.dest.add0;
+	gre2d_value.dest.add1 = rop.dest.add1;
+	gre2d_value.dest.add2 = rop.dest.add2;
+	gre2d_value.dest.frame_pix_sx = rop.dest.frame_pix_sx;
+	gre2d_value.dest.frame_pix_sy = rop.dest.frame_pix_sy;
+	gre2d_value.dest.dest_off_sx = rop.dest.dest_off_sx;
+	gre2d_value.dest.dest_off_sy = rop.dest.dest_off_sy;
+	gre2d_value.dest.ysel = 0;
+	gre2d_value.dest.xsel = 0;
 
-    gre2d_value.dest.op_mode = rop.dest.op_mode;
-    gre2d_value.dest.dest_form = rop.dest.dest_form;
-    
-    // RGB to YUV ´Â back end image format coverter 
-    if(dest_fmt_ch == R2Y_TYPE){
-        gre2d_value.dest.converter_en = TRUE;
-        gre2d_value.dest.converter_mode = gre2d_R2Y_type;
-    }
+	gre2d_value.dest.op_mode = rop.dest.op_mode;
+	gre2d_value.dest.dest_form = rop.dest.dest_form;
 
-    ret = gre2d_3ch_dma_main_func(gre2d_value, en_channel);
+	// RGB to YUV ï¿½ï¿½ back end image format coverter
+	if(dest_fmt_ch == R2Y_TYPE){
+		gre2d_value.dest.converter_en = TRUE;
+		gre2d_value.dest.converter_mode = gre2d_R2Y_type;
+	}
+
+	ret = gre2d_3ch_dma_main_func(gre2d_value, en_channel);
 
 return ret;
 }
@@ -1547,74 +1547,74 @@ return ret;
 
 /*------------------------------------------------------------------------------
 gre2d_RGBxxx2RGB888
- 
-Graphic engine¿¡¼­ »ç¿ëÇÒ RGB888 º¯È¯À» ÇØÁØ´Ù. 
-ZF ÀÇ °ªÀ» ÂüÁ¶ ÇØ¼­ ÇÏÀ§ ºñÆ®¸¦ Ã¤¿î´Ù.
+
+Graphic engineï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ RGB888 ï¿½ï¿½È¯ï¿½ï¿½ ï¿½ï¿½ï¿½Ø´ï¿½.
+ZF ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½Ø¼ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½Æ®ï¿½ï¿½ Ã¤ï¿½ï¿½ï¿½.
 ------------------------------------------------------------------------------*/
 unsigned char  gre2d_RGBxxx2RGB888(G2D_DATA_FM form, unsigned char Red, unsigned char Green, unsigned char Blue,
-                        unsigned char *r_Red, unsigned char *r_Green, unsigned char *r_Blue)
+						unsigned char *r_Red, unsigned char *r_Green, unsigned char *r_Blue)
 {
-    unsigned char ret = TRUE;
+	unsigned char ret = TRUE;
 
-    if(form  == GE_RGB444 || form == GE_RGB444_A)
-    {
-        if(ZF | (!MSB_4BIT(Red))) *r_Red = ((Red<<4) & 0xF0);
-        else *r_Red = (((Red<<4) & 0xF0) | 0x0F);
+	if(form  == GE_RGB444 || form == GE_RGB444_A)
+	{
+		if(ZF | (!MSB_4BIT(Red))) *r_Red = ((Red<<4) & 0xF0);
+		else *r_Red = (((Red<<4) & 0xF0) | 0x0F);
 
-        if(ZF | (!MSB_4BIT(Green))) *r_Green = ((Green<<4) & 0xF0);
-        else *r_Green = (((Green<<4) & 0xF0) | 0x0F);
+		if(ZF | (!MSB_4BIT(Green))) *r_Green = ((Green<<4) & 0xF0);
+		else *r_Green = (((Green<<4) & 0xF0) | 0x0F);
 
-        if(ZF | (!MSB_4BIT(Blue))) *r_Blue = ((Blue<<4) & 0xF0);
-        else *r_Blue = (((Blue<<4) & 0xF0) | 0x0F);
-    }
-    else if(form  == GE_RGB454 || form == GE_RGB454_A)
-    {
-        if(ZF | (!MSB_4BIT(Red))) *r_Red = ((Red<<4) & 0xF0);
-        else *r_Red = (((Red<<4) & 0xF0) | 0x0F);
+		if(ZF | (!MSB_4BIT(Blue))) *r_Blue = ((Blue<<4) & 0xF0);
+		else *r_Blue = (((Blue<<4) & 0xF0) | 0x0F);
+	}
+	else if(form  == GE_RGB454 || form == GE_RGB454_A)
+	{
+		if(ZF | (!MSB_4BIT(Red))) *r_Red = ((Red<<4) & 0xF0);
+		else *r_Red = (((Red<<4) & 0xF0) | 0x0F);
 
-        if(ZF | (!MSB_5BIT(Green))) *r_Green = ((Green<<3) & 0xF8);
-        else *r_Green = (((Green<<3) & 0xF8) | 0x07);
+		if(ZF | (!MSB_5BIT(Green))) *r_Green = ((Green<<3) & 0xF8);
+		else *r_Green = (((Green<<3) & 0xF8) | 0x07);
 
-        if(ZF | (!MSB_4BIT(Blue))) *r_Blue = ((Blue<<4) & 0xF0);
-        else *r_Blue = (((Blue<<4) & 0xF0) | 0x0F);
-    }
+		if(ZF | (!MSB_4BIT(Blue))) *r_Blue = ((Blue<<4) & 0xF0);
+		else *r_Blue = (((Blue<<4) & 0xF0) | 0x0F);
+	}
 
-    else if(form  == GE_RGB555 || form == GE_RGB555_A)
-    {
-        if(ZF | (!MSB_5BIT(Red))) *r_Red = ((Red<<3) & 0xF8);
-        else *r_Red = (((Red<<3) & 0xF8) | 0x07);
+	else if(form  == GE_RGB555 || form == GE_RGB555_A)
+	{
+		if(ZF | (!MSB_5BIT(Red))) *r_Red = ((Red<<3) & 0xF8);
+		else *r_Red = (((Red<<3) & 0xF8) | 0x07);
 
-        if(ZF | (!MSB_5BIT(Green))) *r_Green = ((Green<<3) & 0xF8);
-        else *r_Green = (((Green<<3) & 0xF8) | 0x07);
+		if(ZF | (!MSB_5BIT(Green))) *r_Green = ((Green<<3) & 0xF8);
+		else *r_Green = (((Green<<3) & 0xF8) | 0x07);
 
-        if(ZF | (!MSB_5BIT(Blue))) *r_Blue = ((Blue<<3) & 0xF8);
-        else *r_Blue = (((Blue<<3) & 0xF8) | 0x07);
-    }
-    else if(form  == GE_RGB565)
-    {
-        if(ZF | (!MSB_5BIT(Red))) *r_Red = ((Red<<3) & 0xF8);
-        else *r_Red = (((Red<<3) & 0xF8) | 0x07);
+		if(ZF | (!MSB_5BIT(Blue))) *r_Blue = ((Blue<<3) & 0xF8);
+		else *r_Blue = (((Blue<<3) & 0xF8) | 0x07);
+	}
+	else if(form  == GE_RGB565)
+	{
+		if(ZF | (!MSB_5BIT(Red))) *r_Red = ((Red<<3) & 0xF8);
+		else *r_Red = (((Red<<3) & 0xF8) | 0x07);
 
-        if(ZF | (!MSB_6BIT(Green))) *r_Green = ((Green<<2) & 0xFC);
-        else *r_Green = (((Green<<2) & 0xFC) | 0x03);
+		if(ZF | (!MSB_6BIT(Green))) *r_Green = ((Green<<2) & 0xFC);
+		else *r_Green = (((Green<<2) & 0xFC) | 0x03);
 
-        if(ZF | (!MSB_5BIT(Blue))) *r_Blue = ((Blue<<3) & 0xF8);
-            else *r_Blue = (((Blue<<3) & 0xF8) | 0x07);
-    }
-    else if(form  == GE_RGB666 || form == GE_RGB666_A)
-    {
-        if(ZF | (!MSB_6BIT(Red))) *r_Red = ((Red<<2) & 0xFC);
-        else *r_Red = (((Red<<2) & 0xFC) | 0x03);
+		if(ZF | (!MSB_5BIT(Blue))) *r_Blue = ((Blue<<3) & 0xF8);
+			else *r_Blue = (((Blue<<3) & 0xF8) | 0x07);
+	}
+	else if(form  == GE_RGB666 || form == GE_RGB666_A)
+	{
+		if(ZF | (!MSB_6BIT(Red))) *r_Red = ((Red<<2) & 0xFC);
+		else *r_Red = (((Red<<2) & 0xFC) | 0x03);
 
-        if(ZF | (!MSB_6BIT(Green))) *r_Green = ((Green<<2) & 0xFC);
-        else *r_Green = (((Green<<2) & 0xFC) | 0x03);
+		if(ZF | (!MSB_6BIT(Green))) *r_Green = ((Green<<2) & 0xFC);
+		else *r_Green = (((Green<<2) & 0xFC) | 0x03);
 
-        if(ZF | (!MSB_6BIT(Blue))) *r_Blue = ((Blue<<2) & 0xFC);
-        else *r_Blue = (((Blue<<2) & 0xFC) | 0x03);
-    }
-    else ret = FALSE;
+		if(ZF | (!MSB_6BIT(Blue))) *r_Blue = ((Blue<<2) & 0xFC);
+		else *r_Blue = (((Blue<<2) & 0xFC) | 0x03);
+	}
+	else ret = FALSE;
 
-    return ret;
+	return ret;
 }
 
 
@@ -1622,147 +1622,148 @@ unsigned char  gre2d_RGBxxx2RGB888(G2D_DATA_FM form, unsigned char Red, unsigned
 
 /*------------------------------------------------------------------------------
 gre2d_YUVtoRGB888
- 
-Graphic engine¿¡¼­ »ç¿ëÇÒ YUV to RGB888·Î º¯È¯À» ÇØÁØ´Ù. 
-gre2d_Y2R_type ÀÇ °ªÀ» ÂüÁ¶ º¯È¯ ½ÄÀÌ ¼±ÅÃµÈ´Ù.
+
+Graphic engineï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ YUV to RGB888ï¿½ï¿½ ï¿½ï¿½È¯ï¿½ï¿½ ï¿½ï¿½ï¿½Ø´ï¿½.
+gre2d_Y2R_type ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½È¯ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ÃµÈ´ï¿½.
 ------------------------------------------------------------------------------*/
 void gre2d_YUVtoRGB888(unsigned char Y, unsigned char U, unsigned char V, unsigned char *R, unsigned char *G, unsigned char *B)
 {
 
 	float	tmp_r, tmp_g, tmp_b;
 
-    if(gre2d_Y2R_type == Y2R_TYP0)
-    {
-        tmp_r = Y + (1 * V) + (0.371094 * V) - 176;
-        tmp_g = Y - (0.335938 * U) - (0.697266 * V) + 132;
-        tmp_b = Y + (1 * U) + (0.732422 * U) - 222;
-    }
-    else if(gre2d_Y2R_type == Y2R_TYP1)
-    {
-        tmp_r =  Y + (1 * V) + (0.164063 * Y) + (0.595703 * V) - 223;
-        tmp_g =  Y + (0.164063 * Y) - (0.390625 * U) - (0.814453 * V) + 136;
-        tmp_b = Y + (2 * U) + (0.164063 * Y) + (0.017578 * U) - 277;
-    }
-    else if(gre2d_Y2R_type == Y2R_TYP2)
-    {
-        tmp_r = Y + (1 * V) + (0.539063 * V) - 197;
-        tmp_g = Y - (0.183594 * U) - (0.458984 * V) + 82;
-        tmp_b = Y + (1 * U) + (0.816406 * U) - 233;
-    }
-    else if(gre2d_Y2R_type == Y2R_TYP3)
-    {
-        tmp_r = Y + (1 * V) + (0.164063 * Y) + (0.792969 * V) - 248;
-        tmp_g = Y + (0.164063 * Y) - (0.212891 * U) - (0.533203 * V) + 77;
-        tmp_b = Y + (2 * U) + (0.164063 * Y) + (0.115234 * U) - 289;
-    }
+	if(gre2d_Y2R_type == Y2R_TYP0)
+	{
+		tmp_r = Y + (1 * V) + (0.371094 * V) - 176;
+		tmp_g = Y - (0.335938 * U) - (0.697266 * V) + 132;
+		tmp_b = Y + (1 * U) + (0.732422 * U) - 222;
+	}
+	else if(gre2d_Y2R_type == Y2R_TYP1)
+	{
+		tmp_r =  Y + (1 * V) + (0.164063 * Y) + (0.595703 * V) - 223;
+		tmp_g =  Y + (0.164063 * Y) - (0.390625 * U) - (0.814453 * V) + 136;
+		tmp_b = Y + (2 * U) + (0.164063 * Y) + (0.017578 * U) - 277;
+	}
+	else if(gre2d_Y2R_type == Y2R_TYP2)
+	{
+		tmp_r = Y + (1 * V) + (0.539063 * V) - 197;
+		tmp_g = Y - (0.183594 * U) - (0.458984 * V) + 82;
+		tmp_b = Y + (1 * U) + (0.816406 * U) - 233;
+	}
+	else if(gre2d_Y2R_type == Y2R_TYP3)
+	{
+		tmp_r = Y + (1 * V) + (0.164063 * Y) + (0.792969 * V) - 248;
+		tmp_g = Y + (0.164063 * Y) - (0.212891 * U) - (0.533203 * V) + 77;
+		tmp_b = Y + (2 * U) + (0.164063 * Y) + (0.115234 * U) - 289;
+	}
 
-    *R = BitCLIP(tmp_r);
-    *G = BitCLIP(tmp_g);
-    *B = BitCLIP(tmp_b);
+	*R = BitCLIP(tmp_r);
+	*G = BitCLIP(tmp_g);
+	*B = BitCLIP(tmp_b);
 }
 
 
 
 /*------------------------------------------------------------------------------
 gre2d_RGB888toYUV_y
- 
-Graphic engine¿¡¼­ »ç¿ëÇÒ RGB888 to YUVÀÇ Y °ªÀ» °è»ê ÇÑ´Ù. º¯È¯À» ÇØÁØ´Ù. 
-gre2d_R2Y_type ÀÇ °ªÀ» ÂüÁ¶ º¯È¯ ½ÄÀÌ ¼±ÅÃµÈ´Ù.
+
+Graphic engineï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ RGB888 to YUVï¿½ï¿½ Y ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ ï¿½Ñ´ï¿½. ï¿½ï¿½È¯ï¿½ï¿½ ï¿½ï¿½ï¿½Ø´ï¿½.
+gre2d_R2Y_type ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½È¯ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ÃµÈ´ï¿½.
 ------------------------------------------------------------------------------*/
-unsigned int	gre2d_RGB888toYUV_y(  unsigned int rgb )
+unsigned int	gre2d_RGB888toYUV_y(  unsigned int rgb)
 {
-    uint y;
-    double	tmp_y;
-    ushort  r = ((rgb >> 16) & 0xFF);
-    ushort  g = ((rgb >> 8) & 0xFF);
-    ushort  b = (rgb & 0xFF);
+	uint y;
+	double	tmp_y;
+	ushort  r = ((rgb >> 16) & 0xFF);
+	ushort  g = ((rgb >> 8) & 0xFF);
+	ushort  b = (rgb & 0xFF);
 
-    if(gre2d_R2Y_type == R2Y_TYP0)
-    	tmp_y = (0.299 * r) + (0.587 * g) + (0.114 * b);
-    else if(gre2d_R2Y_type == R2Y_TYP1)
-        tmp_y = (0.257 * r) + (0.504 * g) + (0.098 * b) + 16;
-    else if(gre2d_R2Y_type == R2Y_TYP2)
-        tmp_y = (0.213 * r) + (0.715 * g) + (0.072 * b);
-    else 
-        tmp_y = (0.183 * r) + (0.614 * g) + (0.062 * b) + 16;
-            
-    if( tmp_y > 235 )			tmp_y = 235;
-    else if( tmp_y < 16 ) 	tmp_y = 16;
-    else					tmp_y = tmp_y;
+	if(gre2d_R2Y_type == R2Y_TYP0)
+		tmp_y = (0.299 * r) + (0.587 * g) + (0.114 * b);
+	else if(gre2d_R2Y_type == R2Y_TYP1)
+		tmp_y = (0.257 * r) + (0.504 * g) + (0.098 * b) + 16;
+	else if(gre2d_R2Y_type == R2Y_TYP2)
+		tmp_y = (0.213 * r) + (0.715 * g) + (0.072 * b);
+	else
+		tmp_y = (0.183 * r) + (0.614 * g) + (0.062 * b) + 16;
 
-    y = (unsigned char)tmp_y;
+	if (tmp_y > 235)			tmp_y = 235;
+	else if (tmp_y < 16) 	tmp_y = 16;
+	else					tmp_y = tmp_y;
 
-    return 	y;
+	y = (unsigned char)tmp_y;
+
+	return 	y;
 }
 
 
 /*------------------------------------------------------------------------------
 gre2d_RGB888toYUV_cb
- 
-Graphic engine¿¡¼­ »ç¿ëÇÒ RGB888 to YUVÀÇ U °ªÀ» °è»ê ÇÑ´Ù. º¯È¯À» ÇØÁØ´Ù. 
-gre2d_R2Y_type ÀÇ °ªÀ» ÂüÁ¶ º¯È¯ ½ÄÀÌ ¼±ÅÃµÈ´Ù.
+
+Graphic engineï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ RGB888 to YUVï¿½ï¿½ U ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ ï¿½Ñ´ï¿½. ï¿½ï¿½È¯ï¿½ï¿½ ï¿½ï¿½ï¿½Ø´ï¿½.
+gre2d_R2Y_type ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½È¯ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ÃµÈ´ï¿½.
 ------------------------------------------------------------------------------*/
-unsigned int	gre2d_RGB888toYUV_cb(  unsigned int  rgb )
+unsigned int	gre2d_RGB888toYUV_cb(  unsigned int  rgb)
 {
-    unsigned char cb;
-    double	tmp_cb;
-    
-    ushort  r = ((rgb >> 16) & 0xFF);
-    ushort  g = ((rgb >> 8) & 0xFF);
-    ushort  b = (rgb & 0xFF);
+	unsigned char cb;
+	double	tmp_cb;
 
-    if(gre2d_R2Y_type == R2Y_TYP0)
-        tmp_cb = -(0.172 * r) - (0.339 * g) + (0.511 * b) + 128;
-    else if(gre2d_R2Y_type == R2Y_TYP1)
-        tmp_cb = -(0.148 * r) - (0.291 * g) + (0.439 * b) + 128;
-    else if(gre2d_R2Y_type == R2Y_TYP2)
-        tmp_cb = -(0.117 * r) - (0.394 * g) + (0.511 * b) + 128;
-    else 
-        tmp_cb = -(0.101 * r) - (0.338 * g) + (0.439 * b) + 128;
+	ushort  r = ((rgb >> 16) & 0xFF);
+	ushort  g = ((rgb >> 8) & 0xFF);
+	ushort  b = (rgb & 0xFF);
+
+	if(gre2d_R2Y_type == R2Y_TYP0)
+		tmp_cb = -(0.172 * r) - (0.339 * g) + (0.511 * b) + 128;
+	else if(gre2d_R2Y_type == R2Y_TYP1)
+		tmp_cb = -(0.148 * r) - (0.291 * g) + (0.439 * b) + 128;
+	else if(gre2d_R2Y_type == R2Y_TYP2)
+		tmp_cb = -(0.117 * r) - (0.394 * g) + (0.511 * b) + 128;
+	else
+		tmp_cb = -(0.101 * r) - (0.338 * g) + (0.439 * b) + 128;
 
 
 
-    if( tmp_cb > 240 )			tmp_cb = 240;
-    else if( tmp_cb < 16 ) 	tmp_cb = 16;
-    else					tmp_cb = tmp_cb;
+	if (tmp_cb > 240)			tmp_cb = 240;
+	else if (tmp_cb < 16) 	tmp_cb = 16;
+	else					tmp_cb = tmp_cb;
 
-    cb = (unsigned char)tmp_cb;
+	cb = (unsigned char)tmp_cb;
 
-    return 	cb;
+	return 	cb;
 }
 
 /*------------------------------------------------------------------------------
 gre2d_RGB888toYUV_cr
- 
-Graphic engine¿¡¼­ »ç¿ëÇÒ RGB888 to YUVÀÇ V °ªÀ» °è»ê ÇÑ´Ù. º¯È¯À» ÇØÁØ´Ù. 
-gre2d_R2Y_type ÀÇ °ªÀ» ÂüÁ¶ º¯È¯ ½ÄÀÌ ¼±ÅÃµÈ´Ù.
+
+Graphic engineï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ RGB888 to YUVï¿½ï¿½ V ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ ï¿½Ñ´ï¿½. ï¿½ï¿½È¯ï¿½ï¿½ ï¿½ï¿½ï¿½Ø´ï¿½.
+gre2d_R2Y_type ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½È¯ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ÃµÈ´ï¿½.
 ------------------------------------------------------------------------------*/
-unsigned int	gre2d_RGB888toYUV_cr(  unsigned int  rgb )
+unsigned int	gre2d_RGB888toYUV_cr(  unsigned int  rgb)
 {
-    unsigned char cr;
-    double	tmp_cr;
-    ushort  r = ((rgb >> 16) & 0xFF);
-    ushort  g = ((rgb >> 8) & 0xFF);
-    ushort  b = (rgb & 0xFF);
+	unsigned char cr;
+	double	tmp_cr;
+	ushort  r = ((rgb >> 16) & 0xFF);
+	ushort  g = ((rgb >> 8) & 0xFF);
+	ushort  b = (rgb & 0xFF);
 
-    if(gre2d_R2Y_type == R2Y_TYP0)
-        tmp_cr = (0.511 * r) - (0.428 * g) - (0.083 * b) + 128;
-    else if(gre2d_R2Y_type == R2Y_TYP1)
-        tmp_cr = (0.439 * r) - (0.368 * g) - (0.071 * b) + 128;
-    else if(gre2d_R2Y_type == R2Y_TYP2)
-        tmp_cr = (0.511 * r) - (0.464 * g) - (0.047 * b) + 128;
-    else 
-        tmp_cr = (0.439 * r) - (0.399 * g) - (0.040 * b) + 128;
+	if(gre2d_R2Y_type == R2Y_TYP0)
+		tmp_cr = (0.511 * r) - (0.428 * g) - (0.083 * b) + 128;
+	else if(gre2d_R2Y_type == R2Y_TYP1)
+		tmp_cr = (0.439 * r) - (0.368 * g) - (0.071 * b) + 128;
+	else if(gre2d_R2Y_type == R2Y_TYP2)
+		tmp_cr = (0.511 * r) - (0.464 * g) - (0.047 * b) + 128;
+	else
+		tmp_cr = (0.439 * r) - (0.399 * g) - (0.040 * b) + 128;
 
 
-    if( tmp_cr > 240 )			tmp_cr = 240;
-    else if( tmp_cr < 16 ) 	tmp_cr = 16;
-    else					tmp_cr = tmp_cr;
+	if (tmp_cr > 240)			tmp_cr = 240;
+	else if (tmp_cr < 16) 	tmp_cr = 16;
+	else
+		tmp_cr = tmp_cr;
 
-    cr = (unsigned char)tmp_cr;
+	cr = (unsigned char)tmp_cr;
 
-    return 	cr;
+	return 	cr;
 }
 
-#endif 
+#endif
 

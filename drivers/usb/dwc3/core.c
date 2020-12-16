@@ -288,8 +288,7 @@ static void dwc3_frame_length_adjustment(struct dwc3 *dwc)
 
 	reg = dwc3_readl(dwc->regs, DWC3_GFLADJ);
 	dft = reg & DWC3_GFLADJ_30MHZ_MASK;
-	if (!dev_WARN_ONCE(dwc->dev, dft == dwc->fladj,
-	    "request value same as default, ignoring\n")) {
+	if (dft != dwc->fladj) {
 		reg &= ~DWC3_GFLADJ_30MHZ_MASK;
 		reg |= DWC3_GFLADJ_30MHZ_SDBND_SEL | dwc->fladj;
 		dwc3_writel(dwc->regs, DWC3_GFLADJ, reg);
@@ -745,7 +744,8 @@ static void dwc3_core_setup_global_control(struct dwc3 *dwc)
 
 	/* check if current dwc3 is on simulation board */
 	if (dwc->hwparams.hwparams6 & DWC3_GHWPARAMS6_EN_FPGA) {
-		dev_info(dwc->dev, "[INFO][USB] Running with FPGA optmizations\n");
+		dev_info(dwc->dev,
+			"[INFO][USB] Running with FPGA optimizations\n");
 		dwc->is_fpga = true;
 	}
 
@@ -880,13 +880,16 @@ static int dwc3_core_init(struct dwc3 *dwc)
 		if (dwc->dis_tx_ipgap_linecheck_quirk)
 			reg |= DWC3_GUCTL1_TX_IPGAP_LINECHECK_DIS;
 
+		if (dwc->parkmode_disable_ss_quirk)
+			reg |= DWC3_GUCTL1_PARKMODE_DISABLE_SS;
+
 		dwc3_writel(dwc->regs, DWC3_GUCTL1, reg);
 	}
 
 	reg = dwc3_readl(dwc->regs, DWC3_GUCTL2);
-	//reg |= 0x01F80000; //HP TIMER & PM TIMER spec is changed. 
-	reg &= 0x0000FFFF; //HP TIMER & PM TIMER spec is changed. 
-	reg |= 0x03080000; //HP TIMER & PM TIMER spec is changed. 
+	//reg |= 0x01F80000; //HP TIMER & PM TIMER spec is changed.
+	reg &= 0x0000FFFF; //HP TIMER & PM TIMER spec is changed.
+	reg |= 0x03080000; //HP TIMER & PM TIMER spec is changed.
 	dwc3_writel(dwc->regs, DWC3_GUCTL2, reg);
 
 	return 0;
@@ -921,8 +924,12 @@ static int dwc3_core_get_phy(struct dwc3 *dwc)
 	int ret;
 
 	if (node) {
-		dwc->usb2_phy = devm_usb_get_phy_by_phandle(dev, "telechips,dwc3_phy", 0);
-		dwc->usb3_phy = devm_usb_get_phy_by_phandle(dev, "telechips,dwc3_phy", 0);
+		dwc->usb2_phy =
+			devm_usb_get_phy_by_phandle(dev,
+				"telechips,dwc3_phy", 0);
+		dwc->usb3_phy =
+			devm_usb_get_phy_by_phandle(dev,
+				"telechips,dwc3_phy", 0);
 #if 0
 		dwc->usb2_phy = devm_usb_get_phy_by_phandle(dev, "usb-phy", 0);
 		dwc->usb3_phy = devm_usb_get_phy_by_phandle(dev, "usb-phy", 1);
@@ -1035,7 +1042,9 @@ static int dwc3_core_init_mode(struct dwc3 *dwc)
 		}
 		break;
 	default:
-		dev_err(dev, "[ERROR][USB] Unsupported mode of operation %d\n", dwc->dr_mode);
+		dev_err(dev,
+				"[ERROR][USB] Unsupported mode of operation %d\n",
+				dwc->dr_mode);
 		return -EINVAL;
 	}
 
@@ -1058,6 +1067,9 @@ static void dwc3_core_exit_mode(struct dwc3 *dwc)
 		/* do nothing */
 		break;
 	}
+
+	/* de-assert DRVVBUS for HOST and OTG mode */
+	dwc3_set_prtcap(dwc, DWC3_GCTL_PRTCAP_DEVICE);
 }
 
 static void dwc3_get_properties(struct dwc3 *dwc)
@@ -1131,6 +1143,8 @@ static void dwc3_get_properties(struct dwc3 *dwc)
 				"snps,dis-del-phy-power-chg-quirk");
 	dwc->dis_tx_ipgap_linecheck_quirk = device_property_read_bool(dev,
 				"snps,dis-tx-ipgap-linecheck-quirk");
+	dwc->parkmode_disable_ss_quirk = device_property_read_bool(dev,
+				"snps,parkmode-disable-ss-quirk");
 
 	dwc->tx_de_emphasis_quirk = device_property_read_bool(dev,
 				"snps,tx_de_emphasis_quirk");
@@ -1140,6 +1154,9 @@ static void dwc3_get_properties(struct dwc3 *dwc)
 				    &dwc->hsphy_interface);
 	device_property_read_u32(dev, "snps,quirk-frame-length-adjustment",
 				 &dwc->fladj);
+
+	dwc->dis_metastability_quirk = device_property_read_bool(dev,
+				"snps,dis_metastability_quirk");
 
 	dwc->lpm_nyet_threshold = lpm_nyet_threshold;
 	dwc->tx_de_emphasis = tx_de_emphasis;
@@ -1224,30 +1241,12 @@ static int dwc3_probe(struct platform_device *pdev)
 
 	dwc->dev = dev;
 
-	
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	if (!res) {
 		dev_err(dev, "[ERROR][USB] missing memory resource\n");
 		return -ENODEV;
 	}
-#if 0
-	if (!pdev->dev.dma_mask)
-	{
-		ret = dma_coerce_mask_and_coherent(&pdev->dev, DMA_BIT_MASK(64));
-	}
-	else
-	{
-		ret = dma_set_mask_and_coherent(&pdev->dev,DMA_BIT_MASK(64));
-	}
-	if (ret) {
-		ret = dma_set_mask_and_coherent(&pdev->dev,DMA_BIT_MASK(32));
-		if (ret)
-		{
-			printk("[INFO][USB] %s : Failed to alloc dma\n", __func__);
-				return ret;
-		}
-	}
-#endif
+
 	dwc->xhci_resources[0].start = res->start;
 	dwc->xhci_resources[0].end = dwc->xhci_resources[0].start +
 					DWC3_XHCI_REGS_END;

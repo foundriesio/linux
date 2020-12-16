@@ -418,7 +418,6 @@ struct ohci_hcd {
 #define	OHCI_QUIRK_AMD_PLL	0x200			/* AMD PLL quirk*/
 #define	OHCI_QUIRK_AMD_PREFETCH	0x400			/* pre-fetch for ISO transfer */
 #define	OHCI_QUIRK_GLOBAL_SUSPEND	0x800		/* must suspend ports */
-#define	OHCI_QUIRK_TCC_SUSPEND	0x800			/* suspend/resume */
 #define	OHCI_QUIRK_QEMU		0x1000			/* relax timing expectations */
 
 	// there are also chip quirks/bugs in init logic
@@ -744,3 +743,7 @@ extern int	ohci_resume(struct usb_hcd *hcd, bool hibernated);
 extern int	ohci_hub_control(struct usb_hcd	*hcd, u16 typeReq, u16 wValue,
 				 u16 wIndex, char *buf, u16 wLength);
 extern int	ohci_hub_status_data(struct usb_hcd *hcd, char *buf);
+extern void	ohci_hcd_init(struct ohci_hcd *ohci);
+extern int	ohci_init(struct ohci_hcd *ohci);
+extern int	ohci_run(struct ohci_hcd *ohci);
+extern void	ohci_stop(struct usb_hcd *hcd);

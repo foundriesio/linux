@@ -1,16 +1,20 @@
 /*
- * linux/drivers/char/vta.c
- *
- * Author: Team AD
- * Created: 2018
- * Description: Telechips VTA driver
- *
- * Copyright (c) Telechips, Inc.
+ * Copyright (C) Telechips, Inc.
  *
  * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2 as
- * published by the Free Software Foundation.
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
  *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, see the file COPYING, or write
+ * to the Free Software Foundation, Inc.,
+ * 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  */
 #include <linux/init.h>
 #include <linux/kernel.h>
@@ -32,31 +36,18 @@
 #include <linux/irq.h>
 #include <linux/random.h>
 #include <linux/uaccess.h>
-#include <asm/io.h>
+#include <linux/io.h>
 
 #include <linux/tee_drv.h>
 
 #include <video/tcc/tcc_composite_ioctl.h>
 #include <video/tcc/tcc_component_ioctl.h>
-#if defined(CONFIG_FB_TCC_COMPOSITE)
-extern void tcc_composite_set_cgms(TCC_COMPOSITE_CGMS_TYPE *cgms_cfg);
-extern void tcc_composite_get_cgms(TCC_COMPOSITE_CGMS_TYPE *cgms_cfg);
-#else
-#define tcc_composite_set_cgms(x) NULL
-#define tcc_composite_get_cgms(x) NULL
-#endif
-#if defined(CONFIG_FB_TCC_COMPONENT)
-extern void component_set_cgms(TCC_COMPONENT_CGMS_TYPE *cgms);
-extern void component_get_cgms(TCC_COMPONENT_CGMS_TYPE *cgms);
-#else
-#define component_set_cgms(x) NULL
-#define component_get_cgms(x) NULL
-#endif
 
 
 /* Debugging stuff */
 #if 0
-#define DBG(fmt, args...) printk("\e[33m[%s:%d]\e[0m " fmt, __func__, __LINE__, ## args)
+#define DBG(fmt, args...) \
+	pr_info("\e[33m[%s:%d]\e[0m " fmt, __func__, __LINE__, ## args)
 #else
 #define DBG(fmt, args...)
 #endif
@@ -89,8 +80,8 @@ struct vta_data_t *vta_data;
  * UUID (Don't modify)
  * 4e276916-62f7-42c6-bf78-65456409a8fa
  */
-#define VTA_UUID	{ 0x4e276916, 0x62f7, 0x42c6, \
-					{ 0xbf, 0x78, 0x65, 0x45, 0x64, 0x09, 0xa8, 0xfa } }
+#define VTA_UUID { 0x4e276916, 0x62f7, 0x42c6, \
+	{ 0xbf, 0x78, 0x65, 0x45, 0x64, 0x09, 0xa8, 0xfa } }
 
 /*
  * Command ID
@@ -98,17 +89,17 @@ struct vta_data_t *vta_data;
  * xx is 0x00~0x7f - VTA Kernel driver only user this command.
  * xx is 0x80~0xff - Other TA or CA only use this command.
  */
-#define VTA_CMD_IOCTL(x)			(0x56544100 | x)
-#define VTA_CMD_TEST				VTA_CMD_IOCTL(0x00)
-#define VTA_CMD_OBSERVE				VTA_CMD_IOCTL(0x01)
-#define VTA_CMD_NOTIFY_END_VSYNC	VTA_CMD_IOCTL(0x02)
-#define VTA_CMD_REQ_SET_OPC			VTA_CMD_IOCTL(0x80)
-#define VTA_CMD_DRM_CONTENT_START	VTA_CMD_IOCTL(0x81)
-#define VTA_CMD_DRM_CONTENT_STOP	VTA_CMD_IOCTL(0x82)
+#define VTA_CMD_IOCTL(x)          (0x56544100 | x)
+#define VTA_CMD_TEST              VTA_CMD_IOCTL(0x00)
+#define VTA_CMD_OBSERVE           VTA_CMD_IOCTL(0x01)
+#define VTA_CMD_NOTIFY_END_VSYNC  VTA_CMD_IOCTL(0x02)
+#define VTA_CMD_REQ_SET_OPC       VTA_CMD_IOCTL(0x80)
+#define VTA_CMD_DRM_CONTENT_START VTA_CMD_IOCTL(0x81)
+#define VTA_CMD_DRM_CONTENT_STOP  VTA_CMD_IOCTL(0x82)
 
 /* TEE error code */
-#define TEE_SUCCESS				0x00000000
-#define TEE_ERROR_TARGET_DEAD	0xFFFF3024
+#define TEE_SUCCESS 0x00000000
+#define TEE_ERROR_TARGET_DEAD 0xFFFF3024
 
 
 static int vta_cmd_observe(struct vta_data_t *vta);
@@ -131,6 +122,7 @@ static unsigned long random_delay(void)
 static int vta_thread_func(void *data)
 {
 	struct vta_data_t *vta = data;
+
 	DBG("\n");
 
 	while (true) {
@@ -149,6 +141,7 @@ static int vta_get_context(struct vta_data_t *vta, int run)
 {
 	struct tee_client_uuid uuid = VTA_UUID;
 	int ret = 0;
+
 	DBG("\n");
 
 	if (vta->context && vta->context->session_initalized) {
@@ -161,10 +154,11 @@ static int vta_get_context(struct vta_data_t *vta, int run)
 		ret = -ECONNREFUSED;
 		goto err;
 	}
-	printk("\e[33mvta opened\e[0m\n");
+	pr_info("\e[33mvta opened\e[0m\n");
 
 	if (run) {
-		vta->vta_thread = kthread_run(vta_thread_func, vta, "vta_thread");
+		vta->vta_thread = kthread_run(vta_thread_func, vta,
+			"vta_thread");
 		if (vta->vta_thread == ERR_PTR(-ENOMEM)) {
 			pr_err("%s: vta_thread failed\n", __func__);
 			ret = -ENOMEM;
@@ -196,7 +190,8 @@ static unsigned int vta_get_display_output(void)
 	#endif
 
 	#ifdef CONFIG_FB_TCC_COMPONENT
-	component_np = of_find_compatible_node(NULL, NULL, "telechips,tcc-component");
+	component_np = of_find_compatible_node(NULL, NULL,
+		"telechips,tcc-component");
 	if (component_np != NULL) {
 		if (of_device_is_available(component_np)) {
 			output |= SUPPORT_COMPONENT;
@@ -205,7 +200,8 @@ static unsigned int vta_get_display_output(void)
 	#endif
 
 	#ifdef CONFIG_FB_TCC_COMPOSITE
-	composite_np = of_find_compatible_node(NULL, NULL, "telechips,tcc-composite");
+	composite_np = of_find_compatible_node(NULL, NULL,
+		"telechips,tcc-composite");
 	if (composite_np != NULL) {
 		if (of_device_is_available(composite_np)) {
 			output |= SUPPORT_COMPOSITE;
@@ -223,6 +219,7 @@ static __u32 vta_send_command(struct tee_client_context *context,
 				int command)
 {
 	__u32 tee_result;
+
 	DBG("\n");
 
 	if (!context || !context->session_initalized) {
@@ -237,12 +234,11 @@ static __u32 vta_send_command(struct tee_client_context *context,
 
 	tee_result = tee_client_execute_command(context, params, command);
 
-	if (TEE_SUCCESS == tee_result) {
-		return tee_result;
-	} else {
-		pr_err("vta: tee_client_execute_command failed(0x%08X)\n", tee_result);
+	if (tee_result != TEE_SUCCESS) {
+		pr_err("vta: tee_client_execute_command failed(0x%08X)\n",
+			tee_result);
 
-		if (TEE_ERROR_TARGET_DEAD == tee_result) {
+		if (tee_result == TEE_ERROR_TARGET_DEAD) {
 			vta_get_context(vta_data, 0);
 			pr_err("\e[33mvta: vioc-ta was re-opened\e[0m\n");
 		}
@@ -251,28 +247,41 @@ static __u32 vta_send_command(struct tee_client_context *context,
 	return tee_result;
 }
 
-static void vta_link_protection(struct tee_client_param *composite, struct tee_client_param *component)
+static void vta_link_protection(struct tee_client_param *composite,
+	struct tee_client_param *component)
 {
 	DBG("\n");
 
-	if (0xffffffff != composite->tee_client_value.a) {
-		TCC_COMPOSITE_CGMS_TYPE cgms_cfg;
+	if (composite->tee_client_value.a != 0xffffffff) {
+		struct TCC_COMPOSITE_CGMS_TYPE cgms_cfg;
+
 		cgms_cfg.data = composite->tee_client_value.b;
 		cgms_cfg.odd_field_en = composite->tee_client_value.a;
 		cgms_cfg.even_field_en = composite->tee_client_value.a;
+
+		#if defined(CONFIG_FB_TCC_COMPOSITE)
 		tcc_composite_set_cgms(&cgms_cfg);
-		DBG("composite cgms-a: %s\n", composite->tee_client_value.a ? "on" : "off");
+		#endif
+
+		DBG("composite cgms-a: %s\n",
+			composite->tee_client_value.a ? "on" : "off");
 	} else {
 		DBG("composite cgms-a: Don't care\n");
 	}
 
 	#ifndef CONFIG_FB_TCC_COMPONENT_ADV7343
-	if (0xffffffff != component->tee_client_value.a) {
-		TCC_COMPONENT_CGMS_TYPE cgms_cfg;
+	if (component->tee_client_value.a != 0xffffffff) {
+		struct TCC_COMPONENT_CGMS_TYPE cgms_cfg;
+
 		cgms_cfg.data = component->tee_client_value.b;
 		cgms_cfg.enable = component->tee_client_value.a;
+
+		#if defined(CONFIG_FB_TCC_COMPONENT)
 		component_set_cgms(&cgms_cfg);
-		DBG("component cgms-a %s\n", component->tee_client_value.a ? "on" : "off");
+		#endif
+
+		DBG("component cgms-a %s\n",
+			component->tee_client_value.a ? "on" : "off");
 	} else {
 		DBG("component cgms-a: Don't care\n");
 	}
@@ -286,6 +295,7 @@ static int vta_cmd_observe(struct vta_data_t *vta)
 {
 	int ret = 0;
 	struct tee_client_params params;
+
 	DBG("\n");
 
 	if (!vta->context || !vta->context->session_initalized) {
@@ -326,17 +336,18 @@ int vta_cmd_notify_change_status(const char *func)
 	//	return 0;
 	//}
 
-	ret = vta_send_command(vta_data->context, NULL, VTA_CMD_NOTIFY_END_VSYNC);
+	ret = vta_send_command(vta_data->context, NULL,
+		VTA_CMD_NOTIFY_END_VSYNC);
 
 	switch (ret) {
 	case TEE_SUCCESS:
 		DBG("called by %s\n", func);
 		goto exit;
-		break;
+		//break;
 	case 0xFFFFFFFF:
 		DBG("vioc-ta context isn't exist\n");
 		goto exit;
-		break;
+		//break;
 	case TEE_ERROR_TARGET_DEAD:
 		DBG("vioc-ta is dead\n");
 		break;
@@ -367,20 +378,19 @@ static int vta_test_cmd(struct vta_data_t *vta)
 	ret = vta_send_command(vta->context, &params, VTA_CMD_TEST);
 	if (ret) {
 		pr_err("%s failed\n", __func__);
-		goto exit;
-	}
-
-	printk("%s: 0x%lx -> TA -> 0x%lx\n", __func__,
+	} else {
+		pr_info("%s: 0x%lx -> TA -> 0x%lx\n", __func__,
 			params.params[0].tee_client_value.a,
 			params.params[0].tee_client_value.b);
+	}
 
-exit:
 	return ret;
 }
 
 static int vta_test_req_set_opc(struct vta_data_t *vta)
 {
 	int ret;
+
 	DBG("\n");
 
 	ret = vta_send_command(vta->context, NULL, VTA_CMD_REQ_SET_OPC);
@@ -396,6 +406,7 @@ exit:
 static int vta_test_drm_content_xxx(struct vta_data_t *vta, int start)
 {
 	int ret, cmd;
+
 	DBG("\n");
 
 	cmd = start ? VTA_CMD_DRM_CONTENT_START : VTA_CMD_DRM_CONTENT_STOP;
@@ -412,9 +423,9 @@ exit:
 static void vta_test_link_protection(long onoff)
 {
 	struct tee_client_param composite, component;
-	TCC_COMPOSITE_CGMS_TYPE composite_cgms;
+	struct TCC_COMPOSITE_CGMS_TYPE composite_cgms;
 	#ifndef CONFIG_FB_TCC_COMPONENT_ADV7343
-	TCC_COMPONENT_CGMS_TYPE component_cgms;
+	struct TCC_COMPONENT_CGMS_TYPE component_cgms;
 	#endif
 
 	/* key:0xc0 crc=0x3a (1 1 1 0 1 0) => cgms_data=0xe80c0 */
@@ -426,37 +437,54 @@ static void vta_test_link_protection(long onoff)
 	vta_link_protection(&composite, &component);
 
 	DBG("COMPOSITE CGMS-A onoff(%d) data(0x%x)\n",
-		(int)composite.tee_client_value.a, (int)composite.tee_client_value.b);
+		(int)composite.tee_client_value.a,
+		(int)composite.tee_client_value.b);
+
 	memset(&composite_cgms, 0, sizeof(composite_cgms));
+
+	#if defined(CONFIG_FB_TCC_COMPOSITE)
 	tcc_composite_get_cgms(&composite_cgms);
-	DBG("cgms.vctrl(odd/even)=[%d/%d], cgms=0x%08x(A:0x%02x|B:0x%02x|C:0x%02x) cgms.status=%d\n",
-			composite_cgms.odd_field_en, composite_cgms.even_field_en,
-			composite_cgms.data, composite_cgms.data & 0x3F,
-			(composite_cgms.data >> 6) & 0xFF, (composite_cgms.data >> 14) & 0x3F,
-			composite_cgms.status);
+	#endif
+
+	DBG("CGMS-A: [%d/%d], 0x%08x(A:0x%02x|B:0x%02x|C:0x%02x) status=%d\n",
+		composite_cgms.odd_field_en,
+		composite_cgms.even_field_en,
+		composite_cgms.data,
+		composite_cgms.data & 0x3F,
+		(composite_cgms.data >> 6) & 0xFF,
+		(composite_cgms.data >> 14) & 0x3F,
+		composite_cgms.status);
 
 	#ifndef CONFIG_FB_TCC_COMPONENT_ADV7343
 	DBG("COMPONENT CGMS-A onoff(%d) data(0x%x)\n",
-		(int)component.tee_client_value.a, (int)component.tee_client_value.b);
+		(int)component.tee_client_value.a,
+		(int)component.tee_client_value.b);
 	memset(&component_cgms, 0, sizeof(component_cgms));
+
+	#if defined(CONFIG_FB_TCC_COMPONENT)
 	component_get_cgms(&component_cgms);
-	DBG("%s, 0x%05x\n", component_cgms.enable ? "on" : "off", component_cgms.data);
+	#endif
+
+	DBG("%s, 0x%05x\n",
+		component_cgms.enable ? "on" : "off",
+		component_cgms.data);
 	#endif
 }
 
 /*
  * sysfs
  */
-#define VTA_IOCTL_CMD_TEST					0x00
-#define VTA_IOCTL_CMD_OBSERVE				0x01
-#define VTA_IOCTL_CMD_LINK_PROTECTION_ON	0x02
-#define VTA_IOCTL_CMD_LINK_PROTECTION_OFF	0x03
-#define VTA_IOCTL_CMD_NOTIFY_END_VSYNC		0x04
-#define VTA_IOCTL_CMD_REQ_SET_OPC			0x05
-#define VTA_IOCTL_CMD_DRM_CONTENT_START		0x06
-#define VTA_IOCTL_CMD_DRM_CONTENT_STOP		0x07
+#define VTA_IOCTL_CMD_TEST                (0x00)
+#define VTA_IOCTL_CMD_OBSERVE             (0x01)
+#define VTA_IOCTL_CMD_LINK_PROTECTION_ON  (0x02)
+#define VTA_IOCTL_CMD_LINK_PROTECTION_OFF (0x03)
+#define VTA_IOCTL_CMD_NOTIFY_END_VSYNC    (0x04)
+#define VTA_IOCTL_CMD_REQ_SET_OPC         (0x05)
+#define VTA_IOCTL_CMD_DRM_CONTENT_START   (0x06)
+#define VTA_IOCTL_CMD_DRM_CONTENT_STOP    (0x07)
 
-static ssize_t vta_store(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
+static ssize_t vta_store(struct device *dev, struct device_attribute *attr,
+	const char *buf, size_t count)
 {
 	unsigned long cmd;
 	int ret;
@@ -500,7 +528,8 @@ static ssize_t vta_store(struct device *dev, struct device_attribute *attr, cons
 	return count;
 }
 
-static ssize_t vta_show(struct device *dev, struct device_attribute *attr, char *buf)
+static ssize_t vta_show(struct device *dev, struct device_attribute *attr,
+	char *buf)
 {
 	struct vta_data_t *vta = dev->platform_data;
 
@@ -541,10 +570,12 @@ static long vta_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 			return -EFAULT;
 
 		return vta_get_context(vta, 1);
-		break;
+		//break;
 	case IOCTL_VTA_CHECK:
-		if (copy_from_user((void *)&data, (const void *)arg, sizeof(data)))
+		if (copy_from_user((void *)&data, (const void *)arg,
+			sizeof(data))) {
 			return -EFAULT;
+		}
 		break;
 	default:
 		pr_err("%s: unrecognized ioctl(0x%x)\n", __func__, cmd);
@@ -564,6 +595,7 @@ static int vta_open(struct inode *inode, struct file *filp)
 static int vta_release(struct inode *inode, struct file *filp)
 {
 	struct vta_data_t *vta = (struct vta_data_t *)filp->private_data;
+
 	vta->cmd = 0;
 	DBG("%s\n", vta->pdev->name);
 	return 0;
@@ -615,7 +647,8 @@ static int vta_probe(struct platform_device *pdev)
 	/*
 	 * alloc driver private data
 	 */
-	vta_data = (struct vta_data_t *)kmalloc(sizeof(struct vta_data_t), GFP_KERNEL);
+	vta_data = kmalloc(sizeof(struct vta_data_t),
+		GFP_KERNEL);
 	if (vta_data == NULL) {
 		ret = -ENOMEM;
 		goto out;
@@ -644,7 +677,8 @@ err3:
 
 static int vta_remove(struct platform_device *pdev)
 {
-	//struct vta_data_t *vta = (struct vta_data_t *)platform_get_drvdata(pdev);
+	//struct vta_data_t *vta =
+	//	(struct vta_data_t *)platform_get_drvdata(pdev);
 	struct vta_data_t *vta = vta_data;
 
 	kthread_stop(vta->vta_thread);
@@ -724,13 +758,15 @@ static int __init vta_init(void)
 	}
 	ret = platform_driver_register(&vta_device_driver);
 	if (ret < 0) {
-		pr_err("%s: platform_driver_register error(%d)\n", __func__, ret);
+		pr_err("%s: platform_driver_register error(%d)\n",
+			__func__, ret);
 		goto err;
 	}
 
 #if defined(__TEST_CODE__)
-	ret = sysfs_create_group(&vta_platform_device->dev.kobj, &vta_attribute_group);
-	if(ret)
+	ret = sysfs_create_group(&vta_platform_device->dev.kobj,
+		&vta_attribute_group);
+	if (ret)
 		pr_err("%s: failed create sysfs(%d)\n", __func__, ret);
 #endif
 

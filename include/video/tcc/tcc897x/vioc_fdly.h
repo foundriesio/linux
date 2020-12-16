@@ -1,5 +1,5 @@
 /*
- * Copyright (C) Telechips Inc.
+ * Copyright (C) Telechips, Inc.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -20,58 +20,51 @@
 #define	__VIOC_FDLY_H__
 
 
-/************************************************************************
-*   Frame Delay				(Base Addr = 0x72003900)
-*************************************************************************/
-typedef	struct
-{
-	unsigned				FMT		:  1;
-	unsigned 				   		: 15;
-	unsigned 				     	: 16;
-}	VIOC_FDLY_CTRL;
+/*
+ * Frame Delay (Base Addr = 0x12003900)
+ */
+struct VIOC_FDLY_CTRL {
+	unsigned int FMT :  1;
+	unsigned int     : 15;
+	unsigned int     : 16;
+};
 
-typedef	union
-{
-	unsigned	long			nREG;
-	VIOC_FDLY_CTRL		bREG;
-}	VIOC_FDLY_CTRL_u;
+union VIOC_FDLY_CTRL_u {
+	unsigned long nREG;
+	struct VIOC_FDLY_CTRL bREG;
+};
 
-typedef	struct
-{
-	unsigned 						: 16;
-	unsigned				MAXRATE	:  8;
-	unsigned 						:  7;
-	unsigned				REN		:  1;
-}	VIOC_FDLY_RATE;
+struct VIOC_FDLY_RATE {
+	unsigned int     : 16;
+	unsigned MAXRATE :  8;
+	unsigned int     :  7;
+	unsigned REN     :  1;
+};
 
-typedef	union
-{
-	unsigned	long			nREG;
-	VIOC_FDLY_RATE		bREG;
-}	VIOC_FDLY_RATE_u;
+union VIOC_FDLY_RATE_u {
+	unsigned long nREG;
+	struct VIOC_FDLY_RATE bREG;
+};
 
-typedef	struct
-{
-	unsigned				BG0		: 8;
-	unsigned				BG1		: 8;
-	unsigned				BG2		: 8;
-	unsigned				BG3		: 8;
-}	VIOC_FDLY_BG;
+struct VIOC_FDLY_BG {
+	unsigned int BG0 : 8;
+	unsigned int BG1 : 8;
+	unsigned int BG2 : 8;
+	unsigned int BG3 : 8;
+};
 
-typedef	union
-{
-	unsigned	long			nREG;
-	VIOC_FDLY_BG		bREG;
-}	VIOC_FDLY_BG_u;
+union VIOC_FDLY_BG_u {
+	unsigned long nREG;
+	struct VIOC_FDLY_BG bREG;
+};
 
-typedef	struct _VIOC_FDLY
-{
-	VIOC_FDLY_CTRL_u	uCTRL;			// 0x00  R/W	0x00000000	Frame Delay Control Register 
-	VIOC_FDLY_RATE_u	uRATE;			// 0x04	R/W	0x00000000	Frame Delay Rate Control Register
-	unsigned				uBASE0;			// 0x08	R/W	0x00000000	Frame Delay Base Address 0 Register
-	unsigned				uBASE1;			// 0x0C	R/W	0x00000000	Frame Delay Base Address 1 Register
-	VIOC_FDLY_BG_u		uBG;				// 0x10	R/W	0x0x000000	Frame Delay Default Color Register
-	unsigned	int			reserved0[3];		// 5,6,7
-}	VIOC_FDLY,*PVIOC_FDLY;
+struct VIOC_FDLY {
+	union VIOC_FDLY_CTRL_u uCTRL; // 0x00 R/W Frame Delay Control Reg.
+	union VIOC_FDLY_RATE_u uRATE; // 0x04 R/W Frame Delay Rate Control Reg.
+	unsigned int uBASE0; // 0x08 R/W Frame Delay Base Address 0 Reg.
+	unsigned int uBASE1; // 0x0C R/W Frame Delay Base Address 1 Reg.
+	union VIOC_FDLY_BG_u uBG; // 0x10 R/W Frame Delay Default Color Reg.
+	unsigned int reserved0[3]; // 5,6,7
+};
 #endif
 

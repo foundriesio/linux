@@ -30,64 +30,64 @@
 #define DV_DUAL_MODE  	0x4
 #define DV_ALL_DONE 	(DV_MAIN_DONE|DV_SUB_DONE|DV_DUAL_MODE)
 
-typedef enum{
+enum DV_PATH {
 	DV_PATH_DIRECT 			= 0x1,
 	DV_PATH_VIN_WDMA		= 0x2,
 	DV_PATH_DIRECT_VIN_WDMA	= 0x3, // 0x1 | 0x2,  DV_PATH_DIRECT with VIN and WDMA0 (new sequence with DISP0)
 	DV_PATH_VIN_DISP		= 0x4,
 	DV_PATH_VIN_ALL 		= 0x6, // 0x2 | 0x4,  VIN + DISP0 and WDMA0
 	DV_PATH_DUAL 			= 0x7, // 0x1 | 0x6,  DV_PATH_DIRECT with VIN + DISP0 and WDMA0
-}DV_PATH;
+};
 
-typedef enum{
+enum DV_MODE {
 	DV_STD = 0,
 	DV_LL,
 	DV_LL_RGB
-}DV_MODE;
+};
 
-typedef enum{
+enum DV_STAGE {
 	DV_OFF = 0,
 	DV_STANDBY,
 	DV_READY,
 	DV_RUN,
-}DV_STAGE;
+};
 
-typedef enum{
+enum OUT_TYPE {
 	DOVI = 0,
 	HDR10,
 	SDR,
 	DOVI_LL
-}OUT_TYPE;
+};
 
 //0 rgb, 1 ycc444, 2 ycc422, 3 ycc420
-typedef enum{
+enum OUT_FORMAT {
 	DV_OUT_FMT_RGB = 0,
 	DV_OUT_FMT_YUV444,
 	DV_OUT_FMT_YUV422,
 	DV_OUT_FMT_YUV420
-}OUT_FORMAT;
+};
 
-typedef enum{
+enum VEDR_TYPE {
 	VEDR = 0,
 	VPANEL,
 	VPANEL_LUT,
 	VDV_CFG,
 	VEDR_MAX
-}VEDR_TYPE;
+};
 
-typedef enum{
+enum DV_DISP_TYPE {
 	EDR_OSD1 = 0,
 	EDR_OSD3,
 	EDR_BL,
 	EDR_EL,
 	EDR_MAX
-}DV_DISP_TYPE;
+};
 
-typedef enum{
+enum VIDEO_ATTR {
 	ATTR_SDR = 0,
 	ATTR_DV_WITHOUT_BC,
 	ATTR_DV_WITH_BC,
-}VIDEO_ATTR;
+};
 
 extern unsigned int Hactive;
 extern unsigned int Vactive;
@@ -108,10 +108,10 @@ extern void VIOC_V_DV_Power(char on);
 extern void VIOC_V_DV_SWReset(unsigned int force, unsigned int bReset);
 extern void VIOC_V_DV_Base_Configure(int sx, int sy, int w, int h);
 extern volatile void __iomem * VIOC_DNG_GetAddress(void);
-extern volatile void __iomem* VIOC_DV_GetAddress(DV_DISP_TYPE type);
-extern void VIOC_DV_DUMP(DV_DISP_TYPE type, unsigned int size);
-extern volatile void __iomem*  VIOC_DV_VEDR_GetAddress(VEDR_TYPE type);
-extern void VIOC_DV_VEDR_DUMP(VEDR_TYPE type, unsigned int size);
+extern volatile void __iomem* VIOC_DV_GetAddress(enum DV_DISP_TYPE type);
+extern void VIOC_DV_DUMP(enum DV_DISP_TYPE type, unsigned int size);
+extern volatile void __iomem*  VIOC_DV_VEDR_GetAddress(enum VEDR_TYPE type);
+extern void VIOC_DV_VEDR_DUMP(enum VEDR_TYPE type, unsigned int size);
 
 // extern tcc_vdv_interface.c
 extern void voic_v_dv_set_hdmi_timming(struct lcdc_timimg_parms_t *mode, int bHDMI_Out, unsigned int hdmi_khz);
@@ -120,20 +120,20 @@ extern void vioc_v_dv_el_bypass(void);
 extern char vioc_v_dv_get_sc(void);
 extern void vioc_v_dv_swreset(unsigned int edr, unsigned panel, unsigned int crtc);
 extern void vioc_v_dv_block_off(void);
-extern void voic_v_dv_osd_ctrl(DV_DISP_TYPE type, unsigned int on);
+extern void voic_v_dv_osd_ctrl(enum DV_DISP_TYPE type, unsigned int on);
 extern int vioc_v_dv_prog(unsigned int meta_PhyAddr, unsigned int reg_PhyAddr, unsigned int video_attribute, unsigned int frmcnt);
-extern void vioc_v_dv_set_mode(DV_MODE mode, unsigned char* vsvdb, unsigned int sz_vsvdb);
-extern DV_MODE vioc_v_dv_get_mode(void);
+extern void vioc_v_dv_set_mode(enum DV_MODE mode, unsigned char* vsvdb, unsigned int sz_vsvdb);
+extern enum DV_MODE vioc_v_dv_get_mode(void);
 extern int vioc_v_dv_is_rgb_tunneling(void);
 extern unsigned int vioc_v_dv_get_vsvdb(unsigned char* vsvdb);
-extern void vioc_v_dv_set_stage(DV_STAGE stage);
-extern DV_STAGE vioc_v_dv_get_stage(void);
-extern DV_PATH vioc_get_path_type(void);
-extern void vioc_set_out_type(OUT_TYPE type);
-extern OUT_TYPE vioc_get_out_type(void);
+extern void vioc_v_dv_set_stage(enum DV_STAGE stage);
+extern enum DV_STAGE vioc_v_dv_get_stage(void);
+extern enum DV_PATH vioc_get_path_type(void);
+extern void vioc_set_out_type(enum OUT_TYPE type);
+extern enum OUT_TYPE vioc_get_out_type(void);
 extern void vioc_v_dv_set_output_color_format(unsigned int pxdw, unsigned int swap);
-extern OUT_FORMAT vioc_v_dv_get_output_color_format(void);
-extern VIDEO_ATTR vioc_get_video_attribute(void);
+extern enum OUT_FORMAT vioc_v_dv_get_output_color_format(void);
+extern enum VIDEO_ATTR vioc_get_video_attribute(void);
 extern void vioc_v_dv_reset(void);
 extern char vioc_v_dv_check_hdmi_out(void);
 #endif

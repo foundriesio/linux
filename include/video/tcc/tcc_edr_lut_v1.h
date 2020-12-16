@@ -1,10 +1,5 @@
 /*
- *   FileName    : tcc_edr_lut_v1.h
- *   Author:  <linux@telechips.com>
- *   Created: June 10, 2008
- *   Description: TCC Dolby h/w block
- *
- *   Copyright (C) 2008-2009 Telechips
+ * Copyright (C) Telechips, Inc.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -20,10 +15,7 @@
  * along with this program; if not, see the file COPYING, or write
  * to the Free Software Foundation, Inc.,
  * 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
- *
  */
-
-
 #ifndef __TCC_EDR_LUT_V1_H__
 #define __TCC_EDR_LUT_V1_H__
 
@@ -32,68 +24,68 @@
 #endif
 
 /**
-  @file tcc_edr_lut_v1.h . Adapted from file vp_edr_stb_source_display_management_lut_v1.h in SMP8760.
-  @brief Definitions of register structures. Module name: vp_edr_stb_source_display_management_lut.
-  @author Aurelia Popa-Radu.
-*/
+ * @file tcc_edr_lut_v1.h . Adapted from file vp_edr_stb_source_display_management_lut_v1.h in SMP8760.
+ * @brief Definitions of register structures. Module name: vp_edr_stb_source_display_management_lut.
+ * @author Aurelia Popa-Radu.
+ */
 
 /* Known differences:
-   SMP8760:
-    - programs in one shot G2L and ToneMapping for both graphics (osd1 and ods3)
-    - programs in one shot all PQ2L, L2PQ instances
-   TCC has to write each hw lut instance separately even if the content is identical.
-   Note. SMP8760 register name prefix VsyncRegVpEdrStbSourceDisplayManagement was changed to TccEdrDM.
-*/
+ * SMP8760:
+ *  - programs in one shot G2L and ToneMapping for both graphics (osd1 and ods3)
+ *  - programs in one shot all PQ2L, L2PQ instances
+ * TCC has to write each hw lut instance separately even if the content is identical.
+ * Note. SMP8760 register name prefix VsyncRegVpEdrStbSourceDisplayManagement was changed to TccEdrDM.
+ */
 
 /********************** V_EDR_LUTs based at 0x12500000 *****************************/
 
 // Next addresses are for video G2L.
 #define TCC_EDR_DM_LUT_VD_G2LLUT0    0x12500000 // 0x3a2000
 #define TCC_EDR_DM_LUT_VD_G2LLUT1    0x12500004 // 0x3a2004
-// .................................................................................
+// ................................................................
 #define TCC_EDR_DM_LUT_VD_G2LLUT255  0x125003fc // 0x3a23fc
 
 // Next addresses are for PQ2L video input. In TCC there other 3 instances (2 for graphics 0x12581000 and 0x12585000) and one for output (0x12589000).
 #define TCC_EDR_DM_LUT_PQ2LLUT0      0x12501000 // 0x3a3000
 #define TCC_EDR_DM_LUT_PQ2LLUT1      0x12501004 // 0x3a3004
-// .................................................................................
+// ................................................................
 #define TCC_EDR_DM_LUT_PQ2LLUT1023   0x12501ffc // 0x3a3ffc
 
 // Next addresses are for L2PQ video input. In TCC there other 3 instances (2 for graphics 0x12582000 and 0x12586000) and one for output (0x1258a000).
 #define TCC_EDR_DM_LUT_L2PQLUTX0     0x12502000 // 0x3a4000
 #define TCC_EDR_DM_LUT_L2PQLUTX1     0x12502004 // 0x3a4004
-// .................................................................................
+// ................................................................
 #define TCC_EDR_DM_LUT_L2PQLUTX127   0x125021fc // 0x3a41fc
 
 #define TCC_EDR_DM_LUT_L2PQLUTA0     0x12502200 // 0x3a4200
 #define TCC_EDR_DM_LUT_L2PQLUTA1     0x12502204 // 0x3a4204
-// .................................................................................
+// ................................................................
 #define TCC_EDR_DM_LUT_L2PQLUTA127   0x125023fc // 0x3a43fc
 
 #define TCC_EDR_DM_LUT_L2PQLUTB0     0x12502400 // 0x3a4400
 #define TCC_EDR_DM_LUT_L2PQLUTB1     0x12502404 // 0x3a4404
-// .................................................................................
+// ................................................................
 #define TCC_EDR_DM_LUT_L2PQLUTB127   0x125025fc // 0x3a45fc
 
 // Next addresses are for ToneMapping for video.
 #define TCC_EDR_DM_LUT_VD_TMLUTI0    0x12503000 // 0x3a0000
 #define TCC_EDR_DM_LUT_VD_TMLUTI1    0x12503004 // 0x3a0004
-// .................................................................................
+// ................................................................
 #define TCC_EDR_DM_LUT_VD_TMLUTI255  0x125033fc // 0x3a03fc
 
 #define TCC_EDR_DM_LUT_VD_SMLUTI0    0x12503400 // 0x3a0400
 #define TCC_EDR_DM_LUT_VD_SMLUTI1    0x12503404 // 0x3a0404
-// .................................................................................
+// ................................................................
 #define TCC_EDR_DM_LUT_VD_SMLUTI255  0x125037fc // 0x3a07fc
 
 #define TCC_EDR_DM_LUT_VD_TMLUTS0    0x12503800 // 0x3a0800
 #define TCC_EDR_DM_LUT_VD_TMLUTS1    0x12503804 // 0x3a0804
-// .................................................................................
+// ................................................................
 #define TCC_EDR_DM_LUT_VD_TMLUTS255  0x12503bfc // 0x3a0bfc
 
 #define TCC_EDR_DM_LUT_VD_SMLUTS0    0x12503c00 // 0x3a0c00
 #define TCC_EDR_DM_LUT_VD_SMLUTS1    0x12503c04 // 0x3a0c04
-// .................................................................................
+// ................................................................
 #define TCC_EDR_DM_LUT_VD_SMLUTS255  0x12503ffc // 0x3a0ffc
 
 
@@ -102,44 +94,44 @@
 // Next addresses are for G2L graphic1 (osd1). In TCC the G2L graphic2 (osd3) starts at 0x12584000.
 #define TCC_EDR_DM_LUT_GR_G2LLUT0    0x12580000 // 0x3a2400
 #define TCC_EDR_DM_LUT_GR_G2LLUT1    0x12580004 // 0x3a2404
-// .................................................................................
+// ................................................................
 #define TCC_EDR_DM_LUT_GR_G2LLUT255  0x125803fc // 0x3a27fc
 
 // Next addresses are for ToneMapping for graphic1 (osd1). In TCC the G2L graphic2 (osd3) starts at 0x12587000.
 #define TCC_EDR_DM_LUT_GR_TMLUTI0    0x12583000 // 0x3a1000
 #define TCC_EDR_DM_LUT_GR_TMLUTI1    0x12583004 // 0x3a1004
-// .................................................................................
+// ................................................................
 #define TCC_EDR_DM_LUT_GR_TMLUTI255  0x125833fc // 0x3a13fc
 
 #define TCC_EDR_DM_LUT_GR_SMLUTI0    0x12583400 // 0x3a1400
 #define TCC_EDR_DM_LUT_GR_SMLUTI1    0x12583404 // 0x3a1404
-// .................................................................................
+// ................................................................
 #define TCC_EDR_DM_LUT_GR_SMLUTI255  0x125837fc // 0x3a17fc
 
 #define TCC_EDR_DM_LUT_GR_TMLUTS0    0x12583800 // 0x3a1800
 #define TCC_EDR_DM_LUT_GR_TMLUTS1    0x12583804 // 0x3a1804
-// .................................................................................
+// ................................................................
 #define TCC_EDR_DM_LUT_GR_TMLUTS255  0x12583bfc // 0x3a1bfc
 
 #define TCC_EDR_DM_LUT_GR_SMLUTS0    0x12583c00 // 0x3a1c00
 #define TCC_EDR_DM_LUT_GR_SMLUTS1    0x12583c04 // 0x3a1c04
-// .................................................................................
+// ................................................................
 #define TCC_EDR_DM_LUT_GR_SMLUTS255  0x12583ffc // 0x3a1ffc
 
 // Next addresses are for output L2G.
 #define TCC_EDR_DM_LUT_L2GLUTX0      0x12588000 // 0x3a2800
 #define TCC_EDR_DM_LUT_L2GLUTX1      0x12588004 // 0x3a2804
-// .................................................................................
+// ................................................................
 #define TCC_EDR_DM_LUT_L2GLUTX127    0x125881fc // 0x3a29fc
 
 #define TCC_EDR_DM_LUT_L2GLUTA0      0x12588200 // 0x3a2a00
 #define TCC_EDR_DM_LUT_L2GLUTA1      0x12588204 // 0x3a2a04
-// .................................................................................
+// ................................................................
 #define TCC_EDR_DM_LUT_L2GLUTA127    0x125883fc // 0x3a2bfc
 
 #define TCC_EDR_DM_LUT_L2GLUTB0      0x12588400 // 0x3a2c00
 #define TCC_EDR_DM_LUT_L2GLUTB1      0x12588404 // 0x3a2c04
-// .................................................................................
+// ................................................................
 #define TCC_EDR_DM_LUT_L2GLUTB127    0x125885fc // 0x3a2dfc
 
 
@@ -342,5 +334,5 @@ struct TccEdrDMLutOutV1Reg {
 	union TccEdrDMLutL2pqlutaReg l2pqluta[128]; // 0x2200
 	union TccEdrDMLutL2pqlutbReg l2pqlutb[128]; // 0x2400
 };
-#endif /** #ifndef __TCC_EDR_LUT_V1_H__ */
 
+#endif /** #ifndef __TCC_EDR_LUT_V1_H__ */

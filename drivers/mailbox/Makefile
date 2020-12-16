@@ -55,7 +55,7 @@ endif
 
 obj-$(CONFIG_TCC_MAILBOX_HLC) += tcc_mailbox_hlc.o
 
-obj-$(CONFIG_TCC_MAILBOX_SUSPEND) += tcc_mailbox_suspend/
+#obj-$(CONFIG_TCC_MAILBOX_SUSPEND) += tcc_mailbox_suspend/
 
 obj-$(CONFIG_TCC_SC_MAILBOX) += mailbox-tcc-sc.o
 

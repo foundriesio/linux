@@ -5,6 +5,31 @@
 #ifndef DT_BINDINGS_PMAP_TCC803X_ANDROID_IVI_DISPLAY_H
 #define DT_BINDINGS_PMAP_TCC803X_ANDROID_IVI_DISPLAY_H
 
+/*********************************** DISPLAY **********************************/
+#define PRIMARY_FRAMEBUFFER_WIDTH       (1920)
+#define PRIMARY_FRAMEBUFFER_HEIGHT      (720)
+#define SECONDARY_FRAMEBUFFER_WIDTH     (1920)
+#define SECONDARY_FRAMEBUFFER_HEIGHT    (720)
+#define TERTIARY_FRAMEBUFFER_WIDTH      (0)
+#define TERTIARY_FRAMEBUFFER_HEIGHT     (0)
+
+// Choose bigger resolution between Primary and Secondary display device.
+// and Should sync with hardware/telechips/common/hwcomposer/Hwrenderer.h
+#define PRIMARY_TARGET_WIDTH            (1920)
+#define PRIMARY_TARGET_HEIGHT           (720)
+#define SECONDARY_TARGET_WIDTH          (0)
+#define SECONDARY_TARGET_HEIGHT         (0)
+#define TERTIARY_TARGET_WIDTH           (0)
+#define TERTIARY_TARGET_HEIGHT          (0)
+
+#if ((PRIMARY_TARGET_WIDTH*PRIMARY_TARGET_HEIGHT) > (SECONDARY_TARGET_WIDTH*SECONDARY_TARGET_HEIGHT))
+#define SUPPORT_DISPLAY_MAX_WIDTH       (PRIMARY_TARGET_WIDTH)
+#define SUPPORT_DISPLAY_MAX_HEIGHT      (PRIMARY_TARGET_HEIGHT)
+#else
+#define SUPPORT_DISPLAY_MAX_WIDTH       (SECONDARY_TARGET_WIDTH)
+#define SUPPORT_DISPLAY_MAX_HEIGHT      (SECONDARY_TARGET_HEIGHT)
+#endif
+
 //****************************** Camera ******************************/
 #define CAMERA_INPUT_WIDTH		1280
 #define CAMERA_INPUT_HEIGHT		720

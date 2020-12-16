@@ -40,8 +40,10 @@ static int tcc_pm_enter(suspend_state_t state)
 	if (!sub_suspend_ops)
 		return -EPERM;
 
+#ifndef CONFIG_TCC803X_CA7S
 	if (mode < 0)
 		return mode;
+#endif
 
 	local_irq_save(flags);
 	local_irq_disable();
@@ -52,6 +54,7 @@ static int tcc_pm_enter(suspend_state_t state)
 			goto failed_soc_reg_save;
 	}
 
+#ifndef CONFIG_TCC803X_CA7S
 	if (mode == 0) { //sleep mode
 		arg = (0 << 24) | (mode << 16) | ((unsigned long)mode&0xFFFF);
 	} else if (mode == 1) { //shutdown mode
@@ -63,6 +66,7 @@ static int tcc_pm_enter(suspend_state_t state)
 	}
 
 	cpu_suspend(arg, (void *)tcc_cpu_suspend);
+#endif
 
 	if (sub_suspend_ops->soc_reg_restore != NULL) {
 		sub_suspend_ops->soc_reg_restore();

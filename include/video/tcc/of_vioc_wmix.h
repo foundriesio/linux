@@ -49,16 +49,19 @@ struct vioc_wmix_device {
 	unsigned int		path;
 	unsigned int		mixmode;
 	union{
-		struct vioc_wmix_data		data;
-		struct vioc_wmix_pos 		pos;
+		struct vioc_wmix_data data;
+		struct vioc_wmix_pos pos;
 	};
 
 };
 
-extern void vioc_wmix_set_position(struct vioc_wmix_device *wmix, unsigned int update);
-extern void vioc_wmix_set_image(struct vioc_wmix_device *wmix, unsigned int en);
+extern void vioc_wmix_set_position(
+	struct vioc_wmix_device *wmix, unsigned int update);
+extern void vioc_wmix_set_image(
+	struct vioc_wmix_device *wmix, unsigned int en);
 extern void vioc_wmix_swreset(struct vioc_wmix_device *wmix, int reset);
 extern int get_count_vioc_wmix(struct device *dev);
-extern struct vioc_wmix_device *devm_vioc_wmix_get(struct device *dev, int index);
+extern struct vioc_wmix_device *devm_vioc_wmix_get(
+	struct device *dev, int index);
 
 #endif

@@ -1,10 +1,5 @@
 /*
- * linux/include/video/tcc/vioc_fifo.h
- * Author:  <linux@telechips.com>
- * Created: June 10, 2008
- * Description: TCC VIOC h/w block 
- *
- * Copyright (C) 2008-2009 Telechips
+ * Copyright (C) Telechips, Inc.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -31,7 +26,7 @@
 #define OPL_BLANK		(0x08)
 
 /*
- * Output Channel Status Register 
+ * Output Channel Status Register
  */
 #define OPL_FK_SHIFT			(13)
 #define OPL_PR_SHIFT			(12)
@@ -51,7 +46,12 @@
 #define PR_COMPOSITE_MASK		(0x1 << PR_COMPOSITE_SHIFT)
 #define PR_HDMI_MASK			(0x1 << PR_HDMI_SHIFT)
 
-#define PR_CH_STATUS_MASK		(PR_SUB_MASK|PR_MAIN_MASK|PR_COMPONENT_MASK|PR_COMPOSITE_MASK|PR_HDMI_MASK)
+#define PR_CH_STATUS_MASK \
+	(PR_SUB_MASK \
+	| PR_MAIN_MASK \
+	| PR_COMPONENT_MASK \
+	| PR_COMPOSITE_MASK \
+	| PR_HDMI_MASK)
 
 /*
  * Output Channel Size Register
@@ -64,7 +64,8 @@
 
 extern void VIOC_OUTCFG_set_disp_size(unsigned int width, unsigned int height);
 extern unsigned int VIOC_OUTCFG_get_disp_size(void);
-extern int VIOC_OUTCFG_dispStatus(int hdmi, int composite, int component, int sub_off, int main_off);
+extern int VIOC_OUTCFG_dispStatus(int hdmi, int composite,
+	int component, int sub_off, int main_off);
 extern int PlayReady_main_off(void);
 extern int PlayReady_sub_off(void);
 extern void OPL_PlayReady_NoHDCP_set(unsigned long val);
@@ -73,4 +74,5 @@ extern void OPL_PlayReady_set(unsigned long ch);
 extern unsigned long OPL_PlayReady_get(void);
 extern void OPL_FixedKey_set(unsigned long ch);
 extern unsigned long OPL_FixedKey_get(void);
+
 #endif

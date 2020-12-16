@@ -1,4 +1,5 @@
-/* include/linux/regulator/rt5028.h
+/*
+ * include/linux/regulator/rt5028.h
  *
  * Copyright (C) 2012 Telechips, Inc.
  *
@@ -10,7 +11,8 @@
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
-*/
+ *
+ */
 /*
  * rt5028.h  --  Voltage regulation for the RICOH RT5028
  *
@@ -30,11 +32,11 @@
 #endif
 
 enum {
-	RT5028_ID_BUCK1 = 0,	
-	RT5028_ID_BUCK2,		
-	RT5028_ID_BUCK3,		
-	RT5028_ID_BUCK4,		
-	RT5028_ID_LDO1,			// 4
+	RT5028_ID_BUCK1 = 0,
+	RT5028_ID_BUCK2,
+	RT5028_ID_BUCK3,
+	RT5028_ID_BUCK4,
+	RT5028_ID_LDO1,// 4
 	RT5028_ID_LDO2,
 	RT5028_ID_LDO3,
 	RT5028_ID_LDO4,
@@ -56,7 +58,7 @@ struct rt5028_subdev_data {
 	char			*name;
 	struct regulator_init_data	*platform_data;
 };
-	
+
 /**
  * rt5028_platform_data - platform data for rt5028
  * @num_subdevs: number of regulators used (may be 1 or 2)

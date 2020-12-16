@@ -1,23 +1,21 @@
-/****************************************************************************
-FileName    : kernel/drivers/video/tcc/vioc/tcc_composite.c
-Description :
-
-Copyright (C) 2013 Telechips Inc.
-
-This program is free software; you can redistribute it and/or modify it under
-the terms of the GNU General Public License as published by the Free Software
-Foundation; either version 2 of the License, or (at your option) any later
-version.
-
-This program is distributed in the hope that it will be useful, but WITHOUT ANY
-WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
-PARTICULAR PURPOSE. See the GNU General Public License for more details.
-
-You should have received a copy of the GNU General Public License along with
-this program; if not, write to the Free Software Foundation, Inc., 59 Temple
-Place, Suite 330, Boston, MA 02111-1307 USA
-****************************************************************************/
-
+/*
+ * Copyright (C) Telechips, Inc.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, see the file COPYING, or write
+ * to the Free Software Foundation, Inc.,
+ * 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+ */
 #include <linux/module.h>
 #include <linux/kernel.h>
 #include <linux/errno.h>
@@ -34,7 +32,7 @@ Place, Suite 330, Boston, MA 02111-1307 USA
 #include <linux/clk.h>
 #include <linux/cpufreq.h>
 #include <linux/uaccess.h>
-#include <asm/io.h>
+#include <linux/io.h>
 #include <asm/div64.h>
 #ifndef CONFIG_ARM64
 #include <asm/mach/map.h>
@@ -80,25 +78,17 @@ Place, Suite 330, Boston, MA 02111-1307 USA
 #include <video/tcc/tca_dtrc_converter.h>
 #endif
 
-extern struct tcc_dp_device *tca_fb_get_displayType(TCC_OUTPUT_TYPE check_type);
-extern void tca_scale_display_update(struct tcc_dp_device *pdp_data,
-				     struct tcc_lcdc_image_update *ImageInfo);
-extern void tca_vioc_displayblock_powerOn(struct tcc_dp_device *pDisplayInfo,
-					  int specific_pclk);
-extern void tca_vioc_displayblock_powerOff(struct tcc_dp_device *pDisplayInfo);
-extern void tca_vioc_displayblock_disable(struct tcc_dp_device *pDisplayInfo);
-extern void tca_vioc_displayblock_ctrl_set(unsigned int outDevice,
-					   struct tcc_dp_device *pDisplayInfo,
-					   stLTIMING *pstTiming,
-					   stLCDCTR *pstCtrl);
-extern void tca_fb_attach_start(struct tccfb_info *info);
-extern int tca_fb_attach_stop(struct tccfb_info *info);
+#include "tcc_composite.h"
 
-#if defined(CONFIG_TCC_HDMI_DRIVER_V2_0)
-extern int hdmi_get_hotplug_status(void);
-#elif defined(CONFIG_TCC_DISPLAY_MODE_DUAL_AUTO)
-#error "display dual auto mode needs hdmi v2.0"
+
+/* Debugging stuff */
+//#define DBG_COMPOSITE
+#ifdef DBG_COMPOSITE
+#define dprintk(msg...) pr_info("[DBG][COMPOSITE] " msg)
+#else
+#define dprintk(msg...)
 #endif
+
 
 /*
  * TVE clk on/off sequence type
@@ -108,21 +98,10 @@ extern int hdmi_get_hotplug_status(void);
  */
 #define COMPOSITE_CLK_SEQUENCE_TYPE 2
 
-/*****************************************************************************
-
- VARIABLES
-
-******************************************************************************/
-
-extern char fb_power_state;
-
-/* Debugging stuff */
-static int debug = 0;
-#define dprintk(msg...) \
-	if (debug) { \
-		printk("[DBG][COMPOSITE] " msg); \
-	}
-
+/*==============================================================================
+ *  VARIABLES
+ *==============================================================================
+ */
 #define TCC_LCDC1_USE
 
 static int Composite_LCDC_Num = -1;
@@ -153,51 +132,51 @@ static struct clk *composite_lcdc0_clk;
 static struct clk *composite_lcdc1_clk;
 
 static char tcc_composite_mode = COMPOSITE_MAX_M;
-static char tcc_composite_started = 0;
-static char tcc_composite_attached = 0;
-static char tcc_composite_starter = 0;
-static char tcc_composite_attached_cvbs = 0;
+static char tcc_composite_started;
+static char tcc_composite_attached;
+static char tcc_composite_starter;
+static char tcc_composite_attached_cvbs;
 
-static char composite_plugout = 0;
-static char composite_bypass_mode = 0;
+static char composite_plugout;
+static char composite_bypass_mode;
 
-static unsigned int gCompositeSuspendStatus = 0;
-static unsigned int gLinuxCompositeSuspendStatus = 0;
+static unsigned int gCompositeSuspendStatus;
+static unsigned int gLinuxCompositeSuspendStatus;
 
 static struct device *pdev_composite;
 
 #define RDMA_UVI_MAX_WIDTH 3072
 
 #if defined(CONFIG_TCC_DISPLAY_LCD_CVBS)
-static char attach_block_operating = 0;
-static char detach_block_operating = 0;
+static char attach_block_operating;
+static char detach_block_operating;
 #endif
 
 #if defined(CONFIG_SWITCH_GPIO_COMPOSITE)
 static struct platform_device tcc_composite_detect_device = {
 	.name = "switch-gpio-composite-detect",
 	.id = -1,
-	.dev =
-		{
-			.platform_data = NULL,
-		},
+	.dev = {
+		.platform_data = NULL,
+	},
 };
 #endif
 
 
-/*****************************************************************************
- Function Name : tcc_composite_detect()
-******************************************************************************/
+/*==============================================================================
+ * Function Name : tcc_composite_detect()
+ *==============================================================================
+ */
 int tcc_composite_detect(void)
 {
 	int detect = true;
 
 /* Check the HDMI detection */
-#if defined(CONFIG_TCC_DISPLAY_MODE_AUTO_DETECT) ||                            \
+#if defined(CONFIG_TCC_DISPLAY_MODE_AUTO_DETECT) || \
 	defined(CONFIG_TCC_DISPLAY_MODE_DUAL_HDMI_CVBS)
 	if (hdmi_get_hotplug_status())
 		detect = false;
-#elif defined(CONFIG_TCC_DISPLAY_MODE_DUAL_AUTO) ||                            \
+#elif defined(CONFIG_TCC_DISPLAY_MODE_DUAL_AUTO) || \
 	defined(CONFIG_TCC_DISPLAY_LCD_CVBS)
 	detect = false;
 #endif
@@ -205,9 +184,10 @@ int tcc_composite_detect(void)
 	return detect;
 }
 
-/*****************************************************************************
- Function Name : tcc_composite_connect_lcdc()
-******************************************************************************/
+/*==============================================================================
+ * Function Name : tcc_composite_connect_lcdc()
+ *==============================================================================
+ */
 int tcc_composite_connect_lcdc(int lcdc_num, int enable)
 {
 	volatile void __iomem *pHwDDICFG = pComposite_DDICFG;
@@ -222,9 +202,10 @@ int tcc_composite_connect_lcdc(int lcdc_num, int enable)
 	return 0;
 }
 
-/*****************************************************************************
- Function Name : tcc_composite_get_started()
-******************************************************************************/
+/*==============================================================================
+ * Function Name : tcc_composite_get_started()
+ *==============================================================================
+ */
 int tcc_composite_get_started(void)
 {
 	int ret = 0;
@@ -235,10 +216,12 @@ int tcc_composite_get_started(void)
 	return ret;
 }
 
-/*****************************************************************************
- Function Name : tcc_composite_get_spec()
-******************************************************************************/
-void tcc_composite_get_spec(COMPOSITE_MODE_TYPE mode, COMPOSITE_SPEC_TYPE *spec)
+/*==============================================================================
+ * Function Name : tcc_composite_get_spec()
+ *==============================================================================
+ */
+void tcc_composite_get_spec(enum COMPOSITE_MODE_TYPE mode,
+	struct COMPOSITE_SPEC_TYPE *spec)
 {
 #if defined(CONFIG_FB_TCC_COMPOSITE_BVO)
 	internal_bvo_get_spec(mode, spec);
@@ -268,28 +251,28 @@ void tcc_composite_get_spec(COMPOSITE_MODE_TYPE mode, COMPOSITE_SPEC_TYPE *spec)
 		spec->composite_lcd_width = 720;
 		spec->composite_lcd_height = 480;
 #ifdef TCC_COMPOSITE_CCIR656
-		spec->composite_LPW = 224 - 1; // line pulse width
-		spec->composite_LPC = 720 * 2 - 1; 	// line pulse count (active horizontal pixel - 1)
-		spec->composite_LSWC = 20 - 1;		// line start wait clock (the number of dummy pixel clock - 1)
-		spec->composite_LEWC = 32 - 1;		// line end wait clock (the number of dummy pixel clock - 1)
+		spec->composite_LPW = 224 - 1;
+		spec->composite_LPC = 720 * 2 - 1;
+		spec->composite_LSWC = 20 - 1;
+		spec->composite_LEWC = 32 - 1;
 #else
-		spec->composite_LPW = 212 - 1; // line pulse width
-		spec->composite_LPC = 720 * 2 - 1; 	// line pulse count (active horizontal pixel - 1)
-		spec->composite_LSWC = 32 - 1;		// line start wait clock (the number of dummy pixel clock - 1)
-		spec->composite_LEWC = 32 - 1;		// line end wait clock (the number of dummy pixel clock - 1)
+		spec->composite_LPW = 212 - 1;
+		spec->composite_LPC = 720 * 2 - 1;
+		spec->composite_LSWC = 32 - 1;
+		spec->composite_LEWC = 32 - 1;
 #endif
 
-		spec->composite_VDB = 0; // Back porch Vsync delay
-		spec->composite_VDF = 0; // front porch of Vsync delay
+		spec->composite_VDB = 0;
+		spec->composite_VDF = 0;
 
-		spec->composite_FPW1 = 1 - 1;		// TFT/TV : Frame pulse width is the pulse width of frmae clock
-		spec->composite_FLC1 = 480 - 1;		// frmae line count is the number of lines in each frmae on the screen
-		spec->composite_FSWC1 = 37 - 1;		// frmae start wait cycle is the number of lines to insert at the end each frame
-		spec->composite_FEWC1 = 7 - 1;		// frame start wait cycle is the number of lines to insert at the begining each frame
-		spec->composite_FPW2 = 1 - 1;		// TFT/TV : Frame pulse width is the pulse width of frmae clock
-		spec->composite_FLC2 = 480 - 1;		// frmae line count is the number of lines in each frmae on the screen
-		spec->composite_FSWC2 = 38 - 1;		// frmae start wait cycle is the number of lines to insert at the end each frame
-		spec->composite_FEWC2 = 6 - 1; 		// frame start wait cycle is the number of lines to insert at the begining each frame
+		spec->composite_FPW1 = 1 - 1;
+		spec->composite_FLC1 = 480 - 1;
+		spec->composite_FSWC1 = 37 - 1;
+		spec->composite_FEWC1 = 7 - 1;
+		spec->composite_FPW2 = 1 - 1;
+		spec->composite_FLC2 = 480 - 1;
+		spec->composite_FSWC2 = 38 - 1;
+		spec->composite_FEWC2 = 6 - 1;
 		break;
 
 	case NTSC_N:
@@ -304,22 +287,22 @@ void tcc_composite_get_spec(COMPOSITE_MODE_TYPE mode, COMPOSITE_SPEC_TYPE *spec)
 		spec->composite_bus_width = 8;
 		spec->composite_lcd_width = 720;
 		spec->composite_lcd_height = 576;
-		spec->composite_LPW = 128 - 1; // line pulse width
-		spec->composite_LPC = 720 * 2 - 1; 	// line pulse count (active horizontal pixel - 1)
-		spec->composite_LSWC = 138 - 1;		// line start wait clock (the number of dummy pixel clock - 1)
-		spec->composite_LEWC = 22 - 1;		// line end wait clock (the number of dummy pixel clock - 1)
+		spec->composite_LPW = 128 - 1;
+		spec->composite_LPC = 720 * 2 - 1;
+		spec->composite_LSWC = 138 - 1;
+		spec->composite_LEWC = 22 - 1;
 
-		spec->composite_VDB = 0; // Back porch Vsync delay
-		spec->composite_VDF = 0; // front porch of Vsync delay
+		spec->composite_VDB = 0;
+		spec->composite_VDF = 0;
 
-		spec->composite_FPW1 = 1 - 1;		// TFT/TV : Frame pulse width is the pulse width of frmae clock
-		spec->composite_FLC1 = 576 - 1;		// frmae line count is the number of lines in each frmae on the screen
-		spec->composite_FSWC1 = 43-1;		// frmae start wait cycle is the number of lines to insert at the end each frame
-		spec->composite_FEWC1 = 5-1;		// frame start wait cycle is the number of lines to insert at the begining each frame
-		spec->composite_FPW2 = 1 - 1;		// TFT/TV : Frame pulse width is the pulse width of frmae clock
-		spec->composite_FLC2 = 576 - 1;		// frmae line count is the number of lines in each frmae on the screen
-		spec->composite_FSWC2 = 44-1; 		// frame start wait cycle is the number of lines to insert at the end each frame
-		spec->composite_FEWC2 = 4-1; 		// frame start wait cycle is the number of lines to insert at the begining each frame
+		spec->composite_FPW1 = 1 - 1;
+		spec->composite_FLC1 = 576 - 1;
+		spec->composite_FSWC1 = 43-1;
+		spec->composite_FEWC1 = 5-1;
+		spec->composite_FPW2 = 1 - 1;
+		spec->composite_FLC2 = 576 - 1;
+		spec->composite_FSWC2 = 44-1;
+		spec->composite_FEWC2 = 4-1;
 		break;
 
 	default:
@@ -327,12 +310,13 @@ void tcc_composite_get_spec(COMPOSITE_MODE_TYPE mode, COMPOSITE_SPEC_TYPE *spec)
 	}
 }
 
-/*****************************************************************************
- Function Name : tcc_composite_set_lcd2tv()
-******************************************************************************/
-void tcc_composite_set_lcd2tv(COMPOSITE_MODE_TYPE type)
+/*==============================================================================
+ * Function Name : tcc_composite_set_lcd2tv()
+ *==============================================================================
+ */
+void tcc_composite_set_lcd2tv(enum COMPOSITE_MODE_TYPE type)
 {
-	COMPOSITE_SPEC_TYPE spec;
+	struct COMPOSITE_SPEC_TYPE spec;
 	stLTIMING CompositeTiming;
 	stLCDCTR LcdCtrlParam;
 
@@ -362,7 +346,8 @@ void tcc_composite_set_lcd2tv(COMPOSITE_MODE_TYPE type)
 
 	memset(&LcdCtrlParam, 0, sizeof(LcdCtrlParam));
 
-#if defined(CONFIG_TCC_OUTPUT_COLOR_SPACE_YUV) || defined(CONFIG_TCC_COMPOSITE_COLOR_SPACE_YUV)
+#if defined(CONFIG_TCC_OUTPUT_COLOR_SPACE_YUV) \
+	|| defined(CONFIG_TCC_COMPOSITE_COLOR_SPACE_YUV)
 	LcdCtrlParam.r2ymd = 0;
 #else
 	// LcdCtrlParam.r2ymd = 3;
@@ -403,9 +388,11 @@ void tcc_composite_set_lcd2tv(COMPOSITE_MODE_TYPE type)
 	LcdCtrlParam.tv = 1;
 
 	#if defined(CONFIG_ARCH_TCC898X)
-	LcdCtrlParam.advi = LcdCtrlParam.ni;	// 0 is enable, 1 is disable (only tcc898x)
+	// 0 is enable, 1 is disable (only tcc898x)
+	LcdCtrlParam.advi = LcdCtrlParam.ni;
 	#else
-	LcdCtrlParam.advi = !LcdCtrlParam.ni;	// 1 is enable, 0 is disable
+	// 1 is enable, 0 is disable
+	LcdCtrlParam.advi = !LcdCtrlParam.ni;
 	#endif
 #endif
 
@@ -417,7 +404,8 @@ void tcc_composite_set_lcd2tv(COMPOSITE_MODE_TYPE type)
 	LcdCtrlParam.y2r = 0; // LcdCtrlParam.r2y?0:1;
 	LcdCtrlParam.r2y = 0;
 #else
-#if defined(CONFIG_TCC_OUTPUT_COLOR_SPACE_YUV) || defined(CONFIG_TCC_COMPOSITE_COLOR_SPACE_YUV)
+#if defined(CONFIG_TCC_OUTPUT_COLOR_SPACE_YUV) \
+	|| defined(CONFIG_TCC_COMPOSITE_COLOR_SPACE_YUV)
 	if (tcc_composite_starter == 0)
 		LcdCtrlParam.r2y = 0;
 #endif
@@ -461,24 +449,33 @@ void tcc_composite_set_lcd2tv(COMPOSITE_MODE_TYPE type)
 
 #ifdef CONFIG_PRESENTATION_SECONDAY_DISPLAY_RESIZE_STB
 		if (dp_device->FbUpdateType == FB_SC_RDMA_UPDATE) {
-			if (VIOC_CONFIG_PlugOut(dp_device->sc_num0) == VIOC_PATH_DISCONNECTED) {
-				VIOC_CONFIG_SWReset(dp_device->sc_num0, VIOC_CONFIG_RESET);
-				VIOC_CONFIG_SWReset(dp_device->sc_num0, VIOC_CONFIG_CLEAR);
-				VIOC_CONFIG_SWReset(dp_device->rdma_info[RDMA_FB].blk_num, VIOC_CONFIG_RESET);
-				VIOC_CONFIG_SWReset(dp_device->rdma_info[RDMA_FB].blk_num, VIOC_CONFIG_CLEAR);
-				VIOC_CONFIG_PlugIn(dp_device->sc_num0, dp_device->rdma_info[RDMA_FB].blk_num);
+			if (VIOC_CONFIG_PlugOut(dp_device->sc_num0)
+				== VIOC_PATH_DISCONNECTED) {
+				VIOC_CONFIG_SWReset(dp_device->sc_num0,
+					VIOC_CONFIG_RESET);
+				VIOC_CONFIG_SWReset(dp_device->sc_num0,
+					VIOC_CONFIG_CLEAR);
+				VIOC_CONFIG_SWReset(
+					dp_device->rdma_info[RDMA_FB].blk_num,
+					VIOC_CONFIG_RESET);
+				VIOC_CONFIG_SWReset(
+					dp_device->rdma_info[RDMA_FB].blk_num,
+					VIOC_CONFIG_CLEAR);
+				VIOC_CONFIG_PlugIn(dp_device->sc_num0,
+					dp_device->rdma_info[RDMA_FB].blk_num);
 			}
 		}
 #endif
 #endif //
 		tca_vioc_displayblock_powerOn(dp_device, spec.composite_clk);
-		tca_vioc_displayblock_ctrl_set(VIOC_OUTCFG_SDVENC, dp_device, &CompositeTiming, &LcdCtrlParam);
+		tca_vioc_displayblock_ctrl_set(VIOC_OUTCFG_SDVENC, dp_device,
+			&CompositeTiming, &LcdCtrlParam);
 	}
 
 #if defined(CONFIG_TCC_VIOC_DISP_PATH_INTERNAL_CS_YUV)
 	VIOC_WMIX_SetBGColor(pComposite_WMIX, 0x00, 0x80, 0x80, 0x00);
 #else
-#if defined(CONFIG_TCC_OUTPUT_COLOR_SPACE_YUV) ||                              \
+#if defined(CONFIG_TCC_OUTPUT_COLOR_SPACE_YUV) || \
 	defined(CONFIG_TCC_COMPOSITE_COLOR_SPACE_YUV)
 	if (tcc_composite_starter == 0)
 		VIOC_WMIX_SetBGColor(pComposite_WMIX, 0x00, 0x80, 0x80, 0x00);
@@ -490,9 +487,10 @@ void tcc_composite_set_lcd2tv(COMPOSITE_MODE_TYPE type)
 #endif
 }
 
-/*****************************************************************************
- Function Name : tcc_composite_set_bypass()
-******************************************************************************/
+/*==============================================================================
+ * Function Name : tcc_composite_set_bypass()
+ *==============================================================================
+ */
 void tcc_composite_set_bypass(char bypass_mode)
 {
 	dprintk("%s, bypass_mode=%d\n", __func__, bypass_mode);
@@ -515,79 +513,97 @@ void tcc_plugout_for_composite(int ch_layer)
 }
 EXPORT_SYMBOL(tcc_plugout_for_composite);
 
-/*****************************************************************************
- Function Name : tcc_composite_get_mode()
-******************************************************************************/
-TCC_COMPOSITE_MODE_TYPE tcc_composite_get_mode(void)
+/*==============================================================================
+ * Function Name : tcc_composite_get_mode()
+ *==============================================================================
+ */
+enum TCC_COMPOSITE_MODE_TYPE tcc_composite_get_mode(void)
 {
 	return tcc_composite_mode;
 }
 
-/*****************************************************************************
- Function Name : tcc_composite_enabled()
-******************************************************************************/
+/*==============================================================================
+ * Function Name : tcc_composite_enabled()
+ *==============================================================================
+ */
 int tcc_composite_enabled(void)
 {
 	volatile void __iomem *pTVE_VEN = VIOC_TVE_VEN_GetAddress();
+
 	if (__raw_readl(pTVE_VEN + VENCON) & VENCON_EN_MASK)
 		return 1;
 	else
 		return 0;
 }
 
-/*****************************************************************************
-  Function Name : tcc_composite_set_cgms()
- ******************************************************************************/
-void tcc_composite_set_cgms(TCC_COMPOSITE_CGMS_TYPE *cgms_cfg)
+/*==============================================================================
+ * Function Name : tcc_composite_set_cgms()
+ *==============================================================================
+ */
+void tcc_composite_set_cgms(struct TCC_COMPOSITE_CGMS_TYPE *cgms_cfg)
 {
 	if (tcc_composite_started) {
 		dprintk("%s cgms.vctrl(odd/even)=[%d/%d], cgms=0x%08x(A:0x%02x|B:0x%02x|C:0x%02x)\n",
-			__func__, cgms_cfg->odd_field_en, cgms_cfg->even_field_en,
-			cgms_cfg->data, cgms_cfg->data & 0x3F,
-			(cgms_cfg->data >> 6) & 0xFF, (cgms_cfg->data >> 14) & 0x3F);
+			__func__,
+			cgms_cfg->odd_field_en,
+			cgms_cfg->even_field_en,
+			cgms_cfg->data,
+			cgms_cfg->data & 0x3F,
+			(cgms_cfg->data >> 6) & 0xFF,
+			(cgms_cfg->data >> 14) & 0x3F);
 
-		internal_tve_set_cgms(cgms_cfg->odd_field_en, cgms_cfg->even_field_en, cgms_cfg->data);
-		dprintk("CGMS-A %s - Composite\n", (cgms_cfg->odd_field_en | cgms_cfg->even_field_en) ? "on" : "off");
+		internal_tve_set_cgms(cgms_cfg->odd_field_en,
+			cgms_cfg->even_field_en, cgms_cfg->data);
+		dprintk("CGMS-A %s - Composite\n",
+			(cgms_cfg->odd_field_en | cgms_cfg->even_field_en)
+			? "on" : "off");
 	}
 }
 
-/*****************************************************************************
-  Function Name : tcc_composite_get_cgms()
- ******************************************************************************/
-void tcc_composite_get_cgms(TCC_COMPOSITE_CGMS_TYPE *cgms_cfg)
+/*==============================================================================
+ * Function Name : tcc_composite_get_cgms()
+ *==============================================================================
+ */
+void tcc_composite_get_cgms(struct TCC_COMPOSITE_CGMS_TYPE *cgms_cfg)
 {
 	if (tcc_composite_started) {
-		internal_tve_get_cgms(&cgms_cfg->odd_field_en, &cgms_cfg->even_field_en,
-				      &cgms_cfg->data, &cgms_cfg->status);
+		internal_tve_get_cgms(&cgms_cfg->odd_field_en,
+			&cgms_cfg->even_field_en,
+			&cgms_cfg->data, &cgms_cfg->status);
 
 		dprintk("%s cgms.vctrl(odd/even)=[%d/%d], cgms=0x%08x(A:0x%02x|B:0x%02x|C:0x%02x) cgms.status=%d\n",
-			__func__, cgms_cfg->odd_field_en, cgms_cfg->even_field_en,
+			__func__,
+			cgms_cfg->odd_field_en,
+			cgms_cfg->even_field_en,
 			cgms_cfg->data, cgms_cfg->data & 0x3F,
-			(cgms_cfg->data >> 6) & 0xFF, (cgms_cfg->data >> 14) & 0x3F,
+			(cgms_cfg->data >> 6) & 0xFF,
+			(cgms_cfg->data >> 14) & 0x3F,
 			cgms_cfg->status);
 	}
 }
 
-/*****************************************************************************
- Function Name : tcc_composite_clock_onoff()
-******************************************************************************/
+/*==============================================================================
+ * Function Name : tcc_composite_clock_onoff()
+ *==============================================================================
+ */
 void tcc_composite_clock_onoff(char OnOff)
 {
-	dprintk("%s, OnOff = %d \n", __func__, OnOff);
+	dprintk("%s, OnOff = %d\n", __func__, OnOff);
 
 	internal_tve_clock_onoff(OnOff);
 }
 
-/*****************************************************************************
- Function Name : tcc_composite_end()
-******************************************************************************/
+/*==============================================================================
+ * Function Name : tcc_composite_end()
+ *==============================================================================
+ */
 void tcc_composite_end(void)
 {
 	struct fb_info *info = registered_fb[0];
 	struct tccfb_info *tccfb_info = NULL;
 	struct tcc_dp_device *dp_device = NULL;
 
-	dprintk("%s, LCDC_Num = %d \n", __func__, Composite_LCDC_Num);
+	dprintk("%s, LCDC_Num = %d\n", __func__, Composite_LCDC_Num);
 
 	if (!tcc_composite_started)
 		return;
@@ -619,14 +635,16 @@ void tcc_composite_end(void)
 	#endif
 }
 
-/*****************************************************************************
- Function Name : tcc_composite_start()
-******************************************************************************/
-void tcc_composite_start(TCC_COMPOSITE_MODE_TYPE mode)
+/*==============================================================================
+ * Function Name : tcc_composite_start()
+ *==============================================================================
+ */
+void tcc_composite_start(enum TCC_COMPOSITE_MODE_TYPE mode)
 {
-	COMPOSITE_MODE_TYPE composite_mode;
+	enum COMPOSITE_MODE_TYPE composite_mode;
 
-	pr_info("[INF][COMPOSITE] %s mode=%d, lcdc_num=%d\n", __func__, mode, Composite_LCDC_Num);
+	pr_info("[INF][COMPOSITE] %s mode=%d, lcdc_num=%d\n",
+		__func__, mode, Composite_LCDC_Num);
 
 	#if COMPOSITE_CLK_SEQUENCE_TYPE >= 2
 	tcc_composite_clock_onoff(1);
@@ -684,12 +702,13 @@ static int composite_blank(int blank_mode)
 #ifdef CONFIG_PM
 	if ((pdev_composite->power.usage_count.counter == 1) &&
 	    (blank_mode == 0)) {
-		// usage_count = 1 ( resume ), blank_mode = 0 ( FB_BLANK_UNBLANK
-		// ) is stable state when booting don't call runtime_suspend or
-		// resume state
-		// pr_info("[INF][COMPOSITE] %s ### state = [%d] count =[%d] power_cnt=[%d]
-		// \n",__func__,blank_mode, pdev_composite->power.usage_count,
-		// pdev_composite->power.usage_count.counter);
+		/* usage_count = 1 ( resume ), blank_mode = 0 ( FB_BLANK_UNBLANK
+		 * ) is stable state when booting don't call runtime_suspend or
+		 * resume state
+		 */
+		//pr_info("[INF][COMPOSITE] %s ### state = [%d] count =[%d] power_cnt=[%d]\n",
+		//	__func__,blank_mode, pdev_composite->power.usage_count,
+		//	pdev_composite->power.usage_count.counter);
 		return 0;
 	}
 
@@ -711,9 +730,10 @@ static int composite_blank(int blank_mode)
 	return ret;
 }
 
-/*****************************************************************************
- Function Name : tcc_composite_attach()
-******************************************************************************/
+/*==============================================================================
+ * Function Name : tcc_composite_attach()
+ *==============================================================================
+ */
 void tcc_composite_attach(char lcdc_num, char mode, char starter_flag)
 {
 	char composite_mode;
@@ -758,9 +778,10 @@ void tcc_composite_attach(char lcdc_num, char mode, char starter_flag)
 	tca_fb_attach_start(tccfb_info);
 }
 
-/*****************************************************************************
- Function Name : tcc_composite_detach()
-******************************************************************************/
+/*==============================================================================
+ * Function Name : tcc_composite_detach()
+ *==============================================================================
+ */
 void tcc_composite_detach(void)
 {
 	struct fb_info *info = registered_fb[0];
@@ -782,14 +803,15 @@ void tcc_composite_detach(void)
 	Composite_LCDC_Num = Composite_Disp_Num;
 }
 
-/*****************************************************************************
- Function Name : tcc_composite_ioctl()
-******************************************************************************/
+/*==============================================================================
+ * Function Name : tcc_composite_ioctl()
+ *==============================================================================
+ */
 static long tcc_composite_ioctl(struct file *file, unsigned int cmd,
 				unsigned long arg)
 {
-	TCC_COMPOSITE_START_TYPE start;
-	TCC_COMPOSITE_CGMS_TYPE cgms;
+	struct TCC_COMPOSITE_START_TYPE start;
+	struct TCC_COMPOSITE_CGMS_TYPE cgms;
 
 	dprintk("composite_ioctl IOCTRL[%d]\n", cmd);
 
@@ -807,11 +829,15 @@ static long tcc_composite_ioctl(struct file *file, unsigned int cmd,
 				tcc_composite_detect_device.dev.platform_data;
 
 			if (enable) {
-				switch_data->send_composite_event(switch_data, TCC_COMPOSITE_ON);
-				dprintk("TCC_COMPOSITE_IOCTL_HPD_SWITCH_STATUS enable = %d\n", enable);
+				switch_data->send_composite_event(switch_data,
+					TCC_COMPOSITE_ON);
+		dprintk("TCC_COMPOSITE_IOCTL_HPD_SWITCH_STATUS enable = %d\n",
+					enable);
 			} else {
-				switch_data->send_composite_event(switch_data, TCC_COMPOSITE_OFF);
-				pr_info("[INF][COMPOSITE] TCC_COMPOSITE_IOCTL_HPD_SWITCH_STATUS enable = %d\n", enable);
+				switch_data->send_composite_event(switch_data,
+					TCC_COMPOSITE_OFF);
+				pr_info("[INF][COMPOSITE] TCC_COMPOSITE_IOCTL_HPD_SWITCH_STATUS enable = %d\n",
+					enable);
 			}
 		}
 	#endif
@@ -942,12 +968,15 @@ static long tcc_composite_ioctl(struct file *file, unsigned int cmd,
 	}
 
 	case TCC_COPOSITE_IOCTL_GET_SUSPEND_STATUS: {
-		dprintk("TCC_COPOSITE_IOCTL_GET_SUSPEND_STATUS: %d\n", gCompositeSuspendStatus);
+		dprintk("TCC_COPOSITE_IOCTL_GET_SUSPEND_STATUS: %d\n",
+			gCompositeSuspendStatus);
 		if (gLinuxCompositeSuspendStatus) {
-			put_user(gLinuxCompositeSuspendStatus, (unsigned int __user *)arg);
+			put_user(gLinuxCompositeSuspendStatus,
+				(unsigned int __user *)arg);
 			gLinuxCompositeSuspendStatus = 0;
 		} else {
-			put_user(gCompositeSuspendStatus, (unsigned int __user *)arg);
+			put_user(gCompositeSuspendStatus,
+				(unsigned int __user *)arg);
 		}
 
 		break;
@@ -961,22 +990,24 @@ static long tcc_composite_ioctl(struct file *file, unsigned int cmd,
 	return 0;
 }
 
-/*****************************************************************************
- Function Name : tcc_composite_open()
-******************************************************************************/
+/*==============================================================================
+ * Function Name : tcc_composite_open()
+ *==============================================================================
+ */
 static int tcc_composite_open(struct inode *inode, struct file *filp)
 {
-	//dprintk("%s  \n", __func__);
+	//dprintk("%s\n", __func__);
 	//tcc_composite_clock_onoff(1);
 	return 0;
 }
 
-/*****************************************************************************
- Function Name : tcc_composite_release()
-******************************************************************************/
+/*==============================================================================
+ * Function Name : tcc_composite_release()
+ *==============================================================================
+ */
 static int tcc_composite_release(struct inode *inode, struct file *file)
 {
-	//dprintk(" %s  \n", __func__);
+	//dprintk(" %s\n", __func__);
 	//tcc_composite_clock_onoff(0);
 	return 0;
 }
@@ -984,7 +1015,7 @@ static int tcc_composite_release(struct inode *inode, struct file *file)
 #ifdef CONFIG_PM
 int composite_runtime_suspend(struct device *dev)
 {
-	pr_info("[INF][COMPOSITE] %s:  \n", __FUNCTION__);
+	pr_info("[INF][COMPOSITE] %s:\n", __func__);
 
 	if (tcc_composite_started) {
 		#if 1 // defined(CONFIG_TCC_DISPLAY_LCD_CVBS)
@@ -997,14 +1028,14 @@ int composite_runtime_suspend(struct device *dev)
 
 	gCompositeSuspendStatus = 1;
 
-	pr_info("[INF][COMPOSITE] %s: finish \n", __FUNCTION__);
+	pr_info("[INF][COMPOSITE] %s: finish\n", __func__);
 
 	return 0;
 }
 
 int composite_runtime_resume(struct device *dev)
 {
-	pr_info("[INF][COMPOSITE] %s:  \n", __FUNCTION__);
+	pr_info("[INF][COMPOSITE] %s:\n", __func__);
 
 	#if 1 // defined(CONFIG_TCC_DISPLAY_LCD_CVBS)
 	if (tcc_composite_attached_cvbs)
@@ -1024,7 +1055,7 @@ static int composite_suspend(struct device *dev)
 	tcc_composite_end();
 	gLinuxCompositeSuspendStatus = 1;
 	#endif
-	pr_info("[INF][COMPOSITE] %s: gCompositeSuspendStatus = %d\n", __FUNCTION__,
+	pr_info("[INF][COMPOSITE] %s: gCompositeSuspendStatus = %d\n", __func__,
 		gCompositeSuspendStatus);
 
 	#if COMPOSITE_CLK_SEQUENCE_TYPE == 3
@@ -1038,7 +1069,7 @@ static int composite_resume(struct device *dev)
 {
 	/* Linux Platform */
 
-	pr_info("[INF][COMPOSITE] %s: gCompositeSuspendStatus = %d\n", __FUNCTION__,
+	pr_info("[INF][COMPOSITE] %s: gCompositeSuspendStatus = %d\n", __func__,
 	       gCompositeSuspendStatus);
 
 	return 0;
@@ -1077,21 +1108,25 @@ static int composite_parse_dt(struct device_node *np)
 		pComposite_SCALER = VIOC_SC_GetAddress(index);
 		Composite_Scaler_Num = index;
 	} else {
-		pr_err("[ERR][COMPOSITE] %s, could not find scaler node\n", __func__);
+		pr_err("[ERR][COMPOSITE] %s, could not find scaler node\n",
+			__func__);
 		ret = -ENODEV;
 	}
 
 	pComposite_DDICFG = VIOC_DDICONFIG_GetAddress();
 	if (pComposite_DDICFG == NULL) {
-		pr_err("[ERR][COMPOSITE] %s, could not get ddi_config \n", __func__);
+		pr_err("[ERR][COMPOSITE] %s, could not get ddi_config\n",
+			__func__);
 		ret = -ENODEV;
 	}
 
 	/* get the information of vioc-fb device node */
 	np_fb = of_find_compatible_node(NULL, NULL, "telechips,vioc-fb");
 
-	if (of_property_read_u32(np_fb, "telechips,fbdisplay_num", &Composite_Disp_Num)) {
-		pr_err("[ERR][COMPOSITE] %s, could not find fbdisplay_num\n", __func__);
+	if (of_property_read_u32(np_fb, "telechips,fbdisplay_num",
+		&Composite_Disp_Num)) {
+		pr_err("[ERR][COMPOSITE] %s, could not find fbdisplay_num\n",
+			__func__);
 		ret = -ENODEV;
 	}
 
@@ -1108,65 +1143,80 @@ static int composite_parse_dt(struct device_node *np)
 	/* get register address for main output */
 	np_fb_child = of_parse_phandle(np_fb_1st, "telechips,disp", 0);
 	if (np_fb_child) {
-		of_property_read_u32_index(np_fb_1st, "telechips,disp", 1, &index);
+		of_property_read_u32_index(np_fb_1st, "telechips,disp", 1,
+			&index);
 		pComposite_DISP = VIOC_DISP_GetAddress(index);
 	} else {
-		pr_err("[ERR][COMPOSITE] %s, could not find disp node\n", __func__);
+		pr_err("[ERR][COMPOSITE] %s, could not find disp node\n",
+			__func__);
 		ret = -ENODEV;
 	}
 
 	np_fb_child = of_parse_phandle(np_fb_1st, "telechips,wmixer", 0);
 	if (np_fb_child) {
-		of_property_read_u32_index(np_fb_1st, "telechips,wmixer", 1, &index);
+		of_property_read_u32_index(np_fb_1st, "telechips,wmixer", 1,
+			&index);
 		pComposite_WMIX = VIOC_WMIX_GetAddress(index);
 	} else {
-		pr_err("[ERR][COMPOSITE] %s, could not find wmixer node\n", __func__);
+		pr_err("[ERR][COMPOSITE] %s, could not find wmixer node\n",
+			__func__);
 		ret = -ENODEV;
 	}
 
 	np_fb_child = of_parse_phandle(np_fb_1st, "telechips,rdma", 0);
 	if (np_fb_child) {
-		of_property_read_u32_index(np_fb_1st, "telechips,rdma", 1 + 0, &index);
+		of_property_read_u32_index(np_fb_1st, "telechips,rdma", 1 + 0,
+			&index);
 		pComposite_RDMA_UI = VIOC_RDMA_GetAddress(index);
-		of_property_read_u32_index(np_fb_1st, "telechips,rdma", 1 + 3, &index);
+		of_property_read_u32_index(np_fb_1st, "telechips,rdma", 1 + 3,
+			&index);
 		pComposite_RDMA_VIDEO = VIOC_RDMA_GetAddress(index);
 		Composite_RDMA_VIDEO_Num = index;
 	} else {
-		pr_err("[ERR][COMPOSITE] %s, could not find rdma node\n", __func__);
+		pr_err("[ERR][COMPOSITE] %s, could not find rdma node\n",
+			__func__);
 		ret = -ENODEV;
 	}
 
 	/* get register address for attached output */
 	np_fb_child = of_parse_phandle(np_fb_2nd, "telechips,disp", 0);
 	if (np_fb_child) {
-		of_property_read_u32_index(np_fb_2nd, "telechips,disp", 1, &index);
+		of_property_read_u32_index(np_fb_2nd, "telechips,disp", 1,
+			&index);
 		pComposite_Attach_DISP = VIOC_DISP_GetAddress(index);
 	} else {
-		pr_err("[ERR][COMPOSITE] %s, could not find disp node for attached output\n", __func__);
+		pr_err("[ERR][COMPOSITE] %s, could not find disp node for attached output\n",
+			__func__);
 		ret = -ENODEV;
 	}
 
 	np_fb_child = of_parse_phandle(np_fb_2nd, "telechips,wmixer", 0);
 	if (np_fb_child) {
-		of_property_read_u32_index(np_fb_2nd, "telechips,wmixer", 1, &index);
+		of_property_read_u32_index(np_fb_2nd, "telechips,wmixer", 1,
+			&index);
 		pComposite_Attach_WMIX = VIOC_WMIX_GetAddress(index);
 	} else {
-		pr_err("[ERR][COMPOSITE] %s, could not find wmixer node for attached output\n", __func__);
+		pr_err("[ERR][COMPOSITE] %s, could not find wmixer node for attached output\n",
+			__func__);
 		ret = -ENODEV;
 	}
 
 	np_fb_child = of_parse_phandle(np_fb_2nd, "telechips,rdma", 0);
 	if (np_fb_child) {
-		of_property_read_u32_index(np_fb_2nd, "telechips,rdma", 1 + 0, &index);
+		of_property_read_u32_index(np_fb_2nd, "telechips,rdma", 1 + 0,
+			&index);
 		pComposite_Attach_RDMA_UI = VIOC_RDMA_GetAddress(index);
-		of_property_read_u32_index(np_fb_2nd, "telechips,rdma", 1 + 3, &index);
+		of_property_read_u32_index(np_fb_2nd, "telechips,rdma", 1 + 3,
+			&index);
 		pComposite_Attach_RDMA_VIDEO = VIOC_RDMA_GetAddress(index);
 	} else {
-		pr_err("[ERR][COMPOSITE] %s, could not find rdma node for attached output\n", __func__);
+		pr_err("[ERR][COMPOSITE] %s, could not find rdma node for attached output\n",
+			__func__);
 		ret = -ENODEV;
 	}
 
-	pr_info("[INF][COMPOSITE] %s, Composite_LCDC_Num = %d\n", __func__, Composite_Disp_Num);
+	pr_info("[INF][COMPOSITE] %s, Composite_LCDC_Num = %d\n", __func__,
+		Composite_Disp_Num);
 	return ret;
 }
 #else
@@ -1205,7 +1255,7 @@ static int composite_probe(struct platform_device *pdev)
 
 static int composite_remove(struct platform_device *pdev)
 {
-	pr_info("[INF][COMPOSITE] %s LCDC:%d \n", __func__, Composite_LCDC_Num);
+	pr_info("[INF][COMPOSITE] %s LCDC:%d\n", __func__, Composite_LCDC_Num);
 
 	misc_deregister(&tcc_composite_misc_device);
 
@@ -1229,7 +1279,8 @@ static const struct dev_pm_ops composite_pm_ops = {
 #ifdef CONFIG_OF
 static struct of_device_id composite_of_match[] = {
 	{.compatible = "telechips,tcc-composite"},
-	{}};
+	{}
+};
 MODULE_DEVICE_TABLE(of, composite_of_match);
 #endif
 
@@ -1248,17 +1299,19 @@ static struct platform_driver tcc_composite = {
 	},
 };
 
-/*****************************************************************************
- Function Name : tcc_composite_init()
-******************************************************************************/
+/*==============================================================================
+ * Function Name : tcc_composite_init()
+ *==============================================================================
+ */
 int __init tcc_composite_init(void)
 {
 	return platform_driver_register(&tcc_composite);
 }
 
-/*****************************************************************************
- Function Name : tcc_composite_cleanup()
-******************************************************************************/
+/*==============================================================================
+ * Function Name : tcc_composite_cleanup()
+ *==============================================================================
+ */
 void __exit tcc_composite_exit(void)
 {
 	platform_driver_unregister(&tcc_composite);

@@ -65,20 +65,24 @@
 #define Hw0		0x00000001
 #define HwZERO	0x00000000
 
-#define BITSET(X, MASK)             ((X) |= (unsigned int)(MASK))
-#define BITCSET(X, CMASK, SMASK)    ((X) = ((((unsigned int)(X)) & ~((unsigned int)(CMASK))) | ((unsigned int)(SMASK))) )
-#define BITCLR(X, MASK)             ((X) &= ~((unsigned int)(MASK)) )
+#ifndef uint32_t
+typedef unsigned int uint32_t;
+#endif
 
-typedef struct hwdemux_handler {
-    void __iomem *mbox0_base;
-    void __iomem *mbox1_base;
-    void __iomem *code_base;
-    void __iomem *data_base;
-    void __iomem *cfg_base;
-} HWDMX_HANDLE;
+#define BITSET(X, M) ((X) |= ((uint32_t)(M)))
+#define BITCSETXC(X, C) (((uint32_t)(X)) & ~((uint32_t)(C)))
+#define BITCSET(X, C, S) ((X) = (BITCSETXC(X, C) | ((uint32_t)(S))))
+#define BITCLR(X, M) ((X) &= ~((uint32_t)(M)))
 
-struct tcc_demux_handle
-{
+struct HWDMX_HANDLE {
+	void __iomem *mbox0_base;
+	void __iomem *mbox1_base;
+	void __iomem *code_base;
+	void __iomem *data_base;
+	void __iomem *cfg_base;
+};
+
+struct tcc_demux_handle {
 	void *handle;
 };
 
@@ -86,19 +90,25 @@ int hwdmx_register(int devid, struct device *dev);
 int hwdmx_unregister(int devid);
 int hwdmx_start(struct tcc_demux_handle *dmx, unsigned int devid);
 int hwdmx_stop(struct tcc_demux_handle *dmx, unsigned int devid);
-int hwdmx_buffer_flush(struct tcc_demux_handle *dmx, unsigned long addr, int len);
-int hwdmx_set_external_tsdemux(
-	struct tcc_demux_handle *dmx,
-	int (*decoder)(char *p1, int p1_size, char *p2, int p2_size, int devid));
+int hwdmx_buffer_flush(struct tcc_demux_handle *dmx, unsigned long addr,
+		       int len);
+int hwdmx_set_external_tsdemux(struct tcc_demux_handle *dmx,
+			       int (*decoder)(char *p1, int p1_size, char *p2,
+					       int p2_size, int devid));
 int hwdmx_add_pid(struct tcc_demux_handle *dmx, struct tcc_tsif_filter *param);
-int hwdmx_remove_pid(struct tcc_demux_handle *dmx, struct tcc_tsif_filter *param);
-int hwdmx_set_pcr_pid(struct tcc_demux_handle *dmx, unsigned int index, unsigned int pcr_pid);
+int hwdmx_remove_pid(struct tcc_demux_handle *dmx,
+		     struct tcc_tsif_filter *param);
+int hwdmx_set_pcr_pid(struct tcc_demux_handle *dmx, unsigned int index,
+		      unsigned int pcr_pid);
 int hwdmx_get_stc(struct tcc_demux_handle *dmx, unsigned int index, u64 *stc);
-int hwdmx_set_cipher_dec_pid(struct tcc_demux_handle *dmx,	unsigned int numOfPids, 
-	unsigned int delete_option, unsigned short *pids);
+int hwdmx_set_cipher_dec_pid(struct tcc_demux_handle *dmx,
+			     unsigned int numOfPids, unsigned int delete_option,
+			     unsigned short *pids);
 int hwdmx_set_cipher_mode(struct tcc_demux_handle *dmx, int algo, int opmode,
-	int residual, int smsg, unsigned int numOfPids, unsigned short *pids);
-int hwdmx_set_key(struct tcc_demux_handle *dmx, int keytype, int keymode, int size, void *key);
+			  int residual, int smsg, unsigned int numOfPids,
+			  unsigned short *pids);
+int hwdmx_set_key(struct tcc_demux_handle *dmx, int keytype, int keymode,
+		  int size, void *key);
 
 int hwdmx_input_ts(int devid, uintptr_t mmap_buf, int size);
 

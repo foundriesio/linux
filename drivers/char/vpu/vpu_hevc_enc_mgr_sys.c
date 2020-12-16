@@ -26,18 +26,18 @@
 #include "vpu_comm.h"
 #include "vpu_hevc_enc_mgr_sys.h"
 
-static struct clk* fbus_vbus_clk = NULL;
-static struct clk* fbus_chevcenc_clk = NULL;
-static struct clk* fbus_bhevcenc_clk = NULL;
-static struct clk* vbus_hevc_encoder_clk = NULL;
+static struct clk *fbus_vbus_clk;	// = NULL;
+static struct clk *fbus_chevcenc_clk;	// = NULL;
+static struct clk *fbus_bhevcenc_clk;	// = NULL;
+static struct clk *vbus_hevc_encoder_clk;	// = NULL;
 
 #if defined(VIDEO_IP_DIRECT_RESET_CTRL)
 #include <linux/reset.h>
-static struct reset_control* vbus_hevc_encoder_rst = NULL;
+static struct reset_control *vbus_hevc_encoder_rst;	// = NULL;
 #endif
 
 extern int tccxxx_sync_player(int sync);
-static int cache_droped = 0;
+static int cache_droped;	// = 0;
 
 #if 0
 #define USE_CLK_DYNAMIC_CTRL
@@ -79,12 +79,10 @@ void vmgr_hevc_enc_disable_clock(int vbus_no_ctrl)
 #endif
 }
 
-void vmgr_hevc_enc_get_clock(struct device_node* node)
+void vmgr_hevc_enc_get_clock(struct device_node *node)
 {
 	if (node == NULL)
-	{
 		V_DBG(VPU_DBG_ERROR, "device node is null");
-	}
 
 	fbus_vbus_clk = of_clk_get(node, 0);
 	BUG_ON(IS_ERR(fbus_vbus_clk));
@@ -101,26 +99,22 @@ void vmgr_hevc_enc_get_clock(struct device_node* node)
 
 void vmgr_hevc_enc_put_clock(void)
 {
-	if (fbus_chevcenc_clk)
-	{
+	if (fbus_chevcenc_clk) {
 		clk_put(fbus_chevcenc_clk);
 		fbus_chevcenc_clk = NULL;
 	}
 
-	if (fbus_bhevcenc_clk)
-	{
+	if (fbus_bhevcenc_clk) {
 		clk_put(fbus_bhevcenc_clk);
 		fbus_bhevcenc_clk = NULL;
 	}
 
-	if (vbus_hevc_encoder_clk)
-	{
+	if (vbus_hevc_encoder_clk) {
 		clk_put(vbus_hevc_encoder_clk);
 		vbus_hevc_encoder_clk = NULL;
 	}
 
-	if (fbus_vbus_clk)
-	{
+	if (fbus_vbus_clk) {
 		clk_put(fbus_vbus_clk);
 		fbus_vbus_clk = NULL;
 	}
@@ -129,14 +123,16 @@ void vmgr_hevc_enc_put_clock(void)
 void vmgr_hevc_enc_change_clock(unsigned int width, unsigned int height)
 {
 #ifdef USE_CLK_DYNAMIC_CTRL
-	static unsigned int prev_resolution = 0x0;
+	static unsigned int prev_resolution;	// = 0x0;
 	unsigned long vbus_clk_value, bhevc_clk_value = 0, chevc_clk_value = 0;
 	unsigned long curr_resolution = width * height;
 	unsigned int bclk_changed = 0x0;
 	int err;
 
 //pll: Based on 1500/800
-// => path to confiture PLL: bootable/bootloader/uboot/board/telechips/tcc8990_stb/clock.c, clock_init_early
+// => path to confiture PLL:
+// bootable/bootloader/uboot/board/telechips/tcc8990_stb/clock.c,
+// clock_init_early
 #if 0 //Remove below lines if not necessary
 	tcc_set_pll(PLL_VIDEO_0, ENABLE, 800000000, 2);
 	tcc_set_pll(PLL_VIDEO_1, ENABLE, 1500000000, 2);
@@ -147,59 +143,53 @@ void vmgr_hevc_enc_change_clock(unsigned int width, unsigned int height)
 
 	prev_resolution = curr_resolution;
 
-	if (curr_resolution > 1920*1088)
-	{
+	if (curr_resolution > 1920 * 1088) {
 		vbus_clk_value = 800000000;
 		bhevc_clk_value = 500000000;
 		chevc_clk_value = 800000000;
-	}
-	else if (curr_resolution > 1280*720)
-	{
+	} else if (curr_resolution > 1280 * 720) {
 		vbus_clk_value = 500000000;
 		bhevc_clk_value = 250000000;
 		chevc_clk_value = 500000000;
-	}
-	else if (curr_resolution > 720*480)
-	{
+	} else if (curr_resolution > 720 * 480) {
 		vbus_clk_value = 300000000;
 		bhevc_clk_value = 200000000;
 		chevc_clk_value = 300000000;
-	}
-	else /*curr_resolution > 0*/
-	{
+	} else {	//curr_resolution > 0
 		vbus_clk_value = 200000000;
 		bhevc_clk_value = 150000000;
 		chevc_clk_value = 200000000;
 	}
 
-	if (fbus_vbus_clk)
-	{
+	if (fbus_vbus_clk) {
 		err = clk_set_rate(fbus_vbus_clk, vbus_clk_value);
 		if (err)
-			pr_err("cannot change fbus_vbus_clk rate to %ld: %d\n", vbus_clk_value, err);
+			pr_err("cannot change fbus_vbus_clk rate to %ld: %d\n",
+				vbus_clk_value, err);
 		else
 			bclk_changed |= 0x1;
 	}
 
-	if (fbus_bhevcenc_clk)
-	{
+	if (fbus_bhevcenc_clk) {
 		err = clk_set_rate(fbus_bhevcenc_clk, bhevc_clk_value);
 		if (err)
-			pr_err("cannot change fbus_bhevcenc_clk rate to %ld: %d\n", bhevc_clk_value, err);
+			pr_err("cannot change fbus_bhevcenc_clk rate to %ld: %d\n",
+				bhevc_clk_value, err);
 		else
 			bclk_changed |= 0x2;
 	}
 
-	if (fbus_chevcenc_clk)
-	{
+	if (fbus_chevcenc_clk) {
 		err = clk_set_rate(fbus_chevcenc_clk, chevc_clk_value);
 		if (err)
-			pr_err("cannot change fbus_chevcenc_clk rate to %ld: %d\n", chevc_clk_value, err);
+			pr_err("cannot change fbus_chevcenc_clk rate to %ld: %d\n",
+				chevc_clk_value, err);
 		else
 			bclk_changed |= 0x4;
 	}
 
-	printk("%s-%d :[0x%x]: %d x %d => clock : vbus(%d Mhz), hevc(%d/%d Mhz) \n", __func__, __LINE__,
+	pr_info("%s-%d :[0x%x]: %d x %d => clock : vbus(%d Mhz), hevc(%d/%d Mhz)\n",
+			 __func__, __LINE__,
 			bclk_changed, width, height,
 			(unsigned int)(vbus_clk_value/1000000),
 			(unsigned int)(chevc_clk_value/1000000),
@@ -207,13 +197,11 @@ void vmgr_hevc_enc_change_clock(unsigned int width, unsigned int height)
 #endif
 }
 
-void vmgr_hevc_enc_get_reset(struct device_node* node)
+void vmgr_hevc_enc_get_reset(struct device_node *node)
 {
 #if defined(VIDEO_IP_DIRECT_RESET_CTRL)
 	if (node == NULL)
-	{
-		printk("device node is null\n");
-	}
+		pr_info("device node is null");
 
 	vbus_hevc_encoder_rst = of_reset_control_get(node, "hevc_encoder");
 	BUG_ON(IS_ERR(vbus_hevc_encoder_rst));
@@ -223,8 +211,7 @@ void vmgr_hevc_enc_get_reset(struct device_node* node)
 void vmgr_hevc_enc_put_reset(void)
 {
 #if defined(VIDEO_IP_DIRECT_RESET_CTRL)
-	if (vbus_hevc_encoder_rst)
-	{
+	if (vbus_hevc_encoder_rst) {
 		reset_control_put(vbus_hevc_encoder_rst);
 		vbus_hevc_encoder_rst = NULL;
 	}
@@ -245,13 +232,15 @@ void vmgr_hevc_enc_hw_assert(void)
 #if defined(VIDEO_IP_DIRECT_RESET_CTRL)
 	V_DBG(VPU_DBG_RSTCLK, "enter");
 
-	if (vbus_hevc_encoder_rst)
-	{
-		V_DBG(VPU_DBG_RSTCLK, "Video bus hevc encoder reset: assert (rsr:0x%x)\n", vmgr_hevc_enc_get_reset_register());
+	if (vbus_hevc_encoder_rst) {
+		V_DBG(VPU_DBG_RSTCLK,
+			"Video bus hevc encoder reset: assert (rsr:0x%x)",
+			vmgr_hevc_enc_get_reset_register());
 		reset_control_assert(vbus_hevc_encoder_rst);
 	}
 
-	V_DBG(VPU_DBG_RSTCLK, "out!! (rsr:0x%x)", vmgr_hevc_enc_get_reset_register());
+	V_DBG(VPU_DBG_RSTCLK, "out!! (rsr:0x%x)",
+		vmgr_hevc_enc_get_reset_register());
 #endif
 }
 
@@ -260,13 +249,15 @@ void vmgr_hevc_enc_hw_deassert(void)
 #if defined(VIDEO_IP_DIRECT_RESET_CTRL)
 	V_DBG(VPU_DBG_RSTCLK, "enter");
 
-	if (vbus_hevc_encoder_rst)
-	{
-		V_DBG(VPU_DBG_RSTCLK, "Video bus hevc encoder reset: deassert (rsr:0x%x)\n", vmgr_hevc_enc_get_reset_register());
+	if (vbus_hevc_encoder_rst) {
+		V_DBG(VPU_DBG_RSTCLK,
+			"Video bus hevc encoder reset: deassert (rsr:0x%x)",
+			vmgr_hevc_enc_get_reset_register());
 		reset_control_deassert(vbus_hevc_encoder_rst);
 	}
 
-	V_DBG(VPU_DBG_RSTCLK, "out!! (rsr:0x%x)", vmgr_hevc_enc_get_reset_register());
+	V_DBG(VPU_DBG_RSTCLK, "out!! (rsr:0x%x)",
+		vmgr_hevc_enc_get_reset_register());
 #endif
 }
 
@@ -285,7 +276,8 @@ void vmgr_hevc_enc_hw_reset(void)
 
 	udelay(1000); //1ms
 
-	V_DBG(VPU_DBG_RSTCLK, "out (rsr:0x%x)", vmgr_hevc_enc_get_reset_register());
+	V_DBG(VPU_DBG_RSTCLK, "out (rsr:0x%x)",
+		vmgr_hevc_enc_get_reset_register());
 #endif
 }
 
@@ -300,8 +292,7 @@ void vmgr_hevc_enc_restore_clock(int vbus_no_ctrl, int opened_cnt)
 
 	udelay(1000); //1ms
 
-	while (opened_count)
-	{
+	while (opened_count) {
 		vmgr_hevc_enc_disable_clock(vbus_no_ctrl);
 		if (opened_count > 0)
 			opened_count--;
@@ -310,8 +301,7 @@ void vmgr_hevc_enc_restore_clock(int vbus_no_ctrl, int opened_cnt)
 	udelay(1000); //1ms
 
 	opened_count = opened_cnt;
-	while (opened_count)
-	{
+	while (opened_count) {
 		vmgr_hevc_enc_enable_clock(vbus_no_ctrl);
 		if (opened_count > 0)
 			opened_count--;
@@ -335,13 +325,14 @@ void vmgr_hevc_enc_disable_irq(unsigned int irq)
 	disable_irq(irq);
 }
 
-void vmgr_hevc_enc_free_irq(unsigned int irq, void* dev_id)
+void vmgr_hevc_enc_free_irq(unsigned int irq, void *dev_id)
 {
 	free_irq(irq, dev_id);
 }
 
-int vmgr_hevc_enc_request_irq(unsigned int irq, irqreturn_t (*handler)(int irq, void* dev_id),
-								unsigned long frags, const char* device, void* dev_id)
+int vmgr_hevc_enc_request_irq(unsigned int irq,
+		irqreturn_t (*handler)(int irq, void *dev_id),
+		unsigned long frags, const char *device, void *dev_id)
 {
 	return request_irq(irq, handler, frags, device, dev_id);
 }
@@ -360,7 +351,7 @@ int vmgr_hevc_enc_BusPrioritySetting(int mode, int type)
 	return 0;
 }
 
-void vmgr_hevc_enc_status_clear(unsigned int* base_addr)
+void vmgr_hevc_enc_status_clear(unsigned int *base_addr)
 {
 #if defined(VPU_C5)
 	vetc_reg_write(base_addr, 0x174, 0x00);

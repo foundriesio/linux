@@ -27,7 +27,7 @@
 #include <video/tcc/vioc_wdma.h>
 #include <video/tcc/vioc_disp.h>
 #include <video/tcc/vioc_global.h>
-#include <video/tcc/vioc_ddicfg.h>	// is_VIOC_REMAP
+#include <video/tcc/vioc_ddicfg.h> // is_VIOC_REMAP
 
 #if defined(CONFIG_VIOC_DOLBY_VISION_EDR)
 #include <video/tcc/vioc_v_dv.h>
@@ -44,9 +44,11 @@
 static volatile void __iomem *pTIMER_reg;
 #endif
 
-static int vioc_base_irq_num[4] = {0,};
+static int vioc_base_irq_num[4] = {
+	0,
+};
 
-int vioc_intr_enable(int irq, int id, unsigned mask)
+int vioc_intr_enable(int irq, int id, unsigned int mask)
 {
 	volatile void __iomem *reg;
 	unsigned int sub_id;
@@ -76,32 +78,29 @@ int vioc_intr_enable(int irq, int id, unsigned mask)
 			sub_id = id - VIOC_INTR_DEV0;
 
 		reg = VIOC_DISP_GetAddress(sub_id);
-		__raw_writel((__raw_readl(reg + DIM) &
-			      ~(mask & VIOC_DISP_INT_MASK)),
-			     reg + DIM);
+		__raw_writel(
+			(__raw_readl(reg + DIM) & ~(mask & VIOC_DISP_INT_MASK)),
+			reg + DIM);
 		break;
 #endif
 #endif
 		sub_id = id - VIOC_INTR_DEV0;
 
 		reg = VIOC_DISP_GetAddress(sub_id);
-		__raw_writel((__raw_readl(reg + DIM) &
-			      ~(mask & VIOC_DISP_INT_MASK)),
-			     reg + DIM);
+		__raw_writel(
+			(__raw_readl(reg + DIM) & ~(mask & VIOC_DISP_INT_MASK)),
+			reg + DIM);
 		break;
 
 #if defined(CONFIG_VIOC_DOLBY_VISION_EDR)
-	case VIOC_INTR_V_DV:
-	{
+	case VIOC_INTR_V_DV: {
 		volatile void __iomem *pDV_Cfg =
 			VIOC_DV_VEDR_GetAddress(VDV_CFG);
+		VIOC_V_DV_SetInterruptEnable(
+			pDV_Cfg, (mask & VIOC_V_DV_INT_MASK), 1);
 
-		VIOC_V_DV_SetInterruptEnable(pDV_Cfg,
-					     (mask & VIOC_V_DV_INT_MASK), 1);
-
-		//dprintk_dv_sequence("### V_DV INT On\n");
-	}
-	break;
+		// dprintk_dv_sequence("### V_DV INT On\n");
+	} break;
 #endif
 	case VIOC_INTR_RD0:
 	case VIOC_INTR_RD1:
@@ -128,8 +127,8 @@ int vioc_intr_enable(int irq, int id, unsigned mask)
 
 		/* enable irq */
 		reg = VIOC_RDMA_GetAddress(sub_id) + RDMAIRQMSK;
-		__raw_writel(__raw_readl(reg) & ~(mask & VIOC_RDMA_INT_MASK),
-				reg);
+		__raw_writel(
+			__raw_readl(reg) & ~(mask & VIOC_RDMA_INT_MASK), reg);
 		break;
 	case VIOC_INTR_WD0:
 	case VIOC_INTR_WD1:
@@ -143,15 +142,13 @@ int vioc_intr_enable(int irq, int id, unsigned mask)
 		sub_id = id - VIOC_INTR_WD0;
 
 		/* clera irq status */
-		reg = VIOC_WDMA_GetAddress(sub_id) +
-		      WDMAIRQSTS_OFFSET;
+		reg = VIOC_WDMA_GetAddress(sub_id) + WDMAIRQSTS_OFFSET;
 		__raw_writel((mask & VIOC_WDMA_INT_MASK), reg);
 
 		/* enable irq */
-		reg = VIOC_WDMA_GetAddress(sub_id) +
-		      WDMAIRQMSK_OFFSET;
-		__raw_writel(__raw_readl(reg) & ~(mask & VIOC_WDMA_INT_MASK),
-			     reg);
+		reg = VIOC_WDMA_GetAddress(sub_id) + WDMAIRQMSK_OFFSET;
+		__raw_writel(
+			__raw_readl(reg) & ~(mask & VIOC_WDMA_INT_MASK), reg);
 		break;
 #if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X)
 	case VIOC_INTR_WD9:
@@ -161,15 +158,14 @@ int vioc_intr_enable(int irq, int id, unsigned mask)
 		sub_id = id - VIOC_INTR_WD_OFFSET - VIOC_INTR_WD0;
 
 		/* clera irq status */
-		reg = VIOC_WDMA_GetAddress(sub_id) +
-		WDMAIRQSTS_OFFSET;
+		reg = VIOC_WDMA_GetAddress(sub_id) + WDMAIRQSTS_OFFSET;
 		__raw_writel((mask & VIOC_WDMA_INT_MASK), reg);
 
 		/* enable irq */
 		reg = VIOC_WDMA_GetAddress(sub_id) + WDMAIRQMSK_OFFSET;
-		__raw_writel(__raw_readl(reg) & ~(mask & VIOC_WDMA_INT_MASK),
-			reg);
-	break;
+		__raw_writel(
+			__raw_readl(reg) & ~(mask & VIOC_WDMA_INT_MASK), reg);
+		break;
 #if defined(CONFIG_ARCH_TCC805X)
 	case VIOC_INTR_WD13:
 		sub_id = id - VIOC_INTR_WD_OFFSET - VIOC_INTR_WD_OFFSET2 -
@@ -215,7 +211,7 @@ int vioc_intr_enable(int irq, int id, unsigned mask)
 	case VIOC_INTR_VIN6:
 #if defined(CONFIG_ARCH_TCC805X)
 	case VIOC_INTR_VIN7:
-#endif//defined(CONFIG_ARCH_TCC805X)
+#endif // defined(CONFIG_ARCH_TCC805X)
 		sub_id = id - VIOC_INTR_VIN_OFFSET - VIOC_INTR_VIN0;
 
 		reg = VIOC_VIN_GetAddress(sub_id * 2) + VIN_INT;
@@ -228,7 +224,7 @@ int vioc_intr_enable(int irq, int id, unsigned mask)
 			__raw_readl(reg) | ((mask & VIOC_VIN_INT_MASK) << 16),
 			reg);
 		break;
-#endif//defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X)
+#endif // defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X)
 	}
 
 #if defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X) || \
@@ -270,11 +266,11 @@ int vioc_intr_enable(int irq, int id, unsigned mask)
 }
 EXPORT_SYMBOL(vioc_intr_enable);
 
-int vioc_intr_disable(int irq, int id, unsigned mask)
+int vioc_intr_disable(int irq, int id, unsigned int mask)
 {
 	volatile void __iomem *reg;
 	unsigned int sub_id;
-	unsigned do_irq_mask = 1;
+	unsigned int do_irq_mask = 1;
 	unsigned int type_set_offset;
 
 	if ((id < 0) || (id > VIOC_INTR_NUM))
@@ -282,8 +278,8 @@ int vioc_intr_disable(int irq, int id, unsigned mask)
 
 #ifdef CONFIG_TCC_VIOC_CORE_RESET_SUPPORT
 	__raw_writel(
-		__raw_readl(pTIMER_reg + FB_CR_REG_OFFSET(id)) &
-		~(1 << FB_CR_BIT_OFFSET(id)),
+		__raw_readl(pTIMER_reg + FB_CR_REG_OFFSET(id))
+			& ~(1 << FB_CR_BIT_OFFSET(id)),
 		pTIMER_reg + FB_CR_REG_OFFSET(id));
 #endif
 
@@ -300,10 +296,10 @@ int vioc_intr_disable(int irq, int id, unsigned mask)
 			sub_id = id - VIOC_INTR_DEV0;
 
 		reg = VIOC_DISP_GetAddress(sub_id) + DIM;
-		__raw_writel(__raw_readl(reg) | (mask & VIOC_DISP_INT_MASK),
-			     reg);
-		if ((__raw_readl(reg) & VIOC_DISP_INT_MASK) !=
-		    VIOC_DISP_INT_MASK)
+		__raw_writel(
+			__raw_readl(reg) | (mask & VIOC_DISP_INT_MASK), reg);
+		if ((__raw_readl(reg) & VIOC_DISP_INT_MASK)
+		    != VIOC_DISP_INT_MASK)
 			do_irq_mask = 0;
 		break;
 #endif
@@ -311,25 +307,23 @@ int vioc_intr_disable(int irq, int id, unsigned mask)
 		sub_id = id - VIOC_INTR_DEV0;
 
 		reg = VIOC_DISP_GetAddress(sub_id) + DIM;
-		__raw_writel(__raw_readl(reg) | (mask & VIOC_DISP_INT_MASK),
-			reg);
-		if ((__raw_readl(reg) & VIOC_DISP_INT_MASK) !=
-		    VIOC_DISP_INT_MASK)
+		__raw_writel(
+			__raw_readl(reg) | (mask & VIOC_DISP_INT_MASK), reg);
+		if ((__raw_readl(reg) & VIOC_DISP_INT_MASK)
+		    != VIOC_DISP_INT_MASK)
 			do_irq_mask = 0;
 		break;
 #if defined(CONFIG_VIOC_DOLBY_VISION_EDR)
-	case VIOC_INTR_V_DV:
-	{
+	case VIOC_INTR_V_DV: {
 		volatile void __iomem *pDV_Cfg =
 			VIOC_DV_VEDR_GetAddress(VDV_CFG);
 
-		VIOC_V_DV_SetInterruptEnable(pDV_Cfg,
-					     (mask & VIOC_V_DV_INT_MASK), 0);
+		VIOC_V_DV_SetInterruptEnable(
+			pDV_Cfg, (mask & VIOC_V_DV_INT_MASK), 0);
 		if (!(__raw_readl(pDV_Cfg) & (mask & VIOC_V_DV_INT_MASK)))
 			do_irq_mask = 0;
-		//dprintk_dv_sequence("### V_DV INT Off\n");
-	}
-	break;
+		// dprintk_dv_sequence("### V_DV INT Off\n");
+	} break;
 #endif
 	case VIOC_INTR_RD0:
 	case VIOC_INTR_RD1:
@@ -351,10 +345,10 @@ int vioc_intr_disable(int irq, int id, unsigned mask)
 #endif
 		sub_id = id - VIOC_INTR_RD0;
 		reg = VIOC_RDMA_GetAddress(sub_id) + RDMAIRQMSK;
-		__raw_writel(__raw_readl(reg) | (mask & VIOC_RDMA_INT_MASK),
-				reg);
-		if ((__raw_readl(reg) & VIOC_RDMA_INT_MASK) !=
-				VIOC_RDMA_INT_MASK)
+		__raw_writel(
+			__raw_readl(reg) | (mask & VIOC_RDMA_INT_MASK), reg);
+		if ((__raw_readl(reg) & VIOC_RDMA_INT_MASK)
+		    != VIOC_RDMA_INT_MASK)
 			do_irq_mask = 0;
 		break;
 	case VIOC_INTR_WD0:
@@ -367,12 +361,11 @@ int vioc_intr_disable(int irq, int id, unsigned mask)
 	case VIOC_INTR_WD7:
 	case VIOC_INTR_WD8:
 		sub_id = id - VIOC_INTR_WD0;
-		reg = VIOC_WDMA_GetAddress(sub_id) +
-		      WDMAIRQMSK_OFFSET;
-		__raw_writel(__raw_readl(reg) | (mask & VIOC_WDMA_INT_MASK),
-			     reg);
-		if ((__raw_readl(reg) & VIOC_WDMA_INT_MASK) !=
-		    VIOC_WDMA_INT_MASK)
+		reg = VIOC_WDMA_GetAddress(sub_id) + WDMAIRQMSK_OFFSET;
+		__raw_writel(
+			__raw_readl(reg) | (mask & VIOC_WDMA_INT_MASK), reg);
+		if ((__raw_readl(reg) & VIOC_WDMA_INT_MASK)
+		    != VIOC_WDMA_INT_MASK)
 			do_irq_mask = 0;
 		break;
 #if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X)
@@ -381,23 +374,22 @@ int vioc_intr_disable(int irq, int id, unsigned mask)
 	case VIOC_INTR_WD11:
 	case VIOC_INTR_WD12:
 		sub_id = id - VIOC_INTR_WD_OFFSET - VIOC_INTR_WD0;
-		reg = VIOC_WDMA_GetAddress(sub_id) +
-			WDMAIRQMSK_OFFSET;
-		__raw_writel(__raw_readl(reg) | (mask & VIOC_WDMA_INT_MASK),
-			reg);
-		if ((__raw_readl(reg) & VIOC_WDMA_INT_MASK) !=
-			VIOC_WDMA_INT_MASK)
+		reg = VIOC_WDMA_GetAddress(sub_id) + WDMAIRQMSK_OFFSET;
+		__raw_writel(
+			__raw_readl(reg) | (mask & VIOC_WDMA_INT_MASK), reg);
+		if ((__raw_readl(reg) & VIOC_WDMA_INT_MASK)
+		    != VIOC_WDMA_INT_MASK)
 			do_irq_mask = 0;
-	break;
+		break;
 #if defined(CONFIG_ARCH_TCC805X)
 	case VIOC_INTR_WD13:
-		sub_id = id - VIOC_INTR_WD_OFFSET - VIOC_INTR_WD_OFFSET2 -
-			VIOC_INTR_WD0;
+		sub_id = id - VIOC_INTR_WD_OFFSET - VIOC_INTR_WD_OFFSET2
+			- VIOC_INTR_WD0;
 		reg = VIOC_WDMA_GetAddress(sub_id) + WDMAIRQMSK_OFFSET;
-		__raw_writel(__raw_readl(reg) | (mask & VIOC_WDMA_INT_MASK),
-		reg);
-		if ((__raw_readl(reg) & VIOC_WDMA_INT_MASK) !=
-			VIOC_WDMA_INT_MASK)
+		__raw_writel(
+			__raw_readl(reg) | (mask & VIOC_WDMA_INT_MASK), reg);
+		if ((__raw_readl(reg) & VIOC_WDMA_INT_MASK)
+		    != VIOC_WDMA_INT_MASK)
 			do_irq_mask = 0;
 		break;
 #endif
@@ -418,8 +410,8 @@ int vioc_intr_disable(int irq, int id, unsigned mask)
 		__raw_writel(
 			__raw_readl(reg) & ~((mask & VIOC_VIN_INT_MASK) << 16),
 			reg);
-//		if ((__raw_readl(reg) & VIOC_VIN_INT_MASK) != VIOC_VIN_INT_MASK)
-//			do_irq_mask = 0;
+		//if ((__raw_readl(reg) & VIOC_VIN_INT_MASK) !=
+		// VIOC_VIN_INT_MASK) do_irq_mask = 0;
 		break;
 #if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X)
 	case VIOC_INTR_VIN4:
@@ -427,16 +419,16 @@ int vioc_intr_disable(int irq, int id, unsigned mask)
 	case VIOC_INTR_VIN6:
 #if defined(CONFIG_ARCH_TCC805X)
 	case VIOC_INTR_VIN7:
-#endif//defined(CONFIG_ARCH_TCC805X)
+#endif // defined(CONFIG_ARCH_TCC805X)
 		sub_id = id - VIOC_INTR_VIN_OFFSET - VIOC_INTR_VIN0;
 		reg = VIOC_VIN_GetAddress(sub_id * 2) + VIN_INT;
 		__raw_writel(
 			__raw_readl(reg) & ~((mask & VIOC_VIN_INT_MASK) << 16),
 			reg);
-//		if ((__raw_readl(reg) & VIOC_VIN_INT_MASK) != VIOC_VIN_INT_MASK)
-//			do_irq_mask = 0;
+		//if ((__raw_readl(reg) & VIOC_VIN_INT_MASK) !=
+		//VIOC_VIN_INT_MASK) do_irq_mask = 0;
 		break;
-#endif//defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X)
+#endif // defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X)
 	}
 
 	if (do_irq_mask) {
@@ -550,10 +542,8 @@ unsigned int vioc_intr_get_status(int id)
 		return (__raw_readl(reg) & VIOC_WDMA_INT_MASK);
 #if defined(CONFIG_ARCH_TCC805X)
 	case VIOC_INTR_WD13:
-		id -=
-			(
-				VIOC_INTR_WD_OFFSET - VIOC_INTR_WD_OFFSET2 -
-				VIOC_INTR_WD0);
+		id -= (VIOC_INTR_WD_OFFSET - VIOC_INTR_WD_OFFSET2
+		       - VIOC_INTR_WD0);
 		reg = VIOC_WDMA_GetAddress(id) + WDMAIRQSTS_OFFSET;
 		return (__raw_readl(reg) & VIOC_WDMA_INT_MASK);
 #endif
@@ -571,11 +561,11 @@ unsigned int vioc_intr_get_status(int id)
 	case VIOC_INTR_VIN6:
 #if defined(CONFIG_ARCH_TCC805X)
 	case VIOC_INTR_VIN7:
-#endif//defined(CONFIG_ARCH_TCC805X)
+#endif // defined(CONFIG_ARCH_TCC805X)
 		id -= (VIOC_INTR_VIN_OFFSET + VIOC_INTR_VIN0);
 		reg = VIOC_VIN_GetAddress(id * 2) + VIN_INT;
 		return (__raw_readl(reg) & VIOC_VIN_INT_MASK);
-#endif//defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X)
+#endif // defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X)
 	}
 	return 0;
 }
@@ -583,7 +573,7 @@ EXPORT_SYMBOL(vioc_intr_get_status);
 
 bool check_vioc_irq_status(volatile void __iomem *reg, int id)
 {
-	unsigned flag;
+	unsigned int flag;
 
 	if ((id < 0) || (id > VIOC_INTR_NUM))
 		return false;
@@ -593,21 +583,21 @@ bool check_vioc_irq_status(volatile void __iomem *reg, int id)
 			(__raw_readl(reg + SYNCSTATUS0_OFFSET) & (1 << id)) :
 			(__raw_readl(reg + RAWSTATUS0_OFFSET) & (1 << id));
 	} else if (id >= 32 && id < 64) {
-		flag = (__raw_readl(reg + IRQMASKCLR0_1_OFFSET) &
-			(1 << (id - 32))) ?
-			(__raw_readl(reg + SYNCSTATUS1_OFFSET) &
-			(1 << (id - 32))) :
-			(__raw_readl(reg + RAWSTATUS1_OFFSET) &
-			(1 << (id - 32)));
+		flag = (__raw_readl(reg + IRQMASKCLR0_1_OFFSET)
+			& (1 << (id - 32))) ?
+			(__raw_readl(reg + SYNCSTATUS1_OFFSET)
+			 & (1 << (id - 32))) :
+			(__raw_readl(reg + RAWSTATUS1_OFFSET)
+			 & (1 << (id - 32)));
 	}
 #if !defined(CONFIG_ARCH_TCC897X)
 	else {
-		flag = (__raw_readl(reg + IRQMASKCLR0_2_OFFSET) &
-			(1 << (id - 64)))
-			       ? (__raw_readl(reg + SYNCSTATUS2_OFFSET) &
-				  (1 << (id - 64)))
-			       : (__raw_readl(reg + RAWSTATUS2_OFFSET) &
-				  (1 << (id - 64)));
+		flag = (__raw_readl(reg + IRQMASKCLR0_2_OFFSET)
+			& (1 << (id - 64))) ?
+			(__raw_readl(reg + SYNCSTATUS2_OFFSET)
+			 & (1 << (id - 64))) :
+			(__raw_readl(reg + RAWSTATUS2_OFFSET)
+			 & (1 << (id - 64)));
 	}
 #endif
 
@@ -617,7 +607,7 @@ bool check_vioc_irq_status(volatile void __iomem *reg, int id)
 }
 EXPORT_SYMBOL(check_vioc_irq_status);
 
-bool is_vioc_intr_activatied(int id, unsigned mask)
+bool is_vioc_intr_activatied(int id, unsigned int mask)
 {
 	volatile void __iomem *reg;
 
@@ -635,15 +625,13 @@ bool is_vioc_intr_activatied(int id, unsigned mask)
 			id -= VIOC_INTR_DISP_OFFSET;
 
 		reg = VIOC_DISP_GetAddress(id);
-		if (__raw_readl(reg + DSTATUS) &
-		    (mask & VIOC_DISP_INT_MASK))
+		if (__raw_readl(reg + DSTATUS) & (mask & VIOC_DISP_INT_MASK))
 			return true;
 		return false;
 #endif
 #endif
 		reg = VIOC_DISP_GetAddress(id);
-		if (__raw_readl(reg + DSTATUS) &
-		    (mask & VIOC_DISP_INT_MASK))
+		if (__raw_readl(reg + DSTATUS) & (mask & VIOC_DISP_INT_MASK))
 			return true;
 		return false;
 	case VIOC_INTR_RD0:
@@ -695,10 +683,8 @@ bool is_vioc_intr_activatied(int id, unsigned mask)
 		return false;
 #if defined(CONFIG_ARCH_TCC805X)
 	case VIOC_INTR_WD13:
-		id -=
-			(
-				VIOC_INTR_WD_OFFSET - VIOC_INTR_WD_OFFSET2 -
-				VIOC_INTR_WD0);
+		id -= (VIOC_INTR_WD_OFFSET - VIOC_INTR_WD_OFFSET2
+		       - VIOC_INTR_WD0);
 		reg = VIOC_WDMA_GetAddress(id) + WDMAIRQSTS_OFFSET;
 		if (__raw_readl(reg) & (mask & VIOC_WDMA_INT_MASK))
 			return true;
@@ -720,19 +706,19 @@ bool is_vioc_intr_activatied(int id, unsigned mask)
 	case VIOC_INTR_VIN6:
 #if defined(CONFIG_ARCH_TCC805X)
 	case VIOC_INTR_VIN7:
-#endif//defined(CONFIG_ARCH_TCC805X)
+#endif // defined(CONFIG_ARCH_TCC805X)
 		id -= (VIOC_INTR_VIN_OFFSET + VIOC_INTR_VIN0);
 		reg = VIOC_VIN_GetAddress(id * 2) + VIN_INT;
 		if (__raw_readl(reg) & (mask & VIOC_VIN_INT_MASK))
 			return true;
 		return false;
-#endif//defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X)
+#endif // defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X)
 	}
 	return false;
 }
 EXPORT_SYMBOL(is_vioc_intr_activatied);
 
-bool is_vioc_intr_unmasked(int id, unsigned mask)
+bool is_vioc_intr_unmasked(int id, unsigned int mask)
 {
 	volatile void __iomem *reg;
 
@@ -808,10 +794,8 @@ bool is_vioc_intr_unmasked(int id, unsigned mask)
 		return true;
 #if defined(CONFIG_ARCH_TCC805X)
 	case VIOC_INTR_WD13:
-		id -=
-			(
-				VIOC_INTR_WD_OFFSET - VIOC_INTR_WD_OFFSET2 -
-				VIOC_INTR_WD0);
+		id -= (VIOC_INTR_WD_OFFSET - VIOC_INTR_WD_OFFSET2
+		       - VIOC_INTR_WD0);
 		reg = VIOC_WDMA_GetAddress(id) + WDMAIRQMSK_OFFSET;
 		if (__raw_readl(reg) & (mask & VIOC_WDMA_INT_MASK))
 			return false;
@@ -840,13 +824,13 @@ bool is_vioc_intr_unmasked(int id, unsigned mask)
 	case VIOC_INTR_VIN6:
 #if defined(CONFIG_ARCH_TCC805X)
 	case VIOC_INTR_VIN7:
-#endif//defined(CONFIG_ARCH_TCC805X)
+#endif // defined(CONFIG_ARCH_TCC805X)
 		id -= (VIOC_INTR_VIN_OFFSET + VIOC_INTR_VIN0);
 		reg = VIOC_VIN_GetAddress(id * 2) + VIN_INT;
 		if (__raw_readl(reg) & ((mask & VIOC_VIN_INT_MASK) << 16))
 			return true;
 		return false;
-#endif//defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X)
+#endif // defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X)
 	}
 	return false;
 }
@@ -888,7 +872,7 @@ out:
 }
 EXPORT_SYMBOL(is_vioc_display_device_intr_masked);
 
-int vioc_intr_clear(int id, unsigned mask)
+int vioc_intr_clear(int id, unsigned int mask)
 {
 	volatile void __iomem *reg;
 
@@ -959,9 +943,8 @@ int vioc_intr_clear(int id, unsigned mask)
 		break;
 #if defined(CONFIG_ARCH_TCC805X)
 	case VIOC_INTR_WD13:
-		id -= (
-			VIOC_INTR_WD_OFFSET - VIOC_INTR_WD_OFFSET2 -
-			VIOC_INTR_WD0);
+		id -= (VIOC_INTR_WD_OFFSET - VIOC_INTR_WD_OFFSET2
+		       - VIOC_INTR_WD0);
 		reg = VIOC_WDMA_GetAddress(id) + WDMAIRQSTS_OFFSET;
 		__raw_writel((mask & VIOC_WDMA_INT_MASK), reg);
 		break;
@@ -981,12 +964,12 @@ int vioc_intr_clear(int id, unsigned mask)
 	case VIOC_INTR_VIN6:
 #if defined(CONFIG_ARCH_TCC805X)
 	case VIOC_INTR_VIN7:
-#endif//defined(CONFIG_ARCH_TCC805X)
+#endif // defined(CONFIG_ARCH_TCC805X)
 		id -= (VIOC_INTR_VIN_OFFSET + VIOC_INTR_VIN0);
 		reg = VIOC_VIN_GetAddress(id * 2) + VIN_INT;
 		__raw_writel((mask & VIOC_VIN_INT_MASK), reg);
 		break;
-#endif//defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X)
+#endif // defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X)
 	}
 
 	return 0;
@@ -1007,8 +990,8 @@ void vioc_intr_initialize(void)
 	/* disp irq mask & status clear */
 #if defined(CONFIG_ARCH_TCC805X)
 	for (i = 0;
-		i < (VIOC_INTR_DEV3 - (VIOC_INTR_DISP_OFFSET + VIOC_INTR_DEV0));
-		i++) {
+	     i < (VIOC_INTR_DEV3 - (VIOC_INTR_DISP_OFFSET + VIOC_INTR_DEV0));
+	     i++) {
 #else
 	for (i = 0; i < (VIOC_INTR_DEV2 - VIOC_INTR_DEV0); i++) {
 #endif
@@ -1028,7 +1011,7 @@ void vioc_intr_initialize(void)
 		__raw_writel(VIOC_RDMA_INT_MASK, reg + RDMASTAT);
 	}
 
-	/* wdma irq mask & status clear */
+		/* wdma irq mask & status clear */
 #if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X)
 #if defined(CONFIG_ARCH_TCC805X)
 	for (i = 0;
@@ -1038,8 +1021,8 @@ void vioc_intr_initialize(void)
 				VIOC_INTR_WD0)); i++) {
 #else
 	for (i = 0;
-		i < (VIOC_INTR_WD12 - (VIOC_INTR_WD_OFFSET + VIOC_INTR_WD0));
-		i++) {
+	     i < (VIOC_INTR_WD12 - (VIOC_INTR_WD_OFFSET + VIOC_INTR_WD0));
+	     i++) {
 #endif
 		reg = VIOC_WDMA_GetAddress(i);
 		if (reg == NULL)
@@ -1056,7 +1039,6 @@ void vioc_intr_initialize(void)
 		__raw_writel(VIOC_WDMA_INT_MASK, reg + WDMAIRQSTS_OFFSET);
 	}
 #endif
-
 }
 EXPORT_SYMBOL(vioc_intr_initialize);
 
@@ -1129,4 +1111,3 @@ static int __init vioc_intr_init(void)
 	return 0;
 }
 fs_initcall(vioc_intr_init);
-

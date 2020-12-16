@@ -574,7 +574,6 @@ static int scsi_probe_lun(struct scsi_device *sdev, unsigned char *inq_result,
 	int pass, count, result;
 	struct scsi_sense_hdr sshdr;
 	char buffer[18];
-	int i = 0;
 	*bflags = 0;
 
 	memset(scsi_cmd, 0, 6);
@@ -582,17 +581,11 @@ static int scsi_probe_lun(struct scsi_device *sdev, unsigned char *inq_result,
 	scsi_cmd[0] = REQUEST_SENSE;
 	scsi_cmd[4] = 18;
 
-	printk("%s:%d scsi_excute for REQUEST_SENSE\n", __func__, __LINE__);
 	memset(buffer, 0, 18);
 	result = scsi_execute(sdev, scsi_cmd, DMA_FROM_DEVICE, buffer,
 			18, NULL, NULL,
 			msecs_to_jiffies(1000), 3, 0, 0, NULL);
-/*
-	for (i = 0; i < 18; i++) {
-		shost_printk(KERN_INFO, sdev->host,
-					"buffer[%d] = %x(%c)\n", i, buffer[i], buffer[i]);
-	}
-*/
+
 	/* Perform up to 3 passes.  The first pass uses a conservative
 	 * transfer length of 36 unless sdev->inquiry_len specifies a
 	 * different value. */
@@ -730,12 +723,6 @@ static int scsi_probe_lun(struct scsi_device *sdev, unsigned char *inq_result,
 				    "scsi scan: INQUIRY result too short (%d),"
 				    " using 36\n", sdev->inquiry_len);
 			sdev->host->short_inquiry = 1;
-/*
-			for (i = 0; i<36; i++) {
-				shost_printk(KERN_INFO, sdev->host,
-					"inq_result[%d] = %x(%c)\n", i, inq_result[i], inq_result[i]);
-			}
-*/
 		}
 		sdev->inquiry_len = 36;
 	}

@@ -39,26 +39,26 @@
 
 #ifdef CONFIG_UAC20_DEBUG_ENABLE
 /* Debugging for UAC20 transfer */
-int complete_count = 0;
-module_param(complete_count, uint, S_IRUGO);
-MODULE_PARM_DESC(complete_count, "UAC20 Complete count");
+int complete_count;
 EXPORT_SYMBOL(complete_count);
+module_param(complete_count, uint, 0444);
+MODULE_PARM_DESC(complete_count, "UAC20 Complete count");
 
-unsigned int ringbuff_offset = 0;
-module_param(ringbuff_offset, uint, S_IRUGO);
-MODULE_PARM_DESC(ringbuff_offset, "UAC20 ringbuff offset");
+unsigned int ringbuff_offset;
 EXPORT_SYMBOL(ringbuff_offset);
+module_param(ringbuff_offset, uint, 0444);
+MODULE_PARM_DESC(ringbuff_offset, "UAC20 ringbuff offset");
 
-int capture_pcm = 0;
-module_param(capture_pcm, uint, S_IRUGO);
-MODULE_PARM_DESC(capture_pcm, "UAC20 capture pcmdata");
+int capture_pcm;
 EXPORT_SYMBOL(capture_pcm);
+module_param(capture_pcm, uint, 0444);
+MODULE_PARM_DESC(capture_pcm, "UAC20 capture pcmdata");
 
 char dump_path[30];
-char* pdump_path = dump_path;
-module_param(pdump_path, uint, S_IRUGO);
-MODULE_PARM_DESC(pdump_path, "UAC20 dump path");
+char *pdump_path = dump_path;
 EXPORT_SYMBOL(pdump_path);
+module_param(pdump_path, uint, 0444);
+MODULE_PARM_DESC(pdump_path, "UAC20 dump path");
 
 #define pcm_buff_size 0x200000
 #endif
@@ -124,14 +124,17 @@ static const struct snd_pcm_hardware uac_pcm_hardware = {
 	.periods_min = MIN_PERIODS,
 };
 #ifdef TCC_UAC2_WQ
-static int compl_cnt_for_reset = 0;
-static struct work_struct *ws_rs = NULL;
-static int zero_cnt = 0;
-static int enable_while = 0;
+static int compl_cnt_for_reset;
+static struct work_struct *ws_rs;
+static int zero_cnt;
+static int enable_while;
 
 static void f_uac2_work_reset(struct work_struct *data)
 {
-	struct snd_uac_chip *uac2 = container_of(data, struct snd_uac_chip, work_reset);
+	struct snd_uac_chip *uac2 =
+		container_of(data, struct snd_uac_chip,
+				work_reset);
+
 	u_audio_stop_capture(uac2->audio_dev);
 	u_audio_start_capture(uac2->audio_dev);
 	pr_info("[INFO][USB] [UAC2] %s : reset!!\n", __func__);
@@ -140,18 +143,16 @@ static void f_uac2_work_reset(struct work_struct *data)
 static int f_uac2_reset_monitor_thread(void *w)
 {
 	struct snd_uac_chip *suc = (struct snd_uac_chip *)w;
-	bool discon_chk = false;
 	int retry = 10;	//wait for a sec until iPhone role-switching
-	unsigned long flags;
 	int pre_compl_cnt = compl_cnt_for_reset;
-	while(!kthread_should_stop() && retry > 0) {
+
+	while (!kthread_should_stop() && retry > 0) {
 		msleep(50);
 		if (pre_compl_cnt != compl_cnt_for_reset) {//normal
 			retry = 0;
 			pre_compl_cnt = compl_cnt_for_reset;
 			continue;
-		}
-		else {
+		} else {
 			retry--;
 			if (ws_rs)
 				schedule_work(ws_rs);
@@ -160,17 +161,23 @@ static int f_uac2_reset_monitor_thread(void *w)
 
 	suc->thread_reset = NULL;
 	pr_info("[INFO][USB] %s : thread termination\n", __func__);
+
+	return 0;
 }
 
 static void f_uac2_work_reset_while(struct work_struct *data)
 {
-	struct snd_uac_chip *uac2 = container_of(data, struct snd_uac_chip, work_reset_while);
+	struct snd_uac_chip *uac2 =
+		container_of(data, struct snd_uac_chip, work_reset_while);
+
 	if (enable_while) {
 		if (uac2->thread_reset != NULL) {
 			kthread_stop(uac2->thread_reset);
 			uac2->thread_reset = NULL;
 		}
-		uac2->thread_reset = kthread_run(f_uac2_reset_monitor_thread, (void *)uac2, "uac2_reset_thread");
+		uac2->thread_reset =
+			kthread_run(f_uac2_reset_monitor_thread,
+					(void *)uac2, "uac2_reset_thread");
 	} else {
 		if (uac2->thread_reset != NULL) {
 			kthread_stop(uac2->thread_reset);
@@ -183,9 +190,9 @@ static void f_uac2_work_reset_while(struct work_struct *data)
 #endif
 #ifdef CONFIG_UAC20_DEBUG_ENABLE
 struct f_uac2_buf {
-    u8 *buf;
-    int actual;
-    struct list_head list;
+	u8 *buf;
+	int actual;
+	struct list_head list;
 };
 
 static struct f_uac2_buf *usb_buffer;
@@ -193,57 +200,60 @@ static struct f_uac2_buf *usb_buffer;
 
 static struct f_uac2_buf *f_uac2_buffer_alloc(int buf_size)
 {
-    struct f_uac2_buf *copy_buf;
+	struct f_uac2_buf *copy_buf;
 
-    copy_buf = kzalloc(sizeof *copy_buf, GFP_ATOMIC);
-    if (!copy_buf)
-        return ERR_PTR(-ENOMEM);
+	copy_buf = kzalloc(sizeof(*copy_buf), GFP_ATOMIC);
+	if (!copy_buf)
+		return ERR_PTR(-ENOMEM);
 
-    copy_buf->buf = kzalloc(buf_size, GFP_ATOMIC);
-    if (!copy_buf->buf) {
-        kfree(copy_buf);
-        return ERR_PTR(-ENOMEM);
-    }
+	copy_buf->buf = kzalloc(buf_size, GFP_ATOMIC);
+	if (!copy_buf->buf) {
+		kfree(copy_buf);
+		return ERR_PTR(-ENOMEM);
+	}
 
-    return copy_buf;
+	return copy_buf;
 }
 
 static void f_uac2_buffer_free(struct f_uac2_buf *audio_buf)
 {
-    kfree(audio_buf->buf);
-    kfree(audio_buf);
+	kfree(audio_buf->buf);
+	kfree(audio_buf);
 }
 
-static void f_uac2_capture_pcm (void)
+static void f_uac2_capture_pcm(void)
 {
-    struct file *filp;
-    char filename[100];
+	struct file *filp;
+	char filename[100];
+	mm_segment_t old_fs = get_fs();
 
-    mm_segment_t old_fs = get_fs();
-    set_fs(KERNEL_DS);
+	set_fs(KERNEL_DS);
 
-    /* open a file */
-    printk("[INFO][USB] \x1b[1;33m[uac2 debug]Start capturing pcm data | (%susb_pcm.wav)\x1b[0m\n", dump_path);
-    sprintf(filename, "%s%s", dump_path, "usb_pcm.wav");
-    filp = filp_open(filename, O_RDWR|O_CREAT, S_IRUSR|S_IWUSR);
-    if (IS_ERR(filp)) {
-      printk("[INFO][USB] [uac2 debug] open error\n");
-    } else {
-      printk("[INFO][USB] [uac2 debug] open success\n");
-    }
+	/* open a file */
+	pr_info("[INFO][USB] \x1b[1;33m[uac2 debug]Start capturing pcm data | (%susb_pcm.wav)\x1b[0m\n",
+		dump_path);
+	sprintf(filename, "%s%s", dump_path, "usb_pcm.wav");
+	filp = filp_open(filename, O_RDWR|O_CREAT, 0600);
+	if (IS_ERR(filp)) {
+		pr_info("[INFO][USB] [uac2 debug] open error\n");
+	} else {
+		pr_info("[INFO][USB] [uac2 debug] open success\n");
+	}
 
-    /* write example */
-    printk("[INFO][USB] [uac2 debug] filp->f_pos = %d\n", (int)filp->f_pos);
-    vfs_write(filp, usb_buffer->buf, pcm_buff_size, &filp->f_pos);
-    printk("[INFO][USB] [uac2 debug] filp->f_pos = %d\n", (int)filp->f_pos);
-    filp_close(filp, NULL);  /* filp_close(filp, current->files) ?  */
-    /* restore kernel memory setting */
-    set_fs(old_fs);
-    printk( "[uac2 debug] success file save\n");
+	/* write example */
+	pr_info("[INFO][USB] [uac2 debug] filp->f_pos = %d\n",
+			(int)filp->f_pos);
+	vfs_write(filp, usb_buffer->buf, pcm_buff_size, &filp->f_pos);
+	pr_info("[INFO][USB] [uac2 debug] filp->f_pos = %d\n",
+			(int)filp->f_pos);
+	filp_close(filp, NULL);  /* filp_close(filp, current->files) ?  */
+	/* restore kernel memory setting */
+	set_fs(old_fs);
+	pr_info("[uac2 debug] success file save\n");
 
-    memset(usb_buffer->buf, 0xff, pcm_buff_size);
-    usb_buffer->actual = 0;
-    //f_uac2_buffer_free(usb_buffer);
+	memset(usb_buffer->buf, 0xff, pcm_buff_size);
+	usb_buffer->actual = 0;
+	//f_uac2_buffer_free(usb_buffer);
 }
 #endif
 
@@ -260,25 +270,28 @@ static void u_audio_iso_complete(struct usb_ep *ep, struct usb_request *req)
 	struct snd_uac_chip *uac = prm->uac;
 #ifdef CONFIG_UAC20_DEBUG_ENABLE
 	int *tmp_pkt;
-    if (complete_count > 1000000) // for debugging UAC20 transfer
-        complete_count = 0;
-    else
-        complete_count++;
 
-    if(capture_pcm >= 1)
-    {
-        if (pcm_buff_size - usb_buffer->actual > req->actual) {
-            memcpy(usb_buffer->buf + usb_buffer->actual, req->buf, req->actual);
-            usb_buffer->actual += req->actual;
-        } else {
-            capture_pcm = 0;
-            printk("[INFO][USB] [uac2 debug] end buffring!\n");
-            schedule_work(&uac->work_capture);
-        }
-    }
+	if (complete_count > 1000000) // for debugging UAC20 transfer
+		complete_count = 0;
+	else
+		complete_count++;
+
+	if (capture_pcm >= 1) {
+		if (pcm_buff_size - usb_buffer->actual > req->actual) {
+			memcpy(usb_buffer->buf + usb_buffer->actual,
+					req->buf, req->actual);
+			usb_buffer->actual += req->actual;
+		} else {
+			capture_pcm = 0;
+			pr_info("[INFO][USB] [uac2 debug] end buffring!\n");
+			schedule_work(&uac->work_capture);
+		}
+	}
+
 	if (complete_count % 5000 == 0 || complete_count == 1) {
 		tmp_pkt = (int *)req->buf;
-		printk(KERN_DEBUG, "[DEBUG][USB][UAC2]%s : complete per 5000 , req->buf[0] = 0x%08x, req->actual = %d\n", __func__, tmp_pkt[0], req->actual);
+		pr_debug("[DEBUG][USB][UAC2]%s : complete per 5000 , req->buf[0] = 0x%08x, req->actual = %d\n",
+				__func__, tmp_pkt[0], req->actual);
 	}
 #endif
 	/* i/f shutting down */
@@ -298,7 +311,8 @@ static void u_audio_iso_complete(struct usb_ep *ep, struct usb_request *req)
 
 	/* Do nothing if ALSA isn't active */
 	if (!substream) {
-		pr_debug("[DEBUG][USB] %s : Do nothing if ALSA isn't active\n", __func__);
+		pr_debug("[DEBUG][USB] %s : Do nothing if ALSA isn't active\n",
+			__func__);
 		goto exit;
 	}
 
@@ -348,7 +362,7 @@ static void u_audio_iso_complete(struct usb_ep *ep, struct usb_request *req)
 #if 1
 //#ifdef CONFIG_USB_DWC2_TCC
 	compl_cnt_for_reset++;
-	if(compl_cnt_for_reset > 10000)
+	if (compl_cnt_for_reset > 10000)
 		compl_cnt_for_reset = 0;
 #endif
 #endif
@@ -359,10 +373,10 @@ static void u_audio_iso_complete(struct usb_ep *ep, struct usb_request *req)
 	/* Pack USB load in ALSA ring buffer */
 	pending = runtime->dma_bytes - hw_ptr;
 
-    if (req->actual < 0 || req->actual > req->length) {
-        snd_pcm_stream_unlock_irqrestore(substream, flags2);
-        goto exit;
-    }
+	if (req->actual < 0 || req->actual > req->length) {
+		snd_pcm_stream_unlock_irqrestore(substream, flags2);
+		goto exit;
+	}
 
 	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) {
 		if (unlikely(pending < req->actual)) {
@@ -393,7 +407,8 @@ static void u_audio_iso_complete(struct usb_ep *ep, struct usb_request *req)
 
 	if ((hw_ptr % snd_pcm_lib_period_bytes(substream)) < req->actual) {
 #ifdef CONFIG_UAC20_DEBUG_ENABLE
-		printk(KERN_DEBUG "[DEBUG][USB] [UAC2] %s : hw_ptr = %d\n", __func__, hw_ptr);
+		pr_debug("[DEBUG][USB] [UAC2] %s : hw_ptr = %d\n",
+				__func__, hw_ptr);
 #endif
 		snd_pcm_period_elapsed(substream);
 	}
@@ -409,7 +424,6 @@ static int uac_pcm_trigger(struct snd_pcm_substream *substream, int cmd)
 	struct uac_rtd_params *prm;
 	struct g_audio *audio_dev;
 	struct uac_params *params;
-	struct work_struct *ws;
 	unsigned long flags;
 	int err = 0;
 
@@ -421,7 +435,8 @@ static int uac_pcm_trigger(struct snd_pcm_substream *substream, int cmd)
 	else
 		prm = &uac->c_prm;
 
-	printk("[INFO][USB] [UAC2]%s : cmd = %d\n", __func__, cmd);
+	pr_info("[INFO][USB] [UAC2]%s : cmd = %d\n",
+			__func__, cmd);
 	spin_lock_irqsave(&prm->lock, flags);
 
 	/* Reset */
@@ -589,7 +604,9 @@ static inline void free_ep(struct uac_rtd_params *prm, struct usb_ep *ep)
 	}
 
 	if (usb_ep_disable(ep))
-		dev_err(uac->card->dev, "[ERROR][USB] %s:%d Error!\n", __func__, __LINE__);
+		dev_err(uac->card->dev,
+				"[ERROR][USB] %s:%d Error!\n",
+				__func__, __LINE__);
 }
 
 
@@ -629,7 +646,9 @@ int u_audio_start_capture(struct g_audio *audio_dev)
 		}
 
 		if (usb_ep_queue(ep, prm->ureq[i].req, GFP_ATOMIC))
-			dev_err(dev, "[ERROR][USB] %s:%d Error!\n", __func__, __LINE__);
+			dev_err(dev,
+					"[ERROR][USB] %s:%d Error!\n",
+					__func__, __LINE__);
 	}
 
 	return 0;
@@ -705,7 +724,9 @@ int u_audio_start_playback(struct g_audio *audio_dev)
 		}
 
 		if (usb_ep_queue(ep, prm->ureq[i].req, GFP_ATOMIC))
-			dev_err(dev, "[ERROR][USB] %s:%d Error!\n", __func__, __LINE__);
+			dev_err(dev,
+					"[ERROR][USB] %s:%d Error!\n",
+					__func__, __LINE__);
 	}
 
 	return 0;
@@ -862,15 +883,15 @@ void g_audio_cleanup(struct g_audio *g_audio)
 	kfree(uac->c_prm.rbuf);
 	kfree(uac);
 #ifdef CONFIG_UAC20_DEBUG_ENABLE
-	if(usb_buffer)
+	if (usb_buffer)
 		f_uac2_buffer_free(usb_buffer);
-	if(&uac->work_capture)
+	if (&uac->work_capture)
 		cancel_work_sync(&uac->work_capture);
 #endif
 #ifdef TCC_UAC2_WQ
-	if(&uac->work_reset_while)
+	if (&uac->work_reset_while)
 		cancel_work_sync(&uac->work_reset_while);
-	if(&uac->work_reset)
+	if (&uac->work_reset)
 		cancel_work_sync(&uac->work_reset);
 	ws_rs = NULL;
 #endif

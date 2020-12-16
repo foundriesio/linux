@@ -31,7 +31,7 @@ struct tcc_composite_platform_data {
 };
 
 struct tcc_composite_hpd_platform_data {
-	unsigned composite_port;
+	unsigned int composite_port;
 };
 
 #if defined(CONFIG_SWITCH_GPIO_COMPOSITE)
@@ -44,7 +44,8 @@ struct composite_gpio_switch_data {
 	const char *state_off;
 	unsigned int state_val;
 	struct work_struct work;
-	void (*send_composite_event)(void *pswitch_data, unsigned int composite_state);
+	void (*send_composite_event)(void *pswitch_data,
+		unsigned int composite_state);
 };
 #endif
 

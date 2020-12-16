@@ -25,7 +25,7 @@
 
 enum {
 	PANEL_ID_AT070TN93,
-	PANEL_ID_ED090NA,	
+	PANEL_ID_ED090NA,
 	PANEL_ID_FLD0800,
 	PANEL_ID_TM123XDHP90,
 	PANEL_ID_PVLBJT02,
@@ -33,7 +33,7 @@ enum {
 	PANEL_ID_HDMI,
 };
 
-// Display Device 
+// Display Device
 typedef enum{
 	TCC_OUTPUT_NONE,
 	TCC_OUTPUT_LCD,
@@ -47,16 +47,17 @@ struct lcd_panel;
 struct tcc_dp_device;
 struct tccfb_platform_data;
 
-typedef enum{
+typedef enum {
 	TCC_PWR_INIT,
-	TCC_PWR_ON,		
+	TCC_PWR_ON,
 	TCC_PWR_OFF
-}tcc_db_power_s;
+} tcc_db_power_s;
 
-struct tcc_db_platform_data{
+struct tcc_db_platform_data {
 	/* destroy output.  db clocks are not on at this point */
 	int (*set_power)(struct lcd_panel *db, tcc_db_power_s pwr);
 };
+
 extern struct tcc_db_platform_data *get_tcc_db_platform_data(void);
 
 // tcc display output block operation 
@@ -66,7 +67,7 @@ struct tcc_db_out_ops {
 	/* destroy output.  db clocks are not on at this point */
 	void (*destroy)(struct lcd_panel *db);
 	/* detect connected display.  can sleep.*/
-	unsigned (*detect)(struct lcd_panel *db);
+	unsigned int (*detect)(struct lcd_panel *db);
 	/* enable output.  db clocks are on at this point */
 	void (*enable)(struct lcd_panel *db);
 	/* disable output.  db clocks are on at this point */
@@ -85,7 +86,8 @@ enum{
 	TCC_DB_OUT_HDMI,
 };
 
-#if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC897X) ||  defined(CONFIG_ARCH_TCC805X) 
+#if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC897X) \
+	||  defined(CONFIG_ARCH_TCC805X) 
 struct lvds_gpio {
 	int power_on;
 	int display_on;
@@ -152,7 +154,8 @@ struct lcd_panel {
 	unsigned int vcm;		/* common voltage level in mV */
 	unsigned int vsw;		/* swing voltage level in mV */
 	int (*init)(struct lcd_panel *panel, struct tcc_dp_device *fb_pdata);
-	int (*set_power)(struct lcd_panel *panel, int on, struct tcc_dp_device *fb_pdata);
+	int (*set_power)(struct lcd_panel *panel,
+		int on, struct tcc_dp_device *fb_pdata);
 
 	int state; //current state 0 off , 0: on
 	void *panel_data;

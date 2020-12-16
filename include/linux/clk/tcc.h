@@ -1,33 +1,22 @@
-/****************************************************************************
- * linux/clk/tcc.h
- * Copyright (C) 2014 Telechips Inc.
- *
- * This program is free software; you can redistribute it and/or modify it under the terms
- * of the GNU General Public License as published by the Free Software Foundation;
- * either version 2 of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
- * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
- * PURPOSE. See the GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License along with
- * this program; if not, write to the Free Software Foundation, Inc., 59 Temple Place,
- * Suite 330, Boston, MA 02111-1307 USA
- ****************************************************************************/
+// SPDX-License-Identifier: GPL-2.0-or-later
+/*
+ * linux/include/clk/tcc.h
+ * Copyright (C) Telechips Inc.
+ */
 
 struct _tcc_clk_data {
-	const char	*name;
-	const char	*parent_name;
-	unsigned int	idx;
-	unsigned int	flags;
+	const char *name;
+	const char *parent_name;
+	unsigned int idx;
+	unsigned int flags;
 };
 
 struct tcc_clks_type {
-	const char	*parent_name;
-	unsigned int	clks_num;
+	const char *parent_name;
+	unsigned int clks_num;
 	struct _tcc_clk_data *data;
-	unsigned int	data_num;
-	unsigned int	common_flags;
+	unsigned int data_num;
+	unsigned int common_flags;
 };
 
 struct tcc_ckc_ops {
@@ -65,7 +54,11 @@ struct tcc_ckc_ops {
 	/* peripheral */
 	int (*ckc_peri_enable)(int id);
 	int (*ckc_peri_disable)(int id);
+#if defined(CONFIG_ARCH_TCC897X)
 	int (*ckc_peri_set_rate)(int id, unsigned long rate);
+#else
+	int (*ckc_peri_set_rate)(int id, unsigned long rate, u32 flags);
+#endif
 	unsigned long (*ckc_peri_get_rate)(int id);
 	int (*ckc_is_peri_enabled)(int id);
 

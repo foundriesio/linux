@@ -105,12 +105,12 @@ int ion_heap_map_user(struct ion_heap *heap, struct ion_buffer *buffer,
 
 static int ion_heap_clear_pages(struct page **pages, int num, pgprot_t pgprot)
 {
-	void *addr = vm_map_ram(pages, num, -1, pgprot);
+	void *addr = vmap(pages, num, VM_MAP, pgprot);
 
 	if (!addr)
 		return -ENOMEM;
 	memset(addr, 0, PAGE_SIZE * num);
-	vm_unmap_ram(addr, num);
+	vunmap(addr);
 
 	return 0;
 }
@@ -226,7 +226,9 @@ static int ion_heap_deferred_free(void *data)
 {
 	struct ion_heap *heap = data;
 
-pr_info("%s name:%s size:%d\n", __func__, heap->name, heap->free_list_size);
+	pr_info("%s name:%s size:%d\n",
+		__func__, heap->name, (u32)heap->free_list_size);
+
 	while (true) {
 		struct ion_buffer *buffer;
 

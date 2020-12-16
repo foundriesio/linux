@@ -15,7 +15,8 @@
 #define XIN_CLK_RATE    (24*1000*1000)  // 24MHz
 #define XTIN_CLK_RATE   32768   // 32.768kHz
 #define HDMI_CLK_RATE   (27*1000*1000)
-#define HDMI_PCLK_RATE  27      // dummy value for set lcdc peri source to hdmi pclk
+#define HDMI_PCLK_RATE  27
+// dummy value for set lcdc peri source to hdmi pclk
 #define EXT0_CLK_RATE   (24*1000*1000)  // 24MHz
 #define EXT1_CLK_RATE   (24*1000*1000)  // 24MHz
 
@@ -26,7 +27,7 @@
 
 /* PLL channel index */
 enum {
-	PLL_0=0,
+	PLL_0 = 0,
 	PLL_1,
 	PLL_2,
 	PLL_3,
@@ -107,16 +108,16 @@ enum {
 	VBUS_CODA
 };
 
-typedef struct {
+struct tPMS {
 	unsigned int    fpll;
 	unsigned int    en;
 	unsigned int    p;
 	unsigned int    m;
 	unsigned int    s;
 	unsigned int    src;
-} tPMS;
+};
 
-typedef struct {
+struct tDPMS {
 	uint32_t	fpll;
 	uint32_t	en;
 	uint32_t	p;
@@ -128,37 +129,37 @@ typedef struct {
 	uint32_t	sscg_en;
 	uint32_t	sel_pf;
 	uint32_t	src;
-} tDPMS;
+};
 
-typedef struct {
+struct tPMSValue {
 	uint32_t fpll;
 	uint32_t pms;
-} tPMSValue;
+};
 
-typedef struct {
+struct tCLKCTRL {
 	unsigned int    freq;
 	unsigned int    en;
 	unsigned int    config;
 	unsigned int    sel;
-} tCLKCTRL;
+};
 
-typedef struct {
+struct tPCLKCTRL {
 	unsigned int    periname;
 	unsigned int    freq;
 	unsigned int    md;
 	unsigned int    en;
 	unsigned int    sel;
 	unsigned int    div;
-} tPCLKCTRL;
+};
 
-typedef struct {
+struct tDCKC {
 	unsigned int clkctrl0;
 	unsigned int clkctrl1;
 	unsigned int pms;
 	unsigned int con;
 	unsigned int mon;
 	unsigned int divc;
-} tDCKC;
+};
 
 extern unsigned long tca_ckc_get_nand_iobus_clk(void);
 extern int tcc_ckc_set_hdmi_audio_src(unsigned int src_id);

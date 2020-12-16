@@ -324,6 +324,7 @@ static int gic_set_type(struct irq_data *d, unsigned int type)
 	if (gicirq < 16)
 		return -EINVAL;
 
+#if !defined(CONFIG_TCC803X_CA7S) // TODO: Temporarily disabled for TCC803x CA7S
 #ifdef CONFIG_ARCH_TCC
 	if (d->hwirq >= 32) {
 		if (tcc_irq_set_polarity(d, type) != 0)
@@ -335,6 +336,7 @@ static int gic_set_type(struct irq_data *d, unsigned int type)
 	else if (type == IRQ_TYPE_EDGE_FALLING || type == IRQ_TYPE_EDGE_BOTH)
 		type = IRQ_TYPE_EDGE_RISING;
 #endif
+#endif /* !CONFIG_TCC803X_CA7S */
 
 	/* SPIs have restrictions on the supported types */
 	if (gicirq >= 32 && type != IRQ_TYPE_LEVEL_HIGH &&

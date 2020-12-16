@@ -217,7 +217,7 @@ struct clk_ops {
 	int		(*set_phase)(struct clk_hw *hw, int degrees);
 	void		(*init)(struct clk_hw *hw);
 #ifdef CONFIG_ARCH_TCC
-	void		(*reset)(struct clk_hw *hw, unsigned);
+	void		(*reset)(struct clk_hw *hw, unsigned int);
 #endif
 	int		(*debug_init)(struct clk_hw *hw, struct dentry *dentry);
 };

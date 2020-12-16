@@ -22,11 +22,9 @@
 #include "autoconf.h"
 #include <linux/ioctl.h>
 
-
-
 #define CITPL_IOC_MAGIC		'c'
 
-typedef enum{
+typedef enum {
 	TCC_CITPL_NONE,
 	TCC_CITPL_X,
 	TCC_CITPL_Y,
@@ -34,10 +32,7 @@ typedef enum{
 	TCC_CITPL_MAX
 } tcc_citpl_type;
 
-
-
-struct VIOC_CITPL_SET
-{
+struct VIOC_CITPL_SET {
 	unsigned int citpl_n;	// chroma interpolator number
 	unsigned int mode;	// tcc_citpl_type
 	unsigned int y2r_en;	// y2r enable
@@ -46,15 +41,14 @@ struct VIOC_CITPL_SET
 	unsigned int r2y_mode;
 };
 
-struct VIOC_CITPL_PLUG_SET
-{
+struct VIOC_CITPL_PLUG_SET {
 	unsigned int onoff;
 	unsigned int citpl_n;	// chroma interpolator number
 	unsigned int rdma_n;	// mode
 };
 
-#define TCC_CITPL_SET		_IOWR(CITPL_IOC_MAGIC, 2, struct VIOC_CITPL_SET) //hw vioc lut set
-#define TCC_CITPL_PLUG		_IOWR(CITPL_IOC_MAGIC, 3, struct VIOC_CITPL_PLUG_SET) //hw vioc lut set
+// hw vioc lut set
+#define TCC_CITPL_SET  _IOWR(CITPL_IOC_MAGIC, 2, struct VIOC_CITPL_SET)
+#define TCC_CITPL_PLUG _IOWR(CITPL_IOC_MAGIC, 3, struct VIOC_CITPL_PLUG_SET)
 
-#endif//
-
+#endif

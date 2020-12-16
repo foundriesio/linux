@@ -1,11 +1,5 @@
-/****************************************************************************
- * linux/drivers/video/tca_map_converter.c
- *
- * Author:  <linux@telechips.com>
- * Created: March 18, 2012
- * Description: TCC lcd Driver
- *
- * Copyright (C) 20010-2011 Telechips
+/*
+ * Copyright (C) Telechips, Inc.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -21,8 +15,7 @@
  * along with this program; if not, see the file COPYING, or write
  * to the Free Software Foundation, Inc.,
  * 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
- *****************************************************************************/
-
+ */
 #include <linux/module.h>
 #include <linux/kernel.h>
 #include <linux/errno.h>
@@ -40,7 +33,7 @@
 #include <linux/clk.h>
 #include <linux/clk-provider.h>
 #include <linux/uaccess.h>
-#include <asm/io.h>
+#include <linux/io.h>
 #include <asm/div64.h>
 
 #include <video/tcc/tcc_types.h>
@@ -74,9 +67,10 @@
 #include <video/tcc/tccfb.h>
 #endif
 
+#include <video/tcc/tca_map_converter.h>
+
 #define MAX_WAIT_TIEM 400 //0xF0000
 
-extern unsigned int tca_get_main_decompressor_num(void);
 
 void tca_map_convter_wait_done(unsigned int component_num)
 {
@@ -105,8 +99,8 @@ void tca_map_convter_wait_done(unsigned int component_num)
 	}
 
 	if ((loop >= MAX_WAIT_TIEM) || (upd_loop >= MAX_WAIT_TIEM))
-		pr_err("[ERR][MAPC] %s  Loop (EOF :0x%d  UPD:0x%x) \n", __func__, loop,
-		       upd_loop);
+		pr_err("[ERR][MAPC] %s  Loop (EOF :%d  UPD:0x%x)\n",
+			__func__, loop, upd_loop);
 }
 
 void tca_map_convter_swreset(unsigned int component_num)
@@ -123,7 +117,7 @@ void tca_map_convter_onoff(unsigned int component_num, unsigned int onoff,
 #if defined(CONFIG_VIOC_DOLBY_VISION_EDR)
 	if (get_vioc_index(component_num) == 0) {
 		volatile void __iomem *pDisp_DV =
-			VIOC_DV_GetAddress((DV_DISP_TYPE)EDR_BL);
+			VIOC_DV_GetAddress((enum DV_DISP_TYPE)EDR_BL);
 		if (onoff)
 			VIOC_V_DV_Turnon(pDisp_DV, NULL);
 		else
@@ -136,7 +130,7 @@ void tca_map_convter_onoff(unsigned int component_num, unsigned int onoff,
 		VIOC_CONFIG_DV_EX_VIOC_PROC(component_num);
 #endif
 
-	if (!onoff){
+	if (!onoff) {
 		VIOC_MC_FRM_SIZE(HwVIOC_MC, 0, 0);
 	}
 
@@ -151,7 +145,7 @@ void tca_map_convter_onoff(unsigned int component_num, unsigned int onoff,
 #if 0//defined(CONFIG_VIOC_DOLBY_VISION_EDR)
 	if (get_vioc_index(component_num) == 0) {
 		volatile void __iomem *pDisp_DV =
-			VIOC_DV_GetAddress((DV_DISP_TYPE)EDR_BL);
+			VIOC_DV_GetAddress((enum DV_DISP_TYPE)EDR_BL);
 		if (onoff)
 			VIOC_V_DV_Turnon(pDisp_DV, NULL);
 		else
@@ -188,9 +182,11 @@ void tca_map_convter_set(unsigned int component_num,
 
 #if 0
 	ImageInfo->private_data.mapConv_info.m_CompressedY[0] = 0x31900000;
-	ImageInfo->private_data.mapConv_info.m_CompressedCb[0] = 0x31900000+0x7F8000;
+	ImageInfo->private_data.mapConv_info.m_CompressedCb[0]
+		= 0x31900000 + 0x7F8000;
 	ImageInfo->private_data.mapConv_info.m_FbcYOffsetAddr[0] = 0x32900000;
-	ImageInfo->private_data.mapConv_info.m_FbcCOffsetAddr[0] = 0x32900000+0x272000;
+	ImageInfo->private_data.mapConv_info.m_FbcCOffsetAddr[0]
+		= 0x32900000 + 0x272000;
 #endif
 #if 0 // cropping test~
 	ImageInfo->crop_left = 480;
@@ -200,23 +196,39 @@ void tca_map_convter_set(unsigned int component_num,
 #endif
 
 #if 0  // debug log
-	{
-		printk("[DBG][MAPC] MC[0x%x] >> R[0x%lx/0x%lx/0x%lx] M[%d] idx[%d], ID[%d] Buff:[%dx%d]%dx%d F:%dx%d I:%dx%d Str(%d/%d) C:0x%08x/0x%08x T:0x%08x/0x%08x bpp(%d/%d) crop(%d/%d~%dx%d)\n", component_num,
-				__raw_readl(HwVIOC_MC+MC_CTRL), __raw_readl(HwVIOC_MC+MC_FRM_BASE_Y), __raw_readl(HwVIOC_MC+MC_STAT),
-				ImageInfo->private_data.optional_info[VID_OPT_HAVE_MC_INFO], ImageInfo->private_data.optional_info[VID_OPT_DISP_OUT_IDX], ImageInfo->private_data.optional_info[VID_OPT_BUFFER_ID],
-				ImageInfo->private_data.optional_info[VID_OPT_FRAME_WIDTH], ImageInfo->private_data.optional_info[VID_OPT_FRAME_HEIGHT],
-				ImageInfo->private_data.optional_info[VID_OPT_BUFFER_WIDTH], ImageInfo->private_data.optional_info[VID_OPT_BUFFER_HEIGHT],
-				ImageInfo->Frame_width, ImageInfo->Frame_height, ImageInfo->Image_width, ImageInfo->Image_height,
-				ImageInfo->private_data.mapConv_info.m_uiLumaStride, ImageInfo->private_data.mapConv_info.m_uiChromaStride,
-				ImageInfo->private_data.mapConv_info.m_CompressedY[0],	ImageInfo->private_data.mapConv_info.m_CompressedCb[0],
-				ImageInfo->private_data.mapConv_info.m_FbcYOffsetAddr[0], ImageInfo->private_data.mapConv_info.m_FbcCOffsetAddr[0],
-				ImageInfo->private_data.mapConv_info.m_uiLumaBitDepth, ImageInfo->private_data.mapConv_info.m_uiChromaBitDepth,
-				ImageInfo->crop_left, ImageInfo->crop_top, (ImageInfo->crop_right-ImageInfo->crop_left),(ImageInfo->crop_bottom-ImageInfo->crop_top));
-	}
+	pr_info("[DBG][MAPC] MC[0x%x] >> R[0x%lx/0x%lx/0x%lx] M[%d] idx[%d], ID[%d] Buff:[%dx%d]%dx%d F:%dx%d I:%dx%d Str(%d/%d) C:0x%08x/0x%08x T:0x%08x/0x%08x bpp(%d/%d) crop(%d/%d~%dx%d)\n",
+		component_num,
+		__raw_readl(HwVIOC_MC+MC_CTRL),
+		__raw_readl(HwVIOC_MC+MC_FRM_BASE_Y),
+		__raw_readl(HwVIOC_MC+MC_STAT),
+		ImageInfo->private_data.optional_info[VID_OPT_HAVE_MC_INFO],
+		ImageInfo->private_data.optional_info[VID_OPT_DISP_OUT_IDX],
+		ImageInfo->private_data.optional_info[VID_OPT_BUFFER_ID],
+		ImageInfo->private_data.optional_info[VID_OPT_FRAME_WIDTH],
+		ImageInfo->private_data.optional_info[VID_OPT_FRAME_HEIGHT],
+		ImageInfo->private_data.optional_info[VID_OPT_BUFFER_WIDTH],
+		ImageInfo->private_data.optional_info[VID_OPT_BUFFER_HEIGHT],
+		ImageInfo->Frame_width,
+		ImageInfo->Frame_height,
+		ImageInfo->Image_width,
+		ImageInfo->Image_height,
+		ImageInfo->private_data.mapConv_info.m_uiLumaStride,
+		ImageInfo->private_data.mapConv_info.m_uiChromaStride,
+		ImageInfo->private_data.mapConv_info.m_CompressedY[0],
+		ImageInfo->private_data.mapConv_info.m_CompressedCb[0],
+		ImageInfo->private_data.mapConv_info.m_FbcYOffsetAddr[0],
+		ImageInfo->private_data.mapConv_info.m_FbcCOffsetAddr[0],
+		ImageInfo->private_data.mapConv_info.m_uiLumaBitDepth,
+		ImageInfo->private_data.mapConv_info.m_uiChromaBitDepth,
+		ImageInfo->crop_left,
+		ImageInfo->crop_top,
+		(ImageInfo->crop_right-ImageInfo->crop_left),
+		(ImageInfo->crop_bottom-ImageInfo->crop_top));
 #endif //
 
 #if defined(CONFIG_VIOC_DOLBY_VISION_EDR)
-	if (VIOC_CONFIG_DV_GET_EDR_PATH() && get_vioc_index(component_num) == tca_get_main_decompressor_num())
+	if (VIOC_CONFIG_DV_GET_EDR_PATH() && get_vioc_index(component_num)
+		== tca_get_main_decompressor_num())
 		y2r = 0;
 #endif
 
@@ -226,7 +238,7 @@ void tca_map_convter_set(unsigned int component_num,
 		ImageInfo->private_data.mapConv_info.m_uiChromaBitDepth);
 
 #if defined(CONFIG_SUPPORT_TCC_WAVE512_4K_D2)
-	if( ImageInfo->private_data.mapConv_info.m_Reserved[0] == 16 ) //VP9
+	if (ImageInfo->private_data.mapConv_info.m_Reserved[0] == 16) //VP9
 		pic_height = (((ImageInfo->Frame_height + 63) >> 6) << 6);
 	else
 #endif
@@ -295,37 +307,39 @@ void tca_map_convter_set(unsigned int component_num,
 	VIOC_MC_SetDefaultAlpha(HwVIOC_MC, 0x3FF);
 
 #if defined(CONFIG_VIOC_DOLBY_VISION_EDR)
-	if (VIOC_CONFIG_DV_GET_EDR_PATH() &&
-			get_vioc_index(component_num) == tca_get_main_decompressor_num())
-	{
+	if (VIOC_CONFIG_DV_GET_EDR_PATH() && get_vioc_index(component_num)
+		== tca_get_main_decompressor_num()) {
 		volatile void __iomem *pDisp_DV =
-		VIOC_DV_GetAddress((DV_DISP_TYPE)EDR_BL);
 
-		if (ImageInfo->Lcdc_layer == RDMA_VIDEO || ImageInfo->Lcdc_layer == RDMA_LASTFRM)
-		{
-			if (vioc_get_out_type() == ImageInfo->private_data.dolbyVision_info.reg_out_type)
-			{
-				VIOC_V_DV_SetPXDW(pDisp_DV, NULL, VIOC_PXDW_FMT_24_RGB888);
-				VIOC_V_DV_SetSize(pDisp_DV, NULL, ImageInfo->offset_x, ImageInfo->offset_y, Hactive, Vactive);
+		VIOC_DV_GetAddress((enum DV_DISP_TYPE)EDR_BL);
+
+		if (ImageInfo->Lcdc_layer == RDMA_VIDEO
+			|| ImageInfo->Lcdc_layer == RDMA_LASTFRM) {
+			if (vioc_get_out_type() == ImageInfo->private_data.dolbyVision_info.reg_out_type) {
+				VIOC_V_DV_SetPXDW(pDisp_DV, NULL,
+					VIOC_PXDW_FMT_24_RGB888);
+				VIOC_V_DV_SetSize(pDisp_DV, NULL,
+					ImageInfo->offset_x,
+					ImageInfo->offset_y,
+					Hactive, Vactive);
 				VIOC_V_DV_Turnon(pDisp_DV, NULL);
 
 				VIOC_MC_Start_OnOff(HwVIOC_MC, 1);
 
-				vioc_v_dv_prog( ImageInfo->private_data.dolbyVision_info.md_hdmi_addr,
-								ImageInfo->private_data.dolbyVision_info.reg_addr,
-								ImageInfo->private_data.optional_info[VID_OPT_CONTENT_TYPE],
-								1);
-			}
-			else
-			{
-				pr_err("[ERR][MAPC] 1 Dolby Out type mismatch (%d != %d)\n", vioc_get_out_type(), ImageInfo->private_data.dolbyVision_info.reg_out_type);
+				vioc_v_dv_prog(ImageInfo->private_data.dolbyVision_info.md_hdmi_addr,
+					ImageInfo->private_data.dolbyVision_info.reg_addr,
+					ImageInfo->private_data.optional_info[VID_OPT_CONTENT_TYPE],
+					1);
+			} else {
+				pr_err("[ERR][MAPC] 1 Dolby Out type mismatch (%d != %d)\n",
+					vioc_get_out_type(),
+					ImageInfo->private_data.dolbyVision_info.reg_out_type);
 			}
 		} else {
-			pr_err("[ERR][MAPC] @@@@@@@@@ 3 @@@@@@@@@@ Should be implement other layer configuration. \n");
+			pr_err("[ERR][MAPC] @@@@@@@@@ 3 @@@@@@@@@@ Should be implement other layer configuration\n");
 			return;
 		}
-	}
-	else
+	} else
 #endif
 	{
 		VIOC_MC_Start_OnOff(HwVIOC_MC, 1);
@@ -348,23 +362,34 @@ void tca_map_convter_driver_set(unsigned int component_num, unsigned int Fwidth,
 	volatile void __iomem *HwVIOC_MC =
 		VIOC_MC_GetAddress(component_num);
 #if 0  // debug log
-	{
-		printk("[DBG][MAPC] MC[%d] >> R[0x%lx/0x%lx/0x%lx] M[%d] F:%dx%d Str(%d/%d) C:0x%08x/0x%08x T:0x%08x/0x%08x bpp(%d/%d) crop(%d/%d~%dx%d) Reserved(%d)\n", get_vioc_index(component_num),
-				__raw_readl(HwVIOC_MC+MC_CTRL), __raw_readl(HwVIOC_MC+MC_FRM_BASE_Y), __raw_readl(HwVIOC_MC+MC_STAT),
-				1, Fwidth, Fheight,
-				mapConv_info->m_uiLumaStride, mapConv_info->m_uiChromaStride,
-				mapConv_info->m_CompressedY[0],	mapConv_info->m_CompressedCb[0],
-				mapConv_info->m_FbcYOffsetAddr[0], mapConv_info->m_FbcCOffsetAddr[0],
-				mapConv_info->m_uiLumaBitDepth, mapConv_info->m_uiChromaBitDepth,
-				pos_x, pos_y, Cwidth,Cheight, mapConv_info->m_Reserved[0]);
-	}
+	pr_info("[DBG][MAPC] MC[%d] >> R[0x%lx/0x%lx/0x%lx] M[%d] F:%dx%d Str(%d/%d) C:0x%08x/0x%08x T:0x%08x/0x%08x bpp(%d/%d) crop(%d/%d~%dx%d) Reserved(%d)\n",
+		get_vioc_index(component_num),
+		__raw_readl(HwVIOC_MC+MC_CTRL),
+		__raw_readl(HwVIOC_MC+MC_FRM_BASE_Y),
+		__raw_readl(HwVIOC_MC+MC_STAT),
+		1,
+		Fwidth,
+		Fheight,
+		mapConv_info->m_uiLumaStride,
+		mapConv_info->m_uiChromaStride,
+		mapConv_info->m_CompressedY[0],
+		mapConv_info->m_CompressedCb[0],
+		mapConv_info->m_FbcYOffsetAddr[0],
+		mapConv_info->m_FbcCOffsetAddr[0],
+		mapConv_info->m_uiLumaBitDepth,
+		mapConv_info->m_uiChromaBitDepth,
+		pos_x,
+		pos_y,
+		Cwidth,
+		Cheight,
+		mapConv_info->m_Reserved[0]);
 #endif //
 
 	bit_depth_y = __tca_convert_bit_depth(mapConv_info->m_uiLumaBitDepth);
 	bit_depth_c = __tca_convert_bit_depth(mapConv_info->m_uiChromaBitDepth);
 
 #if defined(CONFIG_SUPPORT_TCC_WAVE512_4K_D2)
-	if( mapConv_info->m_Reserved[0] == 16 ) //VP9
+	if (mapConv_info->m_Reserved[0] == 16) //VP9
 		pic_height = (((Fheight + 63) >> 6) << 6);
 	else
 #endif

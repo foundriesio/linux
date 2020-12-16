@@ -149,7 +149,8 @@ static int ohci_platform_probe(struct platform_device *dev)
 	if (!pdata)
 		pdata = &ohci_platform_defaults;
 
-	of_dma_configure(&dev->dev, NULL); ////fix issue - failed to alloc dma buffer
+	// fix issue - failed to alloc dma buffer
+	of_dma_configure(&dev->dev, NULL);
 
 	err = dma_coerce_mask_and_coherent(&dev->dev, DMA_BIT_MASK(32));
 	if (err)
@@ -284,7 +285,7 @@ static int ohci_platform_probe(struct platform_device *dev)
 	hcd->rsrc_start = res_mem->start;
 	hcd->rsrc_len = resource_size(res_mem);
 	#ifdef CONFIG_TCC_EH_ELECT_TST
-	printk("[INFO][USB] %s : tpl_support!!\n", __func__);
+	pr_info("[INFO][USB] %s : tpl_support!!\n", __func__);
 	hcd->tpl_support = 1;
 	#endif
 
@@ -360,7 +361,7 @@ static int ohci_platform_suspend(struct device *dev)
 	if (ret)
 		return ret;
 
-#if defined (CONFIG_TCC_DWC_OTG_HOST_MUX) || defined (CONFIG_USB_DWC2_TCC_MUX)
+#if defined(CONFIG_TCC_DWC_OTG_HOST_MUX) || defined(CONFIG_USB_DWC2_TCC_MUX)
 	if (hcd->usb_phy) {
 		hcd->usb_phy->set_phy_state(hcd->usb_phy, 0);
 	}

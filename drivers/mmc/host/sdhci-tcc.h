@@ -14,29 +14,33 @@
 /* Telechips SDHC Specific Registers for TCC897x */
 #define TCC897X_SDHC_HOSTCFG			0x00u
 #define TCC897X_SDHC_HOSTCFG_DISC(x)	((unsigned int)1 << (20u + (x)))
-#define TCC897X_SDHC_ODELAY_OFFSET		0x08u
-#define TCC897X_SDHC_ODELAY(x)			(TCC897X_SDHC_ODELAY_OFFSET + ((x) * 0x4u))
-#define TCC897X_SDHC_CAPREG_OFFSET		0x18u
-#define TCC897X_SDHC_CAPREG0(x)			(TCC897X_SDHC_CAPREG_OFFSET + ((x) * 0x18u))
-#define TCC897X_SDHC_CAPREG1(x)			(TCC897X_SDHC_CAPREG0(x) + 0x4u)
-#define TCC897X_SDHC_DELAY_OFFSET		0x78u
-#define TCC897X_SDHC_DELAY_CON(x)		(TCC897X_SDHC_DELAY_OFFSET + ((x) * 0x2u))
+#define TCC897X_SDHC_ODELAY_OFFSET	0x08u
+#define TCC897X_SDHC_ODELAY(x)		\
+	(TCC897X_SDHC_ODELAY_OFFSET + ((x) * 0x4u))
+#define TCC897X_SDHC_CAPREG_OFFSET	0x18u
+#define TCC897X_SDHC_CAPREG0(x)		\
+	(TCC897X_SDHC_CAPREG_OFFSET + ((x) * 0x18u))
+#define TCC897X_SDHC_CAPREG1(x)		(TCC897X_SDHC_CAPREG0(x) + 0x4u)
+#define TCC897X_SDHC_DELAY_OFFSET	0x78u
+#define TCC897X_SDHC_DELAY_CON(x)	\
+	(TCC897X_SDHC_DELAY_OFFSET + ((x) * 0x2u))
 
 #define TCC897X_SDHC_DAT_DELAY_OUT(x)	(((x) & 0xFu) << 0u)
 #define TCC897X_SDHC_DAT_DELAY_EN(x)	(((x) & 0xFu) << 8u)
 #define TCC897X_SDHC_CMD_DELAY_OUT(x)	(((x) & 0xFu) << 16u)
 #define TCC897X_SDHC_CMD_DELAY_EN(x)	(((x) & 0xFu) << 24u)
 
-#define TCC897X_SDHC_MK_ODEALY(cmd, data)	(TCC897X_SDHC_DAT_DELAY_OUT(data) \
+#define TCC897X_SDHC_MK_ODEALY(cmd, data)	\
+	(TCC897X_SDHC_DAT_DELAY_OUT(data) \
 	| TCC897X_SDHC_DAT_DELAY_EN(data) \
 	| TCC897X_SDHC_CMD_DELAY_OUT(cmd) \
-	| TCC897X_SDHC_CMD_DELAY_EN(cmd) )
+	| TCC897X_SDHC_CMD_DELAY_EN(cmd))
 
-#define TCC897X_SDHC_IPTAP(x)			(((x) & 0x3Fu) << 0u)
-#define TCC897X_SDHC_IPTAP_EN(x)		(((x) & 0x1u) << 7u)
-#define TCC897X_SDHC_TUNE_CNT(x)		(((x) & 0xFu) << 8u)
-#define TCC897X_SDHC_DELAY_CTRL(x)		(((x) & 0x3u) << 12u)
-#define TCC897X_SDHC_FBEN(x)			(((x) & 0x1u) << 15u)
+#define TCC897X_SDHC_IPTAP(x)		(((x) & 0x3Fu) << 0u)
+#define TCC897X_SDHC_IPTAP_EN(x)	(((x) & 0x1u) << 7u)
+#define TCC897X_SDHC_TUNE_CNT(x)	(((x) & 0xFu) << 8u)
+#define TCC897X_SDHC_DELAY_CTRL(x)	(((x) & 0x3u) << 12u)
+#define TCC897X_SDHC_FBEN(x)		(((x) & 0x1u) << 15u)
 
 #define TCC897X_SDHC_DELAY_CON_DEF		(TCC897X_SDHC_IPTAP((u32)0) \
 	| TCC897X_SDHC_IPTAP_EN((u32)0) \
@@ -52,7 +56,8 @@
 #define TCC_SDHC_CORE_CLK_DIV_EN(x)			(((x) & 0x1u) << 0u)
 #define TCC_SDHC_CORE_CLK_CLK_SEL(x)		(((x) & 0x1u) << 1u)
 #define TCC_SDHC_CORE_CLK_DIV_VAL_OFFSET	(8u)
-#define TCC_SDHC_CORE_CLK_DIV_VAL(x)		(((x) & 0xFFu) << TCC_SDHC_CORE_CLK_DIV_VAL_OFFSET)
+#define TCC_SDHC_CORE_CLK_DIV_VAL(x)		\
+	(((x) & 0xFFu) << TCC_SDHC_CORE_CLK_DIV_VAL_OFFSET)
 
 #define TCC_SDHC_CORE_CLK_MASK_EN(x)	(((x) & 0x1u) << 0u)
 #define TCC_SDHC_CORE_CLK_GATE_DIS(x)	(((x) & 0x1u) << 16u)
@@ -62,13 +67,15 @@
 
 #define TCC_SDHC_SD_DQS_DLY		(0x114u)
 
-#define TCC_SDHC_TX_CLKDLY_OFFSET(ch)		(0x10Cu - ((ch) * 0x50u) + (((ch)/2u) * 0x4u))
+#define TCC_SDHC_TX_CLKDLY_OFFSET(ch)		\
+	(0x10Cu - ((ch) * 0x50u) + (((ch)/2u) * 0x4u))
 #define TCC_SDHC_RX_CLKDLY_VAL_OFFSET(ch)	(0x128u - ((ch) * 0x48u))
 /* (0x128 - (ch * 0x50) + (ch * 0x8)) */
 #define TCC_SDHC_TAPDLY_OFFSET(ch)		(0x12Cu - ((ch) * 0x2Cu))
 
 #define TCC_SDHC_CMDDLY(ch)			TCC_SDHC_TAPDLY_OFFSET(ch)
-#define TCC_SDHC_DATADLY(ch, x)		TCC_SDHC_TAPDLY_OFFSET(ch) + (0x4u + ((x) * 0x4u))
+#define TCC_SDHC_DATADLY(ch, x)	\
+	(TCC_SDHC_TAPDLY_OFFSET(ch) + (0x4u + ((x) * 0x4u)))
 
 #define TCC_SDHC_TAPDLY_IN(x)	(((x) & 0x1Fu) << 0u)
 #define TCC_SDHC_TAPDLY_OUT(x)	(((x) & 0x1Fu) << 8u)
@@ -76,18 +83,20 @@
 
 #define TCC_SDHC_MK_TX_CLKDLY(ch, x) (((ch) != (2u)) ? \
 	(((x) & 0x1Fu) << ((ch) * 16u)) : \
-	((((x) & 0x1Eu) << 16u) | ((x) & 0x1u)) )
+	((((x) & 0x1Eu) << 16u) | ((x) & 0x1u)))
 #define TCC_SDHC_MK_RX_CLKTA_VAL(x) (((x) & 0x3u) << 0u)
 #define TCC_SDHC_MK_TAPDLY(in, out)	(TCC_SDHC_TAPDLY_IN(in) \
 	| TCC_SDHC_TAPDLY_OUT(out) \
-	| TCC_SDHC_TAPDLY_OEN(out) )
+	| TCC_SDHC_TAPDLY_OEN(out))
 
 #define TCC_SDHC_CLKOUTDLY_DEF_TAP_V2	15u
 #define TCC_SDHC_CMDDLY_DEF_TAP_V2		15u
 #define TCC_SDHC_DATADLY_DEF_TAP_V2		15u
 #define TCC_SDHC_CLK_TXDLY_DEF_TAP_V2	15u
 
-/* Telechips SDHC Specific Registers for others (such as TCC803x rev. 0, tcc899x, and so on)*/
+/* Telechips SDHC Specific Registers for others
+ * (such as TCC803x rev. 0, tcc899x, and so on)
+ */
 /* Specific registers of SDMMC registers */
 #define TCC_SDHC_VENDOR			0x78
 /* Specific registers of Channel Control registers */
@@ -101,24 +110,27 @@
 #define TCC_SDHC_DELAY_CON4		0x38u
 #define TCC_SDHC_CD_WP			0x4Cu
 
-#define TCC_SDHC_TAPDLY_TUNE_CNT(x)		(((x) & 0x3Fu) << 16u)
-#define TCC_SDHC_TAPDLY_ITAP_MAX		(32u)
-#define TCC_SDHC_TAPDLY_ITAP_SEL(x)		(((x) & 0x1Fu) << 0u)
+#define TCC_SDHC_TAPDLY_TUNE_CNT(x)	(((x) & 0x3Fu) << 16u)
+#define TCC_SDHC_TAPDLY_ITAP_MAX	(32u)
+#define TCC_SDHC_TAPDLY_ITAP_SEL(x)	(((x) & 0x1Fu) << 0u)
 #define TCC_SDHC_TAPDLY_ITAP_SEL_MASK	(TCC_SDHC_TAPDLY_ITAP_SEL(0x1Fu))
-#define TCC_SDHC_TAPDLY_ITAP_EN(x)		(((x) & 0x1u) << 5u)
+#define TCC_SDHC_TAPDLY_ITAP_EN(x)	(((x) & 0x1u) << 5u)
 #define TCC_SDHC_TAPDLY_ITAP_CHGWIN(x)	(((x) & 0x1u) << 6u)
-#define TCC_SDHC_TAPDLY_OTAP_SEL(x)		(((x) & (u32)0x1F) << (u32)8)
-#define TCC_SDHC_TAPDLY_OTAP_SEL_MASK	(TCC_SDHC_TAPDLY_OTAP_SEL ((u32)0x1F))
-#define TCC_SDHC_TAPDLY_OTAP_EN(x)		(((x) & 0x1u) << 13u)
+#define TCC_SDHC_TAPDLY_OTAP_SEL(x)	(((x) & (u32)0x1F) << (u32)8)
+#define TCC_SDHC_TAPDLY_OTAP_SEL_MASK	(TCC_SDHC_TAPDLY_OTAP_SEL((u32)0x1F))
+#define TCC_SDHC_TAPDLY_OTAP_EN(x)	(((x) & 0x1u) << 13u)
 #define TCC_SDHC_TAPDLY_ASYNCWKUP_EN(x)	(((x) & 0x1u) << 14u)
 
-#define TCC_SDHC_CMDDLY_IN(x)			(((x) & 0xFu) << 16u)
-#define TCC_SDHC_CMDDLY_OUT(x)			(((x) & 0xFu) << 20u)
-#define TCC_SDHC_CMDDLY_EN(x)			(((x) & 0xFu) << 24u)
+#define TCC_SDHC_CMDDLY_IN(x)		(((x) & 0xFu) << 16u)
+#define TCC_SDHC_CMDDLY_OUT(x)		(((x) & 0xFu) << 20u)
+#define TCC_SDHC_CMDDLY_EN(x)		(((x) & 0xFu) << 24u)
 
-#define TCC_SDHC_DATADLY_IN(n, x)		(((x) & 0xFu) << (((n) & 0x1u) * 12u))
-#define TCC_SDHC_DATADLY_OUT(n, x)		(((x) & 0xFu) << ((((n) & 0x1u) * 12u) + 4u))
-#define TCC_SDHC_DATADLY_EN(n, x)		(((x) & 0xFu) << ((((n) & 0x1u) * 12u) + 8u))
+#define TCC_SDHC_DATADLY_IN(n, x)	\
+		(((x) & 0xFu) << (((n) & 0x1u) * 12u))
+#define TCC_SDHC_DATADLY_OUT(n, x)	\
+		(((x) & 0xFu) << ((((n) & 0x1u) * 12u) + 4u))
+#define TCC_SDHC_DATADLY_EN(n, x)	\
+		(((x) & 0xFu) << ((((n) & 0x1u) * 12u) + 8u))
 
 #define TCC_SDHC_CAPARG0_DEF		0xEDFE9970
 #define TCC_SDHC_CAPARG1_DEF		0x00000007
@@ -126,21 +138,21 @@
 #define TCC_SDHC_CMDDLY_DEF_TAP		7
 #define TCC_SDHC_DATADLY_DEF_TAP	7
 
-#define TCC_SDHC_TAPDLY_DEF				(TCC_SDHC_TAPDLY_TUNE_CNT((u32)16) \
+#define TCC_SDHC_TAPDLY_DEF	(TCC_SDHC_TAPDLY_TUNE_CNT((u32)16) \
 	| TCC_SDHC_TAPDLY_OTAP_SEL((u32)0x8) \
 	| TCC_SDHC_TAPDLY_OTAP_EN((u32)1) \
-	| TCC_SDHC_TAPDLY_ASYNCWKUP_EN((u32)1) )
+	| TCC_SDHC_TAPDLY_ASYNCWKUP_EN((u32)1))
 
-#define TCC_SDHC_MK_CMDDLY(x)			(TCC_SDHC_CMDDLY_IN(x) \
+#define TCC_SDHC_MK_CMDDLY(x)	(TCC_SDHC_CMDDLY_IN(x) \
 	| TCC_SDHC_CMDDLY_OUT(x) \
-	| TCC_SDHC_CMDDLY_EN(x) )
+	| TCC_SDHC_CMDDLY_EN(x))
 
-#define TCC_SDHC_MK_DATADLY(x)				(TCC_SDHC_DATADLY_IN(0u, x) \
+#define TCC_SDHC_MK_DATADLY(x)	(TCC_SDHC_DATADLY_IN(0u, x) \
 	| TCC_SDHC_DATADLY_OUT(0u, x) \
 	| TCC_SDHC_DATADLY_EN(0u, x) \
 	| TCC_SDHC_DATADLY_IN(1u, x) \
 	| TCC_SDHC_DATADLY_OUT(1u, x) \
-	| TCC_SDHC_DATADLY_EN(1u, x) )
+	| TCC_SDHC_DATADLY_EN(1u, x))
 #define TCC_SDHC_F_MIN		400000 /* in Hz */
 
 #define TCC_SDHC_AUTO_TUNE_EN(x)		((x) & 0x20u)
@@ -156,7 +168,8 @@
 
 struct sdhci_tcc_soc_data {
 	const struct sdhci_pltfm_data *pdata;
-	int (*parse_channel_configs)(struct platform_device *, struct sdhci_host *);
+	int (*parse_channel_configs)(struct platform_device *,
+					struct sdhci_host *);
 	void (*set_channel_configs)(struct sdhci_host *);
 	void (*set_channel_itap)(struct sdhci_host *, u32 itap);
 	int (*set_core_clock)(struct sdhci_host *);
@@ -200,6 +213,7 @@ struct tcc_sdhci_itap_window {
 	unsigned int width;
 };
 
-extern void sdhci_tcc_force_presence_change(struct platform_device *pdev, bool mmc_nonremovable);
+extern void sdhci_tcc_force_presence_change(struct platform_device *pdev,
+						bool mmc_nonremovable);
 
 #endif

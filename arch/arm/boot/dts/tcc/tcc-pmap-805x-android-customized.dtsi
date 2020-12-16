@@ -1,7 +1,12 @@
 // SPDX-License-Identifier: (GPL-2.0+ OR MIT)
 /*
- * Copyright (C) 2020 Telechips Inc.
+ * Copyright (C) Telechips Inc.
  */
+
+#include "../../../../../include/generated/autoconf.h"
+
+#include <dt-bindings/pmap/tcc805x/pmap-tcc805x-android-ivi.h>
+
 #undef SZ_1MB
 #define SZ_1MB				(1024*1024)
 #define ARRAY_16MBYTE(x)	((((x) + ((16*SZ_1MB)-1))>> 24) << 24)
@@ -22,32 +27,6 @@
 //##################################################################################################################################################
 
 //#define SUPPORT_ROTATION  // Enable in case supporting the display-device or video-contents rotation (90/180/270) // have to have rotation h/w block
-
-//***************************** DISPLAY ******************************/
-#define PRIMARY_FRAMEBUFFER_WIDTH		1920
-#define PRIMARY_FRAMEBUFFER_HEIGHT		720
-#define SECONDARY_FRAMEBUFFER_WIDTH		1920
-#define SECONDARY_FRAMEBUFFER_HEIGHT	720
-#define TERTIARY_FRAMEBUFFER_WIDTH		0
-#define TERTIARY_FRAMEBUFFER_HEIGHT		0
-
-//Choose more bigger resolution between Primary and Secondary display device.
-//and Should sync with hardware/telechips/common/hwcomposer/Hwrenderer.h
-#define PRIMARY_TARGET_WIDTH			1920
-#define PRIMARY_TARGET_HEIGHT			720
-#define SECONDARY_TARGET_WIDTH			1920
-#define SECONDARY_TARGET_HEIGHT			720
-#define TERTIARY_TARGET_WIDTH			0
-#define TERTIARY_TARGET_HEIGHT			0
-
-#if ((PRIMARY_TARGET_WIDTH*PRIMARY_TARGET_HEIGHT) > (SECONDARY_TARGET_WIDTH*SECONDARY_TARGET_HEIGHT))
-#define SUPPORT_DISPLAY_MAX_WIDTH	PRIMARY_TARGET_WIDTH
-#define SUPPORT_DISPLAY_MAX_HEIGHT	PRIMARY_TARGET_HEIGHT
-#else
-#define SUPPORT_DISPLAY_MAX_WIDTH	SECONDARY_TARGET_WIDTH
-#define SUPPORT_DISPLAY_MAX_HEIGHT	SECONDARY_TARGET_HEIGHT
-#endif
-
 
 //***************************** VPU/HEVC ******************************/
 //Should sync with hardware/telechips/omx/omx_videodec_interface/include/vdec.h

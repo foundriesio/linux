@@ -1,4 +1,4 @@
- /*
+/*
  *   lcd_cvbs.c
  *   Author:  <linux@telechips.com>
  *   Created: June 10, 2008
@@ -32,7 +32,7 @@
 #include <linux/module.h>
 
 #include <asm/mach-types.h>
-#include <asm/io.h>
+#include <linux/io.h>
 
 #ifdef CONFIG_OF
 #include <linux/of.h>
@@ -55,17 +55,18 @@ extern void internal_tve_clock_onoff(unsigned int onoff);
 extern void internal_tve_enable(unsigned int type, unsigned int onoff);
 extern void internal_tve_init(void);
 
+#define NTSC 0
+#define PAL 1
 
-#define NTSC	0
-#define PAL		1
-
-#define CVBS_TYPE	(NTSC)
+#define CVBS_TYPE (NTSC)
 
 static struct mutex panel_lock;
 
-static int cvbslcd_panel_init(struct lcd_panel *panel, struct tcc_dp_device *fb_pdata)
+static int
+cvbslcd_panel_init(struct lcd_panel *panel, struct tcc_dp_device *fb_pdata)
 {
-	pr_info("[INF][LCD] %s lcdc:%d DispOrder:%d \n", __func__, fb_pdata->ddc_info.blk_num, fb_pdata->DispOrder);
+	pr_info("[INF][LCD] %s lcdc:%d DispOrder:%d\n", __func__,
+		fb_pdata->ddc_info.blk_num, fb_pdata->DispOrder);
 
 	fb_pdata->FbPowerState = true;
 	fb_pdata->FbUpdateType = FB_RDMA_UPDATE;
@@ -73,19 +74,18 @@ static int cvbslcd_panel_init(struct lcd_panel *panel, struct tcc_dp_device *fb_
 	return 0;
 }
 
-static int cvbslcd_set_power(struct lcd_panel *panel, int on, struct tcc_dp_device *fb_pdata)
+static int cvbslcd_set_power(
+	struct lcd_panel *panel, int on, struct tcc_dp_device *fb_pdata)
 {
-
 	mutex_lock(&panel_lock);
 
 	fb_pdata->FbPowerState = panel->state = on;
 
-	if (on) {
-
-	}
-	else 	{
-
-	}
+	//if (on)
+	//	todo
+	//else
+	//	todo
+	//
 
 	mutex_unlock(&panel_lock);
 
@@ -93,71 +93,71 @@ static int cvbslcd_set_power(struct lcd_panel *panel, int on, struct tcc_dp_devi
 }
 
 static struct lcd_panel cvbslcd_ntsc_panel = {
-	.name		= "CVBS(NTSC)",
-	.manufacturer	= "Telechips",
-	.id		= PANEL_ID_CVBS,
-	.xres		= 720,
-	.yres		= 480,
-	.width		= 0,
-	.height		= 0,
-	.bpp		= 24,
-	.clk_freq	= 27000000,
-	.clk_div	= 1,
-	.bus_width	= 8,
+	.name = "CVBS(NTSC)",
+	.manufacturer = "Telechips",
+	.id = PANEL_ID_CVBS,
+	.xres = 720,
+	.yres = 480,
+	.width = 0,
+	.height = 0,
+	.bpp = 24,
+	.clk_freq = 27000000,
+	.clk_div = 1,
+	.bus_width = 8,
 
-	.lpw		= (212)		-1,
-	.lpc		= (720 *2)	-1,
-	.lswc		= (32) 		-1,
-	.lewc		= (32)		-1,
-	.vdb		= 0,
-	.vdf		= 0,
+	.lpw = (212) - 1,
+	.lpc = (720 * 2) - 1,
+	.lswc = (32) - 1,
+	.lewc = (32) - 1,
+	.vdb = 0,
+	.vdf = 0,
 
-	.fpw1		= (1)		-1,
-	.flc1		= (480)		-1,
-	.fswc1		= (37)		-1,
-	.fewc1		= (7)		-1,
+	.fpw1 = (1) - 1,
+	.flc1 = (480) - 1,
+	.fswc1 = (37) - 1,
+	.fewc1 = (7) - 1,
 
-	.fpw2		= (1)		-1,
-	.flc2		= (480)		-1,
-	.fswc2		= (38)		-1,
-	.fewc2		= (6)		-1,
-	.sync_invert	= IV_INVERT | IH_INVERT | IP_INVERT,
-	.init		= cvbslcd_panel_init,
-	.set_power	= cvbslcd_set_power,
+	.fpw2 = (1) - 1,
+	.flc2 = (480) - 1,
+	.fswc2 = (38) - 1,
+	.fewc2 = (6) - 1,
+	.sync_invert = IV_INVERT | IH_INVERT | IP_INVERT,
+	.init = cvbslcd_panel_init,
+	.set_power = cvbslcd_set_power,
 };
 
 static struct lcd_panel cvbslcd_pal_panel = {
-	.name		= "CVBS(PAL)",
-	.manufacturer	= "Telechips",
-	.id		= PANEL_ID_CVBS,
-	.xres		= 720,
-	.yres		= 576,
-	.width		= 0,
-	.height		= 0,
-	.bpp		= 24,
-	.clk_freq	= 27000000,
-	.clk_div	= 1,
-	.bus_width	= 8,
+	.name = "CVBS(PAL)",
+	.manufacturer = "Telechips",
+	.id = PANEL_ID_CVBS,
+	.xres = 720,
+	.yres = 576,
+	.width = 0,
+	.height = 0,
+	.bpp = 24,
+	.clk_freq = 27000000,
+	.clk_div = 1,
+	.bus_width = 8,
 
-	.lpw		= (128)		-1,
-	.lpc		= (720 *2)	-1,
-	.lswc		= (138) 	-1,
-	.lewc		= (22)		-1,
-	.vdb		= 0,
-	.vdf		= 0,
+	.lpw = (128) - 1,
+	.lpc = (720 * 2) - 1,
+	.lswc = (138) - 1,
+	.lewc = (22) - 1,
+	.vdb = 0,
+	.vdf = 0,
 
-	.fpw1		= (1)		-1,
-	.flc1		= (576)		-1,
-	.fswc1		= (43)		-1,
-	.fewc1		= (5)		-1,
+	.fpw1 = (1) - 1,
+	.flc1 = (576) - 1,
+	.fswc1 = (43) - 1,
+	.fewc1 = (5) - 1,
 
-	.fpw2		= (1)		-1,
-	.flc2		= (576)		-1,
-	.fswc2		= (44)		-1,
-	.fewc2		= (4)		-1,
-	.sync_invert	= IV_INVERT | IH_INVERT | IP_INVERT,
-	.init		= cvbslcd_panel_init,
-	.set_power	= cvbslcd_set_power,
+	.fpw2 = (1) - 1,
+	.flc2 = (576) - 1,
+	.fswc2 = (44) - 1,
+	.fewc2 = (4) - 1,
+	.sync_invert = IV_INVERT | IH_INVERT | IP_INVERT,
+	.init = cvbslcd_panel_init,
+	.set_power = cvbslcd_set_power,
 };
 
 static struct lcd_panel *cvbslcd_panel;
@@ -173,8 +173,7 @@ static int cvbslcd_probe(struct platform_device *pdev)
 	if (CVBS_TYPE == NTSC) {
 		cvbslcd_panel = &cvbslcd_ntsc_panel;
 		type = NTSC_M;
-	}
-	else {
+	} else {
 		cvbslcd_panel = &cvbslcd_pal_panel;
 		type = PAL_N;
 	}
@@ -198,21 +197,21 @@ static int cvbslcd_remove(struct platform_device *pdev)
 }
 
 #ifdef CONFIG_OF
-static struct of_device_id cvbslcd_of_match[] = {
-	{ .compatible = "telechips,cvbslcd" },
+static const struct of_device_id cvbslcd_of_match[] = {
+	{.compatible = "telechips,cvbslcd"},
 	{}
 };
 MODULE_DEVICE_TABLE(of, cvbslcd_of_match);
 #endif
 
 static struct platform_driver cvbslcd_driver = {
-	.probe	= cvbslcd_probe,
-	.remove	= cvbslcd_remove,
-	.driver	= {
-		.name	= "cvbs_lcd",
-		.owner	= THIS_MODULE,
-		.of_match_table = of_match_ptr(cvbslcd_of_match),
-	},
+	.probe = cvbslcd_probe,
+	.remove = cvbslcd_remove,
+	.driver = {
+			.name = "cvbs_lcd",
+			.owner = THIS_MODULE,
+			.of_match_table = of_match_ptr(cvbslcd_of_match),
+		},
 };
 
 static __init int cvbslcd_init(void)

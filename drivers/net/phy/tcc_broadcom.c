@@ -73,7 +73,8 @@ static int bcm89810_config_init(struct phy_device *phydev)
 	phy_write(phydev, BCM89810_DSPRW, 0x0323);
 
 	// shut off unused clocks
-	// If verification of the previous register writes is required, it should be done before 
+	// If verification of the previous register
+	// writes is required, it should be done before
 	// shutting off the unused clocks (next 4 lines below)
 	phy_write(phydev, BCM89810_DSPADDR, BCM89810_EXPREGFD);
 	phy_write(phydev, BCM89810_DSPRW, 0x1C3F);
@@ -86,25 +87,29 @@ static int bcm89810_config_init(struct phy_device *phydev)
 	phy_write(phydev, BCM89810_DSPADDR, BCM89810_EXPREG9A);
 	phy_write(phydev, BCM89810_DSPRW, 0x34C0);
 	// ---------END PHY optimization portion-----------
-	
+
 	// ---------begin MACconfiguration portion-----------
 #if defined(CONFIG_TCC_RGMII_MODE_BCM_89810)
-	phy_write(phydev, BCM89810_DSPADDR, BCM89810_EXPREG0E); // turn off MII Lite
+	phy_write(phydev, BCM89810_DSPADDR, BCM89810_EXPREG0E);
+	// turn off MII Lite
 	phy_write(phydev, BCM89810_DSPRW, 0x0000);
-	phy_write(phydev, BCM89810_DSPADDR, BCM89810_EXPREG9F); // unset MII reverse
+	phy_write(phydev, BCM89810_DSPADDR, BCM89810_EXPREG9F);
+	// unset MII reverse
 	phy_write(phydev, BCM89810_DSPRW, 0x0000);
 	phy_write(phydev, BCM89810_AUXCTRL, 0xF1E7); // turn on RGMII mode
 #elif defined(CONFIG_TCC_MII_MODE_BCM_89810)
 	phy_write(phydev, BCM89810_AUXCTRL, 0xF167); // turn off RGMII mode
-	phy_write(phydev, BCM89810_DSPADDR, BCM89810_EXPREG0E); // turn on MII Lite
+	phy_write(phydev, BCM89810_DSPADDR, BCM89810_EXPREG0E);
+	// turn on MII Lite
 	phy_write(phydev, BCM89810_DSPRW, 0x0800);
-	phy_write(phydev, BCM89810_DSPADDR, BCM89810_EXPREG9F); // unset MII reverse
+	phy_write(phydev, BCM89810_DSPADDR, BCM89810_EXPREG9F);
+	// unset MII reverse
 	phy_write(phydev, BCM89810_DSPRW, 0x0000);
 #else
 //	error "Not supported Phy Mode"
 #endif
 	// ---------end MACconfiguration portion-----------
-	
+
 	// ---------begin mdi configuration portion-----------
 #ifdef CONFIG_TCC_BOARDCOM_MDI_MASTER_MODE_BCM_89810
 	phy_write(phydev, BCM89810_MIICTL, 0x0208);
@@ -136,21 +141,20 @@ int bcm89810_update_link(struct phy_device *phydev)
 int bcm89810_read_status(struct phy_device *phydev)
 {
 	int err;
-	static int mdi_mode = 0;
-	static int count = 0;
-	static int max = 0;
+	static int mdi_mode;
+	static int count;
+	static int max;
 
 
-	/* Update the link, but return if there
-	 * was an error */
 	err = bcm89810_update_link(phydev);
 	if (err)
 		return err;
-	
+
 #if 0
 	if (phydev->link == 0) {
 		if (count++ > max) {
 			int rand;
+
 			if (mdi_mode) {
 				phy_write(phydev, BCM89810_MIICTL, 0x0200);
 				mdi_mode = 0;

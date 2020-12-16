@@ -1,29 +1,28 @@
-/****************************************************************************
-FileName    : kernel/drivers/video/fbdev/tcc-fb/vioc/tcc_component_adv7343.c
-Description :
-
-Copyright (C) 2016 Telechips Inc.
-
-This program is free software; you can redistribute it and/or modify it under
-the terms of the GNU General Public License as published by the Free Software
-Foundation; either version 2 of the License, or (at your option) any later
-version.
-
-This program is distributed in the hope that it will be useful, but WITHOUT ANY
-WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
-PARTICULAR PURPOSE. See the GNU General Public License for more details.
-
-You should have received a copy of the GNU General Public License along with
-this program; if not, write to the Free Software Foundation, Inc., 59 Temple
-Place, Suite 330, Boston, MA 02111-1307 USA
-****************************************************************************/
+/*
+ * Copyright (C) Telechips, Inc.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, see the file COPYING, or write
+ * to the Free Software Foundation, Inc.,
+ * 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+ */
 #include <linux/errno.h>
 #include <linux/i2c.h>
 #include <linux/delay.h>
 #include <linux/slab.h>
 #include <linux/module.h>
 #include <linux/gpio.h>
-#include <asm/io.h>
+#include <linux/io.h>
 #ifndef CONFIG_ARM64
 #include <asm/mach-types.h>
 #endif
@@ -36,8 +35,9 @@ Place, Suite 330, Boston, MA 02111-1307 USA
 
 //#define ADV7343_DBG
 #ifdef ADV7343_DBG
-#define dprintk(fmt, args...)                                                  \
-	printk("\e[33m[DBG][ADV7343][%s:%d] \e[0m" fmt, __func__, __LINE__, ##args);
+#define dprintk(fmt, args...) \
+	pr_info("\e[33m[DBG][ADV7343][%s:%d] \e[0m" fmt, \
+	__func__, __LINE__, ##args)
 #else
 #define dprintk(fmt, args...)
 #endif
@@ -45,13 +45,14 @@ Place, Suite 330, Boston, MA 02111-1307 USA
 #define STD_INFO_END 0xFF
 #define STD_INFO_DELAY 0xFE
 
-static struct i2c_client *adv7343_i2c_client = NULL;
+static struct i2c_client *adv7343_i2c_client;
 static const struct i2c_device_id adv7343_i2c_id[] = {
 	{
 		"component-adv7343",
 		0,
 	},
-	{}};
+	{}
+};
 
 //#define ADV7343_REGMAP
 #ifdef ADV7343_REGMAP
@@ -64,8 +65,8 @@ static const struct regmap_config adv7343_regmap_config = {
 #endif
 
 
-// static struct adv7343_std_info adv7343_test_pattern[] =
-//{	/* Test pattern generation */
+// static struct adv7343_std_info adv7343_test_pattern[] = {
+//	/* Test pattern generation */
 //	//{0x02, 0x14},	// Test pattern black bar for RGB
 //	//{0x02, 0x24},	// Test pattern black bar for YCbCr
 //
@@ -73,8 +74,8 @@ static const struct regmap_config adv7343_regmap_config = {
 //	//{0x31, 0x0D},	// Test pattern on with Field/frame.
 //
 //	/* red (output blue) */
-//	{0x36, 76},		// Y
-//	{0x37, 84},		// Cb
+//	{0x36, 76},	// Y
+//	{0x37, 84},	// Cb
 //	{0x38, 255},	// Cr
 //	/* green (output green) */
 //	//{0x36, 149},
@@ -94,72 +95,80 @@ static const struct regmap_config adv7343_regmap_config = {
  * - need RGB output port
  * - N/A
  */
-static struct adv7343_std_info adv7343_720p_24bitRGB_to_RGB[] =
-	{/* Table 124. 24-Bit 720p RGB In, RGB Out */
-	 {0x17, 0x02},
-	 {0x00, 0x1C},
-	 {0x01, 0x10},
-	 {0x02, 0x10}, // RGB output
-	 {0x30, 0x28},
-	 {0x31, 0x01},
-	 {0x33, 0x28},
-	 {0x35, 0x02}, // RGB input
-	 {STD_INFO_END, STD_INFO_END}};
+static struct adv7343_std_info adv7343_720p_24bitRGB_to_RGB[] = {
+	/* Table 124. 24-Bit 720p RGB In, RGB Out */
+	{0x17, 0x02},
+	{0x00, 0x1C},
+	{0x01, 0x10},
+	{0x02, 0x10}, // RGB output
+	{0x30, 0x28},
+	{0x31, 0x01},
+	{0x33, 0x28},
+	{0x35, 0x02}, // RGB input
+	{STD_INFO_END, STD_INFO_END}
+};
 
-static struct adv7343_std_info adv7343_1080i_24bitRGB_to_RGB[] =
-	{/* Table 137. 24-Bit 1080i RGB In, RGB Out */
-	 {0x17, 0x02},
-	 {0x00, 0x1C},
-	 {0x01, 0x10},
-	 //{0x02, 0x10},	// RGB output (comment-out is YPrPb output)
-	 {0x30, 0x68},
-	 {0x31, 0x01},
-	 {0x33, 0x28},
-	 {0x35, 0x02}, // RGB input & DAC2=Pb DAC3=Pr (0x0A is DAC2=Pr DAC3=Pb)
-	 {STD_INFO_END, STD_INFO_END}};
+static struct adv7343_std_info adv7343_1080i_24bitRGB_to_RGB[] = {
+	/* Table 137. 24-Bit 1080i RGB In, RGB Out */
+	{0x17, 0x02},
+	{0x00, 0x1C},
+	{0x01, 0x10},
+	//{0x02, 0x10},	// RGB output (comment-out is YPrPb output)
+	{0x30, 0x68},
+	{0x31, 0x01},
+	{0x33, 0x28},
+	{0x35, 0x02}, // RGB input & DAC2=Pb DAC3=Pr (0x0A is DAC2=Pr DAC3=Pb)
+	{STD_INFO_END, STD_INFO_END}
+};
 
 /*
  * 24bit YCrCb Input, YPrPb Output
- * - need 24bit (fake) YCrCb Input format (refer to lcdc.c::lcdc_io_init_component)
+ * - need 24bit (fake) YCrCb Input format
+ *    (refer to lcdc.c::lcdc_io_init_component)
  * - Test only
  */
-static struct adv7343_std_info adv7343_720p_24bitYCrCb_to_YPrPb[] =
-	{/* Table 121. 24-Bit 720p YCrCb In, YPrPb Out */
-	 {0x17, 0x02},
-	 {0x00, 0x1C},
-	 {0x01, 0x10},
-	 {0x30, 0x28},
-	 {0x31, 0x01},
-	 {0x33, 0x28},
-	 {STD_INFO_END, STD_INFO_END}};
+static struct adv7343_std_info adv7343_720p_24bitYCrCb_to_YPrPb[] = {
+	/* Table 121. 24-Bit 720p YCrCb In, YPrPb Out */
+	{0x17, 0x02},
+	{0x00, 0x1C},
+	{0x01, 0x10},
+	{0x30, 0x28},
+	{0x31, 0x01},
+	{0x33, 0x28},
+	{STD_INFO_END, STD_INFO_END}
+};
 
-static struct adv7343_std_info adv7343_1080i_24bitYCrCb_to_YPrPb[] =
-	{/* Table 134. 24-Bit 1080i YCrCb In, YPrPb Out */
-	 {0x17, 0x02},
-	 {0x00, 0x1C},
-	 {0x01, 0x10},
-	 {0x30, 0x68},
-	 {0x31, 0x01},
-	 {0x33, 0x28},
-	 {STD_INFO_END, STD_INFO_END}};
+static struct adv7343_std_info adv7343_1080i_24bitYCrCb_to_YPrPb[] = {
+	/* Table 134. 24-Bit 1080i YCrCb In, YPrPb Out */
+	{0x17, 0x02},
+	{0x00, 0x1C},
+	{0x01, 0x10},
+	{0x30, 0x68},
+	{0x31, 0x01},
+	{0x33, 0x28},
+	{STD_INFO_END, STD_INFO_END}
+};
 
 /*
  * 16bit YCrCb Input, YPrPb Output
  */
-static struct adv7343_std_info adv7343_720p_16bitYCrCb_to_YPrPb[] =
-	{/* Table 117. 16-Bit 720p YCrCb In, YPrPb Out */
-	 {0x17, 0x02}, {0x00, 0x1C}, {0x01, 0x10},
-	 {0x30, 0x28}, {0x31, 0x01}, {STD_INFO_END, STD_INFO_END}};
+static struct adv7343_std_info adv7343_720p_16bitYCrCb_to_YPrPb[] = {
+	/* Table 117. 16-Bit 720p YCrCb In, YPrPb Out */
+	{0x17, 0x02}, {0x00, 0x1C}, {0x01, 0x10},
+	{0x30, 0x28}, {0x31, 0x01}, {STD_INFO_END, STD_INFO_END}
+};
 
-static struct adv7343_std_info adv7343_1080i_16bitYCrCb_to_YPrPb[] =
-	{/* Table 130. 16-Bit 1080i YCrCb In, YPrPb Out */
-	 {0x17, 0x02},
-	 {0x00, 0x1C},
-	 {0x01, 0x10},
-	 {0x30, 0x68},
-	 {0x31, 0x01},
-	 {0x35, 0x08}, // RGB input disable & (DAC swap) DAC2=Pr DAC3=Pb for TCC8980_STB
-	 {STD_INFO_END, STD_INFO_END}};
+static struct adv7343_std_info adv7343_1080i_16bitYCrCb_to_YPrPb[] = {
+	/* Table 130. 16-Bit 1080i YCrCb In, YPrPb Out */
+	{0x17, 0x02},
+	{0x00, 0x1C},
+	{0x01, 0x10},
+	{0x30, 0x68},
+	{0x31, 0x01},
+	{0x35, 0x08},	// RGB input disable
+			// & (DAC swap) DAC2=Pr DAC3=Pb for TCC8980_STB
+	{STD_INFO_END, STD_INFO_END}
+};
 
 static int adv7343_i2c_probe(struct i2c_client *client,
 			     const struct i2c_device_id *id)
@@ -283,7 +292,8 @@ void component_chip_set_cgms(unsigned int enable, unsigned int data)
 	unsigned char cgms_header, cgms_payload_msb, cgms_payload_lsb;
 
 	if (enable) {
-		cgms_header = (unsigned char)(ADV7343_SD_CGMS_WSS0_ENABLE | ((data & 0xf0000) >> 16));
+		cgms_header = (unsigned char)(ADV7343_SD_CGMS_WSS0_ENABLE
+				| ((data & 0xf0000) >> 16));
 		cgms_payload_msb = (unsigned char)(((data & 0xff00) >> 8));
 		cgms_payload_lsb = (unsigned char)((data & 0xff));
 	} else {
@@ -296,8 +306,9 @@ void component_chip_set_cgms(unsigned int enable, unsigned int data)
 	adv7343_i2c_write(ADV7343_SD_CGMS_WSS1, cgms_payload_msb);
 	adv7343_i2c_write(ADV7343_SD_CGMS_WSS2, cgms_payload_lsb);
 
-	dprintk("%s: CGMS %s, 0x%05x (header 0x%02x, payload_msb 0x%02x, payload_lsb 0x%02x\n", __func__,
-		enable ? "on" : "off", data, cgms_header, cgms_payload_msb, cgms_payload_lsb);
+	dprintk("%s: CGMS %s, 0x%05x (header 0x%02x, payload_msb 0x%02x, payload_lsb 0x%02x\n",
+		__func__, enable ? "on" : "off",
+		data, cgms_header, cgms_payload_msb, cgms_payload_lsb);
 }
 
 void component_chip_get_cgms(unsigned int *enable, unsigned int *data)
@@ -313,8 +324,9 @@ void component_chip_get_cgms(unsigned int *enable, unsigned int *data)
 		 | (cgms_payload_msb << 8)
 		 | (cgms_payload_lsb);
 
-	dprintk("%s: CGMS %s, 0x%05x (header 0x%02x, payload_msb 0x%02x, payload_lsb 0x%02x\n", __func__,
-		*enable ? "on" : "off", *data, cgms_header, cgms_payload_msb, cgms_payload_lsb);
+	dprintk("%s: CGMS %s, 0x%05x (header 0x%02x, payload_msb 0x%02x, payload_lsb 0x%02x\n",
+		__func__, *enable ? "on" : "off",
+		*data, cgms_header, cgms_payload_msb, cgms_payload_lsb);
 }
 
 static int adv7343_set_mode(int mode, int input, int starter_flag)
@@ -351,28 +363,30 @@ static int adv7343_set_mode(int mode, int input, int starter_flag)
 		reg = std_info->reg;
 		val = std_info->val;
 
-		if (STD_INFO_DELAY == reg)
+		if (reg == STD_INFO_DELAY)
 			mdelay(val);
 		else
 			err = adv7343_i2c_write(reg, val);
 
 		if (err < 0) {
-			pr_err("[ERR][ADV7343] %s: Set mode i2c write error\n", __func__);
+			pr_err("[ERR][ADV7343] %s: Set mode i2c write error\n",
+				__func__);
 			break;
 		}
 
 		#ifdef ADV7343_DBG
-		 if (STD_INFO_DELAY == reg) {
+		if (reg == STD_INFO_DELAY) {
 			dprintk("delay(%d)\n", val);
 		} else {
 			unsigned char r;
+
 			adv7343_i2c_read(reg, &r);
 			dprintk("0x%02x(0x%02x, 0x%02x)\n", reg, val, r);
 		}
 		#endif
 
 		std_info++;
-	} while (STD_INFO_END != std_info->reg);
+	} while (std_info->reg != STD_INFO_END);
 
 	return err;
 }
@@ -405,14 +419,13 @@ static struct i2c_driver adv7343_i2c_driver = {
 	.probe = adv7343_i2c_probe,
 	.remove = adv7343_i2c_remove,
 	.id_table = adv7343_i2c_id,
-	.driver =
-		{
-			.name = "component-adv7343",
-			.owner = THIS_MODULE,
+	.driver = {
+		.name = "component-adv7343",
+		.owner = THIS_MODULE,
 #ifdef CONFIG_OF
-			.of_match_table = of_match_ptr(adv7343_of_match),
+		.of_match_table = of_match_ptr(adv7343_of_match),
 #endif
-		},
+	},
 };
 
 static int adv7343_init(void)

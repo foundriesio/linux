@@ -502,7 +502,6 @@ static void xhci_disable_port(struct usb_hcd *hcd, struct xhci_hcd *xhci,
 			wIndex, port_status);
 }
 
-static int ss_down_control_first = 0;
 static void xhci_clear_port_change_bit(struct xhci_hcd *xhci, u16 wValue,
 		u16 wIndex, __le32 __iomem *addr, u32 port_status)
 {
@@ -551,20 +550,6 @@ static void xhci_clear_port_change_bit(struct xhci_hcd *xhci, u16 wValue,
 	port_status = readl(addr);
 	xhci_dbg(xhci, "clear port %s change, actual port %d status  = 0x%x\n",
 			port_change_bit, wIndex, port_status);
-#if 0
-#if defined (CONFIG_ARCH_TCC803X) || defined (CONFIG_ARCH_TCC899X)
-	if(!ss_down_control_first && system_rev == 0) { /* MPW 1 case*/
-		struct usb_hcd *hcd = xhci_to_hcd(xhci);	
-		if ((unsigned long long)hcd->rsrc_start == 0x11b00000){
-			void * addr = ioremap(0x11d90010, 0x4);
-			writel((readl(addr) | 0x02000000), addr);
-			iounmap(addr);
-			printk("[INFO][USB] KJS : %s\n", __func__);
-			ss_down_control_first = 1;
-		}
-	}
-#endif
-#endif
 }
 
 static int xhci_get_ports(struct usb_hcd *hcd, __le32 __iomem ***port_array)
@@ -766,15 +751,6 @@ static void xhci_hub_report_usb3_link_state(struct xhci_hcd *xhci,
 {
 	u32 pls = status_reg & PORT_PLS_MASK;
 
-	/* resume state is a xHCI internal state.
-	 * Do not report it to usb core, instead, pretend to be U3,
-	 * thus usb core knows it's not ready for transfer
-	 */
-	if (pls == XDEV_RESUME) {
-		*status |= USB_SS_PORT_LS_U3;
-		return;
-	}
-
 	/* When the CAS bit is set then warm reset
 	 * should be performed on port
 	 */
@@ -796,6 +772,16 @@ static void xhci_hub_report_usb3_link_state(struct xhci_hcd *xhci,
 		 */
 		pls |= USB_PORT_STAT_CONNECTION;
 	} else {
+		/*
+		 * Resume state is an xHCI internal state.  Do not report it to
+		 * usb core, instead, pretend to be U3, thus usb core knows
+		 * it's not ready for transfer.
+		 */
+		if (pls == XDEV_RESUME) {
+			*status |= USB_SS_PORT_LS_U3;
+			return;
+		}
+
 		/*
 		 * If CAS bit isn't set but the Port is already at
 		 * Compliance Mode, fake a connection so the USB core
@@ -871,7 +857,7 @@ static u32 xhci_get_port_status(struct usb_hcd *hcd,
 		struct xhci_bus_state *bus_state,
 		__le32 __iomem **port_array,
 		u16 wIndex, u32 raw_port_status,
-		unsigned long flags)
+		unsigned long *flags)
 	__releases(&xhci->lock)
 	__acquires(&xhci->lock)
 {
@@ -903,6 +889,14 @@ static u32 xhci_get_port_status(struct usb_hcd *hcd,
 			status |= USB_PORT_STAT_C_BH_RESET << 16;
 		if ((raw_port_status & PORT_CEC))
 			status |= USB_PORT_STAT_C_CONFIG_ERROR << 16;
+
+		/* USB3 remote wake resume signaling completed */
+		if (bus_state->port_remote_wakeup & (1 << wIndex) &&
+		    (raw_port_status & PORT_PLS_MASK) != XDEV_RESUME &&
+		    (raw_port_status & PORT_PLS_MASK) != XDEV_RECOVERY) {
+			bus_state->port_remote_wakeup &= ~(1 << wIndex);
+			usb_hcd_end_port_resume(&hcd->self, wIndex);
+		}
 	}
 
 	if (hcd->speed < HCD_USB3) {
@@ -953,12 +947,12 @@ static u32 xhci_get_port_status(struct usb_hcd *hcd,
 			xhci_set_link_state(xhci, port_array, wIndex,
 					XDEV_U0);
 
-			spin_unlock_irqrestore(&xhci->lock, flags);
+			spin_unlock_irqrestore(&xhci->lock, *flags);
 			time_left = wait_for_completion_timeout(
 					&bus_state->rexit_done[wIndex],
 					msecs_to_jiffies(
 						XHCI_MAX_REXIT_TIMEOUT_MS));
-			spin_lock_irqsave(&xhci->lock, flags);
+			spin_lock_irqsave(&xhci->lock, *flags);
 
 			if (time_left) {
 				slot_id = xhci_find_slot_id_by_port(hcd,
@@ -1107,7 +1101,7 @@ int xhci_hub_control(struct usb_hcd *hcd, u16 typeReq, u16 wValue,
 			break;
 		}
 		status = xhci_get_port_status(hcd, bus_state, port_array,
-				wIndex, temp, flags);
+				wIndex, temp, &flags);
 		if (status == 0xffffffff)
 			goto error;
 
@@ -1127,7 +1121,7 @@ int xhci_hub_control(struct usb_hcd *hcd, u16 typeReq, u16 wValue,
 			}
 			port_li = readl(port_array[wIndex] + PORTLI);
 			status = xhci_get_ext_port_status(temp, port_li);
-			put_unaligned_le32(cpu_to_le32(status), &buf[4]);
+			put_unaligned_le32(status, &buf[4]);
 		}
 		break;
 	case SetPortFeature:
@@ -1344,16 +1338,15 @@ int xhci_hub_control(struct usb_hcd *hcd, u16 typeReq, u16 wValue,
 			break;
 			/* TCC Embedded Host Electrical Test */
 #ifdef CONFIG_TCC_EH_ELECT_TST
-			/* For downstream facing ports (these):  one hub port is put
-			 * into test mode according to USB2 11.24.2.13, then the hub
-			 * must be reset (which for root hub now means rmmod+modprobe,
-			 * or else system reboot).  See EHCI 2.3.9 and 4.14 for info
-			 * about the EHCI-specific stuff.
+			/*
+			 * For downstream facing ports (these):  one hub port is
+			 * put into test mode according to USB2 11.24.2.13, then
+			 * the hub must be reset (which for root hub now means
+			 * rmmod+modprobe, or else system reboot). See EHCI
+			 * 2.3.9 and 4.14 for info about the EHCI-specific stuff
 			 */
 		case USB_PORT_FEAT_TEST:
 			if (test_mode > 0 && test_mode <= 5) {
-				//xhci_quiesce(xhci);
-
 				spin_unlock_irqrestore(&xhci->lock, flags);
 				xhci_halt(xhci);
 				spin_lock_irqsave(&xhci->lock, flags);
@@ -1363,20 +1356,21 @@ int xhci_hub_control(struct usb_hcd *hcd, u16 typeReq, u16 wValue,
 				writel(temp, &xhci->op_regs->port_power_base);
 				temp = readl(&xhci->op_regs->port_power_base);
 
-				printk("[INFO][USB] \x1b[1;33mportpmsc: 0x%08x  \x1b[0m\n",temp);
+				pr_info("[INFO][USB] \x1b[1;33mportpmsc: 0x%08x \x1b[0m\n",
+						temp);
 			} else if (test_mode == 6) {
 				u32 irq_pending;
 
 #define HHSETP_DBG
 #ifdef HHSETP_DBG
-#define hhsetp_dbg(x) printk(x)
+#define hhsetp_dbg(x) pr_info(x)
 #else
 #define hhsetp_dbg(x)
 #endif
 
-				/* HS_HOST_PORT_SUSPEND_RESUME
-				*/
-				printk("[INFO][USB] xHCI HS_HOST_PORT_SUSPEND_RESUME 0x%x\n", test_mode);
+				/* HS_HOST_PORT_SUSPEND_RESUME */
+				pr_info("[INFO][USB] xHCI HS_HOST_PORT_SUSPEND_RESUME 0x%x\n",
+						test_mode);
 
 				/* Save current interrupt mask */
 				spin_unlock_irqrestore(&xhci->lock, flags);
@@ -1415,7 +1409,6 @@ int xhci_hub_control(struct usb_hcd *hcd, u16 typeReq, u16 wValue,
 
 				hhsetp_dbg("End of HS_HOST_PORT_SUSPEND_RESUME\n");
 				spin_lock_irqsave(&xhci->lock, flags);
-				break;
 			} else {
 				goto error;
 			}
@@ -1571,7 +1564,8 @@ int xhci_hub_status_data(struct usb_hcd *hcd, char *buf)
 	}
 	if (!status && !reset_change) {
 #ifdef CONFIG_TCC_EH_ELECT_TST
-		xhci_err(xhci, "%s: ERROR!! Timeout port polling.\n", __func__); //for USB 3.0 link test
+		// for USB 3.0 link test
+		xhci_err(xhci, "%s: ERROR!! Timeout port polling.\n", __func__);
 #endif
 		xhci_dbg(xhci, "%s: stopping port polling.\n", __func__);
 		clear_bit(HCD_FLAG_POLL_RH, &hcd->flags);

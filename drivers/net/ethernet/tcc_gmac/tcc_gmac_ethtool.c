@@ -1,10 +1,10 @@
 /*
  * linux/driver/net/tcc_gmac/tcc_gmac_ethtool.c
- * 	
+ *
  * Based on : STMMAC of STLinux 2.4
  * Author : Telechips <linux@telechips.com>
  * Created : June 22, 2010
- * Description : This is the driver for the Telechips MAC 10/100/1000 on-chip Ethernet controllers.  
+ * Description : This is the driver for the Telechips MAC 10/100/1000 on-chip Ethernet controllers.
  *               Telechips Ethernet IPs are built around a Synopsys IP Core.
  *
  * Copyright (C) 2010 Telechips
@@ -24,7 +24,7 @@
  *
  * The full GNU General Public License is included in this distribution in
  * the file called "COPYING".
- */ 
+ */
 
 #include <linux/etherdevice.h>
 #include <linux/ethtool.h>
@@ -49,7 +49,7 @@ struct tcc_gmac_stats {
 	{ #m, FIELD_SIZEOF(struct tcc_gmac_extra_stats, m),	\
 	offsetof(struct tcc_gmac_priv, xstats.m)}
 
-static const struct  tcc_gmac_stats tcc_gmac_gstrings_stats[] = {
+static const struct tcc_gmac_stats tcc_gmac_gstrings_stats[] = {
 	TCC_GMAC_STAT(tx_underflow),
 	TCC_GMAC_STAT(tx_carrier),
 	TCC_GMAC_STAT(tx_losscarrier),
@@ -96,7 +96,7 @@ static const struct  tcc_gmac_stats tcc_gmac_gstrings_stats[] = {
 #define TCC_GMAC_STATS_LEN ARRAY_SIZE(tcc_gmac_gstrings_stats)
 
 static void tcc_gmac_ethtool_getdrvinfo(struct net_device *dev,
-			       struct ethtool_drvinfo *info)
+					struct ethtool_drvinfo *info)
 {
 	strncpy(info->driver, TCC_GMAC_ETHTOOL_NAME, sizeof(info->driver));
 
@@ -106,7 +106,9 @@ static void tcc_gmac_ethtool_getdrvinfo(struct net_device *dev,
 	return;
 }
 
-static int tcc_gmac_ethtool_get_link_ksettings(struct net_device *dev, struct ethtool_link_ksettings *cmd)
+static int tcc_gmac_ethtool_get_link_ksettings(struct net_device *dev,
+					       struct ethtool_link_ksettings
+					       *cmd)
 {
 	struct tcc_gmac_priv *priv = netdev_priv(dev);
 	struct phy_device *phy = priv->phydev;
@@ -115,13 +117,12 @@ static int tcc_gmac_ethtool_get_link_ksettings(struct net_device *dev, struct et
 	rc = 0;
 
 	if (phy == NULL) {
-		pr_err("%s: %s: PHY is not registered\n",
-		       __func__, dev->name);
+		pr_err("%s: %s: PHY is not registered\n", __func__, dev->name);
 		return -ENODEV;
 	}
 	if (!netif_running(dev)) {
 		pr_err("%s: interface is disabled: we cannot track "
-		"link speed / duplex setting\n", dev->name);
+		       "link speed / duplex setting\n", dev->name);
 		return -EBUSY;
 	}
 	spin_lock_irq(&priv->lock);
@@ -131,8 +132,8 @@ static int tcc_gmac_ethtool_get_link_ksettings(struct net_device *dev, struct et
 	return rc;
 }
 
-
-static int tcc_gmac_ethtool_setsettings(struct net_device *dev, struct ethtool_cmd *cmd)
+static int tcc_gmac_ethtool_setsettings(struct net_device *dev,
+					struct ethtool_cmd *cmd)
 {
 	struct tcc_gmac_priv *priv = netdev_priv(dev);
 	struct phy_device *phy = priv->phydev;
@@ -148,12 +149,14 @@ static int tcc_gmac_ethtool_setsettings(struct net_device *dev, struct ethtool_c
 static u32 tcc_gmac_ethtool_getmsglevel(struct net_device *dev)
 {
 	struct tcc_gmac_priv *priv = netdev_priv(dev);
+
 	return priv->msg_enable;
 }
 
 static void tcc_gmac_ethtool_setmsglevel(struct net_device *dev, u32 level)
 {
 	struct tcc_gmac_priv *priv = netdev_priv(dev);
+
 	priv->msg_enable = level;
 
 }
@@ -171,17 +174,18 @@ static int tcc_gmac_ethtool_get_regs_len(struct net_device *dev)
 }
 
 static void tcc_gmac_ethtool_gregs(struct net_device *dev,
-			  struct ethtool_regs *regs, void *space)
+				   struct ethtool_regs *regs, void *space)
 {
 	int i;
 	u32 *reg_space = (u32 *) space;
+#if defined(CONFIG_ARM64_TCC_BUILD)
 	void __iomem *baddr = (void __iomem *)dev->base_addr;
+#endif
 
 	memset(reg_space, 0x0, REG_SPACE_SIZE);
 
 	/* MAC registers */
-	for (i = 0; i < 55; i++)
-	{
+	for (i = 0; i < 55; i++) {
 #if defined(CONFIG_ARM64_TCC_BUILD)
 		reg_space[i] = readl(baddr + (i * 4));
 #else
@@ -190,20 +194,28 @@ static void tcc_gmac_ethtool_gregs(struct net_device *dev,
 
 	}
 	/* DMA registers */
-	for (i = 0; i < 22; i++)
-	{
+	for (i = 0; i < 22; i++) {
 #if defined(CONFIG_ARM64_TCC_BUILD)
-		reg_space[i + 55] = (unsigned)readl(baddr + (unsigned int)((unsigned int)DMA_CH0_BUS_MODE + (unsigned int)( (unsigned int)i * (unsigned int)4)));
+		reg_space[i + 55] =
+		    (unsigned int)readl(baddr +
+				    (unsigned int)((unsigned int)
+						   DMA_CH0_BUS_MODE +
+						   (unsigned int)((unsigned int)
+								  i *
+								  (unsigned int)
+								  4)));
 #else
-		reg_space[i + 55] = (unsigned)readl(IOMEM(dev->base_addr + (DMA_CH0_BUS_MODE + (i * 4))));
+		reg_space[i + 55] =
+		    (unsigned int)
+		    readl(IOMEM(dev->base_addr + (DMA_CH0_BUS_MODE + (i * 4))));
 #endif
 	}
 
 	return;
 }
 
-static void tcc_gmac_get_pauseparam(struct net_device *netdev, 
-									struct ethtool_pauseparam *pause)
+static void tcc_gmac_get_pauseparam(struct net_device *netdev,
+				    struct ethtool_pauseparam *pause)
 {
 	struct tcc_gmac_priv *priv = netdev_priv(netdev);
 
@@ -211,19 +223,21 @@ static void tcc_gmac_get_pauseparam(struct net_device *netdev,
 
 	pause->rx_pause = 0;
 	pause->tx_pause = 0;
-	pause->autoneg = (unsigned)priv->phydev->autoneg;
+	pause->autoneg = (unsigned int)priv->phydev->autoneg;
 
-	if ( (unsigned)((unsigned)priv->flow_ctrl & (unsigned)FLOW_RX) != (unsigned)0 )
+	if ((unsigned int)((unsigned int)priv->flow_ctrl & (unsigned int)FLOW_RX) !=
+	    (unsigned int)0)
 		pause->rx_pause = 1;
-	if ( (unsigned)((unsigned)priv->flow_ctrl & (unsigned)FLOW_TX) != (unsigned)0 )
+	if ((unsigned int)((unsigned int)priv->flow_ctrl & (unsigned int)FLOW_TX) !=
+	    (unsigned int)0)
 		pause->tx_pause = 1;
 
 	spin_unlock(&priv->lock);
 	return;
 }
 
-static int tcc_gmac_set_pauseparam(struct net_device *netdev, 
-								struct ethtool_pauseparam *pause)
+static int tcc_gmac_set_pauseparam(struct net_device *netdev,
+				   struct ethtool_pauseparam *pause)
 {
 	struct tcc_gmac_priv *priv = netdev_priv(netdev);
 	struct phy_device *phy = priv->phydev;
@@ -232,29 +246,31 @@ static int tcc_gmac_set_pauseparam(struct net_device *netdev,
 
 	spin_lock(&priv->lock);
 
-	if ( (unsigned)pause->rx_pause != (unsigned)0 )
-		new_pause |= (unsigned)FLOW_RX;
-	if ( (unsigned)pause->tx_pause != (unsigned)0 )
-		new_pause |= (unsigned)FLOW_TX;
+	if ((unsigned int)pause->rx_pause != (unsigned int)0)
+		new_pause |= (unsigned int)FLOW_RX;
+	if ((unsigned int)pause->tx_pause != (unsigned int)0)
+		new_pause |= (unsigned int)FLOW_TX;
 
-	priv->flow_ctrl = (unsigned)new_pause;
+	priv->flow_ctrl = (unsigned int)new_pause;
 	phy->autoneg = (int)pause->autoneg;
 
-	if ( (unsigned)phy->autoneg != (unsigned)0 ) {
+	if ((unsigned int)phy->autoneg != (unsigned int)0) {
 		if (netif_running(netdev)) {
 			ret = phy_start_aneg(phy);
 		}
 	} else {
 		unsigned long ioaddr = netdev->base_addr;
-		priv->hw->mac->flow_ctrl((void *)ioaddr, (unsigned)phy->duplex,
-					 (unsigned)priv->flow_ctrl, (unsigned)priv->pause);
+
+		priv->hw->mac->flow_ctrl((void *)ioaddr, (unsigned int)phy->duplex,
+					 (unsigned int)priv->flow_ctrl,
+					 (unsigned int)priv->pause);
 	}
 	spin_unlock(&priv->lock);
 	return ret;
 }
 
 static void tcc_gmac_get_ethtool_stats(struct net_device *dev,
-				 struct ethtool_stats *dummy, u64 *data)
+				       struct ethtool_stats *dummy, u64 *data)
 {
 	struct tcc_gmac_priv *priv = netdev_priv(dev);
 	//unsigned long ioaddr = dev->base_addr;
@@ -262,12 +278,13 @@ static void tcc_gmac_get_ethtool_stats(struct net_device *dev,
 
 	/* Update HW stats if supported */
 	//priv->hw->dma->dma_diagnostic_fr(&dev->stats, (void *) &priv->xstats,
-	//				 ioaddr);
+	//                               ioaddr);
 
 	for (i = 0; i < TCC_GMAC_STATS_LEN; i++) {
 		char *p = (char *)priv + tcc_gmac_gstrings_stats[i].stat_offset;
-		data[i] = ((unsigned)tcc_gmac_gstrings_stats[i].sizeof_stat ==
-		(unsigned)sizeof(u64)) ? (*(u64 *)p) : (*(u32 *)p);
+
+		data[i] = ((unsigned int)tcc_gmac_gstrings_stats[i].sizeof_stat ==
+			   (unsigned int)sizeof(u64)) ? (*(u64 *) p) : (*(u32 *) p);
 	}
 
 	return;
@@ -285,7 +302,8 @@ static int tcc_gmac_get_sset_count(struct net_device *netdev, int sset)
 	}
 }
 
-static void tcc_gmac_get_strings(struct net_device *dev, u32 stringset, u8 *data)
+static void tcc_gmac_get_strings(struct net_device *dev, u32 stringset,
+				 u8 *data)
 {
 	int i;
 	u8 *p = data;
@@ -294,7 +312,7 @@ static void tcc_gmac_get_strings(struct net_device *dev, u32 stringset, u8 *data
 	case (unsigned int)ETH_SS_STATS:
 		for (i = 0; i < TCC_GMAC_STATS_LEN; i++) {
 			memcpy(p, tcc_gmac_gstrings_stats[i].stat_string,
-				ETH_GSTRING_LEN);
+			       ETH_GSTRING_LEN);
 			p += ETH_GSTRING_LEN;
 		}
 		break;
@@ -306,7 +324,8 @@ static void tcc_gmac_get_strings(struct net_device *dev, u32 stringset, u8 *data
 }
 
 /* Currently only support WOL through Magic packet. */
-static void tcc_gmac_get_wol(struct net_device *dev, struct ethtool_wolinfo *wol)
+static void tcc_gmac_get_wol(struct net_device *dev,
+			     struct ethtool_wolinfo *wol)
 {
 	struct tcc_gmac_priv *priv = netdev_priv(dev);
 
@@ -326,13 +345,15 @@ static int tcc_gmac_set_wol(struct net_device *dev, struct ethtool_wolinfo *wol)
 	if (!device_can_wakeup(priv->device))
 		return -EINVAL;
 
-	if ( (unsigned)(wol->wolopts & ~support) != (unsigned)0 )
+	if ((unsigned int)(wol->wolopts & ~support) != (unsigned int)0)
 		return -EINVAL;
 
-	if ((unsigned)wol->wolopts == (unsigned)0)
-		device_set_wakeup_enable(priv->device, ((unsigned)0 != (unsigned)0));
+	if ((unsigned int)wol->wolopts == (unsigned int)0)
+		device_set_wakeup_enable(priv->device,
+					 ((unsigned int)0 != (unsigned int)0));
 	else
-		device_set_wakeup_enable(priv->device, ((unsigned)0 == (unsigned)0));
+		device_set_wakeup_enable(priv->device,
+					 ((unsigned int)0 == (unsigned int)0));
 
 	spin_lock_irq(&priv->lock);
 	priv->wolopts = (int)wol->wolopts;
@@ -341,24 +362,27 @@ static int tcc_gmac_set_wol(struct net_device *dev, struct ethtool_wolinfo *wol)
 	return 0;
 }
 
-static int tcc_gmac_get_ts_info(struct net_device *dev, struct ethtool_ts_info *info)
+static int tcc_gmac_get_ts_info(struct net_device *dev,
+				struct ethtool_ts_info *info)
 {
 
+#if defined(CONFIG_TCC_GMAC_PTP)
 	struct tcc_gmac_priv *priv = netdev_priv(dev);
+#endif
 
-	printk("%s.\n", __func__);
+	pr_info("%s.\n", __func__);
 	info->so_timestamping =
-		(unsigned)SOF_TIMESTAMPING_TX_HARDWARE |
-		(unsigned)SOF_TIMESTAMPING_RX_HARDWARE |
-		(unsigned)SOF_TIMESTAMPING_RAW_HARDWARE;
+	    (unsigned int)SOF_TIMESTAMPING_TX_HARDWARE |
+	    (unsigned int)SOF_TIMESTAMPING_RX_HARDWARE |
+	    (unsigned int)SOF_TIMESTAMPING_RAW_HARDWARE;
 
 #if defined(CONFIG_TCC_GMAC_PTP)
 	info->phc_index = ptp_clock_index(priv->ptp_clk);
 #endif
 
-	info->tx_types = ((unsigned)1 << (unsigned)HWTSTAMP_TX_OFF) |
-		((unsigned)1 << (unsigned)HWTSTAMP_TX_ON);
-	info->rx_filters = ((unsigned)1 << (unsigned)HWTSTAMP_FILTER_NONE);
+	info->tx_types = ((unsigned int)1 << (unsigned int)HWTSTAMP_TX_OFF) |
+	    ((unsigned int)1 << (unsigned int)HWTSTAMP_TX_ON);
+	info->rx_filters = ((unsigned int)1 << (unsigned int)HWTSTAMP_FILTER_NONE);
 	// (1 << HWTSTAMP_FILTER_ALL);
 
 	return 0;
@@ -381,7 +405,7 @@ struct ethtool_ops tcc_gmac_ethtool_ops = {
 	.get_strings = tcc_gmac_get_strings,
 	.get_wol = tcc_gmac_get_wol,
 	.set_wol = tcc_gmac_set_wol,
-	.get_sset_count	= tcc_gmac_get_sset_count,
+	.get_sset_count = tcc_gmac_get_sset_count,
 	.get_ts_info = tcc_gmac_get_ts_info,
 };
 
@@ -389,9 +413,3 @@ void tcc_gmac_set_ethtool_ops(struct net_device *netdev)
 {
 	netdev->ethtool_ops = &tcc_gmac_ethtool_ops;
 }
-
-
-
-
-
-

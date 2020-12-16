@@ -1,7 +1,7 @@
 /*
  * linux/drivers/video/tcc/tca_disaplay_config.c
  *
- * Based on:    
+ * Based on:
  * Author:  <linux@telechips.com>
  * Created: Jan 11, 2012
  * Description: TCC LCD Controller Number define
@@ -38,11 +38,10 @@ unsigned int tca_get_lcd_lcdc_num(void)
 {
 	return 0;
 }
-//EXPORT_SYMBOL(tca_get_lcd_lcdc_num);
+// EXPORT_SYMBOL(tca_get_lcd_lcdc_num);
 
 unsigned int tca_get_output_lcdc_num(void)
 {
 	return 1;
 }
-//EXPORT_SYMBOL(tca_get_output_lcdc_num);
-
+// EXPORT_SYMBOL(tca_get_output_lcdc_num);

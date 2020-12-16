@@ -1,25 +1,25 @@
 /*
- * tcc_vout_attr.c
+ * Copyright (C) Telechips, Inc.
  *
- * Copyright (C) 2013 Telechips, Inc. 
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
  *
- * Video-for-Linux (Version 2) video output driver for Telechips SoC.
- * 
- * This package is free software; you can redistribute it and/or modify 
- * it under the terms of the GNU General Public License version 2 as
- * published by the Free Software Foundation. 
- * 
- * THIS PACKAGE IS PROVIDED ``AS IS'' AND WITHOUT ANY EXPRESS OR 
- * IMPLIED WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED 
- * WARRANTIES OF MERCHANTIBILITY AND FITNESS FOR A PARTICULAR PURPOSE. 
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
  *
- * ChangeLog:
- *   
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, see the file COPYING, or write
+ * to the Free Software Foundation, Inc.,
+ * 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  */
 #include <linux/kernel.h>
 #include <linux/module.h>
 #include <linux/platform_device.h>
-#include <asm/io.h>
+#include <linux/io.h>
 
 #include "tcc_vout.h"
 #include "tcc_vout_core.h"
@@ -29,7 +29,8 @@
 /**
  * Show the vioc path of the v4l2 video output.
  */
-static ssize_t vioc_path_show(struct device *dev, struct device_attribute *attr, char *buf)
+static ssize_t vioc_path_show(struct device *dev,
+	struct device_attribute *attr, char *buf)
 {
 	struct tcc_vout_device *vout = dev->platform_data;
 	struct tcc_vout_vioc *vioc = vout->vioc;
@@ -50,7 +51,8 @@ DEVICE_ATTR(vioc_path, S_IRUGO, vioc_path_show, NULL);
 /**
  * Show & Set the rdma of vioc path.
  */
-static ssize_t vioc_rdma_show(struct device *dev, struct device_attribute *attr, char *buf)
+static ssize_t vioc_rdma_show(struct device *dev,
+	struct device_attribute *attr, char *buf)
 {
 	struct tcc_vout_device *vout = dev->platform_data;
 	struct tcc_vout_vioc *vioc = vout->vioc;
@@ -59,19 +61,25 @@ static ssize_t vioc_rdma_show(struct device *dev, struct device_attribute *attr,
 	return sprintf(buf, "%d\n", vioc->rdma.id);
 }
 
-static ssize_t vioc_rdma_store(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
+static ssize_t vioc_rdma_store(struct device *dev,
+	struct device_attribute *attr, const char *buf, size_t count)
 {
 	struct tcc_vout_device *vout = dev->platform_data;
 	struct tcc_vout_vioc *vioc = vout->vioc;
-	unsigned int val;
+	int val, ret;
 
 	if (vout->status != TCC_VOUT_IDLE) {
 		pr_err("[ERR][VOUT] status is not idle\n");
 		return count;
 	}
 
-	val = simple_strtoul(buf, NULL, 10);
-	if ((int)val < 0 || val > 7) {
+	//val = simple_strtoul(buf, NULL, 10);
+	ret = kstrtoul(buf, 10, (unsigned long *)&val);
+	if (ret) {
+		pr_err("[ERR][VOUT] %s\n", __func__);
+		return count;
+	}
+	if (val < 0 || val > 7) {
 		pr_err("[ERR][VOUT] invalid rdma\n");
 		return count;
 	}
@@ -87,7 +95,8 @@ DEVICE_ATTR(vioc_rdma, S_IRUGO | S_IWUSR, vioc_rdma_show, vioc_rdma_store);
 /**
  * Show & Set the scaler of vioc path.
  */
-static ssize_t vioc_sc_show(struct device *dev, struct device_attribute *attr, char *buf)
+static ssize_t vioc_sc_show(struct device *dev,
+	struct device_attribute *attr, char *buf)
 {
 	struct tcc_vout_device *vout = dev->platform_data;
 	struct tcc_vout_vioc *vioc = vout->vioc;
@@ -96,19 +105,25 @@ static ssize_t vioc_sc_show(struct device *dev, struct device_attribute *attr, c
 	return sprintf(buf, "%d\n", vioc->sc.id);
 }
 
-static ssize_t vioc_sc_store(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
+static ssize_t vioc_sc_store(struct device *dev,
+	struct device_attribute *attr, const char *buf, size_t count)
 {
 	struct tcc_vout_device *vout = dev->platform_data;
 	struct tcc_vout_vioc *vioc = vout->vioc;
-	unsigned int val;
+	int val, ret;
 
 	if (vout->status != TCC_VOUT_IDLE) {
 		pr_err("[ERR][VOUT] status is not idle\n");
 		return count;
 	}
 
-	val = simple_strtoul(buf, NULL, 10);
-	if ((int)val < 0 || val > 3) {
+	//val = simple_strtoul(buf, NULL, 10);
+	ret = kstrtoul(buf, 10, (unsigned long *)&val);
+	if (ret) {
+		pr_err("[ERR][VOUT] %s\n", __func__);
+		return count;
+	}
+	if (val < 0 || val > 3) {
 		pr_err("[ERR][VOUT] invalid sc\n");
 		return count;
 	}
@@ -123,7 +138,8 @@ DEVICE_ATTR(vioc_sc, S_IRUGO | S_IWUSR, vioc_sc_show, vioc_sc_store);
 /**
  * Show & Set the ovp (overlay priority) of wmix.
  */
-static ssize_t vioc_wmix_ovp_show(struct device *dev, struct device_attribute *attr, char *buf)
+static ssize_t vioc_wmix_ovp_show(struct device *dev,
+	struct device_attribute *attr, char *buf)
 {
 	struct tcc_vout_device *vout = dev->platform_data;
 	struct tcc_vout_vioc *vioc = vout->vioc;
@@ -132,58 +148,78 @@ static ssize_t vioc_wmix_ovp_show(struct device *dev, struct device_attribute *a
 	return sprintf(buf, "%d\n", vioc->wmix.ovp);
 }
 
-static ssize_t vioc_wmix_ovp_store(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
+static ssize_t vioc_wmix_ovp_store(struct device *dev,
+	struct device_attribute *attr, const char *buf, size_t count)
 {
 	struct tcc_vout_device *vout = dev->platform_data;
 	struct tcc_vout_vioc *vioc = vout->vioc;
 	unsigned int val;
+	int ret;
 
 	if (vout->status != TCC_VOUT_IDLE) {
 		pr_err("[ERR][VOUT] status is not idle\n");
 		return count;
 	}
 
-	val = simple_strtoul(buf, NULL, 10);
-	dprintk("wmix%d ovp(%d) -> ovp(%d)\n", vioc->wmix.id, vioc->wmix.ovp, val);
+	//val = simple_strtoul(buf, NULL, 10);
+	ret = kstrtoul(buf, 10, (unsigned long *)&val);
+	if (ret) {
+		pr_err("[ERR][VOUT] %s\n", __func__);
+		return count;
+	}
+	dprintk("wmix%d ovp(%d) -> ovp(%d)\n",
+		vioc->wmix.id, vioc->wmix.ovp, val);
 
 	vioc->wmix.ovp = val;
 
 	return count;
 }
-DEVICE_ATTR(vioc_wmix_ovp, S_IRUGO | S_IWUSR, vioc_wmix_ovp_show, vioc_wmix_ovp_store);
+DEVICE_ATTR(vioc_wmix_ovp, S_IRUGO | S_IWUSR,
+	vioc_wmix_ovp_show, vioc_wmix_ovp_store);
 
 /**
  * Show & Set the v4l2_memory.
  */
-static ssize_t force_v4l2_memory_userptr_show(struct device *dev, struct device_attribute *attr, char *buf)
+static ssize_t force_v4l2_memory_userptr_show(struct device *dev,
+	struct device_attribute *attr, char *buf)
 {
 	struct tcc_vout_device *vout = dev->platform_data;
 
-	dprintk("force(%d) v4l2_memory(%d)\n", vout->force_userptr, vout->memory);
+	dprintk("force(%d) v4l2_memory(%d)\n",
+		vout->force_userptr, vout->memory);
 	return sprintf(buf, "%d\n", vout->force_userptr);
 }
 
-static ssize_t force_v4l2_memory_userptr_store(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
+static ssize_t force_v4l2_memory_userptr_store(struct device *dev,
+	struct device_attribute *attr, const char *buf, size_t count)
 {
 	struct tcc_vout_device *vout = dev->platform_data;
 	unsigned int val;
+	int ret;
 
 	if (vout->status != TCC_VOUT_IDLE) {
 		pr_err("[ERR][VOUT] status is not idle\n");
 		return count;
 	}
 
-	val = simple_strtoul(buf, NULL, 10);
+	//val = simple_strtoul(buf, NULL, 10);
+	ret = kstrtoul(buf, 10, (unsigned long *)&val);
+	if (ret) {
+		pr_err("[ERR][VOUT] %s\n", __func__);
+		return count;
+	}
 	vout->force_userptr = !!val;
 	dprintk("set(%d) -> force(%d)\n", val, vout->force_userptr);
 	return count;
 }
-DEVICE_ATTR(force_v4l2_memory_userptr, S_IRUGO | S_IWUSR, force_v4l2_memory_userptr_show, force_v4l2_memory_userptr_store);
+DEVICE_ATTR(force_v4l2_memory_userptr, S_IRUGO | S_IWUSR,
+	force_v4l2_memory_userptr_show, force_v4l2_memory_userptr_store);
 
 /**
  * Show & Set the pmap name.
  */
-static ssize_t vout_pmap_show(struct device *dev, struct device_attribute *attr, char *buf)
+static ssize_t vout_pmap_show(struct device *dev,
+	struct device_attribute *attr, char *buf)
 {
 	struct tcc_vout_device *vout = dev->platform_data;
 
@@ -191,7 +227,8 @@ static ssize_t vout_pmap_show(struct device *dev, struct device_attribute *attr,
 	return sprintf(buf, "%s\n", vout->pmap.name);
 }
 
-static ssize_t vout_pmap_store(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
+static ssize_t vout_pmap_store(struct device *dev,
+	struct device_attribute *attr, const char *buf, size_t count)
 {
 	struct tcc_vout_device *vout = dev->platform_data;
 
@@ -208,7 +245,7 @@ static ssize_t vout_pmap_store(struct device *dev, struct device_attribute *attr
 DEVICE_ATTR(vout_pmap, S_IRUGO | S_IWUSR, vout_pmap_show, vout_pmap_store);
 
 
-/*==========================================================================================
+/*==============================================================================
  * DE-INTERLACE
  * ------------
  * deinterlace_path_show
@@ -216,12 +253,13 @@ DEVICE_ATTR(vout_pmap, S_IRUGO | S_IWUSR, vout_pmap_show, vout_pmap_store);
  * deinterlace_rdma_show/store
  * deinterlace_pmap_show/store
  * deinterlace_bufs_show/store
- *==========================================================================================
+ *==============================================================================
  */
 /**
  * Show interlace information.
  */
-static ssize_t deinterlace_path_show(struct device *dev, struct device_attribute *attr, char *buf)
+static ssize_t deinterlace_path_show(struct device *dev,
+	struct device_attribute *attr, char *buf)
 {
 	struct tcc_vout_device *vout = dev->platform_data;
 	struct tcc_vout_vioc *vioc = vout->vioc;
@@ -229,25 +267,34 @@ static ssize_t deinterlace_path_show(struct device *dev, struct device_attribute
 
 	switch (vout->deinterlace) {
 	case VOUT_DEINTL_S:
-		ret = sprintf(buf, "RDMA%d - DEINTL_S - WMIX%d - SC%d - WDMA%d\n",
-			vioc->m2m_rdma.id, vioc->m2m_wmix.id, vioc->sc.id, vioc->m2m_wdma.id);
+		ret = sprintf(buf,
+			"RDMA%d - DEINTL_S - WMIX%d - SC%d - WDMA%d\n",
+			vioc->m2m_rdma.id, vioc->m2m_wmix.id,
+			vioc->sc.id, vioc->m2m_wdma.id);
 		break;
 	case VOUT_DEINTL_VIQE_2D:
-		ret = sprintf(buf, "RDMA%d - VIQE_2D - WMIX%d - SC%d - WDMA%d\n",
-			vioc->m2m_rdma.id, vioc->m2m_wmix.id, vioc->sc.id, vioc->m2m_wdma.id);
+		ret = sprintf(buf,
+			"RDMA%d - VIQE_2D - WMIX%d - SC%d - WDMA%d\n",
+			vioc->m2m_rdma.id, vioc->m2m_wmix.id,
+			vioc->sc.id, vioc->m2m_wdma.id);
 		break;
 	case VOUT_DEINTL_VIQE_3D:
-		ret = sprintf(buf, "RDMA%d - VIQE_3D - WMIX%d - SC%d - WDMA%d\n",
-			vioc->m2m_rdma.id, vioc->m2m_wmix.id, vioc->sc.id, vioc->m2m_wdma.id);
+		ret = sprintf(buf,
+			"RDMA%d - VIQE_3D - WMIX%d - SC%d - WDMA%d\n",
+			vioc->m2m_rdma.id, vioc->m2m_wmix.id,
+			vioc->sc.id, vioc->m2m_wdma.id);
 		break;
 	case VOUT_DEINTL_VIQE_BYPASS:
-		ret = sprintf(buf, "RDMA%d - VIQE_BYPASS - WMIX%d - SC%d - WDMA%d\n",
-			vioc->m2m_rdma.id,  vioc->m2m_wmix.id, vioc->sc.id,vioc->m2m_wdma.id);
+		ret = sprintf(buf,
+			"RDMA%d - VIQE_BYPASS - WMIX%d - SC%d - WDMA%d\n",
+			vioc->m2m_rdma.id,  vioc->m2m_wmix.id,
+			vioc->sc.id, vioc->m2m_wdma.id);
 		break;
 	case VOUT_DEINTL_NONE:
 	default:
 		ret = sprintf(buf, "RDMA%d - WMIX%d - SC%d - WDMA%d\n",
-			vioc->m2m_rdma.id, vioc->m2m_wmix.id, vioc->sc.id, vioc->m2m_wdma.id);
+			vioc->m2m_rdma.id, vioc->m2m_wmix.id,
+			vioc->sc.id, vioc->m2m_wdma.id);
 		break;
 	}
 
@@ -258,22 +305,31 @@ DEVICE_ATTR(deinterlace_path, S_IRUGO, deinterlace_path_show, NULL);
 /**
  * Select De-interlacer.
  */
-static ssize_t deinterlace_show(struct device *dev, struct device_attribute *attr, char *buf)
+static ssize_t deinterlace_show(struct device *dev,
+	struct device_attribute *attr, char *buf)
 {
 	struct tcc_vout_device *vout = dev->platform_data;
+
 	return sprintf(buf, "%d\n", vout->deinterlace);
 }
-static ssize_t deinterlace_store(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
+static ssize_t deinterlace_store(struct device *dev,
+	struct device_attribute *attr, const char *buf, size_t count)
 {
 	struct tcc_vout_device *vout = dev->platform_data;
 	unsigned int val;
+	int ret;
 
 	if (vout->status != TCC_VOUT_IDLE) {
 		pr_err("[ERR][VOUT] status is not idle\n");
 		return count;
 	}
 
-	val = simple_strtoul(buf, NULL, 10);
+	//val = simple_strtoul(buf, NULL, 10);
+	ret = kstrtoul(buf, 10, (unsigned long *)&val);
+	if (ret) {
+		pr_err("[ERR][VOUT] %s\n", __func__);
+		return count;
+	}
 	vout->deinterlace = val;
 	dprintk("set(%d) -> deintl(%d)\n", val, vout->deinterlace);
 
@@ -282,30 +338,38 @@ static ssize_t deinterlace_store(struct device *dev, struct device_attribute *at
 
 	return count;
 }
-DEVICE_ATTR(deinterlace, S_IRUGO | S_IWUSR, deinterlace_show, deinterlace_store);
+DEVICE_ATTR(deinterlace, S_IRUGO | S_IWUSR,
+	deinterlace_show, deinterlace_store);
 
 /**
  * Select deinterlace's rdma.
  */
-static ssize_t deinterlace_rdma_show(struct device *dev, struct device_attribute *attr, char *buf)
+static ssize_t deinterlace_rdma_show(struct device *dev,
+	struct device_attribute *attr, char *buf)
 {
 	struct tcc_vout_device *vout = dev->platform_data;
 	struct tcc_vout_vioc *vioc = vout->vioc;
+
 	return sprintf(buf, "%d\n", vioc->m2m_rdma.id);
 }
-static ssize_t deinterlace_rdma_store(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
+static ssize_t deinterlace_rdma_store(struct device *dev,
+	struct device_attribute *attr, const char *buf, size_t count)
 {
 	struct tcc_vout_device *vout = dev->platform_data;
 	struct tcc_vout_vioc *vioc = vout->vioc;
-	unsigned int val;
+	int val, ret;
 
 	if (vout->status != TCC_VOUT_IDLE) {
 		pr_err("[ERR][VOUT] status is not idle\n");
 		return count;
 	}
 
-	val = simple_strtoul(buf, NULL, 10);
-
+	//val = simple_strtoul(buf, NULL, 10);
+	ret = kstrtoul(buf, 10, (unsigned long *)&val);
+	if (ret) {
+		pr_err("[ERR][VOUT] %s\n", __func__);
+		return count;
+	}
 	if (!(val == 16 || val == 17)) {
 		pr_err("[ERR][VOUT] invalid rdma (use 16 or 17)\n");
 		return count;
@@ -317,12 +381,14 @@ static ssize_t deinterlace_rdma_store(struct device *dev, struct device_attribut
 
 	return count;
 }
-DEVICE_ATTR(deinterlace_rdma, S_IRUGO | S_IWUSR, deinterlace_rdma_show, deinterlace_rdma_store);
+DEVICE_ATTR(deinterlace_rdma, S_IRUGO | S_IWUSR,
+	deinterlace_rdma_show, deinterlace_rdma_store);
 
 /**
  * Show & Set the scaler of deintl_path.
  */
-static ssize_t deinterlace_sc_show(struct device *dev, struct device_attribute *attr, char *buf)
+static ssize_t deinterlace_sc_show(struct device *dev,
+	struct device_attribute *attr, char *buf)
 {
 	struct tcc_vout_device *vout = dev->platform_data;
 	struct tcc_vout_vioc *vioc = vout->vioc;
@@ -331,19 +397,25 @@ static ssize_t deinterlace_sc_show(struct device *dev, struct device_attribute *
 	return sprintf(buf, "%d\n", vioc->sc.id);
 }
 
-static ssize_t deinterlace_sc_store(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
+static ssize_t deinterlace_sc_store(struct device *dev,
+	struct device_attribute *attr, const char *buf, size_t count)
 {
 	struct tcc_vout_device *vout = dev->platform_data;
 	struct tcc_vout_vioc *vioc = vout->vioc;
-	unsigned int val;
+	int val, ret;
 
 	if (vout->status != TCC_VOUT_IDLE) {
 		pr_err("[ERR][VOUT] status is not idle\n");
 		return count;
 	}
 
-	val = simple_strtoul(buf, NULL, 10);
-	if ((int)val < 0 || val > 3) {
+	//val = simple_strtoul(buf, NULL, 10);
+	ret = kstrtoul(buf, 10, (unsigned long *)&val);
+	if (ret) {
+		pr_err("[ERR][VOUT] %s\n", __func__);
+		return count;
+	}
+	if (val < 0 || val > 3) {
 		pr_err("[ERR][VOUT] invalid sc\n");
 		return count;
 	}
@@ -353,12 +425,14 @@ static ssize_t deinterlace_sc_store(struct device *dev, struct device_attribute 
 
 	return count;
 }
-DEVICE_ATTR(deinterlace_sc, S_IRUGO | S_IWUSR, deinterlace_sc_show, deinterlace_sc_store);
+DEVICE_ATTR(deinterlace_sc, S_IRUGO | S_IWUSR,
+	deinterlace_sc_show, deinterlace_sc_store);
 
 /**
  * Show & Set the deintl_pmap name.
  */
-static ssize_t deinterlace_pmap_show(struct device *dev, struct device_attribute *attr, char *buf)
+static ssize_t deinterlace_pmap_show(struct device *dev,
+	struct device_attribute *attr, char *buf)
 {
 	struct tcc_vout_device *vout = dev->platform_data;
 
@@ -366,7 +440,8 @@ static ssize_t deinterlace_pmap_show(struct device *dev, struct device_attribute
 	return sprintf(buf, "%s\n", vout->deintl_pmap.name);
 }
 
-static ssize_t deintlerlace_pmap_store(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
+static ssize_t deintlerlace_pmap_store(struct device *dev,
+	struct device_attribute *attr, const char *buf, size_t count)
 {
 	struct tcc_vout_device *vout = dev->platform_data;
 
@@ -380,54 +455,73 @@ static ssize_t deintlerlace_pmap_store(struct device *dev, struct device_attribu
 	dprintk("deintl_pmap(%s)\n", vout->deintl_pmap.name);
 	return count;
 }
-DEVICE_ATTR(deinterlace_pmap, S_IRUGO | S_IWUSR, deinterlace_pmap_show, deintlerlace_pmap_store);
+DEVICE_ATTR(deinterlace_pmap, S_IRUGO | S_IWUSR,
+	deinterlace_pmap_show, deintlerlace_pmap_store);
 
 /**
  * Select De-interlacer buffers.
  */
-static ssize_t deinterlace_bufs_show(struct device *dev, struct device_attribute *attr, char *buf)
+static ssize_t deinterlace_bufs_show(struct device *dev,
+	struct device_attribute *attr, char *buf)
 {
 	struct tcc_vout_device *vout = dev->platform_data;
+
 	return sprintf(buf, "%d\n", vout->deintl_nr_bufs);
 }
-static ssize_t deinterlace_bufs_store(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
+static ssize_t deinterlace_bufs_store(struct device *dev,
+	struct device_attribute *attr, const char *buf, size_t count)
 {
 	struct tcc_vout_device *vout = dev->platform_data;
-	unsigned int val;
+	int val, ret;
 
 	if (vout->status != TCC_VOUT_IDLE) {
 		pr_err("[ERR][VOUT] status is not idle\n");
 		return count;
 	}
 
-	val = simple_strtoul(buf, NULL, 10);
+	//val = simple_strtoul(buf, NULL, 10);
+	ret = kstrtoul(buf, 10, (unsigned long *)&val);
+	if (ret) {
+		pr_err("[ERR][VOUT] %s\n", __func__);
+		return count;
+	}
 	vout->deintl_nr_bufs = val;
 	dprintk("set(%d) -> deintl_nr_bufs(%d)\n", val, vout->deintl_nr_bufs);
 	return count;
 }
-DEVICE_ATTR(deinterlace_bufs, S_IRUGO | S_IWUSR, deinterlace_bufs_show, deinterlace_bufs_store);
+DEVICE_ATTR(deinterlace_bufs, S_IRUGO | S_IWUSR,
+	deinterlace_bufs_show, deinterlace_bufs_store);
 
 /**
  * Select rdma first field.
  */
-static ssize_t deinterlace_bfield_show(struct device *dev, struct device_attribute *attr, char *buf)
+static ssize_t deinterlace_bfield_show(struct device *dev,
+	struct device_attribute *attr, char *buf)
 {
 	struct tcc_vout_device *vout = dev->platform_data;
 	struct tcc_vout_vioc *vioc = vout->vioc;
+
 	return sprintf(buf, "%d\n", vioc->m2m_rdma.bf);
 }
-static ssize_t deinterlace_bfield_store(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
+static ssize_t deinterlace_bfield_store(struct device *dev,
+	struct device_attribute *attr, const char *buf, size_t count)
 {
 	struct tcc_vout_device *vout = dev->platform_data;
 	struct tcc_vout_vioc *vioc = vout->vioc;
 	unsigned int val;
+	int ret;
 
 	if (vout->status != TCC_VOUT_IDLE) {
 		pr_err("[ERR][VOUT] status is not idle\n");
 		return count;
 	}
 
-	val = simple_strtoul(buf, NULL, 10);
+	//val = simple_strtoul(buf, NULL, 10);
+	ret = kstrtoul(buf, 10, (unsigned long *)&val);
+	if (ret) {
+		pr_err("[ERR][VOUT] %s\n", __func__);
+		return count;
+	}
 	if (val != 0 || val != 1) {
 		pr_err("[ERR][VOUT] invalid rdma's bfield. select 0(top-field first) or 1(bottom-field first)\n");
 		return count;
@@ -436,55 +530,73 @@ static ssize_t deinterlace_bfield_store(struct device *dev, struct device_attrib
 	vioc->m2m_rdma.bf = val;
 	return count;
 }
-DEVICE_ATTR(deinterlace_bfield, S_IRUGO | S_IWUSR, deinterlace_bfield_show, deinterlace_bfield_store);
+DEVICE_ATTR(deinterlace_bfield, S_IRUGO | S_IWUSR,
+	deinterlace_bfield_show, deinterlace_bfield_store);
 
 /**
  * Select De-interlacer.
  */
-static ssize_t deinterlace_force_show(struct device *dev, struct device_attribute *attr, char *buf)
+static ssize_t deinterlace_force_show(struct device *dev,
+	struct device_attribute *attr, char *buf)
 {
 	struct tcc_vout_device *vout = dev->platform_data;
+
 	return sprintf(buf, "%d\n", vout->deintl_force);
 }
-static ssize_t deinterlace_force_store(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
+static ssize_t deinterlace_force_store(struct device *dev,
+	struct device_attribute *attr, const char *buf, size_t count)
 {
 	struct tcc_vout_device *vout = dev->platform_data;
-	unsigned int val;
+	int val, ret;
 
 	if (vout->status != TCC_VOUT_IDLE) {
 		pr_err("[ERR][VOUT] status is not idle\n");
 		return count;
 	}
 
-	val = simple_strtoul(buf, NULL, 10);
+	//val = simple_strtoul(buf, NULL, 10);
+	ret = kstrtoul(buf, 10, (unsigned long *)&val);
+	if (ret) {
+		pr_err("[ERR][VOUT] %s\n", __func__);
+		return count;
+	}
 	vout->deintl_force = val;
 	dprintk("set(%d) -> deintl_force(%d)\n", val, vout->deintl_force);
 	return count;
 }
-DEVICE_ATTR(deinterlace_force, S_IRUGO | S_IWUSR, deinterlace_force_show, deinterlace_force_store);
+DEVICE_ATTR(deinterlace_force, S_IRUGO | S_IWUSR,
+	deinterlace_force_show, deinterlace_force_store);
 
 /**
  * Select type of vout path.
  * 0 = m2m path
  * 1 = on-the-fly path
  */
-static ssize_t otf_mode_show(struct device *dev, struct device_attribute *attr, char *buf)
+static ssize_t otf_mode_show(struct device *dev,
+	struct device_attribute *attr, char *buf)
 {
 	struct tcc_vout_device *vout = dev->platform_data;
+
 	return sprintf(buf, "%d\n", vout->onthefly_mode);
 }
-static ssize_t otf_mode_store(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
+static ssize_t otf_mode_store(struct device *dev,
+	struct device_attribute *attr, const char *buf, size_t count)
 {
 	#ifdef CONFIG_VOUT_USE_VSYNC_INT
 	struct tcc_vout_device *vout = dev->platform_data;
-	unsigned int val;
+	int val, ret;
 
 	if (vout->status != TCC_VOUT_IDLE) {
 		pr_err("[ERR][VOUT] status is not idle\n");
 		return count;
 	}
 
-	val = simple_strtoul(buf, NULL, 10);
+	//val = simple_strtoul(buf, NULL, 10);
+	ret = kstrtoul(buf, 10, (unsigned long *)&val);
+	if (ret) {
+		pr_err("[ERR][VOUT] %s\n", __func__);
+		return count;
+	}
 	vout->onthefly_mode = !!val;
 	dprintk("set(%d) -> onthefly_mode(%d)\n", val, vout->onthefly_mode);
 	#endif
@@ -536,4 +648,3 @@ void tcc_vout_attr_remove(struct platform_device *pdev)
 	/* on-the-fly path */
 	device_remove_file(&pdev->dev, &dev_attr_otf_mode);
 }
-

@@ -23,7 +23,7 @@
 
 /*-------------------------------------------------------------------------*/
 
-void ohci_hcd_init (struct ohci_hcd *ohci)
+void ohci_hcd_init(struct ohci_hcd *ohci)
 {
 	ohci->next_statechange = jiffies;
 	spin_lock_init (&ohci->lock);

@@ -29,18 +29,23 @@
 #include <video/tcc/vioc_outcfg.h>
 
 /* Debugging stuff */
-static int debug = 0;
-#define dprintk(msg...)	if (debug) { printk("\e[33m[DBG][OUTCFG]\e[0m " msg); }
+static int debug;
+static volatile void __iomem *pOUTCFG_reg;
 
-static volatile void __iomem *pOUTCFG_reg = NULL;
+#define dprintk(msg...)                                           \
+	do {                                                      \
+		if (debug) {                                      \
+			pr_info("\e[33m[DBG][OUTCFG]\e[0m " msg); \
+		}                                                 \
+	} while (0)
 
 /* -------------------------------
-2¡¯b00 : Display Device 0 Component
-2¡¯b01 : Display Device 1 Component
-2¡¯b10 : Display Device 2 Component
-2¡¯b11 : NOT USED
----------------------------------*/
-void VIOC_OUTCFG_SetOutConfig(unsigned nType, unsigned nDisp)
+ *2¡¯b00 : Display Device 0 Component
+ *2¡¯b01 : Display Device 1 Component
+ *2¡¯b10 : Display Device 2 Component
+ *2¡¯b11 : NOT USED
+ */
+void VIOC_OUTCFG_SetOutConfig(unsigned int nType, unsigned int nDisp)
 {
 	volatile void __iomem *reg = VIOC_OUTCONFIG_GetAddress();
 	unsigned long val;
@@ -49,8 +54,8 @@ void VIOC_OUTCFG_SetOutConfig(unsigned nType, unsigned nDisp)
 		return;
 
 	nDisp = get_vioc_index(nDisp);
-	pr_info("[INF][OUTCFG] %s : addr:%p nType:%d nDisp:%d \n", __func__, reg, nType,
-		nDisp);
+	pr_info("[INF][OUTCFG] %s : addr:%p nType:%d nDisp:%d\n", __func__,
+		reg, nType, nDisp);
 
 	switch (nType) {
 	case VIOC_OUTCFG_HDMI:
@@ -74,22 +79,23 @@ void VIOC_OUTCFG_SetOutConfig(unsigned nType, unsigned nDisp)
 		val |= ((nDisp & 0x3) << MISC_MRGBSEL_SHIFT);
 		break;
 	default:
-		pr_err("[ERR][OUTCFG] %s, wrong type(0x%08x)\n", __func__, nType);
+		pr_err("[ERR][OUTCFG] %s, wrong type(0x%08x)\n", __func__,
+		       nType);
 		WARN_ON(1);
 		return;
-		break;
 	}
 
-	/* MISC[7:6] is read-only bits. So we need below code. */
-	#if defined(CONFIG_FB_TCC_COMPOSITE_BVO)
-	#if defined(CONFIG_TCC_DISPLAY_MODE_DUAL_HDMI_CVBS) || defined(CONFIG_TCC_DISPLAY_MODE_DUAL_AUTO)
+/* MISC[7:6] is read-only bits. So we need below code. */
+#if defined(CONFIG_FB_TCC_COMPOSITE_BVO)
+#if defined(CONFIG_TCC_DISPLAY_MODE_DUAL_HDMI_CVBS) \
+	|| defined(CONFIG_TCC_DISPLAY_MODE_DUAL_AUTO)
 	val |= (1 << MISC_BVO_SDVESEL_SHIFT);
-	#endif
-	#endif
+#endif
+#endif
 
 	__raw_writel(val, reg + MISC);
 
-	dprintk("VIOC_OUTCFG_SetOutConfig(OUTCFG.MISC=0x%08lx)\n", val);
+	dprintk("%s(OUTCFG.MISC=0x%08lx)\n", __func__, val);
 }
 
 #if defined(CONFIG_FB_TCC_COMPOSITE_BVO)
@@ -102,14 +108,14 @@ void VIOC_OUTCFG_BVO_SetOutConfig(unsigned int nDisp)
 	val |= ((nDisp & 0x3) << MISC_BVO_SDVESEL_SHIFT);
 	__raw_writel(val, reg + MISC);
 
-	dprintk("VIOC_OUTCFG_BVO_SetOutConfig(OUTCFG.MISC=0x%08lx)\n", val);
+	dprintk("%s(OUTCFG.MISC=0x%08lx)\n", __func__, val);
 }
 #endif
 
 volatile void __iomem *VIOC_OUTCONFIG_GetAddress(void)
 {
 	if (pOUTCFG_reg == NULL)
-		pr_err("[ERR][OUTCFG] %s pOUTCFG_reg is NULL \n", __func__);
+		pr_err("[ERR][OUTCFG] %s pOUTCFG_reg is NULL\n", __func__);
 
 	return pOUTCFG_reg;
 }
@@ -119,12 +125,14 @@ void VIOC_OUTCONFIG_DUMP(void)
 	unsigned int cnt = 0;
 	volatile void __iomem *pReg = VIOC_OUTCONFIG_GetAddress();
 
-	pr_debug("[DBG][OUTCFG] %p \n", pReg);
+	pr_debug("[DBG][OUTCFG] %p\n", pReg);
 	while (cnt < 0x10) {
-		pr_debug("[DBG][OUTCFG] 0x%p: 0x%08x 0x%08x 0x%08x 0x%08x \n", pReg + cnt,
-		       __raw_readl(pReg + cnt), __raw_readl(pReg + cnt + 0x4),
-		       __raw_readl(pReg + cnt + 0x8),
-		       __raw_readl(pReg + cnt + 0xC));
+		pr_debug(
+			"[DBG][OUTCFG] 0x%p: 0x%08x 0x%08x 0x%08x 0x%08x\n",
+			pReg + cnt, __raw_readl(pReg + cnt),
+			__raw_readl(pReg + cnt + 0x4),
+			__raw_readl(pReg + cnt + 0x8),
+			__raw_readl(pReg + cnt + 0xC));
 		cnt += 0x10;
 	}
 }
@@ -141,7 +149,8 @@ static int __init vioc_outputconfig_init(void)
 		pOUTCFG_reg = of_iomap(ViocOutputConfig_np, 0);
 
 		if (pOUTCFG_reg)
-				pr_info("[INF][OUTCFG] vioc-outcfg: 0x%p\n", pOUTCFG_reg);
+			pr_info("[INF][OUTCFG] vioc-outcfg: 0x%p\n",
+				pOUTCFG_reg);
 	}
 	return 0;
 }

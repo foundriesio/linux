@@ -1,10 +1,5 @@
 /*
- * linux/drivers/video/tcc/viqe/tcc_util.c
- * Author:  <linux@telechips.com>
- * Created: June 10, 2008
- * Description: TCC VIOC h/w block 
- *
- * Copyright (C) 2008-2009 Telechips
+ * Copyright (C) Telechips, Inc.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -25,20 +20,21 @@
 
 const char *MMOUNT = "/proc/mounts";
 
-MOUNTP *dfopen()
+struct MOUNTP *dfopen()
 {
-	MOUNTP *MP;    // /proc/mounts 파일을 연다.
-	MP = (MOUNTP *)malloc(sizeof(MOUNTP));
-	if(!(MP->fp = fopen(MMOUNT, "r")))
-	{
+	struct MOUNTP *MP;    // /proc/mounts 파일을 연다.
+
+	MP = (struct MOUNTP *)malloc(sizeof(struct MOUNTP));
+
+	MP->fp = fopen(MMOUNT, "r");
+	if (MP->fp == NULL) {
 		free(MP);
 		return NULL;
-	}
-	else
+	} else
 		return MP;
 }
 
-MOUNTP *dfget(MOUNTP *MP, int deviceType)
+struct MOUNTP *dfget(struct MOUNTP *MP, int deviceType)
 {
 	char buf[256];
 	char *bname;
@@ -48,28 +44,35 @@ MOUNTP *dfget(MOUNTP *MP, int deviceType)
 	int is_root = 0;
 
 	// /proc/mounts로 부터 마운트된 파티션의 정보를 얻어온다.
-	while(fgets(buf, 255, MP->fp))
-	{
+	while (fgets(buf, 255, MP->fp)) {
 		is_root = 0;
-		sscanf(buf, "%s%s%s",MP->devname, MP->mountdir, MP->fstype);
+		if (sscanf(buf, "%s%s%s", MP->devname, MP->mountdir, MP->fstype)
+			!= 3) {
+			pr_err("tcc_util:%s sscanf failed\n", __func__);
+			return NULL;
+		}
 	#if 0
-		if (strcmp(MP->mountdir,"/") == 0)
-			is_root=1;
+		if (strcmp(MP->mountdir, "/") == 0)
+			is_root = 1;
 	#endif
 
-		if(deviceType == 0 && strcmp(MP->mountdir, "/nand") != 0)
+		if (deviceType == 0 && strcmp(MP->mountdir,
+			"/nand") != 0) {
 			continue;
-		else if(deviceType == 1 && strcmp(MP->mountdir, "/sdcard") != 0)
+		} else if (deviceType == 1 && strcmp(MP->mountdir,
+			"/sdcard") != 0) {
 			continue;
+		}
 
-		if (stat(MP->devname, &lstat) == 0 || is_root)
-		{
-			if (strstr(buf, MP->mountdir) && S_ISBLK(lstat.st_mode) || is_root)
-			{
-				// 파일시스템의 총 할당된 크기와 사용량을 구한다.
+		if (stat(MP->devname, &lstat) == 0 || is_root) {
+			if (strstr(buf, MP->mountdir) && S_ISBLK(lstat.st_mode)
+				|| is_root) {
+				// 파일시스템의 총 할당된 크기와 사용량을 구한다
 				statfs(MP->mountdir, &lstatfs);
-				MP->size.blocks = lstatfs.f_blocks * (lstatfs.f_bsize/1024);
-				MP->size.avail  = lstatfs.f_bavail * (lstatfs.f_bsize/1024);
+				MP->size.blocks = lstatfs.f_blocks
+					* (lstatfs.f_bsize / 1024);
+				MP->size.avail  = lstatfs.f_bavail
+					* (lstatfs.f_bsize / 1024);
 				rewind(MP->fp);
 				return MP;
 			}
@@ -79,16 +82,15 @@ MOUNTP *dfget(MOUNTP *MP, int deviceType)
 	return NULL;
 }
 
-int dfclose(MOUNTP *MP)
+int dfclose(struct MOUNTP *MP)
 {
-	if(MP->fp != 0)
+	if (MP->fp != 0)
 		fclose(MP->fp);
 	free(MP);
 	return 1;
 }
 
-enum
-{
+enum {
 	PHYMEM_GET_PMEM,
 	PHYMEM_GET_VIQE,
 	PHYMEM_GET_CAMERA,
@@ -97,11 +99,12 @@ enum
 	PHYMEM_GET_FB,
 	PHYMEM_GET_JPEG_HEADER,
 	PHYMEM_GET_JPEG_RAW,
-	PHYMEM_GET_JPEG_STREAM,		
+	PHYMEM_GET_JPEG_STREAM,
 	PHYMEM_GET_MAX
 };
 
-int tccutil_get_phy_mem_info(unsigned int cmd, unsigned int *puiBase, unsigned int *puiSize)
+int tccutil_get_phy_mem_info(unsigned int cmd, unsigned int *puiBase,
+	unsigned int *puiSize)
 {
 	FILE *fp;
 	char buf[1024], nametofind[64];
@@ -112,17 +115,16 @@ int tccutil_get_phy_mem_info(unsigned int cmd, unsigned int *puiBase, unsigned i
 	unsigned int size;
 	char name[128];
 
-	if(!(fp = fopen("/proc/phys_mem", "r")))		
-	{
+	fp = fopen("/proc/phys_mem", "r");
+	if (fp == NULL) {
 		pr_err("[ERR][UTIL] /proc/phys_mem Open Error!!![%d]", cmd);
 		return 1;
 	}
-	
+
 	nbytes = fread(buf, 1, sizeof(buf), fp);
 	fclose(fp);
 	p = buf;
-	switch(cmd)
-	{
+	switch (cmd) {
 	case PHYMEM_GET_PMEM:
 		strcpy(nametofind, "pmem");
 		break;
@@ -149,24 +151,22 @@ int tccutil_get_phy_mem_info(unsigned int cmd, unsigned int *puiBase, unsigned i
 		break;
 	case PHYMEM_GET_JPEG_STREAM:
 		strcpy(nametofind, "jpeg_stream");
-		break;		
+		break;
 	default:
 		return 1;
-		break;		
+		//break;
 	}
-	
-	while(1) 
-	{
+
+	while (1) {
 		matches = sscanf(p, "%x %x %s", &base_addr, &size, name);
-		if (matches == 3) 
-		{			
-			if(strcmp(name, nametofind) == 0)
-			{
-				pr_info("[INF][UTIL] %s: 0x%x 0x%x\n", name, base_addr, size);
+		if (matches == 3) {
+			if (strcmp(name, nametofind) == 0) {
+				pr_info("[INF][UTIL] %s: 0x%x 0x%x\n",
+					name, base_addr, size);
 				*puiBase = base_addr;
 				*puiSize = size;
 				return 0;
-			}				
+			}
 		}
 		p = strchr(p, '\n');
 		if (p == NULL)
@@ -197,4 +197,3 @@ int TCCUTIL_PHYGetViqe(unsigned int *puiBase, unsigned int *puiSize)
 {
 	return tccutil_get_phy_mem_info(PHYMEM_GET_VIQE, puiBase, puiSize);
 }
-

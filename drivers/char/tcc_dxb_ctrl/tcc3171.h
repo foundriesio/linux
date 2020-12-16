@@ -1,8 +1,8 @@
-/* 
+/*
  * tcc3171.h
  *
  * Author:  <linux@telechips.com>
- * Created: 10th Jun, 2008 
+ * Created: 10th Jun, 2008
  * Description: Telechips Linux DxB Control DRIVER
  *
  * Copyright (c) Telechips, Inc.
@@ -36,16 +36,15 @@ static inline int tcc3171_init(struct tcc_dxb_ctrl_t *ctrl, int deviceIdx)
 
 static inline int tcc3171_reset(struct tcc_dxb_ctrl_t *ctrl, int deviceIdx)
 {
-	switch(deviceIdx)
-	{
+	switch (deviceIdx) {
 	case 0:
 		GPIO_SET_VALUE(ctrl->gpio_dxb_0_rst, 0);
-		msleep (20);
+		msleep(20);
 		GPIO_SET_VALUE(ctrl->gpio_dxb_0_rst, 1);
 		break;
 	case 1:
 		GPIO_SET_VALUE(ctrl->gpio_dxb_1_rst, 0);
-		msleep (20);
+		msleep(20);
 		GPIO_SET_VALUE(ctrl->gpio_dxb_1_rst, 1);
 		break;
 	default:
@@ -58,27 +57,26 @@ static inline int tcc3171_on(struct tcc_dxb_ctrl_t *ctrl, int deviceIdx)
 {
 	GPIO_SET_VALUE(ctrl->gpio_dxb_on, 1);
 
-	switch(deviceIdx)
-	{
+	switch (deviceIdx) {
 	case 0:
 		GPIO_SET_VALUE(ctrl->gpio_dxb_0_rst, 0);
 //		GPIO_SET_VALUE(ctrl->gpio_dxb_0_pwdn, 0);
-//		msleep (20);
+//		msleep(20);
 //		GPIO_SET_VALUE(ctrl->gpio_dxb_0_pwdn, 1);
-		msleep (20);
+		msleep(20);
 		GPIO_SET_VALUE(ctrl->gpio_dxb_0_rst, 0);
-		msleep (20);
+		msleep(20);
 		GPIO_SET_VALUE(ctrl->gpio_dxb_0_rst, 1);
 		break;
 
 	case 1:
 		GPIO_SET_VALUE(ctrl->gpio_dxb_1_rst, 0);
 //		GPIO_SET_VALUE(ctrl->gpio_dxb_1_pwdn, 0);
-//		msleep (20);
+//		msleep(20);
 //		GPIO_SET_VALUE(ctrl->gpio_dxb_1_pwdn, 1);
-		msleep (20);
+		msleep(20);
 		GPIO_SET_VALUE(ctrl->gpio_dxb_1_rst, 0);
-		msleep (20);
+		msleep(20);
 		GPIO_SET_VALUE(ctrl->gpio_dxb_1_rst, 1);
 		break;
 	default:
@@ -89,8 +87,7 @@ static inline int tcc3171_on(struct tcc_dxb_ctrl_t *ctrl, int deviceIdx)
 
 static inline int tcc3171_off(struct tcc_dxb_ctrl_t *ctrl, int deviceIdx)
 {
-	switch(deviceIdx)
-	{
+	switch (deviceIdx) {
 	case 0:
 //		GPIO_SET_VALUE(ctrl->gpio_dxb_0_pwdn, 0);
 		GPIO_SET_VALUE(ctrl->gpio_dxb_0_rst, 0);
@@ -112,20 +109,19 @@ static inline int tcc3171_pure_on(struct tcc_dxb_ctrl_t *ctrl, int deviceIdx)
 {
 	GPIO_SET_VALUE(ctrl->gpio_dxb_on, 1);
 
-	switch(deviceIdx)
-	{
-	case 0:			
+	switch (deviceIdx) {
+	case 0:
 //		GPIO_SET_VALUE(ctrl->gpio_dxb_0_pwdn, 0);
-		msleep (20);
+		msleep(20);
 //		GPIO_SET_VALUE(ctrl->gpio_dxb_0_pwdn, 1);
-		msleep (20);				
+		msleep(20);
 
 		break;
-	case 1:			
+	case 1:
 //		GPIO_SET_VALUE(ctrl->gpio_dxb_1_pwdn, 0);
-		msleep (20);
+		msleep(20);
 //		GPIO_SET_VALUE(ctrl->gpio_dxb_1_pwdn, 1);
-		msleep (20);
+		msleep(20);
 		break;
 	default:
 		break;
@@ -136,12 +132,11 @@ static inline int tcc3171_pure_on(struct tcc_dxb_ctrl_t *ctrl, int deviceIdx)
 
 static inline int tcc3171_pure_off(struct tcc_dxb_ctrl_t *ctrl, int deviceIdx)
 {
-	switch(deviceIdx)
-	{
-	case 0:				
+	switch (deviceIdx) {
+	case 0:
 //		GPIO_SET_VALUE(ctrl->gpio_dxb_0_pwdn, 0);
 		break;
-	case 1:				
+	case 1:
 //		GPIO_SET_VALUE(ctrl->gpio_dxb_1_pwdn, 0);
 		break;
 	default:
@@ -155,16 +150,15 @@ static inline int tcc3171_pure_off(struct tcc_dxb_ctrl_t *ctrl, int deviceIdx)
 
 static inline int tcc3171_reset_low(struct tcc_dxb_ctrl_t *ctrl, int deviceIdx)
 {
-	switch(deviceIdx)
-	{
-	case 0:				
+	switch (deviceIdx) {
+	case 0:
 		GPIO_SET_VALUE(ctrl->gpio_dxb_0_rst, 0);
-		msleep (20);
+		msleep(20);
 		GPIO_SET_VALUE(ctrl->gpio_dxb_0_rst, 0);
 		break;
-	case 1:				
+	case 1:
 		GPIO_SET_VALUE(ctrl->gpio_dxb_1_rst, 0);
-		msleep (20);
+		msleep(20);
 		GPIO_SET_VALUE(ctrl->gpio_dxb_1_rst, 0);
 		break;
 	default:
@@ -176,16 +170,15 @@ static inline int tcc3171_reset_low(struct tcc_dxb_ctrl_t *ctrl, int deviceIdx)
 
 static inline int tcc3171_reset_high(struct tcc_dxb_ctrl_t *ctrl, int deviceIdx)
 {
-	switch(deviceIdx)
-	{
+	switch (deviceIdx) {
 	case 0:
 		GPIO_SET_VALUE(ctrl->gpio_dxb_0_rst, 0);
-		msleep (20);
+		msleep(20);
 		GPIO_SET_VALUE(ctrl->gpio_dxb_0_rst, 1);
 		break;
 	case 1:
 		GPIO_SET_VALUE(ctrl->gpio_dxb_1_rst, 0);
-		msleep (20);
+		msleep(20);
 		GPIO_SET_VALUE(ctrl->gpio_dxb_1_rst, 1);
 		break;
 	default:
@@ -195,56 +188,57 @@ static inline int tcc3171_reset_high(struct tcc_dxb_ctrl_t *ctrl, int deviceIdx)
 	return 0;
 }
 
-static inline int TCC3171_IOCTL(struct tcc_dxb_ctrl_t *ctrl, unsigned int cmd, unsigned long arg)
+static inline int TCC3171_IOCTL(struct tcc_dxb_ctrl_t *ctrl,
+				unsigned int cmd, unsigned long arg)
 {
 	unsigned int deviceIdx;
-	dprintk("%s cmd[0x%X]\n", __func__, cmd);
-	switch (cmd)
-	{
-		case IOCTL_DXB_CTRL_SET_BOARD:
-			deviceIdx = (arg == 0) ? 0 : *(unsigned int *)arg;
-			tcc3171_init(ctrl, deviceIdx);
-			break;
 
-		case IOCTL_DXB_CTRL_OFF:
-			deviceIdx = (arg == 0) ? 0 : *(unsigned int *)arg;
-			tcc3171_off(ctrl, deviceIdx);
-			break;
+	pr_info("[INFO][TCC_DXB_CTRL] %s cmd[0x%X]\n", __func__, cmd);
+	switch (cmd) {
+	case IOCTL_DXB_CTRL_SET_BOARD:
+		deviceIdx = (arg == 0) ? 0 : *(unsigned int *)arg;
+		tcc3171_init(ctrl, deviceIdx);
+		break;
 
-		case IOCTL_DXB_CTRL_ON:
-			deviceIdx = (arg == 0) ? 0 : *(unsigned int *)arg;
-			tcc3171_on(ctrl, deviceIdx);
-			break;
+	case IOCTL_DXB_CTRL_OFF:
+		deviceIdx = (arg == 0) ? 0 : *(unsigned int *)arg;
+		tcc3171_off(ctrl, deviceIdx);
+		break;
 
-		case IOCTL_DXB_CTRL_RESET:
-			deviceIdx = (arg == 0) ? 0 : *(unsigned int *)arg;
-			tcc3171_reset(ctrl, deviceIdx);
-			break;
+	case IOCTL_DXB_CTRL_ON:
+		deviceIdx = (arg == 0) ? 0 : *(unsigned int *)arg;
+		tcc3171_on(ctrl, deviceIdx);
+		break;
 
-		case IOCTL_DXB_CTRL_RESET_LOW:
-			deviceIdx = (arg == 0) ? 0 : *(unsigned int *)arg;
-			tcc3171_reset_low(ctrl, deviceIdx);
-			break;
+	case IOCTL_DXB_CTRL_RESET:
+		deviceIdx = (arg == 0) ? 0 : *(unsigned int *)arg;
+		tcc3171_reset(ctrl, deviceIdx);
+		break;
 
-		case IOCTL_DXB_CTRL_RESET_HIGH:
-			deviceIdx = (arg == 0) ? 0 : *(unsigned int *)arg;
-			tcc3171_reset_high(ctrl, deviceIdx);
-			break;
+	case IOCTL_DXB_CTRL_RESET_LOW:
+		deviceIdx = (arg == 0) ? 0 : *(unsigned int *)arg;
+		tcc3171_reset_low(ctrl, deviceIdx);
+		break;
 
-		case IOCTL_DXB_CTRL_PURE_ON:
-			deviceIdx = (arg == 0) ? 0 : *(unsigned int *)arg;
-			tcc3171_pure_on(ctrl, deviceIdx);
-			break;
+	case IOCTL_DXB_CTRL_RESET_HIGH:
+		deviceIdx = (arg == 0) ? 0 : *(unsigned int *)arg;
+		tcc3171_reset_high(ctrl, deviceIdx);
+		break;
 
-		case IOCTL_DXB_CTRL_PURE_OFF:
-			deviceIdx = (arg == 0) ? 0 : *(unsigned int *)arg;
-			tcc3171_pure_off(ctrl, deviceIdx);
-			break;
+	case IOCTL_DXB_CTRL_PURE_ON:
+		deviceIdx = (arg == 0) ? 0 : *(unsigned int *)arg;
+		tcc3171_pure_on(ctrl, deviceIdx);
+		break;
 
-		case IOCTL_DXB_CTRL_GET_CTLINFO:
-		case IOCTL_DXB_CTRL_RF_PATH:
-		default:
-			break;
+	case IOCTL_DXB_CTRL_PURE_OFF:
+		deviceIdx = (arg == 0) ? 0 : *(unsigned int *)arg;
+		tcc3171_pure_off(ctrl, deviceIdx);
+		break;
+
+	case IOCTL_DXB_CTRL_GET_CTLINFO:
+	case IOCTL_DXB_CTRL_RF_PATH:
+	default:
+		break;
 
 	}
 	return 0;

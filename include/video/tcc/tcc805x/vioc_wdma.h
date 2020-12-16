@@ -43,8 +43,7 @@
 #define		R2YMD_UHDTV_LR	4
 #define		R2YMD_UHDTV_FR	5
 
-typedef struct
-{
+struct VIOC_WDMA_IMAGE_INFO_Type {
 	unsigned int ImgSizeWidth;
 	unsigned int ImgSizeHeight;
 	unsigned int TargetWidth;
@@ -60,7 +59,7 @@ typedef struct
 	unsigned int Hue;
 	unsigned int Bright;
 	unsigned int Contrast;
-} VIOC_WDMA_IMAGE_INFO_Type;
+};
 
 /*
  * register offset

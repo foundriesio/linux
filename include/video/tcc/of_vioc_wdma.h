@@ -65,6 +65,7 @@ struct vioc_wdma_device {
 extern void vioc_wdma_set_image(struct vioc_wdma_device *wdma, unsigned int en);
 extern void vioc_wdma_swreset(struct vioc_wdma_device *wdma, int reset);
 extern int get_count_vioc_wdma(struct device *dev);
-extern struct vioc_wdma_device *devm_vioc_wdma_get(struct device *dev, int index);
+extern struct vioc_wdma_device *devm_vioc_wdma_get(
+	struct device *dev, int index);
 
 #endif

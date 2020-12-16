@@ -1,8 +1,8 @@
-/* 
+/*
  * amfmtuner.h
  *
  * Author:  <linux@telechips.com>
- * Created: 13th Jan, 2020 
+ * Created: 13th Jan, 2020
  * Description: Telechips Linux DxB Control DRIVER
  *
  * Copyright (c) Telechips, Inc.
@@ -42,14 +42,16 @@ static inline int amfmtuner_off(struct tcc_dxb_ctrl_t *ctrl, int deviceIdx)
 	return 0;
 }
 
-static inline int amfmtuner_reset_low(struct tcc_dxb_ctrl_t *ctrl, int deviceIdx)
+static inline int amfmtuner_reset_low(struct tcc_dxb_ctrl_t *ctrl,
+				int deviceIdx)
 {
 	GPIO_SET_VALUE(ctrl->gpio_tuner_rst, 0);
 
 	return 0;
 }
 
-static inline int amfmtuner_reset_high(struct tcc_dxb_ctrl_t *ctrl, int deviceIdx)
+static inline int amfmtuner_reset_high(struct tcc_dxb_ctrl_t *ctrl,
+				int deviceIdx)
 {
 	GPIO_SET_VALUE(ctrl->gpio_tuner_rst, 1);
 
@@ -57,39 +59,41 @@ static inline int amfmtuner_reset_high(struct tcc_dxb_ctrl_t *ctrl, int deviceId
 }
 
 
-static inline int amfmtuner_ioctl(struct tcc_dxb_ctrl_t *ctrl, unsigned int cmd, unsigned long arg)
+static inline int amfmtuner_ioctl(struct tcc_dxb_ctrl_t *ctrl,
+				unsigned int cmd, unsigned long arg)
 {
 	unsigned int deviceIdx;
-	dprintk("%s cmd[0x%X]\n", __func__, cmd);
-	switch (cmd)
-	{
-		case IOCTL_DXB_CTRL_SET_BOARD:
-			deviceIdx = (arg == 0) ? 0 : *(unsigned int *)arg;
-			amfmtuner_init(ctrl, deviceIdx);
-			break;
 
-		case IOCTL_DXB_CTRL_OFF:
-			deviceIdx = (arg == 0) ? 0 : *(unsigned int *)arg;
-			amfmtuner_off(ctrl, deviceIdx);
-			break;
+	pr_info("[INFO][TCC_DXB_CTRL] %s cmd[0x%X]\n", __func__, cmd);
 
-		case IOCTL_DXB_CTRL_ON:
-			deviceIdx = (arg == 0) ? 0 : *(unsigned int *)arg;
-			amfmtuner_on(ctrl, deviceIdx);
-			break;
+	switch (cmd) {
+	case IOCTL_DXB_CTRL_SET_BOARD:
+		deviceIdx = (arg == 0) ? 0 : *(unsigned int *)arg;
+		amfmtuner_init(ctrl, deviceIdx);
+		break;
 
-		case IOCTL_DXB_CTRL_RESET_LOW:
-			deviceIdx = (arg == 0) ? 0 : *(unsigned int *)arg;
-			amfmtuner_reset_low(ctrl, deviceIdx);
-			break;
+	case IOCTL_DXB_CTRL_OFF:
+		deviceIdx = (arg == 0) ? 0 : *(unsigned int *)arg;
+		amfmtuner_off(ctrl, deviceIdx);
+		break;
 
-		case IOCTL_DXB_CTRL_RESET_HIGH:
-			deviceIdx = (arg == 0) ? 0 : *(unsigned int *)arg;
-			amfmtuner_reset_high(ctrl, deviceIdx);
-			break;
+	case IOCTL_DXB_CTRL_ON:
+		deviceIdx = (arg == 0) ? 0 : *(unsigned int *)arg;
+		amfmtuner_on(ctrl, deviceIdx);
+		break;
 
-		default:
-			break;
+	case IOCTL_DXB_CTRL_RESET_LOW:
+		deviceIdx = (arg == 0) ? 0 : *(unsigned int *)arg;
+		amfmtuner_reset_low(ctrl, deviceIdx);
+		break;
+
+	case IOCTL_DXB_CTRL_RESET_HIGH:
+		deviceIdx = (arg == 0) ? 0 : *(unsigned int *)arg;
+		amfmtuner_reset_high(ctrl, deviceIdx);
+		break;
+
+	default:
+		break;
 
 	}
 	return 0;

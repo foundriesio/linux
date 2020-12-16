@@ -34,63 +34,87 @@
 #include "ufs-tcc.h"
 #include "ufshci.h"
 
-#define UNIPRO_PCLK_PERIOD_NS 6 //145 MHz < PCLK_Freq <= 170 MHz
-#define CALCULATED_VALUE 0x4E20 //UNIPRO_PCLK_PERIOD_NS * 6 = 120,000
+#define UNIPRO_PCLK_PERIOD_NS 6
+#define CALCULATED_VALUE 0x4E20
 
 static unsigned int debug;
 
 static int ufs_tcc_get_resource(struct ufs_tcc_host *host)
 {
-       struct resource *mem_res;
-       struct device *dev = host->hba->dev;
-       struct platform_device *pdev = to_platform_device(dev);
+	struct resource *mem_res;
+	struct device *dev = host->hba->dev;
+	struct platform_device *pdev = to_platform_device(dev);
 
-       mem_res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "ufs-unipro");
-       host->ufs_reg_unipro = devm_ioremap_resource(dev, mem_res);
-	   dev_dbg(dev, "%s:%d mem_res = %08x\n", __func__, __LINE__, host->ufs_reg_unipro);
-       if (host->ufs_reg_unipro == NULL) {
-               dev_err(dev, "cannot ioremap for ufs unipro register\n");
-               return -ENOMEM;
-       }
+	mem_res =
+		platform_get_resource_byname(pdev,
+		IORESOURCE_MEM, "ufs-unipro");
+	host->ufs_reg_unipro = devm_ioremap_resource(dev, mem_res);
+	dev_dbg(dev,
+		"%s:%d mem_res = %08x\n",
+		__func__, __LINE__, host->ufs_reg_unipro);
+	if (host->ufs_reg_unipro == NULL) {
+		dev_err(dev,
+		"cannot ioremap for ufs unipro register\n");
+		return -ENOMEM;
+	}
 
-       mem_res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "ufs-mphy");
-       host->ufs_reg_mphy = devm_ioremap_resource(dev, mem_res);
-	   dev_dbg(dev, "%s:%d mem_res = %08x\n", __func__, __LINE__, host->ufs_reg_mphy);
-       if (host->ufs_reg_mphy == NULL) {
-               dev_err(dev, "cannot ioremap for ufs mphy register\n");
-               return -ENOMEM;
-       }
+	mem_res =
+		platform_get_resource_byname(pdev,
+		IORESOURCE_MEM, "ufs-mphy");
+	host->ufs_reg_mphy = devm_ioremap_resource(dev, mem_res);
+	dev_dbg(dev,
+		"%s:%d mem_res = %08x\n",
+		__func__, __LINE__, host->ufs_reg_mphy);
 
-       mem_res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "ufs-sbus-config");
-       host->ufs_reg_sbus_config = devm_ioremap_resource(dev, mem_res);
-	   dev_dbg(dev, "%s:%d mem_res = %08x\n", __func__, __LINE__, host->ufs_reg_sbus_config);
-       if (host->ufs_reg_sbus_config == NULL) {
-               dev_err(dev, "cannot ioremap for ufs sbus config register\n");
-               return -ENOMEM;
-       }
+	if (host->ufs_reg_mphy == NULL) {
+		dev_err(dev, "cannot ioremap for ufs mphy register\n");
+		return -ENOMEM;
+	}
 
-       mem_res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "ufs-fmp");
-       host->ufs_reg_fmp = devm_ioremap_resource(dev, mem_res);
-	   dev_dbg(dev, "%s:%d mem_Res = %08x\n", __func__, __LINE__, host->ufs_reg_fmp);
-       if (host->ufs_reg_fmp == NULL) {
-               dev_err(dev, "cannot ioremap for ufs fmp register\n");
-               return -ENOMEM;
-       }
+	mem_res =
+		platform_get_resource_byname(pdev,
+		IORESOURCE_MEM, "ufs-sbus-config");
+	host->ufs_reg_sbus_config =
+		devm_ioremap_resource(dev, mem_res);
+	dev_dbg(dev,
+		"%s:%d mem_res = %08x\n",
+		__func__, __LINE__, host->ufs_reg_sbus_config);
+	if (host->ufs_reg_sbus_config == NULL) {
+		dev_err(dev,
+		"cannot ioremap for ufs sbus config register\n");
+		return -ENOMEM;
+	}
 
-       mem_res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "ufs-sec");
-       host->ufs_reg_sec = devm_ioremap_resource(dev, mem_res);
-	   dev_dbg(dev, "%s:%d mem_Res = %08x\n", __func__, __LINE__, host->ufs_reg_sec);
-       if (host->ufs_reg_sec == NULL) {
-               dev_err(dev, "cannot ioremap for ufs fmp register\n");
-               return -ENOMEM;
-       }
-       return 0;
+	mem_res =
+		platform_get_resource_byname(pdev,
+		IORESOURCE_MEM, "ufs-fmp");
+	host->ufs_reg_fmp = devm_ioremap_resource(dev, mem_res);
+	dev_dbg(dev,
+		"%s:%d mem_Res = %08x\n",
+		__func__, __LINE__, host->ufs_reg_fmp);
+	if (host->ufs_reg_fmp == NULL) {
+		dev_err(dev, "cannot ioremap for ufs fmp register\n");
+		return -ENOMEM;
+	}
+
+	mem_res =
+		platform_get_resource_byname(pdev,
+		IORESOURCE_MEM, "ufs-sec");
+	host->ufs_reg_sec = devm_ioremap_resource(dev, mem_res);
+	dev_dbg(dev,
+		"%s:%d mem_Res = %08x\n",
+		__func__, __LINE__, host->ufs_reg_sec);
+	if (host->ufs_reg_sec == NULL) {
+		dev_err(dev, "cannot ioremap for ufs fmp register\n");
+		return -ENOMEM;
+	}
+	return 0;
 }
 
 static void ufs_tcc_set_pm_lvl(struct ufs_hba *hba)
 {
-       hba->rpm_lvl = UFS_PM_LVL_1;
-       hba->spm_lvl = UFS_PM_LVL_3;
+	hba->rpm_lvl = UFS_PM_LVL_1;
+	hba->spm_lvl = UFS_PM_LVL_3;
 }
 
 static void encryption_setting(struct ufs_hba *hba)
@@ -122,7 +146,9 @@ static int tcc_ufs_smu_setting(struct ufs_hba *hba)
 	unsigned int smu_index  = 0;
 	unsigned int desc_type  = 0;
 	unsigned int tid, sw, sr, nsw, nsr, ufk, enc, valid;
-	unsigned int protbytzpc, select_inline_enc, fmp_on, unmap_disable, nskeyreg, nssmu, nsuser, use_otp_mask;
+	unsigned int protbytzpc, select_inline_enc,
+		fmp_on, unmap_disable, nskeyreg,
+		nssmu, nsuser, use_otp_mask;
 
 	unsigned int fmp_bsector;
 	unsigned int fmp_esector;
@@ -130,9 +156,7 @@ static int tcc_ufs_smu_setting(struct ufs_hba *hba)
 	unsigned int fmp_ctrl;
 	unsigned int fmp_security;
 
-
 	struct ufs_tcc_host *host = ufshcd_get_variant(hba);
-
 
 	encryption_setting(hba);
 
@@ -148,7 +172,7 @@ static int tcc_ufs_smu_setting(struct ufs_hba *hba)
 	fmp_bsector = 0x0;
 	fmp_esector = 0xFFFFFFFF;
 	fmp_lun     = 0x7;
-	fmp_ctrl = 
+	fmp_ctrl =
 		(tid   << 8U) | //tid
 		(sw    << 7U) | //sw
 		(sr    << 6U) | //sr
@@ -203,55 +227,64 @@ static int tcc_ufs_smu_setting(struct ufs_hba *hba)
 	ufs_fmp_writel(host, 0x01000000, FMP_FMPSCTRL6);
 	ufs_fmp_writel(host, 0x10000000, FMP_FMPSCTRL7);
 
-	switch(smu_index) {
-		case 0:  {
-					 ufs_fmp_writel(host, fmp_bsector, FMP_FMPSBEGIN0);
-					 ufs_fmp_writel(host, fmp_esector, FMP_FMPSEND0);
-					 ufs_fmp_writel(host, fmp_lun, FMP_FMPSLUN0);
-					 ufs_fmp_writel(host, fmp_ctrl, FMP_FMPSCTRL0); break;}
-		case 1:  {
-					 ufs_fmp_writel(host, fmp_bsector, FMP_FMPSBEGIN1);
-					 ufs_fmp_writel(host, fmp_esector, FMP_FMPSEND1);
-					 ufs_fmp_writel(host, fmp_lun, FMP_FMPSLUN1);
-					 ufs_fmp_writel(host, fmp_ctrl, FMP_FMPSCTRL1); break;}
-		case 2:  {
-					 ufs_fmp_writel(host, fmp_bsector, FMP_FMPSBEGIN2);
-					 ufs_fmp_writel(host, fmp_esector, FMP_FMPSEND2);
-					 ufs_fmp_writel(host, fmp_lun, FMP_FMPSLUN2);
-					 ufs_fmp_writel(host, fmp_ctrl, FMP_FMPSCTRL2); break;}
-		case 3:  {
-					 ufs_fmp_writel(host, fmp_bsector, FMP_FMPSBEGIN3);
-					 ufs_fmp_writel(host, fmp_esector, FMP_FMPSEND3);
-					 ufs_fmp_writel(host, fmp_lun, FMP_FMPSLUN3);
-					 ufs_fmp_writel(host, fmp_ctrl, FMP_FMPSCTRL3); break;}
-		case 4:  {
-					 ufs_fmp_writel(host, fmp_bsector, FMP_FMPSBEGIN4);
-					 ufs_fmp_writel(host, fmp_esector, FMP_FMPSEND4);
-					 ufs_fmp_writel(host, fmp_lun, FMP_FMPSLUN4);
-					 ufs_fmp_writel(host, fmp_ctrl, FMP_FMPSCTRL4); break;}
-		case 5:  {
-					 ufs_fmp_writel(host, fmp_bsector, FMP_FMPSBEGIN5);
-					 ufs_fmp_writel(host, fmp_esector, FMP_FMPSEND5);
-					 ufs_fmp_writel(host, fmp_lun, FMP_FMPSLUN5);
-					 ufs_fmp_writel(host, fmp_ctrl, FMP_FMPSCTRL5); break;}
+	switch (smu_index) {
+	case 0:
+		ufs_fmp_writel(host, fmp_bsector, FMP_FMPSBEGIN0);
+		ufs_fmp_writel(host, fmp_esector, FMP_FMPSEND0);
+		ufs_fmp_writel(host, fmp_lun, FMP_FMPSLUN0);
+		ufs_fmp_writel(host, fmp_ctrl, FMP_FMPSCTRL0);
+		break;
+	case 1:
+		ufs_fmp_writel(host, fmp_bsector, FMP_FMPSBEGIN1);
+		ufs_fmp_writel(host, fmp_esector, FMP_FMPSEND1);
+		ufs_fmp_writel(host, fmp_lun, FMP_FMPSLUN1);
+		ufs_fmp_writel(host, fmp_ctrl, FMP_FMPSCTRL1);
+		break;
+	case 2:
+		ufs_fmp_writel(host, fmp_bsector, FMP_FMPSBEGIN2);
+		ufs_fmp_writel(host, fmp_esector, FMP_FMPSEND2);
+		ufs_fmp_writel(host, fmp_lun, FMP_FMPSLUN2);
+		ufs_fmp_writel(host, fmp_ctrl, FMP_FMPSCTRL2);
+		break;
+	case 3:
+		ufs_fmp_writel(host, fmp_bsector, FMP_FMPSBEGIN3);
+		ufs_fmp_writel(host, fmp_esector, FMP_FMPSEND3);
+		ufs_fmp_writel(host, fmp_lun, FMP_FMPSLUN3);
+		ufs_fmp_writel(host, fmp_ctrl, FMP_FMPSCTRL3);
+		break;
+	case 4:
+		ufs_fmp_writel(host, fmp_bsector, FMP_FMPSBEGIN4);
+		ufs_fmp_writel(host, fmp_esector, FMP_FMPSEND4);
+		ufs_fmp_writel(host, fmp_lun, FMP_FMPSLUN4);
+		ufs_fmp_writel(host, fmp_ctrl, FMP_FMPSCTRL4);
+		break;
+	case 5:
+		ufs_fmp_writel(host, fmp_bsector, FMP_FMPSBEGIN5);
+		ufs_fmp_writel(host, fmp_esector, FMP_FMPSEND5);
+		ufs_fmp_writel(host, fmp_lun, FMP_FMPSLUN5);
+		ufs_fmp_writel(host, fmp_ctrl, FMP_FMPSCTRL5);
+		break;
 
-		case 6:  {
-					 ufs_fmp_writel(host, fmp_bsector, FMP_FMPSBEGIN6);
-					 ufs_fmp_writel(host, fmp_esector, FMP_FMPSEND6);
-					 ufs_fmp_writel(host, fmp_lun, FMP_FMPSLUN6);
-					 ufs_fmp_writel(host, fmp_ctrl, FMP_FMPSCTRL6); break;}
+	case 6:
+		ufs_fmp_writel(host, fmp_bsector, FMP_FMPSBEGIN6);
+		ufs_fmp_writel(host, fmp_esector, FMP_FMPSEND6);
+		ufs_fmp_writel(host, fmp_lun, FMP_FMPSLUN6);
+		ufs_fmp_writel(host, fmp_ctrl, FMP_FMPSCTRL6);
+		break;
 
-		case 7:  {
-					 ufs_fmp_writel(host, fmp_bsector, FMP_FMPSBEGIN7);
-					 ufs_fmp_writel(host, fmp_esector, FMP_FMPSEND7);
-					 ufs_fmp_writel(host, fmp_lun, FMP_FMPSLUN7);
-					 ufs_fmp_writel(host, fmp_ctrl, FMP_FMPSCTRL7); break;}
+	case 7:
+		ufs_fmp_writel(host, fmp_bsector, FMP_FMPSBEGIN7);
+		ufs_fmp_writel(host, fmp_esector, FMP_FMPSEND7);
+		ufs_fmp_writel(host, fmp_lun, FMP_FMPSLUN7);
+		ufs_fmp_writel(host, fmp_ctrl, FMP_FMPSCTRL7);
+		break;
 
-		default: {
-					 ufs_fmp_writel(host, fmp_bsector, FMP_FMPSBEGIN7);
-					 ufs_fmp_writel(host, fmp_esector, FMP_FMPSEND7);
-					 ufs_fmp_writel(host, fmp_lun, FMP_FMPSLUN7);
-					 ufs_fmp_writel(host, fmp_ctrl, FMP_FMPSCTRL7); break;}
+	default:
+		ufs_fmp_writel(host, fmp_bsector, FMP_FMPSBEGIN7);
+		ufs_fmp_writel(host, fmp_esector, FMP_FMPSEND7);
+		ufs_fmp_writel(host, fmp_lun, FMP_FMPSLUN7);
+		ufs_fmp_writel(host, fmp_ctrl, FMP_FMPSCTRL7);
+		break;
 	}
 
 	// --------------------------------------------
@@ -287,36 +320,19 @@ static int tcc_ufs_smu_setting(struct ufs_hba *hba)
 	return 0;
 }
 
-static void ufs_tcc_clk_init(struct ufs_hba *hba)
-{
-	//struct ufs_tcc_host *host = ufshcd_get_variant(hba);
-
-	//ufs_sys_ctrl_clr_bits(host, BIT_SYSCTRL_REF_CLOCK_EN, PHY_CLK_CTRL);
-	//if (ufs_sys_ctrl_readl(host, PHY_CLK_CTRL) & BIT_SYSCTRL_REF_CLOCK_EN)
-	//	mdelay(1);
-	/* use abb clk */
-	//ufs_sys_ctrl_clr_bits(host, BIT_UFS_REFCLK_SRC_SEl, UFS_SYSCTRL);
-	//ufs_sys_ctrl_clr_bits(host, BIT_UFS_REFCLK_ISO_EN, PHY_ISO_EN);
-	/* open mphy ref clk */
-	//ufs_sys_ctrl_set_bits(host, BIT_SYSCTRL_REF_CLOCK_EN, PHY_CLK_CTRL);
-}
-
 static void ufs_tcc_pre_init(struct ufs_hba *hba)
 {
 	struct ufs_tcc_host *host = ufshcd_get_variant(hba);
 
-	ufs_sbus_config_clr_bits(host, SBUS_CONFIG_SWRESETN_UFS_HCI | SBUS_CONFIG_SWRESETN_UFS_PHY, SBUS_CONFIG_SWRESETN);
-	msleep(1);
-	ufs_sbus_config_set_bits(host, SBUS_CONFIG_SWRESETN_UFS_HCI | SBUS_CONFIG_SWRESETN_UFS_PHY, SBUS_CONFIG_SWRESETN);
-	//ufs_sbus_config_writel(host , 0x1, SBUS_TEMP);
-	//msleep(10);
+	ufs_sbus_config_clr_bits(host, SBUS_CONFIG_SWRESETN_UFS_HCI |
+		SBUS_CONFIG_SWRESETN_UFS_PHY, SBUS_CONFIG_SWRESETN);
+	mdelay(1);
+	ufs_sbus_config_set_bits(host, SBUS_CONFIG_SWRESETN_UFS_HCI |
+		SBUS_CONFIG_SWRESETN_UFS_PHY, SBUS_CONFIG_SWRESETN);
 	ufshcd_writel(hba, 0x1, HCI_MPHY_REFCLK_SEL);
 	ufshcd_writel(hba, 0x0, HCI_CLKSTOP_CTRL);
 	ufshcd_writel(hba, 0x1, HCI_GPIO_OUT);
 	ufshcd_writel(hba, 0x1, HCI_UFS_ACG_DISABLE);
-	//printk("AAA\n");
-	//ufs_sec_writel(host, 0x2, 0xc);
-	//printk("BBB\n");
 }
 
 static void ufs_tcc_post_init(struct ufs_hba *hba)
@@ -324,72 +340,123 @@ static void ufs_tcc_post_init(struct ufs_hba *hba)
 	struct ufs_tcc_host *host = ufshcd_get_variant(hba);
 	unsigned int data = 0;
 
-	data = ufshcd_readl(hba,REG_CONTROLLER_ENABLE);
-	while (data != 0x1U)
-	{
-		data = ufshcd_readl(hba,REG_CONTROLLER_ENABLE);
+	data = ufshcd_readl(hba, REG_CONTROLLER_ENABLE);
+	while (data != 0x1U) {
+		data = ufshcd_readl(hba, REG_CONTROLLER_ENABLE);
 	}
 
-	data = ufshcd_readl(hba,REG_CONTROLLER_STATUS);
-	while (reg_rdb((data),(3U)) != 1U)
-	{
-		data = ufshcd_readl(hba,REG_CONTROLLER_STATUS);
+	data = ufshcd_readl(hba, REG_CONTROLLER_STATUS);
+	while (reg_rdb((data), (3U)) != 1U) {
+		data = ufshcd_readl(hba, REG_CONTROLLER_STATUS);
 	}
 
-	ufshcd_writel(hba, 0x7FFF,REG_INTERRUPT_ENABLE);
+	ufshcd_writel(hba, 0x7FFF, REG_INTERRUPT_ENABLE);
 
 
-	ufs_unipro_writel(host, UNIPRO_PCLK_PERIOD_NS, PA_DBG_CLK_PERIOD);
-	ufs_unipro_writel(host, CALCULATED_VALUE, PA_DBG_AUTOMODE_THLD);
-	ufs_unipro_writel(host, 0x2E820183, PA_DBG_OPTION_SUITE);
+	ufs_unipro_writel(host,
+		UNIPRO_PCLK_PERIOD_NS, PA_DBG_CLK_PERIOD);
+	ufs_unipro_writel(host,
+		CALCULATED_VALUE, PA_DBG_AUTOMODE_THLD);
+	ufs_unipro_writel(host,
+		0x2E820183, PA_DBG_OPTION_SUITE);
 
-	ufshcd_dme_set(hba, UIC_ARG_MIB_SEL((unsigned int)PA_Local_TX_LCC_Enable, 0x0U), 0x0U);
-	ufshcd_dme_set(hba, UIC_ARG_MIB_SEL((unsigned int)N_DeviceID, 0x0U), N_DEVICE_ID_VAL);
-	ufshcd_dme_set(hba, UIC_ARG_MIB_SEL((unsigned int)N_DeviceID_valid, 0x0U), N_DEVICE_ID_VALID_VAL);
-	ufshcd_dme_set(hba, UIC_ARG_MIB_SEL((unsigned int)T_ConnectionState, 0x0U), T_CONNECTION_STATE_OFF_VAL);
-	ufshcd_dme_set(hba, UIC_ARG_MIB_SEL((unsigned int)T_PeerDeviceID, 0x0U), T_PEER_DEVICE_ID_VAL);
-	ufshcd_dme_set(hba, UIC_ARG_MIB_SEL((unsigned int)T_ConnectionState, 0x0U), T_CONNECTION_STATE_ON_VAL);
+	ufshcd_dme_set(hba,
+		UIC_ARG_MIB_SEL((unsigned int)PA_Local_TX_LCC_Enable,
+		0x0U), 0x0U);
+	ufshcd_dme_set(hba,
+		UIC_ARG_MIB_SEL((unsigned int)N_DeviceID,
+		0x0U), N_DEVICE_ID_VAL);
+	ufshcd_dme_set(hba,
+		UIC_ARG_MIB_SEL((unsigned int)N_DeviceID_valid,
+		0x0U), N_DEVICE_ID_VALID_VAL);
+	ufshcd_dme_set(hba,
+		UIC_ARG_MIB_SEL((unsigned int)T_ConnectionState,
+		0x0U), T_CONNECTION_STATE_OFF_VAL);
+	ufshcd_dme_set(hba,
+		UIC_ARG_MIB_SEL((unsigned int)T_PeerDeviceID,
+		0x0U), T_PEER_DEVICE_ID_VAL);
+	ufshcd_dme_set(hba,
+		UIC_ARG_MIB_SEL((unsigned int)T_ConnectionState,
+		0x0U), T_CONNECTION_STATE_ON_VAL);
 
-	ufshcd_dme_set(hba, UIC_ARG_MIB_SEL((unsigned int)0x0200, 0x0U), 0x3fU);
-	ufshcd_dme_set(hba, UIC_ARG_MIB_SEL((unsigned int)0x8f, TX_LANE_0), 0x0U);
-	ufshcd_dme_set(hba, UIC_ARG_MIB_SEL((unsigned int)0x8f, RX_LANE_1), 0x0U);
+	ufshcd_dme_set(hba,
+		UIC_ARG_MIB_SEL((unsigned int)0x0200,
+		0x0U), 0x3fU);
+	ufshcd_dme_set(hba,
+		UIC_ARG_MIB_SEL((unsigned int)0x8f,
+		TX_LANE_0), 0x0U);
+	ufshcd_dme_set(hba,
+		UIC_ARG_MIB_SEL((unsigned int)0x8f,
+		RX_LANE_1), 0x0U);
 
-	ufshcd_dme_set(hba, UIC_ARG_MIB_SEL((unsigned int)0x0f, RX_LANE_0), 0x0U);
-	ufshcd_dme_set(hba, UIC_ARG_MIB_SEL((unsigned int)0x0f, RX_LANE_1), 0x0U);
+	ufshcd_dme_set(hba,
+		UIC_ARG_MIB_SEL((unsigned int)0x0f,
+		RX_LANE_0), 0x0U);
+	ufshcd_dme_set(hba,
+		UIC_ARG_MIB_SEL((unsigned int)0x0f,
+		RX_LANE_1), 0x0U);
 
-	ufshcd_dme_set(hba, UIC_ARG_MIB_SEL((unsigned int)0x21, RX_LANE_0), 0x0U);
-	ufshcd_dme_set(hba, UIC_ARG_MIB_SEL((unsigned int)0x21, RX_LANE_1), 0x0U);
+	ufshcd_dme_set(hba,
+		UIC_ARG_MIB_SEL((unsigned int)0x21,
+		RX_LANE_0), 0x0U);
+	ufshcd_dme_set(hba,
+		UIC_ARG_MIB_SEL((unsigned int)0x21,
+		RX_LANE_1), 0x0U);
 
-	ufshcd_dme_set(hba, UIC_ARG_MIB_SEL((unsigned int)0x22, RX_LANE_0), 0x0U);
-	ufshcd_dme_set(hba, UIC_ARG_MIB_SEL((unsigned int)0x22, RX_LANE_1), 0x0U);
+	ufshcd_dme_set(hba,
+		UIC_ARG_MIB_SEL((unsigned int)0x22,
+		RX_LANE_0), 0x0U);
+	ufshcd_dme_set(hba,
+		UIC_ARG_MIB_SEL((unsigned int)0x22,
+		RX_LANE_1), 0x0U);
 
-	ufshcd_dme_set(hba, UIC_ARG_MIB_SEL((unsigned int)0x5c, RX_LANE_0), 0x38U);
-	ufshcd_dme_set(hba, UIC_ARG_MIB_SEL((unsigned int)0x5c, RX_LANE_1), 0x38U);
+	ufshcd_dme_set(hba,
+		UIC_ARG_MIB_SEL((unsigned int)0x5c,
+		RX_LANE_0), 0x38U);
+	ufshcd_dme_set(hba,
+		UIC_ARG_MIB_SEL((unsigned int)0x5c,
+		RX_LANE_1), 0x38U);
 
-	ufshcd_dme_set(hba, UIC_ARG_MIB_SEL((unsigned int)0x62, RX_LANE_0), 0x97U);
-	ufshcd_dme_set(hba, UIC_ARG_MIB_SEL((unsigned int)0x62, RX_LANE_1), 0x97U);
+	ufshcd_dme_set(hba,
+		UIC_ARG_MIB_SEL((unsigned int)0x62,
+		RX_LANE_0), 0x97U);
+	ufshcd_dme_set(hba,
+		UIC_ARG_MIB_SEL((unsigned int)0x62,
+		RX_LANE_1), 0x97U);
 
-	ufshcd_dme_set(hba, UIC_ARG_MIB_SEL((unsigned int)0x63, RX_LANE_0), 0x70U);
-	ufshcd_dme_set(hba, UIC_ARG_MIB_SEL((unsigned int)0x63, RX_LANE_1), 0x70U);
+	ufshcd_dme_set(hba,
+		UIC_ARG_MIB_SEL((unsigned int)0x63,
+		RX_LANE_0), 0x70U);
+	ufshcd_dme_set(hba,
+		UIC_ARG_MIB_SEL((unsigned int)0x63,
+		RX_LANE_1), 0x70U);
 
-	ufshcd_dme_set(hba, UIC_ARG_MIB_SEL((unsigned int)0x65, RX_LANE_0), 0x1U);
-	ufshcd_dme_set(hba, UIC_ARG_MIB_SEL((unsigned int)0x65, RX_LANE_1), 0x1U);
+	ufshcd_dme_set(hba,
+		UIC_ARG_MIB_SEL((unsigned int)0x65,
+		RX_LANE_0), 0x1U);
+	ufshcd_dme_set(hba,
+		UIC_ARG_MIB_SEL((unsigned int)0x65,
+		RX_LANE_1), 0x1U);
 
-	ufshcd_dme_set(hba, UIC_ARG_MIB_SEL((unsigned int)0x69, RX_LANE_0), 0x1U);
-	ufshcd_dme_set(hba, UIC_ARG_MIB_SEL((unsigned int)0x69, RX_LANE_1), 0x1U);
+	ufshcd_dme_set(hba,
+		UIC_ARG_MIB_SEL((unsigned int)0x69,
+		RX_LANE_0), 0x1U);
+	ufshcd_dme_set(hba,
+		UIC_ARG_MIB_SEL((unsigned int)0x69,
+		RX_LANE_1), 0x1U);
 
-	ufshcd_dme_set(hba, UIC_ARG_MIB_SEL((unsigned int)0x200, 0x0U), 0x0U);
+	ufshcd_dme_set(hba,
+		UIC_ARG_MIB_SEL((unsigned int)0x200,
+		0x0U), 0x0U);
 
 	ufshcd_writel(hba, 0xA, HCI_DATA_REORDER);
-	//ufs_fmp_clr_bits(host, 0x80000000, FMP_FMPRSECURITY);
-	//ufs_fmp_writel(host, 0xDFC2E492, FMP_FMPRSECURITY);
-	//ufs_fmp_readl(host, FMP_FMPRSECURITY);
 
 }
-static int ufs_tcc_hce_enable_notify(struct ufs_hba *hba, 
+static int ufs_tcc_hce_enable_notify(struct ufs_hba *hba,
 				enum ufs_notify_change_status status)
 {
 	int ret = 0;
+
 	switch (status) {
 	case PRE_CHANGE:
 		ufs_tcc_pre_init(hba);
@@ -413,8 +480,6 @@ static int ufs_tcc_link_startup_post_change(struct ufs_hba *hba)
 	uint32_t  hci_buffering_enable = 0;
 	uint32_t  axidma_rwdataburstlen = 0;
 	uint32_t  no_of_beat_burst = 7;
-	//uint32_t  otp_data=0;
-	//int  ext_clk_sel = 0; //Internal Clock default
 	int res = 0;
 	struct ufs_tcc_host *host = ufshcd_get_variant(hba);
 
@@ -425,29 +490,14 @@ static int ufs_tcc_link_startup_post_change(struct ufs_hba *hba)
 	ufshcd_writel(hba, UTRLBA_LOW_VAL, HCI_UTRLBA);
 	ufshcd_writel(hba, UTRLBA_HIGH_VAL, HCI_UTRLBAU);
 
-	ufshcd_writel(hba, /*TXPRDT_ENTRY_SIZE_VAL*/ 0xC, HCI_TXPRDT_ENTRY_SIZE);
-	ufshcd_writel(hba, /*RXPRDT_ENTRY_SIZE_VAL*/ 0xC, HCI_RXPRDT_ENTRY_SIZE);
+	ufshcd_writel(hba, 0xC, HCI_TXPRDT_ENTRY_SIZE);
+	ufshcd_writel(hba, 0xC, HCI_RXPRDT_ENTRY_SIZE);
 
 	ufshcd_writel(hba, 0x1, HCI_UTMRLRSR);
 	ufshcd_writel(hba, 0x1, HCI_UTRLRSR);
 
-	//if(wlu_enable == 1U) {
-		//if(debug) printk(KERN_DEBUG "BASIC_LINK_UP::Write Line Unique Feature Enable");
-		//axidma_rwdataburstlen = ((unsigned int)1<<31U) | ((unsigned int)wlu_burst_len<<27U) | 0x3U;
-	//} else {
-		axidma_rwdataburstlen = no_of_beat_burst;
-	//}
-
-	//if(hci_buffering_enable == 1) {
-		//if(debug) printk(KERN_DEBUG "BASIC_LINK_UP::Hci Buffering Feature Enable");
-		//axidma_rwdataburstlen = (axidma_rwdataburstlen & 0xFFFFFFF0) | no_of_beat_burst;
-	//} else {
-		axidma_rwdataburstlen = (axidma_rwdataburstlen & 0xFFFFFFF0);
-	//}
-
-	//if((hci_buffering_enable == 1) || (wlu_enable == 1)) {
-	//	ufshcd_writel(hba, axidma_rwdataburstlen, HCI_AXIDMA_RWDATA_BURST_LEN);
-	//}
+	axidma_rwdataburstlen = no_of_beat_burst;
+	axidma_rwdataburstlen = (axidma_rwdataburstlen & 0xFFFFFFF0);
 
 	tcc_ufs_smu_setting(hba);
 
@@ -460,13 +510,13 @@ static int ufs_tcc_link_startup_notify(struct ufs_hba *hba,
 	int err = 0;
 
 	switch (status) {
-		case PRE_CHANGE:
-			break;
-		case POST_CHANGE:
-			err = ufs_tcc_link_startup_post_change(hba);
-			break;
-		default:
-			break;
+	case PRE_CHANGE:
+		break;
+	case POST_CHANGE:
+		err = ufs_tcc_link_startup_post_change(hba);
+		break;
+	default:
+		break;
 	}
 
 	return err;
@@ -485,15 +535,9 @@ static int ufs_tcc_init(struct ufs_hba *hba)
 
 	host = devm_kzalloc(dev, sizeof(*host), GFP_KERNEL);
 	if (host == NULL) {
-		dev_err(dev, "%s: no memory for telechips ufs host\n", __func__);
 		return -ENOMEM;
 	}
-	hba->quirks |= 0x00000080U;//<-- is UFSHCD_QUIRK_PRDT_BYTE_GRAN;
-			//UFSHCI_QUIRK_SKIP_INTR_AGGR |
-			//UFSHCD_QUIRK_UNRESET_INTR_AGGR |
-			//UFSHCD_QUIRK_BROKEN_REQ_LIST_CLR |
-			//UFSHCD_QUIRK_GET_UPMCRS_DIRECT |
-			//UFSHCD_QUIRK_GET_GENERRCODE_DIRECT;
+	hba->quirks |= 0x00000080U;
 
 	host->hba = hba;
 	ufshcd_set_variant(hba, host);
@@ -509,34 +553,35 @@ static int ufs_tcc_init(struct ufs_hba *hba)
 		return err;
 	}
 
-	//ufs_tcc_clk_init(hba);
-
-	//ufs_tcc_soc_init(hba);
-
 	return 0;
 }
 static int ufs_tcc_suspend(struct ufs_hba *hba, enum ufs_pm_op pm_op)
 {
-    struct ufs_tcc_host *host = ufshcd_get_variant(hba);
-   int ret = 0;
+	struct ufs_tcc_host *host = ufshcd_get_variant(hba);
+	int ret = 0;
 
-   ufshcd_writel(hba, 0x0, HCI_HCE);
-   if (ufshcd_is_runtime_pm(pm_op))
-       return 0;
-   if (host->in_suspend) {
-       WARN_ON(1);
-       return 0;
-   }
-   host->in_suspend = true;
-   return ret;
+	ufshcd_writel(hba, 0x0, HCI_HCE);
+	if (ufshcd_is_runtime_pm(pm_op))
+		return 0;
+	if (host->in_suspend) {
+		WARN_ON(1);
+		return 0;
+	}
+	host->in_suspend = true;
+	return ret;
 }
 static int ufs_tcc_resume(struct ufs_hba *hba, enum ufs_pm_op pm_op)
 {
 	struct ufs_tcc_host *host = ufshcd_get_variant(hba);
 	int ret = 0;
-	ufs_sbus_config_clr_bits(host, SBUS_CONFIG_SWRESETN_UFS_HCI | SBUS_CONFIG_SWRESETN_UFS_PHY, SBUS_CONFIG_SWRESETN);
+
+	ufs_sbus_config_clr_bits(host,
+		SBUS_CONFIG_SWRESETN_UFS_HCI | SBUS_CONFIG_SWRESETN_UFS_PHY,
+		SBUS_CONFIG_SWRESETN);
 	mdelay(1);
-	ufs_sbus_config_set_bits(host, SBUS_CONFIG_SWRESETN_UFS_HCI | SBUS_CONFIG_SWRESETN_UFS_PHY, SBUS_CONFIG_SWRESETN);
+	ufs_sbus_config_set_bits(host,
+		SBUS_CONFIG_SWRESETN_UFS_HCI | SBUS_CONFIG_SWRESETN_UFS_PHY,
+		SBUS_CONFIG_SWRESETN);
 	ufshcd_writel(hba, 0x1, HCI_MPHY_REFCLK_SEL);
 	host->in_suspend = false;
 	return ret;

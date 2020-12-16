@@ -23,6 +23,7 @@
 #include <media/v4l2-device.h>
 
 #include <video/tcc/tcc_cam_ioctrl.h>
+#include <video/tcc/tcc_mem_ioctl.h>
 
 #include "tccvin_common.h"
 #include "tccvin_core.h"
@@ -246,7 +247,6 @@ unsigned int tccvin_core_poll(struct file * file, struct poll_table_struct * wai
 	return 0;
 }
 
-extern int range_is_allowed(unsigned long pfn, unsigned long size);
 int tccvin_core_mmap(struct file * file, struct vm_area_struct * vma) {
 	if(range_is_allowed(vma->vm_pgoff, vma->vm_end - vma->vm_start) < 0) {
 		loge("this address is not allowed\n");

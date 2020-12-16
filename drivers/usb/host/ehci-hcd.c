@@ -35,6 +35,7 @@
 #include <linux/interrupt.h>
 #include <linux/usb.h>
 #include <linux/usb/hcd.h>
+#include <linux/usb/otg.h>
 #include <linux/moduleparam.h>
 #include <linux/dma-mapping.h>
 #include <linux/debugfs.h>
@@ -701,29 +702,31 @@ EXPORT_SYMBOL_GPL(ehci_setup);
 
 int ehci_set_test_mode(struct ehci_hcd *ehci, int mode)
 {
-	u32             reg;
+	u32 reg;
 
-    reg = ehci_readl(ehci, &ehci->regs->port_status[0]);
-    printk("[INFO][USB] @0x%08X: 0x%08X\n",(unsigned int)&ehci->regs->port_status[0], reg);
-    reg &= ~EHCI_PORTPMSC_TESTMODE_MASK;
+	reg = ehci_readl(ehci, &ehci->regs->port_status[0]);
+	pr_info("[INFO][USB] @0x%08lx: 0x%08X\n",
+			(unsigned long)&ehci->regs->port_status[0], reg);
+	reg &= ~EHCI_PORTPMSC_TESTMODE_MASK;
 
-    switch (mode) {
-    	case TEST_J:
-        case TEST_K:
-        case TEST_SE0_NAK:
-        case TEST_PACKET:
-        case TEST_FORCE_EN:
-        	ehci_quiesce(ehci);
-            reg |= mode << 16;
-            break;
-        default:
-            break;
+	switch (mode) {
+	case TEST_J:
+	case TEST_K:
+	case TEST_SE0_NAK:
+	case TEST_PACKET:
+	case TEST_FORCE_EN:
+		ehci_quiesce(ehci);
+		reg |= mode << 16;
+		break;
+	default:
+		break;
 	}
 
-    ehci_writel(ehci, reg, &ehci->regs->port_status[0]);
-    udelay(100);
-    reg = ehci_readl(ehci, &ehci->regs->port_status[0]);
-    printk("[INFO][USB] @0x%08X: 0x%08X\n", (unsigned int)&ehci->regs->port_status[0], reg);
+	ehci_writel(ehci, reg, &ehci->regs->port_status[0]);
+	udelay(100);
+	reg = ehci_readl(ehci, &ehci->regs->port_status[0]);
+	pr_info("[INFO][USB] @0x%08lX: 0x%08X\n",
+			(unsigned long)&ehci->regs->port_status[0], reg);
 	return 0;
 }
 EXPORT_SYMBOL_GPL(ehci_set_test_mode);
@@ -1276,7 +1279,8 @@ static const struct hc_driver ehci_hc_driver = {
 	.free_dev =		ehci_remove_device,
 };
 
-const struct hc_driver* get_ehci_hcd_driver(void) {
+const struct hc_driver *get_ehci_hcd_driver(void)
+{
 	return &ehci_hc_driver;
 }
 EXPORT_SYMBOL_GPL(get_ehci_hcd_driver);
@@ -1350,12 +1354,11 @@ static int __init ehci_hcd_init(void)
 	if (usb_disabled())
 		return -ENODEV;
 
-	printk(KERN_INFO "[INFO][USB] %s: " DRIVER_DESC "\n", hcd_name);
+	pr_info("[INFO][USB] %s: " DRIVER_DESC "\n", hcd_name);
 	set_bit(USB_EHCI_LOADED, &usb_hcds_loaded);
 	if (test_bit(USB_UHCI_LOADED, &usb_hcds_loaded) ||
 			test_bit(USB_OHCI_LOADED, &usb_hcds_loaded))
-		printk(KERN_WARNING "[WARN][USB] Warning! ehci_hcd should always be loaded"
-				" before uhci_hcd and ohci_hcd, not after\n");
+		pr_info("[WARN][USB] Warning! ehci_hcd should always be loaded before uhci_hcd and ohci_hcd, not after\n");
 
 	pr_debug("[DEBUG][USB] %s: block sizes: qh %zd qtd %zd itd %zd sitd %zd\n",
 		 hcd_name,

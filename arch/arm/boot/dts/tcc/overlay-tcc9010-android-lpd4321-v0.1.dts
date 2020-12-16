@@ -17,6 +17,8 @@
 #include <dt-bindings/power/telechips,boot-mode.h>
 #include <dt-bindings/gpio/gpio.h>
 
+#include "tcc-pmap-901x-android-customized.dtsi"
+
 #include "tcc-pmap-common.dtsi"
 
 #include "tcc9010-android-lpd4321-v0.1.dts"

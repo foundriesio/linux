@@ -3,9 +3,12 @@
 #
 config TCC_GMAC
 	tristate "Telechips 10/100/1000 Ethernet Driver"
-	depends on ARCH_TCC893X || ARCH_TCC896X || ARCH_TCC897X || ARCH_TCC898X || ARCH_TCC570X || ARCH_TCC802X || ARCH_TCC899X || ARCH_TCC803X || ARCH_TCC901X || ARCH_TCC805X
+	depends on ARCH_TCC893X || ARCH_TCC896X || ARCH_TCC897X || \
+		ARCH_TCC898X || ARCH_TCC570X || \
+		ARCH_TCC802X || ARCH_TCC899X || \
+		ARCH_TCC803X || ARCH_TCC901X
 	select CRC32
-	select MII 
+	select MII
 	---help---
 	  Support for Telechips 10/100/1000 Ethernet Driver
 
@@ -17,7 +20,8 @@ config TCC_GMAC_DA
 config TCC_GMAC_FQTSS_SUPPORT
     bool "Support FQTSS(IEEE 802.1Qav)"
 	help
-    	Support Forwaring and Queuing Enhancements for Time-Sensitive Streams(IEEE 802.1Qav)
+    	Support Forwaring and Queuing Enhancements for
+	Time-Sensitive Streams(IEEE 802.1Qav)
     depends on TCC_GMAC
     default n
 
@@ -30,14 +34,6 @@ config TCC_GMAC_PTP
     	Support Precision Time Protocol(IEEE 1588-2008)
     depends on TCC_GMAC
     default n
-
-config TCC_GMAC_JUMBO_PACKET
-    bool "Support Jumbo Packet"
-	help
-	Support Jumbo Packet. MTU is 9000 byte and max frame length is 9018 byte.
-    depends on TCC_GMAC
-    default n
-   
 
 config TCC8990_MPW2_SOCKET
 	bool "USE TCC8990 MPW2 SOCKET TYPE BOARD."

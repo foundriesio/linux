@@ -17,7 +17,7 @@
  * 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  */
 #include <linux/kernel.h>
-#include <asm/io.h>
+#include <linux/io.h>
 #include <linux/of.h>
 #include <linux/of_address.h>
 #include <linux/of_device.h>
@@ -336,7 +336,11 @@ void GRE_2D_SetOperator(G2D_OP_TYPE op_set, unsigned short alpha , unsigned char
 GRE_2D_SetOperatorCtrl
  graphic engine operator control register setting
 -------------------------------------------------------------------*/
-void GRE_2D_SetOperatorCtrl(G2D_OP_TYPE op_set, G2D_OP_ACON ACON1, G2D_OP_ACON ACON0, G2D_OP_CCON CCON1, G2D_OP_CCON CCON0, G2D_OP_ATUNE ATUNE, G2D_OP1_CHROMA CSEL,GE_ROP_TYPE op )
+void GRE_2D_SetOperatorCtrl(G2D_OP_TYPE op_set,
+	G2D_OP_ACON ACON1, G2D_OP_ACON ACON0,
+	G2D_OP_CCON CCON1, G2D_OP_CCON CCON0,
+	G2D_OP_ATUNE ATUNE, G2D_OP1_CHROMA CSEL,
+	GE_ROP_TYPE op)
 {
 	//POVERLAYMIXER pHwOVERLAYMIXER;
 	//pHwOVERLAYMIXER  = (volatile POVERLAYMIXER)tcc_p2v(HwOVERLAYMIXER_BASE);
@@ -588,7 +592,8 @@ void GRE_2D_ClutCtrl(unsigned int ch, unsigned int index, unsigned int data)
 
 	if(index > 256)
 	{
-		pr_err("[ERR][G2D] Invalid index value(%d)\n",__func__, __LINE__, index);
+		pr_err("[ERR][G2D] [%s:%d] Invalid index value(%d)\n",
+				__func__, __LINE__, index);
 		return;
 	}
 
@@ -609,7 +614,8 @@ void GRE_2D_ClutCtrl(unsigned int ch, unsigned int index, unsigned int data)
 		//pClut[index] = data;
 	}
 	else {
-		pr_err("[ERR][G2D] [%s:%d] invalid ch for clut\n", __func__, __LINE__);
+		pr_err("[ERR][G2D] [%s:%d] invalid ch for clut\n",
+				__func__, __LINE__);
 	}
 }
 #endif /* TCC_OVERLAY_MIXER_CLUT_SUPPORT */

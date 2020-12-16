@@ -50,7 +50,7 @@
 #include "tcc_screen_share.h"
 
 #define TCC_SCRSHARE_DEV_MINOR		0
-#define OVERLAY_DRIVER "/dev/overlay"
+#define OVERLAY_DRIVER "/dev/overlay1"
 
 typedef struct _tcc_scrshare_tx_t {
 	struct mutex lock;

@@ -1,10 +1,5 @@
 /*
- * linux/include/video/tcc/vioc_dv_cfg.h
- * Author:  <linux@telechips.com>
- * Created: June 10, 2008
- * Description: TCC VIOC h/w block 
- *
- * Copyright (C) 2008-2009 Telechips
+ * Copyright (C) Telechips, Inc.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -21,7 +16,6 @@
  * to the Free Software Foundation, Inc.,
  * 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  */
-
 #ifdef CONFIG_ARCH_TCC898X
 #include "tcc898x/vioc_dv_cfg.h"
 #endif
@@ -38,6 +32,6 @@
 #include "tcc901x/vioc_dv_cfg.h"
 #endif
 
-#define DV_FB_INT			(1<<INT_EN_R_TX_VS_SHIFT)
-#define DV_VIDEO_INT		(1<<INT_EN_R_TX_VE_SHIFT) // INT_EN_F_TX_VS_SHIFT
-#define DV_VIDEO_INT_SUB	(1<<INT_EN_R_TX_HE_SHIFT) // INT_EN_F_TX_VS_SHIFT
+#define DV_FB_INT        (1<<INT_EN_R_TX_VS_SHIFT)
+#define DV_VIDEO_INT     (1<<INT_EN_R_TX_VE_SHIFT) // INT_EN_F_TX_VS_SHIFT
+#define DV_VIDEO_INT_SUB (1<<INT_EN_R_TX_HE_SHIFT) // INT_EN_F_TX_VS_SHIFT

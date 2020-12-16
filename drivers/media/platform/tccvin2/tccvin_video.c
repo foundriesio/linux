@@ -736,10 +736,11 @@ int tccvin_set_pgl(struct tccvin_streaming *vdev)
 	void __iomem	*rdma		=
 		VIOC_RDMA_GetAddress(vdev->cif.vioc_path.pgl);
 
-	unsigned int	width		= vdev->cur_frame->wWidth;
-	unsigned int	height		= vdev->cur_frame->wHeight;
-	unsigned int	format		= PGL_FORMAT;
-	unsigned int	buf_addr	= vdev->cif.pmap_pgl.base;
+	uint16_t	width		= vdev->cur_frame->wWidth;
+	uint16_t	height		= vdev->cur_frame->wHeight;
+	uint32_t	format		= PGL_FORMAT;
+	uint32_t	buf_addr	= vdev->cif.pmap_pgl.base;
+
 
 	loge("RDMA: 0x%p, size[%d x %d], format[%d]\n",
 		rdma, width, height, format);
@@ -812,6 +813,7 @@ static int32_t tccvin_set_vin(struct tccvin_streaming *vdev)
 
 	logd("data_order:	%d\n", data_order);
 	logd("data_format:	%d\n", data_format);
+	logd("stream_enable:	%d\n", stream_enable);
 	logd("gen_field_en:	%d\n", gen_field_en);
 	logd("de_low:	%d\n", de_low);
 	logd("vs_mask:		%d\n", vs_mask);

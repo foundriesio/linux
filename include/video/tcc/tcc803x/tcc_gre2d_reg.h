@@ -1,5 +1,5 @@
 /*
- * Copyright (C) Telechips Inc.
+ * Copyright (C) Telechips, Inc.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -16,13 +16,12 @@
  * to the Free Software Foundation, Inc.,
  * 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  */
-
 #ifndef _PLATFORM_REG_PHYSICAL_H_
 #define _PLATFORM_REG_PHYSICAL_H_
 
-/************************************************************************
-*    Bit Field Definition
-************************************************************************/
+/*
+ * Bit Field Definition
+ */
 #define    Hw37                                 (1LL << 37)
 #define    Hw36                                 (1LL << 36)
 #define    Hw35                                 (1LL << 35)
@@ -63,8 +62,7 @@
 #define    Hw0                                  0x00000001
 #define    HwZERO                               0x00000000
 
-/*******************************************************************************
- *******************************************************************************/
+
 #define HwOVERLAYMIXER_BASE             (0x72400000)		//TCC893x
 
 #define HwGE_FCH_SSB                    (Hw24+Hw25+Hw26)                    // Operation Mode
@@ -102,7 +100,7 @@
 
 // Source Operator Pattern
 #define HwGE_OP_ALL                     (HwGE_ALPHA + HwGE_PAT_RY + HwGE_PAT_GU + HwGE_PAT_BV)
-#define HwGE_ALPHA                      (HwGE_PAT_GU + HwGE_PAT_BV )                // ALPHA VALUE
+#define HwGE_ALPHA                      (HwGE_PAT_GU + HwGE_PAT_BV)                // ALPHA VALUE
 #define HwGE_PAT_RY                     (Hw16+Hw17+Hw18+Hw19+Hw20+Hw21+Hw22+Hw23)   // Pattern Value RED,   Y
 #define HwGE_PAT_GU                     (Hw8+Hw9+Hw10+Hw11+Hw12+Hw13+Hw14+Hw15)     // Pattern Value GREEN, U
 #define HwGE_PAT_BV                     (Hw0+Hw1+Hw2+Hw3+Hw4+Hw5+Hw6+Hw7)           // Pattern Value BULE,  V
@@ -112,8 +110,8 @@
 #define HwGE_OP_CTRL_ACON0              (Hw26+Hw25+Hw24)                    // Alpha-value control 0
 #define HwGE_OP_CTRL_CCON1              (Hw23+Hw22+Hw21+Hw20)               // color control 1
 #define HwGE_OP_CTRL_CCON0              (Hw19+Hw18+Hw17+Hw16)               // color control 1
-#define HwGE_OP_CTRL_ATUNE              (Hw13+Hw12)                         // Alpha value tuning 
-#define HwGE_OP_CTRL_CSEL               (Hw9+Hw8)                           // chroma-key 
+#define HwGE_OP_CTRL_ATUNE              (Hw13+Hw12)                         // Alpha value tuning
+#define HwGE_OP_CTRL_CSEL               (Hw9+Hw8)                           // chroma-key
 #define HwGE_OP_CTRL_OPMODE             (Hw4+Hw3+Hw2+Hw1+Hw0)               // operation mode
 
 // Back -End Channel Control
@@ -137,95 +135,100 @@
 #define HwGE_GE_IREQ_IRQ                Hw0
 
 typedef struct {
-    unsigned VALUE          :32;
+	unsigned VALUE          :32;
 } TCC_DEF32BIT_IDX_TYPE;
 
 typedef union {
-    unsigned long           nREG;
-    TCC_DEF32BIT_IDX_TYPE   bREG;
+	unsigned long           nREG;
+	TCC_DEF32BIT_IDX_TYPE   bREG;
 } TCC_DEF32BIT_TYPE;
 
 
-typedef struct _OVERLAYMIXER{
-    volatile TCC_DEF32BIT_TYPE  FCH0_SADDR0;    // 0x000  R/W  0x00000000   Front-End Channel 0 Source Address 0
-    volatile TCC_DEF32BIT_TYPE  FCH0_SADDR1;    // 0x004  R/W  0x00000000   Front-End Channel 0 Source Address 1
-    volatile TCC_DEF32BIT_TYPE  FCH0_SADDR2;    // 0x008  R/W  0x00000000   Front-End Channel 0 Source Address 2
-    volatile TCC_DEF32BIT_TYPE  FCH0_SFSIZE;    // 0x00C  R/W  0x00000000   Front-End Channel 0 Source Frame Pixel Size
-    volatile TCC_DEF32BIT_TYPE  FCH0_SOFF;      // 0x010  R/W  0x00000000   Front-End Channel 0 Source Pixel Offset
-    volatile TCC_DEF32BIT_TYPE  FCH0_SISIZE;    // 0x014  R/W  0x00000000   Front-End Channel 0 Source Image Pixel Size
-    volatile TCC_DEF32BIT_TYPE  FCH0_WOFF;      // 0x018  R/W  0x00000000   Front-End Channel 0 Window Pixel Offset
-    volatile TCC_DEF32BIT_TYPE  FCH0_SCTRL;     // 0x01C  R/W  0x00000000   Front-End Channel 0 Control
+typedef struct _OVERLAYMIXER {
+	volatile TCC_DEF32BIT_TYPE  FCH0_SADDR0;    // 0x000  R/W  0x00000000   Front-End Channel 0 Source Address 0
+	volatile TCC_DEF32BIT_TYPE  FCH0_SADDR1;    // 0x004  R/W  0x00000000   Front-End Channel 0 Source Address 1
+	volatile TCC_DEF32BIT_TYPE  FCH0_SADDR2;    // 0x008  R/W  0x00000000   Front-End Channel 0 Source Address 2
+	volatile TCC_DEF32BIT_TYPE  FCH0_SFSIZE;    // 0x00C  R/W  0x00000000   Front-End Channel 0 Source Frame Pixel Size
+	volatile TCC_DEF32BIT_TYPE  FCH0_SOFF;      // 0x010  R/W  0x00000000   Front-End Channel 0 Source Pixel Offset
+	volatile TCC_DEF32BIT_TYPE  FCH0_SISIZE;    // 0x014  R/W  0x00000000   Front-End Channel 0 Source Image Pixel Size
+	volatile TCC_DEF32BIT_TYPE  FCH0_WOFF;      // 0x018  R/W  0x00000000   Front-End Channel 0 Window Pixel Offset
+	volatile TCC_DEF32BIT_TYPE  FCH0_SCTRL;     // 0x01C  R/W  0x00000000   Front-End Channel 0 Control
 
-    volatile TCC_DEF32BIT_TYPE  FCH1_SADDR0;    // 0x020  R/W  0x00000000   Front-End Channel 1 Source Address 0
-    volatile TCC_DEF32BIT_TYPE  FCH1_SADDR1;    // 0x024  R/W  0x00000000   Front-End Channel 1 Source Address 1
-    volatile TCC_DEF32BIT_TYPE  FCH1_SADDR2;    // 0x028  R/W  0x00000000   Front-End Channel 1 Source Address 2
-    volatile TCC_DEF32BIT_TYPE  FCH1_SFSIZE;    // 0x02C  R/W  0x00000000   Front-End Channel 1 Source Frame Pixel Size
-    volatile TCC_DEF32BIT_TYPE  FCH1_SOFF;      // 0x030  R/W  0x00000000   Front-End Channel 1 Source Pixel Offset
-    volatile TCC_DEF32BIT_TYPE  FCH1_SISIZE;    // 0x034  R/W  0x00000000   Front-End Channel 1 Source Image Pixel Size
-    volatile TCC_DEF32BIT_TYPE  FCH1_WOFF;      // 0x038  R/W  0x00000000   Front-End Channel 1 Window Pixel Offset
-    volatile TCC_DEF32BIT_TYPE  FCH1_SCTRL;     // 0x03C  R/W  0x00000000   Front-End Channel 1 Control
-/*
-    volatile TCC_DEF32BIT_TYPE  FCH2_SADDR0;    // 0x040  R/W  0x00000000   Front-End Channel 2 Source Address 0
-    volatile TCC_DEF32BIT_TYPE  FCH2_SADDR1;    // 0x044  R/W  0x00000000   Front-End Channel 2 Source Address 1
-    volatile TCC_DEF32BIT_TYPE  FCH2_SADDR2;    // 0x048  R/W  0x00000000   Front-End Channel 2 Source Address 2
-    volatile TCC_DEF32BIT_TYPE  FCH2_SFSIZE;    // 0x04C  R/W  0x00000000   Front-End Channel 2 Source Frame Pixel Size
-    volatile TCC_DEF32BIT_TYPE  FCH2_SOFF;      // 0x050  R/W  0x00000000   Front-End Channel 2 Source Pixel Offset
-    volatile TCC_DEF32BIT_TYPE  FCH2_SISIZE;    // 0x054  R/W  0x00000000   Front-End Channel 2 Source Image Pixel Size
-    volatile TCC_DEF32BIT_TYPE  FCH2_WOFF;      // 0x058  R/W  0x00000000   Front-End Channel 2 Window Pixel Offset
-    volatile TCC_DEF32BIT_TYPE  FCH2_SCTRL;     // 0x05C  R/W  0x00000000   Front-End Channel 2 Control
+	volatile TCC_DEF32BIT_TYPE  FCH1_SADDR0;    // 0x020  R/W  0x00000000   Front-End Channel 1 Source Address 0
+	volatile TCC_DEF32BIT_TYPE  FCH1_SADDR1;    // 0x024  R/W  0x00000000   Front-End Channel 1 Source Address 1
+	volatile TCC_DEF32BIT_TYPE  FCH1_SADDR2;    // 0x028  R/W  0x00000000   Front-End Channel 1 Source Address 2
+	volatile TCC_DEF32BIT_TYPE  FCH1_SFSIZE;    // 0x02C  R/W  0x00000000   Front-End Channel 1 Source Frame Pixel Size
+	volatile TCC_DEF32BIT_TYPE  FCH1_SOFF;      // 0x030  R/W  0x00000000   Front-End Channel 1 Source Pixel Offset
+	volatile TCC_DEF32BIT_TYPE  FCH1_SISIZE;    // 0x034  R/W  0x00000000   Front-End Channel 1 Source Image Pixel Size
+	volatile TCC_DEF32BIT_TYPE  FCH1_WOFF;      // 0x038  R/W  0x00000000   Front-End Channel 1 Window Pixel Offset
+	volatile TCC_DEF32BIT_TYPE  FCH1_SCTRL;     // 0x03C  R/W  0x00000000   Front-End Channel 1 Control
 
-    volatile TCC_DEF32BIT_TYPE  FCH3_SADDR0;    // 0x060  R/W  0x00000000   Front-End Channel 3 Source Address 0
-    unsigned :32; unsigned :32;
-    volatile TCC_DEF32BIT_TYPE  FCH3_SFSIZE;    // 0x06C  R/W  0x00000000   Front-End Channel 3 Source Frame Pixel Size
-    volatile TCC_DEF32BIT_TYPE  FCH3_SOFF;      // 0x070  R/W  0x00000000   Front-End Channel 3 Source Pixel Offset
-    volatile TCC_DEF32BIT_TYPE  FCH3_SISIZE;    // 0x074  R/W  0x00000000   Front-End Channel 3 Source Image Pixel Size
-    volatile TCC_DEF32BIT_TYPE  FCH3_WOFF;      // 0x078  R/W  0x00000000   Front-End Channel 3 Window Pixel Offset
-    volatile TCC_DEF32BIT_TYPE  FCH3_SCTRL;     // 0x07C  R/W  0x00000000   Front-End Channel 3 Control
-*/
-    volatile TCC_DEF32BIT_TYPE  S0_CHROMA;      // 0x080  R/W  0x00000000   Source 0 Chroma-Key Parameter
-    volatile TCC_DEF32BIT_TYPE  S0_PAR;         // 0x084  R/W  0x00000000   Source 0 Arithmetic Parameter
-/*
-    volatile TCC_DEF32BIT_TYPE  S1_CHROMA;      // 0x088  R/W  0x00000000   Source 1 Chroma-Key Parameter
-    volatile TCC_DEF32BIT_TYPE  S1_PAR;         // 0x08C  R/W  0x00000000   Source 1 Arithmetic Parameter
+//	volatile TCC_DEF32BIT_TYPE  FCH2_SADDR0;    // 0x040  R/W  0x00000000   Front-End Channel 2 Source Address 0
+//	volatile TCC_DEF32BIT_TYPE  FCH2_SADDR1;    // 0x044  R/W  0x00000000   Front-End Channel 2 Source Address 1
+//	volatile TCC_DEF32BIT_TYPE  FCH2_SADDR2;    // 0x048  R/W  0x00000000   Front-End Channel 2 Source Address 2
+//	volatile TCC_DEF32BIT_TYPE  FCH2_SFSIZE;    // 0x04C  R/W  0x00000000   Front-End Channel 2 Source Frame Pixel Size
+//	volatile TCC_DEF32BIT_TYPE  FCH2_SOFF;      // 0x050  R/W  0x00000000   Front-End Channel 2 Source Pixel Offset
+//	volatile TCC_DEF32BIT_TYPE  FCH2_SISIZE;    // 0x054  R/W  0x00000000   Front-End Channel 2 Source Image Pixel Size
+//	volatile TCC_DEF32BIT_TYPE  FCH2_WOFF;      // 0x058  R/W  0x00000000   Front-End Channel 2 Window Pixel Offset
+//	volatile TCC_DEF32BIT_TYPE  FCH2_SCTRL;     // 0x05C  R/W  0x00000000   Front-End Channel 2 Control
 
-    volatile TCC_DEF32BIT_TYPE  S2_CHROMA;      // 0x090  R/W  0x00000000   Source 2 Chroma-Key Parameter
-    volatile TCC_DEF32BIT_TYPE  S2_PAR;         // 0x094  R/W  0x00000000   Source 2 Arithmetic Parameter
-    volatile TCC_DEF32BIT_TYPE  S3_CHROMA;      // 0x098  R/W  0x00000000   Source 3 Chroma-Key Parameter
-    volatile TCC_DEF32BIT_TYPE  S3_PAR;         // 0x09C  R/W  0x00000000   Source 3 Arithmetic Parameter
-*/
-    volatile TCC_DEF32BIT_TYPE  SF_CTRL;        // 0x0A0  R/W  0x00000000   Source Function Control Register
-    volatile TCC_DEF32BIT_TYPE  SA_CTRL;        // 0x0A4  R/W  0x00000000   Source Arithmetic Control Register
-    unsigned :32; unsigned :32;
-    volatile TCC_DEF32BIT_TYPE  OP0_ALPHA;      // 0x0B0  R/W  0x00000000   Source Operator 0 Alpha
-//    volatile TCC_DEF32BIT_TYPE  OP1_ALPHA;      // 0x0B4  R/W  0x00000000   Source Operator 1 Alpha
-//    volatile TCC_DEF32BIT_TYPE  OP2_ALPHA;      // 0x0B4  R/W  0x00000000   Source Operator 2 Alpha
-    unsigned :32;
-    volatile TCC_DEF32BIT_TYPE  OP0_PAT;        // 0x0C0  R/W  0x00000000   Source Operator 0 Pattern
-//    volatile TCC_DEF32BIT_TYPE  OP1_PAT;        // 0x0C4  R/W  0x00000000   Source Operator 1 Pattern
-//    volatile TCC_DEF32BIT_TYPE  OP2_PAT;        // 0x0C8  R/W  0x00000000   Source Operator 2 Pattern
-    unsigned :32;
-    volatile TCC_DEF32BIT_TYPE  OP0_CTRL;       // 0x0D0  R/W  0x00000000   Source Operation 0 Control Register
-//    volatile TCC_DEF32BIT_TYPE  OP1_CTRL;       // 0x0D4  R/W  0x00000000   Source Operation 1 Control Register
-//    volatile TCC_DEF32BIT_TYPE  OP2_CTRL;       // 0x0D8  R/W  0x00000000   Source Operation 2 Control Register
-    unsigned :32;
-    volatile TCC_DEF32BIT_TYPE  BCH_DADDR0;     // 0x0E0  R/W  0x00000000   Back-End Channel Destination Address 0
-    volatile TCC_DEF32BIT_TYPE  BCH_DADDR1;     // 0x0E4  R/W  0x00000000   Back-End Channel Destination Address 1
-    volatile TCC_DEF32BIT_TYPE  BCH_DADDR2;     // 0x0E8  R/W  0x00000000   Back-End Channel Destination Address 2
-    volatile TCC_DEF32BIT_TYPE  BCH_DFSIZE;     // 0x0EC  R/W  0x00000000   Back-End Channel Destination Frame Pixel Size
-    volatile TCC_DEF32BIT_TYPE  BCH_DOFF;       // 0x0F0  R/W  0x00000000   Back-End Channel Destination Pixel Offset
-    volatile TCC_DEF32BIT_TYPE  BCH_DCTRL;      // 0x0F4  R/W  0x00000000   Back-End Channel Control
-    unsigned :32; unsigned :32;
-    volatile TCC_DEF32BIT_TYPE  BCH_DDMAT0;     // 0x100  R/W  0x00000000   Back-End Channel Destination Dither Matrix 0
-    volatile TCC_DEF32BIT_TYPE  BCH_DDMAT1;     // 0x104  R/W  0x00000000   Back-End Channel Destination Dither Matrix 1
-    volatile TCC_DEF32BIT_TYPE  BCH_DDMAT2;     // 0x108  R/W  0x00000000   Back-End Channel Destination Dither Matrix 2
-    volatile TCC_DEF32BIT_TYPE  BCH_DDMAT3;     // 0x10C  R/W  0x00000000   Back-End Channel Destination Dither Matrix 3
-    volatile TCC_DEF32BIT_TYPE  OM_CTRL;        // 0x110  R/W  0x00000000   Overlay Mixer Control
-    volatile TCC_DEF32BIT_TYPE  OM_IREQ;        // 0x114  R/W  0x00000000   Overlay Mixer Interrupt Request
-    unsigned :32; unsigned :32;
-    TCC_DEF32BIT_TYPE           NOTDEFINED[184];  // 0x120 - 0x3FF //kch 120->184
-    volatile TCC_DEF32BIT_TYPE  FCH0_LUT[256];  // 0x400  R/W  -            Front-End Channel 0 Lookup Table
-    volatile TCC_DEF32BIT_TYPE  FCH1_LUT[256];  // 0x800  R/W  -            Front-End Channel 1 Lookup Table
-//    volatile TCC_DEF32BIT_TYPE  FCH2_LUT[256];  // 0xC00  R/W  -            Front-End Channel 2 Lookup Table
+//	volatile TCC_DEF32BIT_TYPE  FCH3_SADDR0;    // 0x060  R/W  0x00000000   Front-End Channel 3 Source Address 0
+//	unsigned :32; unsigned :32;
+//	volatile TCC_DEF32BIT_TYPE  FCH3_SFSIZE;    // 0x06C  R/W  0x00000000   Front-End Channel 3 Source Frame Pixel Size
+//	volatile TCC_DEF32BIT_TYPE  FCH3_SOFF;      // 0x070  R/W  0x00000000   Front-End Channel 3 Source Pixel Offset
+//	volatile TCC_DEF32BIT_TYPE  FCH3_SISIZE;    // 0x074  R/W  0x00000000   Front-End Channel 3 Source Image Pixel Size
+//	volatile TCC_DEF32BIT_TYPE  FCH3_WOFF;      // 0x078  R/W  0x00000000   Front-End Channel 3 Window Pixel Offset
+//	volatile TCC_DEF32BIT_TYPE  FCH3_SCTRL;     // 0x07C  R/W  0x00000000   Front-End Channel 3 Control
+
+	volatile TCC_DEF32BIT_TYPE  S0_CHROMA;      // 0x080  R/W  0x00000000   Source 0 Chroma-Key Parameter
+	volatile TCC_DEF32BIT_TYPE  S0_PAR;         // 0x084  R/W  0x00000000   Source 0 Arithmetic Parameter
+
+//	volatile TCC_DEF32BIT_TYPE  S1_CHROMA;      // 0x088  R/W  0x00000000   Source 1 Chroma-Key Parameter
+//	volatile TCC_DEF32BIT_TYPE  S1_PAR;         // 0x08C  R/W  0x00000000   Source 1 Arithmetic Parameter
+
+//	volatile TCC_DEF32BIT_TYPE  S2_CHROMA;      // 0x090  R/W  0x00000000   Source 2 Chroma-Key Parameter
+//	volatile TCC_DEF32BIT_TYPE  S2_PAR;         // 0x094  R/W  0x00000000   Source 2 Arithmetic Parameter
+//	volatile TCC_DEF32BIT_TYPE  S3_CHROMA;      // 0x098  R/W  0x00000000   Source 3 Chroma-Key Parameter
+//	volatile TCC_DEF32BIT_TYPE  S3_PAR;         // 0x09C  R/W  0x00000000   Source 3 Arithmetic Parameter
+
+	volatile TCC_DEF32BIT_TYPE  SF_CTRL;        // 0x0A0  R/W  0x00000000   Source Function Control Register
+	volatile TCC_DEF32BIT_TYPE  SA_CTRL;        // 0x0A4  R/W  0x00000000   Source Arithmetic Control Register
+	unsigned int :32;
+	unsigned int :32;
+	volatile TCC_DEF32BIT_TYPE  OP0_ALPHA;      // 0x0B0  R/W  0x00000000   Source Operator 0 Alpha
+//	volatile TCC_DEF32BIT_TYPE  OP1_ALPHA;      // 0x0B4  R/W  0x00000000   Source Operator 1 Alpha
+//	volatile TCC_DEF32BIT_TYPE  OP2_ALPHA;      // 0x0B4  R/W  0x00000000   Source Operator 2 Alpha
+	unsigned int :32;
+	volatile TCC_DEF32BIT_TYPE  OP0_PAT;        // 0x0C0  R/W  0x00000000   Source Operator 0 Pattern
+//	volatile TCC_DEF32BIT_TYPE  OP1_PAT;        // 0x0C4  R/W  0x00000000   Source Operator 1 Pattern
+//	volatile TCC_DEF32BIT_TYPE  OP2_PAT;        // 0x0C8  R/W  0x00000000   Source Operator 2 Pattern
+	unsigned int :32;
+	volatile TCC_DEF32BIT_TYPE  OP0_CTRL;       // 0x0D0  R/W  0x00000000   Source Operation 0 Control Register
+//	volatile TCC_DEF32BIT_TYPE  OP1_CTRL;       // 0x0D4  R/W  0x00000000   Source Operation 1 Control Register
+//	volatile TCC_DEF32BIT_TYPE  OP2_CTRL;       // 0x0D8  R/W  0x00000000   Source Operation 2 Control Register
+	unsigned int :32;
+	volatile TCC_DEF32BIT_TYPE  BCH_DADDR0;     // 0x0E0  R/W  0x00000000   Back-End Channel Destination Address 0
+	volatile TCC_DEF32BIT_TYPE  BCH_DADDR1;     // 0x0E4  R/W  0x00000000   Back-End Channel Destination Address 1
+	volatile TCC_DEF32BIT_TYPE  BCH_DADDR2;     // 0x0E8  R/W  0x00000000   Back-End Channel Destination Address 2
+	volatile TCC_DEF32BIT_TYPE  BCH_DFSIZE;     // 0x0EC  R/W  0x00000000   Back-End Channel Destination Frame Pixel Size
+	volatile TCC_DEF32BIT_TYPE  BCH_DOFF;       // 0x0F0  R/W  0x00000000   Back-End Channel Destination Pixel Offset
+	volatile TCC_DEF32BIT_TYPE  BCH_DCTRL;      // 0x0F4  R/W  0x00000000   Back-End Channel Control
+	unsigned int :32;
+	unsigned int :32;
+	volatile TCC_DEF32BIT_TYPE  BCH_DDMAT0;     // 0x100  R/W  0x00000000   Back-End Channel Destination Dither Matrix 0
+	volatile TCC_DEF32BIT_TYPE  BCH_DDMAT1;     // 0x104  R/W  0x00000000   Back-End Channel Destination Dither Matrix 1
+	volatile TCC_DEF32BIT_TYPE  BCH_DDMAT2;     // 0x108  R/W  0x00000000   Back-End Channel Destination Dither Matrix 2
+	volatile TCC_DEF32BIT_TYPE  BCH_DDMAT3;     // 0x10C  R/W  0x00000000   Back-End Channel Destination Dither Matrix 3
+	volatile TCC_DEF32BIT_TYPE  OM_CTRL;        // 0x110  R/W  0x00000000   Overlay Mixer Control
+	volatile TCC_DEF32BIT_TYPE  OM_IREQ;        // 0x114  R/W  0x00000000   Overlay Mixer Interrupt Request
+	unsigned int :32;
+	unsigned int :32;
+
+	TCC_DEF32BIT_TYPE           NOTDEFINED[184];  // 0x120 - 0x3FF //kch 120->184
+
+	volatile TCC_DEF32BIT_TYPE  FCH0_LUT[256];  // 0x400  R/W  -            Front-End Channel 0 Lookup Table
+	volatile TCC_DEF32BIT_TYPE  FCH1_LUT[256];  // 0x800  R/W  -            Front-End Channel 1 Lookup Table
+//	volatile TCC_DEF32BIT_TYPE  FCH2_LUT[256];  // 0xC00  R/W  -            Front-End Channel 2 Lookup Table
 } OVERLAYMIXER, *POVERLAYMIXER;
 
 #endif /* _PLATFORM_REG_PHYSICAL_H_ */
