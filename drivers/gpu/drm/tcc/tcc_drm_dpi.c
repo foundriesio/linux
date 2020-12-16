@@ -28,9 +28,11 @@
 #include <tcc_drm_address.h>
 #include <tcc_drm_crtc.h>
 #include <tcc_drm_dpi.h>
+#include <tcc_drm_edid.h>
 
 #define LOG_TAG "DRMDPI"
-
+#define CONFIG_DRM_TCC_DPI_PROC
+#define CONFIG_TCC_DRM_SUPPORT_REAL_HPD
 struct drm_detailed_timing_t {
 	unsigned int vic;
 	unsigned int pixelrepetions;
@@ -69,6 +71,7 @@ struct tcc_dpi {
 	#if defined(CONFIG_DRM_TCC_DPI_PROC)
 	struct proc_dir_entry *proc_dir;
 	struct proc_dir_entry *proc_hpd;
+	struct proc_dir_entry *proc_edid;
 	enum drm_connector_status manual_hpd;
 	#endif
 	#if defined(CONFIG_TCC_DP_DRIVER_V1_4)
@@ -91,8 +94,19 @@ static const struct drm_detailed_timing_t drm_detailed_timing[] = {
 	{ 1024,  0,  88200, 0, 1920,   64,   30,   4, 0,  720,  21, 10,  2, 0},
 	/* CUSTOM AV080WSM-NW2 1024x600@60p */
 	{ 1025,  0,  51200, 0, 1024,  313,  147,  19, 0,  600,  37, 25,  2, 0},
+	/* CUSTOM VIRTUAL DEVICE 1920x720@30p */
+	{ 1026,  0,  44100, 0, 1920,   64,   30,   4, 0,  720,  21, 10,  2, 0},
 	{    0,  0,      0, 0,    0,    0,    0,   0, 0,    0,   0,  0,  0, 0},
 };
+
+static inline struct tcc_dpi *connector_to_dpi(struct drm_connector *c)
+{
+	return container_of(c, struct tcc_dpi, connector);
+}
+static inline struct tcc_dpi *encoder_to_dpi(struct drm_encoder *e)
+{
+	return container_of(e, struct tcc_dpi, encoder);
+}
 
 static int drm_detailed_timing_find_index(int vic)
 {
@@ -156,12 +170,6 @@ out:
 	return ret;
 }
 
-#define connector_to_dpi(c) container_of(c, struct tcc_dpi, connector)
-
-static inline struct tcc_dpi *encoder_to_dpi(struct drm_encoder *e)
-{
-	return container_of(e, struct tcc_dpi, encoder);
-}
 #if defined(CONFIG_TCC_DP_DRIVER_V1_4)
 static int tcc_drm_dp_get_hpd_state(struct tcc_dpi *ctx)
 {
@@ -256,8 +264,9 @@ tcc_dpi_detect(struct drm_connector *connector, bool force)
 				connector_status_connected;
 	struct tcc_dpi *ctx = connector_to_dpi(connector);
 
-	if (ctx->panel && ctx->panel->connector == NULL)
+	if (ctx->panel && !ctx->panel->connector) {
 		drm_panel_attach(ctx->panel, &ctx->connector);
+	}
 
 	#if defined(CONFIG_TCC_DP_DRIVER_V1_4)
 	if (ctx->hw_device->connector_type == DRM_MODE_CONNECTOR_DisplayPort) {
@@ -330,7 +339,7 @@ static int tcc_dpi_get_modes(struct drm_connector *connector)
 		goto err_out;
 	}
 	mode = drm_mode_create(connector->dev);
-	if (mode == NULL) {
+	if (!mode) {
 		pr_err(
 			"[ERROR][%s] %s failed to create drm_mode\r\n",
 			LOG_TAG, __func__);
@@ -338,24 +347,27 @@ static int tcc_dpi_get_modes(struct drm_connector *connector)
 	}
 
 	/* step1: Check panels */
-	if (ctx->panel != NULL) {
+	if (ctx->panel) {
 		count = drm_panel_get_modes(ctx->panel);
-		if (count > 0)
+		if (count)
 			goto find_modes;
 	}
 	/* step2: Check detailed timing from device tree */
-	if (ctx->vm != NULL) {
+	if (ctx->vm) {
 		drm_display_mode_from_videomode(ctx->vm, mode);
 		count = 1;
 		goto probed_add_modes;
 	}
 	/* step3: Check kernel config */
-	if (ctx->hw_device == NULL) {
+	if (!ctx->hw_device) {
 		pr_err(
 			"[ERROR][%s] %s hw_device is NULL\r\n",
 			LOG_TAG, __func__);
 		goto err_out;
 	}
+	/* clearn edid property */
+	drm_mode_connector_update_edid_property(connector, NULL);
+
 	switch (ctx->hw_device->vic)  {
 	#if defined(CONFIG_TCC_DP_DRIVER_V1_4)
 	case 0:
@@ -423,6 +435,7 @@ err_out:
 static const struct
 drm_connector_helper_funcs tcc_dpi_connector_helper_funcs = {
 	.get_modes = tcc_dpi_get_modes,
+	.best_encoder = drm_atomic_helper_best_encoder,
 };
 
 static int tcc_dpi_create_connector(
@@ -703,11 +716,54 @@ err_out:
 	return ret;
 }
 
+ssize_t proc_read_edid(
+        struct file *filp, char __user *usr_buf, size_t cnt, loff_t *off_set)
+{
+	struct drm_encoder encoder;
+	struct tcc_dpi *ctx = PDE_DATA(file_inode(filp));
+	struct drm_crtc *crtc = (ctx) ? ctx->encoder.crtc : NULL;
+
+	if (crtc) {
+		struct drm_property_blob *edid_blob = NULL;
+		struct drm_connector *connector =
+			tcc_dpi_find_connector_from_crtc(crtc);
+		if (connector)
+			edid_blob = connector->edid_blob_ptr;
+		if (edid_blob) {
+			int i;
+
+			pr_info(
+				"[INFO][%s] CRTC_ID[%d] length = %d",
+				LOG_TAG, drm_crtc_index(crtc), edid_blob->length);
+			for(i = 0; i < edid_blob->length; i += 8) {
+				pr_info(
+					"%02x %02x %02x %02x %02x %02x %02x %02x\r\n",
+					edid_blob->data[i+0],
+					edid_blob->data[i+1],
+					edid_blob->data[i+2],
+					edid_blob->data[i+3],
+					edid_blob->data[i+4],
+					edid_blob->data[i+5],
+					edid_blob->data[i+6],
+					edid_blob->data[i+7]);
+			}
+		}
+	}
+	return 0;
+}
+
 static const struct file_operations proc_fops_hpd = {
 	.owner   = THIS_MODULE,
 	.open    = proc_open,
 	.release = proc_close,
 	.write   = proc_write_hpd,
+};
+
+static const struct file_operations proc_fops_edid = {
+	.owner   = THIS_MODULE,
+	.open    = proc_open,
+	.release = proc_close,
+	.read	 = proc_read_edid,
 };
 #endif
 
@@ -791,6 +847,15 @@ struct drm_encoder *tcc_dpi_probe(
 				"[WARN][%s] %s: Could not create file system @ /%s/%s/hpd\r\n",
 				LOG_TAG, __func__, proc_name,
 				ctx->dev->driver->name);
+		ctx->proc_edid = proc_create_data(
+			"edid", S_IFREG | 0555,
+			ctx->proc_dir, &proc_fops_edid, ctx);
+		if (ctx->proc_edid == NULL)
+			dev_warn(
+				ctx->dev,
+				"[WARN][%s] %s: Could not create file system @ /%s/%s/edid\r\n",
+				LOG_TAG, __func__, proc_name,
+				ctx->dev->driver->name);
 	} else {
 		dev_warn(
 			ctx->dev,
@@ -827,3 +892,28 @@ int tcc_dpi_remove(struct drm_encoder *encoder)
 	devm_kfree(ctx->dev, ctx);
 	return 0;
 }
+
+struct drm_encoder * tcc_dpi_find_encoder_from_crtc(struct drm_crtc *crtc)
+{
+	struct drm_encoder *encoder = NULL;
+
+	drm_for_each_encoder(encoder, crtc->dev)
+		if (encoder->crtc == crtc)
+			break;
+	return encoder;
+}
+
+struct drm_connector * tcc_dpi_find_connector_from_crtc(struct drm_crtc *crtc)
+{
+	struct drm_connector *connector = NULL;
+	struct drm_encoder *encoder;
+	struct tcc_dpi *ctx;
+
+	drm_for_each_encoder(encoder, crtc->dev)
+		if (encoder->crtc == crtc) {
+			ctx = encoder_to_dpi(encoder);
+			connector = &ctx->connector;
+		}
+	return connector;
+}
+

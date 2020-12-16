@@ -10,7 +10,7 @@ EXTRA_CFLAGS += -I$(srctree)/drivers/char -Idrivers/clk/tcc
 endif
 
 tccdrm-y := tcc_drm_drv.o tcc_drm_crtc.o tcc_drm_fb.o \
-	tcc_drm_gem.o tcc_drm_plane.o
+	tcc_drm_gem.o tcc_drm_plane.o tcc_drm_edid.o
 
 tccdrm-$(CONFIG_DRM_FBDEV_EMULATION) += tcc_drm_fbdev.o
 tccdrm-$(CONFIG_DRM_TCC_DPI) += tcc_drm_dpi.o

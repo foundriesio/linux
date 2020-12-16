@@ -23,4 +23,6 @@ struct tcc_drm_dp_callback_funcs {
 		struct dptx_drm_helper_funcs *dptx_ops);
 };
 #endif
+struct drm_encoder * tcc_dpi_find_encoder_from_crtc(struct drm_crtc *crtc);
+struct drm_connector * tcc_dpi_find_connector_from_crtc(struct drm_crtc *crtc);
 #endif

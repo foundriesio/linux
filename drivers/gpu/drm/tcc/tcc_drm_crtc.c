@@ -31,8 +31,11 @@
 #include <video/tcc/vioc_config.h>
 
 #include <tcc_drm_crtc.h>
+#include <tcc_drm_dpi.h>
 #include <tcc_drm_drv.h>
 #include <tcc_drm_plane.h>
+#include <tcc_drm_edid.h>
+
 #define LOG_TAG "DRMCRTC"
 
 enum tcc_drm_crtc_flip_status {
@@ -469,260 +472,21 @@ void tcc_drm_crtc_vblank_handler(struct drm_crtc *crtc)
 			tcc_drm_crtc_flip_complete(crtc);
 	}
 }
-void tcc_crtc_fill_base_edid(struct edid *base_edid)
-{
-	/*
-	 * LVDS Sample EDID (Ver 1.3)
-	 * Display Name : BOE WLCD 12.3
-	 * Vendor ID : TCC
-	 * Mode : 1920 x 720 60Hz
-	 */
-
-	/* edid header */
-	base_edid->header[0] = 0x00;
-	base_edid->header[1] = 0xff;
-	base_edid->header[2] = 0xff;
-	base_edid->header[3] = 0xff;
-	base_edid->header[4] = 0xff;
-	base_edid->header[5] = 0xff;
-	base_edid->header[6] = 0xff;
-	base_edid->header[7] = 0x00;
-
-	// edid vendor/product
-	base_edid->mfg_id[0] = 0x50;
-	base_edid->mfg_id[1] = 0x63;// TCC
-	// edid product code
-	base_edid->prod_code[0] = 0x0;
-	base_edid->prod_code[1] = 0x0;
-	// edid Serial Number
-	base_edid->serial = 0x0;
-	// edid mfg_week
-	base_edid->mfg_week = 0x1;
-	// edid mfg_year
-	base_edid->mfg_year = 0x1E;// 2020
-	// edid version / revision
-	base_edid->version = 0x01;
-	base_edid->revision = 0x03;
-	base_edid->input = 0x80;
-	base_edid->width_cm = 0x50;
-	base_edid->height_cm = 0x2D;
-	base_edid->gamma = 0x78;
-	base_edid->features = 0x1A;
-	base_edid->red_green_lo = 0x0D;
-	base_edid->black_white_lo = 0xC9;
-	base_edid->red_x = 0xA0;
-	base_edid->red_y = 0x57;
-	base_edid->green_x = 0x47;
-	base_edid->green_y = 0x98;
-	base_edid->blue_x = 0x27;
-	base_edid->blue_y = 0x12;
-	base_edid->white_x = 0x48;
-	base_edid->white_y = 0x4C;
-
-/* established timing */
-	base_edid->established_timings.t1 = 0x20;
-	base_edid->established_timings.t2 = 0x00;
-	base_edid->established_timings.mfg_rsvd = 0x00;
-
-/* standard timing */
-	base_edid->standard_timings[0].hsize = 0x01;
-	base_edid->standard_timings[0].vfreq_aspect = 0x01;
-	base_edid->standard_timings[1].hsize = 0x01;
-	base_edid->standard_timings[1].vfreq_aspect = 0x01;
-	base_edid->standard_timings[2].hsize = 0x01;
-	base_edid->standard_timings[2].vfreq_aspect = 0x01;
-	base_edid->standard_timings[3].hsize = 0x01;
-	base_edid->standard_timings[3].vfreq_aspect = 0x01;
-	base_edid->standard_timings[4].hsize = 0x01;
-	base_edid->standard_timings[4].vfreq_aspect = 0x01;
-	base_edid->standard_timings[5].hsize = 0x01;
-	base_edid->standard_timings[5].vfreq_aspect = 0x01;
-	base_edid->standard_timings[6].hsize = 0x01;
-	base_edid->standard_timings[6].vfreq_aspect = 0x01;
-	base_edid->standard_timings[7].hsize = 0x01;
-	base_edid->standard_timings[7].vfreq_aspect = 0x01;
-
-	/* detailed timing */
-	base_edid->detailed_timings[0].pixel_clock = 0x1770;
-	base_edid->detailed_timings[0].data.pixel_data.hactive_lo = 0x80;
-	base_edid->detailed_timings[0].data.pixel_data.hblank_lo = 0x0;
-	base_edid->detailed_timings[0].data.pixel_data.hactive_hblank_hi = 0x70;
-	base_edid->detailed_timings[0].data.pixel_data.vactive_lo = 0xD0;
-	base_edid->detailed_timings[0].data.pixel_data.vblank_lo = 0x0;
-	base_edid->detailed_timings[0].data.pixel_data.vactive_vblank_hi = 0x20;
-	base_edid->detailed_timings[0].data.pixel_data.hsync_offset_lo = 0x00;
-	base_edid->detailed_timings[
-		0].data.pixel_data.hsync_pulse_width_lo = 0x00;
-	base_edid->detailed_timings[
-		0].data.pixel_data.vsync_offset_pulse_width_lo = 0x00;
-	base_edid->detailed_timings[
-		0].data.pixel_data.hsync_vsync_offset_pulse_width_hi = 0x00;
-	base_edid->detailed_timings[0].data.pixel_data.width_mm_lo = 0x00;
-	base_edid->detailed_timings[0].data.pixel_data.height_mm_lo = 0x00;
-	base_edid->detailed_timings[
-		0].data.pixel_data.width_height_mm_hi = 0x00;
-	base_edid->detailed_timings[0].data.pixel_data.hborder = 0x0;
-	base_edid->detailed_timings[0].data.pixel_data.vborder = 0x0;
-	base_edid->detailed_timings[0].data.pixel_data.misc = 0x18;
-	/* Descriptor 2*/
-	base_edid->detailed_timings[1].pixel_clock = 0x0;
-	base_edid->detailed_timings[1].data.pixel_data.hactive_lo = 0x00;
-	base_edid->detailed_timings[1].data.pixel_data.hblank_lo = 0xFC;
-	base_edid->detailed_timings[
-		1].data.pixel_data.hactive_hblank_hi = 0x00;
-	base_edid->detailed_timings[1].data.pixel_data.vactive_lo = 0x42;
-	base_edid->detailed_timings[1].data.pixel_data.vblank_lo = 0x4F;
-	base_edid->detailed_timings[1].data.pixel_data.vactive_vblank_hi = 0x45;
-	base_edid->detailed_timings[1].data.pixel_data.hsync_offset_lo = 0x20;
-	base_edid->detailed_timings[
-		1].data.pixel_data.hsync_pulse_width_lo = 0x57;
-	base_edid->detailed_timings[
-		1].data.pixel_data.vsync_offset_pulse_width_lo = 0x4C;
-	base_edid->detailed_timings[
-		1].data.pixel_data.hsync_vsync_offset_pulse_width_hi = 0x43;
-	base_edid->detailed_timings[1].data.pixel_data.width_mm_lo = 0x44;
-	base_edid->detailed_timings[1].data.pixel_data.height_mm_lo = 0x20;
-	base_edid->detailed_timings[
-		1].data.pixel_data.width_height_mm_hi = 0x31;
-	base_edid->detailed_timings[1].data.pixel_data.hborder = 0x32;
-	base_edid->detailed_timings[1].data.pixel_data.vborder = 0x2E;
-	base_edid->detailed_timings[1].data.pixel_data.misc = 0x33;
-	/* Descriptor 3*/
-	base_edid->detailed_timings[2].pixel_clock = 0x0;
-	base_edid->detailed_timings[2].data.pixel_data.hactive_lo = 0x00;
-	base_edid->detailed_timings[2].data.pixel_data.hblank_lo = 0x10;
-	base_edid->detailed_timings[
-		2].data.pixel_data.hactive_hblank_hi = 0x00;
-	base_edid->detailed_timings[2].data.pixel_data.vactive_lo = 0x00;
-	base_edid->detailed_timings[2].data.pixel_data.vblank_lo = 0x00;
-	base_edid->detailed_timings[
-		2].data.pixel_data.vactive_vblank_hi = 0x00;
-	base_edid->detailed_timings[2].data.pixel_data.hsync_offset_lo = 0x00;
-	base_edid->detailed_timings[
-		2].data.pixel_data.hsync_pulse_width_lo = 0x00;
-	base_edid->detailed_timings[
-		2].data.pixel_data.vsync_offset_pulse_width_lo = 0x00;
-	base_edid->detailed_timings[
-		2].data.pixel_data.hsync_vsync_offset_pulse_width_hi = 0x00;
-	base_edid->detailed_timings[2].data.pixel_data.width_mm_lo = 0x00;
-	base_edid->detailed_timings[2].data.pixel_data.height_mm_lo = 0x00;
-	base_edid->detailed_timings[
-		2].data.pixel_data.width_height_mm_hi = 0x00;
-	base_edid->detailed_timings[2].data.pixel_data.hborder = 0x00;
-	base_edid->detailed_timings[2].data.pixel_data.vborder = 0x00;
-	base_edid->detailed_timings[2].data.pixel_data.misc = 0x00;
-	/* Descriptor 4*/
-	base_edid->detailed_timings[3].pixel_clock = 0x0;
-	base_edid->detailed_timings[3].data.pixel_data.hactive_lo = 0x00;
-	base_edid->detailed_timings[3].data.pixel_data.hblank_lo = 0x10;
-	base_edid->detailed_timings[
-		3].data.pixel_data.hactive_hblank_hi = 0x00;
-	base_edid->detailed_timings[3].data.pixel_data.vactive_lo = 0x00;
-	base_edid->detailed_timings[3].data.pixel_data.vblank_lo = 0x00;
-	base_edid->detailed_timings[3].data.pixel_data.vactive_vblank_hi = 0x00;
-	base_edid->detailed_timings[3].data.pixel_data.hsync_offset_lo = 0x00;
-	base_edid->detailed_timings[
-		3].data.pixel_data.hsync_pulse_width_lo = 0x00;
-	base_edid->detailed_timings[
-		3].data.pixel_data.vsync_offset_pulse_width_lo = 0x00;
-	base_edid->detailed_timings[
-		3].data.pixel_data.hsync_vsync_offset_pulse_width_hi = 0x00;
-	base_edid->detailed_timings[3].data.pixel_data.width_mm_lo = 0x00;
-	base_edid->detailed_timings[3].data.pixel_data.height_mm_lo = 0x00;
-	base_edid->detailed_timings[
-		3].data.pixel_data.width_height_mm_hi = 0x00;
-	base_edid->detailed_timings[3].data.pixel_data.hborder = 0x00;
-	base_edid->detailed_timings[3].data.pixel_data.vborder = 0x00;
-	base_edid->detailed_timings[3].data.pixel_data.misc = 0x00;
-	base_edid->extensions = 0x00;
-
-	base_edid->checksum = 0x59;
-}
-
-void tcc_crtc_fill_detailed_edid(
-	struct edid *base_edid, struct drm_display_mode *mode)
-{
-	base_edid->detailed_timings[0].pixel_clock = mode->clock / 10;
-	base_edid->detailed_timings[0].data.pixel_data.hactive_lo =
-		mode->hdisplay & 0xff;
-	base_edid->detailed_timings[0].data.pixel_data.hblank_lo =
-		(mode->htotal - mode->hdisplay) & 0xff;
-	base_edid->detailed_timings[0].data.pixel_data.hactive_hblank_hi =
-		(mode->hdisplay >> 4) & 0xf0;
-	base_edid->detailed_timings[0].data.pixel_data.vactive_lo =
-		mode->vdisplay & 0xff;
-	base_edid->detailed_timings[0].data.pixel_data.vblank_lo =
-		(mode->vtotal - mode->vdisplay) & 0xff;
-	base_edid->detailed_timings[0].data.pixel_data.vactive_vblank_hi =
-		(mode->vdisplay >> 4) & 0xf0;
-
-	//horizontal front porch      - lower 8bits
-	base_edid->detailed_timings[0].data.pixel_data.hsync_offset_lo =
-		(mode->hsync_start - mode->hdisplay) & 0xff;
-	//horizontal sync pulse width hsyncwidth - lower 8bits
-	base_edid->detailed_timings[0].data.pixel_data.hsync_pulse_width_lo =
-		(mode->hsync_end - mode->hsync_start) & 0xff;
-
-	/*
-	 * Vertical Front Porch  -  --- stored in Upper Nibble :
-	 * contains lower 4 bits
-	 * Vertical Sync Pulse Width in Lines  vsyncwidth  ---
-	 * stored in Lower Nibble : contains lower 4 bits
-	 */
-	base_edid->detailed_timings[
-		0].data.pixel_data.vsync_offset_pulse_width_lo =
-		(((mode->vsync_start - mode->vdisplay) & 0xf) << 4) |
-		((mode->vsync_end - mode->vsync_start) & 0xf);
-	base_edid->detailed_timings[
-		0].data.pixel_data.hsync_vsync_offset_pulse_width_hi =
-		(((mode->hsync_start - mode->hdisplay) >> 8) << 6) ||
-		(((mode->hsync_end - mode->hsync_start) >> 8) << 4) ||
-		(((mode->vsync_start - mode->vdisplay) >> 4) << 2) ||
-		((mode->vsync_end - mode->vsync_start) >> 4);
-
-	base_edid->detailed_timings[0].data.pixel_data.width_mm_lo =
-		mode->width_mm & 0xff;
-	base_edid->detailed_timings[0].data.pixel_data.height_mm_lo =
-		mode->height_mm & 0xff;
-	base_edid->detailed_timings[0].data.pixel_data.width_height_mm_hi =
-		(mode->width_mm >> 8) << 4 || mode->height_mm >> 8;
-	base_edid->detailed_timings[0].data.pixel_data.hborder = 0x0;
-	base_edid->detailed_timings[0].data.pixel_data.vborder = 0x0;
-	base_edid->detailed_timings[0].data.pixel_data.misc = 0x18;
-}
-
-int tcc_crtc_edid_checksum(struct edid *base_edid)
-{
-	u8 data[128];
-	u8 csum = 0;
-	int i;
-
-	memcpy(data, base_edid, sizeof(data));
-
-	for (i = 0; i < EDID_LENGTH - 1; i++)
-		csum += data[i];
-	pr_debug(
-		"[DEBUG][%s] %s Sum of EDID is %2x, Checksum is %2x\n",
-				LOG_TAG, __func__, csum, 0xFF-csum+1);
-
-	base_edid->checksum = 0xFF-csum+1;
-	return 0;
-}
 
 int tcc_crtc_parse_edid_ioctl(
 	struct drm_device *dev, void *data, struct drm_file *file)
 {
-	struct edid base_edid[4];
-	//u8 test[512];
 	struct drm_crtc *crtc;
-	struct drm_crtc_state *crtc_state;
 	struct drm_tcc_edid *args = (void __user *)data;
+	struct drm_property_blob *edid_blob = NULL;
+	struct drm_connector *connector;
 	int ret;
 
 	if (!dev) {
 		ret = -EINVAL;
 		goto err_out;
 	}
+
 	if (!dev->dev) {
 		ret = -EINVAL;
 		goto err_out;
@@ -730,7 +494,6 @@ int tcc_crtc_parse_edid_ioctl(
 
 	dev_info(dev->dev, "[INFO][%s] %s Ioctl called\n", LOG_TAG, __func__);
 
-	memset(base_edid, 0, sizeof(base_edid));
 	/* get crtc */
 	crtc = drm_crtc_find(dev, args->crtc_id);
 	if (!crtc) {
@@ -740,21 +503,38 @@ int tcc_crtc_parse_edid_ioctl(
 		ret = -EINVAL;
 		goto err_out;
 	}
-	crtc_state = crtc->state;
+
 	dev_info(
-		dev->dev,
-		"[INFO][%s] %s crtc_id : [%d]\n",
-			LOG_TAG, __func__, args->crtc_id);
+		dev->dev, "[INFO][%s] %s crtc_id : [%d]\n", LOG_TAG, __func__,
+		args->crtc_id);
 
-	// fill edid with base info
-	tcc_crtc_fill_base_edid(base_edid);
+	connector = tcc_dpi_find_connector_from_crtc(crtc);
+	if (connector)
+		edid_blob = connector->edid_blob_ptr;
 
-	/* fill edid with crtc state timing */
-	tcc_crtc_fill_detailed_edid(base_edid, &crtc_state->mode);
-	tcc_crtc_edid_checksum(base_edid);
+	if (edid_blob) {
+		memcpy(args->data, edid_blob->data, edid_blob->length);
+	} else {
+		struct drm_crtc_state *crtc_state;
+		struct edid *edid =
+			devm_kzalloc(dev->dev, EDID_LENGTH, GFP_KERNEL);
 
-	memcpy(args->data, base_edid, sizeof(base_edid));
+		if (!edid ) {
+			ret = -ENOMEM;
+			goto err_out;
+		}
 
+		crtc_state = crtc->state;
+		if (
+			tcc_make_edid_from_display_mode(
+				edid, &crtc_state->mode)) {
+			ret = -EINVAL;
+			goto err_out;
+		}
+
+		memcpy(args->data, edid, EDID_LENGTH);
+		devm_kfree(dev->dev, edid);
+        }
 	return 0;
 err_out:
 	return ret;
