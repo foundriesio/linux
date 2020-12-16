@@ -2591,7 +2591,7 @@
 		clock-frequency = <48000>;	// Default LRCK
 		interrupts = <GIC_SPI 81 IRQ_TYPE_LEVEL_HIGH>;
 		have-fifo-clear = <1>;
-		audio-filter = <3>;	// 0: disable, 1: clock only, 2: data only, 3: data and clock
+		audio-filter = <0>;	// 0: disable, 1: clock only, 2: data only, 3: data and clock
 		block-type = <1>; // 0: Stereo 1: 7.1CH
 		adma = <&adma0>;
 		status = "disabled";
@@ -2605,7 +2605,7 @@
 		clock-frequency = <48000>;	// Default LRCK
 		interrupts = <GIC_SPI 93 IRQ_TYPE_LEVEL_HIGH>;
 		have-fifo-clear = <1>;
-		audio-filter = <3>;	// 0: disable, 1: clock only, 2: data only, 3: data and clock
+		audio-filter = <0>;	// 0: disable, 1: clock only, 2: data only, 3: data and clock
 		block-type = <1>; // 0: Stereo 1: 7.1CH
 		adma = <&adma1>;
 		status = "disabled";
@@ -2619,7 +2619,7 @@
 		clock-frequency = <48000>;	// Default LRCK
 		interrupts = <GIC_SPI 95 IRQ_TYPE_LEVEL_HIGH>;
 		have-fifo-clear = <1>;
-		audio-filter = <3>;	// 0: disable, 1: clock only, 2: data only, 3: data and clock
+		audio-filter = <0>;	// 0: disable, 1: clock only, 2: data only, 3: data and clock
 		block-type = <1>; // 0: Stereo 1: 7.1CH
 		adma = <&adma2>;
 		status = "disabled";
@@ -2633,7 +2633,7 @@
 		clock-frequency = <48000>;	// Default LRCK
 		interrupts = <GIC_SPI 83 IRQ_TYPE_LEVEL_HIGH>;
 		have-fifo-clear = <1>;
-		audio-filter = <3>;	// 0: disable, 1: clock only, 2: data only, 3: data and clock
+		audio-filter = <0>;	// 0: disable, 1: clock only, 2: data only, 3: data and clock
 		block-type = <0>; // 0: Stereo 1: 7.1CH
 		adma = <&adma3>;
 		status = "disabled";
@@ -2647,7 +2647,7 @@
 		clock-frequency = <48000>;	// Default LRCK
 		interrupts = <GIC_SPI 101 IRQ_TYPE_LEVEL_HIGH>;
 		have-fifo-clear = <1>;
-		audio-filter = <3>;	// 0: disable, 1: clock only, 2: data only, 3: data and clock
+		audio-filter = <0>;	// 0: disable, 1: clock only, 2: data only, 3: data and clock
 		block-type = <0>; // 0: Stereo 1: 7.1CH
 		adma = <&adma4>;
 		status = "disabled";
@@ -2661,7 +2661,7 @@
 		clock-frequency = <48000>;	// Default LRCK
 		interrupts = <GIC_SPI 103 IRQ_TYPE_LEVEL_HIGH>;
 		have-fifo-clear = <1>;
-		audio-filter = <3>;	// 0: disable, 1: clock only, 2: data only, 3: data and clock
+		audio-filter = <0>;	// 0: disable, 1: clock only, 2: data only, 3: data and clock
 		block-type = <0>; // 0: Stereo 1: 7.1CH
 		adma = <&adma5>;
 		status = "disabled";
@@ -2675,7 +2675,7 @@
 		clock-frequency = <48000>;	// Default LRCK
 		interrupts = <GIC_SPI 105 IRQ_TYPE_LEVEL_HIGH>;
 		have-fifo-clear = <1>;
-		audio-filter = <3>;	// 0: disable, 1: clock only, 2: data only, 3: data and clock
+		audio-filter = <0>;	// 0: disable, 1: clock only, 2: data only, 3: data and clock
 		block-type = <0>; // 0: Stereo 1: 7.1CH
 		adma = <&adma6>;
 		status = "disabled";
@@ -2689,7 +2689,7 @@
 		clock-frequency = <48000>;	// Default LRCK
 		interrupts = <GIC_SPI 116 IRQ_TYPE_LEVEL_HIGH>;
 		have-fifo-clear = <1>;
-		audio-filter = <3>;	// 0: disable, 1: clock only, 2: data only, 3: data and clock
+		audio-filter = <0>;	// 0: disable, 1: clock only, 2: data only, 3: data and clock
 		block-type = <1>; // 0: Stereo 1: 7.1CH
 		adma = <&adma7>;
 		status = "disabled";
