@@ -772,7 +772,7 @@ static int bcm_sf2_sw_suspend(struct dsa_switch *ds)
 	 * port, the other ones have already been disabled during
 	 * bcm_sf2_sw_setup
 	 */
-	for (port = 0; port < DSA_MAX_PORTS; port++) {
+	for (port = 0; port < ds->num_ports; port++) {
 		if ((1 << port) & ds->enabled_port_mask ||
 		    dsa_is_cpu_port(ds, port))
 			bcm_sf2_port_disable(ds, port, NULL);
