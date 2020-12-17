@@ -1096,7 +1096,7 @@ int VIOC_CONFIG_WMIXPath(unsigned int component_num, unsigned int mode)
 			}
 			break;
 		case get_vioc_type(VIOC_VIN):
-			switch (get_vioc_index(component_num)) {
+			switch (get_vioc_index(component_num) / 2) {
 			case get_vioc_index(VIOC_VIN00):
 				shift_mix_path = CFG_MISC0_MIX50_SHIFT;
 				break;
@@ -1212,7 +1212,7 @@ void VIOC_CONFIG_WMIXPathReset(unsigned int component_num, unsigned int mode)
 			}
 			break;
 		case get_vioc_type(VIOC_VIN):
-			switch (get_vioc_index(component_num)) {
+			switch (get_vioc_index(component_num) / 2) {
 			case get_vioc_index(VIOC_VIN00):
 				shift_mix_path = WMIX_PATH_SWR_MIX50_SHIFT;
 				break;
