@@ -517,8 +517,6 @@
 	sai2a: audio-controller@4400b004 {
 		#clock-cells = <0>;
 		dma-names = "tx";
-		clocks = <&rcc SAI2_K>;
-		clock-names = "sai_ck";
 		status = "okay";
 
 		sai2a_port: port {
@@ -556,8 +554,6 @@
 		pinctrl-0 = <&sai4a_pins_a>;
 		pinctrl-1 = <&sai4a_sleep_pins_a>;
 		dma-names = "tx";
-		clocks = <&rcc SAI4_K>;
-		clock-names = "sai_ck";
 		st,iec60958;
 		status = "okay";
 
