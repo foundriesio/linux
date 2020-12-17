@@ -3524,6 +3524,7 @@ static int lpfc_bsg_check_cmd_access(struct lpfc_hba *phba,
 				mb->mbxCommand);
 			return -EPERM;
 		}
+		break;
 	case MBX_WRITE_NV:
 	case MBX_WRITE_VPARMS:
 	case MBX_LOAD_SM:
