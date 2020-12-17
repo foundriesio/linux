@@ -31,8 +31,7 @@
 #include <tcc_drm_edid.h>
 
 #define LOG_TAG "DRMDPI"
-#define CONFIG_DRM_TCC_DPI_PROC
-#define CONFIG_TCC_DRM_SUPPORT_REAL_HPD
+
 struct drm_detailed_timing_t {
 	unsigned int vic;
 	unsigned int pixelrepetions;
