@@ -206,10 +206,13 @@ lpfc_dev_loss_tmo_callbk(struct fc_rport *rport)
 
 	spin_lock_irqsave(&ndlp->lock, iflags);
 	ndlp->nlp_flag |= NLP_IN_DEV_LOSS;
+	ndlp->nlp_flag &= ~NLP_NPR_2B_DISC;
+
 	/*
-	 * The backend does not expect any more calls assoicated with this
-	 * rport, Remove the association between rport and ndlp
+	 * The backend does not expect any more calls associated with this
+	 * rport. Remove the association between rport and ndlp.
 	 */
+	ndlp->fc4_xpt_flags &= ~SCSI_XPT_REGD;
 	((struct lpfc_rport_data *)rport->dd_data)->pnode = NULL;
 	ndlp->rport = NULL;
 	spin_unlock_irqrestore(&ndlp->lock, iflags);
@@ -250,7 +253,6 @@ lpfc_dev_loss_tmo_handler(struct lpfc_nodelist *ndlp)
 	int warn_on = 0;
 	int fcf_inuse = 0;
 	unsigned long iflags;
-	u32 fc4_xpt_flags;
 
 	vport = ndlp->vport;
 	shost = lpfc_shost_from_vport(vport);
@@ -269,10 +271,11 @@ lpfc_dev_loss_tmo_handler(struct lpfc_nodelist *ndlp)
 			      ndlp->nlp_DID, ndlp->nlp_type, ndlp->nlp_sid);
 
 	lpfc_printf_vlog(ndlp->vport, KERN_INFO, LOG_NODE,
-			 "3182 %s x%06x, nflag x%x xflags x%x\n",
+			 "3182 %s x%06x, nflag x%x xflags x%x refcnt %d\n",
 			 __func__, ndlp->nlp_DID, ndlp->nlp_flag,
-			 ndlp->fc4_xpt_flags);
+			 ndlp->fc4_xpt_flags, kref_read(&ndlp->kref));
 
+	/* If the driver is recovering the rport, ignore devloss. */
 	if (ndlp->nlp_state == NLP_STE_MAPPED_NODE) {
 		lpfc_printf_vlog(vport, KERN_INFO, LOG_DISCOVERY,
 				 "0284 Devloss timeout Ignored on "
@@ -284,8 +287,11 @@ lpfc_dev_loss_tmo_handler(struct lpfc_nodelist *ndlp)
 		return fcf_inuse;
 	}
 
-	if (ndlp->nlp_type & NLP_FABRIC)
+	/* Fabric nodes are done. */
+	if (ndlp->nlp_type & NLP_FABRIC) {
+		lpfc_nlp_put(ndlp);
 		return fcf_inuse;
+	}
 
 	if (ndlp->nlp_sid != NLP_NO_SID) {
 		warn_on = 1;
@@ -313,12 +319,7 @@ lpfc_dev_loss_tmo_handler(struct lpfc_nodelist *ndlp)
 				 ndlp->nlp_state, ndlp->nlp_rpi);
 	}
 
-	/* Should be final reference removal triggering a node free. */
-	spin_lock_irqsave(shost->host_lock, iflags);
-	fc4_xpt_flags = ndlp->fc4_xpt_flags;
-	spin_unlock_irqrestore(shost->host_lock, iflags);
-
-	if (!(fc4_xpt_flags & (NVME_XPT_REGD | SCSI_XPT_REGD)))
+	if (!(ndlp->fc4_xpt_flags & NVME_XPT_REGD))
 		lpfc_disc_state_machine(vport, ndlp, NULL, NLP_EVT_DEVICE_RM);
 
 	return fcf_inuse;
@@ -3583,7 +3584,7 @@ lpfc_mbx_cmpl_reg_login(struct lpfc_hba *phba, LPFC_MBOXQ_t *pmb)
 	pmb->ctx_buf = NULL;
 	pmb->ctx_ndlp = NULL;
 
-	lpfc_printf_vlog(vport, KERN_INFO, LOG_SLI,
+	lpfc_printf_vlog(vport, KERN_INFO, LOG_SLI | LOG_NODE | LOG_DISCOVERY,
 			 "0002 rpi:%x DID:%x flg:%x %d x%px\n",
 			 ndlp->nlp_rpi, ndlp->nlp_DID, ndlp->nlp_flag,
 			 kref_read(&ndlp->kref),
@@ -4075,8 +4076,16 @@ out:
 		kfree(mp);
 		mempool_free(pmb, phba->mbox_mem_pool);
 
-		/* If no other thread is using the ndlp, free it */
-		lpfc_nlp_not_used(ndlp);
+		/* If the node is not registered with the scsi or nvme
+		 * transport, remove the fabric node.  The failed reg_login
+		 * is terminal.
+		 */
+		if (!(ndlp->fc4_xpt_flags & (SCSI_XPT_REGD | NVME_XPT_REGD))) {
+			spin_lock_irq(&ndlp->lock);
+			ndlp->nlp_flag &= ~NLP_NPR_2B_DISC;
+			spin_unlock_irq(&ndlp->lock);
+			lpfc_nlp_not_used(ndlp);
+		}
 
 		if (phba->fc_topology == LPFC_TOPOLOGY_LOOP) {
 			/*
