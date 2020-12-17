@@ -92,6 +92,7 @@ static void receive_message(struct mbox_client *client, void *message)
 			touch_wake_up(&dev->touch_mbox_wait);
 		break;
 		default:
+			pr_info("[INFO][TR]This Command does not use %u \n", cmd);
 		break;
 		}
 	}
@@ -109,14 +110,15 @@ static int32_t tcc_touch_receive_probe(struct platform_device *pdev)
 		tr_dev = devm_kzalloc(&pdev->dev,
 				sizeof(struct touch_mbox), GFP_KERNEL);
 
-		if (tr_dev == NULL)
+		if (tr_dev == NULL) {
 			return -ENOMEM;
+		}
 		platform_set_drvdata(pdev, tr_dev);
 
-		of_property_read_string(pdev->dev.of_node, "mbox-names",
+		(void)of_property_read_string(pdev->dev.of_node, "mbox-names",
 				&tr_dev->touch_mbox_name);
-		of_property_read_s32(pdev->dev.of_node, "xmax", &xMax);
-		of_property_read_s32(pdev->dev.of_node, "ymax", &yMax);
+		(void)of_property_read_s32(pdev->dev.of_node, "xmax", &xMax);
+		(void)of_property_read_s32(pdev->dev.of_node, "ymax", &yMax);
 		tr_dev->touch_mbox_client.dev = &pdev->dev;
 		tr_dev->touch_mbox_client.rx_callback = &receive_message;
 		tr_dev->touch_mbox_client.tx_done = NULL;
@@ -129,8 +131,9 @@ static int32_t tcc_touch_receive_probe(struct platform_device *pdev)
 		tr_dev->touch_mbox_client.tx_tout = 10;
 		mbox_channel = mbox_request_channel_byname(&tr_dev->touch_mbox_client,
 					tr_dev->touch_mbox_name);
-		if (mbox_channel != NULL)
+		if (mbox_channel != NULL) {
 			tr_dev->touch_mbox_channel = mbox_channel;
+		}
 
 		init_waitqueue_head(&tr_dev->touch_mbox_wait._cmdQueue);
 		tr_dev->touch_mbox_wait._condition = 1;
@@ -156,14 +159,14 @@ static int32_t tcc_touch_receive_probe(struct platform_device *pdev)
 			ret = input_register_device(virt_tr_dev);
 			pr_info("[INFO][TR]Register Input Device %d\n", ret);
 		}
-		device_create_file(&pdev->dev, &dev_attr_touch_state);
+		ret = device_create_file(&pdev->dev, &dev_attr_touch_state);
 		mutex_init(&tr_dev->lock);
 
 		touch_send_init(tr_dev, tr_dev->touch_state);
 		touch_wait_event_timeout(&tr_dev->touch_mbox_wait,
 				tr_dev->touch_mbox_wait._condition, 100);
 
-		pr_info("[INFO][TR]Probe TCC_TR Device\n");
+		pr_info("[INFO][TR]Probe TCC_TR Driver %d\n", ret);
 	}
 	return 0;
 }

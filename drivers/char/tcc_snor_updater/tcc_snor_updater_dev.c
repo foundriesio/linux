@@ -273,12 +273,12 @@ static int32_t snor_updater_probe(struct platform_device *pdev)
 			GFP_KERNEL);
 	}
 
-	if (!updater_dev) {
+	if (updater_dev == NULL) {
 		ret = -ENOMEM;
 	} else {
 		platform_set_drvdata(pdev, updater_dev);
 
-		of_property_read_string(pdev->dev.of_node,
+		(void)of_property_read_string(pdev->dev.of_node,
 			"mbox-names",
 			&updater_dev->mbox_name);
 

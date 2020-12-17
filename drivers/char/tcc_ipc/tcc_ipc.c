@@ -114,13 +114,13 @@ static ssize_t tcc_ipc_read(struct file *filp,
 
 		(void)f_pos;
 
-		if (!filp->private_data) {
+		if (filp->private_data == NULL) {
 			ret = -ENODEV;
 		} else {
 			struct ipc_device *ipc_dev =
 				(struct ipc_device *)filp->private_data;
 
-			d2printk(ipc_dev, ipc_dev->dev, "In\n");
+			d2printk((ipc_dev), ipc_dev->dev, "In\n");
 
 			if ((filp->f_flags & (IPC_UINT32)O_NONBLOCK) ==
 				(IPC_UINT32)0) {
@@ -153,8 +153,10 @@ static ssize_t tcc_ipc_write(struct file *filp,
 {
 	ssize_t  ret = -EINVAL;
 
+	(void)f_pos;
+
 	if ((filp != NULL) && (buf != NULL)) {
-		if (!filp->private_data) {
+		if (filp->private_data == NULL) {
 			ret = -ENODEV;
 		} else {
 			struct ipc_device *ipc_dev =
@@ -163,7 +165,7 @@ static ssize_t tcc_ipc_write(struct file *filp,
 				ipc_dev->ipc_handler.tempWbuf;
 			size_t size = (size_t)0;
 
-			d2printk(ipc_dev, ipc_dev->dev,
+			d2printk((ipc_dev), ipc_dev->dev,
 				"In, data size(%d)\n", (IPC_INT32)count);
 
 
@@ -400,10 +402,17 @@ static IPC_LONG tcc_ipc_ioctl(struct file *filp,
 					pingInfo.pingResult = IPC_PING_ERR_INIT;
 					pingInfo.responseTime = 0;
 					(void)ipc_ping_test(ipc_dev, &pingInfo);
-					ret = copy_to_user((void __user *)arg,
+
+					if (copy_to_user((void __user *)arg,
 						(const void *)&pingInfo,
 						(IPC_ULONG)
-						sizeof(tcc_ipc_ping_info));
+						sizeof(tcc_ipc_ping_info))
+						== (IPC_ULONG)0) {
+						ret = 0;
+
+					} else {
+						ret = -EINVAL;
+					}
 
 				} else {
 					ret = -EINVAL;
@@ -458,7 +467,7 @@ static IPC_UINT32 tcc_ipc_poll(struct file *filp, poll_table *wait)
 			(struct ipc_device *)filp->private_data;
 
 		if (ipc_dev != NULL) {
-			d2printk(ipc_dev, ipc_dev->dev, "In\n");
+			d2printk((ipc_dev), ipc_dev->dev, "In\n");
 
 			if ((ipc_dev->ipc_handler.ipcStatus < IPC_READY) ||
 				(ipc_dev->ipc_handler.readBuffer.status
@@ -466,7 +475,7 @@ static IPC_UINT32 tcc_ipc_poll(struct file *filp, poll_table *wait)
 
 				ipc_try_connection(ipc_dev);
 
-				d2printk(ipc_dev, ipc_dev->dev,
+				d2printk((ipc_dev), ipc_dev->dev,
 					"IPC Not Ready:ipcstatus(%d),Bufferstatus(%d)\n",
 					ipc_dev->ipc_handler.ipcStatus,
 					ipc_dev->ipc_handler.readBuffer.status);
@@ -535,9 +544,9 @@ static IPC_INT32 tcc_ipc_probe(struct platform_device *pdev)
 		} else {
 			platform_set_drvdata(pdev, ipc_dev);
 
-			of_property_read_string(pdev->dev.of_node,
+			(void)of_property_read_string(pdev->dev.of_node,
 				"device-name", &ipc_dev->name);
-			of_property_read_string(pdev->dev.of_node,
+			(void)of_property_read_string(pdev->dev.of_node,
 				"mbox-names", &ipc_dev->mbox_name);
 
 			ipc_dev->debug_level = ipc_verbose_mode;

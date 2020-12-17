@@ -96,16 +96,25 @@ IPC_INT32 ipc_cmd_wait_event_timeout(
 {
 	IPC_INT32 ret = -1;
 
+	(void)seqID;
+
 	if (ipc_dev != NULL) {
 		struct IpcHandler *ipc_handle = &ipc_dev->ipc_handler;
 		struct ipc_wait_queue *waitQueue;
+		IPC_LONG wait_ret;
 
 		waitQueue = &ipc_handle->ipcWaitQueue[cmdType];
 
-		ret = wait_event_interruptible_timeout(
+		wait_ret = wait_event_interruptible_timeout(
 			waitQueue->_cmdQueue,
 			waitQueue->_condition == (IPC_UINT32)0,
 			msecs_to_jiffies(timeOut));
+
+		if (wait_ret >= (IPC_LONG)1) {
+			ret = 1;
+		} else {
+			ret = 0;
+	 	}
 
 		if ((waitQueue->_condition == (IPC_UINT32)1)
 			|| (ret <= 0)) {
@@ -189,12 +198,19 @@ IPC_INT32 ipc_read_wait_event_timeout(
 
 	if (ipc_dev != NULL) {
 		struct IpcHandler *ipc_handle = &ipc_dev->ipc_handler;
+		IPC_LONG wait_ret;
 
 		ipc_handle->ipcReadQueue._condition = 1;
-		ret = wait_event_interruptible_timeout(
+		wait_ret = wait_event_interruptible_timeout(
 			ipc_handle->ipcReadQueue._cmdQueue,
 			ipc_handle->ipcReadQueue._condition == (IPC_UINT32)0,
 			msecs_to_jiffies(timeOut));
+
+		if (wait_ret == (IPC_LONG)1) {
+			ret = 1;
+		} else {
+			ret = 0;
+		}
 
 		if ((ipc_handle->ipcReadQueue._condition == (IPC_UINT32)1)
 			|| (ret <= 0)) {

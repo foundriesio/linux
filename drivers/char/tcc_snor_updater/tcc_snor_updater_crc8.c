@@ -4,6 +4,7 @@
  */
 
 #include <linux/types.h>
+#include "tcc_snor_updater_crc8.h"
 
 static const uint32_t CRC32_TABLE[256] = {
 	0x00000000U, 0x90910101U, 0x91210201U, 0x01B00300U,
@@ -77,7 +78,7 @@ uint32_t tcc_snor_calc_crc8(u8 *base, uint32_t length)
 	uint32_t crcout = 0;
 	uint32_t cnt;
 	u8 code;
-	u8 tmp;
+	uint32_t tmp;
 
 	for (cnt = 0; cnt < length; cnt++) {
 		code = base[cnt];

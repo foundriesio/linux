@@ -36,7 +36,7 @@ IPC_INT32 ipc_send_open(struct ipc_device *ipc_dev)
 	IPC_INT32 ret = IPC_ERR_COMMON;
 	struct tcc_mbox_data sendMsg;
 
-	memset(&sendMsg, 0x00, sizeof(struct tcc_mbox_data));
+	(void)memset(&sendMsg, 0x00, sizeof(struct tcc_mbox_data));
 
 	sendMsg.cmd[0] = get_sequential_ID(ipc_dev);
 	sendMsg.cmd[1] = ((IPC_UINT32)CTL_CMD << (IPC_UINT32)16)
@@ -54,7 +54,7 @@ IPC_INT32 ipc_send_close(struct ipc_device *ipc_dev)
 	IPC_INT32 ret = IPC_ERR_COMMON;
 	struct tcc_mbox_data sendMsg;
 
-	memset(&sendMsg, 0x00, sizeof(struct tcc_mbox_data));
+	(void)memset(&sendMsg, 0x00, sizeof(struct tcc_mbox_data));
 
 	sendMsg.cmd[0] = get_sequential_ID(ipc_dev);
 	sendMsg.cmd[1] = ((IPC_UINT32)CTL_CMD << (IPC_UINT32)16)
@@ -66,21 +66,21 @@ IPC_INT32 ipc_send_close(struct ipc_device *ipc_dev)
 }
 
 IPC_INT32 ipc_send_write(struct ipc_device *ipc_dev,
-							IPC_CHAR *ipc_data,
+							IPC_UCHAR *ipc_data,
 							IPC_UINT32 size)
 {
 	IPC_INT32 ret = IPC_ERR_COMMON;
 	struct tcc_mbox_data sendMsg;
 
 	if ((size <= IPC_TXBUFFER_SIZE) && (ipc_data != NULL)) {
-		memset(&sendMsg, 0x00, sizeof(struct tcc_mbox_data));
+		(void)memset(&sendMsg, 0x00, sizeof(struct tcc_mbox_data));
 
 		sendMsg.cmd[0] = get_sequential_ID(ipc_dev);
 		sendMsg.cmd[1] = ((IPC_UINT32)WRITE_CMD << (IPC_UINT32)16)
 			|((IPC_UINT32)IPC_WRITE);
 		sendMsg.cmd[2] = size;
 
-		memcpy((void *)&sendMsg.data,
+		(void)memcpy((void *)&sendMsg.data,
 			(const void *)ipc_data,
 			(IPC_ULONG)size);
 
@@ -112,7 +112,7 @@ IPC_INT32 ipc_send_ping(struct ipc_device *ipc_dev)
 	IPC_INT32 ret = IPC_ERR_COMMON;
 	struct tcc_mbox_data sendMsg;
 
-	memset(&sendMsg, 0x00, sizeof(struct tcc_mbox_data));
+	(void)memset(&sendMsg, 0x00, sizeof(struct tcc_mbox_data));
 
 	sendMsg.cmd[0] = get_sequential_ID(ipc_dev);
 	sendMsg.cmd[1] = ((IPC_UINT32)CTL_CMD << (IPC_UINT32)16U)
@@ -143,7 +143,7 @@ IPC_INT32 ipc_send_ack(struct ipc_device *ipc_dev,
 	IPC_INT32 ret = IPC_ERR_COMMON;
 	struct tcc_mbox_data sendMsg;
 
-	memset(&sendMsg, 0x00, sizeof(struct tcc_mbox_data));
+	(void)memset(&sendMsg, 0x00, sizeof(struct tcc_mbox_data));
 
 	sendMsg.cmd[0] = seqID;
 	sendMsg.cmd[1] = ((IPC_UINT32)cmdType << (IPC_UINT32)16U)

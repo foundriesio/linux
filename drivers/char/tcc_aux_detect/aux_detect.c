@@ -50,9 +50,6 @@ typedef long long_t;
 	{ (void)pr_info("[DEBUG][AUX_DEV_DRV]%s - " \
 	pr_fmt(fmt), __func__, ##__VA_ARGS__); } }
 
-#define FUNCTION_IN			(dlog("IN\n"))
-#define FUNCTION_OUT		(dlog("OUT\n"))
-
 #define MODULE_NAME			("aux_detect")
 
 #define AUX_IOCTL_CMD_GET_STATE		(0x10)
@@ -69,24 +66,6 @@ struct aux_detect_data {
 
 static struct aux_detect_data *pdata;
 
-static atomic_t aux_detect_status;
-
-static int32_t aux_detect_get_state(void)
-{
-	int32_t	state = (int32_t)atomic_read(&aux_detect_status);
-
-	dlog("state: %d\n", state);
-	return state;
-}
-
-#if 0
-static void aux_detect_set_state(int32_t state)
-{
-	dlog("state: %d\n", state);
-	atomic_set(&aux_detect_status, (int)state);
-}
-#endif
-
 static int32_t pre_aux_status;
 
 static ssize_t aux_detect_status_show(
@@ -97,6 +76,9 @@ static ssize_t aux_detect_status_show(
 	struct aux_detect_data *aux_data = pdata;
 	int32_t	aux_value = -1;
 	int32_t	ret	= -1;
+
+	(void)dev;
+	(void)attr;
 
 	if ((aux_data->aux_detect_gpio != -1) &&
 		(aux_data->aux_active != -1)) {
@@ -192,7 +174,7 @@ static int32_t aux_detect_check_state(void)
 			aux_data->aux_detect_gpio,
 			aux_data->aux_active);
 
-		ret = aux_detect_get_state();
+		ret = -1;
 	}
 
 	vlog("aux detect status: %d\n", ret);
@@ -281,7 +263,7 @@ static int32_t aux_detect_create_cdev(struct platform_device *pdev)
 			/* Allocate memory for aux detect Platform Data.*/
 			aux_data = kzalloc(sizeof(struct aux_detect_data),
 							GFP_KERNEL);
-			if (!aux_data) {
+			if (aux_data == NULL) {
 				ret = -ENOMEM;
 			}
 		}
@@ -299,6 +281,7 @@ static int32_t aux_detect_create_cdev(struct platform_device *pdev)
 					(const char_t *)MODULE_NAME);
 				ret = -1;
 			} else {
+				u32 out_value;
 				pinctrl_put(pinctrl);
 
 				aux_data->aux_detect_gpio	= -1;
@@ -315,11 +298,17 @@ static int32_t aux_detect_create_cdev(struct platform_device *pdev)
 							pdev->dev.of_node,
 							"aux-gpios", 0);
 
-					of_property_read_u32_index(
+					ret = of_property_read_u32_index(
 						pdev->dev.of_node,
 						"aux-active",
 						0,
-						&aux_data->aux_active);
+						&out_value);
+					if(ret == 0)
+					{
+						aux_data->aux_active =
+							(int32_t)out_value;
+					}
+
 
 					ilog("switch-gpios:%d\n",
 						aux_data->aux_detect_gpio);
@@ -348,8 +337,6 @@ static int32_t aux_detect_create_cdev(struct platform_device *pdev)
 static int32_t aux_detect_probe(struct platform_device *pdev)
 {
 	int32_t ret = 0;
-
-	FUNCTION_IN;
 
 	if (pdev != NULL) {
 		pre_aux_status = 0;
@@ -406,13 +393,13 @@ static int32_t aux_detect_probe(struct platform_device *pdev)
 	} else {
 		ret = -1;
 	}
-	FUNCTION_OUT;
+
 	return ret;
 }
 
 static int32_t aux_detect_remove(struct platform_device *pdev)
 {
-	FUNCTION_IN;
+	(void)pdev;
 
 	cdev_del(&aux_detect_cdev);
 
@@ -422,20 +409,20 @@ static int32_t aux_detect_remove(struct platform_device *pdev)
 
 	unregister_chrdev_region(aux_detect_dev_region, 1);
 
-	FUNCTION_OUT;
 	return 0;
 }
 
 #if defined(CONFIG_PM)
 static int32_t aux_detect_suspend(struct platform_device *pdev, pm_message_t state)
 {
-
+	(void)pdev;
+	(void)state;
 	return 0;
 }
 
 static int32_t aux_detect_resume(struct platform_device *pdev)
 {
-
+	(void)pdev;
 	return 0;
 }
 

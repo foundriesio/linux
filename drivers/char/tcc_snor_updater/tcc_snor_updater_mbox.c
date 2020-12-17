@@ -66,7 +66,7 @@ struct mbox_chan *snor_updater_request_channel(
 	struct mbox_chan *channel;
 
 	client = devm_kzalloc(&pdev->dev, sizeof(*client), GFP_KERNEL);
-	if (!client) {
+	if (client == NULL) {
 		channel = NULL;
 	} else {
 		client->dev = &pdev->dev;

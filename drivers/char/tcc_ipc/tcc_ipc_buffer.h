@@ -33,7 +33,7 @@ IPC_INT32 ipc_push_buffer_overwrite(struct IPC_RINGBUF  *pBufCtrl,
 					IPC_UCHAR *buffer,
 					IPC_UINT32 size);
 IPC_INT32 ipc_pop_buffer(struct IPC_RINGBUF  *pBufCtrl,
-							IPC_UCHAR *buffer,
+							IPC_CHAR __user *buffer,
 							IPC_UINT32 size);
 
 #endif /* __TCC_IPC_BUFFER_H__ */

@@ -52,7 +52,7 @@ static IPC_INT32 ipc_write_data(
 				IPC_UINT32 size);
 static IPC_INT32 ipc_read_data(
 				struct ipc_device *ipc_dev,
-				IPC_UCHAR *buff,
+				IPC_CHAR __user *buff,
 				IPC_UINT32 size,
 				IPC_UINT32 flag);
 
@@ -178,7 +178,7 @@ void receive_message(struct mbox_client *client, void *message)
 
 		for (i = 0; i < 7; i++) {
 			dprintk(ipc_dev->dev,
-				"cmd[%d] = [0x%02x]\n",
+				"cmd[%d] = [0x%08x]\n",
 				i, msg->cmd[i]);
 		}
 
@@ -245,7 +245,7 @@ void receive_message(struct mbox_client *client, void *message)
 						(size_t)(ipc_list->data.data_len
 						* (size_t)4));
 
-					ipc_add_queue_and_work(
+					(void)ipc_add_queue_and_work(
 						&handler->receiveQueue[cmdType],
 						ipc_list);
 				} else {
@@ -274,7 +274,7 @@ static IPC_INT32 ipc_add_queue_and_work(
 	}
 	spin_unlock_irqrestore(&ipc->rx_queue_lock, flags);
 
-	kthread_queue_work(&ipc->kworker, &ipc->pump_messages);
+	(void)kthread_queue_work(&ipc->kworker, &ipc->pump_messages);
 
 	return 0;
 }
@@ -348,7 +348,7 @@ static void deregister_receive_queue(struct ipc_receiveQueue *ipc)
 {
 	if (ipc != NULL) {
 		kthread_flush_worker(&ipc->kworker);
-		kthread_stop(ipc->kworker_task);
+		(void)kthread_stop(ipc->kworker_task);
 	}
 }
 
@@ -392,7 +392,10 @@ static void ipc_receive_ctlcmd(void *device_info, struct tcc_mbox_data  *pMsg)
 							pMsg->cmd[1]);
 			break;
 		case IPC_ACK:
+			break;
 		default:
+			eprintk(ipc_dev->dev,
+				"Unknown cmd(%d)\n", (int32_t)cmdID);
 			break;
 		}
 	}
@@ -421,7 +424,7 @@ static void ipc_receive_writecmd(void *device_info, struct tcc_mbox_data  *pMsg)
 			IPC_UINT32 i;
 
 			readSize = pMsg->cmd[2];
-			d2printk(ipc_dev, ipc_dev->dev,
+			d2printk((ipc_dev), ipc_dev->dev,
 				"ipc recevie size(%d)\n", readSize);
 
 			if (readSize > (IPC_UINT32)0) {
@@ -434,12 +437,12 @@ static void ipc_receive_writecmd(void *device_info, struct tcc_mbox_data  *pMsg)
 					(IPC_UINT32)ipc_buffer_free_space(
 						&ipc_handle->readRingBuffer);
 
-				d2printk(ipc_dev, ipc_dev->dev,
+				d2printk((ipc_dev), ipc_dev->dev,
 					"ipc freeSpace size(%d)\n",
 					freeSpace);
 
 				for (i = 0; i < readSize; i++) {
-					d2printk(ipc_dev, ipc_dev->dev,
+					d2printk((ipc_dev), ipc_dev->dev,
 						"ipc data[%d] : [0x%x]\n",
 						i, pMsg->data[i]);
 				}
@@ -636,7 +639,7 @@ IPC_INT32 ipc_write(struct ipc_device *ipc_dev,
 
 		if (ipc_handle->ipcStatus < IPC_READY) {
 			ipc_try_connection(ipc_dev);
-			d1printk(ipc_dev, ipc_dev->dev, "IPC Not Ready\n");
+			d1printk((ipc_dev), ipc_dev->dev, "IPC Not Ready\n");
 		} else {
 			ret = ipc_write_data(ipc_dev, buff, size);
 		}
@@ -645,7 +648,7 @@ IPC_INT32 ipc_write(struct ipc_device *ipc_dev,
 }
 
 static IPC_INT32 ipc_read_data(struct ipc_device *ipc_dev,
-								IPC_UCHAR *buff,
+								IPC_CHAR __user *buff,
 								IPC_UINT32 size,
 								IPC_UINT32 flag)
 {
@@ -660,7 +663,7 @@ static IPC_INT32 ipc_read_data(struct ipc_device *ipc_dev,
 		IPC_UINT32 isWait;
 		IPC_UINT32 isReadAll = 0;
 
-		d2printk(ipc_dev, ipc_dev->dev, "\n");
+		d2printk((ipc_dev), ipc_dev->dev, "\n");
 
 		spin_lock(&ipc_handle->spinLock);
 		ipc_handle->vTime = ipc_handle->setParam.vTime;
@@ -679,12 +682,14 @@ static IPC_INT32 ipc_read_data(struct ipc_device *ipc_dev,
 				ipc_handle->vTime = MAX_READ_TIMEOUT;
 				ipc_handle->vMin = size;
 				isReadAll = 1;
-			} else if (ipc_handle->vTime == (IPC_UINT32)0) {
+			}
+
+			if (ipc_handle->vTime == (IPC_UINT32)0) {
 				ipc_handle->vTime = MAX_READ_TIMEOUT;
-			} else if (ipc_handle->vMin == (IPC_UINT32)0) {
+			}
+
+			if (ipc_handle->vMin == (IPC_UINT32)0) {
 				ipc_handle->vMin = 1;
-			} else {
-				;
 			}
 
 			isWait = 1;
@@ -742,7 +747,7 @@ static IPC_INT32 ipc_read_data(struct ipc_device *ipc_dev,
 }
 
 IPC_INT32 ipc_read(struct ipc_device *ipc_dev,
-					IPC_UCHAR *buff,
+					IPC_CHAR __user *buff,
 					IPC_UINT32 size,
 					IPC_UINT32 flag)
 {
@@ -759,7 +764,7 @@ IPC_INT32 ipc_read(struct ipc_device *ipc_dev,
 			(ipc_handle->readBuffer.status < IPC_BUF_READY)) {
 			ipc_try_connection(ipc_dev);
 
-			d1printk(ipc_dev, ipc_dev->dev,
+			d1printk((ipc_dev), ipc_dev->dev,
 				"IPC Not Ready:ipc status(%d),Buffer status(%d)\n",
 				ipc_handle->ipcStatus,
 				ipc_handle->readBuffer.status);
@@ -785,7 +790,6 @@ IPC_INT32 ipc_ping_test(
 		ret = IPC_SUCCESS;
 		/* Check IPC */
 		if (pIPCHandler->ipcStatus < IPC_INIT) {
-			//pingInfo->pingResult = IPC_PING_ERR_INIT;
 			ret = IPC_ERR_COMMON;
 			eprintk(ipc_dev->dev, "ipc not init\n");
 		}

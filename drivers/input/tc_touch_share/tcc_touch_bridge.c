@@ -34,21 +34,22 @@ static void ttb_push_queue(void)
 	if (ttb_list != NULL) {
 		int32_t idx = 0;
 
-		memset(&sendMsg, 0x00, sizeof(struct tcc_mbox_data));
+		(void)memset(&sendMsg, 0x00, sizeof(struct tcc_mbox_data));
 		sendMsg.cmd[0] = (uint32_t)TOUCH_DATA;
 		sendMsg.cmd[1] = (uint32_t)TOUCH_SINGLE;
 
-		for (; idx < TOUCH_DATA_SIZE; idx++)
+		for (; idx < TOUCH_DATA_SIZE; idx++) {
 			sendMsg.data[idx] = (uint32_t)ts_dev->touch_data[idx];
+		}
 		sendMsg.data_len = TOUCH_DATA_SIZE;
-		memcpy((void *)&ttb_list->msg, (void *)&sendMsg,
+		(void)memcpy((void *)&ttb_list->msg, (void *)&sendMsg,
 				sizeof(struct tcc_mbox_data));
 		spin_lock_irqsave(&ts_dev->touch_mbox_queue.queue_lock, flags);
 		list_add_tail(&ttb_list->queue,
 				&ts_dev->touch_mbox_queue.queue);
 		spin_unlock_irqrestore(&(ts_dev->touch_mbox_queue.queue_lock),
 				flags);
-		kthread_queue_work(&ts_dev->touch_mbox_queue.kworker,
+		(void)kthread_queue_work(&ts_dev->touch_mbox_queue.kworker,
 				&ts_dev->touch_mbox_queue.pump_messages);
 	}
 }
@@ -56,8 +57,9 @@ static void ttb_push_queue(void)
 static void ttb_event(struct input_handle *handle,
 		uint32_t type, uint32_t code, int32_t value)
 {
-	(void)handle;
 	uint32_t state = ts_dev->touch_state;
+
+	(void)handle;
 
 	switch (code) {
 	case TOUCH_ABS_X:
@@ -70,11 +72,13 @@ static void ttb_event(struct input_handle *handle,
 		ts_dev->touch_data[2] = value;
 	break;
 	default:
+		pr_info("[INFO][TB] This event does not transfer to subcore\n");
 	break;
 	}
 	if (state == (uint32_t)1) {
-		if ((type == (uint32_t)0) && (code == (uint32_t)0) && (value == (int32_t)0))
+		if ((type == (uint32_t)0) && (code == (uint32_t)0) && (value == (int32_t)0)) {
 			ttb_push_queue();
+		}
 	}
 }
 
@@ -87,7 +91,7 @@ static int32_t ttb_connect(struct input_handler *handler, struct input_dev *dev,
 
 	i_handle = kzalloc(sizeof(struct input_handle), GFP_KERNEL);
 
-	if (!i_handle) {
+	if (i_handle == NULL) {
 		err = (int32_t)-ENOMEM;
 		goto error_no_mem;
 	}
@@ -97,11 +101,13 @@ static int32_t ttb_connect(struct input_handler *handler, struct input_dev *dev,
 	i_handle->name = "tcc_tb";
 
 	err = input_register_handle(i_handle);
-	if (err != (int32_t)0)
+	if (err != (int32_t)0) {
 		goto error_free_handle;
+	}
 	err = input_open_device(i_handle);
-	if (err != (int32_t)0)
+	if (err != (int32_t)0) {
 		goto error_unregister_handle;
+	}
 
 	pr_info("[INFO][TB]Connected device: %s (%s at %s)\n",
 		dev_name(&dev->dev),
@@ -162,8 +168,9 @@ static void receive_message(struct mbox_client *client, void *message)
 
 		switch (cmd)	{
 		case (uint32_t)TOUCH_ACK:
-			if (msg->cmd[1] == (uint32_t)TOUCH_INIT)
+			if (msg->cmd[1] == (uint32_t)TOUCH_INIT) {
 				ts_dev->touch_state = msg->cmd[2];
+			}
 		break;
 		case (uint32_t)TOUCH_STATE:
 			ts_dev->touch_state = msg->cmd[1];
@@ -176,6 +183,7 @@ static void receive_message(struct mbox_client *client, void *message)
 					(uint32_t)TOUCH_INIT, ts_dev->touch_state);
 		break;
 		default:
+			pr_info("[INFO][TB] This command is invalid\n");
 		break;
 		}
 	}
@@ -186,6 +194,8 @@ static void ttb_pump_messages(struct kthread_work *work)
 	struct mbox_list *ttb_list = NULL;
 	struct mbox_list *ttb_list_tmp = NULL;
 	ulong flags;
+
+	(void)work;
 
 	if (ts_dev != NULL)	{
 		spin_lock_irqsave(&ts_dev->touch_mbox_queue.queue_lock, flags);
@@ -214,8 +224,9 @@ static int32_t tcc_touch_bridge_probe(struct platform_device *pdev)
 	if (pdev != NULL) {
 		ts_dev = devm_kzalloc(&pdev->dev,
 				sizeof(struct touch_mbox), GFP_KERNEL);
-		if (ts_dev == NULL)
+		if (ts_dev == NULL) {
 			return -ENOMEM;
+		}
 		platform_set_drvdata(pdev, ts_dev);
 
 		INIT_LIST_HEAD(&ts_dev->touch_mbox_queue.queue);
@@ -223,7 +234,7 @@ static int32_t tcc_touch_bridge_probe(struct platform_device *pdev)
 
 		ret = input_register_handler(&ttb_handler);
 
-		of_property_read_string(pdev->dev.of_node,
+		(void)of_property_read_string(pdev->dev.of_node,
 				"mbox-names", &ts_dev->touch_mbox_name);
 		ts_dev->touch_mbox_client.dev = &pdev->dev;
 		ts_dev->touch_mbox_client.rx_callback = &receive_message;
@@ -234,7 +245,7 @@ static int32_t tcc_touch_bridge_probe(struct platform_device *pdev)
 		ts_dev->touch_mbox_client.tx_block = (bool)true;
 #endif
 		ts_dev->touch_mbox_client.knows_txdone = (bool)false;
-		ts_dev->touch_mbox_client.tx_tout = 10;
+		ts_dev->touch_mbox_client.tx_tout = 11;
 		ts_dev->touch_mbox_channel =
 		mbox_request_channel_byname(&ts_dev->touch_mbox_client,
 				ts_dev->touch_mbox_name);
@@ -263,7 +274,7 @@ static int32_t tcc_touch_bridge_remove(struct platform_device *pdev)
 	if (tb_dev != NULL)	{
 		input_unregister_handler(&ttb_handler);
 		kthread_flush_worker(&tb_dev->touch_mbox_queue.kworker);
-		kthread_stop(tb_dev->touch_mbox_queue.kworker_task);
+		(void)kthread_stop(tb_dev->touch_mbox_queue.kworker_task);
 		mbox_free_channel(tb_dev->touch_mbox_channel);
 		pr_info("[INFO][TB]Remove TCC_TB Device\n");
 	}
@@ -274,10 +285,15 @@ static int32_t tcc_touch_bridge_remove(struct platform_device *pdev)
 static int32_t tcc_touch_bridge_suspend(struct platform_device *pdev,
 		pm_message_t state)
 {
+	(void)pdev;
+	(void)state;
+
 	return 0;
 }
 static int32_t tcc_touch_bridge_resume(struct platform_device *pdev)
 {
+	(void)pdev;
+
 	touch_send_init(ts_dev, ts_dev->touch_state);
 	return 0;
 }

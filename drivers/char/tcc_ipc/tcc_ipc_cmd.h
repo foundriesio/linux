@@ -13,7 +13,7 @@ IPC_UINT32 get_sequential_ID(struct ipc_device *ipc_dev);
 IPC_INT32 ipc_send_open(struct ipc_device *ipc_dev);
 IPC_INT32 ipc_send_close(struct ipc_device *ipc_dev);
 IPC_INT32 ipc_send_write(struct ipc_device *ipc_dev,
-							IPC_CHAR *ipc_data,
+							IPC_UCHAR *ipc_data,
 							IPC_UINT32 size);
 IPC_INT32 ipc_send_ping(struct ipc_device *ipc_dev);
 IPC_INT32 ipc_send_ack(struct ipc_device *ipc_dev,

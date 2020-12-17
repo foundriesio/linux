@@ -45,16 +45,17 @@ int32_t snor_updater_wait_event_timeout(
 	int32_t ret = -EINVAL;
 
 	if (updater_dev != NULL) {
+		long_t wait_ret;
+
 		updater_dev->waitQueue._condition = 1;
 		updater_dev->waitQueue.reqeustCMD = reqeustCMD;
 
-		ret = wait_event_interruptible_timeout(
+		wait_ret = wait_event_interruptible_timeout(
 			updater_dev->waitQueue._cmdQueue,
 			updater_dev->waitQueue._condition == 0,
 			msecs_to_jiffies(timeOut));
-		(void)ret;
 
-		if ((updater_dev->waitQueue._condition == 1) || (ret <= 0)) {
+		if ((updater_dev->waitQueue._condition == 1) || (wait_ret <= (long_t)0)) {
 			/* timeout */
 			ret = SNOR_UPDATER_ERR_TIMEOUT;
 		} else	{
@@ -105,7 +106,7 @@ int32_t send_update_start(struct snor_updater_device *updater_dev)
 	struct tcc_mbox_data sendMsg;
 	struct tcc_mbox_data receiveMsg;
 
-	memset(&sendMsg, 0x00, sizeof(struct tcc_mbox_data));
+	(void)memset(&sendMsg, 0x00, sizeof(struct tcc_mbox_data));
 
 	sendMsg.cmd[0] = (uint32_t)UPDATE_START;
 
@@ -171,7 +172,7 @@ int32_t send_update_done(struct snor_updater_device *updater_dev)
 	struct tcc_mbox_data sendMsg;
 	struct tcc_mbox_data receiveMsg;
 
-	memset(&sendMsg, 0x00, sizeof(struct tcc_mbox_data));
+	(void)memset(&sendMsg, 0x00, sizeof(struct tcc_mbox_data));
 
 	sendMsg.cmd[0] = (uint32_t)UPDATE_DONE;
 
@@ -219,7 +220,7 @@ int32_t send_fw_start(struct snor_updater_device *updater_dev,
 	struct tcc_mbox_data sendMsg;
 	struct tcc_mbox_data receiveMsg;
 
-	memset(&sendMsg, 0x00, sizeof(struct tcc_mbox_data));
+	(void)memset(&sendMsg, 0x00, sizeof(struct tcc_mbox_data));
 
 	sendMsg.cmd[0] = (uint32_t)UPDATE_FW_START;
 	sendMsg.cmd[1] = fwStartAddress;
@@ -288,7 +289,7 @@ int32_t send_fw_send(struct snor_updater_device *updater_dev,
 	struct tcc_mbox_data sendMsg;
 	struct tcc_mbox_data receiveMsg;
 
-	memset(&sendMsg, 0x00, sizeof(struct tcc_mbox_data));
+	(void)memset(&sendMsg, 0x00, sizeof(struct tcc_mbox_data));
 
 	sendMsg.cmd[0] = (uint32_t)UPDATE_FW_SEND;
 	sendMsg.cmd[1] = fwStartAddress;
@@ -297,7 +298,7 @@ int32_t send_fw_send(struct snor_updater_device *updater_dev,
 	sendMsg.cmd[4] = fwDataSize;
 	sendMsg.cmd[5] = fwdataCRC;
 
-	memcpy(&sendMsg.data, fwData, (ulong)fwDataSize);
+	(void)memcpy(&sendMsg.data, fwData, (ulong)fwDataSize);
 	sendMsg.data_len = (fwDataSize + (uint32_t)3)/(uint32_t)4;
 
 	ret = snor_updater_mailbox_send(
@@ -346,7 +347,7 @@ int32_t send_fw_done(struct snor_updater_device *updater_dev)
 	struct tcc_mbox_data sendMsg;
 	struct tcc_mbox_data receiveMsg;
 
-	memset(&sendMsg, 0x00, sizeof(struct tcc_mbox_data));
+	(void)memset(&sendMsg, 0x00, sizeof(struct tcc_mbox_data));
 
 	sendMsg.cmd[0] = (uint32_t)UPDATE_FW_DONE;
 
