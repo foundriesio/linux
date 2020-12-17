@@ -648,7 +648,6 @@ static inline void tcc_dai_set_dsp_tdm_mode_rx_channel(
 	dai_writel(mccr1, base_addr + TCC_DAI_MCCR1_OFFSET);
 }
 
-#define TDM_RX_FEEDBACK_BCLK (17000000)
 static inline void tcc_dai_set_dsp_tdm_mode_rx_early(
 	void __iomem *base_addr,
 	bool enable)
@@ -665,7 +664,8 @@ static inline void tcc_dai_set_dsp_tdm_mode_rx_early(
 	dai_writel(mccr1, base_addr + TCC_DAI_MCCR1_OFFSET);
 }
 
-static inline void tcc_dai_set_dsp_tdm_mode_rx_feedback(
+#define RX_BCLK_DELAY_MUST_SET_BCLK (17000000)
+static inline void tcc_dai_set_rx_bclk_delay(
 	void __iomem *base_addr,
 	bool enable)
 {

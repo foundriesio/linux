@@ -125,6 +125,9 @@ struct tcc_i2s_t {
 #if defined(PCM_INTERFACE)
 	bool tdm_pcm_mode;
 #endif
+#if defined(TCC805x_CS_SND)
+	bool rx_bclk_delay;
+#endif
 	bool is_updated;
 	int32_t tdm_slots;
 	int32_t tdm_slot_width;
@@ -201,7 +204,6 @@ static inline uint32_t calc_dsp_pcm_mclk(
 	int32_t sample_rate)
 {
 	int32_t ret;
-
 	sample_rate = (sample_rate == 44100) ? 44100 :
 				  (sample_rate == 22000) ? 22050 :
 				  (sample_rate == 11000) ? 11025 : sample_rate;
@@ -947,47 +949,58 @@ static int tcc_i2s_hw_params(
 #else
 		tcc_dai_set_multiport_mode(i2s->dai_reg, FALSE);
 #endif //PCM_INTERFACE
-#if defined(TCC805x_CS_SND)
-		if (substream->stream == SNDRV_PCM_STREAM_CAPTURE) {
-			uint32_t chip_rev = (uint32_t)get_chip_rev();
-			uint32_t chip_name = (uint32_t)get_chip_name();
-			uint32_t bclk=0;
-
-			if((chip_rev == 1)&&(chip_name == 0x8050)) { 
-				tcc_dai_set_dsp_tdm_mode_rx_channel(i2s->dai_reg, i2s->tdm_slots);
-
-				bclk = calc_bclk_from_mclk(i2s, mclk);
-				if(bclk >= TDM_RX_FEEDBACK_BCLK) {
-					tcc_dai_set_dsp_tdm_mode_rx_feedback(i2s->dai_reg, FALSE);
-					if(i2s->tdm_late_mode == TRUE) {
-						tcc_dai_set_dsp_tdm_mode_rx_early(i2s->dai_reg, FALSE);
-					} else {
-						tcc_dai_set_dsp_tdm_mode_rx_early(i2s->dai_reg, TRUE);
-					}
-				} else {
-					tcc_dai_set_dsp_tdm_mode_rx_feedback(i2s->dai_reg, FALSE);
-					tcc_dai_set_dsp_tdm_mode_rx_early(i2s->dai_reg, FALSE);
-				}
-			}
-		}
-#endif//TCC805x_CS_SND
 	} else  {
 		if (channels > 2)
 			tcc_dai_set_multiport_mode(i2s->dai_reg, TRUE);
 		else
 			tcc_dai_set_multiport_mode(i2s->dai_reg, FALSE);
+	}
+
 #if defined(TCC805x_CS_SND)
-		if (substream->stream == SNDRV_PCM_STREAM_CAPTURE) {
-			uint32_t chip_rev = (uint32_t)get_chip_rev();
-			uint32_t chip_name = (uint32_t)get_chip_name();
-			if((chip_rev == 1)&&(chip_name == 0x8050)){ 
+	if (substream->stream == SNDRV_PCM_STREAM_CAPTURE) {
+		uint32_t chip_rev = (uint32_t)get_chip_rev();
+		uint32_t chip_name = (uint32_t)get_chip_name();
+		uint32_t bclk=0;
+
+		if((chip_rev == 1)&&(chip_name == 0x8050)) { 
+			if (i2s->tdm_mode == TRUE) {
+				tcc_dai_set_dsp_tdm_mode_rx_channel(i2s->dai_reg, i2s->tdm_slots);
+			} else {
 				tcc_dai_set_dsp_tdm_mode_rx_channel(i2s->dai_reg, 2);
-				tcc_dai_set_dsp_tdm_mode_rx_feedback(i2s->dai_reg, FALSE);
-				tcc_dai_set_dsp_tdm_mode_rx_early(i2s->dai_reg, FALSE);
+			}
+			switch (i2s->dai_fmt & (uint32_t)SND_SOC_DAIFMT_MASTER_MASK) {
+				case SND_SOC_DAIFMT_CBS_CFM: /* codec clk slave & FRM master */
+				case SND_SOC_DAIFMT_CBS_CFS: /* codec clk & FRM slave */
+					if (i2s->tdm_mode == TRUE) {
+						bclk = calc_bclk_from_mclk(i2s, mclk);
+						if((bclk >= RX_BCLK_DELAY_MUST_SET_BCLK)||(i2s->rx_bclk_delay)) {
+							tcc_dai_set_rx_bclk_delay(i2s->dai_reg, TRUE);
+							if(i2s->tdm_late_mode == TRUE) {
+								tcc_dai_set_dsp_tdm_mode_rx_early(i2s->dai_reg, FALSE);
+							} else {
+								tcc_dai_set_dsp_tdm_mode_rx_early(i2s->dai_reg, TRUE);
+							}
+						} else {
+							tcc_dai_set_rx_bclk_delay(i2s->dai_reg, FALSE);
+							tcc_dai_set_dsp_tdm_mode_rx_early(i2s->dai_reg, FALSE);
+						}
+					} else {
+						if(i2s->rx_bclk_delay) {
+							tcc_dai_set_rx_bclk_delay(i2s->dai_reg, TRUE);
+						} else {
+							tcc_dai_set_rx_bclk_delay(i2s->dai_reg, FALSE);
+						}
+						tcc_dai_set_dsp_tdm_mode_rx_early(i2s->dai_reg, FALSE);
+					}
+					break;
+				default:
+					tcc_dai_set_rx_bclk_delay(i2s->dai_reg, FALSE);
+					tcc_dai_set_dsp_tdm_mode_rx_early(i2s->dai_reg, FALSE);
+					break;
 			}
 		}
-#endif//TCC805x_CS_SND
 	}
+#endif//TCC805x_CS_SND
 
 /* Workaround Code for TCC803X, TCC899X and TCC901X
  * Stereo & 9.1ch Audio IPs cannot read DCLKDIV register (0x54)
@@ -1468,6 +1481,50 @@ static const struct soc_enum mclk_div_enum[] = {
 		(mclk_div_texts)),
 };
 
+#if defined(TCC805x_CS_SND)
+static int get_rx_bclk_delay(
+	struct snd_kcontrol *kcontrol,
+	struct snd_ctl_elem_value  *ucontrol)
+{
+	struct snd_soc_component *component =
+		snd_soc_kcontrol_component(kcontrol);
+	struct tcc_i2s_t *i2s =
+		(struct tcc_i2s_t *)snd_soc_component_get_drvdata(component);
+
+	ucontrol->value.integer.value[0] = i2s->rx_bclk_delay;
+
+	return 0;
+}
+
+static int set_rx_bclk_delay(
+	struct snd_kcontrol *kcontrol,
+	struct snd_ctl_elem_value  *ucontrol)
+{
+	struct snd_soc_component *component =
+		snd_soc_kcontrol_component(kcontrol);
+	struct tcc_i2s_t *i2s =
+		(struct tcc_i2s_t *)snd_soc_component_get_drvdata(component);
+
+	if (tcc_i2s_is_active(component, __func__) == TRUE)
+		return -EINVAL;
+
+	i2s->rx_bclk_delay = ucontrol->value.integer.value[0];
+
+	return 0;
+}
+
+static char const *rx_bclk_delay_texts[] = {
+	"Disable",
+	"Enable",
+};
+
+static const struct soc_enum rx_bclk_delay_enum[] = {
+	SOC_ENUM_SINGLE_EXT(
+		(TCC_AUDIO_ARRAY_SIZE(rx_bclk_delay_texts)),
+		(rx_bclk_delay_texts)),
+};
+#endif
+
 static int get_audio_filter(
 	struct snd_kcontrol *kcontrol,
 	struct snd_ctl_elem_value  *ucontrol)
@@ -1655,6 +1712,10 @@ static const struct snd_kcontrol_new tcc_i2s_snd_controls[] = {
 #if defined(PCM_INTERFACE)
 	SOC_SINGLE_BOOL_EXT(("TDM PCM Mode"), (0),
 		(get_tdm_pcm_mode), (set_tdm_pcm_mode)),
+#endif
+#if defined(TCC805x_CS_SND)
+	SOC_SINGLE_BOOL_EXT(("Rx BCLK Delay in Master Mode"), (0),
+		(get_rx_bclk_delay), (set_rx_bclk_delay)),
 #endif
 };
 
@@ -2070,6 +2131,13 @@ static int parse_i2s_dt(struct platform_device *pdev, struct tcc_i2s_t *i2s)
 		i2s->tdm_pcm_mode = FALSE;
 	}
 #endif //PCM_INTERFACE
+#if defined(TCC805x_CS_SND)
+	if (of_get_property(pdev->dev.of_node, "rx-bclk-delay", NULL)) {
+		i2s->rx_bclk_delay = TRUE;
+	} else {
+		i2s->rx_bclk_delay = FALSE;
+	}
+#endif
 	return 0;
 }
 
