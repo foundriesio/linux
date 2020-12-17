@@ -77,7 +77,6 @@ choice
 	bool "DISP1"
 endchoice
 
-
 config FB1_MEMORY_SIZE
        int "FB1 memory size"
        default 20
@@ -338,7 +337,10 @@ config USE_SUB_MULTI_FRAME
 	help
 		Choose this option if you want to use 4/5ch-video
 
+source "drivers/video/fbdev/tcc-fb/panel/Kconfig"
+
 menu "Support for LCD panels"
+
 
 config LCD_HDMI1280X720
 	bool "HDMI 1280x720 LCD support"
@@ -591,5 +593,3 @@ config TCC_VIDEO_S_FEATURE
 	default n
 	help
 	Enable Telechips 'S' feature for VIDEO
-
-
