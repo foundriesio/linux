@@ -24,7 +24,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/arch/powerpc/Kconfig
 +++ b/arch/powerpc/Kconfig
-@@ -409,6 +409,7 @@ menu "Kernel options"
+@@ -410,6 +410,7 @@ menu "Kernel options"
  config HIGHMEM
  	bool "High memory support"
  	depends on PPC32

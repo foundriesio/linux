@@ -19,7 +19,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	select ARCH_WANT_COMPAT_IPC_PARSE_VERSION if COMPAT
  	select ARCH_WANT_DEFAULT_BPF_JIT
  	select ARCH_WANT_DEFAULT_TOPDOWN_MMAP_LAYOUT
-@@ -194,6 +195,7 @@ config ARM64
+@@ -195,6 +196,7 @@ config ARM64
  	select PCI_DOMAINS_GENERIC if PCI
  	select PCI_ECAM if (ACPI && PCI)
  	select PCI_SYSCALL if PCI

@@ -367,7 +367,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	active_slabs = total_slabs - free_slabs;
 --- a/mm/slab.h
 +++ b/mm/slab.h
-@@ -538,7 +538,7 @@ static inline void slab_post_alloc_hook(
+@@ -546,7 +546,7 @@ static inline void slab_post_alloc_hook(
   * The slab lists for all objects.
   */
  struct kmem_cache_node {

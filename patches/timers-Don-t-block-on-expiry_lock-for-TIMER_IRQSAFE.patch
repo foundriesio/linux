@@ -27,7 +27,7 @@ Cc: stable-rt@vger.kernel.org
 
 --- a/kernel/time/timer.c
 +++ b/kernel/time/timer.c
-@@ -1283,7 +1283,7 @@ static void del_timer_wait_running(struc
+@@ -1285,7 +1285,7 @@ static void del_timer_wait_running(struc
  	u32 tf;
  
  	tf = READ_ONCE(timer->flags);
@@ -36,7 +36,7 @@ Cc: stable-rt@vger.kernel.org
  		struct timer_base *base = get_timer_base(tf);
  
  		/*
-@@ -1367,6 +1367,13 @@ int del_timer_sync(struct timer_list *ti
+@@ -1369,6 +1369,13 @@ int del_timer_sync(struct timer_list *ti
  	 */
  	WARN_ON(in_irq() && !(timer->flags & TIMER_IRQSAFE));
  

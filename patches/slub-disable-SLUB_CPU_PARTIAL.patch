@@ -36,7 +36,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/init/Kconfig
 +++ b/init/Kconfig
-@@ -1964,7 +1964,7 @@ config SHUFFLE_PAGE_ALLOCATOR
+@@ -1974,7 +1974,7 @@ config SHUFFLE_PAGE_ALLOCATOR
  
  config SLUB_CPU_PARTIAL
  	default y

@@ -161,7 +161,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  static inline void clear_user_highpage(struct page *page, unsigned long vaddr)
 --- a/mm/Kconfig
 +++ b/mm/Kconfig
-@@ -872,4 +872,7 @@ config ARCH_HAS_HUGEPD
+@@ -859,4 +859,7 @@ config ARCH_HAS_HUGEPD
  config MAPPING_DIRTY_HELPERS
          bool
  
