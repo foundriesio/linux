@@ -262,7 +262,7 @@ IPC_INT32 ipc_push_buffer_overwrite(struct IPC_RINGBUF  *pBufCtrl,
 
 			if (continuousSize > size) {
 
-				memcpy((void *)
+				(void)memcpy((void *)
 				&pBufCtrl->_pBuffer[pBufCtrl->_Tail],
 				(const void *)buffer,
 				(size_t) size);
@@ -276,14 +276,14 @@ IPC_INT32 ipc_push_buffer_overwrite(struct IPC_RINGBUF  *pBufCtrl,
 			} else {
 				IPC_UINT32 remainSize;
 
-				memcpy((void *)
+				(void)memcpy((void *)
 			       &pBufCtrl->_pBuffer[pBufCtrl->_Tail],
 			       (const void *)buffer,
 			       (size_t) continuousSize);
 
 				remainSize = size - continuousSize;
 
-				memcpy((void *)
+				(void)memcpy((void *)
 				&pBufCtrl->_pBuffer[0],
 		       (const void *)&buffer[continuousSize],
 		       (size_t) remainSize);
@@ -301,7 +301,7 @@ IPC_INT32 ipc_push_buffer_overwrite(struct IPC_RINGBUF  *pBufCtrl,
 }
 
 IPC_INT32 ipc_pop_buffer(struct IPC_RINGBUF  *pBufCtrl,
-							IPC_UCHAR *buffer,
+							IPC_CHAR __user *buffer,
 							IPC_UINT32 size)
 {
 	IPC_INT32 ret = IPC_BUFFER_ERROR;

@@ -6,7 +6,7 @@
 #ifndef TCC805X_MULTI_MBOX_H
 #define TCC805X_MULTI_MBOX_H
 
-#define MBOX_TX_TIMEOUT  (600000) /* 10 minute timeout */
+#define MBOX_TX_TIMEOUT  (10)		/*msec*/
 
 #define MBOX_CMD_FIFO_SIZE		(6)
 #define MBOX_DATA_FIFO_SIZE		(128U)

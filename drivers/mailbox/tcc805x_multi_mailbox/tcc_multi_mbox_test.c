@@ -189,7 +189,8 @@ static int mbox_test_add_queue_and_work(struct mbox_test_receiveQueue *mbox, str
 	}
 	spin_unlock_irqrestore(&mbox->rx_queue_lock, flags);
 
-	kthread_queue_work(&mbox->kworker, &mbox->pump_messages);
+	(void)kthread_queue_work(&mbox->kworker,
+		&mbox->pump_messages);
 
 	return 0;
 }
@@ -246,7 +247,7 @@ static void mbox_test_deregister_receive_queue(struct mbox_test_receiveQueue *mb
 {
 	if (mbox != NULL) {
 		kthread_flush_worker(&mbox->kworker);
-		kthread_stop(mbox->kworker_task);
+		(void)kthread_stop(mbox->kworker_task);
 	}
 }
 
@@ -359,7 +360,7 @@ static int mbox_test_loopback(struct mbox_test_device *mbox_test_dev)
 
 		/* test 1 */
 		test_printk(mbox_test_dev->dev, "Start Test 1\n");
-		memset(&mbox_test_dev->send_msg, 0x00, sizeof(struct tcc_mbox_data));
+		(void)memset(&mbox_test_dev->send_msg, 0x00, sizeof(struct tcc_mbox_data));
 		mbox_test_dev->send_msg.cmd[0] = MBOX_TEST_CMD_TX;
 		ret = mbox_test_send_message(mbox_test_dev, &mbox_test_dev->send_msg);
 		if (ret < 0) {
@@ -369,7 +370,7 @@ static int mbox_test_loopback(struct mbox_test_device *mbox_test_dev)
 
 		/* test 2 */
 		test_printk(mbox_test_dev->dev, "\nStart Test 2\n");
-		memset(&mbox_test_dev->send_msg, 0x00, sizeof(struct tcc_mbox_data));
+		(void)memset(&mbox_test_dev->send_msg, 0x00, sizeof(struct tcc_mbox_data));
 		mbox_test_dev->send_msg.cmd[0] = MBOX_TEST_CMD_TX;
 		mbox_test_dev->send_msg.cmd[1] = 0xFFFFFFFF;
 		mbox_test_dev->send_msg.cmd[2] = 0xAAAA8888;
@@ -384,7 +385,7 @@ static int mbox_test_loopback(struct mbox_test_device *mbox_test_dev)
 
 		/* test 3 */
 		test_printk(mbox_test_dev->dev, "\nStart Test 3\n");
-		memset(&mbox_test_dev->send_msg, 0x00, sizeof(struct tcc_mbox_data));
+		(void)memset(&mbox_test_dev->send_msg, 0x00, sizeof(struct tcc_mbox_data));
 		mbox_test_dev->send_msg.cmd[0] = MBOX_TEST_CMD_TX;
 		mbox_test_dev->send_msg.cmd[1] = 0xFFFFFFFF;
 		mbox_test_dev->send_msg.cmd[2] = 0xAAAA8888;
@@ -401,7 +402,7 @@ static int mbox_test_loopback(struct mbox_test_device *mbox_test_dev)
 
 		/* test 4 */
 		test_printk(mbox_test_dev->dev, "\nStart Test 4\n");
-		memset(&mbox_test_dev->send_msg, 0x00, sizeof(struct tcc_mbox_data));
+		(void)memset(&mbox_test_dev->send_msg, 0x00, sizeof(struct tcc_mbox_data));
 		mbox_test_dev->send_msg.cmd[0] = MBOX_TEST_CMD_TX;
 		mbox_test_dev->send_msg.cmd[1] = 0xFFFFFFFF;
 		mbox_test_dev->send_msg.cmd[2] = 0xAAAA8888;
@@ -561,8 +562,8 @@ static int mbox_test_probe(struct platform_device *pdev)
 			platform_set_drvdata(pdev, mbox_test_dev);
 
 			mbox_test_dev->pdev = pdev;
-			of_property_read_string(pdev->dev.of_node, "device-name", &mbox_test_dev->name);
-			of_property_read_string(pdev->dev.of_node, "mbox-names", &mbox_test_dev->mbox_name);
+			(void)of_property_read_string(pdev->dev.of_node, "device-name", &mbox_test_dev->name);
+			(void)of_property_read_string(pdev->dev.of_node, "mbox-names", &mbox_test_dev->mbox_name);
 			iprintk(&pdev->dev, "device name(%s), mbox-names(%s)\n", mbox_test_dev->name, mbox_test_dev->mbox_name);
 
 			result = alloc_chrdev_region(&mbox_test_dev->devnum, MBOX_TEST_DEV_MINOR, 1, mbox_test_dev->name);

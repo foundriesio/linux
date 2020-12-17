@@ -25,15 +25,15 @@ IPC_INT32 ipc_mailbox_send(
 		struct IpcHandler *ipc_handle = &ipc_dev->ipc_handler;
 		IPC_INT32 i;
 
-		d2printk(ipc_dev, ipc_dev->dev,
+		d2printk((ipc_dev), ipc_dev->dev,
 			"ipc_msg(0x%px)\n", (void *)ipc_msg);
 
 		for (i = 0; i < (MBOX_CMD_FIFO_SIZE); i++) {
-			d2printk(ipc_dev, ipc_dev->dev,
+			d2printk((ipc_dev), ipc_dev->dev,
 				"cmd[%d]:(0x%08x)\n",
 				i, ipc_msg->cmd[i]);
 		}
-		d2printk(ipc_dev, ipc_dev->dev,
+		d2printk((ipc_dev), ipc_dev->dev,
 			"data size(%d)\n", ipc_msg->data_len);
 
 		mutex_lock(&ipc_handle->mboxMutex);
@@ -45,7 +45,7 @@ IPC_INT32 ipc_mailbox_send(
 #else
 		ret = mbox_send_message(ipc_dev->mbox_ch, ipc_msg);
 		if (ret < 0) {
-			d2printk(ipc_dev, ipc_dev->dev,
+			d2printk((ipc_dev), ipc_dev->dev,
 			"mbox send error(%d)\n", ret);
 			ret = IPC_ERR_TIMEOUT;
 		} else {

@@ -43,7 +43,7 @@ enum {
 	UPDATE_FW_COMPLETE,
 	UPDATE_DONE,
 	UPDATE_COMPLETE,
-	MAX_UPDATE_CMD_TYPE,
+	MAX_UPDATE_CMD_TYPE
 };
 
 struct snor_updater_wait_queue {

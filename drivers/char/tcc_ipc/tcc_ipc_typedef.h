@@ -98,7 +98,7 @@ typedef	long IPC_LONG;
 typedef enum {
 	CTL_CMD = 0x0000U,
 	WRITE_CMD,
-	MAX_CMD_TYPE,
+	MAX_CMD_TYPE
 } IpcCmdType;
 
 typedef enum {
@@ -108,21 +108,21 @@ typedef enum {
 	IPC_SEND_PING,
 	IPC_WRITE,
 	IPC_ACK,
-	MAC_CMD_ID,
+	MAC_CMD_ID
 } IpcCmdID;
 
 typedef enum {
 	IPC_NULL = 0U,
 	IPC_INIT,
 	IPC_READY,
-	IPC_MAX_STATUS,
+	IPC_MAX_STATUS
 } IpcStatus;
 
 typedef enum {
 	IPC_BUF_NULL = 0U,
 	IPC_BUF_READY,
 	IPC_BUF_BUSY,
-	IPC_BUF_MAX_STATUS,
+	IPC_BUF_MAX_STATUS
 } IpcBufferStatus;
 
 typedef void (*ipc_receive_queue_t)

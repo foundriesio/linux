@@ -118,7 +118,7 @@
 
 #define MBOX_ID0_LEN	(4U)
 #define MBOX_ID1_LEN	(2U)
-#define MBOX_ID_MAX_LEN		(6U) /*(MBOX_ID0_LEN+MBOX_ID1_LEN)*/
+#define MBOX_ID_MAX_LEN (6U)	 /* for Codesonar&qac : MBOX_ID0_LEN+MBOX_ID1_LEN */
 
 #define SSS_MBOX_STATUS_ADDR (0x1E020000)
 #define SSS_MBOX_DATA_ADDR (0x1E022000)
@@ -133,6 +133,11 @@ static int32_t mbox_verbose_mode;
 #ifndef char_t
 typedef char char_t;
 #endif
+
+#ifndef long_t
+typedef long long_t;
+#endif
+
 
 #define eprintk(dev, msg, ...)	\
 	((void)dev_err(dev, "[ERROR][%s]%s: " pr_fmt(msg), \
@@ -158,24 +163,24 @@ typedef char char_t;
 	(void)dev_info(dev, "[DEBUG][%s]%s: " pr_fmt(msg), \
 	(const char_t *)LOG_TAG, __func__, ##__VA_ARGS__); } }
 
-struct mbox_header0 {
-	union {
-		struct {
-			s8 bsid[1];
-			s8 cid[1];
-			char_t idName[MBOX_ID1_LEN];
-			};
-		uint32_t cmd;
-	};
+struct channel_id0{
+	s8 bsid[1];
+	s8 cid[1];
+	char_t idName[MBOX_ID1_LEN];
 };
 
-struct mbox_header1 {
-	union {
-		struct {
-			char_t idName[MBOX_ID0_LEN];
-			};
-		uint32_t cmd;
-	};
+struct channel_id1{
+	char_t idName[MBOX_ID0_LEN];
+};
+
+union mbox_header0{
+	struct channel_id0 id;
+	uint32_t cmd;
+};
+
+union mbox_header1{
+	struct channel_id1 id;
+	uint32_t cmd;
 };
 
 typedef void (*mbox_receive_queue_t)(void *dev_id, uint32_t ch,
@@ -184,8 +189,8 @@ typedef void (*mbox_receive_queue_t)(void *dev_id, uint32_t ch,
 struct mbox_receive_list {
 	void *dev_id;
 	uint32_t ch;
-	struct mbox_header0 header0;
-	struct mbox_header1 header1;
+	union mbox_header0 header0;
+	union mbox_header1 header1;
 	struct tcc_mbox_data msg;
 	struct list_head      queue; //for linked list
 };
@@ -260,10 +265,10 @@ struct tcc_mbox_device {
 /**
  * tcc mbox channel data
  *
- * @mdev:	Pointer to parent Mailbox device
- * @channel:	Channel number pertaining to this container
- * @msg:mbox message sturct for rx.
- * @receiveQueue: rx queue
+ * mdev:	Pointer to parent Mailbox device
+ * channel:	Channel number pertaining to this container
+ * msg:mbox message sturct for rx.
+ * receiveQueue: rx queue
  */
 struct tcc_channel {
 	struct tcc_mbox_device	*mdev;
@@ -274,9 +279,9 @@ struct tcc_channel {
 	struct tcc_mbox_data *msg;
 	struct mbox_receiveQueue receiveQueue;
 
-	struct mbox_header0 header0;
-	struct mbox_header1 header1;
-	char_t mbox_id[MBOX_ID_MAX_LEN+1];
+	union mbox_header0 header0;
+	union mbox_header1 header1;
+	char_t mbox_id[MBOX_ID_MAX_LEN+(uint32_t)1];
 	int32_t ch_enable;
 
 	uint32_t rx_count;
@@ -473,11 +478,11 @@ static int32_t deregister_receive_queue(struct mbox_receiveQueue *mbox_queue)
 {
 	int32_t ret;
 
-	if (!mbox_queue) {
+	if (mbox_queue == NULL) {
 		ret = -EINVAL;
 	} else {
 		kthread_flush_worker(&mbox_queue->kworker);
-		kthread_stop(mbox_queue->kworker_task);
+		(void)kthread_stop(mbox_queue->kworker_task);
 		ret = 0;
 	}
 
@@ -497,7 +502,8 @@ static int32_t mbox_add_rx_queue_and_work(
 	}
 	spin_unlock_irqrestore(&mbox_queue->rx_queue_lock, flags);
 
-	kthread_queue_work(&mbox_queue->kworker, &mbox_queue->pump_messages);
+	(void)kthread_queue_work(&mbox_queue->kworker,
+		&mbox_queue->pump_messages);
 
 	return 0;
 }
@@ -578,11 +584,11 @@ static int32_t deregister_transmit_queue(struct mbox_transmitQueue *mbox_queue)
 {
 	int32_t ret;
 
-	if (!mbox_queue) {
+	if (mbox_queue == NULL) {
 		ret = -EINVAL;
 	} else {
 		kthread_flush_worker(&mbox_queue->kworker);
-		kthread_stop(mbox_queue->kworker_task);
+		(void)kthread_stop(mbox_queue->kworker_task);
 		ret = 0;
 	}
 	return ret;
@@ -601,7 +607,8 @@ static int32_t mbox_add_tx_queue_and_work(
 	}
 	spin_unlock_irqrestore(&mbox_queue->tx_queue_lock, flags);
 
-	kthread_queue_work(&mbox_queue->kworker, &mbox_queue->pump_messages);
+	(void)kthread_queue_work(&mbox_queue->kworker,
+		&mbox_queue->pump_messages);
 
 	return 0;
 }
@@ -627,13 +634,14 @@ static int32_t tcc_mbox_wait_event_timeout(struct tcc_mbox_device *mdev,
 	int32_t ret = -EINVAL;
 
 	if (mdev != NULL) {
-		//mdev->waitQueue._condition = 1;
-		ret = wait_event_interruptible_timeout(
+		long_t wait_ret;
+
+		wait_ret = wait_event_interruptible_timeout(
 			mdev->waitQueue._cmdQueue,
 			mdev->waitQueue._condition == 0,
 			msecs_to_jiffies(timeOut));
 
-		if ((mdev->waitQueue._condition == 1) || (ret <= 0)) {
+		if ((mdev->waitQueue._condition == 1) || (wait_ret <= (long_t)0)) {
 			/* timeout */
 			ret = -ETIME;
 		} else {
@@ -665,7 +673,7 @@ static int32_t tcc_mbox_send_message(struct mbox_chan *chan,
 		uint32_t idx;
 		int32_t i;
 
-		d2printk(mdev, mdev->mbox.dev,
+		d2printk((mdev), mdev->mbox.dev,
 			"msg(0x%px)\n", (void *)msg);
 #if 0
 		d2printk(mdev, mdev->mbox.dev,
@@ -687,7 +695,7 @@ static int32_t tcc_mbox_send_message(struct mbox_chan *chan,
 			eprintk(mdev->mbox.dev, "cmd[0]: (0x%08x)\n",
 				chan_info->header0.cmd);
 			for (i = 0; i < (MBOX_CMD_FIFO_SIZE); i++) {
-				d1printk(mdev, mdev->mbox.dev,
+				d1printk((mdev), mdev->mbox.dev,
 					"cmd[%d]:(0x%08x)\n", i+1, msg->cmd[i]);
 			}
 			eprintk(mdev->mbox.dev,
@@ -696,16 +704,16 @@ static int32_t tcc_mbox_send_message(struct mbox_chan *chan,
 		} else {
 			if ((readl_relaxed(mdev->base + (uint32_t)TRM_STS) &
 				(uint32_t)OPP_TMN_STS_BIT) == (uint32_t)0) {
-				d1printk(mdev, mdev->mbox.dev,
+				d1printk((mdev), mdev->mbox.dev,
 					"Opposite MBOX is not ready\n");
 				ret = -ECOMM;
 			} else if ((readl_relaxed(mdev->base + MBOXSTR) &
 				(uint32_t)MEMP_MASK) == (uint32_t)0) {
-				d1printk(mdev, mdev->mbox.dev,
+				d1printk((mdev), mdev->mbox.dev,
 					"MBOX is not empty\n");
 				ret = -EBUSY;
 			} else {
-				d2printk(mdev, mdev->mbox.dev,
+				d2printk((mdev), mdev->mbox.dev,
 					"push mbox msg to mbox fifo\n");
 
 				/* check data fifo */
@@ -756,19 +764,21 @@ static int32_t tcc_mbox_send_message(struct mbox_chan *chan,
 					mdev->base + MBOXTXD(0));
 
 			/* Wait until SSS mbox busy is 0 in case of HSM */
-				if (memcmp(chan_info->mbox_id, "HSM",
+				if (strncmp(chan_info->mbox_id, "HSM",
 					(size_t)3) == (int32_t)0) {
 					void __iomem *sss_status_vaddr = NULL;
 
 					sss_status_vaddr =
 					ioremap_nocache(
 					(phys_addr_t)SSS_MBOX_STATUS_ADDR,
-					64);
+					(ulong)64);
 
 					while ((readl_relaxed(sss_status_vaddr)
 						& (uint32_t)0x01)
 						== (uint32_t)0x01)
-						;
+						{
+							;
+						}
 
 					iounmap(sss_status_vaddr);
 				}
@@ -783,14 +793,14 @@ static int32_t tcc_mbox_send_message(struct mbox_chan *chan,
 					mdev->base + MBOXCTR_SET);
 
 			/*Set funcID(0x02) to SSS mailbox in case of HSM */
-				if (memcmp(chan_info->mbox_id, "HSM", (size_t)3)
+				if (strncmp(chan_info->mbox_id, "HSM", (size_t)3)
 					== (int32_t)0) {
 					void __iomem *sss_data_vaddr = NULL;
 
 					sss_data_vaddr =
 					ioremap_nocache(
 					(phys_addr_t)SSS_MBOX_DATA_ADDR,
-					64);
+					(ulong)64);
 					writel_relaxed((uint32_t)0x02,
 						sss_data_vaddr);
 					iounmap(sss_data_vaddr);
@@ -821,7 +831,7 @@ static void tcc_multich_mbox_send_worker(struct mbox_chan *chan,
 		struct tcc_channel *chan_info = chan->con_priv;
 
 		if ((mdev != NULL) && (chan_info != NULL))	{
-			d2printk(mdev, mdev->mbox.dev, "In, %s ch(%d)\n",
+			d2printk((mdev), mdev->mbox.dev, "In, %s ch(%d)\n",
 				chan_info->mbox_id, chan_info->channel);
 
 			mutex_lock(&mdev->sendLock);
@@ -832,7 +842,7 @@ static void tcc_multich_mbox_send_worker(struct mbox_chan *chan,
 			if (ret != 0) {
 				chan_info->tx_fail_count++;
 			}
-			d2printk(mdev, mdev->mbox.dev, "tx result : %d\n", ret);
+			d2printk((mdev), mdev->mbox.dev, "tx result : %d\n", ret);
 
 			tcc_txdone(chan, ret);
 
@@ -863,7 +873,7 @@ static int32_t tcc_multich_mbox_submit(struct mbox_chan *chan, void *mbox_msg)
 			tx_list->chan = chan;
 			tx_list->msg = (struct tcc_mbox_data *)mbox_msg;
 
-			mbox_add_tx_queue_and_work(
+			(void)mbox_add_tx_queue_and_work(
 				&mdev->transmitQueue, tx_list);
 		} else {
 			eprintk(mdev->mbox.dev, "Allocate fail\n");
@@ -903,7 +913,7 @@ static int32_t tcc_multich_mbox_startup(struct mbox_chan *chan)
 		if (of_property_read_string(cl->dev->of_node, "mbox-id",
 				&mbox_id_ptr) == 0)	{
 
-			d1printk(mdev, mdev->mbox.dev,
+			d1printk((mdev), mdev->mbox.dev,
 				"mbox id is %s\n", mbox_id_ptr);
 
 			mbox_id_len = strnlen(mbox_id_ptr,
@@ -922,10 +932,15 @@ static int32_t tcc_multich_mbox_startup(struct mbox_chan *chan)
 					"mbox id(%s) is too short. Minimal len is 3\n",
 					mbox_id_ptr);
 				ret = -EINVAL;
-
+			} else if (cl->tx_tout <= (ulong)MBOX_TX_TIMEOUT) {
+				eprintk(mdev->mbox.dev,
+					"The client timeout time is greater than the mbox timeout.\n");
+				eprintk(mdev->mbox.dev,
+					"Please set it to less than  mbox time(%dms).\n",MBOX_TX_TIMEOUT);
+				ret = -EINVAL;
 			} else {
-				memset(mbox_id, 0x00, MBOX_ID_MAX_LEN);
-				memcpy(mbox_id,
+				(void)memset(mbox_id, 0x00, MBOX_ID_MAX_LEN);
+				(void)memcpy(mbox_id,
 					mbox_id_ptr,
 					(__kernel_size_t)mbox_id_len);
 
@@ -950,9 +965,9 @@ static int32_t tcc_multich_mbox_startup(struct mbox_chan *chan)
 					struct tcc_channel *chan_info_temp =
 						mbox->chans[i].con_priv;
 
-					if (memcmp(chan_info_temp->mbox_id,
-						mbox_id,
-						MBOX_ID_MAX_LEN) == 0) {
+					if (strncmp((const char_t *)chan_info_temp->mbox_id,
+						(const char_t *)mbox_id,
+						(size_t)MBOX_ID_MAX_LEN) == 0) {
 
 						eprintk(mdev->mbox.dev,
 							"This mbox id(%s) is already in use.\n",
@@ -964,18 +979,18 @@ static int32_t tcc_multich_mbox_startup(struct mbox_chan *chan)
 			}
 
 			if (ret == 0) {
-				memcpy(chan_info->mbox_id,
+				(void)memcpy(chan_info->mbox_id,
 					mbox_id,
 					MBOX_ID_MAX_LEN);
 
-				chan_info->header0.idName[0] = mbox_id[4];
-				chan_info->header0.idName[1] = mbox_id[5];
+				chan_info->header0.id.idName[0] = mbox_id[4];
+				chan_info->header0.id.idName[1] = mbox_id[5];
 			#ifdef CONFIG_TCC805X_CA53Q
-				chan_info->header0.cid[0] = CID_A53;
+				chan_info->header0.id.cid[0] = CID_A53;
 			#else
-				chan_info->header0.cid[0] = CID_A72;
+				chan_info->header0.id.cid[0] = CID_A72;
 			#endif
-				chan_info->header0.bsid[0] = BSID;
+				chan_info->header0.id.bsid[0] = BSID;
 
 				chan_info->header1.cmd =
 					(((uint32_t)mbox_id[0]) |
@@ -987,7 +1002,7 @@ static int32_t tcc_multich_mbox_startup(struct mbox_chan *chan)
 						sizeof(struct tcc_mbox_data),
 						GFP_KERNEL);
 
-				if (!chan_info->msg) {
+				if (chan_info->msg == NULL) {
 					ret = -ENOMEM;
 				} else {
 					ret = mbox_receive_queue_init(
@@ -1016,17 +1031,17 @@ static void tcc_multich_mbox_shutdown(struct mbox_chan *chan)
 		struct tcc_channel *chan_info = chan->con_priv;
 
 		if ((mdev != NULL) && (chan_info != NULL)) {
-			d1printk(mdev, mdev->mbox.dev, "In\n");
+			d1printk((mdev), mdev->mbox.dev, "In\n");
 
 			chan_info->ch_enable = TCC_MBOX_CH_DISALBE;
 			mutex_lock(&mdev->lock);
 
 			list_del(&chan_info->proc_list);
 
-			deregister_receive_queue(&chan_info->receiveQueue);
+			(void)deregister_receive_queue(&chan_info->receiveQueue);
 
 			mutex_unlock(&mdev->lock);
-			d1printk(mdev, mdev->mbox.dev, "out\n");
+			d1printk((mdev), mdev->mbox.dev, "out\n");
 
 			chan->con_priv = NULL;
 		}
@@ -1040,7 +1055,7 @@ static bool tcc_multich_mbox_last_tx_done(struct mbox_chan *chan)
 	if (chan != NULL) {
 		struct tcc_mbox_device *mdev = dev_get_drvdata(chan->mbox->dev);
 
-		d1printk(mdev, mdev->mbox.dev, "In\n");
+		d1printk((mdev), mdev->mbox.dev, "In\n");
 
 		mutex_lock(&mdev->lock);
 
@@ -1081,14 +1096,14 @@ static void tcc_received_msg(void *dev_id, uint32_t ch,
 		struct mbox_controller *mbox;
 		struct mbox_chan *chan;
 
-		d2printk(mdev, mdev->mbox.dev, "In, ch(%d)\n", ch);
+		d2printk((mdev), mdev->mbox.dev, "In, ch(%d)\n", ch);
 
 		mbox = &mdev->mbox;
 		chan = &mbox->chans[ch];
 
 		if (chan != NULL) {
 			mbox_chan_received_data(chan, msg);
-			d2printk(mdev,
+			d2printk((mdev),
 				mdev->mbox.dev, "out, ch(%d)\n", ch);
 		} else {
 			eprintk(mdev->mbox.dev,
@@ -1109,10 +1124,10 @@ static int32_t tcc_mbox_find_header(struct mbox_chan *chan,
 		if ((chan_info != NULL) &&
 			(chan_info->ch_enable == TCC_MBOX_CH_ENALBE)) {
 			if (chan_info->header1.cmd == mbox_list->header1.cmd) {
-				if ((chan_info->header0.idName[0] ==
-						mbox_list->header0.idName[0]) &&
-					(chan_info->header0.idName[1] ==
-						mbox_list->header0.idName[1])) {
+				if ((chan_info->header0.id.idName[0] ==
+						mbox_list->header0.id.idName[0]) &&
+					(chan_info->header0.id.idName[1] ==
+						mbox_list->header0.id.idName[1])) {
 					ret = 1;
 				}
 			}
@@ -1185,28 +1200,28 @@ static irqreturn_t tcc_multich_mbox_rx_irq(int irq, void *dev_id)
 		mbox_list->header1.cmd =
 			readl_relaxed(mdev->base + MBOXRXD(7));
 #if 1
-		d2printk(mdev, mdev->mbox.dev,
+		d2printk((mdev), mdev->mbox.dev,
 			"cmd [0] = (0x%08x)\n",
 			mbox_list->header0.cmd);
-		d2printk(mdev, mdev->mbox.dev,
+		d2printk((mdev), mdev->mbox.dev,
 			"cmd [1] = (0x%08x)\n",
 			mbox_list->msg.cmd[0]);
-		d2printk(mdev, mdev->mbox.dev,
+		d2printk((mdev), mdev->mbox.dev,
 			"cmd [2] = (0x%08x)\n",
 			mbox_list->msg.cmd[1]);
-		d2printk(mdev, mdev->mbox.dev,
+		d2printk((mdev), mdev->mbox.dev,
 			"cmd [3] = (0x%08x)\n",
 			mbox_list->msg.cmd[2]);
-		d2printk(mdev, mdev->mbox.dev,
+		d2printk((mdev), mdev->mbox.dev,
 			"cmd [4] = (0x%08x)\n",
 			mbox_list->msg.cmd[3]);
-		d2printk(mdev, mdev->mbox.dev,
+		d2printk((mdev), mdev->mbox.dev,
 			"cmd [5] = (0x%08x)\n",
 			mbox_list->msg.cmd[4]);
-		d2printk(mdev, mdev->mbox.dev,
+		d2printk((mdev), mdev->mbox.dev,
 			"cmd [6] = (0x%08x)\n",
 			mbox_list->msg.cmd[5]);
-		d2printk(mdev, mdev->mbox.dev,
+		d2printk((mdev), mdev->mbox.dev,
 			"cmd [7] = (0x%08x)\n",
 			mbox_list->header1.cmd);
 #endif
@@ -1223,7 +1238,7 @@ static irqreturn_t tcc_multich_mbox_rx_irq(int irq, void *dev_id)
 				chan_info =
 				(struct tcc_channel *) chan->con_priv;
 
-				mbox_add_rx_queue_and_work(
+				(void)mbox_add_rx_queue_and_work(
 					&chan_info->receiveQueue,
 					mbox_list);
 
@@ -1235,24 +1250,24 @@ static irqreturn_t tcc_multich_mbox_rx_irq(int irq, void *dev_id)
 		}
 
 		if (is_valid_ch == 0) {
-			char_t mbox_id[MBOX_ID_MAX_LEN+1];
+			char_t mbox_id[MBOX_ID_MAX_LEN+(uint32_t)1];
 
-			memset(mbox_id, 0x00,
+			(void)memset(mbox_id, 0x00,
 				((__kernel_size_t)(MBOX_ID_MAX_LEN) +
 				(__kernel_size_t)1));
 
 			for (i = 0;	i < (uint32_t)MBOX_ID0_LEN; i++) {
 				if (mbox_list != NULL) {
 					mbox_id[i] =
-					mbox_list->header1.idName[i];
+					mbox_list->header1.id.idName[i];
 				}
 			}
 			mbox_id[MBOX_ID0_LEN] =
-				mbox_list->header0.idName[0];
+				mbox_list->header0.id.idName[0];
 			mbox_id[MBOX_ID0_LEN+(u8)1] =
-				mbox_list->header0.idName[1];
+				mbox_list->header0.id.idName[1];
 
-			d1printk(mdev, mdev->mbox.dev,
+			d1printk((mdev), mdev->mbox.dev,
 				"mbox ch(%d) is not registered : id(%s)\n",
 				mbox_list->ch, mbox_id);
 
@@ -1301,7 +1316,7 @@ static struct mbox_chan *tcc_multich_mbox_xlate(struct mbox_controller *mbox,
 		uint32_t channel   = spec->args[0];
 		struct tcc_channel *chan_info;
 
-		d1printk(mdev, mdev->mbox.dev,
+		d1printk((mdev), mdev->mbox.dev,
 			"In, channel (%d)\n", channel);
 
 		if (mbox->num_chans <= (int32_t)channel)	{
@@ -1313,7 +1328,7 @@ static struct mbox_chan *tcc_multich_mbox_xlate(struct mbox_controller *mbox,
 			chan_info = mbox->chans[channel].con_priv;
 			if ((chan_info != NULL) &&
 				(channel == chan_info->channel))	{
-				eprintk(mbox->dev,	"Channel in use\n");
+				eprintk(mbox->dev, "Channel in use\n");
 				chan = ERR_PTR(-EBUSY);
 			} else {
 				chan = &mbox->chans[channel];
@@ -1321,7 +1336,7 @@ static struct mbox_chan *tcc_multich_mbox_xlate(struct mbox_controller *mbox,
 				chan_info = devm_kzalloc(mbox->dev,
 					sizeof(*chan_info), GFP_KERNEL);
 
-				if (!chan_info) {
+				if (chan_info == NULL) {
 					chan = ERR_PTR(-ENOMEM);
 				} else {
 					chan_info->mdev = mdev;
@@ -1329,7 +1344,7 @@ static struct mbox_chan *tcc_multich_mbox_xlate(struct mbox_controller *mbox,
 
 					chan->con_priv = chan_info;
 
-					d1printk(mdev, mbox->dev,
+					d1printk((mdev), mbox->dev,
 						"Mbox: Created channel: channel: %d\n",
 						channel);
 				}
@@ -1397,10 +1412,10 @@ static int32_t tcc_multich_mbox_probe(struct platform_device *pdev)
 		mdev = devm_kzalloc(&pdev->dev,
 			sizeof(struct tcc_mbox_device), GFP_KERNEL);
 
-		if (!mdev) {
+		if (mdev == NULL) {
 			ret = -ENOMEM;
 		} else {
-			d1printk(mdev, &pdev->dev, "set drvdata\n");
+			d1printk((mdev), &pdev->dev, "set drvdata\n");
 			platform_set_drvdata(pdev, mdev);
 
 			mdev->debug_level = mbox_verbose_mode;
@@ -1419,14 +1434,14 @@ static int32_t tcc_multich_mbox_probe(struct platform_device *pdev)
 				ret = -EINVAL;
 			} else	{
 				/* Allocated channel */
-				d1printk(mdev, &pdev->dev,
+				d1printk((mdev), &pdev->dev,
 					"Allocated channel\n");
 				mdev->mbox.chans =
 				devm_kzalloc(&pdev->dev,
 					sizeof(struct mbox_chan)*
 					(size_t)mdev->mbox.num_chans,
 				GFP_KERNEL);
-				if (!mdev->mbox.chans) {
+				if (mdev->mbox.chans == NULL) {
 					ret = -ENOMEM;
 				} else {
 					tcc_mbox_event_create(mdev);
@@ -1437,7 +1452,7 @@ static int32_t tcc_multich_mbox_probe(struct platform_device *pdev)
 
 	/* mbox rx irq init */
 	if (ret == 0) {
-		d1printk(mdev, &pdev->dev, "mbox rx irq init\n");
+		d1printk((mdev), &pdev->dev, "mbox rx irq init\n");
 		ret = devm_request_irq(&pdev->dev, (uint32_t)mdev->rx_irq,
 			&tcc_multich_mbox_rx_irq, IRQF_ONESHOT,
 			dev_name(&pdev->dev), mdev);
@@ -1450,13 +1465,13 @@ static int32_t tcc_multich_mbox_probe(struct platform_device *pdev)
 				get_cpu_mask(0));
 
 			//choose online cpus
-			cpumask_and(&affinity_mask,
+			(void)cpumask_and(&affinity_mask,
 				cpu_online_mask,
 				(const struct cpumask *)&affinity_set);
 
 			if (!cpumask_empty(&affinity_mask))	{
-				irq_set_affinity_hint((uint32_t)mdev->rx_irq,
-				(const struct cpumask *)&affinity_mask);
+				(void)irq_set_affinity_hint((uint32_t)mdev->rx_irq,
+					(const struct cpumask *)&affinity_mask);
 			}
 #endif
 		} else {
@@ -1467,7 +1482,7 @@ static int32_t tcc_multich_mbox_probe(struct platform_device *pdev)
 
 	/* mbox tx done irq init */
 	if (ret == 0) {
-		d1printk(mdev, &pdev->dev,
+		d1printk((mdev), &pdev->dev,
 			"mbox tx done init\n");
 
 		ret = devm_request_irq(&pdev->dev, (uint32_t)mdev->txd_irq,
@@ -1482,12 +1497,12 @@ static int32_t tcc_multich_mbox_probe(struct platform_device *pdev)
 				get_cpu_mask(0));
 
 			/*choose online cpus*/
-			cpumask_and(&affinity_mask,
+			(void)cpumask_and(&affinity_mask,
 				cpu_online_mask,
 				(const struct cpumask *)&affinity_set);
 
 			if (!cpumask_empty(&affinity_mask))	{
-				irq_set_affinity_hint((uint32_t)mdev->txd_irq,
+				(void)irq_set_affinity_hint((uint32_t)mdev->txd_irq,
 					(const struct cpumask *)&affinity_mask);
 			}
 #endif
@@ -1509,11 +1524,11 @@ static int32_t tcc_multich_mbox_probe(struct platform_device *pdev)
 	}
 
 	if (ret == 0) {
-		d1printk(mdev, &pdev->dev, "mbox mutex init\n");
+		d1printk((mdev), &pdev->dev, "mbox mutex init\n");
 		mutex_init(&mdev->lock);
 		mutex_init(&mdev->sendLock);
 
-		d1printk(mdev, &pdev->dev, "mbox queue init\n");
+		d1printk((mdev), &pdev->dev, "mbox queue init\n");
 
 		ret = mbox_transmit_queue_init(&mdev->transmitQueue,
 			&tcc_multich_mbox_send_worker,
@@ -1551,7 +1566,7 @@ static int32_t tcc_multich_mbox_remove(struct platform_device *pdev)
 {
 	struct tcc_mbox_device *mdev = platform_get_drvdata(pdev);
 
-	d1printk(mdev, mdev->mbox.dev, "In\n");
+	d1printk((mdev), mdev->mbox.dev, "In\n");
 
 	writel_relaxed(readl_relaxed(mdev->base + TRM_STS) &
 		~(uint32_t)OWN_TMN_STS_BIT, mdev->base + TRM_STS);

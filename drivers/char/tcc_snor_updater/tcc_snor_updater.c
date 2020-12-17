@@ -121,7 +121,7 @@ int32_t snor_update_fw(struct snor_updater_device *updater_dev,
 					updater_dev,
 					(fwInfo->start_address + imageOffset),
 					currentCount + (uint32_t)1,
-					totalCount, &fwInfo->image[imageOffset],
+					totalCount, (char_t *)&fwInfo->image[imageOffset],
 					fwDataSize, fwdataCRC);
 				if (ret != SNOR_UPDATER_SUCCESS) {
 					break;
