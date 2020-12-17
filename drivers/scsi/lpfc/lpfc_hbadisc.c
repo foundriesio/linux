@@ -119,7 +119,6 @@ lpfc_dev_loss_tmo_callbk(struct fc_rport *rport)
 	struct lpfc_hba   *phba;
 	struct lpfc_work_evt *evtp;
 	int  put_node;
-	int  put_rport;
 	unsigned long iflags;
 
 	rdata = rport->dd_data;
@@ -144,13 +143,10 @@ lpfc_dev_loss_tmo_callbk(struct fc_rport *rport)
 	 */
 	if (vport->load_flag & FC_UNLOADING) {
 		put_node = rdata->pnode != NULL;
-		put_rport = ndlp->rport != NULL;
 		rdata->pnode = NULL;
 		ndlp->rport = NULL;
 		if (put_node)
 			lpfc_nlp_put(ndlp);
-		if (put_rport)
-			put_device(&rport->dev);
 		return;
 	}
 
@@ -265,7 +261,6 @@ lpfc_dev_loss_tmo_handler(struct lpfc_nodelist *ndlp)
 		ndlp->rport = NULL;
 		if (put_node)
 			lpfc_nlp_put(ndlp);
-		put_device(&rport->dev);
 
 		return fcf_inuse;
 	}
@@ -286,7 +281,6 @@ lpfc_dev_loss_tmo_handler(struct lpfc_nodelist *ndlp)
 	ndlp->rport = NULL;
 	if (put_node)
 		lpfc_nlp_put(ndlp);
-	put_device(&rport->dev);
 
 	if (ndlp->nlp_type & NLP_FABRIC)
 		return fcf_inuse;
@@ -4186,8 +4180,6 @@ lpfc_register_remote_port(struct lpfc_vport *vport, struct lpfc_nodelist *ndlp)
 				lpfc_nlp_put(ndlp);
 			rdata->pnode = NULL;
 		}
-		/* drop reference for earlier registeration */
-		put_device(&rport->dev);
 	}
 
 	lpfc_debugfs_disc_trc(vport, LPFC_DISC_TRC_RPORT,
@@ -4199,7 +4191,7 @@ lpfc_register_remote_port(struct lpfc_vport *vport, struct lpfc_nodelist *ndlp)
 		return;
 
 	ndlp->rport = rport = fc_remote_port_add(shost, 0, &rport_ids);
-	if (!rport || !get_device(&rport->dev)) {
+	if (!rport) {
 		dev_printk(KERN_WARNING, &phba->pcidev->dev,
 			   "Warning: fc_remote_port_add failed\n");
 		return;
@@ -4240,6 +4232,7 @@ lpfc_register_remote_port(struct lpfc_vport *vport, struct lpfc_nodelist *ndlp)
 	    (rport->scsi_target_id < LPFC_MAX_TARGET)) {
 		ndlp->nlp_sid = rport->scsi_target_id;
 	}
+
 	return;
 }
 
@@ -5214,7 +5207,6 @@ lpfc_nlp_remove(struct lpfc_vport *vport, struct lpfc_nodelist *ndlp)
 		rdata = rport->dd_data;
 		rdata->pnode = NULL;
 		ndlp->rport = NULL;
-		put_device(&rport->dev);
 	}
 }
 
