@@ -1274,10 +1274,6 @@ static bool io_cqring_overflow_flush(struct io_ring_ctx *ctx, bool force,
 
 	spin_lock_irqsave(&ctx->completion_lock, flags);
 
-	/* if force is set, the ring is going away. always drop after that */
-	if (force)
-		ctx->cq_overflow_flushed = 1;
-
 	cqe = NULL;
 	list_for_each_entry_safe(req, tmp, &ctx->cq_overflow_list, list) {
 		if (tsk && req->task != tsk)
@@ -7629,6 +7625,8 @@ static void io_ring_ctx_wait_and_kill(struct io_ring_ctx *ctx)
 {
 	mutex_lock(&ctx->uring_lock);
 	percpu_ref_kill(&ctx->refs);
+	/* if force is set, the ring is going away. always drop after that */
+	ctx->cq_overflow_flushed = 1;
 	mutex_unlock(&ctx->uring_lock);
 
 	io_kill_timeouts(ctx, NULL);
