@@ -32,6 +32,43 @@
 
 #define LOG_TAG "DRMDPI"
 
+#if defined(CONFIG_TCC_DP_DRIVER_V1_4)
+/* property */
+enum tcc_prop_audio_freq {
+	PROP_36_HZ = 0,
+	PROP_44_1HZ,
+	PROP_48HZ,
+	PROP_88_2HZ,
+	PROP_96HZ,
+	PROP_192HZ,
+};
+
+static const struct drm_prop_enum_list tcc_prop_audio_freq_names[] = {
+	{ PROP_36_HZ, "36hz" },
+	{ PROP_44_1HZ, "44.1hz" },
+	{ PROP_48HZ, "48hz" },
+	{ PROP_88_2HZ, "88.2hz" },
+	{ PROP_96HZ, "96hz" },
+	{ PROP_192HZ, "192hz" },
+};
+
+enum tcc_prop_audio_type {
+	PROP_TYPE_PCM = 0,
+	PROP_TYPE_DD,
+	PROP_TYPE_DDP,
+	PROP_TYPE_DTS,
+	PROP_TYPE_DTS_HD,
+};
+
+static const struct drm_prop_enum_list tcc_prop_audio_type_names[] = {
+	{ PROP_TYPE_PCM, "pcm" },
+	{ PROP_TYPE_DD, "dd" },
+	{ PROP_TYPE_DDP, "ddp" },
+	{ PROP_TYPE_DTS, "dts" },
+	{ PROP_TYPE_DTS_HD, "dts-hd" },
+};
+#endif
+
 struct drm_detailed_timing_t {
 	unsigned int vic;
 	unsigned int pixelrepetions;
@@ -54,7 +91,18 @@ struct tcc_dpi_dp {
 	int dp_id;
 	struct dptx_drm_helper_funcs *funcs;
 };
+
+struct tcc_dp_prop {
+	struct drm_property *audio_freq;
+	struct drm_property *audio_type;
+};
+
+struct tcc_dp_prop_data {
+	enum tcc_prop_audio_freq audio_freq;
+	enum tcc_prop_audio_type audio_type;
+};
 #endif
+
 struct tcc_dpi {
 	struct drm_encoder encoder;
 	struct device *dev;
@@ -75,6 +123,8 @@ struct tcc_dpi {
 	#endif
 	#if defined(CONFIG_TCC_DP_DRIVER_V1_4)
 	struct tcc_dpi_dp *dp;
+	struct tcc_dp_prop dp_prop;
+	struct tcc_dp_prop_data dp_prop_data;
 	#endif
 };
 
@@ -304,6 +354,55 @@ static void tcc_dpi_connector_destroy(struct drm_connector *connector)
 	drm_connector_cleanup(connector);
 }
 
+#if defined(CONFIG_TCC_DP_DRIVER_V1_4)
+static int
+tcc_dpi_connector_atomic_get_property(struct drm_connector *connector,
+					const struct drm_connector_state *state,
+					struct drm_property *property,
+					uint64_t *val)
+{
+	struct tcc_dpi *ctx = connector_to_dpi(connector);
+
+	if (property == ctx->dp_prop.audio_freq) {
+		int i;
+		uint64_t audio_freq;
+
+		//audio_freq = ctx->dp->funcs->get_audio_freq();
+		audio_freq = (uint64_t)ctx->dp_prop_data.audio_freq;
+		*val = audio_freq;
+	} else if (property == ctx->dp_prop.audio_type) {
+		int audio_type;
+		//*val = ctx->dp->funcs->get_audio_type();
+		audio_type = (uint64_t)ctx->dp_prop_data.audio_type;
+		*val = audio_type;
+	}
+	return 0;
+}
+
+static int
+tcc_dpi_connector_atomic_set_property(struct drm_connector *connector,
+					 struct drm_connector_state *state,
+					 struct drm_property *property,
+					 uint64_t val)
+{
+	struct tcc_dpi *ctx = connector_to_dpi(connector);
+
+	if (property == ctx->dp_prop.audio_freq) {
+		if (val <= PROP_192HZ) {
+			//ctx->dp->funcs->set_audio_freq(val);
+			ctx->dp_prop_data.audio_freq =
+				(enum tcc_prop_audio_freq)val;
+		}
+	} else if (property == ctx->dp_prop.audio_type) {
+		if (val <= PROP_TYPE_DTS_HD) {
+			//ctx->dp->funcs->set_audio_freq(val);
+			ctx->dp_prop_data.audio_type =
+				(enum tcc_prop_audio_type)val;
+		}
+	}
+	return 0;
+}
+#endif
 static const struct drm_connector_funcs tcc_dpi_connector_funcs = {
 	.detect = tcc_dpi_detect,
 	.fill_modes = drm_helper_probe_single_connector_modes,
@@ -311,6 +410,10 @@ static const struct drm_connector_funcs tcc_dpi_connector_funcs = {
 	.reset = drm_atomic_helper_connector_reset,
 	.atomic_duplicate_state = drm_atomic_helper_connector_duplicate_state,
 	.atomic_destroy_state = drm_atomic_helper_connector_destroy_state,
+	#if defined(CONFIG_TCC_DP_DRIVER_V1_4)
+        .atomic_get_property = tcc_dpi_connector_atomic_get_property,
+        .atomic_set_property = tcc_dpi_connector_atomic_set_property,
+	#endif
 };
 
 /*
@@ -457,6 +560,27 @@ static int tcc_dpi_create_connector(
 		DRM_ERROR("failed to initialize connector with drm\n");
 		return ret;
 	}
+
+	#if defined(CONFIG_TCC_DP_DRIVER_V1_4)
+	if (ctx->hw_device->connector_type == DRM_MODE_CONNECTOR_DisplayPort) {
+		/* audio_freq */
+		ctx->dp_prop.audio_freq =
+			drm_property_create_enum(connector->dev, 0,
+				"audio_freq",
+				tcc_prop_audio_freq_names,
+				ARRAY_SIZE(tcc_prop_audio_freq_names));
+		 drm_object_attach_property(&connector->base,
+				   ctx->dp_prop.audio_freq, 0);
+
+		ctx->dp_prop.audio_type =
+			drm_property_create_enum(connector->dev, 0,
+				"audio_type",
+				tcc_prop_audio_type_names,
+				ARRAY_SIZE(tcc_prop_audio_type_names));
+		 drm_object_attach_property(&connector->base,
+				   ctx->dp_prop.audio_type, 0);
+	}
+	#endif
 
 	drm_connector_helper_add(connector, &tcc_dpi_connector_helper_funcs);
 	drm_mode_connector_attach_encoder(connector, encoder);
@@ -716,7 +840,7 @@ err_out:
 }
 
 ssize_t proc_read_edid(
-        struct file *filp, char __user *usr_buf, size_t cnt, loff_t *off_set)
+	struct file *filp, char __user *usr_buf, size_t cnt, loff_t *off_set)
 {
 	struct drm_encoder encoder;
 	struct tcc_dpi *ctx = PDE_DATA(file_inode(filp));
