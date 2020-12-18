@@ -273,7 +273,7 @@ static const struct of_device_id vpu_venc_ext_of_match[] = {
 MODULE_DEVICE_TABLE(of, vpu_venc_ext_of_match);
 #endif
 
-static const struct platform_driver venc_ext_driver = {
+static struct platform_driver venc_ext_driver = {
 	.probe = venc_probe,
 	.remove = venc_remove,
 	.driver = {
