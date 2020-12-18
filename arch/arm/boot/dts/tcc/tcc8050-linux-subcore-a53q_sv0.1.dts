@@ -58,6 +58,14 @@
 		switch1 = &switch1;
 		switch2 = &switch2;
 		switch3 = &switch3;
+		videosource0 = &videosource0; /* adv7182 */
+		videosource1 = &videosource1; /* max9286 */
+		videosource2 = &videosource2; /* max9276 */
+		//videosource3 = &videosource3; /* max96712 */
+		//videosource4 = &videosource4; /* max96712 */
+		//videosource5 = &videosource5; /* max9286 for ispless cam */
+		videosource10 = &videosource10;	// ar0135
+		videosource11 = &videosource11;	// max96759
 		mipi-csi2-0 = &mipi_csi2_0;
 		mipi-csi2-1 = &mipi_csi2_1;
 #if 0
@@ -1347,9 +1355,6 @@
 			port@0 {
 				reg = <0>;
 				mipi_csi2_0_in: endpoint {
-					remote-endpoint	= <&max9286_out>;
-					//remote-endpoint	= <&max96712_out>;
-					io-direction	= "input";
 					num-channel = <4>;
 
 					/*
@@ -1359,9 +1364,7 @@
 					 * 3: VC and DT
 					 */
 					interleave-mode = <3>;
-					//hs-settle = <2>; // for mcnex ispless 1ch
 					hs-settle = <17>; // for HD 4ch
-					//hs-settle = <37>; // for FHD 4ch
 					data-lanes = <1 2 3 4>;
 				};
 			};
@@ -1369,8 +1372,6 @@
 		        port@1 {
 				reg = <1>;
 		                mipi_csi2_0_out0: endpoint {
-		                        remote-endpoint = <&videoinput0_in>;
-					io-direction	= "output";
 					channel		= <0>;
 					/*
 					 * 0: Single pixel mode
@@ -1384,8 +1385,6 @@
 			port@2 {
 				reg = <2>;
 				mipi_csi2_0_out1: endpoint {
-					remote-endpoint	= <&videoinput1_in>;
-					io-direction	= "output";
 					channel		= <1>;
 					pixel-mode = <1>;
 				};
@@ -1393,8 +1392,6 @@
 			port@3 {
 				reg = <3>;
 				mipi_csi2_0_out2: endpoint {
-					remote-endpoint	= <&videoinput2_in>;
-					io-direction	= "output";
 					channel		= <2>;
 					pixel-mode = <1>;
 				};
@@ -1402,8 +1399,6 @@
 			port@4 {
 				reg = <4>;
 				mipi_csi2_0_out3: endpoint {
-					remote-endpoint	= <&videoinput3_in>;
-					io-direction	= "output";
 					channel		= <3>;
 					pixel-mode = <1>;
 				};
@@ -1450,6 +1445,11 @@
 		isp1-bypass = <1>;
 		isp2-bypass = <1>;
 		isp3-bypass = <1>;
+
+		/*
+		 * the number of isp to use
+		 */
+		isp-number = <0>;
 	};
 
 #if 0
@@ -1470,22 +1470,6 @@
 		pinctrl-names = "default";
 		pinctrl-0 = <&isp0_uart_tx &isp0_uart_rx>;
 */
-		ports {
-		        port@0 {
-				reg = <0>;
-		                isp0_in: endpoint {
-		                        remote-endpoint = <&mipi_csi2_0_out0>;
-					io-direction	= "input";
-		                };
-			};
-			port@1 {
-				reg = <1>;
-				isp0_out: endpoint {
-					remote-endpoint	= <&videoinput0_in>;
-					io-direction	= "output";
-				};
-			};
-		};
 	};
 
 	isp1: isp1@1bca0000 {
@@ -1498,22 +1482,6 @@
 		pinctrl-names = "default";
 		pinctrl-0 = <&isp1_uart_tx &isp1_uart_rx>;
 */
-		ports {
-		        port@0 {
-				reg = <0>;
-		                isp1_in: endpoint {
-		                        remote-endpoint = <&mipi_csi2_0_out1>;
-					io-direction	= "input";
-		                };
-			};
-			port@1 {
-				reg = <1>;
-				isp1_out: endpoint {
-					remote-endpoint	= <&videoinput1_in>;
-					io-direction	= "output";
-				};
-			};
-		};
 	};
 
 	isp2: isp2@1bcc0000 {
@@ -1526,22 +1494,6 @@
 		pinctrl-names = "default";
 		pinctrl-0 = <&isp2_uart_tx &isp2_uart_rx>;
 */
-		ports {
-		        port@0 {
-				reg = <0>;
-		                isp2_in: endpoint {
-		                        remote-endpoint = <&mipi_csi2_0_out2>;
-					io-direction	= "input";
-		                };
-			};
-			port@1 {
-				reg = <1>;
-				isp2_out: endpoint {
-					remote-endpoint	= <&videoinput2_in>;
-					io-direction	= "output";
-				};
-			};
-		};
 	};
 
 	isp3: isp3@1bce0000 {
@@ -1554,22 +1506,6 @@
 		pinctrl-names = "default";
 		pinctrl-0 = <&isp3_uart_tx &isp3_uart_rx>;
 */
-		ports {
-		        port@0 {
-				reg = <0>;
-		                isp3_in: endpoint {
-		                        remote-endpoint = <&mipi_csi2_0_out3>;
-					io-direction	= "input";
-		                };
-			};
-			port@1 {
-				reg = <1>;
-				isp3_out: endpoint {
-					remote-endpoint	= <&videoinput3_in>;
-					io-direction	= "output";
-				};
-			};
-		};
 	};
 #endif
 
@@ -1753,12 +1689,7 @@
 	};
 
 	videoinput0: videoinput@0 {
-		status		= "okay";
 		compatible	= "telechips,video-input";
-		cifport		= <&cifport 0>;
-/* for MIPI CSI2 input
-		cifport = <&cifport 5>;
-*/
 		clocks		= <&clk_ddi DDIBUS_VIOC>;
 		rdma		= <&vioc_rdma		VIOC_RDMA16>;
 		use_pgl		= <1>;
@@ -1770,30 +1701,11 @@
 		wmixer		= <&vioc_wmix		VIOC_WMIX5>;
 		wdma		= <&vioc_wdma		VIOC_WDMA05>;
 		fifo		= <&vioc_fifo		VIOC_FIFO0>;
-
-		port {
-			videoinput0_in: endpoint {
-				remote-endpoint	= <&adv7182_out>;
-				io-direction	= "input";
-				bus-type 	= <0>;
-				stream-enable	= <0>;	// VIN_CTRL.SE
-				flush-vsync	= <0>;	// VIN_MISC.FVS
-/* for MIPI CSI2 input
-				remote-endpoint	= <&mipi_csi2_0_out0>;
-				io-direction	= "input";
-				bus-type	= <0>;
-				stream-enable	= <1>;	// VIN_CTRL.SE
-				flush-vsync	= <1>;	// VIN_MISC.FVS
-*/
-			};
-		};
+		status		= "okay";
 	};
 
 	videoinput1: videoinput@1 {
-		status		= "disabled";
 		compatible	= "telechips,video-input";
-		cifport	= <&cifport 6>;
-
 		clocks		= <&clk_ddi DDIBUS_VIOC>;
 		rdma		= <&vioc_rdma		VIOC_RDMA17>;
 		use_pgl		= <1>;
@@ -1805,22 +1717,11 @@
 		wmixer		= <&vioc_wmix		VIOC_WMIX6>;
 		wdma		= <&vioc_wdma		VIOC_WDMA07>;
 		fifo		= <&vioc_fifo		VIOC_FIFO0>;
-
-		port {
-			videoinput1_in: endpoint {
-				remote-endpoint	= <&mipi_csi2_0_out1>;
-				io-direction	= "input";
-				bus-type	= <0>;
-				stream-enable	= <1>;	// VIN_CTRL.SE
-				flush-vsync	= <1>;	// VIN_MISC.FVS
-			};
-		};
+		status		= "okay";
 	};
 
 	videoinput2: videoinput@2 {
-		status		= "disabled";
 		compatible	= "telechips,video-input";
-		cifport	= <&cifport 7>;
 		clocks		= <&clk_ddi DDIBUS_VIOC>;
 		rdma		= <&vioc_rdma		VIOC_RDMA13>;
 		use_pgl		= <1>;
@@ -1832,22 +1733,11 @@
 		wmixer		= <&vioc_wmix		VIOC_WMIX3>;
 		wdma		= <&vioc_wdma		VIOC_WDMA03>;
 		fifo		= <&vioc_fifo		VIOC_FIFO0>;
-
-		port {
-			videoinput2_in: endpoint {
-				remote-endpoint	= <&mipi_csi2_0_out2>;
-				io-direction	= "input";
-				bus-type	= <0>;
-				stream-enable	= <1>;	// VIN_CTRL.SE
-				flush-vsync	= <1>;	// VIN_MISC.FVS
-			};
-		};
+		status		= "okay";
 	};
 
 	videoinput3: videoinput@3 {
-		status		= "disabled";
 		compatible	= "telechips,video-input";
-		cifport	= <&cifport 8>;
 		clocks		= <&clk_ddi DDIBUS_VIOC>;
 		rdma		= <&vioc_rdma		VIOC_RDMA15>;
 		use_pgl		= <1>;
@@ -1859,16 +1749,7 @@
 		wmixer		= <&vioc_wmix		VIOC_WMIX4>;
 		wdma		= <&vioc_wdma		VIOC_WDMA04>;
 		fifo		= <&vioc_fifo		VIOC_FIFO0>;
-
-		port {
-			videoinput3_in: endpoint {
-				remote-endpoint	= <&mipi_csi2_0_out3>;
-				io-direction	= "input";
-				bus-type	= <0>;
-				stream-enable	= <1>;	// VIN_CTRL.SE
-				flush-vsync	= <1>;	// VIN_MISC.FVS
-			};
-		};
+		status		= "okay";
 	};
 
 	videoinput4: videoinput@4 {
@@ -1877,7 +1758,7 @@
 		vin		= <&vioc_vin		VIOC_VIN40>;
 		wdma		= <&vioc_wdma		VIOC_WDMA09>;
 		fifo		= <&vioc_fifo		VIOC_FIFO0>;
-		status		= "disabled";
+		status		= "okay";
 	};
 
 	videoinput5: videoinput@5 {
@@ -1886,7 +1767,7 @@
 		vin		= <&vioc_vin		VIOC_VIN50>;
 		wdma		= <&vioc_wdma		VIOC_WDMA10>;
 		fifo		= <&vioc_fifo		VIOC_FIFO0>;
-		status		= "disabled";
+		status		= "okay";
 	};
 
 	videoinput6: videoinput@6 {
@@ -1895,7 +1776,7 @@
 		vin		= <&vioc_vin		VIOC_VIN60>;
 		wdma		= <&vioc_wdma		VIOC_WDMA11>;
 		fifo		= <&vioc_fifo		VIOC_FIFO0>;
-		status		= "disabled";
+		status		= "okay";
 	};
 
 	videoinput7: videoinput@7 {
@@ -1904,7 +1785,7 @@
 		vin		= <&vioc_vin		VIOC_VIN70>;
 		wdma		= <&vioc_wdma		VIOC_WDMA12>;
 		fifo		= <&vioc_fifo		VIOC_FIFO0>;
-		status		= "disabled";
+		status		= "okay";
 	};
 
 	cb_watchdog: cb_watchdog4@0x17050000 {
@@ -3036,283 +2917,72 @@
 	pinctrl-names = "default";
 	pinctrl-0 = <&i2c12_bus>;
 
-	adv7182: adv7182 {
-		status		= "okay";
-		compatible	= "adi,adv7182";
-		pinctrl-names	= "default";
-		pinctrl-0	= <&cam0_clk &cam0_data_8bit>;
-		rst-gpios	= <&gpb 14 0>;
+	videosource0: videodecoder_adv7182 {
+		compatible	= "analogdevices,adv7182";
+		pinctrl-names	= "idle", "active";
+		cifport		= <0>;
+		pinctrl-0	= <&cam0_8bit_idle>;
+		pinctrl-1	= <&cam0_clk &cam0_data_8bit>;
+		rst-gpios	= <&gpb 14 1>;
 		reg		= <0x21>;	// 0x42 >> 1
-		port@0 {
-			reg = <0>;
-			adv7182_out: endpoint {
-				remote-endpoint	= <&videoinput0_in>;
-				io-direction	= "output";
-				bus-width       = <8>;
-			};
-		};
 	};
 
-	/* HD camera module & max9286 using MIPI CSI2 output */
-	max96701: max96701 {
-		/* serializer */
-		status		= "disabled";
-		compatible	= "maxim,max96701";
-		reg		= <0x40>;
-		ports {
-#if 0
-		        port@0 {
-				reg = <0>;
-				max96701_in: endpoint {
-					remote-endpoint = <&ar0147_out>;
-					io-direction	= "input";
-				};
-			};
-#endif
-		        port@1 {
-				reg = <1>;
-				max96701_out: endpoint {
-					remote-endpoint = <&max9286_in0>;
-					io-direction	= "output";
-				};
-			};
-                };
-	};
-
-	max96701_1: max96701_1 {
-		status		= "disabled";
-		compatible	= "maxim,max96701";
-		reg		= <0x50>;
-		ports {
-#if 0
-		        port@0 {
-				reg = <0>;
-				max96701_in: endpoint {
-					remote-endpoint = <&ar0147_out>;
-					io-direction	= "input";
-				};
-			};
-#endif
-		        port@1 {
-				reg = <1>;
-				max96701_1_out: endpoint {
-					remote-endpoint = <&max9286_in1>;
-					io-direction	= "output";
-				};
-			};
-                };
-	};
-
-	max96701_2: max96701_2 {
-		status		= "disabled";
-		compatible	= "maxim,max96701";
-		reg		= <0x60>;
-		ports {
-#if 0
-		        port@0 {
-				reg = <0>;
-				max96701_in: endpoint {
-					remote-endpoint = <&ar0147_out>;
-					io-direction	= "input";
-				};
-			};
-#endif
-		        port@1 {
-				reg = <1>;
-				max96701_2_out: endpoint {
-					remote-endpoint = <&max9286_in2>;
-					io-direction	= "output";
-				};
-			};
-                };
-	};
-
-	max96701_3: max96701_3 {
-		status		= "disabled";
-		compatible	= "maxim,max96701";
-		reg		= <0x70>;
-		ports {
-#if 0
-		        port@0 {
-				reg = <0>;
-				max96701_in: endpoint {
-					remote-endpoint = <&ar0147_out>;
-					io-direction	= "input";
-				};
-			};
-#endif
-		        port@1 {
-				reg = <1>;
-				max96701_3_out: endpoint {
-					remote-endpoint = <&max9286_in3>;
-					io-direction	= "output";
-				};
-			};
-                };
-	};
-
-	max9286: max9286 {
-		/* deserializer */
-		status		= "disabled";
+	videosource1: deserializer_max9286 {
 		compatible	= "maxim,max9286";
+		cifport		= <5>;
 		pwd-gpios	= <&gpg 5 1>;
 		intb-gpios	= <&gph 11 1>;
-		//rst-gpios	= <&gpb 15 1>;  /* mcnex module sensor */
 		reg		= <0x48>;	// 0x90 >> 1
-		ports {
-			/*
-			 * 0 ~ 3
-			 * input ports. The number is matched with VC
-			 *
-			 * 4
-			 * output port.
-			 */
-		        port@0 {
-				reg = <0>;
-				max9286_in0: endpoint {
-					remote-endpoint = <&max96701_out>;
-					io-direction	= "input";
-					channel		= <0>;
-				};
-			};
-		        port@1 {
-				reg = <1>;
-				max9286_in1: endpoint {
-					remote-endpoint = <&max96701_out>;
-					io-direction	= "input";
-					channel		= <1>;
-				};
-			};
-		        port@2 {
-				reg = <2>;
-				max9286_in2: endpoint {
-					remote-endpoint = <&max96701_out>;
-					io-direction	= "input";
-					channel		= <2>;
-				};
-			};
-		        port@3 {
-				reg = <3>;
-				max9286_in3: endpoint {
-					remote-endpoint = <&max96701_out>;
-					io-direction	= "input";
-					channel		= <3>;
-				};
-			};
-		        port@4 {
-				reg = <4>;
-				max9286_out: endpoint {
-					remote-endpoint = <&mipi_csi2_0_in>;
-					io-direction	= "output";
-				};
-			};
-                };
+		mipi-csi2-idx   = <0>;
 	};
 
-	/* FHD camera module & max96712 using MIPI CSI2 output */
-	cxd5700: cxd5700 {
-		/* ISP of camera module */
-		status		= "disabled";
-		compatible	= "sony,cxd5700";
-		reg		= <0x18>;
-		ports {
+	videosource2: deserializer_max9276 {
+		compatible	= "maxim,max9276";
+		pinctrl-names	= "idle", "active";
+		cifport		= <0>;
+		pinctrl-0	= <&cam0_16bit_idle>;
+		pinctrl-1	= <&cam0_clk &cam0_hsync &cam0_vsync &cam0_fld &cam0_data_16bit>;
+		rst-gpios	= <&gpb 14 1>;
+		intb-gpios	= <&gpma 19 1>;
+		reg		= <0x4A>;	// 0x94 >> 1
+	};
 #if 0
-		        port@0 {
-				reg = <0>;
-				cxd5700_in: endpoint {
-					remote-endpoint = <&cis>;
-					io-direction	= "input";
-				};
-			};
-#endif
-		        port@1 {
-				reg = <1>;
-				cxd5700_out: endpoint {
-					remote-endpoint = <&max9275_in>;
-					io-direction	= "output";
-				};
-			};
-                };
-	};
-
-	max9275: max9275 {
-		/* serializer */
-		status		= "disabled";
-		compatible	= "maxim,max9275";
-		reg		= <0x40>;
-		ports {
-		        port@0 {
-				reg = <0>;
-				max9275_in: endpoint {
-					remote-endpoint = <&cxd5700_out>;
-					io-direction	= "input";
-				};
-			};
-		        port@1 {
-				reg = <1>;
-				max9275_out: endpoint {
-					remote-endpoint = <&max96712_in0>;
-					io-direction	= "output";
-				};
-			};
-                };
-	};
-
-	max96712: max96712 {
-		/* deserializer */
-		status		= "disabled";
+	videosource3: deserializer_max96712 {
 		compatible	= "maxim,max96712";
+		cifport		= <5>;
 		pwd-gpios	= <&gpg 5 1>;
 		intb-gpios	= <&gph 11 1>;
-		reg		= <0x2A>;
-		ports {
-			/*
-			 * 0 ~ 3
-			 * input ports. The number is matched with VC
-			 *
-			 * 4
-			 * output port.
-			 */
-		        port@0 {
-				reg = <0>;
-				max96712_in0: endpoint {
-					remote-endpoint = <&max9275_out>;
-					io-direction	= "input";
-					channel		= <0>;
-				};
-			};
-		        port@1 {
-				reg = <1>;
-				max96712_in1: endpoint {
-					remote-endpoint = <&max9275_out>;
-					io-direction	= "input";
-					channel		= <1>;
-				};
-			};
-		        port@2 {
-				reg = <2>;
-				max96712_in2: endpoint {
-					remote-endpoint = <&max9275_out>;
-					io-direction	= "input";
-					channel		= <2>;
-				};
-			};
-		        port@3 {
-				reg = <3>;
-				max96712_in3: endpoint {
-					remote-endpoint = <&max9275_out>;
-					io-direction	= "input";
-					channel		= <3>;
-				};
-			};
-		        port@4 {
-				reg = <4>;
-				max96712_out: endpoint {
-					remote-endpoint = <&mipi_csi2_0_in>;
-					io-direction	= "output";
-				};
-			};
-                };
+		reg		= <0x29>;	// 0x52 >> 1
+		mipi-csi2-idx	= <0>;
+	};
+
+	videosource5: deserializer_max9286_isp {
+		compatible	= "maxim,max9286_isp";
+		cifport		= <5>;
+		pwd-gpios	= <&gpg 5 1>;
+		intb-gpios	= <&gph 11 1>;
+		rst-gpios	= <&gpb 15 1>;  /* mcnex module sensor */
+		reg		= <0x48>;	// 0x90 >> 1
+		mipi-csi2-idx	= <0>;
+	};
+#endif
+	videosource10: cis_ar0135 {
+		compatible	= "onsemiconductor,ar0135";
+		pinctrl-names	= "idle", "active";
+		cifport		= <0>;
+		pinctrl-0	= <&cam0_16bit_idle>;
+		pinctrl-1	= <&cam0_clk &cam0_hsync &cam0_vsync &cam0_data_16bit>;
+		rst-gpios	= <&gpb 14 1>;
+		reg		= <0x10>;	// 0x20 >> 1
+	};
+
+	videosource11: deserializer_max96759 {
+		compatible	= "maxim,max96759";
+		pinctrl-names	= "idle", "active";
+		cifport		= <0>;
+		pinctrl-0	= <&cam0_16bit_idle>;
+		pinctrl-1	= <&cam0_clk &cam0_hsync &cam0_vsync &cam0_fld &cam0_data_16bit>;
+		reg		= <0x49>;	// 0x92 >> 1
 	};
 };
 
