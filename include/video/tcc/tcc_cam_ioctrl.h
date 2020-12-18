@@ -6,7 +6,7 @@
 #ifndef __TCC_CAMERA_IOCTL_H__
 #define __TCC_CAMERA_IOCTL_H__
 
-#include <videosource_ioctl.h>
+#include "videosource_ioctl.h"
 
 #define V4L2_CID_ISO			(V4L2_CID_PRIVATE_BASE+0)
 #define V4L2_CID_EFFECT			(V4L2_CID_PRIVATE_BASE+1)
