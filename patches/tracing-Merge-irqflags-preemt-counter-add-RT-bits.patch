@@ -46,6 +46,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  kernel/trace/blktrace.c              |   17 +-
  kernel/trace/trace.c                 |  217 +++++++++++++++++++----------------
  kernel/trace/trace.h                 |   38 ++----
+ kernel/trace/trace_branch.c          |    6 
  kernel/trace/trace_event_perf.c      |    5 
  kernel/trace/trace_events.c          |   15 --
  kernel/trace/trace_events_inject.c   |    8 -
@@ -59,7 +60,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  kernel/trace/trace_sched_wakeup.c    |   61 +++++----
  kernel/trace/trace_syscalls.c        |   20 +--
  kernel/trace/trace_uprobe.c          |    4 
- 18 files changed, 294 insertions(+), 279 deletions(-)
+ 19 files changed, 297 insertions(+), 282 deletions(-)
 
 --- a/include/linux/trace_events.h
 +++ b/include/linux/trace_events.h
@@ -895,6 +896,30 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  	if (tt)
  		event_triggers_post_call(file, tt);
+--- a/kernel/trace/trace_branch.c
++++ b/kernel/trace/trace_branch.c
+@@ -37,7 +37,7 @@ probe_likely_condition(struct ftrace_lik
+ 	struct ring_buffer_event *event;
+ 	struct trace_branch *entry;
+ 	unsigned long flags;
+-	int pc;
++	unsigned int pc;
+ 	const char *p;
+ 
+ 	if (current->trace_recursion & TRACE_BRANCH_BIT)
+@@ -59,10 +59,10 @@ probe_likely_condition(struct ftrace_lik
+ 	if (atomic_read(&data->disabled))
+ 		goto out;
+ 
+-	pc = preempt_count();
++	trace_ctx = _tracing_gen_ctx_flags(flags);
+ 	buffer = tr->array_buffer.buffer;
+ 	event = trace_buffer_lock_reserve(buffer, TRACE_BRANCH,
+-					  sizeof(*entry), flags, pc);
++					  sizeof(*entry), trace_ctx);
+ 	if (!event)
+ 		goto out;
+ 
 --- a/kernel/trace/trace_event_perf.c
 +++ b/kernel/trace/trace_event_perf.c
 @@ -421,11 +421,8 @@ NOKPROBE_SYMBOL(perf_trace_buf_alloc);
