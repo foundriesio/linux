@@ -1751,6 +1751,7 @@
 */
 		clocks		= <&clk_ddi DDIBUS_VIOC>;
 		rdma		= <&vioc_rdma		VIOC_RDMA16>;
+		use_pgl		= <1>;
 		vin		= <&vioc_vin		VIOC_VIN00>;
 		viqe		= <&vioc_viqe		VIOC_VIQE1>;
 		viqe_set	= <&viqe_hidden>;
@@ -1759,7 +1760,6 @@
 		wmixer		= <&vioc_wmix		VIOC_WMIX5>;
 		wdma		= <&vioc_wdma		VIOC_WDMA05>;
 		fifo		= <&vioc_fifo		VIOC_FIFO0>;
-		use_pgl		= <0>;
 
 		port {
 			videoinput0_in: endpoint {
@@ -1786,6 +1786,7 @@
 
 		clocks		= <&clk_ddi DDIBUS_VIOC>;
 		rdma		= <&vioc_rdma		VIOC_RDMA17>;
+		use_pgl		= <1>;
 		vin		= <&vioc_vin		VIOC_VIN10>;
 		viqe		= <&vioc_viqe		VIOC_VIQE1>;
 		viqe_set	= <&viqe_hidden>;
@@ -1812,6 +1813,7 @@
 		cifport	= <&cifport 7>;
 		clocks		= <&clk_ddi DDIBUS_VIOC>;
 		rdma		= <&vioc_rdma		VIOC_RDMA13>;
+		use_pgl		= <1>;
 		vin		= <&vioc_vin		VIOC_VIN20>;
 		viqe		= <&vioc_viqe		VIOC_VIQE1>;
 		viqe_set	= <&viqe_hidden>;
@@ -1838,6 +1840,7 @@
 		cifport	= <&cifport 8>;
 		clocks		= <&clk_ddi DDIBUS_VIOC>;
 		rdma		= <&vioc_rdma		VIOC_RDMA15>;
+		use_pgl		= <1>;
 		vin		= <&vioc_vin		VIOC_VIN30>;
 		viqe		= <&vioc_viqe		VIOC_VIQE1>;
 		viqe_set	= <&viqe_hidden>;

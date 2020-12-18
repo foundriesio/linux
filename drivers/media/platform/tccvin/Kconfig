@@ -20,11 +20,6 @@ config OVERLAY_PGL
 	depends on VIDEO_TCCVIN
 	default n
 
-config OVERLAY_DPGL
-	bool "Support Dynamic Parking Guide Line"
-	depends on VIDEO_TCCVIN && OVERLAY_PGL
-	default n
-
 config VIDEO_TCCVIN_SWITCHMANAGER
 	bool "Telechips Video-Input SwitchManager Driver"
 	depends on VIDEO_TCCVIN
