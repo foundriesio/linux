@@ -192,48 +192,47 @@ static inline int TCC3171_IOCTL(struct tcc_dxb_ctrl_t *ctrl,
 				unsigned int cmd, unsigned long arg)
 {
 	unsigned int deviceIdx;
+	unsigned int parg;
+	dprintk("%s cmd[0x%X]\n", __func__, cmd);
+  if (copy_from_user((void *)&parg, (const void *)arg, sizeof(unsigned int)) != 0)
+  {
+    return 0;
+  }
+  deviceIdx = (parg == 0) ? 0 : parg;
 
-	pr_info("[INFO][TCC_DXB_CTRL] %s cmd[0x%X]\n", __func__, cmd);
-	switch (cmd) {
-	case IOCTL_DXB_CTRL_SET_BOARD:
-		deviceIdx = (arg == 0) ? 0 : *(unsigned int *)arg;
-		tcc3171_init(ctrl, deviceIdx);
-		break;
+	switch (cmd)
+	{
+		case IOCTL_DXB_CTRL_SET_BOARD:
+			tcc3171_init(ctrl, deviceIdx);
+			break;
 
-	case IOCTL_DXB_CTRL_OFF:
-		deviceIdx = (arg == 0) ? 0 : *(unsigned int *)arg;
-		tcc3171_off(ctrl, deviceIdx);
-		break;
+		case IOCTL_DXB_CTRL_OFF:
+			tcc3171_off(ctrl, deviceIdx);
+			break;
 
-	case IOCTL_DXB_CTRL_ON:
-		deviceIdx = (arg == 0) ? 0 : *(unsigned int *)arg;
-		tcc3171_on(ctrl, deviceIdx);
-		break;
+		case IOCTL_DXB_CTRL_ON:
+			tcc3171_on(ctrl, deviceIdx);
+			break;
 
-	case IOCTL_DXB_CTRL_RESET:
-		deviceIdx = (arg == 0) ? 0 : *(unsigned int *)arg;
-		tcc3171_reset(ctrl, deviceIdx);
-		break;
+		case IOCTL_DXB_CTRL_RESET:
+			tcc3171_reset(ctrl, deviceIdx);
+			break;
 
-	case IOCTL_DXB_CTRL_RESET_LOW:
-		deviceIdx = (arg == 0) ? 0 : *(unsigned int *)arg;
-		tcc3171_reset_low(ctrl, deviceIdx);
-		break;
+		case IOCTL_DXB_CTRL_RESET_LOW:
+			tcc3171_reset_low(ctrl, deviceIdx);
+			break;
 
-	case IOCTL_DXB_CTRL_RESET_HIGH:
-		deviceIdx = (arg == 0) ? 0 : *(unsigned int *)arg;
-		tcc3171_reset_high(ctrl, deviceIdx);
-		break;
+		case IOCTL_DXB_CTRL_RESET_HIGH:
+			tcc3171_reset_high(ctrl, deviceIdx);
+			break;
 
-	case IOCTL_DXB_CTRL_PURE_ON:
-		deviceIdx = (arg == 0) ? 0 : *(unsigned int *)arg;
-		tcc3171_pure_on(ctrl, deviceIdx);
-		break;
+		case IOCTL_DXB_CTRL_PURE_ON:
+			tcc3171_pure_on(ctrl, deviceIdx);
+			break;
 
-	case IOCTL_DXB_CTRL_PURE_OFF:
-		deviceIdx = (arg == 0) ? 0 : *(unsigned int *)arg;
-		tcc3171_pure_off(ctrl, deviceIdx);
-		break;
+		case IOCTL_DXB_CTRL_PURE_OFF:
+			tcc3171_pure_off(ctrl, deviceIdx);
+			break;
 
 	case IOCTL_DXB_CTRL_GET_CTLINFO:
 	case IOCTL_DXB_CTRL_RF_PATH:
