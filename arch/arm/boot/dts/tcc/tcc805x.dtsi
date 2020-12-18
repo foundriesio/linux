@@ -2728,8 +2728,8 @@
 		status = "disabled";
 	};
 
-	vioc_afbc_dec:vioc_afbc_dec@12012000{
-		compatible = "telechips,vioc_afbc_dec";
+	vioc_pvric_fbdc:vioc_pvric_fbdc@12012000{
+		compatible = "telechips,vioc_pvric_fbdc";
 		status = "disabled";
 		reg = <0x0 0x12012000 0x0 0x100>,
 		      <0x0 0x12013000 0x0 0x100>,

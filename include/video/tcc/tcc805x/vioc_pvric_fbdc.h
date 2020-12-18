@@ -170,6 +170,7 @@ extern void VIOC_PVRIC_FBDC_SetRequestBase(volatile void __iomem *reg, unsigned 
 extern void VIOC_PVRIC_FBDC_GetCurTileNum(volatile void __iomem *reg, unsigned int *tile_num);
 extern void VIOC_PVRIC_FBDC_SetOutBufOffset(volatile void __iomem *reg, unsigned int imgFmt, unsigned int imgWidth);
 extern void VIOC_PVRIC_FBDC_SetOutBufBase(volatile void __iomem *reg, unsigned int base);
+extern unsigned int VIOC_PVRIC_FBDC_GetIdle(volatile void __iomem *reg);
 extern unsigned int VIOC_PVRIC_FBDC_GetStatus(volatile void __iomem *reg);
 extern void VIOC_PVRIC_FBDC_SetIrqMask(volatile void __iomem *reg, unsigned int enable, unsigned int mask);
 extern void VIOC_PVRIC_FBDC_ClearIrq(volatile void __iomem *reg, unsigned int mask);

@@ -140,10 +140,15 @@ void VIOC_PVRIC_FBDC_SetIrqMask(volatile void __iomem * reg,
 				unsigned int enable, unsigned int mask)
 {
 	if (enable)		/* Interrupt Enable */
-		__raw_writel((mask << PVRICSTS_IRQ_MASK_SHIFT), reg + PVRICSTS);
-	else			/* Interrupt Diable */
 		__raw_writel((~mask << PVRICSTS_IRQ_MASK_SHIFT),
 			     reg + PVRICSTS);
+	else			/* Interrupt Diable */
+		__raw_writel((mask << PVRICSTS_IRQ_MASK_SHIFT), reg + PVRICSTS);
+}
+
+unsigned int VIOC_PVRIC_FBDC_GetIdle(volatile void __iomem * reg)
+{
+	return (__raw_readl(reg + PVRICIDLE));
 }
 
 unsigned int VIOC_PVRIC_FBDC_GetStatus(volatile void __iomem * reg)
@@ -169,6 +174,7 @@ void VIOC_PVRIC_FBDC_TurnOFF(volatile void __iomem * reg)
 	unsigned int val;
 	val = (__raw_readl(reg + PVRICCTRL) & ~(PVRICCTRL_START_MASK));
 	__raw_writel(val, reg + PVRICCTRL);
+	VIOC_PVRIC_FBDC_SetUpdateInfo(reg, 1);
 }
 
 int VIOC_PVRIC_FBDC_SetBasicConfiguration(volatile void __iomem * reg,
@@ -180,9 +186,9 @@ int VIOC_PVRIC_FBDC_SetBasicConfiguration(volatile void __iomem * reg,
 {
 
 	//pr_info("%s- Start\n", __func__);
-	if (imgFmt == TCC_LCDC_IMG_FMT_RGB888_3)
+	if (imgFmt == VIOC_IMG_FMT_RGB888)
 		VIOC_PVRIC_FBDC_SetFormat(reg, PVRICCTRL_FMT_RGB888);
-	else if (imgFmt == TCC_LCDC_IMG_FMT_RGB888) {
+	else if (imgFmt == VIOC_IMG_FMT_ARGB8888) {
 		VIOC_PVRIC_FBDC_SetFormat(reg, PVRICCTRL_FMT_ARGB8888);
 		VIOC_PVRIC_FBDC_SetARGBSwizzMode(reg,
 						 VIOC_PVRICCTRL_SWIZZ_ARGB);
@@ -204,7 +210,6 @@ int VIOC_PVRIC_FBDC_SetBasicConfiguration(volatile void __iomem * reg,
 		return -1;
 	}
 	VIOC_PVRIC_FBDC_SetLossyDecomp(reg, decomp_mode);
-	VIOC_PVRIC_FBDC_SetUpdateInfo(reg, 1);
 
 	VIOC_PVRIC_FBDC_SetFrameSize(reg, imgWidth, imgHeight);
 	VIOC_PVRIC_FBDC_SetRequestBase(reg, base);
@@ -226,10 +231,10 @@ void VIOC_PVRIC_FBDC_DUMP(volatile void __iomem * reg, unsigned int vioc_id)
 	if (pReg == NULL)
 		pReg = (char *)VIOC_PVRIC_FBDC_GetAddress(vioc_id);
 
-	pr_debug("[DBG][FBDC] PVRIC-FBDC-%d :: 0x%p \n", Num, pReg);
+	pr_info("[DBG][FBDC] PVRIC-FBDC-%d :: 0x%p \n", Num, pReg);
 
 	while (cnt < 0x100) {
-		pr_debug("[DBG][FBDC] 0x%p: 0x%08x 0x%08x 0x%08x 0x%08x \n",
+		pr_info("[DBG][FBDC] 0x%p: 0x%08x 0x%08x 0x%08x 0x%08x \n",
 			 pReg + cnt, __raw_readl(pReg + cnt),
 			 __raw_readl(pReg + cnt + 0x4),
 			 __raw_readl(pReg + cnt + 0x8),
