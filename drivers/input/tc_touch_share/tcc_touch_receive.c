@@ -128,7 +128,7 @@ static int32_t tcc_touch_receive_probe(struct platform_device *pdev)
 		tr_dev->touch_mbox_client.tx_block = (bool)true;
 #endif
 		tr_dev->touch_mbox_client.knows_txdone = (bool)false;
-		tr_dev->touch_mbox_client.tx_tout = 10;
+		tr_dev->touch_mbox_client.tx_tout = 11;
 		mbox_channel = mbox_request_channel_byname(&tr_dev->touch_mbox_client,
 					tr_dev->touch_mbox_name);
 		if (mbox_channel != NULL) {
