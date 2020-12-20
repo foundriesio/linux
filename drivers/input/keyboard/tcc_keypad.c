@@ -1,27 +1,6 @@
+// SPDX-License-Identifier: GPL-2.0-or-later
 /*
- * linux/drivers/input/keyboard/tcc-keys.c
- *
- * Based on: drivers/input/keyboard/bf54x-keys.c
- * Author: <linux@telechips.com>
- * Created: June 10, 2008
- * Description: Keypad ADC driver on Telechips TCC Series
- *
- * Copyright (C) 2008-2009 Telechips
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, see the file COPYING, or write
- * to the Free Software Foundation, Inc.,
- * 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+ * Copyright (C) Telechips Inc.
  */
 
 #include <linux/errno.h>
@@ -48,9 +27,9 @@
 #define KEY_PRESSED     1
 
 struct tcc_button {
-	unsigned int    s_scancode;
-	unsigned int    e_scancode;
-	int             vkcode;
+	uint32_t    s_scancode;
+	uint32_t    e_scancode;
+	int32_t             vkcode;
 	const char      *label;
 };
 
@@ -58,18 +37,18 @@ struct tcc_key {
 	struct iio_channel *ch;
 	struct tcc_button *map;
 	uint32_t poll_interval;
-	int key_num;
-	int key_code;
-	int key_status;
+	int32_t key_num;
+	int32_t key_code;
+	int32_t key_status;
 };
 
 static void tcc_key_poll_callback(struct input_polled_dev *dev)
 {
 	struct tcc_key *key = dev->private;
-	int i, value, ret;
-	int pressed_keycode = -1;
-	int val_start;
-	int val_end;
+	int32_t i, value, ret;
+	int32_t pressed_keycode = -1;
+	int32_t val_start;
+	int32_t val_end;
 
 	ret = iio_read_channel_raw(key->ch, &value);
 	if (ret < 0) {
@@ -79,8 +58,8 @@ static void tcc_key_poll_callback(struct input_polled_dev *dev)
 	}
 
 	for (i = 0; i < key->key_num; i++) {
-		val_start = (int)key->map[i].s_scancode;
-		val_end = (int)key->map[i].e_scancode;
+		val_start = (int32_t)key->map[i].s_scancode;
+		val_end = (int32_t)key->map[i].e_scancode;
 		/* Check whether the value is within the range */
 		if ((val_start <= value) && (value <= val_end)) {
 			pressed_keycode = key->map[i].vkcode;
@@ -92,13 +71,11 @@ static void tcc_key_poll_callback(struct input_polled_dev *dev)
 			input_report_key(dev->input,
 					(u32)key->key_code,
 					KEY_PRESSED);
-			//input_sync(dev->input);
 			key->key_status = KEY_PRESSED;
 		} else {
 			input_report_key(dev->input,
 					(u32)key->key_code,
 					KEY_RELEASED);
-			//input_sync(dev->input);
 			key->key_status = KEY_RELEASED;
 		}
 	} else {
@@ -106,7 +83,6 @@ static void tcc_key_poll_callback(struct input_polled_dev *dev)
 			input_report_key(dev->input,
 					(u32)key->key_code,
 					KEY_RELEASED);
-			//input_sync(dev->input);
 			key->key_status = KEY_RELEASED;
 		} else {
 			/* invalid key code, Nothing to do */
@@ -125,9 +101,12 @@ static void tcc_key_load_map(struct device *dev,
 		struct tcc_button *map)
 {
 	uint32_t voltage_range[2] = {0,};
-	int ret;
+	int32_t ret;
 
-	of_property_read_string(child, "label", &map->label);
+	ret = of_property_read_string(child, "label", &map->label);
+	if (ret != 0) {
+		dev_dbg(dev, "[DEBUG][ADC] failed to get label\n");
+	}
 
 	ret = of_property_read_u32(child,
 			"linux,code",
@@ -147,7 +126,7 @@ static void tcc_key_load_map(struct device *dev,
 	map->e_scancode = voltage_range[1];
 }
 
-static int tcc_key_probe(struct platform_device *pdev)
+static int32_t tcc_key_probe(struct platform_device *pdev)
 {
 	struct device *dev = &pdev->dev;
 	struct device_node *np = pdev->dev.of_node;
@@ -157,7 +136,7 @@ static int tcc_key_probe(struct platform_device *pdev)
 	struct input_polled_dev *poll_dev;
 	struct input_dev *input_dev;
 	enum iio_chan_type type;
-	int  i, error, cnt = 0;
+	int32_t  i, error, cnt = 0;
 
 	key = devm_kzalloc(&pdev->dev, sizeof(*key), GFP_KERNEL);
 	if (key == NULL) {
@@ -166,12 +145,8 @@ static int tcc_key_probe(struct platform_device *pdev)
 
 	key->ch = iio_channel_get(dev, "buttons");
 	if (IS_ERR(key->ch)) {
-		return (int)PTR_ERR(key->ch);
+		return (int32_t)PTR_ERR(key->ch);
 	}
-	if (key->ch->indio_dev == NULL) {
-		return -ENXIO;
-	}
-
 	error = iio_get_channel_type(key->ch, &type);
 	if (error < 0) {
 		dev_err(dev, "[ERROR][ADC] failed to get iio channel type.\n");
@@ -221,7 +196,7 @@ static int tcc_key_probe(struct platform_device *pdev)
 
 	poll_dev->private = key;
 	poll_dev->poll = tcc_key_poll_callback;
-	poll_dev->poll_interval = msecs_to_jiffies(key->poll_interval);
+	poll_dev->poll_interval = (uint32_t)msecs_to_jiffies(key->poll_interval);
 
 	input_dev = poll_dev->input;
 	input_dev->evbit[0] = BIT(EV_KEY);
@@ -249,12 +224,12 @@ fail:
 }
 
 #ifdef CONFIG_PM
-static int tcc_key_suspend(struct device *dev)
+static int32_t tcc_key_suspend(struct device *dev)
 {
 	return 0;
 }
 
-static int tcc_key_resume(struct device *dev)
+static int32_t tcc_key_resume(struct device *dev)
 {
 	return 0;
 }

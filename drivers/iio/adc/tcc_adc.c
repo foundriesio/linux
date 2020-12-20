@@ -14,7 +14,7 @@
 #include <linux/io.h>
 #include <linux/of.h>
 #include <linux/of_address.h>
-
+#include <linux/spinlock.h>
 #include <linux/iio/iio.h>
 #include <linux/iio/driver.h>
 #include <linux/iio/sysfs.h>
@@ -32,21 +32,21 @@ struct tcc_adc {
 	void __iomem  *clk_regs;
 	struct clk    *fclk;
 	struct clk    *hclk;
-	struct clk    *phyclk;
+	struct clk    *iso_clk;
 
 	bool          is_12bit_res;
 	u32           delay;
 	u32           ckin;
-	u32           board_ver;
-	struct mutex  lock;
-
+	u32           conv_time_ns;
+	u32           board_ver_ch;
+	spinlock_t    lock;
 	const struct tcc_adc_soc_data *soc_data;
 };
 
 static struct tcc_adc_soc_data {
 	void (*adc_power_ctrl)(struct tcc_adc *adc, bool pwr_on);
-	unsigned int (*adc_read)(struct iio_dev *iio_dev, int ch);
-	int (*parsing_dt)(struct tcc_adc *adc);
+	int32_t (*adc_read)(struct iio_dev *iio_dev, int32_t ch);
+	int32_t (*parsing_dt)(struct tcc_adc *adc);
 };
 
 #define TCC_ADC_CHANNEL(_channel) {      \
@@ -93,7 +93,7 @@ static const struct attribute_group tcc_adc_attribute_group = {
 
 static void tcc_adc_pmu_power_ctrl(struct tcc_adc *adc, bool pwr_on)
 {
-	unsigned int reg_values;
+	uint32_t reg_values;
 
 	BUG_ON(adc == NULL);
 
@@ -103,13 +103,13 @@ static void tcc_adc_pmu_power_ctrl(struct tcc_adc *adc, bool pwr_on)
 			((u32)1U << PMU_TSADC_STOP_SHIFT));
 
 	if (pwr_on) {
-		clk_prepare_enable(adc->phyclk);
+		(void)clk_prepare_enable(adc->iso_clk);
 		reg_values |= ((u32)1U << PMU_TSADC_PWREN_SHIFT);
 		writel(reg_values, adc->pmu_regs);
 	} else {
 		reg_values |= ((u32)1U << PMU_TSADC_STOP_SHIFT);
 		writel(reg_values, adc->pmu_regs);
-		clk_prepare_enable(adc->phyclk);
+		(void)clk_prepare_enable(adc->iso_clk);
 	}
 #if 0
 	BITSET(pPMU->CONTROL, 1<<16/*HwPMU_CONTROL_APEN*/);
@@ -120,17 +120,17 @@ static void tcc_adc_pmu_power_ctrl(struct tcc_adc *adc, bool pwr_on)
 
 static void tcc_adc_power_ctrl(struct tcc_adc *adc, bool pwr_on)
 {
-	unsigned int reg_values;
-	unsigned long clk_rate;
-	unsigned int ps_val;
+	uint32_t reg_values;
+	ulong clk_rate;
+	uint32_t ps_val;
 
 	if (pwr_on) {
 		/* enable ADC PMU power */
 		tcc_adc_pmu_power_ctrl(adc, (bool)true);
 
 		/* enable IO BUS, perhipheral clock */
-		clk_prepare_enable(adc->fclk);
-		clk_prepare_enable(adc->hclk);
+		(void)clk_prepare_enable(adc->fclk);
+		(void)clk_prepare_enable(adc->hclk);
 
 		/* adc delay */
 		reg_values = readl(adc->regs + ADCDLY_REG);
@@ -152,29 +152,21 @@ static void tcc_adc_power_ctrl(struct tcc_adc *adc, bool pwr_on)
 		if (adc->is_12bit_res) {
 			reg_values |= ADCCON_12BIT_RES;
 		}
-		writel(reg_values, adc->regs+ADCCON_REG);
-
-#if defined(GENERAL_ADC)
-		/* adctsc control */
-		reg_values = readl(adc->regs+ADCTSC_REG);
-		reg_values &= ~ADCTSC_MASK;
-		reg_values |= (ADCTSC_PUON | ADCTSC_XPEN | ADCTSC_YPEN);
-		writel(reg_values, adc->regs+ADCTSC_REG);
-#endif //GENERAL_ADC
-
+		writel(reg_values, adc->regs + ADCCON_REG);
 	} else {
-		if (adc->fclk != NULL)
+		if (adc->fclk != NULL) {
 			clk_disable_unprepare(adc->fclk);
-		if (adc->hclk != NULL)
+		}
+		if (adc->hclk != NULL) {
 			clk_disable_unprepare(adc->hclk);
-
+		}
 		tcc_adc_pmu_power_ctrl(adc, (bool)false);
 	}
 }
 
 static void tcc_micom_adc_power_ctrl(struct tcc_adc *adc, bool clk_on)
 {
-	unsigned int reg_values;
+	uint32_t reg_values;
 
 	if (clk_on) {
 		/* enable clock for micom adc */
@@ -190,26 +182,26 @@ static void tcc_micom_adc_power_ctrl(struct tcc_adc *adc, bool clk_on)
 	}
 }
 
-static unsigned int tcc_micom_adc_read(struct iio_dev *iio_dev, int ch)
+static int32_t tcc_micom_adc_read(struct iio_dev *iio_dev, int32_t ch)
 {
 	struct tcc_adc *adc = iio_priv(iio_dev);
-	unsigned int data = 0;
-	unsigned int reg_values;
-	int retry, max_count = 100;
+	uint32_t data;
+	uint32_t reg_values;
+	int32_t retry, max_count = 100;
 
 	dev_dbg(adc->dev, "[DEBUG][ADC] %s:\n", __func__);
 
 	if ((ch >= ADC_CH0) && (ch <= ADC_CH11)) {
-		reg_values = ADCCMD_SMP_CMD(ch);
+		reg_values = (uint32_t)ADCCMD_SMP_CMD(ch);
 
 		for (retry = 0; retry < 2; retry++) {
 			/* sampling Command */
-			writel(reg_values, adc->regs+ADCCMD);
+			writel(reg_values, adc->regs + ADCCMD);
 
 			/* wait for sampling completion */
-			while (((readl(adc->regs+ADCCMD) & ADCCMD_DONE) == 0U)
+			while (((readl(adc->regs + ADCCMD) & ADCCMD_DONE) == 0U)
 					&& (max_count > 0)) {
-				ndelay(5);
+				udelay(1);
 				max_count--;
 			}
 			if (max_count > 0) {
@@ -217,7 +209,7 @@ static unsigned int tcc_micom_adc_read(struct iio_dev *iio_dev, int ch)
 				data = readl(adc->regs+ADCDATA0) & ADCDATA_MASK;
 				dev_dbg(adc->dev, "[DEBUG][ADC] %s: data = %#X\n",
 						__func__, data);
-				return data;
+				return (int32_t)data;
 			}
 			max_count = 100;
 		}
@@ -225,47 +217,58 @@ static unsigned int tcc_micom_adc_read(struct iio_dev *iio_dev, int ch)
 		/* time out - sampling completion */
 		dev_warn(adc->dev, "[WARN][ADC] %s: ADC CH %d Sampling Command is not completed.\n",
 				__func__, ch);
-		return data;
+		return -EIO;
 	}
 
 	dev_err(adc->dev, "[ERROR][ADC] %s: ADC CH %d is not supported.\n",
 			__func__, ch);
-	return data;
+	return -EINVAL;
 }
 
-static unsigned int tcc_adc_read(struct iio_dev *iio_dev, int ch)
+static void tcc_adc_set_normal_mode(struct tcc_adc *adc)
+{
+	uint32_t reg_values;
+	bool use_touch = (bool)false;
+
+#if defined (CONFIG_TOUCHSCREEN_TCCTS)
+	use_touch = (bool)true;
+#endif
+	if (!use_touch) {
+		/* set normal conversion mode */
+		reg_values = readl(adc->regs + ADCTSC_REG);
+		reg_values &= ~ADCTSC_MASK;
+ 		reg_values |= (ADCTSC_PUON | ADCTSC_XPEN | ADCTSC_YPEN);
+		writel(reg_values, adc->regs + ADCTSC_REG);
+	}
+}
+
+static int32_t tcc_adc_read(struct iio_dev *iio_dev, int32_t ch)
 {
 	struct tcc_adc *adc = iio_priv(iio_dev);
-	unsigned int data;
-	unsigned int reg_values;
+	uint32_t data;
+	uint32_t reg_values;
 
-	/* change operation mode */
-	reg_values = readl(adc->regs+ADCCON_REG);
-	reg_values &= ~ADCCON_STBY;
-	writel(reg_values, adc->regs+ADCCON_REG);
-
-#if defined(GENERAL_ADC)
 	if (ch > ADC_CH9) {
 		dev_err(adc->dev, "[ERROR][ADC] %s: ADC CH %d is Not supported\n",
 				__func__, ch);
 		return -EINVAL;
 	}
-#else
-	/* adc ch6-9 for touchscreen. */
-	if ((ch >= ADC_TOUCHSCREEN) && (ch < ADC_CH10)) {
-		dev_err(adc->dev, "[ERROR][ADC] %s: ADC CH %d is Not supported\n",
-				__func__, ch);
-		return -EINVAL;
-	}
-#endif
+
+	/* If touch screen ADC is not enabled, set normal conversion mode */
+	tcc_adc_set_normal_mode(adc);
+
+	/* change operation mode */
+	reg_values = readl(adc->regs + ADCCON_REG);
+	reg_values &= ~ADCCON_STBY;
+	writel(reg_values, adc->regs + ADCCON_REG);
 
 	/* clear input channel select */
 	reg_values &= ~(ADCCON_ASEL(15U));
-	writel(reg_values, adc->regs+ADCCON_REG);
-	ndelay(5);
+	writel(reg_values, adc->regs + ADCCON_REG);
+	ndelay(adc->conv_time_ns);
 
 	/* select input channel, enable conversion */
-	reg_values |= (ADCCON_ASEL(ch) | ADCCON_EN_ST);
+	reg_values |= (ADCCON_ASEL((u32)ch) | ADCCON_EN_ST);
 	writel(reg_values, adc->regs+ADCCON_REG);
 
 	/* Wait for Start Bit Cleared */
@@ -280,7 +283,7 @@ static unsigned int tcc_adc_read(struct iio_dev *iio_dev, int ch)
 
 	/* Read Measured data */
 	if (adc->is_12bit_res) {
-		data = readl(adc->regs+ADCDAT0_REG) & 0xFFFU;
+		data = readl(adc->regs + ADCDAT0_REG) & ADCDATA_MASK;
 	} else {
 		data = readl(adc->regs+ADCDAT0_REG) & 0x3FFU;
 	}
@@ -291,40 +294,45 @@ static unsigned int tcc_adc_read(struct iio_dev *iio_dev, int ch)
 
 	/* chagne stand-by mode */
 	reg_values |= ADCCON_STBY;
-	writel(reg_values, adc->regs+ADCCON_REG);
+	writel(reg_values, adc->regs + ADCCON_REG);
 
-	return data;
+	return (int32_t)data;
 }
 
-static int tcc_adc_read_raw(struct iio_dev *iio_dev,
+static int32_t tcc_adc_read_raw(struct iio_dev *iio_dev,
 		struct iio_chan_spec const *chan,
-		int *val, int *val2, long info)
+		int32_t *val, int32_t *val2, long info)
 {
 	struct tcc_adc *adc = iio_priv(iio_dev);
-	unsigned int value;
-	int ret = -EINVAL;
+	int32_t ret = -EINVAL;
 
 	switch (info) {
 	case IIO_CHAN_INFO_RAW:
 		/* Read converted ADC data */
-		mutex_lock(&adc->lock);
-		value = adc->soc_data->adc_read(iio_dev, chan->channel);
-		mutex_unlock(&adc->lock);
-		*val = (int)value;
+		spin_lock(&adc->lock);
+		ret = adc->soc_data->adc_read(iio_dev, chan->channel);
+		spin_unlock(&adc->lock);
+		if (ret < 0) {
+			return ret;
+		}
+
+		*val = ret;
 		ret = IIO_VAL_INT;
 		break;
 	default:
+		dev_warn(adc->dev, "[WARN][ADC] %s: %d is not supported\n",
+				__func__, info);
 		break;
 	}
 
 	return ret;
 }
 
-static int tcc_adc_parsing_dt(struct tcc_adc *adc)
+static int32_t tcc_adc_parsing_dt(struct tcc_adc *adc)
 {
 	struct device_node *np = adc->dev->of_node;
-	unsigned int clk_rate;
-	int ret;
+	uint32_t clk_rate;
+	int32_t ret;
 
 	/* get adc base address */
 	adc->regs = of_iomap(np, 0);
@@ -353,32 +361,41 @@ static int tcc_adc_parsing_dt(struct tcc_adc *adc)
 		dev_err(adc->dev, "[ERROR][ADC]Can not get adc ckin value\n");
 		return -EINVAL;
 	}
+	/* calculate conversion time */
+	adc->conv_time_ns = 6U * (1000U * (1000000U / adc->ckin));
 
 	/* get adc delay */
-	of_property_read_u32(np, "adc-delay", &adc->delay);
+	ret = of_property_read_u32(np, "adc-delay", &adc->delay);
+	if (ret != 0) {
+		adc->delay = 0;
+	}
 
 	adc->is_12bit_res = of_property_read_bool(np, "adc-12bit-resolution");
 
 	/* board version check */
-	of_property_read_u32(np, "adc-board-ver", &adc->board_ver);
+	ret = of_property_read_u32(np, "adc-board-ver", &adc->board_ver_ch);
 
 	if (adc->fclk == NULL) {
 		adc->fclk = of_clk_get(np, 0);
 	}
-	clk_set_rate(adc->fclk, (unsigned long)clk_rate);
+
+	ret = clk_set_rate(adc->fclk, (ulong)clk_rate);
+	if (ret != 0) {
+		dev_err(adc->dev, "[ERROR][ADC] failed to set clock\n");
+	}
 
 	if (adc->hclk == NULL) {
 		adc->hclk = of_clk_get(np, 1);
 	}
 
-	if (adc->phyclk == NULL) {
-		adc->phyclk = of_clk_get(np, 2);
+	if (adc->iso_clk == NULL) {
+		adc->iso_clk = of_clk_get(np, 2);
 	}
 
 	return 0;
 }
 
-static int tcc_micom_adc_parsing_dt(struct tcc_adc *adc)
+static int32_t tcc_micom_adc_parsing_dt(struct tcc_adc *adc)
 {
 	struct device_node *np = adc->dev->of_node;
 
@@ -428,17 +445,17 @@ static const struct of_device_id tcc_adc_dt_ids[] = {
 };
 MODULE_DEVICE_TABLE(of, tcc_adc_dt_ids);
 
-static int tcc_adc_probe(struct platform_device *pdev)
+static int32_t tcc_adc_probe(struct platform_device *pdev)
 {
-	struct iio_dev *iio_dev = NULL;
+	struct iio_dev *iio_dev;
 	struct tcc_adc *adc;
 	const struct of_device_id *match;
-	int error;
+	int32_t error;
 
 	pr_debug("[DEBUG][ADC] %s:\n", __func__);
 
 	/* allocate IIO device */
-	iio_dev = devm_iio_device_alloc(&pdev->dev, (int)sizeof(*adc));
+	iio_dev = devm_iio_device_alloc(&pdev->dev, (int32_t)sizeof(*adc));
 	if (iio_dev == NULL) {
 		return -ENOMEM;
 	}
@@ -463,7 +480,7 @@ static int tcc_adc_probe(struct platform_device *pdev)
 		goto fail;
 	}
 
-	mutex_init(&adc->lock);
+	spin_lock_init(&adc->lock);
 	iio_dev->name = dev_name(&pdev->dev);
 	iio_dev->dev.parent = &pdev->dev;
 	iio_dev->info = &tcc_adc_info;
@@ -486,8 +503,7 @@ static int tcc_adc_probe(struct platform_device *pdev)
 #ifdef DEBUG
 /* Test code */
 	if (0) {
-		unsigned int i;
-		unsigned long value;
+		int32_t i, value;
 
 		for (i = 2; i < 10; i++) {
 			value = adc->soc_data->adc_read(iio_dev, i);
@@ -505,7 +521,7 @@ fail:
 	return error;
 }
 
-static int tcc_adc_remove(struct platform_device *pdev)
+static int32_t tcc_adc_remove(struct platform_device *pdev)
 {
 	struct iio_dev *iio_dev = platform_get_drvdata(pdev);
 	struct tcc_adc *adc = iio_priv(iio_dev);
@@ -516,23 +532,25 @@ static int tcc_adc_remove(struct platform_device *pdev)
 	return 0;
 }
 
-static int tcc_adc_suspend(struct device *dev)
+static int32_t tcc_adc_suspend(struct device *dev)
 {
 	struct iio_dev *iio_dev = dev_get_drvdata(dev);
 	struct tcc_adc *adc = iio_priv(iio_dev);
 
-	if (adc->soc_data != NULL)
+	if (adc->soc_data != NULL) {
 		adc->soc_data->adc_power_ctrl(adc, (bool)false);
+	}
 	return 0;
 }
 
-static int tcc_adc_resume(struct device *dev)
+static int32_t tcc_adc_resume(struct device *dev)
 {
 	struct iio_dev *iio_dev = dev_get_drvdata(dev);
 	struct tcc_adc *adc = iio_priv(iio_dev);
 
-	if (adc->soc_data != NULL)
+	if (adc->soc_data != NULL) {
 		adc->soc_data->adc_power_ctrl(adc, (bool)true);
+	}
 	return 0;
 }
 
@@ -550,8 +568,7 @@ static ssize_t tcc_adc_store(struct device *dev,
 {
 	struct iio_dev *iio_dev = dev_get_drvdata(dev);
 	struct tcc_adc *adc = iio_priv(iio_dev);
-	int ch, ret;
-	unsigned long data;
+	int32_t ch, data, ret;
 
 	ret = kstrtoint(buf, 10, &ch);
 	if (ret < 0) {
@@ -559,12 +576,12 @@ static ssize_t tcc_adc_store(struct device *dev,
 		return -EINVAL;
 	}
 
-	mutex_lock(&adc->lock);
+	spin_lock(&adc->lock);
 	data = adc->soc_data->adc_read(iio_dev, ch);
-	mutex_unlock(&adc->lock);
+	spin_unlock(&adc->lock);
 
 	pr_info("[INFO][ADC] Get ADC %d : value = %#X\n",
-			ch, (unsigned int)data);
+			ch, (uint32_t)data);
 
 	return (ssize_t)count;
 }
