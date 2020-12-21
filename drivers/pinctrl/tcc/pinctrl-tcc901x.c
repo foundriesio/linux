@@ -94,7 +94,7 @@ static struct tcc_pinctrl_soc_data tcc901x_pinctrl_soc_data;
 inline static int tcc901x_set_eint(void __iomem *base, unsigned bit, int extint, struct tcc_pinctrl *pctl)
 {
 	void __iomem *reg = (void __iomem *)(gpio_base + EINTSEL + 4*(extint/4));
-	unsigned int data, mask, shift, idx;
+	unsigned int data, mask, shift, idx, i, j;
 	struct extintr_match_ *match = (struct extintr_match_ *)tcc901x_pinctrl_soc_data.irq->data;
 	int irq_size = tcc901x_pinctrl_soc_data.irq->size;
 #ifdef CONFIG_ARM64
@@ -120,9 +120,9 @@ inline static int tcc901x_set_eint(void __iomem *base, unsigned bit, int extint,
 
 			} else {
 
-				for(i = 0; i < bank->source_section; i++){
-					if((bit >= bank->source_offset_base[i]) && (bit < (bank->source_offset_base[i]+bank->source_range[i]))) {
-						idx = bank->source_base[i] + (bit - bank->source_offset_base[i]);
+				for(j = 0; j < bank->source_section; j++){
+					if((bit >= bank->source_offset_base[j]) && (bit < (bank->source_offset_base[j]+bank->source_range[j]))) {
+						idx = bank->source_base[j] + (bit - bank->source_offset_base[j]);
 						pin_valid = 1; //true
 						break;
 					} else {
