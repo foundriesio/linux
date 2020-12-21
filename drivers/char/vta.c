@@ -177,8 +177,12 @@ static unsigned int vta_get_display_output(void)
 {
 	unsigned int output = 0;
 	struct device_node *hdmi_np = NULL;
+	#ifdef CONFIG_FB_TCC_COMPONENT
 	struct device_node *component_np = NULL;
+	#endif
+	#ifdef CONFIG_FB_TCC_COMPOSITE
 	struct device_node *composite_np = NULL;
+	#endif
 
 	#ifdef CONFIG_TCC_HDMI_DRIVER_V2_0
 	hdmi_np = of_find_compatible_node(NULL, NULL, "telechips,dw-hdmi-tx");

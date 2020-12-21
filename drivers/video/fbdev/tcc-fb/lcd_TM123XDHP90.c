@@ -396,7 +396,8 @@ static void tm123xdhp90_parse_dt(struct device_node *np)
 static int tm123xdhp90_probe(struct platform_device *pdev)
 {
 	struct device_node *np;
-	unsigned int second_display = 0, value;
+	unsigned int second_display = 0;
+	//unsigned int value;
 
 	pr_debug("[DBG][LCD] %s : %s\n", __func__, pdev->name);
 

@@ -37,8 +37,8 @@
  *  WARNING : DO NOT add 0x00XX type. it will be potential problem.
  */
 
-#define get_vioc_type(x)		(x >> 8)
-#define get_vioc_index(x)		(x & 0xFF)
+#define get_vioc_type(x)		((x) >> 8)
+#define get_vioc_index(x)		((x) & 0xFF)
 
 /* DISP : 0x01XX */
 #define VIOC_DISP			(0x0100)

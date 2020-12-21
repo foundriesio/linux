@@ -834,12 +834,12 @@ void _voic_set_edr(void __iomem *reg_VirtAddr, unsigned int frmcnt)
 		//ctrl1Reg = pReg_Src->vedr.dm.bioCtrl1;
 		//ctrl1Reg.bits.ksdmctrlShadowcontext_icsc = bShadow_context;
 		//ctrl1Reg.bits.ksdmctrlShadowcontext_cvm = bShadow_context;
-		////printk("shadow edr : 0x%x\n", ctrl1Reg.value);
+		////pr_info("shadow edr : 0x%x\n", ctrl1Reg.value);
 		//pVEDR->vedr.dm.bioCtrl1	= ctrl1Reg; // 94
 
 		value = pReg_Src->vedr.dm.bioCtrl1.value & ~((0x1<<1)|(0x1<<0));
 		value |= ((bShadow_context<<1)|(bShadow_context<<0));
-		//printk("shadow edr : 0x%x\n", value);
+		//pr_info("shadow edr : 0x%x\n", value);
 		__dv_reg_w(value, pVEDR + 0x3c494);
 	}
 #endif
@@ -977,7 +977,7 @@ void _voic_set_panel(void __iomem *reg_VirtAddr, void __iomem *meta_VirtAddr,
 		value = pReg_Src->vpanel.osd1.unkimapg04.value & ~((0x1<<12)|(0x1<<13));
 		value |= ((bShadow_context<<12)|(bShadow_context<<13));
 
-		//printk("shadow osd1 : 0x%x\n", unK04Reg.value);
+		//pr_info("shadow osd1 : 0x%x\n", unK04Reg.value);
 
 		//pVPANEL->osd1.unkimapg04 = unK04Reg; // 10
 		__dv_reg_w(value, pVPANEL + 0x0010);
@@ -1083,7 +1083,7 @@ void _voic_set_panel(void __iomem *reg_VirtAddr, void __iomem *meta_VirtAddr,
 		//unK04Reg = pReg_Src->vpanel.osd3.unkimapgb04;
 		//unK04Reg.bits.shadowContext_cvm_in = bShadow_context;
 		//unK04Reg.bits.shadowContext_icsc_in = bShadow_context;
-		////printk("shadow osd3 : 0x%x\n", unK04Reg.value);
+		////pr_info("shadow osd3 : 0x%x\n", unK04Reg.value);
 		//pVPANEL->osd3.unkimapgb04 = unK04Reg; // ac
 
 		value = pReg_Src->vpanel.osd3.unkimapgb04.value

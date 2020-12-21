@@ -217,7 +217,7 @@ void viqe_render_frame(struct tcc_lcdc_image_update *input_image,
 	struct tcc_lcdc_image_update *p_entry_image;
 
 	if (viqe_queue_is_full(&g_viqe_render_queue)) {
-//		printk("[REND] queue is full ...\n");
+//		pr_err("[REND] queue is full ...\n");
 		return;
 	}
 
@@ -265,7 +265,7 @@ void viqe_render_field(int curTime)
 	unsigned int curr_time;
 	int next_frame_info;
 
-//	printk("@@render_field ...");
+//	pr_info("@@render_field ...");
 	curr_time = curTime;
 
 	if (viqe_queue_is_empty(&g_viqe_render_queue)) {

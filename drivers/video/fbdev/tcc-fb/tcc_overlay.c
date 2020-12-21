@@ -830,11 +830,9 @@ static void __exit tcc_overlay_cleanup(void)
 	platform_driver_unregister(&tcc_overlay_driver);
 }
 
-static char banner[] __initdata = KERN_INFO "TCC Overlay driver initializing\n";
-
 static int __init tcc_overlay_init(void)
 {
-	printk(banner);
+	pr_info("%s\n", __func__);
 	platform_driver_register(&tcc_overlay_driver);
 	return 0;
 }

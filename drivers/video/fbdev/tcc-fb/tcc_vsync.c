@@ -189,7 +189,7 @@ extern unsigned int HDMI_video_hz;
 
 #ifdef TCC_LCD_VIDEO_DISPLAY_BY_VSYNC_INT
 static int vsync_started_device = LCD_START_VSYNC;
-static int vsync_started;
+//static int vsync_started;
 #endif
 
 static unsigned int EX_OUT_LCDC;
@@ -201,15 +201,15 @@ static int video_display_disable_check;
 extern unsigned int vsync_rdma_off[VSYNC_MAX];	// RDMA_VIDEO enable/disable
 
 static int debug_v = 0;
-#define vprintk(msg...) if (debug_v) { printk("[DBG][VSYNC] " msg); }
+#define vprintk(msg...) if (debug_v) { pr_info("[DBG][VSYNC] " msg); }
 static int debug = 0;
-#define dprintk(msg...) if (debug) { printk("[DBG][VSYNC] " msg); }
-#define dprintk_ext(msg...) if (debug) { printk("[DBG][VSYNC-EXT] " msg); }
+#define dprintk(msg...) if (debug) { pr_info("[DBG][VSYNC] " msg); }
+#define dprintk_ext(msg...) if (debug) { pr_info("[DBG][VSYNC-EXT] " msg); }
 #if defined(CONFIG_VIOC_DOLBY_VISION_CERTIFICATION_TEST)
-#define dprintk_drop(msg...) if (1) { printk("[DBG][VSYNC] " msg); }
-#define dprintk_dv_transition(msg...) if (0) { printk("[DBG][VSYNC-DV] " msg); }
+#define dprintk_drop(msg...) if (1) { pr_info("[DBG][VSYNC] " msg); }
+#define dprintk_dv_transition(msg...) if (0) { pr_info("[DBG][VSYNC-DV] " msg); }
 #else
-#define dprintk_drop(msg...) if (debug) { printk("[DBG][VSYNC] " msg); }
+#define dprintk_drop(msg...) if (debug) { pr_info("[DBG][VSYNC] " msg); }
 #endif
 
 
@@ -516,7 +516,7 @@ static int tcc_vsync_set_max_buffer(tcc_vsync_buffer_t *buffer_t, int buffer_cou
 	return buffer_count;
 }
 
-static int _tcc_vsync_print_all_buffers(tcc_vsync_buffer_t *buffer_t)
+static void _tcc_vsync_print_all_buffers(tcc_vsync_buffer_t *buffer_t)
 {
 	int i = 0;
 
@@ -1482,7 +1482,11 @@ int display_vsync(tcc_video_disp *p)
 }
 
 #define USE_DOLBY_VISION_SUB_INTERRUPT
+
+#if defined(CONFIG_VIOC_DOLBY_VISION_EDR) && defined(USE_DOLBY_VISION_SUB_INTERRUPT)
 static unsigned int dv_video_int_he_count;
+#endif
+
 static irqreturn_t tcc_vsync_handler_for_video(int irq, void *dev_id)
 {
 	struct tcc_vsync_display_info_t *vsync = (struct tcc_vsync_display_info_t *)dev_id;
@@ -2195,7 +2199,7 @@ static int tcc_vsync_start(tcc_video_disp *p, struct tcc_lcdc_image_update *inpu
 				if(prepare_input_image_info[type] != NULL) {
 					memcpy(prepare_input_image_info[type], input_image_info, sizeof(struct tcc_lcdc_image_update));
 					p->isVsyncRunning = EM_VSYNC_PREPARE;
-					printk(KERN_ERR "%s Output device is turned off - backup \r\n", __func__);
+					pr_err("%s Output device is turned off - backup \r\n", __func__);
 				}
 				// Save info
 				#else
@@ -2209,7 +2213,7 @@ static int tcc_vsync_start(tcc_video_disp *p, struct tcc_lcdc_image_update *inpu
 					if(prepare_input_image_info[type] != NULL) {
 						memcpy(prepare_input_image_info[type], input_image_info, sizeof(struct tcc_lcdc_image_update));
 						p->isVsyncRunning = EM_VSYNC_PREPARE;
-						printk(KERN_ERR "%s Output device is turned off - backup \r\n", __func__);
+						pr_err("%s Output device is turned off - backup \r\n", __func__);
 					}
 					// Save info
 					#else
@@ -2318,7 +2322,7 @@ static int tcc_vsync_start(tcc_video_disp *p, struct tcc_lcdc_image_update *inpu
 
 		case EM_VSYNC_RUNNING:
 			p->firstFrameFlag = 1;
-			printk(KERN_DEBUG "[DEBUG][VSYNC][%s] %s reset firstFrameFlag!!\r\n", (type == 0)?"MAIN":"SUB ", __func__);
+			pr_debug("[DEBUG][VSYNC][%s] %s reset firstFrameFlag!!\r\n", (type == 0)?"MAIN":"SUB ", __func__);
 			break;
 	}
 	return ret;
@@ -2647,7 +2651,7 @@ int tcc_move_video_frame_simple(struct file *file, struct tcc_lcdc_image_update 
 			return -3;
 		}
 
-		pr_info("[INF][VSYNC] ### tcc_move_video_frame_simple pre-processing(%dx%d - BitDepth(%d) Y(0x%x-0x%x / 0x%x), Cb(0x%x-0x%x / 0x%x)\n",
+		pr_info("[INF][VSYNC] ### tcc_move_video_frame_simple pre-processing(%dx%d - BitDepth(%d) Y(0x%x-0x%llx / 0x%llx), Cb(0x%x-0x%llx / 0x%llx)\n",
 					inFframeInfo->Frame_width, inFframeInfo->Frame_height, inFframeInfo->private_data.mapConv_info.m_uiLumaBitDepth,
 					inFframeInfo->addr0, inFframeInfo->private_data.mapConv_info.m_CompressedY[PA], inFframeInfo->private_data.mapConv_info.m_FbcYOffsetAddr[PA],
 					inFframeInfo->addr1, inFframeInfo->private_data.mapConv_info.m_CompressedCb[PA], inFframeInfo->private_data.mapConv_info.m_FbcCOffsetAddr[PA]);
@@ -2672,7 +2676,7 @@ int tcc_move_video_frame_simple(struct file *file, struct tcc_lcdc_image_update 
 			inFframeInfo->private_data.mapConv_info.m_FbcYOffsetAddr[PA] = pDst_addr;
 			inFframeInfo->private_data.mapConv_info.m_FbcCOffsetAddr[PA] = pDst_addr+PAGE_ALIGN(LumaTblSize);
 
-			pr_info("[INF][VSYNC] ### tcc_move_video_frame_simple pre-processing(%dx%d - BitDepth(%d) Y(0x%x-0x%x / 0x%x), Cb(0x%x-0x%x / 0x%x) :: End(0x%x)\n",
+			pr_info("[INF][VSYNC] ### tcc_move_video_frame_simple pre-processing(%dx%d - BitDepth(%d) Y(0x%x-0x%llx / 0x%llx), Cb(0x%x-0x%llx / 0x%llx) :: End(0x%x)\n",
 						inFframeInfo->Frame_width, inFframeInfo->Frame_height, inFframeInfo->private_data.mapConv_info.m_uiLumaBitDepth,
 						inFframeInfo->addr0, inFframeInfo->private_data.mapConv_info.m_CompressedY[PA], inFframeInfo->private_data.mapConv_info.m_FbcYOffsetAddr[PA],
 						inFframeInfo->addr1, inFframeInfo->private_data.mapConv_info.m_CompressedCb[PA], inFframeInfo->private_data.mapConv_info.m_FbcCOffsetAddr[PA],
@@ -3500,7 +3504,7 @@ int tcc_display_ext_frame(struct tcc_lcdc_image_update *lastUpdated, char bInter
 		iImage.private_data.optional_info[VID_OPT_BIT_DEPTH] = 0;
 	#endif
 
-		pr_info("[INF][VSYNC] ### TCC_LCDC_VIDEO_CTRL_EXT_FRAME Phy(0x%p) :: Start info(%dx%d, %d,%d ~ %dx%d), Display(%d,%d ~ %dx%d)\n", dest_addr,
+		pr_info("[INF][VSYNC] ### TCC_LCDC_VIDEO_CTRL_EXT_FRAME Phy(0x%x) :: Start info(%dx%d, %d,%d ~ %dx%d), Display(%d,%d ~ %dx%d)\n", dest_addr,
 					last_backup.Frame_width, last_backup.Frame_height,
 					last_backup.crop_left, last_backup.crop_top, last_backup.crop_right, last_backup.crop_bottom,
 					iImage.offset_x, iImage.offset_y, iImage.Image_width, iImage.Image_height);
@@ -3860,7 +3864,7 @@ static long tcc_vsync_do_ioctl(unsigned int cmd, unsigned long arg, VSYNC_CH_TYP
 
 	p->type = type;
 
-	dprintk("%s-%d :: cmd: 0x%x arg: 0x%x\n", __func__, __LINE__, cmd, (void *)arg);
+	dprintk("%s-%d :: cmd: 0x%x\n", __func__, __LINE__, cmd);
 
 	mutex_lock(&vsync_io_mutex[type]);
 
@@ -4841,11 +4845,11 @@ void tcc_vsync_hdmi_start(struct tcc_dp_device *pdp_data, int *lcd_video_started
 	spin_unlock_irq(&vsync_lock);
 
 	#if defined(CONFIG_VSYNC_DRV_ALWAYS_ACCEPT_START_VSYNC)
-	printk(KERN_DEBUG "%s tccvid_vsync[VSYNC_MAIN].isVsyncRunning=%d\r\n", __func__, tccvid_vsync[VSYNC_MAIN].isVsyncRunning);
+	pr_debug("%s tccvid_vsync[VSYNC_MAIN].isVsyncRunning=%d\r\n", __func__, tccvid_vsync[VSYNC_MAIN].isVsyncRunning);
 	if(tccvid_vsync[VSYNC_MAIN].isVsyncRunning == EM_VSYNC_PREPARE) {
 		tcc_vsync_start(&tccvid_vsync[VSYNC_MAIN], prepare_input_image_info[VSYNC_MAIN], VSYNC_MAIN);
 	}
-	printk(KERN_DEBUG "%s tccvid_vsync[VSYNC_SUB0].isVsyncRunning=%d\r\n", __func__, tccvid_vsync[VSYNC_SUB0].isVsyncRunning);
+	pr_debug("%s tccvid_vsync[VSYNC_SUB0].isVsyncRunning=%d\r\n", __func__, tccvid_vsync[VSYNC_SUB0].isVsyncRunning);
 	if(tccvid_vsync[VSYNC_SUB0].isVsyncRunning == EM_VSYNC_PREPARE) {
 		tcc_vsync_start(&tccvid_vsync[VSYNC_SUB0], prepare_input_image_info[VSYNC_SUB0], VSYNC_SUB0);
 	}
@@ -5227,7 +5231,7 @@ static int tcc_vsync1_open(struct inode *inode, struct file *filp)
 		pr_info("[INF][VSYNC] %s-%d : fb_wmixer1 allocation is failed.\n", __func__, __LINE__);
 		//return -ENOMEM;
 	}
-	dprintk("%s :: Sub LastFrame(%d/%d) - wmixer base:0x%08x/0x%x\n", __func__,
+	dprintk("%s :: Sub LastFrame(%d/%d) - wmixer base:0x%08llx/0x%llx\n", __func__,
 				tccvid_lastframe[VSYNC_SUB0].support, tccvid_lastframe[VSYNC_SUB0].enabled,
 				tccvid_lastframe[VSYNC_SUB0].pmapBuff.base, tccvid_lastframe[VSYNC_SUB0].pmapBuff.size);
 
@@ -5315,7 +5319,7 @@ static int tcc_vsync0_open(struct inode *inode, struct file *filp)
 			__func__, __LINE__);
 		//return -ENOMEM;
 	}
-	dprintk("%s :: Main LastFrame(%d/%d) - wmixer base:0x%08x/0x%x\n", __func__,
+	dprintk("%s :: Main LastFrame(%d/%d) - wmixer base:0x%08llx/0x%llx\n", __func__,
 				tccvid_lastframe[VSYNC_MAIN].support, tccvid_lastframe[VSYNC_MAIN].enabled,
 				tccvid_lastframe[VSYNC_MAIN].pmapBuff.base, tccvid_lastframe[VSYNC_MAIN].pmapBuff.size);
 
@@ -5636,7 +5640,7 @@ static int __init tcc_vsync_init(void)
 
 	pmap_get_info("fb_wmixer", &tccvid_lastframe[type].pmapBuff);
 	tcc_video_ctrl_last_frame(type, 1);
-	pr_info("[INF][VSYNC] %s :: Main LastFrame(%d/%d) - wmixer base:0x%08x/0x%x\n", __func__,
+	pr_info("[INF][VSYNC] %s :: Main LastFrame(%d/%d) - wmixer base:0x%08llx/0x%llx\n", __func__,
 				tccvid_lastframe[type].support, tccvid_lastframe[type].enabled,
 				tccvid_lastframe[type].pmapBuff.base, tccvid_lastframe[type].pmapBuff.size);
 

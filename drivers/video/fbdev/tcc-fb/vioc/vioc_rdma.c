@@ -58,7 +58,7 @@ void VIOC_RDMA_PreventEnable_for_UI(char no_update, char disabled)
 	noUpdate_FB_RDMA = no_update;
 	Disable_FB_RDMA = disabled;
 
-	// printk("%s :: %d - %d\n", __func__, noUpdate_FB_RDMA,
+	//pr_info("%s :: %d - %d\n", __func__, noUpdate_FB_RDMA,
 	// Disable_FB_RDMA);
 	if (Disable_FB_RDMA)
 		VIOC_RDMA_SetImageDisable(reg);

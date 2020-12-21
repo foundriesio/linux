@@ -419,7 +419,7 @@ void filt2d_coeff_simple(unsigned int F2D_N, uint plane, uint *coeff)
 	}
 }
 
-void filt2d_coeff_set(unsigned int F2D_N, enum F2D_SMODE_TYPE smode)
+void filt2d_coeff_set(unsigned int F2D_N, F2D_SMODE_TYPE smode)
 {
 	if ((smode <= SMODE_02) && (get_vioc_index(F2D_N) < VIOC_F2D_MAX)) {
 		filt2d_coeff_simple(

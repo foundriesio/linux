@@ -19,10 +19,10 @@
 #ifndef __VIOC_MC_H__
 #define	__VIOC_MC_H__
 
-struct mc_info_type {
+typedef struct {
 	unsigned short width; 	 	/* Source Width*/
 	unsigned short height; 		/* Source Height*/
-};
+} mc_info_type;
 
 /*
  * register offset
@@ -374,7 +374,7 @@ extern void VIOC_MC_ENDIAN  (volatile void __iomem *reg, uint ofs_endian, uint c
 extern void VIOC_MC_DITH_CONT(volatile void __iomem *reg, uint en, uint sel);
 extern void VIOC_MC_SetDefaultAlpha (volatile void __iomem *reg, uint alpha);
 extern volatile void __iomem* VIOC_MC_GetAddress(unsigned int vioc_id);
-extern int  tvc_mc_get_info(unsigned int component_num, struct mc_info_type *pMC_info);
+extern int  tvc_mc_get_info(unsigned int component_num, mc_info_type *pMC_info);
 extern void VIOC_MC_DUMP(unsigned int vioc_id);
 
 #endif

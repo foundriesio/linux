@@ -118,7 +118,7 @@ static int bStep_Check = DEF_DV_CHECK_NUM;
 static unsigned int nFrame = 0;
 unsigned int dv_reg_phyaddr = 0x00, dv_md_phyaddr = 0x00;
 static unsigned int bUse_GAlpha = 0;
-#define dvprintk(msg...) //printk("[DBG]dolby-vision[voic-interface]: " msg);
+#define dvprintk(msg...) //pr_info("[DBG]dolby-vision[voic-interface]: " msg);
 
 typedef struct dolby_layer_str_t
 {
@@ -176,7 +176,7 @@ typedef struct dolby_layer_str_t
 #endif
 /* Debugging stuff */
 static int debug = 0;
-#define dprintk(msg...)	if (debug) { printk("[DBG][VIOC_I] " msg); }
+#define dprintk(msg...)	if (debug) { pr_info("[DBG][VIOC_I] " msg); }
 
 struct device_node *ViocScaler_np;
 struct device_node *ViocConfig_np;
@@ -360,7 +360,7 @@ void tca_fb_mem_scale_init(void)
 	g2d_release = tccxxx_grp_release;
 	#endif//
 
-	pr_info("[INF][VIOC_I] %s scaler buffer:0x%x 0x%x g2d buffer : 0x%x, 0x%x size:%d \n", __func__, fb_scaler_pbuf0, fb_scaler_pbuf1, fb_g2d_pbuf0, fb_g2d_pbuf1, pmap.size);
+	pr_info("[INF][VIOC_I] %s scaler buffer:0x%x 0x%x g2d buffer : 0x%x, 0x%x size:%llu \n", __func__, fb_scaler_pbuf0, fb_scaler_pbuf1, fb_g2d_pbuf0, fb_g2d_pbuf1, pmap.size);
 }
 
 
@@ -453,10 +453,10 @@ void vioc_reset_rdma_on_display_path(int DispNum)
 
 				VIOC_CONFIG_SWReset(dp_device->rdma_info[i].blk_num, VIOC_CONFIG_RESET);
 				VIOC_CONFIG_SWReset(dp_device->rdma_info[i].blk_num, VIOC_CONFIG_CLEAR);
-				printk(KERN_DEBUG "[DBG][FBIF] reset rdma_%d with Scaler-%d\n",
+				pr_debug("[DBG][FBIF] reset rdma_%d with Scaler-%d\n", 
 					i + (get_vioc_index(dp_device->ddc_info.blk_num) << 2), get_vioc_index(scnum));
 			} else {
-				printk(KERN_DEBUG "[DBG][FBIF] reset rdma_%d\n",
+				pr_debug("[DBG][FBIF] reset rdma_%d\n", 
 					i + (get_vioc_index(dp_device->ddc_info.blk_num) << 2));
 				VIOC_CONFIG_SWReset(dp_device->rdma_info[i].blk_num, VIOC_CONFIG_RESET);
 				VIOC_CONFIG_SWReset(dp_device->rdma_info[i].blk_num, VIOC_CONFIG_CLEAR);
@@ -1837,12 +1837,12 @@ int tca_vioc_displayblock_pre_ctrl_set(struct tcc_dp_device *dp_device)
 
 	do {
 		if(dp_device == NULL) {
-			printk(KERN_ERR "[ERR][FB] %s dp_device is NULL\r\n", __func__);
+			pr_err("[ERR][FB] %s dp_device is NULL\r\n", __func__);
 			break;
 		}
 		pWMIX = dp_device->wmixer_info.virt_addr;
 		if(pWMIX == NULL) {
-			printk(KERN_ERR "[ERR][FB] %s pWMIX is NULL\r\n", __func__);
+			pr_err("[ERR][FB] %s pWMIX is NULL\r\n", __func__);
 			break;
 		}
 		/* set wmix */
@@ -1898,13 +1898,13 @@ int tca_vioc_displayblock_pre_ctrl_set(struct tcc_dp_device *dp_device)
 			if(dp_device->FbUpdateType == FB_SC_RDMA_UPDATE) {
 				sc_num = VIOC_CONFIG_GetScaler_PluginToRDMA(dp_device->rdma_info[RDMA_FB].blk_num);
 				if(sc_num  != dp_device->sc_num0) {
-					printk(KERN_INFO "[INFO][FBIF] %s scaler is mismatch 0x%x : 0x%x \r\n", __func__, sc_num, dp_device->sc_num0);
+					pr_info("[INFO][FBIF] %s scaler is mismatch 0x%x : 0x%x \r\n", __func__, sc_num, dp_device->sc_num0);
 					break;
 				}
 			} else {
 				sc_num = VIOC_CONFIG_GetScaler_PluginToRDMA(dp_device->rdma_info[RDMA_FB].blk_num);
 				if(sc_num  >= VIOC_SCALER0) {
-					printk(KERN_INFO "[INFO][FBIF] %s FbUpdateType is not Scaler but scaler 0x%x is connected\r\n",  __func__, sc_num);
+					pr_info("[INFO][FBIF] %s FbUpdateType is not Scaler but scaler 0x%x is connected\r\n",  __func__, sc_num);
 					break;
 				}
 			}
@@ -2420,9 +2420,10 @@ void tca_fb_rdma_transparent_active_var(unsigned int base_addr, struct fb_var_sc
 	unsigned int lcd_width, lcd_height, img_width, img_height;
 
 	unsigned int alpha_type = 0, alpha_blending_en = 0;
-	unsigned int chromaR, chromaG, chromaB, chroma_en = 1;
+	//unsigned int chroma_en = 1;
+	unsigned int chromaR, chromaG, chromaB;
 	unsigned int lcd_pos_x = 0, lcd_pos_y = 0, lcd_layer = RDMA_FB;
-	unsigned int blk_num=pdp_data->rdma_info[RDMA_FB].blk_num;
+	//unsigned int blk_num=pdp_data->rdma_info[RDMA_FB].blk_num;
 
 	volatile void __iomem *pRDMA = pdp_data->rdma_info[RDMA_FB].virt_addr;
 	volatile void __iomem *pWMIX = pdp_data->wmixer_info.virt_addr;
@@ -3147,7 +3148,7 @@ void tca_fb_mvc_active_var(unsigned int base_addr, struct fb_var_screeninfo *var
 
 void tca_fb_attach_update(struct tcc_dp_device *pMdp_data, struct tcc_dp_device *pSdp_data)
 {
-	unsigned int img_width, img_height, base_addr,attach_posx,attach_posy;
+	unsigned int img_width, img_height, base_addr, attach_posx, attach_posy;
 	unsigned int nRDMA_Attached = RDMA_FB;
 
 #if defined(CONFIG_VIOC_DOLBY_VISION_EDR)
@@ -3324,7 +3325,7 @@ void tca_fb_attach_start(struct tccfb_info *info)
 
 	attach_buffer_len = attach_wd * attach_ht * 4;
 	if( (attach_buffer_len*MAX_ATTACH_BUFF_CNT) > pmap.size )
-		pr_info("[INF][VIOC_I] %s-%d not enough pmap size (0x%x) for attach \n", __func__, __LINE__, pmap.size);
+		pr_info("[INF][VIOC_I] %s-%d not enough pmap size (0x%llx) for attach \n", __func__, __LINE__, pmap.size);
 
 	for(i=0; i<MAX_ATTACH_BUFF_CNT; i++)
 	{
@@ -4968,7 +4969,9 @@ static void tca_scale_display_update_internal(struct tcc_dp_device *pdp_data, st
 	volatile void __iomem *pSC;
 	int iSCType;
 	unsigned int lcd_width = 0, lcd_height = 0;
+#if defined(CONFIG_TCC_VSYNC_DRV_CONTROL_LUT)
 	unsigned int rdma_en = 0;
+#endif
 
 //	pr_info("[INF][VIOC_I] %s enable:%d, layer:%d, addr:0x%x, ts:%d, fmt:%d, Fw:%d, Fh:%d, Iw:%d, Ih:%d, fmt:%d onthefly:%d  map :%d \n", __func__, ImageInfo->enable, ImageInfo->Lcdc_layer, ImageInfo->addr0, ImageInfo->time_stamp,
 //			ImageInfo->fmt,ImageInfo->Frame_width, ImageInfo->Frame_height, ImageInfo->Image_width, ImageInfo->Image_height, ImageInfo->fmt, ImageInfo->on_the_fly, ImageInfo->private_data.optional_info[16]);

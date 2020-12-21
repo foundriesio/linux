@@ -293,7 +293,7 @@ static void ump_sw_mgmt_init(void)
 		(pmap_ump_reserved_sw.size
 		< (UMP_SW_BLOCK_SIZE*UMP_SW_BLOCK_MAX_CNT))) {
 		ump_printk_err(
-			"%s check the size(0x%x vs. 0x%x) of ump_reserved_sw\n",
+			"%s check the size(0x%llx vs. 0x%x) of ump_reserved_sw\n",
 			__func__, pmap_ump_reserved_sw.size,
 			(UMP_SW_BLOCK_SIZE * UMP_SW_BLOCK_MAX_CNT));
 	} else {
@@ -315,7 +315,7 @@ static void ump_sw_mgmt_init(void)
 		}
 
 		if (remap_ump_reserved_sw == NULL) {
-			ump_printk_err("phy[0x%x - 0x%x] mmap failed.\n",
+			ump_printk_err("phy[0x%llx - 0x%llx] mmap failed.\n",
 			pmap_ump_reserved_sw.base, pmap_ump_reserved_sw.size);
 		} else {
 			memset_io(remap_ump_reserved_sw, 0x00,

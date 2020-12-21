@@ -19,7 +19,7 @@
 #ifndef __VIOC_FILTER2D_H__
 #define	__VIOC_FILTER2D_H__
 
-struct F2D_MODE_PARAM {
+typedef struct {
 	/* set detecting directon filter mode */
 	// 0: LPF mode
 	// 1: HPF mode
@@ -40,7 +40,7 @@ struct F2D_MODE_PARAM {
 	unsigned int simple0_mode;	// channel.0
 	unsigned int simple1_mode;	// channel.1
 	unsigned int simple2_mode;	// channel.2
-};
+} F2D_MODE_PARAM;
 
 
 #define PLANE0 0
@@ -49,37 +49,37 @@ struct F2D_MODE_PARAM {
 
 #define SIMPLE_MODE 0
 
-enum F2D_SMODE_TYPE {
+typedef enum {
 	SMODE_00 = 0,
 	SMODE_01 = 1,
 	SMODE_02 = 2,
-};
+} F2D_SMODE_TYPE;
 
-enum F2D_STRENGTH_TYPE {
+typedef enum {
 	STRENGTH_1 = 0,
 	STRENGTH_2 = 1,
 	STRENGTH_3 = 2,
 	STRENGTH_4 = 3,
 	STRENGTH_5 = 4,
 	STRENGTH_0 = 5,	// bypass
-};
+} F2D_STRENGTH_TYPE;
 
-struct F2D_FILT_STRENGTH_PARM {
-	enum F2D_STRENGTH_TYPE ch0;
-	enum F2D_STRENGTH_TYPE ch1;
-	enum F2D_STRENGTH_TYPE ch2;
-};
+typedef struct {
+	F2D_STRENGTH_TYPE ch0;
+	F2D_STRENGTH_TYPE ch1;
+	F2D_STRENGTH_TYPE ch2;
+} F2D_FILT_STRENGTH_PARM;
 
-struct F2D_SCOEFF_PARAM {
+typedef struct {
 	unsigned int para[9];	// [0]-P00, [1]-P01, ..., [7]-P21, [8]-P22
 	unsigned int cb;
-};
+} F2D_SCOEFF_PARAM;
 
-struct F2D_DIV_PARAM {
+typedef struct {
 	unsigned int pos;
 	unsigned int dtog;
 	unsigned int den;
-};
+} F2D_DIV_PARAM;
 
 #define TCC_F2D_SET_MODE				0x301
 #define TCC_F2D_SET_LPF_STRENGTH		0x302
@@ -101,7 +101,7 @@ extern void filt2d_coeff_hpf(unsigned int F2D_N, uint strength0,
 extern void filt2d_coeff_lpf(unsigned int F2D_N, uint strength0,
 	uint strength1, uint strength2);
 extern void filt2d_coeff_set(unsigned int F2D_N,
-	enum F2D_SMODE_TYPE smode);
+	F2D_SMODE_TYPE smode);
 
 extern void filt2d_enable(unsigned int F2D_N, uint enable);
 

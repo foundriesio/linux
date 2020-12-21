@@ -48,6 +48,14 @@
 #define CLK_DOUBLE_EDGE_FREQ  (2)
 #define CLK_DOUBLE_4TIME_FREQ (3)
 
+#ifdef ON
+#undef ON
+#endif
+
+#ifdef OFF
+#undef OFF
+#endif
+
 #define ON  (1)
 #define OFF (0)
 
