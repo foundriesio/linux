@@ -1305,6 +1305,11 @@
 		arbitor_num = <4>;
 	};
 
+        vioc_pvric_fbdc:vioc_pvric_fbdc@12012000{
+                compatible = "telechips,vioc_pvric_fbdc";
+                status = "okay";
+        };
+
 	mipi_csi2_0: mipi_csi2_0@1bc00800 {
 		compatible = "telechips,tcc805x-mipi-csi2";
 		status = "okay";
