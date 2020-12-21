@@ -260,6 +260,16 @@ static inline void nvme_tcp_advance_req(struct nvme_tcp_request *req,
 	}
 }
 
+static inline void nvme_tcp_send_all(struct nvme_tcp_queue *queue)
+{
+	int ret;
+
+	/* drain the send queue as much as we can... */
+	do {
+		ret = nvme_tcp_try_send(queue);
+	} while (ret > 0);
+}
+
 static inline void nvme_tcp_queue_request(struct nvme_tcp_request *req,
 		bool sync)
 {
@@ -278,7 +288,7 @@ static inline void nvme_tcp_queue_request(struct nvme_tcp_request *req,
 	 */
 	if (queue->io_cpu == smp_processor_id() &&
 	    sync && empty && mutex_trylock(&queue->send_mutex)) {
-		nvme_tcp_try_send(queue);
+		nvme_tcp_send_all(queue);
 		mutex_unlock(&queue->send_mutex);
 	} else {
 		queue_work_on(queue->io_cpu, nvme_tcp_wq, &queue->io_work);
