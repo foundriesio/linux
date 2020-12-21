@@ -51,18 +51,6 @@
 		pr_info("[INFO][%s] %s - "\
 			fmt, LOG_TAG, __func__, ##__VA_ARGS__)
 
-struct power_sequence {
-	int			pwr_port;
-	int			pwd_port;
-	int			rst_port;
-	int			intb_port;
-
-	enum of_gpio_flags	pwr_value;
-	enum of_gpio_flags	pwd_value;
-	enum of_gpio_flags	rst_value;
-	enum of_gpio_flags	intb_value;
-};
-
 /*
  * This object contains essential v4l2 objects
  * such as sub-device and ctrl_handler
@@ -72,10 +60,13 @@ struct ar0147 {
 	struct v4l2_mbus_framefmt	fmt;
 	struct v4l2_ctrl_handler	hdl;
 
-	struct power_sequence		gpio;
-
 	/* Regmaps */
 	struct regmap			*regmap;
+
+	struct mutex lock;
+	unsigned int p_cnt;
+	unsigned int s_cnt;
+	unsigned int i_cnt;
 };
 
 const struct reg_sequence ar0147_reg_init[] = {
@@ -599,74 +590,6 @@ static void ar0147_init_format(struct ar0147 *dev)
 	dev->fmt.field = V4L2_FIELD_NONE;
 	dev->fmt.colorspace = V4L2_COLORSPACE_SMPTE170M;
 }
-/*
- * gpio fuctions
- */
-int ar0147_parse_device_tree(struct ar0147 *dev, struct i2c_client *client)
-{
-	struct device_node	*node	= client->dev.of_node;
-	int			ret	= 0;
-
-	if (node) {
-		dev->gpio.pwr_port = of_get_named_gpio_flags(node,
-			"pwr-gpios", 0, &dev->gpio.pwr_value);
-		dev->gpio.pwd_port = of_get_named_gpio_flags(node,
-			"pwd-gpios", 0, &dev->gpio.pwd_value);
-		dev->gpio.rst_port = of_get_named_gpio_flags(node,
-			"rst-gpios", 0, &dev->gpio.rst_value);
-		dev->gpio.intb_port = of_get_named_gpio_flags(node,
-			"intb-gpios", 0, &dev->gpio.intb_value);
-	} else {
-		loge("could not find node!! n");
-		ret = -ENODEV;
-	}
-
-	return ret;
-}
-
-void ar0147_request_gpio(struct ar0147 *dev)
-{
-	if (dev->gpio.pwr_port > 0) {
-		gpio_request(dev->gpio.pwr_port, "ar0147 power");
-		gpio_direction_output(dev->gpio.pwr_port, dev->gpio.pwr_value);
-		logd("[pwr] gpio: %3d, new val: %d, cur val: %d\n",
-			dev->gpio.pwr_port, dev->gpio.pwr_value,
-			gpio_get_value(dev->gpio.pwr_port));
-	}
-	if (dev->gpio.pwd_port > 0) {
-		gpio_request(dev->gpio.pwd_port, "ar0147 power down");
-		gpio_direction_output(dev->gpio.pwd_port, dev->gpio.pwd_value);
-		logd("[pwd] gpio: %3d, new val: %d, cur val: %d\n",
-			dev->gpio.pwd_port, dev->gpio.pwd_value,
-			gpio_get_value(dev->gpio.pwd_port));
-	}
-	if (dev->gpio.rst_port > 0) {
-		gpio_request(dev->gpio.rst_port, "ar0147 reset");
-		gpio_direction_output(dev->gpio.rst_port, dev->gpio.rst_value);
-		logd("[rst] gpio: %3d, new val: %d, cur val: %d\n",
-			dev->gpio.rst_port, dev->gpio.rst_value,
-			gpio_get_value(dev->gpio.rst_port));
-	}
-	if (dev->gpio.intb_port > 0) {
-		gpio_request(dev->gpio.intb_port, "ar0147 interrupt");
-		gpio_direction_input(dev->gpio.intb_port);
-		logd("[int] gpio: %3d, new val: %d, cur val: %d\n",
-			dev->gpio.intb_port, dev->gpio.intb_value,
-			gpio_get_value(dev->gpio.intb_port));
-	}
-}
-
-void ar0147_free_gpio(struct ar0147 *dev)
-{
-	if (dev->gpio.pwr_port > 0)
-		gpio_free(dev->gpio.pwr_port);
-	if (dev->gpio.pwd_port > 0)
-		gpio_free(dev->gpio.pwd_port);
-	if (dev->gpio.rst_port > 0)
-		gpio_free(dev->gpio.rst_port);
-	if (dev->gpio.intb_port > 0)
-		gpio_free(dev->gpio.intb_port);
-}
 
 /*
  * Helper fuctions for reflection
@@ -700,37 +623,30 @@ static int ar0147_s_ctrl(struct v4l2_ctrl *ctrl)
 /*
  * v4l2_subdev_core_ops implementations
  */
-static int ar0147_set_power(struct v4l2_subdev *sd, int on)
-{
-	struct ar0147		*dev	= to_dev(sd);
-	struct power_sequence	*gpio	= &dev->gpio;
-
-	if (on) {
-		if (dev->gpio.rst_port > 0) {
-			gpio_set_value_cansleep(gpio->rst_port, 1);
-			msleep(20);
-		}
-	} else {
-
-		if (dev->gpio.rst_port > 0) {
-			gpio_set_value_cansleep(gpio->rst_port, 0);
-			msleep(20);
-		}
-	}
-	return 0;
-}
-
-static int ar0147_init(struct v4l2_subdev *sd, u32 val)
+static int ar0147_init(struct v4l2_subdev *sd, u32 enable)
 {
 	struct ar0147		*dev	= to_dev(sd);
 	int			ret	= 0;
 
+	mutex_lock(&dev->lock);
 
-	ret = regmap_multi_reg_write(dev->regmap,
-			ar0147_reg_init,
-			ARRAY_SIZE(ar0147_reg_init));
-	if (ret)
-		loge("regmap_multi_reg_write returned %d\n", ret);
+	if ((dev->i_cnt == 0) && (enable == 1)) {
+		ret = regmap_multi_reg_write(dev->regmap,
+				ar0147_reg_init,
+				ARRAY_SIZE(ar0147_reg_init));
+		if (ret)
+			loge("regmap_multi_reg_write returned %d\n", ret);
+		else
+			logi("init success\n");
+	} else if ((dev->i_cnt == 1) && (enable == 0)) {
+	}
+
+	if (enable)
+		dev->i_cnt++;
+	else
+		dev->i_cnt--;
+
+	mutex_unlock(&dev->lock);
 
 	return ret;
 }
@@ -738,22 +654,15 @@ static int ar0147_init(struct v4l2_subdev *sd, u32 val)
 /*
  * v4l2_subdev_video_ops implementations
  */
-static int ar0147_g_input_status(struct v4l2_subdev *sd, u32 *status)
-{
-	struct ar0147		*dev	= to_dev(sd);
-	unsigned int		val	= 0;
-	int			ret	= 0;
-
-	return ret;
-}
-
 static int ar0147_s_stream(struct v4l2_subdev *sd, int enable)
 {
 	struct ar0147		*dev	= to_dev(sd);
 	int			ret	= 0;
 
-	logi("call !!\n");
+	mutex_lock(&dev->lock);
 
+
+	mutex_unlock(&dev->lock);
 	return ret;
 }
 
@@ -766,9 +675,12 @@ static int ar0147_get_fmt(struct v4l2_subdev *sd,
 
 	logi("%s call\n", __func__);
 
+	mutex_lock(&dev->lock);
+
 	memcpy((void *)&format->format, (const void *)&dev->fmt,
 		sizeof(struct v4l2_mbus_framefmt));
 
+	mutex_unlock(&dev->lock);
 	return ret;
 }
 
@@ -781,9 +693,12 @@ static int ar0147_set_fmt(struct v4l2_subdev *sd,
 
 	logi("%s call\n", __func__);
 
+	mutex_lock(&dev->lock);
+
 	memcpy((void *)&dev->fmt, (const void *)&format->format,
 		sizeof(struct v4l2_mbus_framefmt));
 
+	mutex_unlock(&dev->lock);
 	return ret;
 }
 
@@ -795,7 +710,6 @@ static const struct v4l2_ctrl_ops ar0147_ctrl_ops = {
 };
 
 static const struct v4l2_subdev_core_ops ar0147_core_ops = {
-	.s_power		= ar0147_set_power,
 	.init			= ar0147_init,
 };
 
@@ -846,6 +760,8 @@ int ar0147_probe(struct i2c_client * client, const struct i2c_device_id * id) {
 		return -ENOMEM;
 	}
 
+	mutex_init(&dev->lock);
+
 	// set the specific information
 	if(client->dev.of_node) {
 		dev_id = of_match_node(ar0147_of_match, client->dev.of_node);
@@ -854,12 +770,6 @@ int ar0147_probe(struct i2c_client * client, const struct i2c_device_id * id) {
 
 	logd("name: %s, addr: 0x%x, client: 0x%p\n", 
 		client->name, (client->addr)<<1, client);
-
-	// parse the device tree
-	if((ret = ar0147_parse_device_tree(dev, client)) < 0) {
-		loge("cannot initialize gpio port\n");
-		return ret;
-	}
 
 	// Register with V4L2 layer as a slave device
 	v4l2_i2c_subdev_init(&dev->sd, client, &ar0147_ops);
@@ -887,9 +797,6 @@ int ar0147_probe(struct i2c_client * client, const struct i2c_device_id * id) {
 		loge("Failed to register subdevice\n");
 	else
 		logi("%s is registered as a v4l2 sub device.\n", dev->sd.name);
-
-	// request gpio
-	ar0147_request_gpio(dev);
 
 	// init regmap
         dev->regmap = devm_regmap_init_i2c(client, &ar0147_regmap);
@@ -919,9 +826,6 @@ int ar0147_remove(struct i2c_client * client)
 
 	// release regmap
 	regmap_exit(dev->regmap);
-
-	// gree gpio
-	ar0147_free_gpio(dev);
 
 	v4l2_ctrl_handler_free(&dev->hdl);
 

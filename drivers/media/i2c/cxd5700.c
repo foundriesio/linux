@@ -232,6 +232,8 @@ int cxd5700_probe(struct i2c_client *client, const struct i2c_device_id *id)
 		return -ENOMEM;
 	}
 
+	mutex_init(&dev->lock);
+
 	// set the specific information
 	if (client->dev.of_node) {
 		dev_id = of_match_node(cxd5700_of_match, client->dev.of_node);
