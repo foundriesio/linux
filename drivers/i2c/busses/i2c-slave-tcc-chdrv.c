@@ -1,21 +1,6 @@
+// SPDX-License-Identifier: GPL-2.0-or-later
 /*
- * linux/drivers/i2c/busses/i2c-slave-tcc-chdrv.c
- *
- * Copyright (C) 2017 Telechips, Inc.
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful, but WITHOUT
- * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
- * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
- * more details.
- *
- * You should have received a copy of the GNU General Public License along
- * with this program; if not, write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ * Copyright (C) Telechips Inc.
  */
 
 #include <linux/device.h>
@@ -51,7 +36,7 @@
 #include "i2c-slave-tcc-chdrv.h"
 
 static struct class *tcc_i2c_slave_class;
-static unsigned int tcc_i2c_slave_major;	/* mojor number of device */
+static uint32_t tcc_i2c_slave_major;	/* mojor number of device */
 
 static ssize_t tcc_i2c_slave_fifo_byte_show(struct device *dev,
 					    struct device_attribute *attr,
@@ -62,15 +47,14 @@ static ssize_t tcc_i2c_slave_fifo_byte_store(struct device *dev,
 DEVICE_ATTR(fifo_byte, 0664, tcc_i2c_slave_fifo_byte_show,
 	    tcc_i2c_slave_fifo_byte_store);
 
-static int tcc_i2c_slave_push_one_byte(struct tcc_i2c_slave *i2c, uint8_t data,
-				       int rx)
+static int32_t tcc_i2c_slave_push_one_byte(struct tcc_i2c_slave *i2c, uint8_t data,
+				       int32_t rx)
 {
 	struct circ_buf *circ;
-	int buf_size;
+	int32_t buf_size;
 	char buf = (char)data;
-
-	spinlock_t *lock = NULL;
-	unsigned long flags;
+	spinlock_t *lock;
+	ulong flags;
 
 	if (rx != 0) {
 		circ = &i2c->rx_buf.circ;
@@ -101,15 +85,14 @@ static int tcc_i2c_slave_push_one_byte(struct tcc_i2c_slave *i2c, uint8_t data,
 	return 0;
 }
 
-static int tcc_i2c_slave_pop_one_byte(struct tcc_i2c_slave *i2c, uint8_t *data,
-				      int rx)
+static int32_t tcc_i2c_slave_pop_one_byte(struct tcc_i2c_slave *i2c, uint8_t *data,
+				      int32_t rx)
 {
 	struct circ_buf *circ;
-	int buf_size;
-	char *buf = (char *)data;
-
-	spinlock_t *lock = NULL;
-	unsigned long flags;
+	int32_t buf_size;
+	uint8_t *buf;
+	spinlock_t *lock;
+	ulong flags;
 
 	if (rx != 0) {
 		circ = &i2c->rx_buf.circ;
@@ -119,7 +102,7 @@ static int tcc_i2c_slave_pop_one_byte(struct tcc_i2c_slave *i2c, uint8_t *data,
 		lock = &i2c->tx_buf.lock;
 	}
 	buf_size = i2c->buf_size;
-
+	buf = data;
 	spin_lock_irqsave(lock, flags);
 
 	if (circ_cnt(circ, buf_size) == 0) {
@@ -139,16 +122,14 @@ static int tcc_i2c_slave_pop_one_byte(struct tcc_i2c_slave *i2c, uint8_t *data,
 	return 0;
 }
 
-static size_t tcc_i2c_slave_push(struct tcc_i2c_slave *i2c, const char *src,
-				 size_t sz, int rx)
+static int32_t tcc_i2c_slave_push(struct tcc_i2c_slave *i2c, const char *src,
+				 int32_t sz, int32_t rx)
 {
-	size_t ret;
 	struct circ_buf *circ;
-	int buf_size;
-	size_t writeSize;
-
-	spinlock_t *lock = NULL;
-	unsigned long flags;
+	int32_t buf_size, writeSize, size;
+	int32_t ret;
+	spinlock_t *lock;
+	ulong flags;
 
 	if (rx != 0) {
 		circ = &i2c->rx_buf.circ;
@@ -157,13 +138,14 @@ static size_t tcc_i2c_slave_push(struct tcc_i2c_slave *i2c, const char *src,
 		circ = &i2c->tx_buf.circ;
 		lock = &i2c->tx_buf.lock;
 	}
+	size = sz;
 	buf_size = i2c->buf_size;
 	ret = 0;
 
 	spin_lock_irqsave(lock, flags);
 
 	/* check circ buf space */
-	if (circ_space(circ, buf_size) < (int)sz) {
+	if (circ_space(circ, buf_size) < size) {
 		spin_unlock_irqrestore(lock, flags);
 		dev_dbg(i2c->dev, "[DEBUG][I2C]%s buffer is full\n", __func__);
 		return 0;
@@ -178,40 +160,40 @@ static size_t tcc_i2c_slave_push(struct tcc_i2c_slave *i2c, const char *src,
 
 	if (circ->head >= circ->tail) {
 		writeSize = circ_space_to_end(circ, buf_size);
-		if (writeSize > sz) {
-			writeSize = sz;
+		if (writeSize > size) {
+			writeSize = size;
 		}
 
-		memcpy(&circ->buf[circ->head], src, writeSize);
-		sz -= writeSize;
+		(void)memcpy(&circ->buf[circ->head], src, (size_t)writeSize);
+		size -= writeSize;
 		ret = writeSize;
-		circ->head += (int)writeSize;
+		circ->head += writeSize;
 		if (circ->head >= buf_size) {
 			circ->head = 0;
 		}
 
-		if (sz > 0UL) {
-			memcpy(&circ->buf[circ->head], src + writeSize, sz);
-			circ->head = (int)sz;
-			ret += sz;
+		if (size > 0) {
+			(void)memcpy(&circ->buf[circ->head], src + writeSize, (size_t)size);
+			circ->head = size;
+			ret += size;
 		}
 	} else {
 		writeSize = circ->tail - circ->head;
-		if (writeSize > sz) {
-			writeSize = sz;
+		if (writeSize > size) {
+			writeSize = size;
 		}
 
-		memcpy(&circ->buf[circ->head], src, writeSize);
-		circ->head += (int)writeSize;
+		(void)memcpy(&circ->buf[circ->head], src, (size_t)writeSize);
+		circ->head += writeSize;
 		ret = writeSize;
 	}
 
 	dev_dbg(i2c->dev,
-		"[DEBUG][I2C] %s: write %ld(req %ld) circ buf(0x%08lx) head %d tail %d size %d space %d\n",
+		"[DEBUG][I2C] %s: write %d(req %d) circ buf(0x%08lx) head %d tail %d size %d space %d\n",
 		__func__,
 		ret,
-		sz,
-		(unsigned long)circ->buf,
+		size,
+		(ulong)circ->buf,
 		circ->head, circ->tail, buf_size, circ_space(circ, buf_size));
 
 	spin_unlock_irqrestore(lock, flags);
@@ -219,16 +201,15 @@ static size_t tcc_i2c_slave_push(struct tcc_i2c_slave *i2c, const char *src,
 	return ret;
 }
 
-static size_t tcc_i2c_slave_pop(struct tcc_i2c_slave *i2c, char *dst, size_t sz,
-				int rx)
+static int32_t tcc_i2c_slave_pop(struct tcc_i2c_slave *i2c, char *dst, int32_t sz,
+				int32_t rx)
 {
-	size_t ret;
 	struct circ_buf *circ;
-	int buf_size;
-	size_t readSize;
-
-	spinlock_t *lock = NULL;
-	unsigned long flags;
+	char *buf;
+	int32_t buf_size, readSize, size;
+	int32_t ret;
+	spinlock_t *lock;
+	ulong flags;
 
 	if (rx != 0) {
 		circ = &i2c->rx_buf.circ;
@@ -237,6 +218,8 @@ static size_t tcc_i2c_slave_pop(struct tcc_i2c_slave *i2c, char *dst, size_t sz,
 		circ = &i2c->tx_buf.circ;
 		lock = &i2c->tx_buf.lock;
 	}
+	buf = dst;
+	size = sz;
 	buf_size = i2c->buf_size;
 	ret = 0;
 
@@ -248,7 +231,7 @@ static size_t tcc_i2c_slave_pop(struct tcc_i2c_slave *i2c, char *dst, size_t sz,
 		return 0;
 	}
 
-	if (IS_ERR(dst)) {
+	if (IS_ERR(buf)) {
 		spin_unlock_irqrestore(lock, flags);
 		dev_err(i2c->dev, "[ERROR][I2C]%s dst ptr is invalid\n",
 			__func__);
@@ -257,39 +240,39 @@ static size_t tcc_i2c_slave_pop(struct tcc_i2c_slave *i2c, char *dst, size_t sz,
 
 	if (circ->head > circ->tail) {
 		readSize = circ->head - circ->tail;
-		if (readSize > sz) {
-			readSize = sz;
+		if (readSize > size) {
+			readSize = size;
 		}
 
-		memcpy(dst, &circ->buf[circ->tail], readSize);
-		circ->tail += (int)readSize;
+		(void)memcpy(buf, &circ->buf[circ->tail], (size_t)readSize);
+		circ->tail += readSize;
 		ret = readSize;
 	} else {
 		readSize = buf_size - circ->tail;
-		if (readSize > sz) {
-			readSize = sz;
+		if (readSize > size) {
+			readSize = size;
 		}
 
-		memcpy(dst, &circ->buf[circ->tail], readSize);
-		dst += readSize;
-		sz -= readSize;
+		(void)memcpy(buf, &circ->buf[circ->tail], (size_t)readSize);
+		buf += readSize;
+		size -= readSize;
 		ret = readSize;
-		circ->tail += (int)readSize;
-		if (circ->tail >= sz) {
+		circ->tail += readSize;
+		if (circ->tail >= size) {
 			circ->tail = 0;
 		}
 
-		memcpy(dst, &circ->buf[circ->tail], sz);
-		circ->tail = sz;
-		ret += sz;
+		(void)memcpy(buf, &circ->buf[circ->tail], (size_t)size);
+		circ->tail = (int32_t)size;
+		ret += size;
 	}
 
 	dev_dbg(i2c->dev,
-		"[DEBUG][I2C] %s: read %ld(req %ld) circ buf(0x%08lx) head %d tail %d size %d count %d\n",
+		"[DEBUG][I2C] %s: read %d(req %d) circ buf(0x%08lx) head %d tail %d size %d count %d\n",
 		__func__,
 		ret,
-		sz,
-		(unsigned long)circ->buf,
+		size,
+		(ulong)circ->buf,
 		circ->head, circ->tail, buf_size, circ_cnt(circ, buf_size));
 
 	spin_unlock_irqrestore(lock, flags);
@@ -301,22 +284,21 @@ static size_t tcc_i2c_slave_pop(struct tcc_i2c_slave *i2c, char *dst, size_t sz,
 #define TCC_I2C_SLV_DMA_SG_LEN	1
 
 /* Terminate all dma-engine channel */
-static void tcc_i2c_slave_stop_dma_engine(struct tcc_i2c_slave *i2c, int rx)
+static void tcc_i2c_slave_stop_dma_engine(struct tcc_i2c_slave *i2c, bool is_rx)
 {
-	if (rx != 0) {
-		if (i2c->dma.chan_rx != NULL)
-			dmaengine_terminate_all(i2c->dma.chan_rx);
-	} else {
-		if (i2c->dma.chan_tx != NULL)
-			dmaengine_terminate_all(i2c->dma.chan_tx);
+	if (is_rx && (i2c->dma.chan_rx != NULL)) {
+		dmaengine_terminate_all(i2c->dma.chan_rx);
+	}
+	if ((!is_rx) && (i2c->dma.chan_tx != NULL)) {
+		dmaengine_terminate_all(i2c->dma.chan_tx);
 	}
 }
 
 /* Submit dma-engine descriptor */
-static int tcc_i2c_slave_dma_dma_engine_submit(struct tcc_i2c_slave *i2c,
+static int32_t tcc_i2c_slave_dma_dma_engine_submit(struct tcc_i2c_slave *i2c,
 					       dma_async_tx_callback callback,
 					       void *callback_param,
-					       ssize_t len, int rx)
+					       ssize_t len, bool is_rx)
 {
 	struct tcc_i2c_slave_dma *dma;
 	struct dma_chan *chan;
@@ -326,31 +308,31 @@ static int tcc_i2c_slave_dma_dma_engine_submit(struct tcc_i2c_slave *i2c,
 	enum dma_transfer_direction dma_dir;
 	dma_addr_t dma_addr;
 	dma_cookie_t cookie;
-	unsigned int dma_length;
+	uint32_t dma_length;
 
 	dma = &i2c->dma;
-	if (rx != 0) {
+	if (is_rx) {
 		chan = dma->chan_rx;
 		sg = &dma->sgrx;
 		dma_addr = dma->rx_dma_addr;
-		dma_length = (unsigned int)len;
+		dma_length = (uint32_t)len;
 		dma_dir = DMA_DEV_TO_MEM;
 		slave_config.src_addr =
-		    (dma_addr_t) (i2c->phy_regs + I2C_DPORT);
+		    (dma_addr_t) (i2c->phy_regs);
 	} else {
 		chan = dma->chan_tx;
 		sg = &dma->sgtx;
 		dma_addr = dma->tx_dma_addr;
-		dma_length = (unsigned int)len;
+		dma_length = (uint32_t)len;
 		dma_dir = DMA_MEM_TO_DEV;
 		slave_config.dst_addr =
-		    (dma_addr_t) (i2c->phy_regs + I2C_DPORT);
+		    (dma_addr_t) (i2c->phy_regs);
 	}
 
 	if (chan == NULL) {
 		dev_err(i2c->dev,
 			"[ERROR][I2C]%s chan(%p) is invalid pointer\n",
-			((rx != 0) ? "rx" : "tx"), chan);
+			(is_rx ? "rx" : "tx"), chan);
 		return -ENODEV;
 	}
 
@@ -368,7 +350,7 @@ static int tcc_i2c_slave_dma_dma_engine_submit(struct tcc_i2c_slave *i2c,
 	if (dmaengine_slave_config(chan, &slave_config) < 0) {
 		dev_err(i2c->dev,
 			"[ERROR][I2C] Failed to configrue %s dma channel\n",
-			((rx != 0) ? "rx" : "tx"));
+			(is_rx ? "rx" : "tx"));
 		return -EINVAL;
 	}
 
@@ -377,8 +359,8 @@ static int tcc_i2c_slave_dma_dma_engine_submit(struct tcc_i2c_slave *i2c,
 				       DMA_PREP_INTERRUPT | DMA_CTRL_ACK);
 	if (desc == NULL) {
 		dev_err(i2c->dev, "[ERROR][I2C] Failed preparing %s dma desc\n",
-			((rx != 0) ? "rx" : "tx"));
-		tcc_i2c_slave_stop_dma_engine(i2c, rx);
+			(is_rx ? "rx" : "tx"));
+		tcc_i2c_slave_stop_dma_engine(i2c, is_rx);
 		return -ENOMEM;
 	}
 
@@ -389,8 +371,8 @@ static int tcc_i2c_slave_dma_dma_engine_submit(struct tcc_i2c_slave *i2c,
 	if (dma_submit_error(cookie) != 0) {
 		dev_err(i2c->dev,
 			"%s dma desc submitting error! (cookie: %X)\n",
-			((rx != 0) ? "rx" : "tx"), (unsigned int)cookie);
-		tcc_i2c_slave_stop_dma_engine(i2c, rx);
+			(is_rx ? "rx" : "tx"), (uint32_t)cookie);
+		tcc_i2c_slave_stop_dma_engine(i2c, is_rx);
 		return -ENOMEM;
 	}
 
@@ -399,8 +381,8 @@ static int tcc_i2c_slave_dma_dma_engine_submit(struct tcc_i2c_slave *i2c,
 	dev_dbg(i2c->dev,
 			"[DEBUG][I2C]%s (%s) dma_addr 0x%x size %d cb %p cb_param %p\n",
 			__func__,
-			((rx != 0) ? "rx" : "tx"),
-			(unsigned int)dma_addr,
+			(is_rx ? "rx" : "tx"),
+			(uint32_t)dma_addr,
 			dma_length,
 			desc->callback,
 			desc->callback_param);
@@ -411,14 +393,15 @@ static int tcc_i2c_slave_dma_dma_engine_submit(struct tcc_i2c_slave *i2c,
 static void tcc_i2c_slave_tx_dma_callback(void *data)
 {
 	struct tcc_i2c_slave *i2c = (struct tcc_i2c_slave *)data;
-	int ret;
+	int32_t ret;
 	ssize_t size;
+	void *pv_i2c;
 
 	if (i2c == NULL) {
 		pr_err("[ERROR][I2C] %s i2c is invalid pointer\n", __func__);
 		return;
 	}
-
+	pv_i2c = i2c;
 	size = (ssize_t)tcc_i2c_slave_pop(i2c,
 			i2c->dma.tx_v_addr,
 			i2c->dma.size,
@@ -426,7 +409,7 @@ static void tcc_i2c_slave_tx_dma_callback(void *data)
 	if (size != 0) {
 		ret = tcc_i2c_slave_dma_dma_engine_submit(i2c,
 				tcc_i2c_slave_tx_dma_callback,
-				i2c,
+				pv_i2c,
 				size,
 				I2C_SLV_TX);
 		if (ret != 0) {
@@ -434,7 +417,7 @@ static void tcc_i2c_slave_tx_dma_callback(void *data)
 					"[ERROR][I2C] failed to submit tx dma-engine descriptor\n");
 		} else {
 			dev_dbg(i2c->dev,
-				"[DEBUG][I2C]queue is not empty, restart dma (sz %ld)\n",
+				"[DEBUG][I2C]queue is not empty, restart dma (size %ld)\n",
 				size);
 		}
 	} else {
@@ -442,7 +425,7 @@ static void tcc_i2c_slave_tx_dma_callback(void *data)
 		i2c_slave_writel((i2c_slave_readl(i2c->regs + I2C_CTL) &
 				  ~(BIT(17))), i2c->regs + I2C_CTL);
 		i2c->is_tx_dma_running = 0;
-		tcc_i2c_slave_stop_dma_engine(i2c, 0);
+		tcc_i2c_slave_stop_dma_engine(i2c, I2C_SLV_TX);
 		dev_dbg(i2c->dev, "[DEBUG][I2C]queue is empty, stop dma\n");
 		spin_unlock(&i2c->lock);
 	}
@@ -452,27 +435,34 @@ static void tcc_i2c_slave_tx_dma_callback(void *data)
 static void tcc_i2c_slave_rx_dma_callback(void *data)
 {
 	struct tcc_i2c_slave *i2c = (struct tcc_i2c_slave *)data;
+	void *pv_i2c;
+	int32_t ret = 0;
 
 	if (i2c == NULL) {
 		pr_err("[ERROR][I2C] %s i2c is invalid pointer\n", __func__);
 		return;
 	}
-
-	tcc_i2c_slave_push(i2c, i2c->dma.rx_v_addr, i2c->poll_count,
+	pv_i2c = i2c;
+	(void)tcc_i2c_slave_push(i2c, i2c->dma.rx_v_addr, i2c->poll_count,
 			   I2C_SLV_RX);
 	wake_up(&i2c->wait_q);
 
 	if (i2c->dma.chan_rx != NULL) {
 		/* Re-enable Rx DMA */
-		tcc_i2c_slave_dma_dma_engine_submit(i2c,
+		ret = tcc_i2c_slave_dma_dma_engine_submit(i2c,
 				tcc_i2c_slave_rx_dma_callback,
-				i2c,
+				pv_i2c,
 				(ssize_t) i2c->poll_count,
 				I2C_SLV_RX);
 	}
 
-	dev_dbg(i2c->dev, "[DEBUG][I2C]%s (v_addr: 0x%lx, poll_count: %ld)\n",
-		__func__, (unsigned long)i2c->dma.rx_v_addr, i2c->poll_count);
+	if (ret != 0) {
+		dev_warn(i2c->dev,
+				"[WARN][I2C] tcc_i2c_slave_dma_dma_engine_submit return %d\n",
+				ret);
+	}
+	dev_dbg(i2c->dev, "[DEBUG][I2C]%s (v_addr: 0x%lx, poll_count: %d)\n",
+		__func__, (ulong)i2c->dma.rx_v_addr, i2c->poll_count);
 }
 
 /* dma-engine filter */
@@ -510,13 +500,13 @@ static void tcc_i2c_slave_release_dma_engine(struct tcc_i2c_slave *i2c)
 	}
 
 	if (i2c->dma.tx_v_addr != NULL) {
-		dma_free_writecombine(i2c->dev, (size_t) i2c->buf_size,
+		dma_free_writecombine(i2c->dev, (size_t)i2c->buf_size,
 				      i2c->dma.tx_v_addr, i2c->dma.tx_dma_addr);
 		i2c->dma.tx_v_addr = NULL;
 		i2c->dma.tx_dma_addr = 0;
 	}
 	if (i2c->dma.rx_v_addr != NULL) {
-		dma_free_writecombine(i2c->dev, (size_t) i2c->buf_size,
+		dma_free_writecombine(i2c->dev, (size_t)i2c->buf_size,
 				      i2c->dma.rx_v_addr, i2c->dma.rx_dma_addr);
 		i2c->dma.rx_v_addr = NULL;
 		i2c->dma.rx_dma_addr = 0;
@@ -524,27 +514,27 @@ static void tcc_i2c_slave_release_dma_engine(struct tcc_i2c_slave *i2c)
 }
 
 /* Probe dma-engine channels */
-static int tcc_i2c_slave_dma_engine_probe(struct platform_device *pdev,
+static int32_t tcc_i2c_slave_dma_engine_probe(struct platform_device *pdev,
 					  struct tcc_i2c_slave *i2c)
 {
 	struct tcc_i2c_slave_dma *dma;
 	struct device *dev = &pdev->dev;
 	dma_cap_mask_t mask;
-	int ret, count, i;
+	int32_t ret, count, i;
 	const char *str;
 
 	dma_cap_zero(mask);
 	dma_cap_set(DMA_SLAVE, mask);
 
 	dma = &i2c->dma;
-	memset(dma, 0, sizeof(struct tcc_i2c_slave_dma));
+	(void)memset(dma, 0, sizeof(struct tcc_i2c_slave_dma));
 
 #ifndef TCC_DMA_ENGINE
 	dev_dbg(i2c->dev, "[DEBUG][I2C]DMA-engine is not enabled\n");
 	return -ENXIO;
 #endif
 
-	dma->size = (size_t) i2c->buf_size;
+	dma->size = i2c->buf_size;
 
 	count = of_property_count_strings(dev->of_node, "dma-names");
 	if (count < 0) {
@@ -558,15 +548,14 @@ static int tcc_i2c_slave_dma_engine_probe(struct platform_device *pdev,
 				dev->of_node,
 				"dma-names",
 				i, &str);
-		if (ret < 0)
+		if (ret < 0) {
 			goto error;
-
+		}
 		if (strncmp(str, "tx", 2) == 0) {
 			dma->chan_tx =
 				dma_request_slave_channel_compat(mask,
 						tcc_i2c_slave_dma_engine_filter,
 						dma, dev, "tx");
-			//dma->chan_tx = dma_request_slave_channel(dev, "tx");
 			if (IS_ERR(dma->chan_tx)) {
 				dev_err(dev,
 					"DMA TX channel request Error!(%p)\n",
@@ -575,7 +564,7 @@ static int tcc_i2c_slave_dma_engine_probe(struct platform_device *pdev,
 				goto error;
 			} else {
 				dma->tx_v_addr =
-				    dma_alloc_writecombine(dev, dma->size,
+				    dma_alloc_writecombine(dev, (size_t)dma->size,
 							   &dma->tx_dma_addr,
 							   GFP_KERNEL);
 				if (dma->tx_v_addr == NULL) {
@@ -598,7 +587,7 @@ static int tcc_i2c_slave_dma_engine_probe(struct platform_device *pdev,
 				goto error;
 			} else {
 				dma->rx_v_addr =
-				    dma_alloc_writecombine(dev, dma->size,
+				    dma_alloc_writecombine(dev, (size_t)dma->size,
 							   &dma->rx_dma_addr,
 							   GFP_KERNEL);
 				if (dma->rx_v_addr == NULL) {
@@ -621,7 +610,7 @@ error:
 	return ret;
 }
 
-static int tcc_i2c_slave_init_buf(struct tcc_i2c_slave *i2c, int dma_to_mem)
+static int32_t tcc_i2c_slave_init_buf(struct tcc_i2c_slave *i2c, int32_t dma_to_mem)
 {
 	void *v_addr;
 	dma_addr_t dma_addr;
@@ -649,30 +638,27 @@ static int tcc_i2c_slave_init_buf(struct tcc_i2c_slave *i2c, int dma_to_mem)
 
 	buf->v_addr = v_addr;
 	buf->dma_addr = dma_addr;
-	buf->size = (size_t) i2c->buf_size;
+	buf->size = i2c->buf_size;
 
 	buf->circ.buf = v_addr;
 	buf->circ.head = 0;
 	buf->circ.tail = buf->circ.head;
 	spin_lock_init(&buf->lock);
 
-	memset(buf->v_addr, 0, buf->size);
+	(void)memset(buf->v_addr, 0, (size_t)buf->size);
 
 	dev_dbg(i2c->dev,
 		"[DEBUG][I2C] [%s] dma_to_mem: %d v_addr: 0x%lX dma_addr: 0x%08X size: %d\n",
-		__func__, dma_to_mem, (unsigned long)v_addr,
-		(unsigned int)dma_addr, i2c->buf_size);
+		__func__, dma_to_mem, (ulong)v_addr,
+		(uint32_t)dma_addr, i2c->buf_size);
 	return 0;
 }
 
-static void tcc_i2c_slave_deinit_buf(struct tcc_i2c_slave *i2c, int dma_to_mem)
+static void tcc_i2c_slave_deinit_buf(struct tcc_i2c_slave *i2c, int32_t dma_to_mem)
 {
 	void *v_addr;
 	dma_addr_t dma_addr;
-	struct device *dev;
 	struct tcc_i2c_slave_buf *buf;
-
-	dev = i2c->dev;
 
 	if (dma_to_mem != 0) {
 		buf = &i2c->rx_buf;
@@ -691,20 +677,20 @@ static void tcc_i2c_slave_deinit_buf(struct tcc_i2c_slave *i2c, int dma_to_mem)
 
 	dev_dbg(i2c->dev,
 		"[DEBUG][I2C] [%s] dma_to_mem: %d v_addr: 0x%08lX dma_addr: 0x%08X size: %d\n",
-		__func__, dma_to_mem, (unsigned long)v_addr,
-		(unsigned int)dma_addr, i2c->buf_size);
+		__func__, dma_to_mem, (ulong)v_addr,
+		(uint32_t)dma_addr, i2c->buf_size);
 }
 
-static irqreturn_t tcc_i2c_slave_isr(int irq, void *arg)
+static irqreturn_t tcc_i2c_slave_isr(int32_t irq, void *arg)
 {
 	struct tcc_i2c_slave *i2c = (struct tcc_i2c_slave *)arg;
-	unsigned int status = 0, intr_mask;
-	unsigned int mbfr = 0, mbft = 0, mbf = 0;
-	unsigned int data, i, stat;
-	unsigned int reg_shift;
+	uint32_t status, intr_mask;
+	uint32_t mbfr, mbft, mbf;
+	uint32_t data, i, stat;
+	uint32_t reg_shift;
 	uint8_t val, cnt;
-	int circ_q_cnt;
-	int ret;
+	int32_t circ_q_cnt;
+	int32_t ret;
 
 	status = i2c_slave_readl(i2c->regs + I2C_INT);
 	intr_mask = status & 0xFFFU;
@@ -716,23 +702,23 @@ static irqreturn_t tcc_i2c_slave_isr(int irq, void *arg)
 
 	/* Data Buffer has been read by a master */
 	if ((status & BIT(25)) != 0U) {
-		mbft = (mbf >> 16) & 0xFFU;
+		mbft = (mbf >> 16U) & 0xFFU;
 		for (i = 0U; i < 8U; i++) {
 			if ((mbft & BIT(i)) != 0U) {
 				/* Notify read request and read data */
 				if (i < 4U) {
-					reg_shift = i * 8U;
+					reg_shift = i << 3U;
 					data =
 						readl(i2c->regs+I2C_MB0);
 					data = ((data >> reg_shift) & 0xFFU);
 				} else {
-					reg_shift = (i - 4U) * 8U;
+					reg_shift = (i - 4U) << 3U;
 					data =
 						readl(i2c->regs+I2C_MB1);
 					data =
 						((data >> reg_shift) & 0xFFU);
 				}
-				val = (uint8_t) (data & 0xFFU);
+				val = (uint8_t)data;
 				dev_dbg(i2c->dev,
 					"[DEBUG][I2C] Data buffer has been read by master (s_addr 0x%02x val 0x%02x)\n",
 					i, data);
@@ -747,19 +733,19 @@ static irqreturn_t tcc_i2c_slave_isr(int irq, void *arg)
 			if ((mbfr & BIT(i)) != (u32) 0U) {
 				/* Notify write request and written data */
 				if (i < 4U) {
-					reg_shift = i * 8U;
+					reg_shift = i << 3U;
 					data = i2c_slave_readl(
 							i2c->regs + I2C_MB0);
 					data = ((data >> reg_shift) & 0xFFU);
 				} else {
-					reg_shift = (i - 4U) * 8U;
+					reg_shift = (i - 4U) << 3U;
 					data =
 						i2c_slave_readl(
 i2c->regs + I2C_MB1);
 					data =
 						((data >> reg_shift) & 0xFFU);
 				}
-				val = (uint8_t) (data & 0xFFU);
+				val = (uint8_t)data;
 				dev_dbg(i2c->dev,
 					"[DEBUG][I2C] Data buffer has been written by master (s_addr 0x%02x val 0x%02x)\n",
 					i, data);
@@ -776,11 +762,8 @@ i2c->regs + I2C_MB1);
 
 	/* RX FIFO Level (RXCV <= RXTH) */
 	if ((status & BIT(16)) != 0U) {
-		cnt = 0;
 		while (1) {
 			val = i2c_slave_readb(i2c->regs + I2C_DPORT);
-			val = val & 0xFFU;
-			cnt++;
 
 			ret = tcc_i2c_slave_push_one_byte(i2c, val, I2C_SLV_RX);
 			if (ret != 0) {
@@ -794,14 +777,14 @@ i2c->regs + I2C_MB1);
 			}
 		}
 		dev_dbg(i2c->dev,
-			"[DEBUG][I2C] Rx FIFO level interrupt, status 0x%08x, get %d\n",
-			status, cnt);
+			"[DEBUG][I2C] Rx FIFO level interrupt, status 0x%08x\n",
+			status);
 
 		circ_q_cnt = circ_cnt(&(i2c->rx_buf.circ), i2c->buf_size);
-		if (circ_q_cnt >= (int)i2c->poll_count) {
+		if (circ_q_cnt >= i2c->poll_count) {
 			wake_up(&i2c->wait_q);
 			dev_dbg(i2c->dev,
-				"[DEBUG][I2C] Rx count(%d) is over poll count(%ld) - wakeup\n",
+				"[DEBUG][I2C] Rx count(%d) is over poll count(%d) - wakeup\n",
 				circ_q_cnt, i2c->poll_count);
 		}
 	}
@@ -821,11 +804,9 @@ i2c->regs + I2C_MB1);
 						  I2C_INT) & ~(BIT(1)),
 						 i2c->regs + I2C_INT);
 				break;
-			} else {
-				i2c_slave_writeb((val & 0xFFU),
-						 i2c->regs + I2C_DPORT);
-				cnt++;
 			}
+			i2c_slave_writeb(val, i2c->regs + I2C_DPORT);
+			cnt++;
 			if (cnt >= TCC_I2C_SLV_MAX_FIFO_CNT) {
 				break;
 			}
@@ -837,13 +818,12 @@ i2c->regs + I2C_MB1);
 
 /* Set i2c port configuration */
 #ifdef TCC_USE_GFB_PORT
-static int tcc_i2c_slave_set_port(struct tcc_i2c_slave *i2c)
+static int32_t tcc_i2c_slave_set_port(struct tcc_i2c_slave *i2c)
 {
 	u32 port_value;
 	u32 pcfg_value, pcfg_offset, pcfg_shift;
 
 	if (i2c->id >= 4) {
-		BUG();
 		return -EINVAL;
 	}
 
@@ -869,14 +849,13 @@ static int tcc_i2c_slave_set_port(struct tcc_i2c_slave *i2c)
 	return 0;
 }
 #else
-static int tcc_i2c_slave_set_port(struct tcc_i2c_slave *i2c)
+static int32_t tcc_i2c_slave_set_port(struct tcc_i2c_slave *i2c)
 {
-	int i;
+	int32_t i;
 	uint32_t reg_shift, pcfg_val;
 	uint8_t port = (u8) i2c->port_mux;
 
 	if (i2c->id >= TCC_I2C_SLV_MAX_NUM) {
-		BUG();
 		dev_err(i2c->dev, "[ERROR][I2C] %s: id %d is invalid!\n",
 			__func__, i2c->id);
 		return -EINVAL;
@@ -892,18 +871,20 @@ static int tcc_i2c_slave_set_port(struct tcc_i2c_slave *i2c)
 	pcfg_val = i2c_slave_readl(i2c->port_cfg + I2C_PORT_CFG0);
 	for (i = 0; i < 4; i++) {
 		reg_shift = (u32) i << 3;
-		if (port == ((pcfg_val >> reg_shift) & 0xFFU))
+		if (port == ((pcfg_val >> reg_shift) & 0xFFU)) {
 			/* Clear duplicated port */
 			pcfg_val |= ((u32) 0xFFU << reg_shift);
+		}
 	}
 	i2c_slave_writel(pcfg_val, i2c->port_cfg + I2C_PORT_CFG0);
 
 	pcfg_val = i2c_slave_readl(i2c->port_cfg + I2C_PORT_CFG2);
 	for (i = 0; i < 4; i++) {
 		reg_shift = (u32) i << 3;
-		if (port == ((pcfg_val >> reg_shift) & 0xFFU))
+		if (port == ((pcfg_val >> reg_shift) & 0xFFU)) {
 			/* Clear duplicated port */
 			pcfg_val |= ((u32) 0xFFU << reg_shift);
+		}
 	}
 	i2c_slave_writel(pcfg_val, i2c->port_cfg + I2C_PORT_CFG2);
 
@@ -911,9 +892,10 @@ static int tcc_i2c_slave_set_port(struct tcc_i2c_slave *i2c)
 	pcfg_val = i2c_slave_readl(i2c->port_cfg + I2C_PORT_CFG1);
 	for (i = 0; i < 4; i++) {
 		reg_shift = (u32) i << 3;
-		if (port == ((pcfg_val >> reg_shift) & 0xFFU))
+		if (port == ((pcfg_val >> reg_shift) & 0xFFU)) {
 			/* Clear duplicated port */
 			pcfg_val |= ((u32) 0xFFU << reg_shift);
+		}
 	}
 	i2c_slave_writel(pcfg_val, i2c->port_cfg + I2C_PORT_CFG1);
 
@@ -933,7 +915,7 @@ static int tcc_i2c_slave_set_port(struct tcc_i2c_slave *i2c)
 /* Initialize i2c slave */
 static void tcc_i2c_slave_hwinit(struct tcc_i2c_slave *i2c)
 {
-	unsigned int addr;
+	uint32_t addr;
 
 	addr = ((u32) i2c->addr & 0x7FU) << 1;
 	/*
@@ -947,12 +929,13 @@ static void tcc_i2c_slave_hwinit(struct tcc_i2c_slave *i2c)
 	i2c_slave_writel((BIT(8) | BIT(9)), i2c->regs + I2C_INT);
 }
 
-static int tcc_i2c_slave_open(struct inode *inode, struct file *filp)
+static int32_t tcc_i2c_slave_open(struct inode *inode, struct file *filp)
 {
-	unsigned int minor = 0;
-	int ret = 0;
-	unsigned long flags = 0;
+	uint32_t minor;
+	int32_t ret;
+	ulong flags = 0;
 	struct tcc_i2c_slave *i2c;
+	void *pv_i2c;
 
 	if (filp->private_data == NULL) {
 		minor = iminor(inode);
@@ -965,11 +948,11 @@ static int tcc_i2c_slave_open(struct inode *inode, struct file *filp)
 		}
 	}
 
-	i2c = filp->private_data;
-
+	pv_i2c = filp->private_data;
+	i2c = pv_i2c;
 	spin_lock_irqsave(&i2c->lock, flags);
 
-	if (i2c->open_cnt != 0U) {
+	if (i2c->opened) {
 		spin_unlock_irqrestore(&i2c->lock, flags);
 		return -EBUSY;
 	}
@@ -1022,11 +1005,11 @@ static int tcc_i2c_slave_open(struct inode *inode, struct file *filp)
 		goto memerr;
 	}
 
-	ret = request_irq((unsigned int)i2c->irq,
+	ret = request_irq((uint32_t)i2c->irq,
 			tcc_i2c_slave_isr,
 			IRQF_SHARED,
 			dev_name(i2c->dev),
-			i2c);
+			pv_i2c);
 	if (ret < 0) {
 		dev_err(i2c->dev, "[ERROR][I2C] failed to request irq %i\n",
 			i2c->irq);
@@ -1034,7 +1017,7 @@ static int tcc_i2c_slave_open(struct inode *inode, struct file *filp)
 		goto clkerr;
 	}
 
-	i2c->open_cnt++;
+	i2c->opened = (bool)true;
 
 	init_waitqueue_head(&(i2c->wait_q));
 
@@ -1071,17 +1054,18 @@ memerr:
 	return ret;
 }
 
-static int tcc_i2c_slave_release(struct inode *inode, struct file *filp)
+static int32_t tcc_i2c_slave_release(struct inode *inode, struct file *filp)
 {
 	struct tcc_i2c_slave *i2c;
-	unsigned long flags = 0;
+	ulong flags = 0;
+	void *pv_i2c;
 
 	if (filp->private_data == NULL) {
 		return 0;
 	}
 
-	i2c = (struct tcc_i2c_slave *)filp->private_data;
-
+	pv_i2c = (struct tcc_i2c_slave *)filp->private_data;
+	i2c = pv_i2c;
 	dev_dbg(i2c->dev, "[DEBUG][I2C] %s\n", __func__);
 
 	spin_lock_irqsave(&i2c->lock, flags);
@@ -1101,7 +1085,7 @@ static int tcc_i2c_slave_release(struct inode *inode, struct file *filp)
 		clk_disable(i2c->hclk);
 	}
 
-	free_irq(i2c->irq, i2c);
+	free_irq(i2c->irq, pv_i2c);
 
 	if (i2c->read_buf != NULL) {
 		kfree(i2c->read_buf);
@@ -1112,12 +1096,12 @@ static int tcc_i2c_slave_release(struct inode *inode, struct file *filp)
 
 	i2c->read_buf = NULL;
 	i2c->write_buf = NULL;
-	i2c->open_cnt--;
+	i2c->opened = (bool)false;
 
 	spin_unlock_irqrestore(&i2c->lock, flags);
 
-	tcc_i2c_slave_stop_dma_engine(i2c, 1);
-	tcc_i2c_slave_stop_dma_engine(i2c, 0);
+	tcc_i2c_slave_stop_dma_engine(i2c, I2C_SLV_RX);
+	tcc_i2c_slave_stop_dma_engine(i2c, I2C_SLV_TX);
 
 	filp->private_data = NULL;
 
@@ -1128,8 +1112,8 @@ static ssize_t tcc_i2c_slave_read(struct file *filp, char *buf, size_t sz,
 				  loff_t *ppos)
 {
 	struct tcc_i2c_slave *i2c;
-	unsigned long err;
-	size_t _sz, offset, rd_sz;
+	ulong err;
+	size_t offset, rd_sz, size;
 
 	if (filp->private_data == NULL) {
 		pr_err("[ERROR][I2C] %s: priv data is invalid\n", __func__);
@@ -1137,14 +1121,14 @@ static ssize_t tcc_i2c_slave_read(struct file *filp, char *buf, size_t sz,
 	}
 
 	i2c = (struct tcc_i2c_slave *)filp->private_data;
-
-	_sz = sz;
+	size = sz;
 	offset = 0;
+
 	while (1) {
-		rd_sz = (_sz > i2c->rw_buf_size) ? i2c->rw_buf_size : _sz;
-		rd_sz = tcc_i2c_slave_pop(i2c,
+		rd_sz = (size > i2c->rw_buf_size) ? i2c->rw_buf_size : size;
+		rd_sz = (size_t)tcc_i2c_slave_pop(i2c,
 				i2c->read_buf,
-				rd_sz,
+				(int32_t)rd_sz,
 				I2C_SLV_RX);
 		if (rd_sz != 0U) {
 			err = copy_to_user(buf + offset, i2c->read_buf, rd_sz);
@@ -1157,10 +1141,17 @@ static ssize_t tcc_i2c_slave_read(struct file *filp, char *buf, size_t sz,
 			break;
 		}
 		offset += rd_sz;
-		_sz -= rd_sz;
+		if (size < rd_sz) {
+			dev_err(i2c->dev,
+					"[ERROR][I2C] %s: size %ld is under\n",
+					__func__, size);
+		}else {
+			size -= rd_sz;
+		}
 
-		if (_sz == 0UL)
+		if (size == 0UL) {
 			break;
+		}
 	}
 
 	return (ssize_t) offset;
@@ -1170,10 +1161,10 @@ static ssize_t tcc_i2c_slave_write(struct file *filp, const char *buf,
 				   size_t sz, loff_t *ppos)
 {
 	struct tcc_i2c_slave *i2c;
-	unsigned int status;
+	uint32_t status;
 	uint8_t cnt, val;
-	unsigned long err, flags;
-	size_t _sz, offset, wr_sz;
+	ulong err, flags;
+	size_t offset, wr_sz, size;
 	ssize_t ret = 0;
 
 	if (filp->private_data == NULL) {
@@ -1182,34 +1173,41 @@ static ssize_t tcc_i2c_slave_write(struct file *filp, const char *buf,
 	}
 
 	i2c = (struct tcc_i2c_slave *)filp->private_data;
+	size = sz;
 
-	_sz = sz;
 	offset = 0;
 	while (1) {
-		wr_sz = (_sz > i2c->rw_buf_size) ? i2c->rw_buf_size : _sz;
+		wr_sz = (size > i2c->rw_buf_size) ? i2c->rw_buf_size : size;
 		err = copy_from_user(i2c->write_buf, buf + offset, wr_sz);
 		if (err != 0U) {
 			dev_err(i2c->dev,
 				"[ERROR][I2C] failed to copy_to_user\n");
 			return (ssize_t) err;
 		}
-		wr_sz = tcc_i2c_slave_push(i2c,
+		wr_sz = (size_t)tcc_i2c_slave_push(i2c,
 				i2c->write_buf,
-				wr_sz,
+				(int32_t)wr_sz,
 				I2C_SLV_TX);
 		if (wr_sz == 0U) {
 			break;
 		}
 		offset += wr_sz;
-		_sz -= wr_sz;
+		if (size < wr_sz) {
+			dev_err(i2c->dev,
+					"[ERROR][I2C] %s: size %ld is under\n",
+					__func__, size);
+		}else {
+			size -= wr_sz;
+		}
 
-		if (_sz == 0U)
+		if (size == 0U) {
 			break;
+		}
 	}
 
-	if (offset == 0U)
+	if (offset == 0U) {
 		return (ssize_t) offset;
-
+	}
 	dev_dbg(i2c->dev, "[DEBUG][I2C] succeed to push data(%ld)", offset);
 
 	if (i2c->dma.chan_tx == NULL) {
@@ -1225,7 +1223,7 @@ static ssize_t tcc_i2c_slave_write(struct file *filp, const char *buf,
 				if (cnt >= TCC_I2C_SLV_MAX_FIFO_CNT) {
 					break;
 				}
-				err = (unsigned long)
+				err = (ulong)
 				    tcc_i2c_slave_pop_one_byte(i2c, &val,
 							       I2C_SLV_TX);
 				if (err != 0U) {
@@ -1248,7 +1246,7 @@ static ssize_t tcc_i2c_slave_write(struct file *filp, const char *buf,
 		/* DMA mode */
 		spin_lock_irqsave(&i2c->lock, flags);
 		if (i2c->is_tx_dma_running == 0) {
-			size_t copy_size;
+			int32_t copy_size;
 
 			i2c->is_tx_dma_running = 1;
 			spin_unlock_irqrestore(&i2c->lock, flags);
@@ -1257,13 +1255,13 @@ static ssize_t tcc_i2c_slave_write(struct file *filp, const char *buf,
 					i2c->dma.tx_v_addr,
 					i2c->dma.size,
 					I2C_SLV_TX);
-			if (copy_size == 0U) {
+			if (copy_size == 0) {
 				dev_err(i2c->dev,
 					"[ERROR][I2C] failed to pop data from tx fifo\n");
-				return (ssize_t) copy_size;
+				return (ssize_t)copy_size;
 			}
 			dev_dbg(i2c->dev,
-				"[DEBUG][I2C] start tx dma (size %08ld)\n",
+				"[DEBUG][I2C] start tx dma (size %08d)\n",
 				copy_size);
 
 			/* Enable Tx DMA request */
@@ -1271,11 +1269,10 @@ static ssize_t tcc_i2c_slave_write(struct file *filp, const char *buf,
 					 BIT(17), i2c->regs + I2C_CTL);
 			ret = tcc_i2c_slave_dma_dma_engine_submit(i2c,
 					tcc_i2c_slave_tx_dma_callback,
-					i2c, (ssize_t)
-					copy_size,
+					i2c, (ssize_t)copy_size,
 					I2C_SLV_TX);
 			if (ret != 0) {
-				tcc_i2c_slave_stop_dma_engine(i2c, 0);
+				tcc_i2c_slave_stop_dma_engine(i2c, I2C_SLV_TX);
 				ret = 0;
 
 				spin_lock_irqsave(&i2c->lock, flags);
@@ -1299,14 +1296,15 @@ static ssize_t tcc_i2c_slave_write(struct file *filp, const char *buf,
 	return ret;
 }
 
-static long tcc_i2c_slave_ioctl(struct file *filp, unsigned int cmd,
-				unsigned long arg)
+static long tcc_i2c_slave_ioctl(struct file *filp, uint32_t cmd,
+				ulong arg)
 {
 	struct tcc_i2c_slave *i2c;
 	uint8_t addr, val[2], reg_shift;
-	unsigned long flags = 0;
-	unsigned int temp, count;
-	long ret = 0;
+	ulong flags = 0;
+	uint32_t temp;
+	int32_t count;
+	long ret;
 
 	if (filp->private_data == NULL) {
 		pr_err("[ERROR][I2C] %s: priv data is invalid\n", __func__);
@@ -1327,7 +1325,7 @@ static long tcc_i2c_slave_ioctl(struct file *filp, unsigned int cmd,
 		if (addr > 0x7FU) {
 			dev_err(i2c->dev,
 				"[ERROR][I2C] %s: slave address is invalid addr 0x%02X\n",
-				__func__, (unsigned int)addr);
+				__func__, (uint32_t)addr);
 			ret = -EINVAL;
 			break;
 		}
@@ -1361,8 +1359,8 @@ static long tcc_i2c_slave_ioctl(struct file *filp, unsigned int cmd,
 		break;
 	case IOCTL_I2C_SLAVE_SET_MB:
 		/* Set memory buffers (MB0/MB1), sub-address 0x00 - 0x07 */
-		memset(val, 0xFF, sizeof(unsigned char) * 2U);
-		if (copy_from_user(val, (void *)arg, sizeof(unsigned char) * 2U)
+		(void)memset(val, 0xFF, sizeof(uint8_t) * 2U);
+		if (copy_from_user(val, (void *)arg, sizeof(uint8_t) * 2U)
 		    != 0UL) {
 			ret = -EFAULT;
 			dev_err(i2c->dev,
@@ -1386,13 +1384,13 @@ static long tcc_i2c_slave_ioctl(struct file *filp, unsigned int cmd,
 		spin_lock_irqsave(&i2c->lock, flags);
 
 		if (addr < 0x4U) {
-			reg_shift = addr * 8U;
+			reg_shift = (addr << 3U);
 			temp = i2c_slave_readl(i2c->regs + I2C_MB0);
 			temp = temp & ~((u32) 0xFFU << reg_shift);
 			temp = temp | ((u32) val[1] << reg_shift);
 			i2c_slave_writel(temp, i2c->regs + I2C_MB0);
 		} else {
-			reg_shift = (addr - 4U) * 8U;
+			reg_shift = (addr - 4U) << 3U;
 			temp = i2c_slave_readl(i2c->regs + I2C_MB1);
 			temp = temp & ~((u32) 0xFFU << reg_shift);
 			temp = temp | ((u32) val[1] << reg_shift);
@@ -1426,10 +1424,10 @@ static long tcc_i2c_slave_ioctl(struct file *filp, unsigned int cmd,
 
 		if (addr < 0x4U) {
 			temp = i2c_slave_readl(i2c->regs + I2C_MB0);
-			temp = ((temp >> (addr * 8U)) & 0xFFU);
+			temp = ((temp >> (addr << 3U)) & 0xFFU);
 		} else {
 			temp = i2c_slave_readl(i2c->regs + I2C_MB1);
-			temp = ((temp >> ((addr - 4U) * 8U)) & 0xFFU);
+			temp = ((temp >> ((addr - 4U) << 3U)) & 0xFFU);
 		}
 		ret = (long)temp;
 
@@ -1449,10 +1447,10 @@ static long tcc_i2c_slave_ioctl(struct file *filp, unsigned int cmd,
 			break;
 		}
 
-		if (count > (u32) i2c->buf_size) {
-			i2c->poll_count = (size_t) i2c->buf_size;
+		if (count > i2c->buf_size) {
+			i2c->poll_count = i2c->buf_size;
 			dev_dbg(i2c->dev,
-				"[DEBUG][I2C] poll count(%d) is bigger than queue size(%d), poll count %ld\n",
+				"[DEBUG][I2C] poll count(%d) is bigger than queue size(%d), poll count %d\n",
 				count, i2c->buf_size, i2c->poll_count);
 		} else {
 			i2c->poll_count = count;
@@ -1485,7 +1483,7 @@ static long tcc_i2c_slave_ioctl(struct file *filp, unsigned int cmd,
 					  BIT(0)), i2c->regs + I2C_INT);
 			ret = 0;
 		}
-		dev_dbg(i2c->dev, "[DEBUG][I2C] %s: set poll count %ld\n",
+		dev_dbg(i2c->dev, "[DEBUG][I2C] %s: set poll count %d\n",
 			__func__, i2c->poll_count);
 		break;
 	default:
@@ -1496,16 +1494,16 @@ static long tcc_i2c_slave_ioctl(struct file *filp, unsigned int cmd,
 	return ret;
 }
 
-static unsigned int tcc_i2c_slave_poll(struct file *filp,
+static uint32_t tcc_i2c_slave_poll(struct file *filp,
 				       struct poll_table_struct *wait)
 {
 	struct tcc_i2c_slave *i2c;
-	int circ_q_cnt;
-	unsigned long flags;
+	int32_t circ_q_cnt;
+	ulong flags;
 
 	if (filp->private_data == NULL) {
 		pr_err("[ERROR][I2C] %s: priv data is invalid\n", __func__);
-		return -EFAULT;
+		return POLL_ERR;
 	}
 
 	i2c = (struct tcc_i2c_slave *)filp->private_data;
@@ -1513,9 +1511,9 @@ static unsigned int tcc_i2c_slave_poll(struct file *filp,
 	spin_lock_irqsave(&i2c->rx_buf.lock, flags);
 	circ_q_cnt = circ_cnt(&(i2c->rx_buf.circ), i2c->buf_size);
 	spin_unlock_irqrestore(&i2c->rx_buf.lock, flags);
-	if (circ_q_cnt >= (int)i2c->poll_count) {
+	if (circ_q_cnt >= (int32_t)i2c->poll_count) {
 		dev_dbg(i2c->dev,
-			"[DEBUG][I2C] Rx count(%d) is over poll count(%ld)\n",
+			"[DEBUG][I2C] Rx count(%d) is over poll count(%d)\n",
 			circ_q_cnt, i2c->poll_count);
 		return (POLL_IN | POLLRDNORM);
 	}
@@ -1525,9 +1523,9 @@ static unsigned int tcc_i2c_slave_poll(struct file *filp,
 	spin_lock_irqsave(&i2c->rx_buf.lock, flags);
 	circ_q_cnt = circ_cnt(&(i2c->rx_buf.circ), i2c->buf_size);
 	spin_unlock_irqrestore(&i2c->rx_buf.lock, flags);
-	if (circ_q_cnt >= (int)i2c->poll_count) {
+	if (circ_q_cnt >= (int32_t)i2c->poll_count) {
 		dev_dbg(i2c->dev,
-			"[DEBUG][I2C] Rx count(%d) is over poll count(%ld)\n",
+			"[DEBUG][I2C] Rx count(%d) is over poll count(%d)\n",
 			circ_q_cnt, i2c->poll_count);
 		return (POLL_IN | POLLRDNORM);
 	}
@@ -1548,10 +1546,10 @@ const struct file_operations tcc_i2c_slv_fops = {
 
 /* Get port configuration */
 #ifdef CONFIG_OF
-static int tcc_i2c_slave_parse_dt(struct device_node *np,
+static int32_t tcc_i2c_slave_parse_dt(struct device_node *np,
 				  struct tcc_i2c_slave *i2c)
 {
-	int ret = 0;
+	int32_t ret;
 #ifdef TCC_USE_GFB_PORT
 	/* Port array order : [0]SCL [1]SDA */
 	ret = of_property_read_u32_array(np, "port-mux", i2c->port_mux,
@@ -1567,29 +1565,30 @@ static int tcc_i2c_slave_parse_dt(struct device_node *np,
 			__func__);
 		return ret;
 	}
+
 	return 0;
 }
 #else
-static int tcc_i2c_slave_parse_dt(struct device_node *np,
+static int32_t tcc_i2c_slave_parse_dt(struct device_node *np,
 				  struct tcc_i2c_slave *i2c)
 {
 	return -ENXIO;
 }
 #endif
 
-static int tcc_i2c_slave_probe(struct platform_device *pdev)
+static int32_t tcc_i2c_slave_probe(struct platform_device *pdev)
 {
-	int ret = 0;
-	unsigned int id;
 	struct tcc_i2c_slave *i2c;
 	struct resource *res;
 	struct device *dev;
 	void __iomem *byte_cmd;
-	u32 byte_cmd_val = 0;
+	void *pv_i2c;
+	uint32_t id, byte_cmd_val;
+	int32_t ret;
 
-	if (pdev->dev.of_node == NULL)
+	if (pdev->dev.of_node == NULL) {
 		return -EINVAL;
-
+	}
 	ret = of_property_read_u32(pdev->dev.of_node, "id", &id);
 	if (ret != 0) {
 		dev_err(&pdev->dev, "[ERROR][I2C] failed to get id\n");
@@ -1601,8 +1600,9 @@ static int tcc_i2c_slave_probe(struct platform_device *pdev)
 		return -EINVAL;
 	}
 
-	i2c = &i2c_slave_priv[id];
-	memset(i2c, 0, sizeof(struct tcc_i2c_slave));
+	pv_i2c = &i2c_slave_priv[id];
+	i2c = pv_i2c;
+	(void)memset(i2c, 0, sizeof(struct tcc_i2c_slave));
 	i2c->id = id;
 
 	/* get base register */
@@ -1618,7 +1618,7 @@ static int tcc_i2c_slave_probe(struct platform_device *pdev)
 
 	i2c->regs = devm_ioremap_resource(&pdev->dev, res);
 	if (IS_ERR(i2c->regs)) {
-		ret = (int)PTR_ERR(i2c->regs);
+		ret = (int32_t)PTR_ERR(i2c->regs);
 		dev_err(&pdev->dev,
 			"[ERROR][I2C] failed to remap base address\n");
 		return ret;
@@ -1636,7 +1636,7 @@ static int tcc_i2c_slave_probe(struct platform_device *pdev)
 
 	i2c->port_cfg = devm_ioremap_resource(&pdev->dev, res);
 	if (IS_ERR(i2c->port_cfg)) {
-		ret = (int)PTR_ERR(i2c->port_cfg);
+		ret = (int32_t)PTR_ERR(i2c->port_cfg);
 		dev_err(&pdev->dev,
 			"[ERROR][I2C] failed to remap port config address\n");
 		return ret;
@@ -1659,9 +1659,9 @@ static int tcc_i2c_slave_probe(struct platform_device *pdev)
 			"[DEBUG][I2C] byte command register 0x%08llx\n",
 			res->start);
 		byte_cmd = devm_ioremap_resource(&pdev->dev, res);
-		if (i2c_slave_readl(byte_cmd) == 0xFFFF0000) {
+		if (i2c_slave_readl(byte_cmd) == 0xFFFF0000U) {
 			byte_cmd_val =
-			    0xFFF00000U | ((i2c->phy_regs >> 16) & 0x0000FFF0U);
+			    0xFFF00000U | ((i2c->phy_regs >> 16U) & 0x0000FFF0U);
 			dev_dbg(&pdev->dev,
 				"[DEBUG][I2C] byte command write value = 0x%08x\n",
 				byte_cmd_val);
@@ -1689,7 +1689,7 @@ static int tcc_i2c_slave_probe(struct platform_device *pdev)
 
 	i2c->dev = &pdev->dev;
 	i2c->addr = 0xFF;
-	i2c->open_cnt = 0;
+	i2c->opened = (bool)false;
 	i2c->buf_size = TCC_I2C_SLV_DMA_BUF_SIZE;
 	i2c->poll_count = TCC_I2C_SLV_DEF_POLL_CNT;
 	i2c->rw_buf_size = TCC_I2C_SLV_WR_BUF_SIZE;
@@ -1719,12 +1719,12 @@ static int tcc_i2c_slave_probe(struct platform_device *pdev)
 			  TCC_I2C_SLV_DEV_NAMES, i2c->id);
 	if (IS_ERR(dev)) {
 		dev_err(&pdev->dev, "[ERROR][I2C] failed to create device\n");
-		ret = (int)PTR_ERR(dev);
+		ret = (int32_t)PTR_ERR(dev);
 		goto err_mem_tx;
 	}
 
 	spin_lock_init(&i2c->lock);
-	platform_set_drvdata(pdev, i2c);
+	platform_set_drvdata(pdev, pv_i2c);
 
 	ret = device_create_file(&pdev->dev, &dev_attr_fifo_byte);
 	if (ret != 0) {
@@ -1778,16 +1778,14 @@ err_mem_tx:
 err_mem_rx:
 	tcc_i2c_slave_deinit_buf(i2c, 1);
 err_clk:
-	if (i2c->hclk != NULL) {
-		clk_disable(i2c->hclk);
-		clk_put(i2c->hclk);
-		i2c->hclk = NULL;
-	}
+	clk_disable(i2c->hclk);
+	clk_put(i2c->hclk);
+	i2c->hclk = NULL;
 	return ret;
 
 }
 
-static int tcc_i2c_slave_remove(struct platform_device *pdev)
+static int32_t tcc_i2c_slave_remove(struct platform_device *pdev)
 {
 	struct tcc_i2c_slave *i2c = platform_get_drvdata(pdev);
 
@@ -1813,7 +1811,7 @@ static int tcc_i2c_slave_remove(struct platform_device *pdev)
 }
 
 #ifdef CONFIG_PM_SLEEP
-static int tcc_i2c_slave_suspend(struct device *dev)
+static int32_t tcc_i2c_slave_suspend(struct device *dev)
 {
 	struct tcc_i2c_slave *i2c = dev_get_drvdata(dev);
 
@@ -1821,14 +1819,14 @@ static int tcc_i2c_slave_suspend(struct device *dev)
 	if (i2c->hclk != NULL) {
 		clk_disable_unprepare(i2c->hclk);
 	}
-	i2c->is_suspended = true;
+	i2c->is_suspended = (bool)true;
 	spin_unlock(&i2c->lock);
 	return 0;
 }
 
-static int tcc_i2c_slave_resume(struct device *dev)
+static int32_t tcc_i2c_slave_resume(struct device *dev)
 {
-	int ret;
+	int32_t ret;
 	struct tcc_i2c_slave *i2c = dev_get_drvdata(dev);
 
 	spin_lock(&i2c->lock);
@@ -1853,7 +1851,7 @@ static int tcc_i2c_slave_resume(struct device *dev)
 	}
 	/* Initialize I2C Slave */
 	tcc_i2c_slave_hwinit(i2c);
-	i2c->is_suspended = false;
+	i2c->is_suspended = (bool)false;
 
 	spin_unlock(&i2c->lock);
 	return 0;
@@ -1864,10 +1862,10 @@ static ssize_t tcc_i2c_slave_fifo_byte_store(struct device *dev,
 					     const char *buf, size_t count)
 {
 	struct tcc_i2c_slave *i2c;
-	int ret;
-	unsigned int status;
+	int32_t ret;
+	uint32_t status;
 	uint8_t val, cnt;
-	unsigned long flags;
+	ulong flags;
 
 	dev_dbg(dev, "[DEBUG][I2C] %s\n", __func__);
 
@@ -1937,7 +1935,7 @@ static ssize_t tcc_i2c_slave_fifo_byte_store(struct device *dev,
 			i2c->is_tx_dma_running = 1;
 			spin_unlock_irqrestore(&i2c->lock, flags);
 
-			memcpy(i2c->dma.tx_v_addr, &val, sizeof(char));
+			(void)memcpy(i2c->dma.tx_v_addr, &val, sizeof(char));
 			dev_dbg(i2c->dev,
 				"[DEBUG][I2C] start tx dma (dma_buf 1 byte)\n");
 
@@ -1950,7 +1948,7 @@ static ssize_t tcc_i2c_slave_fifo_byte_store(struct device *dev,
 						i2c, 1,
 						I2C_SLV_TX);
 			if (ret != 0) {
-				tcc_i2c_slave_stop_dma_engine(i2c, 0);
+				tcc_i2c_slave_stop_dma_engine(i2c, I2C_SLV_TX);
 
 				spin_lock_irqsave(&i2c->lock, flags);
 				i2c->is_tx_dma_running = 0;
@@ -1968,7 +1966,7 @@ static ssize_t tcc_i2c_slave_fifo_byte_store(struct device *dev,
 		}
 	}
 
-	return count;
+	return (ssize_t)count;
 }
 
 static ssize_t tcc_i2c_slave_fifo_byte_show(struct device *dev,
@@ -1976,7 +1974,7 @@ static ssize_t tcc_i2c_slave_fifo_byte_show(struct device *dev,
 					    char *buf)
 {
 	struct tcc_i2c_slave *i2c;
-	int ret;
+	int32_t ret;
 	char val;
 
 	dev_dbg(dev, "[DEBUG][I2C] %s\n", __func__);
@@ -1992,9 +1990,9 @@ static ssize_t tcc_i2c_slave_fifo_byte_show(struct device *dev,
 		 tcc_i2c_slave_rx_fifo_cnt(i2c));
 
 	ret = tcc_i2c_slave_pop_one_byte(i2c, &val, I2C_SLV_RX);
-	if (ret != 0)
+	if (ret != 0) {
 		return sprintf(buf, "no rx data\n");
-
+	}
 	return sprintf(buf, "read 0x%02x\n", val);
 }
 
@@ -2029,9 +2027,9 @@ static struct platform_driver tcc_i2c_slave_driver = {
 		   },
 };
 
-static int __init tcc_i2c_slave_init(void)
+static int32_t __init tcc_i2c_slave_init(void)
 {
-	int ret;
+	int32_t ret;
 
 	ret = register_chrdev(0, TCC_I2C_SLV_CHRDEV_NAME, &tcc_i2c_slv_fops);
 	if (ret < 0) {
@@ -2047,7 +2045,7 @@ static int __init tcc_i2c_slave_init(void)
 					   TCC_I2C_SLV_CHRDEV_CLASS_NAME);
 	if (IS_ERR(tcc_i2c_slave_class)) {
 		pr_err("[ERROR][I2C] %s: failed to create class\n", __func__);
-		ret = (int)PTR_ERR(tcc_i2c_slave_class);
+		ret = (int32_t)PTR_ERR(tcc_i2c_slave_class);
 		goto init_err;
 	}
 
@@ -2069,8 +2067,9 @@ init_err:
 static void __exit tcc_i2c_slave_exit(void)
 {
 	class_destroy(tcc_i2c_slave_class);
-	if (tcc_i2c_slave_major != 0U)
+	if (tcc_i2c_slave_major != 0U) {
 		unregister_chrdev(tcc_i2c_slave_major, TCC_I2C_SLV_CHRDEV_NAME);
+	}
 	platform_driver_unregister(&tcc_i2c_slave_driver);
 }
 
