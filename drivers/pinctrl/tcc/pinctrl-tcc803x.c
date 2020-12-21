@@ -102,7 +102,7 @@ static int tcc803x_set_eint(void __iomem *base, u32 bit, int extint, struct tcc_
 {
 	void __iomem *reg
 		= (void __iomem *)(gpio_base + EINTSEL + 4*(extint/4));
-	u32 data, mask, shift, idx, i, pin_valid;
+	u32 data, mask, shift, idx, i, j, pin_valid;
 	u32 port = base - gpio_base;
 	struct extintr_match_ *match
 		= (struct extintr_match_ *)tcc803x_pinctrl_soc_data.irq->data;
@@ -126,9 +126,9 @@ static int tcc803x_set_eint(void __iomem *base, u32 bit, int extint, struct tcc_
 
 			} else {
 
-				for(i = 0; i < bank->source_section; i++){
-					if((bit >= bank->source_offset_base[i]) && (bit < (bank->source_offset_base[i]+bank->source_range[i]))) {
-						idx = bank->source_base[i] + (bit - bank->source_offset_base[i]);
+				for(j = 0; j < bank->source_section; j++){
+					if((bit >= bank->source_offset_base[j]) && (bit < (bank->source_offset_base[j]+bank->source_range[j]))) {
+						idx = bank->source_base[j] + (bit - bank->source_offset_base[j]);
 						pin_valid = 1; //true
 						break;
 					} else {
@@ -326,7 +326,7 @@ static int tcc803x_gpio_set_eclk_sel(void __iomem *base, u32 offset,
 	void __iomem *reg = (void __iomem *)(gpio_base + ECLKSEL);
 	struct tcc_pin_bank *bank = pctl->pin_banks;
 	u32 port = (u32)base - (u32)gpio_base;
-	u32 idx, i, pin_valid;
+	u32 idx, i, j, pin_valid;
 	int data;
 
 	if (value > 3)
@@ -343,9 +343,9 @@ static int tcc803x_gpio_set_eclk_sel(void __iomem *base, u32 offset,
 
 			} else {
 
-				for(i = 0; i < bank->source_section; i++){
-					if((offset >= bank->source_offset_base[i]) && (offset < (bank->source_offset_base[i]+bank->source_range[i]))) {
-						idx = bank->source_base[i] + (offset - bank->source_offset_base[i]);
+				for(j = 0; j < bank->source_section; j++){
+					if((offset >= bank->source_offset_base[j]) && (offset < (bank->source_offset_base[j]+bank->source_range[j]))) {
+						idx = bank->source_base[j] + (offset - bank->source_offset_base[j]);
 						pin_valid = 1; //true
 						break;
 					} else {

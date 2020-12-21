@@ -136,7 +136,7 @@ static int tcc805x_set_eint(void __iomem *base, u32 bit, u32 extint, struct tcc_
 #if !defined(CONFIG_PINCTRL_TCC_SCFW)
 	u32 data, mask;
 #endif
-	u32 shift, idx, i, pin_valid;
+	u32 shift, idx, i, j, pin_valid;
 	u32 port = (u32)base - (u32)gpio_base;
 	struct extintr_match_ *match
 		= (struct extintr_match_ *)tcc805x_pinctrl_soc_data.irq->data;
@@ -164,10 +164,9 @@ static int tcc805x_set_eint(void __iomem *base, u32 bit, u32 extint, struct tcc_
 
 			} else {
 
-				for(i = 0; i < bank->source_section; i++){
-					printk("source offset : %d source base : %d source range %d\n", bank->source_offset_base[i],  bank->source_offset_base[i], bank->source_range[i]);
-					if((bit >= bank->source_offset_base[i]) && (bit < (bank->source_offset_base[i]+bank->source_range[i]))) {
-						idx = bank->source_base[i] + (bit - bank->source_offset_base[i]);
+				for(j = 0; j < bank->source_section; j++){
+					if((bit >= bank->source_offset_base[j]) && (bit < (bank->source_offset_base[j]+bank->source_range[j]))) {
+						idx = bank->source_base[j] + (bit - bank->source_offset_base[j]);
 						pin_valid = 1; //true
 						break;
 					} else {
@@ -447,7 +446,7 @@ static int tcc805x_gpio_set_eclk_sel(void __iomem *base, u32 offset,
 	void __iomem *reg = (void __iomem *)(gpio_base + ECLKSEL);
 	struct tcc_pin_bank *bank = pctl->pin_banks;
 	u32 port = (u32)base - (u32)gpio_base;
-	u32 idx, i, pin_valid;
+	u32 idx, i, j, pin_valid;
 #if !defined(CONFIG_PINCTRL_TCC_SCFW)
 	u32 data;
 #endif
@@ -468,9 +467,9 @@ static int tcc805x_gpio_set_eclk_sel(void __iomem *base, u32 offset,
 
 			} else {
 
-				for(i = 0; i < bank->source_section; i++){
-					if((offset >= bank->source_offset_base[i]) && (offset < (bank->source_offset_base[i]+bank->source_range[i]))) {
-						idx = bank->source_base[i] + (offset - bank->source_offset_base[i]);
+				for(j = 0; j < bank->source_section; j++){
+					if((offset >= bank->source_offset_base[j]) && (offset < (bank->source_offset_base[j]+bank->source_range[j]))) {
+						idx = bank->source_base[j] + (offset - bank->source_offset_base[j]);
 						pin_valid = 1; //true
 						break;
 					} else {

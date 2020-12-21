@@ -94,7 +94,7 @@ inline static int tcc897x_set_eint(void __iomem *base, unsigned bit, int extint,
 	int irq_size = tcc897x_pinctrl_soc_data.irq->size;
 	unsigned port = (unsigned)base - (unsigned)gpio_base;
 	struct tcc_pin_bank *bank = pctl->pin_banks;
-	int i, pin_valid;
+	int i, j, pin_valid;
 
 	if (!gpio_base)
 		return -1;
@@ -113,9 +113,9 @@ inline static int tcc897x_set_eint(void __iomem *base, unsigned bit, int extint,
 
 			} else {
 
-				for(i = 0; i < bank->source_section; i++){
-					if((bit >= bank->source_offset_base[i]) && (bit < (bank->source_offset_base[i]+bank->source_range[i]))) {
-						idx = bank->source_base[i] + (bit - bank->source_offset_base[i]);
+				for(j = 0; j < bank->source_section; j++){
+					if((bit >= bank->source_offset_base[j]) && (bit < (bank->source_offset_base[j]+bank->source_range[j]))) {
+						idx = bank->source_base[j] + (bit - bank->source_offset_base[j]);
 						pin_valid = 1; //true
 						break;
 					} else {
@@ -297,7 +297,7 @@ static int tcc897x_gpio_to_irq(void __iomem *base, unsigned offset, struct tcc_p
 				goto set_gpio_to_irq_finish;
 			else
 				break;
-		}			
+		}
 	}
 
 	return -ENXIO;
