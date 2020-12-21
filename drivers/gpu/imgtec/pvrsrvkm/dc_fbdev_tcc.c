@@ -46,7 +46,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "kerneldisplay.h"
 #include "imgpixfmts.h"
 #include "pvrmodule.h" /* for MODULE_LICENSE() */
-
+#if defined(CONFIG_VIOC_PVRIC_FBDC)
+#include <video/tcc/vioc_pvric_fbdc.h>
+#endif
 #if !defined(CONFIG_FB)
 #error dc_fbdev needs Linux framebuffer support. Enable it in your kernel.
 #endif
@@ -223,12 +225,26 @@ PVRSRV_ERROR DC_FBDEV_PanelQuery(IMG_HANDLE hDeviceData,
 		return PVRSRV_ERROR_RETRY;
 
 	*pui32NumPanels = 1;
-
 	psPanelInfo[0].sSurfaceInfo.sFormat.ePixFormat = psDeviceData->ePixFormat;
 	psPanelInfo[0].sSurfaceInfo.sDims.ui32Width    = psVar->xres;
 	psPanelInfo[0].sSurfaceInfo.sDims.ui32Height   = psVar->yres;
 	psPanelInfo[0].sSurfaceInfo.sFormat.eMemLayout = PVRSRV_SURFACE_MEMLAYOUT_STRIDED;
-	psPanelInfo[0].sSurfaceInfo.sFormat.u.sFBCLayout.eFBCompressionMode = IMG_FB_COMPRESSION_NONE;
+#if defined(CONFIG_VIOC_PVRIC_FBDC)
+	psVar->reserved[3] = 1;
+	if( psVar->xres <= VIOC_PVRICSIZE_MAX_WIDTH_8X8 )
+		psPanelInfo[0].sSurfaceInfo.sFormat.u.sFBCLayout.eFBCompressionMode = IMG_FB_COMPRESSION_DIRECT_8x8;
+        else if( psVar->xres <= VIOC_PVRICSIZE_MAX_WIDTH_16X4 )
+                psPanelInfo[0].sSurfaceInfo.sFormat.u.sFBCLayout.eFBCompressionMode = IMG_FB_COMPRESSION_DIRECT_16x4;
+        else if( psVar->xres <= VIOC_PVRICSIZE_MAX_WIDTH_32X2 )
+                psPanelInfo[0].sSurfaceInfo.sFormat.u.sFBCLayout.eFBCompressionMode = IMG_FB_COMPRESSION_DIRECT_32x2;
+	else {
+		psVar->reserved[3]=0;
+		pr_err("%s Not Support condition : xres should be less than 7860 to use FBDC\n", __func__);
+		psPanelInfo[0].sSurfaceInfo.sFormat.u.sFBCLayout.eFBCompressionMode = IMG_FB_COMPRESSION_NONE;
+	}
+#else
+        psPanelInfo[0].sSurfaceInfo.sFormat.u.sFBCLayout.eFBCompressionMode = IMG_FB_COMPRESSION_NONE;
+#endif
 
 	/* Conformant fbdev drivers should have 'var' and mode in sync by now,
 	 * but some don't (like drmfb), so try a couple of different ways to

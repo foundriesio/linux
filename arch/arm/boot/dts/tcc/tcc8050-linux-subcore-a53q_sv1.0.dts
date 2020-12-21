@@ -1538,6 +1538,7 @@
 		clock-names = "9XTP_clk";
 	};
 
+
 #if 0
 	tcc-drm-lcd {
 	        compatible = "telechips,tcc-drm-lcd";
@@ -1586,6 +1587,7 @@
 		telechips,disp = <&vioc_disp VIOC_DISP2>;
 		telechips,wmixer = <&vioc_wmix VIOC_WMIX2>;
 		telechips,rdma = <&vioc_rdma VIOC_RDMA08>;
+		telechips,fbdc = <&vioc_pvric_fbdc VIOC_FBCDEC1>;
 	};
 
 	fb1: fb@1 { //SVM
