@@ -718,7 +718,7 @@ void VIQE_MADI_Set_SrcImgBase(enum MadiADDR_Type type, unsigned int YAddr,
 		return;
 	}
 
-	//printk("SrcImgBase : type[%d] = 0x%x / 0x%x\n", type, YAddr, CAddr);
+	//pr_info("SrcImgBase : type[%d] = 0x%x / 0x%x\n", type, YAddr, CAddr);
 
 	y_value = (YAddr >> COMMON_ADDR_SHIFT) & COMMON_ADDR_MASK;
 	u_value = (CAddr >> COMMON_ADDR_SHIFT) & COMMON_ADDR_MASK;
@@ -1140,14 +1140,14 @@ void VIQE_MADI_Set_odd_field_first(unsigned int odd_first)
 
 	//curr_cfg_code = __madi_reg_r(reg + MADITIMMING_GEN_CFG_CODE_OFFSET);
 	//curr_cfg_field = __madi_reg_r(reg + MADITIMMING_GEN_CFG_FIELD_OFFSET);
-	//printk("curr_cfg_code = %d, curr_cfg_field = %d\n",
+	//pr_info("curr_cfg_code = %d, curr_cfg_field = %d\n",
 	//	curr_cfg_code, curr_cfg_field);
 
 	__madi_reg_w(0, reg + MADITIMMING_GEN_CFG_CODE_OFFSET);
 
 	if (odd_first) {
 		//next_cfg_field = (curr_cfg_field + 1) & 0x1;
-		//printk("first_field = %d\n", next_cfg_field);
+		//pr_info("first_field = %d\n", next_cfg_field);
 		__madi_reg_w(1, reg + MADITIMMING_GEN_CFG_FIELD_OFFSET);
 	} else {
 		__madi_reg_w(0, reg + MADITIMMING_GEN_CFG_FIELD_OFFSET);
@@ -1168,7 +1168,7 @@ void VIQE_MADI_Change_Cfg(void)
 	next_cfg_code = (curr_cfg_code + 1) & 0x3;
 	next_cfg_field = (curr_cfg_field + 1) & 0x1;
 
-	//printk("cfg_field = %d -> %d\n", curr_cfg_field, next_cfg_field);
+	//pr_info("cfg_field = %d -> %d\n", curr_cfg_field, next_cfg_field);
 
 	__madi_reg_w(next_cfg_code, reg + MADITIMMING_GEN_CFG_CODE_OFFSET);
 	__madi_reg_w(next_cfg_field, reg + MADITIMMING_GEN_CFG_FIELD_OFFSET);

@@ -1,20 +1,21 @@
-/****************************************************************************
- * Copyright (C) 2015 Telechips Inc.
+/*
+ * Copyright (C) Telechips Inc.
  *
- * This program is free software; you can redistribute it and/or modify it under
- * the terms of the GNU General Public License as published by the Free Software
- * Foundation; either version 2 of the License, or (at your option) any later
- * version.
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
  *
- * This program is distributed in the hope that it will be useful, but WITHOUT
- * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
- * FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along with
- * this program; if not, write to the Free Software Foundation, Inc., 59 Temple
- * Place, Suite 330, Boston, MA 02111-1307 USA
- ****************************************************************************/
-
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, see the file COPYING, or write
+ * to the Free Software Foundation, Inc.,
+ * 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+ */
 #include <linux/io.h>
 #include <linux/of_irq.h>
 #include <linux/of_address.h>
@@ -59,10 +60,9 @@ int vioc_intr_enable(int irq, int id, unsigned int mask)
 
 #ifdef CONFIG_TCC_VIOC_CORE_RESET_SUPPORT
 	__raw_writel(
-		__raw_readl(
-			pTIMER_reg + FB_CR_REG_OFFSET(id)) |
-			(1 << FB_CR_BIT_OFFSET(id)),
-			pTIMER_reg + FB_CR_REG_OFFSET(id));
+		__raw_readl(pTIMER_reg + FB_CR_REG_OFFSET(id))
+			| (1 << FB_CR_BIT_OFFSET(id)),
+		pTIMER_reg + FB_CR_REG_OFFSET(id));
 #endif
 
 	switch (id) {
@@ -168,8 +168,8 @@ int vioc_intr_enable(int irq, int id, unsigned int mask)
 		break;
 #if defined(CONFIG_ARCH_TCC805X)
 	case VIOC_INTR_WD13:
-		sub_id = id - VIOC_INTR_WD_OFFSET - VIOC_INTR_WD_OFFSET2 -
-			VIOC_INTR_WD0;
+		sub_id = id - VIOC_INTR_WD_OFFSET - VIOC_INTR_WD_OFFSET2
+			- VIOC_INTR_WD0;
 
 		/* clera irq status */
 		reg = VIOC_WDMA_GetAddress(sub_id) + WDMAIRQSTS_OFFSET;
@@ -227,8 +227,8 @@ int vioc_intr_enable(int irq, int id, unsigned int mask)
 #endif // defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X)
 	}
 
-#if defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X) || \
-		defined(CONFIG_ARCH_TCC901X) || defined(CONFIG_ARCH_TCC805X)
+#if defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X) \
+	|| defined(CONFIG_ARCH_TCC901X) || defined(CONFIG_ARCH_TCC805X)
 	if (irq == vioc_base_irq_num[0])
 		type_clr_offset = IRQMASKCLR0_0_OFFSET;
 	else if (irq == vioc_base_irq_num[1])
@@ -238,9 +238,8 @@ int vioc_intr_enable(int irq, int id, unsigned int mask)
 	else if (irq == vioc_base_irq_num[3])
 		type_clr_offset = IRQMASKCLR3_0_OFFSET;
 	else {
-		pr_err(
-			"[ERR][VIOC_INTR] %s-%d :: irq(%d) is wierd.\n",
-			__func__, __LINE__, irq);
+		pr_err("[ERR][VIOC_INTR] %s-%d :: irq(%d) is wierd.\n",
+		       __func__, __LINE__, irq);
 		return -1;
 	}
 #else
@@ -432,8 +431,8 @@ int vioc_intr_disable(int irq, int id, unsigned int mask)
 	}
 
 	if (do_irq_mask) {
-#if defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X) || \
-		defined(CONFIG_ARCH_TCC901X) || defined(CONFIG_ARCH_TCC805X)
+#if defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X) \
+	|| defined(CONFIG_ARCH_TCC901X) || defined(CONFIG_ARCH_TCC805X)
 		if (irq == vioc_base_irq_num[0])
 			type_set_offset = IRQMASKSET0_0_OFFSET;
 		else if (irq == vioc_base_irq_num[1])
@@ -443,9 +442,8 @@ int vioc_intr_disable(int irq, int id, unsigned int mask)
 		else if (irq == vioc_base_irq_num[3])
 			type_set_offset = IRQMASKSET3_0_OFFSET;
 		else {
-			pr_err(
-				"[ERR][VIOC_INTR] %s-%d :: irq(%d) is wierd.\n",
-				__func__, __LINE__, irq);
+			pr_err("[ERR][VIOC_INTR] %s-%d :: irq(%d) is wierd.\n",
+			       __func__, __LINE__, irq);
 			return -1;
 		}
 #else
@@ -1049,18 +1047,15 @@ static int fb_cr_intr_clear(void)
 	unsigned int irq_mask;
 
 	for (i = 0; i < VIOC_INTR_NUM; i++) {
-		if (
-			__raw_readl(
-				pTIMER_reg + FB_CR_REG_OFFSET(i)) &
-				(1 << FB_CR_BIT_OFFSET(i))) {
+		if (__raw_readl(pTIMER_reg + FB_CR_REG_OFFSET(i))
+		    & (1 << FB_CR_BIT_OFFSET(i))) {
 			irq_mask = vioc_intr_get_status(i);
 			vioc_intr_clear(i, irq_mask);
 			__raw_writel(
-				__raw_readl(pTIMER_reg + FB_CR_REG_OFFSET(i)) &
-					~(1 << FB_CR_BIT_OFFSET(i)),
-					pTIMER_reg + FB_CR_REG_OFFSET(i));
-			pr_info(
-				"[INF][VIOC_INTR] %s : cleared intr = %d, reg = 0x%08x\n",
+				__raw_readl(pTIMER_reg + FB_CR_REG_OFFSET(i))
+					& ~(1 << FB_CR_BIT_OFFSET(i)),
+				pTIMER_reg + FB_CR_REG_OFFSET(i));
+			pr_info("[INF][VIOC_INTR] %s : cleared intr = %d, reg = 0x%08x\n",
 				__func__, i, pTIMER_reg + FB_CR_REG_OFFSET(i));
 		}
 	}
@@ -1075,35 +1070,32 @@ static int __init vioc_intr_init(void)
 		of_find_compatible_node(NULL, NULL, "telechips,vioc_intr");
 
 	if (ViocIntr_np == NULL) {
-		pr_info(
-			"[INF][VIOC_INTR] disabled [this is mandatory for vioc display]\n");
+		pr_info("[INF][VIOC_INTR] disabled [this is mandatory for vioc display]\n");
 	} else {
-#if defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X) || \
-		defined(CONFIG_ARCH_TCC901X) || defined(CONFIG_ARCH_TCC805X)
+#if defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X) \
+	|| defined(CONFIG_ARCH_TCC901X) || defined(CONFIG_ARCH_TCC805X)
 		int i = 0;
 
 		for (i = 0; i < VIOC_IRQ_MAX; i++) {
 			vioc_base_irq_num[i] =
 				irq_of_parse_and_map(ViocIntr_np, i);
-			pr_info(
-				"[INF][VIOC_INTR] vioc-intr%d: irq %d\n",
-				i, vioc_base_irq_num[i]);
+			pr_info("[INF][VIOC_INTR] vioc-intr%d: irq %d\n", i,
+				vioc_base_irq_num[i]);
 		}
 
 #ifdef CONFIG_TCC_VIOC_CORE_RESET_SUPPORT
-		pTIMER_reg = (volatile void __iomem *)of_iomap(ViocIntr_np,
-				is_VIOC_REMAP ? FB_CR_VIOC_REMAP_ENABLE :
+		pTIMER_reg = (volatile void __iomem *)of_iomap(
+			ViocIntr_np,
+			is_VIOC_REMAP ? FB_CR_VIOC_REMAP_ENABLE :
 				FB_CR_VIOC_REMAP_DISABLE);
-		pr_info(
-			"[INF][VIOC_INTR] vioc-intr: fb core reset mode. backup reg = 0x%08x\n",
+		pr_info("[INF][VIOC_INTR] vioc-intr: fb core reset mode. backup reg = 0x%08x\n",
 			pTIMER_reg);
 		fb_cr_intr_clear();
 #endif
 
 #else
 		vioc_base_irq_num[0] = irq_of_parse_and_map(ViocIntr_np, 0);
-		pr_info(
-			"[INF][VIOC_INTR] vioc-intr%d : %d\n",
+		pr_info("[INF][VIOC_INTR] vioc-intr%d : %d\n",
 			0, vioc_base_irq_num[0]);
 #endif
 	}

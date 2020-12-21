@@ -1701,8 +1701,10 @@ static int vidioc_querybuf(struct file *file, void *fh, struct v4l2_buffer *buf)
 	qbuf->buf.m.planes[MPLANE_VID].m.mem_offset = qbuf->img_base0;
 	qbuf->buf.m.planes[MPLANE_VID].length = vout->src_pix.sizeimage;
 
-	copy_to_user(buf->m.planes, qbuf->buf.m.planes,
-		sizeof(struct v4l2_buffer) * MPLANE_NUM);
+	if (copy_to_user(buf->m.planes, qbuf->buf.m.planes,
+		sizeof(struct v4l2_buffer) * MPLANE_NUM)) {
+		pr_err("%s: copy_to_user failed\n", __func__);
+	}
 
 	return 0;
 }

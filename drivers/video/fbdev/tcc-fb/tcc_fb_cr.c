@@ -70,14 +70,14 @@ MODULE_DEVICE_TABLE(of, fb_cr_of_match);
 
 static int __init fb_cr_probe(struct platform_device *pdev)
 {
-	struct device_node *np = NULL;
+	//struct device_node *np = NULL;
 	unsigned int idx;
-	unsigned int temp;
+	//unsigned int temp;
 	unsigned int num_comp = 0;
 	unsigned int vioc_comp = 0;
 	unsigned int vioc_intr_type;
 	unsigned int irq_sts; // irq_status
-	unsigned int irq_num; // irq_num
+	//unsigned int irq_num; // irq_num
 
 	of_property_read_u32_index(
 		pdev->dev.of_node, "telechips,num_comp", 0, &num_comp);
@@ -133,7 +133,7 @@ static int __init fb_cr_probe(struct platform_device *pdev)
  */
 static int fb_cr_remove(struct platform_device *pdev)
 {
-	struct fb_info *info = platform_get_drvdata(pdev);
+	//struct fb_info *info = platform_get_drvdata(pdev);
 
 	return 0;
 }
@@ -148,7 +148,8 @@ static int fb_cr_remove(struct platform_device *pdev)
  */
 static int fb_cr_suspend(struct platform_device *dev, pm_message_t msg)
 {
-	struct fb_info *info = platform_get_drvdata(dev);
+	//struct fb_info *info = platform_get_drvdata(dev);
+
 	/* suspend here */
 	return 0;
 }
@@ -161,7 +162,8 @@ static int fb_cr_suspend(struct platform_device *dev, pm_message_t msg)
  */
 static int fb_cr_resume(struct platform_device *dev)
 {
-	struct fb_info *info = platform_get_drvdata(dev);
+	//struct fb_info *info = platform_get_drvdata(dev);
+
 	/* resume here */
 	return 0;
 }

@@ -20,7 +20,7 @@
 #ifndef __VIOC_DISP_H__
 #define	__VIOC_DISP_H__
 
-struct VIOC_TIMING_INFO {
+typedef struct {
 	unsigned int	nType;
 	unsigned int	CLKDIV;
 	unsigned int	IV;
@@ -41,7 +41,7 @@ struct VIOC_TIMING_INFO {
 	unsigned int	FLC2;
 	unsigned int	FSWC2;
 	unsigned int	FEWC2;
-};
+} VIOC_TIMING_INFO;
 
 /*
  * register offset
@@ -431,7 +431,7 @@ struct VIOC_TIMING_INFO {
 #define DDMAT1_DITH21_MASK (0x7 << DDMAT1_DITH21_SHIFT)
 #define DDMAT1_DITH20_MASK (0x7 << DDMAT1_DITH20_SHIFT)
 
-struct LCDCTR {
+typedef struct LCDCDEFAULT {
 	unsigned int evp;     // External VSYNC Polarity
 	unsigned int evs;     // External VSYNC Enable
 	unsigned int r2ymd;   // RGB to YCbCr Conversion Option
@@ -452,9 +452,9 @@ struct LCDCTR {
 	unsigned int ni;      // Non-Interlaced
 	unsigned int tv;      // TV Mode
 	unsigned int y2r;     // YUV to RGB Converter Enable
-};
+} stLCDCTR;
 
-struct LCDTIMING {
+typedef struct LDCTIMING {
 	// LHTIME1
 	unsigned int lpw;	// Line Pulse Width, HSync width
 	unsigned int lpc;	// Line Pulse Count, HActive width
@@ -475,7 +475,7 @@ struct LCDTIMING {
 	// LVTIME4
 	unsigned int fswc2;	 // Frame Start Wait Cycle
 	unsigned int fewc2;	 // Frame End Wait Cycle
-};
+} stLTIMING;
 
 #define VIOC_DISP_IREQ_FU_MASK		0x00000001UL /* fifo underrun */
 #define VIOC_DISP_IREQ_VSR_MASK		0x00000002UL /* VSYNC rising */
@@ -521,14 +521,16 @@ enum {
 	DCTRL_FMT_MAX
 };
 
-struct LCDC_PARAM {
-	struct LCDCTR LCDCTRL;
-	struct LCDTIMING LCDCTIMING;
-};
+typedef struct LCDC_PARAM
+{
+	stLCDCTR	 LCDCTRL;
+	stLTIMING	 LCDCTIMING;
+} stLCDCPARAM;
 
-struct DisplayBlock_Info {
+struct DisplayBlock_Info
+{
 	unsigned int enable;
-	struct LCDCTR pCtrlParam;
+	stLCDCTR pCtrlParam;
 	unsigned int width;
 	unsigned int height;
 };
@@ -537,7 +539,7 @@ struct DisplayBlock_Info {
 extern void VIOC_DISP_SetDefaultTimingParam(volatile void __iomem *reg,
 	unsigned int nType);
 extern void VIOC_DISP_SetControlConfigure(volatile void __iomem *reg,
-	struct LCDCTR *pCtrlParam);
+	stLCDCTR *pCtrlParam);
 extern void VIOC_DISP_SetPXDW(volatile void __iomem *reg,
 	unsigned char PXDW);
 extern void VIOC_DISP_SetR2YMD(volatile void __iomem *reg,
@@ -627,9 +629,9 @@ extern void VIOC_DISP_SetDither(volatile void __iomem *reg,
 	unsigned int ditherEn, unsigned int ditherSel,
 	unsigned char mat[4][4]);
 extern void VIOC_DISP_SetTimingParam(volatile void __iomem *reg,
-	struct LCDTIMING *pTimeParam);
+	stLTIMING *pTimeParam);
 //extern void VIOC_DISP_SetPixelClockDiv( void __iomem *reg,
-//	struct LCDTIMING *pTimeParam);
+//	stLTIMING *pTimeParam);
 extern void VIOC_DISP_SetPixelClockDiv(volatile void __iomem *reg,
 	unsigned int div);
 extern void VIOC_DISP_TurnOn(volatile void __iomem *reg);
@@ -642,7 +644,7 @@ extern unsigned int  VIOC_DISP_Get_TurnOnOff(volatile void __iomem *reg);
 extern int VIOC_DISP_Wait_DisplayDone(volatile void __iomem *reg);
 extern int VIOC_DISP_sleep_DisplayDone(volatile void __iomem *reg);
 extern void VIOC_DISP_SetControl(volatile void __iomem *reg,
-	struct LCDC_PARAM *pLcdParam);
+	stLCDCPARAM *pLcdParam);
 extern void VIOC_DISP_SetIreqMask(volatile void __iomem *pDISP,
 	unsigned int mask, unsigned int set);
 extern void VIOC_DISP_SetStatus(volatile void __iomem *pDISP,

@@ -55,7 +55,7 @@ Place, Suite 330, Boston, MA 02111-1307 USA
  *DEFINITION
  ***************************************************************************
  */
-#define dprintk(msg...) // printk(msg)
+#define dprintk(msg...) // pr_info(msg)
 
 #define DEVICE_NAME "ccfb"
 #define DEV_MINOR 204

@@ -1627,7 +1627,7 @@ void TCC_VIQE_Scaler_Sub_Init60Hz_M2M(struct tcc_lcdc_image_update *input_image)
 		vioc_intr_clear(scaler_sub->vioc_intr->id, scaler_sub->vioc_intr->bits);
 		ret = request_irq(scaler_sub->irq, TCC_VIQE_Scaler_Sub_Handler60Hz_M2M, IRQF_SHARED, "m2m-sub", scaler_sub);
 
-		if (ret) printk("failed to acquire scaler3 request_irq\n");
+		if (ret) pr_info("failed to acquire scaler3 request_irq\n");
 
 		vioc_intr_enable(scaler_sub->irq, scaler_sub->vioc_intr->id, scaler_sub->vioc_intr->bits);
 		scaler_sub->data->irq_reged = 1;
@@ -2310,7 +2310,7 @@ void TCC_VIQE_DI_Init60Hz(TCC_OUTPUT_TYPE outputMode, int lcdCtrlNum, struct tcc
 	cropHeight = ((crop_bottom - crop_top) >> 2) << 2; //4bit align
 
 	dprintk("%s: FB:%dx%d, SRC:%dx%d, DST:%dx%d(%d,%d), FMT:%d, VFMT:%s, OddFirst:%d\n", __func__, framebufWidth, framebufHeight, cropWidth, cropHeight, input_image->Image_width, input_image->Image_height, input_image->offset_x, input_image->offset_y, input_image->fmt, (gViqe_fmt_60Hz?"YUV422":"YUV420"), input_image->odd_first_flag);
-//	printk("%s: W:%d, H:%d, DW:%d, DH:%d, FMT:%d, VFMT:%s, OddFirst:%d\n", __func__, framebufWidth, framebufHeight, input_image->Image_width, input_image->Image_height, input_image->fmt, (gViqe_fmt_60Hz?"YUV422":"YUV420"), input_image->odd_first_flag);
+//	pr_info("%s: W:%d, H:%d, DW:%d, DH:%d, FMT:%d, VFMT:%s, OddFirst:%d\n", __func__, framebufWidth, framebufHeight, input_image->Image_width, input_image->Image_height, input_image->fmt, (gViqe_fmt_60Hz?"YUV422":"YUV420"), input_image->odd_first_flag);
 
 	VIOC_DISP_GetSize(pViqe_60hz_info->pDISPBase_60Hz, &lcd_width, &lcd_height);
 	if ((!lcd_width) || (!lcd_height)) {

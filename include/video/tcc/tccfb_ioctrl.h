@@ -154,7 +154,7 @@ typedef struct {
 
 typedef struct {
 	char flag;
-	char index;
+	unsigned char index;	// array index must has unsigned type
 	char update_flag;
 	char update_start;
 	char update_started;

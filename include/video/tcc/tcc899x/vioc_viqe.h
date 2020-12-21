@@ -30,17 +30,17 @@
 #define	DUPLI_MODE  1  // duplicate mode
 #define	SKIP_MODE   2  // skip mode
 
-enum VIOC_VIQE_DEINTL_MODE {
+typedef enum {
 	VIOC_VIQE_DEINTL_MODE_BYPASS = 0,
 	VIOC_VIQE_DEINTL_MODE_2D,
 	VIOC_VIQE_DEINTL_MODE_3D,
 	VIOC_VIQE_DEINTL_S
-};
+} VIOC_VIQE_DEINTL_MODE;
 
-enum VIOC_VIQE_FMT_TYPE {
+typedef enum {
 	VIOC_VIQE_FMT_YUV420 = 0,
 	VIOC_VIQE_FMT_YUV422
-};
+} VIOC_VIQE_FMT_TYPE;
 
 /*
  * Register offset
@@ -658,18 +658,18 @@ extern void VIOC_VIQE_SetDeintlControl(volatile void __iomem *reg,
 	unsigned int ac_k1_limit, unsigned int ac_k2_limit);
 extern void VIOC_VIQE_SetDeintlFMT(volatile void __iomem *reg, int enable);
 extern void VIOC_VIQE_SetDeintlMode(volatile void __iomem *reg,
-	enum VIOC_VIQE_DEINTL_MODE mode);
+	VIOC_VIQE_DEINTL_MODE mode);
 extern void VIOC_VIQE_SetDeintlRegion(volatile void __iomem *reg,
 	int region_enable, int region_idx_x_start,
 	int region_idx_x_end, int region_idx_y_start, int region_idx_y_end);
 extern void VIOC_VIQE_SetDeintlCore(volatile void __iomem *reg,
 	unsigned int width, unsigned int height,
-	enum VIOC_VIQE_FMT_TYPE fmt, unsigned int bypass,
+	VIOC_VIQE_FMT_TYPE fmt, unsigned int bypass,
 	unsigned int top_size_dont_use);
 extern void VIOC_VIQE_SetDeintlRegister(volatile void __iomem *reg,
 	unsigned int fmt, unsigned int top_size_dont_use,
 	unsigned int width, unsigned int height,
-	enum VIOC_VIQE_DEINTL_MODE mode, unsigned int base0,
+	VIOC_VIQE_DEINTL_MODE mode, unsigned int base0,
 	unsigned int base1, unsigned int base2, unsigned int base3);
 extern void VIOC_VIQE_SetDeintlJudderCnt(volatile void __iomem *reg,
 	unsigned int cnt);

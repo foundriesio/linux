@@ -152,10 +152,10 @@ extern int tca_vioc_displayblock_pre_ctrl_set(struct tcc_dp_device *dp_device);
 extern void tcafb_activate_var(struct tccfb_info *fbi,  struct fb_var_screeninfo *var);
 /* Debugging stuff */
 static int debug = 0;
-#define dprintk(msg...)	if (debug) { printk("[DBG][FB] " msg); }
+#define dprintk(msg...)	if (debug) { pr_info("[DBG][FB] " msg); }
 
 static int screen_debug = 0;
-#define sprintk(msg...)	if (screen_debug) { printk("[DBG][FB] " msg); }
+#define sprintk(msg...)	if (screen_debug) { pr_info("[DBG][FB] " msg); }
 
 #define FB_NUM_BUFFERS 3
 
@@ -487,7 +487,7 @@ void tccfb_extoutput_activate(int fb, int stage)
 			if(hdmi_base_address != 0) {
 				BaseAddr = hdmi_base_address;
 				pdp_data->FbPowerState = 0;
-				printk(KERN_INFO "[INF][FB] Load bootlogo from VIQE memory at 0x%x\r\n", hdmi_base_address);
+				pr_info("[INF][FB] Load bootlogo from VIQE memory at 0x%x\r\n", hdmi_base_address);
 			} else
 			#endif
 			BaseAddr = ptccfb_info->map_dma + ptccfb_info->fb->var.xres *  ptccfb_info->fb->var.yoffset * ( ptccfb_info->fb->var.bits_per_pixel/8);
@@ -573,12 +573,12 @@ void tccfb_output_starter(char output_type, char lcdc_num, stLTIMING *pstTiming,
 			#if defined(CONFIG_LOGO_PRESERVE_WITHOUT_FB_INIT)
 			if(skip_display_device) {
 				if(tca_vioc_displayblock_pre_ctrl_set(pdp_data) == 0) {
-					printk(KERN_INFO "[INF][FB] %s skip because display block status is same..\r\n", __func__);
+					pr_info("[INF][FB] %s skip because display block status is same..\r\n", __func__);
 					break;
 				}
 			}
 			#endif
-			printk(KERN_INFO "[INF][FB] %s set display block \r\n", __func__);
+			pr_info("[INF][FB] %s set display block \r\n", __func__);
 			tca_vioc_displayblock_ctrl_set(VIOC_OUTCFG_HDMI, pdp_data, pstTiming, pstCtrl);
 			break;
 
@@ -2816,7 +2816,7 @@ static int __init tccfb_map_video_memory(struct tccfb_info *fbi, int plane)
 	if (pmap_fb_video.size == 0) {
 		fbi->map_size  = fbi->fb->var.xres_virtual * fbi->fb->var.yres_virtual * (fbi->fb->var.bits_per_pixel/ 8);
 		fbi->map_cpu = dma_alloc_writecombine(fbi->dev, fbi->map_size, &fbi->map_dma, GFP_KERNEL);
-		printk("map_video_memory (fbi=%p) kernel memory, dma:0x%x map_size:%08x\n", fbi,fbi->map_dma, fbi->map_size);
+		pr_info("map_video_memory (fbi=%p) kernel memory, dma:0x%x map_size:%08x\n", fbi,fbi->map_dma, fbi->map_size);
 	} else {
 		fbi->map_dma = pmap_fb_video.base;
 		fbi->map_size = pmap_fb_video.size;
@@ -2899,9 +2899,9 @@ static int __init tccfb_map_video_memory(struct tccfb_info *fbi, int plane)
 			mdelay(50);
 			VIOC_CONFIG_PlugOut(scnum);
 
-			printk(KERN_INFO "[INF][FB] Capture bootlogo to VIQE memory at 0x%x\r\n", hdmi_base_address);
+			pr_info("[INF][FB] Capture bootlogo to VIQE memory at 0x%x\r\n", hdmi_base_address);
 		} else {
-			printk(KERN_INFO "[INF][FB] SKIP Capture bootlogo to VIQE memory\r\n");
+			pr_info("[INF][FB] SKIP Capture bootlogo to VIQE memory\r\n");
 		}
 		/* CONFIG_LOGO_PRESERVE_WITHOUT_FB_INIT */
 		#else
@@ -3108,7 +3108,7 @@ static int tccfb_probe(struct platform_device *pdev)
 
 		fbinfo_reg->pseudo_palette          = devm_kzalloc(&pdev->dev, sizeof(u32) * 16, GFP_KERNEL);
 		if (!fbinfo_reg->pseudo_palette) {
-				printk( KERN_ERR "Failed to allocate pseudo_palette\r\n");
+				pr_err("Failed to allocate pseudo_palette\r\n");
 				ret = -ENOMEM;
 				goto free_framebuffer;
 		}

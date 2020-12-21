@@ -298,7 +298,7 @@ void tcc_output_starter_composite(unsigned char lcdc_num, unsigned char type, st
 	CompositeTiming.fswc2 = spec.composite_FSWC2;
 	CompositeTiming.fewc2 = spec.composite_FEWC2;
 
-	memset((stLCDCTR *)&LcdCtrlParam, 0x00, sizeof(stLCDCTRR));
+	memset((stLCDCTR *)&LcdCtrlParam, 0x00, sizeof(stLCDCTR));
 #if defined(CONFIG_FB_TCC_COMPOSITE_BVO)
 	//LcdCtrlParam.evp = 0;
 	//LcdCtrlParam.evs = 0;

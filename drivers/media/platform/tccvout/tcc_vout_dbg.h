@@ -51,12 +51,11 @@
 #define diprintk(fmt, args...)
 #endif
 
-#define fourcc2char(fourcc) ( \
+#define fourcc2char(fourcc) \
 	((char) ((fourcc) & 0xff)), \
 	((char) (((fourcc) >> 8) & 0xff)), \
 	((char) (((fourcc) >> 16) & 0xff)), \
-	((char) (((fourcc) >> 24) & 0xff)) \
-	)
+	((char) (((fourcc) >> 24) & 0xff))
 
 #ifdef CONFIG_TCC_VOUT_DEBUG
 extern char *fourcc2str(unsigned int fourcc, char buf[4]);

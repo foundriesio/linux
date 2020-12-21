@@ -1551,13 +1551,13 @@
 //	WMIX_MAX
 //};
 
-enum VIOC_CONFIG_FBCDEC_PATH {
+typedef enum {
 	FBCDEC0 = 0,
 	FBCDEC1,
 	FBCDEC_MAX
-};
+} VIOC_CONFIG_FBCDEC_PATH;
 
-enum VIOC_SWRESET_Component {
+typedef enum {
 	VIOC_CONFIG_DEV	= 0,
 	VIOC_CONFIG_WMIXER,
 	VIOC_CONFIG_WDMA,
@@ -1570,13 +1570,13 @@ enum VIOC_SWRESET_Component {
 	VIOC_CONFIG_FCENC,
 	VIOC_CONFIG_FCDEC,
 	VIOC_CONFIG_DTRC
-};
+} VIOC_SWRESET_Component;
 
-struct VIOC_PlugInOutCheck{
+typedef struct{
 	unsigned int enable;
 	unsigned int connect_statue;
 	unsigned int connect_device;
-};
+}VIOC_PlugInOutCheck;
 
 #ifdef CONFIG_VIOC_PIXEL_MAPPER
 extern int CheckPixelMapPathSelection(unsigned int component);
@@ -1596,7 +1596,7 @@ extern int VIOC_CONFIG_FBCDECPath(unsigned int AFBCDecPath, unsigned int rdmaPat
 extern void VIOC_CONFIG_SWReset(unsigned int component, unsigned int mode);
 extern void VIOC_CONFIG_SWReset_RAW(unsigned int component, unsigned int mode);
 extern int VIOC_CONFIG_CheckPlugInOut(unsigned int nDevice);
-extern int VIOC_CONFIG_Device_PlugState(unsigned int component, struct VIOC_PlugInOutCheck *VIOC_PlugIn);
+extern int VIOC_CONFIG_Device_PlugState(unsigned int component, VIOC_PlugInOutCheck *VIOC_PlugIn);
 extern int VIOC_CONFIG_GetScaler_PluginToRDMA(unsigned int RdmaNum);
 extern int VIOC_CONFIG_GetViqeDeintls_PluginToRDMA(unsigned int RdmaNum);
 //map converter vioc config set

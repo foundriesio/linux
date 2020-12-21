@@ -2111,7 +2111,7 @@ void VIOC_CONFIG_DV_EX_VIOC_PROC(unsigned int component)
 			 *if(pViqe){
 			 *	VIOC_VIQE_SetDeintlSize(pViqe, 0, 0);
 			 *	VIOC_VIQE_SetImageSize(pViqe, 0, 0);
-			 *	//printk("%s-%d viqe(%d) reinit\n", __func__,
+			 *	//pr_info("%s-%d viqe(%d) reinit\n", __func__,
 			 *__LINE__, nPlugged_viqe-VIOC_VIQE0);
 			 *	VIOC_VIQE_SetControlMode(pViqe, OFF, OFF, OFF,
 			 *OFF, OFF);
@@ -2401,6 +2401,8 @@ void VIOC_CONFIG_DMAPath_Iint(void)
 int VIOC_CONFIG_LCDPath_Select(unsigned int lcdx_sel, unsigned int lcdx_if)
 {
 	int i, ret = 0, cnt;
+	unsigned int lcdx_bak;
+	uint32_t val;
 #if defined(CONFIG_ARCH_TCC805X)
 	unsigned int sel_lcd[4];
 
@@ -2410,8 +2412,6 @@ int VIOC_CONFIG_LCDPath_Select(unsigned int lcdx_sel, unsigned int lcdx_if)
 
 	cnt = 2;
 #endif
-	unsigned int lcdx_bak;
-	uint32_t val;
 
 	if (lcdx_sel > 3 || lcdx_if > 3) {
 		ret = -EINVAL;
