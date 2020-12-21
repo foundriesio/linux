@@ -463,7 +463,7 @@ void tcc_isp_enable(struct tcc_isp_state *state, unsigned int enable)
 
 	if (enable) {
 		tcc_isp_init_local(state);
-		tcc_isp_additional_setting(state);
+		/* tcc_isp_additional_setting(state); */
 	} else {
 		/*
 		 * TODO
