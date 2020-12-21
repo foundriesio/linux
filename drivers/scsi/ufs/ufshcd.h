@@ -555,6 +555,13 @@ enum ufshcd_quirks {
 	 * auto-hibernate capability but it doesn't work.
 	 */
 	UFSHCD_QUIRK_BROKEN_AUTO_HIBERN8		= 1 << 11,
+
+	/*
+	 * This quirk needs to disable unipro timeout values
+	 * before power mode change
+	 */
+	UFSHCD_QUIRK_SKIP_DEF_UNIPRO_TIMEOUT_SETTING = 1 << 13,
+
 };
 
 enum ufshcd_caps {
