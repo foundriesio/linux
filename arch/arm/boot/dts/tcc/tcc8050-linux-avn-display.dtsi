@@ -175,9 +175,7 @@
 
 	drm_dpv14_0 {
 		status = "okay";
-
 		lcdc-mux-select = <0>;
-
 		pinctrl-names = "default", "power_on", "reset_off", "blk_on", "blk_off", "power_off";
 		pinctrl-0 = <&lcd_port_default0>;
 		pinctrl-1 = <&lcd_port_power_on0>;
@@ -229,15 +227,30 @@
 
 	tcc-drm-lcd {
 		status = "okay";
+		connector_type = "DP";
+		port@0 {
+			reg = <0>;
+			lcd_display_out: endpoint {
+				remote-endpoint = <&dpv14_0_input_0>;
+			};
+		};
 	};
 
 	tcc-drm-ext {
 		status = "okay";
+		connector_type = "DP";
+		port@0 {
+			reg = <0>;
+			ext_display_out: endpoint {
+				remote-endpoint = <&dpv14_1_input_1>;
+			};
+		};
 	};
 
 	tcc-drm-third {
 		status = "okay";
 	};
+
 	tcc-drm-fourth {
 		status = "okay";
 	};

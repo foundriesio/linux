@@ -178,7 +178,7 @@
 
 		lcdc-mux-select = <0>;
 
-		pinctrl-names = "default", "power_on", "reset_off", "blk_on",	"blk_off", "power_off";
+		pinctrl-names = "default", "power_on", "reset_off", "blk_on", "blk_off", "power_off";
 		pinctrl-0 = <&lcd_port_default0>;
 		pinctrl-1 = <&lcd_port_power_on0>;
 		pinctrl-2 = <&lcd_port_reset_off0>;
@@ -192,7 +192,7 @@
 
 		lcdc-mux-select = <1>;
 
-		pinctrl-names = "default", "power_on", "reset_off", "blk_on",	"blk_off", "power_off";
+		pinctrl-names = "default", "power_on", "reset_off", "blk_on", "blk_off", "power_off";
 		pinctrl-0 = <&lcd_port_default1>;
 		pinctrl-1 = <&lcd_port_power_on1>;
 		pinctrl-2 = <&lcd_port_reset_off1>;
@@ -240,6 +240,13 @@
 
 	tcc-drm-ext {
 		status = "okay";
+		connector_type = "DP";
+		port@0 {
+			reg = <0>;
+			ext_display_out: endpoint {
+				remote-endpoint = <&dpv14_1_input_1>;
+			};
+		};
 	};
 
 	tcc-drm-third {

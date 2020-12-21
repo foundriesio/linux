@@ -242,7 +242,9 @@ static int panel_dpv14_parse_dt(struct Panel_Dpv14_Param_t *pstPanel_Dpv14_Param
 	pstPanel_Dpv14_Param->stPanel_Pins.p = devm_pinctrl_get(pstPanel_Dpv14_Param->dev);
 	if (IS_ERR(pstPanel_Dpv14_Param->stPanel_Pins.p))
 	{
-		pr_err("[ERROR][%s:%s]failed to find pinctrl\r\n",	LOG_DPV14_TAG, __func__);
+		pr_info(
+			"[INFO][%s:%s] There is no pinctrl - May be this panel controls backlight using serializer\r\n",
+			LOG_DPV14_TAG, __func__);
 		pstPanel_Dpv14_Param->stPanel_Pins.p = NULL;
 
 		goto err_parse_dt;
@@ -251,7 +253,7 @@ static int panel_dpv14_parse_dt(struct Panel_Dpv14_Param_t *pstPanel_Dpv14_Param
 	pstPanel_Dpv14_Param->stPanel_Pins.pwr_port = pinctrl_lookup_state(pstPanel_Dpv14_Param->stPanel_Pins.p, "default");
 	if (IS_ERR(pstPanel_Dpv14_Param->stPanel_Pins.pwr_port))
 	{
-		pr_err("[ERROR][%s:%s] failed to find pwr_port\r\n", LOG_DPV14_TAG, __func__);
+		pr_warning("[WARN][%s:%s] failed to find pwr_port\r\n", LOG_DPV14_TAG, __func__);
 		pstPanel_Dpv14_Param->stPanel_Pins.pwr_port = NULL;
 
 		goto err_parse_dt;

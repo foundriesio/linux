@@ -128,6 +128,12 @@
 		pinctrl-5 = <&lcd_port_reset_on0 &lcd_port_power_off0>;
 	};
 
+	drm_dpv14_1 {
+		status = "okay";
+
+		lcdc-mux-select = <1>;
+	};
+
 	drm_tm123xdhp90 {
 		status = "disabled";
 
@@ -156,16 +162,30 @@
 
 	tcc-drm-lcd {
 		status = "okay";
+		connector_type = "DP";
+		port@0 {
+			reg = <0>;
+			lcd_display_out: endpoint {
+				remote-endpoint = <&dpv14_0_input_0>;
+			};
+		};
 	};
 
 	tcc-drm-ext {
 		status = "okay";
+		connector_type = "DP";
+		port@0 {
+			reg = <0>;
+			ext_display_out: endpoint {
+				remote-endpoint = <&dpv14_1_input_1>;
+			};
+		};
 	};
 
 	tcc-drm-third {
 		status = "okay";
 	};
-	
+
 	tcc-drm-screen-share {
 		status = "okay";
 	};
