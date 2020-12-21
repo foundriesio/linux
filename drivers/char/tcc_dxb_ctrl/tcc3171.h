@@ -193,12 +193,15 @@ static inline int TCC3171_IOCTL(struct tcc_dxb_ctrl_t *ctrl,
 {
 	unsigned int deviceIdx;
 	unsigned int parg;
-	dprintk("%s cmd[0x%X]\n", __func__, cmd);
-  if (copy_from_user((void *)&parg, (const void *)arg, sizeof(unsigned int)) != 0)
-  {
-    return 0;
-  }
-  deviceIdx = (parg == 0) ? 0 : parg;
+
+	pr_info("[INFO][TCC_DXB_CTRL] %s cmd[0x%X]\n", __func__, cmd);
+
+	if (copy_from_user((void *)&parg,
+	   (const void *)arg, sizeof(unsigned int)) != 0)
+	{
+		return 0;
+	}
+	deviceIdx = (parg == 0) ? 0 : parg;
 
 	switch (cmd)
 	{
