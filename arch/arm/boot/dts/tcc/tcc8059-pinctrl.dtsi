@@ -61,27 +61,6 @@
 		source-num = <1 0 135 30>;
 	};
 
-	gpmb: gpmb {
-		gpio-controller;
-		#gpio-cells = <2>;
-		reg = <0x700 0 32>;
-		source-num = <1 0 202 26>;
-	};
-
-	gpmc: gpmc {
-		gpio-controller;
-		#gpio-cells = <2>;
-		reg = <0x740 0 30>;
-		source-num = <1 0 228 24>;
-	};
-
-	gpmd: gpmd {
-		gpio-controller;
-		#gpio-cells = <2>;
-		reg = <0x780 0 18>;
-		source-num = <2 8 252 2 16 254 2>;
-	};
-
 	gpsd0: gpsd0 {
 		gpio-controller;
 		#gpio-cells = <2>;
@@ -530,7 +509,7 @@
 		telechips,input-enable;
 		telechips,pull-down;
 	};
-	
+
 	serdes_intb_qd:serdes_intb_qd {
 		telechips,pins = "gpe-19";
 		telechips,pin-function = <0>;
