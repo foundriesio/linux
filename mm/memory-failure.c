@@ -1155,6 +1155,12 @@ static int memory_failure_dev_pagemap(unsigned long pfn, int trapno, int flags,
 	int rc = -EBUSY;
 	loff_t start;
 
+	if (flags & MF_COUNT_INCREASED)
+		/*
+		 * Drop the extra refcount in case we come from madvise().
+		 */
+		put_page(page);
+
 	/*
 	 * Prevent the inode from being freed while we are interrogating
 	 * the address_space, typically this would be handled by
