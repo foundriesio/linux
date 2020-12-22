@@ -929,10 +929,10 @@ int tcc_pinctrl_probe(struct platform_device *pdev,
 		}
 
 		ret = of_property_read_u32_index(np, "source-num", 0, &bank->source_section);
-		if(ret > 0) {
+		if(ret < 0) {
 			dev_err(&(pdev->dev),
 					"[ERROR][PINCTRL] failed to get source offset base\n");
-			return -EINVAL;
+			return ret;
 		}
 
 		if(bank->source_section != 0xff) {
@@ -943,22 +943,22 @@ int tcc_pinctrl_probe(struct platform_device *pdev,
 
 			for(i = 0U ; i < bank->source_section ; i++) {
 				ret = of_property_read_u32_index(np, "source-num", ((i*3)+1), &bank->source_offset_base[i]);
-				if(ret > 0) {
+				if(ret < 0) {
 					dev_err(&(pdev->dev),
 							"[ERROR][PINCTRL] failed to get source offset base\n");
-					return -EINVAL;
+					return ret;
 				}
 				ret = of_property_read_u32_index(np, "source-num", ((i*3)+2), &bank->source_base[i]);
-				if(ret > 0) {
+				if(ret < 0) {
 					dev_err(&(pdev->dev),
 							"[ERROR][PINCTRL] failed to get source base\n");
-					return -EINVAL;
+					return ret;
 				}
 				ret = of_property_read_u32_index(np, "source-num", ((i*3)+3), &bank->source_range[i]);
-				if(ret > 0) {
+				if(ret < 0) {
 					dev_err(&(pdev->dev),
 							"[ERROR][PINCTRL] failed to get source range\n");
-					return -EINVAL;
+					return ret;
 				}
 			}
 		}
