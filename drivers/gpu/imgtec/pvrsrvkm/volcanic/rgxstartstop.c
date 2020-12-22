@@ -335,7 +335,8 @@ static void RGXResetSequence(const void *hPrivate, const IMG_CHAR *pcRGXFW_PROCE
 	RGXSPUSoftResetAssert(hPrivate);
 
 	RGXCommentLog(hPrivate, "RGXStart: soft reset assert step 2");
-	RGXWriteReg64(hPrivate, RGX_CR_SOFT_RESET, RGX_SOFT_RESET_JONES_ALL);
+	//RGXWriteReg64(hPrivate, RGX_CR_SOFT_RESET, RGX_SOFT_RESET_JONES_ALL);
+	RGXWriteReg64(hPrivate, RGX_CR_SOFT_RESET, RGX_CR_SOFT_RESET_MASKFULL);
 
 	/* Read soft-reset to fence previous write in order to clear the SOCIF pipeline */
 	(void) RGXReadReg64(hPrivate, RGX_CR_SOFT_RESET);
