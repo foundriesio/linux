@@ -96,8 +96,11 @@
 static LIST_HEAD(ictc_list);
 
 struct ictc_pin_map {
-	int pin_num;
-	int config_num;
+	u32 reg_base;
+	u32 source_section;
+	u32 *source_offset_base;
+	u32 *source_base;
+	u32 *source_range;
 };
 
 struct ictc_dev {
@@ -116,7 +119,8 @@ struct ictc_dev {
 
 static struct tasklet_struct ictc_tasklet;
 static void __iomem *ictc_base;
-static int32_t f_in_gpio;
+static uint32_t f_in_gpio_base;
+static uint32_t f_in_gpio_bit;
 static int32_t f_in_source;
 static bool f_in_rtc_wkup;
 
@@ -274,72 +278,105 @@ static int32_t ictc_parse_dt(struct device_node *np, struct device *dev)
 	int32_t  temp, ret=0, pinctrl_num=0;
 	uint64_t count = 0;
 	struct device_node *gpio_node;
+	struct device_node *pinctrl_node;
 	struct ictc_dev *idev = dev_get_drvdata(dev);
-	uint32_t num_gpio, i, node_num;
+	uint32_t num_gpio=0, i=0, j, k, node_num;
 	u32 num_val = 0, accum_num = 0;
 	bool temp_bool;
 
 
-	of_get_property(np, "pinctrl-map", &pinctrl_num);
+	pinctrl_node = of_parse_phandle(np, "pinctrl-map", 0);
 
-	num_gpio = pinctrl_num/4u;
+	for_each_child_of_node((pinctrl_node), (gpio_node)) {
+		if(of_find_property(gpio_node, "gpio-controller", NULL) != NULL)
+			num_gpio++;
+	}
 
 	idev->num_gpio = num_gpio;
 
 	idev->ictc_pin_map_val = kzalloc(sizeof(struct ictc_pin_map)*num_gpio, GFP_KERNEL);
 
-	for(i =0; i < num_gpio; i++) {
+	for_each_child_of_node((pinctrl_node), (gpio_node)) {
+		if(of_find_property(gpio_node, "gpio-controller", NULL) == NULL) {
+			continue;
+		}
 
-		idev->ictc_pin_map_val[i].pin_num = accum_num;
-		gpio_node = of_parse_phandle(np, "pinctrl-map", i);
-		of_property_read_u32_index(gpio_node, "reg", 2, &num_val);
-		accum_num += num_val;
-		of_property_read_u32_index(gpio_node, "source-num", 0, &num_val);
-		idev->ictc_pin_map_val[i].config_num = num_val;
+		ret = of_property_read_u32_index(gpio_node, "reg", 0, idev->ictc_pin_map_val[i].reg_base);
+		if(ret < 0) {
+			dev_err(dev, "[ERROR][ICTC] failed to get reg base\n");
+			return ret;
+		}
 
-		err_ictc("%d : 0x%x, 0x%x\n", i, idev->ictc_pin_map_val[i].pin_num, idev->ictc_pin_map_val[i].config_num);
+		ret = of_property_read_u32_index(gpio_node, "source-num", 0, idev->ictc_pin_map_val[i].source_section);
+		if(ret < 0) {
+			dev_err(dev, "[ERROR][ICTC] failed to get source section number\n");
+			return ret;
+		}
+
+		if(idev->ictc_pin_map_val[i].source_section != 0xff) {
+			idev->ictc_pin_map_val[i].source_offset_base = kzalloc(sizeof(u32)*idev->ictc_pin_map_val[i].source_section, GFP_KERNEL);
+			idev->ictc_pin_map_val[i].source_base = kzalloc(sizeof(u32)*idev->ictc_pin_map_val[i].source_section, GFP_KERNEL);
+			idev->ictc_pin_map_val[i].source_range = kzalloc(sizeof(u32)*idev->ictc_pin_map_val[i].source_section, GFP_KERNEL);
+
+			for(j = 0U ; j < idev->ictc_pin_map_val[i].source_section; j++) {
+				ret = of_property_read_u32_index(gpio_node, "source-num", ((j*3)+1), idev->ictc_pin_map_val[i].source_offset_base[j]);
+				if(ret < 0) {
+					dev_err(dev, "[ERROR][PINCTRL] failed to get source offset base\n");
+					return ret;
+				}
+				ret = of_property_read_u32_index(gpio_node, "source-num", ((j*3)+2), idev->ictc_pin_map_val[i].source_base[j]);
+				if(ret < 0) {
+					dev_err(dev, "[ERROR][PINCTRL] failed to get source base\n");
+					return ret;
+				}
+				ret = of_property_read_u32_index(gpio_node, "source-num", ((j*3)+3), idev->ictc_pin_map_val[i].source_range[j]);
+				if(ret < 0) {
+					dev_err(dev, "[ERROR][PINCTRL] failed to get source range\n");
+					return ret;
+				}
+			}
+		}
+
+		i++;
+	}
+
+	count = ARRAY_SIZE(ictc_prop_v_l);
+
+	for (node_num = 0; node_num < (uint32_t)count; node_num++) {
+		temp = of_property_read_u32(np, ictc_prop_v_l[node_num],
+				&ictc_prop_v[node_num]);
+		if (temp != 0) {
+			err_ictc("no property found in DT : %s\n",
+					ictc_prop_v_l[node_num]);
+			ret = -EINVAL;
+		}
+		debug_ictc("%s -> %x\n", ictc_prop_v_l[node_num],
+				ictc_prop_v[node_num]);
+
+		if (ret != 0) {
+			break;
+		}
 
 	}
 
-	if(ret)
-		err_ictc("fail pinctrl parse\n");
-        count = ARRAY_SIZE(ictc_prop_v_l);
+	count = ARRAY_SIZE(ictc_prop_b_l);
 
-        for (node_num = 0; node_num < (uint32_t)count; node_num++) {
-                temp = of_property_read_u32(np, ictc_prop_v_l[node_num],
-                                        &ictc_prop_v[node_num]);
-                if (temp != 0) {
-                        err_ictc("no property found in DT : %s\n",
-                                 ictc_prop_v_l[node_num]);
-                        ret = -EINVAL;
-                }
-                debug_ictc("%s -> %x\n", ictc_prop_v_l[node_num],
-                                ictc_prop_v[node_num]);
+	for (node_num = 0; node_num < count; node_num++) {
 
-                if (ret != 0) {
-                        break;
-                }
+		temp_bool = of_property_read_bool(np, ictc_prop_b_l[node_num]);
 
-        }
-
-        count = ARRAY_SIZE(ictc_prop_b_l);
-
-        for (node_num = 0; node_num < count; node_num++) {
-
-                temp_bool = of_property_read_bool(np, ictc_prop_b_l[node_num]);
-
-                if(temp_bool) {
-                        ictc_prop_b[node_num] = 1;
-                } else {
-                        ictc_prop_b[node_num] = 0;
-                }
+		if(temp_bool) {
+			ictc_prop_b[node_num] = 1;
+		} else {
+			ictc_prop_b[node_num] = 0;
+		}
 
 
-                debug_ictc("%s -> %x\n", ictc_prop_b_l[node_num],
-                           ictc_prop_b[node_num]);
-        }
+		debug_ictc("%s -> %x\n", ictc_prop_b_l[node_num],
+				ictc_prop_b[node_num]);
+	}
 
-        return ret;
+	return ret;
 
 }
 
@@ -484,43 +521,50 @@ static void ictc_enable(void)
 
 }
 
-static int32_t gpio_to_f_in(int32_t gpio_num, struct device *dev)
+static int32_t gpio_to_f_in(uint32_t gpio_base, uint32_t gpio_bit, struct device *dev)
 {
 
-        int32_t count;
-        int32_t gpio_group, gpio_group_val = 0;
+        int32_t count, i, f_in_gpio_num, pin_valid = 0;
 		struct ictc_dev *idev = dev_get_drvdata(dev);
 
-        count = idev->num_gpio;
+		for(count = 0; count < idev->num_gpio ; count++) {
 
-        debug_ictc("gpio group count : %d\n", count);
+			if(idev->ictc_pin_map_val[count].reg_base == gpio_base) {
+				if(idev->ictc_pin_map_val[count].source_section == 0xff) {
+					pr_err("[ERROR][ICTC] %s: not supported for ICTC source\n", __func__);
+					return -EINVAL;
+				}
+			} else {
+				for(i = 0; i < idev->ictc_pin_map_val[count].source_section; i++) {
+					if((gpio_bit >= idev->ictc_pin_map_val[count].source_offset_base[i]) && (gpio_bit < (idev->ictc_pin_map_val[count].source_offset_base[i]+idev->ictc_pin_map_val[count].source_range[i]))) {
+						f_in_gpio_num = idev->ictc_pin_map_val[count].source_base[i] + (gpio_bit - idev->ictc_pin_map_val[count].source_offset_base[i]);
+						pin_valid = 1;
+						break;
+					}
+				}
+			}
 
-        for (gpio_group = 1; gpio_group < count; gpio_group++) {
-
-		debug_ictc("pin_num : %d", idev->ictc_pin_map_val[gpio_group].pin_num);
-                if ((gpio_num - idev->ictc_pin_map_val[gpio_group].pin_num) < 0) {
-                        gpio_group_val = gpio_group - 1;
-                        break;
-                }
-
-        }
-
-	debug_ictc("gpio_group_val : %d, gpio_pin_num : %d, gpio_config_val : 0x%x, gpio_num :%d\n", gpio_group_val, idev->ictc_pin_map_val[gpio_group_val].pin_num, idev->ictc_pin_map_val[gpio_group_val].config_num, gpio_num);
-
-	return idev->ictc_pin_map_val[gpio_group_val].config_num + (gpio_num - idev->ictc_pin_map_val[gpio_group_val].pin_num);
+		}
+		if(pin_valid) {
+			return f_in_gpio_num;
+		} else {
+			return -1;
+		}
 
 }
 
 static int32_t ictc_probe(struct platform_device *pdev)
 {
         struct ictc_dev *idev;
+		struct device_node *gpio_node;
         struct device_node *np = pdev->dev.of_node;
         uint32_t irq = (uint32_t)platform_get_irq(pdev, 0);
         struct clk *pPClk = of_clk_get(pdev->dev.of_node, 0);
         int32_t ret;
 
         //initialize global variables
-        f_in_gpio = 0;
+        f_in_gpio_base = 0;
+		f_in_gpio_bit = 0;
         f_in_source = 0;
         irq_setting = 0;
         f_in_rtc_wkup = (bool)false;
@@ -580,12 +624,16 @@ static int32_t ictc_probe(struct platform_device *pdev)
 
                                         if (!f_in_rtc_wkup) {
 
-                                                f_in_gpio =
-                                                    of_get_named_gpio(np,
-                                                                      "f-in-gpio",
-                                                                      0);
+												gpio_node = of_parse_phandle(np, "f-in-gpio", 0);
+												of_property_read_u32_index(gpio_node, "reg", 0, &f_in_gpio_base);
+												of_property_read_u32_index(np, "f-in-gpio", 1, &f_in_gpio_bit);
                                                 f_in_source =
-						    gpio_to_f_in(f_in_gpio, &pdev->dev);
+						    gpio_to_f_in(f_in_gpio_base, f_in_gpio_bit, &pdev->dev);
+
+												if(f_in_source < 0) {
+													err_ictc("ictc: invalid gpio\n");
+													return -EINVAL;
+												}
 
 					}
 

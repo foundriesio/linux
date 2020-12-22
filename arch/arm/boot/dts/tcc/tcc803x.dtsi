@@ -3172,7 +3172,7 @@
 		clocks = <&clk_peri PERI_IC_TC>;
 		pinctrl-names = "default";
 		pinctrl-0 = <&ictc_f_in>;
-		pinctrl-map = <&gpa &gpb &gpc &gpe &gpg &gph &gpma &gpsd0 &gpsd1 &gpsd2>;
+		pinctrl-map = <&pinctrl>;
 		f-in-gpio = <&gph 5 0>;
 		//f-in-rtc-wkup;
 		r-edge = <100>;
