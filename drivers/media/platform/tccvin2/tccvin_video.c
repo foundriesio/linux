@@ -813,7 +813,6 @@ static int32_t tccvin_set_vin(struct tccvin_streaming *vdev)
 
 	logd("data_order:	%d\n", data_order);
 	logd("data_format:	%d\n", data_format);
-	logd("stream_enable:	%d\n", stream_enable);
 	logd("gen_field_en:	%d\n", gen_field_en);
 	logd("de_low:	%d\n", de_low);
 	logd("vs_mask:		%d\n", vs_mask);
