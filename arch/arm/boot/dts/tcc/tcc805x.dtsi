@@ -3554,7 +3554,7 @@
 		compatible = "telechips,ictc";
 		reg = <0x0 0x16055000 0x0 0x4d>;
 		interrupts = <GIC_SPI 97 IRQ_TYPE_LEVEL_HIGH>;
-		pinctrl-map = <&gpa &gpb &gpc &gpe &gpg &gph &gpma &gpmb &gpmc &gpmd &gpsd0 &gpsd1 &gpsd2>;
+		pinctrl-map = <&pinctrl>;
 		clocks = <&clk_peri PERI_IC_TC>;
 		status = "disabled";
 	};
