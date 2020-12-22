@@ -42,4 +42,10 @@ int fb_panel_add(struct fb_panel *panel);
 void fb_panel_remove(struct fb_panel *panel);
 struct fb_panel *of_fb_find_panel(const struct device_node *np);
 
+int fb_panel_prepare(struct fb_panel *panel);
+int fb_panel_enable(struct fb_panel *panel);
+int fb_panel_disable(struct fb_panel *panel);
+int fb_panel_unprepare(struct fb_panel *panel);
+int fb_panel_get_mode(struct fb_panel *panel, struct videomode *vm);
 #endif
+
