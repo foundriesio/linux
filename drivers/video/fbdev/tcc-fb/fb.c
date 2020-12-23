@@ -112,7 +112,7 @@ struct fb_dp_device {
 	struct file *filp;
 	unsigned int dst_addr[FB_BUF_MAX_NUM];
 	unsigned int buf_idx;
-	#if defined(CONFIG_ARCH_TCC805X)
+	#if defined(CONFIG_FB_PANEL_LVDS_TCC)
 	u32 lcdc_mux;
 	struct videomode vm;
 	#endif
@@ -127,7 +127,7 @@ struct fbX_par {
 	struct fb_dp_device pdata;
 
 	int pm_state;
-	#if defined(CONFIG_ARCH_TCC805X)
+	#if defined(CONFIG_FB_PANEL_LVDS_TCC)
 	struct fb_panel *panel;
 	#endif
 };
@@ -771,7 +771,7 @@ static int fbX_pan_display(struct fb_var_screeninfo *var, struct fb_info *info)
 			return 0;
 		}
 
-		#if defined(CONFIG_ARCH_TCC805X)
+		#if defined(CONFIG_FB_PANEL_LVDS_TCC)
 		if(par->panel) {
 			VIOC_DISP_TurnOn(par->pdata.ddc_info.virt_addr);
 		}
@@ -1477,7 +1477,7 @@ static struct attribute_group fbX_dev_attgrp = {
 
 static int __init fbX_probe (struct platform_device *pdev)
 {
-	#if defined(CONFIG_ARCH_TCC805X)
+	#if defined(CONFIG_FB_PANEL_LVDS_TCC)
 	struct device_node *panel_node;
 	#endif
 	unsigned int no_kernel_logo = 0;
@@ -1503,7 +1503,7 @@ static int __init fbX_probe (struct platform_device *pdev)
 		pr_warn("[WARN][FBX] %s There is no no-kernel-logo property\n", __func__);
 	}
 
-	#if defined(CONFIG_ARCH_TCC805X)
+	#if defined(CONFIG_FB_PANEL_LVDS_TCC)
 	panel_node = of_graph_get_remote_node(pdev->dev.of_node, 0, -1);
 	if (panel_node)
 		par->panel = of_fb_find_panel(panel_node);
@@ -1642,7 +1642,7 @@ static int fbX_remove(struct platform_device *pdev)
 	return 0;
 }
 
-#if defined(CONFIG_ARCH_TCC805X)
+#if defined(CONFIG_FB_PANEL_LVDS_TCC)
 static int fbx_set_display_controller(struct fb_info *info,
 				struct videomode *vm)
 {
@@ -1788,11 +1788,9 @@ err_null_pointer:
 static int fbx_turn_on_resource(struct fb_info *info)
 {
 	struct fbX_par *par = info->par;
-	#if defined(CONFIG_ARCH_TCC805X)
+	#if defined(CONFIG_FB_PANEL_LVDS_TCC)
 	struct videomode vm;
-	#endif
 
-	#if defined(CONFIG_ARCH_TCC805X)
 	if(par->panel) {
 		if(fb_panel_get_mode(par->panel, &vm) < 0) {
 			goto next_step;
@@ -1832,7 +1830,7 @@ static int fbx_turn_off_resource(struct fb_info *info)
 	/* Disable RDMA */
 	VIOC_RDMA_SetImageDisableNW(par->pdata.rdma_info.virt_addr);
 
-	#if defined(CONFIG_ARCH_TCC805X)
+	#if defined(CONFIG_FB_PANEL_LVDS_TCC)
 	if(par->panel) {
 		/* Turn off display controller */
 		if(VIOC_DISP_Get_TurnOnOff(par->pdata.ddc_info.virt_addr)) {
@@ -1893,7 +1891,7 @@ static int fbX_suspend(struct platform_device *dev, pm_message_t msg)
 
 	console_lock();
 	fb_set_suspend(info, 1);
-	#if defined(CONFIG_ARCH_TCC805X)
+	#if defined(CONFIG_FB_PANEL_LVDS_TCC)
 	if(par->panel) {
 		fb_panel_disable(par->panel);
 		fb_panel_unprepare(par->panel);
@@ -1919,7 +1917,7 @@ static int fbX_resume(struct platform_device *dev)
 
 
 	console_lock();
-	#if defined(CONFIG_ARCH_TCC805X)
+	#if defined(CONFIG_FB_PANEL_LVDS_TCC)
 	if(par->panel) {
 		fb_panel_prepare(par->panel);
 	}
@@ -1927,7 +1925,7 @@ static int fbX_resume(struct platform_device *dev)
 	fbx_turn_on_resource(info);
         fb_set_suspend(info, 0);
 
-	#if defined(CONFIG_ARCH_TCC805X)
+	#if defined(CONFIG_FB_PANEL_LVDS_TCC)
 	if(par->panel) {
 		fb_panel_enable(par->panel);
 	}
