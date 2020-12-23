@@ -3732,6 +3732,8 @@ irq_retry:
 	if (gintsts & (GINTSTS_USBRST | GINTSTS_RESETDET)) {
 		u32 usb_status = dwc2_readl(hsotg->regs + GOTGCTL);
 		u32 connected = hsotg->connected;
+		int ep;
+		u32 epctrl;
 
 		dev_dbg(hsotg->dev, "[DEBUG][USB] %s: USBRst\n", __func__);
 		dev_dbg(hsotg->dev, "[DEBUG][USB] GNPTXSTS=%08x\n",
@@ -3747,6 +3749,12 @@ irq_retry:
 
 		if (usb_status & GOTGCTL_BSESVLD && connected)
 			dwc2_hsotg_core_init_disconnected(hsotg, true);
+
+		for (ep = 0; ep < hsotg->num_of_eps; ep++) {
+			epctrl = dwc2_readl(hsotg->regs + DOEPCTL(ep));
+			epctrl |= DXEPCTL_SNAK;
+			dwc2_writel(epctrl, hsotg->regs + DOEPCTL(ep));
+		}
 	}
 
 	if (gintsts & GINTSTS_ENUMDONE) {
