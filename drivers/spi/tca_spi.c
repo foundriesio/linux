@@ -1,22 +1,6 @@
+// SPDX-License-Identifier: GPL-2.0-or-later
 /*
- * Author: Telechips Inc.
- * Created: 10th Jun, 2008
- * Description: Telechips Linux SPI Driver
- *
- * Copyright (c) Telechips, Inc.
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2 as
- * published by the Free Software Foundation.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ * Copyright (C) Telechips Inc.
  */
 
 #include <linux/module.h>
@@ -27,14 +11,14 @@
 #include <linux/spi/tcc_tsif.h>
 #include <linux/device.h>
 
-int tca_spi_is_use_gdma(struct tca_spi_handle *h)
+int32_t tca_spi_is_use_gdma(struct tca_spi_handle *h)
 {
 	return h->gdma_use;
 }
 
-int tca_spi_is_normal_slave(struct tca_spi_handle *h)
+int32_t tca_spi_is_normal_slave(struct tca_spi_handle *h)
 {
-	u32 tmp_val;
+	uint32_t tmp_val;
 
 	tmp_val = (u32)h->is_slave;
 	if ((tmp_val & TCC_GPSB_SLAVE_NORMAL) == (u32)0) {
@@ -44,10 +28,10 @@ int tca_spi_is_normal_slave(struct tca_spi_handle *h)
 	return 1;
 }
 
-static int tca_spi_isenabledma(struct tca_spi_handle *h)
+static int32_t tca_spi_isenabledma(struct tca_spi_handle *h)
 {
-	int ret;
-	u32 uret;
+	int32_t ret;
+	uint32_t uret;
 
 	ret = tca_spi_is_use_gdma(h);
 	if (ret != 0) {
@@ -63,9 +47,9 @@ static int tca_spi_isenabledma(struct tca_spi_handle *h)
 	return 0;
 }
 
-static int tca_spi_dmastop(struct tca_spi_handle *h)
+static int32_t tca_spi_dmastop(struct tca_spi_handle *h)
 {
-	int ret;
+	int32_t ret;
 
 	if (h->tx_pkt_remain == 0) {
 		/* Operation Disable */
@@ -86,9 +70,9 @@ static int tca_spi_dmastop(struct tca_spi_handle *h)
 	return 0;
 }
 
-static int tca_spi_dmastop_slave(struct tca_spi_handle *h)
+static int32_t tca_spi_dmastop_slave(struct tca_spi_handle *h)
 {
-	int ret;
+	int32_t ret;
 
 	/* If GPSB use GDMA */
 	ret = tca_spi_is_use_gdma(h);
@@ -104,9 +88,9 @@ static int tca_spi_dmastop_slave(struct tca_spi_handle *h)
 	return 0;
 }
 
-static int tca_spi_dmastart(struct tca_spi_handle *h)
+static int32_t tca_spi_dmastart(struct tca_spi_handle *h)
 {
-	int ret;
+	int32_t ret;
 
 	TCC_GPSB_BITCLR(h->regs + TCC_GPSB_MODE, BIT(4));
 	if (h->ctf != 0) {
@@ -137,9 +121,9 @@ static int tca_spi_dmastart(struct tca_spi_handle *h)
 	return 0;
 }
 
-static int tca_spi_dmastart_slave(struct tca_spi_handle *h)
+static int32_t tca_spi_dmastart_slave(struct tca_spi_handle *h)
 {
-	int ret;
+	int32_t ret;
 
 	/* If GPSB use GDMA */
 	ret = tca_spi_is_use_gdma(h);
@@ -173,7 +157,7 @@ static int tca_spi_dmastart_slave(struct tca_spi_handle *h)
 
 static void tca_spi_clearfifopacket(struct tca_spi_handle *h)
 {
-	int ret;
+	int32_t ret;
 
 	/* clear tx/rx FIFO & Packet counter  */
 	TCC_GPSB_BITSET(h->regs + TCC_GPSB_MODE, BIT(15) | BIT(14));
@@ -186,9 +170,9 @@ static void tca_spi_clearfifopacket(struct tca_spi_handle *h)
 	TCC_GPSB_BITCLR(h->regs + TCC_GPSB_MODE, BIT(15) | BIT(14));
 }
 
-static void tca_spi_setpacketcnt(struct tca_spi_handle *h, int size)
+static void tca_spi_setpacketcnt(struct tca_spi_handle *h, int32_t size)
 {
-	int ret;
+	int32_t ret;
 
 	ret = tca_spi_is_use_gdma(h);
 	if (ret == 0) {
@@ -198,13 +182,13 @@ static void tca_spi_setpacketcnt(struct tca_spi_handle *h, int size)
 	}
 }
 
-static void tca_spi_setpacketcnt_slave(struct tca_spi_handle *h, int size)
+static void tca_spi_setpacketcnt_slave(struct tca_spi_handle *h, int32_t size)
 {
-	unsigned int packet_cnt;
-	unsigned int packet_size;
-	unsigned int intr_packet_cnt;
-	int ret;
-	u32 tmp_val;
+	uint32_t packet_cnt;
+	uint32_t packet_size;
+	uint32_t intr_packet_cnt;
+	int32_t ret;
+	uint32_t tmp_val;
 
 	packet_cnt = h->dma_total_packet_cnt & 0x1FFFU;
 	tmp_val = (u32)1;
@@ -238,11 +222,11 @@ static void tca_spi_setpacketcnt_slave(struct tca_spi_handle *h, int size)
 	}
 }
 
-static void tca_spi_setbitwidth(struct tca_spi_handle *h, int width)
+static void tca_spi_setbitwidth(struct tca_spi_handle *h, int32_t width)
 {
-	u32 width_value;
-	int ret;
-	int tmp_val;
+	uint32_t width_value;
+	int32_t ret;
+	int32_t tmp_val;
 
 	tmp_val = width - 1;
 	width_value = (u32)tmp_val;
@@ -265,7 +249,7 @@ static void tca_spi_setbitwidth(struct tca_spi_handle *h, int width)
 
 static void tca_spi_setdmaaddr(struct tca_spi_handle *h)
 {
-	int ret;
+	int32_t ret;
 
 	/* If GPSB use GDMA */
 	ret = tca_spi_is_use_gdma(h);
@@ -292,7 +276,7 @@ static void tca_spi_setdmaaddr(struct tca_spi_handle *h)
 
 static void tca_spi_setdmaaddr_slave(struct tca_spi_handle *h)
 {
-	int ret;
+	int32_t ret;
 
 	/* If GPSB use GDMA */
 	ret = tca_spi_is_use_gdma(h);
@@ -327,7 +311,7 @@ static void tca_spi_setdmaaddr_slave(struct tca_spi_handle *h)
 
 static void tca_spi_regs_reset(struct tca_spi_handle *h)
 {
-	int ret;
+	int32_t ret;
 
 	TCC_GPSB_BITCLR(h->regs + TCC_GPSB_STAT, BIT(31) - BIT(0));
 	TCC_GPSB_BITCLR(h->regs + TCC_GPSB_INTEN, BIT(31) - BIT(0));
@@ -401,9 +385,9 @@ static void tca_spi_hwinit_slave(struct tca_spi_handle *h)
 	TCC_GPSB_BITSET(h->regs + TCC_GPSB_MODE, BIT(3));
 }
 
-static void tca_spi_set_mpegtspidmode(struct tca_spi_handle *h, int is_set)
+static void tca_spi_set_mpegtspidmode(struct tca_spi_handle *h, int32_t is_set)
 {
-	int ret;
+	int32_t ret;
 
 	h->hw_init(h);
 	ret = tca_spi_is_use_gdma(h);
@@ -423,8 +407,8 @@ static void tca_spi_set_port(struct tca_spi_handle *h,
 				struct tca_spi_port_config *port)
 {
 	void __iomem *gpsb_pcf_regs = h->port_regs;
-	unsigned int pcfg_offset = TCC_GPSB_PCFG_OFFSET * h->gpsb_channel;
-	int i;
+	uint32_t pcfg_offset = TCC_GPSB_PCFG_OFFSET * h->gpsb_channel;
+	int32_t i;
 
 	/* [0]SDI [1]SCLK [2]SFRM [3]SDO */
 	for (i = 0; i < 4; i++) {
@@ -438,14 +422,14 @@ static void tca_spi_set_port(struct tca_spi_handle *h,
 			port->gpsb_port[2], port->gpsb_port[3]);
 	dev_info(h->dev, "[INFO][SPI] [%s][CH:%d] PCFG(0x%X): 0x%x\n",
 			__func__, h->gpsb_channel,
-			(unsigned int)(gpsb_pcf_regs + pcfg_offset),
+			(uint)(gpsb_pcf_regs + pcfg_offset),
 			tca_spi_readl(gpsb_pcf_regs + pcfg_offset));
 }
 
 static void tca_spi_clear_port(struct tca_spi_handle *h)
 {
 	void __iomem *gpsb_pcf_regs = h->port_regs;
-	unsigned int pcfg_offset = TCC_GPSB_PCFG_OFFSET * h->gpsb_channel;
+	uint32_t pcfg_offset = TCC_GPSB_PCFG_OFFSET * h->gpsb_channel;
 
 	TCC_GPSB_BITCSET(gpsb_pcf_regs + pcfg_offset, 0xFFFFFFFF, 0xFFFFFFFF);
 }
@@ -453,12 +437,12 @@ static void tca_spi_clear_port(struct tca_spi_handle *h)
 static void tca_spi_set_port(struct tca_spi_handle *h,
 				struct tca_spi_port_config *port)
 {
-	int gpsb_channel, gpsb_port, gpsb_channel2;
+	int32_t gpsb_channel, gpsb_port, gpsb_channel2;
 	void __iomem *gpsb_pcf_regs = h->port_regs;
-	int i, i2;
+	int32_t i, i2;
 	u32 cmask_val, smask_val;
 	u32 utmp_val, reg_val;
-	unsigned int gpsb_port_reg_val;
+	uint32_t gpsb_port_reg_val;
 
 	gpsb_channel = h->gpsb_channel;
 	gpsb_port    = h->gpsb_port;
@@ -531,7 +515,7 @@ static void tca_spi_set_port(struct tca_spi_handle *h,
 
 static void tca_spi_clear_port(struct tca_spi_handle *h)
 {
-	int gpsb_channel;
+	int32_t gpsb_channel;
 	void __iomem *gpsb_pcf_regs = h->port_regs;
 
 	gpsb_channel = h->gpsb_channel;
@@ -554,26 +538,26 @@ static void tca_spi_clear_port(struct tca_spi_handle *h)
  * ret == 0: success
  * ret > 0 or ret < 0: fail
  ******************************/
-int tca_spi_init(struct tca_spi_handle *h,
+int32_t tca_spi_init(struct tca_spi_handle *h,
 		void __iomem *regs,
-		unsigned int phy_reg_base,
+		uint32_t phy_reg_base,
 		void __iomem *port_regs,
 		void __iomem *pid_regs,
-		int irq,
-		int (*tea_dma_alloc)(struct tea_dma_buf *tdma,
-					unsigned int size, struct device *dev,
-					int id),
+		int32_t irq,
+		int32_t (*tea_dma_alloc)(struct tea_dma_buf *tdma,
+					uint32_t size, struct device *dev,
+					int32_t id),
 		void (*tea_dma_free)(struct tea_dma_buf *tdma,
-					struct device *dev, int id),
-		unsigned int dma_size,
-		int id,
-		int is_slave,
+					struct device *dev, int32_t id),
+		uint32_t dma_size,
+		int32_t id,
+		int32_t is_slave,
 		struct tca_spi_port_config *port,
 		const char *gpsb_name,
 		struct device *dev)
 {
-	int ret = -1;
-	int ret1;
+	int32_t ret;
+	int32_t ret1;
 	struct tcc_spi_dma dma;
 
 	if ((h == NULL) || (regs == NULL)) {
@@ -600,14 +584,14 @@ int tca_spi_init(struct tca_spi_handle *h,
 
 #ifdef TCC_USE_GFB_PORT
 	{
-		int i;
+		int32_t i;
 
 		for (i = 0; i < 4; i++) {
 			h->gpsb_port[i] = port->gpsb_port[i];
 		}
 	}
 #else
-	h->gpsb_port = (int)port->gpsb_port;
+	h->gpsb_port = (s32)port->gpsb_port;
 #endif
 
 	ret = sscanf(gpsb_name, "gpsb%d", &(h->gpsb_channel));
@@ -646,7 +630,7 @@ int tca_spi_init(struct tca_spi_handle *h,
 	h->tea_dma_alloc = tea_dma_alloc;
 	h->tea_dma_free = tea_dma_free;
 
-	h->dma_total_size = (int)dma_size;
+	h->dma_total_size = (s32)dma_size;
 	h->dma_mode = 1; /* default MPEG2-TS DMA mode */
 
 	h->ctf = 0;
@@ -683,7 +667,7 @@ void tca_spi_clean(struct tca_spi_handle *h)
 {
 	if (h != NULL) {
 		struct tcc_spi_dma	dma;
-		int id;
+		int32_t id;
 
 		dma = h->dma;
 		id = h->id;
@@ -701,18 +685,18 @@ void tca_spi_clean(struct tca_spi_handle *h)
 	}
 }
 
-int tca_spi_register_pids(struct tca_spi_handle *h, unsigned int *pids,
-			unsigned int count)
+int32_t tca_spi_register_pids(struct tca_spi_handle *h, uint32_t *pids,
+			uint32_t count)
 {
-	int ret = 0, gpsb_channel;
+	int32_t ret = 0, gpsb_channel;
 
 	gpsb_channel = h->gpsb_channel;
 
 	/* supporting pids is 32 */
 	if (count <= (u32)32) {
 		void __iomem *PIDT;
-		int i;
-		u32 pid_ch;
+		int32_t i;
+		uint32_t pid_ch;
 
 		if (gpsb_channel == 0) {
 			pid_ch = (u32)BIT(29); /* HwGPSB_PIDT_CH0 */
@@ -721,16 +705,16 @@ int tca_spi_register_pids(struct tca_spi_handle *h, unsigned int *pids,
 		} else if (gpsb_channel == 2) {
 			pid_ch = (u32)BIT(31); /* HwGPSB_PIDT_CH2 */
 		} else {
-			return -1;
+			return -EINVAL;
 		}
 
 		for (i = 0; i < 32; i++) {
-			PIDT = h->pid_regs + (4*i);
+			PIDT = h->pid_regs + (4 * i);
 			tca_spi_writel(0x0, PIDT);
 		}
 		if (count > (u32)0) {
-			for (i = 0; i < (int)count; i++) {
-				PIDT = h->pid_regs + (4*i);
+			for (i = 0; i < (s32)count; i++) {
+				PIDT = h->pid_regs + (4 * i);
 				tca_spi_writel(pids[i] & 0x1FFFFFFFU, PIDT);
 				TCC_GPSB_BITSET(PIDT, pid_ch);
 				dev_dbg(h->dev,

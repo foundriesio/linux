@@ -265,10 +265,6 @@
 
 #define TCC_SPI_DMA_MAX_SIZE	TCC_GPSB_PACKET_MAX_SIZE
 
-struct tcc_dma_slave {
-	struct device	*dma_dev;
-};
-
 /* TCC GDMA Date for GPSB w/o dedicated DMA channel */
 struct tcc_spi_gdma {
 	/* DMA ENGINE */
@@ -279,8 +275,8 @@ struct tcc_spi_gdma {
 	struct dma_async_tx_descriptor	*data_desc_rx;
 	struct dma_async_tx_descriptor	*data_desc_tx;
 
-	/* dma_slave */
-	struct tcc_dma_slave dma_slave;
+	/* dma */
+	struct device *dma_dev;
 
 	struct device	*dev;
 };
@@ -298,10 +294,10 @@ struct tcc_spi_dma_buf {
 /* TCC GPSB SPI Platform Data */
 struct tcc_spi_pl_data {
 	/* Bus id*/
-	unsigned int id;
+	uint32_t id;
 
 	/* GPSB channel */
-	int gpsb_channel;
+	int32_t gpsb_channel;
 
 	/* Driver name */
 	const char	*name;
@@ -311,13 +307,13 @@ struct tcc_spi_pl_data {
 
 	/* Port configuration */
 #ifdef TCC_USE_GFB_PORT
-	unsigned int port[4];
+	uint32_t port[4];
 #else
-	unsigned int port;
+	uint32_t port;
 #endif
 
 	/* GDMA usage */
-	int dma_enable;
+	int32_t dma_enable;
 
 	/* GDMA data */
 	struct tcc_spi_gdma	dma;
@@ -345,7 +341,7 @@ struct tcc_spi {
 	void __iomem		*ac;
 
 	/* IRQ number */
-	int					irq;
+	int32_t			irq;
 
 	struct device		*dev;
 
@@ -354,12 +350,12 @@ struct tcc_spi {
 	struct spi_transfer	*transfer;
 
 	/* DMA buffer */
-	size_t				dma_buf_size;
+	size_t			dma_buf_size;
 	struct tcc_spi_dma_buf	tx_buf;
 	struct tcc_spi_dma_buf	rx_buf;
-	unsigned int cur_tx_pos;
-	unsigned int cur_rx_pos;
-	unsigned int cur_pos;
+	uint32_t cur_tx_pos;
+	uint32_t cur_rx_pos;
+	uint32_t cur_pos;
 
 	/* Platform data */
 	struct tcc_spi_pl_data	*pd;
@@ -368,10 +364,10 @@ struct tcc_spi {
 	struct tcc_spi_gdma	dma;
 
 	/* Bitwidth */
-	unsigned int		bits;
+	uint32_t		bits;
 
 	/* SCLK */
-	unsigned int		clk;
+	uint32_t		clk;
 
 	/* Pin-control */
 	struct pinctrl *pinctrl;
@@ -383,8 +379,8 @@ struct tcc_spi {
 	struct list_head queue;
 
 	/* for spi stransfer */
-	int tx_packet_remain;
-	unsigned int current_remaining_bytes;
+	int32_t tx_packet_remain;
+	uint32_t current_remaining_bytes;
 	struct spi_transfer *current_xfer;
 	struct completion xfer_complete;
 };

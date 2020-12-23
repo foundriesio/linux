@@ -1,22 +1,6 @@
+// SPDX-License-Identifier: GPL-2.0-or-later
 /*
- * Author:  Telechips Inc.
- * Created: 10th Jun, 2013
- * Description: LINUX SPI DRIVER FUNCTIONS
- *
- * Copyright (c) Telechips, Inc.
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2 as
- * published by the Free Software Foundation.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ * Copyright (C) Telechips Inc.
  */
 
 #ifndef TCA_SPI_H
@@ -167,21 +151,17 @@
 struct tea_dma_buf {
 	void *v_addr;
 	dma_addr_t dma_addr;
-	int buf_size; /* total size of DMA */
+	int32_t buf_size; /* total size of DMA */
 };
 
 struct tca_spi_port_config {
-	int          gpsb_id;
+	int32_t          gpsb_id;
 #ifdef TCC_USE_GFB_PORT
-	unsigned int gpsb_port[4];
+	uint32_t gpsb_port[4];
 #else
-	unsigned int gpsb_port;
+	uint32_t gpsb_port;
 #endif
 	const char *name;
-};
-
-struct tcc_dma_slave {
-	struct device	*dma_dev;
 };
 
 struct tcc_spi_dma {
@@ -192,7 +172,7 @@ struct tcc_spi_dma {
 	struct dma_async_tx_descriptor	*data_desc_rx;
 	struct dma_async_tx_descriptor	*data_desc_tx;
 
-	struct tcc_dma_slave dma_slave;
+	struct device *dma_dev;
 };
 
 struct tca_spi_handle {
@@ -204,51 +184,51 @@ struct tca_spi_handle {
 	struct tea_dma_buf tx_dma, rx_dma;
 	struct tea_dma_buf tx_dma_1;
 	struct tca_spi_port_config port_config;
-	int flag;
-	int irq;
+	int32_t flag;
+	int32_t irq;
 	void *private_data;
-	int id;
-	int is_slave;
+	int32_t id;
+	int32_t is_slave;
 #ifdef TCC_USE_GFB_PORT
-	unsigned int gpsb_port[4];
+	uint32_t gpsb_port[4];
 #else
-	int gpsb_port;
+	int32_t gpsb_port;
 #endif
-	int gpsb_channel;
+	int32_t gpsb_channel;
 
-	int (*is_enable_dma)(struct tca_spi_handle *h);
-	int (*dma_stop)(struct tca_spi_handle *h);
-	int (*dma_start)(struct tca_spi_handle *h);
+	int32_t (*is_enable_dma)(struct tca_spi_handle *h);
+	int32_t (*dma_stop)(struct tca_spi_handle *h);
+	int32_t (*dma_start)(struct tca_spi_handle *h);
 	void (*clear_fifo_packet)(struct tca_spi_handle *h);
-	void (*set_packet_cnt)(struct tca_spi_handle *h, int cnt);
-	void (*set_bit_width)(struct tca_spi_handle *h, int width);
+	void (*set_packet_cnt)(struct tca_spi_handle *h, int32_t cnt);
+	void (*set_bit_width)(struct tca_spi_handle *h, int32_t width);
 	void (*set_dma_addr)(struct tca_spi_handle *h);
 	void (*hw_init)(struct tca_spi_handle *h);
-	void (*set_mpegts_pidmode)(struct tca_spi_handle *h, int is_set);
+	void (*set_mpegts_pidmode)(struct tca_spi_handle *h, int32_t is_set);
 
 	/* tea function. */
-	int (*tea_dma_alloc)(struct tea_dma_buf *tdma, unsigned int size,
-				struct device *dev, int id);
+	int32_t (*tea_dma_alloc)(struct tea_dma_buf *tdma, uint32_t size,
+				struct device *dev, int32_t id);
 	/* tea function. */
 	void (*tea_dma_free)(struct tea_dma_buf *tdma,
-				struct device *dev, int id);
+				struct device *dev, int32_t id);
 
-	int clk; /* Mhz */
-	int ctf; /* continuous transfer mode */
-	int tx_pkt_remain;
+	int32_t clk; /* Mhz */
+	int32_t ctf; /* continuous transfer mode */
+	int32_t tx_pkt_remain;
 
 	/* add for slave */
-	unsigned int dma_total_packet_cnt, dma_intr_packet_cnt;
-	int q_pos, cur_q_pos;
-	int dma_total_size;
-	int dma_mode;
+	uint32_t dma_total_packet_cnt, dma_intr_packet_cnt;
+	int32_t q_pos, cur_q_pos;
+	int32_t dma_total_size;
+	int32_t dma_mode;
 
 	/* backup gpsb regs */
-	unsigned int bak_gpio_port;
-	unsigned int bak_gpsb_port;
+	uint32_t bak_gpio_port;
+	uint32_t bak_gpsb_port;
 
 	/* DMA-engine specific */
-	int gdma_use;
+	int32_t gdma_use;
 	struct tcc_spi_dma	dma;
 };
 
@@ -302,29 +282,29 @@ struct tca_spi_handle {
 extern "C" {
 #endif
 
-int tca_spi_init(struct tca_spi_handle *h,
+int32_t tca_spi_init(struct tca_spi_handle *h,
 		void __iomem *regs,
-		unsigned int phy_reg_base,
+		uint32_t phy_reg_base,
 		void __iomem *port_regs,
 		void __iomem *pid_regs,
-		int irq,
-		int (*tea_dma_alloc)(struct tea_dma_buf *tdma,
-					unsigned int size, struct device *dev,
-					int id),
+		int32_t irq,
+		int32_t (*tea_dma_alloc)(struct tea_dma_buf *tdma,
+					uint32_t size, struct device *dev,
+					int32_t id),
 		void (*tea_dma_free)(struct tea_dma_buf *tdma,
-					struct device *dev, int id),
-		unsigned int dma_size,
-		int id,
-		int is_slave,
+					struct device *dev, int32_t id),
+		uint32_t dma_size,
+		int32_t id,
+		int32_t is_slave,
 		struct tca_spi_port_config *port,
 		const char *gpsb_name,
 		struct device *dev);
 
 void tca_spi_clean(struct tca_spi_handle *h);
-int tca_spi_register_pids(struct tca_spi_handle *h, unsigned int *pids,
-			unsigned int count);
-int tca_spi_is_use_gdma(struct tca_spi_handle *h);
-int tca_spi_is_normal_slave(struct tca_spi_handle *h);
+int32_t tca_spi_register_pids(struct tca_spi_handle *h, uint32_t *pids,
+			uint32_t count);
+int32_t tca_spi_is_use_gdma(struct tca_spi_handle *h);
+int32_t tca_spi_is_normal_slave(struct tca_spi_handle *h);
 
 #ifdef __cplusplus
 }

@@ -1,17 +1,12 @@
+// SPDX-License-Identifier: GPL-2.0-or-later
 /*
- * include/linux/tcc_tsif.h
- *
- * Author: Telechips Inc.
- * Created: 1st April, 2009
- * Description: Driver for Telechips TSIF Controllers
- *
- * Copyright (c) Telechips, Inc.
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2 as
- * published by the Free Software Foundation.
- *
+ * Copyright (C) Telechips Inc.
  */
+
+/*
+ * Description: Driver for Telechips TSIF Controllers
+ */
+
 #ifndef TCC_TSIF_H
 #define TCC_TSIF_H
 
@@ -28,22 +23,22 @@
 #define PID_MATCH_TABLE_MAX_CNT 32
 
 struct tcc_tsif_param {
-	unsigned int ts_total_packet_cnt;
-	unsigned int ts_intr_packet_cnt;
-	unsigned int mode;
-	unsigned int dma_mode;	/* DMACTR[MD]: DMA mode register */
+	uint32_t ts_total_packet_cnt;
+	uint32_t ts_intr_packet_cnt;
+	uint32_t mode;
+	uint32_t dma_mode;	/* DMACTR[MD]: DMA mode register */
 #define DMA_NORMAL_MODE		0x00
 #define DMA_MPEG2TS_MODE	0x01
 };
 
 struct tcc_tsif_pid_param {
-	unsigned int pid_data[PID_MATCH_TABLE_MAX_CNT];
-	unsigned int valid_data_cnt;
+	uint32_t pid_data[PID_MATCH_TABLE_MAX_CNT];
+	uint32_t valid_data_cnt;
 };
 
 struct tcc_tsif_pcr_param {
-	unsigned int pcr_pid;
-	unsigned int index;
+	uint32_t pcr_pid;
+	uint32_t index;
 };
 
 #define TSIF_MODE_GPSB 0
