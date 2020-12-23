@@ -527,6 +527,31 @@
 		no-map;
 	};
 
+
+	pmap_enc_ext5: enc_ext5 {
+		compatible = "telechips,pmap";
+		telechips,pmap-name = "enc_ext5";
+		alloc-ranges = <0x0 RESERVED_MEM_BASE 0x0 RESERVED_MEM_SIZE>;
+		size = <0x0 PMAP_SIZE_ENC_EXT5>;
+		no-map;
+	};
+
+	pmap_enc_ext6: enc_ext6 {
+		compatible = "telechips,pmap";
+		telechips,pmap-name = "enc_ext6";
+		alloc-ranges = <0x0 RESERVED_MEM_BASE 0x0 RESERVED_MEM_SIZE>;
+		size = <0x0 PMAP_SIZE_ENC_EXT6>;
+		no-map;
+	};
+
+	pmap_enc_ext7: enc_ext7 {
+		compatible = "telechips,pmap";
+		telechips,pmap-name = "enc_ext7";
+		alloc-ranges = <0x0 RESERVED_MEM_BASE 0x0 RESERVED_MEM_SIZE>;
+		size = <0x0 PMAP_SIZE_ENC_EXT7>;
+		no-map;
+	};
+
 	/*
 	pmap_svm: pmap_svm {
 		compatible = "telechips,pmap";

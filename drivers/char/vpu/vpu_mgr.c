@@ -54,7 +54,7 @@ extern codec_result_t tcc_vpu_dec_esc(int Op, codec_handle_t *pHandle,
 extern codec_result_t tcc_vpu_dec_ext(int Op, codec_handle_t *pHandle,
 					void *pParam1, void *pParam2);
 
-#if DEFINED_CONFIG_VENC_CNT_12345
+#if DEFINED_CONFIG_VENC_CNT_12345678
 extern int tcc_vpu_enc(int Op, codec_handle_t *pHandle, void *pParam1,
 		void *pParam2);
 #endif
@@ -130,20 +130,29 @@ static void _vmgr_close_all(int bfreemem)
 	vmgr_set_close(VPU_DEC_EXT3, 1, bfreemem);
 	vmgr_set_close(VPU_DEC_EXT4, 1, bfreemem);
 
-#if DEFINED_CONFIG_VENC_CNT_12345
+#if DEFINED_CONFIG_VENC_CNT_12345678
 	vmgr_set_close(VPU_ENC, 1, bfreemem);
 #endif
-#if DEFINED_CONFIG_VENC_CNT_2345
+#if DEFINED_CONFIG_VENC_CNT_2345678
 	vmgr_set_close(VPU_ENC_EXT, 1, bfreemem);
 #endif
-#if DEFINED_CONFIG_VENC_CNT_345
+#if DEFINED_CONFIG_VENC_CNT_345678
 	vmgr_set_close(VPU_ENC_EXT2, 1, bfreemem);
 #endif
-#if DEFINED_CONFIG_VENC_CNT_45
+#if DEFINED_CONFIG_VENC_CNT_45678
 	vmgr_set_close(VPU_ENC_EXT3, 1, bfreemem);
 #endif
-#if defined(CONFIG_VENC_CNT_5)
+#if DEFINED_CONFIG_VENC_CNT_5678
 	vmgr_set_close(VPU_ENC_EXT4, 1, bfreemem);
+#endif
+#if DEFINED_CONFIG_VENC_CNT_678
+	vmgr_set_close(VPU_ENC_EXT5, 1, bfreemem);
+#endif
+#if DEFINED_CONFIG_VENC_CNT_78
+	vmgr_set_close(VPU_ENC_EXT6, 1, bfreemem);
+#endif
+#if DEFINED_CONFIG_VENC_CNT_8
+	vmgr_set_close(VPU_ENC_EXT7, 1, bfreemem);
 #endif
 }
 
@@ -690,7 +699,7 @@ static int _vmgr_process(vputype type, int cmd, long pHandle, void *args)
 		}
 	}
 #if !defined(VPU_D6)
-#if DEFINED_CONFIG_VENC_CNT_12345
+#if DEFINED_CONFIG_VENC_CNT_12345678
 	else {
 		if (cmd != VPU_ENC_INIT) {
 			if (vmgr_get_close(type)
@@ -1058,7 +1067,7 @@ static int _vmgr_cmd_open(char *str)
 #ifdef FORCED_ERROR
 		forced_error_count = FORCED_ERR_CNT;
 #endif
-#if DEFINED_CONFIG_VENC_CNT_12345
+#if DEFINED_CONFIG_VENC_CNT_12345678
 		vmgr_data.only_decmode = 0;
 #else
 		vmgr_data.only_decmode = 1;
@@ -2117,13 +2126,14 @@ int vmgr_suspend(struct platform_device *pdev, pm_message_t state)
 
 	if (atomic_read(&vmgr_data.dev_opened) != 0) {
 		pr_info(
-		"\n vpu: suspend In DEC(%d/%d/%d/%d/%d), ENC(%d/%d/%d/%d/%d)\n",
+		"\n vpu: suspend In DEC(%d/%d/%d/%d/%d), ENC(%d/%d/%d/%d/%d/%d/%d/%d)\n",
 		vmgr_get_close(VPU_DEC), vmgr_get_close(VPU_DEC_EXT),
 		vmgr_get_close(VPU_DEC_EXT2), vmgr_get_close(VPU_DEC_EXT3),
 		vmgr_get_close(VPU_DEC_EXT4), vmgr_get_close(VPU_ENC),
 		vmgr_get_close(VPU_ENC_EXT), vmgr_get_close(VPU_ENC_EXT2),
-		vmgr_get_close(VPU_ENC_EXT3),
-		vmgr_get_close(VPU_ENC_EXT4));
+		vmgr_get_close(VPU_ENC_EXT3), vmgr_get_close(VPU_ENC_EXT4),
+		vmgr_get_close(VPU_ENC_EXT5), vmgr_get_close(VPU_ENC_EXT6),
+		vmgr_get_close(VPU_ENC_EXT7));
 
 		_vmgr_external_all_close(200);
 
@@ -2133,13 +2143,14 @@ int vmgr_suspend(struct platform_device *pdev, pm_message_t state)
 			vmgr_disable_clock(0, 0);
 
 		pr_info(
-		"vpu: suspend Out DEC(%d/%d/%d/%d/%d), ENC(%d/%d/%d/%d/%d)\n\n",
+		"vpu: suspend Out DEC(%d/%d/%d/%d/%d), ENC(%d/%d/%d/%d/%d/%d/%d/%d)\n\n",
 		vmgr_get_close(VPU_DEC), vmgr_get_close(VPU_DEC_EXT),
 		vmgr_get_close(VPU_DEC_EXT2), vmgr_get_close(VPU_DEC_EXT3),
 		vmgr_get_close(VPU_DEC_EXT4), vmgr_get_close(VPU_ENC),
 		vmgr_get_close(VPU_ENC_EXT), vmgr_get_close(VPU_ENC_EXT2),
-		vmgr_get_close(VPU_ENC_EXT3),
-		vmgr_get_close(VPU_ENC_EXT4));
+		vmgr_get_close(VPU_ENC_EXT3), vmgr_get_close(VPU_ENC_EXT4),
+		vmgr_get_close(VPU_ENC_EXT5), vmgr_get_close(VPU_ENC_EXT6),
+		vmgr_get_close(VPU_ENC_EXT7));
 	}
 
 	return 0;

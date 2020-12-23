@@ -610,7 +610,7 @@ static int _vp9mgr_process(vputype type, int cmd, int pHandle, void *args)
 			break;
 		}
 	}
-#if DEFINED_CONFIG_VENC_CNT_12345
+#if DEFINED_CONFIG_VENC_CNT_12345678
 	else {
 		err("Enc :: Encoder for VP9 do not support. command(0x%x)\n",
 			cmd);
@@ -760,7 +760,7 @@ static int _vp9mgr_cmd_open(char *str)
 #ifdef FORCED_ERROR
 		forced_error_count = FORCED_ERR_CNT;
 #endif
-#if DEFINED_CONFIG_VENC_CNT_12345
+#if DEFINED_CONFIG_VENC_CNT_12345678
 		vp9mgr_data.only_decmode = 0;
 #else
 		vp9mgr_data.only_decmode = 1;

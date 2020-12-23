@@ -26,19 +26,28 @@
 /*****************************************************************************
  * VIDEO ENCODER COUNT DEFINITION
  */
-#define DEFINED_CONFIG_VENC_CNT_5 defined(CONFIG_VENC_CNT_5)
+#define DEFINED_CONFIG_VENC_CNT_8 defined(CONFIG_VENC_CNT_8)
 
-#define DEFINED_CONFIG_VENC_CNT_45 \
-	(defined(CONFIG_VENC_CNT_4) || DEFINED_CONFIG_VENC_CNT_5)
+#define DEFINED_CONFIG_VENC_CNT_78 \
+	(defined(CONFIG_VENC_CNT_7) || DEFINED_CONFIG_VENC_CNT_8)
 
-#define DEFINED_CONFIG_VENC_CNT_345 \
-	(defined(CONFIG_VENC_CNT_3) || DEFINED_CONFIG_VENC_CNT_45)
+#define DEFINED_CONFIG_VENC_CNT_678 \
+	(defined(CONFIG_VENC_CNT_6) || DEFINED_CONFIG_VENC_CNT_78)
 
-#define DEFINED_CONFIG_VENC_CNT_2345 \
-	(defined(CONFIG_VENC_CNT_2) || DEFINED_CONFIG_VENC_CNT_345)
+#define DEFINED_CONFIG_VENC_CNT_5678 \
+	(defined(CONFIG_VENC_CNT_5) || DEFINED_CONFIG_VENC_CNT_678)
 
-#define DEFINED_CONFIG_VENC_CNT_12345 \
-	(defined(CONFIG_VENC_CNT_1) || DEFINED_CONFIG_VENC_CNT_2345)
+#define DEFINED_CONFIG_VENC_CNT_45678 \
+	(defined(CONFIG_VENC_CNT_4) || DEFINED_CONFIG_VENC_CNT_5678)
+
+#define DEFINED_CONFIG_VENC_CNT_345678 \
+	(defined(CONFIG_VENC_CNT_3) || DEFINED_CONFIG_VENC_CNT_45678)
+
+#define DEFINED_CONFIG_VENC_CNT_2345678 \
+	(defined(CONFIG_VENC_CNT_2) || DEFINED_CONFIG_VENC_CNT_345678)
+
+#define DEFINED_CONFIG_VENC_CNT_12345678 \
+	(defined(CONFIG_VENC_CNT_1) || DEFINED_CONFIG_VENC_CNT_2345678)
 
 /*****************************************************************************/
 
@@ -265,7 +274,7 @@ struct _vpu_decoder_data {
 };
 #endif
 
-#if DEFINED_CONFIG_VENC_CNT_12345
+#if DEFINED_CONFIG_VENC_CNT_12345678
 struct _vpu_encoder_data {
 	struct miscdevice *misc;
 	struct _vpu_dec_data_t vComm_data;

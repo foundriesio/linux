@@ -88,27 +88,45 @@
 
 #define INST_ENC_2ND_USE                (0)
 #define INST_ENC_2ND_IS_HEVC_TYPE       (0)
-#define INST_ENC_2ND_VIDEO_WIDTH        (1280)       // 16x alignment
-#define INST_ENC_2ND_VIDEO_HEIGHT       (720)        // 16x alignment
+#define INST_ENC_2ND_VIDEO_WIDTH        (1920)       // 16x alignment
+#define INST_ENC_2ND_VIDEO_HEIGHT       (1088)       // 16x alignment
 #define INST_ENC_2ND_MAX_FRAMEBUFFERS   (8)          // 8 :: fixed value. ask right engineer if you want to change it.
 
 #define INST_ENC_3RD_USE                (0)
 #define INST_ENC_3RD_IS_HEVC_TYPE       (0)
-#define INST_ENC_3RD_VIDEO_WIDTH        (800)        // 16x alignment
-#define INST_ENC_3RD_VIDEO_HEIGHT       (480)        // 16x alignment
+#define INST_ENC_3RD_VIDEO_WIDTH        (1920)       // 16x alignment
+#define INST_ENC_3RD_VIDEO_HEIGHT       (1088)       // 16x alignment
 #define INST_ENC_3RD_MAX_FRAMEBUFFERS   (8)          // 8 :: fixed value. ask right engineer if you want to change it.
 
 #define INST_ENC_4TH_USE                (0)
 #define INST_ENC_4TH_IS_HEVC_TYPE       (0)
-#define INST_ENC_4TH_VIDEO_WIDTH        (640)        // 16x alignment
-#define INST_ENC_4TH_VIDEO_HEIGHT       (480)        // 16x alignment
+#define INST_ENC_4TH_VIDEO_WIDTH        (1920)       // 16x alignment
+#define INST_ENC_4TH_VIDEO_HEIGHT       (1088)       // 16x alignment
 #define INST_ENC_4TH_MAX_FRAMEBUFFERS   (8)          // 8 :: fixed value. ask right engineer if you want to change it.
 
 #define INST_ENC_5TH_USE                (0)
 #define INST_ENC_5TH_IS_HEVC_TYPE       (0)
-#define INST_ENC_5TH_VIDEO_WIDTH        (640)        // 16x alignment
-#define INST_ENC_5TH_VIDEO_HEIGHT       (480)        // 16x alignment
+#define INST_ENC_5TH_VIDEO_WIDTH        (1920)       // 16x alignment
+#define INST_ENC_5TH_VIDEO_HEIGHT       (1088)       // 16x alignment
 #define INST_ENC_5TH_MAX_FRAMEBUFFERS   (8)          // 8 :: fixed value. ask right engineer if you want to change it.
+
+#define INST_ENC_6TH_USE                (0)
+#define INST_ENC_6TH_IS_HEVC_TYPE       (0)
+#define INST_ENC_6TH_VIDEO_WIDTH        (1920)       // 16x alignment
+#define INST_ENC_6TH_VIDEO_HEIGHT       (1088)       // 16x alignment
+#define INST_ENC_6TH_MAX_FRAMEBUFFERS   (8)          // 8 :: fixed value. ask right engineer if you want to change it.
+
+#define INST_ENC_7TH_USE                (0)
+#define INST_ENC_7TH_IS_HEVC_TYPE       (0)
+#define INST_ENC_7TH_VIDEO_WIDTH        (1920)       // 16x alignment
+#define INST_ENC_7TH_VIDEO_HEIGHT       (1088)       // 16x alignment
+#define INST_ENC_7TH_MAX_FRAMEBUFFERS   (8)          // 8 :: fixed value. ask right engineer if you want to change it.
+
+#define INST_ENC_8TH_USE                (0)
+#define INST_ENC_8TH_IS_HEVC_TYPE       (0)
+#define INST_ENC_8TH_VIDEO_WIDTH        (1920)       // 16x alignment
+#define INST_ENC_8TH_VIDEO_HEIGHT       (1088)       // 16x alignment
+#define INST_ENC_8TH_MAX_FRAMEBUFFERS   (8)          // 8 :: fixed value. ask right engineer if you want to change it.
 
 //##################################################################################################################################################
 //##################################################################################################################################################

@@ -67,7 +67,7 @@ static void __exit vpu_hevc_enc_dev_cleanup(void)
 
 static int vpu_hevc_enc_dev_init(void)
 {
-	pr_info("============> VPU HEVC ENC device drivers enter!! -------\n");
+	pr_info("============> VPU HEVC ENC device drivers initializing!!  Start -------\n");
 
 	/*
 	 * Register an encoder manager driver
@@ -75,7 +75,7 @@ static int vpu_hevc_enc_dev_init(void)
 	 */
 	platform_driver_register(&vmgr_hevc_enc_driver);
 
-	pr_info("============> VPU HEVC ENC device drivers out!! -------\n");
+	pr_info("Done!!\n");
 	return 0;
 }
 

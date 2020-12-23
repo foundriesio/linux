@@ -5,7 +5,8 @@
 
 #if defined(CONFIG_VENC_CNT_1) || defined(CONFIG_VENC_CNT_2) || \
 	defined(CONFIG_VENC_CNT_3) || defined(CONFIG_VENC_CNT_4) || \
-	defined(CONFIG_VENC_CNT_5)
+	defined(CONFIG_VENC_CNT_5) || defined(CONFIG_VENC_CNT_6) || \
+	defined(CONFIG_VENC_CNT_7) || defined(CONFIG_VENC_CNT_8)
 
 #include <linux/moduleparam.h>
 #include <linux/device.h>
@@ -626,17 +627,17 @@ unsigned int venc_poll(struct file *filp, poll_table *wait)
 
 static int _venc_cmd_open(struct _vpu_encoder_data *vdata, char *str)
 {
-	dprintk("%s :: _vdec_%s_open(%d)!!\n", vdata->misc->name,
+	dprintk("%s :: _venc_%s_open(%d)!!\n", vdata->misc->name,
 			str, vdata->vComm_data.dev_opened);
 
 	if (vmem_get_free_memory(vdata->gsEncType) == 0) {
 		err(
-		"VPU%s : Couldn't open device because of no reserved memory.",
+		"[VPU] %s : Couldn't open device because of no reserved memory.",
 			vdata->misc->name);
 		return -ENOMEM;
 	}
 
-	dprintk("======> %s :: _vdec_%s_open(%d)!!", vdata->misc->name, str,
+	dprintk("======> %s :: _venc_%s_open(%d)!!", vdata->misc->name, str,
 		vdata->vComm_data.dev_opened);
 
 	if (vdata->vComm_data.dev_opened == 0)
@@ -648,7 +649,7 @@ static int _venc_cmd_open(struct _vpu_encoder_data *vdata, char *str)
 
 static int _venc_cmd_release(struct _vpu_encoder_data *vdata, char *str)
 {
-	detailk("======> %s :: _vdec_%s_release In(%d)!!", vdata->misc->name,
+	detailk("======> %s :: _venc_%s_release In(%d)!!", vdata->misc->name,
 		str, vdata->vComm_data.dev_opened);
 
 	if (vdata->vComm_data.dev_opened > 0)
@@ -671,7 +672,7 @@ static int _venc_cmd_release(struct _vpu_encoder_data *vdata, char *str)
 			vmgr_set_close(vdata->gsEncType, 1, 1);
 	}
 
-	V_DBG(VPU_DBG_CLOSE, "======> %s :: _vdec_%s_release Out(%d)!!",
+	V_DBG(VPU_DBG_CLOSE, "======> %s :: _venc_%s_release Out(%d)!!",
 		vdata->misc->name, str, vdata->vComm_data.dev_opened);
 
 	return 0;
@@ -872,7 +873,7 @@ int venc_probe(struct platform_device *pdev)
 	init_waitqueue_head(&(vdata->vComm_data.wq));
 
 	if (misc_register(vdata->misc)) {
-		pr_info("VPU %s: Couldn't register device.\n",
+		pr_info("[VPU] %s: Couldn't register device.\n",
 		       pdev->name);
 		ret = -EBUSY;
 		goto err_misc_register;

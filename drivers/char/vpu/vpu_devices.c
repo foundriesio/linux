@@ -33,7 +33,7 @@
 #include "vpu_mem.h"
 #include "vpu_mgr.h"
 
-#if DEFINED_CONFIG_VENC_CNT_12345
+#if DEFINED_CONFIG_VENC_CNT_12345678
 #include "vpu_enc.h"
 #endif
 #if DEFINED_CONFIG_VDEC_CNT_12345
@@ -230,7 +230,7 @@ static struct platform_driver vdec_ext4_driver = {
 };
 #endif
 
-#if DEFINED_CONFIG_VENC_CNT_12345
+#if DEFINED_CONFIG_VENC_CNT_12345678
 static struct platform_device venc_device = {
 	.name = ENC_NAME,
 	.dev = {},
@@ -258,7 +258,7 @@ static struct platform_driver venc_driver = {
 };
 #endif
 
-#if DEFINED_CONFIG_VENC_CNT_2345
+#if DEFINED_CONFIG_VENC_CNT_2345678
 static struct platform_device venc_ext_device = {
 	.name = ENC_EXT_NAME,
 	.dev = {},
@@ -286,7 +286,7 @@ static struct platform_driver venc_ext_driver = {
 };
 #endif
 
-#if DEFINED_CONFIG_VENC_CNT_345
+#if DEFINED_CONFIG_VENC_CNT_345678
 static struct platform_device venc_ext2_device = {
 	.name = ENC_EXT2_NAME,
 	.dev = {},
@@ -314,7 +314,7 @@ static struct platform_driver venc_ext2_driver = {
 };
 #endif
 
-#if DEFINED_CONFIG_VENC_CNT_45
+#if DEFINED_CONFIG_VENC_CNT_45678
 static struct platform_device venc_ext3_device = {
 	.name = ENC_EXT3_NAME,
 	.dev = {},
@@ -342,7 +342,7 @@ static struct platform_driver venc_ext3_driver = {
 };
 #endif
 
-#if defined(CONFIG_VENC_CNT_5)
+#if DEFINED_CONFIG_VENC_CNT_5678
 static struct platform_device venc_ext4_device = {
 	.name = ENC_EXT4_NAME,
 	.dev = {},
@@ -370,26 +370,122 @@ static struct platform_driver venc_ext4_driver = {
 };
 #endif
 
+#if DEFINED_CONFIG_VENC_CNT_678
+static struct platform_device venc_ext5_device = {
+	.name = ENC_EXT5_NAME,
+	.dev = {},
+	.id = VPU_ENC_EXT5,
+};
+
+#ifdef CONFIG_OF
+static const struct of_device_id vpu_venc_ext5_of_match[] = {
+	{.compatible = "telechips,vpu_venc_ext5"},
+	{}
+};
+MODULE_DEVICE_TABLE(of, vpu_venc_ext5_of_match);
+#endif
+
+static struct platform_driver venc_ext5_driver = {
+	.probe = venc_probe,
+	.remove = venc_remove,
+	.driver = {
+		   .name = ENC_EXT5_NAME,
+		   .owner = THIS_MODULE,
+#ifdef CONFIG_OF
+		   .of_match_table = of_match_ptr(vpu_venc_ext5_of_match),
+#endif
+	},
+};
+#endif
+
+#if DEFINED_CONFIG_VENC_CNT_78
+static struct platform_device venc_ext6_device = {
+	.name = ENC_EXT6_NAME,
+	.dev = {},
+	.id = VPU_ENC_EXT6,
+};
+
+#ifdef CONFIG_OF
+static const struct of_device_id vpu_venc_ext6_of_match[] = {
+	{.compatible = "telechips,vpu_venc_ext6"},
+	{}
+};
+MODULE_DEVICE_TABLE(of, vpu_venc_ext6_of_match);
+#endif
+
+static struct platform_driver venc_ext6_driver = {
+	.probe = venc_probe,
+	.remove = venc_remove,
+	.driver = {
+		   .name = ENC_EXT6_NAME,
+		   .owner = THIS_MODULE,
+#ifdef CONFIG_OF
+		   .of_match_table = of_match_ptr(vpu_venc_ext6_of_match),
+#endif
+	},
+};
+#endif
+
+#if DEFINED_CONFIG_VENC_CNT_8
+static struct platform_device venc_ext7_device = {
+	.name = ENC_EXT7_NAME,
+	.dev = {},
+	.id = VPU_ENC_EXT7,
+};
+
+#ifdef CONFIG_OF
+static const struct of_device_id vpu_venc_ext7_of_match[] = {
+	{.compatible = "telechips,vpu_venc_ext7"},
+	{}
+};
+MODULE_DEVICE_TABLE(of, vpu_venc_ext7_of_match);
+#endif
+
+static struct platform_driver venc_ext7_driver = {
+	.probe = venc_probe,
+	.remove = venc_remove,
+	.driver = {
+		   .name = ENC_EXT7_NAME,
+		   .owner = THIS_MODULE,
+#ifdef CONFIG_OF
+		   .of_match_table = of_match_ptr(vpu_venc_ext7_of_match),
+#endif
+	},
+};
+#endif
+
 static void __exit vdev_cleanup(void)
 {
-#if defined(CONFIG_VENC_CNT_5)
+#if DEFINED_CONFIG_VENC_CNT_8
+	platform_driver_unregister(&venc_ext7_driver);
+	platform_device_unregister(&venc_ext7_device);
+#endif
+#if DEFINED_CONFIG_VENC_CNT_78
+	platform_driver_unregister(&venc_ext6_driver);
+	platform_device_unregister(&venc_ext6_device);
+#endif
+#if DEFINED_CONFIG_VENC_CNT_678
+	platform_driver_unregister(&venc_ext5_driver);
+	platform_device_unregister(&venc_ext5_device);
+#endif
+#if DEFINED_CONFIG_VENC_CNT_5678
 	platform_driver_unregister(&venc_ext4_driver);
 	platform_device_unregister(&venc_ext4_device);
 #endif
-#if DEFINED_CONFIG_VENC_CNT_45
+#if DEFINED_CONFIG_VENC_CNT_45678
 	platform_driver_unregister(&venc_ext3_driver);
 	platform_device_unregister(&venc_ext3_device);
 #endif
-#if DEFINED_CONFIG_VENC_CNT_345
+#if DEFINED_CONFIG_VENC_CNT_345678
 	platform_driver_unregister(&venc_ext2_driver);
 	platform_device_unregister(&venc_ext2_device);
 #endif
-#if DEFINED_CONFIG_VENC_CNT_2345
+#if DEFINED_CONFIG_VENC_CNT_2345678
 	platform_driver_unregister(&venc_ext_driver);
 	platform_device_unregister(&venc_ext_device);
 #endif
 
-#if DEFINED_CONFIG_VENC_CNT_12345
+#if DEFINED_CONFIG_VENC_CNT_12345678
 	platform_driver_unregister(&venc_driver);
 	platform_device_unregister(&venc_device);
 #endif
@@ -424,7 +520,7 @@ static void __exit vdev_cleanup(void)
 
 static int vdev_init(void)
 {
-	pr_info("=======> VPU Devices drivers initializing!!  Start ---\n");
+	pr_info("=======> VPU Device drivers initializing!!  Start ---\n");
 
 	platform_driver_register(&vmgr_driver);
 
@@ -435,60 +531,104 @@ static int vdev_init(void)
 	// register decoder driver...
 	platform_device_register(&vdec_device);
 	platform_driver_register(&vdec_driver);
+// Jun 20201217
+pr_info("vdec_device registered\n");
 #endif
 
 #if DEFINED_CONFIG_VDEC_CNT_2345
 	// register decoder_ext driver...
 	platform_device_register(&vdec_ext_device);
 	platform_driver_register(&vdec_ext_driver);
+// Jun 20201217
+pr_info("vdec_ext_device registered\n");
 #endif
 
 #if DEFINED_CONFIG_VDEC_CNT_345
 	// register decoder_ext2 driver...
 	platform_device_register(&vdec_ext2_device);
 	platform_driver_register(&vdec_ext2_driver);
+// Jun 20201217
+pr_info("vdec_ext2_device registered\n");
 #endif
 
 #if DEFINED_CONFIG_VDEC_CNT_45
 	// register decoder_ext3 driver...
 	platform_device_register(&vdec_ext3_device);
 	platform_driver_register(&vdec_ext3_driver);
+// Jun 20201217
+pr_info("vdec_ext3_device registered\n");
 #endif
 
 #if defined(CONFIG_VDEC_CNT_5)
 	// register decoder_ext4 driver...
 	platform_device_register(&vdec_ext4_device);
 	platform_driver_register(&vdec_ext4_driver);
+// Jun 20201217
+pr_info("vdec_ext4_device registered\n");
 #endif
 
-#if DEFINED_CONFIG_VENC_CNT_12345
+#if DEFINED_CONFIG_VENC_CNT_12345678
 	// register encoder driver...
 	platform_device_register(&venc_device);
 	platform_driver_register(&venc_driver);
+// Jun 20201217
+pr_info("venc_device registered\n");
 #endif
 
-#if DEFINED_CONFIG_VENC_CNT_2345
+#if DEFINED_CONFIG_VENC_CNT_2345678
 	// register encoder_ext driver...
 	platform_device_register(&venc_ext_device);
 	platform_driver_register(&venc_ext_driver);
+// Jun 20201217
+pr_info("venc_ext_device registered\n");
 #endif
 
-#if DEFINED_CONFIG_VENC_CNT_345
+#if DEFINED_CONFIG_VENC_CNT_345678
 	// register encoder_ext2 driver...
 	platform_device_register(&venc_ext2_device);
 	platform_driver_register(&venc_ext2_driver);
+// Jun 20201217
+pr_info("venc_ext2_device registered\n");
 #endif
 
-#if DEFINED_CONFIG_VENC_CNT_45
+#if DEFINED_CONFIG_VENC_CNT_45678
 	// register encoder_ext3 driver...
 	platform_device_register(&venc_ext3_device);
 	platform_driver_register(&venc_ext3_driver);
+// Jun 20201217
+pr_info("venc_ext3_device registered\n");
 #endif
 
-#if defined(CONFIG_VENC_CNT_5)
+#if DEFINED_CONFIG_VENC_CNT_5678
 	// register encoder_ext4 driver...
 	platform_device_register(&venc_ext4_device);
 	platform_driver_register(&venc_ext4_driver);
+// Jun 20201217
+pr_info("venc_ext4_device registered\n");
+#endif
+
+#if DEFINED_CONFIG_VENC_CNT_678
+	// register encoder_ext4 driver...
+	platform_device_register(&venc_ext5_device);
+	platform_driver_register(&venc_ext5_driver);
+// Jun 20201217
+pr_info("venc_ext5_device registered\n");
+#endif
+
+#if DEFINED_CONFIG_VENC_CNT_78
+	// register encoder_ext4 driver...
+	platform_device_register(&venc_ext6_device);
+	platform_driver_register(&venc_ext6_driver);
+// Jun 20201217
+pr_info("venc_ext6_device registered\n");
+#endif
+
+#if DEFINED_CONFIG_VENC_CNT_8
+	// register encoder_ext4 driver...
+	platform_device_register(&venc_ext7_device);
+	platform_driver_register(&venc_ext7_driver);
+// Jun 20201217
+pr_info("venc_ext7_device registered\n");
 #endif
 
 	pr_info("Done!!\n");

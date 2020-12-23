@@ -58,17 +58,20 @@
 #endif
 
 typedef enum {
-	VPU_DEC = 0,
-	VPU_DEC_EXT,
-	VPU_DEC_EXT2,
-	VPU_DEC_EXT3,
-	VPU_DEC_EXT4,
-	VPU_ENC,
-	VPU_ENC_EXT,
-	VPU_ENC_EXT2,
-	VPU_ENC_EXT3,
-	VPU_ENC_EXT4,
-	VPU_MAX
+    VPU_DEC = 0,
+    VPU_DEC_EXT,
+    VPU_DEC_EXT2,
+    VPU_DEC_EXT3,
+    VPU_DEC_EXT4,
+    VPU_ENC,
+    VPU_ENC_EXT,
+    VPU_ENC_EXT2,
+    VPU_ENC_EXT3,
+    VPU_ENC_EXT4,
+    VPU_ENC_EXT5,
+    VPU_ENC_EXT6,
+    VPU_ENC_EXT7,
+    VPU_MAX
 } vputype, E_VPU_TYPE;
 
 typedef enum {

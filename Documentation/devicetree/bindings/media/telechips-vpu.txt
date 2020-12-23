@@ -20,7 +20,10 @@ Required properties:
                 "telechips,vpu_venc_ext2",
                 "telechips,vpu_venc_ext3",
                 "telechips,vpu_venc_ext4",
-                "telechips,vpu_hevc_enc_dev_mgr
+                "telechips,vpu_venc_ext5",
+                "telechips,vpu_venc_ext6",
+                "telechips,vpu_venc_ext7",
+                "telechips,vpu_hevc_enc_dev_mgr"
 
 Optional properties:
 

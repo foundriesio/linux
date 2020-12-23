@@ -190,7 +190,7 @@ endchoice
 choice
 	prompt "Instance count of Encoder"
 	depends on (SUPPORT_TCC_JPU || ARCH_TCC893X || ARCH_TCC896X || ARCH_TCC898X || ARCH_TCC803X || ARCH_TCC805X)
-	default VENC_MAX_CNT_5
+	default VENC_MAX_CNT_8
 	help
 		max instance count for encoder.
 		This adds support
@@ -238,6 +238,33 @@ config VENC_CNT_5
 	select VENC_MAX_CNT_5
 	help
 		VENC_MAX_CNT_5
+		This adds support
+		the VPU drivers.
+		on TCCxxxx Soc devices.
+
+config VENC_CNT_6
+	bool "max 6"
+	select VENC_MAX_CNT_6
+	help
+		VENC_MAX_CNT_6
+		This adds support
+		the VPU drivers.
+		on TCCxxxx Soc devices.
+
+config VENC_CNT_7
+	bool "max 7"
+	select VENC_MAX_CNT_7
+	help
+		VENC_MAX_CNT_7
+		This adds support
+		the VPU drivers.
+		on TCCxxxx Soc devices.
+
+config VENC_CNT_8
+	bool "max 8"
+	select VENC_MAX_CNT_8
+	help
+		VENC_MAX_CNT_8
 		This adds support
 		the VPU drivers.
 		on TCCxxxx Soc devices.

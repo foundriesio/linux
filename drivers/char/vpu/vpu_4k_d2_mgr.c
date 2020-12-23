@@ -1335,7 +1335,7 @@ rinse_repeat:
 			return 0x999;
 		}
 	}
-#if DEFINED_CONFIG_VENC_CNT_12345
+#if DEFINED_CONFIG_VENC_CNT_12345678
 	else {
 		err(
 		"Enc[%d]: Encoder for VPU-4K-D2 VP9/HEVC do not support. command(0x%x)",
@@ -1489,7 +1489,7 @@ static int _vmgr_4k_d2_cmd_open(char *str)
 #ifdef FORCED_ERROR
 		forced_error_count = FORCED_ERR_CNT;
 #endif
-#if DEFINED_CONFIG_VENC_CNT_12345
+#if DEFINED_CONFIG_VENC_CNT_12345678
 		vmgr_4k_d2_data.only_decmode = 0;
 #else
 		vmgr_4k_d2_data.only_decmode = 1;

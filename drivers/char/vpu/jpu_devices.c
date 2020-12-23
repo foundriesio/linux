@@ -66,7 +66,7 @@ static void __exit jmgr_cleanup(void)
 
 static int jmgr_init(void)
 {
-	pr_info("============> JPU Devices drivers initializing!!  Start ------");
+	pr_info("============> JPU device drivers initializing!!  Start ------");
 
 	platform_driver_register(&jmgr_driver);
 

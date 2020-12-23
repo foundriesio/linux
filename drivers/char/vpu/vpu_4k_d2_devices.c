@@ -66,7 +66,7 @@ static void __exit vpu_4k_d2_cleanup(void)
 
 static int vpu_4k_d2_init(void)
 {
-	pr_info("==========> 4K-D2 VP9/HEVC Devices drivers initializing!!  Start");
+	pr_info("============> 4K-D2(VP9/HEVC) device drivers initializing!! Start -------");
 
 	platform_driver_register(&vpu_4k_d2_driver);
 
