@@ -66,7 +66,7 @@ static atomic_t irq_flag = ATOMIC_INIT(0);
 
 #define rtc_readl	__raw_readl
 #define rtc_writel	__raw_writel
-#define rtc_reg(x) (*(unsigned int *)(tcc_rtc->regs + x))
+#define rtc_reg(x) (*(volatile unsigned int *)(tcc_rtc->regs + x))
 
 struct tcc_rtc_data {
 	void __iomem *regs;
