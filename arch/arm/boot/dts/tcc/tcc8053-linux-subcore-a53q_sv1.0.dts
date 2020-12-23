@@ -1906,6 +1906,15 @@
 		status = "okay";
 	};
 
+	/* sdr_ipc for A53->A72 */
+	sdr_ipc {
+		compatible = "telechips,sdr_ipc";
+		device-name = "tcc_sdr_ipc";
+		mbox-names ="sdr-ipc-a53";
+		mboxes = <&cb_mbox TCC_CB_MBOX_SDR>;
+		mbox-id = TCC_MBOX_SDR_ID;
+	};
+
 	touch_share {
 	    compatible = "telechips,tcc_touch_receive";
 	    mbox-names ="tr-mbox";

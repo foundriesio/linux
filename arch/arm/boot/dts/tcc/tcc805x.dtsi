@@ -1089,11 +1089,11 @@
 		status = "disable";
 	};
 
-	/* sdr_ipc for A53 */
+	/* sdr_ipc for A72->A53 */
 	sdr_ipc {
 		compatible = "telechips,sdr_ipc";
 		device-name = "tcc_sdr_ipc";
-		mbox-names ="sdr-ipc";
+		mbox-names ="sdr-ipc-a72";
 		mboxes = <&cb_mbox TCC_CB_MBOX_SDR>;
 		mbox-id = TCC_MBOX_SDR_ID;
 	};
