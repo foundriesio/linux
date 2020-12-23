@@ -20,7 +20,7 @@
 #define __STMMAC_H__
 
 
-#if defined(CONFIG_TCC_GMAC)
+#if defined(CONFIG_TCC_GMAC_CS)
 #define STMMAC_RESOURCE_NAME   "hsio-clk"
 #else
 #define STMMAC_RESOURCE_NAME	"stmmaceth"
@@ -35,7 +35,7 @@
 #include <linux/ptp_clock_kernel.h>
 #include <linux/reset.h>
 
-#if defined(CONFIG_TCC_GMAC)
+#if defined(CONFIG_TCC_GMAC_CS)
 #include "dwmac-tcc.h"
 #endif
 

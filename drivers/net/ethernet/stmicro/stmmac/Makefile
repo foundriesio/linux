@@ -24,7 +24,7 @@ obj-$(CONFIG_DWMAC_GENERIC)	+= dwmac-generic.o
 stmmac-platform-objs:= stmmac_platform.o
 dwmac-altr-socfpga-objs := altr_tse_pcs.o dwmac-socfpga.o
 
-obj-$(CONFIG_TCC_GMAC) += dwmac-tcc.o
+obj-$(CONFIG_TCC_GMAC_CS) += dwmac-tcc.o
 
 # stmmac-objs += tca_gmac.o
 obj-$(CONFIG_STMMAC_PCI) += stmmac-pci.o

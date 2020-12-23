@@ -2113,16 +2113,19 @@
 	gmac1_mdio: gmac1_mdio {
 		telechips,pins = "gpb-2";
 		telechips,pin-function = <1>;
+		telechips,input_buffer_enable;
 	};
 
 	gmac1_rxd0: gmac1_rxd0 {
 		telechips,pins = "gpb-3";
 		telechips,pin-function = <1>;
+		telechips,input_buffer_enable;
 	};
 
 	gmac1_rxd1: gmac1_rxd1 {
 		telechips,pins = "gpb-4";
 		telechips,pin-function = <1>;
+		telechips,input_buffer_enable;
 	};
 
 	gmac1_txd0: gmac1_txd0 {
@@ -2145,16 +2148,19 @@
 	gmac1_rxdv: gmac1_rxdv {
 		telechips,pins = "gpb-8";
 		telechips,pin-function = <1>;
+		telechips,input_buffer_enable;
 	};
 
 	gmac1_rxd2: gmac1_rxd2{
 		telechips,pins = "gpb-9";
 		telechips,pin-function = <1>;
+		telechips,input_buffer_enable;
 	};
 
 	gmac1_rxd3: gmac1_rxd3{
 		telechips,pins = "gpb-10";
 		telechips,pin-function = <1>;
+		telechips,input_buffer_enable;
 	};
 
 	gmac1_txd2: gmac1_txd2{
@@ -2172,11 +2178,13 @@
 	gmac1_rxclk: gmac1_rxclk {
 		telechips,pins = "gpb-13";
 		telechips,pin-function = <1>;
+		telechips,input_buffer_enable;
 	};
 
 	gmac1_rxer: gmac1_rxer{
 		telechips,pins = "gpb-14";
 		telechips,pin-function = <1>;
+		telechips,input_buffer_enable;
 	};
 
 	gmac1_txer: gmac1_txer{

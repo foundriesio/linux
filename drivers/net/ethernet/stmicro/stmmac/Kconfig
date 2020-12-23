@@ -165,6 +165,14 @@ config DWMAC_SUN8I
 	  This selects Allwinner SoC glue layer support for the
 	  stmmac device driver. This driver is used for H3/A83T/A64
 	  EMAC ethernet controller.
+
+config TCC_GMAC_CS
+	tristate "Telechips GMAC 5.1a support"
+	default ARCH_TCC805X
+	depends on OF && ARCH_TCC805X
+	select MFD_SYSCON
+	---help---
+	  Support for Telechips GMAC 5.1a support 
 endif
 
 config STMMAC_PCI

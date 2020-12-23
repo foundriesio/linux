@@ -51,7 +51,7 @@
 #include <linux/of_mdio.h>
 #include "dwmac1000.h"
 
-#if defined(CONFIG_TCC_GMAC)
+#if defined(CONFIG_TCC_GMAC_CS)
 #include "dwmac-tcc.h"
 #endif
 #include "dwmac4_dma.h"
@@ -4086,7 +4086,7 @@ static int stmmac_hw_init(struct stmmac_priv *priv)
 	if (!mac)
 		return -ENOMEM;
 
-#if defined(CONFIG_TCC_GMAC)
+#if defined(CONFIG_TCC_GMAC_CS)
 	if ((unsigned)(priv->synopsys_id) != 0x51){
 		printk("%s.[WARN] Exit gmac probe due to version mismatch\n",
 				__func__);
@@ -4216,7 +4216,7 @@ int stmmac_dvr_probe(struct device *device,
 	priv->ioaddr = res->addr;
 	priv->dev->base_addr = (unsigned long)res->addr;
 
-#if defined(CONFIG_TCC_GMAC)
+#if defined(CONFIG_TCC_GMAC_CS)
 	// TCC specific function.
 	pin = devm_pinctrl_get_select(priv->device, "rgmii");
 	dwmac_tcc_clk_enable(plat_dat);

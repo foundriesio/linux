@@ -385,7 +385,7 @@ stmmac_probe_config_dt(struct platform_device *pdev, const char **mac)
 	if (!plat)
 		return ERR_PTR(-ENOMEM);
 
-#if defined(CONFIG_TCC_GMAC)
+#if defined(CONFIG_TCC_GMAC_CS)
 	dwmac_tcc_init(np, NULL);
 #endif
 
@@ -519,7 +519,7 @@ stmmac_probe_config_dt(struct platform_device *pdev, const char **mac)
 	clk_prepare_enable(plat->stmmac_clk);
 
 
-#if defined(CONFIG_TCC_GMAC)
+#if defined(CONFIG_TCC_GMAC_CS)
 	plat->pclk = devm_clk_get(&pdev->dev, "gmac-pclk");
 #else
 	plat->pclk = devm_clk_get(&pdev->dev, "pclk");
