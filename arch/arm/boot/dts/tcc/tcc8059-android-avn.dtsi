@@ -686,7 +686,7 @@
 	pinctrl-names = "default";
 	pinctrl-0 = <&i2c12_bus>;
 
-	pmic@58 {
+	da9062: pmic@58 {
 		compatible = "dlg,da9062";
 		reg = <0x58>;
 		rst-gpios = <&gpma 12 0>;
@@ -877,6 +877,10 @@
 		intb-gpios	= <&gpma 19 1>;
 		reg		= <0x4A>;	// 0x94 >> 1
 	};
+};
+
+&tcc_pm_fw {
+	pmic = <&da9062>;
 };
 
 &gpsb0 {

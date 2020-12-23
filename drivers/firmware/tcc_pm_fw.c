@@ -4,13 +4,18 @@
  */
 
 #include <linux/kernel.h>
+#include <linux/module.h>
+#include <linux/io.h>
+#include <linux/of.h>
+#include <linux/platform_device.h>
+#include <linux/suspend.h>
+
+#include <linux/i2c.h>
 #include <linux/mailbox_controller.h>
 #include <linux/mailbox_client.h>
 #include <linux/mailbox/tcc_multi_mbox.h>
-#include <linux/io.h>
-#include <linux/module.h>
-#include <linux/of.h>
-#include <linux/platform_device.h>
+#include <linux/mfd/da9062/core.h>
+#include <linux/regmap.h>
 
 #define TCC_PM_FW_DEV_NAME "tcc-pm-fw"
 
@@ -30,19 +35,22 @@ struct tcc_pm_fw_drvdata {
 	struct platform_device *pdev;
 	struct mbox_chan *mbox_chan;
 
+	struct da9062 *pmic;
+	struct notifier_block pm_noti;
+
 	/* /sys/power/str sysfs */
 	struct kobject pwrstr;
 	struct bit_field *boot_reason;
 	bool application_ready;
 };
 
-#define pwrstr_to_tcc_pm_fw_drvdata(kobj) \
-	container_of(kobj, struct tcc_pm_fw_drvdata, pwrstr)
+#define to_tcc_pm_fw_drvdata(from, kobj) \
+	container_of(kobj, struct tcc_pm_fw_drvdata, from)
 
 static ssize_t application_ready_show(struct kobject *kobj,
 		struct kobj_attribute *attr, char *buf)
 {
-	struct tcc_pm_fw_drvdata *data = pwrstr_to_tcc_pm_fw_drvdata(kobj);
+	struct tcc_pm_fw_drvdata *data = to_tcc_pm_fw_drvdata(pwrstr, kobj);
 
 	return sprintf(buf, "%d\n", data->application_ready ? 1 : 0);
 }
@@ -50,7 +58,7 @@ static ssize_t application_ready_show(struct kobject *kobj,
 static ssize_t application_ready_store(struct kobject *kobj,
 		struct kobj_attribute *attr, const char *buf, size_t count)
 {
-	struct tcc_pm_fw_drvdata *data = pwrstr_to_tcc_pm_fw_drvdata(kobj);
+	struct tcc_pm_fw_drvdata *data = to_tcc_pm_fw_drvdata(pwrstr, kobj);
 	struct mbox_chan *mbox_chan = data->mbox_chan;
 	struct tcc_mbox_data msg;
 	int ret;
@@ -89,7 +97,7 @@ static struct kobj_attribute application_ready_attr = {
 static ssize_t boot_reason_show(struct kobject *kobj,
 		struct kobj_attribute *attr, char *buf)
 {
-	struct tcc_pm_fw_drvdata *data = pwrstr_to_tcc_pm_fw_drvdata(kobj);
+	struct tcc_pm_fw_drvdata *data = to_tcc_pm_fw_drvdata(pwrstr, kobj);
 	struct bit_field *field = data->boot_reason;
 
 	u32 boot_reason = (readl(field->reg) >> field->shift) & field->mask;
@@ -134,6 +142,74 @@ static inline void tcc_pm_fw_power_sysfs_free(struct kobject *kobj)
 {
 	sysfs_remove_group(kobj, &pwrstr_attr_group);
 	kobject_put(kobj);
+}
+
+static inline void pmic_enter_str_mode(struct da9062 *pmic)
+{
+	int val;
+
+	if (pmic == NULL) {
+		return;
+	}
+
+	regmap_read(pmic->regmap, DA9062AA_BUCK1_CONT, &val);
+	regmap_write(pmic->regmap, DA9062AA_BUCK1_CONT, val | BIT(3));
+
+	regmap_read(pmic->regmap, DA9062AA_LDO2_CONT, &val);
+	regmap_write(pmic->regmap, DA9062AA_LDO2_CONT, val | BIT(7));
+
+	regmap_read(pmic->regmap, DA9062AA_GPIO_OUT3_4, &val);
+	regmap_write(pmic->regmap, DA9062AA_GPIO_OUT3_4, val & ~(0x3));
+}
+
+static inline void pmic_exit_str_mode(struct da9062 *pmic)
+{
+	int val;
+
+	if (pmic == NULL) {
+		return;
+	}
+
+	regmap_read(pmic->regmap, DA9062AA_GPIO_OUT3_4, &val);
+	regmap_write(pmic->regmap, DA9062AA_GPIO_OUT3_4, val | (0x3));
+
+	regmap_read(pmic->regmap, DA9062AA_BUCK1_CONT, &val);
+	regmap_write(pmic->regmap, DA9062AA_BUCK1_CONT, val & ~BIT(3));
+
+	regmap_read(pmic->regmap, DA9062AA_LDO2_CONT, &val);
+	regmap_write(pmic->regmap, DA9062AA_LDO2_CONT, val & ~BIT(7));
+}
+
+static int tcc_pm_fw_pm_notifier_call(struct notifier_block *nb,
+				      unsigned long action, void *data)
+{
+	struct tcc_pm_fw_drvdata *drvdata = to_tcc_pm_fw_drvdata(pm_noti, nb);
+
+	switch (action) {
+	case PM_SUSPEND_PREPARE:
+		drvdata->application_ready = false;
+		pmic_enter_str_mode(drvdata->pmic);
+		break;
+	case PM_POST_SUSPEND:
+		pmic_exit_str_mode(drvdata->pmic);
+		break;
+	default:
+		break;
+	}
+
+	return 0;
+}
+
+static int tcc_pm_fw_pm_notifier_init(struct notifier_block *nb)
+{
+	nb->notifier_call = tcc_pm_fw_pm_notifier_call;
+
+	return register_pm_notifier(nb);
+}
+
+static int tcc_pm_fw_pm_notifier_free(struct notifier_block *nb)
+{
+	return unregister_pm_notifier(nb);
 }
 
 static struct bit_field *tcc_pm_fw_boot_reason_init(struct device *dev,
@@ -217,6 +293,22 @@ static inline void tcc_pm_fw_mbox_free(struct device *dev, struct mbox_chan *ch)
 	devm_kfree(dev, cl);
 }
 
+static struct da9062 *tcc_pm_fw_get_pmic(struct device_node *np)
+{
+	struct i2c_client *cl;
+
+	if (np == NULL) {
+		return NULL;
+	}
+
+	cl = of_find_i2c_device_by_node(np);
+	if (cl == NULL) {
+		return ERR_PTR(-ENOENT);
+	}
+
+	return i2c_get_clientdata(cl);
+}
+
 static int tcc_pm_fw_probe(struct platform_device *pdev)
 {
 	struct device *dev = &pdev->dev;
@@ -225,6 +317,7 @@ static int tcc_pm_fw_probe(struct platform_device *pdev)
 
 	u32 boot_reason_pr[3];
 	const char *mbox_name;
+	struct device_node *pmic_np;
 	int ret;
 
 	/* Parse properties needed to initialize pm_fw interface driver */
@@ -240,6 +333,8 @@ static int tcc_pm_fw_probe(struct platform_device *pdev)
 		goto pre_init_error;
 	}
 
+	pmic_np = of_parse_phandle(np, "pmic", 0);
+
 	/* Allocate memory for pm_fw interface driver data */
 	data = devm_kzalloc(dev, sizeof(struct tcc_pm_fw_drvdata), GFP_KERNEL);
 	if (data == NULL) {
@@ -253,6 +348,13 @@ static int tcc_pm_fw_probe(struct platform_device *pdev)
 	if (ret != 0) {
 		tcc_pm_fw_dev_err(dev, "init `/sys/power/str` sysfs", ret);
 		goto power_sysfs_init_error;
+	}
+
+	/* Initialize notifier for power event handling */
+	ret = tcc_pm_fw_pm_notifier_init(&data->pm_noti);
+	if (ret != 0) {
+		tcc_pm_fw_dev_err(dev, "init pm notifier", ret);
+		goto pm_notifier_init_error;
 	}
 
 	/* Initialize access to boot-reason register field */
@@ -271,18 +373,27 @@ static int tcc_pm_fw_probe(struct platform_device *pdev)
 		goto mbox_init_error;
 	}
 
+	/* Get PMIC struct for entering/exiting STR mode */
+	data->pmic = tcc_pm_fw_get_pmic(pmic_np);
+	if (IS_ERR(data->pmic)) {
+		ret = (int)PTR_ERR(data->pmic);
+		tcc_pm_fw_dev_err(dev, "get i2c client for pmic", ret);
+		goto pmic_init_error;
+	}
+
 	/* Now we can register driver data */
 	platform_set_drvdata(pdev, data);
 	data->pdev = pdev;
 
 	return 0;
 
-	// Below line will never gonna happened, but keep in comments for
-	// future usage:
-	// tcc_pm_fw_mbox_free(dev, data->mbox_chan);
+pmic_init_error:
+	tcc_pm_fw_mbox_free(dev, data->mbox_chan);
 mbox_init_error:
 	tcc_pm_fw_boot_reason_free(dev, data->boot_reason);
 boot_reason_init_error:
+	tcc_pm_fw_pm_notifier_free(&data->pm_noti);
+pm_notifier_init_error:
 	tcc_pm_fw_power_sysfs_free(&data->pwrstr);
 power_sysfs_init_error:
 	devm_kfree(dev, data);
@@ -290,33 +401,19 @@ pre_init_error:
 	return ret;
 }
 
-static int tcc_pm_fw_suspend(struct platform_device *pdev, pm_message_t state)
-{
-	struct tcc_pm_fw_drvdata *data = platform_get_drvdata(pdev);
-
-	/*
-	 * Unflag `application_ready`. This must be reflagged by
-	 * an user-level process when it is ready after resumption.
-	 */
-	data->application_ready = false;
-
-	return 0;
-}
-
 static const struct of_device_id tcc_pm_fw_match[2] = {
 	{ .compatible = "telechips,pm-fw" },
 	{ /* sentinel */ }
 };
 
-static struct platform_driver tcc_pm_fw_driver = {
+struct platform_driver tcc_pm_fw_driver = {
 	.driver = {
 		.name = TCC_PM_FW_DEV_NAME,
-		.owner	= THIS_MODULE,
+		.owner = THIS_MODULE,
 		.of_match_table = of_match_ptr(tcc_pm_fw_match),
 	},
 
 	.probe  = tcc_pm_fw_probe,
-	.suspend = tcc_pm_fw_suspend,
 };
 
 builtin_platform_driver(tcc_pm_fw_driver);

@@ -307,4 +307,3 @@
 	linux,axis = <0>;
 	rotary-encoder,relative-axis;
 };
-

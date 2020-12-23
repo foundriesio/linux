@@ -258,7 +258,7 @@
 	pinctrl-0 = <&i2c22_bus>;
 
 	/* pmic da9062 */
-	pmic@58 {
+	da9062: pmic@58 {
 		compatible = "dlg,da9062";
 		reg = <0x58>;
 		rst-gpios = <&gpma 12 0>;
@@ -446,4 +446,8 @@ dp_deserializer3:max96878@68 {
 			pinctrl-0 = <&serdes_intb_sv01>;
 			pinctrl-1 = <&serdes_lock>;
 			};
+};
+
+&tcc_pm_fw {
+	pmic = <&da9062>;
 };
