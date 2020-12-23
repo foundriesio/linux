@@ -842,6 +842,7 @@ static void tcc_dma_engine_tx_callback(void *data)
 {
 	struct spi_master *master = data;
 	struct tcc_spi *tccspi = spi_master_get_devdata(master);
+	uint32_t status;
 
 	if (tccspi == NULL) {
 		pr_err("[ERROR][SPI] [%s] tcc_spi is NULL!!\n", __func__);
@@ -1439,7 +1440,7 @@ static int32_t tcc_spi_transfer_one(struct spi_master *master,
 					__func__,
 					tccspi->current_remaining_bytes,
 					len);
-			stataus = -EIO;
+			status = -EIO;
 			goto exit;
 		}
 		tccspi->current_remaining_bytes -= len;
