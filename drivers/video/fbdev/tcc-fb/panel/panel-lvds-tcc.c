@@ -236,7 +236,7 @@ static int panel_lvds_parse_dt(struct panel_lvds *lvds)
 	}
 
 	if(of_property_read_u32_index(dn, "mode", 0, &lvds_info.lvds_type) < 0) {
-		dev_err(lvds->dev, 
+		dev_err(lvds->dev,
 			"[ERROR][%s] %s failed to get mode property\r\n",
 								LOG_TAG, __func__);
 		goto err_parse_dt;
@@ -412,28 +412,32 @@ static int panel_lvds_probe(struct platform_device *pdev)
 
 	lvds = devm_kzalloc(&pdev->dev, sizeof(*lvds), GFP_KERNEL);
 	if (!lvds) {
-		dev_err(lvds->dev,
+		dev_err(
+			lvds->dev,
 			"[ERROR][%s] %s failed to alloc device context\r\n",
-								LOG_TAG, __func__);
+			LOG_TAG, __func__);
 		ret = -ENODEV;
 		goto err_init;
 	}
 	lvds->dev = &pdev->dev;
 
-	ret = panel_lvds_parse_dt(lvds);
-	if (ret < 0) {
-		dev_err(lvds->dev,
-			"[ERROR][%s] %s failed to parse device tree\r\n",
-								LOG_TAG, __func__);
+	lvds->data =
+		(struct lvds_match_data*)of_device_get_match_data(&pdev->dev);
+	if(lvds->data == NULL) {
+		dev_err(
+			lvds->dev,
+			"[ERROR][%s] %s failed to find match_data from device tree\r\n",
+			LOG_TAG, __func__);
+		ret = -ENODEV;
 		goto err_free_mem;
 	}
 
-	lvds->data = (struct lvds_match_data*)of_device_get_match_data(&pdev->dev);
-	if(lvds->data == NULL) {
-		dev_err(lvds->dev,
-			"[ERROR][%s] %s failed to find match_data from device tree\r\n",
-									LOG_TAG, __func__);
-		ret = -ENODEV;
+	ret = panel_lvds_parse_dt(lvds);
+	if (ret < 0) {
+		dev_err(
+			lvds->dev,
+			"[ERROR][%s] %s failed to parse device tree\r\n",
+			LOG_TAG, __func__);
 		goto err_free_mem;
 	}
 
@@ -444,39 +448,54 @@ static int panel_lvds_probe(struct platform_device *pdev)
 
 	ret = fb_panel_add(&lvds->panel);
 	if (ret < 0) {
-		dev_err(lvds->dev,
+		dev_err(
+			lvds->dev,
 			"[ERROR][%s] %s with [%s] failed to fb_panel_init\r\n",
-						LOG_TAG, __func__, lvds->data->name);
+			LOG_TAG, __func__, lvds->data->name);
 		goto err_put_dev;
 	}
 	dev_set_drvdata(lvds->dev, lvds);
-	dev_dbg(lvds->dev, "[DEBUG][%s] %s with [%s]\r\n",
-						LOG_TAG, __func__, lvds->data->name);
-	lvds_status = LVDS_PHY_CheckStatus(lvds->tcc_lvds_hw.port_main, lvds->tcc_lvds_hw.port_sub);
+	dev_info(
+		lvds->dev, "[INFO][%s] %s with [%s]\r\n",
+		LOG_TAG, __func__, lvds->data->name);
+	lvds_status =
+		LVDS_PHY_CheckStatus(
+			lvds->tcc_lvds_hw.port_main,
+			lvds->tcc_lvds_hw.port_sub);
 	if(!(lvds_status & 0x1)){
-		dev_dbg(lvds->dev,
-			"[DEBUG][%s] %s with [%s] Primary port(%d) is in death\r\n",
-			LOG_TAG, __func__, lvds->data->name, lvds->tcc_lvds_hw.port_main);
+		dev_info(
+			lvds->dev,
+			"[INFO][%s] %s with [%s] Primary port(%d) is in death\r\n",
+			LOG_TAG, __func__, lvds->data->name,
+			lvds->tcc_lvds_hw.port_main);
 	}else{
-		dev_dbg(lvds->dev,
-			"[DEBUG][%s] %s with [%s] Primary port(%d) is in alive\r\n",
-			LOG_TAG, __func__, lvds->data->name, lvds->tcc_lvds_hw.port_main);
+		dev_info(
+			lvds->dev,
+			"[INFO][%s] %s with [%s] Primary port(%d) is in alive\r\n",
+			LOG_TAG, __func__, lvds->data->name,
+			lvds->tcc_lvds_hw.port_main);
 	}
 	if(lvds->tcc_lvds_hw.lvds_type == PANEL_LVDS_DUAL){
 		if(!(lvds_status & 0x2)){
-			dev_dbg(lvds->dev,
-				"[DEBUG][%s] %s with [%s] Secondary port(%d) is in death\r\n",
-					LOG_TAG, __func__, lvds->data->name, lvds->tcc_lvds_hw.port_sub);
+			dev_info(
+				lvds->dev,
+				"[INFO][%s] %s with [%s] Secondary port(%d) is in death\r\n",
+				LOG_TAG, __func__, lvds->data->name,
+				lvds->tcc_lvds_hw.port_sub);
 		}else{
 			lvds->enabled = 1;
-			dev_dbg(lvds->dev,
-				"[DEBUG][%s] %s with [%s] Secondary port(%d) is in alive\r\n",
-					LOG_TAG, __func__, lvds->data->name, lvds->tcc_lvds_hw.port_sub);
+			dev_info(
+				lvds->dev,
+				"[INFO][%s] %s with [%s] Secondary port(%d) is in alive\r\n",
+				LOG_TAG, __func__, lvds->data->name,
+				lvds->tcc_lvds_hw.port_sub);
 		}
 	}
-	dev_dbg(lvds->dev,
-				"[DEBUG][%s] %s with [%s] lvds - lcdc-mux-select: %d\r\n",
-					LOG_TAG, __func__, lvds->data->name, lvds->tcc_lvds_hw.lcdc_mux_id);
+	dev_info(
+		lvds->dev,
+		"[INFO][%s] %s with [%s] lvds - lcdc-mux-select: %d\r\n",
+		LOG_TAG, __func__, lvds->data->name,
+		lvds->tcc_lvds_hw.lcdc_mux_id);
 	return 0;
 
 err_put_dev:
