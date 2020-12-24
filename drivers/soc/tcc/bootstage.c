@@ -54,31 +54,29 @@ static const char *const bootstage_desc[NR_BOOT_STAGES] = {
 #define NR_BOOT_STAGES (0U)
 #endif
 
-static inline unsigned long add_boot_timestamp(void)
+static inline void add_boot_timestamp(void)
 {
 	struct arm_smccc_res res;
 
 	arm_smccc_smc(SIP_CHIP_ADD_BOOTTIME, 0, 0, 0, 0, 0, 0, 0, &res);
-
-	return res.a0;
 }
 
-static inline unsigned long get_boot_timestamp(unsigned long index)
+static inline u32 get_boot_timestamp(ulong index)
 {
 	struct arm_smccc_res res;
 
 	arm_smccc_smc(SIP_CHIP_GET_BOOTTIME, index, 0, 0, 0, 0, 0, 0, &res);
 
-	return res.a0;
+	return (u32)res.a0;
 }
 
-static inline unsigned long get_boot_timestamp_num(void)
+static inline u32 get_boot_timestamp_num(void)
 {
 	struct arm_smccc_res res;
 
 	arm_smccc_smc(SIP_CHIP_GET_BOOTTIME_NUM, 0, 0, 0, 0, 0, 0, 0, &res);
 
-	return res.a0;
+	return (u32)res.a0;
 }
 
 static inline void validate_boot_timestamp_num(struct seq_file *m, u32 num)
@@ -92,22 +90,22 @@ static inline void validate_boot_timestamp_num(struct seq_file *m, u32 num)
 static inline const char *u32_to_str_in_format(u32 num)
 {
 	static char format[13]; /* ",000,000,000" */
-	u32 idx = 0U, div = 1000000U;
+	u32 ths = 1000000U;
+	s32 idx = 0;
 
-	while (div != 0U) {
-		sprintf(&format[idx], ",%03u", (num / div) % 1000U);
-		div /= 1000U;
-		idx += 4U;
+	for (idx = 0; idx < 12; idx += 4) {
+		(void)sprintf(&format[idx], ",%03u", (num / ths) % 1000U);
+		ths /= 1000U;
 	}
 
-	idx = 0U;
+	idx = 0;
 
-	while (format[idx] == ',' || format[idx] == '0') {
-		/* Remove unnecessary delimiters and zeros in front */
+	/* Remove unnecessary delimiters and zeros in front */
+	while (((u8)format[idx] == (u8)',') || ((u8)format[idx] == (u8)'0')) {
 		++idx;
 	}
 
-	if (format[idx] == '\0') {
+	if ((u8)format[idx] == (u8)'\0') {
 		/* Keep the last zero, if the num is just zero */
 		--idx;
 	}
@@ -121,8 +119,8 @@ static int bootstage_report_show(struct seq_file *m, void *v)
 	 * CAUTION. This function is **NOT THREAD SAFE** !!!
 	 */
 
-	u32 n, num, nr_actual = 0;
-	u32 stamp, prev = 0;
+	u32 n, num, stamp, prev = 0;
+	s32 nr_actual = 0;
 	const char *stamp_fmt, *desc;
 
 	num = get_boot_timestamp_num();
@@ -134,14 +132,18 @@ static int bootstage_report_show(struct seq_file *m, void *v)
 	seq_printf(m, "%11u%11u  %s\n", 0U, 0U, "reset");
 
 	for (n = 0; n < num; n++) {
-		desc = n < NR_BOOT_STAGES ? bootstage_desc[n] : "-";
+		desc = (n < NR_BOOT_STAGES) ? bootstage_desc[n] : "-";
 		stamp = get_boot_timestamp(n);
 
-		if (stamp != 0) {
+		if (stamp != 0U) {
 			stamp_fmt = u32_to_str_in_format(stamp);
 			seq_printf(m, "%11s", stamp_fmt);
 
-			stamp_fmt = u32_to_str_in_format(stamp - prev);
+			if (stamp >= prev) {
+				stamp_fmt = u32_to_str_in_format(stamp - prev);
+			} else {
+				stamp_fmt = "overflow";
+			}
 			seq_printf(m, "%11s", stamp_fmt);
 
 			prev = stamp;
@@ -151,23 +153,12 @@ static int bootstage_report_show(struct seq_file *m, void *v)
 		}
 	}
 
-	seq_printf(m, "\n%u stages out of %u stages were proceeded. (%u stages skipped)\n",
-		   nr_actual, num, num - nr_actual);
+	seq_printf(m, "\n%d stages out of %u stages were proceeded. (%d stages skipped)\n",
+		   nr_actual, num, (s32)num - nr_actual);
 
 	return 0;
 }
-
-static int bootstage_report_open(struct inode *inode, struct file *file)
-{
-	return single_open(file, bootstage_report_show, PDE_DATA(inode));
-}
-
-static const struct file_operations bootstage_report_fops = {
-	.open		= bootstage_report_open,
-	.read		= seq_read,
-	.llseek		= seq_lseek,
-	.release	= seq_release,
-};
+DEFINE_SHOW_ATTRIBUTE(bootstage_report);
 
 static int bootstage_data_show(struct seq_file *m, void *v)
 {
@@ -185,32 +176,25 @@ static int bootstage_data_show(struct seq_file *m, void *v)
 	seq_puts(m, "reset,0\n");
 
 	for (n = 0; n < num; n++) {
-		desc = n < NR_BOOT_STAGES ? bootstage_desc[n] : "-";
+		desc = (n < NR_BOOT_STAGES) ? bootstage_desc[n] : "-";
 		stamp = get_boot_timestamp(n);
 
-		if (stamp == 0) {
+		if (stamp == 0U) {
 			seq_printf(m, "%s,0\n", desc);
 			continue;
 		}
 
-		seq_printf(m, "%s,%u\n", desc, stamp - prev);
+		if (stamp >= prev) {
+			seq_printf(m, "%s,%u\n", desc, stamp - prev);
+		} else {
+			seq_printf(m, "%s,overflow\n", desc);
+		}
 		prev = stamp;
 	}
 
 	return 0;
 }
-
-static int bootstage_data_open(struct inode *inode, struct file *file)
-{
-	return single_open(file, bootstage_data_show, PDE_DATA(inode));
-}
-
-static const struct file_operations bootstage_data_fops = {
-	.open		= bootstage_data_open,
-	.read		= seq_read,
-	.llseek		= seq_lseek,
-	.release	= seq_release,
-};
+DEFINE_SHOW_ATTRIBUTE(bootstage_data);
 
 static int bootstage_pm_notifier_call(struct notifier_block *nb,
 				      unsigned long action, void *data)
@@ -220,13 +204,14 @@ static int bootstage_pm_notifier_call(struct notifier_block *nb,
 		add_boot_timestamp();
 		break;
 	default:
+		/* Nothing to do */
 		break;
 	}
 
 	return 0;
 }
 
-struct notifier_block bootstage_pm_notifier = {
+static struct notifier_block bootstage_pm_notifier = {
 	.notifier_call = bootstage_pm_notifier_call,
 };
 
@@ -234,21 +219,21 @@ static struct proc_dir_entry *bootstage_procfs_init(void)
 {
 	struct proc_dir_entry *pdir, *pent;
 
-	/* Create `/proc/bootstage` procfs directory */
+	/* Create '/proc/bootstage' procfs directory */
 	pdir = proc_mkdir("bootstage", NULL);
 	if (pdir == NULL) {
 		/* Nothing to do, just return */
 		goto procfs_dir_init_error;
 	}
 
-	/* Create `/proc/bootstage/report` procfs entry */
+	/* Create '/proc/bootstage/report' procfs entry */
 	pent = proc_create("report", 0444, pdir, &bootstage_report_fops);
 	if (pent == NULL) {
 		pdir = NULL;
 		goto procfs_report_init_error;
 	}
 
-	/* Create `/proc/bootstage/data` procfs entry */
+	/* Create '/proc/bootstage/data' procfs entry */
 	pent = proc_create("data", 0444, pdir, &bootstage_data_fops);
 	if (pent == NULL) {
 		pdir = NULL;
@@ -257,9 +242,6 @@ static struct proc_dir_entry *bootstage_procfs_init(void)
 
 	return pdir;
 
-	// Below line will never gonna happened, but keep in comments for
-	// future usage:
-	// remove_proc_entry("data", pdir);
 procfs_data_init_error:
 	remove_proc_entry("report", pdir);
 procfs_report_init_error:
@@ -277,28 +259,25 @@ static void bootstage_procfs_free(struct proc_dir_entry *pdir)
 static int bootstage_init(void)
 {
 	struct proc_dir_entry *pdir;
-	int ret = 0;
+	s32 ret = 0;
 
-	/* Create `/proc/bootstage` procfs directory and child entries */
+	/* Create '/proc/bootstage' procfs directory and child entries */
 	pdir = bootstage_procfs_init();
 	if (pdir == NULL) {
 		ret = -ENOMEM;
-		bootstage_pr_err("init `proc/bootstage` procfs", ret);
+		(void)bootstage_pr_err("init 'proc/bootstage' procfs", ret);
 		goto procfs_init_error;
 	}
 
 	/* Register PM notifier for boot time until resumption */
 	ret = register_pm_notifier(&bootstage_pm_notifier);
 	if (ret != 0) {
-		bootstage_pr_err("init `proc/bootstage` procfs", ret);
+		(void)bootstage_pr_err("register pm notifier", ret);
 		goto pm_notifier_register_error;
 	}
 
 	return 0;
 
-	// Below line will never gonna happened, but keep in comments for
-	// future usage:
-	// unregister_pm_notifier(&bootstage_pm_notifier);
 pm_notifier_register_error:
 	bootstage_procfs_free(pdir);
 procfs_init_error:
