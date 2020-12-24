@@ -157,9 +157,6 @@ static inline void pmic_enter_str_mode(struct da9062 *pmic)
 
 	regmap_read(pmic->regmap, DA9062AA_LDO2_CONT, &val);
 	regmap_write(pmic->regmap, DA9062AA_LDO2_CONT, val | BIT(7));
-
-	regmap_read(pmic->regmap, DA9062AA_GPIO_OUT3_4, &val);
-	regmap_write(pmic->regmap, DA9062AA_GPIO_OUT3_4, val & ~(0x3));
 }
 
 static inline void pmic_exit_str_mode(struct da9062 *pmic)
@@ -169,9 +166,6 @@ static inline void pmic_exit_str_mode(struct da9062 *pmic)
 	if (pmic == NULL) {
 		return;
 	}
-
-	regmap_read(pmic->regmap, DA9062AA_GPIO_OUT3_4, &val);
-	regmap_write(pmic->regmap, DA9062AA_GPIO_OUT3_4, val | (0x3));
 
 	regmap_read(pmic->regmap, DA9062AA_BUCK1_CONT, &val);
 	regmap_write(pmic->regmap, DA9062AA_BUCK1_CONT, val & ~BIT(3));
