@@ -6,6 +6,8 @@
 #ifndef SOC_TCC_PMAP_H
 #define SOC_TCC_PMAP_H
 
+#include <linux/types.h>
+
 #define TCC_PMAP_NAME_LEN	(16U)
 
 #define PMAP_FLAG_SECURED	((u32)1U << 1)
@@ -26,9 +28,9 @@ struct pmap {
 };
 
 
-int pmap_check_region(u64 base, u64 size);
-int pmap_get_info(const char *name, struct pmap *mem);
-int pmap_release_info(const char *name);
+s32 pmap_check_region(u64 base, u64 size);
+s32 pmap_get_info(const char *name, struct pmap *mem);
+s32 pmap_release_info(const char *name);
 
 #ifdef CONFIG_PMAP_TO_CMA
 void *pmap_cma_remap(u64 base, u64 size);
