@@ -16,8 +16,12 @@
 
 #include "hdcp_interface.h"
 
-#define HDCP_DRV_VERSION		("0.1.0")
+#define HDCP_DRV_VERSION		("0.2.0")
 
+/* Internal Options */
+// #define HDCP22_INT_USED
+
+/* DP Link register */
 #define SWRESET				(0x0204)
 #define SWRESET_HDCP			(1<<2)
 
@@ -69,6 +73,11 @@
 #define INT_AUXRESPDEFER7TIMES		(1<<2)
 #define INT_KSVACCESS			(1<<0)
 #define INT_MASK_VALUE			(0x1FF)
+#ifdef HDCP22_INT_USED
+#define INT_UNMASK_VALUE		(0x000)
+#else
+#define INT_UNMASK_VALUE		(0x100)
+#endif
 
 struct hdcp_device {
 	void __iomem		*reg;
@@ -202,14 +211,15 @@ static int hdcp_set_protocal(struct hdcp_device *hdcp, uint32_t protocal)
 {
 	switch (protocal) {
 	case HDCP_PROTOCAL_HDCP_1_X:
-		iowrite32(HDCPCFG_ENCRYPTIONDISABLE | HDCPCFG_ENABLE_HDCP_13,
-			  hdcp->reg + HDCPCFG);
+		iowrite32(HDCPCFG_DPCD12PLUS | HDCPCFG_ENCRYPTIONDISABLE |
+			  HDCPCFG_ENABLE_HDCP_13, hdcp->reg + HDCPCFG);
 		hdcp->protocal = HDCP_PROTOCAL_HDCP_1_X;
 		hdcp->status = HDCP_STATUS_IDLE;
 		break;
 	case HDCP_PROTOCAL_HDCP_2_2:
 		/* must be eanble hdcp */
-		iowrite32(HDCPCFG_ENABLE_HDCP /* 0x0 */, hdcp->reg + HDCPCFG);
+		iowrite32(HDCPCFG_DPCD12PLUS | HDCPCFG_ENABLE_HDCP /* 0x0 */,
+			  hdcp->reg + HDCPCFG);
 		hdcp->protocal = HDCP_PROTOCAL_HDCP_2_2;
 		hdcp->status = HDCP_STATUS_IDLE;
 		break;
@@ -237,7 +247,7 @@ static irqreturn_t hdcp_irq(int irq, void *dev_id)
 	struct hdcp_device *hdcp = dev_id;
 
 	if (hdcp) {
-		if (ioread32(hdcp->reg + HDCPAPIINTSTAT)) {
+		if (ioread32(hdcp->reg + HDCPAPIINTSTAT) & ~INT_UNMASK_VALUE) {
 			/* mask interrupt */
 			iowrite32(INT_MASK_VALUE, hdcp->reg + HDCPAPIINTMSK);
 			return IRQ_WAKE_THREAD;
@@ -264,9 +274,41 @@ static irqreturn_t hdcp_isr(int irq, void *dev_id)
 
 	// TODO: Check HPD and rxsense
 
+#ifdef HDCP22_INT_USED
 	if (int_stat & INT_HDCP22_GPIO) {
-		dev_info(hdcp->dev, "HDCP22_GPIO\n");
-	} else if (int_stat & INT_HDCP_ENGAGED) {
+		uint32_t hdcp22_gpio = ioread32(hdcp->reg + HDCP22GPIOCHNGSTS);
+
+		iowrite32(hdcp22_gpio, hdcp->reg + HDCP22GPIOCHNGSTS);
+		dev_dbg(hdcp->dev, "HDCP22: sts:0x%x\n", hdcp22_gpio);
+
+		if (hdcp22_gpio & (1<<0)) {
+			dev_info(hdcp->dev, "HDCP22: %s.\n",
+				 "Capable");
+		}
+		if (hdcp22_gpio & (1<<1)) {
+			dev_info(hdcp->dev, "HDCP22: %s.\n",
+				 "Does not support");
+		}
+		if (hdcp22_gpio & (1<<2)) {
+			dev_info(hdcp->dev, "HDCP22: %s.\n",
+				 "Successfully completed authentication");
+		}
+		if (hdcp22_gpio & (1<<3)) {
+			dev_info(hdcp->dev, "HDCP22: %s.\n",
+				 "Not able to authenticate");
+		}
+		if (hdcp22_gpio & (1<<4)) {
+			dev_info(hdcp->dev, "HDCP22: %s.\n",
+				 "Cipher syncronization has been lost");
+		}
+		if (hdcp22_gpio & (1<<5)) {
+			dev_info(hdcp->dev, "HDCP22: %s.\n",
+				 "receiver is requesting re-authentication");
+		}
+	}
+#endif
+
+	if (int_stat & INT_HDCP_ENGAGED) {
 		dev_info(hdcp->dev, "HDCP_ENGAGED\n");
 		hdcp->status = HDCP_STATUS_1_x_AUTENTICATED;
 	} else if (int_stat & INT_HDCP_FAILED) {
@@ -285,7 +327,7 @@ static irqreturn_t hdcp_isr(int irq, void *dev_id)
 	}
 
 	/* unmask insterrupt */
-	iowrite32(0, hdcp->reg + HDCPAPIINTMSK);
+	iowrite32(INT_UNMASK_VALUE, hdcp->reg + HDCPAPIINTMSK);
 
 	return IRQ_HANDLED;
 }
@@ -359,13 +401,14 @@ static int hdcp_open(struct inode *inode, struct file *file)
 		iowrite32(INT_MASK_VALUE, hdcp->reg + HDCPAPIINTCLR);
 
 		/* unmask insterrupt */
-		iowrite32(0, hdcp->reg + HDCPAPIINTMSK);
+		iowrite32(INT_UNMASK_VALUE, hdcp->reg + HDCPAPIINTMSK);
 
 		/*
 		 * Switch to HDCP2.2 and enable hdcp.
 		 * HDCP2.2 can be enabled only with '/dev/hd_dev'
 		 */
-		iowrite32(HDCPCFG_ENABLE_HDCP /* 0x0 */, hdcp->reg + HDCPCFG);
+		iowrite32(HDCPCFG_DPCD12PLUS | HDCPCFG_ENABLE_HDCP /* 0x0 */,
+			  hdcp->reg + HDCPCFG);
 	}
 
 	hdcp->open_cs++;
@@ -483,7 +526,7 @@ static int hdcp_resume(struct platform_device *pdev)
 	iowrite32(INT_MASK_VALUE, hdcp->reg + HDCPAPIINTCLR);
 
 	/* unmask insterrupt */
-	iowrite32(0x0, hdcp->reg + HDCPAPIINTMSK);
+	iowrite32(INT_UNMASK_VALUE, hdcp->reg + HDCPAPIINTMSK);
 
 	return 0;
 }
