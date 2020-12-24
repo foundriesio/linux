@@ -18,8 +18,8 @@
 #include <soc/tcc/tcc-sip.h>
 #include <soc/tcc/chipinfo.h>
 
-static u32 chip_rev = ~((unsigned long)0);
-static u32 chip_name = ~((unsigned long)0);
+static u32 chip_rev = ~((u32)0);
+static u32 chip_name = ~((u32)0);
 
 u32 get_chip_rev(void)
 {
@@ -39,22 +39,20 @@ static inline u32 tcc_chip_ops(ulong cmd, ulong arg)
 	u32 ret;
 
 	arm_smccc_smc(cmd, arg, 0, 0, 0, 0, 0, 0, &res);
-	ret = res.a0 & 0xFFFFFFFFU;
+	ret = (u32)res.a0 & 0xFFFFFFFFU;
 
 	return ret;
 }
 
 static int __init chip_info_init(void)
 {
-	struct arm_smccc_res res;
-
 	chip_rev = tcc_chip_ops(SIP_CHIP_REV, 0);
 	chip_name = tcc_chip_ops(SIP_CHIP_NAME, 0);
 
 	/* For backward compatibility */
 	system_rev = chip_rev;
 
-	pr_info("%s, package: %x rev: %d\n", __func__, chip_name, chip_rev);
+	(void)pr_info("[chipinfo] package: %x rev: %d\n", chip_name, chip_rev);
 	return 0;
 }
 pure_initcall(chip_info_init);
