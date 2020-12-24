@@ -16,27 +16,26 @@
 
 #include "reboot-mode.h"
 
-#define TCC_SIP_SET_RESET_REASON	0x82003002
+#define TCC_SIP_SET_RESET_REASON	0x82003002U
 
 #if !defined(CONFIG_ARM_PSCI) && !defined(CONFIG_ARM64)
 static void __iomem *pmu_usstatus;
 #endif
 
 static int tcc_reboot_mode_write(struct reboot_mode_driver *reboot,
-		unsigned int magic)
+				 unsigned int magic)
 {
 	struct arm_smccc_res res;
 
 	dev_dbg(reboot->dev, "magic=%x\n", magic);
 
 #if defined(CONFIG_ARM_PSCI) || defined(CONFIG_ARM64)
-	arm_smccc_smc(TCC_SIP_SET_RESET_REASON, magic, 0, 0,
-			0, 0, 0, 0, &res);
+	arm_smccc_smc(TCC_SIP_SET_RESET_REASON, magic, 0, 0, 0, 0, 0, 0, &res);
 #else
 	writel(magic, pmu_usstatus);
 #endif
 
-	return (int)res.a0;
+	return (s32)res.a0;
 }
 
 static struct reboot_mode_driver tcc_reboot_mode = {
@@ -48,7 +47,7 @@ static int tcc_reboot_mode_probe(struct platform_device *pdev)
 #if !defined(CONFIG_ARM_PSCI) && !defined(CONFIG_ARM64)
 	struct device_node *np = pdev->dev.of_node;
 #endif
-	int ret;
+	s32 ret;
 
 #if !defined(CONFIG_ARM_PSCI) && !defined(CONFIG_ARM64)
 	pmu_usstatus = of_iomap(np, 0);
@@ -62,15 +61,16 @@ static int tcc_reboot_mode_probe(struct platform_device *pdev)
 	tcc_reboot_mode.dev = &pdev->dev;
 
 	ret = devm_reboot_mode_register(&pdev->dev, &tcc_reboot_mode);
-	if (ret != 0)
+	if (ret != 0) {
 		dev_err(&pdev->dev, "failed to register reboot mode\n");
+	}
 
 	return ret;
 }
 
 static const struct of_device_id tcc_reboot_mode_of_match[2] = {
 	{ .compatible = "telechips,reboot-mode" },
-	{ /* sentinel */ }
+	{ .compatible = "" }
 };
 
 static struct platform_driver tcc_reboot_mode_driver = {
