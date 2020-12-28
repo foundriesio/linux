@@ -836,6 +836,40 @@ static int __maybe_unused tcc805x_pinctrl_resume(struct device *dev)
 static SIMPLE_DEV_PM_OPS(tcc805x_pinctrl_pm_ops,
 			 tcc805x_pinctrl_suspend, tcc805x_pinctrl_resume);
 
+
+static void tcc805x_pinctrl_shutdown(struct platform_device *pdev)
+{
+	void __iomem *reg;
+	u32 i;
+#if !defined(CONFIG_PINCTRL_TCC_SCFW)
+	u32 data, mask;
+#else
+	void __iomem *reg_sc;
+#endif
+	u32 shift;
+	struct extintr_match_ *match
+		= (struct extintr_match_ *)tcc805x_pinctrl_soc_data.irq->data;
+	u32 irq_size = tcc805x_pinctrl_soc_data.irq->size;
+
+	for (i = 0U; i < (irq_size/2U); i++) {
+		reg = (void __iomem *)(gpio_base + EINTSEL + (4U*(i/4U)));
+
+		if (match[i].used != 0U) {
+			shift = 8U*(i%4U);
+#if defined(CONFIG_PINCTRL_TCC_SCFW)
+			reg_sc = reg - base_offset;
+			request_gpio_to_sc((u32)reg_sc, shift, 8, 0);
+#else
+			mask = (u32)0xFFU << shift;
+			data = readl(reg);
+			data = (data & ~mask) | (0 << shift);
+			writel(data, reg);
+#endif
+		}
+	}
+
+}
+
 static struct platform_driver tcc805x_pinctrl_driver = {
 	.probe		= tcc805x_pinctrl_probe,
 	.driver		= {
@@ -844,6 +878,7 @@ static struct platform_driver tcc805x_pinctrl_driver = {
 		.of_match_table = of_match_ptr(tcc805x_pinctrl_of_match),
 		.pm	= &tcc805x_pinctrl_pm_ops,
 	},
+	.shutdown = tcc805x_pinctrl_shutdown,
 };
 
 static int __init tcc805x_pinctrl_drv_register(void)
