@@ -79,10 +79,16 @@ int __init early_init_dt_alloc_reserved_memory_arch(phys_addr_t size,
 {
 	phys_addr_t base;
 	s32 ret = 0;
+	ulong flags = (ulong)MEMBLOCK_NONE;
+
+	if (res_base == NULL) {
+		/* XXX: Should not happen */
+		return -EINVAL;
+	}
 
 	memblock_set_bottom_up((bool)true);
 
-	base = memblock_alloc_range(size, align, start, end, MEMBLOCK_NONE);
+	base = memblock_alloc_range(size, align, start, end, flags);
 	if (base == (phys_addr_t)0U) {
 		ret = -ENOMEM;
 		goto error;
@@ -262,7 +268,7 @@ static void pmap_cma_release(struct pmap *info)
 	info->base = PMAP_FREED;
 }
 
-#define VM_ARM_DMA_CONSISTENT	0x20000000
+#define VM_ARM_DMA_CONSISTENT	(0x20000000)
 
 /*
  * FIXME
@@ -316,6 +322,7 @@ static s32 pmap_get_info_internal(struct pmap *info)
 	struct pmap_entry *entry = pmap_entry_of(info);
 
 	if (entry->parent != NULL) {
+		/* XXX: MISRA-C rule does not allow recursion */
 		s32 ret = pmap_get_info_internal(&entry->parent->info);
 
 		if (ret == 0) {
@@ -346,6 +353,7 @@ static void pmap_release_info_internal(struct pmap *info)
 	struct pmap_entry *entry = pmap_entry_of(info);
 
 	if ((info->rc != 0U) && (entry->parent != NULL)) {
+		/* XXX: MISRA-C rule does not allow recursion */
 		pmap_release_info_internal(&entry->parent->info);
 #ifdef CONFIG_PMAP_TO_CMA
 	} else if ((info->rc == 1U) && pmap_is_cma_alloc(info)) {
@@ -402,21 +410,23 @@ EXPORT_SYMBOL(pmap_release_info);
 s32 pmap_check_region(u64 base, u64 size)
 {
 	struct pmap_entry *entry = NULL;
-	u64 rbase, rend, end;
+	u64 end = U64_MAX;
 
 	if ((U64_MAX - base) >= size) {
 		end = base + size;
-	} else {
-		end = U64_MAX;
 	}
 
 	list_for_each_entry(entry, &pmap_list_head, list) {
-		rbase = pmap_get_base(&entry->info);
+		u64 rbase = pmap_get_base(&entry->info);
+		u64 rend = U64_MAX;
+
+		if (entry == NULL) {
+			/* XXX: Should not happen */
+			continue;
+		}
 
 		if ((U64_MAX - rbase) >= entry->info.size) {
 			rend = rbase + entry->info.size;
-		} else {
-			rend = U64_MAX;
 		}
 
 		if ((rbase != (u64)0U) && (rbase <= base) && (rend >= end)) {
@@ -437,10 +447,19 @@ static int pmap_compare(void *p, struct list_head *a, struct list_head *b)
 	struct pmap *pa = &list_entry(a, struct pmap_entry, list)->info;
 	struct pmap *pb = &list_entry(b, struct pmap_entry, list)->info;
 
-	s32 order_a = pmap_get_order(pa);
-	s32 order_b = pmap_get_order(pb);
+	s32 order_a;
+	s32 order_b;
 
-	u64 base_a, base_b;
+	u64 base_a;
+	u64 base_b;
+
+	if ((pa == NULL) || (pb == NULL)) {
+		/* XXX: Should not happen */
+		return 0;
+	}
+
+	order_a = pmap_get_order(pa);
+	order_b = pmap_get_order(pb);
 
 	if (order_a != order_b) {
 		return (order_a < order_b) ? -1 : 1;
@@ -457,14 +476,15 @@ static int pmap_compare(void *p, struct list_head *a, struct list_head *b)
 static int proc_pmap_show(struct seq_file *m, void *v)
 {
 	struct pmap_entry *entry = NULL;
-	s32 shared_info = 0, secured_info = 0;
+	s32 shared_info = 0;
+	s32 secured_info = 0;
 
 	if (!pmap_list_sorted) {
-		list_sort(NULL, &pmap_list_head, pmap_compare);
+		list_sort(NULL, &pmap_list_head, &pmap_compare);
 		pmap_list_sorted = (bool)true;
 	}
 
-	/* format:     %-10s      %-10s      %3s %3s %s */
+	/* format:   -10s       -10s        3s  3s    s */
 	seq_puts(m, "base_addr  size       cma ref name\n");
 
 	list_for_each_entry(entry, &pmap_list_head, list) {
@@ -498,7 +518,7 @@ static int proc_pmap_show(struct seq_file *m, void *v)
 
 static int proc_pmap_open(struct inode *inode, struct file *file)
 {
-	return single_open(file, proc_pmap_show, PDE_DATA(inode));
+	return single_open(file, &proc_pmap_show, PDE_DATA(inode));
 }
 
 static long proc_pmap_ioctl(struct file *f, unsigned int cmd, unsigned long arg)
@@ -576,8 +596,10 @@ static void pmap_update_info(struct device_node *np, struct pmap *info)
 		struct pmap *shared;
 		const char *name;
 		const __be32 *prop;
-		s32 len, ret;
-		u64 offset = 0, size = 0;
+		s32 len;
+		s32 ret;
+		u64 offset = 0;
+		u64 size = 0;
 
 		sn = of_parse_phandle(np, "telechips,pmap-shared", 0);
 		ret = of_property_read_string(sn, "telechips,pmap-name", &name);
@@ -668,6 +690,11 @@ int __init tcc_pmap_init(void)
 	for (i = 0; i < MAX_PMAP_GROUPS; i++) {
 		entry = &secure_area_table[i];
 
+		if (entry == NULL) {
+			/* XXX: Should not happen */
+			return -ENOMEM;
+		}
+
 		(void)sprintf(entry->info.name, "secure_area%d", (s32)i + 1);
 		entry->info.base = PMAP_FREED;
 		entry->info.groups = PMAP_DATA_NA;
@@ -709,7 +736,10 @@ int __init tcc_pmap_init(void)
 	for_each_compatible_node(np, NULL, "telechips,pmap") {
 		const char *name;
 		struct pmap *info;
-		s32 ncell, naddr, nsize, ret;
+		s32 ncell;
+		s32 naddr;
+		s32 nsize;
+		s32 ret;
 		struct property *prop;
 		__be32 *pval;
 		const void *reg;
@@ -735,10 +765,25 @@ int __init tcc_pmap_init(void)
 		ncell = naddr + nsize;
 
 		prop = kzalloc(sizeof(*prop), GFP_KERNEL);
+		if (prop == NULL) {
+			/* XXX: Should not happen */
+			continue;
+		}
+
+		if (INT_MAX / sizeof(__be32) < (size_t)ncell) {
+			/* XXX: Should not happen */
+			kfree(prop);
+			continue;
+		}
 
 		prop->value = kzalloc((size_t)ncell * sizeof(__be32),
 				      GFP_KERNEL);
 		pval = prop->value;
+
+		if (pval == NULL) {
+			/* XXX: Should not happen */
+			continue;
+		}
 
 		if (naddr > 1) {
 			*pval = 0;
@@ -776,8 +821,8 @@ int __init tcc_pmap_init(void)
 	}
 
 	(void)pr_info("[INFO][PMAP] total reserved %llu bytes (%llu KiB, %llu MiB)\n",
-		      pmap_total_size, pmap_total_size >> 10,
-		      pmap_total_size >> 20);
+		      pmap_total_size, pmap_total_size >> 10U,
+		      pmap_total_size >> 20U);
 
 	return 0;
 }
@@ -786,17 +831,30 @@ postcore_initcall(tcc_pmap_init);
 static int __init rmem_pmap_setup(struct reserved_mem *rmem)
 {
 	static s32 num_pmaps_left = (s32)MAX_PMAPS;
-	ulong node = rmem->fdt_node;
+	ulong node;
 	const char *name;
 	const __be32 *prop;
 	s32 len;
 	u32 flags = 0;
-	u64 groups = 0, alloc_size = 0;
+	u64 groups = 0;
 	struct pmap_entry *entry;
-	phys_addr_t end = rmem->base;
+	phys_addr_t end;
+	u64 base;
+	u64 size;
+
+	if (rmem == NULL) {
+		/* XXX: Should not happen */
+		return -EINVAL;
+	}
+
+	node = rmem->fdt_node;
+	base = rmem->base;
+	size = rmem->size;
 
 	if ((rmem->size > 0U) && ((ULONG_MAX - rmem->base) >= rmem->size)) {
-		end = rmem->base + rmem->size;
+		end = rmem->base + rmem->size - 1U;
+	} else {
+		end = rmem->base;
 	}
 
 	pr_debug("[DEBUG][PMAP] reserved %ld MiB\t[%pa-%pa]\n",
@@ -837,10 +895,12 @@ static int __init rmem_pmap_setup(struct reserved_mem *rmem)
 	prop = of_get_flat_dt_prop(node, "telechips,cma-alloc-size", &len);
 
 	if (prop != NULL) {
-		alloc_size = of_read_number(prop, len/4);
+		u64 alloc_size = of_read_number(prop, len/4);
 
 		if (alloc_size != 0U) {
 			flags |= PMAP_FLAG_CMA_ALLOC;
+			base = PMAP_FREED;
+			size = alloc_size;
 		}
 	}
 #endif
@@ -854,8 +914,8 @@ static int __init rmem_pmap_setup(struct reserved_mem *rmem)
 	--num_pmaps_left;
 
 	(void)strncpy(entry->info.name, name, TCC_PMAP_NAME_LEN);
-	entry->info.base = (alloc_size != 0U) ? PMAP_FREED : (u64)rmem->base;
-	entry->info.size = (alloc_size != 0U) ? alloc_size : (u64)rmem->size;
+	entry->info.base = base;
+	entry->info.size = size;
 	entry->info.groups = (u32)groups;
 	entry->info.rc = 0;
 	entry->info.flags = flags;
@@ -864,7 +924,7 @@ static int __init rmem_pmap_setup(struct reserved_mem *rmem)
 
 	return 0;
 }
-RESERVEDMEM_OF_DECLARE(pmap, "telechips,pmap", rmem_pmap_setup);
+RESERVEDMEM_OF_DECLARE(pmap, "telechips,pmap", &rmem_pmap_setup);
 
 MODULE_AUTHOR("Albert Kim <kimys@telechips.com>");
 MODULE_DESCRIPTION("Telechips PMAP driver");
