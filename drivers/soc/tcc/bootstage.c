@@ -87,9 +87,8 @@ static inline void validate_boot_timestamp_num(struct seq_file *m, u32 num)
 	}
 }
 
-static inline const char *u32_to_str_in_format(u32 num)
+static inline const char *u32_to_str_in_format(u32 num, char *format)
 {
-	static char format[13]; /* ",000,000,000" */
 	u32 ths = 1000000U;
 	s32 idx = 0;
 
@@ -115,13 +114,10 @@ static inline const char *u32_to_str_in_format(u32 num)
 
 static int bootstage_report_show(struct seq_file *m, void *v)
 {
-	/*
-	 * CAUTION. This function is **NOT THREAD SAFE** !!!
-	 */
-
 	u32 n, num, stamp, prev = 0;
 	s32 nr_actual = 0;
-	const char *stamp_fmt, *desc;
+	const char *fmt, *desc;
+	char buf[13]; /* ",000,000,000" */
 
 	num = get_boot_timestamp_num();
 	validate_boot_timestamp_num(m, num);
@@ -136,15 +132,15 @@ static int bootstage_report_show(struct seq_file *m, void *v)
 		stamp = get_boot_timestamp(n);
 
 		if (stamp != 0U) {
-			stamp_fmt = u32_to_str_in_format(stamp);
-			seq_printf(m, "%11s", stamp_fmt);
+			fmt = u32_to_str_in_format(stamp, buf);
+			seq_printf(m, "%11s", fmt);
 
 			if (stamp >= prev) {
-				stamp_fmt = u32_to_str_in_format(stamp - prev);
+				fmt = u32_to_str_in_format(stamp - prev, buf);
 			} else {
-				stamp_fmt = "overflow";
+				fmt = "overflow";
 			}
-			seq_printf(m, "%11s", stamp_fmt);
+			seq_printf(m, "%11s", fmt);
 
 			prev = stamp;
 			seq_printf(m, "  %s\n", desc);
@@ -158,14 +154,11 @@ static int bootstage_report_show(struct seq_file *m, void *v)
 
 	return 0;
 }
+
 DEFINE_SHOW_ATTRIBUTE(bootstage_report);
 
 static int bootstage_data_show(struct seq_file *m, void *v)
 {
-	/*
-	 * CAUTION. This function is **NOT THREAD SAFE** !!!
-	 */
-
 	u32 n, num;
 	u32 stamp, prev = 0;
 	const char *desc;
@@ -194,6 +187,7 @@ static int bootstage_data_show(struct seq_file *m, void *v)
 
 	return 0;
 }
+
 DEFINE_SHOW_ATTRIBUTE(bootstage_data);
 
 static int bootstage_pm_notifier_call(struct notifier_block *nb,
