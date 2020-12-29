@@ -15,6 +15,8 @@
 #ifndef SOC_TCC_SIP_H
 #define SOC_TCC_SIP_H
 
+#include <linux/arm-smccc.h>
+
 #define SIP_CMD_TAG		(0x82000000)
 /* 8200_TXXX	: SMC Function ID Struct*/
 /* [27:24] 2	: Service Call Range	*/
@@ -104,7 +106,7 @@ enum {
 };
 
 /* TCC SiP Service for DRAM */
-enum{
+enum {
 	/* 0x8200_6000 */
 	SIP_DRAM_TOOL_RDQS = SIP_CMD(SIP_DEV_DRAM, 0x000),
 	SIP_DRAM_TOOL_WDQS,
@@ -116,15 +118,15 @@ enum{
 	SIP_DRAM_TOOL_WIMP,
 	SIP_DRAM_TOOL_TM_INIT,
 	SIP_DRAM_TOOL_TM_SET,
-        SIP_DRAM_TOOL_CLK,
-        SIP_DRAM_TOOL_CA,
-        SIP_GET_DRAM_SIZE,
+	SIP_DRAM_TOOL_CLK,
+	SIP_DRAM_TOOL_CA,
+	SIP_GET_DRAM_SIZE,
 	SIP_DDR_ERROR_CNT,
         SIP_ECC_ERROR_REASON,
 };
 
 /* TCC SiP Service for chip info */
-enum{
+enum {
 	/* 0x8200_7000 */
 	SIP_CHIP_REV = SIP_CMD(SIP_DEV_CHIP, 0x000),
 	SIP_CHIP_NAME,
@@ -134,6 +136,9 @@ enum{
 	SIP_CHIP_GET_BOOTTIME_NUM,
 	SIP_CHIP_GET_BOOT_CONFIG,
 };
+
+#define tcc_sip_chip(id, ...) \
+	(arm_smccc_smc((ulong)SIP_CHIP_##id, ##__VA_ARGS__))
 
 /* Crypto SIP Service */
 enum {
