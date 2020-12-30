@@ -278,6 +278,7 @@ static int renoir_print_clk_levels(struct smu_context *smu,
 		count = NUM_SOCCLK_DPM_LEVELS;
 		cur_value = metrics.ClockFrequency[CLOCK_SOCCLK];
 		break;
+	case SMU_UCLK:
 	case SMU_MCLK:
 		count = NUM_MEMCLK_DPM_LEVELS;
 		cur_value = metrics.ClockFrequency[CLOCK_FCLK];
