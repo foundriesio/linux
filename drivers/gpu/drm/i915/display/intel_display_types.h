@@ -1376,6 +1376,9 @@ struct intel_dp {
 	/* Displayport compliance testing */
 	struct intel_dp_compliance compliance;
 
+	/* To control wakeup latency, e.g. for irq-driven dp aux transfers. */
+	struct pm_qos_request pm_qos;
+
 	/* Display stream compression testing */
 	bool force_dsc_en;
 };
