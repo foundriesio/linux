@@ -208,8 +208,14 @@ check_name(struct dentry *direntry, struct cifs_tcon *tcon)
 		     direntry->d_name.len >
 		     le32_to_cpu(tcon->fsAttrInfo.MaxPathNameComponentLength)))
 		return -ENAMETOOLONG;
-
-	if (!(cifs_sb->mnt_cifs_flags & CIFS_MOUNT_POSIX_PATHS)) {
+	/*
+	 * If POSIX extensions negotiated or if mapping reserved characters
+	 * (via SFM, the default on most mounts currently, then '\' is
+	 * remapped on the wire into the Unicode reserved range, 0xF026) then
+	 * do not need to reject get/set requests with backslash in path
+	 */
+	if (!(cifs_sb->mnt_cifs_flags & CIFS_MOUNT_POSIX_PATHS) &&
+	    !(cifs_sb->mnt_cifs_flags & CIFS_MOUNT_MAP_SFM_CHR)) {
 		for (i = 0; i < direntry->d_name.len; i++) {
 			if (direntry->d_name.name[i] == '\\') {
 				cifs_dbg(FYI, "Invalid file name\n");

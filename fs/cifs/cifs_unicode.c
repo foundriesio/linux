@@ -98,6 +98,9 @@ convert_sfm_char(const __u16 src_char, char *target)
 	case SFM_PERIOD:
 		*target = '.';
 		break;
+	case SFM_SLASH:
+		*target = '\\';
+		break;
 	default:
 		return false;
 	}
@@ -430,6 +433,9 @@ static __le16 convert_to_sfm_char(char src_char, bool end_of_string)
 		break;
 	case '|':
 		dest_char = cpu_to_le16(SFM_PIPE);
+		break;
+	case '\\':
+		dest_char = cpu_to_le16(SFM_SLASH);
 		break;
 	case '.':
 		if (end_of_string)
