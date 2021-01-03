@@ -1144,10 +1144,6 @@ static int sun8i_dwmac_probe(struct platform_device *pdev)
 	if (ret)
 		return ret;
 
-	plat_dat = stmmac_probe_config_dt(pdev, &stmmac_res.mac);
-	if (IS_ERR(plat_dat))
-		return PTR_ERR(plat_dat);
-
 	gmac = devm_kzalloc(dev, sizeof(*gmac), GFP_KERNEL);
 	if (!gmac)
 		return -ENOMEM;
@@ -1211,11 +1207,15 @@ static int sun8i_dwmac_probe(struct platform_device *pdev)
 	ret = of_get_phy_mode(dev->of_node, &interface);
 	if (ret)
 		return -EINVAL;
-	plat_dat->interface = interface;
+
+	plat_dat = stmmac_probe_config_dt(pdev, &stmmac_res.mac);
+	if (IS_ERR(plat_dat))
+		return PTR_ERR(plat_dat);
 
 	/* platform data specifying hardware features and callbacks.
 	 * hardware features were copied from Allwinner drivers.
 	 */
+	plat_dat->interface = interface;
 	plat_dat->rx_coe = STMMAC_RX_COE_TYPE2;
 	plat_dat->tx_coe = 1;
 	plat_dat->has_sun8i = true;
@@ -1226,7 +1226,7 @@ static int sun8i_dwmac_probe(struct platform_device *pdev)
 
 	ret = sun8i_dwmac_init(pdev, plat_dat->bsp_priv);
 	if (ret)
-		return ret;
+		goto dwmac_deconfig;
 
 	ret = stmmac_dvr_probe(&pdev->dev, plat_dat, &stmmac_res);
 	if (ret)
@@ -1240,7 +1240,7 @@ static int sun8i_dwmac_probe(struct platform_device *pdev)
 	if (gmac->variant->soc_has_internal_phy) {
 		ret = get_ephy_nodes(priv);
 		if (ret)
-			goto dwmac_exit;
+			goto dwmac_remove;
 		ret = sun8i_dwmac_register_mdio_mux(priv);
 		if (ret) {
 			dev_err(&pdev->dev, "Failed to register mux\n");
@@ -1249,7 +1249,7 @@ static int sun8i_dwmac_probe(struct platform_device *pdev)
 	} else {
 		ret = sun8i_dwmac_reset(priv);
 		if (ret)
-			goto dwmac_exit;
+			goto dwmac_remove;
 	}
 
 	return ret;
@@ -1257,9 +1257,14 @@ dwmac_mux:
 	reset_control_put(gmac->rst_ephy);
 	clk_put(gmac->ephy_clk);
 	sun8i_dwmac_unset_syscon(gmac);
+dwmac_remove:
+	stmmac_dvr_remove(&pdev->dev);
 dwmac_exit:
-	stmmac_pltfr_remove(pdev);
-return ret;
+	sun8i_dwmac_exit(pdev, gmac);
+dwmac_deconfig:
+	stmmac_remove_config_dt(pdev, plat_dat);
+
+	return ret;
 }
 
 static int sun8i_dwmac_remove(struct platform_device *pdev)
