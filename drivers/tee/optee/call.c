@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2015, Linaro Limited
+ * Copyright (c) Telechips Inc
  */
 #include <linux/arm-smccc.h>
 #include <linux/device.h>
@@ -545,6 +546,15 @@ static bool is_normal_memory(pgprot_t p)
 
 static int __check_mem_type(struct vm_area_struct *vma, unsigned long end)
 {
+#if defined(CONFIG_ARCH_TCC) && defined(CONFIG_ANDROID)
+	/**
+	 * Sometimes the vma is null at Android11.
+	 * Ignore this function call. (should be check next upgrade)
+	 */
+	if (vma == NULL)
+		return 0;
+#endif
+
 	while (vma && is_normal_memory(vma->vm_page_prot)) {
 		if (vma->vm_end >= end)
 			return 0;
