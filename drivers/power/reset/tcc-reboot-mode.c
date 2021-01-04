@@ -10,13 +10,12 @@
 #include <linux/of_address.h>
 #include <linux/delay.h>
 #include <linux/reboot.h>
+#include <linux/reboot-mode.h>
 #include <linux/platform_device.h>
 #include <linux/arm-smccc.h>
 #include <asm/system_misc.h>
 
-#include "reboot-mode.h"
-
-#define TCC_SIP_SET_RESET_REASON	0x82003002U
+#define TCC_SIP_SET_RESET_REASON	(0x82003002U)
 
 #if !defined(CONFIG_ARM_PSCI) && !defined(CONFIG_ARM64)
 static void __iomem *pmu_usstatus;

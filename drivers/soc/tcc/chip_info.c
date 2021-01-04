@@ -14,7 +14,6 @@
 #include <asm/system_misc.h>
 #include <linux/io.h>
 #include <linux/types.h>
-#include <linux/arm-smccc.h>
 #include <soc/tcc/tcc-sip.h>
 #include <soc/tcc/chipinfo.h>
 
@@ -33,23 +32,17 @@ u32 get_chip_name(void)
 }
 EXPORT_SYMBOL(get_chip_name);
 
-static inline u32 tcc_chip_ops(ulong cmd, ulong arg)
-{
-	struct arm_smccc_res res;
-	u32 ret;
-
-	arm_smccc_smc(cmd, arg, 0, 0, 0, 0, 0, 0, &res);
-	ret = (u32)res.a0 & 0xFFFFFFFFU;
-
-	return ret;
-}
-
 static int __init chip_info_init(void)
 {
-	chip_rev = tcc_chip_ops(SIP_CHIP_REV, 0);
-	chip_name = tcc_chip_ops(SIP_CHIP_NAME, 0);
+	struct arm_smccc_res res;
 
-	/* For backward compatibility */
+	tcc_sip_chip(REV, 0, 0, 0, 0, 0, 0, 0, &res);
+	chip_rev = (u32)res.a0;
+
+	tcc_sip_chip(NAME, 0, 0, 0, 0, 0, 0, 0, &res);
+	chip_name = (u32)res.a0;
+
+	/* XXX: For backward compatibility */
 	system_rev = chip_rev;
 
 	(void)pr_info("[chipinfo] package: %x rev: %d\n", chip_name, chip_rev);
