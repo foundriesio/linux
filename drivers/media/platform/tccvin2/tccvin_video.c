@@ -160,6 +160,8 @@ struct framesize tccvin_framesize_list[] = {
 	{	 720,	 480	},
 	{	1024,	 600	},
 	{	1280,	 720	},
+	/* for ispless camera module(using internal isp) */
+	{	1280 - 16,	 990 - 16	},
 	{	1920,	 720	},
 	{	1920,	1080	},
 };

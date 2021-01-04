@@ -623,7 +623,8 @@
 
 		/*
 		 * ISPless camera module.
-		 * It includes max9601 and is used with des(max9286)
+		 * mcnex(for ecarx demo) camera module: max96701, max9286
+		 * sekonix(for mobis svm) camera module: max96701, max96712
 		 */
 		ar0147: ar0147 {
 			/* Camera Image Sensor */
@@ -915,6 +916,7 @@
 					 */
 					interleave-mode = <3>;
 					//hs-settle = <2>; // for mcnex ispless 1ch
+					//hs-settle = <19>; // for sekonix ispless 4ch
 					hs-settle = <17>; // for HD 4ch
 					//hs-settle = <37>; // for FHD 4ch
 					data-lanes = <1 2 3 4>;

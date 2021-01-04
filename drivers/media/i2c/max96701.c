@@ -52,6 +52,7 @@
 			fmt, LOG_TAG, __func__, ##__VA_ARGS__)
 
 
+//#define USE_MCNEX_CAM_MODULE
 
 /*
  * This object contains essential v4l2 objects such as sub-device and
@@ -70,35 +71,8 @@ struct max96701 {
 	unsigned int i_cnt;
 };
 
+/* for yuv422 HD camera module*/
 const struct reg_sequence max96701_reg_defaults[] = {
-#ifdef CONFIG_VIDEO_AR0147
-	{0x04, 0x47, 0}, // configuration mode(in the case of pclk detection fail)
-	{0x07, 0x40, 0}, // dbl off, hs/vs encoding off, 27bit
-	{0x0f, 0xbe, 300}, // GPO output low to reset sensor
-	{0x0f, 0xbf, 100}, // GPO output hight to reset release of sensor
-
-	/* test */
-	//{0x07, 0xa4, 0},
-	//{0x4d, 0xc0, 0},
-//	{0x07, 0xc0, 0}, // high bandwidth mode when BWS, HS/VS encoding disable
-	//{0xff,  100, 0},
-
-	// cross bar(Sensor Data Dout7 -> DIN0)
-	{0x20, 0x0b, 0},
-	{0x21, 0x0a, 0},
-	{0x22, 0x09, 0},
-	{0x23, 0x08, 0},
-	{0x24, 0x07, 0},
-	{0x25, 0x06, 0},
-	{0x26, 0x05, 0},
-	{0x27, 0x04, 0},
-	{0x28, 0x03, 0},
-	{0x29, 0x02, 0},
-	{0x2a, 0x01, 0},
-	{0x2b, 0x00, 0},
-
-
-#else /* for HD camera module */
 	{0x04, 0x47, 0},
 	// Sensor Data Dout7 -> DIN0
 	{0x20, 0x07, 0},
@@ -129,9 +103,40 @@ const struct reg_sequence max96701_reg_defaults[] = {
 	{0x4B, 0x83, 0},
 	{0x4C, 0x84, 0},
 	{0x43, 0x21, 0},
-#endif
 };
 
+/* for raw12 ispless camera module */
+const struct reg_sequence max96701_reg_defaults_raw12[] = {
+#ifdef USE_MCNEX_CAM_MODULE
+	{0x04, 0x47, 0}, // configuration mode(in the case of pclk detection fail)
+	{0x07, 0x40, 0}, // dbl off, hs/vs encoding off, 27bit
+	{0x0f, 0xbe, 300}, // GPO output low to reset sensor
+	{0x0f, 0xbf, 100}, // GPO output hight to reset release of sensor
+
+	/* test */
+	//{0x07, 0xa4, 0},
+	//{0x4d, 0xc0, 0},
+//	{0x07, 0xc0, 0}, // high bandwidth mode when BWS, HS/VS encoding disable
+	//{0xff,  100, 0},
+
+	// cross bar(Sensor Data Dout7 -> DIN0)
+	{0x20, 0x0b, 0},
+	{0x21, 0x0a, 0},
+	{0x22, 0x09, 0},
+	{0x23, 0x08, 0},
+	{0x24, 0x07, 0},
+	{0x25, 0x06, 0},
+	{0x26, 0x05, 0},
+	{0x27, 0x04, 0},
+	{0x28, 0x03, 0},
+	{0x29, 0x02, 0},
+	{0x2a, 0x01, 0},
+	{0x2b, 0x00, 0},
+#else
+	{0x04, 0x47, 50},
+	{0x07, 0xA4, 0},
+#endif
+};
 static const struct regmap_config max96701_regmap = {
 	.reg_bits		= 8,
 	.val_bits		= 8,
@@ -167,9 +172,18 @@ static int max96701_init(struct v4l2_subdev *sd, u32 enable)
 	mutex_lock(&dev->lock);
 
 	if ((dev->i_cnt == 0) && (enable == 1)) {
-		ret = regmap_multi_reg_write(dev->regmap,
-				max96701_reg_defaults,
-				ARRAY_SIZE(max96701_reg_defaults));
+		if (dev->fmt.code == MEDIA_BUS_FMT_SGRBG12_1X12) {
+			logi("input format is bayer raw\n");
+			ret = regmap_multi_reg_write(dev->regmap,
+					max96701_reg_defaults_raw12,
+					ARRAY_SIZE(max96701_reg_defaults_raw12));
+		}
+		else {
+			logi("input format is yuv422\n");
+			ret = regmap_multi_reg_write(dev->regmap,
+					max96701_reg_defaults,
+					ARRAY_SIZE(max96701_reg_defaults));
+		}
 		if (ret < 0)
 			loge("Fail initializing max96701 device\n");
 	} else if ((dev->i_cnt == 1) && (enable == 0)) {
@@ -220,8 +234,6 @@ static int max96701_get_fmt(struct v4l2_subdev *sd,
 	struct max96701		*dev	= to_dev(sd);
 	int			ret	= 0;
 
-	logi("%s call\n", __func__);
-
 	mutex_lock(&dev->lock);
 
 	memcpy((void *)&format->format, (const void *)&dev->fmt,
@@ -237,8 +249,6 @@ static int max96701_set_fmt(struct v4l2_subdev *sd,
 {
 	struct max96701		*dev	= to_dev(sd);
 	int			ret	= 0;
-
-	logi("%s call\n", __func__);
 
 	mutex_lock(&dev->lock);
 
@@ -304,6 +314,8 @@ int max96701_probe(struct i2c_client *client, const struct i2c_device_id *id)
 		return -ENOMEM;
 	}
 
+	mutex_init(&dev->lock);
+
 	// set the specific information
 	if (client->dev.of_node) {
 		dev_id = of_match_node(max96701_of_match, client->dev.of_node);
@@ -322,7 +334,6 @@ int max96701_probe(struct i2c_client *client, const struct i2c_device_id *id)
 		loge("Failed to register subdevice\n");
 	else
 		logi("%s is registered as a v4l2 sub device.\n", dev->sd.name);
-
 
 	// init regmap
 	dev->regmap = devm_regmap_init_i2c(client, &max96701_regmap);
