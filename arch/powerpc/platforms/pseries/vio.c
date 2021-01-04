@@ -1353,9 +1353,9 @@ struct vio_dev *vio_register_device_node(struct device_node *of_node)
 		else if (!strcmp(parent_node->full_name, "/vdevice"))
 			family = VDEVICE;
 		else {
-			pr_warn("%s: parent(%s) of %s not recognized.\n",
+			pr_warn("%s: parent(%pOF) of %s not recognized.\n",
 					__func__,
-					parent_node->full_name,
+					parent_node,
 					of_node_name);
 			of_node_put(parent_node);
 			return NULL;
@@ -1545,7 +1545,7 @@ static ssize_t devspec_show(struct device *dev,
 {
 	struct device_node *of_node = dev->of_node;
 
-	return sprintf(buf, "%s\n", of_node_full_name(of_node));
+	return sprintf(buf, "%pOF\n", of_node);
 }
 
 static ssize_t modalias_show(struct device *dev, struct device_attribute *attr,
