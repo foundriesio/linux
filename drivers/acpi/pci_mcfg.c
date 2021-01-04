@@ -143,6 +143,13 @@ static struct mcfg_fixup mcfg_quirks[] = {
 	XGENE_V2_ECAM_MCFG(4, 1),
 	XGENE_V2_ECAM_MCFG(4, 2),
 
+#define N1SDP_ECAM_MCFG(rev, seg, ops) \
+	{"ARMLTD", "ARMN1SDP", rev, seg, MCFG_BUS_ANY, ops }
+
+	/* N1SDP SoC with v1 PCIe controller */
+	N1SDP_ECAM_MCFG(0x20181101, 0, &pci_n1sdp_pcie_ecam_ops),
+	N1SDP_ECAM_MCFG(0x20181101, 1, &pci_n1sdp_ccix_ecam_ops),
+
 #define ALTRA_ECAM_QUIRK(rev, seg) \
 	{ "Ampere", "Altra   ", rev, seg, MCFG_BUS_ANY, &pci_32b_read_ops }
 

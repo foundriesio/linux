@@ -37,6 +37,17 @@ config PCI_FTPCI100
 	depends on OF
 	default ARCH_GEMINI
 
+config PCIE_HOST_N1SDP_ECAM
+	bool "ARM N1SDP PCIe Controller"
+	depends on ARM64
+	depends on OF || (ACPI && PCI_QUIRKS)
+	select PCI_HOST_COMMON
+	default y if ARCH_VEXPRESS
+	help
+	  Say Y here if you want PCIe support for the Arm N1SDP platform.
+	  The controller is ECAM compliant, but needs a quirk to workaround
+	  an integration issue.
+
 config PCI_TEGRA
 	bool "NVIDIA Tegra PCIe controller"
 	depends on ARCH_TEGRA || COMPILE_TEST
