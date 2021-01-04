@@ -47,6 +47,7 @@ int tcc_make_edid_from_display_mode(
 {
 	struct detailed_pixel_timing *pixel_data;
 	u8 csum, *raw_edid;
+	u32 blank;
 	int i, ret = -1;
 
 	if(!edid)
@@ -62,11 +63,15 @@ int tcc_make_edid_from_display_mode(
 	edid->detailed_timings[0].pixel_clock =
 		cpu_to_le16(DIV_ROUND_UP(mode->clock, 10));
 	pixel_data->hactive_lo = mode->hdisplay & 0xff;
-	pixel_data->hblank_lo = (mode->htotal - mode->hdisplay) & 0xff;
+	blank = (mode->htotal - mode->hdisplay);
+	pixel_data->hblank_lo = blank & 0xff;
 	pixel_data->hactive_hblank_hi = (mode->hdisplay >> 4) & 0xf0;
+	pixel_data->hactive_hblank_hi |= ((blank >> 8) & 0xf);
 	pixel_data->vactive_lo = mode->vdisplay & 0xff;
-	pixel_data->vblank_lo = (mode->vtotal - mode->vdisplay) & 0xff;
+	blank = (mode->vtotal - mode->vdisplay);
+	pixel_data->vblank_lo = blank & 0xff;
 	pixel_data->vactive_vblank_hi = (mode->vdisplay >> 4) & 0xf0;
+	pixel_data->vactive_vblank_hi |= ((blank >> 8) & 0xf);
 	pixel_data->hsync_offset_lo =
 		(mode->hsync_start - mode->hdisplay) & 0xff;
 	pixel_data->hsync_pulse_width_lo =
