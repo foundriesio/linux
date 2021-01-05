@@ -9,6 +9,16 @@
 #endif
 
 #include "tcc8059-linux-avn.dtsi"
+
+/* Definition for H/W LCD ports */
+#define LCD_PORT1_PWR "gpb-17"
+#define LCD_PORT1_RST "gpb-18"
+#define LCD_PORT1_BLK "gpma-26"
+
+#define LCD_PORT2_PWR "gpc-8"
+#define LCD_PORT2_RST "gpc-9"
+#define LCD_PORT2_BLK "gpma-27"
+
 #include "tcc8059-linux-avn-display.dtsi"
 
 / {

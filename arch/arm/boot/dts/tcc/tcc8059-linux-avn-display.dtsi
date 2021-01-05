@@ -6,106 +6,28 @@
 
 #include "tcc805x-display.dtsi"
 
-/* LCD POWER PORT 1 */
-&pinctrl {
-	lcd_port_default0:lcd_port_default0 {
-		telechips,pins = "gpb-17", "gpb-18", "gpma-26";
-		telechips,pin-function = <0>;
-		telechips,no-pull;
-	};
-	/* LVDS power on */
-	lcd_port_power_on0:lcd_port_power_on0 {
-		telechips,pins = "gpb-17";
-		telechips,pin-function = <0>;
-		telechips,output-high;
-	};
-	lcd_port_power_off0:lcd_port_power_off0 {
-		telechips,pins = "gpb-17";
-		telechips,pin-function = <0>;
-		telechips,output-low;
-	};
-	lcd_port_reset_on0:lcd_port_reset_on0 {
-		telechips,pins = "gpb-18";
-		telechips,pin-function = <0>;
-		telechips,output-low;
-	};
-	lcd_port_reset_off0:lcd_port_reset_off0 {
-		telechips,pins = "gpb-18";
-		telechips,pin-function = <0>;
-		telechips,output-high;
-	};
-	lcd_port_blk_on0:lcd_port_blk_on0 {
-		telechips,pins = "gpma-26";
-		telechips,pin-function = <0>;
-		telechips,output-high;
-	};
-	lcd_port_blk_off0:lcd_port_blk_off0 {
-		telechips,pins = "gpma-26";
-		telechips,pin-function = <0>;
-		telechips,output-low;
-	};
-};
 
-/* LCD POWER PORT 2 */
-&pinctrl {
-	lcd_port_default1:lcd_port_default1 {
-		telechips,pins = "gpc-8", "gpc-9", "gpma-27";
-		telechips,pin-function = <0>;
-		telechips,no-pull;
-	};
-	/* LVDS power on */
-	lcd_port_power_on1:lcd_port_power_on1 {
-		telechips,pins = "gpc-8";
-		telechips,pin-function = <0>;
-		telechips,output-high;
-	};
-	lcd_port_power_off1:lcd_port_power_off1 {
-		telechips,pins = "gpc-8";
-		telechips,pin-function = <0>;
-		telechips,output-low;
-	};
-	lcd_port_reset_on1:lcd_port_reset_on1 {
-		telechips,pins = "gpc-9";
-		telechips,pin-function = <0>;
-		telechips,output-low;
-	};
-	lcd_port_reset_off1:lcd_port_reset_off1 {
-		telechips,pins = "gpc-9";
-		telechips,pin-function = <0>;
-		telechips,output-high;
-	};
-	lcd_port_blk_on1:lcd_port_blk_on1 {
-		telechips,pins = "gpma-27";
-		telechips,pin-function = <0>;
-		telechips,output-high;
-	};
-	lcd_port_blk_off1:lcd_port_blk_off1 {
-		telechips,pins = "gpma-27";
-		telechips,pin-function = <0>;
-		telechips,output-low;
-	};
-};
+
 
 /* LCD POWER PORT 3 */
 &pinctrl {
-	lcd_port_default2:lcd_port_default2 {
+	lcd_port_default3:lcd_port_default3 {
 		telechips,pins = "gpsd1-10";
 		telechips,pin-function = <0>;
 		telechips,no-pull;
 	};
 	/* LVDS power on */
-	lcd_port_power_on2:lcd_port_power_on2 {
+	lcd_port_power_on3:lcd_port_power_on3 {
 		telechips,pins = "gpsd1-10";
 		telechips,pin-function = <0>;
 		telechips,output-high;
 	};
-	lcd_port_power_off2:lcd_port_power_off2 {
+	lcd_port_power_off3:lcd_port_power_off3 {
 		telechips,pins = "gpsd1-10";
 		telechips,pin-function = <0>;
 		telechips,output-low;
 	};
 };
-
 
 / {
 	/* Describe here after remove this statement if you have something to be override. */
@@ -120,12 +42,12 @@
 		lcdc-mux-select = <0>;
 
 		pinctrl-names = "default", "power_on", "reset_off", "blk_on", "blk_off", "power_off";
-		pinctrl-0 = <&lcd_port_default0>;
-		pinctrl-1 = <&lcd_port_power_on0>;
-		pinctrl-2 = <&lcd_port_reset_off0>;
-		pinctrl-3 = <&lcd_port_blk_on0>;
-		pinctrl-4 = <&lcd_port_blk_off0>;
-		pinctrl-5 = <&lcd_port_reset_on0 &lcd_port_power_off0>;
+		pinctrl-0 = <&lcd_port_default1>;
+		pinctrl-1 = <&lcd_port_power_on1>;
+		pinctrl-2 = <&lcd_port_reset_off1>;
+		pinctrl-3 = <&lcd_port_blk_on1>;
+		pinctrl-4 = <&lcd_port_blk_off1>;
+		pinctrl-5 = <&lcd_port_reset_on1 &lcd_port_power_off1>;
 	};
 
 	drm_dpv14_1 {
@@ -141,12 +63,12 @@
 		lcdc-mux-select = <2>;
 		pinctrl-names = "default", "pwr_on_1", "pwr_on_2",
 					"blk_on", "blk_off", "power_off";
-                pinctrl-0 = <&lcd_port_default1>;
-		pinctrl-1 = <&lcd_port_power_on1>;
-		pinctrl-2 = <&lcd_port_reset_off1>;
-		pinctrl-3 = <&lcd_port_blk_on1>;
-		pinctrl-4 = <&lcd_port_blk_off1>;
-		pinctrl-5 = <&lcd_port_reset_on1 &lcd_port_power_off1>;
+                pinctrl-0 = <&lcd_port_default2>;
+		pinctrl-1 = <&lcd_port_power_on2>;
+		pinctrl-2 = <&lcd_port_reset_off2>;
+		pinctrl-3 = <&lcd_port_blk_on2>;
+		pinctrl-4 = <&lcd_port_blk_off2>;
+		pinctrl-5 = <&lcd_port_reset_on2 &lcd_port_power_off2>;
 	};
 
 	drm_fld0800 {
@@ -155,9 +77,9 @@
 		phy-ports = <PHY_PORT_S0>;
 		lcdc-mux-select = <3>;
 		pinctrl-names = "default", "pwr_on_1", "power_off";
-                pinctrl-0 = <&lcd_port_default2>;
-		pinctrl-1 = <&lcd_port_power_on2>;
-		pinctrl-2 = <&lcd_port_power_off2>;
+                pinctrl-0 = <&lcd_port_default3>;
+		pinctrl-1 = <&lcd_port_power_on3>;
+		pinctrl-2 = <&lcd_port_power_off3>;
 	};
 
 	tcc-drm-lcd {

@@ -9,6 +9,24 @@
 #endif
 
 #include "tcc8053-android-avn.dtsi"
+
+/* Definition for H/W LCD ports */
+#define LCD_PORT1_PWR "gpa-21"
+#define LCD_PORT1_RST "gpg-6"
+#define LCD_PORT1_BLK "gph-6"
+
+#define LCD_PORT2_PWR "gpmb-28"
+#define LCD_PORT2_RST "gpc-12"
+#define LCD_PORT2_BLK "gph-7"
+
+#define LCD_PORT3_PWR "gpc-9"
+#define LCD_PORT3_RST "gpc-8"
+#define LCD_PORT3_BLK "gpmb-29"
+
+#define LCD_PORT4_PWR "gpc-23"
+#define LCD_PORT4_RST "gpc-25"
+#define LCD_PORT4_BLK "gpc-21"
+
 #include "tcc8053-android-avn-display.dtsi"
 
 / {

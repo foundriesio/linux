@@ -6,6 +6,168 @@
 
 #include <dt-bindings/display/tcc805x-lvds.h>
 
+&pinctrl {
+	/* LCD POWER PORT 1 */
+	#if defined(LCD_PORT1_PWR) && defined(LCD_PORT1_RST) && \
+		defined(LCD_PORT1_BLK)
+	lcd_port_default1:lcd_port_default1 {
+		telechips,pins = LCD_PORT1_PWR, LCD_PORT1_RST, LCD_PORT1_BLK;
+		telechips,pin-function = <0>;
+		telechips,no-pull;
+	};
+	lcd_port_power_on1:lcd_port_power_on1 {
+		telechips,pins = LCD_PORT1_PWR;
+		telechips,pin-function = <0>;
+		telechips,output-high;
+	};
+	lcd_port_power_off1:lcd_port_power_off1 {
+		telechips,pins = LCD_PORT1_PWR;
+		telechips,pin-function = <0>;
+		telechips,output-low;
+	};
+	lcd_port_reset_on1:lcd_port_reset_on1 {
+		telechips,pins = LCD_PORT1_RST;
+		telechips,pin-function = <0>;
+		telechips,output-low;
+	};
+	lcd_port_reset_off1:lcd_port_reset_off1 {
+		telechips,pins = LCD_PORT1_RST;
+		telechips,pin-function = <0>;
+		telechips,output-high;
+	};
+	lcd_port_blk_on1:lcd_port_blk_on1 {
+		telechips,pins = LCD_PORT1_BLK;
+		telechips,pin-function = <0>;
+		telechips,output-high;
+	};
+	lcd_port_blk_off1:lcd_port_blk_off1 {
+		telechips,pins = LCD_PORT1_BLK;
+		telechips,pin-function = <0>;
+		telechips,output-low;
+	};
+	#endif
+
+	/* LCD POWER PORT 2 */
+	#if defined(LCD_PORT2_PWR) && defined(LCD_PORT2_RST) && \
+		defined(LCD_PORT2_BLK)
+	lcd_port_default2:lcd_port_default2 {
+		telechips,pins = LCD_PORT2_PWR, LCD_PORT2_RST, LCD_PORT2_BLK;
+		telechips,pin-function = <0>;
+		telechips,no-pull;
+	};
+	lcd_port_power_on2:lcd_port_power_on2 {
+		telechips,pins = LCD_PORT2_PWR;
+		telechips,pin-function = <0>;
+		telechips,output-high;
+	};
+	lcd_port_power_off2:lcd_port_power_off2 {
+		telechips,pins = LCD_PORT2_PWR;
+		telechips,pin-function = <0>;
+		telechips,output-low;
+	};
+	lcd_port_reset_on2:lcd_port_reset_on2 {
+		telechips,pins = LCD_PORT2_RST;
+		telechips,pin-function = <0>;
+		telechips,output-low;
+	};
+	lcd_port_reset_off2:lcd_port_reset_off2 {
+		telechips,pins = LCD_PORT2_RST;
+		telechips,pin-function = <0>;
+		telechips,output-high;
+	};
+	lcd_port_blk_on2:lcd_port_blk_on2 {
+		telechips,pins = LCD_PORT2_BLK;
+		telechips,pin-function = <0>;
+		telechips,output-high;
+	};
+	lcd_port_blk_off2:lcd_port_blk_off2 {
+		telechips,pins = LCD_PORT2_BLK;
+		telechips,pin-function = <0>;
+		telechips,output-low;
+	};
+	#endif
+
+	/* LCD POWER PORT 3 */
+	#if defined(LCD_PORT3_PWR) && defined(LCD_PORT3_RST) && \
+		defined(LCD_PORT3_BLK)
+	lcd_port_default3:lcd_port_default3 {
+		telechips,pins = LCD_PORT3_PWR, LCD_PORT3_RST, LCD_PORT3_BLK;
+		telechips,pin-function = <0>;
+		telechips,no-pull;
+	};
+	/* LVDS power on */
+	lcd_port_power_on3:lcd_port_power_on3 {
+		telechips,pins = LCD_PORT3_PWR;
+		telechips,pin-function = <0>;
+		telechips,output-high;
+	};
+	lcd_port_power_off3:lcd_port_power_off3 {
+		telechips,pins = LCD_PORT3_PWR;
+		telechips,pin-function = <0>;
+		telechips,output-low;
+	};
+	lcd_port_reset_on3:lcd_port_reset_on3 {
+		telechips,pins = LCD_PORT3_RST;
+		telechips,pin-function = <0>;
+		telechips,output-low;
+	};
+	lcd_port_reset_off3:lcd_port_reset_off3 {
+		telechips,pins = LCD_PORT3_RST;
+		telechips,pin-function = <0>;
+		telechips,output-high;
+	};
+	lcd_port_blk_on3:lcd_port_blk_on3 {
+		telechips,pins = LCD_PORT3_BLK;
+		telechips,pin-function = <0>;
+		telechips,output-high;
+	};
+	lcd_port_blk_off3:lcd_port_blk_off3 {
+		telechips,pins = LCD_PORT3_BLK;
+		telechips,pin-function = <0>;
+		telechips,output-low;
+	};
+	#endif
+
+	/* LCD POWER PORT 4 */
+	#if defined(LCD_PORT4_PWR) && defined(LCD_PORT4_RST) && defined(LCD_PORT4_BLK)
+	lcd_port_default4:lcd_port_default4 {
+		telechips,pins = LCD_PORT4_PWR, LCD_PORT4_RST, LCD_PORT4_BLK;
+		telechips,pin-function = <0>;
+		telechips,no-pull;
+	};
+	lcd_port_power_on4:lcd_port_power_on4 {
+		telechips,pins = LCD_PORT4_PWR;
+		telechips,pin-function = <0>;
+		telechips,output-high;
+	};
+	lcd_port_power_off4:lcd_port_power_off4 {
+		telechips,pins = LCD_PORT4_PWR;
+		telechips,pin-function = <0>;
+		telechips,output-low;
+	};
+	lcd_port_reset_on4:lcd_port_reset_on4 {
+		telechips,pins = LCD_PORT4_RST;
+		telechips,pin-function = <0>;
+		telechips,output-low;
+	};
+	lcd_port_reset_off4:lcd_port_reset_off4 {
+		telechips,pins = LCD_PORT4_RST;
+		telechips,pin-function = <0>;
+		telechips,output-high;
+	};
+	lcd_port_blk_on4:lcd_port_blk_on4 {
+		telechips,pins = LCD_PORT4_BLK;
+		telechips,pin-function = <0>;
+		telechips,output-high;
+	};
+	lcd_port_blk_off4:lcd_port_blk_off4 {
+		telechips,pins = LCD_PORT4_BLK;
+		telechips,pin-function = <0>;
+		telechips,output-low;
+	};
+	#endif
+};
+
 / {
 	/* Describe here after remove this statement if you have something to be override. */
 	lcd_drm_dummy {
