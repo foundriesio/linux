@@ -92,7 +92,11 @@ int tcc_make_edid_from_display_mode(
 		(mode->width_mm >> 8) << 4 || mode->height_mm >> 8;
 	pixel_data->hborder = 0x0;
 	pixel_data->vborder = 0x0;
-	pixel_data->misc = 0x18;
+	pixel_data->misc = DRM_EDID_PT_SEPARATE_SYNC;
+	if(mode->flags & DRM_MODE_FLAG_PHSYNC)
+		pixel_data->misc |= DRM_EDID_PT_HSYNC_POSITIVE;
+	if(mode->flags & DRM_MODE_FLAG_PVSYNC)
+		pixel_data->misc |= DRM_EDID_PT_VSYNC_POSITIVE;
 
 	/* Checksum */
 	for (i = 0, csum = 0; i < EDID_LENGTH; i++)
