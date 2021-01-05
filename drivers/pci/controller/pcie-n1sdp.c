@@ -28,8 +28,11 @@
 
 /* Platform specific values as hardcoded in the firmware. */
 #define AP_NS_SHARED_MEM_BASE	0x06000000
-#define MAX_SEGMENTS		2
+
+/* Two PCIe root complexes in One Chip + One PCIe RC in Remote Chip*/
+#define MAX_SEGMENTS		3
 #define BDF_TABLE_SIZE		SZ_16K
+#define REMOTE_CHIP_ADDR_OFFSET	0x40000000000
 
 /*
  * Shared memory layout as written by the SCP upon boot time:
@@ -100,7 +103,10 @@ static int pci_n1sdp_init(struct pci_config_window *cfg, unsigned int segment)
 	if (segment >= MAX_SEGMENTS)
 		return -ENODEV;
 
-	table_base = AP_NS_SHARED_MEM_BASE + segment * BDF_TABLE_SIZE;
+	if (segment > 1)
+		table_base = AP_NS_SHARED_MEM_BASE + REMOTE_CHIP_ADDR_OFFSET;
+	else
+		table_base = AP_NS_SHARED_MEM_BASE + segment * BDF_TABLE_SIZE;
 
 	if (!request_mem_region(table_base, BDF_TABLE_SIZE,
 				"PCIe valid BDFs")) {
@@ -122,9 +128,15 @@ static int pci_n1sdp_init(struct pci_config_window *cfg, unsigned int segment)
 
 	memcpy_fromio(pcie_discovery_data[segment], shared_data, bdfs_size);
 
-	rc_remapped_addr[segment] = devm_ioremap(dev,
+	if (segment > 1)
+		rc_remapped_addr[segment] = devm_ioremap(dev,
+						shared_data->rc_base_addr + REMOTE_CHIP_ADDR_OFFSET,
+						PCI_CFG_SPACE_EXP_SIZE);
+	else
+		rc_remapped_addr[segment] = devm_ioremap(dev,
 						shared_data->rc_base_addr,
 						PCI_CFG_SPACE_EXP_SIZE);
+
 	if (!rc_remapped_addr[segment]) {
 		dev_err(dev, "Cannot remap root port base\n");
 		return -ENOMEM;
@@ -145,6 +157,11 @@ static int pci_n1sdp_ccix_init(struct pci_config_window *cfg)
 	return pci_n1sdp_init(cfg, 1);
 }
 
+static int pci_n1sdp_remote_pcie_init(struct pci_config_window *cfg)
+{
+	return pci_n1sdp_init(cfg, 2);
+}
+
 const struct pci_ecam_ops pci_n1sdp_pcie_ecam_ops = {
 	.bus_shift	= 20,
 	.init		= pci_n1sdp_pcie_init,
@@ -162,6 +179,16 @@ const struct pci_ecam_ops pci_n1sdp_ccix_ecam_ops = {
 		.map_bus        = pci_n1sdp_map_bus,
 		.read           = pci_generic_config_read32,
 		.write          = pci_generic_config_write32,
+	}
+};
+
+const struct pci_ecam_ops pci_n1sdp_remote_pcie_ecam_ops = {
+	.bus_shift	= 20,
+	.init		= pci_n1sdp_remote_pcie_init,
+	.pci_ops	= {
+		.map_bus	= pci_n1sdp_map_bus,
+		.read		= pci_generic_config_read32,
+		.write		= pci_generic_config_write32,
 	}
 };
 
@@ -187,6 +214,9 @@ static int n1sdp_pcie_probe(struct platform_device *pdev)
 		return pci_host_common_probe(pdev);
 	case 1:
 		n1sdp_pcie_of_match[0].data = &pci_n1sdp_ccix_ecam_ops;
+		return pci_host_common_probe(pdev);
+	case 2:
+		n1sdp_pcie_of_match[0].data = &pci_n1sdp_remote_pcie_ecam_ops;
 		return pci_host_common_probe(pdev);
 	}
 

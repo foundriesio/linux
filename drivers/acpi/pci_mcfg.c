@@ -149,6 +149,7 @@ static struct mcfg_fixup mcfg_quirks[] = {
 	/* N1SDP SoC with v1 PCIe controller */
 	N1SDP_ECAM_MCFG(0x20181101, 0, &pci_n1sdp_pcie_ecam_ops),
 	N1SDP_ECAM_MCFG(0x20181101, 1, &pci_n1sdp_ccix_ecam_ops),
+	N1SDP_ECAM_MCFG(0x20181101, 2, &pci_n1sdp_remote_pcie_ecam_ops),
 
 #define ALTRA_ECAM_QUIRK(rev, seg) \
 	{ "Ampere", "Altra   ", rev, seg, MCFG_BUS_ANY, &pci_32b_read_ops }
