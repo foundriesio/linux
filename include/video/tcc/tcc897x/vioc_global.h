@@ -156,7 +156,7 @@
 #define VIOC_VIQE			(0x1000)
 #define VIOC_VIQE0			(0x1000)
 //#define VIOC_VIQE1			(0x1001)
-#define VIOC_VIQE_MAX			(0x0002)
+#define VIOC_VIQE_MAX			(0x0001)
 
 /* OUTCFG : 0x13XX */
 #define VIOC_OUTCFG			(0x1300)

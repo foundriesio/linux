@@ -2912,7 +2912,7 @@ unsigned int tcc_viqe_commom_dt_parse(struct device_node *np, struct tcc_viqe_co
 	viqe_node1 = of_parse_phandle(np, "telechips,viqe,1", 0);
 	of_property_read_u32_index(np, "telechips,viqe,1", 1, &viqe_common_info->gVIOC_VIQE1);
 	if (!viqe_node1) {
-		pr_err("[ERR][VIQE] could not find viqe_video viqe1 node\n");
+		pr_info("[INF][VIQE] this soc has only one viqe node\n");
 
 		viqe_common_info->pVIQE1 = viqe_common_info->pVIQE0;
 		viqe_common_info->gVIOC_VIQE1 = viqe_common_info->gVIOC_VIQE0;
