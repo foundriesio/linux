@@ -47,7 +47,6 @@
 #include <tcc_screen_share.h>
 
 #define LOG_TAG "DRMLCD"
-//#define CONFIG_CHECK_DRM_TCC_VSYNC_TIME_GAP
 
 struct screen_share_context {
 	struct device *dev;
@@ -62,7 +61,6 @@ struct screen_share_context {
 	int vrefresh;
 
 	unsigned int timer_id;
-	struct delayed_work screen_share_work;
 	#if defined(CONFIG_CHECK_DRM_TCC_VSYNC_TIME_GAP)
 	struct timeval prev_time;
 	#endif
@@ -130,17 +128,6 @@ static unsigned int tcc_time_diff_ms(
 }
 #endif
 
-static void screen_shared_queue_work_thread(struct work_struct *work)
-{
-        struct screen_share_context *ctx =
-                container_of(
-                        (struct delayed_work *)work,
-                        struct screen_share_context, screen_share_work);
-        if (!ctx)
-		return;
-	tcc_drm_crtc_vblank_handler(&ctx->crtc->base);
-}
-
 static irqreturn_t screen_share_irq_handler(int irq, void *dev_id)
 {
 	struct screen_share_context *ctx =
@@ -165,9 +152,15 @@ static irqreturn_t screen_share_irq_handler(int irq, void *dev_id)
 		#if defined(CONFIG_CHECK_DRM_TCC_VSYNC_TIME_GAP)
 		do_gettimeofday(&cur_time);
 		diff_ms = tcc_time_diff_ms(&ctx->prev_time, &cur_time);
-		if(diff_ms < 33 || diff_ms > 33) {
-			//pr_err("DIFF %dms %d00us", diff_ms, vioc_timer_get_curtime());
-			pr_err("%d", diff_ms);
+		if(
+			diff_ms < (DIV_ROUND_UP(1000, ctx->vrefresh) -1 ) ||
+			diff_ms > (DIV_ROUND_UP(1000, ctx->vrefresh) +1 )) {
+			pr_err(
+				"DIFF %dms %d00us, <%d>",
+
+
+				diff_ms, vioc_timer_get_curtime(),
+				DIV_ROUND_UP(1000, ctx->vrefresh));
 		}
 		memcpy(&ctx->prev_time, &cur_time, sizeof(cur_time));
 		#endif
@@ -185,7 +178,6 @@ static int screen_share_enable_vblank(struct tcc_drm_crtc *crtc)
 
 	spin_lock_irqsave(&ctx->irq_lock, irqflags);
 	if (!test_and_set_bit(CRTC_FLAGS_IRQ_BIT, &ctx->crtc_flags)) {
-
 		ret = devm_request_irq(
 			ctx->dev, ctx->irq_num,
 			screen_share_irq_handler,
@@ -202,25 +194,19 @@ static int screen_share_enable_vblank(struct tcc_drm_crtc *crtc)
 		#endif
 		vioc_timer_clear_irq_status(ctx->timer_id);
 		vioc_timer_clear_irq_mask(ctx->timer_id);
-		if(ctx->vrefresh > 0) {
+		vioc_intr_enable(ctx->irq_num, VIOC_INTR_TIMER, 0);
+		if(ctx->vrefresh >= 24 && ctx->vrefresh <= 120) {
 			dev_info(
 				ctx->dev,
 				"[INFO][%s] %s with vrefresh(%d)\r\n",
 				LOG_TAG, __func__, ctx->vrefresh);
 			vioc_timer_set_timer(ctx->timer_id, 1, ctx->vrefresh);
-			schedule_delayed_work(
-				&ctx->screen_share_work,
-	                	usecs_to_jiffies(DIV_ROUND_UP(1000000,
-				ctx->vrefresh)));
 		} else {
 			dev_info(
 				ctx->dev,
 				"[INFO][%s] %s with force 30Hz\r\n",
 				LOG_TAG, __func__);
 			vioc_timer_set_timer(ctx->timer_id, 1, 30);
-			schedule_delayed_work(
-				&ctx->screen_share_work,
-	                	usecs_to_jiffies(33000));
 		}
 	}
 err_irq_request:
@@ -235,6 +221,7 @@ static void screen_share_disable_vblank(struct tcc_drm_crtc *crtc)
 
 	spin_lock_irqsave(&ctx->irq_lock, irqflags);
 	if (test_and_clear_bit(CRTC_FLAGS_IRQ_BIT, &ctx->crtc_flags)) {
+		vioc_intr_disable(ctx->irq_num, VIOC_INTR_TIMER, 0);
 		vioc_timer_set_irq_mask(ctx->timer_id);
 		devm_free_irq(
 			ctx->dev, ctx->irq_num, ctx);
@@ -520,8 +507,6 @@ static int screen_share_bind(
 	pm_runtime_enable(dev);
 	#endif
 
-	INIT_DELAYED_WORK(
-                &ctx->screen_share_work, screen_shared_queue_work_thread);
 	ctx->timer_id = VIOC_TIMER_TIMER0;
 
 	return 0;
