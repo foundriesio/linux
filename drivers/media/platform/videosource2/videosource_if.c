@@ -39,33 +39,6 @@
 
 extern int tcc_mipi_csi2_enable(unsigned int idx, videosource_format_t * format, unsigned int enable);
 
-struct tcc_pinctrl {
-	struct device *dev;
-
-	void __iomem *base;
-
-	struct pinctrl_desc pinctrl_desc;
-
-	struct pinctrl_dev *pctldev;
-
-	struct tcc_pinconf *pin_configs;
-	int nconfigs;
-
-	struct tcc_pinctrl_ops *ops;
-
-	struct pinctrl_pin_desc *pins;
-	unsigned int npins;
-
-	struct tcc_pin_bank *pin_banks;
-	unsigned int nbanks;
-
-	struct tcc_pin_group *groups;
-	unsigned int ngroups;
-
-	struct tcc_pinmux_function *functions;
-	unsigned int nfunctions;
-};
-
 //extern irqreturn_t ds90ub964_irq_thread_handler(int irq, void * client_data);
 
 /* list of image formats supported by sensor sensor */
