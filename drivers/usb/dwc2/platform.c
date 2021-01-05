@@ -873,8 +873,8 @@ static int dwc2_lowlevel_hw_init(struct dwc2_hsotg *hsotg)
 			return ret;
 		default:
 			hsotg->phy = NULL;
-			dev_err(hsotg->dev,
-					"[ERROR][USB] error getting phy %d\n",
+			dev_warn(hsotg->dev,
+					"[WARN][USB] error getting phy %d\n",
 					ret);
 		}
 	}
