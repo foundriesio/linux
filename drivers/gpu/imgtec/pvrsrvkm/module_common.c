@@ -346,7 +346,6 @@ void PVRSRVDeviceDeinit(PVRSRV_DEVICE_NODE *psDeviceNode)
 void PVRSRVDeviceShutdown(PVRSRV_DEVICE_NODE *psDeviceNode)
 {
 	PVRSRV_ERROR eError;
-
 	/*
 	 * Disable the bridge to stop processes trying to use the driver
 	 * after it has been shut down.
@@ -379,6 +378,12 @@ int PVRSRVDeviceSuspend(PVRSRV_DEVICE_NODE *psDeviceNode)
 	 * while it's suspended (this is needed for Android). Acquire the bridge
 	 * lock first to ensure the driver isn't currently in use.
 	 */
+	PVRSRV_RGXDEV_INFO *psDevInfo = psDeviceNode->pvDevice;
+
+	psDeviceNode->bAutoVzFwIsUp = IMG_FALSE;
+	PVR_DPF((PVR_DBG_ERROR, "%s Mode: %s", __func__, (PVRSRV_VZ_MODE_IS(GUEST)?"GUEST":"HOST"))); 
+	PVR_DPF((PVR_DBG_ERROR, "%s before: RGX_CR_OS0_SCRATCH2=0x%x, RGX_CR_OS0_SCRATCH3=0x%x"
+				, __func__, OSReadHWReg32(psDevInfo->pvRegsBaseKM, RGX_CR_OS0_SCRATCH2), OSReadHWReg32(psDevInfo->pvRegsBaseKM, RGX_CR_OS0_SCRATCH3)));
 
 	LinuxBridgeBlockClientsAccess(IMG_FALSE);
 
@@ -388,6 +393,9 @@ int PVRSRVDeviceSuspend(PVRSRV_DEVICE_NODE *psDeviceNode)
 		LinuxBridgeUnblockClientsAccess();
 		return -EINVAL;
 	}
+
+	PVR_DPF((PVR_DBG_ERROR, "%s after: RGX_CR_OS0_SCRATCH2=0x%x, RGX_CR_OS0_SCRATCH3=0x%x"
+				, __func__, OSReadHWReg32(psDevInfo->pvRegsBaseKM, RGX_CR_OS0_SCRATCH2), OSReadHWReg32(psDevInfo->pvRegsBaseKM, RGX_CR_OS0_SCRATCH3)));
 
 	return 0;
 }
@@ -401,11 +409,99 @@ int PVRSRVDeviceSuspend(PVRSRV_DEVICE_NODE *psDeviceNode)
 */ /***************************************************************************/
 int PVRSRVDeviceResume(PVRSRV_DEVICE_NODE *psDeviceNode)
 {
+	PVRSRV_RGXDEV_INFO *psDevInfo = psDeviceNode->pvDevice;
+
+	PVR_DPF((PVR_DBG_ERROR, "%s Mode: %s", __func__, (PVRSRV_VZ_MODE_IS(GUEST)?"GUEST":"HOST")));
+	PVR_DPF((PVR_DBG_ERROR, "%s before: RGX_CR_OS0_SCRATCH2=0x%x, RGX_CR_OS0_SCRATCH3=0x%x"
+		, __func__, OSReadHWReg32(psDevInfo->pvRegsBaseKM, RGX_CR_OS0_SCRATCH2), OSReadHWReg32(psDevInfo->pvRegsBaseKM, RGX_CR_OS0_SCRATCH3)));
+
+	psDeviceNode->bAutoVzFwIsUp = IMG_FALSE;
+
 	if (PVRSRVSetDeviceSystemPowerState(psDeviceNode,
 										PVRSRV_SYS_POWER_STATE_ON) != PVRSRV_OK)
 	{
 		return -EINVAL;
 	}
+
+	PVR_DPF((PVR_DBG_ERROR, "%s after: RGX_CR_OS0_SCRATCH2=0x%x, RGX_CR_OS0_SCRATCH3=0x%x"
+		, __func__, OSReadHWReg32(psDevInfo->pvRegsBaseKM, RGX_CR_OS0_SCRATCH2), OSReadHWReg32(psDevInfo->pvRegsBaseKM, RGX_CR_OS0_SCRATCH3)));
+	
+	if(PVRSRV_VZ_MODE_IS(GUEST))
+	{
+		IMG_UINT32 ui32FwTimeout = (3000 * 1000 * 3);
+
+		/* Guest waits for FW ready */
+		if (OSReadHWReg32(psDevInfo->pvRegsBaseKM, RGX_CR_OS0_SCRATCH3) != RGXFW_CONNECTION_FW_READY)
+		{
+			PVR_DPF((PVR_DBG_ERROR, "%s: Firmware Connection is not in Ready state. Waiting for Firmware ...", __func__));
+		}
+		while (OSReadHWReg32(psDevInfo->pvRegsBaseKM, RGX_CR_OS0_SCRATCH3) != RGXFW_CONNECTION_FW_READY)
+		{
+			OSWaitus(1000000);
+			PVR_DPF((PVR_DBG_ERROR, "%s: Firmware Connection is not in Ready state. Waiting for Firmware ...", __func__));
+		}
+		PVR_DPF((PVR_DBG_ERROR, "%s: Firmware Connection is Ready. Initialisation proceeding.", __func__));
+
+		OSWriteHWReg32(psDevInfo->pvRegsBaseKM, RGX_CR_OS0_SCRATCH2, RGXFW_CONNECTION_OS_READY);
+		*((volatile IMG_BOOL *)&psDevInfo->psRGXFWIfOsInit->sRGXCompChecks.bUpdated) = IMG_FALSE;
+
+		PVR_DPF((PVR_DBG_ERROR, "%s after forced init: RGX_CR_OS0_SCRATCH2=0x%x, RGX_CR_OS0_SCRATCH3=0x%x, bUpdated=%d"
+					, __func__, OSReadHWReg32(psDevInfo->pvRegsBaseKM, RGX_CR_OS0_SCRATCH2), OSReadHWReg32(psDevInfo->pvRegsBaseKM, RGX_CR_OS0_SCRATCH3),
+					(*((volatile IMG_BOOL *)&psDevInfo->psRGXFWIfOsInit->sRGXCompChecks.bUpdated))));
+
+		{
+			extern PVRSRV_ERROR RGXFWHealthCheckCmd(PVRSRV_RGXDEV_INFO *psDevInfo);
+
+			PVRSRV_ERROR eError;
+			eError = RGXFWHealthCheckCmd(psDevInfo);
+			if (eError != PVRSRV_OK)
+			{
+				PVR_DPF((PVR_DBG_ERROR, "%s: Cannot kick initial command to the Device (%s)",
+							__func__, PVRSRVGetErrorString(eError)));
+				return -EINVAL;
+			}
+		}
+
+		LOOP_UNTIL_TIMEOUT(ui32FwTimeout)
+		{
+			if (*((volatile IMG_BOOL *)&psDevInfo->psRGXFWIfOsInit->sRGXCompChecks.bUpdated))
+			{
+				/* No need to wait if the FW has already updated the values */
+				break;
+			}
+			OSWaitus(ui32FwTimeout/WAIT_TRY_COUNT);
+		} END_LOOP_UNTIL_TIMEOUT();
+
+		PVR_DPF((PVR_DBG_ERROR, "%s after wait: RGX_CR_OS0_SCRATCH2=0x%x, RGX_CR_OS0_SCRATCH3=0x%x, bUpdated=%d"
+					, __func__, OSReadHWReg32(psDevInfo->pvRegsBaseKM, RGX_CR_OS0_SCRATCH2), OSReadHWReg32(psDevInfo->pvRegsBaseKM, RGX_CR_OS0_SCRATCH3),
+					(*((volatile IMG_BOOL *)&psDevInfo->psRGXFWIfOsInit->sRGXCompChecks.bUpdated))));
+	}
+
+	/* Wait for FW ACTIVE */
+	{
+
+		if (OSReadHWReg32(psDevInfo->pvRegsBaseKM, RGX_CR_OS0_SCRATCH3) != RGXFW_CONNECTION_FW_ACTIVE)
+		{
+			PVR_DPF((PVR_DBG_ERROR, "%s: Firmware Connection is not in Active state. Waiting for Firmware ...", __func__));
+		}
+		while (OSReadHWReg32(psDevInfo->pvRegsBaseKM, RGX_CR_OS0_SCRATCH3) != RGXFW_CONNECTION_FW_ACTIVE)
+		{
+			OSWaitus(1000000);
+			PVR_DPF((PVR_DBG_ERROR, "%s: Firmware Connection is not in Active state. Waiting for Firmware ...", __func__));
+		}
+		PVR_DPF((PVR_DBG_ERROR, "%s: Firmware Connection is Active. Initialisation proceeding.", __func__));
+
+	}
+
+	PVR_DPF((PVR_DBG_ERROR, "%s after wait2: RGX_CR_OS0_SCRATCH2=0x%x, RGX_CR_OS0_SCRATCH3=0x%x, bUpdated=%d"
+				, __func__, OSReadHWReg32(psDevInfo->pvRegsBaseKM, RGX_CR_OS0_SCRATCH2), OSReadHWReg32(psDevInfo->pvRegsBaseKM, RGX_CR_OS0_SCRATCH3),
+				(*((volatile IMG_BOOL *)&psDevInfo->psRGXFWIfOsInit->sRGXCompChecks.bUpdated))));
+
+	psDeviceNode->bAutoVzFwIsUp = IMG_TRUE;
+	OSWriteHWReg32(psDevInfo->pvRegsBaseKM, RGX_CR_OS0_SCRATCH2, RGXFW_CONNECTION_OS_ACTIVE);
+
+	PVR_DPF((PVR_DBG_ERROR, "%s final: RGX_CR_OS0_SCRATCH2=0x%x, RGX_CR_OS0_SCRATCH3=0x%x"
+				, __func__, OSReadHWReg32(psDevInfo->pvRegsBaseKM, RGX_CR_OS0_SCRATCH2), OSReadHWReg32(psDevInfo->pvRegsBaseKM, RGX_CR_OS0_SCRATCH3)));
 
 	LinuxBridgeUnblockClientsAccess();
 
@@ -509,7 +605,6 @@ void PVRSRVDeviceRelease(PVRSRV_DEVICE_NODE *psDeviceNode,
 	void *pvConnectionData = psDRMFile->driver_priv;
 
 	PVR_UNREFERENCED_PARAMETER(psDeviceNode);
-
 	psDRMFile->driver_priv = NULL;
 	if (pvConnectionData)
 	{
