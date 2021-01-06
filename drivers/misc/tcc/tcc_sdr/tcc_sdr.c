@@ -388,7 +388,7 @@ int tcc_sdr_initialize(struct tcc_sdr_t *sdr, gfp_t gfp)
 		tcc_adma_dai_threshold(sdr->adma_reg, dbth);
 
 		//audio filter enable
-		tcc_dai_set_audio_filter_enable(sdr->dai_reg, true);
+		tcc_dai_set_audio_filter_enable(sdr->dai_reg, false);
 
 		tcc_dai_dma_threshold_enable(sdr->dai_reg, true);
 
@@ -405,7 +405,7 @@ int tcc_sdr_initialize(struct tcc_sdr_t *sdr, gfp_t gfp)
 		tcc_adma_dai_threshold(sdr->adma_reg, dbth);
 
 		//audio filter enable
-		tcc_dai_set_audio_filter_enable(sdr->dai_reg, true);
+		tcc_dai_set_audio_filter_enable(sdr->dai_reg, false);
 
 		tcc_dai_dma_threshold_enable(sdr->dai_reg, true);
 		tcc_dai_set_dao_mask(sdr->dai_reg, true, true, true, true,
