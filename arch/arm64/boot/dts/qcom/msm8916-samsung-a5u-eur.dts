@@ -32,7 +32,7 @@
 
 &pronto {
 	iris {
-		compatible = "qcom,wcn3680";
+		compatible = "qcom,wcn3660b";
 	};
 };
 
