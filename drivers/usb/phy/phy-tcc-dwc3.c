@@ -184,13 +184,16 @@ static int tcc_dwc3_vbus_set(struct usb_phy *phy, int on_off)
 	struct tcc_dwc3_device *phy_dev =
 		container_of(phy, struct tcc_dwc3_device, phy);
 	struct device *dev = phy_dev->dev;
+	struct property *pp;
 	int retval = 0;
 
 	/*
 	 * Check that the "vbus-ctrl-able" property for the USB PHY driver node
 	 * is declared in the device tree.
 	 */
-	if (of_find_property(dev->of_node, "vbus-ctrl-able", 0) == NULL) {
+
+	pp = of_find_property(dev->of_node, "vbus-ctrl-able", NULL);
+	if (pp == NULL) {
 		dev_err(dev, "[ERROR][USB] vbus-ctrl-able property is not declared in device tree.\n");
 		return -ENODEV;
 	}

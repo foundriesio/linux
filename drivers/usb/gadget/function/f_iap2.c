@@ -7,9 +7,6 @@
  *
  */
 
-/* #define DEBUG */
-/* #define VERBOSE_DEBUG */
-
 #include <linux/module.h>
 #include <linux/init.h>
 #include <linux/poll.h>
@@ -38,13 +35,11 @@
 #if defined(CONFIG_TCC_EH_ELECT_TST)
 #undef DMA_MODE
 #else
-//#define DMA_MODE
 #endif
 #endif
 
-//#define IAP_USE_INTR
 
-#define IAP_BULK_BUFFER_SIZE    512
+#define IAP_BULK_BUFFER_SIZE    512UL
 #define IAP_INTR_BUFFER_SIZE    512
 #define IAP_MAX_INST_NAME_LEN   40
 
@@ -84,11 +79,11 @@ struct iap_dev {
 
 	int state;
 	/* set to 1 when we connect */
-	int online:1;
+	signed int online:1;
 	/* Set to 1 when we disconnect.
 	 * Not cleared until our file is closed.
 	 */
-	int disconnected:1;
+	signed int disconnected:1;
 
 	/* for acc_complete_set_string */
 	int string_index;
@@ -219,15 +214,16 @@ static int iap_release(struct inode *ip, struct file *fp);
 
 static inline struct iap_dev *func_to_iap(struct usb_function *f)
 {
-	return container_of(f, struct iap_dev, function);
+	return (struct iap_dev *)container_of(f, struct iap_dev, function);
 }
 
 static struct usb_request *iap_request_new(struct usb_ep *ep, int buffer_size)
 {
 	struct usb_request *req = usb_ep_alloc_request(ep, GFP_KERNEL);
 
-	if (!req)
+	if (req == NULL) {
 		return NULL;
+	}
 
 	/* now allocate buffers for the requests */
 #ifdef DMA_MODE
@@ -235,9 +231,9 @@ static struct usb_request *iap_request_new(struct usb_ep *ep, int buffer_size)
 	    dma_alloc_coherent(NULL, buffer_size, &req->dma,
 			       GFP_KERNEL | GFP_DMA);
 #else
-	req->buf = kmalloc(buffer_size, GFP_KERNEL);
+	req->buf = kmalloc((unsigned long)buffer_size, GFP_KERNEL);
 #endif
-	if (!req->buf) {
+	if (req->buf == NULL) {
 		usb_ep_free_request(ep, req);
 		return NULL;
 	}
@@ -247,7 +243,7 @@ static struct usb_request *iap_request_new(struct usb_ep *ep, int buffer_size)
 
 static void iap_request_free(struct usb_request *req, struct usb_ep *ep)
 {
-	if (req) {
+	if (req != NULL) {
 #ifdef DMA_MODE
 		dma_free_coherent(NULL, IAP_BULK_BUFFER_SIZE, req->buf,
 				  req->dma);
@@ -278,7 +274,7 @@ static struct usb_request
 
 	spin_lock_irqsave(&dev->lock, flags);
 	if (list_empty(head)) {
-		req = 0;
+		req = NULL;
 	} else {
 		req = list_first_entry(head, struct usb_request, list);
 		list_del(&req->list);
@@ -298,8 +294,9 @@ static void iap_complete_in(struct usb_ep *ep, struct usb_request *req)
 {
 	struct iap_dev *dev = _iap_dev;
 
-	if (req->status != 0)
+	if (req->status != 0) {
 		iap_set_disconnected(dev);
+	}
 
 	iap_req_put(dev, &dev->tx_idle, req);
 
@@ -311,8 +308,9 @@ static void iap_complete_out(struct usb_ep *ep, struct usb_request *req)
 	struct iap_dev *dev = _iap_dev;
 
 	dev->rx_done = 1;
-	if (req->status != 0)
+	if (req->status != 0) {
 		iap_set_disconnected(dev);
+	}
 
 	wake_up(&dev->read_wq);
 }
@@ -347,7 +345,7 @@ static int __init create_iap_bulk_endpoints(struct iap_dev *dev,
 	DBG(cdev, "create_bulk_endpoints dev: %p\n", dev);
 
 	ep = usb_ep_autoconfig(cdev->gadget, in_desc);
-	if (!ep) {
+	if (ep == NULL) {
 		DBG(cdev, "usb_ep_autoconfig for iap ep_in failed\n");
 		return -ENODEV;
 	}
@@ -356,7 +354,7 @@ static int __init create_iap_bulk_endpoints(struct iap_dev *dev,
 	dev->ep_in = ep;
 
 	ep = usb_ep_autoconfig(cdev->gadget, out_desc);
-	if (!ep) {
+	if (ep == NULL) {
 		DBG(cdev, "usb_ep_autoconfig for iap ep_out failed\n");
 		return -ENODEV;
 	}
@@ -366,7 +364,7 @@ static int __init create_iap_bulk_endpoints(struct iap_dev *dev,
 
 #ifdef IAP_USE_INTR
 	ep = usb_ep_autoconfig(cdev->gadget, intr_desc);
-	if (!ep) {
+	if (ep == NULL) {
 		DBG(cdev, "usb_ep_autoconfig for iap ep_intr failed\n");
 		return -ENODEV;
 	}
@@ -378,23 +376,26 @@ static int __init create_iap_bulk_endpoints(struct iap_dev *dev,
 	/* now allocate requests for our endpoints */
 	for (i = 0; i < TX_REQ_MAX; i++) {
 		req = iap_request_new(dev->ep_in, IAP_BULK_BUFFER_SIZE);
-		if (!req)
+		if (req == NULL) {
 			goto fail;
+		}
 		req->complete = iap_complete_in;
 		iap_req_put(dev, &dev->tx_idle, req);
 	}
 	for (i = 0; i < RX_REQ_MAX; i++) {
 		req = iap_request_new(dev->ep_out, IAP_BULK_BUFFER_SIZE);
-		if (!req)
+		if (req == NULL) {
 			goto fail;
+		}
 		req->complete = iap_complete_out;
 		dev->rx_req[i] = req;
 	}
 #ifdef IAP_USE_INTR
 	for (i = 0; i < INTR_REQ_MAX; i++) {
 		req = iap_request_new(dev->ep_intr, IAP_INTR_BUFFER_SIZE);
-		if (!req)
+		if (req == NULL) {
 			goto fail;
+		}
 		req->complete = iap_complete_intr;
 		iap_req_put(dev, &dev->intr_idle, req);
 	}
@@ -412,16 +413,19 @@ static ssize_t iap_read(struct file *fp, char __user *buf,
 {
 	struct iap_dev *dev = fp->private_data;
 	struct usb_request *req;
-	int r = count, xfer;
+	int r, xfer;
 	int ret = 0;
 
+	r = (int)count;
 	DBG(dev->cdev, "%s(%d)\n", __func__, r);
 
-	if (dev->disconnected)
+	if (dev->disconnected == 1) {
 		return -ENODEV;
+	}
 
-	if (count > IAP_BULK_BUFFER_SIZE)
+	if (count > IAP_BULK_BUFFER_SIZE) {
 		count = IAP_BULK_BUFFER_SIZE;
+	}
 
 	/* we will block until we're online */
 	DBG(dev->cdev, "%s: waiting for online state\n", __func__);
@@ -434,7 +438,7 @@ static ssize_t iap_read(struct file *fp, char __user *buf,
 requeue_req:
 	/* queue a request */
 	req = dev->rx_req[0];
-	req->length = count;
+	req->length = (unsigned)count;
 	dev->rx_done = 0;
 	ret = usb_ep_queue(dev->ep_out, req, GFP_KERNEL);
 	if (ret < 0) {
@@ -448,25 +452,28 @@ requeue_req:
 	ret = wait_event_interruptible(dev->read_wq, dev->rx_done);
 	if (ret < 0) {
 		r = ret;
-		usb_ep_dequeue(dev->ep_out, req);
+		ret = usb_ep_dequeue(dev->ep_out, req);
 		goto done;
 	}
 
-	if (dev->online) {
+	if (dev->online == (signed int)1) {
 		/* If we got a 0-len packet, throw it back and try again. */
-		if (req->actual == 0)
+		if (req->actual == (unsigned)0) {
 			goto requeue_req;
+		}
 #if 0
 		print_hex_dump(KERN_DEBUG, "",
 			DUMP_PREFIX_OFFSET, 16, 1, req->buf, req->actual, 0);
 #endif
 		DBG(dev->cdev, "rx %p %d\n", req, req->actual);
-		xfer = (req->actual < count) ? req->actual : count;
+		xfer = (req->actual < count) ? (int)req->actual : (int)count;
 		r = xfer;
-		if (copy_to_user(buf, req->buf, xfer))
+		if (copy_to_user(buf, req->buf, xfer) != 0UL) {
 			r = -EFAULT;
-	} else
+		}
+	} else {
 		r = -EIO;
+	}
 
 done:
 	DBG(dev->cdev, "%s %d\n", __func__, r);
@@ -477,44 +484,52 @@ static ssize_t iap_write(struct file *fp, const char __user *buf,
 			 size_t count, loff_t *pos)
 {
 	struct iap_dev *dev = fp->private_data;
-	struct usb_request *req = 0;
-	int r = count, xfer;
+	struct usb_request *req = NULL;
+	int r, xfer;
 	int ret;
 
+	r = (int)count;
 	DBG(dev->cdev, "%s(%d)\n", __func__, r);
 
 #if 0
 	print_hex_dump(KERN_DEBUG, "",
 		DUMP_PREFIX_OFFSET, 16, 1, buf, count, 0);
 #endif
-	if (!dev->online || dev->disconnected)
+	if (dev->online == (signed int)0) {
 		return -ENODEV;
+	}
 
-	while (count > 0) {
+	if (dev->disconnected == (signed int)1) {
+		return -ENODEV;
+	}
 
-		if (!dev->online) {
+	while (count > 0UL) {
+
+		if (dev->online == (signed int)0) {
 			DBG(dev->cdev, "%s dev->error\n", __func__);
 			r = -EIO;
 			break;
 		}
 
 		/* get an idle tx request to use */
-		req = 0;
+		req = NULL;
 		ret = wait_event_interruptible(dev->write_wq,
 					       ((req =
 						 iap_req_get(dev,
 							     &dev->tx_idle))
 						|| !dev->online));
-		if (!req) {
+		if (req == NULL) {
 			r = ret;
 			break;
 		}
 
-		if (count > IAP_BULK_BUFFER_SIZE)
-			xfer = IAP_BULK_BUFFER_SIZE;
-		else
-			xfer = count;
-		if (xfer && copy_from_user(req->buf, buf, xfer)) {
+		if (count > IAP_BULK_BUFFER_SIZE) {
+			xfer = (int)IAP_BULK_BUFFER_SIZE;
+		} else {
+			xfer = (int)count;
+		}
+
+		if (xfer != 0 && copy_from_user(req->buf, buf, xfer) != 0UL) {
 			r = -EFAULT;
 			break;
 		}
@@ -522,7 +537,7 @@ static ssize_t iap_write(struct file *fp, const char __user *buf,
 		print_hex_dump(KERN_DEBUG, "",
 			DUMP_PREFIX_OFFSET, 16, 1, req->buf, xfer, 0);
 #endif
-		req->length = xfer;
+		req->length = (unsigned)xfer;
 		ret = usb_ep_queue(dev->ep_in, req, GFP_KERNEL);
 		if (ret < 0) {
 			DBG(dev->cdev, "%s: xfer error %d\n", __func__, ret);
@@ -530,15 +545,18 @@ static ssize_t iap_write(struct file *fp, const char __user *buf,
 			break;
 		}
 
-		buf += xfer;
-		count -= xfer;
+		buf += (unsigned int)xfer;
+		if (count >= (size_t)xfer) {
+			count -= (size_t)xfer;
+		}
 
 		/* zero this so we don't try to free it on error exit */
-		req = 0;
+		req = NULL;
 	}
 
-	if (req)
+	if (req != NULL) {
 		iap_req_put(dev, &dev->tx_idle, req);
+	}
 
 	DBG(dev->cdev, "%s returning %d\n", __func__, r);
 	return r;
@@ -702,7 +720,7 @@ int iap_ctrlrequest(struct usb_composite_dev *cdev,
 	/* respond with data transfer or status phase? */
 	if (value >= 0) {
 		cdev->req->zero = 0;
-		cdev->req->length = value;
+		cdev->req->length = (unsigned)value;
 		value = usb_ep_queue(cdev->gadget->ep0, cdev->req, GFP_ATOMIC);
 		if (value < 0)
 			pr_info("[INFO][USB] %s: response queue error\n",
@@ -736,15 +754,19 @@ iap_function_bind(struct usb_configuration *c, struct usb_function *f)
 	/* allocate a string ID for our interface */
 	us = usb_gstrings_attach(cdev, iap_strings,
 				 ARRAY_SIZE(iap_string_defs));
-	if (IS_ERR(us))
+	if (IS_ERR(us)) {
 		return PTR_ERR(us);
+	}
+
 	iap_interface_desc.iInterface = us[INTERFACE_STRING_INDEX].id;
 
 	/* allocate interface ID(s) */
 	id = usb_interface_id(c, f);
-	if (id < 0)
+	if (id < 0) {
 		return id;
-	iap_interface_desc.bInterfaceNumber = id;
+	}
+
+	iap_interface_desc.bInterfaceNumber = (unsigned char)id;
 
 	/* allocate endpoints */
 #ifdef IAP_USE_INTR
@@ -755,11 +777,12 @@ iap_function_bind(struct usb_configuration *c, struct usb_function *f)
 	ret = create_iap_bulk_endpoints(dev, &iap_fullspeed_in_desc,
 					&iap_fullspeed_out_desc, NULL);
 #endif
-	if (ret)
+	if (ret != 0) {
 		return ret;
+	}
 
 	/* support high speed hardware */
-	if (gadget_is_dualspeed(c->cdev->gadget)) {
+	if (gadget_is_dualspeed(c->cdev->gadget) != 0) {
 		iap_highspeed_in_desc.bEndpointAddress =
 		    iap_fullspeed_in_desc.bEndpointAddress;
 		iap_highspeed_out_desc.bEndpointAddress =
@@ -767,7 +790,7 @@ iap_function_bind(struct usb_configuration *c, struct usb_function *f)
 	}
 
 	DBG(cdev, "IAP2 %s speed %s: IN/%s, OUT/%s\n",
-	    gadget_is_dualspeed(c->cdev->gadget) ? "dual" : "full",
+	    gadget_is_dualspeed(c->cdev->gadget) != 0 ? "dual" : "full",
 	    f->name, dev->ep_in->name, dev->ep_out->name);
 	return 0;
 }
@@ -781,13 +804,18 @@ iap_function_unbind(struct usb_configuration *c, struct usb_function *f)
 
 	DBG(dev->cdev, "%s\n", __func__);
 
-	while ((req = iap_req_get(dev, &dev->tx_idle)))
+	while ((req = iap_req_get(dev, &dev->tx_idle))) {
 		iap_request_free(req, dev->ep_in);
-	for (i = 0; i < RX_REQ_MAX; i++)
+	}
+
+	for (i = 0; i < RX_REQ_MAX; i++) {
 		iap_request_free(dev->rx_req[i], dev->ep_out);
+	}
+
 #ifdef IAP_USE_INTR
-	while ((req = iap_req_get(dev, &dev->intr_idle)))
+	while ((req = iap_req_get(dev, &dev->intr_idle))) {
 		iap_request_free(req, dev->ep_intr);
+	}
 #endif
 }
 
@@ -805,40 +833,44 @@ static int iap_function_set_alt(struct usb_function *f,
 {
 	struct iap_dev *dev = func_to_iap(f);
 	struct usb_composite_dev *cdev = f->config->cdev;
-	int ret;
+	int ret, ret2;
 
 	DBG(cdev, "%s: %d alt: %d\n", __func__, intf, alt);
 
 	ret = config_ep_by_speed(cdev->gadget, f, dev->ep_in);
-	if (ret)
+	if (ret != 0) {
 		return ret;
+	}
 
 	ret = usb_ep_enable(dev->ep_in);
-	if (ret)
+	if (ret != 0) {
 		return ret;
+	}
 
 	ret = config_ep_by_speed(cdev->gadget, f, dev->ep_out);
-	if (ret)
+	if (ret != 0) {
 		return ret;
+	}
 
 	ret = usb_ep_enable(dev->ep_out);
-	if (ret) {
-		usb_ep_disable(dev->ep_in);
+	if (ret != 0) {
+		ret2 = usb_ep_disable(dev->ep_in);
 		return ret;
 	}
 #ifdef IAP_USE_INTR
 	ret = config_ep_by_speed(cdev->gadget, f, dev->ep_intr);
-	if (ret)
+	if (ret != 0) {
 		return ret;
+	}
 
 	ret = usb_ep_enable(dev->ep_intr);
-	if (ret) {
+	if (ret != 0) {
 		usb_ep_disable(dev->ep_out);
 		usb_ep_disable(dev->ep_in);
 		return ret;
 	}
 #endif
-	dev->online = 1;
+	dev->online = (signed int)1;
 
 	/* readers may be blocked waiting for us to go online */
 	wake_up(&dev->read_wq);
@@ -848,12 +880,13 @@ static int iap_function_set_alt(struct usb_function *f,
 static void iap_function_disable(struct usb_function *f)
 {
 	struct iap_dev *dev = func_to_iap(f);
+	int ret;
 
 	DBG(dev->cdev, "%s\n", __func__);
 
 	iap_set_disconnected(dev);
-	usb_ep_disable(dev->ep_in);
-	usb_ep_disable(dev->ep_out);
+	ret = usb_ep_disable(dev->ep_in);
+	ret = usb_ep_disable(dev->ep_out);
 #ifdef IAP_USE_INTR
 	usb_ep_disable(dev->ep_intr);
 #endif
@@ -890,11 +923,13 @@ static int __iap_setup(struct iap_instance *fi_iap)
 	pr_info("[INFO][USB] %s\n", __func__);
 
 	dev = kzalloc(sizeof(*dev), GFP_KERNEL);
-	if (!dev)
+	if (dev == NULL) {
 		return -ENOMEM;
+	}
 
-	if (fi_iap != NULL)
+	if (fi_iap != NULL) {
 		fi_iap->dev = dev;
+	}
 
 	spin_lock_init(&dev->lock);
 	init_waitqueue_head(&dev->read_wq);
@@ -910,8 +945,9 @@ static int __iap_setup(struct iap_instance *fi_iap)
 	_iap_dev = dev;
 
 	ret = misc_register(&iap_device);
-	if (ret)
+	if (ret != 0) {
 		goto err;
+	}
 
 	return 0;
 
@@ -938,7 +974,7 @@ void iap_cleanup(void)
 {
 	struct iap_dev *dev = _iap_dev;
 
-	if (!dev)
+	if (dev == NULL)
 		return;
 
 	DBG(dev->cdev, "%s\n", __func__);
@@ -951,7 +987,8 @@ EXPORT_SYMBOL_GPL(iap_cleanup);
 
 static struct iap_instance *to_iap_instance(struct config_item *item)
 {
-	return container_of(to_config_group(item), struct iap_instance,
+	return (struct iap_instance *)
+		container_of(to_config_group(item), struct iap_instance,
 			    func_inst.group);
 }
 
@@ -973,7 +1010,8 @@ static struct config_item_type iap_func_type = {
 
 static struct iap_instance *to_fi_iap(struct usb_function_instance *fi)
 {
-	return container_of(fi, struct iap_instance, func_inst);
+	return (struct iap_instance *)
+		container_of(fi, struct iap_instance, func_inst);
 }
 
 static int iap_set_inst_name(struct usb_function_instance *fi, const char *name)
@@ -982,13 +1020,15 @@ static int iap_set_inst_name(struct usb_function_instance *fi, const char *name)
 	char *ptr;
 	int name_len;
 
-	name_len = strlen(name) + 1;
-	if (name_len > IAP_MAX_INST_NAME_LEN)
+	name_len = (int)strlen(name) + 1;
+	if (name_len > IAP_MAX_INST_NAME_LEN) {
 		return -ENAMETOOLONG;
+	}
 
 	ptr = kstrndup(name, name_len, GFP_KERNEL);
-	if (!ptr)
+	if (ptr == NULL) {
 		return -ENOMEM;
+	}
 
 	fi_iap = to_fi_iap(fi);
 	fi_iap->name = ptr;
@@ -1012,13 +1052,15 @@ static struct usb_function_instance *iap_alloc_inst(void)
 	int ret = 0;
 
 	fi_iap = kzalloc(sizeof(*fi_iap), GFP_KERNEL);
-	if (!fi_iap)
+	if (fi_iap == NULL) {
 		return ERR_PTR(-ENOMEM);
+	}
+
 	fi_iap->func_inst.set_inst_name = iap_set_inst_name;
 	fi_iap->func_inst.free_func_inst = iap_free_inst;
 
 	ret = iap_setup_configfs(fi_iap);
-	if (ret) {
+	if (ret != 0) {
 		kfree(fi_iap);
 		pr_err("[ERROR][USB] Error setting iAP2\n");
 		return ERR_PTR(ret);

@@ -38,20 +38,17 @@
 #define EA_DBG(stuff...)          do { } while (0)
 #endif
 
-#define IAP2_EXT_ACC_BULK_BUFFER_SIZE    512
+#define IAP2_EXT_ACC_BULK_BUFFER_SIZE    512U
 #define IAP2_EXT_ACC_MAX_INST_NAME_LEN   40
 
 /* String IDs */
 #define IAP2_EXT_ACC_INTF_ALT0_STRING_INDEX	0
-//#define IAP2_EXT_ACC_INTF_ALT1_STRING_INDEX   1
 
 /* iAP2 Ext. Acc. protocol name */
 static char iap2_ext_acc_protocol_name0[256];
-//static char iap2_ext_acc_protocol_name1[256];
 
 /* iAP2 Ext. Acc. Default protocol name */
 #define IAP2_EXT_ACC_DEF_INTF_STRING0 "com.company.protocol0"
-//#define IAP2_EXT_ACC_DEF_INTF_STRING1 "com.company.protocol1"
 
 #ifndef USB_MFI_SUBCLASS_VENDOR_SPEC
 #define USB_MFI_SUBCLASS_VENDOR_SPEC 0xf0
@@ -184,8 +181,6 @@ static struct usb_descriptor_header *hs_iap2_ext_acc_descs[] = {
 
 static struct usb_string iap2_ext_acc_string_defs[] = {
 	[IAP2_EXT_ACC_INTF_ALT0_STRING_INDEX].s = iap2_ext_acc_protocol_name0,
-	//[IAP2_EXT_ACC_INTF_ALT1_STRING_INDEX].s       =
-	//iap2_ext_acc_protocol_name1,
 	{},			/* end of list */
 };
 
@@ -234,11 +229,9 @@ field ## _store(struct device *dev, struct device_attribute *attr, \
 static DEVICE_ATTR(field, 0644, field ## _show, field ## _store)
 
 IAP2_STRING_ATTR(protocol_name0, iap2_ext_acc_protocol_name0);
-//IAP2_STRING_ATTR(protocol_name1, iap2_ext_acc_protocol_name1);
 
 static struct device_attribute *iap2_ext_acc_attrs[] = {
 	&dev_attr_protocol_name0,
-//      &dev_attr_protocol_name1,
 	NULL
 };
 #endif
@@ -248,12 +241,13 @@ static struct usb_request *iap2_ext_acc_request_new(struct usb_ep *ep,
 {
 	struct usb_request *req = usb_ep_alloc_request(ep, GFP_KERNEL);
 
-	if (!req)
+	if (req == NULL) {
 		return NULL;
+	}
 
 	/* now allocate buffers for the requests */
 	req->buf = kmalloc(buffer_size, GFP_KERNEL);
-	if (!req->buf) {
+	if (req->buf == NULL) {
 		usb_ep_free_request(ep, req);
 		return NULL;
 	}
@@ -265,7 +259,7 @@ static struct usb_request *iap2_ext_acc_request_new(struct usb_ep *ep,
 static void iap2_ext_acc_request_free(struct usb_request *req,
 				      struct usb_ep *ep)
 {
-	if (req) {
+	if (req != NULL) {
 		kfree(req->buf);
 		usb_ep_free_request(ep, req);
 	}
@@ -291,8 +285,8 @@ static struct usb_request *iap2_ext_acc_req_get(struct iap2_ext_acc_dev *dev,
 	struct usb_request *req;
 
 	spin_lock_irqsave(&dev->lock, flags);
-	if (list_empty(head)) {
-		req = 0;
+	if (list_empty(head) != 0) {
+		req = NULL;
 	} else {
 		req = list_first_entry(head, struct usb_request, list);
 		list_del(&req->list);
@@ -334,13 +328,14 @@ static void iap2_ext_acc_complete_in(struct usb_ep *ep, struct usb_request *req)
 	struct iap2_ext_acc_dev *dev = req->context;
 
 	EA_DBG("%s : req->status[%d]\n", __func__, req->status);
-	if (!dev) {
+	if (dev == NULL) {
 		EA_DBG("%s : iap2_ext_acc_dev is NULL!!\n", __func__);
 		return;
 	}
 
-	if (req->status != 0)
+	if (req->status != 0) {
 		iap2_ext_acc_set_disconnected(dev);
+	}
 
 	iap2_ext_acc_req_put(dev, &dev->tx_idle, req);
 
@@ -354,13 +349,14 @@ static void iap2_ext_acc_complete_out(struct usb_ep *ep,
 	struct iap2_ext_acc_dev *dev = req->context;
 
 	EA_DBG("%s : req->status[%d]\n", __func__, req->status);
-	if (!dev) {
+	if (dev == NULL) {
 		EA_DBG("%s : iap2_ext_acc_dev is NULL!!\n", __func__);
 		return;
 	}
 
-	if (req->status != 0)
+	if (req->status != 0) {
 		iap2_ext_acc_set_disconnected(dev);
+	}
 
 	dev->rx_done = 1;
 
@@ -387,7 +383,7 @@ static int __init create_iap2_ext_acc_bulk_endpoints(struct iap2_ext_acc_dev
 	EA_DBG("create_bulk_endpoints dev: %p\n", dev);
 
 	ep = usb_ep_autoconfig(cdev->gadget, in_desc);
-	if (!ep) {
+	if (ep == NULL) {
 		pr_info("[INFO][USB] usb_ep_autoconfig for ep_in failed\n");
 		return -ENODEV;
 	}
@@ -398,7 +394,7 @@ static int __init create_iap2_ext_acc_bulk_endpoints(struct iap2_ext_acc_dev
 	dev->ep_in = ep;
 
 	ep = usb_ep_autoconfig(cdev->gadget, out_desc);
-	if (!ep) {
+	if (ep == NULL) {
 		pr_info("[INFO][USB] usb_ep_autoconfig for ep_out failed\n");
 		return -ENODEV;
 	}
@@ -413,8 +409,9 @@ static int __init create_iap2_ext_acc_bulk_endpoints(struct iap2_ext_acc_dev
 		req =
 		    iap2_ext_acc_request_new(dev->ep_in,
 					     IAP2_EXT_ACC_BULK_BUFFER_SIZE);
-		if (!req)
+		if (req == NULL) {
 			goto fail;
+		}
 		req->complete = iap2_ext_acc_complete_in;
 		iap2_ext_acc_req_put(dev, &dev->tx_idle, req);
 	}
@@ -422,8 +419,9 @@ static int __init create_iap2_ext_acc_bulk_endpoints(struct iap2_ext_acc_dev
 		req =
 		    iap2_ext_acc_request_new(dev->ep_out,
 					     IAP2_EXT_ACC_BULK_BUFFER_SIZE);
-		if (!req)
+		if (req == NULL) {
 			goto fail;
+		}
 		req->complete = iap2_ext_acc_complete_out;
 		dev->rx_req[i] = req;
 	}
@@ -433,10 +431,14 @@ static int __init create_iap2_ext_acc_bulk_endpoints(struct iap2_ext_acc_dev
 fail:
 	pr_err
 	    ("[ERROR][USB] iap2_ext_acc_bind() could not allocate requests\n");
-	while ((req = iap2_ext_acc_req_get(dev, &dev->tx_idle)))
+	while ((req = iap2_ext_acc_req_get(dev, &dev->tx_idle))) {
 		iap2_ext_acc_request_free(req, dev->ep_in);
-	for (i = 0; i < IAP2_EXT_ACC_RX_REQ_MAX; i++)
+	}
+
+	for (i = 0; i < IAP2_EXT_ACC_RX_REQ_MAX; i++) {
 		iap2_ext_acc_request_free(dev->rx_req[i], dev->ep_out);
+	}
+
 	return -1;
 }
 
@@ -446,9 +448,10 @@ static ssize_t iap2_ext_acc_read(struct file *fp, char __user *buf,
 {
 	struct iap2_ext_acc_dev *dev = fp->private_data;
 	struct usb_request *req;
-	int r = count, xfer;
+	int r, xfer;
 	int ret = 0;
 
+	r = (int)count;
 	EA_DBG("%s(%d)\n", __func__, count);
 
 	if (dev->state != IAP2_EXT_ACC_ONLINE) {
@@ -456,8 +459,9 @@ static ssize_t iap2_ext_acc_read(struct file *fp, char __user *buf,
 		return -ENODEV;
 	}
 
-	if (count > IAP2_EXT_ACC_BULK_BUFFER_SIZE)
+	if (count > IAP2_EXT_ACC_BULK_BUFFER_SIZE) {
 		count = IAP2_EXT_ACC_BULK_BUFFER_SIZE;
+	}
 
 	/* we will block until we're online */
 	EA_DBG("Wait until state is online\n");
@@ -473,7 +477,7 @@ static ssize_t iap2_ext_acc_read(struct file *fp, char __user *buf,
 requeue_req:
 	/* queue a request */
 	req = dev->rx_req[0];
-	req->length = count;
+	req->length = (unsigned)count;
 	req->context = dev;
 	dev->rx_done = 0;
 	ret = usb_ep_queue(dev->ep_out, req, GFP_KERNEL);
@@ -511,13 +515,13 @@ requeue_req:
 			       req->buf, req->actual, 0);
 #endif
 
-		xfer = (req->actual < count) ? req->actual : count;
+		xfer = (req->actual < count) ? (int)req->actual : (int)count;
 		r = xfer;
-		if (copy_to_user(buf, req->buf, xfer))
+		if (copy_to_user(buf, req->buf, xfer)) {
 			r = -EFAULT;
-		else
+		} else {
 			EA_DBG("read ok.\n");
-
+		}
 	} else {
 		r = -EIO;
 	}
@@ -533,9 +537,10 @@ static ssize_t iap2_ext_acc_write(struct file *fp, const char __user *buf,
 {
 	struct iap2_ext_acc_dev *dev = fp->private_data;
 	struct usb_request *req = 0;
-	int r = count, xfer;
+	int r, xfer;
 	int ret;
 
+	r = count;
 	EA_DBG("%s(%d)\n", __func__, count);
 
 #ifdef VERBOSE_DEBUG
@@ -548,7 +553,7 @@ static ssize_t iap2_ext_acc_write(struct file *fp, const char __user *buf,
 		return -ENODEV;
 	}
 
-	while (count > 0) {
+	while (count > 0U) {
 
 		if (dev->state != IAP2_EXT_ACC_ONLINE) {
 			EA_DBG("error1! gadget connection state %d\n",
@@ -559,31 +564,32 @@ static ssize_t iap2_ext_acc_write(struct file *fp, const char __user *buf,
 
 		/* get an idle tx request to use */
 		EA_DBG("Wait for getting an idle tx request\n");
-		req = 0;
+		req = NULL;
 		ret = wait_event_interruptible(dev->write_wq,
 				((req =
 				  iap2_ext_acc_req_get(dev,
 					  &dev->tx_idle))
 				 || (dev->state !=
 					 IAP2_EXT_ACC_ONLINE)));
-		if (!req) {
+		if (req == NULL) {
 			r = ret;
 			pr_debug("Failed to wait completion (req: 0x%p r: %d state: %d)\n",
 			     req, r, dev->state);
 			break;
 		}
 
-		if (count > IAP2_EXT_ACC_BULK_BUFFER_SIZE)
+		if (count > IAP2_EXT_ACC_BULK_BUFFER_SIZE) {
 			xfer = IAP2_EXT_ACC_BULK_BUFFER_SIZE;
-		else
+		} else {
 			xfer = count;
+		}
 
 		if (copy_from_user(req->buf, buf, xfer)) {
 			r = -EFAULT;
 			break;
 		}
 
-		req->length = xfer;
+		req->length = (unsigned)xfer;
 		req->context = dev;
 		ret = usb_ep_queue(dev->ep_in, req, GFP_KERNEL);
 		if (ret < 0) {
@@ -593,14 +599,15 @@ static ssize_t iap2_ext_acc_write(struct file *fp, const char __user *buf,
 		}
 
 		buf += xfer;
-		count -= xfer;
+		count -= (size_t)xfer;
 
 		/* zero this so we don't try to free it on error exit */
 		req = 0;
 	}
 
-	if (req)
+	if (req != NULL) {
 		iap2_ext_acc_req_put(dev, &dev->tx_idle, req);
+	}
 
 	EA_DBG("%s returning %d\n", __func__, r);
 	return r;
@@ -656,9 +663,6 @@ int iap2_ext_acc_ctrlrequest(struct usb_composite_dev *cdev,
 {
 	struct iap2_ext_acc_dev *dev = _iap2_ext_acc_dev;
 	int value = -EOPNOTSUPP;
-	//int offset;
-	//u8 b_requestType = ctrl->bRequestType;
-	//u8 b_request = ctrl->bRequest;
 	u16 w_index = le16_to_cpu(ctrl->wIndex);
 	u16 w_value = le16_to_cpu(ctrl->wValue);
 	u16 w_length = le16_to_cpu(ctrl->wLength);
@@ -668,8 +672,8 @@ int iap2_ext_acc_ctrlrequest(struct usb_composite_dev *cdev,
 	// TODO: Need to implement
 #if 1
 	if (value >= 0) {
-		cdev->req->zero = 0;
-		cdev->req->length = value;
+		cdev->req->zero = (unsigned)0;
+		cdev->req->length = (unsigned)value;
 		cdev->req->context = dev;
 		value = usb_ep_queue(cdev->gadget->ep0, cdev->req, GFP_ATOMIC);
 	}
@@ -712,11 +716,12 @@ static int iap2_ext_acc_function_bind(struct usb_configuration *c,
 
 	/* allocate interface ID(s) */
 	id = usb_interface_id(c, f);
-	if (id < 0)
+	if (id < 0) {
 		return id;
-	iap2_ext_acc_interface_alt0_desc.bInterfaceNumber = id;
-	iap2_ext_acc_interface_alt1_desc.bInterfaceNumber = id;
-	dev->intf = id;
+	}
+	iap2_ext_acc_interface_alt0_desc.bInterfaceNumber = (unsigned char)id;
+	iap2_ext_acc_interface_alt1_desc.bInterfaceNumber = (unsigned char)id;
+	dev->intf = (unsigned char)id;
 
 	/* allocate endpoints */
 	ret =
@@ -724,11 +729,12 @@ static int iap2_ext_acc_function_bind(struct usb_configuration *c,
 					       &iap2_ext_acc_fullspeed_in_desc,
 					       &iap2_ext_acc_fullspeed_out_desc
 					       /*, &iap_intr_desc */);
-	if (ret)
+	if (ret != 0) {
 		return ret;
+	}
 
 	/* support high speed hardware */
-	if (gadget_is_dualspeed(c->cdev->gadget)) {
+	if (gadget_is_dualspeed(c->cdev->gadget) != 0) {
 		iap2_ext_acc_highspeed_in_desc.bEndpointAddress =
 		    iap2_ext_acc_fullspeed_in_desc.bEndpointAddress;
 		iap2_ext_acc_highspeed_out_desc.bEndpointAddress =
@@ -736,7 +742,7 @@ static int iap2_ext_acc_function_bind(struct usb_configuration *c,
 	}
 
 	EA_DBG("iAP2 Ext. Acc. %s speed %s: IN/%s, OUT/%s, INTF ID %d\n",
-	       gadget_is_dualspeed(c->cdev->gadget) ? "dual" : "full",
+	       (gadget_is_dualspeed(c->cdev->gadget) != 0) ? "dual" : "full",
 	       f->name, dev->ep_in->name, dev->ep_out->name, dev->intf);
 	return 0;
 }
@@ -751,10 +757,13 @@ static void iap2_ext_acc_function_unbind(struct usb_configuration *c,
 
 	EA_DBG("%s\n", __func__);
 
-	while ((req = iap2_ext_acc_req_get(dev, &dev->tx_idle)))
+	while ((req = iap2_ext_acc_req_get(dev, &dev->tx_idle))) {
 		iap2_ext_acc_request_free(req, dev->ep_in);
-	for (i = 0; i < IAP2_EXT_ACC_RX_REQ_MAX; i++)
+	}
+
+	for (i = 0; i < IAP2_EXT_ACC_RX_REQ_MAX; i++) {
 		iap2_ext_acc_request_free(dev->rx_req[i], dev->ep_out);
+	}
 }
 
 /* Notify start of EA gadget */
@@ -776,7 +785,7 @@ static void iap2_ext_acc_start_work(struct work_struct *work)
 	}
 	misc_dev = dev->misc_dev;
 
-	if (misc_dev) {
+	if (misc_dev != NULL) {
 		pr_info("[INFO][USB] %s: Send uevent [%s]\n",
 				__func__, envp[0]);
 		kobject_uevent_env(&iap2_ext_acc_device.this_device->kobj,
@@ -809,8 +818,8 @@ static void iap2_ext_acc_alt_change(struct work_struct *work)
 
 	misc_dev = dev->misc_dev;
 
-	if (misc_dev) {
-		if (dev->alt == 0) {
+	if (misc_dev != NULL) {
+		if (dev->alt == 0U) {
 			pr_info("[INFO][USB] %s: Send uevent [%s]\n", __func__,
 					alt0[0]);
 			kobject_uevent_env(&misc_dev->this_device->kobj,
@@ -824,9 +833,10 @@ static void iap2_ext_acc_alt_change(struct work_struct *work)
 			pr_debug("%s iAP2 EA does not have more than 3 alt settings.\n",
 			     __func__);
 		}
-	} else
+	} else {
 		pr_info("[INFO][USB] \x1b[1;33m[%s:%d] Error: misc_dev is NULL!!\x1b[0m\n",
 		     __func__, __LINE__);
+	}
 
 }
 
@@ -836,7 +846,7 @@ static int iap2_ext_acc_function_set_alt(struct usb_function *f,
 {
 	struct iap2_ext_acc_dev *dev = usb_func_to_iap2_ext_acc_dev(f);
 	struct usb_composite_dev *cdev = f->config->cdev;
-	int ret;
+	int ret, ret2;
 
 	ret = 0;
 
@@ -848,17 +858,17 @@ static int iap2_ext_acc_function_set_alt(struct usb_function *f,
 		return -EINVAL;
 	}
 
-	if (alt > 1) {
+	if (alt > 1U) {
 		EA_DBG
 		    ("%s : Interface does not have more than 3 alt settings.\n",
 		     __func__);
 		return -EINVAL;
 	}
 
-	if (alt == 0) {
+	if (alt == 0U) {
 		// Zero bandwidth
-		usb_ep_disable(dev->ep_out);
-		usb_ep_disable(dev->ep_in);
+		ret2 = usb_ep_disable(dev->ep_out);
+		ret2 = usb_ep_disable(dev->ep_in);
 
 		dev->rx_done = 1;	// dead lock
 		iap2_ext_acc_set_connected(dev);
@@ -869,20 +879,23 @@ static int iap2_ext_acc_function_set_alt(struct usb_function *f,
 		// BULK IN/OUT
 		// ep in
 		ret = config_ep_by_speed(cdev->gadget, f, dev->ep_in);
-		if (ret)
+		if (ret != 0) {
 			return ret;
+		}
 
 		ret = usb_ep_enable(dev->ep_in);
-		if (ret)
+		if (ret != 0) {
 			return ret;
+		}
 
 		// ep out
 		ret = config_ep_by_speed(cdev->gadget, f, dev->ep_out);
-		if (ret)
+		if (ret != 0) {
 			return ret;
+		}
 
 		ret = usb_ep_enable(dev->ep_out);
-		if (ret) {
+		if (ret != 0) {
 			usb_ep_disable(dev->ep_in);
 			return ret;
 		}
@@ -912,18 +925,18 @@ static int iap2_ext_acc_function_get_alt(struct usb_function *f,
 		return -EINVAL;
 	}
 
-	return dev->alt;
+	return (int)dev->alt;
 }
 
 /* Disalbe the function */
 static void iap2_ext_acc_function_disable(struct usb_function *f)
 {
 	struct iap2_ext_acc_dev *dev = usb_func_to_iap2_ext_acc_dev(f);
-	//struct usb_composite_dev      *cdev = dev->cdev;
+	int ret;
 
 	// disable all endpoints
-	usb_ep_disable(dev->ep_in);
-	usb_ep_disable(dev->ep_out);
+	ret = usb_ep_disable(dev->ep_in);
+	ret = usb_ep_disable(dev->ep_out);
 
 	dev->rx_done = 1;	// dead lock
 	iap2_ext_acc_set_disconnected(dev);	// set disconnect state
@@ -973,7 +986,6 @@ int iap2_ext_acc_bind_config(struct usb_configuration *c)
 
 	dev->cdev = c->cdev;
 	dev->function.name = "ea";
-	//dev->function.strings = iap2_ext_acc_strings,
 	dev->function.fs_descriptors = fs_iap2_ext_acc_descs;
 	dev->function.hs_descriptors = hs_iap2_ext_acc_descs;
 	dev->function.bind = iap2_ext_acc_function_bind;
@@ -998,11 +1010,13 @@ static int __iap2_ext_acc_setup(struct iap2_ext_acc_instance *fi_iap2_ext_acc)
 	EA_DBG("%s\n", __func__);
 
 	dev = kzalloc(sizeof(*dev), GFP_KERNEL);
-	if (!dev)
+	if (dev == NULL) {
 		return -ENOMEM;
+	}
 
-	if (fi_iap2_ext_acc != NULL)
+	if (fi_iap2_ext_acc != NULL) {
 		fi_iap2_ext_acc->dev = dev;
+	}
 
 	memset(dev, 0x0, sizeof(struct iap2_ext_acc_dev));
 
@@ -1025,22 +1039,20 @@ static int __iap2_ext_acc_setup(struct iap2_ext_acc_instance *fi_iap2_ext_acc)
 	_iap2_ext_acc_dev = dev;
 
 	ret = misc_register(&iap2_ext_acc_device);
-	if (ret)
+	if (ret != 0) {
 		goto err;
+	}
 
 	dev->misc_dev = &iap2_ext_acc_device;
 
 	/* Set default protocol names */
 	strncpy(iap2_ext_acc_protocol_name0, IAP2_EXT_ACC_DEF_INTF_STRING0,
 		sizeof(iap2_ext_acc_protocol_name0) - 1);
-	//strncpy(iap2_ext_acc_protocol_name1,
-		//IAP2_EXT_ACC_DEF_INTF_STRING1,
-		//sizeof(iap2_ext_acc_protocol_name1) - 1);
 
 	/* Create sysfs for misc device */
 	while ((attr = *attrs++)) {
 		ret = device_create_file(dev->misc_dev->this_device, attr);
-		if (ret) {
+		if (ret != 0) {
 			misc_deregister(dev->misc_dev);
 			goto err;
 		}
@@ -1119,12 +1131,14 @@ static int iap2_ext_acc_set_inst_name(struct usb_function_instance *fi,
 	int name_len;
 
 	name_len = strlen(name) + 1;
-	if (name_len > IAP2_EXT_ACC_MAX_INST_NAME_LEN)
+	if (name_len > IAP2_EXT_ACC_MAX_INST_NAME_LEN) {
 		return -ENAMETOOLONG;
+	}
 
 	ptr = kstrndup(name, name_len, GFP_KERNEL);
-	if (!ptr)
+	if (ptr == NULL) {
 		return -ENOMEM;
+	}
 
 	fi_iap2_ext_acc = to_fi_iap2_ext_acc(fi);
 	fi_iap2_ext_acc->name = ptr;
@@ -1148,13 +1162,15 @@ static struct usb_function_instance *iap2_ext_acc_alloc_inst(void)
 	int ret = 0;
 
 	fi_iap2_ext_acc = kzalloc(sizeof(*fi_iap2_ext_acc), GFP_KERNEL);
-	if (!fi_iap2_ext_acc)
+	if (fi_iap2_ext_acc == NULL) {
 		return ERR_PTR(-ENOMEM);
+	}
+
 	fi_iap2_ext_acc->func_inst.set_inst_name = iap2_ext_acc_set_inst_name;
 	fi_iap2_ext_acc->func_inst.free_func_inst = iap2_ext_acc_free_inst;
 
 	ret = iap2_ext_acc_setup_configfs(fi_iap2_ext_acc);
-	if (ret) {
+	if (ret != 0) {
 		kfree(fi_iap2_ext_acc);
 		pr_err("[ERROR][USB] Error setting iAP2 Ext Acc\n");
 		return ERR_PTR(ret);
