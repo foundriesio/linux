@@ -2486,4 +2486,11 @@
 		telechips,pin-function = <0>;
 		telechips,output-high;
 	};
+
+	aux_detect_c24: aux_detect_c24{
+		 telechips,pins = "gpc-24";
+		 telechips,pin-function = <0>;
+		 telechips,input-enable;
+		 telechips,no-pull;
+	 };
 };

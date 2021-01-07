@@ -1952,4 +1952,15 @@
 			method = "none";
 		};
 	};
+
+	aux_detect {
+		compatible = "telechips,aux_detect";
+		status = "okay";
+
+		pinctrl-names = "default";
+		pinctrl-0 = <&aux_detect_c24>;
+
+		aux-gpios = <&gpc 24 1>;
+		aux-active = <1>;
+	};
 };
