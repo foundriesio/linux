@@ -332,23 +332,29 @@ static inline void tcc_isp_set_output(struct tcc_isp_state *state)
 	volatile void __iomem *isp_base = state->isp_base;
 	static const char * const str[] = {
 		"YUV420", "YUV422", "YUV444", "RGB888"};
-	int x, y, w, h, fmt;
+	int x, y, w, h, fmt, window_ctl;
 
 	x = state->isp.o_state.x;
 	y = state->isp.o_state.y;
 	w = state->isp.o_state.width;
 	h = state->isp.o_state.height;
 	fmt = state->isp.o_state.format;
+	window_ctl = 0;
 
-	logi(&(state->pdev->dev), "output crop(%d, %d / %d x %d) format(%s)\n",
-		x, y, w, h, str[fmt]);
+	logi(&(state->pdev->dev), "output format(%s)\n", str[fmt]);
 
-	/* window enable */
-	write_isp(isp_base + reg_imgout_window_ctl,
-		((IMGOUT_WINDOW_CTL_ISP_OUTPUT_WINDOW_EN <<
-		 IMGOUT_WINDOW_CTL_ISP_OUTPUT_WINDOW_SHIFT) |
-		(IMGOUT_WINDOW_CTL_DEBLANK_EN <<
-		 IMGOUT_WINDOW_CTL_DEBLANK_SHIFT)));
+	if (state->isp.i_state.width != w || state->isp.i_state.height != h) {
+		logi(&(state->pdev->dev), "enable crop window\n");
+		window_ctl = (IMGOUT_WINDOW_CTL_ISP_OUTPUT_WINDOW_EN <<
+				IMGOUT_WINDOW_CTL_ISP_OUTPUT_WINDOW_SHIFT);
+	} else {
+		logi(&(state->pdev->dev), "disable crop window\n");
+	}
+
+	window_ctl |= (IMGOUT_WINDOW_CTL_DEBLANK_EN <<
+			IMGOUT_WINDOW_CTL_DEBLANK_SHIFT);
+
+	write_isp(isp_base + reg_imgout_window_ctl, window_ctl);
 
 	/* format */
 	switch (fmt) {
@@ -366,11 +372,16 @@ static inline void tcc_isp_set_output(struct tcc_isp_state *state)
 	}
 	write_isp(isp_base + reg_imgout_window_cfg, fmt);
 
-	/* crop */
-	write_isp(isp_base + reg_imgout_window_x_start, x);
-	write_isp(isp_base + reg_imgout_window_y_start, y);
-	write_isp(isp_base + reg_imgout_window_x_width,	w);
-	write_isp(isp_base + reg_imgout_window_y_width,	h);
+	if (state->isp.i_state.width != w || state->isp.i_state.height != h) {
+		logi(&(state->pdev->dev), "output crop(%d, %d / %d x %d)\n",
+				x, y, w, h);
+
+		/* crop */
+		write_isp(isp_base + reg_imgout_window_x_start, x);
+		write_isp(isp_base + reg_imgout_window_y_start, y);
+		write_isp(isp_base + reg_imgout_window_x_width,	w);
+		write_isp(isp_base + reg_imgout_window_y_width,	h);
+	}
 }
 
 static inline void tcc_isp_set_decompanding(struct tcc_isp_state *state)
@@ -679,6 +690,14 @@ static int tcc_isp_set_fmt(struct v4l2_subdev *sd,
 	 */
 	state->fmt.width -= 16;
 	state->fmt.height -= 16;
+
+#if 0
+	/* for test. if this code is enabled, crop is disabled  */
+	state->fmt.width += 16;
+	state->fmt.height += 16;
+	state->isp.o_state.x = 0;
+	state->isp.o_state.y = 0;
+#endif
 
 	state->isp.o_state.width = state->fmt.width;
 	state->isp.o_state.height = state->fmt.height;
