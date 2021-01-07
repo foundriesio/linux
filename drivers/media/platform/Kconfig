@@ -673,6 +673,12 @@ config TCC_SMP
 
 config ISDBT_CONTROL
 	tristate "Telechips isdbt control driver"
-    	depends on (ARCH_TCC899X || ARCH_TCC803X || ARCH_TCC901X || ARCH_TCC805X) && PLATFORM_HWDEMUX
+    	depends on (ARCH_TCC897X || ARCH_TCC899X || ARCH_TCC803X || ARCH_TCC901X || ARCH_TCC805X)
 	help
 	  Say Y here if you want Telechips isdbt control drivers.
+
+config ISDBT_DEMUX
+	tristate "Telechips isdbt demux driver"
+    	depends on (ARCH_TCC897X) && ISDBT_CONTROL
+	help
+	  Say Y here if you want Telechips isdbt demux drivers.

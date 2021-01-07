@@ -1,6 +1,20 @@
-// SPDX-License-Identifier: GPL-2.0-or-later
 /*
- * Copyright (C) Telechips Inc.
+ * Copyright (C) Telechips, Inc.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, see the file COPYING, or write
+ * to the Free Software Foundation, Inc.,
+ * 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
 #ifndef _TCC_ISDBT_CONTROL_H_
@@ -11,17 +25,33 @@ enum DXB_BOARD_TYPE {
 	BOARD_MAX
 };
 
-#define DXB_RF_PATH_UHF 1
-#define DXB_RF_PATH_VHF 2
-
-struct ST_CTRLINFO_ARG {
-	unsigned int uiI2C;
-	unsigned int uiSPI;
-	unsigned int status;
-};
-
 #define ISDBT_CTRL_DEV_FILE "/dev/tcc_isdbt_ctrl"
 #define ISDBT_CTRL_DEV_NAME "tcc_isdbt_ctrl"
+#if defined(CONFIG_ARCH_TCC897X)
+#define ISDBT_CTRL_DEV_MAJOR 248
+#define ISDBT_CTRL_DEV_MINOR 0
+
+#define IOCTL_DXB_CTRL_OFF _IO(ISDBT_CTRL_DEV_MAJOR, 1)
+#define IOCTL_DXB_CTRL_ON _IO(ISDBT_CTRL_DEV_MAJOR, 2)
+#define IOCTL_DXB_CTRL_RESET _IO(ISDBT_CTRL_DEV_MAJOR, 3)
+#define IOCTL_DXB_CTRL_SET_BOARD _IO(ISDBT_CTRL_DEV_MAJOR, 4)
+#define IOCTL_DXB_CTRL_GET_CTLINFO _IO(ISDBT_CTRL_DEV_MAJOR, 5)
+#define IOCTL_DXB_CTRL_RF_PATH _IO(ISDBT_CTRL_DEV_MAJOR, 6)
+#define IOCTL_DXB_CTRL_SET_CTRLMODE _IO(ISDBT_CTRL_DEV_MAJOR, 7)
+#define IOCTL_DXB_CTRL_RESET_LOW _IO(ISDBT_CTRL_DEV_MAJOR, 8)
+#define IOCTL_DXB_CTRL_RESET_HIGH _IO(ISDBT_CTRL_DEV_MAJOR, 9)
+#define IOCTL_DXB_CTRL_PURE_ON _IO(ISDBT_CTRL_DEV_MAJOR, 10)
+#define IOCTL_DXB_CTRL_PURE_OFF _IO(ISDBT_CTRL_DEV_MAJOR, 11)
+/* add for HWDEMUX cipher */
+#define IOCTL_DXB_CTRL_HWDEMUX_CIPHER_SET_ALGORITHM \
+	_IO(ISDBT_CTRL_DEV_MAJOR, 12)
+#define IOCTL_DXB_CTRL_HWDEMUX_CIPHER_SET_KEY _IO(ISDBT_CTRL_DEV_MAJOR, 13)
+#define IOCTL_DXB_CTRL_HWDEMUX_CIPHER_SET_VECTOR _IO(ISDBT_CTRL_DEV_MAJOR, 14)
+#define IOCTL_DXB_CTRL_HWDEMUX_CIPHER_SET_DATA _IO(ISDBT_CTRL_DEV_MAJOR, 15)
+#define IOCTL_DXB_CTRL_HWDEMUX_CIPHER_EXECUTE _IO(ISDBT_CTRL_DEV_MAJOR, 16)
+#define IOCTL_DXB_CTRL_HWDEMUX_CIPHER_ENCRYPT _IO(ISDBT_CTRL_DEV_MAJOR, 17)
+#define IOCTL_DXB_CTRL_HWDEMUX_CIPHER_DECRYPT _IO(ISDBT_CTRL_DEV_MAJOR, 18)
+#else
 #define ISDBT_CTRL_DEV_MAJOR 250
 #define ISDBT_CTRL_DEV_MINOR 0
 
@@ -45,4 +75,5 @@ struct ST_CTRLINFO_ARG {
 #define IOCTL_DXB_CTRL_HWDEMUX_CIPHER_EXECUTE _IO(ISDBT_CTRL_DEV_MAJOR, 16)
 #define IOCTL_DXB_CTRL_UNLOCK _IO(ISDBT_CTRL_DEV_MAJOR, 17)
 #define IOCTL_DXB_CTRL_LOCK _IO(ISDBT_CTRL_DEV_MAJOR, 18)
+#endif
 #endif

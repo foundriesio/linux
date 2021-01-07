@@ -1,6 +1,20 @@
-// SPDX-License-Identifier: GPL-2.0-or-later
 /*
- * Copyright (C) Telechips Inc.
+ * Copyright (C) Telechips, Inc.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, see the file COPYING, or write
+ * to the Free Software Foundation, Inc.,
+ * 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
 #include <linux/module.h>
@@ -15,8 +29,13 @@
 #include <linux/uaccess.h>
 
 #include <linux/io.h>
+#if defined(CONFIG_ARCH_TCC897X)
+#include "../tcc-demux/tcc-demux-core/tcc_cipher_ioctl.h"
+#include "../tcc-demux/tcc-demux-core/tca_hwdemux_tsif.h"
+#else
 #include "../hwdmx-core/hwdmx_cmd.h"
 #include "../hwdmx-core/hwdmx_cipher.h"
+#endif
 #include "tcc_isdbt_control.h"
 
 /*****************************************************************************
@@ -43,24 +62,18 @@ MODULE_PARM_DESC(dev_debug, "Turn on/off device debugging (default:off).");
 struct tcc_isdbt_ctrl_t {
 	int board_type;
 	int power_status[MAX_DEVICE_NO + 1];
-
 	int ant_ctrl_mode;
-
 	int gpio_dxb_on;
-
 	int gpio_dxb_0_pwdn;
 	int gpio_dxb_0_rst;
 	int gpio_dxb_0_irq;
 	int gpio_dxb_0_sdo;
-
 	int gpio_dxb_1_pwdn;
 	int gpio_dxb_1_rst;
 	int gpio_dxb_1_irq;
 	int gpio_dxb_1_sdo;
-
 	int gpio_ant_pwr;
 	int gpio_check_ant_overload;
-
 	int irq_check_ant_overlaod;
 };
 
@@ -246,6 +259,153 @@ static int tcc_isdbt_ctrl_ant_off(struct tcc_isdbt_ctrl_t *ctrl)
 	return 0;
 }
 
+#if defined(CONFIG_ARCH_TCC897X)
+static long tcc_isdbt_ctrl_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
+{
+	switch (cmd)
+	{
+		case IOCTL_DXB_CTRL_HWDEMUX_CIPHER_SET_ALGORITHM:
+			{
+				stHWDEMUXCIPHER_ALGORITHM stAlgorithm;
+				if (copy_from_user((void *)&stAlgorithm, (const void *)arg, sizeof(stHWDEMUXCIPHER_ALGORITHM)) == 0)
+				{
+					tca_hwdemux_cipher_Set_Algorithm(&stAlgorithm);
+				}
+			}
+			break;
+
+		case IOCTL_DXB_CTRL_HWDEMUX_CIPHER_SET_KEY:
+			{
+				stHWDEMUXCIPHER_KEY stKeyInfo;
+				if (copy_from_user((void *)&stKeyInfo, (const void *)arg, sizeof(stHWDEMUXCIPHER_KEY)) == 0)
+				{
+					tca_hwdemux_cipher_Set_Key(&stKeyInfo);
+				}
+			}
+			break;
+
+		case IOCTL_DXB_CTRL_HWDEMUX_CIPHER_SET_VECTOR:
+			{
+				stHWDEMUXCIPHER_VECTOR stVectorInfo;
+				if (copy_from_user((void *)&stVectorInfo, (const void *)arg, sizeof(stHWDEMUXCIPHER_VECTOR)) == 0)
+				{
+					tca_hwdemux_cipher_Set_IV(&stVectorInfo);
+				}
+			}
+			break;
+
+		case IOCTL_DXB_CTRL_HWDEMUX_CIPHER_ENCRYPT:
+			{
+				stHWDEMUXCIPHER_EXECUTE stEncryptInfo;
+				if (copy_from_user((void *)&stEncryptInfo, (const void *)arg, sizeof(stHWDEMUXCIPHER_EXECUTE)) == 0)
+				{
+					tca_hwdemux_cipher_Cipher_Run(&stEncryptInfo);
+				}
+			}
+			break;
+
+		case IOCTL_DXB_CTRL_HWDEMUX_CIPHER_DECRYPT:
+			{
+				stHWDEMUXCIPHER_EXECUTE stDecryptInfo;
+				if (copy_from_user((void *)&stDecryptInfo, (const void *)arg, sizeof(stHWDEMUXCIPHER_EXECUTE)) == 0)
+				{
+					tca_hwdemux_cipher_Cipher_Run(&stDecryptInfo);
+				}
+			}
+			break;
+
+		case IOCTL_DXB_CTRL_HWDEMUX_CIPHER_EXECUTE:
+			{
+				stHWDEMUXCIPHER_EXECUTE stExecute;
+				if (copy_from_user((void *)&stExecute, (const void *)arg, sizeof(stHWDEMUXCIPHER_EXECUTE)) == 0)
+				{
+					tca_hwdemux_cipher_Cipher_Run(&stExecute);
+				}
+			}
+			break;
+
+		case IOCTL_DXB_CTRL_SET_CTRLMODE:
+			{
+				unsigned int uiAntCtrlMode;
+				if (copy_from_user((void *)&uiAntCtrlMode, (const void *)arg, sizeof(unsigned int)) != 0)
+					break;
+				gIsdbtCtrl->ant_ctrl_mode = uiAntCtrlMode;
+			}
+			break;
+
+		case IOCTL_DXB_CTRL_OFF:
+			{
+				if (gIsdbtCtrl->board_type < BOARD_MAX)
+				{
+					if (ISDBT_BB[gIsdbtCtrl->board_type].ant_ctrl == 1)
+					{
+						tcc_isdbt_ctrl_ant_off(gIsdbtCtrl);
+					}
+					if (ISDBT_BB[gIsdbtCtrl->board_type].ioctl != NULL)
+					{
+						unsigned int parg;
+						if (copy_from_user((void *)&parg, (const void *)arg, sizeof(unsigned int)) != 0)
+							break;
+						return ISDBT_BB[gIsdbtCtrl->board_type].ioctl(gIsdbtCtrl, cmd, parg);
+					}
+				}
+			}
+			break;
+
+		case IOCTL_DXB_CTRL_ON:
+			{
+				if (gIsdbtCtrl->board_type < BOARD_MAX)
+				{
+					if (ISDBT_BB[gIsdbtCtrl->board_type].ant_ctrl == 1)
+					{
+						tcc_isdbt_ctrl_ant_on(gIsdbtCtrl);
+					}
+					if (ISDBT_BB[gIsdbtCtrl->board_type].ioctl != NULL)
+					{
+						unsigned int parg;
+						if (copy_from_user((void *)&parg, (const void *)arg, sizeof(unsigned int)) != 0)
+							break;
+						return ISDBT_BB[gIsdbtCtrl->board_type].ioctl(gIsdbtCtrl, cmd, parg);
+					}
+				}
+			}
+			break;
+
+		case IOCTL_DXB_CTRL_SET_BOARD:
+			{
+				unsigned int uiboardtype;
+				if (copy_from_user((void *)&uiboardtype, (const void *)arg, sizeof(unsigned int)) != 0)
+					break;
+
+				gIsdbtCtrl->board_type = uiboardtype;
+				if (gIsdbtCtrl->board_type < BOARD_MAX)
+				{
+					tca_tsif_set_interface(ISDBT_BB[gIsdbtCtrl->board_type].tsif_mode);
+					if (ISDBT_BB[gIsdbtCtrl->board_type].ioctl != NULL)
+					{
+						return ISDBT_BB[gIsdbtCtrl->board_type].ioctl(gIsdbtCtrl, cmd, arg);
+					}
+				}
+			}
+			break;
+		default:
+			{
+				if (gIsdbtCtrl->board_type < BOARD_MAX)
+				{
+					if (ISDBT_BB[gIsdbtCtrl->board_type].ioctl != NULL)
+					{
+						unsigned int parg;
+						if (copy_from_user((void *)&parg, (const void *)arg, sizeof(unsigned int)) != 0)
+							break;
+						return ISDBT_BB[gIsdbtCtrl->board_type].ioctl(gIsdbtCtrl, cmd, parg);
+					}
+				}
+			}
+			break;
+	}
+	return 0;
+}
+#else
 static long tcc_isdbt_ctrl_ioctl(struct file *filp, unsigned int cmd,
 				 unsigned long arg)
 {
@@ -423,6 +583,7 @@ static long tcc_isdbt_ctrl_ioctl(struct file *filp, unsigned int cmd,
 	}
 	return 0;
 }
+#endif
 
 static int tcc_isdbt_ctrl_release(struct inode *inode, struct file *filp)
 {
@@ -545,6 +706,7 @@ static int tcc_isdbt_ctrl_probe(struct platform_device *pdev)
 	gIsdbtCtrl->gpio_check_ant_overload =
 	    of_get_named_gpio(dev->of_node, "ant-gpios", 1);
 #endif
+#if 0
 	pr_info(
 	"[DEBUG][TCC_ISDBT_CTRL] %s [0x%X][0x%X][0x%X][0x%X][0x%X]\n",
 	__func__, gIsdbtCtrl->gpio_dxb_on, gIsdbtCtrl->gpio_dxb_0_pwdn,
@@ -558,7 +720,7 @@ static int tcc_isdbt_ctrl_probe(struct platform_device *pdev)
 		gIsdbtCtrl->gpio_dxb_1_sdo, gIsdbtCtrl->gpio_ant_pwr,
 		gIsdbtCtrl->gpio_check_ant_overload);
 
-
+#endif
 	gIsdbtCtrl->board_type = BOARD_ISDBT_TCC353X;
 	gIsdbtCtrl->ant_ctrl_mode = PWRCTRL_AUTO;
 

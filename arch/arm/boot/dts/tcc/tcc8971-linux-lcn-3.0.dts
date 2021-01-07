@@ -983,6 +983,16 @@
 		ant-gpios  = <0>, <0>;
 	};
 
+	tcc_isdbt_ctrl {
+		compatible = "telechips,tcc_isdbt_ctrl";
+		/* DXB_ON */
+		pw-gpios   = <&gpe 8 0>;
+		/* PD RST IRQ */
+		dxb0-gpios = <&gpe 27 0>, <&gpe 9 0>, <0>, <0>;
+		dxb1-gpios = <&gpe 7 0>, <&gpe 6 0>, <0>, <0>;
+		ant-gpios  = <0>, <0>;
+	};
+
 	i2s@76b01000 {
 		compatible = "telechips,sdr";
 		dev-name = "tcc-sdr";
@@ -1178,9 +1188,14 @@
 	};
 
 	/* H/W Demux */
-	hwdemux: cmbus@79000000 {
+	hwdemux: cm_bus {
 		compatible = "telechips,hwdemux";
 		status = "okay";
+		clocks = <&clk_fbus FBUS_CMBUS>,
+		       <&clk_peri PERI_CMBUS_TSIF0>,
+		       <&clk_peri PERI_CMBUS_TSIF1>,
+		       <&clk_peri PERI_CMBUS_TSIF2>,
+		       <&clk_peri PERI_CMBUS_TSIF3>;
 	};
 
 	gpsb1@76910000 {
@@ -1199,14 +1214,15 @@
 		pinctrl-1 = <&gpsb12_bus_tsif>;
 	};
 
-	/*tcc_ex_tsif {
+	tcc_ex_tsif {
 		compatible = "telechips,tcc89xx-hwdmx-tsif";
 		tsif-id = <2>;
 		tsif-port = <6>;
+		port-mux = <6>;
 		pinctrl-names = "idle", "active";
 		pinctrl-0 = <&ts6_idle>;
 		pinctrl-1 = <&ts6_active>;
-	};*/
+	};
 
 /*
 	viocmg {
