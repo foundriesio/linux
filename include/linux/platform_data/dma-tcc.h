@@ -1,16 +1,13 @@
+// SPDX-License-Identifier: GPL-2.0-or-later
 /*
- * Copyright (C) 2015 Telechips, Inc.
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2 as
- * published by the Free Software Foundation.
+ * Copyright (C) Telechips Inc.
  */
 
 #ifndef DMA_TCC_H
 #define DMA_TCC_H
 
 struct tcc_dma_platform_data {
-	int nr_channels;
+	s32 nr_channels;
 };
 
 #endif
