@@ -22,8 +22,8 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 +#include <linux/rcupdate.h>
  #include <linux/page-flags-layout.h>
  #include <linux/workqueue.h>
- 
-@@ -548,6 +549,9 @@ struct mm_struct {
+ #include <linux/seqlock.h>
+@@ -556,6 +557,9 @@ struct mm_struct {
  		bool tlb_flush_batched;
  #endif
  		struct uprobes_state uprobes_state;
@@ -92,7 +92,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  	}
  	if (unlikely(prev_state == TASK_DEAD)) {
  		if (prev->sched_class->task_dead)
-@@ -7269,6 +7273,7 @@ void sched_setnuma(struct task_struct *p
+@@ -7265,6 +7269,7 @@ void sched_setnuma(struct task_struct *p
  #endif /* CONFIG_NUMA_BALANCING */
  
  #ifdef CONFIG_HOTPLUG_CPU

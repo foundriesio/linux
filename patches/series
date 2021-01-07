@@ -5,9 +5,7 @@
 ############################################################
 # UPSTREAM merged
 ############################################################
-# z3fold, fc5488651c7d840c9cad9b0f273f2f31bd03413a+
-0001-z3fold-simplify-freeing-slots.patch
-0002-z3fold-stricter-locking-and-more-careful-reclaim.patch
+# z3fold, 135f97fd0c398f20a544cc52c3f8a3cb925a8aef
 0003-z3fold-remove-preempt-disabled-sections-for-RT.patch
 
 ############################################################
