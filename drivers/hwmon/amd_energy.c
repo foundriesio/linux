@@ -265,7 +265,7 @@ static int amd_create_sensor(struct device *dev,
 	 */
 	cpus = num_present_cpus() / num_siblings;
 
-	s_config = devm_kcalloc(dev, cpus + sockets,
+	s_config = devm_kcalloc(dev, cpus + sockets + 1,
 				sizeof(u32), GFP_KERNEL);
 	if (!s_config)
 		return -ENOMEM;
@@ -293,6 +293,7 @@ static int amd_create_sensor(struct device *dev,
 				  "Esocket%u", (i - cpus));
 	}
 
+	s_config[i] = 0;
 	return 0;
 }
 
