@@ -155,15 +155,15 @@ struct tccvin_format_desc tccvin_format_list[] = {
 };
 
 struct framesize tccvin_framesize_list[] = {
-	{	 320,	 240	},
-	{	 640,	 480	},
-	{	 720,	 480	},
-	{	1024,	 600	},
+	{	1920,	1080	},
+	{	1920,	 720	},
 	{	1280,	 720	},
 	/* for ispless camera module(using internal isp) */
-	{	1280 - 16,	 990 - 16	},
-	{	1920,	 720	},
-	{	1920,	1080	},
+	{	1264,	 974	},
+	{	1024,	 600	},
+	{	 720,	 480	},
+	{	 640,	 480	},
+	{	 320,	 240	},
 };
 
 u32 tccvin_framerate_list[] = {
