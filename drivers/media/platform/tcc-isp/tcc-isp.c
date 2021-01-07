@@ -817,6 +817,7 @@ end:
 
 static int tcc_isp_remove(struct platform_device *pdev)
 {
+	struct tcc_isp_state *state = platform_get_drvdata(pdev);
 	int ret = 0;
 
 	logi(&(state->pdev->dev), "%s in\n", __func__);
