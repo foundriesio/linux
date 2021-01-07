@@ -151,7 +151,7 @@ static void tcc_isp_load_firmware(
 	val |= (ON << MSP430_MEM_CTL_DOWNLOAD_ENABLE_SHIFT);
 	write_isp(isp_base + reg_msp430_mem_ctl, val);
 
-	pr_info("[INFO][tcc-isp-%d] copy firmware(%ld)\n",
+	logi(&(state->pdev->dev), "[INFO][tcc-isp-%d] copy firmware(%ld)\n",
 		state->pdev->id, count);
 	/* copy firmware to the msp430 code memory */
 	memcpy(mem_base + ISP_MEM_OFFSET_CODE_MEM, fw, count);
@@ -180,18 +180,18 @@ static void tcc_isp_callback_load_firmware(
 
 
 	if (fw == NULL) {
-		pr_warn("[WARN][tcc-isp] Timeout - firmware loading\n");
+		logw(&(state->pdev->dev), "Timeout - firmware loading\n");
 		return;
 	}
 
 
-	pr_info("[INFO][tcc-isp] FW size: %ld\n", fw->size);
+	logi(&(state->pdev->dev), "FW size: %ld\n", fw->size);
 
 	tcc_isp_load_firmware(state, fw->data, fw->size);
 
 	release_firmware(fw);
 
-	pr_info("[INFO][tcc-isp] success callback (%s)\n", __func__);
+	logi(&(state->pdev->dev), "success callback (%s)\n", __func__);
 }
 
 static int tcc_isp_request_firmware(
@@ -199,7 +199,7 @@ static int tcc_isp_request_firmware(
 {
 	int ret = 0;
 
-	pr_info("[INFO][tcc-isp] request firmware(%s)\n", fw_name);
+	logi(&(state->pdev->dev), "request firmware(%s)\n", fw_name);
 
 	ret = request_firmware_nowait(THIS_MODULE,
 		FW_ACTION_HOTPLUG,
@@ -209,7 +209,7 @@ static int tcc_isp_request_firmware(
 		state,
 		tcc_isp_callback_load_firmware);
 
-	pr_info("[INFO][tcc-isp] %s - ret is %d\n", __func__, ret);
+	logi(&(state->pdev->dev), "%s - ret is %d\n", __func__, ret);
 
 	return ret;
 }
@@ -256,7 +256,7 @@ static inline void tcc_isp_set_regster_update_mode(struct tcc_isp_state *state)
 	 * 2: sync on vsync rising edge timing
 	 * 3: sync on writing timing
 	 */
-	pr_info("[INFO][tcc-isp] update_sel1, 2(0x%x, 0x%x) is %s\n",
+	logi(&(state->pdev->dev), "update_sel1, 2(0x%x, 0x%x) is %s\n",
 		update_sel1, update_sel2,
 		str_update_sel[update_sel1 & UPDATE_SEL1_UPDATE_00_SEL_MASK]);
 
@@ -267,7 +267,7 @@ static inline void tcc_isp_set_regster_update_mode(struct tcc_isp_state *state)
 	 * 0: sync mode
 	 * 1: always mode
 	 */
-	pr_info("[INFO][tcc-isp] update_mod1(0x%x) is %s\n",
+	logi(&(state->pdev->dev), "update_mod1(0x%x) is %s\n",
 		update_mod1,
 		str_update_mod1[update_mod1 & UPDATE_MOD1_UPDATE_MODE_0_MASK]);
 
@@ -277,7 +277,7 @@ static inline void tcc_isp_set_regster_update_mode(struct tcc_isp_state *state)
 	 * 0: individual sync
 	 * 1: group sync
 	 */
-	pr_info("[INFO][tcc-isp] update_mod2(0x%x) is %s\n",
+	logi(&(state->pdev->dev), "update_mod2(0x%x) is %s\n",
 		update_mod2,
 		str_update_mod2[update_mod2 & UPDATE_MOD2_VSYNC_00_SEL_MASK]);
 
@@ -316,7 +316,7 @@ static inline void tcc_isp_set_input(struct tcc_isp_state *state)
 	h = state->isp.i_state.height;
 	rgb_order = state->isp.i_state.rgb_order;
 
-	pr_info("[INFO][tcc-isp] input size(%d x %d) rgb order(%s)\n",
+	logi(&(state->pdev->dev), "input size(%d x %d) rgb order(%s)\n",
 		w, h, str[rgb_order]);
 
 	/* size */
@@ -340,7 +340,7 @@ static inline void tcc_isp_set_output(struct tcc_isp_state *state)
 	h = state->isp.o_state.height;
 	fmt = state->isp.o_state.format;
 
-	pr_info("[INFO][tcc-isp] output crop(%d, %d / %d x %d) format(%s)\n",
+	logi(&(state->pdev->dev), "output crop(%d, %d / %d x %d) format(%s)\n",
 		x, y, w, h, str[fmt]);
 
 	/* window enable */
@@ -383,7 +383,7 @@ static inline void tcc_isp_set_decompanding(struct tcc_isp_state *state)
 		"16bit", "17bit", "20bit"};
 	int i = 0;
 
-	pr_info("[INFO][tcc-isp] dcpd input %s, output %s\n",
+	logi(&(state->pdev->dev), "dcpd input %s, output %s\n",
 		str_dcpd_input_bit[state->hdr->decompanding_input_bit],
 		str_dcpd_output_bit[state->hdr->decompanding_output_bit]);
 
@@ -398,12 +398,12 @@ static inline void tcc_isp_set_decompanding(struct tcc_isp_state *state)
 		  DCPD_CTL_DCPD_ON_OFF_SHIFT))
 	);
 
-	pr_info("[INFO][tcc-isp] setting dcpd curve\n");
+	logi(&(state->pdev->dev), "setting dcpd curve\n");
 	for (i = 0; i < 8; i++) {
 		write_isp(isp_base + reg_dcpd_crv_0 + (i * 2),
 			state->hdr->dcpd_crv[i]);
 	}
-	pr_info("[INFO][tcc-isp] setting dcpd curve axis\n");
+	logi(&(state->pdev->dev), "setting dcpd curve axis\n");
 	for (i = 0; i < 8; i++) {
 		write_isp(isp_base + reg_dcpdx_0 + (i * 2),
 			state->hdr->dcpdx[i]);
@@ -412,7 +412,7 @@ static inline void tcc_isp_set_decompanding(struct tcc_isp_state *state)
 
 static void tcc_isp_init_local(struct tcc_isp_state *state)
 {
-	pr_info("[INFO][tcc-isp] start init ISP\n");
+	logi(&(state->pdev->dev), "start init ISP\n");
 
 	/* set register update control */
 	tcc_isp_set_regster_update_mode(state);
@@ -441,7 +441,7 @@ static void tcc_isp_init_local(struct tcc_isp_state *state)
 	/* register update */
 	tcc_isp_update_register(state);
 
-	pr_info("[INFO][tcc-isp] finish init ISP\n");
+	logi(&(state->pdev->dev), "finish init ISP\n");
 }
 
 static inline void tcc_isp_additional_setting(struct tcc_isp_state *state)
@@ -449,17 +449,17 @@ static inline void tcc_isp_additional_setting(struct tcc_isp_state *state)
 	volatile void __iomem *isp_base = state->isp_base;
 	int i = 0;
 
-	pr_info("[INFO][tcc-isp] start %s\n", __func__);
+	logi(&(state->pdev->dev), "start %s\n", __func__);
 
 	for (i = 0; i < ARRAY_SIZE(settings); i++)
 		regw(isp_base + settings[i].reg, settings[i].val);
 
-	pr_info("[INFO][tcc-isp] finish %s\n", __func__);
+	logi(&(state->pdev->dev), "finish %s\n", __func__);
 }
 
 void tcc_isp_enable(struct tcc_isp_state *state, unsigned int enable)
 {
-	pr_info("[INFO][tcc-isp] start %s\n", __func__);
+	logi(&(state->pdev->dev), "start %s\n", __func__);
 
 	if (enable) {
 		tcc_isp_init_local(state);
@@ -469,7 +469,7 @@ void tcc_isp_enable(struct tcc_isp_state *state, unsigned int enable)
 		 * TODO
 		 */
 	}
-	pr_info("[INFO][tcc-isp] end %s\n", __func__);
+	logi(&(state->pdev->dev), "end %s\n", __func__);
 }
 
 static int tcc_isp_parse_dt(struct platform_device *pdev,
@@ -491,7 +491,7 @@ static int tcc_isp_parse_dt(struct platform_device *pdev,
 		goto err;
 	}
 
-	pr_info("[INFO][tcc-isp] isp base addr is %px\n", state->isp_base);
+	logi(&(state->pdev->dev), "isp base addr is %px\n", state->isp_base);
 
 	/* Get mem base address */
 	mem_res = platform_get_resource_byname(pdev,
@@ -503,7 +503,7 @@ static int tcc_isp_parse_dt(struct platform_device *pdev,
 		loge(&(state->pdev->dev), "Fail parsing mem_base\n");
 		goto err;
 	}
-	pr_info("[INFO][tcc-isp] mem base addr is %px\n", state->mem_base);
+	logi(&(state->pdev->dev), "mem base addr is %px\n", state->mem_base);
 
 #if 0
 	/*
@@ -634,7 +634,6 @@ static int tcc_isp_get_fmt(struct v4l2_subdev *sd,
 {
 	struct tcc_isp_state	*state	= sd_to_state(sd);
 	int ret	= 0;
-	int i = 0;
 
 	logi(&(state->pdev->dev), "call\n");
 
@@ -736,8 +735,6 @@ static int tcc_isp_probe(struct platform_device *pdev)
 	struct device *dev = &pdev->dev;
 	int ret = 0;
 
-	pr_info("[INFO][tcc-isp] %s in\n", __func__);
-
 	state = devm_kzalloc(dev, sizeof(*state), GFP_KERNEL);
 	if (WARN_ON(state == NULL)) {
 		ret = -ENOMEM;
@@ -768,7 +765,7 @@ static int tcc_isp_probe(struct platform_device *pdev)
 
 	ret = tcc_isp_request_firmware(state, state->isp_fw_name);
 	if (ret < 0) {
-		pr_err("[ERR][tcc-isp] FAIL - loading firmware(%s)\n",
+		loge(&(state->pdev->dev), "FAIL - loading firmware(%s)\n",
 			TCC_ISP_FIRMWARE_NAME);
 	}
 
@@ -790,11 +787,11 @@ static int tcc_isp_probe(struct platform_device *pdev)
 		"%s is registered as a v4l2 sub device.\n",
 		state->sd.name);
 
-	pr_info("[INFO][tcc-isp] Success proving tcc-isp-%d\n", pdev->id);
+	logi(&(state->pdev->dev), "Success proving tcc-isp-%d\n", pdev->id);
 	goto end;
 err:
 end:
-	pr_info("[INFO][tcc-isp] %s out\n", __func__);
+	logi(&(state->pdev->dev), "%s out\n", __func__);
 
 	return ret;
 }
@@ -803,9 +800,10 @@ static int tcc_isp_remove(struct platform_device *pdev)
 {
 	int ret = 0;
 
-	pr_info("[INFO][tcc-isp] %s in\n", __func__);
+	logi(&(state->pdev->dev), "%s in\n", __func__);
 
-	pr_info("[INFO][tcc-isp] %s out\n", __func__);
+
+	logi(&(state->pdev->dev), "%s out\n", __func__);
 
 	return ret;
 }
