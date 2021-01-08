@@ -643,6 +643,8 @@
 			compatible	= "maxim,max96701";
 			reg		= <0x40>;
 			ports {
+				#address-cells = <1>;
+				#size-cells = <0>;
 			        port@0 {
 					reg = <0>;
 					max96701_in: endpoint {
@@ -669,6 +671,8 @@
 			//rst-gpios	= <&gpb 15 1>;  /* mcnex module sensor */
 			reg		= <0x48>;	// 0x90 >> 1
 			ports {
+				#address-cells = <1>;
+				#size-cells = <0>;
 				/*
 				 * 0 ~ 3
 				 * input ports. The number is matched with VC
@@ -725,6 +729,8 @@
 			compatible	= "sony,cxd5700";
 			reg		= <0x18>;
 			ports {
+				#address-cells = <1>;
+				#size-cells = <0>;
 #if 0
 			        port@0 {
 					reg = <0>;
@@ -750,6 +756,8 @@
 			compatible	= "maxim,max9275";
 			reg		= <0x40>;
 			ports {
+				#address-cells = <1>;
+				#size-cells = <0>;
 			        port@0 {
 					reg = <0>;
 					max9275_in: endpoint {
@@ -775,6 +783,8 @@
 			intb-gpios	= <&gph 11 1>;
 			reg		= <0x2A>;
 			ports {
+				#address-cells = <1>;
+				#size-cells = <0>;
 				/*
 				 * 0 ~ 3
 				 * input ports. The number is matched with VC
@@ -891,6 +901,8 @@
 		isp3-bypass = <1>;
 
 		ports {
+			#address-cells = <1>;
+			#size-cells = <0>;
 			/*
 			 * 0 ~ 3
 			 * input port.
@@ -1005,6 +1017,8 @@
 		pinctrl-0 = <&isp0_uart_tx &isp0_uart_rx>;
 */
 		ports {
+			#address-cells = <1>;
+			#size-cells = <0>;
 		        port@0 {
 				reg = <0>;
 		                isp0_in: endpoint {
@@ -1029,6 +1043,8 @@
 		pinctrl-0 = <&isp1_uart_tx &isp1_uart_rx>;
 */
 		ports {
+			#address-cells = <1>;
+			#size-cells = <0>;
 		        port@0 {
 				reg = <0>;
 		                isp1_in: endpoint {
@@ -1053,6 +1069,8 @@
 		pinctrl-0 = <&isp2_uart_tx &isp2_uart_rx>;
 */
 		ports {
+			#address-cells = <1>;
+			#size-cells = <0>;
 		        port@0 {
 				reg = <0>;
 		                isp2_in: endpoint {
@@ -1077,6 +1095,8 @@
 		pinctrl-0 = <&isp3_uart_tx &isp3_uart_rx>;
 */
 		ports {
+			#address-cells = <1>;
+			#size-cells = <0>;
 		        port@0 {
 				reg = <0>;
 		                isp3_in: endpoint {

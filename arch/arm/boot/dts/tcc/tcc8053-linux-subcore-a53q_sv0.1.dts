@@ -1336,6 +1336,8 @@
 		isp3-bypass = <1>;
 
 		ports {
+			#address-cells = <1>;
+			#size-cells = <0>;
 			/*
 			 * 0 ~ 3
 			 * input port.
