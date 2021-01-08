@@ -37,6 +37,7 @@
 #else
 #define dbg(msg...)
 #endif
+//#define USE_REGMAP
 
 //#define RT5028_MIN_UV   700000
 //#define RT5028_MAX_UV  3600000
@@ -230,9 +231,12 @@ static struct rt5028_voltage_t ldo456_voltages[] = {
     { 3600000, 0x7C }, { 3600000, 0x7D }, { 3600000, 0x7E }, { 3600000, 0x7F },
 };
 
+#ifdef USE_REGMAP
 static const struct regmap_config rt5028_regmap_config = {
     .reg_bits = 8,
+	.val_bits = 8,
 };
+#endif
 
 #define NUM_LDO456     ARRAY_SIZE(ldo456_voltages)
 
@@ -259,7 +263,7 @@ static void rt5028_work_func(struct work_struct *work)
 	int ret;
 	dbg("%s\n", __func__);
 
-#ifdef CONFIG_ARCH_TCC
+#ifdef USE_REGMAP
 	ret = regmap_read(rt5028->regmap, RT5028_IRQ1_STATUS_REG, (unsigned int *)&data[0]);
 	if (ret < 0)
 		dev_err(&rt5028_i2c_client->dev, "[%d]Failed to read REG: %d\n", __LINE__, ret);
@@ -380,7 +384,7 @@ static int rt5028_buck_set_voltage(struct regulator_dev *rdev, int min_uV, int m
 	if (i == max_num)
 		return -EINVAL;
 
-#ifdef CONFIG_ARCH_TCC
+#ifdef USE_REGMAP
 	ret = regmap_read(rt5028->regmap, reg, (unsigned int *)&old_value);
 	if (ret < 0 ) {
 		dev_err(&rt5028_i2c_client->dev, "failed to read register(0x%x)\n", reg);
@@ -392,7 +396,7 @@ static int rt5028_buck_set_voltage(struct regulator_dev *rdev, int min_uV, int m
 	value = (old_value & 0x3) | (value << 2);
 
 	dbg("%s: reg:0x%x value:%dmV\n", __func__, reg, buck_voltags[i].uV/1000);
-#ifdef CONFIG_ARCH_TCC
+#ifdef USE_REGMAP
 	ret = regmap_write(rt5028->regmap, reg, value);
 #else
 	ret = i2c_smbus_write_byte_data(rt5028->client, reg, value);
@@ -439,7 +443,7 @@ static int rt5028_buck_get_voltage(struct regulator_dev *rdev)
 			return -EINVAL;
 	}
 
-#ifdef CONFIG_ARCH_TCC
+#ifdef USE_REGMAP
 	res = regmap_read(rt5028->regmap, reg, (unsigned int *)&ret);
 	if (res < 0)
 		return -EINVAL;
@@ -482,7 +486,7 @@ static int rt5028_buck_enable(struct regulator_dev *rdev)
 			return -EINVAL;
 	}
 
-#ifdef CONFIG_ARCH_TCC
+#ifdef USE_REGMAP
 	ret = regmap_read(rt5028->regmap, RT5028_BUCK_ON_OFF_REG, (unsigned int *)&old_value);
 	if (ret < 0)
 		return -EINVAL;
@@ -491,7 +495,7 @@ static int rt5028_buck_enable(struct regulator_dev *rdev)
 #endif
 	value = old_value | (1 << bit);
 
-#ifdef CONFIG_ARCH_TCC
+#ifdef USE_REGMAP
 	return regmap_write(rt5028->regmap, RT5028_BUCK_ON_OFF_REG, value);
 #else
 	return i2c_smbus_write_byte_data(rt5028->client, RT5028_BUCK_ON_OFF_REG, value);
@@ -518,7 +522,7 @@ static int rt5028_buck_disable(struct regulator_dev *rdev)
 			return -EINVAL;
 	}
 
-#ifdef CONFIG_ARCH_TCC
+#ifdef USE_REGMAP
 	ret = regmap_read(rt5028->regmap, RT5028_BUCK_ON_OFF_REG, (unsigned int *)&old_value);
 	if (ret < 0)
 		return -EINVAL;
@@ -527,7 +531,7 @@ static int rt5028_buck_disable(struct regulator_dev *rdev)
 #endif
 	value = old_value & ~(1 << bit);
 
-#ifdef CONFIG_ARCH_TCC
+#ifdef USE_REGMAP
 	return regmap_write(rt5028->regmap, RT5028_BUCK_ON_OFF_REG, value);
 #else
 	return i2c_smbus_write_byte_data(rt5028->client, RT5028_BUCK_ON_OFF_REG, value);
@@ -602,7 +606,7 @@ static int rt5028_ldo_set_voltage(struct regulator_dev *rdev, int min_uV, int ma
 		return -EINVAL;
 
 	dbg("%s: reg:0x%x value: %dmV\n", __func__, reg, ldo_voltags[i].uV/1000);
-#ifdef CONFIG_ARCH_TCC
+#ifdef USE_REGMAP
 	return regmap_write(rt5028->regmap, reg, value);
 #else
 	return i2c_smbus_write_byte_data(rt5028->client, reg, value);
@@ -664,7 +668,7 @@ static int rt5028_ldo_get_voltage(struct regulator_dev *rdev)
 			return -EINVAL;
 	}
 
-#ifdef CONFIG_ARCH_TCC
+#ifdef USE_REGMAP
 	res = regmap_read(rt5028->regmap, reg, (unsigned int *)&ret);
 	if (res < 0)
 		return -EINVAL;
@@ -711,7 +715,7 @@ static int rt5028_ldo_enable(struct regulator_dev *rdev)
 		default:
 			return -EINVAL;
 	}
-#ifdef CONFIG_ARCH_TCC
+#ifdef USE_REGMAP
 	ret = regmap_read(rt5028->regmap, RT5028_LDO_ON_OFF_REG, (unsigned int *)&old_value);
 	if (ret < 0)
 		return -EINVAL;
@@ -720,7 +724,7 @@ static int rt5028_ldo_enable(struct regulator_dev *rdev)
 #endif
 	value = old_value | (1 << bit);
 
-#ifdef CONFIG_ARCH_TCC
+#ifdef USE_REGMAP
 	return regmap_write(rt5028->regmap, RT5028_LDO_ON_OFF_REG, value);
 #else
 	return i2c_smbus_write_byte_data(rt5028->client, RT5028_LDO_ON_OFF_REG, value);
@@ -749,7 +753,7 @@ static int rt5028_ldo_disable(struct regulator_dev *rdev)
 			return -EINVAL;
 	}
 
-#ifdef CONFIG_ARCH_TCC
+#ifdef USE_REGMAP
 	ret = regmap_read(rt5028->regmap, RT5028_LDO_ON_OFF_REG, (unsigned int *)&old_value);
 	if (ret < 0)
 		return -EINVAL;
@@ -758,7 +762,7 @@ static int rt5028_ldo_disable(struct regulator_dev *rdev)
 #endif
 	value = old_value & ~(1 << bit);
 
-#ifdef CONFIG_ARCH_TCC
+#ifdef USE_REGMAP
 	return regmap_write(rt5028->regmap, RT5028_LDO_ON_OFF_REG, value);
 #else
 	return i2c_smbus_write_byte_data(rt5028->client, RT5028_LDO_ON_OFF_REG, value);
@@ -787,7 +791,7 @@ static int rt5028_ldo_is_enabled(struct regulator_dev *rdev)
 			return -EINVAL;
 	}
 
-#ifdef CONFIG_ARCH_TCC
+#ifdef USE_REGMAP
 	ret = regmap_read(rt5028->regmap, RT5028_LDO_ON_OFF_REG, (unsigned int *)&old_value);
 	if (ret < 0)
 		return -EINVAL;
@@ -965,6 +969,7 @@ static int rt5028_pmic_probe(struct i2c_client *client, const struct i2c_device_
 
 	i2c_set_clientdata(client, rdev);
 
+#ifdef USE_REGMAP
     rt5028->regmap = devm_regmap_init_i2c(client, &rt5028_regmap_config);
     if (IS_ERR(rt5028->regmap)) {
         ret = PTR_ERR(rt5028->regmap);
@@ -972,7 +977,6 @@ static int rt5028_pmic_probe(struct i2c_client *client, const struct i2c_device_
         return ret;
     }
 
-#ifdef CONFIG_ARCH_TCC
 	ret = regmap_read(rt5028->regmap, RT5028_DEVICE_ID_REG, (unsigned int *)&i2c_data);
 	if (ret < 0)
 		return -EINVAL;
@@ -1019,7 +1023,7 @@ static int rt5028_pmic_probe(struct i2c_client *client, const struct i2c_device_
 		int status=0;
 		/* irq enable */
 		// TODO:
-#ifdef CONFIG_ARCH_TCC
+#ifdef USE_REGMAP
 		ret = regmap_write(rt5028->regmap, RT5028_IRQ1_ENABLE_REG, RT5028_IRQ1);
 		if (ret < 0)
 			dev_err(&client->dev, "failed to write IRQ1 enable (res=%d) !\n", ret);
@@ -1153,7 +1157,7 @@ static int rt5028_pmic_suspend(struct device *dev)
 
 	/* clear irq status */
 	// TODO:
-#ifdef CONFIG_ARCH_TCC
+#ifdef USE_REGMAP
 	regmap_write(rt5028->regmap, RT5028_IRQ1_STATUS_REG, 0xFF);
 	regmap_write(rt5028->regmap, RT5028_IRQ2_STATUS_REG, 0xFF);
 #else
