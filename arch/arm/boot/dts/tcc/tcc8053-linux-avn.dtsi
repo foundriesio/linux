@@ -270,6 +270,14 @@
 		 * Camera Memory
 		 *-----------------------------------------------------------
 		 */
+		pmap_parking_gui: parking_gui {
+			compatible = "telechips,pmap";
+			telechips,pmap-name = "parking_gui";
+			alloc-ranges = <0x0 EARLY_REARCAM_BASE 0x0 EARLY_REARCAM_SIZE>;
+			size = <0x0 PMAP_SIZE_CAMERA_PGL>;
+			no-map;
+		};
+
 		pmap_rearcamera_viqe: rearcamera_viqe {
 			compatible = "telechips,pmap";
 			telechips,pmap-name = "rearcamera_viqe";
@@ -339,14 +347,6 @@
 			telechips,pmap-name = "rearcamera7";
 			alloc-ranges = <0x0 EARLY_REARCAM_BASE 0x0 EARLY_REARCAM_SIZE>;
 			size = <0x0 PMAP_SIZE_CAMERA_PREVIEW7>;
-			no-map;
-		};
-
-		pmap_parking_gui: parking_gui {
-			compatible = "telechips,pmap";
-			telechips,pmap-name = "parking_gui";
-			alloc-ranges = <0x0 EARLY_REARCAM_BASE 0x0 EARLY_REARCAM_SIZE>;
-			size = <0x0 PMAP_SIZE_CAMERA_PGL>;
 			no-map;
 		};
 
