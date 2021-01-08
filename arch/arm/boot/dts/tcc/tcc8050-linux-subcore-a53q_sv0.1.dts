@@ -210,6 +210,13 @@
 		#size-cells = <1>;
 		ranges;
 
+        pmap_tcc_shmem: tcc_shmem {
+            compatible = "telechips,pmap";
+            reg = <0x38000000 0x8000000>;
+            telechips,pmap-name = "tcc_shmem";
+            no-map;
+        };
+
 		/*-----------------------------------------------------------
 		 * Secure Area 1 (CPU R/W, VPU X, GPU R/W, VIOC R)
 		 *-----------------------------------------------------------
@@ -2099,6 +2106,22 @@
 		clock-names = "gmac-pclk", "hsio-clk", "ptp-pclk", "gmac-hclk";
 	};
 #endif
+
+    tcc_shared_memory: tcc_shared_memory {
+        compatible = "telechips,tcc_shmem";
+        reg = <0x38000000 0x8000000>;
+        reg-names = "tcc_shmem";
+        interrupts = <GIC_SPI 50 0>;
+        lable = "TCC shared memory";
+        memory-region = <&pmap_tcc_shmem>;
+        dist_regs = <0x17301000 0x1000 0x17C01000 0x1000>;
+        core-num = <1>;
+    };
+
+    tcc_virt_eth: tcc_virt_eth {
+        compatible = "telechips,tcc_virt_eth";
+        status = "okay";
+    };
 };
 
 &a53_sc_mbox {
