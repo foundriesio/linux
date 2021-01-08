@@ -141,6 +141,11 @@ config NET_NETX
 	  To compile this driver as a module, choose M here. The module
 	  will be called netx-eth.
 
+config TCC_DUMMY
+	bool "Tcc ethernet support"
+	---help---
+	TCC virtual ethernet
+
 source "drivers/net/ethernet/nuvoton/Kconfig"
 source "drivers/net/ethernet/nvidia/Kconfig"
 source "drivers/net/ethernet/nxp/Kconfig"

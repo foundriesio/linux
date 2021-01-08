@@ -8,6 +8,7 @@ obj-$(CONFIG_VIDEO_HDMI_IN_SENSOR_EP9553T)	+= tcc_ep9553t_cec.o
 obj-$(CONFIG_TCC_G2D) += tcc_grp.o
 obj-$(CONFIG_GPIO_TCC_SAMPLE)   += gpio-tcc-sample.o
 obj-$(CONFIG_CLKOUT_TCC_SAMPLE)   += clkout-tcc-sample.o
+obj-$(CONFIG_TCC_SHMEM) += tcc_shared_mem.o
 
 ifdef CONFIG_ARCH_TCC897X
 obj-$(CONFIG_TCC_SDR)   += tcc_sdr.o
