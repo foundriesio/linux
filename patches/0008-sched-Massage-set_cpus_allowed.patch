@@ -109,7 +109,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  	if (!retval) {
  		cpuset_cpus_allowed(p, cpus_allowed);
-@@ -6595,7 +6603,7 @@ void init_idle(struct task_struct *idle,
+@@ -6591,7 +6599,7 @@ void init_idle(struct task_struct *idle,
  	 *
  	 * And since this is boot we can forgo the serialization.
  	 */
@@ -141,7 +141,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  /* Assumes rq->lock is held */
 --- a/kernel/sched/sched.h
 +++ b/kernel/sched/sched.h
-@@ -1814,7 +1814,8 @@ struct sched_class {
+@@ -1808,7 +1808,8 @@ struct sched_class {
  	void (*task_woken)(struct rq *this_rq, struct task_struct *task);
  
  	void (*set_cpus_allowed)(struct task_struct *p,
@@ -151,7 +151,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  	void (*rq_online)(struct rq *rq);
  	void (*rq_offline)(struct rq *rq);
-@@ -1907,7 +1908,9 @@ extern void update_group_capacity(struct
+@@ -1901,7 +1902,9 @@ extern void update_group_capacity(struct
  
  extern void trigger_load_balance(struct rq *rq);
  

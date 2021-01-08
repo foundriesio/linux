@@ -478,6 +478,7 @@ powerpc-traps.patch
 powerpc-pseries-iommu-Use-a-locallock-instead-local_ir.patch
 powerpc-kvm-Disable-in-kernel-MPIC-emulation-for-PRE.patch
 powerpc-stackprotector-work-around-stack-guard-init-.patch
+powerpc-Avoid-recursive-header-includes.patch
 POWERPC-Allow-to-enable-RT.patch
 
 # DRIVERS

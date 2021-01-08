@@ -214,7 +214,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	return 0;
 --- a/kernel/sched/sched.h
 +++ b/kernel/sched/sched.h
-@@ -1221,6 +1221,9 @@ static inline void rq_pin_lock(struct rq
+@@ -1215,6 +1215,9 @@ static inline void rq_pin_lock(struct rq
  	rq->clock_update_flags &= (RQCF_REQ_SKIP|RQCF_ACT_SKIP);
  	rf->clock_update_flags = 0;
  #endif

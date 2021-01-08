@@ -306,7 +306,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  		trace_sched_switch(preempt, prev, next);
 --- a/kernel/sched/sched.h
 +++ b/kernel/sched/sched.h
-@@ -1902,14 +1902,16 @@ static inline bool sched_fair_runnable(s
+@@ -1896,14 +1896,16 @@ static inline bool sched_fair_runnable(s
  extern struct task_struct *pick_next_task_fair(struct rq *rq, struct task_struct *prev, struct rq_flags *rf);
  extern struct task_struct *pick_next_task_idle(struct rq *rq);
  
