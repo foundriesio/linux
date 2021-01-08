@@ -36,7 +36,7 @@ static inline s32 tcc_reset_internal(struct reset_controller_dev *rcdev,
 
 	spin_lock_irqsave(&priv->lock, flags);
 
-	arm_smccc_smc(priv->op, id, 1, 0, 0, 0, 0, 0, &res);
+	arm_smccc_smc(priv->op, id, ast, 0, 0, 0, 0, 0, &res);
 
 	spin_unlock_irqrestore(&priv->lock, flags);
 
