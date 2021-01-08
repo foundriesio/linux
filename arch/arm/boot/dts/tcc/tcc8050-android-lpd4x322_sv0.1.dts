@@ -437,43 +437,6 @@
 		};
 	};
 
-&i2c7 {
-	status = "okay";
-	port-mux = <12>; /* [0]SCL [1]SDA */
-	pinctrl-names = "default";
-	pinctrl-0 = <&i2c12_bus>;
-
-	videosource0: videodecoder_adv7182 {
-		compatible	= "analogdevices,adv7182";
-		pinctrl-names	= "idle", "active";
-		cifport		= <0>;
-		pinctrl-0	= <&cam0_8bit_idle>;
-		pinctrl-1	= <&cam0_clk &cam0_data_8bit>;
-		rst-gpios	= <&gpb 14 1>;
-		reg		= <0x21>;	// 0x42 >> 1
-	};
-
-	videosource1: deserializer_max9286 {
-		compatible	= "maxim,max9286";
-		cifport		= <5>;
-		pwd-gpios	= <&gpg 5 1>;
-		intb-gpios	= <&gph 11 1>;
-		reg		= <0x48>;	// 0x90 >> 1
-		mipi-csi2-idx   = <0>;
-	};
-
-	videosource2: deserializer_max9276 {
-		compatible	= "maxim,max9276";
-		pinctrl-names	= "idle", "active";
-		cifport		= <0>;
-		pinctrl-0	= <&cam0_16bit_idle>;
-		pinctrl-1	= <&cam0_clk &cam0_hsync &cam0_vsync &cam0_fld &cam0_data_16bit>;
-		rst-gpios	= <&gpb 14 1>;
-		intb-gpios	= <&gpma 19 1>;
-		reg		= <0x4A>;	// 0x94 >> 1
-	};
-};
-
 &tcc_pm_fw {
 	pmic = <&da9062>;
 };
