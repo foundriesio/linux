@@ -299,14 +299,8 @@ int tccvin_parse_device_tree(tccvin_dev_t * vdev) {
 			}
 
 			// Parking Guide Line
-			vioc_node = of_parse_phandle(main_node, "use_pgl", 0);
-			if(vioc_node != NULL) {
-				of_property_read_u32_index(main_node, "use_pgl", 0, &vdev->cif.use_pgl);
-				dlog("%10s[%2d]: %d\n", "usage status pgl", vdev->vid_dev.minor, vdev->cif.use_pgl);
-			} else {
-				loge("\"use_pgl\" node is not found.\n");
-				return -ENODEV;
-			}
+			of_property_read_u32_index(main_node, "use_pgl", 0, &vdev->cif.use_pgl);
+			dlog("%10s[%2d]: %d\n", "usage status pgl", vdev->vid_dev.minor, vdev->cif.use_pgl);
 		} else {
 			loge("\"rdma\" node is not found.\n");
 			return -ENODEV;
@@ -1577,7 +1571,7 @@ int tccvin_diagnostics_cif_port_mapping(tccvin_dev_t * vdev) {
 	if(ret < 0) {
 		tccvin_dump_register((unsigned long *)vdev->cif.cifport_addr, 1);
 	}
-	
+
 	return ret;
 }
 
@@ -2132,4 +2126,3 @@ void tccvin_check_path_status(tccvin_dev_t * vdev, int * status) {
 	}
 	dlog("status: %d\n", * status);
 }
-
