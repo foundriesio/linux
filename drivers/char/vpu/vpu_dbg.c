@@ -52,10 +52,10 @@ void V_DEBUG(enum vdbg_mask_type dbg_mask, const char *fn,
 	vaf.va = &args;
 	if (vpu_prt_mode == VPU_ALWAYS_PRT_DBG) {
 		if (dbg_mask & VPU_DBG_ERROR)
-			pr_info("[%s:%d] %pV\n", fn, ln, &vaf);
+			printk(KERN_ERR "[%s:%d] %pV\n", fn, ln, &vaf);
 		else
 			if (vpu_have_debug_mask(dbg_mask))
-				pr_info("[%s:%d] %pV\n", fn, ln, &vaf);
+				printk(KERN_ERR "[%s:%d] %pV\n", fn, ln, &vaf);
 	} else {
 		if (dbg_mask & VPU_DBG_ERROR)
 			pr_info("[%s:%d] %pV\n", fn, ln, &vaf);

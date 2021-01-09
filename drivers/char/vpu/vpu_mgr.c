@@ -1539,7 +1539,7 @@ static irqreturn_t _vmgr_isr_handler(int irq, void *dev_id)
 	cntInt_vpu++;
 
 	if (cntInt_vpu % 30 == 0)
-		V_DBG(VPU_DBG_RSTCLK, "%d", cntInt_vpu);
+		V_DBG(VPU_DBG_ISR, "%d", cntInt_vpu);
 
 	atomic_inc(&vmgr_data.oper_intr);
 
