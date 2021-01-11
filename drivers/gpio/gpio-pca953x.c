@@ -888,8 +888,10 @@ static int pca953x_probe(struct i2c_client *client,
 
 	i2c_set_clientdata(client, chip);
 
+#if defined (CONFIG_ARCH_TCC805X)
 	pca953x_gpio_direction_output(&chip->gpio_chip, 4, 1);
 	pca953x_gpio_set_value(&chip->gpio_chip, 4, 1);
+#endif
 
 	return 0;
 
