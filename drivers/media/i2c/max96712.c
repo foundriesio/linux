@@ -54,8 +54,44 @@
 #define DEFAULT_WIDTH			(1920)
 #define DEFAULT_HEIGHT			(1080)
 
-#define MAX96712_REG_STATUS_1	0x1E
-#define MAX96712_VAL_STATUS_1	0x40
+//#define MAX96712_REG_STATUS_1	0x1E
+//#define MAX96712_VAL_STATUS_1	0x40
+
+/*
+ * MAX96712 REG
+ */
+#define MAX96712_LINK_EN_A	(1 << 0)
+#define MAX96712_LINK_EN_B	(1 << 1)
+#define MAX96712_LINK_EN_C	(1 << 2)
+#define MAX96712_LINK_EN_D	(1 << 3)
+
+#define MAX96712_GMSL1_A	(0 << 4)
+#define MAX96712_GMSL1_B	(0 << 5)
+#define MAX96712_GMSL1_C	(0 << 6)
+#define MAX96712_GMSL1_D	(0 << 7)
+
+#define MAX96712_GMSL2_A	(1 << 4)
+#define MAX96712_GMSL2_B	(1 << 5)
+#define MAX96712_GMSL2_C	(1 << 6)
+#define MAX96712_GMSL2_D	(1 << 7)
+
+#define MAX96712_GMSL1_4CH					\
+		(MAX96712_GMSL1_A | MAX96712_GMSL1_B |		\
+		 MAX96712_GMSL1_C | MAX96712_GMSL1_D |		\
+		 MAX96712_LINK_EN_A | MAX96712_LINK_EN_B |	\
+		 MAX96712_LINK_EN_C | MAX96712_LINK_EN_D)
+
+#define MAX96712_GMSL1_2CH					\
+		(MAX96712_GMSL1_A | MAX96712_GMSL1_B |		\
+		 MAX96712_GMSL1_C | MAX96712_GMSL1_D |		\
+		 MAX96712_LINK_EN_A | MAX96712_LINK_EN_B)
+
+#define MAX96712_GMSL1_1CH					\
+		(MAX96712_GMSL1_A | MAX96712_GMSL1_B |		\
+		 MAX96712_GMSL1_C | MAX96712_GMSL1_D |		\
+		 MAX96712_LINK_EN_A)
+
+#define MAX96712_LINK_MODE	MAX96712_GMSL1_4CH
 
 struct power_sequence {
 	int			pwr_port;
@@ -257,7 +293,8 @@ const struct reg_sequence max96712_reg_defaults[] = {
 	/*
 	 * enable GMSL1 link A B C D
 	 */
-	{0x0006, 0x0f, 50},
+	//{0x0006, 0x0f, 50},
+	{0x0006, MAX96712_LINK_MODE, 50},
 };
 
 /* for raw12 4ch input */
@@ -379,7 +416,8 @@ const struct reg_sequence max96712_reg_defaults_raw12[] = {
 	{0x09D2,0xC1, 0},	// DST short packet.
 
 
-	{0x0006,0x0F, 0},	// GMSL1 mode for all Links & All LINK enabled.
+	//{0x0006,0x0F, 0},	// GMSL1 mode for all Links & All LINK enabled.
+	{0x0006, MAX96712_LINK_MODE, 0},
 
 	{0x0018,0x0F, 100},	 //MAX96712 one shot reset
 };
