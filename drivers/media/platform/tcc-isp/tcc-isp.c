@@ -59,6 +59,11 @@ struct v4l2_mbus_config isp_mbus_config = {
 /*
  * Helper fuctions for reflection
  */
+static inline struct v4l2_subdev *ctrl_to_sd(struct v4l2_ctrl *c)
+{
+	return (&container_of(c->handler, struct tcc_isp_state, ctrl_hdl)->sd);
+}
+
 static inline struct tcc_isp_state *sd_to_state(struct v4l2_subdev *sd)
 {
 	return container_of(sd, struct tcc_isp_state, sd);
@@ -594,6 +599,68 @@ static void tcc_isp_set_default(struct tcc_isp_state *state)
 	tcc_isp_update_register(state);
 }
 
+static int tcc_isp_s_ctrl(struct v4l2_ctrl *ctrl)
+{
+	struct v4l2_subdev *sd = ctrl_to_sd(ctrl);
+	struct tcc_isp_state *state = sd_to_state(sd);
+	int ret = 0;
+	int val;
+
+	if (ret)
+		return ret;
+
+	val = ctrl->val;
+	switch (ctrl->id) {
+	case V4L2_CID_BRIGHTNESS:
+		logi(&(state->pdev->dev), "V4L2_CID_BRIGHTNESS\n");
+		break;
+	default:
+		loge(&(state->pdev->dev),
+			"NOT supported CID(0x%x)\n", ctrl->id);
+		ret = -EINVAL;
+	}
+
+	return ret;
+}
+
+static const struct v4l2_ctrl_ops tcc_isp_ctrl_ops = {
+	.s_ctrl = tcc_isp_s_ctrl,
+};
+
+static int tcc_isp_init_controls(struct tcc_isp_state *state)
+{
+	int ret = 0;
+
+	v4l2_ctrl_handler_init(&state->ctrl_hdl, 1);
+
+	v4l2_ctrl_new_std(&state->ctrl_hdl, &tcc_isp_ctrl_ops,
+			V4L2_CID_BRIGHTNESS, TCC_ISP_BRI_MIN,
+			TCC_ISP_BRI_MAX, 1, TCC_ISP_BRI_DEF);
+
+	state->sd.ctrl_handler = &state->ctrl_hdl;
+	if (state->ctrl_hdl.error) {
+		ret  = state->ctrl_hdl.error;
+
+		v4l2_ctrl_handler_free(&state->ctrl_hdl);
+		loge(&(state->pdev->dev), "FAIL %s\n", __func__);
+		return ret;
+	}
+
+	/*
+	 * call s_ctrl for all controls unconditionally.
+	 * this ensures that both the internal data and
+	 * the hardware are in sync
+	 */
+	 v4l2_ctrl_handler_setup(&state->ctrl_hdl);
+
+	return ret;
+}
+
+static void tcc_isp_exit_controls(struct tcc_isp_state *state)
+{
+	v4l2_ctrl_handler_free(&state->ctrl_hdl);
+}
+
 static int tcc_isp_s_stream(struct v4l2_subdev *sd, int enable)
 {
 	struct tcc_isp_state *state = sd_to_state(sd);
@@ -791,7 +858,15 @@ static int tcc_isp_probe(struct platform_device *pdev)
 	v4l2_subdev_init(&(state->sd), &tcc_isp_ops);
 	state->sd.owner = pdev->dev.driver->owner;
 	state->sd.dev = &pdev->dev;
+	state->sd.flags = V4L2_SUBDEV_FL_HAS_DEVNODE;
+
 	v4l2_set_subdevdata(&(state->sd), state);
+
+	/* initialize v4l2 control handler */
+	ret = tcc_isp_init_controls(state);
+	if (ret)
+		goto err;
+
 	/* initialize name */
 	sprintf(state->sd.name, "tcc-isp-%d", pdev->id);
 
@@ -822,6 +897,7 @@ static int tcc_isp_remove(struct platform_device *pdev)
 
 	logi(&(state->pdev->dev), "%s in\n", __func__);
 
+	tcc_isp_exit_controls(state);
 
 	logi(&(state->pdev->dev), "%s out\n", __func__);
 

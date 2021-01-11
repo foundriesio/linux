@@ -364,7 +364,20 @@ void tccvin_async_unbind(struct v4l2_async_notifier *notifier,
 
 int tccvin_async_complete(struct v4l2_async_notifier *notifier)
 {
-	return 0;
+	struct tccvin_device	*dev		= NULL;
+	int			ret		= 0;
+
+	dev = container_of(notifier, struct tccvin_device, notifier);
+
+	ret = v4l2_device_register_subdev_nodes(&dev->vdev);
+	if (ret != 0) {
+		loge("FAIL - register subdev nodes\n");
+		goto err;
+	}
+
+
+err:
+	return ret;
 }
 
 void tccvin_print_fw_node_info(struct tccvin_device *vdev,
@@ -567,6 +580,7 @@ int tccvin_init_subdevices(struct tccvin_device *vdev)
 	if (ret < 0) {
 		loge("Error registering async notifier for tccvin\n");
 		ret = -EINVAL;
+		goto end;
 	}
 
 	logi("Succeed to register async notifier for tccvin\n");
