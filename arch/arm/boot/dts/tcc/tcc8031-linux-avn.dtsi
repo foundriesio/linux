@@ -42,10 +42,11 @@
  *     OTHER DEALINGS IN THE SOFTWARE.
  */
 
+#include "tcc-pmap-803x-linux-customized.dtsi"
+
 #include "tcc8031.dtsi"
 #include "tcc803x-linux.dtsi"
 
-#include "tcc-pmap-803x-linux-customized.dtsi"
 #include "tcc-pmap-common.dtsi"
 #include <dt-bindings/pmap/tcc803x/pmap-tcc803x-linux-ivi.h>
 

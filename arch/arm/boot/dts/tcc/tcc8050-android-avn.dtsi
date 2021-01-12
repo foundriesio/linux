@@ -4,6 +4,8 @@
  * Device tree for Telechips TCC8050 board
  */
 
+#include "tcc-pmap-805x-android-customized.dtsi"
+
 #ifndef DT_OVERLAY
 #include "tcc8050.dtsi"
 #endif
@@ -11,7 +13,6 @@
 #include "tcc805x-android.dtsi"
 
 #include <dt-bindings/pmap/tcc805x/pmap-tcc805x-android-ivi.h>
-#include "tcc-pmap-805x-android-customized.dtsi"
 #include "tcc-pmap-common.dtsi"
 
 / {
