@@ -560,7 +560,7 @@
 	/* CP */
 	auth-cp {
 		compatible = "telechips, tcc-cp";
-		cp-type = <1>;	    // 2.0C = 1, 2.0B = 0
+		cp-type = <2>;	    // 3.0 = 2, 2.0C = 1, 2.0B = 0
 		i2c-channel = <2>;	// 0 ~ 3
 		//power-ctrl-able;
 		//cp_power-gpio = <&gpg 19 0>;
