@@ -64,11 +64,14 @@
 //***************************** VPU/HEVC ******************************/
 //Should sync with hardware/telechips/omx/omx_videodec_interface/include/vdec.h
 #if defined(CONFIG_VDEC_MAX_FRAME_SIZE_1)
-#    define SUPPORT_VIDEO_MAX_WIDTH         4096
-#    define SUPPORT_VIDEO_MAX_HEIGHT        2160
+	#define SUPPORT_VIDEO_MAX_WIDTH         4096
+	#define SUPPORT_VIDEO_MAX_HEIGHT        2160
 #elif defined(CONFIG_VDEC_MAX_FRAME_SIZE_2)
-#    define SUPPORT_VIDEO_MAX_WIDTH         3840
-#    define SUPPORT_VIDEO_MAX_HEIGHT        2160
+	#define SUPPORT_VIDEO_MAX_WIDTH         3840
+	#define SUPPORT_VIDEO_MAX_HEIGHT        2160
+#else
+	#define SUPPORT_VIDEO_MAX_WIDTH         1920
+	#define SUPPORT_VIDEO_MAX_HEIGHT        1088
 #endif
 
 #define SUPPORT_VIQE_MAX_WIDTH          1920

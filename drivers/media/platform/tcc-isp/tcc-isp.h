@@ -6,6 +6,8 @@
 #ifndef __TCC_ISP_H__
 #define __TCC_ISP_H__
 
+#include <media/v4l2-subdev.h>
+#include <media/v4l2-ctrls.h>
 #include "tcc-isp-reg.h"
 
 #ifndef ON
@@ -19,6 +21,11 @@
 #define TCC_ISP_DRIVER_NAME	"tcc-isp"
 #define TCC_ISP_SUBDEV_NAME	TCC_ISP_DRIVER_NAME
 #define TCC_ISP_FIRMWARE_NAME	"tcc-isp-fw"
+
+/* Brightness*/
+#define TCC_ISP_BRI_MIN		-128
+#define TCC_ISP_BRI_DEF		0
+#define TCC_ISP_BRI_MAX		127
 
 struct hdr_state {
 	/* hdr input and output */
@@ -56,6 +63,7 @@ struct isp_state {
 struct tcc_isp_state {
 	struct platform_device *pdev;
 	struct v4l2_subdev	sd;
+	struct v4l2_ctrl_handler ctrl_hdl;
 
 	char isp_fw_name[20];
 	/* register base addr */

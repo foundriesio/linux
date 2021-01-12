@@ -378,12 +378,6 @@ int PVRSRVDeviceSuspend(PVRSRV_DEVICE_NODE *psDeviceNode)
 	 * while it's suspended (this is needed for Android). Acquire the bridge
 	 * lock first to ensure the driver isn't currently in use.
 	 */
-	PVRSRV_RGXDEV_INFO *psDevInfo = psDeviceNode->pvDevice;
-
-	psDeviceNode->bAutoVzFwIsUp = IMG_FALSE;
-	PVR_DPF((PVR_DBG_ERROR, "%s Mode: %s", __func__, (PVRSRV_VZ_MODE_IS(GUEST)?"GUEST":"HOST"))); 
-	PVR_DPF((PVR_DBG_ERROR, "%s before: RGX_CR_OS0_SCRATCH2=0x%x, RGX_CR_OS0_SCRATCH3=0x%x"
-				, __func__, OSReadHWReg32(psDevInfo->pvRegsBaseKM, RGX_CR_OS0_SCRATCH2), OSReadHWReg32(psDevInfo->pvRegsBaseKM, RGX_CR_OS0_SCRATCH3)));
 
 	LinuxBridgeBlockClientsAccess(IMG_FALSE);
 
@@ -393,9 +387,6 @@ int PVRSRVDeviceSuspend(PVRSRV_DEVICE_NODE *psDeviceNode)
 		LinuxBridgeUnblockClientsAccess();
 		return -EINVAL;
 	}
-
-	PVR_DPF((PVR_DBG_ERROR, "%s after: RGX_CR_OS0_SCRATCH2=0x%x, RGX_CR_OS0_SCRATCH3=0x%x"
-				, __func__, OSReadHWReg32(psDevInfo->pvRegsBaseKM, RGX_CR_OS0_SCRATCH2), OSReadHWReg32(psDevInfo->pvRegsBaseKM, RGX_CR_OS0_SCRATCH3)));
 
 	return 0;
 }
@@ -409,6 +400,7 @@ int PVRSRVDeviceSuspend(PVRSRV_DEVICE_NODE *psDeviceNode)
 */ /***************************************************************************/
 int PVRSRVDeviceResume(PVRSRV_DEVICE_NODE *psDeviceNode)
 {
+#if defined(SUPPORT_AUTOVZ)
 	PVRSRV_RGXDEV_INFO *psDevInfo = psDeviceNode->pvDevice;
 
 	PVR_DPF((PVR_DBG_ERROR, "%s Mode: %s", __func__, (PVRSRV_VZ_MODE_IS(GUEST)?"GUEST":"HOST")));
@@ -416,6 +408,7 @@ int PVRSRVDeviceResume(PVRSRV_DEVICE_NODE *psDeviceNode)
 		, __func__, OSReadHWReg32(psDevInfo->pvRegsBaseKM, RGX_CR_OS0_SCRATCH2), OSReadHWReg32(psDevInfo->pvRegsBaseKM, RGX_CR_OS0_SCRATCH3)));
 
 	psDeviceNode->bAutoVzFwIsUp = IMG_FALSE;
+#endif
 
 	if (PVRSRVSetDeviceSystemPowerState(psDeviceNode,
 										PVRSRV_SYS_POWER_STATE_ON) != PVRSRV_OK)
@@ -423,6 +416,7 @@ int PVRSRVDeviceResume(PVRSRV_DEVICE_NODE *psDeviceNode)
 		return -EINVAL;
 	}
 
+#if defined(SUPPORT_AUTOVZ)
 	PVR_DPF((PVR_DBG_ERROR, "%s after: RGX_CR_OS0_SCRATCH2=0x%x, RGX_CR_OS0_SCRATCH3=0x%x"
 		, __func__, OSReadHWReg32(psDevInfo->pvRegsBaseKM, RGX_CR_OS0_SCRATCH2), OSReadHWReg32(psDevInfo->pvRegsBaseKM, RGX_CR_OS0_SCRATCH3)));
 	
@@ -502,7 +496,7 @@ int PVRSRVDeviceResume(PVRSRV_DEVICE_NODE *psDeviceNode)
 
 	PVR_DPF((PVR_DBG_ERROR, "%s final: RGX_CR_OS0_SCRATCH2=0x%x, RGX_CR_OS0_SCRATCH3=0x%x"
 				, __func__, OSReadHWReg32(psDevInfo->pvRegsBaseKM, RGX_CR_OS0_SCRATCH2), OSReadHWReg32(psDevInfo->pvRegsBaseKM, RGX_CR_OS0_SCRATCH3)));
-
+#endif
 	LinuxBridgeUnblockClientsAccess();
 
 	/*

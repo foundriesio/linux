@@ -531,104 +531,91 @@ static int vdev_init(void)
 	// register decoder driver...
 	platform_device_register(&vdec_device);
 	platform_driver_register(&vdec_driver);
-// Jun 20201217
-pr_info("vdec_device registered\n");
+	V_DBG(VPU_DBG_DEV_REGED, "vdec_device registered");
 #endif
 
 #if DEFINED_CONFIG_VDEC_CNT_2345
 	// register decoder_ext driver...
 	platform_device_register(&vdec_ext_device);
 	platform_driver_register(&vdec_ext_driver);
-// Jun 20201217
-pr_info("vdec_ext_device registered\n");
+	V_DBG(VPU_DBG_DEV_REGED, "vdec_ext_device registered");
 #endif
 
 #if DEFINED_CONFIG_VDEC_CNT_345
 	// register decoder_ext2 driver...
 	platform_device_register(&vdec_ext2_device);
 	platform_driver_register(&vdec_ext2_driver);
-// Jun 20201217
-pr_info("vdec_ext2_device registered\n");
+	V_DBG(VPU_DBG_DEV_REGED, "vdec_ext2_device registered");
 #endif
 
 #if DEFINED_CONFIG_VDEC_CNT_45
 	// register decoder_ext3 driver...
 	platform_device_register(&vdec_ext3_device);
 	platform_driver_register(&vdec_ext3_driver);
-// Jun 20201217
-pr_info("vdec_ext3_device registered\n");
+	V_DBG(VPU_DBG_DEV_REGED, "vdec_ext3_device registered");
 #endif
 
 #if defined(CONFIG_VDEC_CNT_5)
 	// register decoder_ext4 driver...
 	platform_device_register(&vdec_ext4_device);
 	platform_driver_register(&vdec_ext4_driver);
-// Jun 20201217
-pr_info("vdec_ext4_device registered\n");
+	V_DBG(VPU_DBG_DEV_REGED, "vdec_ext4_device registered");
 #endif
 
 #if DEFINED_CONFIG_VENC_CNT_12345678
 	// register encoder driver...
 	platform_device_register(&venc_device);
 	platform_driver_register(&venc_driver);
-// Jun 20201217
-pr_info("venc_device registered\n");
+	V_DBG(VPU_DBG_DEV_REGED, "venc_device registered");
 #endif
 
 #if DEFINED_CONFIG_VENC_CNT_2345678
 	// register encoder_ext driver...
 	platform_device_register(&venc_ext_device);
 	platform_driver_register(&venc_ext_driver);
-// Jun 20201217
-pr_info("venc_ext_device registered\n");
+	V_DBG(VPU_DBG_DEV_REGED, "venc_ext_device registered");
 #endif
 
 #if DEFINED_CONFIG_VENC_CNT_345678
 	// register encoder_ext2 driver...
 	platform_device_register(&venc_ext2_device);
 	platform_driver_register(&venc_ext2_driver);
-// Jun 20201217
-pr_info("venc_ext2_device registered\n");
+	V_DBG(VPU_DBG_DEV_REGED, "venc_ext2_device registered");
 #endif
 
 #if DEFINED_CONFIG_VENC_CNT_45678
 	// register encoder_ext3 driver...
 	platform_device_register(&venc_ext3_device);
 	platform_driver_register(&venc_ext3_driver);
-// Jun 20201217
-pr_info("venc_ext3_device registered\n");
+	V_DBG(VPU_DBG_DEV_REGED, "venc_ext3_device registered");
 #endif
 
 #if DEFINED_CONFIG_VENC_CNT_5678
 	// register encoder_ext4 driver...
 	platform_device_register(&venc_ext4_device);
 	platform_driver_register(&venc_ext4_driver);
-// Jun 20201217
-pr_info("venc_ext4_device registered\n");
+	V_DBG(VPU_DBG_DEV_REGED, "venc_ext4_device registered");
 #endif
 
 #if DEFINED_CONFIG_VENC_CNT_678
 	// register encoder_ext4 driver...
 	platform_device_register(&venc_ext5_device);
 	platform_driver_register(&venc_ext5_driver);
-// Jun 20201217
-pr_info("venc_ext5_device registered\n");
+	V_DBG(VPU_DBG_DEV_REGED, "venc_ext5_device registered");
 #endif
 
 #if DEFINED_CONFIG_VENC_CNT_78
 	// register encoder_ext4 driver...
 	platform_device_register(&venc_ext6_device);
 	platform_driver_register(&venc_ext6_driver);
-// Jun 20201217
-pr_info("venc_ext6_device registered\n");
+	V_DBG(VPU_DBG_DEV_REGED, "venc_ext6_device registered");
 #endif
 
 #if DEFINED_CONFIG_VENC_CNT_8
 	// register encoder_ext4 driver...
 	platform_device_register(&venc_ext7_device);
 	platform_driver_register(&venc_ext7_driver);
-// Jun 20201217
-pr_info("venc_ext7_device registered\n");
+	V_DBG(VPU_DBG_DEV_REGED, "venc_ext7_device registered");
 #endif
 
 	pr_info("Done!!\n");

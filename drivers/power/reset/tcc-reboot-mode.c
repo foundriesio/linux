@@ -15,6 +15,10 @@
 #include <linux/arm-smccc.h>
 #include <asm/system_misc.h>
 
+#if defined(CONFIG_ARCH_TCC805X)
+#include <dt-bindings/power/tcc805x,boot-mode.h>
+#endif
+
 #define TCC_SIP_SET_RESET_REASON	(0x82003002U)
 
 #if !defined(CONFIG_ARM_PSCI) && !defined(CONFIG_ARM64)
@@ -26,7 +30,9 @@ static int tcc_reboot_mode_write(struct reboot_mode_driver *reboot,
 {
 	struct arm_smccc_res res;
 
-	dev_dbg(reboot->dev, "magic=%x\n", magic);
+	if (reboot != NULL) {
+		dev_dbg(reboot->dev, "magic=%x\n", magic);
+	}
 
 #if defined(CONFIG_ARM_PSCI) || defined(CONFIG_ARM64)
 	arm_smccc_smc(TCC_SIP_SET_RESET_REASON, magic, 0, 0, 0, 0, 0, 0, &res);
@@ -40,6 +46,20 @@ static int tcc_reboot_mode_write(struct reboot_mode_driver *reboot,
 static struct reboot_mode_driver tcc_reboot_mode = {
 	.write = tcc_reboot_mode_write,
 };
+
+#if defined(BOOT_PANIC)
+static int tcc_reboot_mode_panic_notifier_call(struct notifier_block *nb,
+					       unsigned long action, void *data)
+{
+	tcc_reboot_mode_write(NULL, BOOT_PANIC);
+
+	return 0;
+}
+
+static struct notifier_block tcc_reboot_mode_panic_notifier = {
+	.notifier_call = tcc_reboot_mode_panic_notifier_call,
+};
+#endif
 
 static int tcc_reboot_mode_probe(struct platform_device *pdev)
 {
@@ -63,6 +83,11 @@ static int tcc_reboot_mode_probe(struct platform_device *pdev)
 	if (ret != 0) {
 		dev_err(&pdev->dev, "failed to register reboot mode\n");
 	}
+
+#if defined(BOOT_PANIC)
+	(void)atomic_notifier_chain_register(&panic_notifier_list,
+					     &tcc_reboot_mode_panic_notifier);
+#endif
 
 	return ret;
 }

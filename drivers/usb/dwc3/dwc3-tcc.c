@@ -225,11 +225,11 @@ static ssize_t dwc3_tcc_vbus_store(struct device *dev,
 {
 	struct dwc3_tcc *tcc = platform_get_drvdata(to_platform_device(dev));
 
-	if (strncmp(buf, "on", 2) != 0) {
+	if (strncmp(buf, "on", 2) == 0) {
 		dwc3_tcc_vbus_ctrl(tcc, ON);
 	}
 
-	if (strncmp(buf, "off", 3) != 0) {
+	if (strncmp(buf, "off", 3) == 0) {
 		dwc3_tcc_vbus_ctrl(tcc, OFF);
 	}
 
