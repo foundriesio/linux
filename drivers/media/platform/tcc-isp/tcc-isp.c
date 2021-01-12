@@ -735,7 +735,8 @@ static int tcc_isp_set_fmt(struct v4l2_subdev *sd,
 		sizeof(struct v4l2_mbus_framefmt));
 
 	state->isp.i_state.width = state->fmt.width;
-	state->isp.i_state.height = state->fmt.height;
+	/* set -2 to get the margin of vertical front porch */
+	state->isp.i_state.height = state->fmt.height - 2;
 
 	ret = tcc_isp_rgb_order(state->fmt.code);
 	if (ret < 0) {
