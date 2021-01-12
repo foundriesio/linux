@@ -169,29 +169,36 @@ static void pm_fw_power_sysfs_free(struct kobject *kobj)
 	kobject_put(kobj);
 }
 
-static s32 pmic_ctrl_str_mode(struct da9062 *pmic, bool enter)
+#define pmic_regmap_update(map, reg, shift, val) \
+	(regmap_update_bits((map), (reg), (u32)1 << (shift), (val) << (shift)))
+
+static s32 pmic_ctrl_str_mode(struct da9062 *pmic, u32 enter)
 {
-	struct reg_default set[2] = {
-		{ DA9062AA_BUCK1_CONT,	(u32)1 << DA9062AA_BUCK1_CONF_SHIFT },
-		{ DA9062AA_LDO2_CONT,	(u32)1 << DA9062AA_LDO2_CONF_SHIFT },
-	};
 	struct regmap *map;
 	u32 i;
+	s32 ret;
 
 	if (pmic == NULL) {
 		/* No PMIC to control (e.g. subcore doesn't control PMIC) */
 		return 0;
 	}
 
-	map = pmic->regmap;
+	ret = pmic_regmap_update(pmic->regmap, DA9062AA_IRQ_MASK_C,
+				 DA9062AA_M_GPI4_SHIFT, 0);
+	if (ret < 0) {
+		return ret;
+	}
 
-	for (i = 0; i < ARRAY_SIZE(set); i++) {
-		u32 val = enter ? set[i].def : (u32)0;
-		s32 ret = regmap_update_bits(map, set[i].reg, set[i].def, val);
+	ret = pmic_regmap_update(pmic->regmap, DA9062AA_BUCK1_CONT,
+				 DA9062AA_BUCK1_CONF_SHIFT, enter);
+	if (ret < 0) {
+		return ret;
+	}
 
-		if (ret < 0) {
-			return ret;
-		}
+	ret = pmic_regmap_update(pmic->regmap, DA9062AA_LDO2_CONT,
+				 DA9062AA_LDO2_CONF_SHIFT, enter);
+	if (ret < 0) {
+		return ret;
 	}
 
 	return 0;
@@ -210,10 +217,10 @@ static int pm_fw_pm_notifier_call(struct notifier_block *nb,
 	switch (action) {
 	case PM_SUSPEND_PREPARE:
 		drvdata->application_ready = (bool)false;
-		ret = pmic_ctrl_str_mode(drvdata->pmic, (bool)true);
+		ret = pmic_ctrl_str_mode(drvdata->pmic, (u32)1);
 		break;
 	case PM_POST_SUSPEND:
-		ret = pmic_ctrl_str_mode(drvdata->pmic, (bool)false);
+		ret = pmic_ctrl_str_mode(drvdata->pmic, (u32)0);
 		break;
 	default:
 		/* Nothing to do */
