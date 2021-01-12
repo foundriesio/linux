@@ -40,6 +40,7 @@
 #include <net/sock.h>
 #include <linux/u64_stats_sync.h>
 
+#include <linux/ip.h>
 #include <linux/tcc_shmem.h>
 
 #define DRV_NAME	"eth_test"
@@ -50,6 +51,11 @@
 
 static int numdummies = 1;
 static int num_vfs = 1;
+
+static int shmem_port = 0;
+
+struct tcc_shm_callback virt_eth_callback;
+int32_t virt_eth_rx(unsigned long data, char* received_data, uint32_t received_num);
 
 struct vf_data_storage {
 	u8	vf_mac[ETH_ALEN];
@@ -125,10 +131,32 @@ static void dummy_get_stats64(struct net_device *dev,
 static netdev_tx_t dummy_xmit(struct sk_buff *skb, struct net_device *dev)
 {
 	struct pcpu_dstats *dstats = this_cpu_ptr(dev->dstats);
-	int len;
+	int len, ret, val;
+	struct iphdr *ih;
+
+	ih = (struct iphdr *)(skb->data + sizeof(struct ethhdr));
+	ih->check = 0;
+	ih->check = ip_fast_csum((unsigned char *)ih, ih->ihl);
 
 	len = skb->len;
-	tcc_shm_transfer_port_nodev(0, len, skb->data);
+	ret = tcc_shmem_transfer_port_nodev(0, len, skb->data);
+
+	if(ret < 0) {
+		val = tcc_shmem_is_valid();
+		if(val != 0) {
+			tcc_shmem_request_port_by_name("eth", 52428800);//50MB, 50*1024*1024
+			val = tcc_shmem_find_port_by_name("eth");
+
+			if(!(val < 0)) {
+				virt_eth_callback.data = dev;
+				virt_eth_callback.callback_func = virt_eth_rx;
+				tcc_shmem_register_callback(val, virt_eth_callback);
+			}
+
+		} else {
+			printk("%s: tcc shared memory is not valid\n", __func__);
+		}
+	}
 
 	u64_stats_update_begin(&dstats->syncp);
 	dstats->tx_packets++;
@@ -178,118 +206,23 @@ static int dummy_change_carrier(struct net_device *dev, bool new_carrier)
 	return 0;
 }
 
-static int dummy_set_vf_mac(struct net_device *dev, int vf, u8 *mac)
-{
-	struct dummy_priv *priv = netdev_priv(dev);
 
-	if (!is_valid_ether_addr(mac) || (vf >= num_vfs))
-		return -EINVAL;
+int dummy_open(struct net_device *dev) {
 
-	memcpy(priv->vfinfo[vf].vf_mac, mac, ETH_ALEN);
-
-	return 0;
+	printk("dummy open\n");
+   netif_start_queue(dev);
+   return 0;
 }
 
-static int dummy_set_vf_vlan(struct net_device *dev, int vf,
-			     u16 vlan, u8 qos, __be16 vlan_proto)
-{
-	struct dummy_priv *priv = netdev_priv(dev);
-
-	if ((vf >= num_vfs) || (vlan > 4095) || (qos > 7))
-		return -EINVAL;
-
-	priv->vfinfo[vf].pf_vlan = vlan;
-	priv->vfinfo[vf].pf_qos = qos;
-	priv->vfinfo[vf].vlan_proto = vlan_proto;
-
-	return 0;
-}
-
-static int dummy_set_vf_rate(struct net_device *dev, int vf, int min, int max)
-{
-	struct dummy_priv *priv = netdev_priv(dev);
-
-	if (vf >= num_vfs)
-		return -EINVAL;
-
-	priv->vfinfo[vf].min_tx_rate = min;
-	priv->vfinfo[vf].max_tx_rate = max;
-
-	return 0;
-}
-
-static int dummy_set_vf_spoofchk(struct net_device *dev, int vf, bool val)
-{
-	struct dummy_priv *priv = netdev_priv(dev);
-
-	if (vf >= num_vfs)
-		return -EINVAL;
-
-	priv->vfinfo[vf].spoofchk_enabled = val;
-
-	return 0;
-}
-
-static int dummy_set_vf_rss_query_en(struct net_device *dev, int vf, bool val)
-{
-	struct dummy_priv *priv = netdev_priv(dev);
-
-	if (vf >= num_vfs)
-		return -EINVAL;
-
-	priv->vfinfo[vf].rss_query_enabled = val;
-
-	return 0;
-}
-
-static int dummy_set_vf_trust(struct net_device *dev, int vf, bool val)
-{
-	struct dummy_priv *priv = netdev_priv(dev);
-
-	if (vf >= num_vfs)
-		return -EINVAL;
-
-	priv->vfinfo[vf].trusted = val;
-
-	return 0;
-}
-
-static int dummy_get_vf_config(struct net_device *dev,
-			       int vf, struct ifla_vf_info *ivi)
-{
-	struct dummy_priv *priv = netdev_priv(dev);
-
-	if (vf >= num_vfs)
-		return -EINVAL;
-
-	ivi->vf = vf;
-	memcpy(&ivi->mac, priv->vfinfo[vf].vf_mac, ETH_ALEN);
-	ivi->vlan = priv->vfinfo[vf].pf_vlan;
-	ivi->qos = priv->vfinfo[vf].pf_qos;
-	ivi->spoofchk = priv->vfinfo[vf].spoofchk_enabled;
-	ivi->linkstate = priv->vfinfo[vf].link_state;
-	ivi->min_tx_rate = priv->vfinfo[vf].min_tx_rate;
-	ivi->max_tx_rate = priv->vfinfo[vf].max_tx_rate;
-	ivi->rss_query_en = priv->vfinfo[vf].rss_query_enabled;
-	ivi->trusted = priv->vfinfo[vf].trusted;
-	ivi->vlan_proto = priv->vfinfo[vf].vlan_proto;
-
-	return 0;
-}
-
-static int dummy_set_vf_link_state(struct net_device *dev, int vf, int state)
-{
-	struct dummy_priv *priv = netdev_priv(dev);
-
-	if (vf >= num_vfs)
-		return -EINVAL;
-
-	priv->vfinfo[vf].link_state = state;
-
-	return 0;
+int dummy_release(struct net_device *dev) {
+	printk("dummy close\n");
+   netif_stop_queue(dev);
+   return 0;
 }
 
 static const struct net_device_ops dummy_netdev_ops = {
+	.ndo_open		= dummy_open,
+	.ndo_stop		= dummy_release,
 	.ndo_init		= dummy_dev_init,
 	.ndo_uninit		= dummy_dev_uninit,
 	.ndo_start_xmit		= dummy_xmit,
@@ -298,14 +231,6 @@ static const struct net_device_ops dummy_netdev_ops = {
 	.ndo_set_mac_address	= eth_mac_addr,
 	.ndo_get_stats64	= dummy_get_stats64,
 	.ndo_change_carrier	= dummy_change_carrier,
-	.ndo_set_vf_mac		= dummy_set_vf_mac,
-	.ndo_set_vf_vlan	= dummy_set_vf_vlan,
-	.ndo_set_vf_rate	= dummy_set_vf_rate,
-	.ndo_set_vf_spoofchk	= dummy_set_vf_spoofchk,
-	.ndo_set_vf_trust	= dummy_set_vf_trust,
-	.ndo_get_vf_config	= dummy_get_vf_config,
-	.ndo_set_vf_link_state	= dummy_set_vf_link_state,
-	.ndo_set_vf_rss_query_en = dummy_set_vf_rss_query_en,
 };
 
 static void dummy_get_drvinfo(struct net_device *dev,
@@ -339,13 +264,12 @@ static void dummy_free_netdev(struct net_device *dev)
 	kfree(priv->vfinfo);
 }
 
-struct tcc_shm_callback virt_eth_callback;
 
 int32_t virt_eth_rx(unsigned long data, char* received_data, uint32_t received_num) {
 
 	struct net_device *dev = (struct net_device *)data;
 	struct sk_buff *skb;
-	u_char *ptr;
+	//u_char *ptr;
 
 	//printk("%s: test : %s\n", __func__, received_data);
 
@@ -355,15 +279,16 @@ int32_t virt_eth_rx(unsigned long data, char* received_data, uint32_t received_n
 		dev->stats.rx_dropped++;
 		return -1;
 	} else {
-		//skb_reserve(skb,2);
-		/* ptr to start of the sk_buff data area */
-		skb_put(skb, received_num);
-		ptr = skb->data;
-		memcpy(ptr, received_data, received_num);
+		skb_reserve(skb,2);
+		memcpy(skb_put(skb, received_num), received_data, received_num);
+		//ptr = skb->data;
+		//memcpy(ptr, received_data, received_num);
+		skb->dev = dev;
+		skb->ip_summed = CHECKSUM_UNNECESSARY;
 		skb->protocol = eth_type_trans(skb, dev);
-		netif_rx(skb);
 		dev->stats.rx_packets++;
 		dev->stats.rx_bytes += received_num;
+		netif_rx(skb);
 	}
 
 	return 0;
@@ -373,8 +298,7 @@ int32_t virt_eth_rx(unsigned long data, char* received_data, uint32_t received_n
 static void dummy_setup(struct net_device *dev)
 {
 
-	struct device *device  = dev->dev.parent;
-	int32_t val, ret;
+	int32_t val;
 
 	ether_setup(dev);
 
@@ -384,26 +308,20 @@ static void dummy_setup(struct net_device *dev)
 	dev->needs_free_netdev = true;
 	dev->priv_destructor = dummy_free_netdev;
 
-	/* Fill in device structure with ethernet-generic values. */
 	dev->flags |= IFF_NOARP;
-	dev->flags &= ~IFF_MULTICAST;
-	dev->priv_flags |= IFF_LIVE_ADDR_CHANGE | IFF_NO_QUEUE;
-	dev->features	|= NETIF_F_SG | NETIF_F_FRAGLIST;
-	dev->features	|= NETIF_F_ALL_TSO;
-	dev->features	|= NETIF_F_HW_CSUM | NETIF_F_HIGHDMA | NETIF_F_LLTX;
-	dev->features	|= NETIF_F_GSO_ENCAP_ALL;
-	dev->hw_features |= dev->features;
-	dev->hw_enc_features |= dev->features;
-	eth_hw_addr_random(dev);
+	dev->features |= NETIF_F_IP_CSUM;
+	memcpy(dev->dev_addr, "\0eth_test0", ETH_ALEN);
 
 	dev->min_mtu = 0;
 	dev->max_mtu = ETH_MAX_MTU;
 
+
 	val = tcc_shmem_is_valid();
 	if(val != 0) {
-		tcc_shmem_request_port_by_name("eth", 4096);
+		tcc_shmem_request_port_by_name("eth", 52428800);//50MB, 50*1024*1024
 
 		val = tcc_shmem_find_port_by_name("eth");
+		shmem_port = val;
 		//printk("%s:tcc_sh val : %d\n",__func__, val);
 
 		if(!(val < 0)) {
