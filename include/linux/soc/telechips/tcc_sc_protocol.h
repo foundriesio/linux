@@ -69,6 +69,11 @@ struct tcc_sc_fw_ufs_cmd {
 	unsigned int		resp[4];
 };
 
+struct tcc_sc_fw_otp_cmd {
+	u32		cmd;
+	u32		resp[5];
+};
+
 struct tcc_sc_fw_mmc_ops {
 	int (*request_command)(const struct tcc_sc_fw_handle *handle,
 		struct tcc_sc_fw_mmc_cmd *cmd, struct tcc_sc_fw_mmc_data *data);
@@ -87,10 +92,17 @@ struct tcc_sc_fw_gpio_ops {
 		uint32_t width, uint32_t value);
 };
 
+struct tcc_sc_fw_otp_ops {
+
+	int (*get_otp)(const struct tcc_sc_fw_handle *handle,
+		struct tcc_sc_fw_otp_cmd *cmd, uint32_t offset);
+};
+
 struct tcc_sc_fw_ops {
 	struct tcc_sc_fw_mmc_ops *mmc_ops;
 	struct tcc_sc_fw_ufs_ops *ufs_ops;
 	struct tcc_sc_fw_gpio_ops *gpio_ops;
+	struct tcc_sc_fw_otp_ops *otp_ops;
 };
 
 struct tcc_sc_fw_handle {
