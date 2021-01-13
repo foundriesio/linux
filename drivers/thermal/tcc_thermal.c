@@ -33,6 +33,7 @@
 #include <linux/tcc_thermal.h>
 #include <linux/arm-smccc.h>
 #include <soc/tcc/tcc-sip.h>
+#include <linux/soc/telechips/tcc_sc_protocol.h>
 
 #define IRQ_MAIN_PROBE	((phys_addr_t)0x14700110)
 #define IRQ_PROBE0	((phys_addr_t)0x14700114)
@@ -73,6 +74,8 @@
 #endif
 
 #define DEBUG
+
+static const struct tcc_sc_fw_handle *sc_fw_handle_for_otp;
 
 enum calibration_type {
 	TYPE_ONE_POINT_TRIMMING,
@@ -356,6 +359,25 @@ static int32_t code_to_temp(struct tcc_thermal_data *data, uint32_t temp_trim1,
 	return temp;
 }
 
+static uint32_t request_otp_to_sc(u32 offset)
+{
+        uint32_t ret = -1;
+	struct tcc_sc_fw_otp_cmd otp_cmd;
+
+        if (sc_fw_handle_for_otp != NULL) {
+		ret = sc_fw_handle_for_otp
+			->ops.otp_ops->get_otp
+			(sc_fw_handle_for_otp, &otp_cmd, offset);
+        } else {
+		/**/
+	}
+	if (ret == 0) {
+		return otp_cmd.resp[1];
+	} else {
+		return 0;
+	}
+}
+
 #else
 
 static int32_t code_to_temp(struct cal_thermal_data *data, int32_t temp_code)
@@ -443,7 +465,7 @@ static int32_t tcc_thermal_read(struct tcc_thermal_data *data)
 			celsius_temp = code_to_temp(data,
 					data->temp_trim1,
 					data->temp_trim2,
-					(int32_t)readl_relaxed(data->temp_code0));
+					(int32_t)readl_relaxed(data->temp_code1));
 			break;
 		}
 	} else {
@@ -704,10 +726,12 @@ static ssize_t temp_probe_read(struct device *dev,
 static irqreturn_t tcc_thermal_irq(int32_t irq, void *dev)
 {
 	struct tcc_thermal_data *data = dev;
+	int32_t stat = 0;
 /* For print irq message for test.
  * If need to change CPU frequency depending on CPU temperature,
  * modify this function
  */
+
 	writel(0x777777, data->interrupt_mask); // clear irq
 	writel(0x777777, data->interrupt_clear); // clear irq
 	writel(0x0, data->interrupt_mask); // clear irq
@@ -828,6 +852,7 @@ static int32_t tcc_thermal_init(struct tcc_thermal_data *data)
 
 	writel(v_temp, data->control);
 	writel(1, data->enable);
+	data->probe_num = 1;
 #else
 
 	v_temp = readl_relaxed(data->control);
@@ -896,7 +921,12 @@ static int32_t tcc_get_temp(struct thermal_zone_device *thermal,
 	if ((thermal_zone->sensor_conf->read_temperature != NULL) &&
 							 (temp != NULL)) {
 		*temp = thermal_zone->sensor_conf->read_temperature(data);
+
+#if defined(CONFIG_ARCH_TCC805X)
+		*temp = *temp * 10;
+#else
 		*temp = *temp * MCELSIUS;
+#endif
 		thermal_zone->result_of_thermal_read = *temp;
 	}
 	return 0;
@@ -1004,8 +1034,8 @@ static int32_t tcc_bind(struct thermal_zone_device *thermal,
 	int32_t ret = 0, tab_size;
 	int32_t i = 0;
 #ifdef CONFIG_ARM_TCC_MP_CPUFREQ
-#ifdef CONFIG_ARM64
 	uint64_t level = THERMAL_CSTATE_INVALID;
+#ifdef CONFIG_ARM64
 #else
 	uint32_t level = THERMAL_CSTATE_INVALID;
 
@@ -1189,12 +1219,6 @@ static struct thermal_zone_device_ops tcc_dev_ops = {
 	.get_trip_type = tcc_get_trip_type,
 	.get_trip_temp = tcc_get_trip_temp,
 	.get_crit_temp = tcc_get_crit_temp,
-	.set_trips = NULL,
-	.set_trip_temp = NULL,
-	.get_trip_hyst = NULL,
-	.set_trip_hyst = NULL,
-	.set_emul_temp = NULL,
-	.notify = NULL,
 };
 
 static struct thermal_sensor_conf tcc_sensor_conf = {
@@ -1214,9 +1238,9 @@ static int32_t tcc_register_thermal(struct thermal_sensor_conf *sensor_conf)
 	int32_t ret = 0;
 #ifdef CONFIG_ARM_TCC_MP_CPUFREQ
 	int32_t i, j;
-	struct cpufreq_policy policy;
 #endif
 	struct cpumask mask_val;
+	struct cpufreq_policy policy;
 
 	if ((sensor_conf == NULL) || (sensor_conf->read_temperature == NULL)) {
 		(void)pr_err("[ERROR][TSENSOR] %s: Temperature sensor not initialised\n", __func__);
@@ -1233,7 +1257,7 @@ static int32_t tcc_register_thermal(struct thermal_sensor_conf *sensor_conf)
 	cpumask_clear(&mask_val);
 	cpumask_set_cpu(CS_POLICY_CORE, &mask_val);
 
-#if 0
+#ifdef CONFIG_CPU_THERMAL 
 	if (cpufreq_get_policy(&policy, CS_POLICY_CORE)) {
 		(void)pr_err("cannot get cpu policy. %s\n", __func__);
 		return -EINVAL;
@@ -1321,72 +1345,63 @@ static void tcc_unregister_thermal(void)
 #if defined(CONFIG_ARCH_TCC805X)
 static void thermal_otp_read(struct tcc_thermal_data *data, int32_t probe)
 {
-	struct arm_smccc_res res;
-
+	uint32_t ret = 0;
 	switch (probe) {
 	case 0:
-		arm_smccc_smc((uint64_t)0x82005009U, (uint64_t)0x3210U,
-			0, 0, 0, 0, 0, 0, &res);
-		data->temp_trim1 = (uint32_t)res.a0 &
+		ret = request_otp_to_sc(0x3210U);
+		data->temp_trim1 = ret &
 					(uint32_t)0xFFF;
-		data->temp_trim2 =((uint32_t)res.a0 >> (uint32_t)16) &
+		data->temp_trim2 =(ret >> (uint32_t)16) &
 					(uint32_t)0xFFF;
 		break;
 	case 1:
-		arm_smccc_smc((uint64_t)0x82005009U, (uint64_t)0x3214U,
-			0, 0, 0, 0, 0, 0, &res);
+		ret = request_otp_to_sc(0x3214U);
 			data->probe0_temp_trim1 =
-				((uint32_t)res.a0 &
+				(ret &
 					(uint32_t)0xFFF);
 			data->probe0_temp_trim2 =
-				(((uint32_t)res.a0 >> (uint32_t)16) &
+				((ret >> (uint32_t)16) &
 					(uint32_t)0xFFF);
 		break;
 	case 2:
-		arm_smccc_smc((uint64_t)0x82005009U, (uint64_t)0x3218U,
-			0, 0, 0, 0, 0, 0, &res);
-		data->probe1_temp_trim1 = ((uint32_t)res.a0 &
+		ret = request_otp_to_sc(0x3218U);
+		data->probe1_temp_trim1 = (ret &
 					(uint32_t)0xFFF);
 		data->probe1_temp_trim2 =
-				(((uint32_t)res.a0 >> (uint32_t)16) &
+				((ret >> (uint32_t)16) &
 					(uint32_t)0xFFF);
 		break;
 	case 3:
-		arm_smccc_smc((uint64_t)0x82005009U, (uint64_t)0x321CU,
-			0, 0, 0, 0, 0, 0, &res);
+		ret = request_otp_to_sc(0x321CU);
 		data->probe2_temp_trim1 =
-				((uint32_t)res.a0 &
+				(ret &
 					(uint32_t)0xFFF);
 		data->probe2_temp_trim2 =
-				(((uint32_t)res.a0 >> (uint32_t)16) &
+				((ret >> (uint32_t)16) &
 					(uint32_t)0xFFF);
 		break;
 	case 4:
-		arm_smccc_smc((uint64_t)0x82005009U, (uint64_t)0x3220U,
-			0, 0, 0, 0, 0, 0, &res);
+		ret = request_otp_to_sc(0x3220U);
 		data->probe3_temp_trim1 =
-			((uint32_t)res.a0 &
+			(ret &
 					(uint32_t)0xFFF);
 		data->probe3_temp_trim2 =
-			(((uint32_t)res.a0 >> (uint32_t)16) &
+			((ret >> (uint32_t)16) &
 					(uint32_t)0xFFF);
 		break;
 	case 5:
-		arm_smccc_smc((uint64_t)0x82005009U, (uint64_t)0x3224U,
-			0, 0, 0, 0, 0, 0, &res);
+		ret = request_otp_to_sc(0x3224U);
 		data->probe4_temp_trim1 =
-			((uint32_t)res.a0 &
+			(ret &
 					(uint32_t)0xFFF);
 		data->probe4_temp_trim2 =
-			(((uint32_t)res.a0 >> (uint32_t)16) &
+			((ret >> (uint32_t)16) &
 					(uint32_t)0xFFF);
 		break;
 	case 6:
-		arm_smccc_smc((uint64_t)0x82005009U, (uint64_t)0x3228U,
-			0, 0, 0, 0, 0, 0, &res);
-
+		ret = request_otp_to_sc(0x3228U);
 		data->ts_test_info_high =
-			(((uint32_t)res.a0	&
+			((ret	&
 					(uint32_t)0xFFF000) >> (uint32_t)12);
 
 		data->ts_test_info_high =
@@ -1396,7 +1411,7 @@ static void thermal_otp_read(struct tcc_thermal_data *data, int32_t probe)
 				(data->ts_test_info_high & (uint32_t)0xF);
 
 		data->ts_test_info_low =
-			((uint32_t)res.a0	& (uint32_t)0xFFF);
+			(ret	& (uint32_t)0xFFF);
 
 		data->ts_test_info_low =
 			(((data->ts_test_info_low &
@@ -1405,21 +1420,20 @@ static void thermal_otp_read(struct tcc_thermal_data *data, int32_t probe)
 			(data->ts_test_info_low & (uint32_t)0xF);
 		break;
 	case 7:
-		arm_smccc_smc((uint64_t)0x82005009U, (uint64_t)0x322CU,
-			0, 0, 0, 0, 0, 0, &res);
-		data->buf_slope_sel_ts  = (((uint32_t)res.a0 >> (uint32_t)28) &
+		ret = request_otp_to_sc(0x3228U);
+		data->buf_slope_sel_ts  = ((ret >> (uint32_t)28) &
 							(uint32_t)0xF);
-		data->d_otp_slope	= (((uint32_t)res.a0 >> (uint32_t)24) &
+		data->d_otp_slope	= ((ret >> (uint32_t)24) &
 							(uint32_t)0xF);
-		data->calib_sel		= (((uint32_t)res.a0 >> (uint32_t)14) &
+		data->calib_sel		= ((ret >> (uint32_t)14) &
 							(uint32_t)0x3);
-		data->buf_vref_sel_ts	= (((uint32_t)res.a0 >> (uint32_t)12) &
+		data->buf_vref_sel_ts	= ((ret >> (uint32_t)12) &
 							(uint32_t)0x3);
-		data->trim_bgr_ts	= (((uint32_t)res.a0 >> (uint32_t)8) &
+		data->trim_bgr_ts	= ((ret >> (uint32_t)8) &
 							(uint32_t)0xF);
-		data->trim_vlsb_ts	= (((uint32_t)res.a0 >> (uint32_t)4) &
+		data->trim_vlsb_ts	= ((ret >> (uint32_t)4) &
 							(uint32_t)0xF);
-		data->trim_bjt_cur_ts	= ((uint32_t)res.a0 &
+		data->trim_bjt_cur_ts	= (ret &
 							(uint32_t)0xF);
 		break;
 	default:
@@ -1437,8 +1451,8 @@ static void thermal_otp_read(struct tcc_thermal_data *data, int32_t probe)
 		data->probe4_temp_trim2 = 2552;
 		data->calib_sel = 2;
 		data->d_otp_slope = 6;
-		data->ts_test_info_high = 105;
-		data->ts_test_info_low = 25;
+		data->ts_test_info_high = 10500;
+		data->ts_test_info_low = 2500;
 		break;
 	}
 }
@@ -1493,6 +1507,37 @@ static void tcc_thermal_otp_data_checker(struct tcc_thermal_data *data)
 	if (data->ts_test_info_low == (uint32_t)0) {
 		data->ts_test_info_low = 2500;
 	}
+	(void)pr_info("[INFO][TSENSOR] %s. main_temp_trim1: %d\n",
+			__func__, data->temp_trim1);
+	(void)pr_info("[INFO][TSENSOR] %s. main_temp_trim2: %d\n",
+			__func__, data->temp_trim2);
+	(void)pr_info("[INFO][TSENSOR] %s. probe0_temp_trim1: %d\n",
+			__func__, data->probe0_temp_trim1);
+	(void)pr_info("[INFO][TSENSOR] %s. probe0_temp_trim2: %d\n",
+			__func__, data->probe0_temp_trim2);
+	(void)pr_info("[INFO][TSENSOR] %s. probe1_temp_trim1: %d\n",
+			__func__, data->probe1_temp_trim1);
+	(void)pr_info("[INFO][TSENSOR] %s. probe1_temp_trim2: %d\n",
+			__func__, data->probe1_temp_trim2);
+	(void)pr_info("[INFO][TSENSOR] %s. probe2_temp_trim1: %d\n",
+			__func__, data->probe2_temp_trim1);
+	(void)pr_info("[INFO][TSENSOR] %s. probe2_temp_trim2: %d\n",
+			__func__, data->probe2_temp_trim2);
+	(void)pr_info("[INFO][TSENSOR] %s. probe3_temp_trim1: %d\n",
+			__func__, data->probe3_temp_trim1);
+	(void)pr_info("[INFO][TSENSOR] %s. probe3_temp_trim2: %d\n",
+			__func__, data->probe3_temp_trim2);
+	(void)pr_info("[INFO][TSENSOR] %s. probe4_temp_trim1: %d\n",
+			__func__, data->probe4_temp_trim1);
+	(void)pr_info("[INFO][TSENSOR] %s. probe4_temp_trim2: %d\n",
+			__func__, data->probe4_temp_trim2);
+	(void)pr_info("[INFO][TSENSOR] %s. cal_type: %d\n",
+			__func__, data->calib_sel);
+	(void)pr_info("[INFO][TSENSOR] %s. ts_test_info_high: %d\n",
+			__func__, data->ts_test_info_high);
+	(void)pr_info("[INFO][TSENSOR] %s. ts_test_info_low: %d\n",
+			__func__, data->ts_test_info_low);
+
 }
 
 static int32_t tcc_thermal_get_otp(struct platform_device *pdev)
@@ -1516,42 +1561,6 @@ static int32_t tcc_thermal_get_otp(struct platform_device *pdev)
 			thermal_otp_read(data, i);
 		}
 		tcc_thermal_otp_data_checker(data);
-		if (data->temp_trim1 != (uint32_t)0) {
-			data->cal_data->cal_type = pdata->cal_type;
-		} else {
-			data->cal_data->cal_type = TYPE_NONE;
-		}
-
-		(void)pr_info("[INFO][TSENSOR] %s. main_temp_trim1: %d\n",
-				__func__, data->temp_trim1);
-		(void)pr_info("[INFO][TSENSOR] %s. main_temp_trim2: %d\n",
-				__func__, data->temp_trim2);
-		(void)pr_info("[INFO][TSENSOR] %s. probe0_temp_trim1: %d\n",
-				__func__, data->probe0_temp_trim1);
-		(void)pr_info("[INFO][TSENSOR] %s. probe0_temp_trim2: %d\n",
-				__func__, data->probe0_temp_trim2);
-		(void)pr_info("[INFO][TSENSOR] %s. probe1_temp_trim1: %d\n",
-				__func__, data->probe1_temp_trim1);
-		(void)pr_info("[INFO][TSENSOR] %s. probe1_temp_trim2: %d\n",
-				__func__, data->probe1_temp_trim2);
-		(void)pr_info("[INFO][TSENSOR] %s. probe2_temp_trim1: %d\n",
-				__func__, data->probe2_temp_trim1);
-		(void)pr_info("[INFO][TSENSOR] %s. probe2_temp_trim2: %d\n",
-				__func__, data->probe2_temp_trim2);
-		(void)pr_info("[INFO][TSENSOR] %s. probe3_temp_trim1: %d\n",
-				__func__, data->probe3_temp_trim1);
-		(void)pr_info("[INFO][TSENSOR] %s. probe3_temp_trim2: %d\n",
-				__func__, data->probe3_temp_trim2);
-		(void)pr_info("[INFO][TSENSOR] %s. probe4_temp_trim1: %d\n",
-				__func__, data->probe4_temp_trim1);
-		(void)pr_info("[INFO][TSENSOR] %s. probe4_temp_trim2: %d\n",
-				__func__, data->probe4_temp_trim2);
-		(void)pr_info("[INFO][TSENSOR] %s. cal_type: %d\n",
-				__func__, data->calib_sel);
-		(void)pr_info("[INFO][TSENSOR] %s. ts_test_info_high: %d\n",
-				__func__, data->ts_test_info_high);
-		(void)pr_info("[INFO][TSENSOR] %s. ts_test_info_low: %d\n",
-				__func__, data->ts_test_info_low);
 
 		mutex_unlock(&data->lock);
 
@@ -1677,7 +1686,7 @@ static int32_t parse_throttle_data(struct device_node *np,
 			/**/
 			/**/
 		}
-
+#ifndef CONFIG_ARCH_TCC805X
 		ret = of_property_read_u32(np_throttle, "freq_max_cluster0",
 					&pdata->freq_tab[i].freq_clip_max);
 		if (ret != 0) {
@@ -1698,6 +1707,7 @@ static int32_t parse_throttle_data(struct device_node *np,
 			pdata->freq_tab[i].mask_val = &mp_cluster_cpus[CL_ZERO];
 			pdata->freq_tab[i].mask_val_cluster1 = &mp_cluster_cpus[CL_ONE];
 		}
+#endif
 #endif
 		return ret;
 	}
@@ -1912,9 +1922,11 @@ static int32_t tcc_thermal_probe(struct platform_device *pdev)
 	struct tcc_thermal_data *data;
 	struct tcc_thermal_platform_data *pdata = NULL;
 	struct device_node *use_dt;
+	struct device_node *fw_np;
 	int32_t i = 0;
 	int32_t ret = 0;
 
+	(void)pr_info("[INFO][TSENSOR]%s:TCC thermal \n", __func__);
 	if ((pdev == NULL) && (pdev == (void *)0)) {
 		(void)pr_err("[ERROR][TSENSOR]%s: No platform device.\n", __func__);
 		return -ENODEV;
@@ -2463,7 +2475,36 @@ static int32_t tcc_thermal_probe(struct platform_device *pdev)
 	mutex_init(&data->lock);
 	data->pdata = pdata;
 #if defined(CONFIG_ARCH_TCC805X)
-	ret = tcc_thermal_get_otp(pdev);
+        fw_np = of_parse_phandle(pdev->dev.of_node, "sc-firmware", 0);
+        if (fw_np == NULL) {
+                dev_err(&(pdev->dev),
+                                "[ERROR][THERMAL] fw_np == NULL\n");
+                return -EINVAL;
+        }
+
+        sc_fw_handle_for_otp = tcc_sc_fw_get_handle(fw_np);
+        if (sc_fw_handle_for_otp == NULL) {
+                dev_err(&(pdev->dev),
+                        "[ERROR][THERMAL] sc_fw_handle == NULL\n");
+                return -EINVAL;
+        }
+
+        if ((sc_fw_handle_for_otp->version.major == 0U)
+                        && (sc_fw_handle_for_otp->version.minor == 0U)
+                        && (sc_fw_handle_for_otp->version.patch < 21U)) {
+                dev_err(&(pdev->dev),
+                                "[ERROR][THERMAL] The version of SCFW is low. So, register cannot be set through SCFW.\n"
+                                );
+                dev_err(&(pdev->dev),
+                                "[ERROR][THERMAL] SCFW Version : %d.%d.%d\n",
+                                sc_fw_handle_for_otp->version.major,
+                                sc_fw_handle_for_otp->version.minor,
+                                sc_fw_handle_for_otp->version.patch);
+        	tcc_thermal_otp_data_checker(data);
+	} else {
+		ret = tcc_thermal_get_otp(pdev);
+	}
+
 	if (ret != 0) {
 		(void)pr_err("[TSENSOR]%s:Fail to read Thermal Data from OTP ROM!!", __func__);
 	}

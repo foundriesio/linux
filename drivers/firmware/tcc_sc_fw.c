@@ -52,6 +52,7 @@
 #define TCC_SC_CMD_REQ_MMC_REQ		0x00000005U
 #define TCC_SC_CMD_REQ_UFS_REQ		0x00000006U
 #define TCC_SC_CMD_REQ_GPIO_CONFIG  0x00000010U
+#define TCC_SC_CMD_REQ_OTP_READ  0x00000014U
 
 #define TCC_SC_MAX_CMD_LENGTH		8U
 #define TCC_SC_MAX_DATA_LENGTH	128U
@@ -542,6 +543,66 @@ static int tcc_sc_fw_cmd_request_gpio_cmd(const struct tcc_sc_fw_handle *handle,
 	return ret;
 }
 
+static int tcc_sc_fw_cmd_get_otp_cmd (const struct tcc_sc_fw_handle *handle,
+					struct tcc_sc_fw_otp_cmd *cmd, uint32_t offset)
+{
+	const struct tcc_sc_fw_info *info;
+	struct device *dev;
+	struct tcc_sc_fw_xfer *xfer;
+	struct tcc_sc_fw_cmd req_cmd = { 0, };
+	struct tcc_sc_fw_cmd res_cmd = { 0, };
+	int ret;
+
+	if (handle == NULL)
+		return -EINVAL;
+
+	info = handle_to_tcc_sc_fw_info(handle);
+
+	if (info == NULL)
+		return -EINVAL;
+
+	mutex_lock(&xfer_mutex);
+
+	dev = info->dev;
+	xfer = info->xfer;
+
+	req_cmd.bsid = info->bsid;
+	req_cmd.cid = info->cid;
+	req_cmd.uid = info->uid;
+	req_cmd.cmd = TCC_SC_CMD_REQ_OTP_READ;
+	req_cmd.args[0] = offset;
+
+	memcpy(xfer->tx_mssg.cmd, &req_cmd, sizeof(struct tcc_sc_fw_cmd));
+	xfer->tx_mssg.cmd_len = (unsigned int)sizeof(struct tcc_sc_fw_cmd)
+	    / (unsigned int)sizeof(u32);
+	memset(xfer->rx_mssg.cmd, 0, xfer->rx_cmd_buf_len);
+
+	ret = tcc_sc_fw_do_xfer(info, xfer);
+	if (ret != 0) {
+		dev_err(dev, "[ERROR][TCC_SC_FW] Failed to send mbox (%d)\n",
+			ret);
+	} else {
+		memcpy(&res_cmd, xfer->rx_mssg.cmd,
+		       sizeof(struct tcc_sc_fw_cmd));
+		if ((res_cmd.bsid != info->bsid)
+		    || (res_cmd.cid != TCC_SC_CID_SC)) {
+			dev_err(dev,
+				"[ERROR][TCC_SC_FW] Receive NAK for CMD 0x%x (BSID 0x%x CID 0x%x)\n",
+				req_cmd.cmd, res_cmd.bsid, res_cmd.cid);
+			ret = -ENODEV;
+		} else {
+			cmd->cmd = res_cmd.cmd;
+			cmd->resp[0] = res_cmd.args[0];
+			cmd->resp[1] = res_cmd.args[1];
+		}
+	}
+
+	mutex_unlock(&xfer_mutex);
+
+	return ret;
+}
+
+
 static const struct of_device_id tcc_sc_fw_of_match[2] = {
 	{.compatible = "telechips,tcc805x-sc-fw"},
 	{},
@@ -560,6 +621,10 @@ static struct tcc_sc_fw_ufs_ops sc_fw_ufs_ops = {
 
 static struct tcc_sc_fw_gpio_ops sc_fw_gpio_ops = {
 	.request_gpio = tcc_sc_fw_cmd_request_gpio_cmd,
+};
+
+static struct tcc_sc_fw_otp_ops sc_fw_otp_ops = {
+	.get_otp = tcc_sc_fw_cmd_get_otp_cmd,
 };
 
 static int tcc_sc_fw_probe(struct platform_device *pdev)
@@ -649,6 +714,7 @@ static int tcc_sc_fw_probe(struct platform_device *pdev)
 	handle->ops.mmc_ops = &sc_fw_mmc_ops;
 	handle->ops.ufs_ops = &sc_fw_ufs_ops;
 	handle->ops.gpio_ops = &sc_fw_gpio_ops;
+	handle->ops.otp_ops = &sc_fw_otp_ops;
 	handle->priv = info;
 	info->handle = handle;
 
