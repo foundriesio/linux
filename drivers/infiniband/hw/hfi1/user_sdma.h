@@ -1,7 +1,8 @@
 #ifndef _HFI1_USER_SDMA_H
 #define _HFI1_USER_SDMA_H
 /*
- * Copyright(c) 2015 - 2017 Intel Corporation.
+ * Copyright(c) 2020 - Cornelis Networks, Inc.
+ * Copyright(c) 2015 - 2018 Intel Corporation.
  *
  * This file is provided under a dual BSD/GPLv2 license.  When using or
  * redistributing this file, you may do so under either license.
@@ -129,7 +130,6 @@ struct hfi1_user_sdma_pkt_q {
 	unsigned long unpinned;
 	struct mmu_rb_handler *handler;
 	atomic_t n_locked;
-	struct mm_struct *mm;
 };
 
 struct hfi1_user_sdma_comp_q {
@@ -249,5 +249,10 @@ int hfi1_user_sdma_free_queues(struct hfi1_filedata *fd,
 int hfi1_user_sdma_process_request(struct hfi1_filedata *fd,
 				   struct iovec *iovec, unsigned long dim,
 				   unsigned long *count);
+
+static inline struct mm_struct *mm_from_sdma_node(struct sdma_mmu_node *node)
+{
+	return node->rb.handler->mm;
+}
 
 #endif /* _HFI1_USER_SDMA_H */
