@@ -392,6 +392,39 @@ static int32_t switch_release(struct inode *inode, struct file *filp)
 	return 0;
 }
 
+#ifdef CONFIG_PM_SLEEP
+static int32_t switch_suspend(struct device *dev)
+{
+	return 0;
+}
+
+static int32_t switch_resume(struct device *dev)
+{
+	struct pinctrl *pinctrl	= NULL;
+
+	// pinctrl
+	if (dev == NULL) {
+		loge("switch device is not found.\n");
+	} else {
+		pinctrl = pinctrl_get_select(dev, "default");
+		if (IS_ERR(pinctrl)) {
+			// print out the error
+			logd("\"pinctrl\" node is not found.\n");
+		}
+	}
+
+	return 0;
+}
+
+static const struct dev_pm_ops swich_pm_ops = {
+        SET_SYSTEM_SLEEP_PM_OPS(switch_suspend, switch_resume)
+};
+
+#define DEV_PM_OPS  (&swich_pm_ops)
+#else
+#define DEV_PM_OPS  NULL
+#endif
+
 const struct file_operations switch_fops = {
 	.owner		= THIS_MODULE,
 	.unlocked_ioctl	= switch_ioctl,
@@ -578,6 +611,7 @@ struct platform_driver switch_driver = {
 #ifdef CONFIG_OF
 		.of_match_table	= switch_of_match,
 #endif//CONFIG_OF
+		.pm = DEV_PM_OPS,
 	},
 };
 
