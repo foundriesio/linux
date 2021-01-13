@@ -46,10 +46,7 @@ static inline struct tee_rproc *tee_rproc_register(struct device *dev,
 						   struct rproc *rproc,
 						   unsigned int fw_id)
 {
-	/* This shouldn't be possible */
-	WARN_ON(1);
-
-	return NULL;
+	return ERR_PTR(-ENODEV);
 }
 
 static inline int tee_rproc_unregister(struct tee_rproc *trproc)

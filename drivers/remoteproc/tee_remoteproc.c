@@ -328,7 +328,7 @@ static int tee_rproc_probe(struct device *dev)
 	pvt_data.ctx = tee_client_open_context(NULL, tee_ctx_match, NULL,
 					       NULL);
 	if (IS_ERR(pvt_data.ctx))
-		return -ENODEV;
+		return PTR_ERR(pvt_data.ctx);
 
 	pvt_data.dev = dev;
 	INIT_LIST_HEAD(&pvt_data.sessions);
