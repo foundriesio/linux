@@ -2,6 +2,8 @@
 
 #define TCC_SHM_PORT_REQ (1<<0)
 #define TCC_SHM_PORT_DEL_REQ (1<<1)
+#define TCC_SHM_RESET_REQ (1<<2)
+#define TCC_SHM_RESET_PORT_REQ_DONE (1<<3)
 
 #define TCC_SHM_A72_REQ_OFFSET 0x0
 #define TCC_SHM_A53_REQ_OFFSET 0x4
@@ -14,10 +16,10 @@
 #define TCC_SHM_NAME_SPACE 0x20
 #define TCC_SHM_NAME_SIZE 0x40
 
-#define HEAD_OFFSET_72 (0x0)
-#define HEAD_OFFSET_53 (0x4)
-#define TAIL_OFFSET_72 (0x8)
-#define TAIL_OFFSET_53 (0xc)
+#define HEAD_OFFSET_72 (0x0+1)
+#define HEAD_OFFSET_53 (0x4+1)
+#define TAIL_OFFSET_72 (0x8+1)
+#define TAIL_OFFSET_53 (0xc+1)
 
 #define SUCCESS     0
 
@@ -33,6 +35,8 @@
 #define SHM_PORT_REQUESTED  2
 
 #define TCCSHM_BASE_OFFSET_VAL 0x200
+
+#define SHM_RECV_BUF_NUM 9014 //for jumbo packet
 
 struct tcc_shm_port_list {
     int32_t port_num;
@@ -76,6 +80,7 @@ struct tcc_shm_desc {
 struct tcc_shm_data {
     int32_t port_req;
     int32_t port_del_req;
+	int32_t reset_req;
     struct device *dev;
     void __iomem *base;
     uint32_t core_num;
@@ -93,7 +98,7 @@ struct tcc_shm_data {
 };
 
 int32_t tcc_shmem_register_callback(int32_t port, struct tcc_shm_callback shm_callback);
-int32_t tcc_shm_transfer_port_nodev(int32_t port, uint32_t size, char *data);
+int32_t tcc_shmem_transfer_port_nodev(int32_t port, uint32_t size, char *data);
 int32_t tcc_shmem_request_port_by_name(char* name, uint32_t size);
 int32_t tcc_shmem_find_port_by_name(char* name);
 uint32_t tcc_shmem_is_valid(void);

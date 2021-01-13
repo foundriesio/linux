@@ -300,6 +300,7 @@
 			reg = <0x0 0x38000000 0x0 0x8000000>;
 			telechips,pmap-name = "tcc_shmem";
 			no-map;
+			status = "disabled";
 		};
 
 

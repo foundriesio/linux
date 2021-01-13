@@ -142,7 +142,8 @@ config NET_NETX
 	  will be called netx-eth.
 
 config TCC_DUMMY
-	bool "Tcc ethernet support"
+	bool "TCC ethernet support"
+	default n
 	---help---
 	TCC virtual ethernet
 
