@@ -309,7 +309,7 @@ config TI_K3_R5_REMOTEPROC
 
 
 config TEE_REMOTEPROC
-	tristate "trusted firmware Support by a Trusted Application"
+	tristate "trusted firmware support by a TEE application"
 	depends on OPTEE
 	help
 	  Support for trusted remote processors firmware. The firmware
