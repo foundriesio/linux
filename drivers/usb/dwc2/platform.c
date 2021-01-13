@@ -224,8 +224,7 @@ static int dwc2_lowlevel_hw_init(struct dwc2_hsotg *hsotg)
 	hsotg->reset = devm_reset_control_get_optional(hsotg->dev, "dwc2");
 	if (IS_ERR(hsotg->reset)) {
 		ret = PTR_ERR(hsotg->reset);
-		dev_err(hsotg->dev, "error getting reset control %d\n", ret);
-		return ret;
+		return dev_err_probe(hsotg->dev, ret, "error getting reset control\n");
 	}
 
 	reset_control_deassert(hsotg->reset);
@@ -233,8 +232,7 @@ static int dwc2_lowlevel_hw_init(struct dwc2_hsotg *hsotg)
 	hsotg->reset_ecc = devm_reset_control_get_optional(hsotg->dev, "dwc2-ecc");
 	if (IS_ERR(hsotg->reset_ecc)) {
 		ret = PTR_ERR(hsotg->reset_ecc);
-		dev_err(hsotg->dev, "error getting reset control for ecc %d\n", ret);
-		return ret;
+		return dev_err_probe(hsotg->dev, ret, "error getting reset control for ecc\n");
 	}
 
 	reset_control_deassert(hsotg->reset_ecc);
@@ -283,8 +281,8 @@ static int dwc2_lowlevel_hw_init(struct dwc2_hsotg *hsotg)
 	/* Clock */
 	hsotg->clk = devm_clk_get_optional(hsotg->dev, "otg");
 	if (IS_ERR(hsotg->clk)) {
-		dev_err(hsotg->dev, "cannot get otg clock\n");
-		return PTR_ERR(hsotg->clk);
+		ret = PTR_ERR(hsotg->clk);
+		return dev_err_probe(hsotg->dev, ret, "cannot get otg clock\n");
 	}
 
 	/* Regulators */
@@ -293,12 +291,9 @@ static int dwc2_lowlevel_hw_init(struct dwc2_hsotg *hsotg)
 
 	ret = devm_regulator_bulk_get(hsotg->dev, ARRAY_SIZE(hsotg->supplies),
 				      hsotg->supplies);
-	if (ret) {
-		if (ret != -EPROBE_DEFER)
-			dev_err(hsotg->dev, "failed to request supplies: %d\n",
-				ret);
-		return ret;
-	}
+	if (ret)
+		return dev_err_probe(hsotg->dev, ret, "failed to request supplies\n");
+
 	return 0;
 }
 
