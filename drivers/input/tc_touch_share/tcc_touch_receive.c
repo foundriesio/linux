@@ -92,7 +92,7 @@ static void receive_message(struct mbox_client *client, void *message)
 			touch_wake_up(&dev->touch_mbox_wait);
 		break;
 		default:
-			pr_info("[INFO][TR]This Command does not use %u \n", cmd);
+			pr_debug("[DEBUG][TR]This Command does not use %u \n", cmd);
 		break;
 		}
 	}

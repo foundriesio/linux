@@ -72,7 +72,7 @@ static void ttb_event(struct input_handle *handle,
 		ts_dev->touch_data[2] = value;
 	break;
 	default:
-		pr_info("[INFO][TB] This event does not transfer to subcore\n");
+		pr_debug("[DEBUG][TB] This event does not transfer to subcore\n");
 	break;
 	}
 	if (state == (uint32_t)1) {
@@ -183,7 +183,7 @@ static void receive_message(struct mbox_client *client, void *message)
 					(uint32_t)TOUCH_INIT, ts_dev->touch_state);
 		break;
 		default:
-			pr_info("[INFO][TB] This command is invalid\n");
+			pr_debug("[DEBUG][TB] This command is invalid\n");
 		break;
 		}
 	}
