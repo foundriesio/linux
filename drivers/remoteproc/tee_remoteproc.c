@@ -251,8 +251,7 @@ static const struct tee_client_device_id stm32_tee_fw_id_table[] = {
 	{}
 };
 
-struct tee_rproc *tee_rproc_register(struct device *dev, struct rproc *rproc,
-				     unsigned int fw_id)
+struct tee_rproc *tee_rproc_register(struct device *dev, unsigned int fw_id)
 {
 	struct tee_client_device *rproc_tee_device;
 	struct tee_ioctl_open_session_arg sess_arg;
@@ -286,7 +285,6 @@ struct tee_rproc *tee_rproc_register(struct device *dev, struct rproc *rproc,
 		return ERR_PTR(ret);
 	}
 
-	trproc->rproc = rproc;
 	trproc->parent =  dev;
 	trproc->fw_id = fw_id;
 	trproc->session_id = sess_arg.session;

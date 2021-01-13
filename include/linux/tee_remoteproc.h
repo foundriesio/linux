@@ -30,8 +30,7 @@ struct tee_rproc {
 
 #if IS_ENABLED(CONFIG_TEE_REMOTEPROC)
 
-struct tee_rproc *tee_rproc_register(struct device *dev, struct rproc *rproc,
-				     unsigned int fw_id);
+struct tee_rproc *tee_rproc_register(struct device *dev, unsigned int fw_id);
 int tee_rproc_unregister(struct tee_rproc *trproc);
 
 int tee_rproc_load_fw(struct tee_rproc *trproc, const struct firmware *fw);
@@ -43,7 +42,6 @@ int tee_rproc_stop(struct tee_rproc *trproc);
 #else
 
 static inline struct tee_rproc *tee_rproc_register(struct device *dev,
-						   struct rproc *rproc,
 						   unsigned int fw_id)
 {
 	return ERR_PTR(-ENODEV);
