@@ -29,6 +29,19 @@
 
 #include "pinctrl-tcc.h"
 
+struct tcc_pinmux_function {
+	const char *name;
+	const char **groups;
+	s32 ngroups;
+};
+
+struct tcc_pin_group {
+	const char *name;
+	const u32 *pins;
+	u32 npins;
+	u32 func;
+};
+
 u32 tcc_pinconf_pack(u32 param, u32 value)
 {
 	return (param << TCC_PINCONF_SHIFT) | value;
@@ -46,10 +59,10 @@ u32 tcc_pinconf_unpack_value(u32 config)
 
 #ifdef CONFIG_ARCH_TCC803X
 
-int tcc_gpio_config(u32 gpio, u32 config)
+s32 tcc_gpio_config(u32 gpio, u32 config)
 {
 	u32 config_list[9] = {0,};
-	int config_num = 0, i;
+	s32 config_num = 0, i;
 
 	if (!!(config&GPIO_FN_BITMASK)) {
 		config_list[config_num]
@@ -148,17 +161,39 @@ static inline struct tcc_pin_bank *gpiochip_to_pin_bank(struct gpio_chip *gc)
 	return container_of(gc, struct tcc_pin_bank, gpio_chip);
 }
 
-static int tcc_pinctrl_gpio_request(struct gpio_chip *chip, u32 offset)
+static s32 tcc_pinctrl_gpio_request(struct gpio_chip *chip, u32 offset)
 {
-	return pinctrl_request_gpio((u32)(chip->base) + offset);
+	u32 chip_base;
+
+	if (chip == NULL) {
+		return -EINVAL;
+	}
+
+	chip_base = (u32)(chip->base);
+	if (((UINT_MAX) - chip_base) < offset) {
+		return -EINVAL;
+	} else {
+		return pinctrl_request_gpio(chip_base + offset);
+	}
 }
 
 static void tcc_pinctrl_gpio_free(struct gpio_chip *chip, u32 offset)
 {
-	pinctrl_free_gpio((u32)(chip->base) + offset);
+	u32 chip_base;
+
+	if (chip == NULL) {
+		return;
+	}
+
+	chip_base = (u32)(chip->base);
+	if (((UINT_MAX) - chip_base) < offset) {
+		return;
+	} else {
+		pinctrl_free_gpio(chip_base + offset);
+	}
 }
 
-static int tcc_pinctrl_gpio_get(struct gpio_chip *chip, u32 offset)
+static s32 tcc_pinctrl_gpio_get(struct gpio_chip *chip, u32 offset)
 {
 	struct tcc_pin_bank *bank = gpiochip_to_pin_bank(chip);
 	struct tcc_pinctrl *pctl = bank->pctl;
@@ -173,7 +208,7 @@ static int tcc_pinctrl_gpio_get(struct gpio_chip *chip, u32 offset)
 }
 
 static void tcc_pinctrl_gpio_set(struct gpio_chip *chip, u32 offset,
-		int value)
+		s32 value)
 {
 	struct tcc_pin_bank *bank = gpiochip_to_pin_bank(chip);
 	struct tcc_pinctrl *pctl = bank->pctl;
@@ -198,31 +233,52 @@ static void tcc_pinctrl_gpio_set(struct gpio_chip *chip, u32 offset,
 #endif
 }
 
-int tcc_pinctrl_gpio_get_direction(struct gpio_chip *chip,
-			                        unsigned offset) {
-
+static s32 tcc_pinctrl_gpio_get_direction(struct gpio_chip *chip,
+			                        u32 offset)
+{
 	struct tcc_pin_bank *bank = gpiochip_to_pin_bank(chip);
 	struct tcc_pinctrl *pctl = bank->pctl;
 	struct tcc_pinctrl_ops *ops = pctl->ops;
 
 	return ops->gpio_get_direction(pctl->base + bank->reg_base, offset);
-
 }
 
-static int tcc_pinctrl_gpio_direction_input(struct gpio_chip *chip,
+static s32 tcc_pinctrl_gpio_direction_input(struct gpio_chip *chip,
 		u32 offset)
 {
-	return pinctrl_gpio_direction_input((u32)(chip->base) + offset);
+	u32 chip_base;
+
+	if (chip == NULL) {
+		return -EINVAL;
+	}
+
+	chip_base = (u32)(chip->base);
+	if (((UINT_MAX) - chip_base) < offset) {
+		return -EINVAL;
+	} else {
+		return pinctrl_gpio_direction_input(chip_base + offset);
+	}
 }
 
-static int tcc_pinctrl_gpio_direction_output(struct gpio_chip *chip,
-		u32 offset, int value)
+static s32 tcc_pinctrl_gpio_direction_output(struct gpio_chip *chip,
+		u32 offset, s32 value)
 {
-	tcc_pinctrl_gpio_set(chip, offset, value);
-	return pinctrl_gpio_direction_output((u32)(chip->base) + offset);
+	u32 chip_base;
+
+	if (chip == NULL) {
+		return -EINVAL;
+	}
+
+	chip_base = (u32)(chip->base);
+	if (((UINT_MAX) - chip_base) < offset) {
+		return -EINVAL;
+	} else {
+		tcc_pinctrl_gpio_set(chip, offset, value);
+		return pinctrl_gpio_direction_output(chip_base + offset);
+	}
 }
 
-static int tcc_pinctrl_gpio_to_irq(struct gpio_chip *chip,
+static s32 tcc_pinctrl_gpio_to_irq(struct gpio_chip *chip,
 		u32 offset)
 {
 	struct tcc_pin_bank *bank = gpiochip_to_pin_bank(chip);
@@ -231,7 +287,7 @@ static int tcc_pinctrl_gpio_to_irq(struct gpio_chip *chip,
 #if !defined(CONFIG_PINCTRL_TCC_SCFW)
 	ulong flags;
 #endif
-	int ret;
+	s32 ret;
 
 	if (ops->to_irq == NULL) {
 		return -ENXIO;
@@ -263,11 +319,11 @@ static struct gpio_chip tcc_pinctrl_gpio_chip = {
 	.to_irq			= tcc_pinctrl_gpio_to_irq,
 };
 
-static int tcc_get_groups_count(struct pinctrl_dev *pctldev)
+static s32 tcc_get_groups_count(struct pinctrl_dev *pctldev)
 {
 	struct tcc_pinctrl *pctl = pinctrl_dev_get_drvdata(pctldev);
 
-	return (int)(pctl->ngroups);
+	return (s32)(pctl->ngroups);
 }
 
 static const char *tcc_get_group_name(struct pinctrl_dev *pctldev,
@@ -278,7 +334,7 @@ static const char *tcc_get_group_name(struct pinctrl_dev *pctldev,
 	return pctl->groups[selector].name;
 }
 
-static int tcc_get_group_pins(struct pinctrl_dev *pctldev, u32 selector,
+static s32 tcc_get_group_pins(struct pinctrl_dev *pctldev, u32 selector,
 		const u32 **pins, u32 *npins)
 {
 	struct tcc_pinctrl *pctl = pinctrl_dev_get_drvdata(pctldev);
@@ -293,11 +349,10 @@ static void tcc_pin_dbg_show(struct pinctrl_dev *pctldev, struct seq_file *s,
 {
 	struct tcc_pinctrl *pctl = pinctrl_dev_get_drvdata(pctldev);
 
-	dev_dbg(pctl->dev, "[DEBUG][PINCTRL] %s\n", __func__);
-	//seq_printf(s, "%s", dev_name(pctldev->dev));
+	dev_dbg(pctl->dev, "[DEBUG][PINCTRL] %s, seq_file : %x, offset : %u\n", __func__, s, offset);
 }
 
-static int tcc_dt_node_to_map(struct pinctrl_dev *pctldev,
+static s32 tcc_dt_node_to_map(struct pinctrl_dev *pctldev,
 		struct device_node *np,
 		struct pinctrl_map **map, u32 *num_maps)
 {
@@ -307,12 +362,21 @@ static int tcc_dt_node_to_map(struct pinctrl_dev *pctldev,
 	char *function;
 	u32 num_configs = 0U;
 	u32 nmaps = 0U;
-	int i;
+	s32 i;
+	struct property *prop_ret;
+	u32 temp_32;
+
+	if (num_maps == NULL) {
+		dev_err(pctl->dev,
+			"[ERROR][PINCTRL] num_maps is NULL\n");
+		return -EINVAL;
+	}
 
 	*num_maps = 0;
 	for (i = 0; i < pctl->nconfigs; i++) {
-		if (of_find_property
-				(np, pctl->pin_configs[i].prop, NULL) != NULL) {
+		prop_ret = of_find_property(np, pctl->pin_configs[i].prop, NULL);
+		if ((prop_ret != NULL)
+			&& ((UINT_MAX) > num_configs)) {
 			++num_configs;
 		}
 	}
@@ -322,9 +386,16 @@ static int tcc_dt_node_to_map(struct pinctrl_dev *pctldev,
 		/* comment for QAC, codesonar, kernel coding style */
 	}
 
-	if (of_find_property(np, "telechips,pin-function", NULL)
-			!= NULL) {
+	prop_ret = of_find_property(np, "telechips,pin-function", NULL);
+	if ((prop_ret != NULL)
+		&& ((UINT_MAX) > nmaps)) {
 		++nmaps;
+	}
+
+	if (np == NULL) {
+		dev_err(pctl->dev,
+			"[ERROR][PINCTRL] np is NULL\n");
+		return -EINVAL;
 	}
 
 	if (nmaps == 0U) {
@@ -334,27 +405,36 @@ static int tcc_dt_node_to_map(struct pinctrl_dev *pctldev,
 		return -EINVAL;
 	}
 
-	*map = kzalloc(sizeof(struct pinctrl_map) * nmaps, GFP_KERNEL);
+	temp_32 = sizeof(struct pinctrl_map);
+	if (((UINT_MAX) / temp_32) < nmaps) {
+		return -EINVAL;
+	}
+	temp_32 *= nmaps;
+	*map = kzalloc(temp_32, GFP_KERNEL);
 	if ((*map) == NULL) {
 		dev_err(pctl->dev,
 			"[ERROR][PINCTRL] failed to allocate memory for maps\n");
 		return -ENOMEM;
 	}
 
+	temp_32 = sizeof(ulong);
+	if (((UINT_MAX) / temp_32) < num_configs) {
+		return -EINVAL;
+	}
+	temp_32 *= num_configs;
 	configs = devm_kzalloc
-		(pctl->dev, sizeof(ulong) * num_configs, GFP_KERNEL);
+		(pctl->dev, temp_32, GFP_KERNEL);
 
 	if (configs == NULL) {
 	/* comment for kernel code style */
-	//	dev_err(pctl->dev,
-	//		"[ERROR][PINCTRL]"
-	//		"Failed to allocate memory for configs\n");
 		return -ENOMEM;
 	}
 
 	group = kstrdup(np->name, GFP_KERNEL);
 
-	if (of_find_property(np, "telechips,pin-function", NULL) != NULL) {
+	prop_ret = of_find_property(np, "telechips,pin-function", NULL);
+	if ((prop_ret != NULL)
+		&& ((UINT_MAX) > (*num_maps))) {
 		function = kstrdup(np->name, GFP_KERNEL);
 
 		(*map)[*num_maps].data.mux.group = group;
@@ -368,22 +448,31 @@ static int tcc_dt_node_to_map(struct pinctrl_dev *pctldev,
 		/* We have only function config */
 	}
 
-	for (i = 0, num_configs = 0U; i < pctl->nconfigs; i++) {
+	num_configs = 0U;
+	for (i = 0; i < pctl->nconfigs; i++) {
 		struct tcc_pinconf *config = &pctl->pin_configs[i];
 		u32 value;
-		int ret;
+		s32 ret;
 
 		ret = of_property_read_u32(np, config->prop, &value);
-		if (ret == -EINVAL)
+		if (ret == -EINVAL) {
 			continue;
+		/* comment for kernel code style */
+		}
 
 		/* set value to 0, when no value is specified */
-		if (ret != 0)
+		if (ret != 0) {
 			value = 0U;
+		/* comment for kernel code style */
+		}
 
-		configs[num_configs++]
+		configs[num_configs]
 			= (ulong)tcc_pinconf_pack((u32)(config->param),
 				value);
+		if ((UINT_MAX) > num_configs) {
+			num_configs++;
+		/* comment for kernel code style */
+		}
 	}
 
 	if ((*num_maps) >= nmaps) {
@@ -395,7 +484,11 @@ static int tcc_dt_node_to_map(struct pinctrl_dev *pctldev,
 	(*map)[*num_maps].data.configs.configs = configs;
 	(*map)[*num_maps].data.configs.num_configs = num_configs;
 	(*map)[*num_maps].type = PIN_MAP_TYPE_CONFIGS_GROUP;
-	++(*num_maps);
+
+	if ((UINT_MAX) > (*num_maps)) {
+		++(*num_maps);
+	/* comment for kernel code style */
+	}
 
 skip_config:
 	return 0;
@@ -406,8 +499,12 @@ static void tcc_dt_free_map(struct pinctrl_dev *pctldev,
 {
 	struct tcc_pinctrl *pctl = pinctrl_dev_get_drvdata(pctldev);
 
-	dev_dbg(pctl->dev, "[DEBUG][PINCTRL] %s\n", __func__);
-	kfree(map);
+	dev_dbg(pctl->dev, "[DEBUG][PINCTRL] %s, num_maps : %u\n", __func__, num_maps);
+
+	if (map != NULL) {
+		kfree(map);
+		/* comment for kernel code style */
+	}
 }
 
 static const struct pinctrl_ops tcc_pinctrl_pctlops = {
@@ -419,11 +516,11 @@ static const struct pinctrl_ops tcc_pinctrl_pctlops = {
 	.dt_free_map = tcc_dt_free_map,
 };
 
-static int tcc_pinmux_get_funcs_count(struct pinctrl_dev *pctldev)
+static s32 tcc_pinmux_get_funcs_count(struct pinctrl_dev *pctldev)
 {
 	struct tcc_pinctrl *pctl = pinctrl_dev_get_drvdata(pctldev);
 
-	return (int)(pctl->nfunctions);
+	return (s32)(pctl->nfunctions);
 }
 
 static const char *tcc_pinmux_get_func_name(struct pinctrl_dev *pctldev,
@@ -434,7 +531,7 @@ static const char *tcc_pinmux_get_func_name(struct pinctrl_dev *pctldev,
 	return pctl->functions[selector].name;
 }
 
-static int tcc_pinmux_get_func_groups(struct pinctrl_dev *pctldev,
+static s32 tcc_pinmux_get_func_groups(struct pinctrl_dev *pctldev,
 		u32 selector,
 		const char * const **groups,
 		u32 *num_groups)
@@ -451,20 +548,37 @@ static void tcc_pin_to_reg(struct tcc_pinctrl *pctl, u32 pin,
 		void __iomem **reg, u32 *offset)
 {
 	struct tcc_pin_bank *bank = pctl->pin_banks;
+	s32 cmp_ret;
 
-	while ((pin >= bank->base) && ((bank->base + bank->npins - 1U) < pin))
-		++bank;
+	while (1) {
+		if (((UINT_MAX) - bank->base)
+			< bank->npins) {
+			return;
+		} else if ((pin >= bank->base)
+			&& (pin >= (bank->base + bank->npins))) {
+			++bank;
+		} else {
+			break;
+		/* comment for kernel coding style */
+		}
+	}
 
-	if (strncmp("gpk", bank->name, 3) == 0) {
-		*reg = pctl->pmgpio_base;
-		*offset = pin - bank->base;
-	} else {
-		*reg = pctl->base + bank->reg_base;
-		*offset = pin - bank->base;
+	if ((reg != NULL) && (offset != NULL)) {
+		cmp_ret = strncmp("gpk", bank->name, 3);
+
+		if (pin >= bank->base) {
+			if (cmp_ret == 0) {
+				*reg = pctl->pmgpio_base;
+				*offset = pin - bank->base;
+			} else {
+				*reg = pctl->base + bank->reg_base;
+				*offset = pin - bank->base;
+			}
+		}
 	}
 }
 
-static int tcc_pinmux_enable(struct pinctrl_dev *pctldev, u32 selector,
+static s32 tcc_pinmux_enable(struct pinctrl_dev *pctldev, u32 selector,
 		u32 group)
 {
 	struct tcc_pinctrl *pctl = pinctrl_dev_get_drvdata(pctldev);
@@ -481,7 +595,7 @@ static int tcc_pinmux_enable(struct pinctrl_dev *pctldev, u32 selector,
 		tcc_pin_to_reg(pctl, pctl->groups[group].pins[i],
 				&reg, &offset);
 		pctl->ops->gpio_set_function(reg, offset,
-				(int)(pctl->groups[group].func));
+				(s32)(pctl->groups[group].func));
 	}
 
 	return 0;
@@ -494,7 +608,7 @@ static void tcc_pinmux_disable(struct pinctrl_dev *pctldev, u32 selector,
 	struct tcc_pinctrl *pctl = pinctrl_dev_get_drvdata(pctldev);
 	void __iomem *reg;
 	u32 offset;
-	int i;
+	s32 i;
 
 	if (!pctl->ops->gpio_set_function)
 		return;
@@ -507,7 +621,7 @@ static void tcc_pinmux_disable(struct pinctrl_dev *pctldev, u32 selector,
 }
 #endif
 
-static int tcc_pinmux_gpio_set_direction(struct pinctrl_dev *pctldev,
+static s32 tcc_pinmux_gpio_set_direction(struct pinctrl_dev *pctldev,
 		struct pinctrl_gpio_range *range, u32 offset, bool input)
 {
 	struct tcc_pinctrl *pctl = pinctrl_dev_get_drvdata(pctldev);
@@ -520,10 +634,10 @@ static int tcc_pinmux_gpio_set_direction(struct pinctrl_dev *pctldev,
 	}
 
 	tcc_pin_to_reg(pctl, offset, &reg, &pin_offset);
-	return pctl->ops->gpio_set_direction(reg, pin_offset, (int)input);
+	return pctl->ops->gpio_set_direction(reg, pin_offset, (s32)input);
 }
 
-static int tcc_pinmux_gpio_request_enable(struct pinctrl_dev *pctldev,
+static s32 tcc_pinmux_gpio_request_enable(struct pinctrl_dev *pctldev,
 		struct pinctrl_gpio_range *range, u32 offset)
 {
 	struct tcc_pinctrl *pctl = pinctrl_dev_get_drvdata(pctldev);
@@ -544,18 +658,18 @@ static const struct pinmux_ops tcc_pinmux_ops = {
 	.get_function_name = tcc_pinmux_get_func_name,
 	.get_function_groups = tcc_pinmux_get_func_groups,
 	.set_mux = tcc_pinmux_enable,
-	//.disable = tcc_pinmux_disable,
 	.gpio_set_direction = tcc_pinmux_gpio_set_direction,
 	.gpio_request_enable = tcc_pinmux_gpio_request_enable,
 };
 
-static int tcc_pinconf_get(struct pinctrl_dev *pctldev, u32 pin,
+static s32 tcc_pinconf_get(struct pinctrl_dev *pctldev, u32 pin,
 		ulong *config)
 {
 	struct tcc_pinctrl *pctl = pinctrl_dev_get_drvdata(pctldev);
 	void __iomem *reg;
 	u32 offset;
-	int param, value;
+	s32 param;
+	s32 value;
 
 	if ((pctl->ops->pinconf_get)
 			== NULL) {
@@ -564,20 +678,22 @@ static int tcc_pinconf_get(struct pinctrl_dev *pctldev, u32 pin,
 
 	tcc_pin_to_reg(pctl, pin, &reg, &offset);
 
-	param = (int)tcc_pinconf_unpack_param((u32)(*config));
+	param = (s32)tcc_pinconf_unpack_param((u32)(*config));
 	value = pctl->ops->pinconf_get(reg, offset, param);
 	*config = (ulong)tcc_pinconf_pack((u32)param, (u32)value);
 	return 0;
 }
 
-static int tcc_pinconf_set(struct pinctrl_dev *pctldev, u32 pin,
+static s32 tcc_pinconf_set(struct pinctrl_dev *pctldev, u32 pin,
 		ulong *configs,
 		u32 num_configs)
 {
 	struct tcc_pinctrl *pctl = pinctrl_dev_get_drvdata(pctldev);
 	void __iomem *reg;
 	u32 offset;
-	int param, value, ret;
+	s32 param;
+	s32 value;
+	s32 ret;
 	u32 i;
 
 	if ((pctl->ops->pinconf_set)
@@ -585,20 +701,28 @@ static int tcc_pinconf_set(struct pinctrl_dev *pctldev, u32 pin,
 		return -EINVAL;
 	}
 
+	if (configs == NULL) {
+		dev_err(pctl->dev,
+			"[ERROR][PINCTRL] configs is NULL\n");
+		return -EINVAL;
+	}
+
 	tcc_pin_to_reg(pctl, pin, &reg, &offset);
 
 	for (i = 0U; i < num_configs; i++) {
-		param = (int)tcc_pinconf_unpack_param((u32)(configs[i]));
-		value = (int)tcc_pinconf_unpack_value((u32)(configs[i]));
+		param = (s32)tcc_pinconf_unpack_param((u32)(configs[i]));
+		value = (s32)tcc_pinconf_unpack_value((u32)(configs[i]));
 		ret = pctl->ops->pinconf_set(reg, offset, param, value, pctl);
-		if (ret < 0)
+		if (ret < 0) {
 			return ret;
+		/* comment for QAC, codesonar, kernel coding style */
+		}
 	}
 
 	return 0;
 }
 
-static int tcc_pinconf_group_get(struct pinctrl_dev *pctldev,
+static s32 tcc_pinconf_group_get(struct pinctrl_dev *pctldev,
 		u32 group,
 		ulong *config)
 {
@@ -607,7 +731,7 @@ static int tcc_pinconf_group_get(struct pinctrl_dev *pctldev,
 	return tcc_pinconf_get(pctldev, pctl->groups[group].pins[0], config);
 }
 
-static int tcc_pinconf_group_set(struct pinctrl_dev *pctldev,
+static s32 tcc_pinconf_group_set(struct pinctrl_dev *pctldev,
 		u32 group, ulong *configs,
 		u32 num_configs)
 {
@@ -615,7 +739,7 @@ static int tcc_pinconf_group_set(struct pinctrl_dev *pctldev,
 	u32 i;
 
 	for (i = 0; i < pctl->groups[group].npins; i++) {
-		tcc_pinconf_set(pctldev,
+		(void)tcc_pinconf_set(pctldev,
 				pctl->groups[group].pins[i],
 				configs, num_configs);
 	}
@@ -648,14 +772,16 @@ static const struct pinconf_ops tcc_pinconf_ops = {
 	.pin_config_group_dbg_show = tcc_pinconf_group_dbg_show,
 };
 
-static int tcc_pinctrl_parse_dt_pins(struct tcc_pinctrl *pctl,
+static s32 tcc_pinctrl_parse_dt_pins(struct tcc_pinctrl *pctl,
 		struct device_node *np,
 		u32 **pins, u32 *npins)
 {
 	struct property *prop;
 	const char *pin_name;
 	u32 idx = 0, i;
-	int ret;
+	s32 ret;
+	s32 cmp_ret;
+	u32 temp_32;
 
 	ret = of_property_count_strings(np, "telechips,pins");
 	if (ret < 0) {
@@ -665,7 +791,12 @@ static int tcc_pinctrl_parse_dt_pins(struct tcc_pinctrl *pctl,
 	}
 
 	*npins = (u32)ret;
-	*pins = devm_kzalloc(pctl->dev, (*npins) * sizeof(u32), GFP_KERNEL);
+	temp_32 = sizeof(u32);
+	if (((UINT_MAX) / temp_32) < (*npins)) {
+		return -EINVAL;
+	}
+	temp_32 *= (*npins);
+	*pins = devm_kzalloc(pctl->dev, temp_32, GFP_KERNEL);
 
 	if ((*pins) == NULL) {
 		dev_err(pctl->dev,
@@ -675,8 +806,12 @@ static int tcc_pinctrl_parse_dt_pins(struct tcc_pinctrl *pctl,
 
 	of_property_for_each_string(np, "telechips,pins", (prop), (pin_name)) {
 		for (i = 0; i < pctl->npins; i++) {
-			if (strncmp(pin_name, pctl->pins[i].name, 10) == 0) {
-				(*pins)[idx++] = pctl->pins[i].number;
+			cmp_ret = strncmp(pin_name, pctl->pins[i].name, 10);
+			if (cmp_ret == 0) {
+				(*pins)[idx] = pctl->pins[i].number;
+				if ((UINT_MAX) > idx) {
+					idx++;
+				}
 				break;
 			}
 		}
@@ -691,7 +826,7 @@ static int tcc_pinctrl_parse_dt_pins(struct tcc_pinctrl *pctl,
 	return 0;
 }
 
-static int tcc_pinctrl_parse_dt(struct platform_device *pdev,
+static s32 tcc_pinctrl_parse_dt(struct platform_device *pdev,
 		struct tcc_pinctrl *pctl)
 {
 	struct device_node *np = pdev->dev.of_node;
@@ -699,9 +834,13 @@ static int tcc_pinctrl_parse_dt(struct platform_device *pdev,
 	struct tcc_pin_group *group;
 	struct tcc_pinmux_function *func;
 	u32 *pins;
-	u32 ngroups = 0, nfuncs = 0, npins = 0;
-	int i;
-	int ret;
+	u32 ngroups = 0;
+	u32 nfuncs = 0;
+	u32 npins = 0;
+	s32 i;
+	s32 ret;
+	struct property *prop_ret;
+	u32 temp_32;
 
 	ngroups = (u32)of_get_child_count(np);
 	if (ngroups <= 0U) {
@@ -713,8 +852,13 @@ static int tcc_pinctrl_parse_dt(struct platform_device *pdev,
 		"[DEBUG][PINCTRL] %d groups defined\n", ngroups);
 
 	pctl->ngroups = ngroups;
+	temp_32 = sizeof(struct tcc_pin_group);
+	if (((UINT_MAX) / temp_32) < ngroups) {
+		return -EINVAL;
+	}
+	temp_32 *= ngroups;
 	pctl->groups = devm_kzalloc(&pdev->dev,
-			ngroups * sizeof(struct tcc_pin_group),
+			temp_32,
 			GFP_KERNEL);
 	if ((pctl->groups) == NULL) {
 		dev_err(&(pdev->dev),
@@ -722,8 +866,13 @@ static int tcc_pinctrl_parse_dt(struct platform_device *pdev,
 		return -ENOMEM;
 	}
 
+	temp_32 = sizeof(struct tcc_pinmux_function);
+	if (((UINT_MAX) / temp_32) < ngroups) {
+		return -EINVAL;
+	}
+	temp_32 *= ngroups;
 	pctl->functions = devm_kzalloc(&pdev->dev,
-			ngroups * sizeof(struct tcc_pinmux_function),
+			temp_32,
 			GFP_KERNEL);
 	if ((pctl->functions) == NULL) {
 		dev_err(&(pdev->dev),
@@ -735,9 +884,10 @@ static int tcc_pinctrl_parse_dt(struct platform_device *pdev,
 	group = pctl->groups;
 	func = pctl->functions;
 	for_each_child_of_node(np, (child)) {
-		if (of_find_property(child, "telechips,pins", NULL)
-				== NULL) {
+		prop_ret = of_find_property(child, "telechips,pins", NULL);
+		if (prop_ret == NULL) {
 			continue;
+		/* comment for kernel coding style */
 		}
 
 		ret = tcc_pinctrl_parse_dt_pins(pctl, child, &pins, &npins);
@@ -750,22 +900,32 @@ static int tcc_pinctrl_parse_dt(struct platform_device *pdev,
 		group->name = kstrdup(child->name, GFP_KERNEL);
 		group->pins = pins;
 		group->npins = npins;
-		of_property_read_u32(child, "telechips,pin-function",
+		(void)of_property_read_u32(child, "telechips,pin-function",
 				&group->func);
 
-		if (of_find_property(child, "telechips,pin-function", NULL)
-				!= NULL) {
+		prop_ret = of_find_property(child, "telechips,pin-function", NULL);
+		if (prop_ret != NULL) {
 			func->name = kstrdup(child->name, GFP_KERNEL);
+
+			temp_32 = (u32)strnlen(func->name, 100);
+			if (((UINT_MAX) - 5U) < temp_32) {
+				return -EINVAL;
+			/* comment for kernel coding style */
+			}
+			temp_32 += 5U;
+			temp_32 = ((temp_32) / 4U) << 2U;
 			func->groups = devm_kzalloc(
 					pctl->dev,
-					((strnlen(func->name, 100)
-					  +2U+3U)/4U)*4U,
+					temp_32,
 					GFP_KERNEL);
 			func->groups[0] = kstrdup(child->name, GFP_KERNEL);
 			func->ngroups = 1;
 
 			++func;
-			++nfuncs;
+			if ((UINT_MAX) > nfuncs) {
+				++nfuncs;
+			/* comment for kernel coding style */
+			}
 		}
 
 		++group;
@@ -775,31 +935,38 @@ static int tcc_pinctrl_parse_dt(struct platform_device *pdev,
 	return 0;
 }
 
-static int tcc_pinctrl_get_irq_count(struct platform_device *dev)
+static s32 tcc_pinctrl_get_irq_count(struct platform_device *dev)
 {
-	int ret, nr = 0;
+	s32 ret;
+	s32 nr = 0;
 
 	while (1) {
 		ret = platform_get_irq(dev, (u32)nr);
-		if (ret < 0)
+		if (ret < 0) {
 			break;
+		/* comment for kernel code style */
+		}
 
 		nr++;
 	}
 
-	if (ret == -EPROBE_DEFER)
+	if (ret == -EPROBE_DEFER) {
 		return ret;
+	/* comment for kernel code style */
+	}
 
 	return nr;
 }
 
-static int tcc_pinctrl_get_irq
+static s32 tcc_pinctrl_get_irq
 	(struct platform_device *pdev, struct tcc_pinctrl_ext_irq *ext_irq)
 {
 	struct device *dev = &pdev->dev;
-	int irq, irq_cnt;
+	s32 irq;
+	s32 irq_cnt;
 	u32 i;
 	struct extintr_match_ *match;
+	u32 temp_32;
 
 	irq_cnt = tcc_pinctrl_get_irq_count(pdev);
 	if (irq_cnt < 1) {
@@ -809,13 +976,18 @@ static int tcc_pinctrl_get_irq
 	}
 	ext_irq->size = (u32)irq_cnt;
 
-	if (ext_irq->size > EINT_MAX_SIZE) {
-		ext_irq->size = EINT_MAX_SIZE;
+	if (ext_irq->size > TCC_EINT_MAX_SIZE) {
+		ext_irq->size = TCC_EINT_MAX_SIZE;
 		/* comment for QAC, codesonar, kernel coding style */
 	}
 
+	temp_32 = sizeof(struct extintr_match_);
+	if (((UINT_MAX) / temp_32) < ext_irq->size) {
+		return -EINVAL;
+	}
+	temp_32 *= ext_irq->size;
 	match = (struct extintr_match_ *) devm_kzalloc(dev,
-			(sizeof(struct extintr_match_) * ext_irq->size),
+			temp_32,
 			GFP_KERNEL);
 
 	if (match == NULL) {
@@ -837,10 +1009,10 @@ static int tcc_pinctrl_get_irq
 	}
 	ext_irq->data = (void *)match;
 
-	return (int)(ext_irq->size);
+	return (s32)(ext_irq->size);
 }
 
-int tcc_pinctrl_probe(struct platform_device *pdev,
+s32 tcc_pinctrl_probe(struct platform_device *pdev,
 		struct tcc_pinctrl_soc_data *soc_data,
 		void __iomem *base, void __iomem *pmgpio_base)
 {
@@ -848,13 +1020,23 @@ int tcc_pinctrl_probe(struct platform_device *pdev,
 	struct tcc_pinctrl *pctl;
 	struct device_node *node = pdev->dev.of_node;
 	struct device_node *np;
-	void __iomem *regs, *pmgpio_regs;
+	void __iomem *regs;
+	void __iomem *pmgpio_regs;
 	struct tcc_pin_bank *bank;
-	int ret;
+	s32 ret;
 	u32 i;
+	struct property *prop_ret;
+	s32 gpiochip_ret;
+	u32 temp_32;
 
 	regs = base;
 	pmgpio_regs = pmgpio_base;
+
+	if (soc_data == NULL) {
+		dev_err(pctl->dev,
+			"[ERROR][PINCTRL] soc_data is NULL\n");
+		return -EINVAL;
+	}
 
 	/* Getting IRQs */
 	soc_data->irq = devm_kzalloc
@@ -874,9 +1056,7 @@ int tcc_pinctrl_probe(struct platform_device *pdev,
 	pctl = devm_kzalloc(&pdev->dev, sizeof(struct tcc_pinctrl), GFP_KERNEL);
 
 	if (pctl == NULL) {
-/* comment for kernel code style */
-//		dev_err(&(pdev->dev),
-//			"failed to allocate pinctrl data\n");
+	/* comment for kernel code style */
 		return -ENOMEM;
 	}
 
@@ -886,11 +1066,19 @@ int tcc_pinctrl_probe(struct platform_device *pdev,
 
 	pctl->nbanks = 0;
 	for_each_child_of_node((node), (np)) {
-		if (of_find_property(np, "gpio-controller", NULL) != NULL)
+		prop_ret = of_find_property(np, "gpio-controller", NULL);
+		if ((prop_ret != NULL)
+			&& ((UINT_MAX) > pctl->nbanks)) {
 			++pctl->nbanks;
+		}
 	}
-	pctl->pin_banks = devm_kzalloc(&pdev->dev, pctl->nbanks *
-			sizeof(struct tcc_pin_bank),
+
+	temp_32 = sizeof(struct tcc_pin_bank);
+	if (((UINT_MAX) / temp_32) < pctl->nbanks) {
+		return -EINVAL;
+	}
+	temp_32 *= pctl->nbanks;
+	pctl->pin_banks = devm_kzalloc(&pdev->dev, temp_32,
 			GFP_KERNEL);
 	if ((pctl->pin_banks) == NULL) {
 		dev_err(&(pdev->dev),
@@ -900,8 +1088,8 @@ int tcc_pinctrl_probe(struct platform_device *pdev,
 
 	bank = pctl->pin_banks;
 	for_each_child_of_node((node), (np)) {
-		if (of_find_property(np, "gpio-controller", NULL)
-				== NULL) {
+		prop_ret = of_find_property(np, "gpio-controller", NULL);
+		if (prop_ret == NULL) {
 			continue;
 		}
 
@@ -935,26 +1123,45 @@ int tcc_pinctrl_probe(struct platform_device *pdev,
 			return ret;
 		}
 
-		if(bank->source_section != 0xff) {
+		if(bank->source_section != 0xffU) {
+			temp_32 = sizeof(u32);
+			if (((UINT_MAX) / temp_32) < bank->source_section) {
+				return -EINVAL;
+			}
+			temp_32 *= bank->source_section;
 
-			bank->source_offset_base = kzalloc(sizeof(u32)*bank->source_section, GFP_KERNEL);
-			bank->source_base = kzalloc(sizeof(u32)*bank->source_section, GFP_KERNEL);
-			bank->source_range = kzalloc(sizeof(u32)*bank->source_section, GFP_KERNEL);
+			bank->source_offset_base = kzalloc(temp_32, GFP_KERNEL);
+			bank->source_base = kzalloc(temp_32, GFP_KERNEL);
+			bank->source_range = kzalloc(temp_32, GFP_KERNEL);
 
 			for(i = 0U ; i < bank->source_section ; i++) {
-				ret = of_property_read_u32_index(np, "source-num", ((i*3)+1), &bank->source_offset_base[i]);
+				if (((UINT_MAX) / 3U) < i) {
+					continue;
+				}
+				temp_32 = i * 3U;
+
+				if ((((UINT_MAX) - 2U) < temp_32)
+					|| (((UINT_MAX) - 3U) < temp_32)) {
+					continue;
+				}
+
+				if ((UINT_MAX) > temp_32) {
+					ret = of_property_read_u32_index(np, "source-num", (temp_32 + 1U), &bank->source_offset_base[i]);
+				} else {
+					ret = -1;
+				}
 				if(ret < 0) {
 					dev_err(&(pdev->dev),
 							"[ERROR][PINCTRL] failed to get source offset base\n");
 					return ret;
 				}
-				ret = of_property_read_u32_index(np, "source-num", ((i*3)+2), &bank->source_base[i]);
+				ret = of_property_read_u32_index(np, "source-num", (temp_32 + 2U), &bank->source_base[i]);
 				if(ret < 0) {
 					dev_err(&(pdev->dev),
 							"[ERROR][PINCTRL] failed to get source base\n");
 					return ret;
 				}
-				ret = of_property_read_u32_index(np, "source-num", ((i*3)+3), &bank->source_range[i]);
+				ret = of_property_read_u32_index(np, "source-num", (temp_32 + 3U), &bank->source_range[i]);
 				if(ret < 0) {
 					dev_err(&(pdev->dev),
 							"[ERROR][PINCTRL] failed to get source range\n");
@@ -968,12 +1175,21 @@ int tcc_pinctrl_probe(struct platform_device *pdev,
 		bank->base = pctl->npins;
 		bank->name = kstrdup(np->name, GFP_KERNEL);
 		bank->of_node = np;
-		pctl->npins += bank->npins;
+
+		if (((UINT_MAX) - (pctl->npins)) >= (bank->npins)) {
+			pctl->npins += bank->npins;
+		}
 		++bank;
 	}
 
+
+	temp_32 = sizeof(struct pinctrl_pin_desc);
+	if (((UINT_MAX) / temp_32) < pctl->npins) {
+		return -EINVAL;
+	}
+	temp_32 *= pctl->npins;
 	pindesc = devm_kzalloc(&pdev->dev,
-			sizeof(struct pinctrl_pin_desc) * pctl->npins,
+			temp_32,
 			GFP_KERNEL);
 	if (pindesc == NULL) {
 		dev_err(&(pdev->dev),
@@ -981,17 +1197,33 @@ int tcc_pinctrl_probe(struct platform_device *pdev,
 		return -ENOMEM;
 	}
 
-	for (i = 0U, bank = pctl->pin_banks; i < pctl->nbanks; ++i, ++bank) {
+	bank = pctl->pin_banks;
+	for (i = 0U; i < pctl->nbanks; ++i) {
 		u32 pin;
+		u32 pin_plus_base;
+		u32 pin_plus_pin_base;
 
 		for (pin = 0U; pin < bank->npins; pin++) {
 			struct pinctrl_pin_desc *pdesc;
 
-			pdesc = pindesc + bank->base + pin;
+			if (((UINT_MAX) - pin)
+				< bank->base) {
+				continue;
+			}
+			if (((UINT_MAX) - pin)
+				< bank->pin_base) {
+				continue;
+			}
+
+			pin_plus_pin_base = bank->pin_base + pin;
+			pin_plus_base = bank->base + pin;
+			pdesc = pindesc + pin_plus_base;
 			pdesc->number = bank->base + pin;
 			pdesc->name = kasprintf(GFP_KERNEL, "%s-%u", bank->name,
-					pin + bank->pin_base);
+					bank->pin_base + pin);
 		}
+
+		++bank;
 	}
 	pctl->base = regs;
 	pctl->pmgpio_base = pmgpio_regs;
@@ -1015,18 +1247,21 @@ int tcc_pinctrl_probe(struct platform_device *pdev,
 		return -EINVAL;
 	}
 
-	for (i = 0U, bank = pctl->pin_banks; i < pctl->nbanks; ++i, ++bank) {
+	bank = pctl->pin_banks;
+	for (i = 0U; i < pctl->nbanks; ++i) {
 		struct pinctrl_gpio_range *range;
 
 		bank->gpio_chip = tcc_pinctrl_gpio_chip;
-		bank->gpio_chip.base = (int)(bank->base);
+		bank->gpio_chip.base = (s32)(bank->base);
 		bank->gpio_chip.ngpio = (u16)(bank->npins);
 		bank->gpio_chip.parent = &pdev->dev;
 		bank->gpio_chip.of_node = bank->of_node;
 		bank->gpio_chip.label = bank->name;
-		if (gpiochip_add(&bank->gpio_chip) != 0) {
+		gpiochip_ret = gpiochip_add(&bank->gpio_chip);
+		if (gpiochip_ret != 0) {
 			dev_err(&(pdev->dev),
 				"[ERROR][PINCTRL] failed to register gpio chip\n");
+			 ++bank;
 			continue;
 		}
 
@@ -1034,10 +1269,13 @@ int tcc_pinctrl_probe(struct platform_device *pdev,
 		range->name = bank->name;
 		range->id = i;
 		range->base = bank->base;
-		range->pin_base = bank->base + bank->pin_base;
+		if (((UINT_MAX) - bank->base) >= bank->pin_base) {
+			range->pin_base = bank->base + bank->pin_base;
+		}
 		range->npins = bank->npins;
 		range->gc = &bank->gpio_chip;
 		pinctrl_add_gpio_range(pctl->pctldev, range);
+		 ++bank;
 	}
 
 	ret = tcc_pinctrl_parse_dt(pdev, pctl);
