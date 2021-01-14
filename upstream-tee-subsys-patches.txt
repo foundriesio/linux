@@ -20,7 +20,7 @@ followed by the sha1 hash in the upstream kernel tree.
 [v5.7-rc1] c180f9bbe29a tee: remove unused tee_shm_priv_alloc()
 [v5.7-rc1] 59a135f6fb66 tee: remove linked list of struct tee_shm
 [v5.6] 36fa3e50085e tee: amdtee: out of bounds read in find_session()
-[v5.6-rc5] 483685bceedb tee: amdtee: fix memory leak in amdtee_open_session()
+[v5.6-rc5] b83685bceedb tee: amdtee: fix memory leak in amdtee_open_session()
 [v5.6-rc4] 872d92dec353 tee: amdtee: amdtee depends on CRYPTO_DEV_CCP_DD
 [v5.6-rc1] 48d625e4c4ce tee: fix memory allocation failure checks on drv_data and amdtee
 [v5.6-rc1] 279c075dc1d2 tee: amdtee: remove redundant NULL check for pool
