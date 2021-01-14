@@ -22,7 +22,8 @@ void ipc_cmd_wake_preset(struct ipc_device *ipc_dev,
 							IPC_UINT32 seqID);
 void ipc_cmd_wake_up(struct ipc_device *ipc_dev,
 						IpcCmdType cmdType,
-						IPC_UINT32 seqID);
+						IPC_UINT32 seqID,
+						IPC_UINT32 result);
 void ipc_cmd_all_wake_up(struct ipc_device *ipc_dev);
 IPC_INT32 ipc_read_wait_event_timeout(
 			struct ipc_device *ipc_dev,

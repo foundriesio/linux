@@ -49,7 +49,8 @@ static void ipc_receive_writecmd(
 static IPC_INT32 ipc_write_data(
 				struct ipc_device *ipc_dev,
 				IPC_UCHAR *buff,
-				IPC_UINT32 size);
+				IPC_UINT32 size,
+				IPC_INT32 *err_code);
 static IPC_INT32 ipc_read_data(
 				struct ipc_device *ipc_dev,
 				IPC_CHAR __user *buff,
@@ -90,6 +91,8 @@ void ipc_struct_init(struct ipc_device *ipc_dev)
 		ipcHandle->requestConnectTime = 0;
 
 		ipcHandle->tempWbuf = NULL;
+
+		ipcHandle->sendNACK = 0;
 
 		spin_lock_init(&ipcHandle->spinLock);
 		mutex_init(&ipcHandle->rMutex);
@@ -200,18 +203,40 @@ void receive_message(struct mbox_client *client, void *message)
 					if (msg->cmd[0] ==
 						handler->openSeqID) {
 
+						IPC_UINT32 req_feature = msg->cmd[3];
+
 						spin_lock(&handler->spinLock);
 
 						handler->ipcStatus = IPC_READY;
 
 						spin_unlock(&handler->spinLock);
+
+						if((req_feature & (IPC_UINT32)USE_NACK)
+							== (IPC_UINT32)USE_NACK) {
+							handler->sendNACK = 1;
+						} else {
+							handler->sendNACK = 0;
+						}
+						dprintk(ipc_dev->dev,
+							"open ack 0x%08x, nack(%d)\n",
+							msg->cmd[3],handler->sendNACK);
 					} else {
 						/* too old ack */
 					}
 				} else {
 					ipc_cmd_wake_up(ipc_dev,
 								cmdType,
-								msg->cmd[0]);
+								msg->cmd[0],
+								(IPC_UINT32)0);
+				}
+			} else if (cmdID == IPC_NACK) {
+				if ((msg->cmd[2] & (IPC_UINT32)CMD_ID_MASK) ==
+					(IPC_UINT32)IPC_WRITE) {
+
+					ipc_cmd_wake_up(ipc_dev,
+								cmdType,
+								msg->cmd[0],
+								msg->cmd[3]);
 				}
 			} else {
 				struct ipc_receive_list *ipc_list =
@@ -361,6 +386,8 @@ static void ipc_receive_ctlcmd(void *device_info, struct tcc_mbox_data  *pMsg)
 		IPC_UINT32 maskedID;
 		IpcCmdID cmdID;
 		IPC_UINT32 seqID;
+		IPC_UINT32 req_feature = pMsg->cmd[2];
+		IPC_UINT32 support_feature = 0;
 
 		maskedID = pMsg->cmd[1] & (IPC_UINT32)CMD_ID_MASK;
 		cmdID = (IpcCmdID)maskedID;
@@ -369,12 +396,22 @@ static void ipc_receive_ctlcmd(void *device_info, struct tcc_mbox_data  *pMsg)
 
 		switch (cmdID) {
 		case IPC_OPEN:
-				(void)ipc_send_ack(
+				if((req_feature & (IPC_UINT32)USE_NACK)
+					== (IPC_UINT32)USE_NACK) {
+					ipc_handle->sendNACK = 1;
+					support_feature =
+						(support_feature | (IPC_UINT32)USE_NACK);
+				} else {
+					ipc_handle->sendNACK = 0;
+				}
+
+				(void)ipc_send_open_ack(
 							ipc_dev,
 							seqID,
 							CTL_CMD,
-							pMsg->cmd[1]);
-
+							pMsg->cmd[1],
+							support_feature);
+				dprintk(ipc_dev->dev,"use Nack %d\n",support_feature);
 				if (ipc_handle->ipcStatus < IPC_READY) {
 					ipc_try_connection(ipc_dev);
 				}
@@ -416,6 +453,7 @@ static void ipc_receive_writecmd(void *device_info, struct tcc_mbox_data  *pMsg)
 		IpcCmdID cmdID;
 		IPC_UINT32 maskedID = (pMsg->cmd[1] & (IPC_UINT32)CMD_ID_MASK);
 		IPC_INT32 ovfSize = 0;
+		IPC_INT32  dataSize;
 
 		cmdID = (IpcCmdID)maskedID;
 
@@ -433,6 +471,7 @@ static void ipc_receive_writecmd(void *device_info, struct tcc_mbox_data  *pMsg)
 				mutex_lock(&ipc_handle->rbufMutex);
 
 				ipc_handle->readBuffer.status = IPC_BUF_BUSY;
+
 				freeSpace =
 					(IPC_UINT32)ipc_buffer_free_space(
 						&ipc_handle->readRingBuffer);
@@ -454,55 +493,63 @@ static void ipc_receive_writecmd(void *device_info, struct tcc_mbox_data  *pMsg)
 						readSize);
 
 					if (ret  > 0) {
-						ret = IPC_SUCCESS;
+						(void)ipc_send_ack(ipc_dev,
+										seqID,
+										WRITE_CMD,
+										pMsg->cmd[1]);
 					} else {
+						if(ipc_handle->sendNACK == (IPC_UINT32)1) {
+							(void)ipc_send_nack(ipc_dev,
+											seqID,
+											WRITE_CMD,
+											pMsg->cmd[1],
+											NACK_BUF_ERR);
+						}
 						ret = IPC_ERR_BUFFER;
 					}
 				} else {
-					ovfSize = ((IPC_INT32)readSize -
-							(IPC_INT32)freeSpace);
-					ret = ipc_push_buffer_overwrite(
-						&ipc_handle->readRingBuffer,
-						(IPC_UCHAR *)pMsg->data,
-						readSize);
-
-					if (ret > 0) {
-						ret = IPC_SUCCESS;
+					if(ipc_handle->sendNACK == (IPC_UINT32)1) {
+						(void)ipc_send_nack(ipc_dev,
+										seqID,
+										WRITE_CMD,
+										pMsg->cmd[1],
+										NACK_BUF_FULL);
+						eprintk(ipc_dev->dev,
+							"rx buffer full\n");
 					} else {
-						ret = IPC_ERR_BUFFER;
+						ovfSize = ((IPC_INT32)readSize -
+									(IPC_INT32)freeSpace);
+						ret = ipc_push_buffer_overwrite(
+							&ipc_handle->readRingBuffer,
+							(IPC_UCHAR *)pMsg->data,
+							readSize);
+
+						if (ret > 0) {
+							(void)ipc_send_ack(ipc_dev,
+											seqID,
+											WRITE_CMD,
+											pMsg->cmd[1]);
+						} else {
+							ret = IPC_ERR_BUFFER;
+						}
+						eprintk(ipc_dev->dev,
+							"%d input overrun\n",
+							ovfSize);
 					}
 				}
+
 				ipc_handle->readBuffer.status =
 					IPC_BUF_READY;
 
 				mutex_unlock(&ipc_handle->rbufMutex);
 			}
 
-			if (ret == IPC_SUCCESS)	{
-				ret = ipc_send_ack(ipc_dev,
-								seqID,
-								WRITE_CMD,
-								pMsg->cmd[1]);
+			dataSize = ipc_buffer_data_available(
+				&ipc_handle->readRingBuffer);
+			if (ipc_handle->vMin <=
+				(IPC_UINT32)dataSize) {
 
-				if (ret < 0) {
-					ret = IPC_ERR_RECEIVER_DOWN;
-				} else {
-					IPC_INT32  dataSize;
-
-					dataSize = ipc_buffer_data_available(
-						&ipc_handle->readRingBuffer);
-					if (ipc_handle->vMin <=
-						(IPC_UINT32)dataSize) {
-
-						ipc_read_wake_up(ipc_dev);
-					}
-				}
-			}
-
-			if (ovfSize > 0) {
-				eprintk(ipc_dev->dev,
-					"%d input overrun\n",
-					ovfSize);
+				ipc_read_wake_up(ipc_dev);
 			}
 		}
 	}
@@ -585,19 +632,22 @@ void ipc_release(struct ipc_device *ipc_dev)
 static IPC_INT32 ipc_write_data(
 					struct ipc_device *ipc_dev,
 					IPC_UCHAR *buff,
-					IPC_UINT32 size)
+					IPC_UINT32 size,
+					IPC_INT32 *err_code)
 {
 	IPC_INT32 ret = IPC_ERR_COMMON;
 
 	if ((ipc_dev != NULL) &&
 		(buff != NULL) &&
-		(size > (IPC_UINT32)0)) {
+		(size > (IPC_UINT32)0) &&
+		(err_code != NULL)) {
 
 		IPC_UINT32 remainSize;
 		IPC_UINT32 inputSize;
 		IPC_UINT32 offset = 0;
 
 		remainSize = size;
+		*err_code = (IPC_INT32)0;
 
 		while (remainSize != (IPC_UINT32)0) {
 			if (remainSize > IPC_TXBUFFER_SIZE)	{
@@ -612,8 +662,23 @@ static IPC_INT32 ipc_write_data(
 			if (ret == 0) {
 				ret = (IPC_INT32)inputSize;
 			} else {
-				wprintk(ipc_dev->dev,
-					"IPC Write ACK Timeout\n");
+				if (ret == (IPC_INT32)IPC_ERR_TIMEOUT) {
+					*err_code = (IPC_INT32)IPC_ERR_TIMEOUT;
+					wprintk(ipc_dev->dev,
+						"IPC Write ACK Timeout\n");
+				} else if (ret == (IPC_INT32)IPC_ERR_RECEIVER_BUF_FULL)	{
+					*err_code = (IPC_INT32)IPC_ERR_RECEIVER_BUF_FULL;
+					wprintk(ipc_dev->dev,
+						"Opposite Receive Buffer is full\n");
+				} else if (ret == (IPC_INT32)IPC_ERR_BUFFER) {
+					*err_code = (IPC_INT32)IPC_ERR_BUFFER;
+					wprintk(ipc_dev->dev,
+						"Opposite Receive Buffer is ERROR\n");
+				} else {
+					*err_code = IPC_ERR_COMMON;
+					wprintk(ipc_dev->dev,
+						"IPC Write error (%d)\n", ret);
+				}
 				break;
 			}
 
@@ -628,7 +693,8 @@ static IPC_INT32 ipc_write_data(
 
 IPC_INT32 ipc_write(struct ipc_device *ipc_dev,
 						IPC_UCHAR *buff,
-						IPC_UINT32 size)
+						IPC_UINT32 size,
+						IPC_INT32 *err_code)
 {
 	IPC_INT32 ret = IPC_ERR_COMMON;
 
@@ -641,7 +707,7 @@ IPC_INT32 ipc_write(struct ipc_device *ipc_dev,
 			ipc_try_connection(ipc_dev);
 			d1printk((ipc_dev), ipc_dev->dev, "IPC Not Ready\n");
 		} else {
-			ret = ipc_write_data(ipc_dev, buff, size);
+			ret = ipc_write_data(ipc_dev, buff, size, err_code);
 		}
 	}
 	return ret;
