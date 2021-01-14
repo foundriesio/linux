@@ -66,6 +66,7 @@ struct tcc_isp_state {
 	struct v4l2_ctrl_handler ctrl_hdl;
 
 	char isp_fw_name[20];
+	int fw_load;
 	/* register base addr */
 	volatile void __iomem * isp_base;
 	void __iomem * mem_base;

@@ -1832,6 +1832,25 @@ static int32_t tccvin_video_subdevs_init(struct tccvin_streaming *stream,
 	return ret;
 }
 
+static int32_t tccvin_video_subdevs_load_fw(struct tccvin_streaming *stream)
+{
+	WARN_ON(IS_ERR_OR_NULL(stream));
+
+	struct tccvin_device	*dev		= stream->dev;
+	struct v4l2_subdev	*subdev		= NULL;
+	int32_t ret = 0;
+
+	subdev = dev->linked_subdevs[0].sd;
+
+	if (subdev != NULL && (strncmp(subdev->name, "tcc-isp", 7) == 0))
+		ret = v4l2_subdev_call(subdev, core, load_fw);
+	if (ret) {
+		loge("FAIL - v4l2_subdev_call(subdev, core, load_fw)\n");
+	}
+
+	return ret;
+}
+
 static int32_t tccvin_video_subdevs_get_config(struct tccvin_streaming *stream)
 {
 	WARN_ON(IS_ERR_OR_NULL(stream));
@@ -2053,6 +2072,9 @@ int32_t tccvin_video_streamon(struct tccvin_streaming *stream,
 		loge("to start v4l2 sub devices\n");
 		return -1;
 	}
+
+	/* load fw subdev call is not essential to enable camera data stream */
+	tccvin_video_subdevs_load_fw(stream);
 
 	ret = tccvin_start_stream(stream);
 	if (ret < 0) {

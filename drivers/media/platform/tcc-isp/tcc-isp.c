@@ -561,6 +561,7 @@ static int tcc_isp_s_power(struct v4l2_subdev *sd, int on)
 
 	return ret;
 }
+
 static int tcc_isp_init(struct v4l2_subdev *sd, u32 enable)
 {
 	struct tcc_isp_state	*state	= sd_to_state(sd);
@@ -570,6 +571,30 @@ static int tcc_isp_init(struct v4l2_subdev *sd, u32 enable)
 
 	tcc_isp_enable(state, enable);
 
+	return ret;
+}
+
+static int tcc_isp_load_fw(struct v4l2_subdev *sd)
+{
+	struct tcc_isp_state *state = sd_to_state(sd);
+	int ret = 0;
+
+	logi(&(state->pdev->dev), "call\n");
+
+	if (state->fw_load == 1) {
+		logi(&(state->pdev->dev), "skip loading firmware\n");
+		goto end;
+	}
+
+	ret = tcc_isp_request_firmware(state, state->isp_fw_name);
+	if (ret < 0) {
+		loge(&(state->pdev->dev), "FAIL - loading firmware(%s)\n",
+			TCC_ISP_FIRMWARE_NAME);
+		goto end;
+	}
+	state->fw_load = 1;
+
+end:
 	return ret;
 }
 
@@ -793,6 +818,7 @@ err:
 static const struct v4l2_subdev_core_ops tcc_isp_core_ops = {
 	.s_power		= tcc_isp_s_power,
 	.init			= tcc_isp_init,
+	.load_fw		= tcc_isp_load_fw,
 };
 
 static const struct v4l2_subdev_pad_ops tcc_isp_pad_ops = {
@@ -849,12 +875,6 @@ static int tcc_isp_probe(struct platform_device *pdev)
 	sprintf(state->isp_fw_name, "%s-%d", TCC_ISP_FIRMWARE_NAME, pdev->id);
 
 	tcc_isp_set_default(state);
-
-	ret = tcc_isp_request_firmware(state, state->isp_fw_name);
-	if (ret < 0) {
-		loge(&(state->pdev->dev), "FAIL - loading firmware(%s)\n",
-			TCC_ISP_FIRMWARE_NAME);
-	}
 
 	v4l2_subdev_init(&(state->sd), &tcc_isp_ops);
 	state->sd.owner = pdev->dev.driver->owner;
