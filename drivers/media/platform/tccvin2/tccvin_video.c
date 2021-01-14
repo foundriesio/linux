@@ -1269,13 +1269,14 @@ static void tccvin_work_thread(struct work_struct *data)
 		spin_unlock_irqrestore(&queue->irqlock, flags);
 	}
 
+	getrawmonotonic(&ts);
 	buf->buf.vb2_buf.timestamp = timespec_to_ns(&ts);
 	buf->buf.field = V4L2_FIELD_NONE;
 	buf->buf.sequence = stream->sequence++;
 	buf->state = TCCVIN_BUF_STATE_READY;
 	buf->bytesused = buf->length;
 
-	dlog("VIN[%d] buf->length: 0x%08x\n", stream->vdev.num, buf->length);
+	dlog("VIN[%d] buf->length: 0x%08x, timestamp: %llu\n", stream->vdev.num, buf->length, buf->buf.vb2_buf.timestamp);
 	if (buf->buf.vb2_buf.memory != VB2_MEMORY_MMAP &&
 	   buf->buf.vb2_buf.memory != VB2_MEMORY_USERPTR &&
 	   buf->buf.vb2_buf.memory != V4L2_MEMORY_DMABUF) {
