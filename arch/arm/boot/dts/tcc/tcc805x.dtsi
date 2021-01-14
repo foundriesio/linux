@@ -123,7 +123,7 @@
 		asrc-m2m-pcm2 = &asrc_m2m_pcm2;
 		asrc-m2m-pcm3 = &asrc_m2m_pcm3;
 		tcc-overlay-drv1 = &tcc_overlay_drv1;
-
+		max968xx_config = &max968xx_config;
 	};
 
 	psci {
@@ -3372,6 +3372,8 @@
 		vcp_id_3rd_sink = <3>;
 		vcp_id_4th_sink = <4>;
 	};
+
+	max968xx_config: max968xx_config {};
 
 	hdcp-dp {
 		compatible = "dwc,hdcp-dp";
