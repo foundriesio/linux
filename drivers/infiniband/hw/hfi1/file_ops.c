@@ -207,6 +207,7 @@ static int hfi1_file_open(struct inode *inode, struct file *fp)
 	spin_lock_init(&fd->tid_lock);
 	spin_lock_init(&fd->invalid_lock);
 	fd->rec_cpu_num = -1; /* no cpu affinity by default */
+	fd->dd = dd;
 	kobject_get(&fd->dd->kobj);
 	fp->private_data = fd;
 	return 0;
