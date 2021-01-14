@@ -18,12 +18,12 @@
 #define PINCTRL_TCC_H
 
 #ifdef CONFIG_TCC_MICOM
-#define EINT_MAX_SIZE		8U
+#define TCC_EINT_MAX_SIZE		(8U)
 #else
-#define EINT_MAX_SIZE		32U
+#define TCC_EINT_MAX_SIZE		(32U)
 #endif
 
-#define TCC_PINCONF_SHIFT	8U
+#define TCC_PINCONF_SHIFT	(8U)
 
 #if defined(CONFIG_ARCH_TCC803X)
 
@@ -155,18 +155,8 @@ enum tcc_pinconf_param {
 
 #endif
 
-struct tcc_pinmux_function {
-	const char *name;
-	const char **groups;
-	int ngroups;
-};
-
-struct tcc_pin_group {
-	const char *name;
-	const u32 *pins;
-	u32 npins;
-	u32 func;
-};
+struct tcc_pinmux_function;
+struct tcc_pin_group;
 
 struct tcc_pinctrl {
     struct device *dev;
@@ -179,7 +169,7 @@ struct tcc_pinctrl {
     struct pinctrl_dev *pctldev;
 
     struct tcc_pinconf *pin_configs;
-    int nconfigs;
+    s32 nconfigs;
 
     struct tcc_pinctrl_ops *ops;
 
@@ -220,31 +210,31 @@ struct tcc_pin_bank {
 
 /**
  * struct tcc_pinctrl_ops - operations for gpio / pin configurations
- * @gpio_get: get gpio value
- * @gpio_set: set gpio value
- * @gpio_set_direction: set gpio direction input or output
- * @gpio_get_direction: get gpio direction input or output
- * @gpio_set_function: set gpio function
- * @pinconf_get: get configurations for a pin
- * @pinconf_set: configure a pin
+ * gpio_get: get gpio value
+ * gpio_set: set gpio value
+ * gpio_set_direction: set gpio direction input or output
+ * gpio_get_direction: get gpio direction input or output
+ * gpio_set_function: set gpio function
+ * pinconf_get: get configurations for a pin
+ * pinconf_set: configure a pin
  */
 struct tcc_pinctrl_ops {
-	int (*gpio_get)(void __iomem *base, u32 offset);
-	void (*gpio_set)(void __iomem *base, u32 offset, int value);
-	int (*gpio_set_direction)(void __iomem *base, u32 offset,
-				  int input);
-	int (*gpio_get_direction)(void __iomem *base, u32 offset);
-	int (*gpio_set_function)(void __iomem *base, u32 offset,
-				 int func);
-	int (*pinconf_get)(void __iomem *base, u32 offset, int param);
-	int (*pinconf_set)(void __iomem *base, u32 offset,
-			   int param, int config, struct tcc_pinctrl *pctl);
-	int (*to_irq)(void __iomem *base, u32 offset, struct tcc_pinctrl *pctl);
+	s32 (*gpio_get)(void __iomem *base, u32 offset);
+	void (*gpio_set)(void __iomem *base, u32 offset, s32 value);
+	s32 (*gpio_set_direction)(void __iomem *base, u32 offset,
+				  s32 input);
+	s32 (*gpio_get_direction)(void __iomem *base, u32 offset);
+	s32 (*gpio_set_function)(void __iomem *base, u32 offset,
+				 s32 func);
+	s32 (*pinconf_get)(void __iomem *base, u32 offset, s32 param);
+	s32 (*pinconf_set)(void __iomem *base, u32 offset,
+			   s32 param, s32 config, struct tcc_pinctrl *pctl);
+	s32 (*to_irq)(void __iomem *base, u32 offset, struct tcc_pinctrl *pctl);
 };
 
 struct tcc_pinconf {
 	const char *prop;
-	int param;
+	s32 param;
 };
 
 struct tcc_pinctrl_ext_irq {
@@ -256,18 +246,18 @@ struct extintr_match_ {
 	u32 used;
 	void __iomem *port_base;
 	u32 port_num;
-	int irq;
+	s32 irq;
 };
 
 struct tcc_pinctrl_soc_data {
 	struct tcc_pinconf *pin_configs;
-	int nconfigs;
+	s32 nconfigs;
 
 	struct tcc_pinctrl_ops *ops;
 	struct tcc_pinctrl_ext_irq *irq;
 };
 
-int tcc_pinctrl_probe(struct platform_device *pdev,
+s32 tcc_pinctrl_probe(struct platform_device *pdev,
 		      struct tcc_pinctrl_soc_data *soc_data,
 			  void __iomem *base, void __iomem *pmgpio_base);
 
