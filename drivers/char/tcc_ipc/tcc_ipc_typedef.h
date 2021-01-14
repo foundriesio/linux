@@ -52,6 +52,14 @@
 #define Hw0			(0x00000001U)
 #define HwZERO		(0x00000000U)
 
+/* Extension feautre Bit*/
+#define USE_NACK	(0x00000001U)
+
+
+/* NACK Reason Bit */
+#define NACK_BUF_FULL	(Hw0)
+#define NACK_BUF_ERR	(Hw1)
+
 
 typedef	char IPC_CHAR;
 typedef	unsigned char IPC_UCHAR;
@@ -94,6 +102,8 @@ typedef	long IPC_LONG;
 #define IPC_ERR_ARGUMENT			(-8)
 #define IPC_ERR_RECEIVER_NOT_SET	(-9)
 #define IPC_ERR_RECEIVER_DOWN		(-10)
+#define IPC_ERR_RECEIVER_BUF_FULL	(-11)
+
 
 typedef enum {
 	CTL_CMD = 0x0000U,
@@ -108,6 +118,7 @@ typedef enum {
 	IPC_SEND_PING,
 	IPC_WRITE,
 	IPC_ACK,
+	IPC_NACK,
 	MAC_CMD_ID
 } IpcCmdID;
 
@@ -140,6 +151,7 @@ struct ipc_wait_queue {
 	wait_queue_head_t _cmdQueue;
 	IPC_UINT32 _seqID;
 	IPC_UINT32 _condition;
+	IPC_UINT32 _result;
 };
 
 struct ipc_read_queue {
@@ -190,6 +202,8 @@ struct IpcHandler {
 	IPC_UINT32 openSeqID;
 	IPC_UINT64 requestConnectTime;
 	IPC_UCHAR *tempWbuf;
+
+	IPC_UINT32 sendNACK;
 
 	spinlock_t spinLock; /* commont spinlock */
 	struct mutex rMutex; /* read mutex*/

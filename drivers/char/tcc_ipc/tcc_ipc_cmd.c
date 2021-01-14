@@ -41,6 +41,7 @@ IPC_INT32 ipc_send_open(struct ipc_device *ipc_dev)
 	sendMsg.cmd[0] = get_sequential_ID(ipc_dev);
 	sendMsg.cmd[1] = ((IPC_UINT32)CTL_CMD << (IPC_UINT32)16)
 		|((IPC_UINT32)IPC_OPEN);
+	sendMsg.cmd[2] = (uint32_t)USE_NACK;
 
 	ipc_dev->ipc_handler.openSeqID = sendMsg.cmd[0];
 	ipc_dev->ipc_handler.requestConnectTime = get_jiffies_64();
@@ -82,7 +83,7 @@ IPC_INT32 ipc_send_write(struct ipc_device *ipc_dev,
 
 		(void)memcpy((void *)&sendMsg.data,
 			(const void *)ipc_data,
-			(IPC_ULONG)size);
+			(size_t)size);
 
 		sendMsg.data_len = ((size + 3U)/4U);
 		ipc_cmd_wake_preset(ipc_dev, WRITE_CMD, sendMsg.cmd[0]);
@@ -94,7 +95,7 @@ IPC_INT32 ipc_send_write(struct ipc_device *ipc_dev,
 								sendMsg.cmd[0],
 								ACK_TIMEOUT);
 			if (ret != IPC_SUCCESS)	{
-				wprintk(ipc_dev->dev, "cmd ack timeout\n");
+				wprintk(ipc_dev->dev, "write fail %d\n",ret);
 			}
 		}
 	} else {
@@ -138,7 +139,7 @@ IPC_INT32 ipc_send_ping(struct ipc_device *ipc_dev)
 IPC_INT32 ipc_send_ack(struct ipc_device *ipc_dev,
 							IPC_UINT32 seqID,
 							IpcCmdType cmdType,
-							IPC_UINT32 sourcCmd)
+							IPC_UINT32 sourceCmd)
 {
 	IPC_INT32 ret = IPC_ERR_COMMON;
 	struct tcc_mbox_data sendMsg;
@@ -148,9 +149,55 @@ IPC_INT32 ipc_send_ack(struct ipc_device *ipc_dev,
 	sendMsg.cmd[0] = seqID;
 	sendMsg.cmd[1] = ((IPC_UINT32)cmdType << (IPC_UINT32)16U)
 		|((IPC_UINT32)IPC_ACK);
-	sendMsg.cmd[2] = sourcCmd;
+	sendMsg.cmd[2] = sourceCmd;
 
 	ret = ipc_mailbox_send(ipc_dev, &sendMsg);
 
 	return ret;
 }
+
+IPC_INT32 ipc_send_open_ack(struct ipc_device *ipc_dev,
+							IPC_UINT32 seqID,
+							IpcCmdType cmdType,
+							IPC_UINT32 sourceCmd,
+							IPC_UINT32 feature)
+{
+	IPC_INT32 ret = IPC_ERR_COMMON;
+	struct tcc_mbox_data sendMsg;
+
+	(void)memset(&sendMsg, 0x00, sizeof(struct tcc_mbox_data));
+
+	sendMsg.cmd[0] = seqID;
+	sendMsg.cmd[1] = ((IPC_UINT32)cmdType << (IPC_UINT32)16U)
+		|((IPC_UINT32)IPC_ACK);
+	sendMsg.cmd[2] = sourceCmd;
+	sendMsg.cmd[3] = feature;
+
+	ret = ipc_mailbox_send(ipc_dev, &sendMsg);
+
+	return ret;
+}
+
+IPC_INT32 ipc_send_nack(struct ipc_device *ipc_dev,
+							IPC_UINT32 seqID,
+							IpcCmdType cmdType,
+							IPC_UINT32 sourceCmd,
+							IPC_UINT32 reason)
+{
+	IPC_INT32 ret = IPC_ERR_COMMON;
+	struct tcc_mbox_data sendMsg;
+
+	(void)memset(&sendMsg, 0x00, sizeof(struct tcc_mbox_data));
+
+	sendMsg.cmd[0] = seqID;
+	sendMsg.cmd[1] = ((IPC_UINT32)cmdType << (IPC_UINT32)16U)
+		|((IPC_UINT32)IPC_NACK);
+	sendMsg.cmd[2] = sourceCmd;
+	sendMsg.cmd[3] = reason;
+
+	ret = ipc_mailbox_send(ipc_dev, &sendMsg);
+
+	return ret;
+}
+
+

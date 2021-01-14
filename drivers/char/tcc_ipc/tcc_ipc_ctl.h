@@ -22,7 +22,8 @@ IPC_INT32 ipc_initialize(struct ipc_device *ipc_dev);
 void ipc_release(struct ipc_device *ipc_dev);
 IPC_INT32 ipc_write(struct ipc_device *ipc_dev,
 						IPC_UCHAR *buff,
-						IPC_UINT32 size);
+						IPC_UINT32 size,
+						IPC_INT32 *err_code);
 IPC_INT32 ipc_read(struct ipc_device *ipc_dev,
 					IPC_CHAR __user *buff,
 					IPC_UINT32 size,

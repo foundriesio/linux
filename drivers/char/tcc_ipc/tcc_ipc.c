@@ -152,6 +152,7 @@ static ssize_t tcc_ipc_write(struct file *filp,
 	const IPC_CHAR __user *buf,	size_t count, loff_t *f_pos)
 {
 	ssize_t  ret = -EINVAL;
+	IPC_INT32 err_code = 0;
 
 	(void)f_pos;
 
@@ -167,7 +168,6 @@ static ssize_t tcc_ipc_write(struct file *filp,
 
 			d2printk((ipc_dev), ipc_dev->dev,
 				"In, data size(%d)\n", (IPC_INT32)count);
-
 
 			if ((tempWbuf != NULL) &&
 				(count > (IPC_UINT32)0))  {
@@ -185,9 +185,16 @@ static ssize_t tcc_ipc_write(struct file *filp,
 					ret = (ssize_t)ipc_write(
 							ipc_dev,
 							(IPC_UCHAR *)tempWbuf,
-							(IPC_UINT32)size);
-					if (ret < 0) {
-						ret = 0;
+							(IPC_UINT32)size,
+							&err_code);
+					if (ret <= 0) {
+						if ((err_code == (IPC_INT32)IPC_ERR_RECEIVER_BUF_FULL) ||
+							(err_code == (IPC_INT32)IPC_ERR_BUFFER))
+						{
+							ret = -ENOSPC;
+						} else {
+							ret = -ETIME;
+						}
 					}
 				} else {
 					ret = -ENOMEM;
@@ -557,7 +564,6 @@ static IPC_INT32 tcc_ipc_probe(struct platform_device *pdev)
 
 			result = alloc_chrdev_region(&ipc_dev->devnum,
 				IPC_DEV_MINOR, 1, ipc_dev->name);
-
 		}
 
 		if (result != 0) {

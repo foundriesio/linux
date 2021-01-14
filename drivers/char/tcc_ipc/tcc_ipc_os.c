@@ -121,11 +121,23 @@ IPC_INT32 ipc_cmd_wait_event_timeout(
 			/* timeout */
 			ret = IPC_ERR_TIMEOUT;
 		} else {
-			ret = IPC_SUCCESS;
+
+			if(waitQueue->_result == (IPC_UINT32)0)
+			{
+				ret = IPC_SUCCESS;
+			} else if (waitQueue->_result == NACK_BUF_FULL){
+				ret = IPC_ERR_RECEIVER_BUF_FULL;
+			} else if (waitQueue->_result == NACK_BUF_ERR){
+				ret = IPC_ERR_BUFFER;
+			} else {
+				ret = IPC_ERR_COMMON;
+			}
 		}
+
 		/* clear flag */
 		ipc_handle->ipcWaitQueue[cmdType]._condition = 0;
 		ipc_handle->ipcWaitQueue[cmdType]._seqID = 0xFFFFFFFFU;
+		ipc_handle->ipcWaitQueue[cmdType]._result = 0;
 	}
 	return ret;
 }
@@ -139,20 +151,25 @@ void ipc_cmd_wake_preset(struct ipc_device *ipc_dev,
 
 		ipc_handle->ipcWaitQueue[cmdType]._condition = 1;
 		ipc_handle->ipcWaitQueue[cmdType]._seqID = seqID;
+		ipc_handle->ipcWaitQueue[cmdType]._result = 0;
 	}
 }
 
 void ipc_cmd_wake_up(struct ipc_device *ipc_dev,
 						IpcCmdType cmdType,
-						IPC_UINT32 seqID)
+						IPC_UINT32 seqID,
+						IPC_UINT32 result)
 {
 	if (ipc_dev != NULL) {
 		struct IpcHandler *ipc_handle = &ipc_dev->ipc_handler;
 
 		if (ipc_handle->ipcWaitQueue[cmdType]._seqID == seqID) {
+
 			ipc_handle->ipcWaitQueue[cmdType]._condition = 0;
+			ipc_handle->ipcWaitQueue[cmdType]._result = result;
+
 			wake_up_interruptible(
-			&ipc_handle->ipcWaitQueue[cmdType]._cmdQueue);
+				&ipc_handle->ipcWaitQueue[cmdType]._cmdQueue);
 		}
 	}
 }
