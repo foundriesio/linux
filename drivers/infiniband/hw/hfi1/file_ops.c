@@ -202,6 +202,7 @@ static int hfi1_file_open(struct inode *inode, struct file *fp)
 
 	if (fd) {
 		fd->rec_cpu_num = -1; /* no cpu affinity by default */
+		fd->dd = dd;
 		kobject_get(&fd->dd->kobj);
 		fp->private_data = fd;
 	} else {
