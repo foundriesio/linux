@@ -501,27 +501,29 @@ static int32_t switch_probe(struct platform_device *pdev)
 		goto goto_destroy_device;
 	}
 
-	// pinctrl
-	pinctrl = pinctrl_get_select(&pdev->dev, "default");
-	if (IS_ERR(pinctrl)) {
-		// print out the error
-		logd("\"pinctrl\" node is not found.\n");
-	} else {
-		// otherwise, do pin-control
-		pinctrl_put(pinctrl);
-	}
-
+	/* parse device tree */
 	vdev->switch_gpio	= -1;
 	vdev->switch_active	= -1;
-	if (of_parse_phandle(pdev->dev.of_node, "switch-gpios", 0) != NULL) {
-		vdev->switch_gpio = of_get_named_gpio(pdev->dev.of_node,
-			"switch-gpios", 0);
-		of_property_read_u32_index(pdev->dev.of_node, "switch-active",
-			0, &vdev->switch_active);
-		logd("switch-gpios: %d, switch-active: %d\n", vdev->switch_gpio,
-			vdev->switch_active);
+
+	/* pinctrl */
+	pinctrl = pinctrl_get_select(&pdev->dev, "default");
+	if (IS_ERR(pinctrl)) {
+		/* print out the error */
+		logd("\"pinctrl\" node is not found.\n");
 	} else {
-		logd("\"switch-gpios\" node is not found.\n");
+		/* otherwise, do pin-control */
+		pinctrl_put(pinctrl);
+
+		if (of_parse_phandle(pdev->dev.of_node, "switch-gpios", 0) != NULL) {
+			vdev->switch_gpio = of_get_named_gpio(pdev->dev.of_node,
+				"switch-gpios", 0);
+			of_property_read_u32_index(pdev->dev.of_node, "switch-active",
+				0, &vdev->switch_active);
+			logd("switch-gpios: %d, switch-active: %d\n", vdev->switch_gpio,
+				vdev->switch_active);
+		} else {
+			logd("\"switch-gpios\" node is not found.\n");
+		}
 	}
 
 	// Create the type sysfs
