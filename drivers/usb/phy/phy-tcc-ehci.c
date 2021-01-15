@@ -15,23 +15,18 @@
 #include <dt-bindings/gpio/gpio.h>
 #include "../host/tcc-hcd.h"
 
-#define ON      1
-#define OFF     0
-
 #ifndef BITSET
-#define BITSET(X, MASK)                 ((X) |= (unsigned int)(MASK))
-#define BITCLR(X, MASK)                 ((X) &= ~((unsigned int)(MASK)))
-#define BITXOR(X, MASK)                 ((X) ^= (unsigned int)(MASK))
-#define BITCSET(X, CMASK, SMASK)        ((X) = ((((unsigned int)(X)) &  \
-					~((unsigned int)(CMASK))) |     \
-					((unsigned int)(SMASK))))
-#define BITSCLR(X, SMASK, CMASK)        ((X) = ((((unsigned int)(X)) |  \
-					((unsigned int)(SMASK))) &      \
-					~((unsigned int)(CMASK))))
-#define ISZERO(X, MASK)                 (!(((unsigned int)(X)) &        \
-					((unsigned int)(MASK))))
-#define ISSET(X, MASK)                  ((unsigned long)(X) &           \
-					((unsigned long)(MASK)))
+#define BITSET(X, MASK)                 ((X) |= (uint32_t)(MASK))
+#define BITCLR(X, MASK)                 ((X) &= ~((uint32_t)(MASK)))
+#define BITXOR(X, MASK)                 ((X) ^= (uint32_t)(MASK))
+#define BITCSET(X, CMASK, SMASK)        ((X) = ((((uint32_t)(X)) &	\
+				               ~((uint32_t)(CMASK))) |	\
+			                       ((uint32_t)(SMASK))))
+#define BITSCLR(X, SMASK, CMASK)        ((X) = ((((uint32_t)(X)) |	\
+				               ((uint32_t)(SMASK))) &	\
+			                       ~((uint32_t)(CMASK))))
+#define ISZERO(X, MASK)                 (!(((uint32_t)(X)) & ((uint32_t)(MASK))))
+#define ISSET(X, MASK)                  ((ulong)(X) & ((ulong)(MASK)))
 #endif
 
 struct tcc_ehci_device {
@@ -40,9 +35,9 @@ struct tcc_ehci_device {
 	struct usb_phy phy;
 	struct clk *hclk;
 	struct clk *isol;
-	int mux_port;
-	int vbus_gpio_num;
-	unsigned long vbus_gpio_flag;
+	int32_t mux_port;
+	int32_t vbus_gpio_num;
+	ulong vbus_gpio_flag;
 #if defined(CONFIG_TCC_BC_12)
 	int irq;
 #endif
@@ -65,18 +60,22 @@ static void __iomem *tcc_ehci_get_base(struct usb_phy *phy)
 	struct tcc_ehci_device *phy_dev =
 		container_of(phy, struct tcc_ehci_device, phy);
 
+	if (phy_dev == NULL) {
+		return (void __iomem *)0;
+	}
+
 	return phy_dev->base;
 }
 
 /*
  * TOP Isolateion Control function
  */
-static int tcc_ehci_phy_isolation(struct usb_phy *phy, int on_off)
+static int32_t tcc_ehci_phy_isolation(struct usb_phy *phy, int32_t on_off)
 {
 	struct tcc_ehci_device *phy_dev =
 		container_of(phy, struct tcc_ehci_device, phy);
 
-	if (phy_dev->isol == NULL) {
+	if ((phy_dev == NULL) || (phy_dev->isol == NULL)) {
 		return -1;
 	}
 
@@ -96,12 +95,18 @@ static int tcc_ehci_phy_isolation(struct usb_phy *phy, int on_off)
 /*
  * Set vbus function
  */
-static int tcc_ehci_vbus_set(struct usb_phy *phy, int on_off)
+static int32_t tcc_ehci_vbus_set(struct usb_phy *phy, int32_t on_off)
 {
 	struct tcc_ehci_device *phy_dev =
 		container_of(phy, struct tcc_ehci_device, phy);
-	struct device *dev = phy_dev->dev;
-	int retval = 0;
+	struct device *dev;
+	int32_t retval = 0;
+
+	if (phy_dev == NULL) {
+		return -ENODEV;
+	}
+
+	dev = phy_dev->dev;
 
 	/*
 	 * Check that the "vbus-ctrl-able" property for the USB PHY driver node
@@ -120,7 +125,7 @@ static int tcc_ehci_vbus_set(struct usb_phy *phy, int on_off)
 	}
 
 	/* Request a single VBus GPIO with initial configuration. */
-	retval = gpio_request_one((unsigned int)phy_dev->vbus_gpio_num,
+	retval = gpio_request_one((uint32_t)phy_dev->vbus_gpio_num,
 			phy_dev->vbus_gpio_flag, "vbus_gpio_phy");
 
 	if (retval != 0) {
@@ -134,7 +139,7 @@ static int tcc_ehci_vbus_set(struct usb_phy *phy, int on_off)
 	 * structure to output.
 	 */
 	retval = gpiod_direction_output(
-			gpio_to_desc((unsigned int)phy_dev->vbus_gpio_num),
+			gpio_to_desc((uint32_t)phy_dev->vbus_gpio_num),
 			on_off);
 
 	if (retval != 0) {
@@ -143,15 +148,15 @@ static int tcc_ehci_vbus_set(struct usb_phy *phy, int on_off)
 		return retval;
 	}
 
-	gpio_free((unsigned int)phy_dev->vbus_gpio_num);
+	gpio_free((uint32_t)phy_dev->vbus_gpio_num);
 
 	return retval;
 }
 
 #if defined(CONFIG_DYNAMIC_DC_LEVEL_ADJUSTMENT)
-#define PCFG1_TXVRT_MASK	0xF
-#define PCFG1_TXVRT_SHIFT	0x0
-#define get_txvrt(x)		((x & PCFG1_TXVRT_MASK) >> PCFG1_TXVRT_SHIFT)
+#define PCFG1_TXVRT_MASK	(0xF)
+#define PCFG1_TXVRT_SHIFT	(0x0)
+#define get_txvrt(x)		(((x) & PCFG1_TXVRT_MASK) >> PCFG1_TXVRT_SHIFT)
 
 static int tcc_ehci_get_dc_level(struct usb_phy *phy)
 {
@@ -166,7 +171,7 @@ static int tcc_ehci_get_dc_level(struct usb_phy *phy)
 	return get_txvrt(pcfg1_val);
 }
 
-static int tcc_ehci_set_dc_level(struct usb_phy *phy, unsigned int level)
+static int tcc_ehci_set_dc_level(struct usb_phy *phy, uint32_t level)
 {
 	struct tcc_ehci_device *ehci_phy_dev =
 		container_of(phy, struct tcc_ehci_device, phy);
@@ -230,30 +235,35 @@ static irqreturn_t chg_irq(int irq, void *data)
 #endif
 
 /* Host Controller in OTG MUX S/W Reset */
-#define TCC_MUX_H_SWRST		(1 << 4)
+#define TCC_MUX_H_SWRST         (uint32_t)(1U << 4U)
 /* Host Controller in OTG MUX Clock Enable */
-#define TCC_MUX_H_CLKMSK	(1 << 3)
+#define TCC_MUX_H_CLKMSK        (uint32_t)(1U << 3U)
 /* OTG Controller in OTG MUX S/W Reset */
-#define TCC_MUX_O_SWRST		(1 << 2)
+#define TCC_MUX_O_SWRST         (uint32_t)(1U << 2U)
 /* OTG Controller in OTG MUX Clock Enable */
-#define TCC_MUX_O_CLKMSK	(1 << 1)
+#define TCC_MUX_O_CLKMSK        (uint32_t)(1U << 1U)
 /* OTG MUX Controller Select */
-#define TCC_MUX_OPSEL		(1 << 0)
+#define TCC_MUX_OPSEL           (uint32_t)(1U << 0U)
 
 #define TCC_MUX_O_SELECT	(TCC_MUX_O_SWRST | TCC_MUX_O_CLKMSK)
 #define TCC_MUX_H_SELECT	(TCC_MUX_H_SWRST | TCC_MUX_H_CLKMSK)
 
-#define MUX_MODE_HOST		0
-#define MUX_MODE_DEVICE		1
+#define MUX_MODE_HOST           (0)
+#define MUX_MODE_DEVICE         (1)
 
-static int tcc_ehci_phy_init(struct usb_phy *phy)
+static int32_t tcc_ehci_phy_init(struct usb_phy *phy)
 {
 	struct tcc_ehci_device *ehci_phy_dev =
 		container_of(phy, struct tcc_ehci_device, phy);
-	struct ehci_phy_reg *ehci_pcfg =
-		(struct ehci_phy_reg *)ehci_phy_dev->base;
+	struct ehci_phy_reg *ehci_pcfg;
 	uint32_t mux_cfg_val;
-	int i;
+	int32_t i;
+
+	if (ehci_phy_dev == NULL) {
+		return -ENODEV;
+	}
+
+	ehci_pcfg = (struct ehci_phy_reg *)ehci_phy_dev->base;
 
 	if (ehci_phy_dev->mux_port != 0) {
 		/* get otg control cfg register */
@@ -305,7 +315,7 @@ static int tcc_ehci_phy_init(struct usb_phy *phy)
 	// Set the POR
 	writel(readl(&ehci_pcfg->pcfg0) | Hw31, &ehci_pcfg->pcfg0);
 	// Set the Core Reset
-	writel(readl(&ehci_pcfg->lcfg0) & 0xCFFFFFFF, &ehci_pcfg->lcfg0);
+	writel(readl(&ehci_pcfg->lcfg0) & 0xCFFFFFFFU, &ehci_pcfg->lcfg0);
 
 #if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X)
 	// Clear SIDDQ
@@ -325,7 +335,8 @@ static int tcc_ehci_phy_init(struct usb_phy *phy)
 	writel(readl(&ehci_pcfg->pcfg0) & ~Hw31, &ehci_pcfg->pcfg0);
 #if !(defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X))
 	// Clear SIDDQ, moved it before Release POR for stability
-	writel(readl(&ehci_pcfg->pcfg0) & ~(1<<24), &ehci_pcfg->pcfg0);
+	writel(readl(&ehci_pcfg->pcfg0) & (uint32_t)(~(1U<<24U)),
+			&ehci_pcfg->pcfg0);
 #endif
 	// Set Phyvalid en
 	writel(readl(&ehci_pcfg->pcfg4) | Hw30, &ehci_pcfg->pcfg4);
@@ -352,7 +363,7 @@ static int tcc_ehci_phy_init(struct usb_phy *phy)
 		i++;
 		udelay(5);
 	}
-	dev_info(ehci_phy_dev->dev, "[INFO][USB] EHCI PHY valid check %s\x1b[0m\n",
+	dev_info(ehci_phy_dev->dev, "[INFO][USB] EHCI PHY valid check %s\n",
 			(i >= 9999) ? "fail!" : "pass.");
 
 	// Release Core Reset
@@ -390,12 +401,17 @@ static int tcc_ehci_phy_init(struct usb_phy *phy)
 #define USB20_PCFG0_PHY_POR     (Hw31)
 #define USB20_PCFG0_PHY_SIDDQ   (Hw24)
 
-static int tcc_ehci_phy_state_set(struct usb_phy *phy, int on_off)
+static int32_t tcc_ehci_phy_state_set(struct usb_phy *phy, int32_t on_off)
 {
 	struct tcc_ehci_device *ehci_phy_dev =
 		container_of(phy, struct tcc_ehci_device, phy);
-	struct ehci_phy_reg *ehci_pcfg =
-		(struct ehci_phy_reg *)ehci_phy_dev->base;
+	struct ehci_phy_reg *ehci_pcfg = NULL;
+
+	if (ehci_phy_dev == NULL) {
+		return -ENODEV;
+	}
+
+	ehci_pcfg = (struct ehci_phy_reg *)ehci_phy_dev->base;
 
 	if (on_off == ON) {
 		BITCLR(ehci_pcfg->pcfg0,
@@ -414,11 +430,15 @@ static int tcc_ehci_phy_state_set(struct usb_phy *phy, int on_off)
 	return 0;
 }
 
-static void tcc_ehci_phy_mux_sel(struct usb_phy *phy, int is_mux)
+static void tcc_ehci_phy_mux_sel(struct usb_phy *phy, int32_t is_mux)
 {
 	struct tcc_ehci_device *ehci_phy_dev =
 		container_of(phy, struct tcc_ehci_device, phy);
 	uint32_t mux_cfg_val;
+
+	if (ehci_phy_dev == NULL) {
+		return;
+	}
 
 	if (ehci_phy_dev->mux_port != 0) {
 		mux_cfg_val = readl(phy->otg->mux_cfg_addr);
@@ -434,12 +454,12 @@ static void tcc_ehci_phy_mux_sel(struct usb_phy *phy, int is_mux)
 	}
 }
 
-static int tcc_ehci_phy_set_vbus_resource(struct usb_phy *phy)
+static int32_t tcc_ehci_phy_set_vbus_resource(struct usb_phy *phy)
 {
 	struct tcc_ehci_device *phy_dev =
 		container_of(phy, struct tcc_ehci_device, phy);
 	struct device *dev = phy_dev->dev;
-	unsigned int gpio_flag;
+	uint32_t gpio_flag;
 
 	/*
 	 * Check that the "vbus-ctrl-able" property for the USB PHY driver node
@@ -480,7 +500,7 @@ static int tcc_ehci_phy_set_vbus_resource(struct usb_phy *phy)
 			 * gpio_request_one() used in the set_vbus() is a legacy
 			 * GPIO function using the value defined in linux/gpio.h
 			 */
-			if (gpio_flag == (unsigned int)GPIO_ACTIVE_LOW) {
+			if (gpio_flag == (uint32_t)GPIO_ACTIVE_LOW) {
 				phy_dev->vbus_gpio_flag = GPIOF_ACTIVE_LOW;
 			}
 
@@ -501,19 +521,24 @@ static int tcc_ehci_phy_set_vbus_resource(struct usb_phy *phy)
 	return 0;
 }
 
-static int tcc_ehci_create_phy(struct device *dev,
+static int32_t tcc_ehci_create_phy(struct device *dev,
 		struct tcc_ehci_device *phy_dev)
 {
-	int retval = 0;
+	int32_t retval = 0;
+
+	if ((dev == NULL) || (phy_dev == NULL)) {
+		return -ENODEV;
+	}
 
 	phy_dev->phy.otg =
 		devm_kzalloc(dev, sizeof(*phy_dev->phy.otg), GFP_KERNEL);
+
 	if (phy_dev->phy.otg == NULL) {
 		return -ENOMEM;
 	}
 
 	phy_dev->mux_port =
-		of_find_property(dev->of_node, "mux_port", 0) ? 1 : 0;
+		(of_find_property(dev->of_node, "mux_port", NULL) != NULL) ? 1 : 0;
 
 	// HCLK
 	phy_dev->hclk = of_clk_get(dev->of_node, 0);
@@ -555,13 +580,13 @@ static int tcc_ehci_create_phy(struct device *dev,
 	return retval;
 }
 
-static int tcc_ehci_phy_probe(struct platform_device *pdev)
+static int32_t tcc_ehci_phy_probe(struct platform_device *pdev)
 {
 	struct device *dev = &pdev->dev;
 	struct tcc_ehci_device *phy_dev;
-	int retval;
+	int32_t retval;
 #if defined(CONFIG_TCC_BC_12)
-	int irq, ret = 0;
+	int32_t irq, ret = 0;
 #endif
 	dev_info(dev, "[INFO][USB] %s:%s\n", pdev->dev.kobj.name, __func__);
 	phy_dev = devm_kzalloc(dev, sizeof(*phy_dev), GFP_KERNEL);
@@ -591,7 +616,7 @@ static int tcc_ehci_phy_probe(struct platform_device *pdev)
 
 	phy_dev->base = (void __iomem *)ioremap_nocache(
 			(resource_size_t)pdev->resource[0].start,
-			pdev->resource[0].end - pdev->resource[0].start + 1);
+			pdev->resource[0].end - pdev->resource[0].start + 1U);
 
 	phy_dev->phy.base = phy_dev->base;
 #if defined(CONFIG_TCC_BC_12)
@@ -614,7 +639,7 @@ static int tcc_ehci_phy_probe(struct platform_device *pdev)
 	return retval;
 }
 
-static int tcc_ehci_phy_remove(struct platform_device *pdev)
+static int32_t tcc_ehci_phy_remove(struct platform_device *pdev)
 {
 	struct tcc_ehci_device *phy_dev = platform_get_drvdata(pdev);
 
@@ -641,9 +666,9 @@ static struct platform_driver tcc_ehci_phy_driver = {
 	},
 };
 
-static int __init tcc_ehci_phy_drv_init(void)
+static int32_t __init tcc_ehci_phy_drv_init(void)
 {
-	int retval = 0;
+	int32_t retval = 0;
 
 	retval = platform_driver_register(&tcc_ehci_phy_driver);
 	if (retval < 0) {

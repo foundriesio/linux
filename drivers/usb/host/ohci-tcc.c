@@ -43,86 +43,90 @@
 #include "ohci.h"
 #include "tcc-hcd.h"
 
-#define DRIVER_DESC "USB 2.0 'Enhanced' Host Controller (OHCI-TCC) Driver"
+#define DRIVER_DESC ("USB 2.0 'Enhanced' Host Controller (OHCI-TCC) Driver")
 
-#define tcc_ohci_readl(r)       readl(r)
-#define tcc_ohci_writel(v, r)   writel(v, r)
+#define tcc_ohci_readl(r)       (readl((r)))
+#define tcc_ohci_writel(v, r)   (writel((v), (r)))
 
 /* TCC897x USB PHY */
-#define TCC_OHCI_PHY_BCFG       0x00
-#define TCC_OHCI_PHY_PCFG0      0x04
-#define TCC_OHCI_PHY_PCFG1      0x08
-#define TCC_OHCI_PHY_PCFG2      0x0C
-#define TCC_OHCI_PHY_PCFG3      0x10
-#define TCC_OHCI_PHY_PCFG4      0x14
-#define TCC_OHCI_PHY_STS        0x18
-#define TCC_OHCI_PHY_LCFG0      0x1C
-#define TCC_OHCI_HSIO_CFG       0x40
+#define TCC_OHCI_PHY_BCFG       (0x00)
+#define TCC_OHCI_PHY_PCFG0      (0x04)
+#define TCC_OHCI_PHY_PCFG1      (0x08)
+#define TCC_OHCI_PHY_PCFG2      (0x0C)
+#define TCC_OHCI_PHY_PCFG3      (0x10)
+#define TCC_OHCI_PHY_PCFG4      (0x14)
+#define TCC_OHCI_PHY_STS        (0x18)
+#define TCC_OHCI_PHY_LCFG0      (0x1C)
+#define TCC_OHCI_HSIO_CFG       (0x40)
 
 static struct hc_driver __read_mostly ohci_tcc_hc_driver;
 
 struct tcc_ohci_hcd {
 	struct device *dev;
 	struct usb_hcd *hcd;
-	int hosten_ctrl_able;
-	int host_en_gpio;
+	int32_t hosten_ctrl_able;
+	int32_t host_en_gpio;
 
-	int vbus_ctrl_able;
-	int vbus_gpio;
+	int32_t vbus_ctrl_able;
+	int32_t vbus_gpio;
 
-	int vbus_source_ctrl;
+	int32_t vbus_source_ctrl;
 	struct regulator *vbus_source;
 
 	struct clk *hclk;
 
-	unsigned int core_clk_rate;
+	uint32_t core_clk_rate;
 
 	/* USB PHY */
 	void __iomem *phy_regs;         /* device memory/io */
 	resource_size_t phy_rsrc_start; /* memory/io resource start */
 	resource_size_t phy_rsrc_len;   /* memory/io resource length */
 
-	unsigned int hcd_tpl_support;   /* TPL support */
+	uint32_t hcd_tpl_support;   /* TPL support */
 };
 
-static int tcc_ohci_parse_dt(struct platform_device *pdev,
+static int32_t tcc_ohci_parse_dt(struct platform_device *pdev,
 		struct tcc_ohci_hcd *tcc_ohci);
 
 /* TPL Support Attribute */
-static ssize_t ohci_tpl_support_show(struct device *_dev,
+static ssize_t ohci_tpl_support_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
-	struct tcc_ohci_hcd *tcc_ohci =	dev_get_drvdata(_dev);
+	struct tcc_ohci_hcd *tcc_ohci =	dev_get_drvdata(dev);
 	struct usb_hcd *hcd = tcc_ohci->hcd;
 
 	return sprintf(buf, "tpl support : %s\n",
-			hcd->tpl_support ? "on" : "off");
+			((uint32_t)(hcd->tpl_support) != 0U) ? "on" : "off");
 }
 
-static ssize_t ohci_tpl_support_store(struct device *_dev,
+static ssize_t ohci_tpl_support_store(struct device *dev,
 		struct device_attribute *attr, const char *buf, size_t count)
 {
-	struct tcc_ohci_hcd *tcc_ohci =	dev_get_drvdata(_dev);
+	struct tcc_ohci_hcd *tcc_ohci =	dev_get_drvdata(dev);
 	struct usb_hcd *hcd = tcc_ohci->hcd;
 
-	if (!strncmp(buf, "on", 2)) {
+	if (strncmp(buf, "on", 2) == 0) {
 		tcc_ohci->hcd_tpl_support = ON;
 	}
 
-	if (!strncmp(buf, "off", 3)) {
+	if (strncmp(buf, "off", 3) == 0) {
 		tcc_ohci->hcd_tpl_support = OFF;
 	}
 
 	hcd->tpl_support = tcc_ohci->hcd_tpl_support;
 
-	return count;
+	return (ssize_t)count;
 }
 
 DEVICE_ATTR(ohci_tpl_support, 0644,
 		ohci_tpl_support_show, ohci_tpl_support_store);
 
-int tcc_ohci_clk_ctrl(struct tcc_ohci_hcd *tcc_ohci, int on_off)
+int32_t tcc_ohci_clk_ctrl(struct tcc_ohci_hcd *tcc_ohci, int32_t on_off)
 {
+	if (tcc_ohci == NULL) {
+		return -ENODEV;
+	}
+
 	if (on_off == ON) {
 		if (clk_prepare_enable(tcc_ohci->hclk) != 0) {
 			dev_err(tcc_ohci->dev, "[ERROR][USB] can't do usb 2.0 hclk clock enable\n");
@@ -130,43 +134,57 @@ int tcc_ohci_clk_ctrl(struct tcc_ohci_hcd *tcc_ohci, int on_off)
 			return -1;
 		}
 	} else {
-		if (tcc_ohci->hclk) {
+		if (tcc_ohci->hclk != NULL) {
 			clk_disable_unprepare(tcc_ohci->hclk);
+		} else {
+			/* Nothing to do */
 		}
 	}
 
 	return 0;
 }
+EXPORT_SYMBOL_GPL(tcc_ohci_clk_ctrl);
 
-int tcc_ohci_vbus_ctrl(struct tcc_ohci_hcd *tcc_ohci, int on_off)
+int32_t tcc_ohci_vbus_ctrl(struct tcc_ohci_hcd *tcc_ohci, int32_t on_off)
 {
-	int err = 0;
+	int32_t err = 0;
+
+	if (tcc_ohci == NULL) {
+		return -ENODEV;
+	}
 
 	if (tcc_ohci->vbus_source_ctrl == 1) {
 		if (on_off == ON) {
-			if (tcc_ohci->vbus_source) {
+			if (tcc_ohci->vbus_source != NULL) {
 				err = regulator_enable(tcc_ohci->vbus_source);
 
-				if (err) {
+				if (err != 0) {
 					dev_err(tcc_ohci->dev, "[ERROR][USB] can't enable vbus source\n");
 
 					return err;
 				}
 			}
 		} else if (on_off == OFF) {
-			if (tcc_ohci->vbus_source) {
+			if (tcc_ohci->vbus_source != NULL) {
 				regulator_disable(tcc_ohci->vbus_source);
 			}
+		} else {
+			/* Nothing to do */
 		}
 	}
 
 	return err;
 }
+EXPORT_SYMBOL_GPL(tcc_ohci_vbus_ctrl);
 
-static void tcc_ohci_phy_ctrl(struct tcc_ohci_hcd *tcc_ohci, int on_off)
+static void tcc_ohci_phy_ctrl(struct tcc_ohci_hcd *tcc_ohci, int32_t on_off)
 {
+	if (tcc_ohci == NULL) {
+		return;
+	}
+
 	if (on_off == ON) {
-		if (!ehci_phy_set) {
+		if (ehci_phy_set == 0) {
 			pr_info("[INFO][USB] ehci load first!\n");
 		}
 
@@ -177,15 +195,21 @@ static void tcc_ohci_phy_ctrl(struct tcc_ohci_hcd *tcc_ohci, int on_off)
 		tcc_ohci_writel(tcc_ohci_readl(tcc_ohci->phy_regs +
 					TCC_OHCI_PHY_PCFG1) | Hw28,
 				tcc_ohci->phy_regs + TCC_OHCI_PHY_PCFG1);
+	} else {
+		/* Nothing to do */
 	}
 }
 
-static int tcc_ohci_select_pmm(unsigned long reg_base, int mode,
-		int num_port, int *port_mode)
+static int32_t tcc_ohci_select_pmm(ulong reg_base, int32_t mode,
+		int32_t num_port, int32_t *port_mode)
 {
 	volatile struct TCC_OHCI *ohci_reg =
 		(volatile struct TCC_OHCI *)reg_base;
-	int p;
+	int32_t p;
+
+	if (ohci_reg == NULL) {
+		return -ENXIO;
+	}
 
 	switch (mode) {
 	case TCC_OHCI_PPM_NPS:
@@ -210,7 +234,7 @@ static int tcc_ohci_select_pmm(unsigned long reg_base, int mode,
 		 * clear power commands
 		 */
 		ohci_reg->HcRhDescriptorA &= ~RH_A_NPS;
-		ohci_reg->HcRhDescriptorA |=  TCC_OHCI_UHCRHDA_PSM_PERPORT;
+		ohci_reg->HcRhDescriptorA |= (ulong)TCC_OHCI_UHCRHDA_PSM_PERPORT;
 
 		/*
 		 * set the power management mode for each individual port to Per
@@ -230,7 +254,7 @@ static int tcc_ohci_select_pmm(unsigned long reg_base, int mode,
 		 * clear power commands
 		 */
 		ohci_reg->HcRhDescriptorA &= ~RH_A_NPS;
-		ohci_reg->HcRhDescriptorA |=  TCC_OHCI_UHCRHDA_PSM_PERPORT;
+		ohci_reg->HcRhDescriptorA |= (ulong)TCC_OHCI_UHCRHDA_PSM_PERPORT;
 
 		/*
 		 * set the power management mode for each individual port to Per
@@ -240,7 +264,7 @@ static int tcc_ohci_select_pmm(unsigned long reg_base, int mode,
 		 */
 		for (p = 0; p < num_port; p++) {
 			// port 1 begins at bit 17
-			if (port_mode[p]) {
+			if (port_mode[p] != 0) {
 				ohci_reg->HcRhDescriptorB |=
 					(unsigned int)(1u << (p + 17));
 			} else {
@@ -253,6 +277,7 @@ static int tcc_ohci_select_pmm(unsigned long reg_base, int mode,
 		pr_err("[ERROR][USB] Invalid mode %d, set to non-power switch mode.\n",
 				mode);
 		ohci_reg->HcRhDescriptorA |= RH_A_NPS;
+		break;
 	}
 
 	return 0;
@@ -267,18 +292,18 @@ static int tcc_ohci_select_pmm(unsigned long reg_base, int mode,
  * through the hotplug entry's driver_data.
  *
  */
-static int usb_hcd_tcc_probe(const struct hc_driver *driver,
+static int32_t usb_hcd_tcc_probe(const struct hc_driver *driver,
 		struct platform_device *pdev)
 {
-	int retval = 0;
+	int32_t retval = 0;
 	struct usb_hcd *hcd = usb_create_hcd(driver, &pdev->dev, "tcc");
 	struct tcc_ohci_hcd *tcc_ohci;
 	struct resource *res;
 	struct resource *res1;
-	int irq;
+	int32_t irq;
 
 	retval = dma_coerce_mask_and_coherent(&pdev->dev, DMA_BIT_MASK(32));
-	if (retval) {
+	if (retval != 0) {
 		return retval;
 	}
 
@@ -304,12 +329,11 @@ static int usb_hcd_tcc_probe(const struct hc_driver *driver,
 		goto err0;
 	} else {
 		if (retval != 0) {
-			if (retval != -1) {
-				dev_err(&pdev->dev, "[ERROR][USB] Device table parsing failed.\n");
-			}
-
+			dev_err(&pdev->dev, "[ERROR][USB] Device table parsing failed.\n");
 			retval = -EIO;
 			goto err0;
+		} else {
+			/* Nothing to do */
 		}
 	}
 
@@ -337,7 +361,7 @@ static int usb_hcd_tcc_probe(const struct hc_driver *driver,
 	}
 
 	hcd->rsrc_start = res->start;
-	hcd->rsrc_len = res->end - res->start + 1;
+	hcd->rsrc_len = res->end - res->start + 1U;
 	hcd->regs = devm_ioremap(&pdev->dev, res->start, hcd->rsrc_len);
 
 	/* USB PHY (UTMI) Base Address*/
@@ -354,7 +378,7 @@ static int usb_hcd_tcc_probe(const struct hc_driver *driver,
 	tcc_ohci->hcd = hcd;
 
 	tcc_ohci->phy_rsrc_start = res1->start;
-	tcc_ohci->phy_rsrc_len = res1->end - res1->start + 1;
+	tcc_ohci->phy_rsrc_len = res1->end - res1->start + 1U;
 	tcc_ohci->phy_regs = devm_ioremap(&pdev->dev, res1->start,
 			tcc_ohci->phy_rsrc_len);
 
@@ -377,8 +401,8 @@ static int usb_hcd_tcc_probe(const struct hc_driver *driver,
 	tcc_ohci_phy_ctrl(tcc_ohci, ON);
 
 	/* Select Power Management Mode */
-	tcc_ohci_select_pmm((unsigned long)hcd->regs, TCC_OHCI_PPM_PERPORT,
-			0, 0);
+	tcc_ohci_select_pmm((ulong)hcd->regs, TCC_OHCI_PPM_PERPORT,
+			0, NULL);
 
 	ohci_hcd_init(hcd_to_ohci(hcd));
 
@@ -389,7 +413,7 @@ static int usb_hcd_tcc_probe(const struct hc_driver *driver,
 		goto err2;
 	}
 
-	retval = usb_add_hcd(hcd, irq, IRQF_SHARED);
+	retval = usb_add_hcd(hcd, (uint32_t)irq, IRQF_SHARED);
 	if (retval == 0) {
 		return retval;
 	}
@@ -418,6 +442,10 @@ err0:
 static void usb_hcd_tcc_remove(struct usb_hcd *hcd,
 		struct platform_device *pdev)
 {
+	if (hcd == NULL) {
+		return;
+	}
+
 	usb_remove_hcd(hcd);
 
 	device_remove_file(&pdev->dev, &dev_attr_ohci_tpl_support);
@@ -446,7 +474,7 @@ static void tcc_ohci_PHY_cfg(struct device *dev)
 				TCC_OHCI_PHY_PCFG0) | Hw31,
 			tcc_ohci->phy_regs + TCC_OHCI_PHY_PCFG0);
 	tcc_ohci_writel(tcc_ohci_readl(tcc_ohci->phy_regs +
-				TCC_OHCI_PHY_LCFG0) & 0xCFFFFFFF,
+				TCC_OHCI_PHY_LCFG0) & 0xCFFFFFFFU,
 			tcc_ohci->phy_regs + TCC_OHCI_PHY_LCFG0);
 
 	udelay(10);
@@ -462,23 +490,23 @@ static void tcc_ohci_PHY_cfg(struct device *dev)
 				TCC_OHCI_PHY_PCFG4) | Hw30,
 			tcc_ohci->phy_regs + TCC_OHCI_PHY_PCFG4);
 	tcc_ohci_writel(tcc_ohci_readl(tcc_ohci->phy_regs +
-				TCC_OHCI_PHY_PCFG4) | 0x1400,
+				TCC_OHCI_PHY_PCFG4) | 0x1400U,
 			tcc_ohci->phy_regs + TCC_OHCI_PHY_PCFG4);
 
 	tcc_ohci_writel(tcc_ohci_readl(tcc_ohci->phy_regs +
-				TCC_OHCI_PHY_LCFG0) | 0x30000000,
+				TCC_OHCI_PHY_LCFG0) | 0x30000000U,
 			tcc_ohci->phy_regs + TCC_OHCI_PHY_LCFG0);
 }
 #endif
 
-static int tcc_ohci_suspend(struct device *dev)
+static int32_t tcc_ohci_suspend(struct device *dev)
 {
 	struct tcc_ohci_hcd *tcc_ohci = dev_get_drvdata(dev);
 	struct usb_hcd *hcd = tcc_ohci->hcd;
 	bool do_wakeup = device_may_wakeup(dev);
-	int ret = ohci_suspend(hcd, do_wakeup);
+	int32_t ret = ohci_suspend(hcd, do_wakeup);
 
-	if (ret) {
+	if (ret != 0) {
 		return ret;
 	}
 
@@ -493,7 +521,7 @@ static int tcc_ohci_suspend(struct device *dev)
 	return 0;
 }
 
-static int tcc_ohci_resume(struct device *dev)
+static int32_t tcc_ohci_resume(struct device *dev)
 {
 	struct tcc_ohci_hcd *tcc_ohci = dev_get_drvdata(dev);
 	struct usb_hcd *hcd = tcc_ohci->hcd;
@@ -512,6 +540,10 @@ static int tcc_ohci_resume(struct device *dev)
 	tcc_ohci_PHY_cfg(dev);
 #endif
 #endif
+	if (ohci == NULL) {
+		return -ENODEV;
+	}
+
 	ohci->flags &= ~TCC_OHCI_QUIRK_SUSPEND;
 
 	if (time_before(jiffies, ohci->next_statechange)) {
@@ -524,20 +556,20 @@ static int tcc_ohci_resume(struct device *dev)
 	return 0;
 }
 #else
-#define tcc_ohci_suspend        NULL
-#define tcc_ohci_resume         NULL
+#define tcc_ohci_suspend        (NULL)
+#define tcc_ohci_resume         (NULL)
 #endif
 
-static int ohci_hcd_tcc_drv_probe(struct platform_device *pdev)
+static int32_t ohci_hcd_tcc_drv_probe(struct platform_device *pdev)
 {
-	if (usb_disabled()) {
+	if (usb_disabled() != 0) {
 		return -ENODEV;
 	}
 
 	return usb_hcd_tcc_probe(&ohci_tcc_hc_driver, pdev);
 }
 
-static int ohci_hcd_tcc_drv_remove(struct platform_device *pdev)
+static int32_t ohci_hcd_tcc_drv_remove(struct platform_device *pdev)
 {
 	struct tcc_ohci_hcd *tcc_ohci = platform_get_drvdata(pdev);
 	struct usb_hcd *hcd = tcc_ohci->hcd;
@@ -555,22 +587,24 @@ static const struct of_device_id tcc_ohci_match[] = {
 };
 
 #if defined(CONFIG_OF)
-static int tcc_ohci_parse_dt(struct platform_device *pdev,
+static int32_t tcc_ohci_parse_dt(struct platform_device *pdev,
 		struct tcc_ohci_hcd *tcc_ohci)
 {
-	int err = 0;
+	int32_t err = 0;
 
 	// Check VBUS Source enable
-	if (of_find_property(pdev->dev.of_node, "vbus-source-ctrl", 0)) {
+	if (of_find_property(pdev->dev.of_node, "vbus-source-ctrl", NULL) != NULL) {
 		tcc_ohci->vbus_source_ctrl = 1;
 		tcc_ohci->vbus_source = regulator_get(&pdev->dev, "vdd_ohci");
 
 		if (IS_ERR(tcc_ohci->vbus_source)) {
 			dev_err(&pdev->dev, "[ERROR][USB] failed to get ohci vdd_source\n");
 			tcc_ohci->vbus_source = NULL;
+			err = 1;
 		}
 	} else {
 		tcc_ohci->vbus_source_ctrl = 0;
+		err = 1;
 	}
 
 	tcc_ohci->hclk = of_clk_get(pdev->dev.of_node, 0);
@@ -588,7 +622,7 @@ static int tcc_ohci_parse_dt(struct platform_device *pdev,
 	return err;
 }
 #else
-static int tcc_ohci_parse_dt(struct platform_device *pdev,
+static int32_t tcc_ohci_parse_dt(struct platform_device *pdev,
 		struct tcc_ohci_hcd *tcc_ohci)
 {
 	return 0;
@@ -616,9 +650,9 @@ static struct platform_driver ohci_hcd_tcc_driver = {
 MODULE_DESCRIPTION(DRIVER_DESC);
 MODULE_LICENSE("GPL");
 
-static int __init tcc_ohci_hcd_init(void)
+static int32_t __init tcc_ohci_hcd_init(void)
 {
-	int retval = 0;
+	int32_t retval = 0;
 
 	ohci_init_driver(&ohci_tcc_hc_driver, NULL);
 	set_bit(USB_EHCI_LOADED, &usb_hcds_loaded);

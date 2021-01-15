@@ -34,62 +34,62 @@
 #include "ehci.h"
 #include "tcc-hcd.h"
 
-#define DRIVER_DESC "USB 2.0 'Enhanced' Host Controller (EHCI-TCC) Driver"
+#define DRIVER_DESC ("USB 2.0 'Enhanced' Host Controller (EHCI-TCC) Driver")
 
-#define tcc_ehci_readl(r)		readl(r)
-#define tcc_ehci_writel(v, r)		writel(v, r)
+#define tcc_ehci_readl(r)	(readl((r)))
+#define tcc_ehci_writel(v, r)	(writel((v), (r)))
 
 /* TCC897x USB PHY */
-#define TCC_EHCI_PHY_BCFG			0x00
-#define TCC_EHCI_PHY_PCFG0			0x04
-#define TCC_EHCI_PHY_PCFG1			0x08
-#define TCC_EHCI_PHY_PCFG2			0x0C
-#define TCC_EHCI_PHY_PCFG3			0x10
-#define TCC_EHCI_PHY_PCFG4			0x14
-#define TCC_EHCI_PHY_STS			0x18
-#define TCC_EHCI_PHY_LCFG0			0x1C
-#define TCC_EHCI_PHY_LCFG1			0x20
-#define TCC_EHCI_HSIO_CFG			0x40
+#define TCC_EHCI_PHY_BCFG	(0x00)
+#define TCC_EHCI_PHY_PCFG0	(0x04)
+#define TCC_EHCI_PHY_PCFG1	(0x08)
+#define TCC_EHCI_PHY_PCFG2	(0x0C)
+#define TCC_EHCI_PHY_PCFG3	(0x10)
+#define TCC_EHCI_PHY_PCFG4	(0x14)
+#define TCC_EHCI_PHY_STS	(0x18)
+#define TCC_EHCI_PHY_LCFG0	(0x1C)
+#define TCC_EHCI_PHY_LCFG1	(0x20)
+#define TCC_EHCI_HSIO_CFG	(0x40)
 
 static const char hcd_name[] = "tcc-ehci";
 
 struct tcc_ehci_hcd {
 	struct ehci_hcd *ehci;
 	struct device *dev;
-	int hosten_ctrl_able;
-	int host_en_gpio;
+	int32_t hosten_ctrl_able;
+	int32_t host_en_gpio;
 
-	int vbus_ctrl_able;
-	int vbus_gpio;
+	int32_t vbus_ctrl_able;
+	int32_t vbus_gpio;
 
-	unsigned int vbus_status;
+	uint32_t vbus_status;
 
-	unsigned int TXVRT;
-	unsigned int TXRISET;
-	unsigned int TXAT;
+	uint32_t TXVRT;
+	uint32_t TXRISET;
+	uint32_t TXAT;
 
-	int vbus_source_ctrl;
+	int32_t vbus_source_ctrl;
 	struct regulator *vbus_source;
 
 	struct clk *hclk;
 	struct clk *pclk;
 	struct clk *phy_clk;
-	unsigned int core_clk_rate;
-	unsigned int core_clk_rate_phy;
+	uint32_t core_clk_rate;
+	uint32_t core_clk_rate_phy;
 	struct clk *isol;
 
 	struct tcc_usb_phy *phy;
 	struct usb_phy *transceiver;
-	int host_resumed;
-	int port_resuming;
+	int32_t host_resumed;
+	int32_t port_resuming;
 
 	/* USB PHY */
 	void __iomem *phy_regs; /* device memory/io */
 
-	unsigned int hcd_tpl_support; /* TPL support */
+	uint32_t hcd_tpl_support; /* TPL support */
 };
 
-static int tcc_ehci_parse_dt(struct platform_device *pdev,
+static int32_t tcc_ehci_parse_dt(struct platform_device *pdev,
 		struct tcc_ehci_hcd *tcc_ehci);
 static void tcc_ehci_phy_init(struct tcc_ehci_hcd *tcc_ehci);
 
@@ -112,7 +112,7 @@ struct pcfg1_unit {
 	char str[256];
 };
 
-struct pcfg1_unit USB20_PCFG1[] = {
+struct pcfg1_unit USB20_PCFG1[7] = {
 	/* name, offset, mask */
 	{"TXVRT  ",  0, (0xF<<0)},
 	{"CDT    ",  4, (0x7<<4)},
@@ -122,13 +122,20 @@ struct pcfg1_unit USB20_PCFG1[] = {
 	{"TXREST ", 12, (0x3<<12)},
 	{"TXHSXVT", 14, (0x3<<14)},
 };
+EXPORT_SYMBOL_GPL(USB20_PCFG1);
 
-int ehci_phy_set = -1;
+int32_t ehci_phy_set = -1;
 EXPORT_SYMBOL_GPL(ehci_phy_set);
 
-static void tcc_ehci_phy_ctrl(struct tcc_ehci_hcd *tcc_ehci, int on_off)
+static void tcc_ehci_phy_ctrl(struct tcc_ehci_hcd *tcc_ehci, int32_t on_off)
 {
-	struct usb_phy *phy = tcc_ehci->transceiver;
+	struct usb_phy *phy;
+
+	if (tcc_ehci == NULL) {
+		return;
+	}
+
+	phy = tcc_ehci->transceiver;
 
 	if (!phy || !phy->set_phy_state) {
 		pr_info("[INFO][USB] [%s:%d]Phy driver is needed\n",
@@ -139,10 +146,14 @@ static void tcc_ehci_phy_ctrl(struct tcc_ehci_hcd *tcc_ehci, int on_off)
 	}
 }
 
-int tcc_ehci_clk_ctrl(struct tcc_ehci_hcd *tcc_ehci, int on_off)
+int32_t tcc_ehci_clk_ctrl(struct tcc_ehci_hcd *tcc_ehci, int32_t on_off)
 {
+	if (tcc_ehci == NULL) {
+		return -ENODEV;
+	}
+
 	if (on_off == ON) {
-		if (tcc_ehci->hclk) {
+		if (tcc_ehci->hclk != NULL) {
 			if (clk_prepare_enable(tcc_ehci->hclk) != 0) {
 				dev_err(tcc_ehci->dev,
 						"[ERROR][USB] can't do usb 2.0 hclk clock enable\n");
@@ -150,7 +161,7 @@ int tcc_ehci_clk_ctrl(struct tcc_ehci_hcd *tcc_ehci, int on_off)
 			}
 		}
 
-		if (tcc_ehci->pclk) {
+		if (tcc_ehci->pclk != NULL) {
 			if (clk_prepare_enable(tcc_ehci->pclk) != 0) {
 				dev_err(tcc_ehci->dev,
 						"[ERROR][USB] can't do usb 2.0 hclk clock enable\n");
@@ -160,12 +171,16 @@ int tcc_ehci_clk_ctrl(struct tcc_ehci_hcd *tcc_ehci, int on_off)
 			clk_set_rate(tcc_ehci->pclk, tcc_ehci->core_clk_rate);
 		}
 	} else {
-		if (tcc_ehci->hclk && __clk_is_enabled(tcc_ehci->hclk)) {
-			clk_disable_unprepare(tcc_ehci->hclk);
+		if (tcc_ehci->hclk) {
+			if (__clk_is_enabled(tcc_ehci->hclk)) {
+				clk_disable_unprepare(tcc_ehci->hclk);
+			}
 		}
 
-		if (tcc_ehci->pclk && __clk_is_enabled(tcc_ehci->pclk)) {
-			clk_disable_unprepare(tcc_ehci->pclk);
+		if (tcc_ehci->pclk) {
+			if (__clk_is_enabled(tcc_ehci->pclk)) {
+				clk_disable_unprepare(tcc_ehci->pclk);
+			}
 		}
 	}
 
@@ -174,10 +189,11 @@ int tcc_ehci_clk_ctrl(struct tcc_ehci_hcd *tcc_ehci, int on_off)
 
 static char *ehci_pcfg1_display(uint32_t old_reg, uint32_t new_reg, char *str)
 {
-	uint32_t new_val, old_val;
-	int i;
+	ulong new_val;
+	ulong old_val;
+	int32_t i;
 
-	for (i = 0; i < PCFG1_MAX; i++) {
+	for (i = 0; i < (int32_t)PCFG1_MAX; i++) {
 		old_val = (ISSET(old_reg, USB20_PCFG1[i].mask)) >>
 			(USB20_PCFG1[i].offset);
 		new_val = (ISSET(new_reg, USB20_PCFG1[i].mask)) >>
@@ -185,15 +201,15 @@ static char *ehci_pcfg1_display(uint32_t old_reg, uint32_t new_reg, char *str)
 
 		if (old_val != new_val) {
 			sprintf(USB20_PCFG1[i].str,
-					"%s = 0x%X -> \x1b[1;33m0x%X\x1b[1;0m*\n",
+					"%s = 0x%lX -> 0x%lX\n",
 					USB20_PCFG1[i].reg_name,
 					old_val, new_val);
 		} else {
-			sprintf(USB20_PCFG1[i].str, "%s = 0x%X\n",
+			sprintf(USB20_PCFG1[i].str, "%s = 0x%lX\n",
 					USB20_PCFG1[i].reg_name, old_val);
 		}
 
-		strcat(str, USB20_PCFG1[i].str);
+		strncat(str, USB20_PCFG1[i].str, 256 - strlen(str) - 1);
 	}
 
 	return str;
@@ -202,11 +218,11 @@ static char *ehci_pcfg1_display(uint32_t old_reg, uint32_t new_reg, char *str)
 /*
  * Show the current value of the USB20H PHY Configuration 1 Register(U20H_PCFG1)
  */
-static ssize_t ehci_pcfg1_show(struct device *_dev,
+static ssize_t ehci_pcfg1_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
 	char str[256] = {0};
-	struct tcc_ehci_hcd *tcc_ehci = dev_get_drvdata(_dev);
+	struct tcc_ehci_hcd *tcc_ehci = dev_get_drvdata(dev);
 	uint32_t reg = tcc_ehci_readl(tcc_ehci->phy_regs+TCC_EHCI_PHY_PCFG1);
 
 	return sprintf(buf, "USB20H_PCFG1 = 0x%08X\n%s", reg,
@@ -216,28 +232,33 @@ static ssize_t ehci_pcfg1_show(struct device *_dev,
 /*
  * HS DC Voltage Level is set
  */
-static ssize_t ehci_pcfg1_store(struct device *_dev,
+static ssize_t ehci_pcfg1_store(struct device *dev,
 		struct device_attribute *attr, const char *buf, size_t count)
 {
-	struct tcc_ehci_hcd *tcc_ehci = dev_get_drvdata(_dev);
+	struct tcc_ehci_hcd *tcc_ehci = dev_get_drvdata(dev);
 	uint32_t old_reg = readl(tcc_ehci->phy_regs + TCC_EHCI_PHY_PCFG1);
-	uint32_t new_reg = kstrtoul(buf, 16, NULL);
+	uint32_t new_reg = (uint32_t)kstrtoul(buf, 16, NULL);
 	char str[256] = {0};
-	int i;
+	int32_t i;
 
-	if (((count - 1) < 10) || (10 < (count - 1))) {
-		pr_info("[INFO][USB]\nThis argument length is \x1b[1;33mnot 10\x1b[0m\n\n");
-		pr_info("\tUsage : echo \x1b[1;31m0xXXXXXXXX\x1b[0m > ehci_pcfg1\n\n");
-		pr_info("\t\t1) length of \x1b[1;32m0xXXXXXXXX\x1b[0m is 10\n");
-		pr_info("\t\t2) \x1b[1;32mX\x1b[0m is hex number(\x1b[1;31m0\x1b[0m to \x1b[1;31mf\x1b[0m)\n\n");
-		return count;
+	if (((count - 1U) < 10U) || (10U < (count - 1U))) {
+		pr_info("[INFO][USB]\nThis argument length is not 10\n\n");
+		pr_info("\tUsage : echo 0xXXXXXXXX > ehci_pcfg1\n\n");
+		pr_info("\t\t1) length of 0xXXXXXXXX is 10\n");
+		pr_info("\t\t2) X is hex number(0 to f)\n\n");
+		return (ssize_t)count;
 	}
+
+	if (buf == NULL) {
+		return -ENXIO;
+	}
+
 	if ((buf[0] != '0') || (buf[1] != 'x')) {
-		pr_info("[INFO][USB]\n\techo \x1b[1;32m%c%c\x1b[1;0mXXXXXXXX is \x1b[1;33mnot Ox\x1b[0m\n\n",
+		pr_info("[INFO][USB]\n\techo %c%cXXXXXXXX is not Ox\n\n",
 				buf[0], buf[1]);
-		pr_info("\tUsage : echo \x1b[1;32m0x\x1b[1;31mXXXXXXXX\x1b[0m > ehci_pcfg1\n\n");
-		pr_info("\t\t1) \x1b[1;32m0\x1b[0m is binary number\x1b[0m)\n\n");
-		return count;
+		pr_info("\tUsage : echo 0xXXXXXXXX > ehci_pcfg1\n\n");
+		pr_info("\t\t1) 0 is binary number)\n\n");
+		return (ssize_t)count;
 	}
 
 	for (i = 2; i < 10; i++) {
@@ -246,13 +267,13 @@ static ssize_t ehci_pcfg1_store(struct device *_dev,
 				((buf[i] >= 'A') && (buf[i] <= 'F'))) {
 			continue;
 		} else {
-			pr_info("[INFO][USB]\necho 0x%c%c%c%c%c%c%c%c is \x1b[1;33mnot hex\x1b[0m\n\n",
+			pr_info("[INFO][USB]\necho 0x%c%c%c%c%c%c%c%c is not hex\n\n",
 					buf[2], buf[3], buf[4], buf[5],
 					buf[6], buf[7], buf[8], buf[9]);
-			pr_info("\tUsage : echo \x1b[1;31m0xXXXXXXXX\x1b[0m > ehci_pcfg1\n\n");
-			pr_info("\t\t2) \x1b[1;32mX\x1b[0m is hex number(\x1b[1;31m0\x1b[0m to \x1b[1;31mf\x1b[0m)\n\n");
+			pr_info("\tUsage : echo 0xXXXXXXXX > ehci_pcfg1\n\n");
+			pr_info("\t\t2) X is hex number(0 to f)\n\n");
 
-			return count;
+			return (ssize_t)count;
 		}
 	}
 
@@ -261,27 +282,33 @@ static ssize_t ehci_pcfg1_store(struct device *_dev,
 	new_reg = tcc_ehci_readl(tcc_ehci->phy_regs + TCC_EHCI_PHY_PCFG1);
 
 	ehci_pcfg1_display(old_reg, new_reg, str);
-	pr_info("[INFO][USB]\n%sUSB20H_PCFG1 = \x1b[1;33m0x%08X\x1b[1;0m\n",
+	pr_info("[INFO][USB]\n%sUSB20H_PCFG1 = 0x%08X\n",
 			str, new_reg);
 
-	return count;
+	return (ssize_t)count;
 }
 
 DEVICE_ATTR(ehci_pcfg1, 0644, ehci_pcfg1_show, ehci_pcfg1_store);
 
 #if defined(CONFIG_VBUS_CTRL_DEF_ENABLE)
-static unsigned int vbus_control_enable = 1;
+static uint32_t vbus_control_enable = 1;
 #else
-static unsigned int vbus_control_enable;
+static uint32_t vbus_control_enable;
 #endif
 module_param(vbus_control_enable, uint, 0644);
 MODULE_PARM_DESC(vbus_control_enable, "ehci vbus control enable");
 
-int tcc_ehci_vbus_ctrl(struct tcc_ehci_hcd *tcc_ehci, int on_off)
+int32_t tcc_ehci_vbus_ctrl(struct tcc_ehci_hcd *tcc_ehci, int32_t on_off)
 {
-	struct usb_phy *phy = tcc_ehci->transceiver;
+	struct usb_phy *phy;
 
-	if (!vbus_control_enable) {
+	if (tcc_ehci == NULL) {
+		return -ENODEV;
+	}
+
+	phy = tcc_ehci->transceiver;
+
+	if (vbus_control_enable == 0U) {
 		pr_info("[INFO][USB] ehci vbus ctrl disable.\n");
 		return -1;
 	}
@@ -292,7 +319,7 @@ int tcc_ehci_vbus_ctrl(struct tcc_ehci_hcd *tcc_ehci, int on_off)
 		return -1;
 	}
 
-	tcc_ehci->vbus_status = on_off;
+	tcc_ehci->vbus_status = (uint32_t)on_off;
 
 	return phy->set_vbus(phy, on_off);
 }
@@ -303,7 +330,7 @@ static ssize_t ehci_tcc_vbus_show(struct device *dev,
 	struct tcc_ehci_hcd *tcc_ehci = dev_get_drvdata(dev);
 
 	return sprintf(buf, "ehci vbus - %s\n",
-			(tcc_ehci->vbus_status) ? "on" : "off");
+			((tcc_ehci->vbus_status) != 0U) ? "on" : "off");
 }
 
 static ssize_t ehci_tcc_vbus_store(struct device *dev,
@@ -311,15 +338,15 @@ static ssize_t ehci_tcc_vbus_store(struct device *dev,
 {
 	struct tcc_ehci_hcd *tcc_ehci = dev_get_drvdata(dev);
 
-	if (!strncmp(buf, "on", 2)) {
+	if (strncmp(buf, "on", 2) == 0) {
 		tcc_ehci_vbus_ctrl(tcc_ehci, ON);
 	}
 
-	if (!strncmp(buf, "off", 3)) {
+	if (strncmp(buf, "off", 3) == 0) {
 		tcc_ehci_vbus_ctrl(tcc_ehci, OFF);
 	}
 
-	return count;
+	return (ssize_t)count;
 }
 
 static DEVICE_ATTR(vbus, 0644, ehci_tcc_vbus_show, ehci_tcc_vbus_store);
@@ -337,33 +364,41 @@ static struct attribute_group usb_sq_attr_group = {
 };
 
 /* TPL Support Attribute */
-static ssize_t ehci_tpl_support_show(struct device *_dev,
+static ssize_t ehci_tpl_support_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
-	struct tcc_ehci_hcd *tcc_ehci =	dev_get_drvdata(_dev);
+	struct tcc_ehci_hcd *tcc_ehci =	dev_get_drvdata(dev);
 	struct usb_hcd *hcd = ehci_to_hcd(tcc_ehci->ehci);
+
+	if (hcd == NULL) {
+		return -ENODEV;
+	}
 
 	return sprintf(buf, "tpl support : %s\n",
-			hcd->tpl_support ? "on" : "off");
+			(hcd->tpl_support != 0U) ? "on" : "off");
 }
 
-static ssize_t ehci_tpl_support_store(struct device *_dev,
+static ssize_t ehci_tpl_support_store(struct device *dev,
 		struct device_attribute *attr, const char *buf, size_t count)
 {
-	struct tcc_ehci_hcd *tcc_ehci =	dev_get_drvdata(_dev);
+	struct tcc_ehci_hcd *tcc_ehci =	dev_get_drvdata(dev);
 	struct usb_hcd *hcd = ehci_to_hcd(tcc_ehci->ehci);
 
-	if (!strncmp(buf, "on", 2)) {
+	if (hcd == NULL) {
+		return -ENODEV;
+	}
+
+	if (strncmp(buf, "on", 2) == 0) {
 		tcc_ehci->hcd_tpl_support = ON;
 	}
 
-	if (!strncmp(buf, "off", 3)) {
+	if (strncmp(buf, "off", 3) == 0) {
 		tcc_ehci->hcd_tpl_support = OFF;
 	}
 
 	hcd->tpl_support = tcc_ehci->hcd_tpl_support;
 
-	return count;
+	return (ssize_t)count;
 }
 
 DEVICE_ATTR(ehci_tpl_support, 0644,
@@ -376,7 +411,11 @@ static void tcc_ehci_phy_init(struct tcc_ehci_hcd *tcc_ehci)
 {
 	struct usb_phy *phy = tcc_ehci->transceiver;
 
-	if (!phy && !phy->init) {
+	if (phy == NULL) {
+		return;
+	}
+
+	if (!phy->init && !phy) {
 		pr_info("[INFO][USB] [%s:%d]Phy driver is needed\n",
 				__func__, __LINE__);
 	} else {
@@ -384,16 +423,20 @@ static void tcc_ehci_phy_init(struct tcc_ehci_hcd *tcc_ehci)
 	}
 }
 
-int tcc_ehci_power_ctrl(struct tcc_ehci_hcd *tcc_ehci, int on_off)
+int32_t tcc_ehci_power_ctrl(struct tcc_ehci_hcd *tcc_ehci, int32_t on_off)
 {
-	int err = 0;
+	int32_t err = 0;
+
+	if (tcc_ehci == NULL) {
+		return -ENODEV;
+	}
 
 	if (tcc_ehci->vbus_source_ctrl == 1) {
 		if (on_off == ON) {
-			if (tcc_ehci->vbus_source) {
+			if (tcc_ehci->vbus_source != NULL) {
 				err = regulator_enable(tcc_ehci->vbus_source);
 
-				if (err) {
+				if (err != 0) {
 					dev_err(tcc_ehci->dev, "[ERROR][USB] can't enable vbus source\n");
 					return err;
 				}
@@ -406,9 +449,9 @@ int tcc_ehci_power_ctrl(struct tcc_ehci_hcd *tcc_ehci, int on_off)
 		 * Don't control gpio_hs_host_en because this power also
 		 * supported in USB core.
 		 */
-		err = gpio_direction_output(tcc_ehci->host_en_gpio, 1);
+		err = (int32_t)gpio_direction_output(tcc_ehci->host_en_gpio, 1);
 
-		if (err) {
+		if (err != 0) {
 			dev_err(tcc_ehci->dev, "[ERROR][USB] can't enable host\n");
 			return err;
 		}
@@ -416,7 +459,7 @@ int tcc_ehci_power_ctrl(struct tcc_ehci_hcd *tcc_ehci, int on_off)
 
 	if (tcc_ehci->vbus_source_ctrl == 1) {
 		if (on_off == OFF) {
-			if (tcc_ehci->vbus_source) {
+			if (tcc_ehci->vbus_source != NULL) {
 				regulator_disable(tcc_ehci->vbus_source);
 			}
 		}
@@ -426,7 +469,7 @@ int tcc_ehci_power_ctrl(struct tcc_ehci_hcd *tcc_ehci, int on_off)
 }
 
 #ifdef CONFIG_PM
-static int tcc_ehci_suspend(struct device *dev)
+static int32_t tcc_ehci_suspend(struct device *dev)
 {
 	struct tcc_ehci_hcd *tcc_ehci =	dev_get_drvdata(dev);
 	struct usb_hcd *hcd = ehci_to_hcd(tcc_ehci->ehci);
@@ -457,7 +500,7 @@ static int tcc_ehci_suspend(struct device *dev)
 	return 0;
 }
 
-static int tcc_ehci_resume(struct device *dev)
+static int32_t tcc_ehci_resume(struct device *dev)
 {
 	struct tcc_ehci_hcd *tcc_ehci =	dev_get_drvdata(dev);
 	struct usb_hcd *hcd = ehci_to_hcd(tcc_ehci->ehci);
@@ -497,7 +540,7 @@ static int tcc_ehci_resume(struct device *dev)
 static SIMPLE_DEV_PM_OPS(ehci_tcc_pmops, tcc_ehci_suspend, tcc_ehci_resume);
 #define EHCI_TCC_PMOPS (&ehci_tcc_pmops)
 #else
-#define EHCI_TCC_PMOPS NULL
+#define EHCI_TCC_PMOPS (NULL)
 #endif	/* CONFIG_PM */
 
 /*
@@ -506,20 +549,20 @@ static SIMPLE_DEV_PM_OPS(ehci_tcc_pmops, tcc_ehci_suspend, tcc_ehci_resume);
  */
 static struct hc_driver __read_mostly ehci_tcc_hc_driver;
 
-static int ehci_tcc_drv_probe(struct platform_device *pdev)
+static int32_t ehci_tcc_drv_probe(struct platform_device *pdev)
 {
 	struct usb_hcd *hcd;
 	struct tcc_ehci_hcd *tcc_ehci;
 	struct resource *res;
-	int irq;
-	int retval;
+	int32_t irq;
+	int32_t retval;
 
-	if (usb_disabled()) {
+	if (usb_disabled() != 0) {
 		return -ENODEV;
 	}
 
 	retval = dma_coerce_mask_and_coherent(&pdev->dev, DMA_BIT_MASK(32));
-	if (retval)
+	if (retval != 0)
 		return retval;
 
 	tcc_ehci = devm_kzalloc(&pdev->dev, sizeof(struct tcc_ehci_hcd),
@@ -586,7 +629,7 @@ static int ehci_tcc_drv_probe(struct platform_device *pdev)
 	}
 
 	hcd->rsrc_start = res->start;
-	hcd->rsrc_len = res->end - res->start + 1;
+	hcd->rsrc_len = res->end - res->start + 1U;
 	hcd->regs = devm_ioremap(&pdev->dev, res->start, hcd->rsrc_len);
 
 	tcc_ehci_clk_ctrl(tcc_ehci, ON);
@@ -621,8 +664,8 @@ static int ehci_tcc_drv_probe(struct platform_device *pdev)
 	/* TPL Support Set */
 	hcd->tpl_support = tcc_ehci->hcd_tpl_support;
 
-	retval = usb_add_hcd(hcd, irq, IRQF_SHARED);
-	if (retval) {
+	retval = (int32_t)usb_add_hcd(hcd, irq, IRQF_SHARED);
+	if (retval != 0) {
 		goto fail_add_hcd;
 	}
 
@@ -656,7 +699,7 @@ fail_create_hcd:
 	return retval;
 }
 
-static int __exit ehci_tcc_drv_remove(struct platform_device *pdev)
+static int32_t __exit ehci_tcc_drv_remove(struct platform_device *pdev)
 {
 	struct tcc_ehci_hcd *tcc_ehci = platform_get_drvdata(pdev);
 	struct usb_hcd *hcd = ehci_to_hcd(tcc_ehci->ehci);
@@ -674,10 +717,10 @@ static int __exit ehci_tcc_drv_remove(struct platform_device *pdev)
 	tcc_ehci_vbus_ctrl(tcc_ehci, OFF);
 	tcc_ehci_power_ctrl(tcc_ehci, OFF);
 
-	gpio_free(tcc_ehci->host_en_gpio);
-	gpio_free(tcc_ehci->vbus_gpio);
+	gpio_free((uint32_t)tcc_ehci->host_en_gpio);
+	gpio_free((uint32_t)tcc_ehci->vbus_gpio);
 
-	if (tcc_ehci->vbus_source) {
+	if (tcc_ehci->vbus_source != NULL) {
 		regulator_disable(tcc_ehci->vbus_source);
 		regulator_put(tcc_ehci->vbus_source);
 	}
@@ -692,13 +735,13 @@ static const struct of_device_id tcc_ehci_match[] = {
 };
 MODULE_DEVICE_TABLE(of, tcc_ehci_match);
 
-static int tcc_ehci_parse_dt(struct platform_device *pdev,
+static int32_t tcc_ehci_parse_dt(struct platform_device *pdev,
 		struct tcc_ehci_hcd *tcc_ehci)
 {
-	int err = 0;
+	int32_t err = 0;
 
 	// Check Host enable pin
-	if (of_find_property(pdev->dev.of_node, "hosten-ctrl-able", 0)) {
+	if (of_find_property(pdev->dev.of_node, "hosten-ctrl-able", NULL) != NULL) {
 		tcc_ehci->hosten_ctrl_able = 1;
 		tcc_ehci->host_en_gpio = of_get_named_gpio(pdev->dev.of_node,
 				"hosten-gpio", 0);
@@ -709,9 +752,9 @@ static int tcc_ehci_parse_dt(struct platform_device *pdev,
 			return -ENODEV;
 		}
 
-		err = gpio_request(tcc_ehci->host_en_gpio, "host_en_gpio");
+		err = gpio_request((uint32_t)tcc_ehci->host_en_gpio, "host_en_gpio");
 
-		if (err) {
+		if (err != 0) {
 			dev_err(&pdev->dev, "[ERROR][USB] can't requeest host_en gpio\n");
 
 			return err;
@@ -721,7 +764,7 @@ static int tcc_ehci_parse_dt(struct platform_device *pdev,
 	}
 
 	// Check vbus enable pin
-	if (of_find_property(pdev->dev.of_node, "telechips,ehci_phy", 0)) {
+	if (of_find_property(pdev->dev.of_node, "telechips,ehci_phy", NULL) != NULL) {
 		tcc_ehci->transceiver = devm_usb_get_phy_by_phandle(&pdev->dev,
 				"telechips,ehci_phy", 0);
 #if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X)
@@ -744,7 +787,7 @@ static int tcc_ehci_parse_dt(struct platform_device *pdev,
 	}
 
 	// Check VBUS Source enable
-	if (of_find_property(pdev->dev.of_node, "vbus-source-ctrl", 0)) {
+	if (of_find_property(pdev->dev.of_node, "vbus-source-ctrl", NULL) != NULL) {
 		tcc_ehci->vbus_source_ctrl = 1;
 		tcc_ehci->vbus_source = regulator_get(&pdev->dev, "vdd_v5p0");
 
@@ -795,7 +838,7 @@ static int tcc_ehci_parse_dt(struct platform_device *pdev,
 	return err;
 }
 #else
-static int tcc_ehci_parse_dt(struct platform_device *pdev,
+static int32_t tcc_ehci_parse_dt(struct platform_device *pdev,
 		struct tcc_ehci_hcd *tcc_ehci)
 {
 	return 0;
@@ -807,7 +850,11 @@ static void tcc_ehci_hcd_shutdown(struct platform_device *pdev)
 	struct tcc_ehci_hcd *tcc_ehci = platform_get_drvdata(pdev);
 	struct usb_hcd *hcd = ehci_to_hcd(tcc_ehci->ehci);
 
-	if (hcd->driver->shutdown) {
+	if (hcd == NULL) {
+		return;
+	}
+
+	if (hcd->driver->shutdown != NULL) {
 		hcd->driver->shutdown(hcd);
 	}
 }
@@ -829,9 +876,9 @@ static struct platform_driver ehci_tcc_driver = {
 MODULE_DESCRIPTION(DRIVER_DESC);
 MODULE_LICENSE("GPL");
 
-static int __init tcc_ehci_hcd_init(void)
+static int32_t __init tcc_ehci_hcd_init(void)
 {
-	int retval = 0;
+	int32_t retval = 0;
 
 	ehci_init_driver(&ehci_tcc_hc_driver, NULL);
 	set_bit(USB_EHCI_LOADED, &usb_hcds_loaded);
