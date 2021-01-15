@@ -3,7 +3,9 @@
 #define TCC_SHM_PORT_REQ (1<<0)
 #define TCC_SHM_PORT_DEL_REQ (1<<1)
 #define TCC_SHM_RESET_REQ (1<<2)
-#define TCC_SHM_RESET_PORT_REQ_DONE (1<<3)
+#define TCC_SHM_RESET_SYNC_REQ (1<<3)
+#define TCC_SHM_RESET_DONE (1<<4)
+#define TCC_SHM_ENABLED (1<< 31)
 
 #define TCC_SHM_A72_REQ_OFFSET 0x0
 #define TCC_SHM_A53_REQ_OFFSET 0x4
@@ -81,6 +83,7 @@ struct tcc_shm_data {
     int32_t port_req;
     int32_t port_del_req;
 	int32_t reset_req;
+	int32_t initial_reset_req;
     struct device *dev;
     void __iomem *base;
     uint32_t core_num;
