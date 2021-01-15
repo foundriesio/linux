@@ -613,12 +613,11 @@ static void felix_teardown(struct dsa_switch *ds)
 	struct ocelot *ocelot = ds->priv;
 	struct felix *felix = ocelot_to_felix(ocelot);
 
+	ocelot_deinit_timestamp(ocelot);
+	ocelot_deinit(ocelot);
+
 	if (felix->info->mdio_bus_free)
 		felix->info->mdio_bus_free(ocelot);
-
-	ocelot_deinit_timestamp(ocelot);
-	/* stop workqueue thread */
-	ocelot_deinit(ocelot);
 }
 
 static int felix_hwtstamp_get(struct dsa_switch *ds, int port,
