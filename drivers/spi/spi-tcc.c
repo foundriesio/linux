@@ -1631,7 +1631,7 @@ static struct tcc_spi_pl_data *tcc_spi_parse_dt(struct device *dev)
 	 * TCC GPSB CH 3-5 don't have dedicated dma
 	 * GPSB CH 3-5 should use gdma(dma-engine)
 	 */
-	if (pd->gpsb_channel > 2) {
+	if ((pd->gpsb_channel > 2) && (pd->gpsb_channel < 6)) {
 		pd->dma_enable = 1;
 		dev_dbg(dev, "[DEBUG][SPI] gpsb ch %d - use gdma\n",
 				pd->gpsb_channel);

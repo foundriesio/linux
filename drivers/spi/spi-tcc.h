@@ -260,7 +260,7 @@
 #define TCC_GPSB_AC3_START 0x18
 #define TCC_GPSB_AC3_LIMIT 0x1C
 /* The maximum number of channel */
-#define TCC_GPSB_MAX_CH	6
+#define TCC_GPSB_MAX_CH	7
 #endif
 
 #define TCC_SPI_DMA_MAX_SIZE	TCC_GPSB_PACKET_MAX_SIZE

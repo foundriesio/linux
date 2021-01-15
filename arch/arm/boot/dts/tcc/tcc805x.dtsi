@@ -2030,6 +2030,17 @@
 		dma-names = "tx", "rx";
 	};
 
+	gpsb6: gpsb6@16990000 {
+		compatible = "telechips,tcc805x-spi";
+		reg = <0x0 0x16990000 0x0 0x38>, /* base address */
+		      <0x0 0x16960000 0x0 0x20>, /* Port Configuration register */
+		      <0x0 0x16980060 0x0 0x20>; /* GPSB_6_AC */
+		interrupts = <GIC_SPI 74 IRQ_TYPE_LEVEL_HIGH>;
+		clocks = <&clk_peri PERI_GPSB3 &clk_io IOBUS_GPSB6>;
+		gpsb-id = <6>;
+		status = "disabled";
+       };
+
 	audio_chmux: audio_chmux@16051000{
 		compatible = "telechips,audio-chmux-805x";
 		reg = <0x0 0x16051000 0x0 0x98>;
