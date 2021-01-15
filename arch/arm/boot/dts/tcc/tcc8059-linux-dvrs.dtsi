@@ -801,6 +801,7 @@
 			reg = <0x74>;
 			gpio-controller;
 			#gpio-cells = <2>;
+			not-use-subcore;
 		};
 	};
 

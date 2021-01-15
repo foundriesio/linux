@@ -1019,7 +1019,11 @@ static int dwc3_core_init_mode(struct dwc3 *dwc)
 		dwc3_set_prtcap(dwc, DWC3_GCTL_PRTCAP_HOST);
 
 		if (dwc->usb2_phy) {
+#if defined(CONFIG_TCC_DWC3_PHY)
+			dwc->usb2_phy->set_vbus(dwc->usb2_phy, 0);
+#else
 			dwc->usb2_phy->set_vbus(dwc->usb2_phy, 1);
+#endif
 			otg_set_vbus(dwc->usb2_phy->otg, true);
 		}
 		if (dwc->usb2_generic_phy)

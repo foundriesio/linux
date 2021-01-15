@@ -758,6 +758,9 @@ static int pca953x_probe(struct i2c_client *client,
 	int ret;
 	u32 invert = 0;
 	struct regulator *reg;
+#if defined(CONFIG_ARCH_TCC805X)
+	struct device_node *node;
+#endif
 
 	chip = devm_kzalloc(&client->dev,
 			sizeof(struct pca953x_chip), GFP_KERNEL);
@@ -888,9 +891,14 @@ static int pca953x_probe(struct i2c_client *client,
 
 	i2c_set_clientdata(client, chip);
 
-#if defined (CONFIG_ARCH_TCC805X)
-	pca953x_gpio_direction_output(&chip->gpio_chip, 4, 1);
-	pca953x_gpio_set_value(&chip->gpio_chip, 4, 1);
+#if defined(CONFIG_ARCH_TCC805X)
+	node = client->dev.of_node;
+
+	ret = of_property_read_bool(node, "not-use-subcore");
+	if (ret == 0) {
+		pca953x_gpio_direction_output(&chip->gpio_chip, 4, 1);
+		pca953x_gpio_set_value(&chip->gpio_chip, 4, 1);
+	}
 #endif
 
 	return 0;
