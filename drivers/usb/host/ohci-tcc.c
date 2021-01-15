@@ -43,7 +43,7 @@
 #include "ohci.h"
 #include "tcc-hcd.h"
 
-#define DRIVER_DESC ("USB 2.0 'Enhanced' Host Controller (OHCI-TCC) Driver")
+#define DRIVER_DESC "USB 2.0 'Enhanced' Host Controller (OHCI-TCC) Driver"
 
 #define tcc_ohci_readl(r)       (readl((r)))
 #define tcc_ohci_writel(v, r)   (writel((v), (r)))
