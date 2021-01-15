@@ -1,6 +1,6 @@
 # The following upstream stable releases have been ported:
 [upstream-stable]
-    linux-5.4.y = v5.4.85
+    linux-5.4.y = v5.4.86
     linux-5.8.y = v5.8.18
     linux-5.9.y = v5.9.16
-    linux-5.10.y = v5.10.3
+    linux-5.10.y = v5.10.4
