@@ -307,7 +307,7 @@ int CM_SEND_COMMAND(cm_ctrl_msg_t * pTxMsg, cm_ctrl_msg_t * pRxMsg) {
 	FUNCTION_IN
 
 	// Print the tx msg
-	printk(KERN_ALERT "[KN] Tx: 0x%08x 0x%08x 0x%08x 0x%08x 0x%08x 0x%08x 0x%08x 0x%08x\n", \
+	dlog("[KN] Tx: 0x%08x 0x%08x 0x%08x 0x%08x 0x%08x 0x%08x 0x%08x 0x%08x\n", \
 		pTxMsg->preamble, pTxMsg->data[5], pTxMsg->data[4], pTxMsg->data[3], pTxMsg->data[2], pTxMsg->data[1], pTxMsg->data[0], pTxMsg->cmd);
 
 	// Send the mailbox msg
@@ -325,12 +325,12 @@ int CM_SEND_COMMAND(cm_ctrl_msg_t * pTxMsg, cm_ctrl_msg_t * pRxMsg) {
 #else
 	ret = tcc_mbox_wait_receive_msg(pRxMsg);
 	if(ret < 0) {
-		printk(KERN_ERR "ERROR: tcc_mbox_wait_receive_msg returned %d\n", ret);
+		log("ERROR: tcc_mbox_wait_receive_msg returned %d\n", ret);
 	}
 #endif//defined(MAILBOX_RX_METHOD_INTERRUPT)
 
 	// Print the rx msg
-	printk(KERN_ALERT "[KN] Rx: 0x%08x 0x%08x 0x%08x 0x%08x 0x%08x 0x%08x 0x%08x 0x%08x\n", \
+	dlog("[KN] Rx: 0x%08x 0x%08x 0x%08x 0x%08x 0x%08x 0x%08x 0x%08x 0x%08x\n", \
 		pRxMsg->preamble, pRxMsg->data[5], pRxMsg->data[4], pRxMsg->data[3], pRxMsg->data[2], pRxMsg->data[1], pRxMsg->data[0], pRxMsg->cmd);
 
 	FUNCTION_OUT
