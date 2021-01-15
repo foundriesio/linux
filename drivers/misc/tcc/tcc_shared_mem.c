@@ -1299,9 +1299,10 @@ static int32_t tcc_shmem_create_desc_req(struct device *dev, char *name,
 						(desc_new->size + 0xf)) {
 						desc_new->offset_72 =
 							(mem_map[i - 1].offset
-							 + mem_map[i - 1].size)	+ 1 + 0xf;
-						// allocate memory just next to previous memory.
-						// plus '1'.
+							 + mem_map[i - 1].size)	+ 2 + 0xf;
+						// allocate memory just next to previous
+						// memory(+1) and HEAD/TAIL buffer(+1).
+						// plus '2'.
 						// reserve 0xf for tail and head of Tx and Rx.
 						// plus '0xf'.
 						desc_new->offset_53 =
@@ -1327,10 +1328,11 @@ static int32_t tcc_shmem_create_desc_req(struct device *dev, char *name,
 							    (desc_new->size +
 							     0xf)) {
 								desc_new->offset_72 =
-								(mem_map[i].offset 
-                                                                 + mem_map[i].size) + 1 + 0xf;
-								// allocate memory just next to 
-								// previous memory. plus '1'.
+								(mem_map[i].offset
+                                + mem_map[i].size) + 2 + 0xf;
+								// allocate memory just next to previous
+								// memory(+1) and HEAD/TAIL buffer(+1).
+								// plus '2'.
 								// reserve 0xf for tail and head of
 								// Tx and Rx. plus '0xf'.
 								desc_new->offset_53
@@ -1412,6 +1414,7 @@ static int32_t tcc_shmem_create_desc_req(struct device *dev, char *name,
 									 shdev->pending_offset)));
 			}
 
+			spin_unlock_irq(&tcc_shm_spinlock3);
 			return desc_new->port_num;
 		} else {
 			spin_unlock_irq(&tcc_shm_spinlock3);

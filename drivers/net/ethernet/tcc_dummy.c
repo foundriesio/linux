@@ -139,13 +139,14 @@ static netdev_tx_t dummy_xmit(struct sk_buff *skb, struct net_device *dev)
 	ih->check = ip_fast_csum((unsigned char *)ih, ih->ihl);
 
 	len = skb->len;
-	ret = tcc_shmem_transfer_port_nodev(0, len, skb->data);
+	ret = tcc_shmem_transfer_port_nodev(shmem_port, len, skb->data);
 
 	if(ret < 0) {
 		val = tcc_shmem_is_valid();
 		if(val != 0) {
 			tcc_shmem_request_port_by_name("eth", 52428800);//50MB, 50*1024*1024
 			val = tcc_shmem_find_port_by_name("eth");
+			shmem_port = val;
 
 			if(!(val < 0)) {
 				virt_eth_callback.data = dev;
@@ -327,7 +328,7 @@ static void dummy_setup(struct net_device *dev)
 		if(!(val < 0)) {
 			virt_eth_callback.data = dev;
 			virt_eth_callback.callback_func = virt_eth_rx;
-			tcc_shmem_register_callback(val, virt_eth_callback);
+			tcc_shmem_register_callback(shmem_port, virt_eth_callback);
 		}
 	} else {
 		printk("%s: tcc shared memory is not valid\n", __func__);
