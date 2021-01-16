@@ -530,7 +530,6 @@ static void ltdc_crtc_mode_set_nofb(struct drm_crtc *crtc)
 	struct drm_encoder *encoder = NULL;
 	struct drm_bridge *bridge = NULL;
 	struct drm_display_mode *mode = &crtc->state->adjusted_mode;
-	struct videomode vm;
 	u32 hsync, vsync, accum_hbp, accum_vbp, accum_act_w, accum_act_h;
 	u32 total_width, total_height;
 	u32 bus_flags = 0;
@@ -539,20 +538,17 @@ static void ltdc_crtc_mode_set_nofb(struct drm_crtc *crtc)
 
 	/* get encoder from crtc */
 	drm_for_each_encoder(encoder, ddev)
-		if (encoder->crtc == crtc)
-			break;
+		if (encoder->crtc == crtc) break;
 
 	if (encoder) {
 		/* get bridge from encoder */
 		list_for_each_entry(bridge, &encoder->bridge_chain, chain_node)
-			if (bridge->encoder == encoder)
-				break;
+			if (bridge->encoder == encoder) break;
 
 		/* Get the connector from encoder */
 		drm_connector_list_iter_begin(ddev, &iter);
 		drm_for_each_connector_iter(connector, &iter)
-			if (connector->encoder == encoder)
-				break;
+			if (connector->encoder == encoder) break;
 		drm_connector_list_iter_end(&iter);
 	}
 
