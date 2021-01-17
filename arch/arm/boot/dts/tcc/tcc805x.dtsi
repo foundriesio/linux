@@ -2709,6 +2709,26 @@
 		status = "okay";
 	};
 
+	vioc_lut_3d:vioc_lut_3d@12003200{
+		compatible = "telechips,vioc_lut_3d";
+		reg = <0x0 0x12003200 0x0 0x200>,
+			<0x0 0x12003400 0x0 0x200>;
+		status = "okay";
+	};
+
+	vioc_lut_3d_d0: vioc_lut_3d_d0@0{
+		compatible = "telechips,vioc_lut_3d_d0";
+		reg = <0x0 0x12003200 0x0 0x200>;
+		status = "okay";
+	};
+
+
+	vioc_lut_3d_d1: vioc_lut_3d_d1@1{
+		compatible = "telechips,vioc_lut_3d_d1";
+		reg = <0x0 0x12003400 0x0 0x200>;
+		status = "okay";
+	};
+
 	vioc_deintls:vioc_deintls@12003800{
 		compatible = "telechips,vioc_deintls";
 		reg = <0x0 0x12003800 0x0 0x100>,

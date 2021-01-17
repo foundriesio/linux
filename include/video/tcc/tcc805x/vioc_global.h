@@ -211,6 +211,12 @@
 #define VIOC_FBCDEC1			(0x1801)
 #define VIOC_FBCDEC_MAX		(0x0002)
 
+/* LUT 3D : 0x19XX */
+#define VIOC_LUT_3D         (0x1900)
+#define VIOC_LUT_3D0        (0x1900)
+#define VIOC_LUT_3D1        (0x1901)
+#define VIOC_LUT_3D_MAX     (0x0002)
+
 /* VIOC Interrupt sources */
 #define VIOC0_IRQI			(119)
 #define VIOC1_IRQI			(120)
