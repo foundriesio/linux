@@ -1,20 +1,4 @@
-/*
- *      tccvin_video.h
- *
- *      Copyright (c) 2020-
- *          Telechips Inc.
- *      Copyright (C) 2005-2010
- *          Laurent Pinchart (laurent.pinchart@ideasonboard.com)
- *
- *      This program is free software; you can redistribute it and/or modify
- *      it under the terms of the GNU General Public License as published by
- *      the Free Software Foundation; either version 2 of the License, or
- *      (at your option) any later version.
- *
- *      SPDX-license-Identifier : GPL-2.0+
- *
- */
-
+/* SPDX-License-Identifier: GPL-2.0 */
 #ifndef _TCCVIN_VIDEO_H_
 #define _TCCVIN_VIDEO_H_
 

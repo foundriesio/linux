@@ -1,8 +1,6 @@
 /*
- *      tccvin_v4l2.c  --  v4l2 interface
+ *      uvc_v4l2.c  --  USB Video Class driver - V4L2 API
  *
- *      Copyright (c) 2020-
- *          Telechips Inc.
  *      Copyright (C) 2005-2010
  *          Laurent Pinchart (laurent.pinchart@ideasonboard.com)
  *
@@ -11,9 +9,19 @@
  *      the Free Software Foundation; either version 2 of the License, or
  *      (at your option) any later version.
  *
- *      SPDX-license-Identifier : GPL-2.0+
- *
- */
+ ******************************************************************************
+
+
+ *   Modified by Telechips Inc.
+
+
+ *   Modified date : 2020
+
+
+ *   Description : v4l2 interface
+
+
+ *****************************************************************************/
 
 #include <linux/compat.h>
 #include <linux/kernel.h>
