@@ -235,11 +235,13 @@ int get_hub_level(void)
 {
 	return hub_level;
 }
+EXPORT_SYMBOL(get_hub_level);
 
 void set_hub_level(int level)
 {
 	hub_level = level;
 }
+EXPORT_SYMBOL(set_hub_level);
 
 #endif /* CONFIG_TCC_EH_ELECT_TST */
 
@@ -2919,9 +2921,9 @@ static bool use_new_scheme(struct usb_device *udev, int retry)
 static bool hub_port_warm_reset_required(struct usb_hub *hub, int port1,
 		u16 portstatus)
 {
+#ifndef CONFIG_TCC_EH_ELECT_TST
 	u16 link_state;
 
-#ifndef CONFIG_TCC_EH_ELECT_TST
 	if (!hub_is_superspeed(hub->hdev))
 		return false;
 
