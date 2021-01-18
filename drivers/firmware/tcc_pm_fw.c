@@ -51,6 +51,8 @@ struct pm_fw_drvdata {
 	/* power contrl for DRAM retention */
 #if defined(CONFIG_MFD_DA9062)
 	struct da9062 *pmic;
+#else
+	void *pmic;
 #endif
 };
 
@@ -174,6 +176,7 @@ static void pm_fw_power_sysfs_free(struct kobject *kobj)
 	kobject_put(kobj);
 }
 
+#if defined(CONFIG_MFD_DA9062)
 #define pmic_regmap_update(map, reg, shift, val) \
 	(regmap_update_bits((map), (reg), (u32)1 << (shift), (val) << (shift)))
 
@@ -208,6 +211,9 @@ static s32 pmic_ctrl_str_mode(struct da9062 *pmic, u32 enter)
 
 	return 0;
 }
+#else
+#define pmic_ctrl_str_mode(pmic, enter) ((s32)0)
+#endif
 
 static int pm_fw_pm_notifier_call(struct notifier_block *nb,
 				  unsigned long action, void *data)
@@ -359,6 +365,7 @@ static void pm_fw_mbox_free(struct mbox_chan *ch, struct device *dev)
 	devm_kfree(dev, cl);
 }
 
+#if defined(CONFIG_MFD_DA9062)
 static s32 pm_fw_get_pmic(struct da9062 **pmic, struct device *dev)
 {
 	struct device_node *np = dev->of_node;
@@ -378,6 +385,9 @@ static s32 pm_fw_get_pmic(struct da9062 **pmic, struct device *dev)
 
 	return 0;
 }
+#else
+#define pm_fw_get_pmic(pmic, dev) ((s32)0)
+#endif
 
 static int pm_fw_probe(struct platform_device *pdev)
 {
