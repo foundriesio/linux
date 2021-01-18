@@ -467,31 +467,15 @@ void max96712_request_gpio(struct max96712 *dev)
 {
 	if (dev->gpio.pwr_port > 0) {
 		gpio_request(dev->gpio.pwr_port, "max96712 power");
-		gpio_direction_output(dev->gpio.pwr_port, dev->gpio.pwr_value);
-		logd("[pwr] gpio: %3d, new val: %d, cur val: %d\n",
-			dev->gpio.pwr_port, dev->gpio.pwr_value,
-			gpio_get_value(dev->gpio.pwr_port));
 	}
 	if (dev->gpio.pwd_port > 0) {
 		gpio_request(dev->gpio.pwd_port, "max96712 power down");
-		gpio_direction_output(dev->gpio.pwd_port, dev->gpio.pwd_value);
-		logd("[pwd] gpio: %3d, new val: %d, cur val: %d\n",
-			dev->gpio.pwd_port, dev->gpio.pwd_value,
-			gpio_get_value(dev->gpio.pwd_port));
 	}
 	if (dev->gpio.rst_port > 0) {
 		gpio_request(dev->gpio.rst_port, "max96712 reset");
-		gpio_direction_output(dev->gpio.rst_port, dev->gpio.rst_value);
-		logd("[rst] gpio: %3d, new val: %d, cur val: %d\n",
-			dev->gpio.rst_port, dev->gpio.rst_value,
-			gpio_get_value(dev->gpio.rst_port));
 	}
 	if (dev->gpio.intb_port > 0) {
 		gpio_request(dev->gpio.intb_port, "max96712 interrupt");
-		gpio_direction_input(dev->gpio.intb_port);
-		logd("[int] gpio: %3d, new val: %d, cur val: %d\n",
-			dev->gpio.intb_port, dev->gpio.intb_value,
-			gpio_get_value(dev->gpio.intb_port));
 	}
 }
 
@@ -563,6 +547,33 @@ static int max96712_set_power(struct v4l2_subdev *sd, int on)
 
 	if (on) {
 		if (dev->p_cnt == 0) {
+			// port configuration
+			if (dev->gpio.pwr_port > 0) {
+				gpio_direction_output(dev->gpio.pwr_port, dev->gpio.pwr_value);
+				logd("[pwr] gpio: %3d, new val: %d, cur val: %d\n",
+					dev->gpio.pwr_port, dev->gpio.pwr_value,
+					gpio_get_value(dev->gpio.pwr_port));
+			}
+			if (dev->gpio.pwd_port > 0) {
+				gpio_direction_output(dev->gpio.pwd_port, dev->gpio.pwd_value);
+				logd("[pwd] gpio: %3d, new val: %d, cur val: %d\n",
+					dev->gpio.pwd_port, dev->gpio.pwd_value,
+					gpio_get_value(dev->gpio.pwd_port));
+			}
+			if (dev->gpio.rst_port > 0) {
+				gpio_direction_output(dev->gpio.rst_port, dev->gpio.rst_value);
+				logd("[rst] gpio: %3d, new val: %d, cur val: %d\n",
+					dev->gpio.rst_port, dev->gpio.rst_value,
+					gpio_get_value(dev->gpio.rst_port));
+			}
+			if (dev->gpio.intb_port > 0) {
+				gpio_direction_input(dev->gpio.intb_port);
+				logd("[int] gpio: %3d, new val: %d, cur val: %d\n",
+					dev->gpio.intb_port, dev->gpio.intb_value,
+					gpio_get_value(dev->gpio.intb_port));
+			}
+
+			// power-up sequence
 			if (dev->gpio.pwd_port > 0) {
 				gpio_set_value_cansleep(gpio->pwd_port, 1);
 				msleep(20);
@@ -571,6 +582,7 @@ static int max96712_set_power(struct v4l2_subdev *sd, int on)
 		dev->p_cnt++;
 	} else {
 		if (dev->p_cnt == 1) {
+			// power-down sequence
 			if (dev->gpio.pwd_port > 0) {
 				gpio_set_value_cansleep(gpio->pwd_port, 0);
 				msleep(20);

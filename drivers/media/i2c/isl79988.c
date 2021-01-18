@@ -164,24 +164,12 @@ void isl79988_request_gpio(struct isl79988 *dev)
 {
 	if (dev->gpio.pwr_port > 0) {
 		gpio_request(dev->gpio.pwr_port, "isl79988 power");
-		gpio_direction_output(dev->gpio.pwr_port, dev->gpio.pwr_value);
-		logd("[pwr] gpio: %3d, new val: %d, cur val: %d\n",
-			dev->gpio.pwr_port, dev->gpio.pwr_value,
-			gpio_get_value(dev->gpio.pwr_port));
 	}
 	if (dev->gpio.pwd_port > 0) {
 		gpio_request(dev->gpio.pwd_port, "isl79988 power-down");
-		gpio_direction_output(dev->gpio.pwd_port, dev->gpio.pwd_value);
-		logd("[pwd] gpio: %3d, new val: %d, cur val: %d\n",
-			dev->gpio.pwd_port, dev->gpio.pwd_value,
-			gpio_get_value(dev->gpio.pwd_port));
 	}
 	if (dev->gpio.rst_port > 0) {
 		gpio_request(dev->gpio.rst_port, "isl79988 reset");
-		gpio_direction_output(dev->gpio.rst_port, dev->gpio.rst_value);
-		logd("[rst] gpio: %3d, new val: %d, cur val: %d\n",
-			dev->gpio.rst_port, dev->gpio.rst_value,
-			gpio_get_value(dev->gpio.rst_port));
 	}
 }
 
@@ -233,11 +221,33 @@ static int isl79988_set_power(struct v4l2_subdev *sd, int on)
 	struct power_sequence	*gpio	= &dev->gpio;
 
 	if (on) {
+		// port configuration
+		if (dev->gpio.pwr_port > 0) {
+			gpio_direction_output(dev->gpio.pwr_port, dev->gpio.pwr_value);
+			logd("[pwr] gpio: %3d, new val: %d, cur val: %d\n",
+				dev->gpio.pwr_port, dev->gpio.pwr_value,
+				gpio_get_value(dev->gpio.pwr_port));
+		}
+		if (dev->gpio.pwd_port > 0) {
+			gpio_direction_output(dev->gpio.pwd_port, dev->gpio.pwd_value);
+			logd("[pwd] gpio: %3d, new val: %d, cur val: %d\n",
+				dev->gpio.pwd_port, dev->gpio.pwd_value,
+				gpio_get_value(dev->gpio.pwd_port));
+		}
+		if (dev->gpio.rst_port > 0) {
+			gpio_direction_output(dev->gpio.rst_port, dev->gpio.rst_value);
+			logd("[rst] gpio: %3d, new val: %d, cur val: %d\n",
+				dev->gpio.rst_port, dev->gpio.rst_value,
+				gpio_get_value(dev->gpio.rst_port));
+		}
+
+		// power-up sequence
 		if (dev->gpio.rst_port > 0) {
 			gpio_set_value_cansleep(gpio->rst_port, 1);
 			msleep(20);
 		}
 	} else {
+		// power-down sequence
 		if (dev->gpio.rst_port > 0) {
 			gpio_set_value_cansleep(gpio->rst_port, 0);
 			msleep(20);
@@ -281,6 +291,8 @@ static int isl79988_g_input_status(struct v4l2_subdev *sd, u32 *status)
 static int isl79988_s_stream(struct v4l2_subdev *sd, int enable)
 {
 	struct isl79988		*dev	= NULL;
+	struct i2c_client	*client	= NULL;
+	struct pinctrl		*pctrl	= NULL;
 	int			ret	= 0;
 
 	dev = to_state(sd);
@@ -291,6 +303,13 @@ static int isl79988_s_stream(struct v4l2_subdev *sd, int enable)
 		ret = regmap_multi_reg_write(dev->regmap, isl79988_reg_defaults,
 			ARRAY_SIZE(isl79988_reg_defaults));
 		msleep(600);
+	}
+
+	// pinctrl
+	client = v4l2_get_subdevdata(&dev->sd);
+	pctrl = pinctrl_get_select(&client->dev, "default");
+	if (!IS_ERR(pctrl)) {
+		pinctrl_put(pctrl);
 	}
 
 	return ret;
