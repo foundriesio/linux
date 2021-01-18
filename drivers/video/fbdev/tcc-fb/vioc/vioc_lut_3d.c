@@ -135,6 +135,14 @@ int vioc_lut_3d_setupdate(unsigned int lut_n)
 	return 0;
 }
 
+/*
+ *	vioc_lut_3d_bypass
+ *	@lut_n : 3d LUT NUM
+ *	@onoff :
+ *		0 - Bypass ON	(Disable 3D LUT)
+ *		1 - Bypass OFF	(Enable 3D LUT)
+ *
+ */
 int vioc_lut_3d_bypass(unsigned int lut_n, unsigned int onoff)
 {
 	unsigned int value;
@@ -142,9 +150,10 @@ int vioc_lut_3d_bypass(unsigned int lut_n, unsigned int onoff)
 	reg = get_lut_3d_address(lut_n);
 
 	if(onoff)
-		value = __raw_readl(reg + LUT_3D_CTRL_OFFSET) | (LUT_3D_CTRL_BYPASS_MASK);
-	else
 		value = __raw_readl(reg + LUT_3D_CTRL_OFFSET) & ~(LUT_3D_CTRL_BYPASS_MASK);
+	else
+		value = __raw_readl(reg + LUT_3D_CTRL_OFFSET) | (LUT_3D_CTRL_BYPASS_MASK);
+
 	__raw_writel(value, reg + LUT_3D_CTRL_OFFSET);
 	return 0;
 }
