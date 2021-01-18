@@ -198,7 +198,7 @@ static int __init vioc_lut_3d_init(void)
 			if (pLUT3D_reg[i])
 				printk("[INF][LUT_3D] vioc-lut-3d%d: 0x%p\n", i, pLUT3D_reg[i]);
 
-			vioc_lut_3d_bypass(i, 1);
+			vioc_lut_3d_bypass(i, 0);
 			memset(&lut_reg, 0x0, sizeof(lut_reg));
 		}
 	}
