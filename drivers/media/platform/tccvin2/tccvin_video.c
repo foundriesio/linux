@@ -239,6 +239,62 @@ int tccvin_create_recovery_trigger(struct device * dev) {
 	return ret;
 }
 
+ssize_t timestamp_show(struct device *dev,
+	struct device_attribute *attr, char *buf)
+{
+	struct platform_device		*pdev	=
+		container_of(dev, struct platform_device, dev);
+	struct tccvin_device		*vdev	=
+		(struct tccvin_device *)platform_get_drvdata(pdev);
+	struct tccvin_streaming		*stream	= vdev->stream;
+
+	long val = atomic_read(&stream->timestamp);
+
+	sprintf(buf, "%ld\n", val);
+
+	return val;
+}
+
+ssize_t timestamp_store(struct device *dev,
+	struct device_attribute *attr, const char *buf, size_t count)
+{
+	struct platform_device		*pdev	=
+		container_of(dev, struct platform_device, dev);
+	struct tccvin_device		*vdev	=
+		(struct tccvin_device *)platform_get_drvdata(pdev);
+	struct tccvin_streaming		*stream	= vdev->stream;
+
+	long val;
+	int error = kstrtoul(buf, 10, &val);
+	if(error)
+		return error;
+
+	atomic_set(&stream->timestamp, val);
+
+	return count;
+}
+
+static DEVICE_ATTR(timestamp, S_IRUGO|S_IWUSR|S_IWGRP,
+	timestamp_show, timestamp_store);
+
+int tccvin_create_timestamp(struct device * dev) {
+	struct platform_device		*pdev	=
+		container_of(dev, struct platform_device, dev);
+	struct tccvin_device		*vdev	=
+		(struct tccvin_device *)platform_get_drvdata(pdev);
+	struct tccvin_streaming		*stream	= vdev->stream;
+	int		ret = 0;
+
+	ret = device_create_file(dev, &dev_attr_timestamp);
+	if(ret < 0)
+		loge("failed create sysfs: timestamp\n");
+
+	// set recovery trigger as default
+	atomic_set(&stream->timestamp, 0);
+
+	return ret;
+}
+
 /* ------------------------------------------------------------------------
  * Utility functions
  */
@@ -1216,7 +1272,6 @@ static void tccvin_work_thread(struct work_struct *data)
 	struct tccvin_video_queue	*queue		= &stream->queue;
 	struct tccvin_buffer		*buf		= NULL;
 	unsigned long			flags;
-	struct timespec			ts		= { 0, };
 
 	void __iomem			*wdma		=
 		VIOC_WDMA_GetAddress(stream->cif.vioc_path.wdma);
@@ -1225,6 +1280,7 @@ static void tccvin_work_thread(struct work_struct *data)
 	unsigned long			addr1		= 0;
 	unsigned long			addr2		= 0;
 	uint32_t			buf_index;
+	long				ts_enabled	= 0;
 
 	if (stream == NULL) {
 		loge("stream is NULL\n");
@@ -1269,14 +1325,20 @@ static void tccvin_work_thread(struct work_struct *data)
 		spin_unlock_irqrestore(&queue->irqlock, flags);
 	}
 
-	getrawmonotonic(&ts);
-	buf->buf.vb2_buf.timestamp = timespec_to_ns(&ts);
+	ts_enabled = atomic_read(&stream->timestamp);
+	if (ts_enabled) {
+		logi("prev: %9ld.%09ld, next: %9ld.%09ld, diff: %9ld.%09ld\n",
+			stream->ts_prev.tv_sec, stream->ts_prev.tv_nsec,
+			stream->ts_next.tv_sec, stream->ts_next.tv_nsec,
+			stream->ts_diff.tv_sec, stream->ts_diff.tv_nsec);
+	}
+	buf->buf.vb2_buf.timestamp = timespec_to_ns(&stream->ts_diff);
 	buf->buf.field = V4L2_FIELD_NONE;
 	buf->buf.sequence = stream->sequence++;
 	buf->state = TCCVIN_BUF_STATE_READY;
 	buf->bytesused = buf->length;
 
-	dlog("VIN[%d] buf->length: 0x%08x, timestamp: %llu\n", stream->vdev.num, buf->length, buf->buf.vb2_buf.timestamp);
+	dlog("VIN[%d] buf->length: 0x%08x\n", stream->vdev.num, buf->length);
 	if (buf->buf.vb2_buf.memory != VB2_MEMORY_MMAP &&
 	   buf->buf.vb2_buf.memory != VB2_MEMORY_USERPTR &&
 	   buf->buf.vb2_buf.memory != V4L2_MEMORY_DMABUF) {
@@ -1335,6 +1397,17 @@ static irqreturn_t tccvin_wdma_isr(int irq, void *client_data)
 	// preview operation.
 	VIOC_WDMA_GetStatus(wdma, &status);
 	if (status & VIOC_WDMA_IREQ_EOFR_MASK) {
+		getrawmonotonic(&vdev->ts_next);
+		if ((vdev->ts_prev.tv_sec != 0) && (vdev->ts_prev.tv_nsec != 0)) {
+			vdev->ts_diff.tv_sec  = vdev->ts_next.tv_sec  - vdev->ts_prev.tv_sec;
+			vdev->ts_diff.tv_nsec = vdev->ts_next.tv_nsec - vdev->ts_prev.tv_nsec;
+			if (vdev->ts_diff.tv_nsec < 0) {
+				vdev->ts_diff.tv_sec  -= 1;
+				vdev->ts_diff.tv_nsec += 1000000000;
+			}
+		}
+		vdev->ts_prev = vdev->ts_next;
+
 		schedule_work(&vdev->cif.wdma_work);
 
 		vioc_intr_clear(vdev->cif.vioc_intr.id,
