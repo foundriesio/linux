@@ -40,6 +40,8 @@
 
 #define SHM_RECV_BUF_NUM 9014 //for jumbo packet
 
+#define SHM_SYNC_TIMEOUT 100
+
 struct tcc_shm_port_list {
     int32_t port_num;
 };
