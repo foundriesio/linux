@@ -33,6 +33,7 @@ DEFINE_SPINLOCK(tcc_shm_spinlock2);
 DEFINE_SPINLOCK(tcc_shm_spinlock3);
 
 static volatile uint32_t tcc_shm_valid = 0;
+struct timer_list shm_timer;
 
 static LIST_HEAD(tcc_shm_list);
 static LIST_HEAD(tcc_shm_req_name);
@@ -62,6 +63,17 @@ const static struct file_operations fops = {
 	.unlocked_ioctl = tcc_shmem_ioctl,
 	.release = tcc_shmem_release,
 };
+
+static void tcc_shmem_timer(unsigned long args)
+{
+	struct tcc_shm_data *shdev = (struct tcc_shm_data *)args;
+
+	if(tcc_shm_valid != 1) {
+		printk("%s: sync mode failed. initial reset!\n", __func__);
+		tcc_shmem_initial_reset(shdev->dev);
+	}
+
+}
 
 static irqreturn_t tcc_shmem_handler(int irq, void *dev)
 {
@@ -95,6 +107,7 @@ static irqreturn_t tcc_shmem_handler(int irq, void *dev)
 					shdev->port_req = 1;
 				}
 			}
+			mod_timer(&shmem_timer, jiffies+msecs_to_jiffies(SHM_SYNC_TIMEOUT));
 			printk("%s: interrupt sync\n", __func__);
 		} else {
 
@@ -1756,6 +1769,10 @@ static int tcc_shmem_probe(struct platform_device *pdev)
 							(4 *
 							 shdev->pending_offset)));
 	}
+
+	init_timer(&shm_timer);
+	shm_timer.function = tcc_shmem_timer;
+	shm_timer.data = (unsigned long)shdev;
 
 	ret =
 	    request_irq(irq, (irq_handler_t) tcc_shmem_handler, IRQF_SHARED,
