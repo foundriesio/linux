@@ -1332,7 +1332,7 @@ static void tccvin_work_thread(struct work_struct *data)
 			stream->ts_next.tv_sec, stream->ts_next.tv_nsec,
 			stream->ts_diff.tv_sec, stream->ts_diff.tv_nsec);
 	}
-	buf->buf.vb2_buf.timestamp = timespec_to_ns(&stream->ts_diff);
+	buf->buf.vb2_buf.timestamp = timespec_to_ns(&stream->ts_next);
 	buf->buf.field = V4L2_FIELD_NONE;
 	buf->buf.sequence = stream->sequence++;
 	buf->state = TCCVIN_BUF_STATE_READY;
