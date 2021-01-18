@@ -285,6 +285,11 @@ struct tccvin_streaming {
 	int					preview_method;
 	int					is_handover_needed;
 	int					cam_streaming;
+
+	atomic_t				timestamp;
+	struct timespec				ts_prev;
+	struct timespec				ts_next;
+	struct timespec				ts_diff;
 };
 
 #define TCCVIN_MAX_VIDEOSOURCE 255
@@ -412,6 +417,7 @@ extern const struct v4l2_file_operations tccvin_fops;
 
 /* Video */
 extern int tccvin_create_recovery_trigger(struct device * dev);
+extern int tccvin_create_timestamp(struct device * dev);
 extern int tccvin_count_supported_formats(void);
 extern struct tccvin_format_desc * tccvin_format_by_index(int index);
 extern int tccvin_count_supported_framesizes(void);
