@@ -4,6 +4,7 @@ menu "Support for TSVFB LCD panels"
 config FB_PANEL_LVDS_TCC
 	bool "LVDS panel driver for TSVFB"
 	depends on OF && FB_NEW && ARCH_TCC805X
+	default y if ARCH_TCC805X
 	help
 	  This driver supports LVDS panels that don't require device-specific
 	  handling of power supplies or control signals.
