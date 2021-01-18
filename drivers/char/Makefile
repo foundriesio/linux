@@ -103,5 +103,5 @@ obj-$(CONFIG_TCC_SNOR_UPDATER) += tcc_snor_updater/
 
 obj-$(CONFIG_TCC_AUX_DETECT) += tcc_aux_detect/
 
-obj-$(TCC_LUT_3D_DRV_0) += tcc_lut_3d_d0.o
-obj-$(TCC_LUT_3D_DRV_1) += tcc_lut_3d_d1.o
+obj-$(CONFIG_TCC_LUT_3D_DRV_0) += tcc_lut_3d_d0.o
+obj-$(CONFIG_TCC_LUT_3D_DRV_1) += tcc_lut_3d_d1.o
