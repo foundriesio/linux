@@ -46,6 +46,9 @@
 
 #define SIP_CMD(dev, cmd)	(SIP_CMD_TAG|SIP_DEV(dev)|(cmd&0xFFF))
 
+#define SMC_OK			(0UL)
+#define SMC_UNK			(ULONG_MAX)
+
 /* TCC SiP Service for Clock Driver */
 enum {
 	/* 0x8200_0000 */
@@ -134,7 +137,7 @@ enum {
 	SIP_CHIP_ADD_BOOTTIME,
 	SIP_CHIP_GET_BOOTTIME,
 	SIP_CHIP_GET_BOOTTIME_NUM,
-	SIP_CHIP_GET_BOOT_CONFIG,
+	SIP_CHIP_GET_BOOT_INFO,
 };
 
 #define tcc_sip_chip(id, ...) \

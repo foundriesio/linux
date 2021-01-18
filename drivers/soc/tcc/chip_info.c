@@ -17,35 +17,88 @@
 #include <soc/tcc/tcc-sip.h>
 #include <soc/tcc/chipinfo.h>
 
-static u32 chip_rev = ~((u32)0);
-static u32 chip_name = ~((u32)0);
+static struct chip_info cinfo = {
+	INFO_UNK, INFO_UNK
+};
 
-u32 get_chip_rev(void)
-{
-	return chip_rev;
-}
-EXPORT_SYMBOL(get_chip_rev);
+static struct boot_info binfo = {
+	INFO_UNK, INFO_UNK
+};
 
-u32 get_chip_name(void)
+static inline void print_chip_info(void)
 {
-	return chip_name;
+	(void)pr_info("[chipinfo] TCC%x R%u.", cinfo.name, cinfo.rev);
+
+	if ((binfo.bootsel != INFO_UNK) && (binfo.coreid != INFO_UNK)) {
+		(void)pr_info(" %s Core (%s Boot)",
+			      is_main_core(binfo.coreid) ? "Main" : "Sub",
+			      is_dual_boot(binfo.bootsel) ? "Dual" : "Single");
+	}
+
+	(void)pr_info("\n");
 }
-EXPORT_SYMBOL(get_chip_name);
 
 static int __init chip_info_init(void)
 {
 	struct arm_smccc_res res;
 
+	/* Initialize chip revision info */
 	tcc_sip_chip(REV, 0, 0, 0, 0, 0, 0, 0, &res);
-	chip_rev = (u32)res.a0;
+	cinfo.rev = (u32)res.a0;
 
 	tcc_sip_chip(NAME, 0, 0, 0, 0, 0, 0, 0, &res);
-	chip_name = (u32)res.a0;
+	cinfo.name = (u32)res.a0;
 
 	/* XXX: For backward compatibility */
-	system_rev = chip_rev;
+	system_rev = cinfo.rev;
 
-	(void)pr_info("[chipinfo] package: %x rev: %d\n", chip_name, chip_rev);
+	/* Initialize boot info */
+	tcc_sip_chip(GET_BOOT_INFO, 0, 0, 0, 0, 0, 0, 0, &res);
+	if (res.a0 == SMC_OK) {
+		binfo.bootsel = (u32)res.a1;
+		binfo.coreid = (u32)res.a2;
+	}
+
+	print_chip_info();
+
 	return 0;
 }
 pure_initcall(chip_info_init);
+
+struct chip_info *get_chip_info(void)
+{
+	return &cinfo;
+}
+
+u32 get_chip_rev(void)
+{
+	return cinfo.rev;
+}
+
+u32 get_chip_name(void)
+{
+	return cinfo.name;
+}
+
+EXPORT_SYMBOL(get_chip_info);
+EXPORT_SYMBOL(get_chip_rev);
+EXPORT_SYMBOL(get_chip_name);
+
+struct boot_info *get_boot_info(void)
+{
+	return &binfo;
+}
+
+u32 get_boot_sel(void)
+{
+	return binfo.bootsel;
+}
+
+u32 get_core_identity(void)
+{
+	return binfo.coreid;
+}
+
+EXPORT_SYMBOL(get_boot_info);
+EXPORT_SYMBOL(get_boot_sel);
+EXPORT_SYMBOL(get_core_identity);
