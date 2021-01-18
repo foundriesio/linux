@@ -171,7 +171,7 @@ int TCC_OPT_TEST(struct usb_hub *hub, int port1,
 			__func__, udev->descriptor.idProduct);
 		_test_mode = 2;
 	} else if (le16_to_cpu(udev->descriptor.idProduct) ==
-		TEST_PACKET) {
+		_TEST_PACKET) {
 		pr_info("[INFO][USB] [%s] TEST_PACKET, PID : 0x%04X\n",
 		__func__, udev->descriptor.idProduct);
 		_test_mode = 4;
