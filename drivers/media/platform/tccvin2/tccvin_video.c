@@ -44,6 +44,10 @@
 
 #include "tccvin_video.h"
 
+/* Rounds an integer value up to the next multiple of num */
+#define ROUND_UP_2(num)         (((num)+1)&~1)
+#define ROUND_UP_4(num)         (((num)+3)&~3)
+
 /* ------------------------------------------------------------------------
  * Video formats
  */
@@ -52,17 +56,17 @@ struct tccvin_format_desc tccvin_format_list[] = {
 	/* RGB */
 	{
 		.name		= "RGB 8:8:8 (RGB3)",
-		// B1[31:24] R[23:16] G[15:8] B0[7:0]
+		/* B1 31:24, R 23:16, G 15:8, B0 7:0 : RGB24bit */
 		.guid		= VIOC_IMG_FMT_RGB888,
-		// 'RBG3' 24 RGB-8-8-8
+		/* 'RBG3' 24 RGB-8-8-8 */
 		.fcc		= V4L2_PIX_FMT_RGB24,
 		.bpp		= 24,
 	},
 	{
 		.name		= "ARGB 8:8:8:8 (RGB4)",
-		// A[31:24] R[23:16] G[15:8] B[7:0]
+		/* A 31:24, R 23:16, G 15:8, B 7:0 : RGB32bit */
 		.guid		= VIOC_IMG_FMT_ARGB8888,
-		// 'RGB4' 32 RGB-8-8-8-8
+		/* 'RGB4' 32 RGB-8-8-8-8 */
 		.fcc		= V4L2_PIX_FMT_RGB32,
 		.bpp		= 32,
 	},
@@ -70,33 +74,33 @@ struct tccvin_format_desc tccvin_format_list[] = {
 	/* sequential (YUV packed) */
 	{
 		.name		= "YUV 4:2:2 (UYVY)",
-		// LSB [Y/U/Y/V] MSB : YCbCr 4:2:2 sequential
+		/* LSB [Y|U|Y|V] MSB : YCbCr 4:2:2 sequential */
 		.guid		= VIOC_IMG_FMT_UYVY,
-		// 'UYVY' 16 YUV 4:2:2
+		/* 'UYVY' 16 YUV 4:2:2 */
 		.fcc		= V4L2_PIX_FMT_UYVY,
 		.bpp		= 16,
 	},
 	{
 		.name		= "YUV 4:2:2 (VYUY)",
-		// LSB [Y/V/Y/U] MSB : YCbCr 4:2:2 sequential
+		/* LSB [Y|V|Y|U] MSB : YCbCr 4:2:2 sequential */
 		.guid		= VIOC_IMG_FMT_VYUY,
-		// 'VYUY' 16 YUV 4:2:2
+		/* 'VYUY' 16 YUV 4:2:2 */
 		.fcc		= V4L2_PIX_FMT_VYUY,
 		.bpp		= 16,
 	},
 	{
 		.name		= "YUV 4:2:2 (YUYV)",
-		// LSB [Y/U/Y/V] MSB : YCbCr 4:2:2 sequential
+		/* LSB [Y|U|Y|V] MSB : YCbCr 4:2:2 sequential */
 		.guid		= VIOC_IMG_FMT_YUYV,
-		// 'YUYV' 16 YUV 4:2:2
+		/* 'YUYV' 16 YUV 4:2:2 */
 		.fcc		= V4L2_PIX_FMT_YUYV,
 		.bpp		= 16,
 	},
 	{
 		.name		= "YUV 4:2:2 (YVYU)",
-		// LSB [Y/V/Y/U] MSB : YCbCr 4:2:2 sequential
+		/* LSB [Y|V|Y|U] MSB : YCbCr 4:2:2 sequential */
 		.guid		= VIOC_IMG_FMT_YVYU,
-		// 'YVYU' 16 YVU 4:2:2
+		/* 'YVYU' 16 YVU 4:2:2 */
 		.fcc		= V4L2_PIX_FMT_YVYU,
 		.bpp		= 16,
 	},
@@ -104,25 +108,25 @@ struct tccvin_format_desc tccvin_format_list[] = {
 	/* separated (Y, U, V planar) */
 	{
 		.name		= "YVU 4:2:0 (YV12)",
-		// YCbCr 4:2:0 separated
+		/* YCbCr 4:2:0 separated */
 		.guid		= VIOC_IMG_FMT_YUV420SEP,
-		// 'YV12' 12 YVU 4:2:0
+		/* 'YV12' 12 YVU 4:2:0 */
 		.fcc		= V4L2_PIX_FMT_YVU420,
 		.bpp		= 12,
 	},
 	{
 		.name		= "YUV 4:2:0 (YU12)",
-		// YCbCr 4:2:0 separated
+		/* YCbCr 4:2:0 separated */
 		.guid		= VIOC_IMG_FMT_YUV420SEP,
-		// 'YU12' 12 YUV 4:2:0
+		/* 'YU12' 12 YUV 4:2:0 */
 		.fcc		= V4L2_PIX_FMT_YUV420,
 		.bpp		= 12,
 	},
 	{
 		.name		= "YUV 4:2:2 (422P)",
-		// YCbCr 4:2:2 separated
+		/* YCbCr 4:2:2 separated */
 		.guid		= VIOC_IMG_FMT_YUV422SEP,
-		// '422P' 16 YVU422 Planar
+		/* '422P' 16 YVU422 Planar */
 		.fcc		= V4L2_PIX_FMT_YUV422P,
 		.bpp		= 16,
 	},
@@ -130,33 +134,33 @@ struct tccvin_format_desc tccvin_format_list[] = {
 	/* interleaved (Y planar, UV planar) */
 	{
 		.name		= "YUV 4:2:0 (NV12)",
-		// YCbCr 4:2:0 interleaved type0
+		/* YCbCr 4:2:0 interleaved type0 */
 		.guid		= VIOC_IMG_FMT_YUV420IL0,
-		// 'NV12' 12 Y/CbCr 4:2:0
+		/* 'NV12' 12 Y/CbCr 4:2:0 */
 		.fcc		= V4L2_PIX_FMT_NV12,
 		.bpp		= 12,
 	},
 	{
 		.name		= "YUV 4:2:0 (NV21)",
-		// YCbCr 4:2:0 interleaved type1
+		/* YCbCr 4:2:0 interleaved type1 */
 		.guid		= VIOC_IMG_FMT_YUV420IL1,
-		// 'NV21' 12 Y/CrCb 4:2:0
+		/* 'NV21' 12 Y/CrCb 4:2:0 */
 		.fcc		= V4L2_PIX_FMT_NV21,
 		.bpp		= 12,
 	},
 	{
 		.name		= "YUV 4:2:0 (NV16)",
-		// YCbCr 4:2:2 interleaved type0
+		/* YCbCr 4:2:2 interleaved type0 */
 		.guid		= VIOC_IMG_FMT_YUV422IL0,
-		// 'NV16' 16 Y/CbCr 4:2:2
+		/* 'NV16' 16 Y/CbCr 4:2:2 */
 		.fcc		= V4L2_PIX_FMT_NV16,
 		.bpp		= 12,
 	},
 	{
 		.name		= "YUV 4:2:0 (NV61)",
-		// YCbCr 4:2:2 interleaved type1
+		/* YCbCr 4:2:2 interleaved type1 */
 		.guid		= VIOC_IMG_FMT_YUV422IL1,
-		// 'NV61' 16 Y/CrCb 4:2:2
+		/* 'NV61' 16 Y/CrCb 4:2:2 */
 		.fcc		= V4L2_PIX_FMT_NV61,
 		.bpp		= 12,
 	},
@@ -369,9 +373,9 @@ static int32_t tccvin_convert_to_multi_planes_buffer_addresses(
 	uint32_t width, uint32_t height, uint32_t fcc,
 	unsigned long *addr0, unsigned long *addr1, unsigned long *addr2)
 {
-	unsigned long	addr0len	= 0;
-	unsigned long	addr1len	= 0;
-	int32_t		ret		= 0;
+	unsigned long			y_offset	= 0;
+	unsigned long			uv_offset	= 0;
+	int32_t				ret		= 0;
 
 	if ((addr0 == NULL) || (addr1 == NULL) || (addr2 == NULL)) {
 		loge("Passed arguments is not available\n");
@@ -380,30 +384,39 @@ static int32_t tccvin_convert_to_multi_planes_buffer_addresses(
 
 	switch (fcc) {
 	/* sepatated (Y, U, V planar) */
-	case V4L2_PIX_FMT_YVU420:	// 'YV12' 12 YVU 4:2:0
-#if 0
-		addr0len	= width * height;
-		addr1len	= (width / 2) * (height / 2);
-		*addr2		= *addr0 + addr0len;
-		*addr1		= *addr2 + addr1len;
+	/* 'YV12' 12 YVU 4:2:0 */
+	case V4L2_PIX_FMT_YVU420:
+                y_offset	= ROUND_UP_4(width) * ROUND_UP_2(height);
+                uv_offset	= (ROUND_UP_4(width) / 2) * (ROUND_UP_2(height) / 2);
+		*addr2		= *addr0 + y_offset;
+		*addr1		= *addr2 + uv_offset;
 		break;
-#endif
-	case V4L2_PIX_FMT_YUV420:	// 'YU12' 12 YUV 4:2:0
-		addr0len	= width * height;
-		addr1len	= (width / 2) * (height / 2);
-		*addr1		= *addr0 + addr0len;
-		*addr2		= *addr1 + addr1len;
+	/* 'YU12' 12 YUV 4:2:0 */
+	case V4L2_PIX_FMT_YUV420:
+                y_offset	= ROUND_UP_4(width) * ROUND_UP_2(height);
+                uv_offset	= (ROUND_UP_4(width) / 2) * (ROUND_UP_2(height) / 2);
+		*addr1		= *addr0 + y_offset;
+		*addr2		= *addr1 + uv_offset;
 		break;
-	case V4L2_PIX_FMT_YUV422P:	// '422P' 16 YVU422 Planar
+	/* '422P' 16 YVU422 Planar */
+	case V4L2_PIX_FMT_YUV422P:
+		y_offset	= ROUND_UP_4(width) * height;
+		uv_offset	= (ROUND_UP_4(width) / 2) * height;
+		*addr1		= *addr0 + y_offset;
+		*addr2		= *addr1 + uv_offset;
 		break;
 
 	/* interleaved (Y planar, UV planar) */
-	case V4L2_PIX_FMT_NV12:		// 'NV12' 12 Y/CbCr 4:2:0
-	case V4L2_PIX_FMT_NV21:		// 'NV21' 12 Y/CrCb 4:2:0
-	case V4L2_PIX_FMT_NV16:		// 'NV16' 16 Y/CbCr 4:2:2
-	case V4L2_PIX_FMT_NV61:		// 'NV61' 16 Y/CrCb 4:2:2
-		addr0len	= width * height;
-		*addr1		= *addr0 + addr0len;
+	/* 'NV12' 12 Y/CbCr 4:2:0 */
+	case V4L2_PIX_FMT_NV12:
+	/* 'NV21' 12 Y/CrCb 4:2:0 */
+	case V4L2_PIX_FMT_NV21:
+	/* 'NV16' 16 Y/CbCr 4:2:2 */
+	case V4L2_PIX_FMT_NV16:
+	/* 'NV61' 16 Y/CrCb 4:2:2 */
+	case V4L2_PIX_FMT_NV61:
+                y_offset	= ROUND_UP_4(width) * ROUND_UP_2(height);
+		*addr1		= *addr0 + y_offset;
 		*addr2		= 0;
 		break;
 
