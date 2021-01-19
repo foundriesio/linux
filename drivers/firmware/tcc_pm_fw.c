@@ -27,10 +27,11 @@ struct bit_field {
 	void __iomem *reg;
 	u32 mask;
 	u32 shift;
+	u32 val;
 };
 
-#define read_bit_field(field) \
-	((readl((field)->reg) >> (field)->shift) & (field)->mask)
+#define update_bit_field_val(field) \
+	(field)->val = ((readl((field)->reg) >> (field)->shift) & (field)->mask)
 
 struct pm_fw_drvdata {
 	struct platform_device *pdev;
@@ -85,6 +86,8 @@ static ssize_t application_ready_store(struct kobject *kobj,
 		return (ssize_t)count;
 	}
 
+	update_bit_field_val(&drvdata->boot_reason);
+
 	(void)memset(msg.cmd, 0, sizeof(*msg.cmd) * (size_t)MBOX_CMD_FIFO_SIZE);
 	msg.cmd[0] = 1U;
 	msg.data_len = 0;
@@ -120,9 +123,11 @@ static ssize_t boot_reason_show(struct kobject *kobj,
 		return sprintf(buf, "-1\n");
 	}
 
-	val = read_bit_field(&drvdata->boot_reason);
+	if (drvdata->boot_reason.val == 0) {
+		update_bit_field_val(&drvdata->boot_reason);
+	}
 
-	return sprintf(buf, "%u\n", val);
+	return sprintf(buf, "%u\n", drvdata->boot_reason.val);
 }
 
 static struct kobj_attribute boot_reason_attr = {
@@ -217,6 +222,7 @@ static int pm_fw_pm_notifier_call(struct notifier_block *nb,
 	switch (action) {
 	case PM_SUSPEND_PREPARE:
 		drvdata->application_ready = (bool)false;
+		drvdata->boot_reason.val = 0;
 		ret = pmic_ctrl_str_mode(drvdata->pmic, (u32)1);
 		break;
 	case PM_POST_SUSPEND:
@@ -260,10 +266,13 @@ static s32 pm_fw_boot_reason_init(struct bit_field *reason, struct device *dev)
 	reason->reg = ioremap(prop[0], sizeof(u32));
 	reason->mask = prop[1];
 	reason->shift = prop[2];
+	reason->val = 0;
 
 	if (reason->reg == NULL) {
 		return -ENOMEM;
 	}
+
+	update_bit_field_val(reason);
 
 	return 0;
 }
