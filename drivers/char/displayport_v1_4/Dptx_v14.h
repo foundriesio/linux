@@ -9,7 +9,9 @@
 #include <linux/compat.h>
 #include <linux/irqreturn.h>
 #include <linux/regmap.h>
+#if defined(CONFIG_TOUCHSCREEN_INIT_SERDES)
 #include <linux/input/tcc_tsc_serdes.h>
+#endif
 
 #define TCC_DPTX_DRV_MAJOR_VER			2
 #define TCC_DPTX_DRV_MINOR_VER			0
