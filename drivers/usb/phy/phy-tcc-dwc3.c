@@ -853,11 +853,7 @@ static int32_t dwc3_tcc_ss_phy_ctrl_native(struct usb_phy *phy, int32_t on_off)
 static int32_t tcc_dwc3_init_phy(struct usb_phy *phy)
 {
 #if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X)
-	if (system_rev == 0U) {
-		return dwc3_tcc_phy_ctrl_native(phy, ON);
-	} else {
-		return dwc3_tcc_ss_phy_ctrl_native(phy, ON);
-	}
+	return dwc3_tcc_ss_phy_ctrl_native(phy, ON);
 #else
 	return dwc3_tcc_phy_ctrl_native(phy, ON);
 #endif
