@@ -154,7 +154,7 @@ struct tccvin_format_desc tccvin_format_list[] = {
 		.guid		= VIOC_IMG_FMT_YUV422IL0,
 		/* 'NV16' 16 Y/CbCr 4:2:2 */
 		.fcc		= V4L2_PIX_FMT_NV16,
-		.bpp		= 12,
+		.bpp		= 16,
 	},
 	{
 		.name		= "YUV 4:2:0 (NV61)",
@@ -162,7 +162,7 @@ struct tccvin_format_desc tccvin_format_list[] = {
 		.guid		= VIOC_IMG_FMT_YUV422IL1,
 		/* 'NV61' 16 Y/CrCb 4:2:2 */
 		.fcc		= V4L2_PIX_FMT_NV61,
-		.bpp		= 12,
+		.bpp		= 16,
 	},
 };
 
