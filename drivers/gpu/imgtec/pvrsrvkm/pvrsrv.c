@@ -3007,6 +3007,7 @@ PVRSRV_ERROR IMG_CALLCONV PVRSRVDeviceFinalise(PVRSRV_DEVICE_NODE *psDeviceNode,
 
 		if (PVRSRV_VZ_MODE_IS(GUEST))
 		{
+			RGXFWIF_KCCB_CMD	sCmpKCCBCmd;
 #if defined(SUPPORT_AUTOVZ)
 			/* AutoVz Guest drivers expect the firmware to have set its end of the
 			 * connection to Ready state by now. Poll indefinitely otherwise. */
@@ -3027,12 +3028,15 @@ PVRSRV_ERROR IMG_CALLCONV PVRSRVDeviceFinalise(PVRSRV_DEVICE_NODE *psDeviceNode,
 
 			/* Kick an initial dummy command to make the firmware initialise all
 			 * its internal guest OS data structures and compatibility information */
-			if (RGXFWHealthCheckCmd((PVRSRV_RGXDEV_INFO *)(psDeviceNode->pvDevice)) != PVRSRV_OK)
-			{
-				PVR_DPF((PVR_DBG_ERROR, "%s: Cannot kick initial command to the Device (%s)",
-						 __func__, PVRSRVGetErrorString(eError)));
-				goto ErrorExit;
-			}
+			sCmpKCCBCmd.eCmdType = RGXFWIF_KCCB_CMD_HEALTH_CHECK;
+
+			eError = PVRSRVPowerLock(psDeviceNode);
+			PVR_LOG_GOTO_IF_ERROR(eError, "PVRSRVPowerLock", ErrorExit);
+
+			eError = RGXSendCommandAndGetKCCBSlot(psDevInfo, &sCmpKCCBCmd, PDUMP_FLAGS_CONTINUOUS, 0);
+			PVRSRVPowerUnlock(psDeviceNode);
+
+			PVR_LOG_GOTO_IF_ERROR(eError, "RGXSendCommandAndGetKCCBSlot()", ErrorExit);
 
 			eError = PVRSRVDevInitCompatCheck(psDeviceNode);
 			if (eError != PVRSRV_OK)
