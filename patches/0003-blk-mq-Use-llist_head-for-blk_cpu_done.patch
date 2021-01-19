@@ -154,7 +154,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	cpuhp_setup_state_nocalls(CPUHP_BLOCK_SOFTIRQ_DEAD,
 --- a/include/linux/blkdev.h
 +++ b/include/linux/blkdev.h
-@@ -156,7 +156,7 @@ struct request {
+@@ -153,7 +153,7 @@ struct request {
  	 */
  	union {
  		struct hlist_node hash;	/* merge hash */
