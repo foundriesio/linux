@@ -2930,19 +2930,7 @@ int usb_add_hcd(struct usb_hcd *hcd,
 	}
 	if (hcd->uses_new_polling && HCD_POLL_RH(hcd))
 		usb_hcd_poll_rh_status(hcd);
-#if 0
-#if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X)
-	if (system_rev == 0) { /* MPW 1 case*/
-		if ((unsigned long long)hcd->rsrc_start == 0x11b00000) {
-			void *addr = ioremap(0x11d90010, 0x4);
 
-			writel((readl(addr) | 0x02000000), addr);
-			iounmap(addr);
-			dev_info(hcd->self.controller, "[INFO][USB] power down SS circit\n");
-		}
-	}
-#endif
-#endif
 	return retval;
 
 error_create_attr_group:
