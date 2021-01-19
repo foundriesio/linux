@@ -28,14 +28,15 @@ typedef long long_t;
 
 #define LOG_TAG ("SDRIPC")
 static int32_t sdripc_verbose_mode=1;
-#define eprintk(dev, msg, ...)	((void)dev_err(dev, "[ERROR][%s][%s]: " pr_fmt(msg), (const char_t *)LOG_TAG, __FUNCTION__, ##__VA_ARGS__))
-#define wprintk(dev, msg, ...)	((void)dev_warn(dev, "[WARN][%s][%s]: " pr_fmt(msg), (const char_t *)LOG_TAG, __FUNCTION__, ##__VA_ARGS__))
-#define iprintk(dev, msg, ...)	((void)dev_info(dev, "[INFO][%s][%s]: " pr_fmt(msg), (const char_t *)LOG_TAG, __FUNCTION__, ##__VA_ARGS__))
-#define dprintk(dev, msg, ...)	{ if(sdripc_verbose_mode == 1) { (void)dev_info(dev, "[INFO][%s][%s]: " pr_fmt(msg), (const char_t *)LOG_TAG, __FUNCTION__, ##__VA_ARGS__); } }
+#define eprintk(dev, msg, ...)  ((void)dev_err(dev, "[ERROR][%s]%s: " pr_fmt(msg), (const char_t *)LOG_TAG, __func__, ##__VA_ARGS__))
+#define wprintk(dev, msg, ...)	((void)dev_warn(dev, "[WARN][%s]%s: " pr_fmt(msg), (const char_t *)LOG_TAG, __func__, ##__VA_ARGS__))
+#define iprintk(dev, msg, ...)	((void)dev_info(dev, "[INFO][%s]%s: " pr_fmt(msg), (const char_t *)LOG_TAG, __func__, ##__VA_ARGS__))
+#define dprintk(dev, msg, ...)	{ if(sdripc_verbose_mode == 1) { (void)dev_info(dev, "[INFO][%s]%s: " pr_fmt(msg), (const char_t *)LOG_TAG, __func__, ##__VA_ARGS__); } }
 
-#define SUBCORE_MBOX_NAME ("sdr-ipc-a53")
 #define MAX_NUM_IPC_CLIENT (16)
-#define SHARED_BUFFER_SIZE (1024*512)
+#define SHARED_BUFFER_SIZE (1024*512) //512KBytes
+
+static const char_t subcore_mbox_name[]="sdr-ipc-a53";
 
 /* PCM buffer size : (48k*2ch*16bit)*2sec */
 #define SHARED_PCM_BUFFER_SIZE (384000)
@@ -84,18 +85,17 @@ struct sdripc_device
 /* get client index from IPC data */
 static int32_t get_ipclient_index(char_t *buf, int32_t size)
 {
-	int32_t index;
+	uint8_t index;
 
 	if((buf!=NULL)&&(size>4))
 	{
-		index = (int32_t)((uint8_t)buf[4]&(uint8_t)0x0F);
+		index = (uint8_t)buf[4]&(uint8_t)0x0F;
+		return (int32_t)index;
 	}
 	else
 	{
-		index = -1;
+		return (-1);
 	}
-
-	return index;
 }
 
 static int32_t get_ipclient(struct sdripc_device *sdripc_dev, int32_t index, struct ipclient_t **p_ipclient)
@@ -119,7 +119,9 @@ static int32_t get_ipclient(struct sdripc_device *sdripc_dev, int32_t index, str
 	}
 
 	*p_ipclient = sdripc_dev->ipclient_list[index];
-	//dprintk(dev,"ipclient_list[%d]=%p\n", index,sdripc_dev->ipclient_list[index]);
+	#if 0 //debug
+	dprintk(dev,"ipclient_list[%d]=%p\n", index,sdripc_dev->ipclient_list[index]);
+	#endif
 	return ret;
 }
 
@@ -209,17 +211,13 @@ static int32_t unregister_ipclient(struct sdripc_device *sdripc_dev, struct ipcl
 	return ret;
 }
 
-static int32_t sdripc_rxqueue_init(struct ipclient_t *ipclient)//(struct sdripc_device *sdripc_dev)
+static void sdripc_rxqueue_init(struct ipclient_t *ipclient)
 {
-	int32_t ret=0;
-	//warn//struct sdripc_device *sdripc_dev=ipclient->sdripc_dev;
-	//warn//struct device *dev = sdripc_dev->dev;
-
 	INIT_LIST_HEAD(&ipclient->rx_queue);
 	spin_lock_init(&ipclient->rx_queue_lock);
 	ipclient->rx_queue_count=0;
 
-	return ret;
+	return;
 }
 
 static int32_t sdripc_rxqueue_push(struct ipclient_t *ipclient, struct tcc_mbox_data *mbox_data)
@@ -228,7 +226,7 @@ static int32_t sdripc_rxqueue_push(struct ipclient_t *ipclient, struct tcc_mbox_
 	struct device *dev = sdripc_dev->dev;
 	struct sdripc_receive_list *receive_list;
 	ulong flags;
-	int32_t ret=0;
+	int32_t ret;
 
 	receive_list = devm_kzalloc(dev, sizeof(struct sdripc_receive_list), GFP_KERNEL);
 	if(receive_list == NULL)
@@ -237,7 +235,7 @@ static int32_t sdripc_rxqueue_push(struct ipclient_t *ipclient, struct tcc_mbox_
 		return ret;
 	}
 	INIT_LIST_HEAD(&receive_list->queue);
-	memcpy(&receive_list->data, mbox_data, sizeof(struct tcc_mbox_data));
+	(void)memcpy(&receive_list->data, mbox_data, sizeof(struct tcc_mbox_data));
 
 	spin_lock_irqsave(&ipclient->rx_queue_lock, flags);
 	list_add_tail(&receive_list->queue, &ipclient->rx_queue);
@@ -266,7 +264,7 @@ static int32_t sdripc_rxqueue_get(struct ipclient_t *ipclient, struct tcc_mbox_d
 		receive_list = list_first_entry(&ipclient->rx_queue, struct sdripc_receive_list, queue);
 		if(receive_list!=NULL)
 		{
-			memcpy(mbox_data, &receive_list->data, sizeof(struct tcc_mbox_data));
+			(void)memcpy(mbox_data, &receive_list->data, sizeof(struct tcc_mbox_data));
 		}
 		else
 		{	/* no data */
@@ -282,13 +280,12 @@ static int32_t sdripc_rxqueue_get(struct ipclient_t *ipclient, struct tcc_mbox_d
 	return ret;
 }
 
-static int32_t sdripc_rxqueue_pop(struct ipclient_t *ipclient)
+static void sdripc_rxqueue_pop(struct ipclient_t *ipclient)
 {
 	struct sdripc_device *sdripc_dev = ipclient->sdripc_dev;
 	struct device *dev = sdripc_dev->dev;
 	struct sdripc_receive_list *receive_list;
 	ulong flags;
-	int32_t ret = 0;
 
 	spin_lock_irqsave(&ipclient->rx_queue_lock, flags);
 	if(list_empty(&ipclient->rx_queue)==0)
@@ -302,7 +299,7 @@ static int32_t sdripc_rxqueue_pop(struct ipclient_t *ipclient)
 	}
 	ipclient->rx_queue_count--;
 	spin_unlock_irqrestore(&ipclient->rx_queue_lock, flags);
-	return ret;
+	return;
 }
 
 static int32_t sdripc_rxqueue_deinit(struct ipclient_t *ipclient)
@@ -310,7 +307,7 @@ static int32_t sdripc_rxqueue_deinit(struct ipclient_t *ipclient)
 	struct sdripc_device *sdripc_dev = ipclient->sdripc_dev;
 	struct device *dev = sdripc_dev->dev;
 	struct sdripc_receive_list *receive_list = NULL;
-    struct sdripc_receive_list *receive_list_tmp = NULL;
+	struct sdripc_receive_list *receive_list_tmp;
 	ulong flags;
 	int32_t ret = 0;
 
@@ -322,25 +319,24 @@ static int32_t sdripc_rxqueue_deinit(struct ipclient_t *ipclient)
 
 	/* flush rxqueue */
 	spin_lock_irqsave(&ipclient->rx_queue_lock, flags);
-    list_for_each_entry_safe(receive_list, receive_list_tmp, &ipclient->rx_queue, queue)
-    {
-        list_del_init(&receive_list->queue);
-        devm_kfree(dev, receive_list);
-    }
+	list_for_each_entry_safe((receive_list), (receive_list_tmp), &ipclient->rx_queue, queue)
+	{
+		list_del_init(&receive_list->queue);
+		devm_kfree(dev, receive_list);
+	}
 	ipclient->rx_queue_count=0;
 	spin_unlock_irqrestore(&ipclient->rx_queue_lock, flags);
 	return ret;
 }
 
 
-static int32_t shared_buffer_init(struct sdripc_device *sdripc_dev)
+static void shared_buffer_init(struct sdripc_device *sdripc_dev)
 {
 	//warning//struct device *dev = sdripc_dev->dev;
-	int32_t ret = 0;
 
 	sdripc_dev->shared_head_offset = 0;
 
-	return ret;
+	return;
 }
 
 static int32_t shared_buffer_copy_from_user(struct sdripc_device *sdripc_dev, const char_t __user *data, size_t size)
@@ -351,6 +347,7 @@ static int32_t shared_buffer_copy_from_user(struct sdripc_device *sdripc_dev, co
 	char_t *shared_buf_vaddr;
 	int32_t start_offset;
 	int32_t next_start_offset;
+	uint32_t roundup_offset;
 
 	if( (sdripc_dev->shared_head_offset+(int32_t)size)>SHARED_BUFFER_SIZE )
 	{
@@ -368,9 +365,12 @@ static int32_t shared_buffer_copy_from_user(struct sdripc_device *sdripc_dev, co
 		return (-1);
 	}
 
-	/* Align address to 8 byte */
+	/* Align address to 8 byte, round-up */
 	next_start_offset = start_offset + (int32_t)size;
-	sdripc_dev->shared_head_offset = (int32_t)(((uint32_t)next_start_offset+(8-1))&(~(uint32_t)(8-1)));
+	next_start_offset += 0x7; /* for round up */
+	roundup_offset = (uint32_t)next_start_offset;
+	roundup_offset &= ~0x7u;
+	sdripc_dev->shared_head_offset = (int32_t)roundup_offset;
 
 	return start_offset;
 }
@@ -384,6 +384,7 @@ static void sdripc_mbox_receive_message(struct mbox_client *client, void *messag
 	int32_t ret;
 	int32_t client_index;
 	struct ipclient_t *ipclient;
+	dma_addr_t receive_paddr;
 	int32_t start_offset;
 	int32_t dataSize;
 
@@ -407,31 +408,35 @@ static void sdripc_mbox_receive_message(struct mbox_client *client, void *messag
 		mbox_data->cmd[0], mbox_data->cmd[1], mbox_data->cmd[2], mbox_data->cmd[3], mbox_data->cmd[4], mbox_data->cmd[5]);
 	#endif
 
+	receive_paddr = (dma_addr_t)mbox_data->cmd[4] | ((dma_addr_t)mbox_data->cmd[5]<<32u);
 	if(sdripc_dev->receive_paddr==(dma_addr_t)0)
 	{
-		dma_addr_t receive_paddr;
-		memcpy((char_t*)&receive_paddr, &mbox_data->cmd[4], sizeof(dma_addr_t));
-		sdripc_dev->receive_vaddr = (char_t *)ioremap_nocache(receive_paddr, SHARED_BUFFER_SIZE);
-		if (sdripc_dev->receive_vaddr == NULL)
+		void __iomem *receive_vaddr;
+
+		receive_vaddr = ioremap_nocache((phys_addr_t)receive_paddr, (ulong)SHARED_BUFFER_SIZE);
+		if (receive_vaddr == NULL)
 		{
-			eprintk(dev, "Fail ioremap_nocache\n");
+			eprintk(dev, "Fail ioremap_nocache paddr[%llX]\n", receive_paddr);
 			return;
 		}
 		sdripc_dev->receive_paddr = receive_paddr;
-		dprintk(dev, "Remap paddr paddr[%llX] to vaddr[%p]\n", sdripc_dev->receive_paddr, sdripc_dev->receive_vaddr);
+		sdripc_dev->receive_vaddr = receive_vaddr;
+		dprintk(dev, "Remap paddr[%llX] to vaddr[%p]\n", sdripc_dev->receive_paddr, sdripc_dev->receive_vaddr);
 	}
 	#if 1
-	else /* never happens */
+	else
 	{
-		dma_addr_t receive_paddr;
-		memcpy((char_t*)&receive_paddr, &mbox_data->cmd[4], sizeof(dma_addr_t));
 		if(receive_paddr != sdripc_dev->receive_paddr )
 		{
-			/* abnormal situation */
+			/* abnormal situation, should never be happened */
 			eprintk(dev, "change paddr prev[%llX] to new[%llX]\n", sdripc_dev->receive_paddr, receive_paddr);
 			dprintk(dev, "cmd[%08X][%08X][%08X] [%08X][%08X]\n",
 				mbox_data->cmd[0], mbox_data->cmd[1], mbox_data->cmd[2], mbox_data->cmd[4], mbox_data->cmd[5]);
 			return;
+		}
+		else
+		{
+			/* nothing to do */
 		}
 	}
 	#endif
@@ -446,7 +451,9 @@ static void sdripc_mbox_receive_message(struct mbox_client *client, void *messag
 	{
 		/* discard data, because client_index is not registered */
 		spin_unlock(&sdripc_dev->ipclient_lock[client_index]);
-		//dprintk(dev,"client_index[%d] is not registered\n", client_index);
+		#if 0 //debug
+		dprintk(dev,"client_index[%d] is not registered\n", client_index);
+		#endif
 		return;
 	}
 
@@ -463,14 +470,16 @@ static void sdripc_mbox_receive_message(struct mbox_client *client, void *messag
 
 static struct mbox_chan *sdripc_mbox_request_channel(struct platform_device *pdev, const char_t *channel_name)
 {
-	struct device *dev = &pdev->dev;
+	struct device *dev;
 	struct mbox_client *client;
 	struct mbox_chan *channel = NULL;
 
 	if((pdev != NULL)&&(channel_name != NULL))
 	{
+		dev = &pdev->dev;
+
 		client = devm_kzalloc(dev, sizeof(struct mbox_client), GFP_KERNEL);
-		if (!client)
+		if (client==NULL)
 		{
 			return ERR_PTR(-ENOMEM);
 		}
@@ -516,7 +525,6 @@ static uint32_t sdripc_poll( struct file *filp, poll_table *wait)
 	{
 		return 0;
 	}
-	//dev = sdripc_dev->dev;
 
 	poll_wait(filp, &ipclient->event_waitq, wait);
 	spin_lock(&sdripc_dev->ipclient_lock[ipclient->client_index]);
@@ -533,13 +541,15 @@ static uint32_t sdripc_poll( struct file *filp, poll_table *wait)
 
 static ssize_t sdripc_write(struct file *filp, const char_t __user *buf, size_t count, loff_t *f_pos)
 {
-	ssize_t ret = -1;
+	ssize_t ret;
 	struct ipclient_t *ipclient;
 	struct sdripc_device *sdripc_dev;
-	//warn//struct device *dev;
+	struct device *dev;
 	struct tcc_mbox_data mbox_data;
-	int32_t mbox_result = 0;
+	int32_t mbox_result;
 	int32_t shared_start_offset;
+
+	(void)f_pos;  /* to avoid QAC warning 'unused' */
 
 	if(filp==NULL)
 	{
@@ -566,7 +576,7 @@ static ssize_t sdripc_write(struct file *filp, const char_t __user *buf, size_t 
 	{
 		return (-ENODEV);
 	}
-	//dev = sdripc_dev->dev;
+	dev = sdripc_dev->dev;
 
 	mutex_lock(&sdripc_dev->mboxsendMutex);
 	{
@@ -582,14 +592,15 @@ static ssize_t sdripc_write(struct file *filp, const char_t __user *buf, size_t 
 			mbox_data.cmd[2] = (uint32_t)count;
 			/* cmd[3]: not used */
 			/* cmd[4-5]: physical address of shared buffer */
-			memcpy(&mbox_data.cmd[4], (char_t*)&sdripc_dev->paddr, sizeof(dma_addr_t));
+			mbox_data.cmd[4] = (uint32_t)(sdripc_dev->paddr&0xFFFFFFFFu);
+			mbox_data.cmd[5] = (uint32_t)(sdripc_dev->paddr>>32u);
 			/* data_fifo won't be used */
 			mbox_data.data_len = 0;
 
 			mbox_result = mbox_send_message(sdripc_dev->mbox_channel, &mbox_data);
 			if(mbox_result < 0)
 			{
-				//eprintk(dev, "mbox_send_message failed: %d\n", mbox_result);
+				eprintk(dev, "mbox_send_message failed: %d\n", mbox_result);
 				ret = (-ETIMEDOUT);
 			}
 			else
@@ -599,7 +610,9 @@ static ssize_t sdripc_write(struct file *filp, const char_t __user *buf, size_t 
 		}
 		else
 		{
-			//eprintk(dev, "shared_buffer_copy_from_user failed: %d\n", shared_start_offset);
+			#if 0
+			eprintk(dev, "shared_buffer_copy_from_user failed: %d\n", shared_start_offset);
+			#endif
 			ret = (-EFAULT);
 		}
 	}
@@ -616,9 +629,10 @@ static ssize_t sdripc_read(struct file *filp, char_t __user *buf, size_t count, 
 	struct tcc_mbox_data mbox_data;
 
 	int32_t ret;
-	//int32_t type;
 	int32_t start_offset;
 	size_t  size=0;
+
+	(void)f_pos;  /* to avoid QAC warning 'unused' */
 
 	if(filp==NULL)
 	{
@@ -769,11 +783,11 @@ static int32_t sdripc_close(struct inode *inode, struct file *filp)
 		{
 			spin_lock(&sdripc_dev->ipclient_lock[client_index]);
 		}
-		unregister_ipclient(sdripc_dev, ipclient);
+		(void)unregister_ipclient(sdripc_dev, ipclient);
 
 		/* question : event_waitq need to destory? */
 
-		sdripc_rxqueue_deinit(ipclient);
+		(void)sdripc_rxqueue_deinit(ipclient);
 
 		/* free ipclient instance */
 		devm_kfree(dev, ipclient);
@@ -790,7 +804,7 @@ static int32_t sdripc_close(struct inode *inode, struct file *filp)
 
 static long_t sdripc_ioctl(struct file *filp, uint32_t cmd, ulong arg)
 {
-	long_t ret = -1;
+	long_t ret;
 	struct ipclient_t *ipclient;
 	struct sdripc_device *sdripc_dev;
 	struct device *dev;
@@ -819,6 +833,7 @@ static long_t sdripc_ioctl(struct file *filp, uint32_t cmd, ulong arg)
 					case IOCTL_SDRPIC_GET_SHM_BUFFER:
 						{
 							sdripc_get_shm_param shm_param;
+							ulong ret_copy;
 
 							if(arg == (ulong)0)
 							{
@@ -829,7 +844,8 @@ static long_t sdripc_ioctl(struct file *filp, uint32_t cmd, ulong arg)
 							shm_param.phyaddr =  (uint64_t)sdripc_dev->paddr_pcm;
 							shm_param.size    =  (int32_t)SHARED_PCM_BUFFER_SIZE;
 
-							if( copy_to_user((void*)arg, &shm_param, sizeof(shm_param)) == (ulong)0 )
+							ret_copy = copy_to_user((void*)arg, &shm_param, sizeof(sdripc_get_shm_param));
+							if( ret_copy == (ulong)0 )
 							{
 								ret = 0;
 							}
@@ -877,7 +893,7 @@ static const struct file_operations sdripc_ops = {
 
 static int32_t sdripc_cdev_create(struct device *dev, struct sdripc_device *sdripc_dev)
 {
-	int32_t ret=0;
+	int32_t ret;
 
 	ret = alloc_chrdev_region(&sdripc_dev->devnum, 0, 1, sdripc_dev->device_name);
 	if (ret != 0)
@@ -925,19 +941,19 @@ err_alloc_chrdev:
 	return ret;
 }
 
-static int32_t sdripc_cdev_destory(struct device *dev, struct sdripc_device *sdripc_dev)
+static void sdripc_cdev_destory(struct sdripc_device *sdripc_dev)
 {
 	device_destroy(sdripc_dev->class, sdripc_dev->devnum);
 	class_destroy(sdripc_dev->class);
 	cdev_del(&sdripc_dev->cdev);
 	unregister_chrdev_region(sdripc_dev->devnum, 1);
 
-	return 0;
+	return;
 }
 
 static int32_t sdripc_probe(struct platform_device *pdev)
 {
-	int32_t ret=0;
+	int32_t ret;
 	struct sdripc_device *sdripc_dev;
 	struct device *dev;
 	int32_t i;
@@ -956,11 +972,11 @@ static int32_t sdripc_probe(struct platform_device *pdev)
 		goto error_return;
 	}
 
-	platform_set_drvdata(pdev, sdripc_dev);
+	platform_set_drvdata(pdev, (void*)sdripc_dev);
 
-	of_property_read_string(pdev->dev.of_node,"device-name", &sdripc_dev->device_name);
-	of_property_read_string(pdev->dev.of_node,"mbox-names", &sdripc_dev->mbox_name);
-	of_property_read_string(pdev->dev.of_node,"mbox-id", &sdripc_dev->mbox_id_string);
+	(void)of_property_read_string(pdev->dev.of_node,"device-name", &sdripc_dev->device_name);
+	(void)of_property_read_string(pdev->dev.of_node,"mbox-names", &sdripc_dev->mbox_name);
+	(void)of_property_read_string(pdev->dev.of_node,"mbox-id", &sdripc_dev->mbox_id_string);
 	dprintk(dev, "device name[%s], mbox-names[%s], mbox-id[%s]\n", sdripc_dev->device_name, sdripc_dev->mbox_name, sdripc_dev->mbox_id_string);
 
 	/* create char device and device node */
@@ -983,7 +999,8 @@ static int32_t sdripc_probe(struct platform_device *pdev)
 	shared_buffer_init(sdripc_dev);
 
 	/* allocate PCM buffer from DMA memory */
-	if( memcmp(sdripc_dev->mbox_name, SUBCORE_MBOX_NAME, (sizeof(SUBCORE_MBOX_NAME)) ) ==  0 )
+	ret = strncmp(sdripc_dev->mbox_name, subcore_mbox_name, sizeof(subcore_mbox_name) );
+	if( ret==0 )
 	{
 		/* only at A53 core */
 		sdripc_dev->vaddr_pcm = dma_alloc_coherent(dev, SHARED_PCM_BUFFER_SIZE, &sdripc_dev->paddr_pcm, GFP_KERNEL);
@@ -1014,9 +1031,9 @@ static int32_t sdripc_probe(struct platform_device *pdev)
 	return 0;
 
 error_mbox_request_channel:
-	dma_free_coherent(dev, SHARED_BUFFER_SIZE, sdripc_dev->vaddr, sdripc_dev->paddr);
+	dma_free_coherent(dev, SHARED_BUFFER_SIZE, (void *)sdripc_dev->vaddr, sdripc_dev->paddr);
 error_dma_alloc:
-	sdripc_cdev_destory(dev, sdripc_dev);
+	sdripc_cdev_destory(sdripc_dev);
 error_create_cdev:
 error_return:
 	return ret;
@@ -1065,7 +1082,7 @@ static int32_t sdripc_remove(struct platform_device *pdev)
 	}
 
 	/* destory char device and device node */
-	sdripc_cdev_destory(dev, sdripc_dev);
+	sdripc_cdev_destory(sdripc_dev);
 
 	return ret;
 }
@@ -1077,6 +1094,7 @@ static int32_t sdripc_suspend(struct platform_device *pdev, pm_message_t state)
 	struct sdripc_device *sdripc_dev;
 	struct device *dev;
 
+	(void)state;  /* to avoid QAC warning 'unused' */
 	sdripc_dev = (struct sdripc_device *)platform_get_drvdata(pdev);
 	if( sdripc_dev != NULL )
 	{
