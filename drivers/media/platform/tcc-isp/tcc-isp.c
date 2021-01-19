@@ -521,7 +521,7 @@ static int tcc_isp_parse_dt(struct platform_device *pdev,
 	}
 	logi(&(state->pdev->dev), "mem base addr is %px\n", state->mem_base);
 
-#if 1
+#if 0
 	/*
 	 * Get UART pinctrl
 	 *
