@@ -1510,6 +1510,72 @@ static int tcc_mipi_csi2_remove(struct platform_device *pdev)
 	return ret;
 }
 
+#ifdef CONFIG_PM_SLEEP
+static int tcc_mipi_csi2_suspend(struct device *dev)
+{
+	struct platform_device *pdev = to_platform_device(dev);
+	struct tcc_mipi_csi2_state *state = platform_get_drvdata(pdev);
+	int ret = 0;
+
+	logi(&(state->pdev->dev), "%s in\n", __func__);
+
+#if defined(CONFIG_ARCH_TCC803X)
+	clk_disable(state->clock);
+	tcc_mipi_csi2_clk_put(state);
+#else
+
+#endif
+
+	return ret;
+}
+
+static int tcc_mipi_csi2_resume(struct device *dev)
+{
+	struct platform_device *pdev = to_platform_device(dev);
+	struct tcc_mipi_csi2_state *state = platform_get_drvdata(pdev);
+	int ret = 0;
+
+	logi(&(state->pdev->dev), "%s in\n", __func__);
+
+#if defined(CONFIG_ARCH_TCC803X)
+	ret = tcc_mipi_csi2_clk_get(state);
+	if (ret < 0)
+		goto err;
+
+	ret = clk_set_rate(state->clock, state->clk_frequency);
+	if (ret < 0)
+		goto e_clkput;
+
+	ret = clk_enable(state->clock);
+	if (ret < 0)
+		goto e_clkput;
+
+	logi(&(state->pdev->dev), "csi clock is %d Hz\n", state->clk_frequency);
+#else
+	if (!(MIPI_WRAP_Set_CKC(state))) {
+		loge(&(state->pdev->dev), "fail - mipi wrap clock setting\n");
+		ret = -ENODEV;
+		goto err;
+	}
+#endif
+
+	return ret;
+
+e_clkdis:
+#if defined(CONFIG_ARCH_TCC803X)
+	clk_disable(state->clock);
+e_clkput:
+	tcc_mipi_csi2_clk_put(state);
+#endif
+err:
+	return ret;
+}
+#endif
+
+static const struct dev_pm_ops tcc_mipi_csi2_pm_ops = {
+	SET_SYSTEM_SLEEP_PM_OPS(tcc_mipi_csi2_suspend, tcc_mipi_csi2_resume)
+};
+
 static const struct of_device_id tcc_mipi_csi2_of_match[] = {
 	{
 		.compatible	= "telechips,tcc803x-mipi-csi2",
@@ -1530,6 +1596,7 @@ static struct platform_driver tcc_mipi_csi2_driver = {
 		.name = TCC_MIPI_CSI2_DRIVER_NAME,
 		.owner = THIS_MODULE,
 		.of_match_table	= tcc_mipi_csi2_of_match,
+		.pm = &tcc_mipi_csi2_pm_ops,
 	},
 };
 module_platform_driver(tcc_mipi_csi2_driver);

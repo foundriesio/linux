@@ -521,7 +521,7 @@ static int tcc_isp_parse_dt(struct platform_device *pdev,
 	}
 	logi(&(state->pdev->dev), "mem base addr is %px\n", state->mem_base);
 
-#if 0
+#if 1
 	/*
 	 * Get UART pinctrl
 	 *
@@ -925,6 +925,38 @@ static int tcc_isp_remove(struct platform_device *pdev)
 	return ret;
 }
 
+#ifdef CONFIG_PM_SLEEP
+static int tcc_isp_suspend(struct device *dev)
+{
+	struct platform_device *pdev = to_platform_device(dev);
+	struct tcc_isp_state *state = platform_get_drvdata(pdev);
+	int ret = 0;
+
+	logi(&(state->pdev->dev), "%s in\n", __func__);
+
+
+	return ret;
+}
+
+static int tcc_isp_resume(struct device *dev)
+{
+	struct platform_device *pdev = to_platform_device(dev);
+	struct tcc_isp_state *state = platform_get_drvdata(pdev);
+	int ret = 0;
+
+	logi(&(state->pdev->dev), "%s in\n", __func__);
+
+	tcc_isp_set_default(state);
+	state->fw_load = 0;
+
+	return ret;
+}
+#endif
+
+static const struct dev_pm_ops tcc_isp_pm_ops = {
+	SET_SYSTEM_SLEEP_PM_OPS(tcc_isp_suspend, tcc_isp_resume)
+};
+
 static const struct of_device_id tcc_isp_of_match[] = {
 	{
 		.compatible = "telechips,tcc805x-isp",
@@ -941,6 +973,7 @@ static struct platform_driver tcc_isp_driver = {
 		.name = TCC_ISP_DRIVER_NAME,
 		.owner = THIS_MODULE,
 		.of_match_table = tcc_isp_of_match,
+		.pm = &tcc_isp_pm_ops,
 	},
 };
 module_platform_driver(tcc_isp_driver);
