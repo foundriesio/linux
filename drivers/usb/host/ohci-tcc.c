@@ -604,7 +604,7 @@ static int32_t tcc_ohci_parse_dt(struct platform_device *pdev,
 		}
 	} else {
 		tcc_ohci->vbus_source_ctrl = 0;
-		err = 1;
+		err = 0;
 	}
 
 	tcc_ohci->hclk = of_clk_get(pdev->dev.of_node, 0);
