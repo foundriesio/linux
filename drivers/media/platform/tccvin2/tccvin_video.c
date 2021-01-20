@@ -2151,8 +2151,8 @@ int32_t tccvin_video_streamon(struct tccvin_streaming *stream)
 	logi("preview method: %s\n", (stream->preview_method == PREVIEW_V4L2) ?
 		"PREVIEW_V4L2" : "PREVIEW_DD");
 
-	if (stream->is_handover_needed == V4L2_CAP_RESERVED_HANDOVER_NEED) {
-		stream->is_handover_needed = V4L2_CAP_RESERVED_HANDOVER_NONE;
+	if (stream->is_handover_needed == V4L2_CAP_HANDOVER_NEED) {
+		stream->is_handover_needed = V4L2_CAP_HANDOVER_NONE;
 		logi("#### Handover - Skip to set the vioc path\n");
 	} else {
 		ret = tccvin_video_subdevs_streamon(stream);
