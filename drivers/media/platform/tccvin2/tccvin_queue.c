@@ -168,7 +168,7 @@ static int tccvin_start_streaming(struct vb2_queue *vq, unsigned int count)
 
 	queue->buf_used = 0;
 
-	ret = tccvin_video_streamon(stream, 0);
+	ret = tccvin_video_streamon(stream);
 	if (ret == 0) {
 		return 0;
 	}
@@ -190,7 +190,7 @@ static void tccvin_stop_streaming(struct vb2_queue *vq)
 	tccvin_queue_return_buffers(queue, TCCVIN_BUF_STATE_ERROR);
 	spin_unlock_irqrestore(&queue->irqlock, flags);
 
-	tccvin_video_streamoff(stream, 0);
+	tccvin_video_streamoff(stream);
 }
 
 static const struct vb2_ops tccvin_queue_qops = {

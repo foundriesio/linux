@@ -677,6 +677,16 @@ static int tccvin_ioctl_g_parm(struct file *file, void *fh,
 		fract = &(a->parm.capture.timeperframe);
 		fract->numerator	= 1;
 		fract->denominator	= stream->cur_frame->dwDefaultFrameInterval;
+
+		ret = tccvin_check_wdma_counter(stream);
+		if (ret == 0) {
+			a->parm.capture.reserved[V4L2_CAP_PATH_STATUS_MASK] =
+				V4L2_CAP_PATH_WORKING;
+		} else {
+
+			a->parm.capture.reserved[V4L2_CAP_PATH_STATUS_MASK] =
+				 V4L2_CAP_PATH_NOT_WORKING;
+                }
 		break;
 	default:
 		ret = -1;
@@ -700,8 +710,11 @@ static int tccvin_ioctl_s_parm(struct file *file, void *fh,
 		stream->cur_frame->dwDefaultFrameInterval = 
 			tccvin_try_frame_interval(stream->cur_frame,
 				a->parm.capture.timeperframe.denominator);
-		logd("numerator: %d, denominator: %d\n",
-			1, stream->cur_frame->dwDefaultFrameInterval);
+		stream->is_handover_needed = a->parm.capture.reserved[V4L2_CAP_HANDOVER_MASK];
+
+		logd("numerator: %d, denominator: %d, is_handover: %d\n",
+			1, stream->cur_frame->dwDefaultFrameInterval,
+			stream->is_handover_needed);
 		break;
 	default:
 		ret = -1;
