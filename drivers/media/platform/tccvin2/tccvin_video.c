@@ -493,9 +493,7 @@ static int32_t tccvin_parse_device_tree(struct tccvin_streaming *vdev)
 		loge("VIN[%d] - The CIF port node is NULL\n", vin_id);
 	}
 
-#ifdef CONFIG_OVERLAY_PGL
-	// Parking Guide Line
-
+#if defined(CONFIG_OVERLAY_PGL)
 	vioc_path->pgl = -1;
 	vdev->cif.use_pgl = -1;
 	// VIDEO_IN04~06 don't have RDMA
@@ -510,8 +508,10 @@ static int32_t tccvin_parse_device_tree(struct tccvin_streaming *vdev)
 				logd("%10s[%2d]: 0x%p\n", "RDMA(PGL)",
 					vioc_id, address);
 			}
+
+			// Parking Guide Line
 			of_property_read_u32_index(main_node, "use_pgl", 0,
-						   &vdev->cif.use_pgl);
+				&vdev->cif.use_pgl);
 			dlog("%10s[%2d]: %d\n", "usage status pgl",
 			     vdev->vid_dev.minor, vdev->cif.use_pgl);
 		} else {
@@ -519,7 +519,7 @@ static int32_t tccvin_parse_device_tree(struct tccvin_streaming *vdev)
 			return -ENODEV;
 		}
 	}
-#endif//CONFIG_OVERLAY_PGL
+#endif//defined(CONFIG_OVERLAY_PGL)
 
 	// VIQE
 	vioc_path->viqe = -1;
@@ -830,12 +830,8 @@ int tccvin_set_pgl(struct tccvin_streaming *vdev)
 	VIOC_RDMA_SetImageSize(rdma, width, height);
 	VIOC_RDMA_SetImageOffset(rdma, format, width);
 	VIOC_RDMA_SetImageBase(rdma, buf_addr, 0, 0);
-	if (vdev->cif.use_pgl == 1U) {
-		VIOC_RDMA_SetImageEnable(rdma);
-		VIOC_RDMA_SetImageUpdate(rdma);
-	} else {
-		VIOC_RDMA_SetImageDisable(rdma);
-	}
+	VIOC_RDMA_SetImageEnable(rdma);
+	VIOC_RDMA_SetImageUpdate(rdma);
 
 	return 0;
 }
@@ -1150,7 +1146,7 @@ static int32_t tccvin_set_wmixer(struct tccvin_streaming *vdev)
 	unsigned int	out_posy	= 0;
 	unsigned int	ovp		= 5;
 	unsigned int	vs_ch		= 0;
-#ifdef CONFIG_OVERLAY_PGL
+#if defined(CONFIG_OVERLAY_PGL)
 	unsigned int	pgl_ch		= 1;
 	unsigned int	chrom_layer	= 0;
 	uint32_t	key_R		= PGL_BG_R;
@@ -1159,7 +1155,7 @@ static int32_t tccvin_set_wmixer(struct tccvin_streaming *vdev)
 	uint32_t	mask_R		= ((PGL_BGM_R >> 3) << 3);
 	uint32_t	mask_G		= ((PGL_BGM_G >> 3) << 3);
 	uint32_t	mask_B		= ((PGL_BGM_B >> 3) << 3);
-#endif//CONFIG_OVERLAY_PGL
+#endif//defined(CONFIG_OVERLAY_PGL)
 
 	if (!((vdev->selection.r.left == 0) && (vdev->selection.r.top == 0))) {
 		if (vdev->selection.flags != V4L2_SEL_FLAG_GE) {
@@ -1177,11 +1173,11 @@ static int32_t tccvin_set_wmixer(struct tccvin_streaming *vdev)
 	VIOC_WMIX_SetSize(wmixer, width, height);
 	VIOC_WMIX_SetOverlayPriority(wmixer, ovp);
 	VIOC_WMIX_SetPosition(wmixer, vs_ch, out_posx, out_posy);
-#ifdef CONFIG_OVERLAY_PGL
+#if defined(CONFIG_OVERLAY_PGL)
 	VIOC_WMIX_SetPosition(wmixer, pgl_ch, 0, 0);
 	VIOC_WMIX_SetChromaKey(wmixer, chrom_layer, ON, key_R, key_G, key_B,
 		mask_R, mask_G, mask_B);
-#endif
+#endif//defined(CONFIG_OVERLAY_PGL)
 	VIOC_WMIX_SetUpdate(wmixer);
 	VIOC_CONFIG_WMIXPath(vdev->cif.vioc_path.vin, ON);
 
@@ -1510,10 +1506,13 @@ static int32_t tccvin_start_stream(struct tccvin_streaming *vdev)
 	// reset vioc path
 	tccvin_reset_vioc_path(vdev);
 
+#if defined(CONFIG_OVERLAY_PGL)
 	// set rdma for Parking Guide Line
-#if defined(CONFIG_OVERLAY_PGL) && !defined(CONFIG_OVERLAY_DPGL)
-	tccvin_set_pgl(vdev);
-#endif
+	if (vdev->cif.use_pgl == 1U) {
+		// enable rdma
+		tccvin_set_pgl(vdev);
+	}
+#endif//defined(CONFIG_OVERLAY_PGL)
 
 	// set vin
 	tccvin_set_vin(vdev);
@@ -1607,10 +1606,12 @@ static int32_t tccvin_stop_stream(struct tccvin_streaming *vdev)
 
 	VIOC_VIN_SetEnable(VIOC_VIN_GetAddress(vioc->vin), OFF);
 
-#if defined(CONFIG_OVERLAY_PGL) && !defined(CONFIG_OVERLAY_DPGL)
-	// disable pgl
-	VIOC_RDMA_SetImageDisable(pgl);
-#endif//CONFIG_OVERLAY_PGL
+#if defined(CONFIG_OVERLAY_PGL)
+	if (vdev->cif.use_pgl == 1U) {
+		// disable rdma
+		VIOC_RDMA_SetImageDisable(pgl);
+	}
+#endif//defined(CONFIG_OVERLAY_PGL)
 
 	// reset vioc path
 	tccvin_reset_vioc_path(vdev);

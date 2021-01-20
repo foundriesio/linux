@@ -289,18 +289,22 @@ int tccvin_parse_device_tree(tccvin_dev_t * vdev) {
 	vdev->cif.vioc_path.pgl = -1;
 	vdev->cif.use_pgl = -1;
 	// VIDEO_IN04~06 don't have RDMA
-	if(vdev->cif.vioc_path.vin >= VIOC_VIN00 && vdev->cif.vioc_path.vin <= VIOC_VIN30) {
+	if (vdev->cif.vioc_path.vin >= VIOC_VIN00 && vdev->cif.vioc_path.vin <= VIOC_VIN30) {
 		vioc_node = of_parse_phandle(main_node, "rdma", 0);
-		if(vioc_node != NULL) {
-			of_property_read_u32_index(main_node, "rdma", 1, &vdev->cif.vioc_path.pgl);
-			if(vdev->cif.vioc_path.pgl != -1) {
-				address = VIOC_RDMA_GetAddress(vdev->cif.vioc_path.pgl);
-				dlog("%10s[%2d]: 0x%p\n", "RDMA(PGL)", get_vioc_index(vdev->cif.vioc_path.pgl), address);
+		if (vioc_node != NULL) {
+			of_property_read_u32_index(main_node,
+				"rdma", 1, &vdev->cif.vioc_path.pgl);
+			if (vdev->cif.vioc_path.pgl != -1) {
+				address	= VIOC_RDMA_GetAddress(vdev->cif.vioc_path.pgl);
+				logd("%10s[%2d]: 0x%p\n", "RDMA(PGL)",
+					get_vioc_index(vdev->cif.vioc_path.pgl), address);
 			}
 
 			// Parking Guide Line
-			of_property_read_u32_index(main_node, "use_pgl", 0, &vdev->cif.use_pgl);
-			dlog("%10s[%2d]: %d\n", "usage status pgl", vdev->vid_dev.minor, vdev->cif.use_pgl);
+			of_property_read_u32_index(main_node, "use_pgl",
+				0, &vdev->cif.use_pgl);
+			dlog("%10s[%2d]: %d\n", "usage status pgl",
+				vdev->vid_dev.minor, vdev->cif.use_pgl);
 		} else {
 			loge("\"rdma\" node is not found.\n");
 			return -ENODEV;
@@ -654,10 +658,10 @@ void tccvin_clear_buffer(tccvin_dev_t * vdev) {
 int tccvin_set_pgl(tccvin_dev_t * vdev) {
 	volatile void __iomem	* pRDMA		= VIOC_RDMA_GetAddress(vdev->cif.vioc_path.pgl);
 
-	unsigned int	width		= vdev->v4l2.format.fmt.pix.width;
-	unsigned int	height		= vdev->v4l2.format.fmt.pix.height;
-	unsigned int	format		= PGL_FORMAT;
-	unsigned int	buf_addr	= vdev->cif.pmap_pgl.base;
+	unsigned int	width			= vdev->v4l2.format.fmt.pix.width;
+	unsigned int	height			= vdev->v4l2.format.fmt.pix.height;
+	unsigned int	format			= PGL_FORMAT;
+	unsigned int	buf_addr		= vdev->cif.pmap_pgl.base;
 
 	FUNCTION_IN
 	dlog("RDMA: 0x%p, size[%d x %d], format[%d]. \n", pRDMA, width, height, format);
@@ -666,8 +670,6 @@ int tccvin_set_pgl(tccvin_dev_t * vdev) {
 	VIOC_RDMA_SetImageSize(pRDMA, width, height);
 	VIOC_RDMA_SetImageOffset(pRDMA, format, width);
 	VIOC_RDMA_SetImageBase(pRDMA, buf_addr, 0, 0);
-//	VIOC_RDMA_SetImageAlphaEnable(pRDMA, ON);
-//	VIOC_RDMA_SetImageAlpha(pRDMA, 0xff, 0xff);
 	VIOC_RDMA_SetImageEnable(pRDMA);
 	VIOC_RDMA_SetImageUpdate(pRDMA);
 
@@ -1327,9 +1329,9 @@ int tccvin_start_stream(tccvin_dev_t * vdev) {
 	// reset vioc path
 	tccvin_reset_vioc_path(vdev);
 
-	// set rdma for Parking Guide Line
 #if defined(CONFIG_OVERLAY_PGL)
-	if (vdev->cif.use_pgl == 1) {
+	// set rdma for Parking Guide Line
+	if (vdev->cif.use_pgl == 1U) {
 		// enable rdma
 		tccvin_set_pgl(vdev);
 	}
@@ -1447,7 +1449,7 @@ int tccvin_stop_stream(tccvin_dev_t * vdev) {
 	VIOC_VIN_SetEnable(VIOC_VIN_GetAddress(vdev->cif.vioc_path.vin), OFF); // disable VIN
 
 #if defined(CONFIG_OVERLAY_PGL)
-	if (vdev->cif.use_pgl == 1) {
+	if (vdev->cif.use_pgl == 1U) {
 		// disable rdma
 		VIOC_RDMA_SetImageDisable(pPGL);
 	}
