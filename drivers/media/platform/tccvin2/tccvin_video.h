@@ -430,7 +430,9 @@ extern int tccvin_video_init(struct tccvin_streaming *stream);
 extern int tccvin_video_deinit(struct tccvin_streaming *stream);
 extern int tccvin_video_streamon(struct tccvin_streaming *stream);
 extern int tccvin_video_streamoff(struct tccvin_streaming *stream);
-extern int tccvin_check_wdma_counter(struct tccvin_streaming *stream);
+extern void tccvin_check_path_status(struct tccvin_streaming *stream, int *status);
+extern int32_t tccvin_s_handover(struct tccvin_streaming *stream,
+	int32_t *is_handover_needed);
 extern int tccvin_allocated_dmabuf(struct tccvin_streaming *stream, int count);
 extern int tccvin_set_buffer_address(struct tccvin_streaming *stream,
 	struct v4l2_buffer *buf);
