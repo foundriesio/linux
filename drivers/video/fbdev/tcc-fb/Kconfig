@@ -369,7 +369,9 @@ config LCD_HDMI4K
 
 config LCD_HDMI640X480TU
 	bool "HDMI 640X480 panel support"
-	depends on FB_TCC && TCC_VIOC_CONTROLLER && TCC_HDMI_DRIVER_V2_0 && ARCH_TCC803X
+	depends on FB_TCC && TCC_VIOC_CONTROLLER && \
+		((TCC_HDMI_DRIVER_V1_4 && ARCH_TCC897X) ||\
+		 (TCC_HDMI_DRIVER_V2_0 && ARCH_TCC803X))
 	default n
 	help
 		This panel should only used as extended panel
