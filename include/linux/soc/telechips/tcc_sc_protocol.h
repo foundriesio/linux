@@ -3,12 +3,12 @@
  * Copyright (C) Telechips Inc.
  */
 
-#ifndef __TCC_SC_PROTOCOL__
-#define __TCC_SC_PROTOCOL__
+#ifndef TCC_SC_PROTOCOL
+#define TCC_SC_PROTOCOL
 
-#define TCC_SC_MMC_DATA_READ	1
-#define TCC_SC_MMC_DATA_WRITE	2
-#define TCC_SC_FW_INFO_DESC_SIZE	16 /* in byte */
+#define TCC_SC_MMC_DATA_READ		(1)
+#define TCC_SC_MMC_DATA_WRITE		(2)
+#define TCC_SC_FW_INFO_DESC_SIZE	(16) /* in byte */
 
 struct tcc_sc_fw_handle;
 
@@ -23,50 +23,49 @@ struct tcc_sc_fw_version {
 	u16 major;
 	u16 minor;
 	u32 patch;
-	char desc[TCC_SC_FW_INFO_DESC_SIZE];
+	s8 desc[TCC_SC_FW_INFO_DESC_SIZE];
 };
 
 struct tcc_sc_fw_mmc_cmd {
 	u32			opcode;
 	u32			arg;
 	u32			resp[4];
-	unsigned int		flags;
-	int			error;
-
-	unsigned int part_num;
+	u32			flags;
+	s32			error;
+	u32 			part_num;
 };
 
 struct tcc_sc_fw_mmc_data {
-	unsigned int		blksz;
-	unsigned int		blocks;
-	unsigned int		blk_addr;
-	int			error;
-	unsigned int		flags;
+	u32		blksz;
+	u32		blocks;
+	u32		blk_addr;
+	s32		error;
+	u32		flags;
 
-	unsigned int		sg_len;
-	int			sg_count;
+	u32		sg_len;
+	s32		sg_count;
 	struct scatterlist	*sg;
 };
 
 struct tcc_sc_fw_ufs_cmd {
-	unsigned int		datsz;
-	unsigned int		blocks;
-	unsigned int		lba;
-	int			error;
-	unsigned int		dir;
-	unsigned int		lun;
-	unsigned int		tag;
-	unsigned int		op;
-	unsigned int		cdb;
+	u32		datsz;
+	u32		blocks;
+	u32		lba;
+	s32		error;
+	u32		dir;
+	u32		lun;
+	u32		tag;
+	u32		op;
+	u32		cdb;
 
-	unsigned int		cdb0;
-	unsigned int		cdb1;
-	unsigned int		cdb2;
-	unsigned int		cdb3;
+	u32		cdb0;
+	u32		cdb1;
+	u32		cdb2;
+	u32		cdb3;
 
-	int			sg_count;
+	s32		sg_count;
 	struct scatterlist	*sg;
-	unsigned int		resp[4];
+	u32		resp[4];
 };
 
 struct tcc_sc_fw_otp_cmd {
@@ -75,19 +74,19 @@ struct tcc_sc_fw_otp_cmd {
 };
 
 struct tcc_sc_fw_mmc_ops {
-	int (*request_command)(const struct tcc_sc_fw_handle *handle,
+	s32 (*request_command)(const struct tcc_sc_fw_handle *handle,
 		struct tcc_sc_fw_mmc_cmd *cmd, struct tcc_sc_fw_mmc_data *data);
-	int (*prot_info)(const struct tcc_sc_fw_handle *handle,
+	s32 (*prot_info)(const struct tcc_sc_fw_handle *handle,
 		struct tcc_sc_fw_prot_mmc *mmc_info);
 };
 
 struct tcc_sc_fw_ufs_ops {
-	int (*request_command)(const struct tcc_sc_fw_handle *handle,
+	s32 (*request_command)(const struct tcc_sc_fw_handle *handle,
 			struct tcc_sc_fw_ufs_cmd *cmd);
 };
 
 struct tcc_sc_fw_gpio_ops {
-	int (*request_gpio)(const struct tcc_sc_fw_handle *handle,
+	s32 (*request_gpio)(const struct tcc_sc_fw_handle *handle,
 		uint32_t address, uint32_t bit_number,
 		uint32_t width, uint32_t value);
 };
