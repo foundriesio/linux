@@ -467,6 +467,7 @@ static int _vmgr_hevc_enc_process(vputype type, int cmd, long pHandle,
 #ifdef CONFIG_VPU_TIME_MEASUREMENT
 	struct timeval t1, t2;
 	int time_gap_ms = 0;
+	do_gettimeofday(&t1);
 #endif
 
 	vmgr_hevc_enc_data.check_interrupt_detection = 0;
@@ -621,9 +622,6 @@ static int _vmgr_hevc_enc_process(vputype type, int cmd, long pHandle,
 		case VPU_ENC_ENCODE:
 		{
 			VENC_HEVC_ENCODE_t *arg = (VENC_HEVC_ENCODE_t *)args;
-#ifdef CONFIG_VPU_TIME_MEASUREMENT
-			do_gettimeofday(&t1);
-#endif
 
 			V_DBG(VPU_DBG_SEQUENCE,
 			" enter w/ Handle(0x%x) :: 0x%x-0x%x-0x%x, %d-%d-%d, %d-%d-%d, %d, 0x%x-%d",
@@ -647,10 +645,6 @@ static int _vmgr_hevc_enc_process(vputype type, int cmd, long pHandle,
 				(void *)(&arg->encOutput));
 
 			vmgr_hevc_enc_data.nDecode_Cmd++;
-
-#ifdef CONFIG_VPU_TIME_MEASUREMENT
-			do_gettimeofday(&t2);
-#endif
 
 			V_DBG(VPU_DBG_SEQUENCE,
 			" out w/ [%d] !! PicType[%d], Encoded_size[%d]",
@@ -676,8 +670,13 @@ static int _vmgr_hevc_enc_process(vputype type, int cmd, long pHandle,
 	}
 
 #ifdef CONFIG_VPU_TIME_MEASUREMENT
-	if (cmd == VPU_ENC_ENCODE) {
-		time_gap_ms = vetc_GetTimediff_ms(t1, t2);
+	do_gettimeofday(&t2);
+	time_gap_ms = vetc_GetTimediff_ms(t1, t2);
+	if (cmd == VPU_ENC_INIT) {
+		V_DBG(VPU_DBG_PERF, "Elapsed time for VENC_INIT[dev-%u]: %d ms",
+				type, time_gap_ms);
+	}
+	else if (cmd == VPU_ENC_ENCODE) {
 		vmgr_hevc_enc_data.iTime[type].accumulated_frame_cnt++;
 		vmgr_hevc_enc_data.iTime[type]
 		.proc_time[vmgr_hevc_enc_data.iTime[type].proc_base_cnt]
