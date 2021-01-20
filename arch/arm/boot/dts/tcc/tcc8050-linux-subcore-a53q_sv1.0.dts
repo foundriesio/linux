@@ -1666,7 +1666,7 @@
 
 	fb1: fb@1 { //SVM
 		compatible = "telechips,fb";
-		status = "okay";
+		status = "disabled";
 		memory-region = <&pmap_fb1_video>;
 		xres = <1920>;
 		yres = <720>;
