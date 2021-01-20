@@ -2216,27 +2216,38 @@ int32_t tccvin_video_streamoff(struct tccvin_streaming *stream)
 	return ret;
 }
 
-int tccvin_check_wdma_counter(struct tccvin_streaming *stream) {
+void tccvin_check_path_status(struct tccvin_streaming *stream, int *status)
+{
 	struct vioc_path *vioc = &stream->cif.vioc_path;
-        volatile void __iomem   *pWDMA = VIOC_WDMA_GetAddress(vioc->wdma);
-        volatile unsigned int prev_addr, curr_addr;
-        volatile int nCheck, idxCheck, delay = 20;
+	volatile void __iomem   *pWDMA = VIOC_WDMA_GetAddress(vioc->wdma);
+	volatile unsigned int prev_addr, curr_addr;
+	volatile int nCheck, idxCheck, delay = 20;
 
-        curr_addr = VIOC_WDMA_Get_CAddress(pWDMA);
-        msleep(delay);
+	curr_addr = VIOC_WDMA_Get_CAddress(pWDMA);
+	msleep(delay);
 
-        nCheck = 4;
-        for(idxCheck=0; idxCheck<nCheck; idxCheck++) {
-                prev_addr = curr_addr;
-                msleep(delay);
-                curr_addr = VIOC_WDMA_Get_CAddress(pWDMA);
+	nCheck = 4;
+	for (idxCheck = 0; idxCheck < nCheck; idxCheck++) {
+		prev_addr = curr_addr;
+		msleep(delay);
+		curr_addr = VIOC_WDMA_Get_CAddress(pWDMA);
 
-                if(prev_addr != curr_addr)
-                        return 0;
-                else
-                        dlog("[%d] prev_addr: 0x%08x, curr_addr: 0x%08x\n", idxCheck, prev_addr, curr_addr);
-        }
-        return -1;
+		if(prev_addr != curr_addr) {
+			*status = V4L2_CAP_PATH_WORKING;
+		} else {
+			*status = V4L2_CAP_PATH_NOT_WORKING;
+			logd("[%d] prev_addr: 0x%08x, curr_addr: 0x%08x\n", idxCheck, prev_addr, curr_addr);
+		}
+	}
+}
+
+int32_t tccvin_s_handover(struct tccvin_streaming *stream,
+	int32_t *is_handover_needed)
+{
+	stream->is_handover_needed = *is_handover_needed;
+	logi("is_handover_needed: %d\n", stream->is_handover_needed);
+
+	return 0;
 }
 
 int32_t tccvin_allocated_dmabuf(struct tccvin_streaming *stream, int32_t count)
