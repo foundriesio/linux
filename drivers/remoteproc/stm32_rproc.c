@@ -92,15 +92,9 @@ struct stm32_rproc {
 	struct stm32_rproc_mem *rmems;
 	struct stm32_mbox mb[MBOX_NB_MBX];
 	struct workqueue_struct *workqueue;
-	bool secured_fw;
 	bool fw_loaded;
 	struct tee_rproc *trproc;
 	void __iomem *rsc_va;
-};
-
-struct stm32_rproc_conf {
-	bool secured_fw;
-	struct rproc_ops *ops;
 };
 
 static int stm32_rproc_pa_to_da(struct rproc *rproc, phys_addr_t pa, u64 *da)
@@ -663,25 +657,8 @@ static struct rproc_ops st_rproc_tee_ops = {
 	.load		= stm32_rproc_tee_elf_load,
 };
 
-static const struct stm32_rproc_conf  stm32_rproc_default_conf = {
-	.secured_fw = false,
-	.ops = &st_rproc_ops,
-};
-
-static const struct stm32_rproc_conf  stm32_rproc_tee_conf = {
-	.secured_fw = true,
-	.ops = &st_rproc_tee_ops,
-};
-
 static const struct of_device_id stm32_rproc_match[] = {
-	{
-		.compatible = "st,stm32mp1-m4",
-		.data = &stm32_rproc_default_conf,
-	},
-	{
-		.compatible = "st,stm32mp1-m4_optee",
-		.data = &stm32_rproc_tee_conf,
-	},
+	{.compatible = "st,stm32mp1-m4",},
 	{},
 };
 MODULE_DEVICE_TABLE(of, stm32_rproc_match);
@@ -869,8 +846,7 @@ static int stm32_rproc_probe(struct platform_device *pdev)
 	struct device *dev = &pdev->dev;
 	struct stm32_rproc *ddata;
 	struct device_node *np = dev->of_node;
-	const struct of_device_id *of_id;
-	const struct stm32_rproc_conf *conf;
+	struct tee_rproc *trproc;
 	struct rproc *rproc;
 	unsigned int state;
 	int ret;
@@ -879,18 +855,33 @@ static int stm32_rproc_probe(struct platform_device *pdev)
 	if (ret)
 		return ret;
 
-	of_id = of_match_device(stm32_rproc_match, &pdev->dev);
-	if (of_id)
-		conf = (const struct stm32_rproc_conf *)of_id->data;
-	else
-		return -EINVAL;
+	trproc = tee_rproc_register(dev, STM32_MP1_FW_ID);
+	if (!IS_ERR_OR_NULL(trproc)) {
+		/*
+		 * Delagate the firmware management to the secure context. The
+		 * firmware loaded has to be signed.
+		 */
+		dev_info(dev, "Support of signed firmware only\n");
 
-	rproc = rproc_alloc(dev, np->name, conf->ops, NULL, sizeof(*ddata));
-	if (!rproc)
-		return -ENOMEM;
+	} else {
+		if (PTR_ERR(trproc) == -EPROBE_DEFER)
+			return PTR_ERR(trproc);
+		trproc = NULL;
+	}
+
+	rproc = rproc_alloc(dev, np->name,
+			    trproc ? &st_rproc_tee_ops : &st_rproc_ops,
+			    NULL, sizeof(*ddata));
+	if (!rproc) {
+		ret = -ENOMEM;
+		goto free_tee;
+	}
 
 	ddata = rproc->priv;
-	ddata->secured_fw = conf->secured_fw;
+	ddata->trproc = trproc;
+	if (trproc)
+		ddata->trproc->rproc = rproc;
+
 	rproc_coredump_set_elf_info(rproc, ELFCLASS32, EM_NONE);
 
 	ret = stm32_rproc_parse_dt(pdev, ddata, &rproc->auto_boot);
@@ -931,25 +922,12 @@ static int stm32_rproc_probe(struct platform_device *pdev)
 	if (ret)
 		goto free_wkq;
 
-	if (ddata->secured_fw) {
-		ddata->trproc = tee_rproc_register(dev, rproc,
-						   STM32_MP1_FW_ID);
-		if (IS_ERR(ddata->trproc)) {
-			ret = PTR_ERR(ddata->trproc);
-			dev_err_probe(dev, ret, "TEE rproc device not found\n");
-			goto free_mb;
-		}
-	}
-
 	ret = rproc_add(rproc);
 	if (ret)
-		goto free_tee;
+		goto free_mb;
 
 	return 0;
 
-free_tee:
-	if (ddata->trproc)
-		tee_rproc_unregister(ddata->trproc);
 free_mb:
 	stm32_rproc_free_mbox(rproc);
 free_wkq:
@@ -962,6 +940,10 @@ free_rproc:
 		device_init_wakeup(dev, false);
 	}
 	rproc_free(rproc);
+free_tee:
+	if (trproc)
+		tee_rproc_unregister(trproc);
+
 	return ret;
 }
 
@@ -975,8 +957,6 @@ static int stm32_rproc_remove(struct platform_device *pdev)
 		rproc_shutdown(rproc);
 
 	rproc_del(rproc);
-	if (ddata->trproc)
-		tee_rproc_unregister(ddata->trproc);
 	stm32_rproc_free_mbox(rproc);
 	destroy_workqueue(ddata->workqueue);
 
@@ -985,6 +965,8 @@ static int stm32_rproc_remove(struct platform_device *pdev)
 		device_init_wakeup(dev, false);
 	}
 	rproc_free(rproc);
+	if (ddata->trproc)
+		tee_rproc_unregister(ddata->trproc);
 
 	return 0;
 }
