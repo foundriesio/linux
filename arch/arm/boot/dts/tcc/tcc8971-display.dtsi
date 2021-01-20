@@ -35,6 +35,12 @@
 				"hdmi-hclk", "hdmi-phy";
 	};
 
+	/* definition to extended panel for hdmi. */
+	hdmi640x480tu {
+		compatible = "telechips,hdmi640x480tu";
+		status = "okay";
+	};
+
 	/* DRM dummy panel */
 	lcd_drm_dummy {
 		status = "okay";
