@@ -241,6 +241,7 @@ static int _vmgr_process(vputype type, int cmd, long pHandle, void *args)
 #ifdef CONFIG_VPU_TIME_MEASUREMENT
 	struct timeval t1, t2;
 	int time_gap_ms = 0;
+	do_gettimeofday(&t1);
 #endif
 
 	vmgr_data.check_interrupt_detection = 0;
@@ -452,9 +453,7 @@ static int _vmgr_process(vputype type, int cmd, long pHandle, void *args)
 		case VPU_DEC_DECODE_KERNEL:
 		{
 			VDEC_DECODE_t *arg = (VDEC_DECODE_t *) args;
-#ifdef CONFIG_VPU_TIME_MEASUREMENT
-			do_gettimeofday(&t1);
-#endif
+
 			vmgr_data.szFrame_Len =
 				arg->gsVpuDecInput.m_iBitstreamDataSize;
 			V_DBG(VPU_DBG_INFO,
@@ -554,10 +553,6 @@ static int _vmgr_process(vputype type, int cmd, long pHandle, void *args)
 					sizeof(struct wait_list_entry));
 				wprintk("[%d] end waiting...", type);
 			}
-#endif
-
-#ifdef CONFIG_VPU_TIME_MEASUREMENT
-			do_gettimeofday(&t2);
 #endif
 		}
 		break;
@@ -822,10 +817,6 @@ static int _vmgr_process(vputype type, int cmd, long pHandle, void *args)
 		{
 			VENC_ENCODE_t *arg = (VENC_ENCODE_t *) args;
 
-#ifdef CONFIG_VPU_TIME_MEASUREMENT
-			do_gettimeofday(&t1);
-#endif
-
 			V_DBG(VPU_DBG_INFO,
 				"Enc In !! Handle = 0x%x, 0x%x-0x%x-0x%x, %d-%d-%d, %d-%d-%d, %d-%d-%d, 0x%x-%d",
 				pHandle,
@@ -888,9 +879,6 @@ static int _vmgr_process(vputype type, int cmd, long pHandle, void *args)
 
 			vmgr_data.nDecode_Cmd++;
 
-#ifdef CONFIG_VPU_TIME_MEASUREMENT
-			do_gettimeofday(&t2);
-#endif
 			V_DBG(VPU_DBG_SEQUENCE,
 				"Enc Out[%d] !! PicType[%d], Encoded_size[%d]",
 				ret,
@@ -922,9 +910,15 @@ static int _vmgr_process(vputype type, int cmd, long pHandle, void *args)
 #endif
 
 #ifdef CONFIG_VPU_TIME_MEASUREMENT
-	if (cmd == VPU_DEC_DECODE || cmd == VPU_ENC_ENCODE) {
-		time_gap_ms = vetc_GetTimediff_ms(t1, t2);
-
+	do_gettimeofday(&t2);
+	time_gap_ms = vetc_GetTimediff_ms(t1, t2);
+	if (cmd == VPU_DEC_INIT || cmd == VPU_ENC_INIT) {
+		V_DBG(VPU_DBG_PERF, "Elapsed time for V%s_INIT[dev-%u] is %d ms",
+			cmd == VPU_DEC_INIT ? "DEC" : "ENC",
+			type,
+			time_gap_ms);
+	}
+	else if (cmd == VPU_DEC_DECODE || cmd == VPU_ENC_ENCODE) {
 		vmgr_data.iTime[type].accumulated_frame_cnt++;
 		vmgr_data.iTime[type]
 			.proc_time[vmgr_data.iTime[type].proc_base_cnt]
