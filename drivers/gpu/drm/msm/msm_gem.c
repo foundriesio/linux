@@ -877,16 +877,17 @@ void msm_gem_free_object(struct drm_gem_object *obj)
 		if (msm_obj->pages)
 			kvfree(msm_obj->pages);
 
+		put_iova_vmas(obj);
+
 		drm_prime_gem_destroy(obj, msm_obj->sgt);
 	} else {
 		msm_gem_vunmap_locked(obj);
 		put_pages(obj);
+		put_iova_vmas(obj);
 	}
 
 	if (msm_obj->resv == &msm_obj->_resv)
 		reservation_object_fini(msm_obj->resv);
-
-	put_iova_vmas(obj);
 
 	drm_gem_object_release(obj);
 
