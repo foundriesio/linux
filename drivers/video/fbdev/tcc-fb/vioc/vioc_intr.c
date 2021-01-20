@@ -1016,7 +1016,8 @@ void vioc_intr_initialize(void)
 }
 EXPORT_SYMBOL(vioc_intr_initialize);
 
-void vioc_intr_disable_core_intr(void)
+#if defined(CONFIG_ARCH_TCC805X) || defined(CONFIG_ARCH_TCC803X)
+static void vioc_intr_disable_core_intr(void)
 {
 	volatile void __iomem *reg = VIOC_IREQConfig_GetAddress();
 
@@ -1032,7 +1033,7 @@ void vioc_intr_disable_core_intr(void)
 	__raw_writel(0xffffffff, reg + IRQMASKSET1_2_OFFSET);
 	#endif
 }
-
+#endif
 
 static int __init vioc_intr_init(void)
 {
