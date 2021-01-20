@@ -43,6 +43,7 @@
 #include <video/tcc/vioc_rdma.h>
 #include <video/tcc/vioc_disp.h>
 #include <video/tcc/vioc_intr.h>
+#include <video/tcc/tcc_cam_ioctrl.h>
 
 // optional pmap for viqe
 #include <soc/tcc/pmap.h>
@@ -427,10 +428,9 @@ extern int tccvin_framerate_by_index(int index);
 extern struct tccvin_format_desc *tccvin_format_by_guid(const __u32 guid);
 extern int tccvin_video_init(struct tccvin_streaming *stream);
 extern int tccvin_video_deinit(struct tccvin_streaming *stream);
-extern int tccvin_video_streamon(struct tccvin_streaming *stream,
-	int is_handover_needed);
-extern int tccvin_video_streamoff(struct tccvin_streaming *stream,
-	int is_handover_needed);
+extern int tccvin_video_streamon(struct tccvin_streaming *stream);
+extern int tccvin_video_streamoff(struct tccvin_streaming *stream);
+extern int tccvin_check_wdma_counter(struct tccvin_streaming *stream);
 extern int tccvin_allocated_dmabuf(struct tccvin_streaming *stream, int count);
 extern int tccvin_set_buffer_address(struct tccvin_streaming *stream,
 	struct v4l2_buffer *buf);
