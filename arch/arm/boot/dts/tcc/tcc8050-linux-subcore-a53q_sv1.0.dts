@@ -1163,11 +1163,7 @@
 		compatible = "telechips,vioc_intr";
 		reg = <0x1200a400 0x100>,
 			/* VIOC_REMAP */
-			<0x12046400 0x100>,
-			/* For FB Core Reset, backup register (TIMER) */
-			<0x1200c014 0xc>,
-			/* For FB Core Reset  VIOC_REMAP */
-			<0x1204A014 0xc>;
+			<0x12046400 0x100>;
 		interrupts = <GIC_SPI VIOC0_IRQI IRQ_TYPE_LEVEL_HIGH>;
 	};
 
@@ -1670,7 +1666,7 @@
 
 	fb1: fb@1 { //SVM
 		compatible = "telechips,fb";
-		status = "disabled";
+		status = "okay";
 		memory-region = <&pmap_fb1_video>;
 		xres = <1920>;
 		yres = <720>;

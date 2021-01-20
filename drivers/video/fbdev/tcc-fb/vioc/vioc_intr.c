@@ -35,16 +35,6 @@
 #include <video/tcc/vioc_dv_cfg.h>
 #endif
 
-#ifdef CONFIG_TCC_CORE_RESET
-#define CONFIG_TCC_VIOC_CORE_RESET_SUPPORT
-#define FB_CR_VIOC_REMAP_DISABLE 2
-#define FB_CR_VIOC_REMAP_ENABLE 3
-#define FB_CR_REG_IDX(x) (x / 32)
-#define FB_CR_REG_OFFSET(x) (FB_CR_REG_IDX(x) * 4)
-#define FB_CR_BIT_OFFSET(x) (x % 32)
-static volatile void __iomem *pTIMER_reg;
-#endif
-
 static int vioc_base_irq_num[4] = {
 	0,
 };
@@ -57,13 +47,6 @@ int vioc_intr_enable(int irq, int id, unsigned int mask)
 
 	if ((id < 0) || (id > VIOC_INTR_NUM))
 		return -1;
-
-#ifdef CONFIG_TCC_VIOC_CORE_RESET_SUPPORT
-	__raw_writel(
-		__raw_readl(pTIMER_reg + FB_CR_REG_OFFSET(id))
-			| (1 << FB_CR_BIT_OFFSET(id)),
-		pTIMER_reg + FB_CR_REG_OFFSET(id));
-#endif
 
 	switch (id) {
 	case VIOC_INTR_DEV0:
@@ -274,13 +257,6 @@ int vioc_intr_disable(int irq, int id, unsigned int mask)
 
 	if ((id < 0) || (id > VIOC_INTR_NUM))
 		return -1;
-
-#ifdef CONFIG_TCC_VIOC_CORE_RESET_SUPPORT
-	__raw_writel(
-		__raw_readl(pTIMER_reg + FB_CR_REG_OFFSET(id))
-			& ~(1 << FB_CR_BIT_OFFSET(id)),
-		pTIMER_reg + FB_CR_REG_OFFSET(id));
-#endif
 
 	switch (id) {
 	case VIOC_INTR_DEV0:
@@ -1040,27 +1016,23 @@ void vioc_intr_initialize(void)
 }
 EXPORT_SYMBOL(vioc_intr_initialize);
 
-#ifdef CONFIG_TCC_VIOC_CORE_RESET_SUPPORT
-static int fb_cr_intr_clear(void)
+void vioc_intr_disable_core_intr(void)
 {
-	int i;
-	unsigned int irq_mask;
+	volatile void __iomem *reg = VIOC_IREQConfig_GetAddress();
 
-	for (i = 0; i < VIOC_INTR_NUM; i++) {
-		if (__raw_readl(pTIMER_reg + FB_CR_REG_OFFSET(i))
-		    & (1 << FB_CR_BIT_OFFSET(i))) {
-			irq_mask = vioc_intr_get_status(i);
-			vioc_intr_clear(i, irq_mask);
-			__raw_writel(
-				__raw_readl(pTIMER_reg + FB_CR_REG_OFFSET(i))
-					& ~(1 << FB_CR_BIT_OFFSET(i)),
-				pTIMER_reg + FB_CR_REG_OFFSET(i));
-			pr_info("[INF][VIOC_INTR] %s : cleared intr = %d, reg = 0x%08x\n",
-				__func__, i, pTIMER_reg + FB_CR_REG_OFFSET(i));
-		}
-	}
+	#if defined(CONFIG_TCC803X_CA7S) || defined(CONFIG_TCC805X_CA53Q)
+	pr_info("[INF][VIOC_INTR] disable all VIOC interrupts of VIOC0_IRQI\n");
+	__raw_writel(0xffffffff, reg + IRQMASKSET0_0_OFFSET);
+	__raw_writel(0xffffffff, reg + IRQMASKSET0_1_OFFSET);
+	__raw_writel(0xffffffff, reg + IRQMASKSET0_2_OFFSET);
+	#else
+	pr_info("[INF][VIOC_INTR] disable all VIOC interrupts of VIOC1_IRQI\n");
+	__raw_writel(0xffffffff, reg + IRQMASKSET1_0_OFFSET);
+	__raw_writel(0xffffffff, reg + IRQMASKSET1_1_OFFSET);
+	__raw_writel(0xffffffff, reg + IRQMASKSET1_2_OFFSET);
+	#endif
 }
-#endif
+
 
 static int __init vioc_intr_init(void)
 {
@@ -1083,23 +1055,16 @@ static int __init vioc_intr_init(void)
 				vioc_base_irq_num[i]);
 		}
 
-#ifdef CONFIG_TCC_VIOC_CORE_RESET_SUPPORT
-		pTIMER_reg = (volatile void __iomem *)of_iomap(
-			ViocIntr_np,
-			is_VIOC_REMAP ? FB_CR_VIOC_REMAP_ENABLE :
-				FB_CR_VIOC_REMAP_DISABLE);
-		pr_info("[INF][VIOC_INTR] vioc-intr: fb core reset mode. backup reg = 0x%08x\n",
-			pTIMER_reg);
-		fb_cr_intr_clear();
-#endif
-
 #else
 		vioc_base_irq_num[0] = irq_of_parse_and_map(ViocIntr_np, 0);
 		pr_info("[INF][VIOC_INTR] vioc-intr%d : %d\n",
 			0, vioc_base_irq_num[0]);
 #endif
-	}
 
+#if defined(CONFIG_ARCH_TCC805X) || defined(CONFIG_ARCH_TCC803X)
+	vioc_intr_disable_core_intr();
+#endif
+	}
 	return 0;
 }
 fs_initcall(vioc_intr_init);
