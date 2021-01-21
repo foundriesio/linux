@@ -1205,14 +1205,14 @@ static int vidioc_s_fmt_vid_out(struct file *file, void *fh,
 			vout_wmix_getsize(vout, &panel_width, &panel_height);
 
 		#if defined(CONFIG_TCC_DUAL_DISPLAY)
-			vout->deintl_buf_size = 
+			vout->deintl_buf_size =
 				PAGE_ALIGN(vout->disp_rect.width * vout->disp_rect.height
 							* 3 / 2);
-			vout->m2m_dual_buf_size = 
+			vout->m2m_dual_buf_size =
 				PAGE_ALIGN(vout->disp_rect.width * vout->disp_rect.height
 							* 3 / 2);
 		#else
-			vout->deintl_buf_size = 
+			vout->deintl_buf_size =
 				PAGE_ALIGN(panel_width * panel_height * 3 / 2);
 		#endif
 			#endif
@@ -1701,10 +1701,8 @@ static int vidioc_querybuf(struct file *file, void *fh, struct v4l2_buffer *buf)
 	qbuf->buf.m.planes[MPLANE_VID].m.mem_offset = qbuf->img_base0;
 	qbuf->buf.m.planes[MPLANE_VID].length = vout->src_pix.sizeimage;
 
-	if (copy_to_user(buf->m.planes, qbuf->buf.m.planes,
-		sizeof(struct v4l2_buffer) * MPLANE_NUM)) {
-		pr_err("%s: copy_to_user failed\n", __func__);
-	}
+	copy_to_user(buf->m.planes, qbuf->buf.m.planes,
+		sizeof(struct v4l2_buffer) * MPLANE_NUM);
 
 	return 0;
 }
