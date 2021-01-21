@@ -65,7 +65,9 @@
 #include <linux/pm_runtime.h>
 #endif
 
-#if defined(CONFIG_PM_SLEEP)&&defined(CONFIG_ARCH_TCC805X)
+#if defined(CONFIG_PM_SLEEP) \
+	&&(defined(CONFIG_ARCH_TCC805X)||defined(CONFIG_ARCH_TCC803X)) \
+	&&(!defined(CONFIG_TCC803X_CA7S))
 #include <linux/of_address.h>
 #endif
 
@@ -2718,7 +2720,9 @@ static int pl011_setup_port(struct device *dev, struct uart_amba_port *uap,
 			    struct resource *mmiobase, int index)
 {
 	void __iomem *base;
-#if defined(CONFIG_PM_SLEEP)&&defined(CONFIG_ARCH_TCC805X)
+#if defined(CONFIG_PM_SLEEP) \
+	&&(defined(CONFIG_ARCH_TCC805X)||defined(CONFIG_ARCH_TCC803X)) \
+	&&(!defined(CONFIG_TCC803X_CA7S))
 	int ret;
 #endif
 
@@ -2735,7 +2739,9 @@ static int pl011_setup_port(struct device *dev, struct uart_amba_port *uap,
 	uap->port.fifosize = uap->fifosize;
 	uap->port.flags = UPF_BOOT_AUTOCONF;
 	uap->port.line = index;
-#if defined(CONFIG_PM_SLEEP)&&defined(CONFIG_ARCH_TCC805X)
+#if defined(CONFIG_PM_SLEEP) \
+	&&(defined(CONFIG_ARCH_TCC805X)||defined(CONFIG_ARCH_TCC803X)) \
+	&&(!defined(CONFIG_TCC803X_CA7S))
 	ret = of_property_read_u32_index(dev->of_node, "config-reg", 0, &uap->port.phy_config_reg);
 	if (ret){
 		printk(KERN_ERR "[ERROR][PL011] no configuration address \n");
@@ -2795,7 +2801,8 @@ static int pl011_register_port(struct uart_amba_port *uap)
 
 static void tcc_set_uart_port_cfg( struct uart_amba_port *uap, struct device *dev)
 {
-#if defined(CONFIG_ARCH_TCC805X)
+#if (defined(CONFIG_ARCH_TCC805X)||defined(CONFIG_ARCH_TCC803X)) \
+	&&(!defined(CONFIG_TCC803X_CA7S))
     struct device_node *np;
     int node_detect = 0;
     long cfg_num_len, i;
@@ -2845,7 +2852,7 @@ static void tcc_set_uart_port_cfg( struct uart_amba_port *uap, struct device *de
                     printk(KERN_ERR "[ERROR][PL011] no SC firmware handle\n");
 
                     reg_val = readl_relaxed(uap->port.config_reg+offset_reg);
-                    reg_val = reg_val&~((unsigned int)0xF<<((uap->port.line%4u)*8u));
+                    reg_val = reg_val&~((unsigned int)0xFF<<((uap->port.line%4u)*8u));
                     reg_val = reg_val|((unsigned int)cfg_id<<((uap->port.line%4u)*8u));
 
                     writel_relaxed(reg_val, uap->port.config_reg+offset_reg);
@@ -2859,7 +2866,7 @@ static void tcc_set_uart_port_cfg( struct uart_amba_port *uap, struct device *de
 #else
 
                 reg_val = readl_relaxed(uap->port.config_reg+offset_reg);
-                reg_val = reg_val&~(0xF<<((uap->port.line%4)*8));
+                reg_val = reg_val&~(0xFF<<((uap->port.line%4)*8));
                 reg_val = reg_val|(cfg_id<<((uap->port.line%4)*8));
 
                 writel_relaxed(reg_val, uap->port.config_reg+offset_reg);
