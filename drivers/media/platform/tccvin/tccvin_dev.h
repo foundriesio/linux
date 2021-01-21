@@ -199,7 +199,6 @@ extern int	tccvin_v4l2_try_fmt(struct v4l2_format * fmt);
 extern int tccvin_start_stream(tccvin_dev_t * vdev);
 extern int tccvin_stop_stream(tccvin_dev_t * vdev);
 extern int tccvin_set_wmixer_out(tccvin_cif_t * cif, unsigned int ovp);
-extern int tccvin_set_ovp_value(tccvin_cif_t * cif);
 extern int tccvin_check_wdma_counter(tccvin_dev_t * vdev);
 extern void tccvin_dump_register(unsigned long * addr, unsigned int word);
 extern int tccvin_diagnostics(tccvin_dev_t * vdev);
