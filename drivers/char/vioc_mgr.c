@@ -1,6 +1,6 @@
-/****************************************************************************
+/*******************************************************************************
  *
- * Copyright (C) 2020 Telechips Inc.
+ * Copyright (C) 2018 Telechips Inc.
  *
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License as published by the Free Software
@@ -9,13 +9,13 @@
  *
  * This program is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
- * FOR A PARTICULAR PURPOSE. See the GNU General Public License for more
- * details.
+ * FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details
+ * .
  *
  * You should have received a copy of the GNU General Public License along with
  * this program; if not, write to the Free Software Foundation, Inc., 59 Temple
  * Place, Suite 330, Boston, MA 02111-1307 USA
- ****************************************************************************/
+ ******************************************************************************/
 
 #include <linux/platform_device.h>
 
@@ -45,18 +45,17 @@
 
 #define LOG_TAG			("VIOCM")
 
-#define loge(fmt, ...) \
-	{ pr_err("[ERROR][%s] %s - "	fmt, LOG_TAG, __func__, ##__VA_ARGS__); }
-#define logw(fmt, ...) \
-	{ pr_warn("[WARN][%s] %s - "	fmt, LOG_TAG, __func__, ##__VA_ARGS__); }
-#define logd(fmt, ...) \
-	{ pr_debug("[DEBUG][%s] %s - "	fmt, LOG_TAG, __func__, ##__VA_ARGS__); }
-#define logi(fmt, ...) \
-	{ pr_info("[INFO][%s] %s - "	fmt, LOG_TAG, __func__, ##__VA_ARGS__); }
-#define log \
-	logi
-#define dlog(fmt, ...) \
-	{ do { if (debug) logd(fmt, ##__VA_ARGS__); } while (0); }
+#define loge(fmt, ...)		{ pr_err("[ERROR][%s] %s - " fmt, LOG_TAG, \
+					__func__, ##__VA_ARGS__); }
+#define logw(fmt, ...)		{ pr_warn("[WARN][%s] %s - " fmt, LOG_TAG, \
+					__func__, ##__VA_ARGS__); }
+#define logd(fmt, ...)		{ pr_debug("[DEBUG][%s] %s - " fmt, LOG_TAG, \
+					__func__, ##__VA_ARGS__); }
+#define logi(fmt, ...)		{ pr_info("[INFO][%s] %s - " fmt, LOG_TAG, \
+					__func__, ##__VA_ARGS__); }
+#define log					logi
+#define dlog(fmt, ...)		do { if (debug) { ; logd(fmt, \
+					##__VA_ARGS__); } while (0)
 
 #define VIOC_MGR_DEV_MINOR		(0)
 
@@ -104,13 +103,13 @@ static int mbox_done;
 /* Function : vioc_mgr_set_ovp Description: Set the layer-order of WMIXx block
  * data[0] : WMIX Block Number data[1] : ovp (Please refer to the full spec)
  */
-static void vioc_mgr_set_ovp(struct tcc_mbox_data *mssg)
+static void vioc_mgr_set_ovp(struct tcc_mbox_data *msg)
 {
-	if (mssg != NULL) {
+	if (msg != NULL) {
 		VIOC_WMIX_SetOverlayPriority(
-			VIOC_WMIX_GetAddress(mssg->data[0]), mssg->data[1]);
+			VIOC_WMIX_GetAddress(msg->data[0]), msg->data[1]);
 		VIOC_WMIX_SetUpdate(
-			VIOC_WMIX_GetAddress(mssg->data[0]));
+			VIOC_WMIX_GetAddress(msg->data[0]));
 	} else {
 		loge("tcc_mbox_data struct is NULL\n");
 	}
@@ -120,13 +119,14 @@ static void vioc_mgr_set_ovp(struct tcc_mbox_data *mssg)
  * data[0] : WMIX block number data[1] : the input channel data[2] : x-position
  * data[3] : y-position
  */
-static void vioc_mgr_set_pos(struct tcc_mbox_data *mssg)
+static void vioc_mgr_set_pos(struct tcc_mbox_data *msg)
 {
-	if (mssg != NULL) {
-		VIOC_WMIX_SetPosition(VIOC_WMIX_GetAddress(
-			mssg->data[0]), mssg->data[1], mssg->data[2], mssg->data[3]);
-		VIOC_WMIX_SetUpdate(VIOC_WMIX_GetAddress(mssg->data[0]));
+	if (msg != NULL) {
+		VIOC_WMIX_SetPosition(VIOC_WMIX_GetAddress(msg->data[0]),
+			msg->data[1], msg->data[2], msg->data[3]);
+		VIOC_WMIX_SetUpdate(VIOC_WMIX_GetAddress(msg->data[0]));
 	} else {
+		/* msg is NULL */
 		loge("tcc_mbox_data struct is NULL\n");
 	}
 }
@@ -134,11 +134,13 @@ static void vioc_mgr_set_pos(struct tcc_mbox_data *mssg)
 /* Function : vioc_mgr_set_reset Description : VIOC Block SWReset data[0] : VIOC
  * Block Number data[1] : mode (0: clear, 1: reset)
  */
-static void vioc_mgr_set_reset(struct tcc_mbox_data *mssg)
+static void vioc_mgr_set_reset(struct tcc_mbox_data *msg)
 {
-	if (mssg != NULL) {
-		VIOC_CONFIG_SWReset_RAW(mssg->data[0], mssg->data[1]);
+	if (msg != NULL) {
+		/* msg is available */
+		VIOC_CONFIG_SWReset_RAW(msg->data[0], msg->data[1]);
 	} else {
+		/* msg is unavailable */
 		loge("tcc_mbox_data struct is NULL\n");
 	}
 }
@@ -188,12 +190,12 @@ EXPORT_SYMBOL_GPL(vioc_mgr_queue_work);
 
 
 static void vioc_mgr_send_message(struct vioc_mgr_device *vioc_mgr,
-	struct tcc_mbox_data *mssg)
+	struct tcc_mbox_data *msg)
 {
 	if (vioc_mgr != NULL) {
 		int32_t ret;
 
-		ret = mbox_send_message(vioc_mgr->mbox_ch, mssg);
+		ret = mbox_send_message(vioc_mgr->mbox_ch, msg);
 #if defined(CONFIG_ARCH_TCC805X)
 		if (ret < 0)
 			loge("vioc manager mbox send error(%d)\n", ret);
@@ -210,7 +212,9 @@ static void vioc_mgr_cmd_handler(struct vioc_mgr_device *vioc_mgr,
 		uint32_t cmd = (uint32_t)((data->cmd[1] >> 16) & 0xFFFF);
 
 		if (data->cmd[0]) {
-			int32_t status = (int32_t)atomic_read(&vioc_mgr->rx.seq);
+			int32_t status = 0;
+
+			status = (int32_t)atomic_read(&vioc_mgr->rx.seq);
 			if (status > (int32_t)data->cmd[0]) {
 				loge("already processed command(%d,%d)\n",
 					atomic_read(&vioc_mgr->rx.seq),
@@ -235,7 +239,6 @@ static void vioc_mgr_cmd_handler(struct vioc_mgr_device *vioc_mgr,
 		default:
 			log("Invalid command(%d)\n", cmd);
 			goto end_handler;
-			break;
 		}
 
 		/* Update rx-sequence ID */
@@ -250,9 +253,9 @@ end_handler:
 }
 
 
-static void vioc_mgr_receive_message(struct mbox_client *client, void *mssg)
+static void vioc_mgr_receive_message(struct mbox_client *client, void *msg)
 {
-	struct tcc_mbox_data *msg = (struct tcc_mbox_data *)mssg;
+	struct tcc_mbox_data *msg = (struct tcc_mbox_data *)msg;
 	struct vioc_mgr_device *vioc_mgr =
 		container_of(client, struct vioc_mgr_device, cl);
 	uint32_t command  = (uint32_t)((msg->cmd[1] >> 16) & 0xFFFF);
@@ -472,7 +475,8 @@ static int vioc_mgr_rx_init(struct vioc_mgr_device *vioc_mgr)
 
 	memset(&data, 0x0, sizeof(struct tcc_mbox_data));
 	data.cmd[0] = (uint32_t)atomic_read(&vioc_mgr->tx.seq);
-	data.cmd[1] = (uint32_t)(((VIOC_CMD_READY & 0xFFFF) << 16) | VIOC_MGR_SEND);
+	data.cmd[1] = (uint32_t)(((VIOC_CMD_READY & 0xFFFF) << 16) |
+								VIOC_MGR_SEND);
 	vioc_mgr_send_message(vioc_mgr, &data);
 
 err_rx_init:
@@ -491,6 +495,7 @@ static void vioc_mgr_tx_init(struct vioc_mgr_device *vioc_mgr)
 static int vioc_mgr_probe(struct platform_device *pdev)
 {
 	if (pdev == NULL) {
+		/* pdev is NULL */
 		loge("pdev is NULL");
 	}
 
