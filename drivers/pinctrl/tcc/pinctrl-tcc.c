@@ -185,12 +185,30 @@ static void tcc_pinctrl_gpio_free(struct gpio_chip *chip, u32 offset)
 static s32 tcc_pinctrl_gpio_get(struct gpio_chip *chip, u32 offset)
 {
 	struct tcc_pin_bank *bank = gpiochip_to_pin_bank(chip);
-	struct tcc_pinctrl *pctl = bank->pctl;
-	struct tcc_pinctrl_ops *ops = pctl->ops;
+	struct tcc_pinctrl *pctl;
+	struct tcc_pinctrl_ops *ops;
+
+	if (bank == NULL) {
+		(void)pr_err(
+				"[ERROR][PINCTRL] %s : bank == NULL\n"
+				, __func__);
+		return -EINVAL;
+	}
+	pctl = bank->pctl;
+
+	if (pctl == NULL) {
+		(void)pr_err(
+				"[ERROR][PINCTRL] %s : pctl == NULL\n"
+				, __func__);
+		return -EINVAL;
+	}
+	ops = pctl->ops;
 
 	if (ops->gpio_get == NULL) {
+		(void)pr_err(
+				"[ERROR][PINCTRL] %s : ops->gpio_get == NULL\n"
+				, __func__);
 		return -EINVAL;
-		/* comment for QAC, codesonar, kernel coding style */
 	}
 
 	return ops->gpio_get(pctl->base + bank->reg_base, offset);
@@ -226,8 +244,24 @@ static s32 tcc_pinctrl_gpio_get_direction(struct gpio_chip *chip,
 			                        u32 offset)
 {
 	struct tcc_pin_bank *bank = gpiochip_to_pin_bank(chip);
-	struct tcc_pinctrl *pctl = bank->pctl;
-	struct tcc_pinctrl_ops *ops = pctl->ops;
+	struct tcc_pinctrl *pctl;
+	struct tcc_pinctrl_ops *ops;
+
+	if (bank == NULL) {
+		(void)pr_err(
+				"[ERROR][PINCTRL] %s : bank == NULL\n"
+				, __func__);
+		return -EINVAL;
+	}
+	pctl = bank->pctl;
+
+	if (pctl == NULL) {
+		(void)pr_err(
+				"[ERROR][PINCTRL] %s : pctl == NULL\n"
+				, __func__);
+		return -EINVAL;
+	}
+	ops = pctl->ops;
 
 	return ops->gpio_get_direction(pctl->base + bank->reg_base, offset);
 }
@@ -255,11 +289,17 @@ static s32 tcc_pinctrl_gpio_direction_output(struct gpio_chip *chip,
 	u32 chip_base;
 
 	if (chip == NULL) {
+		(void)pr_err(
+				"[ERROR][PINCTRL] %s : chip == NULL\n"
+				, __func__);
 		return -EINVAL;
 	}
 
 	chip_base = (u32)(chip->base);
 	if (((UINT_MAX) - chip_base) < offset) {
+		(void)pr_err(
+				"[ERROR][PINCTRL] %s : UINT_MAX < chip_base + offset\n"
+				, __func__);
 		return -EINVAL;
 	} else {
 		tcc_pinctrl_gpio_set(chip, offset, value);
@@ -271,8 +311,25 @@ static s32 tcc_pinctrl_gpio_to_irq(struct gpio_chip *chip,
 		u32 offset)
 {
 	struct tcc_pin_bank *bank = gpiochip_to_pin_bank(chip);
-	struct tcc_pinctrl *pctl = bank->pctl;
-	struct tcc_pinctrl_ops *ops = pctl->ops;
+	struct tcc_pinctrl *pctl;
+	struct tcc_pinctrl_ops *ops;
+
+	if (bank == NULL) {
+		(void)pr_err(
+				"[ERROR][PINCTRL] %s : bank == NULL\n"
+				, __func__);
+		return -EINVAL;
+	}
+	pctl = bank->pctl;
+
+	if (pctl == NULL) {
+		(void)pr_err(
+				"[ERROR][PINCTRL] %s : pctl == NULL\n"
+				, __func__);
+		return -EINVAL;
+	}
+	ops = pctl->ops;
+
 #if !defined(CONFIG_PINCTRL_TCC_SCFW)
 	ulong flags;
 #endif
@@ -328,8 +385,14 @@ static s32 tcc_get_group_pins(struct pinctrl_dev *pctldev, u32 selector,
 {
 	struct tcc_pinctrl *pctl = pinctrl_dev_get_drvdata(pctldev);
 
-	*pins = pctl->groups[selector].pins;
-	*npins = pctl->groups[selector].npins;
+	if (pins != NULL) {
+		*pins = pctl->groups[selector].pins;
+	}
+
+	if (npins != NULL) {
+		*npins = pctl->groups[selector].npins;
+	}
+
 	return 0;
 }
 
@@ -357,7 +420,7 @@ static s32 tcc_dt_node_to_map(struct pinctrl_dev *pctldev,
 
 	if (num_maps == NULL) {
 		dev_err(pctl->dev,
-			"[ERROR][PINCTRL] num_maps is NULL\n");
+			"[ERROR][PINCTRL] num_maps == NULL\n");
 		return -EINVAL;
 	}
 
@@ -383,7 +446,7 @@ static s32 tcc_dt_node_to_map(struct pinctrl_dev *pctldev,
 
 	if (np == NULL) {
 		dev_err(pctl->dev,
-			"[ERROR][PINCTRL] np is NULL\n");
+			"[ERROR][PINCTRL] np == NULL\n");
 		return -EINVAL;
 	}
 
@@ -394,6 +457,11 @@ static s32 tcc_dt_node_to_map(struct pinctrl_dev *pctldev,
 		return -EINVAL;
 	}
 
+	if (map == NULL) {
+		dev_err(pctl->dev,
+			"[ERROR][PINCTRL] map == NULL\n");
+		return -EINVAL;
+	}
 	temp_32 = sizeof(struct pinctrl_map);
 	if (((UINT_MAX) / temp_32) < nmaps) {
 		return -EINVAL;
@@ -527,8 +595,13 @@ static s32 tcc_pinmux_get_func_groups(struct pinctrl_dev *pctldev,
 {
 	struct tcc_pinctrl *pctl = pinctrl_dev_get_drvdata(pctldev);
 
-	*groups = pctl->functions[selector].groups;
-	*num_groups = (u32)(pctl->functions[selector].ngroups);
+	if (groups != NULL) {
+		*groups = pctl->functions[selector].groups;
+	}
+
+	if (num_groups != NULL) {
+		*num_groups = (u32)(pctl->functions[selector].ngroups);
+	}
 
 	return 0;
 }
@@ -571,8 +644,8 @@ static s32 tcc_pinmux_enable(struct pinctrl_dev *pctldev, u32 selector,
 		u32 group)
 {
 	struct tcc_pinctrl *pctl = pinctrl_dev_get_drvdata(pctldev);
-	void __iomem *reg;
-	u32 offset;
+	void __iomem *reg = NULL;
+	u32 offset = 0U;
 	u32 i;
 
 	if ((pctl->ops->gpio_set_function)
@@ -614,8 +687,8 @@ static s32 tcc_pinmux_gpio_set_direction(struct pinctrl_dev *pctldev,
 		struct pinctrl_gpio_range *range, u32 offset, bool input)
 {
 	struct tcc_pinctrl *pctl = pinctrl_dev_get_drvdata(pctldev);
-	void __iomem *reg;
-	u32 pin_offset;
+	void __iomem *reg = NULL;
+	u32 pin_offset = 0U;
 
 	if ((pctl->ops->gpio_set_direction)
 			== NULL) {
@@ -630,8 +703,8 @@ static s32 tcc_pinmux_gpio_request_enable(struct pinctrl_dev *pctldev,
 		struct pinctrl_gpio_range *range, u32 offset)
 {
 	struct tcc_pinctrl *pctl = pinctrl_dev_get_drvdata(pctldev);
-	void __iomem *reg;
-	u32 pin_offset;
+	void __iomem *reg = NULL;
+	u32 pin_offset = 0U;
 
 	if ((pctl->ops->gpio_set_function)
 			== NULL) {
@@ -655,8 +728,8 @@ static s32 tcc_pinconf_get(struct pinctrl_dev *pctldev, u32 pin,
 		ulong *config)
 {
 	struct tcc_pinctrl *pctl = pinctrl_dev_get_drvdata(pctldev);
-	void __iomem *reg;
-	u32 offset;
+	void __iomem *reg = NULL;
+	u32 offset = 0U;
 	s32 param;
 	s32 value;
 
@@ -667,10 +740,18 @@ static s32 tcc_pinconf_get(struct pinctrl_dev *pctldev, u32 pin,
 
 	tcc_pin_to_reg(pctl, pin, &reg, &offset);
 
-	param = (s32)tcc_pinconf_unpack_param((u32)(*config));
-	value = pctl->ops->pinconf_get(reg, offset, param);
-	*config = (ulong)tcc_pinconf_pack((u32)param, (u32)value);
-	return 0;
+	if (config != NULL) {
+		param = (s32)tcc_pinconf_unpack_param((u32)(*config));
+		value = pctl->ops->pinconf_get(reg, offset, param);
+		*config = (ulong)tcc_pinconf_pack((u32)param, (u32)value);
+
+		return 0;
+	} else {
+		(void)pr_err(
+				"[ERROR][PINCTRL] %s : config == NULL\n"
+				, __func__);
+		return -EINVAL;
+	}
 }
 
 static s32 tcc_pinconf_set(struct pinctrl_dev *pctldev, u32 pin,
@@ -678,8 +759,8 @@ static s32 tcc_pinconf_set(struct pinctrl_dev *pctldev, u32 pin,
 		u32 num_configs)
 {
 	struct tcc_pinctrl *pctl = pinctrl_dev_get_drvdata(pctldev);
-	void __iomem *reg;
-	u32 offset;
+	void __iomem *reg = NULL;
+	u32 offset = 0U;
 	s32 param;
 	s32 value;
 	s32 ret;
@@ -692,7 +773,7 @@ static s32 tcc_pinconf_set(struct pinctrl_dev *pctldev, u32 pin,
 
 	if (configs == NULL) {
 		dev_err(pctl->dev,
-			"[ERROR][PINCTRL] configs is NULL\n");
+			"[ERROR][PINCTRL] configs == NULL\n");
 		return -EINVAL;
 	}
 
@@ -777,6 +858,18 @@ static s32 tcc_pinctrl_parse_dt_pins(struct tcc_pinctrl *pctl,
 		dev_err(pctl->dev,
 				"[ERROR][PINCTRL] invalid property(telechips,pins)\n");
 		return ret;
+	}
+
+	if (npins == NULL) {
+		dev_err(pctl->dev,
+				"[ERROR][PINCTRL] npins == NULL)\n");
+		return -EINVAL;
+	}
+
+	if (pins == NULL) {
+		dev_err(pctl->dev,
+				"[ERROR][PINCTRL] pins == NULL)\n");
+		return -EINVAL;
 	}
 
 	*npins = (u32)ret;
@@ -1022,8 +1115,9 @@ s32 tcc_pinctrl_probe(struct platform_device *pdev,
 	pmgpio_regs = pmgpio_base;
 
 	if (soc_data == NULL) {
-		dev_err(pctl->dev,
-			"[ERROR][PINCTRL] soc_data is NULL\n");
+		(void)pr_err(
+				"[ERROR][PINCTRL] %s : soc_data == NULL\n"
+				, __func__);
 		return -EINVAL;
 	}
 

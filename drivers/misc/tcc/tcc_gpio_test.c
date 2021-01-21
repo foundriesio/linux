@@ -191,8 +191,8 @@ ssize_t gpio_test(struct device *dev, struct device_attribute *attr, char *buf)
 						pin_banks[bank_num].name, pin_num);
 					continue;
 				} else if(strcmp(pin_banks[bank_num].name, "gpk") == 0) {
-					printk("\033[31mskip %s %u\033[0m\n",
-						pin_banks[bank_num].name, pin_num);
+					//printk("\033[31mskip %s %u\033[0m\n",
+					//	pin_banks[bank_num].name, pin_num);
 					continue;
 				}
 

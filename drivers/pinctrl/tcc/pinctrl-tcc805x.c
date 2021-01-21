@@ -68,6 +68,13 @@ static u32 reg_readl
 	u32 bit_shift;
 	void __iomem *address;
 
+	if (width == 0U) {
+		(void)pr_err(
+				"[ERROR][PINCTRL] %s : width == 0\n"
+				, __func__);
+		return 0;
+	}
+
 	mask = (u32)1U << width;
 	if (mask > 0U) {
 		mask -= 1U;
@@ -75,9 +82,9 @@ static u32 reg_readl
 	}
 
 	bit_shift = (pin_num % (32U / width));
-	if ((width != 0U)
-		&& (((UINT_MAX) / width) >= bit_shift)) {
+	if (((UINT_MAX) / width) >= bit_shift) {
 		bit_shift *= width;
+	/* comment for kernel coding style */
 	}
 
 	address = base + ((pin_num / (32U / width)) << 2U);
@@ -85,7 +92,6 @@ static u32 reg_readl
 	reg_data = readl(address);
 
 	return (reg_data >> bit_shift) & mask;
-
 }
 
 #if defined(CONFIG_PINCTRL_TCC_SCFW)
@@ -104,7 +110,9 @@ static int32_t request_gpio_to_sc(ulong address, ulong bit_number, ulong width, 
 			(sc_fw_handle_for_gpio, addr_32,
 			 bit_num_32, width_32, value_32);
 	} else {
-		(void)pr_err("[ERROR][PINCTRL] %s : sc_fw_handle_for_gpio is NULL", __func__);
+		(void)pr_err(
+				"[ERROR][PINCTRL] %s : sc_fw_handle_for_gpio is NULL"
+				, __func__);
 		ret = -EINVAL;
 	}
 
@@ -129,24 +137,37 @@ static s32 tcc805x_set_eint(void __iomem *base, u32 bit, u32 extint, struct tcc_
 	struct extintr_match_ *match
 		= (struct extintr_match_ *)tcc805x_pinctrl_soc_data.irq->data;
 	u32 irq_size = tcc805x_pinctrl_soc_data.irq->size;
-	struct tcc_pin_bank *bank = pctl->pin_banks;
+	struct tcc_pin_bank *bank;
+
+	if (pctl == NULL) {
+		(void)pr_err(
+				"[ERROR][PINCTRL] %s : pctl == NULL\n"
+				, __func__);
+		return -1;
+	}
+
+	bank = pctl->pin_banks;
 
 	if (gpio_base == NULL) {
+		(void)pr_err(
+				"[ERROR][PINCTRL] %s : gpio_base == NULL\n"
+				, __func__);
 		return -1;
-		/* comment for QAC, codesonar, kernel coding style */
 	}
 
 	if (extint >= (irq_size/2U)) {
+		(void)pr_err(
+				"[ERROR][PINCTRL] %s : extint >= (irq_size/2U)\n"
+				, __func__);
 		return -1;
-		/* comment for QAC, codesonar, kernel coding style */
 	}
 
 	for(i = 0; i < pctl->nbanks ; i++) {
 
 		if(bank->reg_base == port) {
 			if(bank->source_section == 0xffU) {
-
-				(void)pr_err("[ERROR][EXTI] %s: %s is not supported for external interrupt\n"
+				(void)pr_err(
+						"[ERROR][EXTI] %s: %s is not supported for external interrupt\n"
 						, __func__, bank->name);
 				return -EINVAL;
 
@@ -179,7 +200,9 @@ static s32 tcc805x_set_eint(void __iomem *base, u32 bit, u32 extint, struct tcc_
 
 
 	if(pin_valid == 0U) {
-		(void)pr_err("[ERROR][EXTI] %s: %d(%d) is out of range of pin number of %s group\n",__func__, bit, idx, bank->name);
+		(void)pr_err(
+				"[ERROR][EXTI] %s: %d(%d) is out of range of pin number of %s group\n"
+				,__func__, bit, idx, bank->name);
 		return -EINVAL;
 	}
 
@@ -448,7 +471,7 @@ static s32 tcc805x_gpio_set_eclk_sel(void __iomem *base, u32 offset,
 				     s32 value, struct tcc_pinctrl *pctl)
 {
 	void __iomem *reg = (void __iomem *)(gpio_base + TCC_ECLKSEL);
-	struct tcc_pin_bank *bank = pctl->pin_banks;
+	struct tcc_pin_bank *bank;
 	ulong port = (ulong)(base - gpio_base);
 	u32 idx = 0U;
 	u32 i;
@@ -457,6 +480,12 @@ static s32 tcc805x_gpio_set_eclk_sel(void __iomem *base, u32 offset,
 #if !defined(CONFIG_PINCTRL_TCC_SCFW)
 	u32 data;
 #endif
+
+	if (pctl == NULL) {
+		return -EINVAL;
+		/* comment for QAC, codesonar, kernel coding style */
+	}
+	bank = pctl->pin_banks;
 
 	if (value > 3) {
 		return -EINVAL;
@@ -468,7 +497,8 @@ static s32 tcc805x_gpio_set_eclk_sel(void __iomem *base, u32 offset,
 		if(bank->reg_base == port) {
 			if(bank->source_section == 0xffU) {
 
-				(void)pr_err("[ERROR][ECLK] %s: %s is not supported for external interrupt\n"
+				(void)pr_err(
+						"[ERROR][ECLK] %s: %s is not supported for external interrupt\n"
 						, __func__, bank->name);
 				return -EINVAL;
 
@@ -500,7 +530,9 @@ static s32 tcc805x_gpio_set_eclk_sel(void __iomem *base, u32 offset,
 	}
 
 	if (pin_valid == 0U) {
-		(void)pr_err("[ERROR][ECLK] %s: %d(%d) is out of range of pin number of %s group\n",__func__, offset, idx, bank->name);
+		(void)pr_err(
+				"[ERROR][ECLK] %s: %d(%d) is out of range of pin number of %s group\n"
+				,__func__, offset, idx, bank->name);
 		return -EINVAL;
 	}
 
@@ -535,7 +567,9 @@ static s32 tcc805x_gpio_to_irq(void __iomem *base, u32 offset, struct tcc_pinctr
 	rev = get_chip_rev();
 
 	if((port >= GPMB) && (rev == 0U)) {
-		(void)pr_err("[ERROR][EXTI] %s: GPMB, MC and MD are not allowed for ES\n", __func__);
+		(void)pr_err(
+				"[ERROR][EXTI] %s: GPMB, MC and MD are not allowed for ES\n"
+				, __func__);
 		return -ENODEV;
 	}
 
@@ -802,6 +836,13 @@ static s32 tcc805x_pinctrl_probe(struct platform_device *pdev)
 	tcc805x_pinctrl_soc_data.ops = &tcc805x_ops;
 	tcc805x_pinctrl_soc_data.irq = NULL;
 
+	if (pdev == NULL) {
+		(void)pr_err(
+				"[ERROR][PINCTRL] %s : pdev == NULL\n"
+				, __func__);
+		return -EINVAL;
+	}
+
 	gpio_base = of_iomap(pdev->dev.of_node, 0);
 	pmgpio_base = of_iomap(pdev->dev.of_node, 1);
 	cfg_res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
@@ -811,14 +852,14 @@ static s32 tcc805x_pinctrl_probe(struct platform_device *pdev)
 	fw_np = of_parse_phandle(pdev->dev.of_node, "sc-firmware", 0);
 	if (fw_np == NULL) {
 		dev_err(&(pdev->dev),
-				"[ERROR][PINCTRL] fw_np == NULL\n");
+				"[ERROR][PINCTRL] %s : fw_np == NULL\n", __func__);
 		return -EINVAL;
 	}
 
 	sc_fw_handle_for_gpio = tcc_sc_fw_get_handle(fw_np);
 	if (sc_fw_handle_for_gpio == NULL) {
 		dev_err(&(pdev->dev),
-			"[ERROR][PINCTRL] sc_fw_handle == NULL\n");
+			"[ERROR][PINCTRL] %s : sc_fw_handle == NULL\n", __func__);
 		return -EINVAL;
 	}
 
@@ -826,10 +867,11 @@ static s32 tcc805x_pinctrl_probe(struct platform_device *pdev)
 			&& (sc_fw_handle_for_gpio->version.minor == 0U)
 			&& (sc_fw_handle_for_gpio->version.patch < 7U)) {
 		dev_err(&(pdev->dev),
-				"[ERROR][PINCTRL] The version of SCFW is low. So, register cannot be set through SCFW.\n"
-				);
+				"[ERROR][PINCTRL] %s : The version of SCFW is low. So, register cannot be set through SCFW.\n"
+				, __func__);
 		dev_err(&(pdev->dev),
-				"[ERROR][PINCTRL] SCFW Version : %d.%d.%d\n",
+				"[ERROR][PINCTRL] %s : SCFW Version : %d.%d.%d\n",
+				__func__,
 				sc_fw_handle_for_gpio->version.major,
 				sc_fw_handle_for_gpio->version.minor,
 				sc_fw_handle_for_gpio->version.patch);
