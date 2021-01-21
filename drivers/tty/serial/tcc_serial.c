@@ -24,6 +24,10 @@
  * 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA V
  */
 
+#if defined(CONFIG_MAGIC_SYSRQ_SERIAL) && defined(CONFIG_MAGIC_SYSRQ)
+#define SUPPORT_SYSRQ
+#endif
+
 #include <linux/module.h>
 #include <linux/slab.h>
 #include <linux/ioport.h>
@@ -476,8 +480,10 @@ static void tcc_serial_rx(struct uart_port *port, unsigned int lsr)
 	else if (lsr & ( UART_LSR_FE | UART_LSR_OE))
 		flag = TTY_FRAME;
 
+#if defined(CONFIG_MAGIC_SYSRQ_SERIAL) || defined(SUPPORT_SYSRQ)
 	if (uart_handle_sysrq_char(port, ch))
 		return ;
+#endif
 	/* put the received char into UART buffer */
 	uart_insert_char(port, lsr, UART_LSR_OE, ch, flag);
 
