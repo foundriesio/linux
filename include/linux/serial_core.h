@@ -254,7 +254,9 @@ struct uart_port {
 	const struct attribute_group **tty_groups;	/* all attributes (serial core use only) */
 	struct serial_rs485     rs485;
 	void			*private_data;		/* generic platform data pointer */
-#if defined(CONFIG_PM_SLEEP) && defined(CONFIG_ARCH_TCC805X)
+#if defined(CONFIG_PM_SLEEP) \
+	&&(defined(CONFIG_ARCH_TCC805X)||defined(CONFIG_ARCH_TCC803X)) \
+	&&(!defined(CONFIG_TCC803X_CA7S))
 	unsigned int		phy_config_reg;
 	unsigned int		phy_config_reg_size;
 	void __iomem		*config_reg;

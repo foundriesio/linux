@@ -1606,6 +1606,7 @@
 	uart0: serial@16600000 {
 		compatible = "arm,pl011", "arm,primecell";
 		reg = <0x16600000 0x1000>;
+		config-reg = <0x16684000 0x8>;
 		arm,primecell-periphid = <0x001feff7>;
 		interrupts = <GIC_SPI 88 IRQ_TYPE_LEVEL_HIGH>;
 		clocks = <&clk_peri PERI_UART0>, <&clk_io IOBUS_UART0>;
@@ -1616,6 +1617,7 @@
 	uart1: serial@16610000 {
 		compatible = "arm,pl011", "arm,primecell";
 		reg = <0x16610000 0x1000>;
+		config-reg = <0x16684000 0x8>;
 		arm,primecell-periphid = <0x001feff7>;
 		interrupts = <GIC_SPI 89 IRQ_TYPE_LEVEL_HIGH>;
 		clocks = <&clk_peri PERI_UART1>, <&clk_io IOBUS_UART1>;
@@ -1626,6 +1628,7 @@
 	uart2: serial@16620000 {
 		compatible = "arm,pl011", "arm,primecell";
 		reg = <0x16620000 0x1000>;
+		config-reg = <0x16684000 0x8>;
 		arm,primecell-periphid = <0x001feff7>;
 		interrupts = <GIC_SPI 90 IRQ_TYPE_LEVEL_HIGH>;
 		clocks = <&clk_peri PERI_UART2>, <&clk_io IOBUS_UART2>;
@@ -1636,6 +1639,7 @@
 	uart3: serial@16630000 {
 		compatible = "arm,pl011", "arm,primecell";
 		reg = <0x16630000 0x1000>;
+		config-reg = <0x16684000 0x8>;
 		arm,primecell-periphid = <0x001feff7>;
 		interrupts = <GIC_SPI 91 IRQ_TYPE_LEVEL_HIGH>;
 		clocks = <&clk_peri PERI_UART3>, <&clk_io IOBUS_UART3>;
@@ -1646,6 +1650,7 @@
 	uart4: serial@16640000 {
 		compatible = "arm,pl011", "arm,primecell";
 		reg = <0x16640000 0x1000>;
+		config-reg = <0x16684000 0x8>;
 		arm,primecell-periphid = <0x001feff7>;
 		interrupts = <GIC_SPI 69 IRQ_TYPE_LEVEL_HIGH>;
 		clocks = <&clk_peri PERI_UART4>, <&clk_io IOBUS_UART4>;
