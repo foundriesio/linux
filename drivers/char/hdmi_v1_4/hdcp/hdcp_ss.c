@@ -40,6 +40,27 @@
 //#define HDCP_DEV_MAJOR 233
 #define HDCP_DEV_MINOR 0
 
+static char hdcp_status[1024];
+static ssize_t
+show_status(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	return snprintf(buf, PAGE_SIZE, "%s\n", hdcp_status);
+}
+
+static ssize_t store_status(
+	struct device *dev, struct device_attribute *attr, const char *buf,
+	size_t count)
+{
+	sscanf(buf, "%s", hdcp_status);
+	return strnlen(buf, PAGE_SIZE);
+}
+static DEVICE_ATTR(status, S_IRUGO | S_IWUSR, show_status, store_status);
+
+void hdcp_attr_status(const char *status)
+{
+	snprintf(hdcp_status, 1024, "hdcp1.4 status: %s\n", status);
+}
+
 static long hdcp_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 {
 	hdcp_api_cmd_process(cmd, arg);
@@ -105,34 +126,42 @@ static struct miscdevice hdcp_misc_device = {
 static __init int hdcp_init(void)
 {
 	int ret = -ENODEV;
+	ILOG("\n");
 	ret = misc_register(&hdcp_misc_device);
 	if (ret < 0) {
-		ILOG("%s: Couldn't register device - (ret: 0x%X)\n",
+		ELOG("%s: Couldn't register device - (ret: 0x%X)\n",
 		     HDCP_DEV_NAME, ret);
 		return -EBUSY;
 	}
+	ret = device_create_file(
+		hdcp_misc_device.this_device, &dev_attr_status);
+	if (ret < 0) {
+		ELOG("sysfs_create_file error [%d]\n", ret);
+		return -EBUSY;
+	}
+
 #if defined(HDCP_IRQ_HANDLING)
 	ret = request_irq(
 		IRQ_HDMI, hdcp_handler, IRQF_SHARED, HDCP_DEV_NAME,
 		hdcp_handler);
 	if (ret < 0) {
-		ILOG("IRQ %d is not free. - (ret: 0x%X)\n", IRQ_HDMI, ret);
+		ELOG("IRQ %d is not free. - (ret: 0x%X)\n", IRQ_HDMI, ret);
 		misc_deregister(&hdcp_misc_device);
 		return -EIO;
 	}
 #endif
 	hdcp_api_initialize();
-	TRACE;
 	return 0;
 }
 
 static __exit void hdcp_exit(void)
 {
+	ILOG("\n");
 #if defined(HDCP_IRQ_HANDLING)
 	free_irq(IRQ_HDMI, hdcp_handler);
 #endif
+	device_remove_file(hdcp_misc_device.this_device, &dev_attr_status);
 	misc_deregister(&hdcp_misc_device);
-	TRACE;
 }
 
 module_init(hdcp_init);

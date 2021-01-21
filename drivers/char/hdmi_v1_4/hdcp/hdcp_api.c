@@ -135,10 +135,12 @@ static void hdcp_enable(unsigned char enable)
 
 		// reset hdcp state machine
 		hdcp_reset();
+		hdcp_attr_status("enabled");
 	} else {
 		ILOG("HDCP DISABLE\n");
 
 		hdcp_disable();
+		hdcp_attr_status("disabled");
 	}
 }
 
@@ -154,10 +156,12 @@ static void hdcp_enable_encryption(unsigned char enable)
 		hdcp_writeb(HDCP_EESS_START, HDCP_ENC_EN);
 		// disable blue screen
 		hdcp_enable_bluescreen(0);
+		hdcp_attr_status("encryption enabled");
 	} else {
 		hdcp_writeb(HDCP_EESS_STOP, HDCP_ENC_EN);
 		// enable blue screen
 		hdcp_enable_bluescreen(1);
+		hdcp_attr_status("encryption disabled");
 	}
 }
 
@@ -369,6 +373,7 @@ int hdcp_api_cmd_process(unsigned int cmd, unsigned long arg)
 		spin_lock_irqsave(&hdcp_struct.lock, irqflags);
 		hdcp_struct.event |= (1 << HDCP_EVENT_STOP);
 		spin_unlock_irqrestore(&hdcp_struct.lock, irqflags);
+		hdcp_attr_status("stopped");
 		break;
 	}
 	case HDCP_IOC_ENABLE_HDCP: {
@@ -829,6 +834,7 @@ unsigned int hdcp_api_poll_chk(struct file *file, poll_table *wait)
 int hdcp_api_open(void)
 {
 	TRACE;
+	hdcp_attr_status("opened");
 	return 0;
 }
 
@@ -837,6 +843,7 @@ int hdcp_api_close(void)
 	TRACE;
 	hdcp_disable();
 	hdmi_api_reg_hdcp_callback((hdcp_callback)NULL);
+	hdcp_attr_status("closed");
 	return 0;
 }
 
@@ -846,5 +853,6 @@ int hdcp_api_initialize(void)
 	init_waitqueue_head(&hdcp_struct.waitq);
 	spin_lock_init(&hdcp_struct.lock);
 	hdmi_api_reg_hdcp_callback((hdcp_callback)&hdcp_api_status_chk);
+	hdcp_attr_status("initialized");
 	return 0;
 }
