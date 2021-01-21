@@ -33,9 +33,9 @@
 
 #include <linux/soc/telechips/tcc_sc_protocol.h>
 
-#define COOKIE_UNMAPPED		0x0
-#define COOKIE_PRE_MAPPED	0x1
-#define COOKIE_MAPPED		0x2
+#define COOKIE_UNMAPPED		(0x0)
+#define COOKIE_PRE_MAPPED	(0x1)
+#define COOKIE_MAPPED		(0x2)
 
 struct tcc_sc_mmc_host {
 	struct device *dev;
@@ -43,9 +43,9 @@ struct tcc_sc_mmc_host {
 	struct tcc_sc_fw_prot_mmc mmc_prot_info;
 
 	/* Bounce buffer */
-	char *bounce_buffer;	/* For packing SDMA reads/writes */
+	s8 *bounce_buffer;	/* For packing SDMA reads/writes */
 	dma_addr_t bounce_addr;
-	unsigned int bounce_buffer_size;
+	u32 bounce_buffer_size;
 
 	/* Internal data */
 	struct mmc_request *mrq;
@@ -61,11 +61,14 @@ struct tcc_sc_mmc_host {
 	spinlock_t lock;	/* Mutex */
 };
 
-static bool tcc_sc_mmc_request_done(struct tcc_sc_mmc_host *host)
+static s32 tcc_sc_mmc_request_done(struct tcc_sc_mmc_host *host)
 {
-	unsigned long flags;
+	size_t flags;
 	struct mmc_request *mrq;
 	struct mmc_data *data;
+
+	if (host == NULL)
+		return -EINVAL;
 
 	spin_lock_irqsave((&host->lock), (flags));
 
@@ -73,7 +76,7 @@ static bool tcc_sc_mmc_request_done(struct tcc_sc_mmc_host *host)
 
 	if (mrq == NULL) {
 		spin_unlock_irqrestore(&host->lock, flags);
-		return true;
+		return -EINVAL;
 	}
 
 	data = mrq->data;
@@ -86,7 +89,7 @@ static bool tcc_sc_mmc_request_done(struct tcc_sc_mmc_host *host)
 			 * sglist
 			 */
 			if (mmc_get_dma_dir(data) == DMA_FROM_DEVICE) {
-				unsigned int length = data->bytes_xfered;
+				u32 length = data->bytes_xfered;
 
 				if (length > host->bounce_buffer_size) {
 					pr_err("%s: bounce buffer is %u bytes but DMA claims to have transferred %u bytes\n",
@@ -116,7 +119,7 @@ static bool tcc_sc_mmc_request_done(struct tcc_sc_mmc_host *host)
 		} else {
 			/* Unmap the raw data */
 			dma_unmap_sg(mmc_dev(host->mmc), data->sg,
-				     (int) data->sg_len,
+				     (s32) data->sg_len,
 				     mmc_get_dma_dir(data));
 		}
 		data->host_cookie = COOKIE_UNMAPPED;
@@ -127,7 +130,7 @@ static bool tcc_sc_mmc_request_done(struct tcc_sc_mmc_host *host)
 	spin_unlock_irqrestore(&host->lock, flags);
 	mmc_request_done(host->mmc, mrq);
 
-	return false;
+	return 0;
 }
 
 static void tcc_sc_mmc_tasklet_finish(unsigned long param)
@@ -160,10 +163,10 @@ static void tcc_sc_mmc_timeout_timer(unsigned long data)
 }
 
 
-static int tcc_sc_mmc_pre_dma_transfer(struct tcc_sc_mmc_host *host,
-				  struct mmc_data *data, int cookie)
+static s32 tcc_sc_mmc_pre_dma_transfer(struct tcc_sc_mmc_host *host,
+				  struct mmc_data *data, s32 cookie)
 {
-	int sg_count;
+	s32 sg_count;
 
 	/*
 	 * If the data buffers are already mapped, return the previous
@@ -174,7 +177,7 @@ static int tcc_sc_mmc_pre_dma_transfer(struct tcc_sc_mmc_host *host,
 
 	/* Bounce write requests to the bounce buffer */
 	if (host->bounce_buffer != NULL) {
-		unsigned int length = data->blksz * data->blocks;
+		u32 length = data->blksz * data->blocks;
 
 		if (length > host->bounce_buffer_size) {
 			pr_err("%s: asked for transfer of %u bytes exceeds bounce buffer %u bytes\n",
@@ -198,7 +201,7 @@ static int tcc_sc_mmc_pre_dma_transfer(struct tcc_sc_mmc_host *host,
 	} else {
 		/* Just access the data directly from memory */
 		sg_count = dma_map_sg(mmc_dev(host->mmc),
-				      data->sg, (int) data->sg_len,
+				      data->sg, (s32) data->sg_len,
 				      mmc_get_dma_dir(data));
 	}
 
@@ -247,8 +250,7 @@ static void tcc_sc_mmc_request(struct mmc_host *mmc, struct mmc_request *mrq)
 
 static void tcc_sc_mmc_request_work(struct work_struct *work)
 {
-	struct tcc_sc_mmc_host *host =
-		container_of(work, struct tcc_sc_mmc_host, request_work);
+	struct tcc_sc_mmc_host *host;
 	struct mmc_host *mmc;
 	const struct tcc_sc_fw_handle *handle;
 	struct tcc_sc_fw_mmc_cmd cmd;
@@ -256,7 +258,13 @@ static void tcc_sc_mmc_request_work(struct work_struct *work)
 	struct mmc_request *mrq;
 	unsigned long timeout;
 	struct scatterlist sg;
-	int ret;
+	s32 ret;
+
+	if (work == NULL) {
+		pr_err("[ERROR][TCC_SC_MMC] work_struct is null\n");
+		return ;
+	}
+	host = container_of(work, struct tcc_sc_mmc_host, request_work);
 
 	if (host == NULL) {
 		pr_err("[ERROR][TCC_SC_MMC] host is null\n");
@@ -295,7 +303,7 @@ static void tcc_sc_mmc_request_work(struct work_struct *work)
 
 	if (mrq->cmd->data != NULL) {
 
-		int sg_cnt = tcc_sc_mmc_pre_dma_transfer(host,
+		s32 sg_cnt = tcc_sc_mmc_pre_dma_transfer(host,
 					mrq->cmd->data, COOKIE_MAPPED);
 
 		if (sg_cnt <= 0) {
@@ -315,7 +323,7 @@ static void tcc_sc_mmc_request_work(struct work_struct *work)
 		data.blksz = mrq->cmd->data->blksz;
 		data.blocks = mrq->cmd->data->blocks;
 		data.blk_addr = mrq->cmd->data->blk_addr;
-		if ((mrq->cmd->data->flags & MMC_DATA_WRITE) != 0)
+		if ((mrq->cmd->data->flags & (u32)MMC_DATA_WRITE) != 0)
 			data.flags = TCC_SC_MMC_DATA_WRITE;
 		else
 			data.flags = TCC_SC_MMC_DATA_READ;
@@ -401,12 +409,14 @@ static void tcc_sc_mmc_set_ios(struct mmc_host *mmc, struct mmc_ios *ios)
 	/* do nothing */
 }
 
-static int tcc_sc_mmc_card_busy(struct mmc_host *mmc)
+static s32 tcc_sc_mmc_card_busy(struct mmc_host *mmc)
 {
 	struct tcc_sc_mmc_host *host = mmc_priv(mmc);
 	const struct tcc_sc_fw_handle *handle;
-	struct tcc_sc_fw_mmc_cmd cmd = {0, };
-	int ret;
+	struct tcc_sc_fw_mmc_cmd cmd;
+	s32 ret;
+
+	memset(&cmd , 0, sizeof(struct tcc_sc_fw_mmc_cmd));
 
 	handle = host->handle;
 	BUG_ON((handle == NULL));
@@ -416,7 +426,7 @@ static int tcc_sc_mmc_card_busy(struct mmc_host *mmc)
 	if (ret != 0)
 		return 0;
 	else
-		return (int)cmd.resp[0];
+		return (s32)cmd.resp[0];
 }
 
 static const struct mmc_host_ops tcc_sc_mmc_ops = {
@@ -433,12 +443,12 @@ static const struct of_device_id tcc_sc_mmc_of_match_table[2] = {
 };
 MODULE_DEVICE_TABLE(of, tcc_sc_mmc_of_match_table);
 
-static int tcc_sc_mmc_allocate_bounce_buffer(struct tcc_sc_mmc_host *host)
+static s32 tcc_sc_mmc_allocate_bounce_buffer(struct tcc_sc_mmc_host *host)
 {
 	struct mmc_host *mmc = host->mmc;
-	unsigned int max_blocks;
-	unsigned int bounce_size;
-	int ret;
+	u32 max_blocks;
+	u32 bounce_size;
+	s32 ret;
 
 	bounce_size = SZ_64K;
 
@@ -471,16 +481,16 @@ static int tcc_sc_mmc_allocate_bounce_buffer(struct tcc_sc_mmc_host *host)
 	host->bounce_buffer_size = bounce_size;
 
 	/* Lie about this since we're bouncing */
-	mmc->max_segs = (unsigned short) max_blocks;
+	mmc->max_segs = (u16) max_blocks;
 	mmc->max_seg_size = bounce_size;
 	mmc->max_req_size = bounce_size;
 
 	return 0;
 }
 
-static int tcc_sc_mmc_probe(struct platform_device *pdev)
+static s32 tcc_sc_mmc_probe(struct platform_device *pdev)
 {
-	int ret = 0;
+	s32 ret = 0;
 	struct device_node *fw_np;
 	const struct tcc_sc_fw_handle *handle;
 	struct mmc_host *mmc;
@@ -509,7 +519,7 @@ static int tcc_sc_mmc_probe(struct platform_device *pdev)
 	}
 	dev_info(&pdev->dev, "[INFO][TCC_SC_MMC] regitser tcc-sc-mmc\n");
 
-	mmc = mmc_alloc_host((int) sizeof(struct tcc_sc_mmc_host), &pdev->dev);
+	mmc = mmc_alloc_host((s32) sizeof(struct tcc_sc_mmc_host), &pdev->dev);
 	if (mmc == NULL) {
 		dev_err(&pdev->dev, "[ERROR][TCC_SC_MMC] Failed to allocate memory for mmc\n");
 		return -ENOMEM;
@@ -564,15 +574,15 @@ static int tcc_sc_mmc_probe(struct platform_device *pdev)
 	mmc->ops = &tcc_sc_mmc_ops;
 	mmc->f_min = 100000;
 	mmc->ocr_avail |= (u32) MMC_VDD_32_33 | (u32) MMC_VDD_33_34;
-	mmc->max_segs = (unsigned short) host->mmc_prot_info.max_segs;
+	mmc->max_segs = (u16) host->mmc_prot_info.max_segs;
 	mmc->max_seg_size = host->mmc_prot_info.max_seg_len;
 	mmc->max_blk_size = host->mmc_prot_info.blk_size;
 	mmc->max_req_size = 0x80000;
 	mmc->max_blk_count = 65535;
 
 	/* 32-bit mask as default */
-	ret = dma_set_mask_and_coherent(&pdev->dev, DMA_BIT_MASK(32));
-	if (ret) {
+	ret = dma_set_mask_and_coherent(&pdev->dev, DMA_BIT_MASK(32ULL));
+	if (ret != 0) {
 		dev_warn(&pdev->dev, "[WARN][TCC_SC_MMC] Failed to set 32-bit DMA mask.\n");
 	}
 
@@ -591,7 +601,7 @@ static int tcc_sc_mmc_probe(struct platform_device *pdev)
 	return ret;
 }
 
-static int tcc_sc_mmc_remove(struct platform_device *pdev)
+static s32 tcc_sc_mmc_remove(struct platform_device *pdev)
 {
 	return 0;
 }

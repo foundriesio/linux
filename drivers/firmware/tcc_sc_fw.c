@@ -32,33 +32,33 @@
 #define CREATE_TRACE_POINTS
 #include <trace/events/tcc_sc_fw.h>
 
-#define TCC_SC_CID_CA72	0x72U
-#define TCC_SC_CID_CA53	0x53U
-#define TCC_SC_CID_SC	0xD3U
-#define TCC_SC_CID_HSM	0xA0U
+#define TCC_SC_CID_CA72		(0x72U)
+#define TCC_SC_CID_CA53		(0x53U)
+#define TCC_SC_CID_SC		(0xD3U)
+#define TCC_SC_CID_HSM		(0xA0U)
 
-#define TCC_SC_BSID_BL0	0x42U
-#define TCC_SC_BSID_BL1	0x43U
-#define TCC_SC_BSID_BL2	0x44U
-#define TCC_SC_BSID_BL3	0x45U
-#define TCC_SC_BSID_BL4	0x46U
+#define TCC_SC_BSID_BL0		(0x42U)
+#define TCC_SC_BSID_BL1		(0x43U)
+#define TCC_SC_BSID_BL2		(0x44U)
+#define TCC_SC_BSID_BL3		(0x45U)
+#define TCC_SC_BSID_BL4		(0x46U)
 
-#define TCC_SC_CMD_REQ_GET_VERSION	0x00000000U
-#define TCC_SC_CMD_REQ_GET_PROT_INFO	0x00000001U
-#define TCC_SC_PROT_ID_MMC	0x00000002U
-#define TCC_SC_CMD_REQ_STOR_IO		0x00000004U
-#define TCC_SC_CMD_REQ_STOR_IO_READ	0x1U
-#define TCC_SC_CMD_REQ_STOR_IO_WRITE	0x0U
-#define TCC_SC_CMD_REQ_MMC_REQ		0x00000005U
-#define TCC_SC_CMD_REQ_UFS_REQ		0x00000006U
-#define TCC_SC_CMD_REQ_GPIO_CONFIG  0x00000010U
-#define TCC_SC_CMD_REQ_OTP_READ  0x00000014U
+#define TCC_SC_CMD_REQ_GET_VERSION	(0x00000000U)
+#define TCC_SC_CMD_REQ_GET_PROT_INFO	(0x00000001U)
+#define TCC_SC_PROT_ID_MMC		(0x00000002U)
+#define TCC_SC_CMD_REQ_STOR_IO		(0x00000004U)
+#define TCC_SC_CMD_REQ_STOR_IO_READ	(0x1U)
+#define TCC_SC_CMD_REQ_STOR_IO_WRITE	(0x0U)
+#define TCC_SC_CMD_REQ_MMC_REQ		(0x00000005U)
+#define TCC_SC_CMD_REQ_UFS_REQ		(0x00000006U)
+#define TCC_SC_CMD_REQ_GPIO_CONFIG  	(0x00000010U)
+#define TCC_SC_CMD_REQ_OTP_READ  	(0x00000014U)
 
-#define TCC_SC_MAX_CMD_LENGTH		8U
-#define TCC_SC_MAX_DATA_LENGTH	128U
+#define TCC_SC_MAX_CMD_LENGTH		(8U)
+#define TCC_SC_MAX_DATA_LENGTH		(128U)
 
-#define TCC_SC_TX_TIMEOUT_MS		5000U
-#define TCC_SC_RX_TIMEOUT_MS		5000U
+#define TCC_SC_TX_TIMEOUT_MS		(5000UL)
+#define TCC_SC_RX_TIMEOUT_MS		(5000U)
 
 DEFINE_MUTEX((xfer_mutex));
 
@@ -90,7 +90,7 @@ struct tcc_sc_fw_info {
 
 	struct mbox_client cl;
 	struct mbox_chan *chan;
-	unsigned int max_rx_timeout_ms;
+	u32 max_rx_timeout_ms;
 
 	struct tcc_sc_fw_xfer *xfer;
 	struct tcc_sc_fw_version version;
@@ -125,11 +125,11 @@ const struct tcc_sc_fw_handle *tcc_sc_fw_get_handle(struct device_node *np)
 }
 EXPORT_SYMBOL_GPL(tcc_sc_fw_get_handle);
 
-static inline int tcc_sc_fw_do_xfer(const struct tcc_sc_fw_info *info,
+static inline s32 tcc_sc_fw_do_xfer(const struct tcc_sc_fw_info *info,
 				    struct tcc_sc_fw_xfer *xfer)
 {
-	int ret;
-	unsigned long timeout;
+	s32 ret;
+	size_t timeout;
 	struct device *dev = info->dev;
 
 	reinit_completion(&xfer->done);
@@ -161,9 +161,22 @@ static inline int tcc_sc_fw_do_xfer(const struct tcc_sc_fw_info *info,
 static void tcc_sc_fw_rx_callback(struct mbox_client *cl, void *mssg)
 {
 	const struct tcc_sc_fw_info *info = cl_to_tcc_sc_fw_info(cl);
-	struct device *dev = info->dev;
 	struct tcc_sc_mbox_msg *mbox_msg = mssg;
-	struct tcc_sc_mbox_msg *rx_mbox_msg = &info->xfer->rx_mssg;
+	struct device *dev;
+	struct tcc_sc_mbox_msg *rx_mbox_msg;
+
+	if (info == NULL) {
+		pr_err("[ERROR[TCC_SCFW] sc_fw_info is null\n");
+		return ;
+	}
+	dev = info->dev;
+
+	if(mbox_msg == NULL) {
+		dev_err(dev,
+			"[ERROR][TCC_SC_FW] mmsg is null\n");
+		return ;
+	}
+	rx_mbox_msg = &info->xfer->rx_mssg;
 
 	rx_mbox_msg->cmd_len = 0;
 	rx_mbox_msg->data_len = 0;
@@ -197,18 +210,22 @@ static void tcc_sc_fw_rx_callback(struct mbox_client *cl, void *mssg)
 	complete(&info->xfer->done);
 }
 
-static int tcc_sc_fw_cmd_request_mmc_cmd(const struct tcc_sc_fw_handle *handle,
+static s32 tcc_sc_fw_cmd_request_mmc_cmd(const struct tcc_sc_fw_handle *handle,
 					 struct tcc_sc_fw_mmc_cmd *cmd,
 					 struct tcc_sc_fw_mmc_data *data)
 {
 	const struct tcc_sc_fw_info *info = NULL;
 	struct tcc_sc_fw_xfer *xfer;
-	struct tcc_sc_fw_cmd req_cmd = { 0, };
-	struct tcc_sc_fw_cmd res_cmd = { 0, };
+	struct tcc_sc_fw_cmd req_cmd;
+	struct tcc_sc_fw_cmd res_cmd;
 	struct scatterlist *sg;
 	dma_addr_t addr;
-	int ret, i;
-	unsigned int len;
+	s32 ret;
+	s32 i;
+	u32 len;
+
+	memset(&req_cmd, 0, sizeof(struct tcc_sc_fw_cmd));
+	memset(&res_cmd, 0, sizeof(struct tcc_sc_fw_cmd));
 
 	if (handle == NULL)
 		return -EINVAL;
@@ -218,16 +235,22 @@ static int tcc_sc_fw_cmd_request_mmc_cmd(const struct tcc_sc_fw_handle *handle,
 	if (info == NULL)
 		return -EINVAL;
 
+	if (cmd == NULL)
+		return -EINVAL;
+
 	mutex_lock(&xfer_mutex);
 	trace_tcc_sc_fw_start_mmc_req(cmd, data);
 
 	xfer = info->xfer;
+	if (xfer == NULL) {
+		mutex_unlock(&xfer_mutex);
+		return -EINVAL;
+	}
 
 	memset(xfer->rx_mssg.cmd, 0, xfer->rx_cmd_buf_len);
 
 	req_cmd.bsid = info->bsid;
 	req_cmd.cid = info->cid;
-	req_cmd.uid = 0;
 	req_cmd.cmd = TCC_SC_CMD_REQ_MMC_REQ;
 	req_cmd.args[0] = cmd->opcode;
 	req_cmd.args[1] = cmd->arg;
@@ -238,21 +261,21 @@ static int tcc_sc_fw_cmd_request_mmc_cmd(const struct tcc_sc_fw_handle *handle,
 
 	memcpy(xfer->tx_mssg.cmd, &req_cmd, sizeof(struct tcc_sc_fw_cmd));
 	xfer->tx_mssg.cmd_len =
-	    (unsigned int)(sizeof(struct tcc_sc_fw_cmd) / sizeof(u32));
+	    (u32)(sizeof(struct tcc_sc_fw_cmd) / sizeof(u32));
 
 	if (data != NULL) {
 		xfer->tx_mssg.data_buf[0] = data->blksz;
 		xfer->tx_mssg.data_buf[1] = data->blocks;
 		xfer->tx_mssg.data_buf[2] = data->flags;
-		xfer->tx_mssg.data_buf[3] = (unsigned int)data->sg_count;
+		xfer->tx_mssg.data_buf[3] = (u32)data->sg_count;
 		for_each_sg((data->sg), (sg), data->sg_count, i) {
 			addr = sg_dma_address(sg);
 			len = sg_dma_len(sg);
 			xfer->tx_mssg.data_buf[4U + ((u32) i * 2U)] =
-			    (unsigned int)addr;
+			    (u32)addr;
 			xfer->tx_mssg.data_buf[5U + ((u32) i * 2U)] = len;
 		}
-		xfer->tx_mssg.data_len = (unsigned int)(4U + (i * 2U));
+		xfer->tx_mssg.data_len = (u32)(4U + ((u32) i * 2U));
 	} else {
 		xfer->tx_mssg.data_len = 0;
 	}
@@ -266,20 +289,19 @@ static int tcc_sc_fw_cmd_request_mmc_cmd(const struct tcc_sc_fw_handle *handle,
 		memcpy(&res_cmd, xfer->rx_mssg.cmd,
 		       sizeof(struct tcc_sc_fw_cmd));
 		if ((res_cmd.bsid != info->bsid)
-		    || (res_cmd.cid != TCC_SC_CID_SC)) {
+		    || (res_cmd.cid != (u8)TCC_SC_CID_SC)) {
 			dev_err(info->dev,
-				"[ERROR][TCC_SC_FW] Receive NAK for CMD 0x%x (BSID 0x%x CID 0x%x)\n",
-				req_cmd.cmd, res_cmd.bsid, res_cmd.cid);
+				"[ERROR][TCC_SC_FW] Receive NAK for CMD 0x%x (BSID 0x%x CID 0x%x)\n", req_cmd.cmd, res_cmd.bsid, res_cmd.cid);
 			ret = -ENODEV;
 		} else {
 			cmd->resp[0] = res_cmd.args[0];
 			cmd->resp[1] = res_cmd.args[1];
 			cmd->resp[2] = res_cmd.args[2];
 			cmd->resp[3] = res_cmd.args[3];
-			cmd->error = (int)res_cmd.args[4];
+			cmd->error = (s32)res_cmd.args[4];
 
 			if (data != NULL)
-				data->error = (int)res_cmd.args[5];
+				data->error = (s32)res_cmd.args[5];
 		}
 	}
 
@@ -289,21 +311,21 @@ static int tcc_sc_fw_cmd_request_mmc_cmd(const struct tcc_sc_fw_handle *handle,
 	return ret;
 }
 
-static int tcc_sc_fw_cmd_get_mmc_prot_info(
+static s32 tcc_sc_fw_cmd_get_mmc_prot_info(
 			   const struct tcc_sc_fw_handle *handle,
 			   struct tcc_sc_fw_prot_mmc *mmc_info)
 {
 	const struct tcc_sc_fw_info *info;
 	struct device *dev;
 	struct tcc_sc_fw_xfer *xfer;
-	struct tcc_sc_fw_cmd req_cmd = { 0, }, res_cmd = {
-	0,};
-	int ret;
+	struct tcc_sc_fw_cmd req_cmd;
+	struct tcc_sc_fw_cmd res_cmd;
+	s32 ret;
 
-	if (handle == NULL)
-		return -EINVAL;
+	memset(&req_cmd, 0, sizeof(struct tcc_sc_fw_cmd));
+	memset(&res_cmd, 0, sizeof(struct tcc_sc_fw_cmd));
 
-	if (mmc_info == NULL)
+	if ((handle == NULL) || (mmc_info == NULL))
 		return -EINVAL;
 
 	info = handle_to_tcc_sc_fw_info(handle);
@@ -314,7 +336,15 @@ static int tcc_sc_fw_cmd_get_mmc_prot_info(
 	mutex_lock(&xfer_mutex);
 
 	dev = info->dev;
+	if (dev == NULL) {
+		mutex_unlock(&xfer_mutex);
+		return -EINVAL;
+	}
 	xfer = info->xfer;
+	if (xfer == NULL) {
+		mutex_unlock(&xfer_mutex);
+		return -EINVAL;
+	}
 
 	req_cmd.bsid = info->bsid;
 	req_cmd.cid = info->cid;
@@ -323,8 +353,8 @@ static int tcc_sc_fw_cmd_get_mmc_prot_info(
 	req_cmd.args[0] = TCC_SC_PROT_ID_MMC;
 
 	memcpy(xfer->tx_mssg.cmd, &req_cmd, sizeof(struct tcc_sc_fw_cmd));
-	xfer->tx_mssg.cmd_len = (unsigned int)sizeof(struct tcc_sc_fw_cmd) /
-	    (unsigned int)sizeof(u32);
+	xfer->tx_mssg.cmd_len = (u32)sizeof(struct tcc_sc_fw_cmd) /
+	    (u32)sizeof(u32);
 	memset(xfer->rx_mssg.cmd, 0, xfer->rx_cmd_buf_len);
 
 	ret = tcc_sc_fw_do_xfer(info, xfer);
@@ -335,14 +365,13 @@ static int tcc_sc_fw_cmd_get_mmc_prot_info(
 		memcpy(&res_cmd, xfer->rx_mssg.cmd,
 		       sizeof(struct tcc_sc_fw_cmd));
 		if ((res_cmd.bsid != info->bsid)
-		    || (res_cmd.cid != TCC_SC_CID_SC)) {
+		    || (res_cmd.cid != (u8)TCC_SC_CID_SC)) {
 			dev_err(dev,
 				"[ERROR][TCC_SC_FW] Receive NAK for CMD 0x%x (BSID 0x%x CID 0x%x)\n",
 				req_cmd.cmd, res_cmd.bsid, res_cmd.cid);
 			ret = -ENODEV;
 		} else {
-			memcpy((void *)mmc_info, (void *)res_cmd.args,
-			       sizeof(struct tcc_sc_fw_prot_mmc));
+			memcpy((void *)mmc_info, (void *)res_cmd.args, sizeof(struct tcc_sc_fw_prot_mmc));
 		}
 	}
 
@@ -351,20 +380,24 @@ static int tcc_sc_fw_cmd_get_mmc_prot_info(
 	return ret;
 }
 
-static int tcc_sc_fw_cmd_request_ufs_cmd(const struct tcc_sc_fw_handle *handle,
+static s32 tcc_sc_fw_cmd_request_ufs_cmd(const struct tcc_sc_fw_handle *handle,
 					 struct tcc_sc_fw_ufs_cmd *sc_cmd)
 {
 	const struct tcc_sc_fw_info *info = NULL;
 	struct tcc_sc_fw_xfer *xfer;
-	struct tcc_sc_fw_cmd req_cmd = { 0, };
-	struct tcc_sc_fw_cmd res_cmd = { 0, };
+	struct tcc_sc_fw_cmd req_cmd;
+	struct tcc_sc_fw_cmd res_cmd;
 	struct scatterlist *sg;
 	dma_addr_t addr;
-	int ret, i;
-	unsigned int len;
+	s32 ret;
+	s32 i;
+	u32 len;
 
-	if (handle == NULL)
+	if ((handle == NULL) || (sc_cmd == NULL))
 		return -EINVAL;
+
+	memset(&req_cmd, 0, sizeof(struct tcc_sc_fw_cmd));
+	memset(&res_cmd, 0, sizeof(struct tcc_sc_fw_cmd));
 
 	info = handle_to_tcc_sc_fw_info(handle);
 
@@ -375,15 +408,18 @@ static int tcc_sc_fw_cmd_request_ufs_cmd(const struct tcc_sc_fw_handle *handle,
 	//trace_tcc_sc_fw_start_ufs_req(cmd, data);
 
 	xfer = info->xfer;
+	if (xfer == NULL) {
+		mutex_unlock(&xfer_mutex);
+		return -EINVAL;
+	}
 
 	memset(xfer->rx_mssg.cmd, 0, xfer->rx_cmd_buf_len);
 
 	req_cmd.bsid = info->bsid;
 	req_cmd.cid = info->cid;
-	req_cmd.uid = 0;
 	req_cmd.cmd = TCC_SC_CMD_REQ_UFS_REQ;
 	req_cmd.args[0] = sc_cmd->datsz;
-	req_cmd.args[1] = sc_cmd->sg_count;	//sc_cmd->cdb;
+	req_cmd.args[1] = (u32)sc_cmd->sg_count;	//sc_cmd->cdb;
 	req_cmd.args[2] = sc_cmd->lba;	//reserved
 	req_cmd.args[3] = sc_cmd->lun;
 	req_cmd.args[4] = sc_cmd->tag;
@@ -391,7 +427,7 @@ static int tcc_sc_fw_cmd_request_ufs_cmd(const struct tcc_sc_fw_handle *handle,
 
 	memcpy(xfer->tx_mssg.cmd, &req_cmd, sizeof(struct tcc_sc_fw_cmd));
 	xfer->tx_mssg.cmd_len =
-	    (unsigned int)(sizeof(struct tcc_sc_fw_cmd) / sizeof(u32));
+	    (u32)(sizeof(struct tcc_sc_fw_cmd) / sizeof(u32));
 
 	xfer->tx_mssg.data_buf[0] = sc_cmd->cdb0;
 	xfer->tx_mssg.data_buf[1] = sc_cmd->cdb1;
@@ -403,10 +439,10 @@ static int tcc_sc_fw_cmd_request_ufs_cmd(const struct tcc_sc_fw_handle *handle,
 		addr = sg_dma_address(sg);
 		len = sg_dma_len(sg);
 		xfer->tx_mssg.data_buf[4U + ((u32) i * 2U)] =
-		    (unsigned int)addr;
+		    (u32)addr;
 		xfer->tx_mssg.data_buf[5U + ((u32) i * 2U)] = len;
 	}
-	xfer->tx_mssg.data_len = (unsigned int)(4U + (i * 2U));
+	xfer->tx_mssg.data_len = (u32)(4U + ((u32) i * 2U));
 
 	ret = tcc_sc_fw_do_xfer(info, xfer);
 	if (ret != 0) {
@@ -417,7 +453,7 @@ static int tcc_sc_fw_cmd_request_ufs_cmd(const struct tcc_sc_fw_handle *handle,
 		memcpy(&res_cmd, xfer->rx_mssg.cmd,
 		       sizeof(struct tcc_sc_fw_cmd));
 		if ((res_cmd.bsid != info->bsid)
-		    || (res_cmd.cid != TCC_SC_CID_SC)) {
+		    || (res_cmd.cid != (u8)TCC_SC_CID_SC)) {
 			dev_err(info->dev,
 				"[ERROR][TCC_SC_FW] Receive NAK for CMD 0x%x (BSID 0x%x CID 0x%x)\n",
 				req_cmd.cmd, res_cmd.bsid, res_cmd.cid);
@@ -427,7 +463,7 @@ static int tcc_sc_fw_cmd_request_ufs_cmd(const struct tcc_sc_fw_handle *handle,
 			sc_cmd->resp[1] = res_cmd.args[1];
 			sc_cmd->resp[2] = res_cmd.args[2];
 			sc_cmd->resp[3] = res_cmd.args[3];
-			sc_cmd->error = (int)res_cmd.args[4];
+			sc_cmd->error = (s32)res_cmd.args[4];
 		}
 	}
 
@@ -437,13 +473,27 @@ static int tcc_sc_fw_cmd_request_ufs_cmd(const struct tcc_sc_fw_handle *handle,
 	return ret;
 }
 
-static int tcc_sc_fw_cmd_get_revision(struct tcc_sc_fw_info *info)
+static s32 tcc_sc_fw_cmd_get_revision(struct tcc_sc_fw_info *info)
 {
-	struct device *dev = info->dev;
-	struct tcc_sc_fw_xfer *xfer = info->xfer;
-	struct tcc_sc_fw_cmd req_cmd = { 0, };
-	struct tcc_sc_fw_cmd res_cmd = { 0, };
-	int ret;
+	struct device *dev;
+	struct tcc_sc_fw_xfer *xfer;
+	struct tcc_sc_fw_cmd req_cmd;
+	struct tcc_sc_fw_cmd res_cmd;
+	s32 ret;
+
+	if (info == NULL)
+		return -EINVAL;
+
+	memset(&req_cmd, 0, sizeof(struct tcc_sc_fw_cmd));
+	memset(&res_cmd, 0, sizeof(struct tcc_sc_fw_cmd));
+
+	dev = info->dev;
+	if (dev == NULL)
+		return -EINVAL;
+
+	xfer = info->xfer;
+	if (xfer == NULL)
+		return -EINVAL;
 
 	mutex_lock(&xfer_mutex);
 
@@ -453,8 +503,8 @@ static int tcc_sc_fw_cmd_get_revision(struct tcc_sc_fw_info *info)
 	req_cmd.cmd = TCC_SC_CMD_REQ_GET_VERSION;
 
 	memcpy(xfer->tx_mssg.cmd, &req_cmd, sizeof(struct tcc_sc_fw_cmd));
-	xfer->tx_mssg.cmd_len = (unsigned int)sizeof(struct tcc_sc_fw_cmd)
-	    / (unsigned int)sizeof(u32);
+	xfer->tx_mssg.cmd_len = (u32)sizeof(struct tcc_sc_fw_cmd)
+	    / (u32)sizeof(u32);
 	memset(xfer->rx_mssg.cmd, 0, xfer->rx_cmd_buf_len);
 
 	ret = tcc_sc_fw_do_xfer(info, xfer);
@@ -462,17 +512,14 @@ static int tcc_sc_fw_cmd_get_revision(struct tcc_sc_fw_info *info)
 		dev_err(dev, "[ERROR][TCC_SC_FW] Failed to send mbox (%d)\n",
 			ret);
 	} else {
-		memcpy(&res_cmd, xfer->rx_mssg.cmd,
-		       sizeof(struct tcc_sc_fw_cmd));
+		memcpy(&res_cmd, xfer->rx_mssg.cmd, sizeof(struct tcc_sc_fw_cmd));
 		if ((res_cmd.bsid != info->bsid)
-		    || (res_cmd.cid != TCC_SC_CID_SC)) {
+		    || (res_cmd.cid != (u8)TCC_SC_CID_SC)) {
 			dev_err(dev,
-				"[ERROR][TCC_SC_FW] Receive NAK for CMD 0x%x (BSID 0x%x CID 0x%x)\n",
-				req_cmd.cmd, res_cmd.bsid, res_cmd.cid);
+				"[ERROR][TCC_SC_FW] Receive NAK for CMD 0x%x (BSID 0x%x CID 0x%x)\n", req_cmd.cmd, res_cmd.bsid, res_cmd.cid);
 			ret = -ENODEV;
 		} else {
-			memcpy((void *)&info->version, (void *)res_cmd.args,
-			       sizeof(struct tcc_sc_fw_version));
+			memcpy((void *)&info->version, (void *)res_cmd.args, sizeof(struct tcc_sc_fw_version));
 		}
 	}
 
@@ -481,19 +528,22 @@ static int tcc_sc_fw_cmd_get_revision(struct tcc_sc_fw_info *info)
 	return ret;
 }
 
-static int tcc_sc_fw_cmd_request_gpio_cmd(const struct tcc_sc_fw_handle *handle,
+static s32 tcc_sc_fw_cmd_request_gpio_cmd(const struct tcc_sc_fw_handle *handle,
 					  uint32_t address, uint32_t bit_number,
 					  uint32_t width, uint32_t value)
 {
 	const struct tcc_sc_fw_info *info;
 	struct device *dev;
 	struct tcc_sc_fw_xfer *xfer;
-	struct tcc_sc_fw_cmd req_cmd = { 0, };
-	struct tcc_sc_fw_cmd res_cmd = { 0, };
-	int ret;
+	struct tcc_sc_fw_cmd req_cmd;
+	struct tcc_sc_fw_cmd res_cmd;
+	s32 ret;
 
 	if (handle == NULL)
 		return -EINVAL;
+
+	memset(&req_cmd, 0, sizeof(struct tcc_sc_fw_cmd));
+	memset(&res_cmd, 0, sizeof(struct tcc_sc_fw_cmd));
 
 	info = handle_to_tcc_sc_fw_info(handle);
 
@@ -503,7 +553,15 @@ static int tcc_sc_fw_cmd_request_gpio_cmd(const struct tcc_sc_fw_handle *handle,
 	mutex_lock(&xfer_mutex);
 
 	dev = info->dev;
+	if (dev == NULL) {
+		mutex_unlock(&xfer_mutex);
+		return -EINVAL;
+	}
 	xfer = info->xfer;
+	if (xfer == NULL) {
+		mutex_unlock(&xfer_mutex);
+		return -EINVAL;
+	}
 
 	req_cmd.bsid = info->bsid;
 	req_cmd.cid = info->cid;
@@ -517,8 +575,8 @@ static int tcc_sc_fw_cmd_request_gpio_cmd(const struct tcc_sc_fw_handle *handle,
 	req_cmd.args[5] = 0;
 
 	memcpy(xfer->tx_mssg.cmd, &req_cmd, sizeof(struct tcc_sc_fw_cmd));
-	xfer->tx_mssg.cmd_len = (unsigned int)sizeof(struct tcc_sc_fw_cmd)
-	    / (unsigned int)sizeof(u32);
+	xfer->tx_mssg.cmd_len = (u32)sizeof(struct tcc_sc_fw_cmd)
+	    / (u32)sizeof(u32);
 	memset(xfer->rx_mssg.cmd, 0, xfer->rx_cmd_buf_len);
 
 	ret = tcc_sc_fw_do_xfer(info, xfer);
@@ -627,13 +685,13 @@ static struct tcc_sc_fw_otp_ops sc_fw_otp_ops = {
 	.get_otp = tcc_sc_fw_cmd_get_otp_cmd,
 };
 
-static int tcc_sc_fw_probe(struct platform_device *pdev)
+static s32 tcc_sc_fw_probe(struct platform_device *pdev)
 {
 	struct device *dev = &pdev->dev;
 	struct tcc_sc_fw_info *info = NULL;
 	struct tcc_sc_fw_handle *handle = NULL;
 	struct mbox_client *cl;
-	int ret = -EINVAL;
+	s32 ret = -EINVAL;
 
 	info = devm_kzalloc(dev, sizeof(struct tcc_sc_fw_info), GFP_KERNEL);
 	if (info == NULL)
@@ -723,12 +781,10 @@ static int tcc_sc_fw_probe(struct platform_device *pdev)
 	ret = tcc_sc_fw_cmd_get_revision(info);
 	if (ret != 0) {
 		dev_err(dev,
-			"[ERROR][TCC_SC_FW] failed to get firmware version %d\n",
-			ret);
+			"[ERROR][TCC_SC_FW] failed to get firmware version %d\n", ret);
 		goto out;
 	}
-	memcpy(&info->handle->version, &info->version,
-	       sizeof(struct tcc_sc_fw_version));
+	memcpy(&info->handle->version, &info->version,sizeof(struct tcc_sc_fw_version));
 
 	dev_info(dev, "[INFO][TCC_SC_FW] firmware version %d.%d.%d (%s)\n",
 		 info->version.major, info->version.minor, info->version.patch,
@@ -743,10 +799,10 @@ out:
 	return ret;
 }
 
-static int tcc_sc_fw_remove(struct platform_device *pdev)
+static s32 tcc_sc_fw_remove(struct platform_device *pdev)
 {
 	struct device *dev = &pdev->dev;
-	int ret = 0;
+	s32 ret = 0;
 
 	of_platform_depopulate(dev);
 
@@ -762,7 +818,7 @@ static struct platform_driver tcc_sc_fw_driver = {
 		   },
 };
 
-static int __init tcc_sc_fw_init(void)
+static s32 __init tcc_sc_fw_init(void)
 {
 	return platform_driver_register(&tcc_sc_fw_driver);
 }
