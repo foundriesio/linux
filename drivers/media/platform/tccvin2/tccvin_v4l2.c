@@ -65,6 +65,7 @@ static __u32 tccvin_try_frame_interval(struct tccvin_frame *frame,
 			     : frame->dwFrameInterval[i] - interval;
 
 			if (dist > best) {
+				/* dist > best */
 				break;
 			}
 
@@ -124,6 +125,7 @@ static int tccvin_v4l2_try_format(struct tccvin_streaming *stream,
 	for (i = 0; i < stream->nformats; ++i) {
 		format = &stream->format[i];
 		if (format->fcc == fmt->fmt.pix.pixelformat) {
+			/* fcc is available */
 			break;
 		}
 	}
@@ -153,6 +155,7 @@ static int tccvin_v4l2_try_format(struct tccvin_streaming *stream,
 		}
 
 		if (maxd == 0) {
+			/* max is 0 */
 			break;
 		}
 	}
@@ -191,9 +194,11 @@ static int tccvin_v4l2_try_format(struct tccvin_streaming *stream,
 	logd("colorspace: 0x%08x\n",	fmt->fmt.pix.colorspace);
 
 	if (tccvin_format != NULL) {
+		/* format is available */
 		*tccvin_format = format;
 	}
 	if (tccvin_frame != NULL) {
+		/* frame is available */
 		*tccvin_frame = frame;
 	}
 
@@ -208,6 +213,7 @@ static int tccvin_v4l2_get_format(struct tccvin_streaming *stream,
 	int ret = 0;
 
 	if (fmt->type != stream->type) {
+		/* type is wrong */
 		return -EINVAL;
 	}
 
@@ -243,11 +249,13 @@ static int tccvin_v4l2_set_format(struct tccvin_streaming *stream,
 	int ret;
 
 	if (fmt->type != stream->type) {
+		/* type is wrong */
 		return -EINVAL;
 	}
 
 	ret = tccvin_v4l2_try_format(stream, fmt, &format, &frame);
 	if (ret < 0) {
+		/* failure of trying format */
 		return ret;
 	}
 
@@ -297,6 +305,7 @@ static int tccvin_acquire_privileges(struct tccvin_fh *handle)
 {
 	/* Always succeed if the handle is already privileged. */
 	if (handle->state == TCCVIN_HANDLE_ACTIVE) {
+		/* state is active */
 		return 0;
 	}
 
@@ -313,6 +322,7 @@ static int tccvin_acquire_privileges(struct tccvin_fh *handle)
 static void tccvin_dismiss_privileges(struct tccvin_fh *handle)
 {
 	if (handle->state == TCCVIN_HANDLE_ACTIVE) {
+		/* state is not active */
 		atomic_dec(&handle->stream->active);
 	}
 
@@ -338,6 +348,7 @@ static int tccvin_v4l2_open(struct file *file)
 	/* Create the device handle. */
 	handle = kzalloc(sizeof(*handle), GFP_KERNEL);
 	if (handle == NULL) {
+		/* failure of allocating memory */
 		return -ENOMEM;
 	}
 
@@ -361,6 +372,7 @@ static int tccvin_v4l2_release(struct file *file)
 
 	/* Only free resources if this is a privileged handle. */
 	if (tccvin_has_privileges(handle)) {
+		/* release privileges */
 		tccvin_queue_release(&stream->queue);
 	}
 
@@ -412,6 +424,7 @@ static int tccvin_ioctl_enum_fmt(struct tccvin_streaming *stream,
 	__u32 index = fmt->index;
 
 	if (fmt->type != stream->type || fmt->index >= stream->nformats) {
+		/* type or format is unavailable */
 		return -EINVAL;
 	}
 
@@ -464,6 +477,7 @@ static int tccvin_ioctl_s_fmt_vid_cap(struct file *file, void *fh,
 
 	ret = tccvin_acquire_privileges(handle);
 	if (ret < 0) {
+		/* failure of acquiring privileges */
 		return ret;
 	}
 
@@ -479,6 +493,7 @@ static int tccvin_ioctl_try_fmt_vid_cap(struct file *file, void *fh,
 
 	ret = tccvin_v4l2_try_format(stream, fmt, NULL, NULL);
 	if (ret < 0) {
+		/* failure of trying format */
 		loge("tccvin_v4l2_try_format, ret: %d\n", ret);
 	}
 
@@ -494,6 +509,7 @@ static int tccvin_ioctl_reqbufs(struct file *file, void *fh,
 
 	ret = tccvin_acquire_privileges(handle);
 	if (ret < 0) {
+		/* failure of acquiring privileges */
 		return ret;
 	}
 
@@ -501,10 +517,12 @@ static int tccvin_ioctl_reqbufs(struct file *file, void *fh,
 	ret = tccvin_request_buffers(&stream->queue, rb);
 	mutex_unlock(&stream->mutex);
 	if (ret < 0) {
+		/* failure of requesting buffers */
 		return ret;
 	}
 
 	if (ret == 0) {
+		/* dismiss privileges */
 		tccvin_dismiss_privileges(handle);
 	}
 
@@ -527,6 +545,7 @@ static int tccvin_ioctl_querybuf(struct file *file, void *fh,
 	int ret;
 
 	if (!tccvin_has_privileges(handle)) {
+		/* device is busy */
 		return -EBUSY;
 	}
 
@@ -556,6 +575,7 @@ static int tccvin_ioctl_qbuf(struct file *file, void *fh,
 	struct tccvin_streaming *stream = handle->stream;
 
 	if (!tccvin_has_privileges(handle)) {
+		/* device is busy */
 		return -EBUSY;
 	}
 
@@ -569,6 +589,7 @@ static int tccvin_ioctl_dqbuf(struct file *file, void *fh,
 	struct tccvin_streaming *stream = handle->stream;
 
 	if (!tccvin_has_privileges(handle)) {
+		/* device is busy */
 		return -EBUSY;
 	}
 
@@ -584,6 +605,7 @@ static int tccvin_ioctl_streamon(struct file *file, void *fh,
 	int ret;
 
 	if (!tccvin_has_privileges(handle)) {
+		/* device is busy */
 		return -EBUSY;
 	}
 
@@ -601,6 +623,7 @@ static int tccvin_ioctl_streamoff(struct file *file, void *fh,
 	struct tccvin_streaming *stream = handle->stream;
 
 	if (!tccvin_has_privileges(handle)) {
+		/* device is busy */
 		return -EBUSY;
 	}
 
@@ -617,6 +640,7 @@ static int tccvin_ioctl_enum_input(struct file *file, void *fh,
 	u32 index = input->index;
 
 	if (index != 0) {
+		/* index is not 0 */
 		return -EINVAL;
 	}
 
@@ -676,7 +700,8 @@ static int tccvin_ioctl_g_parm(struct file *file, void *fh,
 	case V4L2_BUF_TYPE_VIDEO_CAPTURE:
 		fract = &(a->parm.capture.timeperframe);
 		fract->numerator	= 1;
-		fract->denominator	= stream->cur_frame->dwDefaultFrameInterval;
+		fract->denominator	=
+			stream->cur_frame->dwDefaultFrameInterval;
 		break;
 	default:
 		ret = -1;
@@ -695,13 +720,12 @@ static int tccvin_ioctl_s_parm(struct file *file, void *fh,
 
 	switch (stream->type) {
 	case V4L2_BUF_TYPE_VIDEO_CAPTURE:
-		// Does the video-input path support this framerate?
-		// Do all the video sources support this framerate?
-		stream->cur_frame->dwDefaultFrameInterval = 
+		/* Does the video-input path support this framerate? */
+		/* Do all the video sources support this framerate? */
+		stream->cur_frame->dwDefaultFrameInterval =
 			tccvin_try_frame_interval(stream->cur_frame,
 				a->parm.capture.timeperframe.denominator);
-
-		logd("numerator: %d, denominator: %d, is_handover: %d\n",
+		logd("numerator: %d, denominator: %d\n",
 			1, stream->cur_frame->dwDefaultFrameInterval);
 		break;
 	default:
@@ -729,10 +753,12 @@ static int tccvin_ioctl_enum_framesizes(struct file *file, void *fh,
 		}
 	}
 	if (format == NULL) {
+		/* format is NULL */
 		return -EINVAL;
 	}
 
 	if (fsize->index >= format->nframes) {
+		/* index is wrong */
 		return -EINVAL;
 	}
 
@@ -760,6 +786,7 @@ static int tccvin_ioctl_enum_frameintervals(struct file *file, void *fh,
 		}
 	}
 	if (format == NULL) {
+		/* frame is NULL */
 		return -EINVAL;
 	}
 
@@ -771,17 +798,19 @@ static int tccvin_ioctl_enum_frameintervals(struct file *file, void *fh,
 		}
 	}
 	if (frame == NULL) {
+		/* frame is NULL */
 		return -EINVAL;
 	}
 
 	if (frame->bFrameIntervalType) {
 		if (fival->index >= frame->bFrameIntervalType) {
+			/* interval index is wrong */
 			return -EINVAL;
 		}
 
 		fival->type = V4L2_FRMIVAL_TYPE_DISCRETE;
 		fival->discrete.numerator = 1;
-		fival->discrete.denominator = 
+		fival->discrete.denominator =
 			frame->dwFrameInterval[fival->index];
 		logd("index: %d, pixel_format: 0x%08x, width: %d, height: %d\n",
 			fival->index, fival->pixel_format,

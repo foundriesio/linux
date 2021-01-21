@@ -100,6 +100,7 @@ static int tccvin_queue_setup(struct vb2_queue *vq,
 	 * to store a complete frame.
 	 */
 	if (*nplanes) {
+		/* nplanes is wrong */
 		return *nplanes != 1 || sizes[0] < size ? -EINVAL : 0;
 	}
 
@@ -122,6 +123,7 @@ static int tccvin_buffer_prepare(struct vb2_buffer *vb)
 	}
 
 	if (unlikely(queue->flags & TCCVIN_QUEUE_DISCONNECTED)) {
+		/* queue->flags is wrong */
 		return -ENODEV;
 	}
 
@@ -130,8 +132,10 @@ static int tccvin_buffer_prepare(struct vb2_buffer *vb)
 	buf->mem = vb2_plane_vaddr(vb, 0);
 	buf->length = vb2_plane_size(vb, 0);
 	if (vb->type == V4L2_BUF_TYPE_VIDEO_CAPTURE) {
+		/* vb->type is V4L2_BUF_TYPE_VIDEO_CAPTURE */
 		buf->bytesused = 0;
 	} else {
+		/* vb->type is not V4L2_BUF_TYPE_VIDEO_CAPTURE */
 		buf->bytesused = vb2_get_plane_payload(vb, 0);
 	}
 
@@ -170,6 +174,7 @@ static int tccvin_start_streaming(struct vb2_queue *vq, unsigned int count)
 
 	ret = tccvin_video_streamon(stream);
 	if (ret == 0) {
+		/* return of streamon is 0 */
 		return 0;
 	}
 
@@ -223,6 +228,7 @@ int tccvin_queue_init(struct tccvin_video_queue *queue, enum v4l2_buf_type type,
 	queue->queue.dev = &stream->dev->pdev->dev;
 	ret = vb2_queue_init(&queue->queue);
 	if (ret) {
+		/* failure of queue init */
 		return ret;
 	}
 

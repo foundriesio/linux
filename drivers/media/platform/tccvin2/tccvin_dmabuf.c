@@ -41,7 +41,7 @@
 
 #include "tccvin_video.h"
 
-//#define TCCVIN_DMABUF_IOC_MAGIC		'D'
+/* #define TCCVIN_DMABUF_IOC_MAGIC		'D' */
 
 struct tccvin_dmabuf_buffer {
 	struct tccvin_dmabuf_heap *heap;
@@ -347,7 +347,6 @@ static int tccvin_dmabuf_mmap(struct dma_buf *dmabuf,
 {
 	struct tccvin_dmabuf_buffer *buffer = dmabuf->priv;
 	struct tccvin_dmabuf_heap *heap = buffer->heap;
-	struct device *dev = heap->dev;
 	int ret;
 
 	vma->vm_page_prot = pgprot_writecombine(vma->vm_page_prot);
@@ -492,7 +491,7 @@ long tccvin_dmabuf_g_phys(struct tccvin_fh *fh, struct v4l2_buffer *buf)
 		return -EFAULT;
 	}
 
-	logd("Successful conversion of physical(0x%lx) address using fd(%d)\n",
+	logd("Successful conversion of physical(0x%llx) address using fd(%d)\n",
 		phys.paddr,
 		stream->queue.queue.bufs[buf->index]->planes[0].m.fd);
 

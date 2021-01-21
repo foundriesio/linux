@@ -127,9 +127,12 @@ static int tccvin_parse_format(struct tccvin_device *dev,
 				frame->wWidth * frame->wHeight *
 				streamimg_format->bpp / 8;
 			frame->bFrameIntervalType = nintervals;
-			for (idxInterval = 0; idxInterval < nintervals; idxInterval++) {
-				(*intervals)[idxInterval] = tccvin_framerate_by_index(idxInterval);
-				frame->dwDefaultFrameInterval = (*intervals)[idxInterval];
+			for (idxInterval = 0; idxInterval < nintervals;
+				idxInterval++) {
+				(*intervals)[idxInterval] =
+					tccvin_framerate_by_index(idxInterval);
+				frame->dwDefaultFrameInterval =
+					(*intervals)[idxInterval];
 			}
 			frame->dwFrameInterval = *intervals;
 
@@ -162,6 +165,7 @@ static int tccvin_parse_streaming(struct tccvin_device *dev)
 
 	streaming = kzalloc(sizeof(*streaming), GFP_KERNEL);
 	if (streaming == NULL) {
+		/* streaming is NULL */
 		return -EINVAL;
 	}
 
@@ -201,6 +205,7 @@ static int tccvin_parse_streaming(struct tccvin_device *dev)
 	ret = tccvin_parse_format(dev, streaming, format,
 		&interval, nintervals);
 	if (ret < 0) {
+		/* failure of parsing format */
 		goto error;
 	}
 
@@ -226,6 +231,7 @@ static int tccvin_parse_control(struct tccvin_device *dev)
 
 	ret = tccvin_parse_standard_control(dev);
 	if (ret < 0) {
+		/* failure of parsing standard control */
 		return ret;
 	}
 
@@ -253,6 +259,7 @@ static void tccvin_delete(struct kref *kref)
 	struct tccvin_streaming *streaming = dev->stream;
 
 	if (dev->vdev.dev) {
+		/* unregister v4l2 device */
 		v4l2_device_unregister(&dev->vdev);
 	}
 
@@ -280,6 +287,7 @@ static void tccvin_unregister_video(struct tccvin_device *dev)
 
 	stream = dev->stream;
 	if (video_is_registered(&stream->vdev)) {
+		/* unregister video device  */
 		video_unregister_device(&stream->vdev);
 	}
 
@@ -288,6 +296,7 @@ static void tccvin_unregister_video(struct tccvin_device *dev)
 	 */
 	ret = tccvin_video_deinit(stream);
 	if (ret < 0) {
+		/* failure of video deinit */
 		loge("Failed to initialize the device (%d).\n", ret);
 	}
 }
@@ -356,9 +365,9 @@ int tccvin_async_bound(struct v4l2_async_notifier *notifier,
 	dev = container_of(notifier, struct tccvin_device, notifier);
 	tc_subdev = container_of(asd, struct tccvin_subdev, asd);
 
-	// register subdevice here
+	/* register subdevice here */
 	tc_subdev->sd = subdev;
-	//dev->subdevs[dev->bounded_subdevs] = subdev;
+	/* dev->subdevs[dev->bounded_subdevs] = subdev; */
 	tccvin_add_subdev_list(subdev);
 	dev->bounded_subdevs++;
 	return ret;
@@ -406,33 +415,33 @@ void tccvin_print_fw_node_info(struct tccvin_device *vdev,
 		flags = vdev->fw_ep[vdev->num_ep].bus.parallel.flags;
 
 		logd("flags: 0x%08x\n", flags);
-		// hsync-active
+		/* hsync-active */
 		logd("hsync-active: %s\n",
 			(flags & V4L2_MBUS_HSYNC_ACTIVE_HIGH) ?
 				"V4L2_MBUS_HSYNC_ACTIVE_HIGH" :
 				"V4L2_MBUS_HSYNC_ACTIVE_LOW");
-		// vsync-active
+		/* vsync-active */
 		logd("vsync-active: %s\n",
 			(flags & V4L2_MBUS_VSYNC_ACTIVE_HIGH) ?
 				"V4L2_MBUS_VSYNC_ACTIVE_HIGH" :
 				"V4L2_MBUS_VSYNC_ACTIVE_LOW");
-		// pclk-sample
+		/* pclk-sample */
 		logd("pclk-sample: %s\n",
 			(flags & V4L2_MBUS_PCLK_SAMPLE_RISING) ?
 				"V4L2_MBUS_PCLK_SAMPLE_RISING" :
 				"V4L2_MBUS_PCLK_SAMPLE_FALLING");
-		// data-active
+		/* data-active */
 		logd("data-active: %s\n",
 			(flags & V4L2_MBUS_DATA_ACTIVE_HIGH) ?
 				"V4L2_MBUS_DATA_ACTIVE_HIGH" :
 				"V4L2_MBUS_DATA_ACTIVE_LOW");
-		// conv_en
+		/* conv_en */
 		logd("conv_en: %s\n",
 			(vdev->fw_ep[vdev->num_ep].bus_type ==
 				V4L2_MBUS_BT656) ?
 				"V4L2_MBUS_BT656" :
 				"V4L2_MBUS_PARALLEL");
-		// bus width
+		/* bus width */
 		logd("bus-width: %d\n",
 			vdev->fw_ep[vdev->num_ep].bus.parallel.bus_width);
 		break;
@@ -507,7 +516,8 @@ static int tccvin_traversal_subdevices(struct tccvin_device *vdev,
 	if (founded_sd == NULL) {
 		tccvin_add_async_subdev(vdev, node);
 	} else {
-		vdev->linked_subdevs[vdev->num_asd + vdev->bounded_subdevs].sd = founded_sd;
+		vdev->linked_subdevs[vdev->num_asd + vdev->bounded_subdevs].sd =
+			founded_sd;
 		vdev->bounded_subdevs++;
 		logi("already subdev(%s) is founded\n", node->name);
 	}
@@ -560,7 +570,6 @@ skip_alloc_async_subdev:
 		of_node_put(local_ep);
 	}
 
-end:
 	return 0;
 }
 
@@ -605,14 +614,14 @@ static int tccvin_core_probe(struct platform_device *pdev)
 {
 	struct tccvin_device *dev;
 
-	// Get the index from its alias
+	/* Get the index from its alias */
 	pdev->id = of_alias_get_id(pdev->dev.of_node, "videoinput");
 	logd("Platform Device index: %d, name: %s\n", pdev->id, pdev->name);
 
 	/* Allocate memory for the device and initialize it. */
 	dev = kzalloc(sizeof(*dev), GFP_KERNEL);
 	if (dev == NULL) {
-		// dev is null
+		/* dev is null */
 		return -ENOMEM;
 	}
 
@@ -635,6 +644,7 @@ static int tccvin_core_probe(struct platform_device *pdev)
 
 	/* Initialize the media device and register the V4L2 device. */
 	if (v4l2_device_register(&pdev->dev, &dev->vdev) < 0) {
+		/* failure of registering v4l2 device */
 		goto error;
 	}
 
@@ -645,7 +655,7 @@ static int tccvin_core_probe(struct platform_device *pdev)
 	if (tccvin_init_subdevices(dev) < 0)
 		goto e_v4l2_dev_unregister;
 
-	// Create the tccvin_recovery_trigger sysfs
+	/* Create the tccvin_recovery_trigger sysfs */
 	tccvin_create_recovery_trigger(&dev->pdev->dev);
 
 	// Create the tccvin_timestamp sysfs
@@ -668,7 +678,7 @@ static int tccvin_core_remove(struct platform_device *pdev)
 	tccvin_unregister_video(dev);
 	kref_put(&dev->ref, tccvin_delete);
 
-	// free the memory for the camera device
+	/* free the memory for the camera device */
 	kfree(dev);
 	return 0;
 }
