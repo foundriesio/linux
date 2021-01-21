@@ -214,4 +214,5 @@ struct hdcp_ri_info {
 #define hdcp_readl hdmi_api_ddi_reg_read
 #define hdcp_writel hdmi_api_ddi_reg_write
 
+void hdcp_attr_status(const char *status);
 #endif /* HDCP_SS_H */
