@@ -408,7 +408,7 @@ static int32_t tccvin_convert_to_multi_planes_buffer_addresses(
 		break;
 	/* 'YU12' 12 YUV 4:2:0 */
 	case V4L2_PIX_FMT_YUV420:
-		y_offsetdwi	= ROUND_UP_4(width) * ROUND_UP_2(height);
+		y_offset	= ROUND_UP_4(width) * ROUND_UP_2(height);
 		uv_offset	= (ROUND_UP_4(width) / 2)
 					* (ROUND_UP_2(height) / 2);
 		*addr1		= *addr0 + y_offset;
