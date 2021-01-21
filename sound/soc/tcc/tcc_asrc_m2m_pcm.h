@@ -196,6 +196,7 @@ struct asrc_m2m_pcm_stream {
 	wait_queue_head_t kth_wq;
 	atomic_t wakeup;
 	spinlock_t is_locked;
+	struct mutex mlock;
 };
 
 struct tcc_asrc_m2m_pcm {

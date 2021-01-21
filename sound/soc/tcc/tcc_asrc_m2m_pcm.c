@@ -485,7 +485,8 @@ static int tcc_asrc_m2m_pcm_set_action_to_mbox(
 static int tcc_asrc_m2m_pcm_set_hw_params_to_mbox(
 	struct tcc_asrc_m2m_pcm
 	*asrc_m2m_pcm,
-	int stream)
+	int stream,
+	int channels)
 {
 	struct mbox_audio_data_header_t mbox_header;
 
@@ -494,6 +495,7 @@ static int tcc_asrc_m2m_pcm_set_hw_params_to_mbox(
 	dma_addr_t phy_address;
 
 	unsigned int mbox_msg[MBOX_MSG_SIZE_FOR_PARAMS] = { 0 };
+	unsigned ch = channels << 1;
 
 	if (asrc_m2m_pcm == NULL) {
 		tpcm_warn("[%s] asrc_m2m_pcm is NULL\n",
@@ -527,6 +529,7 @@ static int tcc_asrc_m2m_pcm_set_hw_params_to_mbox(
 	mbox_msg[2] =
 	    (stream == SNDRV_PCM_STREAM_PLAYBACK) ? PCM_VALUE_DIRECTON_TX :
 	    PCM_VALUE_DIRECTON_RX;
+	mbox_msg[2] |= ch; //add channel info
 	mbox_msg[3] = (unsigned int)phy_address;
 	mbox_msg[4] =
 		(stream == SNDRV_PCM_STREAM_PLAYBACK) ?
@@ -689,7 +692,10 @@ static void playback_for_mbox_callback(struct tcc_asrc_m2m_pcm *asrc_m2m_pcm)
 	}
 
 	if (period_elapsed_en == TRUE) {
-		snd_pcm_period_elapsed(substream);
+		mutex_lock(&playback->mlock);
+		if(playback->asrc_substream)
+			snd_pcm_period_elapsed(substream);
+		mutex_unlock(&playback->mlock);
 		atomic_set(&playback->wakeup, 1);
 		wake_up_interruptible(&(playback->kth_wq));
 	} else {
@@ -724,16 +730,19 @@ static void playback_for_mbox_callback(struct tcc_asrc_m2m_pcm *asrc_m2m_pcm)
 					playback->Bperiod_pos =
 						playback->Bperiod_pos -
 						playback->src->period_bytes;
-					if (substream)
+					mutex_lock(&playback->mlock);
+					if (playback->asrc_substream) {
 						snd_pcm_period_elapsed(
 						substream);
-					else {
+						mutex_unlock(&playback->mlock);
+					} else {
 						tpcm_err(
 							"[%d]asrc_m2m_pcm->",
 							asrc_m2m_pcm->dev_id);
 						pr_err("asrc_substream");
 						pr_err("set to null during");
 						pr_err("drain!!\n");
+						mutex_unlock(&playback->mlock);
 						break;
 					}
 				}
@@ -808,8 +817,13 @@ static void tcc_asrc_m2m_pcm_mbox_callback(
 		return;
 	}
 
-	if (msg_size == AUDIO_MBOX_CONCURRENT_PCM_POSITION_MESSAGE_SIZE)
+	if ((msg_size == AUDIO_MBOX_CONCURRENT_PCM_POSITION_MESSAGE_SIZE) &&
+		(cmd_type == asrc_m2m_pcm->playback->mbox_cmd_type))
 		pos = msg[cmd_type];
+
+	if ((msg_size == AUDIO_MBOX_CONCURRENT_PCM_POSITION_MESSAGE_SIZE) &&
+		(cmd_type == asrc_m2m_pcm->capture->mbox_cmd_type))
+		return;
 
 	//For playback
 	if (cmd_type == asrc_m2m_pcm->playback->mbox_cmd_type) {
@@ -984,8 +998,11 @@ static int tcc_asrc_m2m_pcm_close(struct snd_pcm_substream *substream)
 		}
 		tcc_asrc_footprint_init(asrc_m2m_pcm->asrc_footprint);
 
-		if (asrc_m2m_pcm->playback->asrc_substream != NULL)
+		if (asrc_m2m_pcm->playback->asrc_substream) {
+			mutex_lock(&asrc_m2m_pcm->playback->mlock);
 			asrc_m2m_pcm->playback->asrc_substream = NULL;
+			mutex_unlock(&asrc_m2m_pcm->playback->mlock);
+		}
 
 	} else {
 #ifdef CONFIG_TCC_MULTI_MAILBOX_AUDIO
@@ -1002,8 +1019,11 @@ static int tcc_asrc_m2m_pcm_close(struct snd_pcm_substream *substream)
 		atomic_set(&asrc_m2m_pcm->capture->wakeup, 0);
 
 		tcc_asrc_m2m_pcm_stream_reset(asrc_m2m_pcm->capture, FALSE);
-		if (asrc_m2m_pcm->capture->asrc_substream != NULL)
+		if (asrc_m2m_pcm->capture->asrc_substream) {
+			mutex_lock(&asrc_m2m_pcm->capture->mlock);
 			asrc_m2m_pcm->capture->asrc_substream = NULL;
+			mutex_unlock(&asrc_m2m_pcm->capture->mlock);
+		}
 	}
 
 /*
@@ -1142,7 +1162,10 @@ static int tcc_asrc_m2m_pcm_hw_params(
 	}
 
 #ifdef CONFIG_TCC_MULTI_MAILBOX_AUDIO
-	tcc_asrc_m2m_pcm_set_hw_params_to_mbox(asrc_m2m_pcm, substream->stream);
+	tcc_asrc_m2m_pcm_set_hw_params_to_mbox(
+		asrc_m2m_pcm,
+		substream->stream,
+		channels);
 #endif
 	snd_pcm_set_runtime_buffer(substream, &substream->dma_buffer);
 
@@ -2107,7 +2130,10 @@ static int tcc_ptr_update_func_for_capture(
 				asrc_m2m_pcm->capture->Bperiod_pos =
 				    asrc_m2m_pcm->capture->Bperiod_pos %
 				    dst_period_bytes;
-				snd_pcm_period_elapsed(substream);
+				mutex_lock(&asrc_m2m_pcm->capture->mlock);
+				if(asrc_m2m_pcm->capture->asrc_substream)
+					snd_pcm_period_elapsed(substream);
+				mutex_unlock(&asrc_m2m_pcm->capture->mlock);
 			}
 
 		} else {
@@ -2263,7 +2289,10 @@ static int tcc_ptr_update_func_for_capture(
 				asrc_m2m_pcm->capture->Bperiod_pos =
 				    asrc_m2m_pcm->capture->Bperiod_pos %
 				    dst_period_bytes;
-				snd_pcm_period_elapsed(substream);
+				mutex_lock(&asrc_m2m_pcm->capture->mlock);
+				if(asrc_m2m_pcm->capture->asrc_substream)
+					snd_pcm_period_elapsed(substream);
+				mutex_unlock(&asrc_m2m_pcm->capture->mlock);
 			}
 #ifdef TAIL_DEBUG
 			if (asrc_m2m_pcm->capture->Btail != cap_tail) {
@@ -3288,6 +3317,8 @@ static int tcc_asrc_m2m_pcm_stream_init(
 	strm->app = app;
 
 	strm->first_open = FALSE;
+
+	mutex_init(&strm->mlock);		
 	return 0;
 
 	devm_kfree(dev, app);
@@ -3345,6 +3376,8 @@ static void tcc_asrc_m2m_pcm_stream_deinit(
 		app = strm->app;
 		devm_kfree(dev, app);
 	}
+
+	mutex_destroy(&strm->mlock);
 }
 
 static int tcc_asrc_m2m_pcm_new(struct snd_soc_pcm_runtime *rtd)

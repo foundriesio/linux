@@ -107,13 +107,15 @@ static int tcc_mbox_audio_send_message_to_channel(struct mbox_audio_device
 {
 	int ret;
 
+	mutex_lock(&audio_dev->lock);	
 	ret = mbox_send_message(audio_dev->mbox_ch, mbox_data);
+#ifdef CONFIG_ARCH_TCC803X 
 	mbox_client_txdone(audio_dev->mbox_ch, 0);
-
+#endif//CONFIG_ARCH_TCC803x
 	if (ret < 0)
 		maudio_err("%s : Failed to send message via mailbox\n",
 				__func__);
-
+	mutex_unlock(&audio_dev->lock);
 	return ret;
 }
 
@@ -241,7 +243,7 @@ int tcc_mbox_audio_send_command(struct mbox_audio_device *audio_dev,
 
 	//payload //TODO : assume msg_size as unsigned int
 	memcpy(&(mbox_data->cmd[AUDIO_MBOX_HEADER_SIZE]), msg,
-	       sizeof(unsigned int) * header->msg_size);
+	       sizeof(unsigned int) * (MBOX_AUDIO_CMD_SIZE-AUDIO_MBOX_HEADER_SIZE));
 
 	maudio_dbg(
 			"%s : usage(0x%04x) type(0x%04x) available tx(%d) msg_size(%d) command(0x%08x)",
@@ -434,7 +436,7 @@ static int tcc_mbox_audio_set_message(struct mbox_audio_device *audio_dev,
 			(msg_size & 0x000000FF);
 
 		memcpy(&(audio_usr_msg->mbox_data.cmd[AUDIO_MBOX_HEADER_SIZE]),
-				msg, sizeof(unsigned int) * msg_size);
+				msg, sizeof(unsigned int) * (MBOX_AUDIO_CMD_SIZE-AUDIO_MBOX_HEADER_SIZE));
 
 		//insert to queue
 		mutex_lock(&audio_dev->user_queue.uq_lock);
@@ -638,9 +640,9 @@ static void tcc_mbox_audio_rx_work(struct kthread_work *work)
 static void tcc_mbox_audio_message_received(struct mbox_client *client,
 					    void *message)
 {
-	struct platform_device *pdev = to_platform_device(client->dev);
-	struct mbox_audio_device *audio_dev = platform_get_drvdata(pdev);
-	struct tcc_mbox_data *mbox_data = (struct tcc_mbox_data *)message;
+	struct platform_device *pdev = NULL;
+	struct mbox_audio_device *audio_dev = NULL;
+	struct tcc_mbox_data *mbox_data = NULL;
 	struct mbox_audio_cmd_t *audio_msg;
 	int rx_queue_handle;
 	unsigned long flags;
@@ -699,8 +701,8 @@ static void tcc_mbox_audio_message_received(struct mbox_client *client,
 		audio_msg->mbox_data.cmd[i] = mbox_data->cmd[i];
 
 	//TODO : delete if we do not need mbox_data->data
-	memcpy(audio_msg->mbox_data.data, mbox_data->data,
-			mbox_data->data_len * sizeof(unsigned int));
+//	memcpy(audio_msg->mbox_data.data, mbox_data->data,
+//			mbox_data->data_len * sizeof(unsigned int));
 
 	cmd_type = (mbox_data->cmd[0] >> 16) & 0x00FF;
 
@@ -712,9 +714,9 @@ static void tcc_mbox_audio_message_received(struct mbox_client *client,
 		   cmd_type <= MBOX_AUDIO_CMD_TYPE_POSITION_MAX) {
 		rx_queue_handle = cmd_type;
 	} else {
-		maudio_err("%s : invalid cmd type..forcibly use RX_QUEUE_FOR_COMMAND.\n",
-				__func__);
-		rx_queue_handle = RX_QUEUE_FOR_COMMAND;
+		maudio_err("%s : invalid cmd type..drop msg cmd[0][0x%x],.\n",
+				__func__ , mbox_data->cmd[0]); 		
+		goto mbox_audio_message_received_error;
 	}
 
 	if (&audio_dev->rx[rx_queue_handle] == NULL) {
@@ -766,10 +768,15 @@ static struct mbox_chan *audio_request_channel(struct platform_device *pdev,
 		return ERR_PTR(-ENOMEM);
 
 	client->dev = &pdev->dev;
+#ifdef CONFIG_ARCH_TCC803X
 	client->tx_block = false;
-	client->rx_callback = tcc_mbox_audio_message_received;
 	client->tx_done = client->tx_block ? tcc_mbox_audio_message_sent : NULL;
-	client->knows_txdone = false;
+#else 
+	client->tx_block = true;
+	client->tx_done = NULL;
+#endif//CONFIG_ARCH_TCC803X
+	client->rx_callback = tcc_mbox_audio_message_received;
+	client->knows_txdone = false;	
 	client->tx_tout = 500;
 
 	channel = mbox_request_channel_byname(client, name);
@@ -915,6 +922,7 @@ static ssize_t tcc_mbox_audio_read(struct file *filp, char __user *buf,
 		}
 		maudio_dbg("%s : read count = %zd, copy_byte_size = %d\n",
 				__func__, count, copy_byte_size);
+		
 		if (copy_to_user
 				(buf + copy_byte_size,
 				 &(audio_usr_msg->mbox_data.cmd[0]),
@@ -1242,7 +1250,7 @@ static long tcc_mbox_audio_ioctl(struct file *filp, unsigned int cmd,
 
 			memcpy(&(mbox_audio_msg.data[AUDIO_MBOX_HEADER_SIZE]),
 			       reply_data->msg,
-			       sizeof(unsigned int) * reply_data->msg_size);
+			       sizeof(unsigned int) * (MBOX_AUDIO_CMD_SIZE-AUDIO_MBOX_HEADER_SIZE));
 
 			// don't copy data area
 			/*
