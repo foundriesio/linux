@@ -13,7 +13,7 @@
 #include <media/v4l2-fwnode.h>
 #include <media/videobuf2-v4l2.h>
 
-// vioc path
+/* vioc path */
 #include <video/tcc/vioc_global.h>
 #include <video/tcc/vioc_config.h>
 #include <video/tcc/vioc_rdma.h>
@@ -29,7 +29,7 @@
 #include <video/tcc/vioc_intr.h>
 #include <video/tcc/tcc_cam_ioctrl.h>
 
-// optional pmap for viqe
+/* optional pmap for viqe */
 #include <soc/tcc/pmap.h>
 
 #include <linux/kthread.h>
@@ -42,7 +42,7 @@
 #define DRIVER_NAME			"tccvin"
 #define DRIVER_VERSION			"2.0.0"
 
-// vioc path
+/* vioc path */
 #define MAX_BUFFERS			4
 
 #define PGL_FORMAT			(VIOC_IMG_FMT_ARGB8888)
@@ -53,7 +53,7 @@
 #define PGL_BGM_G			(0xff)
 #define PGL_BGM_B			(0xff)
 
-// video-input path
+/* video-input path */
 #define TCCVIN_CTRL_CONTROL_TIMEOUT	500
 #define TCCVIN_CTRL_STREAMING_TIMEOUT	5000
 
@@ -84,12 +84,12 @@ struct buf_addr {
 };
 
 struct tccvin_cif {
-	// cif port
+	/* cif port */
 	int32_t				cif_port;
 
 	void __iomem			*cifport_addr;
 
-	// vioc
+	/* vioc */
 	struct clk			*vioc_clk;
 	struct vioc_path		vioc_path;
 
@@ -97,15 +97,15 @@ struct tccvin_cif {
 	unsigned int			vioc_irq_num;
 	struct vioc_intr_type		vioc_intr;
 
-	// usage status pgl
+	/* usage status pgl */
 	unsigned int			use_pgl;
 
-	// optional pmap
+	/* optional pmap */
 	struct pmap			pmap_pgl;
 	struct pmap			pmap_viqe;
 	struct pmap			pmap_preview;
 
-	// framebuffer
+	/* framebuffer */
 	struct buf_addr			preview_buf_addr[VB2_MAX_FRAME];
 	void __iomem			*vir;
 
@@ -264,7 +264,7 @@ struct tccvin_streaming {
 
 	__u32 sequence;
 
-	// video-input path device
+	/* video-input path device */
 	struct tccvin_cif			cif;
 
 	int					preview_method;
@@ -303,7 +303,7 @@ struct tccvin_device {
 
 	struct v4l2_async_subdev	*async_subdevs[TCCVIN_MAX_VIDEOSOURCE];
 	struct tccvin_subdev		linked_subdevs[TCCVIN_MAX_VIDEOSOURCE];
-	//struct v4l2_subdev		*subdevs[TCCVIN_MAX_VIDEOSOURCE];
+	/* struct v4l2_subdev		*subdevs[TCCVIN_MAX_VIDEOSOURCE]; */
 	int				num_asd;
 	struct v4l2_async_notifier	notifier;
 
@@ -353,15 +353,16 @@ extern unsigned int tccvin_timeout_param;
 
 #define LOG_TAG			"VIN"
 
-#define loge(fmt, ...) \
-	pr_err("[ERROR][%s] %s - "	fmt, LOG_TAG, __func__, ##__VA_ARGS__)
-#define logw(fmt, ...) \
-	pr_warn("[WARN][%s] %s - "	fmt, LOG_TAG, __func__, ##__VA_ARGS__)
-#define logd(fmt, ...) \
-	pr_debug("[DEBUG][%s] %s - "	fmt, LOG_TAG, __func__, ##__VA_ARGS__)
-#define logi(fmt, ...) \
-	pr_info("[INFO][%s] %s - "	fmt, LOG_TAG, __func__, ##__VA_ARGS__)
-#define dlog(fmt, ...)
+#define loge(fmt, ...)		{ pr_err("[ERROR][%s] %s - " fmt, LOG_TAG, \
+					__func__, ##__VA_ARGS__); }
+#define logw(fmt, ...)		{ pr_warn("[WARN][%s] %s - " fmt, LOG_TAG, \
+					__func__, ##__VA_ARGS__); }
+#define logd(fmt, ...)		{ pr_debug("[DEBUG][%s] %s - " fmt, LOG_TAG, \
+					__func__, ##__VA_ARGS__); }
+#define logi(fmt, ...)		{ pr_info("[INFO][%s] %s - " fmt, LOG_TAG, \
+					__func__, ##__VA_ARGS__); }
+#define dlog(fmt, ...)		//{ do { if (debug) { ; logd(fmt, \
+					##__VA_ARGS__); } while (0); }
 
 /* --------------------------------------------------------------------------
  * Internal functions.
@@ -401,12 +402,12 @@ extern const struct v4l2_ioctl_ops tccvin_ioctl_ops;
 extern const struct v4l2_file_operations tccvin_fops;
 
 /* Video */
-extern int tccvin_create_recovery_trigger(struct device * dev);
-extern int tccvin_create_timestamp(struct device * dev);
+extern int tccvin_create_recovery_trigger(struct device *dev);
+extern int tccvin_create_timestamp(struct device *dev);
 extern int tccvin_count_supported_formats(void);
-extern struct tccvin_format_desc * tccvin_format_by_index(int index);
+extern struct tccvin_format_desc *tccvin_format_by_index(int index);
 extern int tccvin_count_supported_framesizes(void);
-extern struct framesize * tccvin_framesize_by_index(int index);
+extern struct framesize *tccvin_framesize_by_index(int index);
 extern int tccvin_count_supported_framerates(void);
 extern int tccvin_framerate_by_index(int index);
 extern struct tccvin_format_desc *tccvin_format_by_guid(const __u32 guid);
@@ -414,7 +415,8 @@ extern int tccvin_video_init(struct tccvin_streaming *stream);
 extern int tccvin_video_deinit(struct tccvin_streaming *stream);
 extern int tccvin_video_streamon(struct tccvin_streaming *stream);
 extern int tccvin_video_streamoff(struct tccvin_streaming *stream);
-extern void tccvin_check_path_status(struct tccvin_streaming *stream, int *status);
+extern void tccvin_check_path_status(struct tccvin_streaming *stream,
+	int *status);
 extern int32_t tccvin_s_handover(struct tccvin_streaming *stream,
 	int32_t *is_handover_needed);
 extern int tccvin_allocated_dmabuf(struct tccvin_streaming *stream, int count);
