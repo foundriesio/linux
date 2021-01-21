@@ -1679,12 +1679,12 @@
 		disp = <&vioc_disp VIOC_DISP1>;
 
 		subplane_rdma = <&vioc_rdma VIOC_RDMA05>;
-		m2m_subplane_rdma = <&vioc_rdma VIOC_RDMA13>;
-		m2m_rdma = <&vioc_rdma VIOC_RDMA12>;
+		m2m_subplane_rdma = <&vioc_rdma VIOC_RDMA12>;
+		m2m_rdma = <&vioc_rdma VIOC_RDMA13>;
 		m2m_wmix = <&vioc_wmix VIOC_WMIX3>;
 		m2m_wdma = <&vioc_wdma VIOC_WDMA03>;
 
-		deintl_block = <&vioc_deintls VIOC_DEINTLS0>;
+		// deintl_block = <&vioc_deintls VIOC_DEINTLS0>;
 		scaler = <&vioc_scaler VIOC_SCALER3>;
 
 		status = "disabled";
