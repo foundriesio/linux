@@ -40,6 +40,7 @@
 #define LUT7_INDEX				729
 
 static volatile void __iomem *pLUT3D_reg[VIOC_LUT_3D_MAX] = {0};
+
 unsigned int lut_reg[729];
 
 int vioc_lut_3d_set_select(unsigned int lut_n, unsigned int sel)
@@ -173,7 +174,7 @@ int vioc_lut_3d_pend(unsigned int lut_n, unsigned int onoff)
 	return 0;
 }
 
-void __iomem *get_lut_3d_address(unsigned int lut_n)
+volatile void __iomem *get_lut_3d_address(unsigned int lut_n)
 {
 	if (lut_n < VIOC_LUT_3D_MAX)
 		return pLUT3D_reg[lut_n];

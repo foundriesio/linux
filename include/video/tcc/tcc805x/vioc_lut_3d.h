@@ -45,6 +45,6 @@ extern int vioc_lut_3d_setupdate(unsigned int lut_n);
 extern int vioc_lut_3d_bypass(unsigned int lut_n, unsigned int onoff);
 extern int vioc_lut_3d_pend(unsigned int lut_n, unsigned int onoff);
 extern int vioc_lut_3d_set_select(unsigned int lut_n, unsigned int sel);
-extern void __iomem* get_lut_3d_address(unsigned int lut_n);
+extern volatile void __iomem* get_lut_3d_address(unsigned int lut_n);
 
 #endif
