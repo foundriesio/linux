@@ -110,7 +110,7 @@ struct v4l2_dv_timings adv7182_dv_timings = {
 		.width		= WIDTH,
 		.height		= HEIGHT,
 		.interlaced	= V4L2_DV_INTERLACED,
-		.polarities	= 0,//V4L2_DV_XSYNC_POS_POL,
+		.polarities	= 0,/* V4L2_DV_VSYNC_POS_POL */
 	},
 };
 
@@ -154,12 +154,15 @@ int adv7182_parse_device_tree(struct adv7182 *dev, struct i2c_client *client)
 void adv7182_request_gpio(struct adv7182 *dev)
 {
 	if (dev->gpio.pwr_port > 0) {
+		/* request power */
 		gpio_request(dev->gpio.pwr_port, "adv7182 power");
 	}
 	if (dev->gpio.pwd_port > 0) {
+		/* request power-down */
 		gpio_request(dev->gpio.pwd_port, "adv7182 power-down");
 	}
 	if (dev->gpio.rst_port > 0) {
+		/* request reset */
 		gpio_request(dev->gpio.rst_port, "adv7182 reset");
 	}
 }
@@ -212,33 +215,36 @@ static int adv7182_set_power(struct v4l2_subdev *sd, int on)
 	struct power_sequence	*gpio	= &dev->gpio;
 
 	if (on) {
-		// port configuration
+		/* port configuration */
 		if (dev->gpio.pwr_port > 0) {
-			gpio_direction_output(dev->gpio.pwr_port, dev->gpio.pwr_value);
+			gpio_direction_output(dev->gpio.pwr_port,
+				dev->gpio.pwr_value);
 			logd("[pwr] gpio: %3d, new val: %d, cur val: %d\n",
 				dev->gpio.pwr_port, dev->gpio.pwr_value,
 				gpio_get_value(dev->gpio.pwr_port));
 		}
 		if (dev->gpio.pwd_port > 0) {
-			gpio_direction_output(dev->gpio.pwd_port, dev->gpio.pwd_value);
+			gpio_direction_output(dev->gpio.pwd_port,
+				dev->gpio.pwd_value);
 			logd("[pwd] gpio: %3d, new val: %d, cur val: %d\n",
 				dev->gpio.pwd_port, dev->gpio.pwd_value,
 				gpio_get_value(dev->gpio.pwd_port));
 		}
 		if (dev->gpio.rst_port > 0) {
-			gpio_direction_output(dev->gpio.rst_port, dev->gpio.rst_value);
+			gpio_direction_output(dev->gpio.rst_port,
+				dev->gpio.rst_value);
 			logd("[rst] gpio: %3d, new val: %d, cur val: %d\n",
 				dev->gpio.rst_port, dev->gpio.rst_value,
 				gpio_get_value(dev->gpio.rst_port));
 		}
 
-		// power-up sequence
+		/* power-up sequence */
 		if (dev->gpio.rst_port > 0) {
 			gpio_set_value_cansleep(gpio->rst_port, 1);
 			msleep(20);
 		}
 	} else {
-		// power-down sequence
+		/* power-down sequence */
 		if (dev->gpio.rst_port > 0) {
 			gpio_set_value_cansleep(gpio->rst_port, 0);
 			msleep(20);
@@ -257,7 +263,7 @@ static int adv7182_g_input_status(struct v4l2_subdev *sd, u32 *status)
 	unsigned int		val	= 0;
 	int			ret	= 0;
 
-	// check V4L2_IN_ST_NO_SIGNAL
+	/* check V4L2_IN_ST_NO_SIGNAL */
 	ret = regmap_read(dev->regmap, ADV7182_REG_STATUS_1, &val);
 	if (ret < 0) {
 		loge("failure to check V4L2_IN_ST_NO_SIGNAL\n");
@@ -291,10 +297,11 @@ static int adv7182_s_stream(struct v4l2_subdev *sd, int enable)
 		msleep(50);
 	}
 
-	// pinctrl
+	/* pinctrl */
 	client = v4l2_get_subdevdata(&dev->sd);
 	pctrl = pinctrl_get_select(&client->dev, "default");
 	if (!IS_ERR(pctrl)) {
+		/* put pinctrl */
 		pinctrl_put(pctrl);
 	}
 
@@ -423,14 +430,14 @@ int adv7182_probe(struct i2c_client *client, const struct i2c_device_id *id)
 	const struct of_device_id	*dev_id	= NULL;
 	int				ret	= 0;
 
-	// allocate and clear memory for a device
+	/* allocate and clear memory for a device */
 	dev = devm_kzalloc(&client->dev, sizeof(struct adv7182), GFP_KERNEL);
 	if (dev == NULL) {
 		loge("Allocate a device struct.\n");
 		return -ENOMEM;
 	}
 
-	// set the specific information
+	/* set the specific information */
 	if (client->dev.of_node) {
 		dev_id = of_match_node(adv7182_of_match, client->dev.of_node);
 		memcpy(dev, (const void *)dev_id->data, sizeof(*dev));
@@ -439,17 +446,17 @@ int adv7182_probe(struct i2c_client *client, const struct i2c_device_id *id)
 	logd("name: %s, addr: 0x%x, client: 0x%p\n",
 		client->name, (client->addr)<<1, client);
 
-	// parse the device tree
+	/* parse the device tree */
 	ret = adv7182_parse_device_tree(dev, client);
 	if (ret < 0) {
 		loge("cannot initialize gpio port\n");
 		return ret;
 	}
 
-	// Register with V4L2 layer as a slave device
+	/* Register with V4L2 layer as a slave device */
 	v4l2_i2c_subdev_init(&dev->sd, client, &adv7182_ops);
 
-	// regitster v4l2 control handlers
+	/* regitster v4l2 control handlers */
 	v4l2_ctrl_handler_init(&dev->hdl, 2);
 	v4l2_ctrl_new_std(&dev->hdl, &adv7182_ctrl_ops,
 		V4L2_CID_BRIGHTNESS, 0, 255, 1, 128);
@@ -463,17 +470,17 @@ int adv7182_probe(struct i2c_client *client, const struct i2c_device_id *id)
 		goto goto_free_device_data;
 	}
 
-	// register a v4l2 sub device
+	/* register a v4l2 sub device */
 	ret = v4l2_async_register_subdev(&dev->sd);
 	if (ret)
 		loge("Failed to register subdevice\n");
 	else
 		logi("%s is registered as a v4l2 sub device.\n", dev->sd.name);
 
-	// request gpio
+	/* request gpio */
 	adv7182_request_gpio(dev);
 
-	// init regmap
+	/* init regmap */
 	dev->regmap = devm_regmap_init_i2c(client, &adv7182_regmap);
 	if (IS_ERR(dev->regmap)) {
 		loge("devm_regmap_init_i2c is wrong\n");
@@ -484,7 +491,7 @@ int adv7182_probe(struct i2c_client *client, const struct i2c_device_id *id)
 	goto goto_end;
 
 goto_free_device_data:
-	// free the videosource data
+	/* free the videosource data */
 	kfree(dev);
 
 goto_end:
@@ -496,10 +503,10 @@ int adv7182_remove(struct i2c_client *client)
 	struct v4l2_subdev	*sd	= i2c_get_clientdata(client);
 	struct adv7182		*dev	= to_state(sd);
 
-	// release regmap
+	/* release regmap */
 	regmap_exit(dev->regmap);
 
-	// gree gpio
+	/* gree gpio */
 	adv7182_free_gpio(dev);
 
 	v4l2_ctrl_handler_free(&dev->hdl);

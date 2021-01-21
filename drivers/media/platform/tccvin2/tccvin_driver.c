@@ -658,7 +658,7 @@ static int tccvin_core_probe(struct platform_device *pdev)
 	/* Create the tccvin_recovery_trigger sysfs */
 	tccvin_create_recovery_trigger(&dev->pdev->dev);
 
-	// Create the tccvin_timestamp sysfs
+	/* Create the tccvin_timestamp sysfs */
 	tccvin_create_timestamp(&dev->pdev->dev);
 
 	return 0;

@@ -102,8 +102,8 @@ const struct reg_sequence max9286_reg_defaults[] = {
 				 * for CSI2 output
 				 */
 #ifdef CONFIG_VIDEO_AR0147
-	{0X12, 0Xc7, 0},	 //    Write   DBL OFF, MIPI Output setting(RAW12)
-	{0X1C, 0xf6, 5},	 //    BWS: 27bit
+	{0X12, 0Xc7, 0},	// Write DBL OFF, MIPI Output setting(RAW12)
+	{0X1C, 0xf6, 5},	// BWS: 27bit
 #else
 	{0X12, 0XF3, 5},	/* MIPI Output setting(DBL ON, YUV422) */
 #endif
@@ -130,7 +130,7 @@ const struct reg_sequence max9286_reg_defaults[] = {
 #endif
 	{0X69, 0XF0, 0},	/* Auto mask & comabck enable */
 #ifdef CONFIG_VIDEO_AR0147
-	{0x01, 0xe0, 0}, 	// enable gpi(des) - gpo(ser) transmission
+	{0x01, 0xe0, 0},	// enable gpi(des) - gpo(ser) transmission
 #else
 	{0x01, 0x00, 0},
 #endif
@@ -173,15 +173,19 @@ int max9286_parse_device_tree(struct max9286 *dev, struct i2c_client *client)
 void max9286_request_gpio(struct max9286 *dev)
 {
 	if (dev->gpio.pwr_port > 0) {
+		/* request power */
 		gpio_request(dev->gpio.pwr_port, "max9286 power");
 	}
 	if (dev->gpio.pwd_port > 0) {
-		gpio_request(dev->gpio.pwd_port, "max9286 power down");
+		/* request power-down */
+		gpio_request(dev->gpio.pwd_port, "max9286 power-down");
 	}
 	if (dev->gpio.rst_port > 0) {
+		/* request reset */
 		gpio_request(dev->gpio.rst_port, "max9286 reset");
 	}
 	if (dev->gpio.intb_port > 0) {
+		/* request intb */
 		gpio_request(dev->gpio.intb_port, "max9286 interrupt");
 	}
 }
@@ -220,10 +224,12 @@ static int max9286_init(struct v4l2_subdev *sd, u32 enable)
 		ret = regmap_multi_reg_write(dev->regmap,
 				max9286_reg_defaults,
 				ARRAY_SIZE(max9286_reg_defaults));
-		if (ret < 0)
+		if (ret < 0) {
+			/* failed to write i2c */
 			loge("Fail initializing max9286 device\n");
+		}
 	} else if ((dev->i_cnt == 1) && (enable == 0)) {
-		//ret = regmap_write(dev->regmap, 0x15, 0x93);
+		/* ret = regmap_write(dev->regmap, 0x15, 0x93); */
 	}
 
 	if (enable)
@@ -245,38 +251,45 @@ static int max9286_set_power(struct v4l2_subdev *sd, int on)
 
 	if (on) {
 		if (dev->p_cnt == 0) {
-			// port configuration
+			/* port configuration */
 			if (dev->gpio.pwr_port > 0) {
-				gpio_direction_output(dev->gpio.pwr_port, dev->gpio.pwr_value);
-				logd("[pwr] gpio: %3d, new val: %d, cur val: %d\n",
-					dev->gpio.pwr_port, dev->gpio.pwr_value,
+				gpio_direction_output(dev->gpio.pwr_port,
+					dev->gpio.pwr_value);
+				logd("[pwr] gpio: %3d, val: %d, cur val: %d\n",
+					dev->gpio.pwr_port,
+					dev->gpio.pwr_value,
 					gpio_get_value(dev->gpio.pwr_port));
 			}
 			if (dev->gpio.pwd_port > 0) {
-				gpio_direction_output(dev->gpio.pwd_port, dev->gpio.pwd_value);
-				logd("[pwd] gpio: %3d, new val: %d, cur val: %d\n",
-					dev->gpio.pwd_port, dev->gpio.pwd_value,
+				gpio_direction_output(dev->gpio.pwd_port,
+					dev->gpio.pwd_value);
+				logd("[pwd] gpio: %3d, val: %d, cur val: %d\n",
+					dev->gpio.pwd_port,
+					dev->gpio.pwd_value,
 					gpio_get_value(dev->gpio.pwd_port));
 			}
 			if (dev->gpio.rst_port > 0) {
-				gpio_direction_output(dev->gpio.rst_port, dev->gpio.rst_value);
-				logd("[rst] gpio: %3d, new val: %d, cur val: %d\n",
-					dev->gpio.rst_port, dev->gpio.rst_value,
+				gpio_direction_output(dev->gpio.rst_port,
+					dev->gpio.rst_value);
+				logd("[rst] gpio: %3d, val: %d, cur val: %d\n",
+					dev->gpio.rst_port,
+					dev->gpio.rst_value,
 					gpio_get_value(dev->gpio.rst_port));
 			}
 			if (dev->gpio.intb_port > 0) {
 				gpio_direction_input(dev->gpio.intb_port);
-				logd("[int] gpio: %3d, new val: %d, cur val: %d\n",
-					dev->gpio.intb_port, dev->gpio.intb_value,
+				logd("[int] gpio: %3d, val: %d, cur val: %d\n",
+					dev->gpio.intb_port,
+					dev->gpio.intb_value,
 					gpio_get_value(dev->gpio.intb_port));
 			}
 
-			// power-up sequence
+			/* power-up sequence */
 			if (dev->gpio.pwd_port > 0) {
 				gpio_set_value_cansleep(gpio->pwd_port, 1);
 				msleep(20);
 			}
-			if(dev->gpio.rst_port > 0) {
+			if (dev->gpio.rst_port > 0) {
 				gpio_set_value_cansleep(gpio->rst_port, 1);
 				msleep(20);
 			}
@@ -284,8 +297,8 @@ static int max9286_set_power(struct v4l2_subdev *sd, int on)
 		dev->p_cnt++;
 	} else {
 		if (dev->p_cnt == 1) {
-			// power-down sequence
-			if(dev->gpio.rst_port > 0) {
+			/* power-down sequence */
+			if (dev->gpio.rst_port > 0) {
 				gpio_set_value_cansleep(gpio->rst_port, 0);
 				msleep(20);
 			}
@@ -313,7 +326,7 @@ static int max9286_g_input_status(struct v4l2_subdev *sd, u32 *status)
 
 	mutex_lock(&dev->lock);
 
-	// check V4L2_IN_ST_NO_SIGNAL
+	/* check V4L2_IN_ST_NO_SIGNAL */
 	ret = regmap_read(dev->regmap, MAX9286_REG_STATUS_1, &val);
 	if (ret < 0) {
 		loge("failure to check V4L2_IN_ST_NO_SIGNAL\n");
@@ -345,30 +358,37 @@ static int max9286_s_stream(struct v4l2_subdev *sd, int enable)
 #else
 		ret = regmap_write(dev->regmap, 0x15, 0x9B);
 #endif
-		if (ret < 0)
+		if (ret < 0) {
+			/* failure of enabling output  */
 			loge("Fail enable output of max9286 device\n");
+		}
 	} else if ((dev->s_cnt == 1) && (enable == 0)) {
 #if defined(CONFIG_MIPI_OUTPUT_TYPE_LINE_CONCAT)
 		ret = regmap_write(dev->regmap, 0x15, 0x03);
 #else
 		ret = regmap_write(dev->regmap, 0x15, 0x93);
 #endif
-		if (ret < 0)
+		if (ret < 0) {
+			/* failure of disabling output  */
 			loge("Fail disable output of max9286 device\n");
+		}
 	}
 
-	if (enable)
+	if (enable) {
+		/* count up */
 		dev->s_cnt++;
-	else
+	} else {
+		/* count down */
 		dev->s_cnt--;
+	}
 
 	mutex_unlock(&dev->lock);
 	return ret;
 }
 
 static int max9286_get_fmt(struct v4l2_subdev *sd,
-			   struct v4l2_subdev_pad_config *cfg,
-			   struct v4l2_subdev_format *format)
+				struct v4l2_subdev_pad_config *cfg,
+				struct v4l2_subdev_format *format)
 {
 	struct max9286		*dev	= to_dev(sd);
 	int			ret	= 0;
@@ -383,8 +403,8 @@ static int max9286_get_fmt(struct v4l2_subdev *sd,
 }
 
 static int max9286_set_fmt(struct v4l2_subdev *sd,
-			   struct v4l2_subdev_pad_config *cfg,
-			   struct v4l2_subdev_format *format)
+				struct v4l2_subdev_pad_config *cfg,
+				struct v4l2_subdev_format *format)
 {
 	struct max9286		*dev	= to_dev(sd);
 	int			ret	= 0;
@@ -448,7 +468,7 @@ int max9286_probe(struct i2c_client *client, const struct i2c_device_id *id)
 	const struct of_device_id *dev_id = NULL;
 	int ret = 0;
 
-	// allocate and clear memory for a device
+	/* allocate and clear memory for a device */
 	dev = devm_kzalloc(&client->dev, sizeof(struct max9286), GFP_KERNEL);
 	if (dev == NULL) {
 		loge("Allocate a device struct.\n");
@@ -457,7 +477,7 @@ int max9286_probe(struct i2c_client *client, const struct i2c_device_id *id)
 
 	mutex_init(&dev->lock);
 
-	// set the specific information
+	/* set the specific information */
 	if (client->dev.of_node) {
 		dev_id = of_match_node(max9286_of_match, client->dev.of_node);
 		memcpy(dev, (const void *)dev_id->data, sizeof(*dev));
@@ -466,27 +486,27 @@ int max9286_probe(struct i2c_client *client, const struct i2c_device_id *id)
 	logd("name: %s, addr: 0x%x, client: 0x%p\n",
 		client->name, (client->addr)<<1, client);
 
-	// parse the device tree
+	/* parse the device tree */
 	ret = max9286_parse_device_tree(dev, client);
 	if (ret < 0) {
 		loge("cannot initialize gpio port\n");
 		return ret;
 	}
 
-	// Register with V4L2 layer as a slave device
+	/* Register with V4L2 layer as a slave device */
 	v4l2_i2c_subdev_init(&dev->sd, client, &max9286_ops);
 
-	// register a v4l2 sub device
+	/* register a v4l2 sub device */
 	ret = v4l2_async_register_subdev(&dev->sd);
 	if (ret)
 		loge("Failed to register subdevice\n");
 	else
 		logi("%s is registered as a v4l2 sub device.\n", dev->sd.name);
 
-	// request gpio
+	/* request gpio */
 	max9286_request_gpio(dev);
 
-	// init regmap
+	/* init regmap */
 	dev->regmap = devm_regmap_init_i2c(client, &max9286_regmap);
 	if (IS_ERR(dev->regmap)) {
 		loge("devm_regmap_init_i2c is wrong\n");
@@ -497,7 +517,7 @@ int max9286_probe(struct i2c_client *client, const struct i2c_device_id *id)
 	goto goto_end;
 
 goto_free_device_data:
-	// free the videosource data
+	/* free the videosource data */
 	kfree(dev);
 
 goto_end:
@@ -509,10 +529,10 @@ int max9286_remove(struct i2c_client *client)
 	struct v4l2_subdev	*sd	= i2c_get_clientdata(client);
 	struct max9286		*dev	= to_dev(sd);
 
-	// release regmap
+	/* release regmap */
 	regmap_exit(dev->regmap);
 
-	// gree gpio
+	/* gree gpio */
 	max9286_free_gpio(dev);
 
 	v4l2_async_unregister_subdev(sd);
