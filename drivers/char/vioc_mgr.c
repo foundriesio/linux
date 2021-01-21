@@ -253,9 +253,9 @@ end_handler:
 }
 
 
-static void vioc_mgr_receive_message(struct mbox_client *client, void *msg)
+static void vioc_mgr_receive_message(struct mbox_client *client, void *_msg)
 {
-	struct tcc_mbox_data *msg = (struct tcc_mbox_data *)msg;
+	struct tcc_mbox_data *msg = (struct tcc_mbox_data *)_msg;
 	struct vioc_mgr_device *vioc_mgr =
 		container_of(client, struct vioc_mgr_device, cl);
 	uint32_t command  = (uint32_t)((msg->cmd[1] >> 16) & 0xFFFF);
