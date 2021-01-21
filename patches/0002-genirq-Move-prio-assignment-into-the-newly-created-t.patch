@@ -35,7 +35,7 @@ Link: https://lkml.kernel.org/r/a23a826af7c108ea5651e73b8fbae5e653f16e86.camel@g
 
 --- a/kernel/irq/manage.c
 +++ b/kernel/irq/manage.c
-@@ -1155,6 +1155,8 @@ static int irq_thread(void *data)
+@@ -1225,6 +1225,8 @@ static int irq_thread(void *data)
  	irqreturn_t (*handler_fn)(struct irq_desc *desc,
  			struct irqaction *action);
  
@@ -44,7 +44,7 @@ Link: https://lkml.kernel.org/r/a23a826af7c108ea5651e73b8fbae5e653f16e86.camel@g
  	if (force_irqthreads && test_bit(IRQTF_FORCED_THREAD,
  					&action->thread_flags))
  		handler_fn = irq_forced_thread_fn;
-@@ -1320,8 +1322,6 @@ setup_irq_thread(struct irqaction *new,
+@@ -1390,8 +1392,6 @@ setup_irq_thread(struct irqaction *new,
  	if (IS_ERR(t))
  		return PTR_ERR(t);
  

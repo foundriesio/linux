@@ -25,7 +25,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/drivers/gpu/drm/i915/display/intel_sprite.c
 +++ b/drivers/gpu/drm/i915/display/intel_sprite.c
-@@ -118,7 +118,8 @@ void intel_pipe_update_start(const struc
+@@ -122,7 +122,8 @@ void intel_pipe_update_start(const struc
  			"PSR idle timed out 0x%x, atomic update may fail\n",
  			psr_status);
  
@@ -35,7 +35,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  	crtc->debug.min_vbl = min;
  	crtc->debug.max_vbl = max;
-@@ -143,11 +144,13 @@ void intel_pipe_update_start(const struc
+@@ -147,11 +148,13 @@ void intel_pipe_update_start(const struc
  			break;
  		}
  
@@ -51,7 +51,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	}
  
  	finish_wait(wq, &wait);
-@@ -180,7 +183,8 @@ void intel_pipe_update_start(const struc
+@@ -184,7 +187,8 @@ void intel_pipe_update_start(const struc
  	return;
  
  irq_disable:
@@ -61,7 +61,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  }
  
  /**
-@@ -218,7 +222,8 @@ void intel_pipe_update_end(struct intel_
+@@ -233,7 +237,8 @@ void intel_pipe_update_end(struct intel_
  		new_crtc_state->uapi.event = NULL;
  	}
  

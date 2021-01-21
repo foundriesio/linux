@@ -79,7 +79,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  reason is that an RCU read-side critical section might be preempted,
  which means that a subsequent ``synchronize_rcu()`` really does have to
  wait for something, as opposed to simply returning immediately.
-@@ -2010,7 +2010,7 @@ The compiler must not be permitted to tr
+@@ -2040,7 +2040,7 @@ The compiler must not be permitted to tr
         5 rcu_read_unlock();
         6 do_something_with(v, user_v);
  
@@ -88,7 +88,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  build, and if ``get_user()`` did page fault, the result would be a quiescent
  state in the middle of an RCU read-side critical section.  This misplaced
  quiescent state could result in line 4 being a use-after-free access,
-@@ -2292,7 +2292,7 @@ conjunction with the `-rt
+@@ -2322,7 +2322,7 @@ conjunction with the `-rt
  patchset <https://wiki.linuxfoundation.org/realtime/>`__. The
  real-time-latency response requirements are such that the traditional
  approach of disabling preemption across RCU read-side critical sections
@@ -97,7 +97,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  an RCU implementation that allows RCU read-side critical sections to be
  preempted. This requirement made its presence known after users made it
  clear that an earlier `real-time
-@@ -2414,7 +2414,7 @@ includes ``rcu_read_lock_bh()``, ``rcu_r
+@@ -2444,7 +2444,7 @@ includes ``rcu_read_lock_bh()``, ``rcu_r
  ``call_rcu_bh()``, ``rcu_barrier_bh()``, and
  ``rcu_read_lock_bh_held()``. However, the update-side APIs are now
  simple wrappers for other RCU flavors, namely RCU-sched in
@@ -106,7 +106,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  Sched Flavor (Historical)
  ~~~~~~~~~~~~~~~~~~~~~~~~~
-@@ -2432,11 +2432,11 @@ not have this property, given that any p
+@@ -2462,11 +2462,11 @@ not have this property, given that any p
  RCU read-side critical section can be a quiescent state. Therefore,
  *RCU-sched* was created, which follows “classic” RCU in that an
  RCU-sched grace period waits for pre-existing interrupt and NMI
@@ -121,7 +121,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  ``rcu_read_lock_sched()`` and ``rcu_read_unlock_sched()`` disable and
  re-enable preemption, respectively. This means that if there was a
  preemption attempt during the RCU-sched read-side critical section,
-@@ -2599,10 +2599,10 @@ userspace execution also delimit tasks-R
+@@ -2629,10 +2629,10 @@ userspace execution also delimit tasks-R
  
  The tasks-RCU API is quite compact, consisting only of
  ``call_rcu_tasks()``, ``synchronize_rcu_tasks()``, and
@@ -191,7 +191,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	that low-priority task is not permitted to run on any other CPU,
 --- a/Documentation/RCU/whatisRCU.rst
 +++ b/Documentation/RCU/whatisRCU.rst
-@@ -684,7 +684,7 @@ so there can be no deadlock cycle.
+@@ -683,7 +683,7 @@ so there can be no deadlock cycle.
  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
  This section presents a "toy" RCU implementation that is based on
  "classic RCU".  It is also short on performance (but only for updates) and
@@ -200,7 +200,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  kernels.  The definitions of rcu_dereference() and rcu_assign_pointer()
  are the same as those shown in the preceding section, so they are omitted.
  ::
-@@ -740,7 +740,7 @@ to that data item, so we can safely recl
+@@ -739,7 +739,7 @@ to that data item, so we can safely recl
  Quick Quiz #3:
  		If it is illegal to block in an RCU read-side
  		critical section, what the heck do you do in
@@ -209,7 +209,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  :ref:`Answers to Quick Quiz <8_whatisRCU>`
  
-@@ -1094,7 +1094,7 @@ the right tool for your job.
+@@ -1093,7 +1093,7 @@ the right tool for your job.
  		overhead is **negative**.
  
  Answer:
@@ -218,7 +218,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  		kernel where a routing table is used by process-context
  		code, but can be updated by irq-context code (for example,
  		by an "ICMP REDIRECT" packet).	The usual way of handling
-@@ -1121,10 +1121,10 @@ the right tool for your job.
+@@ -1120,10 +1120,10 @@ the right tool for your job.
  Quick Quiz #3:
  		If it is illegal to block in an RCU read-side
  		critical section, what the heck do you do in

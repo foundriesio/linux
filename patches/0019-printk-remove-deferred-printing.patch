@@ -24,7 +24,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/arch/arm/kernel/smp.c
 +++ b/arch/arm/kernel/smp.c
-@@ -672,9 +672,7 @@ static void do_handle_IPI(int ipinr)
+@@ -671,9 +671,7 @@ static void do_handle_IPI(int ipinr)
  		break;
  
  	case IPI_CPU_BACKTRACE:
@@ -228,7 +228,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  {
  	return __printk_percpu_data_ready;
  }
-@@ -1058,7 +1042,6 @@ void __init setup_log_buf(int early)
+@@ -1057,7 +1041,6 @@ void __init setup_log_buf(int early)
  	struct printk_record r;
  	size_t new_descs_size;
  	size_t new_infos_size;
@@ -236,7 +236,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	char *new_log_buf;
  	unsigned int free;
  	u64 seq;
-@@ -1116,8 +1099,6 @@ void __init setup_log_buf(int early)
+@@ -1115,8 +1098,6 @@ void __init setup_log_buf(int early)
  		 new_descs, ilog2(new_descs_count),
  		 new_infos);
  
@@ -245,7 +245,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	log_buf_len = new_log_buf_len;
  	log_buf = new_log_buf;
  	new_log_buf_len = 0;
-@@ -1133,8 +1114,6 @@ void __init setup_log_buf(int early)
+@@ -1132,8 +1113,6 @@ void __init setup_log_buf(int early)
  	 */
  	prb = &printk_rb_dynamic;
  
@@ -254,7 +254,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	if (seq != prb_next_seq(&printk_rb_static)) {
  		pr_err("dropped %llu messages\n",
  		       prb_next_seq(&printk_rb_static) - seq);
-@@ -1925,9 +1904,9 @@ static u16 printk_sprint(char *text, u16
+@@ -1924,9 +1903,9 @@ static u16 printk_sprint(char *text, u16
  }
  
  __printf(4, 0)
@@ -267,7 +267,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  {
  	const u32 caller_id = printk_caller_id();
  	struct prb_reserved_entry e;
-@@ -2051,7 +2030,6 @@ asmlinkage int vprintk_emit(int facility
+@@ -2050,7 +2029,6 @@ asmlinkage int vprintk_emit(int facility
  			    const struct dev_printk_info *dev_info,
  			    const char *fmt, va_list args)
  {
@@ -275,7 +275,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	int printed_len;
  
  	/* Suppress unimportant messages after panic happens */
-@@ -2061,20 +2039,29 @@ asmlinkage int vprintk_emit(int facility
+@@ -2060,20 +2038,29 @@ asmlinkage int vprintk_emit(int facility
  	if (level == LOGLEVEL_SCHED)
  		level = LOGLEVEL_DEFAULT;
  
@@ -309,7 +309,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  asmlinkage int vprintk(const char *fmt, va_list args)
  {
-@@ -3038,18 +3025,10 @@ void wake_up_klogd(void)
+@@ -3042,18 +3029,10 @@ void wake_up_klogd(void)
  	preempt_enable();
  }
  
@@ -422,7 +422,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 -}
 --- a/kernel/trace/trace.c
 +++ b/kernel/trace/trace.c
-@@ -9329,7 +9329,6 @@ void ftrace_dump(enum ftrace_dump_mode o
+@@ -9359,7 +9359,6 @@ void ftrace_dump(enum ftrace_dump_mode o
  	tracing_off();
  
  	local_irq_save(flags);
@@ -430,7 +430,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  	/* Simulate the iterator */
  	trace_init_global_iter(&iter);
-@@ -9409,7 +9408,6 @@ void ftrace_dump(enum ftrace_dump_mode o
+@@ -9439,7 +9438,6 @@ void ftrace_dump(enum ftrace_dump_mode o
  		atomic_dec(&per_cpu_ptr(iter.array_buffer->data, cpu)->disabled);
  	}
  	atomic_dec(&dump_running);

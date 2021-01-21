@@ -36,7 +36,7 @@ Cc: stable-rt@vger.kernel.org
  	}
  }
  
-@@ -1448,14 +1450,14 @@ static void expire_timers(struct timer_b
+@@ -1455,14 +1457,14 @@ static void expire_timers(struct timer_b
  		if (timer->flags & TIMER_IRQSAFE) {
  			raw_spin_unlock(&base->lock);
  			call_timer_fn(timer, fn, baseclk);

@@ -17,7 +17,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/Documentation/RCU/Design/Requirements/Requirements.rst
 +++ b/Documentation/RCU/Design/Requirements/Requirements.rst
-@@ -2289,7 +2289,7 @@ decides to throw at it.
+@@ -2319,7 +2319,7 @@ decides to throw at it.
  
  The Linux kernel is used for real-time workloads, especially in
  conjunction with the `-rt

@@ -19,7 +19,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/mm/memcontrol.c
 +++ b/mm/memcontrol.c
-@@ -816,6 +816,7 @@ void __mod_memcg_lruvec_state(struct lru
+@@ -805,6 +805,7 @@ void __mod_memcg_lruvec_state(struct lru
  	pn = container_of(lruvec, struct mem_cgroup_per_node, lruvec);
  	memcg = pn->memcg;
  
@@ -27,7 +27,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	/* Update memcg */
  	__mod_memcg_state(memcg, idx, val);
  
-@@ -835,6 +836,7 @@ void __mod_memcg_lruvec_state(struct lru
+@@ -824,6 +825,7 @@ void __mod_memcg_lruvec_state(struct lru
  		x = 0;
  	}
  	__this_cpu_write(pn->lruvec_stat_cpu->count[idx], x);

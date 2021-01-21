@@ -90,7 +90,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  		/* Removes fcf from current list */
 --- a/drivers/scsi/libfc/fc_exch.c
 +++ b/drivers/scsi/libfc/fc_exch.c
-@@ -826,10 +826,10 @@ static struct fc_exch *fc_exch_em_alloc(
+@@ -825,10 +825,10 @@ static struct fc_exch *fc_exch_em_alloc(
  	}
  	memset(ep, 0, sizeof(*ep));
  

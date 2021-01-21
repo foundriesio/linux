@@ -754,7 +754,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  		return -EBADF;
 --- a/kernel/trace/trace.h
 +++ b/kernel/trace/trace.h
-@@ -766,8 +766,7 @@ struct ring_buffer_event *
+@@ -589,8 +589,7 @@ struct ring_buffer_event *
  trace_buffer_lock_reserve(struct trace_buffer *buffer,
  			  int type,
  			  unsigned long len,
@@ -764,7 +764,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  struct trace_entry *tracing_get_trace_entry(struct trace_array *tr,
  						struct trace_array_cpu *data);
-@@ -792,11 +791,11 @@ unsigned long trace_total_entries(struct
+@@ -615,11 +614,11 @@ unsigned long trace_total_entries(struct
  void trace_function(struct trace_array *tr,
  		    unsigned long ip,
  		    unsigned long parent_ip,
@@ -778,7 +778,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  void trace_latency_header(struct seq_file *m);
  void trace_default_header(struct seq_file *m);
  void print_trace_header(struct seq_file *m, struct trace_iterator *iter);
-@@ -864,11 +863,10 @@ static inline void latency_fsnotify(stru
+@@ -687,11 +686,10 @@ static inline void latency_fsnotify(stru
  #endif
  
  #ifdef CONFIG_STACKTRACE
@@ -793,7 +793,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  {
  }
  #endif /* CONFIG_STACKTRACE */
-@@ -1008,10 +1006,10 @@ extern void graph_trace_open(struct trac
+@@ -831,10 +829,10 @@ extern void graph_trace_open(struct trac
  extern void graph_trace_close(struct trace_iterator *iter);
  extern int __trace_graph_entry(struct trace_array *tr,
  			       struct ftrace_graph_ent *trace,
@@ -806,7 +806,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  #ifdef CONFIG_DYNAMIC_FTRACE
  extern struct ftrace_hash __rcu *ftrace_graph_hash;
-@@ -1474,15 +1472,15 @@ extern int call_filter_check_discard(str
+@@ -1297,15 +1295,15 @@ extern int call_filter_check_discard(str
  void trace_buffer_unlock_commit_regs(struct trace_array *tr,
  				     struct trace_buffer *buffer,
  				     struct ring_buffer_event *event,
@@ -825,7 +825,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  }
  
  DECLARE_PER_CPU(struct ring_buffer_event *, trace_buffered_event);
-@@ -1543,8 +1541,7 @@ static inline bool
+@@ -1366,8 +1364,7 @@ static inline bool
   * @buffer: The ring buffer that the event is being written to
   * @event: The event meta data in the ring buffer
   * @entry: The event itself
@@ -835,7 +835,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
   *
   * This is a helper function to handle triggers that require data
   * from the event itself. It also tests the event against filters and
-@@ -1554,12 +1551,12 @@ static inline void
+@@ -1377,12 +1374,12 @@ static inline void
  event_trigger_unlock_commit(struct trace_event_file *file,
  			    struct trace_buffer *buffer,
  			    struct ring_buffer_event *event,
@@ -850,7 +850,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  	if (tt)
  		event_triggers_post_call(file, tt);
-@@ -1571,8 +1568,7 @@ event_trigger_unlock_commit(struct trace
+@@ -1394,8 +1391,7 @@ event_trigger_unlock_commit(struct trace
   * @buffer: The ring buffer that the event is being written to
   * @event: The event meta data in the ring buffer
   * @entry: The event itself
@@ -860,7 +860,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
   *
   * This is a helper function to handle triggers that require data
   * from the event itself. It also tests the event against filters and
-@@ -1585,14 +1581,14 @@ static inline void
+@@ -1408,14 +1404,14 @@ static inline void
  event_trigger_unlock_commit_regs(struct trace_event_file *file,
  				 struct trace_buffer *buffer,
  				 struct ring_buffer_event *event,
@@ -1004,7 +1004,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  		if (is_function_field(field))
 --- a/kernel/trace/trace_functions.c
 +++ b/kernel/trace/trace_functions.c
-@@ -133,15 +133,14 @@ function_trace_call(unsigned long ip, un
+@@ -132,10 +132,9 @@ function_trace_call(unsigned long ip, un
  {
  	struct trace_array *tr = op->private;
  	struct trace_array_cpu *data;
@@ -1016,13 +1016,13 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  	if (unlikely(!tr->function_enabled))
  		return;
+@@ -144,15 +143,14 @@ function_trace_call(unsigned long ip, un
+ 	if (bit < 0)
+ 		return;
  
 -	pc = preempt_count();
 +	trace_ctx = tracing_gen_ctx_flags();
  	preempt_disable_notrace();
- 
- 	bit = trace_test_and_set_recursion(TRACE_FTRACE_START, TRACE_FTRACE_MAX);
-@@ -150,10 +149,9 @@ function_trace_call(unsigned long ip, un
  
  	cpu = smp_processor_id();
  	data = per_cpu_ptr(tr->array_buffer.data, cpu);
@@ -1033,10 +1033,10 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 +	if (!atomic_read(&data->disabled))
 +		trace_function(tr, ip, parent_ip, trace_ctx);
 +
- 	trace_clear_recursion(bit);
- 
-  out:
-@@ -187,7 +185,7 @@ function_stack_trace_call(unsigned long
+ 	ftrace_test_recursion_unlock(bit);
+ 	preempt_enable_notrace();
+ }
+@@ -184,7 +182,7 @@ function_stack_trace_call(unsigned long
  	unsigned long flags;
  	long disabled;
  	int cpu;
@@ -1045,7 +1045,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  	if (unlikely(!tr->function_enabled))
  		return;
-@@ -202,9 +200,9 @@ function_stack_trace_call(unsigned long
+@@ -199,9 +197,9 @@ function_stack_trace_call(unsigned long
  	disabled = atomic_inc_return(&data->disabled);
  
  	if (likely(disabled == 1)) {
@@ -1058,7 +1058,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	}
  
  	atomic_dec(&data->disabled);
-@@ -407,13 +405,11 @@ ftrace_traceoff(unsigned long ip, unsign
+@@ -404,13 +402,11 @@ ftrace_traceoff(unsigned long ip, unsign
  
  static __always_inline void trace_stack(struct trace_array *tr)
  {

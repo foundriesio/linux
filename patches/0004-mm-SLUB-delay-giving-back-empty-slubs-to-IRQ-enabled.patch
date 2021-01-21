@@ -12,12 +12,12 @@ so it can be processed later.
 Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 ---
- mm/slub.c |   74 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++-----
- 1 file changed, 69 insertions(+), 5 deletions(-)
+ mm/slub.c |   71 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++-----
+ 1 file changed, 66 insertions(+), 5 deletions(-)
 
 --- a/mm/slub.c
 +++ b/mm/slub.c
-@@ -1496,6 +1496,12 @@ static bool freelist_corrupted(struct km
+@@ -1499,6 +1499,12 @@ static bool freelist_corrupted(struct km
  }
  #endif /* CONFIG_SLUB_DEBUG */
  
@@ -30,7 +30,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  /*
   * Hooks for other subsystems that check memory allocations. In a typical
   * production configuration these hooks all should produce no code at all.
-@@ -1844,6 +1850,16 @@ static void __free_slab(struct kmem_cach
+@@ -1846,6 +1852,16 @@ static void __free_slab(struct kmem_cach
  	__free_pages(page, order);
  }
  
@@ -47,7 +47,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  static void rcu_free_slab(struct rcu_head *h)
  {
  	struct page *page = container_of(h, struct page, rcu_head);
-@@ -1855,6 +1871,12 @@ static void free_slab(struct kmem_cache
+@@ -1857,6 +1873,12 @@ static void free_slab(struct kmem_cache
  {
  	if (unlikely(s->flags & SLAB_TYPESAFE_BY_RCU)) {
  		call_rcu(&page->rcu_head, rcu_free_slab);
@@ -82,7 +82,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  				oldpage = NULL;
  				pobjects = 0;
  				pages = 0;
-@@ -2461,7 +2490,22 @@ static bool has_cpu_slab(int cpu, void *
+@@ -2461,7 +2490,19 @@ static bool has_cpu_slab(int cpu, void *
  
  static void flush_all(struct kmem_cache *s)
  {
@@ -93,9 +93,6 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 +	for_each_online_cpu(cpu) {
 +		struct slub_free_list *f;
 +
-+		if (!has_cpu_slab(cpu, s))
-+			continue;
-+
 +		f = &per_cpu(slub_free_list, cpu);
 +		raw_spin_lock_irq(&f->lock);
 +		list_splice_init(&f->list, &tofree);
@@ -105,7 +102,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  }
  
  /*
-@@ -2658,8 +2702,10 @@ static inline void *get_freelist(struct
+@@ -2658,8 +2699,10 @@ static inline void *get_freelist(struct
   * already disabled (which is the case for bulk allocation).
   */
  static void *___slab_alloc(struct kmem_cache *s, gfp_t gfpflags, int node,
@@ -117,7 +114,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	void *freelist;
  	struct page *page;
  
-@@ -2727,6 +2773,13 @@ static void *___slab_alloc(struct kmem_c
+@@ -2727,6 +2770,13 @@ static void *___slab_alloc(struct kmem_c
  	VM_BUG_ON(!c->page->frozen);
  	c->freelist = get_freepointer(s, freelist);
  	c->tid = next_tid(c->tid);
@@ -131,7 +128,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	return freelist;
  
  new_slab:
-@@ -2742,7 +2795,7 @@ static void *___slab_alloc(struct kmem_c
+@@ -2742,7 +2792,7 @@ static void *___slab_alloc(struct kmem_c
  
  	if (unlikely(!freelist)) {
  		slab_out_of_memory(s, gfpflags, node);
@@ -140,7 +137,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	}
  
  	page = c->page;
-@@ -2755,7 +2808,7 @@ static void *___slab_alloc(struct kmem_c
+@@ -2755,7 +2805,7 @@ static void *___slab_alloc(struct kmem_c
  		goto new_slab;	/* Slab failed checks. Next slab needed */
  
  	deactivate_slab(s, page, get_freepointer(s, freelist), c);
@@ -149,7 +146,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  }
  
  /*
-@@ -2767,6 +2820,7 @@ static void *__slab_alloc(struct kmem_ca
+@@ -2767,6 +2817,7 @@ static void *__slab_alloc(struct kmem_ca
  {
  	void *p;
  	unsigned long flags;
@@ -157,7 +154,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  	local_irq_save(flags);
  #ifdef CONFIG_PREEMPTION
-@@ -2778,8 +2832,9 @@ static void *__slab_alloc(struct kmem_ca
+@@ -2778,8 +2829,9 @@ static void *__slab_alloc(struct kmem_ca
  	c = this_cpu_ptr(s->cpu_slab);
  #endif
  
@@ -168,7 +165,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	return p;
  }
  
-@@ -3275,6 +3330,7 @@ int kmem_cache_alloc_bulk(struct kmem_ca
+@@ -3275,6 +3327,7 @@ int kmem_cache_alloc_bulk(struct kmem_ca
  			  void **p)
  {
  	struct kmem_cache_cpu *c;
@@ -176,7 +173,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	int i;
  	struct obj_cgroup *objcg = NULL;
  
-@@ -3308,7 +3364,7 @@ int kmem_cache_alloc_bulk(struct kmem_ca
+@@ -3308,7 +3361,7 @@ int kmem_cache_alloc_bulk(struct kmem_ca
  			 * of re-populating per CPU c->freelist
  			 */
  			p[i] = ___slab_alloc(s, flags, NUMA_NO_NODE,
@@ -185,7 +182,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  			if (unlikely(!p[i]))
  				goto error;
  
-@@ -3323,6 +3379,7 @@ int kmem_cache_alloc_bulk(struct kmem_ca
+@@ -3323,6 +3376,7 @@ int kmem_cache_alloc_bulk(struct kmem_ca
  	}
  	c->tid = next_tid(c->tid);
  	local_irq_enable();
@@ -193,7 +190,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  	/* Clear memory outside IRQ disabled fastpath loop */
  	if (unlikely(slab_want_init_on_alloc(flags, s))) {
-@@ -3337,6 +3394,7 @@ int kmem_cache_alloc_bulk(struct kmem_ca
+@@ -3337,6 +3391,7 @@ int kmem_cache_alloc_bulk(struct kmem_ca
  	return i;
  error:
  	local_irq_enable();
@@ -201,7 +198,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	slab_post_alloc_hook(s, objcg, flags, i, p);
  	__kmem_cache_free_bulk(s, i, p);
  	return 0;
-@@ -4360,6 +4418,12 @@ void __init kmem_cache_init(void)
+@@ -4360,6 +4415,12 @@ void __init kmem_cache_init(void)
  {
  	static __initdata struct kmem_cache boot_kmem_cache,
  		boot_kmem_cache_node;

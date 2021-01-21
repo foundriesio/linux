@@ -26,7 +26,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	struct ratelimit_state rs;
  	struct mutex lock;
  	char buf[CONSOLE_EXT_LOG_MAX];
-@@ -759,7 +759,7 @@ static ssize_t devkmsg_read(struct file
+@@ -758,7 +758,7 @@ static ssize_t devkmsg_read(struct file
  		return ret;
  
  	logbuf_lock_irq();
@@ -35,7 +35,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  		if (file->f_flags & O_NONBLOCK) {
  			ret = -EAGAIN;
  			logbuf_unlock_irq();
-@@ -768,15 +768,15 @@ static ssize_t devkmsg_read(struct file
+@@ -767,15 +767,15 @@ static ssize_t devkmsg_read(struct file
  
  		logbuf_unlock_irq();
  		ret = wait_event_interruptible(log_wait,
@@ -54,7 +54,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  		ret = -EPIPE;
  		logbuf_unlock_irq();
  		goto out;
-@@ -787,7 +787,7 @@ static ssize_t devkmsg_read(struct file
+@@ -786,7 +786,7 @@ static ssize_t devkmsg_read(struct file
  				  &r->text_buf[0], r->info->text_len,
  				  &r->info->dev_info);
  
@@ -63,7 +63,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	logbuf_unlock_irq();
  
  	if (len > count) {
-@@ -827,7 +827,7 @@ static loff_t devkmsg_llseek(struct file
+@@ -826,7 +826,7 @@ static loff_t devkmsg_llseek(struct file
  	switch (whence) {
  	case SEEK_SET:
  		/* the first record */
@@ -72,7 +72,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  		break;
  	case SEEK_DATA:
  		/*
-@@ -835,11 +835,11 @@ static loff_t devkmsg_llseek(struct file
+@@ -834,11 +834,11 @@ static loff_t devkmsg_llseek(struct file
  		 * like issued by 'dmesg -c'. Reading /dev/kmsg itself
  		 * changes no global state, and does not clear anything.
  		 */
@@ -86,7 +86,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  		break;
  	default:
  		ret = -EINVAL;
-@@ -859,9 +859,9 @@ static __poll_t devkmsg_poll(struct file
+@@ -858,9 +858,9 @@ static __poll_t devkmsg_poll(struct file
  	poll_wait(file, &log_wait, wait);
  
  	logbuf_lock_irq();
@@ -98,7 +98,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  			ret = EPOLLIN|EPOLLRDNORM|EPOLLERR|EPOLLPRI;
  		else
  			ret = EPOLLIN|EPOLLRDNORM;
-@@ -900,7 +900,7 @@ static int devkmsg_open(struct inode *in
+@@ -899,7 +899,7 @@ static int devkmsg_open(struct inode *in
  			&user->text_buf[0], sizeof(user->text_buf));
  
  	logbuf_lock_irq();

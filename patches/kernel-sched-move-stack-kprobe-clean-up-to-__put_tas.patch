@@ -36,7 +36,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  		return;
  	}
  #endif
-@@ -742,6 +743,15 @@ void __put_task_struct(struct task_struc
+@@ -743,6 +744,15 @@ void __put_task_struct(struct task_struc
  	WARN_ON(refcount_read(&tsk->usage));
  	WARN_ON(tsk == current);
  
@@ -54,7 +54,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	task_numa_free(tsk, true);
 --- a/kernel/sched/core.c
 +++ b/kernel/sched/core.c
-@@ -4260,15 +4260,6 @@ static struct rq *finish_task_switch(str
+@@ -4273,15 +4273,6 @@ static struct rq *finish_task_switch(str
  		if (prev->sched_class->task_dead)
  			prev->sched_class->task_dead(prev);
  

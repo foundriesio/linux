@@ -25,7 +25,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/include/linux/console.h
 +++ b/include/linux/console.h
-@@ -138,6 +138,7 @@ static inline int con_debug_leave(void)
+@@ -137,6 +137,7 @@ static inline int con_debug_leave(void)
  #define CON_ANYTIME	(16) /* Safe to call when cpu is offline */
  #define CON_BRL		(32) /* Used for a braille device */
  #define CON_EXTENDED	(64) /* Use the extended output format a la /dev/kmsg */
@@ -35,7 +35,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	char	name[16];
 --- a/kernel/printk/printk.c
 +++ b/kernel/printk/printk.c
-@@ -1670,6 +1670,8 @@ static bool console_can_sync(struct cons
+@@ -1669,6 +1669,8 @@ static bool console_can_sync(struct cons
  		return false;
  	if (con->write_atomic && kernel_sync_mode())
  		return true;
@@ -44,7 +44,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	if (con->write && (con->flags & CON_BOOT) && !con->thread)
  		return true;
  	return false;
-@@ -1681,6 +1683,8 @@ static bool call_sync_console_driver(str
+@@ -1680,6 +1682,8 @@ static bool call_sync_console_driver(str
  		return false;
  	if (con->write_atomic && kernel_sync_mode())
  		con->write_atomic(con, text, text_len);
@@ -53,7 +53,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	else if (con->write && (con->flags & CON_BOOT) && !con->thread)
  		con->write(con, text, text_len);
  	else
-@@ -2785,8 +2789,10 @@ void register_console(struct console *ne
+@@ -2791,8 +2795,10 @@ void register_console(struct console *ne
  	 * the real console are the same physical device, it's annoying to
  	 * see the beginning boot messages twice
  	 */

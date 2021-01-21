@@ -41,7 +41,7 @@ Tested-by: Udo van den Heuvel <udovdh@xs4all.nl>
  }
  
  static void free_stripe(struct kmem_cache *sc, struct stripe_head *sh)
-@@ -7098,6 +7100,7 @@ static int raid456_cpu_up_prepare(unsign
+@@ -7097,6 +7099,7 @@ static int raid456_cpu_up_prepare(unsign
  			__func__, cpu);
  		return -ENOMEM;
  	}

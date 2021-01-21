@@ -36,7 +36,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  		local_irq_enable();
  
  	flags |= s->allocflags;
-@@ -1807,7 +1815,7 @@ static struct page *allocate_slab(struct
+@@ -1809,7 +1817,7 @@ static struct page *allocate_slab(struct
  	page->frozen = 1;
  
  out:

@@ -53,7 +53,7 @@ V2: Rewrote changelog.
  /*
 --- a/include/linux/sched.h
 +++ b/include/linux/sched.h
-@@ -1039,6 +1039,9 @@ struct task_struct {
+@@ -1041,6 +1041,9 @@ struct task_struct {
  	int				softirq_context;
  	int				irq_config;
  #endif

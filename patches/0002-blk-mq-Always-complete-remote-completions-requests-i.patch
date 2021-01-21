@@ -15,7 +15,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/block/blk-mq.c
 +++ b/block/blk-mq.c
-@@ -626,19 +626,7 @@ static void __blk_mq_complete_request_re
+@@ -628,19 +628,7 @@ static void __blk_mq_complete_request_re
  {
  	struct request *rq = data;
  

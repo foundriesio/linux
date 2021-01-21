@@ -20,7 +20,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/mm/workingset.c
 +++ b/mm/workingset.c
-@@ -432,6 +432,8 @@ static struct list_lru shadow_nodes;
+@@ -430,6 +430,8 @@ static struct list_lru shadow_nodes;
  
  void workingset_update_node(struct xa_node *node)
  {
@@ -29,7 +29,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	/*
  	 * Track non-empty nodes that contain only shadow entries;
  	 * unlink those that contain pages or are being freed.
-@@ -440,7 +442,8 @@ void workingset_update_node(struct xa_no
+@@ -438,7 +440,8 @@ void workingset_update_node(struct xa_no
  	 * already where they should be. The list_empty() test is safe
  	 * as node->private_list is protected by the i_pages lock.
  	 */

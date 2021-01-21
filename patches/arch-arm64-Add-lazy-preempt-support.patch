@@ -13,22 +13,22 @@ Signed-off-by: Anders Roxell <anders.roxell@linaro.org>
 ---
  arch/arm64/Kconfig                   |    1 +
  arch/arm64/include/asm/preempt.h     |   25 ++++++++++++++++++++++++-
- arch/arm64/include/asm/thread_info.h |    7 ++++++-
+ arch/arm64/include/asm/thread_info.h |    8 +++++++-
  arch/arm64/kernel/asm-offsets.c      |    1 +
  arch/arm64/kernel/entry.S            |   13 +++++++++++--
  arch/arm64/kernel/signal.c           |    2 +-
- 6 files changed, 44 insertions(+), 5 deletions(-)
+ 6 files changed, 45 insertions(+), 5 deletions(-)
 
 --- a/arch/arm64/Kconfig
 +++ b/arch/arm64/Kconfig
-@@ -173,6 +173,7 @@ config ARM64
- 	select HAVE_PERF_EVENTS
+@@ -177,6 +177,7 @@ config ARM64
  	select HAVE_PERF_REGS
  	select HAVE_PERF_USER_STACK_DUMP
-+	select HAVE_PREEMPT_LAZY
  	select HAVE_REGS_AND_STACK_ACCESS_API
++	select HAVE_PREEMPT_LAZY
  	select HAVE_FUNCTION_ARG_ACCESS_API
  	select HAVE_FUTEX_CMPXCHG if FUTEX
+ 	select MMU_GATHER_RCU_TABLE_FREE
 --- a/arch/arm64/include/asm/preempt.h
 +++ b/arch/arm64/include/asm/preempt.h
 @@ -70,13 +70,36 @@ static inline bool __preempt_count_dec_a
@@ -71,7 +71,7 @@ Signed-off-by: Anders Roxell <anders.roxell@linaro.org>
  #ifdef CONFIG_PREEMPTION
 --- a/arch/arm64/include/asm/thread_info.h
 +++ b/arch/arm64/include/asm/thread_info.h
-@@ -29,6 +29,7 @@ struct thread_info {
+@@ -26,6 +26,7 @@ struct thread_info {
  #ifdef CONFIG_ARM64_SW_TTBR0_PAN
  	u64			ttbr0;		/* saved TTBR0_EL1 */
  #endif
@@ -79,30 +79,35 @@ Signed-off-by: Anders Roxell <anders.roxell@linaro.org>
  	union {
  		u64		preempt_count;	/* 0 => preemptible, <0 => bug */
  		struct {
-@@ -68,6 +69,7 @@ void arch_release_task_struct(struct tas
+@@ -65,6 +66,7 @@ void arch_release_task_struct(struct tas
  #define TIF_UPROBE		4	/* uprobe breakpoint or singlestep */
- #define TIF_FSCHECK		5	/* Check FS is USER_DS on return */
- #define TIF_MTE_ASYNC_FAULT	6	/* MTE Asynchronous Tag Check Fault */
+ #define TIF_MTE_ASYNC_FAULT	5	/* MTE Asynchronous Tag Check Fault */
+ #define TIF_NOTIFY_SIGNAL	6	/* signal notifications exist */
 +#define TIF_NEED_RESCHED_LAZY	7
  #define TIF_SYSCALL_TRACE	8	/* syscall trace active */
  #define TIF_SYSCALL_AUDIT	9	/* syscall auditing */
  #define TIF_SYSCALL_TRACEPOINT	10	/* syscall tracepoint for ftrace */
-@@ -98,11 +100,14 @@ void arch_release_task_struct(struct tas
- #define _TIF_32BIT		(1 << TIF_32BIT)
+@@ -95,8 +97,10 @@ void arch_release_task_struct(struct tas
  #define _TIF_SVE		(1 << TIF_SVE)
  #define _TIF_MTE_ASYNC_FAULT	(1 << TIF_MTE_ASYNC_FAULT)
+ #define _TIF_NOTIFY_SIGNAL	(1 << TIF_NOTIFY_SIGNAL)
 +#define _TIF_NEED_RESCHED_LAZY	(1 << TIF_NEED_RESCHED_LAZY)
  
- #define _TIF_WORK_MASK		(_TIF_NEED_RESCHED | _TIF_SIGPENDING | \
+-#define _TIF_WORK_MASK		(_TIF_NEED_RESCHED | _TIF_SIGPENDING | \
++#define _TIF_WORK_MASK		(_TIF_NEED_RESCHED | _TIF_NEED_RESCHED_LAZY | \
++				 _TIF_SIGPENDING | \
  				 _TIF_NOTIFY_RESUME | _TIF_FOREIGN_FPSTATE | \
--				 _TIF_UPROBE | _TIF_FSCHECK | _TIF_MTE_ASYNC_FAULT)
-+				 _TIF_UPROBE | _TIF_FSCHECK | _TIF_MTE_ASYNC_FAULT | \
-+				 _TIF_NEED_RESCHED_LAZY)
- 
-+#define _TIF_NEED_RESCHED_MASK	(_TIF_NEED_RESCHED | _TIF_NEED_RESCHED_LAZY)
- #define _TIF_SYSCALL_WORK	(_TIF_SYSCALL_TRACE | _TIF_SYSCALL_AUDIT | \
+ 				 _TIF_UPROBE | _TIF_MTE_ASYNC_FAULT | \
+ 				 _TIF_NOTIFY_SIGNAL)
+@@ -105,6 +109,8 @@ void arch_release_task_struct(struct tas
  				 _TIF_SYSCALL_TRACEPOINT | _TIF_SECCOMP | \
  				 _TIF_SYSCALL_EMU)
+ 
++#define _TIF_NEED_RESCHED_MASK	(_TIF_NEED_RESCHED | _TIF_NEED_RESCHED_LAZY)
++
+ #ifdef CONFIG_SHADOW_CALL_STACK
+ #define INIT_SCS							\
+ 	.scs_base	= init_shadow_call_stack,			\
 --- a/arch/arm64/kernel/asm-offsets.c
 +++ b/arch/arm64/kernel/asm-offsets.c
 @@ -30,6 +30,7 @@ int main(void)
@@ -110,12 +115,12 @@ Signed-off-by: Anders Roxell <anders.roxell@linaro.org>
    DEFINE(TSK_TI_FLAGS,		offsetof(struct task_struct, thread_info.flags));
    DEFINE(TSK_TI_PREEMPT,	offsetof(struct task_struct, thread_info.preempt_count));
 +  DEFINE(TSK_TI_PREEMPT_LAZY,	offsetof(struct task_struct, thread_info.preempt_lazy_count));
-   DEFINE(TSK_TI_ADDR_LIMIT,	offsetof(struct task_struct, thread_info.addr_limit));
  #ifdef CONFIG_ARM64_SW_TTBR0_PAN
    DEFINE(TSK_TI_TTBR0,		offsetof(struct task_struct, thread_info.ttbr0));
+ #endif
 --- a/arch/arm64/kernel/entry.S
 +++ b/arch/arm64/kernel/entry.S
-@@ -649,9 +649,18 @@ alternative_if ARM64_HAS_IRQ_PRIO_MASKIN
+@@ -678,9 +678,18 @@ alternative_if ARM64_HAS_IRQ_PRIO_MASKIN
  	mrs	x0, daif
  	orr	x24, x24, x0
  alternative_else_nop_endif
@@ -138,10 +143,10 @@ Signed-off-by: Anders Roxell <anders.roxell@linaro.org>
  	mov	x0, sp
 --- a/arch/arm64/kernel/signal.c
 +++ b/arch/arm64/kernel/signal.c
-@@ -925,7 +925,7 @@ asmlinkage void do_notify_resume(struct
- 		/* Check valid user FS if needed */
- 		addr_limit_user_check();
- 
+@@ -915,7 +915,7 @@ asmlinkage void do_notify_resume(struct
+ 				 unsigned long thread_flags)
+ {
+ 	do {
 -		if (thread_flags & _TIF_NEED_RESCHED) {
 +		if (thread_flags & _TIF_NEED_RESCHED_MASK) {
  			/* Unmask Debug and SError for the next task */
