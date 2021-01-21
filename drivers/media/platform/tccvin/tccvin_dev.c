@@ -996,27 +996,6 @@ int tccvin_set_wmixer_out(tccvin_cif_t * cif, unsigned int ovp) {
 	return 0;
 }
 
-int tccvin_set_ovp_value(tccvin_cif_t * cif) {
-#if 0
-	volatile void __iomem   * pWMIXer   = VIOC_WMIX_GetAddress(cif->vioc_path.wmixer_out);
-
-	FUNCTION_IN
-	dlog("WMIXer: 0x%p, OVP : %d \n");
-
-    VIOC_WMIX_ALPHA_SetAlphaSelection(pWMIXer, 0, VIOC_WMIX_ALPHA_SEL3);
-    VIOC_WMIX_ALPHA_SetROPMode(pWMIXer, 0, 0x18);
-#endif
-	FUNCTION_IN
-
-    RCAM_OVP = 16;//24;
-
-    dlog("set ovp %d \n", RCAM_OVP);
-    tccvin_set_wmixer_out(cif, RCAM_OVP);
-
-	FUNCTION_OUT
-	return 0;
-}
-
 /*
  * tccvin_set_wdma
  *
