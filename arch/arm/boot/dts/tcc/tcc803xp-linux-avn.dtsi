@@ -61,6 +61,10 @@
 		reset-gpio = <&gpsd0 11 0>;
 		//status = "okay";
 	};
+
+	reserved-memory {
+
+	};
 /*
 	nand@16400000 {
 		compatible = "telechips,nand-v8";
