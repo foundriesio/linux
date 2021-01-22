@@ -1024,8 +1024,7 @@ static void pl011_dma_rx_chars(struct uart_amba_port *uap,
 	}
 
 	spin_unlock(&uap->port.lock);
-	pr_warn("[WARN][PL011]Took %d chars from DMA buffer and %d chars from the FIFO\n",
-		 dma_count, fifotaken);
+
 	tty_flip_buffer_push(port);
 	spin_lock(&uap->port.lock);
 }
