@@ -546,16 +546,15 @@ static inline void tcc_dai_set_cirrus_tdm_mode(
 	dai_writel(mccr0, base_addr + TCC_DAI_MCCR0_OFFSET);
 }
 
-#define DSP_TDM_MODE_FRAME_LENGTH \
-	(256)
-
 static inline void tcc_dai_set_dsp_tdm_mode(
 	void __iomem *base_addr,
+	uint32_t tdm_slots,
 	uint32_t slot_width,
 	bool late)
 {
 	uint32_t damr = readl(base_addr + TCC_DAI_DAMR_OFFSET);
 	uint32_t mccr0 = readl(base_addr + TCC_DAI_MCCR0_OFFSET);
+	uint32_t frame_len = tdm_slots * slot_width;
 
 	damr &=
 		~(DAMR_RX_JUSTIFIED_MODE_Msk
@@ -581,7 +580,7 @@ static inline void tcc_dai_set_dsp_tdm_mode(
 	     ((uint32_t) DAMR_DSP_WORD_LEN_16BIT);
 
 	mccr0 |=
-	    ((uint32_t) (DSP_TDM_MODE_FRAME_LENGTH - 1) <<
+	    ((uint32_t) (frame_len - 1) <<
 	    (uint32_t) MCCR0_FRAME_SIZE_Pos);
 	mccr0 |= ((uint32_t) 0 << (uint32_t) MCCR0_FRAME_END_POSTION_Pos);
 	mccr0 |= MCCR0_FRAME_CLK_DIV_USE;
@@ -698,7 +697,7 @@ static inline void tcc_dai_set_master_mode(
 		| DAMR_DAI_BIT_CLK_MASTER_Msk
 		| DAMR_DAI_FRAME_CLK_MASTER_Msk);
 
-	if (tdm_mode || !is_pinctrl_export) {
+	if (!is_pinctrl_export) {
 		value |=
 		    (DAMR_BCLK_SRC_DIRECT_MASTER | DAMR_LRCK_SRC_DIRECT_MASTER);
 	} else

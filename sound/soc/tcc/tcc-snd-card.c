@@ -258,7 +258,9 @@ static int get_tdm_slots(
 		(dai_info->tdm_slots == 0) ? 0 :
 	    (dai_info->tdm_slots == 2) ? 1 :
 	    (dai_info->tdm_slots == 4) ? 2 :
-		(dai_info->tdm_slots == 6) ? 3 : 4;
+		(dai_info->tdm_slots == 8) ? 3 :
+		(dai_info->tdm_slots == 16) ? 4 :
+		(dai_info->tdm_slots == 32) ? 5 : 3;
 
 	return 0;
 }
@@ -288,7 +290,9 @@ static int set_tdm_slots(
 		(ucontrol->value.integer.value[0] == 0) ? 0 :
 		(ucontrol->value.integer.value[0] == 1) ? 2 :
 		(ucontrol->value.integer.value[0] == 2) ? 4 :
-		(ucontrol->value.integer.value[0] == 3) ? 6 : 8;
+		(ucontrol->value.integer.value[0] == 3) ? 8 :
+		(ucontrol->value.integer.value[0] == 4) ? 16 :
+		(ucontrol->value.integer.value[0] == 5) ? 32 : 8;
 
 	dai_info->is_updated = TRUE;
 
@@ -299,8 +303,9 @@ static char const *tdm_slots_texts[] = {
 	"Disable",
 	"2slots",
 	"4slots",
-	"6slots",
 	"8slots",
+	"16slots",
+	"32slots",
 };
 
 static const struct soc_enum tdm_slots_enum[] = {
