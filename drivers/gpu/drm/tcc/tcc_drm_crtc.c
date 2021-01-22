@@ -38,6 +38,10 @@
 
 #define LOG_TAG "DRMCRTC"
 
+/* Definitions for overlay priority of WMIX */
+#define VIOC_WMIX_POR_OVP 5
+#define VIOC_WMIX_DRM_DEFAULT_OVP 24
+
 enum tcc_drm_crtc_flip_status {
 	TCC_DRM_CRTC_FLIP_STATUS_NONE = 0,
 	TCC_DRM_CRTC_FLIP_STATUS_PENDING,
@@ -550,6 +554,7 @@ int tcc_drm_crtc_set_display_timing(struct drm_crtc *crtc,
 	bool interlace;
 	u32 tmp_sync;
 	u32 vactive;
+	u32 ovp;
 	#endif
 	struct videomode vm;
 
@@ -649,12 +654,16 @@ int tcc_drm_crtc_set_display_timing(struct drm_crtc *crtc,
 	VIOC_CONFIG_SWReset(
 		hw_data->display_device.blk_num, VIOC_CONFIG_CLEAR);
 
+	VIOC_WMIX_GetOverlayPriority(hw_data->wmixer.virt_addr, &ovp);
+	/* Restore ovp value of WMIX to drm default ovp value */
+	if(ovp == VIOC_WMIX_POR_OVP)
+		ovp = VIOC_WMIX_DRM_DEFAULT_OVP;
 	VIOC_CONFIG_SWReset(hw_data->wmixer.blk_num, VIOC_CONFIG_RESET);
 	VIOC_CONFIG_SWReset(hw_data->wmixer.blk_num, VIOC_CONFIG_CLEAR);
 
 	//vioc_reset_rdma_on_display_path(pDisplayInfo->DispNum);
 
-	VIOC_WMIX_SetOverlayPriority(hw_data->wmixer.virt_addr, 24);
+	VIOC_WMIX_SetOverlayPriority(hw_data->wmixer.virt_addr, ovp);
 	VIOC_WMIX_SetSize(hw_data->wmixer.virt_addr, vm.hactive, vactive);
 	VIOC_WMIX_SetUpdate(hw_data->wmixer.virt_addr);
 

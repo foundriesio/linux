@@ -26,7 +26,7 @@ config DRM_TCC_LCD
 
 config DRM_TCC_VIC_MAX
   int "Maximum Video Identification Code supported by TCC DRM"
-  default 1025
+  default 1026
 
 config DRM_TCC_LCD_VIC
 	int "Video Identification Code for LCD"
