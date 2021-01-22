@@ -1671,6 +1671,15 @@
 		status      = "okay";
 	};
 
+	touch_share {
+	    compatible = "telechips,tcc_touch_receive";
+	    mbox-names ="tr-mbox";
+		mboxes = <&cb_mbox TCC_CB_MBOX_TCHSHARE>;
+		mbox-id = TCC_MBOX_TCHSHARE_ID;
+		xmax = <1920>;
+		ymax = <720>;
+	};
+
 	gpio_keys_polled {
 		compatible = "gpio-keys-polled";
 		#address-cells = <1>;
