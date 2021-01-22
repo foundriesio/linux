@@ -11,7 +11,7 @@ if TCC_TOUCH_SHARE
 
 choice
 	prompt "Telechips Touch Share Driver Select"
-	default TCC_TOUCH_RECEIVE if TCC805X_CA53Q
+	default TCC_TOUCH_RECEIVE if (TCC805X_CA53Q || TCC803X_CA7S)
 	default TCC_TOUCH_BRIDGE
 	help
 		This options touch share driver select.

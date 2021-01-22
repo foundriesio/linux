@@ -207,7 +207,6 @@ static void ttb_pump_messages(struct kthread_work *work)
 				(void)touch_send_data(ts_dev, &ttb_list->msg);
 #ifdef CONFIG_ARCH_TCC803X
 				mbox_client_txdone(ts_dev->touch_mbox_channel, 0);
-			}
 #endif
 			}
 			spin_lock_irqsave(&ts_dev->touch_mbox_queue.queue_lock, flags);
