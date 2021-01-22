@@ -1653,6 +1653,14 @@
 		status      = "okay";
 	};
 
+	touch_share {
+	    compatible = "telechips,tcc_touch_receive";
+	    mbox-names ="tr-mbox";
+		mboxes = <&mbox1 TCC_MBOX1_CH_TCHSHARE>;
+		xmax = <1920>;
+		ymax = <720>;
+	};
+
 	gpio_keys_polled {
 		compatible = "gpio-keys-polled";
 		#address-cells = <1>;

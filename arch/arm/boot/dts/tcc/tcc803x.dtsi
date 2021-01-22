@@ -1051,10 +1051,10 @@
 		max-channel = <TCC_MBOX1_CH_MAX>;
 	};
 
-	tctb: tcc_touch_bridge {
+	tstb: tcc_touch_bridge {
 		compatible = "telechips,tcc_touch_bridge";
 		mbox-names ="tb-mbox";
-		mboxes = <&mbox1 TCC_MBOX1_CH_TOUCH>;
+		mboxes = <&mbox1 TCC_MBOX1_CH_TCHSHARE>;
 	};
 
 	/* ipc for r5(micom) */

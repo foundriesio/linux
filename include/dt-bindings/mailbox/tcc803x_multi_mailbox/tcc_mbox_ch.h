@@ -23,7 +23,7 @@
 #define TCC_MBOX1_CH_VIOC			(2)
 #define TCC_MBOX1_CH_SND			(3)
 #define TCC_MBOX1_CH_SWITCH			(4)
-#define TCC_MBOX1_CH_TOUCH			(5)
+#define TCC_MBOX1_CH_TCHSHARE		(5)
 #define TCC_MBOX1_CH_SCRSHARE		(6)
 #define TCC_MBOX1_CH_HSM			(7)
 #define TCC_MBOX1_CH_MAX			(8)
