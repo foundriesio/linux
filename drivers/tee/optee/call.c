@@ -530,7 +530,8 @@ void optee_free_pages_list(void *list, size_t num_entries)
 static bool is_normal_memory(pgprot_t p)
 {
 #if defined(CONFIG_ARM)
-	return (pgprot_val(p) & L_PTE_MT_MASK) == L_PTE_MT_WRITEALLOC;
+	return (((pgprot_val(p) & L_PTE_MT_MASK) == L_PTE_MT_WRITEALLOC) ||
+		((pgprot_val(p) & L_PTE_MT_MASK) == L_PTE_MT_WRITEBACK));
 #elif defined(CONFIG_ARM64)
 	return (pgprot_val(p) & PTE_ATTRINDX_MASK) == PTE_ATTRINDX(MT_NORMAL);
 #else
@@ -553,6 +554,13 @@ static int check_mem_type(unsigned long start, size_t num_pages)
 {
 	struct mm_struct *mm = current->mm;
 	int rc;
+
+	/*
+	 * Allow kernel address to register with OP-TEE as kernel
+	 * pages are configured as normal memory only.
+	 */
+	if (virt_addr_valid(start))
+		return 0;
 
 	down_read(&mm->mmap_sem);
 	rc = __check_mem_type(find_vma(mm, start),
