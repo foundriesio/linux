@@ -1674,8 +1674,7 @@
 	touch_share {
 	    compatible = "telechips,tcc_touch_receive";
 	    mbox-names ="tr-mbox";
-		mboxes = <&cb_mbox TCC_CB_MBOX_TCHSHARE>;
-		mbox-id = TCC_MBOX_TCHSHARE_ID;
+		mboxes = <&mbox1 TCC_MBOX1_CH_TCHSHARE>;
 		xmax = <1920>;
 		ymax = <720>;
 	};
