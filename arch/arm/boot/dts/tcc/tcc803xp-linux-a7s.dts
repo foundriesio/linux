@@ -797,7 +797,7 @@
 		port-mux = <12>;
 		pinctrl-names = "default";
 		pinctrl-0 = <&i2c12_bus>;
-
+#if 0
 		isl79988: isl79988 {
 			compatible	= "adi,isl79988";
 			pinctrl-names	= "default";
@@ -813,6 +813,23 @@
 				};
 			};
 		};
+#endif
+	/* video decoder using parallel interface output */
+	adv7182: adv7182 {
+		status		= "okay";
+		compatible	= "adi,adv7182";
+		pinctrl-names	= "default";
+		pinctrl-0	= <&cam0_clk &cam0_data_8bit>;
+		rst-gpios	= <&gpb 14 0>;
+		reg		= <0x21>;	// 0x42 >> 1
+		port {
+			adv7182_out: endpoint {
+				remote-endpoint = <&videoinput0_in>;
+				io-direction	= "output";
+				bus-width	= <8>;
+			};
+		};
+	};
 
 		max96701: max96701 {
 			compatible	= "maxim,max96701";
@@ -1457,9 +1474,9 @@
 		status = "okay";
 
 		pinctrl-names = "default";
-		pinctrl-0 = <&switch_ma15>;
+		pinctrl-0 = <&switch_c13>;
 
-		switch-gpios = <&gpma 15 1>;
+		switch-gpios = <&gpc 13 1>;
 		switch-active = <0>;
 	};
 
@@ -1480,7 +1497,8 @@
 
 		port {
 			videoinput0_in: endpoint {
-				remote-endpoint	= <&isl79988_out>;
+				//remote-endpoint	= <&isl79988_out>;
+				remote-endpoint	= <&adv7182_out>;
 				io-direction	= "input";
                 	        bus-type	= <0>;
 				bus-with	= <8>;
@@ -1990,8 +2008,8 @@
 		telechips,input_buffer_enable;
 	};
 
-	switch_ma15: switch_ma15 {
-		telechips,pins = "gpma-15";
+	switch_c13: switch_c13 {
+		telechips,pins = "gpc-13";
 		telechips,pin-function = <0>;
 		telechips,input-enable;
 		telechips,no-pull;
