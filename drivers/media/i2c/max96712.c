@@ -830,7 +830,7 @@ goto_end:
 	return ret;
 }
 
-int max9286_remove(struct i2c_client *client)
+int max96712_remove(struct i2c_client *client)
 {
 	struct v4l2_subdev	*sd	= i2c_get_clientdata(client);
 	struct max96712		*dev	= to_dev(sd);
