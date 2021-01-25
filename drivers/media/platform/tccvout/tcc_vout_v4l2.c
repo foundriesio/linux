@@ -1685,6 +1685,7 @@ static int vidioc_querybuf(struct file *file, void *fh, struct v4l2_buffer *buf)
 {
 	struct tcc_vout_device *vout = fh;
 	struct tcc_v4l2_buffer *qbuf = vout->qbufs + buf->index;
+	int ret = 0;
 
 	dprintk("buffer index(%d) type(%d) memory(%d)\n", buf->index,
 		buf->type, buf->memory);
@@ -1698,13 +1699,14 @@ static int vidioc_querybuf(struct file *file, void *fh, struct v4l2_buffer *buf)
 	buf->flags = qbuf->buf.flags = V4L2_BUF_FLAG_MAPPED;
 	buf->length = qbuf->buf.length = vout->src_pix.sizeimage;
 
-	qbuf->buf.m.planes[MPLANE_VID].m.mem_offset = qbuf->img_base0;
-	qbuf->buf.m.planes[MPLANE_VID].length = vout->src_pix.sizeimage;
+#ifdef V4L2_MEMORY_MMAP
+	//qbuf->buf.m.planes[MPLANE_VID].m.mem_offset = qbuf->img_base0;
+	//qbuf->buf.m.planes[MPLANE_VID].length = vout->src_pix.sizeimage;
 
-	if (copy_to_user(buf->m.planes, qbuf->buf.m.planes,
-		sizeof(struct v4l2_buffer) * MPLANE_NUM)) {
-		pr_err("%s: copy_to_user failed\n", __func__);
-	}
+	ret = copy_to_user(buf->m.planes, qbuf->buf.m.planes,
+		sizeof(struct v4l2_buffer) * MPLANE_NUM);
+	pr_info("%s: copy_to_user ret(%d)\n", __func__, ret);
+#endif
 
 	return 0;
 }
