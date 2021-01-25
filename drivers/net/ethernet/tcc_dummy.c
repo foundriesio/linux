@@ -43,7 +43,7 @@
 #include <linux/ip.h>
 #include <linux/tcc_shmem.h>
 
-#define DRV_NAME	"tcc_virt_eth"
+#define DRV_NAME	"eth_test"
 #define DRV_VERSION	"1.0"
 
 #undef pr_fmt
@@ -311,7 +311,7 @@ static void dummy_setup(struct net_device *dev)
 
 	dev->flags |= IFF_NOARP;
 	dev->features |= NETIF_F_IP_CSUM;
-	memcpy(dev->dev_addr, "\0tcc_virt_eth", ETH_ALEN);
+	memcpy(dev->dev_addr, "\0eth_test0", ETH_ALEN);
 
 	dev->min_mtu = 0;
 	dev->max_mtu = ETH_MAX_MTU;
@@ -370,7 +370,7 @@ static int __init dummy_init_one(void)
 	//printk("%s: init one\n", __func__);
 
 	dev_dummy = alloc_netdev(sizeof(struct dummy_priv),
-				 "tcc_virt_eth%d", NET_NAME_UNKNOWN, dummy_setup);
+				 "eth_test%d", NET_NAME_UNKNOWN, dummy_setup);
 	if (!dev_dummy)
 		return -ENOMEM;
 

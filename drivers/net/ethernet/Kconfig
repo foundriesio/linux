@@ -141,7 +141,7 @@ config NET_NETX
 	  To compile this driver as a module, choose M here. The module
 	  will be called netx-eth.
 
-config TCC_VIRT_ETH
+config TCC_DUMMY
 	bool "TCC ethernet support"
 	default n
 	---help---
