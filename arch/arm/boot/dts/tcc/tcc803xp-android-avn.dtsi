@@ -27,7 +27,7 @@
 	//status = "okay";
 };
 
-&reserved-memory {
+&reserved_memory {
 
 };
 
