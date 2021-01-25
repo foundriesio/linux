@@ -100,6 +100,7 @@ struct tcc_shm_data {
     int32_t read_que[32];
     uint32_t que_pos;
     uint32_t que_next_pos;
+	uint32_t irq;
 };
 
 int32_t tcc_shmem_register_callback(int32_t port, struct tcc_shm_callback shm_callback);
