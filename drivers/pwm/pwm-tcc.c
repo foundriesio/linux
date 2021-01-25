@@ -250,7 +250,7 @@ static int32_t tcc_pwm_config(struct pwm_chip *chip, struct pwm_device *pwm,
 		}
 	}
 
-	cal_duty = (uint32_t)((uint64_t)duty_ns / divide);
+	cal_duty = (duty_ns / (uint32_t)(divide & 0xFFFFFFFFu));
 	cal_period = (uint32_t)div_u64(period_ns, (uint32_t)divide);
 
 	hi_cnt = (uint32_t)div_u64((total_cnt * (cal_duty)), (cal_period));
