@@ -1699,14 +1699,14 @@ static int vidioc_querybuf(struct file *file, void *fh, struct v4l2_buffer *buf)
 	buf->flags = qbuf->buf.flags = V4L2_BUF_FLAG_MAPPED;
 	buf->length = qbuf->buf.length = vout->src_pix.sizeimage;
 
-#ifdef V4L2_MEMORY_MMAP
-	//qbuf->buf.m.planes[MPLANE_VID].m.mem_offset = qbuf->img_base0;
-	//qbuf->buf.m.planes[MPLANE_VID].length = vout->src_pix.sizeimage;
+	if (buf->memory == V4L2_MEMORY_MMAP) {
+		//qbuf->buf.m.planes[MPLANE_VID].m.mem_offset = qbuf->img_base0;
+		//qbuf->buf.m.planes[MPLANE_VID].length = vout->src_pix.sizeimage;
 
-	ret = copy_to_user(buf->m.planes, qbuf->buf.m.planes,
-		sizeof(struct v4l2_buffer) * MPLANE_NUM);
-	pr_info("%s: copy_to_user ret(%d)\n", __func__, ret);
-#endif
+		ret = copy_to_user(buf->m.planes, qbuf->buf.m.planes,
+			sizeof(struct v4l2_buffer) * MPLANE_NUM);
+		pr_info("%s: copy_to_user ret(%d)\n", __func__, ret);
+	}
 
 	return 0;
 }
