@@ -107,7 +107,7 @@ static irqreturn_t tcc_shmem_handler(int irq, void *dev)
 					shdev->port_req = 1;
 				}
 			}
-			mod_timer(&shmem_timer, jiffies+msecs_to_jiffies(SHM_SYNC_TIMEOUT));
+			mod_timer(&shm_timer, jiffies+msecs_to_jiffies(SHM_SYNC_TIMEOUT));
 			printk("%s: interrupt sync\n", __func__);
 		} else {
 
@@ -1735,6 +1735,7 @@ static int tcc_shmem_probe(struct platform_device *pdev)
 	shdev->reg_phy = reg_phy;
 	shdev->bit_place = bit_place;
 	shdev->size = size;
+	shdev->irq = irq;
 
 	platform_set_drvdata(pdev, shdev);
 
@@ -1788,6 +1789,101 @@ static int tcc_shmem_probe(struct platform_device *pdev)
 
 }
 
+#if defined(CONFIG_PM_SLEEP) && defined(CONFIG_ARCH_TCC805X)
+
+static int32_t tcc_shmem_suspend(struct device *dev)
+{
+	struct tcc_shm_data *shdev = dev_get_drvdata(dev);
+	int32_t ret = 0;
+
+	tcc_shm_valid = 0;
+
+	if(shdev == NULL) {
+		ret = -EINVAL;
+	} else {
+		del_timer(&shm_timer);
+		tasklet_kill(&tcc_shm_tasklet);
+		tasklet_kill(&tcc_shm_port_req_tasklet);
+		free_irq(shdev->irq, (void *)dev);
+	}
+
+	return ret;
+}
+
+static int32_t tcc_shmem_resume(struct device *dev)
+{
+	struct tcc_shm_data *shdev = dev_get_drvdata(dev);
+	struct tcc_shm_desc *desc_pos, *desc_pos_s;
+	int32_t ret;
+
+	if(shdev == NULL) {
+		ret = -EINVAL;
+	} else {
+		ret = SUCCESS;
+	}
+
+	if(ret == SUCCESS) {
+		tasklet_init(&tcc_shm_tasklet, tcc_shmem_tasklet_handler,
+				(unsigned long)shdev);
+
+		tasklet_init(&tcc_shm_port_req_tasklet,
+				tcc_shmem_port_req_tasklet_handler, (unsigned long)shdev);
+
+
+		tcc_shmem_writel(0, shdev->base + TCC_SHM_BASE_OFFSET);
+		tcc_shmem_writel(0, shdev->base + TCC_SHM_SIZE_OFFSET);
+		tcc_shmem_writel(0, shdev->base + TCC_SHM_PORT_OFFSET);
+		tcc_shmem_writel(0, shdev->base + TCC_SHM_A72_READ_REQ_OFFSET);
+		tcc_shmem_writel(0, shdev->base + TCC_SHM_A53_READ_REQ_OFFSET);
+		tcc_shmem_writel(0, shdev->base + TCC_SHM_NAME_OFFSET);
+		tcc_shmem_writel(0, shdev->base + TCC_SHM_NAME_SPACE);
+		tcc_shmem_writel(0, shdev->base + TCC_SHM_NAME_SIZE);
+
+		if (shdev->core_num == 0) {
+			tcc_shmem_writel(TCC_SHM_RESET_REQ,
+					shdev->base + TCC_SHM_A72_REQ_OFFSET);
+			tcc_shmem_writel((1 << shdev->bit_place),
+					shdev->a53_dist_reg + (0x204 +
+						(4 *
+						 shdev->pending_offset)));
+		} else {
+			tcc_shmem_writel(TCC_SHM_RESET_REQ,
+					shdev->base + TCC_SHM_A53_REQ_OFFSET);
+			tcc_shmem_writel((1 << shdev->bit_place),
+					shdev->a72_dist_reg + (0x204 +
+						(4 *
+						 shdev->pending_offset)));
+		}
+
+		init_timer(&shm_timer);
+		shm_timer.function = tcc_shmem_timer;
+		shm_timer.data = (unsigned long)shdev;
+
+		ret = request_irq(shdev->irq, (irq_handler_t) tcc_shmem_handler, IRQF_SHARED,
+				"TCC_SHMEM", (void *)&shdev->dev);
+
+	}
+
+	if(ret != SUCCESS) {
+		tasklet_kill(&tcc_shm_tasklet);
+		tasklet_kill(&tcc_shm_port_req_tasklet);
+		del_timer(&shm_timer);
+		devm_kfree(dev,shdev);
+
+		list_for_each_entry_safe(desc_pos, desc_pos_s, &tcc_shm_list, list) {
+			devm_kfree(dev, desc_pos->name);
+			list_del(&desc_pos->list);
+			devm_kfree(dev, desc_pos);
+		}
+	}
+
+	return ret;
+
+}
+
+static SIMPLE_DEV_PM_OPS(tcc_shmem_pm_ops, tcc_shmem_suspend, tcc_shmem_resume);
+#endif
+
 static const struct of_device_id tcc_shmem_match_table[] = {
 	{.compatible = "telechips,tcc_shmem"},
 	{}
@@ -1799,6 +1895,9 @@ static struct platform_driver tcc_shmem_driver = {
 	.probe = tcc_shmem_probe,
 	.driver = {
 		   .name = "tcc-tcc_shmem",
+#if defined(CONFIG_PM_SLEEP) && defined(CONFIG_ARCH_TCC805X)
+		   .pm = &tcc_shmem_pm_ops,
+#endif
 		   .of_match_table = tcc_shmem_match_table,
 		   },
 };
