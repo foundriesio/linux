@@ -27,6 +27,10 @@
 	//status = "okay";
 };
 
+&reserved-memory {
+
+};
+
 /*
 &nand {
 	compatible = "telechips,nand-v8";
