@@ -870,10 +870,12 @@
 		/*keep-power-in-suspend;*/
 		/*enable-sdio-wakeup;*/
 		/*cap-power-off-card;*/
+
+		cap-adma;
 	};
 
 	sdhc@76020400 { // Wi-Fi tcm3840
-		status = "okay";
+		status = "disabled";
 		controller-id = <2>;
 		max-frequency = <208000000>;
 		//cd-gpios = <&gpb 13 0>;

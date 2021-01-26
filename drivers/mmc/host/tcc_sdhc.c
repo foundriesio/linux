@@ -1,26 +1,6 @@
+// SPDX-License-Identifier: GPL-2.0-or-later
 /*
- * linux/drivers/mmc/host/tcc_sdhc.c
- *
- * Author:  Telechips Inc.
- * Created: Octo 18, 2010
- * Description: SD/MMC Host Driver for Telechips Boards.
- *
- * Copyright (C) 2008-2010 Telechips
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
- *
+ * Copyright (C) Telechips Inc.
  */
 
 #include <linux/fcntl.h>
@@ -50,32 +30,28 @@
 
 #include <linux/pci.h>
 #include <linux/pinctrl/consumer.h>
-#include <linux/regulator/consumer.h>
 
 #include <asm/io.h>
 #include <asm/irq.h>
-//#include <asm/scatterlist.h>
 #ifndef CONFIG_ARM64
 #include <asm/mach-types.h>
 #endif
 
 #include <linux/io.h>
 #include <linux/dma-mapping.h>
-//#ifndef CONFIG_ARM64
 #include <asm/system_info.h>
-//#endif
 
 #include "tcc_sdhc.h"
 
 #if defined(CONFIG_ENABLE_TCC_MMC_KPANIC)
-#include <linux/mmc/tcc_kpanic.h>
+#include <linux/tcc_kpanic.h>
 #endif
 
-#define WIFI_POLLING -9999
+#define WIFI_POLLING (-9999)
 
 #ifdef CONFIG_TCC_MMC_SDHC_DEBUG
 #define TCC_SDHC_DBG(level, id, x...) \
-	((level & tcc_sdhc_dbg_level) && (id & tcc_sdhc_dbg_channel)) ? printk(KERN_DEBUG "[DEBUG][SDHC] " x) : 0
+	((level & tcc_sdhc_dbg_level) && ((1 << id) & tcc_sdhc_dbg_channel)) ? printk(KERN_DEBUG "[DEBUG][SDHC] " x) : 0
 #else
 #define TCC_SDHC_DBG(level, id, x...)
 #endif
@@ -85,7 +61,7 @@
 #define DETECT_TIMEOUT		(HZ/2)
 
 #define SDMMC_FIFO_CNT		1024
-#define SDMMC_TIMEOUT_TICKS	(1000*HZ/1000)	/* 1000ms */
+#define SDMMC_TIMEOUT_TICKS	(1000*HZ/1000) /* 1000ms */
 #define TCC_MMC_GET_CMD(c) ((c>>24) & 0x3f)
 
 extern const u8 tuning_blk_pattern_4bit[64];
@@ -94,22 +70,23 @@ extern const u8 tuning_blk_pattern_8bit[128];
 int wifi_stat = 0;
 EXPORT_SYMBOL(wifi_stat);
 
-void tcc_mmc_gpio_set_value(unsigned gpio, int value)
+void tcc_mmc_gpio_set_value(unsigned int gpio, int value)
 {
 	gpio_set_value_cansleep(gpio, value);
 }
 
-int tcc_mmc_gpio_get_value(unsigned gpio)
+int tcc_mmc_gpio_get_value(unsigned int gpio)
 {
 	return gpio_get_value_cansleep(gpio);
 }
+
 static inline int mmc_readw(struct tcc_mmc_host *host, unsigned offset)
 {
 	return readw(host->base + offset);
 }
 
 static inline void mmc_writew(struct tcc_mmc_host *host, u16 b,
-			      unsigned offset)
+				unsigned offset)
 {
 	writew(b, host->base + offset);
 }
@@ -120,7 +97,7 @@ static inline int mmc_readl(struct tcc_mmc_host *host, unsigned offset)
 }
 
 static inline void mmc_writel(struct tcc_mmc_host *host, u32 b,
-			      unsigned offset)
+				unsigned offset)
 {
 	writel(b, host->base + offset);
 }
@@ -131,7 +108,7 @@ void tcc_mmc_clock_control(struct tcc_mmc_host *host, int onoff)
 
 	temp_reg = mmc_readl(host, TCCSDHC_CLOCK_CONTROL);
 
-	if(onoff) {
+	if (onoff) {
 		mmc_writew(host, temp_reg | HwSDCLKSEL_SCK_EN, TCCSDHC_CLOCK_CONTROL);
 	} else {
 		mmc_writew(host, temp_reg & ~HwSDCLKSEL_SCK_EN, TCCSDHC_CLOCK_CONTROL);
@@ -141,17 +118,18 @@ void tcc_mmc_clock_control(struct tcc_mmc_host *host, int onoff)
 static void tcc_mmc_dumpregs(struct tcc_mmc_host *host)
 {
 	int i = 0;
+
 	TCC_SDHC_DBG(DEBUG_LEVEL_DUMP, host->controller_id, "=========== REGISTER DUMP (%s)===========\n",
 			mmc_hostname(host->mmc));
 
-	for(i = 0; i < 15; i++)
-	{
+	for (i = 0; i < 15; i++) {
 		TCC_SDHC_DBG(DEBUG_LEVEL_DUMP, host->controller_id, "0x%08x 0x%08x 0x%08x 0x%08x\n",
 				mmc_readl(host, (0x0 + (0x10)*i)),
 				mmc_readl(host, (0x4 + (0x10)*i)),
 				mmc_readl(host, (0x8 + (0x10)*i)),
 				mmc_readl(host, (0xc + (0x10)*i)));
 	}
+
 	TCC_SDHC_DBG(DEBUG_LEVEL_DUMP, host->controller_id, "===========================================\n");
 }
 
@@ -162,6 +140,7 @@ static void tcc_mmc_tasklet_finish(unsigned long param);
 static void init_mmc_host(struct tcc_mmc_host *host, unsigned int clock_rate);
 
 static struct clk *rtc_clk = NULL;
+
 int make_rtc(struct device_node *np, struct tcc_mmc_host *host)
 {
 	//tcc_gpio_config(TCC_GPB(29), GPIO_FN12);
@@ -185,24 +164,23 @@ int make_rtc(struct device_node *np, struct tcc_mmc_host *host)
 	return 0;
 }
 
-static int tcc_sw_reset(struct tcc_mmc_host *host, uint8_t rst_bits)
+static int tcc_sw_reset(struct tcc_mmc_host *host, uint32_t rst_bits)
 {
-	int timeout = 1000;
+	unsigned int timeout = 1000000000;
 
 	if(host == NULL) {
-		printk(KERN_ERR "[ERROR][SDHC] [mmc:NULL] %s(host:%x)\n", __func__, (u32)host);
+		printk(KERN_DEBUG "[DEBUG][SDHC] [mmc:NULL] %s(host:%x)\n", __func__, (u32)host);
 		return -EHOSTDOWN;
 	}
 
-	mmc_writew(host, rst_bits<<8 | mmc_readw(host, TCCSDHC_TIMEOUT_CONTROL),
-		   TCCSDHC_TIMEOUT_CONTROL);
+	mmc_writel(host, rst_bits | mmc_readl(host, TCCSDHC_CLOCK_CONTROL),
+			TCCSDHC_CLOCK_CONTROL);
 
 	while (--timeout) {
-		if (!(mmc_readw(host, TCCSDHC_TIMEOUT_CONTROL) & rst_bits << 8)){
+		if (!(mmc_readl(host, TCCSDHC_CLOCK_CONTROL) & rst_bits)) {
 			break;
 		}
-		/* Must be mdelay not msleep, as called from interrupt context */
-		mdelay(1);
+		udelay(1);
 	}
 	if (!timeout) {
 		printk(KERN_ERR "[ERROR][SDHC] %s: timed out waiting for reset\n", mmc_hostname(host->mmc));
@@ -218,13 +196,11 @@ static int tcc_sw_reset(struct tcc_mmc_host *host, uint8_t rst_bits)
  */
 static int tcc_mmc_get_cd(struct mmc_host *mmc)
 {
-	if(mmc->slot.cd_irq == WIFI_POLLING)
-	{
+	if (mmc->slot.cd_irq == WIFI_POLLING) {
 		return wifi_stat;
-	} // sdio Wi-Fi
+	} /* sdio Wi-Fi */
 
-	if(mmc->caps & MMC_CAP_NONREMOVABLE)
-	{
+	if (mmc->caps & MMC_CAP_NONREMOVABLE) {
 		return 1;
 	}
 
@@ -240,38 +216,31 @@ static void tcc_mmc_poll_event(unsigned long data)
 	struct tcc_mmc_host *host = (struct tcc_mmc_host *) data;
 
 	if (host == NULL) {
-		return;// -EHOSTDOWN;
+		return; /* -EHOSTDOWN; */
 	}
 
-	if(host->mmc->detect_change == 0)
-	{
+	if (host->mmc->detect_change == 0) {
 		status = tcc_mmc_get_cd(host->mmc);
-	}
-	else
-	{
+	} else {
 		mod_timer(&host->detect_timer, jiffies + DETECT_TIMEOUT);
 		return;
 	}
 
-	if(host->cd_irq <= 0) // polling only mode
-	{
-		if((status == 0) && (host->card_inserted == 1)) // remove
-		{
+	if (host->cd_irq <= 0) {
+		/* polling only mode */
+		if ((status == 0) && (host->card_inserted == 1)) {
+			/* remove */
 			TCC_SDHC_DBG(DEBUG_LEVEL_CD, host->controller_id, "%s: card removed\n", mmc_hostname(host->mmc));
 			mmc_detect_change(host->mmc, msecs_to_jiffies(0));
 			host->card_inserted = status;
-		}
-		else if((status == 1) && (host->card_inserted == 0)) // insert
-		{
+		} else if((status == 1) && (host->card_inserted == 0)) {
+			/* insert */
 			TCC_SDHC_DBG(DEBUG_LEVEL_CD, host->controller_id, "%s: card inserted\n", mmc_hostname(host->mmc));
 			mmc_detect_change(host->mmc, msecs_to_jiffies(500));
 			host->card_inserted = status;
 		}
-	}
-	else
-	{
-		if(status && host->card_inserted && (host->mmc->card == NULL))
-		{
+	} else {
+		if (status && host->card_inserted && (host->mmc->card == NULL)) {
 			TCC_SDHC_DBG(DEBUG_LEVEL_CD, host->controller_id, "%s : card is not properly inserted,,, retry mmc_detect_change!!\n", mmc_hostname(host->mmc));
 			mmc_detect_change(host->mmc, msecs_to_jiffies(1000));
 		}
@@ -282,7 +251,7 @@ static void tcc_mmc_poll_event(unsigned long data)
 
 static char *tcc_mmc_kmap_atomic(struct scatterlist *sg, unsigned long *flags)
 {
-	if((sg == NULL)||(flags == NULL)) {
+	if ((sg == NULL)||(flags == NULL)) {
 		printk(KERN_WARNING "[WARN][SDHC] [mmc:NULL] %s(sg:%x, flags:%x)\n", __func__, (u32)sg, (u32)flags);
 		return 0;
 	}
@@ -293,7 +262,7 @@ static char *tcc_mmc_kmap_atomic(struct scatterlist *sg, unsigned long *flags)
 
 static void tcc_mmc_kunmap_atomic(void *buffer, unsigned long *flags)
 {
-	if((buffer == NULL)||(flags == NULL)) {
+	if ((buffer == NULL)||(flags == NULL)) {
 		printk(KERN_WARNING "[WARN][SDHC] [mmc:NULL] %s(buffer:%x, flags:%x)\n", __func__, (u32)buffer, (u32)flags);
 		return;
 	}
@@ -317,7 +286,7 @@ static int tcc_mmc_adma_table_pre(struct tcc_mmc_host *host, struct mmc_data *da
 	char *buffer;
 	unsigned long flags;
 
-	if((host == NULL)||(data == NULL)) {
+	if ((host == NULL) || (data == NULL)) {
 		printk(KERN_ERR "[ERROR][SDHC] [mmc:NULL] %s(host:%x, data:%x)\n", __func__, (u32)host, (u32)data);
 		return -EHOSTDOWN;
 	}
@@ -327,10 +296,11 @@ static int tcc_mmc_adma_table_pre(struct tcc_mmc_host *host, struct mmc_data *da
 	 * We currently guess that it is LE.
 	 */
 
-	if (data->flags & MMC_DATA_READ)
+	if (data->flags & MMC_DATA_READ) {
 		direction = DMA_FROM_DEVICE;
-	else
+	} else {
 		direction = DMA_TO_DEVICE;
+	}
 
 	/*
 	 * The ADMA descriptor table is mapped further down as we
@@ -339,14 +309,16 @@ static int tcc_mmc_adma_table_pre(struct tcc_mmc_host *host, struct mmc_data *da
 
 	host->align_addr = dma_map_single(mmc_dev(host->mmc),
 			host->align_buffer, 128 * 4, direction);
-	if (dma_mapping_error(mmc_dev(host->mmc), host->align_addr))
+	if (dma_mapping_error(mmc_dev(host->mmc), host->align_addr)) {
 		goto fail;
+	}
 	BUG_ON(host->align_addr & 0x3);
 
 	host->sg_count = dma_map_sg(mmc_dev(host->mmc),
 			data->sg, data->sg_len, direction);
-	if (host->sg_count == 0)
+	if (host->sg_count == 0) {
 		goto unmap_align;
+	}
 
 	desc = host->adma_desc;
 	align = host->align_buffer;
@@ -441,10 +413,11 @@ static int tcc_mmc_adma_table_pre(struct tcc_mmc_host *host, struct mmc_data *da
 
 	host->adma_addr = dma_map_single(mmc_dev(host->mmc), host->adma_desc, (128 * 2 + 1) * 4, DMA_TO_DEVICE);
 
-//	printk(KERN_DEBUG "[DEBUG][SDHC] ADMA address: 0x%x\n",host->adma_addr);
+//	printk("ADMA address: 0x%x\n",host->adma_addr);
 
-	if (dma_mapping_error(mmc_dev(host->mmc), host->adma_addr))
+	if (dma_mapping_error(mmc_dev(host->mmc), host->adma_addr)) {
 		goto unmap_entries;
+	}
 	BUG_ON(host->adma_addr & 0x3);
 
 	return 0;
@@ -469,15 +442,16 @@ static void tcc_mmc_adma_table_post(struct tcc_mmc_host *host, struct mmc_data *
 	char *buffer;
 	unsigned long flags;
 
-	if((host == NULL)||(data == NULL)) {
+	if ((host == NULL) || (data == NULL)) {
 		printk(KERN_WARNING "[WARN][SDHC] [mmc:NULL] %s(host:%x, data:%x)\n", __func__, (u32)host, (u32)data);
-		return;// -EHOSTDOWN;
+		return; /* -EHOSTDOWN */
 	}
 
-	if (data->flags & MMC_DATA_READ)
+	if (data->flags & MMC_DATA_READ) {
 		direction = DMA_FROM_DEVICE;
-	else
+	} else {
 		direction = DMA_TO_DEVICE;
+	}
 
 	dma_unmap_single(mmc_dev(host->mmc), host->adma_addr,
 			(128 * 2 + 1) * 4, DMA_TO_DEVICE);
@@ -516,7 +490,7 @@ static void tcc_mmc_finish_data(struct tcc_mmc_host *host)
 
 	if(host == NULL) {
 		printk(KERN_WARNING "[WARN][SDHC] [mmc:NULL] %s(host:%x)\n", __func__, (u32)host);
-		return;// -EHOSTDOWN;
+		return; /* -EHOSTDOWN */
 	}
 
 	BUG_ON(!host->data);
@@ -585,8 +559,9 @@ void tcc_mmc_read_block_pio(struct tcc_mmc_host *host)
 
 	local_irq_save(flags);
 	while (blksize) {
-		if (!sg_miter_next(&host->sg_miter))
+		if (!sg_miter_next(&host->sg_miter)) {
 			BUG();
+		}
 
 		len = min(host->sg_miter.length, blksize);
 		blksize -= len;
@@ -626,8 +601,9 @@ static void tcc_mmc_write_block_pio(struct tcc_mmc_host *host)
 	local_irq_save(flags);
 
 	while (blksize) {
-		if (!sg_miter_next(&host->sg_miter))
+		if (!sg_miter_next(&host->sg_miter)) {
 			BUG();
+		}
 
 		len = min(host->sg_miter.length, blksize);
 
@@ -662,23 +638,27 @@ static void tcc_transfer_pio(struct tcc_mmc_host *host)
 
 	BUG_ON(!host->data);
 
-	if (host->blocks == 0)
+	if (host->blocks == 0) {
 		return;
+	}
 
-	if (host->data->flags & MMC_DATA_READ)
+	if (host->data->flags & MMC_DATA_READ) {
 		mask = TCCSDHC_DATA_AVAILABLE;
-	else
+	} else {
 		mask = TCCSDHC_SPACE_AVAILABLE;
+	}
 
 	while (mmc_readl(host, TCCSDHC_PRESENT_STATE) & mask) {
-		if (host->data->flags & MMC_DATA_READ)
+		if (host->data->flags & MMC_DATA_READ) {
 			tcc_mmc_read_block_pio(host);
-		else
+		} else {
 			tcc_mmc_write_block_pio(host);
+		}
 
 		host->blocks--;
-		if (host->blocks == 0)
+		if (host->blocks == 0) {
 			break;
+		}
 	}
 }
 
@@ -691,9 +671,9 @@ static void tcc_mmc_start_command(struct tcc_mmc_host *host, struct mmc_command 
 	int cmd_reg = 0x00000000;
 	unsigned int uiIntStatusEn;
 
-	if((host == NULL)||(cmd == NULL)) {
+	if ((host == NULL)||(cmd == NULL)) {
 		printk(KERN_WARNING "[WARN][SDHC] [mmc:NULL] %s(host:%x, cmd:%x)\n", __func__, (u32)host, (u32)cmd);
-		return;// -EHOSTDOWN;
+		return; /* -EHOSTDOWN */
 	}
 
 	/* Wait max 10 ms */
@@ -721,6 +701,8 @@ static void tcc_mmc_start_command(struct tcc_mmc_host *host, struct mmc_command 
 			tasklet_schedule(&host->finish_tasklet);
 			return;
 		}
+		timeout--;
+		mdelay(1);
 	}
 
 	mod_timer(&host->timer, jiffies + 10 * HZ);
@@ -768,19 +750,22 @@ static void tcc_mmc_start_command(struct tcc_mmc_host *host, struct mmc_command 
 					cmd_reg |= HwSD_COM_TRANS_ACMD23; // auto CMD23 enable
 					mmc_writel(host, host->mrq->sbc->arg, TCCSDHC_DMA_ADDRESS);
 					//if (host->mrq->sbc->arg & 0x80000000)
-					//	printk(KERN_DEBUG "[DEBUG][SDHC] %s: 0x%08X\n", __func__, host->mrq->sbc->arg);
+					//printk("\x1b[1;32m %s: 0x%08X \x1b[0m\n", __func__, host->mrq->sbc->arg);
 				}
 			}
 		}
 
-		if (cmd->data->flags & MMC_DATA_WRITE)
+		if (cmd->data->flags & MMC_DATA_WRITE) {
 			cmd_reg &= ~HwSD_COM_TRANS_DIR;
+		}
 
-		if (host->flags & TCC_MMC_USE_DMA)
+		if (host->flags & TCC_MMC_USE_DMA) {
 			host->flags |= TCC_MMC_REQ_USE_DMA;
+		}
 
-		if ((host->flags & TCC_MMC_REQ_USE_DMA) && (!host->is_in_tuning_mode))
+		if ((host->flags & TCC_MMC_REQ_USE_DMA) && (!host->is_in_tuning_mode)) {
 			cmd_reg |= HwSD_COM_TRANS_DMAEN;
+		}
 
 		/*
 		 * Always adjust the DMA selection as some controllers
@@ -791,10 +776,11 @@ static void tcc_mmc_start_command(struct tcc_mmc_host *host, struct mmc_command 
 			unsigned short ctrl = mmc_readw(host, TCCSDHC_HOST_CONTROL);
 			ctrl &= ~HwSD_CTRL_DMA_MASK;
 
-			if ((host->flags & TCC_MMC_REQ_USE_DMA) && (host->flags & TCC_MMC_USE_ADMA))
+			if ((host->flags & TCC_MMC_REQ_USE_DMA) && (host->flags & TCC_MMC_USE_ADMA)) {
 				ctrl |= HwSD_CTRL_ADMA32;
-			else
+			} else {
 				ctrl |= HwSD_CTRL_SDMA;
+			}
 
 			mmc_writew(host, ctrl, TCCSDHC_HOST_CONTROL);
 		}
@@ -840,14 +826,16 @@ static void tcc_mmc_start_command(struct tcc_mmc_host *host, struct mmc_command 
 				host->num_sg = cmd->data->sg_len;
 				host->offset = 0;
 				host->remain = host->cur_sg->length;
-			} else { // pio
+			} else {
+				/* pio */
 				int flags;
 
 				flags = SG_MITER_ATOMIC;
-				if (host->data->flags & MMC_DATA_READ)
+				if (host->data->flags & MMC_DATA_READ) {
 					flags |= SG_MITER_TO_SG;
-				else
+				} else {
 					flags |= SG_MITER_FROM_SG;
+				}
 				sg_miter_start(&host->sg_miter, host->data->sg, host->data->sg_len, flags);
 				host->blocks = host->data->blocks;
 			}
@@ -863,11 +851,13 @@ static void tcc_mmc_start_command(struct tcc_mmc_host *host, struct mmc_command 
 		cmdtype = HwSD_COM_TRANS_ABORT;
 	}
 
-	if (cmd->flags & MMC_RSP_CRC)
+	if (cmd->flags & MMC_RSP_CRC) {
 		cmd_reg |= HwSD_COM_TRANS_CRCHK;
+	}
 
-	if (cmd->flags & MMC_RSP_OPCODE)
+	if (cmd->flags & MMC_RSP_OPCODE) {
 		cmd_reg |= HwSD_COM_TRANS_CICHK;
+	}
 
 	cmd_reg |= (cmd->opcode << 24) |cmdtype| (resptype << 16);
 
@@ -875,11 +865,12 @@ static void tcc_mmc_start_command(struct tcc_mmc_host *host, struct mmc_command 
 		   TCCSDHC_INT_STATUS);
 
 	if (cmd->data) {
-		if (host->is_in_tuning_mode)
+		if (host->is_in_tuning_mode) {
 			mmc_writew(host, cmd->data->blksz, TCCSDHC_BLOCK_SIZE);
-		else
+		} else {
 			mmc_writew(host, (0x07<<12) | cmd->data->blksz,
 					TCCSDHC_BLOCK_SIZE);
+		}
 		mmc_writew(host, cmd->data->blocks, TCCSDHC_BLOCK_COUNT);
 	} else {
 		mmc_writel(host, 0, TCCSDHC_DMA_ADDRESS);
@@ -889,8 +880,9 @@ static void tcc_mmc_start_command(struct tcc_mmc_host *host, struct mmc_command 
 
 	if (host->is_in_tuning_mode) {
 		int flags = SG_MITER_ATOMIC | SG_MITER_TO_SG;
+
 		sg_miter_start(&host->sg_miter, cmd->data->sg, cmd->data->sg_len, flags);
-		/*printk(KERN_DEBUG "[DEBUG][SDHC] [%s] sg_miter_start : sg_len(%d)\n", __func__, cmd->data->sg_len);*/
+		/*printk("[%s] sg_miter_start : sg_len(%d)\n", __func__, cmd->data->sg_len);*/
 		cmd_reg |= HwSD_COM_TRANS_DATSEL | HwSD_COM_TRANS_DIR | Hw20 | Hw19;
 		mmc_writel(host, 0x0, TCCSDHC_DMA_ADDRESS);
 	}
@@ -905,9 +897,9 @@ static void tcc_mmc_start_command(struct tcc_mmc_host *host, struct mmc_command 
 
 static void tcc_mmc_finish_command(struct tcc_mmc_host *host)
 {
-	if(host == NULL) {
+	if (host == NULL) {
 		printk(KERN_WARNING "[WARN][SDHC] [mmc:NULL] %s(host:%x)\n", __func__, (u32)host);
-		return;// -EHOSTDOWN;
+		return; /* -EHOSTDOWN */
 	}
 
 	BUG_ON(host->cmd == NULL);
@@ -939,11 +931,13 @@ static void tcc_mmc_finish_command(struct tcc_mmc_host *host)
 		host->cmd = NULL;
 		tcc_mmc_start_command(host, host->mrq->cmd);
 	} else {
-		if (host->data && host->data_early)
+		if (host->data && host->data_early) {
 			tcc_mmc_finish_data(host);
+		}
 
-		if (!host->cmd->data)
+		if (!host->cmd->data) {
 			tasklet_schedule(&host->finish_tasklet);
+		}
 
 		host->cmd = NULL;
 	}
@@ -954,9 +948,9 @@ static void tcc_mmc_request(struct mmc_host *mmc, struct mmc_request *mrq)
 	struct tcc_mmc_host *host = mmc_priv(mmc);
 	unsigned long flags;
 
-	if((mmc == NULL)||(host == NULL)||(mrq == NULL)) {
+	if ((mmc == NULL)||(host == NULL)||(mrq == NULL)) {
 		printk(KERN_WARNING "[WARN][SDHC] [mmc:NULL] %s(mmc:%x, host:%x, mrq:%x)\n", __func__, (u32)mmc, (u32)host, (u32)mrq);
-		return;// -EHOSTDOWN;
+		return; /* -EHOSTDOWN */
 	}
 
 	spin_lock_irqsave(&host->lock, flags);
@@ -980,19 +974,20 @@ static void tcc_mmc_request(struct mmc_host *mmc, struct mmc_request *mrq)
 		if (mrq->data && !(mrq->data->flags & MMC_DATA_READ)) {
 			mrq->cmd->error = 0;
 			mrq->data->bytes_xfered = mrq->data->blksz *
-						  mrq->data->blocks;
-		} else
+				mrq->data->blocks;
+		} else {
 			mrq->cmd->error = -ENOMEDIUM;
+		}
 
 		tasklet_schedule(&host->finish_tasklet);
 		spin_unlock_irqrestore(&host->lock, flags);
 		return;
-
 	} else {
-		if (mrq->sbc && !(host->flags & HwSD_COM_TRANS_ACMD23))
+		if (mrq->sbc && !(host->flags & HwSD_COM_TRANS_ACMD23)) {
 			tcc_mmc_start_command(host, mrq->sbc);
-		else
+		} else {
 			tcc_mmc_start_command(host, mrq->cmd);
+		}
 	}
 
 	mmiowb();
@@ -1014,9 +1009,9 @@ static void tcc_hw_set_high_speed(struct mmc_host *mmc, int hs)
 	unsigned long flags;
 	u8 host_ctrl = 0;
 
-	if((mmc == NULL)||(host == NULL)) {
+	if ((mmc == NULL) || (host == NULL)) {
 		printk(KERN_WARNING "[WARN][SDHC] [mmc:NULL] %s(mmc:%x, host:%x)\n", __func__, (u32)mmc, (u32)host);
-		return;// -EHOSTDOWN;
+		return; /* -EHOSTDOWN */
 	}
 
 	spin_lock_irqsave(&host->lock, flags);
@@ -1044,8 +1039,8 @@ static void tcc_mmc_set_ios(struct mmc_host *mmc, struct mmc_ios *ios)
 	int i = 0; /* 2^i is the divisor value */
 	u32 clk_div = 0;
 
-	if((mmc == NULL)||(host == NULL)||(ios == NULL)) {
-		return;// -EHOSTDOWN;
+	if ((mmc == NULL)||(host == NULL)||(ios == NULL)) {
+		return; /* -EHOSTDOWN */
 	}
 
 	if (ios->clock != 0) {
@@ -1056,13 +1051,14 @@ static void tcc_mmc_set_ios(struct mmc_host *mmc, struct mmc_ios *ios)
 			i++;
 		}
 
-		if(i==0)
+		if (i==0) {
 			clk_div = 0;
-		else
+		} else {
 			clk_div = 1<<(i-1);
+		}
 
 		host->timing = ios->timing;
-		if ( (ios->timing == MMC_TIMING_MMC_DDR52) || (ios->timing == MMC_TIMING_UHS_DDR50) ) {
+		if ((ios->timing == MMC_TIMING_MMC_DDR52) || (ios->timing == MMC_TIMING_UHS_DDR50)) {
 			TCC_SDHC_DBG(DEBUG_LEVEL_IOS, host->controller_id, "%s: Start DDR clock\n", mmc_hostname(host->mmc));
 			mmc_writel(host, 0x40000, TCCSDHC_ACMD12_ERR);
 		}
@@ -1070,7 +1066,7 @@ static void tcc_mmc_set_ios(struct mmc_host *mmc, struct mmc_ios *ios)
 		TCC_SDHC_DBG(DEBUG_LEVEL_IOS, host->controller_id, "%s: id[%d] ios->clock : %d, host->peri_clk: %lu, clk_div : %d\n",
 				mmc_hostname(host->mmc), host->controller_id, ios->clock, host->peri_clk, clk_div);
 
-		host->clk_div = clk_div;	/* store divider */
+		host->clk_div = clk_div; /* store divider */
 
 		temp_reg = mmc_readl(host, TCCSDHC_CLOCK_CONTROL);
 		mmc_writew(host, temp_reg & ~HwSDCLKSEL_SCK_EN,
@@ -1078,24 +1074,22 @@ static void tcc_mmc_set_ios(struct mmc_host *mmc, struct mmc_ios *ios)
 
 		udelay(10);
 
-		if(clk_div <= 128)
-		{
+		if (clk_div <= 128) {
 			mmc_writew(host, (clk_div << 8) | HwSDCLKSEL_INCLK_EN,
 				TCCSDHC_CLOCK_CONTROL);
-		}
-		else // use extend SDCLKSEL register
-		{
-			if(clk_div > 1023)
+		} else {
+			/* use extend SDCLKSEL register */
+			if (clk_div > 1023) {
 				host->clk_div = clk_div = 1023;
+			}
 
 			mmc_writew(host, ((clk_div & 0xFF) << 8) | ((clk_div & 0x300) >> 2) | HwSDCLKSEL_INCLK_EN,
-				TCCSDHC_CLOCK_CONTROL);
+					TCCSDHC_CLOCK_CONTROL);
 		}
 
 		timeout = 20;
 		while (!(mmc_readl(host, TCCSDHC_CLOCK_CONTROL) & HwSDCLKSEL_INCLK_STABLE)) {
-			if (timeout == 0)
-			{
+			if (timeout == 0) {
 				printk(KERN_WARNING "[WARN][SDHC] %s: Internal clock never stablized.\n", mmc_hostname(host->mmc));
 				tcc_mmc_dumpregs(host);
 				break;
@@ -1106,98 +1100,93 @@ static void tcc_mmc_set_ios(struct mmc_host *mmc, struct mmc_ios *ios)
 		temp_reg = mmc_readl(host, TCCSDHC_CLOCK_CONTROL);
 		//mmc_writew(host, temp_reg|(HwSDCLKSEL_SCK_EN|HwSDCLKSEL_INCLK_EN), TCCSDHC_CLOCK_CONTROL);
 		mmc_writew(host, temp_reg | (HwSDCLKSEL_SCK_EN),
-			   TCCSDHC_CLOCK_CONTROL);
+				TCCSDHC_CLOCK_CONTROL);
 
 		udelay(100);
 	}
 
 	switch (ios->power_mode) {
-		case MMC_POWER_OFF:
-				TCC_SDHC_DBG(DEBUG_LEVEL_IOS, host->controller_id, "%s: MMC_POWER_OFF\n", mmc_hostname(host->mmc));
+	case MMC_POWER_OFF:
+		TCC_SDHC_DBG(DEBUG_LEVEL_IOS, host->controller_id, "%s: MMC_POWER_OFF\n", mmc_hostname(host->mmc));
 
-				pinctrl = pinctrl_get_select(host->dev, "default");
-				if(IS_ERR(pinctrl))
-					TCC_SDHC_DBG(DEBUG_LEVEL_IOS, host->controller_id, "%s: failed to select pinctrl \n", mmc_hostname(host->mmc));
+		pinctrl = pinctrl_get_select(host->dev, "default");
+		if (IS_ERR(pinctrl)) {
+			TCC_SDHC_DBG(DEBUG_LEVEL_IOS, host->controller_id, "%s: failed to select pinctrl \n", mmc_hostname(host->mmc));
+		}
 
-				temp_reg = mmc_readl(host, TCCSDHC_CLOCK_CONTROL);
-				mmc_writew(host, ((temp_reg & ~HwSDCLKSEL_SCK_EN) & ~HwSDCLKSEL_INCLK_EN),
-						TCCSDHC_CLOCK_CONTROL); // disable controller clock
+		temp_reg = mmc_readl(host, TCCSDHC_CLOCK_CONTROL);
+		mmc_writew(host, ((temp_reg & ~HwSDCLKSEL_SCK_EN) & ~HwSDCLKSEL_INCLK_EN),
+				TCCSDHC_CLOCK_CONTROL); /* disable controller clock */
 
-				if(host->cd_irq != WIFI_POLLING) {
-					if (gpio_is_valid(host->tcc_hw.vctrl_gpio)) {
-						tcc_mmc_gpio_set_value(host->tcc_hw.vctrl_gpio, 1);
-					} // switch voltage level from 1.8 to 3.3
+		if (host->cd_irq != WIFI_POLLING) {
+			if (gpio_is_valid(host->tcc_hw.vctrl_gpio)) {
+				tcc_mmc_gpio_set_value(host->tcc_hw.vctrl_gpio, 1);
+			} /* switch voltage level from 1.8 to 3.3 */
+			if (gpio_is_valid(host->tcc_hw.pwr_gpio)) {
+				tcc_mmc_gpio_set_value(host->tcc_hw.pwr_gpio, 0);
+			} /* power off */
+		}
 
-					// power off
-					if (gpio_is_valid(host->tcc_hw.pwr_gpio)) {
-						tcc_mmc_gpio_set_value(host->tcc_hw.pwr_gpio, 0);
-					} else if(!IS_ERR(mmc->supply.vmmc)) {
-						mmc_regulator_set_ocr(mmc, mmc->supply.vmmc, 0);
-					}
-				}
+		udelay(100);
+		break;
+	case MMC_POWER_UP:
+		TCC_SDHC_DBG(DEBUG_LEVEL_IOS, host->controller_id, "%s: MMC_POWER_UP\n", mmc_hostname(host->mmc));
 
-				udelay(100);
-				break;
-		case MMC_POWER_UP:
-				TCC_SDHC_DBG(DEBUG_LEVEL_IOS, host->controller_id, "%s: MMC_POWER_UP\n", mmc_hostname(host->mmc));
+		if (host->cd_irq != WIFI_POLLING) {
+			if (gpio_is_valid(host->tcc_hw.pwr_gpio)) {
+				tcc_mmc_gpio_set_value(host->tcc_hw.pwr_gpio, 1);
 
-				if(host->cd_irq != WIFI_POLLING) {
-					// power on
-					if (gpio_is_valid(host->tcc_hw.pwr_gpio)) {
-						tcc_mmc_gpio_set_value(host->tcc_hw.pwr_gpio, 1);
+				mdelay(10); /* It is required because of the stablization of the voltage. */
+			} /* power on */
+		}
 
-						mdelay(10); // It is required because of the stablization of the voltage.
-					} else if(!IS_ERR(mmc->supply.vmmc)) {
-						mmc_regulator_set_ocr(mmc, mmc->supply.vmmc, ios->vdd);
-					}
-				}
+		pinctrl = pinctrl_get_select(host->dev, "active");
+		if (IS_ERR(pinctrl)) {
+			TCC_SDHC_DBG(DEBUG_LEVEL_IOS, host->controller_id, "%s: failed to select pinctrl \n", mmc_hostname(host->mmc));
+		}
 
-				pinctrl = pinctrl_get_select(host->dev, "active");
-				if(IS_ERR(pinctrl))
-					TCC_SDHC_DBG(DEBUG_LEVEL_IOS, host->controller_id, "%s: failed to select pinctrl \n", mmc_hostname(host->mmc));
-
-				init_mmc_host(host, mmc->f_max);
-				break;
-		case MMC_POWER_ON:
-				TCC_SDHC_DBG(DEBUG_LEVEL_IOS, host->controller_id, "%s: MMC_POWER_ON\n", mmc_hostname(host->mmc));
-				break;
+		init_mmc_host(host, mmc->f_max);
+		break;
+	case MMC_POWER_ON:
+		TCC_SDHC_DBG(DEBUG_LEVEL_IOS, host->controller_id, "%s: MMC_POWER_ON\n", mmc_hostname(host->mmc));
+		break;
 	}
 
 	switch (ios->bus_width) {
-		uint16_t cont_l, cont_h;
+	uint16_t cont_l, cont_h;
 
-		case MMC_BUS_WIDTH_1:
-			TCC_SDHC_DBG(DEBUG_LEVEL_IOS, host->controller_id, "%s: 1 bit mode\n", mmc_hostname(host->mmc));
-			cont_l = mmc_readw(host, TCCSDHC_HOST_CONTROL);
-			cont_l &= ~(HwSD_POWER_SD4|HwSD_POWER_SD8);
-			cont_l |= HwSD_POWER_POW|HwSD_POWER_VOL33;
-			mmc_writew(host, cont_l, TCCSDHC_HOST_CONTROL);
+	case MMC_BUS_WIDTH_1:
+		TCC_SDHC_DBG(DEBUG_LEVEL_IOS, host->controller_id, "%s: 1 bit mode\n", mmc_hostname(host->mmc));
+		cont_l = mmc_readw(host, TCCSDHC_HOST_CONTROL);
+		cont_l &= ~(HwSD_POWER_SD4|HwSD_POWER_SD8);
+		cont_l |= HwSD_POWER_POW|HwSD_POWER_VOL33;
+		mmc_writew(host, cont_l, TCCSDHC_HOST_CONTROL);
 
-			cont_h = mmc_readw(host, TCCSDHC_BLOCK_GAP_CONTROL);
-			cont_h &= ~Hw3;
-			mmc_writew(host, cont_h, TCCSDHC_BLOCK_GAP_CONTROL);
-			break;
-		case MMC_BUS_WIDTH_4:
-			TCC_SDHC_DBG(DEBUG_LEVEL_IOS, host->controller_id, "%s: 4 bit mode\n", mmc_hostname(host->mmc));
-			cont_l = mmc_readw(host, TCCSDHC_HOST_CONTROL);
-			cont_l &= ~HwSD_POWER_SD8;
-			cont_l |= HwSD_POWER_POW|HwSD_POWER_VOL33|HwSD_POWER_SD4;
-			mmc_writew(host, cont_l, TCCSDHC_HOST_CONTROL);
+		cont_h = mmc_readw(host, TCCSDHC_BLOCK_GAP_CONTROL);
+		cont_h &= ~Hw3;
+		mmc_writew(host, cont_h, TCCSDHC_BLOCK_GAP_CONTROL);
+		break;
+	case MMC_BUS_WIDTH_4:
+		TCC_SDHC_DBG(DEBUG_LEVEL_IOS, host->controller_id, "%s: 4 bit mode\n", mmc_hostname(host->mmc));
+		cont_l = mmc_readw(host, TCCSDHC_HOST_CONTROL);
+		cont_l &= ~HwSD_POWER_SD8;
+		cont_l |= HwSD_POWER_POW|HwSD_POWER_VOL33|HwSD_POWER_SD4;
+		mmc_writew(host, cont_l, TCCSDHC_HOST_CONTROL);
 
-			cont_h = mmc_readw(host, TCCSDHC_BLOCK_GAP_CONTROL);
-			/*cont_h |= Hw3;*/
-			mmc_writew(host, cont_h, TCCSDHC_BLOCK_GAP_CONTROL);
-			break;
-		case MMC_BUS_WIDTH_8:
-			TCC_SDHC_DBG(DEBUG_LEVEL_IOS, host->controller_id, "%s: 8 bit mode\n", mmc_hostname(host->mmc));
-			cont_l = mmc_readw(host, TCCSDHC_HOST_CONTROL);
-			cont_l |= HwSD_POWER_POW|HwSD_POWER_VOL33|HwSD_POWER_SD8;
-			mmc_writew(host, cont_l, TCCSDHC_HOST_CONTROL);
+		cont_h = mmc_readw(host, TCCSDHC_BLOCK_GAP_CONTROL);
+		/*cont_h |= Hw3;*/
+		mmc_writew(host, cont_h, TCCSDHC_BLOCK_GAP_CONTROL);
+		break;
+	case MMC_BUS_WIDTH_8:
+		TCC_SDHC_DBG(DEBUG_LEVEL_IOS, host->controller_id, "%s: 8 bit mode\n", mmc_hostname(host->mmc));
+		cont_l = mmc_readw(host, TCCSDHC_HOST_CONTROL);
+		cont_l |= HwSD_POWER_POW|HwSD_POWER_VOL33|HwSD_POWER_SD8;
+		mmc_writew(host, cont_l, TCCSDHC_HOST_CONTROL);
 
-			cont_h = mmc_readw(host, TCCSDHC_BLOCK_GAP_CONTROL);
-			cont_h &= ~Hw3;
-			mmc_writew(host, cont_h, TCCSDHC_BLOCK_GAP_CONTROL);
-			break;
+		cont_h = mmc_readw(host, TCCSDHC_BLOCK_GAP_CONTROL);
+		cont_h &= ~Hw3;
+		mmc_writew(host, cont_h, TCCSDHC_BLOCK_GAP_CONTROL);
+		break;
 	}
 
 	host->bus_mode = ios->bus_mode;
@@ -1214,13 +1203,21 @@ static void tcc_hw_reset(struct mmc_host *mmc)
 {
 	struct tcc_mmc_host *host = mmc_priv(mmc);
 
-	if (!gpio_is_valid(host->tcc_hw.rst_gpio))
+	if (!gpio_is_valid(host->tcc_hw.rst_gpio)) {
 		return;
+	}
 
-	tcc_mmc_gpio_set_value(host->tcc_hw.rst_gpio, 0);
-	mdelay(1);
+	if (host->is_clock_control) {
+		tcc_mmc_clock_control(host, 1);
+	}
+
 	tcc_mmc_gpio_set_value(host->tcc_hw.rst_gpio, 1);
-	mdelay(1);
+	udelay(10);
+	tcc_mmc_gpio_set_value(host->tcc_hw.rst_gpio, 0);
+
+	if (host->is_clock_control) {
+		tcc_mmc_clock_control(host, 0);
+	}
 }
 
 static void tcc_sdio_hw_enable_int(struct mmc_host *mmc, uint32_t sigs)
@@ -1229,14 +1226,14 @@ static void tcc_sdio_hw_enable_int(struct mmc_host *mmc, uint32_t sigs)
 	unsigned long flags;
 	uint32_t stat_en;
 
-	if((mmc == NULL)||(host == NULL)) {
+	if ((mmc == NULL) || (host == NULL)) {
 		printk(KERN_WARNING "[WARN][SDHC] [mmc:NULL] %s(mmc:%x, host:%x)\n", __func__, (u32)mmc, (u32)host);
-		return;// -EHOSTDOWN;
+		return; /* -EHOSTDOWN */
 	}
 
 	spin_lock_irqsave(&host->lock, flags);
 
-	stat_en=mmc_readl(host, TCCSDHC_INT_ENABLE);
+	stat_en = mmc_readl(host, TCCSDHC_INT_ENABLE);
 	mmc_writel(host, stat_en | sigs, TCCSDHC_INT_ENABLE);
 
 	spin_unlock_irqrestore(&host->lock, flags);
@@ -1248,9 +1245,9 @@ static void tcc_sdio_hw_disable_int(struct mmc_host *mmc, uint32_t sigs)
 	unsigned long flags;
 	uint32_t stat_en;
 
-	if((mmc == NULL)||(host == NULL)) {
+	if ((mmc == NULL) || (host == NULL)) {
 		printk(KERN_WARNING "[WARN][SDHC] [mmc:NULL] %s(mmc:%x, host:%x)\n", __func__, (u32)mmc, (u32)host);
-		return;// -EHOSTDOWN;
+		return; /* -EHOSTDOWN */
 	}
 
 	spin_lock_irqsave(&host->lock, flags);
@@ -1263,9 +1260,9 @@ static void tcc_sdio_hw_disable_int(struct mmc_host *mmc, uint32_t sigs)
 
 static void tcc_sdio_enable_card_int(struct mmc_host *mmc)
 {
-	if(mmc == NULL) {
+	if (mmc == NULL) {
 		printk(KERN_WARNING "[WARN][SDHC] [mmc:NULL] %s(mmc:%x)\n", __func__, (u32)mmc);
-		return;// -EHOSTDOWN;
+		return; /* -EHOSTDOWN */
 	}
 
 	tcc_sdio_hw_enable_int(mmc, HwSDINT_EN_CDINT);
@@ -1273,9 +1270,9 @@ static void tcc_sdio_enable_card_int(struct mmc_host *mmc)
 
 static void tcc_sdio_disable_card_int(struct mmc_host *mmc)
 {
-	if(mmc == NULL) {
+	if (mmc == NULL) {
 		printk(KERN_WARNING "[WARN][SDHC] [mmc:NULL] %s(mmc:%x)\n", __func__, (u32)mmc);
-		return;// -EHOSTDOWN;
+		return; /* -EHOSTDOWN */
 	}
 
 	tcc_sdio_hw_disable_int(mmc, HwSDINT_EN_CDINT);
@@ -1283,14 +1280,16 @@ static void tcc_sdio_disable_card_int(struct mmc_host *mmc)
 
 static void tcc_mmc_enable_cd_irq(int cd_irq)
 {
-	if(!(cd_irq<0))
-	  enable_irq(cd_irq);
+	if (!(cd_irq<0)) {
+		enable_irq(cd_irq);
+	}
 }
 
 static void tcc_mmc_disable_cd_irq(int cd_irq)
 {
-	if(!(cd_irq<0))
-	  disable_irq_nosync(cd_irq);
+	if (!(cd_irq<0)) {
+		disable_irq_nosync(cd_irq);
+	}
 }
 
 static void tcc_mmc_check_status(struct tcc_mmc_host *host)
@@ -1298,43 +1297,53 @@ static void tcc_mmc_check_status(struct tcc_mmc_host *host)
 	unsigned int status = 0;
 	unsigned int irq_type = 0;
 	int ret = 0;
+	unsigned long flags;
 
-	if((host == NULL)||(host->mmc == NULL)) {
+	spin_lock_irqsave(&host->lock, flags);
+
+	if ((host == NULL) || (host->mmc == NULL)) {
 		printk(KERN_WARNING "[WARN][SDHC] [mmc:NULL] %s(host:%x, host->mmc:%x)\n", __func__, (u32)host, (u32)(host->mmc));
-		return;// -EHOSTDOWN;
+		spin_unlock_irqrestore(&host->lock, flags);
+		return; /* -EHOSTDOWN */
 	}
 
 	status = tcc_mmc_get_cd(host->mmc);
 
 	TCC_SDHC_DBG(DEBUG_LEVEL_CD, host->controller_id, "status : %d, card_inserted : %d\n", status, host->card_inserted);
-
-	if(host->card_inserted == status)
-	{
+	if (host->card_inserted == status) {
 		TCC_SDHC_DBG(DEBUG_LEVEL_CD, host->controller_id, "card_inserted and status are same...cancel cd_irq\n");
+		spin_unlock_irqrestore(&host->lock, flags);
 		return;
 	}
 
-	if(host->card_inserted ^ status)
-	{
-		if(status) // insert
-		{
+	if (host->card_inserted ^ status) {
+		host->card_inserted = status;
+
+		if (status) {
+			/* insert */
 			mmc_detect_change(host->mmc, msecs_to_jiffies(1000));
-		}
-		else // remove
-		{
+		} else {
+			/* remove */
 			mmc_detect_change(host->mmc, 0);
 		}
-		host->card_inserted = status;
 
 		irq_type = irqd_get_trigger_type(irq_get_irq_data(host->cd_irq));
 		irq_type ^= (IRQF_TRIGGER_HIGH | IRQF_TRIGGER_LOW);
-		ret = irq_set_irq_type(host->cd_irq, irq_type);
 
-		if (ret)
-		{
+		if ((status == 1 && (irq_type & IRQF_TRIGGER_LOW)) ||
+				(status == 0 && (irq_type & IRQF_TRIGGER_HIGH))) {
+			printk(KERN_WARNING "[WARN][SDHC] [%s] warn! insrt %d sts %d irq_type 0x%x\n",
+					mmc_hostname(host->mmc), host->card_inserted, status, irq_type);
+			irq_type ^= (IRQF_TRIGGER_HIGH | IRQF_TRIGGER_LOW);
+		}
+
+		ret = irq_set_irq_type(host->cd_irq, irq_type);
+		if (ret) {
 			TCC_SDHC_DBG(DEBUG_LEVEL_CD, host->controller_id, "%s : error setting irq type\n", __func__);
 		}
 	}
+
+	spin_unlock_irqrestore(&host->lock, flags);
 }
 
 /*
@@ -1343,18 +1352,10 @@ static void tcc_mmc_check_status(struct tcc_mmc_host *host)
 static irqreturn_t tcc_mmc_cd_irq(int irq, void *dev_id)
 {
 	struct tcc_mmc_host *host = (struct tcc_mmc_host *)dev_id;
-	unsigned long flags;
 
-	if(host)
-	{
+	if (host) {
 		tcc_mmc_disable_cd_irq(host->cd_irq);
-
-		spin_lock_irqsave(&host->lock, flags);
-
 		tcc_mmc_check_status(host);
-
-		spin_unlock_irqrestore(&host->lock, flags);
-
 		tcc_mmc_enable_cd_irq(host->cd_irq);
 	}
 
@@ -1364,9 +1365,9 @@ static irqreturn_t tcc_mmc_cd_irq(int irq, void *dev_id)
 
 static void tcc_mmc_cmd_irq(struct tcc_mmc_host *host, u32 intmask)
 {
-	if(host == NULL) {
+	if (host == NULL) {
 		printk(KERN_WARNING "[WARN][SDHC] [mmc:NULL] %s(host:%x)\n", __func__, (u32)host);
-		return;// -EHOSTDOWN;
+		return; /* -EHOSTDOWN */
 	}
 
 	BUG_ON(intmask == 0);
@@ -1394,9 +1395,9 @@ static void tcc_mmc_cmd_irq(struct tcc_mmc_host *host, u32 intmask)
 
 static void tcc_mmc_data_irq(struct tcc_mmc_host *host, u32 intmask)
 {
-	if(host == NULL) {
+	if (host == NULL) {
 		printk(KERN_WARNING "[WARN][SDHC] [mmc:NULL] %s(host:%x)\n", __func__, (u32)host);
-		return;// -EHOSTDOWN;
+		return; /* -EHOSTDOWN */
 	}
 
 	BUG_ON(intmask == 0);
@@ -1406,8 +1407,9 @@ static void tcc_mmc_data_irq(struct tcc_mmc_host *host, u32 intmask)
 		 * A data end interrupt is sent together with the response
 		 * for the stop command.
 		 */
-		if (intmask & HwSDINT_STATUS_TDONE)
+		if (intmask & HwSDINT_STATUS_TDONE) {
 			return;
+		}
 
 		printk(KERN_ERR "[ERROR][SDHC] %s: Got data interrupt 0x%08x even "
 				"though no data operation was in progress.\n",
@@ -1436,9 +1438,9 @@ static void tcc_mmc_data_irq(struct tcc_mmc_host *host, u32 intmask)
 		 * boundaries, but as we can't disable the feature
 		 * we need to at least restart the transfer.
 		 */
-		//if (intmask & HwSDINT_STATUS_DMA){
-		//	mmc_writel(host, mmc_readl(host, TCCSDHC_DMA_ADDRESS), TCCSDHC_DMA_ADDRESS);
-		//}
+		if (intmask & HwSDINT_STATUS_DMA){
+			mmc_writel(host, mmc_readl(host, TCCSDHC_DMA_ADDRESS), TCCSDHC_DMA_ADDRESS);
+		}
 
 		if (intmask & HwSDINT_STATUS_TDONE) {
 			if (host->cmd) {
@@ -1465,9 +1467,9 @@ static irqreturn_t tcc_mmc_interrupt_handler(int irq, void *dev_id)
 	unsigned int errstat;
 	unsigned int cmd;
 
-	if(host == NULL) {
+	if (host == NULL) {
 		printk(KERN_WARNING "[WARN][SDHC] [mmc:NULL] %s(host:%x)\n", __func__, (u32)host);
-		return IRQ_HANDLED;// -EHOSTDOWN;
+		return IRQ_HANDLED;
 	}
 
 	spin_lock_irqsave(&host->lock, flags);
@@ -1479,8 +1481,7 @@ static irqreturn_t tcc_mmc_interrupt_handler(int irq, void *dev_id)
 		goto out;
 	}
 
-	if (IntStatus & TCCSDHC_INT_ERR)
-	{
+	if (IntStatus & TCCSDHC_INT_ERR) {
 		TCC_SDHC_DBG(DEBUG_LEVEL_IRQ, host->controller_id, "[Interrupt Error (%s)] ", mmc_hostname(host->mmc));
 		TCC_SDHC_DBG(DEBUG_LEVEL_IRQ, host->controller_id, "Normal Interrupt : 0x%08x ", IntStatus);
 		TCC_SDHC_DBG(DEBUG_LEVEL_IRQ, host->controller_id, "ACMD12 : 0x%08x\n",
@@ -1491,14 +1492,13 @@ static irqreturn_t tcc_mmc_interrupt_handler(int irq, void *dev_id)
 				mmc_readl(host, TCCSDHC_RESPONSE10));
 	}
 
-	if(IntStatus & HwSDINT_EN_RDRDY) {
+	if (IntStatus & HwSDINT_EN_RDRDY) {
 		cmd = TCC_MMC_GET_CMD(mmc_readl(host, TCCSDHC_TMODE_COM));
 		if (cmd == MMC_SEND_TUNING_BLOCK ||
 				cmd == MMC_SEND_TUNING_BLOCK_HS200) {
 			tcc_mmc_read_block_pio(host);
 #if defined(CONFIG_ARCH_TCC897X)
-			tcc_sw_reset(host, HwSD_SRESET_RSTCMD);
-			tcc_sw_reset(host, HwSD_SRESET_RSTDAT);
+			tcc_sw_reset(host, HwSD_SRESET_RSTCMD | HwSD_SRESET_RSTDAT);
 #endif
 			host->tuning_done = 1;
 			wake_up(&host->buf_ready_int);
@@ -1507,20 +1507,20 @@ static irqreturn_t tcc_mmc_interrupt_handler(int irq, void *dev_id)
 
 	if (IntStatus & HwSDINT_CMD_MASK) {
 		mmc_writel(host, IntStatus & HwSDINT_CMD_MASK,
-			   TCCSDHC_INT_STATUS);
+				TCCSDHC_INT_STATUS);
 		tcc_mmc_cmd_irq(host, IntStatus & HwSDINT_CMD_MASK);
 	}
 
 	if (IntStatus & HwSDINT_DATA_MASK) {
 		mmc_writel(host, IntStatus & HwSDINT_DATA_MASK,
-			   TCCSDHC_INT_STATUS);
+				TCCSDHC_INT_STATUS);
 		tcc_mmc_data_irq(host, IntStatus & HwSDINT_DATA_MASK);
 	}
 
 	IntStatus &= ~(HwSDINT_CMD_MASK |HwSDINT_DATA_MASK);
 	IntStatus &= ~HwSDINT_STATUS_ERR;
 
-	if(IntStatus & HwSDINT_STATUS_CDINT) {
+	if (IntStatus & HwSDINT_STATUS_CDINT) {
 		cardint =1;
 	}
 
@@ -1529,14 +1529,14 @@ static irqreturn_t tcc_mmc_interrupt_handler(int irq, void *dev_id)
 	IntStatus &= ~HwSDINT_STATUS_CDINT;
 
 	if (IntStatus) {
-		if(!(IntStatus & (HwSDINT_STATUS_CDOUT | HwSDINT_STATUS_CDIN)))
-		{
+		if (!(IntStatus & (HwSDINT_STATUS_CDOUT | HwSDINT_STATUS_CDIN))) {
 			TCC_SDHC_DBG(DEBUG_LEVEL_IRQ, host->controller_id, "%s: Unexpected interrupt 0x%08x.\n", mmc_hostname(host->mmc), IntStatus);
 			tcc_mmc_dumpregs(host);
 		}
 
-		if(IntStatus & HwSDINT_STATUS_ACMD){
-			errstat = mmc_readl(host, TCCSDHC_ACMD12_ERR); // clear AMCD error status register
+		if (IntStatus & HwSDINT_STATUS_ACMD) {
+			/* clear AMCD error status register */
+			errstat = mmc_readl(host, TCCSDHC_ACMD12_ERR);
 		}
 		mmc_writel(host, IntStatus, TCCSDHC_INT_STATUS);
 	}
@@ -1569,13 +1569,14 @@ static void tcc_enable_sdio_irq(struct mmc_host *mmc, int enable)
 #define DEBUG_AUTO_TUNING 0
 static int tcc_mmc_execute_tuning(struct mmc_host *mmc, u32 opcode)
 {
- 	struct tcc_mmc_host *host = mmc_priv(mmc);
+	struct tcc_mmc_host *host = mmc_priv(mmc);
 	uint32_t reg = 0, tuning_status = 0;
 	int err = 0;
 	int tuning_count = MAX_LOOP;
 	unsigned int timeout = 0;
 	u8 blksz = 0;
 	u8 *blocks;
+	unsigned int chctrl_delay = 0;
 	struct scatterlist sg;
 	const u8 *tuning_data;
 
@@ -1583,7 +1584,7 @@ static int tcc_mmc_execute_tuning(struct mmc_host *mmc, u32 opcode)
 	spin_lock(&host->lock);
 
 #if defined(CONFIG_ARCH_TCC898X)
-	if(system_rev < 0x0002) {
+	if (system_rev < 0x0002) {
 		TCC_SDHC_DBG(DEBUG_LEVEL_TUNING, host->controller_id, "%s: TCC898X_rev0 and rev1 can't execute auto tuning.\n", mmc_hostname(host->mmc));
 		printk(KERN_INFO "[INFO][SDHC] [%s] Manual tuning is required.\n", __func__);
 
@@ -1610,24 +1611,24 @@ static int tcc_mmc_execute_tuning(struct mmc_host *mmc, u32 opcode)
 	}
 #endif
 
-    switch (opcode) {
-		case MMC_SEND_TUNING_BLOCK_HS200:
-			if (mmc->ios.bus_width == MMC_BUS_WIDTH_8) {
-				blksz = sizeof(tuning_blk_pattern_8bit);
-				tuning_data = tuning_blk_pattern_8bit;
-			} else if (mmc->ios.bus_width == MMC_BUS_WIDTH_4) {
-				blksz = sizeof(tuning_blk_pattern_4bit);
-				tuning_data = tuning_blk_pattern_4bit;
-			}
-			break;
-		case MMC_SEND_TUNING_BLOCK:
+	switch (opcode) {
+	case MMC_SEND_TUNING_BLOCK_HS200:
+		if (mmc->ios.bus_width == MMC_BUS_WIDTH_8) {
+			blksz = sizeof(tuning_blk_pattern_8bit);
+			tuning_data = tuning_blk_pattern_8bit;
+		} else if (mmc->ios.bus_width == MMC_BUS_WIDTH_4) {
 			blksz = sizeof(tuning_blk_pattern_4bit);
 			tuning_data = tuning_blk_pattern_4bit;
-			break;
-		default:
-			spin_unlock(&host->lock);
-			enable_irq(host->irq);
-			return 0;
+		}
+		break;
+	case MMC_SEND_TUNING_BLOCK:
+		blksz = sizeof(tuning_blk_pattern_4bit);
+		tuning_data = tuning_blk_pattern_4bit;
+		break;
+	default:
+		spin_unlock(&host->lock);
+		enable_irq(host->irq);
+		return 0;
 	}
 
 	host->is_in_tuning_mode = true;
@@ -1639,13 +1640,10 @@ static int tcc_mmc_execute_tuning(struct mmc_host *mmc, u32 opcode)
 	TCC_SDHC_DBG(DEBUG_LEVEL_TUNING, host->controller_id, "%s: DLY3 (0x%08x)\n", mmc_hostname(host->mmc), readl(host->chctrl_base + TCCSDHC_CHCTRL_DLY3));
 	TCC_SDHC_DBG(DEBUG_LEVEL_TUNING, host->controller_id, "%s: DLY4 (0x%08x)\n", mmc_hostname(host->mmc), readl(host->chctrl_base + TCCSDHC_CHCTRL_DLY4));
 
-	reg = readl(host->chctrl_base + TCCSDHC_CHCTRL_TAPDLY);
-	reg &= ~(TCCSDHC_TAPDLY_TUNE_CNT(0x3F)); /* set count 16, 16*1.5=24 */
-	reg |= TCCSDHC_TAPDLY_TUNE_CNT(16);
-	writel(reg, host->chctrl_base + TCCSDHC_CHCTRL_TAPDLY);
-
-	TCC_SDHC_DBG(DEBUG_LEVEL_TUNING, host->controller_id, "%s: Init tap delay(0x%08x)\n",
-		mmc_hostname(host->mmc), readl(host->chctrl_base + TCCSDHC_CHCTRL_TAPDLY));
+	chctrl_delay = 0;
+	//writel(0x000A6100, host->chctrl_base);
+	writel(0x00106100, host->chctrl_base); /* set count 16, 16*1.5=24 */
+	TCC_SDHC_DBG(DEBUG_LEVEL_TUNING, host->controller_id, "%s: Init tap delay(0x%08x)\n", mmc_hostname(host->mmc), readl(host->chctrl_base + chctrl_delay));
 
 	reg = mmc_readl(host, TCCSDHC_ACMD12_ERR);
 	reg |= TCCSDHC_EXEC_TUNING;
@@ -1654,13 +1652,14 @@ static int tcc_mmc_execute_tuning(struct mmc_host *mmc, u32 opcode)
 	TCC_SDHC_DBG(DEBUG_LEVEL_TUNING, host->controller_id, "%s: Initial Host Control2 Reg(0x%08x)\n",
 			mmc_hostname(host->mmc), mmc_readl(host, TCCSDHC_ACMD12_ERR));
 
-	// Enable Buffer Read Ready bit
+	/* Enable Buffer Read Ready bit */
 	reg = mmc_readl(host, TCCSDHC_INT_ENABLE);
 	mmc_writel(host, reg | TCCSDHC_INT_DATA_AVAIL, TCCSDHC_INT_ENABLE);
 	reg = mmc_readl(host, TCCSDHC_SIGNAL_ENABLE);
 	mmc_writel(host, reg | TCCSDHC_INT_DATA_AVAIL, TCCSDHC_SIGNAL_ENABLE);
 
 	timeout = 150;
+	blocks = kmalloc(blksz, GFP_KERNEL);
 	do {
 		struct mmc_command cmd = {0};
 		struct mmc_request mrq = {NULL};
@@ -1675,17 +1674,18 @@ static int tcc_mmc_execute_tuning(struct mmc_host *mmc, u32 opcode)
 		cmd.data = &data;
 		cmd.error = 0;
 
- 		data.blksz = blksz;
+		data.blksz = blksz;
 		data.blocks = 1;
 		data.flags = MMC_DATA_READ;
 		data.sg = &sg;
 		data.sg_len = 1;
 
-		blocks = kmalloc(blksz, GFP_KERNEL);
+		memset(blocks, 0x0, blksz);
 		sg_init_one(&sg, blocks, blksz);
 
-		if (tuning_count-- == 0)
+		if (tuning_count-- == 0) {
 			break;
+		}
 
 		tuning_status = 0;
 
@@ -1709,7 +1709,7 @@ static int tcc_mmc_execute_tuning(struct mmc_host *mmc, u32 opcode)
 		disable_irq(host->irq);
 		spin_lock(&host->lock);
 
-		if(DEBUG_AUTO_TUNING) {
+		if (DEBUG_AUTO_TUNING) {
 			if (!memcmp(blocks, tuning_data, blksz))  {
 				TCC_SDHC_DBG(DEBUG_LEVEL_TUNING, host->controller_id, "%s: tuning data ok\n",
 						mmc_hostname(host->mmc));
@@ -1719,7 +1719,7 @@ static int tcc_mmc_execute_tuning(struct mmc_host *mmc, u32 opcode)
 			}
 		}
 
-		if(!host->tuning_done) {
+		if (!host->tuning_done) {
 			printk(KERN_ERR "[ERROR][SDHC] [%s] Timeout waiting for "
 					"Buffer Read Ready interrupt during tuninig "
 					"procedrue, falling back to fixed sampling "
@@ -1740,22 +1740,26 @@ static int tcc_mmc_execute_tuning(struct mmc_host *mmc, u32 opcode)
 
 		{
 #ifdef CONFIG_TCC_MMC_SDHC_DEBUG
-		unsigned int dbg2 =  readl(host->chctrl_base + TCCSDHC_CHCTRL_DBG2);
-		TCC_SDHC_DBG(DEBUG_LEVEL_TUNING, host->controller_id, "%s: dbg2 : 0x%08x\n",
-				mmc_hostname(host->mmc), dbg2);
-		TCC_SDHC_DBG(DEBUG_LEVEL_TUNING, host->controller_id, "%s: tuningfsm_count[5:0] : 0x%02x\n",
-				mmc_hostname(host->mmc), ((dbg2 >> 3) & 0x3f));
-		TCC_SDHC_DBG(DEBUG_LEVEL_TUNING, host->controller_id, "%s: tuningfsm_numseqmatch[5:0] : 0x%02x\n",
-				mmc_hostname(host->mmc), ((dbg2 >> 9) & 0x3f));
+			unsigned int dbg2 =  readl(host->chctrl_base + TCCSDHC_CHCTRL_DBG2);
+			TCC_SDHC_DBG(DEBUG_LEVEL_TUNING, host->controller_id, "%s: dbg2 : 0x%08x\n",
+					mmc_hostname(host->mmc), dbg2);
+			TCC_SDHC_DBG(DEBUG_LEVEL_TUNING, host->controller_id, "%s: tuningfsm_count[5:0] : 0x%02x\n",
+					mmc_hostname(host->mmc), ((dbg2 >> 3) & 0x3f));
+			TCC_SDHC_DBG(DEBUG_LEVEL_TUNING, host->controller_id, "%s: tuningfsm_numseqmatch[5:0] : 0x%02x\n",
+					mmc_hostname(host->mmc), ((dbg2 >> 9) & 0x3f));
 #endif
-		TCC_SDHC_DBG(DEBUG_LEVEL_TUNING, host->controller_id, "%s: [%d] ACMD12_ERR : 0x%08x\n\n",
-				mmc_hostname(host->mmc), tuning_count, tuning_status);
+			TCC_SDHC_DBG(DEBUG_LEVEL_TUNING, host->controller_id, "%s: [%d] ACMD12_ERR : 0x%08x\n\n",
+					mmc_hostname(host->mmc), tuning_count, tuning_status);
 		}
 
+		host->cmd = NULL;
+		host->mrq = NULL;
+		host->data = NULL;
 		host->tuning_done = 0;
 
-		if(opcode == MMC_SEND_TUNING_BLOCK)
+		if (opcode == MMC_SEND_TUNING_BLOCK) {
 			mdelay(1);
+		}
 	} while (tuning_status & TCCSDHC_EXEC_TUNING);
 
 	if (tuning_count < 0) {
@@ -1771,17 +1775,13 @@ static int tcc_mmc_execute_tuning(struct mmc_host *mmc, u32 opcode)
 		err = -EIO;
 	}
 out:
+	kfree(blocks);
+
 	TCC_SDHC_DBG(DEBUG_LEVEL_TUNING, host->controller_id, "%s: Last Host Control2(0x%08x)\n",
 			mmc_hostname(host->mmc), mmc_readl(host, TCCSDHC_ACMD12_ERR));
 
-	if(host->auto_tune_rtl_base) {
-		reg = readl(host->auto_tune_rtl_base);
-		reg = (reg >> (8 * host->controller_id)) & 0x3F;
-		TCC_SDHC_DBG(DEBUG_LEVEL_TUNING, host->controller_id, "%s: tcc auto tune result 0x%x\n",
-			__func__, reg);
-	}
-
 	host->is_in_tuning_mode = false;
+	host->mmc->retune_period = MAX_LOOP;
 
 	spin_unlock(&host->lock);
 	enable_irq(host->irq);
@@ -1789,7 +1789,12 @@ out:
 	return err;
 }
 
-#else // TCC897X
+#else /* TCC897X */
+struct tcc_mmc_tune_window {
+	unsigned int start;
+	unsigned int end;
+	unsigned int width;
+};
 
 #define MAX_LOOP 40
 static int tcc_mmc_execute_tuning(struct mmc_host *mmc, u32 opcode)
@@ -1807,23 +1812,28 @@ static int tcc_mmc_execute_tuning(struct mmc_host *mmc, u32 opcode)
 	struct scatterlist sg;
 	unsigned int chctrl_delay = 0;
 	const u8 *tuning_data;
+	struct tcc_mmc_tune_window windows[20];
+	struct tcc_mmc_tune_window *cur_window;
+	unsigned int i, window_count;
+
+	memset(windows, 0, sizeof(struct tcc_mmc_tune_window) * 20);
 
 	disable_irq(host->irq);
 	spin_lock(&host->lock);
 
 	switch (opcode) {
-		case MMC_SEND_TUNING_BLOCK_HS200:
-			blksz = sizeof(tuning_blk_pattern_8bit);
-			tuning_data = tuning_blk_pattern_8bit;
-			break;
-		case MMC_SEND_TUNING_BLOCK:
-			blksz = sizeof(tuning_blk_pattern_4bit);
-			tuning_data = tuning_blk_pattern_4bit;
-			break;
-		default:
-			spin_unlock(&host->lock);
-			enable_irq(host->irq);
-			return 0;
+	case MMC_SEND_TUNING_BLOCK_HS200:
+		blksz = sizeof(tuning_blk_pattern_8bit);
+		tuning_data = tuning_blk_pattern_8bit;
+		break;
+	case MMC_SEND_TUNING_BLOCK:
+		blksz = sizeof(tuning_blk_pattern_4bit);
+		tuning_data = tuning_blk_pattern_4bit;
+		break;
+	default:
+		spin_unlock(&host->lock);
+		enable_irq(host->irq);
+		return 0;
 	}
 
 	host->is_in_tuning_mode = true;
@@ -1847,7 +1857,7 @@ static int tcc_mmc_execute_tuning(struct mmc_host *mmc, u32 opcode)
 	TCC_SDHC_DBG(DEBUG_LEVEL_TUNING, host->controller_id, "%s: Initial Host Control2 Reg(0x%08x)\n",
 			mmc_hostname(host->mmc), mmc_readl(host, TCCSDHC_ACMD12_ERR));
 
-	// Enable Buffer Read Ready bit
+	/* Enable Buffer Read Ready bit */
 	reg = mmc_readl(host, TCCSDHC_INT_ENABLE);
 	mmc_writel(host, reg | TCCSDHC_INT_DATA_AVAIL, TCCSDHC_INT_ENABLE);
 	reg = mmc_readl(host, TCCSDHC_SIGNAL_ENABLE);
@@ -1857,6 +1867,9 @@ static int tcc_mmc_execute_tuning(struct mmc_host *mmc, u32 opcode)
 			mmc_hostname(host->mmc), mmc_readl(host, TCCSDHC_INT_ENABLE));
 
 	timeout = 150;
+	window_count = 0;
+	cur_window = NULL;
+	blocks = kmalloc(blksz, GFP_KERNEL);
 	do {
 		tuning_status = 0;
 
@@ -1875,10 +1888,10 @@ static int tcc_mmc_execute_tuning(struct mmc_host *mmc, u32 opcode)
 		data.sg = &sg;
 		data.sg_len = 1;
 
-		blocks = kmalloc(blksz, GFP_KERNEL);
+		memset(blocks, 0x0, blksz);
 		sg_init_one(&sg, blocks, blksz);
 
-		//printk(KERN_DEBUG "[DEBUG][SDHC] blocks : %d, blksz : %d\n", blocks, blksz);
+		//printk("blocks : %d, blksz : %d\n", blocks, blksz);
 
 		mrq.cmd = &cmd;
 		mrq.data = &data;
@@ -1897,41 +1910,108 @@ static int tcc_mmc_execute_tuning(struct mmc_host *mmc, u32 opcode)
 		disable_irq(host->irq);
 		spin_lock(&host->lock);
 
-		if (!memcmp(blocks, tuning_data, blksz))  {
-			highest_delay = tuning_count;
-			if (lowest_delay == 0)
-				lowest_delay = tuning_count;
-		} else {
-			asm ("nop");
-		}
-
-		if(!host->tuning_done) {
+		if (!host->tuning_done) {
 			printk(KERN_ERR "[ERROR][SDHC] [%s] Timeout waiting for "
 					"Buffer Read Ready interrupt during tuninig "
 					"procedrue, falling back to fixed sampling "
 					"clock\n", __func__);
-			err = 0;
+
+			err = -EIO;
 			host->cmd = NULL;
 			host->mrq = NULL;
 			host->data = NULL;
+			tcc_sw_reset(host, HwSD_SRESET_RSTCMD | HwSD_SRESET_RSTDAT);
+
 			goto out;
+		}
+
+		/* Find windows */
+		if (!memcmp(blocks, tuning_data, blksz))  {
+			/* if data is same as pattern */
+			if (cur_window == NULL) {
+				cur_window = &windows[window_count];
+				cur_window->start = tuning_count;
+				window_count++;
+			}
+			cur_window->end = tuning_count;
+			cur_window->width = cur_window->end - cur_window->start + 1;
+		} else {
+			/* if data is different from pattern */
+			cur_window = NULL;
 		}
 
 		tuning_status = mmc_readl(host, TCCSDHC_ACMD12_ERR);
 
 		host->cmd = NULL;
 		host->mrq = NULL;
+		host->data = NULL;
 		host->tuning_done = 0;
 		tuning_count++;
 
-		//if(opcode == MMC_SEND_TUNING_BLOCK)
-			//mdelay(1);
+		if (opcode == MMC_SEND_TUNING_BLOCK) {
+			mdelay(1);
+		}
 	} while (tuning_status & 0x00400000);
 
-out:
-	avg_delay = (lowest_delay + highest_delay) / 2;
-	TCC_SDHC_DBG(DEBUG_LEVEL_TUNING, host->controller_id, "%s: avg_delay(%d), lowest_delay(%d), highest_delay(%d)\n",
+	/* Select tap delay */
+	if (window_count == 0) {
+		/* if there is not window, set delay tap to zero and return error */
+		printk(KERN_ERR "[ERROR][SDHC] %s: failed to find windows\n", mmc_hostname(host->mmc));
+		avg_delay = 0;
+		err = -EIO;
+	} else {
+		if (window_count > 1) {
+			if ((windows[0].start == 0) &&
+					(windows[window_count-1].end == tuning_count - 1)) {
+				/* Merge Window */
+				windows[window_count].start = windows[window_count-1].start;
+				windows[window_count].end = windows[0].end + tuning_count;
+				windows[window_count].width = windows[window_count].end - windows[window_count].start + 1;
+				window_count++;
+
+				TCC_SDHC_DBG(DEBUG_LEVEL_TUNING, host->controller_id, "%s:  ## merging window...\n",
+						mmc_hostname(host->mmc));
+				TCC_SDHC_DBG(DEBUG_LEVEL_TUNING, host->controller_id, "%s:  ## top: window[0] s %d e %d w %d\n",
+						mmc_hostname(host->mmc), windows[0].start, windows[0].end, windows[0].width);
+				TCC_SDHC_DBG(DEBUG_LEVEL_TUNING, host->controller_id, "%s:  ## bottom: window[%d] s %d e %d w %d\n",
+						mmc_hostname(host->mmc), window_count-1,
+						windows[window_count - 1].start,
+						windows[window_count - 1].end,
+						windows[window_count - 1].width);
+			}
+		}
+
+		TCC_SDHC_DBG(DEBUG_LEVEL_TUNING, host->controller_id,
+				"%s: total tuning count %d / window count %d\n", mmc_hostname(host->mmc),
+				tuning_count, window_count);
+
+		/* Select the Widest Window */
+		cur_window = NULL;
+		for (i = 0; i< window_count; i++) {
+			if (i == 0) {
+				cur_window = &windows[i];
+			} else {
+				if (cur_window->width < windows[i].width) {
+					cur_window = &windows[i];
+				}
+			}
+			TCC_SDHC_DBG(DEBUG_LEVEL_TUNING, host->controller_id,
+					"%s: windows[%d] start %d end %d width %d\n",
+					mmc_hostname(host->mmc), i,
+					windows[i].start, windows[i].end, windows[i].width);
+		}
+
+		lowest_delay = cur_window->start;
+		highest_delay = cur_window->end;
+
+		/* Select Tap */
+		avg_delay = ((lowest_delay + highest_delay) / 2) % tuning_count;
+	}
+
+	TCC_SDHC_DBG(DEBUG_LEVEL_TUNING, host->controller_id,
+			"%s: avg_delay(%d), lowest_delay(%d), highest_delay(%d)\n",
 			mmc_hostname(host->mmc), avg_delay, lowest_delay, highest_delay);
+
 	reg = readl(host->chctrl_base + chctrl_delay);
 	reg &= ~(0x3f);
 	reg |= avg_delay;
@@ -1943,7 +2023,15 @@ out:
 	TCC_SDHC_DBG(DEBUG_LEVEL_TUNING, host->controller_id, "%s: Host Control2(0x%08x)\n",
 			mmc_hostname(host->mmc), mmc_readl(host, TCCSDHC_ACMD12_ERR));
 
+out:
+	kfree(blocks);
+	if (err) {
+		tuning_status &= ~TCCSDHC_TUNED_CLOCK;
+		mmc_writel(host, tuning_status, TCCSDHC_ACMD12_ERR);
+	}
+
 	host->is_in_tuning_mode = false;
+	host->mmc->retune_period = MAX_LOOP;
 
 	spin_unlock(&host->lock);
 	enable_irq(host->irq);
@@ -1957,26 +2045,33 @@ static int get_sdr_mode(struct tcc_mmc_host *host)
 	u32 caps = host->mmc->caps;
 	u32 caps2 = host->mmc->caps2;
 
-	if((caps2 & MMC_CAP2_HS200) ||
-		(caps & MMC_CAP_UHS_SDR104)) {
-		//TCC_SDHC_DBG(DEBUG_LEVEL_INFO, "%s: MMC_CAP2_HS200/MMC_CAP_UHS_SDR104 is enabled.\n", mmc_hostname(host->mmc));
-		return 0x000B0000;
-	} else if (caps & MMC_CAP_UHS_SDR12) {
+	if (caps & MMC_CAP_UHS_SDR12) {
 		//TCC_SDHC_DBG(DEBUG_LEVEL_INFO, "%s: MMC_CAP_UHS_SDR12 is enabled.\n", mmc_hostname(host->mmc));
 		return 0x00080000;
-	} else if (caps & MMC_CAP_UHS_SDR25) {
+	}
+	if (caps & MMC_CAP_UHS_SDR25) {
 		//TCC_SDHC_DBG(DEBUG_LEVEL_INFO, "%s: MMC_CAP_UHS_SDR25 is enabled.\n", mmc_hostname(host->mmc));
 		return 0x00190000;
-	} else if (caps & MMC_CAP_UHS_SDR50) {
+	}
+	if (caps & MMC_CAP_UHS_SDR50) {
 		//TCC_SDHC_DBG(DEBUG_LEVEL_INFO, "%s: MMC_CAP_UHS_SDR50 is enabled.\n", mmc_hostname(host->mmc));
 		return 0x002A0000;
-	} else if (caps & MMC_CAP_UHS_DDR50) {
+	}
+	if (caps & MMC_CAP_UHS_SDR104) {
+		//TCC_SDHC_DBG(DEBUG_LEVEL_INFO, "%s: MMC_CAP_UHS_SDR104 is enabled.\n", mmc_hostname(host->mmc));
+		return 0x000B0000;
+	}
+	if (caps & MMC_CAP_UHS_DDR50) {
 		/* In case of DDR50 for SD UHS-I card,
 		 * just enable 1.8v signaling bit here.
 		 * UHS mode has to be enabled when DDR timing(MMC_TIMING_UHS_DDR50) is started.
 		 */
 		//TCC_SDHC_DBG(DEBUG_LEVEL_INFO, "%s: MMC_CAP_UHS_DDR50 is enabled.\n", mmc_hostname(host->mmc));
 		return 0x00080000;
+	}
+	if (caps2 & MMC_CAP2_HS200) {
+		//TCC_SDHC_DBG(DEBUG_LEVEL_INFO, "%s: MMC_CAP2_HS200 is enabled.\n", mmc_hostname(host->mmc));
+		return 0x000B0000;
 	}
 
 	return 0;
@@ -1989,12 +2084,11 @@ static int tcc_mmc_start_signal_voltage_switch(struct mmc_host *mmc,
 	uint32_t temp_reg, temp_val;
 	long dwMaxClockRate = host->peri_clk;
 	int i=0;
-	int ret;
 	u32 clk_div = 0;
 
-	if ((ios->signal_voltage != MMC_SIGNAL_VOLTAGE_180) &&
-		(ios->signal_voltage != MMC_SIGNAL_VOLTAGE_330))
+	if (ios->signal_voltage != MMC_SIGNAL_VOLTAGE_180) {
 		return 0;
+	}
 
 	temp_reg = mmc_readl(host, TCCSDHC_CLOCK_CONTROL);
 	temp_reg &= ~HwSDCLKSEL_SCK_EN;
@@ -2004,84 +2098,61 @@ static int tcc_mmc_start_signal_voltage_switch(struct mmc_host *mmc,
 	temp_val &= ~HwSD_POWER_POW;
 	mmc_writew(host, temp_val, TCCSDHC_HOST_CONTROL);
 
-	if(ios-> clock == 0)
+	if (ios-> clock == 0) {
 		ios->clock = 400000;
-	if (ios->clock != 0)
-	{
+	}
+	if (ios->clock != 0) {
 		temp_reg = mmc_readl(host, TCCSDHC_CLOCK_CONTROL);
 		mmc_writew(host, temp_reg & (~HwSDCLKSEL_SCK_EN | ~HwSDCLKSEL_INCLK_EN),
-			   TCCSDHC_CLOCK_CONTROL);
+				TCCSDHC_CLOCK_CONTROL);
 
-		mmc_writel(host, get_sdr_mode(host),
-				TCCSDHC_ACMD12_ERR);
-		if (ios->signal_voltage == MMC_SIGNAL_VOLTAGE_180)
-		{
-			if(gpio_is_valid(host->tcc_hw.vctrl_gpio)) {
+		if (ios->signal_voltage == MMC_SIGNAL_VOLTAGE_180) {
+			mmc_writel(host, get_sdr_mode(host),
+					TCCSDHC_ACMD12_ERR);
+			if (gpio_is_valid(host->tcc_hw.vctrl_gpio)) {
 				tcc_mmc_gpio_set_value(host->tcc_hw.vctrl_gpio, 0);
 				TCC_SDHC_DBG(DEBUG_LEVEL_INFO, host->controller_id, "%s: vctrl(%d)\n",
 						mmc_hostname(host->mmc), tcc_mmc_gpio_get_value(host->tcc_hw.vctrl_gpio));
-				mdelay(15); // [Timing] Host keeps SDCLK low at least 5 ms.
-			} else if(!IS_ERR(mmc->supply.vqmmc)) {
-				mmc_regulator_set_vqmmc(host->mmc, ios);
-				TCC_SDHC_DBG(DEBUG_LEVEL_INFO, host->controller_id, "%s: set vqmmc as 1.8v\n",
-						mmc_hostname(host->mmc));
-			} else {
-				mdelay(15); // [Timing] Host keeps SDCLK low at least 5 ms.
 			}
+			mdelay(15); /* [Timing] Host keeps SDCLK low at least 5 ms. */
 		}
 
-		if (ios->signal_voltage == MMC_SIGNAL_VOLTAGE_330)
-		{
-			if(gpio_is_valid(host->tcc_hw.vctrl_gpio)) {
-				tcc_mmc_gpio_set_value(host->tcc_hw.vctrl_gpio, 1);
-				TCC_SDHC_DBG(DEBUG_LEVEL_INFO, host->controller_id, "%s: vctrl(%d)\n",
-						mmc_hostname(host->mmc), tcc_mmc_gpio_get_value(host->tcc_hw.vctrl_gpio));
-				mdelay(15); // [Timing] Host keeps SDCLK low at least 5 ms.
-			} else if(!IS_ERR(mmc->supply.vqmmc)) {
-				mmc_regulator_set_vqmmc(host->mmc, ios);
-				TCC_SDHC_DBG(DEBUG_LEVEL_INFO, host->controller_id, "%s: set vqmmc as 3.3v\n",
-						mmc_hostname(host->mmc));
-			} else {
-				mdelay(15); // [Timing] Host keeps SDCLK low at least 5 ms.
-			}
-		}
-
-		/*tcc_hw_set_high_speed(mmc, 1);*/
+		/* tcc_hw_set_high_speed(mmc, 1); */
 		/* shift MaxClockRate until we find the closest frequency <= target */
 		while ((ios->clock < dwMaxClockRate)) {
 			dwMaxClockRate = dwMaxClockRate >> 1;
 			i++;
 		}
 
-		if(i==0)
+		if (i==0) {
 			clk_div = 0;
-		else
+		} else {
 			clk_div = 1<<(i-1);
+		}
 
-		host->clk_div = clk_div;	/* store divider */
+		host->clk_div = clk_div; /* store divider */
 
- 		if(clk_div <= 128)
-		{
+ 		if (clk_div <= 128) {
 			mmc_writew(host, (clk_div << 8) | HwSDCLKSEL_INCLK_EN,
 				TCCSDHC_CLOCK_CONTROL);
-		}
-		else // use extend SDCLKSEL register
-		{
-			if(clk_div > 1023)
+		} else {
+			/* use extend SDCLKSEL register */
+			if (clk_div > 1023) {
 				host->clk_div = clk_div = 1023;
+			}
 
 			mmc_writew(host, ((clk_div & 0xFF) << 8) | ((clk_div & 0x300) >> 2) | HwSDCLKSEL_INCLK_EN,
-				TCCSDHC_CLOCK_CONTROL);
+					TCCSDHC_CLOCK_CONTROL);
 		}
 
 		while (!(mmc_readl(host, TCCSDHC_CLOCK_CONTROL) &
-				HwSDCLKSEL_INCLK_STABLE)) {
+					HwSDCLKSEL_INCLK_STABLE)) {
 			udelay(100);
 		}
 
 		temp_reg = mmc_readl(host, TCCSDHC_CLOCK_CONTROL);
 		mmc_writew(host, temp_reg | (HwSDCLKSEL_SCK_EN),
-			   TCCSDHC_CLOCK_CONTROL);
+				TCCSDHC_CLOCK_CONTROL);
 		udelay(100);
 	}
 
@@ -2092,16 +2163,15 @@ static int tcc_mmc_start_signal_voltage_switch(struct mmc_host *mmc,
 	return 0;
 }
 
-static int tcc_mmc_select_drive_strength(struct mmc_card *card,
-                                         unsigned int max_dtr, int host_drv,
-                                         int card_drv, int *drv_type)
-
+int tcc_mmc_select_drive_strength(struct mmc_card *card,
+		unsigned int max_dtr, int host_drv,
+		int card_drv, int *drv_type)
 {
 	/*
-	 * #define SD_DRIVER_TYPE_B	0x01
-	 * #define SD_DRIVER_TYPE_A	0x02
-	 * #define SD_DRIVER_TYPE_C	0x04
-	 * #define SD_DRIVER_TYPE_D	0x08
+	 * #define SD_DRIVER_TYPE_B 0x01
+	 * #define SD_DRIVER_TYPE_A 0x02
+	 * #define SD_DRIVER_TYPE_C 0x04
+	 * #define SD_DRIVER_TYPE_D 0x08
 	 *
 	 * Return Value for Drive Strength
 	 * SDR12 - Default /Type B - Func 0x0
@@ -2140,8 +2210,7 @@ static int tcc_mmc_card_busy(struct mmc_host *mmc)
 	u32 present_state;
 	present_state = mmc_readl(host, TCCSDHC_PRESENT_STATE);
 
-	/* Check whether DATA line is activated */
-	return !(present_state & BIT(20));
+	return !(present_state & 0x00F00000);
 }
 
 static struct mmc_host_ops tcc_mmc_ops = {
@@ -2168,14 +2237,14 @@ static void tcc_mmc_tasklet_finish(unsigned long param)
 
 	host = (struct tcc_mmc_host *)param;
 
-	if(host == NULL) {
+	if (host == NULL) {
 		printk(KERN_WARNING "[WARN][SDHC] [mmc:NULL] %s(host:%x)\n", __func__, (u32)host);
-		return;// -EHOSTDOWN;
+		return; /* -EHOSTDOWN */
 	}
 
 	spin_lock_irqsave(&host->lock, flags);
 
-	if(!host->mrq) {
+	if (!host->mrq) {
 		spin_unlock_irqrestore(&host->lock, flags);
 		return;
 	}
@@ -2190,15 +2259,13 @@ static void tcc_mmc_tasklet_finish(unsigned long param)
 	 */
 	if (mrq->cmd->error ||
 			(mrq->data && (mrq->data->error ||
-						   (mrq->data->stop && mrq->data->stop->error)))) {
+				       (mrq->data->stop && mrq->data->stop->error)))) {
 
 		tcc_mmc_dumpregs(host);
 		/* Spec says we should do both at the same time, but Ricoh
 		   controllers do not like that. */
-		tcc_sw_reset(host, HwSD_SRESET_RSTCMD);
-		tcc_sw_reset(host, HwSD_SRESET_RSTDAT);
+		tcc_sw_reset(host, HwSD_SRESET_RSTCMD | HwSD_SRESET_RSTDAT);
 	}
-
 
 	host->mrq = NULL;
 	host->cmd = NULL;
@@ -2224,9 +2291,9 @@ static void tcc_mmc_timeout_timer(unsigned long data)
 
 	host = (struct tcc_mmc_host*)data;
 
-	if(host == NULL) {
+	if (host == NULL) {
 		printk(KERN_WARNING "[WARN][SDHC] [mmc:NULL] %s(host:%x)\n", __func__, (u32)host);
-		return;// -EHOSTDOWN;
+		return; /* -EHOSTDOWN */
 	}
 
 	spin_lock_irqsave(&host->lock, flags);
@@ -2240,10 +2307,11 @@ static void tcc_mmc_timeout_timer(unsigned long data)
 			host->data->error = -ETIMEDOUT;
 			tcc_mmc_finish_data(host);
 		} else {
-			if (host->cmd)
+			if (host->cmd) {
 				host->cmd->error = -ETIMEDOUT;
-			else
+			} else {
 				host->mrq->cmd->error = -ETIMEDOUT;
+			}
 
 			tasklet_schedule(&host->finish_tasklet);
 		}
@@ -2256,18 +2324,18 @@ static void init_mmc_host(struct tcc_mmc_host *host,
 		unsigned int clock_rate)
 {
 	unsigned int temp_val = 0;
-	struct tcc_mmc_tap_delays *tap_delays = &host->tcc_tap_delays;
 
-	if(host == NULL) {
+	if (host == NULL) {
 		printk(KERN_WARNING "[WARN][SDHC] [mmc:NULL] %s(host:%x)\n", __func__, (u32)host);
-		return;// -EHOSTDOWN;
+		return; /* -EHOSTDOWN */
 	}
-	if (host->fclk > 0)
+	if (host->fclk > 0) {
 		clk_set_rate(host->fclk, clock_rate);
-	else
+	} else {
 		clk_set_rate(host->fclk, 25*1000*1000);
+	}
 	host->peri_clk = clk_get_rate(host->fclk);
-	dev_dbg(host->dev, "[DEBUG][SDHC] clock %lu\n", host->peri_clk);
+	dev_printk(KERN_DEBUG, host->dev, "clock %lu\n", host->peri_clk);
 
 	mmc_writel(host, 0xfffff0ff, TCCSDHC_INT_ENABLE);
 	mmc_writel(host, 0xffffffff, TCCSDHC_SIGNAL_ENABLE);
@@ -2284,155 +2352,83 @@ static void init_mmc_host(struct tcc_mmc_host *host,
 
 #if defined(CONFIG_ARCH_TCC897X)
 	temp_val = readl(host->chctrl_base + TCCSDMMC_CHCTRL_SDCTRL);
-	temp_val |= 0x00F00000; // disable command conflict
+	temp_val |= 0x00F00000; /* disable command conflict */
 	writel(temp_val, host->chctrl_base + TCCSDMMC_CHCTRL_SDCTRL);
 
 	temp_val = (host->mmc->caps &
 			(MMC_CAP_UHS_SDR12 | MMC_CAP_UHS_SDR25 | MMC_CAP_UHS_SDR50 | MMC_CAP_UHS_DDR50 | MMC_CAP_UHS_SDR104)) ?
 		0x07070707: 0x0F0F0F0F;
-	switch (host->controller_id % 4)
-	{
-		case 0:
-			writel(temp_val, host->chctrl_base + TCCSDMMC_CHCTRL_SD0CMDDAT);
-			writel(0xEDFF9870, host->chctrl_base + TCCSDMMC_CHCTRL_SD0CAPREG0);
-			writel(0x00000007, host->chctrl_base + TCCSDMMC_CHCTRL_SD0CAPREG1);
-			break;
-		case 1:
-			writel(temp_val, host->chctrl_base + TCCSDMMC_CHCTRL_SD1CMDDAT);
-			writel(0xEDFF9870, host->chctrl_base + TCCSDMMC_CHCTRL_SD1CAPREG0);
-			writel(0x00000007, host->chctrl_base + TCCSDMMC_CHCTRL_SD1CAPREG1);
-			break;
-		case 2:
-			writel(temp_val, host->chctrl_base + TCCSDMMC_CHCTRL_SD2CMDDAT);
-			writel(0xEDFF9870, host->chctrl_base + TCCSDMMC_CHCTRL_SD2CAPREG0);
-			writel(0x00000007, host->chctrl_base + TCCSDMMC_CHCTRL_SD2CAPREG1);
-			break;
-		case 3:
-			writel(temp_val, host->chctrl_base + TCCSDMMC_CHCTRL_SD3CMDDAT);
-			writel(0xEDFF9870, host->chctrl_base + TCCSDMMC_CHCTRL_SD3CAPREG0);
-			writel(0x00000007, host->chctrl_base + TCCSDMMC_CHCTRL_SD3CAPREG1);
-			break;
-		default:
-			printk(KERN_ERR "[ERROR][SDHC] %s: failed to init mmc channel configuration...\n", __func__);
-			break;
+	switch (host->controller_id % 4) {
+	case 0:
+		writel(temp_val, host->chctrl_base + TCCSDMMC_CHCTRL_SD0CMDDAT);
+		writel(0xEDFF9870, host->chctrl_base + TCCSDMMC_CHCTRL_SD0CAPREG0);
+		writel(0x00000007, host->chctrl_base + TCCSDMMC_CHCTRL_SD0CAPREG1);
+		break;
+	case 1:
+		writel(temp_val, host->chctrl_base + TCCSDMMC_CHCTRL_SD1CMDDAT);
+		writel(0xEDFF9870, host->chctrl_base + TCCSDMMC_CHCTRL_SD1CAPREG0);
+		writel(0x00000007, host->chctrl_base + TCCSDMMC_CHCTRL_SD1CAPREG1);
+		break;
+	case 2:
+		writel(temp_val, host->chctrl_base + TCCSDMMC_CHCTRL_SD2CMDDAT);
+		writel(0xEDFF9870, host->chctrl_base + TCCSDMMC_CHCTRL_SD2CAPREG0);
+		writel(0x00000007, host->chctrl_base + TCCSDMMC_CHCTRL_SD2CAPREG1);
+		break;
+	case 3:
+		writel(temp_val, host->chctrl_base + TCCSDMMC_CHCTRL_SD3CMDDAT);
+		writel(0xEDFF9870, host->chctrl_base + TCCSDMMC_CHCTRL_SD3CAPREG0);
+		writel(0x00000007, host->chctrl_base + TCCSDMMC_CHCTRL_SD3CAPREG1);
+		break;
+	default:
+		printk(KERN_ERR "[ERROR][SDHC] %s: failed to init mmc channel configuration...\n", __func__);
+		break;
 	}
-#else // CONFIG_ARCH_TCC898X || CONFIG_ARCH_TCC802X
-	// It is need to add delay
+#else /* CONFIG_ARCH_TCC898X || CONFIG_ARCH_TCC802X */
+	/* It is need to add delay */
 	writel(0xEDFF9970, host->chctrl_base + TCCSDHC_CHCTRL_CAP0);
 	writel(0x00000007, host->chctrl_base + TCCSDHC_CHCTRL_CAP1);
 
-#ifdef CONFIG_ARCH_TCC803X
-	if(system_rev == 0)
-#endif
-	{
-		writel(tap_delays->clk_tap_delay, host->chctrl_base + TCCSDHC_CHCTRL_TAPDLY);
-		writel(tap_delays->cmd_tap_delay, host->chctrl_base + TCCSDHC_CHCTRL_DLY0);
-		writel(tap_delays->data01_tap_delay, host->chctrl_base + TCCSDHC_CHCTRL_DLY1);
-		writel(tap_delays->data23_tap_delay, host->chctrl_base + TCCSDHC_CHCTRL_DLY2);
-		writel(tap_delays->data45_tap_delay, host->chctrl_base + TCCSDHC_CHCTRL_DLY3);
-		writel(tap_delays->data67_tap_delay, host->chctrl_base + TCCSDHC_CHCTRL_DLY4);
+	switch (host->controller_id % 3) {
+	case 0:
+		writel(0x00206100, host->chctrl_base + TCCSDHC_CHCTRL_TAPDLY);
+		writel(0x08880000, host->chctrl_base + TCCSDHC_CHCTRL_DLY0);
+		writel(0x00888888, host->chctrl_base + TCCSDHC_CHCTRL_DLY1);
+		writel(0x00888888, host->chctrl_base + TCCSDHC_CHCTRL_DLY2);
+		writel(0x00888888, host->chctrl_base + TCCSDHC_CHCTRL_DLY3);
+		writel(0x00888888, host->chctrl_base + TCCSDHC_CHCTRL_DLY4);
+		break;
+	case 1:
+		writel(0x00206100, host->chctrl_base + TCCSDHC_CHCTRL_TAPDLY);
+		writel(0x08880000, host->chctrl_base + TCCSDHC_CHCTRL_DLY0);
+		writel(0x00888888, host->chctrl_base + TCCSDHC_CHCTRL_DLY1);
+		writel(0x00888888, host->chctrl_base + TCCSDHC_CHCTRL_DLY2);
+		writel(0x00888888, host->chctrl_base + TCCSDHC_CHCTRL_DLY3);
+		writel(0x00888888, host->chctrl_base + TCCSDHC_CHCTRL_DLY4);
+		break;
+	case 2:
+		writel(0x00206100, host->chctrl_base + TCCSDHC_CHCTRL_TAPDLY);
+		writel(0x08880000, host->chctrl_base + TCCSDHC_CHCTRL_DLY0);
+		writel(0x00888888, host->chctrl_base + TCCSDHC_CHCTRL_DLY1);
+		writel(0x00888888, host->chctrl_base + TCCSDHC_CHCTRL_DLY2);
+		writel(0x00888888, host->chctrl_base + TCCSDHC_CHCTRL_DLY3);
+		writel(0x00888888, host->chctrl_base + TCCSDHC_CHCTRL_DLY4);
+		break;
+	default:
+		break;
 	}
-#ifdef CONFIG_ARCH_TCC803X
-	else {
-		u8 ch = host->controller_id;
-		u32 vals, i;
-
-		writel(tap_delays->clk_tap_delay, host->chctrl_base + TCCSDHC_CHCTRL_TAPDLY);
-		pr_debug("[DEBUG][SDHC] %d: set clk-out-tap 0x%08x @0x%p\n",
-			ch, vals, host->chctrl_base + TCCSDHC_CHCTRL_TAPDLY);
-
-		/* Configure CMD TAPDLY */
-		vals = TCC803X_SDHC_MK_TAPDLY(tap_delays->cmd_tap_delay);
-		writel(vals, host->chctrl_base + TCC803X_SDHC_CMDDLY(ch));
-		pr_debug("[DEBUG][SDHC] %d: set cmd-tap 0x%08x @0x%p\n",
-			ch, vals, host->chctrl_base + TCC803X_SDHC_CMDDLY(ch));
-
-		/* Configure DATA TAPDLY */
-		vals = TCC803X_SDHC_MK_TAPDLY(tap_delays->data01_tap_delay);
-		for(i = 0; i < 8; i++) {
-			writel(vals, host->chctrl_base + TCC803X_SDHC_DATADLY(ch, i));
-			pr_debug("[DEBUG][SDHC] %d: set data%d-tap 0x%08x @0x%p\n",
-				ch, i, vals, host->chctrl_base + TCC803X_SDHC_DATADLY(ch, i));
-		}
-
-		/* Configure CLK TX TAPDLY */
-		vals = readl(host->chctrl_base + TCC803X_SDHC_TX_CLKDLY_OFFSET(ch));
-		vals &= ~TCC803X_SDHC_MK_TX_CLKDLY(ch, 0x1F);
-		vals |= TCC803X_SDHC_MK_TX_CLKDLY(ch, tap_delays->clk_tx_tap_delay);
-		writel(vals, host->chctrl_base + TCC803X_SDHC_TX_CLKDLY_OFFSET(ch));
-		pr_debug("[DEBUG][SDHC] %d: set clk-tx-tap 0x%08x @0x%p\n",
-				ch, vals, host->chctrl_base + TCC803X_SDHC_TX_CLKDLY_OFFSET(ch));
-	}
-#endif
 
 	{
 		temp_val = 0x00000002;
 #ifdef CONFIG_ARCH_TCC898X
-		if(system_rev >= 2) // only tcc898x evt2
+		if (system_rev >= 2) {
+			/* only tcc898x evt2 */
 			temp_val = 0x00000001;
+		}
 #endif
 		writel(temp_val, host->chctrl_base + TCCSDHC_CHCTRL_CD_WP);
 		writel(0x00000000, host->chctrl_base + TCCSDHC_CHCTRL_CD_WP);
 	}
 #endif
-}
-
-static int tcc_mmc_tap_delay_parse_dt(struct tcc_mmc_host *host, struct device_node *np)
-{
-	struct tcc_mmc_tap_delays *tap_delays = &host->tcc_tap_delays;
-	struct mmc_host *mmc = host->mmc;
-	u32 taps;
-
-#ifdef CONFIG_ARCH_TCC803X
-	if(system_rev == 0)
-#endif
-	{
-		if(!of_property_read_u32(np, "tcc-mmc-clk-out-tap", &taps)) {
-			tap_delays->clk_tap_delay &= ~TCCSDHC_TAPDLY_OTAP_SEL_MASK;
-			tap_delays->clk_tap_delay |= TCCSDHC_TAPDLY_OTAP_SEL(taps);
-			TCC_SDHC_DBG(DEBUG_LEVEL_INFO, host->controller_id, "tap-delay 0x%x\n", tap_delays->clk_tap_delay);
-		}
-
-		if(!of_property_read_u32(np, "tcc-mmc-cmd-tap", &taps)) {
-			tap_delays->cmd_tap_delay = TCCSDHC_MK_CMDDLY(taps);
-			TCC_SDHC_DBG(DEBUG_LEVEL_INFO, host->controller_id, "cmd-delay 0x%x\n", tap_delays->cmd_tap_delay);
-		}
-
-		if(!of_property_read_u32(np, "tcc-mmc-data-tap", &taps)) {
-			tap_delays->data01_tap_delay = TCCSDHC_MK_DATADLY(taps);
-			tap_delays->data23_tap_delay = TCCSDHC_MK_DATADLY(taps);
-			tap_delays->data45_tap_delay = TCCSDHC_MK_DATADLY(taps);
-			tap_delays->data67_tap_delay = TCCSDHC_MK_DATADLY(taps);
-
-			TCC_SDHC_DBG(DEBUG_LEVEL_INFO, host->controller_id, "data01-delay 0x%x\n", tap_delays->data01_tap_delay);
-			TCC_SDHC_DBG(DEBUG_LEVEL_INFO, host->controller_id, "data23-delay 0x%x\n", tap_delays->data23_tap_delay);
-			TCC_SDHC_DBG(DEBUG_LEVEL_INFO, host->controller_id, "data45-delay 0x%x\n", tap_delays->data45_tap_delay);
-			TCC_SDHC_DBG(DEBUG_LEVEL_INFO, host->controller_id, "data67-delay 0x%x\n", tap_delays->data67_tap_delay);
-		}
-	}
-#ifdef CONFIG_ARCH_TCC803X
-	else {
-		u32 taps[4] = {TCC803X_SDHC_CLKOUTDLY_DEF_TAP,
-			TCC803X_SDHC_CMDDLY_DEF_TAP,
-			TCC803X_SDHC_DATADLY_DEF_TAP,
-			TCC803X_SDHC_CLK_TXDLY_DEF_TAP };
-
-		if(!of_property_read_u32_array(np, "tcc-mmc-taps", taps, 4)) {
-			/* in case of tcc803x, tcc-mmc-taps is for rev. 1 */
-			tap_delays->clk_tap_delay &= ~TCCSDHC_TAPDLY_OTAP_SEL_MASK;
-			tap_delays->clk_tap_delay |= TCCSDHC_TAPDLY_OTAP_SEL(taps[0]);
-			tap_delays->cmd_tap_delay = taps[1];
-			tap_delays->data01_tap_delay = taps[2];
-			tap_delays->clk_tx_tap_delay = taps[3]; /* only for tcc803x rev. 1 */
-		}
-
-		TCC_SDHC_DBG(DEBUG_LEVEL_INFO, host->controller_id, "default taps 0x%x 0x%x 0x%x 0x%x\n",
-			tap_delays->clk_tap_delay, tap_delays->cmd_tap_delay, tap_delays->data01_tap_delay, tap_delays->clk_tx_tap_delay);
-	}
-#endif
-
-
-	return 0;
 }
 
 static int tcc_mmc_parse_dt(struct tcc_mmc_host *host, struct device_node *np)
@@ -2443,56 +2439,69 @@ static int tcc_mmc_parse_dt(struct tcc_mmc_host *host, struct device_node *np)
 
 	mmc_of_parse(host->mmc);
 
-	if (of_find_property(np, "cap-erase", &len))
+	if (of_find_property(np, "cap-erase", &len)) {
 		host->mmc->caps |= MMC_CAP_ERASE;
-	if (of_find_property(np, "cap-bus-width-test", &len))
+	}
+	if (of_find_property(np, "cap-bus-width-test", &len)) {
 		host->mmc->caps |= MMC_CAP_BUS_WIDTH_TEST;
-	if (of_find_property(np, "cap-uhs-cmd23", &len))
+	}
+	if (of_find_property(np, "cap-uhs-cmd23", &len)) {
 		host->mmc->caps |= MMC_CAP_CMD23;
+	}
 
-	if (of_find_property(np, "cap-1-8V-ddr", &len))
+	if (of_find_property(np, "cap-1-8V-ddr", &len)) {
 		host->mmc->caps |= MMC_CAP_1_8V_DDR;
+	}
 
-	if (of_find_property(np, "cap-uhs-sdr12", &len))
+	if (of_find_property(np, "cap-uhs-sdr12", &len)) {
 		host->mmc->caps |= MMC_CAP_UHS_SDR12;
-	if (of_find_property(np, "cap-uhs-sdr25", &len))
+	}
+	if (of_find_property(np, "cap-uhs-sdr25", &len)) {
 		host->mmc->caps |= MMC_CAP_UHS_SDR25;
-	if (of_find_property(np, "cap-uhs-sdr50", &len))
+	}
+	if (of_find_property(np, "cap-uhs-sdr50", &len)) {
 		host->mmc->caps |= MMC_CAP_UHS_SDR50;
-	if (of_find_property(np, "cap-uhs-sdr104", &len))
+	}
+	if (of_find_property(np, "cap-uhs-sdr104", &len)) {
 		host->mmc->caps |= MMC_CAP_UHS_SDR104;
-	if (of_find_property(np, "cap-uhs-ddr50", &len))
+	}
+	if (of_find_property(np, "cap-uhs-ddr50", &len)) {
 		host->mmc->caps |= MMC_CAP_UHS_DDR50;
-	if (of_find_property(np, "mmc-hs200-1_8v", &len))
+	}
+	if (of_find_property(np, "mmc-hs200-1_8v", &len)) {
 		host->mmc->caps2 |= MMC_CAP2_HS200_1_8V_SDR;
+	}
 
-	if (of_find_property(np, "cap-uhs-driver_type_a", &len))
+	if (of_find_property(np, "cap-uhs-driver_type_a", &len)) {
 		host->mmc->caps |= MMC_CAP_DRIVER_TYPE_A;
-	if (of_find_property(np, "cap-uhs-driver_type_c", &len))
+	}
+	if (of_find_property(np, "cap-uhs-driver_type_c", &len)) {
 		host->mmc->caps |= MMC_CAP_DRIVER_TYPE_C;
-	if (of_find_property(np, "cap-uhs-driver_type_d", &len))
+	}
+	if (of_find_property(np, "cap-uhs-driver_type_d", &len)) {
 		host->mmc->caps |= MMC_CAP_DRIVER_TYPE_D;
+	}
 
-	if (of_find_property(np, "cap-vdd-165-195", &len))
+	if (of_find_property(np, "cap-vdd-165-195", &len)) {
 		host->mmc->ocr_avail |= MMC_VDD_165_195;
+	}
+
+#if 0
+	if (host->mmc->pm_caps & MMC_PM_KEEP_POWER)
+		if(of_find_property(np, "wifi-polling", 0))
+			host->mmc->caps2 |= MMC_CAP2_SDIO_NO_RESCAN_SUSPEND;
+#endif
 
 	/*
 	if (of_find_property(np, "cap2-no-sleep-cmd", &len))
 		host->mmc->caps2 |= MMC_CAP2_NO_SLEEP_CMD;
 	*/
 
-#if defined(CONFIG_ENABLE_TCC_MMC_KPANIC)
-	if (of_find_property(np, "tcc-kpanic", NULL)) {
-		host->is_kpanic_card = true;
-		init_tcc_mmc_kpanic();
-	} else
-		host->is_kpanic_card = false;
-#endif
-
-	if (of_find_property(np, "tcc-clock-control", NULL))
+	if (of_find_property(np, "tcc-clock-control", NULL)) {
 		host->is_clock_control = true;
-	else
+	} else {
 		host->is_clock_control = false;
+	}
 
 	host->tcc_hw.vctrl_gpio = of_get_named_gpio_flags(np, "vctrl-gpio", 0, &flags);
 	TCC_SDHC_DBG(DEBUG_LEVEL_INFO, host->controller_id, "%s: host->tcc_hw.vctrl_gpio(%d)\n", mmc_hostname(host->mmc), host->tcc_hw.vctrl_gpio);
@@ -2501,16 +2510,9 @@ static int tcc_mmc_parse_dt(struct tcc_mmc_host *host, struct device_node *np)
 				host->tcc_hw.vctrl_gpio,
 				GPIOF_OUT_INIT_HIGH,
 				"tcc_sdhc: voltage control gpio");
-		if (ret < 0)
+		if (ret < 0) {
 			TCC_SDHC_DBG(DEBUG_LEVEL_INFO, host->controller_id, "%s: failed to request vctrl gpio\n", mmc_hostname(host->mmc));
-	}
-
-	/* Try to get supply */
-	ret = mmc_regulator_get_supply(host->mmc);
-	if(!ret) {
-		TCC_SDHC_DBG(DEBUG_LEVEL_INFO, host->controller_id, "%s: success to get mmc regulators\n", mmc_hostname(host->mmc));
-	} else {
-		TCC_SDHC_DBG(DEBUG_LEVEL_INFO, host->controller_id, "%s: failed to get mmc regulators err %d\n", mmc_hostname(host->mmc), ret);
+		}
 	}
 
 	host->tcc_hw.pwr_gpio = of_get_named_gpio_flags(np, "pwr-gpio", 0, &flags);
@@ -2518,14 +2520,15 @@ static int tcc_mmc_parse_dt(struct tcc_mmc_host *host, struct device_node *np)
 	if (gpio_is_valid(host->tcc_hw.pwr_gpio)) {
 		tcc_mmc_gpio_set_value(host->tcc_hw.pwr_gpio, 0);
 
-		mdelay(10); // for hardware reset
+		mdelay(10); /* for hardware reset */
 
 		ret = devm_gpio_request_one(&host->mmc->class_dev,
 				host->tcc_hw.pwr_gpio,
 				GPIOF_OUT_INIT_HIGH,
 				"tcc_sdhc: power control gpio");
-		if (ret < 0)
+		if (ret < 0) {
 			TCC_SDHC_DBG(DEBUG_LEVEL_INFO, host->controller_id, "%s: failed to request pwr gpio\n", mmc_hostname(host->mmc));
+		}
 	}
 
 	host->tcc_hw.rst_gpio = of_get_named_gpio_flags(np, "emmc-rst-gpio", 0, &flags);
@@ -2535,14 +2538,13 @@ static int tcc_mmc_parse_dt(struct tcc_mmc_host *host, struct device_node *np)
 
 		tcc_mmc_gpio_set_value(host->tcc_hw.rst_gpio, 0);
 
-		mdelay(10); // for hardware reset
-
 		ret = devm_gpio_request_one(&host->mmc->class_dev,
 				host->tcc_hw.rst_gpio,
-				GPIOF_OUT_INIT_HIGH,
+				GPIOF_OUT_INIT_LOW,
 				"tcc_sdhc: reset control gpio");
-		if (ret < 0)
+		if (ret < 0) {
 			TCC_SDHC_DBG(DEBUG_LEVEL_INFO, host->controller_id, "%s: failed to request rst gpio\n", mmc_hostname(host->mmc));
+		}
 	}
 
 	return 0;
@@ -2557,7 +2559,7 @@ static void tcc_mmc_wifi_check_sdio30(struct tcc_mmc_host *host)
 			tcc_mmc_gpio_set_value(host->tcc_hw.vctrl_gpio, 0);
 			TCC_SDHC_DBG(DEBUG_LEVEL_INFO, host->controller_id, "%s: vctrl(%d)\n", mmc_hostname(host->mmc),
 					tcc_mmc_gpio_get_value(host->tcc_hw.vctrl_gpio));
-			mdelay(10); // [Timing] Host keeps SDCLK low at least 5 ms.
+			mdelay(10); /* [Timing] Host keeps SDCLK low at least 5 ms. */
 		}
 	}
 }
@@ -2577,38 +2579,28 @@ static int tcc_mmc_probe(struct platform_device *pdev)
 	}
 
 	mmc = mmc_alloc_host(sizeof(struct tcc_mmc_host), &pdev->dev);
-	if (!mmc)
+	if (!mmc) {
 		return -ENOMEM;
+	}
 
 	host = mmc_priv(mmc);
 
-	if(host == NULL) {
+	if (host == NULL) {
 		printk(KERN_ERR "[ERROR][SDHC] [mmc:NULL] %s(host:%x)\n", __func__, (u32)host);
-		return -ENODEV;// -EHOSTDOWN;
+		return -ENODEV;
 	}
 
 	host->mmc = mmc;
 	host->dev = &pdev->dev;
-
-	/* Reset tap delays value */
-	memset(&host->tcc_tap_delays, 0, sizeof(struct tcc_mmc_tap_delays));
-	host->tcc_tap_delays.clk_tap_delay = TCCSDHC_TAPDLY_DEF;
-	host->tcc_tap_delays.cmd_tap_delay = TCCSDHC_MK_CMDDLY(TCCSDHC_CMDDLY_DEF_TAP);
-	host->tcc_tap_delays.data01_tap_delay = TCCSDHC_MK_DATADLY(TCCSDHC_DATADLY_DEF_TAP);
-	host->tcc_tap_delays.data23_tap_delay = TCCSDHC_MK_DATADLY(TCCSDHC_DATADLY_DEF_TAP);
-	host->tcc_tap_delays.data45_tap_delay = TCCSDHC_MK_DATADLY(TCCSDHC_DATADLY_DEF_TAP);
-	host->tcc_tap_delays.data67_tap_delay = TCCSDHC_MK_DATADLY(TCCSDHC_DATADLY_DEF_TAP);
 
 	if (of_property_read_u32(np, "controller-id", &host->controller_id) < 0) {
 		printk(KERN_ERR "[ERROR][SDHC] \"conrtoller-id\" property is missing...\n");
 		goto error;
 	}
 
-	if (tcc_mmc_parse_dt(host, np))
+	if (tcc_mmc_parse_dt(host, np)) {
 		goto error;
-
-	if (tcc_mmc_tap_delay_parse_dt(host, np))
-		goto error;
+	}
 
 	host->fclk = of_clk_get(np, 0);
 	if (!host->fclk) {
@@ -2628,7 +2620,7 @@ static int tcc_mmc_probe(struct platform_device *pdev)
 		printk(KERN_ERR "[ERROR][SDHC] %s: failed to get sdhc base address\n", mmc_hostname(host->mmc));
 		return -ENOMEM;
 	} else {
-        of_address_to_resource(np, 0, &res);
+		of_address_to_resource(np, 0, &res);
 		TCC_SDHC_DBG(DEBUG_LEVEL_INFO, host->controller_id, "%s : host->base(0x%08x/0x%08x)\n",
 				mmc_hostname(host->mmc), (unsigned int)host->base, (unsigned int)res.start);
 	}
@@ -2638,21 +2630,20 @@ static int tcc_mmc_probe(struct platform_device *pdev)
 		printk(KERN_ERR "[ERROR][SDHC] %s: failed to get channel control base address\n", mmc_hostname(host->mmc));
 		return -ENOMEM;
 	} else {
-        of_address_to_resource(np, 1, &res);
+		of_address_to_resource(np, 1, &res);
 		TCC_SDHC_DBG(DEBUG_LEVEL_INFO, host->controller_id, "%s : host->chctrl_base(0x%08x/0x%08x)\n",
 				mmc_hostname(host->mmc), (unsigned int)host->chctrl_base, (unsigned int)res.start);
 	}
 
-	if(of_find_property(np, "channel-mux", 0))
+	if (of_find_property(np, "channel-mux", 0))
 	{
 		host->chmux_base = of_iomap(np, 2);
 		if (!host->chmux_base) {
 			printk(KERN_WARNING "[WARN][SDHC] %s: failed to get channel-mux base address\n", mmc_hostname(host->mmc));
 		} else {
 			unsigned temp_val = 0;
-			if(of_property_read_u32(np, "channel-mux", &temp_val) == 0) {
-				if(host->chmux_base != NULL) {
-					host->channel_mux = temp_val;
+			if (of_property_read_u32(np, "channel-mux", &temp_val) == 0) {
+				if (host->chmux_base != NULL) {
 					writel(temp_val, host->chmux_base);
 				}
 				of_address_to_resource(np, 2, &res);
@@ -2662,26 +2653,16 @@ static int tcc_mmc_probe(struct platform_device *pdev)
 		}
 	}
 
-	host->auto_tune_rtl_base = of_iomap(np, 3);
-	if(!host->auto_tune_rtl_base) {
-		dev_info(host->dev, "[INFO][SDHC] not support auto tune rtl register\n");
-	} else {
-		dev_info(host->dev, "[INFO][SDHC] auto tune rtl base 0x%x\n", host->auto_tune_rtl_base);
-	}
-
 	host->irq = platform_get_irq(pdev, 0);
 	host->cd_irq = host->mmc->slot.cd_irq;
 
-	if (of_find_property(np, "cd-polling", 0))
-	{
+	if (of_find_property(np, "cd-polling", 0)) {
 		host->cd_irq = -1;
-	} // only polling mode
+	} /* only polling mode */
 
-	if (of_find_property(np, "wifi-polling", 0))
-	{
-		host->cd_irq = host->mmc->slot.cd_irq = WIFI_POLLING; // tcm3800
-		if (of_find_property(np, "ext32-enable", 0))
-		{
+	if (of_find_property(np, "wifi-polling", 0)) {
+		host->cd_irq = host->mmc->slot.cd_irq = WIFI_POLLING; /* tcm3800 */
+		if (of_find_property(np, "ext32-enable", 0)) {
 			make_rtc(np, host);
 		}
 	}
@@ -2689,11 +2670,9 @@ static int tcc_mmc_probe(struct platform_device *pdev)
 	TCC_SDHC_DBG(DEBUG_LEVEL_INFO, host->controller_id, "%s: host->cd_irq(%d)\n", mmc_hostname(host->mmc), host->cd_irq);
 	host->flags =0;
 
-	if (!of_find_property(np, "cap-pio", 0))
-	{
+	if (!of_find_property(np, "cap-pio", 0)) {
 		host->flags = TCC_MMC_USE_DMA;
-		if (of_find_property(np, "cap-adma", 0))
-		{
+		if (of_find_property(np, "cap-adma", 0)) {
 			host->flags |= TCC_MMC_USE_ADMA;
 			//host->flags |= HwSD_COM_TRANS_ACMD23;
 		}
@@ -2725,7 +2704,7 @@ static int tcc_mmc_probe(struct platform_device *pdev)
 	 * Maximum number of segments. Hardware cannot do scatter lists.
 	 */
 	if (host->flags & TCC_MMC_USE_DMA) {
-		if(host->flags & TCC_MMC_USE_ADMA) {
+		if (host->flags & TCC_MMC_USE_ADMA) {
 			mmc->max_segs = 128;
 		} else {
 			mmc->max_segs = 1;
@@ -2746,7 +2725,6 @@ static int tcc_mmc_probe(struct platform_device *pdev)
 	 */
 	if (host->flags & TCC_MMC_USE_ADMA) {
 		mmc->max_seg_size = 65536;
-		//mmc->max_seg_size = 524288;
 	} else {
 		mmc->max_seg_size = mmc->max_req_size;
 	}
@@ -2768,8 +2746,6 @@ static int tcc_mmc_probe(struct platform_device *pdev)
 
 	init_mmc_host(host, mmc->f_max);
 
-	mmc_add_host(mmc);
-
 	/*
 	 * Init tasklets.
 	 */
@@ -2785,14 +2761,15 @@ static int tcc_mmc_probe(struct platform_device *pdev)
 		goto error;
 	}
 
-	//Card detect
+	mmc_add_host(mmc);
+
+	/* Card detect */
 	init_timer(&host->detect_timer);
 	host->detect_timer.function = tcc_mmc_poll_event;
 	host->detect_timer.data = (unsigned long) host;
 	host->detect_timer.expires = jiffies + DETECT_TIMEOUT;
 	add_timer(&host->detect_timer);
-	if(host->cd_irq > 0)
-	{
+	if (host->cd_irq > 0) {
 		snprintf(host->cdirq_desc, 16, "mmc%d-cdirq", host->mmc->index);
 		ret = request_irq(host->cd_irq, tcc_mmc_cd_irq,
 				IRQF_TRIGGER_LOW,
@@ -2825,21 +2802,31 @@ error:
 
 static int tcc_mmc_remove(struct platform_device *pdev)
 {
-	struct mmc_host *mmc = platform_get_drvdata(pdev);
-
-	platform_set_drvdata(pdev, NULL);
+	struct tcc_mmc_host *host = platform_get_drvdata(pdev);
+	struct mmc_host *mmc = host->mmc;
+	unsigned long flags;
 
 	if (mmc) {
-		struct tcc_mmc_host *host = mmc_priv(mmc);
+		spin_lock_irqsave(&host->lock, flags);
+		if (host->mrq) {
+			tasklet_kill(&host->finish_tasklet);
+		}
+		spin_unlock_irqrestore(&host->lock, flags);
 
-		free_irq(host->irq, host);
+		if (host->cd_irq > 0) {
+			tcc_mmc_disable_cd_irq(host->cd_irq);
+		}
 
 		mmc_remove_host(mmc);
-		del_timer(&host->timer);
-		del_timer_sync(&host->timer);
-		mmc_free_host(mmc);
 
-		tasklet_kill(&host->finish_tasklet);
+		free_irq(host->irq, host);
+		if (host->cd_irq > 0) {
+			free_irq(host->cd_irq, host);
+		}
+		del_timer_sync(&host->detect_timer);
+		del_timer_sync(&host->timer);
+
+		mmc_free_host(mmc);
 
 		kfree(host->adma_desc);
 		kfree(host->align_buffer);
@@ -2858,12 +2845,19 @@ static int tcc_mmc_suspend(struct device *dev)
 	struct tcc_mmc_host *host = platform_get_drvdata(pdev);
 	struct mmc_host *mmc = host->mmc;
 
-	if((host == NULL)||(mmc == NULL)) {
+	if ((host == NULL)||(mmc == NULL)) {
 		printk(KERN_WARNING "[WARN][SDHC] [mmc:NULL] %s(host:%x, mmc:%x)\n", __func__, (u32)host, (u32)mmc);
-		return 0;// -EHOSTDOWN;
+		return 0;
 	}
 
-	//disable cd interrupt
+	mmc_retune_timer_stop(mmc);
+	mmc_retune_needed(mmc);
+
+	if ((host->mmc->pm_flags & MMC_PM_KEEP_POWER)) {
+		mmc_writel(host, 0x0, TCCSDHC_INT_ENABLE);
+		mmc_writel(host, 0x0, TCCSDHC_SIGNAL_ENABLE);
+	}
+	/* disable cd interrupt */
 	tcc_mmc_disable_cd_irq(host->cd_irq);
 
 	return 0;
@@ -2874,36 +2868,21 @@ static int tcc_mmc_resume(struct device *dev)
 	struct platform_device *pdev = to_platform_device(dev);
 	struct tcc_mmc_host *host = platform_get_drvdata(pdev);
 
-	if(host == NULL) {
+	if (host == NULL) {
 		printk(KERN_WARNING "[WARN][SDHC] [mmc:NULL] %s(host:%x)\n", __func__, (u32)host);
-		return 0;// -EHOSTDOWN;
-	}
-
-	if(host->chmux_base != NULL) {
-		writel(host->channel_mux, host->chmux_base);
-		printk(KERN_INFO "[INFO][SDHC] %s set channel mux %d(@%p) during resume\n",
-			mmc_hostname(host->mmc), readl(host->chmux_base), host->chmux_base);
+		return 0;
 	}
 
 	if ((host->mmc->pm_flags & MMC_PM_KEEP_POWER)) {
-		tcc_sw_reset(host, HwSD_SRESET_RSTCMD);
-		tcc_sw_reset(host, HwSD_SRESET_RSTDAT);
+		tcc_sw_reset(host, HwSD_SRESET_RSTCMD | HwSD_SRESET_RSTDAT);
 
 		init_mmc_host(host, host->mmc->f_max);
 
 		tcc_mmc_wifi_check_sdio30(host);
 
-		if(host->cd_irq == WIFI_POLLING) {
-			if(wifi_stat != 0) {
-				host->mmc->caps |= MMC_CAP_NONREMOVABLE;
-			} else {
-				host->mmc->caps &= ~MMC_CAP_NONREMOVABLE;
-			}
-		}
-
 		tcc_mmc_set_ios(host->mmc, &host->mmc->ios);
 	}
-	//enable cd interrupt
+	/* enable cd interrupt */
 	tcc_mmc_enable_cd_irq(host->cd_irq);
 
 	return 0;
@@ -2918,10 +2897,7 @@ static SIMPLE_DEV_PM_OPS(tcc_mmc_dev_pm_ops, tcc_mmc_suspend,
 
 #ifdef CONFIG_OF
 static const struct of_device_id tcc_mmc_of_match[] = {
-	{ .compatible = "telechips,tcc893x-sdhc" },
-	{ .compatible = "telechips,tcc896x-sdhc" },
 	{ .compatible = "telechips,tcc897x-sdhc" },
-	{ .compatible = "telechips,tcc-sdhc" },
 	{ }
 };
 MODULE_DEVICE_TABLE(of, tcc_mmc_of_match);
