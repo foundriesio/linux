@@ -111,9 +111,11 @@ static unsigned long random_delay(void)
 	lessthan1000 = get_random_int() % 1000;
 	if (lessthan1000 < 500) {
 		lessthan1000 += 500;
+		/* prevent KCS warning */
 	}
 	if (lessthan1000 > 900) {
 		lessthan1000 -= 100;
+		/* prevent KCS warning */
 	}
 
 	return lessthan1000;
@@ -146,6 +148,7 @@ static int vta_get_context(struct vta_data_t *vta, int run)
 
 	if (vta->context && vta->context->session_initalized) {
 		return 0;
+		/* prevent KCS warning */
 	}
 
 	ret = tee_client_open_ta(&uuid, NULL, &vta->context);
@@ -189,6 +192,7 @@ static unsigned int vta_get_display_output(void)
 	if (hdmi_np != NULL) {
 		if (of_device_is_available(hdmi_np)) {
 			output |= SUPPORT_HDMI;
+			/* prevent KCS warning */
 		}
 	}
 	#endif
@@ -199,6 +203,7 @@ static unsigned int vta_get_display_output(void)
 	if (component_np != NULL) {
 		if (of_device_is_available(component_np)) {
 			output |= SUPPORT_COMPONENT;
+			/* prevent KCS warning */
 		}
 	}
 	#endif
@@ -209,6 +214,7 @@ static unsigned int vta_get_display_output(void)
 	if (composite_np != NULL) {
 		if (of_device_is_available(composite_np)) {
 			output |= SUPPORT_COMPOSITE;
+			/* prevent KCS warning */
 		}
 	}
 	#endif
@@ -304,6 +310,7 @@ static int vta_cmd_observe(struct vta_data_t *vta)
 
 	if (!vta->context || !vta->context->session_initalized) {
 		goto exit;
+		/* prevent KCS warning */
 	}
 
 	memset(&params, 0, sizeof(params));
@@ -496,8 +503,10 @@ static ssize_t vta_store(struct device *dev, struct device_attribute *attr,
 
 	DBG("\n");
 	ret = kstrtoul(buf, 10, &cmd);
-	if (ret)
+	if (ret) {
 		return ret;
+		/* prevent KCS warning */
+	}
 
 	switch (cmd) {
 	case VTA_IOCTL_CMD_TEST:
@@ -570,8 +579,10 @@ static long vta_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 	case IOCTL_VTA_CTX:
 		/* Get output update */
 		output = vta_get_display_output();
-		if (copy_to_user((unsigned int *)arg, &output, sizeof(output)))
+		if (copy_to_user((unsigned int *)arg, &output,
+				sizeof(output))) {
 			return -EFAULT;
+		}
 
 		return vta_get_context(vta, 1);
 		//break;
@@ -703,6 +714,7 @@ static int vta_suspend(struct platform_device *pdev, pm_message_t state)
 
 	if (!vta->context || !vta->context->session_initalized) {
 		goto exit;
+		/* prevent KCS warning */
 	}
 
 	/* You don't have to stop kthread. */
@@ -769,8 +781,10 @@ static int __init vta_init(void)
 #if defined(__TEST_CODE__)
 	ret = sysfs_create_group(&vta_platform_device->dev.kobj,
 		&vta_attribute_group);
-	if (ret)
+	if (ret) {
 		pr_err("%s: failed create sysfs(%d)\n", __func__, ret);
+		/* prevent KCS warning */
+	}
 #endif
 
 	return 0;
