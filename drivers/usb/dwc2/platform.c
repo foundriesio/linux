@@ -288,7 +288,7 @@ static ssize_t dwc2_pcfg1_store(struct device *dev,
 	struct USBDEVPHYCFG *pUSBDEVPHYCFG =
 		(struct USBDEVPHYCFG *)(hsotg->uphy->get_base(hsotg->uphy));
 	uint32_t old_reg = readl(&pUSBDEVPHYCFG->U20DH_DEV_PCFG1);
-	uint32_t new_reg = kstrtoul(buf, 0, (unsigned long *)16);
+	uint32_t new_reg = simple_strtoul(buf, NULL, 16);
 	char str[256] = {0};
 	int i;
 
@@ -383,7 +383,7 @@ static ssize_t dwc2_host_mux_pcfg1_store(struct device *dev,
 		(struct USBMHSTPHYCFG *)
 		(hsotg->mhst_uphy->get_base(hsotg->mhst_uphy));
 	uint32_t old_reg = readl(&pUSBMHSTPHYCFG->U20DH_HST_PCFG1);
-	uint32_t new_reg = kstrtoul(buf, 0, (unsigned long *)16);
+	uint32_t new_reg = simple_strtoul(buf, NULL, 16);
 	char str[256] = {0};
 	int i;
 
