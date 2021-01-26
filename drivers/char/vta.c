@@ -542,7 +542,7 @@ static ssize_t vta_show(struct device *dev, struct device_attribute *attr,
 	return sprintf(buf, "%lu\n", vta->cmd);
 }
 
-static DEVICE_ATTR(vta, S_IRUGO|S_IWUSR|S_IWGRP, vta_show, vta_store);
+static DEVICE_ATTR(vta, 0664, vta_show, vta_store);
 
 static struct attribute *vta_attributes[] = {
 	&dev_attr_vta.attr,
@@ -667,8 +667,7 @@ static int vta_probe(struct platform_device *pdev)
 	return 0;
 
 out:
-	if (vta_data)
-		kfree(vta_data);
+	kfree(vta_data);
 err:
 	cdev_del(&vta_cdev);
 err1:
