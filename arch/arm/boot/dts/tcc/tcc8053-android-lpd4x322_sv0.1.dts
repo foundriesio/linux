@@ -94,6 +94,16 @@
 		sc-firmware = <&tcc_sc_fw>;
 	};
 
+	aux_detect {
+		compatible = "telechips,aux_detect";
+		status = "okay";
+
+		pinctrl-names = "default";
+		pinctrl-0 = <&aux_detect_pin>;
+
+		aux-gpios = <&gpmd 13 1>;
+		aux-active = <1>;
+	};
 };
 
 /* eMMC */
@@ -437,4 +447,7 @@
 
 &tcc_pm_fw {
 	pmic = <&da9062>;
+};
+&aux_detect_pin {
+	telechips,pins = "gpmd-13";
 };

@@ -153,6 +153,17 @@
 	dwc3_platform {
 		status = "okay";
 	};
+
+	aux_detect {
+		compatible = "telechips,aux_detect";
+		status = "okay";
+
+		pinctrl-names = "default";
+		pinctrl-0 = <&aux_detect_pin>;
+
+		aux-gpios = <&gpmb 11 1>;
+		aux-active = <1>;
+	};
 };
 
 &a72_sc_mbox {
@@ -478,3 +489,8 @@
 &tcc_pm_fw {
 	pmic = <&da9062>;
 };
+
+&aux_detect_pin {
+	telechips,pins = "gpmb-11";
+};
+

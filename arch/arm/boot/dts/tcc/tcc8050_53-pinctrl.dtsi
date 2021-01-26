@@ -1226,8 +1226,7 @@
 		telechips,pin-function = <1>;
 	};
 
-	aux_detect_md13: aux_detect_md13{
-		 telechips,pins = "gpmd-13";
+	aux_detect_pin: aux_detect_pin{
 		 telechips,pin-function = <0>;
 		 telechips,input-enable;
 		 telechips,no-pull;
