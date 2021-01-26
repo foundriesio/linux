@@ -1095,9 +1095,10 @@ end_func:
 
 volatile void __iomem *LVDS_PHY_GetAddress(unsigned int port)
 {
-	if (port >= LVDS_PHY_PORT_MAX)
-		pr_err("[ERR][LVDS] %s: wrong parameter - %d\n", __func__,
-		       port);
+	if (port >= LVDS_PHY_PORT_MAX){
+		pr_warn("[WARN][LVDS] %s: unused port value. return NULL.", __func__);
+		return NULL;
+	}
 
 	if (pLVDS_reg[port] == NULL)
 		pr_err("[ERR][LVDS] %s: pLVDS_reg:%p\n", __func__,

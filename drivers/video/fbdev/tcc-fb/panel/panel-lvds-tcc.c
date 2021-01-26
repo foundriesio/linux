@@ -469,6 +469,9 @@ static int panel_lvds_probe(struct platform_device *pdev)
 			LOG_TAG, __func__, lvds->data->name,
 			lvds->tcc_lvds_hw.port_main);
 	}else{
+		if(lvds->tcc_lvds_hw.lvds_type == PANEL_LVDS_SINGLE){
+			lvds->enabled = 1;
+		}
 		dev_info(
 			lvds->dev,
 			"[INFO][%s] %s with [%s] Primary port(%d) is in alive\r\n",
