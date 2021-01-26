@@ -150,7 +150,7 @@ static int tcc_viqe_open(struct inode *inode, struct file *filp)
 }
 
 
-struct file_operations tcc_viqe_fops = {
+static const struct file_operations tcc_viqe_fops = {
 	.owner		= THIS_MODULE,
 	.open		= tcc_viqe_open,
 	.release	= tcc_viqe_release,
