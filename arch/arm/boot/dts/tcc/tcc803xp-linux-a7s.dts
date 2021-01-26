@@ -1457,9 +1457,9 @@
 		status = "okay";
 
 		pinctrl-names = "default";
-		pinctrl-0 = <&switch_ma15>;
+		pinctrl-0 = <&switch_c13>;
 
-		switch-gpios = <&gpma 15 1>;
+		switch-gpios = <&gpc 13 1>;
 		switch-active = <0>;
 	};
 
@@ -1990,8 +1990,8 @@
 		telechips,input_buffer_enable;
 	};
 
-	switch_ma15: switch_ma15 {
-		telechips,pins = "gpma-15";
+	switch_c13: switch_c13 {
+		telechips,pins = "gpc-13";
 		telechips,pin-function = <0>;
 		telechips,input-enable;
 		telechips,no-pull;
