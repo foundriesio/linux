@@ -719,7 +719,7 @@ static int32_t tccvin_map_cif_port(struct tccvin_streaming *vdev)
 	return 0;
 }
 
-#if 0
+#if defined(CONFIG_VIDEO_TCCVIN2_DIAG)
 /*
  * tccvin_check_cif_port_mapping
  *
@@ -744,15 +744,17 @@ static int tccvin_check_cif_port_mapping(struct tccvin_streaming *vdev)
 	vin_index = (get_vioc_index(vdev->cif.vioc_path.vin) / 2);
 	cif_port = ((__raw_readl(vdev->cif.cifport_addr) >>
 		(vin_index * 4)) & (0xF));
+	logi("**** VIN[%d] cif port mapping: %d -> %d\n",
+		vin_index, vdev->cif.cif_port, cif_port);
 	if (cif_port != vdev->cif.cif_port) {
-		loge("CIF Port: %d / %d, VIN Index: %d\n",
-			cif_port, vdev->cif.cif_port, vin_index);
+		loge("**** VIN[%d] cif port mapping: %d -> %d\n",
+			vin_index, vdev->cif.cif_port, cif_port);
 		ret = -1;
 	}
 
 	return ret;
 }
-#endif
+#endif//defined(CONFIG_VIDEO_TCCVIN2_DIAG)
 
 #if defined(CONFIG_OVERLAY_PGL)
 /*
@@ -1533,6 +1535,7 @@ static int32_t tccvin_start_stream(struct tccvin_streaming *vdev)
 	struct vioc_path		*vioc		= NULL;
 	struct v4l2_dv_timings		*dv_timings	= NULL;
 	struct v4l2_bt_timings		*bt_timings	= NULL;
+	int32_t				ret		= 0;
 
 	WARN_ON(IS_ERR_OR_NULL(vdev));
 
@@ -1547,6 +1550,15 @@ static int32_t tccvin_start_stream(struct tccvin_streaming *vdev)
 
 	/* map cif-port */
 	tccvin_map_cif_port(vdev);
+
+#if defined(CONFIG_VIDEO_TCCVIN2_DIAG)
+	/* check cif-port mapping */
+	ret = tccvin_check_cif_port_mapping(vdev);
+	if (ret < 0) {
+		loge("tccvin_check_cif_port_mapping, ret: %d\n", ret);
+		return -1;
+	}
+#endif//defined(CONFIG_VIDEO_TCCVIN2_DIAG)
 
 	/* reset vioc path */
 	tccvin_reset_vioc_path(vdev);

@@ -29,3 +29,14 @@ config OVERLAY_PGL
 	Note that the driver is supported on the following conditions.
 	- The pgl image is loaded on bootloader step.
 	- The related device node is updated to overlay.
+
+config VIDEO_TCCVIN2_DIAG
+	bool "Video-Input Path Diagnostics"
+	depends on VIDEO_TCCVIN2
+	default n
+	---help---
+	Support Video-Input Path Diagnostics
+
+	Note that the following diagnostics functions are supported.
+	- cif port pinctrl checking.
+	- cif port mapping checking.

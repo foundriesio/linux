@@ -299,10 +299,15 @@ static int adv7182_s_stream(struct v4l2_subdev *sd, int enable)
 
 	/* pinctrl */
 	client = v4l2_get_subdevdata(&dev->sd);
-	pctrl = pinctrl_get_select(&client->dev, "default");
+	if (client == NULL) {
+		loge("client is NULL\n");
+		ret = -1;
+	}
+
+	pctrl = pinctrl_get_select_default(&client->dev);
 	if (!IS_ERR(pctrl)) {
-		/* put pinctrl */
 		pinctrl_put(pctrl);
+		ret = -1;
 	}
 
 	return ret;
