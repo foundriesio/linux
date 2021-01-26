@@ -1351,6 +1351,12 @@
 		telechips,pin-function = <1>;
 	};
 
+	switch_c13: switch_c13 {
+		telechips,pins = "gpc-13";
+		telechips,pin-function = <0>;
+		telechips,output-low = <0>;
+	};
+
 	switch_ma15: switch_ma15 {
 		telechips,pins = "gpma-15";
 		telechips,pin-function = <0>;
