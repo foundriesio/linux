@@ -455,6 +455,16 @@ ak4601: ak4601@10 {
 		reset-gpios = <&gpc 12 0x0>;
 	};
 
+	aux_detect {
+		compatible = "telechips,aux_detect";
+		status = "okay";
+
+		pinctrl-names = "default";
+		pinctrl-0 = <&aux_detect_pin>;
+
+		aux-gpios = <&gpmd 13 1>;
+		aux-active = <1>;
+	};
 };
 
 
@@ -502,4 +512,8 @@ dp_deserializer3:max96878@68 {
 
 &tcc_pm_fw {
 	pmic = <&da9062>;
+};
+
+&aux_detect_pin {
+	telechips,pins = "gpmd-13";
 };

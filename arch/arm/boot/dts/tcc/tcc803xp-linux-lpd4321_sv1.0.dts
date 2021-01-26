@@ -304,6 +304,19 @@
 		status = "okay";
 	};
 #endif
+	aux_detect {
+		compatible = "telechips,aux_detect";
+		status = "okay";
+		pinctrl-names = "default";
+
+		pinctrl-0 = <&aux_detect_pin>;
+		aux-gpios = <&gpma 11 1>;
+		aux-active = <1>;
+	};
+};
+
+&aux_detect_pin {
+	telechips,pins = "gpma-11";
 };
 
 &ictc {

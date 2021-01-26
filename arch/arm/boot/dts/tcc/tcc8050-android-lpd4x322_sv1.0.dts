@@ -421,6 +421,17 @@
 		irq-gpios = <&gpmc 18 0x0>;
 		reset-gpios = <&gpmc 24 0x0>;
 	};
+
+	aux_detect {
+		compatible = "telechips,aux_detect";
+		status = "okay";
+
+		pinctrl-names = "default";
+		pinctrl-0 = <&aux_detect_pin>;
+
+		aux-gpios = <&gpmb 11 1>;
+		aux-active = <1>;
+	};
 };
 
 &tcc_pm_fw {
@@ -472,4 +483,8 @@
 
 &dwc3 {
 	status = "okay";
+};
+
+&aux_detect_pin {
+	telechips,pins = "gpmb-11";
 };
