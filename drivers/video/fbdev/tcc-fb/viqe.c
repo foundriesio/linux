@@ -49,16 +49,20 @@ int viqe_get_next_ptr(int cptr)
 {
 	int nptr = cptr + 1;
 
-	if (nptr >= (VIQE_QUEUE_MAX_ENTRY * 2))
+	if (nptr >= (VIQE_QUEUE_MAX_ENTRY * 2)) {
 		nptr = 0;
+		/* prevent KCS warning */
+	}
 
 	return nptr;
 }
 
 int viqe_get_index(int cindex)
 {
-	if (cindex >= VIQE_QUEUE_MAX_ENTRY)
+	if (cindex >= VIQE_QUEUE_MAX_ENTRY) {
 		cindex -= VIQE_QUEUE_MAX_ENTRY;
+		/* prevent KCS warning */
+	}
 
 	return cindex;
 }
@@ -70,8 +74,10 @@ int viqe_queue_get_filled(struct viqe_queue_t *p_queue)
 
 	if (w_ptr >= r_ptr) {
 		return (w_ptr - r_ptr);
+		/* prevent KCS warning */
 	} else {
 		return (w_ptr + (VIQE_QUEUE_MAX_ENTRY*2 - r_ptr));
+		/* prevent KCS warning */
 	}
 }
 
@@ -136,15 +142,19 @@ int viqe_queue_is_full(struct viqe_queue_t *p_queue)
 	if (w_ptr >= r_ptr) {
 		if ((w_ptr - r_ptr) < VIQE_QUEUE_MAX_ENTRY) {
 			nRet = 0;
+			/* prevent KCS warning */
 		} else {
 			nRet = 1;
+			/* prevent KCS warning */
 		}
 	} else {
 		if ((w_ptr + (VIQE_QUEUE_MAX_ENTRY * 2 - r_ptr))
 			< VIQE_QUEUE_MAX_ENTRY) {
 			nRet = 0;
+			/* prevent KCS warning */
 		} else {
 			nRet = 1;
+			/* prevent KCS warning */
 		}
 	}
 
@@ -185,8 +195,10 @@ void viqe_render_frame(struct tcc_lcdc_image_update *input_image,
 	struct viqe_queue_entry_t *p_entry;
 	struct tcc_lcdc_image_update *p_entry_image;
 
-	if (Output_SelectMode == TCC_OUTPUT_NONE)
+	if (Output_SelectMode == TCC_OUTPUT_NONE) {
 		return;
+		/* prevent KCS warning */
+	}
 
 	if (viqe_queue_is_full(&g_viqe_render_queue)) {
 		//pr_info("[INF][VIQE] %s queue is full\n", __func__);
@@ -217,7 +229,7 @@ void viqe_render_frame(struct tcc_lcdc_image_update *input_image,
 	struct tcc_lcdc_image_update *p_entry_image;
 
 	if (viqe_queue_is_full(&g_viqe_render_queue)) {
-//		pr_err("[REND] queue is full ...\n");
+		//pr_err("[REND] queue is full ...\n");
 		return;
 	}
 
@@ -253,7 +265,8 @@ void viqe_render_frame(struct tcc_lcdc_image_update *input_image,
  #endif
 
 	if (!g_viqe_render_queue.ready) {
-//		viqe_render_field (curTime);
+		//viqe_render_field (curTime);
+		/* prevent KCS warning */
 	}
 }
 
@@ -279,9 +292,11 @@ void viqe_render_field(int curTime)
 	} else {
 		p_entry = &g_viqe_render_queue.curr_entry;
 		next_frame_info = VIQE_FIELD_NEW;
+
 		while (1) {
 			p_entry_next =
 				viqe_queue_show_entry(&g_viqe_render_queue);
+
 			if (viqe_queue_is_empty(&g_viqe_render_queue)) {
 				// field duplicate
 				break;
@@ -291,36 +306,49 @@ void viqe_render_field(int curTime)
 				next_frame_info = VIQE_FIELD_NEW;
 				viqe_queue_pop_entry(&g_viqe_render_queue);
 				break;
-			} else {
-				if (p_entry->input_image.odd_first_flag != p_entry_next->input_image.odd_first_flag) {
-					// normal condition : T->B->T->B->T->B->T->B->T
-					if ((p_entry->input_image.odd_first_flag) && ((viqe_queue_get_filled(&g_viqe_render_queue)) >= 3)) {
-						// in case of source frame rate is higher than sink(display) frame rate..
-						// for example, 30i contents and 50p display
+			}
 
-						// 1. remove a field
-						viqe_queue_pop_entry(&g_viqe_render_queue);
-						p_entry = viqe_queue_show_entry(&g_viqe_render_queue);
-						next_frame_info = VIQE_FIELD_SKIP;
-						viqe_queue_pop_entry(&g_viqe_render_queue);
-						break;
-					} else {
-						p_entry = p_entry_next;
-						next_frame_info = VIQE_FIELD_NEW;
-						viqe_queue_pop_entry(&g_viqe_render_queue);
-						break;
-					}
-				} else {
-					// abnormal condition : T->B->B->T->T->B->B->T->T
-					p_entry = p_entry_next;
+			if (p_entry->input_image.odd_first_flag
+				!= p_entry_next->input_image.odd_first_flag) {
+
+				// normal condition : T->B->T->B->T->B->T->B->T
+				if ((p_entry->input_image.odd_first_flag)
+					&& ((viqe_queue_get_filled(
+					&g_viqe_render_queue)) >= 3)) {
+
+					// in case of source frame rate
+					// is higher than sink(display)
+					// frame rate. for example,
+					// 30i contents and 50p display
+
+					// 1. remove a field
+					viqe_queue_pop_entry(
+						&g_viqe_render_queue);
+					p_entry = viqe_queue_show_entry(
+						&g_viqe_render_queue);
 					next_frame_info = VIQE_FIELD_SKIP;
-					viqe_queue_pop_entry(&g_viqe_render_queue);
+					viqe_queue_pop_entry(
+						&g_viqe_render_queue);
 					break;
 				}
+
+				p_entry = p_entry_next;
+				next_frame_info = VIQE_FIELD_NEW;
+				viqe_queue_pop_entry(&g_viqe_render_queue);
+				break;
 			}
+
+			// abnormal condition : T->B->B->T->T->B->B->T->T
+			p_entry = p_entry_next;
+			next_frame_info = VIQE_FIELD_SKIP;
+			viqe_queue_pop_entry(&g_viqe_render_queue);
+			break;
 		}
-		if (p_entry->new_field == 0)
+
+		if (p_entry->new_field == 0) {
 			next_frame_info = VIQE_FIELD_DUP;
+			/* prevent KCS warning */
+		}
 	}
 
 	if (next_frame_info == VIQE_FIELD_BROKEN) {
@@ -331,14 +359,17 @@ void viqe_render_field(int curTime)
 
 	if (g_viqe_render_queue.frame_cnt < 4) {
 		next_frame_info = VIQE_FIELD_NEW;
+		/* prevent KCS warning */
 	}
 
 	switch (next_frame_info) {
 	case VIQE_FIELD_SKIP:
 		//viqe_queue_show_entry_info(p_entry, "RDMA:SKIP");
 		viqe_swap_buffer(SKIP_MODE);
-		if ((g_viqe_render_queue.inout_rate++) >= 10)
+		if ((g_viqe_render_queue.inout_rate++) >= 10) {
 			g_viqe_render_queue.inout_rate = 10;
+			/* prevent KCS warning */
+		}
 		break;
 	case VIQE_FIELD_NEW:
 		//viqe_queue_show_entry_info(p_entry, "RDMA:NEW");
@@ -352,16 +383,21 @@ void viqe_render_field(int curTime)
 	case VIQE_FIELD_DUP:
 		//viqe_queue_show_entry_info(p_entry, "RDMA:DUP");
 		viqe_swap_buffer(DUPLI_MODE);
-		if ((g_viqe_render_queue.inout_rate--) <= -10)
+		if ((g_viqe_render_queue.inout_rate--) <= -10) {
 			g_viqe_render_queue.inout_rate = -10;
+			/* prevent KCS warning */
+		}
 		break;
 	}
 
 //	sim_value (g_viqe_render_queue.inout_rate);
-	if (g_viqe_render_queue.inout_rate <= -3)
+	if (g_viqe_render_queue.inout_rate <= -3) {
 		TCC_VIQE_DI_SetFMT60Hz(0);
-	else if (g_viqe_render_queue.inout_rate >= 3)
+		/* prevent KCS warning */
+	} else if (g_viqe_render_queue.inout_rate >= 3) {
 		TCC_VIQE_DI_SetFMT60Hz(1);
+		/* prevent KCS warning */
+	}
 
 	if (g_viqe_render_queue.ready) {
 		//viqe_queue_show_entry_info (p_entry, "RDMA:WRITE");
@@ -395,8 +431,10 @@ void viqe_render_field(int curTime)
 		}
 	#endif
 
-		if (++g_viqe_render_queue.frame_cnt >= 6)
+		if (++g_viqe_render_queue.frame_cnt >= 6) {
 			g_viqe_render_queue.frame_cnt = 6;
+			/* prevent KCS warning */
+		}
 	}
 
 	p_entry->new_field = 0;
