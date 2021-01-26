@@ -1096,7 +1096,7 @@ end_func:
 volatile void __iomem *LVDS_PHY_GetAddress(unsigned int port)
 {
 	if (port >= LVDS_PHY_PORT_MAX){
-		pr_warn("[WARN][LVDS] %s: unused port value. return NULL.", __func__);
+		//pr_warn("[WARN][LVDS] %s: unused port value. return NULL.", __func__);
 		return NULL;
 	}
 
