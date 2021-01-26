@@ -19,14 +19,6 @@
 	model = "Telechips TCC8050 Evaluation Board for AVN";
 	compatible = "telechips,tcc8050", "telechips,tcc805x";
 
-	aux_detect {
-		compatible = "telechips,aux_detect";
-    		status = "okay";
-    		pinctrl-names = "default";
-    		pinctrl-0 = <&aux_detect_md13>;
-    		aux-gpios = <&gpmd 13 1>;
-    		aux-active = <1>;
-	};
 };
 
 &aliases {

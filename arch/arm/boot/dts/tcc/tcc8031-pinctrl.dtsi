@@ -1071,8 +1071,7 @@
 		telechips,pin-function = <1>;
 	};
 
-	aux_detect_ma14: aux_detect_ma14{
-		 telechips,pins = "gpma-14";
+	aux_detect_pin: aux_detect_pin{
 		 telechips,pin-function = <0>;
 		 telechips,input-enable;
 		 telechips,no-pull;

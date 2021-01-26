@@ -610,17 +610,6 @@
 		switch-active = <0>;
 	};
 
-	aux_detect {
-		compatible = "telechips,aux_detect";
-		status = "okay";
-
-		pinctrl-names = "default";
-		pinctrl-0 = <&aux_detect_md13>;
-
-		aux-gpios = <&gpmd 13 1>;
-		aux-active = <1>;
-	};
-
 	fbdisplay: fbdisplay@12000000 {
 		telechips,fbdisplay_num = <0>;
 		//Linuxplatform
