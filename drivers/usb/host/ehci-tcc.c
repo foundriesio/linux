@@ -237,7 +237,7 @@ static ssize_t ehci_pcfg1_store(struct device *dev,
 {
 	struct tcc_ehci_hcd *tcc_ehci = dev_get_drvdata(dev);
 	uint32_t old_reg = readl(tcc_ehci->phy_regs + TCC_EHCI_PHY_PCFG1);
-	uint32_t new_reg = (uint32_t)kstrtoul(buf, 16, NULL);
+	uint32_t new_reg = simple_strtoul(buf, NULL, 16);
 	char str[256] = {0};
 	int32_t i;
 
