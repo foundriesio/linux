@@ -756,11 +756,19 @@ static int wmixer_drv_alpha_mixing_ctrl(struct wmixer_drv_type *wmixer)
 
 	if (wmixer->sc.reg) {
 		wmixer->scaler_plug_status = 1;
-		VIOC_SC_SetBypass(pWMIX_sc_base, true);
-		VIOC_SC_SetDstSize(pWMIX_sc_base,
-			apb_info->dst_width, apb_info->dst_height);
-		VIOC_SC_SetOutSize(pWMIX_sc_base,
-			apb_info->dst_width, apb_info->dst_height);
+		if(apb_info->src0_use_scaler == false){
+			VIOC_SC_SetBypass(pWMIX_sc_base, true);
+			VIOC_SC_SetDstSize(pWMIX_sc_base,
+				apb_info->dst_width, apb_info->dst_height);
+			VIOC_SC_SetOutSize(pWMIX_sc_base,
+				apb_info->dst_width, apb_info->dst_height);
+		} else {
+			VIOC_SC_SetBypass(pWMIX_sc_base, false);
+			VIOC_SC_SetDstSize(pWMIX_sc_base,
+				apb_info->src0_dst_width, apb_info->src0_dst_height);
+			VIOC_SC_SetOutSize(pWMIX_sc_base,
+				apb_info->src0_dst_width, apb_info->src0_dst_height);
+		}
 		VIOC_SC_SetOutPosition(pWMIX_sc_base, 0, 0);
 		VIOC_CONFIG_PlugIn(wmixer->sc.id, wmixer->rdma0.id);
 		VIOC_SC_SetUpdate(pWMIX_sc_base);
@@ -816,6 +824,13 @@ static int wmixer_drv_alpha_mixing_ctrl(struct wmixer_drv_type *wmixer)
 	// pWMIX_wmix_base, apb_info->src1_layer,
 	// apb_info->src1_alpha0,
 	// apb_info->src1_alpha1);
+
+	//position
+	VIOC_WMIX_SetPosition(pWMIX_wmix_base, 0,
+		apb_info->src0_winLeft, apb_info->src0_winTop);
+	VIOC_WMIX_SetPosition(pWMIX_wmix_base, 1,
+		apb_info->src1_winLeft, apb_info->src1_winTop);
+
 	// update WMIX.
 	VIOC_WMIX_SetUpdate(pWMIX_wmix_base);
 
