@@ -15,6 +15,8 @@
 #include <linux/ceph/mdsmap.h>
 #include <linux/ceph/auth.h>
 
+#include "super.h"
+
 /* The first 8 bits are reserved for old ceph releases */
 #define CEPHFS_FEATURE_MIMIC		8
 #define CEPHFS_FEATURE_REPLY_ENCODING	9
@@ -430,6 +432,9 @@ struct ceph_mds_client {
 };
 
 extern const char *ceph_mds_op_name(int op);
+
+extern bool check_session_state(struct ceph_mds_session *s);
+void inc_session_sequence(struct ceph_mds_session *s);
 
 extern struct ceph_mds_session *
 __ceph_lookup_mds_session(struct ceph_mds_client *, int mds);

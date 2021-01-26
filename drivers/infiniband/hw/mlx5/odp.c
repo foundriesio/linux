@@ -138,6 +138,29 @@ void mlx5_odp_populate_klm(struct mlx5_klm *pklm, size_t offset,
 		return;
 	}
 
+	/*
+	 * The locking here is pretty subtle. Ideally the implicit children
+	 * list would be protected by the umem_mutex, however that is not
+	 * possible. Instead this uses a weaker update-then-lock pattern:
+	 *
+	 *  srcu_read_lock()
+	 *    <change children list>
+	 *    mutex_lock(umem_mutex)
+	 *     mlx5_ib_update_xlt()
+	 *    mutex_unlock(umem_mutex)
+	 *    destroy lkey
+	 *
+	 * ie any change the children list must be followed by the locked
+	 * update_xlt before destroying.
+	 *
+	 * The umem_mutex provides the acquire/release semantic needed to make
+	 * the children list visible to a racing thread. While SRCU is not
+	 * technically required, using it gives consistent use of the SRCU
+	 * locking around the children list.
+	 */
+	lockdep_assert_held(&to_ib_umem_odp(mr->umem)->umem_mutex);
+	lockdep_assert_held(&mr->dev->mr_srcu);
+
 	odp = odp_lookup(offset * MLX5_IMR_MTT_SIZE,
 			 nentries * MLX5_IMR_MTT_SIZE, mr);
 
@@ -162,15 +185,22 @@ static void mr_leaf_free_action(struct work_struct *work)
 	struct ib_umem_odp *odp = container_of(work, struct ib_umem_odp, work);
 	int idx = ib_umem_start(&odp->umem) >> MLX5_IMR_MTT_SHIFT;
 	struct mlx5_ib_mr *mr = odp->private, *imr = mr->parent;
+	struct ib_umem_odp *odp_imr = to_ib_umem_odp(imr->umem);
+	int srcu_key;
 
 	mr->parent = NULL;
 	synchronize_srcu(&mr->dev->mr_srcu);
 
-	ib_umem_release(&odp->umem);
-	if (imr->live)
+	if (imr->live) {
+		srcu_key = srcu_read_lock(&mr->dev->mr_srcu);
+		mutex_lock(&odp_imr->umem_mutex);
 		mlx5_ib_update_xlt(imr, idx, 1, 0,
 				   MLX5_IB_UPD_XLT_INDIRECT |
 				   MLX5_IB_UPD_XLT_ATOMIC);
+		mutex_unlock(&odp_imr->umem_mutex);
+		srcu_read_unlock(&mr->dev->mr_srcu, srcu_key);
+	}
+	ib_umem_release(&odp->umem);
 	mlx5_mr_cache_free(mr->dev, mr);
 
 	if (atomic_dec_and_test(&imr->num_leaf_free))
@@ -208,7 +238,7 @@ void mlx5_ib_invalidate_range(struct ib_umem_odp *umem_odp, unsigned long start,
 	 * overwrite the same MTTs.  Concurent invalidations might race us,
 	 * but they will write 0s as well, so no difference in the end result.
 	 */
-
+	mutex_lock(&umem_odp->umem_mutex);
 	for (addr = start; addr < end; addr += BIT(umem->page_shift)) {
 		idx = (addr - ib_umem_start(umem)) >> umem->page_shift;
 		/*
@@ -240,6 +270,7 @@ void mlx5_ib_invalidate_range(struct ib_umem_odp *umem_odp, unsigned long start,
 				   idx - blk_start_idx + 1, 0,
 				   MLX5_IB_UPD_XLT_ZAP |
 				   MLX5_IB_UPD_XLT_ATOMIC);
+	mutex_unlock(&umem_odp->umem_mutex);
 	/*
 	 * We are now sure that the device will not access the
 	 * memory. We can safely unmap it, and mark it as dirty if
@@ -452,7 +483,7 @@ struct mlx5_ib_mr *mlx5_ib_alloc_implicit_mr(struct mlx5_ib_pd *pd,
 	struct mlx5_ib_mr *imr;
 	struct ib_umem *umem;
 
-	umem = ib_umem_get(ctx, 0, 0, IB_ACCESS_ON_DEMAND, 0);
+	umem = ib_umem_get(ctx, 0, 0, access_flags, 0);
 	if (IS_ERR(umem))
 		return ERR_CAST(umem);
 
@@ -507,9 +538,8 @@ static int pagefault_mr(struct mlx5_ib_dev *dev, struct mlx5_ib_mr *mr,
 			u64 io_virt, size_t bcnt, u32 *bytes_mapped)
 {
 	int npages = 0, current_seq, page_shift, ret, np;
-	bool implicit = false;
 	struct ib_umem_odp *odp_mr = to_ib_umem_odp(mr->umem);
-	u64 access_mask = ODP_READ_ALLOWED_BIT;
+	u64 access_mask;
 	u64 start_idx, page_mask;
 	struct ib_umem_odp *odp;
 	size_t size;
@@ -520,7 +550,6 @@ static int pagefault_mr(struct mlx5_ib_dev *dev, struct mlx5_ib_mr *mr,
 		if (IS_ERR(odp))
 			return PTR_ERR(odp);
 		mr = odp->private;
-		implicit = true;
 	} else {
 		odp = odp_mr;
 	}
@@ -531,6 +560,7 @@ next_mr:
 	page_shift = mr->umem->page_shift;
 	page_mask = ~(BIT(page_shift) - 1);
 	start_idx = (io_virt - (mr->mmkey.iova & page_mask)) >> page_shift;
+	access_mask = ODP_READ_ALLOWED_BIT;
 
 	if (mr->umem->writable)
 		access_mask |= ODP_WRITE_ALLOWED_BIT;
@@ -599,19 +629,15 @@ next_mr:
 
 out:
 	if (ret == -EAGAIN) {
-		if (implicit || !odp->dying) {
-			unsigned long timeout =
-				msecs_to_jiffies(MMU_NOTIFIER_TIMEOUT);
+		unsigned long timeout = msecs_to_jiffies(MMU_NOTIFIER_TIMEOUT);
 
-			if (!wait_for_completion_timeout(
-					&odp->notifier_completion,
-					timeout)) {
-				mlx5_ib_warn(dev, "timeout waiting for mmu notifier. seq %d against %d\n",
-					     current_seq, odp->notifiers_seq);
-			}
-		} else {
-			/* The MR is being killed, kill the QP as well. */
-			ret = -EFAULT;
+		if (!wait_for_completion_timeout(&odp->notifier_completion,
+						 timeout)) {
+			mlx5_ib_warn(
+				dev,
+				"timeout waiting for mmu notifier. seq %d against %d. notifiers_count=%d\n",
+				current_seq, odp->notifiers_seq,
+				odp->notifiers_count);
 		}
 	}
 
@@ -625,6 +651,15 @@ struct pf_frame {
 	size_t bcnt;
 	int depth;
 };
+
+static bool mkey_is_eq(struct mlx5_core_mkey *mmkey, u32 key)
+{
+	if (!mmkey)
+		return false;
+	if (mmkey->type == MLX5_MKEY_MW)
+		return mlx5_base_mkey(mmkey->key) == mlx5_base_mkey(key);
+	return mmkey->key == key;
+}
 
 /*
  * Handle a single data segment in a page-fault WQE or RDMA region.
@@ -658,7 +693,7 @@ static int pagefault_single_data_segment(struct mlx5_ib_dev *dev,
 
 next_mr:
 	mmkey = __mlx5_mr_lookup(dev->mdev, mlx5_base_mkey(key));
-	if (!mmkey || mmkey->key != key) {
+	if (!mkey_is_eq(mmkey, key)) {
 		mlx5_ib_dbg(dev, "failed to find mkey %x\n", key);
 		ret = -EFAULT;
 		goto srcu_unlock;

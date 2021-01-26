@@ -473,6 +473,8 @@ static int si470x_i2c_suspend(struct device *dev)
 	if (si470x_set_register(radio, POWERCFG) < 0)
 		return -EIO;
 
+	v4l2_ctrl_handler_free(&radio->hdl);
+	v4l2_device_unregister(&radio->v4l2_dev);
 	return 0;
 }
 

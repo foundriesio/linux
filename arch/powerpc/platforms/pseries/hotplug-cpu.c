@@ -178,8 +178,8 @@ static int pseries_add_processor(struct device_node *np)
 		/* If we get here, it most likely means that NR_CPUS is
 		 * less than the partition's max processors setting.
 		 */
-		printk(KERN_ERR "Cannot add cpu %s; this system configuration"
-		       " supports %d logical cpus.\n", np->full_name,
+		printk(KERN_ERR "Cannot add cpu %pOF; this system configuration"
+		       " supports %d logical cpus.\n", np,
 		       num_possible_cpus());
 		goto out_unlock;
 	}
@@ -749,6 +749,7 @@ static int dlpar_cpu_add_by_count(u32 cpus_to_add)
 	parent = of_find_node_by_path("/cpus");
 	if (!parent) {
 		pr_warn("Could not find CPU root node in device tree\n");
+		kfree(cpu_drcs);
 		return -1;
 	}
 

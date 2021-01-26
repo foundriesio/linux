@@ -427,16 +427,13 @@ enum qeth_qdio_buffer_states {
 	 * outbound: filled by driver; owned by hardware in order to be sent
 	 */
 	QETH_QDIO_BUF_PRIMED,
-	/*
-	 * inbound: not applicable
-	 * outbound: identified to be pending in TPQ
-	 */
+	/* Discovered by the TX completion code: */
 	QETH_QDIO_BUF_PENDING,
-	/*
-	 * inbound: not applicable
-	 * outbound: found in completion queue
-	 */
-	QETH_QDIO_BUF_IN_CQ,
+	/* Finished by the TX completion code: */
+	QETH_QDIO_BUF_NEED_QAOB,
+	/* Received QAOB notification on CQ: */
+	QETH_QDIO_BUF_QAOB_OK,
+	QETH_QDIO_BUF_QAOB_ERROR,
 	/*
 	 * inbound: not applicable
 	 * outbound: handled via transfer pending / completion queue

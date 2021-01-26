@@ -2309,3 +2309,11 @@ void __init mmu_feature_keys_init(void)
 	}
 }
 #endif
+
+#include <asm/cacheflush.h>
+#undef flush_dcache_range
+void flush_dcache_range(unsigned long start, unsigned long stop)
+{
+	flush_dcache_range_inline(start, stop);
+}
+EXPORT_SYMBOL(flush_dcache_range);

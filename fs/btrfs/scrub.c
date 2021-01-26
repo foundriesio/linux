@@ -903,7 +903,7 @@ static void scrub_print_warning(const char *errstr, struct scrub_block *sblock)
 		swarn.dev = dev;
 		iterate_extent_inodes(fs_info, found_key.objectid,
 					extent_item_pos, 1,
-					scrub_print_warning_inode, &swarn);
+					scrub_print_warning_inode, &swarn, false);
 	}
 
 out:
@@ -1067,7 +1067,7 @@ static void scrub_fixup_nodatasum(struct btrfs_work *work)
 	 * can be found.
 	 */
 	ret = iterate_inodes_from_logical(fixup->logical, fs_info, path,
-					  scrub_fixup_readpage, fixup);
+					  scrub_fixup_readpage, fixup, false);
 	if (ret < 0) {
 		uncorrectable = 1;
 		goto out;
@@ -3902,11 +3902,12 @@ int scrub_enumerate_chunks(struct scrub_ctx *sctx,
 					cache->key.offset);
 		}
 		scrub_pause_off(fs_info);
-		btrfs_dev_replace_lock(&fs_info->dev_replace, 1);
+
+		btrfs_dev_replace_write_lock(&fs_info->dev_replace);
 		dev_replace->cursor_right = found_key.offset + length;
 		dev_replace->cursor_left = found_key.offset;
 		dev_replace->item_needs_writeback = 1;
-		btrfs_dev_replace_unlock(&fs_info->dev_replace, 1);
+		btrfs_dev_replace_write_unlock(&fs_info->dev_replace);
 		ret = scrub_chunk(sctx, scrub_dev, chunk_offset, length,
 				  found_key.offset, cache, is_dev_replace);
 
@@ -3942,10 +3943,10 @@ int scrub_enumerate_chunks(struct scrub_ctx *sctx,
 
 		scrub_pause_off(fs_info);
 
-		btrfs_dev_replace_lock(&fs_info->dev_replace, 1);
+		btrfs_dev_replace_write_lock(&fs_info->dev_replace);
 		dev_replace->cursor_left = dev_replace->cursor_right;
 		dev_replace->item_needs_writeback = 1;
-		btrfs_dev_replace_unlock(&fs_info->dev_replace, 1);
+		btrfs_dev_replace_write_unlock(&fs_info->dev_replace);
 
 		if (ro_set)
 			btrfs_dec_block_group_ro(cache);
@@ -4165,16 +4166,16 @@ int btrfs_scrub_dev(struct btrfs_fs_info *fs_info, u64 devid, u64 start,
 		return -EIO;
 	}
 
-	btrfs_dev_replace_lock(&fs_info->dev_replace, 0);
+	btrfs_dev_replace_read_lock(&fs_info->dev_replace);
 	if (dev->scrub_device ||
 	    (!is_dev_replace &&
 	     btrfs_dev_replace_is_ongoing(&fs_info->dev_replace))) {
-		btrfs_dev_replace_unlock(&fs_info->dev_replace, 0);
+		btrfs_dev_replace_read_unlock(&fs_info->dev_replace);
 		mutex_unlock(&fs_info->scrub_lock);
 		mutex_unlock(&fs_info->fs_devices->device_list_mutex);
 		return -EINPROGRESS;
 	}
-	btrfs_dev_replace_unlock(&fs_info->dev_replace, 0);
+	btrfs_dev_replace_read_unlock(&fs_info->dev_replace);
 
 	ret = scrub_workers_get(fs_info, is_dev_replace);
 	if (ret) {
@@ -4458,7 +4459,7 @@ static void copy_nocow_pages_worker(struct btrfs_work *work)
 	}
 
 	ret = iterate_inodes_from_logical(logical, fs_info, path,
-					  record_inode_for_nocow, nocow_ctx);
+			record_inode_for_nocow, nocow_ctx, false);
 	if (ret != 0 && ret != -ENOENT) {
 		btrfs_warn(fs_info,
 			   "iterate_inodes_from_logical() failed: log %llu, phys %llu, len %llu, mir %u, ret %d",

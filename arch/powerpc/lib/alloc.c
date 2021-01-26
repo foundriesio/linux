@@ -17,3 +17,10 @@ void * __ref zalloc_maybe_bootmem(size_t size, gfp_t mask)
 	}
 	return p;
 }
+
+#include <asm/uaccess.h>
+unsigned long __clear_user(void __user *addr, unsigned long size)
+{
+	return clear_user(addr, size);
+}
+EXPORT_SYMBOL(__clear_user);

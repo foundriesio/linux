@@ -117,6 +117,11 @@ struct b53_device {
 	struct b53_vlan *vlans;
 	unsigned int num_ports;
 	struct b53_port *ports;
+#ifndef __GENKSYMS__
+	bool vlan_enabled;
+	bool vlan_filtering_enabled;
+	u16		*port_pvid;
+#endif
 };
 
 #define b53_for_each_port(dev, i) \

@@ -104,6 +104,7 @@ int mtk_mdp_comp_init(struct device *dev, struct device_node *node,
 {
 	struct device_node *larb_node;
 	struct platform_device *larb_pdev;
+	int ret;
 	int i;
 
 	if (comp_id < 0 || comp_id >= MTK_MDP_COMP_ID_MAX) {
@@ -136,7 +137,8 @@ int mtk_mdp_comp_init(struct device *dev, struct device_node *node,
 		dev_err(dev,
 			"Missing mediadek,larb phandle in %s node\n",
 			node->full_name);
-		return -EINVAL;
+		ret = -EINVAL;
+		goto put_dev;
 	}
 
 	larb_pdev = of_find_device_by_node(larb_node);
@@ -144,13 +146,19 @@ int mtk_mdp_comp_init(struct device *dev, struct device_node *node,
 		dev_warn(dev, "Waiting for larb device %s\n",
 			 larb_node->full_name);
 		of_node_put(larb_node);
-		return -EPROBE_DEFER;
+		ret = -EPROBE_DEFER;
+		goto put_dev;
 	}
 	of_node_put(larb_node);
 
 	comp->larb_dev = &larb_pdev->dev;
 
 	return 0;
+
+put_dev:
+	of_node_put(comp->dev_node);
+
+	return ret;
 }
 
 void mtk_mdp_comp_deinit(struct device *dev, struct mtk_mdp_comp *comp)

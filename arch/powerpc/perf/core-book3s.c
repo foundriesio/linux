@@ -21,6 +21,10 @@
 #include <asm/ptrace.h>
 #include <asm/code-patching.h>
 
+#ifdef CONFIG_PPC64
+#include "internal.h"
+#endif
+
 #define BHRB_MAX_ENTRIES	32
 #define BHRB_TARGET		0x0000000000000002
 #define BHRB_PREDICTION		0x0000000000000001
@@ -132,6 +136,9 @@ static void pmao_restore_workaround(bool ebb) { }
 
 bool is_sier_available(void)
 {
+	if (!ppmu)
+		return false;
+
 	if (ppmu->flags & PPMU_HAS_SIER)
 		return true;
 
@@ -1521,9 +1528,16 @@ nocheck:
 	ret = 0;
  out:
 	if (has_branch_stack(event)) {
-		power_pmu_bhrb_enable(event);
-		cpuhw->bhrb_filter = ppmu->bhrb_filter_map(
-					event->attr.branch_sample_type);
+		u64 bhrb_filter = -1;
+
+		if (ppmu->bhrb_filter_map)
+			bhrb_filter = ppmu->bhrb_filter_map(
+				event->attr.branch_sample_type);
+
+		if (bhrb_filter != -1) {
+			cpuhw->bhrb_filter = bhrb_filter;
+			power_pmu_bhrb_enable(event);
+		}
 	}
 
 	perf_pmu_enable(event->pmu);
@@ -1845,7 +1859,6 @@ static int power_pmu_event_init(struct perf_event *event)
 	int n;
 	int err;
 	struct cpu_hw_events *cpuhw;
-	u64 bhrb_filter;
 
 	if (!ppmu)
 		return -ENOENT;
@@ -1951,7 +1964,10 @@ static int power_pmu_event_init(struct perf_event *event)
 	err = power_check_constraints(cpuhw, events, cflags, n + 1);
 
 	if (has_branch_stack(event)) {
-		bhrb_filter = ppmu->bhrb_filter_map(
+		u64 bhrb_filter = -1;
+
+		if (ppmu->bhrb_filter_map)
+			bhrb_filter = ppmu->bhrb_filter_map(
 					event->attr.branch_sample_type);
 
 		if (bhrb_filter == -1) {
@@ -2286,3 +2302,27 @@ int register_power_pmu(struct power_pmu *pmu)
 			  power_pmu_prepare_cpu, NULL);
 	return 0;
 }
+
+#ifdef CONFIG_PPC64
+static int __init init_ppc64_pmu(void)
+{
+	/* run through all the pmu drivers one at a time */
+	if (!init_power5_pmu())
+		return 0;
+	else if (!init_power5p_pmu())
+		return 0;
+	else if (!init_power6_pmu())
+		return 0;
+	else if (!init_power7_pmu())
+		return 0;
+	else if (!init_power8_pmu())
+		return 0;
+	else if (!init_power9_pmu())
+		return 0;
+	else if (!init_ppc970_pmu())
+		return 0;
+	else
+		return init_generic_compat_pmu();
+}
+early_initcall(init_ppc64_pmu);
+#endif

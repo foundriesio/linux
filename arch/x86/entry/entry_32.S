@@ -233,6 +233,7 @@ ENTRY(__switch_to_asm)
 	pushl	%ebx
 	pushl	%edi
 	pushl	%esi
+	pushfl
 
 	/* switch stack */
 	movl	%esp, TASK_threadsp(%eax)
@@ -255,6 +256,7 @@ ENTRY(__switch_to_asm)
 #endif
 
 	/* restore callee-saved registers */
+	popfl
 	popl	%esi
 	popl	%edi
 	popl	%ebx
@@ -908,14 +910,6 @@ BUILD_INTERRUPT3(hv_stimer0_callback_vector, HYPERV_STIMER0_VECTOR,
 		 hv_stimer0_vector_handler)
 
 #endif /* CONFIG_HYPERV */
-
-#ifdef CONFIG_TRACING
-ENTRY(trace_page_fault)
-	ASM_CLAC
-	pushl	$trace_do_page_fault
-	jmp	common_exception
-END(trace_page_fault)
-#endif
 
 ENTRY(page_fault)
 	ASM_CLAC

@@ -476,7 +476,7 @@ void __init smp_setup_cpu_maps(void)
 		__be32 cpu_be;
 		int j, len;
 
-		DBG("  * %s...\n", dn->full_name);
+		DBG("  * %pOF...\n", dn);
 
 		intserv = of_get_property(dn, "ibm,ppc-interrupt-server#s",
 				&len);
@@ -906,17 +906,6 @@ void __init setup_arch(char **cmdline_p)
 	/* On BookE, setup per-core TLB data structures. */
 	setup_tlb_core_data();
 
-	/*
-	 * Release secondary cpus out of their spinloops at 0x60 now that
-	 * we can map physical -> logical CPU ids.
-	 *
-	 * Freescale Book3e parts spin in a loop provided by firmware,
-	 * so smp_release_cpus() does nothing for them.
-	 */
-#ifdef CONFIG_SMP
-	smp_release_cpus();
-#endif
-
 	/* Print various info about the machine that has been gathered so far. */
 	print_system_info();
 
@@ -957,6 +946,17 @@ void __init setup_arch(char **cmdline_p)
 	irqstack_early_init();
 	exc_lvl_early_init();
 	emergency_stack_init();
+
+	/*
+	 * Release secondary cpus out of their spinloops at 0x60 now that
+	 * we can map physical -> logical CPU ids.
+	 *
+	 * Freescale Book3e parts spin in a loop provided by firmware,
+	 * so smp_release_cpus() does nothing for them.
+	 */
+#ifdef CONFIG_SMP
+	smp_release_cpus();
+#endif
 
 	initmem_init();
 

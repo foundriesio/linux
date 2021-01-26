@@ -216,6 +216,9 @@ struct wmi_ops {
 	struct sk_buff *(*gen_echo)(struct ath10k *ar, u32 value);
 	struct sk_buff *(*gen_pdev_get_tpc_table_cmdid)(struct ath10k *ar,
 							u32 param);
+#ifndef __GENKSYMS__
+	int (*cleanup_mgmt_tx_send)(struct ath10k *ar, struct sk_buff *msdu);
+#endif
 
 };
 
@@ -429,6 +432,15 @@ ath10k_wmi_get_txbf_conf_scheme(struct ath10k *ar)
 		return WMI_TXBF_CONF_UNSUPPORTED;
 
 	return ar->wmi.ops->get_txbf_conf_scheme(ar);
+}
+
+static inline int
+ath10k_wmi_cleanup_mgmt_tx_send(struct ath10k *ar, struct sk_buff *msdu)
+{
+	if (!ar->wmi.ops->cleanup_mgmt_tx_send)
+		return -EOPNOTSUPP;
+
+	return ar->wmi.ops->cleanup_mgmt_tx_send(ar, msdu);
 }
 
 static inline int
