@@ -797,7 +797,7 @@
 		port-mux = <12>;
 		pinctrl-names = "default";
 		pinctrl-0 = <&i2c12_bus>;
-#if 0
+
 		isl79988: isl79988 {
 			compatible	= "adi,isl79988";
 			pinctrl-names	= "default";
@@ -813,23 +813,6 @@
 				};
 			};
 		};
-#endif
-	/* video decoder using parallel interface output */
-	adv7182: adv7182 {
-		status		= "okay";
-		compatible	= "adi,adv7182";
-		pinctrl-names	= "default";
-		pinctrl-0	= <&cam0_clk &cam0_data_8bit>;
-		rst-gpios	= <&gpb 14 0>;
-		reg		= <0x21>;	// 0x42 >> 1
-		port {
-			adv7182_out: endpoint {
-				remote-endpoint = <&videoinput0_in>;
-				io-direction	= "output";
-				bus-width	= <8>;
-			};
-		};
-	};
 
 		max96701: max96701 {
 			compatible	= "maxim,max96701";
@@ -1497,8 +1480,7 @@
 
 		port {
 			videoinput0_in: endpoint {
-				//remote-endpoint	= <&isl79988_out>;
-				remote-endpoint	= <&adv7182_out>;
+				remote-endpoint	= <&isl79988_out>;
 				io-direction	= "input";
                 	        bus-type	= <0>;
 				bus-with	= <8>;
