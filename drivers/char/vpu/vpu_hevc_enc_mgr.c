@@ -14,7 +14,7 @@
 #include <linux/mm.h>
 #include <linux/module.h>
 #include <linux/platform_device.h>
-#include <linux/kernel.h>
+#include <linux/kernel.h>:
 #include <linux/kthread.h>
 #include <linux/uaccess.h>
 #include <soc/tcc/pmap.h>
@@ -655,7 +655,7 @@ static int _vmgr_hevc_enc_process(vputype type, int cmd, long pHandle,
 		break;
 
 		case VPU_ENC_CLOSE:
-			V_DBG(VPU_DBG_SEQUENCE, "VPU_ENC_CLOSE !!");
+			V_DBG(VPU_DBG_CLOSE, "VPU_ENC_CLOSE !!");
 			vmgr_hevc_enc_data.check_interrupt_detection = 1;
 			ret = tcc_vpu_hevc_enc(cmd, (codec_handle_t *)&pHandle,
 				(void *)NULL, (void *)NULL);
