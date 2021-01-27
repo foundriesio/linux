@@ -509,6 +509,11 @@ PVRSRV_ERROR RGXRegisterMemoryContext(PVRSRV_DEVICE_NODE	*psDeviceNode,
 		 * of the MMU context for use when programming the BIF.
 		 */
 		psDevInfo->psKernelMMUCtx = psMMUContext;
+
+#if defined(RGX_BRN71422_TARGET_HARDWARE_PHYSICAL_ADDR)
+		/* Setup the BRN71422 mapping in the FW memory context. */
+		RGXMapBRN71422TargetPhysicalAddress(psMMUContext);
+#endif 
 	}
 	else
 	{

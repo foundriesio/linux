@@ -659,6 +659,64 @@ static IMG_UINT32 _CalcPTEIdx(IMG_DEV_VIRTADDR sDevVAddr,
 	return ui32RetVal;
 }
 
+#if defined(RGX_BRN71422_TARGET_HARDWARE_PHYSICAL_ADDR)
+/*
+ * RGXMapBRN71422TargetPhysicalAddress
+ *
+ * Set-up a special MMU tree mapping with a single page that eventually points to
+ * RGX_BRN71422_TARGET_HARDWARE_PHYSICAL_ADDR.
+ *
+ * PC entries are 32b, with the last 4 bits being 0 except for the LSB bit that should be 1 (Valid). Addr is 4KB aligned.
+ * PD entries are 64b, with addr in bits 39:5 and everything else 0 except for LSB bit that is Valid. Addr is byte aligned?
+ * PT entries are 64b, with phy addr in bits 39:12 and everything else 0 except for LSB bit that is Valid. Addr is 4KB aligned.
+ * So, we can construct the page tables in a single page like this:
+ *   0x00 : PCE (PCE index 0)
+ *   0x04 : 0x0
+ *   0x08 : PDEa (PDE index 1)
+ *   0x0C : PDEb
+ *   0x10 : PTEa (PTE index 2)
+ *   0x14 : PTEb
+ *
+ * With the PCE and the PDE pointing to this same page. 
+ * The VA address that we are mapping is therefore:
+ *  VA = PCE_idx*PCE_size + PDE_idx*PDE_size + PTE_idx*PTE_size = 
+ *     =      0 * 1GB     +      1 * 2MB     +      2 * 4KB     =
+ *     =        0         +    0x20_0000     +      0x2000      =
+ *     = 0x00_0020_2000
+ */
+void RGXMapBRN71422TargetPhysicalAddress(MMU_CONTEXT *psMMUContext)
+{
+	MMU_MEMORY_DESC  *psMemDesc  = &psMMUContext->sBaseLevelInfo.sMemDesc;
+	IMG_DEV_PHYADDR  sPhysAddrPC = psMemDesc->sDevPAddr;
+	IMG_UINT32       *pui32Px    = psMemDesc->pvCpuVAddr; 
+	IMG_UINT64       *pui64Px    = psMemDesc->pvCpuVAddr; 
+	IMG_UINT64       ui64Entry;
+
+	/* PCE points to PC */
+	ui64Entry = sPhysAddrPC.uiAddr;
+	ui64Entry = ui64Entry >> RGX_MMUCTRL_PC_DATA_PD_BASE_ALIGNSHIFT;
+	ui64Entry = ui64Entry << RGX_MMUCTRL_PC_DATA_PD_BASE_SHIFT;
+	ui64Entry = ui64Entry & ~RGX_MMUCTRL_PC_DATA_PD_BASE_CLRMSK;
+	ui64Entry = ui64Entry | RGX_MMUCTRL_PC_DATA_VALID_EN;
+	pui32Px[0] = (IMG_UINT32) ui64Entry;
+
+	/* PDE points to PC */
+	ui64Entry = sPhysAddrPC.uiAddr;
+	ui64Entry = ui64Entry & ~RGX_MMUCTRL_PD_DATA_PT_BASE_CLRMSK;
+	ui64Entry = ui64Entry | RGX_MMUCTRL_PD_DATA_VALID_EN;
+	pui64Px[1] = ui64Entry;
+
+	/* PTE points to PAddr */
+	ui64Entry = RGX_BRN71422_TARGET_HARDWARE_PHYSICAL_ADDR;
+	ui64Entry = ui64Entry & ~RGX_MMUCTRL_PT_DATA_PAGE_CLRMSK;
+	ui64Entry = ui64Entry | RGX_MMUCTRL_PT_DATA_VALID_EN;
+	pui64Px[2] = ui64Entry;
+
+	PVR_DPF((PVR_DBG_ERROR, "%s: Mapping the BRN71422 workaround to target physical address 0x%" IMG_UINT64_FMTSPECx ".",
+	         __func__, RGX_BRN71422_TARGET_HARDWARE_PHYSICAL_ADDR));
+}
+#endif 
+
 /*****************************************************************************
  *         MMU memory allocation/management functions (mem desc)             *
  *****************************************************************************/

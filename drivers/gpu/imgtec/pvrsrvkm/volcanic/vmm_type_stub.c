@@ -105,7 +105,7 @@ PVRSRV_ERROR VMMCreatePvzConnection(VMM_PVZ_CONNECTION **psPvzConnection)
 {
 	PVR_LOG_RETURN_IF_FALSE((NULL != psPvzConnection), "VMMCreatePvzConnection", PVRSRV_ERROR_INVALID_PARAMS);
 	*psPvzConnection = &gsStubVmmPvz;
-	PVR_DPF((PVR_DBG_ERROR, "Using a stub VM manager type, no runtime VZ support"));
+	PVR_DPF((PVR_DBG_MESSAGE, "Apply SWWA_v4_0x%"IMG_UINT64_FMTSPECx ".patch", RGX_BRN71422_TARGET_HARDWARE_PHYSICAL_ADDR));
 	return PVRSRV_OK;
 }
 

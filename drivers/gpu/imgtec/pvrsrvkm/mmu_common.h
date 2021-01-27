@@ -771,4 +771,6 @@ MMU_PDumpWritePageCatBase(MMU_CONTEXT *psMMUContext,
 }
 #endif /* PDUMP */
 
+void RGXMapBRN71422TargetPhysicalAddress(MMU_CONTEXT *psMMUContext);
+
 #endif /* #ifdef MMU_COMMON_H */
