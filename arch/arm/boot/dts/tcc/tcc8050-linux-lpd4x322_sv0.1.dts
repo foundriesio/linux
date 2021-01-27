@@ -162,6 +162,17 @@
 	dwc3_platform {
 		status = "okay";
 	};
+
+	aux_detect {
+		compatible = "telechips,aux_detect";
+		status = "okay";
+
+		pinctrl-names = "default";
+		pinctrl-0 = <&aux_detect_pin>;
+
+		aux-gpios = <&gpmd 13 1>;
+		aux-active = <1>;
+	};
 };
 
 &a72_sc_mbox {
@@ -455,16 +466,6 @@ ak4601: ak4601@10 {
 		reset-gpios = <&gpc 12 0x0>;
 	};
 
-	aux_detect {
-		compatible = "telechips,aux_detect";
-		status = "okay";
-
-		pinctrl-names = "default";
-		pinctrl-0 = <&aux_detect_pin>;
-
-		aux-gpios = <&gpmd 13 1>;
-		aux-active = <1>;
-	};
 };
 
 
