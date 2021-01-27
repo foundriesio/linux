@@ -2002,6 +2002,7 @@
     spdif0_rx: spdif0_rx{
         telechips,pins = "gpe-5";
         telechips,pin-function = <4>;
+		telechips,input_buffer_enable;
     };
 
     spdif0_rx_idle: spdif0_rx_idle{
@@ -2024,6 +2025,7 @@
     spdif1_rx: spdif1_rx{
         telechips,pins = "gpe-6";
         telechips,pin-function = <4>;
+		telechips,input_buffer_enable;
     };
 
     spdif1_rx_idle: spdif1_rx_idle{
@@ -2046,6 +2048,7 @@
     spdif2_rx: spdif2_rx{
         telechips,pins = "gpe-7";
         telechips,pin-function = <4>;
+		telechips,input_buffer_enable;
     };
 
     spdif2_rx_idle: spdif2_rx_idle{
@@ -2068,6 +2071,7 @@
     spdif3_rx: spdif3_rx{
         telechips,pins = "gpe-8";
         telechips,pin-function = <4>;
+		telechips,input_buffer_enable;
     };
 
     spdif3_rx_idle: spdif3_rx_idle{
@@ -2090,6 +2094,7 @@
     spdif4_rx: spdif4_rx{
         telechips,pins = "gpe-9";
         telechips,pin-function = <4>;
+		telechips,input_buffer_enable;
     };
 
     spdif4_rx_idle: spdif4_rx_idle{
@@ -2112,6 +2117,7 @@
     spdif5_rx: spdif5_rx{
         telechips,pins = "gpe-10";
         telechips,pin-function = <4>;
+		telechips,input_buffer_enable;
     };
 
     spdif5_rx_idle: spdif5_rx_idle{
@@ -2134,6 +2140,7 @@
     spdif6_rx: spdif6_rx{
         telechips,pins = "gpe-15";
         telechips,pin-function = <4>;
+		telechips,input_buffer_enable;
     };
 
     spdif6_rx_idle: spdif6_rx_idle{
