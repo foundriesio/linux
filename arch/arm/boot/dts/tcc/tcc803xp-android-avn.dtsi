@@ -1266,8 +1266,9 @@
 /* bluetooth */
 &tcc_bluetooth {
 	compatible = "telechips, tcc_bluetooth";
-	bt_power-gpio = <&gpsd2 6 0>; /* BTWIFI_VBAT_EN */
+	bt_power-gpio = <&gpsd1 10 0>; /* BTWIFI_VBAT_EN */
 	bt_reg_on-gpio = <&gpext1 3 0>;
+	bt_hwake-gpio = <&gpk 2 0>;
 	status = "okay";
 };
 
