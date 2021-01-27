@@ -148,8 +148,6 @@ static int cxd5700_get_fmt(struct v4l2_subdev *sd,
 	struct cxd5700		*dev	= to_dev(sd);
 	int			ret	= 0;
 
-	logi("%s call\n", __func__);
-
 	mutex_lock(&dev->lock);
 
 	memcpy((void *)&format->format, (const void *)&dev->fmt,
@@ -165,8 +163,6 @@ static int cxd5700_set_fmt(struct v4l2_subdev *sd,
 {
 	struct cxd5700		*dev	= to_dev(sd);
 	int			ret	= 0;
-
-	logi("%s call\n", __func__);
 
 	mutex_lock(&dev->lock);
 

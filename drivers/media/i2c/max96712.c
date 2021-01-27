@@ -294,7 +294,7 @@ const struct reg_sequence max96712_reg_defaults[] = {
 	 * enable GMSL1 link A B C D
 	 */
 	//{0x0006, 0x0f, 50},
-	{0x0006, MAX96712_LINK_MODE, 50},
+	{0x0006, MAX96712_LINK_MODE, 50*1000},
 };
 
 /* for raw12 4ch input */
@@ -330,7 +330,7 @@ const struct reg_sequence max96712_reg_defaults_raw12[] = {
 	{0x0D07, 0xA4, 0}, // DBL BWS and HVEN =1
 	{0x0E07, 0xA4, 0}, // DBL BWS and HVEN =1
 
-	{0x0018, 0x0F, 100}, // ----- One shot reset
+	{0x0018, 0x0F, 100*1000}, // ----- One shot reset
 	//{0xFF,0x64, 0}, // sleep 100ms
 
 	// Pipe plie Enable and control
@@ -419,7 +419,7 @@ const struct reg_sequence max96712_reg_defaults_raw12[] = {
 	//{0x0006,0x0F, 0}, // GMSL1 mode for all Links & All LINK enabled.
 	{0x0006, MAX96712_LINK_MODE, 0},
 
-	{0x0018, 0x0F, 100},  //i MAX96712 one shot reset
+	{0x0018, 0x0F, 100*1000},  //i MAX96712 one shot reset
 };
 
 const struct reg_sequence max96712_reg_s_stream[] = {
@@ -427,7 +427,7 @@ const struct reg_sequence max96712_reg_s_stream[] = {
 	{0x0B0D, 0x00, 0},
 	{0x0C0D, 0x00, 0},
 	{0x0D0D, 0x00, 0},
-	{0x0E0D, 0x00, 50},
+	{0x0E0D, 0x00, 50*1000},
 };
 
 static const struct regmap_config max96712_regmap = {
@@ -687,6 +687,8 @@ static int max96712_s_stream(struct v4l2_subdev *sd, int enable)
 		/* count down */
 		dev->s_cnt--;
 	}
+
+	msleep(30);
 
 	mutex_unlock(&dev->lock);
 	return ret;
