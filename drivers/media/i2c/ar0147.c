@@ -73,8 +73,8 @@ const struct reg_sequence ar0147_reg_init[] = {
 	/*
 	 * [1296x816 30fps parallel 12bit]
 	 */
-	{0x301A, 0x10D8, 20}, //  RESET_REGISTER
-	{0x3500, 0x0100, 1}, //  DAC_LD_0_1
+	{0x301A, 0x10D8, 20*1000}, //  RESET_REGISTER
+	{0x3500, 0x0100, 1*1000}, //  DAC_LD_0_1
 	{0x30B0, 0x980E, 0}, //  DIGITAL_TEST
 	{0x3C08, 0x0000, 0}, //  CONFIGURE_BUFFERS2
 	{0x3C0C, 0x0518, 0}, //  DELAY_BUFFER_LLPCK_RD_WR_OVERLAP
@@ -783,8 +783,6 @@ static int ar0147_get_fmt(struct v4l2_subdev *sd,
 	struct ar0147		*dev	= to_dev(sd);
 	int			ret	= 0;
 
-	logi("%s call\n", __func__);
-
 	mutex_lock(&dev->lock);
 
 	memcpy((void *)&format->format, (const void *)&dev->fmt,
@@ -800,8 +798,6 @@ static int ar0147_set_fmt(struct v4l2_subdev *sd,
 {
 	struct ar0147		*dev	= to_dev(sd);
 	int			ret	= 0;
-
-	logi("%s call\n", __func__);
 
 	mutex_lock(&dev->lock);
 
