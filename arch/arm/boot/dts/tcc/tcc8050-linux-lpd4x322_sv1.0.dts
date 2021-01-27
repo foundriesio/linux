@@ -494,3 +494,11 @@
 	telechips,pins = "gpmb-11";
 };
 
+/* bluetooth */
+&tcc_bluetooth {
+	compatible = "telechips, tcc_bluetooth";
+	bt_power-gpio = <&gpsd1 10 0>; /* BTWIFI_VBAT_EN */
+	bt_reg_on-gpio = <&gpmc 1 0>;
+	bt_hwake-gpio = <&gpk 2 0>;
+	status = "okay";
+};
