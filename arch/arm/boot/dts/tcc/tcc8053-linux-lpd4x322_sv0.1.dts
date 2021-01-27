@@ -108,8 +108,6 @@
                 irq-type = <2>;
                 gpios = <&gpa 1 0>;
         };
-
-
 };
 
 &a72_sc_mbox {
@@ -464,4 +462,12 @@ dp_deserializer3:max96878@68 {
 
 &aux_detect_pin {
 	telechips,pins = "gpmd-13";
+};
+/* bluetooth */
+&tcc_bluetooth {
+	compatible = "telechips, tcc_bluetooth";
+	bt_power-gpio = <&gpmd 10 0>; /* BTWIFI_VBAT_EN */
+	bt_reg_on-gpio = <&gpmd 9 0>;
+	bt_hwake-gpio = <&gpk 2 0>;
+	status = "okay";
 };
