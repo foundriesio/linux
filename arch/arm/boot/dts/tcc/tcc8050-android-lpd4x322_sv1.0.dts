@@ -93,6 +93,17 @@
 		status = "okay";
 		sc-firmware = <&tcc_sc_fw>;
 	};
+
+	aux_detect {
+		compatible = "telechips,aux_detect";
+		status = "okay";
+
+		pinctrl-names = "default";
+		pinctrl-0 = <&aux_detect_pin>;
+
+		aux-gpios = <&gpmb 11 1>;
+		aux-active = <1>;
+	};
 };
 
 /* eMMC */
@@ -422,16 +433,6 @@
 		reset-gpios = <&gpmc 24 0x0>;
 	};
 
-	aux_detect {
-		compatible = "telechips,aux_detect";
-		status = "okay";
-
-		pinctrl-names = "default";
-		pinctrl-0 = <&aux_detect_pin>;
-
-		aux-gpios = <&gpmb 11 1>;
-		aux-active = <1>;
-	};
 };
 
 &tcc_pm_fw {
