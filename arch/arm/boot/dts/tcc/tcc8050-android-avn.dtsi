@@ -906,19 +906,6 @@
     tuner-gpios = <&gpg 0 0>, <&gpma 0 0>;
 };
 
-/* bluetooth */
-&tcc_bluetooth {
-	compatible = "telechips, tcc_bluetooth";
-	bt_power-gpio = <&gpmd 10 0>; /* BTWIFI_VBAT_EN */
-	bt_reg_on-gpio = <&gpmd 9 0>;
-	status = "okay";
-};
-
-&tcc_bt_dev {
-	compatible = "telechips, tcc_bt_dev";
-	status = "okay";
-};
-
 &smartcard {
 	compatible = "telechips,pl131-smartcard";
 	reg = <0x16601000 0xFFF 0x16684000 0x10>;                //smartcard #0,
