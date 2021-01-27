@@ -103,9 +103,9 @@ const struct reg_sequence max9286_reg_defaults[] = {
 				 */
 #ifdef CONFIG_VIDEO_AR0147
 	{0X12, 0Xc7, 0},	// Write DBL OFF, MIPI Output setting(RAW12)
-	{0X1C, 0xf6, 5},	// BWS: 27bit
+	{0X1C, 0xf6, 5*1000},	 //    BWS: 27bit
 #else
-	{0X12, 0XF3, 5},	/* MIPI Output setting(DBL ON, YUV422) */
+	{0X12, 0XF3, 5*1000},	/* MIPI Output setting(DBL ON, YUV422) */
 #endif
 	{0X63, 0X00, 0},	/* Widows off */
 	{0X64, 0X00, 0},	/* Widows off */
@@ -115,13 +115,13 @@ const struct reg_sequence max9286_reg_defaults[] = {
 	{0x01, 0xe0, 0}, // manual mode, enable gpi(des) - gpo(ser) transmission
 	//{0x01, 0xc0}, // manual mode, enable gpi(des) - gpo(ser) transmission
 	{0X00, 0XE1, 0}, // Port 0 used
-	{0x0c, 0x11, 5}, // disable HS/VS encoding
+	{0x0c, 0x11, 5*1000}, // disable HS/VS encoding
 #else
 	{0x01, 0xc0, 0},	/* manual mode */
 	{0X08, 0X25, 0},	/* FSYNC-period-High */
 	{0X07, 0XC3, 0},	/* FSYNC-period-Mid */
-	{0X06, 0XF8, 5},	/* FSYNC-period-Low */
-	{0X00, 0XEF, 5},	/* Port 0~3 used */
+	{0X06, 0XF8, 5*1000},	/* FSYNC-period-Low */
+	{0X00, 0XEF, 5*1000},	/* Port 0~3 used */
 #endif
 #if defined(CONFIG_MIPI_OUTPUT_TYPE_LINE_CONCAT)
 	{0X15, 0X03, 0},	/* (line concatenation) */
@@ -381,6 +381,8 @@ static int max9286_s_stream(struct v4l2_subdev *sd, int enable)
 		/* count down */
 		dev->s_cnt--;
 	}
+
+	msleep(30);
 
 	mutex_unlock(&dev->lock);
 	return ret;

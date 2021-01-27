@@ -69,7 +69,7 @@ struct max9275 {
 };
 
 const struct reg_sequence max9275_reg_defaults[] = {
-	{0x04, 0x43, 50},
+	{0x04, 0x43, 50*1000},
 
 };
 
@@ -152,8 +152,6 @@ static int max9275_get_fmt(struct v4l2_subdev *sd,
 	struct max9275		*dev	= to_dev(sd);
 	int			ret	= 0;
 
-	logi("%s call\n", __func__);
-
 	mutex_lock(&dev->lock);
 
 	memcpy((void *)&format->format, (const void *)&dev->fmt,
@@ -169,8 +167,6 @@ static int max9275_set_fmt(struct v4l2_subdev *sd,
 {
 	struct max9275		*dev	= to_dev(sd);
 	int			ret	= 0;
-
-	logi("%s call\n", __func__);
 
 	mutex_lock(&dev->lock);
 
@@ -236,7 +232,9 @@ int max9275_probe(struct i2c_client *client, const struct i2c_device_id *id)
 		return -ENOMEM;
 	}
 
-	// set the specific information
+	mutex_init(&dev->lock);
+
+	/* set the specific information */
 	if (client->dev.of_node) {
 		dev_id = of_match_node(max9275_of_match, client->dev.of_node);
 		memcpy(dev, (const void *)dev_id->data, sizeof(*dev));

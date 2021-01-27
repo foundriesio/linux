@@ -110,8 +110,8 @@ const struct reg_sequence max96701_reg_defaults_raw12[] = {
 #ifdef USE_MCNEX_CAM_MODULE
 	{0x04, 0x47, 0}, // configuration mode(in the case of pclk detection fail)
 	{0x07, 0x40, 0}, // dbl off, hs/vs encoding off, 27bit
-	{0x0f, 0xbe, 300}, // GPO output low to reset sensor
-	{0x0f, 0xbf, 100}, // GPO output hight to reset release of sensor
+	{0x0f, 0xbe, 300*1000}, // GPO output low to reset sensor
+	{0x0f, 0xbf, 100*1000}, // GPO output hight to reset release of sensor
 
 	/* test */
 	//{0x07, 0xa4, 0},
@@ -133,7 +133,7 @@ const struct reg_sequence max96701_reg_defaults_raw12[] = {
 	{0x2a, 0x01, 0},
 	{0x2b, 0x00, 0},
 #else
-	{0x04, 0x47, 50},
+	{0x04, 0x47, 50*1000},
 	{0x07, 0xA4, 0},
 #endif
 };
@@ -222,6 +222,8 @@ static int max96701_s_stream(struct v4l2_subdev *sd, int enable)
 		dev->s_cnt++;
 	else
 		dev->s_cnt--;
+
+	msleep(30);
 
 	mutex_unlock(&dev->lock);
 	return ret;
