@@ -159,6 +159,14 @@
 		 * Camera Memory
 		 *-----------------------------------------------------------
 		 */
+		pmap_parking_gui: parking_gui {
+			compatible = "telechips,pmap";
+			telechips,pmap-name = "parking_gui";
+			alloc-ranges = <CAMERA_MEM_BASE CAMERA_MEM_SIZE>;
+			size = <PMAP_SIZE_CAMERA_PGL>;
+			no-map;
+		};
+
 		pmap_rearcamera_viqe: rearcamera_viqe {
 			compatible = "telechips,pmap";
 			telechips,pmap-name = "rearcamera_viqe";
@@ -172,7 +180,7 @@
 			telechips,pmap-name = "rearcamera";
 			alloc-ranges = <CAMERA_MEM_BASE CAMERA_MEM_SIZE>;
 			size = <PMAP_SIZE_CAMERA_PREVIEW0>;
-			no-map;
+			// no-map;
 		};
 
 		pmap_rearcamera1: rearcamera1 {
@@ -180,7 +188,7 @@
 			telechips,pmap-name = "rearcamera1";
 			alloc-ranges = <CAMERA_MEM_BASE CAMERA_MEM_SIZE>;
 			size = <PMAP_SIZE_CAMERA_PREVIEW1>;
-			no-map;
+			// no-map;
 		};
 
 		pmap_rearcamera2: rearcamera2 {
@@ -188,7 +196,7 @@
 			telechips,pmap-name = "rearcamera2";
 			alloc-ranges = <CAMERA_MEM_BASE CAMERA_MEM_SIZE>;
 			size = <PMAP_SIZE_CAMERA_PREVIEW2>;
-			no-map;
+			// no-map;
 		};
 
 		pmap_rearcamera3: rearcamera3 {
@@ -196,7 +204,7 @@
 			telechips,pmap-name = "rearcamera3";
 			alloc-ranges = <CAMERA_MEM_BASE CAMERA_MEM_SIZE>;
 			size = <PMAP_SIZE_CAMERA_PREVIEW3>;
-			no-map;
+			// no-map;
 		};
 
 		pmap_rearcamera4: rearcamera4 {
@@ -204,7 +212,7 @@
 			telechips,pmap-name = "rearcamera4";
 			alloc-ranges = <CAMERA_MEM_BASE CAMERA_MEM_SIZE>;
 			size = <PMAP_SIZE_CAMERA_PREVIEW4>;
-			no-map;
+			// no-map;
 		};
 
 		pmap_rearcamera5: rearcamera5 {
@@ -212,7 +220,7 @@
 			telechips,pmap-name = "rearcamera5";
 			alloc-ranges = <CAMERA_MEM_BASE CAMERA_MEM_SIZE>;
 			size = <PMAP_SIZE_CAMERA_PREVIEW5>;
-			no-map;
+			// no-map;
 		};
 
 		pmap_rearcamera6: rearcamera6 {
@@ -220,15 +228,7 @@
 			telechips,pmap-name = "rearcamera6";
 			alloc-ranges = <CAMERA_MEM_BASE CAMERA_MEM_SIZE>;
 			size = <PMAP_SIZE_CAMERA_PREVIEW6>;
-			no-map;
-		};
-
-		pmap_parking_gui: parking_gui {
-			compatible = "telechips,pmap";
-			telechips,pmap-name = "parking_gui";
-			alloc-ranges = <CAMERA_MEM_BASE CAMERA_MEM_SIZE>;
-			size = <PMAP_SIZE_CAMERA_PGL>;
-			no-map;
+			// no-map;
 		};
 	};
 
@@ -791,107 +791,9 @@
 		#size-cells = <0>;
 		clocks = <&clk_peri PERI_I2C0 &clk_io IOBUS_I2C_M0 &clk_fbus FBUS_IO>;
 		clock-frequency = <400000>;
+		port-mux = <0xFF>;      /* default value */
+		status = "disabled";
 		interrupt_mode = <0>;
-
-		status = "okay";
-		port-mux = <12>;
-		pinctrl-names = "default";
-		pinctrl-0 = <&i2c12_bus>;
-
-		isl79988: isl79988 {
-			compatible	= "adi,isl79988";
-			pinctrl-names	= "default";
-			pinctrl-0	= <&cam0_clk &cam0_data_8bit>;
-			cifport		= <0>;
-			rst-gpios	= <&gpb 14 0>;
-			reg		= <0x44>;	// 0x88 >> 1
-			port {
-				isl79988_out: endpoint {
-					remote-endpoint = <&videoinput0_in>;
-					io-direction	= "output";
-					bus-width       = <8>;
-				};
-			};
-		};
-
-		max96701: max96701 {
-			compatible	= "maxim,max96701";
-			reg		= <0x40>;
-			ports {
-#if 0
-			        port@0 {
-					reg = <0>;
-					max96701_in: endpoint {
-						remote-endpoint = <&cis>;
-						io-direction	= "input";
-					};
-				};
-#endif
-			        port@1 {
-					reg = <1>;
-					max96701_out: endpoint {
-						remote-endpoint = <&max9286_in0>;
-						io-direction	= "output";
-					};
-				};
-	                };
-		};
-
-		max9286: max9286 {
-			compatible	= "maxim,max9286";
-			cifport		= <5>;
-			pwd-gpios	= <&gpg 5 1>;
-			intb-gpios	= <&gph 11 1>;
-			reg		= <0x48>;	// 0x90 >> 1
-			ports {
-				/*
-				 * 0 ~ 3
-				 * input ports. The number is matched with VC
-				 *
-				 * 4
-				 * output port.
-				 */
-			        port@0 {
-					reg = <0>;
-					max9286_in0: endpoint {
-						remote-endpoint = <&max96701_out>;
-						io-direction	= "input";
-						channel		= <0>;
-					};
-				};
-			        port@1 {
-					reg = <1>;
-					max9286_in1: endpoint {
-						remote-endpoint = <&max96701_out>;
-						io-direction	= "input";
-						channel		= <1>;
-					};
-				};
-			        port@2 {
-					reg = <2>;
-					max9286_in2: endpoint {
-						remote-endpoint = <&max96701_out>;
-						io-direction	= "input";
-						channel		= <2>;
-					};
-				};
-			        port@3 {
-					reg = <3>;
-					max9286_in3: endpoint {
-						remote-endpoint = <&max96701_out>;
-						io-direction	= "input";
-						channel		= <3>;
-					};
-				};
-			        port@4 {
-					reg = <4>;
-					max9286_out: endpoint {
-						remote-endpoint = <&mipi_csi2_0_in>;
-						io-direction	= "output";
-					};
-				};
-	                };
-		};
 	};
 
 	i2c1: i2c@16310000 {
@@ -987,10 +889,132 @@
 		#size-cells = <0>;
 		clocks = <&clk_peri PERI_I2C3 &clk_io IOBUS_I2C_M7 &clk_fbus FBUS_IO>;
 		clock-frequency = <100000>;
-		/*Set CP I2C frequency to 100Khz*/
-		port-mux = <0xFF>;      /* default value */
-		status = "disabled";
 		interrupt_mode = <0>;
+
+		status = "okay";
+		port-mux = <12>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&i2c12_bus>;
+
+		/* video decoder using parallel interface output */
+		adv7182: adv7182 {
+			status		= "okay";
+			compatible	= "adi,adv7182";
+			pinctrl-names	= "default";
+			pinctrl-0	= <&cam0_clk &cam0_data_8bit>;
+			cifport		= <0>;
+			rst-gpios	= <&gpb 14 0>;
+			reg		= <0x21>;	// 0x42 >> 1
+
+			port {
+				adv7182_out: endpoint {
+					remote-endpoint = <&videoinput0_in>;
+					io-direction	= "output";
+					bus-width	= <8>;
+				};
+			};
+		};
+
+		/*
+		 * mcnex(for ecarx demo) camera module: max96701, max9286
+		 */
+		ar0147: ar0147 {
+			/* Camera Image Sensor */
+			status		= "disabled";
+			compatible	= "onsemiconductor,ar0147";
+			reg		= <0x10>;
+			port {
+				ar0147_out: endpoint {
+					remote-endpoint = <&max96701_in>;
+					io-direction	= "output";
+				};
+			};
+		};
+		/* HD camera module & max9286 using MIPI CSI2 output */
+		max96701: max96701 {
+			/* serializer */
+			status		= "disable";
+			compatible	= "maxim,max96701";
+			reg		= <0x40>;
+			ports {
+				#address-cells = <1>;
+				#size-cells = <0>;
+			        port@0 {
+					reg = <0>;
+					max96701_in: endpoint {
+						//remote-endpoint = <&ar0147_out>;
+						//io-direction	= "input";
+					};
+				};
+			        port@1 {
+					reg = <1>;
+					max96701_out: endpoint {
+						remote-endpoint = <&max9286_in0>;
+						io-direction	= "output";
+					};
+				};
+	                };
+		};
+
+		max9286: max9286 {
+			/* deserializer */
+			status		= "disable";
+			compatible	= "maxim,max9286";
+			pwd-gpios	= <&gpg 5 1>;
+			intb-gpios	= <&gph 11 1>;
+			//rst-gpios	= <&gpb 15 1>;  /* mcnex module sensor */
+			reg		= <0x48>;	// 0x90 >> 1
+			ports {
+				#address-cells = <1>;
+				#size-cells = <0>;
+				/*
+				 * 0 ~ 3
+				 * input ports. The number is matched with VC
+				 *
+				 * 4
+				 * output port.
+				 */
+			        port@0 {
+					reg = <0>;
+					max9286_in0: endpoint {
+						remote-endpoint = <&max96701_out>;
+						io-direction	= "input";
+						channel		= <0>;
+					};
+				};
+			        port@1 {
+					reg = <1>;
+					max9286_in1: endpoint {
+						remote-endpoint = <&max96701_out>;
+						io-direction	= "input";
+						channel		= <1>;
+					};
+				};
+			        port@2 {
+					reg = <2>;
+					max9286_in2: endpoint {
+						remote-endpoint = <&max96701_out>;
+						io-direction	= "input";
+						channel		= <2>;
+					};
+				};
+			        port@3 {
+					reg = <3>;
+					max9286_in3: endpoint {
+						remote-endpoint = <&max96701_out>;
+						io-direction	= "input";
+						channel		= <3>;
+					};
+				};
+			        port@4 {
+					reg = <4>;
+					max9286_out: endpoint {
+						remote-endpoint = <&mipi_csi2_0_in>;
+						io-direction	= "output";
+					};
+				};
+	                };
+		};
 	};
 
 	i2cslave0: i2cslave@16380000 {
@@ -1282,6 +1306,8 @@
 	mipi_csi2_0:mipi_csi@123c0000 {
 		compatible = "telechips,tcc803x-mipi-csi2";
 
+		status = "disable";
+
 		reg = <0x123c0000 0x120>,
 		      <0x123c0200 0x5c>;
 		reg-names = "csi", "gdb";
@@ -1469,6 +1495,7 @@
 		cifport		= <&cifport 0>;
 		clocks		= <&clk_ddi DDIBUS_VIOC>;
 		rdma		= <&vioc_rdma VIOC_RDMA16>;
+		use_pgl		= <0>;
 		vin		= <&vioc_vin VIOC_VIN00>;
 		viqe		= <&vioc_viqe VIOC_VIQE1>;
 		viqe_set   	= <&viqe_hidden>;
@@ -1480,7 +1507,7 @@
 
 		port {
 			videoinput0_in: endpoint {
-				remote-endpoint	= <&isl79988_out>;
+				remote-endpoint	= <&adv7182_out>;
 				io-direction	= "input";
                 	        bus-type	= <0>;
 				bus-with	= <8>;
@@ -1496,6 +1523,7 @@
 		cifport		= <&cifport 6>;
 		clocks		= <&clk_ddi DDIBUS_VIOC>;
 		rdma		= <&vioc_rdma VIOC_RDMA17>;
+		use_pgl		= <0>;
 		vin		= <&vioc_vin VIOC_VIN10>;
 		viqe		= <&vioc_viqe VIOC_VIQE1>;
 		viqe_set   	= <&viqe_hidden>;
@@ -1523,6 +1551,7 @@
 		cifport		= <&cifport 7>;
 		clocks		= <&clk_ddi DDIBUS_VIOC>;
 		rdma		= <&vioc_rdma VIOC_RDMA13>;
+		use_pgl		= <0>;
 		vin		= <&vioc_vin VIOC_VIN20>;
 		viqe		= <&vioc_viqe VIOC_VIQE1>;
 		viqe_set   	= <&viqe_hidden>;
@@ -1550,6 +1579,7 @@
 		cifport		= <&cifport 8>;
 		clocks		= <&clk_ddi DDIBUS_VIOC>;
 		rdma		= <&vioc_rdma VIOC_RDMA15>;
+		use_pgl		= <0>;
 		vin		= <&vioc_vin VIOC_VIN30>;
 		viqe		= <&vioc_viqe VIOC_VIQE1>;
 		viqe_set   	= <&viqe_hidden>;

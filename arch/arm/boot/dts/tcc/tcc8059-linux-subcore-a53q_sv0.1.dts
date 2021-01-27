@@ -322,7 +322,7 @@
 			telechips,pmap-name = "rearcamera";
 			alloc-ranges = <CAMERA_MEM_BASE CAMERA_MEM_SIZE>;
 			size = <PMAP_SIZE_CAMERA_PREVIEW0>;
-			no-map;
+			// no-map;
 		};
 
 		pmap_rearcamera1: rearcamera1 {
@@ -330,7 +330,7 @@
 			telechips,pmap-name = "rearcamera1";
 			alloc-ranges = <CAMERA_MEM_BASE CAMERA_MEM_SIZE>;
 			size = <PMAP_SIZE_CAMERA_PREVIEW1>;
-			no-map;
+			// no-map;
 		};
 
 		pmap_rearcamera2: rearcamera2 {
@@ -338,7 +338,7 @@
 			telechips,pmap-name = "rearcamera2";
 			alloc-ranges = <CAMERA_MEM_BASE CAMERA_MEM_SIZE>;
 			size = <PMAP_SIZE_CAMERA_PREVIEW2>;
-			no-map;
+			// no-map;
 		};
 
 		pmap_rearcamera3: rearcamera3 {
@@ -346,7 +346,7 @@
 			telechips,pmap-name = "rearcamera3";
 			alloc-ranges = <CAMERA_MEM_BASE CAMERA_MEM_SIZE>;
 			size = <PMAP_SIZE_CAMERA_PREVIEW3>;
-			no-map;
+			// no-map;
 		};
 
 		pmap_rearcamera4: rearcamera4 {
@@ -354,7 +354,7 @@
 			telechips,pmap-name = "rearcamera4";
 			alloc-ranges = <CAMERA_MEM_BASE CAMERA_MEM_SIZE>;
 			size = <PMAP_SIZE_CAMERA_PREVIEW4>;
-			no-map;
+			// no-map;
 		};
 
 		pmap_rearcamera5: rearcamera5 {
@@ -362,7 +362,7 @@
 			telechips,pmap-name = "rearcamera5";
 			alloc-ranges = <CAMERA_MEM_BASE CAMERA_MEM_SIZE>;
 			size = <PMAP_SIZE_CAMERA_PREVIEW5>;
-			no-map;
+			// no-map;
 		};
 
 		pmap_rearcamera6: rearcamera6 {
@@ -370,7 +370,7 @@
 			telechips,pmap-name = "rearcamera6";
 			alloc-ranges = <CAMERA_MEM_BASE CAMERA_MEM_SIZE>;
 			size = <PMAP_SIZE_CAMERA_PREVIEW6>;
-			no-map;
+			// no-map;
 		};
 
 		pmap_rearcamera7: rearcamera7 {
@@ -378,7 +378,7 @@
 			telechips,pmap-name = "rearcamera7";
 			alloc-ranges = <CAMERA_MEM_BASE CAMERA_MEM_SIZE>;
 			size = <PMAP_SIZE_CAMERA_PREVIEW7>;
-			no-map;
+			// no-map;
 		};
 	};
 
