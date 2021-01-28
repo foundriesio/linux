@@ -977,22 +977,9 @@ crtc_set_mode(struct drm_device *dev, struct drm_atomic_state *old_state)
 	for_each_new_crtc_in_state(old_state, crtc, new_crtc_state, i) {
 		const struct drm_crtc_helper_funcs *funcs;
 
-		/*
-		 * Telechips
-		 * When received DPMS_ON message, DRM core sets only
-		 * state->active_changed to 1, except state->mode_changed.
-		 * Normally In this case, DRM core does not sets the display
-		 * controller to current mode.
-		 * Because DRM core assumes the display controller being
-		 * maintained previous state.
-		 * But We should be set the display controller to
-		 * current mode, because the display controller was initialize
-		 *  by DRM core.
-		 */
-		if (!new_crtc_state->mode_changed &&
-			!new_crtc_state->active_changed) {
-			continue;
-		}
+		if (!new_crtc_state->mode_changed)
+			 continue;
+
 		funcs = crtc->helper_private;
 
 		if (new_crtc_state->enable && funcs->mode_set_nofb) {
@@ -1017,22 +1004,8 @@ crtc_set_mode(struct drm_device *dev, struct drm_atomic_state *old_state)
 		mode = &new_crtc_state->mode;
 		adjusted_mode = &new_crtc_state->adjusted_mode;
 
-		/*
-		 * Telechips
-		 * When received DPMS_ON message, DRM core sets only
-		 * state->active_changed to 1, except state->mode_changed.
-		 * Normally In this case, DRM core does not sets the display
-		 * controller to current mode.
-		 * Because DRM core assumes the display controller being
-		 * maintained previous state.
-		 * But We should be set the display controller to
-		 * current mode, because the display controller was initialize
-		 *  by DRM core.
-		 */
-		if (!new_crtc_state->mode_changed &&
-			!new_crtc_state->active_changed) {
+		if (!new_crtc_state->mode_changed)
 			continue;
-		}
 
 		DRM_DEBUG_ATOMIC("modeset on [ENCODER:%d:%s]\n",
 				 encoder->base.id, encoder->name);
@@ -2949,8 +2922,35 @@ int drm_atomic_helper_commit_duplicated_state(struct drm_atomic_state *state,
 	for_each_new_plane_in_state(state, plane, new_plane_state, i)
 		state->planes[i].old_state = plane->state;
 
+	#if defined(CONFIG_DRM_TCC) && defined(CONFIG_ANDROID)
+	/*
+	 * Telechips
+	 * Some operating systems, for example Android, additionally
+	 * uses the DPMS command to control display device to
+	 * power management.
+	 *
+	 * In this case, It takes more time to turn on the display device
+	 * because, the display device will not turn on until DRM driver
+	 * received DPMS_ON command from user space.
+	 *
+	 * To reduce this delay time, I modified to turn on display device
+	 * when resumed even if the display device was turned off due to
+	 * received DPMS_OFF command before suspend.
+	 */
+	for_each_new_crtc_in_state(state, crtc, new_crtc_state, i) {
+		state->crtcs[i].old_state = crtc->state;
+		if (!new_crtc_state->active) {
+			dev_info(
+				crtc->dev->dev,
+				"[INFO][ATOMICH] Request to turn on CRTC\r\n",
+				__func__);
+			new_crtc_state->active = 1;
+		}
+	}
+	#else
 	for_each_new_crtc_in_state(state, crtc, new_crtc_state, i)
 		state->crtcs[i].old_state = crtc->state;
+	#endif
 
 	for_each_new_connector_in_state(state, connector, new_conn_state, i)
 		state->connectors[i].old_state = connector->state;
