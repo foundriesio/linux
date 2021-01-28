@@ -24,6 +24,9 @@
 #include <asm/hypervisor.h>
 #include <asm/hyperv-tlfs.h>
 #include <asm/mshyperv.h>
+#ifndef __GENKSYMS__ /* kABI workaround for SLE kernel */
+#include <linux/kexec.h>
+#endif
 #include <linux/version.h>
 #include <linux/vmalloc.h>
 #include <linux/mm.h>
@@ -81,6 +84,8 @@ static struct clocksource hyperv_cs_msr = {
 	.mask		= CLOCKSOURCE_MASK(64),
 	.flags		= CLOCK_SOURCE_IS_CONTINUOUS,
 };
+
+int hyperv_init_cpuhp;
 
 void *hv_hypercall_pg;
 EXPORT_SYMBOL_GPL(hv_hypercall_pg);
@@ -392,6 +397,7 @@ register_msr_cs:
 	if (ms_hyperv.features & HV_MSR_TIME_REF_COUNT_AVAILABLE)
 		clocksource_register_hz(&hyperv_cs_msr, NSEC_PER_SEC/100);
 
+	hyperv_init_cpuhp = cpuhp;
 	return;
 
 remove_cpuhp_state:
