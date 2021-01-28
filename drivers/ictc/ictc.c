@@ -616,7 +616,7 @@ static int32_t gpio_to_f_in(uint32_t gpio_base, uint32_t gpio_bit,
 				     __func__);
 				return -EINVAL;
 			}
-		} else {
+
 			for (i = 0;
 			     i < idev->ictc_pin_map_val[count].source_section;
 			     i++) {
