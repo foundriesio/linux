@@ -636,9 +636,6 @@ int aq_nic_xmit(struct aq_nic_s *self, struct sk_buff *skb)
 		if (err >= 0) {
 			if (aq_ring_avail_dx(ring) < AQ_CFG_SKB_FRAGS_MAX + 1)
 				aq_nic_ndev_queue_stop(self, ring->idx);
-
-			++ring->stats.tx.packets;
-			ring->stats.tx.bytes += skb->len;
 		}
 	} else {
 		err = NETDEV_TX_BUSY;
