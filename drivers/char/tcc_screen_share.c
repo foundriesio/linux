@@ -52,15 +52,15 @@
 #define TCC_SCRSHARE_DEV_MINOR		0
 #define OVERLAY_DRIVER "/dev/overlay1"
 
-typedef struct _tcc_scrshare_tx_t {
+struct tcc_scrshare_tx_t {
 	struct mutex lock;
 	atomic_t seq;
-} tcc_scrshare_tx_t;
+};
 
-typedef struct _tcc_scrshare_rx_t {
+struct tcc_scrshare_rx_t {
 	struct mutex lock;
 	atomic_t seq;
-} tcc_scrshare_rx_t;
+};
 
 struct tcc_scrshare_device {
 	struct platform_device *pdev;
@@ -574,7 +574,7 @@ static int tcc_scrshare_probe(struct platform_device *pdev)
 	of_property_read_string(pdev->dev.of_node, "overlay_driver_names",
 				&tcc_scrshare->overlay_driver_name);
 #endif
-	if(!tcc_scrshare->overlay_driver_name)
+	if (!tcc_scrshare->overlay_driver_name)
 		tcc_scrshare->overlay_driver_name =
 			devm_kstrdup(&pdev->dev, OVERLAY_DRIVER, GFP_KERNEL);
 
