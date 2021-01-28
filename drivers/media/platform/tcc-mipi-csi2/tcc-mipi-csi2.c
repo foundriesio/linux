@@ -887,9 +887,6 @@ static irqreturn_t tcc_mipi_csi2_irq_handler(int irq, void *client_data)
 	intr_mask0 = MIPI_CSIS_Get_CSIS_Interrupt_Mask(state, 0);
 	intr_mask1 = MIPI_CSIS_Get_CSIS_Interrupt_Mask(state, 1);
 
-	loge(&(state->pdev->dev), "interrupt status 0x%x / 0x%x\n",
-		intr_status0, intr_status1);
-
 	intr_status0 &= intr_mask0;
 	intr_status1 &= intr_mask1;
 
