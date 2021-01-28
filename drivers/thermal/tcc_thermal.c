@@ -372,6 +372,8 @@ static uint32_t request_otp_to_sc(u32 offset)
 		/**/
 	}
 	if (ret == 0) {
+                (void)pr_info("[request OTP] offset : 0x%4x, data : %x",
+                        otp_cmd.resp[0], otp_cmd.resp[1]);
 		return otp_cmd.resp[1];
 	} else {
 		return 0;
