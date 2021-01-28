@@ -361,8 +361,8 @@ extern unsigned int tccvin_timeout_param;
 					__func__, ##__VA_ARGS__); }
 #define logi(fmt, ...)		{ pr_info("[INFO][%s] %s - " fmt, LOG_TAG, \
 					__func__, ##__VA_ARGS__); }
-#define dlog(fmt, ...)		//{ do { if (debug) { ; logd(fmt, \
-					##__VA_ARGS__); } while (0); }
+#define dlog(fmt, ...)		\
+	//{ do { if (debug) { ; logd(fmt, ##__VA_ARGS__); } while (0); }
 
 /* --------------------------------------------------------------------------
  * Internal functions.

@@ -2013,14 +2013,14 @@ static int32_t tccvin_video_subdevs_init(struct tccvin_streaming *stream,
 
 static int32_t tccvin_video_subdevs_load_fw(struct tccvin_streaming *stream)
 {
+	struct tccvin_device	*dev		= NULL;
+	struct v4l2_subdev	*subdev		= NULL;
+	int32_t			ret		= 0;
+
 	WARN_ON(IS_ERR_OR_NULL(stream));
 
-	struct tccvin_device	*dev		= stream->dev;
-	struct v4l2_subdev	*subdev		= NULL;
-	int32_t ret = 0;
-
-	subdev = dev->linked_subdevs[0].sd;
-
+	dev	= stream->dev;
+	subdev	= dev->linked_subdevs[0].sd;
 	if (subdev != NULL && (strncmp(subdev->name, "tcc-isp", 7) == 0)) {
 		/* load isp fw */
 		ret = v4l2_subdev_call(subdev, core, load_fw);
@@ -2035,19 +2035,18 @@ static int32_t tccvin_video_subdevs_load_fw(struct tccvin_streaming *stream)
 
 static int32_t tccvin_video_subdevs_get_config(struct tccvin_streaming *stream)
 {
-	WARN_ON(IS_ERR_OR_NULL(stream));
-
-	struct tccvin_device	*dev		= stream->dev;
-	int32_t			idx		= 0;
+	struct tccvin_device	*dev		= NULL;
 	struct v4l2_subdev	*subdev		= NULL;
 	struct v4l2_subdev_format *fmt		= NULL;
 	struct v4l2_dv_timings	*timings	= NULL;
-	int32_t ret = 0;
+	int32_t			ret		= 0;
 
-	subdev = dev->linked_subdevs[0].sd;
-	fmt = &dev->linked_subdevs[0].fmt;
+	WARN_ON(IS_ERR_OR_NULL(stream));
 
-	timings = &stream->dv_timings;
+	dev	= stream->dev;
+	subdev	= dev->linked_subdevs[0].sd;
+	fmt	= &dev->linked_subdevs[0].fmt;
+	timings	= &stream->dv_timings;
 	logi("call %s g_dv_timings\n", subdev->name);
 	ret = v4l2_subdev_call(subdev, video, g_dv_timings, timings);
 	if (ret != 0) {
@@ -2221,9 +2220,9 @@ int32_t tccvin_video_subdevs_streamoff(struct tccvin_streaming *stream)
 
 int32_t tccvin_video_streamon(struct tccvin_streaming *stream)
 {
-	WARN_ON(IS_ERR_OR_NULL(stream));
-
 	int32_t			ret		= 0;
+
+	WARN_ON(IS_ERR_OR_NULL(stream));
 
 	logi("preview method: %s\n", (stream->preview_method == PREVIEW_V4L2) ?
 		"PREVIEW_V4L2" : "PREVIEW_DD");
@@ -2265,9 +2264,9 @@ int32_t tccvin_video_streamon(struct tccvin_streaming *stream)
 
 int32_t tccvin_video_streamoff(struct tccvin_streaming *stream)
 {
-	WARN_ON(IS_ERR_OR_NULL(stream));
-
 	int32_t		ret = 0;
+
+	WARN_ON(IS_ERR_OR_NULL(stream));
 
 	stream->cam_streaming = 0;
 
@@ -2299,7 +2298,7 @@ void tccvin_check_path_status(struct tccvin_streaming *stream, int *status)
 	struct vioc_path		*vioc		= NULL;
 	void __iomem			*pWDMA		= NULL;
 	unsigned int			prev_addr	= 0;
-	unsigned int			curr_addr	= NULL;
+	unsigned int			curr_addr	= 0;
 	int				nCheck		= 0;
 	int				idxCheck	= 0;
 	int				delay		= 20;
