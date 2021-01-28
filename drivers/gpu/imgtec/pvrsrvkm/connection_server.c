@@ -134,7 +134,11 @@ static PVRSRV_ERROR ConnectionDataDestroy(CONNECTION_DATA *psConnection)
 	if (psConnection->psHandleBase != NULL)
 	{
 		eError = PVRSRVFreeHandleBase(psConnection->psHandleBase, ui64MaxBridgeTime);
-		PVR_LOG_RETURN_IF_ERROR(eError, "PVRSRVFreeHandleBase:2");
+		if (unlikely(eError != PVRSRV_OK))
+		{
+			PVR_DPF((PVR_DBG_VERBOSE, "PVRSRVFreeHandleBase:2 failed (%s) in %s()", PVRSRVGETERRORSTRING(eError), __func__));
+			return eError;
+		}
 
 		psConnection->psHandleBase = NULL;
 	}
