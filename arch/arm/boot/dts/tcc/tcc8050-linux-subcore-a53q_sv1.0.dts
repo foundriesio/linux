@@ -2311,6 +2311,12 @@
 		vqmmc-supply = <&vqmmc_emmc>;
 	};
 
+    tcc_sc_ufs: tcc_sc_ufs {
+        compatible = "telechips,tcc805x-sc-ufs";
+        status = "okay";
+        sc-firmware = <&tcc_sc_fw>;
+    };
+
 	ehci_phy: ehci_phy@11DA0010 {
 		compatible = "telechips,tcc_ehci_phy";
 		reg = <0x11DA0010 0x30>;
