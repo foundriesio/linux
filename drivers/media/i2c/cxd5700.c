@@ -69,8 +69,7 @@ struct cxd5700 {
 };
 
 const char cxd5700_reg_defaults[] = {
-	/*{0x0A},*/ {0x01}, {0x07}, {0x02}, {0x01},
-	{0x00}, {0x00}, {0x30}, {0x80}, {0xC5}
+	/* 0x0A, */0x01, 0x07, 0x02, 0x01, 0x00, 0x00, 0x30, 0x80, 0xC5,
 };
 
 static const struct regmap_config cxd5700_regmap = {
@@ -110,7 +109,8 @@ static int cxd5700_init(struct v4l2_subdev *sd, u32 enable)
 	if ((dev->i_cnt == 0) && (enable == 1)) {
 		ret = regmap_bulk_write(dev->regmap,
 				0x0a,
-				cxd5700_reg_defaults, ARRAY_SIZE(cxd5700_reg_defaults));
+				cxd5700_reg_defaults,
+				ARRAY_SIZE(cxd5700_reg_defaults));
 		if (ret < 0)
 			loge("regmap_multi_reg_write returned %d\n", ret);
 	} else if ((dev->i_cnt == 1) && (enable == 0)) {
