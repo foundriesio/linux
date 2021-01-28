@@ -54,8 +54,8 @@
 #define logi(fmt, ...)		{ pr_info("[INFO][%s] %s - " fmt, LOG_TAG, \
 					__func__, ##__VA_ARGS__); }
 #define log					logi
-#define dlog(fmt, ...)		do { if (debug) { ; logd(fmt, \
-					##__VA_ARGS__); } while (0)
+#define dlog(fmt, ...)		\
+	//do { if (debug) { ; logd(fmt, ##__VA_ARGS__); } while (0)
 
 #define VIOC_MGR_DEV_MINOR		(0)
 
@@ -299,16 +299,22 @@ static void vioc_mgr_receive_message(struct mbox_client *client, void *_msg)
 static long vioc_mgr_ioctl(struct file *filp,
 	uint32_t cmd, unsigned long arg)
 {
+	struct vioc_mgr_device *vioc_mgr = NULL;
+	struct tcc_mbox_data data;
+	struct vioc_mgr_data vm_data;
+	long ret = 0;
+	uint32_t status;
+
 	if (filp == NULL) {
 		loge("An object of filp is NULL\n");
 		return -1;
 	}
 
-	struct vioc_mgr_device *vioc_mgr = filp->private_data;
-	struct tcc_mbox_data data;
-	struct vioc_mgr_data vm_data;
-	long ret = 0;
-	uint32_t status;
+	vioc_mgr = filp->private_data;
+	if (!vioc_mgr) {
+		// vioc_mgr is NULL
+		return -ENODEV;
+	}
 
 	status = (uint32_t)atomic_read(&vioc_mgr->status);
 	if (status != (uint32_t)VIOC_STS_READY) {
@@ -410,15 +416,18 @@ static int vioc_mgr_release(struct inode *inode, struct file *filp)
 
 static int vioc_mgr_open(struct inode *inode, struct file *filp)
 {
+	struct vioc_mgr_device *vioc_mgr = NULL;
+
 	if (filp == NULL) {
 		loge("An object of filp is NULL\n");
 		return -1;
 	}
 
-	struct vioc_mgr_device *vioc_mgr =
-		container_of(inode->i_cdev, struct vioc_mgr_device, cdev);
-	if (!vioc_mgr)
+	vioc_mgr = container_of(inode->i_cdev, struct vioc_mgr_device, cdev);
+	if (!vioc_mgr) {
+		// vioc_mgr is NULL
 		return -ENODEV;
+	}
 
 	filp->private_data = vioc_mgr;
 
