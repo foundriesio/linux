@@ -671,9 +671,10 @@ const struct reg_sequence ar0147_reg_init[] = {
 
 	//[Trigger mode]
 	{0x301A, 0x11D8, 0}, // Enable GPI
-	{0x340A, 0x0077, 0}, // Disable GPIO_3 Output Buffer and enable Input Buffer
+	// Disable GPIO_3 Output Buffer and enable Input Buffer
+	{0x340A, 0x0077, 0},
 	{0x340C, 0x0080, 0}, // Enable GPIO_3 as input trigger mode
-	{0x340E, 0x0210, 0}, // Disable GPIO_3 output select function 
+	{0x340E, 0x0210, 0}, // Disable GPIO_3 output select function
 	{0x30CE, 0x0120, 0},
 	{0x301A, 0x11DC, 0}, //  RESET_REGISTER
 
@@ -844,7 +845,7 @@ static const struct i2c_device_id ar0147_id[] = {
 MODULE_DEVICE_TABLE(i2c, ar0147_id);
 
 #if IS_ENABLED(CONFIG_OF)
-static struct of_device_id ar0147_of_match[] = {
+static const struct of_device_id ar0147_of_match[] = {
 	{
 		.compatible	= "onsemiconductor,ar0147",
 		.data		= &ar0147_data,
@@ -854,14 +855,15 @@ static struct of_device_id ar0147_of_match[] = {
 MODULE_DEVICE_TABLE(of, ar0147_of_match);
 #endif
 
-int ar0147_probe(struct i2c_client * client, const struct i2c_device_id * id) {
-	struct ar0147		*dev	= NULL;
-	struct of_device_id	*dev_id	= NULL; 
-	int			ret	= 0;
+int ar0147_probe(struct i2c_client *client, const struct i2c_device_id *id)
+{
+	struct ar0147			*dev	= NULL;
+	const struct of_device_id	*dev_id	= NULL;
+	int				ret	= 0;
 
 	// allocate and clear memory for a device
 	dev = devm_kzalloc(&client->dev, sizeof(struct ar0147), GFP_KERNEL);
-	if(dev == NULL) {
+	if (dev == NULL) {
 		loge("Allocate a device struct.\n");
 		return -ENOMEM;
 	}
@@ -869,12 +871,12 @@ int ar0147_probe(struct i2c_client * client, const struct i2c_device_id * id) {
 	mutex_init(&dev->lock);
 
 	// set the specific information
-	if(client->dev.of_node) {
+	if (client->dev.of_node) {
 		dev_id = of_match_node(ar0147_of_match, client->dev.of_node);
 		memcpy(dev, (const void *)dev_id->data, sizeof(*dev));
 	}
 
-	logd("name: %s, addr: 0x%x, client: 0x%p\n", 
+	logd("name: %s, addr: 0x%x, client: 0x%p\n",
 		client->name, (client->addr)<<1, client);
 
 	// Register with V4L2 layer as a slave device
@@ -882,13 +884,13 @@ int ar0147_probe(struct i2c_client * client, const struct i2c_device_id * id) {
 
 	// regitster v4l2 control handlers
 	v4l2_ctrl_handler_init(&dev->hdl, 2);
-	v4l2_ctrl_new_std(&dev->hdl, &ar0147_ctrl_ops, 
+	v4l2_ctrl_new_std(&dev->hdl, &ar0147_ctrl_ops,
 		V4L2_CID_BRIGHTNESS, 0, 255, 1, 128);
-	v4l2_ctrl_new_std_menu(&dev->hdl, 
-		&ar0147_ctrl_ops, 
-		V4L2_CID_DV_RX_IT_CONTENT_TYPE, 
-		V4L2_DV_IT_CONTENT_TYPE_NO_ITC, 
-		0, 
+	v4l2_ctrl_new_std_menu(&dev->hdl,
+		&ar0147_ctrl_ops,
+		V4L2_CID_DV_RX_IT_CONTENT_TYPE,
+		V4L2_DV_IT_CONTENT_TYPE_NO_ITC,
+		0,
 		V4L2_DV_IT_CONTENT_TYPE_NO_ITC);
 	dev->sd.ctrl_handler = &dev->hdl;
 	if (dev->hdl.error) {
@@ -905,8 +907,8 @@ int ar0147_probe(struct i2c_client * client, const struct i2c_device_id * id) {
 		logi("%s is registered as a v4l2 sub device.\n", dev->sd.name);
 
 	// init regmap
-        dev->regmap = devm_regmap_init_i2c(client, &ar0147_regmap);
-	if(IS_ERR(dev->regmap)) {
+	dev->regmap = devm_regmap_init_i2c(client, &ar0147_regmap);
+	if (IS_ERR(dev->regmap)) {
 		loge("devm_regmap_init_i2c is wrong\n");
 		ret = -1;
 		goto goto_free_device_data;
@@ -925,7 +927,7 @@ goto_end:
 	return ret;
 }
 
-int ar0147_remove(struct i2c_client * client)
+int ar0147_remove(struct i2c_client *client)
 {
 	struct v4l2_subdev	*sd	= i2c_get_clientdata(client);
 	struct ar0147		*dev	= to_dev(sd);
