@@ -68,12 +68,10 @@
 		switch2 = &switch2;
 		switch3 = &switch3;
 		mipi-csi2-0 = &mipi_csi2_0;
-#if 0
 		isp0 = &isp0;
 		isp1 = &isp1;
 		isp2 = &isp2;
 		isp3 = &isp3;
-#endif
 		videoinput0 = &videoinput0;
 		videoinput1 = &videoinput1;
 		videoinput2 = &videoinput2;
