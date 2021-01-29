@@ -5869,6 +5869,7 @@ static int qeth_core_probe_device(struct ccwgroup_device *gdev)
 		break;
 	default:
 		card->info.layer_enforced = true;
+		/* It's so early that we don't need the discipline_mutex yet. */
 		rc = qeth_core_load_discipline(card, enforced_disc);
 		if (rc)
 			goto err_load;
@@ -5904,10 +5905,12 @@ static void qeth_core_remove_device(struct ccwgroup_device *gdev)
 
 	QETH_DBF_TEXT(SETUP, 2, "removedv");
 
+	mutex_lock(&card->discipline_mutex);
 	if (card->discipline) {
 		card->discipline->remove(gdev);
 		qeth_core_free_discipline(card);
 	}
+	mutex_unlock(&card->discipline_mutex);
 
 	write_lock_irq(&qeth_core_card_list.rwlock);
 	list_del(&card->list);
@@ -5923,6 +5926,7 @@ static int qeth_core_set_online(struct ccwgroup_device *gdev)
 	int rc = 0;
 	enum qeth_discipline_id def_discipline;
 
+	mutex_lock(&card->discipline_mutex);
 	if (!card->discipline) {
 		if (card->info.type == QETH_CARD_TYPE_IQD)
 			def_discipline = QETH_DISCIPLINE_LAYER3;
@@ -5938,11 +5942,10 @@ static int qeth_core_set_online(struct ccwgroup_device *gdev)
 		}
 	}
 
-	mutex_lock(&card->discipline_mutex);
 	rc = card->discipline->set_online(gdev);
-	mutex_unlock(&card->discipline_mutex);
 
 err:
+	mutex_unlock(&card->discipline_mutex);
 	return rc;
 }
 
@@ -5972,25 +5975,34 @@ static void qeth_core_shutdown(struct ccwgroup_device *gdev)
 static int qeth_core_freeze(struct ccwgroup_device *gdev)
 {
 	struct qeth_card *card = dev_get_drvdata(&gdev->dev);
+	int rc = 0;
+	mutex_lock(&card->discipline_mutex);
 	if (card->discipline && card->discipline->freeze)
-		return card->discipline->freeze(gdev);
-	return 0;
+		rc = card->discipline->freeze(gdev);
+	mutex_unlock(&card->discipline_mutex);
+	return rc;
 }
 
 static int qeth_core_thaw(struct ccwgroup_device *gdev)
 {
 	struct qeth_card *card = dev_get_drvdata(&gdev->dev);
+	int rc = 0;
+	mutex_lock(&card->discipline_mutex);
 	if (card->discipline && card->discipline->thaw)
-		return card->discipline->thaw(gdev);
-	return 0;
+		rc = card->discipline->thaw(gdev);
+	mutex_unlock(&card->discipline_mutex);
+	return rc;
 }
 
 static int qeth_core_restore(struct ccwgroup_device *gdev)
 {
 	struct qeth_card *card = dev_get_drvdata(&gdev->dev);
+	int rc = 0;
+	mutex_lock(&card->discipline_mutex);
 	if (card->discipline && card->discipline->restore)
-		return card->discipline->restore(gdev);
-	return 0;
+		rc = card->discipline->restore(gdev);
+	mutex_unlock(&card->discipline_mutex);
+	return rc;
 }
 
 static ssize_t group_store(struct device_driver *ddrv, const char *buf,
