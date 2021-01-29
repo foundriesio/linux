@@ -38,7 +38,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  void latched_seq_write(struct latched_seq *ls, u64 val)
  {
  	raw_write_seqcount_latch(&ls->latch);
-@@ -1461,7 +1465,9 @@ static int syslog_print(char __user *buf
+@@ -1479,7 +1483,9 @@ static int syslog_print(char __user *buf
  		size_t skip;
  
  		logbuf_lock_irq();
@@ -48,7 +48,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  			logbuf_unlock_irq();
  			break;
  		}
-@@ -1491,6 +1497,7 @@ static int syslog_print(char __user *buf
+@@ -1509,6 +1515,7 @@ static int syslog_print(char __user *buf
  			syslog_partial += n;
  		} else
  			n = 0;
@@ -56,7 +56,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  		logbuf_unlock_irq();
  
  		if (!n)
-@@ -1568,8 +1575,11 @@ static int syslog_print_all(char __user
+@@ -1586,8 +1593,11 @@ static int syslog_print_all(char __user
  			break;
  	}
  
@@ -69,7 +69,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	logbuf_unlock_irq();
  
  	kfree(text);
-@@ -1579,7 +1589,9 @@ static int syslog_print_all(char __user
+@@ -1597,7 +1607,9 @@ static int syslog_print_all(char __user
  static void syslog_clear(void)
  {
  	logbuf_lock_irq();
@@ -79,7 +79,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	logbuf_unlock_irq();
  }
  
-@@ -1588,6 +1600,7 @@ int do_syslog(int type, char __user *buf
+@@ -1606,6 +1618,7 @@ int do_syslog(int type, char __user *buf
  	bool clear = false;
  	static int saved_console_loglevel = LOGLEVEL_DEFAULT;
  	int error;
@@ -87,7 +87,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  	error = check_syslog_permissions(type, source);
  	if (error)
-@@ -1605,8 +1618,14 @@ int do_syslog(int type, char __user *buf
+@@ -1623,8 +1636,14 @@ int do_syslog(int type, char __user *buf
  			return 0;
  		if (!access_ok(buf, len))
  			return -EFAULT;
@@ -103,7 +103,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  		if (error)
  			return error;
  		error = syslog_print(buf, len);
-@@ -1655,6 +1674,7 @@ int do_syslog(int type, char __user *buf
+@@ -1673,6 +1692,7 @@ int do_syslog(int type, char __user *buf
  	/* Number of chars in the log buffer */
  	case SYSLOG_ACTION_SIZE_UNREAD:
  		logbuf_lock_irq();
@@ -111,7 +111,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  		if (syslog_seq < prb_first_valid_seq(prb)) {
  			/* messages are gone, move to first one */
  			syslog_seq = prb_first_valid_seq(prb);
-@@ -1681,6 +1701,7 @@ int do_syslog(int type, char __user *buf
+@@ -1699,6 +1719,7 @@ int do_syslog(int type, char __user *buf
  			}
  			error -= syslog_partial;
  		}
@@ -119,7 +119,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  		logbuf_unlock_irq();
  		break;
  	/* Size of the log buffer */
-@@ -2931,7 +2952,12 @@ void register_console(struct console *ne
+@@ -2949,7 +2970,12 @@ void register_console(struct console *ne
  		 */
  		exclusive_console = newcon;
  		exclusive_console_stop_seq = console_seq;

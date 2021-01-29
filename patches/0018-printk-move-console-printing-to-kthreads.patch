@@ -76,7 +76,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  struct latched_seq {
  	seqcount_latch_t	latch;
  	u64			val[2];
-@@ -1701,6 +1690,8 @@ static bool console_can_sync(struct cons
+@@ -1719,6 +1708,8 @@ static bool console_can_sync(struct cons
  		return false;
  	if (con->write_atomic && kernel_sync_mode())
  		return true;
@@ -85,7 +85,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	return false;
  }
  
-@@ -1710,6 +1701,8 @@ static bool call_sync_console_driver(str
+@@ -1728,6 +1719,8 @@ static bool call_sync_console_driver(str
  		return false;
  	if (con->write_atomic && kernel_sync_mode())
  		con->write_atomic(con, text, text_len);
@@ -94,7 +94,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	else
  		return false;
  
-@@ -1784,202 +1777,16 @@ static void print_sync_until(struct cons
+@@ -1802,202 +1795,16 @@ static void print_sync_until(struct cons
  
  	console_atomic_lock(&flags);
  	for (;;) {
@@ -299,7 +299,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  #ifdef CONFIG_PRINTK_NMI
  #define NUM_RECURSION_CTX 2
  #else
-@@ -2245,41 +2052,18 @@ asmlinkage int vprintk_emit(int facility
+@@ -2263,41 +2070,18 @@ asmlinkage int vprintk_emit(int facility
  {
  	unsigned long flags;
  	int printed_len;
@@ -342,7 +342,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	wake_up_klogd();
  	return printed_len;
  }
-@@ -2331,38 +2115,164 @@ asmlinkage __visible int printk(const ch
+@@ -2349,38 +2133,164 @@ asmlinkage __visible int printk(const ch
  }
  EXPORT_SYMBOL(printk);
  
@@ -530,7 +530,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  #endif /* CONFIG_PRINTK */
  
-@@ -2607,36 +2517,6 @@ int is_console_locked(void)
+@@ -2625,36 +2535,6 @@ int is_console_locked(void)
  }
  EXPORT_SYMBOL(is_console_locked);
  
@@ -567,7 +567,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  /**
   * console_unlock - unlock the console system
   *
-@@ -2653,139 +2533,14 @@ static inline int can_use_console(void)
+@@ -2671,139 +2551,14 @@ static inline int can_use_console(void)
   */
  void console_unlock(void)
  {
@@ -707,7 +707,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  }
  EXPORT_SYMBOL(console_unlock);
  
-@@ -2835,18 +2590,20 @@ void console_unblank(void)
+@@ -2853,18 +2608,20 @@ void console_unblank(void)
   */
  void console_flush_on_panic(enum con_flush_mode mode)
  {
@@ -738,7 +738,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	console_unlock();
  }
  
-@@ -2981,7 +2738,6 @@ static int try_enable_new_console(struct
+@@ -2999,7 +2756,6 @@ static int try_enable_new_console(struct
   */
  void register_console(struct console *newcon)
  {
@@ -746,7 +746,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	struct console *bcon = NULL;
  	int err;
  
-@@ -3005,6 +2761,8 @@ void register_console(struct console *ne
+@@ -3023,6 +2779,8 @@ void register_console(struct console *ne
  		}
  	}
  
@@ -755,7 +755,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	if (console_drivers && console_drivers->flags & CON_BOOT)
  		bcon = console_drivers;
  
-@@ -3069,27 +2827,12 @@ void register_console(struct console *ne
+@@ -3087,27 +2845,12 @@ void register_console(struct console *ne
  	if (newcon->flags & CON_EXTENDED)
  		nr_ext_console_drivers++;
  
@@ -788,7 +788,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	console_unlock();
  	console_sysfs_notify();
  
-@@ -3163,6 +2906,9 @@ int unregister_console(struct console *c
+@@ -3181,6 +2924,9 @@ int unregister_console(struct console *c
  	console_unlock();
  	console_sysfs_notify();
  
@@ -798,7 +798,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	if (console->exit)
  		res = console->exit(console);
  
-@@ -3245,6 +2991,15 @@ static int __init printk_late_init(void)
+@@ -3263,6 +3009,15 @@ static int __init printk_late_init(void)
  			unregister_console(con);
  		}
  	}
@@ -814,7 +814,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	ret = cpuhp_setup_state_nocalls(CPUHP_PRINTK_DEAD, "printk:dead", NULL,
  					console_cpu_notify);
  	WARN_ON(ret < 0);
-@@ -3260,7 +3015,6 @@ late_initcall(printk_late_init);
+@@ -3278,7 +3033,6 @@ late_initcall(printk_late_init);
   * Delayed printk version, for scheduler-internal messages:
   */
  #define PRINTK_PENDING_WAKEUP	0x01
@@ -822,7 +822,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  static DEFINE_PER_CPU(int, printk_pending);
  
-@@ -3268,14 +3022,8 @@ static void wake_up_klogd_work_func(stru
+@@ -3286,14 +3040,8 @@ static void wake_up_klogd_work_func(stru
  {
  	int pending = __this_cpu_xchg(printk_pending, 0);
  
@@ -838,7 +838,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  }
  
  static DEFINE_PER_CPU(struct irq_work, wake_up_klogd_work) =
-@@ -3296,13 +3044,6 @@ void wake_up_klogd(void)
+@@ -3314,13 +3062,6 @@ void wake_up_klogd(void)
  
  void defer_console_output(void)
  {

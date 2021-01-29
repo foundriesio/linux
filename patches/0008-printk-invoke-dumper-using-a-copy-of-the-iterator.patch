@@ -14,7 +14,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/kernel/printk/printk.c
 +++ b/kernel/printk/printk.c
-@@ -3393,6 +3393,7 @@ void kmsg_dump(enum kmsg_dump_reason rea
+@@ -3411,6 +3411,7 @@ void kmsg_dump(enum kmsg_dump_reason rea
  	rcu_read_lock();
  	list_for_each_entry_rcu(dumper, &dump_list, list) {
  		enum kmsg_dump_reason max_reason = dumper->max_reason;
@@ -22,7 +22,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  		/*
  		 * If client has not provided a specific max_reason, default
-@@ -3405,19 +3406,20 @@ void kmsg_dump(enum kmsg_dump_reason rea
+@@ -3423,19 +3424,20 @@ void kmsg_dump(enum kmsg_dump_reason rea
  		if (reason > max_reason)
  			continue;
  

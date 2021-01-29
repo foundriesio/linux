@@ -13,7 +13,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/kernel/printk/printk.c
 +++ b/kernel/printk/printk.c
-@@ -1905,6 +1905,65 @@ static void call_console_drivers(const c
+@@ -1923,6 +1923,65 @@ static void call_console_drivers(const c
  	}
  }
  
@@ -79,7 +79,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  int printk_delay_msec __read_mostly;
  
  static inline void printk_delay(void)
-@@ -2005,11 +2064,13 @@ int vprintk_store(int facility, int leve
+@@ -2023,11 +2082,13 @@ int vprintk_store(int facility, int leve
  	struct prb_reserved_entry e;
  	enum log_flags lflags = 0;
  	struct printk_record r;
@@ -93,7 +93,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	u64 ts_nsec;
  
  	/*
-@@ -2020,6 +2081,9 @@ int vprintk_store(int facility, int leve
+@@ -2038,6 +2099,9 @@ int vprintk_store(int facility, int leve
  	 */
  	ts_nsec = local_clock();
  
@@ -103,7 +103,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	/*
  	 * The sprintf needs to come first since the syslog prefix might be
  	 * passed in as a parameter. An extra byte must be reserved so that
-@@ -2057,7 +2121,8 @@ int vprintk_store(int facility, int leve
+@@ -2075,7 +2139,8 @@ int vprintk_store(int facility, int leve
  				prb_commit(&e);
  			}
  
@@ -113,7 +113,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  		}
  	}
  
-@@ -2073,7 +2138,7 @@ int vprintk_store(int facility, int leve
+@@ -2091,7 +2156,7 @@ int vprintk_store(int facility, int leve
  
  		prb_rec_init_wr(&r, reserve_size + trunc_msg_len);
  		if (!prb_reserve(&e, prb, &r))
@@ -122,7 +122,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	}
  
  	/* fill message */
-@@ -2095,7 +2160,10 @@ int vprintk_store(int facility, int leve
+@@ -2113,7 +2178,10 @@ int vprintk_store(int facility, int leve
  	else
  		prb_final_commit(&e);
  

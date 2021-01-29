@@ -101,16 +101,26 @@ tcp-Remove-superfluous-BH-disable-around-listening_h.patch
 
 # SoftIRQ
 # WIP
-softirq_Add_RT_specific_softirq_accounting.patch
-softirq_Move_various_protections_into_inline_helpers.patch
-softirq_Make_softirq_control_and_processing_RT_aware.patch
-tick_sched_Prevent_false_positive_softirq_pending_warnings_on_RT.patch
-rcu_Prevent_false_positive_softirq_warning_on_RT.patch
-softirq_Replace_barrier_with_cpu_relax_in_tasklet_unlock_wait_.patch
-tasklets_Use_static_inlines_for_stub_implementations.patch
-tasklets_Prevent_kill_unlock_wait_deadlock_on_RT.patch
+0001-softirq-Replace-barrier-with-cpu_relax-in-tasklet_un.patch
+0002-tasklets-Use-static-inlines-for-stub-implementations.patch
+0003-tasklets-Provide-tasklet_disable_in_atomic.patch
+0004-tasklets-Replace-spin-wait-in-tasklet_unlock_wait.patch
+0005-tasklets-Replace-spin-wait-in-tasklet_kill.patch
+0006-tasklets-Prevent-tasklet_unlock_spin_wait-deadlock-o.patch
+0007-softirq-Add-RT-specific-softirq-accounting.patch
+0008-irqtime-Make-accounting-correct-on-RT.patch
+0009-softirq-Move-various-protections-into-inline-helpers.patch
+0010-softirq-Make-softirq-control-and-processing-RT-aware.patch
+0011-tick-sched-Prevent-false-positive-softirq-pending-wa.patch
+0012-rcu-Prevent-false-positive-softirq-warning-on-RT.patch
 #
-irqtime-Use-irq_count-instead-of-preempt_count.patch
+0013-net-jme-Replace-link-change-tasklet-with-a-worker.patch
+0014-net-arcnet-Fix-RESET-flag-handling.patch
+0015-net-sundance-Use-tasklet_disable_in_atomic.patch
+0016-ath9k-Use-tasklet_disable_in_atomic.patch
+0017-PCI-hv-Use-tasklet_disable_in_atomic.patch
+0018-atm-eni-Use-tasklet_disable_in_atomic-in-the-send-ca.patch
+0019-firewire-ohci-Use-tasklet_disable_in_atomic-in-the-t.patch
 
 # RT-MUTEX
 0001-locking-rtmutex-Remove-cruft.patch

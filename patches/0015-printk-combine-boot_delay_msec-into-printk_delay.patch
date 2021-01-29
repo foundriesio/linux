@@ -13,7 +13,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/kernel/printk/printk.c
 +++ b/kernel/printk/printk.c
-@@ -1671,8 +1671,10 @@ SYSCALL_DEFINE3(syslog, int, type, char
+@@ -1689,8 +1689,10 @@ SYSCALL_DEFINE3(syslog, int, type, char
  
  int printk_delay_msec __read_mostly;
  
@@ -25,7 +25,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	if (unlikely(printk_delay_msec)) {
  		int m = printk_delay_msec;
  
-@@ -2131,8 +2133,7 @@ asmlinkage int vprintk_emit(int facility
+@@ -2149,8 +2151,7 @@ asmlinkage int vprintk_emit(int facility
  		in_sched = true;
  	}
  

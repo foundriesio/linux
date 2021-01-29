@@ -96,7 +96,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  /*
 --- a/kernel/printk/printk.c
 +++ b/kernel/printk/printk.c
-@@ -3189,6 +3189,12 @@ void kmsg_dump(enum kmsg_dump_reason rea
+@@ -3207,6 +3207,12 @@ void kmsg_dump(enum kmsg_dump_reason rea
  			sync_mode = true;
  			pr_info("enabled sync mode\n");
  		}
@@ -109,7 +109,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	}
  
  	rcu_read_lock();
-@@ -3525,3 +3531,76 @@ void console_atomic_unlock(unsigned int
+@@ -3543,3 +3549,76 @@ void console_atomic_unlock(unsigned int
  	prb_unlock(&printk_cpulock, flags);
  }
  EXPORT_SYMBOL(console_atomic_unlock);

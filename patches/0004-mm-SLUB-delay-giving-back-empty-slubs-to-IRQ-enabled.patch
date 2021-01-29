@@ -165,7 +165,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	return p;
  }
  
-@@ -3275,6 +3327,7 @@ int kmem_cache_alloc_bulk(struct kmem_ca
+@@ -3276,6 +3328,7 @@ int kmem_cache_alloc_bulk(struct kmem_ca
  			  void **p)
  {
  	struct kmem_cache_cpu *c;
@@ -173,7 +173,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	int i;
  	struct obj_cgroup *objcg = NULL;
  
-@@ -3308,7 +3361,7 @@ int kmem_cache_alloc_bulk(struct kmem_ca
+@@ -3309,7 +3362,7 @@ int kmem_cache_alloc_bulk(struct kmem_ca
  			 * of re-populating per CPU c->freelist
  			 */
  			p[i] = ___slab_alloc(s, flags, NUMA_NO_NODE,
@@ -182,7 +182,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  			if (unlikely(!p[i]))
  				goto error;
  
-@@ -3323,6 +3376,7 @@ int kmem_cache_alloc_bulk(struct kmem_ca
+@@ -3324,6 +3377,7 @@ int kmem_cache_alloc_bulk(struct kmem_ca
  	}
  	c->tid = next_tid(c->tid);
  	local_irq_enable();
@@ -190,7 +190,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  	/* Clear memory outside IRQ disabled fastpath loop */
  	if (unlikely(slab_want_init_on_alloc(flags, s))) {
-@@ -3337,6 +3391,7 @@ int kmem_cache_alloc_bulk(struct kmem_ca
+@@ -3338,6 +3392,7 @@ int kmem_cache_alloc_bulk(struct kmem_ca
  	return i;
  error:
  	local_irq_enable();
@@ -198,7 +198,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	slab_post_alloc_hook(s, objcg, flags, i, p);
  	__kmem_cache_free_bulk(s, i, p);
  	return 0;
-@@ -4360,6 +4415,12 @@ void __init kmem_cache_init(void)
+@@ -4361,6 +4416,12 @@ void __init kmem_cache_init(void)
  {
  	static __initdata struct kmem_cache boot_kmem_cache,
  		boot_kmem_cache_node;

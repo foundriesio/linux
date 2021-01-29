@@ -254,7 +254,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	if (seq != prb_next_seq(&printk_rb_static)) {
  		pr_err("dropped %llu messages\n",
  		       prb_next_seq(&printk_rb_static) - seq);
-@@ -1924,9 +1903,9 @@ static u16 printk_sprint(char *text, u16
+@@ -1942,9 +1921,9 @@ static u16 printk_sprint(char *text, u16
  }
  
  __printf(4, 0)
@@ -267,7 +267,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  {
  	const u32 caller_id = printk_caller_id();
  	struct prb_reserved_entry e;
-@@ -2050,7 +2029,6 @@ asmlinkage int vprintk_emit(int facility
+@@ -2068,7 +2047,6 @@ asmlinkage int vprintk_emit(int facility
  			    const struct dev_printk_info *dev_info,
  			    const char *fmt, va_list args)
  {
@@ -275,7 +275,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	int printed_len;
  
  	/* Suppress unimportant messages after panic happens */
-@@ -2060,20 +2038,29 @@ asmlinkage int vprintk_emit(int facility
+@@ -2078,20 +2056,29 @@ asmlinkage int vprintk_emit(int facility
  	if (level == LOGLEVEL_SCHED)
  		level = LOGLEVEL_DEFAULT;
  
@@ -309,7 +309,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  asmlinkage int vprintk(const char *fmt, va_list args)
  {
-@@ -3042,18 +3029,10 @@ void wake_up_klogd(void)
+@@ -3060,18 +3047,10 @@ void wake_up_klogd(void)
  	preempt_enable();
  }
  

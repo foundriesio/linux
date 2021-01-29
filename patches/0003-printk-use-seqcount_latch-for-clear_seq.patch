@@ -91,7 +91,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  }
  #endif
  
-@@ -1475,6 +1516,7 @@ static int syslog_print_all(char __user
+@@ -1493,6 +1534,7 @@ static int syslog_print_all(char __user
  	struct printk_info info;
  	unsigned int line_count;
  	struct printk_record r;
@@ -99,7 +99,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	char *text;
  	int len = 0;
  	u64 seq;
-@@ -1486,15 +1528,17 @@ static int syslog_print_all(char __user
+@@ -1504,15 +1546,17 @@ static int syslog_print_all(char __user
  
  	time = printk_time;
  	logbuf_lock_irq();
@@ -119,7 +119,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  		if (len <= size)
  			break;
  		len -= get_record_print_text_size(&info, line_count, true, time);
-@@ -1525,7 +1569,7 @@ static int syslog_print_all(char __user
+@@ -1543,7 +1587,7 @@ static int syslog_print_all(char __user
  	}
  
  	if (clear)
@@ -128,7 +128,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	logbuf_unlock_irq();
  
  	kfree(text);
-@@ -1535,7 +1579,7 @@ static int syslog_print_all(char __user
+@@ -1553,7 +1597,7 @@ static int syslog_print_all(char __user
  static void syslog_clear(void)
  {
  	logbuf_lock_irq();
@@ -137,7 +137,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	logbuf_unlock_irq();
  }
  
-@@ -3273,7 +3317,7 @@ void kmsg_dump(enum kmsg_dump_reason rea
+@@ -3291,7 +3335,7 @@ void kmsg_dump(enum kmsg_dump_reason rea
  		dumper->active = true;
  
  		logbuf_lock_irqsave(flags);
@@ -146,7 +146,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  		dumper->next_seq = prb_next_seq(prb);
  		logbuf_unlock_irqrestore(flags);
  
-@@ -3480,7 +3524,7 @@ EXPORT_SYMBOL_GPL(kmsg_dump_get_buffer);
+@@ -3498,7 +3542,7 @@ EXPORT_SYMBOL_GPL(kmsg_dump_get_buffer);
   */
  void kmsg_dump_rewind_nolock(struct kmsg_dumper *dumper)
  {

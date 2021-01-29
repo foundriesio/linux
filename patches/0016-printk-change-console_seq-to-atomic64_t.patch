@@ -30,7 +30,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  struct latched_seq {
  	seqcount_latch_t	latch;
  	u64			val[2];
-@@ -2216,7 +2217,7 @@ EXPORT_SYMBOL(printk);
+@@ -2234,7 +2235,7 @@ EXPORT_SYMBOL(printk);
  #define prb_first_valid_seq(rb)		0
  
  static u64 syslog_seq;
@@ -39,7 +39,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  static u64 exclusive_console_stop_seq;
  static unsigned long console_dropped;
  
-@@ -2532,6 +2533,7 @@ void console_unlock(void)
+@@ -2550,6 +2551,7 @@ void console_unlock(void)
  	bool do_cond_resched, retry;
  	struct printk_info info;
  	struct printk_record r;
@@ -47,7 +47,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  	if (console_suspended) {
  		up_console_sem();
-@@ -2575,12 +2577,14 @@ void console_unlock(void)
+@@ -2593,12 +2595,14 @@ void console_unlock(void)
  
  		printk_safe_enter_irqsave(flags);
  skip:
@@ -66,7 +66,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  		}
  
  		if (suppress_message_printing(r.info->level)) {
-@@ -2589,13 +2593,13 @@ void console_unlock(void)
+@@ -2607,13 +2611,13 @@ void console_unlock(void)
  			 * directly to the console when we received it, and
  			 * record that has level above the console loglevel.
  			 */
@@ -82,7 +82,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  			exclusive_console = NULL;
  		}
  
-@@ -2616,7 +2620,7 @@ void console_unlock(void)
+@@ -2634,7 +2638,7 @@ void console_unlock(void)
  		len = record_print_text(&r,
  				console_msg_format & MSG_FORMAT_SYSLOG,
  				printk_time);
@@ -91,7 +91,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  		/*
  		 * While actively printing out messages, if another printk()
-@@ -2651,7 +2655,7 @@ void console_unlock(void)
+@@ -2669,7 +2673,7 @@ void console_unlock(void)
  	 * there's a new owner and the console_unlock() from them will do the
  	 * flush, no worries.
  	 */
@@ -100,7 +100,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	printk_safe_exit_irqrestore(flags);
  
  	if (retry && console_trylock())
-@@ -2716,7 +2720,7 @@ void console_flush_on_panic(enum con_flu
+@@ -2734,7 +2738,7 @@ void console_flush_on_panic(enum con_flu
  	console_may_schedule = 0;
  
  	if (mode == CONSOLE_REPLAY_ALL)
@@ -109,7 +109,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	console_unlock();
  }
  
-@@ -2953,11 +2957,11 @@ void register_console(struct console *ne
+@@ -2971,11 +2975,11 @@ void register_console(struct console *ne
  		 * ignores console_lock.
  		 */
  		exclusive_console = newcon;

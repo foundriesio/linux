@@ -476,7 +476,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	return x;
  }
  #endif /* CONFIG_SLUB_DEBUG || CONFIG_SYSFS */
-@@ -2978,7 +2978,7 @@ static void __slab_free(struct kmem_cach
+@@ -2979,7 +2979,7 @@ static void __slab_free(struct kmem_cach
  
  	do {
  		if (unlikely(n)) {
@@ -485,7 +485,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  			n = NULL;
  		}
  		prior = page->freelist;
-@@ -3010,7 +3010,7 @@ static void __slab_free(struct kmem_cach
+@@ -3011,7 +3011,7 @@ static void __slab_free(struct kmem_cach
  				 * Otherwise the list_lock will synchronize with
  				 * other processors updating the list of slabs.
  				 */
@@ -494,7 +494,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  			}
  		}
-@@ -3052,7 +3052,7 @@ static void __slab_free(struct kmem_cach
+@@ -3053,7 +3053,7 @@ static void __slab_free(struct kmem_cach
  		add_partial(n, page, DEACTIVATE_TO_TAIL);
  		stat(s, FREE_ADD_PARTIAL);
  	}
@@ -503,7 +503,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	return;
  
  slab_empty:
-@@ -3067,7 +3067,7 @@ static void __slab_free(struct kmem_cach
+@@ -3068,7 +3068,7 @@ static void __slab_free(struct kmem_cach
  		remove_full(s, n, page);
  	}
  
@@ -512,7 +512,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	stat(s, FREE_SLAB);
  	discard_slab(s, page);
  }
-@@ -3472,7 +3472,7 @@ static void
+@@ -3473,7 +3473,7 @@ static void
  init_kmem_cache_node(struct kmem_cache_node *n)
  {
  	n->nr_partial = 0;
@@ -521,7 +521,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	INIT_LIST_HEAD(&n->partial);
  #ifdef CONFIG_SLUB_DEBUG
  	atomic_long_set(&n->nr_slabs, 0);
-@@ -3873,7 +3873,7 @@ static void free_partial(struct kmem_cac
+@@ -3874,7 +3874,7 @@ static void free_partial(struct kmem_cac
  	struct page *page, *h;
  
  	BUG_ON(irqs_disabled());
@@ -530,7 +530,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	list_for_each_entry_safe(page, h, &n->partial, slab_list) {
  		if (!page->inuse) {
  			remove_partial(n, page);
-@@ -3883,7 +3883,7 @@ static void free_partial(struct kmem_cac
+@@ -3884,7 +3884,7 @@ static void free_partial(struct kmem_cac
  			  "Objects remaining in %s on __kmem_cache_shutdown()");
  		}
  	}
@@ -539,7 +539,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  	list_for_each_entry_safe(page, h, &discard, slab_list)
  		discard_slab(s, page);
-@@ -4154,7 +4154,7 @@ int __kmem_cache_shrink(struct kmem_cach
+@@ -4155,7 +4155,7 @@ int __kmem_cache_shrink(struct kmem_cach
  		for (i = 0; i < SHRINK_PROMOTE_MAX; i++)
  			INIT_LIST_HEAD(promote + i);
  
@@ -548,7 +548,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  		/*
  		 * Build lists of slabs to discard or promote.
-@@ -4185,7 +4185,7 @@ int __kmem_cache_shrink(struct kmem_cach
+@@ -4186,7 +4186,7 @@ int __kmem_cache_shrink(struct kmem_cach
  		for (i = SHRINK_PROMOTE_MAX - 1; i >= 0; i--)
  			list_splice(promote + i, &n->partial);
  
@@ -557,7 +557,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  		/* Release empty slabs */
  		list_for_each_entry_safe(page, t, &discard, slab_list)
-@@ -4547,7 +4547,7 @@ static int validate_slab_node(struct kme
+@@ -4548,7 +4548,7 @@ static int validate_slab_node(struct kme
  	struct page *page;
  	unsigned long flags;
  
@@ -566,7 +566,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  	list_for_each_entry(page, &n->partial, slab_list) {
  		validate_slab(s, page);
-@@ -4569,7 +4569,7 @@ static int validate_slab_node(struct kme
+@@ -4570,7 +4570,7 @@ static int validate_slab_node(struct kme
  		       s->name, count, atomic_long_read(&n->nr_slabs));
  
  out:
@@ -575,7 +575,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	return count;
  }
  
-@@ -4748,12 +4748,12 @@ static int list_locations(struct kmem_ca
+@@ -4749,12 +4749,12 @@ static int list_locations(struct kmem_ca
  		if (!atomic_long_read(&n->nr_slabs))
  			continue;
  
