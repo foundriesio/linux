@@ -6,23 +6,18 @@
 #include <linux/kernel.h>
 #include <linux/io.h>
 #include "tca_alarm.h"
-//#include <asm/mach-types.h>
 
-#define rtc_readl   __raw_readl
-#define rtc_writel  __raw_writel
+#define rtc_readl       (__raw_readl)
+#define rtc_writel      (__raw_writel)
 
-int tca_alarm_gettime(void __iomem *pRTC, struct rtctime *pTime)
+void tca_alarm_gettime(void __iomem *pRTC, struct rtctime *pTime)
 {
-	unsigned int uCON;
+	u32 uCON;
 
-	//pTime->wSecond                        = pRTC->ALMSEC;
-	//pTime->wMinute                        = pRTC->ALMMIN;
-	//pTime->wHour                  = pRTC->ALMHOUR;
-	//pTime->wDayOfWeek             = pRTC->ALMDAY;
-	//pTime->wDay                           = pRTC->ALMDATE;
-	//pTime->wMonth                 = pRTC->ALMMON;
-	//pTime->wYear                  = pRTC->ALMYEAR;
-	//uCON = pRTC->RTCALM;
+	if (pTime == NULL) {
+		return;
+	}
+
 	pTime->wSecond = rtc_readl(pRTC + ALMSEC);
 	pTime->wMinute = rtc_readl(pRTC + ALMMIN);
 	pTime->wHour = rtc_readl(pRTC + ALMHOUR);
@@ -78,7 +73,7 @@ int tca_alarm_gettime(void __iomem *pRTC, struct rtctime *pTime)
 	} else {
 		/* YearFix : hjbae */
 		pTime->wYear = (FROM_BCD(pTime->wYear >> (u32)8) * (u32)100)
-				+ FROM_BCD(pTime->wYear & 0x00FF);
+				+ FROM_BCD(pTime->wYear & (u32)0xFF);
 	}
 
 	/* weekdays */
@@ -88,15 +83,16 @@ int tca_alarm_gettime(void __iomem *pRTC, struct rtctime *pTime)
 		pTime->wDayOfWeek = FROM_BCD(pTime->wDayOfWeek);
 	}
 
-	//pRTC->RTCALM  = uCON;
 	rtc_writel(uCON, pRTC + RTCALM);
-
-	return 0;
 }
 
-int tca_alarm_settime(void __iomem *pRTC, struct rtctime *pTime)
+void tca_alarm_settime(void __iomem *pRTC, struct rtctime *pTime)
 {
-	unsigned int uCON;
+	u32 uCON;
+
+	if (pTime == NULL) {
+		return;
+	}
 
 	/* RTC Register write enabled */
 	rtc_writel(rtc_readl(pRTC + RTCCON) | Hw1, pRTC + RTCCON);
@@ -116,48 +112,43 @@ int tca_alarm_settime(void __iomem *pRTC, struct rtctime *pTime)
 	if (pTime->wMinute > (u32)59) {
 		BITCLR(uCON, Hw1);	//HwRTCALM_MINEN_EN
 	} else {
-		//pRTC->ALMMIN  = TO_BCD( pTime->wMinute );
 		rtc_writel(TO_BCD(pTime->wMinute), pRTC + ALMMIN);
 	}
 
 	/* Hour */
-	if (pTime->wHour > 23) {
+	if (pTime->wHour > (u32)23) {
 		BITCLR(uCON, Hw2);	//HwRTCALM_HOUREN_EN
 	} else {
-		//pRTC->ALMHOUR = TO_BCD( pTime->wHour );
 		rtc_writel(TO_BCD(pTime->wHour), pRTC + ALMHOUR);
 	}
 
 	/* Date */
-	if (pTime->wDay > 31 || pTime->wDay < 1) {
+	if ((pTime->wDay > (u32)31) || (pTime->wDay < (u32)1)) {
 		BITCLR(uCON, Hw3);	//HwRTCALM_DATEEN_EN
 	} else {
-		//pRTC->ALMDATE = TO_BCD( pTime->wDay );
 		rtc_writel(TO_BCD(pTime->wDay), pRTC + ALMDATE);
 	}
 
 	/* month */
-	if (pTime->wMonth > 12 || pTime->wMonth < 1) {
+	if ((pTime->wMonth > (u32)12) || (pTime->wMonth < (u32)1)) {
 		BITCLR(uCON, Hw5);	//HwRTCALM_MONEN_EN
 	} else {
-		//pRTC->ALMMON  = TO_BCD( pTime->wMonth );
 		rtc_writel(TO_BCD(pTime->wMonth), pRTC + ALMMON);
 	}
 
 	/* year */
-	if (pTime->wYear > 2099 || pTime->wYear < 1900) {
+	if ((pTime->wYear > (u32)2099) || (pTime->wYear < (u32)1900)) {
 		BITCLR(uCON, Hw6);	//HwRTCALM_YEAREN_EN
 	} else {
-		rtc_writel((TO_BCD(pTime->wYear / 100) << 8) |
-			   TO_BCD(pTime->wYear % 100), pRTC + ALMYEAR);
+		rtc_writel((TO_BCD(pTime->wYear / (u32)100) << (u32)8) |
+			   TO_BCD(pTime->wYear % (u32)100), pRTC + ALMYEAR);
 	}
 
 	/* Day */
-	if (pTime->wDayOfWeek > 6) {
+	if (pTime->wDayOfWeek > (u32)6) {
 		BITCLR(uCON, Hw4);	//HwRTCALM_DAYEN_EN
 	} else {
-		//pRTC->ALMDAY  = pTime->wDayOfWeek+1;
-		rtc_writel(pTime->wDayOfWeek + 1, pRTC + ALMDAY);
+		rtc_writel(pTime->wDayOfWeek + (u32)1, pRTC + ALMDAY);
 	}
 
 	/* Enable ALARM */
@@ -176,7 +167,7 @@ int tca_alarm_settime(void __iomem *pRTC, struct rtctime *pTime)
 	rtc_writel(rtc_readl(pRTC + RTCCON) | (Hw7 | Hw6), pRTC + RTCCON);
 
 	/* If protection enable bit is Disabled */
-	if (!(rtc_readl(pRTC + INTCON) & Hw15))	{
+	if ((rtc_readl(pRTC + INTCON) & Hw15) == (u32)0)	{
 		/* RTC Start bit - Halt */
 		rtc_writel(rtc_readl(pRTC + RTCCON) | Hw0, pRTC + RTCCON);
 		/* protect bit - enable */
@@ -189,55 +180,5 @@ int tca_alarm_settime(void __iomem *pRTC, struct rtctime *pTime)
 	rtc_writel(rtc_readl(pRTC + INTCON) & ~Hw0, pRTC + INTCON);
 	/* RTC write enable bit - disable */
 	rtc_writel(rtc_readl(pRTC + RTCCON) & ~Hw1, pRTC + RTCCON);
-
-	return 0;
 }
 
-int tca_alarm_setint(void __iomem *rtcbaseaddress)
-{
-	struct rtctime lpTime;
-
-	//Set Alarm
-	tca_rtc_gettime(rtcbaseaddress, (struct rtctime *)&lpTime);
-
-	if (lpTime.wSecond < 55)
-		lpTime.wSecond += 5;
-
-	tca_alarm_settime(rtcbaseaddress, (struct rtctime *)&lpTime);
-
-	return 0;
-}
-
-/* Disable the RTC Alarm during the power off state */
-int tca_alarm_disable(void __iomem *pRTC)
-{
-	if (pRTC == NULL) {
-		pr_err("[ERROR][tcc-rtc]failed RTC ioremap()\n");
-	} else {
-		/*
-		 * Disable Wake Up Interrupt Output(Hw7) and
-		 * Alarm Interrupt Output(Hw6)
-		 */
-		rtc_writel(rtc_readl(pRTC + RTCCON) & ~(Hw7 | Hw6),
-			   pRTC + RTCCON);
-
-		/* Enable - RTC Write */
-		rtc_writel(rtc_readl(pRTC + RTCCON) | Hw1, pRTC + RTCCON);
-		/* Enable - Interrupt Block Write */
-		rtc_writel(rtc_readl(pRTC + INTCON) | Hw0, pRTC + INTCON);
-
-		/* Disable - Alarm Control */
-		rtc_writel(rtc_readl(pRTC + RTCALM) & ~(0x000000ff),
-			   pRTC + RTCALM);
-		/* Power down mode, Active HIGH, Disable alarm interrupt */
-		rtc_writel(rtc_readl(pRTC + RTCIM) & (~(0x0000000f) | Hw2),
-			   pRTC + RTCIM);
-
-		/* Disable - Interrupt Block Write */
-		rtc_writel(rtc_readl(pRTC + INTCON) & ~Hw0, pRTC + INTCON);
-		/* Disable - RTC Write */
-		rtc_writel(rtc_readl(pRTC + RTCCON) & ~Hw1, pRTC + RTCCON);
-	}
-
-	return 0;
-}
