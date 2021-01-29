@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2019-2020, Telechips Inc
  * Copyright (c) 2015, Linaro Limited
+ * Copyright (c) Telechips Inc
  */
 
 #define pr_fmt(fmt) KBUILD_MODNAME ": " fmt
@@ -18,7 +18,6 @@
 #include <linux/tee_drv.h>
 #include <linux/types.h>
 #include <linux/uaccess.h>
-#include "optee_bench.h"
 #include "optee_private.h"
 #include "optee_smc.h"
 #include "shm_pool.h"
@@ -795,8 +794,6 @@ static int __init optee_driver_init(void)
 
 	optee_svc = optee;
 
-	optee_bm_enable();
-
 	return 0;
 }
 module_init(optee_driver_init);
@@ -808,8 +805,6 @@ static void __exit optee_driver_exit(void)
 	optee_svc = NULL;
 	if (optee)
 		optee_remove(optee);
-
-	optee_bm_disable();
 }
 module_exit(optee_driver_exit);
 

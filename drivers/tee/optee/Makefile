@@ -8,4 +8,3 @@ optee-objs += shm_pool.o
 ifneq ($(CONFIG_ARCH_TCC),y)
 optee-objs += device.o
 endif
-optee-objs += bench.o

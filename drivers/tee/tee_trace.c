@@ -27,4 +27,3 @@ void tee_trace_reset_shm(void)
 	trace_shm = NULL;
 }
 #endif
-
