@@ -17,6 +17,7 @@
 #include <linux/mailbox/tcc803x_multi_mailbox/tcc803x_multi_mbox.h>
 #include <dt-bindings/mailbox/tcc803x_multi_mailbox/tcc_mbox_ch.h>
 #include <linux/types.h>
+#include "../mailbox.h"
 
 #define Hw37		(1LL << 37)
 #define Hw36		(1LL << 36)
@@ -424,6 +425,9 @@ static int32_t tcc_multich_mbox_startup(struct mbox_chan *chan)
 				devm_kzalloc(chan->mbox->dev,
 				sizeof(struct tcc_mbox_data),
 				GFP_KERNEL);
+
+			 /* TCC803x is support olny TXDONE_BY_ACK */
+			 chan->txdone_method = TXDONE_BY_ACK;
 
 			if (chan_info->msg == NULL) {
 				ret = -ENOMEM;
