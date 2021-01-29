@@ -825,8 +825,11 @@ static void qeth_l2_remove_device(struct ccwgroup_device *cgdev)
 	qeth_set_allowed_threads(card, 0, 1);
 	wait_event(card->wait_q, qeth_threads_running(card, 0xffffffff) == 0);
 
-	if (cgdev->state == CCWGROUP_ONLINE)
+	if (cgdev->state == CCWGROUP_ONLINE) {
+		mutex_lock(&card->discipline_mutex);
 		qeth_l2_set_offline(cgdev);
+		mutex_unlock(&card->discipline_mutex);
+	}
 
 	cancel_work_sync(&card->close_dev_work);
 	if (qeth_netdev_is_registered(card->dev))
@@ -959,7 +962,6 @@ static int __qeth_l2_set_online(struct ccwgroup_device *gdev, int recovery_mode)
 	enum qeth_card_states recover_flag;
 	bool carrier_ok;
 
-	mutex_lock(&card->discipline_mutex);
 	mutex_lock(&card->conf_mutex);
 	QETH_DBF_TEXT(SETUP, 2, "setonlin");
 	QETH_DBF_HEX(SETUP, 2, &card, sizeof(void *));
@@ -1045,7 +1047,6 @@ static int __qeth_l2_set_online(struct ccwgroup_device *gdev, int recovery_mode)
 	/* let user_space know that device is online */
 	kobject_uevent(&gdev->dev.kobj, KOBJ_CHANGE);
 	mutex_unlock(&card->conf_mutex);
-	mutex_unlock(&card->discipline_mutex);
 	return 0;
 
 out_remove:
@@ -1059,7 +1060,6 @@ out_remove:
 	else
 		card->state = CARD_STATE_DOWN;
 	mutex_unlock(&card->conf_mutex);
-	mutex_unlock(&card->discipline_mutex);
 	return rc;
 }
 
@@ -1075,7 +1075,6 @@ static int __qeth_l2_set_offline(struct ccwgroup_device *cgdev,
 	int rc = 0, rc2 = 0, rc3 = 0;
 	enum qeth_card_states recover_flag;
 
-	mutex_lock(&card->discipline_mutex);
 	mutex_lock(&card->conf_mutex);
 	QETH_DBF_TEXT(SETUP, 3, "setoffl");
 	QETH_DBF_HEX(SETUP, 3, &card, sizeof(void *));
@@ -1100,7 +1099,6 @@ static int __qeth_l2_set_offline(struct ccwgroup_device *cgdev,
 	/* let user_space know that device is offline */
 	kobject_uevent(&cgdev->dev.kobj, KOBJ_CHANGE);
 	mutex_unlock(&card->conf_mutex);
-	mutex_unlock(&card->discipline_mutex);
 	return 0;
 }
 
@@ -1122,6 +1120,7 @@ static int qeth_l2_recover(void *ptr)
 	dev_warn(&card->gdev->dev,
 		"A recovery process has been started for the device\n");
 	qeth_set_recovery_task(card);
+	/* Lock-free, other users will block until we are done. */
 	__qeth_l2_set_offline(card->gdev, 1);
 	rc = __qeth_l2_set_online(card->gdev, 1);
 	if (!rc)
@@ -1161,9 +1160,14 @@ static int qeth_l2_pm_suspend(struct ccwgroup_device *gdev)
 	if (card->state == CARD_STATE_UP) {
 		if (card->info.hwtrap)
 			qeth_hw_trap(card, QETH_DIAGS_TRAP_DISARM);
+		mutex_lock(&card->discipline_mutex);
 		__qeth_l2_set_offline(card->gdev, 1);
-	} else
+		mutex_unlock(&card->discipline_mutex);
+	} else {
+		mutex_lock(&card->discipline_mutex);
 		__qeth_l2_set_offline(card->gdev, 0);
+		mutex_unlock(&card->discipline_mutex);
+	}
 	return 0;
 }
 
@@ -1173,14 +1177,19 @@ static int qeth_l2_pm_resume(struct ccwgroup_device *gdev)
 	int rc = 0;
 
 	if (card->state == CARD_STATE_RECOVER) {
+		mutex_lock(&card->discipline_mutex);
 		rc = __qeth_l2_set_online(card->gdev, 1);
+		mutex_unlock(&card->discipline_mutex);
 		if (rc) {
 			rtnl_lock();
 			dev_close(card->dev);
 			rtnl_unlock();
 		}
-	} else
+	} else {
+		mutex_lock(&card->discipline_mutex);
 		rc = __qeth_l2_set_online(card->gdev, 0);
+		mutex_unlock(&card->discipline_mutex);
+	}
 
 	qeth_set_allowed_threads(card, 0xffffffff, 0);
 	netif_device_attach(card->dev);

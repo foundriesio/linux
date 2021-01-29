@@ -5937,7 +5937,11 @@ static int qeth_core_set_online(struct ccwgroup_device *gdev)
 			goto err;
 		}
 	}
+
+	mutex_lock(&card->discipline_mutex);
 	rc = card->discipline->set_online(gdev);
+	mutex_unlock(&card->discipline_mutex);
+
 err:
 	return rc;
 }
@@ -5945,7 +5949,13 @@ err:
 static int qeth_core_set_offline(struct ccwgroup_device *gdev)
 {
 	struct qeth_card *card = dev_get_drvdata(&gdev->dev);
-	return card->discipline->set_offline(gdev);
+	int rc;
+
+	mutex_lock(&card->discipline_mutex);
+	rc = card->discipline->set_offline(gdev);
+	mutex_unlock(&card->discipline_mutex);
+
+	return rc;
 }
 
 static void qeth_core_shutdown(struct ccwgroup_device *gdev)
