@@ -1244,7 +1244,6 @@ static int tcc_mipi_csi2_init(struct v4l2_subdev *sd, u32 enable)
  */
 static int tcc_mipi_csi2_s_stream(struct v4l2_subdev *sd, int enable)
 {
-	struct tcc_mipi_csi2_state	*state	= sd_to_state(sd);
 	int				ret	= 0;
 
 	return ret;
@@ -1558,7 +1557,6 @@ static int tcc_mipi_csi2_resume(struct device *dev)
 
 	return ret;
 
-e_clkdis:
 #if defined(CONFIG_ARCH_TCC803X)
 	clk_disable(state->clock);
 e_clkput:
