@@ -14,18 +14,18 @@ struct tcc_timer {
 	u32	mref;
 	u32	div;	/* tick = cnt/div */
 	struct	device	*dev;
-	u32	used;
-	u32	reserved;
-	u32	use_irq;
+	s32	used;
+	s32	reserved;
+	s32	use_irq;
 	u32	virq;
 	u32	irqcnt;
-	char	name[16];
+	s8	name[16];
 	irq_handler_t	handler;
 };
 
-extern int tcc_timer_enable(struct tcc_timer *timer);
-extern int tcc_timer_disable(struct tcc_timer *timer);
-extern unsigned long tcc_get_timer_count(struct tcc_timer *timer);
+extern s32 tcc_timer_enable(struct tcc_timer *timer);
+extern s32 tcc_timer_disable(struct tcc_timer *timer);
+extern u32 tcc_get_timer_count(struct tcc_timer *timer);
 extern struct tcc_timer *tcc_register_timer(struct device *dev,
 					    u32 usec,
 					    irq_handler_t handler);

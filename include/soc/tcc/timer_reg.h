@@ -30,20 +30,20 @@
 #define TIMER_OFFSET        ((u32)0x10)
 
 /* registers for 32-bit timer */
-#define TC32EN_LDM1         (((u32)0x1)<<29)
-#define TC32EN_LDM0         (((u32)0x1)<<28)
-#define TC32EN_STOPMODE     (((u32)0x1)<<26)
-#define TC32EN_LOADZERO     (((u32)0x1)<<25)
-#define TC32EN_EN           (((u32)0x1)<<24)
+#define TC32EN_LDM1         (((u32)0x1) << 29)
+#define TC32EN_LDM0         (((u32)0x1) << 28)
+#define TC32EN_STOPMODE     (((u32)0x1) << 26)
+#define TC32EN_LOADZERO     (((u32)0x1) << 25)
+#define TC32EN_EN           (((u32)0x1) << 24)
 
 /* fields for TCFG */
-#define TCFG_STOP           (((u32)0x1)<<9)
-#define TCFG_CC             (((u32)0x1)<<8)
-#define TCFG_POL            (((u32)0x1)<<7)
-#define TCFG_TCKSEL(x)      (((x)&((u32)0x7))<<4)
-#define TCFG_IEN            (((u32)0x1)<<3)
-#define TCFG_PWM            (((u32)0x1)<<2)
-#define TCFG_CON            (((u32)0x1)<<1)
+#define TCFG_STOP           (((u32)0x1) << 9)
+#define TCFG_CC             (((u32)0x1) << 8)
+#define TCFG_POL            (((u32)0x1) << 7)
+#define TCFG_TCKSEL(x)      (((x) & ((u32) 0x7)) << 4)
+#define TCFG_IEN            (((u32)0x1) << 3)
+#define TCFG_PWM            (((u32)0x1) << 2)
+#define TCFG_CON            (((u32)0x1) << 1)
 #define TCFG_EN             ((u32)0x1)
 
 #endif
