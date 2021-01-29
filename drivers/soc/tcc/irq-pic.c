@@ -10,20 +10,20 @@
 #include <linux/syscore_ops.h>
 #include <soc/tcc/irq.h>
 
-#define TCC_PIC_NAME		(const char *)"tcc_pic"
+#define TCC_PIC_NAME		((const u8 *)"tcc_pic")
 
 /* index of pic registers */
-#define POL_0                   (u32)0
-#define POL_1                   (u32)1
-#define CMB_CM4                 (u32)2
-#define STRGB_CM4               (u32)3
-#define CA7_IRQO_EN             (u32)4
-#define PIC_REG_MAX             (u32)5
+#define POL_0                   ((u32)0)
+#define POL_1                   ((u32)1)
+#define CMB_CM4                 ((u32)2)
+#define STRGB_CM4               ((u32)3)
+#define CA7_IRQO_EN             ((u32)4)
+#define PIC_REG_MAX             ((u32)5)
 
 struct tcc_pic_ops {
-	int (*set_polarity)(struct irq_data *d, u32 type);
-	int (*mask_cm4)(u32 irq, u32 bus);
-	int (*unmask_cm4)(u32 irq, u32 bus);
+	s32 (*set_polarity)(struct irq_data *d, u32 type);
+	s32 (*mask_cm4)(u32 irq, u32 bus);
+	s32 (*unmask_cm4)(u32 irq, u32 bus);
 };
 
 struct tcc_pic {
@@ -38,13 +38,17 @@ struct tcc_pic {
 
 static struct tcc_pic *picinfo;
 
-static int tcc_pic_set_polarity(struct irq_data *irqd, u32 type)
+static s32 tcc_pic_set_polarity(struct irq_data *irqd, u32 type)
 {
 	void __iomem *pol;
 	u32 mask;
-	int ret = 0;
+	s32 ret = 0;
 	u32 irq;
 	unsigned long flags;
+
+	if (irqd == NULL) {
+		return -EINVAL;
+	}
 
 	if ((irqd->hwirq < (u32)32) || (picinfo->reg[POL_0] == NULL)
 				    || (picinfo->reg[POL_1] == NULL)) {
@@ -62,14 +66,15 @@ static int tcc_pic_set_polarity(struct irq_data *irqd, u32 type)
 	}
 
 	if (irq < picinfo->demarcation) {
-		pol = picinfo->reg[POL_0] + ((irq >> 5) << 2);
+		pol = picinfo->reg[POL_0] + ((irq >> (u32)5) << (u32)2);
 	} else {
 		pol = picinfo->reg[POL_1]
-		      + (((irq - picinfo->demarcation) >> 5) << 2);
+		      + (((irq - picinfo->demarcation) >> (u32)5) << (u32)2);
 	}
 	mask = (u32)1 << (irq & (u32)0x1F);
 
 	spin_lock_irqsave(&picinfo->lock, flags);
+
 	if ((type == (u32)IRQ_TYPE_LEVEL_HIGH) ||
 	    (type == (u32)IRQ_TYPE_EDGE_RISING)) {
 		writel_relaxed(readl_relaxed(pol) & ~mask, pol);
@@ -79,12 +84,13 @@ static int tcc_pic_set_polarity(struct irq_data *irqd, u32 type)
 	} else {
 		ret = -EINVAL;
 	}
+
 	spin_unlock_irqrestore(&picinfo->lock, flags);
 
 	return ret;
 }
 
-static int tcc_pic_mask_control(u32 irq, u32 bus, u32 enable)
+static s32 tcc_pic_mask_control(u32 irq, u32 bus, u32 enable)
 {
 	void __iomem *reg = NULL;
 	u32 mask;
@@ -103,7 +109,7 @@ static int tcc_pic_mask_control(u32 irq, u32 bus, u32 enable)
 				     TCC_PIC_NAME, __func__, irq);
 			return -EFAULT;
 		}
-		reg = picinfo->reg[CMB_CM4] + ((irq >> 5) << 2);
+		reg = picinfo->reg[CMB_CM4] + ((irq >> (u32)5) << (u32)2);
 	} else if (bus == PIC_GATE_STRGB) {
 		if (picinfo->reg[STRGB_CM4] == NULL) {
 			(void)pr_err(
@@ -111,7 +117,7 @@ static int tcc_pic_mask_control(u32 irq, u32 bus, u32 enable)
 				     TCC_PIC_NAME, __func__, irq);
 			return -EFAULT;
 		}
-		reg = picinfo->reg[STRGB_CM4] + ((irq >> 5) << 2);
+		reg = picinfo->reg[STRGB_CM4] + ((irq >> (u32)5) << (u32)2);
 	} else if (bus == SMU_GATE_CA7) {
 		if (picinfo->reg[CA7_IRQO_EN] == NULL) {
 			(void)pr_err(
@@ -119,7 +125,7 @@ static int tcc_pic_mask_control(u32 irq, u32 bus, u32 enable)
 				     TCC_PIC_NAME, __func__);
 			return -EFAULT;
 		}
-		reg = picinfo->reg[CA7_IRQO_EN] + ((irq >> 5) << 2);
+		reg = picinfo->reg[CA7_IRQO_EN] + ((irq >> (u32)5) << (u32)2);
 	} else {
 		(void)pr_err("[ERROR][%s] %s: bus type(%d) is wrong.\n",
 			     TCC_PIC_NAME, __func__, bus);
@@ -129,6 +135,7 @@ static int tcc_pic_mask_control(u32 irq, u32 bus, u32 enable)
 	mask = (u32)1 << (irq & (u32)0x1F);
 
 	spin_lock_irqsave(&picinfo->lock, flags);
+
 	if (enable == (u32)0) {
 		/* mask */
 		writel_relaxed(readl_relaxed(reg) & ~mask, reg);
@@ -136,17 +143,18 @@ static int tcc_pic_mask_control(u32 irq, u32 bus, u32 enable)
 		/* unmask */
 		writel_relaxed(readl_relaxed(reg) | mask, reg);
 	}
+
 	spin_unlock_irqrestore(&picinfo->lock, flags);
 
 	return 0;
 }
 
-static int tcc_pic_mask_cm4(u32 irq, u32 bus)
+static s32 tcc_pic_mask_cm4(u32 irq, u32 bus)
 {
 	return tcc_pic_mask_control(irq, bus, 0);
 }
 
-static int tcc_pic_unmask_cm4(u32 irq, u32 bus)
+static s32 tcc_pic_unmask_cm4(u32 irq, u32 bus)
 {
 	return tcc_pic_mask_control(irq, bus, 1);
 }
@@ -173,11 +181,11 @@ static void __maybe_unused tcc_pic_allmask_ca7(void)
 	spin_unlock_irqrestore(&picinfo->lock, flags);
 }
 
-int tcc_irq_set_polarity_ca7(u32 irq, u32 type)
+s32 tcc_irq_set_polarity_ca7(u32 irq, u32 type)
 {
 	void __iomem *pol;
 	u32 mask;
-	int ret = 0;
+	s32 ret = 0;
 	unsigned long flags;
 
 	if ((picinfo->reg[POL_0] == NULL) || (picinfo->reg[POL_1] == NULL)) {
@@ -194,14 +202,15 @@ int tcc_irq_set_polarity_ca7(u32 irq, u32 type)
 	}
 
 	if (irq < picinfo->demarcation) {
-		pol = picinfo->reg[POL_0] + ((irq >> 5) << 2);
+		pol = picinfo->reg[POL_0] + ((irq >> (u32)5) << (u32)2);
 	} else {
 		pol = picinfo->reg[POL_1]
-		      + (((irq - picinfo->demarcation) >> 5) << 2);
+		      + (((irq - picinfo->demarcation) >> (u32)5) << (u32)2);
 	}
 	mask = (u32)1 << (irq & (u32)0x1F);
 
 	spin_lock_irqsave(&picinfo->lock, flags);
+
 	if ((type == (u32)IRQ_TYPE_LEVEL_HIGH) ||
 	    (type == (u32)IRQ_TYPE_EDGE_RISING)) {
 		writel_relaxed(readl_relaxed(pol) & ~mask, pol);
@@ -211,24 +220,25 @@ int tcc_irq_set_polarity_ca7(u32 irq, u32 type)
 	} else {
 		ret = -EINVAL;
 	}
+
 	spin_unlock_irqrestore(&picinfo->lock, flags);
 
 	return ret;
 }
 
-int tcc_irq_mask_ca7(u32 irq)
+s32 tcc_irq_mask_ca7(u32 irq)
 {
 	return tcc_pic_mask_control(irq, SMU_GATE_CA7, 0);
 }
 
-int tcc_irq_unmask_ca7(u32 irq)
+s32 tcc_irq_unmask_ca7(u32 irq)
 {
 	return tcc_pic_mask_control(irq, SMU_GATE_CA7, 1);
 }
 
-int tcc_irq_set_polarity(struct irq_data *irqd, u32 type)
+s32 tcc_irq_set_polarity(struct irq_data *irqd, u32 type)
 {
-	int ret = 0;
+	s32 ret = 0;
 
 	if (picinfo->ops->set_polarity != NULL) {
 		ret = picinfo->ops->set_polarity(irqd, type);
@@ -237,9 +247,9 @@ int tcc_irq_set_polarity(struct irq_data *irqd, u32 type)
 	return ret;
 }
 
-int tcc_irq_mask_cm4(u32 irq, u32 bus)
+s32 tcc_irq_mask_cm4(u32 irq, u32 bus)
 {
-	int ret = 0;
+	s32 ret = 0;
 
 	if (picinfo->ops->mask_cm4 != NULL) {
 		ret = picinfo->ops->mask_cm4(irq, bus);
@@ -248,9 +258,9 @@ int tcc_irq_mask_cm4(u32 irq, u32 bus)
 	return ret;
 }
 
-int tcc_irq_unmask_cm4(u32 irq, u32 bus)
+s32 tcc_irq_unmask_cm4(u32 irq, u32 bus)
 {
-	int ret = 0;
+	s32 ret = 0;
 
 	if (picinfo->ops->unmask_cm4 != NULL) {
 		ret = picinfo->ops->unmask_cm4(irq, bus);
@@ -261,7 +271,7 @@ int tcc_irq_unmask_cm4(u32 irq, u32 bus)
 
 #if defined(CONFIG_PM_SLEEP)
 #if defined(CONFIG_ARCH_TCC805X)
-static int tcc_pic_suspend(void)
+static s32 tcc_pic_suspend(void)
 {
 	u32 i, j;
 
@@ -356,7 +366,7 @@ static struct tcc_pic_ops tcc897x_pic_ops = {
 };
 
 #ifdef CONFIG_OF
-static const struct of_device_id tcc_pic_of_match[7] = {
+static const struct of_device_id tcc_pic_of_match[] = {
 	{.compatible = "telechips,tcc805x-pic", .data = &tcc805x_pic_ops},
 	{.compatible = "telechips,tcc803x-pic", .data = &tcc803x_pic_ops},
 	{.compatible = "telechips,tccsub-ca7-pic", .data = &tccsub_ca7_pic_ops},
@@ -366,19 +376,26 @@ static const struct of_device_id tcc_pic_of_match[7] = {
 	{}
 };
 
-static int tcc_pic_probe(struct platform_device *pdev)
+static s32 tcc_pic_probe(struct platform_device *pdev)
 {
-	struct device *dev = &pdev->dev;
-	struct device_node *np = pdev->dev.of_node;
+	struct device *dev;
+	struct device_node *np;
 	const struct of_device_id *match;
 	struct tcc_pic *pic;
 	struct resource res;
 	u32 i;
-	int ret;
+	s32 ret;
+
+	if (pdev == NULL) {
+		return -ENODEV;
+	}
+
+	dev = &pdev->dev;
+	np = pdev->dev.of_node;
 
 	pic = devm_kzalloc(dev, sizeof(*pic), GFP_KERNEL);
 	if (pic != NULL) {
-		memset(pic, 0, sizeof(*pic));
+		(void)memset(pic, 0, sizeof(*pic));
 		picinfo = pic;
 	} else {
 		(void)pr_err("[ERROR][%s] %s: can't alloccate memory.\n",
@@ -395,8 +412,8 @@ static int tcc_pic_probe(struct platform_device *pdev)
 
 	/* It'll be set as NULL if the size of reg node is zero. */
 	for (i = 0; i < PIC_REG_MAX; i++) {
-		picinfo->reg[i] = of_iomap(np, (int)i);
-		ret = of_address_to_resource(np, (int)i, &res);
+		picinfo->reg[i] = of_iomap(np, (s32)i);
+		ret = of_address_to_resource(np, (s32)i, &res);
 		if (ret != 0) {
 			picinfo->reg_size[i] = 0;
 		} else {
@@ -404,20 +421,22 @@ static int tcc_pic_probe(struct platform_device *pdev)
 		}
 	}
 
-	ret = of_property_read_s32(np,
+	ret = of_property_read_u32(np,
 				   "demarcation",
-				   (s32 *)&picinfo->demarcation);
+				   (u32 *)&picinfo->demarcation);
 	if (ret != 0) {
 		(void)pr_err("[WARN][%s] %s: can't get the demarcation.\n",
 			     TCC_PIC_NAME, __func__);
 	}
-	ret = of_property_read_s32(np, "max_irq", (s32 *)&picinfo->max_irq);
-	if (ret != 0) {
-		(void)pr_err("[WARN][%s] %s: can't get the max_irq.\n",
+
+	ret = of_property_read_u32(np, "max_irq", (u32 *)&picinfo->max_irq);
+	if ((ret != 0) || (picinfo->max_irq < (u32)1)) {
+		(void)pr_err("[WARN][%s] %s: max_irq is wrong.\n",
 			     TCC_PIC_NAME, __func__);
 	}
 
-	if (of_device_is_compatible(np, "telechips,tccsub-ca7-pic") != 0) {
+	ret = of_device_is_compatible(np, "telechips,tccsub-ca7-pic");
+	if (ret != 0) {
 		tcc_pic_allmask_ca7();
 	} else {
 		/* no operation */
@@ -437,7 +456,7 @@ MODULE_DEVICE_TABLE(of, tcc_pic_of_match);
 #endif
 
 static struct platform_driver tcc_pic_driver = {
-	.probe = tcc_pic_probe,
+	.probe = &tcc_pic_probe,
 	.driver = {
 		   .name = "tcc_pic",
 		   .owner = THIS_MODULE,
@@ -447,14 +466,15 @@ static struct platform_driver tcc_pic_driver = {
 		   },
 };
 
-static int __init tcc_pic_init(void)
+static s32 __init tcc_pic_init(void)
 {
-	int ret = 0;
+	s32 ret;
 
 	ret = platform_driver_register(&tcc_pic_driver);
-	if (ret < 0)
+	if (ret < 0) {
 		(void)pr_err("[ERROR][%s] %s: ret=%d\n",
 			     TCC_PIC_NAME, __func__, ret);
+	}
 
 	return ret;
 }
