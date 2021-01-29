@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) Telechips Inc.
  * Copyright (c) 2015-2016, Linaro Limited
+ * Copyright (c) Telechips Inc.
  */
 #include <linux/device.h>
 #include <linux/dma-buf.h>
@@ -707,7 +707,7 @@ int tee_shm_va2pa(struct tee_shm *shm, void *va, phys_addr_t *pa)
 		return -EINVAL;
 
 	return tee_shm_get_pa(
-		shm, (unsigned long)va - (unsigned long)shm->kaddr, pa);
+			shm, (unsigned long)va - (unsigned long)shm->kaddr, pa);
 }
 EXPORT_SYMBOL_GPL(tee_shm_va2pa);
 

@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: (GPL-2.0 OR BSD-2-Clause) */
 /*
- * Copyright (c) 2019-2020, Telechips Inc
  * Copyright (c) 2015-2019, Linaro Limited
+ * Copyright (c) Telechips Inc
  */
 #ifndef OPTEE_SMC_H
 #define OPTEE_SMC_H

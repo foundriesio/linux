@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
- * Copyright (c) 2019-2020, Telechips Inc
  * Copyright (c) 2015, Linaro Limited
+ * Copyright (c) Telechips Inc
  */
 
 #ifndef OPTEE_PRIVATE_H

@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: (GPL-2.0 OR BSD-2-Clause) */
 /*
- * Copyright (c) 2019-2020, Telechips Inc
  * Copyright (c) 2015-2019, Linaro Limited
+ * Copyright (c) Telechips Inc
  */
 #ifndef _OPTEE_MSG_H
 #define _OPTEE_MSG_H
@@ -444,15 +444,6 @@ struct optee_msg_arg {
  *					above
  */
 #define OPTEE_MSG_RPC_CMD_SHM_FREE	7
-
-/*
- * Register timestamp buffer
- *
- * [in] param[0].u.value.a	Subcommand (register buffer, unregister buffer)
- * [in] param[0].u.value.b	Physical address of timestamp buffer
- * [in] param[0].u.value.c	Size of buffer
- */
-#define OPTEE_MSG_RPC_CMD_BENCH_REG	20
 
 /*
  * Print TEE Log message at REE Kernel layer.

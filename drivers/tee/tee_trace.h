@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2019-2020, Telechips Inc
+ * Copyright (c) Telechips Inc
  */
 
 
@@ -33,4 +33,3 @@ void tee_trace_reset_shm(void);
  * but it is not pre-defined any header files.
  */
 int range_is_allowed(unsigned long pfn, unsigned long size);
-
