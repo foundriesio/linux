@@ -13,10 +13,8 @@ extern
 "C" {
 #endif
 
-int tca_alarm_gettime(void __iomem *rtcbaseaddress, struct rtctime *pTime);
-int tca_alarm_settime(void __iomem *rtcbaseaddress, struct rtctime *pTime);
-int tca_alarm_setint(void __iomem *rtcbaseaddress);
-int tca_alarm_disable(void __iomem *rtcbaseaddress);
+void tca_alarm_gettime(void __iomem *pRTC, struct rtctime *pTime);
+void tca_alarm_settime(void __iomem *pRTC, struct rtctime *pTime);
 
 #ifdef __cplusplus
 }
