@@ -24,10 +24,12 @@
 #include <linux/of_irq.h>
 #include <linux/of_platform.h>
 
-#define DRV_NAME "tcc-rtc"
+#define DRV_NAME        ((const s8 *)"tcc-rtc")
 
 /* This option will set alarm 0sec ~ 59sec. Check it is working correctly. */
-//#define RTC_PMWKUP_TEST
+#if 0
+#define RTC_PMWKUP_TEST
+#endif
 
 #ifdef RTC_PMWKUP_TEST
 #include <linux/wait.h>
@@ -41,51 +43,33 @@ struct rtctime pTime_test;
 static atomic_t irq_flag = ATOMIC_INIT(0);
 #endif
 
-#if 0
-#define RTCCON      0x00
-#define INTCON      0x04
-#define RTCALM      0x08
-#define ALMSEC      0x0C
-#define ALMMIN      0x10
-#define ALMHOUR     0x14
-#define ALMDATE     0x18
-#define ALMDAY      0x1C
-#define ALMMON      0x20
-#define ALMYEAR     0x24
-#define BCDSEC      0x28
-#define BCDMIN      0x2C
-#define BCDHOUR     0x30
-#define BCDDATE     0x34
-#define BCDDAY      0x38
-#define BCDMON      0x3C
-#define BCDYEAR     0x40
-#define RTCIM       0x44
-#define RTCPEND     0x48
-#define RTCSTR		0x4C
-#endif
-
-#define rtc_readl	__raw_readl
-#define rtc_writel	__raw_writel
-#define rtc_reg(x) (*(volatile unsigned int *)(tcc_rtc->regs + x))
+#define rtc_readl       (__raw_readl)
+#define rtc_writel      (__raw_writel)
+#define rtc_reg(x)      (*(volatile u32 *)(tcc_rtc->regs + (x)))
 
 struct tcc_rtc_data {
 	void __iomem *regs;
 	struct clk *hclk;
-	int irq;
+	s32 irq;
 	struct rtc_device *rtc_dev;
 };
 
-static int g_aie_enabled;
+static s32 g_aie_enabled;
 static u32 rtc_timeout;
 
 /* IRQ Handlers */
-static irqreturn_t tcc_rtc_alarmirq(int irq, void *class_dev)
+static irqreturn_t tcc_rtc_alarmirq(s32 irq, void *class_dev)
 {
 
 	struct tcc_rtc_data *tcc_rtc = class_dev;
 
-	pr_info("[INFO][tcc-rtc][%s][%u]", __func__, irq);
-	//local_irq_disable();
+	if ((tcc_rtc == NULL) || (tcc_rtc->regs == NULL)) {
+		(void)pr_err("[INFO][%s][%s] irq:%u, has no rtc data\n",
+			     DRV_NAME, __func__, irq);
+		return IRQ_NONE;
+	}
+
+	(void)pr_info("[INFO][%s][%s] irq:%u\n", DRV_NAME, __func__, irq);
 
 	/* RTC Register write enabled */
 	BITSET(rtc_reg(RTCCON), Hw1);
@@ -93,30 +77,30 @@ static irqreturn_t tcc_rtc_alarmirq(int irq, void *class_dev)
 	BITSET(rtc_reg(INTCON), Hw0);
 
 	/* Clear Interrupt Setting values */
-	BITCLR(rtc_reg(RTCIM), 0xFFFFFFFF);
+	BITCLR(rtc_reg(RTCIM), 0xFFFFFFFFU);
 	/* Change Operation Mode from PowerDown Mode to Normal Operation Mode */
 	BITSET(rtc_reg(RTCIM), Hw2);
 	/* PEND bit Clear - Clear RTC Wake-Up pin */
-	BITCLR(rtc_reg(RTCPEND), 0xFFFFFFFF);
+	BITCLR(rtc_reg(RTCPEND), 0xFFFFFFFFU);
 	/* RTC Alarm, wake-up interrupt pending clear */
 	BITSET(rtc_reg(RTCSTR), Hw6 | Hw7);
-	pr_info("[INFO][tcc-rtc]RTCIM[%#x] RTCPEND[%#x] RTCSTR[%#x]\n",
-		rtc_readl(tcc_rtc->regs + RTCIM),
-		rtc_readl(tcc_rtc->regs + RTCPEND),
-		rtc_readl(tcc_rtc->regs + RTCSTR));
+	(void)pr_info("[INFO][%s] RTCIM[%#x] RTCPEND[%#x] RTCSTR[%#x]\n",
+		      DRV_NAME,
+		      rtc_readl(tcc_rtc->regs + RTCIM),
+		      rtc_readl(tcc_rtc->regs + RTCPEND),
+		      rtc_readl(tcc_rtc->regs + RTCSTR));
 
 	/* RTC Register write Disable */
 	BITCLR(rtc_reg(RTCCON), Hw1);
 	/* Interrupt Block Write Disable */
 	BITCLR(rtc_reg(INTCON), Hw0);
 
-	//local_irq_enable();
-
-	rtc_update_irq(tcc_rtc->rtc_dev, 1, RTC_AF | RTC_IRQF);
+	rtc_update_irq(tcc_rtc->rtc_dev, 1, (u32)RTC_AF | (u32)RTC_IRQF);
 
 #ifdef RTC_PMWKUP_TEST
-	pr_info("[INFO][tcc-rtc]\x1b[1;33mRTC TEST : %s ___________ \x1b[0m\n",
-		__func__);
+	(void)pr_info(
+		      "[INFO][%s] RTC TEST : %s ___________\n",
+		      DRV_NAME, __func__);
 	atomic_set(&irq_flag, 0);
 #endif
 
@@ -124,12 +108,14 @@ static irqreturn_t tcc_rtc_alarmirq(int irq, void *class_dev)
 }
 
 /* Update control registers */
-static void tcc_rtc_setaie(struct device *dev, int to)
+static void tcc_rtc_setaie(struct device *dev, s32 to)
 {
 	struct tcc_rtc_data *tcc_rtc = dev_get_drvdata(dev);
-	unsigned int tmp;
+	u32 tmp;
 
-	pr_debug("[DEBUG][tcc-rtc]%s: aie=%d\n", __func__, to);
+	if ((tcc_rtc == NULL) || (tcc_rtc->regs == NULL)) {
+		return;
+	}
 
 	rtc_writel(rtc_readl(tcc_rtc->regs + RTCCON) | Hw1,
 		   tcc_rtc->regs + RTCCON);
@@ -138,74 +124,87 @@ static void tcc_rtc_setaie(struct device *dev, int to)
 
 	tmp = rtc_readl(tcc_rtc->regs + RTCALM) & ~Hw7;
 
-	if (to)
+	if (to != 0) {
 		tmp |= Hw7;
+	}
 
 	rtc_writel(tmp, tcc_rtc->regs + RTCALM);
 
-	//rtc_writel(rtc_readl(tcc_rtc->regs + INTCON) & ~Hw0,
-	//         tcc_rtc->regs + INTCON);
 	rtc_writel(rtc_readl(tcc_rtc->regs + RTCCON) & ~Hw1,
 		   tcc_rtc->regs + RTCCON);
+
 }
 
-int tcc_rtc_alarm_irq_enable(struct device *dev, unsigned int enabled)
+static s32 tcc_rtc_alarm_irq_enable(struct device *dev, u32 enabled)
 {
-	g_aie_enabled = enabled;
-	tcc_rtc_setaie(dev, enabled);
+	g_aie_enabled = (s32)enabled;
+	tcc_rtc_setaie(dev, (s32)enabled);
 
 	return 0;
 }
 
 /* Time read/write */
-static int tcc_rtc_gettime(struct device *dev, struct rtc_time *rtc_tm)
+static s32 tcc_rtc_gettime(struct device *dev, struct rtc_time *rtc_tm)
 {
 	struct tcc_rtc_data *tcc_rtc = dev_get_drvdata(dev);
 	struct rtctime pTime;
 
+	if (rtc_tm == NULL) {
+		return -EINVAL;
+	}
+
 	local_irq_disable();
 	tca_rtc_gettime(tcc_rtc->regs, &pTime);
 
-	if (pTime.wYear > 2037) {
-		pr_info("[INFO][tcc-rtc]RTC year is over 2037\n");
-		pTime.wYear = 2037;
+	if (pTime.wYear > (u32)2037) {
+		/* TODO: Item to check */
+		(void)pr_info("[INFO][%s] RTC year is over 2037\n", DRV_NAME);
+		pTime.wYear = (u32)2037;
 	}
 
-	rtc_tm->tm_sec = pTime.wSecond;
-	rtc_tm->tm_min = pTime.wMinute;
-	rtc_tm->tm_hour = pTime.wHour;
-	rtc_tm->tm_mday = pTime.wDay;
-	rtc_tm->tm_wday = pTime.wDayOfWeek;
-	rtc_tm->tm_mon = pTime.wMonth - 1;
-	rtc_tm->tm_year = pTime.wYear - 1900;
+	rtc_tm->tm_sec = (s32)pTime.wSecond;
+	rtc_tm->tm_min = (s32)pTime.wMinute;
+	rtc_tm->tm_hour = (s32)pTime.wHour;
+	rtc_tm->tm_mday = (s32)pTime.wDay;
+	rtc_tm->tm_wday = (s32)pTime.wDayOfWeek;
+	rtc_tm->tm_mon = (s32)pTime.wMonth - 1;
+	rtc_tm->tm_year = (s32)pTime.wYear - 1900;
 
-	pr_info("[INFO][tcc-rtc]read time %04d/%02d/%02d %02d:%02d:%02d\n",
-		pTime.wYear, pTime.wMonth, pTime.wDay, pTime.wHour,
-		pTime.wMinute, pTime.wSecond);
+	(void)pr_info(
+		      "[INFO][%s] read time %04d/%02d/%02d %02d:%02d:%02d\n",
+		      DRV_NAME,
+		      pTime.wYear, pTime.wMonth, pTime.wDay,
+		      pTime.wHour, pTime.wMinute, pTime.wSecond);
 
 	local_irq_enable();
 
 	return 0;
 }
 
-static int tcc_rtc_settime(struct device *dev, struct rtc_time *tm)
+static s32 tcc_rtc_settime(struct device *dev, struct rtc_time *rtc_tm)
 {
 	struct tcc_rtc_data *tcc_rtc = dev_get_drvdata(dev);
 	struct rtctime pTime;
 
+	if (rtc_tm == NULL) {
+		return -EINVAL;
+	}
+
 	local_irq_disable();
 
-	pTime.wSecond = tm->tm_sec;
-	pTime.wMinute = tm->tm_min;
-	pTime.wHour = tm->tm_hour;
-	pTime.wDay = tm->tm_mday;
-	pTime.wDayOfWeek = tm->tm_wday;
-	pTime.wMonth = tm->tm_mon + 1;
-	pTime.wYear = tm->tm_year + 1900;
+	pTime.wSecond = (u32)rtc_tm->tm_sec;
+	pTime.wMinute = (u32)rtc_tm->tm_min;
+	pTime.wHour = (u32)rtc_tm->tm_hour;
+	pTime.wDay = (u32)rtc_tm->tm_mday;
+	pTime.wDayOfWeek = (u32)rtc_tm->tm_wday;
+	pTime.wMonth = (u32)rtc_tm->tm_mon + (u32)1;
+	pTime.wYear = (u32)rtc_tm->tm_year + (u32)1900;
 
-	pr_info("[INFO][tcc-rtc]set time %02d/%02d/%02d %02d:%02d:%02d\n",
-		pTime.wYear, pTime.wMonth, pTime.wDay, pTime.wHour,
-		pTime.wMinute, pTime.wSecond);
+	(void)pr_info(
+		      "[INFO][%s] set time %02d/%02d/%02d %02d:%02d:%02d\n",
+		      DRV_NAME,
+		      pTime.wYear, pTime.wMonth, pTime.wDay,
+		      pTime.wHour, pTime.wMinute, pTime.wSecond);
 
 	tca_rtc_settime(tcc_rtc->regs, &pTime);
 
@@ -214,14 +213,19 @@ static int tcc_rtc_settime(struct device *dev, struct rtc_time *tm)
 	return 0;
 }
 
-static int tcc_rtc_getalarm(struct device *dev, struct rtc_wkalrm *alrm)
+static s32 tcc_rtc_getalarm(struct device *dev, struct rtc_wkalrm *alrm)
 {
 	struct tcc_rtc_data *tcc_rtc = dev_get_drvdata(dev);
-	struct rtc_time *alm_tm = &alrm->time;
-	unsigned int alm_en, alm_pnd;
+	struct rtc_time *alm_tm;
+	u32 alm_en;
+	u32 alm_pnd;
 	struct rtctime pTime;
 
-	pr_debug("[DEBUG][tcc-rtc]%s\n", __func__);
+	if ((alrm == NULL) || (tcc_rtc == NULL) || (tcc_rtc->regs == NULL)) {
+		return -EINVAL;
+	}
+
+	alm_tm = &alrm->time;
 
 	local_irq_disable();
 
@@ -233,11 +237,11 @@ static int tcc_rtc_getalarm(struct device *dev, struct rtc_wkalrm *alrm)
 	alm_en = rtc_readl(tcc_rtc->regs + RTCALM);
 	alm_pnd = rtc_readl(tcc_rtc->regs + RTCPEND);
 
-	alrm->enabled = (alm_en & Hw7) ? 1 : 0;
-	alrm->pending = (alm_pnd & Hw0) ? 1 : 0;
+	alrm->enabled = ((alm_en & Hw7) != (u32)0) ? (u8)1 : (u8)0;
+	alrm->pending = ((alm_pnd & Hw0) != (u32)0) ? (u8)1 : (u8)0;
 
-	pr_info("[INFO][tcc-rtc] alrm->enabled = %d, alm_en = %d\n",
-		alrm->enabled, alm_en);
+	(void)pr_info("[INFO][%s] alrm->enabled = %d, alm_en = %d\n",
+		      DRV_NAME, alrm->enabled, alm_en);
 
 	rtc_writel(rtc_readl(tcc_rtc->regs + INTCON) & ~Hw0,
 		   tcc_rtc->regs + INTCON);
@@ -246,16 +250,20 @@ static int tcc_rtc_getalarm(struct device *dev, struct rtc_wkalrm *alrm)
 
 	tca_alarm_gettime(tcc_rtc->regs, &pTime);
 
-	alm_tm->tm_sec = pTime.wSecond;
-	alm_tm->tm_min = pTime.wMinute;
-	alm_tm->tm_hour = pTime.wHour;
-	alm_tm->tm_mday = pTime.wDay;
-	alm_tm->tm_mon = pTime.wMonth - 1;
-	alm_tm->tm_year = pTime.wYear - 1900;
+	if (alm_tm != NULL) {
+		alm_tm->tm_sec = (s32)pTime.wSecond;
+		alm_tm->tm_min = (s32)pTime.wMinute;
+		alm_tm->tm_hour = (s32)pTime.wHour;
+		alm_tm->tm_mday = (s32)pTime.wDay;
+		alm_tm->tm_mon = (s32)pTime.wMonth - 1;
+		alm_tm->tm_year = (s32)pTime.wYear - 1900;
+	}
 
-	pr_info("[INFO][tcc-rtc]read alarm %02x %02x/%02x/%02x %02x:%02x:%02x\n",
-		alm_en, pTime.wYear, pTime.wMonth, pTime.wDay, pTime.wHour,
-		pTime.wMinute, pTime.wSecond);
+	(void)pr_info(
+		      "[INFO][%s] read alarm %02x %02x/%02x/%02x %02x:%02x:%02x\n",
+		      DRV_NAME, alm_en,
+		      pTime.wYear, pTime.wMonth, pTime.wDay,
+		      pTime.wHour, pTime.wMinute, pTime.wSecond);
 
 	local_irq_enable();
 
@@ -267,13 +275,13 @@ static struct rtc_time rtctime_to_rtc_time(struct rtctime pTime)
 {
 	struct rtc_time tm;
 
-	tm.tm_sec = pTime.wSecond;
-	tm.tm_min = pTime.wMinute;
-	tm.tm_hour = pTime.wHour;
-	tm.tm_mday = pTime.wDay;
-	tm.tm_wday = pTime.wDayOfWeek;
-	tm.tm_mon = pTime.wMonth - 1;
-	tm.tm_year = pTime.wYear - 1900;
+	tm.tm_sec = (s32)pTime.wSecond;
+	tm.tm_min = (s32)pTime.wMinute;
+	tm.tm_hour = (s32)pTime.wHour;
+	tm.tm_mday = (s32)pTime.wDay;
+	tm.tm_wday = (s32)pTime.wDayOfWeek;
+	tm.tm_mon = (s32)pTime.wMonth - 1;
+	tm.tm_year = (s32)pTime.wYear - 1900;
 
 	return tm;
 }
@@ -282,18 +290,18 @@ static struct rtctime rtc_time_to_rtctime(struct rtc_time tm)
 {
 	struct rtctime pTime;
 
-	pTime.wSecond = tm.tm_sec;
-	pTime.wMinute = tm.tm_min;
-	pTime.wHour = tm.tm_hour;
-	pTime.wDay = tm.tm_mday;
-	pTime.wDayOfWeek = tm.tm_wday;
-	pTime.wMonth = tm.tm_mon + 1;
-	pTime.wYear = tm.tm_year + 1900;
+	pTime.wSecond = (u32)tm.tm_sec;
+	pTime.wMinute = (u32)tm.tm_min;
+	pTime.wHour = (u32)tm.tm_hour;
+	pTime.wDay = (u32)tm.tm_mday;
+	pTime.wDayOfWeek = (u32)tm.tm_wday;
+	pTime.wMonth = (u32)tm.tm_mon + 1;
+	pTime.wYear = (u32)tm.tm_year + 1900;
 
 	return pTime;
 }
 
-static int check_time(struct rtctime now_time, struct rtctime new_time)
+static s32 check_time(struct rtctime now_time, struct rtctime new_time)
 {
 	struct rtc_time now_tm, new_tm;
 	ktime_t now_kt, new_kt;
@@ -319,34 +327,40 @@ static int check_time(struct rtctime now_time, struct rtctime new_time)
 }
 #endif
 
-static int tcc_rtc_setalarm(struct device *dev, struct rtc_wkalrm *alrm)
+static s32 tcc_rtc_setalarm(struct device *dev, struct rtc_wkalrm *alrm)
 {
 	struct tcc_rtc_data *tcc_rtc = dev_get_drvdata(dev);
 	struct rtctime pTime;
+	struct rtc_time *rtc_tm;
+	s32 ret;
 
-	struct rtc_time *tm = &alrm->time;
+	if ((alrm == NULL) || (tcc_rtc == NULL) || (tcc_rtc->regs == NULL)) {
+		return -EINVAL;
+	}
 
-	int ret = 0;
-
-	pr_debug("[DEBUG][tcc-rtc]%s\n", __func__);
+	rtc_tm = &alrm->time;
 
 	alrm->enabled = 1;
 
-	pTime.wSecond = tm->tm_sec;
-	pTime.wMinute = tm->tm_min;
-	pTime.wHour = tm->tm_hour;
-	pTime.wDay = tm->tm_mday;
-	pTime.wMonth = tm->tm_mon + 1;
-	pTime.wYear = tm->tm_year + 1900;
+	pTime.wSecond = (u32)rtc_tm->tm_sec;
+	pTime.wMinute = (u32)rtc_tm->tm_min;
+	pTime.wHour = (u32)rtc_tm->tm_hour;
+	pTime.wDay = (u32)rtc_tm->tm_mday;
+	pTime.wDayOfWeek = (u32)rtc_tm->tm_wday;
+	pTime.wMonth = (u32)rtc_tm->tm_mon + (u32)1;
+	pTime.wYear = (u32)rtc_tm->tm_year + (u32)1900;
 
-	pr_info("[INFO][tcc-rtc]set alarm %02d/%02d/%02d %02d:%02d:%02d\n",
-		pTime.wYear, pTime.wMonth, pTime.wDay, pTime.wHour,
-		pTime.wMinute, pTime.wSecond);
+	(void)pr_info(
+		      "[INFO][%s] set alarm %02d/%02d/%02d %02d:%02d:%02d\n",
+		      DRV_NAME,
+		      pTime.wYear, pTime.wMonth, pTime.wDay,
+		      pTime.wHour, pTime.wMinute, pTime.wSecond);
 
 	local_irq_disable();
 
-	if (g_aie_enabled)
+	if (g_aie_enabled != 0) {
 		tcc_rtc_setaie(dev, 0);
+	}
 
 #if 1
 /* Original Alarm Set Code. */
@@ -359,21 +373,25 @@ static int tcc_rtc_setalarm(struct device *dev, struct rtc_wkalrm *alrm)
 
 	/*  Alarm Global Set & Enable */
 	BITSET(rtc_reg(RTCALM), Hw7);
-	enable_irq_wake(tcc_rtc->irq);
+	ret = enable_irq_wake((u32)tcc_rtc->irq);
+	if (ret < 0) {
+		(void)pr_warn("[WARN][%s] Failed set irq wake\n", DRV_NAME);
+	}
 
 	/* RTC write enable bit - Disable */
 	BITCLR(rtc_reg(INTCON), Hw0);
 	/* Interrupt Block Write Enable bit - Disable */
 	BITCLR(rtc_reg(RTCCON), Hw1);
 
-	if (!g_aie_enabled)
+	if (g_aie_enabled == 0) {
 		tcc_rtc_setaie(dev, 1);
+	}
 #else
 /* Changed Alarm Set Code to avoid changed RTC Time problem. */
 
-#define STABLE_WAIT	0x10000000
-#define SET_ALARM_LOOP	1000
-	int iLoop = SET_ALARM_LOOP;
+#define STABLE_WAIT	(0x10000000)
+#define SET_ALARM_LOOP	(1000)
+	s32 iLoop = SET_ALARM_LOOP;
 
 	/* RTC Register write enabled */
 	BITSET(rtc_reg(RTCCON), Hw1);
@@ -383,10 +401,10 @@ static int tcc_rtc_setalarm(struct device *dev, struct rtc_wkalrm *alrm)
 	/* RTC Start bit - Halt */
 	BITSET(rtc_reg(RTCCON), Hw0);
 
-	tca_rtc_gettime((unsigned int)tcc_rtc->regs, &now_time);
+	tca_rtc_gettime((u32)tcc_rtc->regs, &now_time);
 
 	while (iLoop--) {
-		tca_alarm_settime((unsigned int)tcc_rtc->regs, &pTime);
+		tca_alarm_settime((u32)tcc_rtc->regs, &pTime);
 
 		/* Interrupt Block Write Enable bit - Enable */
 		BITSET(rtc_reg(RTCCON), Hw1);
@@ -403,13 +421,13 @@ static int tcc_rtc_setalarm(struct device *dev, struct rtc_wkalrm *alrm)
 		BITCLR(rtc_reg(RTCCON), Hw1);
 
 		{
-			unsigned int wait_stable = STABLE_WAIT;
+			u32 wait_stable = STABLE_WAIT;
 
 			while (wait_stable-- > 0)
 				asm("nop");
 		}
 
-		tca_rtc_gettime((unsigned int)tcc_rtc->regs, &new_time);
+		tca_rtc_gettime((u32)tcc_rtc->regs, &new_time);
 
 		if (check_time(now_time, new_time)) {
 			/* initialize RTC Alarm Registers */
@@ -436,11 +454,11 @@ static int tcc_rtc_setalarm(struct device *dev, struct rtc_wkalrm *alrm)
 			BITCLR(rtc_reg(INTCON), Hw0);
 
 			/* Set time to correct time */
-			tca_rtc_settime((unsigned int)tcc_rtc->regs, &now_time);
+			tca_rtc_settime((u32)tcc_rtc->regs, &now_time);
 		} else
 			break;
 	}
-	pr_info("set alarm - : %d\n", SET_ALARM_LOOP - iLoop);
+	(void)pr_info("set alarm - : %d\n", SET_ALARM_LOOP - iLoop);
 
 	/* Interrupt Block Write Enable bit - Enable */
 	BITSET(rtc_reg(RTCCON), Hw1);
@@ -478,17 +496,16 @@ static int tcc_rtc_setalarm(struct device *dev, struct rtc_wkalrm *alrm)
 	return ret;
 }
 
-static int tcc_rtc_proc(struct device *dev, struct seq_file *seq)
+static s32 tcc_rtc_proc(struct device *dev, struct seq_file *seq)
 {
 	return 0;
 }
 
-static int tcc_rtc_ioctl(struct device *dev,
-			 unsigned int cmd, unsigned long arg)
+static s32 tcc_rtc_ioctl(struct device *dev,
+			 u32 cmd, unsigned long arg)
 {
-	unsigned int ret = -ENOIOCTLCMD;
+	s32 ret = -ENOIOCTLCMD;
 
-	pr_debug("[DEBUG][tcc-rtc]%s %d\n", __func__, __LINE__);
 	switch (cmd) {
 	case RTC_AIE_OFF:
 		tcc_rtc_setaie(dev, 0);
@@ -510,32 +527,34 @@ static int tcc_rtc_ioctl(struct device *dev,
 		break;
 	case RTC_UIE_OFF:
 		break;
+	default:
 		ret = -EINVAL;
+		break;
 	}
 
 	return ret;
 }
 
 static const struct rtc_class_ops tcc_rtcops = {
-	.read_time = tcc_rtc_gettime,
-	.set_time = tcc_rtc_settime,
-	.read_alarm = tcc_rtc_getalarm,
-	.set_alarm = tcc_rtc_setalarm,
-	.alarm_irq_enable = tcc_rtc_alarm_irq_enable,
-	.proc = tcc_rtc_proc,
-	.ioctl = tcc_rtc_ioctl,
+	.read_time = &tcc_rtc_gettime,
+	.set_time = &tcc_rtc_settime,
+	.read_alarm = &tcc_rtc_getalarm,
+	.set_alarm = &tcc_rtc_setalarm,
+	.alarm_irq_enable = &tcc_rtc_alarm_irq_enable,
+	.proc = &tcc_rtc_proc,
+	.ioctl = &tcc_rtc_ioctl,
 };
 
-static int tcc_rtc_remove(struct platform_device *pdev)
+static s32 tcc_rtc_remove(struct platform_device *pdev)
 {
 	struct tcc_rtc_data *tcc_rtc = platform_get_drvdata(pdev);
 
 	platform_set_drvdata(pdev, NULL);
 	rtc_device_unregister(tcc_rtc->rtc_dev);
 	tcc_rtc_setaie(&pdev->dev, 0);
-	free_irq(tcc_rtc->irq, &pdev->dev);
+	(void)free_irq((u32)tcc_rtc->irq, &pdev->dev);
 
-	if (tcc_rtc->hclk) {
+	if (tcc_rtc->hclk != NULL) {
 		clk_disable_unprepare(tcc_rtc->hclk);
 		clk_put(tcc_rtc->hclk);
 		tcc_rtc->hclk = NULL;
@@ -545,34 +564,38 @@ static int tcc_rtc_remove(struct platform_device *pdev)
 }
 
 #ifdef RTC_PMWKUP_TEST
-static int cmp_rtc_gettime(struct device *dev)
+static s32 cmp_rtc_gettime(struct device *dev)
 {
 	struct rtctime pTime;
 	struct rtc_time now_time;
 
-	tcc_rtc_gettime(dev, &now_time);
+	(void)tcc_rtc_gettime(dev, &now_time);
 
 	pTime = rtc_time_to_rtctime(now_time);
 
-	pr_info("\x1b[1;33m[INFO][tcc-rtc] RTC TEST: now irq time %04d/%02d/%02d %02d:%02d:%02d\x1b[0m\n",
-		pTime.wYear, pTime.wMonth, pTime.wDay,
-		pTime.wHour, pTime.wMinute, pTime.wSecond);
+	(void)pr_info(
+		      "[INFO][%s] RTC TEST: now irq time %04d/%02d/%02d %02d:%02d:%02d\n",
+		      DRV_NAME,
+		      pTime.wYear, pTime.wMonth, pTime.wDay,
+		      pTime.wHour, pTime.wMinute, pTime.wSecond);
 
 	if (check_time(pTime, pTime_test)) {
-		pr_info("\x1b[1;31m[INFO][tcc-rtc] RTC TEST: __________ alarm un-matched time.\x1b[0m\n");
+		(void)pr_info(
+			      "[INFO][%s] RTC TEST: __________ alarm un-matched time.\n",
+			      DRV_NAME);
 	}
 
 	return 0;
 }
 
-static int get_next_sec(int set_sec)
+static s32 get_next_sec(s32 set_sec)
 {
-	int out;
+	s32 out;
 
 #if 0
 	out = set_sec + 1;
 #else
-	int interval = 10;
+	s32 interval = 10;
 
 	out = set_sec + interval;
 	if (out == 60) {
@@ -589,7 +612,7 @@ static int get_next_sec(int set_sec)
 	return out;
 }
 
-static int tcc_alarm_test(void *arg)
+static s32 tcc_alarm_test(void *arg)
 {
 	struct device *dev = (struct device *)arg;
 
@@ -598,37 +621,24 @@ static int tcc_alarm_test(void *arg)
 	struct rtc_time *tm = &rtc_tm;
 	struct rtctime pTime;
 
-	int ret = 0;
-	int set_sec = 0;
+	s32 ret = 0;
+	s32 set_sec = 0;
 
-	pr_info("\x1b[1;35m[INFO][tcc-rtc] RTC TEST :  __________ %s START\x1b[0m\n"
-		__func__);
+	(void)pr_info(
+		      "[INFO][%s] RTC TEST :  __________ %s START\n",
+		      DRV_NAME, __func__);
 	msleep(30000);
 
 	do {
 		struct rtc_wkalrm rtc_al;
 
-#if 0
-		/*
-		 * If irq has not freed & initialized again,
-		 *  sometimes it didn't work
-		 */
-		devm_free_irq(dev, tcc_rtc->irq, tcc_rtc);
-		msleep(2000);
-		ret =
-		    devm_request_irq(dev, tcc_rtc->irq, tcc_rtc_alarmirq, 0,
-				     DRV_NAME, tcc_rtc);
-		if (ret) {
-			pr_err("\x1b[1;31mRTC TEST : RTC timer interrupt IRQ%d already claimed\x1b[0m\n",
-			       tcc_rtc->irq);
-		}
-#endif
 		if (set_sec >= 60)
 			break;
 
-		pr_info("\x1b[1;35m[INFO][tcc-rtc] RTC TEST : Set Alarm - sec[%d]\x1b[0m\n",
-			set_sec);
-		tcc_rtc_gettime(dev, tm);
+		(void)pr_info(
+			      "[INFO][%s] RTC TEST : Set Alarm - sec[%d]\n",
+			      DRV_NAME, set_sec);
+		(void)tcc_rtc_gettime(dev, tm);
 
 		/* -2 is delay time to set alarm. */
 		if (tm->tm_sec >= (set_sec - 2)) {
@@ -657,9 +667,11 @@ static int tcc_alarm_test(void *arg)
 		pTime.wMonth = tm->tm_mon + 1;
 		pTime.wYear = tm->tm_year + 1900;
 
-		pr_info("\x1b[1;33m[INFO][tcc-rtc]RTC TEST : set alarm %02d/%02d/%02d %02d:%02d:%02d\x1b[0m\n",
-		     pTime.wYear, pTime.wMonth, pTime.wDay,
-		     pTime.wHour, pTime.wMinute, pTime.wSecond);
+		(void)pr_info(
+			      "[INFO][%s] RTC TEST : set alarm %02d/%02d/%02d %02d:%02d:%02d\n",
+			      DRV_NAME,
+			      pTime.wYear, pTime.wMonth, pTime.wDay,
+			      pTime.wHour, pTime.wMinute, pTime.wSecond);
 
 		memcpy(&pTime_test, &pTime, sizeof(struct rtctime));
 
@@ -672,16 +684,17 @@ static int tcc_alarm_test(void *arg)
 		cmp_rtc_gettime(dev);
 	} while (1);
 
-	pr_info("\x1b[1;34m[INFO][tcc-rtc]RTC TEST : Alarm Test is finished.\x1b[0m\n");
+	(void)pr_info("[INFO][%s] RTC TEST : Alarm Test is finished.\n",
+		      DRV_NAME);
 
 	return 0;
 }
 #endif /* RTC_PMWKUP_TEST */
 
 static void tcc_rtc_setclock(struct tcc_rtc_data *tcc_rtc,
-			     unsigned int rtc_clock)
+			     u32 rtc_clock)
 {
-	int restore = 0;
+	s32 restore = 0;
 
 	/* RTC write enable */
 	BITSET(rtc_reg(RTCCON), Hw1);
@@ -697,7 +710,7 @@ static void tcc_rtc_setclock(struct tcc_rtc_data *tcc_rtc,
 	}
 
 	/* INTCON[13:12] XDRV, set clock source for rtc */
-	BITSET(rtc_reg(INTCON), (rtc_clock & 0x3) << 12U);
+	BITSET(rtc_reg(INTCON), (rtc_clock & (u32)0x3) << (u32)12);
 
 	if (restore == 1) {
 		/* Interrupt Block Write Enable */
@@ -709,53 +722,69 @@ static void tcc_rtc_setclock(struct tcc_rtc_data *tcc_rtc,
 	BITCLR(rtc_reg(RTCCON), Hw1);	/* RTC write disable */
 }
 
-static const struct of_device_id tcc_rtc_of_match[];
-
-static int tcc_rtc_probe(struct platform_device *pdev)
+static s32 tcc_rtc_probe(struct platform_device *pdev)
 {
 	struct tcc_rtc_data *tcc_rtc;
-	int ret;
-	unsigned int rtc_clock;
+	s32 ret;
+	u32 rtc_clock;
+	bool err;
 
+	if (pdev == NULL) {
+		return -EINVAL;
+	}
 	tcc_rtc =
 	    devm_kzalloc(&pdev->dev, sizeof(struct tcc_rtc_data), GFP_KERNEL);
-	if (!tcc_rtc) {
-		dev_err(&pdev->dev, "[ERROR][tcc-rtc]failed to allocate memory\n");
+
+	if (tcc_rtc == NULL) {
+		(void)dev_err(&pdev->dev,
+			      "[ERROR][%s] failed to allocate memory\n",
+			      DRV_NAME);
 		return -ENOMEM;
 	}
 	platform_set_drvdata(pdev, tcc_rtc);
 
 	tcc_rtc->regs = of_iomap(pdev->dev.of_node, 0);
 	if (tcc_rtc->regs == NULL) {
-		dev_err(&pdev->dev, "[ERROR][tcc-rtc]failed RTC of_iomap()\n");
+		(void)dev_err(&pdev->dev,
+			      "[ERROR][%s] failed RTC of_iomap()\n", DRV_NAME);
 		ret = -ENOMEM;
 		goto err_get_dt_property;
 	}
 
 	tcc_rtc->irq = platform_get_irq(pdev, 0);
 	if (tcc_rtc->irq <= 0) {
-		dev_err(&pdev->dev, "[ERROR][tcc-rtc]no irq for alarm\n");
+		(void)dev_err(&pdev->dev,
+			      "[ERROR][%s] no irq for alarm\n", DRV_NAME);
 		ret = -ENOENT;
 		goto err_get_dt_property;
 	}
 
 	tcc_rtc->hclk = of_clk_get(pdev->dev.of_node, 0);
-	if (IS_ERR(tcc_rtc->hclk)) {
-		dev_err(&pdev->dev, "[ERROR][tcc-rtc]failed to get hclk\n");
+	err = IS_ERR(tcc_rtc->hclk);
+	if (err) {
+		(void)dev_err(&pdev->dev,
+			      "[ERROR][%s] failed to get hclk\n", DRV_NAME);
 		ret = -ENXIO;
 		goto err_get_hclk;
 	}
-	clk_prepare_enable(tcc_rtc->hclk);
+
+	ret = clk_prepare_enable(tcc_rtc->hclk);
+	if (ret != 0) {
+		(void)dev_err(&pdev->dev,
+			      "[ERROR][%s] clk_enable failed\n", DRV_NAME);
+		ret = -ENXIO;
+		goto err_get_hclk;
+	}
 
 	/* When rtc protection enable bit set, no need to rtc initialize. */
-	if ((rtc_reg(INTCON) & 0x8000) != 0x00008000) {
+	if ((rtc_reg(INTCON) & (u32)0x8000) != (u32)0x00008000) {
 		BITSET(rtc_reg(RTCCON), Hw1);	/* RTC Write Enable */
 		BITSET(rtc_reg(INTCON), Hw0);	/* Interrupt Write Enable */
 
 		BITSET(rtc_reg(RTCCON), Hw0);	/* RTC Start bit - Halt */
 		BITCLR(rtc_reg(INTCON), Hw15);	/* Disable Protection */
 
-		/* 32.768kHz XTAL @1.8V - XTAL I/O Driver Strength Select */
+		/* 32.768kHz XTAL 1.8V - XTAL I/O Driver Strength Select */
 		BITCLR(rtc_reg(INTCON), Hw13 | Hw12);
 		/* 32.768kHz XTAL - Divider Output Select - FSEL */
 		BITCLR(rtc_reg(INTCON), Hw10 | Hw9 | Hw8);
@@ -772,7 +801,7 @@ static int tcc_rtc_probe(struct platform_device *pdev)
 
 		/* Disable - Alarm Control */
 		/* Clear RTCALM reg - Disable Alarm */
-		BITCLR(rtc_reg(RTCALM), 0xFFFFFFFF);
+		BITCLR(rtc_reg(RTCALM), 0xFFFFFFFFU);
 
 		/* Power down mode, Active HIGH, Disable alarm interrupt */
 		/* ActiveHigh */
@@ -791,18 +820,22 @@ static int tcc_rtc_probe(struct platform_device *pdev)
 		tcc_rtc_setclock(tcc_rtc, rtc_clock);
 	}
 
-	ret = of_property_read_u32(pdev->dev.of_node, "rtc_timeout", &rtc_timeout);
+	ret = of_property_read_u32(pdev->dev.of_node,
+				   "rtc_timeout", &rtc_timeout);
 	if (ret != 0) {
-		dev_warn(&pdev->dev, "[WARN][%s] Failted to get rtc_timeout.\n", DRV_NAME);
+		(void)dev_warn(&pdev->dev,
+			       "[WARN][%s] Failted to get rtc_timeout.\n",
+			       DRV_NAME);
 		rtc_timeout = 0;
 	}
 
 	/* Check Valid Time */
-	if (tca_rtc_checkvalidtime(tcc_rtc->regs)) {
+	ret = tca_rtc_checkvalidtime(tcc_rtc->regs);
+	if (ret != 0) {
 		/* Invalied Time */
 		struct rtctime pTime;
 
-		/* temp init; */
+		/* temp init */
 		pTime.wDay = 27;
 		pTime.wMonth = 3;
 		pTime.wDayOfWeek = 5;
@@ -813,15 +846,19 @@ static int tcc_rtc_probe(struct platform_device *pdev)
 
 		tca_rtc_settime(tcc_rtc->regs, &pTime);
 
-		pr_info("[INFO][tcc-rtc]RTC Invalied Time, Set Time %04d/%02d/%02d %02d:%02d:%02d\n",
-			pTime.wYear, pTime.wMonth, pTime.wDay,
-			pTime.wHour, pTime.wMinute, pTime.wSecond);
+		(void)pr_info(
+			      "[INFO][%s] RTC Invalied Time, Set Time %04d/%02d/%02d %02d:%02d:%02d\n",
+			      DRV_NAME,
+			      pTime.wYear, pTime.wMonth, pTime.wDay,
+			      pTime.wHour, pTime.wMinute, pTime.wSecond);
 	}
 
-	pr_info("[INFO][tcc-rtc]tcc_rtc: alarm irq %d\n", tcc_rtc->irq);
+	(void)pr_info("[INFO][%s] tcc_rtc: alarm irq %d\n",
+		      DRV_NAME, tcc_rtc->irq);
 
 	if (tcc_rtc->irq < 0) {
-		dev_err(&pdev->dev, "[ERROR][tcc-rtc]no irq for alarm\n");
+		(void)dev_err(&pdev->dev,
+			      "[ERROR][%s] no irq for alarm\n", DRV_NAME);
 		return -ENOENT;
 	}
 
@@ -830,35 +867,41 @@ static int tcc_rtc_probe(struct platform_device *pdev)
 	 *  the following function has to be used to wake device
 	 *  from suspend mode.
 	 */
-	device_init_wakeup(&pdev->dev, true);
+	ret = device_init_wakeup(&pdev->dev, true);
+	if (ret != 0) {
+		(void)dev_warn(&pdev->dev,
+			      "[WARNING][%s] device_init_wakeup has failed.\n",
+			      DRV_NAME);
+	}
 
 	/* register RTC and exit */
 	tcc_rtc->rtc_dev =
 	    rtc_device_register(pdev->name, &pdev->dev, &tcc_rtcops,
 				THIS_MODULE);
-	if (IS_ERR(tcc_rtc->rtc_dev)) {
-		dev_err(&pdev->dev, "[ERROR][tcc-rtc]cannot attach rtc\n");
-		ret = PTR_ERR(tcc_rtc->rtc_dev);
+	err = IS_ERR(tcc_rtc->rtc_dev);
+	if (err) {
+		(void)dev_err(&pdev->dev,
+			      "[ERROR][%s] cannot attach rtc\n", DRV_NAME);
+		ret = -ENXIO;
 		goto err_nortc;
 	}
 	/*
 	 * Use threaded IRQ, remove IRQ enable in interrupt handler
 	 *   - 120126, hjbae
 	 */
-	//if (request_irq(tcc_rtc->irq, tcc_rtc_alarmirq,
-	//		  IRQF_DISABLED, DRV_NAME, rtc)) {
-	ret = devm_request_irq(&pdev->dev, tcc_rtc->irq, tcc_rtc_alarmirq, 0,
-			       DRV_NAME, tcc_rtc);
-	if (ret) {
-		dev_err(&pdev->dev, "[ERROR][tcc-rtc]%s: RTC timer interrupt IRQ%d already claimed\n",
-			pdev->name, tcc_rtc->irq);
+	ret = devm_request_irq(&pdev->dev, (u32)tcc_rtc->irq, &tcc_rtc_alarmirq,
+			       0, DRV_NAME, tcc_rtc);
+	if (ret != 0) {
+		(void)dev_err(&pdev->dev,
+			      "[ERROR][%s] %s: RTC timer interrupt IRQ%d already claimed\n",
+			      DRV_NAME, pdev->name, tcc_rtc->irq);
 		goto err_request_irq;
 	}
 #ifdef RTC_PMWKUP_TEST
 	alaram_test_thread = (struct task_struct *)
-			      kthread_run(tcc_alarm_test,
-					  (void *)&pdev->dev,
-					  "alarm_test");
+				kthread_run(tcc_alarm_test,
+					    (void *)&pdev->dev,
+					    "alarm_test");
 #endif
 
 	return 0;
@@ -881,35 +924,36 @@ err_get_dt_property:
 static void tcc_rtc_set_timeout(struct device *dev)
 {
 	struct rtc_wkalrm alrm;
-	unsigned long now, timeout;
-	int res;
+	unsigned long now;
+	unsigned long timeout;
+	s32 res;
 
-	res = tcc_rtc_gettime(dev, &alrm.time);
-	if (res != 0) {
-		dev_warn(dev, "[WARN][%s] Failted to gettime.\n", DRV_NAME);
-	}
-	rtc_tm_to_time(&alrm.time, &now);
+	(void)tcc_rtc_gettime(dev, &alrm.time);
+	(void)rtc_tm_to_time(&alrm.time, &now);
 
 	/* set alarm time based on now */
-	timeout = now + rtc_timeout;
-
-	rtc_time_to_tm(timeout, &alrm.time);
-	res = tcc_rtc_setalarm(dev, &alrm);
-	if (res != 0) {
-		dev_warn(dev, "[WARN][%s] Failted to setalarm.\n", DRV_NAME);
+	if ((ULONG_MAX - now) < rtc_timeout) {
+		(void)dev_warn(dev,
+		       "[WARN][%s] Failted to set timeout.\n", DRV_NAME);
+		/* TODO: Check ULONG_MAX */
+	} else {
+		timeout = now + rtc_timeout;
+		rtc_time_to_tm(timeout, &alrm.time);
+		res = tcc_rtc_setalarm(dev, &alrm);
+		if (res != 0) {
+			(void)dev_warn(dev,
+				       "[WARN][%s] Failted to setalarm.\n",
+				       DRV_NAME);
+		}
 	}
 }
 
 #ifdef CONFIG_PM
 
 /* RTC Power management control */
-static int tcc_rtc_suspend(struct device *dev)
+static s32 tcc_rtc_suspend(struct device *dev)
 {
 	struct tcc_rtc_data *tcc_rtc = dev_get_drvdata(dev);
-
-//      if (device_may_wakeup(dev)) {
-//              enable_irq_wake(tcc_rtc->irq);
-//      }
 
 	if (rtc_timeout > (u32)0) {
 		tcc_rtc_set_timeout(dev);
@@ -924,13 +968,9 @@ static int tcc_rtc_suspend(struct device *dev)
 	return 0;
 }
 
-static int tcc_rtc_resume(struct device *dev)
+static s32 tcc_rtc_resume(struct device *dev)
 {
 	struct tcc_rtc_data *tcc_rtc = dev_get_drvdata(dev);
-
-//      if (device_may_wakeup(dev)) {
-//              disable_irq_wake(tcc_rtc->irq);
-//      }
 
 	BITSET(rtc_reg(RTCCON), Hw1);
 	BITSET(rtc_reg(INTCON), Hw0);
@@ -941,12 +981,18 @@ static int tcc_rtc_resume(struct device *dev)
 	return 0;
 }
 
-static int tcc_rtc_restore(struct device *dev)
+static s32 tcc_rtc_restore(struct device *dev)
 {
+	s32 ret;
 	struct tcc_rtc_data *tcc_rtc = dev_get_drvdata(dev);
 
+	if ((tcc_rtc == NULL) || (tcc_rtc->regs == NULL)) {
+		return -EINVAL;
+	}
+
 	/* Check Valid Time */
-	if (tca_rtc_checkvalidtime(tcc_rtc->regs)) {
+	ret = tca_rtc_checkvalidtime(tcc_rtc->regs);
+	if (ret != 0) {
 		/* Invalied Time */
 		struct rtctime pTime;
 
@@ -961,13 +1007,12 @@ static int tcc_rtc_restore(struct device *dev)
 
 		tca_rtc_settime(tcc_rtc->regs, &pTime);
 
-		pr_info("[INFO][tcc-rtc]RTC Invalied Time, Set Time %04d/%02d/%02d %02d:%02d:%02d\n",
-			pTime.wYear, pTime.wMonth, pTime.wDay,
-			pTime.wHour, pTime.wMinute, pTime.wSecond);
+		(void)pr_info(
+			      "[INFO][%s] RTC Invalied Time, Set Time %04d/%02d/%02d %02d:%02d:%02d\n",
+			      DRV_NAME,
+			      pTime.wYear, pTime.wMonth, pTime.wDay,
+			      pTime.wHour, pTime.wMinute, pTime.wSecond);
 	}
-//      if (device_may_wakeup(dev)) {
-//              disable_irq_wake(tcc_rtc->irq);
-//      }
 
 	BITSET(rtc_reg(RTCCON), Hw1);
 	BITSET(rtc_reg(INTCON), Hw0);
@@ -977,38 +1022,32 @@ static int tcc_rtc_restore(struct device *dev)
 
 	return 0;
 }
-
 #else
-#define tcc_rtc_suspend NULL
-#define tcc_rtc_resume  NULL
+#define tcc_rtc_suspend	(NULL)
+#define tcc_rtc_resume  (NULL)
 #endif
-
-
-//static SIMPLE_DEV_PM_OPS(tcc_rtc_pm_ops, tcc_rtc_suspend, tcc_rtc_resume);
 
 #ifdef CONFIG_PM
 static const struct dev_pm_ops tcc_rtc_pm_ops = {
-//      .runtime_suspend      = tcc_rtc_runtime_suspend,
-//      .runtime_resume       = tcc_rtc_runtime_resume,
-	.suspend = tcc_rtc_suspend,
-	.resume = tcc_rtc_resume,
-	.freeze = tcc_rtc_suspend,
-	.thaw = tcc_rtc_resume,
-	.restore = tcc_rtc_restore,
+	.suspend = &tcc_rtc_suspend,
+	.resume = &tcc_rtc_resume,
+	.freeze = &tcc_rtc_suspend,
+	.thaw = &tcc_rtc_resume,
+	.restore = &tcc_rtc_restore,
 };
 #endif
 
 static const struct of_device_id tcc_rtc_of_match[] = {
 	{.compatible = "telechips,rtc",},
-	{},
+	{}
 };
 
 static struct platform_driver tcc_rtc_driver = {
-	.probe = tcc_rtc_probe,
-	.remove = tcc_rtc_remove,
+	.probe = &tcc_rtc_probe,
+	.remove = &tcc_rtc_remove,
 #ifndef CONFIG_PM
-	.suspend = tcc_rtc_suspend,
-	.resume = tcc_rtc_resume,
+	.suspend = &tcc_rtc_suspend,
+	.resume = &tcc_rtc_resume,
 #endif
 	.driver = {
 		   .name = DRV_NAME,
