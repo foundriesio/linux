@@ -382,7 +382,6 @@ static void qeth_l2_stop_card(struct qeth_card *card, int recovery_mode)
 		card->state = CARD_STATE_HARDSETUP;
 	}
 	if (card->state == CARD_STATE_HARDSETUP) {
-		qeth_clear_qdio_buffers(card);
 		qeth_clear_working_pool_list(card);
 		card->state = CARD_STATE_DOWN;
 	}
@@ -392,6 +391,7 @@ static void qeth_l2_stop_card(struct qeth_card *card, int recovery_mode)
 	}
 
 	qeth_qdio_clear_card(card, 0);
+	qeth_clear_qdio_buffers(card);
 	flush_workqueue(card->event_wq);
 	card->info.promisc_mode = 0;
 }
