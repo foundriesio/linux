@@ -11,43 +11,54 @@
 #include <soc/tcc/timer_reg.h>
 #include <soc/tcc/timer_api.h>
 
-#define TCC_TIMER_NAME		(const char *)"tcc_timer"
-#define timer_readl		__raw_readl
-#define timer_writel		__raw_writel
+#define TCC_TIMER_NAME          ((const s8 *)"tcc_timer")
+#define timer_readl             (__raw_readl)
+#define timer_writel            (__raw_writel)
 
-#define TCC_TIMER_TC0           (u32)0
-#define TCC_TIMER_TC1           (u32)1
-#define TCC_TIMER_TC2           (u32)2
-#define TCC_TIMER_TC3           (u32)3
-#define TCC_TIMER_TC4           (u32)4
-#define TCC_TIMER_TC5           (u32)5
-#define TCC_TIMER_MAX           (u32)6
-#define MAX_TCKSEL              (u32)6
+#define TCC_TIMER_TC0           (0)
+#define TCC_TIMER_TC1           (1)
+#define TCC_TIMER_TC2           (2)
+#define TCC_TIMER_TC3           (3)
+#define TCC_TIMER_TC4           (4)
+#define TCC_TIMER_TC5           (5)
+#define TCC_TIMER_MAX           ((u32)6)
+#define MAX_TCKSEL              (6)
 
 #define TREF_LPO_REF            ((u32)0x5B)  /* based on using 12MHz TCLK */
 
 static void __iomem *timer_base;
 static unsigned long clk_rate;
-static int timer_initialized;
+static s32 timer_initialized;
 static struct tcc_timer timer_res[TCC_TIMER_MAX];
 static u32 tco_id;
 
 #ifdef CONFIG_TCC_MICOM
-extern int is_micom_timer(u32 ch);
+extern s32 is_micom_timer(u32 ch);
 #endif
 
-static irqreturn_t tcc_timer_handler(int irq, void *data)
+static irqreturn_t tcc_timer_handler(s32 irq, void *data)
 {
 	struct tcc_timer *timer = (struct tcc_timer *)data;
 
+	if (timer == NULL) {
+		(void)pr_err("[WARN][%s] %s: has no timer structure\n",
+			     TCC_TIMER_NAME, __func__);
+		goto tcc_timer_irq_none;
+	}
 	/* Do not process watchdog irq source */
 	if (timer->id >= TCC_TIMER_MAX) {
+		(void)pr_err("[ERR][%s] %s: wrong timer id:%d\n",
+			     TCC_TIMER_NAME, __func__, timer->id);
 		goto tcc_timer_irq_none;
 	}
 
 	if ((timer_readl(timer_base + TCC_TIREQ) & ((u32)1 << timer->id))
 	    != (u32)0) {
-		timer->irqcnt++;
+		if (timer->irqcnt < (UINT_MAX - (u32)1)) {
+			timer->irqcnt++;
+		} else {
+			timer->irqcnt = 0;
+		}
 		timer_writel(((u32)1 << ((u32)8 + timer->id))
 			     | ((u32)1 << timer->id),
 			     timer_base + TCC_TIREQ);
@@ -63,6 +74,11 @@ tcc_timer_irq_none:
 
 static void tcc_timer_tco_enable(u32 id)
 {
+	if (id >= TCC_TIMER_MAX) {
+		(void)pr_err("[ERROR][%s] %s: wrong timer id:%d\n",
+			     TCC_TIMER_NAME, __func__, id);
+		return;
+	}
 	/* Set TREF to generate 32.768KHz approximately */
 	timer_writel(TREF_LPO_REF,
 		     timer_base + (id * TIMER_OFFSET) + TIMER_TREF);
@@ -71,12 +87,17 @@ static void tcc_timer_tco_enable(u32 id)
 }
 
 
-int tcc_timer_enable(struct tcc_timer *timer)
+s32 tcc_timer_enable(struct tcc_timer *timer)
 {
 	void __iomem *reg;
 
 	if ((timer_initialized == 0) || (timer == NULL)) {
 		return -ENODEV;
+	}
+	if (timer->id >= TCC_TIMER_MAX) {
+		(void)pr_err("[ERROR][%s] %s: wrong timer id:%d\n",
+			     TCC_TIMER_NAME, __func__, timer->id);
+		return -EINVAL;
 	}
 
 	reg = timer_base + (timer->id * (u32)0x10);
@@ -89,12 +110,17 @@ int tcc_timer_enable(struct tcc_timer *timer)
 }
 EXPORT_SYMBOL(tcc_timer_enable);
 
-int tcc_timer_disable(struct tcc_timer *timer)
+s32 tcc_timer_disable(struct tcc_timer *timer)
 {
 	void __iomem *reg;
 
 	if ((timer_initialized == 0) || (timer == NULL)) {
 		return -ENODEV;
+	}
+	if (timer->id >= TCC_TIMER_MAX) {
+		(void)pr_err("[ERROR][%s] %s: wrong timer id:%d\n",
+			     TCC_TIMER_NAME, __func__, timer->id);
+		return -EINVAL;
 	}
 
 	reg = timer_base + (timer->id * (u32)0x10);
@@ -111,15 +137,16 @@ EXPORT_SYMBOL(tcc_timer_disable);
 /*
  * return the timer irq count.
  */
-unsigned long tcc_get_timer_count(struct tcc_timer *timer)
+u32 tcc_get_timer_count(struct tcc_timer *timer)
 {
-	unsigned long cnt, flags;
+	u32 cnt;
+	unsigned long flags;
 
 	if ((timer_initialized == 0) || (timer == NULL)) {
 		return 0;
 	}
 
-	local_irq_save((flags));
+	local_irq_save(flags);
 	cnt = timer->irqcnt;
 	local_irq_restore(flags);
 
@@ -133,37 +160,43 @@ EXPORT_SYMBOL(tcc_get_timer_count);
  *       if usec value is 1000 then timer counter tick is 1 msec.
  * handler
  */
-#define REQ_HZ (u32)50000000
+#define REF_HZ  ((u32)50000000)
 struct tcc_timer *tcc_register_timer(struct device *dev, u32 usec,
 				     irq_handler_t handler)
 {
-	int ret, i;
-	u32 max_ref, req_hz = ((u32)1000*(u32)1000*(u32)50)/usec;
-	u32 k, srch_k, srch_err, ref[MAX_TCKSEL + (u32)1];
+	s32 ret;
+	s32 i;
+	s32 k;
+	u32 max_ref;
+	u32 req_hz = REF_HZ / usec;
+	u32 srch_k;
+	u32 srch_err;
+	u32 ref[MAX_TCKSEL + 1];
 
-	//req_hz = REQ_HZ;
 	if (timer_initialized == 0) {
+		(void)pr_err("[ERROR][%s] %s: timer has not initialized\n",
+			     TCC_TIMER_NAME, __func__);
 		return ERR_PTR(-ENODEV);
 	}
 
 	/* try to use 20-bit counter. when usec is lower then 1ms */
 	if (usec < (u32)1000) {
-		for (i = (int)TCC_TIMER_TC5; i >= (int)TCC_TIMER_TC0; i--) {
-			if ((timer_res[i].used == (u32)0) &&
-			    (timer_res[i].reserved == (u32)0)) {
+		for (i = TCC_TIMER_TC5; i >= TCC_TIMER_TC0; i--) {
+			if ((timer_res[i].used == 0) &&
+			    (timer_res[i].reserved == 0)) {
 				break;
 			}
 		}
 	} else {
-		for (i = (int)TCC_TIMER_TC0 ; i < (int)TCC_TIMER_MAX ; i++) {
-			if ((timer_res[i].used == (u32)0) &&
-			    (timer_res[i].reserved == (u32)0)) {
+		for (i = TCC_TIMER_TC0 ; i <= TCC_TIMER_TC5 ; i++) {
+			if ((timer_res[i].used == 0) &&
+			    (timer_res[i].reserved == 0)) {
 				break;
 			}
 		}
 	}
 
-	if ((i > (int)TCC_TIMER_TC5) || (i < (int)TCC_TIMER_TC0)) {
+	if ((i > TCC_TIMER_TC5) || (i < (s32)TCC_TIMER_TC0)) {
 		return ERR_PTR(-ENOMEM);
 	}
 
@@ -174,23 +207,27 @@ struct tcc_timer *tcc_register_timer(struct device *dev, u32 usec,
 	}
 
 	if (clk_rate > (ULONG_MAX/(u32)50)) {
+		(void)pr_err("[ERROR][%s] %s: wrong timer clock has set.\n",
+			     TCC_TIMER_NAME, __func__);
 		return ERR_PTR(-EDOM);
 	}
 
 	/* find divide factor */
 	srch_k = 0;
-	srch_err = ~((u32)0);
+	srch_err = 0xFFFFFFFFU;	/* U32_MAX */
 	for (k = 0; k <= MAX_TCKSEL; k++) {
-		u32 tck, tcksel, cnt, max_cnt;
-		u32 ref_1, ref_2, err1, err2;
+		s32 max_cnt;
+		u32 tcksel;
+		u32 tck;
+		u32 ref_1;
+		u32 ref_2;
+		u32 err1;
+		u32 err2;
 
-		max_cnt = (k < (u32)5) ? (k + (u32)1) : (k * (u32)2);
-		tcksel = 1;
-		for (cnt = 0; cnt < max_cnt; cnt++) {
-			tcksel *= (u32)2;
-		}
+		max_cnt = (k < 5) ? (k + 1) : (k * 2);
+		tcksel = (u32)1 << (u32)max_cnt;
 
-		tck = (((u32)clk_rate * (u32)50) / tcksel);
+		tck = ((u32)clk_rate * (u32)50) / tcksel;
 		ref_1 = tck / req_hz;
 		ref_2 = (tck + req_hz - (u32)1) / req_hz;
 
@@ -214,7 +251,7 @@ struct tcc_timer *tcc_register_timer(struct device *dev, u32 usec,
 
 		if (err1 < srch_err) {
 			srch_err = err1;
-			srch_k = k;
+			srch_k = (u32)k;
 		}
 
 		if (err1 == (u32)0) {
@@ -225,10 +262,11 @@ struct tcc_timer *tcc_register_timer(struct device *dev, u32 usec,
 	/* cannot found divide factor */
 	if (k > MAX_TCKSEL) {
 		k = MAX_TCKSEL;
-		srch_k = k;
+		srch_k = (u32)k;
 		ref[srch_k] = max_ref;
-		(void)pr_err("[ERROR][%s] %s: cannot get the correct timer\n",
-			     TCC_TIMER_NAME, __func__);
+		(void)pr_warn("[WARN][%s] %s: cannot get the correct timer.\n",
+			      TCC_TIMER_NAME, __func__);
+		/* TODO: supplementary setting */
 	}
 
 	timer_res[i].used = 1;
@@ -238,7 +276,7 @@ struct tcc_timer *tcc_register_timer(struct device *dev, u32 usec,
 	timer_res[i].mref = 0;
 	timer_res[i].handler = handler;
 
-	timer_writel((srch_k << 4),
+	timer_writel(TCFG_TCKSEL(srch_k),
 		     timer_base + ((u32)i * TIMER_OFFSET) + TIMER_TCFG);
 	timer_writel(0x0, timer_base + ((u32)i * TIMER_OFFSET) + TIMER_TCNT);
 	timer_writel(timer_res[i].mref,
@@ -247,8 +285,8 @@ struct tcc_timer *tcc_register_timer(struct device *dev, u32 usec,
 		     timer_base + ((u32)i * TIMER_OFFSET) + TIMER_TREF);
 
 	(void)sprintf(timer_res[i].name, "timer%d", i);
-	ret = request_irq(timer_res[i].virq, tcc_timer_handler, IRQF_SHARED,
-			  timer_res[i].name, &(timer_res[i]));
+	ret = request_irq(timer_res[i].virq, &tcc_timer_handler, IRQF_SHARED,
+			  timer_res[i].name, &timer_res[i]);
 	if (ret != 0) {
 		(void)pr_err("[ERROR][%s] %s: cannot request irq\n",
 			     TCC_TIMER_NAME, __func__);
@@ -267,13 +305,15 @@ void tcc_unregister_timer(struct tcc_timer *timer)
 	}
 
 	if (timer->id >= TCC_TIMER_MAX) {
-		BUG();
-	} else if (timer_res[timer->id].used == (u32)0) {
+		(void)pr_err("[ERROR][%s] %s: wrong timer id:%d\n",
+			     TCC_TIMER_NAME, __func__, timer->id);
+	} else if (timer_res[timer->id].used == 0) {
 		(void)pr_warn("[WARN][%s] %s: id:%d is not registered index\n",
 			      TCC_TIMER_NAME, __func__, timer->id);
 	} else {
 		reg = timer_base + (timer->id * (u32)0x10);
-		free_irq(timer_res[timer->id].virq, &(timer_res[timer->id]));
+		(void)free_irq(timer_res[timer->id].virq,
+			       &(timer_res[timer->id]));
 		timer_writel(0x0, reg + TIMER_TCFG);
 		timer_writel(0x0, reg + TIMER_TCNT);
 
@@ -296,9 +336,18 @@ void tcc_timer_save(void)
 		return;
 	}
 
-	BUG_ON(timer_backup != NULL);
+	if (timer_backup != NULL) {
+		(void)pr_err(
+			     "[ERROR][%s] %s: timer_backup is allocated already\n",
+			     TCC_TIMER_NAME, __func__);
+		return;
+	}
+
 	timer_backup = kzalloc(TIMER_REG_SIZE, GFP_KERNEL);
-	BUG_ON(timer_backup == NULL);
+	if (timer_backup == NULL) {
+		/* unnecessary 'out of memory' message */
+		return;
+	}
 
 	for (i = 0; i < (TIMER_REG_SIZE / (u32)4); i++) {
 		timer_backup[i] = timer_readl(timer_base + (i * (u32)4));
@@ -313,17 +362,22 @@ void tcc_timer_restore(void)
 		return;
 	}
 
-	BUG_ON(timer_backup == NULL);
+	if (timer_backup == NULL) {
+		(void)pr_err("[ERROR][%s] %s: cannot find timer_backup\n",
+			     TCC_TIMER_NAME, __func__);
+		return;
+	}
 
-	for (i = 0; i < (TIMER_REG_SIZE / (u32)4); i++)
+	for (i = 0; i < (TIMER_REG_SIZE / (u32)4); i++) {
 		timer_writel(timer_backup[i], timer_base + (i * (u32)4));
+	}
 
 	kfree(timer_backup);
 	timer_backup = NULL;
 }
 
 #if defined(CONFIG_ARCH_TCC805X)
-static int tcc_timer_suspend(void)
+static s32 tcc_timer_suspend(void)
 {
 	/* do nothing */
 	return 0;
@@ -372,16 +426,23 @@ static void tcc_timer_parse_dt(struct device_node *np)
 }
 
 /* This function only set the clock of timer-t. */
-static int __init tcc_init_timer(struct device_node *np)
+static s32 __init tcc_init_timer(struct device_node *np)
 {
 	u32 rate;
-	int i, num_of_irqs, ret;
+	s32 i;
+	s32 num_of_irqs;
+	s32 ret;
 	struct clk *timer_clk;
 
-	memset(timer_res, 0, sizeof(struct tcc_timer) * TCC_TIMER_MAX);
-	num_of_irqs = of_irq_count(np);
+	memset(&timer_res[0], 0, sizeof(struct tcc_timer) * TCC_TIMER_MAX);
 
-	BUG_ON(num_of_irqs < 1);
+	num_of_irqs = of_irq_count(np);
+	if (num_of_irqs < 1) {
+		(void)pr_err("[ERROR][%s] %s: unable to get timer clock.\n",
+			     TCC_TIMER_NAME, __func__);
+		return -EINVAL;
+	}
+
 	for (i = 0; i < num_of_irqs; i++) {
 		timer_res[i].virq =
 			(u32)of_irq_to_resource(np, i, NULL);
@@ -391,45 +452,48 @@ static int __init tcc_init_timer(struct device_node *np)
 
 	ret = of_property_read_u32(np, "clock-frequency", &rate);
 	if (ret != 0) {
-		(void)pr_err("[ERROR][%s] %s: Can't read clock-frequency\n",
-			     TCC_TIMER_NAME, __func__);
+		(void)pr_warn("[WARN][%s] %s: can't read clock-frequency\n",
+			      TCC_TIMER_NAME, __func__);
 		rate = 12000000;
 	}
+
 	timer_clk = of_clk_get(np, 0);
 	if (IS_ERR(timer_clk)) {
-		(void)pr_err("[ERROR][%s] %s: Unable to get timer clock.\n",
+		(void)pr_err("[ERROR][%s] %s: unable to get timer clock.\n",
 			     TCC_TIMER_NAME, __func__);
-		BUG();
-	} else {
+		return -EINVAL;
+	}
+
 #ifdef CONFIG_TCC_MICOM
-		for (i = 0; i < TCC_TIMER_MAX; i++) {
-			if (is_micom_timer(i))
-				break;
-		}
-		if (i >= TCC_TIMER_MAX)
+	for (i = 0; i < TCC_TIMER_MAX; i++) {
+		if (is_micom_timer(i))
+			break;
+	}
+	if (i >= TCC_TIMER_MAX)
 #endif
-		{
-			ret = clk_set_rate(timer_clk, rate);
-			if (ret != 0) {
-				(void)pr_err(
-					     "%s: Failed to set clk rate %u.\n",
-					     __func__, rate);
-				BUG();
-			}
-		}
-		(void)pr_info("[INFO][%s] %s: clk_rate: %lu\n",
-			TCC_TIMER_NAME, __func__, clk_get_rate(timer_clk));
-		ret = clk_prepare_enable(timer_clk);
+	{
+		ret = clk_set_rate(timer_clk, rate);
 		if (ret != 0) {
 			(void)pr_err(
-				     "[ERROR][%s] %s: Failed to prepare and enable clk.\n",
-				     TCC_TIMER_NAME, __func__);
-			BUG();
+				     "%s: failed to set clk rate %u.\n",
+				     __func__, rate);
+			return -EINVAL;
 		}
 	}
-	clk_rate = clk_get_rate(timer_clk);
 
-	for (i = 1; i < (int)TCC_TIMER_MAX; i++) {
+	clk_rate = clk_get_rate(timer_clk);
+	(void)pr_info("[INFO][%s] %s: clk_rate: %lu\n",
+		TCC_TIMER_NAME, __func__, clk_rate);
+
+	ret = clk_prepare_enable(timer_clk);
+	if (ret != 0) {
+		(void)pr_err(
+			     "[ERROR][%s] %s: failed to prepare and enable clk.\n",
+			     TCC_TIMER_NAME, __func__);
+		return -EINVAL;
+	}
+
+	for (i = 1; i < (s32)TCC_TIMER_MAX; i++) {
 #ifdef CONFIG_TCC_MICOM
 		if (is_micom_timer(i))
 			timer_res[i].used = 1;
