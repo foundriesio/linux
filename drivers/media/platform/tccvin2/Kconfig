@@ -40,3 +40,16 @@ config VIDEO_TCCVIN2_DIAG
 	Note that the following diagnostics functions are supported.
 	- cif port pinctrl checking.
 	- cif port mapping checking.
+
+config VIDEO_TCCVIN2_MMAP_MEMCPY
+	bool "A debugging feature to check V4L2 MMAP mechanism using memcpy"
+	depends on VIDEO_TCCVIN2
+	default n
+	---help---
+	This is a debugging feature to check whether V4L2 MMAP is working.
+	This will use memcpy to convey video frame data to userspace from
+	video device driver.
+
+	Note that the driver is supported on the following conditions.
+	- An application in userspace should invoke functions to use
+	V4L2 MMAP.

@@ -1392,11 +1392,12 @@ static void tccvin_work_thread(struct work_struct *data)
 	buf->bytesused = buf->length;
 
 	dlog("VIN[%d] buf->length: 0x%08x\n", stream->vdev.num, buf->length);
-	if (buf->buf.vb2_buf.memory != VB2_MEMORY_MMAP &&
-	   buf->buf.vb2_buf.memory != VB2_MEMORY_USERPTR &&
-	   buf->buf.vb2_buf.memory != V4L2_MEMORY_DMABUF) {
+
+#if defined(CONFIG_VIDEO_TCCVIN2_MMAP_MEMCPY)
+	if (buf->buf.vb2_buf.memory == VB2_MEMORY_MMAP) {
 		memcpy(buf->mem, cif->vir, buf->length);
 	}
+#endif//defined(CONFIG_VIDEO_TCCVIN2_MMAP_MEMCPY)
 
 	buf = tccvin_queue_next_buffer(&stream->queue, buf);
 
@@ -1493,10 +1494,12 @@ static int32_t tccvin_allocate_essential_buffers(struct tccvin_streaming *vdev)
 	if (ret == 1) {
 		logi("name: %20s, base: 0x%08llx, size: 0x%08llx\n",
 			pmap->name, pmap->base, pmap->size);
+#if defined(CONFIG_VIDEO_TCCVIN2_MMAP_MEMCPY)
 		vdev->cif.vir = ioremap_nocache(pmap->base,
 			PAGE_ALIGN(pmap->size));
 		logd("name: %20s, phy base: 0x%08llx, vir base: 0x%p\n",
 			pmap->name, pmap->base, vdev->cif.vir);
+#endif//defined(CONFIG_VIDEO_TCCVIN2_MMAP_MEMCPY)
 	} else {
 		loge("get \"rearcamera\" pmap information.\n");
 		return -1;
