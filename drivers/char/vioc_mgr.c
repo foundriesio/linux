@@ -503,13 +503,13 @@ static void vioc_mgr_tx_init(struct vioc_mgr_device *vioc_mgr)
 
 static int vioc_mgr_probe(struct platform_device *pdev)
 {
-	if (pdev == NULL) {
-		/* pdev is NULL */
-		loge("pdev is NULL");
-	}
+	struct vioc_mgr_device	*vioc_mgr	= NULL;
+	int32_t			ret		= 0;
 
-	int32_t ret;
-	struct vioc_mgr_device *vioc_mgr;
+	if (pdev == NULL) {
+		loge("pdev is NULL");
+		return -1;
+	}
 
 	vioc_mgr = devm_kzalloc(&pdev->dev,
 			sizeof(struct vioc_mgr_device), GFP_KERNEL);
@@ -576,13 +576,14 @@ static int vioc_mgr_probe(struct platform_device *pdev)
 
 static int vioc_mgr_remove(struct platform_device *pdev)
 {
+	struct vioc_mgr_device *vioc_mgr = NULL;
+
 	if (pdev == NULL) {
 		loge("pdev is NULL");
 		return -1;
 	}
 
-	struct vioc_mgr_device *vioc_mgr = platform_get_drvdata(pdev);
-
+	vioc_mgr = platform_get_drvdata(pdev);
 	if (vioc_mgr != NULL) {
 		device_destroy(vioc_mgr->class, vioc_mgr->devt);
 		class_destroy(vioc_mgr->class);
