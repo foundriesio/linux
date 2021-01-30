@@ -11,6 +11,7 @@
 		compatible = "android,vbmeta";
 		parts = "vbmeta,boot,system,vendor";
 	};
+#if !defined(CONFIG_ANDROID_DYNAMIC_PARTITION)
 	fstab {
 		compatible = "android,fstab";
 		system {
@@ -44,4 +45,5 @@
 #endif
 		};
 	};
+#endif
 };
