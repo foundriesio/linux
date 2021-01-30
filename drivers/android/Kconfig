@@ -64,7 +64,7 @@ config ANDROID_AB_UPDATE
 
 config ANDROID_DYNAMIC_PARTITION
     bool "Android Dynamic Partition"
-    depends on ARCH_TCC803X
+    depends on ARCH_TCC803X || ARCH_TCC805X
     default n
     ---help---
       If enabled, supports Android dynamic partition feature. This
