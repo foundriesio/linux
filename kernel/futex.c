@@ -2390,8 +2390,10 @@ retry:
 		 * situation and not any different from the other retry
 		 * conditions.
 		 */
-		if (unlikely(!newowner))
+		if (unlikely(!newowner)) {
+			err = -EAGAIN;
 			goto handle_err;
+		}
 	} else {
 		WARN_ON_ONCE(argowner != current);
 		if (oldowner == current) {
