@@ -53,8 +53,6 @@ struct tcc_sc_mmc_host {
 	struct mmc_host_ops mmc_host_ops;	/* MMC host ops */
 	u64 dma_mask;		/* custom DMA mask */
 
-	struct workqueue_struct *mmc_tcc_wq;
-	struct work_struct request_work;
 	struct tasklet_struct finish_tasklet;	/* Tasklet structures */
 	struct timer_list timer;	/* Timer for timeouts */
 
@@ -214,9 +212,42 @@ static s32 tcc_sc_mmc_pre_dma_transfer(struct tcc_sc_mmc_host *host,
 	return sg_count;
 }
 
+static void tcc_sc_mmc_complete(void *args, void *msg)
+{
+	struct tcc_sc_mmc_host *host = (struct tcc_sc_mmc_host *)args;
+	s32 *rx_msg = (s32 *)msg;
+	struct mmc_request *mrq;
+
+	mrq = host->mrq;
+
+	mrq->cmd->resp[0] = rx_msg[2];
+	mrq->cmd->resp[1] = rx_msg[3];
+	mrq->cmd->resp[2] = rx_msg[4];
+	mrq->cmd->resp[3] = rx_msg[5];
+	mrq->cmd->error = rx_msg[6];
+
+	if (mrq->cmd->data != NULL) {
+		mrq->cmd->data->error = rx_msg[7];
+		if (mrq->cmd->data->error == 0) {
+			mrq->cmd->data->bytes_xfered =
+				mrq->cmd->data->blksz * mrq->cmd->data->blocks;
+		}
+	}
+
+	/* Finish request */
+	tasklet_schedule(&host->finish_tasklet);
+
+}
+
 static void tcc_sc_mmc_request(struct mmc_host *mmc, struct mmc_request *mrq)
 {
 	struct tcc_sc_mmc_host *host;
+	const struct tcc_sc_fw_handle *handle;
+	struct tcc_sc_fw_mmc_cmd cmd;
+	struct tcc_sc_fw_mmc_data data = {0, };
+	unsigned long timeout;
+	struct scatterlist sg;
+	s32 ret;
 
 	if (mmc == NULL) {
 		pr_err("[ERROR][TCC_SC_MMC] mmc is null\n");
@@ -226,6 +257,13 @@ static void tcc_sc_mmc_request(struct mmc_host *mmc, struct mmc_request *mrq)
 	host = mmc_priv(mmc);
 	if (host == NULL) {
 		pr_err("%s: [ERROR][TCC_SC_MMC] host is null\n",
+		       mmc_hostname(mmc));
+		return;
+	}
+
+	handle = host->handle;
+	if (handle == NULL) {
+		pr_err("%s: [ERROR][TCC_SC_MMC] handle is null\n",
 		       mmc_hostname(mmc));
 		return;
 	}
@@ -243,53 +281,6 @@ static void tcc_sc_mmc_request(struct mmc_host *mmc, struct mmc_request *mrq)
 	}
 
 	host->mrq = mrq;
-
-	/* queue work */
-	queue_work(host->mmc_tcc_wq, &host->request_work);
-}
-
-static void tcc_sc_mmc_request_work(struct work_struct *work)
-{
-	struct tcc_sc_mmc_host *host;
-	struct mmc_host *mmc;
-	const struct tcc_sc_fw_handle *handle;
-	struct tcc_sc_fw_mmc_cmd cmd;
-	struct tcc_sc_fw_mmc_data data = {0, };
-	struct mmc_request *mrq;
-	unsigned long timeout;
-	struct scatterlist sg;
-	s32 ret;
-
-	if (work == NULL) {
-		pr_err("[ERROR][TCC_SC_MMC] work_struct is null\n");
-		return ;
-	}
-	host = container_of(work, struct tcc_sc_mmc_host, request_work);
-
-	if (host == NULL) {
-		pr_err("[ERROR][TCC_SC_MMC] host is null\n");
-		return;
-	}
-
-	mmc = host->mmc;
-	if (mmc == NULL) {
-		pr_err("[ERROR][TCC_SC_MMC] mmc is null\n");
-		return;
-	}
-
-	handle = host->handle;
-	if (handle == NULL) {
-		pr_err("%s: [ERROR][TCC_SC_MMC] handle is null\n",
-		       mmc_hostname(host->mmc));
-		return;
-	}
-
-	mrq = host->mrq;
-	if (mrq == NULL) {
-		pr_err("%s: [ERROR][TCC_SC_MMC] mrq is null\n",
-		       mmc_hostname(host->mmc));
-		return;
-	}
 
 	/* Request to send command */
 	cmd.opcode = mrq->cmd->opcode;
@@ -340,9 +331,13 @@ static void tcc_sc_mmc_request_work(struct work_struct *work)
 		data.sg_count = mrq->cmd->data->sg_count;
 		data.sg_len = mrq->cmd->data->sg_len;
 
-		ret = handle->ops.mmc_ops->request_command(handle, &cmd, &data);
+		ret = handle->ops.mmc_ops->request_command(
+						handle, &cmd, &data,
+						tcc_sc_mmc_complete, host);
 	} else {
-		ret = handle->ops.mmc_ops->request_command(handle, &cmd, NULL);
+		ret = handle->ops.mmc_ops->request_command(
+						handle, &cmd, NULL,
+						tcc_sc_mmc_complete, host);
 	}
 
 	timeout = jiffies;
@@ -354,27 +349,6 @@ static void tcc_sc_mmc_request_work(struct work_struct *work)
 		timeout += (unsigned long) (10U * HZ);
 
 	mod_timer(&host->timer, timeout);
-
-	if (ret != 0) {
-		mrq->cmd->error = ret;
-	} else {
-		mrq->cmd->resp[0] = cmd.resp[0];
-		mrq->cmd->resp[1] = cmd.resp[1];
-		mrq->cmd->resp[2] = cmd.resp[2];
-		mrq->cmd->resp[3] = cmd.resp[3];
-		mrq->cmd->error = cmd.error;
-
-		if (mrq->cmd->data != NULL) {
-			mrq->cmd->data->error = data.error;
-			if (mrq->cmd->data->error == 0) {
-				mrq->cmd->data->bytes_xfered =
-						data.blksz * data.blocks;
-			}
-		}
-	}
-
-	/* Finish request */
-	tasklet_schedule(&host->finish_tasklet);
 
 	mmiowb();
 }
@@ -411,22 +385,7 @@ static void tcc_sc_mmc_set_ios(struct mmc_host *mmc, struct mmc_ios *ios)
 
 static s32 tcc_sc_mmc_card_busy(struct mmc_host *mmc)
 {
-	struct tcc_sc_mmc_host *host = mmc_priv(mmc);
-	const struct tcc_sc_fw_handle *handle;
-	struct tcc_sc_fw_mmc_cmd cmd;
-	s32 ret;
-
-	memset(&cmd , 0, sizeof(struct tcc_sc_fw_mmc_cmd));
-
-	handle = host->handle;
-	BUG_ON((handle == NULL));
-
-	cmd.opcode = ((u32) 1U << (u32) 7U);
-	ret = handle->ops.mmc_ops->request_command(handle, &cmd, NULL);
-	if (ret != 0)
-		return 0;
-	else
-		return (s32)cmd.resp[0];
+	return 0;
 }
 
 static const struct mmc_host_ops tcc_sc_mmc_ops = {
@@ -556,17 +515,6 @@ static s32 tcc_sc_mmc_probe(struct platform_device *pdev)
 	 */
 	tasklet_init(&host->finish_tasklet,
 		tcc_sc_mmc_tasklet_finish, (unsigned long)host);
-
-	/*
-	 * Init workqueue.
-	 */
-	INIT_WORK(&host->request_work, tcc_sc_mmc_request_work);
-	host->mmc_tcc_wq = alloc_workqueue("mmc_tcc_sc", 0, 0);
-	if (host->mmc_tcc_wq == NULL) {
-		dev_err(&pdev->dev,
-			"[ERROR][TCC_SC_MMC] mmc: failed to allocate wq\n");
-		return -ENOMEM;
-	}
 
 	setup_timer(&host->timer,
 			tcc_sc_mmc_timeout_timer, (unsigned long)host);
