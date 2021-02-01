@@ -9,8 +9,13 @@
 #include <asm/ipi.h>
 #include <linux/cpumask.h>
 
+extern u32 x2apic_max_apicid;
+
 static int x2apic_apic_id_valid(int apicid)
 {
+	if (x2apic_max_apicid && apicid > x2apic_max_apicid)
+		return 0;
+
 	return 1;
 }
 
