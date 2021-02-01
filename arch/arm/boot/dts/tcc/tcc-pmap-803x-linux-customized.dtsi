@@ -3,6 +3,8 @@
  * Copyright (C) Telechips Inc.
  */
 
+#include "../../../../../include/generated/autoconf.h"
+
 #include <dt-bindings/pmap/tcc803x/pmap-tcc803x-linux-ivi.h>
 
 ////////////////////////////////////////////////////////////////////////////////
