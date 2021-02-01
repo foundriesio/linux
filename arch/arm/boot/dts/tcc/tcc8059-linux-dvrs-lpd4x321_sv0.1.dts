@@ -19,7 +19,7 @@
 #define LCD_PORT2_RST "gpc-9"
 #define LCD_PORT2_BLK "gpma-27"
 
-#include "tcc8059-linux-avn-display.dtsi"
+#include "tcc8059-linux-dvrs-display.dtsi"
 
 / {
 	/* Describe here after remove this statement if you have something to be override. */

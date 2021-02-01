@@ -27,7 +27,7 @@
 #define LCD_PORT4_RST "gpc-25"
 #define LCD_PORT4_BLK "gpc-21"
 
-#include "tcc8053-linux-avn-display.dtsi"
+#include "tcc8053-linux-dvrs-display.dtsi"
 
 / {
 	/* Describe here after remove this statement if you have something to be override. */
