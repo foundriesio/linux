@@ -34,22 +34,22 @@
 #include <linux/fs.h>
 #include <uapi/misc/switch.h>
 
-static int32_t			debug;
+static int			debug;
 
 #define MODULE_NAME		("switch_gpio_reverse")
 
 #define LOG_TAG			("SWITCH")
 
-#define loge(fmt, ...)		{ pr_err("[ERROR][%s] %s - " fmt, LOG_TAG, \
-					__func__, ##__VA_ARGS__); }
-#define logw(fmt, ...)		{ pr_warn("[WARN][%s] %s - " fmt, LOG_TAG, \
-					__func__, ##__VA_ARGS__); }
-#define logd(fmt, ...)		{ pr_debug("[DEBUG][%s] %s - " fmt, LOG_TAG, \
-					__func__, ##__VA_ARGS__); }
-#define logi(fmt, ...)		{ pr_info("[INFO][%s] %s - " fmt, LOG_TAG, \
-					__func__, ##__VA_ARGS__); }
-#define dlog(fmt, ...)		do { if (debug) { ; logd(fmt, \
-					##__VA_ARGS__); } while (0)
+#define loge(fmt, args...)	{ \
+	pr_err("[ERROR][%s] %s - " fmt, LOG_TAG, __func__, ##args); }
+#define logw(fmt, args...)	{ \
+	pr_warn("[WARN][%s] %s - " fmt, LOG_TAG, __func__, ##args); }
+#define logd(fmt, args...)	{ \
+	pr_info("[DEBUG][%s] %s - " fmt, LOG_TAG, __func__, ##args); }
+#define logi(fmt, args...)	{ \
+	pr_info("[INFO][%s] %s - " fmt, LOG_TAG, __func__, ##args); }
+#define dlog(fmt, args...)	{ \
+	do { if (debug) { ; logd(fmt, ##args); } } while (0); }
 
 struct switch_dev {
 	struct device		*dev_plt;
@@ -58,30 +58,30 @@ struct switch_dev {
 	struct class		*cdev_class;
 	struct cdev		cdev;
 
-	uint32_t		enabled;
+	unsigned int		enabled;
 	atomic_t		type;
-	int32_t			switch_gpio;
-	int32_t			switch_active;
+	int			switch_gpio;
+	int			switch_active;
 	atomic_t		status;
 
 	atomic_t		loglevel;
 };
 
-int32_t switch_get_type(struct switch_dev *vdev)
+int switch_get_type(struct switch_dev *vdev)
 {
-	return (int32_t)atomic_read(&vdev->type);
+	return (int)atomic_read(&vdev->type);
 }
 
-int32_t switch_set_type(struct switch_dev *vdev, int32_t type)
+int switch_set_type(struct switch_dev *vdev, int type)
 {
-	int32_t			ret		= 0;
+	int			ret		= 0;
 
 	if (vdev == NULL) {
 		// vdev is NULL
 		return -1;
 	}
 
-	atomic_set(&vdev->type, type);
+	atomic_set(&vdev->type, (unsigned long)type);
 
 	return ret;
 }
@@ -89,20 +89,26 @@ int32_t switch_set_type(struct switch_dev *vdev, int32_t type)
 ssize_t switch_type_show(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
-	ssize_t rvalue;
-	struct switch_dev *vdev;
+	struct switch_dev	*vdev		= NULL;
+	ssize_t			rvalue		= 0;
+
+	if (dev == NULL) {
+		loge("An object of device is NULL\n");
+		return -1;
+	}
 
 	vdev = (struct switch_dev *)dev->platform_data;
 	rvalue = sprintf(buf, "%d\n", switch_get_type(vdev));
+
 	return rvalue;
 }
 
 ssize_t switch_type_store(struct device *dev,
 	struct device_attribute *attr, const char *buf,	size_t count)
 {
-	struct switch_dev *vdev;
-	int32_t error = 0;
-	uint32_t data = 0;
+	struct switch_dev	*vdev		= NULL;
+	int			error		= 0;
+	unsigned int		data		= 0;
 
 	if (dev == NULL) {
 		loge("An object of device is NULL\n");
@@ -116,20 +122,20 @@ ssize_t switch_type_store(struct device *dev,
 		return error;
 	}
 
-	switch_set_type(vdev, (int32_t)data);
+	switch_set_type(vdev, (int)data);
 
 	return (ssize_t)count;
 }
 
 DEVICE_ATTR(switch_type, 0664, switch_type_show, switch_type_store);
 
-int32_t switch_get_status(struct switch_dev *vdev)
+int switch_get_status(struct switch_dev *vdev)
 {
-	int32_t	type		= 0;
-	int32_t	gpio		= 0;
-	int32_t	gpio_value	= 0;
-	int32_t	gpio_active	= 0;
-	int32_t	status		= 0;
+	int			type		= 0;
+	int			gpio		= 0;
+	int			gpio_value	= 0;
+	int			gpio_active	= 0;
+	int			status		= 0;
 
 	if (vdev == NULL) {
 		loge("An object of vdev is NULL");
@@ -142,11 +148,11 @@ int32_t switch_get_status(struct switch_dev *vdev)
 	switch (type) {
 	/* sw switch */
 	case 0:
-		status = atomic_read(&vdev->status);
+		status = (int)atomic_read(&vdev->status);
 		break;
 	/* hw switch */
 	case 1:
-		gpio		= vdev->switch_gpio;
+		gpio	= vdev->switch_gpio;
 		if (gpio != -1) {
 			gpio_value	= (!!gpio_get_value(gpio) == 1) ? 1 : 0;
 			gpio_active	= vdev->switch_active;
@@ -158,13 +164,13 @@ int32_t switch_get_status(struct switch_dev *vdev)
 				/* set status value */
 				status = (gpio_value == gpio_active) ? 1 : 0;
 			}
-			logd("gpio: %d, value: %d, active: %d, status: %d\n",
+			dlog("gpio: %d, value: %d, active: %d, status: %d\n",
 				gpio, gpio_value, gpio_active, status);
 
-			atomic_set(&vdev->status, status);
+			atomic_set(&vdev->status, (unsigned long)status);
 		} else {
 			loge("HW Switch is not supported, gpio: %d\n", gpio);
-			status = atomic_read(&vdev->status);
+			status = (int)atomic_read(&vdev->status);
 		}
 		break;
 
@@ -173,15 +179,15 @@ int32_t switch_get_status(struct switch_dev *vdev)
 		break;
 	}
 
-	logd("switch status: %d\n", status);
+	dlog("switch status: %d\n", status);
 
 	return status;
 }
 
-int32_t switch_set_status(struct switch_dev *vdev, int32_t status)
+int switch_set_status(struct switch_dev *vdev, int status)
 {
-	int32_t			type		= 0;
-	int32_t			ret		= 0;
+	int			type		= 0;
+	int			ret		= 0;
 
 	if (vdev == NULL) {
 		loge("vdev is NULL\n");
@@ -194,7 +200,7 @@ int32_t switch_set_status(struct switch_dev *vdev, int32_t status)
 	switch (type) {
 	/* sw switch */
 	case 0:
-		atomic_set(&vdev->status, status);
+		atomic_set(&vdev->status, (unsigned long)status);
 		break;
 	/* hw switch */
 	case 1:
@@ -214,16 +220,18 @@ int32_t switch_set_status(struct switch_dev *vdev, int32_t status)
 ssize_t switch_status_show(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
-	struct switch_dev *vdev;
-	ssize_t rvalue;
+	struct switch_dev	*vdev		= NULL;
+	int			status		= 0;
+	ssize_t			rvalue		= 0;
 
 	if (dev == NULL) {
 		loge("dev is NULL\n");
 		return -1;
 	}
 
-	vdev = (struct switch_dev *)dev->platform_data;
-	rvalue = sprintf(buf, "%d\n", atomic_read(&vdev->status));
+	vdev	= (struct switch_dev *)dev->platform_data;
+	status	= (int)atomic_read(&vdev->status);
+	rvalue	= sprintf(buf, "%d\n", status);
 
 	return rvalue;
 }
@@ -231,9 +239,9 @@ ssize_t switch_status_show(struct device *dev,
 ssize_t switch_status_store(struct device *dev,
 	struct device_attribute *attr, const char *buf, size_t count)
 {
-	struct switch_dev *vdev;
-	uint32_t data	= 0;
-	int32_t	error	= 0;
+	struct switch_dev	*vdev		= NULL;
+	unsigned int		data		= 0;
+	int			error		= 0;
 
 	if (dev == NULL) {
 		loge("dev is NULL\n");
@@ -247,7 +255,7 @@ ssize_t switch_status_store(struct device *dev,
 		return error;
 	}
 
-	switch_set_status(vdev, (int32_t)data);
+	switch_set_status(vdev, (int)data);
 
 	return (ssize_t)count;
 }
@@ -257,16 +265,18 @@ DEVICE_ATTR(switch_status, 0664, switch_status_show, switch_status_store);
 ssize_t loglevel_show(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
-	ssize_t rvalue;
-	struct switch_dev *vdev;
+	struct switch_dev	*vdev		= NULL;
+	int			level		= 0;
+	ssize_t			rvalue		= 0;
 
 	if (dev == NULL) {
 		loge("dev is NULL\n");
 		return -1;
 	}
 
-	vdev = (struct switch_dev *)dev->platform_data;
-	rvalue = sprintf(buf, "%d\n", atomic_read(&vdev->loglevel));
+	vdev	= (struct switch_dev *)dev->platform_data;
+	level	= (int)atomic_read(&vdev->loglevel);
+	rvalue	= sprintf(buf, "%d\n", level);
 
 	return rvalue;
 }
@@ -274,9 +284,9 @@ ssize_t loglevel_show(struct device *dev,
 ssize_t loglevel_store(struct device *dev,
 	struct device_attribute *attr, const char *buf, size_t count)
 {
-	struct switch_dev	*vdev;
-	uint32_t		data	= 0;
-	int32_t			error	= 0;
+	struct switch_dev	*vdev		= NULL;
+	unsigned int		data		= 0;
+	int			error		= 0;
 
 	if (dev == NULL) {
 		loge("dev is NULL\n");
@@ -290,20 +300,20 @@ ssize_t loglevel_store(struct device *dev,
 		return error;
 	}
 
-	atomic_set(&vdev->loglevel, (int32_t)data);
-	debug = (int32_t)data;
+	atomic_set(&vdev->loglevel, (unsigned long)data);
+	debug = (int)data;
 
 	return (ssize_t)count;
 }
 
 DEVICE_ATTR(loglevel, 0664, loglevel_show, loglevel_store);
 
-long switch_ioctl(struct file *filp, uint32_t cmd, unsigned long arg)
+long switch_ioctl(struct file *filp, uint cmd, unsigned long arg)
 {
-	struct switch_dev	*vdev;
-	int32_t			status	= 0;
-	unsigned long		byte	= 0;
-	int32_t			ret	= 0;
+	struct switch_dev	*vdev		= NULL;
+	int			status		= 0;
+	unsigned long		byte		= 0;
+	int			ret		= 0;
 
 	if (filp == NULL) {
 		loge("filp is NULL\n");
@@ -315,21 +325,21 @@ long switch_ioctl(struct file *filp, uint32_t cmd, unsigned long arg)
 	switch (cmd) {
 	case SWITCH_IOCTL_CMD_ENABLE:
 		vdev->enabled	= 1;
-		logd("enabled: %d\n", vdev->enabled);
+		logd("enabled: %u\n", vdev->enabled);
 		break;
 
 	case SWITCH_IOCTL_CMD_DISABLE:
 		vdev->enabled	= 0;
-		logd("enabled: %d\n", vdev->enabled);
+		logd("enabled: %u\n", vdev->enabled);
 		break;
 
 	case SWITCH_IOCTL_CMD_GET_STATE:
 		status		= switch_get_status(vdev);
-		logd("status: %d\n", status);
+		dlog("status: %d\n", status);
 
 		byte = copy_to_user((void *)arg, (const void *)&status,
 			sizeof(status));
-		if (byte < 0) {
+		if (byte != 0) {
 			loge("FAILED: copy_to_user\n");
 			ret = -1;
 			break;
@@ -344,9 +354,9 @@ long switch_ioctl(struct file *filp, uint32_t cmd, unsigned long arg)
 	return ret;
 }
 
-int32_t switch_open(struct inode *inode, struct file *filp)
+int switch_open(struct inode *inode, struct file *filp)
 {
-	struct switch_dev	*vdev;
+	struct switch_dev	*vdev		= NULL;
 
 	if (inode == NULL) {
 		loge("Failed to open switch device: inode is NULL\n");
@@ -360,37 +370,26 @@ int32_t switch_open(struct inode *inode, struct file *filp)
 
 	vdev = container_of(inode->i_cdev, struct switch_dev, cdev);
 	filp->private_data = vdev;
+
 	return 0;
 }
 
-int32_t switch_release(struct inode *inode, struct file *filp)
+int switch_release(struct inode *inode, struct file *filp)
 {
-	struct switch_dev	*vdev;
-
-	if (inode == NULL) {
-		loge("Failed to open switch device: inode is NULL\n");
-		return -1;
-	}
-
-	if (filp == NULL) {
-		loge("filp is NULL\n");
-		return -1;
-	}
-
-	vdev = container_of(inode->i_cdev, struct switch_dev, cdev);
+	filp->private_data = NULL;
 
 	return 0;
 }
 
 #ifdef CONFIG_PM_SLEEP
-static int32_t switch_suspend(struct device *dev)
+static int switch_suspend(struct device *dev)
 {
 	return 0;
 }
 
-static int32_t switch_resume(struct device *dev)
+static int switch_resume(struct device *dev)
 {
-	struct pinctrl *pinctrl	= NULL;
+	struct pinctrl		*pinctrl	= NULL;
 
 	// pinctrl
 	if (dev == NULL) {
@@ -412,7 +411,7 @@ static const struct dev_pm_ops swich_pm_ops = {
 
 #define DEV_PM_OPS  (&swich_pm_ops)
 #else
-#define DEV_PM_OPS  NULL
+#define DEV_PM_OPS  (NULL)
 #endif
 
 const struct file_operations switch_fops = {
@@ -422,15 +421,19 @@ const struct file_operations switch_fops = {
 	.release	= switch_release,
 };
 
-int32_t switch_probe(struct platform_device *pdev)
+int switch_probe(struct platform_device *pdev)
 {
 	struct switch_dev	*vdev		= NULL;
 	struct pinctrl		*pinctrl	= NULL;
 	struct device		*dev_ret	= NULL;
-	int32_t			index		= 0;
-	int32_t			ret		= 0;
+	int			index		= 0;
+	int			ret		= 0;
 	int8_t			name[32]	= "";
-	struct device_node	*phandle	= NULL;
+
+	if (pdev == NULL) {
+		loge("pdev is NULL\n");
+		return -1;
+	}
 
 	/* allocate memory for switch device data */
 	vdev = kzalloc(sizeof(struct switch_dev), GFP_KERNEL);
@@ -463,8 +466,7 @@ int32_t switch_probe(struct platform_device *pdev)
 	/* allocate a character device region */
 	ret = alloc_chrdev_region(&vdev->cdev_region, 0, 1, name);
 	if (ret < 0) {
-		loge("Allocate a character device region for the \"%s\"\n",
-			name);
+		loge("alloc_chrdev_region\"%s\"), ret: %d\n", name, ret);
 		return ret;
 	}
 
@@ -502,6 +504,8 @@ int32_t switch_probe(struct platform_device *pdev)
 		/* print out the error */
 		logd("\"pinctrl\" node is not found.\n");
 	} else {
+		struct device_node	*phandle	= NULL;
+
 		/* otherwise, do pin-control */
 		pinctrl_put(pinctrl);
 
@@ -511,7 +515,8 @@ int32_t switch_probe(struct platform_device *pdev)
 			vdev->switch_gpio = of_get_named_gpio(pdev->dev.of_node,
 				"switch-gpios", 0);
 			of_property_read_u32_index(pdev->dev.of_node,
-				"switch-active", 0, &vdev->switch_active);
+				"switch-active", 0,
+				(int *)&vdev->switch_active);
 			logd("switch-gpios: %d, switch-active: %d\n",
 				vdev->switch_gpio, vdev->switch_active);
 		} else {
@@ -560,7 +565,7 @@ goto_end:
 	return ret;
 }
 
-int32_t switch_remove(struct platform_device *pdev)
+int switch_remove(struct platform_device *pdev)
 {
 	struct switch_dev	*vdev		= NULL;
 
