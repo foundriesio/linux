@@ -11,6 +11,12 @@
 int x2apic_phys;
 
 static struct apic apic_x2apic_phys;
+u32 x2apic_max_apicid;
+
+void __init x2apic_set_max_apicid(u32 apicid)
+{
+	x2apic_max_apicid = apicid;
+}
 
 static int set_x2apic_phys_mode(char *arg)
 {
