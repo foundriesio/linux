@@ -541,7 +541,7 @@ unsigned long tca_gmac_get_hsio_clk(struct gmac_dt_info_t *dt_info);
 phy_interface_t tca_gmac_get_phy_interface(struct gmac_dt_info_t *dt_info);
 void tca_gmac_phy_pwr_on(struct gmac_dt_info_t *dt_info);
 void tca_gmac_phy_pwr_off(struct gmac_dt_info_t *dt_info);
-void tca_gmac_phy_reset(struct gmac_dt_info_t *dt_info);
+void dwmac_tcc_phy_reset(struct gmac_dt_info_t *dt_info);
 void dwmac_tcc_tunning_timing(struct gmac_dt_info_t *dt_info, void __iomem *ioaddr);
 void dwmac_tcc_portinit(struct gmac_dt_info_t *dt_info, void __iomem *ioaddr);
 void IO_UTIL_ReadECID (unsigned ecid[]);

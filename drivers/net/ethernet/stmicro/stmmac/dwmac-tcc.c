@@ -39,12 +39,22 @@ static void __iomem *hsio_base = NULL;
 
 int dwmac_tcc_init(struct device_node *np, struct gmac_dt_info_t *dt_info)
 {
+	int ret = 0;
+
 	hsio_base = of_iomap(np,1);
 
 	printk("%s. is called\n", __func__);
 
 	if (hsio_base == NULL)
 		printk(KERN_ERR "hsio base cannot get\n");
+
+	ret = of_get_named_gpio(np, "phyrst-gpio", 0);
+	if (ret < 0)
+		dt_info->phy_rst = (unsigned int)0;
+	else{
+		dt_info->phy_rst = ret;
+		gpio_request(dt_info->phy_rst, "PHY_RST");
+	}
 
 	return 0;
 }
@@ -89,5 +99,15 @@ void dwmac_tcc_tunning_timing(struct gmac_dt_info_t *dt_info, void __iomem *ioad
 		writel(0x0, ioaddr+GMACDLY5_OFFSET);
 		writel(0x0, ioaddr+GMACDLY6_OFFSET);
         }
+}
+
+void dwmac_tcc_phy_reset(struct gmac_dt_info_t *dt_info)
+{
+	if (dt_info->phy_rst != (unsigned int)0) {
+		gpio_direction_output(dt_info->phy_rst, 0);
+		msleep(10);
+		gpio_direction_output(dt_info->phy_rst, 1);
+		msleep(150);
+	}
 }
 

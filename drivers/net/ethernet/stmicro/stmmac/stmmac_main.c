@@ -4196,6 +4196,7 @@ int stmmac_dvr_probe(struct device *device,
 	u32 queue;
 
 	struct pinctrl *pin;
+	struct device_node *np = device->of_node;
 
 	ndev = alloc_etherdev_mqs(sizeof(struct stmmac_priv),
 				  MTL_MAX_TX_QUEUES,
@@ -4218,10 +4219,12 @@ int stmmac_dvr_probe(struct device *device,
 
 #if defined(CONFIG_TCC_GMAC_CS)
 	// TCC specific function.
+	dwmac_tcc_init(np, &priv->dt_info);
 	pin = devm_pinctrl_get_select(priv->device, "rgmii");
 	dwmac_tcc_clk_enable(plat_dat);
-	dwmac_tcc_portinit(NULL, priv->ioaddr);
-	dwmac_tcc_tunning_timing(NULL, priv->ioaddr);
+	dwmac_tcc_portinit(&priv->dt_info, priv->ioaddr);
+	dwmac_tcc_tunning_timing(&priv->dt_info, priv->ioaddr);
+	dwmac_tcc_phy_reset(&priv->dt_info);
 #endif
 
 	priv->dev->irq = res->irq;
