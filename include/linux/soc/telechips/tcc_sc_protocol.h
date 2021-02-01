@@ -75,7 +75,8 @@ struct tcc_sc_fw_otp_cmd {
 
 struct tcc_sc_fw_mmc_ops {
 	s32 (*request_command)(const struct tcc_sc_fw_handle *handle,
-		struct tcc_sc_fw_mmc_cmd *cmd, struct tcc_sc_fw_mmc_data *data);
+		struct tcc_sc_fw_mmc_cmd *cmd, struct tcc_sc_fw_mmc_data *data,
+		void (*complete)(void *, void *), void *args);
 	s32 (*prot_info)(const struct tcc_sc_fw_handle *handle,
 		struct tcc_sc_fw_prot_mmc *mmc_info);
 };
@@ -92,8 +93,7 @@ struct tcc_sc_fw_gpio_ops {
 };
 
 struct tcc_sc_fw_otp_ops {
-
-	int (*get_otp)(const struct tcc_sc_fw_handle *handle,
+	s32 (*get_otp)(const struct tcc_sc_fw_handle *handle,
 		struct tcc_sc_fw_otp_cmd *cmd, uint32_t offset);
 };
 
