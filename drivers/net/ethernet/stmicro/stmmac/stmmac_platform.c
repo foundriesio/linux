@@ -385,8 +385,14 @@ stmmac_probe_config_dt(struct platform_device *pdev, const char **mac)
 	if (!plat)
 		return ERR_PTR(-ENOMEM);
 
+	// dwmac_tcc_init is moved to device probing step. 
+	// becuase device probing step initialize private data and 
+	// dwmac tcc init performs parsing desvice tree and initialize 
+	// private data.
+#if 0
 #if defined(CONFIG_TCC_GMAC_CS)
 	dwmac_tcc_init(np, NULL);
+#endif
 #endif
 
 	*mac = of_get_mac_address(np);

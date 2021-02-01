@@ -1471,6 +1471,12 @@
 		pinctrl-4 = <&gmac1_mdc &gmac1_mdio
 					 &gmac1_txclk &gmac1_txen &gmac1_txd0 &gmac1_txd1 &gmac1_txd2 &gmac1_txd3
 					 &gmac1_rxclk &gmac1_rxdv &gmac1_rxd0 &gmac1_rxd1 &gmac1_rxd2 &gmac1_rxd3>;
+#if 0 /* If using fixed link, enable this */
+                fixed-link {
+                        speed = <1000>;
+                        full-duplex;
+                };
+#endif
 	};
 
 	/* CP */
