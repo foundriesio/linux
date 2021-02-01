@@ -158,6 +158,7 @@ enum {
 };
 
 static struct fb_vioc_waitq fb_waitq[FB_DEV_MAX];
+static void fbX_prepare_vin_path_rdma(struct fbX_par *par);
 
 irqreturn_t fbX_display_handler(int irq, void *dev_id)
 {
@@ -1593,6 +1594,10 @@ static int __init fbX_probe (struct platform_device *pdev)
 #endif
 	fbX_set_par(info);
 
+	if(par->pdata.FbWdmaPath == 1 && par->pdata.wdma_info.virt_addr != NULL){ //vin path RDMA(such as DPGL)
+		fbX_prepare_vin_path_rdma(par);
+	}
+
 	return 0;
 
 err_palette_free:
@@ -1940,6 +1945,35 @@ static int fbX_resume(struct platform_device *dev)
 #define fbX_suspend NULL
 #define fbX_resume NULL
 #endif /* CONFIG_PM */
+
+/* the below code is the solution of FIFO underrun issue after corereset */
+static void fbX_prepare_vin_path_rdma(struct fbX_par *par)
+{
+	int rdma_enable;
+	unsigned int prev = 0;
+	unsigned int cur = 0;
+	int idx;
+	int status = 0;
+	VIOC_RDMA_GetImageEnable(par->pdata.rdma_info.virt_addr, &rdma_enable);
+	cur = VIOC_RDMA_Get_CAddress(par->pdata.rdma_info.virt_addr);
+	for( idx = 0; idx < 10; idx++){
+		prev = cur;
+		msleep(20);
+		cur = VIOC_RDMA_Get_CAddress(par->pdata.rdma_info.virt_addr);
+		if (prev != cur) {
+			status++;
+		}
+	}
+
+	if(rdma_enable)
+		VIOC_RDMA_SetImageDisable(par->pdata.rdma_info.virt_addr);
+	pr_info("[INFO][FBX] rdma_enable = [%s], status = [%s]\n",
+						rdma_enable ? "enable" : "disable",
+						status? "working" : "not working");
+	VIOC_CONFIG_SWReset_RAW(par->pdata.rdma_info.blk_num, VIOC_CONFIG_RESET);
+	VIOC_CONFIG_SWReset_RAW(par->pdata.rdma_info.blk_num, VIOC_CONFIG_CLEAR);
+	pr_info("[INFO][FBX] rdma[%d] SWReset.\n", par->pdata.rdma_info.blk_num - VIOC_RDMA);
+}
 
 static struct platform_driver fbX_driver = {
 	.probe = fbX_probe,
