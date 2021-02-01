@@ -1526,6 +1526,7 @@ arm_smmu_atc_inv_to_cmd(int ssid, unsigned long iova, size_t size,
 	};
 
 	if (!size) {
+		cmd->atc.addr = ATC_INV_ADDR_ALL;
 		cmd->atc.size = ATC_INV_SIZE_ALL;
 		return;
 	}

@@ -446,6 +446,7 @@ struct arm_smmu_cmdq_ent {
 
 		#define CMDQ_OP_ATC_INV		0x40
 		#define ATC_INV_SIZE_ALL	52
+		#define ATC_INV_ADDR_ALL        0x7FFFFFFFFFFFF000UL
 		struct {
 			u32			sid;
 			u32			ssid;
