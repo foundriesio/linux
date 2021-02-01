@@ -121,8 +121,12 @@ void aq_ring_tx_clean(struct aq_ring_s *self)
 					       DMA_TO_DEVICE);
 		}
 
-		if (unlikely(buff->is_eop))
+		if (unlikely(buff->is_eop)) {
+			++self->stats.rx.packets;
+			self->stats.tx.bytes += buff->skb->len;
+
 			dev_kfree_skb_any(buff->skb);
+		}
 	}
 }
 
