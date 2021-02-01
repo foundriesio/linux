@@ -156,6 +156,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 static PVRSRV_DATA	*gpsPVRSRVData;
 static IMG_UINT32 g_ui32InitFlags;
 
+#if defined (SUPPORT_COLD_RESET)
+extern int setColdReset(void);
+#endif
 /* mark which parts of Services were initialised */
 #define		INIT_DATA_ENABLE_PDUMPINIT	0x1U
 
@@ -2067,6 +2070,20 @@ void PVRSRVPhysMemHeapsDeinit(PVRSRV_DEVICE_NODE *psDeviceNode)
 	OSFreeMem(psDeviceNode->papsRegisteredPhysHeaps);
 }
 
+IMG_UINT32 GetApphintDriverMode(void)
+{
+	IMG_UINT32				ui32AppHintDefault = PVRSRV_APPHINT_DRIVERMODE;
+	IMG_UINT32				ui32AppHintDriverMode;
+	void *pvAppHintState    = NULL;
+
+	OSCreateKMAppHintState(&pvAppHintState);
+	OSGetKMAppHintUINT32(pvAppHintState, DriverMode,
+						 &ui32AppHintDefault, &ui32AppHintDriverMode);
+	OSFreeKMAppHintState(pvAppHintState);
+
+	return ui32AppHintDriverMode;
+}
+
 PVRSRV_ERROR IMG_CALLCONV PVRSRVCommonDeviceCreate(void *pvOSDevice,
 											 IMG_INT32 i32UMIdentifier,
 											 PVRSRV_DEVICE_NODE **ppsDeviceNode)
@@ -2087,14 +2104,9 @@ PVRSRV_ERROR IMG_CALLCONV PVRSRVCommonDeviceCreate(void *pvOSDevice,
 
 	/* Read driver mode (i.e. native, host or guest) AppHint early as it is
 	   required by SysDevInit */
-	ui32AppHintDefault = PVRSRV_APPHINT_DRIVERMODE;
-	OSCreateKMAppHintState(&pvAppHintState);
-	OSGetKMAppHintUINT32(pvAppHintState, DriverMode,
-						 &ui32AppHintDefault, &ui32AppHintDriverMode);
+	ui32AppHintDriverMode = GetApphintDriverMode();
 	psPVRSRVData->eDriverMode = PVRSRV_VZ_APPHINT_MODE(ui32AppHintDriverMode);
 	psPVRSRVData->bForceApphintDriverMode = PVRSRV_VZ_APPHINT_MODE_IS_OVERRIDE(ui32AppHintDriverMode);
-	OSFreeKMAppHintState(pvAppHintState);
-	pvAppHintState = NULL;
 
 	psDeviceNode = OSAllocZMemNoStats(sizeof(*psDeviceNode));
 	PVR_LOG_RETURN_IF_NOMEM(psDeviceNode, "psDeviceNode");
@@ -3101,15 +3113,25 @@ PVRSRV_ERROR IMG_CALLCONV PVRSRVDeviceFinalise(PVRSRV_DEVICE_NODE *psDeviceNode,
 		{
 			RGXFWIF_KCCB_CMD	sCmpKCCBCmd;
 #if defined(SUPPORT_AUTOVZ)
+			int retry=0;
 			/* AutoVz Guest drivers expect the firmware to have set its end of the
 			 * connection to Ready state by now. Poll indefinitely otherwise. */
 			if (!KM_FW_CONNECTION_IS(READY, psDevInfo))
 			{
 				PVR_DPF((PVR_DBG_WARNING, "%s: Firmware Connection is not in Ready state. Waiting for Firmware ...", __func__));
 			}
+			
 			while (!KM_FW_CONNECTION_IS(READY, psDevInfo))
 			{
 				OSWaitus(1000000);
+				if(retry==30)
+				{
+					pr_info("%s No GPU-FW Init. system reset required\n",__func__);
+#if defined (SUPPORT_COLD_RESET)
+					setColdReset();
+#endif
+				}
+				retry++;
 			}
 			PVR_DPF((PVR_DBG_MESSAGE, "%s: Firmware Connection is Ready. Initialisation proceeding.", __func__));
 #if defined(SUPPORT_AUTOVZ_HW_REGS)
