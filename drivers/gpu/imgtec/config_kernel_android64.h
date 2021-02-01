@@ -31,6 +31,7 @@
 #define SUPPORT_AUTOVZ
 #define SUPPORT_AUTOVZ_HW_REGS 1 Use dedicated hardware registers for tracking OS states otherwise rely on shared memory._
 #define PVR_AUTOVZ_WDG_PERIOD_MS 3000
+#define SUPPORT_DYNAMIC_DRIVER_MODE
 #define RGX_VZ_STATIC_CARVEOUT_FW_HEAPS
 #else
 #define RGX_NUM_OS_SUPPORTED 1
