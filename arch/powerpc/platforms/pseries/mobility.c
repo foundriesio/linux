@@ -389,7 +389,7 @@ static ssize_t migrate_store(struct class *class, struct class_attribute *attr,
 		return rc;
 
 	do {
-		rc = rtas_ibm_suspend_me(streamid);
+		rc = rtas_ibm_suspend_me_unsafe(streamid);
 		if (rc == -EAGAIN)
 			ssleep(1);
 	} while (rc == -EAGAIN);
