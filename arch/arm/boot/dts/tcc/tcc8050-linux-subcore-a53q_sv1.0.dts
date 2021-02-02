@@ -1615,7 +1615,8 @@
 		compatible = "imagination,powerVR-9XTP";
 		status = "okay";
 		reg = <0x10100000 0x10000>;
-		interrupts = <GIC_SPI 123 IRQ_TYPE_LEVEL_HIGH>;
+		interrupts = <GIC_SPI 123 IRQ_TYPE_LEVEL_HIGH>,
+			     <GIC_SPI 124 IRQ_TYPE_LEVEL_HIGH>;
 		interrupt-names = "GPU";
 		clocks = <&clk_fbus FBUS_GPU>;
 		clock-names = "9XTP_clk";
