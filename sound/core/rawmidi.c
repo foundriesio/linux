@@ -677,6 +677,11 @@ static int resize_runtime_buffer(struct snd_rawmidi_runtime *runtime,
 			kfree(newbuf);
 			return -EBUSY;
 		}
+		if (runtime->buffer_ref) {
+			spin_unlock_irq(&runtime->lock);
+			kfree(newbuf);
+			return -EBUSY;
+		}
 		oldbuf = runtime->buffer;
 		runtime->buffer = newbuf;
 		runtime->buffer_size = params->buffer_size;
