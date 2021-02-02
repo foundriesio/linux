@@ -1224,7 +1224,7 @@ asmlinkage int ppc_rtas(struct rtas_args __user *uargs)
 		int rc = 0;
 		u64 handle = ((u64)be32_to_cpu(args.args[0]) << 32)
 		              | be32_to_cpu(args.args[1]);
-		rc = rtas_ibm_suspend_me_unsafe(handle);
+		rc = rtas_syscall_dispatch_ibm_suspend_me(handle);
 		if (rc == -EAGAIN)
 			args.rets[0] = cpu_to_be32(RTAS_NOT_SUSPENDABLE);
 		else if (rc == -EIO)
