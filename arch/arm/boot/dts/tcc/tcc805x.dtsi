@@ -1373,11 +1373,8 @@
 //		status = "disabled";
 		reg = <0x0 0x10100000 0x0 0x10000>, 	/* 3D Graphic Engine Configuration and Control */
 		      <0x0 0x10010000 0x0 0x30>; 	/* 3D BUS Configuration and Control */
-#if defined(CONFIG_POWERVR_VZ)
-		interrupts = <GIC_SPI 124 IRQ_TYPE_LEVEL_HIGH>;
-#else
-                interrupts = <GIC_SPI 123 IRQ_TYPE_LEVEL_HIGH>;
-#endif
+		interrupts = <GIC_SPI 123 IRQ_TYPE_LEVEL_HIGH>,  /* HostOS */
+			     <GIC_SPI 124 IRQ_TYPE_LEVEL_HIGH>;  /* GuestOS */
 		interrupt-names = "GPU";
 		clocks = <&clk_fbus FBUS_GPU>;
 		clock-names = "9XTP_clk";
