@@ -212,6 +212,14 @@
 		telechips,input_buffer_enable;
 	};
 
+	sd0_strb: sd0_strb {
+		telechips,pins = "gpsd0-10";
+		telechips,pin-function = <1>;
+		telechips,drive-strength = <3>;
+		telechips,pull-down;
+		telechips,input_buffer_enable;
+	};
+
 	/* GPIO SD1 */
 	sd1_clk: sd1_clk {
 		telechips,pins = "gpsd1-0";
