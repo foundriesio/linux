@@ -1262,6 +1262,9 @@
 		disable-wp;
 		cap-mmc-hw-reset;
 		mmc-ddr-1_8v;
+		mmc-hs200-1_8v;
+
+		tcc-mmc-taps = <15 15 15 15>;
 
 		tcc-mmc-reset = <&gpsd0 14 0>;
 
