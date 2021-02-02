@@ -46,7 +46,7 @@ struct tcc_dwc3_device {
 
 	int32_t vbus_gpio_num;
 	ulong vbus_gpio_flag;
-#if defined(CONFIG_TCC_BC_12)
+#if defined(CONFIG_ENABLE_BC_30_HOST)
 	struct work_struct dwc3_work;
 	int32_t irq;
 #endif
@@ -238,8 +238,8 @@ static int32_t tcc_dwc3_vbus_set(struct usb_phy *phy, int32_t on_off)
 	return retval;
 }
 
-#if defined(CONFIG_TCC_BC_12)
-#if defined(CONFIG_ARCH_TCC803x)
+#if defined(CONFIG_ENABLE_BC_30_HOST)
+#if defined(CONFIG_ARCH_TCC803X)
 static void tcc_dwc3_set_chg_det(struct usb_phy *phy)
 {
 	struct tcc_dwc3_device *dwc3_phy_dev =
@@ -303,6 +303,7 @@ static irqreturn_t tcc_dwc3_chg_irq(int32_t irq, void *data)
 
 	// clear irq
 	writel(readl(&USBPHYCFG->U30_PINT) & ~(1 << 22), &USBPHYCFG->U30_PINT);
+
 	schedule_work(&dwc3_phy_dev->dwc3_work);
 
 	return IRQ_HANDLED;
@@ -749,7 +750,7 @@ static int32_t dwc3_tcc_ss_phy_ctrl_native(struct usb_phy *phy, int32_t on_off)
 		} while (((uTmp & 0x0000F000U) == 0U) && (tmp_cnt < 5));
 #endif
 
-#if defined(CONFIG_TCC_BC_12)
+#if defined(CONFIG_ENABLE_BC_30_HOST)
 		writel(readl(&USBPHYCFG->FPHY_PCFG4) | (1 << 31),
 				&USBPHYCFG->FPHY_PCFG4); // clear irq
 		writel(readl(&USBPHYCFG->FPHY_PCFG4) & ~(1 << 30),
@@ -993,7 +994,7 @@ static int32_t tcc_dwc3_create_phy(struct device *dev,
 #else
 	phy_dev->phy.set_phy_state     = &dwc3_tcc_phy_ctrl_native;
 #endif
-#if defined(CONFIG_TCC_BC_12)
+#if defined(CONFIG_ENABLE_BC_30_HOST)
 	phy_dev->phy.set_chg_det       = &tcc_dwc3_set_chg_det;
 #endif
 	phy_dev->phy.set_vbus_resource = &tcc_dwc3_set_vbus_resource;
@@ -1012,7 +1013,7 @@ static int32_t tcc_dwc3_phy_probe(struct platform_device *pdev)
 	struct device *dev;
 	struct tcc_dwc3_device *phy_dev;
 	int32_t retval;
-#if defined(CONFIG_TCC_BC_12)
+#if defined(CONFIG_ENABLE_BC_30_HOST)
 	int32_t irq, ret = 0;
 #endif
 	if (pdev == NULL) {
@@ -1027,7 +1028,7 @@ static int32_t tcc_dwc3_phy_probe(struct platform_device *pdev)
 		dev_err(&pdev->dev, "[ERROR][USB] error create phy\n");
 		return retval;
 	}
-#if defined(CONFIG_TCC_BC_12)
+#if defined(CONFIG_ENABLE_BC_30_HOST)
 	irq = platform_get_irq(pdev, 0);
 
 	if (irq <= 0) {
@@ -1052,7 +1053,7 @@ static int32_t tcc_dwc3_phy_probe(struct platform_device *pdev)
 			(size_t)(pdev->resource[0].end - pdev->resource[0].start + 1U));
 
 	phy_dev->phy.base = phy_dev->base;
-#if defined(CONFIG_TCC_BC_12)
+#if defined(CONFIG_ENABLE_BC_30_HOST)
 	ret = devm_request_irq(&pdev->dev, phy_dev->irq, tcc_dwc3_chg_irq,
 			IRQF_SHARED, pdev->dev.kobj.name, phy_dev);
 	if (ret) {

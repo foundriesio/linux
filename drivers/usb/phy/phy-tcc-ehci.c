@@ -38,7 +38,7 @@ struct tcc_ehci_device {
 	int32_t mux_port;
 	int32_t vbus_gpio_num;
 	ulong vbus_gpio_flag;
-#if defined(CONFIG_TCC_BC_12)
+#if defined(CONFIG_ENABLE_BC_20_HOST)
 	int irq;
 #endif
 };
@@ -190,7 +190,7 @@ static int tcc_ehci_set_dc_level(struct usb_phy *phy, uint32_t level)
 }
 #endif
 
-#if defined(CONFIG_TCC_BC_12)
+#if defined(CONFIG_ENABLE_BC_20_HOST)
 static void tcc_ehci_set_chg_det(struct usb_phy *phy)
 {
 	struct tcc_ehci_device *ehci_phy_dev =
@@ -373,7 +373,7 @@ static int32_t tcc_ehci_phy_init(struct usb_phy *phy)
 	phy->set_dc_voltage_level(phy, CONFIG_USB_HS_DC_VOLTAGE_LEVEL);
 #endif
 
-#if defined(CONFIG_TCC_BC_12)
+#if defined(CONFIG_ENABLE_BC_20_HOST)
 	// clear irq
 	writel(readl(&ehci_pcfg->pcfg4) | (1 << 31), &ehci_pcfg->pcfg4);
 	dev_info(ehci_phy_dev->dev, "[INFO][USB] %s : Not Mux host\n",
@@ -569,7 +569,7 @@ static int32_t tcc_ehci_create_phy(struct device *dev,
 	phy_dev->phy.get_dc_voltage_level = tcc_ehci_get_dc_level;
 	phy_dev->phy.set_dc_voltage_level = tcc_ehci_set_dc_level;
 #endif
-#if defined(CONFIG_TCC_BC_12)
+#if defined(CONFIG_ENABLE_BC_20_HOST)
 	phy_dev->phy.set_chg_det	  = tcc_ehci_set_chg_det;
 #endif
 	phy_dev->phy.otg->usb_phy	  = &phy_dev->phy;
@@ -585,7 +585,7 @@ static int32_t tcc_ehci_phy_probe(struct platform_device *pdev)
 	struct device *dev = &pdev->dev;
 	struct tcc_ehci_device *phy_dev;
 	int32_t retval;
-#if defined(CONFIG_TCC_BC_12)
+#if defined(CONFIG_ENABLE_BC_20_HOST)
 	int32_t irq, ret = 0;
 #endif
 	dev_info(dev, "[INFO][USB] %s:%s\n", pdev->dev.kobj.name, __func__);
@@ -595,7 +595,7 @@ static int32_t tcc_ehci_phy_probe(struct platform_device *pdev)
 	if (retval != 0) {
 		return retval;
 	}
-#if defined(CONFIG_TCC_BC_12)
+#if defined(CONFIG_ENABLE_BC_20_HOST)
 	irq = platform_get_irq(pdev, 0);
 	if (irq <= 0) {
 		dev_err(&pdev->dev, "[ERROR][USB] Found HC with no IRQ. Check %s setup!\n",
@@ -619,7 +619,7 @@ static int32_t tcc_ehci_phy_probe(struct platform_device *pdev)
 			pdev->resource[0].end - pdev->resource[0].start + 1U);
 
 	phy_dev->phy.base = phy_dev->base;
-#if defined(CONFIG_TCC_BC_12)
+#if defined(CONFIG_ENABLE_BC_20_HOST)
 	ret = devm_request_irq(&pdev->dev, phy_dev->irq, chg_irq,
 			IRQF_SHARED, pdev->dev.kobj.name, phy_dev);
 	if (ret) {
