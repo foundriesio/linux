@@ -189,6 +189,7 @@ PVRSRV_DATA *PVRSRVGetPVRSRVData(void);
 
 
 #define PVRSRV_VZ_MODE_IS(_expr)              (DRIVER_MODE_##_expr == PVRSRVGetPVRSRVData()->eDriverMode)
+#define PVRSRV_VZ_MODE_SET(_expr)              (PVRSRVGetPVRSRVData()->eDriverMode = DRIVER_MODE_##_expr)
 #define PVRSRV_VZ_RETN_IF_MODE(_expr)         do { if (  PVRSRV_VZ_MODE_IS(_expr)) { return; } } while (0)
 #define PVRSRV_VZ_RETN_IF_NOT_MODE(_expr)     do { if (! PVRSRV_VZ_MODE_IS(_expr)) { return; } } while (0)
 #define PVRSRV_VZ_RET_IF_MODE(_expr, _rc)     do { if (  PVRSRV_VZ_MODE_IS(_expr)) { return (_rc); } } while (0)
@@ -492,5 +493,7 @@ PVRSRV_ERROR PVRSRVPhysMemHeapsInit(PVRSRV_DEVICE_NODE *psDeviceNode, PVRSRV_DEV
 									error code
 ******************************************************************************/
 void PVRSRVPhysMemHeapsDeinit(PVRSRV_DEVICE_NODE *psDeviceNode);
+
+IMG_UINT32 GetApphintDriverMode(void);
 
 #endif /* PVRSRV_H */
