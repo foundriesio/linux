@@ -1055,13 +1055,9 @@ struct topology_update_data {
 	int new_nid;
 };
 
-#define TOPOLOGY_DEF_TIMER_SECS	60
-
 static cpumask_t cpu_associativity_changes_mask;
 static const int vphn_enabled;
 static const int prrn_enabled;
-static void reset_topology_timer(void);
-static int topology_timer_secs = 1;
 static int topology_inited;
 
 static long hcall_vphn(unsigned long cpu, u64 flags, __be32 *associativity)
@@ -1080,15 +1076,6 @@ static long hcall_vphn(unsigned long cpu, u64 flags, __be32 *associativity)
  */
 int timed_topology_update(int nsecs)
 {
-	if (vphn_enabled) {
-		if (nsecs > 0)
-			topology_timer_secs = nsecs;
-		else
-			topology_timer_secs = TOPOLOGY_DEF_TIMER_SECS;
-
-		reset_topology_timer();
-	}
-
 	return 0;
 }
 
@@ -1366,16 +1353,6 @@ static DECLARE_WORK(topology_work, topology_work_fn);
 static void topology_schedule_update(void)
 {
 	schedule_work(&topology_work);
-}
-
-static struct timer_list topology_timer =
-	TIMER_INITIALIZER(topology_timer_fn, 0, 0);
-
-static void reset_topology_timer(void)
-{
-	topology_timer.data = 0;
-	topology_timer.expires = jiffies + topology_timer_secs * HZ;
-	mod_timer(&topology_timer, topology_timer.expires);
 }
 
 /*
