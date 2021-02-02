@@ -89,6 +89,7 @@ static inline int numa_update_cpu_topology(bool cpus_locked)
 
 static inline void update_numa_cpu_lookup_table(unsigned int cpu, int node) {}
 
+
 static inline int of_drconf_to_nid_single(struct drmem_lmb *lmb)
 {
 	return first_online_node;
@@ -97,19 +98,9 @@ static inline int of_drconf_to_nid_single(struct drmem_lmb *lmb)
 #endif /* CONFIG_NUMA */
 
 #if defined(CONFIG_NUMA) && defined(CONFIG_PPC_SPLPAR)
-extern int start_topology_update(void);
-extern int stop_topology_update(void);
 extern int prrn_is_enabled(void);
 extern int find_and_online_cpu_nid(int cpu);
 #else
-static inline int start_topology_update(void)
-{
-	return 0;
-}
-static inline int stop_topology_update(void)
-{
-	return 0;
-}
 static inline int prrn_is_enabled(void)
 {
 	return 0;
