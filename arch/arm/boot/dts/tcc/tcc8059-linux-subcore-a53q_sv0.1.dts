@@ -1366,11 +1366,11 @@
 			#address-cells = <1>;
 			#size-cells = <0>;
 			/*
-			 * 0 ~ 3
+			 * 0
 			 * input port.
 			 *
-			 * 4
-			 * output ports. The number is matched with VC
+			 * 1 ~ 4
+			 * output ports. (1: VC0 ~ 4: VC3)
 			 */
 			port@0 {
 				reg = <0>;
