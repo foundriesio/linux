@@ -56,8 +56,6 @@ struct tcc_sc_ufs_host {
 	struct ufs_host *ufs;	/* ufs structure */
 	u64 dma_mask;		/* custom DMA mask */
 
-	struct workqueue_struct *ufs_tcc_wq;
-	struct work_struct request_work;
 	struct tasklet_struct finish_tasklet;	/* Tasklet structures */
 	struct timer_list timer;	/* Timer for timeouts */
 
@@ -88,24 +86,12 @@ static bool tcc_sc_ufs_transfer_req_compl(struct tcc_sc_ufs_host *host)
 
 	dev_dbg(host->dev, "%s : sg_count = %d\n", __func__, cmd->sdb.table.nents);
 	scsi_dma_unmap(cmd);
-	cmd->result = 0;//result;
+	cmd->result = 0;
 	/* Mark completed command as NULL in LRB */
 	host->cmd = NULL;
 	/* Do not touch lrbp after scsi done */
 	cmd->scsi_done(cmd);
 
-#if 0
-	if (ufshcd_is_clkscaling_supported(hba))
-		hba->clk_scaling.active_reqs--;
-
-	/* clear corresponding bits of completed commands */
-	hba->outstanding_reqs ^= completed_reqs;
-
-	ufshcd_clk_scaling_update_busy(hba);
-
-	/* we might have free'd some tags above */
-	wake_up(&hba->dev_cmd.tag_wq);
-#endif
 	spin_unlock_irqrestore(&host->lock, flags);
 
 	return (bool)false;
@@ -129,97 +115,11 @@ static uint32_t tcc_sc_ufs_scsi_to_upiu_lun(uint32_t scsi_lun)
 	}
 }
 
-static void tcc_sc_ufs_queuecommand(struct work_struct *work)
+static void tcc_sc_ufs_complete(void *args, void *msg)
 {
-	struct tcc_sc_ufs_host *sc_host;
-	struct scsi_cmnd *scsi_cmd;
-	int32_t tag;
-	int32_t ret;
-	const struct tcc_sc_fw_handle *handle;
-	struct tcc_sc_fw_ufs_cmd sc_cmd;
-	uint32_t direction;
+	struct tcc_sc_ufs_host *sc_host = (struct tcc_sc_ufs_host *)args;
+	int *rx_msg = (int *)msg;
 
-	if (work == NULL) {
-		(void)pr_err("%s:[ERROR][TCC_SC_ufs] No work\n", __func__);
-		return;
-	}
-	sc_host = container_of(work, struct tcc_sc_ufs_host, request_work);
-
-	if (sc_host == NULL) {
-		(void)pr_err("%s:[ERROR][TCC_SC_ufs] No sc_host\n", __func__);
-		return;
-	}
-
-	scsi_cmd = sc_host->cmd;
-
-	handle = sc_host->handle;
-	tag = scsi_cmd->request->tag;
-	if (!((tag >= 0) && (tag < sc_host->nutrs))) {
-		dev_err(sc_host->dev,
-			"%s: invalid command tag %d: cmd=0x%p, cmd->request=0x%p",
-			__func__, tag, scsi_cmd, scsi_cmd->request);
-		BUG();
-	}
-
-	sc_cmd.blocks = 4096;
-	sc_cmd.datsz = scsi_cmd->sdb.length;
-	sc_cmd.lba = (uint32_t)(((uint32_t)scsi_cmd->cmnd[2] << 24u) | ((uint32_t)scsi_cmd->cmnd[3] << 16u)
-		| ((uint32_t)scsi_cmd->cmnd[4] << 8u) | (uint32_t)scsi_cmd->cmnd[5]);
-
-	sc_cmd.op = scsi_cmd->cmnd[0];
-
-	if (scsi_cmd->sc_data_direction == DMA_FROM_DEVICE) {
-		direction = 1;
-	} else if (scsi_cmd->sc_data_direction == DMA_TO_DEVICE) {
-		direction = 0;
-	} else {
-		direction = 2;
-	}
-
-
-	sc_cmd.dir = direction;
-	sc_cmd.lun = (uint32_t)(tcc_sc_ufs_scsi_to_upiu_lun((uint32_t)scsi_cmd->device->lun));
-	sc_cmd.tag = (uint32_t)tag;
-	sc_cmd.sg_count = scsi_dma_map(scsi_cmd);
-	sc_cmd.sg = scsi_cmd->sdb.table.sgl;
-	(void)memcpy(sc_host->scsi_cdb_base_addr, scsi_cmd->cmnd, 16);
-	sc_cmd.cdb = (uint32_t)sc_host->scsi_cdb_dma_addr;
-	(void)memcpy(&sc_cmd.cdb0, &scsi_cmd->cmnd[0], 4);
-	(void)memcpy(&sc_cmd.cdb1, &scsi_cmd->cmnd[4], 4);
-	(void)memcpy(&sc_cmd.cdb2, &scsi_cmd->cmnd[8], 4);
-	(void)memcpy(&sc_cmd.cdb3, &scsi_cmd->cmnd[12], 4);
-
-#if 0
-	dev_dbg(sc_host->dev, "sg_count = %d, datsz = 0x%x, lba = 0x%x, lun = %d, op = %x, direction = %d, tag = %d\n", sc_cmd.sg_count, sc_cmd.datsz, sc_cmd.lba, tcc_sc_ufs_scsi_to_upiu_lun(scsi_cmd->device->lun),sc_cmd.op, direction, tag);
-#endif
-
-	if (handle == NULL) {
-		BUG();
-	}
-
-	ret = handle->ops.ufs_ops->request_command(handle, &sc_cmd);
-#if 0
-	if(ret != 0) {
-		mrq->cmd->error = ret;
-	} else {
-		mrq->cmd->resp[0] = cmd.resp[0];
-		mrq->cmd->resp[1] = cmd.resp[1];
-		mrq->cmd->resp[2] = cmd.resp[2];
-		mrq->cmd->resp[3] = cmd.resp[3];
-		mrq->cmd->error = cmd.error;
-
-		if(mrq->cmd->data != NULL) {
-			mrq->cmd->data->error = data.error;
-			if(mrq->cmd->data->error == 0) {
-				mrq->cmd->data->bytes_xfered = data.datsz * data.blocks;
-			}
-		}
-	}
-#else
-	if(ret != 0) {
-		dev_err(sc_host->dev,"error retuned(%d)\n", ret);
-	}
-#endif
 	/* Finish request */
 	tasklet_schedule(&sc_host->finish_tasklet);
 }
@@ -227,6 +127,11 @@ static void tcc_sc_ufs_queuecommand(struct work_struct *work)
 static int tcc_sc_ufs_queuecommand_sc(struct Scsi_Host *host, struct scsi_cmnd *cmd)
 {
 	struct tcc_sc_ufs_host *sc_host;
+	int32_t tag;
+	int32_t ret;
+	const struct tcc_sc_fw_handle *handle;
+	struct tcc_sc_fw_ufs_cmd sc_cmd;
+	uint32_t direction;
 
 	if(host == NULL) {
 		(void)pr_err("%s: [ERROR][TCC_SC_UFS] scsi_host is null\n", __func__);
@@ -247,11 +152,58 @@ static int tcc_sc_ufs_queuecommand_sc(struct Scsi_Host *host, struct scsi_cmnd *
 	}
 
 	sc_host->cmd = cmd;
+	handle = sc_host->handle;
+	tag = cmd->request->tag;
+	if (!((tag >= 0) && (tag < sc_host->nutrs))) {
+		dev_err(sc_host->dev,
+			"%s: invalid command tag %d: cmd=0x%p, cmd->request=0x%p",
+			__func__, tag, cmd, cmd->request);
+		BUG();
+	}
 
-	/* queue work */
-	(void)queue_work(sc_host->ufs_tcc_wq, &sc_host->request_work);
+	sc_cmd.blocks = 4096;
+	sc_cmd.datsz = cmd->sdb.length;
+	sc_cmd.lba = (uint32_t)(((uint32_t)cmd->cmnd[2] << 24u) |
+		((uint32_t)cmd->cmnd[3] << 16u) |
+		((uint32_t)cmd->cmnd[4] << 8u) | (uint32_t)cmd->cmnd[5]);
 
-	return 0;
+	sc_cmd.op = cmd->cmnd[0];
+
+	if (cmd->sc_data_direction == DMA_FROM_DEVICE) {
+		direction = 1;
+	} else if (cmd->sc_data_direction == DMA_TO_DEVICE) {
+		direction = 0;
+	} else {
+		direction = 2;
+	}
+
+	sc_cmd.dir = direction;
+	sc_cmd.lun = (uint32_t)(tcc_sc_ufs_scsi_to_upiu_lun((uint32_t)cmd->device->lun));
+	sc_cmd.tag = (uint32_t)tag;
+	sc_cmd.sg_count = scsi_dma_map(cmd);
+	sc_cmd.sg = cmd->sdb.table.sgl;
+	(void)memcpy(sc_host->scsi_cdb_base_addr, cmd->cmnd, 16);
+	sc_cmd.cdb = (uint32_t)sc_host->scsi_cdb_dma_addr;
+	(void)memcpy(&sc_cmd.cdb0, &cmd->cmnd[0], 4);
+	(void)memcpy(&sc_cmd.cdb1, &cmd->cmnd[4], 4);
+	(void)memcpy(&sc_cmd.cdb2, &cmd->cmnd[8], 4);
+	(void)memcpy(&sc_cmd.cdb3, &cmd->cmnd[12], 4);
+
+
+	if (handle == NULL) {
+		BUG();
+	}
+
+	ret = handle->ops.ufs_ops->request_command(handle, &sc_cmd,
+									tcc_sc_ufs_complete, sc_host);
+
+	if(ret < 0) {
+		dev_err(sc_host->dev,"error retuned(%d)\n", ret);
+	} else {
+		ret = 0;
+	}
+
+	return ret;
 }
 
 static int32_t tcc_sc_ufs_set_dma_mask(struct tcc_sc_ufs_host *host)
@@ -308,7 +260,6 @@ static int tcc_sc_ufs_slave_configure(struct scsi_device *sdev)
 
 static void tcc_sc_ufs_slave_destroy(struct scsi_device *sdev)
 {
-	//do nothing.
 	if(sdev == NULL) {
 		(void)pr_err("%s:[ERROR]No scsi dev\n", __func__);
 	}
@@ -355,12 +306,10 @@ static struct scsi_host_template tcc_sc_ufs_driver_template = {
 	.proc_name		= "tcc-sc-ufs",
 	.queuecommand		= tcc_sc_ufs_queuecommand_sc,
 	.eh_device_reset_handler = tcc_sc_ufs_eh_device_reset_handler,
-//	.eh_host_reset_handler	= NULL, //tcc_sc_ufs_eh_host_reset_handler,
 	.slave_alloc		= tcc_sc_ufs_slave_alloc,
 	.slave_configure	= tcc_sc_ufs_slave_configure,
 	.slave_destroy		= tcc_sc_ufs_slave_destroy,
 	.change_queue_depth	= tcc_sc_ufs_change_queue_depth,
-//	.eh_timed_out		= NULL, //tcc_sc_ufs_eh_timed_out,
 	.this_id		= -1,
 	.sg_tablesize		= 60,//SG_ALL
 	.cmd_per_lun		= 32,//UFSHCD_CMD_PER_LUN,
@@ -431,12 +380,7 @@ static int tcc_sc_ufs_probe(struct platform_device *pdev)
 	host->scsi_host = scsi_host;
 	host->nutrs = 1;
 	init_rwsem(&host->clk_scaling_lock);
-#if 0
-	if(handle->ops.ufs_ops->request_command == NULL) {
-		dev_err(&pdev->dev, "[ERROR][TCC_SC_ufs] request_command is not registered\n");
-		return -ENODEV;
-	}
-#endif
+
 	scsi_host->can_queue = host->nutrs;
 	scsi_host->cmd_per_lun = (int16_t)host->nutrs;
 	scsi_host->max_id = 1;//UFSHCD_MAX_ID;
@@ -450,21 +394,8 @@ static int tcc_sc_ufs_probe(struct platform_device *pdev)
 						  &host->scsi_cdb_dma_addr,
 						  GFP_KERNEL);
 
-	/*
-	 * Init tasklets.
-	 */
 	tasklet_init(&host->finish_tasklet,
 		tcc_sc_ufs_tasklet_finish, (unsigned long)host);
-
-	/*
-	 * Init workqueue.
-	 */
-	INIT_WORK(&host->request_work, tcc_sc_ufs_queuecommand);
-	host->ufs_tcc_wq = alloc_workqueue("ufs_tcc_sc", 0, 0);
-	if(host->ufs_tcc_wq == NULL) {
-		dev_err(&pdev->dev, "[ERROR][TCC_SC_ufs] ufs: failed to allocate wq\n");
-		return -ENOMEM;
-	}
 
 	platform_set_drvdata(pdev, host);
 

@@ -466,13 +466,13 @@ static s32 tcc_sc_fw_cmd_get_mmc_prot_info(
 	return ret;
 }
 
-static s32 tcc_sc_fw_cmd_request_ufs_cmd(const struct tcc_sc_fw_handle *handle,
-					 struct tcc_sc_fw_ufs_cmd *sc_cmd)
+int tcc_sc_fw_cmd_request_ufs_cmd(const struct tcc_sc_fw_handle *handle,
+					 struct tcc_sc_fw_ufs_cmd *sc_cmd,
+					 void (*complete)(void *, void *), void *args)
 {
 	struct tcc_sc_fw_info *info = NULL;
 	struct tcc_sc_fw_xfer *xfer;
 	struct tcc_sc_fw_cmd req_cmd = { 0, };
-	struct tcc_sc_fw_cmd res_cmd = { 0, };
 	struct scatterlist *sg;
 	dma_addr_t addr;
 	s32 ret, i;
@@ -486,8 +486,6 @@ static s32 tcc_sc_fw_cmd_request_ufs_cmd(const struct tcc_sc_fw_handle *handle,
 	if (info == NULL)
 		return -EINVAL;
 
-	//trace_tcc_sc_fw_start_ufs_req(cmd, data);
-
 	xfer = get_tcc_sc_fw_xfer(info);
 	if(xfer == NULL)
 		return -ENOMEM;
@@ -498,8 +496,8 @@ static s32 tcc_sc_fw_cmd_request_ufs_cmd(const struct tcc_sc_fw_handle *handle,
 	req_cmd.cid = info->cid;
 	req_cmd.cmd = TCC_SC_CMD_REQ_UFS_REQ;
 	req_cmd.args[0] = sc_cmd->datsz;
-	req_cmd.args[1] = (u32)sc_cmd->sg_count;	//sc_cmd->cdb;
-	req_cmd.args[2] = sc_cmd->lba;	//reserved
+	req_cmd.args[1] = (u32)sc_cmd->sg_count;
+	req_cmd.args[2] = sc_cmd->lba;
 	req_cmd.args[3] = sc_cmd->lun;
 	req_cmd.args[4] = sc_cmd->tag;
 	req_cmd.args[5] = sc_cmd->dir;
@@ -512,7 +510,6 @@ static s32 tcc_sc_fw_cmd_request_ufs_cmd(const struct tcc_sc_fw_handle *handle,
 	xfer->tx_mssg.data_buf[1] = sc_cmd->cdb1;
 	xfer->tx_mssg.data_buf[2] = sc_cmd->cdb2;
 	xfer->tx_mssg.data_buf[3] = sc_cmd->cdb3;
-				//(u32) sc_cmd->sg_count;
 
 	for_each_sg((sc_cmd->sg), (sg), sc_cmd->sg_count, i) {
 		addr = sg_dma_address(sg);
@@ -521,28 +518,12 @@ static s32 tcc_sc_fw_cmd_request_ufs_cmd(const struct tcc_sc_fw_handle *handle,
 		    (u32)addr;
 		xfer->tx_mssg.data_buf[5U + ((u32) i * 2U)] = len;
 	}
+
 	xfer->tx_mssg.data_len = (u32)(4U + ((u32) i * 2U));
 
-	ret = tcc_sc_fw_xfer_sync(info, xfer, &res_cmd);
-	if (ret != 0) {
-		dev_err(info->dev,
-			"[ERROR][TCC_SC_FW] Failed to send mbox CMD %d LEN %d(%d)\n",
-			req_cmd.cmd, xfer->tx_mssg.cmd_len, ret);
-	} else {
-		if ((res_cmd.bsid != info->bsid)
-		    || (res_cmd.cid != (u8)TCC_SC_CID_SC)) {
-			dev_err(info->dev,
-				"[ERROR][TCC_SC_FW] Receive NAK for CMD 0x%x (BSID 0x%x CID 0x%x)\n",
-				req_cmd.cmd, res_cmd.bsid, res_cmd.cid);
-			ret = -ENODEV;
-		} else {
-			sc_cmd->resp[0] = res_cmd.args[0];
-			sc_cmd->resp[1] = res_cmd.args[1];
-			sc_cmd->resp[2] = res_cmd.args[2];
-			sc_cmd->resp[3] = res_cmd.args[3];
-			sc_cmd->error = (s32)res_cmd.args[4];
-		}
-	}
+	xfer->complete = complete;
+	xfer->args = args;
+	ret = tcc_sc_fw_xfer_async(info, xfer);
 
 	return ret;
 }
