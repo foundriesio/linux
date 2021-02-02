@@ -24,6 +24,9 @@
 #include <asm/hypervisor.h>
 #include <asm/hyperv-tlfs.h>
 #include <asm/mshyperv.h>
+#ifndef __GENKSYMS__ /* kABI workaround for SLE kernel */
+#include <linux/kexec.h>
+#endif
 #include <linux/version.h>
 #include <linux/vmalloc.h>
 #include <linux/mm.h>
@@ -32,6 +35,8 @@
 #include <linux/kernel.h>
 #include <linux/cpuhotplug.h>
 #include <clocksource/hyperv_timer.h>
+
+int hyperv_init_cpuhp;
 
 void *hv_hypercall_pg;
 EXPORT_SYMBOL_GPL(hv_hypercall_pg);
@@ -316,6 +321,8 @@ void __init hyperv_init(void)
 
 	/* Register Hyper-V specific clocksource */
 	hv_init_clocksource();
+
+	hyperv_init_cpuhp = cpuhp;
 	return;
 
 remove_cpuhp_state:

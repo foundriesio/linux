@@ -504,8 +504,10 @@ static unsigned int aq_nic_map_skb(struct aq_nic_s *self,
 				     dx_buff->len,
 				     DMA_TO_DEVICE);
 
-	if (unlikely(dma_mapping_error(aq_nic_get_dev(self), dx_buff->pa)))
+	if (unlikely(dma_mapping_error(aq_nic_get_dev(self), dx_buff->pa))) {
+		ret = 0;
 		goto exit;
+	}
 
 	dx_buff->len_pkt = skb->len;
 	dx_buff->is_sop = 1U;
@@ -636,9 +638,6 @@ int aq_nic_xmit(struct aq_nic_s *self, struct sk_buff *skb)
 		if (err >= 0) {
 			if (aq_ring_avail_dx(ring) < AQ_CFG_SKB_FRAGS_MAX + 1)
 				aq_nic_ndev_queue_stop(self, ring->idx);
-
-			++ring->stats.tx.packets;
-			ring->stats.tx.bytes += skb->len;
 		}
 	} else {
 		err = NETDEV_TX_BUSY;
