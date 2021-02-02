@@ -98,13 +98,8 @@ static inline int of_drconf_to_nid_single(struct drmem_lmb *lmb)
 #endif /* CONFIG_NUMA */
 
 #if defined(CONFIG_NUMA) && defined(CONFIG_PPC_SPLPAR)
-extern int prrn_is_enabled(void);
 extern int find_and_online_cpu_nid(int cpu);
 #else
-static inline int prrn_is_enabled(void)
-{
-	return 0;
-}
 static inline int find_and_online_cpu_nid(int cpu)
 {
 	return 0;
