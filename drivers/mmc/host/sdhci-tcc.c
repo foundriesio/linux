@@ -829,7 +829,7 @@ static int sdhci_tcc803x_set_core_clock(struct sdhci_host *host)
 			div = 1;
 			while (1) {
 				if (core_clock < (peri_clock / (div + 1u))) {
-					div = div + 3u;
+					div = div + 1u;
 				} else {
 					break;
 				}
