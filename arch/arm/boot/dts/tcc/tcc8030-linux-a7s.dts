@@ -51,6 +51,9 @@
 		videoinput1 = &videoinput1;
 		videoinput2 = &videoinput2;
 		videoinput3 = &videoinput3;
+		videoinput4 = &videoinput4;
+		videoinput5 = &videoinput5;
+		videoinput6 = &videoinput6;
 		i2s0 = &i2s0;
 		adma0 = &adma0;
 #if defined(CONFIG_OVERLAY1)
