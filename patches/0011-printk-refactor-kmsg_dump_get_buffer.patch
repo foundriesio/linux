@@ -59,9 +59,9 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 +	prb_for_each_info(dumper->cur_seq, prb, seq, &info, &line_count) {
 +		if (info.seq >= dumper->next_seq)
  			break;
--		l += get_record_print_text_size(&info, line_count, true, time);
+-		l += get_record_print_text_size(&info, line_count, syslog, time);
 -		seq = r.info->seq + 1;
-+		len += get_record_print_text_size(&info, line_count, true, time);
++		len += get_record_print_text_size(&info, line_count, syslog, time);
  	}
  
 -	/* move first record forward until length fits into the buffer */
@@ -78,9 +78,9 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 +	prb_for_each_info(dumper->cur_seq, prb, seq, &info, &line_count) {
 +		if (len <= size || info.seq >= dumper->next_seq)
  			break;
--		l -= get_record_print_text_size(&info, line_count, true, time);
+-		l -= get_record_print_text_size(&info, line_count, syslog, time);
 -		seq = r.info->seq + 1;
-+		len -= get_record_print_text_size(&info, line_count, true, time);
++		len -= get_record_print_text_size(&info, line_count, syslog, time);
  	}
  
 -	/* last message in next interation */
