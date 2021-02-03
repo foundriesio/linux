@@ -84,7 +84,7 @@ static int s390_iommu_attach_device(struct iommu_domain *domain,
 				    struct device *dev)
 {
 	struct s390_domain *s390_domain = to_s390_domain(domain);
-	struct zpci_dev *zdev = to_pci_dev(dev)->sysdata;
+	struct zpci_dev *zdev = to_zpci_dev(dev);
 	struct s390_domain_device *domain_device;
 	unsigned long flags;
 	int rc;
@@ -136,7 +136,7 @@ static void s390_iommu_detach_device(struct iommu_domain *domain,
 				     struct device *dev)
 {
 	struct s390_domain *s390_domain = to_s390_domain(domain);
-	struct zpci_dev *zdev = to_pci_dev(dev)->sysdata;
+	struct zpci_dev *zdev = to_zpci_dev(dev);
 	struct s390_domain_device *domain_device, *tmp;
 	unsigned long flags;
 	int found = 0;
@@ -183,7 +183,7 @@ static int s390_iommu_add_device(struct device *dev)
 
 static void s390_iommu_remove_device(struct device *dev)
 {
-	struct zpci_dev *zdev = to_pci_dev(dev)->sysdata;
+	struct zpci_dev *zdev = to_zpci_dev(dev);
 	struct iommu_domain *domain;
 
 	/*
