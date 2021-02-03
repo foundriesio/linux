@@ -286,6 +286,12 @@
 		#size-cells = <2>;
 		ranges;
 
+		resume_context {
+			/* Memory to store resume context for STR */
+			reg = <0x0 0x20000000 0x0 0x00001000>;
+			no-map;
+		};
+
 		pmap_a53_avm: a53_avm {
 			compatible = "telechips,pmap";
 			telechips,pmap-name = "subcore kernel";
