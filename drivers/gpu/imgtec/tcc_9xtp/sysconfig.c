@@ -287,7 +287,7 @@ PVRSRV_ERROR SysDevInit(void *pvOSDevice, PVRSRV_DEVICE_CONFIG **ppsDevConfig)
 	/* under AutoVz, if the FW-KM state tracking is done using hardware registers, the FwConnectionCtl structures allocated at the start of
 	 * every VM's Firmware Config Heap are reserved but not used. FwConnectionCtl is allocated from a dedicated memory page that is never cleared.
 	 * In this special page belonging to OSID1 we will store the state variables required for arbitrating which VM gets to be Host. */
-	gpsHostArbitrationCtrl = (HOST_ARBITRATION_CTRL *)ioremap(IMG_UINT64_C(0x90000000)+RGX_FIRMWARE_RAW_HEAP_SIZE, 4096);
+	gpsHostArbitrationCtrl = (HOST_ARBITRATION_CTRL *)ioremap(IMG_UINT64_C(0x80000000)+RGX_FIRMWARE_RAW_HEAP_SIZE, 4096);
 
 	if (ShouldEnterHostMode())
 	{
@@ -417,13 +417,13 @@ PVRSRV_ERROR SysDevInit(void *pvOSDevice, PVRSRV_DEVICE_CONFIG **ppsDevConfig)
 		/* Set FW_CARVEOUT_IPA_BASE Address */
 		if (PVRSRV_VZ_MODE_IS(HOST))
 		{
-			gsPhysHeapConfig[PHYS_HEAP_IDX_CARVEOUT].pasRegions->sStartAddr.uiAddr = IMG_UINT64_C(0x90000000); // pmap_pvr_vz.base;
-			gsPhysHeapConfig[PHYS_HEAP_IDX_CARVEOUT].pasRegions->sCardBase.uiAddr = IMG_UINT64_C(0x90000000); // pmap_pvr_vz.base;
+			gsPhysHeapConfig[PHYS_HEAP_IDX_CARVEOUT].pasRegions->sStartAddr.uiAddr = IMG_UINT64_C(0x80000000); // pmap_pvr_vz.base;
+			gsPhysHeapConfig[PHYS_HEAP_IDX_CARVEOUT].pasRegions->sCardBase.uiAddr = IMG_UINT64_C(0x80000000); // pmap_pvr_vz.base;
 		}
 		else
 		{
-			gsPhysHeapConfig[PHYS_HEAP_IDX_CARVEOUT].pasRegions->sStartAddr.uiAddr = IMG_UINT64_C(0x90000000)+RGX_FIRMWARE_RAW_HEAP_SIZE;
-			gsPhysHeapConfig[PHYS_HEAP_IDX_CARVEOUT].pasRegions->sCardBase.uiAddr = IMG_UINT64_C(0x90000000)+RGX_FIRMWARE_RAW_HEAP_SIZE;
+			gsPhysHeapConfig[PHYS_HEAP_IDX_CARVEOUT].pasRegions->sStartAddr.uiAddr = IMG_UINT64_C(0x80000000)+RGX_FIRMWARE_RAW_HEAP_SIZE;
+			gsPhysHeapConfig[PHYS_HEAP_IDX_CARVEOUT].pasRegions->sCardBase.uiAddr = IMG_UINT64_C(0x80000000)+RGX_FIRMWARE_RAW_HEAP_SIZE;
 		}
 	}
 	/* Device's physical heaps */
