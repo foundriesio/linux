@@ -416,7 +416,6 @@ struct pci_dev {
 	unsigned int	has_secondary_link:1;
 	unsigned int	non_compliant_bars:1;	/* broken BARs; ignore them */
 	unsigned int	no_vf_scan:1;		/* Don't scan for VFs after IOV enablement */
-	unsigned int	no_command_memory:1;	/* No PCI_COMMAND_MEMORY */
 	pci_dev_flags_t dev_flags;
 	atomic_t	enable_cnt;	/* pci_enable_device has been called */
 
@@ -462,6 +461,10 @@ struct pci_dev {
 	char *driver_override; /* Driver name to force a match */
 
 	unsigned long priv_flags; /* Private flags for the pci driver */
+
+#ifndef __GENKSYMS__
+	unsigned int	no_command_memory:1;	/* No PCI_COMMAND_MEMORY */
+#endif
 };
 
 static inline struct pci_dev *pci_physfn(struct pci_dev *dev)
