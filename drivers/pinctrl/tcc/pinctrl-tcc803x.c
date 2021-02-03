@@ -89,8 +89,14 @@ static struct tcc_pinctrl_soc_data tcc803x_pinctrl_soc_data;
 
 static int tcc803x_set_eint(void __iomem *base, u32 bit, int extint, struct tcc_pinctrl *pctl)
 {
+#if defined(CONFIG_TCC803X_CA7S)
+	u32 a7_exti = 14 - (2 * extint);
+	void __iomem *reg
+		= (void __iomem *)(gpio_base + EINTSEL + 4*(a7_exti/4));
+#else
 	void __iomem *reg
 		= (void __iomem *)(gpio_base + EINTSEL + 4*(extint/4));
+#endif
 	u32 data, mask, shift, idx, i, j, pin_valid;
 	u32 port = base - gpio_base;
 	struct extintr_match_ *match
@@ -139,10 +145,17 @@ static int tcc803x_set_eint(void __iomem *base, u32 bit, int extint, struct tcc_
 	match[extint].port_base = base;
 	match[extint].port_num = bit;
 
+#if defined(CONFIG_TCC803X_CA7S)
+	shift = 8*(a7_exti%4);
+	mask = 0x7F7F << shift;
+	idx = idx | (idx << 8);
+	data = readl(reg);
+#else
 	shift = 8*(extint%4);
 	mask = 0x7F << shift;
 
 	data = readl(reg);
+#endif
 	data = (data & ~mask) | (idx << shift);
 	writel(data, reg);
 	data = readl(reg);
@@ -426,6 +439,7 @@ u32 tcc_irq_get_reverse(u32 irq)
 	struct irq_data *d = irq_get_irq_data(irq);
 	irq_hw_number_t hwirq;
 	u32 ret = 0;
+	int irq_size = tcc803x_pinctrl_soc_data.irq->size;
 
 	if (d == NULL) {
 		return IRQ_NOTCONNECTED;
@@ -439,7 +453,7 @@ u32 tcc_irq_get_reverse(u32 irq)
 		ret = IRQ_NOTCONNECTED;
 		/* for coding style */
 	} else {
-		ret = irq + 16;
+		ret = irq + irq_size/2;
 		/* for coding style */
 	}
 
