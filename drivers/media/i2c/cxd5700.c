@@ -228,8 +228,6 @@ int cxd5700_probe(struct i2c_client *client, const struct i2c_device_id *id)
 		return -ENOMEM;
 	}
 
-	mutex_init(&dev->lock);
-
 	// set the specific information
 	if (client->dev.of_node) {
 		dev_id = of_match_node(cxd5700_of_match, client->dev.of_node);
@@ -238,6 +236,8 @@ int cxd5700_probe(struct i2c_client *client, const struct i2c_device_id *id)
 
 	logd("name: %s, addr: 0x%x, client: 0x%p\n",
 		client->name, (client->addr)<<1, client);
+
+	mutex_init(&dev->lock);
 
 	// Register with V4L2 layer as a slave device
 	v4l2_i2c_subdev_init(&dev->sd, client, &cxd5700_ops);
