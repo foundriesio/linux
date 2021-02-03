@@ -131,7 +131,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  }
  EXPORT_SYMBOL(__napi_schedule);
  
-@@ -10842,6 +10848,7 @@ static int dev_cpu_dead(unsigned int old
+@@ -10847,6 +10853,7 @@ static int dev_cpu_dead(unsigned int old
  
  	raise_softirq_irqoff(NET_TX_SOFTIRQ);
  	local_irq_enable();
