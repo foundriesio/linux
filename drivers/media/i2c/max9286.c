@@ -477,8 +477,6 @@ int max9286_probe(struct i2c_client *client, const struct i2c_device_id *id)
 		return -ENOMEM;
 	}
 
-	mutex_init(&dev->lock);
-
 	/* set the specific information */
 	if (client->dev.of_node) {
 		dev_id = of_match_node(max9286_of_match, client->dev.of_node);
@@ -487,6 +485,8 @@ int max9286_probe(struct i2c_client *client, const struct i2c_device_id *id)
 
 	logd("name: %s, addr: 0x%x, client: 0x%p\n",
 		client->name, (client->addr)<<1, client);
+
+	mutex_init(&dev->lock);
 
 	/* parse the device tree */
 	ret = max9286_parse_device_tree(dev, client);
