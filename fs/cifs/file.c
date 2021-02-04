@@ -4261,8 +4261,7 @@ readpages_fill_pages(struct TCP_Server_Info *server,
 			result = n;
 #endif
 		else
-			result = cifs_read_page_from_socket(
-					server, page, page_offset, n);
+			result = cifs_read_iter_from_socket(server, &rdata->iter, n);
 		if (result < 0)
 			break;
 
