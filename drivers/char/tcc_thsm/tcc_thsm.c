@@ -203,7 +203,7 @@ static long tcc_thsm_ioctl_set_key(unsigned long arg)
 static long tcc_thsm_ioctl_set_key_from_storage(unsigned long arg)
 {
 	struct tcc_thsm_ioctl_set_key_storage_param param = {0};
-	uint8_t obj_id[32] = {
+	int8_t obj_id[TCCTHSM_OBJ_ID_MAX] = {
 		0,
 	};
 	long ret = -EFAULT;
@@ -216,8 +216,8 @@ static long tcc_thsm_ioctl_set_key_from_storage(unsigned long arg)
 		return ret;
 	}
 
-	if (param.obj_id == NULL) {
-		ELOG("param.obj_id is null\n");
+	if ((param.obj_id == NULL) || (param.obj_id_len > TCCTHSM_OBJ_ID_MAX)) {
+		ELOG("Invalid obj param\n");
 		return ret;
 	}
 
@@ -645,7 +645,7 @@ static long tcc_thsm_ioctl_get_rand(unsigned long arg)
 static long tcc_thsm_ioctl_gen_key_ss(unsigned long arg)
 {
 	struct tcc_thsm_ioctl_gen_key_param param = {0};
-	int8_t obj_id[32] = {0};
+	int8_t obj_id[TCCTHSM_OBJ_ID_MAX] = {0};
 	long ret = -EFAULT;
 
 	if (copy_from_user(
@@ -655,8 +655,8 @@ static long tcc_thsm_ioctl_gen_key_ss(unsigned long arg)
 		return ret;
 	}
 
-	if (param.obj_id == NULL) {
-		ELOG("param. is null\n");
+	if ((param.obj_id == NULL) || (param.obj_len > TCCTHSM_OBJ_ID_MAX)) {
+		ELOG("Invalid obj param\n");
 		return ret;
 	}
 
@@ -676,7 +676,7 @@ static long tcc_thsm_ioctl_gen_key_ss(unsigned long arg)
 static long tcc_thsm_ioctl_del_key_ss(unsigned long arg)
 {
 	struct tcc_thsm_ioctl_del_key_param param = {0};
-	int8_t obj_id[32] = {0};
+	int8_t obj_id[TCCTHSM_OBJ_ID_MAX] = {0};
 	long ret = -EFAULT;
 
 	if (copy_from_user(
@@ -686,8 +686,8 @@ static long tcc_thsm_ioctl_del_key_ss(unsigned long arg)
 		return ret;
 	}
 
-	if (param.obj_id == NULL) {
-		ELOG("param. is null\n");
+	if ((param.obj_id == NULL) || (param.obj_len > TCCTHSM_OBJ_ID_MAX)) {
+		ELOG("Invalid obj param\n");
 		return ret;
 	}
 
@@ -705,7 +705,7 @@ static long tcc_thsm_ioctl_del_key_ss(unsigned long arg)
 static long tcc_thsm_ioctl_write_key_ss(unsigned long arg)
 {
 	struct tcc_thsm_ioctl_write_key_param param = {0};
-	int8_t obj_id[32] = {0};
+	int8_t obj_id[TCCTHSM_OBJ_ID_MAX] = {0};
 	uint8_t buffer[128] = {0};
 	long ret = -EFAULT;
 
@@ -718,6 +718,10 @@ static long tcc_thsm_ioctl_write_key_ss(unsigned long arg)
 
 	if (param.obj_id == NULL || param.buffer == NULL) {
 		ELOG("param. is null\n");
+		return ret;
+	}
+	if (param.obj_len > TCCTHSM_OBJ_ID_MAX) {
+		ELOG("Invalid obj param\n");
 		return ret;
 	}
 
