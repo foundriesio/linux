@@ -378,6 +378,8 @@ extern int tccvin_query_buffer(struct tccvin_video_queue *queue,
 	struct v4l2_buffer *v4l2_buf);
 extern int tccvin_queue_buffer(struct tccvin_video_queue *queue,
 	struct v4l2_buffer *v4l2_buf);
+extern int tccvin_export_buffer(struct tccvin_video_queue *queue,
+	struct v4l2_exportbuffer *exp);
 extern int tccvin_dequeue_buffer(struct tccvin_video_queue *queue,
 	struct v4l2_buffer *v4l2_buf, int nonblocking);
 extern int tccvin_queue_streamon(struct tccvin_video_queue *queue,

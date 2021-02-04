@@ -354,6 +354,7 @@ static int tccvin_v4l2_open(struct file *file)
 
 	mutex_lock(&stream->dev->lock);
 	stream->dev->users++;
+	stream->sequence = 0;
 	mutex_unlock(&stream->dev->lock);
 
 	v4l2_fh_init(&handle->vfh, &stream->vdev);
@@ -582,6 +583,18 @@ static int tccvin_ioctl_qbuf(struct file *file, void *fh,
 	return tccvin_queue_buffer(&stream->queue, buf);
 }
 
+static int tccvin_ioctl_expbuf(struct file *file, void *fh,
+			       struct v4l2_exportbuffer *exp)
+{
+	struct tccvin_fh *handle = fh;
+	struct tccvin_streaming *stream = handle->stream;
+
+	if (!tccvin_has_privileges(handle))
+		return -EBUSY;
+
+	return tccvin_export_buffer(&stream->queue, exp);
+}
+
 static int tccvin_ioctl_dqbuf(struct file *file, void *fh,
 	struct v4l2_buffer *buf)
 {
@@ -671,6 +684,11 @@ static int tccvin_ioctl_g_selection(struct file *file, void *fh,
 
 	memset(s, 0, sizeof(*s));
 	*s = stream->selection;
+
+	mutex_lock(&stream->mutex);
+	s->r.width = stream->cur_frame->wWidth;
+	s->r.height = stream->cur_frame->wHeight;
+	mutex_unlock(&stream->mutex);
 
 	return 0;
 }
@@ -874,6 +892,7 @@ const struct v4l2_ioctl_ops tccvin_ioctl_ops = {
 	.vidioc_reqbufs			= tccvin_ioctl_reqbufs,
 	.vidioc_querybuf		= tccvin_ioctl_querybuf,
 	.vidioc_qbuf			= tccvin_ioctl_qbuf,
+	.vidioc_expbuf			= tccvin_ioctl_expbuf,
 	.vidioc_dqbuf			= tccvin_ioctl_dqbuf,
 	.vidioc_streamon		= tccvin_ioctl_streamon,
 	.vidioc_streamoff		= tccvin_ioctl_streamoff,
