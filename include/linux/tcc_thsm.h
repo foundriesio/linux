@@ -18,6 +18,7 @@
 
 #define TCCTHSM_DEVICE_NAME "tcc_thsm"
 #define TCCTHSM_RNG_MAX 16
+#define TCCTHSM_OBJ_ID_MAX 64
 
 enum tcc_thsm_ioctl_cmd {
 	TCCTHSM_IOCTL_INIT,
