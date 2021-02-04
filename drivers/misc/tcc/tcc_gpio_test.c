@@ -175,13 +175,13 @@ ssize_t gpio_test(struct device *dev, struct device_attribute *attr, char *buf)
 
 		printk("max_bank_num : %u\n", max_bank_num);
 		for (bank_num = 0U; bank_num < max_bank_num; bank_num++) {
-			printk("\033[33mbank - %s\033[0m\n", pin_banks[bank_num].name);
-			printk("\033[33mbanks[%u].npins = %u\033[0m\n", bank_num, pin_banks[bank_num].npins);
+
+			if(strcmp(pin_banks[bank_num].name, "gpk") != 0) {
+				printk("\033[33mbank - %s\033[0m\n", pin_banks[bank_num].name);
+				printk("\033[33mbanks[%u].npins = %u\033[0m\n", bank_num, pin_banks[bank_num].npins);
+			}
 
 			for (pin_num = 0U; pin_num < pin_banks[bank_num].npins; pin_num++, gpio_num++) {
-				debug_gpio("pin_num - %u\n", pin_num);
-				debug_gpio("gpio_num - %u\n", gpio_num);
-
 				/* set direction test */
 				//gpio_test_input(pctldev, pin_num, 1U/*not use*/, gpio_num);
 
@@ -191,10 +191,13 @@ ssize_t gpio_test(struct device *dev, struct device_attribute *attr, char *buf)
 						pin_banks[bank_num].name, pin_num);
 					continue;
 				} else if(strcmp(pin_banks[bank_num].name, "gpk") == 0) {
-					//printk("\033[31mskip %s %u\033[0m\n",
-					//	pin_banks[bank_num].name, pin_num);
+					debug_gpio("\033[31mskip %s %u\033[0m\n",
+						pin_banks[bank_num].name, pin_num);
 					continue;
 				}
+
+				debug_gpio("pin_num - %u\n", pin_num);
+				debug_gpio("gpio_num - %u\n", gpio_num);
 
 				debug_gpio("\nTCC_PINCONF_FUNC test\n");
 				for (req_value = 0U; req_value < 16U; req_value++) {
