@@ -19,9 +19,9 @@
 //****************************** Calculation ******************************/
 #undef SZ_1MB
 #define SZ_1MB				(1024*1024)
-#define ARRAY_16MBYTE(x)		((((x) + ((16*SZ_1MB)-1))>> 24) << 24)
-#define ARRAY_MBYTE(x)			((((x) + (SZ_1MB-1))>> 20) << 20)
-#define ARRAY_256KBYTE(x)		((((x) + ((SZ_1MB/4)-1))>> 18) << 18)
+#define ARRAY_16MBYTE(x)		((((x) + ((16*SZ_1MB)-1)) >> 24) << 24)
+#define ARRAY_MBYTE(x)			((((x) + (SZ_1MB-1)) >> 20) << 20)
+#define ARRAY_256KBYTE(x)		((((x) + ((SZ_1MB/4)-1)) >> 18) << 18)
 
 #if 0
 #define PMAP_SIZE_FB_VIDEO		\
@@ -41,7 +41,7 @@
 		PRIMARY_FRAMEBUFFER_HEIGHT * 4 * 4)
 #endif
 #define PMAP_SIZE_CAMERA_VIQE		\
-	ARRAY_MBYTE((CAMERA_INPUT_WIDTH * (CAMERA_INPUT_HEIGHT / 2 ) * 4 * \
+	ARRAY_MBYTE((CAMERA_INPUT_WIDTH * (CAMERA_INPUT_HEIGHT / 2) * 4 * \
 		FRAMES_CAMERA_VIQE) * 3 / 2)
 #define PMAP_SIZE_CAMERA_PREVIEW0	\
 	ARRAY_MBYTE(CAMERA_OUTPUT_WIDTH * CAMERA_OUTPUT_HEIGHT * 4 * \

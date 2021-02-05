@@ -62,7 +62,7 @@
 #define VIDIOC_SET_VIDEOSOURCE_FORMAT		\
 		_IOWR('V', BASE_VIDIOC_PRIVATE+18, videosource_format_t)
 #define VIDIOC_S_HANDOVER			\
-                _IOWR('V', BASE_VIDIOC_PRIVATE+19, int)
+		_IOWR('V', BASE_VIDIOC_PRIVATE+19, int)
 
 #define DIRECT_DISPLAY_IF_INITIALIZE	\
 		_IOWR('V', BASE_VIDIOC_PRIVATE+50, int)
