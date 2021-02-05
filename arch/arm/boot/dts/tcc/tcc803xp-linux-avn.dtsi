@@ -1235,7 +1235,7 @@
 	auth-cp {
 		compatible = "telechips, tcc-cp";
 		cp-type = <2>;	    /* 2.0C = 1, 2.0B = 0, 3.0 = 2 */
-		i2c-channel = <3>;	/* 0 ~ 3 */
+		i2c-channel = <0>;	/* 0 ~ 3 */
 		/*	power-ctrl-able; */
 		/* cp_power-gpio = <&gpk 14 0>; */
 		cp_reset-gpio = <&gpa 11 0>;
