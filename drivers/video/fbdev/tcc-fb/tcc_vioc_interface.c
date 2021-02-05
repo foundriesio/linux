@@ -1,12 +1,5 @@
 /*
- * linux/drivers/video/tcc/tccfb_interface.c
- *
- * Based on:    Based on s3c2410fb.c, sa1100fb.c and others
- * Author:  <linux@telechips.com>
- * Created: June 10, 2008
- * Description: TCC LCD Controller Frame Buffer Driver
- *
- * Copyright (C) 2008-2009 Telechips
+ * Copyright (C) Telechips, Inc.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -202,14 +195,15 @@ extern unsigned int fb_lock;
 extern TCC_OUTPUT_TYPE Output_SelectMode;
 extern void tcc_plugout_for_composite(int ch_layer);
 extern void tcc_plugout_for_component(int ch_layer);
+
 #ifdef CONFIG_VIDEO_DISPLAY_SWAP_VPU_FRAME
 extern void tcc_video_frame_backup(struct tcc_lcdc_image_update *Image);
 #endif
+
 #ifdef CONFIG_DISPLAY_EXT_FRAME
 #if defined(CONFIG_LINUX) || defined(CONFIG_LINUX_ANDROID)
 extern int restricted_ExtFrame;
 #endif
-extern int tcc_ctrl_ext_frame(char enable);
 #endif
 
 #if defined(CONFIG_TCC_HDMI_DRIVER_V1_4) || defined(CONFIG_TCC_HDMI_DRIVER_V2_0)
@@ -4677,7 +4671,6 @@ void tca_edr_inc_check_count(unsigned int nInt, unsigned int nTry, unsigned int 
 			nDV_Updated++;
 	}
 }
-EXPORT_SYMBOL(tca_edr_inc_check_count);
 
 int tca_edr_GetTimediff_ms(struct timeval time1, struct timeval time2)
 {
