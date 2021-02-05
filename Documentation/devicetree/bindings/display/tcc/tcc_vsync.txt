@@ -1,0 +1,16 @@
+This is for 'telechips,tcc_vsync'.
+
+Required properties for display:
+	-compatible:
+		"telechips,tcc_vsync"
+
+-------------------------------------------------------------------------------
+
+Example:
+   tcc_vsync_drv {
+        compatible = "telechips,tcc_vsync";
+        display-vioc0 = <&vioc_disp VIOC_DISP0>;
+        display-vioc1 = <&vioc_disp VIOC_DISP1>;
+        status = "okay";
+    };
+
