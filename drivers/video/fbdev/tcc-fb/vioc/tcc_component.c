@@ -79,6 +79,9 @@
 #include <video/tcc/tcc_vsync_ioctl.h>
 #endif
 #include "tcc_component.h"
+#include "../tcc_vioc_interface.h"
+#include "../tcc_vioc_fb.h"
+
 
 /* Debugging stuff */
 //#define DBG_COMPONENT

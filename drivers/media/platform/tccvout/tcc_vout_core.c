@@ -42,6 +42,8 @@
 #include <video/tcc/viocmg.h>
 #endif
 
+#include <tcc_vioc_fb.h>
+
 #ifdef CONFIG_VOUT_DISPLAY_LASTFRAME
 static struct pmap lastframe_pbuf;
 static int enable_LastFrame;

@@ -79,6 +79,8 @@
 #endif
 
 #include "tcc_composite.h"
+#include "../tcc_vioc_interface.h"
+#include "../tcc_vioc_fb.h"
 
 
 /* Debugging stuff */

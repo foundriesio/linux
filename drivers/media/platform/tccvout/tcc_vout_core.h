@@ -112,8 +112,6 @@ extern void tca_edr_display_update(struct tcc_dp_device *pdp_data,
 extern void hdmi_set_drm(DRM_Packet_t *drmparm);
 extern void hdmi_clear_drm(void);
 extern unsigned int hdmi_get_refreshrate(void);
-#else
-extern unsigned int HDMI_video_hz;
 #endif
 
 extern enum OUTPUT_SELECT_MODE Output_SelectMode;

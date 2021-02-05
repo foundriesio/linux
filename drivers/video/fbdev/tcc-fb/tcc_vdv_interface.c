@@ -35,6 +35,7 @@
 #include <video/tcc/tccfb_ioctrl.h>
 #include <soc/tcc/pmap.h>
 
+#include "tcc_vioc_interface.h"
 
 #define __dv_reg_r	__raw_readl
 #define __dv_reg_w	__raw_writel
@@ -100,11 +101,6 @@ static char DV_RGB_Tunneling;
 #define dprintk(msg...) pr_info("[DBG][DV] " msg)
 #else
 #define dprintk(msg...)
-#endif
-
-#if defined(CONFIG_VIOC_DOLBY_VISION_CERTIFICATION_TEST)
-extern void tca_edr_inc_check_count(unsigned int nInt, unsigned int nTry,
-	unsigned int nProc, unsigned int nUpdated, unsigned int bInit_all);
 #endif
 
 //#define SHADOW_CONTEXT_AT_THE_SAME_TIME

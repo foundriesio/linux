@@ -67,6 +67,8 @@
 #include <video/tcc/vioc_afbcdec.h>
 #endif
 
+#include "tcc_vsync.h"
+
 #if 0
 static int debug	   = 1;
 #else
@@ -108,9 +110,6 @@ struct overlay_drv_type {
 	// to back up image  infomation.
 	overlay_video_buffer_t overBuffCfg;
 };
-#ifdef CONFIG_DISPLAY_EXT_FRAME
-extern int tcc_ctrl_ext_frame(char enable);
-#endif
 
 #if defined(CONFIG_VIOC_AFBCDEC)
 static void tcc_overlay_configure_AFBCDEC(

@@ -175,10 +175,7 @@ extern int tca_edr_path_configure(void);
 
 #include <video/tcc/tccfb.h>
 #include <video/tcc/vioc_disp.h>
-extern struct tcc_dp_device *tca_fb_get_displayType(
-	TCC_OUTPUT_TYPE check_type);
-extern void tca_scale_display_update(struct tcc_dp_device *pdp_data,
-	struct tcc_lcdc_image_update *ImageInfo);
+
 extern void tca_vioc_displayblock_powerOn(struct tcc_dp_device *pDisplayInfo,
 	int specific_pclk);
 extern void tca_vioc_displayblock_powerOff(struct tcc_dp_device *pDisplayInfo);

@@ -59,6 +59,8 @@
 #define SUB_USED  0x2
 
 #include "../tcc_vsync.h"
+#include "../tcc_vioc_interface.h"
+#include "../tcc_vioc_fb.h"
 #include "tcc_vioc_viqe.h"
 #include "tcc_vioc_viqe_interface.h"
 

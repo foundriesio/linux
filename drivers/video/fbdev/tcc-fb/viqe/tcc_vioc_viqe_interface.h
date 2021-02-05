@@ -151,8 +151,6 @@ extern int tca_edr_el_configure(struct tcc_lcdc_image_update *Src_ImageInfo,
 #endif
 
 extern TCC_OUTPUT_TYPE Output_SelectMode;
-extern struct tcc_dp_device *tca_fb_get_displayType(
-	TCC_OUTPUT_TYPE check_type);
 
 #ifdef CONFIG_TCC_HDMI_DRIVER_V2_0
 #include "../tcc_vsync.h"
@@ -165,10 +163,6 @@ extern void tcc_video_frame_backup(struct tcc_lcdc_image_update *Image);
 #endif
 
 extern void tcc_video_post_process(struct tcc_lcdc_image_update *ImageInfo);
-extern void tca_lcdc_set_onthefly(struct tcc_dp_device *pdp_data,
-	struct tcc_lcdc_image_update *ImageInfo);
-extern void tca_scale_display_update(struct tcc_dp_device *pdp_data,
-	struct tcc_lcdc_image_update *ImageInfo);
 
 extern int TCC_VIQE_Scaler_Init_Buffer_M2M(void);
 extern void TCC_VIQE_Scaler_DeInit_Buffer_M2M(void);
