@@ -126,6 +126,7 @@ extern void sw_sync_timeline_inc(struct sync_timeline *obj, unsigned int value);
 #include <linux/file.h>
 #endif
 #include "tcc_vsync.h"
+#include "tcc_vioc_interface.h"
 
 #ifdef CONFIG_VIDEO_TCC_VOUT
 #include <video/tcc/tcc_vout_v4l2.h>
@@ -182,7 +183,6 @@ extern void tca_vioc_displayblock_timing_set(unsigned int outDevice, struct tcc_
 extern void tca_vioc_displayblock_ctrl_set(unsigned int outDevice, struct tcc_dp_device *pDisplayInfo, stLTIMING *pstTiming, stLCDCTR *pstCtrl);
 extern int tca_fb_pan_display(struct fb_var_screeninfo *var, struct fb_info *info);
 extern void tca_fb_activate_var(unsigned int dma_addr,  struct fb_var_screeninfo *var, struct tcc_dp_device *pdp_data);
-extern void tca_scale_display_update(struct tcc_dp_device *pdp_data, struct tcc_lcdc_image_update *ImageInfo);
 extern void tccfb1_set_par(struct tccfb_info *fbi,  struct fb_var_screeninfo *var);
 
 extern unsigned int tca_fb_get_fifo_underrun_count(void);
@@ -434,7 +434,6 @@ struct tcc_dp_device *tca_fb_get_displayType(TCC_OUTPUT_TYPE check_type)
 
 	return dp_device;
 }
-EXPORT_SYMBOL(tca_fb_get_displayType);
 
 static void send_vsync_event(struct work_struct *work)
 {
