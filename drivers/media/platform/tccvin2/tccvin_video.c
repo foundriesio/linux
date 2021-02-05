@@ -1395,6 +1395,7 @@ static void tccvin_work_thread(struct work_struct *data)
 
 #if defined(CONFIG_VIDEO_TCCVIN2_MMAP_MEMCPY)
 	if (buf->buf.vb2_buf.memory == VB2_MEMORY_MMAP) {
+		// copy preview memory
 		memcpy(buf->mem, cif->vir, buf->length);
 	}
 #endif//defined(CONFIG_VIDEO_TCCVIN2_MMAP_MEMCPY)
