@@ -31,10 +31,10 @@
 #endif
 
 static struct device_node *ViocWmixer_np;
-static volatile void __iomem *pWMIX_reg[VIOC_WMIX_MAX];
+static void __iomem *pWMIX_reg[VIOC_WMIX_MAX];
 
 void VIOC_WMIX_SetOverlayPriority(
-	volatile void __iomem *reg, unsigned int nOverlayPriority)
+	void __iomem *reg, unsigned int nOverlayPriority)
 {
 	unsigned long val;
 
@@ -45,7 +45,7 @@ void VIOC_WMIX_SetOverlayPriority(
 EXPORT_SYMBOL(VIOC_WMIX_SetOverlayPriority);
 
 void VIOC_WMIX_GetOverlayPriority(
-	volatile void __iomem *reg, unsigned int *nOverlayPriority)
+	void __iomem *reg, unsigned int *nOverlayPriority)
 {
 	//	*nOverlayPriority = pWMIX->uCTRL.nREG & 0x1F;
 	*nOverlayPriority =
@@ -54,7 +54,7 @@ void VIOC_WMIX_GetOverlayPriority(
 }
 EXPORT_SYMBOL(VIOC_WMIX_GetOverlayPriority);
 
-void VIOC_WMIX_SetUpdate(volatile void __iomem *reg)
+void VIOC_WMIX_SetUpdate(void __iomem *reg)
 {
 	unsigned long val;
 
@@ -70,7 +70,7 @@ void VIOC_WMIX_SetUpdate(volatile void __iomem *reg)
 EXPORT_SYMBOL(VIOC_WMIX_SetUpdate);
 
 void VIOC_WMIX_SetSize(
-	volatile void __iomem *reg, unsigned int nWidth, unsigned int nHeight)
+	void __iomem *reg, unsigned int nWidth, unsigned int nHeight)
 {
 	unsigned long val;
 
@@ -81,7 +81,7 @@ void VIOC_WMIX_SetSize(
 EXPORT_SYMBOL(VIOC_WMIX_SetSize);
 
 void VIOC_WMIX_GetSize(
-	volatile void __iomem *reg, unsigned int *nWidth, unsigned int *nHeight)
+	void __iomem *reg, unsigned int *nWidth, unsigned int *nHeight)
 {
 #ifdef CONFIG_VIOC_DOLBY_VISION_EDR
 	if ((VIOC_CONFIG_DV_GET_EDR_PATH() || vioc_v_dv_get_stage() != DV_OFF)
@@ -102,7 +102,7 @@ void VIOC_WMIX_GetSize(
 EXPORT_SYMBOL(VIOC_WMIX_GetSize);
 
 void VIOC_WMIX_SetBGColor(
-	volatile void __iomem *reg, unsigned int nBG0, unsigned int nBG1,
+	void __iomem *reg, unsigned int nBG0, unsigned int nBG1,
 	unsigned int nBG2, unsigned int nBG3)
 {
 	unsigned long val;
@@ -127,7 +127,7 @@ void VIOC_WMIX_SetBGColor(
 EXPORT_SYMBOL(VIOC_WMIX_SetBGColor);
 
 void VIOC_WMIX_SetPosition(
-	volatile void __iomem *reg, unsigned int nChannel, unsigned int nX,
+	void __iomem *reg, unsigned int nChannel, unsigned int nX,
 	unsigned int nY)
 {
 	unsigned long val;
@@ -139,7 +139,7 @@ void VIOC_WMIX_SetPosition(
 EXPORT_SYMBOL(VIOC_WMIX_SetPosition);
 
 void VIOC_WMIX_GetPosition(
-	volatile void __iomem *reg, unsigned int nChannel, unsigned int *nX,
+	void __iomem *reg, unsigned int nChannel, unsigned int *nX,
 	unsigned int *nY)
 {
 	*nX = ((__raw_readl(reg + (MPOS0 + (0x4 * nChannel))) & MPOS_XPOS_MASK)
@@ -150,7 +150,7 @@ void VIOC_WMIX_GetPosition(
 EXPORT_SYMBOL(VIOC_WMIX_GetPosition);
 
 void VIOC_WMIX_SetChromaKey(
-	volatile void __iomem *reg, unsigned int nLayer, unsigned int nKeyEn,
+	void __iomem *reg, unsigned int nLayer, unsigned int nKeyEn,
 	unsigned int nKeyR, unsigned int nKeyG, unsigned int nKeyB,
 	unsigned int nKeyMaskR, unsigned int nKeyMaskG, unsigned int nKeyMaskB)
 {
@@ -188,7 +188,7 @@ void VIOC_WMIX_SetChromaKey(
 EXPORT_SYMBOL(VIOC_WMIX_SetChromaKey);
 
 void VIOC_WMIX_GetChromaKey(
-	volatile void __iomem *reg, unsigned int nLayer, unsigned int *nKeyEn,
+	void __iomem *reg, unsigned int nLayer, unsigned int *nKeyEn,
 	unsigned int *nKeyR, unsigned int *nKeyG, unsigned int *nKeyB,
 	unsigned int *nKeyMaskR, unsigned int *nKeyMaskG,
 	unsigned int *nKeyMaskB)
@@ -258,7 +258,7 @@ void VIOC_WMIX_GetChromaKey(
 EXPORT_SYMBOL(VIOC_WMIX_GetChromaKey);
 
 void VIOC_WMIX_ALPHA_SetAlphaValueControl(
-	volatile void __iomem *reg, unsigned int layer, unsigned int region,
+	void __iomem *reg, unsigned int layer, unsigned int region,
 	unsigned int acon0, unsigned int acon1)
 {
 	unsigned long val;
@@ -299,7 +299,7 @@ void VIOC_WMIX_ALPHA_SetAlphaValueControl(
 EXPORT_SYMBOL(VIOC_WMIX_ALPHA_SetAlphaValueControl);
 
 void VIOC_WMIX_ALPHA_SetColorControl(
-	volatile void __iomem *reg, unsigned int layer, unsigned int region,
+	void __iomem *reg, unsigned int layer, unsigned int region,
 	unsigned int ccon0, unsigned int ccon1)
 {
 	unsigned long val;
@@ -340,7 +340,7 @@ void VIOC_WMIX_ALPHA_SetColorControl(
 EXPORT_SYMBOL(VIOC_WMIX_ALPHA_SetColorControl);
 
 void VIOC_WMIX_ALPHA_SetROPMode(
-	volatile void __iomem *reg, unsigned int layer, unsigned int mode)
+	void __iomem *reg, unsigned int layer, unsigned int mode)
 {
 	unsigned long val;
 
@@ -360,7 +360,7 @@ void VIOC_WMIX_ALPHA_SetROPMode(
 EXPORT_SYMBOL(VIOC_WMIX_ALPHA_SetROPMode);
 
 void VIOC_WMIX_ALPHA_SetAlphaSelection(
-	volatile void __iomem *reg, unsigned int layer, unsigned int asel)
+	void __iomem *reg, unsigned int layer, unsigned int asel)
 {
 	unsigned long val;
 
@@ -380,7 +380,7 @@ void VIOC_WMIX_ALPHA_SetAlphaSelection(
 EXPORT_SYMBOL(VIOC_WMIX_ALPHA_SetAlphaSelection);
 
 void VIOC_WMIX_ALPHA_SetAlphaValue(
-	volatile void __iomem *reg, unsigned int layer, unsigned int alpha0,
+	void __iomem *reg, unsigned int layer, unsigned int alpha0,
 	unsigned int alpha1)
 {
 	unsigned long val;
@@ -403,7 +403,7 @@ void VIOC_WMIX_ALPHA_SetAlphaValue(
 EXPORT_SYMBOL(VIOC_WMIX_ALPHA_SetAlphaValue);
 
 void VIOC_WMIX_ALPHA_SetROPPattern(
-	volatile void __iomem *reg, unsigned int layer, unsigned int patR,
+	void __iomem *reg, unsigned int layer, unsigned int patR,
 	unsigned int patG, unsigned int patB)
 {
 	unsigned long val;
@@ -424,23 +424,23 @@ void VIOC_WMIX_ALPHA_SetROPPattern(
 }
 EXPORT_SYMBOL(VIOC_WMIX_ALPHA_SetROPPattern);
 
-void VIOC_WMIX_SetInterruptMask(volatile void __iomem *reg, unsigned int nMask)
+void VIOC_WMIX_SetInterruptMask(void __iomem *reg, unsigned int nMask)
 {
 	__raw_writel(nMask, reg + MIRQMSK);
 }
 EXPORT_SYMBOL(VIOC_WMIX_SetInterruptMask);
 
-unsigned int VIOC_WMIX_GetStatus(volatile void __iomem *reg)
+unsigned int VIOC_WMIX_GetStatus(void __iomem *reg)
 {
 	return __raw_readl(reg + MSTS);
 }
 EXPORT_SYMBOL(VIOC_WMIX_GetStatus);
 
-void VIOC_WMIX_DUMP(volatile void __iomem *reg, unsigned int vioc_id)
+void VIOC_WMIX_DUMP(void __iomem *reg, unsigned int vioc_id)
 {
 	unsigned int cnt = 0;
 
-	volatile void __iomem *pReg = (char *)reg;
+	void __iomem *pReg = (char *)reg;
 
 	int Num = get_vioc_index(vioc_id);
 
@@ -469,7 +469,7 @@ err:
 }
 EXPORT_SYMBOL(VIOC_WMIX_DUMP);
 
-volatile void __iomem *VIOC_WMIX_GetAddress(unsigned int vioc_id)
+void __iomem *VIOC_WMIX_GetAddress(unsigned int vioc_id)
 {
 	int Num = get_vioc_index(vioc_id);
 
@@ -498,7 +498,7 @@ static int __init vioc_wmixer_init(void)
 		pr_info("[INF][WMIX] disabled\n");
 	} else {
 		for (i = 0; i < VIOC_WMIX_MAX; i++) {
-			pWMIX_reg[i] = (volatile void __iomem *)of_iomap(
+			pWMIX_reg[i] = (void __iomem *)of_iomap(
 				ViocWmixer_np,
 				is_VIOC_REMAP ? (i + VIOC_WMIX_MAX) : i);
 

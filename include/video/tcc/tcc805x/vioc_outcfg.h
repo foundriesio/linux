@@ -79,7 +79,7 @@
 #define MISC_HDMISEL_MASK		(0x3 << MISC_HDMISEL_SHIFT)
 
 extern void VIOC_OUTCFG_SetOutConfig (unsigned  nType, unsigned nDisp);
-extern volatile void __iomem* VIOC_OUTCONFIG_GetAddress(void);
+extern void __iomem* VIOC_OUTCONFIG_GetAddress(void);
 extern void VIOC_OUTCONFIG_DUMP(void);
 
 #endif

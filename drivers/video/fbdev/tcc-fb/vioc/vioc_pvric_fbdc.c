@@ -32,9 +32,9 @@
 #define PVRIC_FBDC_MAX_N 2
 
 static struct device_node *pViocPVRICFBDC_np;
-static volatile void __iomem *pPVRICFBDC_reg[PVRIC_FBDC_MAX_N] = { 0 };
+static void __iomem *pPVRICFBDC_reg[PVRIC_FBDC_MAX_N] = { 0 };
 
-void VIOC_PVRIC_FBDC_SetARGBSwizzMode(volatile void __iomem * reg,
+void VIOC_PVRIC_FBDC_SetARGBSwizzMode(void __iomem * reg,
 				      VIOC_PVRICCTRL_SWIZZ_MODE mode)
 {
 	unsigned int val;
@@ -43,7 +43,7 @@ void VIOC_PVRIC_FBDC_SetARGBSwizzMode(volatile void __iomem * reg,
 	__raw_writel(val, reg + PVRICCTRL);
 }
 
-void VIOC_PVRIC_FBDC_SetUpdateInfo(volatile void __iomem * reg,
+void VIOC_PVRIC_FBDC_SetUpdateInfo(void __iomem * reg,
 				   unsigned int enable)
 {
 	unsigned int val;
@@ -52,7 +52,7 @@ void VIOC_PVRIC_FBDC_SetUpdateInfo(volatile void __iomem * reg,
 	__raw_writel(val, reg + PVRICCTRL);
 }
 
-void VIOC_PVRIC_FBDC_SetFormat(volatile void __iomem * reg,
+void VIOC_PVRIC_FBDC_SetFormat(void __iomem * reg,
 			       VIOC_PVRICCTRL_FMT_MODE fmt)
 {
 	unsigned int val;
@@ -61,7 +61,7 @@ void VIOC_PVRIC_FBDC_SetFormat(volatile void __iomem * reg,
 	__raw_writel(val, reg + PVRICCTRL);
 }
 
-void VIOC_PVRIC_FBDC_SetTileType(volatile void __iomem * reg,
+void VIOC_PVRIC_FBDC_SetTileType(void __iomem * reg,
 				 VIOC_PVRICCTRL_TILE_TYPE type)
 {
 	unsigned int val;
@@ -70,7 +70,7 @@ void VIOC_PVRIC_FBDC_SetTileType(volatile void __iomem * reg,
 	__raw_writel(val, reg + PVRICCTRL);
 }
 
-void VIOC_PVRIC_FBDC_SetLossyDecomp(volatile void __iomem * reg,
+void VIOC_PVRIC_FBDC_SetLossyDecomp(void __iomem * reg,
 				    unsigned int enable)
 {
 	unsigned int val;
@@ -79,7 +79,7 @@ void VIOC_PVRIC_FBDC_SetLossyDecomp(volatile void __iomem * reg,
 	__raw_writel(val, reg + PVRICCTRL);
 }
 
-void VIOC_PVRIC_FBDC_SetFrameSize(volatile void __iomem * reg,
+void VIOC_PVRIC_FBDC_SetFrameSize(void __iomem * reg,
 				  unsigned int width, unsigned int height)
 {
 	unsigned int val;
@@ -88,7 +88,7 @@ void VIOC_PVRIC_FBDC_SetFrameSize(volatile void __iomem * reg,
 	__raw_writel(val, reg + PVRICSIZE);
 }
 
-void VIOC_PVRIC_FBDC_GetFrameSize(volatile void __iomem * reg,
+void VIOC_PVRIC_FBDC_GetFrameSize(void __iomem * reg,
 				  unsigned int *width, unsigned int *height)
 {
 	*width = ((__raw_readl(reg + PVRICSIZE) &
@@ -97,20 +97,20 @@ void VIOC_PVRIC_FBDC_GetFrameSize(volatile void __iomem * reg,
 		    PVRICSIZE_HEIGHT_MASK) >> PVRICSIZE_HEIGHT_SHIFT);
 }
 
-void VIOC_PVRIC_FBDC_SetRequestBase(volatile void __iomem * reg,
+void VIOC_PVRIC_FBDC_SetRequestBase(void __iomem * reg,
 				    unsigned int base)
 {
 	__raw_writel((base & 0xFFFFFFFF), reg + PVRICRADDR);
 }
 
-void VIOC_PVRIC_FBDC_GetCurTileNum(volatile void __iomem * reg,
+void VIOC_PVRIC_FBDC_GetCurTileNum(void __iomem * reg,
 				   unsigned int *tile_num)
 {
 	*tile_num = ((__raw_readl(reg + PVRICURTILE) &
 		      PVRICCURTILE_MASK) >> PVRICCURTILE_SHIFT);
 }
 
-void VIOC_PVRIC_FBDC_SetOutBufOffset(volatile void __iomem * reg,
+void VIOC_PVRIC_FBDC_SetOutBufOffset(void __iomem * reg,
 				     unsigned int imgFmt, unsigned int imgWidth)
 {
 	unsigned int offset;
@@ -130,13 +130,13 @@ void VIOC_PVRIC_FBDC_SetOutBufOffset(volatile void __iomem * reg,
 	__raw_writel((offset & 0xFFFFFFFF), reg + PVRICOFFS);
 }
 
-void VIOC_PVRIC_FBDC_SetOutBufBase(volatile void __iomem * reg,
+void VIOC_PVRIC_FBDC_SetOutBufBase(void __iomem * reg,
 				   unsigned int base)
 {
 	__raw_writel((base & 0xFFFFFFFF), reg + PVRICOADDR);
 }
 
-void VIOC_PVRIC_FBDC_SetIrqMask(volatile void __iomem * reg,
+void VIOC_PVRIC_FBDC_SetIrqMask(void __iomem * reg,
 				unsigned int enable, unsigned int mask)
 {
 	if (enable)		/* Interrupt Enable */
@@ -146,22 +146,22 @@ void VIOC_PVRIC_FBDC_SetIrqMask(volatile void __iomem * reg,
 		__raw_writel((mask << PVRICSTS_IRQ_MASK_SHIFT), reg + PVRICSTS);
 }
 
-unsigned int VIOC_PVRIC_FBDC_GetIdle(volatile void __iomem * reg)
+unsigned int VIOC_PVRIC_FBDC_GetIdle(void __iomem * reg)
 {
 	return (__raw_readl(reg + PVRICIDLE));
 }
 
-unsigned int VIOC_PVRIC_FBDC_GetStatus(volatile void __iomem * reg)
+unsigned int VIOC_PVRIC_FBDC_GetStatus(void __iomem * reg)
 {
 	return (__raw_readl(reg + PVRICSTS)) & PVRICSYS_IRQ_ALL;
 }
 
-void VIOC_PVRIC_FBDC_ClearIrq(volatile void __iomem * reg, unsigned int mask)
+void VIOC_PVRIC_FBDC_ClearIrq(void __iomem * reg, unsigned int mask)
 {
 	__raw_writel(mask, reg + PVRICSTS);
 }
 
-void VIOC_PVRIC_FBDC_TurnOn(volatile void __iomem * reg)
+void VIOC_PVRIC_FBDC_TurnOn(void __iomem * reg)
 {
 	unsigned int val;
 	val = (__raw_readl(reg + PVRICCTRL) & ~(PVRICCTRL_START_MASK));
@@ -169,7 +169,7 @@ void VIOC_PVRIC_FBDC_TurnOn(volatile void __iomem * reg)
 	__raw_writel(val, reg + PVRICCTRL);
 }
 
-void VIOC_PVRIC_FBDC_TurnOFF(volatile void __iomem * reg)
+void VIOC_PVRIC_FBDC_TurnOFF(void __iomem * reg)
 {
 	unsigned int val;
 	val = (__raw_readl(reg + PVRICCTRL) & ~(PVRICCTRL_START_MASK));
@@ -177,7 +177,7 @@ void VIOC_PVRIC_FBDC_TurnOFF(volatile void __iomem * reg)
 	VIOC_PVRIC_FBDC_SetUpdateInfo(reg, 1);
 }
 
-int VIOC_PVRIC_FBDC_SetBasicConfiguration(volatile void __iomem * reg,
+int VIOC_PVRIC_FBDC_SetBasicConfiguration(void __iomem * reg,
 					  unsigned int base,
 					  unsigned int imgFmt,
 					  unsigned int imgWidth,
@@ -219,7 +219,7 @@ int VIOC_PVRIC_FBDC_SetBasicConfiguration(volatile void __iomem * reg,
 	//pr_info("%s - End\n", __func__);
 }
 
-void VIOC_PVRIC_FBDC_DUMP(volatile void __iomem * reg, unsigned int vioc_id)
+void VIOC_PVRIC_FBDC_DUMP(void __iomem * reg, unsigned int vioc_id)
 {
 	unsigned int cnt = 0;
 	char *pReg = (char *)reg;
@@ -249,7 +249,7 @@ err:
 	return;
 }
 
-volatile void __iomem *VIOC_PVRIC_FBDC_GetAddress(unsigned int vioc_id)
+void __iomem *VIOC_PVRIC_FBDC_GetAddress(unsigned int vioc_id)
 {
 	int Num = get_vioc_index(vioc_id);
 	if (Num >= PVRIC_FBDC_MAX_N)
@@ -278,7 +278,7 @@ static int __init vioc_pvric_fbdc_init(void)
 	} else {
 		for (i = 0; i < PVRIC_FBDC_MAX_N; i++) {
 			pPVRICFBDC_reg[i] =
-			    (volatile void __iomem *)of_iomap(pViocPVRICFBDC_np,
+			    (void __iomem *)of_iomap(pViocPVRICFBDC_np,
 							      is_VIOC_REMAP ? (i
 									       +
 									       PVRIC_FBDC_MAX_N)

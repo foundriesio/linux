@@ -103,16 +103,16 @@ static int Component_Disp_Num;
 static int Component_Scaler_Num;
 static int Component_Mode = -1;
 static int Component_RDMA_VIDEO_Num;
-static volatile void __iomem *pComponent_DISP;
-static volatile void __iomem *pComponent_WMIX;
-static volatile void __iomem *pComponent_RDMA_UI;
-static volatile void __iomem *pComponent_RDMA_VIDEO;
-static volatile void __iomem *pComponent_SCALER;
+static void __iomem *pComponent_DISP;
+static void __iomem *pComponent_WMIX;
+static void __iomem *pComponent_RDMA_UI;
+static void __iomem *pComponent_RDMA_VIDEO;
+static void __iomem *pComponent_SCALER;
 
-static volatile void __iomem *pComponent_Attach_DISP;
-static volatile void __iomem *pComponent_Attach_WMIX;
-static volatile void __iomem *pComponent_Attach_RDMA_UI;
-static volatile void __iomem *pComponent_Attach_RDMA_VIDEO;
+static void __iomem *pComponent_Attach_DISP;
+static void __iomem *pComponent_Attach_WMIX;
+static void __iomem *pComponent_Attach_RDMA_UI;
+static void __iomem *pComponent_Attach_RDMA_VIDEO;
 
 #define DEVICE_NAME "component"
 #define COMPONENT_MINOR 206

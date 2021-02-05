@@ -518,6 +518,6 @@ extern void internal_tve_enable(unsigned int type, unsigned int onoff);
 extern void internal_tve_init(void);
 extern void internal_tve_set_cgms(unsigned char odd_field_en, unsigned char even_field_en, unsigned int data);
 extern void internal_tve_get_cgms(unsigned char *odd_field_en, unsigned char *even_field_en, unsigned int *data, unsigned char *status);
-extern volatile void __iomem* VIOC_TVE_VEN_GetAddress(void);
-extern volatile void __iomem* VIOC_TVE_GetAddress(void);
+extern void __iomem* VIOC_TVE_VEN_GetAddress(void);
+extern void __iomem* VIOC_TVE_GetAddress(void);
 #endif /* __VIOC_TVE_H__ */

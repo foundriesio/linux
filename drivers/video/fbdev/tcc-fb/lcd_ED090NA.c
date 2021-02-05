@@ -75,7 +75,7 @@ ed090na_panel_init(struct lcd_panel *panel, struct tcc_dp_device *fb_pdata)
 static int ed090na_set_power(
 	struct lcd_panel *panel, int on, struct tcc_dp_device *fb_pdata)
 {
-	volatile void __iomem *pDDICfg = VIOC_DDICONFIG_GetAddress();
+	void __iomem *pDDICfg = VIOC_DDICONFIG_GetAddress();
 	unsigned int P, M, S, VSEL, TC;
 
 	pr_info("[INF][LCD] %s : %d\n", __func__, on);

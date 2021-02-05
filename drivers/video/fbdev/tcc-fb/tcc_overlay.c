@@ -86,7 +86,7 @@ static int debug;
 #define OVERLAY_LAYER_MAX (4)
 
 struct overlay_drv_vioc {
-	volatile void __iomem *reg;
+	void __iomem *reg;
 	unsigned int id;
 };
 
@@ -113,8 +113,8 @@ struct overlay_drv_type {
 
 #if defined(CONFIG_VIOC_AFBCDEC)
 static void tcc_overlay_configure_AFBCDEC(
-	volatile void __iomem *pAFBC_Dec, unsigned int afbc_dec_id,
-	volatile void __iomem *pRDMA, unsigned int rdmaPath,
+	void __iomem *pAFBC_Dec, unsigned int afbc_dec_id,
+	void __iomem *pRDMA, unsigned int rdmaPath,
 	unsigned int bSet_Comp, unsigned int onthefly, unsigned int bFirst,
 	unsigned int base_addr, unsigned int fmt, unsigned int bSplitMode,
 	unsigned int bWideMode, unsigned int width, unsigned int height)
@@ -297,7 +297,7 @@ static int tcc_overlay_display_video_buffer(
 			|| (get_vioc_index(overlay_drv->afbc_dec.id)
 			    != buffer_cfg.afbc_dec_num)
 			|| (layer != overlay_drv->layer_nlast))) {
-			volatile void __iomem *reg =
+			void __iomem *reg =
 				overlay_drv->rdma[layer].reg;
 			unsigned int id = overlay_drv->rdma[layer].id;
 

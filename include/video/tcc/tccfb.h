@@ -95,7 +95,7 @@ enum {
  * Structures
  */
 struct tcc_vioc_block {
-	volatile void __iomem *virt_addr; // virtual address
+	void __iomem *virt_addr; // virtual address
 	unsigned int irq_num;
 	unsigned int blk_num; //block number like dma number or mixer number
 };

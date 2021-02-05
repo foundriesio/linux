@@ -158,28 +158,28 @@ typedef enum
 #define PVRICSYS_IRQ_ALL			    ( PVRICSTS_EOF_ERR_MASK | PVRICSTS_ADDR_ERR_MASK | PVRICSTS_TILE_ERR_MASK | PVRICSTS_UPD_MASK | PVRICSTS_IDLE_MASK )	
 
 /* Interface APIs */
-extern void VIOC_PVRIC_FBDC_SetARGBSwizzMode(volatile void __iomem *reg, VIOC_PVRICCTRL_SWIZZ_MODE mode);
-extern void VIOC_PVRIC_FBDC_SetUpdateInfo(volatile void __iomem *reg, unsigned int enable);
-extern void VIOC_PVRIC_FBDC_SetFormat(volatile void __iomem *reg, VIOC_PVRICCTRL_FMT_MODE fmt);
-extern void VIOC_PVRIC_FBDC_SetTileType(volatile void __iomem *reg, VIOC_PVRICCTRL_TILE_TYPE type);
-extern void VIOC_PVRIC_FBDC_SetLossyDecomp(volatile void __iomem *reg, unsigned int enable);
+extern void VIOC_PVRIC_FBDC_SetARGBSwizzMode(void __iomem *reg, VIOC_PVRICCTRL_SWIZZ_MODE mode);
+extern void VIOC_PVRIC_FBDC_SetUpdateInfo(void __iomem *reg, unsigned int enable);
+extern void VIOC_PVRIC_FBDC_SetFormat(void __iomem *reg, VIOC_PVRICCTRL_FMT_MODE fmt);
+extern void VIOC_PVRIC_FBDC_SetTileType(void __iomem *reg, VIOC_PVRICCTRL_TILE_TYPE type);
+extern void VIOC_PVRIC_FBDC_SetLossyDecomp(void __iomem *reg, unsigned int enable);
 
-extern void VIOC_PVRIC_FBDC_SetFrameSize(volatile void __iomem *reg, unsigned int width, unsigned int height);
-extern void VIOC_PVRIC_FBDC_GetFrameSize(volatile void __iomem *reg, unsigned int *width, unsigned int *height);
-extern void VIOC_PVRIC_FBDC_SetRequestBase(volatile void __iomem *reg, unsigned int base);
-extern void VIOC_PVRIC_FBDC_GetCurTileNum(volatile void __iomem *reg, unsigned int *tile_num);
-extern void VIOC_PVRIC_FBDC_SetOutBufOffset(volatile void __iomem *reg, unsigned int imgFmt, unsigned int imgWidth);
-extern void VIOC_PVRIC_FBDC_SetOutBufBase(volatile void __iomem *reg, unsigned int base);
-extern unsigned int VIOC_PVRIC_FBDC_GetIdle(volatile void __iomem *reg);
-extern unsigned int VIOC_PVRIC_FBDC_GetStatus(volatile void __iomem *reg);
-extern void VIOC_PVRIC_FBDC_SetIrqMask(volatile void __iomem *reg, unsigned int enable, unsigned int mask);
-extern void VIOC_PVRIC_FBDC_ClearIrq(volatile void __iomem *reg, unsigned int mask);
-extern void VIOC_PVRIC_FBDC_TurnOFF(volatile void __iomem *reg);
-extern void VIOC_PVRIC_FBDC_TurnOn(volatile void __iomem *reg);
-extern int VIOC_PVRIC_FBDC_SetBasicConfiguration(volatile void __iomem *reg, unsigned int base,
+extern void VIOC_PVRIC_FBDC_SetFrameSize(void __iomem *reg, unsigned int width, unsigned int height);
+extern void VIOC_PVRIC_FBDC_GetFrameSize(void __iomem *reg, unsigned int *width, unsigned int *height);
+extern void VIOC_PVRIC_FBDC_SetRequestBase(void __iomem *reg, unsigned int base);
+extern void VIOC_PVRIC_FBDC_GetCurTileNum(void __iomem *reg, unsigned int *tile_num);
+extern void VIOC_PVRIC_FBDC_SetOutBufOffset(void __iomem *reg, unsigned int imgFmt, unsigned int imgWidth);
+extern void VIOC_PVRIC_FBDC_SetOutBufBase(void __iomem *reg, unsigned int base);
+extern unsigned int VIOC_PVRIC_FBDC_GetIdle(void __iomem *reg);
+extern unsigned int VIOC_PVRIC_FBDC_GetStatus(void __iomem *reg);
+extern void VIOC_PVRIC_FBDC_SetIrqMask(void __iomem *reg, unsigned int enable, unsigned int mask);
+extern void VIOC_PVRIC_FBDC_ClearIrq(void __iomem *reg, unsigned int mask);
+extern void VIOC_PVRIC_FBDC_TurnOFF(void __iomem *reg);
+extern void VIOC_PVRIC_FBDC_TurnOn(void __iomem *reg);
+extern int VIOC_PVRIC_FBDC_SetBasicConfiguration(void __iomem *reg, unsigned int base,
 			 unsigned int imgFmt, unsigned int imgWidth, unsigned int imgHeight, unsigned int decomp_mode);
-extern void VIOC_PVRIC_FBDC_DUMP(volatile void __iomem *reg, unsigned int vioc_id);
-extern volatile void __iomem* VIOC_PVRIC_FBDC_GetAddress(unsigned int vioc_id);
+extern void VIOC_PVRIC_FBDC_DUMP(void __iomem *reg, unsigned int vioc_id);
+extern void __iomem* VIOC_PVRIC_FBDC_GetAddress(unsigned int vioc_id);
 
 
 #endif //__VIOC_PVRICFBDC_H__

@@ -265,7 +265,7 @@ struct tcc_v4l2_img {
 
 struct vioc_disp {
 	int id;
-	volatile void __iomem *addr;
+	void __iomem *addr;
 	unsigned int irq;
 	unsigned int irq_enable;	// avoid overlapping irq
 	struct vioc_intr_type *vioc_intr;
@@ -273,7 +273,7 @@ struct vioc_disp {
 
 struct vioc_rdma {
 	int id;
-	volatile void __iomem *addr;
+	void __iomem *addr;
 	struct tcc_v4l2_img img;
 	unsigned int width;
 	unsigned int height;
@@ -288,7 +288,7 @@ struct vioc_rdma {
 
 struct vioc_wdma {
 	int id;
-	volatile void __iomem *addr;
+	void __iomem *addr;
 	struct tcc_v4l2_img img;
 	unsigned int width;
 	unsigned int height;
@@ -303,7 +303,7 @@ struct vioc_wdma {
 
 struct vioc_wmix {
 	int id;
-	volatile void __iomem *addr;
+	void __iomem *addr;
 	unsigned int width;
 	unsigned int height;
 	unsigned int pos;		// wmix image position
@@ -329,12 +329,12 @@ struct vioc_alpha {
 
 struct vioc_sc {
 	int id;
-	volatile void __iomem *addr;
+	void __iomem *addr;
 };
 
 struct vioc_viqe {
 	int id;
-	volatile void __iomem *addr;
+	void __iomem *addr;
 	unsigned int y2r;
 	unsigned int y2rmd;
 };

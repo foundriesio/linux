@@ -91,6 +91,6 @@ void tcc_set_lut_csc_coeff(
 	unsigned int lut_csc_31_32,
 	unsigned int lut_csc_32);
 void tcc_set_default_lut_csc_coeff(void);
-extern volatile void __iomem *VIOC_LUT_GetAddress(void);
+extern void __iomem *VIOC_LUT_GetAddress(void);
 extern void __iomem *lut_get_address(int lut_n, int *is_dev);
 #endif

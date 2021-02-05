@@ -81,6 +81,6 @@ extern int tcc_get_lut_plugin(unsigned int lut_n);
 extern void tcc_set_lut_enable(
 	unsigned int lut_n, unsigned int enable);
 extern int tcc_get_lut_enable(unsigned int lut_n);
-extern volatile void __iomem *VIOC_LUT_GetAddress(void);
+extern void __iomem *VIOC_LUT_GetAddress(void);
 extern void __iomem *lut_get_address(int lut_n, int *is_dev);
 #endif

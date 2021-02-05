@@ -30,7 +30,7 @@
 #include <video/tcc/vioc_ddicfg.h>	// is_VIOC_REMAP
 #include <video/tcc/vioc_lut.h>
 
-static volatile void __iomem *pLUT_reg;
+static void __iomem *pLUT_reg;
 
 #define REG_VIOC_LUT(offset) (pLUT_reg + (offset))
 #define LUT_CTRL_R REG_VIOC_LUT(0)
@@ -177,7 +177,7 @@ void tcc_set_lut_table_to_color(unsigned int lut_n,
 	void __iomem *table_reg = (void __iomem *)LUT_TABLE_R;
 	void __iomem *ctrl_reg = (void __iomem *)LUT_CTRL_R;
 
-	volatile unsigned int color = 0;
+	unsigned int color = 0;
 
 	color = ((R & 0x3FF) << 20) | ((G & 0x3FF) << 10) | (B & 0x3FF);
 	pr_info("%s R:0x%x, G:0x%x B:0x%x, color:0x%x \n",
@@ -408,7 +408,7 @@ int tcc_get_lut_update_pend(unsigned int lut_n)
 	return pend;
 }
 
-volatile void __iomem *VIOC_LUT_GetAddress(void)
+void __iomem *VIOC_LUT_GetAddress(void)
 {
 	if (pLUT_reg == NULL)
 		pr_err("[ERR][LUT] %s ADDRESS NULL \n", __func__);
@@ -424,7 +424,7 @@ static int __init vioc_lut_init(void)
 	if (ViocLUT_np == NULL) {
 		pr_info("[INF][LUT] disabled\n");
 	} else {
-		pLUT_reg = (volatile void __iomem *)of_iomap(ViocLUT_np,
+		pLUT_reg = (void __iomem *)of_iomap(ViocLUT_np,
 							     is_VIOC_REMAP ? 1 :
 							     0);
 

@@ -309,34 +309,34 @@
 #define LVDS_MISC3_BE_MASK  (0x1 << LVDS_MISC3_BE_SHIFT)
 
 
-extern void VIOC_DDICONFIG_SetSWRESET(volatile void __iomem *reg,
+extern void VIOC_DDICONFIG_SetSWRESET(void __iomem *reg,
 	unsigned int type, unsigned int set);
-extern void VIOC_DDICONFIG_SetPWDN(volatile void __iomem *reg,
+extern void VIOC_DDICONFIG_SetPWDN(void __iomem *reg,
 	unsigned int type, unsigned int set);
-extern void VIOC_DDICONFIG_Set_hdmi_enable(volatile void __iomem *reg,
+extern void VIOC_DDICONFIG_Set_hdmi_enable(void __iomem *reg,
 	unsigned int enable);
-extern void VIOC_DDICONFIG_Set_prng(volatile void __iomem *reg,
+extern void VIOC_DDICONFIG_Set_prng(void __iomem *reg,
 	unsigned int enable);
-extern void VIOC_DDICONFIG_Set_refclock(volatile void __iomem *reg,
+extern void VIOC_DDICONFIG_Set_refclock(void __iomem *reg,
 	unsigned int ref_clock);
-extern void VIOC_DDICONFIG_NTSCPAL_SetEnable(volatile void __iomem *reg,
+extern void VIOC_DDICONFIG_NTSCPAL_SetEnable(void __iomem *reg,
 	unsigned int enable, unsigned int lcdc_num);
-extern void VIOC_DDICONFIG_LVDS_SetEnable(volatile void __iomem *reg,
+extern void VIOC_DDICONFIG_LVDS_SetEnable(void __iomem *reg,
 	unsigned int enable);
-extern void VIOC_DDICONFIG_LVDS_SetReset(volatile void __iomem *reg,
+extern void VIOC_DDICONFIG_LVDS_SetReset(void __iomem *reg,
 	unsigned int reset);
-extern void VIOC_DDICONFIG_LVDS_SetConnectivity(volatile void __iomem *reg,
+extern void VIOC_DDICONFIG_LVDS_SetConnectivity(void __iomem *reg,
 	unsigned int voc, unsigned int cms,
 	unsigned int cc, unsigned int lc);
-extern void VIOC_DDICONFIG_LVDS_SetPLL(volatile void __iomem *reg,
+extern void VIOC_DDICONFIG_LVDS_SetPLL(void __iomem *reg,
 	unsigned int vsel, unsigned int p, unsigned int m,
 	unsigned int s, unsigned int tc);
-extern void VIOC_DDICONFIG_LVDS_SetPort(volatile void __iomem *reg,
+extern void VIOC_DDICONFIG_LVDS_SetPort(void __iomem *reg,
 	unsigned int select);
-extern void VIOC_DDICONFIG_LVDS_SetPath(volatile void __iomem *reg,
+extern void VIOC_DDICONFIG_LVDS_SetPath(void __iomem *reg,
 	int path, unsigned int bit);
 extern void VIOC_DDICONFIG_DUMP(void);
-extern volatile void __iomem *VIOC_DDICONFIG_GetAddress(void);
+extern void __iomem *VIOC_DDICONFIG_GetAddress(void);
 
 /*
  * VIOC_REMAP (VIOC Register Address Remap Enable Register)

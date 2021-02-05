@@ -361,32 +361,32 @@ typedef struct {
 #define MC_IRQ_MD_MASK				(0x1 << MC_IRQ_MD_SHIFT)
 
 extern void VIOC_MC_Get_OnOff(
-	volatile void __iomem *reg, uint *enable);
+	void __iomem *reg, uint *enable);
 extern void VIOC_MC_Start_OnOff(
-	volatile void __iomem *reg, uint OnOff);
-extern void VIOC_MC_UPD(volatile void __iomem *reg);
+	void __iomem *reg, uint OnOff);
+extern void VIOC_MC_UPD(void __iomem *reg);
 extern void VIOC_MC_Y2R_OnOff(
-	volatile void __iomem *reg, uint OnOff, uint mode);
+	void __iomem *reg, uint OnOff, uint mode);
 extern void VIOC_MC_Start_BitDepth(
-	volatile void __iomem *reg, uint Chroma, uint Luma);
+	void __iomem *reg, uint Chroma, uint Luma);
 extern void VIOC_MC_OFFSET_BASE(
-	volatile void __iomem *reg, uint base_y, uint base_c);
+	void __iomem *reg, uint base_y, uint base_c);
 extern void VIOC_MC_FRM_BASE(
-	volatile void __iomem *reg, uint base_y, uint base_c);
+	void __iomem *reg, uint base_y, uint base_c);
 extern void VIOC_MC_FRM_SIZE(
-	volatile void __iomem *reg, uint xsize, uint ysize);
+	void __iomem *reg, uint xsize, uint ysize);
 extern void VIOC_MC_FRM_SIZE_MISC(
-	volatile void __iomem *reg, uint pic_height,
+	void __iomem *reg, uint pic_height,
 	uint stride_y, uint stride_c);
 extern void VIOC_MC_FRM_POS(
-	volatile void __iomem *reg, uint xpos, uint ypos);
+	void __iomem *reg, uint xpos, uint ypos);
 extern void VIOC_MC_ENDIAN(
-	volatile void __iomem *reg, uint ofs_endian, uint comp_endian);
+	void __iomem *reg, uint ofs_endian, uint comp_endian);
 extern void VIOC_MC_DITH_CONT(
-	volatile void __iomem *reg, uint en, uint sel);
+	void __iomem *reg, uint en, uint sel);
 extern void VIOC_MC_SetDefaultAlpha(
-	volatile void __iomem *reg, uint alpha);
-extern volatile void __iomem *VIOC_MC_GetAddress(
+	void __iomem *reg, uint alpha);
+extern void __iomem *VIOC_MC_GetAddress(
 	unsigned int vioc_id);
 extern int  tvc_mc_get_info(
 	unsigned int component_num, mc_info_type *pMC_info);

@@ -74,8 +74,8 @@
 
 void tca_map_convter_wait_done(unsigned int component_num)
 {
-	volatile unsigned int loop = 0, upd_loop = 0;
-	volatile void __iomem *HwVIOC_MC;
+	unsigned int loop = 0, upd_loop = 0;
+	void __iomem *HwVIOC_MC;
 	unsigned int value;
 
 	HwVIOC_MC = VIOC_MC_GetAddress(component_num);
@@ -112,11 +112,11 @@ void tca_map_convter_swreset(unsigned int component_num)
 void tca_map_convter_onoff(unsigned int component_num, unsigned int onoff,
 			   unsigned int wait_done)
 {
-	volatile void __iomem *HwVIOC_MC = VIOC_MC_GetAddress(component_num);
+	void __iomem *HwVIOC_MC = VIOC_MC_GetAddress(component_num);
 
 #if defined(CONFIG_VIOC_DOLBY_VISION_EDR)
 	if (get_vioc_index(component_num) == 0) {
-		volatile void __iomem *pDisp_DV =
+		void __iomem *pDisp_DV =
 			VIOC_DV_GetAddress((enum DV_DISP_TYPE)EDR_BL);
 		if (onoff)
 			VIOC_V_DV_Turnon(pDisp_DV, NULL);
@@ -144,7 +144,7 @@ void tca_map_convter_onoff(unsigned int component_num, unsigned int onoff,
 
 #if 0//defined(CONFIG_VIOC_DOLBY_VISION_EDR)
 	if (get_vioc_index(component_num) == 0) {
-		volatile void __iomem *pDisp_DV =
+		void __iomem *pDisp_DV =
 			VIOC_DV_GetAddress((enum DV_DISP_TYPE)EDR_BL);
 		if (onoff)
 			VIOC_V_DV_Turnon(pDisp_DV, NULL);
@@ -177,7 +177,7 @@ void tca_map_convter_set(unsigned int component_num,
 	uint bit_depth_c;
 	uint offset_base_y, offset_base_c;
 	uint frame_base_y, frame_base_c;
-	volatile void __iomem *HwVIOC_MC =
+	void __iomem *HwVIOC_MC =
 		VIOC_MC_GetAddress(component_num);
 
 #if 0
@@ -309,7 +309,7 @@ void tca_map_convter_set(unsigned int component_num,
 #if defined(CONFIG_VIOC_DOLBY_VISION_EDR)
 	if (VIOC_CONFIG_DV_GET_EDR_PATH() && get_vioc_index(component_num)
 		== tca_get_main_decompressor_num()) {
-		volatile void __iomem *pDisp_DV =
+		void __iomem *pDisp_DV =
 
 		VIOC_DV_GetAddress((enum DV_DISP_TYPE)EDR_BL);
 
@@ -359,7 +359,7 @@ void tca_map_convter_driver_set(unsigned int component_num, unsigned int Fwidth,
 	uint bit_depth_c;
 	uint offset_base_y, offset_base_c;
 	uint frame_base_y, frame_base_c;
-	volatile void __iomem *HwVIOC_MC =
+	void __iomem *HwVIOC_MC =
 		VIOC_MC_GetAddress(component_num);
 #if 0  // debug log
 	pr_info("[DBG][MAPC] MC[%d] >> R[0x%lx/0x%lx/0x%lx] M[%d] F:%dx%d Str(%d/%d) C:0x%08x/0x%08x T:0x%08x/0x%08x bpp(%d/%d) crop(%d/%d~%dx%d) Reserved(%d)\n",

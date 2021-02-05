@@ -39,14 +39,14 @@
 #define LUT6_INDEX				665
 #define LUT7_INDEX				729
 
-static volatile void __iomem *pLUT3D_reg[VIOC_LUT_3D_MAX] = {0};
+static void __iomem *pLUT3D_reg[VIOC_LUT_3D_MAX] = {0};
 
 unsigned int lut_reg[729];
 
 int vioc_lut_3d_set_select(unsigned int lut_n, unsigned int sel)
 {
 	unsigned int value;
-	volatile void __iomem *reg;
+	void __iomem *reg;
 	reg = get_lut_3d_address(lut_n);
 
 	value = __raw_readl(reg + LUT_3D_CTRL_OFFSET) & ~(LUT_3D_CTRL_SEL_MASK);
@@ -59,7 +59,7 @@ int vioc_lut_3d_set_select(unsigned int lut_n, unsigned int sel)
 int vioc_lut_3d_set_table(unsigned int lut_n, unsigned int *table)
 {
 	unsigned int index, i, offset;
-	volatile void __iomem *reg;
+	void __iomem *reg;
 	reg = get_lut_3d_address(lut_n) + LUT_3D_TABLE_OFFSET;
 
 	index = 0;
@@ -127,7 +127,7 @@ int vioc_lut_3d_set_table(unsigned int lut_n, unsigned int *table)
 int vioc_lut_3d_setupdate(unsigned int lut_n)
 {
 	unsigned int value;
-	volatile void __iomem *reg;
+	void __iomem *reg;
 	reg = get_lut_3d_address(lut_n);
 
 	value = __raw_readl(reg + LUT_3D_CTRL_OFFSET) | (1 << LUT_3D_CTRL_UPD_SHIFT);
@@ -147,7 +147,7 @@ int vioc_lut_3d_setupdate(unsigned int lut_n)
 int vioc_lut_3d_bypass(unsigned int lut_n, unsigned int onoff)
 {
 	unsigned int value;
-	volatile void __iomem *reg;
+	void __iomem *reg;
 	reg = get_lut_3d_address(lut_n);
 
 	if(onoff)
@@ -162,7 +162,7 @@ int vioc_lut_3d_bypass(unsigned int lut_n, unsigned int onoff)
 int vioc_lut_3d_pend(unsigned int lut_n, unsigned int onoff)
 {
 	unsigned int value;
-	volatile void __iomem *reg;
+	void __iomem *reg;
 	reg = get_lut_3d_address(lut_n) + LUT_3D_PEND_OFFSET;
 
 	if(onoff)
@@ -174,7 +174,7 @@ int vioc_lut_3d_pend(unsigned int lut_n, unsigned int onoff)
 	return 0;
 }
 
-volatile void __iomem *get_lut_3d_address(unsigned int lut_n)
+void __iomem *get_lut_3d_address(unsigned int lut_n)
 {
 	if (lut_n < VIOC_LUT_3D_MAX)
 		return pLUT3D_reg[lut_n];
@@ -187,7 +187,7 @@ static int __init vioc_lut_3d_init(void)
 {
 	int i = 0;
 	struct device_node *ViocLUT3D_np;
-	volatile void __iomem *reg;
+	void __iomem *reg;
 	ViocLUT3D_np = of_find_compatible_node(NULL, NULL, "telechips,vioc_lut_3d");
 
 	if (ViocLUT3D_np == NULL) {

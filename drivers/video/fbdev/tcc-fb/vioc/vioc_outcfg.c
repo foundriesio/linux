@@ -30,7 +30,7 @@
 
 /* Debugging stuff */
 static int debug;
-static volatile void __iomem *pOUTCFG_reg;
+static void __iomem *pOUTCFG_reg;
 
 #define dprintk(msg...)                                           \
 	do {                                                      \
@@ -47,7 +47,7 @@ static volatile void __iomem *pOUTCFG_reg;
  */
 void VIOC_OUTCFG_SetOutConfig(unsigned int nType, unsigned int nDisp)
 {
-	volatile void __iomem *reg = VIOC_OUTCONFIG_GetAddress();
+	void __iomem *reg = VIOC_OUTCONFIG_GetAddress();
 	unsigned long val;
 
 	if (reg == NULL)
@@ -101,7 +101,7 @@ void VIOC_OUTCFG_SetOutConfig(unsigned int nType, unsigned int nDisp)
 #if defined(CONFIG_FB_TCC_COMPOSITE_BVO)
 void VIOC_OUTCFG_BVO_SetOutConfig(unsigned int nDisp)
 {
-	volatile void __iomem *reg = VIOC_OUTCONFIG_GetAddress();
+	void __iomem *reg = VIOC_OUTCONFIG_GetAddress();
 	unsigned long val;
 
 	val = (__raw_readl(reg + MISC) & ~(MISC_BVO_SDVESEL_MASK));
@@ -112,7 +112,7 @@ void VIOC_OUTCFG_BVO_SetOutConfig(unsigned int nDisp)
 }
 #endif
 
-volatile void __iomem *VIOC_OUTCONFIG_GetAddress(void)
+void __iomem *VIOC_OUTCONFIG_GetAddress(void)
 {
 	if (pOUTCFG_reg == NULL)
 		pr_err("[ERR][OUTCFG] %s pOUTCFG_reg is NULL\n", __func__);
@@ -123,7 +123,7 @@ volatile void __iomem *VIOC_OUTCONFIG_GetAddress(void)
 void VIOC_OUTCONFIG_DUMP(void)
 {
 	unsigned int cnt = 0;
-	volatile void __iomem *pReg = VIOC_OUTCONFIG_GetAddress();
+	void __iomem *pReg = VIOC_OUTCONFIG_GetAddress();
 
 	pr_debug("[DBG][OUTCFG] %p\n", pReg);
 	while (cnt < 0x10) {

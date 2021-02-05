@@ -280,7 +280,7 @@ struct bvo_regs bvo_regs_val[BVO_FMT_MAX] = {
  */
 static struct clk *tve_clk_ntscpal;
 static struct clk *tve_clk_dac;
-static volatile void __iomem *pbvo;
+static void __iomem *pbvo;
 
 static void bvo_regs_dump(enum bvo_format bfmt)
 {
@@ -758,7 +758,7 @@ void internal_tve_enable(enum COMPOSITE_MODE_TYPE type, unsigned int onoff)
 
 void internal_tve_init(void)
 {
-	//volatile void __iomem *ddicfg = VIOC_DDICONFIG_GetAddress();
+	//void __iomem *ddicfg = VIOC_DDICONFIG_GetAddress();
 	//struct device_node *ViocTve_np;
 	//
 	//dprintk("%s\n", __func__);
@@ -933,7 +933,7 @@ void internal_tve_set_cgms_helper(unsigned char odd_field_en,
 }
 
 
-volatile void __iomem *VIOC_TVE_GetAddress(void)
+void __iomem *VIOC_TVE_GetAddress(void)
 {
 	if (pbvo == NULL)
 		pr_err("[ERR][BVO] %s: BVO address NULL\n", __func__);
@@ -941,7 +941,7 @@ volatile void __iomem *VIOC_TVE_GetAddress(void)
 	return pbvo;
 }
 
-volatile void __iomem *VIOC_TVE_VEN_GetAddress(void)
+void __iomem *VIOC_TVE_VEN_GetAddress(void)
 {
 	pr_err("[ERR][BVO] %s: N/A (BVO)\n", __func__);
 	return NULL;
@@ -957,7 +957,7 @@ static int __init vioc_tve_init(void)
 	if (ViocTve_np == NULL) {
 		pr_info("[INF][BVO] disabled\n");
 	} else {
-		pbvo = (volatile void __iomem *)of_iomap(ViocTve_np, 2);
+		pbvo = (void __iomem *)of_iomap(ViocTve_np, 2);
 		if (pbvo) {
 			pr_info("[INF][BVO] 0x%p\n", pbvo);
 		}

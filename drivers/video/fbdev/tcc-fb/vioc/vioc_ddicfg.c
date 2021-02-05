@@ -32,10 +32,10 @@ static int debug;
 		}							\
 	} while (0)
 
-static volatile void __iomem *pDDICFG_reg;
+static void __iomem *pDDICFG_reg;
 
 void VIOC_DDICONFIG_SetPWDN(
-	volatile void __iomem *reg, unsigned int type, unsigned int set)
+	void __iomem *reg, unsigned int type, unsigned int set)
 {
 	unsigned int val;
 
@@ -113,7 +113,7 @@ void VIOC_DDICONFIG_SetPWDN(
 EXPORT_SYMBOL(VIOC_DDICONFIG_SetPWDN);
 
 void VIOC_DDICONFIG_SetSWRESET(
-	volatile void __iomem *reg, unsigned int type, unsigned int set)
+	void __iomem *reg, unsigned int type, unsigned int set)
 {
 	unsigned int val;
 
@@ -187,7 +187,7 @@ EXPORT_SYMBOL(VIOC_DDICONFIG_SetSWRESET);
 #if defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC899X)        \
 	|| defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC901X) \
 	|| defined(CONFIG_ARCH_TCC805X)
-int VIOC_DDICONFIG_GetPeriClock(volatile void __iomem *reg, unsigned int num)
+int VIOC_DDICONFIG_GetPeriClock(void __iomem *reg, unsigned int num)
 {
 	unsigned int val;
 
@@ -198,7 +198,7 @@ int VIOC_DDICONFIG_GetPeriClock(volatile void __iomem *reg, unsigned int num)
 EXPORT_SYMBOL(VIOC_DDICONFIG_GetPeriClock);
 
 void VIOC_DDICONFIG_SetPeriClock(
-	volatile void __iomem *reg, unsigned int num, unsigned int set)
+	void __iomem *reg, unsigned int num, unsigned int set)
 {
 	unsigned int val;
 
@@ -211,7 +211,7 @@ EXPORT_SYMBOL(VIOC_DDICONFIG_SetPeriClock);
 
 #if !defined(CONFIG_ARCH_TCC805X)
 void VIOC_DDICONFIG_Set_hdmi_enable(
-	volatile void __iomem *reg, unsigned int enable)
+	void __iomem *reg, unsigned int enable)
 {
 	unsigned int val;
 
@@ -222,7 +222,7 @@ void VIOC_DDICONFIG_Set_hdmi_enable(
 }
 EXPORT_SYMBOL(VIOC_DDICONFIG_Set_hdmi_enable);
 
-void VIOC_DDICONFIG_Set_prng(volatile void __iomem *reg, unsigned int enable)
+void VIOC_DDICONFIG_Set_prng(void __iomem *reg, unsigned int enable)
 {
 	unsigned int val;
 
@@ -234,7 +234,7 @@ void VIOC_DDICONFIG_Set_prng(volatile void __iomem *reg, unsigned int enable)
 EXPORT_SYMBOL(VIOC_DDICONFIG_Set_prng);
 
 void VIOC_DDICONFIG_Set_refclock(
-	volatile void __iomem *reg, unsigned int ref_clock)
+	void __iomem *reg, unsigned int ref_clock)
 {
 	unsigned int val;
 
@@ -246,7 +246,7 @@ EXPORT_SYMBOL(VIOC_DDICONFIG_Set_refclock);
 
 #if defined(HDMI_CTRL_PLL_SEL_MASK)
 void VIOC_DDICONFIG_Set_pll_sel(
-	volatile void __iomem *reg, unsigned int pll_sel)
+	void __iomem *reg, unsigned int pll_sel)
 {
 	unsigned int val;
 
@@ -259,7 +259,7 @@ EXPORT_SYMBOL(VIOC_DDICONFIG_Set_pll_sel);
 
 #if defined(HDMI_CTRL_PHY_ST_MASK)
 int VIOC_DDICONFIG_get_phy_status(
-	volatile void __iomem *reg, unsigned int phy_mode)
+	void __iomem *reg, unsigned int phy_mode)
 {
 	int status = 0;
 	unsigned int val;
@@ -277,7 +277,7 @@ EXPORT_SYMBOL(VIOC_DDICONFIG_get_phy_status);
 
 #if defined(HDMI_CTRL_TB_MASK)
 void VIOC_DDICONFIG_Set_tmds_bit_order(
-	volatile void __iomem *reg, unsigned int bit_order)
+	void __iomem *reg, unsigned int bit_order)
 {
 	unsigned int val;
 
@@ -290,7 +290,7 @@ EXPORT_SYMBOL(VIOC_DDICONFIG_Set_tmds_bit_order);
 
 #if defined(HDMI_CTRL_RESET_PHY_MASK)
 void VIOC_DDICONFIG_reset_hdmi_phy(
-	volatile void __iomem *reg, unsigned int reset_enable)
+	void __iomem *reg, unsigned int reset_enable)
 {
 	unsigned int val;
 
@@ -303,7 +303,7 @@ EXPORT_SYMBOL(VIOC_DDICONFIG_reset_hdmi_phy);
 
 #if defined(HDMI_CTRL_RESET_LINK_MASK)
 void VIOC_DDICONFIG_reset_hdmi_link(
-	volatile void __iomem *reg, unsigned int reset_enable)
+	void __iomem *reg, unsigned int reset_enable)
 {
 	unsigned int val;
 
@@ -317,7 +317,7 @@ EXPORT_SYMBOL(VIOC_DDICONFIG_reset_hdmi_link);
 #endif
 #if defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC901X)
 void VIOC_DDICONFIG_DAC_PWDN_Control(
-	volatile void __iomem *reg, enum dac_pwdn_status dac_status)
+	void __iomem *reg, enum dac_pwdn_status dac_status)
 {
 	uint32_t val;
 
@@ -351,7 +351,7 @@ EXPORT_SYMBOL(VIOC_DDICONFIG_DAC_PWDN_Control);
  */
 #if defined(CONFIG_FB_TCC_COMPOSITE_BVO)
 static void VIOC_DDICONFIG_BVOVENC_SetEnable(
-	volatile void __iomem *reg, unsigned int enable)
+	void __iomem *reg, unsigned int enable)
 {
 	uint32_t val;
 
@@ -363,7 +363,7 @@ static void VIOC_DDICONFIG_BVOVENC_SetEnable(
 	__raw_writel(val, reg + BVOVENC_EN);
 }
 
-static void VIOC_DDICONFIG_BVOVENC_Reset(volatile void __iomem *reg)
+static void VIOC_DDICONFIG_BVOVENC_Reset(void __iomem *reg)
 {
 	uint32_t val;
 
@@ -401,7 +401,7 @@ void VIOC_DDICONFIG_BVOVENC_Reset_ctrl(int reset_bit)
 EXPORT_SYMBOL(VIOC_DDICONFIG_BVOVENC_Reset_ctrl);
 #else
 static void VIOC_DDICONFIG_TVOVENC_SetEnable(
-	volatile void __iomem *reg, unsigned int enable)
+	void __iomem *reg, unsigned int enable)
 {
 #if !(defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC897X) \
 	|| defined(CONFIG_ARCH_TCC805X))
@@ -418,7 +418,7 @@ static void VIOC_DDICONFIG_TVOVENC_SetEnable(
 #endif // CONFIG_FB_TCC_COMPOSITE_BVO
 
 static void VIOC_DDICONFIG_Select_TVEncoder(
-	volatile void __iomem *reg, unsigned int tve_type)
+	void __iomem *reg, unsigned int tve_type)
 {
 #if defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC901X)
 	uint32_t val;
@@ -432,7 +432,7 @@ static void VIOC_DDICONFIG_Select_TVEncoder(
 }
 
 void VIOC_DDICONFIG_NTSCPAL_SetEnable(
-	volatile void __iomem *reg, unsigned int enable, unsigned int lcdc_num)
+	void __iomem *reg, unsigned int enable, unsigned int lcdc_num)
 {
 	dprintk("%s(lcdc%d %s)\n", __func__, lcdc_num,
 		enable ? "enable" : "disable");
@@ -456,7 +456,7 @@ EXPORT_SYMBOL(VIOC_DDICONFIG_NTSCPAL_SetEnable);
 
 #if defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC897X)
 void VIOC_DDICONFIG_LVDS_SetEnable(
-	volatile void __iomem *reg, unsigned int enable)
+	void __iomem *reg, unsigned int enable)
 {
 	unsigned int val;
 
@@ -468,7 +468,7 @@ void VIOC_DDICONFIG_LVDS_SetEnable(
 EXPORT_SYMBOL(VIOC_DDICONFIG_LVDS_SetEnable);
 
 void VIOC_DDICONFIG_LVDS_SetReset(
-	volatile void __iomem *reg, unsigned int reset)
+	void __iomem *reg, unsigned int reset)
 {
 	unsigned int val;
 
@@ -480,7 +480,7 @@ void VIOC_DDICONFIG_LVDS_SetReset(
 EXPORT_SYMBOL(VIOC_DDICONFIG_LVDS_SetReset);
 
 void VIOC_DDICONFIG_LVDS_SetPort(
-	volatile void __iomem *reg, unsigned int select)
+	void __iomem *reg, unsigned int select)
 {
 	unsigned int val;
 
@@ -491,7 +491,7 @@ void VIOC_DDICONFIG_LVDS_SetPort(
 EXPORT_SYMBOL(VIOC_DDICONFIG_LVDS_SetPort);
 
 void VIOC_DDICONFIG_LVDS_SetPLL(
-	volatile void __iomem *reg, unsigned int vsel, unsigned int p,
+	void __iomem *reg, unsigned int vsel, unsigned int p,
 	unsigned int m, unsigned int s, unsigned int tc)
 {
 	unsigned int val;
@@ -509,7 +509,7 @@ void VIOC_DDICONFIG_LVDS_SetPLL(
 EXPORT_SYMBOL(VIOC_DDICONFIG_LVDS_SetPLL);
 
 void VIOC_DDICONFIG_LVDS_SetConnectivity(
-	volatile void __iomem *reg, unsigned int voc, unsigned int cms,
+	void __iomem *reg, unsigned int voc, unsigned int cms,
 	unsigned int cc, unsigned int lc)
 {
 	unsigned int val;
@@ -526,7 +526,7 @@ void VIOC_DDICONFIG_LVDS_SetConnectivity(
 EXPORT_SYMBOL(VIOC_DDICONFIG_LVDS_SetConnectivity);
 
 void VIOC_DDICONFIG_LVDS_SetPath(
-	volatile void __iomem *reg, int path, unsigned int bit)
+	void __iomem *reg, int path, unsigned int bit)
 {
 	if (path < 0) {
 		pr_err("[ERR][DDICFG] %s: path:%d wrong path\n", __func__,
@@ -541,7 +541,7 @@ EXPORT_SYMBOL(VIOC_DDICONFIG_LVDS_SetPath);
 
 #if defined(CONFIG_ARCH_TCC803X)
 void VIOC_DDICONFIG_MIPI_Reset_DPHY(
-	volatile void __iomem *reg, unsigned int reset)
+	void __iomem *reg, unsigned int reset)
 {
 	unsigned int val;
 
@@ -554,7 +554,7 @@ void VIOC_DDICONFIG_MIPI_Reset_DPHY(
 EXPORT_SYMBOL(VIOC_DDICONFIG_MIPI_Reset_DPHY);
 
 void VIOC_DDICONFIG_MIPI_Reset_GEN(
-	volatile void __iomem *reg, unsigned int reset)
+	void __iomem *reg, unsigned int reset)
 {
 	unsigned int val;
 
@@ -610,7 +610,7 @@ void VIOC_DDICONFIG_DUMP(void)
 {
 	unsigned int cnt = 0;
 
-	volatile void __iomem *pReg = VIOC_DDICONFIG_GetAddress();
+	void __iomem *pReg = VIOC_DDICONFIG_GetAddress();
 
 	pr_debug("[DBG][DDICFG] DDICONFIG :: 0x%p\n", pReg);
 	while (cnt < 0x50) {
@@ -625,7 +625,7 @@ void VIOC_DDICONFIG_DUMP(void)
 }
 EXPORT_SYMBOL(VIOC_DDICONFIG_DUMP);
 
-volatile void __iomem *VIOC_DDICONFIG_GetAddress(void)
+void __iomem *VIOC_DDICONFIG_GetAddress(void)
 {
 	if (pDDICFG_reg == NULL)
 		pr_err("[ERR][DDICFG] %s pDDICFG_reg:%p\n", __func__,
@@ -645,7 +645,7 @@ static int __init vioc_ddicfg_init(void)
 		pr_info("[INF][DDICFG] vioc-ddicfg: disabled\n");
 	} else {
 		pDDICFG_reg =
-			(volatile void __iomem *)of_iomap(ViocDDICONFIG_np, 0);
+			(void __iomem *)of_iomap(ViocDDICONFIG_np, 0);
 
 		if (pDDICFG_reg)
 			pr_info("[INF][DDICFG] vioc-ddicfg: 0x%p\n",

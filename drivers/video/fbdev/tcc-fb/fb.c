@@ -82,7 +82,7 @@ struct fb_vioc_waitq {
 };
 
 struct fb_vioc_block{
-	volatile void __iomem		*virt_addr;		// virtual address
+	void __iomem		*virt_addr;		// virtual address
 	unsigned int 		irq_num;
 	unsigned int 		blk_num;		//block number like dma number or mixer number
 };
@@ -582,9 +582,9 @@ static void fbX_m2m_activate_var(unsigned int dma_addr, struct fb_var_screeninfo
 #if defined(CONFIG_VIOC_PVRIC_FBDC)
 static void
 tca_vioc_configure_FBCDEC(unsigned int vioc_dec_id, unsigned int base_addr,
-			   volatile void __iomem *pFBDC,
-			   volatile void __iomem *pRDMA,
-			   volatile void __iomem *pWDMA, unsigned int fmt,
+			   void __iomem *pFBDC,
+			   void __iomem *pRDMA,
+			   void __iomem *pWDMA, unsigned int fmt,
 			   unsigned int rdmaPath, unsigned char bSet_Comp,
 			   unsigned int width, unsigned int height)
 {

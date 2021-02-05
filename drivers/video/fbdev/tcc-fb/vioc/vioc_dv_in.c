@@ -28,7 +28,7 @@
 #include <video/tcc/vioc_v_dv.h>
 
 struct device_node *pDVIN_np;
-volatile void __iomem *pDVIN_reg;
+void __iomem *pDVIN_reg;
 
 #define __dvin_reg_r __raw_readl
 #define __dvin_reg_w __raw_writel
@@ -107,7 +107,7 @@ void VIOC_DV_IN_SetEnable(unsigned int vin_en)
 	__dvin_reg_w(val, pDVIN_reg + DV_IN_CTRL);
 }
 
-unsigned int VIOC_DV_IN_IsEnable(volatile void __iomem *reg)
+unsigned int VIOC_DV_IN_IsEnable(void __iomem *reg)
 {
 	return ((__dvin_reg_r(pDVIN_reg + DV_IN_CTRL) & (DV_IN_CTRL_EN_MASK))
 		>> DV_IN_CTRL_EN_SHIFT);
@@ -169,7 +169,7 @@ void VIOC_DV_IN_SetSwap(unsigned int mode)
 	__dvin_reg_w(val, pDVIN_reg + DV_IN_TUNNELING);
 }
 
-volatile void __iomem *VIOC_DV_IN_GetAddress(void)
+void __iomem *VIOC_DV_IN_GetAddress(void)
 {
 	if (pDVIN_reg == NULL) {
 		pr_err("[ERR][DV_IN] %s\n", __func__);
@@ -201,7 +201,7 @@ void VIOC_DV_IN_Configure(
 
 void VIOC_DV_IN_DUMP(void)
 {
-	volatile void __iomem *pReg;
+	void __iomem *pReg;
 	unsigned int cnt = 0;
 
 	if (pDVIN_np == NULL)

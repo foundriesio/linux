@@ -319,8 +319,8 @@ void voic_v_dv_set_hdmi_timming(struct lcdc_timimg_parms_t *mode,
 
 void _vioc_v_dv_prog_1st_done(void)
 {
-	volatile void __iomem *pVEDR = NULL;
-	volatile void __iomem *pVPANEL = NULL;
+	void __iomem *pVEDR = NULL;
+	void __iomem *pVPANEL = NULL;
 	unsigned int value = 0x00;
 
 	pVEDR = VIOC_DV_VEDR_GetAddress(VEDR);
@@ -366,9 +366,9 @@ void _vioc_v_dv_prog_1st_done(void)
 
 void _vioc_v_dv_prog_start(void)
 {
-	volatile void __iomem *pVEDR = NULL;
-	volatile void __iomem *pVPANEL = NULL;
-	volatile void __iomem *pVDVCFG = NULL;
+	void __iomem *pVEDR = NULL;
+	void __iomem *pVPANEL = NULL;
+	void __iomem *pVDVCFG = NULL;
 	unsigned int value = 0x00;
 
 	pVEDR = VIOC_DV_VEDR_GetAddress(VEDR);
@@ -422,8 +422,8 @@ void _vioc_v_dv_prog_start(void)
 
 void _vioc_v_dv_prog_done(void)
 {
-	volatile void __iomem *pVEDR = NULL;
-	volatile void __iomem *pVPANEL = NULL;
+	void __iomem *pVEDR = NULL;
+	void __iomem *pVPANEL = NULL;
 	unsigned int value = 0x00;
 
 	pVEDR = VIOC_DV_VEDR_GetAddress(VEDR);
@@ -484,7 +484,7 @@ void _void_reset_edr_compnent(int ctrc, int dm, int composer)
 {
 	unsigned int reset = 0;
 	unsigned int value = 0x00;
-	volatile void __iomem *pVEDR = VIOC_DV_VEDR_GetAddress(VEDR);
+	void __iomem *pVEDR = VIOC_DV_VEDR_GetAddress(VEDR);
 
 	if (!ctrc)
 		reset |= 0x1;
@@ -504,7 +504,7 @@ void _void_reset_edr_compnent(int ctrc, int dm, int composer)
 void vioc_v_dv_swreset(unsigned int edr, unsigned int panel, unsigned int crtc)
 {
 	if (panel || crtc) {
-		volatile void __iomem *pVPANEL = NULL;
+		void __iomem *pVPANEL = NULL;
 		unsigned int value = 0x00;
 
 		pVPANEL = VIOC_DV_VEDR_GetAddress(VPANEL);
@@ -545,7 +545,7 @@ void vioc_v_dv_swreset(unsigned int edr, unsigned int panel, unsigned int crtc)
 void _voic_set_edr_lut(void __iomem *reg_VirtAddr)
 {
 	int i = 0;
-	volatile void __iomem *pVEDR = NULL;
+	void __iomem *pVEDR = NULL;
 	struct TccEdrV1Reg *pReg_Src = (struct TccEdrV1Reg *)reg_VirtAddr;
 
 //LUT :: 0x12500000
@@ -599,7 +599,7 @@ void _voic_set_edr_lut(void __iomem *reg_VirtAddr)
 
 void __vioc_set_edr_specific(struct TccEdrV1Reg *pReg_Src)
 {
-	volatile void __iomem *pVEDR = VIOC_DV_VEDR_GetAddress(VEDR);
+	void __iomem *pVEDR = VIOC_DV_VEDR_GetAddress(VEDR);
 	unsigned int value = 0x00;
 
 //Core :: 0x1253C014 ~ 2C
@@ -655,7 +655,7 @@ void _voic_set_edr(void __iomem *reg_VirtAddr, unsigned int frmcnt)
 {
 	int i = 0;
 	unsigned int value = 0x00;
-	volatile void __iomem *pVEDR = NULL;
+	void __iomem *pVEDR = NULL;
 	struct TccEdrV1Reg *pReg_Src = (struct TccEdrV1Reg *)reg_VirtAddr;
 
 	pVEDR = VIOC_DV_VEDR_GetAddress(VEDR);
@@ -864,7 +864,7 @@ void _voic_set_edr(void __iomem *reg_VirtAddr, unsigned int frmcnt)
 
 void __vioc_set_panel_specific(struct TccEdrV1Reg *pReg_Src)
 {
-	volatile void __iomem *pVPANEL = VIOC_DV_VEDR_GetAddress(VPANEL);
+	void __iomem *pVPANEL = VIOC_DV_VEDR_GetAddress(VPANEL);
 	unsigned int value = 0x00;
 
 	value = pReg_Src->vpanel.osd1.unkimapg12.value;
@@ -924,7 +924,7 @@ void __vioc_set_panel_specific(struct TccEdrV1Reg *pReg_Src)
 void _voic_set_panel(void __iomem *reg_VirtAddr, void __iomem *meta_VirtAddr,
 	unsigned int frmcnt)
 {
-	volatile void __iomem *pVPANEL = NULL;
+	void __iomem *pVPANEL = NULL;
 	struct TccEdrV1Reg *pReg_Src = (struct TccEdrV1Reg *)reg_VirtAddr;
 	unsigned int value = 0x0;
 
@@ -1300,7 +1300,7 @@ void _voic_set_panel(void __iomem *reg_VirtAddr, void __iomem *meta_VirtAddr,
 void _voic_set_panel_lut(void __iomem *reg_VirtAddr)
 {
 	int i = 0;
-	volatile void __iomem *pVPANEL_LUT = NULL;
+	void __iomem *pVPANEL_LUT = NULL;
 	struct TccEdrV1Reg *pReg_Src = (struct TccEdrV1Reg *)reg_VirtAddr;
 
 	pVPANEL_LUT = VIOC_DV_VEDR_GetAddress(VPANEL_LUT);
@@ -1423,7 +1423,7 @@ void _voic_set_panel_lut(void __iomem *reg_VirtAddr)
 void _voic_set_metadata(unsigned int meta_PhyAddr, void __iomem *meta_VirtAddr,
 	void __iomem *reg_VirtAddr, unsigned int frmcnt)
 {
-	volatile void __iomem *pVPANEL = VIOC_DV_VEDR_GetAddress(VPANEL);
+	void __iomem *pVPANEL = VIOC_DV_VEDR_GetAddress(VPANEL);
 //	struct TccEdrV1Reg *pReg_Src = (struct TccEdrV1Reg *)reg_VirtAddr;
 	unsigned int value;
 
@@ -1451,7 +1451,7 @@ char vioc_v_dv_get_sc(void)
 
 void vioc_v_dv_block_off(void)
 {
-	volatile void __iomem *pVEDR = NULL;
+	void __iomem *pVEDR = NULL;
 	unsigned int value = 0x00;
 
 	if (!VIOC_CONFIG_DV_GET_EDR_PATH())
@@ -1470,7 +1470,7 @@ void vioc_v_dv_block_off(void)
 
 void voic_v_dv_osd_ctrl(enum DV_DISP_TYPE type, unsigned int on)
 {
-	volatile void __iomem *pVPANEL = NULL;
+	void __iomem *pVPANEL = NULL;
 	unsigned int value;
 
 	if (!VIOC_CONFIG_DV_GET_EDR_PATH())
@@ -1506,7 +1506,7 @@ void voic_v_dv_osd_ctrl(enum DV_DISP_TYPE type, unsigned int on)
 
 void vioc_v_dv_el_bypass(void)
 {
-	volatile void __iomem *pVEDR = NULL;
+	void __iomem *pVEDR = NULL;
 
 	unsigned int value;
 
@@ -1526,7 +1526,7 @@ void vioc_v_dv_el_bypass(void)
 #if defined(SHADOW_CONTEXT_AT_THE_SAME_TIME)
 static void _vioc_v_dv_set_shadow_context(void __iomem *reg_VirtAddr)
 {
-	volatile void __iomem *pVPANEL, *pVEDR;
+	void __iomem *pVPANEL, *pVEDR;
 	unsigned int value = 0x0;
 	struct TccEdrV1Reg *pReg_Src = (struct TccEdrV1Reg *)reg_VirtAddr;
 

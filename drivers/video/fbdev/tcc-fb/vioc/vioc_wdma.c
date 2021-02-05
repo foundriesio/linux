@@ -34,10 +34,10 @@
 #include <video/tcc/vioc_ddicfg.h> // is_VIOC_REMAP
 
 static struct device_node *ViocWdma_np;
-static volatile void __iomem *pWDMA_reg[VIOC_WDMA_MAX] = {0};
+static void __iomem *pWDMA_reg[VIOC_WDMA_MAX] = {0};
 
 void VIOC_WDMA_SetImageEnable(
-	volatile void __iomem *reg, unsigned int nContinuous)
+	void __iomem *reg, unsigned int nContinuous)
 {
 	unsigned long value;
 
@@ -58,7 +58,7 @@ void VIOC_WDMA_SetImageEnable(
 }
 EXPORT_SYMBOL(VIOC_WDMA_SetImageEnable);
 
-void VIOC_WDMA_SetImageDisable(volatile void __iomem *reg)
+void VIOC_WDMA_SetImageDisable(void __iomem *reg)
 {
 	unsigned long value;
 
@@ -70,7 +70,7 @@ void VIOC_WDMA_SetImageDisable(volatile void __iomem *reg)
 }
 EXPORT_SYMBOL(VIOC_WDMA_SetImageDisable);
 
-void VIOC_WDMA_SetImageUpdate(volatile void __iomem *reg)
+void VIOC_WDMA_SetImageUpdate(void __iomem *reg)
 {
 	unsigned long value;
 
@@ -81,7 +81,7 @@ void VIOC_WDMA_SetImageUpdate(volatile void __iomem *reg)
 EXPORT_SYMBOL(VIOC_WDMA_SetImageUpdate);
 
 void VIOC_WDMA_SetContinuousMode(
-	volatile void __iomem *reg, unsigned int enable)
+	void __iomem *reg, unsigned int enable)
 {
 	unsigned long value;
 
@@ -93,7 +93,7 @@ void VIOC_WDMA_SetContinuousMode(
 EXPORT_SYMBOL(VIOC_WDMA_SetContinuousMode);
 
 
-void VIOC_WDMA_SetImageFormat(volatile void __iomem *reg, unsigned int nFormat)
+void VIOC_WDMA_SetImageFormat(void __iomem *reg, unsigned int nFormat)
 {
 	unsigned long value;
 
@@ -107,7 +107,7 @@ EXPORT_SYMBOL(VIOC_WDMA_SetImageFormat);
 
 #ifdef CONFIG_VIOC_10BIT
 void VIOC_WDMA_SetDataFormat(
-	volatile void __iomem *reg, unsigned int fmt_type,
+	void __iomem *reg, unsigned int fmt_type,
 	unsigned int fill_mode)
 {
 	unsigned long value;
@@ -125,7 +125,7 @@ EXPORT_SYMBOL(VIOC_WDMA_SetDataFormat);
 #endif //
 
 void VIOC_WDMA_SetImageRGBSwapMode(
-	volatile void __iomem *reg, unsigned int rgb_mode)
+	void __iomem *reg, unsigned int rgb_mode)
 {
 	unsigned long value;
 
@@ -137,7 +137,7 @@ void VIOC_WDMA_SetImageRGBSwapMode(
 EXPORT_SYMBOL(VIOC_WDMA_SetImageRGBSwapMode);
 
 
-void VIOC_WDMA_SetImageInterlaced(volatile void __iomem *reg, unsigned int intl)
+void VIOC_WDMA_SetImageInterlaced(void __iomem *reg, unsigned int intl)
 {
 	unsigned long value;
 
@@ -150,7 +150,7 @@ EXPORT_SYMBOL(VIOC_WDMA_SetImageInterlaced);
 
 
 void VIOC_WDMA_SetImageR2YMode(
-	volatile void __iomem *reg, unsigned int r2y_mode)
+	void __iomem *reg, unsigned int r2y_mode)
 {
 	unsigned long value;
 
@@ -162,7 +162,7 @@ void VIOC_WDMA_SetImageR2YMode(
 EXPORT_SYMBOL(VIOC_WDMA_SetImageR2YMode);
 
 void VIOC_WDMA_SetImageR2YEnable(
-	volatile void __iomem *reg, unsigned int enable)
+	void __iomem *reg, unsigned int enable)
 {
 	unsigned long value;
 
@@ -175,7 +175,7 @@ EXPORT_SYMBOL(VIOC_WDMA_SetImageR2YEnable);
 
 
 void VIOC_WDMA_SetImageY2RMode(
-	volatile void __iomem *reg, unsigned int y2r_mode)
+	void __iomem *reg, unsigned int y2r_mode)
 {
 	unsigned long value;
 
@@ -187,7 +187,7 @@ void VIOC_WDMA_SetImageY2RMode(
 EXPORT_SYMBOL(VIOC_WDMA_SetImageY2RMode);
 
 void VIOC_WDMA_SetImageY2REnable(
-	volatile void __iomem *reg, unsigned int enable)
+	void __iomem *reg, unsigned int enable)
 {
 	unsigned long value;
 
@@ -199,7 +199,7 @@ void VIOC_WDMA_SetImageY2REnable(
 EXPORT_SYMBOL(VIOC_WDMA_SetImageY2REnable);
 
 void VIOC_WDMA_SetImageSize(
-	volatile void __iomem *reg, unsigned int sw, unsigned int sh)
+	void __iomem *reg, unsigned int sw, unsigned int sh)
 {
 	unsigned long value;
 
@@ -209,7 +209,7 @@ void VIOC_WDMA_SetImageSize(
 EXPORT_SYMBOL(VIOC_WDMA_SetImageSize);
 
 void VIOC_WDMA_SetImageBase(
-	volatile void __iomem *reg, unsigned int nBase0, unsigned int nBase1,
+	void __iomem *reg, unsigned int nBase0, unsigned int nBase1,
 	unsigned int nBase2)
 {
 	__raw_writel(nBase0 << WDMABASE0_BASE0_SHIFT, reg + WDMABASE0_OFFSET);
@@ -220,7 +220,7 @@ EXPORT_SYMBOL(VIOC_WDMA_SetImageBase);
 
 
 void VIOC_WDMA_SetImageOffset(
-	volatile void __iomem *reg, unsigned int imgFmt, unsigned int imgWidth)
+	void __iomem *reg, unsigned int imgFmt, unsigned int imgWidth)
 {
 	unsigned int offset0 = 0;
 	unsigned int offset1 = 0;
@@ -327,7 +327,7 @@ void VIOC_WDMA_SetImageOffset(
 EXPORT_SYMBOL(VIOC_WDMA_SetImageOffset);
 
 void VIOC_WDMA_SetImageOffset_withYV12(
-	volatile void __iomem *reg, unsigned int imgWidth)
+	void __iomem *reg, unsigned int imgWidth)
 {
 	unsigned int stride, stride_c;
 	unsigned long value;
@@ -347,7 +347,7 @@ EXPORT_SYMBOL(VIOC_WDMA_SetImageOffset_withYV12);
 
 #if defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC901X)
 void VIOC_WDMA_SetImageEnhancer(
-	volatile void __iomem *reg, unsigned int nContrast,
+	void __iomem *reg, unsigned int nContrast,
 	unsigned int nBright, unsigned int nHue)
 {
 	unsigned long value;
@@ -365,7 +365,7 @@ EXPORT_SYMBOL(VIOC_WDMA_SetImageEnhancer);
 #endif
 
 void VIOC_WDMA_SetIreqMask(
-	volatile void __iomem *reg, unsigned int mask, unsigned int set)
+	void __iomem *reg, unsigned int mask, unsigned int set)
 {
 	/*
 	 * set 1 : IREQ Masked(interrupt disable),
@@ -381,7 +381,7 @@ void VIOC_WDMA_SetIreqMask(
 }
 EXPORT_SYMBOL(VIOC_WDMA_SetIreqMask);
 
-void VIOC_WDMA_SetIreqStatus(volatile void __iomem *reg, unsigned int mask)
+void VIOC_WDMA_SetIreqStatus(void __iomem *reg, unsigned int mask)
 {
 	unsigned long value;
 
@@ -391,7 +391,7 @@ void VIOC_WDMA_SetIreqStatus(volatile void __iomem *reg, unsigned int mask)
 }
 EXPORT_SYMBOL(VIOC_WDMA_SetIreqStatus);
 
-void VIOC_WDMA_ClearEOFR(volatile void __iomem *reg)
+void VIOC_WDMA_ClearEOFR(void __iomem *reg)
 {
 	unsigned long value;
 
@@ -403,7 +403,7 @@ void VIOC_WDMA_ClearEOFR(volatile void __iomem *reg)
 }
 EXPORT_SYMBOL(VIOC_WDMA_ClearEOFR);
 
-void VIOC_WDMA_ClearEOFF(volatile void __iomem *reg)
+void VIOC_WDMA_ClearEOFF(void __iomem *reg)
 {
 	unsigned long value;
 
@@ -416,14 +416,14 @@ void VIOC_WDMA_ClearEOFF(volatile void __iomem *reg)
 EXPORT_SYMBOL(VIOC_WDMA_ClearEOFF);
 
 
-void VIOC_WDMA_GetStatus(volatile void __iomem *reg, unsigned int *status)
+void VIOC_WDMA_GetStatus(void __iomem *reg, unsigned int *status)
 {
 	*status = __raw_readl(reg + WDMAIRQSTS_OFFSET);
 }
 EXPORT_SYMBOL(VIOC_WDMA_GetStatus);
 
 
-bool VIOC_WDMA_IsImageEnable(volatile void __iomem *reg)
+bool VIOC_WDMA_IsImageEnable(void __iomem *reg)
 {
 	return ((__raw_readl(reg + WDMACTRL_OFFSET) & WDMACTRL_IEN_MASK)
 		>> WDMACTRL_IEN_SHIFT) ?
@@ -432,7 +432,7 @@ bool VIOC_WDMA_IsImageEnable(volatile void __iomem *reg)
 }
 EXPORT_SYMBOL(VIOC_WDMA_IsImageEnable);
 
-bool VIOC_WDMA_IsContinuousMode(volatile void __iomem *reg)
+bool VIOC_WDMA_IsContinuousMode(void __iomem *reg)
 {
 	return ((__raw_readl(reg + WDMACTRL_OFFSET) & WDMACTRL_CONT_MASK)
 		>> WDMACTRL_CONT_SHIFT) ?
@@ -441,7 +441,7 @@ bool VIOC_WDMA_IsContinuousMode(volatile void __iomem *reg)
 }
 EXPORT_SYMBOL(VIOC_WDMA_IsContinuousMode);
 
-unsigned int VIOC_WDMA_Get_CAddress(volatile void __iomem *reg)
+unsigned int VIOC_WDMA_Get_CAddress(void __iomem *reg)
 {
 	unsigned int value = 0;
 
@@ -451,7 +451,7 @@ unsigned int VIOC_WDMA_Get_CAddress(volatile void __iomem *reg)
 }
 EXPORT_SYMBOL(VIOC_WDMA_Get_CAddress);
 
-volatile void __iomem *VIOC_WDMA_GetAddress(unsigned int vioc_id)
+void __iomem *VIOC_WDMA_GetAddress(unsigned int vioc_id)
 {
 	int Num = get_vioc_index(vioc_id);
 
@@ -472,11 +472,11 @@ err:
 }
 EXPORT_SYMBOL(VIOC_WDMA_GetAddress);
 
-void VIOC_WDMA_DUMP(volatile void __iomem *reg, unsigned int vioc_id)
+void VIOC_WDMA_DUMP(void __iomem *reg, unsigned int vioc_id)
 {
 	unsigned int cnt = 0;
 
-	volatile void __iomem *pReg = reg;
+	void __iomem *pReg = reg;
 	int Num = get_vioc_index(vioc_id);
 
 	if (Num >= VIOC_WDMA_MAX)
@@ -515,7 +515,7 @@ static int __init vioc_wdma_init(void)
 		pr_info("[INF][WDMA] vioc-wdma: disabled\n");
 	} else {
 		for (i = 0; i < VIOC_WDMA_MAX; i++) {
-			pWDMA_reg[i] = (volatile void __iomem *)of_iomap(
+			pWDMA_reg[i] = (void __iomem *)of_iomap(
 				ViocWdma_np,
 				is_VIOC_REMAP ? (i + VIOC_WDMA_MAX) : i);
 

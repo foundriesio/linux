@@ -370,61 +370,61 @@ enum VIOC_WMIX_ALPHA_CCON1_Type {
 
 /* Interface APIs */
 extern void VIOC_WMIX_SetOverlayPriority(
-	volatile void __iomem *reg, unsigned int nOverlayPriority);
+	void __iomem *reg, unsigned int nOverlayPriority);
 extern void VIOC_WMIX_GetOverlayPriority(
-	volatile void __iomem *reg, unsigned int *nOverlayPriority);
-extern void VIOC_WMIX_SetUpdate(volatile void __iomem *reg);
-extern void VIOC_WMIX_SetSize(volatile void __iomem *reg,
+	void __iomem *reg, unsigned int *nOverlayPriority);
+extern void VIOC_WMIX_SetUpdate(void __iomem *reg);
+extern void VIOC_WMIX_SetSize(void __iomem *reg,
 	unsigned int nWidth, unsigned int nHeight);
-extern void VIOC_WMIX_GetSize(volatile void __iomem *reg,
+extern void VIOC_WMIX_GetSize(void __iomem *reg,
 	unsigned int *nWidth, unsigned int *nHeight);
-extern void VIOC_WMIX_SetBGColor(volatile void __iomem *reg,
+extern void VIOC_WMIX_SetBGColor(void __iomem *reg,
 	unsigned int nBG0, unsigned int nBG1,
 	unsigned int nBG2, unsigned int nBG3);
-extern void VIOC_WMIX_SetPosition(volatile void __iomem *reg,
+extern void VIOC_WMIX_SetPosition(void __iomem *reg,
 	unsigned int nChannel, unsigned int nX, unsigned int nY);
-extern void VIOC_WMIX_GetPosition(volatile void __iomem *reg,
+extern void VIOC_WMIX_GetPosition(void __iomem *reg,
 	unsigned int nChannel, unsigned int *nX, unsigned int *nY);
-extern void VIOC_WMIX_SetChromaKey(volatile void __iomem *reg,
+extern void VIOC_WMIX_SetChromaKey(void __iomem *reg,
 	unsigned int nLayer, unsigned int nKeyEn,
 	unsigned int nKeyR, unsigned int nKeyG, unsigned int nKeyB,
 	unsigned int nKeyMaskR, unsigned int nKeyMaskG, unsigned int nKeyMaskB);
-extern void VIOC_WMIX_GetChromaKey(volatile void __iomem *reg,
+extern void VIOC_WMIX_GetChromaKey(void __iomem *reg,
 	unsigned int nLayer, unsigned int *nKeyEn,
 	unsigned int *nKeyR, unsigned int *nKeyG, unsigned int *nKeyB,
 	unsigned int *nKeyMaskR, unsigned int *nKeyMaskG,
 	unsigned int *nKeyMaskB);
 extern void VIOC_WMIX_ALPHA_SetAlphaValueControl(
-	volatile void __iomem *reg, unsigned int layer,
+	void __iomem *reg, unsigned int layer,
 	unsigned int region, unsigned int acon0, unsigned int acon1);
-extern void VIOC_WMIX_ALPHA_SetColorControl(volatile void __iomem *reg,
+extern void VIOC_WMIX_ALPHA_SetColorControl(void __iomem *reg,
 	unsigned int layer, unsigned int region,
 	unsigned int ccon0, unsigned int ccon1);
-extern void VIOC_WMIX_ALPHA_SetROPMode(volatile void __iomem *reg,
+extern void VIOC_WMIX_ALPHA_SetROPMode(void __iomem *reg,
 	unsigned int layer, unsigned int mode);
-extern void VIOC_WMIX_ALPHA_SetAlphaSelection(volatile void __iomem *reg,
+extern void VIOC_WMIX_ALPHA_SetAlphaSelection(void __iomem *reg,
 	unsigned int layer, unsigned int asel);
-extern void VIOC_WMIX_ALPHA_SetAlphaValue(volatile void __iomem *reg,
+extern void VIOC_WMIX_ALPHA_SetAlphaValue(void __iomem *reg,
 	unsigned int layer, unsigned int alpha0, unsigned int alpha1);
-extern void VIOC_WMIX_ALPHA_SetROPPattern(volatile void __iomem *reg,
+extern void VIOC_WMIX_ALPHA_SetROPPattern(void __iomem *reg,
 	unsigned int layer, unsigned int patR,
 	unsigned int patG, unsigned int patB);
-extern void VIOC_WMIX_SetInterruptMask(volatile void __iomem *reg,
+extern void VIOC_WMIX_SetInterruptMask(void __iomem *reg,
 	unsigned int nMask);
-extern unsigned int VIOC_WMIX_GetStatus(volatile void __iomem *reg);
-extern void VIOC_API_WMIX_SetOverlayAlphaROPMode(volatile void __iomem *reg,
+extern unsigned int VIOC_WMIX_GetStatus(void __iomem *reg);
+extern void VIOC_API_WMIX_SetOverlayAlphaROPMode(void __iomem *reg,
 	unsigned int layer, unsigned int opmode);
-extern void VIOC_API_WMIX_SetOverlayAlphaValue(volatile void __iomem *reg,
+extern void VIOC_API_WMIX_SetOverlayAlphaValue(void __iomem *reg,
 	unsigned int layer, unsigned int alpha0, unsigned int alpha1);
-extern void VIOC_API_WMIX_SetOverlayAlphaSelection(volatile void __iomem *reg,
+extern void VIOC_API_WMIX_SetOverlayAlphaSelection(void __iomem *reg,
 	unsigned int layer, unsigned int asel);
 extern void VIOC_API_WMIX_SetOverlayAlphaValueControl(
-	volatile void __iomem *reg, unsigned int layer,
+	void __iomem *reg, unsigned int layer,
 	unsigned int region, unsigned int acon0, unsigned int acon1);
 extern void VIOC_API_WMIX_SetOverlayAlphaColorControl(
-	volatile void __iomem *reg, unsigned int layer,
+	void __iomem *reg, unsigned int layer,
 	unsigned int region, unsigned int ccon0, unsigned int ccon1);
-extern volatile void __iomem *VIOC_WMIX_GetAddress(unsigned int vioc_id);
-extern void VIOC_WMIX_DUMP(volatile void __iomem *reg, unsigned int vioc_id);
+extern void __iomem *VIOC_WMIX_GetAddress(unsigned int vioc_id);
+extern void VIOC_WMIX_DUMP(void __iomem *reg, unsigned int vioc_id);
 
 #endif

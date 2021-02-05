@@ -2037,7 +2037,7 @@ static int tccfb_ioctl(struct fb_info *info, unsigned int cmd,unsigned long arg)
 					if(pdp_data->rdma_info[RDMA_FB].virt_addr)
 					{
 						int sc_num = 0;
-						volatile void __iomem *pscale_addr = NULL;
+						void __iomem *pscale_addr = NULL;
 						sc_num = VIOC_CONFIG_GetScaler_PluginToRDMA(pdp_data->rdma_info[RDMA_FB].blk_num);
 						if(sc_num > 0)
 							pscale_addr = VIOC_SC_GetAddress(sc_num);
@@ -2870,8 +2870,8 @@ static int __init tccfb_map_video_memory(struct tccfb_info *fbi, int plane)
 		#if defined(CONFIG_LOGO_PRESERVE_WITHOUT_FB_INIT)
 		struct pmap pmap;
 		int scnum;
-		volatile void __iomem *pSC = NULL;
-		volatile void __iomem *pWDMA = NULL;
+		void __iomem *pSC = NULL;
+		void __iomem *pWDMA = NULL;
 		
 		pmap_get_info("viqe", &pmap);
 		hdmi_base_address = (unsigned int)pmap.base;
@@ -2905,7 +2905,7 @@ static int __init tccfb_map_video_memory(struct tccfb_info *fbi, int plane)
 		/* CONFIG_LOGO_PRESERVE_WITHOUT_FB_INIT */
 		#else
 		#if !defined(CONFIG_LOGO) && defined(CONFIG_PLATFORM_AVN) && !defined(CONFIG_ANDROID)
-		volatile void __iomem * pWDMA;
+		void __iomem * pWDMA;
 		pWDMA = VIOC_WDMA_GetAddress(fbi->pdata.Mdp_data.DispNum);
 		VIOC_WDMA_SetImageFormat(pWDMA, (fbi->fb->var.bits_per_pixel==32)?TCC_LCDC_IMG_FMT_RGB888:TCC_LCDC_IMG_FMT_RGB565);
 		VIOC_WDMA_SetImageSize(pWDMA, fbi->fb->var.xres, fbi->fb->var.yres);

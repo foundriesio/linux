@@ -110,17 +110,17 @@ static int Composite_LCDC_Num = -1;
 static int Composite_Disp_Num;
 static int Composite_Scaler_Num;
 static int Composite_RDMA_VIDEO_Num;
-static volatile void __iomem *pComposite_DISP;
-static volatile void __iomem *pComposite_WMIX;
-static volatile void __iomem *pComposite_RDMA_UI;
-static volatile void __iomem *pComposite_RDMA_VIDEO;
-static volatile void __iomem *pComposite_SCALER;
-static volatile void __iomem *pComposite_DDICFG;
+static void __iomem *pComposite_DISP;
+static void __iomem *pComposite_WMIX;
+static void __iomem *pComposite_RDMA_UI;
+static void __iomem *pComposite_RDMA_VIDEO;
+static void __iomem *pComposite_SCALER;
+static void __iomem *pComposite_DDICFG;
 
-static volatile void __iomem *pComposite_Attach_DISP;
-static volatile void __iomem *pComposite_Attach_WMIX;
-static volatile void __iomem *pComposite_Attach_RDMA_UI;
-static volatile void __iomem *pComposite_Attach_RDMA_VIDEO;
+static void __iomem *pComposite_Attach_DISP;
+static void __iomem *pComposite_Attach_WMIX;
+static void __iomem *pComposite_Attach_RDMA_UI;
+static void __iomem *pComposite_Attach_RDMA_VIDEO;
 
 #define DEVICE_NAME "composite"
 #define COMPOSITE_MINOR 205
@@ -192,7 +192,7 @@ int tcc_composite_detect(void)
  */
 int tcc_composite_connect_lcdc(int lcdc_num, int enable)
 {
-	volatile void __iomem *pHwDDICFG = pComposite_DDICFG;
+	void __iomem *pHwDDICFG = pComposite_DDICFG;
 
 	VIOC_OUTCFG_SetOutConfig(VIOC_OUTCFG_SDVENC, lcdc_num);
 
@@ -530,7 +530,7 @@ enum TCC_COMPOSITE_MODE_TYPE tcc_composite_get_mode(void)
  */
 int tcc_composite_enabled(void)
 {
-	volatile void __iomem *pTVE_VEN = VIOC_TVE_VEN_GetAddress();
+	void __iomem *pTVE_VEN = VIOC_TVE_VEN_GetAddress();
 
 	if (__raw_readl(pTVE_VEN + VENCON) & VENCON_EN_MASK)
 		return 1;

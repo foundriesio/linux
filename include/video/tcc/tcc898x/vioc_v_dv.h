@@ -92,26 +92,26 @@ typedef enum{
 extern unsigned int Hactive;
 extern unsigned int Vactive;
 
-extern void VIOC_V_DV_SetInterruptEnable(volatile void __iomem *reg, unsigned int nInterrupt, unsigned int en);
-extern void VIOC_V_DV_GetInterruptPending(volatile void __iomem *reg, unsigned int *pPending);
-extern void VIOC_V_DV_GetInterruptStatus(volatile void __iomem *reg, unsigned int *pStatus);
-extern void VIOC_V_DV_ClearInterrupt(volatile void __iomem *reg, unsigned int nInterrupt);
-extern int VIOC_V_DV_Is_EdrRDMA(volatile void __iomem *pRDMA);
-extern void VIOC_V_DV_SetSize(volatile void __iomem *pDISP, volatile void __iomem *pRDMA, unsigned int sx, unsigned int sy, unsigned int width, unsigned int height);
-extern void VIOC_V_DV_SetPosition(volatile void __iomem *pDISP, volatile void __iomem *pRDMA, unsigned int sx,unsigned int sy);
+extern void VIOC_V_DV_SetInterruptEnable(void __iomem *reg, unsigned int nInterrupt, unsigned int en);
+extern void VIOC_V_DV_GetInterruptPending(void __iomem *reg, unsigned int *pPending);
+extern void VIOC_V_DV_GetInterruptStatus(void __iomem *reg, unsigned int *pStatus);
+extern void VIOC_V_DV_ClearInterrupt(void __iomem *reg, unsigned int nInterrupt);
+extern int VIOC_V_DV_Is_EdrRDMA(void __iomem *pRDMA);
+extern void VIOC_V_DV_SetSize(void __iomem *pDISP, void __iomem *pRDMA, unsigned int sx, unsigned int sy, unsigned int width, unsigned int height);
+extern void VIOC_V_DV_SetPosition(void __iomem *pDISP, void __iomem *pRDMA, unsigned int sx,unsigned int sy);
 
-extern void VIOC_V_DV_SetPXDW(volatile void __iomem *pDISP, volatile void __iomem *pRDMA, unsigned int pixel_fmt);
-extern void VIOC_V_DV_SetBGColor(volatile void __iomem *pDISP, volatile void __iomem *pRDMA, unsigned int R_y, unsigned int G_u, unsigned int B_v, unsigned int alpha);
-extern void VIOC_V_DV_Turnon(volatile void __iomem *pDISP, volatile void __iomem *pRDMA);
-extern void VIOC_V_DV_Turnoff(volatile void __iomem *pDISP, volatile void __iomem *pRDMA);
+extern void VIOC_V_DV_SetPXDW(void __iomem *pDISP, void __iomem *pRDMA, unsigned int pixel_fmt);
+extern void VIOC_V_DV_SetBGColor(void __iomem *pDISP, void __iomem *pRDMA, unsigned int R_y, unsigned int G_u, unsigned int B_v, unsigned int alpha);
+extern void VIOC_V_DV_Turnon(void __iomem *pDISP, void __iomem *pRDMA);
+extern void VIOC_V_DV_Turnoff(void __iomem *pDISP, void __iomem *pRDMA);
 extern void VIOC_V_DV_All_Turnoff(void);
 extern void VIOC_V_DV_Power(char on);
 extern void VIOC_V_DV_SWReset(unsigned int force, unsigned int bReset);
 extern void VIOC_V_DV_Base_Configure(int sx, int sy, int w, int h);
-extern volatile void __iomem * VIOC_DNG_GetAddress(void);
-extern volatile void __iomem* VIOC_DV_GetAddress(DV_DISP_TYPE type);
+extern void __iomem * VIOC_DNG_GetAddress(void);
+extern void __iomem* VIOC_DV_GetAddress(DV_DISP_TYPE type);
 extern void VIOC_DV_DUMP(DV_DISP_TYPE type, unsigned int size);
-extern volatile void __iomem*  VIOC_DV_VEDR_GetAddress(VEDR_TYPE type);
+extern void __iomem*  VIOC_DV_VEDR_GetAddress(VEDR_TYPE type);
 extern void VIOC_DV_VEDR_DUMP(VEDR_TYPE type, unsigned int size);
 
 // extern tcc_vdv_interface.c

@@ -32,10 +32,10 @@
 #include <video/tcc/tcc_types.h>
 #include <video/tcc/vioc_dtrc.h>
 
-static volatile void __iomem *pDTRC_reg[VIOC_DTRC_MAX] = {0};
+static void __iomem *pDTRC_reg[VIOC_DTRC_MAX] = {0};
 static struct device_node *ViocDTRC_np;
 
-void VIOC_DTRC_RDMA_Setuvintpl(volatile void __iomem *reg, unsigned int uvintpl)
+void VIOC_DTRC_RDMA_Setuvintpl(void __iomem *reg, unsigned int uvintpl)
 {
 	unsigned long val;
 
@@ -45,7 +45,7 @@ void VIOC_DTRC_RDMA_Setuvintpl(volatile void __iomem *reg, unsigned int uvintpl)
 }
 
 void VIOC_DTRC_RDMA_SetY2R(
-	volatile void __iomem *reg, unsigned int y2r_on, unsigned int y2r_mode)
+	void __iomem *reg, unsigned int y2r_on, unsigned int y2r_mode)
 {
 	unsigned long val;
 
@@ -56,18 +56,18 @@ void VIOC_DTRC_RDMA_SetY2R(
 	__raw_writel(val, reg + DTRC_CTRL);
 }
 
-void VIOC_DTRC_RDMA_SetImageConfig(volatile void __iomem *reg)
+void VIOC_DTRC_RDMA_SetImageConfig(void __iomem *reg)
 {
 	__raw_writel(0x00000000, reg + DTRC_CTRL);
 }
 
-unsigned int VIOC_DTRC_RDMA_GetIEN(volatile void __iomem *reg)
+unsigned int VIOC_DTRC_RDMA_GetIEN(void __iomem *reg)
 {
 	return (__raw_readl(reg + DTRC_CTRL) & DTRC_CTRL_IEN_MASK) ? 1 : 0;
 }
 
 void VIOC_DTRC_RDMA_SetImageUpdate(
-	volatile void __iomem *reg, unsigned int nEnable)
+	void __iomem *reg, unsigned int nEnable)
 {
 	unsigned long val;
 
@@ -81,13 +81,13 @@ void VIOC_DTRC_RDMA_SetImageUpdate(
 	__raw_writel(val, reg + DTRC_CTRL);
 }
 
-unsigned int VIOC_DTRC_RDMA_GetImageUpdate(volatile void __iomem *reg)
+unsigned int VIOC_DTRC_RDMA_GetImageUpdate(void __iomem *reg)
 {
 	return (__raw_readl(reg + DTRC_CTRL) & DTRC_CTRL_UPD_MASK) ? 1 : 0;
 }
 
 void VIOC_DTRC_RDMA_SetImageFormat(
-	volatile void __iomem *reg, unsigned int nFormat)
+	void __iomem *reg, unsigned int nFormat)
 {
 	unsigned long val;
 
@@ -97,7 +97,7 @@ void VIOC_DTRC_RDMA_SetImageFormat(
 }
 
 void VIOC_DTRC_RDMA_SetImageAlpha(
-	volatile void __iomem *reg, unsigned int nAlpha0, unsigned int nAlpha1)
+	void __iomem *reg, unsigned int nAlpha0, unsigned int nAlpha1)
 {
 	unsigned long val;
 
@@ -109,7 +109,7 @@ void VIOC_DTRC_RDMA_SetImageAlpha(
 }
 
 void VIOC_DTRC_RDMA_SetImageSize(
-	volatile void __iomem *reg, unsigned int sw, unsigned int sh)
+	void __iomem *reg, unsigned int sw, unsigned int sh)
 {
 	unsigned long val;
 
@@ -119,7 +119,7 @@ void VIOC_DTRC_RDMA_SetImageSize(
 }
 
 void VIOC_DTRC_RDMA_GetImageSize(
-	volatile void __iomem *reg, unsigned int *sw, unsigned int *sh)
+	void __iomem *reg, unsigned int *sw, unsigned int *sh)
 {
 	*sh = ((__raw_readl(reg + DTRC_SIZE) & DTRC_SIZE_HEIGHT_MASK)
 	       >> DTRC_SIZE_HEIGHT_SHIFT);
@@ -128,7 +128,7 @@ void VIOC_DTRC_RDMA_GetImageSize(
 }
 
 void VIOC_DTRC_RDMA_SetImageBase(
-	volatile void __iomem *reg, unsigned int nBase0,
+	void __iomem *reg, unsigned int nBase0,
 	unsigned int nBase1 /*unsigned int nBase2*/)
 {
 	unsigned long val;
@@ -141,7 +141,7 @@ void VIOC_DTRC_RDMA_SetImageBase(
 }
 
 void VIOC_DTRC_RDMA_SetImageOffset(
-	volatile void __iomem *reg, unsigned int nOffset0,
+	void __iomem *reg, unsigned int nOffset0,
 	unsigned int nOffset1)
 {
 	unsigned long val;
@@ -152,7 +152,7 @@ void VIOC_DTRC_RDMA_SetImageOffset(
 }
 
 void VIOC_DTRC_RDMA_SetIDSEL(
-	volatile void __iomem *reg, uint nIDSEL, uint nFRUS, uint nMISC)
+	void __iomem *reg, uint nIDSEL, uint nFRUS, uint nMISC)
 {
 	unsigned long val;
 
@@ -164,7 +164,7 @@ void VIOC_DTRC_RDMA_SetIDSEL(
 }
 
 void VIOC_DTRC_RDMA_F0_ADDR(
-	volatile void __iomem *reg, unsigned int frm0_y_data_addr,
+	void __iomem *reg, unsigned int frm0_y_data_addr,
 	unsigned int frm0_y_table_addr, unsigned int frm0_uv_data_addr,
 	unsigned int frm0_uv_table_addr)
 {
@@ -183,7 +183,7 @@ void VIOC_DTRC_RDMA_F0_ADDR(
 }
 
 void VIOC_DTRC_RDMA_F0_SIZE(
-	volatile void __iomem *reg, unsigned int frm0_width,
+	void __iomem *reg, unsigned int frm0_width,
 	unsigned int frm0_height)
 {
 	unsigned long val;
@@ -194,7 +194,7 @@ void VIOC_DTRC_RDMA_F0_SIZE(
 }
 
 void VIOC_DTRC_RDMA_F0_BYP_DETILE_ADDR(
-	volatile void __iomem *reg, unsigned int frm0_y_byp_detile_addr_s,
+	void __iomem *reg, unsigned int frm0_y_byp_detile_addr_s,
 	unsigned int frm0_y_byp_detile_addr_e,
 	unsigned int frm0_uv_byp_detile_addr_s,
 	unsigned int frm0_uv_byp_detile_addr_e)
@@ -214,7 +214,7 @@ void VIOC_DTRC_RDMA_F0_BYP_DETILE_ADDR(
 }
 
 void VIOC_DTRC_RDMA_DCTL(
-	volatile void __iomem *reg, unsigned int frm0_data_rdy,
+	void __iomem *reg, unsigned int frm0_data_rdy,
 	unsigned int frm0_main8, unsigned int frm0_vinv, unsigned int frm0_byp,
 	unsigned int frm1_data_rdy, unsigned int frm1_main8,
 	unsigned int frm1_vinv, unsigned int frm1_byp)
@@ -235,7 +235,7 @@ void VIOC_DTRC_RDMA_DCTL(
 }
 
 void VIOC_DTRC_RDMA_F1_ADDR(
-	volatile void __iomem *reg, unsigned int frm1_y_data_addr,
+	void __iomem *reg, unsigned int frm1_y_data_addr,
 	unsigned int frm1_y_table_addr, unsigned int frm1_uv_data_addr,
 	unsigned int frm1_uv_table_addr)
 {
@@ -254,7 +254,7 @@ void VIOC_DTRC_RDMA_F1_ADDR(
 }
 
 void VIOC_DTRC_RDMA_F1_SIZE(
-	volatile void __iomem *reg, unsigned int frm1_width,
+	void __iomem *reg, unsigned int frm1_width,
 	unsigned int frm1_height)
 {
 	unsigned long val;
@@ -265,7 +265,7 @@ void VIOC_DTRC_RDMA_F1_SIZE(
 }
 
 void VIOC_DTRC_RDMA_F1_BYP_DETILE_ADDR(
-	volatile void __iomem *reg, unsigned int frm1_y_byp_detile_addr_s,
+	void __iomem *reg, unsigned int frm1_y_byp_detile_addr_s,
 	unsigned int frm1_y_byp_detile_addr_e,
 	unsigned int frm1_uv_byp_detile_addr_s,
 	unsigned int frm1_uv_byp_detile_addr_e)
@@ -285,7 +285,7 @@ void VIOC_DTRC_RDMA_F1_BYP_DETILE_ADDR(
 }
 
 void VIOC_DTRC_RDM_CTRL(
-	volatile void __iomem *reg, unsigned int arid_reg_ctrl,
+	void __iomem *reg, unsigned int arid_reg_ctrl,
 	unsigned int clk_dis, unsigned int soft_reset,
 	unsigned int detile_by_addr, unsigned int pf_cnt_en)
 {
@@ -300,7 +300,7 @@ void VIOC_DTRC_RDM_CTRL(
 }
 
 void VIOC_DTRC_RDMA_FETCH_ARID(
-	volatile void __iomem *reg, unsigned int data_fetch_arid,
+	void __iomem *reg, unsigned int data_fetch_arid,
 	unsigned int table_fetch_arid)
 {
 	unsigned long val;
@@ -310,19 +310,19 @@ void VIOC_DTRC_RDMA_FETCH_ARID(
 	__raw_writel(val, reg + FETCH_ARID);
 }
 
-void VIOC_DTRC_RDMA_TIMEOUT(volatile void __iomem *reg, unsigned int timeout)
+void VIOC_DTRC_RDMA_TIMEOUT(void __iomem *reg, unsigned int timeout)
 {
 	__raw_writel(
 		((timeout & 0xFFFFFFFF) << TIMEOUT_CNT_SHIFT), reg + TIMEOUT);
 }
 
-void VIOC_DTRC_RDMA_ARIDR(volatile void __iomem *reg, unsigned int ARID_REG)
+void VIOC_DTRC_RDMA_ARIDR(void __iomem *reg, unsigned int ARID_REG)
 {
 	__raw_writel(((ARID_REG & 0xFFFFFFFF) << ARID_ARID_SHIFT), reg + ARID);
 }
 
 void VIOC_DTRC_RDMA_FRM0_CROP(
-	volatile void __iomem *reg, unsigned int frm0_crop,
+	void __iomem *reg, unsigned int frm0_crop,
 	unsigned int frm0_xpos, unsigned int frm0_ypos,
 	unsigned int frm0_crop_w, unsigned int frm0_crop_h)
 {
@@ -342,7 +342,7 @@ void VIOC_DTRC_RDMA_FRM0_CROP(
 }
 
 void VIOC_DTRC_RDMA_FRM1_CROP(
-	volatile void __iomem *reg, unsigned int frm1_crop,
+	void __iomem *reg, unsigned int frm1_crop,
 	unsigned int frm1_xpos, unsigned int frm1_ypos,
 	unsigned int frm1_crop_w, unsigned int frm1_crop_h)
 {
@@ -362,7 +362,7 @@ void VIOC_DTRC_RDMA_FRM1_CROP(
 }
 
 void VIOC_DTRC_RDMA_DTCTRL(
-	volatile void __iomem *reg, unsigned int mst_nontile_swap,
+	void __iomem *reg, unsigned int mst_nontile_swap,
 	unsigned int mst_table_swap, unsigned int mst_tile_data_swap,
 	unsigned int slv_rstc_data_swap, unsigned int max_burst_len,
 	unsigned int g1_src, unsigned int g2_hotrst, unsigned int big_endian_en,
@@ -382,7 +382,7 @@ void VIOC_DTRC_RDMA_DTCTRL(
 	__raw_writel(val, reg + DTRC_CTRL2);
 }
 
-volatile void __iomem *VIOC_DTRC_GetAddress(unsigned int vioc_id)
+void __iomem *VIOC_DTRC_GetAddress(unsigned int vioc_id)
 {
 	int Num = get_vioc_index(vioc_id);
 
@@ -402,7 +402,7 @@ err:
 
 void VIOC_DTRC_DUMP(unsigned int vioc_id, unsigned int size)
 {
-	volatile void __iomem *pReg;
+	void __iomem *pReg;
 	unsigned int cnt = 0;
 
 	int Num = get_vioc_index(vioc_id);
@@ -443,7 +443,7 @@ static int __init vioc_dtrc_init(void)
 		pr_info("[INF][DTRC] vioc-dtrc: disabled\n");
 	} else {
 		for (i = 0; i < VIOC_DTRC_MAX; i++) {
-			pDTRC_reg[i] = (volatile void __iomem *)of_iomap(
+			pDTRC_reg[i] = (void __iomem *)of_iomap(
 				ViocDTRC_np, i);
 
 			if (pDTRC_reg[i])

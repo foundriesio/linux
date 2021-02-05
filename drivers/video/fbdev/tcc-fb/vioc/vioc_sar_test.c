@@ -267,7 +267,7 @@ static int __init test_sar_wdma_api(unsigned int loop)
 	//((VIOC_DISP *)(HwVIOC_DISP0))->uCTRL.bReg.Y2R = 1;
 	//((VIOC_DISP *)(HwVIOC_DISP0))->uCTRL.bReg.PXDW = 0x17;
 
-	volatile void __iomem *UIrdma_reg;
+	void __iomem *UIrdma_reg;
 
 	UIrdma_reg = VIOC_RDMA_GetAddress(VIOC_RDMA + 3);
 	VIOC_RDMA_SetImageFormat(UIrdma_reg, VIOC_IMG_FMT_ARGB8888);
@@ -355,11 +355,11 @@ static int __init test_disp_api(unsigned int Nrdma_n)
 	unsigned int disp_width, disp_height, width, height = 0;
 	unsigned int Src0, Src1, Src2, Dest0, Dest1, Dest2;
 
-	volatile void __iomem *wdma_reg;
-	volatile void __iomem *rdma_reg, *UIrdma_reg;
-	volatile void __iomem *wmix_reg;
-	volatile void __iomem *scaler_reg;
-	volatile void __iomem *disp_reg;
+	void __iomem *wdma_reg;
+	void __iomem *rdma_reg, *UIrdma_reg;
+	void __iomem *wmix_reg;
+	void __iomem *scaler_reg;
+	void __iomem *disp_reg;
 	unsigned int disp_status = 0;
 
 	rdma_n = Nrdma_n;
@@ -490,7 +490,7 @@ static int __init test_disp_api(unsigned int Nrdma_n)
 
 static int __init test_disp(void)
 {
-	volatile unsigned int rdma_n, i, j;
+	unsigned int rdma_n, i, j;
 
 	VIOC_SAR_POWER_ONOFF(1);
 	VIOC_CONFIG_SWReset(VIOC_SAR, VIOC_CONFIG_RESET);

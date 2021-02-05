@@ -33,9 +33,9 @@
 #include <video/tcc/vioc_ddicfg.h> // is_VIOC_REMAP
 
 static struct device_node *ViocSC_np;
-static volatile void __iomem *pScale[VIOC_SCALER_MAX];
+static void __iomem *pScale[VIOC_SCALER_MAX];
 
-void VIOC_SC_SetBypass(volatile void __iomem *reg, unsigned int nOnOff)
+void VIOC_SC_SetBypass(void __iomem *reg, unsigned int nOnOff)
 {
 	unsigned long val;
 
@@ -44,7 +44,7 @@ void VIOC_SC_SetBypass(volatile void __iomem *reg, unsigned int nOnOff)
 	__raw_writel(val, reg + SCCTRL);
 }
 
-void VIOC_SC_SetUpdate(volatile void __iomem *reg)
+void VIOC_SC_SetUpdate(void __iomem *reg)
 {
 	unsigned long val;
 
@@ -55,7 +55,7 @@ void VIOC_SC_SetUpdate(volatile void __iomem *reg)
 }
 
 void VIOC_SC_SetSrcSize(
-	volatile void __iomem *reg, unsigned int nWidth, unsigned int nHeight)
+	void __iomem *reg, unsigned int nWidth, unsigned int nHeight)
 {
 	unsigned long val;
 
@@ -95,7 +95,7 @@ unsigned int VIOC_SC_GetPlusSize(unsigned int src_height,
 #endif
 
 void VIOC_SC_SetDstSize(
-	volatile void __iomem *reg, unsigned int nWidth, unsigned int nHeight)
+	void __iomem *reg, unsigned int nWidth, unsigned int nHeight)
 {
 	unsigned long val;
 
@@ -105,7 +105,7 @@ void VIOC_SC_SetDstSize(
 }
 
 void VIOC_SC_SetOutSize(
-	volatile void __iomem *reg, unsigned int nWidth, unsigned int nHeight)
+	void __iomem *reg, unsigned int nWidth, unsigned int nHeight)
 {
 	unsigned long val;
 
@@ -115,7 +115,7 @@ void VIOC_SC_SetOutSize(
 }
 
 void VIOC_SC_SetOutPosition(
-	volatile void __iomem *reg, unsigned int nXpos, unsigned int nYpos)
+	void __iomem *reg, unsigned int nXpos, unsigned int nYpos)
 {
 	unsigned long val;
 
@@ -123,9 +123,9 @@ void VIOC_SC_SetOutPosition(
 	__raw_writel(val, reg + SCOPOS);
 }
 
-volatile void __iomem *VIOC_SC_GetAddress(unsigned int vioc_id)
+void __iomem *VIOC_SC_GetAddress(unsigned int vioc_id)
 {
-	volatile void __iomem *pScaler = NULL;
+	void __iomem *pScaler = NULL;
 
 	int Num = get_vioc_index(vioc_id);
 
@@ -151,11 +151,11 @@ err:
 	return NULL;
 }
 
-void VIOC_SCALER_DUMP(volatile void __iomem *reg, unsigned int vioc_id)
+void VIOC_SCALER_DUMP(void __iomem *reg, unsigned int vioc_id)
 {
 	unsigned int cnt = 0;
 
-	volatile void __iomem *pReg = reg;
+	void __iomem *pReg = reg;
 
 	int Num = get_vioc_index(vioc_id);
 
@@ -191,7 +191,7 @@ static int __init vioc_sc_init(void)
 		pr_err("[ERR][SC] cann't find vioc_scaler\n");
 	} else {
 		for (i = 0; i < VIOC_SCALER_MAX; i++)
-			pScale[i] = (volatile void __iomem *)of_iomap(
+			pScale[i] = (void __iomem *)of_iomap(
 				ViocSC_np,
 				is_VIOC_REMAP ? (i + VIOC_SCALER_MAX) : i);
 	}

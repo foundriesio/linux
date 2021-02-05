@@ -41,7 +41,7 @@ static int vioc_base_irq_num[4] = {
 
 int vioc_intr_enable(int irq, int id, unsigned int mask)
 {
-	volatile void __iomem *reg;
+	void __iomem *reg;
 	unsigned int sub_id;
 	unsigned int type_clr_offset;
 
@@ -77,7 +77,7 @@ int vioc_intr_enable(int irq, int id, unsigned int mask)
 
 #if defined(CONFIG_VIOC_DOLBY_VISION_EDR)
 	case VIOC_INTR_V_DV: {
-		volatile void __iomem *pDV_Cfg =
+		void __iomem *pDV_Cfg =
 			VIOC_DV_VEDR_GetAddress(VDV_CFG);
 		VIOC_V_DV_SetInterruptEnable(
 			pDV_Cfg, (mask & VIOC_V_DV_INT_MASK), 1);
@@ -250,7 +250,7 @@ EXPORT_SYMBOL(vioc_intr_enable);
 
 int vioc_intr_disable(int irq, int id, unsigned int mask)
 {
-	volatile void __iomem *reg;
+	void __iomem *reg;
 	unsigned int sub_id;
 	unsigned int do_irq_mask = 1;
 	unsigned int type_set_offset;
@@ -290,7 +290,7 @@ int vioc_intr_disable(int irq, int id, unsigned int mask)
 		break;
 #if defined(CONFIG_VIOC_DOLBY_VISION_EDR)
 	case VIOC_INTR_V_DV: {
-		volatile void __iomem *pDV_Cfg =
+		void __iomem *pDV_Cfg =
 			VIOC_DV_VEDR_GetAddress(VDV_CFG);
 
 		VIOC_V_DV_SetInterruptEnable(
@@ -451,7 +451,7 @@ EXPORT_SYMBOL(vioc_intr_disable);
 
 unsigned int vioc_intr_get_status(int id)
 {
-	volatile void __iomem *reg;
+	void __iomem *reg;
 
 	if ((id < 0) || (id > VIOC_INTR_NUM))
 		return 0;
@@ -545,7 +545,7 @@ unsigned int vioc_intr_get_status(int id)
 }
 EXPORT_SYMBOL(vioc_intr_get_status);
 
-bool check_vioc_irq_status(volatile void __iomem *reg, int id)
+bool check_vioc_irq_status(void __iomem *reg, int id)
 {
 	unsigned int flag;
 
@@ -583,7 +583,7 @@ EXPORT_SYMBOL(check_vioc_irq_status);
 
 bool is_vioc_intr_activatied(int id, unsigned int mask)
 {
-	volatile void __iomem *reg;
+	void __iomem *reg;
 
 	if ((id < 0) || (id > VIOC_INTR_NUM))
 		return false;
@@ -694,7 +694,7 @@ EXPORT_SYMBOL(is_vioc_intr_activatied);
 
 bool is_vioc_intr_unmasked(int id, unsigned int mask)
 {
-	volatile void __iomem *reg;
+	void __iomem *reg;
 
 	if ((id < 0) || (id > VIOC_INTR_NUM))
 		return false;
@@ -848,7 +848,7 @@ EXPORT_SYMBOL(is_vioc_display_device_intr_masked);
 
 int vioc_intr_clear(int id, unsigned int mask)
 {
-	volatile void __iomem *reg;
+	void __iomem *reg;
 
 	if ((id < 0) || (id > VIOC_INTR_NUM))
 		return -1;
@@ -952,7 +952,7 @@ EXPORT_SYMBOL(vioc_intr_clear);
 
 void vioc_intr_initialize(void)
 {
-	volatile void __iomem *reg = VIOC_IREQConfig_GetAddress();
+	void __iomem *reg = VIOC_IREQConfig_GetAddress();
 	int i;
 
 	__raw_writel(0xffffffff, reg + IRQMASKCLR0_0_OFFSET);
@@ -1019,7 +1019,7 @@ EXPORT_SYMBOL(vioc_intr_initialize);
 #if defined(CONFIG_ARCH_TCC805X) || defined(CONFIG_ARCH_TCC803X)
 static void vioc_intr_disable_core_intr(void)
 {
-	volatile void __iomem *reg = VIOC_IREQConfig_GetAddress();
+	void __iomem *reg = VIOC_IREQConfig_GetAddress();
 
 	#if defined(CONFIG_TCC803X_CA7S) || defined(CONFIG_TCC805X_CA53Q)
 	pr_info("[INF][VIOC_INTR] disable all VIOC interrupts of VIOC0_IRQI\n");

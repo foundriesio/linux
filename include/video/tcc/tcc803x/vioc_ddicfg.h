@@ -521,35 +521,35 @@
 #define CAM_DLY_05_CAMDATA_24_MASK	(0xF << CAM_DLY_05_CAMDATA_24_SHIFT)
 
 extern void VIOC_DDICONFIG_SetSWRESET(
-	volatile void __iomem *reg, unsigned int type, unsigned int set);
+	void __iomem *reg, unsigned int type, unsigned int set);
 extern void VIOC_DDICONFIG_SetPWDN(
-	volatile void __iomem *reg, unsigned int type, unsigned int set);
+	void __iomem *reg, unsigned int type, unsigned int set);
 extern int VIOC_DDICONFIG_GetPeriClock(
-	volatile void __iomem *reg, unsigned int num);
+	void __iomem *reg, unsigned int num);
 extern void VIOC_DDICONFIG_SetPeriClock(
-	volatile void __iomem *reg, unsigned int num, unsigned int set);
+	void __iomem *reg, unsigned int num, unsigned int set);
 extern void VIOC_DDICONFIG_Set_hdmi_enable(
-	volatile void __iomem *reg, unsigned int enable);
+	void __iomem *reg, unsigned int enable);
 extern void VIOC_DDICONFIG_Set_prng(
-	volatile void __iomem *reg, unsigned int enable);
+	void __iomem *reg, unsigned int enable);
 extern void VIOC_DDICONFIG_Set_refclock(
-	volatile void __iomem *reg, unsigned int ref_clock);
+	void __iomem *reg, unsigned int ref_clock);
 extern int VIOC_DDICONFIG_get_phy_status(
-	volatile void __iomem *reg, unsigned int phy_mode);
+	void __iomem *reg, unsigned int phy_mode);
 extern void VIOC_DDICONFIG_Set_tmds_bit_order(
-	volatile void __iomem *reg, unsigned int phy_mode);
+	void __iomem *reg, unsigned int phy_mode);
 extern void VIOC_DDICONFIG_reset_hdmi_phy(
-	volatile void __iomem *reg, unsigned int reset_enable);
+	void __iomem *reg, unsigned int reset_enable);
 extern void VIOC_DDICONFIG_reset_hdmi_link(
-	volatile void __iomem *reg, unsigned int reset_enable);
+	void __iomem *reg, unsigned int reset_enable);
 extern void VIOC_DDICONFIG_NTSCPAL_SetEnable(
-	volatile void __iomem *reg, unsigned int enable, unsigned int lcdc_num);
+	void __iomem *reg, unsigned int enable, unsigned int lcdc_num);
 extern void VIOC_DDICONFIG_MIPI_Reset_DPHY(
-	volatile void __iomem *reg, unsigned int reset);
+	void __iomem *reg, unsigned int reset);
 extern void VIOC_DDICONFIG_MIPI_Reset_GEN(
-	volatile void __iomem *reg, unsigned int reset);
+	void __iomem *reg, unsigned int reset);
 extern void VIOC_DDICONFIG_DUMP(void);
-extern volatile void __iomem *VIOC_DDICONFIG_GetAddress(void);
+extern void __iomem *VIOC_DDICONFIG_GetAddress(void);
 
 /*
  * VIOC_REMAP (VIOC Register Address Remap Enable Register)

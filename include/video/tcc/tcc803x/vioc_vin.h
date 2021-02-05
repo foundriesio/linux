@@ -335,49 +335,49 @@
 
 
 /* Interface APIs. */
-extern void VIOC_VIN_SetSyncPolarity(volatile void __iomem *reg,
+extern void VIOC_VIN_SetSyncPolarity(void __iomem *reg,
 	unsigned int hs_active_low, unsigned int vs_active_low,
 	unsigned int field_bfield_low, unsigned int de_active_low,
 	unsigned int gen_field_en, unsigned int pxclk_pol);
-extern void VIOC_VIN_SetCtrl(volatile void __iomem *reg,
+extern void VIOC_VIN_SetCtrl(void __iomem *reg,
 	unsigned int conv_en, unsigned int hsde_connect_en,
 	unsigned int vs_mask, unsigned int fmt, unsigned int data_order);
-extern void VIOC_VIN_SetInterlaceMode(volatile void __iomem *reg,
+extern void VIOC_VIN_SetInterlaceMode(void __iomem *reg,
 	unsigned int intl_en, unsigned int intpl_en);
 extern void VIOC_VIN_SetCaptureModeEnable(
-	volatile void __iomem *reg, unsigned int cap_en);
-extern void VIOC_VIN_SetEnable(volatile void __iomem *reg,
+	void __iomem *reg, unsigned int cap_en);
+extern void VIOC_VIN_SetEnable(void __iomem *reg,
 	unsigned int vin_en);
-extern void VIOC_VIN_SetImageSize(volatile void __iomem *reg,
+extern void VIOC_VIN_SetImageSize(void __iomem *reg,
 	unsigned int width, unsigned int height);
-extern void VIOC_VIN_SetImageOffset(volatile void __iomem *reg,
+extern void VIOC_VIN_SetImageOffset(void __iomem *reg,
 	unsigned int offs_width, unsigned int offs_height,
 	unsigned int offs_height_intl);
-extern void VIOC_VIN_SetImageCropSize(volatile void __iomem *reg,
+extern void VIOC_VIN_SetImageCropSize(void __iomem *reg,
 	unsigned int width, unsigned int height);
-extern void VIOC_VIN_SetImageCropOffset(volatile void __iomem *reg,
+extern void VIOC_VIN_SetImageCropOffset(void __iomem *reg,
 	unsigned int offs_width, unsigned int offs_height);
-extern void VIOC_VIN_SetY2RMode(volatile void __iomem *reg,
+extern void VIOC_VIN_SetY2RMode(void __iomem *reg,
 	unsigned int y2r_mode);
-extern void VIOC_VIN_SetY2REnable(volatile void __iomem *reg,
+extern void VIOC_VIN_SetY2REnable(void __iomem *reg,
 	unsigned int y2r_en);
-extern void VIOC_VIN_SetLUT(volatile void __iomem *reg,
+extern void VIOC_VIN_SetLUT(void __iomem *reg,
 	unsigned int *pLUT);
-extern void VIOC_VIN_SetLUTEnable(volatile void __iomem *reg,
+extern void VIOC_VIN_SetLUTEnable(void __iomem *reg,
 	unsigned int lut0_en, unsigned int lut1_en, unsigned int lut2_en);
 extern void VIOC_VIN_IreqHandler(unsigned int vectorID);
-extern unsigned int VIOC_VIN_IsEnable(volatile void __iomem *reg);
+extern unsigned int VIOC_VIN_IsEnable(void __iomem *reg);
 
-extern void VIOC_VIN_SetDemuxPort(volatile void __iomem *reg,
+extern void VIOC_VIN_SetDemuxPort(void __iomem *reg,
 	unsigned int p0, unsigned int p1, unsigned int p2, unsigned int p3);
-extern void VIOC_VIN_SetDemuxClock(volatile void __iomem *reg,
+extern void VIOC_VIN_SetDemuxClock(void __iomem *reg,
 	unsigned int mode);
-extern void VIOC_VIN_SetDemuxEnable(volatile void __iomem *reg,
+extern void VIOC_VIN_SetDemuxEnable(void __iomem *reg,
 	unsigned int enable);
-extern void VIOC_VIN_SetSEEnable(volatile void __iomem *reg,
+extern void VIOC_VIN_SetSEEnable(void __iomem *reg,
 	unsigned int se);
 extern void VIOC_VIN_SetFlushBufferEnable(
-	volatile void __iomem *reg, unsigned int fvs);
+	void __iomem *reg, unsigned int fvs);
 
-extern volatile void __iomem *VIOC_VIN_GetAddress(unsigned int Num);
+extern void __iomem *VIOC_VIN_GetAddress(unsigned int Num);
 #endif

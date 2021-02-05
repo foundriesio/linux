@@ -521,8 +521,8 @@ extern void internal_tve_get_cgms(
 extern void internal_tve_set_cgms_helper(
 	unsigned char odd_field_en, unsigned char even_field_en,
 	unsigned int key);
-extern volatile void __iomem *VIOC_TVE_VEN_GetAddress(void);
-extern volatile void __iomem *VIOC_TVE_GetAddress(void);
+extern void __iomem *VIOC_TVE_VEN_GetAddress(void);
+extern void __iomem *VIOC_TVE_GetAddress(void);
 
 #if defined(CONFIG_FB_TCC_COMPOSITE_BVO)
 extern void internal_bvo_get_spec(

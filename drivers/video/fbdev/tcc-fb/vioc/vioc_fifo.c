@@ -25,9 +25,9 @@
 #include <video/tcc/vioc_fifo.h>
 
 static struct device_node *ViocFifo_np;
-static volatile void __iomem *pFIFO_reg[VIOC_FIFO_MAX] = {0};
+static void __iomem *pFIFO_reg[VIOC_FIFO_MAX] = {0};
 
-void VIOC_FIFO_ConfigEntry(volatile void __iomem *reg, unsigned int *buf)
+void VIOC_FIFO_ConfigEntry(void __iomem *reg, unsigned int *buf)
 {
 	unsigned int EEMPTY = 1; // emergency empty
 	unsigned int EFULL = 1;  // emergency full
@@ -53,7 +53,7 @@ void VIOC_FIFO_ConfigEntry(volatile void __iomem *reg, unsigned int *buf)
 }
 
 void VIOC_FIFO_ConfigDMA(
-	volatile void __iomem *reg, unsigned int nWDMA, unsigned int nRDMA0,
+	void __iomem *reg, unsigned int nWDMA, unsigned int nRDMA0,
 	unsigned int nRDMA1, unsigned int nRDMA2)
 {
 	unsigned long val;
@@ -69,7 +69,7 @@ void VIOC_FIFO_ConfigDMA(
 }
 
 void VIOC_FIFO_SetEnable(
-	volatile void __iomem *reg, unsigned int nWDMA, unsigned int nRDMA0,
+	void __iomem *reg, unsigned int nWDMA, unsigned int nRDMA0,
 	unsigned int nRDMA1, unsigned int nRDMA2)
 {
 	unsigned long val;
@@ -84,7 +84,7 @@ void VIOC_FIFO_SetEnable(
 	__raw_writel(val, reg + CH0_CTRL0);
 }
 
-volatile void __iomem *VIOC_FIFO_GetAddress(unsigned int vioc_id)
+void __iomem *VIOC_FIFO_GetAddress(unsigned int vioc_id)
 {
 	int Num = get_vioc_index(vioc_id);
 
@@ -114,7 +114,7 @@ static int __init vioc_fifo_init(void)
 		pr_info("[INF][FIFO] vioc-fifo: disabled\n");
 	} else {
 		for (i = 0; i < VIOC_FIFO_MAX; i++) {
-			pFIFO_reg[i] = (volatile void __iomem *)of_iomap(
+			pFIFO_reg[i] = (void __iomem *)of_iomap(
 				ViocFifo_np,
 				is_VIOC_REMAP ? (i + VIOC_FIFO_MAX) : i);
 

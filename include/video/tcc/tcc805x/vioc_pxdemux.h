@@ -318,5 +318,5 @@ extern void VIOC_PXDEMUX_SetDataSwap(unsigned int idx, unsigned int ch, unsigned
 extern void VIOC_PXDEMUX_SetMuxOutput(PD_MUX_TYPE mux, unsigned int ch, unsigned int select,unsigned int enable);
 extern void VIOC_PXDEMUX_SetDataPath(unsigned int ch, unsigned int path,unsigned int set);
 extern void VIOC_PXDEMUX_SetDataArray(unsigned int ch, unsigned int data[TXOUT_MAX_LINE][TXOUT_DATA_PER_LINE]);
-extern volatile void __iomem* VIOC_PXDEMUX_GetAddress(void);
+extern void __iomem* VIOC_PXDEMUX_GetAddress(void);
 #endif

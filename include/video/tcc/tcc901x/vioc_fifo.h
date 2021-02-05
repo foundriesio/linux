@@ -165,15 +165,15 @@
 
 #define CH_BASE_BASE_MASK	(0xFFFFFFFF << CH_BASE_BASE_SHIFT)
 
-extern void VIOC_FIFO_ConfigEntry(volatile void __iomem *pFIFO,
+extern void VIOC_FIFO_ConfigEntry(void __iomem *pFIFO,
 	unsigned int *buf);
-extern void VIOC_FIFO_ConfigDMA(volatile void __iomem *reg,
+extern void VIOC_FIFO_ConfigDMA(void __iomem *reg,
 	unsigned int nWDMA, unsigned int nRDMA0,
 	unsigned int nRDMA1, unsigned int nRDMA2);
-extern void VIOC_FIFO_SetEnable(volatile void __iomem *pFIFO,
+extern void VIOC_FIFO_SetEnable(void __iomem *pFIFO,
 	unsigned int nWDMA, unsigned int nRDMA0,
 	unsigned int nRDMA1, unsigned int nRDMA2);
-extern volatile void __iomem *VIOC_FIFO_GetAddress(unsigned int vioc_id);
+extern void __iomem *VIOC_FIFO_GetAddress(unsigned int vioc_id);
 
 #endif
 

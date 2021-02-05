@@ -35,7 +35,7 @@
 #define VIOC_VIN_IREQ_VS_MASK 0x00000004UL
 #define VIOC_VIN_IREQ_INVS_MASK 0x00000008UL
 
-static volatile void __iomem *pVIN_reg[VIOC_VIN_MAX] = {0};
+static void __iomem *pVIN_reg[VIOC_VIN_MAX] = {0};
 
 /* VIN polarity Setting
  *	- VIN_CTRL
@@ -47,7 +47,7 @@ static volatile void __iomem *pVIN_reg[VIOC_VIN_MAX] = {0};
  *		. [ 8] = pxclk_pol
  */
 void VIOC_VIN_SetSyncPolarity(
-	volatile void __iomem *reg, unsigned int hs_active_low,
+	void __iomem *reg, unsigned int hs_active_low,
 	unsigned int vs_active_low, unsigned int field_bfield_low,
 	unsigned int de_active_low, unsigned int gen_field_en,
 	unsigned int pxclk_pol)
@@ -76,7 +76,7 @@ void VIOC_VIN_SetSyncPolarity(
  *		. [ 1] = conv_en
  */
 void VIOC_VIN_SetCtrl(
-	volatile void __iomem *reg, unsigned int conv_en,
+	void __iomem *reg, unsigned int conv_en,
 	unsigned int hsde_connect_en, unsigned int vs_mask, unsigned int fmt,
 	unsigned int data_order)
 {
@@ -99,7 +99,7 @@ void VIOC_VIN_SetCtrl(
  *		. [ 2] = intl_en
  */
 void VIOC_VIN_SetInterlaceMode(
-	volatile void __iomem *reg, unsigned int intl_en, unsigned int intpl_en)
+	void __iomem *reg, unsigned int intl_en, unsigned int intpl_en)
 {
 	unsigned long val;
 
@@ -115,7 +115,7 @@ void VIOC_VIN_SetInterlaceMode(
  *		. [31] = cap_en
  */
 void VIOC_VIN_SetCaptureModeEnable(
-	volatile void __iomem *reg, unsigned int cap_en)
+	void __iomem *reg, unsigned int cap_en)
 {
 	unsigned long val;
 
@@ -128,7 +128,7 @@ void VIOC_VIN_SetCaptureModeEnable(
  *	- VIN_CTRL
  *		. [24] = skip
  */
-void VIOC_VIN_SetFrameSkipNumber(volatile void __iomem *reg, unsigned int skip)
+void VIOC_VIN_SetFrameSkipNumber(void __iomem *reg, unsigned int skip)
 {
 	unsigned long val;
 
@@ -141,7 +141,7 @@ void VIOC_VIN_SetFrameSkipNumber(volatile void __iomem *reg, unsigned int skip)
  *	- VIN_CTRL
  *		. [ 0] = vin_en
  */
-void VIOC_VIN_SetEnable(volatile void __iomem *reg, unsigned int vin_en)
+void VIOC_VIN_SetEnable(void __iomem *reg, unsigned int vin_en)
 {
 	unsigned long val;
 
@@ -154,7 +154,7 @@ void VIOC_VIN_SetEnable(volatile void __iomem *reg, unsigned int vin_en)
  *	- VIN_CTRL
  *		. return [ 0]
  */
-unsigned int VIOC_VIN_IsEnable(volatile void __iomem *reg)
+unsigned int VIOC_VIN_IsEnable(void __iomem *reg)
 {
 	return ((__raw_readl(reg + VIN_CTRL) & (VIN_CTRL_EN_MASK))
 		>> VIN_CTRL_EN_SHIFT);
@@ -166,7 +166,7 @@ unsigned int VIOC_VIN_IsEnable(volatile void __iomem *reg)
  *		. [15: 0] = width
  */
 void VIOC_VIN_SetImageSize(
-	volatile void __iomem *reg, unsigned int width, unsigned int height)
+	void __iomem *reg, unsigned int width, unsigned int height)
 {
 	unsigned long val;
 
@@ -183,7 +183,7 @@ void VIOC_VIN_SetImageSize(
  *		. [31:16] = offs_height_intl
  */
 void VIOC_VIN_SetImageOffset(
-	volatile void __iomem *reg, unsigned int offs_width,
+	void __iomem *reg, unsigned int offs_width,
 	unsigned int offs_height, unsigned int offs_height_intl)
 {
 	unsigned long val;
@@ -202,7 +202,7 @@ void VIOC_VIN_SetImageOffset(
  *		. [15: 0] = width
  */
 void VIOC_VIN_SetImageCropSize(
-	volatile void __iomem *reg, unsigned int width, unsigned int height)
+	void __iomem *reg, unsigned int width, unsigned int height)
 {
 	unsigned long val;
 
@@ -217,7 +217,7 @@ void VIOC_VIN_SetImageCropSize(
  *		. [15: 0] = offs_width
  */
 void VIOC_VIN_SetImageCropOffset(
-	volatile void __iomem *reg, unsigned int offs_width,
+	void __iomem *reg, unsigned int offs_width,
 	unsigned int offs_height)
 {
 	unsigned long val;
@@ -231,7 +231,7 @@ void VIOC_VIN_SetImageCropOffset(
  *	- VIN_MISC
  *		. [ 7: 5] = y2r_mode
  */
-void VIOC_VIN_SetY2RMode(volatile void __iomem *reg, unsigned int y2r_mode)
+void VIOC_VIN_SetY2RMode(void __iomem *reg, unsigned int y2r_mode)
 {
 	unsigned long val;
 
@@ -244,7 +244,7 @@ void VIOC_VIN_SetY2RMode(volatile void __iomem *reg, unsigned int y2r_mode)
  *	- VIN_MISC
  *		. [ 4] = y2r_en
  */
-void VIOC_VIN_SetY2REnable(volatile void __iomem *reg, unsigned int y2r_en)
+void VIOC_VIN_SetY2REnable(void __iomem *reg, unsigned int y2r_en)
 {
 	unsigned long val;
 
@@ -263,7 +263,7 @@ void VIOC_VIN_SetY2REnable(volatile void __iomem *reg, unsigned int y2r_en)
  *	- VIN_LUT_C2
  *		. [31: 0] = (pLUT + 512Byte) ~ +256Byte
  */
-void VIOC_VIN_SetLUT(volatile void __iomem *reg, unsigned int *pLUT)
+void VIOC_VIN_SetLUT(void __iomem *reg, unsigned int *pLUT)
 {
 	unsigned int *pLUT0, *pLUT1, *pLUT2, uiCount;
 
@@ -293,7 +293,7 @@ void VIOC_VIN_SetLUT(volatile void __iomem *reg, unsigned int *pLUT)
  *		. [ 0] = lut0_en
  */
 void VIOC_VIN_SetLUTEnable(
-	volatile void __iomem *reg, unsigned int lut0_en, unsigned int lut1_en,
+	void __iomem *reg, unsigned int lut0_en, unsigned int lut1_en,
 	unsigned int lut2_en)
 {
 	unsigned long val;
@@ -307,7 +307,7 @@ void VIOC_VIN_SetLUTEnable(
 
 /* Not Used (will be deleted) */
 void VIOC_VIN_SetDemuxPort(
-	volatile void __iomem *reg, unsigned int p0, unsigned int p1,
+	void __iomem *reg, unsigned int p0, unsigned int p1,
 	unsigned int p2, unsigned int p3)
 {
 	unsigned long val;
@@ -323,7 +323,7 @@ void VIOC_VIN_SetDemuxPort(
 }
 
 /* Not Used (will be deleted) */
-void VIOC_VIN_SetDemuxClock(volatile void __iomem *reg, unsigned int mode)
+void VIOC_VIN_SetDemuxClock(void __iomem *reg, unsigned int mode)
 {
 	unsigned long val;
 
@@ -333,7 +333,7 @@ void VIOC_VIN_SetDemuxClock(volatile void __iomem *reg, unsigned int mode)
 }
 
 /* Not Used (will be deleted) */
-void VIOC_VIN_SetDemuxEnable(volatile void __iomem *reg, unsigned int enable)
+void VIOC_VIN_SetDemuxEnable(void __iomem *reg, unsigned int enable)
 {
 	unsigned long val;
 
@@ -346,7 +346,7 @@ void VIOC_VIN_SetDemuxEnable(volatile void __iomem *reg, unsigned int enable)
  *	- VIN_CTRL
  *		. [14] = se
  */
-void VIOC_VIN_SetSEEnable(volatile void __iomem *reg, unsigned int se)
+void VIOC_VIN_SetSEEnable(void __iomem *reg, unsigned int se)
 {
 	unsigned long val;
 
@@ -361,7 +361,7 @@ void VIOC_VIN_SetSEEnable(volatile void __iomem *reg, unsigned int se)
  */
 #if defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC899X) \
 	|| defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X)
-void VIOC_VIN_SetFlushBufferEnable(volatile void __iomem *reg, unsigned int fvs)
+void VIOC_VIN_SetFlushBufferEnable(void __iomem *reg, unsigned int fvs)
 {
 	unsigned long val;
 
@@ -378,7 +378,7 @@ void VIOC_VIN_SetFlushBufferEnable(volatile void __iomem *reg, unsigned int fvs)
  *	Not Used, Please use the alternative functions in vioc_intr.c
  */
 void VIOC_VIN_SetIreqMask(
-	volatile void __iomem *reg, unsigned int mask, unsigned int set)
+	void __iomem *reg, unsigned int mask, unsigned int set)
 {
 	/*
 	 * set 1 : IREQ Masked(interrupt disable),
@@ -398,7 +398,7 @@ void VIOC_VIN_SetIreqMask(
  *		. return [ 3: 2]
  *	Not Used, Please use the alternative functions in vioc_intr.c
  */
-void VIOC_VIN_GetStatus(volatile void __iomem *reg, unsigned int *status)
+void VIOC_VIN_GetStatus(void __iomem *reg, unsigned int *status)
 {
 	*status = __raw_readl(reg + VIN_INT) & VIOC_VIN_INT_MASK;
 }
@@ -408,7 +408,7 @@ void VIOC_VIN_GetStatus(volatile void __iomem *reg, unsigned int *status)
  *		. [ 0] = 1
  *	* The monitoring registers are used for debugging only.
  */
-void VIOC_VIN_ClearAllMonitorCounters(volatile void __iomem *reg)
+void VIOC_VIN_ClearAllMonitorCounters(void __iomem *reg)
 {
 	__raw_writel(1, reg + VIN_MON_CLR);
 }
@@ -418,7 +418,7 @@ void VIOC_VIN_ClearAllMonitorCounters(volatile void __iomem *reg)
  *		. return [31: 0]
  *	* The monitoring registers are used for debugging only.
  */
-unsigned int VIOC_VIN_GetHSyncMax(volatile void __iomem *reg)
+unsigned int VIOC_VIN_GetHSyncMax(void __iomem *reg)
 {
 	return (__raw_readl(reg + VIN_MON_HS) & VIN_MON_HS_MAX_MASK)
 		>> VIN_MON_HS_MAX_SHIFT;
@@ -429,7 +429,7 @@ unsigned int VIOC_VIN_GetHSyncMax(volatile void __iomem *reg)
  *		. return [31: 0]
  *	* The monitoring registers are used for debugging only.
  */
-unsigned int VIOC_VIN_GetHSyncCounter(volatile void __iomem *reg)
+unsigned int VIOC_VIN_GetHSyncCounter(void __iomem *reg)
 {
 	return (__raw_readl(reg + VIN_MON_HS) & VIN_MON_HS_CNT_MASK)
 		>> VIN_MON_HS_CNT_SHIFT;
@@ -440,7 +440,7 @@ unsigned int VIOC_VIN_GetHSyncCounter(volatile void __iomem *reg)
  *		. return [31:16]
  *	* The monitoring registers are used for debugging only.
  */
-unsigned int VIOC_VIN_GetDataEnableMax(volatile void __iomem *reg)
+unsigned int VIOC_VIN_GetDataEnableMax(void __iomem *reg)
 {
 	return (__raw_readl(reg + VIN_MON_DE) & VIN_MON_DE_MAX_MASK)
 		>> VIN_MON_DE_MAX_SHIFT;
@@ -451,7 +451,7 @@ unsigned int VIOC_VIN_GetDataEnableMax(volatile void __iomem *reg)
  *		. return [31: 0]
  *	* The monitoring registers are used for debugging only.
  */
-unsigned int VIOC_VIN_GetDataEnableCounter(volatile void __iomem *reg)
+unsigned int VIOC_VIN_GetDataEnableCounter(void __iomem *reg)
 {
 	return (__raw_readl(reg + VIN_MON_DE) & VIN_MON_DE_CNT_MASK)
 		>> VIN_MON_DE_CNT_SHIFT;
@@ -462,7 +462,7 @@ unsigned int VIOC_VIN_GetDataEnableCounter(volatile void __iomem *reg)
  *		. return [31:16]
  *	* The monitoring registers are used for debugging only.
  */
-unsigned int VIOC_VIN_GetLineCountMax(volatile void __iomem *reg)
+unsigned int VIOC_VIN_GetLineCountMax(void __iomem *reg)
 {
 	return (__raw_readl(reg + VIN_MON_LCNT) & VIN_MON_LCNT_MAX_MASK)
 		>> VIN_MON_LCNT_MAX_SHIFT;
@@ -473,7 +473,7 @@ unsigned int VIOC_VIN_GetLineCountMax(volatile void __iomem *reg)
  *		. return [31: 0]
  *	* The monitoring registers are used for debugging only.
  */
-unsigned int VIOC_VIN_GetLineCountCounter(volatile void __iomem *reg)
+unsigned int VIOC_VIN_GetLineCountCounter(void __iomem *reg)
 {
 	return (__raw_readl(reg + VIN_MON_LCNT) & VIN_MON_LCNT_CNT_MASK)
 		>> VIN_MON_LCNT_CNT_SHIFT;
@@ -484,7 +484,7 @@ unsigned int VIOC_VIN_GetLineCountCounter(volatile void __iomem *reg)
  *		. return [31: 0]
  *	* The monitoring registers are used for debugging only.
  */
-unsigned int VIOC_VIN_GetVSyncMax(volatile void __iomem *reg)
+unsigned int VIOC_VIN_GetVSyncMax(void __iomem *reg)
 {
 	return __raw_readl(reg + VIN_MON_VSMAX);
 }
@@ -494,7 +494,7 @@ unsigned int VIOC_VIN_GetVSyncMax(volatile void __iomem *reg)
  *		. return [31: 0]
  *	* The monitoring registers are used for debugging only.
  */
-unsigned int VIOC_VIN_GetVSyncCounter(volatile void __iomem *reg)
+unsigned int VIOC_VIN_GetVSyncCounter(void __iomem *reg)
 {
 	return __raw_readl(reg + VIN_MON_VSCNT);
 }
@@ -503,7 +503,7 @@ unsigned int VIOC_VIN_GetVSyncCounter(volatile void __iomem *reg)
 /* VIN Get Register Address
  *	- return VINn_BASE_ADDR
  */
-volatile void __iomem *VIOC_VIN_GetAddress(unsigned int Num)
+void __iomem *VIOC_VIN_GetAddress(unsigned int Num)
 {
 	Num = get_vioc_index(Num);
 	if (Num >= VIOC_VIN_MAX)
@@ -533,7 +533,7 @@ static int __init vioc_vin_init(void)
 		pr_info("[INF][VIN] disabled\n");
 	} else {
 		for (i = 0; i < VIOC_VIN_MAX; i++) {
-			pVIN_reg[i] = (volatile void __iomem *)of_iomap(
+			pVIN_reg[i] = (void __iomem *)of_iomap(
 				ViocVin_np,
 				is_VIOC_REMAP ? (i + VIOC_VIN_MAX) : i);
 

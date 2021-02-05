@@ -30,11 +30,11 @@
 #include <video/tcc/vioc_viqe.h>
 
 static struct device_node *pViocVIQE_np;
-static volatile void __iomem *pVIQE_reg[VIOC_VIQE_MAX] = {0};
+static void __iomem *pVIQE_reg[VIOC_VIQE_MAX] = {0};
 
 /******************************* VIQE Control *******************************/
 void VIOC_VIQE_SetImageSize(
-	volatile void __iomem *reg, unsigned int width, unsigned int height)
+	void __iomem *reg, unsigned int width, unsigned int height)
 {
 	unsigned long val;
 
@@ -44,7 +44,7 @@ void VIOC_VIQE_SetImageSize(
 }
 
 void VIOC_VIQE_SetImageY2RMode(
-	volatile void __iomem *reg, unsigned int y2r_mode)
+	void __iomem *reg, unsigned int y2r_mode)
 {
 	unsigned long val;
 
@@ -53,7 +53,7 @@ void VIOC_VIQE_SetImageY2RMode(
 	__raw_writel(val, reg + VTIMEGEN);
 }
 void VIOC_VIQE_SetImageY2REnable(
-	volatile void __iomem *reg, unsigned int enable)
+	void __iomem *reg, unsigned int enable)
 {
 	unsigned long val;
 
@@ -63,7 +63,7 @@ void VIOC_VIQE_SetImageY2REnable(
 }
 
 void VIOC_VIQE_SetControlMisc(
-	volatile void __iomem *reg, unsigned int no_hor_intpl,
+	void __iomem *reg, unsigned int no_hor_intpl,
 	unsigned int fmt_conv_disable, unsigned int fmt_conv_disable_using_fmt,
 	unsigned int update_disable, unsigned int cfgupd, unsigned int h2h)
 {
@@ -85,7 +85,7 @@ void VIOC_VIQE_SetControlMisc(
 }
 
 void VIOC_VIQE_SetControlDontUse(
-	volatile void __iomem *reg, unsigned int global_en_dont_use,
+	void __iomem *reg, unsigned int global_en_dont_use,
 	unsigned int top_size_dont_use,
 	unsigned int stream_deintl_info_dont_use)
 {
@@ -99,7 +99,7 @@ void VIOC_VIQE_SetControlDontUse(
 }
 
 void VIOC_VIQE_SetControlClockGate(
-	volatile void __iomem *reg, unsigned int deintl_dis,
+	void __iomem *reg, unsigned int deintl_dis,
 	unsigned int d3d_dis, unsigned int pm_dis)
 {
 	unsigned long val;
@@ -113,7 +113,7 @@ void VIOC_VIQE_SetControlClockGate(
 }
 
 void VIOC_VIQE_SetControlEnable(
-	volatile void __iomem *reg, unsigned int his_cdf_or_lut_en,
+	void __iomem *reg, unsigned int his_cdf_or_lut_en,
 	unsigned int his_en, unsigned int gamut_en, unsigned int denoise3d_en,
 	unsigned int deintl_en)
 {
@@ -143,7 +143,7 @@ void VIOC_VIQE_SetControlEnable(
 }
 
 void VIOC_VIQE_SetControlMode(
-	volatile void __iomem *reg, unsigned int his_cdf_or_lut_en,
+	void __iomem *reg, unsigned int his_cdf_or_lut_en,
 	unsigned int his_en, unsigned int gamut_en, unsigned int denoise3d_en,
 	unsigned int deintl_en)
 {
@@ -157,7 +157,7 @@ void VIOC_VIQE_SetControlMode(
 }
 
 void VIOC_VIQE_SetControlRegister(
-	volatile void __iomem *reg, unsigned int width, unsigned int height,
+	void __iomem *reg, unsigned int width, unsigned int height,
 	unsigned int fmt)
 {
 	VIOC_VIQE_SetImageSize(reg, width, height);
@@ -174,7 +174,7 @@ void VIOC_VIQE_SetControlRegister(
 
 /******************************* DI Control *******************************/
 void VIOC_VIQE_SetDeintlBase(
-	volatile void __iomem *reg, unsigned int frmnum, unsigned int base0,
+	void __iomem *reg, unsigned int frmnum, unsigned int base0,
 	unsigned int base1, unsigned int base2, unsigned int base3)
 {
 	if (frmnum == 0) {
@@ -232,7 +232,7 @@ void VIOC_VIQE_SetDeintlBase(
 	}
 }
 
-void VIOC_VIQE_SwapDeintlBase(volatile void __iomem *reg, int mode)
+void VIOC_VIQE_SwapDeintlBase(void __iomem *reg, int mode)
 {
 	unsigned int curr_viqe_base[4];
 	unsigned int next_viqe_base[4];
@@ -271,7 +271,7 @@ void VIOC_VIQE_SwapDeintlBase(volatile void __iomem *reg, int mode)
 }
 
 void VIOC_VIQE_SetDeintlSize(
-	volatile void __iomem *reg, unsigned int width, unsigned int height)
+	void __iomem *reg, unsigned int width, unsigned int height)
 {
 	unsigned long val;
 
@@ -281,7 +281,7 @@ void VIOC_VIQE_SetDeintlSize(
 }
 
 void VIOC_VIQE_SetDeintlMisc(
-	volatile void __iomem *reg, unsigned int uvintpl, unsigned int cfgupd,
+	void __iomem *reg, unsigned int uvintpl, unsigned int cfgupd,
 	unsigned int dma_enable, unsigned int h2h,
 	unsigned int top_size_dont_use)
 {
@@ -299,7 +299,7 @@ void VIOC_VIQE_SetDeintlMisc(
 }
 
 void VIOC_VIQE_SetDeintlControl(
-	volatile void __iomem *reg, unsigned int fmt,
+	void __iomem *reg, unsigned int fmt,
 	unsigned int eof_control_ready, unsigned int dec_divisor,
 	unsigned int ac_k0_limit, unsigned int ac_k1_limit,
 	unsigned int ac_k2_limit)
@@ -339,7 +339,7 @@ void VIOC_VIQE_SetDeintlControl(
 
 /******************************* DI Core Control
  * *******************************/
-void VIOC_VIQE_InitDeintlCoreBypass(volatile void __iomem *reg)
+void VIOC_VIQE_InitDeintlCoreBypass(void __iomem *reg)
 {
 	__raw_writel(0x00010b31, reg + DI_CTRL2);
 	__raw_writel(0x02040408, reg + DI_ENGINE0);
@@ -359,7 +359,7 @@ void VIOC_VIQE_InitDeintlCoreBypass(volatile void __iomem *reg)
 	__raw_writel(0x0008050a, reg + DI_PD_SAW);
 }
 
-void VIOC_VIQE_InitDeintlCoreSpatial(volatile void __iomem *reg)
+void VIOC_VIQE_InitDeintlCoreSpatial(void __iomem *reg)
 {
 	__raw_writel(0x00030a31, reg + DI_CTRL2);
 	__raw_writel(0x02040408, reg + DI_ENGINE0);
@@ -379,7 +379,7 @@ void VIOC_VIQE_InitDeintlCoreSpatial(volatile void __iomem *reg)
 	__raw_writel(0x0008050a, reg + DI_PD_SAW);
 }
 
-void VIOC_VIQE_InitDeintlCoreTemporal(volatile void __iomem *reg)
+void VIOC_VIQE_InitDeintlCoreTemporal(void __iomem *reg)
 {
 	__raw_writel(0x00010b31, reg + DI_CTRL2);
 	__raw_writel(0x02040408, reg + DI_ENGINE0);
@@ -399,7 +399,7 @@ void VIOC_VIQE_InitDeintlCoreTemporal(volatile void __iomem *reg)
 	__raw_writel(0x0008050a, reg + DI_PD_SAW);
 }
 
-void VIOC_VIQE_SetDeintlFMT(volatile void __iomem *reg, int enable)
+void VIOC_VIQE_SetDeintlFMT(void __iomem *reg, int enable)
 {
 	unsigned long val;
 
@@ -409,7 +409,7 @@ void VIOC_VIQE_SetDeintlFMT(volatile void __iomem *reg, int enable)
 }
 
 void VIOC_VIQE_SetDeintlMode(
-	volatile void __iomem *reg, VIOC_VIQE_DEINTL_MODE mode)
+	void __iomem *reg, VIOC_VIQE_DEINTL_MODE mode)
 {
 	unsigned long val;
 
@@ -453,7 +453,7 @@ void VIOC_VIQE_SetDeintlMode(
 	}
 }
 
-void VIOC_VIQE_SetDeintlModeWeave(volatile void __iomem *reg)
+void VIOC_VIQE_SetDeintlModeWeave(void __iomem *reg)
 {
 	unsigned long val;
 
@@ -476,7 +476,7 @@ void VIOC_VIQE_SetDeintlModeWeave(volatile void __iomem *reg)
 }
 
 void VIOC_VIQE_SetDeintlRegion(
-	volatile void __iomem *reg, int region_enable, int region_idx_x_start,
+	void __iomem *reg, int region_enable, int region_idx_x_start,
 	int region_idx_x_end, int region_idx_y_start, int region_idx_y_end)
 {
 	unsigned long val;
@@ -492,7 +492,7 @@ void VIOC_VIQE_SetDeintlRegion(
 }
 
 void VIOC_VIQE_SetDeintlCore(
-	volatile void __iomem *reg, unsigned int width, unsigned int height,
+	void __iomem *reg, unsigned int width, unsigned int height,
 	VIOC_VIQE_FMT_TYPE fmt, unsigned int bypass,
 	unsigned int top_size_dont_use)
 {
@@ -519,7 +519,7 @@ void VIOC_VIQE_SetDeintlCore(
 }
 
 void VIOC_VIQE_SetDeintlRegister(
-	volatile void __iomem *reg, unsigned int fmt,
+	void __iomem *reg, unsigned int fmt,
 	unsigned int top_size_dont_use, unsigned int width, unsigned int height,
 	VIOC_VIQE_DEINTL_MODE mode, unsigned int base0, unsigned int base1,
 	unsigned int base2, unsigned int base3)
@@ -548,7 +548,7 @@ void VIOC_VIQE_SetDeintlRegister(
 	VIOC_VIQE_SetDeintlCore(reg, width, height, fmt, bypass, OFF);
 }
 
-void VIOC_VIQE_SetDeintlJudderCnt(volatile void __iomem *reg, unsigned int cnt)
+void VIOC_VIQE_SetDeintlJudderCnt(void __iomem *reg, unsigned int cnt)
 {
 	unsigned long val;
 
@@ -566,13 +566,13 @@ void VIOC_VIQE_SetDeintlJudderCnt(volatile void __iomem *reg, unsigned int cnt)
 	__raw_writel(val, reg + PD_THRES0);
 }
 
-void VIOC_VIQE_InitDeintlCoreVinMode(volatile void __iomem *reg)
+void VIOC_VIQE_InitDeintlCoreVinMode(void __iomem *reg)
 {
 	__raw_writel(0x00202000, reg + DI_ENGINE3);
 }
 
 void VIOC_VIQE_IgnoreDecError(
-	volatile void __iomem *reg, int sf, int er_ck, int hrer_en)
+	void __iomem *reg, int sf, int er_ck, int hrer_en)
 {
 	unsigned long val;
 
@@ -587,11 +587,11 @@ void VIOC_VIQE_IgnoreDecError(
 	__raw_writel(val, reg + DI_DEC0_CTRL);
 }
 
-void VIOC_VIQE_DUMP(volatile void __iomem *reg, unsigned int vioc_id)
+void VIOC_VIQE_DUMP(void __iomem *reg, unsigned int vioc_id)
 {
 	unsigned int cnt = 0;
 
-	volatile void __iomem *pReg = reg;
+	void __iomem *pReg = reg;
 
 	int Num = get_vioc_index(vioc_id);
 
@@ -617,7 +617,7 @@ err:
 	       VIOC_VIQE_MAX);
 }
 
-volatile void __iomem *VIOC_VIQE_GetAddress(unsigned int vioc_id)
+void __iomem *VIOC_VIQE_GetAddress(unsigned int vioc_id)
 {
 	int Num = get_vioc_index(vioc_id);
 
@@ -645,7 +645,7 @@ static int __init vioc_viqe_init(void)
 		pr_info("[INF][VIQE] vioc-viqe: disabled\n");
 	} else {
 		for (i = 0; i < VIOC_VIQE_MAX; i++) {
-			pVIQE_reg[i] = (volatile void __iomem *)of_iomap(
+			pVIQE_reg[i] = (void __iomem *)of_iomap(
 				pViocVIQE_np,
 				is_VIOC_REMAP ? (i + VIOC_VIQE_MAX) : i);
 

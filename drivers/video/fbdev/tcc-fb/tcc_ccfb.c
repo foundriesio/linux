@@ -82,8 +82,8 @@ typedef struct {
 	ccfb_state_t cur_state;
 	int32_t act_lcdc_idx;
 
-	volatile void __iomem *pCurLcdc;
-	volatile void __iomem *pCurWMix;
+	void __iomem *pCurLcdc;
+	void __iomem *pCurWMix;
 	struct clk *pLcdcClk[MAX_LCDC_NUM];
 	/* TCCxx machine has two LCD controller */
 } ccfb_dev_config_t;

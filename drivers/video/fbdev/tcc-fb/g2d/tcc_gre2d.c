@@ -26,9 +26,9 @@
 #include <video/tcc/tcc_gre2d.h>
 
 struct device_node *pGre2D_np;
-volatile void __iomem *pGre2D_reg = NULL;
+void __iomem *pGre2D_reg = NULL;
 
-extern volatile void __iomem* GRE_2D_GetAddress(void);
+extern void __iomem* GRE_2D_GetAddress(void);
 
 void GRE_2D_SetInterrupt(char onoff)
 {
@@ -59,7 +59,7 @@ void GRE_2D_SetFChAddress(G2D_CHANNEL ch, unsigned int add0, unsigned int add1, 
 {
 	//POVERLAYMIXER pHwOVERLAYMIXER;
 	//pHwOVERLAYMIXER  = (volatile POVERLAYMIXER)tcc_p2v(HwOVERLAYMIXER_BASE);
-	volatile void __iomem *reg = GRE_2D_GetAddress();
+	void __iomem *reg = GRE_2D_GetAddress();
 
 	switch(ch)
     {
@@ -100,7 +100,7 @@ void GRE_2D_SetFChPosition(G2D_CHANNEL ch, unsigned int  frameps_x, unsigned int
 {
 	//POVERLAYMIXER pHwOVERLAYMIXER;
 	//pHwOVERLAYMIXER  = (volatile POVERLAYMIXER)tcc_p2v(HwOVERLAYMIXER_BASE);
-	volatile void __iomem *reg = GRE_2D_GetAddress();
+	void __iomem *reg = GRE_2D_GetAddress();
 	unsigned int value = 0x00;
 
 	switch(ch)
@@ -166,7 +166,7 @@ void GRE_2D_SetFChControl(G2D_CHANNEL ch, G2D_MABC_TYPE MABC, unsigned char LUTE
 {
 	//POVERLAYMIXER pHwOVERLAYMIXER;
 	//pHwOVERLAYMIXER  = (volatile POVERLAYMIXER)tcc_p2v(HwOVERLAYMIXER_BASE);
-	volatile void __iomem *reg = GRE_2D_GetAddress();
+	void __iomem *reg = GRE_2D_GetAddress();
 	unsigned int value = 0x00;
 
 	switch(ch)
@@ -209,7 +209,7 @@ void GRE_2D_SetFChChromaKey(G2D_CHANNEL ch, unsigned char RY, unsigned char GU, 
 {
 	//POVERLAYMIXER pHwOVERLAYMIXER;
 	//pHwOVERLAYMIXER  = (volatile POVERLAYMIXER)tcc_p2v(HwOVERLAYMIXER_BASE);
-	volatile void __iomem *reg = GRE_2D_GetAddress();
+	void __iomem *reg = GRE_2D_GetAddress();
 	unsigned int value = 0x00;
 
 	switch(ch)
@@ -237,7 +237,7 @@ void GRE_2D_SetFChArithmeticPar(G2D_CHANNEL ch, unsigned char RY, unsigned char 
 {
 	//POVERLAYMIXER pHwOVERLAYMIXER;
 	//pHwOVERLAYMIXER  = (volatile POVERLAYMIXER)tcc_p2v(HwOVERLAYMIXER_BASE);
-	volatile void __iomem *reg = GRE_2D_GetAddress();
+	void __iomem *reg = GRE_2D_GetAddress();
 	unsigned int value = 0x00;
 
 	switch(ch)
@@ -266,7 +266,7 @@ void GRE_2D_SetSrcCtrl(G2D_SRC_CTRL g2d_ctrl)
     unsigned int sf_ctrl_reg = 0, sa_ctrl_reg = 0;
 	//POVERLAYMIXER pHwOVERLAYMIXER;
 	//pHwOVERLAYMIXER  = (volatile POVERLAYMIXER)tcc_p2v(HwOVERLAYMIXER_BASE);
-	volatile void __iomem *reg = GRE_2D_GetAddress();
+	void __iomem *reg = GRE_2D_GetAddress();
 	unsigned int value = 0x00;
 
 // source YUV to RGB converter enable 	sf_ctrl
@@ -308,7 +308,7 @@ void GRE_2D_SetOperator(G2D_OP_TYPE op_set, unsigned short alpha , unsigned char
 {
 	//POVERLAYMIXER pHwOVERLAYMIXER;
 	//pHwOVERLAYMIXER  = (volatile POVERLAYMIXER)tcc_p2v(HwOVERLAYMIXER_BASE);
-	volatile void __iomem *reg = GRE_2D_GetAddress();
+	void __iomem *reg = GRE_2D_GetAddress();
 	unsigned int value = 0x00;
 
 	switch(op_set)
@@ -344,7 +344,7 @@ void GRE_2D_SetOperatorCtrl(G2D_OP_TYPE op_set,
 {
 	//POVERLAYMIXER pHwOVERLAYMIXER;
 	//pHwOVERLAYMIXER  = (volatile POVERLAYMIXER)tcc_p2v(HwOVERLAYMIXER_BASE);
-	volatile void __iomem *reg = GRE_2D_GetAddress();
+	void __iomem *reg = GRE_2D_GetAddress();
 	unsigned int value = 0x00;
 
 	switch(op_set){
@@ -377,7 +377,7 @@ void GRE_2D_SetBChAddress(G2D_CHANNEL ch, unsigned int add0, unsigned int add1, 
 {
 	//POVERLAYMIXER pHwOVERLAYMIXER;
 	//pHwOVERLAYMIXER  = (volatile POVERLAYMIXER)tcc_p2v(HwOVERLAYMIXER_BASE);
-	volatile void __iomem *reg = GRE_2D_GetAddress();
+	void __iomem *reg = GRE_2D_GetAddress();
 
     if(ch == DEST_CH)
     {
@@ -402,7 +402,7 @@ void GRE_2D_SetBChPosition(G2D_CHANNEL ch, unsigned int  frameps_x, unsigned int
 {
 	//POVERLAYMIXER pHwOVERLAYMIXER;
 	//pHwOVERLAYMIXER  = (volatile POVERLAYMIXER)tcc_p2v(HwOVERLAYMIXER_BASE);
-	volatile void __iomem *reg = GRE_2D_GetAddress();
+	void __iomem *reg = GRE_2D_GetAddress();
 	unsigned int value = 0x00;
 
     if(ch == DEST_CH)
@@ -435,7 +435,7 @@ void GRE_2D_SetBChControl(G2D_BCH_CTRL_TYPE *g2d_bch_ctrl)
 
 	//POVERLAYMIXER pHwOVERLAYMIXER;
 	//pHwOVERLAYMIXER  = (volatile POVERLAYMIXER)tcc_p2v(HwOVERLAYMIXER_BASE);
-	volatile void __iomem *reg = GRE_2D_GetAddress();
+	void __iomem *reg = GRE_2D_GetAddress();
 
 	BCH_ctrl_reg |= ((g2d_bch_ctrl->MABC<<21) & HwGE_BCH_DCTRL_MABC);
 	BCH_ctrl_reg |= ((g2d_bch_ctrl->ysel<<18) & HwGE_BCH_DCTRL_YSEL);
@@ -457,7 +457,7 @@ void GRE_2D_SetDitheringMatrix(unsigned short *Matrix)
 {
 	//POVERLAYMIXER pHwOVERLAYMIXER;
 	//pHwOVERLAYMIXER  = (volatile POVERLAYMIXER)tcc_p2v(HwOVERLAYMIXER_BASE);
-	volatile void __iomem *reg = GRE_2D_GetAddress();
+	void __iomem *reg = GRE_2D_GetAddress();
 	unsigned int value = 0x00;
 
 	//BITCSET(pHwOVERLAYMIXER->BCH_DDMAT0.nREG, 0x1F1F1F1F, Matrix[0] | (Matrix[1]<<8) | (Matrix[2]<<16) | (Matrix[3]<<24)); // pHwOVERLAYMIXER->BCH_DDMAT0
@@ -490,7 +490,7 @@ void GRE_2D_Enable(G2D_EN grp_enalbe, unsigned char int_en)
 {
 	//POVERLAYMIXER pHwOVERLAYMIXER;
 	//pHwOVERLAYMIXER  = (volatile POVERLAYMIXER)tcc_p2v(HwOVERLAYMIXER_BASE);
-	volatile void __iomem *reg = GRE_2D_GetAddress();
+	void __iomem *reg = GRE_2D_GetAddress();
 	unsigned int value = 0x00;
 
 	//BITCSET( pHwOVERLAYMIXER->OM_CTRL.nREG, (HwGE_GE_CTRL_EN|HwGE_GE_INT_EN), ((int_en<<16)|grp_enalbe));
@@ -509,7 +509,7 @@ unsigned int GRE_2D_Check(void)
 	//unsigned int contrReg = 0;
 	//POVERLAYMIXER pHwOVERLAYMIXER;
 	//pHwOVERLAYMIXER  = (volatile POVERLAYMIXER)tcc_p2v(HwOVERLAYMIXER_BASE);
-	volatile void __iomem *reg = GRE_2D_GetAddress();
+	void __iomem *reg = GRE_2D_GetAddress();
 
 	return __raw_readl(reg + 0x110);
 }
@@ -522,7 +522,7 @@ void GRE_2D_IntEnable(unsigned int int_en)
 {
 	//POVERLAYMIXER pHwOVERLAYMIXER;
 	//pHwOVERLAYMIXER  = (volatile POVERLAYMIXER)tcc_p2v(HwOVERLAYMIXER_BASE);
-	volatile void __iomem *reg = GRE_2D_GetAddress();
+	void __iomem *reg = GRE_2D_GetAddress();
 	unsigned int value = 0x00;
 
 	//BITCSET( pHwOVERLAYMIXER->OM_IREQ.nREG, 0xFFFFFFFF, int_en);
@@ -543,7 +543,7 @@ G2D_INT_TYPE GRE_2D_IntCtrl(unsigned char wr, G2D_INT_TYPE flag, unsigned char i
 	G2D_INT_TYPE ret_v = 0;
 	//POVERLAYMIXER pHwOVERLAYMIXER;
 	//pHwOVERLAYMIXER  = (volatile POVERLAYMIXER)tcc_p2v(HwOVERLAYMIXER_BASE);
-	volatile void __iomem *reg = GRE_2D_GetAddress();
+	void __iomem *reg = GRE_2D_GetAddress();
 	unsigned int value = 0x00;
 
 	if(wr) {
@@ -588,7 +588,7 @@ void GRE_2D_ClutCtrl(unsigned int ch, unsigned int index, unsigned int data)
 {
 	//OVERLAYMIXER *p;
 	//unsigned int *pClut;
-	volatile void __iomem *reg = GRE_2D_GetAddress();
+	void __iomem *reg = GRE_2D_GetAddress();
 
 	if(index > 256)
 	{
@@ -620,7 +620,7 @@ void GRE_2D_ClutCtrl(unsigned int ch, unsigned int index, unsigned int data)
 }
 #endif /* TCC_OVERLAY_MIXER_CLUT_SUPPORT */
 
-volatile void __iomem* GRE_2D_GetAddress(void)
+void __iomem* GRE_2D_GetAddress(void)
 {
 	if(pGre2D_reg == NULL){
 		pr_err("[ERR][G2D] %s \n", __func__);
@@ -632,7 +632,7 @@ volatile void __iomem* GRE_2D_GetAddress(void)
 
 void GRE_2D_DUMP(void)
 {
-	volatile void __iomem *pReg;
+	void __iomem *pReg;
 	unsigned int cnt = 0;
 
 	if(pGre2D_np == NULL )

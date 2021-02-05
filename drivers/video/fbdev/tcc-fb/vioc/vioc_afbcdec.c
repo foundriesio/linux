@@ -33,12 +33,12 @@
 #define AFBC_ALIGNED(w, mul) (((unsigned int)w + (mul - 1)) & ~(mul - 1))
 
 static struct device_node *pViocAFBCDec_np;
-static volatile void __iomem *pAFBCDec_reg[AFBCDec_MAX_N] = {0};
+static void __iomem *pAFBCDec_reg[AFBCDec_MAX_N] = {0};
 
 /******************************* AFBC_DEC Control
  * *******************************/
 
-void VIOC_AFBCDec_GetBlockInfo(volatile void __iomem *reg,
+void VIOC_AFBCDec_GetBlockInfo(void __iomem *reg,
 			       unsigned int *productID, unsigned int *verMaj,
 			       unsigned int *verMin, unsigned int *verStat)
 {
@@ -56,7 +56,7 @@ void VIOC_AFBCDec_GetBlockInfo(volatile void __iomem *reg,
 		    AFBCDEC_VERSION_STATUS_SHIFT);
 }
 
-void VIOC_AFBCDec_SetContiDecEnable(volatile void __iomem *reg,
+void VIOC_AFBCDec_SetContiDecEnable(void __iomem *reg,
 				    unsigned int enable)
 {
 	unsigned int val;
@@ -67,7 +67,7 @@ void VIOC_AFBCDec_SetContiDecEnable(volatile void __iomem *reg,
 	__raw_writel(val, reg + AFBCDEC_SURFACE_CFG);
 }
 
-void VIOC_AFBCDec_SetSurfaceN(volatile void __iomem *reg,
+void VIOC_AFBCDec_SetSurfaceN(void __iomem *reg,
 			      VIOC_AFBCDEC_SURFACE_NUM nSurface,
 			      unsigned int enable)
 {
@@ -78,7 +78,7 @@ void VIOC_AFBCDec_SetSurfaceN(volatile void __iomem *reg,
 	__raw_writel(val, reg + AFBCDEC_SURFACE_CFG);
 }
 
-void VIOC_AFBCDec_SetAXICacheCfg(volatile void __iomem *reg, unsigned int cache)
+void VIOC_AFBCDec_SetAXICacheCfg(void __iomem *reg, unsigned int cache)
 {
 	unsigned int val;
 
@@ -88,7 +88,7 @@ void VIOC_AFBCDec_SetAXICacheCfg(volatile void __iomem *reg, unsigned int cache)
 	__raw_writel(val, reg + AFBCDEC_AXI_CFG);
 }
 
-void VIOC_AFBCDec_SetAXIQoSCfg(volatile void __iomem *reg, unsigned int qos)
+void VIOC_AFBCDec_SetAXIQoSCfg(void __iomem *reg, unsigned int qos)
 {
 	unsigned int val;
 
@@ -97,14 +97,14 @@ void VIOC_AFBCDec_SetAXIQoSCfg(volatile void __iomem *reg, unsigned int qos)
 	__raw_writel(val, reg + AFBCDEC_AXI_CFG);
 }
 
-void VIOC_AFBCDec_SetSrcImgBase(volatile void __iomem *reg, unsigned int base0,
+void VIOC_AFBCDec_SetSrcImgBase(void __iomem *reg, unsigned int base0,
 				unsigned int base1)
 {
 	__raw_writel((base0 & 0xFFFFFFC0), reg + AFBCDEC_S_HEADER_BUF_ADDR_LOW);
 	__raw_writel((base1 & 0xFFFF), reg + AFBCDEC_S_HEADER_BUF_ADDR_HIGH);
 }
 
-void VIOC_AFBCDec_SetWideModeEnable(volatile void __iomem *reg,
+void VIOC_AFBCDec_SetWideModeEnable(void __iomem *reg,
 				    unsigned int enable)
 {
 	unsigned int val;
@@ -115,7 +115,7 @@ void VIOC_AFBCDec_SetWideModeEnable(volatile void __iomem *reg,
 	__raw_writel(val, reg + AFBCDEC_S_FORMAT_SPECIFIER);
 }
 
-void VIOC_AFBCDec_SetSplitModeEnable(volatile void __iomem *reg,
+void VIOC_AFBCDec_SetSplitModeEnable(void __iomem *reg,
 				     unsigned int enable)
 {
 	unsigned int val;
@@ -126,7 +126,7 @@ void VIOC_AFBCDec_SetSplitModeEnable(volatile void __iomem *reg,
 	__raw_writel(val, reg + AFBCDEC_S_FORMAT_SPECIFIER);
 }
 
-void VIOC_AFBCDec_SetYUVTransEnable(volatile void __iomem *reg,
+void VIOC_AFBCDec_SetYUVTransEnable(void __iomem *reg,
 				    unsigned int enable)
 {
 	unsigned int val;
@@ -137,7 +137,7 @@ void VIOC_AFBCDec_SetYUVTransEnable(volatile void __iomem *reg,
 	__raw_writel(val, reg + AFBCDEC_S_FORMAT_SPECIFIER);
 }
 
-void VIOC_AFBCDec_SetImgFmt(volatile void __iomem *reg, unsigned int fmt,
+void VIOC_AFBCDec_SetImgFmt(void __iomem *reg, unsigned int fmt,
 			    unsigned int enable_10bit)
 {
 	unsigned int val;
@@ -164,7 +164,7 @@ void VIOC_AFBCDec_SetImgFmt(volatile void __iomem *reg, unsigned int fmt,
 	__raw_writel(val, reg + AFBCDEC_S_FORMAT_SPECIFIER);
 }
 
-void VIOC_AFBCDec_SetImgSize(volatile void __iomem *reg, unsigned int width,
+void VIOC_AFBCDec_SetImgSize(void __iomem *reg, unsigned int width,
 			     unsigned int height)
 {
 	unsigned int val;
@@ -174,7 +174,7 @@ void VIOC_AFBCDec_SetImgSize(volatile void __iomem *reg, unsigned int width,
 	__raw_writel(val, reg + AFBCDEC_S_BUFFER_SIZE);
 }
 
-void VIOC_AFBCDec_GetImgSize(volatile void __iomem *reg, unsigned int *width,
+void VIOC_AFBCDec_GetImgSize(void __iomem *reg, unsigned int *width,
 			     unsigned int *height)
 {
 	*width = ((__raw_readl(reg + AFBCDEC_S_BUFFER_SIZE) &
@@ -185,7 +185,7 @@ void VIOC_AFBCDec_GetImgSize(volatile void __iomem *reg, unsigned int *width,
 		   AFBCDEC_SIZE_HEIGHT_SHIFT);
 }
 
-void VIOC_AFBCDec_SetBoundingBox(volatile void __iomem *reg, unsigned int minX,
+void VIOC_AFBCDec_SetBoundingBox(void __iomem *reg, unsigned int minX,
 				 unsigned int maxX, unsigned int minY,
 				 unsigned int maxY)
 {
@@ -200,7 +200,7 @@ void VIOC_AFBCDec_SetBoundingBox(volatile void __iomem *reg, unsigned int minX,
 	__raw_writel(val, reg + AFBCDEC_S_BOUNDING_BOX_Y);
 }
 
-void VIOC_AFBCDec_GetBoundingBox(volatile void __iomem *reg,
+void VIOC_AFBCDec_GetBoundingBox(void __iomem *reg,
 				 unsigned int *minX, unsigned int *maxX,
 				 unsigned int *minY, unsigned int *maxY)
 {
@@ -219,7 +219,7 @@ void VIOC_AFBCDec_GetBoundingBox(volatile void __iomem *reg,
 		 AFBCDEC_BOUNDING_BOX_MAX_SHIFT);
 }
 
-void VIOC_AFBCDec_SetOutBufBase(volatile void __iomem *reg, unsigned int base0,
+void VIOC_AFBCDec_SetOutBufBase(void __iomem *reg, unsigned int base0,
 				unsigned int base1, unsigned int fmt,
 				unsigned int width)
 {
@@ -242,7 +242,7 @@ void VIOC_AFBCDec_SetOutBufBase(volatile void __iomem *reg, unsigned int base0,
 	__raw_writel(stride, reg + AFBCDEC_S_OUTPUT_BUF_STRIDE);
 }
 
-void VIOC_AFBCDec_SetBufferFlipX(volatile void __iomem *reg,
+void VIOC_AFBCDec_SetBufferFlipX(void __iomem *reg,
 				 unsigned int enable)
 {
 	unsigned int val;
@@ -253,7 +253,7 @@ void VIOC_AFBCDec_SetBufferFlipX(volatile void __iomem *reg,
 	__raw_writel(val, reg + AFBCDEC_S_PREFETCH_CFG);
 }
 
-void VIOC_AFBCDec_SetBufferFlipY(volatile void __iomem *reg,
+void VIOC_AFBCDec_SetBufferFlipY(void __iomem *reg,
 				 unsigned int enable)
 {
 	unsigned int val;
@@ -264,7 +264,7 @@ void VIOC_AFBCDec_SetBufferFlipY(volatile void __iomem *reg,
 	__raw_writel(val, reg + AFBCDEC_S_PREFETCH_CFG);
 }
 
-void VIOC_AFBCDec_SetIrqMask(volatile void __iomem *reg, unsigned int enable,
+void VIOC_AFBCDec_SetIrqMask(void __iomem *reg, unsigned int enable,
 				unsigned int mask)
 {
 	if (enable) /* Interrupt Enable*/
@@ -273,17 +273,17 @@ void VIOC_AFBCDec_SetIrqMask(volatile void __iomem *reg, unsigned int enable,
 		__raw_writel(~mask, reg + AFBCDEC_IRQ_MASK);
 }
 
-unsigned int VIOC_AFBCDec_GetStatus(volatile void __iomem *reg)
+unsigned int VIOC_AFBCDec_GetStatus(void __iomem *reg)
 {
 	return __raw_readl(reg + AFBCDEC_IRQ_STATUS);
 }
 
-void VIOC_AFBCDec_ClearIrq(volatile void __iomem *reg, unsigned int mask)
+void VIOC_AFBCDec_ClearIrq(void __iomem *reg, unsigned int mask)
 {
 	__raw_writel(mask, reg + AFBCDEC_IRQ_CLEAR);
 }
 
-void VIOC_AFBCDec_TurnOn(volatile void __iomem *reg,
+void VIOC_AFBCDec_TurnOn(void __iomem *reg,
 			      VIOC_AFBCDEC_SWAP swapmode)
 {
 	unsigned int val;
@@ -295,7 +295,7 @@ void VIOC_AFBCDec_TurnOn(volatile void __iomem *reg,
 	__raw_writel(val, reg + AFBCDEC_COMMAND);
 }
 
-void VIOC_AFBCDec_TurnOFF(volatile void __iomem *reg)
+void VIOC_AFBCDec_TurnOFF(void __iomem *reg)
 {
 	unsigned int val;
 
@@ -305,13 +305,13 @@ void VIOC_AFBCDec_TurnOFF(volatile void __iomem *reg)
 	__raw_writel(val, reg + AFBCDEC_COMMAND);
 }
 
-void VIOC_AFBCDec_SurfaceCfg(volatile void __iomem *reg, unsigned int base,
+void VIOC_AFBCDec_SurfaceCfg(void __iomem *reg, unsigned int base,
 			 unsigned int fmt, unsigned int width,
 			 unsigned int height, unsigned int b10bit,
 			 unsigned int split_mode, unsigned int wide_mode,
 			 unsigned int nSurface, unsigned int bSetOutputBase)
 {
-	volatile void __iomem *pSurface_Dec = NULL;
+	void __iomem *pSurface_Dec = NULL;
 
 	//pr_info("%s- Start\n", __func__);
 
@@ -357,7 +357,7 @@ void VIOC_AFBCDec_SurfaceCfg(volatile void __iomem *reg, unsigned int base,
 	//pr_info("%s - End\n", __func__);
 }
 
-void VIOC_AFBCDec_DUMP(volatile void __iomem *reg, unsigned int vioc_id)
+void VIOC_AFBCDec_DUMP(void __iomem *reg, unsigned int vioc_id)
 {
 	unsigned int cnt = 0;
 	char *pReg = (char *)reg;
@@ -386,7 +386,7 @@ err:
 		__func__, Num, AFBCDec_MAX_N);
 }
 
-volatile void __iomem *VIOC_AFBCDec_GetAddress(unsigned int vioc_id)
+void __iomem *VIOC_AFBCDec_GetAddress(unsigned int vioc_id)
 {
 	int Num = get_vioc_index(vioc_id);
 
@@ -416,7 +416,7 @@ static int __init vioc_afbc_dec_init(void)
 		pr_info("[INF][AFBC] vioc-afbc_dec: disabled\n");
 	} else {
 		for (i = 0; i < AFBCDec_MAX_N; i++) {
-			pAFBCDec_reg[i] = (volatile void __iomem *)of_iomap(
+			pAFBCDec_reg[i] = (void __iomem *)of_iomap(
 					pViocAFBCDec_np,
 					is_VIOC_REMAP ?
 					(i + AFBCDec_MAX_N) : i);

@@ -474,7 +474,7 @@ extern unsigned int
 LVDS_PHY_CheckStatus(unsigned int p_port, unsigned int s_port);
 extern unsigned int
 LVDS_PHY_GetRegValue(unsigned int port, unsigned int offset);
-extern volatile void __iomem *LVDS_PHY_GetAddress(unsigned int port);
+extern void __iomem *LVDS_PHY_GetAddress(unsigned int port);
 extern void LVDS_PHY_LaneSwap(
 	unsigned int s_port_en, unsigned int lvds_main, unsigned int lvds_sub,
 	unsigned int *lane_main, unsigned int *lane_sub);

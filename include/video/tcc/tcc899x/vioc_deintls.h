@@ -19,6 +19,6 @@
 #ifndef __VIOC_DEINTLS_H__
 #define	__VIOC_DEINTLS_H__
 
-extern volatile void __iomem *VIOC_DEINTLS_GetAddress(void);
+extern void __iomem *VIOC_DEINTLS_GetAddress(void);
 
 #endif
