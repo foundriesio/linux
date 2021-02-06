@@ -1155,9 +1155,10 @@ int VIOC_CONFIG_WMIXPath(unsigned int component_num, unsigned int mode)
 		return 0;
 	}
 
-	dprintk("%s-%d :: ERROR This component(0x%x) doesn't support mixer bypass(%d) mode, %d/%d!!\n",
-		__func__, __LINE__, component_num, support_bypass,
+	dprintk("%s: vioc(0x%x) doesn't support mixer bypass(%d) mode, %d/%d\n",
+		__func__, component_num, support_bypass,
 		shift_mix_path, shift_vin_rdma_path);
+
 	return -1;
 }
 
@@ -1490,29 +1491,36 @@ void VIOC_CONFIG_SWReset_RAW(unsigned int component, unsigned int mode)
 
 	case get_vioc_type(VIOC_WMIX):
 #if defined(CONFIG_ARCH_TCC805X)
-		// read Bypass mode / Mix mode
-		value = (__raw_readl(reg + CFG_MISC0_OFFSET) &
-			(0x1 << (CFG_MISC0_MIX00_SHIFT + (get_vioc_index(component)*2))));
-		if(value){ // Mix Path reset
+		/* Read wmix mode (bypass or mixing) */
+		value = (__raw_readl(reg + CFG_MISC0_OFFSET)
+			& (0x1 << (CFG_MISC0_MIX00_SHIFT
+			+ (get_vioc_index(component) * 2))));
+
+		/* Mix Path reset */
+		if (value) {
 			value = (__raw_readl(reg + PWR_BLK_SWR1_OFFSET) &
-			 ~(PWR_BLK_SWR1_WMIX_MASK));
+				~(PWR_BLK_SWR1_WMIX_MASK));
 			value |= (mode << (PWR_BLK_SWR1_WMIX_SHIFT +
-				   get_vioc_index(component)));
+				get_vioc_index(component)));
 			__raw_writel(value, (reg + PWR_BLK_SWR1_OFFSET));
-			break;
-		}else{ // Bypass Path reset
-			value = (__raw_readl(reg + CFG_WMIX_PATH_SWR_OFFSET) &
-			 ~(0x1 << (get_vioc_index(component)*2)));
-			value |= (mode << (get_vioc_index(component)*2));
-			__raw_writel(value, (reg + CFG_WMIX_PATH_SWR_OFFSET));
+
 			break;
 		}
+
+		/* Bypass Path reset */
+		value = (__raw_readl(reg + CFG_WMIX_PATH_SWR_OFFSET) &
+			~(0x1 << (get_vioc_index(component)*2)));
+		value |= (mode << (get_vioc_index(component)*2));
+		__raw_writel(value, (reg + CFG_WMIX_PATH_SWR_OFFSET));
+
+		break;
 #else
 		value = (__raw_readl(reg + PWR_BLK_SWR1_OFFSET) &
-			 ~(PWR_BLK_SWR1_WMIX_MASK));
+			~(PWR_BLK_SWR1_WMIX_MASK));
 		value |= (mode << (PWR_BLK_SWR1_WMIX_SHIFT +
-				   get_vioc_index(component)));
+			get_vioc_index(component)));
 		__raw_writel(value, (reg + PWR_BLK_SWR1_OFFSET));
+
 		break;
 #endif
 	case get_vioc_type(VIOC_WDMA):

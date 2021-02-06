@@ -253,6 +253,7 @@ unsigned int vioc_timer_get_irq_status(void)
 
 	if (!ctx.reg) {
 		goto out;
+		/* prevent KCS warning */
 	}
 	reg_val = readl(ctx.reg + IRQSTAT);
 	return reg_val;
@@ -268,10 +269,12 @@ int vioc_timer_is_interrupted(enum vioc_timer_id id)
 
 	if (!ctx.reg) {
 		goto out;
+		/* prevent KCS warning */
 	}
 
 	if (id > VIOC_TIMER_TIREQ1) {
 		goto out;
+		/* prevent KCS warning */
 	}
 	reg_val = readl(ctx.reg + IRQSTAT);
 	return (reg_val & (1 << id)) ? 1 : 0;
@@ -305,7 +308,7 @@ EXPORT_SYMBOL_GPL(vioc_timer_clear_irq_status);
 
 int vioc_timer_suspend(void)
 {
-	if(!ctx.suspend) {
+	if (!ctx.suspend) {
 		ctx.suspend = 1;
 		vioc_timer_set_usec_enable(0, 0);
 	}
@@ -314,7 +317,7 @@ EXPORT_SYMBOL_GPL(vioc_timer_suspend);
 
 int vioc_timer_resume(void)
 {
-	if(ctx.suspend) {
+	if (ctx.suspend) {
 		ctx.suspend = 0;
 		vioc_timer_set_usec_enable(1, 100);
 	}

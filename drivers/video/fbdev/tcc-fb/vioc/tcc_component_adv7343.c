@@ -57,7 +57,7 @@ static const struct i2c_device_id adv7343_i2c_id[] = {
 //#define ADV7343_REGMAP
 #ifdef ADV7343_REGMAP
 #include <linux/regmap.h>
-static struct regmap *adv7343_i2c_regmap = NULL;
+static struct regmap *adv7343_i2c_regmap;
 static const struct regmap_config adv7343_regmap_config = {
 	.reg_bits = 8,
 	.val_bits = 8,
@@ -183,15 +183,19 @@ static int adv7343_i2c_probe(struct i2c_client *client,
 	dprintk("addr=0x%02x\n", client->addr);
 
 	adv7343_i2c_client = client;
-	if (adv7343_i2c_client == NULL)
+	if (adv7343_i2c_client == NULL) {
 		return -ENODEV;
+		/* prevent KCS warning */
+	}
 
 #ifdef ADV7343_REGMAP
-	adv7343_i2c_regmap = devm_regmap_init_i2c(client, &adv7343_regmap_config);
+	adv7343_i2c_regmap =
+		devm_regmap_init_i2c(client, &adv7343_regmap_config);
 	if (IS_ERR(adv7343_i2c_regmap)) {
-        pr_err("[ERR][ADV7343] regmap: %d\n", __func__, PTR_ERR(adv7343_i2c_regmap));
-        return -ENODEV;
-    }
+		pr_err("[ERR][ADV7343] regmap: %d\n", __func__,
+			PTR_ERR(adv7343_i2c_regmap));
+		return -ENODEV;
+	}
 #endif
 
 	return 0;
@@ -306,9 +310,10 @@ void component_chip_set_cgms(unsigned int enable, unsigned int data)
 	adv7343_i2c_write(ADV7343_SD_CGMS_WSS1, cgms_payload_msb);
 	adv7343_i2c_write(ADV7343_SD_CGMS_WSS2, cgms_payload_lsb);
 
-	dprintk("%s: CGMS %s, 0x%05x (header 0x%02x, payload_msb 0x%02x, payload_lsb 0x%02x\n",
-		__func__, enable ? "on" : "off",
-		data, cgms_header, cgms_payload_msb, cgms_payload_lsb);
+	dprintk("%s: CGMS %s, 0x%05x ",
+		__func__, enable ? "on" : "off", data);
+	dprintk("(header 0x%02x, payload_msb 0x%02x, payload_lsb 0x%02x)\n",
+		cgms_header, cgms_payload_msb, cgms_payload_lsb);
 }
 
 void component_chip_get_cgms(unsigned int *enable, unsigned int *data)
@@ -324,9 +329,10 @@ void component_chip_get_cgms(unsigned int *enable, unsigned int *data)
 		 | (cgms_payload_msb << 8)
 		 | (cgms_payload_lsb);
 
-	dprintk("%s: CGMS %s, 0x%05x (header 0x%02x, payload_msb 0x%02x, payload_lsb 0x%02x\n",
-		__func__, *enable ? "on" : "off",
-		*data, cgms_header, cgms_payload_msb, cgms_payload_lsb);
+	dprintk("%s: CGMS %s, 0x%05x ",
+		__func__, *enable ? "on" : "off", *data);
+	dprintk("(header 0x%02x payload_msb 0x%02x, payload_lsb 0x%02x)\n",
+		cgms_header, cgms_payload_msb, cgms_payload_lsb);
 }
 
 static int adv7343_set_mode(int mode, int input, int starter_flag)

@@ -132,6 +132,7 @@ void tca_map_convter_onoff(unsigned int component_num, unsigned int onoff,
 
 	if (!onoff) {
 		VIOC_MC_FRM_SIZE(HwVIOC_MC, 0, 0);
+		/* prevent KCS warning */
 	}
 
 	VIOC_MC_Start_OnOff(HwVIOC_MC, onoff);
@@ -315,7 +316,8 @@ void tca_map_convter_set(unsigned int component_num,
 
 		if (ImageInfo->Lcdc_layer == RDMA_VIDEO
 			|| ImageInfo->Lcdc_layer == RDMA_LASTFRM) {
-			if (vioc_get_out_type() == ImageInfo->private_data.dolbyVision_info.reg_out_type) {
+			if (vioc_get_out_type() ==
+			ImageInfo->private_data.dolbyVision_info.reg_out_type) {
 				VIOC_V_DV_SetPXDW(pDisp_DV, NULL,
 					VIOC_PXDW_FMT_24_RGB888);
 				VIOC_V_DV_SetSize(pDisp_DV, NULL,
@@ -326,14 +328,16 @@ void tca_map_convter_set(unsigned int component_num,
 
 				VIOC_MC_Start_OnOff(HwVIOC_MC, 1);
 
-				vioc_v_dv_prog(ImageInfo->private_data.dolbyVision_info.md_hdmi_addr,
-					ImageInfo->private_data.dolbyVision_info.reg_addr,
-					ImageInfo->private_data.optional_info[VID_OPT_CONTENT_TYPE],
+				vioc_v_dv_prog(
+			ImageInfo->private_data.dolbyVision_info.md_hdmi_addr,
+			ImageInfo->private_data.dolbyVision_info.reg_addr,
+			ImageInfo->private_data.optional_info[
+						VID_OPT_CONTENT_TYPE],
 					1);
 			} else {
 				pr_err("[ERR][MAPC] 1 Dolby Out type mismatch (%d != %d)\n",
 					vioc_get_out_type(),
-					ImageInfo->private_data.dolbyVision_info.reg_out_type);
+			ImageInfo->private_data.dolbyVision_info.reg_out_type);
 			}
 		} else {
 			pr_err("[ERR][MAPC] @@@@@@@@@ 3 @@@@@@@@@@ Should be implement other layer configuration\n");
@@ -347,7 +351,8 @@ void tca_map_convter_set(unsigned int component_num,
 }
 EXPORT_SYMBOL(tca_map_convter_set);
 
-void tca_map_convter_driver_set(unsigned int component_num, unsigned int Fwidth,
+void tca_map_convter_driver_set(
+				unsigned int component_num, unsigned int Fwidth,
 				unsigned int Fheight, unsigned int pos_x,
 				unsigned int pos_y, unsigned int Cwidth,
 				unsigned int Cheight, unsigned int y2r,

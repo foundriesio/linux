@@ -545,10 +545,11 @@ int tcc_composite_enabled(void)
 void tcc_composite_set_cgms(struct TCC_COMPOSITE_CGMS_TYPE *cgms_cfg)
 {
 	if (tcc_composite_started) {
-		dprintk("%s cgms.vctrl(odd/even)=[%d/%d], cgms=0x%08x(A:0x%02x|B:0x%02x|C:0x%02x)\n",
+		dprintk("%s cgms.vctrl(odd/even)=[%d/%d], ",
 			__func__,
 			cgms_cfg->odd_field_en,
-			cgms_cfg->even_field_en,
+			cgms_cfg->even_field_en);
+		dprintk("cgms=0x%08x(A:0x%02x|B:0x%02x|C:0x%02x)\n",
 			cgms_cfg->data,
 			cgms_cfg->data & 0x3F,
 			(cgms_cfg->data >> 6) & 0xFF,
@@ -556,6 +557,7 @@ void tcc_composite_set_cgms(struct TCC_COMPOSITE_CGMS_TYPE *cgms_cfg)
 
 		internal_tve_set_cgms(cgms_cfg->odd_field_en,
 			cgms_cfg->even_field_en, cgms_cfg->data);
+
 		dprintk("CGMS-A %s - Composite\n",
 			(cgms_cfg->odd_field_en | cgms_cfg->even_field_en)
 			? "on" : "off");
@@ -573,11 +575,13 @@ void tcc_composite_get_cgms(struct TCC_COMPOSITE_CGMS_TYPE *cgms_cfg)
 			&cgms_cfg->even_field_en,
 			&cgms_cfg->data, &cgms_cfg->status);
 
-		dprintk("%s cgms.vctrl(odd/even)=[%d/%d], cgms=0x%08x(A:0x%02x|B:0x%02x|C:0x%02x) cgms.status=%d\n",
+		dprintk("%s cgms.vctrl(odd/even)=[%d/%d], ",
 			__func__,
 			cgms_cfg->odd_field_en,
-			cgms_cfg->even_field_en,
-			cgms_cfg->data, cgms_cfg->data & 0x3F,
+			cgms_cfg->even_field_en);
+		dprintk("cgms=0x%08x(A:0x%02x|B:0x%02x|C:0x%02x) status=%d\n",
+			cgms_cfg->data,
+			cgms_cfg->data & 0x3F,
 			(cgms_cfg->data >> 6) & 0xFF,
 			(cgms_cfg->data >> 14) & 0x3F,
 			cgms_cfg->status);
@@ -708,7 +712,7 @@ static int composite_blank(int blank_mode)
 		 * ) is stable state when booting don't call runtime_suspend or
 		 * resume state
 		 */
-		//pr_info("[INF][COMPOSITE] %s ### state = [%d] count =[%d] power_cnt=[%d]\n",
+		//pr_info("%s ### state = [%d] count =[%d] power_cnt=[%d]\n",
 		//	__func__,blank_mode, pdev_composite->power.usage_count,
 		//	pdev_composite->power.usage_count.counter);
 		return 0;
@@ -1078,7 +1082,7 @@ static int composite_resume(struct device *dev)
 }
 #endif
 
-static struct file_operations tcc_composite_fops = {
+static const struct file_operations tcc_composite_fops = {
 	.owner = THIS_MODULE,
 	.unlocked_ioctl = tcc_composite_ioctl,
 	.open = tcc_composite_open,
@@ -1279,7 +1283,7 @@ static const struct dev_pm_ops composite_pm_ops = {
 };
 
 #ifdef CONFIG_OF
-static struct of_device_id composite_of_match[] = {
+static const struct of_device_id composite_of_match[] = {
 	{.compatible = "telechips,tcc-composite"},
 	{}
 };

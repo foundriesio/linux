@@ -55,6 +55,7 @@ static unsigned int Disable_FB_RDMA;
 void VIOC_RDMA_PreventEnable_for_UI(char no_update, char disabled)
 {
 	void __iomem *reg = VIOC_RDMA_GetAddress(RDMA_FB);
+
 	noUpdate_FB_RDMA = no_update;
 	Disable_FB_RDMA = disabled;
 

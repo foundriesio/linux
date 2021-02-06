@@ -354,6 +354,7 @@ unsigned int internal_tve_calc_cgms_crc(unsigned int data)
 	crc_val = 0;
 	for (i = 0; i < 6; i++) {
 		crc_val |= crc[i] << (5 - i);
+		/* prevent KCS warning */
 	}
 
 	dprintk("%s data:0x%x crc=0x%x (%d %d %d %d %d %d)\n", __func__, org,

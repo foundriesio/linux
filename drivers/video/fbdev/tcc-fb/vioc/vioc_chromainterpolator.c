@@ -180,8 +180,10 @@ static int __init vioc_chromainterpolator_init(void)
 			pCHROMA_reg[i] = (void __iomem *)of_iomap(
 							ViocChromaInter_np, i);
 
-			if (pCHROMA_reg[i])
-				pr_info("[INF][CHROMA_I] vioc-chroma_intpr%d: 0x%p\n", i, pCHROMA_reg[i]);
+			if (pCHROMA_reg[i]) {
+				pr_info("[INF][CHROMA_I] vioc-chroma_intpr%d: 0x%p\n",
+					i, pCHROMA_reg[i]);
+			}
 		}
 	}
 	return 0;

@@ -26,7 +26,7 @@
 #include <video/tcc/vioc_ddicfg.h>	// is_VIOC_REMAP
 #include <video/tcc/vioc_deintls.h>
 
-void __iomem *pDEINTLS_reg = NULL;
+void __iomem *pDEINTLS_reg;
 
 void __iomem *VIOC_DEINTLS_GetAddress(void)
 {

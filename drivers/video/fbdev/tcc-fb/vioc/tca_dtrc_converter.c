@@ -69,9 +69,10 @@
 #include <video/tcc/tccfb.h>
 #endif
 
+#include "../tcc_vioc_interface.h"
+
 #define ROUND_UP_16(num) (((num) + 15) & ~15)
 
-extern unsigned int tca_get_main_decompressor_num(void);
 
 void tca_dtrc_convter_wait_done(unsigned int component_num)
 {
@@ -205,7 +206,8 @@ void tca_dtrc_convter_set(unsigned int component_num,
 #if 0  // debug log
 	{
 	pr_info("[INF][DTRC] DTRC[%d] >> R[0x%x/0x%x/0x%x] M[%d] idx[%d],
-	ID[%d] W:%d(%d) H:%d(%d) S(%d/%d) C:0x%8x/0x%8x T:0x%8x/0x%8x Str(%d) bpp(%d/%d) crop(%d/%d~%dx%d)\n", dtrc_num,
+	ID[%d] W:%d(%d) H:%d(%d) S(%d/%d) C:0x%8x/0x%8x T:0x%8x/0x%8x Str(%d)
+	bpp(%d/%d) crop(%d/%d~%dx%d)\n", dtrc_num,
 			__raw_readl(HwVIOC_DTRC_RDMA+DTRC_CTRL),
 			__raw_readl(HwVIOC_DTRC_RDMA+DTRC_BASE0),
 			__raw_readl(HwVIOC_DTRC_RDMA+DTRC_IRQ),

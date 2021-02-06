@@ -133,11 +133,11 @@ static void _reg_w_ext(unsigned int value, void __iomem *reg)
 				pVDEInt_1_Info[i].value = value;
 
 				//if (pVDEInt_1_Info[i].offset < 0x80) {
-				//	pr_info("[INF][MADI] pVDEINT[0x%x] :: 0x%8x -> 0x%8x\n",
+				//	pr_info("pVDEINT[0x%x] 0x%8x->0x%8x\n",
 				//		pVDEInt_Info[i].offset,
 				//		pVDEInt_Info[i].value, value);
 				//	if (pVDEInt_1_Info[i].offset == 0x00) {
-				//		pr_info("[INF][MADI] pVDEINT[0x%x] :: 0x%8x -> 0x%8x\n",
+				//	pr_info("pVDEINT[0x%x] 0x%8x->0x%8x\n",
 				//		       pVDEInt_1_Info[i].offset,
 				//		       pVDEInt_1_Info[i].value,
 				//		       value);
@@ -1333,7 +1333,7 @@ msleep(500);
 				pr_debug("[DBG][MADI] %s :: Error-1 R/W 0x00-test failure => 0x%p(base+0x%x) : 0x%x\n",
 					__func__, reg+i, i, value);
 				fail_count_0x00++;
-				msleep(10);
+				usleep_range(10000, 11000);
 			}
 
 			//write 0xFFFFFFFF
@@ -1343,7 +1343,7 @@ msleep(500);
 				pr_debug("[DBG][MADI] %s :: Error-2 R/W 0xff-test failure => 0x%p(base+0x%x) : 0x%x\n",
 					__func__, reg+i, i, value);
 				fail_count_0xff++;
-				msleep(10);
+				usleep_range(10000, 11000);
 			}
 		}
 	}
@@ -1409,35 +1409,20 @@ static int __init viqe_madi_init(void)
 {
 #ifdef USE_REG_EXTRACTOR
 	pCap_Info = kzalloc(PAGE_ALIGN(sizeof(Data_Capture_IF)), GFP_KERNEL);
-	if (!pCap_Info)
-		pr_err("[ERR][MADI] can not alloc pCap_Info buffer\n");
-	else
-		memcpy(pCap_Info, Data_Capture_IF, sizeof(Data_Capture_IF));
+	memcpy(pCap_Info, Data_Capture_IF, sizeof(Data_Capture_IF));
 
 	pVDEInt_1_Info = kzalloc(PAGE_ALIGN(sizeof(CPU_CLK_VDEINT_1)),
 		GFP_KERNEL);
-	if (!pVDEInt_1_Info)
-		pr_err("[ERR][MADI] can not alloc pVDEInt_1_Info buffer\n");
-	else
-		memcpy(pVDEInt_1_Info, CPU_CLK_VDEINT_1,
-		       sizeof(CPU_CLK_VDEINT_1));
+	memcpy(pVDEInt_1_Info, CPU_CLK_VDEINT_1, sizeof(CPU_CLK_VDEINT_1));
 
 	pVDEInt_lut_Info = kzalloc(PAGE_ALIGN(sizeof(CPU_CLK_VDEINT_LUT)),
 		GFP_KERNEL);
-	if (!pVDEInt_lut_Info)
-		pr_err("[ERR][MADI] can not alloc pVDEInt_lut_Info buffer\n");
-	else
-		memcpy(pVDEInt_lut_Info, CPU_CLK_VDEINT_LUT,
-		       sizeof(CPU_CLK_VDEINT_LUT));
+	memcpy(pVDEInt_lut_Info, CPU_CLK_VDEINT_LUT,
+		sizeof(CPU_CLK_VDEINT_LUT));
 
 	pVDEInt_2_Info = kzalloc(PAGE_ALIGN(sizeof(CPU_CLK_VDEINT_2)),
 		GFP_KERNEL);
-	if (!pVDEInt_2_Info) {
-		pr_err("[ERR][MADI] can not alloc pVDEInt_2_Info buffer\n");
-	} else {
-		memcpy(pVDEInt_2_Info, CPU_CLK_VDEINT_2,
-		       sizeof(CPU_CLK_VDEINT_2));
-	}
+	memcpy(pVDEInt_2_Info, CPU_CLK_VDEINT_2, sizeof(CPU_CLK_VDEINT_2));
 
 	pMADI_reg[VMADI_CTRL_IF] = (void __iomem *)0x01000000;   // 0x12600000
 	pMADI_reg[VMADI_CAP_IF] = (void __iomem *)0x02000000;    // 0x12602000

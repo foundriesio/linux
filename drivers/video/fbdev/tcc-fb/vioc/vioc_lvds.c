@@ -470,6 +470,7 @@ void LVDS_PHY_FifoEnable(unsigned int port, unsigned int enable)
 void LVDS_PHY_FifoReset(unsigned int port, unsigned int reset)
 {
 	void __iomem *reg = LVDS_PHY_GetAddress(port);
+
 	if (reg) {
 		if (reset)
 			__raw_writel(0x0000118F, reg + LVDS_RESETB);

@@ -52,4 +52,6 @@ void tca_edr_inc_check_count(
 	unsigned int nUpdated,
 	unsigned int bInit_all);
 
+unsigned int tca_get_main_decompressor_num(void);
+
 #endif /*__TCC_VIOC_INTERFACE_H__*/
