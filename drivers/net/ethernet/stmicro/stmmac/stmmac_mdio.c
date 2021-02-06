@@ -39,6 +39,8 @@
 #define MII_GMAC4_WRITE			(1 << MII_GMAC4_GOC_SHIFT)
 #define MII_GMAC4_READ			(3 << MII_GMAC4_GOC_SHIFT)
 
+struct semaphore	sema;
+
 /**
  * stmmac_mdio_read
  * @bus: points to the mii_bus structure
@@ -58,6 +60,8 @@ static int stmmac_mdio_read(struct mii_bus *bus, int phyaddr, int phyreg)
 	u32 v;
 	int data;
 	u32 value = MII_BUSY;
+
+	up(&sema);
 
 	value |= (phyaddr << priv->hw->mii.addr_shift)
 		& priv->hw->mii.addr_mask;
@@ -80,6 +84,8 @@ static int stmmac_mdio_read(struct mii_bus *bus, int phyaddr, int phyreg)
 	/* Read the data from the MII data register */
 	data = (int)readl(priv->ioaddr + mii_data);
 
+	down(&sema);
+
 	return data;
 }
 
@@ -101,6 +107,8 @@ static int stmmac_mdio_write(struct mii_bus *bus, int phyaddr, int phyreg,
 	u32 v;
 	u32 value = MII_BUSY;
 
+	up(&sema);
+
 	value |= (phyaddr << priv->hw->mii.addr_shift)
 		& priv->hw->mii.addr_mask;
 	value |= (phyreg << priv->hw->mii.reg_shift) & priv->hw->mii.reg_mask;
@@ -121,6 +129,7 @@ static int stmmac_mdio_write(struct mii_bus *bus, int phyaddr, int phyreg,
 	writel(phydata, priv->ioaddr + mii_data);
 	writel(value, priv->ioaddr + mii_address);
 
+	down(&sema);
 	/* Wait until any existing MII operation is complete */
 	return readl_poll_timeout(priv->ioaddr + mii_address, v, !(v & MII_BUSY),
 				  100, 10000);
@@ -212,6 +221,9 @@ int stmmac_mdio_register(struct net_device *ndev)
 		return 0;
 
 	new_bus = mdiobus_alloc();
+
+	sema_init(&sema, 1);
+
 	if (!new_bus)
 		return -ENOMEM;
 
