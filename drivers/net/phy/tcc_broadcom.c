@@ -1,17 +1,6 @@
+// SPDX-License-Identifier: GPL-2.0-or-later
 /*
- *	drivers/net/phy/broadcom.c
- *
- *	Broadcom BCM5411, BCM5421 and BCM5461 Gigabit Ethernet
- *	transceivers.
- *
- *	Copyright (c) 2006  Maciej W. Rozycki
- *
- *	Inspired by code written by Amy Fong.
- *
- *	This program is free software; you can redistribute it and/or
- *	modify it under the terms of the GNU General Public License
- *	as published by the Free Software Foundation; either version
- *	2 of the License, or (at your option) any later version.
+ * Copyright (C) Telechips Inc.
  */
 
 #include <linux/module.h>

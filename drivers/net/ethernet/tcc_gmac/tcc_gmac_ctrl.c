@@ -1,30 +1,6 @@
+// SPDX-License-Identifier: GPL-2.0-or-later
 /*
- * linux/driver/net/tcc_gmac/tcc_gmac_ctrl.c
- *
- * Based on : STMMAC of STLinux 2.4
- * Author : Telechips <linux@telechips.com>
- * Created : June 22, 2010
- * Description : This is the driver for the
- * Telechips MAC 10/100/1000 on-chip Ethernet controllers.
- *               Telechips Ethernet IPs are built around a Synopsys IP Core.
- *
- * Copyright (C) 2010 Telechips
- *
- * This program is free software; you can redistribute it and/or modify it
- * under the terms and conditions of the GNU General Public License,
- * version 2, as published by the Free Software Foundation.
- *
- * This program is distributed in the hope it will be useful, but WITHOUT
- * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
- * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
- * more details.
- *
- * You should have received a copy of the GNU General Public License along with
- * this program; if not, write to the Free Software Foundation, Inc.,
- * 51 Franklin St - Fifth Floor, Boston, MA 02110-1301 USA.
- *
- * The full GNU General Public License is included in this distribution in
- * the file called "COPYING".
+ * Copyright (C) Telechips Inc.
  */
 
 #include <linux/io.h>

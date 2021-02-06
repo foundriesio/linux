@@ -14,8 +14,14 @@
   the file called "COPYING".
 
   Author: Giuseppe Cavallaro <peppe.cavallaro@st.com>
-*******************************************************************************/
+******************************************************************************
 
+
+* 	Modified by Telechips Inc.
+* 	Modified date: 2020/02/02
+* 	Description: TCC8050 CS
+
+*/
 #ifndef __STMMAC_H__
 #define __STMMAC_H__
 
@@ -155,6 +161,7 @@ struct stmmac_priv {
 	struct dentry *dbgfs_dma_cap;
 #endif
 	struct gmac_dt_info_t dt_info;
+	struct miscdevice *misc;
 };
 
 int stmmac_mdio_unregister(struct net_device *ndev);

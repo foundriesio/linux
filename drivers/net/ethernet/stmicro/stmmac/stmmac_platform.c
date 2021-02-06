@@ -16,7 +16,13 @@
   the file called "COPYING".
 
   Author: Giuseppe Cavallaro <peppe.cavallaro@st.com>
-*******************************************************************************/
+*******************************************************************************
+
+* 	Modified by Telechips Inc.
+* 	Modified date: 2020/02/02
+* 	Description: TCC8050 CS
+
+*/
 
 #include <linux/platform_device.h>
 #include <linux/module.h>
