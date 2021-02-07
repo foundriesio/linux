@@ -567,7 +567,7 @@ wait_for_free_credits(struct TCP_Server_Info *server, const int num_credits,
 					server->hostname, num_credits, 0);
 				cifs_server_dbg(VFS, "wait timed out after %d ms\n",
 					 timeout);
-				return -ENOTSUPP;
+				return -EBUSY;
 			}
 			if (rc == -ERESTARTSYS)
 				return -ERESTARTSYS;
@@ -609,7 +609,7 @@ wait_for_free_credits(struct TCP_Server_Info *server, const int num_credits,
 						0);
 					cifs_server_dbg(VFS, "wait timed out after %d ms\n",
 						 timeout);
-					return -ENOTSUPP;
+					return -EBUSY;
 				}
 				if (rc == -ERESTARTSYS)
 					return -ERESTARTSYS;
@@ -687,7 +687,7 @@ wait_for_compound_request(struct TCP_Server_Info *server, int num,
 					server->hostname, scredits, sin_flight);
 			cifs_dbg(FYI, "%s: %d requests in flight, needed %d total=%d\n",
 					__func__, sin_flight, num, scredits);
-			return -ENOTSUPP;
+			return -EDEADLK;
 		}
 	}
 	spin_unlock(&server->req_lock);
@@ -1171,7 +1171,7 @@ compound_send_recv(const unsigned int xid, struct cifs_ses *ses,
 	/*
 	 * Compounding is never used during session establish.
 	 */
-	if ((ses->status == CifsNew) || (optype & CIFS_NEG_OP))
+	if ((ses->status == CifsNew) || (optype & CIFS_NEG_OP) || (optype & CIFS_SESS_OP))
 		smb311_update_preauth_hash(ses, rqst[0].rq_iov,
 					   rqst[0].rq_nvec);
 
@@ -1236,7 +1236,7 @@ compound_send_recv(const unsigned int xid, struct cifs_ses *ses,
 	/*
 	 * Compounding is never used during session establish.
 	 */
-	if ((ses->status == CifsNew) || (optype & CIFS_NEG_OP)) {
+	if ((ses->status == CifsNew) || (optype & CIFS_NEG_OP) || (optype & CIFS_SESS_OP)) {
 		struct kvec iov = {
 			.iov_base = resp_iov[0].iov_base,
 			.iov_len = resp_iov[0].iov_len
