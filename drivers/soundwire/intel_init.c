@@ -196,11 +196,12 @@ void *sdw_intel_init(acpi_handle *parent_handle, struct sdw_intel_res *res)
 {
 	acpi_status status;
 
+	res->handle = NULL;
 	status = acpi_walk_namespace(ACPI_TYPE_DEVICE,
 				     parent_handle, 1,
 				     sdw_intel_acpi_cb,
 				     NULL, res, NULL);
-	if (ACPI_FAILURE(status))
+	if (ACPI_FAILURE(status) || res->handle == NULL)
 		return NULL;
 
 	return sdw_intel_add_controller(res);
