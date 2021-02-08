@@ -50,8 +50,8 @@
 //#define DEBUG_GPIO
 
 #ifdef DEBUG_GPIO
-#define debug_gpio(msg...) printk(KERN_DEBUG "[DEBUG][GPIO SAMPLE DRIVER]" msg);
-#define err_gpio(msg...) printk(KERN_ERR "[ERROR][GPPIO SAMPLE DRIVER]" msg);
+#define debug_gpio(msg...) pr_info("[DEBUG][GPIO SAMPLE DRIVER]" msg);
+#define err_gpio(msg...) pr_err("[ERROR][GPPIO SAMPLE DRIVER]" msg);
 #else
 #define debug_gpio(msg...)
 #define err_gpio(msg...)

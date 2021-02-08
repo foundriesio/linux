@@ -87,57 +87,61 @@ static void __iomem *pmgpio_base;
 
 static struct tcc_pinctrl_soc_data tcc803x_pinctrl_soc_data;
 
-static int tcc803x_set_eint(void __iomem *base, u32 bit, int extint, struct tcc_pinctrl *pctl)
+static int tcc803x_set_eint(
+		void __iomem *base, u32 bit,
+		int extint, struct tcc_pinctrl *pctl)
 {
-#if defined(CONFIG_TCC803X_CA7S)
-	u32 a7_exti = 14 - (2 * extint);
-	void __iomem *reg
-		= (void __iomem *)(gpio_base + EINTSEL + 4*(a7_exti/4));
-#else
-	void __iomem *reg
-		= (void __iomem *)(gpio_base + EINTSEL + 4*(extint/4));
-#endif
+	void __iomem *reg;
 	u32 data, mask, shift, idx, i, j, pin_valid;
 	u32 port = base - gpio_base;
 	struct extintr_match_ *match
 		= (struct extintr_match_ *)tcc803x_pinctrl_soc_data.irq->data;
 	int irq_size = tcc803x_pinctrl_soc_data.irq->size;
 	struct tcc_pin_bank *bank = pctl->pin_banks;
+#if defined(CONFIG_TCC803X_CA7S)
+	u32 a7_exti = 14 - (2 * extint);
 
+	reg = (void __iomem *)(gpio_base + EINTSEL + 4*(a7_exti/4));
+#else
+	reg = (void __iomem *)(gpio_base + EINTSEL + 4*(extint/4));
+#endif
 	if (!gpio_base)
 		return -1;
 
 	if (extint >= irq_size/2)
 		return -1;
 
-	for(i = 0; i < pctl->nbanks ; i++) {
+	for (i = 0; i < pctl->nbanks; i++) {
 
-		if(bank->reg_base == port) {
-			if(bank->source_section == 0xff) {
+		if (bank->reg_base == port) {
+			if (bank->source_section == 0xff) {
 
 				pr_err("[EXTI][ERROR] %s: %s is not supported for external interrupt\n"
 						, __func__, bank->name);
 				return -EINVAL;
+			}
 
-			} else {
+			for (j = 0; j < bank->source_section; j++) {
+				if ((bit >= bank->source_offset_base[j])
+					&& (bit < (bank->source_offset_base[j]
+					+ bank->source_range[j]))) {
 
-				for(j = 0; j < bank->source_section; j++){
-					if((bit >= bank->source_offset_base[j]) && (bit < (bank->source_offset_base[j]+bank->source_range[j]))) {
-						idx = bank->source_base[j] + (bit - bank->source_offset_base[j]);
-						pin_valid = 1; //true
-						break;
-					} else {
-						pin_valid = 0; //false
-					}
+					idx = bank->source_base[j]
+						+ (bit
+						- bank->source_offset_base[j]);
+					pin_valid = 1; //true
+					break;
 				}
-
+				pin_valid = 0; //false
 			}
 		}
 		bank++;
 	}
 
-	if(!pin_valid) {
-		pr_err("[EXTI][ERROR] %s: %d(%d) is out of range of pin number of %s group\n",__func__, bit, idx, bank->name);
+	if (!pin_valid) {
+		pr_err(
+			"[EXTI][ERROR] %s: %d(%d) is out of range of pin number of %s group\n"
+			, __func__, bit, idx, bank->name);
 		return -EINVAL;
 	}
 
@@ -218,16 +222,17 @@ static int tcc803x_gpio_set_direction(void __iomem *base, u32 offset,
 
 static int tcc803x_gpio_get_direction(void __iomem *base, u32 offset)
 {
-    void __iomem *reg = base + GPIO_OUTPUT_ENABLE;
-    u32 data;
+	void __iomem *reg = base + GPIO_OUTPUT_ENABLE;
+	u32 data;
 
-    data = readl(reg) & ((u32)1U << offset);
+	data = readl(reg) & ((u32)1U << offset);
 
-    if(data == 0) {
-        return 1;
-    } else {
-        return 0;
-    }
+	if (data
+			== 0) {
+		return 1;
+	} else {
+		return 0;
+	}
 }
 
 static int tcc803x_gpio_set_function(void __iomem *base, u32 offset,
@@ -334,34 +339,39 @@ static int tcc803x_gpio_set_eclk_sel(void __iomem *base, u32 offset,
 	if (value > 3)
 		return -EINVAL;
 
-	for(i = 0; i < pctl->nbanks ; i++) {
-
-		if(bank->reg_base == port) {
-			if(bank->source_section == 0xff) {
-
-				pr_err("[ECLK][ERROR] %s: %s is not supported for external interrupt\n"
+	for (i = 0; i < pctl->nbanks ; i++) {
+		if (bank->reg_base == port) {
+			if (bank->source_section == 0xff) {
+				pr_err(
+						"[ECLK][ERROR] %s: %s is not supported for external interrupt\n"
 						, __func__, bank->name);
 				return -EINVAL;
+			}
 
-			} else {
+			for (j = 0; j < bank->source_section; j++) {
+				if ((offset >= bank->source_offset_base[j])
+				&& (offset < (bank->source_offset_base[j]
+				+ bank->source_range[j]))) {
 
-				for(j = 0; j < bank->source_section; j++){
-					if((offset >= bank->source_offset_base[j]) && (offset < (bank->source_offset_base[j]+bank->source_range[j]))) {
-						idx = bank->source_base[j] + (offset - bank->source_offset_base[j]);
-						pin_valid = 1; //true
-						break;
-					} else {
-						pin_valid = 0; //false
-					}
+					idx = bank->source_base[j]
+						+ (offset -
+						bank
+						->source_offset_base[j]
+						);
+					pin_valid = 1; //true
+					break;
 				}
 
+				pin_valid = 0; //false
 			}
 		}
 		bank++;
 	}
 
-	if(!pin_valid) {
-		pr_err("[ECLK][ERROR] %s: %d(%d) is out of range of pin number of %s group\n",__func__, offset, idx, bank->name);
+	if (!pin_valid) {
+		pr_err(
+				"[ECLK][ERROR] %s: %d(%d) is out of range of pin number of %s group\n"
+				, __func__, offset, idx, bank->name);
 		return -EINVAL;
 	}
 
@@ -372,7 +382,8 @@ static int tcc803x_gpio_set_eclk_sel(void __iomem *base, u32 offset,
 	return 0;
 }
 
-static int tcc803x_gpio_to_irq(void __iomem *base, u32 offset, struct tcc_pinctrl *pctl)
+static int tcc803x_gpio_to_irq(
+		void __iomem *base, u32 offset, struct tcc_pinctrl *pctl)
 {
 	int i;
 	struct extintr_match_ *match

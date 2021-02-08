@@ -36,6 +36,9 @@ config PINCTRL_TCC_SCFW
 	depends on ARCH_TCC805X && TCC_SC_MAILBOX && TCC_SC_FW_PROTOCOL
 	help
 	  This option provides pin control via scfw.
+	  This option should be used if the board uses dual core.
+	  It solves the problem that occurs
+	  when accessing registers simultaneously.
 
 config PINCTRL_ADI2
 	bool "ADI pin controller driver"
