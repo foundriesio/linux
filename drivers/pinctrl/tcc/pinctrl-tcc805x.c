@@ -95,7 +95,8 @@ static u32 reg_readl
 }
 
 #if defined(CONFIG_PINCTRL_TCC_SCFW)
-static int32_t request_gpio_to_sc(ulong address, ulong bit_number, ulong width, ulong value)
+static int32_t request_gpio_to_sc(
+		ulong address, ulong bit_number, ulong width, ulong value)
 {
 	s32 ret;
 	u32 u32_mask = 0xFFFFFFFFU;
@@ -120,10 +121,11 @@ static int32_t request_gpio_to_sc(ulong address, ulong bit_number, ulong width, 
 }
 #endif
 
-static s32 tcc805x_set_eint(void __iomem *base, u32 bit, u32 extint, struct tcc_pinctrl *pctl)
+static s32 tcc805x_set_eint(
+		void __iomem *base, u32 bit,
+		u32 extint, struct tcc_pinctrl *pctl)
 {
-	void __iomem *reg
-		= (void __iomem *)(gpio_base + TCC_EINTSEL + ((extint/4U) << 2U));
+	void __iomem *reg;
 #if !defined(CONFIG_PINCTRL_TCC_SCFW)
 	u32 data;
 	u32 mask;
@@ -138,6 +140,8 @@ static s32 tcc805x_set_eint(void __iomem *base, u32 bit, u32 extint, struct tcc_
 		= (struct extintr_match_ *)tcc805x_pinctrl_soc_data.irq->data;
 	u32 irq_size = tcc805x_pinctrl_soc_data.irq->size;
 	struct tcc_pin_bank *bank;
+
+	reg = (void __iomem *)(gpio_base + TCC_EINTSEL + ((extint/4U) << 2U));
 
 	if (pctl == NULL) {
 		(void)pr_err(
@@ -162,47 +166,48 @@ static s32 tcc805x_set_eint(void __iomem *base, u32 bit, u32 extint, struct tcc_
 		return -1;
 	}
 
-	for(i = 0; i < pctl->nbanks ; i++) {
+	for (i = 0; i < pctl->nbanks ; i++) {
 
-		if(bank->reg_base == port) {
-			if(bank->source_section == 0xffU) {
+		if (bank->reg_base == port) {
+			if (bank->source_section == 0xffU) {
 				(void)pr_err(
 						"[ERROR][EXTI] %s: %s is not supported for external interrupt\n"
 						, __func__, bank->name);
 				return -EINVAL;
-
-			} else {
-
-				for(j = 0; j < bank->source_section; j++){
-					if (((UINT_MAX) - bank->source_offset_base[j])
+			}
+			for (j = 0; j < bank->source_section; j++) {
+				if (((UINT_MAX) - bank->source_offset_base[j])
 						< bank->source_range[j]) {
-						continue;
-					}
-					if((bit >= bank->source_offset_base[j]) && (bit < (bank->source_offset_base[j]+bank->source_range[j]))) {
-						idx = (bit - bank->source_offset_base[j]);
-						if (((UINT_MAX) - idx) >= bank->source_base[j]) {
-							idx += bank->source_base[j];
-							pin_valid = 1; //true
-						} else {
-							pin_valid = 0U; //false
-						/* comment for kernel coding style */
-						}
-						break;
-					} else {
-						pin_valid = 0U; //false
-					}
+					continue;
 				}
+				if ((bit >= bank->source_offset_base[j])
+					&& (bit <
+						(bank->source_offset_base[j]
+						 + bank->source_range[j]))) {
 
+					idx = bit - bank->source_offset_base[j];
+					if (((UINT_MAX) - idx)
+						>= bank->source_base[j]) {
+
+						idx += bank->source_base[j];
+						pin_valid = 1;
+						//true
+					} else {
+						pin_valid = 0U;
+						//false
+					}
+					break;
+				}
+				pin_valid = 0U; //false
 			}
 		}
 		bank++;
 	}
 
-
-	if(pin_valid == 0U) {
+	if (pin_valid == 0U) {
 		(void)pr_err(
 				"[ERROR][EXTI] %s: %d(%d) is out of range of pin number of %s group\n"
-				,__func__, bit, idx, bank->name);
+				, __func__, bit, idx, bank->name);
 		return -EINVAL;
 	}
 
@@ -327,7 +332,8 @@ static s32 tcc805x_gpio_get_direction(void __iomem *base, u32 offset)
 
 	data = readl(reg) & ((u32)1U << offset);
 
-	if(data == 0U) {
+	if (data
+			== 0U) {
 		return 1;
 	} else {
 		return 0;
@@ -492,38 +498,40 @@ static s32 tcc805x_gpio_set_eclk_sel(void __iomem *base, u32 offset,
 		/* comment for QAC, codesonar, kernel coding style */
 	}
 
-	for(i = 0; i < pctl->nbanks ; i++) {
-
-		if(bank->reg_base == port) {
-			if(bank->source_section == 0xffU) {
-
+	for (i = 0; i < pctl->nbanks ; i++) {
+		if (bank->reg_base == port) {
+			if (bank->source_section == 0xffU) {
 				(void)pr_err(
 						"[ERROR][ECLK] %s: %s is not supported for external interrupt\n"
 						, __func__, bank->name);
 				return -EINVAL;
-
-			} else {
-
-				for(j = 0; j < bank->source_section; j++){
-					if (((UINT_MAX) - bank->source_offset_base[j])
+			}
+			for (j = 0; j < bank->source_section; j++) {
+				if (((UINT_MAX) - bank->source_offset_base[j])
 						< bank->source_range[j]) {
-						continue;
-					}
-					if((offset >= bank->source_offset_base[j]) && (offset < (bank->source_offset_base[j]+bank->source_range[j]))) {
-						idx = (offset - bank->source_offset_base[j]);
-						if (((UINT_MAX) - idx) >= bank->source_base[j]) {
-							idx += bank->source_base[j];
-							pin_valid = 1U; //true
-						} else {
-							pin_valid = 0U; //false
-						/* comment for kernel coding style */
-						}
-						break;
+					continue;
+				}
+				if ((offset >= bank->source_offset_base[j])
+					&& (offset <
+						(bank->source_offset_base[j]
+						+ bank->source_range[j]))) {
+
+					idx = offset
+						- bank->source_offset_base[j];
+					if (((UINT_MAX) - idx)
+						>= bank->source_base[j]) {
+
+						idx += bank->source_base[j];
+						pin_valid = 1U;
+						//true
 					} else {
-						pin_valid = 0U; //false
+						pin_valid = 0U;
+						//false
 					}
+					break;
 				}
 
+				pin_valid = 0U; //false
 			}
 		}
 		bank++;
@@ -532,7 +540,7 @@ static s32 tcc805x_gpio_set_eclk_sel(void __iomem *base, u32 offset,
 	if (pin_valid == 0U) {
 		(void)pr_err(
 				"[ERROR][ECLK] %s: %d(%d) is out of range of pin number of %s group\n"
-				,__func__, offset, idx, bank->name);
+				, __func__, offset, idx, bank->name);
 		return -EINVAL;
 	}
 
@@ -550,7 +558,8 @@ static s32 tcc805x_gpio_set_eclk_sel(void __iomem *base, u32 offset,
 #endif
 }
 
-static s32 tcc805x_gpio_to_irq(void __iomem *base, u32 offset, struct tcc_pinctrl *pctl)
+static s32 tcc805x_gpio_to_irq(
+		void __iomem *base, u32 offset, struct tcc_pinctrl *pctl)
 {
 	u32 i;
 	struct extintr_match_ *match
@@ -566,7 +575,7 @@ static s32 tcc805x_gpio_to_irq(void __iomem *base, u32 offset, struct tcc_pinctr
 	port = (ulong)(base - gpio_base);
 	rev = get_chip_rev();
 
-	if((port >= GPMB) && (rev == 0U)) {
+	if ((port >= GPMB) && (rev == 0U)) {
 		(void)pr_err(
 				"[ERROR][EXTI] %s: GPMB, MC and MD are not allowed for ES\n"
 				, __func__);
@@ -591,7 +600,8 @@ static s32 tcc805x_gpio_to_irq(void __iomem *base, u32 offset, struct tcc_pinctr
 
 	/* checking unused external interrupt */
 	for (i = 0U; i < (irq_size/2U); i++) {
-		reg = (void __iomem *)(gpio_base + TCC_EINTSEL + ((i/4U) << 2U));
+		reg = (void __iomem *)(gpio_base
+				+ TCC_EINTSEL + ((i/4U) << 2U));
 		shift = (i%4U) << 3U;
 		eint_sel_value = readl(reg)
 			& ((u32)0xfU << shift);
@@ -627,7 +637,8 @@ bool tcc_is_exti(u32 irq)
 
 	hwirq = irqd_to_hwirq(d);
 
-	if (hwirq >= 32UL) {
+	if (hwirq
+			>= 32UL) {
 		hwirq -= 32UL;
 	} else {
 		return (bool)0;
@@ -657,7 +668,8 @@ u32 tcc_irq_get_reverse(u32 irq)
 
 	hwirq = irqd_to_hwirq(d);
 
-	if (hwirq >= 32UL) {
+	if (hwirq
+			>= 32UL) {
 		hwirq = hwirq - 32UL;
 	} else {
 		return (u32)1U << 31; //IRQ_NOTCONNECTED
@@ -706,7 +718,8 @@ static s32 tcc805x_pinconf_get(void __iomem *base, u32 offset, s32 param)
 
 	case TCC_PINCONF_INPUT_BUFFER_ENABLE:
 	case TCC_PINCONF_INPUT_BUFFER_DISABLE:
-		ret = (s32)reg_readl(base + GPIO_INPUT_BUFFER_ENABLE, offset, 1U);
+		ret = (s32)reg_readl(base
+				+ GPIO_INPUT_BUFFER_ENABLE, offset, 1U);
 		break;
 
 	case TCC_PINCONF_SCHMITT_INPUT:
@@ -852,14 +865,16 @@ static s32 tcc805x_pinctrl_probe(struct platform_device *pdev)
 	fw_np = of_parse_phandle(pdev->dev.of_node, "sc-firmware", 0);
 	if (fw_np == NULL) {
 		dev_err(&(pdev->dev),
-				"[ERROR][PINCTRL] %s : fw_np == NULL\n", __func__);
+				"[ERROR][PINCTRL] %s : fw_np == NULL\n"
+				, __func__);
 		return -EINVAL;
 	}
 
 	sc_fw_handle_for_gpio = tcc_sc_fw_get_handle(fw_np);
 	if (sc_fw_handle_for_gpio == NULL) {
 		dev_err(&(pdev->dev),
-			"[ERROR][PINCTRL] %s : sc_fw_handle == NULL\n", __func__);
+			"[ERROR][PINCTRL] %s : sc_fw_handle == NULL\n"
+			, __func__);
 		return -EINVAL;
 	}
 
@@ -905,8 +920,9 @@ static s32 __maybe_unused tcc805x_pinctrl_resume(struct device *dev)
 
 	for (i = 0U; i < (irq_size/2U); i++) {
 		if (match[i].used != 0U) {
-			(void)tcc805x_set_eint
-				(match[i].port_base, match[i].port_num, i, pctl);
+			(void)tcc805x_set_eint(
+					match[i].port_base,
+					match[i].port_num, i, pctl);
 		}
 	}
 
@@ -932,7 +948,8 @@ static void tcc805x_pinctrl_shutdown(struct platform_device *pdev)
 	u32 irq_size = tcc805x_pinctrl_soc_data.irq->size;
 
 	for (i = 0U; i < (irq_size/2U); i++) {
-		reg = (void __iomem *)(gpio_base + TCC_EINTSEL + ((i/4U) << 2U));
+		reg = (void __iomem *)(gpio_base
+				+ TCC_EINTSEL + ((i/4U) << 2U));
 
 		if (match[i].used != 0U) {
 			shift = (i%4U) << 3;

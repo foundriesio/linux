@@ -30,16 +30,16 @@
 #include "../../pinctrl/pinconf.h"
 
 #if defined(DEBUG_GPIO_TEST)
-#define debug_gpio(msg...) printk(msg);
+#define debug_gpio(msg...) pr_err(msg)
 #else
 #define debug_gpio(msg...)
 #endif
 
 #define error_gpio(msg...) \
 	do { \
-		printk("\033[031m" msg); \
-		printk("\033[0m"); \
-	} while(0);
+		pr_err("\033[031m" msg); \
+		pr_err("\033[0m"); \
+	} while (0)
 
 /*
  * pinconf test
@@ -69,7 +69,9 @@ static int set_pinconf_value(struct pinctrl_dev *pctldev,
 	ret = pinctrl_gpio_set_config(gpio_num, s_config);
 
 	if (ret != 0) {
-		error_gpio("Failed to set config\n");
+		error_gpio(
+				"Failed to set config\n"
+				);
 	}
 
 	return ret;
@@ -82,12 +84,16 @@ static int gpio_test_input(struct pinctrl_dev *pctldev,
 	char buf[1024];
 	u32 origin_value = get_pinconf_value(pctldev, TCC_PINCONF_INPUT_BUFFER_ENABLE, gpio_num);
 
-	printk("\tbefore : %u\n", origin_value);
-	printk("\trequest : %u\n", req_value);
-	set_pinconf_value(pctldev, TCC_PINCONF_INPUT_ENABLE, pin_num, req_value, gpio_num);
+	pr_err("\tbefore : %u\n", origin_value);
+	pr_err("\trequest : %u\n", req_value);
+	set_pinconf_value(
+			pctldev, TCC_PINCONF_INPUT_ENABLE
+			, pin_num, req_value, gpio_num);
 
-	result = get_pinconf_value(pctldev, TCC_PINCONF_INPUT_BUFFER_ENABLE, gpio_num);
-	printk("\tafter : %u\n", result);
+	result = get_pinconf_value(
+			pctldev, TCC_PINCONF_INPUT_BUFFER_ENABLE
+			, gpio_num);
+	pr_err("\tafter : %u\n", result);
 
 	if (req_value != result) {
 		error_gpio("Failed to test  request(%u) != result(%u)\n",
@@ -96,11 +102,14 @@ static int gpio_test_input(struct pinctrl_dev *pctldev,
 	}
 
 	req_value = 0;
-	printk("\tbefore2 : %u\n", result);
-	printk("\trequest2 : %u\n", req_value);
-	set_pinconf_value(pctldev, TCC_PINCONF_OUTPUT_LOW, pin_num, origin_value, gpio_num);
-	result = get_pinconf_value(pctldev, TCC_PINCONF_INPUT_BUFFER_ENABLE, gpio_num);
-	printk("\tafter2 : %u\n", result);
+	pr_err("\tbefore2 : %u\n", result);
+	pr_err("\trequest2 : %u\n", req_value);
+	set_pinconf_value(
+			pctldev, TCC_PINCONF_OUTPUT_LOW,
+			pin_num, origin_value, gpio_num);
+	result = get_pinconf_value(
+			pctldev, TCC_PINCONF_INPUT_BUFFER_ENABLE, gpio_num);
+	pr_err("\tafter2 : %u\n", result);
 
 	if (req_value != result) {
 		error_gpio("Failed to test  request(%u) != result(%u)\n",
@@ -149,7 +158,7 @@ ssize_t gpio_test(struct device *dev, struct device_attribute *attr, char *buf)
 
 	// get pinctrl
 	pinctrl = pinctrl_get(dev);
-	if(IS_ERR(pinctrl)) {
+	if (IS_ERR(pinctrl)) {
 		debug_gpio("pinctrl_get returned %p\n", pinctrl);
 		return -1;
 	}
@@ -173,69 +182,150 @@ ssize_t gpio_test(struct device *dev, struct device_attribute *attr, char *buf)
 		pin_banks = pctl->pin_banks;
 		u32 max_bank_num = pctl->nbanks;
 
-		printk("max_bank_num : %u\n", max_bank_num);
+		pr_err("max_bank_num : %u\n", max_bank_num);
 		for (bank_num = 0U; bank_num < max_bank_num; bank_num++) {
 
-			if(strcmp(pin_banks[bank_num].name, "gpk") != 0) {
-				printk("\033[33mbank - %s\033[0m\n", pin_banks[bank_num].name);
-				printk("\033[33mbanks[%u].npins = %u\033[0m\n", bank_num, pin_banks[bank_num].npins);
+			if (strcmp(pin_banks[bank_num].name, "gpk") != 0) {
+				pr_err(
+						"\033[33mbank - %s\033[0m\n"
+						, pin_banks[bank_num].name);
+				pr_err(
+						"\033[33mbanks[%u].npins = %u\033[0m\n"
+						, bank_num,
+						pin_banks[bank_num].npins);
 			}
 
-			for (pin_num = 0U; pin_num < pin_banks[bank_num].npins; pin_num++, gpio_num++) {
+			for (pin_num = 0U;
+					pin_num < pin_banks[bank_num].npins;
+					pin_num++, gpio_num++) {
 				/* set direction test */
-				//gpio_test_input(pctldev, pin_num, 1U/*not use*/, gpio_num);
 
-				if ((pin_num == 10 || pin_num == 11)// || pin_num == 12 || pin_num == 13)
-						&&	strcmp(pin_banks[bank_num].name, "gpc") == 0) {
-					printk("\033[31mskip %s %u, because a72 uart pin\033[0m\n",
-						pin_banks[bank_num].name, pin_num);
+				if ((pin_num == 10 || pin_num == 11)
+						&& strcmp(pin_banks[bank_num].name,
+							"gpc") == 0) {
+
+					pr_err("\033[31mskip %s %u, because a72 uart pin\033[0m\n",
+						pin_banks[bank_num].name,
+						pin_num);
 					continue;
-				} else if(strcmp(pin_banks[bank_num].name, "gpk") == 0) {
-					debug_gpio("\033[31mskip %s %u\033[0m\n",
-						pin_banks[bank_num].name, pin_num);
+				} else if (strcmp(pin_banks[bank_num].name,
+							"gpk") == 0) {
+
+					debug_gpio(
+						"\033[31mskip %s %u\033[0m\n"
+						, pin_banks[bank_num].name,
+						pin_num);
 					continue;
 				}
 
 				debug_gpio("pin_num - %u\n", pin_num);
 				debug_gpio("gpio_num - %u\n", gpio_num);
 
-				debug_gpio("\nTCC_PINCONF_FUNC test\n");
-				for (req_value = 0U; req_value < 16U; req_value++) {
-					gpio_param_test(pctldev, TCC_PINCONF_FUNC, pin_num, req_value, gpio_num);
+				debug_gpio(
+						"\nTCC_PINCONF_FUNC test\n"
+						);
+				for (req_value = 0U;
+						req_value < 16U;
+						req_value++) {
+
+					gpio_param_test(
+						pctldev,
+						TCC_PINCONF_FUNC,
+						pin_num, req_value,
+						gpio_num);
 				}
 
 				debug_gpio("\n");
-				debug_gpio("TCC_PINCONF_OUTPUT_HIGH test\n");
-				debug_gpio("TCC_PINCONF_OUTPUT_LOW test\n");
-				gpio_param_test(pctldev, TCC_PINCONF_OUTPUT_HIGH, pin_num, 1U/* don't care */, gpio_num);
-				gpio_param_test(pctldev, TCC_PINCONF_OUTPUT_LOW, pin_num, 0U/* don't care */, gpio_num);
+				debug_gpio(
+						"TCC_PINCONF_OUTPUT_HIGH test\n"
+						);
+				debug_gpio(
+						"TCC_PINCONF_OUTPUT_LOW test\n"
+						);
+				gpio_param_test(
+					pctldev,
+					TCC_PINCONF_OUTPUT_HIGH,
+					pin_num, 1U/* don't care */,
+					gpio_num);
+				gpio_param_test(
+					pctldev,
+					TCC_PINCONF_OUTPUT_LOW,
+					pin_num, 0U/* don't care */,
+					gpio_num);
 
 				debug_gpio("\n");
-				debug_gpio("TCC_PINCONF_INPUT_ENABLE(output disable) test\n");
-				gpio_param_test(pctldev, TCC_PINCONF_INPUT_ENABLE, pin_num, 1U/* only 1(on) */, gpio_num);
+				debug_gpio(
+						"TCC_PINCONF_INPUT_ENABLE(output disable) test\n"
+						);
+				gpio_param_test(
+					pctldev,
+					TCC_PINCONF_INPUT_ENABLE,
+					pin_num, 1U/* only 1(on) */,
+					gpio_num);
 
-				debug_gpio("\nTCC_PINCONF_DRIVE_STRENGTH test\n");
-				for (req_value = 0U; req_value < 4U; req_value++) {
-					gpio_param_test(pctldev, TCC_PINCONF_DRIVE_STRENGTH, pin_num, req_value, gpio_num);
+				debug_gpio(
+						"\nTCC_PINCONF_DRIVE_STRENGTH test\n"
+						);
+				for (req_value = 0U;
+						req_value < 4U;
+						req_value++) {
+
+					gpio_param_test(
+						pctldev,
+						TCC_PINCONF_DRIVE_STRENGTH,
+						pin_num, req_value,
+						gpio_num);
 				}
 
 				debug_gpio("\n");
-				debug_gpio("TCC_PINCONF_SLOW_SLEW test\n");
-				debug_gpio("TCC_PINCONF_FAST_SLEW test\n");
-				gpio_param_test(pctldev, TCC_PINCONF_SLOW_SLEW, pin_num, 1U/* don't care */, gpio_num);
-				gpio_param_test(pctldev, TCC_PINCONF_FAST_SLEW, pin_num, 0U/* don't care */, gpio_num);
+				debug_gpio(
+						"TCC_PINCONF_SLOW_SLEW test\n"
+						);
+				debug_gpio(
+						"TCC_PINCONF_FAST_SLEW test\n"
+						);
+				gpio_param_test(
+					pctldev,
+					TCC_PINCONF_SLOW_SLEW,
+					pin_num, 1U/* don't care */,
+					gpio_num);
+				gpio_param_test(
+					pctldev,
+					TCC_PINCONF_FAST_SLEW,
+					pin_num, 0U/* don't care */,
+					gpio_num);
 
 				debug_gpio("\n");
-				debug_gpio("TCC_PINCONF_INPUT_BUFFER_ENABLE test\n");
-				debug_gpio("TCC_PINCONF_INPUT_BUFFER_DISABLE test\n");
-				gpio_param_test(pctldev, TCC_PINCONF_INPUT_BUFFER_ENABLE, pin_num, 1U/*don't care*/, gpio_num);
-				gpio_param_test(pctldev, TCC_PINCONF_INPUT_BUFFER_DISABLE, pin_num, 0U/*don't care*/, gpio_num);
+				debug_gpio(
+						"TCC_PINCONF_INPUT_BUFFER_ENABLE test\n"
+						);
+				debug_gpio(
+						"TCC_PINCONF_INPUT_BUFFER_DISABLE test\n"
+						);
+				gpio_param_test(
+					pctldev,
+					TCC_PINCONF_INPUT_BUFFER_ENABLE,
+					pin_num, 1U/*don't care*/,
+					gpio_num);
+				gpio_param_test(
+					pctldev,
+					TCC_PINCONF_INPUT_BUFFER_DISABLE,
+					pin_num, 0U/*don't care*/,
+					gpio_num);
 
 				debug_gpio("\n");
 				debug_gpio("TCC_PINCONF_SCHMITT_INPUT test\n");
 				debug_gpio("TCC_PINCONF_CMOS_INPUT test\n");
-				gpio_param_test(pctldev, TCC_PINCONF_SCHMITT_INPUT, pin_num, 1U/*don't care*/, gpio_num);
-				gpio_param_test(pctldev, TCC_PINCONF_CMOS_INPUT, pin_num, 0U/*don't care*/, gpio_num);
+				gpio_param_test(
+					pctldev,
+					TCC_PINCONF_SCHMITT_INPUT,
+					pin_num, 1U/*don't care*/,
+					gpio_num);
+				gpio_param_test(
+					pctldev,
+					TCC_PINCONF_CMOS_INPUT,
+					pin_num, 0U/*don't care*/,
+					gpio_num);
 			}
 
 			debug_gpio("\n");
@@ -248,7 +338,9 @@ ssize_t gpio_test(struct device *dev, struct device_attribute *attr, char *buf)
 	//return sprintf(buf,"gpio_test\n");
 }
 
-static DEVICE_ATTR(gpio_test, S_IRUGO/*|S_IWUSR*/, gpio_test, NULL);
+// 0444 : S_IRUGO
+// for linux coding style
+static DEVICE_ATTR(gpio_test, 0444/*S_IRUGO*/, gpio_test, NULL);
 
 static struct attribute *gpio_test_attrs[] = {
 	&dev_attr_gpio_test.attr,

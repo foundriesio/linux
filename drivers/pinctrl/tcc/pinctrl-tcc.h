@@ -148,31 +148,31 @@ struct tcc_pinmux_function;
 struct tcc_pin_group;
 
 struct tcc_pinctrl {
-    struct device *dev;
+	struct device *dev;
 
-    void __iomem *base;
-    void __iomem *pmgpio_base;
+	void __iomem *base;
+	void __iomem *pmgpio_base;
 
-    struct pinctrl_desc pinctrl_desc;
+	struct pinctrl_desc pinctrl_desc;
 
-    struct pinctrl_dev *pctldev;
+	struct pinctrl_dev *pctldev;
 
-    struct tcc_pinconf *pin_configs;
-    s32 nconfigs;
+	struct tcc_pinconf *pin_configs;
+	s32 nconfigs;
 
-    struct tcc_pinctrl_ops *ops;
+	struct tcc_pinctrl_ops *ops;
 
-    struct pinctrl_pin_desc *pins;
-    u32 npins;
+	struct pinctrl_pin_desc *pins;
+	u32 npins;
 
-    struct tcc_pin_bank *pin_banks;
-    u32 nbanks;
+	struct tcc_pin_bank *pin_banks;
+	u32 nbanks;
 
-    struct tcc_pin_group *groups;
-    u32 ngroups;
+	struct tcc_pin_group *groups;
+	u32 ngroups;
 
-    struct tcc_pinmux_function *functions;
-    u32 nfunctions;
+	struct tcc_pinmux_function *functions;
+	u32 nfunctions;
 };
 
 struct tcc_pin_bank {
