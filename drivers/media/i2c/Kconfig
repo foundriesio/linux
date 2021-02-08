@@ -16,7 +16,8 @@ config VIDEO_ADV7182
 	depends on OF
 	select REGMAP_I2C
 	---help---
-	  Support for the Analog Devices ADV7182 video decoder.
+	  Say Y here to include support for the Analog Devices ADV7182 video
+	  decoder. This is embedded video decoder in TCC805x EVB Series.
 
 	  To compile this driver as a module, choose M here: the
 	  module will be called adv7182.
@@ -38,7 +39,8 @@ config VIDEO_AR0147
 	tristate "Onsemiconductor AR0147 CIS"
 	depends on GPIOLIB && VIDEO_V4L2 && I2C && VIDEO_V4L2_SUBDEV_API
 	---help---
-	  Support for Onsemiconductor AR0147 CIS.
+	  Say Y to include support for Onsemiconductor AR0147 CIS. AR0147 is
+	  ISP-less camera module. By default, this is disabled in Telechips EVB.
 
 	  To compile this driver as a module, choose M here: the
 	  module will be called ar0147.
@@ -58,7 +60,8 @@ config VIDEO_MAX9275
 	depends on GPIOLIB && VIDEO_V4L2 && I2C && VIDEO_V4L2_SUBDEV_API
 	select REGMAP_I2C
 	---help---
-	  Support for the Maxim MAX9275 Serializer.
+	  Say Y to include support for the Maxim MAX9275 Serializer. In TCC805x
+	  EVB, the serializer is used with cxd5700 FHD module.
 
 	  To compile this driver as a module, choose M here: the
 	  module will be called max9275.
@@ -68,7 +71,10 @@ config VIDEO_MAX96701
 	depends on GPIOLIB && VIDEO_V4L2 && I2C && VIDEO_V4L2_SUBDEV_API
 	select REGMAP_I2C
 	---help---
-	  Support for the Maxim MAX96701 Serializer.
+	  Maxim MAX96701 14-Bit GMSL Serializer is a compact serializer in a
+	  4mmx4mm TQFN package that is especially suited for automotive camera
+	  application. Say Y to include support for the Maxim MAX96701
+	  Serializer.
 
 	  To compile this driver as a module, choose M here: the
 	  module will be called MAX96701.
@@ -78,7 +84,9 @@ config VIDEO_MAX9286
 	depends on GPIOLIB && VIDEO_V4L2 && I2C && VIDEO_V4L2_SUBDEV_API
 	select REGMAP_I2C
 	---help---
-	  Support for the Maxim MAX9286 Deserializer.
+	  MAX9286 is integerated GMSL deserializer that receives and
+	  automatically synchronizes video from up to four serializers. Say Y to
+	  include support for the Maxim MAX9286 Deserializer.
 
 	  To compile this driver as a module, choose M here: the
 	  module will be called max9286.

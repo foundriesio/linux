@@ -163,24 +163,33 @@ int isl79988_parse_device_tree(struct isl79988 *dev, struct i2c_client *client)
 void isl79988_request_gpio(struct isl79988 *dev)
 {
 	if (dev->gpio.pwr_port > 0) {
+		/* power pin */
 		gpio_request(dev->gpio.pwr_port, "isl79988 power");
 	}
 	if (dev->gpio.pwd_port > 0) {
+		/* power down pin */
 		gpio_request(dev->gpio.pwd_port, "isl79988 power-down");
 	}
 	if (dev->gpio.rst_port > 0) {
+		/* reset pin */
 		gpio_request(dev->gpio.rst_port, "isl79988 reset");
 	}
 }
 
 void isl79988_free_gpio(struct isl79988 *dev)
 {
-	if (dev->gpio.pwr_port > 0)
+	if (dev->gpio.pwr_port > 0) {
+		/* power pin */
 		gpio_free(dev->gpio.pwr_port);
-	if (dev->gpio.pwd_port > 0)
+	}
+	if (dev->gpio.pwd_port > 0) {
+		/* power down pin */
 		gpio_free(dev->gpio.pwd_port);
-	if (dev->gpio.rst_port > 0)
+	}
+	if (dev->gpio.rst_port > 0) {
+		/* reset pin */
 		gpio_free(dev->gpio.rst_port);
+	}
 }
 
 /*
@@ -223,19 +232,22 @@ static int isl79988_set_power(struct v4l2_subdev *sd, int on)
 	if (on) {
 		// port configuration
 		if (dev->gpio.pwr_port > 0) {
-			gpio_direction_output(dev->gpio.pwr_port, dev->gpio.pwr_value);
+			gpio_direction_output(dev->gpio.pwr_port,
+				dev->gpio.pwr_value);
 			logd("[pwr] gpio: %3d, new val: %d, cur val: %d\n",
 				dev->gpio.pwr_port, dev->gpio.pwr_value,
 				gpio_get_value(dev->gpio.pwr_port));
 		}
 		if (dev->gpio.pwd_port > 0) {
-			gpio_direction_output(dev->gpio.pwd_port, dev->gpio.pwd_value);
+			gpio_direction_output(dev->gpio.pwd_port,
+				dev->gpio.pwd_value);
 			logd("[pwd] gpio: %3d, new val: %d, cur val: %d\n",
 				dev->gpio.pwd_port, dev->gpio.pwd_value,
 				gpio_get_value(dev->gpio.pwd_port));
 		}
 		if (dev->gpio.rst_port > 0) {
-			gpio_direction_output(dev->gpio.rst_port, dev->gpio.rst_value);
+			gpio_direction_output(dev->gpio.rst_port,
+				dev->gpio.rst_value);
 			logd("[rst] gpio: %3d, new val: %d, cur val: %d\n",
 				dev->gpio.rst_port, dev->gpio.rst_value,
 				gpio_get_value(dev->gpio.rst_port));
@@ -309,6 +321,7 @@ static int isl79988_s_stream(struct v4l2_subdev *sd, int enable)
 	client = v4l2_get_subdevdata(&dev->sd);
 	pctrl = pinctrl_get_select(&client->dev, "default");
 	if (!IS_ERR(pctrl)) {
+		/* release kref about pinctrl */
 		pinctrl_put(pctrl);
 	}
 

@@ -1,0 +1,40 @@
+* Device Tree Bindings for MAX96712
+
+Required properties:
+
+- status     : disable or enable the device node
+- compatible : property name that conveys the platform architecture identifiers,
+               as 'maxim,max96701'
+- reg        : I2C slave address
+- ports      : specifies the endpoint of the sensor
+- pwd-gpios  : specifies gpio number for power
+- intb-gpios : specifies gpio number for interrupt
+
+example
+-------
+	max96712: max96712 {
+		/* deserializer */
+		status		= "disabled";
+		compatible	= "maxim,max96712";
+		pwd-gpios	= <&gpg 5 1>;
+		intb-gpios	= <&gph 11 1>;
+		reg		= <0x2A>;
+		ports {
+			#address-cells = <1>;
+			#size-cells = <0>;
+			/*
+			 * 0 ~ 3
+			 * input ports. The number is matched with VC
+			 *
+			 * 4
+			 * output port.
+			 */
+			port@0 {
+				reg = <0>;
+				max96712_in0: endpoint {
+					remote-endpoint = <&max9275_out>;
+					io-direction	= "input";
+					channel		= <0>;
+				};
+			};
+			...

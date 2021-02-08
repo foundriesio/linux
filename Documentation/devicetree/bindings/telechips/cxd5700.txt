@@ -1,0 +1,41 @@
+* Device Tree Bindings for CXD5700 (ISP-less camera module)
+
+CXD5700 is camera FHD image sensor using MIPI CSI2 output. It is disabled by
+default for Telechips EVB.
+
+Required properties:
+
+- status     : disable or enable the device node
+- compatible : property name that conveys the platform architecture identifiers,
+               as 'sony,cxd5700'
+- reg        : I2C slave address
+- port       : specifies the endpoint of the sensor (input – port@0 – is optional)
+
+example
+-------
+cxd5700: cxd5700 {
+		/* ISP of camera module */
+		status		= "disabled";
+		compatible	= "sony,cxd5700";
+		reg		= <0x18>;
+		ports {
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			port@0 {
+				reg = <0>;
+				cxd5700_in: endpoint {
+					remote-endpoint = <&cis>;
+					io-direction	= "input";
+				};
+			};
+
+			port@1 {
+				reg = <1>;
+				cxd5700_out: endpoint {
+					remote-endpoint = <&max9275_in>;
+					io-direction	= "output";
+				};
+			};
+		};
+	};

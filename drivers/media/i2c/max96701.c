@@ -108,7 +108,7 @@ const struct reg_sequence max96701_reg_defaults[] = {
 /* for raw12 ispless camera module */
 const struct reg_sequence max96701_reg_defaults_raw12[] = {
 #ifdef USE_MCNEX_CAM_MODULE
-	{0x04, 0x47, 0}, // configuration mode(in the case of pclk detection fail)
+	{0x04, 0x47, 0}, // config mode(in the case of pclk detection fail)
 	{0x07, 0x40, 0}, // dbl off, hs/vs encoding off, 27bit
 	{0x0f, 0xbe, 300*1000}, // GPO output low to reset sensor
 	{0x0f, 0xbf, 100*1000}, // GPO output hight to reset release of sensor
@@ -175,14 +175,13 @@ static int max96701_init(struct v4l2_subdev *sd, u32 enable)
 		if (dev->fmt.code == MEDIA_BUS_FMT_SGRBG12_1X12) {
 			logi("input format is bayer raw\n");
 			ret = regmap_multi_reg_write(dev->regmap,
-					max96701_reg_defaults_raw12,
-					ARRAY_SIZE(max96701_reg_defaults_raw12));
-		}
-		else {
+				max96701_reg_defaults_raw12,
+				ARRAY_SIZE(max96701_reg_defaults_raw12));
+		} else {
 			logi("input format is yuv422\n");
 			ret = regmap_multi_reg_write(dev->regmap,
-					max96701_reg_defaults,
-					ARRAY_SIZE(max96701_reg_defaults));
+				max96701_reg_defaults,
+				ARRAY_SIZE(max96701_reg_defaults));
 		}
 		if (ret < 0)
 			loge("Fail initializing max96701 device\n");
