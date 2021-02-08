@@ -2271,7 +2271,7 @@
 		reg = <0x16101000 0x50>,
 		      <0x16100080 0x8>;
 		clocks = <&clk_peri PERI_MDAI0 &clk_io IOBUS_DAI0 &clk_peri PERI_MFLT0_DAI>;
-		clock-frequency = <11289600>;	// 44100*256
+		clock-frequency = <48000>;	// default lrck
 		interrupts = <GIC_SPI 81 IRQ_TYPE_EDGE_RISING>;
 		have-fifo-clear = <1>;
 		audio-filter = <0>;	// 0: disable, 1: clock only, 2: data only, 3: data and clock
@@ -2285,7 +2285,7 @@
 		reg = <0x16701000 0x50>,
 		      <0x16700080 0x8>;
 		clocks = <&clk_peri PERI_MDAI1 &clk_io IOBUS_DAI1 &clk_peri PERI_MFLT1_DAI>;
-		clock-frequency = <11289600>;
+		clock-frequency = <48000>;	// default lrck
 		interrupts = <GIC_SPI 93 IRQ_TYPE_EDGE_RISING>;
 		have-fifo-clear = <1>;
 		audio-filter = <0>;	// 0: disable, 1: clock only, 2: data only, 3: data and clock
@@ -2299,7 +2299,7 @@
 		reg = <0x16801000 0x50>,
 		      <0x16800080 0x8>;
 		clocks = <&clk_peri PERI_MDAI2 &clk_io IOBUS_DAI2 &clk_peri PERI_MFLT2_DAI>;
-		clock-frequency = <11289600>;	// 44100*256
+		clock-frequency = <48000>;	// default lrck
 		interrupts = <GIC_SPI 95 IRQ_TYPE_EDGE_RISING>;
 		have-fifo-clear = <1>;
 		audio-filter = <0>;	// 0: disable, 1: clock only, 2: data only, 3: data and clock
@@ -2313,7 +2313,7 @@
 		reg = <0x16201000 0x50>,
 		      <0x16200080 0x8>;
 		clocks = <&clk_peri PERI_SRCH0_CORE &clk_io IOBUS_DAI3 &clk_peri PERI_SRCH0_FILTER>;
-		clock-frequency = <11289600>;
+		clock-frequency = <48000>;	// default lrck
 		interrupts = <GIC_SPI 83 IRQ_TYPE_EDGE_RISING>;
 		have-fifo-clear = <1>;
 		audio-filter = <0>;	// 0: disable, 1: clock only, 2: data only, 3: data and clock
@@ -2327,7 +2327,7 @@
 		reg = <0x16A01000 0x50>,
 		      <0x16A00080 0x8>;
 		clocks = <&clk_peri PERI_SRCH1_CORE &clk_io IOBUS_DAI4 &clk_peri PERI_SRCH1_FILTER>;
-		clock-frequency = <11289600>;
+		clock-frequency = <48000>;	// default lrck
 		interrupts = <GIC_SPI 101 IRQ_TYPE_EDGE_RISING>;
 		have-fifo-clear = <1>;
 		audio-filter = <0>;	// 0: disable, 1: clock only, 2: data only, 3: data and clock
@@ -2341,7 +2341,7 @@
 		reg = <0x16B01000 0x50>,
 		      <0x16B00080 0x8>;
 		clocks = <&clk_peri PERI_SRCH2_CORE &clk_io IOBUS_DAI5 &clk_peri PERI_SRCH2_FILTER>;
-		clock-frequency = <11289600>;
+		clock-frequency = <48000>;	// default lrck
 		interrupts = <GIC_SPI 103 IRQ_TYPE_EDGE_RISING>;
 		have-fifo-clear = <1>;
 		audio-filter = <0>;	// 0: disable, 1: clock only, 2: data only, 3: data and clock
@@ -2355,7 +2355,7 @@
 		reg = <0x16C01000 0x50>,
 		      <0x16C00080 0x8>;
 		clocks = <&clk_peri PERI_SRCH3_CORE &clk_io IOBUS_DAI6 &clk_peri PERI_SRCH3_FILTER>;
-		clock-frequency = <11289600>;
+		clock-frequency = <48000>;	// default lrck
 		interrupts = <GIC_SPI 105 IRQ_TYPE_EDGE_RISING>;
 		have-fifo-clear = <1>;
 		audio-filter = <0>;	// 0: disable, 1: clock only, 2: data only, 3: data and clock
@@ -2369,7 +2369,7 @@
 		reg = <0x16401000 0x50>,
 		      <0x16400080 0x8>;
 		clocks = <&clk_peri PERI_MDAI3 &clk_io IOBUS_DAI7 &clk_peri PERI_MFLT3_DAI>;
-		clock-frequency = <11289600>;	// 44100*256
+		clock-frequency = <48000>;	// default lrck
 		interrupts = <GIC_SPI 116 IRQ_TYPE_EDGE_RISING>;
 		have-fifo-clear = <1>;
 		audio-filter = <0>;	// 0: disable, 1: clock only, 2: data only, 3: data and clock

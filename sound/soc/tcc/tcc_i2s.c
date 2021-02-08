@@ -530,6 +530,38 @@ static int tcc_i2s_set_dai_fmt(struct snd_soc_dai *dai, unsigned int fmt)
 	if (ret != 0)
 		goto dai_fmt_end;
 
+	switch (fmt & (uint32_t)SND_SOC_DAIFMT_CLOCK_MASK) {
+	case SND_SOC_DAIFMT_CONT:
+		i2s_dai_dbg("[%d] SND_SOC_DAIFMT_CONT\n", i2s->blk_no);
+#if defined(TCC803x_ES_SND)
+		if ((i2s->tdm_mode == TRUE) && (system_rev == 0u)) { //ES
+			i2s_dai_warn("TCC_I2S can't use TDM Mode when clk continuous mode\n");
+			ret = -ENOTSUPP;
+			goto dai_fmt_end;
+		} else {
+#endif
+			i2s->clk_continuous = TRUE;
+			tcc_dai_enable(i2s->dai_reg, TRUE);
+#if defined(TCC803x_ES_SND)
+		}
+#endif
+		break;
+	case SND_SOC_DAIFMT_GATED:
+		i2s_dai_dbg("[%d] SND_SOC_DAIFMT_GATED\n", i2s->blk_no);
+		i2s->clk_continuous = FALSE;
+		tcc_dai_enable(i2s->dai_reg, FALSE);
+		break;
+	default:
+		i2s_dai_err("[%d] does not supported\n", i2s->blk_no);
+		ret = -ENOTSUPP;
+		break;
+	}
+
+	if (ret != 0)
+		goto dai_fmt_end;
+
+	i2s->dai_fmt = fmt;
+	
 	if (i2s->tdm_mode == TRUE) {
 		if (i2s->clk_continuous == TRUE) {
 /* Workaround Code for TCC803X, TCC899X and TCC901X
@@ -588,40 +620,8 @@ static int tcc_i2s_set_dai_fmt(struct snd_soc_dai *dai, unsigned int fmt)
 			(void) clk_prepare_enable(i2s->dai_hclk);
 
 			tcc_dai_reg_restore(i2s->dai_reg, &regs);
-			}
+		}	
 	}
-
-	switch (fmt & (uint32_t)SND_SOC_DAIFMT_CLOCK_MASK) {
-	case SND_SOC_DAIFMT_CONT:
-		i2s_dai_dbg("[%d] SND_SOC_DAIFMT_CONT\n", i2s->blk_no);
-#if defined(TCC803x_ES_SND)
-		if ((i2s->tdm_mode == TRUE) && (system_rev == 0u)) { //ES
-			i2s_dai_warn("TCC_I2S can't use TDM Mode when clk continuous mode\n");
-			ret = -ENOTSUPP;
-			goto dai_fmt_end;
-		} else {
-#endif
-			i2s->clk_continuous = TRUE;
-			tcc_dai_enable(i2s->dai_reg, TRUE);
-#if defined(TCC803x_ES_SND)
-		}
-#endif
-		break;
-	case SND_SOC_DAIFMT_GATED:
-		i2s_dai_dbg("[%d] SND_SOC_DAIFMT_GATED\n", i2s->blk_no);
-		i2s->clk_continuous = FALSE;
-		tcc_dai_enable(i2s->dai_reg, FALSE);
-		break;
-	default:
-		i2s_dai_err("[%d] does not supported\n", i2s->blk_no);
-		ret = -ENOTSUPP;
-		break;
-	}
-
-	if (ret != 0)
-		goto dai_fmt_end;
-
-	i2s->dai_fmt = fmt;
 
 dai_fmt_end:
 	spin_unlock(&i2s->lock);
@@ -783,7 +783,6 @@ static int tcc_i2s_hw_params(
 	int32_t sample_rate = (int32_t)params_rate(params);
 	uint32_t mclk = 0;
 	int ret = 0;
-	bool pcm_mode = 0;
 
 	enum TCC_DAI_FMT tcc_fmt;
 
@@ -875,16 +874,8 @@ static int tcc_i2s_hw_params(
 				ret = -EINVAL;
 				break;
 			}
-			/* D-Audio tcc803x support */
-			if (pcm_mode == TRUE) {
-				tcc_dai_set_dsp_tdm_mode_valid_data(
-					i2s->dai_reg,
-					channels,
-					i2s->tdm_slot_width);
-				mclk = calc_dsp_pcm_mclk(i2s, sample_rate);
-			} else {
-				mclk = calc_cirrus_tdm_mclk(i2s, sample_rate);
-			}
+
+			mclk = calc_cirrus_tdm_mclk(i2s, sample_rate);
 			break;
 		case SND_SOC_DAIFMT_DSP_A:
 		case SND_SOC_DAIFMT_DSP_B:
