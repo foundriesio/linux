@@ -331,6 +331,7 @@ static int _venc_result_init(struct _vpu_encoder_data *vdata, VENC_INIT_t *arg)
 		if (copy_to_user(arg, &vdata->gsJpuEncInit_Info,
 						sizeof(JENC_INIT_t)))
 			return -EFAULT;
+		break;
 #endif
 #ifdef CONFIG_SUPPORT_TCC_WAVE420L_VPU_HEVC_ENC
 	case STD_HEVC_ENC:
