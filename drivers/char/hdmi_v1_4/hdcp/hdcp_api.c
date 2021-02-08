@@ -230,7 +230,7 @@ static int hdcp_read_ri(void)
 	id = 1;
 	adap = i2c_get_adapter(id);
 	if (!adap) {
-		ELOG("i2c_get_adapter(%d) error \n", id);
+		ELOG("i2c_get_adapter(%d) error\n", id);
 		return 0;
 	}
 	// set offset
@@ -247,7 +247,7 @@ static int hdcp_read_ri(void)
 
 	// read from DDC line
 	if (i2c_transfer(adap, msgs, 2) < 0) {
-		ELOG("i2c_transfer(%d) error \n", id);
+		ELOG("i2c_transfer(%d) error\n", id);
 		return 0;
 	}
 	result = (buffer[0] << 8) | buffer[1];
@@ -264,7 +264,6 @@ static void hdcp_enable_bluescreen(unsigned char enable)
 	unsigned char reg, aviYY;
 
 	ILOG("enable = %d\n", enable);
-
 	aviYY = hdcp_readb(HDMI_AVI_BYTE1);
 	if (aviYY & AVI_CS_Y422 || aviYY & AVI_CS_Y444) {
 		// YCbCr Color Space
@@ -322,7 +321,8 @@ static void set_aeskey_to_reg(unsigned char *pkey)
 
 /*
  * Set HDCP Device Private Keys. @n
- * To activate HDCP H/W, user should set AES-encrypted HDCP Device Private Keys.@n
+ * To activate HDCP H/W, user should set AES-encrypted
+ * HDCP Device Private Keys.@n
  * If user does not set this, HDCP H/W does not work.
  */
 static void hdcp_load_data(unsigned char *AES_key, unsigned char *HDCP_key)
@@ -349,7 +349,9 @@ int hdcp_api_cmd_process(unsigned int cmd, unsigned long arg)
 	switch (cmd) {
 	case HDCP_IOC_GET_HDCP_EVENT: {
 		int ret;
-		ILOG("ioctl(HDCP_IOC_GET_HDCP_EVENT)-[0x%X]\n", hdcp_struct.event);
+
+		ILOG("ioctl(HDCP_IOC_GET_HDCP_EVENT)-[0x%X]\n",
+				hdcp_struct.event);
 		// copy to user
 		ret = copy_to_user(
 			(void *)arg, (const void *)&hdcp_struct.event,
@@ -369,6 +371,7 @@ int hdcp_api_cmd_process(unsigned int cmd, unsigned long arg)
 	}
 	case HDCP_IOC_STOP_HDCP: {
 		unsigned long irqflags;
+
 		ILOG("ioctl(HDCP_IOC_STOP_HDCP)\n");
 		spin_lock_irqsave(&hdcp_struct.lock, irqflags);
 		hdcp_struct.event |= (1 << HDCP_EVENT_STOP);
@@ -379,6 +382,7 @@ int hdcp_api_cmd_process(unsigned int cmd, unsigned long arg)
 	case HDCP_IOC_ENABLE_HDCP: {
 		int ret;
 		unsigned char enable;
+
 		ILOG("ioctl(HDCP_IOC_ENABLE_HDCP)\n");
 		// copy from user
 		ret = copy_from_user(
@@ -392,6 +396,7 @@ int hdcp_api_cmd_process(unsigned int cmd, unsigned long arg)
 	case HDCP_IOC_SET_BKSV: {
 		struct hdcp_ksv Bksv;
 		int ret;
+
 		ILOG("ioctl(HDCP_IOC_SET_BKSV)\n");
 		// get arg
 		ret = copy_from_user(
@@ -405,7 +410,7 @@ int hdcp_api_cmd_process(unsigned int cmd, unsigned long arg)
 		hdcp_writeb(Bksv.ksv[3], HDCP_BKSV_3);
 		hdcp_writeb(Bksv.ksv[4], HDCP_BKSV_4);
 
-		ILOG("Bksv[0:4] = 0x%02x, 0x%02x, 0x%02x, 0x%02x, 0x%02x \n",
+		ILOG("Bksv[0:4] = 0x%02x, 0x%02x, 0x%02x, 0x%02x, 0x%02x\n",
 		     Bksv.ksv[0], Bksv.ksv[1], Bksv.ksv[2], Bksv.ksv[3],
 		     Bksv.ksv[4]);
 		break;
@@ -413,6 +418,7 @@ int hdcp_api_cmd_process(unsigned int cmd, unsigned long arg)
 	case HDCP_IOC_SET_BCAPS: {
 		int ret;
 		unsigned char Bcaps;
+
 		ILOG("ioctl(HDCP_IOC_SET_BCAPS)\n");
 		// copy from user
 		ret = copy_from_user(
@@ -428,6 +434,7 @@ int hdcp_api_cmd_process(unsigned int cmd, unsigned long arg)
 	case HDCP_IOC_GET_AKSV: {
 		struct hdcp_ksv Aksv;
 		int ret;
+
 		ILOG("ioctl(HDCP_IOC_GET_AKSV)\n");
 		// get Aksv
 		Aksv.ksv[0] = hdcp_readb(HDCP_AKSV_0);
@@ -436,7 +443,7 @@ int hdcp_api_cmd_process(unsigned int cmd, unsigned long arg)
 		Aksv.ksv[3] = hdcp_readb(HDCP_AKSV_3);
 		Aksv.ksv[4] = hdcp_readb(HDCP_AKSV_4);
 
-		ILOG("Aksv[0:4] = 0x%02x, 0x%02x, 0x%02x, 0x%02x, 0x%02x \n",
+		ILOG("Aksv[0:4] = 0x%02x, 0x%02x, 0x%02x, 0x%02x, 0x%02x\n",
 		     Aksv.ksv[0], Aksv.ksv[1], Aksv.ksv[2], Aksv.ksv[3],
 		     Aksv.ksv[4]);
 
@@ -450,6 +457,7 @@ int hdcp_api_cmd_process(unsigned int cmd, unsigned long arg)
 	case HDCP_IOC_GET_AN: {
 		struct hdcp_an An;
 		int ret;
+
 		ILOG("ioctl(HDCP_IOC_GET_AN)\n");
 		// get an
 		An.an[0] = hdcp_readb(HDCP_AN_0);
@@ -460,7 +468,7 @@ int hdcp_api_cmd_process(unsigned int cmd, unsigned long arg)
 		An.an[5] = hdcp_readb(HDCP_AN_5);
 		An.an[6] = hdcp_readb(HDCP_AN_6);
 		An.an[7] = hdcp_readb(HDCP_AN_7);
-		ILOG("An[0:7] = 0x%02x, 0x%02x, 0x%02x, 0x%02x, 0x%02x, 0x%02x, 0x%02x, 0x%02x \n",
+		ILOG("An[0:7] = 0x%02x, 0x%02x, 0x%02x, 0x%02x, 0x%02x, 0x%02x, 0x%02x, 0x%02x\n",
 		     An.an[0], An.an[1], An.an[2], An.an[3], An.an[4], An.an[5],
 		     An.an[6], An.an[7]);
 		// put to user
@@ -481,6 +489,7 @@ int hdcp_api_cmd_process(unsigned int cmd, unsigned long arg)
 			int res;
 		};
 		struct infoRi info;
+
 		ILOG("ioctl(HDCP_IOC_GET_RI)\n");
 		// get rj from RX
 		result = hdcp_read_ri();
@@ -520,6 +529,7 @@ int hdcp_api_cmd_process(unsigned int cmd, unsigned long arg)
 		int ret;
 		unsigned int result;
 		unsigned char ri0, ri1;
+
 		ILOG("ioctl(HDCP_IOC_GET_RI_REG)\n");
 		// get ri from TX
 		ri0 = hdcp_readb(HDCP_RI_0);
@@ -537,6 +547,7 @@ int hdcp_api_cmd_process(unsigned int cmd, unsigned long arg)
 	case HDCP_IOC_GET_AUTH_STATE: {
 		int ret;
 		int result = 1;
+
 		ILOG("ioctl(HDCP_IOC_GET_AUTH_STATE)\n");
 		// check AUTH state
 		if (!(hdcp_readb(HDMI_STATUS) & (1 << HDCP_AUTHEN_ACK_NUM)))
@@ -552,6 +563,7 @@ int hdcp_api_cmd_process(unsigned int cmd, unsigned long arg)
 	case HDCP_IOC_SET_HDCP_RESULT: {
 		int ret;
 		unsigned char match = 1;
+
 		ILOG("ioctl(HDCP_IOC_SET_HDCP_RESULT)\n");
 		// copy form user
 		ret = copy_from_user(
@@ -566,6 +578,7 @@ int hdcp_api_cmd_process(unsigned int cmd, unsigned long arg)
 		int ret;
 		unsigned char tmp;
 		unsigned char reg;
+
 		ILOG("ioctl(HDCP_IOC_SET_ENCRYPTION) ON\n");
 		// copy form user
 		ret = copy_from_user(
@@ -603,6 +616,7 @@ int hdcp_api_cmd_process(unsigned int cmd, unsigned long arg)
 	case HDCP_IOC_SET_BSTATUS: {
 		struct hdcp_status Bstatus;
 		int ret;
+
 		ILOG("ioctl(HDCP_IOC_SET_BSTATUS)\n");
 		// get arg
 		ret = copy_from_user(
@@ -653,6 +667,7 @@ int hdcp_api_cmd_process(unsigned int cmd, unsigned long arg)
 	case HDCP_IOC_GET_SHA1_RESULT: {
 		int ret;
 		int result = 1;
+
 		ILOG("ioctl(HDCP_IOC_GET_SHA1_RESULT)\n");
 		if (hdcp_readb(HDCP_SHA_RESULT) & HDCP_SHA1_VALID_READY) {
 			if (!(hdcp_readb(HDCP_SHA_RESULT) & HDCP_SHA1_VALID))
@@ -672,6 +687,7 @@ int hdcp_api_cmd_process(unsigned int cmd, unsigned long arg)
 	case HDCP_IOC_GET_KSV_LIST_READ_DONE: {
 		int ret;
 		unsigned char reg;
+
 		reg = hdcp_readb(HDCP_KSV_LIST_CON) & HDCP_KSV_LIST_READ_DONE;
 		// copy to user
 		ret = copy_to_user(
@@ -707,10 +723,11 @@ int hdcp_api_cmd_process(unsigned int cmd, unsigned long arg)
 		break;
 	}
 	case HDCP_SEC_IOCTL_SET_KEY: {
-		int ret;
 		unsigned char *regData;
+
 		TRACE;
-		regData = kmalloc(16+288, GFP_KERNEL); //288+16 means keycontents plus key size
+		//288+16 means keycontents plus key size
+		regData = kmalloc(16+288, GFP_KERNEL);
 		if (regData == NULL) {
 			return -ENOMEM;
 		}
@@ -719,8 +736,8 @@ int hdcp_api_cmd_process(unsigned int cmd, unsigned long arg)
 			    16+288)) {
 			return -EFAULT;
 		}
-		//print_hex_dump_bytes("DATA1: ", DUMP_PREFIX_NONE, &regData[0], 16);
-		//print_hex_dump_bytes("DATA2: ", DUMP_PREFIX_NONE, &regData[16], 288);
+		//print_hex_dump_bytes("D1:",DUMP_PREFIX_NONE,&regData[0],16);
+		//print_hex_dump_bytes("D2:",DUMP_PREFIX_NONE,&regData[16],288);
 		hdcp_load_data(&regData[0], &regData[16]);
 		kfree(regData);
 		break;
