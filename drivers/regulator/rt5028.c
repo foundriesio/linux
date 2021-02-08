@@ -33,7 +33,7 @@
 #include <linux/regulator/rt5028.h>
 //#define DEBUG
 #if defined(DEBUG)
-#define dbg(msg...) printk("RT5028: " msg)
+#define dbg(msg...) pr_info("RT5028: " msg)
 #else
 #define dbg(msg...)
 #endif
@@ -404,7 +404,7 @@ static int rt5028_buck_set_voltage(struct regulator_dev *rdev, int min_uV, int m
 	udelay(50);
 
 	if(ret != 0)
-		printk("%s(reg:%x, val:%x) - fail(%d)\n", __func__, reg, value, ret);
+		dev_info(&rt5028_i2c_client->dev, "%s(reg:%x, val:%x) - fail(%d)\n", __func__, reg, value, ret);
 
 	return ret;
 }
@@ -1106,7 +1106,7 @@ static int rt5028_pmic_probe(struct i2c_client *client, const struct i2c_device_
 	rt5028->timer.data = (unsigned long)rt5028;
 	rt5028->timer.function = rt5028_timer_func;
 	dev_info(&client->dev, "RT5028 regulator driver loaded\n");
-	printk("RT5028 regulator driver loaded\n");
+
 	return 0;
 
 //err_input_register_device_failed:
