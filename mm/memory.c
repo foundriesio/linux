@@ -4708,6 +4708,7 @@ unlock:
 out:
 	return -EINVAL;
 }
+EXPORT_SYMBOL_GPL(follow_pte);
 
 /**
  * follow_pfn - look up PFN at a user virtual address
