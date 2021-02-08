@@ -37,7 +37,6 @@ struct olpc_ec_priv {
 	struct mutex cmd_lock;
 
 	/* DCON regulator */
-	struct regulator_dev *dcon_rdev;
 	bool dcon_enabled;
 
 	/* Pending EC commands */
@@ -394,17 +393,19 @@ static struct regulator_ops dcon_regulator_ops = {
 };
 
 static const struct regulator_desc dcon_desc = {
-	.name	= "dcon",
-	.id	= 0,
-	.ops	= &dcon_regulator_ops,
-	.type	= REGULATOR_VOLTAGE,
-	.owner	= THIS_MODULE,
+	.name		= "dcon",
+	.id		= 0,
+	.ops		= &dcon_regulator_ops,
+	.type		= REGULATOR_VOLTAGE,
+	.owner		= THIS_MODULE,
+	.enable_time	= 25000,
 };
 
 static int olpc_ec_probe(struct platform_device *pdev)
 {
 	struct olpc_ec_priv *ec;
 	struct regulator_config config = { };
+	struct regulator_dev *regulator;
 	int err;
 
 	if (!ec_driver)
@@ -426,26 +427,26 @@ static int olpc_ec_probe(struct platform_device *pdev)
 
 	/* get the EC revision */
 	err = olpc_ec_cmd(EC_FIRMWARE_REV, NULL, 0, &ec->version, 1);
-	if (err) {
-		ec_priv = NULL;
-		kfree(ec);
-		return err;
-	}
+	if (err)
+		goto error;
 
 	config.dev = pdev->dev.parent;
 	config.driver_data = ec;
 	ec->dcon_enabled = true;
-	ec->dcon_rdev = devm_regulator_register(&pdev->dev, &dcon_desc,
-								&config);
-	if (IS_ERR(ec->dcon_rdev)) {
+	regulator = devm_regulator_register(&pdev->dev, &dcon_desc, &config);
+	if (IS_ERR(regulator)) {
 		dev_err(&pdev->dev, "failed to register DCON regulator\n");
-		err = PTR_ERR(ec->dcon_rdev);
-		kfree(ec);
-		return err;
+		err = PTR_ERR(regulator);
+		goto error;
 	}
 
 	ec->dbgfs_dir = olpc_ec_setup_debugfs();
 
+	return 0;
+
+error:
+	ec_priv = NULL;
+	kfree(ec);
 	return err;
 }
 
