@@ -1,0 +1,19 @@
+* Device Tree Bindings for Telechips Reverse Switch Driver
+
+Required properties:
+
+- compatible : property name that conveys the platform architecture identifiers,
+               as 'telechips,switch'
+
+Example
+-------
+	switch0:switch0 {
+		compatible = "telechips,switch";
+		status = "okay";
+
+		pinctrl-names = "default";
+		pinctrl-0 = <&switch_mb23>;
+
+		switch-gpios = <&gpmb 23 1>;
+		switch-active = <0>;
+	};

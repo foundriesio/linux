@@ -1,0 +1,16 @@
+* Device Tree Bindings for ISP-IOMMU  (IOMMU Driver for Image Signal Processor)
+
+Required properties:
+
+- status     : disable or enable the device node
+- compatible : property name that conveys the platform architecture identifiers,
+               as 'maxim,max96701'
+- iommu      : specifies iommu configuration
+
+example
+-------
+	isp_iommu: isp_iommu {
+		compatible = "telechips,tcc-isp-iommu";
+		iommus = <&smmu_dbus 0x90 0x7f00>;
+		status = "okay";
+	};

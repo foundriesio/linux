@@ -1,0 +1,25 @@
+* Device Tree Bindings for MAX9286
+
+Required properties:
+
+- status     : disable or enable the device node
+- compatible : property name that conveys the platform architecture identifiers,
+               as 'maxim,max9286'
+- reg        : I2C slave address
+- port       : specifies the endpoint of the sensor
+- rst-gpios  : specifies reset pin number
+- intb-gpios : specifies interrupt pin number
+- pwd-gpios  : specifies power pin number
+
+example
+-------
+	max9286: max9286 {
+		/* deserializer */
+		status		= "okay";
+		compatible	= "maxim,max9286";
+		pwd-gpios	= <&gpg 5 1>;
+		intb-gpios	= <&gph 11 1>;
+		//rst-gpios	= <&gpb 15 1>;	/* mcnex module sensor */
+		reg		= <0x48>;	// 0x90 >> 1
+		ports {
+		      ...
