@@ -1,0 +1,49 @@
+* Device Tree Bindings for Telechips Video Input Path Driver
+
+VIN (Video INput path) is used to specify the path to receive frame data from
+the sensor.
+
+Required properties:
+
+- status     : disable or enable the device node
+- compatible : property name that conveys the platform architecture identifiers,
+               as 'telechips,switch'
+- cifport    : specifies the port number of CIF (camera interface)
+- clocks     : specifies clock source of video-input
+- rdma       : specifies the index of RDMA used in VIN path
+- use_pgl    : specifies whether PGL (Parking Guide Lines) would be mixed or not
+- vin        : specifies the index of VIN
+- viqe       : specifies the index of VIQE
+- deints     : specifies the index of Simple Deinterlacer
+- scaler     : specifies the index of scaler
+- wmixer     : specifies the index of wmixer
+- wdma       : specifies the index of wdma
+- fifo       : specifies the index of fifo
+
+Example
+-------
+	videoinput0: videoinput@0 {
+		status		= "okay";
+		compatible	= "telechips,video-input";
+		cifport		= <&cifport 0>;
+		clocks		= <&clk_ddi DDIBUS_VIOC>;
+		rdma		= <&vioc_rdma		VIOC_RDMA16>;
+		use_pgl		= <1>;
+		vin		= <&vioc_vin		VIOC_VIN00>;
+		viqe		= <&vioc_viqe		VIOC_VIQE1>;
+		viqe_set	= <&viqe_hidden>;
+		deintls		= <&vioc_deintls	VIOC_DEINTLS0>;
+		scaler		= <&vioc_scaler		VIOC_SCALER2>;
+		wmixer		= <&vioc_wmix		VIOC_WMIX5>;
+		wdma		= <&vioc_wdma		VIOC_WDMA05>;
+		fifo		= <&vioc_fifo		VIOC_FIFO0>;
+		port {
+			videoinput0_in: endpoint {
+				remote-endpoint = <&adv7182_out>;
+				io-direction	= "input";
+				bus-type	= <0>;
+				stream-enable	= <0>;	// VIN_CTRL.SE
+				flush-vsync	= <0>;	// VIN_MISC.FVS
+			};
+		};
+	};

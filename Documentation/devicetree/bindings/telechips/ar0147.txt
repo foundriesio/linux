@@ -1,0 +1,26 @@
+* Device Tree Bindings for AR0147 (ISP-less camera module)
+
+AR0147 is camera image sensor which has no inner-ISP. Basically, it is disabled
+by default for Telechips EVB.
+
+Required properties:
+
+- status     : disable or enable the device node
+- compatible : property name that conveys the platform architecture identifiers,
+               as 'onsemiconductor,ar0147'
+- reg        : I2C slave address
+- port       : specifies the endpoint of the sensor (output only)
+
+example
+-------
+	ar0147: ar0147 {
+		status		= "disabled";
+		compatible	= "onsemiconductor,ar0147";
+		reg		= <0x10>;
+		port {
+			ar0147_out: endpoint {
+				remote-endpoint = <&max96701_in>;
+				io-direction	= "output";
+			};
+		};
+	};

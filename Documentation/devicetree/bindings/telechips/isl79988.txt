@@ -1,0 +1,32 @@
+* Device Tree Bindings for ISL79988 (Embedded Video Decoder)
+
+ISL79988 is video decoder used in Telechips EVB.
+
+Required properties:
+
+- status     : disable or enable the device node
+- compatible : property name that conveys the platform architecture identifiers,
+               as 'adi,isl79988'
+- reg        : I2C slave address
+- cifport    : specifies CIF port
+- rst-gpios  : specifies reset pin number
+- port       : specifies the endpoint of the sensor
+
+example
+-------
+	isl79988: isl79988 {
+		status		= "okay";
+		compatible	= "adi,isl79988";
+		pinctrl-names	= "default";
+		pinctrl-0	= <&cam0_clk &cam0_data_8bit>;
+		cifport		= <0>;
+		rst-gpios	= <&gpb 14 0>;
+		reg		= <0x44>;	// 0x88 >> 1
+		port {
+			isl79988_out: endpoint {
+				remote-endpoint = <&videoinput0_in>;
+				io-direction	= "output";
+				bus-width	= <8>;
+			};
+		};
+	};

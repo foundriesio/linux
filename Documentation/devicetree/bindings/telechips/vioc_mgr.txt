@@ -1,0 +1,21 @@
+* Device Tree Bindings for Telechips VIOC Manager
+
+Required properties:
+
+- status     : disable or enable the device node
+- compatible : property name that conveys the platform architecture identifiers,
+               as 'telechips,switch'
+- mbox-names : the name of mailbox
+- mboxes     : specifies the channel for the mailbox (IPC)
+- mbox-id    : specifies the mailbox id for vioc manager
+
+Example
+-------
+	vioc_mgr0: vioc_mgr@0 {
+		compatible = "telechips,vioc_mgr";
+		device-name ="vioc_mgr_sub";
+		mbox-names ="sub-vioc";
+		mboxes = <&cb_mbox TCC_CB_MBOX_VIOC>;
+		mbox-id = TCC_MBOX_VIOC_ID;
+		status = "okay";
+	};
