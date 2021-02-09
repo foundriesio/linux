@@ -113,7 +113,7 @@ static void af_alloc(struct ion_buffer *buffer, struct ion_heap *heap)
 			pr_debug("%s af_alloc_index=%d, af_free_index=%d,",
 				 __func__, carveout_heap->af_alloc_index,
 				carveout_heap->af_free_index);
-			pr_debug("addr:0x%lx, size:0x%x, index_check_cnt:%d\n",
+			pr_debug("addr:0x%lx, size:0x%zx, index_check_cnt:%d\n",
 				 paddr,
 				 buffer->size, index_check_cnt);
 			#endif
@@ -243,7 +243,7 @@ static int block_auto_free(struct ion_buffer *buffer, struct ion_heap *heap,
 	pr_debug("%s Success. af_alloc_index=%d, af_free_index=%d",
 		 __func__, carveout_heap->af_alloc_index,
 		 carveout_heap->af_free_index);
-	pr_debug(" size=0x%lx, avail_size=0x%x\n",
+	pr_debug(" size=0x%lx, avail_size=0x%zx\n",
 		 size, gen_pool_avail(carveout_heap->pool));
 	#endif
 	return 1;
@@ -257,7 +257,7 @@ static unsigned long ion_carveout_allocate(struct ion_heap *heap,
 	unsigned long offset = gen_pool_alloc(carveout_heap->pool, size);
 
 	#ifdef ION_AUTOFREE_DEBUG
-	pr_debug("%s-heap_name:%s Alloc %lx - 0x%lx avail_mem:0x%x\n",
+	pr_debug("%s-heap_name:%s Alloc %lx - 0x%lx avail_mem:0x%zx\n",
 		 __func__, heap->name, offset, size,
 		 gen_pool_avail(carveout_heap->pool));
 	#endif
@@ -286,7 +286,7 @@ static void ion_carveout_free(struct ion_heap *heap, unsigned long addr,
 		return;
 	gen_pool_free(carveout_heap->pool, addr, size);
 	#ifdef ION_AUTOFREE_DEBUG
-	pr_debug("%s-heap_name:%s, Free 0x%lx - 0x%lx avail_mem:0x%x\n",
+	pr_debug("%s-heap_name:%s, Free 0x%lx - 0x%lx avail_mem:0x%zx\n",
 		 __func__, heap->name, addr, size,
 		 gen_pool_avail(carveout_heap->pool));
 	#endif
