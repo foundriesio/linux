@@ -96,11 +96,11 @@ struct dai_reg_t {
 
 #if defined(TCC805x_CS_SND)
 enum TCC_DAI_TDM_RX_CH {
-	TCC_DAI_TDM_RX_2CH = 2,	
-	TCC_DAI_TDM_RX_4CH = 4,	
-	TCC_DAI_TDM_RX_8CH = 8,	
-	TCC_DAI_TDM_RX_16CH = 16,	
-	TCC_DAI_TDM_RX_32CH = 32	
+	TCC_DAI_TDM_RX_2CH = 2,
+	TCC_DAI_TDM_RX_4CH = 4,
+	TCC_DAI_TDM_RX_8CH = 8,
+	TCC_DAI_TDM_RX_16CH = 16,
+	TCC_DAI_TDM_RX_32CH = 32
 };
 
 enum TCC_DAI_TDM_SLOT_SIZE {
@@ -400,22 +400,23 @@ static inline void tcc_dai_set_i2s_tdm_mode(
 
 #if defined(PCM_INTERFACE)
 static inline void tcc_dai_set_dsp_pcm_word_len(
-	void __iomem *base_addr, 
+	void __iomem *base_addr,
 	uint32_t bit_width)
 {
 	uint32_t value = readl(base_addr + TCC_DAI_DAMR_OFFSET);
 
 	value &= ~(DAMR_DSP_WORD_LEN_Msk);
 
-	value |= (bit_width == (uint32_t)24) ? 
-		((uint32_t) DAMR_DSP_WORD_LEN_24BIT) : ((uint32_t) DAMR_DSP_WORD_LEN_16BIT);
+	value |= (bit_width == (uint32_t)24) ?
+		((uint32_t) DAMR_DSP_WORD_LEN_24BIT) :
+		((uint32_t) DAMR_DSP_WORD_LEN_16BIT);
 
 	dai_writel(value, base_addr + TCC_DAI_DAMR_OFFSET);
 }
 
 static inline void tcc_dai_set_dsp_pcm_mode(
-	void __iomem *base_addr, 
-	uint32_t slots, 
+	void __iomem *base_addr,
+	uint32_t slots,
 	uint32_t slot_width, bool late)
 {
 	uint32_t damr = readl(base_addr + TCC_DAI_DAMR_OFFSET);
@@ -442,13 +443,13 @@ static inline void tcc_dai_set_dsp_pcm_mode(
 	mccr0 |= MCCR0_FRAME_CLK_DIV_USE;
 
 	mccr0 |= MCCR0_FRAME_INVERT_DISABLE;
-	
-	if(slot_width == (uint32_t)32)
+
+	if (slot_width == (uint32_t)32)
 		mccr0 |= MCCR0_TDM_MODE_0;
 	else
 		mccr0 |= MCCR0_TDM_MODE_1;
 
-	if(late == TRUE)
+	if (late == TRUE)
 		mccr0 |= MCCR0_MODE_SELECT_ENABLE; //DSP-B
 
 	dai_writel(damr, base_addr + TCC_DAI_DAMR_OFFSET);
@@ -479,7 +480,7 @@ static inline void tcc_dai_set_cirrus_tdm_mode(
 		| DAMR_DSP_MODE_Msk);
 
 #if defined(TCC805x_CS_SND)
-	if((chip_rev == 1)&&(chip_name == 0x8050)) {
+	if ((chip_rev == 1) && (chip_name == 0x8050)) {
 		mccr0 &=
 			~(MCCR0_FRAME_SIZE_Msk
 				| MCCR0_FRAME_CLK_DIV_Msk
@@ -500,7 +501,7 @@ static inline void tcc_dai_set_cirrus_tdm_mode(
 				| MCCR0_FRAME_BEGIN_POSITION_Msk
 				| MCCR0_FRAME_END_POSTION_Msk);
 #if defined(TCC805x_CS_SND)
-	} 
+	}
 #endif
 
 
@@ -526,7 +527,7 @@ static inline void tcc_dai_set_cirrus_tdm_mode(
 		mccr0 |= MCCR0_FRAME_BEGIN_EARLY_MODE;
 
 #if defined(TCC805x_CS_SND)
-		if((chip_rev == 1)&&(chip_name == 0x8050)) {
+		if ((chip_rev == 1) && (chip_name == 0x8050)) {
 			if (late == TRUE)
 				mccr0 |= MCCR0_MODE_SELECT_ENABLE;
 		} else {
@@ -536,7 +537,7 @@ static inline void tcc_dai_set_cirrus_tdm_mode(
 			else
 				mccr0 |= MCCR0_MODE_SELECT_ENABLE;
 #if defined(TCC805x_CS_SND)
-		} 
+		}
 #endif
 #if defined(TCC803x_ES_SND)
 	}
@@ -627,16 +628,16 @@ static inline void tcc_dai_set_dsp_tdm_mode_rx_channel(
 	int32_t channels)
 {
 	uint32_t mccr1 = readl(base_addr + TCC_DAI_MCCR1_OFFSET);
-	int32_t value = 
-		(channels == TCC_DAI_TDM_RX_2CH)?
+	int32_t value =
+		(channels == TCC_DAI_TDM_RX_2CH) ?
 			MCCR1_TDM_RX_CH_2CH :
-		(channels == TCC_DAI_TDM_RX_4CH)?
+		(channels == TCC_DAI_TDM_RX_4CH) ?
 			MCCR1_TDM_RX_CH_4CH :
-		(channels == TCC_DAI_TDM_RX_8CH)?
+		(channels == TCC_DAI_TDM_RX_8CH) ?
 			MCCR1_TDM_RX_CH_8CH :
-		(channels == TCC_DAI_TDM_RX_16CH)?
+		(channels == TCC_DAI_TDM_RX_16CH) ?
 			MCCR1_TDM_RX_CH_16CH :
-		(channels == TCC_DAI_TDM_RX_32CH)?
+		(channels == TCC_DAI_TDM_RX_32CH) ?
 			MCCR1_TDM_RX_CH_32CH :
 			MCCR1_TDM_RX_CH_2CH;
 
@@ -655,7 +656,7 @@ static inline void tcc_dai_set_dsp_tdm_mode_rx_early(
 
 	mccr1 &= ~MCCR1_TDM_RX_EARLY_Msk;
 
-	if(enable)
+	if (enable)
 		mccr1 |= MCCR1_TDM_RX_EARLY_ENABLE;
 	else
 		mccr1 |= MCCR1_TDM_RX_EARLY_DISABLE;
@@ -672,7 +673,7 @@ static inline void tcc_dai_set_rx_bclk_delay(
 
 	mccr1 &= ~MCCR1_TDM_RX_FDBK_Msk;
 
-	if(enable)
+	if (enable)
 		mccr1 |= MCCR1_TDM_RX_FDBK_ENABLE;
 	else
 		mccr1 |= MCCR1_TDM_RX_FDBK_DISABLE;
@@ -880,7 +881,7 @@ static inline uint32_t tcc_dai_set_clk_mode(
 	enum TCC_DAI_MCLK_DIV mclk_div,
 	enum TCC_DAI_BCLK_RATIO bclk_ratio,
 	bool tdm_mode)
-#else	// defined(CONFIG_ARCH_TCC803X, CONFIG_ARCH_TCC899X, CONFIG_ARCH_TCC901X)
+#else // defined(CONFIG_ARCH_TCC803X, CONFIG_ARCH_TCC899X, CONFIG_ARCH_TCC901X)
 #if defined(TCC805x_CS_SND)
 static inline void tcc_dai_set_clk_mode(
 	void __iomem *base_addr,
