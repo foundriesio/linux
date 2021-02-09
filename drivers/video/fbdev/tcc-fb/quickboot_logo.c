@@ -135,7 +135,7 @@ int load_565rle_image(char *filename)
 	}
 
 	sys_lseek(fd, (off_t)0, 0);
-	data = (unsigned short *)kmalloc(count, GFP_KERNEL);
+	data = kmalloc(count, GFP_KERNEL);
 	if (!data) {
 		pr_err("[ERR][LOGO] %s: Can not alloc data\n", __func__);
 		err = -ENOMEM;

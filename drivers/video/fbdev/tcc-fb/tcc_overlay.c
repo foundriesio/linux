@@ -158,13 +158,17 @@ static void tcc_overlay_configure_AFBCDEC(
 		VIOC_AFBCDec_TurnOFF(pAFBC_Dec);
 		VIOC_CONFIG_FBCDECPath(afbc_dec_id, rdmaPath, 0);
 
-		//VIOC_CONFIG_SWReset(VIOC_AFBCDEC + dec_num, VIOC_CONFIG_RESET);
-		//VIOC_CONFIG_SWReset(VIOC_AFBCDEC + dec_num, VIOC_CONFIG_CLEAR);
+		//VIOC_CONFIG_SWReset(VIOC_AFBCDEC + dec_num,
+		//	VIOC_CONFIG_RESET);
+		//VIOC_CONFIG_SWReset(VIOC_AFBCDEC + dec_num,
+		//	VIOC_CONFIG_CLEAR);
 	}
 }
 #endif
 
-static int tcc_overlay_mmap(struct file *file, struct vm_area_struct *vma)
+static int tcc_overlay_mmap(
+	struct file *file,
+	struct vm_area_struct *vma)
 {
 	if (range_is_allowed(vma->vm_pgoff, vma->vm_end - vma->vm_start) < 0) {
 		pr_err("[ERR][OVERLAY] this address is not allowed\n");

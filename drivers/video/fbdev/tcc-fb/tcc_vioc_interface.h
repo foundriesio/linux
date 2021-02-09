@@ -19,6 +19,7 @@
 #ifndef __TCC_VIOC_INTERFACE_H__
 #define __TCC_VIOC_INTERFACE_H__
 
+#include <video/tcc/tccfb_ioctrl.h>
 #include "tcc_vsync.h"
 
 extern unsigned int vsync_rdma_off[VSYNC_MAX];
@@ -53,6 +54,11 @@ void tca_edr_inc_check_count(
 	unsigned int bInit_all);
 
 unsigned int tca_get_main_decompressor_num(void);
+
+void tca_vioc_displayblock_powerOn(
+	struct tcc_dp_device *pDisplayInfo,
+	int specific_pclk);
+
 
 #endif /*__TCC_VIOC_INTERFACE_H__*/
 

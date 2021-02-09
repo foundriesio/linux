@@ -1,0 +1,52 @@
+This is for
+	'telechips,hdmi640x480tu'
+	'telechips,hdmi1280x720'
+	'telechips,hdmi1920x720'
+	'telechips,adv7613'
+	'telechips,hdmi1920x1080'
+	'telechips,hdmi4k'
+	'telechips,pvlbjt_020_01'
+
+
+-------------------------------------------------------------------------------
+
+Example:
+    hdmi640x480tu {
+        compatible = "telechips,hdmi640x480tu";
+        status = "okay";
+    };
+
+Example:
+    panel_1920x720 {
+        status = "disable";
+        compatible = "telechips,hdmi1920x720";
+        clocks = <&clk_peri PERI_LCD0>, <&clk_peri PERI_LCD1>, <&clk_peri PERI_HDMI>, <&clk_ddi DDIBUS_HDMI>, <&clk_isoip_top ISOIP_TOP_HDMI>;
+        clock-names = "lcdc0-clk", "lcdc1-clk", "hdmi-pclk", "hdmi-hclk", "hdmi-phy";
+    };
+
+Example:
+       hdmi_adv7613 {
+            compatible = "telechips,adv7613";
+            reg=<0x4C>;
+            hdmi-ext-panel = <1>; // HDMI EXT PANEL
+            main-slave = <0x4C>;
+            cec-slave = <0x40>;
+            info-slave = <0x3E>;
+            dpll-slave = <0x26>;
+            ksv-slave = <0x32>;
+            edid-slave = <0x36>;
+            hdmi-slave = <0x34>;
+            cp-slave = <0x22>;
+            lvds-slave = <0x60>;
+            backlight-on-gpios = <&gpma 27 0>;  // BACKLIGHT ON
+            power-on-gpios = <&gpc 8 0>;        // LCD_ON
+            reset-gpios = <&gpc 9 0>;       // LCD_RST
+            pinctrl-0 = <&hdmi_panel>;
+        };
+
+Example:
+    panel {
+        status = "okay";
+        compatible = "telechips,hdmi1920x1080";
+    };
+

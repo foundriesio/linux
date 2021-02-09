@@ -1,0 +1,14 @@
+This is for 'telechips,lvds-pvlbjt020'.
+
+Required properties for display:
+	-compatible:
+		"telechips,lvds-pvlbjt020"
+
+-------------------------------------------------------------------------------
+
+Example:
+   pvlbjt020 {
+        compatible = "telechips,lvds-pvlbjt020";
+        status = "okay";
+    };
+
