@@ -187,7 +187,7 @@ static long tcc_clk_register(struct device_node *np, const struct clk_ops *ops)
 				       GFP_KERNEL);
 		ret = of_clk_parent_fill(np, parent_names, init.num_parents);
 		if (ret != 0) {
-			pr_debug("[DEBUG][tcc_clk][%s] %d num of parents exists\n",
+			pr_debug("[DEBUG][tcc_clk][%s] %ld num of parents exists\n",
 				__func__, ret);
 		}
 		init.parent_names = parent_names;

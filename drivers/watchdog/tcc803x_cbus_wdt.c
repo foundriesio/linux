@@ -18,7 +18,6 @@
 #include <linux/irq.h>
 #include <linux/uaccess.h>
 #include <linux/arm-smccc.h>
-#include <linux/printk.h>
 #include <soc/tcc/tcc-sip.h>
 
 #define TCC_WDT_DEBUG	0
