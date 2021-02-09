@@ -130,11 +130,25 @@ struct extent_io_ops {
 				  struct extent_state *orig, u64 split);
 };
 
+enum {
+	IO_TREE_FS_INFO_FREED_EXTENTS0,
+	IO_TREE_FS_INFO_FREED_EXTENTS1,
+	IO_TREE_INODE_IO,
+	IO_TREE_INODE_IO_FAILURE,
+	IO_TREE_RELOC_BLOCKS,
+	IO_TREE_TRANS_DIRTY_PAGES,
+	IO_TREE_ROOT_DIRTY_LOG_PAGES,
+	IO_TREE_LOG_CSUM_RANGE,
+	IO_TREE_SELFTEST,
+};
+
 struct extent_io_tree {
 	struct rb_root state;
 	struct address_space *mapping;
 	u64 dirty_bytes;
 	int track_uptodate;
+	/* Who owns this io tree, should be one of IO_TREE_* */
+	u8 owner;
 	spinlock_t lock;
 	const struct extent_io_ops *ops;
 };
@@ -264,7 +278,7 @@ typedef struct extent_map *(get_extent_t)(struct btrfs_inode *inode,
 					  int create);
 
 void extent_io_tree_init(struct extent_io_tree *tree,
-			 struct address_space *mapping);
+			 struct address_space *mapping, unsigned int owner);
 void extent_io_tree_release(struct extent_io_tree *tree);
 int try_release_extent_mapping(struct extent_map_tree *map,
 			       struct extent_io_tree *tree, struct page *page,

@@ -267,13 +267,14 @@ void extent_io_exit(void)
 }
 
 void extent_io_tree_init(struct extent_io_tree *tree,
-			 struct address_space *mapping)
+			 struct address_space *mapping, unsigned int owner)
 {
 	tree->state = RB_ROOT;
 	tree->ops = NULL;
 	tree->dirty_bytes = 0;
 	spin_lock_init(&tree->lock);
 	tree->mapping = mapping;
+	tree->owner = owner;
 }
 
 void extent_io_tree_release(struct extent_io_tree *tree)
