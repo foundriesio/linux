@@ -20,6 +20,7 @@
 #include <linux/stddef.h>
 #include <linux/mailbox/tcc805x_multi_mailbox/tcc805x_multi_mbox.h>
 #include <dt-bindings/mailbox/tcc805x_multi_mailbox/tcc_mbox_ch.h>
+#include <soc/tcc/chipinfo.h>
 
 #define Hw37		(1LL << 37)
 #define Hw36		(1LL << 36)
@@ -122,6 +123,8 @@
 
 #define SSS_MBOX_STATUS_ADDR (0x1E020000)
 #define SSS_MBOX_DATA_ADDR (0x1E022000)
+#define CHIP_REVISION_ES (0x00000000)
+#define CHIP_REVISION_CS (0x00000001)
 
 #define TCC_MBOX_CH_DISALBE (0)
 #define TCC_MBOX_CH_ENALBE  (1)
@@ -129,6 +132,7 @@
 #define LOG_TAG	("MULTI_CH_MBOX_DRV")
 
 static int32_t mbox_verbose_mode;
+static uint32_t chip_rev;
 
 #ifndef char_t
 typedef char char_t;
@@ -342,6 +346,36 @@ static ssize_t debug_level_show(struct device *dev,
 static ssize_t debug_level_store(struct device *dev,
 			struct device_attribute *attr, const char_t *buf,
 			size_t count);
+
+static void sss_busy_check(void);
+static void sss_set_func_id(void);
+
+static void sss_busy_check(void)
+{
+	void __iomem *sss_status_vaddr = NULL;
+
+	/* Wait until SSS mbox busy is 0 */
+	sss_status_vaddr =
+		ioremap_nocache((phys_addr_t)SSS_MBOX_STATUS_ADDR, (ulong)64);
+	while ((readl_relaxed(sss_status_vaddr) & (uint32_t)0x01)
+	       == (uint32_t)0x01) {
+		;
+	}
+
+	iounmap(sss_status_vaddr);
+}
+
+static void sss_set_func_id(void)
+{
+	void __iomem *sss_data_vaddr = NULL;
+
+	/*Set funcID(0x02) to SSS mailbox */
+	sss_data_vaddr =
+		ioremap_nocache((phys_addr_t)SSS_MBOX_DATA_ADDR, (ulong)64);
+	writel_relaxed((uint32_t)0x02, sss_data_vaddr);
+	iounmap(sss_data_vaddr);
+}
+
 
 static ssize_t debug_level_show(struct device *dev,
 			struct device_attribute *attr, char_t *buf)
@@ -763,24 +797,12 @@ static int32_t tcc_mbox_send_message(struct mbox_chan *chan,
 				writel_relaxed(chan_info->header1.cmd,
 					mdev->base + MBOXTXD(0));
 
-			/* Wait until SSS mbox busy is 0 in case of HSM */
-				if (strncmp(chan_info->mbox_id, "HSM",
-					(size_t)3) == (int32_t)0) {
-					void __iomem *sss_status_vaddr = NULL;
-
-					sss_status_vaddr =
-					ioremap_nocache(
-					(phys_addr_t)SSS_MBOX_STATUS_ADDR,
-					(ulong)64);
-
-					while ((readl_relaxed(sss_status_vaddr)
-						& (uint32_t)0x01)
-						== (uint32_t)0x01)
-						{
-							;
-						}
-
-					iounmap(sss_status_vaddr);
+				/* Required only on ES chip and HSM */
+				if ((chip_rev == CHIP_REVISION_ES)
+				    && (strncmp(chan_info->mbox_id, "HSM",
+						(size_t)3)
+					== (int32_t)0)) {
+					sss_busy_check();
 				}
 
 				/* enable tx done irq. */
@@ -792,18 +814,12 @@ static int32_t tcc_mbox_send_message(struct mbox_chan *chan,
 				writel_relaxed((uint32_t)OEN_BIT,
 					mdev->base + MBOXCTR_SET);
 
-			/*Set funcID(0x02) to SSS mailbox in case of HSM */
-				if (strncmp(chan_info->mbox_id, "HSM", (size_t)3)
-					== (int32_t)0) {
-					void __iomem *sss_data_vaddr = NULL;
-
-					sss_data_vaddr =
-					ioremap_nocache(
-					(phys_addr_t)SSS_MBOX_DATA_ADDR,
-					(ulong)64);
-					writel_relaxed((uint32_t)0x02,
-						sss_data_vaddr);
-					iounmap(sss_data_vaddr);
+				/* Required only on ES chip and HSM */
+				if ((chip_rev == CHIP_REVISION_ES)
+				    && (strncmp(chan_info->mbox_id, "HSM",
+						(size_t)3)
+					== (int32_t)0)) {
+					sss_set_func_id();
 				}
 
 				ret = tcc_mbox_wait_event_timeout(
@@ -1382,6 +1398,9 @@ static int32_t tcc_multich_mbox_probe(struct platform_device *pdev)
 	} else {
 		ret = -EINVAL;
 	}
+
+	/* Get the chip revision, ES:0 CS:1 */
+	chip_rev = (uint32_t)get_chip_rev();
 
 	/* read dtb node */
 	if (ret == 0) {
