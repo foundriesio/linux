@@ -327,10 +327,10 @@ static int tcc_gmac_set_wol(struct net_device *dev, struct ethtool_wolinfo *wol)
 
 	if ((unsigned int)wol->wolopts == (unsigned int)0)
 		device_set_wakeup_enable(priv->device,
-					 ((unsigned int)0 != (unsigned int)0));
+					 false);
 	else
 		device_set_wakeup_enable(priv->device,
-					 ((unsigned int)0 == (unsigned int)0));
+					 true);
 
 	spin_lock_irq(&priv->lock);
 	priv->wolopts = (int)wol->wolopts;
