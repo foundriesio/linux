@@ -144,7 +144,7 @@ struct hdcp_ri_info {
 
 #define HDCP_IOC_BLANK _IOW(HDCP_IOC_MAGIC, 50, unsigned int)
 
-#define HDCP_SEC_IOCTL_SET_KEY	_IOW(HDCP_IOC_MAGIC,101,void *)
+#define HDCP_SEC_IOCTL_SET_KEY	_IOW(HDCP_IOC_MAGIC, 101, void *)
 
 
 /*** IOR ***/

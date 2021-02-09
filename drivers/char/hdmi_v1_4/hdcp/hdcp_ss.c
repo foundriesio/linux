@@ -51,10 +51,12 @@ static ssize_t store_status(
 	struct device *dev, struct device_attribute *attr, const char *buf,
 	size_t count)
 {
-	sscanf(buf, "%s", hdcp_status);
+	int r;
+
+	r = sscanf(buf, "%s", hdcp_status);
 	return strnlen(buf, PAGE_SIZE);
 }
-static DEVICE_ATTR(status, S_IRUGO | S_IWUSR, show_status, store_status);
+static DEVICE_ATTR(status, 0644, show_status, store_status);
 
 void hdcp_attr_status(const char *status)
 {
@@ -92,6 +94,7 @@ static irqreturn_t hdcp_handler(int irq, void *dev_id)
 static unsigned int hdcp_poll(struct file *file, poll_table *wait)
 {
 	unsigned int mask = 0;
+
 	mask = hdcp_api_poll_chk(file, wait);
 	return mask;
 }
@@ -126,6 +129,7 @@ static struct miscdevice hdcp_misc_device = {
 static __init int hdcp_init(void)
 {
 	int ret = -ENODEV;
+
 	ILOG("\n");
 	ret = misc_register(&hdcp_misc_device);
 	if (ret < 0) {
