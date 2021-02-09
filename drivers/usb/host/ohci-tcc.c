@@ -234,7 +234,8 @@ static int32_t tcc_ohci_select_pmm(ulong reg_base, int32_t mode,
 		 * clear power commands
 		 */
 		ohci_reg->HcRhDescriptorA &= ~RH_A_NPS;
-		ohci_reg->HcRhDescriptorA |= (ulong)TCC_OHCI_UHCRHDA_PSM_PERPORT;
+		ohci_reg->HcRhDescriptorA |=
+			(ulong)TCC_OHCI_UHCRHDA_PSM_PERPORT;
 
 		/*
 		 * set the power management mode for each individual port to Per
@@ -254,7 +255,8 @@ static int32_t tcc_ohci_select_pmm(ulong reg_base, int32_t mode,
 		 * clear power commands
 		 */
 		ohci_reg->HcRhDescriptorA &= ~RH_A_NPS;
-		ohci_reg->HcRhDescriptorA |= (ulong)TCC_OHCI_UHCRHDA_PSM_PERPORT;
+		ohci_reg->HcRhDescriptorA |=
+			(ulong)TCC_OHCI_UHCRHDA_PSM_PERPORT;
 
 		/*
 		 * set the power management mode for each individual port to Per
@@ -593,7 +595,8 @@ static int32_t tcc_ohci_parse_dt(struct platform_device *pdev,
 	int32_t err = 0;
 
 	// Check VBUS Source enable
-	if (of_find_property(pdev->dev.of_node, "vbus-source-ctrl", NULL) != NULL) {
+	if (of_find_property(pdev->dev.of_node,
+				"vbus-source-ctrl", NULL) != NULL) {
 		tcc_ohci->vbus_source_ctrl = 1;
 		tcc_ohci->vbus_source = regulator_get(&pdev->dev, "vdd_ohci");
 

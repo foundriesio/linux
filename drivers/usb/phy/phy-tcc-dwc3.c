@@ -23,13 +23,13 @@
 #define BITCLR(X, MASK)                 ((X) &= ~((uint32_t)(MASK)))
 #define BITXOR(X, MASK)                 ((X) ^= (uint32_t)(MASK))
 #define BITCSET(X, CMASK, SMASK)        ((X) = ((((uint32_t)(X)) &	\
-				               ~((uint32_t)(CMASK))) |	\
-			                       ((uint32_t)(SMASK))))
+				~((uint32_t)(CMASK))) |	\
+				((uint32_t)(SMASK))))
 #define BITSCLR(X, SMASK, CMASK)        ((X) = ((((uint32_t)(X)) |	\
-				               ((uint32_t)(SMASK))) &	\
-			                       ~((uint32_t)(CMASK))))
-#define ISZERO(X, MASK)                 (!(((uint32_t)(X)) & ((uint32_t)(MASK))))
-#define ISSET(X, MASK)                  ((ulong)(X) & ((ulong)(MASK)))
+				((uint32_t)(SMASK))) &	\
+				~((uint32_t)(CMASK))))
+#define ISZERO(X, MASK)		(!(((uint32_t)(X)) & ((uint32_t)(MASK))))
+#define ISSET(X, MASK)		((uint32_t)(X) & ((uint32_t)(MASK)))
 #endif
 
 static const char *maximum_speed = "super";
@@ -38,7 +38,8 @@ struct tcc_dwc3_device {
 	struct device *dev;
 	void __iomem *base;
 	void __iomem *h_base;
-#if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC805X)
+#if defined(CONFIG_ARCH_TCC803X) || \
+	defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC805X)
 	void __iomem *ref_base;
 #endif
 	struct usb_phy phy;
@@ -435,7 +436,8 @@ static int32_t dwc3_tcc_phy_ctrl_native(struct usb_phy *phy, int32_t on_off)
 		tmp_cnt = 0;
 
 		while (tmp_cnt < 10000) {
-			if ((readl(&USBPHYCFG->U30_PCFG0) & 0x80000000U) != 0U) {
+			if ((readl(&USBPHYCFG->U30_PCFG0) &
+					0x80000000U) != 0U) {
 				break;
 			}
 
@@ -680,7 +682,8 @@ static int32_t dwc3_tcc_ss_phy_ctrl_native(struct usb_phy *phy, int32_t on_off)
 		tmp_cnt = 0;
 
 		while (tmp_cnt < 10000) {
-			if ((readl(&USBPHYCFG->U30_PCFG0) & 0x00000004U) != 0U) {
+			if ((readl(&USBPHYCFG->U30_PCFG0) &
+					0x00000004U) != 0U) {
 				break;
 			}
 
@@ -1049,7 +1052,8 @@ static int32_t tcc_dwc3_phy_probe(struct platform_device *pdev)
 
 	phy_dev->base = (void __iomem *)ioremap_nocache(
 			(resource_size_t)pdev->resource[0].start,
-			(size_t)(pdev->resource[0].end - pdev->resource[0].start + 1U));
+			(size_t)(pdev->resource[0].end -
+				pdev->resource[0].start + 1U));
 
 	phy_dev->phy.base = phy_dev->base;
 #if defined(CONFIG_TCC_BC_12)

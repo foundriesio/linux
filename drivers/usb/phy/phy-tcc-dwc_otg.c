@@ -22,13 +22,13 @@
 #define BITCLR(X, MASK)                 ((X) &= ~((uint32_t)(MASK)))
 #define BITXOR(X, MASK)                 ((X) ^= (uint32_t)(MASK))
 #define BITCSET(X, CMASK, SMASK)        ((X) = ((((uint32_t)(X)) &	\
-				               ~((uint32_t)(CMASK))) |	\
-			                       ((uint32_t)(SMASK))))
+				~((uint32_t)(CMASK))) |	\
+				((uint32_t)(SMASK))))
 #define BITSCLR(X, SMASK, CMASK)        ((X) = ((((uint32_t)(X)) |	\
-				               ((uint32_t)(SMASK))) &	\
-			                       ~((uint32_t)(CMASK))))
-#define ISZERO(X, MASK)                 (!(((uint32_t)(X)) & ((uint32_t)(MASK))))
-#define ISSET(X, MASK)                  ((ulong)(X) & ((ulong)(MASK)))
+				((uint32_t)(SMASK))) &	\
+				~((uint32_t)(CMASK))))
+#define ISZERO(X, MASK)		(!(((uint32_t)(X)) & ((uint32_t)(MASK))))
+#define ISSET(X, MASK)		((uint32_t)(X) & ((uint32_t)(MASK)))
 #endif
 
 //typedef enum {
@@ -497,7 +497,7 @@ static int32_t tcc_dwc_otg_create_phy(struct device *dev,
 	phy_dev->phy.type			= USB_PHY_TYPE_USB2;
 	phy_dev->phy.init			= &tcc_dwc_otg_phy_init;
 	phy_dev->phy.set_phy_state		= &tcc_dwc_otg_set_phy_state;
-	phy_dev->phy.set_vbus_resource		= &tcc_dwc_otg_set_vbus_resource;
+	phy_dev->phy.set_vbus_resource	= &tcc_dwc_otg_set_vbus_resource;
 	phy_dev->phy.set_vbus			= &dwc_otg_vbus_set;
 	phy_dev->phy.get_base			= &tcc_dwc_otg_get_base;
 #if defined(CONFIG_DYNAMIC_DC_LEVEL_ADJUSTMENT)

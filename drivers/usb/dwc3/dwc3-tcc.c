@@ -683,12 +683,14 @@ static ssize_t dwc3_eyep_show(struct device *dev,
 
 #if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X)
 	pUSBPHYCFG =
-		(struct USB30SSPHYCFG *)(tcc->dwc3_phy->get_base(tcc->dwc3_phy));
+		(struct USB30SSPHYCFG *)
+			(tcc->dwc3_phy->get_base(tcc->dwc3_phy));
 	reg = readl(&pUSBPHYCFG->FPHY_PCFG1);
 	val = reg & 0xFU;
 #else
 	struct USB30PHYCFG *pUSBPHYCFG =
-	    (struct USB30PHYCFG *)(tcc->dwc3_phy->get_base(tcc->dwc3_phy));
+	    (struct USB30PHYCFG *)
+			(tcc->dwc3_phy->get_base(tcc->dwc3_phy));
 	reg = readl(&pUSBPHYCFG->U30_PCFG2);
 	val = (ISSET(reg, TXVRT_MASK)) >> TXVRT_SHIFT;
 #endif
@@ -731,8 +733,6 @@ static ssize_t dwc3_eyep_store(struct device *dev,
 	} else if (ret == -EINVAL) {
 		pr_err("[ERROR][USB] parsing error occurred in krstrtoul()\n");
 		return ret;
-	} else {
-		/* Nothing to do */
 	}
 
 #if defined(CONFIG_ARCH_TCC803X)
@@ -1324,116 +1324,6 @@ static const struct of_device_id dwc3_tcc_match[] = {
 
 MODULE_DEVICE_TABLE(of, dwc3_tcc_match);
 
-#if 0
-static int32_t dwc3_tcc_parse_dt(struct platform_device *pdev, struct dwc3_tcc *tcc)
-{
-	int32_t err = 0;
-	struct resource *res;
-
-#if defined(DWC3_SQ_TEST_MODE)
-	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
-	if (!res) {
-		dev_err(&pdev->dev,
-			"[ERROR][USB] missing phy memory resource\n");
-		return -1;
-	}
-	res->end += 1;
-	tcc->regs = devm_ioremap(&pdev->dev, res->start, res->end - res->start);
-#endif
-	res = platform_get_resource(pdev, IORESOURCE_MEM, 1);
-	if (!res) {
-		dev_err(&pdev->dev,
-			"[ERROR][USB] missing phy memory resource\n");
-		return -1;
-	}
-	res->end += 1;
-	tcc->phy_regs =
-	    devm_ioremap(&pdev->dev, res->start, res->end - res->start);
-
-	//===============================================
-	// Check Host enable pin
-	//===============================================
-	if (of_find_property(pdev->dev.of_node, "usb3en-ctrl-able", 0)) {
-		tcc->usb3en_ctrl_able = 1;
-		tcc->host_en_gpio = of_get_named_gpio(pdev->dev.of_node,
-						      "usb3en-gpio", 0);
-		if (!gpio_is_valid(tcc->host_en_gpio)) {
-			dev_err(&pdev->dev,
-				"[ERROR][USB] can't find dev of node: host en gpio\n");
-			return -ENODEV;
-		}
-
-		err = gpio_request(tcc->host_en_gpio, "xhci_en_gpio");
-		if (err) {
-			dev_err(&pdev->dev,
-				"[ERROR][USB] can't requeest xhci_en_gpio\n");
-			return err;
-		}
-	} else {
-		tcc->usb3en_ctrl_able = 0;
-	}
-
-	//===============================================
-	// Check Host enable pin
-	//===============================================
-	if (of_find_property(pdev->dev.of_node, "vbus-ctrl-able", 0)) {
-		tcc->vbus_ctrl_able = 1;
-#if 0
-		tcc->vbus_gpio = of_get_named_gpio(pdev->dev.of_node,
-						"vbus-gpio", 0);
-		if (!gpio_is_valid(tcc->vbus_gpio)) {
-			dev_err(&pdev->dev,
-				"[ERROR][USB] can't find dev of node: vbus gpio\n");
-
-			return -ENODEV;
-		}
-
-		err = gpio_request(tcc->vbus_gpio, "usb30_vbus_gpio");
-		if (err) {
-			dev_err(&pdev->dev,
-				"[ERROR][USB] can't requeest vbus gpio\n");
-			return err;
-		}
-#endif
-	} else {
-		tcc->vbus_ctrl_able = 0;
-	}
-
-	//===============================================
-	// Check VBUS Source enable
-	//===============================================
-	if (of_find_property(pdev->dev.of_node, "vbus-source-ctrl", 0)) {
-		tcc->vbus_source_ctrl = 1;
-		tcc->vbus_source = regulator_get(&pdev->dev, "vdd_dwc");
-		if (IS_ERR(tcc->vbus_source)) {
-			dev_err(&pdev->dev,
-				"[ERROR][USB] regulator get fail!!!\n");
-			tcc->vbus_source = NULL;
-		}
-	} else {
-		tcc->vbus_source_ctrl = 0;
-	}
-
-	tcc->hclk = of_clk_get(pdev->dev.of_node, 0);
-	if (IS_ERR(tcc->hclk))
-		tcc->hclk = NULL;
-
-	tcc->phy_clk = of_clk_get(pdev->dev.of_node, 1);
-	if (IS_ERR(tcc->phy_clk))
-		tcc->phy_clk = NULL;
-
-	return 0;
-}
-
-static void dwc3_tcc_free_dt(struct dwc3_tcc *tcc)
-{
-	if (tcc->vbus_ctrl_able == 1) {
-		gpio_free(tcc->host_en_gpio);
-		if (tcc->vbus_source)
-			regulator_put(tcc->vbus_source);
-	}
-}
-#endif
 #endif
 
 static struct platform_driver dwc3_tcc_driver = {

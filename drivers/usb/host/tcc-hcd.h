@@ -59,13 +59,13 @@
 #define BITCLR(X, MASK)                 ((X) &= ~((uint32_t)(MASK)))
 #define BITXOR(X, MASK)                 ((X) ^= (uint32_t)(MASK))
 #define BITCSET(X, CMASK, SMASK)        ((X) = ((((uint32_t)(X)) &	\
-				               ~((uint32_t)(CMASK))) |	\
-			                       ((uint32_t)(SMASK))))
+				~((uint32_t)(CMASK))) |	\
+				((uint32_t)(SMASK))))
 #define BITSCLR(X, SMASK, CMASK)        ((X) = ((((uint32_t)(X)) |	\
-				               ((uint32_t)(SMASK))) &	\
-			                       ~((uint32_t)(CMASK))))
-#define ISZERO(X, MASK)                 (!(((uint32_t)(X)) & ((uint32_t)(MASK))))
-#define ISSET(X, MASK)                  ((ulong)(X) & ((ulong)(MASK)))
+				((uint32_t)(SMASK))) &	\
+				~((uint32_t)(CMASK))))
+#define ISZERO(X, MASK)		(!(((uint32_t)(X)) & ((uint32_t)(MASK))))
+#define ISSET(X, MASK)		((ulong)(X) & ((ulong)(MASK)))
 
 /* USB OHCI */
 struct TCC_OHCI {

@@ -96,6 +96,11 @@ config USB_DWC2_DEBUG_PERIODIC
 config USB_DWC2_TCC
 	bool "Enable TCC SoC dwc2"
 	depends on USB_DWC2
+	help
+     Select this option if you want the driver to work in a tcc
+	 SoC. In this mode both host or gadget features are enabled, and
+	 the role will be determined by User purpose.
+	 If not use, say N.
 
 config USB_DWC2_TCC_MUX
 	depends on USB_DWC2_TCC && (ARCH_TCC898X || ARCH_TCC802X || ARCH_TCC899X || ARCH_TCC803X || ARCH_TCC901X || ARCH_TCC805X)
@@ -113,6 +118,11 @@ choice
 config USB_DWC2_TCC_FIRST_HOST
 	bool "Enable TCC SoC dwc2 first host"
 	depends on USB_DWC2_TCC && USB_DWC2_DUAL_ROLE
+	help
+      Select this option if you want to initialize as host when
+      the driver is loaded. After initializing to peripheral mode,
+      activate the USB_DWC2_TCC_FIRST_PERIPHERAL
+      option.
 
 config USB_DWC2_TCC_FIRST_PERIPHERAL
 	bool "Enable TCC SoC dwc2 first device"

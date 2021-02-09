@@ -16,6 +16,7 @@
 /* this file is part of ehci-hcd.c */
 
 #include "tcc-hcd.h"
+#include "../core/hub.h"
 
 #ifdef CONFIG_DYNAMIC_DEBUG
 #include <linux/uaccess.h>
@@ -307,9 +308,8 @@ static int debug_registers_open(struct inode *, struct file *);
 
 static ssize_t debug_output(struct file*, char __user*, size_t, loff_t*);
 static int debug_close(struct inode *, struct file *);
+
 #ifdef CONFIG_TCC_EH_ELECT_TST
-extern int get_hub_level(void);
-extern void set_hub_level(int level);
 static int ehci_hub_level_show(struct seq_file *s, void *unused)
 {
 	unsigned int level;

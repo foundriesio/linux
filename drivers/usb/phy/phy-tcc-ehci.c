@@ -20,13 +20,13 @@
 #define BITCLR(X, MASK)                 ((X) &= ~((uint32_t)(MASK)))
 #define BITXOR(X, MASK)                 ((X) ^= (uint32_t)(MASK))
 #define BITCSET(X, CMASK, SMASK)        ((X) = ((((uint32_t)(X)) &	\
-				               ~((uint32_t)(CMASK))) |	\
-			                       ((uint32_t)(SMASK))))
+				~((uint32_t)(CMASK))) |	\
+				((uint32_t)(SMASK))))
 #define BITSCLR(X, SMASK, CMASK)        ((X) = ((((uint32_t)(X)) |	\
-				               ((uint32_t)(SMASK))) &	\
-			                       ~((uint32_t)(CMASK))))
-#define ISZERO(X, MASK)                 (!(((uint32_t)(X)) & ((uint32_t)(MASK))))
-#define ISSET(X, MASK)                  ((ulong)(X) & ((ulong)(MASK)))
+				((uint32_t)(SMASK))) &	\
+				~((uint32_t)(CMASK))))
+#define ISZERO(X, MASK)		(!(((uint32_t)(X)) & ((uint32_t)(MASK))))
+#define ISSET(X, MASK)		((uint32_t)(X) & ((uint32_t)(MASK)))
 #endif
 
 struct tcc_ehci_device {
@@ -538,7 +538,8 @@ static int32_t tcc_ehci_create_phy(struct device *dev,
 	}
 
 	phy_dev->mux_port =
-		(of_find_property(dev->of_node, "mux_port", NULL) != NULL) ? 1 : 0;
+		(of_find_property(dev->of_node,
+			"mux_port", NULL) != NULL) ? 1 : 0;
 
 	// HCLK
 	phy_dev->hclk = of_clk_get(dev->of_node, 0);
