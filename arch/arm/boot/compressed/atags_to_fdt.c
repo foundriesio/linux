@@ -1,4 +1,9 @@
 // SPDX-License-Identifier: GPL-2.0
+
+/*
+ * Modified by Telechips Inc. (date: 2021-02)
+ */
+
 #include <asm/setup.h>
 #include <libfdt.h>
 
@@ -60,7 +65,16 @@ static uint32_t get_cell_size(const void *fdt)
 {
 	int len;
 	uint32_t cell_size = 1;
+#if defined(CONFIG_ARCH_TCC)
+	const uint32_t *size_len;
+
+	size_len = getprop(fdt, "/memory", "#size-cells", &len);
+	if (!size_len) {
+		size_len = getprop(fdt, "/", "#size-cells", &len);
+	}
+#else
 	const uint32_t *size_len =  getprop(fdt, "/", "#size-cells", &len);
+#endif
 
 	if (size_len)
 		cell_size = fdt32_to_cpu(*size_len);
