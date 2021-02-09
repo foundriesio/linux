@@ -608,7 +608,7 @@ static void clk_core_disable(struct clk_core *core)
 
 	//if (WARN_ON(core->enable_count == 0))
 	//	return;
-	
+
 	if (core->enable_count == 0)
 		return;
 
