@@ -500,7 +500,11 @@ config TCC_DMA
 	depends on ARCH_TCC
 	select DMA_ENGINE
 	help
-	  Enable support for the Telechips DMA controller
+	  Enable support for the Telechips DMA controller.
+	  DMA controller is having multiple DMA channels which can be
+	  configured for different peripherals.
+	  The DMA channel can transfer data from memory to peripheral,
+	  peripheral to memory, memory to memory.
 
 config TXX9_DMAC
 	tristate "Toshiba TXx9 SoC DMA support"
