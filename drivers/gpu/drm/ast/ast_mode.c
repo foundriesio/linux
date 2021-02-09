@@ -713,7 +713,7 @@ ast_cursor_plane_helper_atomic_update(struct drm_plane *plane,
 	u8 jreg;
 
 	ast_crtc->offset_x = AST_MAX_HWC_WIDTH - fb->width;
-	ast_crtc->offset_y = AST_MAX_HWC_WIDTH - fb->height;
+	ast_crtc->offset_y = AST_MAX_HWC_HEIGHT - fb->height;
 
 	if (state->fb != old_state->fb) {
 		/* A new cursor image was installed. */
