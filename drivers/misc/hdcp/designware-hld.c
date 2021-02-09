@@ -98,9 +98,8 @@ static long get_meminfo(struct hl_device *hl_dev, void __user *arg)
 {
 	struct hl_drv_ioc_meminfo info;
 
-	if ((hl_dev == 0) || (arg == 0) || (hl_dev->hpi_resource == 0)) {
+	if ((hl_dev == 0) || (arg == 0) || (hl_dev->hpi_resource == 0))
 		return -EFAULT;
-	}
 
 	info.hpi_base  = hl_dev->hpi_resource->start;
 	info.code_base = hl_dev->code_base;
@@ -108,9 +107,8 @@ static long get_meminfo(struct hl_device *hl_dev, void __user *arg)
 	info.data_base = hl_dev->data_base;
 	info.data_size = hl_dev->data_size;
 
-	if (copy_to_user(arg, &info, sizeof(info)) != 0) {
+	if (copy_to_user(arg, &info, sizeof(info)) != 0)
 		return -EFAULT;
-	}
 
 	return 0;
 }
@@ -122,9 +120,8 @@ static long load_code(struct hl_device *hl_dev,
 	struct hl_drv_ioc_code head;
 
 	if ((hl_dev == 0) || (arg == 0) ||
-	    (hl_dev->code == 0) || (hl_dev->data == 0)) {
+	    (hl_dev->code == 0) || (hl_dev->data == 0))
 		return -EFAULT;
-	}
 
 	if (copy_from_user(&head, arg, sizeof(head)) != 0)
 		return -EFAULT;
@@ -148,15 +145,15 @@ static long write_data(struct hl_device *hl_dev,
 {
 	struct hl_drv_ioc_data head;
 
-	if ((hl_dev == 0) || (arg == 0) || (hl_dev->data == 0)) {
+	if ((hl_dev == 0) || (arg == 0) || (hl_dev->data == 0))
 		return -EFAULT;
-	}
 
 	if (copy_from_user(&head, arg, sizeof(head)) != 0)
 		return -EFAULT;
 
 	if (hl_dev->data_size < head.len)
 		return -ENOSPC;
+
 	if (hl_dev->data_size - head.len < head.offset)
 		return -ENOSPC;
 
@@ -173,15 +170,15 @@ static long read_data(struct hl_device *hl_dev,
 {
 	struct hl_drv_ioc_data head;
 
-	if ((hl_dev == 0) || (arg == 0) || (hl_dev->data == 0)) {
+	if ((hl_dev == 0) || (arg == 0) || (hl_dev->data == 0))
 		return -EFAULT;
-	}
 
 	if (copy_from_user(&head, arg, sizeof(head)) != 0)
 		return -EFAULT;
 
 	if (hl_dev->data_size < head.len)
 		return -ENOSPC;
+
 	if (hl_dev->data_size - head.len < head.offset)
 		return -ENOSPC;
 
@@ -199,15 +196,15 @@ static long set_data(struct hl_device *hl_dev, void __user *arg)
 		unsigned char buf[sizeof(struct hl_drv_ioc_data) + 1];
 	} u;
 
-	if ((hl_dev == 0) || (arg == 0) || (hl_dev->data == 0)) {
+	if ((hl_dev == 0) || (arg == 0) || (hl_dev->data == 0))
 		return -EFAULT;
-	}
 
 	if (copy_from_user(&u.data, arg, sizeof(u.buf)) != 0)
 		return -EFAULT;
 
 	if (hl_dev->data_size < u.data.len)
 		return -ENOSPC;
+
 	if (hl_dev->data_size - u.data.len < u.data.offset)
 		return -ENOSPC;
 
@@ -220,9 +217,8 @@ static long hpi_read(struct hl_device *hl_dev, void __user *arg)
 {
 	struct hl_drv_ioc_hpi_reg reg;
 
-	if ((hl_dev == 0) || (arg == 0) || (hl_dev->hpi_resource == 0)) {
+	if ((hl_dev == 0) || (arg == 0) || (hl_dev->hpi_resource == 0))
 		return -EFAULT;
-	}
 
 	if (copy_from_user(&reg, arg, sizeof(reg)) != 0)
 		return -EFAULT;
@@ -244,9 +240,8 @@ static long hpi_write(struct hl_device *hl_dev, void __user *arg)
 {
 	struct hl_drv_ioc_hpi_reg reg;
 
-	if ((hl_dev == 0) || (arg == 0)) {
+	if ((hl_dev == 0) || (arg == 0))
 		return -EFAULT;
-	}
 
 	if (copy_from_user(&reg, arg, sizeof(reg)) != 0)
 		return -EFAULT;
@@ -261,9 +256,8 @@ static long hpi_write(struct hl_device *hl_dev, void __user *arg)
 	//  If Kill command
 	//  (HL_GET_CMD_EVENT(krequest.data) == TROOT_CMD_SYSTEM_ON_EXIT_REQ))
 	//
-	if ((reg.offset == 0x38) && ((reg.value & 0x000000ff) == 0x08)) {
+	if ((reg.offset == 0x38) && ((reg.value & 0x000000ff) == 0x08))
 		hl_dev->code_loaded = 0;
-	}
 	#endif
 	return 0;
 }
@@ -273,9 +267,8 @@ static struct hl_device *find_hl_dev_slot(
 {
 	int32_t i;
 
-	if (info == 0 || !hl_devices) {
+	if (info == 0 || !hl_devices)
 		return 0;
-	}
 
 	/* Check if we have a matching device (same HPI base) */
 	for (i = 0; i < MAX_HL_DEVICES; i++) {
@@ -297,17 +290,15 @@ static long init(struct file *f, void __user *arg)
 	struct hl_drv_ioc_meminfo info;
 	struct hl_device *hl_dev;
 
-	if ((f == 0) || (arg == 0)) {
+	if ((f == 0) || (arg == 0))
 		return -EFAULT;
-	}
 
 	if (copy_from_user(&info, arg, sizeof(info)) != 0)
 		return -EFAULT;
 
 	hl_dev = find_hl_dev_slot(&info);
-	if (!hl_dev) {
+	if (!hl_dev)
 		return -EMFILE;
-	}
 
 	f->private_data = hl_dev;
 	return 0;
@@ -318,18 +309,16 @@ static long hld_ioctl(struct file *f, unsigned int cmd, unsigned long arg)
 	struct hl_device *hl_dev;
 	void __user *data;
 
-	if (f == 0) {
+	if (f == 0)
 		return -EFAULT;
-	}
 
 	hl_dev = f->private_data;
 	data = (void __user *)arg;
 
-	if (cmd == HL_DRV_IOC_INIT) {
+	if (cmd == HL_DRV_IOC_INIT)
 		return init(f, data);
-	} else if (!hl_dev) {
+	else if (!hl_dev)
 		return -EAGAIN;
-	}
 
 	switch (cmd) {
 	case HL_DRV_IOC_INIT:
@@ -428,8 +417,10 @@ static int hld_probe(struct platform_device *pdev)
 					  hld->code_base);
 		if (hld->hpi)
 			iounmap(hld->hpi);
+
 		if (hld->hpi_resource)
 			release_resource(hld->hpi_resource);
+
 		kfree(hld);
 		hl_devices[i] = NULL;
 	}
