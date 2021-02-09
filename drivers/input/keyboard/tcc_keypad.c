@@ -196,7 +196,8 @@ static int32_t tcc_key_probe(struct platform_device *pdev)
 
 	poll_dev->private = key;
 	poll_dev->poll = tcc_key_poll_callback;
-	poll_dev->poll_interval = (uint32_t)msecs_to_jiffies(key->poll_interval);
+	poll_dev->poll_interval =
+		(uint32_t)msecs_to_jiffies(key->poll_interval);
 
 	input_dev = poll_dev->input;
 	input_dev->evbit[0] = BIT(EV_KEY);
