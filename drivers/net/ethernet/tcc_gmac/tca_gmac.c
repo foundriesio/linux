@@ -64,16 +64,24 @@ int tca_gmac_init(struct device_node *np, struct gmac_dt_info_t *dt_info)
 
 	phy_str = of_get_property(np, "phy-interface", NULL);
 
-	if (strncmp(phy_str, "mii", MAX_INTF_LEN) == 0)
-		dt_info->phy_inf = PHY_INTERFACE_MODE_MII;
-	else if (strncmp(phy_str, "gmii", MAX_INTF_LEN) == 0)
-		dt_info->phy_inf = PHY_INTERFACE_MODE_GMII;
-	else if (strncmp(phy_str, "rmii", MAX_INTF_LEN) == 0)
-		dt_info->phy_inf = PHY_INTERFACE_MODE_RMII;
-	else if (strncmp(phy_str, "rgmii", MAX_INTF_LEN) == 0)
-		dt_info->phy_inf = PHY_INTERFACE_MODE_RGMII;
-	else
-		dt_info->phy_inf = PHY_INTERFACE_MODE_NA;
+	if (phy_str == NULL){
+		pr_err("[ERROR] %s. GMAC failed to allocate phy_str\n",
+				__func__);
+		return -EINVAL;
+	}
+	else {
+
+		if (strncmp(phy_str, "mii", MAX_INTF_LEN) == 0)
+			dt_info->phy_inf = PHY_INTERFACE_MODE_MII;
+		else if (strncmp(phy_str, "gmii", MAX_INTF_LEN) == 0)
+			dt_info->phy_inf = PHY_INTERFACE_MODE_GMII;
+		else if (strncmp(phy_str, "rmii", MAX_INTF_LEN) == 0)
+			dt_info->phy_inf = PHY_INTERFACE_MODE_RMII;
+		else if (strncmp(phy_str, "rgmii", MAX_INTF_LEN) == 0)
+			dt_info->phy_inf = PHY_INTERFACE_MODE_RGMII;
+		else
+			dt_info->phy_inf = PHY_INTERFACE_MODE_NA;
+	}
 
 	if (dt_info->phy_inf == PHY_INTERFACE_MODE_NA) {
 		pr_err("[ERROR][GMAC] unknown \
