@@ -220,6 +220,10 @@ tcp-Remove-superfluous-BH-disable-around-listening_h.patch
 0018-atm-eni-Use-tasklet_disable_in_atomic-in-the-send-ca.patch
 0019-firewire-ohci-Use-tasklet_disable_in_atomic-in-the-t.patch
 
+# 20210202170104.1909200-1-bigeasy@linutronix.de
+0001-chelsio-cxgb-Replace-the-workqueue-with-threaded-int.patch
+0002-chelsio-cxgb-Disable-the-card-on-error-in-threaded-i.patch
+
 # TIP 5f0c71278d6848b4809f83af90f28196e1505ab1
 x86-fpu-Simplify-fpregs_-un-lock.patch
 # TIP cba08c5dc6dc1a906a0b5ddac9a9ac6c9a64f2e8
