@@ -1,0 +1,14 @@
+This is for 'telechips,lcd_drm_dummy'.
+
+Required properties for display:
+	-compatible:
+		"telechips,lcd_drm_dummy"
+
+-------------------------------------------------------------------------------
+
+Example:
+	lcd_drm_dummy {
+		compatible = "telechips,lcd_drm_dummy";
+		status = "disabled";
+	};
+

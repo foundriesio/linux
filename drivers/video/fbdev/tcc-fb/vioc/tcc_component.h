@@ -176,8 +176,6 @@ extern int tca_edr_path_configure(void);
 #include <video/tcc/tccfb.h>
 #include <video/tcc/vioc_disp.h>
 
-extern void tca_vioc_displayblock_powerOn(struct tcc_dp_device *pDisplayInfo,
-	int specific_pclk);
 extern void tca_vioc_displayblock_powerOff(struct tcc_dp_device *pDisplayInfo);
 extern void tca_vioc_displayblock_disable(struct tcc_dp_device *pDisplayInfo);
 extern void tca_vioc_displayblock_ctrl_set(unsigned int outDevice,

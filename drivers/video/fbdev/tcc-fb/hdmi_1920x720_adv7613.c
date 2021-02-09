@@ -31,7 +31,10 @@
 #include <linux/of.h>
 #include <linux/of_address.h>
 #include <linux/of_gpio.h>
+
 #include <video/tcc/tccfb.h>
+#include "tcc_vioc_fb.h"
+#include "tcc_vioc_interface.h"
 
 /* default i2c slave address */
 #define DEFAULT_MAIN_ADDR 0x4C
@@ -62,9 +65,6 @@
  */
 //#define CONFIG_TCCFB_CONTROL_HDMIPANEL_POWER
 
-extern int tccfb_register_ext_panel(struct lcd_panel *panel);
-extern void tca_vioc_displayblock_powerOn(
-	struct tcc_dp_device *pDisplayInfo, int specific_pclk);
 
 struct adv7613_dev {
 	struct i2c_client *client;

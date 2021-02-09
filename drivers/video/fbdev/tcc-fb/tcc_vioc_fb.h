@@ -24,4 +24,8 @@ extern unsigned int HDMI_video_hz;
 struct tcc_dp_device *tca_fb_get_displayType(
 	TCC_OUTPUT_TYPE check_type);
 
+int tccfb_register_ext_panel(
+	struct lcd_panel *panel);
+
 #endif /*__TCC_VIOC_FB_H__*/
+

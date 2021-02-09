@@ -19,8 +19,6 @@
 #ifndef	_TCC_COMPOSITE_H_
 #define	_TCC_COMPOSITE_H_
 
-extern void tca_vioc_displayblock_powerOn(struct tcc_dp_device *pDisplayInfo,
-					  int specific_pclk);
 extern void tca_vioc_displayblock_powerOff(struct tcc_dp_device *pDisplayInfo);
 extern void tca_vioc_displayblock_disable(struct tcc_dp_device *pDisplayInfo);
 extern void tca_vioc_displayblock_ctrl_set(unsigned int outDevice,

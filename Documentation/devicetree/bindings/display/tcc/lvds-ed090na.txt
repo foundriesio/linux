@@ -1,0 +1,14 @@
+This is for 'telechips,lvds-ed090na'.
+
+Required properties for display:
+	-compatible:
+		"telechips,lvds-ed090na"
+
+-------------------------------------------------------------------------------
+
+Example:
+   ed090na {
+        compatible = "telechips,lvds-ed090na";
+        status = "okay";
+    };
+

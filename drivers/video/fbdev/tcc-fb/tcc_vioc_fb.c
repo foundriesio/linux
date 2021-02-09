@@ -173,7 +173,6 @@ extern void tcc_video_info_backup(VSYNC_CH_TYPE type, struct tcc_lcdc_image_upda
 extern int tcc_video_check_last_frame(struct tcc_lcdc_image_update *ImageInfo);
 #endif
 
-extern void tca_vioc_displayblock_powerOn(struct tcc_dp_device *pDisplayInfo, int specific_pclk);
 extern void tca_vioc_displayblock_powerOff(struct tcc_dp_device *pDisplayInfo);
 extern void tca_vioc_displayblock_disable(struct tcc_dp_device *pDisplayInfo);
 #if defined(CONFIG_ARCH_TCC)
@@ -3339,8 +3338,6 @@ int tccfb_register_ext_panel(struct lcd_panel *panel)
         display_ext_panel = panel;
         return 1;
 }
-EXPORT_SYMBOL(tccfb_register_ext_panel);
-
 
 struct lcd_panel *tccfb_get_hdmi_ext_panel(void)
 {

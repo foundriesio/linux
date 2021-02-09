@@ -83,7 +83,7 @@ static int at070tn93_set_power(
 
 		msleep(100);
 	} else {
-		msleep(10);
+		usleep_range(10000, 11000);
 		gpio_set_value_cansleep(lcd_at070tn93.reset, 0);
 		gpio_set_value_cansleep(lcd_at070tn93.power_on, 0);
 
