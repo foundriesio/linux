@@ -478,6 +478,7 @@ struct phy_device {
 	 */
 	int speed;
 	int duplex;
+	int port;
 	int pause;
 	int asym_pause;
 	u8 master_slave_get;
