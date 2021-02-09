@@ -495,7 +495,7 @@ static int tcc_asrc_m2m_pcm_set_hw_params_to_mbox(
 	dma_addr_t phy_address;
 
 	unsigned int mbox_msg[MBOX_MSG_SIZE_FOR_PARAMS] = { 0 };
-	unsigned ch = channels << 1;
+	unsigned int ch = channels << 1;
 
 	if (asrc_m2m_pcm == NULL) {
 		tpcm_warn("[%s] asrc_m2m_pcm is NULL\n",
@@ -693,7 +693,7 @@ static void playback_for_mbox_callback(struct tcc_asrc_m2m_pcm *asrc_m2m_pcm)
 
 	if (period_elapsed_en == TRUE) {
 		mutex_lock(&playback->mlock);
-		if(playback->asrc_substream)
+		if (playback->asrc_substream)
 			snd_pcm_period_elapsed(substream);
 		mutex_unlock(&playback->mlock);
 		atomic_set(&playback->wakeup, 1);
@@ -2131,7 +2131,7 @@ static int tcc_ptr_update_func_for_capture(
 				    asrc_m2m_pcm->capture->Bperiod_pos %
 				    dst_period_bytes;
 				mutex_lock(&asrc_m2m_pcm->capture->mlock);
-				if(asrc_m2m_pcm->capture->asrc_substream)
+				if (asrc_m2m_pcm->capture->asrc_substream)
 					snd_pcm_period_elapsed(substream);
 				mutex_unlock(&asrc_m2m_pcm->capture->mlock);
 			}
@@ -2290,7 +2290,7 @@ static int tcc_ptr_update_func_for_capture(
 				    asrc_m2m_pcm->capture->Bperiod_pos %
 				    dst_period_bytes;
 				mutex_lock(&asrc_m2m_pcm->capture->mlock);
-				if(asrc_m2m_pcm->capture->asrc_substream)
+				if (asrc_m2m_pcm->capture->asrc_substream)
 					snd_pcm_period_elapsed(substream);
 				mutex_unlock(&asrc_m2m_pcm->capture->mlock);
 			}
@@ -3318,7 +3318,7 @@ static int tcc_asrc_m2m_pcm_stream_init(
 
 	strm->first_open = FALSE;
 
-	mutex_init(&strm->mlock);		
+	mutex_init(&strm->mlock);
 	return 0;
 
 	devm_kfree(dev, app);

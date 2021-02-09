@@ -160,7 +160,7 @@ static inline uint32_t calc_bclk_from_mclk(
 	int32_t ret;
 
 	ret = mclk % i2s->mclk_div;
-	if(ret != 0)
+	if (ret != 0)
 		i2s_dai_warn("[%d] bclk is not multiple of mclk_div[%d]\n",
 					i2s->blk_no, i2s->mclk_div);
 
@@ -205,6 +205,7 @@ static inline uint32_t calc_dsp_pcm_mclk(
 	int32_t sample_rate)
 {
 	int32_t ret;
+
 	sample_rate = (sample_rate == 44100) ? 44100 :
 				  (sample_rate == 22000) ? 22050 :
 				  (sample_rate == 11000) ? 11025 : sample_rate;
@@ -344,9 +345,9 @@ static int tcc_i2s_set_dai_fmt(struct snd_soc_dai *dai, unsigned int fmt)
 					|| (i2s->tdm_slot_width == 24)
 					|| (i2s->tdm_slot_width == 32)) {
 				tcc_dai_set_dsp_pcm_mode(
-						i2s->dai_reg,
-						(uint32_t) i2s->tdm_slots,
-						(uint32_t) i2s->tdm_slot_width, FALSE);
+					i2s->dai_reg,
+					(uint32_t) i2s->tdm_slots,
+					(uint32_t) i2s->tdm_slot_width, FALSE);
 			} else {
 				i2s_dai_err("[%d] PCM supports ", i2s->blk_no);
 				pr_err("only 16bit or 24bit or 32bit slotwidth\n");
@@ -358,10 +359,10 @@ static int tcc_i2s_set_dai_fmt(struct snd_soc_dai *dai, unsigned int fmt)
 				if ((i2s->tdm_slot_width == 16) ||
 						(i2s->tdm_slot_width == 24)) {
 					tcc_dai_set_dsp_tdm_mode(
-							i2s->dai_reg,
-							(uint32_t) i2s->tdm_slots,
-							(uint32_t) i2s->tdm_slot_width,
-							FALSE);
+						i2s->dai_reg,
+						(uint32_t) i2s->tdm_slots,
+						(uint32_t) i2s->tdm_slot_width,
+						FALSE);
 				} else {
 					i2s_dai_err("[%d] DSP_A TDM supports",
 							i2s->blk_no);
@@ -403,8 +404,8 @@ static int tcc_i2s_set_dai_fmt(struct snd_soc_dai *dai, unsigned int fmt)
 				if ((i2s->tdm_slot_width == 16) ||
 						(i2s->tdm_slot_width == 24)) {
 					tcc_dai_set_dsp_tdm_mode(i2s->dai_reg,
-							(uint32_t) i2s->tdm_slots,
-							(uint32_t) i2s->tdm_slot_width, TRUE);
+						(uint32_t) i2s->tdm_slots,
+						(uint32_t) i2s->tdm_slot_width, TRUE);
 				} else {
 					i2s_dai_err("[%d] DSP_B TDM supports only 16bit",
 							i2s->blk_no);
@@ -561,7 +562,7 @@ static int tcc_i2s_set_dai_fmt(struct snd_soc_dai *dai, unsigned int fmt)
 		goto dai_fmt_end;
 
 	i2s->dai_fmt = fmt;
-	
+
 	if (i2s->tdm_mode == TRUE) {
 		if (i2s->clk_continuous == TRUE) {
 /* Workaround Code for TCC803X, TCC899X and TCC901X
@@ -620,7 +621,7 @@ static int tcc_i2s_set_dai_fmt(struct snd_soc_dai *dai, unsigned int fmt)
 			(void) clk_prepare_enable(i2s->dai_hclk);
 
 			tcc_dai_reg_restore(i2s->dai_reg, &regs);
-		}	
+		}
 	}
 
 dai_fmt_end:
@@ -879,7 +880,7 @@ static int tcc_i2s_hw_params(
 			break;
 		case SND_SOC_DAIFMT_DSP_A:
 		case SND_SOC_DAIFMT_DSP_B:
-			{
+		{
 				uint32_t fmt_bitwidth =
 					(format == SNDRV_PCM_FORMAT_S24_LE) ?
 					24 : 16;
@@ -890,7 +891,7 @@ static int tcc_i2s_hw_params(
 					break;
 				}
 #if defined(PCM_INTERFACE)
-				if(i2s->tdm_pcm_mode) {
+				if (i2s->tdm_pcm_mode) {
 					tcc_dai_set_dsp_pcm_word_len(
 							i2s->dai_reg,
 							fmt_bitwidth);
@@ -951,8 +952,8 @@ static int tcc_i2s_hw_params(
 	if (i2s->tdm_mode == TRUE) {
 #if defined(PCM_INTERFACE)
 		if ((i2s->tdm_pcm_mode == TRUE)
-				&&(channels == 8)
-				&&(i2s->tdm_slots == 2)) {
+				&& (channels == 8)
+				&& (i2s->tdm_slots == 2)) {
 			tcc_dai_set_multiport_mode(i2s->dai_reg, TRUE);
 		} else {
 			tcc_dai_set_multiport_mode(i2s->dai_reg, FALSE);
@@ -971,43 +972,42 @@ static int tcc_i2s_hw_params(
 	if (substream->stream == SNDRV_PCM_STREAM_CAPTURE) {
 		uint32_t chip_rev = (uint32_t)get_chip_rev();
 		uint32_t chip_name = (uint32_t)get_chip_name();
-		uint32_t bclk=0;
+		uint32_t bclk = 0;
 
-		if((chip_rev == 1)&&(chip_name == 0x8050)) {
-			if (i2s->tdm_mode == TRUE) {
+		if ((chip_rev == 1) && (chip_name == 0x8050)) {
+			if (i2s->tdm_mode == TRUE)
 				tcc_dai_set_dsp_tdm_mode_rx_channel(i2s->dai_reg, i2s->tdm_slots);
-			} else {
+			else
 				tcc_dai_set_dsp_tdm_mode_rx_channel(i2s->dai_reg, 2);
-			}
+
 			switch (i2s->dai_fmt & (uint32_t)SND_SOC_DAIFMT_MASTER_MASK) {
-				case SND_SOC_DAIFMT_CBS_CFM: /* codec clk slave & FRM master */
-				case SND_SOC_DAIFMT_CBS_CFS: /* codec clk & FRM slave */
-					if (i2s->tdm_mode == TRUE) {
-						bclk = calc_bclk_from_mclk(i2s, mclk);
-						if(i2s->rx_bclk_delay) {
-							tcc_dai_set_rx_bclk_delay(i2s->dai_reg, TRUE);
-							if(i2s->tdm_late_mode == TRUE) {
-								tcc_dai_set_dsp_tdm_mode_rx_early(i2s->dai_reg, FALSE);
-							} else {
-								tcc_dai_set_dsp_tdm_mode_rx_early(i2s->dai_reg, TRUE);
-							}
-						} else {
-							tcc_dai_set_rx_bclk_delay(i2s->dai_reg, FALSE);
+			case SND_SOC_DAIFMT_CBS_CFM: /* codec clk slave & FRM master */
+			case SND_SOC_DAIFMT_CBS_CFS: /* codec clk & FRM slave */
+				if (i2s->tdm_mode == TRUE) {
+					bclk = calc_bclk_from_mclk(i2s, mclk);
+					if (i2s->rx_bclk_delay) {
+						tcc_dai_set_rx_bclk_delay(i2s->dai_reg, TRUE);
+						if (i2s->tdm_late_mode == TRUE)
 							tcc_dai_set_dsp_tdm_mode_rx_early(i2s->dai_reg, FALSE);
-						}
+						else
+							tcc_dai_set_dsp_tdm_mode_rx_early(i2s->dai_reg, TRUE);
 					} else {
-						if(i2s->rx_bclk_delay) {
-							tcc_dai_set_rx_bclk_delay(i2s->dai_reg, TRUE);
-						} else {
-							tcc_dai_set_rx_bclk_delay(i2s->dai_reg, FALSE);
-						}
+						tcc_dai_set_rx_bclk_delay(i2s->dai_reg, FALSE);
 						tcc_dai_set_dsp_tdm_mode_rx_early(i2s->dai_reg, FALSE);
 					}
-					break;
-				default:
-					tcc_dai_set_rx_bclk_delay(i2s->dai_reg, FALSE);
+				} else {
+					if (i2s->rx_bclk_delay)
+						tcc_dai_set_rx_bclk_delay(i2s->dai_reg, TRUE);
+					else
+						tcc_dai_set_rx_bclk_delay(i2s->dai_reg, FALSE);
+
 					tcc_dai_set_dsp_tdm_mode_rx_early(i2s->dai_reg, FALSE);
-					break;
+				}
+				break;
+			default:
+				tcc_dai_set_rx_bclk_delay(i2s->dai_reg, FALSE);
+				tcc_dai_set_dsp_tdm_mode_rx_early(i2s->dai_reg, FALSE);
+				break;
 			}
 		}
 	}
@@ -1116,7 +1116,7 @@ static int tcc_i2s_hw_params(
 
 	if (i2s->clk_continuous == FALSE) {
 #if defined(TCC803x_ES_SND)
-		if((system_rev == 0u) && (i2s->tdm_mode == TRUE)) { //ES
+		if ((system_rev == 0u) && (i2s->tdm_mode == TRUE)) { //ES
 			goto hw_params_end;
 		}
 #endif
@@ -2136,18 +2136,16 @@ static int parse_i2s_dt(struct platform_device *pdev, struct tcc_i2s_t *i2s)
 		i2s->tdm_late_mode = FALSE;
 
 #if defined(PCM_INTERFACE)
-	if (of_get_property(pdev->dev.of_node, "tdm-pcm-mode", NULL)) {
+	if (of_get_property(pdev->dev.of_node, "tdm-pcm-mode", NULL))
 		i2s->tdm_pcm_mode = TRUE;
-	} else {
+	else
 		i2s->tdm_pcm_mode = FALSE;
-	}
 #endif //PCM_INTERFACE
 #if defined(TCC805x_CS_SND)
-	if (of_get_property(pdev->dev.of_node, "rx-bclk-delay", NULL)) {
+	if (of_get_property(pdev->dev.of_node, "rx-bclk-delay", NULL))
 		i2s->rx_bclk_delay = TRUE;
-	} else {
+	else
 		i2s->rx_bclk_delay = FALSE;
-	}
 #endif
 	return 0;
 }
