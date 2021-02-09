@@ -169,3 +169,6 @@ static inline int hub_port_debounce_be_stable(struct usb_hub *hub,
 {
 	return hub_port_debounce(hub, port1, false);
 }
+
+int get_hub_level(void);
+void set_hub_level(int level);

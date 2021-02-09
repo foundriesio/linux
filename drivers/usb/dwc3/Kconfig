@@ -20,7 +20,7 @@ config USB_DWC3_ULPI
 
 choice
 	bool "DWC3 Mode Selection"
-	default USB_DWC3_HOST	
+	default USB_DWC3_HOST
 
 config USB_DWC3_HOST
 	bool "Host only mode"
@@ -55,15 +55,24 @@ choice
     default DWC3_DUAL_FIRST_HOST
     help
       Select Telechips DWC3 OTG Dual-role initial mode, Host or Device mode.
+      This property is only valid when the option to use Telechips SoC is enabled.
+
 config DWC3_DUAL_FIRST_HOST
     bool "Host mode"
     help
       OTG Dual-role initial mode : Host mode
+      When the driver is loaded, the host is initialized to the default mode.
+      This property is only valid when the option to use
+      Telechips SoC is enabled.
+
 config DWC3_DUAL_FIRST_DEV
     bool "Device mode"
     help
       OTG Dual-role initial mode : Device mode
-endchoice                                                                   
+      When the driver is loaded, the host is initialized to the default mode.
+      This property is only valid when the option to use
+      Telechips SoC is enabled.
+endchoice
 comment "Platform Glue Driver Support"
 
 config USB_DWC3_OMAP

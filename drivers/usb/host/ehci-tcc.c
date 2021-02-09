@@ -741,9 +741,11 @@ static int32_t tcc_ehci_parse_dt(struct platform_device *pdev,
 	int32_t err = 0;
 
 	// Check Host enable pin
-	if (of_find_property(pdev->dev.of_node, "hosten-ctrl-able", NULL) != NULL) {
+	if (of_find_property(pdev->dev.of_node,
+			"hosten-ctrl-able", NULL) != NULL) {
 		tcc_ehci->hosten_ctrl_able = 1;
-		tcc_ehci->host_en_gpio = of_get_named_gpio(pdev->dev.of_node,
+		tcc_ehci->host_en_gpio =
+				of_get_named_gpio(pdev->dev.of_node,
 				"hosten-gpio", 0);
 
 		if (!gpio_is_valid(tcc_ehci->host_en_gpio)) {
@@ -752,7 +754,8 @@ static int32_t tcc_ehci_parse_dt(struct platform_device *pdev,
 			return -ENODEV;
 		}
 
-		err = gpio_request((uint32_t)tcc_ehci->host_en_gpio, "host_en_gpio");
+		err = gpio_request((uint32_t)tcc_ehci->host_en_gpio,
+				"host_en_gpio");
 
 		if (err != 0) {
 			dev_err(&pdev->dev, "[ERROR][USB] can't requeest host_en gpio\n");
@@ -764,7 +767,8 @@ static int32_t tcc_ehci_parse_dt(struct platform_device *pdev,
 	}
 
 	// Check vbus enable pin
-	if (of_find_property(pdev->dev.of_node, "telechips,ehci_phy", NULL) != NULL) {
+	if (of_find_property(pdev->dev.of_node,
+				"telechips,ehci_phy", NULL) != NULL) {
 		tcc_ehci->transceiver = devm_usb_get_phy_by_phandle(&pdev->dev,
 				"telechips,ehci_phy", 0);
 #if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X)
@@ -772,7 +776,8 @@ static int32_t tcc_ehci_parse_dt(struct platform_device *pdev,
 				tcc_ehci->transceiver);
 #endif
 		if (IS_ERR(tcc_ehci->transceiver)) {
-			if (PTR_ERR(tcc_ehci->transceiver) == -EPROBE_DEFER) {
+			if (PTR_ERR(tcc_ehci->transceiver) ==
+					-EPROBE_DEFER) {
 				err = -EPROBE_DEFER;
 			} else {
 				err = -ENODEV;
@@ -782,14 +787,15 @@ static int32_t tcc_ehci_parse_dt(struct platform_device *pdev,
 
 			return err;
 		}
-
 		tcc_ehci->phy_regs = tcc_ehci->transceiver->base;
 	}
 
 	// Check VBUS Source enable
-	if (of_find_property(pdev->dev.of_node, "vbus-source-ctrl", NULL) != NULL) {
+	if (of_find_property(pdev->dev.of_node,
+				"vbus-source-ctrl", NULL) != NULL) {
 		tcc_ehci->vbus_source_ctrl = 1;
-		tcc_ehci->vbus_source = regulator_get(&pdev->dev, "vdd_v5p0");
+		tcc_ehci->vbus_source =
+					regulator_get(&pdev->dev, "vdd_v5p0");
 
 		if (IS_ERR(tcc_ehci->vbus_source)) {
 			dev_err(&pdev->dev, "[ERROR][USB] failed to get ehci vdd_source\n");
