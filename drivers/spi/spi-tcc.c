@@ -670,7 +670,9 @@ static void tcc_spi_txbuf_copy_client_to_spi(struct tcc_spi *tccspi,
 		return;
 	}
 
-	(void)memcpy(tccspi->tx_buf.v_addr, xfer->tx_buf + tccspi->cur_tx_pos, len);
+	(void)memcpy(tccspi->tx_buf.v_addr,
+			xfer->tx_buf + tccspi->cur_tx_pos,
+			len);
 	if ((UINT_MAX - len) < tccspi->cur_tx_pos) {
 		dev_warn(tccspi->dev, "[WARN][SPI] %s: len(%d) is too long\n",
 				__func__, len);
@@ -693,7 +695,9 @@ static void tcc_spi_rxbuf_copy_client_to_spi(struct tcc_spi *tccspi,
 		return;
 	}
 
-	(void)memcpy(xfer->rx_buf + tccspi->cur_rx_pos, tccspi->rx_buf.v_addr, len);
+	(void)memcpy(xfer->rx_buf + tccspi->cur_rx_pos,
+			tccspi->rx_buf.v_addr,
+			len);
 	if ((UINT_MAX - len) < tccspi->cur_rx_pos) {
 		dev_warn(tccspi->dev, "[WARN][SPI] %s: len(%d) is too long\n",
 				__func__, len);

@@ -312,7 +312,8 @@ static int32_t tcc_tsif_dma_submit(struct tca_spi_handle *tspi)
 	bits_per_word = (u32)(((reg_val >> 8U) & 0x1FUL) + 1UL);
 	bytes_per_word = bits_per_word >> 3U;
 
-	if ((UINT_MAX / (u32)SPI_GDMA_PACKET_SIZE) < tspi->dma_intr_packet_cnt) {
+	if ((UINT_MAX / (u32)SPI_GDMA_PACKET_SIZE) <
+			tspi->dma_intr_packet_cnt) {
 		pr_err("[ERROR][SPI] %s: dma_intr_packet(%d) is too much\n",
 				__func__, tspi->dma_intr_packet_cnt);
 		return -EINVAL;
