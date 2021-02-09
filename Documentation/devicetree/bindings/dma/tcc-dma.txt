@@ -1,0 +1,10 @@
+* Telechips GDMA controller
+
+* DMA controller
+
+Required properties:
+- compatible: "telechips,tcc897x-dma"
+              "telechips,tcc899x-dma"
+              "telechips,tcc803x-dma"
+              "telechips,tcc805x-dma"
+              "telechips,tcc901x-dma"
