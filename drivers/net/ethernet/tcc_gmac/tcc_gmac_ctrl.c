@@ -1040,10 +1040,8 @@ static int tcc_gmac_coe_rdes0(int ipc_err, int type, int payload_err)
 	 */
 	if ((unsigned int)status == (unsigned int)0x0) {
 		CTRL_DBG(KERN_INFO "RX Des0 status: IEEE 802.3 Type frame.\n");
-		ret = (int)good_frame;
 	} else if ((unsigned int)status == (unsigned int)0x4) {
 		CTRL_DBG(KERN_INFO "RX Des0 status: IPv4/6 No CSUM errorS.\n");
-		ret = (int)good_frame;
 	} else if ((unsigned int)status == (unsigned int)0x5) {
 		CTRL_DBG(KERN_ERR "RX Des0 status: IPv4/6 Payload Error.\n");
 		ret = (int)csum_none;
@@ -1058,13 +1056,11 @@ static int tcc_gmac_coe_rdes0(int ipc_err, int type, int payload_err)
 		CTRL_DBG(KERN_ERR
 			 "RX Des0 status: IPv4/6 unsupported IP PAYLOAD.\n");
 		//ret = discard_frame;
-		ret = (int)good_frame;
 	} else if ((unsigned int)status == (unsigned int)0x3) {
 		CTRL_DBG(KERN_ERR "RX Des0 status: No IPv4, IPv6 frame.\n");
 		//ret = discard_frame;
-		ret = (int)good_frame;
-	} else
-		ret = (int)good_frame;
+	} 
+
 	return ret;
 }
 
@@ -1853,9 +1849,7 @@ static void tcc_gmac_set_filter(struct net_device *dev)
 		writel(mc_filter[5], ioaddr + GMAC_HASH_TABLE_5);
 		writel(mc_filter[6], ioaddr + GMAC_HASH_TABLE_6);
 		writel(mc_filter[7], ioaddr + GMAC_HASH_TABLE_7);
-	} else {
-		value = 0;
-	}
+	} 
 
 	/* Handle multiple unicast addresses (perfect filtering) */
 if ((unsigned int)(dev->uc.count) > (unsigned int)GMAC_MAX_UNICAST_ADDRESSES)
@@ -2155,23 +2149,29 @@ struct mac_device_info *tcc_gmac_setup(void __iomem *ioaddr,
 //              ((uid & 0x0000ff00) >> 8), (uid & 0x000000ff));
 	mac = kzalloc(sizeof(const struct mac_device_info), GFP_KERNEL);
 
-	mac->mac = &tcc_gmac_core_ops;
-	mac->desc = &tcc_gmac_desc_ops;
-	mac->dma[0] = &tcc_gmac_dma_ch0_ops;
-// #ifdef CONFIG_TCC_GMAC_FQTSS_SUPPORT
-	mac->dma[1] = &tcc_gmac_dma_ch1_ops;
-	mac->dma[2] = &tcc_gmac_dma_ch2_ops;
-// #endif
-	mac->ptp = &tcc_gmac_ptp_ops;
+	if (mac == NULL){
+		pr_err("[ERROR] %s. GMAC setup failed\n", __func__);
+		return NULL;
+	}
+	else {
+		mac->mac = &tcc_gmac_core_ops;
+		mac->desc = &tcc_gmac_desc_ops;
+		mac->dma[0] = &tcc_gmac_dma_ch0_ops;
+		// #ifdef CONFIG_TCC_GMAC_FQTSS_SUPPORT
+		mac->dma[1] = &tcc_gmac_dma_ch1_ops;
+		mac->dma[2] = &tcc_gmac_dma_ch2_ops;
+		// #endif
+		mac->ptp = &tcc_gmac_ptp_ops;
 
-	mac->pmt = PMT_SUPPORTED;
-	mac->link.port = (int)GMAC_CONTROL_PS;
-	mac->link.duplex = (int)GMAC_CONTROL_DM;
-	mac->link.speed = (int)GMAC_CONTROL_FES;
-	mac->mii.addr = GMAC_MII_ADDR;
-	mac->mii.data = GMAC_MII_DATA;
+		mac->pmt = PMT_SUPPORTED;
+		mac->link.port = (int)GMAC_CONTROL_PS;
+		mac->link.duplex = (int)GMAC_CONTROL_DM;
+		mac->link.speed = (int)GMAC_CONTROL_FES;
+		mac->mii.addr = GMAC_MII_ADDR;
+		mac->mii.data = GMAC_MII_DATA;
 
-	mac->clk_rate = calc_mdio_clk_rate(bus_clk_rate);
+		mac->clk_rate = calc_mdio_clk_rate(bus_clk_rate);
+	}
 
 	return mac;
 }

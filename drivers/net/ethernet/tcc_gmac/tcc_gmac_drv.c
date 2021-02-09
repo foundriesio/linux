@@ -431,28 +431,35 @@ static void init_tx_dma_desc_rings(struct net_device *dev, unsigned int ch)
 							    &dma->dma_tx_phy,
 							    GFP_KERNEL);
 
+
+
 	if ((dma->dma_tx == NULL)) {
 		pr_err("%s:ERROR allocating the DMA Tx/Rx desc\n", __func__);
 		return;
 	}
-
-	/* TX INITIALIZATION */
-	for (i = 0; i < (int)txsize; i++) {
-		dma->tx_skbuff[i] = NULL;
-		dma->dma_tx[i].des2 = 0;
+	if (dma->tx_skbuff == NULL){
+		pr_err("%s.[ERROR] GMAC allocating the Tx skbuff\n", __func__);
+		return;
 	}
-	dma->dirty_tx = 0;
-	dma->cur_tx = 0;
+	else {
+		/* TX INITIALIZATION */
+		for (i = 0; i < (int)txsize; i++) {
+			dma->tx_skbuff[i] = NULL;
+			dma->dma_tx[i].des2 = 0;
+		}
+		dma->dirty_tx = 0;
+		dma->cur_tx = 0;
 
-	pr_info("[INFO][GMAC] %s : ch %d txsize %d\n", __func__, ch, txsize);
+		pr_info("[INFO][GMAC] %s : ch %d txsize %d\n", __func__, ch, txsize);
 
-	pr_info("[INFO][GMAC] --] init_tx_desc: : before\n");
-	priv->hw->desc->init_tx_desc(dma->dma_tx, txsize);
-	pr_info("[INFO][GMAC] --] init_tx_desc: : done\n");
+		pr_info("[INFO][GMAC] --] init_tx_desc: : before\n");
+		priv->hw->desc->init_tx_desc(dma->dma_tx, txsize);
+		pr_info("[INFO][GMAC] --] init_tx_desc: : done\n");
 
-	if ((unsigned int)netif_msg_hw(priv) != (unsigned int)0) {
-		pr_info("ch %d TX descriptor ring:\n", ch);
-		display_ring(dma->dma_tx, (int)txsize);
+		if ((unsigned int)netif_msg_hw(priv) != (unsigned int)0) {
+			pr_info("ch %d TX descriptor ring:\n", ch);
+			display_ring(dma->dma_tx, (int)txsize);
+		}
 	}
 }
 
@@ -1094,7 +1101,6 @@ static int tcc_gmac_rx(struct tcc_gmac_priv *priv, int limit, unsigned int ch)
 	}
 #endif
 
-	count = 0;
 	//while (!priv->hw->desc->get_rx_owner(p)) {
 	while (count < (limit - 1)) {
 		int status;
@@ -1605,7 +1611,7 @@ static int tcc_gmac_mdio_register(struct net_device *dev)
 	bus->parent = priv->device;
 
 	err = mdiobus_register(bus);
-	if ((unsigned int)err != (unsigned int)0) {
+	if (err != 0) {
 		pr_err("%s: Cannot register as MDIO bus\n", bus->name);
 		goto bus_register_fail;
 	}
@@ -1652,7 +1658,7 @@ static irqreturn_t tcc_gmac_irq_handler(int irq, void *dev_id)
 		gmac_suspended = 0;
 	}
 #endif
-	if ((unsigned int)unlikely(dev == NULL) != (unsigned int)0) {
+	if (unlikely(dev == NULL)){
 		pr_err("%s: invalid dev pointer\n", __func__);
 		return IRQ_NONE;
 	}
@@ -1895,7 +1901,7 @@ static int tcc_gmac_open(struct net_device *dev)
 		priv->is_mdio_registered = 1;
 		pr_info("[INFO][GMAC] registered!\n");
 	}
-	if ((unsigned int)tcc_gmac_phy_probe(dev) != (unsigned int)0) {
+	if (tcc_gmac_phy_probe(dev) < 0){
 		pr_err("[ERROR][GMAC] No Phy found\n");
 		tca_gmac_phy_pwr_off(&priv->dt_info);
 		tca_gmac_clk_disable(&priv->dt_info);
@@ -2845,6 +2851,12 @@ static int tcc_gmac_probe(struct platform_device *pdev)
 	pr_info("[INFO][GMAC] --] tcc_gmac_probe: :\n");
 
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
+
+	if (res == NULL) {
+		pr_err("%s.[ERROR] GMAC platform resource alloc failed\n",
+				__func__);
+		return -ENOMEM;
+	}
 
 	dev =
 	    alloc_etherdev_mqs((unsigned int)sizeof(struct tcc_gmac_priv),
