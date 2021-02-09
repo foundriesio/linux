@@ -1,0 +1,28 @@
+* asrc_m2m_pcm
+
+Required properties:
+
+- compatible : property name that conveys the platform architecture identifiers,
+               as 'telechips,switch'
+
+Example
+-------
+	asrc_m2m_pcm0: asrc_m2m_pcm@0 {
+		compatible = "telechips,asrc_m2m_pcm";
+		status = "disabled";
+	};
+
+	asrc_m2m_pcm1: asrc_m2m_pcm@1 {
+		compatible = "telechips,asrc_m2m_pcm";
+		status = "disabled";
+	};
+
+	asrc_m2m_pcm2: asrc_m2m_pcm@2 {
+		compatible = "telechips,asrc_m2m_pcm";
+		status = "disabled";
+	};
+
+	asrc_m2m_pcm3: asrc_m2m_pcm@3 {
+		compatible = "telechips,asrc_m2m_pcm";
+		status = "disabled";
+	};

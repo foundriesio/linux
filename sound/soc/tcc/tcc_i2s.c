@@ -404,8 +404,8 @@ static int tcc_i2s_set_dai_fmt(struct snd_soc_dai *dai, unsigned int fmt)
 				if ((i2s->tdm_slot_width == 16) ||
 						(i2s->tdm_slot_width == 24)) {
 					tcc_dai_set_dsp_tdm_mode(i2s->dai_reg,
-						(uint32_t) i2s->tdm_slots,
-						(uint32_t) i2s->tdm_slot_width, TRUE);
+					(uint32_t) i2s->tdm_slots,
+					(uint32_t) i2s->tdm_slot_width, TRUE);
 				} else {
 					i2s_dai_err("[%d] DSP_B TDM supports only 16bit",
 							i2s->blk_no);
@@ -830,7 +830,8 @@ static int tcc_i2s_hw_params(
 		}
 	}
 
-	if ((i2s->tdm_mode == true) && (channels != 2) && (channels != 4) && (channels != 8)
+	if ((i2s->tdm_mode == true) && (channels != 2)
+		&& (channels != 4) && (channels != 8)
 		&& (channels != 16) && (channels != 32)) {
 		i2s_dai_err("%s - TDM only supports 2, 4, 8, 16, 32 channels\n",
 					__func__);
@@ -904,7 +905,7 @@ static int tcc_i2s_hw_params(
 #endif //PCM_INTERFACE
 
 					if (fmt_bitwidth !=
-							(uint32_t)i2s->tdm_slot_width) {
+						(uint32_t)i2s->tdm_slot_width) {
 						i2s_dai_err("DSP A or B TDM Mode, slotwidth(%d) != format(%d)\n",
 								i2s->tdm_slot_width,
 								fmt_bitwidth);
