@@ -13,11 +13,11 @@
 
 static void amfmtuner_init(struct tcc_dxb_ctrl_t *ctrl, int32_t deviceIdx)
 {
-	(void)deviceIdx; /* this line is add to avoid QAC/codesonar warning */
+	/* below line is add to avoid QAC/codesonar warning */
+	(void)deviceIdx;
 
 	dxb_ctrl_gpio_out_init(ctrl->gpio_tuner_pwr);
 	dxb_ctrl_gpio_out_init(ctrl->gpio_tuner_rst);
-	return;
 }
 
 static void amfmtuner_on(struct tcc_dxb_ctrl_t *ctrl, int32_t deviceIdx)
@@ -25,7 +25,6 @@ static void amfmtuner_on(struct tcc_dxb_ctrl_t *ctrl, int32_t deviceIdx)
 	(void)deviceIdx;
 
 	dxb_ctrl_gpio_set_value(ctrl->gpio_tuner_pwr, 1);
-	return;
 }
 
 static void amfmtuner_off(struct tcc_dxb_ctrl_t *ctrl, int32_t deviceIdx)
@@ -33,29 +32,23 @@ static void amfmtuner_off(struct tcc_dxb_ctrl_t *ctrl, int32_t deviceIdx)
 	(void)deviceIdx;
 
 	dxb_ctrl_gpio_set_value(ctrl->gpio_tuner_pwr, 0);
-	return;
 }
 
-static void amfmtuner_reset_low(struct tcc_dxb_ctrl_t *ctrl,
-				int32_t deviceIdx)
+static void amfmtuner_reset_low(struct tcc_dxb_ctrl_t *ctrl, int32_t deviceIdx)
 {
 	(void)deviceIdx;
 
 	dxb_ctrl_gpio_set_value(ctrl->gpio_tuner_rst, 0);
-	return;
 }
 
-static void amfmtuner_reset_high(struct tcc_dxb_ctrl_t *ctrl,
-				int32_t deviceIdx)
+static void amfmtuner_reset_high(struct tcc_dxb_ctrl_t *ctrl, int32_t deviceIdx)
 {
 	(void)deviceIdx;
 
 	dxb_ctrl_gpio_set_value(ctrl->gpio_tuner_rst, 1);
-	return;
 }
 
-long_t amfmtuner_ioctl(struct tcc_dxb_ctrl_t *ctrl,
-				uint32_t cmd, ulong arg)
+long_t amfmtuner_ioctl(struct tcc_dxb_ctrl_t *ctrl, uint32_t cmd, ulong arg)
 {
 	int32_t deviceIdx;
 	ulong result;
@@ -66,12 +59,13 @@ long_t amfmtuner_ioctl(struct tcc_dxb_ctrl_t *ctrl,
 		return (-ENODEV);
 	}
 
-	if (arg == (ulong)0) {
+	if (arg == (ulong) 0) {
 		deviceIdx = 0;
 	} else {
-		result = copy_from_user((void *)&deviceIdx, (const void *)arg,
-		                    sizeof(int32_t));
-		if (result != (ulong)0) {
+		result =
+		    copy_from_user((void *)&deviceIdx, (const void *)arg,
+				   sizeof(int32_t));
+		if (result != (ulong) 0) {
 			return 0;
 		}
 	}
@@ -104,4 +98,3 @@ long_t amfmtuner_ioctl(struct tcc_dxb_ctrl_t *ctrl,
 	}
 	return 0;
 }
-
