@@ -808,11 +808,9 @@
 		clocks = <&clk_peri PERI_I2C1 &clk_io IOBUS_I2C_M1 &clk_fbus FBUS_IO>;
 		clock-frequency = <400000>;
 		interrupt_mode = <0>;
-
-		status = "okay";
-		port-mux = <28>; /* [0]SCL [1]SDA */
-		pinctrl-names = "default";
-		pinctrl-0 = <&i2c28_bus>;
+		port-mux = <0xFF>;      /* default value */
+		status = "disabled";
+		interrupt_mode = <0>;
 	};
 
 	i2c2: i2c@16320000 {
