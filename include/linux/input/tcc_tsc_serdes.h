@@ -45,7 +45,7 @@ struct i2c_data {
 	unsigned char val;
 	int board;
 	int display_num;
-	unsigned revision;
+	unsigned int revision;
 };
 
 int tcc_tsc_serdes_update(

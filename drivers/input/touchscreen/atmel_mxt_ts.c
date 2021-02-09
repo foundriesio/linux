@@ -636,7 +636,7 @@ static int __mxt_read_reg(struct i2c_client *client,
 	mxt_reg = (buf[0] << 8) | (buf[1]);
 
 	ret = regmap_bulk_read(data->regmap, mxt_reg, val, len);
-	if(ret < 0){
+	if (ret < 0) {
 		dev_err(&client->dev, "%s: i2c transfer failed (%d)\n",
 			__func__, ret);
 	}
@@ -693,7 +693,7 @@ static int __mxt_write_reg(struct i2c_client *client, u16 reg, u16 len,
 	mxt_reg = (buf[0] << 8) | (buf[1]);
 
 	ret = regmap_bulk_write(data->regmap, mxt_reg, val, len);
-	if(ret < 0){
+	if (ret < 0) {
 		dev_err(&client->dev, "%s: i2c send failed (%d)\n",
 			__func__, ret);
 	}
@@ -3052,9 +3052,10 @@ static const struct mxt_platform_data *mxt_parse_dt(struct i2c_client *client)
 	/* get IRQ Number */
 	atmel_intr_port = of_get_named_gpio(np, "irq-gpios", 0);
 	ret = gpio_is_valid(atmel_intr_port);
-	if(ret < 0){
+	if (ret < 0) {
 		dev_warn(&client->dev,
-				"%s: interrupt gpio %d is invalid.\n", __func__, atmel_intr_port);
+			"%s: interrupt gpio %d is invalid.\n",
+			__func__, atmel_intr_port);
 	}
 
 	client->irq = gpio_to_irq(atmel_intr_port);
@@ -3268,7 +3269,8 @@ static int mxt_probe(struct i2c_client *client, const struct i2c_device_id *id)
 	data->regmap = devm_regmap_init_i2c(client, &mxt_regmap_config);
 	if (IS_ERR(data->regmap)) {
 		error = PTR_ERR(data->regmap);
-		dev_err(&client->dev, "failed to initialize regmap: %d\n", error);
+		dev_err(&client->dev,
+				"failed to initialize regmap: %d\n", error);
 		return error;
 	}
 #ifdef CONFIG_ARCH_TCC
