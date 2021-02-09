@@ -138,6 +138,7 @@ enum {
 	IO_TREE_RELOC_BLOCKS,
 	IO_TREE_TRANS_DIRTY_PAGES,
 	IO_TREE_ROOT_DIRTY_LOG_PAGES,
+	IO_TREE_INODE_FILE_EXTENT,
 	IO_TREE_LOG_CSUM_RANGE,
 	IO_TREE_SELFTEST,
 };
@@ -409,6 +410,8 @@ static inline int set_extent_uptodate(struct extent_io_tree *tree, u64 start,
 int find_first_extent_bit(struct extent_io_tree *tree, u64 start,
 			  u64 *start_ret, u64 *end_ret, unsigned bits,
 			  struct extent_state **cached_state);
+int find_contiguous_extent_bit(struct extent_io_tree *tree, u64 start,
+			       u64 *start_ret, u64 *end_ret, unsigned bits);
 int extent_invalidatepage(struct extent_io_tree *tree,
 			  struct page *page, unsigned long offset);
 int extent_write_full_page(struct page *page, struct writeback_control *wbc);

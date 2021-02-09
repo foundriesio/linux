@@ -2970,6 +2970,11 @@ void btrfs_extent_item_to_extent_map(struct btrfs_inode *inode,
 				     struct btrfs_file_extent_item *fi,
 				     const bool new_inline,
 				     struct extent_map *em);
+int btrfs_inode_clear_file_extent_range(struct btrfs_inode *inode, u64 start,
+					u64 len);
+int btrfs_inode_set_file_extent_range(struct btrfs_inode *inode, u64 start,
+				      u64 len);
+void btrfs_inode_safe_disk_i_size_write(struct inode *inode, u64 new_i_size);
 
 /* inode.c */
 struct btrfs_delalloc_work {
