@@ -47,8 +47,8 @@ static ssize_t tcc_i2c_slave_fifo_byte_store(struct device *dev,
 DEVICE_ATTR(fifo_byte, 0664, tcc_i2c_slave_fifo_byte_show,
 	    tcc_i2c_slave_fifo_byte_store);
 
-static int32_t tcc_i2c_slave_push_one_byte(struct tcc_i2c_slave *i2c, uint8_t data,
-				       int32_t rx)
+static int32_t tcc_i2c_slave_push_one_byte(struct tcc_i2c_slave *i2c,
+		uint8_t data, int32_t rx)
 {
 	struct circ_buf *circ;
 	int32_t buf_size;
@@ -85,8 +85,8 @@ static int32_t tcc_i2c_slave_push_one_byte(struct tcc_i2c_slave *i2c, uint8_t da
 	return 0;
 }
 
-static int32_t tcc_i2c_slave_pop_one_byte(struct tcc_i2c_slave *i2c, uint8_t *data,
-				      int32_t rx)
+static int32_t tcc_i2c_slave_pop_one_byte(struct tcc_i2c_slave *i2c,
+		uint8_t *data, int32_t rx)
 {
 	struct circ_buf *circ;
 	int32_t buf_size;
@@ -173,7 +173,9 @@ static int32_t tcc_i2c_slave_push(struct tcc_i2c_slave *i2c, const char *src,
 		}
 
 		if (size > 0) {
-			(void)memcpy(&circ->buf[circ->head], src + writeSize, (size_t)size);
+			(void)memcpy(&circ->buf[circ->head],
+					src + writeSize,
+					(size_t)size);
 			circ->head = size;
 			ret += size;
 		}
@@ -201,8 +203,8 @@ static int32_t tcc_i2c_slave_push(struct tcc_i2c_slave *i2c, const char *src,
 	return ret;
 }
 
-static int32_t tcc_i2c_slave_pop(struct tcc_i2c_slave *i2c, char *dst, int32_t sz,
-				int32_t rx)
+static int32_t tcc_i2c_slave_pop(struct tcc_i2c_slave *i2c,
+		char *dst, int32_t sz, int32_t rx)
 {
 	struct circ_buf *circ;
 	char *buf;
@@ -480,11 +482,11 @@ static bool tcc_i2c_slave_dma_engine_filter(struct dma_chan *chan, void *pdata)
 	if (dma_slave->dma_dev == chan->device->dev) {
 		chan->private = dma_slave;
 		return (bool) true;
-	} else {
-		dev_err(chan->device->dev, "dma_dev(%p) != dev(%p)\n",
-			dma_slave->dma_dev, chan->device->dev);
-		return (bool) false;
 	}
+
+	dev_err(chan->device->dev, "dma_dev(%p) != dev(%p)\n",
+			dma_slave->dma_dev, chan->device->dev);
+	return (bool) false;
 }
 
 /* Release dma-eninge channel */
@@ -564,9 +566,10 @@ static int32_t tcc_i2c_slave_dma_engine_probe(struct platform_device *pdev,
 				goto error;
 			} else {
 				dma->tx_v_addr =
-				    dma_alloc_writecombine(dev, (size_t)dma->size,
-							   &dma->tx_dma_addr,
-							   GFP_KERNEL);
+					dma_alloc_writecombine(dev,
+							(size_t)dma->size,
+							&dma->tx_dma_addr,
+							GFP_KERNEL);
 				if (dma->tx_v_addr == NULL) {
 					dev_err(i2c->dev,
 						"[ERROR][I2C] Fail to allocate the dma buffer (tx)\n");
@@ -587,9 +590,10 @@ static int32_t tcc_i2c_slave_dma_engine_probe(struct platform_device *pdev,
 				goto error;
 			} else {
 				dma->rx_v_addr =
-				    dma_alloc_writecombine(dev, (size_t)dma->size,
-							   &dma->rx_dma_addr,
-							   GFP_KERNEL);
+					dma_alloc_writecombine(dev,
+							(size_t)dma->size,
+							&dma->rx_dma_addr,
+							GFP_KERNEL);
 				if (dma->rx_v_addr == NULL) {
 					dev_err(i2c->dev,
 						"[ERROR][I2C] Fail to allocate the dma buffer (rx)\n");
@@ -610,7 +614,8 @@ error:
 	return ret;
 }
 
-static int32_t tcc_i2c_slave_init_buf(struct tcc_i2c_slave *i2c, int32_t dma_to_mem)
+static int32_t tcc_i2c_slave_init_buf(struct tcc_i2c_slave *i2c,
+		int32_t dma_to_mem)
 {
 	void *v_addr;
 	dma_addr_t dma_addr;
@@ -654,7 +659,8 @@ static int32_t tcc_i2c_slave_init_buf(struct tcc_i2c_slave *i2c, int32_t dma_to_
 	return 0;
 }
 
-static void tcc_i2c_slave_deinit_buf(struct tcc_i2c_slave *i2c, int32_t dma_to_mem)
+static void tcc_i2c_slave_deinit_buf(struct tcc_i2c_slave *i2c,
+		int32_t dma_to_mem)
 {
 	void *v_addr;
 	dma_addr_t dma_addr;
@@ -1145,7 +1151,7 @@ static ssize_t tcc_i2c_slave_read(struct file *filp, char *buf, size_t sz,
 			dev_err(i2c->dev,
 					"[ERROR][I2C] %s: size %ld is under\n",
 					__func__, size);
-		}else {
+		} else {
 			size -= rd_sz;
 		}
 
@@ -1196,7 +1202,7 @@ static ssize_t tcc_i2c_slave_write(struct file *filp, const char *buf,
 			dev_err(i2c->dev,
 					"[ERROR][I2C] %s: size %ld is under\n",
 					__func__, size);
-		}else {
+		} else {
 			size -= wr_sz;
 		}
 
@@ -1225,13 +1231,11 @@ static ssize_t tcc_i2c_slave_write(struct file *filp, const char *buf,
 				}
 				err = (ulong)
 				    tcc_i2c_slave_pop_one_byte(i2c, &val,
-							       I2C_SLV_TX);
+						    I2C_SLV_TX);
 				if (err != 0U) {
 					break;
-				} else {
-					i2c_slave_writeb(val,
-							 i2c->regs + I2C_DPORT);
 				}
+				i2c_slave_writeb(val, i2c->regs + I2C_DPORT);
 			}
 
 			/* Enable interrupt */
@@ -1661,7 +1665,8 @@ static int32_t tcc_i2c_slave_probe(struct platform_device *pdev)
 		byte_cmd = devm_ioremap_resource(&pdev->dev, res);
 		if (i2c_slave_readl(byte_cmd) == 0xFFFF0000U) {
 			byte_cmd_val =
-			    0xFFF00000U | ((i2c->phy_regs >> 16U) & 0x0000FFF0U);
+				0xFFF00000U |
+				((i2c->phy_regs >> 16U) & 0x0000FFF0U);
 			dev_dbg(&pdev->dev,
 				"[DEBUG][I2C] byte command write value = 0x%08x\n",
 				byte_cmd_val);
@@ -1904,11 +1909,9 @@ static ssize_t tcc_i2c_slave_fifo_byte_store(struct device *dev,
 								I2C_SLV_TX);
 					if (ret != 0) {
 						break;
-					} else {
-						i2c_slave_writeb(val,
-								 i2c->regs +
-								 I2C_DPORT);
 					}
+					i2c_slave_writeb(val,
+							i2c->regs + I2C_DPORT);
 				}
 
 				/* Enable interrupt */
@@ -2033,9 +2036,9 @@ static int32_t __init tcc_i2c_slave_init(void)
 
 	ret = register_chrdev(0, TCC_I2C_SLV_CHRDEV_NAME, &tcc_i2c_slv_fops);
 	if (ret < 0) {
-		pr_err
-		    ("[ERROR][I2C] %s: failed to register character device (ret %d)\n",
-		     __func__, ret);
+		pr_err(
+			"[ERROR][I2C] %s: failed to register character device (ret %d)\n",
+			__func__, ret);
 		return ret;
 	}
 
