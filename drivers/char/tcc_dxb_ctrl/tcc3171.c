@@ -13,13 +13,12 @@
 
 static void tcc3171_init(struct tcc_dxb_ctrl_t *ctrl, int32_t deviceIdx)
 {
-	(void)deviceIdx; /* this line is add to avoid QAC/codesonar warning */
+	/* Below line is add to avoid QAC/codesonar warning */
+	(void)deviceIdx;
 
 	dxb_ctrl_gpio_out_init(ctrl->gpio_dxb_on);
 	dxb_ctrl_gpio_out_init(ctrl->gpio_dxb_0_rst);
 	dxb_ctrl_gpio_out_init(ctrl->gpio_dxb_1_rst);
-
-	return;
 }
 
 static void tcc3171_reset(struct tcc_dxb_ctrl_t *ctrl, int32_t deviceIdx)
@@ -39,7 +38,6 @@ static void tcc3171_reset(struct tcc_dxb_ctrl_t *ctrl, int32_t deviceIdx)
 		/* do nothing */
 		break;
 	}
-	return;
 }
 
 static void tcc3171_on(struct tcc_dxb_ctrl_t *ctrl, int32_t deviceIdx)
@@ -66,7 +64,6 @@ static void tcc3171_on(struct tcc_dxb_ctrl_t *ctrl, int32_t deviceIdx)
 		/* do nothing */
 		break;
 	}
-	return;
 }
 
 static void tcc3171_off(struct tcc_dxb_ctrl_t *ctrl, int32_t deviceIdx)
@@ -84,24 +81,20 @@ static void tcc3171_off(struct tcc_dxb_ctrl_t *ctrl, int32_t deviceIdx)
 	}
 
 	dxb_ctrl_gpio_set_value(ctrl->gpio_dxb_on, 0);
-
-	return;
 }
 
 static void tcc3171_pure_on(struct tcc_dxb_ctrl_t *ctrl, int32_t deviceIdx)
 {
 	(void)deviceIdx;
-	dxb_ctrl_gpio_set_value(ctrl->gpio_dxb_on, 1);
 
-	return;
+	dxb_ctrl_gpio_set_value(ctrl->gpio_dxb_on, 1);
 }
 
 static void tcc3171_pure_off(struct tcc_dxb_ctrl_t *ctrl, int32_t deviceIdx)
 {
 	(void)deviceIdx;
-	dxb_ctrl_gpio_set_value(ctrl->gpio_dxb_on, 0);
 
-	return;
+	dxb_ctrl_gpio_set_value(ctrl->gpio_dxb_on, 0);
 }
 
 static void tcc3171_reset_low(struct tcc_dxb_ctrl_t *ctrl, int32_t deviceIdx)
@@ -121,8 +114,6 @@ static void tcc3171_reset_low(struct tcc_dxb_ctrl_t *ctrl, int32_t deviceIdx)
 		/* do nothing */
 		break;
 	}
-
-	return;
 }
 
 static void tcc3171_reset_high(struct tcc_dxb_ctrl_t *ctrl, int32_t deviceIdx)
@@ -142,12 +133,9 @@ static void tcc3171_reset_high(struct tcc_dxb_ctrl_t *ctrl, int32_t deviceIdx)
 		/* do nothing */
 		break;
 	}
-
-	return;
 }
 
-long_t tcc3171_ioctl(struct tcc_dxb_ctrl_t *ctrl,
-				uint32_t cmd, ulong arg)
+long_t tcc3171_ioctl(struct tcc_dxb_ctrl_t *ctrl, uint32_t cmd, ulong arg)
 {
 	int32_t deviceIdx;
 	ulong result;
@@ -158,12 +146,12 @@ long_t tcc3171_ioctl(struct tcc_dxb_ctrl_t *ctrl,
 		return (-ENODEV);
 	}
 
-	if (arg == (ulong)0) {
+	if (arg == (ulong) 0) {
 		deviceIdx = 0;
 	} else {
 		result = copy_from_user((void *)&deviceIdx, (const void *)arg,
-		                    sizeof(int32_t));
-		if (result != (ulong)0) {
+					sizeof(int32_t));
+		if (result != (ulong) 0) {
 			return 0;
 		}
 	}

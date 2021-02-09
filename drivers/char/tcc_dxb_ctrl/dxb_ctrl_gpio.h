@@ -12,10 +12,12 @@ extern void dxb_ctrl_gpio_out_init(int32_t pin);
 extern void dxb_ctrl_gpio_set_value(int32_t pin, int32_t value);
 extern void dxb_ctrl_gpio_free(int32_t pin);
 
-#if 0 /* comment out to avoid QAC/Codesonar warning, enable later if required */
+/* Below functions are commented out to avoid QAC/Codesonar warning,
+ * enable later if required
+ */
+#if 0
 extern void dxb_ctrl_gpio_in_init(int32_t pin);
 extern int32_t dxb_ctrl_gpio_get_value(int32_t pin);
 #endif
 
 #endif // DXB_CTRL_GPIO_H_
-

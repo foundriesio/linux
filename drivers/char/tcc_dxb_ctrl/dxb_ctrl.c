@@ -23,7 +23,7 @@ static struct tcc_dxb_ctrl_t *gDxbCtrl;
  * Baseband Functions
  ******************************************************************************/
 extern long_t tcc3171_ioctl(struct tcc_dxb_ctrl_t *ctrl,
-					uint32_t cmd, ulong arg);
+				uint32_t cmd, ulong arg);
 extern long_t amfmtuner_ioctl(struct tcc_dxb_ctrl_t *ctrl,
 				uint32_t cmd, ulong arg);
 
@@ -31,8 +31,7 @@ extern long_t amfmtuner_ioctl(struct tcc_dxb_ctrl_t *ctrl,
 
 struct baseband {
 	int32_t type;
-	long_t (*ioctl)(struct tcc_dxb_ctrl_t *ctrl, uint32_t cmd,
-		      ulong arg);
+	long_t (*ioctl)(struct tcc_dxb_ctrl_t *ctrl, uint32_t cmd, ulong arg);
 };
 
 static struct baseband BB[] = {
@@ -56,7 +55,7 @@ static int32_t get_bb_index(int32_t type)
 			break;
 		}
 		index++;
-	} while (BB[index].type != (int32_t)BOARD_DXB_UNDEFINED);
+	} while (BB[index].type != (int32_t) BOARD_DXB_UNDEFINED);
 
 	return found_index;
 }
@@ -64,8 +63,7 @@ static int32_t get_bb_index(int32_t type)
 /*****************************************************************************
  * TCC_DXB_CTRL Functions
  ******************************************************************************/
-static long_t tcc_dxb_ctrl_ioctl(struct file *filp, uint32_t cmd,
-			       ulong arg)
+static long_t tcc_dxb_ctrl_ioctl(struct file *filp, uint32_t cmd, ulong arg)
 {
 	struct baseband *bb;
 	ulong result;
@@ -82,13 +80,14 @@ static long_t tcc_dxb_ctrl_ioctl(struct file *filp, uint32_t cmd,
 		{
 			int32_t new_board_type;
 
-			if (arg == (ulong)0) {
+			if (arg == (ulong) 0) {
 				return (-EINVAL);
 			}
 
-			result = copy_from_user((void *)&new_board_type, (const void *)arg,
-			                       sizeof(uint32_t));
-			if (result != (ulong)0) {
+			result =
+			    copy_from_user((void *)&new_board_type,
+					   (const void *)arg, sizeof(uint32_t));
+			if (result != (ulong) 0) {
 				break;
 			}
 
@@ -96,14 +95,16 @@ static long_t tcc_dxb_ctrl_ioctl(struct file *filp, uint32_t cmd,
 			gDxbCtrl->bb_index = get_bb_index(new_board_type);
 			if (gDxbCtrl->bb_index == (-1)) {
 				/* undefined board type */
-				(void)pr_err("[ERROR][TCC_DXB_CTRL] %s cmd[0x%X] undefined board type %d\n",
-				     __func__, cmd, new_board_type);
+				(void)pr_err(
+					"[ERROR][TCC_DXB_CTRL] %s cmd[0x%X] undefined board type %d\n",
+					__func__, cmd, new_board_type);
 				return -1;
 			}
 
 			bb = &BB[gDxbCtrl->bb_index];
-			(void)pr_info("[INFO][TCC_DXB_CTRL] new_board_type=%d, bb_index=%d\n",
-			     gDxbCtrl->board_type, gDxbCtrl->bb_index);
+			(void)pr_info(
+				"[INFO][TCC_DXB_CTRL] new_board_type=%d, bb_index=%d\n",
+				gDxbCtrl->board_type, gDxbCtrl->bb_index);
 
 			if (bb->ioctl != NULL) {
 				return bb->ioctl(gDxbCtrl, cmd, arg);
@@ -170,7 +171,7 @@ static int32_t tcc_dxb_ctrl_probe(struct platform_device *pdev)
 	int32_t ret;
 	struct device *dev;
 
-	if (pdev == NULL ) {
+	if (pdev == NULL) {
 		return -ENODEV;
 	}
 
@@ -182,9 +183,11 @@ static int32_t tcc_dxb_ctrl_probe(struct platform_device *pdev)
 	}
 
 	ret = alloc_chrdev_region(&gDxbCtrl->devnum, 0, 1, DXB_CTRL_DEV_NAME);
-	if (ret!=0)	{
-		(void)pr_err("[ERROR][TCC_DXB_CTRL] %s alloc_chrdev_region failed\n",
-		       __func__);
+	if (ret != 0) {
+		(void)
+		    pr_err
+		    ("[ERROR][TCC_DXB_CTRL] %s alloc_chrdev_region failed\n",
+		     __func__);
 		goto err_alloc_chrdev;
 	}
 
@@ -192,31 +195,31 @@ static int32_t tcc_dxb_ctrl_probe(struct platform_device *pdev)
 	cdev_init(&gDxbCtrl->cdev, &tcc_dxb_ctrl_fops);
 	gDxbCtrl->cdev.owner = THIS_MODULE;
 	ret = cdev_add(&gDxbCtrl->cdev, gDxbCtrl->devnum, 1);
-	if (ret!=0) {
+	if (ret != 0) {
 		(void)pr_err("[ERROR][TCC_DXB_CTRL] %s cdev_add failed\n",
-		       __func__);
+			     __func__);
 		goto error_cdev_add;
 	}
 
 	/* Create a class */
 	gDxbCtrl->class = class_create(THIS_MODULE, DXB_CTRL_DEV_NAME);
-	if (IS_ERR(gDxbCtrl->class))
-	{
-		ret = (int32_t)PTR_ERR(gDxbCtrl->class);
+	if (IS_ERR(gDxbCtrl->class)) {
+		ret = (int32_t) PTR_ERR(gDxbCtrl->class);
 		(void)pr_err("[ERROR][TCC_DXB_CTRL] %s class_create failed\n",
-		       __func__);
+			     __func__);
 		goto error_class_create;
 	}
 
 	/* Create a device node */
-	gDxbCtrl->dev = device_create(gDxbCtrl->class, dev, gDxbCtrl->devnum, gDxbCtrl, DXB_CTRL_DEV_NAME);
+	gDxbCtrl->dev =
+	    device_create(gDxbCtrl->class, dev, gDxbCtrl->devnum, gDxbCtrl,
+			  DXB_CTRL_DEV_NAME);
 	if (IS_ERR(gDxbCtrl->dev)) {
-		ret = (int32_t)PTR_ERR(gDxbCtrl->dev);
+		ret = (int32_t) PTR_ERR(gDxbCtrl->dev);
 		(void)pr_err("[ERROR][TCC_DXB_CTRL] %s device_create failed\n",
-		       __func__);
+			     __func__);
 		goto error_device_create;
 	}
-
 #ifdef CONFIG_OF
 	gDxbCtrl->gpio_dxb_on = of_get_named_gpio(dev->of_node, "pw-gpios", 0);
 
@@ -236,20 +239,20 @@ static int32_t tcc_dxb_ctrl_probe(struct platform_device *pdev)
 	    of_get_named_gpio(dev->of_node, "tuner-gpios", 1);
 #endif
 	(void)pr_info("[INFO][TCC_DXB_CTRL] %s [0x%X] ",
-		__func__, gDxbCtrl->gpio_dxb_on);
+		      __func__, gDxbCtrl->gpio_dxb_on);
 	(void)pr_info("[0x%X][0x%X] ",
-		gDxbCtrl->gpio_dxb_0_pwdn, gDxbCtrl->gpio_dxb_0_rst);
+		      gDxbCtrl->gpio_dxb_0_pwdn, gDxbCtrl->gpio_dxb_0_rst);
 	(void)pr_info("[0x%X][0x%X] ",
-		gDxbCtrl->gpio_dxb_1_pwdn, gDxbCtrl->gpio_dxb_1_rst);
+		      gDxbCtrl->gpio_dxb_1_pwdn, gDxbCtrl->gpio_dxb_1_rst);
 	(void)pr_info("[0x%X][0x%X]\n",
-		gDxbCtrl->gpio_tuner_rst, gDxbCtrl->gpio_tuner_pwr);
+		      gDxbCtrl->gpio_tuner_rst, gDxbCtrl->gpio_tuner_pwr);
 
 	gDxbCtrl->board_type = (int32_t)DEFAULT_BOARD_TYPE;
 	gDxbCtrl->bb_index = get_bb_index(gDxbCtrl->board_type);
 	if (gDxbCtrl->bb_index == -1) {
 		(void)pr_err
-		("[ERROR][TCC_DXB_CTRL] [%s] default board type is undefined\n",
-		__func__);
+		    ("[ERROR][TCC_DXB_CTRL] [%s] undefined board type\n",
+		     __func__);
 	}
 
 	return 0;
@@ -267,7 +270,7 @@ err_alloc_chrdev:
 static int32_t tcc_dxb_ctrl_remove(struct platform_device *pdev)
 {
 	(void)pdev;
-	if (gDxbCtrl==NULL) {
+	if (gDxbCtrl == NULL) {
 		return 0;
 	}
 	device_destroy(gDxbCtrl->class, gDxbCtrl->devnum);

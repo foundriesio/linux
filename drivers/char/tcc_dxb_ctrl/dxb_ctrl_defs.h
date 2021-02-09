@@ -15,7 +15,7 @@ typedef long long_t;
 
 struct tcc_dxb_ctrl_t {
 	struct device *dev;
-	struct cdev   cdev;
+	struct cdev cdev;
 	struct class *class;
 	dev_t devnum;
 
@@ -31,4 +31,3 @@ struct tcc_dxb_ctrl_t {
 	int32_t gpio_tuner_rst;
 };
 #endif // DXB_CTRL_DEFS_H_
-
