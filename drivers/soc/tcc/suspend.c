@@ -32,7 +32,7 @@ static void tcc_cpu_suspend(unsigned long mode)
 
 static int tcc_pm_enter(suspend_state_t state)
 {
-	unsigned int flags;
+	unsigned long flags;
 	unsigned long arg;
 	int mode = get_pm_suspend_mode();
 	int ret = 0;
