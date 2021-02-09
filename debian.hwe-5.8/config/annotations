@@ -946,7 +946,7 @@ CONFIG_TCG_TIS_I2C_INFINEON                     note<LP:1643652>
 CONFIG_TCG_TIS_I2C_NUVOTON                      note<LP:1643652>
 
 # Menu: Device Drivers >> Clock Source drivers
-CONFIG_DW_APB_TIMER                             policy<{'armhf': 'y'}>
+CONFIG_DW_APB_TIMER                             policy<{'arm64': 'y', 'armhf': 'y'}>
 CONFIG_ROCKCHIP_TIMER                           policy<{'arm64': 'y', 'armhf': 'y'}>
 CONFIG_ARMADA_370_XP_TIMER                      policy<{'armhf': 'y'}>
 CONFIG_MESON6_TIMER                             policy<{'armhf': 'y'}>
@@ -3339,8 +3339,8 @@ CONFIG_HFI1_DEBUG_SDMA_ORDER                    policy<{'amd64': 'n'}>
 CONFIG_SDMA_VERBOSITY                           policy<{'amd64': 'n'}>
 CONFIG_INFINIBAND_QEDR                          policy<{'amd64': 'm', 'arm64': 'm', 'ppc64el': 'm'}>
 CONFIG_INFINIBAND_RDMAVT                        policy<{'amd64': 'm'}>
-CONFIG_RDMA_RXE                                 policy<{'amd64': 'm', 'arm64': 'm', 'armhf': 'm', 'ppc64el': 'm', 's390x': 'm'}>
-CONFIG_RDMA_SIW                                 policy<{'amd64': 'm', 'arm64': 'm', 'armhf': 'm', 'ppc64el': 'm', 's390x': 'm'}>
+CONFIG_RDMA_RXE                                 policy<{'amd64': 'm', 'arm64': 'm', 'ppc64el': 'm', 's390x': 'm'}>
+CONFIG_RDMA_SIW                                 policy<{'amd64': 'm', 'arm64': 'm', 'ppc64el': 'm', 's390x': 'm'}>
 
 # Menu: Device Drivers >> InfiniBand support >> RDMA/CM
 CONFIG_INFINIBAND_ADDR_TRANS                    policy<{'amd64': 'y', 'arm64': 'y', 'armhf': 'y', 'ppc64el': 'y', 's390x': 'y'}>
@@ -9074,7 +9074,6 @@ CONFIG_USB_FTDI_ELAN                            policy<{'amd64': 'm', 'arm64': '
 CONFIG_USB_APPLEDISPLAY                         policy<{'amd64': 'm', 'arm64': 'm', 'armhf': 'm', 'ppc64el': 'm'}>
 CONFIG_APPLE_MFI_FASTCHARGE                     policy<{'amd64': 'm', 'arm64': 'm', 'armhf': 'm', 'ppc64el': 'm'}>
 CONFIG_USB_SISUSBVGA                            policy<{'amd64': 'm', 'arm64': 'm', 'armhf': 'm', 'ppc64el': 'm'}>
-CONFIG_USB_SISUSBVGA_CON                        policy<{'amd64': 'n', 'arm64': 'n', 'armhf': 'n', 'ppc64el': 'n'}>
 CONFIG_USB_LD                                   policy<{'amd64': 'm', 'arm64': 'm', 'armhf': 'm', 'ppc64el': 'm'}>
 CONFIG_USB_TRANCEVIBRATOR                       policy<{'amd64': 'm', 'arm64': 'm', 'armhf': 'm', 'ppc64el': 'm'}>
 CONFIG_USB_IOWARRIOR                            policy<{'amd64': 'm', 'arm64': 'm', 'armhf': 'm', 'ppc64el': 'm'}>
@@ -11332,7 +11331,6 @@ CONFIG_ZPOOL                                    policy<{'amd64': 'y', 'arm64': '
 CONFIG_ZBUD                                     policy<{'amd64': 'y', 'arm64': 'y', 'armhf': 'y', 'ppc64el': 'y', 's390x': 'y'}>
 CONFIG_Z3FOLD                                   policy<{'amd64': 'm', 'arm64': 'm', 'armhf': 'm', 'ppc64el': 'm', 's390x': 'm'}>
 CONFIG_ZSMALLOC                                 policy<{'amd64': 'y', 'arm64': 'y', 'armhf': 'y', 'ppc64el': 'y', 's390x': 'y'}>
-CONFIG_ZSMALLOC_PGTABLE_MAPPING                 policy<{'amd64': 'n', 'arm64': 'n', 'armhf': 'n', 'ppc64el': 'n', 's390x': 'n'}>
 CONFIG_ZSMALLOC_STAT                            policy<{'amd64': 'n', 'arm64': 'n', 'armhf': 'n', 'ppc64el': 'n', 's390x': 'n'}>
 CONFIG_DEFERRED_STRUCT_PAGE_INIT                policy<{'amd64': 'n', 'arm64': 'n', 'ppc64el': 'n', 's390x': 'n'}>
 CONFIG_IDLE_PAGE_TRACKING                       policy<{'amd64': 'y', 'arm64': 'y', 'armhf': 'y', 'ppc64el': 'y', 's390x': 'y'}>
@@ -12813,11 +12811,13 @@ CONFIG_EXTRA_TARGETS                            policy<{'ppc64el': '""'}>
 CONFIG_PPC_MEM_KEYS                             policy<{'ppc64el': 'n'}>
 CONFIG_PPC_SECURE_BOOT                          policy<{'ppc64el': 'y'}>
 CONFIG_PPC_SECVAR_SYSFS                         policy<{'ppc64el': 'y'}>
+CONFIG_PPC_RTAS_FILTER                          policy<{'ppc64el': 'y'}>
 #
 CONFIG_FA_DUMP                                  note<LP:1415562>
 CONFIG_PPC_MEM_KEYS                             flag<REVIEW> note<LP:1776967>
 CONFIG_PPC_SECURE_BOOT                          mark<ENFORCED> note<LP:1866909> note<LP:1855668>
 CONFIG_PPC_SECVAR_SYSFS                         mark<ENFORCED> note<LP:1866909>
+CONFIG_PPC_RTAS_FILTER                          mark<ENFORCED> note<CVE-2020-27777>
 
 # Menu: Processor type and features >> Architecture: s390
 CONFIG_KERNEL_NOBP                              policy<{'s390x': 'n'}>
