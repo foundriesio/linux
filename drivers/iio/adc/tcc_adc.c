@@ -230,14 +230,14 @@ static void tcc_adc_set_normal_mode(struct tcc_adc *adc)
 	uint32_t reg_values;
 	bool use_touch = (bool)false;
 
-#if defined (CONFIG_TOUCHSCREEN_TCCTS)
+#ifdef CONFIG_TOUCHSCREEN_TCCTS
 	use_touch = (bool)true;
 #endif
 	if (!use_touch) {
 		/* set normal conversion mode */
 		reg_values = readl(adc->regs + ADCTSC_REG);
 		reg_values &= ~ADCTSC_MASK;
- 		reg_values |= (ADCTSC_PUON | ADCTSC_XPEN | ADCTSC_YPEN);
+		reg_values |= (ADCTSC_PUON | ADCTSC_XPEN | ADCTSC_YPEN);
 		writel(reg_values, adc->regs + ADCTSC_REG);
 	}
 }
