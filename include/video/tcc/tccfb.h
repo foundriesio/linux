@@ -262,4 +262,7 @@ unsigned int tcc_vioc_display_dt_parse(
 	struct device_node *np,
 	struct tcc_dp_device *dp_data);
 
+extern unsigned int do_hibernation;
+extern unsigned int do_hibernate_boot;
+
 #endif
