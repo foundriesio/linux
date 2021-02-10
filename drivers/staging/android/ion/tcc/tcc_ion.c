@@ -1,21 +1,9 @@
+// SPDX-License-Identifier: GPL-2.0
 /*
  * linux/driver/gpu/ion/tcc/tcc_ion.c
  * Description: TCC ION device driver
  *
  * Copyright (c) 2013 Telechips, Inc.
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2 as
- * published by the Free Software Foundation.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
 #include <linux/module.h>
@@ -95,18 +83,15 @@ static struct ion_platform_data *tcc_ion_parse_dt(struct platform_device *pdev)
 				return ERR_PTR(-ENOMEM);
 			}
 			pr_info("%s - 0x%llx - 0x%llx - %x - %d - %d\n",
-			     pmap_ump_reserved.name, pmap_ump_reserved.base,
-			     pmap_ump_reserved.size, pmap_ump_reserved.groups,
-			     pmap_ump_reserved.rc, pmap_ump_reserved.flags);
+				pmap_ump_reserved.name, pmap_ump_reserved.base,
+				pmap_ump_reserved.size,
+				pmap_ump_reserved.groups,
+				pmap_ump_reserved.rc, pmap_ump_reserved.flags);
 
 			heap->base = pmap_ump_reserved.base;
 			heap->size = pmap_ump_reserved.size;
-			#ifdef CONFIG_PHYS_ADDR_T_64BIT
-			pr_info("ump_reserved base:0x%llx 0x%llx\n", heap->base,
-			#else
-			pr_info("ump_reserved base:0x%x 0x%llx\n", heap->base,
-			#endif
-			       pmap_ump_reserved.base);
+			pr_info("ump_reserved base:%pap 0x%llx\n", &heap->base,
+				pmap_ump_reserved.base);
 		}
 #ifdef CONFIG_ION_CARVEOUT_CAM_HEAP
 		else if (heap->type == ION_HEAP_TYPE_CARVEOUT_CAM) {
@@ -118,11 +103,7 @@ static struct ion_platform_data *tcc_ion_parse_dt(struct platform_device *pdev)
 			}
 			heap->base = pmap_ion_carveout_cam.base;
 			heap->size = pmap_ion_carveout_cam.size;
-			#ifdef CONFIG_PHYS_ADDR_T_64BIT
-			pr_info("ion_carveout_cam base:0x%llx\n", heap->base);
-			#else
-			pr_info("ion_carveout_cam base:0x%x\n", heap->base);
-			#endif
+			pr_info("ion_carveout_cam base:%pap\n", &heap->base);
 		}
 #endif
 		++index;
@@ -159,13 +140,9 @@ struct ion_heap *ion_heap_create(struct ion_platform_heap *heap_data)
 	}
 
 	if (IS_ERR_OR_NULL(heap)) {
-		#ifdef CONFIG_PHYS_ADDR_T_64BIT
-		pr_err("%s: error creating heap %s type %d base %llu size %zu\n",
-		#else
-		pr_err("%s: error creating heap %s type %d base %lu size %zu\n",
-		#endif
+		pr_err("%s: error creating heap %s type %d base %pap size %zu\n",
 		       __func__, heap_data->name, heap_data->type,
-		       heap_data->base, heap_data->size);
+		       &heap_data->base, heap_data->size);
 		return ERR_PTR(-EINVAL);
 	}
 

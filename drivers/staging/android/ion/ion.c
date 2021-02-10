@@ -528,7 +528,7 @@ int ion_phys(int dmabuf_fd, phys_addr_t *addr, size_t *len)
 	buffer = dmabuf->priv;
 	if (!buffer) {
 		pr_err("%s: there is no dmabuf associated with dmabuf_fd.\n",
-			__func__);
+		       __func__);
 		dma_buf_put(dmabuf);
 		return -ENODEV;
 	}
@@ -650,7 +650,7 @@ void ion_device_add_heap(struct ion_heap *heap)
 
 		path = dentry_path(dev->debug_root, buf, 256);
 		pr_err("Failed to create heap debugfs at %s/%s\n",
-			path, heap->name);
+		       path, heap->name);
 	}
 
 	if (heap->shrinker.count_objects && heap->shrinker.scan_objects) {

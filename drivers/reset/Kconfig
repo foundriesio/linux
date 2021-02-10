@@ -97,7 +97,11 @@ config RESET_TCC
 	bool "Telechips SoCs Reset Driver"
 	default ARCH_TCC if !TCC803X_CA7S
 	help
-	  This enables the reset driver for Telechips SoCs.
+	  This enables the reset driver for peripherals or controllers on
+	  Telechips SoCs.
+
+	  Say Y if you want to control reset signals provided by Power
+	  Management Unit.
 
 config RESET_TI_SCI
 	tristate "TI System Control Interface (TI-SCI) reset driver"
