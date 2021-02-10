@@ -75,15 +75,15 @@ extern void tca_fb_vsync_activate(struct tcc_dp_device *pdata);
 
 #if defined(CONFIG_QUICK_BOOT_PROGRESS_BAR)
 
-typedef struct {
+struct progress_bar_info_t {
 	int sx;
 	int sy;
 	int width;
 	int height;
 	int addr;
-} progress_bar_info_t;
+};
 
-progress_bar_info_t bar;
+struct progress_bar_info_t bar;
 unsigned int img_width;
 unsigned int img_height;
 unsigned int QB_BAR_ADDR;
