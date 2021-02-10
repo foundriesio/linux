@@ -592,6 +592,7 @@ static struct da9063_dev_model regulators_models[] = {
 	{ }
 };
 
+#ifndef CONFIG_ARCH_TCC
 /* Regulator interrupt handlers */
 static irqreturn_t da9063_ldo_lim_event(int irq, void *data)
 {
@@ -616,6 +617,7 @@ static irqreturn_t da9063_ldo_lim_event(int irq, void *data)
 
 	return IRQ_HANDLED;
 }
+#endif
 
 /*
  * Probing and Initialisation functions
@@ -726,7 +728,10 @@ static int da9063_regulator_probe(struct platform_device *pdev)
 	struct da9063_regulator *regl;
 	struct regulator_config config;
 	bool bcores_merged, bmem_bio_merged;
-	int id, irq, n, n_regulators, ret, val;
+	int id, n, n_regulators, ret, val;
+#ifndef CONFIG_ARCH_TCC
+	int irq;
+#endif
 	size_t size;
 
 	regl_pdata = da9063_pdata ? da9063_pdata->regulators_pdata : NULL;

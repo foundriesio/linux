@@ -952,6 +952,7 @@ static const struct da9062_regulator_info local_da9062_regulator_info[] = {
 	},
 };
 
+#if 0
 /* Regulator interrupt handlers */
 static irqreturn_t da9062_ldo_lim_event(int irq, void *data)
 {
@@ -983,6 +984,7 @@ static irqreturn_t da9062_ldo_lim_event(int irq, void *data)
 ldo_lim_error:
 	return handled;
 }
+#endif
 
 static int da9062_regulator_probe(struct platform_device *pdev)
 {
@@ -991,7 +993,10 @@ static int da9062_regulator_probe(struct platform_device *pdev)
 	struct da9062_regulator *regl;
 	struct regulator_config config = { };
 	const struct da9062_regulator_info *rinfo;
-	int irq, n, ret;
+	int n;
+#if 0
+	int irq, ret;
+#endif
 	size_t size;
 	int max_regulators;
 
