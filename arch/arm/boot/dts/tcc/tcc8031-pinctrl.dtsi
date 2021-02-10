@@ -1353,13 +1353,17 @@
 	switch_c13: switch_c13 {
 		telechips,pins = "gpc-13";
 		telechips,pin-function = <0>;
-		telechips,output-low = <0>;
+		telechips,input-enable;
+		telechips,input_buffer_enable;
+		telechips,no-pull;
 	};
 
 	switch_ma15: switch_ma15 {
 		telechips,pins = "gpma-15";
 		telechips,pin-function = <0>;
-		telechips,output-low = <0>;
+		telechips,input-enable;
+		telechips,input_buffer_enable;
+		telechips,no-pull;
 	};
 
 	m1dai2_lrck: m1dai2_lrck{
@@ -2239,13 +2243,6 @@
 		telechips,pins = "gpb-25";
 		telechips,pin-function = <1>;
 		telechips,drive-strength = <1>;
-	};
-
-	switch_reverse_ma15: switch_reverse_ma15 {
-		telechips,pins = "gpma-15";
-		telechips,pin-function = <0>;
-		telechips,input-enable;
-		telechips,no-pull;
 	};
 
 	cam0_8bit_idle: cam0_8bit_idle {

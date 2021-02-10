@@ -2610,6 +2610,7 @@
 		telechips,pins = "gpmb-23";
 		telechips,pin-function = <0>;
 		telechips,input-enable;
+		telechips,input_buffer_enable;
 		telechips,no-pull;
 	};
 
@@ -2617,6 +2618,7 @@
 		telechips,pins = "gpc-13";
 		telechips,pin-function = <0>;
 		telechips,input-enable;
+		telechips,input_buffer_enable;
 		telechips,no-pull;
 	};
 

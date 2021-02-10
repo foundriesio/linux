@@ -1994,6 +1994,7 @@
 		telechips,pins = "gpma-15";
 		telechips,pin-function = <0>;
 		telechips,input-enable;
+		telechips,input_buffer_enable;
 		telechips,no-pull;
 	};
 
