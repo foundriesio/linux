@@ -3093,7 +3093,7 @@ static int btrfs_finish_ordered_io(struct btrfs_ordered_extent *ordered_extent)
 	if (test_bit(BTRFS_ORDERED_NOCOW, &ordered_extent->flags)) {
 		BUG_ON(!list_empty(&ordered_extent->list)); /* Logic error */
 
-		btrfs_ordered_update_i_size(inode, 0, ordered_extent);
+		btrfs_inode_safe_disk_i_size_write(inode, 0);
 		if (nolock)
 			trans = btrfs_join_transaction_nolock(root);
 		else
@@ -3168,7 +3168,7 @@ static int btrfs_finish_ordered_io(struct btrfs_ordered_extent *ordered_extent)
 
 	add_pending_csums(trans, inode, &ordered_extent->list);
 
-	btrfs_ordered_update_i_size(inode, 0, ordered_extent);
+	btrfs_inode_safe_disk_i_size_write(inode, 0);
 	ret = btrfs_update_inode_fallback(trans, root, inode);
 	if (ret) { /* -ENOMEM or corruption */
 		btrfs_abort_transaction(trans, ret);
@@ -4738,7 +4738,7 @@ out:
 		ASSERT(last_size >= new_size);
 		if (!ret && last_size > new_size)
 			last_size = new_size;
-		btrfs_ordered_update_i_size(inode, last_size, NULL);
+		btrfs_inode_safe_disk_i_size_write(inode, last_size);
 	}
 
 	btrfs_free_path(path);
@@ -5070,7 +5070,7 @@ static int btrfs_setsize(struct inode *inode, struct iattr *attr)
 		}
 
 		i_size_write(inode, newsize);
-		btrfs_ordered_update_i_size(inode, i_size_read(inode), NULL);
+		btrfs_inode_safe_disk_i_size_write(inode, 0);
 		pagecache_isize_extended(inode, oldsize, newsize);
 		ret = btrfs_update_inode(trans, root, inode);
 		btrfs_end_write_no_snapshoting(root);
@@ -9291,7 +9291,7 @@ static int btrfs_truncate(struct inode *inode)
 			ret = PTR_ERR(trans);
 			goto out;
 		}
-		btrfs_ordered_update_i_size(inode, inode->i_size, NULL);
+		btrfs_inode_safe_disk_i_size_write(inode, 0);
 	}
 
 	if (trans) {
@@ -10595,7 +10595,7 @@ next:
 			else
 				i_size = cur_offset;
 			i_size_write(inode, i_size);
-			btrfs_ordered_update_i_size(inode, i_size, NULL);
+			btrfs_inode_safe_disk_i_size_write(inode, 0);
 		}
 
 		ret = btrfs_update_inode(trans, root, inode);
