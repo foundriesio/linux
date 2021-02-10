@@ -390,219 +390,6 @@ static void dwc3_tcc898x_swreset(struct PUSBPHYCFG *USBPHYCFG, int32_t on_off)
 }
 #endif
 
-static int32_t dwc3_tcc_phy_ctrl_native(struct usb_phy *phy, int32_t on_off)
-{
-	struct tcc_dwc3_device *dwc3_phy_dev =
-		container_of(phy, struct tcc_dwc3_device, phy);
-	struct PUSBPHYCFG *USBPHYCFG;
-	uint32_t uTmp = 0;
-	int32_t tmp_cnt;
-
-	if (dwc3_phy_dev == NULL) {
-		return -ENODEV;
-	}
-
-	USBPHYCFG = (struct PUSBPHYCFG *)dwc3_phy_dev->base;
-
-	if (USBPHYCFG == NULL) {
-		return -ENXIO;
-	}
-
-	dev_info(dwc3_phy_dev->dev, "[INFO][USB] %s %s\n", __func__,
-			(on_off != 0) ? "ON" : "OFF");
-	if ((on_off == (int32_t)ON) && (is_suspend != 0)) {
-		// 1.Power-on Reset
-#if defined(CONFIG_ARCH_TCC898X)
-		dwc3_tcc898x_swreset(USBPHYCFG, ON);
-		mdelay(1);
-		dwc3_tcc898x_swreset(USBPHYCFG, OFF);
-#elif defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X) ||	\
-		defined(CONFIG_ARCH_TCC901X) ||				\
-		defined(CONFIG_ARCH_TCC805X)
-		writel((readl(&USBPHYCFG->U30_LCFG) & ~Hw31),
-				&USBPHYCFG->U30_LCFG);
-		writel((readl(&USBPHYCFG->U30_PCFG0) & ~(Hw30)),
-				&USBPHYCFG->U30_PCFG0);
-
-		uTmp = readl(&USBPHYCFG->U30_PCFG0);
-		uTmp &= ~(Hw25); // turn off SS circuits
-		uTmp &= ~(Hw24); // turn on HS circuits
-		writel(uTmp, &USBPHYCFG->U30_PCFG0);
-		usleep_range(1000, 2000);
-
-		writel((readl(&USBPHYCFG->U30_PCFG0) | (Hw30)),
-				&USBPHYCFG->U30_PCFG0);
-		writel((readl(&USBPHYCFG->U30_LCFG) | (Hw31)),
-				&USBPHYCFG->U30_LCFG);
-		tmp_cnt = 0;
-
-		while (tmp_cnt < 10000) {
-			if ((readl(&USBPHYCFG->U30_PCFG0) &
-					0x80000000U) != 0U) {
-				break;
-			}
-
-			tmp_cnt++;
-			udelay(5);
-		}
-
-		dev_info(dwc3_phy_dev->dev, "[INFO][USB] XHCI PHY valid check %s\n",
-				(tmp_cnt >= 9999) ? "fail!" : "pass.");
-#endif
-		// Initialize all registers
-#if defined(CONFIG_ARCH_TCC898X)
-		USBPHYCFG->U30_PCFG0 =
-			(system_rev >= 2) ? 0x40306228 : 0x20306228;
-#elif defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X) ||	\
-		defined(CONFIG_ARCH_TCC901X) ||				\
-		defined(CONFIG_ARCH_TCC805X)
-		writel(0x03204208, &USBPHYCFG->U30_PCFG0);
-#else
-		USBPHYCFG->U30_PCFG0 = 0x20306228;
-#endif
-
-#if defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X) ||	\
-		defined(CONFIG_ARCH_TCC901X) ||				\
-		defined(CONFIG_ARCH_TCC805X)
-		writel(0x00000000, &USBPHYCFG->U30_PCFG1);
-		writel(0x919E1A04U, &USBPHYCFG->U30_PCFG2);
-#if defined(CONFIG_ARCH_TCC899X)
-		// vboost:4, de-emp:0x1f, swing:0x6f, ios_bias:05
-		writel(0x4befef05, &USBPHYCFG->U30_PCFG3);
-#else
-		writel(0x4B8E7F05, &USBPHYCFG->U30_PCFG3);
-#endif
-		writel(0x00200000, &USBPHYCFG->U30_PCFG4);
-		writel(0x00000351, &USBPHYCFG->U30_PFLT);
-		writel(0x80000000U, &USBPHYCFG->U30_PINT);
-		writel((readl(&USBPHYCFG->U30_LCFG) |
-					(Hw27 | Hw26 | Hw19 |
-					 Hw18 | Hw17 | Hw7)),
-				&USBPHYCFG->U30_LCFG);
-#else
-		USBPHYCFG->U30_PCFG1 = 0x00000300;
-		USBPHYCFG->U30_PCFG2 = 0x919f94C4;
-		USBPHYCFG->U30_PCFG3 = 0x4ab07f05;
-#endif
-
-#if defined(CONFIG_ARCH_TCC898X)
-		dwc3_tcc898x_swreset(USBPHYCFG, ON);
-
-		// Link global Reset, CoreRSTN (Cold Reset), active low
-		USBPHYCFG->U30_LCFG &= ~(Hw31);
-#elif defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X) ||	\
-		defined(CONFIG_ARCH_TCC901X) ||				\
-		defined(CONFIG_ARCH_TCC805X)
-		// Link global Reset, CoreRSTN (Cold Reset), active low
-		writel((readl(&USBPHYCFG->U30_LCFG) & ~Hw31),
-				&USBPHYCFG->U30_LCFG);
-#endif
-
-#if defined(CONFIG_ARCH_TCC898X)
-		if (!strncmp("high", maximum_speed, 4)) {
-			// USB20 Only Mode
-			/*
-			 * enable usb20mode -> removed in DWC_usb3 2.60a, but
-			 * use as interrupt
-			 */
-			USBPHYCFG->U30_LCFG |= Hw28;
-			uTmp = USBPHYCFG->U30_PCFG0;
-			uTmp |= Hw25; // turn off SS circuits
-			uTmp &= ~(Hw24); // turn on HS circuits
-			USBPHYCFG->U30_PCFG0 = uTmp;
-		} else if (!strncmp("super", maximum_speed, 5)) {
-			// USB 3.0
-			/*
-			 * disable usb20mode -> removed in DWC_usb3 2.60a, but
-			 * use as interrupt
-			 */
-			USBPHYCFG->U30_LCFG &= ~(Hw28);
-			uTmp = USBPHYCFG->U30_PCFG0;
-			uTmp &= ~(Hw25); // turn on SS circuits
-			uTmp &= ~(Hw24); // turn on HS circuits
-			USBPHYCFG->U30_PCFG0 = uTmp;
-		}
-
-		// Release Reset Link global
-		USBPHYCFG->U30_LCFG |= (Hw31);
-#elif defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X) ||	\
-		defined(CONFIG_ARCH_TCC901X) ||				\
-		defined(CONFIG_ARCH_TCC805X)
-		if (strncmp("high", maximum_speed, 4) == 0) {
-			// USB20 Only Mode
-			/*
-			 * enable usb20mode -> removed in DWC_usb3 2.60a, but
-			 * use as interrupt
-			 */
-			writel((readl(&USBPHYCFG->U30_LCFG) | Hw28),
-					&USBPHYCFG->U30_LCFG);
-			uTmp = USBPHYCFG->U30_PCFG0;
-			uTmp |= Hw25; // turn off SS circuits
-			uTmp &= ~(Hw24); // turn on HS circuits
-			writel(uTmp, &USBPHYCFG->U30_PCFG0);
-		} else if (strncmp("super", maximum_speed, 5) == 0) {
-			// USB 3.0
-			/*
-			 * disable usb20mode -> removed in DWC_usb3 2.60a, but
-			 * use as interrupt
-			 */
-			writel((readl(&USBPHYCFG->U30_LCFG) & ~(Hw28)),
-					&USBPHYCFG->U30_LCFG);
-			uTmp = USBPHYCFG->U30_PCFG0;
-			uTmp &= ~(Hw25); // turn on SS circuits
-			uTmp &= ~(Hw24); // turn on HS circuits
-			uTmp &= ~(Hw30); // release PHY reset
-			writel(uTmp, &USBPHYCFG->U30_PCFG0);
-		} else {
-			/* Nothing to do */
-		}
-
-		mdelay(1);
-
-		// Release Reset Link global
-		writel((readl(&USBPHYCFG->U30_PCFG0) | (Hw30)),
-				&USBPHYCFG->U30_PCFG0);
-		writel((readl(&USBPHYCFG->U30_LCFG) | (Hw31)),
-				&USBPHYCFG->U30_LCFG);
-#endif
-
-#if defined(CONFIG_ARCH_TCC898X)
-		dwc3_tcc898x_swreset(USBPHYCFG, OFF);
-#endif
-		mdelay(10);
-
-		if (clk_prepare_enable(dwc3_phy_dev->phy_clk) != 0) {
-			dev_err(dwc3_phy_dev->dev, "[ERROR][USB] can't do xhci phy clk enable\n");
-		}
-
-		is_suspend = 0;
-	} else if ((on_off == (int32_t)OFF) && (is_suspend == 0)) {
-		clk_disable_unprepare(dwc3_phy_dev->phy_clk);
-		// USB 3.0 PHY Power down
-		dev_info(dwc3_phy_dev->dev, "[INFO][USB] dwc3 tcc: PHY power down\n");
-		USBPHYCFG->U30_PCFG0 |= (Hw25 | Hw24);
-
-		mdelay(10);
-
-		uTmp = USBPHYCFG->U30_PCFG0;
-		is_suspend = 1;
-	} else if ((on_off == (int32_t)PHY_RESUME) && (is_suspend != 0)) {
-		is_suspend = 0;
-		dev_info(dwc3_phy_dev->dev, "[INFO][USB] dwc3 tcc: PHY resume\n");
-		USBPHYCFG->U30_PCFG0 &= ~(Hw25 | Hw24);
-
-		mdelay(10);
-
-		if (clk_prepare_enable(dwc3_phy_dev->phy_clk) != 0) {
-			dev_err(dwc3_phy_dev->dev, "[ERROR][USB] can't do xhci phy clk enable\n");
-		}
-	} else {
-		/* Nothing to do */
-	}
-
-	return 0;
-}
-
 #if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X)
 static int32_t dwc3_tcc_ss_phy_ctrl_native(struct usb_phy *phy, int32_t on_off)
 {
@@ -846,6 +633,219 @@ static int32_t dwc3_tcc_ss_phy_ctrl_native(struct usb_phy *phy, int32_t on_off)
 		}
 
 		is_suspend = 0;
+	} else {
+		/* Nothing to do */
+	}
+
+	return 0;
+}
+#else
+static int32_t dwc3_tcc_phy_ctrl_native(struct usb_phy *phy, int32_t on_off)
+{
+	struct tcc_dwc3_device *dwc3_phy_dev =
+		container_of(phy, struct tcc_dwc3_device, phy);
+	struct PUSBPHYCFG *USBPHYCFG;
+	uint32_t uTmp = 0;
+	int32_t tmp_cnt;
+
+	if (dwc3_phy_dev == NULL) {
+		return -ENODEV;
+	}
+
+	USBPHYCFG = (struct PUSBPHYCFG *)dwc3_phy_dev->base;
+
+	if (USBPHYCFG == NULL) {
+		return -ENXIO;
+	}
+
+	dev_info(dwc3_phy_dev->dev, "[INFO][USB] %s %s\n", __func__,
+			(on_off != 0) ? "ON" : "OFF");
+	if ((on_off == (int32_t)ON) && (is_suspend != 0)) {
+		// 1.Power-on Reset
+#if defined(CONFIG_ARCH_TCC898X)
+		dwc3_tcc898x_swreset(USBPHYCFG, ON);
+		mdelay(1);
+		dwc3_tcc898x_swreset(USBPHYCFG, OFF);
+#elif defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X) ||	\
+		defined(CONFIG_ARCH_TCC901X) ||				\
+		defined(CONFIG_ARCH_TCC805X)
+		writel((readl(&USBPHYCFG->U30_LCFG) & ~Hw31),
+				&USBPHYCFG->U30_LCFG);
+		writel((readl(&USBPHYCFG->U30_PCFG0) & ~(Hw30)),
+				&USBPHYCFG->U30_PCFG0);
+
+		uTmp = readl(&USBPHYCFG->U30_PCFG0);
+		uTmp &= ~(Hw25); // turn off SS circuits
+		uTmp &= ~(Hw24); // turn on HS circuits
+		writel(uTmp, &USBPHYCFG->U30_PCFG0);
+		usleep_range(1000, 2000);
+
+		writel((readl(&USBPHYCFG->U30_PCFG0) | (Hw30)),
+				&USBPHYCFG->U30_PCFG0);
+		writel((readl(&USBPHYCFG->U30_LCFG) | (Hw31)),
+				&USBPHYCFG->U30_LCFG);
+		tmp_cnt = 0;
+
+		while (tmp_cnt < 10000) {
+			if ((readl(&USBPHYCFG->U30_PCFG0) &
+					0x80000000U) != 0U) {
+				break;
+			}
+
+			tmp_cnt++;
+			udelay(5);
+		}
+
+		dev_info(dwc3_phy_dev->dev, "[INFO][USB] XHCI PHY valid check %s\n",
+				(tmp_cnt >= 9999) ? "fail!" : "pass.");
+#endif
+		// Initialize all registers
+#if defined(CONFIG_ARCH_TCC898X)
+		USBPHYCFG->U30_PCFG0 =
+			(system_rev >= 2) ? 0x40306228 : 0x20306228;
+#elif defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X) ||	\
+		defined(CONFIG_ARCH_TCC901X) ||				\
+		defined(CONFIG_ARCH_TCC805X)
+		writel(0x03204208, &USBPHYCFG->U30_PCFG0);
+#else
+		USBPHYCFG->U30_PCFG0 = 0x20306228;
+#endif
+
+#if defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X) ||	\
+		defined(CONFIG_ARCH_TCC901X) ||				\
+		defined(CONFIG_ARCH_TCC805X)
+		writel(0x00000000, &USBPHYCFG->U30_PCFG1);
+		writel(0x919E1A04U, &USBPHYCFG->U30_PCFG2);
+#if defined(CONFIG_ARCH_TCC899X)
+		// vboost:4, de-emp:0x1f, swing:0x6f, ios_bias:05
+		writel(0x4befef05, &USBPHYCFG->U30_PCFG3);
+#else
+		writel(0x4B8E7F05, &USBPHYCFG->U30_PCFG3);
+#endif
+		writel(0x00200000, &USBPHYCFG->U30_PCFG4);
+		writel(0x00000351, &USBPHYCFG->U30_PFLT);
+		writel(0x80000000U, &USBPHYCFG->U30_PINT);
+		writel((readl(&USBPHYCFG->U30_LCFG) |
+					(Hw27 | Hw26 | Hw19 |
+					 Hw18 | Hw17 | Hw7)),
+				&USBPHYCFG->U30_LCFG);
+#else
+		USBPHYCFG->U30_PCFG1 = 0x00000300;
+		USBPHYCFG->U30_PCFG2 = 0x919f94C4;
+		USBPHYCFG->U30_PCFG3 = 0x4ab07f05;
+#endif
+
+#if defined(CONFIG_ARCH_TCC898X)
+		dwc3_tcc898x_swreset(USBPHYCFG, ON);
+
+		// Link global Reset, CoreRSTN (Cold Reset), active low
+		USBPHYCFG->U30_LCFG &= ~(Hw31);
+#elif defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X) ||	\
+		defined(CONFIG_ARCH_TCC901X) ||				\
+		defined(CONFIG_ARCH_TCC805X)
+		// Link global Reset, CoreRSTN (Cold Reset), active low
+		writel((readl(&USBPHYCFG->U30_LCFG) & ~Hw31),
+				&USBPHYCFG->U30_LCFG);
+#endif
+
+#if defined(CONFIG_ARCH_TCC898X)
+		if (!strncmp("high", maximum_speed, 4)) {
+			// USB20 Only Mode
+			/*
+			 * enable usb20mode -> removed in DWC_usb3 2.60a, but
+			 * use as interrupt
+			 */
+			USBPHYCFG->U30_LCFG |= Hw28;
+			uTmp = USBPHYCFG->U30_PCFG0;
+			uTmp |= Hw25; // turn off SS circuits
+			uTmp &= ~(Hw24); // turn on HS circuits
+			USBPHYCFG->U30_PCFG0 = uTmp;
+		} else if (!strncmp("super", maximum_speed, 5)) {
+			// USB 3.0
+			/*
+			 * disable usb20mode -> removed in DWC_usb3 2.60a, but
+			 * use as interrupt
+			 */
+			USBPHYCFG->U30_LCFG &= ~(Hw28);
+			uTmp = USBPHYCFG->U30_PCFG0;
+			uTmp &= ~(Hw25); // turn on SS circuits
+			uTmp &= ~(Hw24); // turn on HS circuits
+			USBPHYCFG->U30_PCFG0 = uTmp;
+		}
+
+		// Release Reset Link global
+		USBPHYCFG->U30_LCFG |= (Hw31);
+#elif defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X) ||	\
+		defined(CONFIG_ARCH_TCC901X) ||				\
+		defined(CONFIG_ARCH_TCC805X)
+		if (strncmp("high", maximum_speed, 4) == 0) {
+			// USB20 Only Mode
+			/*
+			 * enable usb20mode -> removed in DWC_usb3 2.60a, but
+			 * use as interrupt
+			 */
+			writel((readl(&USBPHYCFG->U30_LCFG) | Hw28),
+					&USBPHYCFG->U30_LCFG);
+			uTmp = USBPHYCFG->U30_PCFG0;
+			uTmp |= Hw25; // turn off SS circuits
+			uTmp &= ~(Hw24); // turn on HS circuits
+			writel(uTmp, &USBPHYCFG->U30_PCFG0);
+		} else if (strncmp("super", maximum_speed, 5) == 0) {
+			// USB 3.0
+			/*
+			 * disable usb20mode -> removed in DWC_usb3 2.60a, but
+			 * use as interrupt
+			 */
+			writel((readl(&USBPHYCFG->U30_LCFG) & ~(Hw28)),
+					&USBPHYCFG->U30_LCFG);
+			uTmp = USBPHYCFG->U30_PCFG0;
+			uTmp &= ~(Hw25); // turn on SS circuits
+			uTmp &= ~(Hw24); // turn on HS circuits
+			uTmp &= ~(Hw30); // release PHY reset
+			writel(uTmp, &USBPHYCFG->U30_PCFG0);
+		} else {
+			/* Nothing to do */
+		}
+
+		mdelay(1);
+
+		// Release Reset Link global
+		writel((readl(&USBPHYCFG->U30_PCFG0) | (Hw30)),
+				&USBPHYCFG->U30_PCFG0);
+		writel((readl(&USBPHYCFG->U30_LCFG) | (Hw31)),
+				&USBPHYCFG->U30_LCFG);
+#endif
+
+#if defined(CONFIG_ARCH_TCC898X)
+		dwc3_tcc898x_swreset(USBPHYCFG, OFF);
+#endif
+		mdelay(10);
+
+		if (clk_prepare_enable(dwc3_phy_dev->phy_clk) != 0) {
+			dev_err(dwc3_phy_dev->dev, "[ERROR][USB] can't do xhci phy clk enable\n");
+		}
+
+		is_suspend = 0;
+	} else if ((on_off == (int32_t)OFF) && (is_suspend == 0)) {
+		clk_disable_unprepare(dwc3_phy_dev->phy_clk);
+		// USB 3.0 PHY Power down
+		dev_info(dwc3_phy_dev->dev, "[INFO][USB] dwc3 tcc: PHY power down\n");
+		USBPHYCFG->U30_PCFG0 |= (Hw25 | Hw24);
+
+		mdelay(10);
+
+		uTmp = USBPHYCFG->U30_PCFG0;
+		is_suspend = 1;
+	} else if ((on_off == (int32_t)PHY_RESUME) && (is_suspend != 0)) {
+		is_suspend = 0;
+		dev_info(dwc3_phy_dev->dev, "[INFO][USB] dwc3 tcc: PHY resume\n");
+		USBPHYCFG->U30_PCFG0 &= ~(Hw25 | Hw24);
+
+		mdelay(10);
+
+		if (clk_prepare_enable(dwc3_phy_dev->phy_clk) != 0) {
+			dev_err(dwc3_phy_dev->dev, "[ERROR][USB] can't do xhci phy clk enable\n");
+		}
 	} else {
 		/* Nothing to do */
 	}
