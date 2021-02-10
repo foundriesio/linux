@@ -31,7 +31,16 @@ menuconfig ARCH_TCC805X
 	select PCI_DOMAINS if PCI
 
 config TCC805X_CA53Q
-        bool "Build for TCC805X Cortex-A53 Subcore"
-        depends on ARCH_TCC805X
-        help
-          Select this option building a kernel for TCC805X Cortex-A53 Subcore.
+	bool "Build for TCC805X Cortex-A53 Subcore"
+	depends on ARCH_TCC805X
+	help
+	  Select this option building a kernel for TCC805X Cortex-A53 Subcore.
+
+	  The TCC805x integrates the ARM® Cortex-A72 quad microprocessor with
+	  4 MB unified L2 cache as well as Cortex-A53 quad/dual microprocessor
+	  with 512 KB unified L2 cache, Cortex-R5 for microprocessor, SC000
+	  core of HSM(Hardware Security Module) in Security sub-system for
+	  automotive security, Cortex-M4 for storage management, another
+	  Cortex-M4 for TSDEMUX in CM sub-system, and hardwired VPU(Video-
+	  Processing Unit)/GPU(Graphics Processing Unit) to maximize multimedia
+	  experience at its peak level.

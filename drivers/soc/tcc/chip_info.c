@@ -69,36 +69,34 @@ struct chip_info *get_chip_info(void)
 {
 	return &cinfo;
 }
+EXPORT_SYMBOL(get_chip_info);
 
 u32 get_chip_rev(void)
 {
 	return cinfo.rev;
 }
+EXPORT_SYMBOL(get_chip_rev);
 
 u32 get_chip_name(void)
 {
 	return cinfo.name;
 }
-
-EXPORT_SYMBOL(get_chip_info);
-EXPORT_SYMBOL(get_chip_rev);
 EXPORT_SYMBOL(get_chip_name);
 
 struct boot_info *get_boot_info(void)
 {
 	return &binfo;
 }
+EXPORT_SYMBOL(get_boot_info);
 
 u32 get_boot_sel(void)
 {
 	return binfo.bootsel;
 }
+EXPORT_SYMBOL(get_boot_sel);
 
 u32 get_core_identity(void)
 {
 	return binfo.coreid;
 }
-
-EXPORT_SYMBOL(get_boot_info);
-EXPORT_SYMBOL(get_boot_sel);
 EXPORT_SYMBOL(get_core_identity);
