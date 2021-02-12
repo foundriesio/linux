@@ -5057,6 +5057,15 @@ static int send_hole(struct send_ctx *sctx, u64 end)
 	u64 len;
 	int ret = 0;
 
+	/*
+	 * A hole that starts at EOF or beyond it. Since we do not yet support
+	 * fallocate (for extent preallocation and hole punching), sending a
+	 * write of zeroes starting at EOF or beyond would later require issuing
+	 * a truncate operation which would undo the write and achieve nothing.
+	 */
+	if (offset >= sctx->cur_inode_size)
+		return 0;
+
 	p = fs_path_alloc();
 	if (!p)
 		return -ENOMEM;
@@ -5089,6 +5098,7 @@ static int send_extent_data(struct send_ctx *sctx,
 			    const u64 len)
 {
 	u64 sent = 0;
+
 
 	if (sctx->flags & BTRFS_SEND_FLAG_NO_FILE_DATA)
 		return send_update_extent(sctx, offset, len);
