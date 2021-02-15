@@ -495,33 +495,35 @@ static int _vmgr_hevc_enc_process(vputype type, int cmd, long pHandle,
 			vmgr_hevc_enc_data.check_interrupt_detection = 1;
 
 			vmgr_hevc_enc_data.handle[type] = 0x00;
-			vmgr_hevc_enc_data.szFrame_Len
-			= arg->encInit.m_iPicWidth
+			vmgr_hevc_enc_data.szFrame_Len =
+			    arg->encInit.m_iPicWidth
 				* arg->encInit.m_iPicHeight * 3 / 2;
 
-			arg->encInit.m_RegBaseAddr[VA]
-			= (codec_addr_t) vmgr_hevc_enc_data.base_addr;
-			arg->encInit.m_Memcpy = vetc_memcpy;
-			arg->encInit.m_Memset
-			= (void (*) (void *, int, unsigned int, unsigned int))
-				vetc_memset;
-			arg->encInit.m_Interrupt
-			= (int (*) (void)) _vmgr_hevc_enc_internal_handler;
-			arg->encInit.m_Ioremap
-			= (void * (*) (phys_addr_t, unsigned int)) vetc_ioremap;
-			arg->encInit.m_Iounmap
-			= (void (*) (void *)) vetc_iounmap;
-			arg->encInit.m_reg_read
-			= (unsigned int (*)(void *, unsigned int))
-				vetc_reg_read;
-			arg->encInit.m_reg_write
-			= (void (*)(void *, unsigned int, unsigned int))
-				vetc_reg_write;
-			arg->encInit.m_Usleep
-			= (void (*)(unsigned int, unsigned int))vetc_usleep;
+			arg->encInit.m_RegBaseAddr[VA] =
+			    (codec_addr_t) vmgr_hevc_enc_data.base_addr;
+			arg->encInit.m_Memcpy =
+			    (void*(*)(void *,const void *,unsigned int,unsigned int))
+			    vetc_memcpy;
+			arg->encInit.m_Memset =
+			    (void (*) (void *,int,unsigned int,unsigned int))
+			    vetc_memset;
+			arg->encInit.m_Interrupt =
+			    (int (*) (void)) _vmgr_hevc_enc_internal_handler;
+			arg->encInit.m_Ioremap =
+			    (void * (*) (phys_addr_t, unsigned int)) vetc_ioremap;
+			arg->encInit.m_Iounmap =
+			    (void (*) (void *)) vetc_iounmap;
+			arg->encInit.m_reg_read =
+			    (unsigned int (*)(void *, unsigned int))
+			    vetc_reg_read;
+			arg->encInit.m_reg_write =
+			    (void (*)(void *, unsigned int, unsigned int))
+			    vetc_reg_write;
+			arg->encInit.m_Usleep =
+			    (void (*)(unsigned int, unsigned int)) vetc_usleep;
 
 			V_DBG(VPU_DBG_SEQUENCE,
-			"Enc :: Init In =>Memcpy(0x%px),Memset(0x%px),Interrupt(0x%px),remap(0x%px),unmap(0x%px),read(0x%px),write(0x%px),sleep(0x%px)||workbuff(0x%px/0x%px),Reg(0x%px/0x%px), format(%d),W:H(%d:%d),Fps(%d),Bps(%d),Keyi(%d),Stream(0x%px/0x%px, %d),Reg(0x%px):Sec. AXI (0x%x)",
+			"Enc :: Init In =>Memcpy(0x%px),Memset(0x%px),Interrupt(0x%px),remap(0x%px),unmap(0x%px),read(0x%px),write(0x%px),sleep(0x%px)||workbuff(v(0x%lx):p(0x%lx)),Reg(0x%lx/0x%lx), format(%d),W:H(%d:%d),Fps(%d),Bps(%d),Keyi(%d),Stream(0x%lx/0x%lx,%d),Reg(0x%lx):Sec. AXI (0x%x)",
 			    arg->encInit.m_Memcpy,
 			    arg->encInit.m_Memset,
 			    arg->encInit.m_Interrupt,
@@ -590,7 +592,7 @@ static int _vmgr_hevc_enc_process(vputype type, int cmd, long pHandle,
 			= (VENC_HEVC_SET_BUFFER_t *) args;
 
 			V_DBG(VPU_DBG_SEQUENCE,
-			"HEnc-%d: Register a frame buffer w PA(0x%px)/VA(0x%px)",
+			"HEnc-%d: Register a frame buffer w PA(0x%lx)/VA(0x%lx)",
 				type,
 				arg->encBuffer.m_FrameBufferStartAddr[0],
 				arg->encBuffer.m_FrameBufferStartAddr[1]);
