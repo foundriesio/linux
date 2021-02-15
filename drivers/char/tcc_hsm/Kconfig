@@ -4,4 +4,3 @@ config TCC_HSM
 	depends on PLATFORM_AVN
 	help
 		Support to HSM based on Cortex-M4(TCC803x) or HSM Core(TCC805x)
-
