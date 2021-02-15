@@ -332,7 +332,7 @@ static int tcc803x_gpio_set_eclk_sel(void __iomem *base, u32 offset,
 {
 	void __iomem *reg = (void __iomem *)(gpio_base + ECLKSEL);
 	struct tcc_pin_bank *bank = pctl->pin_banks;
-	u32 port = (u32)base - (u32)gpio_base;
+	u32 port = base - gpio_base;
 	u32 idx, i, j, pin_valid;
 	int data;
 
