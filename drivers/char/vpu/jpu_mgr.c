@@ -841,20 +841,20 @@ static int _jmgr_process(vputype type, int cmd, long pHandle, void *args)
 
 			jmgr_data.handle[type] = 0x00;
 
-			arg->gsJpuEncInit.m_RegBaseVirtualAddr
-			 = (codec_addr_t)jmgr_data.base_addr;
-			arg->gsJpuEncInit.m_Memcpy
-			 = vetc_memcpy;
-			arg->gsJpuEncInit.m_Memset
-			 = (void (*) (void *, int, unsigned int, unsigned int))
-			     vetc_memset;
-			arg->gsJpuEncInit.m_Interrupt
-			 = (int (*) (void))_jmgr_internal_handler;
-			arg->gsJpuEncInit.m_reg_read
-			 = (unsigned int (*)(void *, unsigned int))
-			     vetc_reg_read;
-			arg->gsJpuEncInit.m_reg_write
-			 = (void (*)(void*, unsigned int, unsigned int))
+			arg->gsJpuEncInit.m_RegBaseVirtualAddr =
+			(codec_addr_t)jmgr_data.base_addr;
+			arg->gsJpuEncInit.m_Memcpy =
+			    vetc_memcpy;
+			arg->gsJpuEncInit.m_Memset =
+			    (void (*) (void *, int, unsigned int, unsigned int))
+			    vetc_memset;
+			arg->gsJpuEncInit.m_Interrupt =
+			    (int (*) (void))_jmgr_internal_handler;
+			arg->gsJpuEncInit.m_reg_read =
+			    (unsigned int (*)(void *, unsigned int))
+			    vetc_reg_read;
+			arg->gsJpuEncInit.m_reg_write =
+			    (void (*)(void*, unsigned int, unsigned int))
 			    vetc_reg_write;
 
 			jmgr_data.check_interrupt_detection = 1;
@@ -888,12 +888,12 @@ static int _jmgr_process(vputype type, int cmd, long pHandle, void *args)
 			  arg->gsJpuEncInit.m_bCbCrInterleaveMode,
 			  arg->gsJpuEncInit.m_uiEncOptFlags);
 #endif
-			jmgr_data.szFrame_Len
-			 = arg->gsJpuEncInit.m_iPicWidth
-			  * arg->gsJpuEncInit.m_iPicHeight * 3 / 2;
-			jmgr_data.current_resolution
-			 = arg->gsJpuEncInit.m_iPicWidth
-			  * arg->gsJpuEncInit.m_iPicHeight;
+			jmgr_data.szFrame_Len =
+			    arg->gsJpuEncInit.m_iPicWidth
+			    * arg->gsJpuEncInit.m_iPicHeight * 3 / 2;
+			jmgr_data.current_resolution =
+			    arg->gsJpuEncInit.m_iPicWidth
+			    * arg->gsJpuEncInit.m_iPicHeight;
 
 			retEnc
 			 = tcc_jpu_enc(JPU_ENC_INIT,
@@ -905,28 +905,28 @@ static int _jmgr_process(vputype type, int cmd, long pHandle, void *args)
 				    retEnc);
 				if (retEnc != RETCODE_CODEC_EXIT) {
 					vetc_dump_reg_all(
-					  jmgr_data.base_addr, "init failure");
+					    jmgr_data.base_addr, "init failure");
 				}
 			}
 
 			ret = _jmgr_convert_returnType(retEnc);
 			if (ret != RETCODE_CODEC_EXIT
 			    && arg->gsJpuEncHandle != 0) {
-				jmgr_data.handle[type]
-				    = arg->gsJpuEncHandle;
+				jmgr_data.handle[type] =
+				    arg->gsJpuEncHandle;
 				jmgr_set_close(type, 0, 0);
 				cmdk("Enc :: jmgr_data.handle = 0x%x\n",
 				     arg->gsJpuEncHandle);
 			}
 			dprintk("Enc :: Init Done Handle(0x%x)",
-				  arg->gsJpuEncHandle);
+				arg->gsJpuEncHandle);
 			jmgr_data.nDecode_Cmd = 0;
+
 #ifdef CONFIG_VPU_TIME_MEASUREMENT
-			jmgr_data.iTime[type].print_out_index
-			 = jmgr_data.iTime[type].proc_base_cnt = 0;
-			jmgr_data.iTime[type].accumulated_proc_time
-			 = jmgr_data.iTime[type].accumulated_frame_cnt
-			 = 0;
+			jmgr_data.iTime[type].print_out_index =
+			    jmgr_data.iTime[type].proc_base_cnt = 0;
+			jmgr_data.iTime[type].accumulated_proc_time =
+			    jmgr_data.iTime[type].accumulated_frame_cnt = 0;
 			jmgr_data.iTime[type].proc_time_30frames = 0;
 #endif
 		}
