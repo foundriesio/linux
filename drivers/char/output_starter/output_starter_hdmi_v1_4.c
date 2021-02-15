@@ -167,7 +167,7 @@ int tcc_output_starter_hdmi_v1_4(unsigned int display_device, volatile void __io
 	struct tcc_fb_extra_data tcc_fb_extra_data;
         struct lcdc_timimg_parms_t lcdc_timimg_parms = {0};
 
-        printk(KERN_INFO "[INFO][HDMI] %s \r\n", __func__);
+        pr_info("[INFO][HDMI] %s \r\n", __func__);
 
         do {
 		/* Initialzie video parameters */
@@ -208,7 +208,7 @@ int tcc_output_starter_hdmi_v1_4(unsigned int display_device, volatile void __io
                 /* wait for 500ms */
                 msleep(100);
 
-                printk(KERN_INFO "[INFO][HDMI] \r\n%s %dx%d\r\n", __func__,
+                pr_info("[INFO][HDMI] \r\n%s %dx%d\r\n", __func__,
 			videoParam.mDtd.mPixelRepetitionInput?(videoParam.mDtd.mHActive>>1):videoParam.mDtd.mHActive,
 			videoParam.mDtd.mInterlaced?(videoParam.mDtd.mVActive << 1):(videoParam.mDtd.mVActive));
 
