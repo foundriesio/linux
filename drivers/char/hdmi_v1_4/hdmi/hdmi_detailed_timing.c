@@ -298,12 +298,12 @@ int hdmi_dtd_fill(dtd_t * target_detailed_timing, unsigned int code, unsigned in
 
 	do {
 		if(target_detailed_timing == NULL) {
-			printk(KERN_ERR "[ERROR][HDMI_V14]%s target_detailed_timing is NULL\r\n", __func__);
+			pr_err("[ERROR][HDMI_V14]%s target_detailed_timing is NULL\r\n", __func__);
 			break;
 		}
 		detailed_timing = get_detailed_timing_pointer(code, refreshRate);
 		if(detailed_timing == NULL){
-			printk(KERN_ERR "[ERROR][HDMI_V14]%s failed to get detailed timing pointer\r\n", __func__);
+			pr_err("[ERROR][HDMI_V14]%s failed to get detailed timing pointer\r\n", __func__);
 			break;
 		}
 
@@ -331,7 +331,7 @@ unsigned int hdmi_dtd_get_vactive(videoParams_t *videoParam)
 
         do {
 		if(videoParam == NULL) {
-			printk(KERN_ERR "[ERROR][HDMI_V14]%s videoParam is NULL\r\n", __func__);
+			pr_err("[ERROR][HDMI_V14]%s videoParam is NULL\r\n", __func__);
 			break;
 		}
                 vactive = videoParam->mDtd.mVActive;
@@ -361,18 +361,18 @@ int hdmi_dtd_get_display_param(videoParams_t *videoParam,
 	dtd_t *detailed_timing = NULL;
         do {
 		if(videoParam == NULL) {
-			printk(KERN_ERR "[ERROR][HDMI_V14]%s videoParam is NULL\r\n", __func__);
+			pr_err("[ERROR][HDMI_V14]%s videoParam is NULL\r\n", __func__);
 			break;
 		}
 
 		detailed_timing = &videoParam->mDtd;
 		if(detailed_timing == NULL) {
-			printk(KERN_ERR "[ERROR][HDMI_V14]%s detailed_timing is NULL\r\n", __func__);
+			pr_err("[ERROR][HDMI_V14]%s detailed_timing is NULL\r\n", __func__);
 			break;
 		}
 
 		if(lcdc_timimg_parms == NULL) {
-			printk(KERN_ERR "[ERROR][HDMI_V14]%s lcdc_timimg_parms is NULL\r\n", __func__);
+			pr_err("[ERROR][HDMI_V14]%s lcdc_timimg_parms is NULL\r\n", __func__);
 			break;
 		}
 		vactive = hdmi_dtd_get_vactive(videoParam);
@@ -451,12 +451,12 @@ int hdmi_dtb_get_extra_data(videoParams_t *videoParam,
 	int ret = -1;
 	do {
 		if(videoParam == NULL) {
-			printk(KERN_ERR "[ERROR][HDMI_V14]%s videoParam is NULL\r\n", __func__);
+			pr_err("[ERROR][HDMI_V14]%s videoParam is NULL\r\n", __func__);
 			break;
 		}
 
 		if(tcc_fb_extra_data == NULL) {
-			printk(KERN_ERR "[ERROR][HDMI_V14]%s tcc_fb_extra_data is NULL\r\n", __func__);
+			pr_err("[ERROR][HDMI_V14]%s tcc_fb_extra_data is NULL\r\n", __func__);
 			break;
 		}
 

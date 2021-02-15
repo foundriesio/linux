@@ -939,6 +939,7 @@ int hdmi_reg_io(struct tcc_hdmi_dev *dev, unsigned int *offset, volatile void __
 		*hdmi_io = (volatile void __iomem *)dev->hdmi_ctrl_io;
 		*offset -= HDMIDP_HDMI_SSREG(0);
 	}
+	return 0;
 }
 
 unsigned int hdmi_reg_read(struct tcc_hdmi_dev *dev, unsigned int offset)
