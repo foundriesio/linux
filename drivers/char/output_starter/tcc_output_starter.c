@@ -69,7 +69,7 @@ Suite 330, Boston, MA 02111-1307 USA
 
 /* Debugging stuff */
 static int debug = 0;
-#define DPRINTF(msg...)	if (debug) { printk("[DBG][O_STARTER] " msg); }
+#define DPRINTF(msg...)	if (debug) { pr_info("[DBG][O_STARTER] " msg); }
 
 enum
 {
@@ -416,7 +416,7 @@ void tcc_output_starter_component(unsigned char lcdc_num, unsigned char type, st
 
 	#if 0
 	if (of_property_read_u32(np_child, "lcdc-clock-frequency", &clock_rate)) {
-		printk("%s, Can't read clock-frequency\n", __func__);
+		pr_info("%s, Can't read clock-frequency\n", __func__);
 		clock_rate = 74250000;
 	}
 	#else
@@ -545,7 +545,7 @@ void tcc_output_starter_component(unsigned char lcdc_num, unsigned char type, st
 		unsigned int *pReg = (unsigned int *)pLCDC_CH;
 		for(i=0; i<32; i++)
 		{
-			printk("[DBG][O_STARTER] 0x%08x: 0x%08x\n", pReg+i, *(pReg+i));
+			pr_info("[DBG][O_STARTER] 0x%08x: 0x%08x\n", pReg+i, *(pReg+i));
 		}
 	}
 	#endif
