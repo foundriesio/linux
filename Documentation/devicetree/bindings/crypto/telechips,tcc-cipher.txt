@@ -1,0 +1,24 @@
+Telechips Random Number Generator
+
+Required properties:
+
+- compatible  : Should be "telechips,cipher".
+- reg         : Specifies base physical address and size of the registers map.
+- clocks      : Phandle to clock-controller plus clock-specifier pair.
+
+Example for tcc897x:
+
+    tcc_cipher@71ec0000 {
+        compatible = "telechips,tcc-cipher";
+        reg = <0x71EC0000 0x1E0 0x74100000 0x10C>; //HSIO_Cipher , VPIC(VECTORED PRIORITY INTERRUPT CONTROLLER)
+        interrupts = <GIC_SPI 52 IRQ_TYPE_LEVEL_HIGH>;
+        clocks = <&clk_hsio HSIOBUS_CIPHER>; //HSIOBUS_CIPHER
+        status = "disabled";
+    };
+
+Example for tcc803x:
+
+    tcc_cipher: tcc_cipher@11DC0000 {
+        compatible = "telechips,tcc-cipher";
+        status = "okay";
+    };
