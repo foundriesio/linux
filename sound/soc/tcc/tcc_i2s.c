@@ -431,7 +431,7 @@ static int tcc_i2s_set_dai_fmt(struct snd_soc_dai *dai, unsigned int fmt)
 	if (ret != 0)
 		goto dai_fmt_end;
 
-#if !defined(CONFIG_ARCH_TCC805X)
+#if !defined(TCC805x_CS_SND)
 	if ((i2s->tdm_mode == TRUE) &&
 		((fmt & (uint32_t)SND_SOC_DAIFMT_MASTER_MASK) !=
 		(uint32_t)SND_SOC_DAIFMT_CBS_CFS)) {
@@ -831,10 +831,17 @@ static int tcc_i2s_hw_params(
 	}
 
 	if ((i2s->tdm_mode == true) && (channels != 2)
-		&& (channels != 4) && (channels != 8)
-		&& (channels != 16) && (channels != 32)) {
+			&& (channels != 4) && (channels != 8) 
+#if defined(TCC805x_CS_SND)
+			&& (channels != 16) && (channels != 32))
+		{
 		i2s_dai_err("%s - TDM only supports 2, 4, 8, 16, 32 channels\n",
 					__func__);
+#else
+		) {
+		i2s_dai_err("%s - TDM only supports 2, 4, 8 channels\n",
+					__func__);
+#endif
 		ret = -ENOTSUPP;
 		goto hw_params_end;
 	}
@@ -850,22 +857,21 @@ static int tcc_i2s_hw_params(
 	i2s_dai_dbg("[%d] %s Rx2Tx mode Disable\n", i2s->blk_no, __func__);
 	tcc_dai_rx2tx_loopback_enable(i2s->dai_reg, FALSE);
 
-#if defined(TCC803x_ES_SND)
-	if (system_rev == 0u) { //ES
-		if ((i2s->tdm_mode == TRUE) && (dai->active > 1u)) {
-			i2s_dai_err("TDM Mode supports only uni-direction");
-			if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK)
-				i2s_dai_err("%s - CAPTURE is already using\n",
-					__func__);
-			else
-				i2s_dai_err("%s - PLAYBACK is already using\n",
-					__func__);
+#if !defined(TCC805x_CS_SND)
+	if ((i2s->tdm_mode == TRUE) && (dai->active > 1u)) {
+		i2s_dai_err("TDM Mode supports only uni-direction");
+		if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK)
+			i2s_dai_err("%s - CAPTURE is already using\n",
+				__func__);
+		else
+			i2s_dai_err("%s - PLAYBACK is already using\n",
+				__func__);
 
-			ret = -ENOTSUPP;
-			goto hw_params_end;
-		}
+		ret = -ENOTSUPP;
+		goto hw_params_end;
 	}
 #endif
+
 	if (i2s->tdm_mode == TRUE) {
 		switch (i2s->dai_fmt & (uint32_t)SND_SOC_DAIFMT_FORMAT_MASK) {
 		case SND_SOC_DAIFMT_I2S:
@@ -903,15 +909,6 @@ static int tcc_i2s_hw_params(
 					mclk = calc_dsp_pcm_mclk(i2s, sample_rate);
 				} else {
 #endif //PCM_INTERFACE
-
-					if (fmt_bitwidth !=
-						(uint32_t)i2s->tdm_slot_width) {
-						i2s_dai_err("DSP A or B TDM Mode, slotwidth(%d) != format(%d)\n",
-								i2s->tdm_slot_width,
-								fmt_bitwidth);
-						ret = -EINVAL;
-						break;
-					}
 					tcc_dai_set_dsp_tdm_mode_valid_data(
 							i2s->dai_reg,
 							channels,
