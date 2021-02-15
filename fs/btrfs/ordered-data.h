@@ -64,9 +64,6 @@ struct btrfs_ordered_sum {
 
 #define BTRFS_ORDERED_IOERR 6 /* We had an io error when writing this out */
 
-#define BTRFS_ORDERED_UPDATED_ISIZE 7 /* indicates whether this ordered extent
-				       * has done its due diligence in updating
-				       * the isize. */
 #define BTRFS_ORDERED_TRUNCATED 8 /* Set when we have to truncate an extent */
 
 #define BTRFS_ORDERED_PENDING 9 /* We are waiting for this ordered extent to
@@ -194,8 +191,6 @@ struct btrfs_ordered_extent *btrfs_lookup_ordered_range(
 		struct btrfs_inode *inode,
 		u64 file_offset,
 		u64 len);
-int btrfs_ordered_update_i_size(struct inode *inode, u64 offset,
-				struct btrfs_ordered_extent *ordered);
 int btrfs_find_ordered_sum(struct inode *inode, u64 offset, u64 disk_bytenr,
 			   u32 *sum, int len);
 u64 btrfs_wait_ordered_extents(struct btrfs_root *root, u64 nr,
