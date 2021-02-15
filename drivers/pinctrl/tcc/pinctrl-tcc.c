@@ -319,6 +319,10 @@ static s32 tcc_pinctrl_gpio_to_irq(struct gpio_chip *chip,
 	struct tcc_pin_bank *bank = gpiochip_to_pin_bank(chip);
 	struct tcc_pinctrl *pctl;
 	struct tcc_pinctrl_ops *ops;
+#if !defined(CONFIG_PINCTRL_TCC_SCFW)
+	ulong flags;
+#endif
+	s32 ret;
 
 	if (bank == NULL) {
 		(void)pr_err(
@@ -335,11 +339,6 @@ static s32 tcc_pinctrl_gpio_to_irq(struct gpio_chip *chip,
 		return -EINVAL;
 	}
 	ops = pctl->ops;
-
-#if !defined(CONFIG_PINCTRL_TCC_SCFW)
-	ulong flags;
-#endif
-	s32 ret;
 
 	if (ops->to_irq == NULL) {
 		return -ENXIO;
@@ -410,7 +409,7 @@ static void tcc_pin_dbg_show(struct pinctrl_dev *pctldev, struct seq_file *s,
 	struct tcc_pinctrl *pctl = pinctrl_dev_get_drvdata(pctldev);
 
 	dev_dbg(pctl->dev,
-			"[DEBUG][PINCTRL] %s, seq_file : %x, offset : %u\n"
+			"[DEBUG][PINCTRL] %s, seq_file : %p, offset : %u\n"
 			, __func__, s, offset);
 }
 
