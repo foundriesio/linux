@@ -18,10 +18,11 @@
 
 #define THSM_EVENT(magic_num, evt) (((magic_num & 0xF) << 12) | (evt & 0xFFF))
 /* tccTHSM command range: 0x5000 ~ 0x5FFF */
+
 // clang-format off
 #define MAGIC_NUM                        (5)	// THSM magic number
-#define TCCTHSM_EVT_INIT        	  	 THSM_EVENT(MAGIC_NUM, 0x011)	// Generic
-#define TCCTHSM_EVT_FINALIZE       		 THSM_EVENT(MAGIC_NUM, 0x012)	// Generic
+#define TCCTHSM_EVT_INIT                 THSM_EVENT(MAGIC_NUM, 0x011)	// Generic
+#define TCCTHSM_EVT_FINALIZE             THSM_EVENT(MAGIC_NUM, 0x012)	// Generic
 #define TCCTHSM_EVT_GET_VERSION          THSM_EVENT(MAGIC_NUM, 0x013)	// Generic
 #define TCCTHSM_EVT_SET_MODE             THSM_EVENT(MAGIC_NUM, 0x014)	// Generic
 #define TCCTHSM_EVT_SET_KEY              THSM_EVENT(MAGIC_NUM, 0x015)	// Generic
@@ -35,7 +36,7 @@
 #define TCCTHSM_EVT_COMPUTE_MAC          THSM_EVENT(MAGIC_NUM, 0x042)	// Message Authentication Code (MAC)
 #define TCCTHSM_EVT_COMPARE_MAC          THSM_EVENT(MAGIC_NUM, 0x043)	// Message Authentication Code (MAC)
 #define TCCTHSM_EVT_GET_RAND             THSM_EVENT(MAGIC_NUM, 0x051)	// RNG
-#define TCCTHSM_EVT_GEN_KEY_SS     	     THSM_EVENT(MAGIC_NUM, 0x061)	// Key Generate
+#define TCCTHSM_EVT_GEN_KEY_SS           THSM_EVENT(MAGIC_NUM, 0x061)	// Key Generate
 #define TCCTHSM_EVT_DEL_KEY_SS           THSM_EVENT(MAGIC_NUM, 0x062)	// Key Generate
 #define TCCTHSM_EVT_WRITE_KEY_SS         THSM_EVENT(MAGIC_NUM, 0x063)	// Key Generate
 #define TCCTHSM_EVT_WRITE_OTP            THSM_EVENT(MAGIC_NUM, 0x071)	// OTP
@@ -50,7 +51,6 @@
 #define TCCTHSM_EVT_COMPARE_MAC_BY_DMA    THSM_EVENT(MAGIC_NUM, 0x094)	// Message Authentication Code (MAC)
 #define TCCTHSM_EVT_ASYMMETRIC_ENC_BY_DMA THSM_EVENT(MAGIC_NUM, 0x095)	// Asymmetric
 #define TCCTHSM_EVT_ASYMMETRIC_DEC_BY_DMA THSM_EVENT(MAGIC_NUM, 0x096)	// Asymmetric
-
 // clang-format on
 
 #define TCCTHSM_CIPHER_KEYSIZE_FOR_64 8

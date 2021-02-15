@@ -171,7 +171,7 @@ static uint32_t sec_get_device_id(const int8_t *dev_name)
 	} else if (strcmp(dev_name, (const int8_t *)"sec-ipc-hsm") == 0) {
 		return MBOX_DEV_HSM;
 	} else {
-		return EINVAL;
+		return -EINVAL;
 	}
 }
 
@@ -232,7 +232,7 @@ int32_t sec_sendrecv_cmd(
 		return -EINVAL;
 	}
 
-	if ((MBOX_DMA_SIZE < size) || (MBOX_DMA_SIZE < rsize)) {
+	if ((size > MBOX_DMA_SIZE) || (rsize > MBOX_DMA_SIZE)) {
 		ELOG("size=%d rsize=%d\n", size, rsize);
 		return -EINVAL;
 	}
@@ -355,7 +355,7 @@ static int32_t sec_send_cmd_ioctl(ulong arg)
 		return result;
 	}
 
-	if (MBOX_DMA_SIZE < segment.size) {
+	if (segment.size > MBOX_DMA_SIZE) {
 		ELOG("size is %d\n", segment.size);
 		return -EINVAL;
 	}
@@ -505,7 +505,8 @@ static uint32_t sec_poll(struct file *filp, poll_table *wait)
 }
 
 #if 0 // Test code
-static int32_t sec_send_cmd(int32_t cmd, void *data, int32_t size, int32_t device_id)
+static int32_t sec_send_cmd(
+		int32_t cmd, void *data, int32_t size, int32_t device_id)
 {
 	struct tcc_mbox_data mbox_data = {
 		0,
