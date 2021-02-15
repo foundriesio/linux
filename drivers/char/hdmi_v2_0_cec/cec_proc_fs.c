@@ -89,20 +89,20 @@ int cec_proc_close(struct inode *inode, struct file *filp){
 
 void hdmi_cec_proc_interface_init(struct cec_device *dev){
 	if(dev == NULL){
-		printk(KERN_ERR "[ERROR][HDMI_CEC] %s:Device is null\n", __func__);
+		pr_err("[ERROR][HDMI_CEC] %s:Device is null\n", __func__);
 		return;
 	}
 
 	dev->cec_proc_dir = proc_mkdir("hdmi_cec", NULL);
 	if(dev->cec_proc_dir == NULL){
-		printk(KERN_ERR "[ERROR][HDMI_CEC] %s:Could not create file system @ /proc/hdmi_cec\n",
+		pr_err("[ERROR][HDMI_CEC] %s:Could not create file system @ /proc/hdmi_cec\n",
 			__func__);
 	}
 
     dev->cec_proc_wakeup = proc_create_data("wakeup", S_IFREG | S_IRUGO | S_IWUGO,
                     dev->cec_proc_dir, &proc_fops_wakeup, dev);
     if(dev->cec_proc_wakeup == NULL){
-            printk(KERN_ERR "[ERROR][HDMI_CEC] %s:Could not create file system @"
+            pr_err("[ERROR][HDMI_CEC] %s:Could not create file system @"
                             " /proc/hdmi_tx/wake_up\n", __func__);
     }
 
