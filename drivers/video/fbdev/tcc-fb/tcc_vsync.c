@@ -190,9 +190,9 @@ static int video_display_disable_check;
 #define GAP_CNT 60
 #endif
 
-#define DEBUG_VSYNC	// for general debugging
-#define DEBUG_VSYNC_V	// for vsync process
-#define DEBUG_VSYNC_D	// for frame drop/skip
+//#define DEBUG_VSYNC	// for general debugging
+//#define DEBUG_VSYNC_V	// for vsync process
+//#define DEBUG_VSYNC_D	// for frame drop/skip
 
 #ifdef DEBUG_VSYNC
 #define dbg(msg...) pr_info("[DBG][VSYNC] " msg)
@@ -2841,6 +2841,8 @@ static int tcc_vsync_push_process(
 	struct tcc_lcdc_image_update *input_image_info,
 	VSYNC_CH_TYPE type)
 {
+	int timeout;
+
 	dbg_v("%s: %d, %d, %d\n", __func__, input_image_info->buffer_unique_id,
 		input_image_info->time_stamp, input_image_info->sync_time);
 
@@ -2850,7 +2852,7 @@ static int tcc_vsync_push_process(
 	}
 
 	if (tcc_vsync_is_full_buffer(&p->vsync_buffer)) {
-		int timeout = wait_event_interruptible_timeout(wq_consume,
+		timeout = wait_event_interruptible_timeout(wq_consume,
 			tcc_vsync_is_full_buffer(&p->vsync_buffer) == 0,
 			msecs_to_jiffies(500));
 

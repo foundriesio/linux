@@ -190,5 +190,10 @@ extern int vta_cmd_notify_change_status(const char *);
 
 extern char fb_power_state;
 
+/*
+ * function
+ */
+void tcc_plugout_for_component(int ch_layer);
+
 
 #endif //_TCC_COMPONENT_H_

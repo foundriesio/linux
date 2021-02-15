@@ -678,7 +678,6 @@ void tcc_plugout_for_component(int ch_layer)
 		BITCLR(onthefly_using, 1 << ch_layer);
 	}
 }
-EXPORT_SYMBOL(tcc_plugout_for_component);
 
 /*
  * Function Name : tcc_component_end()

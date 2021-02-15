@@ -513,7 +513,6 @@ void tcc_plugout_for_composite(int ch_layer)
 		BITCLR(onthefly_using, 1 << ch_layer);
 	}
 }
-EXPORT_SYMBOL(tcc_plugout_for_composite);
 
 /*==============================================================================
  * Function Name : tcc_composite_get_mode()

@@ -36,5 +36,9 @@ extern int hdmi_get_hotplug_status(void);
 
 extern char fb_power_state;
 
+/*
+ * function
+ */
+void tcc_plugout_for_composite(int ch_layer);
 
 #endif /*_TCC_COMPOSITE_H_*/
