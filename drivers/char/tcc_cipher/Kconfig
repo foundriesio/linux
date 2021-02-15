@@ -3,5 +3,9 @@ config TCC_HSIO_CIPHER
 	default n
 	depends on PLATFORM_AVN
 	help
-		Support to HSIO Cipher
-
+        This adds support for HSIO Cipher.
+        The CIPHER encrypts data or decrypts the encrypted data for the security of user data.
+        AES, DES, MULTI2, Hash, CSA2, and CSA3 are algorithms built in the CIPHER.
+        Specifically, AES supports 128/192/256 key mode and ECB (Electronic Codebook),
+		CBC (Cipher Block Chaining), CFB (Cipher Feedback), OFB (Output Feedback),
+		CTR (Counter) mode in AES, DES, and MULTI2.
