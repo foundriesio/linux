@@ -881,7 +881,8 @@ static int sp_probe(struct platform_device *pdev)
 				pbuff->vaddr = ioremap_nocache(
 					pbuff->paddr, pbuff->size);
 				if (pbuff->vaddr == NULL) {
-					ELOG("error ioremap protected buffer\n");
+					ELOG(
+							"error ioremap protected buffer\n");
 					kfree(pbuff);
 					pbuff = NULL;
 				}

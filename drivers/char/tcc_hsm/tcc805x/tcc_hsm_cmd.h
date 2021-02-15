@@ -46,7 +46,7 @@
 #define REQ_HSM_RUN_RSASSA_PSS_SIGN         (0x10570000U)
 #define REQ_HSM_RUN_RSASSA_PSS_VERIFY       (0x10580000U)
 
-#define REQ_HSM_GET_RNG                   	(0x10610000U)
+#define REQ_HSM_GET_RNG                     (0x10610000U)
 
 #define REQ_HSM_WRITE_OTP                   (0x10710000U)
 #define REQ_HSM_WRITE_SNOR                  (0x10720000U)
@@ -59,13 +59,13 @@
 #define HSM_NONE_DMA				(0U)
 #define HSM_DMA						(1U)
 
-#define TCC_HSM_AES_KEY_SIZE 		(32U)
-#define TCC_HSM_AES_IV_SIZE 		(32U)
-#define TCC_HSM_AES_TAG_SIZE 		(32U)
-#define TCC_HSM_AES_AAD_SIZE 		(32U)
+#define TCC_HSM_AES_KEY_SIZE        (32U)
+#define TCC_HSM_AES_IV_SIZE         (32U)
+#define TCC_HSM_AES_TAG_SIZE        (32U)
+#define TCC_HSM_AES_AAD_SIZE        (32U)
 
-#define TCC_HSM_MAC_KEY_SIZE 		(32U)
-#define TCC_HSM_MAC_MSG_SIZE 		(32U)
+#define TCC_HSM_MAC_KEY_SIZE        (32U)
+#define TCC_HSM_MAC_MSG_SIZE        (32U)
 
 #define TCC_HSM_HASH_DIGEST_SIZE	(64U)
 #define TCC_HSM_ECDSA_KEY_SIZE		(64U)

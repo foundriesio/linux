@@ -62,13 +62,13 @@ struct sec_segment {
 #define SEC_RESET				_IO(SEC_IOCTL_MAGIC, 0)
 
 /** Sends and receives #sp_segment to SP. */
-#define SEC_SEND_CMD			_IOWR(SEC_IOCTL_MAGIC, 1, struct sec_segment)
+#define SEC_SEND_CMD    _IOWR(SEC_IOCTL_MAGIC, 1, struct sec_segment)
 
 /** Gets an event when poll operation is awaken. */
-#define SEC_GET_EVENTS			_IOR(SEC_IOCTL_MAGIC, 2, struct sec_segment)
+#define SEC_GET_EVENTS    _IOR(SEC_IOCTL_MAGIC, 2, struct sec_segment)
 
 /** Gets an event when poll operation is awaken. */
-#define SEC_GET_EVT_INFO			_IOR(SEC_IOCTL_MAGIC, 5, struct sec_segment)
+#define SEC_GET_EVT_INFO    _IOR(SEC_IOCTL_MAGIC, 5, struct sec_segment)
 // clang-format on
 
 /**
