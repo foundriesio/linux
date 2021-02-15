@@ -807,7 +807,6 @@
 		#size-cells = <0>;
 		clocks = <&clk_peri PERI_I2C1 &clk_io IOBUS_I2C_M1 &clk_fbus FBUS_IO>;
 		clock-frequency = <400000>;
-		interrupt_mode = <0>;
 		port-mux = <0xFF>;      /* default value */
 		status = "disabled";
 		interrupt_mode = <0>;
