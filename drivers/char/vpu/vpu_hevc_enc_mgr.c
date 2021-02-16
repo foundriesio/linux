@@ -467,9 +467,9 @@ static int _vmgr_hevc_enc_process(vputype type, int cmd, long pHandle,
 #ifdef CONFIG_VPU_TIME_MEASUREMENT
 	struct timeval t1, t2;
 	int time_gap_ms = 0;
+
 	do_gettimeofday(&t1);
 #endif
-
 	vmgr_hevc_enc_data.check_interrupt_detection = 0;
 	vmgr_hevc_enc_data.current_cmd = cmd;
 
@@ -502,15 +502,16 @@ static int _vmgr_hevc_enc_process(vputype type, int cmd, long pHandle,
 			arg->encInit.m_RegBaseAddr[VA] =
 			    (codec_addr_t) vmgr_hevc_enc_data.base_addr;
 			arg->encInit.m_Memcpy =
-			    (void*(*)(void *,const void *,unsigned int,unsigned int))
-			    vetc_memcpy;
+			    (void*(*)(void *, const void *, unsigned int,
+			    unsigned int)) vetc_memcpy;
 			arg->encInit.m_Memset =
-			    (void (*) (void *,int,unsigned int,unsigned int))
+			    (void (*) (void *, int, unsigned int, unsigned int))
 			    vetc_memset;
 			arg->encInit.m_Interrupt =
 			    (int (*) (void)) _vmgr_hevc_enc_internal_handler;
 			arg->encInit.m_Ioremap =
-			    (void * (*) (phys_addr_t, unsigned int)) vetc_ioremap;
+			    (void * (*) (phys_addr_t, unsigned int))
+			    vetc_ioremap;
 			arg->encInit.m_Iounmap =
 			    (void (*) (void *)) vetc_iounmap;
 			arg->encInit.m_reg_read =
@@ -677,8 +678,7 @@ static int _vmgr_hevc_enc_process(vputype type, int cmd, long pHandle,
 	if (cmd == VPU_ENC_INIT) {
 		V_DBG(VPU_DBG_PERF, "Elapsed time for VENC_INIT[dev-%u]: %d ms",
 				type, time_gap_ms);
-	}
-	else if (cmd == VPU_ENC_ENCODE) {
+	} else if (cmd == VPU_ENC_ENCODE) {
 		vmgr_hevc_enc_data.iTime[type].accumulated_frame_cnt++;
 		vmgr_hevc_enc_data.iTime[type]
 		.proc_time[vmgr_hevc_enc_data.iTime[type].proc_base_cnt]

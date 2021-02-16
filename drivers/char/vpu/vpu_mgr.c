@@ -241,6 +241,7 @@ static int _vmgr_process(vputype type, int cmd, long pHandle, void *args)
 #ifdef CONFIG_VPU_TIME_MEASUREMENT
 	struct timeval t1, t2;
 	int time_gap_ms = 0;
+
 	do_gettimeofday(&t1);
 #endif
 
@@ -913,12 +914,12 @@ static int _vmgr_process(vputype type, int cmd, long pHandle, void *args)
 	do_gettimeofday(&t2);
 	time_gap_ms = vetc_GetTimediff_ms(t1, t2);
 	if (cmd == VPU_DEC_INIT || cmd == VPU_ENC_INIT) {
-		V_DBG(VPU_DBG_PERF, "Elapsed time for V%s_INIT[dev-%u] is %d ms",
+		V_DBG(VPU_DBG_PERF,
+			"Elapsed time for V%s_INIT[dev-%u] is %d ms",
 			cmd == VPU_DEC_INIT ? "DEC" : "ENC",
 			type,
 			time_gap_ms);
-	}
-	else if (cmd == VPU_DEC_DECODE || cmd == VPU_ENC_ENCODE) {
+	} else if (cmd == VPU_DEC_DECODE || cmd == VPU_ENC_ENCODE) {
 		vmgr_data.iTime[type].accumulated_frame_cnt++;
 		vmgr_data.iTime[type]
 			.proc_time[vmgr_data.iTime[type].proc_base_cnt]
