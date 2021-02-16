@@ -29,7 +29,7 @@
 #include <linux/wakelock.h>
 #endif
 
-#define HDCP_DRV_VERSION "1.1.4"
+#define HDCP_DRV_VERSION "1.2.0"
 
 #define USE_HDMI_PWR_CTRL
 
@@ -133,7 +133,7 @@ struct esm_device {
 #ifdef USE_HDMI_PWR_CTRL
 extern void hdmi_api_power_control(int enable);
 #endif
-extern void hdmi_api_avmute_core(struct hdmi_tx_dev *dev,
+extern int hdmi_api_avmute_core(struct hdmi_tx_dev *dev,
 				 int enable, uint8_t caller);
 
 static struct esm_device *st_esm;
@@ -149,15 +149,22 @@ static void avmute_delay_work(struct work_struct *work)
 	hdmi_api_avmute_core(esm->dev, 0, 1);
 }
 
-static void dwc_avmute(struct esm_device *esm, uint32_t en, uint32_t delay)
+static int dwc_avmute(struct esm_device *esm, uint32_t en, uint32_t delay)
 {
-	if (!esm || !esm->dev)
-		return;
+	int ret = 0;
+
+	if (!esm || !esm->dev) {
+		ret = -ENODEV;
+		goto exit;
+	}
 
 	cancel_delayed_work(&esm->avmute_work);
 
 	if (en) {
-		hdmi_api_avmute_core(esm->dev, 1, 1);
+		ret = hdmi_api_avmute_core(esm->dev, 1, 1);
+		if (ret)
+			goto exit;
+
 		/* CEA8610F F.3.6 Video Timing Transition
 		 * (AVMUTE Recommendation)
 		 */
@@ -166,6 +173,9 @@ static void dwc_avmute(struct esm_device *esm, uint32_t en, uint32_t delay)
 		schedule_delayed_work(
 			&esm->avmute_work, usecs_to_jiffies(delay * 1000));
 	}
+
+exit:
+	return ret;
 }
 
 static uint8_t dwc_get_hpd_status(struct esm_device *esm)
@@ -605,6 +615,7 @@ static long hdcp1Initialize(struct esm_device *esm, void __user *arg)
 static long hdcp1Start(struct esm_device *esm, void __user *arg)
 {
 	struct dwc_hdmi_hdcp_data hdcpData;
+	int ret;
 
 	if (copy_from_user(&hdcpData, arg, sizeof(hdcpData)) != 0)
 		return -EFAULT;
@@ -612,7 +623,10 @@ static long hdcp1Start(struct esm_device *esm, void __user *arg)
 	if (!esm->dev)
 		return -ENOSPC;
 
-	dwc_avmute(esm, 1, 0);
+	ret = dwc_avmute(esm, 1, 0);
+	if (ret)
+		return (long)ret;
+
 	esm->params = &hdcpData.hdcpParam;
 	mutex_lock(&esm->dev->mutex);
 	mc_hdcp_clock_enable(esm->dev, 0);
@@ -626,10 +640,14 @@ static long hdcp1Start(struct esm_device *esm, void __user *arg)
 /* HDCP1_STOP implementation */
 static long hdcp1Stop(struct esm_device *esm, void __user *arg)
 {
+	int ret;
+
 	if (!esm->dev)
 		return -ENOSPC;
 
-	dwc_avmute(esm, 1, 0);
+	ret = dwc_avmute(esm, 1, 0);
+	if (ret)
+		return (long)ret;
 
 	/* set revoc sizt to 0 */
 	iowrite32(1, esm->link + DWC_HDCP_KSVMEMCTRL);
@@ -723,13 +741,17 @@ static long hdcpGetStatus(struct esm_device *esm, void __user *arg)
 /* HDCP2_INIT implementation */
 static long hdcp2Initialize(struct esm_device *esm, void __user *arg)
 {
+	int ret;
+
 	if (!esm->dev)
 		esm->dev = dwc_hdmi_api_get_dev();
 
 	if (!esm->dev)
 		return -ENOSPC;
 
-	dwc_avmute(esm, 1, 0);
+	ret = dwc_avmute(esm, 1, 0);
+	if (ret)
+		return (long)ret;
 
 	// iowrite32(0xffffffff, esm->hdcp22 + 0x20);
 	// iowrite32(0xffffffff, esm->hdcp22 + 0x24);
@@ -754,11 +776,17 @@ static long hdcp2Initialize(struct esm_device *esm, void __user *arg)
 /* HDCP2_STOP implementation */
 static long hdcp2Stop(struct esm_device *esm, void __user *arg)
 {
+	int ret;
+
 	if (!esm->dev)
 		return -ENOSPC;
 
 	mutex_lock(&esm->dev->mutex);
-	dwc_avmute(esm, 1, 0);
+	ret = dwc_avmute(esm, 1, 0);
+	if (ret) {
+		mutex_unlock(&esm->dev->mutex);
+		return (long)ret;
+	}
 	pr_info("%s[%d]\n", __func__, __LINE__);
 	esm->dev->hdmi_tx_ctrl.hdcp_on = 0;
 	mc_hdcp_clock_enable(esm->dev, 1);

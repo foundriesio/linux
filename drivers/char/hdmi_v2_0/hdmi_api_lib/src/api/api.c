@@ -290,21 +290,23 @@ out:
 
 #ifdef CONFIG_TCC_HDCP2_CORE_DRIVER
 static uint32_t en_mask;
-void hdmi_api_avmute_core(struct hdmi_tx_dev *dev, int enable, uint8_t caller)
+int hdmi_api_avmute_core(struct hdmi_tx_dev *dev, int enable, uint8_t caller)
 {
-	if (caller > 1)
-		return;
+	int ret = 0;
+
+	if (caller > 1) {
+		ret = -EINVAL;
+		goto out;
+	}
 
 	if (enable)
 		en_mask |= (1<<caller);
 	else
 		en_mask &= ~(1<<caller);
 
-	if (enable)
-		dwc_hdcp_avmute(1);
-
 	if (dev == NULL) {
 		pr_err("[ERROR][HDMI_V20]%s dev is NULL\r\n", __func__);
+		ret = -ENODEV;
 		goto out;
 	}
 
@@ -313,6 +315,7 @@ void hdmi_api_avmute_core(struct hdmi_tx_dev *dev, int enable, uint8_t caller)
 		pr_err(
 			"[ERROR][HDMI_V20]%s hdmi link was suspended \r\n",
 			__func__);
+		ret = -EPERM;
 		goto out;
 	}
 
@@ -321,13 +324,20 @@ void hdmi_api_avmute_core(struct hdmi_tx_dev *dev, int enable, uint8_t caller)
 		pr_err(
 			"[ERROR][HDMI_V20]%s HDMI is not powred <%d>\r\n",
 			__func__, __LINE__);
+		ret = -EPERM;
 		goto out;
 	}
 
+	if (enable)
+		dwc_hdcp_avmute(1);
+
 	packets_AvMute(dev, en_mask ? 1 : 0);
-out:
+
 	if (!enable)
 		dwc_hdcp_avmute(0);
+
+out:
+	return ret;
 }
 
 void hdmi_api_avmute(struct hdmi_tx_dev *dev, int enable)
