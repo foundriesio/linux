@@ -53,9 +53,8 @@ struct lut_3d_drv_type {
 
 struct lut_3d_drv_type *lut_3d_api_d1;
 
-
 static long lut_3d_drv_ioctl(struct file *filp, unsigned int cmd,
-			  unsigned long arg)
+			     unsigned long arg)
 {
 	int ret = -EFAULT;
 	struct miscdevice *misc = (struct miscdevice *)filp->private_data;
@@ -64,7 +63,7 @@ static long lut_3d_drv_ioctl(struct file *filp, unsigned int cmd,
 	switch (cmd) {
 	case TCC_LUT_3D_SET_TABLE:
 		{
-			struct VIOC_LUT_3D_SET_TABLE  *lut_cmd;
+			struct VIOC_LUT_3D_SET_TABLE *lut_cmd;
 
 			lut_cmd =
 			    kmalloc(sizeof(struct VIOC_LUT_3D_SET_TABLE),
@@ -77,8 +76,7 @@ static long lut_3d_drv_ioctl(struct file *filp, unsigned int cmd,
 				break;
 			}
 
-			vioc_lut_3d_set_table(LUT_3D_DISP1,
-					  lut_cmd->table);
+			vioc_lut_3d_set_table(LUT_3D_DISP1, lut_cmd->table);
 			kfree(lut_cmd);
 			ret = 0;
 		}
@@ -94,14 +92,16 @@ static long lut_3d_drv_ioctl(struct file *filp, unsigned int cmd,
 				break;
 			}
 			ret =
-			    vioc_lut_3d_bypass(LUT_3D_DISP1, lut_cmd.lut_3d_onoff);
+			    vioc_lut_3d_bypass(LUT_3D_DISP1,
+					       lut_cmd.lut_3d_onoff);
 		}
 		break;
 
 	default:
-		pr_err(
-		       "[ERR]\x1b[1;38m[LUT]\x1b[0m  not supported LUT IOCTL(0x%x).\n",
-		       cmd);
+		pr_err
+		    (
+			"[ERR]\x1b[1;38m[LUT]\x1b[0m  not supported LUT IOCTL(0x%x).\n",
+		     cmd);
 		break;
 	}
 
@@ -207,8 +207,8 @@ MODULE_DEVICE_TABLE(of, lut_3d_d1_of_match);
 static struct platform_driver lut_3d_driver_d1 = {
 	.probe = lut_3d_drv_probe,
 	.remove = lut_3d_drv_remove,
-//	.suspend = lut_drv_3d_suspend,
-//	.resume = lut_drv_3d_resume,
+//      .suspend = lut_drv_3d_suspend,
+//      .resume = lut_drv_3d_resume,
 	.driver = {
 		   .name = "tcc_lut_3d_d1",
 		   .owner = THIS_MODULE,

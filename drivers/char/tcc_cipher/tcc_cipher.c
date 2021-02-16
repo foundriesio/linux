@@ -226,7 +226,7 @@ static int tcc_cipher_run_inner(
 		cipher_dev->dev, cipher_dev->dstPhy, len, DMA_FROM_DEVICE);
 #endif // USE_REV_MEMORY
 
-	msleep(1);
+	usleep_range(1000, 1100);
 
 	/* Copy Cipher Text to Destination Buffer */
 	if (fromuser) {
@@ -283,7 +283,7 @@ static int tcc_cipher_run_phy(
 		SIP_CRYPTO_CIPHER_RUN, (unsigned long)srcAddr,
 		(unsigned long)dstAddr, len, 0, 0, 0, 0, &res);
 
-	msleep(1);
+	usleep_range(1000, 1100);
 
 	return 0;
 }
