@@ -14,7 +14,7 @@
 #include <linux/mm.h>
 #include <linux/module.h>
 #include <linux/platform_device.h>
-#include <linux/kernel.h>:
+#include <linux/kernel.h>
 #include <linux/kthread.h>
 #include <linux/uaccess.h>
 #include <soc/tcc/pmap.h>
