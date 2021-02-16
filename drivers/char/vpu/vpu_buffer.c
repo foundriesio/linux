@@ -2130,31 +2130,31 @@ int vmem_proc_alloc_memory(int codec_type, MEM_ALLOC_INFO_t *alloc_info,
 #if defined(CONFIG_TEST_VPU_DRAM_INTLV)
 #ifdef FIXED_PS_SLICE_BUFFER
 	case BUFFER_PS:
-		alloc_info->phy_addr
-		 = _vmem_request_ps_buff_phyaddr(
-		     type,
-		     &(alloc_info->kernel_remap_addr),
-		     &(alloc_info->request_size));
+		alloc_info->phy_addr =
+			_vmem_request_ps_buff_phyaddr(
+			    type,
+			    &(alloc_info->kernel_remap_addr),
+			    &(alloc_info->request_size));
 		if (alloc_info->phy_addr != 0)
 			goto Success;
 		break;
 	case BUFFER_SLICE:
-		alloc_info->phy_addr
-		 = _vmem_request_slice_buff_phyaddr(
-		    type,
-		    &(alloc_info->kernel_remap_addr),
-		    &(alloc_info->request_size));
+		alloc_info->phy_addr =
+			_vmem_request_slice_buff_phyaddr(
+			    type,
+			    &(alloc_info->kernel_remap_addr),
+			    &(alloc_info->request_size));
 		if (alloc_info->phy_addr != 0)
 			goto Success;
 		break;
 #endif
 #ifdef FIXED_STREAM_BUFFER
 	case BUFFER_STREAM:
-		alloc_info->phy_addr
-		 = _vmem_request_stream_buff_phyaddr(
-		    type,
-		    &(alloc_info->kernel_remap_addr),
-		    &(alloc_info->request_size));
+		alloc_info->phy_addr =
+			_vmem_request_stream_buff_phyaddr(
+			    type,
+			    &(alloc_info->kernel_remap_addr),
+			    &(alloc_info->request_size));
 		if (alloc_info->phy_addr != 0)
 			goto Success;
 		break;
@@ -2165,114 +2165,123 @@ int vmem_proc_alloc_memory(int codec_type, MEM_ALLOC_INFO_t *alloc_info,
 	}
 
 	if (alloc_info->buffer_type == BUFFER_WORK) {
-		alloc_info->phy_addr
-		 = _vmem_request_workbuff_phyaddr(
-		    codec_type,
-		    &(alloc_info->kernel_remap_addr));
+		alloc_info->phy_addr =
+			_vmem_request_workbuff_phyaddr(
+			    codec_type,
+			    &(alloc_info->kernel_remap_addr));
 		if (alloc_info->phy_addr == 0) {
 			V_DBG(VPU_DBG_ERROR,
-			      "type[%d]-buffer[%d] : [0x%x] BUFFER_WORK ALLOC_MEMORY failed.",
-			      type, alloc_info->buffer_type,
-			      alloc_info->phy_addr);
+			    "type[%d]-buffer[%d] : [0x%x] BUFFER_WORK ALLOC_MEMORY failed.",
+			    type,
+			    alloc_info->buffer_type,
+			    alloc_info->phy_addr);
 			goto Error;
 		}
 	} else if (alloc_info->buffer_type == BUFFER_USERDATA) {
-		alloc_info->phy_addr
-		 = _vmem_request_userdata_buff_phyaddr(
-		    type,
-		    &(alloc_info->kernel_remap_addr),
-		    &(alloc_info->request_size));
+		alloc_info->phy_addr =
+			_vmem_request_userdata_buff_phyaddr(
+			    type,
+			    &(alloc_info->kernel_remap_addr),
+			    &(alloc_info->request_size));
 		if (alloc_info->phy_addr == 0) {
 			V_DBG(VPU_DBG_ERROR,
-			      "type[%d]-buffer[%d] : [0x%x] BUFFER_USERDATA ALLOC_MEMORY failed.",
-			      type, alloc_info->buffer_type,
-			      alloc_info->phy_addr);
+			    "type[%d]-buffer[%d] : [0x%x] BUFFER_USERDATA ALLOC_MEMORY failed.",
+			    type,
+			    alloc_info->buffer_type,
+			    alloc_info->phy_addr);
 			goto Error;
 		}
 	} else if (alloc_info->buffer_type == BUFFER_SEQHEADER &&
 			(type == VPU_ENC ||
-				type == VPU_ENC_EXT ||
-				type == VPU_ENC_EXT2 ||
-				type == VPU_ENC_EXT3 ||
-				type == VPU_ENC_EXT4 ||
-				type == VPU_ENC_EXT5 ||
-				type == VPU_ENC_EXT6 ||
-				type == VPU_ENC_EXT7)) {	//Encoder
-		alloc_info->phy_addr
-		 = _vmem_request_seqheader_buff_phyaddr(type,
-				&(alloc_info->kernel_remap_addr),
-				&(alloc_info->request_size));
+			    type == VPU_ENC_EXT ||
+			    type == VPU_ENC_EXT2 ||
+			    type == VPU_ENC_EXT3 ||
+			    type == VPU_ENC_EXT4 ||
+			    type == VPU_ENC_EXT5 ||
+			    type == VPU_ENC_EXT6 ||
+			    type == VPU_ENC_EXT7)) {	//Encoder
+		alloc_info->phy_addr =
+			_vmem_request_seqheader_buff_phyaddr(
+			    type,
+			    &(alloc_info->kernel_remap_addr),
+			    &(alloc_info->request_size));
 		if (alloc_info->phy_addr == 0) {
 			V_DBG(VPU_DBG_ERROR,
-				"type[%d]-buffer[%d] : [0x%x] BUFFER_SEQHEADER ALLOC_MEMORY failed.",
-				type, alloc_info->buffer_type,
-				alloc_info->phy_addr);
+			    "type[%d]-buffer[%d] : [0x%x] BUFFER_SEQHEADER ALLOC_MEMORY failed.",
+			    type,
+			    alloc_info->buffer_type,
+			    alloc_info->phy_addr);
 			goto Error;
 		}
 	} else {	// END :: Dedicated memory region   ******
 #ifdef CONFIG_VPU_ALLOC_MEM_IN_SPECIFIC_SEQUENCE
-		alloc_info->phy_addr
-		 = _vmem_request_phyaddr(
-		   alloc_info->request_size, type);
+		alloc_info->phy_addr =
+			_vmem_request_phyaddr(
+			    alloc_info->request_size, type);
 		if (alloc_info->phy_addr == 0) {
 			V_DBG(VPU_DBG_ERROR,
-				"type[%d]-buffer[%d] : [0x%x] ALLOC_MEMORY failed.",
-				type, alloc_info->buffer_type,
-				alloc_info->phy_addr);
+			    "type[%d]-buffer[%d] : [0x%x] ALLOC_MEMORY failed.",
+			    type,
+			    alloc_info->buffer_type,
+			    alloc_info->phy_addr);
 			goto Error;
 		}
 #else
 		if (type == VPU_DEC_EXT4) {
 #if defined(CONFIG_VDEC_CNT_5)
-			alloc_info->phy_addr
-			 = _vmem_request_phyaddr_dec_ext4(
-			   alloc_info->request_size, type);
+			alloc_info->phy_addr =
+				_vmem_request_phyaddr_dec_ext4(
+				   alloc_info->request_size, type);
 			if (alloc_info->phy_addr == 0) {
 				V_DBG(VPU_DBG_ERROR,
-					"type[%d]-buffer[%d] : [0x%x] ALLOC_MEMORY failed.",
-					type, alloc_info->buffer_type,
-					alloc_info->phy_addr);
+				    "type[%d]-buffer[%d] : [0x%x] ALLOC_MEMORY failed.",
+				    type,
+				    alloc_info->buffer_type,
+				    alloc_info->phy_addr);
 				goto Error;
 			}
 #endif
 		} else if (type == VPU_DEC_EXT2 || type == VPU_DEC_EXT3) {
 #if DEFINED_CONFIG_VDEC_CNT_345
-			alloc_info->phy_addr
-			 = _vmem_request_phyaddr_dec_ext23(
-			 alloc_info->request_size, type);
+			alloc_info->phy_addr =
+				_vmem_request_phyaddr_dec_ext23(
+				    alloc_info->request_size, type);
 			if (alloc_info->phy_addr == 0) {
 				V_DBG(VPU_DBG_ERROR,
-					"type[%d]-buffer[%d] : [0x%x] ALLOC_MEMORY failed.",
-					type, alloc_info->buffer_type,
-					alloc_info->phy_addr);
+				    "type[%d]-buffer[%d] : [0x%x] ALLOC_MEMORY failed.",
+				    type,
+				    alloc_info->buffer_type,
+				    alloc_info->phy_addr);
 				goto Error;
 			}
 #endif
-		} else if (type == VPU_ENC_EXT || type == VPU_ENC_EXT2   ||
+		} else if (type == VPU_ENC_EXT || type == VPU_ENC_EXT2 ||
 			type == VPU_ENC_EXT3 || type == VPU_ENC_EXT4 ||
 			type == VPU_ENC_EXT5 || type == VPU_ENC_EXT6 ||
 			type == VPU_ENC_EXT7) {
 #if DEFINED_CONFIG_VENC_CNT_2345678
 			alloc_info->phy_addr =
 				_vmem_request_phyaddr_enc_ext(
-					alloc_info->request_size, type);
+				    alloc_info->request_size, type);
 			if (alloc_info->phy_addr == 0) {
 				V_DBG(VPU_DBG_ERROR,
-					"type[%d]-buffer[%d] : [0x%x] ALLOC_MEMORY failed.",
-					type, alloc_info->buffer_type,
-					alloc_info->phy_addr);
+				    "type[%d]-buffer[%d] : [0x%x] ALLOC_MEMORY failed.",
+				    type,
+				    alloc_info->buffer_type,
+				    alloc_info->phy_addr);
 				goto Error;
 			}
 #endif
 		} else {
 			alloc_info->phy_addr =
 				_vmem_request_phyaddr(
-					alloc_info->request_size, type);
+				    alloc_info->request_size, type);
 			if (alloc_info->phy_addr == 0) {
 				V_DBG(VPU_DBG_ERROR,
-					"type[%d]-buffer[%d] : [0x%x] ALLOC_MEMORY failed.",
-					type, alloc_info->buffer_type,
-					alloc_info->phy_addr);
+				    "type[%d]-buffer[%d] : [0x%x] ALLOC_MEMORY failed.",
+				    type,
+				    alloc_info->buffer_type,
+				    alloc_info->phy_addr);
 				goto Error;
 			}
 		}
@@ -2280,32 +2289,37 @@ int vmem_proc_alloc_memory(int codec_type, MEM_ALLOC_INFO_t *alloc_info,
 		alloc_info->kernel_remap_addr = 0x0;
 		if (alloc_info->buffer_type != BUFFER_FRAMEBUFFER) {
 			alloc_info->kernel_remap_addr =
-			    _vmem_get_virtaddr(alloc_info->phy_addr,
-					       alloc_info->request_size);
+				_vmem_get_virtaddr(
+				    alloc_info->phy_addr,
+				    alloc_info->request_size);
 			if (alloc_info->kernel_remap_addr == 0) {
 				V_DBG(VPU_DBG_ERROR,
-					"type[%d]-buffer[%d] : phy[0x%x - 0x%x] remap ALLOC_MEMORY failed.",
-					type, alloc_info->buffer_type,
-					alloc_info->phy_addr,
+				    "type[%d]-buffer[%d] : phy[0x%x - 0x%x] remap ALLOC_MEMORY failed.",
+				    type,
+				    alloc_info->buffer_type,
+				    alloc_info->phy_addr,
 					PAGE_ALIGN(
-					alloc_info->request_size
-					/*-PAGE_SIZE*/));
+					    alloc_info->request_size
+					    /*-PAGE_SIZE*/));
 				memcpy(
-				  &(vmem_alloc_info[type]
-				     [vmem_allocated_count[type]]),
-				  alloc_info, sizeof(MEM_ALLOC_INFO_t));
+				    &(vmem_alloc_info[type]
+				    [vmem_allocated_count[type]]),
+				    alloc_info,
+				    sizeof(MEM_ALLOC_INFO_t));
 				vmem_allocated_count[type] += 1;
 				goto Error;
 			}
 		}
 
 		V_DBG(VPU_DBG_MEM_SEQ,
-		"type[%d]-buffer[%d] : alloc addr[%d] :: phy = 0x%x, remap = 0x%p, size = 0x%x(%u) !!",
-		type, alloc_info->buffer_type, vmem_allocated_count[type],
-		alloc_info->phy_addr, alloc_info->kernel_remap_addr,
-		alloc_info->request_size, alloc_info->request_size);
+		    "type[%d]-buffer[%d] : alloc addr[%d] :: phy = 0x%x, remap = 0x%p, size = 0x%x(%u) !!",
+		    type,
+		    alloc_info->buffer_type, vmem_allocated_count[type],
+		    alloc_info->phy_addr, alloc_info->kernel_remap_addr,
+		    alloc_info->request_size, alloc_info->request_size);
+
 		memcpy(&(vmem_alloc_info[type][vmem_allocated_count[type]]),
-		       alloc_info, sizeof(MEM_ALLOC_INFO_t));
+			alloc_info, sizeof(MEM_ALLOC_INFO_t));
 		vmem_allocated_count[type] += 1;
 	}
 
@@ -2869,6 +2883,8 @@ void vdec_get_instance(int *nIdx)
 			V_DBG(VPU_DBG_ERROR,
 				"failed to get new instance for decoder(%d)",
 				nInstance);
+
+		V_DBG(VPU_DBG_INSTANCE, "Instance(#%d) is taken", nInstance);
 
 		*nIdx = nInstance;
 	}
