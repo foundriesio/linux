@@ -19,6 +19,16 @@
 #ifndef __TCC_VIOC_FB_H__
 #define __TCC_VIOC_FB_H__
 
+/*
+ * extern
+ */
+
+
+
+
+/*-----------------------------------------------------------------------------
+ *
+ */
 extern unsigned int HDMI_video_hz;
 
 struct tcc_dp_device *tca_fb_get_displayType(
