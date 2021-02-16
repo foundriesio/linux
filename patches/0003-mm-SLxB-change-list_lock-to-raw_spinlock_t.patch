@@ -512,7 +512,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	stat(s, FREE_SLAB);
  	discard_slab(s, page);
  }
-@@ -3473,7 +3473,7 @@ static void
+@@ -3487,7 +3487,7 @@ static void
  init_kmem_cache_node(struct kmem_cache_node *n)
  {
  	n->nr_partial = 0;
@@ -521,7 +521,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	INIT_LIST_HEAD(&n->partial);
  #ifdef CONFIG_SLUB_DEBUG
  	atomic_long_set(&n->nr_slabs, 0);
-@@ -3874,7 +3874,7 @@ static void free_partial(struct kmem_cac
+@@ -3888,7 +3888,7 @@ static void free_partial(struct kmem_cac
  	struct page *page, *h;
  
  	BUG_ON(irqs_disabled());
@@ -530,7 +530,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	list_for_each_entry_safe(page, h, &n->partial, slab_list) {
  		if (!page->inuse) {
  			remove_partial(n, page);
-@@ -3884,7 +3884,7 @@ static void free_partial(struct kmem_cac
+@@ -3898,7 +3898,7 @@ static void free_partial(struct kmem_cac
  			  "Objects remaining in %s on __kmem_cache_shutdown()");
  		}
  	}
@@ -539,7 +539,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  	list_for_each_entry_safe(page, h, &discard, slab_list)
  		discard_slab(s, page);
-@@ -4155,7 +4155,7 @@ int __kmem_cache_shrink(struct kmem_cach
+@@ -4169,7 +4169,7 @@ int __kmem_cache_shrink(struct kmem_cach
  		for (i = 0; i < SHRINK_PROMOTE_MAX; i++)
  			INIT_LIST_HEAD(promote + i);
  
@@ -548,7 +548,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  		/*
  		 * Build lists of slabs to discard or promote.
-@@ -4186,7 +4186,7 @@ int __kmem_cache_shrink(struct kmem_cach
+@@ -4200,7 +4200,7 @@ int __kmem_cache_shrink(struct kmem_cach
  		for (i = SHRINK_PROMOTE_MAX - 1; i >= 0; i--)
  			list_splice(promote + i, &n->partial);
  
@@ -557,7 +557,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  		/* Release empty slabs */
  		list_for_each_entry_safe(page, t, &discard, slab_list)
-@@ -4548,7 +4548,7 @@ static int validate_slab_node(struct kme
+@@ -4562,7 +4562,7 @@ static int validate_slab_node(struct kme
  	struct page *page;
  	unsigned long flags;
  
@@ -566,7 +566,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  	list_for_each_entry(page, &n->partial, slab_list) {
  		validate_slab(s, page);
-@@ -4570,7 +4570,7 @@ static int validate_slab_node(struct kme
+@@ -4584,7 +4584,7 @@ static int validate_slab_node(struct kme
  		       s->name, count, atomic_long_read(&n->nr_slabs));
  
  out:
@@ -575,7 +575,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	return count;
  }
  
-@@ -4749,12 +4749,12 @@ static int list_locations(struct kmem_ca
+@@ -4763,12 +4763,12 @@ static int list_locations(struct kmem_ca
  		if (!atomic_long_read(&n->nr_slabs))
  			continue;
  

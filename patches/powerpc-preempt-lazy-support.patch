@@ -11,8 +11,8 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  arch/powerpc/kernel/asm-offsets.c      |    1 +
  arch/powerpc/kernel/entry_32.S         |   23 ++++++++++++++++-------
  arch/powerpc/kernel/exceptions-64e.S   |   16 ++++++++++++----
- arch/powerpc/kernel/syscall_64.c       |    9 ++++++---
- 6 files changed, 48 insertions(+), 17 deletions(-)
+ arch/powerpc/kernel/syscall_64.c       |   10 +++++++---
+ 6 files changed, 49 insertions(+), 17 deletions(-)
 
 --- a/arch/powerpc/Kconfig
 +++ b/arch/powerpc/Kconfig
@@ -231,7 +231,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  			schedule();
  		} else {
  			if (ti_flags & _TIF_SIGPENDING)
-@@ -395,11 +395,14 @@ notrace unsigned long interrupt_exit_ker
+@@ -395,11 +395,15 @@ notrace unsigned long interrupt_exit_ker
  		/* Returning to a kernel context with local irqs enabled. */
  		WARN_ON_ONCE(!(regs->msr & MSR_EE));
  again:
@@ -242,7 +242,8 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  				if (preempt_count() == 0)
  					preempt_schedule_irq();
 +			} else if (unlikely(*ti_flagsp & _TIF_NEED_RESCHED_LAZY)) {
-+				if (current_thread_info()->preempt_lazy_count == 0)
++				if ((preempt_count() == 0) &&
++				    (current_thread_info()->preempt_lazy_count == 0))
 +					preempt_schedule_irq();
  			}
  		}

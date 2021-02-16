@@ -23,9 +23,12 @@ timers-Move-clearing-of-base-timer_running-under-bas.patch
 ############################################################
 # POSTED
 ############################################################
-# 20201028141251.3608598-1-bigeasy@linutronix.de
-0002-blk-mq-Always-complete-remote-completions-requests-i.patch
-0003-blk-mq-Use-llist_head-for-blk_cpu_done.patch
+# blk-mq
+# tip 66040b2d5d41f85cb1a752a75260595344c5ec3b
+smp-Process-pending-softirqs-in-flush_smp_call_funct.patch
+# linux-block 0a2efafbb1c752a7041652445bc1232114409633+
+blk-mq-Always-complete-remote-completions-requests-i.patch
+blk-mq-Use-llist_head-for-blk_cpu_done.patch
 
 # 20201110113848.801379-1-bigeasy@linutronix.de
 0001-kthread-Move-prio-affinite-change-into-the-newly-cre.patch
@@ -100,6 +103,9 @@ net--Move-lockdep-where-it-belongs.patch
 tcp-Remove-superfluous-BH-disable-around-listening_h.patch
 
 # SoftIRQ
+# 20210215181027.mxkzolp3fibfiwvv@linutronix.de
+smp-Wake-ksoftirqd-on-PREEMPT_RT-instead-do_softirq.patch
+
 # WIP
 0001-softirq-Replace-barrier-with-cpu_relax-in-tasklet_un.patch
 0002-tasklets-Use-static-inlines-for-stub-implementations.patch
@@ -120,6 +126,10 @@ tcp-Remove-superfluous-BH-disable-around-listening_h.patch
 0017-PCI-hv-Use-tasklet_disable_in_atomic.patch
 0018-atm-eni-Use-tasklet_disable_in_atomic-in-the-send-ca.patch
 0019-firewire-ohci-Use-tasklet_disable_in_atomic-in-the-t.patch
+
+# 20210202170104.1909200-1-bigeasy@linutronix.de
+0001-chelsio-cxgb-Replace-the-workqueue-with-threaded-int.patch
+0002-chelsio-cxgb-Disable-the-card-on-error-in-threaded-i.patch
 
 # RT-MUTEX
 0001-locking-rtmutex-Remove-cruft.patch

@@ -221,7 +221,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  	if (task->state & (__TASK_STOPPED | __TASK_TRACED))
 --- a/include/linux/thread_info.h
 +++ b/include/linux/thread_info.h
-@@ -147,7 +147,17 @@ static inline int test_ti_thread_flag(st
+@@ -149,7 +149,17 @@ static inline int test_ti_thread_flag(st
  	clear_ti_thread_flag(task_thread_info(t), TIF_##fl)
  #endif /* !CONFIG_GENERIC_ENTRY */
  

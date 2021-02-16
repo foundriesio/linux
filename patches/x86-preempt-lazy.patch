@@ -119,7 +119,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  /*
 --- a/include/linux/entry-common.h
 +++ b/include/linux/entry-common.h
-@@ -57,7 +57,7 @@
+@@ -58,7 +58,7 @@
  
  #define EXIT_TO_USER_MODE_WORK						\
  	(_TIF_SIGPENDING | _TIF_NOTIFY_RESUME | _TIF_UPROBE |		\
