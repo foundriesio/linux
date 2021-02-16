@@ -1013,7 +1013,11 @@ struct kvm_x86_ops {
 	void (*set_rflags)(struct kvm_vcpu *vcpu, unsigned long rflags);
 	u32 (*get_pkru)(struct kvm_vcpu *vcpu);
 
+#ifndef __GENKSYMS__
+	void (*tlb_flush)(struct kvm_vcpu *vcpu, bool invalidate_gpa);
+#else
 	void (*tlb_flush)(struct kvm_vcpu *vcpu);
+#endif
 
 	void (*run)(struct kvm_vcpu *vcpu);
 	int (*handle_exit)(struct kvm_vcpu *vcpu);
