@@ -152,9 +152,9 @@ static irqreturn_t screen_share_irq_handler(int irq, void *dev_id)
 		#if defined(CONFIG_CHECK_DRM_TCC_VSYNC_TIME_GAP)
 		do_gettimeofday(&cur_time);
 		diff_ms = tcc_time_diff_ms(&ctx->prev_time, &cur_time);
-		if(
-			diff_ms < (DIV_ROUND_UP(1000, ctx->vrefresh) -1 ) ||
-			diff_ms > (DIV_ROUND_UP(1000, ctx->vrefresh) +1 )) {
+		if (
+			diff_ms < (DIV_ROUND_UP(1000, ctx->vrefresh) - 1) ||
+			diff_ms > (DIV_ROUND_UP(1000, ctx->vrefresh) + 1)) {
 			pr_err(
 				"DIFF %dms %d00us, <%d>",
 
@@ -195,7 +195,7 @@ static int screen_share_enable_vblank(struct tcc_drm_crtc *crtc)
 		vioc_timer_clear_irq_status(ctx->timer_id);
 		vioc_timer_clear_irq_mask(ctx->timer_id);
 		vioc_intr_enable(ctx->irq_num, VIOC_INTR_TIMER, 0);
-		if(ctx->vrefresh >= 24 && ctx->vrefresh <= 120) {
+		if (ctx->vrefresh >= 24 && ctx->vrefresh <= 120) {
 			dev_info(
 				ctx->dev,
 				"[INFO][%s] %s with vrefresh(%d)\r\n",

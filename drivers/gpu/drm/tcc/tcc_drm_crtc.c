@@ -523,7 +523,7 @@ int tcc_crtc_parse_edid_ioctl(
 		struct edid *edid =
 			devm_kzalloc(dev->dev, EDID_LENGTH, GFP_KERNEL);
 
-		if (!edid ) {
+		if (!edid) {
 			ret = -ENOMEM;
 			goto err_out;
 		}
@@ -538,7 +538,7 @@ int tcc_crtc_parse_edid_ioctl(
 
 		memcpy(args->data, edid, EDID_LENGTH);
 		devm_kfree(dev->dev, edid);
-        }
+	}
 	return 0;
 err_out:
 	return ret;
@@ -656,7 +656,7 @@ int tcc_drm_crtc_set_display_timing(struct drm_crtc *crtc,
 
 	VIOC_WMIX_GetOverlayPriority(hw_data->wmixer.virt_addr, &ovp);
 	/* Restore ovp value of WMIX to drm default ovp value */
-	if(ovp == VIOC_WMIX_POR_OVP)
+	if (ovp == VIOC_WMIX_POR_OVP)
 		ovp = VIOC_WMIX_DRM_DEFAULT_OVP;
 	VIOC_CONFIG_SWReset(hw_data->wmixer.blk_num, VIOC_CONFIG_RESET);
 	VIOC_CONFIG_SWReset(hw_data->wmixer.blk_num, VIOC_CONFIG_CLEAR);

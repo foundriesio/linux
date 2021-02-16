@@ -313,9 +313,8 @@ tcc_dpi_detect(struct drm_connector *connector, bool force)
 				connector_status_connected;
 	struct tcc_dpi *ctx = connector_to_dpi(connector);
 
-	if (ctx->panel && !ctx->panel->connector) {
+	if (ctx->panel && !ctx->panel->connector)
 		drm_panel_attach(ctx->panel, &ctx->connector);
-	}
 
 	#if defined(CONFIG_TCC_DP_DRIVER_V1_4)
 	if (ctx->hw_device->connector_type == DRM_MODE_CONNECTOR_DisplayPort) {
@@ -367,12 +366,13 @@ tcc_dpi_connector_atomic_get_property(struct drm_connector *connector,
 		int i;
 		uint64_t audio_freq;
 
-		//audio_freq = ctx->dp->funcs->get_audio_freq();
+		/* audio_freq = ctx->dp->funcs->get_audio_freq(); */
 		audio_freq = (uint64_t)ctx->dp_prop_data.audio_freq;
 		*val = audio_freq;
 	} else if (property == ctx->dp_prop.audio_type) {
 		int audio_type;
-		//*val = ctx->dp->funcs->get_audio_type();
+
+		/* *val = ctx->dp->funcs->get_audio_type(); */
 		audio_type = (uint64_t)ctx->dp_prop_data.audio_type;
 		*val = audio_type;
 	}
@@ -411,8 +411,8 @@ static const struct drm_connector_funcs tcc_dpi_connector_funcs = {
 	.atomic_duplicate_state = drm_atomic_helper_connector_duplicate_state,
 	.atomic_destroy_state = drm_atomic_helper_connector_destroy_state,
 	#if defined(CONFIG_TCC_DP_DRIVER_V1_4)
-        .atomic_get_property = tcc_dpi_connector_atomic_get_property,
-        .atomic_set_property = tcc_dpi_connector_atomic_set_property,
+	.atomic_get_property = tcc_dpi_connector_atomic_get_property,
+	.atomic_set_property = tcc_dpi_connector_atomic_set_property,
 	#endif
 };
 
@@ -857,8 +857,9 @@ ssize_t proc_read_edid(
 
 			pr_info(
 				"[INFO][%s] CRTC_ID[%d] length = %d",
-				LOG_TAG, drm_crtc_index(crtc), edid_blob->length);
-			for(i = 0; i < edid_blob->length; i += 8) {
+				LOG_TAG, drm_crtc_index(crtc),
+				edid_blob->length);
+			for (i = 0; i < edid_blob->length; i += 8) {
 				pr_info(
 					"%02x %02x %02x %02x %02x %02x %02x %02x\r\n",
 					edid_blob->data[i+0],
@@ -1016,7 +1017,7 @@ int tcc_dpi_remove(struct drm_encoder *encoder)
 	return 0;
 }
 
-struct drm_encoder * tcc_dpi_find_encoder_from_crtc(struct drm_crtc *crtc)
+struct drm_encoder *tcc_dpi_find_encoder_from_crtc(struct drm_crtc *crtc)
 {
 	struct drm_encoder *encoder = NULL;
 
@@ -1026,7 +1027,7 @@ struct drm_encoder * tcc_dpi_find_encoder_from_crtc(struct drm_crtc *crtc)
 	return encoder;
 }
 
-struct drm_connector * tcc_dpi_find_connector_from_crtc(struct drm_crtc *crtc)
+struct drm_connector *tcc_dpi_find_connector_from_crtc(struct drm_crtc *crtc)
 {
 	struct drm_connector *connector = NULL;
 	struct drm_encoder *encoder;

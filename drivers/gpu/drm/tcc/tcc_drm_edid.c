@@ -50,7 +50,7 @@ int tcc_make_edid_from_display_mode(
 	u32 blank;
 	int i, ret = -1;
 
-	if(!edid)
+	if (!edid)
 		goto out;
 
 	raw_edid = (u8 *)edid;
@@ -93,9 +93,9 @@ int tcc_make_edid_from_display_mode(
 	pixel_data->hborder = 0x0;
 	pixel_data->vborder = 0x0;
 	pixel_data->misc = DRM_EDID_PT_SEPARATE_SYNC;
-	if(mode->flags & DRM_MODE_FLAG_PHSYNC)
+	if (mode->flags & DRM_MODE_FLAG_PHSYNC)
 		pixel_data->misc |= DRM_EDID_PT_HSYNC_POSITIVE;
-	if(mode->flags & DRM_MODE_FLAG_PVSYNC)
+	if (mode->flags & DRM_MODE_FLAG_PVSYNC)
 		pixel_data->misc |= DRM_EDID_PT_VSYNC_POSITIVE;
 
 	/* Checksum */
