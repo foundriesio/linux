@@ -201,19 +201,19 @@ static void ictc_tasklet_handler(unsigned long data)
 		list_for_each_entry_safe(idev_pos, idev_pos_safe, &ictc_list,
 					 list) {
 #ifdef DEBUG_ICTC
-			if ((idev_pos->int_state & (uint32_t) IRQ_STAT_REDGE) ==
-			    (uint32_t) IRQ_STAT_REDGE) {
+			if ((idev_pos->int_state & (uint32_t) IRQ_STAT_REDGE)
+				== (uint32_t) IRQ_STAT_REDGE) {
 				debug_ictc("rising edge interrupt\n");
 			}
-			if ((idev_pos->int_state & (uint32_t) IRQ_STAT_FEDGE) ==
-			    (uint32_t) IRQ_STAT_FEDGE) {
+			if ((idev_pos->int_state & (uint32_t) IRQ_STAT_FEDGE)
+				== (uint32_t) IRQ_STAT_FEDGE) {
 				debug_ictc("falling edge interrupt\n");
 			}
-			if ((idev_pos->
-			     int_state & (uint32_t) IRQ_STAT_DFFULL) ==
-			    (uint32_t) IRQ_STAT_DFFULL) {
-				debug_ictc
-				    ("duty and frequency counter full interrupt\n");
+			if ((idev_pos->int_state & (uint32_t) IRQ_STAT_DFFULL)
+				== (uint32_t) IRQ_STAT_DFFULL) {
+				debug_ictc(
+					"duty and frequency counter full interrupt\n"
+					);
 			}
 			if ((idev_pos->int_state & (uint32_t) IRQ_STAT_FCHG) ==
 			    (uint32_t) IRQ_STAT_FCHG) {
@@ -223,20 +223,20 @@ static void ictc_tasklet_handler(unsigned long data)
 			    (uint32_t) IRQ_STAT_DCHG) {
 				debug_ictc("duty changing interrupt\n");
 			}
-			if ((idev_pos->int_state & (uint32_t) IRQ_STAT_EFULL) ==
-			    (uint32_t) IRQ_STAT_EFULL) {
+			if ((idev_pos->int_state & (uint32_t) IRQ_STAT_EFULL)
+				== (uint32_t) IRQ_STAT_EFULL) {
 				debug_ictc("edge counter full interrupt\n");
 			}
-			if ((idev_pos->
-			     int_state & (uint32_t) IRQ_STAT_TOFULL) ==
-			    (uint32_t) IRQ_STAT_TOFULL) {
+			if ((idev_pos->int_state & (uint32_t) IRQ_STAT_TOFULL)
+				== (uint32_t) IRQ_STAT_TOFULL) {
 				debug_ictc("timeout counter full interrupt\n");
 			}
-			if ((idev_pos->
-			     int_state & (uint32_t) IRQ_STAT_NFEDFULL) ==
+			if ((idev_pos->int_state
+				    & (uint32_t) IRQ_STAT_NFEDFULL) ==
 			    (uint32_t) IRQ_STAT_NFEDFULL) {
-				debug_ictc
-				    ("noise-filter and edge counter full interrupt\n");
+				debug_ictc(
+					"noise-filter and edge counter full interrupt\n"
+					);
 			}
 #endif
 			list_del(&idev_pos->list);
@@ -285,13 +285,19 @@ static int32_t ictc_parse_dt(struct device_node *np, struct device *dev)
 
 	for_each_child_of_node((pinctrl_node), (gpio_node)) {
 		if (of_find_property(gpio_node, "gpio-controller", NULL) !=
-		    NULL) {
+				NULL) {
 			if ((UINT_MAX - num_gpio) < 1u) {
 				dev_err(dev,
-					"[ERROR][ICTC] warparound guard error\n");
-				return -1;
+						"[ERROR][ICTC] warparound guard error\n"
+						);
+				ret = -1;
 			} else {
 				num_gpio = num_gpio + 1u;
+			}
+
+			if (ret < 0) {
+				return ret;
+				//for coding style
 			}
 		}
 	}
@@ -299,136 +305,149 @@ static int32_t ictc_parse_dt(struct device_node *np, struct device *dev)
 	idev->num_gpio = num_gpio;
 
 	if ((UINT_MAX / sizeof(struct ictc_pin_map)) < num_gpio) {
-		return -1;
+		ret = -1;
 	} else {
 		if (num_gpio != 0u) {
 			idev->ictc_pin_map_val =
-			    kzalloc(sizeof(struct ictc_pin_map) * num_gpio,
-				    GFP_KERNEL);
+				kcalloc(num_gpio, sizeof(struct ictc_pin_map),
+						GFP_KERNEL);
 		} else {
-			return -1;
+			ret = -1;
 		}
+
+	}
+
+	if (ret < 0) {
+		return ret;
+		//for coding style
 	}
 
 	if (idev->ictc_pin_map_val != NULL) {
 
 		for_each_child_of_node((pinctrl_node), (gpio_node)) {
 			if (of_find_property(gpio_node, "gpio-controller", NULL)
-			    == NULL) {
+					== NULL) {
 				continue;
 			}
 
-			ret =
-			    of_property_read_u32_index(gpio_node, "reg", 0,
-						       &idev->
-						       ictc_pin_map_val[i].
-						       reg_base);
-			if (ret < 0) {
-				dev_err(dev,
+		ret =
+		    of_property_read_u32_index(gpio_node, "reg", 0,
+					&idev->ictc_pin_map_val[i].reg_base);
+		if (ret < 0) {
+			dev_err(dev,
 					"[ERROR][ICTC] failed to get reg base\n");
-				return ret;
+			return ret;
+		}
+
+		ret =
+		    of_property_read_u32_index(gpio_node, "source-num",
+			    0, &idev->ictc_pin_map_val[i].source_section);
+		if (ret < 0) {
+			dev_err(dev,
+				"[ERROR][ICTC] failed to get source section number\n"
+				);
+			return ret;
+		}
+
+		if (idev->ictc_pin_map_val[i].source_section != 0xffu) {
+			if ((UINT_MAX / sizeof(u32)) <
+				idev->ictc_pin_map_val[i].source_section) {
+				ret = -1;
+			} else {
+				idev->ictc_pin_map_val[i].source_offset_base =
+		kcalloc(idev->ictc_pin_map_val[i].source_section, sizeof(u32),
+				    GFP_KERNEL);
+			idev->ictc_pin_map_val[i].source_base =
+		kcalloc(idev->ictc_pin_map_val[i].source_section, sizeof(u32),
+				    GFP_KERNEL);
+			idev->ictc_pin_map_val[i].source_range =
+		kcalloc(idev->ictc_pin_map_val[i].source_section, sizeof(u32),
+				    GFP_KERNEL);
 			}
 
-			ret =
-			    of_property_read_u32_index(gpio_node, "source-num",
-						       0,
-						       &idev->
-						       ictc_pin_map_val[i].
-						       source_section);
 			if (ret < 0) {
-				dev_err(dev,
-					"[ERROR][ICTC] failed to get source section number\n");
 				return ret;
+				//for coding style
 			}
 
-			if (idev->ictc_pin_map_val[i].source_section != 0xffu) {
-				if ((UINT_MAX / sizeof(u32)) <
-				    idev->ictc_pin_map_val[i].source_section) {
-					return -1;
+			for (j = 0U; j <
+			    idev->ictc_pin_map_val[i].source_section;
+			    j++) {
+				if ((UINT_MAX - 3u) / 3u < j) {
+					ret = -1;
 				} else {
-					idev->ictc_pin_map_val[i].
-					    source_offset_base =
-					    kzalloc(sizeof(u32) *
-						    idev->ictc_pin_map_val[i].
-						    source_section, GFP_KERNEL);
-					idev->ictc_pin_map_val[i].source_base =
-					    kzalloc(sizeof(u32) *
-						    idev->ictc_pin_map_val[i].
-						    source_section, GFP_KERNEL);
-					idev->ictc_pin_map_val[i].source_range =
-					    kzalloc(sizeof(u32) *
-						    idev->ictc_pin_map_val[i].
-						    source_section, GFP_KERNEL);
-				}
-
-				for (j = 0U;
-				     j <
-				     idev->ictc_pin_map_val[i].source_section;
-				     j++) {
-					if ((UINT_MAX - 3u) / 3u < j) {
-						return -1;
-					} else {
-						ret =
-						    of_property_read_u32_index
-						    (gpio_node, "source-num",
-						     ((j * 3u) + 1u),
-						     &idev->ictc_pin_map_val[i].
-						     source_offset_base[j]);
-						if (ret < 0) {
-							dev_err(dev,
-								"[ERROR][PINCTRL] failed to get source offset base\n");
-							return ret;
-						}
-						ret =
-						    of_property_read_u32_index
-						    (gpio_node, "source-num",
-						     ((j * 3u) + 2u),
-						     &idev->ictc_pin_map_val[i].
-						     source_base[j]);
-						if (ret < 0) {
-							dev_err(dev,
-								"[ERROR][PINCTRL] failed to get source base\n");
-							return ret;
-						}
-						ret =
-						    of_property_read_u32_index
-						    (gpio_node, "source-num",
-						     ((j * 3u) + 3u),
-						     &idev->ictc_pin_map_val[i].
-						     source_range[j]);
-						if (ret < 0) {
-							dev_err(dev,
-								"[ERROR][PINCTRL] failed to get source range\n");
-							return ret;
-						}
+					ret =
+						of_property_read_u32_index
+						(gpio_node, "source-num",
+						 ((j * 3u) + 1u),
+			    &idev->ictc_pin_map_val[i].source_offset_base[j]);
+					if (ret < 0) {
+						dev_err(dev,
+								"[ERROR][PINCTRL] failed to get source offset base\n"
+							   );
+						return ret;
+					}
+					ret =
+						of_property_read_u32_index
+						(gpio_node, "source-num",
+						 ((j * 3u) + 2u),
+				    &idev->ictc_pin_map_val[i].source_base[j]);
+					if (ret < 0) {
+						dev_err(dev,
+								"[ERROR][PINCTRL] failed to get source base\n"
+							   );
+						return ret;
+					}
+					ret =
+						of_property_read_u32_index
+						(gpio_node, "source-num",
+						 ((j * 3u) + 3u),
+				    &idev->ictc_pin_map_val[i].source_range[j]);
+					if (ret < 0) {
+						dev_err(dev,
+								"[ERROR][PINCTRL] failed to get source range\n"
+							   );
+						return ret;
 					}
 				}
-			}
 
-			if ((UINT_MAX - i) < 1u) {
-				dev_err(dev,
-					"[ERROR][ICTC] warparound guard error\n");
-				return -1;
-			} else {
-				i++;
+				if (ret < 0) {
+					return ret;
+					//for coding style
+				}
 			}
 		}
 
-		count = ARRAY_SIZE(ictc_prop_v_l);
+		if ((UINT_MAX - i) < 1u) {
+			dev_err(dev,
+					"[ERROR][ICTC] warparound guard error\n");
+			ret = -1;
+		} else {
+			i++;
+		}
+		}
+
+		if (ret < 0) {
+			return ret;
+			//for coding style
+		}
+
+	    count = ARRAY_SIZE(ictc_prop_v_l);
 
 		for (node_num = 0; node_num < count; node_num++) {
 			temp = of_property_read_u32(np, ictc_prop_v_l[node_num],
-						    &ictc_prop_v[node_num]);
+					&ictc_prop_v[node_num]);
 			if (temp != 0) {
 				err_ictc("no property found in DT : %s\n",
-					 ictc_prop_v_l[node_num]);
+						ictc_prop_v_l[node_num]);
 				ret = -EINVAL;
 			}
 			debug_ictc("%s -> %x\n", ictc_prop_v_l[node_num],
-				   ictc_prop_v[node_num]);
+					ictc_prop_v[node_num]);
 
 			if (ret != 0) {
 				break;
+				//for coding style
 			}
 
 		}
@@ -442,12 +461,14 @@ static int32_t ictc_parse_dt(struct device_node *np, struct device *dev)
 
 			if (temp_bool) {
 				ictc_prop_b[node_num] = 1;
+				//for coding style
 			} else {
 				ictc_prop_b[node_num] = 0;
+				//for coding style
 			}
 
 			debug_ictc("%s -> %x\n", ictc_prop_b_l[node_num],
-				   ictc_prop_b[node_num]);
+					ictc_prop_b[node_num]);
 		}
 	} else {
 		return -1;
@@ -463,14 +484,17 @@ static void ictc_configure(void)
 
 	if (ictc_prop_v[ABS_SEL_V] != 0u) {
 		config_val |= ABS_SEL;
+		//for coding style
 	}
 
 	if (ictc_prop_v[E_SEL_V] != 0u) {
 		config_val |= E_DGE_SEL;
+		//for coding style
 	}
 
 	if (ictc_prop_v[TCK_POL_V] != 0u) {
 		config_val |= TCLK_POL;
+		//for coding style
 	}
 
 	config_val |= TCK_SEL((ictc_prop_v[TCK_SEL_V]));
@@ -483,15 +507,19 @@ static void ictc_configure(void)
 	} else {
 		if (ictc_prop_b[D_CHG_INT] != 0u) {
 			config_val |= CMP_ERR_SEL;
+			//for coding style
 		} else {
 			debug_ictc("no compare error selection\n");
+			//for coding style
 		}
 	}
 
 	if (!f_in_rtc_wkup) {
 		config_val |= (uint32_t) f_in_source;
+		//for coding style
 	} else {
 		config_val |= (uint32_t) RTC_WKUP;
+		//for coding style
 	}
 
 	ictc_writel(config_val, OP_MODE_CTRL);
@@ -522,27 +550,35 @@ static void ictc_enable_interrupt(void)
 
 		if (ictc_prop_b[R_EDGE_INT] != 0u) {
 			enable_int |= REDGEINT;
+			//for coding style
 		}
 		if (ictc_prop_b[F_EDGE_INT] != 0u) {
 			enable_int |= FEDGEINT;
+			//for coding style
 		}
 		if (ictc_prop_b[DF_CNT_FULL_INT] != 0u) {
 			enable_int |= DFFULLINT;
+			//for coding style
 		}
 		if (ictc_prop_b[F_CHG_INT] != 0u) {
 			enable_int |= FCHGINT;
+			//for coding style
 		}
 		if (ictc_prop_b[D_CHG_INT] != 0u) {
 			enable_int |= DCHGINT;
+			//for coding style
 		}
 		if (ictc_prop_b[E_CNT_FULL_INT] != 0u) {
 			enable_int |= E_FULLINT;
+			//for coding style
 		}
 		if (ictc_prop_b[TO_CNT_FULL_INT] != 0u) {
 			enable_int |= TOFULLINT;
+			//for coding style
 		}
 		if (ictc_prop_b[NF_ED_CNT_FULL_INT] != 0u) {
 			enable_int |= NFEDFULLINT;
+			//for coding style
 		}
 
 		irq_setting = enable_int;
@@ -571,18 +607,22 @@ static void ictc_enable_counter(void)
 
 	if (ictc_prop_b[TIME_STAMP_CNT] != 0u) {
 		enable_val |= TSCNT_EN;
+		//for coding style
 	}
 	if (ictc_prop_b[TO_CNT_FULL_INT] != 0u) {
 		enable_val |= TOCNT_EN;
+		//for coding style
 	}
 	if ((ictc_prop_b[D_CHG_INT] != 0u) || (ictc_prop_b[F_CHG_INT] != 0u)
 	    || (ictc_prop_b[DF_CNT_FULL_INT] != 0u)) {
 		enable_val |= PDCNT_EN;
+		//for coding style
 	}
 	if ((ictc_prop_b[R_EDGE_INT] != 0u) || (ictc_prop_b[F_EDGE_INT] != 0u)
 	    || (ictc_prop_b[E_CNT_FULL_INT] != 0u)
 	    || (ictc_prop_b[NF_ED_CNT_FULL_INT] != 0u)) {
 		enable_val |= E_CNT_EN;
+		//for coding style
 	}
 
 	enable_val |= TCLK_EN | FLTCNT_EN;
@@ -599,76 +639,71 @@ static void ictc_enable(void)
 }
 
 static int32_t gpio_to_f_in(uint32_t gpio_base, uint32_t gpio_bit,
-			    struct device *dev)
+		struct device *dev)
 {
 
 	uint32_t count, i, f_in_gpio_num;
-	int32_t pin_valid = 0;
+	int32_t pin_valid = 0, ret = 0;
 	struct ictc_dev *idev = dev_get_drvdata(dev);
+	struct ictc_pin_map *pin_v = idev->ictc_pin_map_val;
+	u32 *s_o_b, *s_r, *s_b;
 
 	for (count = 0; count < idev->num_gpio; count++) {
 
-		if (idev->ictc_pin_map_val[count].reg_base == gpio_base) {
-			if (idev->ictc_pin_map_val[count].source_section ==
-			    0xffu) {
-				err_ictc
-				    ("[ERROR][ICTC] %s: not supported for ICTC source\n",
-				     __func__);
-				return -EINVAL;
-			}
+		if (pin_v[count].reg_base != gpio_base)
+			continue;
 
-			for (i = 0;
-			     i < idev->ictc_pin_map_val[count].source_section;
-			     i++) {
-				if ((UINT_MAX -
-				     idev->ictc_pin_map_val[count].
-				     source_offset_base[i]) <
-				    idev->ictc_pin_map_val[count].
-				    source_range[i]) {
-					return -1;
-				} else {
-					if ((gpio_bit >=
-					     idev->ictc_pin_map_val[count].
-					     source_offset_base[i])
-					    && (gpio_bit <
-						(idev->ictc_pin_map_val[count].
-						 source_offset_base[i] +
-						 idev->ictc_pin_map_val[count].
-						 source_range[i]))) {
-						if ((UINT_MAX -
-						     idev->
-						     ictc_pin_map_val[count].
-						     source_base[i]) <
-						    (gpio_bit -
-						     idev->
-						     ictc_pin_map_val[count].
-						     source_offset_base[i])) {
-							return -1;
-						} else {
-							f_in_gpio_num =
-							    idev->
-							    ictc_pin_map_val
-							    [count].
-							    source_base[i] +
-							    (gpio_bit -
-							     idev->
-							     ictc_pin_map_val
-							     [count].
-							     source_offset_base
-							     [i]);
-						}
-						pin_valid = 1;
-						break;
+		if (pin_v[count].source_section ==
+				0xffu) {
+			err_ictc(
+					"[ERROR][ICTC] %s: not supported for ICTC source\n"
+					, __func__);
+			return -EINVAL;
+		}
+
+		for (i = 0; i < pin_v[count].source_section; i++) {
+			s_o_b = pin_v[count].source_offset_base;
+			s_r = pin_v[count].source_range;
+			s_b = pin_v[count].source_base;
+			if ((UINT_MAX -	s_o_b[i]) < s_r[i]) {
+				ret = -1;
+			} else {
+				if ((gpio_bit >= s_o_b[i])
+						&& (gpio_bit < (s_o_b[i]
+								+ s_r[i]))) {
+					if ((UINT_MAX -	s_b[i])
+						    < (gpio_bit - s_o_b[i])) {
+						ret = -1;
+					} else {
+						f_in_gpio_num =
+							s_b[i] +
+							(gpio_bit -
+							 s_o_b[i]);
 					}
+					if (ret < 0) {
+						return ret;
+						//for coding style
+					}
+
+					pin_valid = 1;
+					break;
 				}
 			}
+
+			if (ret < 0) {
+				return ret;
+				//for coding style
+			}
 		}
+
 
 	}
 	if (pin_valid != 0) {
 		return (int32_t) f_in_gpio_num;
+		//for coding style
 	} else {
 		return -1;
+		//for coding style
 	}
 
 }
@@ -731,76 +766,82 @@ static int32_t ictc_probe(struct platform_device *pdev)
 				if (ret != SUCCESS) {
 					err_ictc("irq req. fail: %d irq: %x\n",
 						 ret, idev->irq);
-				} else {
-
-					ret = ictc_parse_dt(np, &pdev->dev);
-
-					if (ret != SUCCESS) {
-						err_ictc("ictc:No dev node\n");
-					} else {
-
-						ictc_base = of_iomap(np, 0);
-
-						f_in_rtc_wkup =
-						    of_property_read_bool(np,
-									  "f-in-rtc-wkup");
-
-						if (!f_in_rtc_wkup) {
-
-							gpio_node =
-							    of_parse_phandle(np,
-									     "f-in-gpio",
-									     0);
-							ret =
-							    of_property_read_u32_index
-							    (gpio_node, "reg",
-							     0,
-							     &f_in_gpio_base);
-							if (ret != SUCCESS) {
-								return -EINVAL;
-							}
-							ret =
-							    of_property_read_u32_index
-							    (np, "f-in-gpio", 1,
-							     &f_in_gpio_bit);
-							if (ret != SUCCESS) {
-								return -EINVAL;
-							}
-							f_in_source =
-							    gpio_to_f_in
-							    (f_in_gpio_base,
-							     f_in_gpio_bit,
-							     &pdev->dev);
-
-							if (f_in_source < 0) {
-								err_ictc
-								    ("ictc: invalid gpio\n");
-								return -EINVAL;
-							}
-
-						}
-
-						ictc_configure();
-
-						ictc_enable_interrupt();
-
-						ictc_enable_counter();
-
-						ictc_enable();
-
-					}
+					return ret;
 				}
 
-				if (ret != SUCCESS) {
+				ret = ictc_parse_dt(np, &pdev->dev);
 
+				if (ret != SUCCESS) {
+					err_ictc("ictc:No dev node\n");
+					return ret;
+				}
+
+				ictc_base = of_iomap(np, 0);
+
+				f_in_rtc_wkup =
+					of_property_read_bool(np,
+							"f-in-rtc-wkup"
+							);
+
+				if (!f_in_rtc_wkup) {
+
+					gpio_node =
+						of_parse_phandle(np,
+								"f-in-gpio"
+								, 0);
+					ret =
+						of_property_read_u32_index
+						(gpio_node, "reg",
+						 0,
+						 &f_in_gpio_base);
+					if (ret != SUCCESS) {
+						return -EINVAL;
+						//for coding style
+					}
+					ret =
+						of_property_read_u32_index
+						(np, "f-in-gpio", 1,
+						 &f_in_gpio_bit);
+					if (ret != SUCCESS) {
+						return -EINVAL;
+						//for coding style
+					}
+					f_in_source =
+						gpio_to_f_in
+						(f_in_gpio_base,
+						 f_in_gpio_bit,
+						 &pdev->dev);
+
+					if (f_in_source < 0) {
+						err_ictc
+							(
+							 "ictc: invalid gpio\n"
+							);
+						return -EINVAL;
+					}
+
+				}
+
+				ictc_configure();
+
+				ictc_enable_interrupt();
+
+				ictc_enable_counter();
+
+				ictc_enable();
+
+
+
+				if (ret != SUCCESS) {
 					clk_disable_unprepare(pPClk);
+					//for coding style
 				}
 
 			}
 
 			if (ret != SUCCESS) {
-
 				devm_kfree(&pdev->dev, idev);
+				//for coding style
 			}
 
 		}
@@ -837,8 +878,10 @@ static int32_t ictc_resume(struct device *dev)
 
 	if (idev == NULL) {
 		ret = -EINVAL;
+		//for coding style
 	} else {
 		ret = SUCCESS;
+		//for coding style
 	}
 
 	if (ret == SUCCESS) {
@@ -875,6 +918,7 @@ static int32_t ictc_resume(struct device *dev)
 
 		if (ret != SUCCESS) {
 			devm_kfree(idev->dev, idev);
+			//for coding style
 		}
 	}
 
