@@ -52,15 +52,15 @@
 #define TCC_SCRSHARE_DEV_MINOR		0
 #define OVERLAY_DRIVER "/dev/overlay1"
 
-typedef struct _tcc_scrshare_tx_t {
+struct tcc_scrshare_tx_t {
 	struct mutex lock;
 	atomic_t seq;
-} tcc_scrshare_tx_t;
+};
 
-typedef struct _tcc_scrshare_rx_t {
+struct tcc_scrshare_rx_t {
 	struct mutex lock;
 	atomic_t seq;
-} tcc_scrshare_rx_t;
+};
 
 struct tcc_scrshare_device {
 	struct platform_device *pdev;
@@ -79,8 +79,8 @@ struct tcc_scrshare_device {
 
 	atomic_t status;
 
-	tcc_scrshare_tx_t tx;
-	tcc_scrshare_rx_t rx;
+	struct tcc_scrshare_tx_t tx;
+	struct tcc_scrshare_rx_t rx;
 };
 
 static struct tcc_scrshare_device *tcc_scrshare_device;
@@ -95,9 +95,14 @@ static void tcc_scrshare_on(struct tcc_scrshare_device *tcc_scrshare)
 	tcc_scrshare_info->share_enable = 1;
 
 	if (IS_ERR_OR_NULL(overlay_file)) {
-		overlay_file = filp_open(tcc_scrshare->overlay_driver_name, O_RDWR, 0666);
+		overlay_file =
+			filp_open(
+				tcc_scrshare->overlay_driver_name, O_RDWR,
+				0666);
 		if (IS_ERR_OR_NULL(overlay_file))
-			pr_err("open fail (%s)\n", tcc_scrshare->overlay_driver_name);
+			pr_err(
+				"open fail (%s)\n",
+				tcc_scrshare->overlay_driver_name);
 	}
 }
 
@@ -124,7 +129,9 @@ static void tcc_scrshare_get_dstinfo(struct tcc_mbox_data *mssg)
 		 mssg->data[3], mssg->data[4]);
 }
 
-static void tcc_scrshare_display(struct tcc_scrshare_device *tcc_scrshare, struct tcc_mbox_data *mssg)
+static void
+tcc_scrshare_display(
+	struct tcc_scrshare_device *tcc_scrshare, struct tcc_mbox_data *mssg)
 {
 	long ret = 0;
 	overlay_shared_buffer_t buffer_cfg;
@@ -139,10 +146,15 @@ static void tcc_scrshare_display(struct tcc_scrshare_device *tcc_scrshare, struc
 		 tcc_scrshare_info->dstinfo->height);
 	if (tcc_scrshare_info->share_enable) {
 		if (IS_ERR_OR_NULL(overlay_file)) {
-			overlay_file = filp_open(tcc_scrshare->overlay_driver_name, O_RDWR, 0666);
+			overlay_file =
+				filp_open(
+					tcc_scrshare->overlay_driver_name,
+					O_RDWR, 0666);
 			if (IS_ERR_OR_NULL(overlay_file)) {
 				ret = -ENODEV;
-				pr_err("open fail (%s)\n", tcc_scrshare->overlay_driver_name);
+				pr_err(
+					"open fail (%s)\n",
+					tcc_scrshare->overlay_driver_name);
 			}
 		}
 
@@ -489,9 +501,9 @@ const struct file_operations tcc_scrshare_fops = {
 	.unlocked_ioctl = tcc_scrshare_ioctl,
 };
 
-static struct mbox_chan *tcc_scrshare_request_channel(struct tcc_scrshare_device
-						      *tcc_scrshare,
-						      const char *name)
+static struct mbox_chan *
+tcc_scrshare_request_channel(struct tcc_scrshare_device *tcc_scrshare,
+	const char *name)
 {
 	struct mbox_chan *channel;
 
@@ -574,7 +586,7 @@ static int tcc_scrshare_probe(struct platform_device *pdev)
 	of_property_read_string(pdev->dev.of_node, "overlay_driver_names",
 				&tcc_scrshare->overlay_driver_name);
 #endif
-	if(!tcc_scrshare->overlay_driver_name)
+	if (!tcc_scrshare->overlay_driver_name)
 		tcc_scrshare->overlay_driver_name =
 			devm_kstrdup(&pdev->dev, OVERLAY_DRIVER, GFP_KERNEL);
 
