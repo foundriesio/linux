@@ -1608,6 +1608,12 @@ PVRSRV_ERROR RGXInitCreateFWKernelMemoryContext(PVRSRV_DEVICE_NODE *psDeviceNode
 		psDeviceNode->sDevMMUPxSetup = sDefaultPxSetup;
 #endif
 	}
+	else if (PVRSRV_VZ_MODE_IS(GUEST))
+	{
+		DevmemHeapSetPremapStatus(psDevInfo->psFirmwareMainHeap, IMG_TRUE);
+		DevmemHeapSetPremapStatus(psDevInfo->psFirmwareConfigHeap, IMG_TRUE);
+	}
+
 #else
 	if (PVRSRV_VZ_MODE_IS(GUEST))
 	{
@@ -3969,7 +3975,12 @@ PVRSRV_ERROR RGXRegisterDevice (PVRSRV_DEVICE_NODE *psDeviceNode)
 	psDeviceNode->pfnFreeUFOBlock = RGXFreeUFOBlock;
 
 	/* Register callback for checking the device's health */
-	psDeviceNode->pfnUpdateHealthStatus = RGXUpdateHealthStatus;
+	psDeviceNode->pfnUpdateHealthStatus = PVRSRV_VZ_MODE_IS(GUEST) ? NULL : RGXUpdateHealthStatus;
+
+#if defined(SUPPORT_AUTOVZ)
+	/* Register callback for updating the virtualization watchdog */
+	psDeviceNode->pfnUpdateAutoVzWatchdog = RGXUpdateAutoVzWatchdog;
+#endif
 
 	/* Register method to service the FW HWPerf buffer */
 	psDeviceNode->pfnServiceHWPerf = RGXHWPerfDataStoreCB;

@@ -1121,6 +1121,17 @@ void RGXCheckForStalledClientContexts(PVRSRV_RGXDEV_INFO *psDevInfo, IMG_BOOL bI
 PVRSRV_ERROR RGXUpdateHealthStatus(PVRSRV_DEVICE_NODE* psDevNode,
                                    IMG_BOOL bCheckAfterTimePassed);
 
+#if defined(SUPPORT_AUTOVZ)
+/*!
+*******************************************************************************
+@Function       RGXUpdateAutoVzWatchdog
+
+@Description    Updates AutoVz watchdog that maintains the fw-driver connection
+
+@Input         psDevNode        Pointer to device node structure.
+******************************************************************************/
+void RGXUpdateAutoVzWatchdog(PVRSRV_DEVICE_NODE* psDevNode);
+#endif /* SUPPORT_AUTOVZ */
 
 PVRSRV_ERROR CheckStalledClientCommonContext(RGX_SERVER_COMMON_CONTEXT *psCurrentServerCommonContext, RGX_KICK_TYPE_DM eKickTypeDM);
 
