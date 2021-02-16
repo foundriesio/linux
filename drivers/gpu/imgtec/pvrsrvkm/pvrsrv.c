@@ -940,6 +940,51 @@ static void DevicesWatchdogThread(void *pvData)
 	PVR_LOG_IF_ERROR(eError, "OSEventObjectClose");
 }
 
+#if defined(SUPPORT_AUTOVZ)
+static void AutoVzWatchdogThread_ForEachCb(PVRSRV_DEVICE_NODE *psDeviceNode)
+{
+	if (psDeviceNode->eDevState != PVRSRV_DEVICE_STATE_ACTIVE)
+	{
+		return;
+	}
+	else if (psDeviceNode->pfnUpdateAutoVzWatchdog != NULL)
+	{
+		psDeviceNode->pfnUpdateAutoVzWatchdog(psDeviceNode);
+	}
+}
+
+static void AutoVzWatchdogThread(void *pvData)
+{
+	PVRSRV_DATA *psPVRSRVData = pvData;
+	IMG_HANDLE hOSEvent;
+	PVRSRV_ERROR eError;
+	IMG_UINT32 ui32Timeout = PVR_AUTOVZ_WDG_PERIOD_MS / 3;
+
+	/* Open an event on the devices watchdog event object so we can listen on it
+	   and abort the devices watchdog thread. */
+	eError = OSEventObjectOpen(psPVRSRVData->hAutoVzWatchdogEvObj, &hOSEvent);
+	PVR_LOG_RETURN_VOID_IF_ERROR(eError, "OSEventObjectOpen");
+
+#if defined(PVRSRV_FORCE_UNLOAD_IF_BAD_STATE)
+	while ((psPVRSRVData->eServicesState == PVRSRV_SERVICES_STATE_OK) &&
+			!psPVRSRVData->bUnload)
+#else
+	while (!psPVRSRVData->bUnload)
+#endif
+	{
+		/* Wait time between polls (done at the start of the loop to allow devices
+		   to initialise) or for the event signal (shutdown or power on). */
+		eError = OSEventObjectWaitKernel(hOSEvent, (IMG_UINT64)ui32Timeout * 1000);
+
+		List_PVRSRV_DEVICE_NODE_ForEach(psPVRSRVData->psDeviceNodeList,
+		                                AutoVzWatchdogThread_ForEachCb);
+	}
+
+	eError = OSEventObjectClose(hOSEvent);
+	PVR_LOG_IF_ERROR(eError, "OSEventObjectClose");
+}
+#endif /* SUPPORT_AUTOVZ */
+
 PVRSRV_DATA *PVRSRVGetPVRSRVData(void)
 {
 	return gpsPVRSRVData;
@@ -1239,6 +1284,22 @@ PVRSRVCommonDriverInit(void)
 	                                ui32AppHintWatchdogThreadPriority);
 	PVR_LOG_GOTO_IF_ERROR(eError, "OSThreadCreatePriority:2", Error);
 
+#if defined(SUPPORT_AUTOVZ)
+	/* Create the devices watchdog event object */
+	eError = OSEventObjectCreate("PVRSRV_AUTOVZ_WATCHDOG_EVENTOBJECT", &gpsPVRSRVData->hAutoVzWatchdogEvObj);
+	PVR_LOG_GOTO_IF_ERROR(eError, "OSEventObjectCreate", Error);
+
+	/* Create a thread that maintains the FW-KM connection by regularly updating the virtualization watchdog */
+	eError = OSThreadCreatePriority(&gpsPVRSRVData->hAutoVzWatchdogThread,
+	                                "pvr_autovz_wdg",
+	                                AutoVzWatchdogThread,
+	                                NULL,
+	                                IMG_TRUE,
+	                                gpsPVRSRVData,
+	                                OS_THREAD_HIGHEST_PRIORITY);
+	PVR_LOG_GOTO_IF_ERROR(eError, "OSThreadCreatePriority:3", Error);
+#endif /* SUPPORT_AUTOVZ */
+
 	gpsPVRSRVData->psProcessHandleBase_Table = HASH_Create(PVRSRV_PROC_HANDLE_BASE_INIT);
 
 	if (gpsPVRSRVData->psProcessHandleBase_Table == NULL)
@@ -1362,6 +1423,37 @@ PVRSRVCommonDriverDeInit(void)
 	{
 		OSEventObjectSignal(gpsPVRSRVData->hGlobalEventObject);
 	}
+
+#if defined(SUPPORT_AUTOVZ)
+	/* Stop and cleanup the devices watchdog thread */
+	if (gpsPVRSRVData->hAutoVzWatchdogThread)
+	{
+		LOOP_UNTIL_TIMEOUT(OS_THREAD_DESTROY_TIMEOUT_US)
+		{
+			if (gpsPVRSRVData->hAutoVzWatchdogEvObj)
+			{
+				eError = OSEventObjectSignal(gpsPVRSRVData->hAutoVzWatchdogEvObj);
+				PVR_LOG_IF_ERROR(eError, "OSEventObjectSignal");
+			}
+
+			eError = OSThreadDestroy(gpsPVRSRVData->hAutoVzWatchdogThread);
+			if (PVRSRV_OK == eError)
+			{
+				gpsPVRSRVData->hAutoVzWatchdogThread = NULL;
+				break;
+			}
+			OSWaitus(OS_THREAD_DESTROY_TIMEOUT_US/OS_THREAD_DESTROY_RETRY_COUNT);
+		} END_LOOP_UNTIL_TIMEOUT();
+		PVR_LOG_IF_ERROR(eError, "OSThreadDestroy");
+	}
+
+	if (gpsPVRSRVData->hAutoVzWatchdogEvObj)
+	{
+		eError = OSEventObjectDestroy(gpsPVRSRVData->hAutoVzWatchdogEvObj);
+		gpsPVRSRVData->hAutoVzWatchdogEvObj = NULL;
+		PVR_LOG_IF_ERROR(eError, "OSEventObjectDestroy");
+	}
+#endif /* SUPPORT_AUTOVZ */
 
 	/* Stop and cleanup the devices watchdog thread */
 	if (gpsPVRSRVData->hDevicesWatchdogThread)

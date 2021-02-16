@@ -152,6 +152,11 @@ typedef struct PVRSRV_DATA_TAG
 	volatile IMG_UINT32   ui32DevicesWdWakeupCounter;     /* Need this for the unit tests. */
 #endif
 
+#if defined(SUPPORT_AUTOVZ)
+	IMG_HANDLE            hAutoVzWatchdogThread;          /*!< Devices watchdog thread */
+	IMG_HANDLE            hAutoVzWatchdogEvObj;           /*! Event object to drive devices watchdog thread */
+#endif
+
 	POS_LOCK              hHWPerfHostPeriodicThread_Lock; /*!< Lock for the HWPerf Host periodic thread */
 	IMG_HANDLE            hHWPerfHostPeriodicThread;      /*!< HWPerf Host periodic thread */
 	IMG_HANDLE            hHWPerfHostPeriodicEvObj;       /*! Event object to drive HWPerf thread */
