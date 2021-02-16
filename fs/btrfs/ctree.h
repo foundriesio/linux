@@ -357,6 +357,12 @@ struct btrfs_path {
 	unsigned int search_commit_root:1;
 	unsigned int need_commit_sem:1;
 	unsigned int skip_release_on_error:1;
+	/*
+	 * Indicate that new item (btrfs_search_slot) is extending already
+	 * existing item and ins_len contains only the data size and not item
+	 * header (ie. sizeof(struct btrfs_item) is not included).
+	 */
+	unsigned int search_for_extension:1;
 };
 #define BTRFS_MAX_EXTENT_ITEM_SIZE(r) ((BTRFS_LEAF_DATA_SIZE(r->fs_info) >> 4) - \
 					sizeof(struct btrfs_item))
@@ -1151,6 +1157,7 @@ struct btrfs_root {
 	int dedupe_in_progress;
 	struct btrfs_subvolume_writers *subv_writers;
 	atomic_t will_be_snapshoted;
+	atomic_t snapshot_force_cow;
 
 	/* For qgroup metadata reserved space */
 	spinlock_t qgroup_meta_rsv_lock;
@@ -1160,6 +1167,16 @@ struct btrfs_root {
 
 	/* Used only by log trees, when logging csum items */
 	struct extent_io_tree log_csum_range;
+};
+
+struct btrfs_clone_extent_info {
+	u64 disk_offset;
+	u64 disk_len;
+	u64 data_offset;
+	u64 data_len;
+	u64 file_offset;
+	char *extent_buf;
+	u32 item_size;
 };
 
 struct btrfs_file_private {
@@ -2963,6 +2980,11 @@ void btrfs_extent_item_to_extent_map(struct btrfs_inode *inode,
 				     struct btrfs_file_extent_item *fi,
 				     const bool new_inline,
 				     struct extent_map *em);
+int btrfs_inode_clear_file_extent_range(struct btrfs_inode *inode, u64 start,
+					u64 len);
+int btrfs_inode_set_file_extent_range(struct btrfs_inode *inode, u64 start,
+				      u64 len);
+void btrfs_inode_safe_disk_i_size_write(struct inode *inode, u64 new_i_size);
 
 /* inode.c */
 struct btrfs_delalloc_work {
@@ -3113,6 +3135,10 @@ int __btrfs_drop_extents(struct btrfs_trans_handle *trans,
 int btrfs_drop_extents(struct btrfs_trans_handle *trans,
 		       struct btrfs_root *root, struct inode *inode, u64 start,
 		       u64 end, int drop_cache);
+int btrfs_punch_hole_range(struct inode *inode, struct btrfs_path *path,
+			   const u64 start, const u64 end,
+			   struct btrfs_clone_extent_info *clone_info,
+			   struct btrfs_trans_handle **trans_out);
 int btrfs_mark_extent_written(struct btrfs_trans_handle *trans,
 			      struct btrfs_inode *inode, u64 start, u64 end);
 int btrfs_release_file(struct inode *inode, struct file *file);
