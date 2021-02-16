@@ -33,3 +33,4 @@ void hdmi_set_drm(
 	DRM_Packet_t *drmparm);
 
 #endif /*__HDMI_API_H__*/
+
