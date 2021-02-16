@@ -56,7 +56,7 @@ extern G2D_DITHERING_TYPE gG2D_Dithering_type;
 #endif
 
 #if 0
-#define GRP_DBG(msg...)		printk(msg)
+#define GRP_DBG(msg...) pr_info(msg)
 #else
 #define GRP_DBG(msg...)
 #endif

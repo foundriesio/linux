@@ -51,7 +51,7 @@
 #include <video/tcc/vioc_global.h>
 
 #define TCC_CP_DEBUG	0
-#define dprintk(msg...)	if(TCC_CP_DEBUG) { printk("[DBG][CHROMA_I] " msg); }
+#define dprintk(msg...)	if(TCC_CP_DEBUG) { pr_info("[DBG][CHROMA_I] " msg); }
 
 struct chromainterp_drv_type {
 	unsigned int  			dev_opened;

@@ -75,7 +75,7 @@ static unsigned int nFrame;
 static unsigned int nFrame_t0;
 static unsigned int nFrame_t1;
 static unsigned int nFrame_t2;
-#define dvprintk(msg...) //printk("[WAR][VOUT-DV] " msg);
+#define dvprintk(msg...) //pr_info("[WAR][VOUT-DV] " msg);
 #endif
 
 #ifdef CONFIG_TCC_HDMI_DRIVER_V2_0

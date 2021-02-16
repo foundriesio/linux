@@ -128,9 +128,9 @@ static int vta_thread_func(void *data)
 	DBG("\n");
 
 	while (true) {
-		//printk("vta(%ld)+++\n", vta->vta_time);
+		//pr_info("vta(%ld)+++\n", vta->vta_time);
 		vta_cmd_observe(vta);
-		//printk("vta---\n");
+		//pr_info("vta---\n");
 
 		vta->vta_time = random_delay();
 		schedule_timeout_interruptible(msecs_to_jiffies(vta->vta_time));
