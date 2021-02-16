@@ -5540,17 +5540,6 @@ PVRSRV_ERROR RGXUpdateHealthStatus(PVRSRV_DEVICE_NODE* psDevNode,
 	psRGXFWIfTraceBufCtl = psDevInfo->psRGXFWIfTraceBufCtl;
 	psFwSysData = psDevInfo->psRGXFWIfFwSysData;
 
-#if defined(SUPPORT_AUTOVZ)
-	if (KM_FW_CONNECTION_IS(ACTIVE, psDevInfo) && KM_OS_CONNECTION_IS(ACTIVE, psDevInfo))
-	{
-		/* read and write back the alive token value to confirm to the
-		 * virtualisation watchdog that this connection is healthy */
-		KM_SET_OS_ALIVE_TOKEN(KM_GET_FW_ALIVE_TOKEN(psDevInfo), psDevInfo);
-	}
-#endif
-
-	PVRSRV_VZ_RET_IF_MODE(GUEST, PVRSRV_OK);
-
 	/* If this is a quick update, then include the last current value... */
 	if (!bCheckAfterTimePassed)
 	{
@@ -5798,6 +5787,39 @@ _RGXUpdateHealthStatus_Exit:
 
 	return PVRSRV_OK;
 } /* RGXUpdateHealthStatus */
+
+#if defined(SUPPORT_AUTOVZ)
+/*
+	RGXUpdateAutoVzWatchdog
+*/
+void RGXUpdateAutoVzWatchdog(PVRSRV_DEVICE_NODE* psDevNode)
+{
+	if (likely(psDevNode != NULL))
+	{
+		PVRSRV_RGXDEV_INFO *psDevInfo = psDevNode->pvDevice;
+
+		if (unlikely((psDevInfo  == NULL || !psDevInfo->bFirmwareInitialised ||
+			psDevInfo->pvRegsBaseKM == NULL || psDevNode->eDevState == PVRSRV_DEVICE_STATE_DEINIT)))
+		{
+			/* If the firmware is not initialised, stop here */
+			return;
+		}
+		else
+		{
+			PVRSRV_ERROR eError = PVRSRVPowerLock(psDevNode);
+			PVR_LOG_RETURN_VOID_IF_ERROR(eError, "PVRSRVPowerLock");
+
+			if (likely(KM_FW_CONNECTION_IS(ACTIVE, psDevInfo) && KM_OS_CONNECTION_IS(ACTIVE, psDevInfo)))
+			{
+				/* read and write back the alive token value to confirm to the
+				 * virtualisation watchdog that this connection is healthy */
+				KM_SET_OS_ALIVE_TOKEN(KM_GET_FW_ALIVE_TOKEN(psDevInfo), psDevInfo);
+			}
+			PVRSRVPowerUnlock(psDevNode);
+		}
+	}
+}
+#endif /* SUPPORT_AUTOVZ */
 
 PVRSRV_ERROR CheckStalledClientCommonContext(RGX_SERVER_COMMON_CONTEXT *psCurrentServerCommonContext, RGX_KICK_TYPE_DM eKickTypeDM)
 {
