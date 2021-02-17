@@ -7,7 +7,6 @@
 
 #include <dt-bindings/pmap/tcc803x/pmap-tcc803x-android-ivi.h>
 
-////////////////////////////////////////////////////////////////////////////////
 #define CONF_ANDROID
 #define CONF_ARCH_TCC803X
 
@@ -15,7 +14,6 @@
 #define CONF_SUPPORT_TCC_JPU
 #define CONF_VDEC_CNT_2
 #define CONF_VENC_CNT_1
-////////////////////////////////////////////////////////////////////////////////
 
 #undef SZ_1MB
 #define SZ_1MB                          (1024*1024)
@@ -33,8 +31,9 @@
 	 ARRAY_MBYTE(((w*h*182)/100)*(f+7)))*use)
 
 #define VPU_CAL_ENC_PROCBUFFER(use,w,h,f) \
-  (((0x300000 /*the rest except framebuffer and workbuffer*/) + \
-  ARRAY_MBYTE(w*h*3/2) + ARRAY_MBYTE((((w+15)/16*16)*((h+15)/16*16)*3/2)*f))*use)
+	(((0x300000 /*the rest except framebuffer and workbuffer*/) + \
+	ARRAY_MBYTE(w*h*3/2) + \
+	 ARRAY_MBYTE((((w+15)/16*16)*((h+15)/16*16)*3/2)*f))*use)
 
 ////////////////////////////////////////////////////////////////////////////////
 //                     NEED TO BE OPTIMIZED BY CUSTOMER
@@ -52,10 +51,21 @@
 #define SUPPORT_VIQE_MAX_WIDTH          (1920)
 #define SUPPORT_VIQE_MAX_HEIGHT         (1088)
 
-//// VPU DECODER
-// VIDEO_WIDTH, VIDEO_HEIGHT value should be aligned with HEVC:32x, Others:16x
-// MAX_FRAMEBUFFERS - HEVC-4K:7, Others:1~24
-
+/*
+ * DECODER on VPU
+ *
+ * INST_XXX_USE : Decide whether to use an instance or not. 1 means to use.
+ * INST_XXX_IS_HEVC_TYPE : Decide whether or not to set the HEVC codec type.
+ *                      1 means to set HEVC (please check
+ *                      "CONFIG_SUPPORT_TCC_HEVC" Feature in order to enable
+ *                      HEVC at first.)
+ * INST_XXX_VIDEO_WIDTH : Set the width of the video (HEVC: 32x alignment,
+ *                      Other: 16x alignment)
+ * INST_XXX_VIDEO_HEIGHT : Set the width of the video (HEVC: 32x alignment,
+ *                      Other: 16x alignment)
+ * INST_XXX_MAX_FRAMEBUFFER : Set the number of frame buffers (HEVC-4K: 7,
+ *                      Others: 1~24)
+ */
 #define INST_1ST_USE                    (1)
 #define INST_1ST_IS_HEVC_TYPE           (1)
 #define INST_1ST_VIDEO_WIDTH            (1920)
@@ -86,10 +96,19 @@
 #define INST_5TH_VIDEO_HEIGHT           (576)
 #define INST_5TH_MAX_FRAMEBUFFERS       (24)
 
-//// VPU ENCODER
-// VIDEO_WIDTH, VIDEO_HEIGHT value should be aligned with 16x
-// MAX_FRAMEBUFFERS - 8 fixed value. Ask right engineer if you want to change it.
-
+/*
+ * ENCODER on VPU
+ *
+ * INST_ENC_XXX_USE : Decide whether to use an instance or not. 1 means to use.
+ * INST_ENC_XXX_IS_HEVC_TYPE : Decide whether or not to set the HEVC codec type.
+ *                      1 means to set HEVC (please check
+ *                      "CONFIG_SUPPORT_TCC_HEVC" Feature in order to enable
+ *                      HEVC at first.)
+ * INST_ENC_XXX_VIDEO_WIDTH : Set the width of the video (16x alignment)
+ * INST_ENC_XXX_VIDEO_HEIGHT : Set the width of the video (16x alignment)
+ * INST_ENC_XXX_MAX_FRAMEBUFFERS : 8 :: fixed value. ask right engineer
+ *                      if you want to change it.
+ */
 #define INST_ENC_1ST_USE                (0)
 #define INST_ENC_1ST_IS_HEVC_TYPE       (0)
 #define INST_ENC_1ST_VIDEO_WIDTH        (1920)
