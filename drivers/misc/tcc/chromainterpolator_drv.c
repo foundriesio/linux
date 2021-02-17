@@ -66,7 +66,7 @@ static long chromainterp_drv_ioctl(struct file *filp, unsigned int cmd, unsigned
 		case TCC_CITPL_SET:
 			{
 				struct VIOC_CITPL_SET *vioc_citpl;
-				volatile void __iomem *Cl_reg;
+				void __iomem *Cl_reg;
 
 				vioc_citpl = kmalloc(sizeof(struct VIOC_CITPL_SET), GFP_KERNEL);
 

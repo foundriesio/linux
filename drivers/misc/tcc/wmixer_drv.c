@@ -83,7 +83,7 @@ struct wmixer_data {
 };
 
 struct wmixer_drv_vioc {
-	volatile void __iomem *reg;
+	void __iomem *reg;
 	unsigned int id;
 	unsigned int path;
 };
@@ -142,9 +142,9 @@ static int wmixer_drv_mmap(struct file *filp, struct vm_area_struct *vma)
 static int wmixer_drv_ctrl(struct wmixer_drv_type *wmixer)
 {
 	WMIXER_INFO_TYPE    *wmix_info = wmixer->info;
-	volatile void __iomem *pWMIX_rdma_base = wmixer->rdma0.reg;
-	volatile void __iomem *pWMIX_wmix_base = wmixer->wmix.reg;
-	volatile void __iomem *pWMIX_wdma_base = wmixer->wdma.reg;
+	void __iomem *pWMIX_rdma_base = wmixer->rdma0.reg;
+	void __iomem *pWMIX_wmix_base = wmixer->wmix.reg;
+	void __iomem *pWMIX_wdma_base = wmixer->wdma.reg;
 
 	int ret = 0;
 	unsigned int pSrcBase0 = 0, pSrcBase1 = 0, pSrcBase2 = 0;
@@ -413,10 +413,10 @@ static int wmixer_drv_alpha_scaling_ctrl(struct wmixer_drv_type *wmixer)
 {
 	WMIXER_ALPHASCALERING_INFO_TYPE *aps_info =
 		&wmixer->alpha_scalering;
-	volatile void __iomem *pWMIX_rdma_base = wmixer->rdma0.reg;
-	volatile void __iomem *pWMIX_wmix_base = wmixer->wmix.reg;
-	volatile void __iomem *pWMIX_wdma_base = wmixer->wdma.reg;
-	volatile void __iomem *pWMIX_sc_base = wmixer->sc.reg;
+	void __iomem *pWMIX_rdma_base = wmixer->rdma0.reg;
+	void __iomem *pWMIX_wmix_base = wmixer->wmix.reg;
+	void __iomem *pWMIX_wdma_base = wmixer->wdma.reg;
+	void __iomem *pWMIX_sc_base = wmixer->sc.reg;
 
 	int ret = 0;
 	unsigned int pSrcBase0 = 0, pSrcBase1 = 0, pSrcBase2 = 0;
@@ -709,11 +709,11 @@ static int wmixer_drv_alpha_mixing_ctrl(struct wmixer_drv_type *wmixer)
 {
 	WMIXER_ALPHABLENDING_TYPE *apb_info =
 		(WMIXER_ALPHABLENDING_TYPE *)&wmixer->alpha_blending;
-	volatile void __iomem *pWMIX_rdma_base = wmixer->rdma0.reg;
-	volatile void __iomem *pWMIX_rdma1_base = wmixer->rdma1.reg;
-	volatile void __iomem *pWMIX_wmix_base = wmixer->wmix.reg;
-	volatile void __iomem *pWMIX_wdma_base = wmixer->wdma.reg;
-	volatile void __iomem *pWMIX_sc_base = wmixer->sc.reg;
+	void __iomem *pWMIX_rdma_base = wmixer->rdma0.reg;
+	void __iomem *pWMIX_rdma1_base = wmixer->rdma1.reg;
+	void __iomem *pWMIX_wmix_base = wmixer->wmix.reg;
+	void __iomem *pWMIX_wdma_base = wmixer->wdma.reg;
+	void __iomem *pWMIX_sc_base = wmixer->sc.reg;
 	int ret = 0;
 
 	dprintk("%s(): name:%s\n", __func__, wmixer->misc->name);

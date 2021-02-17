@@ -48,7 +48,7 @@
 #include <video/tcc/tcc_attach_ioctrl.h>
 
 struct attach_drv_vioc {
-	volatile void __iomem *reg;
+	void __iomem *reg;
 	unsigned int id;
 	unsigned int path;
 };

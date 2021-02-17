@@ -93,7 +93,7 @@ struct scaler_data {
 };
 
 struct scaler_drv_vioc {
-	volatile void __iomem *reg;
+	void __iomem *reg;
 	unsigned int id;
 //	unsigned int path;
 };
@@ -163,10 +163,10 @@ static char tcc_scaler_run(struct scaler_drv_type *scaler)
 	unsigned int pSrcBase0 = 0, pSrcBase1 = 0, pSrcBase2 = 0;
 	unsigned int crop_width = 0;
 
-	volatile void __iomem *pSC_RDMABase = scaler->rdma.reg;
-	volatile void __iomem *pSC_WMIXBase = scaler->wmix.reg;
-	volatile void __iomem *pSC_WDMABase = scaler->wdma.reg;
-	volatile void __iomem *pSC_SCALERBase = scaler->sc.reg;
+	void __iomem *pSC_RDMABase = scaler->rdma.reg;
+	void __iomem *pSC_WMIXBase = scaler->wmix.reg;
+	void __iomem *pSC_WDMABase = scaler->wdma.reg;
+	void __iomem *pSC_SCALERBase = scaler->sc.reg;
 
 	dprintk("%s():  IN.\n", __func__);
 
@@ -539,10 +539,10 @@ static char tcc_scaler_data_copy_run(
 	struct scaler_drv_type *scaler, struct SCALER_DATA_COPY_TYPE *copy_info)
 {
 	int ret = 0;
-	volatile void __iomem *pSC_RDMABase = scaler->rdma.reg;
-	volatile void __iomem *pSC_WMIXBase = scaler->wmix.reg;
-	volatile void __iomem *pSC_WDMABase = scaler->wdma.reg;
-	volatile void __iomem *pSC_SCALERBase = scaler->sc.reg;
+	void __iomem *pSC_RDMABase = scaler->rdma.reg;
+	void __iomem *pSC_WMIXBase = scaler->wmix.reg;
+	void __iomem *pSC_WDMABase = scaler->wdma.reg;
+	void __iomem *pSC_SCALERBase = scaler->sc.reg;
 
 	dprintk("%s():\n", __func__);
 	dprintk(
@@ -718,7 +718,7 @@ static long scaler_drv_ioctl(
 	struct miscdevice	*misc = (struct miscdevice *)filp->private_data;
 	struct scaler_drv_type	*scaler = dev_get_drvdata(misc->parent);
 
-//	volatile void __iomem *pSC_RDMABase = scaler->rdma.reg;
+//	void __iomem *pSC_RDMABase = scaler->rdma.reg;
 //	SCALER_PLUGIN_Type scaler_plugin;
 
 	struct SCALER_DATA_COPY_TYPE copy_info;

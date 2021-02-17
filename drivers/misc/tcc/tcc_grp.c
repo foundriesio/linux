@@ -81,7 +81,7 @@ struct g2d_drv_type {
 
 	struct miscdevice	*misc;
 
-	volatile void __iomem *reg;
+	void __iomem *reg;
 
 	struct clk		*clk;
 	struct g2d_data	*data;

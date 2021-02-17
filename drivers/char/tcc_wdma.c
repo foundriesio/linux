@@ -651,9 +651,8 @@ long tccxxx_wdma_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 	struct miscdevice *misc = (struct miscdevice *)file->private_data;
 	struct tcc_wdma_dev *wdma_data = dev_get_drvdata(misc->parent);
 
-	dprintk("wdma: cmd(0x%x), block_operating(0x%x),
-				block_waiting(0x%x), cmd_count(0x%x),
-				poll_count(0x%x)\n",
+	dprintk("%s: cmd(0x%x), bo(0x%x), bw(0x%x), cc(0x%x), pc(0x%x)\n",
+		__func__,
 		cmd, wdma_data->block_operating, wdma_data->block_waiting,
 		wdma_data->cmd_count, wdma_data->poll_count);
 
@@ -984,9 +983,7 @@ long tccxxx_wdma_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 			wbuffer.frame_y =
 				wdma_data->frame_list.data->frame_y;
 
-			dprintk("%s index:%d,
-						Y:0x%08x U:0x%08x V:0x%08x,
-						fmt:%d X:%d Y:%d\n",
+			dprintk("%s index:%d, Y:0x%08x U:0x%08x V:0x%08x, fmt:%d X:%d Y:%d\n",
 				__func__,
 				wbuffer.index,
 				wbuffer.buff_Yaddr,

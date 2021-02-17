@@ -155,7 +155,7 @@ static unsigned int viqe_madi_poll(struct file *filp, poll_table *wait)
 static irqreturn_t viqe_madi_handler(int irq, void *client_data)
 {
 	struct viqe_madi_type *viqe_madi = (struct viqe_madi_type *)client_data;
-	volatile void __iomem *reg = NULL;
+	void __iomem *reg = NULL;
 	unsigned int raw;
 	unsigned int enable;
 
@@ -435,7 +435,7 @@ static long viqe_madi_ioctl(struct file *filp, unsigned int cmd,
 	#ifndef USE_REG_EXTRACTOR // for testing!!
 		unsigned int cfg_code, cur_alpha_index, cur_yc_index;
 		struct stVIQE_MADI_RESULT_TYPE result;
-		volatile void __iomem *reg = NULL;
+		void __iomem *reg = NULL;
 
 		if (viqe_madi->info->first_frame
 			|| viqe_madi->info->skip_count > 0) {
