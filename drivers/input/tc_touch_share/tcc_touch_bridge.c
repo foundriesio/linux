@@ -76,7 +76,9 @@ static void ttb_event(struct input_handle *handle,
 	break;
 	}
 	if (state == (uint32_t)1) {
-		if ((type == (uint32_t)0) && (code == (uint32_t)0) && (value == (int32_t)0)) {
+		if ((type == (uint32_t)0) &&
+			(code == (uint32_t)0) &&
+			(value == (int32_t)0)) {
 			ttb_push_queue();
 		}
 	}
@@ -175,12 +177,14 @@ static void receive_message(struct mbox_client *client, void *message)
 		case (uint32_t)TOUCH_STATE:
 			ts_dev->touch_state = msg->cmd[1];
 			touch_send_ack(ts_dev,
-					(uint32_t)TOUCH_STATE, ts_dev->touch_state);
+					(uint32_t)TOUCH_STATE,
+					ts_dev->touch_state);
 		break;
 		case (uint32_t)TOUCH_INIT:
 			ts_dev->touch_state = msg->cmd[1];
 			touch_send_ack(ts_dev,
-					(uint32_t)TOUCH_INIT, ts_dev->touch_state);
+					(uint32_t)TOUCH_INIT,
+					ts_dev->touch_state);
 		break;
 		default:
 			pr_debug("[DEBUG][TB] This command is invalid\n");
@@ -200,26 +204,33 @@ static void ttb_pump_messages(struct kthread_work *work)
 	if (ts_dev != NULL)	{
 		spin_lock_irqsave(&ts_dev->touch_mbox_queue.queue_lock, flags);
 		list_for_each_entry_safe(ttb_list,
-				ttb_list_tmp, &ts_dev->touch_mbox_queue.queue, queue) {
-			spin_unlock_irqrestore(&ts_dev->touch_mbox_queue.queue_lock,
+				ttb_list_tmp,
+				&ts_dev->touch_mbox_queue.queue,
+				queue) {
+			spin_unlock_irqrestore(
+					&ts_dev->touch_mbox_queue.queue_lock,
 					flags);
 			if (ttb_list != NULL) {
 				(void)touch_send_data(ts_dev, &ttb_list->msg);
 #ifdef CONFIG_ARCH_TCC803X
-				mbox_client_txdone(ts_dev->touch_mbox_channel, 0);
+				mbox_client_txdone(ts_dev->touch_mbox_channel
+						, 0);
 #endif
 			}
-			spin_lock_irqsave(&ts_dev->touch_mbox_queue.queue_lock, flags);
+			spin_lock_irqsave(&ts_dev->touch_mbox_queue.queue_lock
+					, flags);
 			list_del(&ttb_list->queue);
 			kfree(ttb_list);
 		}
-		spin_unlock_irqrestore(&ts_dev->touch_mbox_queue.queue_lock, flags);
+		spin_unlock_irqrestore(&ts_dev->touch_mbox_queue.queue_lock
+				, flags);
 	}
 }
 
 static int32_t tcc_touch_bridge_probe(struct platform_device *pdev)
 {
 	int32_t ret = 0;
+
 	if (pdev != NULL) {
 		ts_dev = devm_kzalloc(&pdev->dev,
 				sizeof(struct touch_mbox), GFP_KERNEL);
@@ -252,10 +263,11 @@ static int32_t tcc_touch_bridge_probe(struct platform_device *pdev)
 
 		pr_info("[INFO][TB]Register TCC_TB handler  %d\n", ret);
 		kthread_init_worker(&ts_dev->touch_mbox_queue.kworker);
-		ts_dev->touch_mbox_queue.kworker_task = kthread_run(kthread_worker_fn,
+		ts_dev->touch_mbox_queue.kworker_task =
+			kthread_run(kthread_worker_fn,
 			&ts_dev->touch_mbox_queue.kworker, "ttb_thread");
 		if (IS_ERR(ts_dev->touch_mbox_queue.kworker_task)) {
-			pr_err("[ERROR][TB] %s : failed to create message\n", __func__);
+			pr_err("[ERR][TB]%s:failed to create msg\n", __func__);
 			return -ENOMEM;
 		}
 		kthread_init_work(&ts_dev->touch_mbox_queue.pump_messages,
