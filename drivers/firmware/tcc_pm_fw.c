@@ -30,8 +30,15 @@ struct bit_field {
 	u32 val;
 };
 
-#define update_bit_field_val(field) \
-	(field)->val = ((readl((field)->reg) >> (field)->shift) & (field)->mask)
+static inline void update_bit_field_val(struct bit_field *field)
+{
+	u32 regval;
+
+	if (field != NULL) {
+		regval = readl(field->reg);
+		field->val = (regval >> field->shift) & field->mask;
+	}
+}
 
 struct pm_fw_drvdata {
 	struct platform_device *pdev;
