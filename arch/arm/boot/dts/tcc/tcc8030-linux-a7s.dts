@@ -1698,6 +1698,12 @@
 		 mboxes = <&mbox0 TCC_MBOX0_CH_IPC>;
 	 };
 
+	/* ipc for reboot by r5(micom) */
+	mbox_reboot@0 {
+		 compatible = "telechips,mbox-reboot";
+		 mboxes = <&mbox0 TCC_MBOX0_CH_REBOOT>;
+	};
+
 	/* ipc for A7S */
 	ipc1: tcc_ipc@1 {
 		 compatible = "telechips,tcc_ipc";
