@@ -1,0 +1,29 @@
+Telechips Mailbox device for TCC805x
+
+Required properties:
+- compatible:
+	telechips,multichannel-mailbox
+
+- reg:
+	start address of mailbox
+
+- interrupts:
+	interrupt number of mailbox
+	<Rx interrupt number> <TX done interrupt number>
+
+- #mbox-cells: Must be at least 1. Number of cells in a mailbox
+	specifier.
+- max-channel:
+	number of mailbox channel
+
+Example:
+
+	micom_mbox: mbox@0x1BA10000 {
+		compatible = "telechips,multichannel-mailbox";
+		reg = <0x0 0x1BA10000 0x0 0x100>;
+		interrupts = <GIC_SPI 440 IRQ_TYPE_LEVEL_HIGH>,
+				   <GIC_SPI 441 IRQ_TYPE_LEVEL_HIGH>;
+		#mbox-cells = <1>;
+		max-channel = <TCC_MICOM_MBOX0_MAX>;
+	};
+

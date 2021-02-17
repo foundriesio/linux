@@ -95,7 +95,7 @@ IPC_INT32 ipc_send_write(struct ipc_device *ipc_dev,
 								sendMsg.cmd[0],
 								ACK_TIMEOUT);
 			if (ret != IPC_SUCCESS)	{
-				wprintk(ipc_dev->dev, "write fail %d\n",ret);
+				wprintk(ipc_dev->dev, "write fail %d\n", ret);
 			}
 		}
 	} else {

@@ -30,6 +30,14 @@
 #include "tcc_ipc_cmd.h"
 #include "tcc_ipc_ctl.h"
 
+static void do_process_ack_cmd(
+	struct ipc_device *ipc_dev,
+	IpcCmdType cmdType,
+	struct tcc_mbox_data *msg);
+static void do_process_nack_cmd(
+	struct ipc_device *ipc_dev,
+	IpcCmdType cmdType,
+	struct tcc_mbox_data *msg);
 static IPC_INT32 ipc_add_queue_and_work(
 					struct ipc_receiveQueue *ipc,
 					struct ipc_receive_list *ipc_list);
@@ -43,6 +51,8 @@ static void deregister_receive_queue(struct ipc_receiveQueue *ipc);
 static void ipc_receive_ctlcmd(
 				void *device_info,
 				struct tcc_mbox_data *pMsg);
+static void do_process_writecmd(
+	struct ipc_device *ipc_dev, struct tcc_mbox_data *pMsg);
 static void ipc_receive_writecmd(
 				void *device_info,
 				struct tcc_mbox_data *pMsg);
@@ -165,6 +175,68 @@ void ipc_clear_buffer(struct ipc_device *ipc_dev)
 	}
 }
 
+
+static void do_process_ack_cmd(
+	struct ipc_device *ipc_dev,
+	IpcCmdType cmdType,
+	struct tcc_mbox_data *msg)
+{
+	if ((ipc_dev != NULL) && (msg != NULL)) {
+		struct IpcHandler *handler = &ipc_dev->ipc_handler;
+
+		if ((msg->cmd[2] & (IPC_UINT32)CMD_ID_MASK) ==
+			(IPC_UINT32)IPC_OPEN) {
+			if (msg->cmd[0] == handler->openSeqID) {
+
+				IPC_UINT32 req_feature = msg->cmd[3];
+
+				spin_lock(&handler->spinLock);
+
+				handler->ipcStatus = IPC_READY;
+
+				spin_unlock(&handler->spinLock);
+
+				if ((req_feature & (IPC_UINT32)USE_NACK)
+					== (IPC_UINT32)USE_NACK) {
+					handler->sendNACK = 1;
+				} else {
+					handler->sendNACK = 0;
+				}
+				dprintk(ipc_dev->dev,
+					"open ack 0x%08x, nack(%d)\n",
+					msg->cmd[3], handler->sendNACK);
+			} else {
+				/* too old ack */
+			}
+		} else {
+			ipc_cmd_wake_up(ipc_dev,
+						cmdType,
+						msg->cmd[0],
+						(IPC_UINT32)0);
+		}
+	}
+}
+
+static void do_process_nack_cmd(
+	struct ipc_device *ipc_dev,
+	IpcCmdType cmdType,
+	struct tcc_mbox_data *msg)
+{
+	if ((ipc_dev != NULL) && (msg != NULL)) {
+		struct IpcHandler *handler = &ipc_dev->ipc_handler;
+
+		if ((msg->cmd[2] & (IPC_UINT32)CMD_ID_MASK) ==
+			(IPC_UINT32)IPC_WRITE) {
+
+			ipc_cmd_wake_up(ipc_dev,
+						cmdType,
+						msg->cmd[0],
+						msg->cmd[3]);
+		}
+	}
+}
+
+
 void receive_message(struct mbox_client *client, void *message)
 {
 	if ((client != NULL) && (message != NULL)) {
@@ -198,46 +270,10 @@ void receive_message(struct mbox_client *client, void *message)
 
 		if (cmdType < MAX_CMD_TYPE) {
 			if (cmdID == IPC_ACK) {
-				if ((msg->cmd[2] & (IPC_UINT32)CMD_ID_MASK) ==
-					(IPC_UINT32)IPC_OPEN) {
-					if (msg->cmd[0] ==
-						handler->openSeqID) {
+				do_process_ack_cmd(ipc_dev, cmdType, msg);
 
-						IPC_UINT32 req_feature = msg->cmd[3];
-
-						spin_lock(&handler->spinLock);
-
-						handler->ipcStatus = IPC_READY;
-
-						spin_unlock(&handler->spinLock);
-
-						if((req_feature & (IPC_UINT32)USE_NACK)
-							== (IPC_UINT32)USE_NACK) {
-							handler->sendNACK = 1;
-						} else {
-							handler->sendNACK = 0;
-						}
-						dprintk(ipc_dev->dev,
-							"open ack 0x%08x, nack(%d)\n",
-							msg->cmd[3],handler->sendNACK);
-					} else {
-						/* too old ack */
-					}
-				} else {
-					ipc_cmd_wake_up(ipc_dev,
-								cmdType,
-								msg->cmd[0],
-								(IPC_UINT32)0);
-				}
 			} else if (cmdID == IPC_NACK) {
-				if ((msg->cmd[2] & (IPC_UINT32)CMD_ID_MASK) ==
-					(IPC_UINT32)IPC_WRITE) {
-
-					ipc_cmd_wake_up(ipc_dev,
-								cmdType,
-								msg->cmd[0],
-								msg->cmd[3]);
-				}
+				do_process_nack_cmd(ipc_dev, cmdType, msg);
 			} else {
 				struct ipc_receive_list *ipc_list =
 					kzalloc(sizeof(struct ipc_receive_list),
@@ -359,7 +395,8 @@ static IPC_INT32 ipc_receive_queue_init(
 			&ipc->kworker,
 			name);
 	if (IS_ERR(ipc->kworker_task)) {
-		(void)pr_err("[ERROR][%s]%s:failed to create message pump task\n",
+		(void)pr_err(
+			"[ERROR][%s]%s:failed to create message pump task\n",
 			(const IPC_CHAR *)LOG_TAG, __func__);
 		ret = -ENOMEM;
 	} else {
@@ -396,25 +433,26 @@ static void ipc_receive_ctlcmd(void *device_info, struct tcc_mbox_data  *pMsg)
 
 		switch (cmdID) {
 		case IPC_OPEN:
-				if((req_feature & (IPC_UINT32)USE_NACK)
-					== (IPC_UINT32)USE_NACK) {
-					ipc_handle->sendNACK = 1;
-					support_feature =
-						(support_feature | (IPC_UINT32)USE_NACK);
-				} else {
-					ipc_handle->sendNACK = 0;
-				}
+			if ((req_feature & (IPC_UINT32)USE_NACK)
+				== (IPC_UINT32)USE_NACK) {
+				ipc_handle->sendNACK = 1;
+				support_feature =
+					(support_feature |
+					(IPC_UINT32)USE_NACK);
+			} else {
+				ipc_handle->sendNACK = 0;
+			}
 
-				(void)ipc_send_open_ack(
-							ipc_dev,
-							seqID,
-							CTL_CMD,
-							pMsg->cmd[1],
-							support_feature);
-				dprintk(ipc_dev->dev,"use Nack %d\n",support_feature);
-				if (ipc_handle->ipcStatus < IPC_READY) {
-					ipc_try_connection(ipc_dev);
-				}
+			(void)ipc_send_open_ack(
+						ipc_dev,
+						seqID,
+						CTL_CMD,
+						pMsg->cmd[1],
+						support_feature);
+			dprintk(ipc_dev->dev, "use Nack %d\n", support_feature);
+			if (ipc_handle->ipcStatus < IPC_READY) {
+				ipc_try_connection(ipc_dev);
+			}
 			break;
 		case IPC_CLOSE:
 			/* init ipc status wait buffer */
@@ -439,9 +477,119 @@ static void ipc_receive_ctlcmd(void *device_info, struct tcc_mbox_data  *pMsg)
 
 }
 
-static void ipc_receive_writecmd(void *device_info, struct tcc_mbox_data  *pMsg)
+static void do_process_writecmd(
+	struct ipc_device *ipc_dev, struct tcc_mbox_data *pMsg)
 {
 	IPC_INT32 ret = -1;
+	IPC_INT32 ovfSize = 0;
+	IPC_INT32  dataSize;
+
+	if ((ipc_dev != NULL) && (pMsg != NULL)) {
+
+		IPC_UINT32 readSize;
+		IPC_UINT32 i;
+		struct IpcHandler *ipc_handle = &ipc_dev->ipc_handler;
+		IPC_UINT32 seqID = pMsg->cmd[0];
+
+		readSize = pMsg->cmd[2];
+		d2printk((ipc_dev), ipc_dev->dev,
+			"ipc recevie size(%d)\n", readSize);
+
+		if (readSize > (IPC_UINT32)0) {
+			IPC_UINT32 freeSpace;
+
+			mutex_lock(&ipc_handle->rbufMutex);
+
+			ipc_handle->readBuffer.status = IPC_BUF_BUSY;
+
+			freeSpace =
+				(IPC_UINT32)ipc_buffer_free_space(
+					&ipc_handle->readRingBuffer);
+
+			d2printk((ipc_dev), ipc_dev->dev,
+				"ipc freeSpace size(%d)\n",
+				freeSpace);
+
+			for (i = 0; i < readSize; i++) {
+				d2printk((ipc_dev), ipc_dev->dev,
+					"ipc data[%d] : [0x%x]\n",
+					i, pMsg->data[i]);
+			}
+
+			if (freeSpace > readSize) {
+				ret = ipc_push_buffer(
+					&ipc_handle->readRingBuffer,
+					(IPC_UCHAR *)pMsg->data,
+					readSize);
+
+				if (ret  > 0) {
+					(void)ipc_send_ack(ipc_dev,
+						seqID,
+						WRITE_CMD,
+						pMsg->cmd[1]);
+				} else {
+					if (ipc_handle->sendNACK ==
+						(IPC_UINT32)1) {
+
+						(void)ipc_send_nack(ipc_dev,
+							seqID,
+							WRITE_CMD,
+							pMsg->cmd[1],
+							NACK_BUF_ERR);
+					}
+					ret = IPC_ERR_BUFFER;
+				}
+			} else {
+				if (ipc_handle->sendNACK ==
+					(IPC_UINT32)1) {
+
+					(void)ipc_send_nack(ipc_dev,
+						seqID,
+						WRITE_CMD,
+						pMsg->cmd[1],
+						NACK_BUF_FULL);
+					eprintk(ipc_dev->dev,
+						"rx buffer full\n");
+				} else {
+					ovfSize = ((IPC_INT32)readSize -
+							(IPC_INT32)freeSpace);
+					ret = ipc_push_buffer_overwrite(
+						&ipc_handle->readRingBuffer,
+						(IPC_UCHAR *)pMsg->data,
+						readSize);
+
+					if (ret > 0) {
+						(void)ipc_send_ack(ipc_dev,
+							seqID,
+							WRITE_CMD,
+							pMsg->cmd[1]);
+					} else {
+						ret = IPC_ERR_BUFFER;
+					}
+					eprintk(ipc_dev->dev,
+						"%d input overrun\n",
+						ovfSize);
+				}
+			}
+
+			ipc_handle->readBuffer.status =
+				IPC_BUF_READY;
+
+			mutex_unlock(&ipc_handle->rbufMutex);
+		}
+
+		dataSize = ipc_buffer_data_available(
+			&ipc_handle->readRingBuffer);
+		if (ipc_handle->vMin <=
+			(IPC_UINT32)dataSize) {
+
+			ipc_read_wake_up(ipc_dev);
+		}
+	}
+
+}
+static void ipc_receive_writecmd(void *device_info, struct tcc_mbox_data *pMsg)
+{
 	struct ipc_device *ipc_dev = (struct ipc_device *)device_info;
 
 	if ((pMsg != NULL) &&
@@ -452,105 +600,11 @@ static void ipc_receive_writecmd(void *device_info, struct tcc_mbox_data  *pMsg)
 		IPC_UINT32 seqID = pMsg->cmd[0];
 		IpcCmdID cmdID;
 		IPC_UINT32 maskedID = (pMsg->cmd[1] & (IPC_UINT32)CMD_ID_MASK);
-		IPC_INT32 ovfSize = 0;
-		IPC_INT32  dataSize;
 
 		cmdID = (IpcCmdID)maskedID;
 
 		if (cmdID == IPC_WRITE)	{
-			IPC_UINT32 readSize;
-			IPC_UINT32 i;
-
-			readSize = pMsg->cmd[2];
-			d2printk((ipc_dev), ipc_dev->dev,
-				"ipc recevie size(%d)\n", readSize);
-
-			if (readSize > (IPC_UINT32)0) {
-				IPC_UINT32 freeSpace;
-
-				mutex_lock(&ipc_handle->rbufMutex);
-
-				ipc_handle->readBuffer.status = IPC_BUF_BUSY;
-
-				freeSpace =
-					(IPC_UINT32)ipc_buffer_free_space(
-						&ipc_handle->readRingBuffer);
-
-				d2printk((ipc_dev), ipc_dev->dev,
-					"ipc freeSpace size(%d)\n",
-					freeSpace);
-
-				for (i = 0; i < readSize; i++) {
-					d2printk((ipc_dev), ipc_dev->dev,
-						"ipc data[%d] : [0x%x]\n",
-						i, pMsg->data[i]);
-				}
-
-				if (freeSpace > readSize) {
-					ret = ipc_push_buffer(
-						&ipc_handle->readRingBuffer,
-						(IPC_UCHAR *)pMsg->data,
-						readSize);
-
-					if (ret  > 0) {
-						(void)ipc_send_ack(ipc_dev,
-										seqID,
-										WRITE_CMD,
-										pMsg->cmd[1]);
-					} else {
-						if(ipc_handle->sendNACK == (IPC_UINT32)1) {
-							(void)ipc_send_nack(ipc_dev,
-											seqID,
-											WRITE_CMD,
-											pMsg->cmd[1],
-											NACK_BUF_ERR);
-						}
-						ret = IPC_ERR_BUFFER;
-					}
-				} else {
-					if(ipc_handle->sendNACK == (IPC_UINT32)1) {
-						(void)ipc_send_nack(ipc_dev,
-										seqID,
-										WRITE_CMD,
-										pMsg->cmd[1],
-										NACK_BUF_FULL);
-						eprintk(ipc_dev->dev,
-							"rx buffer full\n");
-					} else {
-						ovfSize = ((IPC_INT32)readSize -
-									(IPC_INT32)freeSpace);
-						ret = ipc_push_buffer_overwrite(
-							&ipc_handle->readRingBuffer,
-							(IPC_UCHAR *)pMsg->data,
-							readSize);
-
-						if (ret > 0) {
-							(void)ipc_send_ack(ipc_dev,
-											seqID,
-											WRITE_CMD,
-											pMsg->cmd[1]);
-						} else {
-							ret = IPC_ERR_BUFFER;
-						}
-						eprintk(ipc_dev->dev,
-							"%d input overrun\n",
-							ovfSize);
-					}
-				}
-
-				ipc_handle->readBuffer.status =
-					IPC_BUF_READY;
-
-				mutex_unlock(&ipc_handle->rbufMutex);
-			}
-
-			dataSize = ipc_buffer_data_available(
-				&ipc_handle->readRingBuffer);
-			if (ipc_handle->vMin <=
-				(IPC_UINT32)dataSize) {
-
-				ipc_read_wake_up(ipc_dev);
-			}
+			do_process_writecmd(ipc_handle, pMsg);
 		}
 	}
 }
@@ -666,10 +720,14 @@ static IPC_INT32 ipc_write_data(
 					*err_code = (IPC_INT32)IPC_ERR_TIMEOUT;
 					wprintk(ipc_dev->dev,
 						"IPC Write ACK Timeout\n");
-				} else if (ret == (IPC_INT32)IPC_ERR_RECEIVER_BUF_FULL)	{
-					*err_code = (IPC_INT32)IPC_ERR_RECEIVER_BUF_FULL;
+				} else if (ret ==
+					(IPC_INT32)IPC_ERR_NACK_BUF_FULL) {
+
+					*err_code =
+					(IPC_INT32)IPC_ERR_NACK_BUF_FULL;
 					wprintk(ipc_dev->dev,
 						"Opposite Receive Buffer is full\n");
+
 				} else if (ret == (IPC_INT32)IPC_ERR_BUFFER) {
 					*err_code = (IPC_INT32)IPC_ERR_BUFFER;
 					wprintk(ipc_dev->dev,
@@ -714,9 +772,7 @@ IPC_INT32 ipc_write(struct ipc_device *ipc_dev,
 }
 
 static IPC_INT32 ipc_read_data(struct ipc_device *ipc_dev,
-								IPC_CHAR __user *buff,
-								IPC_UINT32 size,
-								IPC_UINT32 flag)
+	IPC_CHAR __user *buff, IPC_UINT32 size,	IPC_UINT32 flag)
 {
 	IPC_INT32 ret = 0;	//return read size
 
