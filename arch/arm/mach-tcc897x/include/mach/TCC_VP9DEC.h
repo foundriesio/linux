@@ -1,26 +1,8 @@
+// SPDX-License-Identifier: GPL-2.0-or-later
 /*
- *   FileName    : TCC_VP9DEC.h
- *   Author:  <linux@telechips.com>
- *   Created: June 10, 2008
- *   Description: TCC VPU h/w block
- *
- *   Copyright (C) 2008-2009 Telechips
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, see the file COPYING, or write
- * to the Free Software Foundation, Inc.,
- * 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
- *
+ * Copyright (C) Telechips Inc.
+ * FileName   : TCC_VP9DEC.h
+ * Description: TCC VPU h/w block
  */
 
 #ifndef _TCC_VP9DEC_H_
@@ -36,7 +18,7 @@
 #define RETCODE_VP9ERR_BITDEPTH                 103
 #define RETCODE_VP9ERR_RGB_FORMAT               104
 #define RETCODE_VP9ERR_PROFILE                  110
-//#define RETCODE_VP9ERR_VERSION                    111
+//#define RETCODE_VP9ERR_VERSION                  111
 
 
 #define VP9_LARGE_STREAM_BUF_SIZE   0x300000
@@ -45,187 +27,226 @@
 //-----------------------------------------------------------------------------
 // decode struct and definition
 //-----------------------------------------------------------------------------
-typedef struct vp9_pic_crop_t
-{
-    unsigned int m_iCropLeft;
-    unsigned int m_iCropTop;
-    unsigned int m_iCropRight;
-    unsigned int m_iCropBottom;
+typedef struct vp9_pic_crop_t {
+	unsigned int m_iCropLeft;
+	unsigned int m_iCropTop;
+	unsigned int m_iCropRight;
+	unsigned int m_iCropBottom;
 } vp9_pic_crop_t;
 
-typedef struct dscale_info_t
-{
-    int m_iDscaleHeight;                    //!< Height of down scaled output picture
-    int m_iDscaleWidth;                     //!< Width of down scaled output picture
-    int m_iDscaleStride;                    //!< Stride of down scaled output picture
-    unsigned char* m_pDscaleDispOut[2][3];  //!< physical[0] and virtual[1] display  address of Y, Cb, Cr component
-    unsigned char* m_pDscaleCurrOut[2][3];  //!< physical[0] and virtual[1] current  address of Y, Cb, Cr component
-    unsigned int m_Reserved[17];            //!< Reserved.
+typedef struct dscale_info_t {
+	// Height of down scaled output picture
+	int m_iDscaleHeight;
+	// Width of down scaled output picture
+	int m_iDscaleWidth;
+	// Stride of down scaled output picture
+	int m_iDscaleStride;
+
+	// physical[0] and virtual[1] display  address of Y, Cb, Cr component
+	unsigned char *m_pDscaleDispOut[2][3];
+	// physical[0] and virtual[1] current  address of Y, Cb, Cr component
+	unsigned char *m_pDscaleCurrOut[2][3];
+	unsigned int m_Reserved[17];            // Reserved.
 } dscale_info_t;
 
 //-----------------------------------------------------------------------------
 // data structure to get information necessary to
 // start decoding from the decoder (this is an output parameter)
 //-----------------------------------------------------------------------------
-typedef struct vp9_dec_initial_info_t
-{
-    int m_iPicWidth;                //!< {(PicX+15)/16} * 16  (this width  will be used while allocating decoder frame buffers. picWidth  is a multiple of 16)
-    int m_iPicHeight;               //!< {(PicY+15)/16} * 16  (this height will be used while allocating decoder frame buffers. picHeight is a multiple of 16)
-    int m_iMinFrameBufferCount;     //!< the minimum number of frame buffers that are required for decoding. application must allocate at least this number of frame buffers.
-    int m_iMinFrameBufferSize;      //!< minimum frame buffer size
-    int m_iTempBufferSize;          //!< temp buffer size for segment map & loop filter
+typedef struct vp9_dec_initial_info_t {
+	// {(PicX+15)/16} * 16  (this width  will be used while allocating
+	//  decoder frame buffers. picWidth  is a multiple of 16)
+	int m_iPicWidth;
+	// {(PicY+15)/16} * 16  (this height will be used while allocating
+	//  decoder frame buffers. picHeight is a multiple of 16)
+	int m_iPicHeight;
+	// the minimum number of frame buffers that are required for decoding.
+	//  application must allocate at least this number of frame buffers.
+	int m_iMinFrameBufferCount;
+	// minimum frame buffer size
+	int m_iMinFrameBufferSize;
+	// temp buffer size for segment map & loop filter
+	int m_iTempBufferSize;
 
-    vp9_pic_crop_t m_iVp9PicCrop;       //!< represents rectangular window information in a frame
+	// represents rectangular window information in a frame
+	vp9_pic_crop_t m_iVp9PicCrop;
 
-    //!< Additional Info
-    int m_iVersion;                 //!< version of the decoded stream
-    int m_iProfile;                 //!< profile of the decoded stream
-    int m_iSrcBitDepth;             //!< Source BitDepth
-    int m_iOutBitDepth;             //!< Decoded BitDepth
-    int m_iReportErrorReason;       //!< reports the reason of 'RETCODE_CODEC_SPECOUT' or 'RETCODE_INVALID_STRIDE' error
-    unsigned int m_Reserved[21];    //!< Reserved.
+	//////// Additional Info ////////
+	int m_iVersion;                 // version of the decoded stream
+	int m_iProfile;                 // profile of the decoded stream
+	int m_iSrcBitDepth;             // Source BitDepth
+	int m_iOutBitDepth;             // Decoded BitDepth
+	// reports the reason of 'RETCODE_CODEC_SPECOUT' or
+	//  'RETCODE_INVALID_STRIDE' error
+	int m_iReportErrorReason;
+	unsigned int m_Reserved[21];    // Reserved.
 } vp9_dec_initial_info_t;
 
-//!< data structure for initializing Video unit
-typedef struct vp9_dec_init_t
-{
-    codec_addr_t m_RegBaseVirtualAddr;  //!< virtual register base address
+// data structure for initializing Video unit
+typedef struct vp9_dec_init_t {
+	codec_addr_t m_RegBaseVirtualAddr;  // virtual register base address
 
-    int m_iBitstreamFormat;             //!< bitstream format
-    codec_addr_t m_BitstreamBufAddr[2]; //!< bitstream buf address : 128 align
-    int m_iBitstreamBufSize;            //!< bitstream buf size    : multiple of 1024
+	int m_iBitstreamFormat;             // bitstream format
+	codec_addr_t m_BitstreamBufAddr[2]; // 128 align
+	int m_iBitstreamBufSize;            // multiple of 1024
 
-    //!< Decoding Options
-#define VP9_TILED_ENABLE                (1<<0)  //!< Tiled Output Enable (No Compression Output)
-#define VP9_RASTER_ENABLE               (1<<1)  //!< YUV420 Output Enable
-#define VP9_10BITS_DISABLE              (1<<3)  //!< 10 bits Output Disable
-    unsigned int m_uiDecOptFlags;
+	//////// Decoding Options ////////
+#define VP9_TILED_ENABLE                (1<<0)  // Tiled Output Enable
+						// (No Compression Output)
+#define VP9_RASTER_ENABLE               (1<<1)  // YUV420 Output Enable
+#define VP9_10BITS_DISABLE              (1<<3)  // 10 bits Output Disable
+	unsigned int m_uiDecOptFlags;
 
-    codec_addr_t m_EntropySaveBuffer[2];
-    int m_iEntropySaveBufferSize;
+	codec_addr_t m_EntropySaveBuffer[2];
+	int m_iEntropySaveBufferSize;
 
-    //!< VP9 Control
-    int m_iFilePlayEnable;              //!< enable file play mode. If this value is set to 0, streaming mode with ring buffer will be used
+	//////// VP9 Control ////////
 
-    int m_iMaxResolution;               //!< maximum resolution limitation option
+	// enable file play mode. If this value is set to 0,
+	//  streaming mode with ring buffer will be used
+	int m_iFilePlayEnable;
 
-    //!< Callback Func
-    void* (*m_Memcpy ) ( void*, const void*, unsigned int );    //!< memcpy
-    void (*m_Memset ) ( void*, int, unsigned int );         //!< memset
-    int   (*m_Interrupt ) ( void );                             //!< hw interrupt (return value is always 0)
-    void* (*m_Ioremap ) ( unsigned int, unsigned int );
-    void  (*m_Iounmap ) ( void* );
+	// maximum resolution limitation option
+	int m_iMaxResolution;
 
-    unsigned int m_Reserved[16];    //! Reserved.
+	//////// Callback Func ////////
+	void *(*m_Memcpy)(void *, const void *, unsigned int);
+	void (*m_Memset)(void *, int, unsigned int);
+	int   (*m_Interrupt)(void);  // hw interrupt (return value is always 0)
+	void *(*m_Ioremap)(unsigned int, unsigned int);
+	void  (*m_Iounmap)(void *);
+
+	unsigned int m_Reserved[16];
 } vp9_dec_init_t;
 
-typedef struct vp9_dec_input_t
-{
-    codec_addr_t m_BitstreamDataAddr[2];    //!< bitstream data address
-    int m_iBitstreamDataSize;               //!< bitstream data size
+typedef struct vp9_dec_input_t {
+	codec_addr_t m_BitstreamDataAddr[2];    // bitstream data address
+	int m_iBitstreamDataSize;               // bitstream data size
 
-    int m_iFrameSearchEnable;               //!< I-frame Search Mode
-                                            //!< If this option is enabled, then decoder performs skipping frame decoding until decoder meet I-frame.
-                                            //!< 0x000 ( Disable )
-                                            //!< 0x001 ( Enable  )
+	// I-frame Search Mode
+	// If this option is enabled, then decoder performs skipping
+	//  frame decoding until decoder meet I-frame.
+	// 0x000 ( Disable )
+	// 0x001 ( Enable  )
+	int m_iFrameSearchEnable;
 
-    unsigned int m_Reserved[12];            //!< Reserved.
+	unsigned int m_Reserved[12];
 } vp9_dec_input_t;
 
-typedef struct vp9_dec_buffer_t
-{
-    codec_addr_t m_FrameBufferStartAddr[2]; //!< physical[0] and virtual[1] address of a frame buffer of the decoder.
-    int m_iFrameBufferCount;                //!< allocated frame buffer count
+typedef struct vp9_dec_buffer_t {
+	// physical[0] and virtual[1] address of a frame buffer of the decoder.
+	codec_addr_t m_FrameBufferStartAddr[2];
+	// allocated frame buffer count
+	int m_iFrameBufferCount;
 
-    codec_addr_t m_TempBufferAddr[2];       //!< physical[0] and virtual[1] address of a temp buffer (segment & loopfilter)
-    int m_iTempBufferSize;                  //!< size of temp buffer
+	// physical[0] and virtual[1] address of a temp buffer
+	//  (segment & loopfilter)
+	codec_addr_t m_TempBufferAddr[2];
+	int m_iTempBufferSize;                  // size of temp buffer
 
-    unsigned int m_Reserved[10];            //!< Reserved.
+	unsigned int m_Reserved[10];            // Reserved.
 } vp9_dec_buffer_t;
 
-typedef struct vp9_dec_buffer2_t
-{
-    codec_addr_t    m_addrFrameBuffer[2][16];       //!< physical[0] and virtual[1] address of a frame buffer of the decoder.
-    unsigned long   m_ulFrameBufferCount;           //!< allocated frame buffer count
+typedef struct vp9_dec_buffer2_t {
+	// physical[0] and virtual[1] address of a frame buffer of the decoder.
+	codec_addr_t    m_addrFrameBuffer[2][16];
+	// allocated frame buffer count
+	unsigned long   m_ulFrameBufferCount;
 
-    codec_addr_t m_TempBufferAddr[2];       //!< physical[0] and virtual[1] address of a temp buffer (segment & loopfilter)
-    int m_iTempBufferSize;                  //!< size of temp buffer
+	// physical[0] and virtual[1] address of a temp buffer
+	// (segment & loopfilter)
+	codec_addr_t m_TempBufferAddr[2];
+	int m_iTempBufferSize;                  // size of temp buffer
 
-    unsigned int m_Reserved[28];            //!< Reserved.
+	unsigned int m_Reserved[28];            // Reserved.
 } vp9_dec_buffer2_t;
 
-typedef struct vp9_dec_ring_buffer_setting_in_t
-{
-    codec_addr_t m_OnePacketBufferAddr;
-    unsigned int m_iOnePacketBufferSize;
+typedef struct vp9_dec_ring_buffer_setting_in_t {
+	codec_addr_t m_OnePacketBufferAddr;
+	unsigned int m_iOnePacketBufferSize;
 } vp9_dec_ring_buffer_setting_in_t;
 
-typedef struct vp9_dec_ring_buffer_status_out_t
-{
-    unsigned int m_iAvailableSpaceInRingBuffer;
+typedef struct vp9_dec_ring_buffer_status_out_t {
+	unsigned int m_iAvailableSpaceInRingBuffer;
 } vp9_dec_ring_buffer_status_out_t;
 
 //-----------------------------------------------------------------------------
 // data structure to get resulting information from VP9 after decoding a frame
 //-----------------------------------------------------------------------------
-typedef struct vp9_compressed_info_t
-{
-    codec_addr_t m_CompressedY[2];
-    codec_addr_t m_CompressedCb[2];
 
-    codec_addr_t m_CompressionTableLuma[2];     //!< physical[0] and virtual[1] address of Luma Compression Table for compressed frame buffer.
-    codec_addr_t m_CompressionTableChroma[2];
+typedef struct vp9_compressed_info_t {
+	codec_addr_t m_CompressedY[2];
+	codec_addr_t m_CompressedCb[2];
 
-    int m_iCompressionTableLumaSize;
-    int m_iCompressionTableChromaSize;
+	// physical[0] and virtual[1] address of Luma Compression Table
+	//  for compressed frame buffer.
+	codec_addr_t m_CompressionTableLuma[2];
+	codec_addr_t m_CompressionTableChroma[2];
 
-    int m_iBitDepthLuma;            //!< Output Luma Bit depth.
-    int m_iBitDepthChroma;          //!< Output Chroma Bit depth.
+	int m_iCompressionTableLumaSize;
+	int m_iCompressionTableChromaSize;
 
-    int m_iHeight;                  //!< Height of input bitstream. In some cases, this value can be different from the height of previous frames.
-    int m_iWidth;                   //!< Width of input bitstream. In some cases, this value can be different from the height of previous frames.
-    int m_iPicStride;               //!< Picture Stride.
+	int m_iBitDepthLuma;            // Output Luma Bit depth.
+	int m_iBitDepthChroma;          // Output Chroma Bit depth.
 
-    unsigned int m_Reserved[17];    //! Reserved.
+	// Height of input bitstream. In some cases,
+	//  this value can be different from the height of previous frames.
+	int m_iHeight;
+	// Width of input bitstream. In some cases,
+	// this value can be different from the height of previous frames.
+	int m_iWidth;
+	int m_iPicStride;               // Picture Stride.
+
+	unsigned int m_Reserved[17];    //! Reserved.
 } vp9_compressed_info_t;
 
-typedef struct vp9_dec_output_info_t
-{
-    int m_iPicType;                 //!< ( 0- I picture,  1- P picture,  2- B picture )
+typedef struct vp9_dec_output_info_t {
+	// 0: I-picture, 1: P-picture, 2: B-picture
+	int m_iPicType;
 
-    int m_iDispOutIdx;              //!< index of output frame buffer
-    int m_iDecodedIdx;              //!< index of decoded frame buffer
+	int m_iDispOutIdx;              // index of output frame buffer
+	int m_iDecodedIdx;              // index of decoded frame buffer
 
-    int m_iOutputStatus;
-    int m_iDecodingStatus;
+	int m_iOutputStatus;
+	int m_iDecodingStatus;
 
-    int m_iHeight;                  //!< Height of input bitstream. In some cases, this value can be different from the height of previous frames.
-    int m_iWidth;                   //!< Width of input bitstream. In some cases, this value can be different from the height of previous frames.
+	// Height of input bitstream. In some cases,
+	//  this value can be different from the height of previous frames.
+	int m_iHeight;
+	// Width of input bitstream. In some cases,
+	//  this value can be different from the height of previous frames.
+	int m_iWidth;
 
-    int m_iBitDepthLuma;            //!< Output Luma Bit depth.
-    int m_iBitDepthChroma;          //!< Output Chroma Bit depth.
-    int m_iPicStride;               //!< Picture Stride.
 
-    vp9_compressed_info_t m_DispCompressedInfo; // display compressed frame info. for map converter
-    vp9_compressed_info_t m_CurrCompressedInfo; // current compressed frame info. for map converter
+	int m_iBitDepthLuma;            // Output Luma Bit depth.
+	int m_iBitDepthChroma;          // Output Chroma Bit depth.
+	int m_iPicStride;               // Picture Stride.
 
-    vp9_pic_crop_t m_CropInfo;      //!< Cropping information.
+	// display compressed frame info. for map converter
+	vp9_compressed_info_t m_DispCompressedInfo;
+	// current compressed frame info. for map converter
+	vp9_compressed_info_t m_CurrCompressedInfo;
 
-    dscale_info_t m_DscaleInfo;     //!< Down Scale information.
+	vp9_pic_crop_t m_CropInfo;      // Cropping information.
 
-    unsigned int m_Reserved[18];    //!< Reserved.
+	dscale_info_t m_DscaleInfo;     // Down Scale information.
+
+	unsigned int m_Reserved[18];    // Reserved.
 } vp9_dec_output_info_t;
 
-typedef struct vp9_dec_output_t
-{
-    vp9_dec_output_info_t m_DecOutInfo;
-    unsigned char* m_pDispOut[2][3];    //!< physical[0] and virtual[1] display  address of Y, Cb, Cr component
-    unsigned char* m_pCurrOut[2][3];    //!< physical[0] and virtual[1] current  address of Y, Cb, Cr component
-    unsigned int   m_Reserved[19];      //!< Reserved.
+typedef struct vp9_dec_output_t {
+	vp9_dec_output_info_t m_DecOutInfo;
+
+	// physical[0] and virtual[1] display  address of Y, Cb, Cr component
+	unsigned char *m_pDispOut[2][3];
+	// physical[0] and virtual[1] current  address of Y, Cb, Cr component
+	unsigned char *m_pCurrOut[2][3];
+
+	unsigned int   m_Reserved[19];      // Reserved.
 } vp9_dec_output_t;
 
 /*!
- ******************************************************************************************
+ *******************************************************************************
  * \brief
  *      TCC_VP9_DEC     : main api function of libvp9dec
  * \param
@@ -238,9 +259,10 @@ typedef struct vp9_dec_output_t
  *      [in]pParam2     : output or info parameter
  * \return
  *      If successful, TCC_VP9_DEC returns 0.
- ******************************************************************************************
+ *******************************************************************************
  */
-codec_result_t TCC_VP9_DEC(int Op, codec_handle_t *pHandle, void *pParam1, void *pParam2);
+codec_result_t TCC_VP9_DEC(int Op, codec_handle_t *pHandle,
+			void *pParam1, void *pParam2);
 
 #endif // _TCC_VP9DEC_H_
 
