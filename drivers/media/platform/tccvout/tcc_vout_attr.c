@@ -46,7 +46,7 @@ static ssize_t vioc_path_show(struct device *dev,
 					vioc->sc.id < 0 ? "" : buf_sc,
 					vioc->wmix.id, vioc->disp.id);
 }
-DEVICE_ATTR(vioc_path, S_IRUGO, vioc_path_show, NULL);
+DEVICE_ATTR(vioc_path, 0444, vioc_path_show, NULL);
 
 /**
  * Show & Set the rdma of vioc path.
@@ -90,7 +90,7 @@ static ssize_t vioc_rdma_store(struct device *dev,
 
 	return count;
 }
-DEVICE_ATTR(vioc_rdma, S_IRUGO | S_IWUSR, vioc_rdma_show, vioc_rdma_store);
+DEVICE_ATTR(vioc_rdma, 0644, vioc_rdma_show, vioc_rdma_store);
 
 /**
  * Show & Set the scaler of vioc path.
@@ -133,7 +133,7 @@ static ssize_t vioc_sc_store(struct device *dev,
 
 	return count;
 }
-DEVICE_ATTR(vioc_sc, S_IRUGO | S_IWUSR, vioc_sc_show, vioc_sc_store);
+DEVICE_ATTR(vioc_sc, 0644, vioc_sc_show, vioc_sc_store);
 
 /**
  * Show & Set the ovp (overlay priority) of wmix.
@@ -174,7 +174,7 @@ static ssize_t vioc_wmix_ovp_store(struct device *dev,
 
 	return count;
 }
-DEVICE_ATTR(vioc_wmix_ovp, S_IRUGO | S_IWUSR,
+DEVICE_ATTR(vioc_wmix_ovp, 0644,
 	vioc_wmix_ovp_show, vioc_wmix_ovp_store);
 
 /**
@@ -212,7 +212,7 @@ static ssize_t force_v4l2_memory_userptr_store(struct device *dev,
 	dprintk("set(%d) -> force(%d)\n", val, vout->force_userptr);
 	return count;
 }
-DEVICE_ATTR(force_v4l2_memory_userptr, S_IRUGO | S_IWUSR,
+DEVICE_ATTR(force_v4l2_memory_userptr, 0644,
 	force_v4l2_memory_userptr_show, force_v4l2_memory_userptr_store);
 
 /**
@@ -242,7 +242,7 @@ static ssize_t vout_pmap_store(struct device *dev,
 	dprintk("vout_pmap(%s)\n", vout->pmap.name);
 	return count;
 }
-DEVICE_ATTR(vout_pmap, S_IRUGO | S_IWUSR, vout_pmap_show, vout_pmap_store);
+DEVICE_ATTR(vout_pmap, 0644, vout_pmap_show, vout_pmap_store);
 
 
 /*==============================================================================
@@ -300,7 +300,7 @@ static ssize_t deinterlace_path_show(struct device *dev,
 
 	return ret;
 }
-DEVICE_ATTR(deinterlace_path, S_IRUGO, deinterlace_path_show, NULL);
+DEVICE_ATTR(deinterlace_path, 0444, deinterlace_path_show, NULL);
 
 /**
  * Select De-interlacer.
@@ -338,7 +338,7 @@ static ssize_t deinterlace_store(struct device *dev,
 
 	return count;
 }
-DEVICE_ATTR(deinterlace, S_IRUGO | S_IWUSR,
+DEVICE_ATTR(deinterlace, 0644,
 	deinterlace_show, deinterlace_store);
 
 /**
@@ -381,7 +381,7 @@ static ssize_t deinterlace_rdma_store(struct device *dev,
 
 	return count;
 }
-DEVICE_ATTR(deinterlace_rdma, S_IRUGO | S_IWUSR,
+DEVICE_ATTR(deinterlace_rdma, 0644,
 	deinterlace_rdma_show, deinterlace_rdma_store);
 
 /**
@@ -425,7 +425,7 @@ static ssize_t deinterlace_sc_store(struct device *dev,
 
 	return count;
 }
-DEVICE_ATTR(deinterlace_sc, S_IRUGO | S_IWUSR,
+DEVICE_ATTR(deinterlace_sc, 0644,
 	deinterlace_sc_show, deinterlace_sc_store);
 
 /**
@@ -455,7 +455,7 @@ static ssize_t deintlerlace_pmap_store(struct device *dev,
 	dprintk("deintl_pmap(%s)\n", vout->deintl_pmap.name);
 	return count;
 }
-DEVICE_ATTR(deinterlace_pmap, S_IRUGO | S_IWUSR,
+DEVICE_ATTR(deinterlace_pmap, 0644,
 	deinterlace_pmap_show, deintlerlace_pmap_store);
 
 /**
@@ -489,7 +489,7 @@ static ssize_t deinterlace_bufs_store(struct device *dev,
 	dprintk("set(%d) -> deintl_nr_bufs(%d)\n", val, vout->deintl_nr_bufs);
 	return count;
 }
-DEVICE_ATTR(deinterlace_bufs, S_IRUGO | S_IWUSR,
+DEVICE_ATTR(deinterlace_bufs, 0644,
 	deinterlace_bufs_show, deinterlace_bufs_store);
 
 /**
@@ -530,7 +530,7 @@ static ssize_t deinterlace_bfield_store(struct device *dev,
 	vioc->m2m_rdma.bf = val;
 	return count;
 }
-DEVICE_ATTR(deinterlace_bfield, S_IRUGO | S_IWUSR,
+DEVICE_ATTR(deinterlace_bfield, 0644,
 	deinterlace_bfield_show, deinterlace_bfield_store);
 
 /**
@@ -564,7 +564,7 @@ static ssize_t deinterlace_force_store(struct device *dev,
 	dprintk("set(%d) -> deintl_force(%d)\n", val, vout->deintl_force);
 	return count;
 }
-DEVICE_ATTR(deinterlace_force, S_IRUGO | S_IWUSR,
+DEVICE_ATTR(deinterlace_force, 0644,
 	deinterlace_force_show, deinterlace_force_store);
 
 /**
@@ -602,7 +602,7 @@ static ssize_t otf_mode_store(struct device *dev,
 	#endif
 	return count;
 }
-DEVICE_ATTR(otf_mode, S_IRUGO | S_IWUSR, otf_mode_show, otf_mode_store);
+DEVICE_ATTR(otf_mode, 0644, otf_mode_show, otf_mode_store);
 /**
  * Create the device files
  */

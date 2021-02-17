@@ -56,7 +56,8 @@ extern void vout_m2m_ctrl(struct tcc_vout_vioc *vioc, int enable);
 extern int vout_set_vout_dual_path(struct tcc_vout_device *vout);
 extern int vout_m2m_dual_init(struct tcc_vout_device *vout);
 extern void vout_m2m_dual_deinit(struct tcc_vout_device *vout);
-extern void vout_m2m_dual_ctrl(struct tcc_vout_vioc *vioc, int enable, int m2m_dual_index);
+extern void vout_m2m_dual_ctrl(struct tcc_vout_vioc *vioc, int enable,
+	int m2m_dual_index);
 #endif
 extern void vout_m2m_deinit(struct tcc_vout_device *vout);
 /* overlay  */

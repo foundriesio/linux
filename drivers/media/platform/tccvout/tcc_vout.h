@@ -407,7 +407,7 @@ struct tcc_vout_vioc {
 	struct vioc_rdma m2m_dual_rdma[M2M_DUAL_MAX];
 	struct vioc_wmix m2m_dual_wmix[M2M_DUAL_MAX];
 	struct vioc_wdma m2m_dual_wdma[M2M_DUAL_MAX];
-	struct vioc_sc 	m2m_dual_sc[M2M_DUAL_MAX];
+	struct vioc_sc m2m_dual_sc[M2M_DUAL_MAX];
 #endif
 
 	/* subtitle path */
@@ -453,10 +453,10 @@ struct tcc_vout_device {
 
 #if defined(CONFIG_TCC_DUAL_DISPLAY)
 	int disp_mode;
-	struct v4l2_rect dual_disp_rect;			// dual-display output area
+	struct v4l2_rect dual_disp_rect; // dual-display output area
 #endif
 
-	struct v4l2_rect crop_src;	// to crop source video (deintl_rdma crop)
+	struct v4l2_rect crop_src; // to crop source video (deintl_rdma crop)
 
 	/* vout */
 	unsigned int force_userptr;	// force V4L2_MEMORY_USERPTR
@@ -490,7 +490,8 @@ struct tcc_vout_device {
 	struct pmap m2m_dual_pmap;
 	struct tcc_v4l2_buffer *m2m_dual_bufs;
 	struct tcc_v4l2_buffer *m2m_dual_bufs_hdmi;
-	unsigned int m2m_dual_nr_bufs;		// full size of deintl_buf, it is depended on panel size.
+	// full size of deintl_buf, it is depended on panel size.
+	unsigned int m2m_dual_nr_bufs;
 	unsigned int m2m_dual_buf_size;
 #endif
 

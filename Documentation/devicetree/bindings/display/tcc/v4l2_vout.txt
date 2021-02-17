@@ -1,0 +1,51 @@
+This is for 'telechips,v4l2_vout'.
+
+Required properties for display:
+	-compatible:
+		"telechips,v4l2_vout"
+
+-------------------------------------------------------------------------------
+
+Example:
+	vout_drv0: vout_drv@0 {
+		compatible = "telechips,v4l2_vout";
+		reg = <0x0 0x0>; /* Dummy regs. */
+		clocks = <&clk_ddi DDIBUS_VIOC>;
+
+		rdma = <&vioc_rdma VIOC_RDMA03 VIOC_RDMA07>;
+		wmix = <&vioc_wmix VIOC_WMIX0 VIOC_WMIX1>;
+		disp = <&vioc_disp VIOC_DISP0 VIOC_DISP1>;
+
+		subplane_rdma = <&vioc_rdma VIOC_RDMA02>;
+		m2m_subplane_rdma = <&vioc_rdma VIOC_RDMA13>;
+		m2m_rdma = <&vioc_rdma VIOC_RDMA12>;
+		m2m_wmix	= <&vioc_wmix VIOC_WMIX3>;
+		m2m_wdma = <&vioc_wdma VIOC_WDMA03>;
+
+		deintl_block = <&vioc_viqe VIOC_VIQE0>;
+		scaler = <&vioc_scaler VIOC_SCALER1>;
+
+		status = "disabled";
+	};
+
+	vout_drv1: vout_drv@1 {
+		compatible = "telechips,v4l2_vout";
+		reg = <0x1 0x0>; /* Dummy regs. */
+		clocks = <&clk_ddi DDIBUS_VIOC>;
+
+		rdma = <&vioc_rdma VIOC_RDMA07>;
+		wmix = <&vioc_wmix VIOC_WMIX1>;
+		disp = <&vioc_disp VIOC_DISP1>;
+
+		subplane_rdma = <&vioc_rdma VIOC_RDMA05>;
+		m2m_subplane_rdma = <&vioc_rdma VIOC_RDMA15>;
+		m2m_rdma = <&vioc_rdma VIOC_RDMA14>;
+		m2m_wmix	= <&vioc_wmix VIOC_WMIX4>;
+		m2m_wdma = <&vioc_wdma VIOC_WDMA04>;
+
+		deintl_block = <&vioc_deintls VIOC_DEINTLS0>;
+		scaler = <&vioc_scaler VIOC_SCALER3>;
+
+		status = "disabled";
+	};
+
