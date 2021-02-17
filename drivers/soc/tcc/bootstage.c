@@ -12,8 +12,10 @@
 #include <linux/suspend.h>
 #include <soc/tcc/tcc-sip.h>
 
-#define bootstage_err(msg, err) \
-	(void)pr_err("[ERROR][bootstage] Failed to " msg " (err: %d)\n", (err))
+static inline void bootstage_err(const char *msg, s32 err)
+{
+	(void)pr_err("[ERROR][bootstage] Failed to %s (err: %d)\n", msg, err);
+}
 
 #if defined(CONFIG_ARCH_TCC805X)
 #define NR_BOOT_STAGES (25U)
