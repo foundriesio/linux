@@ -100,7 +100,6 @@
 	IRQSTAT_TIMER1_MASK |\
 	IRQSTAT_TIMER0_MASK)
 
-#endif
 
 enum vioc_timer_id {
 	VIOC_TIMER_TIMER0 = 0,
