@@ -1,0 +1,14 @@
+This is for 'telechips,viqe_madi'.
+
+Required properties for display:
+	-compatible:
+		"telechips,viqe_madi"
+
+-------------------------------------------------------------------------------
+
+Example:
+   viqe_madi:viqe_madi {
+        compatible = "telechips,viqe_madi";
+        status = "okay";
+    };
+

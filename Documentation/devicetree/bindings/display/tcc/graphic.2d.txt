@@ -1,0 +1,17 @@
+This is for 'telechips,graphic.2d'.
+
+Required properties for display:
+	-compatible:
+		"telechips,graphic.2d"
+
+-------------------------------------------------------------------------------
+
+Example:
+	graphic2d:graphic2d@1A400000 {
+	 	compatible = "telechips,graphic.2d";
+	 	reg = <0x1A400000 0x1000>;
+	 	interrupts = <GIC_SPI 133 IRQ_TYPE_LEVEL_HIGH>;
+	 	clocks =<&clk_fbus FBUS_G2D>;
+	 	status ="disabled";
+	};
+
