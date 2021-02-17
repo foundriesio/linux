@@ -1270,16 +1270,16 @@ static int scaler_drv_common_open(struct inode *inode, struct file *filp)
 	return ret;
 }
 
-static struct file_operations scaler_drv_common_fops = {
-	.owner			= THIS_MODULE,
-	.unlocked_ioctl		= scaler_drv_common_ioctl,
-#ifdef CONFIG_COMPAT
-	.compat_ioctl	= scaler_drv_common_compat_ioctl,
-#endif
-	.mmap			= scaler_drv_common_mmap,
-	.open			= scaler_drv_common_open,
-	.release		= scaler_drv_common_release,
-	.poll			= scaler_drv_common_poll,
+static const struct file_operations scaler_drv_common_fops = {
+	.owner          = THIS_MODULE,
+	.unlocked_ioctl = scaler_drv_common_ioctl,
+	#ifdef CONFIG_COMPAT
+	.compat_ioctl   = scaler_drv_common_compat_ioctl,
+	#endif
+	.mmap           = scaler_drv_common_mmap,
+	.open           = scaler_drv_common_open,
+	.release        = scaler_drv_common_release,
+	.poll           = scaler_drv_common_poll,
 };
 
 static int scaler_drv_common_probe(struct platform_device *pdev)
@@ -1387,7 +1387,7 @@ static int scaler_drv_common_resume(struct platform_device *pdev)
 	return 0;
 }
 
-static struct of_device_id scaler_common_of_match[] = {
+static const struct of_device_id scaler_common_of_match[] = {
 	{ .compatible = "telechips,scaler_drv_common" },
 	{}
 };
