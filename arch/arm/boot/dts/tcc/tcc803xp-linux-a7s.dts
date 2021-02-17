@@ -1672,6 +1672,11 @@
 		status = "okay";
 	};
 
+	trng: trng {
+		compatible = "telechips,tcc-rng";
+		status = "okay";
+	};
+
 	/* A7S <-> R5 */
 	mbox0: mbox@0x1BA30000 {
 		compatible = "telechips,multichannel-mailbox";

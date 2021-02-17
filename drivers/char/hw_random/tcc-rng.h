@@ -3,9 +3,9 @@
  * Copyright (C) Telechips Inc.
  */
 
-#if defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X)
+#if defined(CONFIG_ARCH_TCC899X)
 #define TEE_TRNG
-#elif defined(CONFIG_ARCH_TCC805X)
+#elif defined(CONFIG_ARCH_TCC805X) || defined(CONFIG_ARCH_TCC803X)
 #define HSM_TRNG
 #else
 #define HSB_TRNG
@@ -38,12 +38,27 @@ static u32 rnd_word[MAX_ENR_CNT];
 
 #include <linux/dma-mapping.h>
 #include <linux/mailbox/tcc_sec_ipc.h>
+#if defined(CONFIG_ARCH_TCC803X)
+#include "../tcc_hsm/tcc803x/tcc_hsm_sp_cmd.h"
+#define MAX_ENR_CNT (4)
+#else
 #include "../tcc_hsm/tcc805x/tcc_hsm_cmd.h"
-
 #define MAX_ENR_CNT (8)
+#endif
 
 static dma_addr_t phy_rnd_word;
 static u32 *rnd_word;
+
+#if defined(CONFIG_ARCH_TCC803X)
+
+#define trng_run() \
+{ \
+	tcc_hsm_sp_cmd_get_rand(MBOX_DEV_M4, (char*)rnd_word, \
+				 MAX_ENR_CNT << 2); \
+	rnd_word_cnt = MAX_ENR_CNT; \
+}
+
+#else
 
 #define trng_run() \
 { \
@@ -51,6 +66,8 @@ static u32 *rnd_word;
 				 MAX_ENR_CNT << 2); \
 	rnd_word_cnt = MAX_ENR_CNT; \
 }
+
+#endif
 
 #elif defined(HSB_TRNG)
 
