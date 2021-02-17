@@ -1,0 +1,24 @@
+Telechips aux_detect device
+
+Required property:
+- compatible:
+	telechips,aux_detect
+
+- pintctrl-0:
+	<&aux_detect_pin>
+
+- aux-gpios:
+	aux detect gpio
+
+Example:
+	aux_detect {
+		compatible = "telechips,aux_detect";
+		status = "okay";
+
+		pinctrl-names = "default";
+		pinctrl-0 = <&aux_detect_pin>;
+
+		aux-gpios = <&gpmb 11 1>;
+		aux-active = <1>;
+	};
+

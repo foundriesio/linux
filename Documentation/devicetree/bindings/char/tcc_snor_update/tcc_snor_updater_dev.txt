@@ -1,0 +1,21 @@
+Telechips snor update device
+
+Required properties:
+- compatible:
+    telechips,snor_updater
+
+- mbox-names: List of identifier strings for each mailbox channel.
+
+- mboxes: List of phandle and mailbox channel specifiers.
+
+- mbox-id:
+	TCC_MBOX_FWUG_ID
+
+Example:
+	snor_updater: snor_updater {
+		 compatible = "telechips,snor_updater";
+		 mbox-names ="snor-update-mbox";
+		 mboxes = <&micom_mbox TCC_MICOM_MBOX0_FWUG>;
+		 mbox-id = TCC_MBOX_FWUG_ID;
+	};
+

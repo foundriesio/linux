@@ -114,7 +114,7 @@ IPC_INT32 ipc_cmd_wait_event_timeout(
 			ret = 1;
 		} else {
 			ret = 0;
-	 	}
+		}
 
 		if ((waitQueue->_condition == (IPC_UINT32)1)
 			|| (ret <= 0)) {
@@ -122,12 +122,11 @@ IPC_INT32 ipc_cmd_wait_event_timeout(
 			ret = IPC_ERR_TIMEOUT;
 		} else {
 
-			if(waitQueue->_result == (IPC_UINT32)0)
-			{
+			if (waitQueue->_result == (IPC_UINT32)0) {
 				ret = IPC_SUCCESS;
-			} else if (waitQueue->_result == NACK_BUF_FULL){
-				ret = IPC_ERR_RECEIVER_BUF_FULL;
-			} else if (waitQueue->_result == NACK_BUF_ERR){
+			} else if (waitQueue->_result == NACK_BUF_FULL) {
+				ret = IPC_ERR_NACK_BUF_FULL;
+			} else if (waitQueue->_result == NACK_BUF_ERR) {
 				ret = IPC_ERR_BUFFER;
 			} else {
 				ret = IPC_ERR_COMMON;

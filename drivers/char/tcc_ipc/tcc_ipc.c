@@ -149,9 +149,9 @@ static ssize_t tcc_ipc_read(struct file *filp,
 }
 
 static ssize_t tcc_ipc_write(struct file *filp,
-	const IPC_CHAR __user *buf,	size_t count, loff_t *f_pos)
+	const IPC_CHAR __user *buf, size_t count, loff_t *f_pos)
 {
-	ssize_t  ret = -EINVAL;
+	ssize_t  ret;
 	IPC_INT32 err_code = 0;
 
 	(void)f_pos;
@@ -160,52 +160,63 @@ static ssize_t tcc_ipc_write(struct file *filp,
 		if (filp->private_data == NULL) {
 			ret = -ENODEV;
 		} else {
-			struct ipc_device *ipc_dev =
-				(struct ipc_device *)filp->private_data;
-			IPC_UCHAR *tempWbuf =
-				ipc_dev->ipc_handler.tempWbuf;
-			size_t size = (size_t)0;
+			ret = 0;
+		}
+	} else {
+		ret = -EINVAL;
+	}
 
-			d2printk((ipc_dev), ipc_dev->dev,
-				"In, data size(%d)\n", (IPC_INT32)count);
+	if (ret == 0) {
+		struct ipc_device *ipc_dev =
+			(struct ipc_device *)filp->private_data;
+		IPC_UCHAR *tempWbuf =
+			ipc_dev->ipc_handler.tempWbuf;
+		size_t size = (size_t)0;
 
-			if ((tempWbuf != NULL) &&
-				(count > (IPC_UINT32)0))  {
+		d2printk((ipc_dev), ipc_dev->dev,
+			"In, data size(%d)\n", (IPC_INT32)count);
 
-				if (count >	(size_t)IPC_MAX_WRITE_SIZE)	{
-					size = (size_t)IPC_MAX_WRITE_SIZE;
-				} else {
-					size = count;
-				}
+		if ((tempWbuf != NULL) &&
+			(count > (IPC_UINT32)0))  {
 
-				if (copy_from_user((void *)tempWbuf,
-						(const void *)buf,
-						(IPC_ULONG)size)
-						== (IPC_ULONG)0)	{
-					ret = (ssize_t)ipc_write(
-							ipc_dev,
-							(IPC_UCHAR *)tempWbuf,
-							(IPC_UINT32)size,
-							&err_code);
-					if (ret <= 0) {
-						if ((err_code == (IPC_INT32)IPC_ERR_RECEIVER_BUF_FULL) ||
-							(err_code == (IPC_INT32)IPC_ERR_BUFFER))
-						{
-							ret = -ENOSPC;
-						} else {
-							ret = -ETIME;
-						}
+			if (count >
+				(size_t)IPC_MAX_WRITE_SIZE) {
+				size = (size_t)IPC_MAX_WRITE_SIZE;
+			} else {
+				size = count;
+			}
+
+			if (copy_from_user((void *)tempWbuf,
+					(const void *)buf,
+					(IPC_ULONG)size)
+					== (IPC_ULONG)0) {
+				ret = (ssize_t)ipc_write(
+						ipc_dev,
+						(IPC_UCHAR *)tempWbuf,
+						(IPC_UINT32)size,
+						&err_code);
+				if (ret <= 0) {
+					if ((err_code ==
+					(IPC_INT32)IPC_ERR_NACK_BUF_FULL) ||
+					(err_code ==
+					(IPC_INT32)IPC_ERR_BUFFER))	{
+						ret = -ENOSPC;
+					} else {
+						ret = -ETIME;
 					}
-				} else {
-					ret = -ENOMEM;
 				}
 			} else {
 				ret = -ENOMEM;
 			}
+		} else {
+			ret = -ENOMEM;
 		}
+
 	}
+
 	return ret;
 }
+
 
 static IPC_INT32 tcc_ipc_open(struct inode *inode, struct file *filp)
 {
