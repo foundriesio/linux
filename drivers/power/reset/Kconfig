@@ -219,12 +219,12 @@ config POWER_RESET_TCC
 	help
 	  Reboot support for generic Telechips restart driver.
 
-config POWER_RESET_A7S
-	tristate "Telechips A7S mbox reset driver"
+config POWER_RESET_TCC_MBOX
+	tristate "Telechips mailbox reset driver"
 	depends on TCC803X_CA7S && TCC_MULTI_MAILBOX
 	default y
 	help
-	  Reboot support for telechips A7S
+	  Reboot support for TCC803x subcore (Cortex-A7 Single Core) kernel.
 
 config REBOOT_MODE
 	tristate
