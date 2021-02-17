@@ -667,6 +667,7 @@ static ssize_t tcc_output_panel_width_show(struct device *dev,
 
 	if (panel) {
 		result_size = sprintf(buf, "%d\n", panel->xres);
+		/* prevent KCS warning */
 	} else {
 		result_size = sprintf(buf, "%d\n", 0);
 	}
@@ -686,6 +687,7 @@ static ssize_t tcc_output_panel_height_show(struct device *dev,
 
 	if (panel) {
 		result_size = sprintf(buf, "%d\n", panel->yres);
+		/* prevent KCS warning */
 	} else {
 		result_size = sprintf(buf, "%d\n", 0);
 	}
@@ -699,7 +701,7 @@ static ssize_t tcc_output_panel_height_show(struct device *dev,
 static ssize_t tcc_output_dispdev_width_show(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
-	volatile void __iomem *pDISPBase = NULL;
+	void __iomem *pDISPBase = NULL;
 	struct fb_info *info = registered_fb[0];
 	struct tccfb_info *ptccfb_info = NULL;
 	struct tcc_dp_device *pdp_data = NULL;
@@ -737,6 +739,7 @@ static ssize_t tcc_output_dispdev_width_show(struct device *dev,
 
 	if (pdp_data) {
 		result_size = sprintf(buf, "%d\n", lcd_width);
+		/* prevent KCS warning */
 	} else {
 		result_size = sprintf(buf, "%d\n", 0);
 	}
@@ -747,7 +750,7 @@ static ssize_t tcc_output_dispdev_width_show(struct device *dev,
 static ssize_t tcc_output_dispdev_height_show(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
-	volatile void __iomem *pDISPBase = NULL;
+	void __iomem *pDISPBase = NULL;
 	struct fb_info *info = registered_fb[0];
 	struct tccfb_info *ptccfb_info = NULL;
 	struct tcc_dp_device *pdp_data = NULL;
@@ -785,6 +788,7 @@ static ssize_t tcc_output_dispdev_height_show(struct device *dev,
 
 	if (pdp_data) {
 		result_size = sprintf(buf, "%d\n", lcd_height);
+		/* prevent KCS warning */
 	} else {
 		result_size = sprintf(buf, "%d\n", 0);
 	}
@@ -846,69 +850,69 @@ static ssize_t tcc_2d_compression_store(struct device *dev,
 	return count;
 }
 
-static DEVICE_ATTR(tcc_hdmi_720p_fixed, S_IRUGO|S_IWUSR|S_IWGRP,
+static DEVICE_ATTR(tcc_hdmi_720p_fixed, 0664,
 	tcc_hdmi_720p_fixed_show, tcc_hdmi_720p_fixed_store);
-static DEVICE_ATTR(tcc_audio_hdmi_link, S_IRUGO|S_IWUSR|S_IWGRP,
+static DEVICE_ATTR(tcc_audio_hdmi_link, 0664,
 	tcc_audio_hdmi_link_show, tcc_audio_hdmi_link_store);
-static DEVICE_ATTR(tcc_audio_sampling_rate, S_IRUGO|S_IWUSR|S_IWGRP,
+static DEVICE_ATTR(tcc_audio_sampling_rate, 0664,
 	tcc_audio_sampling_rate_show, tcc_audio_sampling_rate_store);
-static DEVICE_ATTR(tcc_audio_channels, S_IRUGO|S_IWUSR|S_IWGRP,
+static DEVICE_ATTR(tcc_audio_channels, 0664,
 	tcc_audio_channels_show, tcc_audio_channels_store);
-static DEVICE_ATTR(tcc_cec_imageview_on, S_IRUGO|S_IWUSR|S_IWGRP,
+static DEVICE_ATTR(tcc_cec_imageview_on, 0664,
 	tcc_cec_imageview_on_show, tcc_cec_imageview_on_store);
-static DEVICE_ATTR(tcc_cec_textview_on, S_IRUGO|S_IWUSR|S_IWGRP,
+static DEVICE_ATTR(tcc_cec_textview_on, 0664,
 	tcc_cec_textview_on_show, tcc_cec_textview_on_store);
-static DEVICE_ATTR(tcc_cec_active_source, S_IRUGO|S_IWUSR|S_IWGRP,
+static DEVICE_ATTR(tcc_cec_active_source, 0664,
 	tcc_cec_active_source_show, tcc_cec_active_source_store);
-static DEVICE_ATTR(tcc_cec_in_active_source, S_IRUGO|S_IWUSR|S_IWGRP,
+static DEVICE_ATTR(tcc_cec_in_active_source, 0664,
 	tcc_cec_in_active_source_show, tcc_cec_in_active_source_store);
-static DEVICE_ATTR(tcc_cec_standby, S_IRUGO|S_IWUSR|S_IWGRP,
+static DEVICE_ATTR(tcc_cec_standby, 0664,
 	tcc_cec_standby_show, tcc_cec_standby_store);
-static DEVICE_ATTR(tcc_cec_connection, S_IRUGO|S_IWUSR|S_IWGRP,
+static DEVICE_ATTR(tcc_cec_connection, 0664,
 	tcc_cec_connection_show, tcc_cec_connection_store);
-static DEVICE_ATTR(tcc_hdmi_audio_type, S_IRUGO|S_IWUSR|S_IWGRP,
+static DEVICE_ATTR(tcc_hdmi_audio_type, 0664,
 	tcc_hdmi_audio_type_show, tcc_hdmi_audio_type_store);
-static DEVICE_ATTR(tcc_output_display_type, S_IRUGO|S_IWUSR|S_IWGRP,
+static DEVICE_ATTR(tcc_output_display_type, 0664,
 	tcc_output_display_type_show, tcc_output_display_type_store);
-static DEVICE_ATTR(tcc_output_hdmi_3d_format, S_IRUGO|S_IWUSR|S_IWGRP,
+static DEVICE_ATTR(tcc_output_hdmi_3d_format, 0664,
 	tcc_output_hdmi_3d_format_show, tcc_output_hdmi_3d_format_store);
-static DEVICE_ATTR(tcc_output_hdmi_audio_onoff, S_IRUGO|S_IWUSR|S_IWGRP,
+static DEVICE_ATTR(tcc_output_hdmi_audio_onoff, 0664,
 	tcc_output_hdmi_audio_onoff_show, tcc_output_hdmi_audio_onoff_store);
-static DEVICE_ATTR(tcc_output_hdmi_audio_disable, S_IRUGO|S_IWUSR|S_IWGRP,
+static DEVICE_ATTR(tcc_output_hdmi_audio_disable, 0664,
 	tcc_output_hdmi_audio_disable_show,
 	tcc_output_hdmi_audio_disable_store);
-static DEVICE_ATTR(tcc_output_hdmi_video_format, S_IRUGO|S_IWUSR|S_IWGRP,
+static DEVICE_ATTR(tcc_output_hdmi_video_format, 0664,
 	tcc_output_hdmi_video_format_show, tcc_output_hdmi_video_format_store);
-static DEVICE_ATTR(tcc_output_hdmi_structure_3d, S_IRUGO|S_IWUSR|S_IWGRP,
+static DEVICE_ATTR(tcc_output_hdmi_structure_3d, 0664,
 	tcc_output_hdmi_structure_3d_show, tcc_output_hdmi_structure_3d_store);
 static DEVICE_ATTR(tcc_output_hdmi_supported_resolution,
-	S_IRUGO|S_IWUSR|S_IWGRP, tcc_output_hdmi_supported_resolution_show,
+	0664, tcc_output_hdmi_supported_resolution_show,
 	tcc_output_hdmi_supported_resolution_store);
-static DEVICE_ATTR(tcc_output_hdmi_supported_3d_mode, S_IRUGO|S_IWUSR|S_IWGRP,
+static DEVICE_ATTR(tcc_output_hdmi_supported_3d_mode, 0664,
 	tcc_output_hdmi_supported_3d_mode_show,
 	tcc_output_hdmi_supported_3d_mode_store);
-static DEVICE_ATTR(tcc_output_hdmi_supported_hdr, S_IRUGO|S_IWUSR|S_IWGRP,
+static DEVICE_ATTR(tcc_output_hdmi_supported_hdr, 0664,
 	tcc_output_hdmi_supported_hdr_show,
 	tcc_output_hdmi_supported_hdr_store);
-static DEVICE_ATTR(tcc_video_hdmi_resolution, S_IRUGO|S_IWUSR|S_IWGRP,
+static DEVICE_ATTR(tcc_video_hdmi_resolution, 0664,
 	tcc_video_hdmi_resolution_show, tcc_video_hdmi_resolution_store);
-static DEVICE_ATTR(tcc_output_mode_detected, S_IRUGO|S_IWUSR|S_IWGRP,
+static DEVICE_ATTR(tcc_output_mode_detected, 0664,
 	tcc_output_mode_detected_show, tcc_output_mode_detected_store);
 
-static DEVICE_ATTR(tcc_output_panel_width, S_IRUGO,
+static DEVICE_ATTR(tcc_output_panel_width, 0444,
 	tcc_output_panel_width_show, NULL);
-static DEVICE_ATTR(tcc_output_panel_height, S_IRUGO,
+static DEVICE_ATTR(tcc_output_panel_height, 0444,
 	tcc_output_panel_height_show, NULL);
-static DEVICE_ATTR(tcc_output_dispdev_width, S_IRUGO,
+static DEVICE_ATTR(tcc_output_dispdev_width, 0444,
 	tcc_output_dispdev_width_show, NULL);
-static DEVICE_ATTR(tcc_output_dispdev_height, S_IRUGO,
+static DEVICE_ATTR(tcc_output_dispdev_height, 0444,
 	tcc_output_dispdev_height_show, NULL);
 
-static DEVICE_ATTR(tcc_output_mode_stb, S_IRUGO,
+static DEVICE_ATTR(tcc_output_mode_stb, 0444,
 	tcc_output_mode_stb_show, NULL);
-static DEVICE_ATTR(tcc_output_mode_plugout, S_IRUGO|S_IWUSR|S_IWGRP,
+static DEVICE_ATTR(tcc_output_mode_plugout, 0664,
 	tcc_output_mode_plugout_show, tcc_output_mode_plugout_store);
-static DEVICE_ATTR(tcc_2d_compression, S_IRUGO|S_IWUSR|S_IWGRP,
+static DEVICE_ATTR(tcc_2d_compression, 0664,
 	tcc_2d_compression_show, tcc_2d_compression_store);
 
 //for hdcp
@@ -933,7 +937,7 @@ static ssize_t tcc_hdcp_hdmi_enable_store(struct device *dev,
 	return count;
 }
 
-static DEVICE_ATTR(tcc_hdcp_hdmi_enable, S_IRUGO|S_IWUSR|S_IWGRP,
+static DEVICE_ATTR(tcc_hdcp_hdmi_enable, 0664,
 	tcc_hdcp_hdmi_enable_show, tcc_hdcp_hdmi_enable_store);
 
 
@@ -1086,21 +1090,21 @@ static ssize_t persist_spdif_setting_store(struct device *dev,
 	return count;
 }
 
-static DEVICE_ATTR(persist_hdcp1x_enable, S_IRUGO,
+static DEVICE_ATTR(persist_hdcp1x_enable, 0444,
 	persist_hdcp1x_enable_show, NULL);
-static DEVICE_ATTR(persist_display_mode, S_IRUGO,
+static DEVICE_ATTR(persist_display_mode, 0444,
 	persist_display_mode_show, NULL);
-static DEVICE_ATTR(persist_extenddisplay_reset, S_IRUGO|S_IWUSR|S_IWGRP,
+static DEVICE_ATTR(persist_extenddisplay_reset, 0664,
 	persist_extenddisplay_reset_show, persist_extenddisplay_reset_store);
-static DEVICE_ATTR(persist_output_attach_main, S_IRUGO|S_IWUSR|S_IWGRP,
+static DEVICE_ATTR(persist_output_attach_main, 0664,
 	persist_output_attach_main_show, persist_output_attach_main_store);
-static DEVICE_ATTR(persist_output_attach_sub, S_IRUGO|S_IWUSR|S_IWGRP,
+static DEVICE_ATTR(persist_output_attach_sub, 0664,
 	persist_output_attach_sub_show, persist_output_attach_sub_store);
-static DEVICE_ATTR(persist_output_mode, S_IRUGO|S_IWUSR|S_IWGRP,
+static DEVICE_ATTR(persist_output_mode, 0664,
 	persist_output_mode_show, persist_output_mode_store);
-static DEVICE_ATTR(persist_auto_resolution, S_IRUGO|S_IWUSR|S_IWGRP,
+static DEVICE_ATTR(persist_auto_resolution, 0664,
 	persist_auto_resolution_show, persist_auto_resolution_store);
-static DEVICE_ATTR(persist_spdif_setting, S_IRUGO|S_IWUSR|S_IWGRP,
+static DEVICE_ATTR(persist_spdif_setting, 0664,
 	persist_spdif_setting_show, persist_spdif_setting_store);
 
 
@@ -1475,39 +1479,39 @@ static ssize_t persist_hdmi_refresh_mode_store(struct device *dev,
 	return count;
 }
 
-static DEVICE_ATTR(persist_hdmi_mode, S_IRUGO|S_IWUSR|S_IWGRP,
+static DEVICE_ATTR(persist_hdmi_mode, 0664,
 	persist_hdmi_mode_show, persist_hdmi_mode_store);
-static DEVICE_ATTR(persist_hdmi_resize_up, S_IRUGO|S_IWUSR|S_IWGRP,
+static DEVICE_ATTR(persist_hdmi_resize_up, 0664,
 	persist_hdmi_resize_up_show, persist_hdmi_resize_up_store);
-static DEVICE_ATTR(persist_hdmi_resize_dn, S_IRUGO|S_IWUSR|S_IWGRP,
+static DEVICE_ATTR(persist_hdmi_resize_dn, 0664,
 	persist_hdmi_resize_dn_show, persist_hdmi_resize_dn_store);
-static DEVICE_ATTR(persist_hdmi_resize_lt, S_IRUGO|S_IWUSR|S_IWGRP,
+static DEVICE_ATTR(persist_hdmi_resize_lt, 0664,
 	persist_hdmi_resize_lt_show, persist_hdmi_resize_lt_store);
-static DEVICE_ATTR(persist_hdmi_resize_rt, S_IRUGO|S_IWUSR|S_IWGRP,
+static DEVICE_ATTR(persist_hdmi_resize_rt, 0664,
 	persist_hdmi_resize_rt_show, persist_hdmi_resize_rt_store);
-static DEVICE_ATTR(persist_hdmi_cec, S_IRUGO|S_IWUSR|S_IWGRP,
+static DEVICE_ATTR(persist_hdmi_cec, 0664,
 	persist_hdmi_cec_show, persist_hdmi_cec_store);
-static DEVICE_ATTR(persist_hdmi_resolution, S_IRUGO|S_IWUSR|S_IWGRP,
+static DEVICE_ATTR(persist_hdmi_resolution, 0664,
 	persist_hdmi_resolution_show, persist_hdmi_resolution_store);
-static DEVICE_ATTR(persist_hdmi_detected_res, S_IRUGO|S_IWUSR|S_IWGRP,
+static DEVICE_ATTR(persist_hdmi_detected_res, 0664,
 	persist_hdmi_detected_res_show, persist_hdmi_detected_res_store);
-static DEVICE_ATTR(persist_hdmi_printlog, S_IRUGO|S_IWUSR|S_IWGRP,
+static DEVICE_ATTR(persist_hdmi_printlog, 0664,
 	persist_hdmi_printlog_show, persist_hdmi_printlog_store);
-static DEVICE_ATTR(persist_hdmi_color_depth, S_IRUGO|S_IWUSR|S_IWGRP,
+static DEVICE_ATTR(persist_hdmi_color_depth, 0664,
 	persist_hdmi_color_depth_show, persist_hdmi_color_depth_store);
-static DEVICE_ATTR(persist_hdmi_color_space, S_IRUGO|S_IWUSR|S_IWGRP,
+static DEVICE_ATTR(persist_hdmi_color_space, 0664,
 	persist_hdmi_color_space_show, persist_hdmi_color_space_store);
-static DEVICE_ATTR(persist_hdmi_colorimetry, S_IRUGO|S_IWUSR|S_IWGRP,
+static DEVICE_ATTR(persist_hdmi_colorimetry, 0664,
 	persist_hdmi_colorimetry_show, persist_hdmi_colorimetry_store);
-static DEVICE_ATTR(persist_hdmi_aspect_ratio, S_IRUGO|S_IWUSR|S_IWGRP,
+static DEVICE_ATTR(persist_hdmi_aspect_ratio, 0664,
 	persist_hdmi_aspect_ratio_show, persist_hdmi_aspect_ratio_store);
-static DEVICE_ATTR(persist_hdmi_detected, S_IRUGO|S_IWUSR|S_IWGRP,
+static DEVICE_ATTR(persist_hdmi_detected, 0664,
 	persist_hdmi_detected_show, persist_hdmi_detected_store);
-static DEVICE_ATTR(persist_hdmi_detected_mode, S_IRUGO|S_IWUSR|S_IWGRP,
+static DEVICE_ATTR(persist_hdmi_detected_mode, 0664,
 	persist_hdmi_detected_mode_show, persist_hdmi_detected_mode_store);
-static DEVICE_ATTR(persist_hdmi_extra_mode, S_IRUGO|S_IWUSR|S_IWGRP,
+static DEVICE_ATTR(persist_hdmi_extra_mode, 0664,
 	persist_hdmi_extra_mode_show, persist_hdmi_extra_mode_store);
-static DEVICE_ATTR(persist_hdmi_refresh_mode, S_IRUGO|S_IWUSR|S_IWGRP,
+static DEVICE_ATTR(persist_hdmi_refresh_mode, 0664,
 	persist_hdmi_refresh_mode_show, persist_hdmi_refresh_mode_store);
 
 
@@ -1647,17 +1651,17 @@ static ssize_t persist_composite_detected_store(struct device *dev,
 	return count;
 }
 
-static DEVICE_ATTR(persist_composite_mode, S_IRUGO|S_IWUSR|S_IWGRP,
+static DEVICE_ATTR(persist_composite_mode, 0664,
 	persist_composite_mode_show, persist_composite_mode_store);
-static DEVICE_ATTR(persist_composite_resize_up, S_IRUGO|S_IWUSR|S_IWGRP,
+static DEVICE_ATTR(persist_composite_resize_up, 0664,
 	persist_composite_resize_up_show, persist_composite_resize_up_store);
-static DEVICE_ATTR(persist_composite_resize_dn, S_IRUGO|S_IWUSR|S_IWGRP,
+static DEVICE_ATTR(persist_composite_resize_dn, 0664,
 	persist_composite_resize_dn_show, persist_composite_resize_dn_store);
-static DEVICE_ATTR(persist_composite_resize_lt, S_IRUGO|S_IWUSR|S_IWGRP,
+static DEVICE_ATTR(persist_composite_resize_lt, 0664,
 	persist_composite_resize_lt_show, persist_composite_resize_lt_store);
-static DEVICE_ATTR(persist_composite_resize_rt, S_IRUGO|S_IWUSR|S_IWGRP,
+static DEVICE_ATTR(persist_composite_resize_rt, 0664,
 	persist_composite_resize_rt_show, persist_composite_resize_rt_store);
-static DEVICE_ATTR(persist_composite_detected, S_IRUGO|S_IWUSR|S_IWGRP,
+static DEVICE_ATTR(persist_composite_detected, 0664,
 	persist_composite_detected_show, persist_composite_detected_store);
 
 
@@ -1795,17 +1799,17 @@ static ssize_t persist_component_detected_store(struct device *dev,
 		data);
 	return count;
 }
-static DEVICE_ATTR(persist_component_mode, S_IRUGO|S_IWUSR|S_IWGRP,
+static DEVICE_ATTR(persist_component_mode, 0664,
 	persist_component_mode_show, persist_component_mode_store);
-static DEVICE_ATTR(persist_component_resize_up, S_IRUGO|S_IWUSR|S_IWGRP,
+static DEVICE_ATTR(persist_component_resize_up, 0664,
 	persist_component_resize_up_show, persist_component_resize_up_store);
-static DEVICE_ATTR(persist_component_resize_dn, S_IRUGO|S_IWUSR|S_IWGRP,
+static DEVICE_ATTR(persist_component_resize_dn, 0664,
 	persist_component_resize_dn_show, persist_component_resize_dn_store);
-static DEVICE_ATTR(persist_component_resize_lt, S_IRUGO|S_IWUSR|S_IWGRP,
+static DEVICE_ATTR(persist_component_resize_lt, 0664,
 	persist_component_resize_lt_show, persist_component_resize_lt_store);
-static DEVICE_ATTR(persist_component_resize_rt, S_IRUGO|S_IWUSR|S_IWGRP,
+static DEVICE_ATTR(persist_component_resize_rt, 0664,
 	persist_component_resize_rt_show, persist_component_resize_rt_store);
-static DEVICE_ATTR(persist_component_detected, S_IRUGO|S_IWUSR|S_IWGRP,
+static DEVICE_ATTR(persist_component_detected, 0664,
 	persist_component_detected_show, persist_component_detected_store);
 
 
@@ -1857,10 +1861,10 @@ static ssize_t persist_supported_resolution_store(struct device *dev,
 	return count;
 }
 
-static DEVICE_ATTR(persist_supported_resolution_count, S_IRUGO|S_IWUSR|S_IWGRP,
+static DEVICE_ATTR(persist_supported_resolution_count, 0664,
 	persist_supported_resolution_count_show,
 	persist_supported_resolution_count_store);
-static DEVICE_ATTR(persist_supported_resolution, S_IRUGO|S_IWUSR|S_IWGRP,
+static DEVICE_ATTR(persist_supported_resolution, 0664,
 	persist_supported_resolution_show, persist_supported_resolution_store);
 
 static ssize_t hdmi_native_first_show(struct device *dev,
@@ -1883,7 +1887,7 @@ static ssize_t hdmi_native_first_store(struct device *dev,
 		data);
 	return count;
 }
-static DEVICE_ATTR(persist_hdmi_native_first, S_IRUGO|S_IWUSR|S_IWGRP,
+static DEVICE_ATTR(persist_hdmi_native_first, 0664,
 	hdmi_native_first_show, hdmi_native_first_store);
 
 
@@ -1907,7 +1911,7 @@ static ssize_t hdmi_hw_cts_store(struct device *dev,
 	atomic_set(&tcc_dispman_attribute_data[MGEM_PERSIST_HDMI_HW_CTS], data);
 	return count;
 }
-static DEVICE_ATTR(persist_hdmi_hw_cts, S_IRUGO|S_IWUSR|S_IWGRP,
+static DEVICE_ATTR(persist_hdmi_hw_cts, 0664,
 	hdmi_hw_cts_show, hdmi_hw_cts_store);
 
 
@@ -1931,7 +1935,7 @@ static ssize_t tcc_dispman_lock_file_store(struct device *dev,
 	atomic_set(&tcc_dispman_lock_file, data);
 	return count;
 }
-static DEVICE_ATTR(tcc_dispman_lock_file, S_IRUGO|S_IWUSR|S_IWGRP,
+static DEVICE_ATTR(tcc_dispman_lock_file, 0664,
 	tcc_dispman_lock_file_show, tcc_dispman_lock_file_store);
 
 static ssize_t tcc_sys_output_second_attach_show(struct device *dev,
@@ -1956,7 +1960,7 @@ static ssize_t tcc_sys_output_second_attach_store(struct device *dev,
 	return count;
 }
 
-static DEVICE_ATTR(tcc_sys_output_second_attach, (S_IRUGO|S_IWUSR|S_IWGRP),
+static DEVICE_ATTR(tcc_sys_output_second_attach, (0664),
 	tcc_sys_output_second_attach_show, tcc_sys_output_second_attach_store);
 
 
@@ -2119,7 +2123,7 @@ int tcc_dispman_open(struct inode *inode, struct file *filp)
 EXPORT_SYMBOL(tcc_dispman_open);
 
 
-static struct file_operations tcc_dispman_fops = {
+static const struct file_operations tcc_dispman_fops = {
 	.owner		= THIS_MODULE,
 	.unlocked_ioctl	= tcc_dispman_ioctl,
 	.mmap		= tcc_dispman_mmap,
