@@ -820,7 +820,7 @@ int __init tcc_pmap_init(void)
 		}
 	}
 
-	(void)pr_info("[INFO][PMAP] total reserved %llu bytes (%llu KiB, %llu MiB)\n",
+	(void)pr_info("[INFO][PMAP] total reserved %llu bytes (%lluK, %lluM)\n",
 		      pmap_total_size, pmap_total_size >> 10U,
 		      pmap_total_size >> 20U);
 
