@@ -223,7 +223,8 @@ static int wmixer_drv_ctrl(struct wmixer_drv_type *wmixer)
 			VIOC_CONFIG_DMAPath_Set(
 				wmixer->rdma0.id, (VIOC_MC0 + gMC_NUM));
 		} else {
-            #if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X)
+			#if defined(CONFIG_ARCH_TCC803X) \
+				|| defined(CONFIG_ARCH_TCC805X)
 			VIOC_CONFIG_MCPath(
 				wmixer->wmix.id, (VIOC_MC0 + gMC_NUM));
 			#endif
@@ -239,7 +240,7 @@ static int wmixer_drv_ctrl(struct wmixer_drv_type *wmixer)
 			0, &wmix_info->mapConv_info);
 		tca_map_convter_onoff(VIOC_MC0 + gMC_NUM, 1, 0);
 	} else
-	#endif//
+	#endif
 	#if defined(CONFIG_VIOC_DTRC_DECOMP)
 	if (wmix_info->src_fmt_ext_info == 0x20) {
 		gDTRC_NUM = 1;
@@ -507,12 +508,15 @@ static int wmixer_drv_alpha_scaling_ctrl(struct wmixer_drv_type *wmixer)
 
 			VIOC_CONFIG_DMAPath_Set(
 				wmixer->rdma0.id, (VIOC_MC0 + gMC_NUM));
+
 		} else {
-            #if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X)
+			#if defined(CONFIG_ARCH_TCC803X) \
+				|| defined(CONFIG_ARCH_TCC805X)
 			VIOC_CONFIG_MCPath(
 				wmixer->wmix.id, (VIOC_MC0 + gMC_NUM));
 			#endif
 		}
+
 		tca_map_convter_driver_set(
 			VIOC_MC0 + gMC_NUM, aps_info->src_img_width,
 			aps_info->src_img_height,
@@ -723,12 +727,14 @@ static int wmixer_drv_alpha_mixing_ctrl(struct wmixer_drv_type *wmixer)
 	VIOC_RDMA_SetImageAlphaEnable(pWMIX_rdma_base, 1);
 	VIOC_RDMA_SetImageAlphaSelect(pWMIX_rdma_base, 1);
 	VIOC_RDMA_SetImageFormat(pWMIX_rdma_base, apb_info->src0_fmt);
-    if (apb_info->src0_fmt > VIOC_IMG_FMT_COMP) {
-        VIOC_RDMA_SetImageY2REnable(pWMIX_rdma_base, 1);
-        VIOC_RDMA_SetImageR2YEnable(pWMIX_rdma_base, 0);
-    } else {
-        VIOC_RDMA_SetImageY2REnable(pWMIX_rdma_base, 0);
-    }
+
+	if (apb_info->src0_fmt > VIOC_IMG_FMT_COMP) {
+		VIOC_RDMA_SetImageY2REnable(pWMIX_rdma_base, 1);
+		VIOC_RDMA_SetImageR2YEnable(pWMIX_rdma_base, 0);
+	} else {
+		VIOC_RDMA_SetImageY2REnable(pWMIX_rdma_base, 0);
+	}
+
 	VIOC_RDMA_SetImageSize(pWMIX_rdma_base,
 		apb_info->src0_width, apb_info->src0_height);
 	VIOC_RDMA_SetImageOffset(pWMIX_rdma_base,
@@ -740,12 +746,14 @@ static int wmixer_drv_alpha_mixing_ctrl(struct wmixer_drv_type *wmixer)
 	VIOC_RDMA_SetImageAlphaEnable(pWMIX_rdma1_base, 1);
 	VIOC_RDMA_SetImageAlphaSelect(pWMIX_rdma1_base, 1);
 	VIOC_RDMA_SetImageFormat(pWMIX_rdma1_base, apb_info->src1_fmt);
-    if ((apb_info->src1_fmt > VIOC_IMG_FMT_COMP)) {
-        VIOC_RDMA_SetImageY2REnable(pWMIX_rdma1_base, 1);
-        VIOC_RDMA_SetImageR2YEnable(pWMIX_rdma1_base, 0);
-    } else {
-        VIOC_RDMA_SetImageY2REnable(pWMIX_rdma1_base, 0);
-    }
+
+	if (apb_info->src1_fmt > VIOC_IMG_FMT_COMP) {
+		VIOC_RDMA_SetImageY2REnable(pWMIX_rdma1_base, 1);
+		VIOC_RDMA_SetImageR2YEnable(pWMIX_rdma1_base, 0);
+	} else {
+		VIOC_RDMA_SetImageY2REnable(pWMIX_rdma1_base, 0);
+	}
+
 	VIOC_RDMA_SetImageSize(pWMIX_rdma1_base,
 		apb_info->src1_width, apb_info->src1_height);
 	VIOC_RDMA_SetImageOffset(pWMIX_rdma1_base,
@@ -776,7 +784,8 @@ static int wmixer_drv_alpha_mixing_ctrl(struct wmixer_drv_type *wmixer)
 
 	VIOC_WMIX_SetSize(pWMIX_wmix_base,
 		apb_info->dst_width, apb_info->dst_height);
-    VIOC_WMIX_SetOverlayPriority(pWMIX_wmix_base, 24);
+	VIOC_WMIX_SetOverlayPriority(pWMIX_wmix_base, 24);
+
 	// set to layer0 of WMIX.
 	VIOC_WMIX_ALPHA_SetColorControl(
 		pWMIX_wmix_base, apb_info->src0_layer,
@@ -816,6 +825,7 @@ static int wmixer_drv_alpha_mixing_ctrl(struct wmixer_drv_type *wmixer)
 	// pWMIX_wmix_base, apb_info->src1_layer,
 	// apb_info->src1_alpha0,
 	// apb_info->src1_alpha1);
+
 	// update WMIX.
 	VIOC_WMIX_SetUpdate(pWMIX_wmix_base);
 
@@ -828,12 +838,14 @@ static int wmixer_drv_alpha_mixing_ctrl(struct wmixer_drv_type *wmixer)
 	VIOC_WDMA_SetImageBase(pWMIX_wdma_base,
 		apb_info->dst_Yaddr, apb_info->dst_Uaddr,
 		apb_info->dst_Vaddr);
-    if (apb_info->dst_fmt > VIOC_IMG_FMT_COMP) {
+
+	if (apb_info->dst_fmt > VIOC_IMG_FMT_COMP) {
 		VIOC_WDMA_SetImageR2YEnable(pWMIX_wdma_base, 1);
 		VIOC_WDMA_SetImageY2REnable(pWMIX_wdma_base, 0);
 	} else {
 		VIOC_WDMA_SetImageR2YEnable(pWMIX_wdma_base, 0);
 	}
+
 	VIOC_WDMA_SetImageEnable(pWMIX_wdma_base, 0 /* OFF */);
 	vioc_intr_clear(wmixer->vioc_intr->id,
 		wmixer->vioc_intr->bits);
@@ -1208,7 +1220,9 @@ static int wmixer_drv_release(struct inode *inode, struct file *filp)
 			}
 			#endif
 		} else {
-            #if defined(CONFIG_VIOC_MAP_DECOMP) && (defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X))
+			#if defined(CONFIG_VIOC_MAP_DECOMP) \
+				&& (defined(CONFIG_ARCH_TCC803X) \
+				|| defined(CONFIG_ARCH_TCC805X))
 			VIOC_CONFIG_MCPath(wmixer->wmix.id, wmixer->rdma0.id);
 			#endif
 		}
@@ -1342,7 +1356,7 @@ static int wmixer_drv_open(struct inode *inode, struct file *filp)
 	return ret;
 }
 
-static struct file_operations wmixer_drv_fops = {
+static const struct file_operations wmixer_drv_fops = {
 	.owner          = THIS_MODULE,
 	.unlocked_ioctl = wmixer_drv_ioctl,
 #ifdef CONFIG_COMPAT
@@ -1542,7 +1556,7 @@ static int wmixer_drv_resume(struct platform_device *pdev)
 	return 0;
 }
 
-static struct of_device_id wmixer_of_match[] = {
+static const struct of_device_id wmixer_of_match[] = {
 	{ .compatible = "telechips,wmixer_drv" },
 	{}
 };
