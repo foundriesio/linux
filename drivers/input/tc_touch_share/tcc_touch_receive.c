@@ -86,13 +86,14 @@ static void receive_message(struct mbox_client *client, void *message)
 			}
 		break;
 		case (uint32_t)TOUCH_INIT:
-			touch_send_ack(dev, (uint32_t)TOUCH_INIT, dev->touch_state);
+			touch_send_ack(dev, (uint32_t)TOUCH_INIT,
+					dev->touch_state);
 		break;
 		case (uint32_t)TOUCH_ACK:
 			touch_wake_up(&dev->touch_mbox_wait);
 		break;
 		default:
-			pr_debug("[DEBUG][TR]This Command does not use %u \n", cmd);
+			pr_debug("[DEBUG][TR]not use : %u\n", cmd);
 		break;
 		}
 	}
@@ -105,7 +106,7 @@ static int32_t tcc_touch_receive_probe(struct platform_device *pdev)
 		int32_t ret = 0;
 		int32_t xMax;
 		int32_t yMax;
-		struct mbox_chan *mbox_channel = NULL;
+		struct mbox_chan *m_chan = NULL;
 
 		tr_dev = devm_kzalloc(&pdev->dev,
 				sizeof(struct touch_mbox), GFP_KERNEL);
@@ -129,10 +130,10 @@ static int32_t tcc_touch_receive_probe(struct platform_device *pdev)
 #endif
 		tr_dev->touch_mbox_client.knows_txdone = (bool)false;
 		tr_dev->touch_mbox_client.tx_tout = 11;
-		mbox_channel = mbox_request_channel_byname(&tr_dev->touch_mbox_client,
+		m_chan = mbox_request_channel_byname(&tr_dev->touch_mbox_client,
 					tr_dev->touch_mbox_name);
-		if (mbox_channel != NULL) {
-			tr_dev->touch_mbox_channel = mbox_channel;
+		if (m_chan != NULL) {
+			tr_dev->touch_mbox_channel = m_chan;
 		}
 
 		init_waitqueue_head(&tr_dev->touch_mbox_wait._cmdQueue);

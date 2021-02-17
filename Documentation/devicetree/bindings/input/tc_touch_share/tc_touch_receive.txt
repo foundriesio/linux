@@ -1,0 +1,30 @@
+Telechips Touch Sharing Single Touch Device
+
+Required properties:
+- compatible:
+    telechips,tcc_touch_receive
+
+- mbox-names:
+	tr-mbox
+
+- mboxes:
+	<&cb_mbox TCC_CB_MBOX_TCHSHARE>
+
+- mbox-id:
+	TCC_MBOX_TCHSHARE_ID
+
+Optional properties for sub-core single touch device:
+- xmax: Sub-core Single Touch Device X coordinate Max range
+	<1920>
+- ymax: Sub-core Single Touch Device Y coordinate Max range
+	<720>
+
+Example:
+	touch_share {
+	    compatible = "telechips,tcc_touch_receive";
+		mbox-names ="tr-mbox";
+		mboxes = <&cb_mbox TCC_CB_MBOX_TCHSHARE>;
+		mbox-id = TCC_MBOX_TCHSHARE_ID;
+		xmax = <1920>;
+		ymax = <720>;
+};
