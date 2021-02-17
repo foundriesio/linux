@@ -1,8 +1,9 @@
-This is for 'telechips,lvds-fld0800'.
+This is for 'telechips,lvds-fld0800' and 'telechips,fb-lvds-fld0800'.
 
 Required properties for display:
 	-compatible:
 		"telechips,lvds-fld0800"
+		"telechips,fb-lvds-fld0800"
 
 -------------------------------------------------------------------------------
 

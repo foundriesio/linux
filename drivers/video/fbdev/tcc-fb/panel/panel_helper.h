@@ -31,9 +31,7 @@ struct fb_panel_funcs {
 
 struct fb_panel {
 	struct device *dev;
-
 	const struct fb_panel_funcs *funcs;
-
 	struct list_head list;
 };
 
@@ -47,5 +45,6 @@ int fb_panel_enable(struct fb_panel *panel);
 int fb_panel_disable(struct fb_panel *panel);
 int fb_panel_unprepare(struct fb_panel *panel);
 int fb_panel_get_mode(struct fb_panel *panel, struct videomode *vm);
-#endif
+
+#endif /*__FB_HELPER_H__*/
 

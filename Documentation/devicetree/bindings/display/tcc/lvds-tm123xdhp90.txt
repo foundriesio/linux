@@ -1,8 +1,9 @@
-This is for 'telechips,lvds-tm123xdhp90'.
+This is for 'telechips,lvds-tm123xdhp90' and 'telechips,fb-lvds-tm123xdhp90'.
 
 Required properties for display:
 	-compatible:
 		"telechips,lvds-tm123xdhp90"
+		"telechips,fb-lvds-tm123xdhp90"
 
 -------------------------------------------------------------------------------
 

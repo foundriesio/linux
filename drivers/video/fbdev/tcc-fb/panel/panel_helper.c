@@ -84,8 +84,11 @@ EXPORT_SYMBOL(of_fb_find_panel);
 int fb_panel_prepare(struct fb_panel *panel)
 {
 	int ret = -ENODEV;
-	if(panel && panel->funcs && panel->funcs->prepare)
+
+	if (panel && panel->funcs && panel->funcs->prepare) {
 		ret = panel->funcs->prepare(panel);
+		/* prevetn KCS warning */
+	}
 	return ret;
 }
 EXPORT_SYMBOL(fb_panel_prepare);
@@ -93,8 +96,11 @@ EXPORT_SYMBOL(fb_panel_prepare);
 int fb_panel_enable(struct fb_panel *panel)
 {
 	int ret = -ENODEV;
-	if(panel && panel->funcs && panel->funcs->enable)
+
+	if (panel && panel->funcs && panel->funcs->enable) {
 		ret = panel->funcs->enable(panel);
+		/* prevetn KCS warning */
+	}
 	return ret;
 }
 EXPORT_SYMBOL(fb_panel_enable);
@@ -102,8 +108,11 @@ EXPORT_SYMBOL(fb_panel_enable);
 int fb_panel_disable(struct fb_panel *panel)
 {
 	int ret = -ENODEV;
-	if(panel && panel->funcs && panel->funcs->disable)
+
+	if (panel && panel->funcs && panel->funcs->disable) {
 		ret = panel->funcs->disable(panel);
+		/* prevetn KCS warning */
+	}
 	return ret;
 }
 EXPORT_SYMBOL(fb_panel_disable);
@@ -111,8 +120,11 @@ EXPORT_SYMBOL(fb_panel_disable);
 int fb_panel_unprepare(struct fb_panel *panel)
 {
 	int ret = -ENODEV;
-	if(panel && panel->funcs && panel->funcs->unprepare)
+
+	if (panel && panel->funcs && panel->funcs->unprepare) {
 		ret = panel->funcs->unprepare(panel);
+		/* prevetn KCS warning */
+	}
 	return ret;
 }
 EXPORT_SYMBOL(fb_panel_unprepare);
@@ -120,8 +132,11 @@ EXPORT_SYMBOL(fb_panel_unprepare);
 int fb_panel_get_mode(struct fb_panel *panel, struct videomode *vm)
 {
 	int ret = -ENODEV;
-	if(panel && panel->funcs && panel->funcs->get_videomode)
+
+	if (panel && panel->funcs && panel->funcs->get_videomode) {
 		ret = panel->funcs->get_videomode(panel, vm);
+		/* prevetn KCS warning */
+	}
 	return ret;
 }
 EXPORT_SYMBOL(fb_panel_get_mode);
