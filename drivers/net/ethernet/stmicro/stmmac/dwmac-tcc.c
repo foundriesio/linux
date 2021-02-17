@@ -12,7 +12,6 @@
 #include <linux/of_address.h>
 #define MAX_INTF_LEN	6
 
-static void __iomem *gmac_base = NULL;
 static void __iomem *hsio_base = NULL;
 
 int dwmac_tcc_init(struct device_node *np, struct gmac_dt_info_t *dt_info)

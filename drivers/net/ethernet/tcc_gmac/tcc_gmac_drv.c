@@ -375,7 +375,7 @@ static int tcc_gmac_sw_tso(struct tcc_gmac_priv *priv, struct sk_buff *skb,
 		       "*next %p\n", curr_skb->len, curr_skb, segs);
 		curr_skb->next = NULL;
 		tcc_gmac_start_xmit_ch(curr_skb, priv->dev, ch);
-	} while ((unsigned int)segs != (unsigned int)0);
+	} while (segs != NULL);
 
 sw_tso_end:
 	dev_kfree_skb(skb);
@@ -437,11 +437,10 @@ static void init_tx_dma_desc_rings(struct net_device *dev, unsigned int ch)
 		pr_err("%s:ERROR allocating the DMA Tx/Rx desc\n", __func__);
 		return;
 	}
-	if (dma->tx_skbuff == NULL){
+	if (dma->tx_skbuff == NULL) {
 		pr_err("%s.[ERROR] GMAC allocating the Tx skbuff\n", __func__);
 		return;
-	}
-	else {
+	} else {
 		/* TX INITIALIZATION */
 		for (i = 0; i < (int)txsize; i++) {
 			dma->tx_skbuff[i] = NULL;
@@ -792,8 +791,8 @@ static void dma_free_rx_skbufs(struct tcc_gmac_priv *priv, unsigned int ch)
 	for (i = 0;
 	     (unsigned int)i < (unsigned int)(priv->rx_dma_ch[ch].dma_rx_size);
 	     i++) {
-		if ((unsigned int)(priv->rx_dma_ch[ch].rx_skbuff[i]) !=
-		    (unsigned int)0) {
+		if ((priv->rx_dma_ch[ch].rx_skbuff[i]) !=
+		    NULL) {
 			dma_unmap_single(priv->device,
 					 priv->rx_dma_ch[ch].rx_skbuff_dma[i],
 					 priv->dma_buf_sz, DMA_FROM_DEVICE);
@@ -1143,8 +1142,7 @@ static int tcc_gmac_rx(struct tcc_gmac_priv *priv, int limit, unsigned int ch)
 #endif
 			skb = dma->rx_skbuff[entry];
 			if ((unsigned int)
-			    unlikely((unsigned int)skb == (unsigned int)0) !=
-			    (unsigned int)0) {
+			    unlikely(skb == NULL) != (unsigned int)0) {
 				pr_err("%s: Inconsistent Rx descriptor chain\n",
 				       priv->dev->name);
 				priv->dev->stats.rx_dropped++;
@@ -1487,7 +1485,7 @@ static int tcc_gmac_phy_probe(struct net_device *dev)
 	for (phy_addr = 0; (unsigned int)phy_addr < (unsigned int)PHY_MAX_ADDR;
 	     phy_addr++) {
 		// for kernel-v4.14
-		if ((unsigned int)bus->mdio_map[phy_addr] != (unsigned int)0) {
+		if (bus->mdio_map[phy_addr] != NULL) {
 #ifdef CONFIG_TCC_RTL9000_PHY
 			if (phy_addr == (unsigned int)1)
 #endif
@@ -1512,7 +1510,7 @@ static int tcc_gmac_phy_probe(struct net_device *dev)
 	}
 
 	//if (!phy) {
-	if ((unsigned int)phy == (unsigned int)0) {
+	if (phy == NULL) {
 		pr_err("[ERROR][GMAC] No Phy found\n");
 		return -1;
 	}
@@ -1658,7 +1656,7 @@ static irqreturn_t tcc_gmac_irq_handler(int irq, void *dev_id)
 		gmac_suspended = 0;
 	}
 #endif
-	if (unlikely(dev == NULL)){
+	if (unlikely(dev == NULL)) {
 		pr_err("%s: invalid dev pointer\n", __func__);
 		return IRQ_NONE;
 	}
@@ -1901,15 +1899,15 @@ static int tcc_gmac_open(struct net_device *dev)
 		priv->is_mdio_registered = 1;
 		pr_info("[INFO][GMAC] registered!\n");
 	}
-	if (tcc_gmac_phy_probe(dev) < 0){
+	if (tcc_gmac_phy_probe(dev) < 0) {
 		pr_err("[ERROR][GMAC] No Phy found\n");
 		tca_gmac_phy_pwr_off(&priv->dt_info);
 		tca_gmac_clk_disable(&priv->dt_info);
 		return -1;
 	}
 	pr_info
-	    ("[INFO][GMAC] --] tcc_gmac_phy_probe done:dev->name %s dev_addr %x\n",
-	     dev->name, (unsigned int)dev->dev_addr);
+	    ("[INFO][GMAC] --] tcc_gmac_phy_probe done:dev->name %s \n",
+	     dev->name);
 
 	ret =
 	    request_irq((unsigned int)dev->irq, tcc_gmac_irq_handler,
@@ -2023,13 +2021,12 @@ static int tcc_gmac_open(struct net_device *dev)
 		}
 	}
 	/* Phy Start */
-	if ((unsigned int)priv->phydev != (unsigned int)0) {
+	if (priv->phydev != NULL) {
 		pr_info("[INFO][GMAC] --] phy_start: :\n");
 		netif_carrier_off(dev);
 		phy_start(priv->phydev);
 	}
-	pr_info("[INFO][GMAC] --] tcc_gmac_open done: :ioaddr %x\n",
-		(unsigned int)ioaddr);
+	pr_info("[INFO][GMAC] --] tcc_gmac_open done: \n");
 
 #ifdef CONFIG_TCC_GMAC_PTP
 	priv->ptp_clk = tcc_gmac_ptp_probe(dev);
@@ -2080,7 +2077,7 @@ static int tcc_gmac_stop(struct net_device *dev)
 
 #if 1
 	if ((unsigned int)priv->shutdown == (unsigned int)0) {
-		if ((unsigned int)priv->phydev != (unsigned int)0) {
+		if (priv->phydev != NULL) {
 			phy_stop(priv->phydev);
 			phy_disconnect(priv->phydev);
 			priv->phydev = NULL;
@@ -2512,7 +2509,7 @@ static int tcc_gmac_ioctl(struct net_device *dev, struct ifreq *rq, int cmd)
 	case SIOCGMIIPHY:
 	case SIOCGMIIREG:
 	case SIOCSMIIREG:
-		if ((unsigned int)priv->phydev == (unsigned int)0)
+		if (priv->phydev == NULL)
 			return -EINVAL;
 
 		spin_lock(&priv->lock);
@@ -2887,18 +2884,18 @@ static int tcc_gmac_probe(struct platform_device *pdev)
 	dev->base_addr = (unsigned long)devm_ioremap_resource(&pdev->dev, res);
 
 	// If version match is failed, do not proceed probe seqeuence further.
-	if ((unsigned)(readl(dev->base_addr + 0x20)&0xFF) != 0x37){
-		printk("%s.[WARN] Exit gmac probe due to version mismatch\n",
+	if ((unsigned)(readl(dev->base_addr + 0x20)&0xFF) != 0x37) {
+		pr_info("%s.[WARN] Exit gmac probe due to version mismatch\n",
 				__func__);
-		printk("%s.[WARN] device driver : 3.7a version.\n", __func__);
-		printk("%s.[WARN] version read: %08x\n", __func__, 
+		pr_info("%s.[WARN] device driver : 3.7a version.\n", __func__);
+		pr_info("%s.[WARN] version read: %08x\n", __func__,
 				readl(dev->base_addr + 0x20)&0xFF);
 		return -ENODEV;
 	}
 
 	priv->misc = kzalloc(sizeof(struct miscdevice), GFP_KERNEL);
 
-	if ((unsigned int)priv->misc == (unsigned int)0)
+	if (priv->misc == NULL)
 		pr_info("[%s] Fail alloc misc device.\n", __func__);
 
 	priv->misc->minor = MISC_DYNAMIC_MINOR;
