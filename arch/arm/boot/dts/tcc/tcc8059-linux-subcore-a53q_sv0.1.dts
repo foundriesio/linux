@@ -2571,6 +2571,7 @@
 	uart28_data: uart28_data {
 		telechips,pins = "gph-4", "gph-5";
 		telechips,pin-function = <7>;
+		telechips,input_buffer_enable;
 	};
 
 	switch_ma15: switch_ma15 {

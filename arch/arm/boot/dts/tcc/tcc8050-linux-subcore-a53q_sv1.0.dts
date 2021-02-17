@@ -2656,6 +2656,7 @@
 	uart9_data: uart9_data {
 		telechips,pins = "gpa-24", "gpa-25";
 		telechips,pin-function = <7>;
+		telechips,input_buffer_enable;
 	};
 
 	switch_c13: switch_c13 {
