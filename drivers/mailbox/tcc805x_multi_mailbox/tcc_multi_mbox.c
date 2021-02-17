@@ -119,7 +119,8 @@
 
 #define MBOX_ID0_LEN	(4U)
 #define MBOX_ID1_LEN	(2U)
-#define MBOX_ID_MAX_LEN (6U)	 /* for Codesonar&qac : MBOX_ID0_LEN+MBOX_ID1_LEN */
+/* for Codesonar&qac : MBOX_ID0_LEN+MBOX_ID1_LEN */
+#define MBOX_ID_MAX_LEN (6U)
 
 #define SSS_MBOX_STATUS_ADDR (0x1E020000)
 #define SSS_MBOX_DATA_ADDR (0x1E022000)
@@ -167,22 +168,22 @@ typedef long long_t;
 	(void)dev_info(dev, "[DEBUG][%s]%s: " pr_fmt(msg), \
 	(const char_t *)LOG_TAG, __func__, ##__VA_ARGS__); } }
 
-struct channel_id0{
+struct channel_id0 {
 	s8 bsid[1];
 	s8 cid[1];
 	char_t idName[MBOX_ID1_LEN];
 };
 
-struct channel_id1{
+struct channel_id1 {
 	char_t idName[MBOX_ID0_LEN];
 };
 
-union mbox_header0{
+union mbox_header0 {
 	struct channel_id0 id;
 	uint32_t cmd;
 };
 
-union mbox_header1{
+union mbox_header1 {
 	struct channel_id1 id;
 	uint32_t cmd;
 };
@@ -493,7 +494,8 @@ static int32_t mbox_receive_queue_init(
 				name);
 
 		if (IS_ERR(mbox_queue->kworker_task)) {
-			(void)pr_err("[ERROR][%s]%s:failed to create message pump task\n",
+			(void)pr_err(
+				"[ERROR][%s]%s:failed to create message pump task\n",
 				LOG_TAG, __func__);
 			ret = -ENOMEM;
 		} else {
@@ -598,7 +600,8 @@ static int32_t mbox_transmit_queue_init(struct mbox_transmitQueue *mbox_queue,
 				name);
 
 		if (IS_ERR(mbox_queue->kworker_task)) {
-			(void)pr_err("[ERROR][%s]%s:failed to create rx message pump task\n",
+			(void)pr_err(
+				"[ERROR][%s]%s:failed to create rx message pump task\n",
 				LOG_TAG, __func__);
 			ret = -ENOMEM;
 		} else {
@@ -675,7 +678,8 @@ static int32_t tcc_mbox_wait_event_timeout(struct tcc_mbox_device *mdev,
 			mdev->waitQueue._condition == 0,
 			msecs_to_jiffies(timeOut));
 
-		if ((mdev->waitQueue._condition == 1) || (wait_ret <= (long_t)0)) {
+		if ((mdev->waitQueue._condition == 1)
+			|| (wait_ret <= (long_t)0)) {
 			/* timeout */
 			ret = -ETIME;
 		} else {
@@ -858,7 +862,8 @@ static void tcc_multich_mbox_send_worker(struct mbox_chan *chan,
 			if (ret != 0) {
 				chan_info->tx_fail_count++;
 			}
-			d2printk((mdev), mdev->mbox.dev, "tx result : %d\n", ret);
+			d2printk((mdev), mdev->mbox.dev,
+				"tx result : %d\n", ret);
 
 			tcc_txdone(chan, ret);
 
@@ -950,9 +955,10 @@ static int32_t tcc_multich_mbox_startup(struct mbox_chan *chan)
 				ret = -EINVAL;
 			} else if (cl->tx_tout <= (ulong)MBOX_TX_TIMEOUT) {
 				eprintk(mdev->mbox.dev,
-					"The client timeout time is greater than the mbox timeout.\n");
+				"The client timeout is greater than the mbox timeout.\n");
 				eprintk(mdev->mbox.dev,
-					"Please set it to less than  mbox time(%dms).\n",MBOX_TX_TIMEOUT);
+				"Please set it to less than mbox time(%dms).\n",
+				MBOX_TX_TIMEOUT);
 				ret = -EINVAL;
 			} else {
 				(void)memset(mbox_id, 0x00, MBOX_ID_MAX_LEN);
@@ -981,7 +987,9 @@ static int32_t tcc_multich_mbox_startup(struct mbox_chan *chan)
 					struct tcc_channel *chan_info_temp =
 						mbox->chans[i].con_priv;
 
-					if (strncmp((const char_t *)chan_info_temp->mbox_id,
+					if (strncmp(
+						(const char_t *)
+						chan_info_temp->mbox_id,
 						(const char_t *)mbox_id,
 						(size_t)MBOX_ID_MAX_LEN) == 0) {
 
@@ -1054,7 +1062,8 @@ static void tcc_multich_mbox_shutdown(struct mbox_chan *chan)
 
 			list_del(&chan_info->proc_list);
 
-			(void)deregister_receive_queue(&chan_info->receiveQueue);
+			(void)deregister_receive_queue(
+				&chan_info->receiveQueue);
 
 			mutex_unlock(&mdev->lock);
 			d1printk((mdev), mdev->mbox.dev, "out\n");
@@ -1097,7 +1106,8 @@ static void tcc_txdone(struct mbox_chan *chan, int32_t error)
 {
 	if (chan != NULL) {
 		mbox_chan_txdone(chan, error);
-		if ((chan->cl->tx_block == (bool)true) && (error == -ETIME)) {
+		if ((chan->cl->tx_block == (bool)true)
+			&& (error == -ETIME)) {
 			complete(&chan->tx_complete);
 		}
 	}
@@ -1141,9 +1151,9 @@ static int32_t tcc_mbox_find_header(struct mbox_chan *chan,
 			(chan_info->ch_enable == TCC_MBOX_CH_ENALBE)) {
 			if (chan_info->header1.cmd == mbox_list->header1.cmd) {
 				if ((chan_info->header0.id.idName[0] ==
-						mbox_list->header0.id.idName[0]) &&
+					mbox_list->header0.id.idName[0]) &&
 					(chan_info->header0.id.idName[1] ==
-						mbox_list->header0.id.idName[1])) {
+					mbox_list->header0.id.idName[1])) {
 					ret = 1;
 				}
 			}
@@ -1489,7 +1499,8 @@ static int32_t tcc_multich_mbox_probe(struct platform_device *pdev)
 				(const struct cpumask *)&affinity_set);
 
 			if (!cpumask_empty(&affinity_mask))	{
-				(void)irq_set_affinity_hint((uint32_t)mdev->rx_irq,
+				(void)irq_set_affinity_hint(
+					(uint32_t)mdev->rx_irq,
 					(const struct cpumask *)&affinity_mask);
 			}
 #endif
@@ -1521,7 +1532,8 @@ static int32_t tcc_multich_mbox_probe(struct platform_device *pdev)
 				(const struct cpumask *)&affinity_set);
 
 			if (!cpumask_empty(&affinity_mask))	{
-				(void)irq_set_affinity_hint((uint32_t)mdev->txd_irq,
+				(void)irq_set_affinity_hint(
+					(uint32_t)mdev->txd_irq,
 					(const struct cpumask *)&affinity_mask);
 			}
 #endif

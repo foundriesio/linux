@@ -55,7 +55,8 @@ int32_t snor_updater_wait_event_timeout(
 			updater_dev->waitQueue._condition == 0,
 			msecs_to_jiffies(timeOut));
 
-		if ((updater_dev->waitQueue._condition == 1) || (wait_ret <= (long_t)0)) {
+		if ((updater_dev->waitQueue._condition == 1)
+			|| (wait_ret <= (long_t)0)) {
 			/* timeout */
 			ret = SNOR_UPDATER_ERR_TIMEOUT;
 		} else	{

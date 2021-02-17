@@ -282,6 +282,7 @@ static int32_t aux_detect_create_cdev(struct platform_device *pdev)
 				ret = -1;
 			} else {
 				u32 out_value;
+
 				pinctrl_put(pinctrl);
 
 				aux_data->aux_detect_gpio	= -1;
@@ -303,8 +304,7 @@ static int32_t aux_detect_create_cdev(struct platform_device *pdev)
 						"aux-active",
 						0,
 						&out_value);
-					if(ret == 0)
-					{
+					if (ret == 0) {
 						aux_data->aux_active =
 							(int32_t)out_value;
 					}
@@ -413,7 +413,8 @@ static int32_t aux_detect_remove(struct platform_device *pdev)
 }
 
 #if defined(CONFIG_PM)
-static int32_t aux_detect_suspend(struct platform_device *pdev, pm_message_t state)
+static int32_t aux_detect_suspend(
+	struct platform_device *pdev, pm_message_t state)
 {
 	(void)pdev;
 	(void)state;

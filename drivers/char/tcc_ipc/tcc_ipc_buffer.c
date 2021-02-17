@@ -205,7 +205,7 @@ IPC_INT32 ipc_push_buffer(struct IPC_RINGBUF  *pBufCtrl,
 			if (pBufCtrl->_MaxBufferSize >
 				pBufCtrl->_Tail) {
 
-				continuousSize = 
+				continuousSize =
 					((IPC_UINT32)pBufCtrl->_MaxBufferSize
 					- (IPC_UINT32)pBufCtrl->_Tail);
 

@@ -1,0 +1,23 @@
+Telechips TCC IPC device
+
+Required properties:
+- compatible:
+    telechips,tcc_ipc
+
+- mbox-names: List of identifier strings for each mailbox channel.
+
+- mboxes: List of phandle and mailbox channel specifiers.
+
+- mbox-id:
+	TCC_MBOX_IPC_ID
+
+
+Example:
+	ipc0: tcc_ipc@0 {
+		 compatible = "telechips,tcc_ipc";
+		 device-name = "tcc_ipc_micom";
+		 mbox-names ="micom-ipc";
+		 mboxes = <&micom_mbox TCC_MICOM_MBOX0_IPC>;
+		 mbox-id = TCC_MBOX_IPC_ID;
+	 };
+

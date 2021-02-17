@@ -102,7 +102,7 @@ typedef	long IPC_LONG;
 #define IPC_ERR_ARGUMENT			(-8)
 #define IPC_ERR_RECEIVER_NOT_SET	(-9)
 #define IPC_ERR_RECEIVER_DOWN		(-10)
-#define IPC_ERR_RECEIVER_BUF_FULL	(-11)
+#define IPC_ERR_NACK_BUF_FULL		(-11)
 
 
 typedef enum {
