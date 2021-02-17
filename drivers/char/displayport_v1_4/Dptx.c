@@ -469,7 +469,8 @@ static int Dpv14_Tx_Suspend( struct platform_device *pdev, pm_message_t state )
 static int Dpv14_Tx_Resume( struct platform_device *pdev )
 {
 	bool	bRetVal;
-	bool					bHotPlugged;	
+	bool	bHotPlugged;
+	int32_t	iError;
 	struct Dptx_Params		*pstDptx;
 	struct Dptx_Video_Params	*pstVideoParams;
 
@@ -482,7 +483,12 @@ static int Dpv14_Tx_Resume( struct platform_device *pdev )
 	pstDptx = platform_get_drvdata( pdev );
 
 	pstVideoParams = &pstDptx->stVideoParams;
-	
+
+	iError = pinctrl_pm_select_default_state(&pdev->dev);
+	if (iError) {
+		dptx_err("from pinctrl_pm_select_default_state()");
+	}
+
 	dptx_info("Resume: Hot %s, HPD IRQ %d, SSC = %s, PClk %d %d %d %d \n", 
 				( pstDptx->eLast_HPDStatus == HPD_STATUS_PLUGGED ) ? "Plugged":"Unplugged", 
 				pstDptx->uiHPD_IRQ,
