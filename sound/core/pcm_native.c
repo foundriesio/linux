@@ -879,7 +879,8 @@ int snd_pcm_sw_params_kernel(struct snd_pcm_substream *substream,
 }
 EXPORT_SYMBOL(snd_pcm_sw_params_kernel);
 
-int snd_pcm_sw_params_get(struct snd_pcm_substream *substream, struct snd_pcm_sw_params *params)
+int snd_pcm_sw_params_get(struct snd_pcm_substream *substream,
+				 struct snd_pcm_sw_params *params)
 {
 	struct snd_pcm_runtime *runtime;
 
@@ -2841,17 +2842,14 @@ int snd_pcm_sync_ptr_kernel(struct snd_pcm_substream *substream,
 {
 	struct snd_pcm_runtime *runtime = substream->runtime;
 	struct snd_pcm_sync_ptr sync_ptr;
-	volatile struct snd_pcm_mmap_status *status;
-	volatile struct snd_pcm_mmap_control *control;
+	struct snd_pcm_mmap_status *status;
+	struct snd_pcm_mmap_control *control;
 	int err;
 
 	memset(&sync_ptr, 0, sizeof(sync_ptr));
-//	if (get_user(sync_ptr.flags, (unsigned __user *)&(_sync_ptr->flags)))
-//		return -EFAULT;
 	sync_ptr.flags = _sync_ptr->flags;
-//	if (copy_from_user(&sync_ptr.c.control, &(_sync_ptr->c.control), sizeof(struct snd_pcm_mmap_control)))
-//		return -EFAULT;
-	memcpy(&sync_ptr.c.control, &_sync_ptr->c.control, sizeof(struct snd_pcm_mmap_control));	
+	memcpy(&sync_ptr.c.control, &_sync_ptr->c.control,
+		sizeof(struct snd_pcm_mmap_control));
 	status = runtime->status;
 	control = runtime->control;
 	if (sync_ptr.flags & SNDRV_PCM_SYNC_PTR_HWSYNC) {
@@ -2873,8 +2871,7 @@ int snd_pcm_sync_ptr_kernel(struct snd_pcm_substream *substream,
 	sync_ptr.s.status.tstamp = status->tstamp;
 	sync_ptr.s.status.suspended_state = status->suspended_state;
 	snd_pcm_stream_unlock_irq(substream);
-//	if (copy_to_user(_sync_ptr, &sync_ptr, sizeof(sync_ptr)))
-//		return -EFAULT;
+
 	memcpy(_sync_ptr, &sync_ptr, sizeof(sync_ptr));
 	return 0;
 }
