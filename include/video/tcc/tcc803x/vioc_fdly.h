@@ -66,5 +66,6 @@ struct VIOC_FDLY {
 	union VIOC_FDLY_BG_u uBG; // 0x10 R/W Frame Delay Default Color Reg.
 	unsigned int reserved0[3]; // 5,6,7
 };
-#endif
+
+#endif /*__VIOC_FDLY_H__*/
 

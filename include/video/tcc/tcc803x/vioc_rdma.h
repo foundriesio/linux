@@ -32,36 +32,36 @@
 #define VIOC_RDMA_STAT_IBOTR           0x00000040UL
 #define VIOC_RDMA_STAT_ALL             0x0000007FUL
 
-#define VIOC_RDMA_IREQ_ICFG_MASK               0x00000001UL
-#define VIOC_RDMA_IREQ_IEOFR_MASK              0x00000002UL
+#define VIOC_RDMA_IREQ_ICFG_MASK       0x00000001UL
+#define VIOC_RDMA_IREQ_IEOFR_MASK      0x00000002UL
 #define VIOC_RDMA_IREQ_IEOFF_MASK      0x00000004UL
 #define VIOC_RDMA_IREQ_IUPDD_MASK      0x00000008UL
 #define VIOC_RDMA_IREQ_IEOFFW_MASK     0x00000010UL
 #define VIOC_RDMA_IREQ_ITOPR_MASK      0x00000020UL
 #define VIOC_RDMA_IREQ_IBOTR_MASK      0x00000040UL
-#define VIOC_RDMA_IREQ_ALL_MASK                0x0000007FUL
+#define VIOC_RDMA_IREQ_ALL_MASK        0x0000007FUL
 
 /*
  * register offset
  */
-#define RDMACTRL			0x00
-#define RDMAPTS				0x04
-#define	RDMASIZE			0x08
-#define	RDMABASE0			0x0C
-#define RDMACADDR			0x10
-#define	RDMABASE1			0x14
-#define	RDMABASE2			0x18
-#define RDMAOFFS			0x1C
-#define RDMASCALE			0x20
-#define RDMAALPHA			0x24
-#define RDMASTAT			0x28
-#define	RDMAIRQMSK			0x2C
-#define RDMASBASE0			0x30
-#define RDMA_RBASE0			0x34
-#define RDMA_RBASE1			0x38
-#define RDMA_RBASE2			0x3C
-#define RDMA_CROP_SIZE		0x40
-#define RDMA_CROP_POS		0x44
+#define RDMACTRL         0x00
+#define RDMAPTS          0x04
+#define	RDMASIZE         0x08
+#define	RDMABASE0        0x0C
+#define RDMACADDR        0x10
+#define	RDMABASE1        0x14
+#define	RDMABASE2        0x18
+#define RDMAOFFS         0x1C
+#define RDMASCALE        0x20
+#define RDMAALPHA        0x24
+#define RDMASTAT         0x28
+#define	RDMAIRQMSK       0x2C
+#define RDMASBASE0       0x30
+#define RDMA_RBASE0      0x34
+#define RDMA_RBASE1      0x38
+#define RDMA_RBASE2      0x3C
+#define RDMA_CROP_SIZE   0x40
+#define RDMA_CROP_POS    0x44
 
 /*
  * RDMA Control Register
@@ -448,15 +448,24 @@ extern void VIOC_RDMA_SetIreqMask(
 	void __iomem *reg, unsigned int mask, unsigned int set);
 extern unsigned int VIOC_RDMA_GetStatus(void __iomem *reg);
 
-extern void __iomem* VIOC_RDMA_GetAddress(unsigned int vioc_id);
+extern void __iomem *VIOC_RDMA_GetAddress(unsigned int vioc_id);
 extern int VIOC_RDMA_IsVRDMA(unsigned int vioc_id);
-extern void VIOC_RDMA_SetDataFormat(void __iomem *reg, unsigned int fmt_type, unsigned int fill_mode);
+extern void VIOC_RDMA_SetDataFormat(
+	void __iomem *reg, unsigned int fmt_type, unsigned int fill_mode);
+
 #ifdef CONFIG_ARCH_TCC898X
-extern void VIOC_RDMA_DEC_CTRL(void __iomem *reg, unsigned int base, unsigned int length, unsigned int has_alpha, unsigned int has_comp);
+extern void VIOC_RDMA_DEC_CTRL(
+	void __iomem *reg, unsigned int base, unsigned int length,
+	unsigned int has_alpha, unsigned int has_comp);
 extern void VIOC_RDMA_DEC_EN(void __iomem *reg, unsigned int OnOff);
 #endif
+
 extern void VIOC_RDMA_DUMP(void __iomem *reg, unsigned int vioc_id);
+
 #ifdef CONFIG_VIOC_DOLBY_VISION_CERTIFICATION_TEST_UI // No UI-Blending
-extern void VIOC_RDMA_PreventEnable_for_UI(char no_update, char disabled);
+extern void VIOC_RDMA_PreventEnable_for_UI(
+	char no_update, char disabled);
 #endif
-#endif
+
+#endif /*__VIOC_RDMA_H__*/
+

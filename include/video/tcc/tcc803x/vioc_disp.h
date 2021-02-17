@@ -85,7 +85,7 @@ typedef struct {
 #define DCTRL_EVP_SHIFT    (31) // External Vsync Polarity
 #define DCTRL_EVS_SHIFT    (30) // External Vsync Enable
 #define DCTRL_R2YMD_SHIFT  (28) // RGB to YCbCr Conversion Option
-#define DCTRL_FLDINV_SHIFT (26) // Advanced interlaced mode
+#define DCTRL_FLDINV_SHIFT (27)	// Field Output Polarity Register
 #define DCTRL_ADVI_SHIFT   (26) // Advanced interlaced mode
 #define DCTRL_656_SHIFT    (24) // CCIR 656 Mode
 #define DCTRL_CKG_SHIFT    (23) // Clock Gating Enable for Timing Generator

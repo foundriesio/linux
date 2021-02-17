@@ -252,7 +252,8 @@ extern void VIOC_AFBCDec_SetSplitModeEnable(
 	void __iomem *reg, unsigned int enable);
 extern void VIOC_AFBCDec_SetYUVTransEnable(
 	void __iomem *reg, unsigned int enable);
-extern void VIOC_AFBCDec_SetImgFmt(void __iomem *reg,
+extern void VIOC_AFBCDec_SetImgFmt(
+	void __iomem *reg,
 	unsigned int fmt, unsigned int enable_10bit);
 extern void VIOC_AFBCDec_SetImgSize(
 	void __iomem *reg,
