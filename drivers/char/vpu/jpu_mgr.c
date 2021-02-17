@@ -905,7 +905,8 @@ static int _jmgr_process(vputype type, int cmd, long pHandle, void *args)
 				    retEnc);
 				if (retEnc != RETCODE_CODEC_EXIT) {
 					vetc_dump_reg_all(
-					    jmgr_data.base_addr, "init failure");
+					    jmgr_data.base_addr,
+					    "init failure");
 				}
 			}
 
@@ -1855,7 +1856,8 @@ int jmgr_suspend(struct platform_device *pdev, pm_message_t state)
 		     jmgr_get_close(VPU_ENC), jmgr_get_close(VPU_ENC_EXT),
 		     jmgr_get_close(VPU_ENC_EXT2), jmgr_get_close(VPU_ENC_EXT3),
 		     jmgr_get_close(VPU_ENC_EXT4), jmgr_get_close(VPU_ENC_EXT5),
-		     jmgr_get_close(VPU_ENC_EXT6), jmgr_get_close(VPU_ENC_EXT7));
+		     jmgr_get_close(VPU_ENC_EXT6), jmgr_get_close(VPU_ENC_EXT7)
+		     );
 
 		_jmgr_external_all_close(200);
 
@@ -1871,7 +1873,8 @@ int jmgr_suspend(struct platform_device *pdev, pm_message_t state)
 		     jmgr_get_close(VPU_ENC), jmgr_get_close(VPU_ENC_EXT),
 		     jmgr_get_close(VPU_ENC_EXT2), jmgr_get_close(VPU_ENC_EXT3),
 		     jmgr_get_close(VPU_ENC_EXT4), jmgr_get_close(VPU_ENC_EXT5),
-		     jmgr_get_close(VPU_ENC_EXT6), jmgr_get_close(VPU_ENC_EXT7));
+		     jmgr_get_close(VPU_ENC_EXT6), jmgr_get_close(VPU_ENC_EXT7)
+		     );
 	}
 
 	return 0;
