@@ -237,11 +237,15 @@ list_alloc_fail:
 
 unsigned int wdma_queue_list_exit(struct wdma_queue_list *frame_list)
 {
-	if (frame_list->wbuf_list != NULL )
+	if (frame_list->wbuf_list != NULL) {
 		kfree(frame_list->wbuf_list);
+		/* prevent KCS warning */
+	}
 
-	if (frame_list->data != NULL )
+	if (frame_list->data != NULL) {
 		kfree(frame_list->data);
+		/* prevent KCS warning */
+	}
 
 	return 0;
 }
@@ -894,10 +898,16 @@ long tccxxx_wdma_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 		CHECKING_AREA(wdma_data->frame_list.data->frame_x,
 			wdma_data->frame_list.data->frame_y);
 			checking_loop++) {
-			if (wdma_data->frame_list.wbuf_list[wbuffer.index].vbase_Yaddr[CHECKING_START_POS(wdma_data->frame_list.data->frame_x,
-			wdma_data->frame_list.data->frame_y)
-			+ checking_loop] != CHECKING_NUM)
+
+			if (wdma_data->frame_list.wbuf_list[
+				wbuffer.index].vbase_Yaddr[
+				CHECKING_START_POS(
+				wdma_data->frame_list.data->frame_x,
+				wdma_data->frame_list.data->frame_y)
+				+ checking_loop] != CHECKING_NUM) {
+
 				break;
+			}
 		}
 
 		if (checking_loop >= CHECKING_AREA(
@@ -983,7 +993,8 @@ long tccxxx_wdma_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 			wbuffer.frame_y =
 				wdma_data->frame_list.data->frame_y;
 
-			dprintk("%s index:%d, Y:0x%08x U:0x%08x V:0x%08x, fmt:%d X:%d Y:%d\n",
+			dprintk(
+				"%s index:%d, Y:0x%08x U:0x%08x V:0x%08x, fmt:%d X:%d Y:%d\n",
 				__func__,
 				wbuffer.index,
 				wbuffer.buff_Yaddr,
