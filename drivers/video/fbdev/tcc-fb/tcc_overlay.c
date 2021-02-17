@@ -539,6 +539,17 @@ tcc_overlay_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 		}
 	} break;
 
+	case OVERLAY_GET_PANEL_SIZE: {
+		struct panel_size_t panel;
+
+		VIOC_WMIX_GetSize(overlay_drv->wmix.reg, &panel.xres, &panel.yres);
+
+		if(copy_to_user((struct panel_size_t *)arg, &panel, sizeof(struct panel_size_t))) {
+			pr_err("[ERR][OVERLAY] OVERLAY_GET_PANEL_SIZE copy_to_user failed\n");
+			return -EFAULT;
+		}
+	} break;
+
 	default:
 		pr_err(" Unsupported IOCTL(%d)!!!\n", cmd);
 		break;
