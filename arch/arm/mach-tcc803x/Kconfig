@@ -34,4 +34,8 @@ config TCC803X_CA7S
 	bool "Build for TCC803X Cortex-A7 Single Core"
 	depends on ARCH_TCC803X
 	help
-	  Select this option building a kernel for TCC803X Cortex-A7 Single Core.
+	  Select this option to build kernel for TCC803x Cortex-A7 Single
+	  Core, which is used as subcore on the platform.
+
+	  If not selected, kernel is built for TCC803x Cortex-A53 Quad Core
+	  which is used as maincore on the platform.
