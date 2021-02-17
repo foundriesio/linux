@@ -1684,6 +1684,12 @@
 		max-channel = <TCC_MBOX0_CH_MAX>;
 	};
 
+	/* ipc for reboot by r5(micom) */
+	mbox_reboot@0 {
+		 compatible = "telechips,mbox-reboot";
+		 mboxes = <&mbox0 TCC_MBOX0_CH_REBOOT>;
+	};
+
 	/* A7S <-> A53 */
 	mbox1: mbox@0x17B00000 {
 		compatible = "telechips,multichannel-mailbox";

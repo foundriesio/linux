@@ -1020,20 +1020,6 @@
 		max-channel = <TCC_MBOX0_CH_MAX>;
 	};
 
-	suspend_mbox0: suspend_mbox@0 {
-		compatible = "telechips,mailbox-suspend";
-		device-name = "suspend-mbox-dev-a53";
-		mbox-names ="suspend-mbox-a53";
-		mboxes = <&mbox0 TCC_MBOX0_CH_SUSPEND>;
-	};
-
-	suspend_mbox1: suspend_mbox@1 {
-		compatible = "telechips,mailbox-resume";
-		device-name = "resume-mbox-dev-a53";
-		mbox-names ="resume-mbox-a53";
-		mboxes = <&mbox0 TCC_MBOX0_CH_RESUME>;
-	};
-
 	hlc_mbox2: hlc_mbox@0 {
 		compatible = "telechips,hlc-mbox";
 		device-name = "hlc-mbox-dev-a53";
