@@ -19,3 +19,6 @@
 
 #include "tca_hwdemux_cmd_tsif.h"
 #include "tca_hwdemux_cmd_cipher.h"
+
+extern struct HWDMX_HANDLE hHWDMX;
+extern void TSDMXCallback(int irq, void *dev, volatile int *nReg);

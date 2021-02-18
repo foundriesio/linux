@@ -6,4 +6,4 @@ tcc-demux-drv-objs := tcc_dxb_kernel.o \
 		    tcc_hwdemux_tsif.o \
                     tcc_dmx.o
 
-EXTRA_CFLAGS := -Idrivers/media/dvb-core
+ccflags-y += -Idrivers/media/dvb-core

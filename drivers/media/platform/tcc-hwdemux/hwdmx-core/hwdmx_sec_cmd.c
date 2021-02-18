@@ -406,8 +406,6 @@ out:
 // FIXME: SP f/w for this function must be fixed.
 long long hwdmx_get_stc(struct tcc_tsif_handle *h)
 {
-	// pr_info(
-	"[INFO][DEMUX #%d]hwdmx_get_stc\n", h->dmx_id);
 	int mbox_data[] = { h->dmx_id, STC_INTERVAL };
 	long long stc;
 
