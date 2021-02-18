@@ -597,8 +597,6 @@ static void ipc_receive_writecmd(void *device_info, struct tcc_mbox_data *pMsg)
 		(ipc_dev != NULL) &&
 		(ipc_dev->ipc_handler.ipcStatus == IPC_READY)) {
 
-		struct IpcHandler *ipc_handle = &ipc_dev->ipc_handler;
-		IPC_UINT32 seqID = pMsg->cmd[0];
 		IpcCmdID cmdID;
 		IPC_UINT32 maskedID = (pMsg->cmd[1] & (IPC_UINT32)CMD_ID_MASK);
 
