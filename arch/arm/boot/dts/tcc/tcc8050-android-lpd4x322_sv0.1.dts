@@ -502,10 +502,6 @@
 	pinctrl-1 = <&serdes_lock>;
 };
 
-&tcc_pm_fw {
-	pmic = <&da9062>;
-};
-
 /* USB 2.0 Host */
 &ehci_phy {
 	status = "disabled";
