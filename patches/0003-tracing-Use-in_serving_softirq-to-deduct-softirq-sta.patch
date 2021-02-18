@@ -1,6 +1,6 @@
 From: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
-Date: Tue, 12 Jan 2021 20:37:54 +0100
-Subject: [PATCH 2/3] tracing: Use in_serving_softirq() to deduct softirq
+Date: Mon, 25 Jan 2021 20:45:10 +0100
+Subject: [PATCH 3/4] tracing: Use in_serving_softirq() to deduct softirq
  status.
 
 PREEMPT_RT does not report "serving softirq" because the tracing core
@@ -18,6 +18,10 @@ The only difference I noticed by using in_serving_softirq() on
 reading FLAG, jmp _tracing_gen_ctx_flags(). Without in_serving_softirq()
 it inlined _tracing_gen_ctx_flags() into tracing_gen_ctx_flags().
 
+Link: https://lkml.kernel.org/r/20210125194511.3924915-4-bigeasy@linutronix.de
+
+Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
+Signed-off-by: Steven Rostedt (VMware) <rostedt@goodmis.org>
 Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 ---
  kernel/trace/trace.c |    3 +--
@@ -25,7 +29,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/kernel/trace/trace.c
 +++ b/kernel/trace/trace.c
-@@ -2596,8 +2596,7 @@ unsigned int _tracing_gen_ctx_flags(unsi
+@@ -2589,8 +2589,7 @@ unsigned int tracing_gen_ctx_irq_test(un
  		trace_flags |= TRACE_FLAG_NMI;
  	if (pc & HARDIRQ_MASK)
  		trace_flags |= TRACE_FLAG_HARDIRQ;

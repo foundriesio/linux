@@ -16,8 +16,8 @@ highmem-Don-t-disable-preemption-on-RT-in-kmap_atomi.patch
 # 87lfea7gw8.fsf@nanos.tec.linutronix.de
 timers-Move-clearing-of-base-timer_running-under-bas.patch
 
-# 1611035683-12732-1-git-send-email-tiantao6@hisilicon.com
-0001-mm-zswap-add-the-flag-can_sleep_mapped.patch
+# 20210213075831.10852-2-song.bao.hua@hisilicon.com
+0001-mm-zswap-add-a-flag-to-indicate-if-zpool-can-do-slee.patch
 0002-mm-set-the-sleep_mapped-to-true-for-zbud-and-z3fold.patch
 
 ############################################################
@@ -46,10 +46,12 @@ notifier-Make-atomic_notifiers-use-raw_spinlock.patch
 0004-doc-Update-RCU-s-requirements-page-about-the-PREEMPT.patch
 0005-doc-Use-CONFIG_PREEMPTION.patch
 
-# 20210112230057.2374308-1-bigeasy@linutronix.de
+# 20210203160549.480454190@goodmis.org
+# ftrace/for-next 36590c50b2d0729952511129916beeea30d31d81+
 0001-tracing-Merge-irqflags-preempt-counter.patch
-0002-tracing-Use-in_serving_softirq-to-deduct-softirq-sta.patch
-0003-tracing-Remove-NULL-check-from-current-in-tracing_ge.patch
+0002-tracing-Inline-tracing_gen_ctx_flags.patch
+0003-tracing-Use-in_serving_softirq-to-deduct-softirq-sta.patch
+0004-tracing-Remove-NULL-check-from-current-in-tracing_ge.patch
 
 # 87ft48doti.fsf@nanos.tec.linutronix.de
 tpm-remove-tpm_dev_wq_lock.patch
@@ -78,6 +80,9 @@ tpm-remove-tpm_dev_wq_lock.patch
 0019-printk-remove-deferred-printing.patch
 0020-printk-add-console-handover.patch
 0021-printk-add-pr_flush.patch
+
+# 20210218173124.iy5iyqv3a4oia4vv@linutronix.de
+kcov-Remove-kcov-include-from-sched.h-and-move-it-to.patch
 
 ############################################################
 # Needs to address review feedback

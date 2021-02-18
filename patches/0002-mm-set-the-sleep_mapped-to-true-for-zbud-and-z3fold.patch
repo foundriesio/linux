@@ -1,15 +1,22 @@
 From: Tian Tao <tiantao6@hisilicon.com>
-Date: Tue, 19 Jan 2021 13:54:43 +0800
+Date: Sat, 13 Feb 2021 20:58:31 +1300
 Subject: [PATCH 2/2] mm: set the sleep_mapped to true for zbud and z3fold
 
-zpool driver add a flag to indicates whether the zpool driver can enter
-an atomic context after mapping, this patch set it true for z3fold and
+zpool driver adds a flag to indicate whether the zpool driver can enter
+an atomic context after mapping. This patch sets it true for z3fold and
 zbud.
 
+Link: https://lkml.kernel.org/r/1611035683-12732-3-git-send-email-tiantao6@hisilicon.com
+[song.bao.hua@hisilicon.com: Rewrote changelog]
+Fixes: 1ec3b5fe6e ("mm/zswap: move to use crypto_acomp API for hardware acceleration")
 Signed-off-by: Tian Tao <tiantao6@hisilicon.com>
 Reviewed-by: Vitaly Wool <vitaly.wool@konsulko.com>
 Acked-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 Reported-by: Mike Galbraith <efault@gmx.de>
+Cc: Seth Jennings <sjenning@redhat.com>
+Cc: Dan Streetman <ddstreet@ieee.org>
+Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
+Signed-off-by: Barry Song <song.bao.hua@hisilicon.com>
 Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 ---
  mm/z3fold.c |    1 +
