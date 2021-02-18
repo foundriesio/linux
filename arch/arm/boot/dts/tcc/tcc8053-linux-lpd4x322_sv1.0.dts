@@ -529,10 +529,6 @@
 
 	};
 
-&tcc_pm_fw {
-	pmic = <&da9062>;
-};
-
 &aux_detect_pin {
 	telechips,pins = "gpmb-11";
 };

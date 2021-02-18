@@ -276,6 +276,46 @@
 	pinctrl-names = "default";
 	pinctrl-0 = <&i2c6_bus>;
 
+	/* pmic da9131-D0 */
+	da9131_D0: pmic@68 {
+		compatible = "dlg,da9131";
+		reg = <0x68>;
+
+		regulators {
+			DA9131_D0_BUCK1: buck1 {
+				regulator-name = "core_0p8";
+				regulator-always-on;
+				regulator-boot-on;
+			};
+
+			DA9131_D0_BUCK2: buck2 {
+				regulator-name = "gb_0p8";
+				regulator-always-on;
+				regulator-boot-on;
+			};
+		};
+	}; /* pmic da9131-D0 */
+
+	/* pmic da9131-D2 */
+	da9131_D2: pmic@69 {
+		compatible = "dlg,da9131";
+		reg = <0x69>;
+
+		regulators {
+			DA9131_D2_BUCK1: buck1 {
+				regulator-name = "cpu_1p0";
+				regulator-always-on;
+				regulator-boot-on;
+			};
+
+			DA9131_D2_BUCK2: buck2 {
+				regulator-name = "io_3p3";
+				regulator-always-on;
+				regulator-boot-on;
+			};
+		};
+	}; /* pmic da9131-D2 */
+
 	/* pmic da9062 */
 	da9062: pmic@58 {
 		compatible = "dlg,da9062";
@@ -451,6 +491,3 @@
 
 };
 
-&tcc_pm_fw {
-	pmic = <&da9062>;
-};

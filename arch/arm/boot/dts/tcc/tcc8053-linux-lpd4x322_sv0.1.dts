@@ -544,10 +544,6 @@ dp_deserializer3:max96878@68 {
 	pinctrl-1 = <&serdes_lock>;
 };
 
-&tcc_pm_fw {
-	pmic = <&da9062>;
-};
-
 &aux_detect_pin {
 	telechips,pins = "gpmd-13";
 };
