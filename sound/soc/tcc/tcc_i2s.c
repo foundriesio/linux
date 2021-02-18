@@ -161,7 +161,7 @@ static inline uint32_t calc_bclk_from_mclk(
 
 	ret = mclk % i2s->mclk_div;
 	if(ret != 0)
-		i2s_dai_warn("[%d] bclk is not multiple of mclk_div[%d]\n", 
+		i2s_dai_warn("[%d] bclk is not multiple of mclk_div[%d]\n",
 					i2s->blk_no, i2s->mclk_div);
 
 	ret = mclk / i2s->mclk_div;
@@ -200,7 +200,7 @@ static inline uint32_t calc_dsp_tdm_mclk(
 
 #if defined(PCM_INTERFACE)
 static inline uint32_t calc_dsp_pcm_mclk(
-	struct tcc_i2s_t *i2s, 
+	struct tcc_i2s_t *i2s,
 	int32_t sample_rate)
 {
 	int32_t ret;
@@ -208,7 +208,7 @@ static inline uint32_t calc_dsp_pcm_mclk(
 				  (sample_rate == 22000) ? 22050 :
 				  (sample_rate == 11000) ? 11025 : sample_rate;
 
-	ret = sample_rate *  i2s->mclk_div * 
+	ret = sample_rate *  i2s->mclk_div *
 		i2s->tdm_slots * i2s->tdm_slot_width;
 	return (uint32_t)ret;
 }
@@ -339,12 +339,12 @@ static int tcc_i2s_set_dai_fmt(struct snd_soc_dai *dai, unsigned int fmt)
 		i2s_dai_dbg("[%d] DSP_A DAIFMT\n", i2s->blk_no);
 #if defined(PCM_INTERFACE)
 		if (i2s->tdm_pcm_mode == TRUE) {
-			if ((i2s->tdm_slot_width == 16) 
-					|| (i2s->tdm_slot_width == 24) 
+			if ((i2s->tdm_slot_width == 16)
+					|| (i2s->tdm_slot_width == 24)
 					|| (i2s->tdm_slot_width == 32)) {
 				tcc_dai_set_dsp_pcm_mode(
-						i2s->dai_reg, 
-						(uint32_t) i2s->tdm_slots, 
+						i2s->dai_reg,
+						(uint32_t) i2s->tdm_slots,
 						(uint32_t) i2s->tdm_slot_width, FALSE);
 			} else {
 				i2s_dai_err("[%d] PCM supports ", i2s->blk_no);
@@ -382,13 +382,13 @@ static int tcc_i2s_set_dai_fmt(struct snd_soc_dai *dai, unsigned int fmt)
 		i2s_dai_dbg("[%d] DSP_B DAIFMT\n", i2s->blk_no);
 #if defined(PCM_INTERFACE)
 		if (i2s->tdm_pcm_mode == TRUE) {
-			if ((i2s->tdm_slot_width == 16) 
-					|| (i2s->tdm_slot_width == 24) 
+			if ((i2s->tdm_slot_width == 16)
+					|| (i2s->tdm_slot_width == 24)
 					|| (i2s->tdm_slot_width == 32)) {
 				tcc_dai_set_dsp_pcm_mode(
-						i2s->dai_reg, 
-						(uint32_t) i2s->tdm_slots, 
-						(uint32_t) i2s->tdm_slot_width, 
+						i2s->dai_reg,
+						(uint32_t) i2s->tdm_slots,
+						(uint32_t) i2s->tdm_slot_width,
 						TRUE);
 			} else {
 				i2s_dai_err("[%d] PCM supports ", i2s->blk_no);
@@ -526,6 +526,38 @@ static int tcc_i2s_set_dai_fmt(struct snd_soc_dai *dai, unsigned int fmt)
 	if (ret != 0)
 		goto dai_fmt_end;
 
+	switch (fmt & (uint32_t)SND_SOC_DAIFMT_CLOCK_MASK) {
+	case SND_SOC_DAIFMT_CONT:
+		i2s_dai_dbg("[%d] SND_SOC_DAIFMT_CONT\n", i2s->blk_no);
+#if defined(TCC803x_ES_SND)
+		if ((i2s->tdm_mode == TRUE) && (system_rev == 0u)) { //ES
+			i2s_dai_warn("TCC_I2S can't use TDM Mode when clk continuous mode\n");
+			ret = -ENOTSUPP;
+			goto dai_fmt_end;
+		} else {
+#endif
+			i2s->clk_continuous = TRUE;
+			tcc_dai_enable(i2s->dai_reg, TRUE);
+#if defined(TCC803x_ES_SND)
+		}
+#endif
+		break;
+	case SND_SOC_DAIFMT_GATED:
+		i2s_dai_dbg("[%d] SND_SOC_DAIFMT_GATED\n", i2s->blk_no);
+		i2s->clk_continuous = FALSE;
+		tcc_dai_enable(i2s->dai_reg, FALSE);
+		break;
+	default:
+		i2s_dai_err("[%d] does not supported\n", i2s->blk_no);
+		ret = -ENOTSUPP;
+		break;
+	}
+
+	if (ret != 0)
+		goto dai_fmt_end;
+
+	i2s->dai_fmt = fmt;
+
 	if (i2s->tdm_mode == TRUE) {
 		if (i2s->clk_continuous == TRUE) {
 /* Workaround Code for TCC803X, TCC899X and TCC901X
@@ -586,38 +618,6 @@ static int tcc_i2s_set_dai_fmt(struct snd_soc_dai *dai, unsigned int fmt)
 			tcc_dai_reg_restore(i2s->dai_reg, &regs);
 			}
 	}
-
-	switch (fmt & (uint32_t)SND_SOC_DAIFMT_CLOCK_MASK) {
-	case SND_SOC_DAIFMT_CONT:
-		i2s_dai_dbg("[%d] SND_SOC_DAIFMT_CONT\n", i2s->blk_no);
-#if defined(TCC803x_ES_SND)
-		if ((i2s->tdm_mode == TRUE) && (system_rev == 0u)) { //ES
-			i2s_dai_warn("TCC_I2S can't use TDM Mode when clk continuous mode\n");
-			ret = -ENOTSUPP;
-			goto dai_fmt_end;
-		} else {
-#endif
-			i2s->clk_continuous = TRUE;
-			tcc_dai_enable(i2s->dai_reg, TRUE);
-#if defined(TCC803x_ES_SND)
-		}
-#endif
-		break;
-	case SND_SOC_DAIFMT_GATED:
-		i2s_dai_dbg("[%d] SND_SOC_DAIFMT_GATED\n", i2s->blk_no);
-		i2s->clk_continuous = FALSE;
-		tcc_dai_enable(i2s->dai_reg, FALSE);
-		break;
-	default:
-		i2s_dai_err("[%d] does not supported\n", i2s->blk_no);
-		ret = -ENOTSUPP;
-		break;
-	}
-
-	if (ret != 0)
-		goto dai_fmt_end;
-
-	i2s->dai_fmt = fmt;
 
 dai_fmt_end:
 	spin_unlock(&i2s->lock);
@@ -881,11 +881,11 @@ static int tcc_i2s_hw_params(
 #if defined(PCM_INTERFACE)
 				if(i2s->tdm_pcm_mode) {
 					tcc_dai_set_dsp_pcm_word_len(
-							i2s->dai_reg, 
+							i2s->dai_reg,
 							fmt_bitwidth);
 					tcc_dai_set_dsp_tdm_mode_valid_data(
-							i2s->dai_reg, 
-							i2s->tdm_slots, 
+							i2s->dai_reg,
+							i2s->tdm_slots,
 							i2s->tdm_slot_width);
 					mclk = calc_dsp_pcm_mclk(i2s, sample_rate);
 				} else {
@@ -900,8 +900,8 @@ static int tcc_i2s_hw_params(
 						break;
 					}
 					tcc_dai_set_dsp_tdm_mode_valid_data(
-							i2s->dai_reg, 
-							channels, 
+							i2s->dai_reg,
+							channels,
 							i2s->tdm_slot_width);
 					mclk = calc_dsp_tdm_mclk(i2s, sample_rate);
 #if defined(PCM_INTERFACE)
@@ -935,7 +935,7 @@ static int tcc_i2s_hw_params(
 		tcc_dai_set_tx_format(i2s->dai_reg, tcc_fmt);
 	else
 		tcc_dai_set_rx_format(i2s->dai_reg, tcc_fmt);
-	
+
 
 	if (i2s->tdm_mode == TRUE) {
 #if defined(PCM_INTERFACE)
@@ -962,7 +962,7 @@ static int tcc_i2s_hw_params(
 		uint32_t chip_name = (uint32_t)get_chip_name();
 		uint32_t bclk=0;
 
-		if((chip_rev == 1)&&(chip_name == 0x8050)) { 
+		if((chip_rev == 1)&&(chip_name == 0x8050)) {
 			if (i2s->tdm_mode == TRUE) {
 				tcc_dai_set_dsp_tdm_mode_rx_channel(i2s->dai_reg, i2s->tdm_slots);
 			} else {
@@ -1298,6 +1298,118 @@ static int tcc_i2s_trigger(
 	return ret;
 }
 
+static int tcc_i2s_set_sysclk(struct snd_soc_dai *dai,
+									int clk_id,
+									unsigned int freq,
+									int dir)
+{
+	int ret = 0;
+
+	i2s_dai_dbg("%s - Not support operation", __func__);
+
+	return ret;
+}
+
+static int tcc_i2s_set_pll(struct snd_soc_dai *dai,
+									int pll_id,
+									int source,
+									unsigned int freq_in,
+									unsigned int freq_out)
+{
+	int ret = 0;
+
+	i2s_dai_dbg("%s - Not support operation", __func__);
+
+	return ret;
+}
+
+static int tcc_i2s_xlate_tdm_slot_mask
+	(unsigned int slots,
+	unsigned int *tx_mask,
+	unsigned int *rx_mask)
+{
+	int ret = 0;
+
+	i2s_dai_dbg("%s - Not support operation", __func__);
+
+	return ret;
+}
+
+static int tcc_i2s_set_channel_map(struct snd_soc_dai *dai,
+										unsigned int tx_num,
+										unsigned int *tx_slot,
+										unsigned int rx_num,
+										unsigned int *rx_slot)
+{
+	int ret = 0;
+
+	i2s_dai_dbg("%s - Not support operation", __func__);
+
+	return ret;
+}
+
+static int tcc_i2s_set_tristate(struct snd_soc_dai *dai,
+									int tristate)
+{
+	int ret = 0;
+
+	i2s_dai_dbg("%s - Not support operation", __func__);
+
+	return ret;
+}
+
+static int tcc_i2s_digital_mute(struct snd_soc_dai *dai,
+									int mute)
+{
+	int ret = 0;
+
+	i2s_dai_dbg("%s - Not support operation", __func__);
+
+	return ret;
+}
+
+static int tcc_i2s_mute_stream(struct snd_soc_dai *dai,
+									int mute,
+									int stream)
+{
+	int ret = 0;
+
+	i2s_dai_dbg("%s - Not support operation", __func__);
+
+	return ret;
+}
+
+static int tcc_i2s_prepare(struct snd_pcm_substream *substream,
+								struct snd_soc_dai *dai)
+{
+	int ret = 0;
+
+	i2s_dai_dbg("%s - Not support operation", __func__);
+
+	return ret;
+}
+
+static int tcc_i2s_bespoke_trigger(struct snd_pcm_substream *substream,
+								int bespoke,
+								struct snd_soc_dai *dai)
+{
+	int ret = 0;
+
+	i2s_dai_dbg("%s - Not support operation", __func__);
+
+	return ret;
+}
+
+static snd_pcm_sframes_t tcc_i2s_delay(struct snd_pcm_substream *substream,
+								struct snd_soc_dai *dai)
+{
+	int ret = 0;
+
+	i2s_dai_dbg("%s - Not support operation", __func__);
+
+	return ret;
+}
+
 static struct snd_soc_dai_ops tcc_i2s_ops = {
 	.set_clkdiv     = tcc_i2s_set_clkdiv,
 	.set_bclk_ratio = tcc_i2s_set_bclk_ratio,
@@ -1308,6 +1420,18 @@ static struct snd_soc_dai_ops tcc_i2s_ops = {
 	.hw_free        = tcc_i2s_hw_free,
 	.trigger        = tcc_i2s_trigger,
 	.set_tdm_slot   = tcc_i2s_set_tdm_slot,
+
+	/*Do not use below operations*/
+	.set_sysclk				= tcc_i2s_set_sysclk,
+	.set_pll				= tcc_i2s_set_pll,
+	.xlate_tdm_slot_mask	= tcc_i2s_xlate_tdm_slot_mask,
+	.set_channel_map		= tcc_i2s_set_channel_map,
+	.set_tristate			= tcc_i2s_set_tristate,
+	.digital_mute			= tcc_i2s_digital_mute,
+	.mute_stream			= tcc_i2s_mute_stream,
+	.prepare				= tcc_i2s_prepare,
+	.bespoke_trigger		= tcc_i2s_bespoke_trigger,
+	//.delay					= tcc_i2s_delay
 };
 
 static bool tcc_i2s_is_active(

@@ -1785,7 +1785,7 @@
 		clocks = <&clk_peri PERI_MDAI0
 			  &clk_io IOBUS_DAI0
 			  &clk_peri PERI_MFLT0_DAI>;
-		clock-frequency = <11289600>;	// 44100*256
+		clock-frequency = <48000>;	// Default LRCK
 		have-fifo-clear=<1>;
 		block-type = <1>; // 0: Stereo 1: 7.1CH
 		adma = <&adma0>;

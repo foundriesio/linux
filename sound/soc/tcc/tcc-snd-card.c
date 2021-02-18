@@ -154,8 +154,62 @@ static int tcc_snd_card_startup(struct snd_pcm_substream *substream)
 	return 0;
 }
 
+static void tcc_snd_card_shutdown(struct snd_pcm_substream *substream)
+{
+	int ret = 0;
+
+	snd_card_dbg("%s - Not support operation", __func__);
+
+	return ret;
+}
+
+static int tcc_snd_card_hw_params(struct snd_pcm_substream *substream,
+								  struct snd_pcm_hw_params *params)
+{
+	int ret = 0;
+
+	snd_card_dbg("%s - Not support operation", __func__);
+
+	return ret;
+}
+
+static int tcc_snd_card_hw_free(struct snd_pcm_substream *substream)
+{
+	int ret = 0;
+
+	snd_card_dbg("%s - Not support operation", __func__);
+
+	return ret;
+}
+
+static int tcc_snd_card_prepare(struct snd_pcm_substream *substream)
+{
+	int ret = 0;
+
+	snd_card_dbg("%s - Not support operation", __func__);
+
+	return ret;
+}
+
+static int tcc_snd_card_trigger(struct snd_pcm_substream *substream,
+								int trigger)
+{
+	int ret = 0;
+
+	snd_card_dbg("%s - Not support operation", __func__);
+
+	return ret;
+}
+
 static struct snd_soc_ops tcc_snd_card_ops = {
 	.startup = tcc_snd_card_startup,
+
+	/*do not use below operations*/
+	.shutdown = tcc_snd_card_shutdown,
+	.hw_params = tcc_snd_card_hw_params,
+	.hw_free = tcc_snd_card_hw_free,
+	.prepare = tcc_snd_card_prepare,
+	.trigger = tcc_snd_card_trigger,
 };
 
 static bool dai_is_active(
@@ -169,7 +223,6 @@ static bool dai_is_active(
 
 	is_active = (dai->active != 0) ? TRUE : FALSE;
 
-	sprintf(dev_name, "hw:%x,%x", card_id, dev_id);
 	if (is_active) {
 		snd_card_err("%s doesn't change while %s is activated. %s.",
 			kcontrol_name,
