@@ -437,7 +437,7 @@ int sw_sync_create_fence(struct sync_timeline *obj, unsigned int value, int *fd)
 
 	*fd = get_unused_fd_flags(O_CLOEXEC);
 	if (*fd < 0) 	{
-		pr_err(" sw_sync get fd error : %d \n", fd);
+		pr_err(" sw_sync get fd error \n");
 		return *fd;
 	}
 
