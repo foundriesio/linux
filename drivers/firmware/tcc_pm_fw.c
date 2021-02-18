@@ -14,6 +14,8 @@
 #include <linux/mailbox_controller.h>
 #include <linux/mailbox_client.h>
 #include <linux/mailbox/tcc_multi_mbox.h>
+
+#include <linux/regulator/consumer.h>
 #include <linux/mfd/da9062/core.h>
 #include <linux/regmap.h>
 
@@ -33,6 +35,11 @@ struct bit_field {
 #define update_bit_field_val(field) \
 	(field)->val = ((readl((field)->reg) >> (field)->shift) & (field)->mask)
 
+struct pmic {
+	struct regmap *da9062_regmap;
+	struct regmap *da9131_regmap[2];
+};
+
 struct pm_fw_drvdata {
 	struct platform_device *pdev;
 
@@ -49,11 +56,7 @@ struct pm_fw_drvdata {
 	struct mbox_chan *mbox_chan;
 
 	/* power contrl for DRAM retention */
-#if defined(CONFIG_MFD_DA9062)
-	struct da9062 *pmic;
-#else
-	void *pmic;
-#endif
+	struct pmic pmic;
 };
 
 #define to_pm_fw_drvdata(ptr, member) \
@@ -119,7 +122,6 @@ static ssize_t boot_reason_show(struct kobject *kobj,
 				struct kobj_attribute *attr, char *buf)
 {
 	struct pm_fw_drvdata *drvdata = to_pm_fw_drvdata(kobj, pwrstr);
-	u32 val;
 
 	if (drvdata == NULL) {
 		return sprintf(buf, "-1\n");
@@ -176,14 +178,13 @@ static void pm_fw_power_sysfs_free(struct kobject *kobj)
 	kobject_put(kobj);
 }
 
-#if defined(CONFIG_MFD_DA9062)
 #define pmic_regmap_update(map, reg, shift, val) \
 	(regmap_update_bits((map), (reg), (u32)1 << (shift), (val) << (shift)))
 
-static s32 pmic_ctrl_str_mode(struct da9062 *pmic, u32 enter)
+static s32 pmic_ctrl_str_mode(struct pmic *pmic, u32 enter)
 {
 	struct regmap *map;
-	u32 i;
+	s32 i;
 	s32 ret;
 
 	if (pmic == NULL) {
@@ -191,29 +192,69 @@ static s32 pmic_ctrl_str_mode(struct da9062 *pmic, u32 enter)
 		return 0;
 	}
 
-	ret = pmic_regmap_update(pmic->regmap, DA9062AA_IRQ_MASK_C,
+#if defined(CONFIG_MFD_DA9062)
+	/* DA9062 */
+	if (pmic->da9062_regmap == NULL) {
+		return 0;
+	}
+	map = pmic->da9062_regmap;
+	ret = pmic_regmap_update(map, DA9062AA_IRQ_MASK_C,
 				 DA9062AA_M_GPI4_SHIFT, 0);
 	if (ret < 0) {
 		return ret;
 	}
 
-	ret = pmic_regmap_update(pmic->regmap, DA9062AA_BUCK1_CONT,
+	ret = pmic_regmap_update(map, DA9062AA_BUCK1_CONT,
 				 DA9062AA_BUCK1_CONF_SHIFT, enter);
 	if (ret < 0) {
 		return ret;
 	}
 
-	ret = pmic_regmap_update(pmic->regmap, DA9062AA_LDO2_CONT,
+	ret = pmic_regmap_update(map, DA9062AA_LDO2_CONT,
 				 DA9062AA_LDO2_CONF_SHIFT, enter);
 	if (ret < 0) {
 		return ret;
 	}
-
+#endif
+#if defined(CONFIG_REGULATOR_DA9121)
+	/* DA9131 Version 0.2 OTP - Power Sequence Issue
+	 * S/W Workaound
+	 *  - modify voltage slew rate
+	 *  - modify GPIO2 pulldown enable
+	 */
+	for (i = 0; i < 2; i++) {
+		if (pmic->da9131_regmap[i] == NULL) {
+			return 0;
+		}
+		map = pmic->da9131_regmap[i];
+		ret = regmap_update_bits(map, 0x20, 0xff, 0x49);
+		if (ret < 0) {
+			return ret;
+		}
+		ret = regmap_update_bits(map, 0x21, 0xff, 0x49);
+		if (ret < 0) {
+			return ret;
+		}
+		ret = regmap_update_bits(map, 0x28, 0xff, 0x49);
+		if (ret < 0) {
+			return ret;
+		}
+		ret = regmap_update_bits(map, 0x29, 0xff, 0x49);
+		if (ret < 0) {
+			return ret;
+		}
+		ret = regmap_update_bits(map, 0x13, 0xff, 0x08);
+		if (ret < 0) {
+			return ret;
+		}
+		ret = regmap_update_bits(map, 0x15, 0xff, 0x08);
+		if (ret < 0) {
+			return ret;
+		}
+	}
+#endif
 	return 0;
 }
-#else
-#define pmic_ctrl_str_mode(pmic, enter) ((s32)0)
-#endif
 
 static int pm_fw_pm_notifier_call(struct notifier_block *nb,
 				  unsigned long action, void *data)
@@ -229,10 +270,10 @@ static int pm_fw_pm_notifier_call(struct notifier_block *nb,
 	case PM_SUSPEND_PREPARE:
 		drvdata->application_ready = (bool)false;
 		drvdata->boot_reason.val = 0;
-		ret = pmic_ctrl_str_mode(drvdata->pmic, (u32)1);
+		ret = pmic_ctrl_str_mode(&drvdata->pmic, (u32)1);
 		break;
 	case PM_POST_SUSPEND:
-		ret = pmic_ctrl_str_mode(drvdata->pmic, (u32)0);
+		ret = pmic_ctrl_str_mode(&drvdata->pmic, (u32)0);
 		break;
 	default:
 		/* Nothing to do */
@@ -365,29 +406,55 @@ static void pm_fw_mbox_free(struct mbox_chan *ch, struct device *dev)
 	devm_kfree(dev, cl);
 }
 
-#if defined(CONFIG_MFD_DA9062)
-static s32 pm_fw_get_pmic(struct da9062 **pmic, struct device *dev)
+static s32 pm_fw_get_pmic(struct pmic *pmic, struct device *dev)
 {
-	struct device_node *np = dev->of_node;
-	struct i2c_client *cl;
+	struct regulator *regulator;
+	bool err;
 
-	np = of_parse_phandle(np, "pmic", 0);
-	if (np == NULL) {
+#if defined(CONFIG_MFD_DA9062)
+	regulator = devm_regulator_get(dev, "memq_1p1");
+	err = IS_ERR(regulator);
+	if (err) {
+		pmic->da9062_regmap = NULL;
+		return 0;
+	}
+	pmic->da9062_regmap = regulator_get_regmap(regulator);
+	err = IS_ERR(pmic->da9062_regmap);
+	if (err) {
+		return -ENOENT;
+	}
+#endif
+
+#if defined(CONFIG_REGULATOR_DA9121)
+	/* D0 */
+	regulator = devm_regulator_get(dev, "core_0p8");
+	err = IS_ERR(regulator);
+	if (err) {
+		pmic->da9131_regmap[0] = NULL;
+		return 0;
+	}
+	pmic->da9131_regmap[0] = regulator_get_regmap(regulator);
+	err = IS_ERR(pmic->da9131_regmap[0]);
+	if (err) {
+		pmic->da9131_regmap[0] = NULL;
 		return 0;
 	}
 
-	cl = of_find_i2c_device_by_node(np);
-	if (cl == NULL) {
-		return -ENOENT;
+	/* D2 */
+	regulator = devm_regulator_get(dev, "cpu_1p0");
+	err = IS_ERR(regulator);
+	if (err) {
+		pmic->da9131_regmap[1] = NULL;
+		return 0;
 	}
-
-	*pmic = i2c_get_clientdata(cl);
-
-	return 0;
-}
-#else
-#define pm_fw_get_pmic(pmic, dev) ((s32)0)
+	pmic->da9131_regmap[1] = regulator_get_regmap(regulator);
+	err = IS_ERR(pmic->da9131_regmap[0]);
+	if (err) {
+		pmic->da9131_regmap[1] = NULL;
+		return 0;
+	}
 #endif
+}
 
 static int pm_fw_probe(struct platform_device *pdev)
 {
@@ -439,8 +506,7 @@ static int pm_fw_probe(struct platform_device *pdev)
 	/* Get PMIC struct for entering/exiting STR mode */
 	ret = pm_fw_get_pmic(&drvdata->pmic, dev);
 	if (ret != 0) {
-		ret = (s32)PTR_ERR(drvdata->pmic);
-		pm_fw_err(dev, "get i2c client for pmic", ret);
+		pm_fw_err(dev, "get regmap of regulator", ret);
 		goto pmic_init_error;
 	}
 
