@@ -3051,7 +3051,6 @@ static void nested_vmx_setup_ctls_msrs(struct vcpu_vmx *vmx)
 		vmx->nested.nested_vmx_secondary_ctls_high);
 	vmx->nested.nested_vmx_secondary_ctls_low = 0;
 	vmx->nested.nested_vmx_secondary_ctls_high &=
-		SECONDARY_EXEC_VIRTUALIZE_APIC_ACCESSES |
 		SECONDARY_EXEC_DESC |
 		SECONDARY_EXEC_VIRTUALIZE_X2APIC_MODE |
 		SECONDARY_EXEC_APIC_REGISTER_VIRT |
@@ -3106,6 +3105,10 @@ static void nested_vmx_setup_ctls_msrs(struct vcpu_vmx *vmx)
 	if (enable_unrestricted_guest)
 		vmx->nested.nested_vmx_secondary_ctls_high |=
 			SECONDARY_EXEC_UNRESTRICTED_GUEST;
+
+	if (flexpriority_enabled)
+		vmx->nested.nested_vmx_secondary_ctls_high |=
+			SECONDARY_EXEC_VIRTUALIZE_APIC_ACCESSES;
 
 	/* miscellaneous data */
 	rdmsr(MSR_IA32_VMX_MISC,
