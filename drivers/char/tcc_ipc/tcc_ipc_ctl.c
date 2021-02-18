@@ -224,6 +224,7 @@ static void do_process_nack_cmd(
 {
 	if ((ipc_dev != NULL) && (msg != NULL)) {
 		struct IpcHandler *handler = &ipc_dev->ipc_handler;
+		(void)handler;
 
 		if ((msg->cmd[2] & (IPC_UINT32)CMD_ID_MASK) ==
 			(IPC_UINT32)IPC_WRITE) {
@@ -604,7 +605,7 @@ static void ipc_receive_writecmd(void *device_info, struct tcc_mbox_data *pMsg)
 		cmdID = (IpcCmdID)maskedID;
 
 		if (cmdID == IPC_WRITE)	{
-			do_process_writecmd(ipc_handle, pMsg);
+			do_process_writecmd(ipc_dev, pMsg);
 		}
 	}
 }
