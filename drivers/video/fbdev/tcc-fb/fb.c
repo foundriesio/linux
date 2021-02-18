@@ -1783,7 +1783,7 @@ static ssize_t fbX_ovp_store(
 {
 	struct fb_info *info = platform_get_drvdata(to_platform_device(dev));
 	struct fbX_par *par = info->par;
-	unsigned int value = 0;
+	unsigned long value = 0;
 	int ret;
 
 	ret = kstrtoul(buf, 10, &value);
