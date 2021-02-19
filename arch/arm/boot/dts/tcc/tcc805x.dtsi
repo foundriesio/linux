@@ -931,8 +931,8 @@
 		status = "okay";
 
 		kick-timer-id = <0>;
-		pretimeout-sec = <1>;
-		timeout-sec = <5>;
+		pretimeout-sec = <5>;
+		timeout-sec = <20>;
 	};
 
 	reboot-mode {

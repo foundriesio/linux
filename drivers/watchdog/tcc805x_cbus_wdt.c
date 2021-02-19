@@ -488,7 +488,7 @@ static int tcc_cb_wdt_probe(struct platform_device *pdev)
 	wdd->info = &tcc_cb_wdt_info;
 	wdd->ops = &tcc_cb_wdt_ops;
 	wdd->min_timeout = 1;
-	wdd->max_timeout = 0x10000000U / cb_wdt->clk_rate;
+	wdd->max_timeout = 0xF0000000U / cb_wdt->clk_rate;
 	wdd->parent = &pdev->dev;
 
 	wdd->timeout = min((wdd->max_timeout), 30U);

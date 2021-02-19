@@ -2009,8 +2009,8 @@
 		clock-frequency = <24000000>;
 
 		kick-timer-id = <1>;
-		pretimeout-sec = <1>;
-		timeout-sec = <5>;
+		pretimeout-sec = <5>;
+		timeout-sec = <20>;
 	};
 
 	/* A53 <-> HSM core */
