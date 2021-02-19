@@ -1307,6 +1307,118 @@ static int tcc_i2s_trigger(
 	return ret;
 }
 
+static int tcc_i2s_set_sysclk(struct snd_soc_dai *dai,
+									int clk_id,
+									unsigned int freq,
+									int dir)
+{
+	int ret = 0;
+
+	i2s_dai_dbg("%s - Not support operation", __func__);
+
+	return ret;
+}
+
+static int tcc_i2s_set_pll(struct snd_soc_dai *dai,
+									int pll_id,
+									int source,
+									unsigned int freq_in,
+									unsigned int freq_out)
+{
+	int ret = 0;
+
+	i2s_dai_dbg("%s - Not support operation", __func__);
+
+	return ret;
+}
+
+static int tcc_i2s_xlate_tdm_slot_mask
+	(unsigned int slots,
+	unsigned int *tx_mask,
+	unsigned int *rx_mask)
+{
+	int ret = 0;
+
+	i2s_dai_dbg("%s - Not support operation", __func__);
+
+	return ret;
+}
+
+static int tcc_i2s_set_channel_map(struct snd_soc_dai *dai,
+										unsigned int tx_num,
+										unsigned int *tx_slot,
+										unsigned int rx_num,
+										unsigned int *rx_slot)
+{
+	int ret = 0;
+
+	i2s_dai_dbg("%s - Not support operation", __func__);
+
+	return ret;
+}
+
+static int tcc_i2s_set_tristate(struct snd_soc_dai *dai,
+									int tristate)
+{
+	int ret = 0;
+
+	i2s_dai_dbg("%s - Not support operation", __func__);
+
+	return ret;
+}
+
+static int tcc_i2s_digital_mute(struct snd_soc_dai *dai,
+									int mute)
+{
+	int ret = 0;
+
+	i2s_dai_dbg("%s - Not support operation", __func__);
+
+	return ret;
+}
+
+static int tcc_i2s_mute_stream(struct snd_soc_dai *dai,
+									int mute,
+									int stream)
+{
+	int ret = 0;
+
+	i2s_dai_dbg("%s - Not support operation", __func__);
+
+	return ret;
+}
+
+static int tcc_i2s_prepare(struct snd_pcm_substream *substream,
+								struct snd_soc_dai *dai)
+{
+	int ret = 0;
+
+	i2s_dai_dbg("%s - Not support operation", __func__);
+
+	return ret;
+}
+
+static int tcc_i2s_bespoke_trigger(struct snd_pcm_substream *substream,
+								int bespoke,
+								struct snd_soc_dai *dai)
+{
+	int ret = 0;
+
+	i2s_dai_dbg("%s - Not support operation", __func__);
+
+	return ret;
+}
+
+static snd_pcm_sframes_t tcc_i2s_delay(struct snd_pcm_substream *substream,
+								struct snd_soc_dai *dai)
+{
+	int ret = 0;
+
+	i2s_dai_dbg("%s - Not support operation", __func__);
+
+	return ret;
+}
+
 static struct snd_soc_dai_ops tcc_i2s_ops = {
 	.set_clkdiv     = tcc_i2s_set_clkdiv,
 	.set_bclk_ratio = tcc_i2s_set_bclk_ratio,
@@ -1317,6 +1429,19 @@ static struct snd_soc_dai_ops tcc_i2s_ops = {
 	.hw_free        = tcc_i2s_hw_free,
 	.trigger        = tcc_i2s_trigger,
 	.set_tdm_slot   = tcc_i2s_set_tdm_slot,
+
+	/*Do not use below operations*/
+	.set_sysclk				= tcc_i2s_set_sysclk,
+	.set_pll				= tcc_i2s_set_pll,
+	.xlate_tdm_slot_mask	= tcc_i2s_xlate_tdm_slot_mask,
+	.set_channel_map
+		= tcc_i2s_set_channel_map,
+	.set_tristate			= tcc_i2s_set_tristate,
+	.digital_mute			= tcc_i2s_digital_mute,
+	.mute_stream			= tcc_i2s_mute_stream,
+	.prepare				= tcc_i2s_prepare,
+	.bespoke_trigger		= tcc_i2s_bespoke_trigger,
+	//.delay					= tcc_i2s_delay
 };
 
 static bool tcc_i2s_is_active(
