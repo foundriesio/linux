@@ -410,6 +410,18 @@ static int32_t tcc_spi_set_mode(struct tcc_spi *tccspi, uint32_t mode)
 			TCC_GPSB_BITCLR(tccspi->base + TCC_GPSB_MODE,
 					TCC_GPSB_MODE_PWD | TCC_GPSB_MODE_PRD);
 		}
+		if (tccspi->pd->recovery_time) {
+			TCC_GPSB_BITSET(tccspi->base + TCC_GPSB_MODE,
+					TCC_GPSB_MODE_TRE);
+		}
+		if (tccspi->pd->hold_time) {
+			TCC_GPSB_BITSET(tccspi->base + TCC_GPSB_MODE,
+					TCC_GPSB_MODE_THL);
+		}
+		if (tccspi->pd->setup_time) {
+			TCC_GPSB_BITSET(tccspi->base + TCC_GPSB_MODE,
+					TCC_GPSB_MODE_TSU);
+		}
 	}
 	if ((mode & SPI_CS_HIGH) != 0U) {
 		TCC_GPSB_BITSET(tccspi->base + TCC_GPSB_MODE,
@@ -432,6 +444,11 @@ static int32_t tcc_spi_set_mode(struct tcc_spi *tccspi, uint32_t mode)
 		TCC_GPSB_BITCLR(tccspi->base + TCC_GPSB_MODE,
 				TCC_GPSB_MODE_LB);
 	}
+	if (tccspi->pd->prd) {
+		TCC_GPSB_BITSET(tccspi->base + TCC_GPSB_MODE,
+				TCC_GPSB_MODE_PRD);
+	}
+
 	dev_dbg(tccspi->dev, "[DEBUG][SPI] [%s] mode: 0x%X (mode reg: 0x%08X)\n",
 			__func__,
 			mode,
@@ -477,17 +494,15 @@ static void tcc_spi_hwinit(struct tcc_spi *tccspi)
 	/* Set Tx and Rx FIFO threshold for interrupt/DMA request */
 	TCC_GPSB_BITCLR(tccspi->base + TCC_GPSB_INTEN,
 			TCC_GPSB_INTEN_CFGRTH_MASK);
-	TCC_GPSB_BITCLR(tccspi->base + TCC_GPSB_INTEN,
-			TCC_GPSB_INTEN_CFGWTH_MASK);
+	TCC_GPSB_BITCSET(tccspi->base + TCC_GPSB_INTEN,
+			TCC_GPSB_INTEN_CFGWTH_MASK,
+			TCC_GPSB_INTEN_CFGWTH(tccspi->pd->cfgwth));
 
 	is_slave = spi_controller_is_slave(tccspi->master);
 	if (is_slave) {
 		/* Set SPI slave mode */
 		TCC_GPSB_BITSET(tccspi->base + TCC_GPSB_MODE,
 				TCC_GPSB_MODE_SLV);
-		TCC_GPSB_BITCSET(tccspi->base + TCC_GPSB_INTEN,
-				TCC_GPSB_INTEN_CFGWTH_MASK,
-				TCC_GPSB_INTEN_CFGWTH(6UL));
 	} else {
 		/* Set SPI master mode */
 		TCC_GPSB_BITCLR(tccspi->base + TCC_GPSB_MODE,
@@ -1621,15 +1636,54 @@ static struct tcc_spi_pl_data *tcc_spi_parse_dt(struct device *dev)
 		pd->ctf = (bool)true;
 	}
 
-	pd->is_slave = of_property_read_bool(np, "spi-slave");
-	if (pd->is_slave) {
-		dev_info(dev,
-				"[INFO][SPI] GPSB Slave ctf mode: %d\n",
-				pd->ctf);
+	if (of_property_read_bool(np, "prd-enable")) {
+		pd->prd = (bool)true;
 	} else {
-		dev_info(dev,
-				"[INFO][SPI] GPSB Master ctf mode: %d\n",
-				pd->ctf);
+		pd->prd = (bool)false;
+	}
+
+	if (of_property_read_bool(np, "recovery-time")) {
+		pd->recovery_time = (bool)true;
+	} else {
+		pd->recovery_time = (bool)false;
+	}
+
+	if (of_property_read_bool(np, "hold-time")) {
+		pd->hold_time = (bool)true;
+	} else {
+		pd->hold_time = (bool)false;
+	}
+
+	if (of_property_read_bool(np, "setup-time")) {
+		pd->setup_time = (bool)true;
+	} else {
+		pd->setup_time = (bool)false;
+	}
+
+	pd->is_slave = of_property_read_bool(np, "spi-slave");
+
+	status = of_property_read_u32(np, "write-threshold", &pd->cfgwth);
+	if (status != 0) {
+		if (pd->is_slave) {
+			pd->cfgwth = 6U; /* slave (default value) */
+		} else {
+			pd->cfgwth = 0U; /* master (default value) */
+		}
+	}
+	if (pd->cfgwth > 15) {
+		pd->cfgwth = 15; /* max value */
+	}
+
+	dev_info(dev, "[INFO][SPI] GPSB %s ctf mode: %d, prd: %d, Tx threshold: %d\n",
+			pd->is_slave ? "Slave":"Master",
+			pd->ctf,
+			pd->prd,
+			pd->cfgwth);
+	if (!pd->is_slave) {
+		dev_info(dev, "[INFO][SPI] recovery-time: %d, hold-time: %d, setup-time: %d\n",
+				pd->recovery_time,
+				pd->hold_time,
+				pd->setup_time);
 	}
 	/*
 	 * TCC GPSB CH 3-5 don't have dedicated dma

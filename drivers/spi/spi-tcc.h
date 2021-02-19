@@ -327,6 +327,19 @@ struct tcc_spi_pl_data {
 
 	/* Continuous mode */
 	bool ctf;
+
+	/* Capture trigger of GSCK for GSDI */
+	bool prd;
+
+	/* TRE */
+	bool recovery_time;
+	/* THL */
+	bool hold_time;
+	/* TSU */
+	bool setup_time;
+
+	/* Write FIFO threshold */
+	uint32_t cfgwth;
 };
 
 /* TCC GPSB SPI Data */
