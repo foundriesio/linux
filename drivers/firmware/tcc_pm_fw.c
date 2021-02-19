@@ -47,8 +47,6 @@ struct pm_fw_drvdata {
 	struct notifier_block pm_noti;
 
 	/* /sys/power/str sysfs */
-	struct kobject pwrstr;
-
 	struct bit_field boot_reason;
 	bool application_ready;
 
@@ -59,13 +57,17 @@ struct pm_fw_drvdata {
 	struct pmic pmic;
 };
 
-#define to_pm_fw_drvdata(ptr, member) \
-	(container_of(ptr, struct pm_fw_drvdata, member))
+struct pm_fw_drvdata *pm_fw_drvdata_ptr;
+
+static inline struct pm_fw_drvdata *get_pm_fw_drvdata(void)
+{
+	return pm_fw_drvdata_ptr;
+}
 
 static ssize_t application_ready_show(struct kobject *kobj,
 				      struct kobj_attribute *attr, char *buf)
 {
-	struct pm_fw_drvdata *drvdata = to_pm_fw_drvdata(kobj, pwrstr);
+	struct pm_fw_drvdata *drvdata = get_pm_fw_drvdata();
 
 	if (drvdata == NULL) {
 		return sprintf(buf, "-1\n");
@@ -78,7 +80,7 @@ static ssize_t application_ready_store(struct kobject *kobj,
 				       struct kobj_attribute *attr,
 				       const char *buf, size_t count)
 {
-	struct pm_fw_drvdata *drvdata = to_pm_fw_drvdata(kobj, pwrstr);
+	struct pm_fw_drvdata *drvdata = get_pm_fw_drvdata();
 	struct tcc_mbox_data msg;
 	s32 ret;
 
@@ -121,7 +123,7 @@ static struct kobj_attribute application_ready_attr = {
 static ssize_t boot_reason_show(struct kobject *kobj,
 				struct kobj_attribute *attr, char *buf)
 {
-	struct pm_fw_drvdata *drvdata = to_pm_fw_drvdata(kobj, pwrstr);
+	struct pm_fw_drvdata *drvdata = get_pm_fw_drvdata();
 
 	if (drvdata == NULL) {
 		return sprintf(buf, "-1\n");
@@ -149,9 +151,12 @@ static struct attribute *pwrstr_attrs[] = {
 	NULL,
 };
 
-ATTRIBUTE_GROUPS(pwrstr);
+static const struct attribute_group pwrstr_group = {
+	.name = "str",
+	.attrs = pwrstr_attrs,
+};
 
-static s32 pm_fw_power_sysfs_init(struct kobject *kobj)
+static s32 pm_fw_power_sysfs_init(void)
 {
 	s32 ret;
 
@@ -159,23 +164,12 @@ static s32 pm_fw_power_sysfs_init(struct kobject *kobj)
 		return -EINVAL;
 	}
 
-	ret = kobject_init_and_add(kobj, power_kobj->ktype, power_kobj, "str");
-	if (ret != 0) {
-		return ret;
-	}
-
-	ret = sysfs_create_groups(kobj, pwrstr_groups);
-	if (ret != 0) {
-		kobject_put(kobj);
-	}
-
-	return ret;
+	return sysfs_create_group(power_kobj, &pwrstr_group);
 }
 
-static void pm_fw_power_sysfs_free(struct kobject *kobj)
+static void pm_fw_power_sysfs_free(void)
 {
-	sysfs_remove_groups(kobj, pwrstr_groups);
-	kobject_put(kobj);
+	sysfs_remove_group(power_kobj, &pwrstr_group);
 }
 
 #define pmic_regmap_update(map, reg, shift, val) \
@@ -259,7 +253,7 @@ static s32 pmic_ctrl_str_mode(struct pmic *pmic, u32 enter)
 static int pm_fw_pm_notifier_call(struct notifier_block *nb,
 				  unsigned long action, void *data)
 {
-	struct pm_fw_drvdata *drvdata = to_pm_fw_drvdata(nb, pm_noti);
+	struct pm_fw_drvdata *drvdata = get_pm_fw_drvdata();
 	s32 ret = 0;
 
 	if (drvdata == NULL) {
@@ -464,6 +458,8 @@ static int pm_fw_probe(struct platform_device *pdev)
 	struct pm_fw_drvdata *drvdata;
 	s32 ret = -ENODEV;
 
+	pm_fw_drvdata_ptr = NULL;
+
 	if (dev == NULL) {
 		pm_fw_err(dev, "get device", ret);
 		goto pre_init_error;
@@ -478,7 +474,7 @@ static int pm_fw_probe(struct platform_device *pdev)
 	}
 
 	/* Initialize '/sys/power/str/' sysfs kobject */
-	ret = pm_fw_power_sysfs_init(&drvdata->pwrstr);
+	ret = pm_fw_power_sysfs_init();
 	if (ret != 0) {
 		pm_fw_err(dev, "init '/sys/power/str' sysfs", ret);
 		goto power_sysfs_init_error;
@@ -515,6 +511,7 @@ static int pm_fw_probe(struct platform_device *pdev)
 	/* Now we can register driver data */
 	platform_set_drvdata(pdev, drvdata);
 	drvdata->pdev = pdev;
+	pm_fw_drvdata_ptr = drvdata;
 
 	return 0;
 
@@ -525,7 +522,7 @@ mbox_init_error:
 boot_reason_init_error:
 	pm_fw_pm_notifier_free(&drvdata->pm_noti);
 pm_notifier_init_error:
-	pm_fw_power_sysfs_free(&drvdata->pwrstr);
+	pm_fw_power_sysfs_free();
 power_sysfs_init_error:
 	devm_kfree(dev, drvdata);
 pre_init_error:
