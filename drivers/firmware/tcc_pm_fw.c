@@ -419,7 +419,7 @@ static s32 pm_fw_get_pmic(struct pmic *pmic, struct device *dev)
 	bool err;
 
 #if defined(CONFIG_MFD_DA9062)
-	regulator = devm_regulator_get(dev, "memq_1p1");
+	regulator = devm_regulator_get_exclusive(dev, "memq_1p1");
 	err = IS_ERR(regulator);
 	if (err) {
 		pmic->da9062_regmap = NULL;
@@ -428,13 +428,14 @@ static s32 pm_fw_get_pmic(struct pmic *pmic, struct device *dev)
 	pmic->da9062_regmap = regulator_get_regmap(regulator);
 	err = IS_ERR(pmic->da9062_regmap);
 	if (err) {
+		pmic->da9062_regmap = NULL;
 		return -ENOENT;
 	}
 #endif
 
 #if defined(CONFIG_REGULATOR_DA9121)
 	/* D0 */
-	regulator = devm_regulator_get(dev, "core_0p8");
+	regulator = devm_regulator_get_exclusive(dev, "core_0p8");
 	err = IS_ERR(regulator);
 	if (err) {
 		pmic->da9131_regmap[0] = NULL;
@@ -448,7 +449,7 @@ static s32 pm_fw_get_pmic(struct pmic *pmic, struct device *dev)
 	}
 
 	/* D2 */
-	regulator = devm_regulator_get(dev, "cpu_1p0");
+	regulator = devm_regulator_get_exclusive(dev, "cpu_1p0");
 	err = IS_ERR(regulator);
 	if (err) {
 		pmic->da9131_regmap[1] = NULL;
@@ -461,6 +462,7 @@ static s32 pm_fw_get_pmic(struct pmic *pmic, struct device *dev)
 		return 0;
 	}
 #endif
+	return 0;
 }
 
 static int pm_fw_probe(struct platform_device *pdev)
