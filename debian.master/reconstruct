@@ -1,9 +1,13 @@
 # Recreate any symlinks created since the orig.
 # Remove any files deleted from the orig.
+rm -f 'arch/alpha/include/asm/local64.h'
+rm -f 'arch/ia64/include/asm/local64.h'
 rm -f 'arch/powerpc/lib/memcpy_mcsafe_64.S'
 rm -f 'arch/powerpc/platforms/pseries/offline_states.h'
+rm -f 'arch/x86/include/asm/local64.h'
 rm -f 'arch/x86/include/asm/mcsafe_test.h'
 rm -f 'drivers/net/ethernet/mscc/ocelot_board.c'
+rm -f 'lib/zlib_dfltcc/dfltcc_syms.c'
 rm -f 'tools/arch/x86/include/asm/mcsafe_test.h'
 rm -f 'tools/perf/bench/mem-memcpy-x86-64-lib.c'
 rm -f 'tools/testing/kunit/.gitattributes'
