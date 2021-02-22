@@ -1956,6 +1956,7 @@ static void fbX_prepare_vin_path_rdma(struct fbX_par *par)
 	int status = 0;
 	VIOC_RDMA_GetImageEnable(par->pdata.rdma_info.virt_addr, &rdma_enable);
 	cur = VIOC_RDMA_Get_CAddress(par->pdata.rdma_info.virt_addr);
+#if 0
 	for( idx = 0; idx < 10; idx++){
 		prev = cur;
 		msleep(20);
@@ -1964,12 +1965,17 @@ static void fbX_prepare_vin_path_rdma(struct fbX_par *par)
 			status++;
 		}
 	}
+#endif
 
-	if(rdma_enable)
+	if (rdma_enable) {
 		VIOC_RDMA_SetImageDisable(par->pdata.rdma_info.virt_addr);
+	}
+
+#if 0
 	pr_info("[INFO][FBX] rdma_enable = [%s], status = [%s]\n",
 						rdma_enable ? "enable" : "disable",
 						status? "working" : "not working");
+#endif
 	VIOC_CONFIG_SWReset_RAW(par->pdata.rdma_info.blk_num, VIOC_CONFIG_RESET);
 	VIOC_CONFIG_SWReset_RAW(par->pdata.rdma_info.blk_num, VIOC_CONFIG_CLEAR);
 	pr_info("[INFO][FBX] rdma[%d] SWReset.\n", par->pdata.rdma_info.blk_num - VIOC_RDMA);
