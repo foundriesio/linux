@@ -1179,8 +1179,6 @@ int tcc_mipi_csi2_enable(struct tcc_mipi_csi2_state *state, unsigned int enable)
 {
 	int ret = 0;
 
-	logi(&(state->pdev->dev), "%s in\n", __func__);
-
 	ret = tcc_mipi_csi2_set_interface(state, enable);
 	if (ret < 0) {
 		loge(&(state->pdev->dev),
@@ -1196,7 +1194,6 @@ int tcc_mipi_csi2_enable(struct tcc_mipi_csi2_state *state, unsigned int enable)
 	}
 
 err:
-	logi(&(state->pdev->dev), "%s out\n", __func__);
 	return ret;
 }
 
@@ -1208,16 +1205,13 @@ static int tcc_mipi_csi2_s_power(struct v4l2_subdev *sd, int on)
 	struct tcc_mipi_csi2_state	*state	= sd_to_state(sd);
 	int				ret	= 0;
 
-	logi(&(state->pdev->dev), "call\n");
-
 	return ret;
 }
+
 static int tcc_mipi_csi2_init(struct v4l2_subdev *sd, u32 enable)
 {
 	struct tcc_mipi_csi2_state	*state	= sd_to_state(sd);
 	int				ret	= 0;
-
-	logi(&(state->pdev->dev), "call\n");
 
 	mutex_lock(&state->lock);
 
@@ -1300,8 +1294,6 @@ static int tcc_mipi_csi2_get_fmt(struct v4l2_subdev *sd,
 	int ret	= 0;
 	int i = 0;
 
-	logi(&(state->pdev->dev), "call\n");
-
 	mutex_lock(&state->lock);
 
 	for (i = 0; i < MAX_VC; i++) {
@@ -1321,8 +1313,6 @@ static int tcc_mipi_csi2_set_fmt(struct v4l2_subdev *sd,
 	struct tcc_mipi_csi2_state	*state	= sd_to_state(sd);
 	int ret	= 0;
 	int i = 0;
-
-	logi(&(state->pdev->dev), "call\n");
 
 	mutex_lock(&state->lock);
 
