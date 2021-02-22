@@ -1377,11 +1377,11 @@
 				};
 			};
 
-		        port@1 {
+			port@1 {
 				reg = <1>;
-		                mipi_csi2_0_out0: endpoint {
-		                        //remote-endpoint = <&isp0_in>;
-		                        remote-endpoint = <&videoinput4_in>;
+				mipi_csi2_0_out0: endpoint {
+					//remote-endpoint = <&isp0_in>;
+					remote-endpoint = <&videoinput4_in>;
 					io-direction	= "output";
 					channel		= <0>;
 					/*
@@ -1391,7 +1391,7 @@
 					 * 3: Invalid
 					 */
 					pixel-mode = <1>;
-		                };
+				};
 			};
 			port@2 {
 				reg = <2>;
@@ -1486,12 +1486,12 @@
 		ports {
 			#address-cells = <1>;
 			#size-cells = <0>;
-		        port@0 {
+			port@0 {
 				reg = <0>;
-		                isp0_in: endpoint {
-		                        remote-endpoint = <&mipi_csi2_0_out0>;
+				isp0_in: endpoint {
+					remote-endpoint = <&mipi_csi2_0_out0>;
 					io-direction	= "input";
-		                };
+				};
 			};
 			port@1 {
 				reg = <1>;
@@ -1516,12 +1516,12 @@
 		ports {
 			#address-cells = <1>;
 			#size-cells = <0>;
-		        port@0 {
+			port@0 {
 				reg = <0>;
-		                isp1_in: endpoint {
-		                        remote-endpoint = <&mipi_csi2_0_out1>;
+				isp1_in: endpoint {
+					remote-endpoint = <&mipi_csi2_0_out1>;
 					io-direction	= "input";
-		                };
+				};
 			};
 			port@1 {
 				reg = <1>;
@@ -1546,12 +1546,12 @@
 		ports {
 			#address-cells = <1>;
 			#size-cells = <0>;
-		        port@0 {
+			port@0 {
 				reg = <0>;
-		                isp2_in: endpoint {
-		                        remote-endpoint = <&mipi_csi2_0_out2>;
+				isp2_in: endpoint {
+					remote-endpoint = <&mipi_csi2_0_out2>;
 					io-direction	= "input";
-		                };
+				};
 			};
 			port@1 {
 				reg = <1>;
@@ -1576,12 +1576,12 @@
 		ports {
 			#address-cells = <1>;
 			#size-cells = <0>;
-		        port@0 {
+			port@0 {
 				reg = <0>;
-		                isp3_in: endpoint {
-		                        remote-endpoint = <&mipi_csi2_0_out3>;
+				isp3_in: endpoint {
+					remote-endpoint = <&mipi_csi2_0_out3>;
 					io-direction	= "input";
-		                };
+				};
 			};
 			port@1 {
 				reg = <1>;
@@ -4237,7 +4237,7 @@
 	ar0147: ar0147 {
 		/* Camera Image Sensor */
 		status		= "disabled";
-		compatible	= "onsemiconductor,ar0147";
+		compatible	= "onnn,ar0147";
 		reg		= <0x10>;
 		port {
 			ar0147_out: endpoint {
@@ -4255,21 +4255,21 @@
 		ports {
 			#address-cells = <1>;
 			#size-cells = <0>;
-		        port@0 {
+			port@0 {
 				reg = <0>;
 				max96701_in: endpoint {
 					//remote-endpoint = <&ar0147_out>;
 					//io-direction	= "input";
 				};
 			};
-		        port@1 {
+			port@1 {
 				reg = <1>;
 				max96701_out: endpoint {
 					remote-endpoint = <&max9286_in0>;
 					io-direction	= "output";
 				};
 			};
-                };
+		};
 	};
 
 	max9286: max9286 {
@@ -4290,7 +4290,7 @@
 			 * 4
 			 * output port.
 			 */
-		        port@0 {
+			port@0 {
 				reg = <0>;
 				max9286_in0: endpoint {
 					remote-endpoint = <&max96701_out>;
@@ -4298,7 +4298,7 @@
 					channel		= <0>;
 				};
 			};
-		        port@1 {
+			port@1 {
 				reg = <1>;
 				max9286_in1: endpoint {
 					remote-endpoint = <&max96701_out>;
@@ -4306,7 +4306,7 @@
 					channel		= <1>;
 				};
 			};
-		        port@2 {
+			port@2 {
 				reg = <2>;
 				max9286_in2: endpoint {
 					remote-endpoint = <&max96701_out>;
@@ -4314,7 +4314,7 @@
 					channel		= <2>;
 				};
 			};
-		        port@3 {
+			port@3 {
 				reg = <3>;
 				max9286_in3: endpoint {
 					remote-endpoint = <&max96701_out>;
@@ -4322,14 +4322,14 @@
 					channel		= <3>;
 				};
 			};
-		        port@4 {
+			port@4 {
 				reg = <4>;
 				max9286_out: endpoint {
 					remote-endpoint = <&mipi_csi2_0_in>;
 					io-direction	= "output";
 				};
 			};
-                };
+		};
 	};
 
 	/* FHD camera module & max96712 using MIPI CSI2 output */
@@ -4342,7 +4342,7 @@
 			#address-cells = <1>;
 			#size-cells = <0>;
 #if 0
-		        port@0 {
+			port@0 {
 				reg = <0>;
 				cxd5700_in: endpoint {
 					remote-endpoint = <&cis>;
@@ -4350,14 +4350,14 @@
 				};
 			};
 #endif
-		        port@1 {
+			port@1 {
 				reg = <1>;
 				cxd5700_out: endpoint {
 					remote-endpoint = <&max9275_in>;
 					io-direction	= "output";
 				};
 			};
-                };
+		};
 	};
 
 	max9275: max9275 {
@@ -4368,21 +4368,21 @@
 		ports {
 			#address-cells = <1>;
 			#size-cells = <0>;
-		        port@0 {
+			port@0 {
 				reg = <0>;
 				max9275_in: endpoint {
 					remote-endpoint = <&cxd5700_out>;
 					io-direction	= "input";
 				};
 			};
-		        port@1 {
+			port@1 {
 				reg = <1>;
 				max9275_out: endpoint {
 					remote-endpoint = <&max96712_in0>;
 					io-direction	= "output";
 				};
 			};
-                };
+		};
 	};
 
 	max96712: max96712 {
@@ -4402,7 +4402,7 @@
 			 * 4
 			 * output port.
 			 */
-		        port@0 {
+			port@0 {
 				reg = <0>;
 				max96712_in0: endpoint {
 					remote-endpoint = <&max9275_out>;
@@ -4410,7 +4410,7 @@
 					channel		= <0>;
 				};
 			};
-		        port@1 {
+			port@1 {
 				reg = <1>;
 				max96712_in1: endpoint {
 					remote-endpoint = <&max9275_out>;
@@ -4418,7 +4418,7 @@
 					channel		= <1>;
 				};
 			};
-		        port@2 {
+			port@2 {
 				reg = <2>;
 				max96712_in2: endpoint {
 					remote-endpoint = <&max9275_out>;
@@ -4426,7 +4426,7 @@
 					channel		= <2>;
 				};
 			};
-		        port@3 {
+			port@3 {
 				reg = <3>;
 				max96712_in3: endpoint {
 					remote-endpoint = <&max9275_out>;
@@ -4434,14 +4434,14 @@
 					channel		= <3>;
 				};
 			};
-		        port@4 {
+			port@4 {
 				reg = <4>;
 				max96712_out: endpoint {
 					remote-endpoint = <&mipi_csi2_0_in>;
 					io-direction	= "output";
 				};
 			};
-                };
+		};
 	};
 };
 
