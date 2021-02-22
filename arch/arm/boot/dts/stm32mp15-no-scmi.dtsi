@@ -97,6 +97,10 @@
 	/delete-node/ sram@2ffff000;
 };
 
+&bsec {
+	clocks = <&rcc BSEC>;
+};
+
 &gpioz {
 	clocks = <&rcc GPIOZ>;
 };

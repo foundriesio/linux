@@ -1790,6 +1790,7 @@
 		bsec: efuse@5c005000 {
 			compatible = "st,stm32mp15-bsec";
 			reg = <0x5c005000 0x400>;
+			clocks = <&scmi0_clk CK_SCMI0_BSEC>;
 			#address-cells = <1>;
 			#size-cells = <1>;
 			part_number_otp: part_number_otp@4 {
