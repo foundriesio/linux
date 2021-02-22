@@ -156,11 +156,9 @@ static int tcc_snd_card_startup(struct snd_pcm_substream *substream)
 
 static void tcc_snd_card_shutdown(struct snd_pcm_substream *substream)
 {
-	int ret = 0;
 
 	snd_card_dbg("%s - Not support operation", __func__);
 
-	return ret;
 }
 
 static int tcc_snd_card_hw_params(struct snd_pcm_substream *substream,
@@ -218,16 +216,13 @@ static bool dai_is_active(
 	unsigned int card_id,
 	unsigned int dev_id)
 {
-	char dev_name[6] = {0,};
 	bool is_active = FALSE;
 
 	is_active = (dai->active != 0) ? TRUE : FALSE;
 
 	if (is_active) {
-		snd_card_err("%s doesn't change while %s is activated. %s.",
-			kcontrol_name,
-			dev_name,
-			dev_name);
+		snd_card_err("%s doesn't change while the device is activated.",
+			kcontrol_name);
 	}
 
 	return is_active;
