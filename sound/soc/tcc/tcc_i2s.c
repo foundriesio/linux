@@ -1403,7 +1403,7 @@ static int tcc_i2s_bespoke_trigger(struct snd_pcm_substream *substream,
 static snd_pcm_sframes_t tcc_i2s_delay(struct snd_pcm_substream *substream,
 								struct snd_soc_dai *dai)
 {
-	int ret = 0;
+	snd_pcm_sframes_t ret = 0;
 
 	i2s_dai_dbg("%s - Not support operation", __func__);
 
@@ -1425,7 +1425,7 @@ static struct snd_soc_dai_ops tcc_i2s_ops = {
 	.set_sysclk				= tcc_i2s_set_sysclk,
 	.set_pll				= tcc_i2s_set_pll,
 	.xlate_tdm_slot_mask	= tcc_i2s_xlate_tdm_slot_mask,
-	.set_channel_map		= tcc_i2s_set_channel_map,
+	.set_channel_map		= tcc_i2s_set_channel_map,
 	.set_tristate			= tcc_i2s_set_tristate,
 	.digital_mute			= tcc_i2s_digital_mute,
 	.mute_stream			= tcc_i2s_mute_stream,
