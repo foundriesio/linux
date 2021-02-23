@@ -128,6 +128,12 @@ struct v4l2_mbus_config adv7182_mbus_config = {
 		V4L2_MBUS_MASTER,
 };
 
+struct v4l2_mbus_framefmt adv7182_mbus_framefmt = {
+	.width		= WIDTH,
+	.height		= HEIGHT,
+	.code		= MEDIA_BUS_FMT_UYVY8_2X8,
+};
+
 /*
  * gpio fuctions
  */
@@ -481,6 +487,10 @@ int adv7182_probe(struct i2c_client *client, const struct i2c_device_id *id)
 		loge("Failed to register subdevice\n");
 	else
 		logi("%s is registered as a v4l2 sub device.\n", dev->sd.name);
+
+	/* init mbus format */
+	memcpy((void *)&dev->fmt, (const void *)&adv7182_mbus_framefmt,
+		sizeof(dev->fmt));
 
 	/* request gpio */
 	adv7182_request_gpio(dev);
