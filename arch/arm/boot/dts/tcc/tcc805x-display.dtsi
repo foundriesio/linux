@@ -180,9 +180,7 @@
 		#size-cells = <0>;
 		compatible = "telechips,drm-lvds-dpv14-0";
 		status = "okay";
-
-		lcdc-mux-select = <0>;
-
+		lcdc-mux-select = <3>;
 		display-timings {
 			native-mode = <&timing_dpv14_0>;
 			timing_dpv14_0: 1920x720p60 {
@@ -232,9 +230,7 @@
 		#size-cells = <0>;
 		compatible = "telechips,drm-lvds-dpv14-1";
 		status = "okay";
-
-		lcdc-mux-select = <1>;
-
+		lcdc-mux-select = <0>;
 		display-timings {
 			native-mode = <&timing_dpv14_1>;
 			timing_dpv14_1: 1920x720p60 {
@@ -278,15 +274,12 @@
 			};
 		};
 	};
-	
 	drm_dpv14_2:drm_dpv14_2 {
 		#address-cells = <1>;
 		#size-cells = <0>;
 		compatible = "telechips,drm-lvds-dpv14-2";
 		status = "disabled";
-
-		lcdc-mux-select = <2>;
-
+		lcdc-mux-select = <1>;
 		display-timings {
 			native-mode = <&timing_dpv14_2>;
 			timing_dpv14_2: 1920x720p60 {
@@ -330,7 +323,7 @@
 			};
 		};
 	};
-	
+
 	drm_tm123xdhp90:drm_tm123xdhp90 {
 		#address-cells = <1>;
 		#size-cells = <0>;
@@ -400,7 +393,7 @@
 
 		mode = <LVDS_SINGLE>;   /* 0: single 1: dual */
 		phy-ports = <PHY_PORT_S0>; /*port main, port sub*/
-		lcdc-mux-select = <3>;
+		lcdc-mux-select = <2>;
 		data-mapping = "vesa-24";
 		lane-main = <DATA0_LANE DATA1_LANE DATA2_LANE CLK_LANE DATA3_LANE>;
 		vcm = <1200>;
@@ -454,7 +447,7 @@
 		#size-cells = <0>;
 		compatible = "telechips,tcc-drm-lcd-v1.0";
 		display_device = <&vioc_disp VIOC_DISP0>;
-		lcdc-mux-select = <0>;
+		lcdc-mux-select = <3>;
 		wmixer = <&vioc_wmix VIOC_WMIX0>;
 		rdma = <&vioc_rdma VIOC_RDMA00>;
 		planes = "primary";
@@ -464,6 +457,7 @@
 
 			reg = <0>;
 			lcd_display_out: endpoint {
+				//remote-endpoint = <&dpv14_0_input_0>;
 				//remote-endpoint = <&tm123xdhp90_input_0>;
 				//remote-endpoint = <&fld0800_input_0>;
 			};
@@ -475,7 +469,7 @@
 		#size-cells = <0>;
 		compatible = "telechips,tcc-drm-ext-v1.0";
 		display_device = <&vioc_disp VIOC_DISP1>;
-		lcdc-mux-select = <1>;
+		lcdc-mux-select = <0>;
 		wmixer = <&vioc_wmix VIOC_WMIX1>;
 		rdma = <&vioc_rdma VIOC_RDMA04>;
 		planes = "primary";
@@ -484,6 +478,7 @@
 		port@0 {
 			reg = <0>;
 			ext_display_out: endpoint {
+				//remote-endpoint = <&dpv14_1_input_1>;
 				//remote-endpoint = <&tm123xdhp90_input_1>;
 				//remote-endpoint = <&fld0800_input_1>;
 			};
@@ -504,6 +499,7 @@
 		port@0 {
 			reg = <0>;
 			third_display_out: endpoint {
+				//remote-endpoint = <&dpv14_2_input_2>;
 				//remote-endpoint = <&tm123xdhp90_input_2>;
 				//remote-endpoint = <&fld0800_input_2>;
 			};
@@ -515,7 +511,7 @@
 		#size-cells = <0>;
 		compatible = "telechips,tcc-drm-fourth-v1.0";
 		display_device = <&vioc_disp VIOC_DISP3>;
-		lcdc-mux-select = <3>;
+		lcdc-mux-select = <1>;
 		wmixer = <&vioc_wmix VIOC_WMIX3>;
 		rdma = <&vioc_rdma VIOC_RDMA12>;
 		planes = "primary";

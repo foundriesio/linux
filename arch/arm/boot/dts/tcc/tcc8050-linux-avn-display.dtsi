@@ -16,8 +16,7 @@
 
 	drm_dpv14_0 {
 		status = "okay";
-
-		lcdc-mux-select = <0>;
+		lcdc-mux-select = <3>;
 		pinctrl-names = "default", "power_on", "reset_off", "blk_on", "blk_off", "power_off";
 		pinctrl-0 = <&lcd_port_default1>;
 		pinctrl-1 = <&lcd_port_power_on1>;
@@ -29,9 +28,7 @@
 
 	drm_dpv14_1 {
 		status = "okay";
-
-		lcdc-mux-select = <1>;
-
+		lcdc-mux-select = <0>;
 		pinctrl-names = "default", "power_on", "reset_off", "blk_on", "blk_off", "power_off";
 		pinctrl-0 = <&lcd_port_default2>;
 		pinctrl-1 = <&lcd_port_power_on2>;
@@ -43,7 +40,6 @@
 
 	drm_tm123xdhp90 {
 		status = "disabled";
-
 		phy-ports = <PHY_PORT_D0 PHY_PORT_D1>;
 		lcdc-mux-select = <2>;
 		pinctrl-names = "default", "pwr_on_1", "pwr_on_2",
@@ -54,17 +50,6 @@
 		pinctrl-3 = <&lcd_port_blk_on2>;
 		pinctrl-4 = <&lcd_port_blk_off2>;
 		pinctrl-5 = <&lcd_port_reset_on2 &lcd_port_power_off2>;
-	};
-
-	drm_fld0800 {
-		status = "disabled";
-
-		phy-ports = <PHY_PORT_S0>;
-		lcdc-mux-select = <3>;
-		pinctrl-names = "default", "pwr_on_1", "power_off";
-                pinctrl-0 = <&lcd_port_default3>;
-		pinctrl-1 = <&lcd_port_power_on3>;
-		pinctrl-2 = <&lcd_port_power_off3>;
 	};
 
 	tcc-drm-lcd {
