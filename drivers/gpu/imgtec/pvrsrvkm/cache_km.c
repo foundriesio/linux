@@ -1536,8 +1536,7 @@ static PVRSRV_ERROR CacheOpPMRExec (PMR *psPMR,
 				(void *)(uintptr_t)((uintptr_t)pvAddress + (uintptr_t)(uiPgAlignedOffset-uiPgAlignedStartOffset));
 		}
 		/* Skip CpuVA acquire if CacheOp can be maintained entirely using CpuPA */
-		else if (gsCwq.uiCacheOpAddrType != OS_CACHE_OP_ADDR_TYPE_PHYSICAL ||
-				PMR_GetType(psPMR) == PMR_TYPE_DMABUF)
+		else if (gsCwq.uiCacheOpAddrType != OS_CACHE_OP_ADDR_TYPE_PHYSICAL)
 		{
 			if (bPMRIsSparse)
 			{
@@ -1576,8 +1575,7 @@ static PVRSRV_ERROR CacheOpPMRExec (PMR *psPMR,
 		if (! pvAddress)
 		{
 			/* The caller has not supplied either a KM/UM CpuVA, release mapping */
-			if (gsCwq.uiCacheOpAddrType != OS_CACHE_OP_ADDR_TYPE_PHYSICAL ||
-				PMR_GetType(psPMR) == PMR_TYPE_DMABUF)
+			if (gsCwq.uiCacheOpAddrType != OS_CACHE_OP_ADDR_TYPE_PHYSICAL)
 			{
 				eError = PMRReleaseKernelMappingData(psPMR, hPrivOut);
 				PVR_LOG_IF_ERROR(eError, "PMRReleaseKernelMappingData");
