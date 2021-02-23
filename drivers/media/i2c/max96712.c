@@ -35,6 +35,7 @@
 #include <media/v4l2-dev.h>
 #include <media/v4l2-subdev.h>
 #include <video/tcc/vioc_vin.h>
+#include "max96712-reg.h"
 
 #define LOG_TAG			"VSRC:MAX96712"
 
@@ -51,47 +52,32 @@
 		pr_info("[INFO][%s] %s - "\
 			fmt, LOG_TAG, __func__, ##__VA_ARGS__)
 
-#define DEFAULT_WIDTH			(1920)
-#define DEFAULT_HEIGHT			(1080)
-
-//#define MAX96712_REG_STATUS_1	0x1E
-//#define MAX96712_VAL_STATUS_1	0x40
-
-/*
- * MAX96712 REG
- */
-#define MAX96712_LINK_EN_A	(1 << 0)
-#define MAX96712_LINK_EN_B	(1 << 1)
-#define MAX96712_LINK_EN_C	(1 << 2)
-#define MAX96712_LINK_EN_D	(1 << 3)
-
-#define MAX96712_GMSL1_A	(0 << 4)
-#define MAX96712_GMSL1_B	(0 << 5)
-#define MAX96712_GMSL1_C	(0 << 6)
-#define MAX96712_GMSL1_D	(0 << 7)
-
-#define MAX96712_GMSL2_A	(1 << 4)
-#define MAX96712_GMSL2_B	(1 << 5)
-#define MAX96712_GMSL2_C	(1 << 6)
-#define MAX96712_GMSL2_D	(1 << 7)
-
-#define MAX96712_GMSL1_4CH					\
-		(MAX96712_GMSL1_A | MAX96712_GMSL1_B |		\
-		 MAX96712_GMSL1_C | MAX96712_GMSL1_D |		\
-		 MAX96712_LINK_EN_A | MAX96712_LINK_EN_B |	\
-		 MAX96712_LINK_EN_C | MAX96712_LINK_EN_D)
-
-#define MAX96712_GMSL1_2CH					\
-		(MAX96712_GMSL1_A | MAX96712_GMSL1_B |		\
-		 MAX96712_GMSL1_C | MAX96712_GMSL1_D |		\
-		 MAX96712_LINK_EN_A | MAX96712_LINK_EN_B)
-
-#define MAX96712_GMSL1_1CH					\
-		(MAX96712_GMSL1_A | MAX96712_GMSL1_B |		\
-		 MAX96712_GMSL1_C | MAX96712_GMSL1_D |		\
-		 MAX96712_LINK_EN_A)
+#define DEFAULT_WIDTH		(1920)
+#define DEFAULT_HEIGHT		(1080)
 
 #define MAX96712_LINK_MODE	MAX96712_GMSL1_4CH
+
+/*
+ * TODO
+ * The defines below must be modified according to your device
+ * The default values are for ar0147(sensor) and max96701(serializer)
+ */
+/* 1. remote devie info - sensor(ar0147) */
+#define AR0147_SLAVE_ADDR			(0x20)
+
+#define MAX96712_SENSOR_SLAVE_ADDR		AR0147_SLAVE_ADDR
+#define MAX96712_SENSOR_SLAVE_ADDR_ALIAS0	(AR0147_SLAVE_ADDR + 2)
+#define MAX96712_SENSOR_SLAVE_ADDR_ALIAS1	(AR0147_SLAVE_ADDR + 4)
+#define MAX96712_SENSOR_SLAVE_ADDR_ALIAS2	(AR0147_SLAVE_ADDR + 6)
+#define MAX96712_SENSOR_SLAVE_ADDR_ALIAS3	(AR0147_SLAVE_ADDR + 8)
+/* 2. remote devie info - serializer(max96701) */
+#define MAX96701_SLAVE_ADDR			(0x80)
+#define MAX96701_REG_I2C_SOURCE_B		(0x0B)
+#define MAX96701_REG_I2C_DEST_B			(0x0C)
+
+#define MAX96712_SER_SLAVE_ADDR			MAX96701_SLAVE_ADDR
+#define MAX96712_SER_REG_I2C_SOURC		MAX96701_REG_I2C_SOURCE_B
+#define MAX96712_SER_REG_I2C_DEST		MAX96701_REG_I2C_DEST_B
 
 struct power_sequence {
 	int			pwr_port;
@@ -640,6 +626,226 @@ static int max96712_g_input_status(struct v4l2_subdev *sd, u32 *status)
 	return ret;
 }
 
+static inline int max96712_set_fwdcc(struct v4l2_subdev *sd,
+				     unsigned int fwdcc, int enable)
+{
+	struct max96712	*dev = to_dev(sd);
+	unsigned int reg_val = 0;
+	int ret = 0;
+
+	if (enable) {
+		/* Enable Forward Control Channel */
+		reg_val = MAX96712_GMSL1_FWDCC_ENABLE;
+	} else {
+		/* Disable Forward Control Channel */
+		reg_val = MAX96712_GMSL1_FWDCC_DISABLE;
+	}
+
+	ret = regmap_write(dev->regmap, fwdcc, reg_val);
+
+	return ret;
+}
+
+static inline int max96712_set_all_fwdcc(struct v4l2_subdev *sd,
+					 int enable)
+{
+	int ret = 0;
+
+	ret = max96712_set_fwdcc(sd, MAX96712_REG_GMSL1_A_FWDCCEN, enable);
+	if (ret < 0) {
+		loge("Fail %s FWDCC of LINKE A\n",
+			((enable == ON) ? "enable" : "disable"));
+		goto e_fwdcc;
+	}
+
+	ret = max96712_set_fwdcc(sd, MAX96712_REG_GMSL1_B_FWDCCEN, enable);
+	if (ret < 0) {
+		loge("Fail %s FWDCC of LINKE B\n",
+			((enable == ON) ? "enable" : "disable"));
+		goto e_fwdcc;
+	}
+
+	ret = max96712_set_fwdcc(sd, MAX96712_REG_GMSL1_C_FWDCCEN, enable);
+	if (ret < 0) {
+		loge("Fail %s FWDCC of LINKE C\n",
+			((enable == ON) ? "enable" : "disable"));
+		goto e_fwdcc;
+	}
+
+	ret = max96712_set_fwdcc(sd, MAX96712_REG_GMSL1_D_FWDCCEN, enable);
+	if (ret < 0) {
+		loge("Fail %s FWDCC of LINKE D\n",
+			((enable == ON) ? "enable" : "disable"));
+		goto e_fwdcc;
+	}
+
+e_fwdcc:
+	return ret;
+}
+
+/**
+ * max96712_set_alias - Set alias of remote device's I2C slave address
+ *
+ * @sd: pointer to &struct v4l2_subdev
+ * @target_fwdcc: target input link's FWDCC reg
+ * @src: alias address
+ * @dst: real I2C slave address
+ *
+ * I2C master -> (source addr) -> ... -> serializer -> (dest addr) -> device
+ */
+static int max96712_set_alias(struct v4l2_subdev *sd,
+				unsigned int target_fwdcc,
+				short src, short dst)
+{
+	struct max96712 *dev = to_dev(sd);
+	struct i2c_client *client = 0;
+	unsigned char buf[3] = {0,};
+	unsigned short backup_addr = 0;
+	int ret = 0;
+
+	client = v4l2_get_subdevdata(sd);
+	if (client == NULL) {
+		ret = -ENODEV;
+		loge("no i2c client info\n");
+		goto end;
+	}
+
+	/* disable all FWDCC */
+	ret = max96712_set_all_fwdcc(sd, OFF);
+	if (ret < 0) {
+		loge("Fail disable all FWDCC\n");
+		goto e_fwdcc;
+	}
+
+	/* enable target FWDCC and change remote device's slave address */
+	ret = max96712_set_fwdcc(sd, target_fwdcc, ON);
+	if (ret < 0) {
+		loge("Fail enable target FWDCC\n");
+		goto e_fwdcc;
+	}
+
+	/* backup deserializer slave address */
+	backup_addr = client->addr;
+
+	/*
+	 * Set alias.
+	 * Src address is a alias.
+	 * Dest address is a real slave address of remote device.
+	 */
+	client->addr = (MAX96712_SER_SLAVE_ADDR >> 1U);
+
+	buf[0] = MAX96712_SER_REG_I2C_SOURC;
+	buf[1] = src;
+
+	ret = i2c_master_send(client, buf, 2);
+	if (ret < 0) {
+		loge("Fail setting source address");
+		goto e_fwdcc;
+	}
+
+	buf[0] = MAX96712_SER_REG_I2C_DEST;
+	buf[1] = dst;
+
+	ret = i2c_master_send(client, buf, 2);
+	if (ret < 0) {
+		loge("Fail setting destination address");
+		goto e_fwdcc;
+	}
+
+	/* restore deserializer slave addr disable target FWDCC */
+	client->addr = backup_addr;
+	ret = max96712_set_fwdcc(sd, target_fwdcc, OFF);
+	if (ret < 0) {
+		loge("Fail enable target FWDCC\n");
+		goto e_fwdcc;
+	}
+
+e_fwdcc:
+	client->addr = backup_addr;
+
+	/* enable all FWDCC */
+	ret = max96712_set_all_fwdcc(sd, ON);
+	if (ret < 0) {
+		loge("Fail enable all FWDCC\n");
+		goto end;
+	}
+
+end:
+	return ret;
+}
+/**
+ * max96712_set_alias_remote_slave_addr - set alias of remote slave address
+ *
+ * @sd: pointer to &struct v4l2_subdev
+ * @link_mode: link status showing which port is connected to the remote device
+ *
+ * MAX96712 has 4 input ports.
+ * So 4 remote devices(serializer, sensor and etc...) can be connected.
+ *
+ * If each remote devices are the same, all the I2C salve address will be same.
+ * So, the serializer supports the feature translating input I2C slave address.
+ */
+static int max96712_set_alias_remote_slave_addr(struct v4l2_subdev *sd,
+						int link_mode)
+{
+	int ret = 0;
+
+	if (link_mode & MAX96712_LINK_EN_A) {
+		ret = max96712_set_alias(sd,
+				MAX96712_REG_GMSL1_A_FWDCCEN,
+				MAX96712_SENSOR_SLAVE_ADDR_ALIAS0,
+				MAX96712_SENSOR_SLAVE_ADDR);
+		if (ret < 0) {
+			/* failure of changing remote device address */
+			loge("Fail set alias of link a remote address\n");
+			goto end;
+		}
+
+	}
+
+	if (link_mode & MAX96712_LINK_EN_B) {
+		ret = max96712_set_alias(sd,
+				MAX96712_REG_GMSL1_B_FWDCCEN,
+				MAX96712_SENSOR_SLAVE_ADDR_ALIAS1,
+				MAX96712_SENSOR_SLAVE_ADDR);
+		if (ret < 0) {
+			/* failure of changing remote device address */
+			loge("Fail set alias of link b remote address\n");
+			goto end;
+		}
+
+	}
+
+	if (link_mode & MAX96712_LINK_EN_C) {
+		ret = max96712_set_alias(sd,
+				MAX96712_REG_GMSL1_C_FWDCCEN,
+				MAX96712_SENSOR_SLAVE_ADDR_ALIAS2,
+				MAX96712_SENSOR_SLAVE_ADDR);
+		if (ret < 0) {
+			/* failure of changing remote device address */
+			loge("Fail set alias of link c remote address\n");
+			goto end;
+		}
+
+	}
+
+	if (link_mode & MAX96712_LINK_EN_D) {
+		ret = max96712_set_alias(sd,
+				MAX96712_REG_GMSL1_D_FWDCCEN,
+				MAX96712_SENSOR_SLAVE_ADDR_ALIAS3,
+				MAX96712_SENSOR_SLAVE_ADDR);
+		if (ret < 0) {
+			/* failure of changing remote device address */
+			loge("Fail set alias of link d remote address\n");
+			goto end;
+		}
+
+	}
+
+end:
+	return ret;
+}
+
 static int max96712_s_stream(struct v4l2_subdev *sd, int enable)
 {
 	struct max96712		*dev	= to_dev(sd);
@@ -658,6 +864,12 @@ static int max96712_s_stream(struct v4l2_subdev *sd, int enable)
 		}
 		if (dev->fmt.code == MEDIA_BUS_FMT_SGRBG12_1X12) {
 			/* format is MEDIA_BUS_FMT_SGRBG12_1X12 */
+			ret = max96712_set_alias_remote_slave_addr(sd,
+					MAX96712_LINK_MODE);
+			if (ret < 0) {
+				/* failure of changing remote device address */
+				loge("Fail set alias of remote address\n");
+			}
 			reg_val = 0x62;
 		} else {
 			/* format is not MEDIA_BUS_FMT_SGRBG12_1X12 */
