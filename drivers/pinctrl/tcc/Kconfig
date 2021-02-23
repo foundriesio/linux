@@ -3,4 +3,5 @@ config PINCTRL_TCC
 	bool
 	select PINMUX
 	select PINCONF
+	select GPIOLIB_IRQCHIP
 endif
