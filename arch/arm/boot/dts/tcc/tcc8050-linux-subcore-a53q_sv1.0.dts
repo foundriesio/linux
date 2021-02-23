@@ -35,7 +35,7 @@
 		reg = <0x40000000 0x20000000>;
 	};
 
-	aliases {
+	aliases: aliases {
 		serial0 = &uart0;
 		serial1 = &uart1;
 		serial2 = &uart2;
@@ -2177,46 +2177,16 @@
 		boot-reason = <0x14400178 0xF 0x8>;
 	};
 
-	pinctrl: pinctrl@14200000 {
-		compatible = "telechips,tcc805x-pinctrl";
-		reg = <0x14200000 0x7C0 0x1B937000 0xA30>;	/* gpio, pmgpio */
-		gpio-controller;
-		#address-cells = <1>;
-		#size-cells = <0>;
-		#gpio-cells = <3>;
+	gpio: gpio@14200000 {
+		compatible = "telechips,tcc-gpio";
+		reg = <0x14200000 0x7C0>;
 		sc-firmware = <&tcc_sc_fw>;
-		interrupts = <GIC_SPI 0 0>,
-			     <GIC_SPI 1 0>,
-			     <GIC_SPI 2 0>,
-			     <GIC_SPI 3 0>,
-			     <GIC_SPI 4 0>,
-			     <GIC_SPI 5 0>,
-			     <GIC_SPI 6 0>,
-			     <GIC_SPI 7 0>,
-			     <GIC_SPI 8 0>,
-			     <GIC_SPI 9 0>,
-			     <GIC_SPI 10 0>,
-			     <GIC_SPI 11 0>,
-			     <GIC_SPI 12 0>,
-			     <GIC_SPI 13 0>,
-			     <GIC_SPI 14 0>,
-			     <GIC_SPI 15 0>,
-			     <GIC_SPI 16 0>,
-			     <GIC_SPI 17 0>,
-			     <GIC_SPI 18 0>,
-			     <GIC_SPI 19 0>,
-			     <GIC_SPI 20 0>,
-			     <GIC_SPI 21 0>,
-			     <GIC_SPI 22 0>,
-			     <GIC_SPI 23 0>,
-			     <GIC_SPI 24 0>,
-			     <GIC_SPI 25 0>,
-			     <GIC_SPI 26 0>,
-			     <GIC_SPI 27 0>,
-			     <GIC_SPI 28 0>,
-			     <GIC_SPI 29 0>,
-			     <GIC_SPI 30 0>,
-			     <GIC_SPI 31 0>;
+	};
+
+	pinctrl: pinctrl@14200000 {
+		compatible = "telechips,tcc-pinctrl";
+		reg = <0x14200000 0x7C0 0x1B937000 0xA30>;	/* gpio, pmgpio */
+		sc-firmware = <&tcc_sc_fw>;
 	};
 
 	adma0: adma@16100000 {
@@ -2556,104 +2526,272 @@
 	mboxes = <&a53_sc_mbox 0>;
 };
 
-&pinctrl {
-	gpa: gpa {
+&aliases {
+		gpio0 = &gpa;
+		gpio32 = &gpb;
+		gpio61 = &gpc;
+		gpio91 = &gpe;
+		gpio111 = &gpg;
+		gpio122 = &gph;
+		gpio134 = &gpk;
+		gpio153 = &gpma;
+		gpio183 = &gpmb;
+		gpio209 = &gpmc;
+		gpio233 = &gpmd;
+		gpio251 = &gpsd0;
+		gpio266 = &gpsd1;
+		gpio277 = &gpsd2;
+};
+
+&gpio {
+               interrupts = <GIC_SPI 0 0>,
+                                  <GIC_SPI 1 0>,
+                                  <GIC_SPI 2 0>,
+                                  <GIC_SPI 3 0>,
+                                  <GIC_SPI 4 0>,
+                                  <GIC_SPI 5 0>,
+                                  <GIC_SPI 6 0>,
+                                  <GIC_SPI 7 0>,
+                                  <GIC_SPI 8 0>,
+                                  <GIC_SPI 9 0>,
+                                  <GIC_SPI 10 0>,
+                                  <GIC_SPI 11 0>,
+                                  <GIC_SPI 12 0>,
+                                  <GIC_SPI 13 0>,
+                                  <GIC_SPI 14 0>,
+                                  <GIC_SPI 15 0>,
+                                  <GIC_SPI 16 0>,
+                                  <GIC_SPI 17 0>,
+                                  <GIC_SPI 18 0>,
+                                  <GIC_SPI 19 0>,
+                                  <GIC_SPI 20 0>,
+                                  <GIC_SPI 21 0>,
+                                  <GIC_SPI 22 0>,
+                                  <GIC_SPI 23 0>,
+                                  <GIC_SPI 24 0>,
+                                  <GIC_SPI 25 0>,
+                                  <GIC_SPI 26 0>,
+                                  <GIC_SPI 27 0>,
+                                  <GIC_SPI 28 0>,
+                                  <GIC_SPI 29 0>,
+                                  <GIC_SPI 30 0>,
+                                  <GIC_SPI 31 0>;
+
+	    gpa: gpa {
+		reg-offset = <0x0>;
 		gpio-controller;
 		#gpio-cells = <2>;
-		reg = <0x0 0 32>;
+		interrupt-controller;
+		#interrupt-cells = <2>;
 		source-num = <1 0 1 32>;
-	};
+		label = "gpioa";
+		gpio-ranges = <&pinctrl 0 0 32>;
+	    };
 
-	gpb: gpb {
+	    gpb: gpb {
+		reg-offset = <0x40>;
 		gpio-controller;
 		#gpio-cells = <2>;
-		reg = <0x40 0 29>;
+		interrupt-controller;
+		#interrupt-cells = <2>;
 		source-num = <1 0 33 29>;
-	};
+		label = "gpiob";
+		gpio-ranges = <&pinctrl 0 32 29>;
+	    };
 
-	gpc: gpc {
+	    gpc: gpc {
+		reg-offset = <0x80>;
 		gpio-controller;
 		#gpio-cells = <2>;
-		reg = <0x80 0 30>;
-		source-num = <1 0 62 30>;
-	};
+		interrupt-controller;
+		#interrupt-cells = <2>;
+		source-num =  <1 0 62 30>;
+		label = "gpioc";
+		gpio-ranges = <&pinctrl 0 61 30>;
+	    };
 
-	gpe: gpe {
+ 	    gpe: gpe {
+		reg-offset = <0x100>;
 		gpio-controller;
 		#gpio-cells = <2>;
-		reg = <0x100 0 20>;
+		interrupt-controller;
+		#interrupt-cells = <2>;
 		source-num = <1 0 92 20>;
-	};
+		label = "gpioe";
+		gpio-ranges = <&pinctrl 0 91 20>;
+	    };
 
-	gpg: gpg {
+ 	    gpg: gpg {
+		reg-offset = <0x180>;
 		gpio-controller;
 		#gpio-cells = <2>;
-		reg = <0x180 0 11>;
+		interrupt-controller;
+		#interrupt-cells = <2>;
 		source-num = <1 0 112 11>;
-	};
+		label = "gpiog";
+		gpio-ranges = <&pinctrl 0 111 11>;
+	    };
 
-	gph: gph {
+ 	    gph: gph {
+		reg-offset = <0x640>;
 		gpio-controller;
 		#gpio-cells = <2>;
-		reg = <0x640 0 12>;
+		interrupt-controller;
+		#interrupt-cells = <2>;
 		source-num = <1 0 123 12>;
-	};
+		label = "gpioh";
+		gpio-ranges = <&pinctrl 0 122 12>;
+	    };
 
-	gpk: gpk {
+ 	    gpk: gpk {
+		reg-offset = <0x800>;
 		gpio-controller;
 		#gpio-cells = <2>;
-		reg = <0x800 0 19>;
+		interrupt-controller;
+		#interrupt-cells = <2>;
 		source-num = <0xff>;
-	};
+		label = "gpiok";
+		gpio-ranges = <&pinctrl 0 134 19>;
+	    };
 
-	gpma: gpma {
+ 	    gpma: gpma {
+		reg-offset = <0x6C0>;
 		gpio-controller;
 		#gpio-cells = <2>;
-		reg = <0x6C0 0 30>;
+		interrupt-controller;
+		#interrupt-cells = <2>;
 		source-num = <1 0 135 30>;
-	};
+		label = "gpioma";
+		gpio-ranges = <&pinctrl 0 153 30>;
+	    };
 
-	gpmb: gpmb {
+ 	    gpmb: gpmb {
+		reg-offset = <0x6C0>;
 		gpio-controller;
 		#gpio-cells = <2>;
-		reg = <0x700 0 32>;
-		source-num = <1 0 202 26>;
-	};
+		interrupt-controller;
+		#interrupt-cells = <2>;
+		source-num = <1 0 202 30>;
+		label = "gpiomb";
+		gpio-ranges = <&pinctrl 0 183 26>;
+	    };
 
-	gpmc: gpmc {
+ 	    gpmc: gpmc {
+		reg-offset = <0x6C0>;
 		gpio-controller;
 		#gpio-cells = <2>;
-		reg = <0x740 0 30>;
-		source-num = <1 0 228 24>;
-	};
+		interrupt-controller;
+		#interrupt-cells = <2>;
+		source-num = <1 0 228 30>;
+		label = "gpiomc";
+		gpio-ranges = <&pinctrl 0 209 24>;
+	    };
 
-	gpmd: gpmd {
+ 	    gpmd: gpmd {
+		reg-offset = <0x6C0>;
 		gpio-controller;
 		#gpio-cells = <2>;
-		reg = <0x780 0 18>;
+		interrupt-controller;
+		#interrupt-cells = <2>;
 		source-num = <2 8 252 2 16 254 2>;
-	};
+		label = "gpiomd";
+		gpio-ranges = <&pinctrl 0 233 18>;
+	    };
 
-	gpsd0: gpsd0 {
+ 	    gpsd0: gpsd0 {
+		reg-offset = <0x200>;
 		gpio-controller;
 		#gpio-cells = <2>;
-		reg = <0x200 0 15>;
+		interrupt-controller;
+		#interrupt-cells = <2>;
 		source-num = <1 0 166 15>;
-	};
+		label = "gpiosd0";
+		gpio-ranges = <&pinctrl 0 251 15>;
+	    };
 
-	gpsd1: gpsd1 {
+ 	    gpsd1: gpsd1 {
+		reg-offset = <0x240>;
 		gpio-controller;
 		#gpio-cells = <2>;
-		reg = <0x240 0 11>;
+		interrupt-controller;
+		#interrupt-cells = <2>;
 		source-num = <1 0 181 11>;
-	};
+		label = "gpiosd1";
+		gpio-ranges = <&pinctrl 0 266 11>;
+	    };
 
-	gpsd2: gpsd2 {
+ 	    gpsd2: gpsd2 {
+		reg-offset = <0x600>;
 		gpio-controller;
 		#gpio-cells = <2>;
-		reg = <0x600 0 10>;
+		interrupt-controller;
+		#interrupt-cells = <2>;
 		source-num = <1 0 192 10>;
+		label = "gpiosd2";
+		gpio-ranges = <&pinctrl 0 277 10>;
+	    };
+
+};
+
+
+&pinctrl {
+    pinctrl_gpio {
+	gpa {
+		pin-info = <0x0 0 32>;
 	};
+
+	gpb {
+		pin-info = <0x40 0 29>;
+	};
+
+	gpc {
+		pin-info = <0x80 0 30>;
+	};
+
+	gpe {
+		pin-info = <0x100 0 20>;
+	};
+
+	gpg {
+		pin-info = <0x180 0 11>;
+	};
+
+	gph {
+		pin-info = <0x640 0 12>;
+	};
+
+	gpk {
+		pin-info = <0x800 0 19>;
+	};
+
+	gpma {
+		pin-info = <0x6C0 0 30>;
+	};
+
+	gpmb {
+		pin-info = <0x700 0 32>;
+	};
+
+	gpmc {
+		pin-info = <0x740 0 30>;
+	};
+
+	gpmd {
+		pin-info = <0x780 0 18>;
+	};
+
+	gpsd0 {
+		pin-info = <0x200 0 15>;
+	};
+
+	gpsd1 {
+		pin-info = <0x240 0 11>;
+	};
+
+	gpsd2 {
+		pin-info = <0x600 0 10>;
+	};
+    };
 
 	uart9_data: uart9_data {
 		telechips,pins = "gpa-24", "gpa-25";
