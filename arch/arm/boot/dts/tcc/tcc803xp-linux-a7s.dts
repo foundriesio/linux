@@ -921,7 +921,7 @@
 		ar0147: ar0147 {
 			/* Camera Image Sensor */
 			status		= "disabled";
-			compatible	= "onsemiconductor,ar0147";
+			compatible	= "onnn,ar0147";
 			reg		= <0x10>;
 			port {
 				ar0147_out: endpoint {
