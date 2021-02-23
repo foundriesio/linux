@@ -5075,6 +5075,7 @@ EXPORT_SYMBOL	 net/netfilter/x_tables 0x00000000	xt_register_match
 EXPORT_SYMBOL	 net/netfilter/x_tables 0x00000000	xt_register_matches
 EXPORT_SYMBOL	 net/netfilter/x_tables 0x00000000	xt_register_target
 EXPORT_SYMBOL	 net/netfilter/x_tables 0x00000000	xt_register_targets
+EXPORT_SYMBOL	 net/netfilter/x_tables 0x00000000	xt_table_get_private_protected
 EXPORT_SYMBOL	 net/netfilter/x_tables 0x00000000	xt_unregister_match
 EXPORT_SYMBOL	 net/netfilter/x_tables 0x00000000	xt_unregister_matches
 EXPORT_SYMBOL	 net/netfilter/x_tables 0x00000000	xt_unregister_target
@@ -5922,6 +5923,7 @@ EXPORT_SYMBOL	 vmlinux 0x00000000	__dec_node_page_state
 EXPORT_SYMBOL	 vmlinux 0x00000000	__dec_zone_page_state
 EXPORT_SYMBOL	 vmlinux 0x00000000	__delay
 EXPORT_SYMBOL	 vmlinux 0x00000000	__destroy_inode
+EXPORT_SYMBOL	 vmlinux 0x00000000	__dev_direct_xmit
 EXPORT_SYMBOL	 vmlinux 0x00000000	__dev_get_by_flags
 EXPORT_SYMBOL	 vmlinux 0x00000000	__dev_get_by_index
 EXPORT_SYMBOL	 vmlinux 0x00000000	__dev_get_by_name
@@ -6953,7 +6955,6 @@ EXPORT_SYMBOL	 vmlinux 0x00000000	dev_change_proto_down_generic
 EXPORT_SYMBOL	 vmlinux 0x00000000	dev_close
 EXPORT_SYMBOL	 vmlinux 0x00000000	dev_close_many
 EXPORT_SYMBOL	 vmlinux 0x00000000	dev_deactivate
-EXPORT_SYMBOL	 vmlinux 0x00000000	dev_direct_xmit
 EXPORT_SYMBOL	 vmlinux 0x00000000	dev_disable_lro
 EXPORT_SYMBOL	 vmlinux 0x00000000	dev_driver_string
 EXPORT_SYMBOL	 vmlinux 0x00000000	dev_get_by_index
@@ -8604,6 +8605,9 @@ EXPORT_SYMBOL	 vmlinux 0x00000000	memset64
 EXPORT_SYMBOL	 vmlinux 0x00000000	memstart_addr
 EXPORT_SYMBOL	 vmlinux 0x00000000	memunmap
 EXPORT_SYMBOL	 vmlinux 0x00000000	memweight
+EXPORT_SYMBOL	 vmlinux 0x00000000	meson_sm_call
+EXPORT_SYMBOL	 vmlinux 0x00000000	meson_sm_call_read
+EXPORT_SYMBOL	 vmlinux 0x00000000	meson_sm_call_write
 EXPORT_SYMBOL	 vmlinux 0x00000000	mfd_add_devices
 EXPORT_SYMBOL	 vmlinux 0x00000000	mfd_cell_disable
 EXPORT_SYMBOL	 vmlinux 0x00000000	mfd_cell_enable
@@ -9932,6 +9936,7 @@ EXPORT_SYMBOL	 vmlinux 0x00000000	scmd_printk
 EXPORT_SYMBOL	 vmlinux 0x00000000	scnprintf
 EXPORT_SYMBOL	 vmlinux 0x00000000	scsi_add_device
 EXPORT_SYMBOL	 vmlinux 0x00000000	scsi_add_host_with_dma
+EXPORT_SYMBOL	 vmlinux 0x00000000	scsi_alloc_sgtables
 EXPORT_SYMBOL	 vmlinux 0x00000000	scsi_bios_ptable
 EXPORT_SYMBOL	 vmlinux 0x00000000	scsi_block_requests
 EXPORT_SYMBOL	 vmlinux 0x00000000	scsi_block_when_processing_errors
@@ -9972,7 +9977,6 @@ EXPORT_SYMBOL	 vmlinux 0x00000000	scsi_host_get
 EXPORT_SYMBOL	 vmlinux 0x00000000	scsi_host_lookup
 EXPORT_SYMBOL	 vmlinux 0x00000000	scsi_host_put
 EXPORT_SYMBOL	 vmlinux 0x00000000	scsi_hostbyte_string
-EXPORT_SYMBOL	 vmlinux 0x00000000	scsi_init_io
 EXPORT_SYMBOL	 vmlinux 0x00000000	scsi_ioctl
 EXPORT_SYMBOL	 vmlinux 0x00000000	scsi_is_host_device
 EXPORT_SYMBOL	 vmlinux 0x00000000	scsi_is_sdev_device
@@ -13659,6 +13663,7 @@ EXPORT_SYMBOL_GPL	 drivers/net/can/cc770/cc770 0x00000000	free_cc770dev
 EXPORT_SYMBOL_GPL	 drivers/net/can/cc770/cc770 0x00000000	register_cc770dev
 EXPORT_SYMBOL_GPL	 drivers/net/can/cc770/cc770 0x00000000	unregister_cc770dev
 EXPORT_SYMBOL_GPL	 drivers/net/can/m_can/m_can 0x00000000	m_can_class_allocate_dev
+EXPORT_SYMBOL_GPL	 drivers/net/can/m_can/m_can 0x00000000	m_can_class_free_dev
 EXPORT_SYMBOL_GPL	 drivers/net/can/m_can/m_can 0x00000000	m_can_class_get_clocks
 EXPORT_SYMBOL_GPL	 drivers/net/can/m_can/m_can 0x00000000	m_can_class_register
 EXPORT_SYMBOL_GPL	 drivers/net/can/m_can/m_can 0x00000000	m_can_class_resume
@@ -13707,6 +13712,7 @@ EXPORT_SYMBOL_GPL	 drivers/net/dsa/realtek-smi 0x00000000	rtl8366rb_variant
 EXPORT_SYMBOL_GPL	 drivers/net/ethernet/arc/arc_emac 0x00000000	arc_emac_probe
 EXPORT_SYMBOL_GPL	 drivers/net/ethernet/arc/arc_emac 0x00000000	arc_emac_remove
 EXPORT_SYMBOL_GPL	 drivers/net/ethernet/freescale/enetc/fsl-enetc-mdio 0x00000000	enetc_hw_alloc
+EXPORT_SYMBOL_GPL	 drivers/net/ethernet/freescale/enetc/fsl-enetc-mdio 0x00000000	enetc_mdio_lock
 EXPORT_SYMBOL_GPL	 drivers/net/ethernet/freescale/enetc/fsl-enetc-mdio 0x00000000	enetc_mdio_read
 EXPORT_SYMBOL_GPL	 drivers/net/ethernet/freescale/enetc/fsl-enetc-mdio 0x00000000	enetc_mdio_write
 EXPORT_SYMBOL_GPL	 drivers/net/ethernet/mellanox/mlx4/mlx4_core 0x00000000	__mlx4_cmd
@@ -14803,6 +14809,7 @@ EXPORT_SYMBOL_GPL	 drivers/nvme/host/nvme-core 0x00000000	nvme_stop_ctrl
 EXPORT_SYMBOL_GPL	 drivers/nvme/host/nvme-core 0x00000000	nvme_stop_keep_alive
 EXPORT_SYMBOL_GPL	 drivers/nvme/host/nvme-core 0x00000000	nvme_stop_queues
 EXPORT_SYMBOL_GPL	 drivers/nvme/host/nvme-core 0x00000000	nvme_submit_sync_cmd
+EXPORT_SYMBOL_GPL	 drivers/nvme/host/nvme-core 0x00000000	nvme_sync_io_queues
 EXPORT_SYMBOL_GPL	 drivers/nvme/host/nvme-core 0x00000000	nvme_sync_queues
 EXPORT_SYMBOL_GPL	 drivers/nvme/host/nvme-core 0x00000000	nvme_try_sched_reset
 EXPORT_SYMBOL_GPL	 drivers/nvme/host/nvme-core 0x00000000	nvme_unfreeze
@@ -16067,6 +16074,7 @@ EXPORT_SYMBOL_GPL	 drivers/vhost/vhost 0x00000000	vhost_signal
 EXPORT_SYMBOL_GPL	 drivers/vhost/vhost 0x00000000	vhost_vq_access_ok
 EXPORT_SYMBOL_GPL	 drivers/vhost/vhost 0x00000000	vhost_vq_avail_empty
 EXPORT_SYMBOL_GPL	 drivers/vhost/vhost 0x00000000	vhost_vq_init_access
+EXPORT_SYMBOL_GPL	 drivers/vhost/vhost 0x00000000	vhost_vq_is_setup
 EXPORT_SYMBOL_GPL	 drivers/vhost/vhost 0x00000000	vhost_vring_ioctl
 EXPORT_SYMBOL_GPL	 drivers/vhost/vhost 0x00000000	vhost_work_flush
 EXPORT_SYMBOL_GPL	 drivers/vhost/vhost 0x00000000	vhost_work_init
@@ -16980,6 +16988,7 @@ EXPORT_SYMBOL_GPL	 net/netfilter/nf_tables 0x00000000	nf_tables_bind_set
 EXPORT_SYMBOL_GPL	 net/netfilter/nf_tables 0x00000000	nf_tables_deactivate_flowtable
 EXPORT_SYMBOL_GPL	 net/netfilter/nf_tables 0x00000000	nf_tables_deactivate_set
 EXPORT_SYMBOL_GPL	 net/netfilter/nf_tables 0x00000000	nf_tables_destroy_set
+EXPORT_SYMBOL_GPL	 net/netfilter/nf_tables 0x00000000	nf_tables_trans_destroy_flush_work
 EXPORT_SYMBOL_GPL	 net/netfilter/nf_tables 0x00000000	nft_chain_validate
 EXPORT_SYMBOL_GPL	 net/netfilter/nf_tables 0x00000000	nft_chain_validate_dependency
 EXPORT_SYMBOL_GPL	 net/netfilter/nf_tables 0x00000000	nft_chain_validate_hooks
@@ -18364,6 +18373,7 @@ EXPORT_SYMBOL_GPL	 vmlinux 0x00000000	__devm_regmap_init_i2c
 EXPORT_SYMBOL_GPL	 vmlinux 0x00000000	__devm_regmap_init_mmio_clk
 EXPORT_SYMBOL_GPL	 vmlinux 0x00000000	__devm_regmap_init_spi
 EXPORT_SYMBOL_GPL	 vmlinux 0x00000000	__devm_reset_control_get
+EXPORT_SYMBOL_GPL	 vmlinux 0x00000000	__devm_spi_alloc_controller
 EXPORT_SYMBOL_GPL	 vmlinux 0x00000000	__dma_request_channel
 EXPORT_SYMBOL_GPL	 vmlinux 0x00000000	__efivar_entry_delete
 EXPORT_SYMBOL_GPL	 vmlinux 0x00000000	__efivar_entry_get
@@ -18597,6 +18607,7 @@ EXPORT_SYMBOL_GPL	 vmlinux 0x00000000	__xdp_release_frame
 EXPORT_SYMBOL_GPL	 vmlinux 0x00000000	__xenbus_register_backend
 EXPORT_SYMBOL_GPL	 vmlinux 0x00000000	__xenbus_register_frontend
 EXPORT_SYMBOL_GPL	 vmlinux 0x00000000	_copy_from_iter_flushcache
+EXPORT_SYMBOL_GPL	 vmlinux 0x00000000	_proc_mkdir
 EXPORT_SYMBOL_GPL	 vmlinux 0x00000000	access_process_vm
 EXPORT_SYMBOL_GPL	 vmlinux 0x00000000	account_locked_vm
 EXPORT_SYMBOL_GPL	 vmlinux 0x00000000	ack_all_badblocks
@@ -18679,7 +18690,6 @@ EXPORT_SYMBOL_GPL	 vmlinux 0x00000000	acpi_os_unmap_memory
 EXPORT_SYMBOL_GPL	 vmlinux 0x00000000	acpi_pci_check_ejectable
 EXPORT_SYMBOL_GPL	 vmlinux 0x00000000	acpi_pci_detect_ejectable
 EXPORT_SYMBOL_GPL	 vmlinux 0x00000000	acpi_pci_find_root
-EXPORT_SYMBOL_GPL	 vmlinux 0x00000000	acpi_pm_set_bridge_wakeup
 EXPORT_SYMBOL_GPL	 vmlinux 0x00000000	acpi_pm_set_device_wakeup
 EXPORT_SYMBOL_GPL	 vmlinux 0x00000000	acpi_pm_wakeup_event
 EXPORT_SYMBOL_GPL	 vmlinux 0x00000000	acpi_processor_get_performance_info
@@ -19059,9 +19069,13 @@ EXPORT_SYMBOL_GPL	 vmlinux 0x00000000	bgmac_enet_suspend
 EXPORT_SYMBOL_GPL	 vmlinux 0x00000000	bgmac_phy_connect_direct
 EXPORT_SYMBOL_GPL	 vmlinux 0x00000000	bgpio_init
 EXPORT_SYMBOL_GPL	 vmlinux 0x00000000	bind_evtchn_to_irq
+EXPORT_SYMBOL_GPL	 vmlinux 0x00000000	bind_evtchn_to_irq_lateeoi
 EXPORT_SYMBOL_GPL	 vmlinux 0x00000000	bind_evtchn_to_irqhandler
+EXPORT_SYMBOL_GPL	 vmlinux 0x00000000	bind_evtchn_to_irqhandler_lateeoi
 EXPORT_SYMBOL_GPL	 vmlinux 0x00000000	bind_interdomain_evtchn_to_irq
+EXPORT_SYMBOL_GPL	 vmlinux 0x00000000	bind_interdomain_evtchn_to_irq_lateeoi
 EXPORT_SYMBOL_GPL	 vmlinux 0x00000000	bind_interdomain_evtchn_to_irqhandler
+EXPORT_SYMBOL_GPL	 vmlinux 0x00000000	bind_interdomain_evtchn_to_irqhandler_lateeoi
 EXPORT_SYMBOL_GPL	 vmlinux 0x00000000	bind_virq_to_irqhandler
 EXPORT_SYMBOL_GPL	 vmlinux 0x00000000	bio_alloc_mddev
 EXPORT_SYMBOL_GPL	 vmlinux 0x00000000	bio_associate_blkg
@@ -20832,6 +20846,10 @@ EXPORT_SYMBOL_GPL	 vmlinux 0x00000000	gnttab_grant_foreign_transfer_ref
 EXPORT_SYMBOL_GPL	 vmlinux 0x00000000	gnttab_init
 EXPORT_SYMBOL_GPL	 vmlinux 0x00000000	gnttab_map_refs
 EXPORT_SYMBOL_GPL	 vmlinux 0x00000000	gnttab_max_grant_frames
+EXPORT_SYMBOL_GPL	 vmlinux 0x00000000	gnttab_page_cache_get
+EXPORT_SYMBOL_GPL	 vmlinux 0x00000000	gnttab_page_cache_init
+EXPORT_SYMBOL_GPL	 vmlinux 0x00000000	gnttab_page_cache_put
+EXPORT_SYMBOL_GPL	 vmlinux 0x00000000	gnttab_page_cache_shrink
 EXPORT_SYMBOL_GPL	 vmlinux 0x00000000	gnttab_pages_clear_private
 EXPORT_SYMBOL_GPL	 vmlinux 0x00000000	gnttab_pages_set_private
 EXPORT_SYMBOL_GPL	 vmlinux 0x00000000	gnttab_query_foreign_access
@@ -21313,7 +21331,7 @@ EXPORT_SYMBOL_GPL	 vmlinux 0x00000000	irq_chip_set_wake_parent
 EXPORT_SYMBOL_GPL	 vmlinux 0x00000000	irq_chip_unmask_parent
 EXPORT_SYMBOL_GPL	 vmlinux 0x00000000	irq_create_direct_mapping
 EXPORT_SYMBOL_GPL	 vmlinux 0x00000000	irq_create_fwspec_mapping
-EXPORT_SYMBOL_GPL	 vmlinux 0x00000000	irq_create_mapping
+EXPORT_SYMBOL_GPL	 vmlinux 0x00000000	irq_create_mapping_affinity
 EXPORT_SYMBOL_GPL	 vmlinux 0x00000000	irq_create_of_mapping
 EXPORT_SYMBOL_GPL	 vmlinux 0x00000000	irq_create_strict_mappings
 EXPORT_SYMBOL_GPL	 vmlinux 0x00000000	irq_dispose_mapping
@@ -21758,6 +21776,7 @@ EXPORT_SYMBOL_GPL	 vmlinux 0x00000000	meson_clk_mpll_ro_ops
 EXPORT_SYMBOL_GPL	 vmlinux 0x00000000	meson_clk_pcie_pll_ops
 EXPORT_SYMBOL_GPL	 vmlinux 0x00000000	meson_clk_pll_ops
 EXPORT_SYMBOL_GPL	 vmlinux 0x00000000	meson_clk_pll_ro_ops
+EXPORT_SYMBOL_GPL	 vmlinux 0x00000000	meson_sm_get
 EXPORT_SYMBOL_GPL	 vmlinux 0x00000000	meson_vid_pll_div_ro_ops
 EXPORT_SYMBOL_GPL	 vmlinux 0x00000000	metadata_dst_alloc
 EXPORT_SYMBOL_GPL	 vmlinux 0x00000000	metadata_dst_alloc_percpu
@@ -23221,6 +23240,7 @@ EXPORT_SYMBOL_GPL	 vmlinux 0x00000000	scsi_dh_set_params
 EXPORT_SYMBOL_GPL	 vmlinux 0x00000000	scsi_eh_get_sense
 EXPORT_SYMBOL_GPL	 vmlinux 0x00000000	scsi_eh_ready_devs
 EXPORT_SYMBOL_GPL	 vmlinux 0x00000000	scsi_flush_work
+EXPORT_SYMBOL_GPL	 vmlinux 0x00000000	scsi_free_sgtables
 EXPORT_SYMBOL_GPL	 vmlinux 0x00000000	scsi_get_vpd_page
 EXPORT_SYMBOL_GPL	 vmlinux 0x00000000	scsi_host_block
 EXPORT_SYMBOL_GPL	 vmlinux 0x00000000	scsi_host_busy_iter
@@ -24367,6 +24387,7 @@ EXPORT_SYMBOL_GPL	 vmlinux 0x00000000	xen_evtchn_nr_channels
 EXPORT_SYMBOL_GPL	 vmlinux 0x00000000	xen_features
 EXPORT_SYMBOL_GPL	 vmlinux 0x00000000	xen_hvm_evtchn_do_upcall
 EXPORT_SYMBOL_GPL	 vmlinux 0x00000000	xen_irq_from_gsi
+EXPORT_SYMBOL_GPL	 vmlinux 0x00000000	xen_irq_lateeoi
 EXPORT_SYMBOL_GPL	 vmlinux 0x00000000	xen_pirq_from_irq
 EXPORT_SYMBOL_GPL	 vmlinux 0x00000000	xen_remap_vma_range
 EXPORT_SYMBOL_GPL	 vmlinux 0x00000000	xen_resume_notifier_register
