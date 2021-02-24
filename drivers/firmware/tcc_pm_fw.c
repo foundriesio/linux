@@ -172,9 +172,6 @@ static void pm_fw_power_sysfs_free(void)
 	sysfs_remove_group(power_kobj, &pwrstr_group);
 }
 
-#define pmic_regmap_update(map, reg, shift, val) \
-	(regmap_update_bits((map), (reg), (u32)1 << (shift), (val) << (shift)))
-
 static s32 pmic_ctrl_str_mode(struct pmic *pmic, u32 enter)
 {
 	struct regmap *map;
@@ -187,60 +184,86 @@ static s32 pmic_ctrl_str_mode(struct pmic *pmic, u32 enter)
 	}
 
 #if defined(CONFIG_MFD_DA9062)
-	/* DA9062 */
-	if (pmic->da9062_regmap == NULL) {
+	map = pmic->da9062_regmap;
+	if (map == NULL) {
 		return 0;
 	}
-	map = pmic->da9062_regmap;
-	ret = pmic_regmap_update(map, DA9062AA_IRQ_MASK_C,
-				 DA9062AA_M_GPI4_SHIFT, 0);
+
+	/*
+	 * Keep BUCK1/LDO2 on in power-down for STR support.
+	 * Must be reset to default config on wake-up.
+	 */
+	ret = regmap_update_bits(map, DA9062AA_BUCK1_CONT,
+				 DA9062AA_BUCK1_CONF_MASK,
+				 enter << DA9062AA_BUCK1_CONF_SHIFT);
 	if (ret < 0) {
 		return ret;
 	}
 
-	ret = pmic_regmap_update(map, DA9062AA_BUCK1_CONT,
-				 DA9062AA_BUCK1_CONF_SHIFT, enter);
+	ret = regmap_update_bits(map, DA9062AA_LDO2_CONT,
+				 DA9062AA_LDO2_CONF_MASK,
+				 enter << DA9062AA_LDO2_CONF_SHIFT);
 	if (ret < 0) {
 		return ret;
 	}
 
-	ret = pmic_regmap_update(map, DA9062AA_LDO2_CONT,
-				 DA9062AA_LDO2_CONF_SHIFT, enter);
+	/*
+	 * S/W Workaround for power sequence issue (DA9062)
+	 * - Add 16.4 ms delay for CORE 0P8 power off
+	 * - Enable IRQ for SYS_EN
+	 */
+	ret = regmap_update_bits(map, DA9062AA_WAIT, 0xff, 0x96);
+	if (ret < 0) {
+		return ret;
+	}
+
+	ret = regmap_update_bits(map, DA9062AA_ID_32_31, 0xff, 0x03);
+	if (ret < 0) {
+		return ret;
+	}
+
+	ret = regmap_update_bits(map, DA9062AA_IRQ_MASK_C, 0x10, 0x00);
 	if (ret < 0) {
 		return ret;
 	}
 #endif
 #if defined(CONFIG_REGULATOR_DA9121)
-	/* DA9131 Version 0.2 OTP - Power Sequence Issue
-	 * S/W Workaound
-	 *  - modify voltage slew rate
-	 *  - modify GPIO2 pulldown enable
+	/*
+	 * S/W Workaround for power sequence issue (DA9131 OTP-42/43 v1)
+	 * - Modify voltage slew rate
+	 * - Modify GPIO2 pulldown enable
 	 */
 	for (i = 0; i < 2; i++) {
-		if (pmic->da9131_regmap[i] == NULL) {
+		map = pmic->da9131_regmap[i];
+		if (map == NULL) {
 			return 0;
 		}
-		map = pmic->da9131_regmap[i];
+
 		ret = regmap_update_bits(map, 0x20, 0xff, 0x49);
 		if (ret < 0) {
 			return ret;
 		}
+
 		ret = regmap_update_bits(map, 0x21, 0xff, 0x49);
 		if (ret < 0) {
 			return ret;
 		}
+
 		ret = regmap_update_bits(map, 0x28, 0xff, 0x49);
 		if (ret < 0) {
 			return ret;
 		}
+
 		ret = regmap_update_bits(map, 0x29, 0xff, 0x49);
 		if (ret < 0) {
 			return ret;
 		}
+
 		ret = regmap_update_bits(map, 0x13, 0xff, 0x08);
 		if (ret < 0) {
 			return ret;
 		}
+
 		ret = regmap_update_bits(map, 0x15, 0xff, 0x08);
 		if (ret < 0) {
 			return ret;
