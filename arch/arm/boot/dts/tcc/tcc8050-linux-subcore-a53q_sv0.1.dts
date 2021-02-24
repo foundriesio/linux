@@ -1852,7 +1852,7 @@
 		cifport		= <&cifport 0>;
 		clocks		= <&clk_ddi DDIBUS_VIOC>;
 		rdma		= <&vioc_rdma		VIOC_RDMA16>;
-		use_pgl		= <1>;
+		use_pgl		= <0>;
 		vin		= <&vioc_vin		VIOC_VIN00>;
 		viqe		= <&vioc_viqe		VIOC_VIQE1>;
 		viqe_set	= <&viqe_hidden>;
@@ -1877,7 +1877,7 @@
 		compatible	= "telechips,video-input";
 		clocks		= <&clk_ddi DDIBUS_VIOC>;
 		rdma		= <&vioc_rdma		VIOC_RDMA17>;
-		use_pgl		= <1>;
+		use_pgl		= <0>;
 		vin		= <&vioc_vin		VIOC_VIN10>;
 		viqe		= <&vioc_viqe		VIOC_VIQE1>;
 		viqe_set	= <&viqe_hidden>;
@@ -1893,7 +1893,7 @@
 		compatible	= "telechips,video-input";
 		clocks		= <&clk_ddi DDIBUS_VIOC>;
 		rdma		= <&vioc_rdma		VIOC_RDMA13>;
-		use_pgl		= <1>;
+		use_pgl		= <0>;
 		vin		= <&vioc_vin		VIOC_VIN20>;
 		viqe		= <&vioc_viqe		VIOC_VIQE1>;
 		viqe_set	= <&viqe_hidden>;
@@ -1909,7 +1909,7 @@
 		compatible	= "telechips,video-input";
 		clocks		= <&clk_ddi DDIBUS_VIOC>;
 		rdma		= <&vioc_rdma		VIOC_RDMA15>;
-		use_pgl		= <1>;
+		use_pgl		= <0>;
 		vin		= <&vioc_vin		VIOC_VIN30>;
 		viqe		= <&vioc_viqe		VIOC_VIQE1>;
 		viqe_set	= <&viqe_hidden>;
@@ -4381,7 +4381,7 @@
 		telechips,pins = "gpb-27";
 		telechips,pin-function = <1>;
 	};
-#endif 
+#endif
 };
 
 &uart4 {
