@@ -94,19 +94,20 @@ static int v2_read_file_info(struct super_block *sb, int type)
 	struct qtree_mem_dqinfo *qinfo;
 	ssize_t size;
 	unsigned int version;
+	int ret;
 
 	if (!v2_read_header(sb, type, &dqhead))
-		return -1;
+		return -EIO;
 	version = le32_to_cpu(dqhead.dqh_version);
 	if ((info->dqi_fmt_id == QFMT_VFS_V0 && version != 0) ||
 	    (info->dqi_fmt_id == QFMT_VFS_V1 && version != 1))
-		return -1;
+		return -EINVAL;
 
 	size = sb->s_op->quota_read(sb, type, (char *)&dinfo,
 	       sizeof(struct v2_disk_dqinfo), V2_DQINFOOFF);
 	if (size != sizeof(struct v2_disk_dqinfo)) {
 		quota_error(sb, "Can't read info structure");
-		return -1;
+		return -EIO;
 	}
 	info->dqi_priv = kmalloc(sizeof(struct qtree_mem_dqinfo), GFP_NOFS);
 	if (!info->dqi_priv) {
@@ -147,7 +148,32 @@ static int v2_read_file_info(struct super_block *sb, int type)
 		qinfo->dqi_entry_size = sizeof(struct v2r1_disk_dqblk);
 		qinfo->dqi_ops = &v2r1_qtree_ops;
 	}
-	return 0;
+	ret = -EUCLEAN;
+	/* Some sanity checks of the read headers... */
+	if ((loff_t)qinfo->dqi_blocks << qinfo->dqi_blocksize_bits >
+	    i_size_read(sb_dqopt(sb)->files[type])) {
+		quota_error(sb, "Number of blocks too big for quota file size (%llu > %llu).",
+		    (loff_t)qinfo->dqi_blocks << qinfo->dqi_blocksize_bits,
+		    i_size_read(sb_dqopt(sb)->files[type]));
+		goto out_free;
+	}
+	if (qinfo->dqi_free_blk >= qinfo->dqi_blocks) {
+		quota_error(sb, "Free block number too big (%u >= %u).",
+			    qinfo->dqi_free_blk, qinfo->dqi_blocks);
+		goto out_free;
+	}
+	if (qinfo->dqi_free_entry >= qinfo->dqi_blocks) {
+		quota_error(sb, "Block with free entry too big (%u >= %u).",
+			    qinfo->dqi_free_entry, qinfo->dqi_blocks);
+		goto out_free;
+	}
+	ret = 0;
+out_free:
+	if (ret) {
+		kfree(info->dqi_priv);
+		info->dqi_priv = NULL;
+	}
+	return ret;
 }
 
 /* Write information header to quota file */
