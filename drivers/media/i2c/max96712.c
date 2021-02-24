@@ -606,23 +606,77 @@ static int max96712_g_input_status(struct v4l2_subdev *sd, u32 *status)
 	/* TODO */
 	mutex_lock(&dev->lock);
 
-	/* check V4L2_IN_ST_NO_SIGNAL */
-	/* ret = regmap_read(dev->regmap, MAX96712_REG_STATUS_1, &val); */
-	if (ret < 0) {
-		loge("failure to check V4L2_IN_ST_NO_SIGNAL\n");
-	} else {
-		logd("status: 0x%08x\n", val);
-		/* if (val == MAX96712_VAL_STATUS_1) { */
-		if (1) {
-			*status &= ~V4L2_IN_ST_NO_SIGNAL;
+	if (MAX96712_LINK_MODE & MAX96712_LINK_EN_A) {
+		/* check V4L2_IN_ST_NO_SIGNAL */
+		ret = regmap_read(dev->regmap, MAX96712_REG_STATUS_A, &val);
+		if (ret < 0) {
+			loge("failure to check V4L2_IN_ST_NO_SIGNAL\n");
 		} else {
-			logw("V4L2_IN_ST_NO_SIGNAL\n");
-			*status |= V4L2_IN_ST_NO_SIGNAL;
+			logd("status: 0x%08x\n", val);
+			if ((val & MAX96712_VAL_STATUS) == MAX96712_VAL_STATUS) {
+				*status &= ~V4L2_IN_ST_NO_SIGNAL;
+			} else {
+				logw("V4L2_IN_ST_NO_SIGNAL\n");
+				*status |= V4L2_IN_ST_NO_SIGNAL;
+				goto end;
+			}
+		}
+	}
+
+	if (MAX96712_LINK_MODE & MAX96712_LINK_EN_B) {
+		/* check V4L2_IN_ST_NO_SIGNAL */
+		ret = regmap_read(dev->regmap, MAX96712_REG_STATUS_B, &val);
+		if (ret < 0) {
+			loge("failure to check V4L2_IN_ST_NO_SIGNAL\n");
+		} else {
+			logd("status: 0x%08x\n", val);
+			if ((val & MAX96712_VAL_STATUS) == MAX96712_VAL_STATUS) {
+				*status &= ~V4L2_IN_ST_NO_SIGNAL;
+			} else {
+				logw("V4L2_IN_ST_NO_SIGNAL\n");
+				*status |= V4L2_IN_ST_NO_SIGNAL;
+				goto end;
+			}
+		}
+	}
+
+	if (MAX96712_LINK_MODE & MAX96712_LINK_EN_C) {
+		/* check V4L2_IN_ST_NO_SIGNAL */
+		ret = regmap_read(dev->regmap, MAX96712_REG_STATUS_C, &val);
+		if (ret < 0) {
+			loge("failure to check V4L2_IN_ST_NO_SIGNAL\n");
+		} else {
+			logd("status: 0x%08x\n", val);
+			if ((val & MAX96712_VAL_STATUS) == MAX96712_VAL_STATUS) {
+				*status &= ~V4L2_IN_ST_NO_SIGNAL;
+			} else {
+				logw("V4L2_IN_ST_NO_SIGNAL\n");
+				*status |= V4L2_IN_ST_NO_SIGNAL;
+				goto end;
+			}
+		}
+	}
+
+	if (MAX96712_LINK_MODE & MAX96712_LINK_EN_D) {
+		/* check V4L2_IN_ST_NO_SIGNAL */
+		ret = regmap_read(dev->regmap, MAX96712_REG_STATUS_D, &val);
+		if (ret < 0) {
+			loge("failure to check V4L2_IN_ST_NO_SIGNAL\n");
+		} else {
+			logd("status: 0x%08x\n", val);
+			if ((val & MAX96712_VAL_STATUS) == MAX96712_VAL_STATUS) {
+				*status &= ~V4L2_IN_ST_NO_SIGNAL;
+			} else {
+				logw("V4L2_IN_ST_NO_SIGNAL\n");
+				*status |= V4L2_IN_ST_NO_SIGNAL;
+				goto end;
+			}
 		}
 	}
 
 	mutex_unlock(&dev->lock);
 
+end:
 	return ret;
 }
 
