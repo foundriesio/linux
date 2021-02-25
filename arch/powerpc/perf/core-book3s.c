@@ -207,7 +207,7 @@ static inline void perf_get_data_addr(struct perf_event *event, struct pt_regs *
 	if (!(mmcra & MMCRA_SAMPLE_ENABLE) || sdar_valid)
 		*addrp = mfspr(SPRN_SDAR);
 
-	if (is_kernel_addr(mfspr(SPRN_SDAR)) && perf_allow_kernel(&event->attr) != 0)
+	if (is_kernel_addr(mfspr(SPRN_SDAR)) && event->attr.exclude_kernel)
 		*addrp = 0;
 }
 
@@ -470,7 +470,7 @@ static void power_pmu_bhrb_read(struct perf_event *event, struct cpu_hw_events *
 			 * exporting it to userspace (avoid exposure of regions
 			 * where we could have speculative execution)
 			 */
-			if (is_kernel_addr(addr) && perf_allow_kernel(&event->attr) != 0)
+			if (is_kernel_addr(addr) && event->attr.exclude_kernel)
 				continue;
 
 			/* Branches are read most recent first (ie. mfbhrb 0 is
