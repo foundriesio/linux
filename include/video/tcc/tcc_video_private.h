@@ -8,7 +8,7 @@
 #ifndef VIDEO_PRIVATE_H_
 #define VIDEO_PRIVATE_H_
 
-#include <generated/autoconf.h>
+#include "../../generated/autoconf.h"
 
 #define UMP_SW_BLOCK_SIZE	(2 * 1024) // 2kB, remember to keep the ()s
 #define UMP_SW_BLOCK_MAX_CNT	128

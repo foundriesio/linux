@@ -20,7 +20,7 @@
 #ifndef _TCC_VIOC_LUT_IOCTL_H_
 #define _TCC_VIOC_LUT_IOCTL_H_
 
-#include <generated/autoconf.h>
+#include "../../generated/autoconf.h"
 //#include <linux/ioctl.h>
 
 #define CONFIG_LUT_SUPPORT_CSC_PRESET_SET

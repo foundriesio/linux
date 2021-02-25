@@ -20,7 +20,7 @@ Suite 330, Boston, MA 02111-1307 USA
 #ifndef __VSYNC_IOCTL_H__
 #define __VSYNC_IOCTL_H__
 
-#include <generated/autoconf.h>
+#include "../../generated/autoconf.h"
 
 struct stTcc_last_frame
 {

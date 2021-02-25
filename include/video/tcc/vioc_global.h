@@ -21,7 +21,7 @@
  * to the Free Software Foundation, Inc.,
  * 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  */
-#include <generated/autoconf.h>
+#include "../../generated/autoconf.h"
 
 #ifdef CONFIG_ARCH_TCC898X
 #include "tcc898x/vioc_global.h"

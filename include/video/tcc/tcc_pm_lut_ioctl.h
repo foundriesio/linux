@@ -19,7 +19,7 @@
 #ifndef _TCC_VIOC_PM_LUT_IOCTL_H_
 #define _TCC_VIOC_PM_LUT_IOCTL_H_
 
-#include <generated/autoconf.h>
+#include "../../generated/autoconf.h"
 #include <linux/ioctl.h>
 
 #define PM_LUT_IOC_MAGIC	'P'

@@ -19,7 +19,7 @@
 #ifndef _TCC_CCFB_H
 #define _TCC_CCFB_H
 
-#include <generated/autoconf.h>
+#include "../../generated/autoconf.h"
 
 /* ioctl enum */
 #define CCFB_OPEN			0x100

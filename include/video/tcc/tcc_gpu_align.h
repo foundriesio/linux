@@ -19,7 +19,7 @@
 #ifndef GPU_ALIGN_H_
 #define GPU_ALIGN_H_
 
-#include <generated/autoconf.h>
+#include "../../generated/autoconf.h"
 
 //Pixel unit
 #ifdef CONFIG_ARCH_TCC805X // PowerVR GPU

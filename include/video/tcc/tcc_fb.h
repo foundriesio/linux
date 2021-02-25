@@ -19,7 +19,7 @@
 #ifndef __TCC_FB_H
 #define __TCC_FB_H
 
-#include <generated/autoconf.h>
+#include "../../generated/autoconf.h"
 
 #define ATAG_TCC_PANEL	0x54434364 /* TCCd */
 
