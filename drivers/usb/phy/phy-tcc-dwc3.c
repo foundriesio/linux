@@ -240,7 +240,7 @@ static int32_t tcc_dwc3_vbus_set(struct usb_phy *phy, int32_t on_off)
 }
 
 #if defined(CONFIG_ENABLE_BC_30_HOST)
-#if defined(CONFIG_ARCH_TCC803X)
+#if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X)
 static void tcc_dwc3_set_chg_det(struct usb_phy *phy)
 {
 	struct tcc_dwc3_device *dwc3_phy_dev =
