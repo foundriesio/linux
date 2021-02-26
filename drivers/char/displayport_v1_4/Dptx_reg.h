@@ -407,7 +407,7 @@
 #define DPTX_EN_AUDIO_CH_1					1
 #define DPTX_EN_AUDIO_CH_2					1
 #define DPTX_EN_AUDIO_CH_3              	3
-#define DPTX_EN_AUDIO_CH_4					9
+#define DPTX_EN_AUDIO_CH_4					3
 #define DPTX_EN_AUDIO_CH_5					7
 #define DPTX_EN_AUDIO_CH_6					7
 #define DPTX_EN_AUDIO_CH_7					0xF

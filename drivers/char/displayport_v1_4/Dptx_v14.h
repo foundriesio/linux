@@ -14,8 +14,8 @@
 #endif
 
 #define TCC_DPTX_DRV_MAJOR_VER			2
-#define TCC_DPTX_DRV_MINOR_VER			0
-#define TCC_DPTX_DRV_SUBTITLE_VER		2
+#define TCC_DPTX_DRV_MINOR_VER			1
+#define TCC_DPTX_DRV_SUBTITLE_VER		0
 
 #define TCC805X_REVISION_CS				0x01
 
@@ -261,7 +261,8 @@ enum DPTX_VIDEO_CTS_PATTERN_MODE
 enum AUDIO_INPUT_MUTE
 {
 	AUDIO_INPUT_CLEAR_MUTE_FLAG_VBID		= 0,
-	AUDIO_INPUT_SET_MUTE_FLAG_VBID			= 1
+	AUDIO_INPUT_SET_MUTE_FLAG_VBID			= 1,
+	AUDIO_INPUT_SET_MUTE_FLAG_MAX			= 2
 };
 
 enum AUDIO_INPUT_INTERFACE
@@ -282,19 +283,6 @@ enum AUDIO_MAX_INPUT_DATA_WIDTH
 	MAX_INPUT_DATA_WIDTH_23BIT = 23,
 	MAX_INPUT_DATA_WIDTH_24BIT = 24,
 	MAX_INPUT_DATA_WIDTH_INVALID = 25
-};
-
-enum AUDIO_MAX_GEN_DATA_WIDTH
-{
-	MAX_GEN_DATA_WIDTH_16BIT = 0,
-	MAX_GEN_DATA_WIDTH_17BIT = 1,
-	MAX_GEN_DATA_WIDTH_18BIT = 2,
-	MAX_GEN_DATA_WIDTH_19BIT = 3,
-	MAX_GEN_DATA_WIDTH_20BIT = 4,
-	MAX_GEN_DATA_WIDTH_21BIT = 5,
-	MAX_GEN_DATA_WIDTH_22BIT = 6,
-	MAX_GEN_DATA_WIDTH_23BIT = 7,
-	MAX_GEN_DATA_WIDTH_24BIT = 8
 };
 
 enum AUDIO_INPUT_MAX_NUM_OF_CH
@@ -464,23 +452,15 @@ struct Dptx_Video_Params
 	struct Dptx_Dtd_Params	stDtdParams[PHY_INPUT_STREAM_MAX];	
 };
 
-struct Dptx_Audio_Short_Descriptor
-{
-	u8									ucEDID_Max_Input_NumOfCh;
-	u8									ucEDID_Max_Bit_Per_Sample;
-	enum AUDIO_EDID_MAX_SAMPLE_FREQ		eEDID_Max_Sampling_Freq; 
-};
-
 struct Dptx_Audio_Params 
 {
-	u8		ucInput_InterfaceType;			/* 0 : I2S is selected for audio input interface( Default ), 1 : SPDIF is selected */
-	u8		ucInput_DataWidth;				/* Input Audio data width */
-	u8		ucInput_Max_NumOfchannels;		/* 0 : 1 channels, 1 : 2 channels, others : 8 channels --> updated by edid */
-	u8		ucInput_TimestampVersion;		/* Audio timestamp version number - according to the DP Spec 1.4, it should 0x12 */
-	u8		ucInput_HBR_Mode;				/* 0 : disable, 1 : 192kHz x 8 x 16 bits in 8-channels is delivered to controller */
-	u8		ucInput_Mute;
-	u8		ucIEC_Sampling_Freq;			/* IEC sampling frequency */	
-	u8		ucIEC_OriginSamplingFreq;
+	uint8_t ucInput_InterfaceType;			/* 0 : I2S is selected for audio input interface( Default ), 1 : SPDIF is selected */
+	uint8_t ucInput_Max_NumOfchannels;		/* 0 : 1 channels, 1 : 2 channels, others : 8 channels --> updated by edid */
+	uint8_t ucInput_DataWidth;				/* Input Audio data width */
+	uint8_t ucInput_TimestampVersion;		/* Audio timestamp version number - according to the DP Spec 1.4, it should 0x12 */
+	uint8_t ucInput_HBR_Mode;				/* 0 : I2S - 92kHz x 8 x 16 bits in 8-channels is delivered to controller, 1 : SPDIF */
+	uint8_t ucIEC_Sampling_Freq;			/* IEC sampling frequency */	
+	uint8_t ucIEC_OriginSamplingFreq;
 };
 
 struct Dptx_Params
@@ -516,7 +496,7 @@ struct Dptx_Params
 	bool			bSpreadSpectrum_Clock;	
 	bool			bMultStreamTransport; 		/* Multi Stream Transport */
 
-	u8				ucNumOfStreams;
+	uint8_t			ucNumOfStreams;
 	u8				ucNumOfPorts;
 	u8				ucMax_Rate;		/* The maximum rate that the controller supports -> Default setting is DPTX_PHYIF_CTRL_RATE_HBR as 0x01 ==> 0 - RBR, 1 - HBR, 2 - HBR2, 3 - HBR3 */
 	u8				ucMax_Lanes;	/* The maximum lane count that the controller supports -> Default setting is 4 */
@@ -535,10 +515,7 @@ struct Dptx_Params
 	
 	struct Dptx_Video_Params			stVideoParams;
 	struct Dptx_Audio_Params			stAudioParams;
-	struct Dptx_Audio_Short_Descriptor	stAudio_Short_Descriptor;
 	struct Dptx_Hdcp_Params				stHdcpParams;
-
-	struct Dptx_Avgen_SDP_FullData		astSdp_List[DPTX_SDP_NUM];
 	struct Dptx_Aux_Params				stAuxParams;
 	struct Dptx_Link_Params				stDptxLink;
 
@@ -548,6 +525,7 @@ struct Dptx_Params
 	struct proc_dir_entry				*pstDP_EDID_Dir;
 	struct proc_dir_entry				*pstDP_LinkT_Dir;
 	struct proc_dir_entry				*pstDP_Video_Dir;
+	struct proc_dir_entry				*pstDP_Auio_Dir;
 
 	Dptx_HPD_Intr_Callback				pvHPD_Intr_CallBack;
 };
@@ -612,7 +590,6 @@ bool Dptx_Core_PHY_Bandwidth_To_Rate( struct Dptx_Params *pstDptx, u8 ucBandWidt
 
 /* Dptx AV Generator */
 bool Dptx_Avgen_Init_Video_Params( struct Dptx_Params *pstDptx, u32 uiPeri_Pixel_Clock[PHY_INPUT_STREAM_MAX] );
-bool Dptx_Avgen_Init_Audio_Params( struct Dptx_Params *pstDptx );
 bool Dptx_Avgen_Set_Video_Stream_Enable( struct Dptx_Params *pstDptx, bool bEnable_Stream, u8 ucStream_Index );
 bool Dptx_Avgen_Get_Video_Stream_Enable( struct Dptx_Params *pstDptx, bool *pbEnable_Stream, u8 ucStream_Index );
 bool Dptx_Avgen_Set_Video_Detailed_Timing( struct Dptx_Params *pstDptx, u8 ucStream_Index, struct Dptx_Dtd_Params *pstDtd_Params );
@@ -623,19 +600,27 @@ bool Dptx_Avgen_Get_Video_PixelEncoding_Type( struct Dptx_Params *pstDptx, u8 uc
 bool Dptx_Avgen_Get_Video_Configured_Timing( struct Dptx_Params *pstDptx, u8 ucStream_Index, struct Dptx_Dtd_Params		*pstDtd );
 bool Dptx_Avgen_Calculate_Video_Average_TU_Symbols( struct Dptx_Params *pstDptx, int iNumOfLane, int iLinkRate, int iBpc, int iEncodingType, int iPixel_Clock, u8 ucStream_Index );
 
-void Dptx_Avgen_Configure_Audio( struct Dptx_Params *dptx );
-void Dptx_Avgen_Set_Audio_SamplingFreq( struct Dptx_Params *pstDptx, enum AUDIO_IEC60958_3_SAMPLE_FREQ	eIEC_SAMPLE_FREQ, enum AUDIO_IEC60958_3_ORIGINAL_SAMPLE_FREQ	eIEC_ORG_SAMPLE_FREQ );
-void Dptx_Avgen_Set_Audio_MaxNumOfChannels( struct Dptx_Params *pstDptx, u8 ucInput_Max_NumOfCh );
-void Dptx_Avgen_Set_Audio_DataWidth( struct Dptx_Params *pstDptx, u8 ucInGen_DataWidth );
-void Dptx_Avgen_Set_Audio_Input_InterfaceType( struct Dptx_Params* pstDptx, u8 ucAudInput_InterfaceType );
-void Dptx_Avgen_Set_Audio_HBR_Mode( struct Dptx_Params* pstDptx, bool bEnable );
-void Dptx_Avgen_Set_Audio_SDP_InforFrame( struct Dptx_Params *pstDptx, bool bEnable );
+void Dptx_Avgen_Configure_Audio(struct Dptx_Params *pstDptx, uint8_t ucStream_Index, struct Dptx_Audio_Params *pstAudioParams);
+void Dptx_Avgen_Get_Audio_SamplingFreq(struct Dptx_Params *pstDptx, uint8_t	*pucSamplingFreq, uint8_t	*pucOrgSamplingFreq );
+void Dptx_Avgen_Set_Audio_MaxNumOfChannels(struct Dptx_Params *pstDptx, uint8_t ucStream_Index, uint8_t ucInput_Max_NumOfCh);
+void Dptx_Avgen_Get_Audio_MaxNumOfChannels(struct Dptx_Params *pstDptx, uint8_t ucStream_Index, uint8_t *pucInput_Max_NumOfCh);
+void Dptx_Avgen_Set_Audio_DataWidth(struct Dptx_Params *pstDptx, uint8_t ucStream_Index, uint8_t ucInput_DataWidth);
+void Dptx_Avgen_Get_Audio_DataWidth(struct Dptx_Params *pstDptx, uint8_t ucStream_Index, uint8_t *pucInput_DataWidth);
+void Dptx_Avgen_Set_Audio_Input_InterfaceType(struct Dptx_Params* pstDptx, uint8_t ucStream_Index, uint8_t ucAudInput_InterfaceType);
+void Dptx_Avgen_Get_Audio_Input_InterfaceType(struct Dptx_Params* pstDptx, uint8_t ucStream_Index, uint8_t *pucAudInput_InterfaceType);
+void Dptx_Avgen_Set_Audio_HBR_En(struct Dptx_Params* pstDptx, uint8_t ucStream_Index, uint8_t ucEnable);
+void Dptx_Avgen_Get_Audio_HBR_En(struct Dptx_Params* pstDptx, uint8_t ucStream_Index, uint8_t *pucEnable);
+void Dptx_Avgen_Set_Audio_SDP_InforFrame(struct Dptx_Params *pstDptx,
+																uint8_t ucIEC_Sampling_Freq,
+																uint8_t ucIEC_OriginSamplingFreq,
+																uint8_t ucInput_Max_NumOfchannels,
+																uint8_t ucInput_DataWidth);
+void Dptx_Avgen_Set_Audio_Timestamp_Ver(struct Dptx_Params *pstDptx, uint8_t ucStream_Index, uint8_t ucAudInput_TimestampVersion);
 void Dptx_Avgen_Set_Audio_Stream_Enable( struct Dptx_Params *pstDptx, u8 ucSatrem_Index, bool bEnable );
-void Dptx_Avgen_Set_Audio_Mute( struct Dptx_Params *pstDptx, bool bMute );
-void Dptx_Avgen_Enable_Audio_SDP( struct Dptx_Params *dptx );
-void Dptx_Avgen_Disable_Audio_SDP( struct Dptx_Params *pstDptx );
-void Dptx_Avgen_Enable_Audio_Timestamp( struct Dptx_Params *dptx );
-void Dptx_Avgen_Disable_Audio_Timestamp( struct Dptx_Params *dptx );
+void Dptx_Avgen_Set_Audio_Mute(struct Dptx_Params *pstDptx, uint8_t ucStream_Index, uint8_t ucMute);
+void Dptx_Avgen_Get_Audio_Mute(struct Dptx_Params *pstDptx, uint8_t ucStream_Index, uint8_t *pucMute);
+void Dptx_Avgen_Enable_Audio_SDP(struct Dptx_Params *pstDptx, uint8_t ucStream_Index, uint8_t ucEnable);
+void Dptx_Avgen_Enable_Audio_Timestamp(struct Dptx_Params *pstDptx, uint8_t ucStream_Index, uint8_t ucEnable);
 bool Dptx_Avgen_Get_VIC_From_Dtd( struct Dptx_Params *pstDptx, u8 ucStream_Index, u32 *puiVideo_Code );
 bool Dptx_Avgen_Fill_Dtd( struct Dptx_Dtd_Params *pstDtd, u32 uiVideo_Code, u32 uiRefreshRate, u8 ucVideoFormat );
 
@@ -652,7 +637,7 @@ irqreturn_t Dptx_Intr_Threaded_IRQ( int irq, void *dev );
 bool Dptx_Intr_Get_Port_Composition( struct Dptx_Params *pstDptx );
 bool Dptx_Intr_Register_HPD_Callback( struct Dptx_Params *pstDptx, Dptx_HPD_Intr_Callback HPD_Intr_Callback );
 bool Dptx_Intr_Handle_HotUnplug( struct Dptx_Params *pstDptx );
-bool Dptx_Intr_Get_HotPlug_Status( struct Dptx_Params *pstDptx, bool *pbHotPlug_Status );
+int32_t Dptx_Intr_Get_HotPlug_Status(struct Dptx_Params *pstDptx, uint8_t *pucHotPlug_Status);
 
 
 /* Dptx EDID */
@@ -681,7 +666,7 @@ bool Dptx_Ext_Set_Sink_VCP_Table_Slots( struct Dptx_Params *pstDptx, u8 ucStream
 bool Dptx_Ext_Get_TopologyState( struct Dptx_Params *pstDptx, u8 *pucNumOfHotpluggedPorts );
 bool Dptx_Ext_Set_Topology_Configuration( struct Dptx_Params *pstDptx, u8 ucNumOfPorts, bool bSideBand_MSG_Supported );
 bool Dptx_Ext_Remote_I2C_Read( struct Dptx_Params *pstDptx, u8 ucStream_Index, bool bSkipped_PortComposition );
-bool Dptx_Ext_Proc_Interface_Init( struct Dptx_Params *pstDptx );
+int32_t Dptx_Ext_Proc_Interface_Init(struct Dptx_Params *pstDptx);
 
 
 
@@ -690,8 +675,6 @@ u32  Dptx_Reg_Readl( struct Dptx_Params *pstDptx, u32 uiOffset );
 void Dptx_Reg_Writel( struct Dptx_Params *pstDptx, u32 uiOffset, u32 uiData );
 u32 Dptx_Reg_Direct_Read( volatile void __iomem *Reg );
 void Dptx_Reg_Direct_Write( volatile void __iomem *Reg, u32 uiData );
-void Dptx_Reg_Set_AudioSel( u32 uiData );
-u32 Dptx_Reg_Get_AudioSel(void);
 
 /* Dptx Aux */
 bool Dptx_Aux_Read_DPCD( struct Dptx_Params *pstDptx, u32 uiAddr, u8 *pucBuffer );

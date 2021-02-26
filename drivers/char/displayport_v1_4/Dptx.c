@@ -34,58 +34,56 @@ Suite 330, Boston, MA 02111-1307 USA
 #include <linux/of_irq.h>
 #include <linux/of_address.h>
 
-//#include <linux/of_dma.h>
-
 #include "Dptx_v14.h"
 #include "Dptx_reg.h"
 #include "Dptx_dbg.h"
 #include "Dptx_drm_dp_addition.h"
 
 
-extern void Dpv14_Tx_API_Hpd_Intr_CB( u8 ucDP_Index, bool bHPD_State );
+extern void Hpd_Intr_CallBabck( u8 ucDP_Index, bool bHPD_State );
 
-static bool of_parse_dp_dt( struct Dptx_Params	*pstDptx, struct device_node *pstOfNode, u32 *puiPeri0_PClk, u32 *puiPeri1_PClk, u32 *puiPeri2_PClk, u32 *puiPeri3_PClk )
+static int32_t of_parse_dp_dt( struct Dptx_Params	*pstDptx, struct device_node *pstOfNode, uint32_t *puiPeri0_PClk, uint32_t *puiPeri1_PClk, uint32_t *puiPeri2_PClk, uint32_t *puiPeri3_PClk )
 {
-	int				iRetVal;
-	u32				uiSerDes_Reset_STR, uiVCP_Id;
-	unsigned long	ulDispX_Peri_Clk;
+	int32_t			iRetVal;
+	uint32_t		uiSerDes_Reset_STR, uiVCP_Id;
+	uint64_t		ulDispX_Peri_Clk;
 	struct clk		*DISP0_Peri_Clk, *DISP1_Peri_Clk, *DISP2_Peri_Clk, *DISP3_Peri_Clk;
 	
 	DISP0_Peri_Clk = of_clk_get_by_name( pstOfNode, "disp0-clk" );
-	if( !DISP0_Peri_Clk ) 
+	if( DISP0_Peri_Clk == NULL ) 
 	{
 		dptx_err("Can't find DISP0 Peri clock \n");
 	}
 
 	DISP1_Peri_Clk = of_clk_get_by_name( pstOfNode, "disp1-clk" );
-	if( !DISP1_Peri_Clk ) 
+	if( DISP1_Peri_Clk == NULL ) 
 	{
 		dptx_err("Can't find DISP1 Peri clock \n");
 	}
 
 	DISP2_Peri_Clk = of_clk_get_by_name( pstOfNode, "disp2-clk" );
-	if( !DISP0_Peri_Clk ) 
+	if( DISP0_Peri_Clk == NULL ) 
 	{
 		dptx_err("Can't find DISP2 Peri clock \n");
 	}
 
 	DISP3_Peri_Clk = of_clk_get_by_name( pstOfNode, "disp3-clk" );
-	if( !DISP3_Peri_Clk ) 
+	if( DISP3_Peri_Clk == NULL ) 
 	{
 		dptx_err("Can't find DISP3 Peri clock \n");
 	}
 
 	ulDispX_Peri_Clk = clk_get_rate( DISP0_Peri_Clk );
-	*puiPeri0_PClk = ( ulDispX_Peri_Clk / 1000 );
+	*puiPeri0_PClk = (uint32_t)( ulDispX_Peri_Clk / (uint32_t)1000 );
 
 	ulDispX_Peri_Clk = clk_get_rate( DISP1_Peri_Clk );
-	*puiPeri1_PClk = ( ulDispX_Peri_Clk / 1000 );
+	*puiPeri1_PClk = (uint32_t)( ulDispX_Peri_Clk / (uint32_t)1000 );
 
 	ulDispX_Peri_Clk = clk_get_rate( DISP2_Peri_Clk );
-	*puiPeri2_PClk = ( ulDispX_Peri_Clk / 1000 );
+	*puiPeri2_PClk = (uint32_t)( ulDispX_Peri_Clk / (uint32_t)1000 );
 
 	ulDispX_Peri_Clk = clk_get_rate( DISP3_Peri_Clk );
-	*puiPeri3_PClk = ( ulDispX_Peri_Clk / 1000 );
+	*puiPeri3_PClk = (uint32_t)( ulDispX_Peri_Clk / (uint32_t)1000 );
 
 	iRetVal = of_property_read_u32( pstOfNode, "serdes_reset_str", &uiSerDes_Reset_STR );
 	if( iRetVal < 0)
@@ -101,7 +99,7 @@ static bool of_parse_dp_dt( struct Dptx_Params	*pstDptx, struct device_node *pst
 		dptx_err("Can't get 1st Sink VCP Id.. set to '1' by default");
 		uiVCP_Id = (u32)1;
 	}
-	pstDptx->aucVCP_Id[PHY_INPUT_STREAM_0] = uiVCP_Id;
+	pstDptx->aucVCP_Id[PHY_INPUT_STREAM_0] = (uint8_t)uiVCP_Id;
 
 	iRetVal = of_property_read_u32( pstOfNode, "vcp_id_2nd_sink", &uiVCP_Id );
 	if( iRetVal < 0)
@@ -109,7 +107,7 @@ static bool of_parse_dp_dt( struct Dptx_Params	*pstDptx, struct device_node *pst
 		dptx_err("Can't get 2nd Sink VCP Id.. set to '2' by default");
 		uiVCP_Id = (u32)2;
 	}
-	pstDptx->aucVCP_Id[PHY_INPUT_STREAM_1] = uiVCP_Id;
+	pstDptx->aucVCP_Id[PHY_INPUT_STREAM_1] = (uint8_t)uiVCP_Id;
 
 	iRetVal = of_property_read_u32( pstOfNode, "vcp_id_3rd_sink", &uiVCP_Id );
 	if( iRetVal < 0)
@@ -117,7 +115,7 @@ static bool of_parse_dp_dt( struct Dptx_Params	*pstDptx, struct device_node *pst
 		dptx_err("Can't get 3rd Sink VCP Id.. set to '3' by default");
 		uiVCP_Id = (u32)3;
 	}
-	pstDptx->aucVCP_Id[PHY_INPUT_STREAM_2] = uiVCP_Id;
+	pstDptx->aucVCP_Id[PHY_INPUT_STREAM_2] = (uint8_t)uiVCP_Id;
 
 	iRetVal = of_property_read_u32( pstOfNode, "vcp_id_4th_sink", &uiVCP_Id );
 	if( iRetVal < 0)
@@ -125,16 +123,17 @@ static bool of_parse_dp_dt( struct Dptx_Params	*pstDptx, struct device_node *pst
 		dptx_err("Can't get 4th Sink VCP Id.. set to '4' by default");
 		uiVCP_Id = (u32)4;
 	}
-	pstDptx->aucVCP_Id[PHY_INPUT_STREAM_3] = uiVCP_Id;
+	pstDptx->aucVCP_Id[PHY_INPUT_STREAM_3] = (uint8_t)uiVCP_Id;
 
-	return ( 0 );
+	return 0;
 }
 
-static int Dpv14_Tx_Probe( struct platform_device *pdev)
+static int32_t Dpv14_Tx_Probe( struct platform_device *pdev)
 {
-	bool					bRetVal = 0;
-	bool					bHotPlugged = false;
-	u32						auiPeri_Pixel_Clock[PHY_INPUT_STREAM_MAX] = { 0, };
+	bool	 bRetVal;
+	uint8_t  ucHotPlugged;
+	int32_t	 iRetVal;
+	uint32_t auiPeri_Pixel_Clock[PHY_INPUT_STREAM_MAX] = { 0, };
 	struct resource			*pstResource;
 	struct Dptx_Params		*pstDptx;
 	struct Dptx_Video_Params	*pstVideoParams;
@@ -240,13 +239,6 @@ static int Dpv14_Tx_Probe( struct platform_device *pdev)
 		return -ENODEV;
 	}
 	
-	bRetVal = Dptx_Avgen_Init_Audio_Params( pstDptx );
-	if( bRetVal )
-	{
-		dptx_err("from Dptx_Avgen_Init_Audio_Params()");
-		return -ENODEV;
-	}
-
 	mutex_init( &pstDptx->Mutex );
 
 	init_waitqueue_head( &pstDptx->WaitQ );
@@ -269,14 +261,14 @@ static int Dpv14_Tx_Probe( struct platform_device *pdev)
 		return -ENODEV;
 	}
 
-	bRetVal = Dptx_Intr_Get_HotPlug_Status( pstDptx, &bHotPlugged );
-	if( bRetVal )
+	iRetVal = Dptx_Intr_Get_HotPlug_Status( pstDptx, &ucHotPlugged );
+	if( iRetVal != 0 )
 	{
 		dptx_err("from Dptx_Intr_Get_HotPlug_Status()");
 	}
 
-	pstDptx->eLast_HPDStatus = ( bHotPlugged == (bool)HPD_STATUS_PLUGGED ) ? (bool)HPD_STATUS_PLUGGED : (bool)HPD_STATUS_UNPLUGGED;
-	if( bHotPlugged == (bool)HPD_STATUS_PLUGGED )
+	pstDptx->eLast_HPDStatus = ( ucHotPlugged == (uint8_t)HPD_STATUS_PLUGGED ) ? HPD_STATUS_PLUGGED : HPD_STATUS_UNPLUGGED;
+	if( ucHotPlugged == (uint8_t)HPD_STATUS_PLUGGED )
 	{
 		Dptx_Intr_Get_Port_Composition( pstDptx );
 	}
@@ -304,12 +296,12 @@ static int Dpv14_Tx_Probe( struct platform_device *pdev)
 					pstVideoParams->auiVideo_Code[0], pstVideoParams->auiVideo_Code[1], pstVideoParams->auiVideo_Code[2], pstVideoParams->auiVideo_Code[3],
 					pstVideoParams->uiPeri_Pixel_Clock[0], pstVideoParams->uiPeri_Pixel_Clock[1], pstVideoParams->uiPeri_Pixel_Clock[2], pstVideoParams->uiPeri_Pixel_Clock[3] );
 
-	Dptx_Intr_Register_HPD_Callback( pstDptx,	Dpv14_Tx_API_Hpd_Intr_CB );
+	Dptx_Intr_Register_HPD_Callback( pstDptx,	Hpd_Intr_CallBabck );
 	Dptx_Core_Enable_Global_Intr( pstDptx,	( DPTX_IEN_HPD | DPTX_IEN_HDCP | DPTX_IEN_SDP | DPTX_IEN_TYPE_C ) );
 
 	Dptx_Ext_Proc_Interface_Init( pstDptx );
 
-	return ( 0 );
+	return 0;
 }
 
 
@@ -368,7 +360,8 @@ int Dpv14_Tx_Suspend_T( struct Dptx_Params	*pstDptx )
 int Dpv14_Tx_Resume_T( struct Dptx_Params	*pstDptx )
 {
 	bool	bRetVal;
-	bool	bHotPlugged;
+	uint8_t ucHotPlugged;
+	int32_t iRetVal;
 	struct Dptx_Video_Params	*pstVideoParams;
 
 	dptx_info("*** PM Resume Test *** ");
@@ -411,15 +404,15 @@ int Dpv14_Tx_Resume_T( struct Dptx_Params	*pstDptx )
 		return -ENODEV;
 	}
 
-	bRetVal = Dptx_Intr_Get_HotPlug_Status( pstDptx, &bHotPlugged );
-	if( bRetVal )
+	iRetVal = Dptx_Intr_Get_HotPlug_Status( pstDptx, &ucHotPlugged );
+	if( iRetVal != 0 )
 	{
 		return -ENODEV;
 	}
 
-	pstDptx->eLast_HPDStatus = (enum HPD_Detection_Status)bHotPlugged;
+	pstDptx->eLast_HPDStatus = (enum HPD_Detection_Status)ucHotPlugged;
 
-	if( bHotPlugged == (bool)HPD_STATUS_PLUGGED )
+	if( ucHotPlugged == (uint8_t)HPD_STATUS_PLUGGED )
 	{
 		bRetVal = Dptx_Link_Perform_BringUp( pstDptx, pstDptx->bMultStreamTransport );
 		if( bRetVal == DPTX_RETURN_SUCCESS )
@@ -463,14 +456,14 @@ static int Dpv14_Tx_Suspend( struct platform_device *pdev, pm_message_t state )
 		dptx_err("from Dptx_Core_Deinit()");
 	}
 
-	return ( 0 );
+	return 0;
 }
 
 static int Dpv14_Tx_Resume( struct platform_device *pdev )
 {
 	bool	bRetVal;
-	bool	bHotPlugged;
-	int32_t	iError;
+	uint8_t ucHotPlugged;
+	int32_t	iRetVal;
 	struct Dptx_Params		*pstDptx;
 	struct Dptx_Video_Params	*pstVideoParams;
 
@@ -484,8 +477,8 @@ static int Dpv14_Tx_Resume( struct platform_device *pdev )
 
 	pstVideoParams = &pstDptx->stVideoParams;
 
-	iError = pinctrl_pm_select_default_state(&pdev->dev);
-	if (iError) {
+	iRetVal = pinctrl_pm_select_default_state(&pdev->dev);
+	if(iRetVal) {
 		dptx_err("from pinctrl_pm_select_default_state()");
 	}
 
@@ -496,8 +489,7 @@ static int Dpv14_Tx_Resume( struct platform_device *pdev )
 				pstVideoParams->uiPeri_Pixel_Clock[PHY_INPUT_STREAM_0], pstVideoParams->uiPeri_Pixel_Clock[PHY_INPUT_STREAM_1], 
 				pstVideoParams->uiPeri_Pixel_Clock[PHY_INPUT_STREAM_2], pstVideoParams->uiPeri_Pixel_Clock[PHY_INPUT_STREAM_3] );
 
-	if( pstDptx->bSerDes_Reset_STR )
-	{
+	if(pstDptx->bSerDes_Reset_STR) {
 			Dptx_Max968XX_Reset( pstDptx );
 	}
 
@@ -505,8 +497,7 @@ static int Dpv14_Tx_Resume( struct platform_device *pdev )
 	Dptx_Platform_Set_APAccess_Mode( pstDptx );
 	Dptx_Platform_Set_ClkPath_To_XIN( pstDptx );
 
-	if( pstDptx->uiTCC805X_Revision == TCC805X_REVISION_CS )
-	{
+	if(pstDptx->uiTCC805X_Revision == TCC805X_REVISION_CS) {
 		Dptx_Platform_Set_PHY_StandardLane_PinConfig( pstDptx );
 		Dptx_Platform_Set_SDMBypass_Ctrl( pstDptx );
 		Dptx_Platform_Set_SRVCBypass_Ctrl( pstDptx );
@@ -514,34 +505,28 @@ static int Dpv14_Tx_Resume( struct platform_device *pdev )
 	}
 
 	bRetVal = Dptx_Platform_Init( pstDptx );
-	if( bRetVal ) 
-	{
+	if(bRetVal) {
 		return -ENODEV;
 	}
 
 	bRetVal = Dptx_Core_Init( pstDptx );
-	if( bRetVal ) 
-	{
+	if(bRetVal) {
 		return -ENODEV;
 	}
 
-	bRetVal = Dptx_Intr_Get_HotPlug_Status( pstDptx, &bHotPlugged );
-	if( bRetVal ) 
-	{
+	iRetVal = Dptx_Intr_Get_HotPlug_Status(pstDptx, &ucHotPlugged);
+	if(iRetVal != 0) {
 		return -ENODEV;
 	}
 
-	pstDptx->eLast_HPDStatus = (enum HPD_Detection_Status)bHotPlugged;
+	pstDptx->eLast_HPDStatus = (enum HPD_Detection_Status)ucHotPlugged;
 
-	if( bHotPlugged == (bool)HPD_STATUS_PLUGGED )
-	{
+	if(ucHotPlugged == (uint8_t)HPD_STATUS_PLUGGED) {
 		bRetVal = Dptx_Link_Perform_BringUp( pstDptx, pstDptx->bMultStreamTransport );
-		if( bRetVal == DPTX_RETURN_SUCCESS ) 
-		{
+		if(bRetVal == DPTX_RETURN_SUCCESS) {
 			Dptx_Link_Perform_Training(pstDptx, pstDptx->ucMax_Rate, pstDptx->ucMax_Lanes );
 
-			if( pstDptx->bMultStreamTransport  )
-			{
+			if(pstDptx->bMultStreamTransport) {
 				Dptx_Ext_Set_Topology_Configuration( pstDptx, pstDptx->ucNumOfPorts, pstDptx->bSideBand_MSG_Supported );
 			}
 		}

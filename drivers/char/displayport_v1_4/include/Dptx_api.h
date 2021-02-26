@@ -90,27 +90,65 @@ enum DPTX_API_VIDEO_PIXEL_ENCODING_TYPE
 enum DPTX_AUDIO_INTERFACE_TYPE
 {
 	AUDIO_INTERFACE_I2S = 0,
-	AUDIO_INTERFACE_SPDIF
+	AUDIO_INTERFACE_MAX
 };
 
 enum  DPTX_AUDIO_DATA_WIDTH
 {
-	AUDIO_DATA_WIDTH_16 = 0,
-	AUDIO_DATA_WIDTH_17,
-	AUDIO_DATA_WIDTH_18,
-	AUDIO_DATA_WIDTH_19,
-	AUDIO_DATA_WIDTH_20,
-	AUDIO_DATA_WIDTH_21,
-	AUDIO_DATA_WIDTH_22,
-	AUDIO_DATA_WIDTH_23,
-	AUDIO_DATA_WIDTH_24
+	AUDIO_DATA_WIDTH_16 = 16,
+	AUDIO_DATA_WIDTH_17 = 17,
+	AUDIO_DATA_WIDTH_18 = 18,
+	AUDIO_DATA_WIDTH_19 = 19,
+	AUDIO_DATA_WIDTH_20 = 20,
+	AUDIO_DATA_WIDTH_21 = 21,
+	AUDIO_DATA_WIDTH_22 = 22,
+	AUDIO_DATA_WIDTH_23 = 23,
+	AUDIO_DATA_WIDTH_24    = 24,
+	AUDIO_DATA_WIDTH_MAX
 };
 
 enum  DPTX_AUDIO_NUM_OF_CHANNELS
 {
 	AUDIO_NUM_OF_CHANNELS_1 = 0,
 	AUDIO_NUM_OF_CHANNELS_2 = 1,
-	AUDIO_NUM_OF_CHANNELS_8 = 7		
+	AUDIO_NUM_OF_CHANNELS_3 = 2,
+	AUDIO_NUM_OF_CHANNELS_4 = 3,
+	AUDIO_NUM_OF_CHANNELS_5 = 4,
+	AUDIO_NUM_OF_CHANNELS_6 = 5,
+	AUDIO_NUM_OF_CHANNELS_7 = 6,
+	AUDIO_NUM_OF_CHANNELS_8 = 7,
+	AUDIO_NUM_OF_CHANNELS_MAX = 8
+};
+
+enum DPTX_AUDIO_IEC60958_3_SAMPLE_FREQ
+{
+	AUDIO_IEC60958_3_SAMPLE_FREQ_44_1			= 0,
+	AUDIO_IEC60958_3_SAMPLE_FREQ_88_2 		= 1,
+	AUDIO_IEC60958_3_SAMPLE_FREQ_22_05		= 2,
+	AUDIO_IEC60958_3_SAMPLE_FREQ_176_4		= 3,
+	AUDIO_IEC60958_3_SAMPLE_FREQ_48			= 4,
+	AUDIO_IEC60958_3_SAMPLE_FREQ_96			= 5,
+	AUDIO_IEC60958_3_SAMPLE_FREQ_24			= 6,
+	AUDIO_IEC60958_3_SAMPLE_FREQ_192			= 7,
+	AUDIO_IEC60958_3_SAMPLE_FREQ_32			= 12,
+	AUDIO_IEC60958_3_SAMPLE_FREQ_INVALID		= 13
+};
+
+enum DPTX_AUDIO_IEC60958_3_ORIGINAL_SAMPLE_FREQ
+{
+	AUDIO_IEC60958_3_ORIGINAL_SAMPLE_FREQ_16			= 1,
+	AUDIO_IEC60958_3_ORIGINAL_SAMPLE_FREQ_32			= 3,
+	AUDIO_IEC60958_3_ORIGINAL_SAMPLE_FREQ_12			= 4,
+	AUDIO_IEC60958_3_ORIGINAL_SAMPLE_FREQ_11_025		= 5,
+	AUDIO_IEC60958_3_ORIGINAL_SAMPLE_FREQ_8			= 6,
+	AUDIO_IEC60958_3_ORIGINAL_SAMPLE_FREQ_192			= 8,
+	AUDIO_IEC60958_3_ORIGINAL_SAMPLE_FREQ_24			= 9,
+	AUDIO_IEC60958_3_ORIGINAL_SAMPLE_FREQ_96			= 10,
+	AUDIO_IEC60958_3_ORIGINAL_SAMPLE_FREQ_48			= 11,
+	AUDIO_IEC60958_3_ORIGINAL_SAMPLE_FREQ_176_4		= 12,
+	AUDIO_IEC60958_3_ORIGINAL_SAMPLE_FREQ_22_05		= 13,
+	AUDIO_IEC60958_3_ORIGINAL_SAMPLE_FREQ_88_2			= 14,
+	AUDIO_IEC60958_3_ORIGINAL_SAMPLE_FREQ_44_1			= 15
 };
 
 enum DPTX_TRAINING_PATTERN_TYPE
@@ -127,7 +165,6 @@ enum DPTX_TRAINING_PATTERN_TYPE
 	DPTX_TRAINING_CTRL_TPS_CP2520_2		= 0x09,
 	DPTX_TRAINING_CTRL_TPS_INVALID		= 0xFF,
 };
-
 
 struct   DPTX_API_Dtd_Params_t
 {
@@ -148,24 +185,25 @@ struct   DPTX_API_Dtd_Params_t
 	u32	uiPixel_Clock;
 };
 
+struct DPTX_API_Audio_Params 
+{
+	enum  DPTX_AUDIO_INTERFACE_TYPE  eIn_InterfaceType;
+	enum  DPTX_AUDIO_DATA_WIDTH      eIn_DataWidth;
+	enum  DPTX_AUDIO_NUM_OF_CHANNELS eIn_Max_NumOfchannels;
+	enum  DPTX_AUDIO_INTERFACE_TYPE  eIn_HBR_Mode;
+	enum  DPTX_AUDIO_IEC60958_3_SAMPLE_FREQ eIEC_Sampling_Freq;
+	enum  DPTX_AUDIO_IEC60958_3_ORIGINAL_SAMPLE_FREQ eIEC_OrgSamplingFreq;
+};
 
-int Dpv14_Tx_API_Get_HPD_State( bool *pbHPD_State );
-int Dpv14_Tx_API_Get_Port_Composition( bool *pbMST_Supported, u8 *pucNumOfPluggedPorts);
-int Dpv14_Tx_API_Get_Edid( u8 ucStream_Index, u8 *pucEDID_Buf, u32 uiBuf_Size );
-int Dpv14_Tx_API_Perform_LinkTraining( bool *pbLinkTraining_Status );
-int Dpv14_Tx_API_Set_Video_Timing( u8 ucStream_Index, struct DPTX_API_Dtd_Params_t *dptx_detailed_timing );
-int Dpv14_Tx_API_Set_Video_Enable( u8 ucStream_Index, bool bEnable );
+int32_t Dpv14_Tx_API_Get_HPD_State(uint8_t *pucHPD_State);
+int32_t Dpv14_Tx_API_Get_Port_Composition( bool *pbMST_Supported, u8 *pucNumOfPluggedPorts);
+int32_t Dpv14_Tx_API_Get_Edid( u8 ucStream_Index, u8 *pucEDID_Buf, u32 uiBuf_Size );
+int32_t Dpv14_Tx_API_Perform_LinkTraining( bool *pbLinkTraining_Status );
+int32_t Dpv14_Tx_API_Set_Video_Timing( u8 ucStream_Index, struct DPTX_API_Dtd_Params_t *dptx_detailed_timing );
+int32_t Dpv14_Tx_API_Set_Video_Enable( u8 ucStream_Index, bool bEnable );
 
-bool Dpv14_Tx_API_Set_Audio_Mute( bool bMute );
-bool Dpv14_Tx_API_Get_Audio_Mute( bool *pbMute );
-bool Dpv14_Tx_API_Set_Audio_InterfaceType( enum DPTX_AUDIO_INTERFACE_TYPE eAudio_InfType );
-bool Dpv14_Tx_API_Get_Audio_InterfaceType( u8 *pucAudio_InfType );
-bool Dpv14_Tx_API_Set_Audio_DataWidth( enum DPTX_AUDIO_DATA_WIDTH eAudio_DataWidth );
-bool Dpv14_Tx_API_Get_Audio_DataWidth( u8 *pucAudio_DataWidth );
-bool Dpv14_Tx_API_Set_Audio_HBR_Mode( bool bEnable );
-bool Dpv14_Tx_API_Get_Audio_HBR_Mode( bool *pbEnable );
-bool Dpv14_Tx_API_Set_Audio_Max_NumOfCh( enum  DPTX_AUDIO_NUM_OF_CHANNELS eAudio_NumOfCh );
-bool Dpv14_Tx_API_Get_Audio_Max_NumOfCh( u8 *pucAudio_NumOfCh );
-bool Dpv14_Tx_API_Set_Audio_Sel( u32 ucData );
-
+int32_t Dpv14_Tx_API_Set_Audio_Configuration(uint8_t ucDP_Index, struct DPTX_API_Audio_Params *pstDptx_audio_params);
+int32_t Dpv14_Tx_API_Get_Audio_Configuration(uint8_t ucDP_Index, struct DPTX_API_Audio_Params *pstDptx_audio_params);
+int32_t Dpv14_Tx_API_Set_Audio_Mute(uint8_t ucDP_Index, uint8_t ucMute);
+int32_t Dpv14_Tx_API_Get_Audio_Mute(uint8_t ucDP_Index, uint8_t *pucMute);
 #endif /* __DPTX_API_H__  */

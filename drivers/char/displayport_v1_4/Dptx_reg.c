@@ -50,26 +50,3 @@ void Dptx_Reg_Direct_Write( volatile void __iomem *Reg, u32 uiData )
 	__raw_writel( uiData, Reg );
 }
 
-void Dptx_Reg_Set_AudioSel( u32 uiData )
-{
-	u32			uiWriteData;
-	
-	uiWriteData = uiData & DPTX_AUDIO_SEL_MASK;
-
-	dptx_dbg("WRITE: addr=0x%05x data=0x%08x", (u32)(DPTX_AUDIO_SEL_REG), uiWriteData);
-
-	writel( uiWriteData , DPTX_AUDIO_SEL_REG );
-}
-
-u32 Dptx_Reg_Get_AudioSel(void)
-{
-	u32			uiReadData;
-	
-	uiReadData = (readl( DPTX_AUDIO_SEL_REG )) & DPTX_AUDIO_SEL_MASK;
-
-	dptx_dbg("Read: addr=0x%05x data=0x%08x", (u32)(DPTX_AUDIO_SEL_REG), uiReadData);
-
-	return ( uiReadData );
-}
-
-
