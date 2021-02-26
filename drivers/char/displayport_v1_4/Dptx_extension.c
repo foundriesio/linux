@@ -1088,7 +1088,7 @@ bool Dptx_Ext_Get_Link_PayloadBandwidthNumber( struct Dptx_Params *pstDptx, u8 u
 {
 	bool		bRetVal;
 	u8			ucRest;
-	u32			uiPBN_BPP, uiPBN_M_BPP, uiTenfold_M_BPP;
+	u32			uiPBN_BPP = 0, uiPBN_M_BPP, uiTenfold_M_BPP;
 	struct Dptx_Video_Params	*pstVideoParams =	&pstDptx->stVideoParams;
 
 //	pstDptx->ausPayloadBandwidthNumber[] = (u16)Drm_Addition_Calculate_PBN_mode( pstDptx->stVideoParams.uiPeri_Pixel_Clock[ucStream_Index], COLOR_DEPTH_8 );
@@ -1114,6 +1114,7 @@ bool Dptx_Ext_Get_Link_PayloadBandwidthNumber( struct Dptx_Params *pstDptx, u8 u
 	else
 	{
 		dptx_err("Unknown Pixel encoding type(%d)", pstVideoParams->ucPixel_Encoding );
+		return ( DPTX_RETURN_FAIL );
 	}
 
 	uiPBN_BPP *= ( 1006 );
@@ -1712,6 +1713,9 @@ static ssize_t dptx_ext_proc_read_link_training_status( struct file *filp, char 
 static ssize_t dptx_ext_proc_read_str_status( struct file *filp, char __user *usr_buf, size_t cnt, loff_t *off_set );
 static ssize_t dptx_ext_proc_read_video_timing( struct file *filp, char __user *usr_buf, size_t cnt, loff_t *off_set );
 static ssize_t dptx_ext_proc_write_video_timing( struct file *filp, const char __user *buffer, size_t cnt, loff_t *off_set );
+static ssize_t dptx_ext_proc_read_audio_configuration( struct file *filp, char __user *usr_buf, size_t cnt, loff_t *off_set );
+static ssize_t dptx_ext_proc_write_audio_configuration( struct file *filp, const char __user *buffer, size_t cnt, loff_t *off_set );
+
 
 static const struct file_operations proc_fops_hpd_state = {
 	.owner   = THIS_MODULE,
@@ -1741,6 +1745,13 @@ static const struct file_operations proc_fops_linkT_data = {
 	.read    = dptx_ext_proc_read_link_training_status,
 };
 
+static const struct file_operations proc_fops_str_data = {
+	.owner   = THIS_MODULE,
+	.open    = dptx_ext_proc_open,
+	.release = dptx_ext_proc_close,
+	.read    = dptx_ext_proc_read_str_status,
+};
+
 static const struct file_operations proc_fops_video_data = {
 	.owner   = THIS_MODULE,
 	.open    = dptx_ext_proc_open,
@@ -1749,11 +1760,12 @@ static const struct file_operations proc_fops_video_data = {
 	.write	 = dptx_ext_proc_write_video_timing,
 };
 
-static const struct file_operations proc_fops_str_data = {
+static const struct file_operations proc_fops_audio_data = {
 	.owner   = THIS_MODULE,
 	.open    = dptx_ext_proc_open,
 	.release = dptx_ext_proc_close,
-	.read    = dptx_ext_proc_read_str_status,
+	.read    = dptx_ext_proc_read_audio_configuration,
+	.write	 = dptx_ext_proc_write_audio_configuration,
 };
 
 
@@ -1801,9 +1813,9 @@ int dptx_ext_proc_close( struct inode *inode, struct file *filp )
 
 ssize_t dptx_ext_proc_read_hpd_state( struct file *filp, char __user *usr_buf, size_t cnt, loff_t *off_set )
 {
-	bool				bHPD_State;
 	ssize_t				stSize;
 	char				*pcHpd_Buf;
+	uint8_t ucHPD_State;
 	struct Dptx_Params *pstDptx = PDE_DATA(file_inode(filp));
 
 	pcHpd_Buf = devm_kzalloc( pstDptx->pstParentDev, DPTX_DEBUGFS_BUF_SIZE, GFP_KERNEL );
@@ -1812,9 +1824,9 @@ ssize_t dptx_ext_proc_read_hpd_state( struct file *filp, char __user *usr_buf, s
 		dptx_err("Could not allocate HPD state buffer ");
 	}
 
-	Dptx_Intr_Get_HotPlug_Status( pstDptx, &bHPD_State );
+	Dptx_Intr_Get_HotPlug_Status(pstDptx, &ucHPD_State);
 
-	stSize = sprintf( pcHpd_Buf, "%s\n", bHPD_State == (bool)HPD_STATUS_PLUGGED ? "Hot plugged":"Hot unplugged");
+	stSize = sprintf( pcHpd_Buf, "%s\n", ucHPD_State == (uint8_t)HPD_STATUS_PLUGGED ? "Hot plugged":"Hot unplugged");
 
 	stSize = simple_read_from_buffer( usr_buf, cnt, off_set, (void *)pcHpd_Buf, stSize );
 
@@ -1825,9 +1837,9 @@ ssize_t dptx_ext_proc_read_hpd_state( struct file *filp, char __user *usr_buf, s
 
 ssize_t dptx_ext_proc_read_port_composition( struct file *filp, char __user *usr_buf, size_t cnt, loff_t *off_set )
 {
-	bool				bRetVal;
-	bool				bHPD_State, bMST_Supported;
-	u8					ucNumOfPluggedPorts;
+	bool	bRetVal;
+	bool	bMST_Supported;
+	uint8_t ucHPD_State, ucNumOfPluggedPorts;
 	ssize_t				stSize;
 	char				*pcTopology_Buf;
 	struct Dptx_Params *pstDptx = PDE_DATA(file_inode(filp));
@@ -1839,12 +1851,8 @@ ssize_t dptx_ext_proc_read_port_composition( struct file *filp, char __user *usr
 		return ( 0 );
 	}
 
-	bRetVal = Dptx_Intr_Get_HotPlug_Status( pstDptx, &bHPD_State );
-	if( bRetVal == DPTX_RETURN_FAIL ) 
-	{
-		return ( 0 );
-	}
-	if( bHPD_State == (bool)HPD_STATUS_UNPLUGGED )
+	Dptx_Intr_Get_HotPlug_Status( pstDptx, &ucHPD_State );
+	if( ucHPD_State == (uint8_t)HPD_STATUS_UNPLUGGED )
 	{
 		dptx_err("Hot unplugged..." );
 		return ( 0 );
@@ -1903,9 +1911,9 @@ ssize_t dptx_ext_proc_read_port_composition( struct file *filp, char __user *usr
 
 ssize_t dptx_ext_proc_read_edid_data( struct file *filp, char __user *usr_buf, size_t cnt, loff_t *off_set )
 {
-	bool				bRetVal;
-	bool				bHPD_State, bSink_MST_Supported, bSink_Has_EDID = true;
-	u8					ucNumOfPluggedPorts = 0, ucStream_Index;
+	bool	bRetVal;
+	bool	bSink_MST_Supported, bSink_Has_EDID = true;
+	uint8_t ucHPD_State, ucNumOfPluggedPorts = 0, ucStream_Index;
 	char				*pcEdid_Buf;
 	ssize_t				stSize;
 	struct Dptx_Params *pstDptx = PDE_DATA(file_inode(filp));
@@ -1916,12 +1924,8 @@ ssize_t dptx_ext_proc_read_edid_data( struct file *filp, char __user *usr_buf, s
 		dptx_err("Could not allocate HPD state buffer ");
 	}
 
-	bRetVal = Dptx_Intr_Get_HotPlug_Status( pstDptx, &bHPD_State );
-	if( bRetVal == DPTX_RETURN_FAIL ) 
-	{
-		return ( 0 );
-	}
-	if( bHPD_State == (bool)HPD_STATUS_UNPLUGGED )
+	Dptx_Intr_Get_HotPlug_Status( pstDptx, &ucHPD_State );
+	if( ucHPD_State == (uint8_t)HPD_STATUS_UNPLUGGED )
 	{
 		dptx_err("Hot unplugged..." );
 		return ( 0 );
@@ -1978,9 +1982,9 @@ ssize_t dptx_ext_proc_read_edid_data( struct file *filp, char __user *usr_buf, s
 
 ssize_t dptx_ext_proc_read_link_training_status( struct file *filp, char __user *usr_buf, size_t cnt, loff_t *off_set )
 {
-	bool				bRetVal;
-	bool				bHPD_State, bSink_MST_Supported, bTrainingState;
-	u8					ucNumOfPluggedPorts = 0;
+	bool	bRetVal;
+	bool	bSink_MST_Supported, bTrainingState;
+	uint8_t ucHPD_State, ucNumOfPluggedPorts = 0;
 	char				*pcEdid_Buf;
 	ssize_t				stSize;
 	struct Dptx_Params *pstDptx = PDE_DATA(file_inode(filp));
@@ -1991,12 +1995,8 @@ ssize_t dptx_ext_proc_read_link_training_status( struct file *filp, char __user 
 		dptx_err("Could not allocate HPD state buffer ");
 	}
 
-	bRetVal = Dptx_Intr_Get_HotPlug_Status( pstDptx, &bHPD_State );
-	if( bRetVal == DPTX_RETURN_FAIL ) 
-	{
-		return ( 0 );
-	}
-	if( bHPD_State == (bool)HPD_STATUS_UNPLUGGED )
+	Dptx_Intr_Get_HotPlug_Status(pstDptx, &ucHPD_State);
+	if(ucHPD_State == (uint8_t)HPD_STATUS_UNPLUGGED)
 	{
 		dptx_err("Hot unplugged..." );
 		return ( 0 );
@@ -2105,15 +2105,17 @@ ssize_t dptx_ext_proc_read_video_timing( struct file *filp, char __user *usr_buf
 
 	stSize = simple_read_from_buffer( usr_buf, cnt, off_set, (void *)pcVideoTiming_Buf, stSize );
 
-	return ( stSize );
+	devm_kfree(pstDptx->pstParentDev, pcVideoTiming_Buf);
+
+	return stSize;
 }
 
 ssize_t dptx_ext_proc_write_video_timing( struct file *filp, const char __user *buffer, size_t cnt, loff_t *off_set )
 {
 	bool				bRetVal;
 	char				*pcVideoTiming_Buf;
-	int					iRetVal;
-	u32					uiVideoCode, uiStream_Index;
+	int32_t	 iRetVal;
+	uint32_t uiVideoCode, uiStream_Index;
 	ssize_t				stSize;
 	struct Dptx_Dtd_Params	stDtd_Params;
 	struct Dptx_Params *pstDptx = PDE_DATA(file_inode(filp));
@@ -2128,7 +2130,7 @@ ssize_t dptx_ext_proc_write_video_timing( struct file *filp, const char __user *
 	stSize = simple_write_to_buffer( pcVideoTiming_Buf, cnt, off_set, buffer, cnt );
 	if(( stSize != cnt ) && ( stSize >= 0 ))
 	{
-		dptx_err("Can't get input data : %d <-> %d ", stSize, cnt);
+		dptx_err("Can't get input data : %d <-> %d ", (uint32_t)stSize, (uint32_t)cnt);
 		
 		devm_kfree( pstDptx->pstParentDev, pcVideoTiming_Buf );
 		return ( -EIO );
@@ -2148,7 +2150,7 @@ ssize_t dptx_ext_proc_write_video_timing( struct file *filp, const char __user *
 	bRetVal = Dptx_Avgen_Fill_Dtd( &stDtd_Params, uiVideoCode, 60000, (u8)VIDEO_FORMAT_CEA_861 );
 	if( bRetVal == DPTX_RETURN_FAIL )
 	{
-		dptx_err("Can't find VIC %d <-> %d from dtd", (u32)uiVideoCode );
+		dptx_err("Can't find VIC %d from dtd", (u32)uiVideoCode );
 
 		devm_kfree( pstDptx->pstParentDev, pcVideoTiming_Buf );
 		return ( 0 );
@@ -2165,7 +2167,97 @@ ssize_t dptx_ext_proc_write_video_timing( struct file *filp, const char __user *
 
 	devm_kfree( pstDptx->pstParentDev, pcVideoTiming_Buf );
 
-	return ( stSize );
+	return stSize;
+}
+
+ssize_t dptx_ext_proc_read_audio_configuration( struct file *filp, char __user *usr_buf, size_t cnt, loff_t *off_set )
+{
+	bool	 bSink_MST_Supported;
+	uint8_t  ucInfType,  ucNumOfCh, ucDataWidth, ucHBRMode, ucSamplingFreq, ucOrgSamplingFreq;
+	uint8_t  ucNumOfPluggedPorts = 0, ucStream_Index;
+	uint32_t uiDataWidth;
+	char	*pcAudioConf_Buf;
+	ssize_t	stSize;
+	struct Dptx_Params *pstDptx = PDE_DATA(file_inode(filp));
+
+	pcAudioConf_Buf = devm_kzalloc(pstDptx->pstParentDev, DPTX_DEBUGFS_BUF_SIZE, GFP_KERNEL);
+	if(pcAudioConf_Buf == NULL) {
+		dptx_err("Could not allocate HPD state buffer ");
+		return 0;
+	}
+
+	Dptx_Ext_Get_Stream_Mode(pstDptx, &bSink_MST_Supported, &ucNumOfPluggedPorts);
+	if((ucNumOfPluggedPorts == 0) || (ucNumOfPluggedPorts >= PHY_INPUT_STREAM_MAX)) {
+		dptx_err("Invalid the Num. of Ports %d -> Get Port Composition first ", ucNumOfPluggedPorts);
+		return 0;
+	}
+
+	for(ucStream_Index = 0; ucStream_Index < ucNumOfPluggedPorts; ucStream_Index++)
+	{
+		Dptx_Avgen_Get_Audio_Input_InterfaceType(pstDptx, ucStream_Index, &ucInfType);
+		Dptx_Avgen_Get_Audio_DataWidth(pstDptx, ucStream_Index, &ucDataWidth);
+		Dptx_Avgen_Get_Audio_MaxNumOfChannels(pstDptx, ucStream_Index, &ucNumOfCh);
+		Dptx_Avgen_Get_Audio_HBR_En(pstDptx, ucStream_Index, &ucHBRMode);
+		Dptx_Avgen_Get_Audio_SamplingFreq(pstDptx, &ucSamplingFreq, &ucOrgSamplingFreq);
+		
+		stSize = sprintf( pcAudioConf_Buf, "DP %d : Input type(%d), Data Width(%d), NumOfCh(%d), HBR(%d), SFreq(%d), OrgSFreq(%d)\n",
+											ucStream_Index, ucInfType, ucDataWidth, ucNumOfCh, ucHBRMode, ucSamplingFreq, ucOrgSamplingFreq );
+
+		stSize = simple_read_from_buffer(usr_buf, cnt, off_set, (void *)pcAudioConf_Buf, stSize);
+	}
+
+	devm_kfree(pstDptx->pstParentDev, pcAudioConf_Buf);
+
+	return stSize;
+}
+
+ssize_t dptx_ext_proc_write_audio_configuration(struct file *filp, const char __user *buffer, size_t cnt, loff_t *off_set)
+{
+	char	 *pcAudioConf_Buf;
+ 	int32_t  iRetVal;
+	uint32_t uiStream_Index, uiInfType, uiDataWidth, uiNumOfCh, uiHBRMode, uiSamplingFreq, uiOrgSamplingFreq;
+	ssize_t	 stSize;
+	struct Dptx_Audio_Params stAudioParams;
+	struct Dptx_Params *pstDptx = PDE_DATA(file_inode(filp));
+
+	pcAudioConf_Buf = devm_kzalloc(pstDptx->pstParentDev, DPTX_DEBUGFS_BUF_SIZE, GFP_KERNEL);
+	if(pcAudioConf_Buf == NULL) {
+		dptx_err("Could not allocate HPD state buffer ");
+		return ( 0 );
+	}
+
+	stSize = simple_write_to_buffer(pcAudioConf_Buf, cnt, off_set, buffer, cnt);
+	if((stSize != cnt) && (stSize >= 0)) {
+		dptx_err("Can't get input data : %d <-> %d ", (uint32_t)stSize, (uint32_t)cnt);
+		
+		devm_kfree(pstDptx->pstParentDev, pcAudioConf_Buf);
+		return ( -EIO );
+	}
+
+	pcAudioConf_Buf[cnt] = '\0';
+
+	iRetVal = sscanf(pcAudioConf_Buf, "%u %u %u %u %u %u %u", &uiStream_Index, &uiInfType, &uiDataWidth, &uiNumOfCh, &uiHBRMode, &uiSamplingFreq, &uiOrgSamplingFreq);
+	if(iRetVal < 0) {
+		devm_kfree( pstDptx->pstParentDev, pcAudioConf_Buf );
+		return ( 0 );
+	}
+
+ 	stAudioParams.ucInput_InterfaceType     = (uint8_t)uiInfType;/* 0 = AUDIO_INTERFACE_I2S */
+	stAudioParams.ucInput_DataWidth         = (uint8_t)uiDataWidth;/* 16 = AUDIO_DATA_WIDTH_16 */
+	stAudioParams.ucInput_Max_NumOfchannels = (uint8_t)uiNumOfCh;/* 1 = AUDIO_NUM_OF_CHANNELS_2 */
+	stAudioParams.ucInput_HBR_Mode          = (uint8_t)uiHBRMode;/* 0 = I2S */
+	stAudioParams.ucIEC_Sampling_Freq       = (uint8_t)uiSamplingFreq;/* 0 = AUDIO_IEC60958_3_SAMPLE_FREQ_44_1 */
+	stAudioParams.ucIEC_OriginSamplingFreq  = (uint8_t)uiOrgSamplingFreq;/* 15 = AUDIO_IEC60958_3_ORIGINAL_SAMPLE_FREQ_44_1 */
+	stAudioParams.ucInput_TimestampVersion	= 0x12;/* Guild from SoC driver development guild document => 0x12400400 = 0x1200 1202*/
+
+	Dptx_Avgen_Configure_Audio(pstDptx, (uint8_t)uiStream_Index, &stAudioParams);
+
+	dptx_info("\n[Write audio Conf]DP %d: Input type(%d), Data Width(%d), NumOfCh(%d), HBR(%d), SFreq(%d), OrgSFreq(%d)\n",
+							uiStream_Index, uiInfType, uiDataWidth, uiNumOfCh, uiHBRMode, uiSamplingFreq, uiOrgSamplingFreq);
+
+	devm_kfree(pstDptx->pstParentDev, pcAudioConf_Buf);
+
+	return stSize;
 }
 
 ssize_t dptx_ext_proc_read_str_status( struct file *filp, char __user *usr_buf, size_t cnt, loff_t *off_set )
@@ -2182,50 +2274,48 @@ ssize_t dptx_ext_proc_read_str_status( struct file *filp, char __user *usr_buf, 
 }
 
 
-bool Dptx_Ext_Proc_Interface_Init( struct Dptx_Params *pstDptx )
+int32_t Dptx_Ext_Proc_Interface_Init(struct Dptx_Params *pstDptx)
 {
 	pstDptx->pstDP_Proc_Dir = proc_mkdir("dptx_v14", NULL);
-	if( pstDptx->pstDP_Proc_Dir == NULL )
-	{
+	if(pstDptx->pstDP_Proc_Dir == NULL) {
 		dptx_err("Could not create file system @ /proc/dptx_v14 ");
 	}
 
 	pstDptx->pstDP_HPD_Dir = proc_create_data("hpd", S_IFREG | S_IRUGO,	pstDptx->pstDP_Proc_Dir, &proc_fops_hpd_state, pstDptx );
-	if( pstDptx->pstDP_HPD_Dir == NULL )
-	{
+	if(pstDptx->pstDP_HPD_Dir == NULL) {
 		dptx_err("Could not create file system data @ /proc/dptx_v14/hpd");
 	}
 
 	pstDptx->pstDP_Topology_Dir = proc_create_data("topology", S_IFREG | S_IRUGO,	pstDptx->pstDP_Proc_Dir, &proc_fops_topology_state, pstDptx );
-	if( pstDptx->pstDP_Topology_Dir == NULL )
-	{
+	if(pstDptx->pstDP_Topology_Dir == NULL) {
 		dptx_err("Could not create file system data @ /proc/dptx_v14/topology");
 	}
 
 	pstDptx->pstDP_EDID_Dir = proc_create_data("edid", S_IFREG | S_IRUGO,	pstDptx->pstDP_Proc_Dir, &proc_fops_edid_data, pstDptx );
-	if( pstDptx->pstDP_EDID_Dir == NULL )
-	{
+	if(pstDptx->pstDP_EDID_Dir == NULL) {
 		dptx_err("Could not create file system data @ /proc/dptx_v14/edid");
 	}
 
 	pstDptx->pstDP_LinkT_Dir = proc_create_data("link", S_IFREG | S_IRUGO,	pstDptx->pstDP_Proc_Dir, &proc_fops_linkT_data, pstDptx );
-	if( pstDptx->pstDP_LinkT_Dir == NULL )
-	{
+	if(pstDptx->pstDP_LinkT_Dir == NULL) {
 		dptx_err("Could not create file system data @ /proc/dptx_v14/link");
 	}
 
-	pstDptx->pstDP_Video_Dir = proc_create_data("video", S_IFREG | S_IRUGO | S_IWUGO,	pstDptx->pstDP_Proc_Dir, &proc_fops_video_data, pstDptx );
-	if( pstDptx->pstDP_Video_Dir == NULL )
-	{
-		dptx_err("Could not create file system data @ /proc/dptx_v14/video");
-	}
-	
 	pstDptx->pstDP_LinkT_Dir = proc_create_data("str", S_IFREG | S_IRUGO,	pstDptx->pstDP_Proc_Dir, &proc_fops_str_data, pstDptx );
-	if( pstDptx->pstDP_LinkT_Dir == NULL )
-	{
+	if(pstDptx->pstDP_LinkT_Dir == NULL) {
 		dptx_err("Could not create file system data @ /proc/dptx_v14/str");
 	}
 
-	return ( DPTX_RETURN_SUCCESS );
+	pstDptx->pstDP_Video_Dir = proc_create_data("video", S_IFREG | S_IRUGO | S_IWUGO,	pstDptx->pstDP_Proc_Dir, &proc_fops_video_data, pstDptx );
+	if(pstDptx->pstDP_Video_Dir == NULL) {
+		dptx_err("Could not create file system data @ /proc/dptx_v14/video");
+	}
+	
+	pstDptx->pstDP_Auio_Dir = proc_create_data("audio", S_IFREG | S_IRUGO,	pstDptx->pstDP_Proc_Dir, &proc_fops_audio_data, pstDptx );
+	if(pstDptx->pstDP_Auio_Dir == NULL) {
+		dptx_err("Could not create file system data @ /proc/dptx_v14/audio");
+	}
+
+	return 0;
 }
 

@@ -461,7 +461,8 @@ bool Dptx_Intr_Handle_HotUnplug( struct Dptx_Params *pstDptx )
 	return ( DPTX_RETURN_SUCCESS );
 }
 
-bool Dptx_Intr_Get_HotPlug_Status( struct Dptx_Params *pstDptx, bool *pbHotPlug_Status )
+int32_t Dptx_Intr_Get_HotPlug_Status(struct Dptx_Params *pstDptx, uint8_t *pucHotPlug_Status)
+
 {
 	u32			uiHpdStatus;
 
@@ -476,19 +477,21 @@ bool Dptx_Intr_Get_HotPlug_Status( struct Dptx_Params *pstDptx, bool *pbHotPlug_
 	 * -.HPD_STATE[Bit11:9]( 0: Sink is not connected, 1: HPD gets deasserted after being in the plugged state in ithis state for 2ms, 3: HPD is high and Sink is connected, 4: HPD is deasserted )
 	 */
 
-	uiHpdStatus = Dptx_Reg_Readl( pstDptx, DPTX_HPDSTS );
-	if( uiHpdStatus & DPTX_HPDSTS_STATUS ) 
-	{
-		dptx_dbg("Hot plugged -> HPD_STATUS[0x%08x]: 0x%08x", DPTX_HPDSTS, uiHpdStatus );
-		*pbHotPlug_Status = (bool)HPD_STATUS_PLUGGED;
+	if(pucHotPlug_Status == NULL) {
+		dptx_err("pucHotPlug_Status == NULL" );
+		return EACCES;
 	}
-	else
-	{
+	
+	uiHpdStatus = Dptx_Reg_Readl( pstDptx, DPTX_HPDSTS );
+	if(uiHpdStatus & DPTX_HPDSTS_STATUS) {
+		dptx_dbg("Hot plugged -> HPD_STATUS[0x%08x]: 0x%08x", DPTX_HPDSTS, uiHpdStatus );
+		*pucHotPlug_Status = (uint8_t)HPD_STATUS_PLUGGED;
+	} else {
 		dptx_dbg("Hot unplugged -> HPD_STATUS[0x%08x]: 0x%08x", DPTX_HPDSTS, uiHpdStatus );
-		*pbHotPlug_Status = (bool)HPD_STATUS_UNPLUGGED;
+		*pucHotPlug_Status = (uint8_t)HPD_STATUS_UNPLUGGED;
 	}
 
-	return ( DPTX_RETURN_SUCCESS );
+	return 0;
 }
 
 
