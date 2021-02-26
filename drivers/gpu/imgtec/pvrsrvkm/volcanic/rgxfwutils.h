@@ -1002,6 +1002,21 @@ PVRSRV_ERROR RGXFWSetFwOsState(PVRSRV_RGXDEV_INFO *psDevInfo,
 								IMG_UINT32 ui32OSid,
 								RGXFWIF_OS_STATE_CHANGE eOSOnlineState);
 
+#if defined(SUPPORT_AUTOVZ)
+/*!
+*******************************************************************************
+@Function       RGXUpdateAutoVzWdgToken
+
+@Description    If the driver-firmware connection is active, read the
+                firmware's watchdog token and copy its value back into the OS
+                token. This indicates to the firmware that this driver is alive
+                and responsive.
+
+@Input          psDevInfo       pointer to device info
+******************************************************************************/
+void RGXUpdateAutoVzWdgToken(PVRSRV_RGXDEV_INFO *psDevInfo);
+#endif
+
 /*!
 *******************************************************************************
 @Function       RGXFWConfigPHR

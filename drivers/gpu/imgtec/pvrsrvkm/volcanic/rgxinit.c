@@ -331,6 +331,9 @@ static IMG_BOOL RGX_LISRHandler (void *pvData)
 	{
 		if (psDevInfo->bRGXPowered && RGXFwIrqEventRx(psDevInfo))
 		{
+#if defined(SUPPORT_AUTOVZ)
+			RGXUpdateAutoVzWdgToken(psDevInfo);
+#endif
 			bInterruptProcessed = IMG_TRUE;
 			OSScheduleMISR(psDevInfo->pvMISRData);
 		}
@@ -392,6 +395,9 @@ static IMG_BOOL RGX_LISRHandler (void *pvData)
 		psDeviceNode->ui64nMISR++;
 #endif
 
+#if defined(SUPPORT_AUTOVZ)
+		RGXUpdateAutoVzWdgToken(psDevInfo);
+#endif
 		OSScheduleMISR(psDevInfo->pvMISRData);
 
 		if (psDevInfo->pvAPMISRData != NULL)
