@@ -83,10 +83,16 @@
 
 // DECODER on VPU
 #define INST_1ST_USE                    (1)
-#define INST_1ST_IS_HEVC_TYPE           (0)
+#define INST_1ST_IS_HEVC_TYPE           (1)
+#if defined(CONFIG_SUPPORT_4K_VIDEO) || defined(CONFIG_SUPPORT_TCC_HEVC_4K) || defined(CONFIG_SUPPORT_TCC_VP9_4K)
+#define INST_1ST_VIDEO_WIDTH            (4096)  // HEVC: 32x alignment, Other: 16x alignment
+#define INST_1ST_VIDEO_HEIGHT           (2160)  // HEVC: 32x alignment, Other: 16x alignment
+#define INST_1ST_MAX_FRAMEBUFFERS       (7)    // HEVC-4K: 7, Others: 1~24
+#else
 #define INST_1ST_VIDEO_WIDTH            (1920)  // HEVC: 32x alignment, Other: 16x alignment
 #define INST_1ST_VIDEO_HEIGHT           (1088)  // HEVC: 32x alignment, Other: 16x alignment
 #define INST_1ST_MAX_FRAMEBUFFERS       (24)    // HEVC-4K: 7, Others: 1~24
+#endif
 
 #define INST_2ND_USE                    (0)
 #define INST_2ND_IS_HEVC_TYPE           (0)
