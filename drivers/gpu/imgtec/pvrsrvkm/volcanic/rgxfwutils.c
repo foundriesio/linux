@@ -3708,6 +3708,10 @@ static PVRSRV_ERROR RGXSendCommandRaw(PVRSRV_RGXDEV_INFO  *psDevInfo,
 		eError = PVRSRV_ERROR_PVZ_OSID_IS_OFFLINE;
 		goto _RGXSendCommandRaw_Exit;
 	}
+	else
+	{
+		RGXUpdateAutoVzWdgToken(psDevInfo);
+	}
 #endif
 
 	PVR_ASSERT(sizeof(RGXFWIF_KCCB_CMD) == psKCCBCtl->ui32CmdSize);
@@ -5789,6 +5793,16 @@ _RGXUpdateHealthStatus_Exit:
 } /* RGXUpdateHealthStatus */
 
 #if defined(SUPPORT_AUTOVZ)
+void RGXUpdateAutoVzWdgToken(PVRSRV_RGXDEV_INFO *psDevInfo)
+{
+	if (likely(KM_FW_CONNECTION_IS(ACTIVE, psDevInfo) && KM_OS_CONNECTION_IS(ACTIVE, psDevInfo)))
+	{
+		/* read and write back the alive token value to confirm to the
+		 * virtualisation watchdog that this connection is healthy */
+		KM_SET_OS_ALIVE_TOKEN(KM_GET_FW_ALIVE_TOKEN(psDevInfo), psDevInfo);
+	}
+}
+
 /*
 	RGXUpdateAutoVzWatchdog
 */
@@ -5809,12 +5823,7 @@ void RGXUpdateAutoVzWatchdog(PVRSRV_DEVICE_NODE* psDevNode)
 			PVRSRV_ERROR eError = PVRSRVPowerLock(psDevNode);
 			PVR_LOG_RETURN_VOID_IF_ERROR(eError, "PVRSRVPowerLock");
 
-			if (likely(KM_FW_CONNECTION_IS(ACTIVE, psDevInfo) && KM_OS_CONNECTION_IS(ACTIVE, psDevInfo)))
-			{
-				/* read and write back the alive token value to confirm to the
-				 * virtualisation watchdog that this connection is healthy */
-				KM_SET_OS_ALIVE_TOKEN(KM_GET_FW_ALIVE_TOKEN(psDevInfo), psDevInfo);
-			}
+			RGXUpdateAutoVzWdgToken(psDevInfo);
 			PVRSRVPowerUnlock(psDevNode);
 		}
 	}
