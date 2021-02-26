@@ -25,7 +25,7 @@
 #define	IEC60958_3_CH_STATUS_SAMPLE_WORD_LENGTH_23BITS			0x01
 #define	IEC60958_3_CH_STATUS_SAMPLE_WORD_LENGTH_24BITS			0x05
 
-#define AUDIO_INFOFREAME_HEADER				0x441B8400
+#define AUDIO_INFOFREAME_HEADER				0x481B8400
 
 static bool dptx_avgen_set_video_sampler( struct Dptx_Params *pstDptx, u8 ucStream_Index )	
 {
@@ -402,35 +402,17 @@ static bool dptx_avgen_set_video_hblank_interval( struct Dptx_Params *pstDptx, u
 	return ( DPTX_RETURN_SUCCESS );
 }
 
-static void dptx_avgen_set_audio_timestamp_version( struct Dptx_Params *pstDptx, u8 ucAudInput_TimestampVersion )
+static void dptx_avgen_active_audio_channels(struct Dptx_Params *dptx, uint8_t ucStream_Index, uint8_t ucNumOfChannels, uint8_t ucEnable)
 {
-	u32							uiRegMap_AudConf1 = 0;
-	struct Dptx_Audio_Params	*pstAudioParams = &pstDptx->stAudioParams;
-	u8 							ucElements = 0;
+	u32 uiEnabledChannels = 0, uiRegMap_EnableAudioChannels = 0, uiReg_Offset = 0;
 
-	pstAudioParams->ucInput_TimestampVersion = ucAudInput_TimestampVersion;
+	uiReg_Offset = DPTX_AUD_CONFIG1_N(ucStream_Index);
 
-	uiRegMap_AudConf1 = Dptx_Reg_Readl( pstDptx, DPTX_AUD_CONFIG1 );
-	uiRegMap_AudConf1 &= ~DPTX_AUD_CONFIG1_ATS_VER_MASK;
-	uiRegMap_AudConf1 |= ( pstAudioParams->ucInput_TimestampVersion << DPTX_AUD_CONFIG1_ATS_VER_SHFIT );
-
-	for( ucElements = 0; ucElements < pstDptx->ucNumOfStreams; ucElements++ ) { 
-		Dptx_Reg_Writel( pstDptx, DPTX_AUD_CONFIG1_N( ucElements ), uiRegMap_AudConf1 );
-	}
-}
-
-static void dptx_avgen_active_audio_input_data( struct Dptx_Params *dptx, int iNumOfChannels, bool bEnable )
-{
-	u32 			uiEnabledChannels = 0, uiRegMap_EnableAudioChannels = 0;
-	u8				ucElements = 0;
-
-	uiRegMap_EnableAudioChannels = Dptx_Reg_Readl(dptx, DPTX_AUD_CONFIG1);
+	uiRegMap_EnableAudioChannels = Dptx_Reg_Readl(dptx, uiReg_Offset);
 	uiRegMap_EnableAudioChannels &= ~DPTX_AUD_CONFIG1_DATA_EN_IN_MASK;
 
-	if( bEnable ) 
-	{
-		switch( iNumOfChannels ) 
-		{
+	if (ucEnable) {
+		switch (ucNumOfChannels) {
 			case INPUT_MAX_1_CH:
 				uiEnabledChannels = DPTX_EN_AUDIO_CH_1;
 				break;
@@ -453,15 +435,13 @@ static void dptx_avgen_active_audio_input_data( struct Dptx_Params *dptx, int iN
 				uiEnabledChannels = DPTX_EN_AUDIO_CH_7;
 				break;
 			case INPUT_MAX_8_CH:
+			default:
 				uiEnabledChannels = DPTX_EN_AUDIO_CH_8;
 				break;
 		}
 		uiRegMap_EnableAudioChannels |= ( uiEnabledChannels << DPTX_AUD_CONFIG1_DATA_EN_IN_SHIFT );
-	} 
-	else 
-	{
-		switch (iNumOfChannels ) 
-		{
+	} else {
+		switch (ucNumOfChannels) {
 			case INPUT_MAX_1_CH:
 				uiEnabledChannels = ~DPTX_EN_AUDIO_CH_1;
 				break;
@@ -484,15 +464,14 @@ static void dptx_avgen_active_audio_input_data( struct Dptx_Params *dptx, int iN
 				uiEnabledChannels = ~DPTX_EN_AUDIO_CH_7;
 				break;
 			case INPUT_MAX_8_CH:
+			default:
 				uiEnabledChannels = ~DPTX_EN_AUDIO_CH_8;
 				break;
 		}
 		uiRegMap_EnableAudioChannels &= ( uiEnabledChannels << DPTX_AUD_CONFIG1_DATA_EN_IN_SHIFT );
 	}
 
-	for( ucElements = 0; ucElements < dptx->ucNumOfStreams; ucElements++ ) { 
-		Dptx_Reg_Writel( dptx, DPTX_AUD_CONFIG1_N( ucElements ), uiRegMap_EnableAudioChannels );
-	}
+	Dptx_Reg_Writel( dptx, uiReg_Offset, uiRegMap_EnableAudioChannels );
 }
 
 static bool dptx_avgen_config_video_input( struct Dptx_Params *pstDptx, u8 ucStream_Index )
@@ -546,29 +525,6 @@ static bool dptx_avgen_config_video_input( struct Dptx_Params *pstDptx, u8 ucStr
 	}
 
 	return ( DPTX_RETURN_SUCCESS );
-}
-
-static void dptx_avgen_config_audio_input( struct Dptx_Params *pstDptx )
-{
-	struct Dptx_Audio_Params	*pstAudioParams = &pstDptx->stAudioParams;
-
-	Dptx_Avgen_Set_Audio_Input_InterfaceType( pstDptx, pstAudioParams->ucInput_InterfaceType );
-	Dptx_Avgen_Set_Audio_HBR_Mode( pstDptx, pstAudioParams->ucInput_HBR_Mode );
-
-	Dptx_Avgen_Set_Audio_MaxNumOfChannels( pstDptx, pstAudioParams->ucInput_Max_NumOfchannels );
-	Dptx_Avgen_Set_Audio_DataWidth( pstDptx, pstAudioParams->ucInput_DataWidth );
-
-	dptx_avgen_set_audio_timestamp_version( pstDptx, pstAudioParams->ucInput_TimestampVersion );
-	dptx_avgen_active_audio_input_data( pstDptx, pstAudioParams->ucInput_Max_NumOfchannels, true );
-
-#if defined ( ENABLE_AVGEN_AUDIO_DEBUG )
-	dptx_dbgn( "dptx_avgen_config_audio_input ... " );
-	dptx_dbg( "  -.Interface type : %d", (u32)pstAudioParams->ucInput_InterfaceType );
-	dptx_dbg( "  -.HBR Mode : %d", (u32)pstAudioParams->ucInput_HBR_Mode );
-	dptx_dbg( "  -.Max num of input channels : %d", (u32)pstAudioParams->ucInput_Max_NumOfchannels );
-	dptx_dbg( "  -.Input data width : %d", (u32)pstAudioParams->ucInput_DataWidth );
-	dptx_dbg( "  -.Input version of time stamp : %d", (u32)pstAudioParams->ucInput_TimestampVersion );
-#endif
 }
 
 static void dptx_avgen_reset_dtd( struct Dptx_Dtd_Params *pstDtd )
@@ -652,38 +608,6 @@ bool Dptx_Avgen_Init_Video_Params( struct Dptx_Params *pstDptx, u32 uiPeri_Pixel
 				pstDptx->ucNumOfStreams,
 				pstVideoParams->auiVideo_Code[0], pstVideoParams->auiVideo_Code[1], pstVideoParams->auiVideo_Code[2], pstVideoParams->auiVideo_Code[3],
 				pstVideoParams->uiPeri_Pixel_Clock[0], pstVideoParams->uiPeri_Pixel_Clock[1], pstVideoParams->uiPeri_Pixel_Clock[2], pstVideoParams->uiPeri_Pixel_Clock[3] );
-
-	return ( DPTX_RETURN_SUCCESS );
-}
-
-bool Dptx_Avgen_Init_Audio_Params( struct Dptx_Params *pstDptx)
-{
-	struct Dptx_Audio_Params 			*pstAudioParams = &pstDptx->stAudioParams;
-	struct Dptx_Audio_Short_Descriptor	*pstAudio_Short_Descriptor = &pstDptx->stAudio_Short_Descriptor;
-
-///// Audio params	
-	pstAudioParams->ucInput_DataWidth							= MAX_INPUT_DATA_WIDTH_16BIT;	/* Guild from SoC driver development guild document => 0x12400400 = 0x1200 1202*/
-	pstAudioParams->ucInput_Max_NumOfchannels					= INPUT_MAX_2_CH;
-	pstAudioParams->ucInput_InterfaceType						= AUDIO_INPUT_INTERFACE_I2S;
-	pstAudioParams->ucInput_Mute								= AUDIO_INPUT_SET_MUTE_FLAG_VBID;
-	pstAudioParams->ucInput_HBR_Mode							= AUDIO_INPUT_INTERFACE_I2S;
-
-	pstAudioParams->ucInput_TimestampVersion					= 0x12;	/* Guild from SoC driver development guild document => 0x12400400 = 0x1200 1202*/
-	pstAudioParams->ucIEC_Sampling_Freq				= (u8)IEC60958_3_SAMPLE_FREQ_32;
-	pstAudioParams->ucIEC_OriginSamplingFreq			= (u8)IEC60958_3_ORIGINAL_SAMPLE_FREQ_32;
-
-	pstAudio_Short_Descriptor->ucEDID_Max_Input_NumOfCh			= INPUT_MAX_8_CH;  /* 8 channels */
-	pstAudio_Short_Descriptor->ucEDID_Max_Bit_Per_Sample		= MAX_INPUT_DATA_WIDTH_24BIT; /* 24 bits */
-	pstAudio_Short_Descriptor->eEDID_Max_Sampling_Freq			= SAMPLE_FREQ_48;
-
-	return ( DPTX_RETURN_SUCCESS );
-}
-
-
-bool Dptx_Avgen_Init( struct Dptx_Params *pstDptx)
-{
-	Dptx_Avgen_Disable_Audio_Timestamp( pstDptx );
-	Dptx_Avgen_Disable_Audio_SDP( pstDptx );
 
 	return ( DPTX_RETURN_SUCCESS );
 }
@@ -1125,215 +1049,238 @@ bool Dptx_Avgen_Calculate_Video_Average_TU_Symbols( struct Dptx_Params *pstDptx,
 	return ( DPTX_RETURN_SUCCESS );
 }
 
-void Dptx_Avgen_Configure_Audio( struct Dptx_Params *pstDptx 	)
+void Dptx_Avgen_Configure_Audio(struct Dptx_Params *pstDptx, uint8_t ucStream_Index, struct Dptx_Audio_Params *pstAudioParams)
 {
-#if defined ( ENABLE_AVGEN_AUDIO_DEBUG )
-	dptx_dbg("Starting Dptx_Avgen_Confgiure_Audio()... ");
-#endif
-
-	Dptx_Avgen_Set_Audio_Mute( pstDptx, true );
-	dptx_avgen_config_audio_input( pstDptx );
-	Dptx_Avgen_Set_Audio_SDP_InforFrame( pstDptx , false);
+	struct Dptx_Audio_Params	*pstDptxAudioParams = &pstDptx->stAudioParams;
 	
-	Dptx_Avgen_Enable_Audio_SDP( pstDptx );
-	Dptx_Avgen_Enable_Audio_Timestamp( pstDptx );
-	Dptx_Avgen_Set_Audio_Mute( pstDptx, false );
+	memcpy(pstDptxAudioParams, pstAudioParams, sizeof(struct Dptx_Audio_Params));
 
-#if defined ( ENABLE_AVGEN_AUDIO_DEBUG )
-	dptx_dbg("Dptx_Avgen_Confgiure_Audio is done... ");
-#endif
+	Dptx_Avgen_Set_Audio_Mute(pstDptx, ucStream_Index, (uint8_t)AUDIO_INPUT_SET_MUTE_FLAG_VBID);
+
+	Dptx_Avgen_Set_Audio_Input_InterfaceType(pstDptx, ucStream_Index, pstAudioParams->ucInput_InterfaceType);
+	Dptx_Avgen_Set_Audio_HBR_En(pstDptx, ucStream_Index, pstAudioParams->ucInput_HBR_Mode);
+	Dptx_Avgen_Set_Audio_MaxNumOfChannels(pstDptx, ucStream_Index, pstAudioParams->ucInput_Max_NumOfchannels);
+	Dptx_Avgen_Set_Audio_DataWidth(pstDptx, ucStream_Index, pstAudioParams->ucInput_DataWidth);
+	Dptx_Avgen_Set_Audio_Timestamp_Ver(pstDptx, ucStream_Index, pstAudioParams->ucInput_TimestampVersion);
+	Dptx_Avgen_Set_Audio_SDP_InforFrame(pstDptx, 
+												pstAudioParams->ucIEC_Sampling_Freq, 
+												pstAudioParams->ucIEC_OriginSamplingFreq, 
+												pstAudioParams->ucInput_Max_NumOfchannels,
+												pstAudioParams->ucInput_DataWidth);
+	Dptx_Avgen_Enable_Audio_SDP(pstDptx, ucStream_Index, 1);
+	Dptx_Avgen_Enable_Audio_Timestamp(pstDptx, ucStream_Index, 1);
+	
+	Dptx_Avgen_Set_Audio_Mute(pstDptx, ucStream_Index, (uint8_t)AUDIO_INPUT_CLEAR_MUTE_FLAG_VBID);
+
+	dptx_info( "\n DP %d : ", ucStream_Index );
+	dptx_info( "  -.Interface type : %d", (u32)pstAudioParams->ucInput_InterfaceType );
+	dptx_info( "  -.Max num of input channels : %d", (u32)pstAudioParams->ucInput_Max_NumOfchannels );
+	dptx_info( "  -.Input data width : %d", (u32)pstAudioParams->ucInput_DataWidth );
+	dptx_info( "  -.HBR Mode : %d", (u32)pstAudioParams->ucInput_HBR_Mode );
+	dptx_info( "  -.Input version of time stamp : %d", (u32)pstAudioParams->ucInput_TimestampVersion );
+	dptx_info( "  -.Sampling Freq : %d", (u32)pstAudioParams->ucIEC_Sampling_Freq );
+	dptx_info( "  -.Orginal Sampling Freq : %d", (u32)pstAudioParams->ucIEC_OriginSamplingFreq );
 }
 
 /* DPTX_AUD_CONFIG1_NCH_SHIFT ==> 0: 1 channel, 1: 2 channels, others: 8 channels */
-void Dptx_Avgen_Set_Audio_MaxNumOfChannels( struct Dptx_Params *pstDptx, u8 ucInput_Max_NumOfCh )
-
+void Dptx_Avgen_Set_Audio_MaxNumOfChannels(struct Dptx_Params *pstDptx, uint8_t ucStream_Index, uint8_t ucInput_Max_NumOfCh)
 {
-	u32							uiRegMap_NumOfChannels = 0, uiNumOfChannels;
-	struct Dptx_Audio_Params	*pstAudParams =   &pstDptx->stAudioParams;
-	u8							ucElements = 0;
+	uint32_t uiRegMap_NumOfChannels = 0, uiReg_Offset = 0;
 
-	if ( (u8)ucInput_Max_NumOfCh >= 2 ) {
-		pstAudParams->ucInput_Max_NumOfchannels = (u8)INPUT_MAX_8_CH;
-	} else {
-		pstAudParams->ucInput_Max_NumOfchannels = (u8)ucInput_Max_NumOfCh;
-	}
+	uiReg_Offset = DPTX_AUD_CONFIG1_N(ucStream_Index);
 
-	uiNumOfChannels = pstAudParams->ucInput_Max_NumOfchannels;
-
-	uiRegMap_NumOfChannels = Dptx_Reg_Readl( pstDptx, DPTX_AUD_CONFIG1 );
+	uiRegMap_NumOfChannels = Dptx_Reg_Readl(pstDptx, uiReg_Offset);
 	uiRegMap_NumOfChannels &= ~DPTX_AUD_CONFIG1_NCH_MASK;
-	uiRegMap_NumOfChannels |= ( uiNumOfChannels << DPTX_AUD_CONFIG1_NCH_SHIFT );
-	
-	for( ucElements = 0; ucElements < pstDptx->ucNumOfStreams; ucElements++ ) { 
-		Dptx_Reg_Writel( pstDptx, DPTX_AUD_CONFIG1_N( ucElements ), uiRegMap_NumOfChannels  );
-	}
-	dptx_avgen_active_audio_input_data( pstDptx, pstAudParams->ucInput_Max_NumOfchannels, true );
-}
+	uiRegMap_NumOfChannels |= (ucInput_Max_NumOfCh << DPTX_AUD_CONFIG1_NCH_SHIFT);
 
-void Dptx_Avgen_Set_Audio_DataWidth( struct Dptx_Params *pstDptx, u8 ucInput_DataWidth )
+	Dptx_Reg_Writel(pstDptx, uiReg_Offset, uiRegMap_NumOfChannels);
+
+	dptx_avgen_active_audio_channels( pstDptx, ucStream_Index, ucInput_Max_NumOfCh, 1 );
+	}
+
+void Dptx_Avgen_Get_Audio_MaxNumOfChannels(struct Dptx_Params *pstDptx, uint8_t ucStream_Index, uint8_t *pucInput_Max_NumOfCh)
 {
-	u32									uiRegMap_AudioSamplingWidth = 0;
-	enum AUDIO_MAX_INPUT_DATA_WIDTH		eInput_Max_DATA_WIDTH;
-	struct Dptx_Audio_Params			*pstAudioParams	= &pstDptx->stAudioParams;
-	u8							ucElements = 0;
+	uint32_t uiRegMap_NumOfChannels = 0, uiReg_Offset = 0;
 
-	pstAudioParams->ucInput_DataWidth	= ucInput_DataWidth;
-	eInput_Max_DATA_WIDTH				= (enum AUDIO_MAX_INPUT_DATA_WIDTH)ucInput_DataWidth;
+	uiReg_Offset = DPTX_AUD_CONFIG1_N(ucStream_Index);
 
-	uiRegMap_AudioSamplingWidth = Dptx_Reg_Readl( pstDptx, DPTX_AUD_CONFIG1 );
-	uiRegMap_AudioSamplingWidth &= ~DPTX_AUD_CONFIG1_DATA_WIDTH_MASK;
-	uiRegMap_AudioSamplingWidth |= ( pstAudioParams->ucInput_DataWidth << DPTX_AUD_CONFIG1_DATA_WIDTH_SHIFT );
+	uiRegMap_NumOfChannels = Dptx_Reg_Readl(pstDptx, uiReg_Offset);
 	
-	for( ucElements = 0; ucElements < pstDptx->ucNumOfStreams; ucElements++ ) { 
-		Dptx_Reg_Writel( pstDptx, DPTX_AUD_CONFIG1_N( ucElements ), uiRegMap_AudioSamplingWidth );
-	}
+	*pucInput_Max_NumOfCh = (uint8_t)((uiRegMap_NumOfChannels & DPTX_AUD_CONFIG1_NCH_MASK) >> DPTX_AUD_CONFIG1_NCH_SHIFT);
 }
 
-void Dptx_Avgen_Set_Audio_SamplingFreq( struct Dptx_Params *pstDptx, enum AUDIO_IEC60958_3_SAMPLE_FREQ	eIEC_SAMPLE_FREQ, enum AUDIO_IEC60958_3_ORIGINAL_SAMPLE_FREQ	eIEC_ORG_SAMPLE_FREQ )
+void Dptx_Avgen_Set_Audio_DataWidth(struct Dptx_Params *pstDptx, uint8_t ucStream_Index, uint8_t ucInput_DataWidth)
+{
+	u32 uiRegMap_AudioSamplingWidth = 0, uiReg_Offset = 0;
+
+	uiReg_Offset = DPTX_AUD_CONFIG1_N(ucStream_Index);
+
+	uiRegMap_AudioSamplingWidth = Dptx_Reg_Readl(pstDptx, uiReg_Offset);
+	uiRegMap_AudioSamplingWidth &= ~DPTX_AUD_CONFIG1_DATA_WIDTH_MASK;
+	uiRegMap_AudioSamplingWidth |= (ucInput_DataWidth << DPTX_AUD_CONFIG1_DATA_WIDTH_SHIFT);
+	
+	Dptx_Reg_Writel(pstDptx, uiReg_Offset, uiRegMap_AudioSamplingWidth);
+	}
+
+void Dptx_Avgen_Get_Audio_DataWidth(struct Dptx_Params *pstDptx, uint8_t ucStream_Index, uint8_t *pucInput_DataWidth)
+{
+	u32 uiRegMap_AudioSamplingWidth = 0, uiReg_Offset = 0;
+
+	uiReg_Offset = DPTX_AUD_CONFIG1_N(ucStream_Index);
+
+	uiRegMap_AudioSamplingWidth = Dptx_Reg_Readl(pstDptx, uiReg_Offset);
+
+	*pucInput_DataWidth = (uint32_t)((uiRegMap_AudioSamplingWidth & DPTX_AUD_CONFIG1_DATA_WIDTH_MASK) >> DPTX_AUD_CONFIG1_DATA_WIDTH_SHIFT);
+}
+
+void Dptx_Avgen_Get_Audio_SamplingFreq(struct Dptx_Params *pstDptx, uint8_t	*pucSamplingFreq, uint8_t	*pucOrgSamplingFreq )
 {
 	struct Dptx_Audio_Params 	*pstAudioParams = &pstDptx->stAudioParams;
 
-	dptx_dbg("Sample Freq %d, ORG Sample Freq %d,  ", (u32)eIEC_SAMPLE_FREQ, (u32)eIEC_ORG_SAMPLE_FREQ );
-
-	pstAudioParams->ucIEC_Sampling_Freq		= (u8)eIEC_SAMPLE_FREQ;
-	pstAudioParams->ucIEC_OriginSamplingFreq	= (u8)eIEC_ORG_SAMPLE_FREQ;
+	*pucSamplingFreq = pstAudioParams->ucIEC_Sampling_Freq;
+	*pucOrgSamplingFreq = pstAudioParams->ucIEC_OriginSamplingFreq;
 }
 
 /* DPTX_AUD_CONFIG1_INF_TYPE_MASK ==> 0 : I2S is selected for audio input interface( Default ), 1 : SPDIF is selected */
-void Dptx_Avgen_Set_Audio_Input_InterfaceType( struct Dptx_Params* pstDptx, u8 ucAudInput_InterfaceType )
+void Dptx_Avgen_Set_Audio_Input_InterfaceType(struct Dptx_Params* pstDptx, uint8_t ucStream_Index, uint8_t ucAudInput_InterfaceType)
 {
-	u32							uiRegMap_AudINFType = 0;
-	struct Dptx_Audio_Params	*pstAudioParams = &pstDptx->stAudioParams;
-	u8							ucElements = 0;
+	u32 uiRegMap_AudINFType = 0, uiReg_Offset = 0;
 
-	pstAudioParams->ucInput_InterfaceType = ucAudInput_InterfaceType;
+	uiReg_Offset = DPTX_AUD_CONFIG1_N(ucStream_Index);
 
-	uiRegMap_AudINFType = Dptx_Reg_Readl( pstDptx, DPTX_AUD_CONFIG1 );
+	uiRegMap_AudINFType = Dptx_Reg_Readl(pstDptx, uiReg_Offset);
 	uiRegMap_AudINFType &= ~DPTX_AUD_CONFIG1_INF_TYPE_MASK;
-	uiRegMap_AudINFType |= ( pstAudioParams->ucInput_InterfaceType << DPTX_AUD_CONFIG1_INF_TYPE_SHIFT );
+	uiRegMap_AudINFType |= (ucAudInput_InterfaceType << DPTX_AUD_CONFIG1_INF_TYPE_SHIFT);
 	
-	for( ucElements = 0; ucElements < pstDptx->ucNumOfStreams; ucElements++ ) { 
-		Dptx_Reg_Writel( pstDptx, DPTX_AUD_CONFIG1_N( ucElements ), uiRegMap_AudINFType );
-	}
+	Dptx_Reg_Writel( pstDptx, uiReg_Offset, uiRegMap_AudINFType );
 }
 
-void Dptx_Avgen_Set_Audio_HBR_Mode( struct Dptx_Params* pstDptx, bool bEnable )
+void Dptx_Avgen_Get_Audio_Input_InterfaceType(struct Dptx_Params* pstDptx, uint8_t ucStream_Index, uint8_t *pucAudInput_InterfaceType)
 {
-	u32							uiRegMap_AudHBR = 0;
-	struct Dptx_Audio_Params	*pstAudioParams = &pstDptx->stAudioParams;
-	u8							ucElements = 0;
+	u32 uiRegMap_AudINFType = 0, uiReg_Offset = 0;
 
-	if( bEnable )
-	{
-		pstAudioParams->ucInput_HBR_Mode = 1;
-	}
-	else
-	{
-		pstAudioParams->ucInput_HBR_Mode = 0;
+	uiReg_Offset = DPTX_AUD_CONFIG1_N( ucStream_Index );
+
+	uiRegMap_AudINFType = Dptx_Reg_Readl(pstDptx, uiReg_Offset);
+
+	*pucAudInput_InterfaceType = (uiRegMap_AudINFType & DPTX_AUD_CONFIG1_INF_TYPE_MASK) ? 1 : 0;
 	}
 
-	uiRegMap_AudHBR = Dptx_Reg_Readl( pstDptx, DPTX_AUD_CONFIG1 );
+void Dptx_Avgen_Set_Audio_HBR_En(struct Dptx_Params* pstDptx, uint8_t ucStream_Index, uint8_t ucEnable)
+	{
+	uint32_t uiRegMap_AudHBR = 0, uiReg_Offset = 0;
+
+	uiReg_Offset = DPTX_AUD_CONFIG1_N(ucStream_Index);
+
+	uiRegMap_AudHBR = Dptx_Reg_Readl(pstDptx, uiReg_Offset);
 	uiRegMap_AudHBR &= ~DPTX_AUD_CONFIG1_HBR_MODE_ENABLE_MASK;
-	uiRegMap_AudHBR |= ( pstAudioParams->ucInput_HBR_Mode << DPTX_AUD_CONFIG1_HBR_MODE_ENABLE_SHIFT );
+	uiRegMap_AudHBR |= (ucEnable << DPTX_AUD_CONFIG1_HBR_MODE_ENABLE_SHIFT);
 	
-	for( ucElements = 0; ucElements < pstDptx->ucNumOfStreams; ucElements++ ) { 
-		Dptx_Reg_Writel( pstDptx, DPTX_AUD_CONFIG1_N( ucElements ), uiRegMap_AudHBR );
+	Dptx_Reg_Writel(pstDptx, uiReg_Offset, uiRegMap_AudHBR);
 	}
+
+void Dptx_Avgen_Get_Audio_HBR_En(struct Dptx_Params* pstDptx, uint8_t ucStream_Index, uint8_t *pucEnable)
+{
+	uint32_t uiRegMap_AudHBR = 0, uiReg_Offset = 0;
+
+	uiReg_Offset = DPTX_AUD_CONFIG1_N(ucStream_Index);
+	
+	uiRegMap_AudHBR = Dptx_Reg_Readl(pstDptx, uiReg_Offset);
+
+	*pucEnable = (uiRegMap_AudHBR & DPTX_AUD_CONFIG1_HBR_MODE_ENABLE_MASK) ? 1 : 0;
 }
 
-void Dptx_Avgen_Set_Audio_SDP_InforFrame( struct Dptx_Params *pstDptx , bool bEnable)
+void Dptx_Avgen_Set_Audio_Timestamp_Ver(struct Dptx_Params *pstDptx, uint8_t ucStream_Index, uint8_t ucAudInput_TimestampVersion)
 {
-	u8							ucOrig_Sample_Freq = 0;
-	u8							ucSample_Freq = 0;
-	u32							uiRegMap_SdpCtrl;
-	u32							uiAudio_SdpInfoframe_header = AUDIO_INFOFREAME_HEADER;
-	u32							auiAudio_SdpInfoframe_data[3] = {0x00000710, 0x0, 0x0};
-	struct Dptx_Audio_Params	*pstAudioParams = &pstDptx->stAudioParams;
-	u8							ucElements = 0;
+	u32 uiRegMap_AudConf1 = 0,    uiReg_Offset = 0;
 
-	ucSample_Freq		= pstAudioParams->ucIEC_Sampling_Freq;
-	ucOrig_Sample_Freq	= pstAudioParams->ucIEC_OriginSamplingFreq;
+	uiReg_Offset = DPTX_AUD_CONFIG1_N(ucStream_Index);
 
-	if( ucOrig_Sample_Freq == (u8)IEC60958_3_ORIGINAL_SAMPLE_FREQ_176_4 && ucSample_Freq == (u8)IEC60958_3_SAMPLE_FREQ_176_4 )
+	uiRegMap_AudConf1 = Dptx_Reg_Readl( pstDptx, uiReg_Offset );
+	uiRegMap_AudConf1 &= ~DPTX_AUD_CONFIG1_ATS_VER_MASK;
+	uiRegMap_AudConf1 |= ( ucAudInput_TimestampVersion << DPTX_AUD_CONFIG1_ATS_VER_SHFIT );
+
+	Dptx_Reg_Writel( pstDptx, uiReg_Offset, uiRegMap_AudConf1 );
+}
+
+
+void Dptx_Avgen_Set_Audio_SDP_InforFrame(struct Dptx_Params *pstDptx,
+																uint8_t ucIEC_Sampling_Freq,
+																uint8_t ucIEC_OriginSamplingFreq,
+																uint8_t ucInput_Max_NumOfchannels,
+																uint8_t ucInput_DataWidth)
 	{
+	uint32_t uiAudio_SdpInfoframe_header = AUDIO_INFOFREAME_HEADER;
+	uint32_t auiAudio_SdpInfoframe_data[3] = {0x00000710, 0x0, 0x0};
+#if 1
+/*
+	Hardcoding based on SoC guilde.
+*/
+	auiAudio_SdpInfoframe_data[0] = 0x00000901;
+	auiAudio_SdpInfoframe_data[1] = 0x00000001;
+
+	Dptx_Reg_Writel( pstDptx, DPTX_SDP_BANK, uiAudio_SdpInfoframe_header );
+	Dptx_Reg_Writel( pstDptx, DPTX_SDP_BANK + 4, auiAudio_SdpInfoframe_data[0] );
+	Dptx_Reg_Writel( pstDptx, DPTX_SDP_BANK + 8, auiAudio_SdpInfoframe_data[1] );
+	Dptx_Reg_Writel( pstDptx, DPTX_SDP_BANK + 12, auiAudio_SdpInfoframe_data[2] );
+#else /* Synopsys reference */
+	if( ucIEC_OriginSamplingFreq == (u8)IEC60958_3_ORIGINAL_SAMPLE_FREQ_176_4 && ucIEC_Sampling_Freq == (u8)IEC60958_3_SAMPLE_FREQ_176_4 ) {
 		auiAudio_SdpInfoframe_data[0] = 0x00000710;
 	}
-	else if( ucOrig_Sample_Freq == (u8)IEC60958_3_ORIGINAL_SAMPLE_FREQ_44_1 && ucSample_Freq == (u8)IEC60958_3_SAMPLE_FREQ_44_1 )
-	{
+	else if( ucIEC_OriginSamplingFreq == (u8)IEC60958_3_ORIGINAL_SAMPLE_FREQ_44_1 && ucIEC_Sampling_Freq == (u8)IEC60958_3_SAMPLE_FREQ_44_1 ) {
 		auiAudio_SdpInfoframe_data[0] = 0x00000B10;
 	}
-	else if( ucOrig_Sample_Freq == (u8)IEC60958_3_ORIGINAL_SAMPLE_FREQ_22_05 && ucSample_Freq == (u8)IEC60958_3_SAMPLE_FREQ_22_05 )
-	{
+	else if( ucIEC_OriginSamplingFreq == (u8)IEC60958_3_ORIGINAL_SAMPLE_FREQ_22_05 && ucIEC_Sampling_Freq == (u8)IEC60958_3_SAMPLE_FREQ_22_05 ) {
 		auiAudio_SdpInfoframe_data[0] = 0x00000F10;
 	}
-	else if( ucOrig_Sample_Freq == 7 && ucSample_Freq == 8 )
-	{
+	else if( ucIEC_OriginSamplingFreq == 7 && ucIEC_Sampling_Freq == 8 ) {
 		auiAudio_SdpInfoframe_data[0] = 0x00001310;
 	}
-	else if( ucOrig_Sample_Freq == (u8)IEC60958_3_ORIGINAL_SAMPLE_FREQ_11_025 && ucSample_Freq == 10 )
-	{
+	else if( ucIEC_OriginSamplingFreq == (u8)IEC60958_3_ORIGINAL_SAMPLE_FREQ_11_025 && ucIEC_Sampling_Freq == 10 ) {
 		auiAudio_SdpInfoframe_data[0] = 0x00001710;
 	}
-	else if( ucOrig_Sample_Freq == (u8)IEC60958_3_ORIGINAL_SAMPLE_FREQ_32 && ucSample_Freq == (u8)IEC60958_3_SAMPLE_FREQ_32 )
-	{
+	else if( ucIEC_OriginSamplingFreq == (u8)IEC60958_3_ORIGINAL_SAMPLE_FREQ_32 && ucIEC_Sampling_Freq == (u8)IEC60958_3_SAMPLE_FREQ_32 ) {
 		auiAudio_SdpInfoframe_data[0] = 0x00001B10;
 	}
-	else
-	{
+	else {
 		auiAudio_SdpInfoframe_data[0] = 0x00001F10;
 	}
 
-	auiAudio_SdpInfoframe_data[0] |= ( pstAudioParams->ucInput_Max_NumOfchannels - 1 );
+	auiAudio_SdpInfoframe_data[0] |= ( ucInput_Max_NumOfchannels - 1 );
 	
-	if( pstAudioParams->ucInput_Max_NumOfchannels == 3 )
-	{
+	if( ucInput_Max_NumOfchannels == 3 ) {
 		auiAudio_SdpInfoframe_data[0] |= 0x02000000;
 	}
-	else if( pstAudioParams->ucInput_Max_NumOfchannels == 4 )
-	{
+	else if( ucInput_Max_NumOfchannels == 4 ) {
 		auiAudio_SdpInfoframe_data[0] |= 0x03000000;
 	}
-	else if( pstAudioParams->ucInput_Max_NumOfchannels == 5 )
-	{
+	else if( ucInput_Max_NumOfchannels == 5 ) {
 		auiAudio_SdpInfoframe_data[0] |= 0x07000000;
 	}
-	else if( pstAudioParams->ucInput_Max_NumOfchannels == 6 )
-	{
+	else if( ucInput_Max_NumOfchannels == 6 ) {
 		auiAudio_SdpInfoframe_data[0] |= 0x0b000000;
 	}
-	else if( pstAudioParams->ucInput_Max_NumOfchannels == 7 )
-	{
+	else if( ucInput_Max_NumOfchannels == 7 ) {
 		auiAudio_SdpInfoframe_data[0] |= 0x0f000000;
 	}
-	else if( pstAudioParams->ucInput_Max_NumOfchannels == 8 )
-	{
+	else if( ucInput_Max_NumOfchannels == 8 ) {
 		auiAudio_SdpInfoframe_data[0] |= 0x13000000;
 	}
 
-#if defined ( ENABLE_AVGEN_AUDIO_DEBUG )
-	dptx_dbg("auiAudio_SdpInfoframe_data[0] before = 0x%x\n", auiAudio_SdpInfoframe_data[0]);
-#endif
-
-	switch( pstAudioParams->ucInput_DataWidth )  
+	switch( ucInput_DataWidth )
 	{
 		case MAX_INPUT_DATA_WIDTH_16BIT:
-#if defined ( ENABLE_AVGEN_AUDIO_DEBUG )			
 			dptx_dbg("ucInput_DataWidth = 16" );
-#endif
 			auiAudio_SdpInfoframe_data[0] &= ~( GENMASK( 9, 8 ) );
 			auiAudio_SdpInfoframe_data[0] |= 1 << 8;
 			break;
 		case MAX_INPUT_DATA_WIDTH_20BIT:
-#if defined ( ENABLE_AVGEN_AUDIO_DEBUG )			
 			dptx_dbg("ucInput_DataWidth = 20" );
-#endif
 			auiAudio_SdpInfoframe_data[0] &= ~( GENMASK( 9, 8 ) );
 			auiAudio_SdpInfoframe_data[0] |= 2 << 8;
 			break;
 		case MAX_INPUT_DATA_WIDTH_24BIT:
-#if defined ( ENABLE_AVGEN_AUDIO_DEBUG )			
 			dptx_dbg("ucInput_DataWidth = 24" );
-#endif
 			auiAudio_SdpInfoframe_data[0] &= ~( GENMASK( 9, 8 ) );
 			auiAudio_SdpInfoframe_data[0] |= 3 << 8;
 			break;
@@ -1342,63 +1289,43 @@ void Dptx_Avgen_Set_Audio_SDP_InforFrame( struct Dptx_Params *pstDptx , bool bEn
 			break;
 	}
 
-#if defined ( ENABLE_AVGEN_AUDIO_DEBUG )
 	dptx_dbg( "auiAudio_SdpInfoframe_data[0] after = %x", auiAudio_SdpInfoframe_data[0] );
-#endif
-
-	pstDptx->astSdp_List[0].auiPayload[0] = uiAudio_SdpInfoframe_header;
 
 	Dptx_Reg_Writel( pstDptx, DPTX_SDP_BANK, uiAudio_SdpInfoframe_header );
 	Dptx_Reg_Writel( pstDptx, DPTX_SDP_BANK + 4, auiAudio_SdpInfoframe_data[0] );
 	Dptx_Reg_Writel( pstDptx, DPTX_SDP_BANK + 8, auiAudio_SdpInfoframe_data[1] );
 	Dptx_Reg_Writel( pstDptx, DPTX_SDP_BANK + 12, auiAudio_SdpInfoframe_data[2] );
-
-	uiRegMap_SdpCtrl = Dptx_Reg_Readl( pstDptx, DPTX_SDP_VERTICAL_CTRL );
-	if(bEnable) {
-		uiRegMap_SdpCtrl |= DPTX_EN_AUDIO_INFOFRAME_SDP;
-	} else {
-		uiRegMap_SdpCtrl &= ~DPTX_EN_AUDIO_INFOFRAME_SDP;
-	}
-	uiRegMap_SdpCtrl |= DPTX_DISABLE_EXT_SDP;	/* Guild from SoC driver guild document */
-	
-	for( ucElements = 0; ucElements < pstDptx->ucNumOfStreams; ucElements++ ) { 
-		Dptx_Reg_Writel( pstDptx, DPTX_SDP_VERTICAL_CTRL_N( ucElements ), uiRegMap_SdpCtrl  );
-	}
-
-	/* 
-	 * Guild from SoC driver guild document 
-	 */
-	uiRegMap_SdpCtrl = Dptx_Reg_Readl( pstDptx, DPTX_SDP_HORIZONTAL_CTRL );
-	uiRegMap_SdpCtrl |= DPTX_FIXED_PRIORITY_ARBITRATION;
-
-	for( ucElements = 0; ucElements < pstDptx->ucNumOfStreams; ucElements++ ) { 
-		Dptx_Reg_Writel( pstDptx, DPTX_SDP_HORIZONTAL_CTRL_N( ucElements ), uiRegMap_SdpCtrl );
-	}
+#endif
 }
 
-void Dptx_Avgen_Set_Audio_Mute( struct Dptx_Params *pstDptx, bool bMute )
+void Dptx_Avgen_Set_Audio_Mute(struct Dptx_Params *pstDptx, uint8_t ucStream_Index, uint8_t ucMute)
 {
-	u32							uiRegMap_AudioMute = 0;
-	struct Dptx_Audio_Params	*pstAudioParams = &pstDptx->stAudioParams;
-	u8							ucElements = 0;
+	u32 uiRegMap_AudioMute = 0, uiReg_Offset = 0;
+	
+	uiReg_Offset = DPTX_AUD_CONFIG1_N( ucStream_Index );
 
-	pstAudioParams->ucInput_Mute = (u8)bMute;
+	uiRegMap_AudioMute = Dptx_Reg_Readl(pstDptx, uiReg_Offset);
 
-	uiRegMap_AudioMute = Dptx_Reg_Readl(pstDptx, DPTX_AUD_CONFIG1);
-
-	if( pstAudioParams->ucInput_Mute )
-	{
+	if(ucMute) {
 		uiRegMap_AudioMute |= DPTX_AUDIO_MUTE;
-	}
-	else
-	{
+	} else {
 		uiRegMap_AudioMute &= ~DPTX_AUDIO_MUTE;
 	}
 
-	for( ucElements = 0; ucElements < pstDptx->ucNumOfStreams; ucElements++ ) { 
-		Dptx_Reg_Writel( pstDptx, DPTX_AUD_CONFIG1_N( ucElements ), uiRegMap_AudioMute );
-	}
+	Dptx_Reg_Writel( pstDptx, uiReg_Offset, uiRegMap_AudioMute );
 }
+
+void Dptx_Avgen_Get_Audio_Mute(struct Dptx_Params *pstDptx, uint8_t ucStream_Index, uint8_t *pucMute)
+{
+	u32 uiRegMap_AudioMute = 0, uiReg_Offset = 0;
+
+	uiReg_Offset = DPTX_AUD_CONFIG1_N( ucStream_Index );
+
+	uiRegMap_AudioMute = Dptx_Reg_Readl(pstDptx, uiReg_Offset);
+
+	*pucMute = (uiRegMap_AudioMute & DPTX_AUDIO_MUTE) ? 1:0;
+}
+
 
 void Dptx_Avgen_Set_Audio_Stream_Enable( struct Dptx_Params *pstDptx, u8 ucSatrem_Index, bool bEnable )
 {
@@ -1418,81 +1345,60 @@ void Dptx_Avgen_Set_Audio_Stream_Enable( struct Dptx_Params *pstDptx, u8 ucSatre
 	Dptx_Reg_Writel( pstDptx, DPTX_AUD_CONFIG1_N( ucSatrem_Index ), uiRegMap_AudioMute );
 }
 
-
-void Dptx_Avgen_Enable_Audio_SDP( struct Dptx_Params *pstDptx )
+void Dptx_Avgen_Enable_Audio_SDP(struct Dptx_Params *pstDptx, uint8_t ucStream_Index, uint8_t ucEnable)
 {
-	u32				uiRegMap_AudEnableSDP;
-	u8				ucElements = 0;
+	u32	uiRegMap_AudEnableSDP, uiReg_Offset = 0;
 
-	uiRegMap_AudEnableSDP = Dptx_Reg_Readl( pstDptx, DPTX_SDP_VERTICAL_CTRL );
+	uiReg_Offset = DPTX_SDP_VERTICAL_CTRL_N(ucStream_Index);
+
+	uiRegMap_AudEnableSDP = Dptx_Reg_Readl(pstDptx, uiReg_Offset);
+
+	if(ucEnable)
 	uiRegMap_AudEnableSDP |= DPTX_EN_AUDIO_STREAM_SDP;
-	for( ucElements = 0; ucElements < pstDptx->ucNumOfStreams; ucElements++ ) { 
-		Dptx_Reg_Writel( pstDptx, DPTX_SDP_VERTICAL_CTRL_N( ucElements ), uiRegMap_AudEnableSDP );
-	}
-
-	uiRegMap_AudEnableSDP = Dptx_Reg_Readl( pstDptx, DPTX_SDP_HORIZONTAL_CTRL );
-	uiRegMap_AudEnableSDP |= DPTX_EN_AUDIO_STREAM_SDP;
-	for( ucElements = 0; ucElements < pstDptx->ucNumOfStreams; ucElements++ ) { 
-		Dptx_Reg_Writel( pstDptx, DPTX_SDP_HORIZONTAL_CTRL_N( ucElements ), uiRegMap_AudEnableSDP );
-	}
-}
-
-void Dptx_Avgen_Disable_Audio_SDP( struct Dptx_Params *pstDptx )
-{
-	u32				uiRegMap_AudEnableSDP;
-	u8				ucElements = 0;
-
-	uiRegMap_AudEnableSDP = Dptx_Reg_Readl( pstDptx, DPTX_SDP_VERTICAL_CTRL );
-	uiRegMap_AudEnableSDP &= ~DPTX_EN_AUDIO_STREAM_SDP;
-	for( ucElements = 0; ucElements < pstDptx->ucNumOfStreams; ucElements++ ) { 
-		Dptx_Reg_Writel( pstDptx, DPTX_SDP_VERTICAL_CTRL_N( ucElements ), uiRegMap_AudEnableSDP );
-	}
-
-	uiRegMap_AudEnableSDP = Dptx_Reg_Readl( pstDptx, DPTX_SDP_HORIZONTAL_CTRL );
-	uiRegMap_AudEnableSDP &= ~DPTX_EN_AUDIO_STREAM_SDP;
-	for( ucElements = 0; ucElements < pstDptx->ucNumOfStreams; ucElements++ ) { 
-		Dptx_Reg_Writel( pstDptx, DPTX_SDP_HORIZONTAL_CTRL_N( ucElements ), uiRegMap_AudEnableSDP );
-	}
-}
-
-void Dptx_Avgen_Enable_Audio_Timestamp( struct Dptx_Params *dptx )
-{
-	u32				uiRegMap_AudEnableTimestamp;
-	u8				ucElements = 0;
-
-	uiRegMap_AudEnableTimestamp = Dptx_Reg_Readl( dptx, DPTX_SDP_VERTICAL_CTRL );
-	uiRegMap_AudEnableTimestamp |= DPTX_EN_AUDIO_TIMESTAMP_SDP;
-
-	for( ucElements = 0; ucElements < dptx->ucNumOfStreams; ucElements++ ) { 
-		Dptx_Reg_Writel( dptx, DPTX_SDP_VERTICAL_CTRL_N( ucElements ), uiRegMap_AudEnableTimestamp );
-	}
-
-	uiRegMap_AudEnableTimestamp = Dptx_Reg_Readl( dptx, DPTX_SDP_HORIZONTAL_CTRL );
-	uiRegMap_AudEnableTimestamp |= DPTX_EN_AUDIO_TIMESTAMP_SDP;
+	else
+		uiRegMap_AudEnableSDP &= ~DPTX_EN_AUDIO_STREAM_SDP;
 	
-	for( ucElements = 0; ucElements < dptx->ucNumOfStreams; ucElements++ ) { 
-		Dptx_Reg_Writel( dptx, DPTX_SDP_HORIZONTAL_CTRL_N( ucElements ), uiRegMap_AudEnableTimestamp);
-	}
+	Dptx_Reg_Writel(pstDptx, uiReg_Offset, uiRegMap_AudEnableSDP);
+
+
+	uiReg_Offset = DPTX_SDP_HORIZONTAL_CTRL_N(ucStream_Index);
+
+	uiRegMap_AudEnableSDP = Dptx_Reg_Readl(pstDptx, uiReg_Offset);
+
+	if(ucEnable)
+		uiRegMap_AudEnableSDP |= DPTX_EN_AUDIO_STREAM_SDP;
+	else
+	uiRegMap_AudEnableSDP &= ~DPTX_EN_AUDIO_STREAM_SDP;
+
+	Dptx_Reg_Writel(pstDptx, uiReg_Offset, uiRegMap_AudEnableSDP);
 }
 
-void Dptx_Avgen_Disable_Audio_Timestamp( struct Dptx_Params *dptx )
+void Dptx_Avgen_Enable_Audio_Timestamp(struct Dptx_Params *pstDptx, uint8_t ucStream_Index, uint8_t ucEnable)
 {
-	u32				uiRegMap_AudEnableTimestamp;
-	u8				ucElements = 0;
+	u32	uiRegMap_AudEnableTimestamp,     uiReg_Offset = 0;
 
-	uiRegMap_AudEnableTimestamp = Dptx_Reg_Readl( dptx, DPTX_SDP_VERTICAL_CTRL );
+	uiReg_Offset = DPTX_SDP_VERTICAL_CTRL_N(ucStream_Index);
+
+	uiRegMap_AudEnableTimestamp = Dptx_Reg_Readl(pstDptx, DPTX_SDP_VERTICAL_CTRL);
+
+	if(ucEnable)
+	uiRegMap_AudEnableTimestamp |= DPTX_EN_AUDIO_TIMESTAMP_SDP;
+	else
+		uiRegMap_AudEnableTimestamp &= ~DPTX_EN_AUDIO_TIMESTAMP_SDP;
+	
+	Dptx_Reg_Writel(pstDptx, uiReg_Offset, uiRegMap_AudEnableTimestamp);
+
+
+	uiReg_Offset = DPTX_SDP_HORIZONTAL_CTRL_N(ucStream_Index);
+	
+	uiRegMap_AudEnableTimestamp = Dptx_Reg_Readl(pstDptx, DPTX_SDP_HORIZONTAL_CTRL);
+
+	if(ucEnable)
+		uiRegMap_AudEnableTimestamp |= DPTX_EN_AUDIO_TIMESTAMP_SDP;
+	else 
 	uiRegMap_AudEnableTimestamp &= ~DPTX_EN_AUDIO_TIMESTAMP_SDP;
 	
-	for( ucElements = 0; ucElements < dptx->ucNumOfStreams; ucElements++ ) { 
-		Dptx_Reg_Writel( dptx, DPTX_SDP_VERTICAL_CTRL_N( ucElements ), uiRegMap_AudEnableTimestamp );
-	}
-
-	uiRegMap_AudEnableTimestamp = Dptx_Reg_Readl( dptx, DPTX_SDP_HORIZONTAL_CTRL );
-	uiRegMap_AudEnableTimestamp &= ~DPTX_EN_AUDIO_TIMESTAMP_SDP;
-	
-	for( ucElements = 0; ucElements < dptx->ucNumOfStreams; ucElements++ ) { 
-		Dptx_Reg_Writel( dptx, DPTX_SDP_HORIZONTAL_CTRL_N( ucElements ), uiRegMap_AudEnableTimestamp);
-	}
+	Dptx_Reg_Writel(pstDptx, uiReg_Offset, uiRegMap_AudEnableTimestamp);
 }
 
 bool Dptx_Avgen_Get_VIC_From_Dtd( struct Dptx_Params *pstDptx, u8 ucStream_Index, u32 *puiVideo_Code )

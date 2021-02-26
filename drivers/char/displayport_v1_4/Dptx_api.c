@@ -165,7 +165,7 @@ EXPORT_SYMBOL( tcc_dp_unregister_drm );
 
 int dpv14_api_get_hpd_state( int dp_id, unsigned char *hpd_state )
 {
-	bool				bHPD_State;
+	uint8_t	ucHPD_State;
 	struct Dptx_Params 	*pstHandle;
 
 	if(( dp_id >= PHY_INPUT_STREAM_MAX ) || ( dp_id < PHY_INPUT_STREAM_0 ))
@@ -187,13 +187,12 @@ int dpv14_api_get_hpd_state( int dp_id, unsigned char *hpd_state )
 		return ( -ENODEV );
 	}
 
-	Dptx_Intr_Get_HotPlug_Status( pstHandle, &bHPD_State );
-	if( bHPD_State == (bool)HPD_STATUS_UNPLUGGED )
-	{
+	Dptx_Intr_Get_HotPlug_Status(pstHandle, &ucHPD_State);
+	if(ucHPD_State == (uint8_t)HPD_STATUS_UNPLUGGED) {
 		dptx_info("DP %d is not plugged", dp_id);
 
 		*hpd_state = (unsigned char)0;
-		return ( 0 );
+		return 0;
 	}
 
 	if( (u8)dp_id >= pstHandle->ucNumOfPorts )
@@ -207,7 +206,7 @@ int dpv14_api_get_hpd_state( int dp_id, unsigned char *hpd_state )
 		*hpd_state = (unsigned char)1;
 	}
 
-	return ( 0 );
+	return 0;
 }
 
 int dpv14_api_get_edid( int dp_id, unsigned char *edid, int buf_length )
@@ -404,14 +403,14 @@ int dpv14_api_set_audio_stream_enable( int dp_id, unsigned char enable )
 
 	dptx_info("Set DP %d audio %s...",	enable ? "enable":"disable" );
 
-	Dptx_Avgen_Set_Audio_Stream_Enable( pstHandle, (u8)dp_id, (bool)enable );
+	Dptx_Avgen_Set_Audio_Mute(pstHandle, (u8)dp_id, enable);
 
 	return ( 0 );
 }
 
 #endif
 
-void Dpv14_Tx_API_Hpd_Intr_CB( u8 ucDP_Index, bool bHPD_State )
+void Hpd_Intr_CallBabck( u8 ucDP_Index, bool bHPD_State )
 {
 	dptx_info("Callback called with DP %d, HPD %s", ucDP_Index, bHPD_State ? "Plugged":"Unplugged" );
 
@@ -424,71 +423,63 @@ void Dpv14_Tx_API_Hpd_Intr_CB( u8 ucDP_Index, bool bHPD_State )
 	{
 		dpv14_api_detach_drm( ucDP_Index );
 	}
-#else
-	if( bHPD_State == (bool)HPD_STATUS_PLUGGED )
-	{
-		dptx_info("DP %d: HPD Plugged");
-	}
-	else
-	{
-		dptx_info("DP %d: HPD Unplugged");
-	}
 #endif
 
 }
-EXPORT_SYMBOL( Dpv14_Tx_API_Hpd_Intr_CB );
+EXPORT_SYMBOL( Hpd_Intr_CallBabck );
 
 
-int Dpv14_Tx_API_Get_HPD_State( bool *pbHPD_State )
+int32_t Dpv14_Tx_API_Get_HPD_State(uint8_t *pucHPD_State)
 {
-	bool				bRetVal;
+	int32_t iRetVal;
 	struct Dptx_Params 	*pstHandle;
 
 	pstHandle = Dptx_Platform_Get_Device_Handle();
-	if( !pstHandle )
-	{
+	if(pstHandle == NULL) {
 		dptx_err("Failed to get handle" );
-		return ( EACCES );
+		return ENXIO;
 	}
 
-	bRetVal = Dptx_Intr_Get_HotPlug_Status( pstHandle, pbHPD_State );
-	if( bRetVal == DPTX_API_RETURN_FAIL ) 
-	{
-		return ( ENODEV );
+	if(pucHPD_State == NULL) {
+		dptx_err("pucHPD_State == NULL" );
+		return ENXIO;
 	}
 
-	return ( 0 );
+	iRetVal = Dptx_Intr_Get_HotPlug_Status( pstHandle, pucHPD_State );
+	if(iRetVal != 0) {
+		return ENODEV;
+	}
+
+	return 0;
 }
 
-int Dpv14_Tx_API_Get_Port_Composition( bool *pbMST_Supported, u8 *pucNumOfPluggedPorts)
+int32_t Dpv14_Tx_API_Get_Port_Composition( bool *pbMST_Supported, u8 *pucNumOfPluggedPorts)
 {
 	bool	bRetVal;
-	bool				bHPD_State, bSink_MST_Supported;
-	u8					ucNumOfPluggedPorts;
+	bool    bSink_MST_Supported;
+	int32_t iRetVal;
+	uint8_t	ucHPD_State, ucNumOfPluggedPorts;
 	struct Dptx_Params 	*pstHandle;
 
 	pstHandle = Dptx_Platform_Get_Device_Handle();
-	if( !pstHandle )
-	{
+	if(pstHandle == NULL) {
 		dptx_err("Failed to get handle" );
-		return ( EACCES );
+		return ENXIO;
 	}
 
-	bRetVal = Dptx_Intr_Get_HotPlug_Status( pstHandle, &bHPD_State );
-	if( bRetVal == DPTX_API_RETURN_FAIL ) 
-	{
-		return ( ENODEV );
+	iRetVal = Dptx_Intr_Get_HotPlug_Status(pstHandle, &ucHPD_State);
+	if(iRetVal != 0) {
+		return ENODEV;
 	}
-	if( bHPD_State == (bool)HPD_STATUS_UNPLUGGED )
-	{
+	if(ucHPD_State == (uint8_t)HPD_STATUS_UNPLUGGED) {
 		dptx_err("Hot unplugged" );
-		return ( EACCES );
+		return ENXIO;
 	}
 
 	bRetVal = Dptx_Ext_Get_Sink_Stream_Capability( pstHandle, &bSink_MST_Supported );
 	if( bRetVal == DPTX_RETURN_FAIL )
 	{
-		return ( ENODEV );
+		return ENODEV;
 	}
 
 	if( bSink_MST_Supported )
@@ -500,7 +491,7 @@ int Dpv14_Tx_API_Get_Port_Composition( bool *pbMST_Supported, u8 *pucNumOfPlugge
 			if( bRetVal == DPTX_RETURN_FAIL )
 			{
 				dptx_err("There is no sink devices connected.. %d", ucNumOfPluggedPorts);
-				return ( ENODEV );
+				return ENODEV;
 			}
 			
 			pstHandle->bSideBand_MSG_Supported = false;
@@ -532,35 +523,33 @@ int Dpv14_Tx_API_Get_Port_Composition( bool *pbMST_Supported, u8 *pucNumOfPlugge
 	return ( 0 );
 }
 
-int Dpv14_Tx_API_Get_Edid( u8 ucStream_Index, u8 *pucEDID_Buf, u32 uiBuf_Size )
+int32_t Dpv14_Tx_API_Get_Edid( u8 ucStream_Index, u8 *pucEDID_Buf, u32 uiBuf_Size )
 {
 	bool				bRetVal;
-	bool				bHPDStatus, bSink_MST_Supported;
-	u8					ucNumOfPorts;
+	bool    bSink_MST_Supported;
+	uint8_t ucHPD_State, ucNumOfPorts;
+	int32_t iRetVal;
 	struct Dptx_Params 	*pstHandle;
 	
 	if( pucEDID_Buf == NULL )
 	{
 		dptx_err("pucEDID_Buf is NULL");
-		return ( EACCES );
+		return ENXIO;
 	}
 
 	pstHandle = Dptx_Platform_Get_Device_Handle();
-	if( !pstHandle )
-	{
+	if(pstHandle == NULL) {
 		dptx_err("Failed to get handle" );
-		return ( EACCES );
+		return ENXIO;
 	}
 
-	bRetVal = Dptx_Intr_Get_HotPlug_Status( pstHandle, &bHPDStatus );
-	if( bRetVal == DPTX_API_RETURN_FAIL )
-	{
-		return ( ENODEV );
+	iRetVal = Dptx_Intr_Get_HotPlug_Status( pstHandle, &ucHPD_State );
+	if(iRetVal != 0) {
+		return ENODEV;
 	}
-	if( bHPDStatus == (bool)HPD_STATUS_UNPLUGGED ) 
-	{
+	if(ucHPD_State == (uint8_t)HPD_STATUS_UNPLUGGED) {
 		dptx_err("Hot unplugged..");
-		return ( ENODEV );
+		return ENODEV;
 	}
 
 	Dptx_Ext_Get_Stream_Mode( pstHandle, &bSink_MST_Supported, &ucNumOfPorts );
@@ -568,13 +557,13 @@ int Dpv14_Tx_API_Get_Edid( u8 ucStream_Index, u8 *pucEDID_Buf, u32 uiBuf_Size )
 	if( ucNumOfPorts == 0 )
 	{
 		dptx_err("Get Port Composition first ");
-		return ( EACCES );
+		return ENXIO;
 	}
 
 	if( ucStream_Index >= ucNumOfPorts )
 	{
 		dptx_err("DP %d isn't plugged", ucStream_Index );
-		return ( EACCES );
+		return ENXIO;
 	}
 
 	if( bSink_MST_Supported )
@@ -582,7 +571,7 @@ int Dpv14_Tx_API_Get_Edid( u8 ucStream_Index, u8 *pucEDID_Buf, u32 uiBuf_Size )
 		bRetVal = Dptx_Edid_Read_EDID_Over_Sideband_Msg( pstHandle, ucStream_Index, true );
 		if( bRetVal == DPTX_API_RETURN_FAIL ) 
 		{
-			return ( ENODEV );
+			return ENODEV;
 		}
 	}
 	else
@@ -590,7 +579,7 @@ int Dpv14_Tx_API_Get_Edid( u8 ucStream_Index, u8 *pucEDID_Buf, u32 uiBuf_Size )
 		bRetVal = Dptx_Edid_Read_EDID_I2C_Over_Aux( pstHandle );
 		if( bRetVal == DPTX_API_RETURN_FAIL )
 		{
-			return ( ENODEV );
+			return ENODEV;
 		}
 	}
 
@@ -606,31 +595,29 @@ int Dpv14_Tx_API_Get_Edid( u8 ucStream_Index, u8 *pucEDID_Buf, u32 uiBuf_Size )
 	return ( 0 );
 }
 
-int Dpv14_Tx_API_Perform_LinkTraining( bool *pbLinkTraining_Status )
+int32_t Dpv14_Tx_API_Perform_LinkTraining( bool *pbLinkTraining_Status )
 {
 	bool				bRetVal;
-	bool				bHPDStatus, bSink_MST_Supported, bTrainingState;
-	u8					ucNumOfPorts;
+	bool    bSink_MST_Supported, bTrainingState;
+	uint8_t ucHPD_State, ucNumOfPorts;
+	int32_t iRetVal;
 	struct Dptx_Params	*pstHandle;
 
 	*pbLinkTraining_Status = false;
 
 	pstHandle = Dptx_Platform_Get_Device_Handle();
-	if( !pstHandle )
-	{
+	if(pstHandle == NULL) {
 		dptx_err("Failed to get handle" );
-		return ( EACCES );
+		return ENXIO;
 	}
 
-	bRetVal = Dptx_Intr_Get_HotPlug_Status( pstHandle, &bHPDStatus );
-	if( bRetVal == DPTX_API_RETURN_FAIL )
-	{
-		return ( ENODEV );
+	iRetVal = Dptx_Intr_Get_HotPlug_Status( pstHandle, &ucHPD_State );
+	if(iRetVal != 0) {
+		return ENODEV;
 	}
-	if( bHPDStatus == (bool)HPD_STATUS_UNPLUGGED ) 
-	{
+	if(ucHPD_State == (uint8_t)HPD_STATUS_UNPLUGGED) {
 		dptx_err("Hot unplugged..");
-		return ( ENODEV );
+		return ENODEV;
 	}
 
 	Dptx_Ext_Get_Stream_Mode( pstHandle, &bSink_MST_Supported, &ucNumOfPorts );
@@ -638,13 +625,13 @@ int Dpv14_Tx_API_Perform_LinkTraining( bool *pbLinkTraining_Status )
 	if( ucNumOfPorts == 0 )
 	{
 		dptx_err("Get Port Composition first ");
-		return ( EACCES );
+		return ENXIO;
 	}
 
 	bRetVal = Dptx_Link_Get_LinkTraining_Status( pstHandle, &bTrainingState );
 	if( bRetVal == DPTX_RETURN_FAIL )
 	{
-		return ( ENODEV );
+		return ENODEV;
 	}
 	
 	if( bTrainingState )
@@ -657,13 +644,13 @@ int Dpv14_Tx_API_Perform_LinkTraining( bool *pbLinkTraining_Status )
 	bRetVal = Dptx_Link_Perform_BringUp( pstHandle, bSink_MST_Supported );
 	if( bRetVal == DPTX_RETURN_FAIL )
 	{
-		return ( ENODEV );
+		return ENODEV;
 	}
 
 	bRetVal = Dptx_Link_Perform_Training(     pstHandle, pstHandle->ucMax_Rate, pstHandle->ucMax_Lanes );
 	if( bRetVal == DPTX_RETURN_FAIL )
 	{
-		return ( ENODEV );
+		return ENODEV;
 	}
 
 	*pbLinkTraining_Status = true;
@@ -673,15 +660,14 @@ int Dpv14_Tx_API_Perform_LinkTraining( bool *pbLinkTraining_Status )
 		bRetVal = Dptx_Ext_Set_Topology_Configuration( pstHandle, pstHandle->ucNumOfPorts, pstHandle->bSideBand_MSG_Supported );
 		if( bRetVal == DPTX_RETURN_FAIL )
 		{
-			return ( ENODEV );
+			return ENODEV;
 		}
 	}
 
-	return ( 0 );
+	return 0;
 }
 
-
-int Dpv14_Tx_API_Set_Video_Timing( u8 ucStream_Index, struct DPTX_API_Dtd_Params_t *dptx_detailed_timing )
+int32_t Dpv14_Tx_API_Set_Video_Timing( u8 ucStream_Index, struct DPTX_API_Dtd_Params_t *dptx_detailed_timing )
 {
 	bool					bRetVal;
 	bool					bMST_Supported;
@@ -702,10 +688,9 @@ int Dpv14_Tx_API_Set_Video_Timing( u8 ucStream_Index, struct DPTX_API_Dtd_Params
 	}
 
 	pstHandle = Dptx_Platform_Get_Device_Handle();
-	if( !pstHandle )
-	{
+	if(pstHandle == NULL) {
 		dptx_err("Failed to get handle" );
-		return ( -ENODEV );
+		return ENXIO;
 	}
 
 	bRetVal = Dptx_Ext_Get_Stream_Mode( pstHandle, &bMST_Supported, &ucNumOfPorts );
@@ -717,12 +702,12 @@ int Dpv14_Tx_API_Set_Video_Timing( u8 ucStream_Index, struct DPTX_API_Dtd_Params
 	if( ucNumOfPorts == 0 )
 	{
 		dptx_err("Get Port Composition first ");
-		return ( EACCES );
+		return ENXIO;
 	}
 	if( ucStream_Index >= ucNumOfPorts )
 	{
 		dptx_err("DP %d isn't plugged", ucStream_Index );
-		return ( EACCES );
+		return ENXIO;
 	}
 
 	memcpy( &stDtd_Params, dptx_detailed_timing, sizeof(struct Dptx_Dtd_Params) );
@@ -730,34 +715,32 @@ int Dpv14_Tx_API_Set_Video_Timing( u8 ucStream_Index, struct DPTX_API_Dtd_Params
 	bRetVal = Dptx_Avgen_Set_Video_Detailed_Timing( pstHandle, (u8)ucStream_Index, &stDtd_Params );
 	if( bRetVal == DPTX_API_RETURN_FAIL )
 	{
-		return ( ENODEV );
+		return ENODEV;
 	}
 
 	return ( 0 );
 }
 
-int Dpv14_Tx_API_Set_Video_Enable( u8 ucStream_Index, bool bEnable )
+int32_t Dpv14_Tx_API_Set_Video_Enable( u8 ucStream_Index, bool bEnable )
 {
 	bool				bRetVal;
-	bool				bHPDStatus;
+ 	uint8_t ucHPD_State;
+	int32_t iRetVal;
 	struct Dptx_Params 	*pstHandle;
 
 	pstHandle = Dptx_Platform_Get_Device_Handle();
-	if( !pstHandle )
-	{
+	if(pstHandle == NULL) {
 		dptx_err("Failed to get handle" );
-		return ( EACCES );
+		return ENXIO;
 	}
 
-	bRetVal = Dptx_Intr_Get_HotPlug_Status( pstHandle, &bHPDStatus );
-	if( bRetVal == DPTX_API_RETURN_FAIL ) 
-	{
-		return ( ENODEV );
+	iRetVal = Dptx_Intr_Get_HotPlug_Status( pstHandle, &ucHPD_State );
+	if(iRetVal != 0) {
+		return ENODEV;
 	}
-	if( bHPDStatus == (bool)HPD_STATUS_UNPLUGGED ) 
-	{
+	if(ucHPD_State == (uint8_t)HPD_STATUS_UNPLUGGED) {
 		dptx_err("Hot unplugged..");
-		return ( ENODEV );
+		return ENODEV;
 	}
 
 	if( bEnable )
@@ -766,7 +749,7 @@ int Dpv14_Tx_API_Set_Video_Enable( u8 ucStream_Index, bool bEnable )
 		if( bRetVal == DPTX_API_RETURN_FAIL ) 
 		{
 			dptx_err("from Dptx_Avgen_Set_Video_Stream_Enable() " );
-			return ( ENODEV );
+			return ENODEV;
 		}
 	}
 	else
@@ -775,295 +758,104 @@ int Dpv14_Tx_API_Set_Video_Enable( u8 ucStream_Index, bool bEnable )
 		if( bRetVal == DPTX_API_RETURN_FAIL ) 
 		{
 			dptx_err("from Dptx_Avgen_Set_Video_Stream_Enable() " );
-			return ( ENODEV );
+			return ENODEV;
 		}
 	}
 
 	dptx_dbg("Stream %d to %s", ucStream_Index, bMute ? "mute":"unmute"  );
 
-	return ( 0 );
+	return 0;
 }
 
-
-bool Dpv14_Tx_API_Set_Audio_Mute( bool bMute )
+int32_t Dpv14_Tx_API_Set_Audio_Configuration(uint8_t ucDP_Index, struct DPTX_API_Audio_Params *pstDptx_audio_params)
 {
 	struct Dptx_Params 		*pstHandle;
+	struct Dptx_Audio_Params stAudioParams;
 
 	pstHandle = Dptx_Platform_Get_Device_Handle();
-	if( !pstHandle )
-	{
+	if(pstHandle == NULL) {
 		dptx_err("Failed to get handle" );
-		return ( DPTX_API_RETURN_FAIL );
+		return ENXIO;
 	}
 
-	Dptx_Avgen_Set_Audio_Mute( pstHandle, (u8)bMute );
-
-	return ( DPTX_API_RETURN_SUCCESS );
+	if(pstDptx_audio_params == NULL) {
+		dptx_err("pstDptx_audio_params == NULL" );
+		return ENXIO;
 }
 
-bool Dpv14_Tx_API_Get_Audio_Mute( bool *pbMute )
-{
-	struct Dptx_Params 		*pstHandle;
-	
-	pstHandle = Dptx_Platform_Get_Device_Handle();
-	if( !pstHandle )
-	{
-		dptx_err("Failed to get handle" );
-		return ( DPTX_API_RETURN_FAIL );
-	}
+	stAudioParams.ucInput_InterfaceType     = (uint8_t)pstDptx_audio_params->eIn_InterfaceType;
+	stAudioParams.ucInput_DataWidth         = (uint8_t)pstDptx_audio_params->eIn_DataWidth;
+	stAudioParams.ucInput_Max_NumOfchannels = (uint8_t)pstDptx_audio_params->eIn_Max_NumOfchannels;
+	stAudioParams.ucInput_HBR_Mode          = (uint8_t)pstDptx_audio_params->eIn_HBR_Mode;
+	stAudioParams.ucIEC_Sampling_Freq       = (uint8_t)pstDptx_audio_params->eIEC_Sampling_Freq;
+	stAudioParams.ucIEC_OriginSamplingFreq  = (uint8_t)pstDptx_audio_params->eIEC_OrgSamplingFreq;
+	stAudioParams.ucInput_TimestampVersion  = 0x12;
 
-	*pbMute = (bool)pstHandle->stAudioParams.ucInput_Mute;
+	Dptx_Avgen_Configure_Audio(pstHandle, ucDP_Index, &stAudioParams);
 
-	return ( DPTX_API_RETURN_SUCCESS );
+	return 0;
 }
 
-bool Dpv14_Tx_API_Set_Audio_InterfaceType( enum DPTX_AUDIO_INTERFACE_TYPE eAudio_InfType )
+int32_t Dpv14_Tx_API_Get_Audio_Configuration(uint8_t ucDP_Index, struct DPTX_API_Audio_Params *pstDptx_audio_params)
 {
+	uint8_t  ucInfType, ucNumOfCh, ucDataWidth, ucHBRMode, ucSamplingFreq, ucOrgSamplingFreq;
 	struct Dptx_Params			*pstHandle;
 
 	pstHandle = Dptx_Platform_Get_Device_Handle();
-	if( !pstHandle )
-	{
+	if(pstHandle == NULL) {
 		dptx_err( "Failed to get handle" );
-		return ( DPTX_API_RETURN_FAIL );
+		return ENXIO;
 	}
 
-	dptx_dbg("Set Audio interface type to %d", (u32)eAudio_InfType );
+	if(pstDptx_audio_params == NULL) {
+		dptx_err("pstDptx_audio_params == NULL" );
+		return ENXIO;
+	}
 
-	Dptx_Avgen_Set_Audio_Input_InterfaceType( pstHandle, (u8)eAudio_InfType );
+	Dptx_Avgen_Get_Audio_Input_InterfaceType(pstHandle, ucDP_Index, &ucInfType);
+	Dptx_Avgen_Get_Audio_DataWidth(pstHandle, ucDP_Index, &ucDataWidth);
+	Dptx_Avgen_Get_Audio_MaxNumOfChannels(pstHandle, ucDP_Index, &ucNumOfCh);
+	Dptx_Avgen_Get_Audio_HBR_En(pstHandle, ucDP_Index, &ucHBRMode);
+	Dptx_Avgen_Get_Audio_SamplingFreq(pstHandle, &ucSamplingFreq, &ucOrgSamplingFreq);
 
-	return ( DPTX_API_RETURN_SUCCESS );
-}
+	pstDptx_audio_params->eIn_InterfaceType        = (enum  DPTX_AUDIO_INTERFACE_TYPE)ucInfType;
+	pstDptx_audio_params->eIn_DataWidth            = (enum  DPTX_AUDIO_DATA_WIDTH)ucDataWidth;
+	pstDptx_audio_params->eIn_Max_NumOfchannels = (enum  DPTX_AUDIO_NUM_OF_CHANNELS)ucNumOfCh;
+	pstDptx_audio_params->eIn_HBR_Mode             = (enum  DPTX_AUDIO_INTERFACE_TYPE)ucHBRMode;
+	pstDptx_audio_params->eIEC_Sampling_Freq       = (enum  DPTX_AUDIO_IEC60958_3_SAMPLE_FREQ)ucSamplingFreq;
+	pstDptx_audio_params->eIEC_OrgSamplingFreq     = (enum  DPTX_AUDIO_IEC60958_3_ORIGINAL_SAMPLE_FREQ)ucOrgSamplingFreq;
 
-bool Dpv14_Tx_API_Get_Audio_InterfaceType( u8 *pucAudio_InfType )
+	return 0;
+	}
+
+
+int32_t Dpv14_Tx_API_Set_Audio_Mute(uint8_t ucDP_Index, uint8_t ucMute)
 {
-	struct Dptx_Params			*pstHandle;
+	struct Dptx_Params 		*pstHandle;
 
 	pstHandle = Dptx_Platform_Get_Device_Handle();
-	if( !pstHandle )
-	{
+	if(pstHandle == NULL) {
 		dptx_err( "Failed to get handle" );
-		return ( DPTX_API_RETURN_FAIL );
+		return ENXIO;
 	}
 
-	dptx_dbg("Get Audio interface type %d", (u32)pstHandle->stAudioParams.ucInput_InterfaceType );
+	Dptx_Avgen_Set_Audio_Mute(pstHandle, ucDP_Index, ucMute);
 
-	*pucAudio_InfType = pstHandle->stAudioParams.ucInput_InterfaceType;
-
-	return ( DPTX_API_RETURN_SUCCESS );
+	return 0;
 }
 
-bool Dpv14_Tx_API_Set_Audio_DataWidth( enum DPTX_AUDIO_DATA_WIDTH eAudio_DataWidth )
+int32_t Dpv14_Tx_API_Get_Audio_Mute(uint8_t ucDP_Index, uint8_t *pucMute)
 {
 	struct Dptx_Params 		*pstHandle;
 
 	pstHandle = Dptx_Platform_Get_Device_Handle();
-	if( !pstHandle )
-	{
+	if(pstHandle == NULL) {
 		dptx_err( "Failed to get handle" );
-		return ( DPTX_API_RETURN_FAIL );
+		return ENXIO;
 	}
 
-	dptx_dbg("Set Audio data width to %d", (u32)eAudio_DataWidth );
+	Dptx_Avgen_Get_Audio_Mute(pstHandle, ucDP_Index, pucMute);
 
-	Dptx_Avgen_Set_Audio_DataWidth( pstHandle, (u8)( (u8)eAudio_DataWidth + 16 ) );
-
-	return ( DPTX_API_RETURN_SUCCESS );
+	return 0;
 }
-
-bool Dpv14_Tx_API_Get_Audio_DataWidth( u8 *pucAudio_DataWidth )
-{
-	struct Dptx_Params 		*pstHandle;
-
-	pstHandle = Dptx_Platform_Get_Device_Handle();
-	if( !pstHandle )
-	{
-		dptx_err( "Failed to get handle" );
-		return ( DPTX_API_RETURN_FAIL );
-	}
-
-	dptx_dbg("Get Audio data width %d", (u32)( pstHandle->stAudioParams.ucInput_DataWidth - 16 ) );
-
-	*pucAudio_DataWidth = ( pstHandle->stAudioParams.ucInput_DataWidth - 16 );
-
-	return ( DPTX_API_RETURN_SUCCESS );
-}
-
-bool Dpv14_Tx_API_Set_Audio_HBR_Mode( bool bEnable )
-{
-	struct Dptx_Params 		*pstHandle;
-
-	pstHandle = Dptx_Platform_Get_Device_Handle();
-	if( !pstHandle )
-	{
-		dptx_err( "Failed to get handle" );
-		return ( DPTX_API_RETURN_FAIL );
-	}
-
-	dptx_dbg("Set Audio HBR Mode to %d", (u32)bEnable );
-
-	Dptx_Avgen_Set_Audio_HBR_Mode( pstHandle, bEnable );
-
-	return ( DPTX_API_RETURN_SUCCESS );
-}
-
-bool Dpv14_Tx_API_Get_Audio_HBR_Mode( bool *pbEnable )
-{
-	struct Dptx_Params 		*pstHandle;
-
-	pstHandle = Dptx_Platform_Get_Device_Handle();
-	if( !pstHandle )
-	{
-		dptx_err( "Failed to get handle" );
-		return ( DPTX_API_RETURN_FAIL );
-	}
-
-	dptx_dbg("Get Audio HBR Mode %d", (u32)pstHandle->stAudioParams.ucInput_HBR_Mode );
-
-	*pbEnable =  (bool)pstHandle->stAudioParams.ucInput_HBR_Mode;
-
-	return ( DPTX_API_RETURN_SUCCESS );
-}
-
-bool Dpv14_Tx_API_Set_Audio_Max_NumOfCh( enum  DPTX_AUDIO_NUM_OF_CHANNELS eAudio_NumOfCh )
-{
-	struct Dptx_Params 		*pstHandle;
-
-	pstHandle = Dptx_Platform_Get_Device_Handle();
-	if( !pstHandle )
-	{
-		dptx_err("Failed to get handle" );
-		return ( DPTX_API_RETURN_FAIL );
-	}
-
-	dptx_dbg("Set Audio num of channes to %d", (u32)eAudio_NumOfCh );
-
-	Dptx_Avgen_Set_Audio_MaxNumOfChannels( pstHandle, (u8)eAudio_NumOfCh );
-
-	return ( DPTX_API_RETURN_SUCCESS );
-}
-
-bool Dpv14_Tx_API_Get_Audio_Max_NumOfCh( u8 *pucAudio_NumOfCh )
-{
-	struct Dptx_Params 		*pstHandle;
-
-	pstHandle = Dptx_Platform_Get_Device_Handle();
-	if( !pstHandle )
-	{
-		dptx_err("Failed to get handle" );
-		return ( DPTX_API_RETURN_FAIL );
-	}
-
-	dptx_dbg("Get Audio num of channes %d", (u32)pstHandle->stAudioParams.ucInput_Max_NumOfchannels );
-
-	*pucAudio_NumOfCh = pstHandle->stAudioParams.ucInput_Max_NumOfchannels;
-
-	return ( DPTX_API_RETURN_SUCCESS );
-}
-
-bool Dpv14_Tx_API_Set_Audio_Freq( enum AUDIO_IEC60958_3_SAMPLE_FREQ  eIEC_SamplingFreq )
-{
-	struct Dptx_Params 		*pstHandle;
-	u8 eIEC_OriginSamplingFreq = 0;
-
-	pstHandle = Dptx_Platform_Get_Device_Handle();
-	if( !pstHandle )
-	{
-		dptx_err("Failed to get handle" );
-		return ( DPTX_API_RETURN_FAIL );
-	}
-
-	switch( eIEC_SamplingFreq ) 
-	{
-		case SAMPLE_FREQ_32:      
-			eIEC_OriginSamplingFreq = IEC60958_3_SAMPLE_FREQ_32;      
-			break;
-		case SAMPLE_FREQ_44_1:    
-			eIEC_OriginSamplingFreq = IEC60958_3_SAMPLE_FREQ_44_1;     
-			break;
-		case SAMPLE_FREQ_48:      
-			eIEC_OriginSamplingFreq = IEC60958_3_SAMPLE_FREQ_48;       
-			break;
-		case SAMPLE_FREQ_88_2:    
-			eIEC_OriginSamplingFreq = IEC60958_3_SAMPLE_FREQ_88_2;     
-			break;
-		case SAMPLE_FREQ_96:      
-			eIEC_OriginSamplingFreq = IEC60958_3_SAMPLE_FREQ_96;       
-			break;
-		case SAMPLE_FREQ_176_4:   
-			eIEC_OriginSamplingFreq = IEC60958_3_SAMPLE_FREQ_176_4;    
-			break;
-		case SAMPLE_FREQ_192:     
-			eIEC_OriginSamplingFreq = IEC60958_3_SAMPLE_FREQ_192;      
-			break;
-		default:
-			eIEC_OriginSamplingFreq = IEC60958_3_SAMPLE_FREQ_INVALID;  
-			break;
-	}
-	dptx_dbg("Set Audio Freq to %d", (u32)eIEC_SamplingFreq );
-
-	Dptx_Avgen_Set_Audio_SamplingFreq( pstHandle, (u8) eIEC_SamplingFreq, (u8) eIEC_OriginSamplingFreq);
-
-	return ( DPTX_API_RETURN_SUCCESS );
-}
-
-bool Dpv14_Tx_API_Get_Audio_Freq( u8 *pucIEC_SamplingFreq )
-{
-	struct Dptx_Params 		*pstHandle;
-
-	pstHandle = Dptx_Platform_Get_Device_Handle();
-	if( !pstHandle )
-	{
-		dptx_err("Failed to get handle" );
-		return ( DPTX_API_RETURN_FAIL );
-	}
-
-	dptx_dbg("Get Audio Sampling Freq %d", (u32)pstHandle->stAudioParams.ucIEC_Sampling_Freq );
-
-	*pucIEC_SamplingFreq = pstHandle->stAudioParams.ucIEC_Sampling_Freq;
-
-	return ( DPTX_API_RETURN_SUCCESS );
-}
-
-
-bool Dpv14_Tx_API_Enable_Audio_SDP_InfoFrame( bool bEnable )
-{
-	struct Dptx_Params 		*pstHandle;
-
-	pstHandle = Dptx_Platform_Get_Device_Handle();
-	if( !pstHandle )
-	{
-		dptx_err( "Failed to get handle" );
-		return ( DPTX_API_RETURN_FAIL );
-	}
-
-	dptx_dbg("Set Audio SDP InforFrame to %d", (u32)bEnable );
-
-	Dptx_Avgen_Set_Audio_SDP_InforFrame( pstHandle , bEnable);
-
-	return ( DPTX_API_RETURN_SUCCESS );
-}
-
-
-bool Dpv14_Tx_API_Set_Audio_Sel( u32 ucData )
-{
-	dptx_dbg("Set Audio sel 0x%08x", (u32)ucData );
-
-	Dptx_Reg_Set_AudioSel( (u32)ucData );
-
-	return ( DPTX_API_RETURN_SUCCESS );
-}
-
-bool Dpv14_Tx_API_Get_Audio_Sel( u32 *pucData )
-{
-	u32 ucAudioSel=0;
-	
-	ucAudioSel = Dptx_Reg_Get_AudioSel();
-	dptx_dbg("Get Audio sel 0x%08x", (u32)ucAudioSel );
-
-	*pucData = ucAudioSel;
-
-	return ( DPTX_API_RETURN_SUCCESS );
-}
-
 
