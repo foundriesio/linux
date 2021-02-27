@@ -64,7 +64,7 @@ config TCC_MICOM
 
 config TCC_CORE_RESET
 	bool "Telechips Core Reset Feature for TCC803x"
-	depends on ARCH_TCC803X && TCC_WATCHDOG
+	depends on ARCH_TCC803X
 	default n
 	help
 	  Select this option to enable core reset feature on TCC803x platform.
