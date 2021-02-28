@@ -280,7 +280,7 @@ no-dot-config-targets := $(clean-targets) \
 			 %asm-generic kernelversion %src-pkg dt_binding_check \
 			 outputmakefile
 no-sync-config-targets := $(no-dot-config-targets) install %install \
-			   kernelrelease
+			   kernelrelease image_name
 single-targets := %.a %.i %.ko %.lds %.ll %.lst %.mod %.o %.s %.symtypes %/
 
 config-build	:=
