@@ -10,7 +10,7 @@
 
 static struct i2c_data hdmi_max96878_des_regs[] = {
 	/* Touch IRQ : Des GPIO 15 RX/TX TX ID 15 */
-	{HDMI_DES_ADDR, 0x022D, 0x61, TCC803X_EVB, 1, REV_ALL},
+	{HDMI_DES_ADDR, 0x022D, 0x81, TCC803X_EVB, 1, REV_ALL},
 	{HDMI_DES_ADDR, 0x022E, 0x6F, TCC803X_EVB, 1, REV_ALL},
 	/* Touch RST : Des GPIO 16 RX/TX RX ID 9 */
 	{HDMI_DES_ADDR, 0x0230, 0x84, TCC803X_EVB, 1, REV_ALL},
@@ -20,7 +20,7 @@ static struct i2c_data hdmi_max96878_des_regs[] = {
 
 	/* IO RX_EN should be '1' */
 	{HDMI_DES_ADDR, 0x022F, 0x2F, TCC803X_EVB, 1, REV_ALL},
-	{HDMI_DES_ADDR, 0x022D, 0x63, TCC803X_EVB, 1, REV_ALL},
+	{HDMI_DES_ADDR, 0x022D, 0x83, TCC803X_EVB, 1, REV_ALL},
 	/* OLDI DES PT1 enable */
 	{HDMI_DES_ADDR, 0x0006, 0x01, TCC803X_EVB, 1, REV_ALL},
 	/* OLDI DES ROUTE PT1 pins to GMSLPT1 */
