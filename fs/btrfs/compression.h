@@ -131,4 +131,6 @@ extern const struct btrfs_compress_op btrfs_zlib_compress;
 extern const struct btrfs_compress_op btrfs_lzo_compress;
 extern const struct btrfs_compress_op btrfs_zstd_compress;
 
+bool btrfs_compress_is_valid_type(const char *str, size_t len);
+
 #endif
