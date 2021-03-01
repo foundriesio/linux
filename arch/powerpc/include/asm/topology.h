@@ -84,6 +84,9 @@ static inline int numa_update_cpu_topology(bool cpus_locked)
 }
 #endif /* CONFIG_NUMA */
 
+struct drmem_lmb;
+int of_drconf_to_nid_single(struct drmem_lmb *lmb);
+
 #if defined(CONFIG_NUMA) && defined(CONFIG_PPC_SPLPAR)
 extern int start_topology_update(void);
 extern int stop_topology_update(void);
