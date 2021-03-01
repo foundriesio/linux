@@ -11,7 +11,7 @@
 struct i2c_data hdmi_max96751_ser_regs[] = {
 	/* Touch GPIO------------------------------- */
 	/* Touch IRQ : Ser GPIO 5 RX/TX RX ID 15 */
-	{HDMI_SER_ADDR, 0x020F, 0xE4, TCC803X_EVB, 1, REV_ALL},
+	{HDMI_SER_ADDR, 0x020F, 0x84, TCC803X_EVB, 1, REV_ALL},
 	{HDMI_SER_ADDR, 0x0211, 0x4F, TCC803X_EVB, 1, REV_ALL},
 	/* Touch RST : Ser GPIO 9 RX/TX TX ID 9 */
 	{HDMI_SER_ADDR, 0x021B, 0x41, TCC803X_EVB, 1, REV_ALL},
