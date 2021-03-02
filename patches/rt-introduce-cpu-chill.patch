@@ -55,15 +55,15 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 Signed-off-by: Steven Rostedt <rostedt@goodmis.org>
 Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 ---
- include/linux/delay.h |    6 ++++++
- kernel/time/hrtimer.c |   30 ++++++++++++++++++++++++++++++
+ include/linux/hrtimer.h |    6 ++++++
+ kernel/time/hrtimer.c   |   30 ++++++++++++++++++++++++++++++
  2 files changed, 36 insertions(+)
 
---- a/include/linux/delay.h
-+++ b/include/linux/delay.h
-@@ -76,4 +76,10 @@ static inline void fsleep(unsigned long
- 		msleep(DIV_ROUND_UP(usecs, 1000));
- }
+--- a/include/linux/hrtimer.h
++++ b/include/linux/hrtimer.h
+@@ -540,4 +540,10 @@ int hrtimers_dead_cpu(unsigned int cpu);
+ #define hrtimers_dead_cpu	NULL
+ #endif
  
 +#ifdef CONFIG_PREEMPT_RT
 +extern void cpu_chill(void);
@@ -71,7 +71,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 +# define cpu_chill()	cpu_relax()
 +#endif
 +
- #endif /* defined(_LINUX_DELAY_H) */
+ #endif
 --- a/kernel/time/hrtimer.c
 +++ b/kernel/time/hrtimer.c
 @@ -1988,6 +1988,36 @@ SYSCALL_DEFINE2(nanosleep_time32, struct

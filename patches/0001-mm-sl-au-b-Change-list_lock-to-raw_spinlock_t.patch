@@ -1,11 +1,11 @@
 From: Thomas Gleixner <tglx@linutronix.de>
 Date: Mon, 28 May 2018 15:24:22 +0200
-Subject: [PATCH 3/4] mm/SLxB: change list_lock to raw_spinlock_t
+Subject: [PATCH 1/8] mm: sl[au]b: Change list_lock to raw_spinlock_t
 
-The list_lock is used with used with IRQs off on RT. Make it a raw_spinlock_t
-otherwise the interrupts won't be disabled on -RT.  The locking rules remain
-the same on !RT.
-This patch changes it for SLAB and SLUB since both share the same header
+The list_lock is used with used with IRQs off on PREEMPT_RT. Make it a
+raw_spinlock_t otherwise the interrupts won't be disabled on PREEMPT_RT.
+The locking rules remain unchanged.
+The lock is updated for SLAB and SLUB since both share the same header
 file for struct kmem_cache_node defintion.
 
 Signed-off-by: Thomas Gleixner <tglx@linutronix.de>

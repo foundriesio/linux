@@ -226,19 +226,22 @@ rt-local-irq-lock.patch
 # Check proper again. Crap....
 oleg-signal-rt-fix.patch
 
-# MM page alloc
-#
-0001-Split-IRQ-off-and-zone-lock-while-freeing-pages-from.patch
-0002-Split-IRQ-off-and-zone-lock-while-freeing-pages-from.patch
-0003-mm-SLxB-change-list_lock-to-raw_spinlock_t.patch
-0004-mm-SLUB-delay-giving-back-empty-slubs-to-IRQ-enabled.patch
-mm-page_alloc-Use-migrate_disable-in-drain_local_pag.patch
-mm-page_alloc-rt-friendly-per-cpu-pages.patch
+# MIGRATE DISABLE AND PER CPU
+# Revisit
+add_cpu_light.patch
+ftrace-migrate-disable-tracing.patch
+locking-don-t-check-for-__LINUX_SPINLOCK_TYPES_H-on-.patch
 
-# MM SLxB
-mm-slub-Make-object_map_lock-a-raw_spinlock_t.patch
-slub-enable-irqs-for-no-wait.patch
-slub-disable-SLUB_CPU_PARTIAL.patch
+# MM slub + + page alloc
+0001-mm-sl-au-b-Change-list_lock-to-raw_spinlock_t.patch
+0002-mm-slub-Make-object_map_lock-a-raw_spinlock_t.patch
+0003-mm-slub-Enable-irqs-for-__GFP_WAIT.patch
+0004-mm-slub-Move-discard_slab-invocations-out-of-IRQ-off.patch
+0005-mm-slub-Move-flush_cpu_slab-invocations-__free_slab-.patch
+0006-mm-slub-Don-t-resize-the-location-tracking-cache-on-.patch
+0007-mm-page_alloc-Use-migrate_disable-in-drain_local_pag.patch
+0008-mm-page_alloc-Use-a-local_lock-instead-of-explicit-l.patch
+mm-slub-Don-t-enable-partial-CPU-caches-on-PREEMPT_R.patch
 
 # MM
 mm-memcontrol-Provide-a-local_lock-for-per-CPU-memcg.patch
@@ -284,12 +287,6 @@ net-core-use-local_bh_disable-in-netif_rx_ni.patch
 pid.h-include-atomic.h.patch
 ptrace-fix-ptrace-vs-tasklist_lock-race.patch
 ptrace-fix-ptrace_unfreeze_traced-race-with-rt-lock.patch
-
-# MIGRATE DISABLE AND PER CPU
-# Revisit
-add_cpu_light.patch
-ftrace-migrate-disable-tracing.patch
-locking-don-t-check-for-__LINUX_SPINLOCK_TYPES_H-on-.patch
 
 # RCU
 locking-Make-spinlock_t-and-rwlock_t-a-RCU-section-o.patch
@@ -423,7 +420,6 @@ tpm_tis-fix-stall-after-iowrite-s.patch
 
 # Postpone
 signals-allow-rt-tasks-to-cache-one-sigqueue-struct.patch
-signal-Prevent-double-free-of-user-struct.patch
 genirq-disable-irqpoll-on-rt.patch
 
 # SYSFS - RT indicator

@@ -1,6 +1,6 @@
-Subject: slub: Enable irqs for __GFP_WAIT
 From: Thomas Gleixner <tglx@linutronix.de>
-Date: Wed, 09 Jan 2013 12:08:15 +0100
+Date: Wed, 9 Jan 2013 12:08:15 +0100
+Subject: [PATCH 3/8] mm: slub: Enable irqs for __GFP_WAIT
 
 SYSTEM_RUNNING might be too late for enabling interrupts. Allocations
 with GFP_WAIT can happen before that. So use this as an indicator.
@@ -11,13 +11,14 @@ with GFP_WAIT can happen before that. So use this as an indicator.
 ]
 
 Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
+Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 ---
  mm/slub.c |   18 +++++++++++++++++-
  1 file changed, 17 insertions(+), 1 deletion(-)
 
 --- a/mm/slub.c
 +++ b/mm/slub.c
-@@ -1745,10 +1745,18 @@ static struct page *allocate_slab(struct
+@@ -1739,10 +1739,18 @@ static struct page *allocate_slab(struct
  	void *start, *p, *next;
  	int idx;
  	bool shuffle;
@@ -36,7 +37,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  		local_irq_enable();
  
  	flags |= s->allocflags;
-@@ -1809,7 +1817,7 @@ static struct page *allocate_slab(struct
+@@ -1803,7 +1811,7 @@ static struct page *allocate_slab(struct
  	page->frozen = 1;
  
  out:
@@ -45,7 +46,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  		local_irq_disable();
  	if (!page)
  		return NULL;
-@@ -2866,6 +2874,10 @@ static __always_inline void *slab_alloc_
+@@ -2814,6 +2822,10 @@ static __always_inline void *slab_alloc_
  	unsigned long tid;
  	struct obj_cgroup *objcg = NULL;
  
@@ -56,7 +57,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  	s = slab_pre_alloc_hook(s, &objcg, 1, gfpflags);
  	if (!s)
  		return NULL;
-@@ -3332,6 +3344,10 @@ int kmem_cache_alloc_bulk(struct kmem_ca
+@@ -3279,6 +3291,10 @@ int kmem_cache_alloc_bulk(struct kmem_ca
  	int i;
  	struct obj_cgroup *objcg = NULL;
  
