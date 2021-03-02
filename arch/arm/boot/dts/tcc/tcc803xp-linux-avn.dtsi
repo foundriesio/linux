@@ -65,7 +65,8 @@
 	};
 
 	pcie@11800000 {
-		reset-gpio = <&gpsd0 11 0>;
+		reset-gpio = <&gpb 15 0>;
+		using_ext_ref_clk = <0>;
 		//status = "okay";
 	};
 
