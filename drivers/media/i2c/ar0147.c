@@ -649,7 +649,7 @@ const struct reg_sequence ar0147_reg_init[] = {
 	{0x32EC, 0x7107, 0},		/* SHUT_CTRL2 */
 	{0x33E0, 0x0080, 0},		/* TEST_ASIL_ROWS */
 	{0x31D0, 0x0001, 0},		/* COMPANDING */
-#if 1
+#if 0
 	{0x33DA, 0x0000, 0},		/* OC_LUT_CONTROL */
 #else	/* enable legacy compand */
 	{0x33DA, 0x0001, 0},		/* OC_LUT_CONTROL */
