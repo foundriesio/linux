@@ -1533,18 +1533,18 @@ static void dma_free_tx_skbufs(struct stmmac_priv *priv, u32 queue)
 		stmmac_free_tx_buffer(priv, queue, i);
 }
 
-/**
+/*
  * stmmac_free_tx_skbufs - free TX skb buffers
  * @priv: private structure
  */
-static void stmmac_free_tx_skbufs(struct stmmac_priv *priv)
+/*static void stmmac_free_tx_skbufs(struct stmmac_priv *priv)
 {
-	u32 tx_queue_cnt = priv->plat->tx_queues_to_use;
-	u32 queue;
+        u32 tx_queue_cnt = priv->plat->tx_queues_to_use;
+        u32 queue;
 
-	for (queue = 0; queue < tx_queue_cnt; queue++)
-		dma_free_tx_skbufs(priv, queue);
-}
+        for (queue = 0; queue < tx_queue_cnt; queue++)
+                dma_free_tx_skbufs(priv, queue);
+}*/
 
 /**
  * free_dma_rx_desc_resources - free RX dma desc resources
@@ -5289,8 +5289,25 @@ int stmmac_resume(struct device *dev)
 
 	stmmac_reset_queues_param(priv);
 
-	stmmac_free_tx_skbufs(priv);
-	stmmac_clear_descriptors(priv);
+	/* Stop TX/RX DMA and clear the descriptors */
+	stmmac_stop_all_dma(priv);
+
+	/* Release and free the Rx/Tx resources */
+	free_dma_desc_resources(priv);
+
+	ret = alloc_dma_desc_resources(priv);
+	if (ret < 0) {
+		netdev_err(priv->dev, "%s: DMA descriptors allocation failed\n",
+			   __func__);
+		goto dma_desc_error;
+	}
+
+	ret = init_dma_desc_rings(ndev, GFP_KERNEL);
+	if (ret < 0) {
+		netdev_err(priv->dev, "%s: DMA descriptors initialization failed\n",
+			   __func__);
+		goto init_error;
+	}
 
 	stmmac_hw_setup(ndev, false);
 	stmmac_init_coalesce(priv);
@@ -5308,6 +5325,13 @@ int stmmac_resume(struct device *dev)
 	netif_device_attach(ndev);
 
 	return 0;
+init_error:
+	free_dma_desc_resources(priv);
+dma_desc_error:
+	if (ndev->phydev)
+		phy_disconnect(ndev->phydev);
+
+	return -1;
 }
 EXPORT_SYMBOL_GPL(stmmac_resume);
 
