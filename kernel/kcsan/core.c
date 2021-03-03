@@ -591,8 +591,6 @@ void __init kcsan_init(void)
 {
 	BUG_ON(!in_task());
 
-	kcsan_debugfs_init();
-
 	/*
 	 * We are in the init task, and no other tasks should be running;
 	 * WRITE_ONCE without memory barrier is sufficient.

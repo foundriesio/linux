@@ -22,11 +22,6 @@ extern unsigned int kcsan_udelay_interrupt;
  */
 extern bool kcsan_enabled;
 
-/*
- * Initialize debugfs file.
- */
-void kcsan_debugfs_init(void);
-
 enum kcsan_counter_id {
 	/*
 	 * Number of watchpoints currently in use.
