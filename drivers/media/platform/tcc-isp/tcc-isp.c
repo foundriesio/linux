@@ -34,9 +34,6 @@
 #define DEFAULT_WIDTH		0x8000
 #define DEFAULT_HEIGHT		0x8000
 
-#define SHIFT(x)	\
-	((((unsigned long)(x) & (REG_HIGH_LOW)) == REG_HIGH) ? (16) : (0))
-
 struct v4l2_dv_timings tcc_isp_dv_timings = {
 	.type = V4L2_DV_BT_656_1120,
 	.bt = {
@@ -69,65 +66,49 @@ static inline struct tcc_isp_state *sd_to_state(struct v4l2_subdev *sd)
 	return container_of(sd, struct tcc_isp_state, sd);
 }
 
-static inline volatile void __iomem *ALIGN_32BIT(volatile void __iomem *reg)
+static inline void regw(void __iomem *reg, u32 val)
 {
-	return (volatile void __iomem *)((((unsigned long)reg) >> 2) << 2);
-}
-
-static inline unsigned short read_isp(volatile void __iomem *reg)
-{
-	unsigned int val32;
-	volatile void __iomem *alligned_addr = ALIGN_32BIT(reg);
-
-	val32 = __raw_readl(alligned_addr);
-	return (short)(val32 >> SHIFT(reg));
-}
-
-static inline void write_isp(volatile void __iomem *reg, unsigned short val16)
-{
-	unsigned int val32;
-	volatile void __iomem *alligned_addr = ALIGN_32BIT(reg);
-
-	val32 = __raw_readl(alligned_addr);
-	val32 &= ~(0xFFFF << SHIFT(reg));
-	val32 |= (((unsigned int)val16) << SHIFT(reg));
-
-	pr_debug("[DEBUG][tcc-isp] reg: 0x%p, val: 0x%d\n",
-		alligned_addr, val32);
-	__raw_writel(val32, alligned_addr);
-}
-
-static inline void regw(volatile void __iomem *reg, unsigned long val)
-{
-	pr_debug("[DEBUG][tcc-isp] reg: 0x%p, val: 0x%ld\n",
-		reg, val);
+	u32 isp_reg_offset = (u32)reg & 0xFFFF;
+#if 0
+	pr_info("[INFO][tcc-isp] reg: 0x%08x, val: 0x%08x\n",
+		isp_reg_offset, val);
+#endif
 	__raw_writel(val, reg);
 }
 
-static s32 tcc_isp_rgb_order(u32 rgb_order)
+static inline u32 regr(void __iomem *reg)
+{
+	u32 val = 0;
+
+	val = __raw_readl(reg);
+
+	return val;
+}
+
+static s32 tcc_isp_pixel_order(u32 pixel_order)
 {
 	s32 tcc_order;
 
-	switch (rgb_order) {
+	switch (pixel_order) {
 	case MEDIA_BUS_FMT_SBGGR10_1X10:
 	case MEDIA_BUS_FMT_SBGGR12_1X12:
 	case MEDIA_BUS_FMT_SBGGR14_1X14:
-		tcc_order = IMGIN_ORDER_CTL_B_FIRST;
+		tcc_order = IMG_IN_ORDER_CTL_IMG_IN_PIXEL_ORDER_B_FIRST;
 		break;
 	case MEDIA_BUS_FMT_SGBRG10_1X10:
 	case MEDIA_BUS_FMT_SGBRG12_1X12:
 	case MEDIA_BUS_FMT_SGBRG14_1X14:
-		tcc_order = IMGIN_ORDER_CTL_GB_FIRST;
+		tcc_order = IMG_IN_ORDER_CTL_IMG_IN_PIXEL_ORDER_GB_FIRST;
 		break;
 	case MEDIA_BUS_FMT_SGRBG10_1X10:
 	case MEDIA_BUS_FMT_SGRBG12_1X12:
 	case MEDIA_BUS_FMT_SGRBG14_1X14:
-		tcc_order = IMGIN_ORDER_CTL_GR_FIRST;
+		tcc_order = IMG_IN_ORDER_CTL_IMG_IN_PIXEL_ORDER_GR_FIRST;
 		break;
 	case MEDIA_BUS_FMT_SRGGB10_1X10:
 	case MEDIA_BUS_FMT_SRGGB12_1X12:
 	case MEDIA_BUS_FMT_SRGGB14_1X14:
-		tcc_order = IMGIN_ORDER_CTL_R_FIRST;
+		tcc_order = IMG_IN_ORDER_CTL_IMG_IN_PIXEL_ORDER_R_FIRST;
 		break;
 	default:
 		tcc_order = -1;
@@ -136,46 +117,87 @@ static s32 tcc_isp_rgb_order(u32 rgb_order)
 	return tcc_order;
 }
 
+static inline void tcc_isp_update_register(struct tcc_isp_state *state)
+{
+	void __iomem *isp_base = state->isp_base;
+
+	regw(isp_base + REG_ISP_UP_CTL, UP_CTL_UP_ALL);
+}
+
+static inline void tcc_isp_set_adaptive_data(struct tcc_isp_state *state)
+{
+	void __iomem *mem_base = state->mem_base;
+	int i = 0;
+
+	for (i = 0; i < state->tune->adaptive_setting_size; i++) {
+		regw(mem_base + state->tune->adaptive[i].reg,
+				state->tune->adaptive[i].val);
+	}
+	tcc_isp_update_register(state);
+
+	logi(&(state->pdev->dev), "complete %s\n", __func__);
+}
+
+static inline void tcc_isp_mcu_enable(struct tcc_isp_state *state, int onOff)
+{
+	unsigned short val = 0;
+	void __iomem *isp_base = state->isp_base;
+
+	if (onOff == ON) {
+		/* MCU enable */
+		val = regr(isp_base + REG_ISP_MCU_CTL);
+		val &= ~(MCU_CTL_MCU_EN_MASK <<
+			 MCU_CTL_MCU_EN_SHIFT);
+		val |= (MCU_CTL_MCU_EN_ENABLE << MCU_CTL_MCU_EN_SHIFT);
+		regw(isp_base + REG_ISP_MCU_CTL, val);
+
+	} else {
+		/* MCU disable */
+		val = regr(isp_base + REG_ISP_MCU_CTL);
+		val &= ~(MCU_CTL_MCU_EN_MASK <<
+			  MCU_CTL_MCU_EN_SHIFT);
+		val |= (MCU_CTL_MCU_EN_DISABLE << MCU_CTL_MCU_EN_SHIFT);
+		regw(isp_base + REG_ISP_MCU_CTL, val);
+	}
+}
+
 static void tcc_isp_load_firmware(
 		struct tcc_isp_state *state, const void *fw, size_t count)
 {
 	unsigned short val = 0;
-	volatile void __iomem *isp_base = state->isp_base;
+	void __iomem *isp_base = state->isp_base;
 	void __iomem *mem_base = state->mem_base;
 
-	/* MSP430 disable */
-	val = read_isp(isp_base + reg_msp430_ctl);
-	val &= ~(MSP430_CTL_MSP430_ENABLE_MASK <<
-		MSP430_CTL_MSP430_ENABLE_SHIFT);
-	val |= (OFF << MSP430_CTL_MSP430_ENABLE_SHIFT);
-	write_isp(isp_base + reg_msp430_ctl, val);
+	tcc_isp_mcu_enable(state, OFF);
 
-	/* MSP430 memory download enable */
-	val = read_isp(isp_base + reg_msp430_mem_ctl);
-	val &= ~MSP430_MEM_CTL_DOWNLOAD_ENABLE_MASK;
-	val |= (ON << MSP430_MEM_CTL_DOWNLOAD_ENABLE_SHIFT);
-	write_isp(isp_base + reg_msp430_mem_ctl, val);
+	/* MCU memory download enable */
+	val = regr(isp_base + REG_ISP_MCU_MEM_CTL);
+	val &= ~(MCU_MEM_CTL_MCU_MEM_DL_EN_MASK <<
+		MCU_MEM_CTL_MCU_MEM_DL_EN_SHIFT);
+	val |= (MCU_MEM_CTL_MCU_MEM_DL_EN_ENABLE <<
+		MCU_MEM_CTL_MCU_MEM_DL_EN_SHIFT);
+	regw(isp_base + REG_ISP_MCU_MEM_CTL, val);
 
 	logi(&(state->pdev->dev), "[INFO][tcc-isp-%d] copy firmware(%ld)\n",
 		state->pdev->id, count);
-	/* copy firmware to the msp430 code memory */
+	/* copy firmware to the MCU code memory */
 	memcpy(mem_base + ISP_MEM_OFFSET_CODE_MEM, fw, count);
 
+	/*
+	 * after copying firmware,
+	 * all related cache coherency should be ensured.
+	 */
 	mb();
 
-	/* MSP430 memory download disable */
-	val = read_isp(isp_base + reg_msp430_mem_ctl);
-	val &= ~(MSP430_MEM_CTL_DOWNLOAD_ENABLE_MASK <<
-		MSP430_MEM_CTL_DOWNLOAD_ENABLE_SHIFT);
-	val |= (OFF << MSP430_MEM_CTL_DOWNLOAD_ENABLE_SHIFT);
-	write_isp(isp_base + reg_msp430_mem_ctl, val);
+	/* MCU memory download disable */
+	val = regr(isp_base + REG_ISP_MCU_MEM_CTL);
+	val &= ~(MCU_MEM_CTL_MCU_MEM_DL_EN_MASK <<
+		MCU_MEM_CTL_MCU_MEM_DL_EN_SHIFT);
+	val |= (MCU_MEM_CTL_MCU_MEM_DL_EN_DISABLE <<
+		MCU_MEM_CTL_MCU_MEM_DL_EN_SHIFT);
+	regw(isp_base + REG_ISP_MCU_MEM_CTL, val);
 
-	/* MSP430 enable */
-	val = read_isp(isp_base + reg_msp430_ctl);
-	val &= ~(MSP430_CTL_MSP430_ENABLE_MASK <<
-		MSP430_CTL_MSP430_ENABLE_SHIFT);
-	val |= (ON << MSP430_CTL_MSP430_ENABLE_SHIFT);
-	write_isp(isp_base + reg_msp430_ctl, val);
+	tcc_isp_mcu_enable(state, ON);
 }
 
 static void tcc_isp_callback_load_firmware(
@@ -193,6 +215,12 @@ static void tcc_isp_callback_load_firmware(
 	logi(&(state->pdev->dev), "FW size: %ld\n", fw->size);
 
 	tcc_isp_load_firmware(state, fw->data, fw->size);
+
+	usleep_range(5000, 6000);
+
+	tcc_isp_set_adaptive_data(state);
+
+	state->fw_load = 1;
 
 	release_firmware(fw);
 
@@ -214,46 +242,55 @@ static int tcc_isp_request_firmware(
 		state,
 		tcc_isp_callback_load_firmware);
 
-	logi(&(state->pdev->dev), "%s - ret is %d\n", __func__, ret);
-
 	return ret;
 }
 
 static inline void tcc_isp_mem_share(struct tcc_isp_state *state, int onOff)
 {
-	volatile void __iomem *isp_base = state->isp_base;
+	void __iomem *isp_base = state->isp_base;
 
-	write_isp(isp_base + reg_mem_swt_en, onOff);
+	if (onOff) {
+		regw(isp_base + REG_ISP_MEM_SHARE,
+			(MEM_SHARE_MEM_SHARE_EN_ENABLE <<
+			MEM_SHARE_MEM_SHARE_EN_SHIFT));
+	} else {
+		regw(isp_base + REG_ISP_MEM_SHARE,
+			(MEM_SHARE_MEM_SHARE_EN_DISABLE <<
+			MEM_SHARE_MEM_SHARE_EN_SHIFT));
+	}
 }
 
 static inline void tcc_isp_set_regster_update_mode(struct tcc_isp_state *state)
 {
-	volatile void __iomem *isp_base = state->isp_base;
-	unsigned short update_sel1, update_sel2;
-	unsigned short update_mod1, update_mod2;
+	void __iomem *isp_base = state->isp_base;
+	u32 up_sel1, up_sel2, up_mode1, up_mode2, user_cnt1, user_cnt2;
 	static const char * const str_update_sel[] = {
 		"USER SPECIFIED TIMING",
 		"VSYNC FALLING EDGE TIMING",
 		"VSYNC RISING EDGE TIMING",
 		"WRITING TIMING"
 	};
-	static const char * const str_update_mod1[] = {
+	static const char * const str_up_mode1[] = {
 		"SYNC MODE",
 		"ALWAYS MODE"
 	};
-	static const char * const str_update_mod2[] = {
+	static const char * const str_up_mode2[] = {
 		"INDIVIDUAL SYNC",
 		"GROUP SYNC"
 	};
 
-	update_sel1 = update_sel2 =
-		UPDATE_SEL_ALL_SYNC_ON_VSYNC_FALLING_EDGE_TIMING;
+	up_sel1 = UP_SEL1_ALL_SYNC_ON_USER_SPECIFIED_TIMING;
+	up_sel2 = UP_SEL2_ALL_SYNC_ON_USER_SPECIFIED_TIMING;
 
-	update_mod1 = UPDATE_MOD1_ALL_ALWAYS_MODE;
-	update_mod2 = UPDATE_MOD2_ALL_GROUP_SYNC;
+	up_mode1 = UP_MODE1_ALL_SYNC_MODE;
+	up_mode2 = UP_MODE2_ALL_INDIV_SYNC_MODE;
 
-	write_isp(isp_base + reg_update_user_cnt1, 0x0);
-	write_isp(isp_base + reg_update_user_cnt2, 0x0300);
+	user_cnt1 = (0 << USR_CNT1_SHIFT);
+	user_cnt2 = (0xF << USR_CNT2_SHIFT);
+
+	/* USR_CNT1(MSB) + USR_CNT2(LSB) is used in USER SPECIFIED TIMING */
+	regw(isp_base + REG_ISP_USR_CNT1, user_cnt1);
+	regw(isp_base + REG_ISP_USR_CNT2, user_cnt2);
 
 	/*
 	 * 0: sync on user specified timing
@@ -261,190 +298,243 @@ static inline void tcc_isp_set_regster_update_mode(struct tcc_isp_state *state)
 	 * 2: sync on vsync rising edge timing
 	 * 3: sync on writing timing
 	 */
-	logi(&(state->pdev->dev), "update_sel1, 2(0x%x, 0x%x) is %s\n",
-		update_sel1, update_sel2,
-		str_update_sel[update_sel1 & UPDATE_SEL1_UPDATE_00_SEL_MASK]);
+	logi(&(state->pdev->dev), "up_sel1, 2(0x%x, 0x%x) is %s\n",
+		up_sel1, up_sel2,
+		str_update_sel[(up_sel1 >> UP_SEL1_TP_SEL_CTL_SHIFT) &
+			(UP_SEL1_TP_SEL_CTL_MASK)]);
 
-	write_isp(isp_base + reg_update_sel1, update_sel1);
-	write_isp(isp_base + reg_update_sel2, update_sel2);
+	regw(isp_base + REG_ISP_UP_SEL1, up_sel1);
+	regw(isp_base + REG_ISP_UP_SEL2, up_sel2);
 
 	/*
 	 * 0: sync mode
-	 * 1: always mode
+	 * 1: async mode
 	 */
-	logi(&(state->pdev->dev), "update_mod1(0x%x) is %s\n",
-		update_mod1,
-		str_update_mod1[update_mod1 & UPDATE_MOD1_UPDATE_MODE_0_MASK]);
+	logi(&(state->pdev->dev), "up_mode1(0x%x) is %s\n",
+		up_mode1,
+		str_up_mode1[up_mode1 &
+			(UP_MODE1_TP_UP_MODE1_MASK <<
+			UP_MODE1_TP_UP_MODE1_SHIFT)]);
 
-	write_isp(isp_base + reg_update_mod1, update_mod1);
+	regw(isp_base + REG_ISP_UP_MODE1, up_mode1);
 
 	/*
 	 * 0: individual sync
 	 * 1: group sync
 	 */
-	logi(&(state->pdev->dev), "update_mod2(0x%x) is %s\n",
-		update_mod2,
-		str_update_mod2[update_mod2 & UPDATE_MOD2_VSYNC_00_SEL_MASK]);
+	logi(&(state->pdev->dev), "up_mode2(0x%x) is %s\n",
+		up_mode2,
+		str_up_mode2[up_mode2 &
+			(UP_MODE2_TP_UP_MODE2_MASK <<
+			UP_MODE2_TP_UP_MODE2_SHIFT)]);
 
-	write_isp(isp_base + reg_update_mod2, update_mod2);
+	regw(isp_base + REG_ISP_UP_MODE2, up_mode2);
 }
 
 static inline void tcc_isp_set_wdma(struct tcc_isp_state *state, int onOff)
 {
-	volatile void __iomem *isp_base = state->isp_base;
+	void __iomem *isp_base = state->isp_base;
 
-	write_isp(isp_base + reg_isp_wdma_ctl0, onOff);
-
-	if (onOff) {
-
+	if (onOff == ON) {
+		regw(isp_base + REG_ISP_WDMA_CTL0,
+			(WDMA_CTL0_WDMA_ENABLE <<
+			WDMA_CTL0_WDMA_ENABLE_SHIFT));
 	} else {
+		regw(isp_base + REG_ISP_WDMA_CTL0,
+			(WDMA_CTL0_WDMA_DISABLE <<
+			WDMA_CTL0_WDMA_ENABLE_SHIFT));
 		/* CV8050C-810 */
-		write_isp(isp_base + reg_isp_wdma_cfg0, 0x0);
+		/* regw(isp_base + REG_ISP_WDMA_CFG0, 0x0); */
 	}
-}
-
-static inline void tcc_isp_update_register(struct tcc_isp_state *state)
-{
-	volatile void __iomem *isp_base = state->isp_base;
-
-	write_isp(isp_base + reg_update_ctl, 0xFFFF);
 }
 
 static inline void tcc_isp_set_input(struct tcc_isp_state *state)
 {
-	volatile void __iomem *isp_base = state->isp_base;
+	void __iomem *isp_base = state->isp_base;
 	static const char * const str[] = {
 		"Blue First", "Gb first", "Gr first", "Red first"};
-	int w, h, rgb_order;
+	int w, h, pixel_order;
 
 	w = state->isp.i_state.width;
 	h = state->isp.i_state.height;
-	rgb_order = state->isp.i_state.rgb_order;
+	pixel_order = state->isp.i_state.pixel_order;
 
 	logi(&(state->pdev->dev), "input size(%d x %d) rgb order(%s)\n",
-		w, h, str[rgb_order]);
+		w, h, str[pixel_order]);
 
 	/* size */
-	write_isp(isp_base + reg_img_size_width, w);
-	write_isp(isp_base + reg_img_size_height, h);
+	regw(isp_base + REG_ISP_IMG_WIDTH,
+		(w << IMG_WIDTH_IN_IMG_WIDTH_SHIFT));
+	regw(isp_base + REG_ISP_IMG_HEIGHT,
+		(h << IMG_HEIGHT_IN_IMG_HEIGHT_SHIFT));
 
 	/* bayer rgb order */
-	write_isp(isp_base + reg_imgin_order_ctl, rgb_order);
+	regw(isp_base + REG_ISP_IMG_IN_ORDER_CTL,
+		(pixel_order << IMG_IN_ORDER_CTL_IMG_IN_PIXEL_ORDER_SHIFT));
 }
 
 static inline void tcc_isp_set_output(struct tcc_isp_state *state)
 {
-	volatile void __iomem *isp_base = state->isp_base;
+	void __iomem *isp_base = state->isp_base;
 	static const char * const str[] = {
 		"YUV420", "YUV422", "YUV444", "RGB888"};
-	int x, y, w, h, fmt, window_ctl;
+	int x, y, w, h, fmt, win_ctl;
 
 	x = state->isp.o_state.x;
 	y = state->isp.o_state.y;
 	w = state->isp.o_state.width;
 	h = state->isp.o_state.height;
 	fmt = state->isp.o_state.format;
-	window_ctl = 0;
+	win_ctl = 0;
 
 	logi(&(state->pdev->dev), "output format(%s)\n", str[fmt]);
 
 	if (state->isp.i_state.width != w || state->isp.i_state.height != h) {
 		logi(&(state->pdev->dev), "enable crop window\n");
-		window_ctl = (IMGOUT_WINDOW_CTL_ISP_OUTPUT_WINDOW_EN <<
-				IMGOUT_WINDOW_CTL_ISP_OUTPUT_WINDOW_SHIFT);
+		win_ctl = (IMG_WIN_CTL_WIN_EN_ENABLE <<
+				IMG_WIN_CTL_WIN_EN_SHIFT);
 	} else {
 		logi(&(state->pdev->dev), "disable crop window\n");
 	}
 
-	window_ctl |= (IMGOUT_WINDOW_CTL_DEBLANK_EN <<
-			IMGOUT_WINDOW_CTL_DEBLANK_SHIFT);
+	win_ctl |= (IMG_WIN_CTL_DEBLANK_EN_ENABLE <<
+			IMG_WIN_CTL_DEBLANK_EN_SHIFT);
 
-	write_isp(isp_base + reg_imgout_window_ctl, window_ctl);
+	regw(isp_base + REG_ISP_IMG_WIN_CTL, win_ctl);
 
 	/* format */
 	switch (fmt) {
-	case IMGOUT_WINDOW_CFG_FORMAT_YUV444:
+	case IMG_WIN_FORMAT_IMG_WIN_FORMAT_YUV444:
+		fmt <<= IMG_WIN_FORMAT_IMG_WIN_FORMAT_SHIFT;
 		break;
-	case IMGOUT_WINDOW_CFG_FORMAT_RGB888:
+	case IMG_WIN_FORMAT_IMG_WIN_FORMAT_RGB888:
+		fmt <<= IMG_WIN_FORMAT_IMG_WIN_FORMAT_SHIFT;
 		break;
-	case IMGOUT_WINDOW_CFG_FORMAT_YUV422:
+	case IMG_WIN_FORMAT_IMG_WIN_FORMAT_YUV422:
 	default:
-		fmt &= ~(IMGOUT_WINDOW_CFG_DATA_ORDER_MASK <<
-			 IMGOUT_WINDOW_CFG_DATA_ORDER_SHIFT);
-		fmt |= (IMGOUT_WINDOW_CFG_DATA_ORDER_P0P2P1 <<
-			IMGOUT_WINDOW_CFG_DATA_ORDER_SHIFT);
+		fmt <<= IMG_WIN_FORMAT_IMG_WIN_FORMAT_SHIFT;
+
+		fmt &= ~(IMG_WIN_FORMAT_IMG_DATA_ORDER_MASK <<
+			IMG_WIN_FORMAT_IMG_DATA_ORDER_SHIFT);
+		fmt |= (IMG_WIN_FORMAT_IMG_DATA_ORDER_P0P2P1 <<
+			IMG_WIN_FORMAT_IMG_DATA_ORDER_SHIFT);
 		break;
 	}
-	write_isp(isp_base + reg_imgout_window_cfg, fmt);
+	regw(isp_base + REG_ISP_IMG_WIN_FORMAT, fmt);
 
 	if (state->isp.i_state.width != w || state->isp.i_state.height != h) {
 		logi(&(state->pdev->dev), "output crop(%d, %d / %d x %d)\n",
 				x, y, w, h);
 
 		/* crop */
-		write_isp(isp_base + reg_imgout_window_x_start, x);
-		write_isp(isp_base + reg_imgout_window_y_start, y);
-		write_isp(isp_base + reg_imgout_window_x_width,	w);
-		write_isp(isp_base + reg_imgout_window_y_width,	h);
+		regw(isp_base + REG_ISP_IMG_WIN_X_START,
+			x << IMG_WIN_X_START_SHIFT);
+		regw(isp_base + REG_ISP_IMG_WIN_Y_START,
+			y << IMG_WIN_Y_START_SHIFT);
+		regw(isp_base + REG_ISP_IMG_WIN_WIDTH,
+			w << IMG_WIN_WIDTH_SHIFT);
+		regw(isp_base + REG_ISP_IMG_WIN_HEIGHT,
+			h << IMG_WIN_HEIGHT_SHIFT);
 	}
 }
 
 static inline void tcc_isp_set_decompanding(struct tcc_isp_state *state)
 {
-	volatile void __iomem *isp_base = state->isp_base;
+	void __iomem *isp_base = state->isp_base;
 	static const char * const str_dcpd_input_bit[] = {
 		"10bit", "12bit"};
 	static const char * const str_dcpd_output_bit[] = {
 		"10bit", "12bit", "14bit", "15bit",
 		"16bit", "17bit", "20bit"};
-	int i = 0;
+	u32 i = 0, val = 0;
 
 	logi(&(state->pdev->dev), "dcpd input %s, output %s\n",
 		str_dcpd_input_bit[state->hdr->decompanding_input_bit],
 		str_dcpd_output_bit[state->hdr->decompanding_output_bit]);
 
-	write_isp(isp_base + reg_dcpd_ctl,
-		((state->hdr->decompanding_curve_maxval <<
-		  DCPD_CTL_DCPD_CURVE_MAXVAL_NO_SHIFT) |
-		 (state->hdr->decompanding_output_bit <<
-		  DCPD_CTL_OUTPUT_BIT_SELECTION_SHIFT) |
-		 (state->hdr->decompanding_input_bit <<
-		  DCPD_CTL_INPUT_BIT_SELECTION_SHIFT) |
-		 (ON <<
-		  DCPD_CTL_DCPD_ON_OFF_SHIFT))
-	);
+	/* default decompanding setting */
+	val = ((state->hdr->decompanding_curve_maxval <<
+		DCPD_CTL_DCPD_CUR_MAXVAL_SHIFT) |
+		(state->hdr->decompanding_output_bit <<
+		DCPD_CTL_OUT_BIT_SEL_SHIFT) |
+		(state->hdr->decompanding_input_bit <<
+		DCPD_CTL_IN_BIT_SEL_SHIFT) |
+		(DCPD_CTL_DCPD_EN_ENABLE <<
+		DCPD_CTL_DCPD_EN_SHIFT));
 
-	logi(&(state->pdev->dev), "setting dcpd curve\n");
-	for (i = 0; i < 8; i++) {
-		write_isp(isp_base + reg_dcpd_crv_0 + (i * 2),
-			state->hdr->dcpd_crv[i]);
+	/* decompanding curve gain0 */
+	val |= (state->hdr->dcpd_cur_gain[0] << DCPD_CTL_DCPD_CUR_GAIN0_SHIFT);
+
+	regw(isp_base + REG_ISP_DCPD_CTL, val);
+
+	/* decompanding curve gain1~6 */
+	for (i = 0; i < 3; i++) {
+		regw(isp_base + REG_ISP_DCPD_CUR_GCFG1 + (i * 4),
+			((state->hdr->dcpd_cur_gain[(i * 2) + 1] <<
+			DCPD_CUR_GCFG1_DCPD_CUR_GAIN1_SHIFT) |
+			(state->hdr->dcpd_cur_gain[(i * 2) + 2] <<
+			DCPD_CUR_GCFG1_DCPD_CUR_GAIN2_SHIFT)));
 	}
-	logi(&(state->pdev->dev), "setting dcpd curve axis\n");
-	for (i = 0; i < 8; i++) {
-		write_isp(isp_base + reg_dcpdx_0 + (i * 2),
-			state->hdr->dcpdx[i]);
+
+	/* decompanding curve gain7, curve x-axis0 */
+	val = ((state->hdr->dcpd_cur_gain[7] <<
+		DCPD_CUR_GCFG4_DCPD_CUR_GAIN7_SHIFT) |
+		(state->hdr->dcpd_cur_x_axis[0] <<
+		DCPD_CUR_GCFG4_DCPD_CUR_X_AXIS0_SHIFT));
+
+	regw(isp_base + REG_ISP_DCPD_CUR_GCFG4, val);
+
+	/* decompanding curve x axis1~6 */
+	for (i = 0; i < 3; i++) {
+		regw(isp_base + REG_ISP_DCPD_CUR_XCFG1 + (i * 4),
+			((state->hdr->dcpd_cur_x_axis[(i * 2) + 1] <<
+			DCPD_CUR_XCFG1_DCPD_CUR_X_AXIS1_SHIFT) |
+			(state->hdr->dcpd_cur_gain[(i * 2) + 2] <<
+			DCPD_CUR_XCFG1_DCPD_CUR_X_AXIS2_SHIFT)));
+	}
+
+	/* decompanding x-axis7 */
+	val = ((state->hdr->dcpd_cur_x_axis[7] <<
+		DCPD_CUR_XCFG4_DCPD_CUR_X_AXIS7_SHIFT));
+
+	regw(isp_base + REG_ISP_DCPD_CUR_XCFG4, val);
+}
+
+static inline void tcc_isp_reset(struct tcc_isp_state *state, int reset)
+{
+	void __iomem *isp_base = state->isp_base;
+
+	if (reset) {
+		/* ISP, MCU reset */
+		regw(isp_base + REG_ISP_SOFT_RESET,
+			((SOFT_RESET_ISP_SOFT_RESET_RESET <<
+			SOFT_RESET_ISP_SOFT_RESET_SHIFT) |
+			(SOFT_RESET_MCU_SOFT_RESET_RESET <<
+			SOFT_RESET_MCU_SOFT_RESET_SHIFT)));
+	} else {
+		/* Wakeup ISP */
+		regw(isp_base + REG_ISP_SLEEP_MODE,
+			(SLEEP_MODE_SLEEP_MODE_DISABLE <<
+			SLEEP_MODE_SLEEP_MODE_SHIFT));
+		/* ISP, MCU release */
+		regw(isp_base + REG_ISP_SOFT_RESET,
+			((SOFT_RESET_ISP_SOFT_RESET_RELEASE <<
+			SOFT_RESET_ISP_SOFT_RESET_SHIFT) |
+			(SOFT_RESET_MCU_SOFT_RESET_RELEASE <<
+			SOFT_RESET_MCU_SOFT_RESET_SHIFT)));
 	}
 }
 
-static void tcc_isp_init_local(struct tcc_isp_state *state)
+static void tcc_isp_set_basic(struct tcc_isp_state *state)
 {
-	logi(&(state->pdev->dev), "start init ISP\n");
-
 	/* set register update control */
 	tcc_isp_set_regster_update_mode(state);
 
-	/* memory sharing */
-	tcc_isp_mem_share(state, state->mem_share);
-
-	/* disable wdma */
+	/* disable wdma(IM896A-22) */
 	tcc_isp_set_wdma(state, OFF);
 
-	/*
-	 * OAK setting
-	 */
-	/* De-companding */
-	if (state->hdr->mode == HDR_MODE_COMPANDING)
-		tcc_isp_set_decompanding(state);
+	/* memory sharing */
+	tcc_isp_mem_share(state, state->mem_share);
 
 	/*
 	 * ZELCOVA setting
@@ -454,38 +544,45 @@ static void tcc_isp_init_local(struct tcc_isp_state *state)
 	/* output */
 	tcc_isp_set_output(state);
 
+	/*
+	 * OAK setting
+	 */
+	/* De-companding */
+	if (state->hdr->mode == HDR_MODE_COMPANDING)
+		tcc_isp_set_decompanding(state);
+
 	/* register update */
 	tcc_isp_update_register(state);
-
-	logi(&(state->pdev->dev), "finish init ISP\n");
 }
 
-static inline void tcc_isp_additional_setting(struct tcc_isp_state *state)
+static inline void tcc_isp_set_tune(struct tcc_isp_state *state)
 {
-	volatile void __iomem *isp_base = state->isp_base;
+	void __iomem *isp_base = state->isp_base;
 	int i = 0;
 
-	logi(&(state->pdev->dev), "start %s\n", __func__);
+	for (i = 0; i < state->tune->isp_setting_size; i++) {
+		/* set tune value of ISP */
+		regw(isp_base + state->tune->isp[i].reg,
+				state->tune->isp[i].val);
+	}
+	tcc_isp_update_register(state);
 
-	for (i = 0; i < ARRAY_SIZE(settings); i++)
-		regw(isp_base + settings[i].reg, settings[i].val);
-
-	logi(&(state->pdev->dev), "finish %s\n", __func__);
+	logi(&(state->pdev->dev), "complete %s\n", __func__);
 }
 
-void tcc_isp_enable(struct tcc_isp_state *state, unsigned int enable)
+static void tcc_isp_enable(struct tcc_isp_state *state, unsigned int enable)
 {
-	logi(&(state->pdev->dev), "start %s\n", __func__);
-
 	if (enable) {
-		tcc_isp_init_local(state);
-		/* tcc_isp_additional_setting(state); */
+		/* enable isp */
+		tcc_isp_reset(state, ON);
+		usleep_range(5000, 6000);
+		tcc_isp_reset(state, OFF);
+		tcc_isp_set_basic(state);
+		tcc_isp_set_tune(state);
 	} else {
-		/*
-		 * TODO
-		 */
+		/* disable isp */
+		tcc_isp_reset(state, ON);
 	}
-	logi(&(state->pdev->dev), "end %s\n", __func__);
 }
 
 static int tcc_isp_parse_dt(struct platform_device *pdev,
@@ -521,18 +618,8 @@ static int tcc_isp_parse_dt(struct platform_device *pdev,
 	}
 	logi(&(state->pdev->dev), "mem base addr is %px\n", state->mem_base);
 
-#if 0
-	/*
-	 * Get UART pinctrl
-	 *
-	 * TCC8059 does not have an ball out of ISP UART.
-	 * TCC8050 has an ball out of ISP UART. Refer to the GPIO pins below.
-	 * UART TX - GPIO_MB[0] / GPIO_MB[6] / GPIO_MB[12] / GPIO_MB[24]
-	 * UART RX - GPIO_MB[1] / GPIO_MB[7] / GPIO_MB[13] / GPIO_MB[25]
-	 * But, GPIO pins above is used for other purpose.
-	 * So, H/W modification is needed to use ISP UART on the TCC8050 EVB.
-	 * Refer to the TCS(CV8050C-606)
-	 */
+#ifdef USE_ISP_UART
+	/* Get UART pinctrl */
 	state->uart_pinctrl = devm_pinctrl_get_select_default(&(pdev->dev));
 	if (IS_ERR(state->uart_pinctrl)) {
 		ret = PTR_ERR((const void *)state->uart_pinctrl);
@@ -549,58 +636,15 @@ err:
 	return ret;
 }
 
-/*
- * v4l2_subdev_video_ops implementations
- */
-static int tcc_isp_s_power(struct v4l2_subdev *sd, int on)
-{
-	struct tcc_isp_state	*state	= sd_to_state(sd);
-	int				ret	= 0;
-
-	logi(&(state->pdev->dev), "call\n");
-
-	return ret;
-}
-
-static int tcc_isp_init(struct v4l2_subdev *sd, u32 enable)
-{
-	struct tcc_isp_state	*state	= sd_to_state(sd);
-	int				ret	= 0;
-
-	logi(&(state->pdev->dev), "call\n");
-
-	tcc_isp_enable(state, enable);
-
-	return ret;
-}
-
-static int tcc_isp_load_fw(struct v4l2_subdev *sd)
-{
-	struct tcc_isp_state *state = sd_to_state(sd);
-	int ret = 0;
-
-	logi(&(state->pdev->dev), "call\n");
-
-	if (state->fw_load == 1) {
-		logi(&(state->pdev->dev), "skip loading firmware\n");
-		goto end;
-	}
-
-	ret = tcc_isp_request_firmware(state, state->isp_fw_name);
-	if (ret < 0) {
-		loge(&(state->pdev->dev), "FAIL - loading firmware(%s)\n",
-			TCC_ISP_FIRMWARE_NAME);
-		goto end;
-	}
-	state->fw_load = 1;
-
-end:
-	return ret;
-}
-
 static void tcc_isp_set_default(struct tcc_isp_state *state)
 {
-	state->hdr = &setting_hdr;
+	state->hdr = hdr_value[state->pdev->id];
+	state->tune = &tune_value[state->pdev->id];
+
+	logi(&(state->pdev->dev),
+		"The number of isp and adaptive tune data(%d, %d)\n",
+		state->tune->isp_setting_size,
+		state->tune->adaptive_setting_size);
 
 	/*
 	 * Because of ISP algorithm characteristics,
@@ -610,16 +654,18 @@ static void tcc_isp_set_default(struct tcc_isp_state *state)
 	state->isp.o_state.x = 8;
 	state->isp.o_state.y = 8;
 
-	state->isp.o_state.format = IMGOUT_WINDOW_CFG_FORMAT_YUV422;
-	state->isp.o_state.data_order = IMGOUT_WINDOW_CFG_DATA_ORDER_P0P2P1;
+	state->isp.o_state.format = IMG_WIN_FORMAT_IMG_WIN_FORMAT_YUV422;
+	state->isp.o_state.data_order = IMG_WIN_FORMAT_IMG_DATA_ORDER_P0P2P1;
 
 	/*
 	 * set axi bus output disable
 	 */
 	/* set register update control */
 	tcc_isp_set_regster_update_mode(state);
-	/* disable wdma */
+
+	/* disable wdma(IM896A-22) */
 	tcc_isp_set_wdma(state, OFF);
+
 	/* register update */
 	tcc_isp_update_register(state);
 }
@@ -686,14 +732,65 @@ static void tcc_isp_exit_controls(struct tcc_isp_state *state)
 	v4l2_ctrl_handler_free(&state->ctrl_hdl);
 }
 
+/*
+ * v4l2_subdev_video_ops implementations
+ */
+static int tcc_isp_s_power(struct v4l2_subdev *sd, int on)
+{
+	struct tcc_isp_state	*state	= sd_to_state(sd);
+	int				ret	= 0;
+
+	return ret;
+}
+
+static int tcc_isp_init(struct v4l2_subdev *sd, u32 enable)
+{
+	struct tcc_isp_state	*state	= sd_to_state(sd);
+	int				ret	= 0;
+
+	tcc_isp_enable(state, enable);
+
+	return ret;
+}
+
+static int tcc_isp_load_fw(struct v4l2_subdev *sd)
+{
+	struct tcc_isp_state *state = sd_to_state(sd);
+	int ret = 0;
+
+	if (state->fw_load == 1) {
+		logi(&(state->pdev->dev), "skip loading firmware\n");
+		goto end;
+	}
+
+	ret = tcc_isp_request_firmware(state, state->isp_fw_name);
+	if (ret < 0) {
+		loge(&(state->pdev->dev), "FAIL - loading firmware(%s)\n",
+			TCC_ISP_FIRMWARE_NAME);
+		goto end;
+	}
+#if 0
+	usleep_range(5000, 6000);
+	tcc_isp_set_adaptive_data(state);
+#endif
+end:
+	return ret;
+}
+
 static int tcc_isp_s_stream(struct v4l2_subdev *sd, int enable)
 {
 	struct tcc_isp_state *state = sd_to_state(sd);
 	int ret = 0;
 
-	logi(&(state->pdev->dev), "in\n");
-
-	logi(&(state->pdev->dev), "out\n");
+	if (enable) {
+		/* enable mcu */
+		tcc_isp_mcu_enable(state, ON);
+		usleep_range(5000, 6000);
+		tcc_isp_set_adaptive_data(state);
+	} else {
+		/* disable mcu */
+		tcc_isp_mcu_enable(state, OFF);
+	}
 
 	return ret;
 }
@@ -722,8 +819,6 @@ static int tcc_isp_g_dv_timings(struct v4l2_subdev *sd,
 	struct tcc_isp_state	*state	= sd_to_state(sd);
 	int				ret	= 0;
 
-	logi(&(state->pdev->dev), "%s call\n", __func__);
-
 	memcpy((void *)timings,
 		(const void *)&tcc_isp_dv_timings,
 		sizeof(*timings));
@@ -738,8 +833,6 @@ static int tcc_isp_get_fmt(struct v4l2_subdev *sd,
 	struct tcc_isp_state	*state	= sd_to_state(sd);
 	int ret	= 0;
 
-	logi(&(state->pdev->dev), "call\n");
-
 	memcpy((void *)&format->format,
 		(const void *)&state->fmt,
 		sizeof(struct v4l2_mbus_framefmt));
@@ -753,8 +846,6 @@ static int tcc_isp_set_fmt(struct v4l2_subdev *sd,
 	struct tcc_isp_state	*state	= sd_to_state(sd);
 	int ret	= 0;
 
-	logi(&(state->pdev->dev), "call\n");
-
 	memcpy((void *)&state->fmt,
 		(const void *)&format->format,
 		sizeof(struct v4l2_mbus_framefmt));
@@ -763,18 +854,14 @@ static int tcc_isp_set_fmt(struct v4l2_subdev *sd,
 	/* set -2 to get the margin of vertical front porch */
 	state->isp.i_state.height = state->fmt.height - 2;
 
-	ret = tcc_isp_rgb_order(state->fmt.code);
+	ret = tcc_isp_pixel_order(state->fmt.code);
 	if (ret < 0) {
 		loge(&(state->pdev->dev),
 			"RGB order(0x%x) is not supported\n", state->fmt.code);
 		goto err;
 	}
 
-	state->isp.i_state.rgb_order = ret;
-
-	logi(&(state->pdev->dev),
-		"RGB order(0x%x, 0x%x)\n",
-		state->fmt.code, state->isp.i_state.rgb_order);
+	state->isp.i_state.pixel_order = ret;
 
 	/*
 	 * Because of ISP algorithm characteristics,
@@ -799,13 +886,13 @@ static int tcc_isp_set_fmt(struct v4l2_subdev *sd,
 	tcc_isp_dv_timings.bt.height = state->fmt.height;
 
 	switch (state->isp.o_state.format) {
-	case IMGOUT_WINDOW_CFG_FORMAT_YUV422:
+	case IMG_WIN_FORMAT_IMG_WIN_FORMAT_YUV422:
 		state->fmt.code = MEDIA_BUS_FMT_UYVY8_1X16;
 		break;
-	case IMGOUT_WINDOW_CFG_FORMAT_YUV444:
+	case IMG_WIN_FORMAT_IMG_WIN_FORMAT_YUV444:
 		state->fmt.code = MEDIA_BUS_FMT_YUV8_1X24;
 		break;
-	case IMGOUT_WINDOW_CFG_FORMAT_RGB888:
+	case IMG_WIN_FORMAT_IMG_WIN_FORMAT_RGB888:
 		state->fmt.code = MEDIA_BUS_FMT_BGR888_1X24;
 		break;
 	}
@@ -863,9 +950,7 @@ static int tcc_isp_probe(struct platform_device *pdev)
 	pdev->id = of_alias_get_id(pdev->dev.of_node, "isp");
 	state->pdev = pdev;
 
-	/*
-	 * Parse device tree
-	 */
+	/* Parse device tree */
 	ret = tcc_isp_parse_dt(pdev, state);
 	if (ret < 0) {
 		loge(&(state->pdev->dev), "Fail tcc_isp_parse_dt\n");
@@ -966,6 +1051,7 @@ static const struct of_device_id tcc_isp_of_match[] = {
 	},
 };
 MODULE_DEVICE_TABLE(of, tcc_isp_of_match);
+
 static struct platform_driver tcc_isp_driver = {
 	.probe = tcc_isp_probe,
 	.remove = tcc_isp_remove,

@@ -35,14 +35,14 @@ struct hdr_state {
 	int decompanding_input_bit;
 	int decompanding_output_bit;
 
-	unsigned long dcpd_crv[8];
-	unsigned long dcpdx[8];
+	unsigned long dcpd_cur_gain[8];
+	unsigned long dcpd_cur_x_axis[8];
 };
 
 struct input_state {
 	int width;
 	int height;
-	int rgb_order;
+	int pixel_order;
 };
 
 struct output_state {
@@ -60,6 +60,14 @@ struct isp_state {
 	struct output_state o_state;
 };
 
+struct isp_tune {
+	const struct reg_setting *isp;
+	unsigned int isp_setting_size;
+
+	const struct reg_setting *adaptive;
+	unsigned int adaptive_setting_size;
+};
+
 struct tcc_isp_state {
 	struct platform_device *pdev;
 	struct v4l2_subdev	sd;
@@ -68,19 +76,23 @@ struct tcc_isp_state {
 	char isp_fw_name[20];
 	int fw_load;
 	/* register base addr */
-	volatile void __iomem * isp_base;
-	void __iomem * mem_base;
-	volatile void __iomem * cfg_base;
+	void __iomem *isp_base;
+	void __iomem *mem_base;
+	void __iomem *cfg_base;
 
 	/* uart pinctrl */
-	struct pinctrl * uart_pinctrl;
+	struct pinctrl *uart_pinctrl;
 
 	struct v4l2_mbus_framefmt fmt;
-	/* oak setting */
-	struct hdr_state * hdr;
+
+	/* oak(hdr) setting */
+	const struct hdr_state *hdr;
 
 	/* zelcova(isp) setting */
 	struct isp_state isp;
+
+	/* tune setting */
+	const struct isp_tune *tune;
 
 	int mem_share;
 

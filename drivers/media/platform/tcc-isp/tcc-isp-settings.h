@@ -3,253 +3,104 @@
  * Copyright (C) Telechips Inc.
  */
 
-#ifndef __MCNEX_SETTING_H__
-#define __MCNEX_SETTING_H__
+#ifndef __TCC_ISP_SETTINGS_H__
+#define __TCC_ISP_SETTINGS_H__
 
 #include "tcc-isp.h"
 
-/* 
- * initializing value for
- * menex camera module (ar0147 / max96701)
+/*
+ * To use ISP UART,
+ * enable "USE_ISP_UART" define and pinctl properties of isp device node in
+ * device tree
+ *
+ * TCC8059 does not have an ball out of ISP UART.
+ * TCC8050/53 has an ball out of ISP UART. Refer to the GPIO pins below.
+ * UART TX - GPIO_MB[0] / GPIO_MB[6] / GPIO_MB[12] / GPIO_MB[24]
+ * UART RX - GPIO_MB[1] / GPIO_MB[7] / GPIO_MB[13] / GPIO_MB[25]
+ * But, GPIO pins above is used for other purpose.
+ * So, H/W modification is needed to use ISP UART on the TCC8050/53 EVB.
+ * Refer to the TCS(CV8050C-606)
  */
+//#define USE_ISP_UART
 
-struct hdr_state setting_hdr = {
+/* decompanding mode(input 12bits, output 20bits) */
+const struct hdr_state setting_hdr0 = {
 	.mode				= HDR_MODE_COMPANDING,
 
-	.decompanding			= ON,
+	.decompanding			= DCPD_CTL_DCPD_EN_ENABLE,
 	.decompanding_curve_maxval	= 7,
-	.decompanding_input_bit		= DCPD_CTL_INPUT_BIT_12,
-	.decompanding_output_bit	= DCPD_CTL_OUTPUT_BIT_20,
+	.decompanding_input_bit		= DCPD_CTL_IN_BIT_SEL_12BITS,
+	.decompanding_output_bit	= DCPD_CTL_OUT_BIT_SEL_20BITS,
 
-	.dcpd_crv[0]			= 0x0002,
-	.dcpd_crv[1]			= 0x0040,
-	.dcpd_crv[2]			= 0x03ff,
-	.dcpd_crv[3]			= 0x03ff,
-	.dcpd_crv[4]			= 0x03ff,
-	.dcpd_crv[5]			= 0x03ff,
-	.dcpd_crv[6]			= 0x03ff,
-	.dcpd_crv[7]			= 0x03ff,
-	
-	.dcpdx[0]			= 0x0200,
-	.dcpdx[1]			= 0x02f8,
-	.dcpdx[2]			= 0x03e8,
-	.dcpdx[3]			= 0x03ff,
-	.dcpdx[4]			= 0x03ff,
-	.dcpdx[5]			= 0x03ff,
-	.dcpdx[6]			= 0x03ff,
-	.dcpdx[7]			= 0x03ff,
+	.dcpd_cur_gain[0]		= 0x0002,
+	.dcpd_cur_gain[1]		= 0x0040,
+	.dcpd_cur_gain[2]		= 0x03ff,
+	.dcpd_cur_gain[3]		= 0x03ff,
+	.dcpd_cur_gain[4]		= 0x03ff,
+	.dcpd_cur_gain[5]		= 0x03ff,
+	.dcpd_cur_gain[6]		= 0x03ff,
+	.dcpd_cur_gain[7]		= 0x03ff,
+
+	.dcpd_cur_x_axis[0]		= 0x0200,
+	.dcpd_cur_x_axis[1]		= 0x02f8,
+	.dcpd_cur_x_axis[2]		= 0x03e8,
+	.dcpd_cur_x_axis[3]		= 0x03ff,
+	.dcpd_cur_x_axis[4]		= 0x03ff,
+	.dcpd_cur_x_axis[5]		= 0x03ff,
+	.dcpd_cur_x_axis[6]		= 0x03ff,
+	.dcpd_cur_x_axis[7]		= 0x03ff,
 };
 
-/* base setting for chip verification (isp block on/off) */
-struct reg_setting settings[] = {
-	{0x1300,  0x00f10010},
-	{0x1304,  0x00040004},
-	{0x1308,  0x00080041},
-	{0x130C,  0x00410041},
-	{0x1310,  0x00410000},
+/* setting values(isp and adaptive_data are from btree) */
+const struct reg_setting setting_isp0[] = {
+	/* TODO */
+};
 
-	{0x1400,  0x000101E0},
-	{0x1404,  0x01000200},
+const struct reg_setting setting_adaptive_data0[] = {
+	/* TODO */
+};
 
-	{0x1800,  0x0001005F},
-	{0x1804,  0x009B00D1},
-	{0x1808,  0x01040159},
-	{0x180C,  0x019A01D6},
-	{0x1810,  0x02080238},
-	{0x1814,  0x0262028A},
-	{0x1818,  0x02AD02E9},
-	{0x181C,  0x0318033C},
-	{0x1820,  0x035C0396},
-	{0x1824,  0x03C003E8},
-	{0x1828,  0x03FF0000},
+/*
+ * setting values below are used to set ISP0 ~ 3.
+ * If the setting value is different for each ISP,
+ * make setting_xxx structure and change below structure's member initialization
+ */
+const struct hdr_state *hdr_value[4] = {
+	&setting_hdr0,	/* FOR ISP0 */
+	&setting_hdr0,	/* FOR ISP1 */
+	&setting_hdr0,	/* FOR ISP2 */
+	&setting_hdr0,	/* FOR ISP3 */
+};
 
-	{0x1900,  0x0c000021},
-	{0x1904,  0x00400033},
-	{0x1908,  0x04000000},
-	{0x7000,  0x00644677},
-	{0x7004,  0x005e7607},
-	{0x7008,  0x005034ee},
-	{0x700C,  0x0049248d},
-	{0x7010,  0x004a649f},
-	{0x7014,  0x005004eb},
-	{0x7018,  0x005fe5e4},
-	{0x701C,  0x00663653},
-	{0x7020,  0x006ad6fb},
-	{0x7024,  0x0055f571},
-	{0x7028,  0x00495490},
-	{0x702C,  0x0044043e},
-	{0x7030,  0x00444441},
-	{0x7034,  0x0049548d},
-	{0x7038,  0x00569562},
-	{0x703C,  0x006d66d1},
-	{0x7040,  0x0062c63a},
-	{0x7044,  0x004fa503},
-	{0x7048,  0x00441448},
-	{0x704C,  0x00400400},
-	{0x7050,  0x003f73f9},
-	{0x7054,  0x00444446},
-	{0x7058,  0x004fd500},
-	{0x705C,  0x00631636},
-	{0x7060,  0x00614640},
-	{0x7064,  0x004fa503},
-	{0x7068,  0x0044a446},
-	{0x706C,  0x003f7400},
-	{0x7070,  0x003fd3f9},
-	{0x7074,  0x0044a441},
-	{0x7078,  0x005004fa},
-	{0x707C,  0x0062c62c},
-	{0x7080,  0x006b4727},
-	{0x7084,  0x0056257b},
-	{0x7088,  0x0049748d},
-	{0x708C,  0x0043e43e},
-	{0x7090,  0x0043b43b},
-	{0x7094,  0x0048d486},
-	{0x7098,  0x00566571},
-	{0x709C,  0x006dc713},
-	{0x70A0,  0x0064e69d},
-	{0x70A4,  0x005f0623},
-	{0x70A8,  0x004fd4eb},
-	{0x70AC,  0x0049748d},
-	{0x70B0,  0x0048b490},
-	{0x70B4,  0x004e24dd},
-	{0x70B8,  0x005f0614},
-	{0x70BC,  0x0065d68c},
-	{0x70C0,  0x00644654},
-	{0x70C4,  0x005e75e0},
-	{0x70C8,  0x005034ed},
-	{0x70CC,  0x00492491},
-	{0x70D0,  0x004a64a8},
-	{0x70D4,  0x005004e2},
-	{0x70D8,  0x005fe608},
-	{0x70DC,  0x0066367e},
-	{0x70E0,  0x006ad6dd},
-	{0x70E4,  0x0055f56b},
-	{0x70E8,  0x00495494},
-	{0x70EC,  0x00440440},
-	{0x70F0,  0x00444446},
-	{0x70F4,  0x0049548f},
-	{0x70F8,  0x00569572},
-	{0x70FC,  0x006d6701},
-	{0x7100,  0x0062c659},
-	{0x7104,  0x004fa511},
-	{0x7108,  0x0044144e},
-	{0x710C,  0x00400400},
-	{0x7110,  0x003f73f9},
-	{0x7114,  0x0044444e},
-	{0x7118,  0x004fd505},
-	{0x711C,  0x00631632},
-	{0x7120,  0x00614645},
-	{0x7124,  0x004fa507},
-	{0x7128,  0x0044a44a},
-	{0x712C,  0x003f7400},
-	{0x7130,  0x003fd400},
-	{0x7134,  0x0044a44a},
-	{0x7138,  0x0050050e},
-	{0x713C,  0x0062c659},
-	{0x7140,  0x006b46e3},
-	{0x7144,  0x0056256f},
-	{0x7148,  0x00497497},
-	{0x714C,  0x0043e441},
-	{0x7150,  0x0043b43b},
-	{0x7154,  0x0048d48f},
-	{0x7158,  0x0056656b},
-	{0x715C,  0x006dc6e9},
-	{0x7160,  0x0064e668},
-	{0x7164,  0x005f05fa},
-	{0x7168,  0x004fd4fc},
-	{0x716C,  0x00497497},
-	{0x7170,  0x0048b485},
-	{0x7174,  0x004e24e7},
-	{0x7178,  0x005f05e5},
-	{0x717C,  0x0065d65e},
-	{0x1900,  0x0C010001},
-
-	{0x1A00,  0x00000000},
-
-	{0x1A10,  0x00000000},
-	{0x1A14,  0x00000000},
-
-	{0x1A30,  0x0000FFFF},
-	{0x1A34,  0xFFFF00FF},
-
-	{0x1A80,  0x00003020},
-	{0x1A84,  0xFFFFFFFF},
-	{0x1A88,  0x00FF3F3F},
-	{0x1A8C,  0x3F3F003F},
-
-	{0x2000,  0x00043020},
-	{0x2004,  0x200100FF},
-	{0x2008,  0x00101010},
-	{0x200C,  0xFFFFFFFF},
-	{0x2010,  0x00FFFFFF},
-	{0x2014,  0xFFFF00FF},
-
-	{0x2070,  0x0002FFFF},
-	{0x2074,  0x00FF0F08},
-	{0x2078,  0x08080808},
-	{0x207C,  0x08080808},
-	{0x2080,  0x08080808},
-	{0x2084,  0x08080808},
-	{0x2088,  0x1000004B},
-
-	{0x20B8,  0x0000FFFF},
-	{0x20BC,  0x1F08FF00},
-	{0x20C0,  0x00FF0508},
-	{0x20C4,  0x00000000},
-	{0x20C8,  0x00000000},
-
-	{0x1A50,  0x0000FFFF},
-	{0x1A54,  0x00FFFFFF},
-	{0x1A58,  0xFFFF00FF},
-	{0x1A5C,  0x00000000},
-
-	{0x1AB0,  0x0F001810},
-	{0x1AB4,  0xFFFFFFFF},
-	{0x1AB8,  0x00FF0000},
-
-	{0x2040,  0x00000609},
-	{0x2044,  0x00180000},
-	{0x2048,  0xFFFFFFFF},
-	{0x204C,  0x00FFFFFF},
-	{0x2050,  0xFFFF00FF},
-	{0x2054,  0x207F0000},
-
-	{0x20E0,  0x0F000003},
-	{0x20E4,  0x1F1FFFFF},
-	{0x20E8,  0xFFFFFFFF},
-	{0x20EC,  0xFFFFFFFF},
-	{0x20F0,  0xFFFF00FF},
-	{0x20F4,  0x007F0000},
-
-	{0x20A8,  0x0000400A},
-	{0x20AC,  0x40000000},
-
-	{0x2500,  0x007E0180},
-	{0x2504,  0x00660019},
-	{0x2508,  0x00660180},
-	{0x250C,  0x004C0180},
-	{0x2510,  0x00030002},
-	{0x2514,  0x00560000},
-
-	{0x2700,  0x000E00FF},
-	{0x2704,  0x00FF00FF},
-	{0x2708,  0x00FF00FF},
-	{0x270C,  0x00FF0000},
-	{0x2710,  0x00000000},
-	{0x2714,  0x00000000},
-	{0x2718,  0x00000000},
-	{0x271C,  0x00000000},
-	{0x2720,  0x00000000},
-	{0x2724,  0x00000001},
-	{0x2728,  0xFF018001},
-
-	{0x2600,  0x0001006E},
-	{0x2604,  0x00504040},
-	{0x2608,  0x40404040},
-	{0x260C,  0x00000103},
-
-	// RGB AE gain
-	//{0x1500, 0x00011000},
+const struct isp_tune tune_value[4] = {
+	/* FOR ISP0 */
+	{
+		setting_isp0,
+		ARRAY_SIZE(setting_isp0),
+		setting_adaptive_data0,
+		ARRAY_SIZE(setting_adaptive_data0),
+	},
+	/* FOR ISP1 */
+	{
+		setting_isp0,
+		ARRAY_SIZE(setting_isp0),
+		setting_adaptive_data0,
+		ARRAY_SIZE(setting_adaptive_data0),
+	},
+	/* FOR ISP2 */
+	{
+		setting_isp0,
+		ARRAY_SIZE(setting_isp0),
+		setting_adaptive_data0,
+		ARRAY_SIZE(setting_adaptive_data0),
+	},
+	/* FOR ISP3 */
+	{
+		setting_isp0,
+		ARRAY_SIZE(setting_isp0),
+		setting_adaptive_data0,
+		ARRAY_SIZE(setting_adaptive_data0),
+	},
 };
 
 #endif
