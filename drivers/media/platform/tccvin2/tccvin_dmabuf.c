@@ -440,7 +440,7 @@ int tccvin_dmabuf_alloc(struct tccvin_dmabuf_heap *heap,
 		return ret;
 
 	exp_info.ops = &tccvin_dmabuf_dmabuf_ops;
-	exp_info.size = buffer->size;
+	exp_info.size = PAGE_ALIGN(buffer->size);
 	exp_info.flags = flags | O_RDWR;
 	exp_info.priv = buffer;
 
