@@ -78,8 +78,7 @@ static int dptx_intr_handle_drm_interface( struct Dptx_Params *pstDptx, bool bHo
 
 		return ( 0 );
 	}
-
-	bRetVal = Dptx_Intr_Get_Port_Composition( pstDptx );
+	bRetVal = Dptx_Intr_Get_Port_Composition( pstDptx, 1 );
 	if( bRetVal == DPTX_RETURN_FAIL )
 	{
 		return ( ENODEV );
@@ -344,11 +343,12 @@ irqreturn_t Dptx_Intr_IRQ( int irq, void *dev )
 	return eRetVal;
 }
 
-bool Dptx_Intr_Get_Port_Composition( struct Dptx_Params *pstDptx )
+bool Dptx_Intr_Get_Port_Composition(struct Dptx_Params *pstDptx, uint8_t ucClear_PayloadID)
 {
-	bool		bRetVal;
-	bool		bMST_Supported;
-	u8			ucNumOfPluggedPorts = 0, ucDP_Index;
+	bool	bRetVal;
+	bool	bMST_Supported;
+	u8	ucNumOfPluggedPorts = 0, ucDP_Index;
+	int32_t	iRetVal;
 
 	bRetVal = Dptx_Ext_Get_Sink_Stream_Capability( pstDptx, &bMST_Supported );
 	if( bRetVal == DPTX_RETURN_FAIL )
@@ -356,69 +356,83 @@ bool Dptx_Intr_Get_Port_Composition( struct Dptx_Params *pstDptx )
 		return ( DPTX_RETURN_FAIL );
 	}
 
-	if( bMST_Supported )
+	bRetVal = Dptx_Edid_Read_EDID_I2C_Over_Aux( pstDptx );
+	if( bRetVal == DPTX_RETURN_SUCCESS )
 	{
-		bRetVal = Dptx_Ext_Get_TopologyState( pstDptx, &ucNumOfPluggedPorts );
-		if( bRetVal == DPTX_RETURN_FAIL )
-		{
-			bRetVal = Dptx_Max968XX_Get_TopologyState( &ucNumOfPluggedPorts );
-			if( bRetVal == DPTX_RETURN_FAIL )
-			{
-				ucNumOfPluggedPorts = 1;
-			}
-
-			for( ucDP_Index = 0; ucDP_Index < ucNumOfPluggedPorts; ucDP_Index++ )
-			{
-				memset( pstDptx->paucEdidBuf_Entry[ucDP_Index], 0,	 DPTX_EDID_BUFLEN );
-			}
-
-			pstDptx->bSideBand_MSG_Supported = false;
-
-			dptx_notice("%d %s connected", ucNumOfPluggedPorts, ucNumOfPluggedPorts == 1 ? "Deserializer is":"Deserializers are");
-		}
-		else
-		{
-			if( ucNumOfPluggedPorts == 0 )
-			{
-				ucNumOfPluggedPorts = 1;
-			}
-
-			if( ucNumOfPluggedPorts == 1 )
-			{
-				Dptx_Edid_Read_EDID_I2C_Over_Aux( pstDptx );
-
-				memcpy( pstDptx->paucEdidBuf_Entry[PHY_INPUT_STREAM_0], pstDptx->pucEdidBuf,	DPTX_EDID_BUFLEN );
-			}
-			else
-			{
-				for( ucDP_Index = 0; ucDP_Index < ucNumOfPluggedPorts; ucDP_Index++ )
-				{
-					Dptx_Edid_Read_EDID_Over_Sideband_Msg( pstDptx, ucDP_Index, true );
-
-					memcpy( pstDptx->paucEdidBuf_Entry[ucDP_Index], pstDptx->pucEdidBuf,	DPTX_EDID_BUFLEN );
-				}
-			}
-
-			pstDptx->bSideBand_MSG_Supported = true;
-
-			dptx_notice("%d %s connected", ucNumOfPluggedPorts, ucNumOfPluggedPorts == 1 ? "Ext. monitor is":"Ext. monitors are");
-		}
+		pstDptx->bSideBand_MSG_Supported = true;
 	}
 	else
 	{
-		bRetVal = Dptx_Edid_Read_EDID_I2C_Over_Aux( pstDptx );
-		if( bRetVal == DPTX_RETURN_SUCCESS )
+		pstDptx->bSideBand_MSG_Supported = false;
+	}
+
+	if( pstDptx->bSideBand_MSG_Supported )
+	{
+		if( bMST_Supported )
 		{
-			dptx_notice("1 Ext. monitor is connected");
+			if( ucClear_PayloadID )
+			{
+				iRetVal = Dptx_Ext_Clear_SidebandMsg_PayloadID_Table( pstDptx );
+				if(iRetVal != 0)
+				{
+					dptx_err("Failed to clear payload id table");
+				}
+			}
+
+			bRetVal = Dptx_Ext_Get_TopologyState( pstDptx,      &ucNumOfPluggedPorts );
+			if(bRetVal == DPTX_RETURN_FAIL)
+			{
+				dptx_err("Failed to get topology...");
+				ucNumOfPluggedPorts = 1;
+			}
 		}
 		else
 		{
-			dptx_notice("1 SerDes is connected");
+			ucNumOfPluggedPorts = 1;
 		}
 
-		ucNumOfPluggedPorts = 1;
+		if( ucNumOfPluggedPorts == 1 )
+		{
+			bRetVal = Dptx_Edid_Read_EDID_I2C_Over_Aux( pstDptx );
+			if(bRetVal == DPTX_RETURN_FAIL)
+			{
+				dptx_notice("Failed to get EDID on I2C_Over_Aux");
+				memset( pstDptx->paucEdidBuf_Entry[ucDP_Index], 0,   DPTX_EDID_BUFLEN );
+			}
+		}
+		else
+		{
+			for( ucDP_Index = 0; ucDP_Index < ucNumOfPluggedPorts; ucDP_Index++ )
+			{
+				bRetVal = Dptx_Edid_Read_EDID_Over_Sideband_Msg( pstDptx, ucDP_Index, true );
+				if(bRetVal == DPTX_RETURN_FAIL)
+				{
+					dptx_notice("Failed to get EDID from DP %d on Sideband_Msg", ucDP_Index);
+					memset( pstDptx->paucEdidBuf_Entry[ucDP_Index], 0,   DPTX_EDID_BUFLEN );
+				}
+				else
+				{
+					memcpy( pstDptx->paucEdidBuf_Entry[ucDP_Index], pstDptx->pucEdidBuf,	DPTX_EDID_BUFLEN );
+				}
+			}
+		}
+		dptx_notice("%d %s connected", ucNumOfPluggedPorts, ucNumOfPluggedPorts == 1 ? "Ext. monitor is":"Ext. monitors are");
+	}
+	else
+	{
+		bRetVal = Dptx_Max968XX_Get_TopologyState( &ucNumOfPluggedPorts );
+		if( bRetVal == DPTX_RETURN_FAIL )
+		{
+			dptx_err("Failed to get topology from SerDes");
+			ucNumOfPluggedPorts = 1;
+		}
 
-		memcpy( pstDptx->paucEdidBuf_Entry[PHY_INPUT_STREAM_0], pstDptx->pucEdidBuf,	DPTX_EDID_BUFLEN );
+		for( ucDP_Index = 0; ucDP_Index < ucNumOfPluggedPorts; ucDP_Index++ )
+		{
+			memset( pstDptx->paucEdidBuf_Entry[ucDP_Index], 0,	 DPTX_EDID_BUFLEN );
+		}
+
+		dptx_notice("%d %s connected", ucNumOfPluggedPorts, ucNumOfPluggedPorts == 1 ? " panel is":" panels are");
 	}
 
 	pstDptx->ucNumOfPorts = ucNumOfPluggedPorts;

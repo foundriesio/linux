@@ -195,13 +195,6 @@ struct DPTX_API_Audio_Params
 	enum  DPTX_AUDIO_IEC60958_3_ORIGINAL_SAMPLE_FREQ eIEC_OrgSamplingFreq;
 };
 
-int32_t Dpv14_Tx_API_Get_HPD_State(uint8_t *pucHPD_State);
-int32_t Dpv14_Tx_API_Get_Port_Composition( bool *pbMST_Supported, u8 *pucNumOfPluggedPorts);
-int32_t Dpv14_Tx_API_Get_Edid( u8 ucStream_Index, u8 *pucEDID_Buf, u32 uiBuf_Size );
-int32_t Dpv14_Tx_API_Perform_LinkTraining( bool *pbLinkTraining_Status );
-int32_t Dpv14_Tx_API_Set_Video_Timing( u8 ucStream_Index, struct DPTX_API_Dtd_Params_t *dptx_detailed_timing );
-int32_t Dpv14_Tx_API_Set_Video_Enable( u8 ucStream_Index, bool bEnable );
-
 int32_t Dpv14_Tx_API_Set_Audio_Configuration(uint8_t ucDP_Index, struct DPTX_API_Audio_Params *pstDptx_audio_params);
 int32_t Dpv14_Tx_API_Get_Audio_Configuration(uint8_t ucDP_Index, struct DPTX_API_Audio_Params *pstDptx_audio_params);
 int32_t Dpv14_Tx_API_Set_Audio_Mute(uint8_t ucDP_Index, uint8_t ucMute);

@@ -39,7 +39,6 @@ Suite 330, Boston, MA 02111-1307 USA
 #include "Dptx_dbg.h"
 #include "Dptx_drm_dp_addition.h"
 
-
 extern void Hpd_Intr_CallBabck( u8 ucDP_Index, bool bHPD_State );
 
 static int32_t of_parse_dp_dt( struct Dptx_Params	*pstDptx, struct device_node *pstOfNode, uint32_t *puiPeri0_PClk, uint32_t *puiPeri1_PClk, uint32_t *puiPeri2_PClk, uint32_t *puiPeri3_PClk )
@@ -270,7 +269,7 @@ static int32_t Dpv14_Tx_Probe( struct platform_device *pdev)
 	pstDptx->eLast_HPDStatus = ( ucHotPlugged == (uint8_t)HPD_STATUS_PLUGGED ) ? HPD_STATUS_PLUGGED : HPD_STATUS_UNPLUGGED;
 	if( ucHotPlugged == (uint8_t)HPD_STATUS_PLUGGED )
 	{
-		Dptx_Intr_Get_Port_Composition( pstDptx );
+		Dptx_Intr_Get_Port_Composition( pstDptx, 0 );
 	}
 
 	pstVideoParams = &pstDptx->stVideoParams;

@@ -654,29 +654,25 @@ static int Dptx_Max968XX_probe( struct i2c_client *client, const struct i2c_devi
 
 	if( ucElements == SER_DES_INPUT_INDEX_MAX )
 	{
-		dptx_err("Invalid device address as 0x%x", client->addr << 1);
-		return -ENOMEM;
-	}
-	else
-	{
-		dptx_dbg("Found elements as index %d, device address as 0x%x", ucElements, client->addr << 1);
+		dptx_err("It's limited to 4 SerDes ports connected.. device address as 0x%x", client->addr << 1);
+		return ENOMEM;
 	}
 
 	aucAddr_buf[0] = (unsigned char)( SER_DEV_REV >> 8 );
 	aucAddr_buf[1] = (unsigned char)( SER_DEV_REV & 0xFF );
 
 	iRW_Len = i2c_master_send((const struct i2c_client *)client, (const char *)aucAddr_buf, (int)SER_DES_I2C_REG_ADD_LEN );
-	if( iRW_Len != (int)SER_DES_I2C_REG_ADD_LEN ) 
+	if( iRW_Len != (int)SER_DES_I2C_REG_ADD_LEN )
 	{
-		dptx_dbg("i2c device %s: error to write register address as 0x%x.. w len %d !!!!", client->name, client->addr, iRW_Len );
-		return (0);
+		dptx_info("DP %d port isn't connected as i2c device name '%s', dev address 0x%x ..", ucElements, client->name, client->addr);
+		return 0;
 	}
 
 	iRW_Len = i2c_master_recv((const struct i2c_client *)client, &ucData_buf, 1 );
 	if( iRW_Len != 1 ) 
 	{
-		dptx_dbg("i2c device %s: error to read value from register address as 0x%x.. R read %d !!!!\n", client->name, client->addr, iRW_Len );
-		return (0);
+		dptx_info("DP %d port isn't connected as i2c device name '%s', dev address 0x%x ..", ucElements, client->name, client->addr);
+		return 0;
 	}
 
 	if( ucElements == SER_INPUT_INDEX_0 )
@@ -694,12 +690,13 @@ static int Dptx_Max968XX_probe( struct i2c_client *client, const struct i2c_devi
 
 	of_parse_serdes_dt( pstMax968xx_dev );
 
-	dptx_notice("[%d]%s(%d) I2C %s address 0x%x : %s revision is %d.. SerDes Lane %s",
+	dptx_info("[%d]%s: %s I2C name '%s', address 0x%x : revision is %d.. SerDes Lane %s",
 					ucElements,
 					( pstMax968xx_dev->ucEVB_Type == TCC8059_EVB_01 ) ? "TCC8059 EVB":( pstMax968xx_dev->ucEVB_Type == TCC8050_SV_01 ) ? "TCC8050/3 sv0.1":( pstMax968xx_dev->ucEVB_Type == TCC8050_SV_10 ) ? "TCC8050/3 sv1.0":"Unknown",
-					pstMax968xx_dev->ucEVB_Type,
-					client->name, (( client->addr ) << 1 ),
-					( client->addr << 1 ) == DP0_PANEL_SER_I2C_DEV_ADD ? "Ser":"Des", ucData_buf,
+					( client->addr << 1 ) == DP0_PANEL_SER_I2C_DEV_ADD ? "Ser":"Des",
+					client->name,
+					(( client->addr ) << 1 ),
+					ucData_buf,
 					( pstMax968xx_dev->bSer_LaneSwap ) ? "is swapped":"is not swapped");
 
 	if( pstMax968xx_dev->ucEVB_Type != TCC8059_EVB_01 )
@@ -765,7 +762,4 @@ static void __exit Max968XX_Drv_exit(void)
 	i2c_del_driver( &stMax96851_78_drv );
 }
 module_exit(Max968XX_Drv_exit);
-
-
-
 
