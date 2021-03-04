@@ -283,94 +283,6 @@ again:
 	return ( DPTX_RETURN_SUCCESS );
 }
 
-/* 2.11.3.1 Vesa DP V1.4 : Sideband MSG Header()
-	The Sideband MSG header specifies which DP nodes are to process or receive data of the Sidebandk MSG.
-
-	Sideband_MSG_Header()
-	{
-		Link_Count_Total[4 Bits]
-		Link_Count_Remaining[4 Bits]
-		
-		for(i = 0; i < Link_Count_Total; i++ )
-		{
-			Relative_Address[i]
-		}
-		while(!bytealigned())
-		{
-			zero_bit
-		}
-		
-		Broadcast_Message[1 Bit]
-		Patch_Message[1 Bit]
-		Sideband_MSG_Body_Length[6 Bits]
-		Start_Of_Message_Transaction[1 Bit]
-		End_Of_Message_Transaction[1 Bit]
-		zero[1 Bit]
-		Message_Sequence_No[1 Bit]
-		Sideband_MSG_CRC[4 Bits]
-	}
-*/
-/*	2.11.9.2 CLEAR_PAYLOAD_ID_TABLE in Vesa DP V1.4
-
-	The CLEAR_PAYLOAD_ID_TABLE path broadcast request message transaction is sent by an MST DP device to de-allocate all VC Payload Id. 
-
-	CLEAR_PAYLOAD_ID_TABLE_Request()
-	{
-		zero
-		Request_Identifier
-	}
-
-	CLEAR_PAYLOAD_ID_TABLE_ACK_Reply()
-	{
-		zero
-		Request_Identifier
-	}	
-*/
-static bool dptx_ext_clear_sideband_msg_payload_id_table( struct Dptx_Params *pstDptx )
-{
-	bool	bRetVal;
-	u8		ucReply_Len;
-	u8		aucMsg_Buf[MAX_MSG_BUFFER_SIZE], *pucMssage;
-	int		iMsg_Len = 0;
-
-	struct drm_dp_sideband_msg_hdr stSideBand_MsgHeader = 
-	{
-		.lct = 1,
-		.lcr = 6,
-		.rad = { 0, },
-		.broadcast = true,
-		.path_msg = 1,
-		.msg_len = 2,
-		.somt = 1,
-		.eomt = 1,
-		.seqno = 0,
-	};
-
-	Drm_Addition_Encode_Sideband_Msg_Hdr( &stSideBand_MsgHeader, aucMsg_Buf, &iMsg_Len );
-
-	pucMssage		= &aucMsg_Buf[iMsg_Len];		/* Header */
-	pucMssage[0]	= DP_CLEAR_PAYLOAD_ID_TABLE;	/* Header + Payload ID */
-	
-	Drm_Addition_Encode_SideBand_Msg_CRC( pucMssage, 1 );	/* Header + ( Payload ID + CRC = SIdeband MSG Body ) */
-
-	iMsg_Len += 2;
-
-	bRetVal = Dptx_Aux_Write_Bytes_To_DPCD( pstDptx, DP_SIDEBAND_MSG_DOWN_REQ_BASE, aucMsg_Buf, iMsg_Len );
-	if( bRetVal ==  DPTX_RETURN_FAIL )
-	{
-		return ( DPTX_RETURN_FAIL );
-	}
-
-	bRetVal = dptx_ext_get_sideband_msg_down_req_reply( pstDptx, DP_CLEAR_PAYLOAD_ID_TABLE, NULL, &ucReply_Len );
-	if( bRetVal ==	DPTX_RETURN_FAIL )
-	{
-		return ( DPTX_RETURN_FAIL );
-	}
-
-	return ( DPTX_RETURN_SUCCESS );
-}
-
-
 /* 2.11.9.4 ENUM_PATH_RESOURCES in Vesa DP V1.4
 	ENUM_PATH_RESOURCES is a path request message transaction used to determine the minimum available PBN of a path from the DP Source to Sink device.
 	This message is targeted at the downstream DP Branch device of the path to be enumerated. 
@@ -653,110 +565,6 @@ static bool dptx_ext_set_sideband_msg_link_address( struct Dptx_Params *dptx,
 //	dptx_ext_print_buf( pstSideband_Msg_Rx->msg, iMsg_Len );
 
 	Drm_Addition_Parse_Sideband_Link_Address( pstSideband_Msg_Rx, pstSideband_Msg_Reply );
-
-	return ( DPTX_RETURN_SUCCESS );
-}
-
-static bool dptx_ext_get_port_composition( struct Dptx_Params *pstDptx ) 
-{
-	bool									bRetVal;
-	u8										ucMainPort_Count, ucBranchPort_Count, ucBranchPort_Number = 0,        ucSinkDevPort_Index = 0;
-	struct drm_dp_sideband_msg_rx			*pstMain_Msg_Rx, *pstMsg_Rx;
-	struct drm_dp_sideband_msg_reply_body	*pstMain_Msg_Reply, *pstMsg_Reply;
-	struct Dptx_Topology_Params				*pstDptx_Topology_Params = &stDptx_Topology_Params;
-
-	memset( &pstDptx_Topology_Params->stMainBranch_Msg_Rx, 0, sizeof(pstDptx_Topology_Params->stMainBranch_Msg_Rx) );
-	memset( &pstDptx_Topology_Params->stMainBranch_Msg_Reply, 0, sizeof(pstDptx_Topology_Params->stMainBranch_Msg_Reply) );
-
-	memset(  &pstDptx->aucStreamSink_PortNumber[0], INVALID_MST_PORT_NUM, ( sizeof(u8) * PHY_INPUT_STREAM_MAX ));
-	memset(  &pstDptx->aucRAD_PortNumber[0], INVALID_MST_PORT_NUM, ( sizeof(u8) * PHY_INPUT_STREAM_MAX ));
-
-	bRetVal = dptx_ext_clear_sideband_msg_payload_id_table( pstDptx );
-	if( bRetVal ==	DPTX_RETURN_FAIL )
-	{
-		return ( DPTX_RETURN_FAIL );
-	}
-
-	pstMain_Msg_Rx = &pstDptx_Topology_Params->stMainBranch_Msg_Rx;
-	pstMain_Msg_Reply = &pstDptx_Topology_Params->stMainBranch_Msg_Reply;
-
-	bRetVal = (bool)dptx_ext_set_sideband_msg_link_address( pstDptx, pstMain_Msg_Rx, pstMain_Msg_Reply, INVALID_MST_PORT_NUM );
-	if( bRetVal ==	DPTX_RETURN_FAIL )
-	{
-		return ( DPTX_RETURN_FAIL );
-	}
-
-	dptx_info("1st Brach DP_LINK_ADDRESS-NPORTS = %d", pstMain_Msg_Reply->u.link_addr.nports);
-
-	for( ucMainPort_Count = 0; ucMainPort_Count < pstMain_Msg_Reply->u.link_addr.nports; ucMainPort_Count++ ) 
-	{
-		dptx_info(" -.Input port(%d): %s ", ucMainPort_Count, pstMain_Msg_Reply->u.link_addr.ports[ucMainPort_Count].input_port == INPUT_PORT_TYPE_RX ? "DP Rx":"DP Tx" );
-		dptx_info(" -.Peer Dev type: %s", pstMain_Msg_Reply->u.link_addr.ports[ucMainPort_Count].peer_device_type == PEER_STREAM_SINK_DEV ? "Stream Sink":( pstMain_Msg_Reply->u.link_addr.ports[ucMainPort_Count].peer_device_type == PEER_BRANCHING_DEV ) ? "Branching Unit":"Other");
-		dptx_info(" -.%s Port Num: %d",	pstMain_Msg_Reply->u.link_addr.ports[ucMainPort_Count].port_number >= 8 ? "Logical":"Physical", pstMain_Msg_Reply->u.link_addr.ports[ucMainPort_Count].port_number );
-		dptx_info(" -.MCS: %s",	pstMain_Msg_Reply->u.link_addr.ports[ucMainPort_Count].mcs == 1 ? "DP Rx Port":"Stream Sink");
-		dptx_info(" -.DP Dev. Plug Status: %d( %s )",	pstMain_Msg_Reply->u.link_addr.ports[ucMainPort_Count].mcs, pstMain_Msg_Reply->u.link_addr.ports[ucMainPort_Count].mcs == 1 ? "Connected":"Connected to Sink");
-
-		if( pstMain_Msg_Reply->u.link_addr.ports[ucMainPort_Count].peer_device_type == PEER_STREAM_SINK_DEV && 
-			!pstMain_Msg_Reply->u.link_addr.ports[ucMainPort_Count].mcs && 
-			pstMain_Msg_Reply->u.link_addr.ports[ucMainPort_Count].ddps  ) 
-		{
-			pstDptx->aucStreamSink_PortNumber[ucSinkDevPort_Index] = pstMain_Msg_Reply->u.link_addr.ports[ucMainPort_Count].port_number;
-			dptx_dbg(" ==> Stream Sink port[%d] = %d, RAD Port = %d", ucSinkDevPort_Index, pstDptx->aucStreamSink_PortNumber[ucSinkDevPort_Index], pstDptx->aucRAD_PortNumber[ucSinkDevPort_Index] );
-			
-			ucSinkDevPort_Index++;
-		}
-
-		if( pstMain_Msg_Reply->u.link_addr.ports[ucMainPort_Count].input_port == INPUT_PORT_TYPE_TX &&
-			pstMain_Msg_Reply->u.link_addr.ports[ucMainPort_Count].peer_device_type == PEER_BRANCHING_DEV && 
-			pstMain_Msg_Reply->u.link_addr.ports[ucMainPort_Count].mcs && 
-			pstMain_Msg_Reply->u.link_addr.ports[ucMainPort_Count].ddps ) 
-		{
-			if( ucBranchPort_Number >= MAX_NUM_OF_SUB_BRANCH )
-			{
-				dptx_warn("Num of branchs is reached to Max(%d)", ( MAX_NUM_OF_SUB_BRANCH + 1 ));
-					return ( DPTX_RETURN_SUCCESS );
-			}
-
-			pstMsg_Rx = &pstDptx_Topology_Params->stSubBranch_Msg_Rx[ucBranchPort_Number];
-			pstMsg_Reply = &pstDptx_Topology_Params->stSubBranch_Msg_Reply[ucBranchPort_Number];
-	
-			ucBranchPort_Number++;
-		
-			bRetVal = (bool)dptx_ext_set_sideband_msg_link_address( pstDptx, pstMsg_Rx, pstMsg_Reply, pstMain_Msg_Reply->u.link_addr.ports[ucMainPort_Count].port_number );
-			if( bRetVal ==	DPTX_RETURN_FAIL )
-			{
-				return ( DPTX_RETURN_FAIL );
-			}
-		
-			dptx_info("%d Brach DP_LINK_ADDRESS-NPORTS = %d", ( ucBranchPort_Number + 1 ), pstMsg_Reply->u.link_addr.nports);
-			for( ucBranchPort_Count = 0; ucBranchPort_Count < pstMsg_Reply->u.link_addr.nports; ucBranchPort_Count++ ) 
-			{
-				dptx_info(" -.Input port(%d): %s ", ucBranchPort_Count, pstMsg_Reply->u.link_addr.ports[ucBranchPort_Count].input_port == INPUT_PORT_TYPE_RX ? "DP Rx":"DP Tx" );
-				dptx_info(" -.Peer Dev type: %s", pstMsg_Reply->u.link_addr.ports[ucBranchPort_Count].peer_device_type == PEER_STREAM_SINK_DEV ? "Stream Sink":( pstMsg_Reply->u.link_addr.ports[ucBranchPort_Count].peer_device_type == PEER_BRANCHING_DEV ) ? "Branching Unit":"Other");
-				dptx_info(" -.%s Port Num: %d",	pstMsg_Reply->u.link_addr.ports[ucBranchPort_Count].port_number >= 8 ? "Logical":"Physical", pstMsg_Reply->u.link_addr.ports[ucBranchPort_Count].port_number );
-				dptx_info(" -.MCS: %s",	pstMsg_Reply->u.link_addr.ports[ucBranchPort_Count].mcs == 1 ? "DP Rx Port":"Stream Sink");
-				dptx_info(" -.DP Dev. Plug Status: %d( %s )",	pstMsg_Reply->u.link_addr.ports[ucBranchPort_Count].mcs, pstMsg_Reply->u.link_addr.ports[ucBranchPort_Count].mcs == 1 ? "Connected":"Connected to Sink");
-
-				if( pstMsg_Reply->u.link_addr.ports[ucBranchPort_Count].input_port == INPUT_PORT_TYPE_TX &&
-					pstMsg_Reply->u.link_addr.ports[ucBranchPort_Count].peer_device_type == PEER_STREAM_SINK_DEV && 
-					!pstMsg_Reply->u.link_addr.ports[ucBranchPort_Count].mcs && 
-					pstMsg_Reply->u.link_addr.ports[ucBranchPort_Count].ddps  ) 
-				{
-					pstDptx->aucStreamSink_PortNumber[ucSinkDevPort_Index] = pstMsg_Reply->u.link_addr.ports[ucBranchPort_Count].port_number;
-					pstDptx->aucRAD_PortNumber[ucSinkDevPort_Index] = pstMsg_Reply->u.link_addr.ports[ucMainPort_Count].port_number;
-
-					dptx_dbg(" ==> Stream Sink port[%d] = %d, RAD Port = %d", ucSinkDevPort_Index, pstMsg_Reply->u.link_addr.ports[ucBranchPort_Count].port_number, pstDptx->aucRAD_PortNumber[ucSinkDevPort_Index] );
-				
-					ucSinkDevPort_Index++;
-					if( ucSinkDevPort_Index >= PHY_INPUT_STREAM_MAX )
-					{
-						dptx_info("Port index is reached to Max(%d)", PHY_INPUT_STREAM_MAX );
-						return ( DPTX_RETURN_SUCCESS );
-					}
-				}
-			}
-		}
-	}
 
 	return ( DPTX_RETURN_SUCCESS );
 }
@@ -1138,7 +946,7 @@ bool Dptx_Ext_Get_Link_PayloadBandwidthNumber( struct Dptx_Params *pstDptx, u8 u
 		return ( DPTX_RETURN_FAIL );
 	}
 
-	dptx_info("Stream %d : PBN(%d) <- Rest(%d), The number of slots: %d", ucStream_Index, pstDptx->ausPayloadBandwidthNumber[ucStream_Index], ucRest, pstDptx->aucNumOfSlots[ucStream_Index] );
+	dptx_dbg("Stream %d : PBN(%d) <- Rest(%d), The number of slots: %d", ucStream_Index, pstDptx->ausPayloadBandwidthNumber[ucStream_Index], ucRest, pstDptx->aucNumOfSlots[ucStream_Index] );
 
 	return ( DPTX_RETURN_SUCCESS );
 }
@@ -1269,6 +1077,94 @@ bool Dptx_Ext_Initiate_MST_Act( struct Dptx_Params *pstDptx )
 	return ( DPTX_RETURN_SUCCESS );
 }
 
+/* 2.11.3.1 Vesa DP V1.4 : Sideband MSG Header()
+	The Sideband MSG header specifies which DP nodes are to process or receive data of the Sidebandk MSG.
+
+	Sideband_MSG_Header()
+	{
+		Link_Count_Total[4 Bits]
+		Link_Count_Remaining[4 Bits]
+
+		for(i = 0; i < Link_Count_Total; i++ )
+		{
+			Relative_Address[i]
+		}
+		while(!bytealigned())
+		{
+			zero_bit
+		}
+
+		Broadcast_Message[1 Bit]
+		Patch_Message[1 Bit]
+		Sideband_MSG_Body_Length[6 Bits]
+		Start_Of_Message_Transaction[1 Bit]
+		End_Of_Message_Transaction[1 Bit]
+		zero[1 Bit]
+		Message_Sequence_No[1 Bit]
+		Sideband_MSG_CRC[4 Bits]
+	}
+*/
+/*	2.11.9.2 CLEAR_PAYLOAD_ID_TABLE in Vesa DP V1.4
+
+	The CLEAR_PAYLOAD_ID_TABLE path broadcast request message transaction is sent by an MST DP device to de-allocate all VC Payload Id.
+
+	CLEAR_PAYLOAD_ID_TABLE_Request()
+	{
+		zero
+		Request_Identifier
+	}
+
+	CLEAR_PAYLOAD_ID_TABLE_ACK_Reply()
+	{
+		zero
+		Request_Identifier
+	}
+*/
+int32_t Dptx_Ext_Clear_SidebandMsg_PayloadID_Table(struct Dptx_Params *pstDptx)
+{
+	u8		ucReply_Len;
+	u8		aucMsg_Buf[MAX_MSG_BUFFER_SIZE], *pucMssage;
+	int32_t	iRetVal;
+	int		iMsg_Len = 0;
+
+	struct drm_dp_sideband_msg_hdr stSideBand_MsgHeader =
+	{
+		.lct = 1,
+		.lcr = 6,
+		.rad = { 0, },
+		.broadcast = true,
+		.path_msg = 1,
+		.msg_len = 2,
+		.somt = 1,
+		.eomt = 1,
+		.seqno = 0,
+	};
+
+	Drm_Addition_Encode_Sideband_Msg_Hdr(&stSideBand_MsgHeader, aucMsg_Buf, &iMsg_Len);
+
+	pucMssage		= &aucMsg_Buf[iMsg_Len];		/* Header */
+	pucMssage[0]	= DP_CLEAR_PAYLOAD_ID_TABLE;	/* Header + Payload ID */
+
+	Drm_Addition_Encode_SideBand_Msg_CRC(pucMssage, 1);	/* Header + ( Payload ID + CRC = SIdeband MSG Body ) */
+
+	iMsg_Len += 2;
+
+	iRetVal = (int32_t)Dptx_Aux_Write_Bytes_To_DPCD(pstDptx, DP_SIDEBAND_MSG_DOWN_REQ_BASE, aucMsg_Buf, iMsg_Len);
+	if(iRetVal !=  0)
+	{
+		return ENODEV;
+	}
+
+	iRetVal = (int32_t)dptx_ext_get_sideband_msg_down_req_reply(pstDptx, DP_CLEAR_PAYLOAD_ID_TABLE, NULL, &ucReply_Len);
+	if(iRetVal !=  0)
+	{
+		return ENODEV;
+	}
+
+	return 0;
+}
+
+
 bool Dptx_Ext_Get_TopologyState( struct Dptx_Params *pstDptx, u8 *pucNumOfHotpluggedPorts )
 {
 	bool									bRetVal;
@@ -1282,12 +1178,6 @@ bool Dptx_Ext_Get_TopologyState( struct Dptx_Params *pstDptx, u8 *pucNumOfHotplu
 
 	memset(  &pstDptx->aucStreamSink_PortNumber[0], INVALID_MST_PORT_NUM, ( sizeof(u8) * PHY_INPUT_STREAM_MAX ));
 	memset(  &pstDptx->aucRAD_PortNumber[0], INVALID_MST_PORT_NUM, ( sizeof(u8) * PHY_INPUT_STREAM_MAX ));
-
-	bRetVal = dptx_ext_clear_sideband_msg_payload_id_table( pstDptx );
-	if( bRetVal == DPTX_RETURN_FAIL )
-	{
-		return ( bRetVal );
-	}
 
 	pstMain_Msg_Rx = &pstDptx_Topology_Params->stMainBranch_Msg_Rx;
 	pstMain_Msg_Reply = &pstDptx_Topology_Params->stMainBranch_Msg_Reply;
@@ -1551,16 +1441,17 @@ bool Dptx_Ext_Set_Topology_Configuration( struct Dptx_Params *pstDptx, u8 ucNumO
 */
 bool Dptx_Ext_Remote_I2C_Read( struct Dptx_Params *pstDptx, u8 ucStream_Index, bool bSkipped_PortComposition )
 {
-	bool     	bRetVal;
-	u8		ucReply_Len, ucPort_Index, ucRad_Port, ucExt_Blocks, ucBlk_Index;
-	u8		aucReq_Buf[MAX_MSG_BUFFER_SIZE], aucRep_Buf[MAX_MSG_BUFFER_SIZE];
-	u8 		*pucMsg;
-	int		len = 256;
+	bool    	bRetVal;
+	u8	ucReply_Len, ucPort_Index, ucRad_Port, ucExt_Blocks, ucBlk_Index;
+	u8	aucReq_Buf[MAX_MSG_BUFFER_SIZE], aucRep_Buf[MAX_MSG_BUFFER_SIZE];
+	u8 	*pucMsg;
+	uint8_t	ucNumOfPorts;
+	int	len = 256;
 	struct drm_dp_sideband_msg_hdr			stMsg_Header;
 
 	if( !bSkipped_PortComposition )
 	{
-		bRetVal = dptx_ext_get_port_composition( pstDptx );
+		bRetVal = Dptx_Ext_Get_TopologyState( pstDptx, &ucNumOfPorts );
 		if( bRetVal == DPTX_RETURN_FAIL )
 		{
 			return ( DPTX_RETURN_FAIL );
@@ -1632,12 +1523,12 @@ bool Dptx_Ext_Remote_I2C_Read( struct Dptx_Params *pstDptx, u8 ucStream_Index, b
 
 	memcpy( pstDptx->pucEdidBuf, &aucRep_Buf[3], DPTX_ONE_EDID_BLK_LEN );
 
-	dptx_info("I2C Remote messages replied => ");
-	dptx_info(" -.Reply type: %s", ( aucRep_Buf[0] & 0x80 ) ? "NAK":"ACK" );
-	dptx_info(" -.Request id: %s", (( aucRep_Buf[0] & 0x7F ) == DP_REMOTE_I2C_READ ) ? "REMOTE_I2C_READ":"Wrong ID" );
-	dptx_info(" -.Port Number: %d <- (%d, %d)", ( aucRep_Buf[1] & 0x0F ), ucPort_Index, ucRad_Port );
-	dptx_info(" -.Num of bytes read: %d", aucRep_Buf[2]);
-	dptx_info(" -.Num of extensions: %d", aucRep_Buf[126 + 3]);
+	dptx_dbg("I2C Remote messages replied => ");
+	dptx_dbg(" -.Reply type: %s", ( aucRep_Buf[0] & 0x80 ) ? "NAK":"ACK" );
+	dptx_dbg(" -.Request id: %s", (( aucRep_Buf[0] & 0x7F ) == DP_REMOTE_I2C_READ ) ? "REMOTE_I2C_READ":"Wrong ID" );
+	dptx_dbg(" -.Port Number: %d <- (%d, %d)", ( aucRep_Buf[1] & 0x0F ), ucPort_Index, ucRad_Port );
+	dptx_dbg(" -.Num of bytes read: %d", aucRep_Buf[2]);
+	dptx_dbg(" -.Num of extensions: %d", aucRep_Buf[126 + 3]);
 
 	ucExt_Blocks = aucRep_Buf[( EDID_EXT_BLK_FIELD + 3 )];
 	if( ucExt_Blocks == 0 )
@@ -1680,12 +1571,12 @@ bool Dptx_Ext_Remote_I2C_Read( struct Dptx_Params *pstDptx, u8 ucStream_Index, b
 
 		memcpy( &pstDptx->pucEdidBuf[DPTX_ONE_EDID_BLK_LEN], &aucRep_Buf[3], DPTX_ONE_EDID_BLK_LEN );
 
-		dptx_info("Extended messages replied => ");
-		dptx_info(" -.Reply type: %s", ( aucRep_Buf[0] & 0x80 ) ? "ACK":"NAK" );
-		dptx_info(" -.Request id: %s", (( aucRep_Buf[0] & 0x7F ) == DP_REMOTE_I2C_READ ) ? "REMOTE_I2C_READ":"Wrong ID" );
-		dptx_info(" -.Port Number: %d <- (%d, %d)", ( aucRep_Buf[1] & 0x0F ), ucPort_Index, ucRad_Port );
-		dptx_info(" -.Num of bytes read: %d", aucRep_Buf[2]);
-		dptx_info(" -.Num of extensions: %d", aucRep_Buf[126 + 3]);
+		dptx_dbg("Extended messages replied => ");
+		dptx_dbg(" -.Reply type: %s", ( aucRep_Buf[0] & 0x80 ) ? "ACK":"NAK" );
+		dptx_dbg(" -.Request id: %s", (( aucRep_Buf[0] & 0x7F ) == DP_REMOTE_I2C_READ ) ? "REMOTE_I2C_READ":"Wrong ID" );
+		dptx_dbg(" -.Port Number: %d <- (%d, %d)", ( aucRep_Buf[1] & 0x0F ), ucPort_Index, ucRad_Port );
+		dptx_dbg(" -.Num of bytes read: %d", aucRep_Buf[2]);
+		dptx_dbg(" -.Num of extensions: %d", aucRep_Buf[126 + 3]);
 	}
 
 	return ( DPTX_RETURN_SUCCESS );
@@ -1837,11 +1728,9 @@ ssize_t dptx_ext_proc_read_hpd_state( struct file *filp, char __user *usr_buf, s
 
 ssize_t dptx_ext_proc_read_port_composition( struct file *filp, char __user *usr_buf, size_t cnt, loff_t *off_set )
 {
-	bool	bRetVal;
-	bool	bMST_Supported;
-	uint8_t ucHPD_State, ucNumOfPluggedPorts;
-	ssize_t				stSize;
-	char				*pcTopology_Buf;
+	uint8_t ucHPD_State;
+	ssize_t	stSize;
+	char	*pcTopology_Buf;
 	struct Dptx_Params *pstDptx = PDE_DATA(file_inode(filp));
 
 	pcTopology_Buf = devm_kzalloc( pstDptx->pstParentDev, DPTX_DEBUGFS_BUF_SIZE, GFP_KERNEL );
@@ -1858,49 +1747,12 @@ ssize_t dptx_ext_proc_read_port_composition( struct file *filp, char __user *usr
 		return ( 0 );
 	}
 
-	bRetVal = Dptx_Ext_Get_Sink_Stream_Capability( pstDptx, &bMST_Supported );
-	if( bRetVal == DPTX_RETURN_FAIL )
-	{
-		return ( 0 );
-	}
+	Dptx_Intr_Get_Port_Composition( pstDptx, 0 );
 
-	if( bMST_Supported )
-	{
-		bRetVal = Dptx_Ext_Get_TopologyState( pstDptx, &ucNumOfPluggedPorts );
-		if( bRetVal == DPTX_RETURN_FAIL )
-		{
-			bRetVal = Dptx_Max968XX_Get_TopologyState( &ucNumOfPluggedPorts );
-			if( bRetVal == DPTX_RETURN_FAIL )
-			{
-				dptx_err("There is no sink devices connected.. %d", ucNumOfPluggedPorts);
-				return ( 0 );
-			}
-			
-			pstDptx->bSideBand_MSG_Supported = false;
-		}
-		else
-		{
-			pstDptx->bSideBand_MSG_Supported = true;
-		}
-	}
-	else
-	{
-		ucNumOfPluggedPorts = 1;
-	}
-
-	if( ucNumOfPluggedPorts == 1 )
-	{
-		bMST_Supported = false;
-		
-		Dptx_Ext_Set_Stream_Mode( pstDptx, false,     ucNumOfPluggedPorts );
-	}
-	else
-	{
-		Dptx_Ext_Set_Stream_Mode( pstDptx, true,     ucNumOfPluggedPorts );
-	}
-
-	stSize = sprintf( pcTopology_Buf, "%s : %d %s connected \n", 
-						bMST_Supported ? "MST mode":"SST mode", ucNumOfPluggedPorts, ucNumOfPluggedPorts == 1 ? "port is":"ports are");
+	stSize = sprintf( pcTopology_Buf, "%s : %d %s %s connected \n", 
+						pstDptx->bMultStreamTransport ? "MST mode":"SST mode", pstDptx->ucNumOfPorts,
+						( pstDptx->bSideBand_MSG_Supported ) ? "Ext. monitor":"SerDes",
+						pstDptx->ucNumOfPorts == 1 ? "port is":"ports are");
 		
 	stSize = simple_read_from_buffer( usr_buf, cnt, off_set, (void *)pcTopology_Buf, stSize );
 
@@ -2175,7 +2027,6 @@ ssize_t dptx_ext_proc_read_audio_configuration( struct file *filp, char __user *
 	bool	 bSink_MST_Supported;
 	uint8_t  ucInfType,  ucNumOfCh, ucDataWidth, ucHBRMode, ucSamplingFreq, ucOrgSamplingFreq;
 	uint8_t  ucNumOfPluggedPorts = 0, ucStream_Index;
-	uint32_t uiDataWidth;
 	char	*pcAudioConf_Buf;
 	ssize_t	stSize;
 	struct Dptx_Params *pstDptx = PDE_DATA(file_inode(filp));

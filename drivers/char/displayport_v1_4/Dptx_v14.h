@@ -15,7 +15,7 @@
 
 #define TCC_DPTX_DRV_MAJOR_VER			2
 #define TCC_DPTX_DRV_MINOR_VER			1
-#define TCC_DPTX_DRV_SUBTITLE_VER		0
+#define TCC_DPTX_DRV_SUBTITLE_VER		1
 
 #define TCC805X_REVISION_CS				0x01
 
@@ -634,7 +634,7 @@ bool Dptx_Link_Get_LinkTraining_Status( struct Dptx_Params *pstDptx, bool *pbTra
 /* Dptx Interrupt */
 irqreturn_t Dptx_Intr_IRQ( int irq, void *dev );
 irqreturn_t Dptx_Intr_Threaded_IRQ( int irq, void *dev );
-bool Dptx_Intr_Get_Port_Composition( struct Dptx_Params *pstDptx );
+bool Dptx_Intr_Get_Port_Composition(struct Dptx_Params *pstDptx, uint8_t ucClear_PayloadID);
 bool Dptx_Intr_Register_HPD_Callback( struct Dptx_Params *pstDptx, Dptx_HPD_Intr_Callback HPD_Intr_Callback );
 bool Dptx_Intr_Handle_HotUnplug( struct Dptx_Params *pstDptx );
 int32_t Dptx_Intr_Get_HotPlug_Status(struct Dptx_Params *pstDptx, uint8_t *pucHotPlug_Status);
@@ -666,6 +666,7 @@ bool Dptx_Ext_Set_Sink_VCP_Table_Slots( struct Dptx_Params *pstDptx, u8 ucStream
 bool Dptx_Ext_Get_TopologyState( struct Dptx_Params *pstDptx, u8 *pucNumOfHotpluggedPorts );
 bool Dptx_Ext_Set_Topology_Configuration( struct Dptx_Params *pstDptx, u8 ucNumOfPorts, bool bSideBand_MSG_Supported );
 bool Dptx_Ext_Remote_I2C_Read( struct Dptx_Params *pstDptx, u8 ucStream_Index, bool bSkipped_PortComposition );
+int32_t Dptx_Ext_Clear_SidebandMsg_PayloadID_Table(struct Dptx_Params *pstDptx);
 int32_t Dptx_Ext_Proc_Interface_Init(struct Dptx_Params *pstDptx);
 
 
@@ -693,7 +694,6 @@ int Dpv14_Tx_Resume_T( struct Dptx_Params	*pstDptx );
 /* Dptx SerDes */
 bool Dptx_Max968XX_Reset( struct Dptx_Params *pstDptx );
 bool Dptx_Max968XX_Get_TopologyState( u8 *pucNumOfPluggedPorts );
-//bool Dptx_Max968XX_Get_Des_VideoLocked( bool *pbVideoLocked );
 bool Touch_Max968XX_update_reg(struct Dptx_Params *pstDptx);
 
 #endif /* __DPTX_API_H__  */
