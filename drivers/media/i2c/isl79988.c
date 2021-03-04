@@ -137,6 +137,12 @@ struct v4l2_mbus_config isl79988_mbus_config = {
 		V4L2_MBUS_MASTER,
 };
 
+struct v4l2_mbus_framefmt isl79988_mbus_framefmt = {
+	.width		= WIDTH,
+	.height		= HEIGHT,
+	.code		= MEDIA_BUS_FMT_UYVY8_2X8,
+};
+
 /*
  * gpio fuctions
  */
@@ -496,6 +502,10 @@ int isl79988_probe(struct i2c_client *client, const struct i2c_device_id *id)
 		loge("Failed to register subdevice\n");
 	else
 		logi("%s is registered as a v4l2 sub device.\n", dev->sd.name);
+
+	/* init mbus format */
+	memcpy((void *)&dev->fmt, (const void *)&isl79988_mbus_framefmt,
+		sizeof(dev->fmt));
 
 	// request gpio
 	isl79988_request_gpio(dev);
