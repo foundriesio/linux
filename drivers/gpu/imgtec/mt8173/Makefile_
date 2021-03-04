@@ -7,7 +7,7 @@ mt8173-y += mt8173_sysconfig.o
 mt8173-y += ../pvrsrvkm/$(PVR_ARCH)/dma_support.o
 mt8173-y += ../pvrsrvkm/$(PVR_ARCH)/ion_support_generic.o
 ccflags-y += -include $(srctree)/drivers/staging/imgtec/config_kernel.h \
- -include $(srctree)/include/generated/uapi/linux/version.h \
+ -include include/generated/uapi/linux/version.h \
  -I$(srctree)/$(src) \
  -I$(srctree)/drivers/staging/imgtec \
  -I$(srctree)/drivers/staging/imgtec/pvrsrvkm \

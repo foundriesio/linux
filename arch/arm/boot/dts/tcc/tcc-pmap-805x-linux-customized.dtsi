@@ -3,7 +3,7 @@
  * Copyright (C) Telechips Inc.
  */
 
-#include "../../../../../include/generated/autoconf.h"
+#include "generated/autoconf.h"
 
 #undef SZ_1MB
 #define SZ_1MB				(1024*1024)
