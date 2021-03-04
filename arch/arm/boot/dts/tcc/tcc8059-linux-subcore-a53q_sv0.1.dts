@@ -1857,7 +1857,7 @@
 		viqe		= <&vioc_viqe		VIOC_VIQE1>;
 		viqe_set	= <&viqe_hidden>;
 		deintls		= <&vioc_deintls	VIOC_DEINTLS0>;
-		scaler		= <&vioc_scaler		VIOC_SCALER2>;
+		scaler		= <&vioc_scaler		VIOC_SCALER4>;
 		wmixer		= <&vioc_wmix		VIOC_WMIX6>;
 		wdma		= <&vioc_wdma		VIOC_WDMA07>;
 		fifo		= <&vioc_fifo		VIOC_FIFO0>;
@@ -1873,7 +1873,7 @@
 		viqe		= <&vioc_viqe		VIOC_VIQE1>;
 		viqe_set	= <&viqe_hidden>;
 		deintls		= <&vioc_deintls	VIOC_DEINTLS0>;
-		scaler		= <&vioc_scaler		VIOC_SCALER2>;
+		scaler		= <&vioc_scaler		VIOC_SCALER5>;
 		wmixer		= <&vioc_wmix		VIOC_WMIX3>;
 		wdma		= <&vioc_wdma		VIOC_WDMA03>;
 		fifo		= <&vioc_fifo		VIOC_FIFO0>;
@@ -1889,7 +1889,7 @@
 		viqe		= <&vioc_viqe		VIOC_VIQE1>;
 		viqe_set	= <&viqe_hidden>;
 		deintls		= <&vioc_deintls	VIOC_DEINTLS0>;
-		scaler		= <&vioc_scaler		VIOC_SCALER2>;
+		scaler		= <&vioc_scaler		VIOC_SCALER6>;
 		wmixer		= <&vioc_wmix		VIOC_WMIX4>;
 		wdma		= <&vioc_wdma		VIOC_WDMA04>;
 		fifo		= <&vioc_fifo		VIOC_FIFO0>;
