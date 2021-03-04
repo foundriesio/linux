@@ -138,9 +138,6 @@ CONFIG_ZONE_DMA32                               policy<{'amd64': 'y', 'arm64': '
 CONFIG_PPC64                                    policy<{'ppc64el': 'y'}>
 CONFIG_NR_IRQS                                  policy<{'ppc64el': '512'}>
 
-# Menu: Architecture: s390
-CONFIG_KMSG_IDS                                 policy<{'s390x': 'y'}>
-
 # Menu: Architecture: x86
 CONFIG_64BIT                                    policy<{'amd64': 'y', 'arm64': 'y', 'ppc64el': 'y', 's390x': 'y'}>
 
