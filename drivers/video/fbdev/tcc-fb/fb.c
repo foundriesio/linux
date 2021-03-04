@@ -70,7 +70,7 @@
 #define FBDC_ALIGNED(w, mul) (((unsigned int)w + (mul - 1)) & ~(mul - 1))
 #endif
 
-#define FB_VERSION "1.0"
+#define FB_VERSION "1.0.1"
 #define FB_BUF_MAX_NUM		(3)
 #if defined(CONFIG_VIOC_PVRIC_FBDC)
 static unsigned int fbdc_dec_1st_cfg = 0;
@@ -872,6 +872,11 @@ static int fbX_blank(int blank, struct fb_info *info)
 	case FB_BLANK_UNBLANK:
 		/* screen: unblanked, hsync: on,  vsync: on */
 		dev_info(info->dev, "FB_BLANK_UNBLANK\r\n");
+		#if defined(CONFIG_FB_PANEL_LVDS_TCC)
+		if (par->panel) {
+			fb_panel_prepare(par->panel);
+		}
+		#endif
 		ret = fbx_turn_on_resource(info);
 		#if defined(CONFIG_FB_PANEL_LVDS_TCC)
 		if (par->panel) {
