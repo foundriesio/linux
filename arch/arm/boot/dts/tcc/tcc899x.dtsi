@@ -765,8 +765,6 @@
 
 	clocks {
 		compatible = "telechips,ckc";
-		#address-cells = <1>;
-		#size-cells = <1>;
 
 		osc24m: oscillator {
 			compatible = "fixed-clock";

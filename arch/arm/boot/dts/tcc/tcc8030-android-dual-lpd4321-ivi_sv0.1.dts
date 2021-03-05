@@ -66,7 +66,7 @@
 	compatible = "telechips,lvds-tm123xdhp90";
 	status = "okay";
 	lvds0 = <&lvds_phy>;
-	power-on-gpios = <&gpb 17>;		// LCD_ON
+	power-on-gpios = <&gpb 17 0>;		// LCD_ON
 	reset-gpios = <&gpb 18 0>;		// LCD_RST
 	/*
 	 * display-on-gpios = ;		// LCD_DISP

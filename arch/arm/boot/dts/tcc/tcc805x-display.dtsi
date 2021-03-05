@@ -278,7 +278,7 @@
 			};
 		};
 	};
-	
+
 	drm_dpv14_2:drm_dpv14_2 {
 		#address-cells = <1>;
 		#size-cells = <0>;
@@ -330,7 +330,7 @@
 			};
 		};
 	};
-	
+
 	drm_tm123xdhp90:drm_tm123xdhp90 {
 		#address-cells = <1>;
 		#size-cells = <0>;
