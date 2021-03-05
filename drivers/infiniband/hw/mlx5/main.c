@@ -5725,7 +5725,7 @@ err_mp:
 err_free_port:
 	kfree(dev->port);
 
-	return -ENOMEM;
+	return err;
 }
 
 static int mlx5_ib_stage_flow_db_init(struct mlx5_ib_dev *dev)

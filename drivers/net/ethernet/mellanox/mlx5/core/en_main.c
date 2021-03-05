@@ -3380,13 +3380,11 @@ static int mlx5e_setup_tc_mqprio(struct net_device *netdev,
 	}
 
 	err = mlx5e_open_channels(priv, &new_channels);
-	if (err)
-		goto out;
 
-	priv->max_opened_tc = max_t(u8, priv->max_opened_tc,
-				    new_channels.params.num_tc);
 	mlx5e_switch_priv_channels(priv, &new_channels, NULL);
 out:
+	priv->max_opened_tc = max_t(u8, priv->max_opened_tc,
+				    priv->channels.params.num_tc);
 	mutex_unlock(&priv->state_lock);
 	return err;
 }
