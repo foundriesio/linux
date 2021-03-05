@@ -15,6 +15,7 @@
 #include "../dwc3/io.h"
 #include <asm/system_info.h>
 #include <dt-bindings/gpio/gpio.h>
+#include <linux/kthread.h>
 
 #define PHY_RESUME      (2)
 
@@ -49,6 +50,7 @@ struct tcc_dwc3_device {
 	ulong vbus_gpio_flag;
 #if defined(CONFIG_ENABLE_BC_30_HOST)
 	struct work_struct dwc3_work;
+	struct task_struct *dwc3_chgdet_thread;
 	int32_t irq;
 #endif
 };
@@ -248,9 +250,69 @@ static void tcc_dwc3_set_chg_det(struct usb_phy *phy)
 	struct PUSBSSPHYCFG *USBPHYCFG =
 		(struct PUSBSSPHYCFG *)dwc3_phy_dev->base;
 
-	dev_info(dwc3_phy_dev->dev, "[INFO][USB] Charging Detection!!\n");
+	dev_dbg(dwc3_phy_dev->dev, "[INFO][USB] Charging Detection!!\n");
 	writel(readl(&USBPHYCFG->FPHY_PCFG2) | (1 << 8),
 			&USBPHYCFG->FPHY_PCFG2); //enable chg det
+	//	writel(readl(&USBPHYCFG->FPHY_PCFG4) | (1 << 28),
+	//			&USBPHYCFG->FPHY_PCFG4); //enable chg det
+}
+
+static int dwc3_chgdet_thread(void *work)
+{
+	struct tcc_dwc3_device *dwc3_phy_dev = (struct tcc_dwc3_device *) work;
+	struct PUSBSSPHYCFG *USBPHYCFG =
+		(struct PUSBSSPHYCFG *)dwc3_phy_dev->base;
+	uint32_t pcfg2 = 0;
+	int timeout = 500;
+
+	dev_dbg(dwc3_phy_dev->dev, "[DEBUG][USB]Start to check CHGDET\n");
+	while (!kthread_should_stop() && timeout > 0) {
+		pcfg2 = readl(&USBPHYCFG->FPHY_PCFG2);
+		mdelay(1);
+		timeout--;
+	}
+
+	if (timeout <= 0) {
+		writel(readl(&USBPHYCFG->FPHY_PCFG2) | (1 << 8),
+				&USBPHYCFG->FPHY_PCFG2); //enable chg det
+		//writel(readl(&USBPHYCFG->FPHY_PCFG4) | (1 << 28),
+		//&USBPHYCFG->FPHY_PCFG4);
+		dev_dbg(dwc3_phy_dev->dev, "[DEBUG][USB]Enable VDATDETENB\n");
+	}
+
+	dwc3_phy_dev->dwc3_chgdet_thread = NULL;
+
+	dev_info(dwc3_phy_dev->dev, "Monitoring is finished(%d)\n", timeout);
+	return 0;
+
+}
+
+static void tcc_dwc3_stop_chg_det(struct usb_phy *phy)
+{
+	struct tcc_dwc3_device *dwc3_phy_dev =
+		container_of(phy, struct tcc_dwc3_device, phy);
+	struct PUSBSSPHYCFG *USBPHYCFG =
+		(struct PUSBSSPHYCFG *)dwc3_phy_dev->base;
+
+	dev_dbg(dwc3_phy_dev->dev, "[DEBUG][USB]stop chg det!\n");
+	if (dwc3_phy_dev->dwc3_chgdet_thread != NULL) {
+		dev_dbg(dwc3_phy_dev->dev, "[DEBUG][USB]kill chg det thread!\n");
+		kthread_stop(dwc3_phy_dev->dwc3_chgdet_thread);
+		dwc3_phy_dev->dwc3_chgdet_thread = NULL;
+	}
+
+
+	dev_dbg(dwc3_phy_dev->dev, "[DEBUG][USB]pcfg2= 0x%x/pcfg4=0x%x\n",
+			readl(&USBPHYCFG->FPHY_PCFG2),
+			readl(&USBPHYCFG->FPHY_PCFG4));
+	//disable chg det
+	//writel(readl(&USBPHYCFG->FPHY_PCFG4) & ~(1 << 28),
+	//&USBPHYCFG->FPHY_PCFG4);
+	writel(readl(&USBPHYCFG->FPHY_PCFG2) & ~((1 << 9) | (1 << 8)),
+			&USBPHYCFG->FPHY_PCFG2);
+	dev_dbg(dwc3_phy_dev->dev, "[DEBUG][USB]Disable chg det! pcfg2= 0x%x/pcfg4=0x%x\n",
+			readl(&USBPHYCFG->FPHY_PCFG2),
+			readl(&USBPHYCFG->FPHY_PCFG4));
 }
 
 static void tcc_dwc3_set_cdp(struct work_struct *data)
@@ -261,6 +323,7 @@ static void tcc_dwc3_set_cdp(struct work_struct *data)
 		(struct PUSBSSPHYCFG *)dwc3_phy_dev->base;
 	uint32_t pcfg2 = 0;
 	int32_t count = 3;
+	int32_t timeout_count = 500; //100ms
 
 	while (count > 0) {
 		if ((readl(&USBPHYCFG->FPHY_PCFG2) & (1 << 22)) != 0) {
@@ -271,23 +334,44 @@ static void tcc_dwc3_set_cdp(struct work_struct *data)
 	}
 
 	if (count == 0) {
-		dev_info(dwc3_phy_dev->dev, "[INFO][USB] %s : failed to detect charging!!\n",
+		dev_dbg(dwc3_phy_dev->dev, "[DEBUG][USB] %s : failed to detect charging(wrong signal)!!\n",
 				__func__);
 	} else {
 		pcfg2 = readl(&USBPHYCFG->FPHY_PCFG2);
 		writel((pcfg2 | (1 << 9)), &USBPHYCFG->FPHY_PCFG2);
-		mdelay(100);
+
+		while (timeout_count > 0) {
+			pcfg2 = readl(&USBPHYCFG->FPHY_PCFG2);
+			if ((pcfg2 & (1 << 22)) != 0) {
+				mdelay(1);
+				timeout_count--;
+			} else {
+				break;
+			}
+		}
+
+		if (timeout_count == 0) {
+			dev_dbg(dwc3_phy_dev->dev, "[DEBUG][USB]Timeout - VDM_SRC on\n");
+		}
+
 		writel(readl(&USBPHYCFG->FPHY_PCFG2) & ~((1 << 9) | (1 << 8)),
 				&USBPHYCFG->FPHY_PCFG2);
-	}
 
-	writel(readl(&USBPHYCFG->FPHY_PCFG4) | (1 << 31),
-			&USBPHYCFG->FPHY_PCFG4); // clear irq
-	udelay(10);
-	writel(readl(&USBPHYCFG->FPHY_PCFG4) & ~(1 << 31),
-			&USBPHYCFG->FPHY_PCFG4); // clear irq
-	dev_info(dwc3_phy_dev->dev, "[INFO][USB] %s:Enable chg det!!!\n",
-			__func__);
+		// writel(readl(&USBPHYCFG->FPHY_PCFG2) | (1 << 8),
+		// &USBPHYCFG->FPHY_PCFG2); //enable chg det
+		dev_dbg(dwc3_phy_dev->dev, "[DEBUG][USB] Enable chg det monitor!\n");
+		if (dwc3_phy_dev->dwc3_chgdet_thread != NULL) {
+			kthread_stop(dwc3_phy_dev->dwc3_chgdet_thread);
+			dwc3_phy_dev->dwc3_chgdet_thread = NULL;
+		}
+		dev_dbg(dwc3_phy_dev->dev, "[DEBUG][USB] start chg det thread!\n");
+		dwc3_phy_dev->dwc3_chgdet_thread =
+			kthread_run(dwc3_chgdet_thread,
+					(void *)dwc3_phy_dev, "dwc3-chgdet");
+		if (IS_ERR(dwc3_phy_dev->dwc3_chgdet_thread)) {
+			dev_err(dwc3_phy_dev->dev, "[ERROR][USB] failed to run dwc3_chgdet_thread\n");
+		}
+	}
 }
 
 static irqreturn_t tcc_dwc3_chg_irq(int32_t irq, void *data)
@@ -296,7 +380,7 @@ static irqreturn_t tcc_dwc3_chg_irq(int32_t irq, void *data)
 	struct PUSBSSPHYCFG *USBPHYCFG =
 		(struct PUSBSSPHYCFG *)dwc3_phy_dev->base;
 
-	dev_info(dwc3_phy_dev->dev, "[INFO][USB] %s : CHGDET\n", __func__);
+	dev_dbg(dwc3_phy_dev->dev, "[DEBUG][USB] %s : CHGDET\n", __func__);
 
 	// clear irq
 	writel(readl(&USBPHYCFG->U30_PINT) | (1 << 22), &USBPHYCFG->U30_PINT);
@@ -999,6 +1083,7 @@ static int32_t tcc_dwc3_create_phy(struct device *dev,
 #endif
 #if defined(CONFIG_ENABLE_BC_30_HOST)
 	phy_dev->phy.set_chg_det       = &tcc_dwc3_set_chg_det;
+	phy_dev->phy.stop_chg_det      = &tcc_dwc3_stop_chg_det;
 #endif
 	phy_dev->phy.set_vbus_resource = &tcc_dwc3_set_vbus_resource;
 	phy_dev->phy.set_vbus          = &tcc_dwc3_vbus_set;

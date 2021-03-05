@@ -121,12 +121,20 @@ config TCC_BC_12
 		Enalbe BC 1.2 Detection
 
 config ENABLE_BC_20_HOST
-	bool "Enable BC 1.2 Detection for 2.0 Host & 2.0 DRD port"
+	bool "Enable BC 1.2 Detection for 2.0 Host"
 	depends on TCC_BC_12
 	default y
 	depends on USB
 	help
-		Enalbe BC 1.2 Detection for 2.0 Host & 2.0 DRD port
+		Enalbe BC 1.2 Detection for 2.0 Host port
+
+config ENABLE_BC_20_DRD
+	bool "Enable BC 1.2 Detection for 2.0 DRD port"
+	depends on TCC_BC_12
+	default y
+	depends on USB
+	help
+		Enalbe BC 1.2 Detection for 2.0 DRD port
 
 config ENABLE_BC_30_HOST
 	bool "Enable BC 1.2 Detection for 3.0 DRD port"

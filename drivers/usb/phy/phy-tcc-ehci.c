@@ -14,6 +14,7 @@
 #include <linux/of_gpio.h>
 #include <dt-bindings/gpio/gpio.h>
 #include "../host/tcc-hcd.h"
+#include <linux/kthread.h>
 
 #ifndef BITSET
 #define BITSET(X, MASK)                 ((X) |= (uint32_t)(MASK))
@@ -38,8 +39,10 @@ struct tcc_ehci_device {
 	int32_t mux_port;
 	int32_t vbus_gpio_num;
 	ulong vbus_gpio_flag;
-#if defined(CONFIG_ENABLE_BC_20_HOST)
+#if defined(CONFIG_ENABLE_BC_20_HOST) || defined(CONFIG_ENABLE_BC_20_DRD)
 	int irq;
+	struct task_struct *ehci_chgdet_thread;
+	struct work_struct chgdet_work;
 #endif
 };
 
@@ -190,7 +193,55 @@ static int tcc_ehci_set_dc_level(struct usb_phy *phy, uint32_t level)
 }
 #endif
 
-#if defined(CONFIG_ENABLE_BC_20_HOST)
+#if defined(CONFIG_ENABLE_BC_20_HOST) || defined(CONFIG_ENABLE_BC_20_DRD)
+static int ehci_chgdet_thread(void *work)
+{
+	struct tcc_ehci_device *phy_dev = (struct tcc_ehci_device *)work;
+	struct ehci_phy_reg *ehci_pcfg = (struct ehci_phy_reg *)phy_dev->base;
+	uint32_t pcfg2 = 0;
+
+	int timeout = 1000;
+
+	dev_dbg(phy_dev->dev, "[DEBUG][USB]Start to check CHGDET\n");
+	while (!kthread_should_stop() && timeout > 0) {
+		pcfg2 = readl(&ehci_pcfg->pcfg2);
+		mdelay(1);
+		timeout--;
+	}
+
+	if ((timeout <= 0)/* || (chgdet == 1)*/) {
+		writel(readl(&ehci_pcfg->pcfg2) | (1 << 8), &ehci_pcfg->pcfg2);
+		writel(readl(&ehci_pcfg->pcfg4) | (1 << 28), &ehci_pcfg->pcfg4);
+		dev_dbg(phy_dev->dev, "[DEBUG][USB]Enable VDATDETENB\n");
+	}
+
+	phy_dev->ehci_chgdet_thread = NULL;
+
+	dev_dbg(phy_dev->dev, "[DEBUG][USB]Monitoring is finished(%d)\n",
+			timeout);
+	return 0;
+
+}
+
+static void chgdet_monitor(struct work_struct *data)
+{
+	struct tcc_ehci_device *phy_dev = container_of(data,
+			struct tcc_ehci_device, chgdet_work);
+
+	dev_dbg(phy_dev->dev, "[DEBUG][USB]Enable chg det monitor!\n");
+	if (phy_dev->ehci_chgdet_thread != NULL) {
+		kthread_stop(phy_dev->ehci_chgdet_thread);
+		phy_dev->ehci_chgdet_thread = NULL;
+	}
+	dev_dbg(phy_dev->dev, "[DEBUG][USB]start chg det thread!\n");
+	phy_dev->ehci_chgdet_thread = kthread_run(ehci_chgdet_thread,
+			(void *)phy_dev, "ehci-chgdet");
+	if (IS_ERR(phy_dev->ehci_chgdet_thread)) {
+		dev_err(phy_dev->dev, "[ERROR][USB]failed to run ehci_chgdet_thread\n");
+	}
+
+}
+
 static void tcc_ehci_set_chg_det(struct usb_phy *phy)
 {
 	struct tcc_ehci_device *ehci_phy_dev =
@@ -198,6 +249,7 @@ static void tcc_ehci_set_chg_det(struct usb_phy *phy)
 	struct ehci_phy_reg *ehci_pcfg =
 		(struct ehci_phy_reg *)ehci_phy_dev->base;
 
+	dev_dbg(ehci_phy_dev->dev, "[DEBUG][USB]start chg det!\n");
 	// clear irq
 	writel(readl(&ehci_pcfg->pcfg4) | (1 << 31), &ehci_pcfg->pcfg4);
 	udelay(1);
@@ -207,6 +259,32 @@ static void tcc_ehci_set_chg_det(struct usb_phy *phy)
 
 	// enable chg det
 	writel(readl(&ehci_pcfg->pcfg2) | (1 << 8), &ehci_pcfg->pcfg2);
+	writel(readl(&ehci_pcfg->pcfg4) | (1 << 28), &ehci_pcfg->pcfg4);
+}
+
+static void tcc_ehci_stop_chg_det(struct usb_phy *phy)
+{
+	struct tcc_ehci_device *ehci_phy_dev =
+		container_of(phy, struct tcc_ehci_device, phy);
+	struct ehci_phy_reg *ehci_pcfg =
+		(struct ehci_phy_reg *)ehci_phy_dev->base;
+
+	dev_dbg(ehci_phy_dev->dev, "[DEBUG][USB]stop chg det!\n");
+	if (ehci_phy_dev->ehci_chgdet_thread != NULL) {
+		dev_dbg(ehci_phy_dev->dev, "[DEBUG][USB]kill chg det thread!\n");
+		kthread_stop(ehci_phy_dev->ehci_chgdet_thread);
+		ehci_phy_dev->ehci_chgdet_thread = NULL;
+	}
+
+
+	dev_dbg(ehci_phy_dev->dev, "[DEBUG][USB]pcfg2= 0x%x/pcfg4=0x%x\n",
+			readl(&ehci_pcfg->pcfg2), readl(&ehci_pcfg->pcfg4));
+	// disable chg det
+	writel(readl(&ehci_pcfg->pcfg4) & ~(1 << 28), &ehci_pcfg->pcfg4);
+	writel(readl(&ehci_pcfg->pcfg2) & ~((1 << 9) | (1 << 8)),
+			&ehci_pcfg->pcfg2);
+	dev_dbg(ehci_phy_dev->dev, "[DEBUG][USB]Disable chg det! pcfg2= 0x%x/pcfg4=0x%x\n",
+			readl(&ehci_pcfg->pcfg2), readl(&ehci_pcfg->pcfg4));
 }
 
 static irqreturn_t chg_irq(int irq, void *data)
@@ -214,12 +292,32 @@ static irqreturn_t chg_irq(int irq, void *data)
 	struct tcc_ehci_device *phy_dev = (struct tcc_ehci_device *)data;
 	struct ehci_phy_reg *ehci_pcfg = (struct ehci_phy_reg *)phy_dev->base;
 	uint32_t pcfg2 = 0;
+	int32_t timeout_count = 500; //500ms
 
+
+	writel(readl(&ehci_pcfg->pcfg4) & ~(1 << 28), &ehci_pcfg->pcfg4);
 	dev_info(phy_dev->dev, "[INFO][USB] Charging Detection!\n");
 
 	pcfg2 = readl(&ehci_pcfg->pcfg2);
 	writel((pcfg2 | (1 << 9)), &ehci_pcfg->pcfg2);
-	mdelay(50);
+
+	while (timeout_count > 0) {
+		pcfg2 = readl(&ehci_pcfg->pcfg2);
+		if ((pcfg2 & (1 << 22)) != 0) { //Check VDP_SRC signal
+			mdelay(1);
+			timeout_count--;
+		} else {
+			break;
+		}
+	}
+
+	if (timeout_count == 0) {
+		dev_dbg(phy_dev->dev, "[DEBUG][USB]Timeout - VDM_SRC is still High\n");
+	} else {
+		dev_dbg(phy_dev->dev, "[DEBUG][USB]Time count(%d) - VDM_SRC is low\n",
+				(500-timeout_count));
+	}
+
 	writel(readl(&ehci_pcfg->pcfg2) & ~((1 << 9) | (1 << 8)),
 			&ehci_pcfg->pcfg2);
 
@@ -229,6 +327,12 @@ static irqreturn_t chg_irq(int irq, void *data)
 
 	// clear irq
 	writel(readl(&ehci_pcfg->pcfg4) & ~(1 << 31), &ehci_pcfg->pcfg4);
+
+	schedule_work(&phy_dev->chgdet_work);
+
+	//It's ONLY for PET environment, it affect to normal connection.
+	//writel(readl(&ehci_pcfg->pcfg2) |(1<<8),
+	//&ehci_pcfg->pcfg2); //enable chg det
 
 	return IRQ_HANDLED;
 }
@@ -373,11 +477,24 @@ static int32_t tcc_ehci_phy_init(struct usb_phy *phy)
 	phy->set_dc_voltage_level(phy, CONFIG_USB_HS_DC_VOLTAGE_LEVEL);
 #endif
 
-#if defined(CONFIG_ENABLE_BC_20_HOST)
+#if defined(CONFIG_ENABLE_BC_20_HOST) || defined(CONFIG_ENABLE_BC_20_DRD)
+#ifndef CONFIG_ENABLE_BC_20_DRD
+	if (ehci_phy_dev->mux_port != 0) {
+		dev_info(ehci_phy_dev->dev, "[INFO][USB] Not support BC1.2 for 2.0 DRD port\n");
+		return 0;
+	}
+#endif
+#ifndef CONFIG_ENABLE_BC_20_HOST
+	if (ehci_phy_dev->mux_port == 0) {
+		dev_info(ehci_phy_dev->dev, "[INFO][USB] Not support BC1.2 for 2.0 HOST port\n");
+		return 0;
+	}
+#endif
+
+	dev_info(ehci_phy_dev->dev, "[INFO][USB] %s : Set Charging Detection\n",
+			__func__);
 	// clear irq
 	writel(readl(&ehci_pcfg->pcfg4) | (1 << 31), &ehci_pcfg->pcfg4);
-	dev_info(ehci_phy_dev->dev, "[INFO][USB] %s : Not Mux host\n",
-			__func__);
 
 	// Disable VBUS Detect
 	writel(readl(&ehci_pcfg->pcfg4) & ~(1 << 30), &ehci_pcfg->pcfg4);
@@ -392,6 +509,8 @@ static int32_t tcc_ehci_phy_init(struct usb_phy *phy)
 
 	// enable CHG_DET interrupt
 	writel(readl(&ehci_pcfg->pcfg4) | (1 << 28), &ehci_pcfg->pcfg4);
+
+	INIT_WORK(&ehci_phy_dev->chgdet_work, chgdet_monitor);
 
 	enable_irq(ehci_phy_dev->irq);
 #endif
@@ -539,7 +658,7 @@ static int32_t tcc_ehci_create_phy(struct device *dev,
 
 	phy_dev->mux_port =
 		(of_find_property(dev->of_node,
-			"mux_port", NULL) != NULL) ? 1 : 0;
+			  "mux_port", NULL) != NULL) ? 1 : 0;
 
 	// HCLK
 	phy_dev->hclk = of_clk_get(dev->of_node, 0);
@@ -570,8 +689,20 @@ static int32_t tcc_ehci_create_phy(struct device *dev,
 	phy_dev->phy.get_dc_voltage_level = tcc_ehci_get_dc_level;
 	phy_dev->phy.set_dc_voltage_level = tcc_ehci_set_dc_level;
 #endif
-#if defined(CONFIG_ENABLE_BC_20_HOST)
+#if defined(CONFIG_ENABLE_BC_20_HOST) || defined(CONFIG_ENABLE_BC_20_DRD)
+#ifndef CONFIG_ENABLE_BC_20_DRD
+	if (phy_dev->mux_port != 0)
+		goto skip;
+#endif
+#ifndef CONFIG_ENABLE_BC_20_HOST
+	if (phy_dev->mux_port == 0)
+		goto skip;
+#endif
 	phy_dev->phy.set_chg_det	  = tcc_ehci_set_chg_det;
+	phy_dev->phy.stop_chg_det	  = tcc_ehci_stop_chg_det;
+#if !defined(CONFIG_ENABLE_BC_20_DRD) || !defined(CONFIG_ENABLE_BC_20_HOST)
+skip:
+#endif
 #endif
 	phy_dev->phy.otg->usb_phy	  = &phy_dev->phy;
 
@@ -586,7 +717,7 @@ static int32_t tcc_ehci_phy_probe(struct platform_device *pdev)
 	struct device *dev = &pdev->dev;
 	struct tcc_ehci_device *phy_dev;
 	int32_t retval;
-#if defined(CONFIG_ENABLE_BC_20_HOST)
+#if defined(CONFIG_ENABLE_BC_20_HOST) || defined(CONFIG_ENABLE_BC_20_DRD)
 	int32_t irq, ret = 0;
 #endif
 	dev_info(dev, "[INFO][USB] %s:%s\n", pdev->dev.kobj.name, __func__);
@@ -596,7 +727,7 @@ static int32_t tcc_ehci_phy_probe(struct platform_device *pdev)
 	if (retval != 0) {
 		return retval;
 	}
-#if defined(CONFIG_ENABLE_BC_20_HOST)
+#if defined(CONFIG_ENABLE_BC_20_HOST) || defined(CONFIG_ENABLE_BC_20_DRD)
 	irq = platform_get_irq(pdev, 0);
 	if (irq <= 0) {
 		dev_err(&pdev->dev, "[ERROR][USB] Found HC with no IRQ. Check %s setup!\n",
@@ -620,7 +751,7 @@ static int32_t tcc_ehci_phy_probe(struct platform_device *pdev)
 			pdev->resource[0].end - pdev->resource[0].start + 1U);
 
 	phy_dev->phy.base = phy_dev->base;
-#if defined(CONFIG_ENABLE_BC_20_HOST)
+#if defined(CONFIG_ENABLE_BC_20_HOST) || defined(CONFIG_ENABLE_BC_20_DRD)
 	ret = devm_request_irq(&pdev->dev, phy_dev->irq, chg_irq,
 			IRQF_SHARED, pdev->dev.kobj.name, phy_dev);
 	if (ret) {

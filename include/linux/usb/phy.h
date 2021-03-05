@@ -172,6 +172,7 @@ struct usb_phy {
 #endif
 #if defined(CONFIG_TCC_BC_12)
 	void (*set_chg_det)(struct usb_phy *phy);
+	void (*stop_chg_det)(struct usb_phy *phy);
 #endif
 	void __iomem *(*get_base)(struct usb_phy *phy);
 #if defined(CONFIG_TCC_DWC3_PHY)

@@ -270,14 +270,31 @@ static int set_port_dc_level(struct usb_hcd *hcd, int level)
 static void set_chg_det(struct usb_hcd *hcd)
 {
 	if (!hcd->usb_phy || !hcd->usb_phy->set_chg_det) {
-		if (!hcd->usb_phy)
+		if (!hcd->usb_phy) {
 			pr_info("[INFO][USB] [%s]PHY driver is needed\n",
 				__func__);
-		else
+		} else {
 			pr_info("[INFO][USB] [%s]BC1.2 Detect function is needed\n",
 				__func__);
-	} else
+		}
+	} else {
 		hcd->usb_phy->set_chg_det(hcd->usb_phy);
+	}
+}
+
+static void stop_chg_det(struct usb_hcd *hcd)
+{
+	if (!hcd->usb_phy || !hcd->usb_phy->stop_chg_det) {
+		if (!hcd->usb_phy) {
+			pr_info("[INFO][USB] [%s]PHY driver is needed\n",
+				__func__);
+		} else {
+			pr_info("[INFO][USB] [%s]BC1.2 Detect function is needed\n",
+				__func__);
+		}
+	} else {
+		hcd->usb_phy->stop_chg_det(hcd->usb_phy);
+	}
 }
 #endif
 
@@ -2318,7 +2335,7 @@ void usb_disconnect(struct usb_device **pdev)
 	struct usb_device *udev = *pdev;
 	struct usb_hub *hub = NULL;
 	int port1 = 1;
-#if defined(CONFIG_DYNAMIC_DC_LEVEL_ADJUSTMENT)
+#if defined(CONFIG_DYNAMIC_DC_LEVEL_ADJUSTMENT) || defined(CONFIG_TCC_BC_12)
 	struct usb_hcd *hcd;
 #endif
 
@@ -2405,7 +2422,8 @@ void usb_disconnect(struct usb_device **pdev)
 	set_port_dc_level(hcd, CONFIG_USB_HS_DC_VOLTAGE_LEVEL);
 #endif
 #if defined(CONFIG_TCC_BC_12)
-	struct usb_hcd *hcd = bus_to_hcd(udev->bus);
+	//struct usb_hcd *hcd = bus_to_hcd(udev->bus);
+	hcd = bus_to_hcd(udev->bus);
 
 	set_chg_det(hcd);
 #endif
@@ -4688,7 +4706,10 @@ hub_port_init(struct usb_hub *hub, struct usb_device *udev, int port1,
 	/*  be a bit pessimistic with those devices. RHbug #23670 */
 	if (oldspeed == USB_SPEED_LOW)
 		delay = HUB_LONG_RESET_TIME;
-
+#if defined(CONFIG_TCC_BC_12)
+	dev_dbg(&udev->dev,"[DEBUG][USB]Start connection! stop chg det!\n");
+	stop_chg_det(hcd);
+#endif
 	mutex_lock(hcd->address0_mutex);
 
 	/* Reset the device; full speed may morph to high speed */
