@@ -133,8 +133,7 @@ static int check_keys(struct rxe_dev *rxe, struct rxe_pkt_info *pkt,
 		pkt->pkey_index = qp->attr.pkey_index;
 	}
 
-	if ((qp_type(qp) == IB_QPT_UD || qp_type(qp) == IB_QPT_GSI) &&
-	    pkt->mask) {
+	if (qp_type(qp) == IB_QPT_UD || qp_type(qp) == IB_QPT_GSI) {
 		u32 qkey = (qpn == 1) ? GSI_QKEY : qp->attr.qkey;
 
 		if (unlikely(deth_qkey(pkt) != qkey)) {
