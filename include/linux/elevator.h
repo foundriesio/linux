@@ -98,7 +98,6 @@ struct elevator_mq_ops {
 	void (*exit_sched)(struct elevator_queue *);
 	int (*init_hctx)(struct blk_mq_hw_ctx *, unsigned int);
 	void (*exit_hctx)(struct blk_mq_hw_ctx *, unsigned int);
-	void (*depth_updated)(struct blk_mq_hw_ctx *);
 
 	bool (*allow_merge)(struct request_queue *, struct request *, struct bio *);
 	bool (*bio_merge)(struct blk_mq_hw_ctx *, struct bio *);
@@ -118,6 +117,10 @@ struct elevator_mq_ops {
 	struct request *(*next_request)(struct request_queue *, struct request *);
 	void (*init_icq)(struct io_cq *);
 	void (*exit_icq)(struct io_cq *);
+#ifndef __GENKSYMS__
+	void (*depth_updated)(struct blk_mq_hw_ctx *);
+#endif
+
 };
 
 #define ELV_NAME_MAX	(16)

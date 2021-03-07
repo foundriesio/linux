@@ -5786,10 +5786,12 @@ static struct elevator_type iosched_bfq_mq = {
 		.requests_merged	= bfq_requests_merged,
 		.request_merged		= bfq_request_merged,
 		.has_work		= bfq_has_work,
-		.depth_updated		= bfq_depth_updated,
 		.init_hctx		= bfq_init_hctx,
 		.init_sched		= bfq_init_queue,
 		.exit_sched		= bfq_exit_queue,
+#ifndef __GENKSYMS__
+		.depth_updated		= bfq_depth_updated,
+#endif
 	},
 
 	.uses_mq =		true,
