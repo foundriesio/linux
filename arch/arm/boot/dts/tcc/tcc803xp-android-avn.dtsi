@@ -1236,15 +1236,11 @@
 /* SD CARD */
 &sdhc2 {
 	status = "okay";
-#ifndef CONFIG_MMC_SDHCI_TCC_MODULE_ONLY
-	compatible = "telechips,tcc-sdhci";
-#else
 	/*
 	 * In order to reduce boot time,
 	 * we use the driver as module not built-in.
 	 */
 	compatible = "telechips,tcc803x-sdhci,module-only";
-#endif
 	controller-id = <2>;
 	bus-width = <4>;
 	max-frequency = <200000000>;

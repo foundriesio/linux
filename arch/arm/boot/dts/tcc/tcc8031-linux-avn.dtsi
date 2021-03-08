@@ -1336,13 +1336,11 @@
 	/* SD CARD */
 	sdhc@16450000 {
 		status = "okay";
-#ifdef CONFIG_MMC_SDHCI_TCC_MODULE_ONLY
 		/*
 		 * In order to reduce boot time,
 		 * we use the driver as module not built-in.
 		 */
 		compatible = "telechips,tcc803x-sdhci,module-only";
-#endif
 		bus-width = <4>;
 		max-frequency = <200000000>;
 		pinctrl-names = "default";
