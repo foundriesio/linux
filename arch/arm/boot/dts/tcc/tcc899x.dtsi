@@ -2658,7 +2658,7 @@
 
 	/* eMMC Boot */
 	sdhc1: sdhc@16450000 {
-		compatible = "telechips,tcc-sdhc";
+		compatible = "telechips,tcc899x-sdhci";
 		reg = <0x16450000 0x100>, <0x16470050 0x50>, <0x16494014 0x4>, <0x164700FC 0x4>;
 		interrupts = <GIC_SPI 75 IRQ_TYPE_LEVEL_HIGH>;
 		clocks = <&clk_peri PERI_SDMMC1 &clk_io IOBUS_SDMMC1>;
@@ -2673,7 +2673,7 @@
 	};
 
 	sdhc0: sdhc@16440000 {
-		compatible = "telechips,tcc-sdhc";
+		compatible = "telechips,tcc899x-sdhci";
 		reg = <0x16440000 0x100>, <0x16470000 0x50>, <0x16494010 0x4>, <0x164700FC 0x4>;
 		interrupts = <GIC_SPI 74 IRQ_TYPE_LEVEL_HIGH>;
 		clocks = <&clk_peri PERI_SDMMC0 &clk_io IOBUS_SDMMC0>;
@@ -2688,7 +2688,7 @@
 	};
 
 	sdhc2: sdhc@16460000 {
-		compatible = "telechips,tcc-sdhc";
+		compatible = "telechips,tcc899x-sdhci";
 		reg = <0x16460000 0x100>, <0x164700A0 0x50>, <0x0 0x0>/*dummy*/, <0x164700FC 0x4>;
 		interrupts = <GIC_SPI 76 IRQ_TYPE_LEVEL_HIGH>;
 		clocks = <&clk_peri PERI_SDMMC2 &clk_io IOBUS_SDMMC2>;
