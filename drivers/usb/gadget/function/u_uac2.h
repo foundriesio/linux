@@ -19,10 +19,18 @@
 #include <linux/usb/composite.h>
 
 #define UAC2_DEF_PCHMASK 0x3
+#ifdef CONFIG_ANDROID
 #define UAC2_DEF_PSRATE 44100
+#else //for Linux
+#define UAC2_DEF_PSRATE 48000
+#endif
 #define UAC2_DEF_PSSIZE 2
 #define UAC2_DEF_CCHMASK 0x3
+#ifdef CONFIG_ANDROID
 #define UAC2_DEF_CSRATE 44100
+#else //for Linux
+#define UAC2_DEF_CSRATE 48000
+#endif
 #define UAC2_DEF_CSSIZE 2
 #define UAC2_DEF_REQ_NUM 8
 
