@@ -4,6 +4,10 @@ linux-unstable (5.12.0-2.2) UNRELEASED; urgency=medium
   CHANGELOG: Use the printchanges target to see the curent changes.
   CHANGELOG: Use the insertchanges target to create the final log.
 
+  [ Upstream Kernel Changes ]
+
+  * Rebase to v5.12-rc2
+
  -- Paolo Pisati <paolo.pisati@canonical.com>  Mon, 08 Mar 2021 10:56:48 +0100
 
 linux-unstable (5.12.0-1.1) hirsute; urgency=medium
