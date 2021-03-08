@@ -542,7 +542,9 @@ tcc_overlay_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 	case OVERLAY_GET_PANEL_SIZE: {
 		struct panel_size_t panel;
 
-		VIOC_WMIX_GetSize(overlay_drv->wmix.reg, &panel.xres, &panel.yres);
+		volatile void __iomem *pDISPBase = VIOC_DISP_GetAddress(VIOC_DISP + overlay_drv->fb_dd_num);
+
+		VIOC_DISP_GetSize(pDISPBase, &panel.xres, &panel.yres);
 
 		if(copy_to_user((struct panel_size_t *)arg, &panel, sizeof(struct panel_size_t))) {
 			pr_err("[ERR][OVERLAY] OVERLAY_GET_PANEL_SIZE copy_to_user failed\n");
