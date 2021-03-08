@@ -56,9 +56,7 @@
 		videoinput6 = &videoinput6;
 		i2s0 = &i2s0;
 		adma0 = &adma0;
-#if defined(CONFIG_OVERLAY1)
 		tcc-overlay-drv1 = &tcc_overlay_drv1;
-#endif
 	};
 
 	cpus {
@@ -1471,7 +1469,6 @@
 		status = "okay";
 	};
 
-#if defined(CONFIG_OVERLAY1)
 	tcc_overlay_drv1: tcc_overlay_drv@1 { //for scrshare
 		compatible = "telechips,tcc_overlay";
 		display_num = <0>;
@@ -1480,7 +1477,7 @@
 		rdma_init_layer = <2>;
 		status = "okay";
 	};
-#endif
+
 	switch_reverse {
 		compatible = "telechips,switch";
 		status = "okay";
