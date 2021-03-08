@@ -780,12 +780,31 @@ static PVRSRV_ERROR RGXSetPowerParams(PVRSRV_RGXDEV_INFO   *psDevInfo,
 	{
 		IMG_DEV_PHYADDR sKernelMMUCtxPCAddr;
 
-		eError = MMU_AcquireBaseAddr(psDevInfo->psKernelMMUCtx,
-		                             &sKernelMMUCtxPCAddr);
-		if (eError != PVRSRV_OK)
+		if (psDevInfo->psDeviceNode->bAutoVzFwIsUp)
 		{
-			PVR_DPF((PVR_DBG_ERROR, "RGXSetPowerParams: Failed to acquire Kernel MMU Ctx page catalog"));
-			return eError;
+			/* If AutoVz firmware is up at this stage, the driver initialised it
+			 * during a previous life-cycle. The firmware's memory is already pre-mapped
+			 * and the MMU page tables reside in the predetermined memory carveout.
+			 * The Kernel MMU Context created in this life-cycle is a dummy structure
+			 * that is not used for mapping.
+			 * To program the Device's BIF with the correct PC address, use the base
+			 * address of the carveout reserved for MMU mappings as Kernel MMU PC Address */
+#if defined(PVR_AUTOVZ_OVERRIDE_FW_MMU_CARVEOUT_BASE_ADDR)
+			sKernelMMUCtxPCAddr.uiAddr = PVR_AUTOVZ_OVERRIDE_FW_MMU_CARVEOUT_BASE_ADDR;
+#else
+			sKernelMMUCtxPCAddr.uiAddr = IMG_UINT64_C(0x80000000) +
+										 (RGX_FIRMWARE_RAW_HEAP_SIZE * RGX_NUM_OS_SUPPORTED);
+#endif /* PVR_AUTOVZ_OVERRIDE_FW_MMU_CARVEOUT_BASE_ADDR */
+		}
+		else
+		{
+			eError = MMU_AcquireBaseAddr(psDevInfo->psKernelMMUCtx,
+			                             &sKernelMMUCtxPCAddr);
+			if (eError != PVRSRV_OK)
+			{
+				PVR_DPF((PVR_DBG_ERROR, "RGXSetPowerParams: Failed to acquire Kernel MMU Ctx page catalog"));
+				return eError;
+			}
 		}
 
 		psDevInfo->sLayerParams.sPCAddr = sKernelMMUCtxPCAddr;
@@ -1465,7 +1484,7 @@ PVRSRV_ERROR RGXInitCreateFWKernelMemoryContext(PVRSRV_DEVICE_NODE *psDeviceNode
 	/* set up fw memory contexts */
 	PVRSRV_RGXDEV_INFO   *psDevInfo = psDeviceNode->pvDevice;
 	PVRSRV_DEVICE_CONFIG *psDevConfig = psDeviceNode->psDevConfig;
-	PVRSRV_ERROR eError, eError_pwr;
+	PVRSRV_ERROR eError;
 	IMG_HANDLE hSysData;
 
 #if defined(SUPPORT_AUTOVZ)
@@ -1480,10 +1499,13 @@ PVRSRV_ERROR RGXInitCreateFWKernelMemoryContext(PVRSRV_DEVICE_NODE *psDeviceNode
 
 		psDeviceNode->sDevMMUPxSetup = RGX_FW_MMU_RESERVED_MEM_SETUP(psDeviceNode);
 	}
+#else
+	PVRSRV_ERROR eError_pwr;
 #endif
 
 	hSysData = psDeviceNode->psDevConfig->hSysData;
 
+#if !defined(SUPPORT_AUTOVZ)
 	/* Power-up the device as required to read the registers */
 	if (psDeviceNode->psDevConfig->pfnPrePowerState)
 	{
@@ -1498,12 +1520,14 @@ PVRSRV_ERROR RGXInitCreateFWKernelMemoryContext(PVRSRV_DEVICE_NODE *psDeviceNode
 				PVRSRV_DEV_POWER_STATE_OFF, IMG_FALSE);
 		PVR_LOG_RETURN_IF_ERROR(eError_pwr, "pfnPostPowerState ON");
 	}
+#endif
 
 	/* Set the device fabric coherency before FW context creation */
 	eError = RGXSystemGetFabricCoherency(psDevConfig->sRegsCpuPBase,
 										 psDevConfig->ui32RegsSize,
 										 &psDeviceNode->eDevFabricType,
 										 &psDevConfig->eCacheSnoopingMode);
+#if !defined(SUPPORT_AUTOVZ)
 	/* Power-down the device */
 	if (psDeviceNode->psDevConfig->pfnPrePowerState)
 	{
@@ -1518,6 +1542,7 @@ PVRSRV_ERROR RGXInitCreateFWKernelMemoryContext(PVRSRV_DEVICE_NODE *psDeviceNode
 				PVRSRV_DEV_POWER_STATE_ON, IMG_FALSE);
 		PVR_LOG_RETURN_IF_ERROR(eError_pwr, "pfnPostPowerState OFF");
 	}
+#endif
 
 	if (eError != PVRSRV_OK)
 	{

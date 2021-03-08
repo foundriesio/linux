@@ -5812,7 +5812,7 @@ void RGXUpdateAutoVzWatchdog(PVRSRV_DEVICE_NODE* psDevNode)
 	{
 		PVRSRV_RGXDEV_INFO *psDevInfo = psDevNode->pvDevice;
 
-		if (unlikely((psDevInfo  == NULL || !psDevInfo->bFirmwareInitialised ||
+		if (unlikely((psDevInfo  == NULL || !psDevInfo->bFirmwareInitialised || !psDevInfo->bRGXPowered ||
 			psDevInfo->pvRegsBaseKM == NULL || psDevNode->eDevState == PVRSRV_DEVICE_STATE_DEINIT)))
 		{
 			/* If the firmware is not initialised, stop here */
