@@ -400,6 +400,7 @@ PVRSRV_ERROR RGXBvncInitialiseConfiguration(PVRSRV_DEVICE_NODE *psDeviceNode)
 
 		hSysData = psDeviceNode->psDevConfig->hSysData;
 
+#if !defined(SUPPORT_AUTOVZ)
 		/* Power-up the device as required to read the registers */
 		if (psDeviceNode->psDevConfig->pfnPrePowerState)
 		{
@@ -414,6 +415,7 @@ PVRSRV_ERROR RGXBvncInitialiseConfiguration(PVRSRV_DEVICE_NODE *psDeviceNode)
 					PVRSRV_DEV_POWER_STATE_OFF, IMG_FALSE);
 			PVR_LOG_RETURN_IF_ERROR(eError, "pfnPostPowerState ON");
 		}
+#endif
 
 		ui32ID = OSReadHWReg64(psDevInfo->pvRegsBaseKM, RGX_CR_CORE_ID);
 
@@ -429,6 +431,7 @@ PVRSRV_ERROR RGXBvncInitialiseConfiguration(PVRSRV_DEVICE_NODE *psDeviceNode)
 		PVR_LOG(("Read BVNC " RGX_BVNC_STR_FMTSPEC
 				" from HW device registers", B, V, N, C));
 
+#if !defined(SUPPORT_AUTOVZ)
 		/* Power-down the device */
 		if (psDeviceNode->psDevConfig->pfnPrePowerState)
 		{
@@ -443,6 +446,7 @@ PVRSRV_ERROR RGXBvncInitialiseConfiguration(PVRSRV_DEVICE_NODE *psDeviceNode)
 					PVRSRV_DEV_POWER_STATE_ON, IMG_FALSE);
 			PVR_LOG_RETURN_IF_ERROR(eError, "pfnPostPowerState OFF");
 		}
+#endif
 
 		/* Extract the BVNC config from the Features table */
 		ui64BVNC = BVNC_PACK(B,0,N,C);

@@ -373,6 +373,14 @@ void PVRSRVDeviceShutdown(PVRSRV_DEVICE_NODE *psDeviceNode)
 */ /***************************************************************************/
 int PVRSRVDeviceSuspend(PVRSRV_DEVICE_NODE *psDeviceNode)
 {
+	PVRSRV_RGXDEV_INFO *psDevInfo = psDeviceNode->pvDevice;
+
+	psDeviceNode->bAutoVzFwIsUp = IMG_FALSE;
+	PVR_DPF((PVR_DBG_MESSAGE, "%s Mode: %s", __func__, (PVRSRV_VZ_MODE_IS(GUEST)?"GUEST":"HOST")));
+
+	PVR_DPF((PVR_DBG_MESSAGE, "%s before: RGX_CR_OS0_SCRATCH2=0x%x, RGX_CR_OS0_SCRATCH3=0x%x"
+				, __func__, OSReadHWReg32(psDevInfo->pvRegsBaseKM, RGX_CR_OS0_SCRATCH2), OSReadHWReg32(psDevInfo->pvRegsBaseKM, RGX_CR_OS0_SCRATCH3)));
+
 	/*
 	 * LinuxBridgeBlockClientsAccess prevents processes from using the driver
 	 * while it's suspended (this is needed for Android). Acquire the bridge
@@ -403,10 +411,7 @@ int PVRSRVDeviceResume(PVRSRV_DEVICE_NODE *psDeviceNode)
 #if defined(SUPPORT_AUTOVZ)
 	PVRSRV_RGXDEV_INFO *psDevInfo = psDeviceNode->pvDevice;
 
-	PVR_DPF((PVR_DBG_ERROR, "%s Mode: %s", __func__, (PVRSRV_VZ_MODE_IS(GUEST)?"GUEST":"HOST")));
-	PVR_DPF((PVR_DBG_ERROR, "%s before: RGX_CR_OS0_SCRATCH2=0x%x, RGX_CR_OS0_SCRATCH3=0x%x"
-		, __func__, OSReadHWReg32(psDevInfo->pvRegsBaseKM, RGX_CR_OS0_SCRATCH2), OSReadHWReg32(psDevInfo->pvRegsBaseKM, RGX_CR_OS0_SCRATCH3)));
-
+	PVR_DPF((PVR_DBG_MESSAGE, "%s Mode: %s", __func__, (PVRSRV_VZ_MODE_IS(GUEST)?"GUEST":"HOST")));
 	psDeviceNode->bAutoVzFwIsUp = IMG_FALSE;
 #endif
 
@@ -417,7 +422,7 @@ int PVRSRVDeviceResume(PVRSRV_DEVICE_NODE *psDeviceNode)
 	}
 
 #if defined(SUPPORT_AUTOVZ)
-	PVR_DPF((PVR_DBG_ERROR, "%s after: RGX_CR_OS0_SCRATCH2=0x%x, RGX_CR_OS0_SCRATCH3=0x%x"
+	PVR_DPF((PVR_DBG_MESSAGE, "%s after: RGX_CR_OS0_SCRATCH2=0x%x, RGX_CR_OS0_SCRATCH3=0x%x"
 		, __func__, OSReadHWReg32(psDevInfo->pvRegsBaseKM, RGX_CR_OS0_SCRATCH2), OSReadHWReg32(psDevInfo->pvRegsBaseKM, RGX_CR_OS0_SCRATCH3)));
 	
 	if(PVRSRV_VZ_MODE_IS(GUEST))
@@ -427,19 +432,19 @@ int PVRSRVDeviceResume(PVRSRV_DEVICE_NODE *psDeviceNode)
 		/* Guest waits for FW ready */
 		if (OSReadHWReg32(psDevInfo->pvRegsBaseKM, RGX_CR_OS0_SCRATCH3) != RGXFW_CONNECTION_FW_READY)
 		{
-			PVR_DPF((PVR_DBG_ERROR, "%s: Firmware Connection is not in Ready state. Waiting for Firmware ...", __func__));
+			PVR_DPF((PVR_DBG_MESSAGE, "%s: Firmware Connection is not in Ready state. Waiting for Firmware ...", __func__));
 		}
 		while (OSReadHWReg32(psDevInfo->pvRegsBaseKM, RGX_CR_OS0_SCRATCH3) != RGXFW_CONNECTION_FW_READY)
 		{
 			OSWaitus(1000000);
-			PVR_DPF((PVR_DBG_ERROR, "%s: Firmware Connection is not in Ready state. Waiting for Firmware ...", __func__));
+			//PVR_DPF((PVR_DBG_MESSAGE, "%s: Firmware Connection is not in Ready state. Waiting for Firmware ...", __func__));
 		}
-		PVR_DPF((PVR_DBG_ERROR, "%s: Firmware Connection is Ready. Initialisation proceeding.", __func__));
+		PVR_DPF((PVR_DBG_MESSAGE, "%s: Firmware Connection is Ready. Initialisation proceeding.", __func__));
 
 		OSWriteHWReg32(psDevInfo->pvRegsBaseKM, RGX_CR_OS0_SCRATCH2, RGXFW_CONNECTION_OS_READY);
 		*((volatile IMG_BOOL *)&psDevInfo->psRGXFWIfOsInit->sRGXCompChecks.bUpdated) = IMG_FALSE;
 
-		PVR_DPF((PVR_DBG_ERROR, "%s after forced init: RGX_CR_OS0_SCRATCH2=0x%x, RGX_CR_OS0_SCRATCH3=0x%x, bUpdated=%d"
+		PVR_DPF((PVR_DBG_MESSAGE, "%s after forced init: RGX_CR_OS0_SCRATCH2=0x%x, RGX_CR_OS0_SCRATCH3=0x%x, bUpdated=%d"
 					, __func__, OSReadHWReg32(psDevInfo->pvRegsBaseKM, RGX_CR_OS0_SCRATCH2), OSReadHWReg32(psDevInfo->pvRegsBaseKM, RGX_CR_OS0_SCRATCH3),
 					(*((volatile IMG_BOOL *)&psDevInfo->psRGXFWIfOsInit->sRGXCompChecks.bUpdated))));
 
@@ -466,7 +471,7 @@ int PVRSRVDeviceResume(PVRSRV_DEVICE_NODE *psDeviceNode)
 			OSWaitus(ui32FwTimeout/WAIT_TRY_COUNT);
 		} END_LOOP_UNTIL_TIMEOUT();
 
-		PVR_DPF((PVR_DBG_ERROR, "%s after wait: RGX_CR_OS0_SCRATCH2=0x%x, RGX_CR_OS0_SCRATCH3=0x%x, bUpdated=%d"
+		PVR_DPF((PVR_DBG_MESSAGE, "%s after wait: RGX_CR_OS0_SCRATCH2=0x%x, RGX_CR_OS0_SCRATCH3=0x%x, bUpdated=%d"
 					, __func__, OSReadHWReg32(psDevInfo->pvRegsBaseKM, RGX_CR_OS0_SCRATCH2), OSReadHWReg32(psDevInfo->pvRegsBaseKM, RGX_CR_OS0_SCRATCH3),
 					(*((volatile IMG_BOOL *)&psDevInfo->psRGXFWIfOsInit->sRGXCompChecks.bUpdated))));
 	}
@@ -476,25 +481,25 @@ int PVRSRVDeviceResume(PVRSRV_DEVICE_NODE *psDeviceNode)
 
 		if (OSReadHWReg32(psDevInfo->pvRegsBaseKM, RGX_CR_OS0_SCRATCH3) != RGXFW_CONNECTION_FW_ACTIVE)
 		{
-			PVR_DPF((PVR_DBG_ERROR, "%s: Firmware Connection is not in Active state. Waiting for Firmware ...", __func__));
+			PVR_DPF((PVR_DBG_MESSAGE, "%s: Firmware Connection is not in Active state. Waiting for Firmware ...", __func__));
 		}
 		while (OSReadHWReg32(psDevInfo->pvRegsBaseKM, RGX_CR_OS0_SCRATCH3) != RGXFW_CONNECTION_FW_ACTIVE)
 		{
 			OSWaitus(1000000);
-			PVR_DPF((PVR_DBG_ERROR, "%s: Firmware Connection is not in Active state. Waiting for Firmware ...", __func__));
+			//PVR_DPF((PVR_DBG_MESSAGE, "%s: Firmware Connection is not in Active state. Waiting for Firmware ...", __func__));
 		}
-		PVR_DPF((PVR_DBG_ERROR, "%s: Firmware Connection is Active. Initialisation proceeding.", __func__));
+		PVR_DPF((PVR_DBG_MESSAGE, "%s: Firmware Connection is Active. Initialisation proceeding.", __func__));
 
 	}
 
-	PVR_DPF((PVR_DBG_ERROR, "%s after wait2: RGX_CR_OS0_SCRATCH2=0x%x, RGX_CR_OS0_SCRATCH3=0x%x, bUpdated=%d"
+	PVR_DPF((PVR_DBG_MESSAGE, "%s after wait2: RGX_CR_OS0_SCRATCH2=0x%x, RGX_CR_OS0_SCRATCH3=0x%x, bUpdated=%d"
 				, __func__, OSReadHWReg32(psDevInfo->pvRegsBaseKM, RGX_CR_OS0_SCRATCH2), OSReadHWReg32(psDevInfo->pvRegsBaseKM, RGX_CR_OS0_SCRATCH3),
 				(*((volatile IMG_BOOL *)&psDevInfo->psRGXFWIfOsInit->sRGXCompChecks.bUpdated))));
 
 	psDeviceNode->bAutoVzFwIsUp = IMG_TRUE;
 	OSWriteHWReg32(psDevInfo->pvRegsBaseKM, RGX_CR_OS0_SCRATCH2, RGXFW_CONNECTION_OS_ACTIVE);
 
-	PVR_DPF((PVR_DBG_ERROR, "%s final: RGX_CR_OS0_SCRATCH2=0x%x, RGX_CR_OS0_SCRATCH3=0x%x"
+	PVR_DPF((PVR_DBG_MESSAGE, "%s final: RGX_CR_OS0_SCRATCH2=0x%x, RGX_CR_OS0_SCRATCH3=0x%x"
 				, __func__, OSReadHWReg32(psDevInfo->pvRegsBaseKM, RGX_CR_OS0_SCRATCH2), OSReadHWReg32(psDevInfo->pvRegsBaseKM, RGX_CR_OS0_SCRATCH3)));
 #endif
 	LinuxBridgeUnblockClientsAccess();
