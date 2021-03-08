@@ -363,9 +363,15 @@ PVRSRV_ERROR SysDevInit(void *pvOSDevice, PVRSRV_DEVICE_CONFIG **ppsDevConfig)
 		
 	/* Setup RGX specific timing data */
 	gsRGXTimingInfo.ui32CoreClockSpeed	  = RGX_TCC8059_CORE_CLOCK_SPEED;
+	gsRGXTimingInfo.bEnableRDPowIsland    = IMG_FALSE;
+
+#ifdef SUPPORT_AUTOVZ
+	gsRGXTimingInfo.bEnableActivePM		  = IMG_FALSE;
+	gsRGXTimingInfo.ui32ActivePMLatencyms = 0;
+#else
 	gsRGXTimingInfo.bEnableActivePM		  = IMG_TRUE;
-	gsRGXTimingInfo.bEnableRDPowIsland      = IMG_FALSE;
 	gsRGXTimingInfo.ui32ActivePMLatencyms  = SYS_RGX_ACTIVE_POWER_LATENCY_MS;
+#endif
 
 	/* Setup RGX specific data */
 	gsRGXData.psRGXTimingInfo = &gsRGXTimingInfo;
@@ -383,7 +389,6 @@ PVRSRV_ERROR SysDevInit(void *pvOSDevice, PVRSRV_DEVICE_CONFIG **ppsDevConfig)
 		gsDevCfg.pvOSDevice = NULL;
 		return PVRSRV_ERROR_OUT_OF_MEMORY;
 	}
-
 
 	/*
 	 * Setup information about physical memory heap(s) we have

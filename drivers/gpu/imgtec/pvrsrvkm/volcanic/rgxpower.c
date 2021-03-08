@@ -147,6 +147,66 @@ static INLINE PVRSRV_ERROR RGXDoStop(PVRSRV_DEVICE_NODE *psDeviceNode)
 	return eError;
 }
 
+#if defined(SUPPORT_AUTOVZ)
+static PVRSRV_ERROR _RGXWaitForGuestsToDisconnect(PVRSRV_DEVICE_NODE *psDeviceNode)
+
+{
+	PVRSRV_RGXDEV_INFO *psDevInfo = psDeviceNode->pvDevice;
+	PVRSRV_ERROR eError = PVRSRV_ERROR_TIMEOUT;
+	IMG_UINT32 ui32FwTimeout = (20 * SECONDS_TO_MICROSECONDS);
+
+	LOOP_UNTIL_TIMEOUT(ui32FwTimeout)
+	{
+		IMG_UINT32 ui32OSid;
+		IMG_BOOL bGuestOnline = IMG_FALSE;
+
+		for (ui32OSid = RGXFW_GUEST_OSID_START;
+			 ui32OSid <= RGX_NUM_OS_SUPPORTED; ui32OSid++)
+		{
+			RGXFWIF_CONNECTION_FW_STATE eGuestState = (volatile RGXFWIF_CONNECTION_FW_STATE)
+					psDevInfo->psRGXFWIfFwSysData->asOsRuntimeFlagsMirror[ui32OSid].bfOsState;
+
+			if ((eGuestState == RGXFW_CONNECTION_FW_ACTIVE) ||
+				(eGuestState == RGXFW_CONNECTION_FW_OFFLOADING))
+			{
+				bGuestOnline = IMG_TRUE;
+				PVR_DPF((PVR_DBG_WARNING, "%s: Guest OS %u still online.", __func__, ui32OSid));
+			}
+		}
+
+		if (!bGuestOnline)
+		{
+			PVR_DPF((PVR_DBG_WARNING, "%s: All Guest connections are down,"
+									  "Host can power down the GPU.", __func__));
+			eError = PVRSRV_OK;
+			break;
+		}
+		else
+		{
+			PVR_DPF((PVR_DBG_WARNING, "%s: Waiting for Guests to disconnect "
+									  "before powering down GPU.", __func__));
+
+			if (PVRSRVPwrLockIsLockedByMe(psDeviceNode))
+			{
+				/* Don't wait with the power lock held as this prevents the vz
+				 * watchdog thread from keeping the fw-km connection alive. */
+				PVRSRVPowerUnlock(psDeviceNode);
+			}
+		}
+
+		OSSleepms(1000);
+	} END_LOOP_UNTIL_TIMEOUT();
+
+	if (!PVRSRVPwrLockIsLockedByMe(psDeviceNode))
+	{
+		/* Take back power lock after waiting for Guests */
+		eError = PVRSRVPowerLock(psDeviceNode);
+	}
+
+	return eError;
+}
+#endif /* defined(SUPPORT_AUTOVZ) */
+
 /*
 	RGXPrePowerState
 */
@@ -158,11 +218,6 @@ PVRSRV_ERROR RGXPrePowerState(IMG_HANDLE				hDevHandle,
 	PVRSRV_ERROR eError = PVRSRV_OK;
 	PVRSRV_DEVICE_NODE    *psDeviceNode = hDevHandle;
 
-	if (PVRSRV_VZ_MODE_IS(GUEST) || (psDeviceNode->bAutoVzFwIsUp))
-	{
-		return PVRSRV_OK;
-	}
-
 	if ((eNewPowerState != eCurrentPowerState) &&
 	    (eNewPowerState != PVRSRV_DEV_POWER_STATE_ON))
 	{
@@ -171,6 +226,24 @@ PVRSRV_ERROR RGXPrePowerState(IMG_HANDLE				hDevHandle,
 		IMG_UINT32            ui32CmdKCCBSlot;
 
 		RGXFWIF_SYSDATA *psFwSysData = psDevInfo->psRGXFWIfFwSysData;
+
+		if (PVRSRV_VZ_MODE_IS(GUEST) || (psDeviceNode->bAutoVzFwIsUp))
+		{
+			/* Driver takes the connection down, preventing the firmware from submitting further interrutps */
+			KM_SET_OS_CONNECTION(OFFLINE, psDevInfo);
+			psDevInfo->bRGXPowered = IMG_FALSE;
+			return PVRSRV_OK;
+		}
+#if defined(SUPPORT_AUTOVZ)
+		else
+		{
+			/* The Host must ensure all Guest drivers have disconnected from the GPU beforing powering it down.
+			 * Guest drivers regularly access hardware registers during runtime. If an attempt is made to
+			 * access a GPU register while the GPU is down, the SoC might lock up. */
+			eError = _RGXWaitForGuestsToDisconnect(psDeviceNode);
+			PVR_LOG_RETURN_IF_ERROR(eError, "_RGXWaitForGuestsToDisconnect");
+		}
+#endif
 
 		/* Send the Power off request to the FW */
 		sPowCmd.eCmdType = RGXFWIF_KCCB_CMD_POW;
@@ -210,6 +283,10 @@ PVRSRV_ERROR RGXPrePowerState(IMG_HANDLE				hDevHandle,
 			{
 #if !defined(NO_HARDWARE)
 				IMG_UINT32 ui32TID;
+
+				/* Driver takes the VZ connection down, preventing the firmware from submitting further interrutps */
+				KM_SET_OS_CONNECTION(OFFLINE, psDevInfo);
+
 				for (ui32TID = 0; ui32TID < RGXFW_THREAD_NUM; ui32TID++)
 				{
 					/* Wait for the pending FW processor to host interrupts to come back. */
