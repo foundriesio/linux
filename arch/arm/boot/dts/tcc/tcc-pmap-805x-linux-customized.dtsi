@@ -114,13 +114,11 @@
 #define INST_1ST_MAX_FRAMEBUFFERS	(24)
 #endif
 
-#if !defined(CONFIG_TCC805X_CLUSTER)
 #define INST_2ND_USE			(1)
 #define INST_2ND_IS_HEVC_TYPE		(0)
 #define INST_2ND_VIDEO_WIDTH		(1920)
 #define INST_2ND_VIDEO_HEIGHT		(1088)
 #define INST_2ND_MAX_FRAMEBUFFERS	(24)
-#endif
 
 #define INST_3RD_USE			(0)
 #define INST_3RD_IS_HEVC_TYPE		(0)
