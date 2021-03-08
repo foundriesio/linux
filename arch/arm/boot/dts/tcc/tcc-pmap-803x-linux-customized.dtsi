@@ -56,17 +56,9 @@
 //Choose more bigger resolution between Primary and Secondary display device.
 //and Should sync with hardware/telechips/common/hwcomposer/Hwrenderer.h
 
-#if defined(CONFIG_TCC_DUAL_DISPLAY)
-#   if defined(CONFIG_DUAL_DISPLAY_HD)
-#       define PRIMARY_TARGET_WIDTH     (1280)
-#       define PRIMARY_TARGET_HEIGHT    (720)
-#   elif defined(CONFIG_DUAL_DISPLAY_FHD)
-#       define PRIMARY_TARGET_WIDTH     (1920)
-#       define PRIMARY_TARGET_HEIGHT    (1088)
-#   elif defined(CONFIG_DUAL_DISPLAY_UHD)
-#       define PRIMARY_TARGET_WIDTH     (3840)
-#       define PRIMARY_TARGET_HEIGHT    (2160)
-#   endif
+#if 0
+#    define PRIMARY_TARGET_WIDTH     (1920)
+#    define PRIMARY_TARGET_HEIGHT    (1088)
 #else
 #    define PRIMARY_TARGET_WIDTH        (1920)
 #    define PRIMARY_TARGET_HEIGHT       (720)

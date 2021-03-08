@@ -2702,12 +2702,10 @@
 		m2m_wmix	= <&vioc_wmix VIOC_WMIX3>;
 		m2m_wdma = <&vioc_wdma VIOC_WDMA03>;
 
-#if defined(CONFIG_TCC_DUAL_DISPLAY)
 		m2m_dual_rdma = <&vioc_rdma VIOC_RDMA15 VIOC_RDMA16>;
 		m2m_dual_wmix	= <&vioc_wmix VIOC_WMIX4 VIOC_WMIX5>;
 		m2m_dual_wdma = <&vioc_wdma VIOC_WDMA04 VIOC_WDMA06>;
 		m2m_dual_scaler = <&vioc_scaler VIOC_SCALER6 VIOC_SCALER4>;
-#endif
 
 		deintl_block = <&vioc_viqe VIOC_VIQE0>;
 		scaler = <&vioc_scaler VIOC_SCALER1>;
