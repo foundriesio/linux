@@ -34,11 +34,6 @@
 //                     NEED TO BE OPTIMIZED BY CUSTOMER
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef CONFIG_ANDROID
-// If there's rotation h/w block and video rotation (90/180/270) is required.
-#define SUPPORT_ROTATION
-#endif
-
 //***************************** DISPLAY ******************************/
 #define PRIMARY_FRAMEBUFFER_WIDTH       (1920)
 #define PRIMARY_FRAMEBUFFER_HEIGHT      (720)
