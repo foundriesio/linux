@@ -3992,7 +3992,6 @@ CONFIG_LEDS_ACER_A500                           policy<{'armhf-generic': 'm'}>
 CONFIG_LEDS_BLINK                               policy<{'amd64': 'y', 'arm64': 'y', 'armhf': 'y', 'ppc64el': 'y'}>
 CONFIG_LEDS_BLINK_LGM                           policy<{'arm64': 'm', 'armhf': 'm', 'ppc64el': 'm'}>
 
-
 # Menu: Device Drivers >> LED Support >> LED Class Support >> LED Flash Class Support
 CONFIG_LEDS_RT8515                              policy<{'amd64': 'm', 'arm64': 'm', 'armhf': 'm', 'ppc64el': 'm'}>
 CONFIG_LEDS_CLASS_FLASH                         policy<{'amd64': 'm', 'arm64': 'm', 'armhf': 'm', 'ppc64el': 'm'}>
@@ -8741,23 +8740,23 @@ CONFIG_SND_SOC_SOF_DEVELOPER_SUPPORT            policy<{'amd64': 'n', 'arm64': '
 
 # Menu: Device Drivers >> Sound card support >> Advanced Linux Sound Architecture >> ALSA for SoC audio support >> Sound Open Firmware Support >> SOF support for Intel audio DSPs
 CONFIG_SND_SOC_SOF_INTEL_TOPLEVEL               policy<{'amd64': 'y'}>
-CONFIG_SND_SOC_SOF_BAYTRAIL_SUPPORT             policy<{'amd64': 'y'}>
-CONFIG_SND_SOC_SOF_BROADWELL_SUPPORT            policy<{'amd64': 'n'}>
-CONFIG_SND_SOC_SOF_MERRIFIELD_SUPPORT           policy<{'amd64': 'y'}>
-CONFIG_SND_SOC_SOF_APOLLOLAKE_SUPPORT           policy<{'amd64': 'y'}>
-CONFIG_SND_SOC_SOF_GEMINILAKE_SUPPORT           policy<{'amd64': 'y'}>
-CONFIG_SND_SOC_SOF_CANNONLAKE_SUPPORT           policy<{'amd64': 'y'}>
-CONFIG_SND_SOC_SOF_COFFEELAKE_SUPPORT           policy<{'amd64': 'y'}>
-CONFIG_SND_SOC_SOF_ICELAKE_SUPPORT              policy<{'amd64': 'y'}>
-CONFIG_SND_SOC_SOF_COMETLAKE_LP_SUPPORT         policy<{'amd64': 'y'}>
-CONFIG_SND_SOC_SOF_TIGERLAKE_SUPPORT            policy<{'amd64': 'y'}>
-CONFIG_SND_SOC_SOF_ELKHARTLAKE_SUPPORT          policy<{'amd64': 'y'}>
-CONFIG_SND_SOC_SOF_JASPERLAKE_SUPPORT           policy<{'amd64': 'y'}>
-CONFIG_SND_SOC_SOF_ALDERLAKE_SUPPORT            policy<{'amd64': 'y'}>
+CONFIG_SND_SOC_SOF_BAYTRAIL                     policy<{'amd64': 'm'}>
+CONFIG_SND_SOC_SOF_BROADWELL                    policy<{'amd64': 'm'}>
+CONFIG_SND_SOC_SOF_MERRIFIELD                   policy<{'amd64': 'm'}>
+CONFIG_SND_SOC_SOF_APOLLOLAKE                   policy<{'amd64': 'm'}>
+CONFIG_SND_SOC_SOF_GEMINILAKE                   policy<{'amd64': 'm'}>
+CONFIG_SND_SOC_SOF_CANNONLAKE                   policy<{'amd64': 'm'}>
+CONFIG_SND_SOC_SOF_COFFEELAKE                   policy<{'amd64': 'm'}>
+CONFIG_SND_SOC_SOF_COMETLAKE                    policy<{'amd64': 'm'}>
+CONFIG_SND_SOC_SOF_ICELAKE                      policy<{'amd64': 'm'}>
+CONFIG_SND_SOC_SOF_JASPERLAKE                   policy<{'amd64': 'm'}>
+CONFIG_SND_SOC_SOF_TIGERLAKE                    policy<{'amd64': 'm'}>
+CONFIG_SND_SOC_SOF_ELKHARTLAKE                  policy<{'amd64': 'm'}>
+CONFIG_SND_SOC_SOF_ALDERLAKE                    policy<{'amd64': 'm'}>
 CONFIG_SND_SOC_SOF_HDA_LINK                     policy<{'amd64': 'y'}>
 CONFIG_SND_SOC_SOF_HDA_AUDIO_CODEC              policy<{'amd64': 'y'}>
 CONFIG_SND_SOC_SOF_HDA_ALWAYS_ENABLE_DMI_L1     policy<{'amd64': 'y'}>
-CONFIG_SND_SOC_SOF_INTEL_SOUNDWIRE_LINK         policy<{'amd64': 'y'}>
+CONFIG_SND_SOC_SOF_INTEL_SOUNDWIRE              policy<{'amd64': 'm'}>
 #
 CONFIG_SND_SOC_SOF_HDA_LINK                     mark<ENFORCED> note<LP:1848490>
 CONFIG_SND_SOC_SOF_HDA_AUDIO_CODEC              mark<ENFORCED> note<LP:1848490>
@@ -14153,6 +14152,7 @@ CONFIG_KVM_WERROR                               policy<{'amd64': 'y'}>
 CONFIG_KVM_INTEL                                policy<{'amd64': 'm'}>
 CONFIG_KVM_AMD                                  policy<{'amd64': 'm'}>
 CONFIG_KVM_AMD_SEV                              policy<{'amd64': 'y'}>
+CONFIG_KVM_XEN                                  policy<{'amd64': 'y'}>
 CONFIG_KVM_MMU_AUDIT                            policy<{'amd64': 'n'}>
 
 # Menu: Virtualization >> Linux - VM Monitor Stream, base infrastructure >> Architecture: s390
