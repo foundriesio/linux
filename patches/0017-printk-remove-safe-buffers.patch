@@ -20,9 +20,9 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  kernel/panic.c                 |    3 
  kernel/printk/internal.h       |    2 
  kernel/printk/printk.c         |   85 +---------
- kernel/printk/printk_safe.c    |  321 -----------------------------------------
+ kernel/printk/printk_safe.c    |  329 -----------------------------------------
  lib/nmi_backtrace.c            |    6 
- 9 files changed, 17 insertions(+), 417 deletions(-)
+ 9 files changed, 17 insertions(+), 425 deletions(-)
 
 --- a/arch/powerpc/kernel/traps.c
 +++ b/arch/powerpc/kernel/traps.c
@@ -468,7 +468,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
 --- a/kernel/printk/printk_safe.c
 +++ b/kernel/printk/printk_safe.c
-@@ -15,274 +15,9 @@
+@@ -15,282 +15,9 @@
  
  #include "internal.h"
  
@@ -502,7 +502,9 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 -static DEFINE_PER_CPU(struct printk_safe_seq_buf, safe_print_seq);
  static DEFINE_PER_CPU(int, printk_context);
  
- #ifdef CONFIG_PRINTK_NMI
+-static DEFINE_RAW_SPINLOCK(safe_read_lock);
+-
+-#ifdef CONFIG_PRINTK_NMI
 -static DEFINE_PER_CPU(struct printk_safe_seq_buf, nmi_print_seq);
 -#endif
 -
@@ -637,8 +639,6 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 - */
 -static void __printk_safe_flush(struct irq_work *work)
 -{
--	static raw_spinlock_t read_lock =
--		__RAW_SPIN_LOCK_INITIALIZER(read_lock);
 -	struct printk_safe_seq_buf *s =
 -		container_of(work, struct printk_safe_seq_buf, work);
 -	unsigned long flags;
@@ -652,7 +652,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 -	 * different CPUs. This is especially important when printing
 -	 * a backtrace.
 -	 */
--	raw_spin_lock_irqsave(&read_lock, flags);
+-	raw_spin_lock_irqsave(&safe_read_lock, flags);
 -
 -	i = 0;
 -more:
@@ -689,7 +689,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 -
 -out:
 -	report_message_lost(s);
--	raw_spin_unlock_irqrestore(&read_lock, flags);
+-	raw_spin_unlock_irqrestore(&safe_read_lock, flags);
 -}
 -
 -/**
@@ -704,7 +704,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 -	int cpu;
 -
 -	for_each_possible_cpu(cpu) {
--#ifdef CONFIG_PRINTK_NMI
+ #ifdef CONFIG_PRINTK_NMI
 -		__printk_safe_flush(&per_cpu(nmi_print_seq, cpu).work);
 -#endif
 -		__printk_safe_flush(&per_cpu(safe_print_seq, cpu).work);
@@ -723,6 +723,14 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 - */
 -void printk_safe_flush_on_panic(void)
 -{
+-	if (raw_spin_is_locked(&safe_read_lock)) {
+-		if (num_online_cpus() > 1)
+-			return;
+-
+-		debug_locks_off();
+-		raw_spin_lock_init(&safe_read_lock);
+-	}
+-
 -	printk_safe_flush();
 -}
 -
@@ -743,7 +751,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  void noinstr printk_nmi_enter(void)
  {
  	this_cpu_add(printk_context, PRINTK_NMI_CONTEXT_OFFSET);
-@@ -297,9 +32,6 @@ void noinstr printk_nmi_exit(void)
+@@ -305,9 +32,6 @@ void noinstr printk_nmi_exit(void)
   * Marks a code that might produce many messages in NMI context
   * and the risk of losing them is more critical than eventual
   * reordering.
@@ -753,7 +761,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
   */
  void printk_nmi_direct_enter(void)
  {
-@@ -312,27 +44,8 @@ void printk_nmi_direct_exit(void)
+@@ -320,27 +44,8 @@ void printk_nmi_direct_exit(void)
  	this_cpu_and(printk_context, ~PRINTK_NMI_DIRECT_CONTEXT_MASK);
  }
  
@@ -781,7 +789,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  /* Can be preempted by NMI. */
  void __printk_safe_enter(void)
  {
-@@ -357,8 +70,10 @@ void __printk_safe_exit(void)
+@@ -365,8 +70,10 @@ void __printk_safe_exit(void)
  	 * Use the main logbuf even in NMI. But avoid calling console
  	 * drivers that might have their own locks.
  	 */
@@ -794,7 +802,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  		int len;
  
  		printk_safe_enter_irqsave(flags);
-@@ -368,34 +83,6 @@ void __printk_safe_exit(void)
+@@ -376,34 +83,6 @@ void __printk_safe_exit(void)
  		return len;
  	}
  

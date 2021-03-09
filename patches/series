@@ -24,8 +24,6 @@ timers-Move-clearing-of-base-timer_running-under-bas.patch
 # POSTED
 ############################################################
 # blk-mq
-# tip 66040b2d5d41f85cb1a752a75260595344c5ec3b
-smp-Process-pending-softirqs-in-flush_smp_call_funct.patch
 # linux-block 0a2efafbb1c752a7041652445bc1232114409633+
 blk-mq-Always-complete-remote-completions-requests-i.patch
 blk-mq-Use-llist_head-for-blk_cpu_done.patch
@@ -64,7 +62,6 @@ powerpc-mm-Move-the-linear_mapping_mutex-to-the-ifde.patch
 ############################################################
 
 # John's printk series.
-0001-printk-avoid-prb_first_valid_seq-where-possible.patch
 0002-printk-limit-second-loop-of-syslog_print_all.patch
 0003-printk-kmsg_dump-remove-unused-fields.patch
 0004-printk-refactor-kmsg_dump_get_buffer.patch

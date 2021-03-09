@@ -432,10 +432,10 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 -		raw_spin_lock_init(&logbuf_lock);
 -	}
 -
- 	printk_safe_flush();
- }
- 
-@@ -311,9 +299,7 @@ void noinstr printk_nmi_exit(void)
+ 	if (raw_spin_is_locked(&safe_read_lock)) {
+ 		if (num_online_cpus() > 1)
+ 			return;
+@@ -319,9 +307,7 @@ void noinstr printk_nmi_exit(void)
   * reordering.
   *
   * It has effect only when called in NMI context. Then printk()
@@ -446,7 +446,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
   */
  void printk_nmi_direct_enter(void)
  {
-@@ -368,20 +354,21 @@ void __printk_safe_exit(void)
+@@ -376,20 +362,21 @@ void __printk_safe_exit(void)
  #endif
  
  	/*
