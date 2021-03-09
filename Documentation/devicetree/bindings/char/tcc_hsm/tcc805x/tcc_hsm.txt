@@ -1,0 +1,22 @@
+This is for "Telechips tcc_hsm device for tcc805x"
+
+Required properties:
+	- compatible:
+		- telechips,tcc-hsm
+	-reg:
+		Specifies base physical address and size of the registers map.
+
+Optional properties:
+	-tcc multi mbox:
+		Telechips Mailbox device Telechips Mailbox device
+		This device file must be enable to use sec_ipc.
+		For more information for , see
+		“Documentation/devicetree/bindings/mailbox/tcc805x_multi_mailbox/tcc_multi_mbox.txt”
+		in kernel directory.
+
+Example:
+
+	tcc_hsm@0 {
+		compatible = "telechips,tcc-hsm";
+		status = "okay";
+	};

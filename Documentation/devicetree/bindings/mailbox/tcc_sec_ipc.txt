@@ -1,0 +1,29 @@
+This is for "Telechips sec-ipc device"
+
+Required properties:
+	- compatible:
+		- CORE <-> M4: telechips,sec-ipc-m4
+		- CORE <-> HSM: telechips,sec-ipc-hsm
+		- CORE <-> A7: telechips,sec-ipc-a7
+		- CORE <-> A53: telechips,sec-ipc-a53
+		- CORE <-> A72: telechips,sec-ipc-a72
+		- CORE <-> R5: telechips,sec-ipc-r5
+	-reg:
+		Specifies base physical address and size of the registers map.
+
+Optional properties:
+	-tcc multi mbox:
+		Telechips Mailbox device Telechips Mailbox device
+		This device file must be enable to use sec_ipc.
+		For more information for , see
+		“Documentation/devicetree/bindings/mailbox/tcc805x_multi_mailbox/tcc_multi_mbox.txt”
+		in kernel directory.
+
+Example:
+
+	sec-ipc-hsm {
+		compatible = "telechips,sec-ipc-hsm";
+		mbox-names = "sec-ipc-hsm";
+		mboxes = <&hsm_mbox TCC_HSM_MBOX0>;
+		mbox-id = TCC_MBOX_HSM_ID;
+	};
