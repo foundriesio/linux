@@ -1,0 +1,24 @@
+Synopsys HDCP on HDMI Controller
+-----------------------------------------------------
+This binding defines the HDCP controller that are using synopsys IP.
+
+Required properties:
+- compatible : "telechips,dw-hdcp"
+- reg : address and length of the register for the device.
+        Should be contained the link and hpi(hdcp2.2) registers.
+- interrupts : Should be contained the hdcp and hdcp2 interrupts.
+
+Optional properties:
+- memory-region : fixed memory region that are defined 'reserved-memroy'.
+                  this option is only used the settop box platform.
+
+Example:
+	hdmi_hdcp: hdmi_hdcp@12440000 {
+		compatible = "telechips,dw-hdcp";
+		reg = <0x12400000 0x20000 0x12440000 0x1000 0x163C0000 0x10>;
+		reg-names = "hdmi_link", "hdcp_2.2", "i2c_port_cfg";
+		interrupts = <GIC_SPI 123 IRQ_TYPE_LEVEL_HIGH>,
+			     <GIC_SPI 126 IRQ_TYPE_LEVEL_HIGH>;
+		interrupt-names = "hdmi_link", "hdcp_2.2";
+		memory-region = <&reserved_dw_esm>;
+	};
