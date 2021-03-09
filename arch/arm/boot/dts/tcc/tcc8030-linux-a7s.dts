@@ -802,7 +802,7 @@
 		/* video decoder using parallel interface output */
 		isl79988: isl79988 {
 			status		= "okay";
-			compatible	= "adi,isl79988";
+			compatible	= "intersil,isl79988";
 			pinctrl-names	= "default";
 			pinctrl-0	= <&cam0_clk &cam0_data_8bit>;
 			cifport		= <0>;
