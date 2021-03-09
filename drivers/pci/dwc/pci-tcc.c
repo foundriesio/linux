@@ -627,7 +627,7 @@ static int tcc_pcie_probe(struct platform_device *pdev)
 
 	tp->suspend_regs = kzalloc(TCC_PCIE_REG_BACKUP_SIZE, GFP_KERNEL);
 	if (tp->suspend_regs == NULL)
-		dev_err(&pdev->dev, "failed to allocate pcie reg backup table\n");
+		return -ENOMEM;
 
 	return 0;
 

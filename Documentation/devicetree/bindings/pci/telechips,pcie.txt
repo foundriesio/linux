@@ -1,0 +1,79 @@
+* Telechips Dolphin+ PCIe interface
+
+This PCIe host controller is based on the Synopsys DesignWare PCIe IP
+and thus inherits all the common properties defined in designware-pcie.txt.
+
+Required properties:
+- compatible: "telechips,pcie"
+- reg: base addresses and lengths of the PCIe controller,
+	the PHY controller, additional register for the PHY controller.
+	- 0x11800000 : dbi register address
+	- 0x11880000 : phy register address
+	- 0x118a0000 : link register address
+	- 0x11700000 : configuration address
+- reg-names : First name should be set to "elbi".
+	And use the "config" instead of getting the configuration address space
+	from "ranges".
+	NOTE: When using the "config" property, reg-names must be set.
+	- dbi
+	- phy
+	- cfg
+	- config
+- interrupts: A list of interrupt outputs for level interrupt,
+	pulse interrupt, special interrupt.
+- cloks : clocks for PCI, Must include the following entries:
+	- pcie_aux 	: clock for AUX 
+	- pcie_apb 	: clock for Link
+	- pcie_pcs 	: clock for Link
+	- pcie_ref_ext 	: clock for internal ref clock
+	- fbus_hsio 	: bus clock for PCI
+	- pcie_phy	: clock for PHY
+- using_ext_ref_clk : if it use external ref clock, it must be set to 1.
+- for_si_test : for CTS mode, it use for measuring waveform of PCI.
+- suspend_mode : Don's set this value, it is for STB platform.
+
+For other common properties, refer to
+	Documentation/devicetree/bindings/pci/designware-pcie.txt
+
+Example:
+
+SoC-specific DT Entry:
+
+        pcie: pcie@11800000 {
+                compatible = "telechips,pcie", "snps,dw-pcie";
+                reg = <0x11800000 0x1000
+                       0x11880000 0x1000
+                       0x118a0000 0x1000
+                       0x11700000 0x100000>;
+                reg-names = "dbi", "phy", "cfg", "config" , "byte_cfg";
+                interrupts = <GIC_SPI 138 IRQ_TYPE_LEVEL_HIGH>;
+                clocks = <&clk_peri PERI_PCIE_AUX>, <&clk_peri PERI_PCIE_APB>,
+                         <&clk_peri PERI_PCIE_PCS>, <&clk_peri PERI_PCIE_REF_EXT>,
+                         <&clk_fbus FBUS_HSIO>, <&clk_isoip_top ISOIP_TOP_PCIE>;
+                clock-names = "pcie_aux", "pcie_apb", "pcie_pcs", "pcie_ref_ext", "fbus_hsio", "pcie_phy";
+                resets = <&pmu_rst RESET_PCIE>;
+                #address-cells = <3>;
+                #size-cells = <2>;
+                device_type = "pci";
+                ranges = <0x81000000 0 0          0x11600000 0 0x00100000   /* downstream I/O */
+                          0x82000000 0 0x00000000 0x11000000 0 0x00600000>;   /* non-prefetchable memory */
+                //ranges = <0x82000000 0 0x00000000 0x11000000 0 0x00600000>;   /* non-prefetchable memory */
+                #interrupt-cells = <1>;
+                interrupt-map-mask = <0 0 0 0>;
+                interrupt-map = <0 0 0 0 &gic GIC_SPI 138 IRQ_TYPE_LEVEL_HIGH>;
+                num-lanes = <1>;
+                num-viewport = <4>;
+                using_ext_ref_clk = <1>;
+                for_si_test = <0>;
+                suspend_mode = <0>;
+
+                status = "disabled";
+        };
+
+Board-specific DT Entry:
+
+        pcie@11800000 {
+                reset-gpio = <&gpsd0 11 0>;
+                status = "okay";
+        };
+
