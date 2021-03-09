@@ -544,6 +544,70 @@
 		no-map;
 	};
 
+	pmap_enc_ext8: enc_ext8 {
+		compatible = "telechips,pmap";
+		telechips,pmap-name = "enc_ext8";
+		alloc-ranges = <0x0 RESERVED_MEM_BASE 0x0 RESERVED_MEM_SIZE>;
+		size = <0x0 PMAP_SIZE_ENC_EXT8>;
+		no-map;
+	};
+
+	pmap_enc_ext9: enc_ext9 {
+		compatible = "telechips,pmap";
+		telechips,pmap-name = "enc_ext9";
+		alloc-ranges = <0x0 RESERVED_MEM_BASE 0x0 RESERVED_MEM_SIZE>;
+		size = <0x0 PMAP_SIZE_ENC_EXT9>;
+		no-map;
+	};
+
+	pmap_enc_ext10: enc_ext10 {
+		compatible = "telechips,pmap";
+		telechips,pmap-name = "enc_ext10";
+		alloc-ranges = <0x0 RESERVED_MEM_BASE 0x0 RESERVED_MEM_SIZE>;
+		size = <0x0 PMAP_SIZE_ENC_EXT10>;
+		no-map;
+	};
+
+	pmap_enc_ext11: enc_ext11 {
+		compatible = "telechips,pmap";
+		telechips,pmap-name = "enc_ext11";
+		alloc-ranges = <0x0 RESERVED_MEM_BASE 0x0 RESERVED_MEM_SIZE>;
+		size = <0x0 PMAP_SIZE_ENC_EXT11>;
+		no-map;
+	};
+
+	pmap_enc_ext12: enc_ext12 {
+		compatible = "telechips,pmap";
+		telechips,pmap-name = "enc_ext12";
+		alloc-ranges = <0x0 RESERVED_MEM_BASE 0x0 RESERVED_MEM_SIZE>;
+		size = <0x0 PMAP_SIZE_ENC_EXT12>;
+		no-map;
+	};
+
+	pmap_enc_ext13: enc_ext13 {
+		compatible = "telechips,pmap";
+		telechips,pmap-name = "enc_ext13";
+		alloc-ranges = <0x0 RESERVED_MEM_BASE 0x0 RESERVED_MEM_SIZE>;
+		size = <0x0 PMAP_SIZE_ENC_EXT13>;
+		no-map;
+	};
+
+	pmap_enc_ext14: enc_ext14 {
+		compatible = "telechips,pmap";
+		telechips,pmap-name = "enc_ext14";
+		alloc-ranges = <0x0 RESERVED_MEM_BASE 0x0 RESERVED_MEM_SIZE>;
+		size = <0x0 PMAP_SIZE_ENC_EXT14>;
+		no-map;
+	};
+
+	pmap_enc_ext15: enc_ext15 {
+		compatible = "telechips,pmap";
+		telechips,pmap-name = "enc_ext15";
+		alloc-ranges = <0x0 RESERVED_MEM_BASE 0x0 RESERVED_MEM_SIZE>;
+		size = <0x0 PMAP_SIZE_ENC_EXT15>;
+		no-map;
+	};
+
 	/*
 	pmap_svm: pmap_svm {
 		compatible = "telechips,pmap";

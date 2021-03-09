@@ -190,7 +190,7 @@ endchoice
 choice
 	prompt "Instance count of Encoder"
 	depends on (SUPPORT_TCC_JPU || ARCH_TCC893X || ARCH_TCC896X || ARCH_TCC898X || ARCH_TCC803X || ARCH_TCC805X)
-	default VENC_MAX_CNT_8
+	default VENC_MAX_CNT_16
 	help
 		max instance count for encoder.
 		This adds support
@@ -265,6 +265,78 @@ config VENC_CNT_8
 	select VENC_MAX_CNT_8
 	help
 		VENC_MAX_CNT_8
+		This adds support
+		the VPU drivers.
+		on TCCxxxx Soc devices.
+
+config VENC_CNT_9
+	bool "max 9"
+	select VENC_MAX_CNT_9
+	help
+		VENC_MAX_CNT_9
+		This adds support
+		the VPU drivers.
+		on TCCxxxx Soc devices.
+
+config VENC_CNT_10
+	bool "max 10"
+	select VENC_MAX_CNT_10
+	help
+		VENC_MAX_CNT_10
+		This adds support
+		the VPU drivers.
+		on TCCxxxx Soc devices.
+
+config VENC_CNT_11
+	bool "max 11"
+	select VENC_MAX_CNT_11
+	help
+		VENC_MAX_CNT_11
+		This adds support
+		the VPU drivers.
+		on TCCxxxx Soc devices.
+
+config VENC_CNT_12
+	bool "max 12"
+	select VENC_MAX_CNT_12
+	help
+		VENC_MAX_CNT_12
+		This adds support
+		the VPU drivers.
+		on TCCxxxx Soc devices.
+
+config VENC_CNT_13
+	bool "max 13"
+	select VENC_MAX_CNT_13
+	help
+		VENC_MAX_CNT_13
+		This adds support
+		the VPU drivers.
+		on TCCxxxx Soc devices.
+
+config VENC_CNT_14
+	bool "max 14"
+	select VENC_MAX_CNT_14
+	help
+		VENC_MAX_CNT_14
+		This adds support
+		the VPU drivers.
+		on TCCxxxx Soc devices.
+
+config VENC_CNT_15
+	bool "max 15"
+	select VENC_MAX_CNT_15
+	help
+		VENC_MAX_CNT_13
+		This adds support
+		the VPU drivers.
+		on TCCxxxx Soc devices.
+
+config VENC_CNT_16
+	bool "max 16"
+	select VENC_MAX_CNT_16
+	help
+		VENC_MAX_CNT_16
 		This adds support
 		the VPU drivers.
 		on TCCxxxx Soc devices.

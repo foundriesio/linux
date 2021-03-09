@@ -29,5 +29,13 @@
 #define ENC_EXT5_NAME                        "vpu_venc_ext5"
 #define ENC_EXT6_NAME                        "vpu_venc_ext6"
 #define ENC_EXT7_NAME                        "vpu_venc_ext7"
+#define ENC_EXT8_NAME                        "vpu_venc_ext8"
+#define ENC_EXT9_NAME                        "vpu_venc_ext9"
+#define ENC_EXT10_NAME                      "vpu_venc_ext10"
+#define ENC_EXT11_NAME                      "vpu_venc_ext11"
+#define ENC_EXT12_NAME                      "vpu_venc_ext12"
+#define ENC_EXT13_NAME                      "vpu_venc_ext13"
+#define ENC_EXT14_NAME                      "vpu_venc_ext14"
+#define ENC_EXT15_NAME                      "vpu_venc_ext15"
 
 #endif /*VPU_DEVICES_H*/

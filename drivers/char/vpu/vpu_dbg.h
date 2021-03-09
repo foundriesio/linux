@@ -51,7 +51,7 @@ void V_DEBUG(enum vdbg_mask_type dbg_mask, const char *fn,
 #define V_DBG(x, fmt, args...) \
 	do { \
 		if (x & VPU_DBG_ERROR) \
-			pr_info("[%s:%d] " fmt "\n", \
+			pr_err("[%s:%d] " fmt "\n", \
 				__func__, __LINE__, ##args); \
 	} while (0)
 #endif

@@ -23,6 +23,14 @@ Required properties:
                 "telechips,vpu_venc_ext5",
                 "telechips,vpu_venc_ext6",
                 "telechips,vpu_venc_ext7",
+                "telechips,vpu_venc_ext8",
+                "telechips,vpu_venc_ext9",
+                "telechips,vpu_venc_ext10",
+                "telechips,vpu_venc_ext11",
+                "telechips,vpu_venc_ext12",
+                "telechips,vpu_venc_ext13",
+                "telechips,vpu_venc_ext14",
+                "telechips,vpu_venc_ext15",
                 "telechips,vpu_hevc_enc_dev_mgr"
 
 Optional properties:

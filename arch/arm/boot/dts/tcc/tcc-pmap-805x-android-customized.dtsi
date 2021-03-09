@@ -73,43 +73,43 @@
  * INST_XXX_MAX_FRAMEBUFFER : Set the number of frame buffers (HEVC-4K: 7,
  *                      Others: 1~24)
  */
-#define INST_1ST_USE			(1)
-#define INST_1ST_IS_HEVC_TYPE		(1)
+#define INST_1ST_USE                (1)
+#define INST_1ST_IS_HEVC_TYPE       (1)
 #if defined(CONFIG_SUPPORT_4K_VIDEO) || \
 	defined(CONFIG_SUPPORT_TCC_HEVC_4K) || \
 	defined(CONFIG_SUPPORT_TCC_VP9_4K)
-#define INST_1ST_VIDEO_WIDTH		(4096)
-#define INST_1ST_VIDEO_HEIGHT		(2160)
-#define INST_1ST_MAX_FRAMEBUFFERS	(7)
+#define INST_1ST_VIDEO_WIDTH        (4096)
+#define INST_1ST_VIDEO_HEIGHT       (2176)
+#define INST_1ST_MAX_FRAMEBUFFERS   (7)
 #else
-#define INST_1ST_VIDEO_WIDTH		(1920)
-#define INST_1ST_VIDEO_HEIGHT		(1088)
-#define INST_1ST_MAX_FRAMEBUFFERS	(24)
+#define INST_1ST_VIDEO_WIDTH        (1920)
+#define INST_1ST_VIDEO_HEIGHT       (1088)
+#define INST_1ST_MAX_FRAMEBUFFERS   (24)
 #endif
 
-#define INST_2ND_USE			(1)
-#define INST_2ND_IS_HEVC_TYPE		(0)
-#define INST_2ND_VIDEO_WIDTH		(1920)
-#define INST_2ND_VIDEO_HEIGHT		(1088)
-#define INST_2ND_MAX_FRAMEBUFFERS	(24)
+#define INST_2ND_USE                (1)
+#define INST_2ND_IS_HEVC_TYPE       (0)
+#define INST_2ND_VIDEO_WIDTH        (1920)
+#define INST_2ND_VIDEO_HEIGHT       (1088)
+#define INST_2ND_MAX_FRAMEBUFFERS   (24)
 
-#define INST_3RD_USE			(0)
-#define INST_3RD_IS_HEVC_TYPE		(0)
-#define INST_3RD_VIDEO_WIDTH		(720)
-#define INST_3RD_VIDEO_HEIGHT		(576)
-#define INST_3RD_MAX_FRAMEBUFFERS	(24)
+#define INST_3RD_USE                (0)
+#define INST_3RD_IS_HEVC_TYPE       (0)
+#define INST_3RD_VIDEO_WIDTH        (720)
+#define INST_3RD_VIDEO_HEIGHT       (576)
+#define INST_3RD_MAX_FRAMEBUFFERS   (24)
 
-#define INST_4TH_USE			(0)
-#define INST_4TH_IS_HEVC_TYPE		(0)
-#define INST_4TH_VIDEO_WIDTH		(720)
-#define INST_4TH_VIDEO_HEIGHT		(576)
-#define INST_4TH_MAX_FRAMEBUFFERS	(24)
+#define INST_4TH_USE                (0)
+#define INST_4TH_IS_HEVC_TYPE       (0)
+#define INST_4TH_VIDEO_WIDTH        (720)
+#define INST_4TH_VIDEO_HEIGHT       (576)
+#define INST_4TH_MAX_FRAMEBUFFERS   (24)
 
-#define INST_5TH_USE			(0)
-#define INST_5TH_IS_HEVC_TYPE		(0)
-#define INST_5TH_VIDEO_WIDTH		(720)
-#define INST_5TH_VIDEO_HEIGHT		(576)
-#define INST_5TH_MAX_FRAMEBUFFERS	(24)
+#define INST_5TH_USE                (0)
+#define INST_5TH_IS_HEVC_TYPE       (0)
+#define INST_5TH_VIDEO_WIDTH        (720)
+#define INST_5TH_VIDEO_HEIGHT       (576)
+#define INST_5TH_MAX_FRAMEBUFFERS   (24)
 
 
 /*
@@ -172,6 +172,54 @@
 #define INST_ENC_8TH_VIDEO_WIDTH        (1920)
 #define INST_ENC_8TH_VIDEO_HEIGHT       (1088)
 #define INST_ENC_8TH_MAX_FRAMEBUFFERS   (8)
+
+#define INST_ENC_9TH_USE                (0)
+#define INST_ENC_9TH_IS_HEVC_TYPE       (0)
+#define INST_ENC_9TH_VIDEO_WIDTH        (1920)
+#define INST_ENC_9TH_VIDEO_HEIGHT       (1088)
+#define INST_ENC_9TH_MAX_FRAMEBUFFERS   (8)
+
+#define INST_ENC_10TH_USE               (0)
+#define INST_ENC_10TH_IS_HEVC_TYPE      (0)
+#define INST_ENC_10TH_VIDEO_WIDTH       (1920)
+#define INST_ENC_10TH_VIDEO_HEIGHT      (1088)
+#define INST_ENC_10TH_MAX_FRAMEBUFFERS  (8)
+
+#define INST_ENC_11TH_USE               (0)
+#define INST_ENC_11TH_IS_HEVC_TYPE      (0)
+#define INST_ENC_11TH_VIDEO_WIDTH       (1920)
+#define INST_ENC_11TH_VIDEO_HEIGHT      (1088)
+#define INST_ENC_11TH_MAX_FRAMEBUFFERS  (8)
+
+#define INST_ENC_12TH_USE               (0)
+#define INST_ENC_12TH_IS_HEVC_TYPE      (0)
+#define INST_ENC_12TH_VIDEO_WIDTH       (1920)
+#define INST_ENC_12TH_VIDEO_HEIGHT      (1088)
+#define INST_ENC_12TH_MAX_FRAMEBUFFERS  (8)
+
+#define INST_ENC_13TH_USE               (0)
+#define INST_ENC_13TH_IS_HEVC_TYPE      (0)
+#define INST_ENC_13TH_VIDEO_WIDTH       (1920)
+#define INST_ENC_13TH_VIDEO_HEIGHT      (1088)
+#define INST_ENC_13TH_MAX_FRAMEBUFFERS  (8)
+
+#define INST_ENC_14TH_USE               (0)
+#define INST_ENC_14TH_IS_HEVC_TYPE      (0)
+#define INST_ENC_14TH_VIDEO_WIDTH       (1920)
+#define INST_ENC_14TH_VIDEO_HEIGHT      (1088)
+#define INST_ENC_14TH_MAX_FRAMEBUFFERS  (8)
+
+#define INST_ENC_15TH_USE               (0)
+#define INST_ENC_15TH_IS_HEVC_TYPE      (0)
+#define INST_ENC_15TH_VIDEO_WIDTH       (1920)
+#define INST_ENC_15TH_VIDEO_HEIGHT      (1088)
+#define INST_ENC_15TH_MAX_FRAMEBUFFERS  (8)
+
+#define INST_ENC_16TH_USE               (0)
+#define INST_ENC_16TH_IS_HEVC_TYPE      (0)
+#define INST_ENC_16TH_VIDEO_WIDTH       (1920)
+#define INST_ENC_16TH_VIDEO_HEIGHT      (1088)
+#define INST_ENC_16TH_MAX_FRAMEBUFFERS  (8)
 
 //########################################################################
 //########################################################################

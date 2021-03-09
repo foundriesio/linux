@@ -190,5 +190,53 @@
 #define INST_ENC_8TH_VIDEO_HEIGHT       (480)
 #define INST_ENC_8TH_MAX_FRAMEBUFFERS   (8)
 
+#define INST_ENC_9TH_USE                (0)
+#define INST_ENC_9TH_IS_HEVC_TYPE       (0)
+#define INST_ENC_9TH_VIDEO_WIDTH        (640)
+#define INST_ENC_9TH_VIDEO_HEIGHT       (480)
+#define INST_ENC_9TH_MAX_FRAMEBUFFERS   (8)
+
+#define INST_ENC_10TH_USE               (0)
+#define INST_ENC_10TH_IS_HEVC_TYPE      (0)
+#define INST_ENC_10TH_VIDEO_WIDTH       (640)
+#define INST_ENC_10TH_VIDEO_HEIGHT      (480)
+#define INST_ENC_10TH_MAX_FRAMEBUFFERS  (8)
+
+#define INST_ENC_11TH_USE               (0)
+#define INST_ENC_11TH_IS_HEVC_TYPE      (0)
+#define INST_ENC_11TH_VIDEO_WIDTH       (640)
+#define INST_ENC_11TH_VIDEO_HEIGHT      (480)
+#define INST_ENC_11TH_MAX_FRAMEBUFFERS  (8)
+
+#define INST_ENC_12TH_USE               (0)
+#define INST_ENC_12TH_IS_HEVC_TYPE      (0)
+#define INST_ENC_12TH_VIDEO_WIDTH       (640)
+#define INST_ENC_12TH_VIDEO_HEIGHT      (480)
+#define INST_ENC_12TH_MAX_FRAMEBUFFERS  (8)
+
+#define INST_ENC_13TH_USE               (0)
+#define INST_ENC_13TH_IS_HEVC_TYPE      (0)
+#define INST_ENC_13TH_VIDEO_WIDTH       (640)
+#define INST_ENC_13TH_VIDEO_HEIGHT      (480)
+#define INST_ENC_13TH_MAX_FRAMEBUFFERS  (8)
+
+#define INST_ENC_14TH_USE               (0)
+#define INST_ENC_14TH_IS_HEVC_TYPE      (0)
+#define INST_ENC_14TH_VIDEO_WIDTH       (640)
+#define INST_ENC_14TH_VIDEO_HEIGHT      (480)
+#define INST_ENC_14TH_MAX_FRAMEBUFFERS  (8)
+
+#define INST_ENC_15TH_USE               (0)
+#define INST_ENC_15TH_IS_HEVC_TYPE      (0)
+#define INST_ENC_15TH_VIDEO_WIDTH       (640)
+#define INST_ENC_15TH_VIDEO_HEIGHT      (480)
+#define INST_ENC_15TH_MAX_FRAMEBUFFERS  (8)
+
+#define INST_ENC_16TH_USE               (0)
+#define INST_ENC_16TH_IS_HEVC_TYPE      (0)
+#define INST_ENC_16TH_VIDEO_WIDTH       (640)
+#define INST_ENC_16TH_VIDEO_HEIGHT      (480)
+#define INST_ENC_16TH_MAX_FRAMEBUFFERS  (8)
+
 //##############################################################################
 //##############################################################################

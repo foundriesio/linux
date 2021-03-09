@@ -188,19 +188,63 @@
 #define INST_ENC_6TH_MAX_FRAMEBUFFERS   (0)
 #define INST_ENC_7TH_USE                (0)
 #define INST_ENC_7TH_IS_HEVC_TYPE       (0)
-#define INST_ENC_7TH_VIDEO_WIDTH        (640)
-#define INST_ENC_7TH_VIDEO_HEIGHT       (480)
-#define INST_ENC_7TH_MAX_FRAMEBUFFERS   (8)
+#define INST_ENC_7TH_VIDEO_WIDTH        (0)
+#define INST_ENC_7TH_VIDEO_HEIGHT       (0)
+#define INST_ENC_7TH_MAX_FRAMEBUFFERS   (0)
 #define INST_ENC_8TH_USE                (0)
 #define INST_ENC_8TH_IS_HEVC_TYPE       (0)
-#define INST_ENC_8TH_VIDEO_WIDTH        (640)
-#define INST_ENC_8TH_VIDEO_HEIGHT       (480)
-#define INST_ENC_8TH_MAX_FRAMEBUFFERS   (8)
+#define INST_ENC_8TH_VIDEO_WIDTH        (0)
+#define INST_ENC_8TH_VIDEO_HEIGHT       (0)
+#define INST_ENC_8TH_MAX_FRAMEBUFFERS   (0)
+#define INST_ENC_9TH_USE                (0)
+#define INST_ENC_9TH_IS_HEVC_TYPE       (0)
+#define INST_ENC_9TH_VIDEO_WIDTH        (0)
+#define INST_ENC_9TH_VIDEO_HEIGHT       (0)
+#define INST_ENC_9TH_MAX_FRAMEBUFFERS   (0)
+#define INST_ENC_10TH_USE               (0)
+#define INST_ENC_10TH_IS_HEVC_TYPE      (0)
+#define INST_ENC_10TH_VIDEO_WIDTH       (0)
+#define INST_ENC_10TH_VIDEO_HEIGHT      (0)
+#define INST_ENC_10TH_MAX_FRAMEBUFFERS  (0)
+#define INST_ENC_11TH_USE               (0)
+#define INST_ENC_11TH_IS_HEVC_TYPE      (0)
+#define INST_ENC_11TH_VIDEO_WIDTH       (0)
+#define INST_ENC_11TH_VIDEO_HEIGHT      (0)
+#define INST_ENC_11TH_MAX_FRAMEBUFFERS  (0)
+#define INST_ENC_12TH_USE               (0)
+#define INST_ENC_12TH_IS_HEVC_TYPE      (0)
+#define INST_ENC_12TH_VIDEO_WIDTH       (0)
+#define INST_ENC_12TH_VIDEO_HEIGHT      (0)
+#define INST_ENC_12TH_MAX_FRAMEBUFFERS  (0)
+#define INST_ENC_13TH_USE               (0)
+#define INST_ENC_13TH_IS_HEVC_TYPE      (0)
+#define INST_ENC_13TH_VIDEO_WIDTH       (0)
+#define INST_ENC_13TH_VIDEO_HEIGHT      (0)
+#define INST_ENC_13TH_MAX_FRAMEBUFFERS  (0)
+#define INST_ENC_14TH_USE               (0)
+#define INST_ENC_14TH_IS_HEVC_TYPE      (0)
+#define INST_ENC_14TH_VIDEO_WIDTH       (0)
+#define INST_ENC_14TH_VIDEO_HEIGHT      (0)
+#define INST_ENC_14TH_MAX_FRAMEBUFFERS  (0)
+#define INST_ENC_15TH_USE               (0)
+#define INST_ENC_15TH_IS_HEVC_TYPE      (0)
+#define INST_ENC_15TH_VIDEO_WIDTH       (0)
+#define INST_ENC_15TH_VIDEO_HEIGHT      (0)
+#define INST_ENC_15TH_MAX_FRAMEBUFFERS  (0)
+#define INST_ENC_16TH_USE               (0)
+#define INST_ENC_16TH_IS_HEVC_TYPE      (0)
+#define INST_ENC_16TH_VIDEO_WIDTH       (0)
+#define INST_ENC_16TH_VIDEO_HEIGHT      (0)
+#define INST_ENC_16TH_MAX_FRAMEBUFFERS  (0)
 
 #if defined(CONFIG_VENC_CNT_1) || defined(CONFIG_VENC_CNT_2) || \
 	defined(CONFIG_VENC_CNT_3) || defined(CONFIG_VENC_CNT_4) || \
 	defined(CONFIG_VENC_CNT_5) || defined(CONFIG_VENC_CNT_6) || \
-	defined(CONFIG_VENC_CNT_7) || defined(CONFIG_VENC_CNT_8)
+	defined(CONFIG_VENC_CNT_7) || defined(CONFIG_VENC_CNT_8) || \
+	defined(CONFIG_VENC_CNT_9) || defined(CONFIG_VENC_CNT_10) || \
+	defined(CONFIG_VENC_CNT_11) || defined(CONFIG_VENC_CNT_12) || \
+	defined(CONFIG_VENC_CNT_13) || defined(CONFIG_VENC_CNT_14) || \
+	defined(CONFIG_VENC_CNT_15) || defined(CONFIG_VENC_CNT_16)
 #undef INST_ENC_1ST_USE
 #undef INST_ENC_1ST_IS_HEVC_TYPE
 #undef INST_ENC_1ST_VIDEO_WIDTH
@@ -216,7 +260,11 @@
 #if defined(CONFIG_VENC_CNT_2) || defined(CONFIG_VENC_CNT_3) || \
 	defined(CONFIG_VENC_CNT_4) || defined(CONFIG_VENC_CNT_5) || \
 	defined(CONFIG_VENC_CNT_6) || defined(CONFIG_VENC_CNT_7) || \
-	defined(CONFIG_VENC_CNT_8)
+	defined(CONFIG_VENC_CNT_8) || defined(CONFIG_VENC_CNT_9) || \
+	defined(CONFIG_VENC_CNT_10) || defined(CONFIG_VENC_CNT_11) || \
+	defined(CONFIG_VENC_CNT_12) || defined(CONFIG_VENC_CNT_13) || \
+	defined(CONFIG_VENC_CNT_14) || defined(CONFIG_VENC_CNT_15) || \
+	defined(CONFIG_VENC_CNT_16)
 #undef INST_ENC_2ND_USE
 #undef INST_ENC_2ND_IS_HEVC_TYPE
 #undef INST_ENC_2ND_VIDEO_WIDTH
@@ -231,7 +279,11 @@
 
 #if defined(CONFIG_VENC_CNT_3) || defined(CONFIG_VENC_CNT_4) || \
 	defined(CONFIG_VENC_CNT_5) || defined(CONFIG_VENC_CNT_6) || \
-	defined(CONFIG_VENC_CNT_7) || defined(CONFIG_VENC_CNT_8)
+	defined(CONFIG_VENC_CNT_7) || defined(CONFIG_VENC_CNT_8) || \
+	defined(CONFIG_VENC_CNT_9) || defined(CONFIG_VENC_CNT_10) || \
+	defined(CONFIG_VENC_CNT_11) || defined(CONFIG_VENC_CNT_12) || \
+	defined(CONFIG_VENC_CNT_13) || defined(CONFIG_VENC_CNT_14) || \
+	defined(CONFIG_VENC_CNT_15) || defined(CONFIG_VENC_CNT_16)
 #undef INST_ENC_3RD_USE
 #undef INST_ENC_3RD_IS_HEVC_TYPE
 #undef INST_ENC_3RD_VIDEO_WIDTH
@@ -246,7 +298,11 @@
 
 #if defined(CONFIG_VENC_CNT_4) || defined(CONFIG_VENC_CNT_5) || \
 	defined(CONFIG_VENC_CNT_6) || defined(CONFIG_VENC_CNT_7) || \
-	defined(CONFIG_VENC_CNT_8)
+	defined(CONFIG_VENC_CNT_8) || defined(CONFIG_VENC_CNT_9) || \
+	defined(CONFIG_VENC_CNT_10) || defined(CONFIG_VENC_CNT_11) || \
+	defined(CONFIG_VENC_CNT_12) || defined(CONFIG_VENC_CNT_13) || \
+	defined(CONFIG_VENC_CNT_14) || defined(CONFIG_VENC_CNT_15) || \
+	defined(CONFIG_VENC_CNT_16)
 #undef INST_ENC_4TH_USE
 #undef INST_ENC_4TH_IS_HEVC_TYPE
 #undef INST_ENC_4TH_VIDEO_WIDTH
@@ -260,7 +316,11 @@
 #endif
 
 #if defined(CONFIG_VENC_CNT_5) || defined(CONFIG_VENC_CNT_6) || \
-	defined(CONFIG_VENC_CNT_7) || defined(CONFIG_VENC_CNT_8)
+	defined(CONFIG_VENC_CNT_7) || defined(CONFIG_VENC_CNT_8) || \
+	defined(CONFIG_VENC_CNT_9) || defined(CONFIG_VENC_CNT_10) || \
+	defined(CONFIG_VENC_CNT_11) || defined(CONFIG_VENC_CNT_12) || \
+	defined(CONFIG_VENC_CNT_13) || defined(CONFIG_VENC_CNT_14) || \
+	defined(CONFIG_VENC_CNT_15) || defined(CONFIG_VENC_CNT_16)
 #undef INST_ENC_5TH_USE
 #undef INST_ENC_5TH_IS_HEVC_TYPE
 #undef INST_ENC_5TH_VIDEO_WIDTH
@@ -274,7 +334,11 @@
 #endif
 
 #if defined(CONFIG_VENC_CNT_6) || defined(CONFIG_VENC_CNT_7) || \
-	defined(CONFIG_VENC_CNT_8)
+	defined(CONFIG_VENC_CNT_8) || defined(CONFIG_VENC_CNT_9) || \
+	defined(CONFIG_VENC_CNT_10) || defined(CONFIG_VENC_CNT_11) || \
+	defined(CONFIG_VENC_CNT_12) || defined(CONFIG_VENC_CNT_13) || \
+	defined(CONFIG_VENC_CNT_14) || defined(CONFIG_VENC_CNT_15) || \
+	defined(CONFIG_VENC_CNT_16)
 #undef INST_ENC_6TH_USE
 #undef INST_ENC_6TH_IS_HEVC_TYPE
 #undef INST_ENC_6TH_VIDEO_WIDTH
@@ -287,7 +351,11 @@
 #define INST_ENC_6TH_MAX_FRAMEBUFFERS   (8)
 #endif
 
-#if defined(CONFIG_VENC_CNT_7) || defined(CONFIG_VENC_CNT_8)
+#if defined(CONFIG_VENC_CNT_7) || defined(CONFIG_VENC_CNT_8) || \
+	defined(CONFIG_VENC_CNT_9) || defined(CONFIG_VENC_CNT_10) || \
+	defined(CONFIG_VENC_CNT_11) || defined(CONFIG_VENC_CNT_12) || \
+	defined(CONFIG_VENC_CNT_13) || defined(CONFIG_VENC_CNT_14) || \
+	defined(CONFIG_VENC_CNT_15) || defined(CONFIG_VENC_CNT_16)
 #undef INST_ENC_7TH_USE
 #undef INST_ENC_7TH_IS_HEVC_TYPE
 #undef INST_ENC_7TH_VIDEO_WIDTH
@@ -300,7 +368,11 @@
 #define INST_ENC_7TH_MAX_FRAMEBUFFERS   (8)
 #endif
 
-#if defined(CONFIG_VENC_CNT_8)
+#if defined(CONFIG_VENC_CNT_8) || defined(CONFIG_VENC_CNT_9) || \
+	defined(CONFIG_VENC_CNT_10) || defined(CONFIG_VENC_CNT_11) || \
+	defined(CONFIG_VENC_CNT_12) || defined(CONFIG_VENC_CNT_13) || \
+	defined(CONFIG_VENC_CNT_14) || defined(CONFIG_VENC_CNT_15) || \
+	defined(CONFIG_VENC_CNT_16)
 #undef INST_ENC_8TH_USE
 #undef INST_ENC_8TH_IS_HEVC_TYPE
 #undef INST_ENC_8TH_VIDEO_WIDTH
@@ -311,6 +383,122 @@
 #define INST_ENC_8TH_VIDEO_WIDTH        (640)
 #define INST_ENC_8TH_VIDEO_HEIGHT       (480)
 #define INST_ENC_8TH_MAX_FRAMEBUFFERS   (8)
+#endif
+
+#if defined(CONFIG_VENC_CNT_9) || defined(CONFIG_VENC_CNT_10) || \
+	defined(CONFIG_VENC_CNT_11) || defined(CONFIG_VENC_CNT_12) || \
+	defined(CONFIG_VENC_CNT_13) || defined(CONFIG_VENC_CNT_14) || \
+	defined(CONFIG_VENC_CNT_15) || defined(CONFIG_VENC_CNT_16)
+#undef INST_ENC_9TH_USE
+#undef INST_ENC_9TH_IS_HEVC_TYPE
+#undef INST_ENC_9TH_VIDEO_WIDTH
+#undef INST_ENC_9TH_VIDEO_HEIGHT
+#undef INST_ENC_9TH_MAX_FRAMEBUFFERS
+#define INST_ENC_9TH_USE                (1)
+#define INST_ENC_9TH_IS_HEVC_TYPE       (1)
+#define INST_ENC_9TH_VIDEO_WIDTH        (640)
+#define INST_ENC_9TH_VIDEO_HEIGHT       (480)
+#define INST_ENC_9TH_MAX_FRAMEBUFFERS   (8)
+#endif
+
+#if defined(CONFIG_VENC_CNT_10) || defined(CONFIG_VENC_CNT_11) || \
+	defined(CONFIG_VENC_CNT_12) || defined(CONFIG_VENC_CNT_13) || \
+	defined(CONFIG_VENC_CNT_14) || defined(CONFIG_VENC_CNT_15) || \
+	defined(CONFIG_VENC_CNT_16)
+#undef INST_ENC_10TH_USE
+#undef INST_ENC_10TH_IS_HEVC_TYPE
+#undef INST_ENC_10TH_VIDEO_WIDTH
+#undef INST_ENC_10TH_VIDEO_HEIGHT
+#undef INST_ENC_10TH_MAX_FRAMEBUFFERS
+#define INST_ENC_10TH_USE                (1)
+#define INST_ENC_10TH_IS_HEVC_TYPE       (1)
+#define INST_ENC_10TH_VIDEO_WIDTH        (640)
+#define INST_ENC_10TH_VIDEO_HEIGHT       (480)
+#define INST_ENC_10TH_MAX_FRAMEBUFFERS   (8)
+#endif
+
+#if defined(CONFIG_VENC_CNT_11) || defined(CONFIG_VENC_CNT_12) || \
+	defined(CONFIG_VENC_CNT_13) || defined(CONFIG_VENC_CNT_14) || \
+	defined(CONFIG_VENC_CNT_15) || defined(CONFIG_VENC_CNT_16)
+#undef INST_ENC_11TH_USE
+#undef INST_ENC_11TH_IS_HEVC_TYPE
+#undef INST_ENC_11TH_VIDEO_WIDTH
+#undef INST_ENC_11TH_VIDEO_HEIGHT
+#undef INST_ENC_11TH_MAX_FRAMEBUFFERS
+#define INST_ENC_11TH_USE                (1)
+#define INST_ENC_11TH_IS_HEVC_TYPE       (1)
+#define INST_ENC_11TH_VIDEO_WIDTH        (640)
+#define INST_ENC_11TH_VIDEO_HEIGHT       (480)
+#define INST_ENC_11TH_MAX_FRAMEBUFFERS   (8)
+#endif
+
+#if defined(CONFIG_VENC_CNT_12) || defined(CONFIG_VENC_CNT_13) || \
+	defined(CONFIG_VENC_CNT_14) || defined(CONFIG_VENC_CNT_15) || \
+	defined(CONFIG_VENC_CNT_16)
+#undef INST_ENC_12TH_USE
+#undef INST_ENC_12TH_IS_HEVC_TYPE
+#undef INST_ENC_12TH_VIDEO_WIDTH
+#undef INST_ENC_12TH_VIDEO_HEIGHT
+#undef INST_ENC_12TH_MAX_FRAMEBUFFERS
+#define INST_ENC_12TH_USE                (1)
+#define INST_ENC_12TH_IS_HEVC_TYPE       (1)
+#define INST_ENC_12TH_VIDEO_WIDTH        (640)
+#define INST_ENC_12TH_VIDEO_HEIGHT       (480)
+#define INST_ENC_12TH_MAX_FRAMEBUFFERS   (8)
+#endif
+
+#if defined(CONFIG_VENC_CNT_13) || defined(CONFIG_VENC_CNT_14) || \
+	defined(CONFIG_VENC_CNT_15) || defined(CONFIG_VENC_CNT_16)
+#undef INST_ENC_13TH_USE
+#undef INST_ENC_13TH_IS_HEVC_TYPE
+#undef INST_ENC_13TH_VIDEO_WIDTH
+#undef INST_ENC_13TH_VIDEO_HEIGHT
+#undef INST_ENC_13TH_MAX_FRAMEBUFFERS
+#define INST_ENC_13TH_USE                (1)
+#define INST_ENC_13TH_IS_HEVC_TYPE       (1)
+#define INST_ENC_13TH_VIDEO_WIDTH        (640)
+#define INST_ENC_13TH_VIDEO_HEIGHT       (480)
+#define INST_ENC_13TH_MAX_FRAMEBUFFERS   (8)
+#endif
+
+#if defined(CONFIG_VENC_CNT_14) || defined(CONFIG_VENC_CNT_15) || \
+	defined(CONFIG_VENC_CNT_16)
+#undef INST_ENC_14TH_USE
+#undef INST_ENC_14TH_IS_HEVC_TYPE
+#undef INST_ENC_14TH_VIDEO_WIDTH
+#undef INST_ENC_14TH_VIDEO_HEIGHT
+#undef INST_ENC_14TH_MAX_FRAMEBUFFERS
+#define INST_ENC_14TH_USE                (1)
+#define INST_ENC_14TH_IS_HEVC_TYPE       (1)
+#define INST_ENC_14TH_VIDEO_WIDTH        (640)
+#define INST_ENC_14TH_VIDEO_HEIGHT       (480)
+#define INST_ENC_14TH_MAX_FRAMEBUFFERS   (8)
+#endif
+
+#if defined(CONFIG_VENC_CNT_15) || defined(CONFIG_VENC_CNT_16)
+#undef INST_ENC_15TH_USE
+#undef INST_ENC_15TH_IS_HEVC_TYPE
+#undef INST_ENC_15TH_VIDEO_WIDTH
+#undef INST_ENC_15TH_VIDEO_HEIGHT
+#undef INST_ENC_15TH_MAX_FRAMEBUFFERS
+#define INST_ENC_15TH_USE                (1)
+#define INST_ENC_15TH_IS_HEVC_TYPE       (1)
+#define INST_ENC_15TH_VIDEO_WIDTH        (640)
+#define INST_ENC_15TH_VIDEO_HEIGHT       (480)
+#define INST_ENC_15TH_MAX_FRAMEBUFFERS   (8)
+#endif
+
+#if defined(CONFIG_VENC_CNT_16)
+#undef INST_ENC_16TH_USE
+#undef INST_ENC_16TH_IS_HEVC_TYPE
+#undef INST_ENC_16TH_VIDEO_WIDTH
+#undef INST_ENC_16TH_VIDEO_HEIGHT
+#undef INST_ENC_16TH_MAX_FRAMEBUFFERS
+#define INST_ENC_16TH_USE                (1)
+#define INST_ENC_16TH_IS_HEVC_TYPE       (1)
+#define INST_ENC_16TH_VIDEO_WIDTH        (640)
+#define INST_ENC_16TH_VIDEO_HEIGHT       (480)
+#define INST_ENC_16TH_MAX_FRAMEBUFFERS   (8)
 #endif
 
 //##############################################################################

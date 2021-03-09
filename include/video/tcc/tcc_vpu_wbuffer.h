@@ -7,7 +7,23 @@
 
 #define VPU_INST_MAX 5
 
-#if defined(CONFIG_VENC_CNT_8)
+#if defined(CONFIG_VENC_CNT_16)
+#define VPU_ENC_MAX_CNT 16
+#elif defined(CONFIG_VENC_CNT_15)
+#define VPU_ENC_MAX_CNT 15
+#elif defined(CONFIG_VENC_CNT_14)
+#define VPU_ENC_MAX_CNT 14
+#elif defined(CONFIG_VENC_CNT_13)
+#define VPU_ENC_MAX_CNT 13
+#elif defined(CONFIG_VENC_CNT_12)
+#define VPU_ENC_MAX_CNT 12
+#elif defined(CONFIG_VENC_CNT_11)
+#define VPU_ENC_MAX_CNT 11
+#elif defined(CONFIG_VENC_CNT_10)
+#define VPU_ENC_MAX_CNT 10
+#elif defined(CONFIG_VENC_CNT_9)
+#define VPU_ENC_MAX_CNT 9
+#elif defined(CONFIG_VENC_CNT_8)
 #define VPU_ENC_MAX_CNT 8
 #elif defined(CONFIG_VENC_CNT_7)
 #define VPU_ENC_MAX_CNT 7
@@ -91,7 +107,11 @@
 #if defined(CONFIG_VENC_CNT_1) || defined(CONFIG_VENC_CNT_2) || \
 	defined(CONFIG_VENC_CNT_3) || defined(CONFIG_VENC_CNT_4) || \
 	defined(CONFIG_VENC_CNT_5) || defined(CONFIG_VENC_CNT_6) || \
-	defined(CONFIG_VENC_CNT_7) || defined(CONFIG_VENC_CNT_8)
+	defined(CONFIG_VENC_CNT_7) || defined(CONFIG_VENC_CNT_8) || \
+	defined(CONFIG_VENC_CNT_9) || defined(CONFIG_VENC_CNT_10) || \
+	defined(CONFIG_VENC_CNT_11) || defined(CONFIG_VENC_CNT_12) || \
+	defined(CONFIG_VENC_CNT_13) || defined(CONFIG_VENC_CNT_14) || \
+	defined(CONFIG_VENC_CNT_15) || defined(CONFIG_VENC_CNT_16)
 #if defined(CONFIG_SUPPORT_TCC_WAVE420L_VPU_HEVC_ENC)
 #define ENC_HEADER_BUF_SIZE (PAGE_ALIGN(VPU_HEVC_ENC_HEADER_BUF_SIZE))
 #else

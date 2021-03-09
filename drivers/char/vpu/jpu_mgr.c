@@ -47,7 +47,7 @@ static struct task_struct *kidle_task;	// = NULL;
 
 extern int tcc_jpu_dec(int Op, codec_handle_t *pHandle, void *pParam1,
 		       void *pParam2);
-#if DEFINED_CONFIG_VENC_CNT_12345678
+#if DEFINED_CONFIG_VENC_CNT_1to16
 extern int tcc_jpu_enc(int Op, codec_handle_t *pHandle, void *pParam1,
 			void *pParam2);
 #endif
@@ -831,7 +831,7 @@ static int _jmgr_process(vputype type, int cmd, long pHandle, void *args)
 			return 0x999;
 		}
 	}
-#if DEFINED_CONFIG_VENC_CNT_12345678
+#if DEFINED_CONFIG_VENC_CNT_1to16
 	else {
 		switch (cmd) {
 		case VPU_ENC_INIT:
@@ -1171,7 +1171,7 @@ static int _jmgr_cmd_open(char *str)
 #ifdef FORCED_ERROR
 		forced_error_count = FORCED_ERR_CNT;
 #endif
-#if DEFINED_CONFIG_VENC_CNT_12345678
+#if DEFINED_CONFIG_VENC_CNT_1to16
 		jmgr_data.only_decmode = 0;
 #else
 		jmgr_data.only_decmode = 1;
@@ -1849,14 +1849,18 @@ int jmgr_suspend(struct platform_device *pdev, pm_message_t state)
 
 	if (atomic_read(&jmgr_data.dev_opened) != 0) {
 		pr_info(
-		    "\n jpu: suspend In DEC(%d/%d/%d/%d/%d), ENC(%d/%d/%d/%d/%d/%d/%d/%d)\n",
-		     jmgr_get_close(VPU_DEC), jmgr_get_close(VPU_DEC_EXT),
-		     jmgr_get_close(VPU_DEC_EXT2), jmgr_get_close(VPU_DEC_EXT3),
-		     jmgr_get_close(VPU_DEC_EXT4),
-		     jmgr_get_close(VPU_ENC), jmgr_get_close(VPU_ENC_EXT),
-		     jmgr_get_close(VPU_ENC_EXT2), jmgr_get_close(VPU_ENC_EXT3),
-		     jmgr_get_close(VPU_ENC_EXT4), jmgr_get_close(VPU_ENC_EXT5),
-		     jmgr_get_close(VPU_ENC_EXT6), jmgr_get_close(VPU_ENC_EXT7)
+		    "\n jpu: suspend In DEC(%d/%d/%d/%d/%d), ENC(%d/%d/%d/%d/%d/%d/%d/%d/%d/%d/%d/%d/%d/%d/%d/%d)\n",
+		    jmgr_get_close(VPU_DEC), jmgr_get_close(VPU_DEC_EXT),
+		    jmgr_get_close(VPU_DEC_EXT2), jmgr_get_close(VPU_DEC_EXT3),
+		    jmgr_get_close(VPU_DEC_EXT4),
+		    jmgr_get_close(VPU_ENC), jmgr_get_close(VPU_ENC_EXT),
+		    jmgr_get_close(VPU_ENC_EXT2), jmgr_get_close(VPU_ENC_EXT3),
+		    jmgr_get_close(VPU_ENC_EXT4), jmgr_get_close(VPU_ENC_EXT5),
+		    jmgr_get_close(VPU_ENC_EXT6), jmgr_get_close(VPU_ENC_EXT7),
+		    jmgr_get_close(VPU_ENC_EXT8), jmgr_get_close(VPU_ENC_EXT9),
+		    jmgr_get_close(VPU_ENC_EXT10), jmgr_get_close(VPU_ENC_EXT11),
+		    jmgr_get_close(VPU_ENC_EXT12), jmgr_get_close(VPU_ENC_EXT13),
+		    jmgr_get_close(VPU_ENC_EXT14), jmgr_get_close(VPU_ENC_EXT15)
 		     );
 
 		_jmgr_external_all_close(200);
@@ -1866,14 +1870,18 @@ int jmgr_suspend(struct platform_device *pdev, pm_message_t state)
 		for (i = 0; i < open_count; i++)
 			jmgr_disable_clock(0, 0);
 		pr_info(
-		    "jpu: suspend Out DEC(%d/%d/%d/%d/%d), ENC(%d/%d/%d/%d/%d/%d/%d/%d)\n\n",
-		     jmgr_get_close(VPU_DEC), jmgr_get_close(VPU_DEC_EXT),
-		     jmgr_get_close(VPU_DEC_EXT2), jmgr_get_close(VPU_DEC_EXT3),
-		     jmgr_get_close(VPU_DEC_EXT4),
-		     jmgr_get_close(VPU_ENC), jmgr_get_close(VPU_ENC_EXT),
-		     jmgr_get_close(VPU_ENC_EXT2), jmgr_get_close(VPU_ENC_EXT3),
-		     jmgr_get_close(VPU_ENC_EXT4), jmgr_get_close(VPU_ENC_EXT5),
-		     jmgr_get_close(VPU_ENC_EXT6), jmgr_get_close(VPU_ENC_EXT7)
+		    "jpu: suspend Out DEC(%d/%d/%d/%d/%d), ENC(%d/%d/%d/%d/%d/%d/%d/%d/%d/%d/%d/%d/%d/%d/%d/%d)\n\n",
+		    jmgr_get_close(VPU_DEC), jmgr_get_close(VPU_DEC_EXT),
+		    jmgr_get_close(VPU_DEC_EXT2), jmgr_get_close(VPU_DEC_EXT3),
+		    jmgr_get_close(VPU_DEC_EXT4),
+		    jmgr_get_close(VPU_ENC), jmgr_get_close(VPU_ENC_EXT),
+		    jmgr_get_close(VPU_ENC_EXT2), jmgr_get_close(VPU_ENC_EXT3),
+		    jmgr_get_close(VPU_ENC_EXT4), jmgr_get_close(VPU_ENC_EXT5),
+		    jmgr_get_close(VPU_ENC_EXT6), jmgr_get_close(VPU_ENC_EXT7),
+		    jmgr_get_close(VPU_ENC_EXT8), jmgr_get_close(VPU_ENC_EXT9),
+		    jmgr_get_close(VPU_ENC_EXT10), jmgr_get_close(VPU_ENC_EXT11),
+		    jmgr_get_close(VPU_ENC_EXT12), jmgr_get_close(VPU_ENC_EXT13),
+		    jmgr_get_close(VPU_ENC_EXT14), jmgr_get_close(VPU_ENC_EXT15)
 		     );
 	}
 

@@ -6,7 +6,11 @@
 #if defined(CONFIG_VENC_CNT_1) || defined(CONFIG_VENC_CNT_2) || \
 	defined(CONFIG_VENC_CNT_3) || defined(CONFIG_VENC_CNT_4) || \
 	defined(CONFIG_VENC_CNT_5) || defined(CONFIG_VENC_CNT_6) || \
-	defined(CONFIG_VENC_CNT_7) || defined(CONFIG_VENC_CNT_8)
+	defined(CONFIG_VENC_CNT_7) || defined(CONFIG_VENC_CNT_8) || \
+	defined(CONFIG_VENC_CNT_9) || defined(CONFIG_VENC_CNT_10) || \
+	defined(CONFIG_VENC_CNT_11) || defined(CONFIG_VENC_CNT_12) || \
+	defined(CONFIG_VENC_CNT_13) || defined(CONFIG_VENC_CNT_14) || \
+	defined(CONFIG_VENC_CNT_15) || defined(CONFIG_VENC_CNT_16)
 
 #include <linux/moduleparam.h>
 #include <linux/device.h>

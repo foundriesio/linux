@@ -185,29 +185,53 @@ int vmgr_hevc_enc_set_close(vputype type, int value, int bfreemem)
 
 static void _vmgr_hevc_enc_close_all(int bfreemem)
 {
-#if DEFINED_CONFIG_VENC_CNT_12345678
+#if DEFINED_CONFIG_VENC_CNT_1to16
 	vmgr_hevc_enc_set_close(VPU_ENC, 1, bfreemem);
 #endif
-#if DEFINED_CONFIG_VENC_CNT_2345678
+#if DEFINED_CONFIG_VENC_CNT_2to16
 	vmgr_hevc_enc_set_close(VPU_ENC_EXT, 1, bfreemem);
 #endif
-#if DEFINED_CONFIG_VENC_CNT_345678
+#if DEFINED_CONFIG_VENC_CNT_3to16
 	vmgr_hevc_enc_set_close(VPU_ENC_EXT2, 1, bfreemem);
 #endif
-#if DEFINED_CONFIG_VENC_CNT_45678
+#if DEFINED_CONFIG_VENC_CNT_4to16
 	vmgr_hevc_enc_set_close(VPU_ENC_EXT3, 1, bfreemem);
 #endif
-#if DEFINED_CONFIG_VENC_CNT_5678
+#if DEFINED_CONFIG_VENC_CNT_5to16
 	vmgr_hevc_enc_set_close(VPU_ENC_EXT4, 1, bfreemem);
 #endif
-#if DEFINED_CONFIG_VENC_CNT_678
+#if DEFINED_CONFIG_VENC_CNT_6to16
 	vmgr_hevc_enc_set_close(VPU_ENC_EXT5, 1, bfreemem);
 #endif
-#if DEFINED_CONFIG_VENC_CNT_78
+#if DEFINED_CONFIG_VENC_CNT_7to16
 	vmgr_hevc_enc_set_close(VPU_ENC_EXT6, 1, bfreemem);
 #endif
-#if DEFINED_CONFIG_VENC_CNT_8
+#if DEFINED_CONFIG_VENC_CNT_8to16
 	vmgr_hevc_enc_set_close(VPU_ENC_EXT7, 1, bfreemem);
+#endif
+#if DEFINED_CONFIG_VENC_CNT_9to16
+	vmgr_hevc_enc_set_close(VPU_ENC_EXT8, 1, bfreemem);
+#endif
+#if DEFINED_CONFIG_VENC_CNT_10to16
+	vmgr_hevc_enc_set_close(VPU_ENC_EXT9, 1, bfreemem);
+#endif
+#if DEFINED_CONFIG_VENC_CNT_11to16
+	vmgr_hevc_enc_set_close(VPU_ENC_EXT10, 1, bfreemem);
+#endif
+#if DEFINED_CONFIG_VENC_CNT_12to16
+	vmgr_hevc_enc_set_close(VPU_ENC_EXT11, 1, bfreemem);
+#endif
+#if DEFINED_CONFIG_VENC_CNT_13to16
+	vmgr_hevc_enc_set_close(VPU_ENC_EXT12, 1, bfreemem);
+#endif
+#if DEFINED_CONFIG_VENC_CNT_14to16
+	vmgr_hevc_enc_set_close(VPU_ENC_EXT13, 1, bfreemem);
+#endif
+#if DEFINED_CONFIG_VENC_CNT_15to16
+	vmgr_hevc_enc_set_close(VPU_ENC_EXT14, 1, bfreemem);
+#endif
+#if DEFINED_CONFIG_VENC_CNT_16
+	vmgr_hevc_enc_set_close(VPU_ENC_EXT15, 1, bfreemem);
 #endif
 }
 
@@ -324,7 +348,7 @@ static int _vmgr_hevc_enc_cmd_release(char *str)
 	vmgr_hevc_enc_data.nOpened_Count++;
 
 	V_DBG(VPU_DBG_ERROR,
-	"======> _vmgr_hevc_enc_%s_release Out!! %d'th, total = %d  - ENC(%d/%d/%d/%d/%d/%d/%d/%d)",
+	"======> _vmgr_hevc_enc_%s_release Out!! %d'th, total = %d  - ENC(%d/%d/%d/%d/%d/%d/%d/%d/%d/%d/%d/%d/%d/%d/%d/%d)",
 		str,
 		atomic_read(&vmgr_hevc_enc_data.dev_opened),
 		vmgr_hevc_enc_data.nOpened_Count,
@@ -335,7 +359,15 @@ static int _vmgr_hevc_enc_cmd_release(char *str)
 		vmgr_hevc_enc_get_close(VPU_ENC_EXT4),
 		vmgr_hevc_enc_get_close(VPU_ENC_EXT5),
 		vmgr_hevc_enc_get_close(VPU_ENC_EXT6),
-		vmgr_hevc_enc_get_close(VPU_ENC_EXT7));
+		vmgr_hevc_enc_get_close(VPU_ENC_EXT7),
+		vmgr_hevc_enc_get_close(VPU_ENC_EXT8),
+		vmgr_hevc_enc_get_close(VPU_ENC_EXT9),
+		vmgr_hevc_enc_get_close(VPU_ENC_EXT10),
+		vmgr_hevc_enc_get_close(VPU_ENC_EXT11),
+		vmgr_hevc_enc_get_close(VPU_ENC_EXT12),
+		vmgr_hevc_enc_get_close(VPU_ENC_EXT13),
+		vmgr_hevc_enc_get_close(VPU_ENC_EXT14),
+		vmgr_hevc_enc_get_close(VPU_ENC_EXT15));
 
 	return 0;
 }
@@ -473,7 +505,7 @@ static int _vmgr_hevc_enc_process(vputype type, int cmd, long pHandle,
 	vmgr_hevc_enc_data.check_interrupt_detection = 0;
 	vmgr_hevc_enc_data.current_cmd = cmd;
 
-#if DEFINED_CONFIG_VENC_CNT_12345678
+#if DEFINED_CONFIG_VENC_CNT_1to16
 
 	if (type <= VPU_HEVC_ENC_MAX) {
 		if (cmd != VPU_ENC_INIT) {
@@ -1390,7 +1422,7 @@ int vmgr_hevc_enc_suspend(struct platform_device *pdev, pm_message_t state)
 	int i, open_count = 0;
 
 	if (atomic_read(&vmgr_hevc_enc_data.dev_opened) != 0) {
-		pr_info("\n vpu hevc enc: suspend enter for ENC(%d/%d/%d/%d/%d)\n",
+		pr_info("\n vpu hevc enc: suspend enter for ENC(%d/%d/%d/%d/%d/%d/%d/%d/%d/%d/%d/%d/%d/%d/%d/%d)\n",
 			vmgr_hevc_enc_get_close(VPU_ENC),
 			vmgr_hevc_enc_get_close(VPU_ENC_EXT),
 			vmgr_hevc_enc_get_close(VPU_ENC_EXT2),
@@ -1398,7 +1430,15 @@ int vmgr_hevc_enc_suspend(struct platform_device *pdev, pm_message_t state)
 			vmgr_hevc_enc_get_close(VPU_ENC_EXT4),
 			vmgr_hevc_enc_get_close(VPU_ENC_EXT5),
 			vmgr_hevc_enc_get_close(VPU_ENC_EXT6),
-			vmgr_hevc_enc_get_close(VPU_ENC_EXT7));
+			vmgr_hevc_enc_get_close(VPU_ENC_EXT7),
+			vmgr_hevc_enc_get_close(VPU_ENC_EXT8),
+			vmgr_hevc_enc_get_close(VPU_ENC_EXT9),
+			vmgr_hevc_enc_get_close(VPU_ENC_EXT10),
+			vmgr_hevc_enc_get_close(VPU_ENC_EXT11),
+			vmgr_hevc_enc_get_close(VPU_ENC_EXT12),
+			vmgr_hevc_enc_get_close(VPU_ENC_EXT13),
+			vmgr_hevc_enc_get_close(VPU_ENC_EXT14),
+			vmgr_hevc_enc_get_close(VPU_ENC_EXT15));
 
 		_vmgr_hevc_enc_external_all_close(200);
 
@@ -1409,7 +1449,7 @@ int vmgr_hevc_enc_suspend(struct platform_device *pdev, pm_message_t state)
 		for (i = 0; i < open_count; i++)
 			vmgr_hevc_enc_disable_clock(0);
 
-		pr_info("vpu hevc enc: suspend out for ENC(%d/%d/%d/%d/%d)\n",
+		pr_info("vpu hevc enc: suspend out for ENC(%d/%d/%d/%d/%d/%d/%d/%d/%d/%d/%d/%d/%d/%d/%d/%d)\n",
 			vmgr_hevc_enc_get_close(VPU_ENC),
 			vmgr_hevc_enc_get_close(VPU_ENC_EXT),
 			vmgr_hevc_enc_get_close(VPU_ENC_EXT2),
@@ -1417,7 +1457,15 @@ int vmgr_hevc_enc_suspend(struct platform_device *pdev, pm_message_t state)
 			vmgr_hevc_enc_get_close(VPU_ENC_EXT4),
 			vmgr_hevc_enc_get_close(VPU_ENC_EXT5),
 			vmgr_hevc_enc_get_close(VPU_ENC_EXT6),
-			vmgr_hevc_enc_get_close(VPU_ENC_EXT7));
+			vmgr_hevc_enc_get_close(VPU_ENC_EXT7),
+			vmgr_hevc_enc_get_close(VPU_ENC_EXT8),
+			vmgr_hevc_enc_get_close(VPU_ENC_EXT9),
+			vmgr_hevc_enc_get_close(VPU_ENC_EXT10),
+			vmgr_hevc_enc_get_close(VPU_ENC_EXT11),
+			vmgr_hevc_enc_get_close(VPU_ENC_EXT12),
+			vmgr_hevc_enc_get_close(VPU_ENC_EXT13),
+			vmgr_hevc_enc_get_close(VPU_ENC_EXT14),
+			vmgr_hevc_enc_get_close(VPU_ENC_EXT15));
 	}
 
 	return 0;
