@@ -533,14 +533,14 @@ static int hdcp_resume(struct platform_device *pdev)
 
 
 static const struct of_device_id hdcp_of_match[] = {
-	{ .compatible =	"dwc,hdcp-dp" },
+	{ .compatible =	"snps,hdcp-dp" },
 	{ }
 };
 MODULE_DEVICE_TABLE(of, hdcp_of_match);
 
-static struct platform_driver __refdata dwc_hdcp_dp_driver = {
+static struct platform_driver __refdata snps_hdcp_dp_driver = {
 	.driver		= {
-		.name	= "dwc,hdcp-dp",
+		.name	= "snps,hdcp-dp",
 		.of_match_table = hdcp_of_match,
 	},
 	.probe		= hdcp_probe,
@@ -548,7 +548,7 @@ static struct platform_driver __refdata dwc_hdcp_dp_driver = {
 	.suspend	= hdcp_suspend,
 	.resume		= hdcp_resume,
 };
-module_platform_driver(dwc_hdcp_dp_driver);
+module_platform_driver(snps_hdcp_dp_driver);
 
 MODULE_VERSION(HDCP_DRV_VERSION);
 MODULE_AUTHOR("Telechips Inc.");

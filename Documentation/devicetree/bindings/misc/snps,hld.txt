@@ -1,0 +1,19 @@
+Synopsys HDCP Host Library Driver
+-----------------------------------------------------
+This binding defines the HDCP Host Library Driver that are using synopsys IP.
+
+Required properties:
+- compatible : "snps,hld"
+- reg : address and length of the register for the HPI interface.
+- firmware-size : code size of ESM firmware. The buffer is allocated using
+                  dma_free_coherent() on the probe.
+- data-size : data size of ESM firmware. The buffer is allocated using
+              dma_free_coherent() on the probe.
+
+Example:
+	snps-hld {
+		compatible = "snps,hld";
+		reg = <0x0 0x12440000 0x0 0x80>;
+		firmware-size = <0x40000>;
+		data-size = <0x20000>;
+	};
