@@ -1,6 +1,5 @@
 /*
  *  Copyright (C) 2002 ARM Limited, All Rights Reserved.
- *  Copyright (C) Telechips Inc.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -20,24 +19,7 @@
  * Note that IRQs 0-31 are special - they are local to each CPU.
  * As such, the enable set/clear, pending set/clear and active bit
  * registers are banked per-cpu for these sources.
-*******************************************************************************
-
-
-*   Modified by Telechips Inc.
-
-
-*   Modified date : 31/07/2020
-
-
-*   Description : For user convenience of setting external interrupt on Telech-
-ips platform, some codes are added featured CONFIG_ARCH_TCC. Requesting irq is
-simpler than before by putting tcc_is_exti() and tcc_irq_get_reverse() into
-request_threaded_irq(). Now it is possible that rising, faling or both edge ex-
-ternal interrupt mode can be enabled with the flag without calling tcc_irq_get-
-_reverse() or request_threaded_irq() several times.
-
-
-*******************************************************************************/
+ */
 #include <linux/init.h>
 #include <linux/kernel.h>
 #include <linux/err.h>
@@ -82,10 +64,6 @@ static void gic_check_cpu_features(void)
 }
 #else
 #define gic_check_cpu_features()	do { } while(0)
-#endif
-
-#ifdef CONFIG_ARCH_TCC
-extern bool tcc_is_exti(unsigned int irq);
 #endif
 
 union gic_base {
@@ -324,7 +302,6 @@ static int gic_set_type(struct irq_data *d, unsigned int type)
 	if (gicirq < 16)
 		return -EINVAL;
 
-#if !defined(CONFIG_TCC803X_CA7S) // TODO: Temporarily disabled for TCC803x CA7S
 #ifdef CONFIG_ARCH_TCC
 	if (d->hwirq >= 32) {
 		if (tcc_irq_set_polarity(d, type) != 0)
@@ -333,10 +310,9 @@ static int gic_set_type(struct irq_data *d, unsigned int type)
 
 	if (type == IRQ_TYPE_LEVEL_LOW)
 		type = IRQ_TYPE_LEVEL_HIGH;
-	else if (type == IRQ_TYPE_EDGE_FALLING || type == IRQ_TYPE_EDGE_BOTH)
+	else if (type == IRQ_TYPE_EDGE_FALLING)
 		type = IRQ_TYPE_EDGE_RISING;
 #endif
-#endif /* !CONFIG_TCC803X_CA7S */
 
 	/* SPIs have restrictions on the supported types */
 	if (gicirq >= 32 && type != IRQ_TYPE_LEVEL_HIGH &&
