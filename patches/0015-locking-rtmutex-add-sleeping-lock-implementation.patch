@@ -1115,7 +1115,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  # include "rtmutex-debug.h"
 --- a/kernel/sched/core.c
 +++ b/kernel/sched/core.c
-@@ -504,9 +504,15 @@ static bool set_nr_if_polling(struct tas
+@@ -502,9 +502,15 @@ static bool set_nr_if_polling(struct tas
  #endif
  #endif
  
@@ -1133,7 +1133,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  	/*
  	 * Atomically grab the task, if ->wake_q is !nil already it means
-@@ -542,7 +548,13 @@ static bool __wake_q_add(struct wake_q_h
+@@ -540,7 +546,13 @@ static bool __wake_q_add(struct wake_q_h
   */
  void wake_q_add(struct wake_q_head *head, struct task_struct *task)
  {
@@ -1148,7 +1148,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  		get_task_struct(task);
  }
  
-@@ -565,28 +577,39 @@ void wake_q_add(struct wake_q_head *head
+@@ -563,28 +575,39 @@ void wake_q_add(struct wake_q_head *head
   */
  void wake_q_add_safe(struct wake_q_head *head, struct task_struct *task)
  {

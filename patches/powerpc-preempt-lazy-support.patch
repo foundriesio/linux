@@ -93,7 +93,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  	OFFSET(DCACHEL1BLOCKSIZE, ppc64_caches, l1d.block_size);
 --- a/arch/powerpc/kernel/entry_32.S
 +++ b/arch/powerpc/kernel/entry_32.S
-@@ -420,7 +420,9 @@
+@@ -423,7 +423,9 @@
  	mtmsr	r10
  	lwz	r9,TI_FLAGS(r2)
  	li	r8,-MAX_ERRNO
@@ -104,7 +104,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  	bne-	syscall_exit_work
  	cmplw	0,r3,r8
  	blt+	syscall_exit_cont
-@@ -537,13 +539,13 @@ END_FTR_SECTION_IFSET(CPU_FTR_NEED_PAIRE
+@@ -540,13 +542,13 @@ END_FTR_SECTION_IFSET(CPU_FTR_NEED_PAIRE
  	b	syscall_dotrace_cont
  
  syscall_exit_work:
@@ -120,7 +120,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  	bne-	1f
  	lwz	r11,_CCR(r1)			/* Load CR */
  	neg	r3,r3
-@@ -552,12 +554,12 @@ END_FTR_SECTION_IFSET(CPU_FTR_NEED_PAIRE
+@@ -555,12 +557,12 @@ END_FTR_SECTION_IFSET(CPU_FTR_NEED_PAIRE
  
  1:	stw	r6,RESULT(r1)	/* Save result */
  	stw	r3,GPR3(r1)	/* Update return value */
@@ -135,7 +135,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  	addi	r12,r2,TI_FLAGS
  3:	lwarx	r8,0,r12
  	andc	r8,r8,r11
-@@ -940,7 +942,14 @@ user_exc_return:		/* r10 contains MSR_KE
+@@ -943,7 +945,14 @@ user_exc_return:		/* r10 contains MSR_KE
  	cmpwi	0,r0,0		/* if non-zero, just restore regs and return */
  	bne	restore_kuap
  	andi.	r8,r8,_TIF_NEED_RESCHED
@@ -150,7 +150,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  	lwz	r3,_MSR(r1)
  	andi.	r0,r3,MSR_EE	/* interrupts off? */
  	beq	restore_kuap	/* don't schedule if so */
-@@ -1258,7 +1267,7 @@ END_FTR_SECTION_IFSET(CPU_FTR_NEED_PAIRE
+@@ -1261,7 +1270,7 @@ END_FTR_SECTION_IFSET(CPU_FTR_NEED_PAIRE
  #endif /* !(CONFIG_4xx || CONFIG_BOOKE) */
  
  do_work:			/* r10 contains MSR_KERNEL here */
@@ -159,7 +159,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  	beq	do_user_signal
  
  do_resched:			/* r10 contains MSR_KERNEL here */
-@@ -1277,7 +1286,7 @@ do_resched:			/* r10 contains MSR_KERNEL
+@@ -1280,7 +1289,7 @@ do_resched:			/* r10 contains MSR_KERNEL
  	LOAD_REG_IMMEDIATE(r10,MSR_KERNEL)
  	mtmsr	r10		/* disable interrupts */
  	lwz	r9,TI_FLAGS(r2)
