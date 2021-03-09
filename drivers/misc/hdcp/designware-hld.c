@@ -463,20 +463,20 @@ static int hld_remove(struct platform_device *pdev)
 }
 
 static const struct of_device_id hld_of_match[] = {
-	{ .compatible =	"dwc,hld" },
+	{ .compatible =	"snps,hld" },
 	{ }
 };
 MODULE_DEVICE_TABLE(of, hld_of_match);
 
-static struct platform_driver __refdata dwc_hld_driver = {
+static struct platform_driver __refdata snps_hld_driver = {
 	.driver		= {
-		.name	= "dwc,hld",
+		.name	= "snps,hld",
 		.of_match_table = hld_of_match,
 	},
 	.probe		= hld_probe,
 	.remove		= hld_remove,
 };
-module_platform_driver(dwc_hld_driver);
+module_platform_driver(snps_hld_driver);
 
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Synopsys, Inc.");

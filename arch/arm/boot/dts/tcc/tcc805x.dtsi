@@ -3405,13 +3405,13 @@
 	max968xx_config: max968xx_config {};
 
 	hdcp-dp {
-		compatible = "dwc,hdcp-dp";
+		compatible = "snps,hdcp-dp";
 		reg = <0x0 0x12400000 0x0 0x10000>;
 		interrupts = <GIC_SPI 294 IRQ_TYPE_LEVEL_HIGH>;
 	};
 
-	dwc-hld {
-		compatible = "dwc,hld";
+	snps-hld {
+		compatible = "snps,hld";
 		reg = <0x0 0x12440000 0x0 0x80>;
 		firmware-size = <0x40000>;
 		data-size = <0x20000>;

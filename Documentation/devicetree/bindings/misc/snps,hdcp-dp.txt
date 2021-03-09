@@ -1,0 +1,15 @@
+Synopsys HDCP on Display Port Controller
+-----------------------------------------------------
+This binding defines the HDCP controller that are using synopsys IP.
+
+Required properties:
+- compatible : "snps,hdcp-dp"
+- reg : address and length of the register for the device
+- interrupts : Should contain hdcp interrupt
+
+Example:
+	hdcp-dp {
+		compatible = "snps,hdcp-dp";
+		reg = <0x0 0x12400000 0x0 0x10000>;
+		interrupts = <GIC_SPI 294 IRQ_TYPE_LEVEL_HIGH>;
+	};
