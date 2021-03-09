@@ -830,15 +830,15 @@ static int tcc_i2s_hw_params(
 		}
 	}
 
+#if defined(TCC805x_CS_SND)
 	if ((i2s->tdm_mode == true) && (channels != 2)
 			&& (channels != 4) && (channels != 8)
-#if defined(TCC805x_CS_SND)
-			&& (channels != 16) && (channels != 32))
-		{
+			&& (channels != 16) && (channels != 32)) {
 		i2s_dai_err("%s - TDM only supports 2, 4, 8, 16, 32 channels\n",
 					__func__);
 #else
-		) {
+	if ((i2s->tdm_mode == true) && (channels != 2)
+			&& (channels != 4) && (channels != 8)) {
 		i2s_dai_err("%s - TDM only supports 2, 4, 8 channels\n",
 					__func__);
 #endif

@@ -162,7 +162,7 @@ static void tcc_snd_card_shutdown(struct snd_pcm_substream *substream)
 }
 
 static int tcc_snd_card_hw_params(struct snd_pcm_substream *substream,
-								  struct snd_pcm_hw_params *params)
+	struct snd_pcm_hw_params *params)
 {
 	int ret = 0;
 

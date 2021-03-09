@@ -1,0 +1,22 @@
+* Device Tree Bindings for spdif
+
+Required properties:
+
+- compatible       : 
+- reg                :
+- clocks             :
+- clock-frequency :
+- adma              :
+- status              : disable or enable the device node
+
+
+Example
+-------
+	spdif0: spdif@16102000 {
+		compatible = "telechips,spdif";
+		reg = <0x0 0x16102000 0x0 0x1000>;
+		clocks = <&clk_peri PERI_MSPDIF0 &clk_io IOBUS_SPDIF0>;
+		clock-frequency = <44100>;
+		adma = <&adma0>;
+		status = "disabled";
+	};
