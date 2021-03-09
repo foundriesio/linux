@@ -1,23 +1,32 @@
 From: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
-Date: Fri, 29 Jan 2021 13:09:59 +0100
-Subject: [PATCH 19/19] firewire: ohci: Use tasklet_disable_in_atomic() in the
- two atomic user
+Date: Tue, 9 Mar 2021 09:42:16 +0100
+Subject: [PATCH 13/20] firewire: ohci: Use tasklet_disable_in_atomic() where
+ required
 
-ohci_cancel_packet() can be invoked from ar_context_tasklet(). It
-will cancel a different tasklet than it is running.
+tasklet_disable() is invoked in several places. Some of them are in atomic
+context which prevents a conversion of tasklet_disable() to a sleepable
+function.
 
-ohci_flush_iso_completions() can be invoked from other driver either
-from a tasklet or from a workqueue with disabled preemption.
-The function irq_target_callback() make it appear to be invoked from
-IRQ-context. The `sc' callback it assigns can be tracked back to the
-flush_iso_completions() function. This is called from preemptible
-context (ohci_allocate_iso_context()) and ohci_flush_iso_completions().
+The atomic callchains are:
 
-The invocation from at_context_flush() is always preemptible.
+ ar_context_tasklet()
+   ohci_cancel_packet()
+     tasklet_disable()
 
-Use tasklet_disable_in_atomic() for the two invocations from atomic
-context.
+ ...
+   ohci_flush_iso_completions()
+     tasklet_disable()
 
+The invocation of tasklet_disable() from at_context_flush() is always in
+preemptible context.
+
+Use tasklet_disable_in_atomic() for the two invocations in
+ohci_cancel_packet() and ohci_flush_iso_completions().
+
+Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
+Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
+Cc: Stefan Richter <stefanr@s5r6.in-berlin.de>
+Cc: linux1394-devel@lists.sourceforge.net
 Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 ---
  drivers/firewire/ohci.c |    4 ++--

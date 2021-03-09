@@ -14,7 +14,7 @@ Signed-off-by: John Ogness <john.ogness@linutronix.de>
 
 --- a/kernel/printk/printk.c
 +++ b/kernel/printk/printk.c
-@@ -2967,9 +2967,7 @@ void register_console(struct console *ne
+@@ -2961,9 +2961,7 @@ void register_console(struct console *ne
  		/*
  		 * console_unlock(); will print out the buffered messages
  		 * for us.
@@ -25,7 +25,7 @@ Signed-off-by: John Ogness <john.ogness@linutronix.de>
  		 * We're about to replay the log buffer.  Only do this to the
  		 * just-registered console to avoid excessive message spam to
  		 * the already-registered consoles.
-@@ -2982,11 +2980,9 @@ void register_console(struct console *ne
+@@ -2976,11 +2974,9 @@ void register_console(struct console *ne
  		exclusive_console_stop_seq = console_seq;
  
  		/* Get a consistent copy of @syslog_seq. */
