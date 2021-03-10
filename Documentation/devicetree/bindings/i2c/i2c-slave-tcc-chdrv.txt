@@ -1,0 +1,39 @@
+Device tree configuration for Telechips I2C Slave Controller
+
+Required properties:
+- compatible	: Should be "telechips,i2c-slave"
+- reg		: Physical base address and size of the controller's register area.
+- interrupts	: Interrupt specifier.
+- clocks	: phandle to input clock.
+- #address-cells: Should be 1.
+- #size-cells	: Should be 0.
+- id		: I2C Slave device bus ID
+- pinctrl-names	: Should be "default"
+- pinctrl-0	: phandle to pinctrl function
+- port-mux	: I2C port number
+
+Optional properties:
+- dmas		: Must contain a list of two references to DMA specifier.
+- dmas-names	: Should be "tx", "rx".
+- status	: Activation status
+
+Note:
+GPIO used for I2C SCL/SDA are named as number. you can find port number in Chip Specification.
+
+Examples:
+
+	i2cslave0: i2cslave@16380000 {
+		compatible = "telechips,i2c-slave";
+		reg = <0x16380000 0x28 0x163c0000 0x10>;
+		interrupts = <GIC_SPI 65 IRQ_TYPE_LEVEL_HIGH>;
+		clocks = <&clk_io IOBUS_I2C_S0>;
+		#address-cells = <1>;
+		#size-cells = <0>;
+		id = <0>;
+		status = "disabled";
+
+		/* USE DMA-engine */
+		//dmas = <&dma0 0 24>, <&dma0 1 28>;
+		//dma-names = "tx", "rx";
+	};
+

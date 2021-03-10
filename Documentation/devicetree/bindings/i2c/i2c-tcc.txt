@@ -1,0 +1,55 @@
+Device tree configuration for Telechips I2C Master Controller
+
+Required properties:
+- compatible	: Name for matching with the drivevrs depending on chipset
+		Should be
+		"telechips,tcc805x-i2c"
+		"telechips,tcc803x-i2c"
+		"telechips,tcc802x-i2c"
+		"telechips,tcc901x-i2c"
+		"telechips,tcc899x-i2c"
+		"telechips,tcc897x-i2c"
+		"telechips,i2c"
+- reg		: Physical base address and size of the controller's register area.
+- interrupts	: Interrupt specifier.
+- clocks	: phandle to input clock.
+- #address-cells: Should be 1.
+- #size-cells	: Should be 0.
+- pinctrl-names	: Should be "default"
+- pinctrl-0	: phandle to pinctrl function
+- port-mux	: I2C port number
+
+Optional properties:
+- peri-clock-frequency	: Desired I2C peripheral frequency in Hz, default is 4MHz.
+- clock-frequency	: Desired I2C bus frequency in Hz, default is 100kHz.
+- interrupt_mode	: interrupt-base transfer, default is not used interrupt.
+- noise_filter		: Desired I2C Noise filtering time in ns, default is 50ns
+- status		: Activation status
+
+Note:
+GPIO used for I2C SCL/SDA are named as number. you can find port number in Chip Specification.
+I2C bus frequency is generated from I2C peripheral frequency which is divided by prescale.
+If i2c transfer between irqsave function, you should set interrupt_mode to 0.
+
+Examples:
+
+	i2c0: i2c@16300000 {
+		reg = <0x16300000 0x1c 0x163c0000 0x10 0x16340004 0x04>;
+		compatible = "telechips,tcc803x-i2c";
+		interrupts = <GIC_SPI 61 IRQ_TYPE_LEVEL_HIGH>;
+		clocks = <&clk_peri PERI_I2C0 &clk_io IOBUS_I2C_M0 &clk_fbus FBUS_IO>;
+		#address-cells = <1>;
+		#size-cells = <0>;
+		interrupt_mode = <0>;
+
+		pinctrl-names = "default";
+		pinctrl-0 = <&i2c11_bus>;
+		port-mux = <11>;
+		clock-frequency = <400000>;
+		status = "okay";
+
+		dummy@60 {
+			compatible = "dummy";
+			reg = <0x60>;
+		};
+	};
