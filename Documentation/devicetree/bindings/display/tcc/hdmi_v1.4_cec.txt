@@ -1,0 +1,38 @@
+Telechips CEC driver for HDMI v1.4
+==================================
+
+The HDMI transmitter is consist of a Samsung HDMI 1.4 TX controller IP and
+Samsung  PHY IP.
+
+Required properties for CEC:
+	-compatible:
+		- "telechips,tcc897x-hdmi-cec"
+	-reg:
+		Physical base address.
+	-reg-names:
+	-interrupt-parent: Specifies the phandle to the parent interrupt
+			   controller.
+	-interrupts: The number of CEC interrupts
+	-clocks: Clocks for CEC controller.
+	-clock-names:
+	-clock-frequency: Clock frequency for CEC controller.
+	-pinctrl-names: Set to "default".
+	-pinctrl-0: List of phandles pointing to pin configuration nodes
+		    for CEC.
+
+-------------------------------------------------------------------------------
+Example:
+
+cec@72370000 {
+	compatible = "telechips,tcc897x-hdmi-cec";
+	reg = <0x76061000 0x200>;
+	reg-names = "hdmi_ctrl", "hdmi_cec";
+	pinctrl-names = "default";
+	pinctrl-0 = <&hdmi_cec>;
+	interrupt-parent = <&gic>;
+	interrupts = <GIC_SPI 55 IRQ_TYPE_LEVEL_HIGH>;
+	clocks = <&clk_peri PERI_IOB_CEC>;
+	clock-names = "cec_core_clock";
+	clock-frequency = <24000000>;
+	status = "disabled";
+};

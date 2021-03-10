@@ -1,0 +1,32 @@
+This is for Telechips CEC driver for HDMI v2.0.
+
+Required properties for display:
+	-compatible:
+		- "telechips,dw-hdmi-cec"
+	-reg:
+		physical base address of the CEC controller.
+	-reg:
+		physical base address
+		- 0 : HDMI CEC base address
+		- 1 : HDMI CEC Interrupt base address
+		- 2 : IOBUS Configuration base address
+	-pinctrl-names: Set to "default".
+	-pinctrl-0: List of phandles pointing to pin configuration nodes
+		    for HPD.
+
+-------------------------------------------------------------------------------
+
+Example:
+
+hdmi_cec_20: hdmi_cec_20@16053000 {
+	compatible = "telechips,dw-hdmi-cec";
+	reg = <0x16053000 0x100 0x16053400 0x400 0x16051054 0x4>;
+	reg-names = "cec_controller", "cec_irq_controller", "cec_clock_select";
+	interrupts = <GIC_SPI 70 IRQ_TYPE_LEVEL_HIGH>,
+			<GIC_SPI 71 IRQ_TYPE_LEVEL_HIGH>;
+	clocks = <&clk_io IOBUS_CEC1>;
+	clock-names = "iobus_cfg_cec";
+	pinctrl-names = "default";
+	pinctrl-0 = <&hdmi_cec>;
+	status = "disabled";
+};
