@@ -42,208 +42,76 @@
  *     OTHER DEALINGS IN THE SOFTWARE.
  */
 
-&aliases {
-    gpio0 = &gpa;
-    gpio32 = &gpb;
-    gpio64 = &gpc;
-    gpio96 = &gpd;
-    gpio128 = &gpe;
-    gpio160 = &gpf;
-    gpio192 = &gpg;
-    gpio212 = &gphdmi;
-    gpio216 = &gpsd;
-    gpio227 = &gpadc;
-};
-
-&gpio {
-		interrupts = <GIC_SPI 3 0>,
-		             <GIC_SPI 4 0>,
-		             <GIC_SPI 5 0>,
-		             <GIC_SPI 6 0>,
-		             <GIC_SPI 7 0>,
-		             <GIC_SPI 8 0>,
-		             <GIC_SPI 9 0>,
-		             <GIC_SPI 10 0>,
-		             <GIC_SPI 11 0>,
-		             <GIC_SPI 12 0>,
-		             <GIC_SPI 13 0>,
-		             <GIC_SPI 14 0>,
-		             <GIC_SPI 72 0>,
-		             <GIC_SPI 73 0>,
-		             <GIC_SPI 74 0>,
-		             <GIC_SPI 75 0>,
-		             <GIC_SPI 80 0>,
-		             <GIC_SPI 81 0>,
-		             <GIC_SPI 82 0>,
-		             <GIC_SPI 83 0>,
-		             <GIC_SPI 84 0>,
-		             <GIC_SPI 85 0>,
-		             <GIC_SPI 86 0>,
-		             <GIC_SPI 87 0>,
-		             <GIC_SPI 88 0>,
-		             <GIC_SPI 89 0>,
-		             <GIC_SPI 90 0>,
-		             <GIC_SPI 91 0>,
-		             <GIC_SPI 92 0>,
-		             <GIC_SPI 93 0>,
-		             <GIC_SPI 94 0>,
-		             <GIC_SPI 95 0>;
-
-
+&pinctrl {
 	gpa: gpa {
-		reg-offset = <0x0>;
 		gpio-controller;
 		#gpio-cells = <2>;
-		interrupt-controller;
-		#interrupt-cells = <2>;
-		label = "gpioa";
+		reg = <0x0 0 32>;
 		source-num = <1 0 188 32>;
-		gpio-ranges = <&pinctrl 0 0 32>;
 	};
 
 	gpb: gpb {
-		reg-offset = <0x40>;
 		gpio-controller;
 		#gpio-cells = <2>;
-		interrupt-controller;
-		#interrupt-cells = <2>;
-		label = "gpiob";
+		reg = <0x40 0 32>;
 		source-num = <1 0 156 32>;
-		gpio-ranges = <&pinctrl 0 32 32>;
 	};
 
 	gpc: gpc {
-		reg-offset = <0x80>;
 		gpio-controller;
 		#gpio-cells = <2>;
-		interrupt-controller;
-		#interrupt-cells = <2>;
-		label = "gpioc";
+		reg = <0x80 0 32>;
 		source-num = <1 0 124 32>;
-		gpio-ranges = <&pinctrl 0 64 32>;
 	};
 
 	gpd: gpd {
-		reg-offset = <0xc0>;
 		gpio-controller;
 		#gpio-cells = <2>;
-		interrupt-controller;
-		#interrupt-cells = <2>;
-		label = "gpiod";
+		reg = <0xc0 0 32>;
 		source-num = <1 0 92 32>;
-		gpio-ranges = <&pinctrl 0 96 32>;
 	};
 
 	gpe: gpe {
-		reg-offset = <0x100>;
 		gpio-controller;
 		#gpio-cells = <2>;
-		interrupt-controller;
-		#interrupt-cells = <2>;
-		label = "gpioe";
+		reg = <0x100 0 32>;
 		source-num = <1 0 60 32>;
-		gpio-ranges = <&pinctrl 0 128 32>;
 	};
 
 	gpf: gpf {
-		reg-offset = <0x140>;
 		gpio-controller;
 		#gpio-cells = <2>;
-		interrupt-controller;
-		#interrupt-cells = <2>;
-		label = "gpiof";
+		reg = <0x140 0 32>;
 		source-num = <1 0 28 32>;
-		gpio-ranges = <&pinctrl 0 160 32>;
 	};
 
 	gpg: gpg {
-		reg-offset = <0x180>;
 		gpio-controller;
 		#gpio-cells = <2>;
-		interrupt-controller;
-		#interrupt-cells = <2>;
-		label = "gpiog";
+		reg = <0x180 0 32>;
 		source-num = <1 0 8 20>;
-		gpio-ranges = <&pinctrl 0 192 20>;
 	};
 
 	gphdmi: gphdmi {
-		reg-offset = <0x1c0>;
 		gpio-controller;
 		#gpio-cells = <2>;
-		interrupt-controller;
-		#interrupt-cells = <2>;
-		label = "gpiohdmi";
+		reg = <0x1c0 0 32>;
 		source-num = <1 0 0 4>;
-		gpio-ranges = <&pinctrl 0 212 4>;
 	};
 
 	gpsd: gpsd { /*GPSD3*/
-		reg-offset = <0x240>;
 		gpio-controller;
 		#gpio-cells = <2>;
-		interrupt-controller;
-		#interrupt-cells = <2>;
-		label = "gpiosd";
+		reg = <0x240 0 32>;
 		source-num = <1 0 224 11>;
-		gpio-ranges = <&pinctrl 0 216 11>;
 	};
 
 	gpadc: gpadc {	/* dummy regs. */
-		reg-offset = <0x2C0>;	/* use 2~9 pins */
 		gpio-controller;
 		#gpio-cells = <2>;
-		interrupt-controller;
-		#interrupt-cells = <2>;
-		label = "gpioadc";
+		reg = <0x2C0 2 32>;	/* use 2~9 pins */
 		source-num = <2 2 4 4 6 220 4>;
-		gpio-ranges = <&pinctrl 0 227 4>;
 	};
-
-};
-
-&pinctrl {
-    pinctrl_gpio {
-	gpa {
-		pin-info = <0x0 0 32>;
-	};
-
-	gpb {
-		pin-info = <0x40 0 32>;
-	};
-
-	gpc {
-		pin-info = <0x80 0 32>;
-	};
-
-	gpd {
-		pin-info = <0xc0 0 32>;
-	};
-
-	gpe {
-		pin-info = <0x100 0 32>;
-	};
-
-	gpf {
-		pin-info = <0x140 0 32>;
-	};
-
-	gpg {
-		pin-info = <0x180 0 32>;
-	};
-
-	gphdmi {
-		pin-info = <0x1c0 0 32>;
-	};
-
-	gpsd { /*GPSD3*/
-		pin-info = <0x240 0 32>;
-	};
-
-	gpadc {	/* dummy regs. */
-		pin-info = <0x2C0 2 32>;	/* use 2~9 pins */
-	};
-    };
 
 	tco_0_0: tco_0_0 {
 		telechips,pins = "gpc-19";

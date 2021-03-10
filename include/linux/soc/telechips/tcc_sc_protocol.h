@@ -89,9 +89,6 @@ struct tcc_sc_fw_gpio_ops {
 	s32 (*request_gpio)(const struct tcc_sc_fw_handle *handle,
 		uint32_t address, uint32_t bit_number,
 		uint32_t width, uint32_t value);
-	s32 (*request_gpio_no_res)(const struct tcc_sc_fw_handle *handle,
-		uint32_t address, uint32_t bit_number,
-		uint32_t width, uint32_t value);
 };
 
 struct tcc_sc_fw_otp_ops {

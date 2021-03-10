@@ -3,8 +3,26 @@
  *
  * Copyright (C) 1992, 1998-2006 Linus Torvalds, Ingo Molnar
  * Copyright (C) 2005-2006 Thomas Gleixner
+ * Copyright (C) Telechips Inc.
  *
  * This file contains driver APIs to the irq subsystem.
+*******************************************************************************
+
+
+*   Modified by Telechips Inc.
+
+
+*   Modified date : 31/07/2020
+
+
+*   Description : For user convenience of setting external interrupt on Telech-
+ips platform, some codes are added featured CONFIG_ARCH_TCC. Requesting irq is
+simpler than before by putting tcc_is_exti() and tcc_irq_get_reverse() into
+request_threaded_irq(). Now it is possible that rising, faling or both edge ex-
+ternal interrupt mode can be enabled with the flag without calling tcc_irq_get-
+_reverse() or request_threaded_irq() several times.
+
+
 *******************************************************************************/
 
 #define pr_fmt(fmt) "genirq: " fmt
@@ -23,6 +41,10 @@
 
 #include "internals.h"
 
+#ifdef CONFIG_ARCH_TCC
+extern bool tcc_is_exti(unsigned int irq);
+extern unsigned int tcc_irq_get_reverse(unsigned int irq);
+#endif
 
 #ifdef CONFIG_IRQ_FORCED_THREADING
 __read_mostly bool force_irqthreads;
@@ -1556,6 +1578,30 @@ static struct irqaction *__free_irq(unsigned int irq, void *dev_id)
 	struct irq_desc *desc = irq_to_desc(irq);
 	struct irqaction *action, **action_ptr;
 	unsigned long flags;
+#ifdef CONFIG_ARCH_TCC
+        struct irqaction *ret;
+
+        if(tcc_is_exti(irq)){
+                if(tcc_irq_get_reverse(irq)!=IRQ_NOTCONNECTED){
+                        desc = irq_to_desc(tcc_irq_get_reverse(irq));
+                        action_ptr = &desc->action;
+                        action = *action_ptr;
+                        if(action){
+                                ret = __free_irq(tcc_irq_get_reverse(irq), dev_id);
+
+                                desc = irq_to_desc(irq);
+                                action_ptr = &desc->action;
+                                action = *action_ptr;
+
+                                if(!action){
+                                        return ret;
+                                }
+                        }
+                        desc = irq_to_desc(irq);
+
+                }
+        }
+#endif
 
 	WARN(in_interrupt(), "Trying to free IRQ %d from IRQ context!\n", irq);
 
@@ -1778,6 +1824,21 @@ int request_threaded_irq(unsigned int irq, irq_handler_t handler,
 	struct irq_desc *desc;
 	int retval;
 
+#ifdef CONFIG_ARCH_TCC
+	if(tcc_is_exti(irq)){
+
+		/* detecting both-edge flag */
+		if((irqflags & IRQ_TYPE_SENSE_MASK) == IRQ_TYPE_EDGE_BOTH){
+
+			irqflags = (irqflags & ~IRQ_TYPE_EDGE_BOTH)|IRQ_TYPE_EDGE_RISING;
+			retval = request_threaded_irq(irq, handler, thread_fn, irqflags, devname, dev_id);
+			if(retval)
+				return retval;
+
+			irq = tcc_irq_get_reverse(irq);
+		}
+	}
+#endif
 
 	if (irq == IRQ_NOTCONNECTED)
 		return -ENOTCONN;
