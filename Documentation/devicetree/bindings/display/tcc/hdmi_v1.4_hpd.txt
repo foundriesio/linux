@@ -1,0 +1,23 @@
+Telechips Hotplug Detect Driver for HDMI v1.4
+=============================================
+
+Required properties for HPD:
+	-compatible:
+		- "telechips,tcc897x-hdmi-hpd".
+	-pinctrl-names: Set to "default".
+	-pinctrl-0: List of phandles pointing to pin configuration nodes
+		    for HPD.
+	-gpios:  GPIO used to get Hotplug Detect signal.
+
+Optional properties:
+
+-------------------------------------------------------------------------------
+Example:
+
+hpd@72310000 {
+	compatible = "telechips,tcc897x-hdmi-hpd";
+	pinctrl-names = "default";
+	pinctrl-0 = <&hdmi_hpd>;
+	gpios = <&gphdmi 1 0>;
+	status = "disabled";
+};

@@ -1,0 +1,69 @@
+Telechips HDMI v1.4 Drivers
+===========================
+
+The HDMI transmitter is consist of a Samsung HDMI 1.4 TX controller IP and
+Samsung  PHY IP.
+
+Required properties for hdmi v1.4:
+	-compatible:
+		- HDMI : "telechips,tcc897x-hdmi"
+	-reg:
+		physical base address
+		- 0 :Controller register base address,
+		- 1 :HDMI register base address,
+		- 2 :HDMI PHY configuration register base address,
+		- 3 :HDCP register base address,
+		- 4 :RGB register base address,
+		- 5 :AES register base address,
+		- 7 :SPDIF Receiver register base address and
+		- 8 :I2S Receiver register base address
+	-reg-names:
+	-interrupt-parent: Specifies the phandle to the parent interrupt
+			   controller
+	-interrupts: The number of HDMI interrupts
+	-clocks: Clocks for HDMI controller
+	-clock-names:
+	-vioc-frequency:
+
+-------------------------------------------------------------------------------
+Example:
+
+hdmi@72300000 {
+	compatible = "telechips,tcc897x-hdmi";
+	reg = < 0x72300000 0x100
+		0x72310000 0x7000
+		0x72360000 0x100
+		0x72317000 0x200
+		0x7231D500 0x100
+		0x72320000 0x100
+		0x72330000 0x100
+		0x72340000 0x100 >;
+	reg-names = "hdmi_ctrl",
+		"hdmi_core",
+		"hdmi_phy",
+		"hdmi_hdcp",
+		"hdmi_rgb",
+		"hdmi_aes",
+		"hdmi_spdif",
+		"hdmi_i2s";
+	interrupt-parent = <&gic>;
+	interrupts = <GIC_SPI 34 IRQ_TYPE_LEVEL_HIGH>;
+	clocks = <&clk_peri PERI_HDMI
+			&clk_ddi DDIBUS_HDMI
+			&clk_peri PERI_HDMI_PCLK
+			&clk_isoip_top ISOIP_TOP_HDMI
+			&clk_peri PERI_HDMIA
+			>;
+	clock-names = 	"hdmi_ref_clk",
+			"hdmi_ddibus",
+			"hdmi_phy_apb",
+			"hdmi_pmu_iso",
+			"hdmi_audio";
+	/* spdif block */
+	spdif-audio = <3>;  /* 0: audio0, 3: audio3 - default*/
+	spdif-block0 = <&spdif0>; /* spdif0 is map to audio0 */
+	spdif-block1 = <&spdif1>; /* spdif1 is map to audio3 */
+
+	vioc-frequency = <27>;
+	status = "disabled";
+};
