@@ -1,0 +1,14 @@
+Maxim Serializer/Deserializer for setting Touch of Telechips EVB
+
+Using Maxim Device:
+max96751, max96851, max96878
+
+Required properties:
+- compatible	: Should be "telechips,tcc803x-tsc-serdes"
+- reg		: Device address
+
+Example:
+		tsc_serdes {
+			compatible = "telechips,tcc803x-tsc-serdes";
+			reg = <0x6A>;
+		};
