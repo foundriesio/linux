@@ -1,0 +1,23 @@
+Hardware demux core for TCC897X
+
+Required properies:
+        -compatible:
+                "telechips,hwdemux"
+
+Optional properties:
+        -status:
+                hwdemux device status
+	-clocks:
+		clock for cmbus
+
+Examples:
+	hwdemux: cm_bus {
+                compatible = "telechips,hwdemux";
+                status = "okay";
+                clocks = <&clk_fbus FBUS_CMBUS>,
+                       <&clk_peri PERI_CMBUS_TSIF0>,
+                       <&clk_peri PERI_CMBUS_TSIF1>,
+                       <&clk_peri PERI_CMBUS_TSIF2>,
+                       <&clk_peri PERI_CMBUS_TSIF3>;
+        };
+

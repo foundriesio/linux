@@ -1,0 +1,15 @@
+Hardware demux core
+
+Required properies:
+	-compatible:
+		"telechips,hwdemux"
+
+Optional properties:
+	-status:
+		hwdemux device status
+
+Examples:
+	hwdemux: cm_bus@19000000 {
+                 compatible = "telechips,hwdemux";
+                 status = "okay";
+        };

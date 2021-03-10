@@ -1,0 +1,31 @@
+Telechips HWDemux TSIF driver for TCC897X
+
+Required properties:
+	-compatible:
+		"telechips,tcc89xx-hwdmx-tsif"
+
+Optional properties:
+	-tsif-id:
+		tsif index(max:2)
+	-tsif-port:
+		tsif port nunmber
+	-port-mex:
+		tsif port mux number
+	-pinctrl-names:
+		port name for status
+	-pinctrl-0:
+		setting of idle for pinctrl for tsif data/valid/clock/sync
+	-pinctrl-1:
+		 setting of active for pinctrl for tsif data/valid/clock/sync
+
+Example:
+	tcc_ex_tsif {
+                compatible = "telechips,tcc89xx-hwdmx-tsif";
+                tsif-id = <2>;
+                tsif-port = <6>;
+                port-mux = <6>;
+                pinctrl-names = "idle", "active";
+                pinctrl-0 = <&ts6_idle>;
+                pinctrl-1 = <&ts6_active>;
+        };
+

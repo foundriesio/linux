@@ -1,0 +1,21 @@
+LinuxTV driver Module
+
+Required properties:
+	-compatible:
+		"telechips,tcc_dxb_drv"
+		"telechips,tcc_dxb_drv,TS0"
+		"telechips,tcc_dxb_drv,TS1"
+		"telechips,tcc_dxb_drv,TS2"
+		"telechips,tcc_dxb_drv,TS3"
+		"telechips,tcc_dxb_drv,TS4"
+		"telechips,tcc_dxb_drv,TS5"
+		"telechips,tcc_dxb_drv,TS6"
+		"telechips,tcc_dxb_drv,TS7"
+
+
+Optional properties:
+
+Example:
+	tcc_dxb_drv {
+                compatible = "telechips,tcc_dxb_drv";
+        };
