@@ -1,0 +1,85 @@
+Telechips GPSB Controller for TSIF(Transport Stream Inteface)
+
+Genral Purpose Serial Bus (GPSB) Controller supports SPI Master / Slave mode
+There are 6 GPSB controllers.
+3 GPSB controllers (Controller-0/1/2) have 2 buffers (TX FIFO, RX FIFO) with dedicated DMA.
+3 GPSB controllers (Controller-3/4/5) have 2 buffers (TX FIFO, RX FIFO) without dedicated DMA.
+the following is FIFO size depending on bit width.
+- 32-bit x 8-depth
+- 16-bit x 16-depth
+-  8-bit x 16-dpeth
+
+Required properties:
+- compatible	: depending on the SoC this should be one of:
+		"telechips,tcc89xx-tsif"
+		"telechips,tcc805x-tsif"
+		"telechips,tcc803x-tsif"
+		"telechips,tcc897x-tsif"
+		"telechips,tcc899x-tsif"
+		"telechips,tcc901x-tsif"
+- reg		: Base address and size of the controllers memory area
+- interrupts	: Interrupt Specifier
+- clocks	: phandle of the GPSB clock
+- #address-cells: Should be <1>
+- #size-cells	: Should be <0>
+- pinctrl-names	: Should be "idle","active"
+- pinctrl-0	: phandle to pinctrl function in idle state
+- pinctrl-1	: phandle to pinctrl function in active state
+- gpsb-id	: TSIF ID
+- gpsb-port	: gpsb port number
+Note:
+GPIO used for GPSB are named as number. you can find port number in Chip Specification.
+the following property is available on gpsb 3 ~ 5, because there are no dedicated-dma.
+- dmas		: Must contain a list of two references to DMA specifiers,
+		  one for transmission, and one for reception.
+- dma-names	: Must contain a list of two DMA names, "tx" and "rx".
+
+
+Optional properties:
+- access-control0/1/2/3	: address filtering
+			DMA can access only a region of address.
+			If the region of DMA address is out of the range that you set in device tree,
+			GPSB Send 0 and cannot read the data.
+
+Example:
+	/* GPSB Controller 1 - TSIF */
+	gpsb1: gpsb1@16910000 {
+		compatible = "telechips,tcc803x-tsif";
+		reg = <0x16910000 0x38>, /* base address */
+		      <0x16960000 0x20>, /* Port Configuration register */
+		      <0x16970000 0x84>, /* PID register */
+		      <0x16980020 0x20>; /* GPSB_1_AC */
+		interrupts = <GIC_SPI 56 IRQ_TYPE_LEVEL_HIGH>;
+		clocks = <&clk_peri PERI_GPSB1 &clk_io IOBUS_GPSB1>;
+		gpsb-id = <0>;
+
+		//access-control0 = <0x20000000 0xC0000000>; /* DRAM */
+		//access-control1 = <0x00000000 0x00000000>;
+		//access-control2 = <0x00000000 0x00000000>;
+		//access-control3 = <0x00000000 0x00000000>;
+
+		gpsb-port = <15>;
+		pinctrl-names = "idle", "active";
+		pinctrl-0 = <&gpsb15_bus_idle>;
+		pinctrl-1 = <&gpsb15_bus_tsif>;
+		status = "okay";
+	};
+
+	/* GPSB Controller 3 - TSIF */
+	gpsb3: gpsb3@16930000 {
+		compatible = "telechips,tcc803x-tsif";
+		reg = <0x16930000 0x38 0x16960000 0x20>;
+		interrupts = <GIC_SPI 58 IRQ_TYPE_LEVEL_HIGH>;
+		clocks = <&clk_peri PERI_GPSBMS0 &clk_io IOBUS_GPSB3>;
+		gpsb-id = <1>;
+
+		// With DMA-engine
+		dmas = <&dma0 0 3 &dma0 1 9>;
+		dma-names = "tx", "rx";
+
+		gpsb-port = <16>;
+		pinctrl-names = "idle", "active";
+		pinctrl-0 = <&gpsb16_bus_idle>;
+		pinctrl-1 = <&gpsb16_bus_tsif>;
+		status = "okay";
+	};

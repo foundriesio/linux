@@ -1,0 +1,126 @@
+Telechips GPSB Controller for SPI Master/Slave
+
+Genral Purpose Serial Bus (GPSB) Controller supports SPI Master / Slave mode
+There are 6 GPSB controllers.
+3 GPSB controllers (Controller-0/1/2) have 2 buffers (TX FIFO, RX FIFO) with dedicated DMA.
+3 GPSB controllers (Controller-3/4/5) have 2 buffers (TX FIFO, RX FIFO) without dedicated DMA.
+the following is FIFO size depending on bit width.
+- 32-bit x 8-depth
+- 16-bit x 16-depth
+-  8-bit x 16-dpeth
+
+
+Required properties:
+- compatible	: depending on the SoC this should be one of:
+		"telechips,tcc-spi-slave"
+		"telechips,tcc-spi"
+		"telechips,tcc805x-spi"
+		"telechips,tcc803x-spi"
+		"telechips,tcc897x-spi"
+		"telechips,tcc899x-spi"
+		"telechips,tcc901x-spi"
+- reg		: Base address and size of the controllers memory area
+- interrupts	: Interrupt Specifier
+- clocks	: phandle of the GPSB clock
+- #address-cells: <1>, as required by generic SPI binding
+- #size-cells	: <0>, also as required by generic SPI binding
+- pinctrl-names	: Should be "idle","active"
+- pinctrl-0	: phandle to pinctrl function in idle state
+- pinctrl-1	: phandle to pinctrl function in active state
+- gpsb-id	: SPI ID
+- gpsb-port	: gpsb port number
+Note:
+GPIO used for GPSB are named as number. you can find port number in Chip Specification.
+the following property is available on gpsb 3 ~ 5, because there are no dedicated-dma.
+- dmas		: Must contain a list of two references to DMA specifiers,
+		  one for transmission, and one for reception.
+- dma-names	: Must contain a list of two DMA names, "tx" and "rx".
+
+
+Optional properties:
+- access-control0/1/2/3	: address filtering
+			DMA can access only a region of address.
+			If the region of DMA address is out of the range that you set in device tree,
+			GPSB Send 0 and cannot read the data.
+- spi-slave		: Empty property indicating the SPI controller is used in slave mode.
+
+
+Optional properties (master mode only):
+- ctf-mode-disable	: boolean, If the property is exist, GPSB transfer in single mode.
+			for more detail in "TCCxxxx Common BSP-User Guide for Driver" Document.
+- cs-gpios		: gpios chip select.
+- num-cs		: total number of chipselects.
+
+If cs-gpios is used the number of chip selects will be increased automatically
+with max(cs-gpios > hw cs).
+So if for example the controller has 2 CS lines, and the cs-gpios
+property looks like this:
+cs-gpios = <&gpg 8 0>,<&gpa 30 0>;
+
+
+Optional subnodes:
+	Subnodes are use to represent the SPI slave devices connected to the SPI
+	master. They follow the generic SPI bindings as outlined in spi-bus.txt.
+
+
+Example:
+	/* GPSB Controller 0 - SPI Master */
+	gpsb0: gpsb0@16900000 {
+		compatible = "telechips,tcc803x-spi";
+		reg = <0x16900000 0x38>,   /* base address */
+			<0x16960000 0x20>, /* Port Configuration register */
+			<0x16980000 0x20>; /* GPSB_0_AC */
+		interrupts = <GIC_SPI 55 IRQ_TYPE_LEVEL_HIGH>;
+		clocks = <&clk_peri PERI_GPSB0 &clk_io IOBUS_GPSB0>;
+		gpsb-id = <0>;
+
+		//access-control0 = <0x20000000 0xC0000000>; /* DRAM */
+
+		status = "okay";
+		gpsb-port = <22>;
+		pinctrl-names = "idle", "active";
+		pinctrl-0 = <&gpsb22_bus_idle>;
+		pinctrl-1 = <&gpsb22_bus_spi>;
+
+		/* cs-gpios */
+		cs-gpios = <&gpg 8 0>,<&gpa 30 0>;
+
+		spidev@0 {
+			compatible = "rohm,dh2228fv";
+			reg = <0>;
+			spi-max-frequency = <2000000>;
+		};
+		spidev@1 {
+			compatible = "rohm,dh2228fv";
+			reg = <1>;
+			spi-max-frequency = <2000000>;
+		};
+	};
+
+	or
+
+	/* GPSB Controller 3 - SPI Slave */
+	gpsb3: gpsb3@16930000 {
+		compatible = "telechips,spi-slave";
+		reg = <0x16930000 0x38 0x16960000 0x20>;
+		interrupts = <GIC_SPI 58 IRQ_TYPE_LEVEL_HIGH>;
+		clocks = <&clk_peri PERI_GPSBMS0 &clk_io IOBUS_GPSB3>
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		/* With DMA-engine */
+		dmas = <&dma0 0 3 &dma0 1 9>;
+		dma-names = "tx", "rx";
+
+		gpsb-id = <3>;
+		pinctrl-names = "idle", "active";
+		pinctrl-0 = <&gpsb19_bus_idle>;
+		pinctrl-1 = <&gpsb19_bus_spi>;
+		gpsb-port = <19>;
+		spi-slave;
+		slave@0 {
+			compatible = "rohm,dh2228fv";
+			reg = <0>;
+			spi-max-frequency = <20000000>;
+		};
+	};
