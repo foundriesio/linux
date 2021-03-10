@@ -1,0 +1,39 @@
+Telechips Keypad device tree bindings
+
+Required properties:
+- compatible		: "telechips,tcckey";
+- io-channels		: Phandle to an ADC channel, ADC Channel number
+- io-channel-names	: Should be "buttons".
+
+Optional Properties:
+- poll-interval		: Poll interval time in milliseconds, default is 20ms.
+
+Each button (key) is represented as a sub-node of "telechips,tcckey":
+Required subnode-properties:
+- label			: Descriptive name of the key.
+- linux,code		: Keycode to emit.
+- voltage-range		: the range of ADC input when this key is pressed.
+
+Example:
+
+	tcckey@0 {
+		compatible = "telechips,tcckey";
+		io-channels = <&adc 0>;
+		io-channel-names = "buttons";
+		status = "okay";
+		button-enter{
+			label = "enter";
+			linux,code = <KEY_ENTER>;
+			voltage-range = <0x00 0x83>;
+		};
+		button-setup{
+			label = "setup";
+			linux,code = <KEY_SETUP>;
+			voltage-range = <0x732 0x8CC>;
+		};
+		button-menu{
+			label = "menu";
+			linux,code = <KEY_MENU>;
+			voltage-range = <0x9E5 0xC18>;
+		};
+	};
