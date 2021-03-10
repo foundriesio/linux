@@ -58,7 +58,7 @@
 
 #define I2C_DEF_RETRIES         2
 
-#define I2C_ACK_TIMEOUT         50   /* in msec */
+#define I2C_ACK_TIMEOUT         5    /* in msec */
 #define I2C_CMD_TIMEOUT         500  /* in msec */
 
 #define i2c_readl       __raw_readl
