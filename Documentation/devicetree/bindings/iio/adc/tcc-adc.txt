@@ -1,0 +1,46 @@
+Telechips A/D converter Controller
+
+Required properties:
+- compatible: depending on the SoC this should be one of:
+		"telechips,adc",
+		"telechips,tcc803x-adc",
+		"telechips,tcc805x-adc",
+- reg: the physical base address and length of the registers
+- #io-channel-cells: must be 1, see ../iio-bindings.txt
+
+Note: the following property is available on "telechips,adc"
+- clocks: phandle and clock identifier
+- clock-frequency: Desired ADC peripharl freiquency
+- ckin-frequency: Desired ADC Sampling frequency
+		  "ckin-frequency" is generated from "clock-frequency" which is divided by prescale.
+
+
+Optional properties:
+- adc-12bit-resolution: boolean, If the property is exist, A/D converts data to 12 bits.
+- adc-delay : A/D conversion delay value. It depends on clock-frequency value.
+              A/D conversion is delayed by counting clock of "clock-frequency".
+
+Example:
+
+	adc: adc@16050000 {
+		compatible = "telechips,adc";
+		reg = <0x16050000 0x24 0x1440000C 0x4>;
+		clocks = <&clk_peri PERI_TSADC &clk_io IOBUS_TSADC &clk_isoip_top ISOIP_TOP_TSADC>;
+		clock-frequency = <12000000>;
+		ckin-frequency  = <1000000>;
+		adc-12bit-resolution;
+		adc-delay = <150>;
+		#io-channel-cells = <1>;
+		status = "okay";
+	};
+
+	or
+
+	adc: adc@1b700000 {
+		compatible = "telechips,tcc805x-adc";
+		reg = <0x0 0x1b700000 0x0 0xAC>,
+		      <0x0 0x1b931088 0x0 0x4>;
+		#io-channel-cells = <1>;
+		status = "okay";
+	};
+
