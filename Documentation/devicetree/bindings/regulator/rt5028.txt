@@ -1,0 +1,39 @@
+ * RICHTEK RT5028 pmic
+
+ Required properties:
+
+ - compatible:   must be "Richtek,rt5028"
+ - reg:      the i2c slave address of the regulator. It should be 0x3f.
+
+ Optional properties:
+
+ - int-gpios:   a reference to the rt5028 interrupt, if available.
+
+ Any standard regulator properties can be used to configure.
+
+ Example:
+
+ rt5028@3f {
+    compatible = "richtek,rt5028";
+    reg = <0x3f>;
+    int-gpios = <&gpe 31 0>;
+
+    regulators {
+        RT5028_ID_BUCK1: buck1 {
+            regulator-name = "vdd_core";
+            regulator-min-microvolt = <700000>;
+            regulator-max-microvolt = <1800000>;
+            regulator-always-on;
+        };
+        RT5028_ID_BUCK2: buck2 {
+            regulator-name = "vdd_mem";
+            regulator-min-microvolt = <700000>;
+            regulator-max-microvolt = <1800000>;
+            regulator-always-on;
+        };
+        RT5028_ID_BUCK3: buck3 {
+            regulator-name = "vdd_cpu";
+            regulator-min-microvolt = <700000>;
+            regulator-max-microvolt = <3600000>;
+            regulator-always-on;
+	};

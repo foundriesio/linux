@@ -86,7 +86,8 @@ static bool tcc_sc_ufs_transfer_req_compl(struct tcc_sc_ufs_host *host)
 		return (bool)true;
 	}
 
-	dev_dbg(host->dev, "%s : sg_count = %d\n", __func__, cmd->sdb.table.nents);
+	dev_dbg(host->dev, "%s : sg_count = %d\n",
+			__func__, cmd->sdb.table.nents);
 	scsi_dma_unmap(cmd);
 	cmd->result = 0;//result;
 	/* Mark completed command as NULL in LRB */
@@ -123,8 +124,7 @@ static uint32_t tcc_sc_ufs_scsi_to_upiu_lun(uint32_t scsi_lun)
 	if (scsi_is_wlun(scsi_lun) != 0) {
 		return ((scsi_lun & (uint32_t)UFS_UPIU_MAX_UNIT_NUM_ID)
 			| (uint32_t)(0x80/*UFS_UPIU_WLUN_ID*/));
-	}
-	else {
+	} else {
 		return (scsi_lun & (uint32_t)UFS_UPIU_MAX_UNIT_NUM_ID);
 	}
 }
@@ -163,8 +163,10 @@ static void tcc_sc_ufs_queuecommand(struct work_struct *work)
 
 	sc_cmd.blocks = 4096;
 	sc_cmd.datsz = scsi_cmd->sdb.length;
-	sc_cmd.lba = (uint32_t)(((uint32_t)scsi_cmd->cmnd[2] << 24u) | ((uint32_t)scsi_cmd->cmnd[3] << 16u)
-		| ((uint32_t)scsi_cmd->cmnd[4] << 8u) | (uint32_t)scsi_cmd->cmnd[5]);
+	sc_cmd.lba = (uint32_t)(((uint32_t)scsi_cmd->cmnd[2] << 24u)
+			| ((uint32_t)scsi_cmd->cmnd[3] << 16u)
+			| ((uint32_t)scsi_cmd->cmnd[4] << 8u)
+			| (uint32_t)scsi_cmd->cmnd[5]);
 
 	sc_cmd.op = scsi_cmd->cmnd[0];
 
@@ -178,7 +180,8 @@ static void tcc_sc_ufs_queuecommand(struct work_struct *work)
 
 
 	sc_cmd.dir = direction;
-	sc_cmd.lun = (uint32_t)(tcc_sc_ufs_scsi_to_upiu_lun((uint32_t)scsi_cmd->device->lun));
+	sc_cmd.lun = (uint32_t)(tcc_sc_ufs_scsi_to_upiu_lun
+			((uint32_t)scsi_cmd->device->lun));
 	sc_cmd.tag = (uint32_t)tag;
 	sc_cmd.sg_count = scsi_dma_map(scsi_cmd);
 	sc_cmd.sg = scsi_cmd->sdb.table.sgl;
@@ -190,7 +193,11 @@ static void tcc_sc_ufs_queuecommand(struct work_struct *work)
 	(void)memcpy(&sc_cmd.cdb3, &scsi_cmd->cmnd[12], 4);
 
 #if 0
-	dev_dbg(sc_host->dev, "sg_count = %d, datsz = 0x%x, lba = 0x%x, lun = %d, op = %x, direction = %d, tag = %d\n", sc_cmd.sg_count, sc_cmd.datsz, sc_cmd.lba, tcc_sc_ufs_scsi_to_upiu_lun(scsi_cmd->device->lun),sc_cmd.op, direction, tag);
+	dev_dbg(sc_host->dev, "sg_count = %d, datsz = 0x%x, lba = 0x%x,
+		lun = %d, op = %x, direction = %d, tag = %d\n", sc_cmd.sg_count,
+		sc_cmd.datsz, sc_cmd.lba,
+		tcc_sc_ufs_scsi_to_upiu_lun(scsi_cmd->device->lun),
+		sc_cmd.op, direction, tag);
 #endif
 
 	if (handle == NULL) {
@@ -199,7 +206,7 @@ static void tcc_sc_ufs_queuecommand(struct work_struct *work)
 
 	ret = handle->ops.ufs_ops->request_command(handle, &sc_cmd);
 #if 0
-	if(ret != 0) {
+	if (ret != 0) {
 		mrq->cmd->error = ret;
 	} else {
 		mrq->cmd->resp[0] = cmd.resp[0];
@@ -208,39 +215,42 @@ static void tcc_sc_ufs_queuecommand(struct work_struct *work)
 		mrq->cmd->resp[3] = cmd.resp[3];
 		mrq->cmd->error = cmd.error;
 
-		if(mrq->cmd->data != NULL) {
+		if (mrq->cmd->data != NULL) {
 			mrq->cmd->data->error = data.error;
-			if(mrq->cmd->data->error == 0) {
-				mrq->cmd->data->bytes_xfered = data.datsz * data.blocks;
+			if (mrq->cmd->data->error == 0) {
+				mrq->cmd->data->bytes_xfered =
+					data.datsz * data.blocks;
 			}
 		}
 	}
 #else
-	if(ret != 0) {
-		dev_err(sc_host->dev,"error retuned(%d)\n", ret);
+	if (ret != 0) {
+		dev_err(sc_host->dev, "error retuned(%d)\n", ret);
 	}
 #endif
 	/* Finish request */
 	tasklet_schedule(&sc_host->finish_tasklet);
 }
 
-static int tcc_sc_ufs_queuecommand_sc(struct Scsi_Host *host, struct scsi_cmnd *cmd)
+static int tcc_sc_ufs_queuecommand_sc(struct Scsi_Host *host,
+		struct scsi_cmnd *cmd)
 {
 	struct tcc_sc_ufs_host *sc_host;
 
-	if(host == NULL) {
-		(void)pr_err("%s: [ERROR][TCC_SC_UFS] scsi_host is null\n", __func__);
+	if (host == NULL) {
+		(void)pr_err("%s: [ERROR][TCC_SC_UFS] scsi_host is null\n",
+				__func__);
 		return -ENODEV;
 	}
 
 	sc_host = shost_priv(host);
-	if(sc_host == NULL) {
+	if (sc_host == NULL) {
 		(void)pr_err("%s: [ERROR][TCC_SC_UFS] sc_host is null\n",
 		       __func__);
 		return -ENODEV;
 	}
 
-	if(cmd == NULL) {
+	if (cmd == NULL) {
 		dev_err(sc_host->dev, "%s: [ERROR][TCC_SC_UFS] scsi_cmd is null\n",
 		       __func__);
 		return -ENODEV;
@@ -309,10 +319,10 @@ static int tcc_sc_ufs_slave_configure(struct scsi_device *sdev)
 static void tcc_sc_ufs_slave_destroy(struct scsi_device *sdev)
 {
 	//do nothing.
-	if(sdev == NULL) {
+	if (sdev == NULL) {
 		(void)pr_err("%s:[ERROR]No scsi dev\n", __func__);
 	}
-	return ;
+	return;
 }
 
 static int tcc_sc_ufs_change_queue_depth(struct scsi_device *sdev, int depth)
@@ -342,10 +352,10 @@ static int tcc_sc_ufs_change_queue_depth(struct scsi_device *sdev, int depth)
 
 static int tcc_sc_ufs_eh_device_reset_handler(struct scsi_cmnd *cmd)
 {
-	if(cmd == NULL) {
+	if (cmd == NULL) {
 		(void)pr_err("%s:[ERROR] No scsi command\n", __func__);
 	}
-	
+
 	return SUCCESS;
 }
 
@@ -406,12 +416,12 @@ static int tcc_sc_ufs_probe(struct platform_device *pdev)
 	}
 
 	handle = tcc_sc_fw_get_handle(fw_np);
-	if(handle == NULL) {
+	if (handle == NULL) {
 		dev_err(&pdev->dev, "[ERROR][TCC_SC_ufs] Failed to get handle\n");
 		return -ENODEV;
 	}
 
-	if(handle->ops.ufs_ops->request_command == NULL) {
+	if (handle->ops.ufs_ops->request_command == NULL) {
 		dev_err(&pdev->dev, "[ERROR][TCC_SC_ufs] request_command callback function is not registered\n");
 		return -ENODEV;
 	}
@@ -432,7 +442,7 @@ static int tcc_sc_ufs_probe(struct platform_device *pdev)
 	host->nutrs = 1;
 	init_rwsem(&host->clk_scaling_lock);
 #if 0
-	if(handle->ops.ufs_ops->request_command == NULL) {
+	if (handle->ops.ufs_ops->request_command == NULL) {
 		dev_err(&pdev->dev, "[ERROR][TCC_SC_ufs] request_command is not registered\n");
 		return -ENODEV;
 	}
@@ -461,7 +471,7 @@ static int tcc_sc_ufs_probe(struct platform_device *pdev)
 	 */
 	INIT_WORK(&host->request_work, tcc_sc_ufs_queuecommand);
 	host->ufs_tcc_wq = alloc_workqueue("ufs_tcc_sc", 0, 0);
-	if(host->ufs_tcc_wq == NULL) {
+	if (host->ufs_tcc_wq == NULL) {
 		dev_err(&pdev->dev, "[ERROR][TCC_SC_ufs] ufs: failed to allocate wq\n");
 		return -ENOMEM;
 	}
@@ -481,7 +491,7 @@ static int tcc_sc_ufs_probe(struct platform_device *pdev)
 
 static int tcc_sc_ufs_remove(struct platform_device *pdev)
 {
-	if(pdev == NULL) {
+	if (pdev == NULL) {
 		(void)pr_err("%s:pdev is null\n", __func__);
 		return -ENODEV;
 	}
