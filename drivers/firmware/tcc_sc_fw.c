@@ -601,57 +601,8 @@ static s32 tcc_sc_fw_cmd_request_gpio_cmd(const struct tcc_sc_fw_handle *handle,
 	return ret;
 }
 
-static s32 tcc_sc_fw_cmd_request_gpio_no_res_cmd(const struct tcc_sc_fw_handle *handle,
-					  uint32_t address, uint32_t bit_number,
-					  uint32_t width, uint32_t value)
-{
-	struct tcc_sc_fw_info *info;
-	struct device *dev;
-	struct tcc_sc_fw_xfer *xfer;
-	struct tcc_sc_fw_cmd req_cmd = { 0, };
-	s32 ret;
-
-	if (handle == NULL)
-		return -EINVAL;
-
-	info = handle_to_tcc_sc_fw_info(handle);
-
-	if (info == NULL)
-		return -EINVAL;
-
-	dev = info->dev;
-	xfer = get_tcc_sc_fw_xfer(info);
-
-	req_cmd.bsid = info->bsid;
-	req_cmd.cid = info->cid;
-	req_cmd.cmd = TCC_SC_CMD_REQ_GPIO_CONFIG;
-	req_cmd.args[0] = address + 0x60000000U;
-	req_cmd.args[1] = bit_number;
-	req_cmd.args[2] = width;
-	req_cmd.args[3] = value;
-	req_cmd.args[4] = 0;
-	req_cmd.args[5] = 0;
-
-	memcpy(xfer->tx_mssg.cmd, &req_cmd, sizeof(struct tcc_sc_fw_cmd));
-	xfer->tx_mssg.cmd_len = (u32)sizeof(struct tcc_sc_fw_cmd)
-	    / (u32)sizeof(u32);
-	memset(xfer->rx_mssg.cmd, 0, xfer->rx_cmd_buf_len);
-
-	ret = tcc_sc_fw_xfer_async(info, xfer);
-
-	if (ret != 0) {
-		dev_err(dev,
-			"[ERROR][TCC_SC_FW] Failed to send mbox (GPIO Command) (%d)\n",
-			ret);
-	}
-
-	return ret;
-}
-
-
-
-static s32 tcc_sc_fw_cmd_get_otp_cmd (const struct tcc_sc_fw_handle *handle,
-				struct tcc_sc_fw_otp_cmd *cmd, uint32_t offset)
+static int tcc_sc_fw_cmd_get_otp_cmd (const struct tcc_sc_fw_handle *handle,
+					struct tcc_sc_fw_otp_cmd *cmd, uint32_t offset)
 {
 	const struct tcc_sc_fw_info *info;
 	struct device *dev;
@@ -728,7 +679,6 @@ static struct tcc_sc_fw_ufs_ops sc_fw_ufs_ops = {
 
 static struct tcc_sc_fw_gpio_ops sc_fw_gpio_ops = {
 	.request_gpio = tcc_sc_fw_cmd_request_gpio_cmd,
-	.request_gpio_no_res = tcc_sc_fw_cmd_request_gpio_no_res_cmd,
 };
 
 static struct tcc_sc_fw_otp_ops sc_fw_otp_ops = {

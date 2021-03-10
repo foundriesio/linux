@@ -29,7 +29,7 @@
 		reg = <0x80000000 0x80000000>;
 	};
 
-	aliases: aliases {
+	aliases {
 		adc = &adc;
 		serial0 = &uart0;
 		serial1 = &uart1;
@@ -599,15 +599,45 @@
 		max_irq = <64>;
 	};
 
-
 	pinctrl: pinctrl@74200000 {
-		compatible = "telechips,tcc-pinctrl";
-		reg = <0x74200000 0x300 0x0 0x0>;
-	};
-
-	gpio: gpio@74200000 {
-		compatible = "telechips,tcc-gpio";
+		compatible = "telechips,tcc897x-pinctrl";
 		reg = <0x74200000 0x300>;
+		gpio-controller;
+		#address-cells = <1>;
+		#size-cells = <2>;
+		#gpio-cells = <3>;
+		interrupts = <GIC_SPI 3 0>,
+		             <GIC_SPI 4 0>,
+		             <GIC_SPI 5 0>,
+		             <GIC_SPI 6 0>,
+		             <GIC_SPI 7 0>,
+		             <GIC_SPI 8 0>,
+		             <GIC_SPI 9 0>,
+		             <GIC_SPI 10 0>,
+		             <GIC_SPI 11 0>,
+		             <GIC_SPI 12 0>,
+		             <GIC_SPI 13 0>,
+		             <GIC_SPI 14 0>,
+		             <GIC_SPI 72 0>,
+		             <GIC_SPI 73 0>,
+		             <GIC_SPI 74 0>,
+		             <GIC_SPI 75 0>,
+		             <GIC_SPI 80 0>,
+		             <GIC_SPI 81 0>,
+		             <GIC_SPI 82 0>,
+		             <GIC_SPI 83 0>,
+		             <GIC_SPI 84 0>,
+		             <GIC_SPI 85 0>,
+		             <GIC_SPI 86 0>,
+		             <GIC_SPI 87 0>,
+		             <GIC_SPI 88 0>,
+		             <GIC_SPI 89 0>,
+		             <GIC_SPI 90 0>,
+		             <GIC_SPI 91 0>,
+		             <GIC_SPI 92 0>,
+		             <GIC_SPI 93 0>,
+		             <GIC_SPI 94 0>,
+		             <GIC_SPI 95 0>;
 	};
 
 	rtc {
