@@ -1,0 +1,30 @@
+* Telechips Timer Counter
+
+Required properties:
+- compatible: Must be "telechips,timer".
+- reg: Specifies base physical address and size of the registers.
+- interrupts: A list of 6 interrupt; one per timer channel.
+- clocks: Should contain a reference to timer counter clock.
+- clock-frequency: The rate of the clock that drives the timer counter, in Hz.
+
+Optional properties:
+- tcc-timer-reserved: Reserve a timer for the LPO clocksource.
+- tcc-timer-reserved-for-wdt: Reserve a timer to kick watchdog.
+
+Example:
+
+tcc_timer: timer@14300000 { /* tc0~tc5 */
+	compatible = "telechips,timer";
+	reg = <0x0 0x14300000 0x0 0xa0>;
+	interrupts = <GIC_SPI 33 0>,
+		     <GIC_SPI 34 0>,
+		     <GIC_SPI 35 0>,
+		     <GIC_SPI 36 0>,
+		     <GIC_SPI 37 0>,
+		     <GIC_SPI 38 0>;
+	clocks = <&clk_peri PERI_TCT>;
+	clock-frequency = <12000000>;
+
+	/* timer 0 and 1 are reserved for watchdog (default) */
+	tcc-timer-reserved-for-wdt = <0 1>;
+};
