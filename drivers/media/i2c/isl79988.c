@@ -442,7 +442,7 @@ MODULE_DEVICE_TABLE(i2c, isl79988_id);
 #if IS_ENABLED(CONFIG_OF)
 const static struct of_device_id isl79988_of_match[] = {
 	{
-		.compatible	= "adi,isl79988",
+		.compatible	= "intersil,isl79988",
 		.data		= &isl79988_data,
 	},
 	{}
