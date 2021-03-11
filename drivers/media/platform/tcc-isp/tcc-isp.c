@@ -68,8 +68,9 @@ static inline struct tcc_isp_state *sd_to_state(struct v4l2_subdev *sd)
 
 static inline void regw(void __iomem *reg, u32 val)
 {
-	u32 isp_reg_offset = (u32)reg & 0xFFFF;
 #if 0
+	u32 isp_reg_offset = (u32)reg & 0xFFFF;
+
 	pr_info("[INFO][tcc-isp] reg: 0x%08x, val: 0x%08x\n",
 		isp_reg_offset, val);
 #endif
@@ -83,6 +84,83 @@ static inline u32 regr(void __iomem *reg)
 	val = __raw_readl(reg);
 
 	return val;
+}
+
+static inline s32 tcc_isp_set_async_bridge_low_power_request(
+				struct tcc_isp_state *state)
+{
+	void __iomem *mem_base = state->cfg_base;
+	s32 ret = 0;
+	u32 val = 0, cnt = 0;
+
+	/* disable power down bypass(pwrdn_bypass) */
+	val = regr(mem_base + REG_ISP_X2X_CFG);
+	val &= ~(ISP_X2X_CFG_PWRDN_BYPASS_MASK <<
+		 ISP_X2X_CFG_PWRDN_BYPASS_SHIFT);
+	regw(mem_base + REG_ISP_X2X_CFG, val);
+	usleep_range(1000, 2000);
+
+	/* request power down(pwrdnreqn) */
+	val = regr(mem_base + REG_ISP_X2X_CFG);
+	val &= ~(ISP_X2X_CFG_PWRDNREQN_MASK <<
+		 ISP_X2X_CFG_PWRDNREQN_SHIFT);
+	regw(mem_base + REG_ISP_X2X_CFG, val);
+	usleep_range(1000, 2000);
+
+	/* check power down request acknowledge(pwrdnackn) */
+	while (cnt < 10) {
+		val = regr(mem_base + REG_ISP_X2X_CFG);
+		if (!(val & (ISP_X2X_CFG_PWRDNACKN_MASK <<
+			     ISP_X2X_CFG_PWRDNACKN_SHIFT))) {
+			/* get ack */
+			break;
+		}
+
+		cnt++;
+		usleep_range(1000, 2000);
+	}
+
+	if (cnt >= 10) {
+		ret = -1;
+		loge(&(state->pdev->dev), "NOT recevied ack\n");
+	}
+
+	return ret;
+}
+
+static inline s32 tcc_isp_set_async_bridge_low_power_release(
+				struct tcc_isp_state *state)
+{
+	void __iomem *mem_base = state->cfg_base;
+	s32 ret = 0;
+	u32 val = 0, cnt = 0;
+
+	/* request normal operation(pwrdnreqn) */
+	val = regr(mem_base + REG_ISP_X2X_CFG);
+	val |= (ISP_X2X_CFG_PWRDNREQN_MASK <<
+		ISP_X2X_CFG_PWRDNREQN_SHIFT);
+	regw(mem_base + REG_ISP_X2X_CFG, val);
+	usleep_range(1000, 2000);
+
+	/* check normal operation request acknowledge(pwrdnackn) */
+	while (cnt < 10) {
+		val = regr(mem_base + REG_ISP_X2X_CFG);
+		if (val & (ISP_X2X_CFG_PWRDNACKN_MASK <<
+			   ISP_X2X_CFG_PWRDNACKN_SHIFT)) {
+			/* get ack */
+			break;
+		}
+
+		cnt++;
+		usleep_range(1000, 2000);
+	}
+
+	if (cnt >= 10) {
+		ret = -1;
+		loge(&(state->pdev->dev), "NOT recevied ack\n");
+	}
+
+	return ret;
 }
 
 static s32 tcc_isp_pixel_order(u32 pixel_order)
@@ -505,6 +583,9 @@ static inline void tcc_isp_reset(struct tcc_isp_state *state, int reset)
 	void __iomem *isp_base = state->isp_base;
 
 	if (reset) {
+		/* CV8050C-595, CV8050C-689 */
+		tcc_isp_set_async_bridge_low_power_request(state);
+
 		/* ISP, MCU reset */
 		regw(isp_base + REG_ISP_SOFT_RESET,
 			((SOFT_RESET_ISP_SOFT_RESET_RESET <<
@@ -512,6 +593,9 @@ static inline void tcc_isp_reset(struct tcc_isp_state *state, int reset)
 			(SOFT_RESET_MCU_SOFT_RESET_RESET <<
 			SOFT_RESET_MCU_SOFT_RESET_SHIFT)));
 	} else {
+		/* CV8050C-595, CV8050C-689 */
+		tcc_isp_set_async_bridge_low_power_release(state);
+
 		/* Wakeup ISP */
 		regw(isp_base + REG_ISP_SLEEP_MODE,
 			(SLEEP_MODE_SLEEP_MODE_DISABLE <<
@@ -617,6 +701,15 @@ static int tcc_isp_parse_dt(struct platform_device *pdev,
 		goto err;
 	}
 	logi(&(state->pdev->dev), "mem base addr is %px\n", state->mem_base);
+
+	/*
+	 * Get CFG base address
+	 */
+	state->cfg_base = (void __iomem *)of_iomap(node, 2);
+	if (IS_ERR((const void *)state->cfg_base))
+		return PTR_ERR((const void *)state->cfg_base);
+
+	logi(&(state->pdev->dev), "cfg base addr is %px\n", state->cfg_base);
 
 #ifdef USE_ISP_UART
 	/* Get UART pinctrl */
@@ -737,8 +830,7 @@ static void tcc_isp_exit_controls(struct tcc_isp_state *state)
  */
 static int tcc_isp_s_power(struct v4l2_subdev *sd, int on)
 {
-	struct tcc_isp_state	*state	= sd_to_state(sd);
-	int				ret	= 0;
+	int ret = 0;
 
 	return ret;
 }
@@ -816,8 +908,7 @@ static int tcc_isp_enum_mbus_code(struct v4l2_subdev *sd,
 static int tcc_isp_g_dv_timings(struct v4l2_subdev *sd,
 				      struct v4l2_dv_timings *timings)
 {
-	struct tcc_isp_state	*state	= sd_to_state(sd);
-	int				ret	= 0;
+	int ret = 0;
 
 	memcpy((void *)timings,
 		(const void *)&tcc_isp_dv_timings,
