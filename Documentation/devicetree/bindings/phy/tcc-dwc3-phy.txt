@@ -1,0 +1,19 @@
+Telechips USB DWC3 PHY
+
+Required properties:
+ - compatible:  must be "telechips,tcc_dwc3_phy"
+ - reg:         physical base addresses of the controller and length of memory
+                mapped region
+ - interrupts:  interrupt should be described here
+ - clocks:      phandle list of usb clocks
+
+Optional properties:
+
+Example:
+
+dwc3_phy: dwc3_phy@11D90000 {
+	compatible = "telechips,tcc_dwc3_phy";
+	reg = <0x11D90000 0x48 0x11DA00EC 0x4>;
+	interrupts = <GIC_SPI 155 IRQ_TYPE_LEVEL_HIGH>;
+	clocks = <&clk_isoip_top ISOIP_TOP_U30>;
+};

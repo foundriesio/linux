@@ -1,0 +1,31 @@
+Telechips USB EHCI PHY
+
+Required properties:
+ - compatible:  must be "telechips,tcc_ehci_phy"
+ - reg:         physical base addresses of the controller and length of memory
+                mapped region
+ - interrupts:  interrupt should be described here
+ - clocks:      phandle list of usb clocks
+ - resets:      phandle to reset to phy block
+
+Optional properties:
+ - mux_port:    MUX port feature for USB 2.0 DRD port
+
+Example:
+
+ehci_phy: ehci_phy@11DA0010 {
+	compatible = "telechips,tcc_ehci_phy";
+	reg = <0x11DA0010 0x30>;
+	interrupts = <GIC_SPI 143 IRQ_TYPE_LEVEL_HIGH>;
+	clocks = <&clk_hsio HSIOBUS_USB20H &clk_isoip_top ISOIP_TOP_U20H>;
+	resets = <&hsiobus_rst HSIOBUS_USB20H>;
+};
+
+mhst_phy: mux_host_phy@11DA00DC {
+	compatible = "telechips,tcc_ehci_phy";
+	reg = <0x11DA00DC 0x20>;
+	interrupts = <GIC_SPI 148 IRQ_TYPE_LEVEL_HIGH>;
+	clocks = <&clk_hsio HSIOBUS_USB20DH &clk_isoip_top ISOIP_TOP_U20DH>;
+	resets = <&hsiobus_rst HSIOBUS_USB20DH>;
+	mux_port;
+};

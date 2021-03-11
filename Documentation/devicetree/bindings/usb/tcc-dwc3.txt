@@ -1,0 +1,34 @@
+Telechips USB DWC3 controller
+
+Required properties:
+ - compatible:          must be "telechips,tcc-dwc3"
+ - clocks:              phandle list of usb clocks
+ - telechips,dwc3_phy:  must be <&dwc3_phy>
+ - #address-cells:      should be <1> if the device has sub-nodes with 'reg'
+                        property
+   #size-cells:         should be <1> if the device has sub-nodes with 'reg'
+                        property
+ - ranges:              allows valid 1:1 translation between child's address
+                        space and parent's address space
+
+Optional properties:
+ - tpl-support:         TPL(Targeted Peripheral List) feature for targeted hosts
+
+Example:
+
+dwc3: dwc3_platform {
+	compatible = "telechips,tcc-dwc3";
+	clocks = <&clk_fbus FBUS_HSIO>;
+	telechips,dwc3_phy = <&dwc3_phy>;
+	#address-cells = <1>;
+	#size-cells = <1>;
+	ranges;
+	tpl-support;
+
+	dwc3 {
+		compatible = "snps,dwc3";
+		reg = <0x11B00000 0xCFFF>;
+		interrupts = <GIC_SPI 152 IRQ_TYPE_LEVEL_HIGH>;
+		telechips,dwc3_phy = <&dwc3_phy>;
+	};
+};
