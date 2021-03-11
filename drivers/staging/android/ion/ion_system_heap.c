@@ -167,10 +167,6 @@ static int ion_system_heap_allocate(struct ion_heap *heap,
 	}
 
 	buffer->sg_table = table;
-
-	/* XXX: This is a temporary workaround for mmap() errors. */
-	buffer->flags |= ION_FLAG_CACHED;
-
 	return 0;
 
 free_table:
@@ -408,9 +404,6 @@ static int ion_system_contig_heap_allocate(struct ion_heap *heap,
 	sg_set_page(table->sgl, page, len, 0);
 
 	buffer->sg_table = table;
-
-	/* XXX: This is a temporary workaround for mmap() errors. */
-	buffer->flags |= ION_FLAG_CACHED;
 
 	return 0;
 
