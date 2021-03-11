@@ -1,8 +1,8 @@
- * Bindings for Telechisp UFS driver
+ * Bindings for Telechips UFS driver
 
  Required properties:
 
- - compatible: must be "telechips,tcc806x-sc-ufs"
+ - compatible: must be "telechips,tcc805x-sc-ufs"
  - sc-firmware: protocol driver to communicate with storage core
 
  Example:
