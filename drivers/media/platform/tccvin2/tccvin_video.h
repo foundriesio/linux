@@ -269,12 +269,13 @@ struct tccvin_streaming {
 
 	int					preview_method;
 	int					is_handover_needed;
-	int					cam_streaming;
 
 	atomic_t				timestamp;
 	struct timespec				ts_prev;
 	struct timespec				ts_next;
 	struct timespec				ts_diff;
+
+	int					skip_frame_cnt;
 };
 
 #define TCCVIN_MAX_VIDEOSOURCE 255

@@ -1301,7 +1301,7 @@ static int32_t tccvin_set_wdma(struct tccvin_streaming *vdev)
 			logd("ADDR0: 0x%08lx, ADDR1: 0x%08lx, ADDR2: 0x%08lx\n",
 				addr0, addr1, addr2);
 			VIOC_WDMA_SetImageBase(wdma, addr0, addr1, addr2);
-			VIOC_WDMA_SetImageEnable(wdma, ON);
+			VIOC_WDMA_SetImageEnable(wdma, OFF);
 		} else {
 			dlog("Buffer is not initialized successfully.\n");
 		}
@@ -1321,10 +1321,9 @@ static int32_t tccvin_set_wdma(struct tccvin_streaming *vdev)
 	return 0;
 }
 
-static void tccvin_work_thread(struct work_struct *data)
+static void tccvin_switch_buffers(struct tccvin_streaming *stream)
 {
 	struct tccvin_cif		*cif		= NULL;
-	struct tccvin_streaming		*stream		= NULL;
 	struct tccvin_video_queue	*queue		= NULL;
 	struct tccvin_buffer		*buf		= NULL;
 	unsigned long			flags		= 0;
@@ -1337,16 +1336,27 @@ static void tccvin_work_thread(struct work_struct *data)
 	uint32_t			buf_index	= 0;
 	long				ts_enabled	= 0;
 
-	WARN_ON(IS_ERR_OR_NULL(data));
+	if (stream == NULL) {
+		loge("stream is NULL\n");
+		return;
+	}
 
-	cif		= container_of(data, struct tccvin_cif, wdma_work);
-	WARN_ON(IS_ERR_OR_NULL(cif));
-
-	stream		= container_of(cif, struct tccvin_streaming, cif);
-	WARN_ON(IS_ERR_OR_NULL(stream));
+	cif		= &stream->cif;
+	if (cif == NULL) {
+		loge("cif is NULL\n");
+		return;
+	}
 
 	queue		= &stream->queue;
-	WARN_ON(IS_ERR_OR_NULL(queue));
+	if (queue == NULL) {
+		loge("queue is NULL\n");
+		return;
+	}
+
+	if (&queue->irqqueue == NULL) {
+		loge("&queue->irqqueue is NULL\n");
+		return;
+	}
 
 	wdma		= VIOC_WDMA_GetAddress(stream->cif.vioc_path.wdma);
 
@@ -1365,6 +1375,12 @@ static void tccvin_work_thread(struct work_struct *data)
 		loge("buf is NULL\n");
 		spin_unlock_irqrestore(&queue->irqlock, flags);
 		return;
+	}
+
+	if (stream->skip_frame_cnt > 0) {
+		stream->skip_frame_cnt--;
+		spin_unlock_irqrestore(&queue->irqlock, flags);
+		goto update_wdma;
 	}
 
 	/*
@@ -1467,10 +1483,10 @@ static irqreturn_t tccvin_wdma_isr(int irq, void *client_data)
 		}
 		vdev->ts_prev = vdev->ts_next;
 
-		schedule_work(&vdev->cif.wdma_work);
-
 		vioc_intr_clear(vdev->cif.vioc_intr.id,
 			vdev->cif.vioc_intr.bits);
+
+		tccvin_switch_buffers(vdev);
 	}
 
 	return IRQ_HANDLED;
@@ -1582,6 +1598,12 @@ static int32_t tccvin_start_stream(struct tccvin_streaming *vdev)
 	if (!!(bt_timings->interlaced & V4L2_DV_INTERLACED)) {
 		/* set Deinterlacer */
 		tccvin_set_deinterlacer(vdev);
+
+		if (vioc->viqe != -1) {
+			/* set skip_frame as 3
+			 * in case of viqe 3d mode (16ms * 3 frames) */
+			vdev->skip_frame_cnt += 3;
+		}
 	}
 
 	/* set scaler */
@@ -1598,9 +1620,6 @@ static int32_t tccvin_start_stream(struct tccvin_streaming *vdev)
 
 	/* set wdma */
 	tccvin_set_wdma(vdev);
-
-	/* wait for the 3 frames in case of viqe 3d mode (16ms * 3 frames) */
-	mdelay(16 * 3);
 
 	return 0;
 }
@@ -1878,13 +1897,11 @@ int tccvin_video_init(struct tccvin_streaming *stream)
 	/* preview method */
 	stream->preview_method		= PREVIEW_V4L2;
 
+	/* set count of frame to skip as 1 in default */
+	stream->skip_frame_cnt		= 1;
+
 	/* init v4l2 resources */
 	mutex_init(&stream->cif.lock);
-
-	/* init work thread */
-	INIT_WORK(&stream->cif.wdma_work, tccvin_work_thread);
-
-	stream->cam_streaming = 0;
 
 	/* allocate essential buffers */
 	tccvin_allocate_essential_buffers(stream);
@@ -2231,6 +2248,14 @@ int32_t tccvin_video_streamon(struct tccvin_streaming *stream)
 	logi("preview method: %s\n", (stream->preview_method == PREVIEW_V4L2) ?
 		"PREVIEW_V4L2" : "PREVIEW_DD");
 
+	if (stream->preview_method == PREVIEW_V4L2) {
+		ret = tccvin_request_irq(stream);
+		if (ret < 0) {
+			loge("Request IRQ\n");
+			return ret;
+		}
+	}
+
 	if (stream->is_handover_needed == V4L2_CAP_HANDOVER_NEED) {
 		stream->is_handover_needed = V4L2_CAP_HANDOVER_NONE;
 		logi("#### Handover - Skip to set the vioc path\n");
@@ -2253,16 +2278,6 @@ int32_t tccvin_video_streamon(struct tccvin_streaming *stream)
 		}
 	}
 
-	if (stream->preview_method == PREVIEW_V4L2) {
-		ret = tccvin_request_irq(stream);
-		if (ret < 0) {
-			loge("Request IRQ\n");
-			return ret;
-		}
-	}
-
-	stream->cam_streaming = 1;
-
 	return ret;
 }
 
@@ -2271,8 +2286,6 @@ int32_t tccvin_video_streamoff(struct tccvin_streaming *stream)
 	int32_t		ret = 0;
 
 	WARN_ON(IS_ERR_OR_NULL(stream));
-
-	stream->cam_streaming = 0;
 
 	if (stream->preview_method == PREVIEW_V4L2) {
 		ret = tccvin_free_irq(stream);
