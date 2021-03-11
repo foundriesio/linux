@@ -1,0 +1,19 @@
+Telechips USB DWC OTG PHY
+
+Required properties:
+ - compatible:  must be "telechips,tcc_dwc_otg_phy"
+ - reg:         physical base addresses of the controller and length of memory
+                mapped region
+ - clocks:      phandle list of usb clocks
+ - resets:      phandle to reset to phy block
+
+Optional properties:
+
+Example:
+
+dwc_otg_phy: dwc_otg_phy@11DA0100 {
+	compatible = "telechips,tcc_dwc_otg_phy";
+	reg = <0x11DA0100 0x30>;
+	clocks = <&clk_hsio HSIOBUS_USB20DH &clk_isoip_top ISOIP_TOP_U20DH>;
+	resets = <&hsiobus_rst HSIOBUS_USB20DH>;
+};

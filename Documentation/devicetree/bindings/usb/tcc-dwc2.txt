@@ -1,0 +1,28 @@
+Telechips USB DWC2 controller
+
+Required properties:
+ - compatible:          must be "telechips,dwc2"
+ - reg:                 physical base addresses of the controller and length of
+                        memory mapped region
+ - interrupts:          interrupt should be described here
+ - clocks:              phandle list of usb clocks
+ - clock-names:         must be "otg"
+ - phy:                 phy provider specifier
+ - phy-names:           must be "usb2-phy"
+ - telechips,mhst_phy:	must be <&mhst_phy>
+
+Optional properties:
+
+Example:
+
+dwc_otg: dwc_otg@11980000 {
+	compatible = "telechips,dwc2";
+	reg = <0x11980000 0xcfff 0x11900000 0x108 0x11940000 0x60>;
+	interrupts = <GIC_SPI 145 IRQ_TYPE_LEVEL_HIGH>,
+                     <GIC_SPI 147 IRQ_TYPE_LEVEL_HIGH>;
+	clocks = <&clk_hsio HSIOBUS_USB20H>;
+	clock-names = "otg";
+	phy = <&dwc_otg_phy>;
+	phy-names = "usb2-phy";
+	telechips,mhst_phy = <&mhst_phy>;
+};

@@ -1,0 +1,23 @@
+Telechips USB EHCI controller
+
+Required properties:
+ - compatible:          must be "telechips,tcc-ehci"
+ - reg:                 physical base addresses of the controller and length of
+                        memory mapped region
+ - interrupts:          interrupt should be described here
+ - clocks:              phandle list of usb clocks
+ - telechips,ehci_phy:	must be <&ehci_phy>
+
+Optional properties:
+ - tpl-support:         TPL(Targeted Peripheral List) feature for targeted hosts
+
+Example:
+
+ehci: ehci@11A00000 {
+	compatible = "telechips,tcc-ehci";
+	reg = <0x11A00000 0x108 0x11DA0010 0x54>;
+	interrupts = <GIC_SPI 142 IRQ_TYPE_LEVEL_HIGH>;
+	clocks = <&clk_hsio HSIOBUS_USB20H &clk_isoip_top ISOIP_TOP_U20H>;
+	telechips,ehci_phy = <&ehci_phy>;
+	tpl-support;
+};
