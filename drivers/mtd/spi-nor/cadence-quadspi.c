@@ -666,7 +666,7 @@ static int cqspi_read_setup(struct spi_nor *nor)
 	/* Setup dummy clock cycles */
 	dummy_clk = nor->read_dummy;
 	if (dummy_clk > CQSPI_DUMMY_CLKS_MAX)
-		dummy_clk = CQSPI_DUMMY_CLKS_MAX;
+		return -EOPNOTSUPP;
 
 	if (!(nor->flags & SNOR_F_BROKEN_OCTAL_DDR)) {
 		if (cqspi->extra_dummy)
