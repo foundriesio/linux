@@ -7,6 +7,20 @@
 #define __TCC_ISP_REG_H__
 
 /******************************************************************
+ * MIPI CFG Register
+ ******************************************************************/
+#define REG_ISP_X2X_CFG					(0x210)
+
+#define ISP_X2X_CFG_PWRDN_BYPASS_MASK			(0x1)
+#define ISP_X2X_CFG_PWRDNACKN_MASK			(0x1)
+#define ISP_X2X_CFG_PWRDNREQN_MASK			(0x1)
+
+#define ISP_X2X_CFG_PWRDN_BYPASS_SHIFT			(10)
+#define ISP_X2X_CFG_PWRDNACKN_SHIFT			(9)
+#define ISP_X2X_CFG_PWRDNREQN_SHIFT			(4)
+
+
+/******************************************************************
  * ISP Factory Only Register Control ( 0 page 0x000~0xFFF )
  ******************************************************************/
 #define REG_ISP_SLEEP_MODE				(0x0004)

@@ -2830,32 +2830,36 @@
 		compatible = "telechips,tcc805x-isp";
 		status = "disabled";
 		reg = 	<0x0 0x1bc80000 0x0 0x10000>,	/* ISP base */
-			<0x0 0x1bc90000 0x0 0x10000>;	/* ISP memory */
-		reg-names = "isp_base", "mem_base";
+			<0x0 0x1bc90000 0x0 0x10000>,	/* ISP memory */
+			<0x0 0x1bc00400 0x0 0x120>;	/* MIPI WRAP cfg_base */
+		reg-names = "isp_base", "mem_base", "cfg_base";
 	};
 
 	isp1: isp1@1bca0000 {
 		compatible = "telechips,tcc805x-isp";
 		status = "disabled";
 		reg = 	<0x0 0x1bca0000 0x0 0x10000>,	/* ISP base */
-			<0x0 0x1bcb0000 0x0 0x10000>;	/* ISP memory */
-		reg-names = "isp_base", "mem_base";
+			<0x0 0x1bcb0000 0x0 0x10000>,	/* ISP memory */
+			<0x0 0x1bc00400 0x0 0x120>;	/* MIPI WRAP cfg_base */
+		reg-names = "isp_base", "mem_base", "cfg_base";
 	};
 
 	isp2: isp2@1bcc0000 {
 		compatible = "telechips,tcc805x-isp";
 		status = "disabled";
 		reg = 	<0x0 0x1bcc0000 0x0 0x10000>,	/* ISP base */
-			<0x0 0x1bcd0000 0x0 0x10000>;	/* ISP memory */
-		reg-names = "isp_base", "mem_base";
+			<0x0 0x1bcd0000 0x0 0x10000>,	/* ISP memory */
+			<0x0 0x1bc00400 0x0 0x120>;	/* MIPI WRAP cfg_base */
+		reg-names = "isp_base", "mem_base", "cfg_base";
 	};
 
 	isp3: isp3@1bce0000 {
 		compatible = "telechips,tcc805x-isp";
 		status = "disabled";
 		reg = 	<0x0 0x1bce0000 0x0 0x10000>,	/* ISP base */
-			<0x0 0x1bcf0000 0x0 0x10000>;	/* ISP memory */
-		reg-names = "isp_base", "mem_base";
+			<0x0 0x1bcf0000 0x0 0x10000>,	/* ISP memory */
+			<0x0 0x1bc00400 0x0 0x120>;	/* MIPI WRAP cfg_base */
+		reg-names = "isp_base", "mem_base", "cfg_base";
 	};
 
 	fb_cr: fb_cr@12000000{
