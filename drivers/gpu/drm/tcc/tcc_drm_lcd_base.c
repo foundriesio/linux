@@ -653,7 +653,7 @@ static void lcd_disable(struct tcc_drm_crtc *crtc)
 	int i;
 
 	for (i = 0; i < RDMA_MAX_NUM; i++)
-		lcd_enable_video_output(ctx, i, false);
+		lcd_enable_video_output(ctx, i);
 
 	dev_info(
 		ctx->dev, "[INFO][%s] %s Turn off\r\n",
