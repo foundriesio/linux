@@ -72,6 +72,10 @@ struct lcd_context {
 	wait_queue_head_t wait_vsync_queue;
 	atomic_t wait_vsync_event;
 
+	/* Display Disable Done */
+	wait_queue_head_t wait_display_done_queue;
+	atomic_t wait_display_done_event;
+
 	spinlock_t irq_lock;
 
 	/*
@@ -147,7 +151,7 @@ static irqreturn_t lcd_irq_handler(int irq, void *dev_id)
 			ctx->hw_data.display_device.blk_num,
 			VIOC_DISP_INTR_DISPLAY)) {
 		dev_warn(ctx->dev,
-				"[WARN][%s] interrupt was not enabled\r\n",
+				"[WARN][%s] %s interrupt was not enabled\r\n",
 				LOG_TAG, __func__);
 		return IRQ_HANDLED;
 	}
@@ -171,7 +175,7 @@ static irqreturn_t lcd_irq_handler(int irq, void *dev_id)
 		/* set wait vsync event to zero and wake up queue. */
 		if (atomic_read(&ctx->wait_vsync_event)) {
 			atomic_set(&ctx->wait_vsync_event, 0);
-			wake_up(&ctx->wait_vsync_queue);
+			wake_up_all(&ctx->wait_vsync_queue);
 		}
 		tcc_drm_crtc_vblank_handler(&ctx->crtc->base);
 	}
@@ -191,9 +195,14 @@ static irqreturn_t lcd_irq_handler(int irq, void *dev_id)
 		}
 	}
 
-	if (dispblock_status & (1 << VIOC_DISP_INTR_DD))
+	if (dispblock_status & (1 << VIOC_DISP_INTR_DD)) {
+		if (atomic_read(&ctx->wait_display_done_event)) {
+			atomic_set(&ctx->wait_display_done_event, 0);
+			wake_up_all(&ctx->wait_display_done_queue);
+		}
 		vioc_intr_clear(
 			display_device_blk_num, (1 << VIOC_DISP_INTR_DD));
+	}
 
 	if (dispblock_status & (1 << VIOC_DISP_INTR_SREQ))
 		vioc_intr_clear(
@@ -265,7 +274,7 @@ static void lcd_wait_for_vblank(struct tcc_drm_crtc *crtc)
 	 */
 	if (test_bit(CRTC_FLAGS_IRQ_BIT, &ctx->crtc_flags)) {
 		if (
-			!wait_event_timeout(
+			!wait_event_interruptible_timeout(
 				ctx->wait_vsync_queue,
 				!atomic_read(&ctx->wait_vsync_event),
 				msecs_to_jiffies(50)))
@@ -274,7 +283,7 @@ static void lcd_wait_for_vblank(struct tcc_drm_crtc *crtc)
 }
 #endif
 
-static void lcd_enable_video_output(struct lcd_context *ctx, unsigned int win,
+static void lcd_set_video_output(struct lcd_context *ctx, unsigned int win,
 					bool enable)
 {
 	if (win >= ctx->hw_data.rdma_counts) {
@@ -308,6 +317,16 @@ static void lcd_enable_video_output(struct lcd_context *ctx, unsigned int win,
 			}
 		}
 	}
+}
+
+static void lcd_enable_video_output(struct lcd_context *ctx, unsigned int win)
+{
+	lcd_set_video_output(ctx, win, true);
+}
+
+static void lcd_disable_video_output(struct lcd_context *ctx, unsigned int win)
+{
+	lcd_set_video_output(ctx, win, false);
 }
 
 static int lcd_atomic_check(struct tcc_drm_crtc *crtc,
@@ -572,7 +591,7 @@ static void lcd_update_plane(struct tcc_drm_crtc *crtc,
 
 	lcd_win_set_pixfmt(ctx, win, fb->format->format, state->src.w);
 
-	lcd_enable_video_output(ctx, win, true);
+	lcd_enable_video_output(ctx, win);
 	#if defined(CONFIG_DRM_TCC_CTRL_CHROMAKEY)
 	mutex_lock(&ctx->chromakey_mutex);
 	#endif
@@ -589,7 +608,7 @@ static void lcd_disable_plane(struct tcc_drm_crtc *crtc,
 	struct lcd_context *ctx = crtc->ctx;
 	unsigned int win = plane->win;
 
-	lcd_enable_video_output(ctx, win, false);
+	lcd_disable_video_output(ctx, win);
 }
 
 static void lcd_enable(struct tcc_drm_crtc *crtc)
@@ -639,8 +658,16 @@ static void lcd_disable(struct tcc_drm_crtc *crtc)
 	dev_info(
 		ctx->dev, "[INFO][%s] %s Turn off\r\n",
 		LOG_TAG, __func__);
-	if (VIOC_DISP_Get_TurnOnOff(ctx->hw_data.display_device.virt_addr))
+	if (VIOC_DISP_Get_TurnOnOff(ctx->hw_data.display_device.virt_addr)) {
+		atomic_set(&ctx->wait_display_done_event, 1);
 		VIOC_DISP_TurnOff(ctx->hw_data.display_device.virt_addr);
+		if (
+			!wait_event_interruptible_timeout(
+				ctx->wait_display_done_queue,
+				!atomic_read(&ctx->wait_display_done_event),
+				msecs_to_jiffies(30)))
+			dev_warn(ctx->dev, "display done wait timed out.\n");
+	}
 
 	#if defined(CONFIG_PM)
 	if (crtc->enabled)
@@ -877,6 +904,9 @@ static int lcd_bind(struct device *dev, struct device *master, void *data)
 
 	init_waitqueue_head(&ctx->wait_vsync_queue);
 	atomic_set(&ctx->wait_vsync_event, 0);
+
+	init_waitqueue_head(&ctx->wait_display_done_queue);
+	atomic_set(&ctx->wait_display_done_event, 0);
 	platform_set_drvdata(pdev, ctx);
 	ctx->encoder = tcc_dpi_probe(dev, &ctx->hw_data);
 	if (IS_ERR(ctx->encoder)) {
@@ -1013,7 +1043,7 @@ static int tcc_lcd_suspend(struct device *dev)
 
 	if (test_bit(CRTC_FLAGS_VCLK_BIT, &ctx->crtc_flags)) {
 		dev_info(
-			dev, "[INFO][%s] %s Eisable vclk\r\n",
+			dev, "[INFO][%s] %s Disable vclk\r\n",
 			LOG_TAG, __func__);
 		clk_disable_unprepare(ctx->hw_data.vioc_clock);
 	}
