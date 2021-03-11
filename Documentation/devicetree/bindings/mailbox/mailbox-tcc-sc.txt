@@ -1,0 +1,26 @@
+Telechips Mailbox device for TCC805x Storage Core
+
+Required properties:
+- compatible: Should be "telechips,mailbox-tcc-sc"
+- reg: Specifices base physical address and size of the registers
+- interrupt: The interrupt numbers of Rx and Tx-done
+- #mbox-cells: Must be at least 1. Number of cells in a mailbox
+
+Optional properties:
+N/A
+
+Examples:
+a72_sc_mbox: mbox@0x1D200000 {
+    status = "okay";
+    compatible = "telechips,tcc805x-mailbox-sc";
+    reg = <0x0 0x1D200000 0x0 0x80>;
+    interrupts = <GIC_SPI 319 IRQ_TYPE_LEVEL_HIGH>,
+               <GIC_SPI 329 IRQ_TYPE_LEVEL_HIGH>;
+    #mbox-cells = <1>;
+};
+
+tcc_sc_fw: tcc_sc_fw {
+    compatible = "telechips,tcc805x-sc-fw";
+	status = "okay";
+	mboxes = <&a72_sc_mbox 0>;
+};
