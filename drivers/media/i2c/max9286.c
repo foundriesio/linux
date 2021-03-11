@@ -326,22 +326,32 @@ static int max9286_g_input_status(struct v4l2_subdev *sd, u32 *status)
 
 	mutex_lock(&dev->lock);
 
+	/* reset status */
+	*status	= 0;
+
 	/* check V4L2_IN_ST_NO_SIGNAL */
 	ret = regmap_read(dev->regmap, MAX9286_REG_STATUS_1, &val);
 	if (ret < 0) {
-		loge("failure to check V4L2_IN_ST_NO_SIGNAL\n");
+		loge("failure to check MAX9286_REG_STATUS_1\n");
+		*status =
+			V4L2_IN_ST_NO_POWER |
+			V4L2_IN_ST_NO_SIGNAL |
+			V4L2_IN_ST_NO_COLOR;
+		goto end;
 	} else {
-		logd("status: 0x%08x\n", val);
-		if (val == MAX9286_VAL_STATUS_1) {
-			*status &= ~V4L2_IN_ST_NO_SIGNAL;
-		} else {
-			logw("V4L2_IN_ST_NO_SIGNAL\n");
+		logd("status 1: 0x%08x\n", val);
+
+		if (val != MAX9286_VAL_STATUS_1) {
+			logw("STATUS_1 is V4L2_IN_ST_NO_SIGNAL\n");
 			*status |= V4L2_IN_ST_NO_SIGNAL;
+			goto end;
 		}
 	}
 
 	mutex_unlock(&dev->lock);
 
+end:
+	logi("status: 0x%08x\n", *status);
 	return ret;
 }
 

@@ -650,19 +650,49 @@ static int tccvin_ioctl_streamoff(struct file *file, void *fh,
 static int tccvin_ioctl_enum_input(struct file *file, void *fh,
 	struct v4l2_input *input)
 {
-	u32 index = input->index;
+	struct tccvin_fh		*handle		= NULL;
+	struct tccvin_streaming		*stream		= NULL;
+	struct v4l2_subdev		*subdev		= NULL;
+	int32_t				n_subdev	= 0;
+	int32_t				idx_subdev	= 0;
+	uint32_t			status		= 0;
+	int				ret		= 0;
 
-	if (index != 0) {
+	handle		= fh;
+	stream		= handle->stream;
+
+	if (input->index != 0) {
 		/* index is not 0 */
 		return -EINVAL;
 	}
 
-	memset(input, 0, sizeof(*input));
-	input->index = index;
-	strlcpy(input->name, "videosource", sizeof(input->name));
+	sprintf(input->name, "v4l2 subdev[%d]", input->index);
 	input->type = V4L2_INPUT_TYPE_CAMERA;
-	logd("index: %d, name: %s, type: 0x%08x\n",
-		input->index, input->name, input->type);
+
+	n_subdev = stream->dev->bounded_subdevs;
+	logd("The number of subdevs is %d\n", n_subdev);
+	for (idx_subdev = n_subdev - 1; idx_subdev >= 0; idx_subdev--) {
+		subdev = stream->dev->linked_subdevs[idx_subdev].sd;
+
+		ret = v4l2_subdev_call(subdev, video, g_input_status, &status);
+		logd("v4l2_subdev_call, ret: %d\n", ret);
+		switch (ret) {
+		case -ENODEV:
+			loge("subdev is null\n");
+			break;
+		case -ENOIOCTLCMD:
+			logd("%s - g_input_status is not supported\n",
+				subdev->name);
+			break;
+		default:
+			logd("%s - status: 0x%08x\n", subdev->name, status);
+			input->status |= status;
+			break;
+		}
+	}
+
+	logi("%s - type: 0x%08x, status: 0x%08x\n",
+		input->name, input->type, input->status);
 
 	return 0;
 }

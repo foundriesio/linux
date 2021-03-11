@@ -47,11 +47,16 @@
 #define logi(fmt, ...) \
 	pr_info("[INFO][%s] %s - "	fmt, LOG_TAG, __func__, ##__VA_ARGS__)
 
-#define WIDTH			720
-#define HEIGHT			480
+#define WIDTH				720
+#define HEIGHT				480
 
-#define ADV7182_REG_STATUS_1	0x10
-#define ADV7182_VAL_STATUS_1	0x07
+#define ADV7182_REG_STATUS_1		0x10
+#define ADV7182_VAL_STATUS_1_COL_KILL	(1 << 7)
+#define ADV7182_VAL_STATUS_1_FSC_LOCK	(1 << 2)
+#define ADV7182_VAL_STATUS_1_IN_LOCK	(1 << 0)
+
+#define ADV7182_REG_STATUS_3		0x13
+#define ADV7182_VAL_STATUS_3_INST_HLOCK	(1 << 0)
 
 struct power_sequence {
 	int			pwr_port;
@@ -269,20 +274,55 @@ static int adv7182_g_input_status(struct v4l2_subdev *sd, u32 *status)
 	unsigned int		val	= 0;
 	int			ret	= 0;
 
-	/* check V4L2_IN_ST_NO_SIGNAL */
+	/* reset status */
+	*status	= 0;
+
+	/* check STATUS 1 */
 	ret = regmap_read(dev->regmap, ADV7182_REG_STATUS_1, &val);
 	if (ret < 0) {
-		loge("failure to check V4L2_IN_ST_NO_SIGNAL\n");
+		loge("failure to check ADV7182_REG_STATUS_1\n");
+		*status =
+			V4L2_IN_ST_NO_POWER |
+			V4L2_IN_ST_NO_SIGNAL |
+			V4L2_IN_ST_NO_COLOR;
+		goto end;
 	} else {
-		logd("status: 0x%08x\n", val);
-		if (val & ADV7182_VAL_STATUS_1) {
-			*status &= ~V4L2_IN_ST_NO_SIGNAL;
-		} else {
+		logd("status 1: 0x%08x\n", val);
+
+		/* check sync signal lock */
+		if (!(val & (ADV7182_VAL_STATUS_1_FSC_LOCK | ADV7182_VAL_STATUS_1_IN_LOCK))) {
 			logw("V4L2_IN_ST_NO_SIGNAL\n");
 			*status |= V4L2_IN_ST_NO_SIGNAL;
 		}
+
+		/* check color kill */
+		if (val & ADV7182_VAL_STATUS_1_COL_KILL) {
+			logw("V4L2_IN_ST_COLOR_KILL\n");
+			*status |= V4L2_IN_ST_COLOR_KILL;
+		}
 	}
 
+	/* check STATUS 3 */
+	ret = regmap_read(dev->regmap, ADV7182_REG_STATUS_3, &val);
+	if (ret < 0) {
+		loge("failure to check ADV7182_REG_STATUS_3\n");
+		*status =
+			V4L2_IN_ST_NO_POWER |
+			V4L2_IN_ST_NO_SIGNAL |
+			V4L2_IN_ST_NO_COLOR;
+		goto end;
+	} else {
+		logd("status 3: 0x%08x\n", val);
+
+		/* check sync signal lock */
+		if (!(val & ADV7182_VAL_STATUS_3_INST_HLOCK)) {
+			logw("V4L2_IN_ST_NO_H_LOCK\n");
+			*status |= V4L2_IN_ST_NO_H_LOCK;
+		}
+	}
+
+end:
+	logi("status: 0x%08x\n", *status);
 	return ret;
 }
 
