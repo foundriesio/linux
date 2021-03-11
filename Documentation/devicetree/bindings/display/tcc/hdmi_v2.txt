@@ -1,0 +1,97 @@
+This is for Telechips HDMI v2.0 Driver
+
+Required properties for HDMI:
+	-compatible: "telechips,tcc897x-hdmi"
+	-reg:
+		physical base address
+		- 0 :HDMI Link base address,
+		- 1 :HDMI HDCP2.2 base address,
+		- 2 :HDMI PHY base address,
+		- 3 :I2C Port register base address,
+		- 4 :IOBUS Configuration register base address,
+	-reg-names:
+	-interrupts: The number of HDMI interrupts.
+	-clocks: Clocks for HDMI controller.
+	-clock-names:
+	-clock-frequency: Clock frequency for HDMI Link.
+	-hdmi_i2c_port_mapping:
+		Maps the I2C/DDC master of HDMI Link with I2C Port of PAD.
+	-hdmi_i2c_port_disable:
+		Connection status of I2C port and DDC pin.
+			-0: DDC pin is connected to I2C port.
+			-1: DDC pin is not connected to I2C port.
+	-fixd_video_id_code: Fixed Video Identification Code.
+	-audio_if_selection_ofst: Offset for HDMI AUDIO I/F Selection Register.
+	-audio_rx_chmux: Offset for HDMI RX and TX Channel Mux Selection
+			 Register.
+	-hdmi_ref_src_clock:
+		Set reference source clock of HDMI PHY.
+			-0: PAX_XIN (X-TAL)
+			-1: HDMI_XIN (HDMI X-TAL)
+			-2: HDMI_PERI_CLK (CKC)
+			-3: PMU_XIN
+
+Optional properties for display:
+	-vendor_name: Vendor name consists of eight 7-bit ASCII.
+	-product_description:
+		Product Description consists of sixteen 7-bit ASCII.
+	-source_informaion:
+		Source information.
+
+-------------------------------------------------------------------------------
+
+Example:
+
+hdmi_tx_20: hdmi_tx_20@12400000 {
+	compatible = "telechips,dw-hdmi-tx";
+	/* Register */
+	reg = <0x12400000 0x20000 0x12440000 0x1000 0x12480000 0x1000 0x163C0000 0x10 0x16051000 0x100>;
+	reg-names = "hdmi_link", "hdcp_2.2", "hdmi_phy", "i2c_port_cfg", "iobus_configure";
+	/* Interrupt */
+	interrupts = <GIC_SPI 123 IRQ_TYPE_LEVEL_HIGH>,
+			<GIC_SPI 126 IRQ_TYPE_LEVEL_HIGH>,
+			<GIC_SPI 127 IRQ_TYPE_LEVEL_HIGH>;
+	interrupt-names = "hdmi_link", "hdcp_2.2", "hdmi_cec";
+	/* Clocks */
+	clocks = <&clk_peri PERI_HDMI_CORE>,
+			<&clk_peri PERI_HDMI_AUDIO>,
+			<&clk_peri PERI_HDMI_PCLK>,
+			<&clk_peri PERI_HDMI_CEC>,
+			<&clk_peri PERI_HDMI_HDCP14>,
+			<&clk_peri PERI_HDMI_HDCP22>,
+			<&clk_ddi DDIBUS_HDMI>,
+			<&clk_isoip_ddi ISOIP_DDB_HDMI>,
+			<&clk_ddi DDIBUS_VIOC>;
+	clock-names = "hdmi_ref_clk",
+			"hdmi_spdif_clk",
+			"hdmi_apb_clk",
+			"hdmi_cec",
+			"hdmi_hdcp14",
+			"hdmi_hdcp22",
+			"hdmi_ddibus",
+			"hdmi_isoip_ddibus",
+			"ddi_bus";
+	clock-frequency = <50000000>;
+	/* Pinctrl and gpio */
+	pinctrl-names = "default";
+	pinctrl-0 = <&hdmi_hpd>;
+	gpios = <&gpc 14 0>;
+
+	/* DDC */
+	hdmi_i2c_port_disable = <1>;
+	hdmi_i2c_port_mapping = <0xc 0xff 0x1d>; /* offset mask value */
+
+	/* Source Product Description */
+	vendor_name = "TCC";
+	product_description = "TCC8031";
+	source_information = <1>; /* Digital STB */
+
+	audio_if_selection_ofst = <0x58>;
+	audio_rx_tx_chmux = <0x98>;
+
+	/* fixed video identification code 4: 1280x720p 60Hz */
+	fixd_video_id_code = <4>;
+
+	verbose = <0>; // 0 disable, 1 basic, 2 io
+	status = "okay";
+};
