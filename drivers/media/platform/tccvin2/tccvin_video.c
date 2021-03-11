@@ -489,7 +489,7 @@ static int32_t tccvin_parse_device_tree(struct tccvin_streaming *vdev)
 		if (vioc_path->vin != -1) {
 			address	= VIOC_VIN_GetAddress(vioc_path->vin);
 			vioc_id	= get_vioc_index(vioc_path->vin) / 2;
-			logd("%10s[%2d]: 0x%p\n", "VIN", vioc_id, address);
+			logd("%10s[%2d]: 0x%px\n", "VIN", vioc_id, address);
 		}
 	} else {
 		loge("VIN[%d] - \"vin\" node is not found.\n", vin_id);
@@ -504,7 +504,7 @@ static int32_t tccvin_parse_device_tree(struct tccvin_streaming *vdev)
 			"cifport", 1, &vdev->cif.cif_port);
 		if (vdev->cif.cif_port != -1) {
 			vdev->cif.cifport_addr = of_iomap(vioc_node, 0);
-			logd("%10s[%2d]: 0x%p\n", "CIF Port",
+			logd("%10s[%2d]: 0x%px\n", "CIF Port",
 				vdev->cif.cif_port, vdev->cif.cifport_addr);
 		}
 	} else {
@@ -523,7 +523,7 @@ static int32_t tccvin_parse_device_tree(struct tccvin_streaming *vdev)
 			if (vioc_path->pgl != -1) {
 				address	= VIOC_RDMA_GetAddress(vioc_path->pgl);
 				vioc_id	= get_vioc_index(vioc_path->pgl);
-				logd("%10s[%2d]: 0x%p\n", "RDMA(PGL)",
+				logd("%10s[%2d]: 0x%px\n", "RDMA(PGL)",
 					vioc_id, address);
 			}
 
@@ -549,7 +549,7 @@ static int32_t tccvin_parse_device_tree(struct tccvin_streaming *vdev)
 		if (vioc_path->viqe != -1) {
 			address	= VIOC_VIQE_GetAddress(vioc_path->viqe);
 			vioc_id	= get_vioc_index(vioc_path->viqe);
-			logd("%10s[%2d]: 0x%p\n", "VIQE", vioc_id, address);
+			logd("%10s[%2d]: 0x%px\n", "VIQE", vioc_id, address);
 		}
 	} else {
 		logw("VIN[%d] - \"viqe\" node is not found.\n", vin_id);
@@ -563,7 +563,7 @@ static int32_t tccvin_parse_device_tree(struct tccvin_streaming *vdev)
 				address	= VIOC_DEINTLS_GetAddress(
 					/*vioc_path->deintl_s*/);
 				vioc_id	= get_vioc_index(vioc_path->deintl_s);
-				logd("%10s[%2d]: 0x%p\n", "DEINTL_S",
+				logd("%10s[%2d]: 0x%px\n", "DEINTL_S",
 					vioc_id, address);
 			}
 		} else {
@@ -581,7 +581,7 @@ static int32_t tccvin_parse_device_tree(struct tccvin_streaming *vdev)
 		if (vioc_path->scaler != -1) {
 			address	= VIOC_SC_GetAddress(vioc_path->scaler);
 			vioc_id	= get_vioc_index(vioc_path->scaler);
-			logd("%10s[%2d]: 0x%p\n", "SCALER", vioc_id, address);
+			logd("%10s[%2d]: 0x%px\n", "SCALER", vioc_id, address);
 		}
 	} else {
 		logw("VIN[%d] - \"scaler\" node is not found.\n", vin_id);
@@ -596,7 +596,7 @@ static int32_t tccvin_parse_device_tree(struct tccvin_streaming *vdev)
 		if (vioc_path->wmixer != -1) {
 			address	= VIOC_WMIX_GetAddress(vioc_path->wmixer);
 			vioc_id	= get_vioc_index(vioc_path->wmixer);
-			logd("%10s[%2d]: 0x%p\n", "WMIXER", vioc_id, address);
+			logd("%10s[%2d]: 0x%px\n", "WMIXER", vioc_id, address);
 		}
 	} else {
 		logw("VIN[%d] - \"wmixer\" node is not found.\n", vin_id);
@@ -612,7 +612,7 @@ static int32_t tccvin_parse_device_tree(struct tccvin_streaming *vdev)
 		if (vioc_path->wdma != -1) {
 			address = VIOC_WDMA_GetAddress(vioc_path->wdma);
 			vioc_id	= get_vioc_index(vioc_path->wdma);
-			logd("%10s[%2d]: 0x%p\n", "WDMA", vioc_id, address);
+			logd("%10s[%2d]: 0x%px\n", "WDMA", vioc_id, address);
 
 			/* WDMA interrupt */
 			vdev->cif.vioc_irq_num =
@@ -787,7 +787,7 @@ int tccvin_set_pgl(struct tccvin_streaming *vdev)
 	format		= PGL_FORMAT;
 	buf_addr	= vdev->cif.pmap_pgl.base;
 
-	loge("RDMA: 0x%p, size[%d x %d], format[%d]\n",
+	logd("RDMA: 0x%px, size[%d x %d], format[%d]\n",
 		rdma, width, height, format);
 
 	VIOC_RDMA_SetImageFormat(rdma, format);
@@ -879,7 +879,7 @@ static int32_t tccvin_set_vin(struct tccvin_streaming *vdev)
 	 * defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X)
 	 */
 
-	logd("VIN: 0x%p, Source Size - width: %d, height: %d\n",
+	logd("VIN: 0x%px, Source Size - width: %d, height: %d\n",
 		vin, width, height);
 
 	logd("data_order:	%d\n", data_order);
@@ -997,7 +997,7 @@ static int32_t tccvin_set_deinterlacer(struct tccvin_streaming *vdev)
 		u32	vioc_format	= vdev->vs_info.data_format;
 		u32	v4l2_format	= vdev->cur_format->fcc;
 
-		logd("VIQE: 0x%p, Source Size - width: %d, height: %d\n",
+		logd("VIQE: 0x%px, Source Size - width: %d, height: %d\n",
 			viqe, width, height);
 
 #if 0
@@ -1127,8 +1127,8 @@ static int32_t tccvin_set_scaler(struct tccvin_streaming *vdev,
 	}
 
 
-	logd("SC: 0x%p, DST: %d * %d\n", sc, dst_width, dst_height);
-	logd("SC: 0x%p, OUT: (%d, %d) %d * %d\n", sc,
+	logd("SC: 0x%px, DST: %d * %d\n", sc, dst_width, dst_height);
+	logd("SC: 0x%px, OUT: (%d, %d) %d * %d\n", sc,
 		out_posx, out_posy, out_width, out_height);
 
 	/* Plug the scaler in */
@@ -1201,9 +1201,9 @@ static int32_t tccvin_set_wmixer(struct tccvin_streaming *vdev)
 	mask_B		= ((PGL_BGM_B >> 3) << 3);
 #endif/* defined(CONFIG_OVERLAY_PGL) */
 
-	logd("WMIXer: 0x%p, Size - width: %d, height: %d\n",
+	logd("WMIXer: 0x%px, Size - width: %d, height: %d\n",
 		wmixer, width, height);
-	logd("WMIXer: 0x%p, CH0: (%d, %d)\n", wmixer,
+	logd("WMIXer: 0x%px, CH0: (%d, %d)\n", wmixer,
 		out_posx, out_posy);
 
 	/* Configure the wmixer */
@@ -1264,7 +1264,7 @@ static int32_t tccvin_set_wdma(struct tccvin_streaming *vdev)
 	format_desc	= tccvin_format_by_fcc(vdev->cur_format->fcc);
 	format		= format_desc->guid;
 
-	logd("WDMA: 0x%p, size[%d x %d], format[%d]\n",
+	logd("WDMA: 0x%px, size[%d x %d], format[%d]\n",
 		wdma, width, height, format);
 
 	VIOC_WDMA_SetImageFormat(wdma, format);
@@ -1514,7 +1514,7 @@ static int32_t tccvin_allocate_essential_buffers(struct tccvin_streaming *vdev)
 #if defined(CONFIG_VIDEO_TCCVIN2_MMAP_MEMCPY)
 		vdev->cif.vir = ioremap_nocache(pmap->base,
 			PAGE_ALIGN(pmap->size));
-		logd("name: %20s, phy base: 0x%08llx, vir base: 0x%p\n",
+		logd("name: %20s, phy base: 0x%08llx, vir base: 0x%px\n",
 			pmap->name, pmap->base, vdev->cif.vir);
 #endif//defined(CONFIG_VIDEO_TCCVIN2_MMAP_MEMCPY)
 	} else {
@@ -1601,7 +1601,8 @@ static int32_t tccvin_start_stream(struct tccvin_streaming *vdev)
 
 		if (vioc->viqe != -1) {
 			/* set skip_frame as 3
-			 * in case of viqe 3d mode (16ms * 3 frames) */
+			 * in case of viqe 3d mode (16ms * 3 frames)
+			 */
 			vdev->skip_frame_cnt += 3;
 		}
 	}
@@ -1621,7 +1622,7 @@ static int32_t tccvin_start_stream(struct tccvin_streaming *vdev)
 	/* set wdma */
 	tccvin_set_wdma(vdev);
 
-	return 0;
+	return ret;
 }
 
 static int32_t tccvin_stop_stream(struct tccvin_streaming *vdev)
