@@ -503,6 +503,10 @@ lpfc_nvme_ls_req(struct nvme_fc_local_port *pnvme_lport,
 				 ndlp->nlp_state, ndlp->nlp_type);
 		return -ENODEV;
 	}
+
+	if (!vport->phba->sli4_hba.nvmels_wq)
+		return -ENOMEM;
+
 	bmp = kmalloc(sizeof(struct lpfc_dmabuf), GFP_KERNEL);
 	if (!bmp) {
 
