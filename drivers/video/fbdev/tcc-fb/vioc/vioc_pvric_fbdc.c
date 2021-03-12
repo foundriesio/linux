@@ -212,7 +212,6 @@ int VIOC_PVRIC_FBDC_SetBasicConfiguration(volatile void __iomem * reg,
 	VIOC_PVRIC_FBDC_SetLossyDecomp(reg, decomp_mode);
 
 	VIOC_PVRIC_FBDC_SetFrameSize(reg, imgWidth, imgHeight);
-	VIOC_PVRIC_FBDC_SetRequestBase(reg, base);
 	VIOC_PVRIC_FBDC_SetOutBufOffset(reg, imgFmt, imgWidth);
 	VIOC_PVRIC_FBDC_SetOutBufBase(reg, base);
 

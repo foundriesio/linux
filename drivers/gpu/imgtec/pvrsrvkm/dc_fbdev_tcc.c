@@ -90,6 +90,8 @@ typedef struct
 	IMG_UINT32			ui32Height;
 	IMG_UINT32			ui32ByteStride;
 	IMG_UINT32			ui32BufferID;
+	IMG_BOOL			bFBComp;
+	IMG_UINT32          ui32FBCBufSize;  
 }
 DC_FBDEV_BUFFER;
 
@@ -231,6 +233,7 @@ PVRSRV_ERROR DC_FBDEV_PanelQuery(IMG_HANDLE hDeviceData,
 	psPanelInfo[0].sSurfaceInfo.sFormat.eMemLayout = PVRSRV_SURFACE_MEMLAYOUT_STRIDED;
 #if defined(CONFIG_VIOC_PVRIC_FBDC)
 	psVar->reserved[3] = 1;
+	psPanelInfo[0].sSurfaceInfo.sFormat.eMemLayout = PVRSRV_SURFACE_MEMLAYOUT_FBC;
 	if( psVar->xres <= VIOC_PVRICSIZE_MAX_WIDTH_8X8 )
 		psPanelInfo[0].sSurfaceInfo.sFormat.u.sFBCLayout.eFBCompressionMode = IMG_FB_COMPRESSION_DIRECT_8x8;
         else if( psVar->xres <= VIOC_PVRICSIZE_MAX_WIDTH_16X4 )
@@ -598,7 +601,18 @@ PVRSRV_ERROR DC_FBDEV_BufferAlloc(IMG_HANDLE hDisplayContext,
 		goto err_free;
 	}
 
-	ui32ByteSize = psBuffer->ui32ByteStride * psBuffer->ui32Height;
+	if( psSurfInfo->sFormat.eMemLayout == PVRSRV_SURFACE_MEMLAYOUT_FBC )
+	{
+		//pr_info("%s ui32FBCBufSize:%d\n", __func__, psCreateInfo->u.sFBC.ui32Size);
+		psBuffer->bFBComp = IMG_TRUE;
+		psBuffer->ui32FBCBufSize = psCreateInfo->u.sFBC.ui32Size;
+		ui32ByteSize = psBuffer->ui32FBCBufSize;
+	}
+	else
+	{
+		psBuffer->bFBComp = IMG_FALSE;
+		ui32ByteSize = psBuffer->ui32ByteStride * psBuffer->ui32Height;
+	}
 
 	*puiLog2PageSize = PAGE_SHIFT;
 	*pui32PageCount	 = BYTE_TO_PAGES(ui32ByteSize);
@@ -622,7 +636,16 @@ PVRSRV_ERROR DC_FBDEV_BufferAcquire(IMG_HANDLE hBuffer,
 {
 	DC_FBDEV_BUFFER *psBuffer = hBuffer;
 	DC_FBDEV_DEVICE *psDeviceData = psBuffer->psDeviceContext->psDeviceData;
-	IMG_UINT32 ui32ByteSize = psBuffer->ui32ByteStride * psBuffer->ui32Height;
+	IMG_UINT32 ui32ByteSize;
+	if( psBuffer->bFBComp )
+	{
+		ui32ByteSize = psBuffer->ui32FBCBufSize;
+	}
+	else
+	{
+		ui32ByteSize = psBuffer->ui32ByteStride * psBuffer->ui32Height;
+	}
+
 	uintptr_t uiStartAddr;
 	IMG_UINT32 i, ui32MaxLen;
 
@@ -632,10 +655,11 @@ PVRSRV_ERROR DC_FBDEV_BufferAcquire(IMG_HANDLE hBuffer,
 	uiStartAddr = psDeviceData->psLINFBInfo->fix.smem_start;
 #endif
 
-	uiStartAddr += psBuffer->ui32BufferID * ui32ByteSize;
+	uiStartAddr += psBuffer->ui32BufferID * (BYTE_TO_PAGES(ui32ByteSize)*PAGE_SIZE);
 	ui32MaxLen = psDeviceData->psLINFBInfo->fix.smem_len -
 				 psBuffer->ui32BufferID * ui32ByteSize;
 
+	//pr_info("%s uiStartAddr:0x%x bufferID:%d ui32FBCBufSize:%d\n", __func__, uiStartAddr, psBuffer->ui32BufferID, psBuffer->ui32FBCBufSize);
 	for (i = 0; i < BYTE_TO_PAGES(ui32ByteSize); i++)
 	{
 		BUG_ON(i * PAGE_SIZE >= ui32MaxLen);
