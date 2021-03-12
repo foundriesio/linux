@@ -189,13 +189,14 @@
 		label = "gpiok";
 		gpio-ranges = <&pinctrl 0 188 19>;
 	    };
+
  	    gpma: gpma {
 		reg-offset = <0x6C0>;
 		gpio-controller;
 		#gpio-cells = <2>;
 		interrupt-controller;
 		#interrupt-cells = <2>;
-		source-num = <1 0 145 30>;
+		source-num = <1 0 135 30>;
 		label = "gpioma";
 		gpio-ranges = <&pinctrl 0 207 30>;
 	    };
