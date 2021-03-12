@@ -690,7 +690,7 @@ config TCC_MMC_SDHC_DEBUG_LEVEL
 	  DEBUG_LEVEL_TUNING  (1 << 6)
 
 config TCC_MMC_SDHC_DEBUG_CHANNEL
-	int "A number of debug channel level"
+	int "A number of debug channel"
 	depends on TCC_MMC_SDHC_DEBUG
 	default 15
 	help
