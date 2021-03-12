@@ -144,7 +144,7 @@
 	    };
 
  	    gpmb: gpmb {
-		reg-offset = <0x6C0>;
+		reg-offset = <0x700>;
 		gpio-controller;
 		#gpio-cells = <2>;
 		interrupt-controller;
@@ -155,7 +155,7 @@
 	    };
 
  	    gpmc: gpmc {
-		reg-offset = <0x6C0>;
+		reg-offset = <0x740>;
 		gpio-controller;
 		#gpio-cells = <2>;
 		interrupt-controller;
@@ -166,7 +166,7 @@
 	    };
 
  	    gpmd: gpmd {
-		reg-offset = <0x6C0>;
+		reg-offset = <0x780>;
 		gpio-controller;
 		#gpio-cells = <2>;
 		interrupt-controller;
