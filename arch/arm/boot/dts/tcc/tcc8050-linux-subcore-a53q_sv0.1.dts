@@ -4396,14 +4396,6 @@
 	status = "okay";
 };
 
-&i2c6 {
-	status = "okay";
-	port-mux = <37>; /* [0]SCL [1]SDA */
-	pinctrl-names = "default";
-	pinctrl-0 = <&i2c37_bus>;
-
-};
-
 &i2c7 {
 	status = "okay";
 	port-mux = <12>; /* [0]SCL [1]SDA */
