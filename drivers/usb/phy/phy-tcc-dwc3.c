@@ -1059,14 +1059,6 @@ static int32_t tcc_dwc3_create_phy(struct device *dev,
 		return -ENOMEM;
 	}
 
-	// PHY CLK
-	phy_dev->phy_clk = of_clk_get(dev->of_node, 0);
-
-	if (IS_ERR(phy_dev->phy_clk)) {
-		dev_info(dev, "[INFO][USB] xhci phy clk_get failed\n");
-		phy_dev->phy_clk = NULL;
-	}
-
 	phy_dev->dev                   = dev;
 
 	phy_dev->phy.dev               = phy_dev->dev;
