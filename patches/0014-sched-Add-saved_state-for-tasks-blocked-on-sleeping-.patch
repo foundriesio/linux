@@ -27,7 +27,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  
  	/*
  	 * This begins the randomizable portion of task_struct. Only
-@@ -1777,6 +1779,7 @@ extern struct task_struct *find_get_task
+@@ -1780,6 +1782,7 @@ extern struct task_struct *find_get_task
  
  extern int wake_up_state(struct task_struct *tsk, unsigned int state);
  extern int wake_up_process(struct task_struct *tsk);

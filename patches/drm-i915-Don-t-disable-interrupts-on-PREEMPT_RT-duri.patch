@@ -25,7 +25,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/drivers/gpu/drm/i915/display/intel_sprite.c
 +++ b/drivers/gpu/drm/i915/display/intel_sprite.c
-@@ -122,7 +122,8 @@ void intel_pipe_update_start(const struc
+@@ -127,7 +127,8 @@ void intel_pipe_update_start(const struc
  			"PSR idle timed out 0x%x, atomic update may fail\n",
  			psr_status);
  
@@ -35,7 +35,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  	crtc->debug.min_vbl = min;
  	crtc->debug.max_vbl = max;
-@@ -147,11 +148,13 @@ void intel_pipe_update_start(const struc
+@@ -152,11 +153,13 @@ void intel_pipe_update_start(const struc
  			break;
  		}
  
@@ -51,7 +51,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	}
  
  	finish_wait(wq, &wait);
-@@ -184,7 +187,8 @@ void intel_pipe_update_start(const struc
+@@ -189,7 +192,8 @@ void intel_pipe_update_start(const struc
  	return;
  
  irq_disable:
@@ -60,8 +60,8 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 +		local_irq_disable();
  }
  
- /**
-@@ -233,7 +237,8 @@ void intel_pipe_update_end(struct intel_
+ #if IS_ENABLED(CONFIG_DRM_I915_DEBUG_VBLANK_EVADE)
+@@ -268,7 +272,8 @@ void intel_pipe_update_end(struct intel_
  		new_crtc_state->uapi.event = NULL;
  	}
  
@@ -69,5 +69,5 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 +	if (!IS_ENABLED(CONFIG_PREEMPT_RT))
 +		local_irq_enable();
  
- 	if (intel_vgpu_active(dev_priv))
- 		return;
+ 	/* Send VRR Push to terminate Vblank */
+ 	intel_vrr_send_push(new_crtc_state);

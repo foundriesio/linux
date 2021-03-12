@@ -7,19 +7,19 @@ having them on special IRQ-stack does not make this easier.
 
 Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 ---
- arch/powerpc/kernel/irq.c     |    2 ++
- arch/powerpc/kernel/misc_32.S |    2 ++
- arch/powerpc/kernel/misc_64.S |    2 ++
- arch/sh/kernel/irq.c          |    2 ++
- arch/sparc/kernel/irq_64.c    |    2 ++
- arch/x86/kernel/irq_32.c      |    2 ++
- arch/x86/kernel/irq_64.c      |    2 ++
- include/linux/interrupt.h     |    2 +-
- 8 files changed, 15 insertions(+), 1 deletion(-)
+ arch/powerpc/kernel/irq.c           |    2 ++
+ arch/powerpc/kernel/misc_32.S       |    2 ++
+ arch/powerpc/kernel/misc_64.S       |    2 ++
+ arch/sh/kernel/irq.c                |    2 ++
+ arch/sparc/kernel/irq_64.c          |    2 ++
+ arch/x86/include/asm/irq_stack.h    |    3 +++
+ arch/x86/kernel/irq_32.c            |    2 ++
+ include/asm-generic/softirq_stack.h |    2 +-
+ 8 files changed, 16 insertions(+), 1 deletion(-)
 
 --- a/arch/powerpc/kernel/irq.c
 +++ b/arch/powerpc/kernel/irq.c
-@@ -753,10 +753,12 @@ void *mcheckirq_ctx[NR_CPUS] __read_most
+@@ -751,10 +751,12 @@ void *mcheckirq_ctx[NR_CPUS] __read_most
  void *softirq_ctx[NR_CPUS] __read_mostly;
  void *hardirq_ctx[NR_CPUS] __read_mostly;
  
@@ -70,7 +70,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  	mflr	r0
 --- a/arch/sh/kernel/irq.c
 +++ b/arch/sh/kernel/irq.c
-@@ -148,6 +148,7 @@ void irq_ctx_exit(int cpu)
+@@ -149,6 +149,7 @@ void irq_ctx_exit(int cpu)
  	hardirq_ctx[cpu] = NULL;
  }
  
@@ -78,7 +78,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  void do_softirq_own_stack(void)
  {
  	struct thread_info *curctx;
-@@ -175,6 +176,7 @@ void do_softirq_own_stack(void)
+@@ -176,6 +177,7 @@ void do_softirq_own_stack(void)
  		  "r5", "r6", "r7", "r8", "r9", "r15", "t", "pr"
  	);
  }
@@ -88,7 +88,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  {
 --- a/arch/sparc/kernel/irq_64.c
 +++ b/arch/sparc/kernel/irq_64.c
-@@ -854,6 +854,7 @@ void __irq_entry handler_irq(int pil, st
+@@ -855,6 +855,7 @@ void __irq_entry handler_irq(int pil, st
  	set_irq_regs(old_regs);
  }
  
@@ -96,7 +96,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  void do_softirq_own_stack(void)
  {
  	void *orig_sp, *sp = softirq_stack[smp_processor_id()];
-@@ -868,6 +869,7 @@ void do_softirq_own_stack(void)
+@@ -869,6 +870,7 @@ void do_softirq_own_stack(void)
  	__asm__ __volatile__("mov %0, %%sp"
  			     : : "r" (orig_sp));
  }
@@ -104,9 +104,28 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  
  #ifdef CONFIG_HOTPLUG_CPU
  void fixup_irqs(void)
+--- a/arch/x86/include/asm/irq_stack.h
++++ b/arch/x86/include/asm/irq_stack.h
+@@ -188,6 +188,7 @@
+ #define ASM_CALL_SOFTIRQ						\
+ 	"call %P[__func]				\n"
+ 
++#ifndef CONFIG_PREEMPT_RT
+ /*
+  * Macro to invoke __do_softirq on the irq stack. This is only called from
+  * task context when bottom halfs are about to be reenabled and soft
+@@ -201,6 +202,8 @@
+ 	__this_cpu_write(hardirq_stack_inuse, false);			\
+ }
+ 
++#endif
++
+ #else /* CONFIG_X86_64 */
+ /* System vector handlers always run on the stack they interrupted. */
+ #define run_sysvec_on_irqstack_cond(func, regs)				\
 --- a/arch/x86/kernel/irq_32.c
 +++ b/arch/x86/kernel/irq_32.c
-@@ -131,6 +131,7 @@ int irq_init_percpu_irqstack(unsigned in
+@@ -132,6 +132,7 @@ int irq_init_percpu_irqstack(unsigned in
  	return 0;
  }
  
@@ -114,7 +133,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  void do_softirq_own_stack(void)
  {
  	struct irq_stack *irqstk;
-@@ -147,6 +148,7 @@ void do_softirq_own_stack(void)
+@@ -148,6 +149,7 @@ void do_softirq_own_stack(void)
  
  	call_on_stack(__do_softirq, isp);
  }
@@ -122,26 +141,14 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  
  void __handle_irq(struct irq_desc *desc, struct pt_regs *regs)
  {
---- a/arch/x86/kernel/irq_64.c
-+++ b/arch/x86/kernel/irq_64.c
-@@ -72,7 +72,9 @@ int irq_init_percpu_irqstack(unsigned in
- 	return map_irq_stack(cpu);
- }
+--- a/include/asm-generic/softirq_stack.h
++++ b/include/asm-generic/softirq_stack.h
+@@ -2,7 +2,7 @@
+ #ifndef __ASM_GENERIC_SOFTIRQ_STACK_H
+ #define __ASM_GENERIC_SOFTIRQ_STACK_H
  
-+#ifndef CONFIG_PREEMPT_RT
- void do_softirq_own_stack(void)
- {
- 	run_on_irqstack_cond(__do_softirq, NULL);
- }
-+#endif
---- a/include/linux/interrupt.h
-+++ b/include/linux/interrupt.h
-@@ -569,7 +569,7 @@ struct softirq_action
- asmlinkage void do_softirq(void);
- asmlinkage void __do_softirq(void);
- 
--#ifdef __ARCH_HAS_DO_SOFTIRQ
-+#if defined(__ARCH_HAS_DO_SOFTIRQ) && !defined(CONFIG_PREEMPT_RT)
+-#ifdef CONFIG_HAVE_SOFTIRQ_ON_OWN_STACK
++#if defined(CONFIG_HAVE_SOFTIRQ_ON_OWN_STACK) && !defined(CONFIG_PREEMPT_RT)
  void do_softirq_own_stack(void);
  #else
  static inline void do_softirq_own_stack(void)

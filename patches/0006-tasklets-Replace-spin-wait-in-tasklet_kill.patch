@@ -20,7 +20,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/kernel/softirq.c
 +++ b/kernel/softirq.c
-@@ -530,6 +530,16 @@ void __tasklet_hi_schedule(struct taskle
+@@ -532,6 +532,16 @@ void __tasklet_hi_schedule(struct taskle
  }
  EXPORT_SYMBOL(__tasklet_hi_schedule);
  
@@ -37,7 +37,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  static void tasklet_action_common(struct softirq_action *a,
  				  struct tasklet_head *tl_head,
  				  unsigned int softirq_nr)
-@@ -549,8 +559,7 @@ static void tasklet_action_common(struct
+@@ -551,8 +561,7 @@ static void tasklet_action_common(struct
  
  		if (tasklet_trylock(t)) {
  			if (!atomic_read(&t->count)) {
@@ -47,7 +47,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  					BUG();
  				if (t->use_callback)
  					t->callback(t);
-@@ -610,13 +619,11 @@ void tasklet_kill(struct tasklet_struct
+@@ -612,13 +621,11 @@ void tasklet_kill(struct tasklet_struct
  	if (in_interrupt())
  		pr_notice("Attempt to kill tasklet from interrupt\n");
  

@@ -9,22 +9,22 @@ recursion paths. Remove all printk context tracking.
 Signed-off-by: John Ogness <john.ogness@linutronix.de>
 Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 ---
- arch/arm/kernel/smp.c       |    2 -
+ arch/arm/kernel/smp.c       |    2 
  arch/powerpc/kexec/crash.c  |    3 -
- include/linux/hardirq.h     |    2 -
- include/linux/printk.h      |   12 ------
+ include/linux/hardirq.h     |    2 
+ include/linux/printk.h      |   12 -----
  kernel/printk/Makefile      |    1 
- kernel/printk/internal.h    |   70 -----------------------------------
- kernel/printk/printk.c      |   58 +++++++++++------------------
- kernel/printk/printk_safe.c |   88 --------------------------------------------
- kernel/trace/trace.c        |    2 -
- 9 files changed, 22 insertions(+), 216 deletions(-)
+ kernel/printk/internal.h    |   70 ----------------------------------
+ kernel/printk/printk.c      |   58 ++++++++++------------------
+ kernel/printk/printk_safe.c |   89 --------------------------------------------
+ kernel/trace/trace.c        |    2 
+ 9 files changed, 22 insertions(+), 217 deletions(-)
  delete mode 100644 kernel/printk/internal.h
  delete mode 100644 kernel/printk/printk_safe.c
 
 --- a/arch/arm/kernel/smp.c
 +++ b/arch/arm/kernel/smp.c
-@@ -671,9 +671,7 @@ static void do_handle_IPI(int ipinr)
+@@ -668,9 +668,7 @@ static void do_handle_IPI(int ipinr)
  		break;
  
  	case IPI_CPU_BACKTRACE:
@@ -298,7 +298,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  int printk_deferred(const char *fmt, ...)
 --- a/kernel/printk/printk_safe.c
 +++ /dev/null
-@@ -1,88 +0,0 @@
+@@ -1,89 +0,0 @@
 -// SPDX-License-Identifier: GPL-2.0-or-later
 -/*
 - * printk_safe.c - Safe printk for printk-deadlock-prone contexts
@@ -319,6 +319,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 -static DEFINE_PER_CPU(int, printk_context);
 -
 -#ifdef CONFIG_PRINTK_NMI
+-
 -void noinstr printk_nmi_enter(void)
 -{
 -	this_cpu_add(printk_context, PRINTK_NMI_CONTEXT_OFFSET);
@@ -389,7 +390,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 -}
 --- a/kernel/trace/trace.c
 +++ b/kernel/trace/trace.c
-@@ -9325,7 +9325,6 @@ void ftrace_dump(enum ftrace_dump_mode o
+@@ -9404,7 +9404,6 @@ void ftrace_dump(enum ftrace_dump_mode o
  	tracing_off();
  
  	local_irq_save(flags);
@@ -397,7 +398,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  	/* Simulate the iterator */
  	trace_init_global_iter(&iter);
-@@ -9405,7 +9404,6 @@ void ftrace_dump(enum ftrace_dump_mode o
+@@ -9486,7 +9485,6 @@ void ftrace_dump(enum ftrace_dump_mode o
  		atomic_dec(&per_cpu_ptr(iter.array_buffer->data, cpu)->disabled);
  	}
  	atomic_dec(&dump_running);

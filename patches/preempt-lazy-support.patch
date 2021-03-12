@@ -173,7 +173,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  
 --- a/include/linux/sched.h
 +++ b/include/linux/sched.h
-@@ -1877,6 +1877,44 @@ static inline int test_tsk_need_resched(
+@@ -1880,6 +1880,44 @@ static inline int test_tsk_need_resched(
  	return unlikely(test_tsk_thread_flag(tsk,TIF_NEED_RESCHED));
  }
  
@@ -241,7 +241,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  static inline int arch_within_stack_frames(const void * const stack,
 --- a/include/linux/trace_events.h
 +++ b/include/linux/trace_events.h
-@@ -68,6 +68,7 @@ struct trace_entry {
+@@ -70,6 +70,7 @@ struct trace_entry {
  	unsigned char		preempt_count;
  	int			pid;
  	unsigned char		migrate_disable;
@@ -249,7 +249,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  };
  
  #define TRACE_EVENT_TYPE_MAX						\
-@@ -155,9 +156,10 @@ static inline void tracing_generic_entry
+@@ -159,9 +160,10 @@ static inline void tracing_generic_entry
  {
  	entry->preempt_count		= trace_ctx & 0xff;
  	entry->migrate_disable		= (trace_ctx >> 8) & 0xff;
@@ -261,7 +261,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  }
  
  unsigned int tracing_gen_ctx_irq_test(unsigned int irqs_status);
-@@ -170,6 +172,7 @@ enum trace_flag_type {
+@@ -174,6 +176,7 @@ enum trace_flag_type {
  	TRACE_FLAG_SOFTIRQ		= 0x10,
  	TRACE_FLAG_PREEMPT_RESCHED	= 0x20,
  	TRACE_FLAG_NMI			= 0x40,
@@ -409,7 +409,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  	preempt_schedule_common();
  }
  NOKPROBE_SYMBOL(preempt_schedule);
-@@ -5358,6 +5431,9 @@ asmlinkage __visible void __sched notrac
+@@ -5364,6 +5437,9 @@ asmlinkage __visible void __sched notrac
  	if (likely(!preemptible()))
  		return;
  
@@ -419,7 +419,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  	do {
  		/*
  		 * Because the function tracer can trace preempt_count_sub()
-@@ -7194,7 +7270,9 @@ void init_idle(struct task_struct *idle,
+@@ -7556,7 +7632,9 @@ void init_idle(struct task_struct *idle,
  
  	/* Set the preempt count _outside_ the spinlocks! */
  	init_idle_preempt_count(idle, cpu);
@@ -432,7 +432,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  	 */
 --- a/kernel/sched/fair.c
 +++ b/kernel/sched/fair.c
-@@ -4383,7 +4383,7 @@ check_preempt_tick(struct cfs_rq *cfs_rq
+@@ -4365,7 +4365,7 @@ check_preempt_tick(struct cfs_rq *cfs_rq
  	ideal_runtime = sched_slice(cfs_rq, curr);
  	delta_exec = curr->sum_exec_runtime - curr->prev_sum_exec_runtime;
  	if (delta_exec > ideal_runtime) {
@@ -441,7 +441,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  		/*
  		 * The current task ran long enough, ensure it doesn't get
  		 * re-elected due to buddy favours.
-@@ -4407,7 +4407,7 @@ check_preempt_tick(struct cfs_rq *cfs_rq
+@@ -4389,7 +4389,7 @@ check_preempt_tick(struct cfs_rq *cfs_rq
  		return;
  
  	if (delta > ideal_runtime)
@@ -450,7 +450,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  }
  
  static void
-@@ -4550,7 +4550,7 @@ entity_tick(struct cfs_rq *cfs_rq, struc
+@@ -4532,7 +4532,7 @@ entity_tick(struct cfs_rq *cfs_rq, struc
  	 * validating it and just reschedule.
  	 */
  	if (queued) {
@@ -459,7 +459,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  		return;
  	}
  	/*
-@@ -4687,7 +4687,7 @@ static void __account_cfs_rq_runtime(str
+@@ -4669,7 +4669,7 @@ static void __account_cfs_rq_runtime(str
  	 * hierarchy can be throttled
  	 */
  	if (!assign_cfs_rq_runtime(cfs_rq) && likely(cfs_rq->curr))
@@ -468,16 +468,16 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  }
  
  static __always_inline
-@@ -5431,7 +5431,7 @@ static void hrtick_start_fair(struct rq
+@@ -5413,7 +5413,7 @@ static void hrtick_start_fair(struct rq
  
  		if (delta < 0) {
- 			if (rq->curr == p)
+ 			if (task_current(rq, p))
 -				resched_curr(rq);
 +				resched_curr_lazy(rq);
  			return;
  		}
  		hrtick_start(rq, delta);
-@@ -7017,7 +7017,7 @@ static void check_preempt_wakeup(struct
+@@ -6988,7 +6988,7 @@ static void check_preempt_wakeup(struct
  	return;
  
  preempt:
@@ -486,7 +486,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  	/*
  	 * Only set the backward buddy when the current task is still
  	 * on the rq. This can happen when a wakeup gets interleaved
-@@ -10794,7 +10794,7 @@ static void task_fork_fair(struct task_s
+@@ -10775,7 +10775,7 @@ static void task_fork_fair(struct task_s
  		 * 'current' within the tree based on its new key value.
  		 */
  		swap(curr->vruntime, se->vruntime);
@@ -495,9 +495,9 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  	}
  
  	se->vruntime -= cfs_rq->min_vruntime;
-@@ -10821,7 +10821,7 @@ prio_changed_fair(struct rq *rq, struct
+@@ -10802,7 +10802,7 @@ prio_changed_fair(struct rq *rq, struct
  	 */
- 	if (rq->curr == p) {
+ 	if (task_current(rq, p)) {
  		if (p->prio > oldprio)
 -			resched_curr(rq);
 +			resched_curr_lazy(rq);
@@ -506,7 +506,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  }
 --- a/kernel/sched/features.h
 +++ b/kernel/sched/features.h
-@@ -47,6 +47,9 @@ SCHED_FEAT(NONTASK_CAPACITY, true)
+@@ -48,6 +48,9 @@ SCHED_FEAT(NONTASK_CAPACITY, true)
  
  #ifdef CONFIG_PREEMPT_RT
  SCHED_FEAT(TTWU_QUEUE, false)
@@ -536,7 +536,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  
 --- a/kernel/trace/trace.c
 +++ b/kernel/trace/trace.c
-@@ -2605,8 +2605,16 @@ unsigned int tracing_gen_ctx_irq_test(un
+@@ -2614,8 +2614,16 @@ unsigned int tracing_gen_ctx_irq_test(un
  		trace_flags |= TRACE_FLAG_NEED_RESCHED;
  	if (test_preempt_need_resched())
  		trace_flags |= TRACE_FLAG_PREEMPT_RESCHED;
@@ -555,7 +555,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  }
  
  struct ring_buffer_event *
-@@ -3807,15 +3815,17 @@ unsigned long trace_total_entries(struct
+@@ -3875,15 +3883,17 @@ unsigned long trace_total_entries(struct
  
  static void print_lat_help_header(struct seq_file *m)
  {
@@ -582,7 +582,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  }
  
  static void print_event_info(struct array_buffer *buf, struct seq_file *m)
-@@ -3849,14 +3859,16 @@ static void print_func_help_header_irq(s
+@@ -3917,14 +3927,16 @@ static void print_func_help_header_irq(s
  
  	print_event_info(buf, m);
  
@@ -619,7 +619,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  }
 --- a/kernel/trace/trace_output.c
 +++ b/kernel/trace/trace_output.c
-@@ -441,6 +441,7 @@ int trace_print_lat_fmt(struct trace_seq
+@@ -451,6 +451,7 @@ int trace_print_lat_fmt(struct trace_seq
  {
  	char hardsoft_irq;
  	char need_resched;
@@ -627,7 +627,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  	char irqs_off;
  	int hardirq;
  	int softirq;
-@@ -471,6 +472,9 @@ int trace_print_lat_fmt(struct trace_seq
+@@ -481,6 +482,9 @@ int trace_print_lat_fmt(struct trace_seq
  		break;
  	}
  
@@ -637,7 +637,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  	hardsoft_irq =
  		(nmi && hardirq)     ? 'Z' :
  		nmi                  ? 'z' :
-@@ -479,14 +483,20 @@ int trace_print_lat_fmt(struct trace_seq
+@@ -489,14 +493,20 @@ int trace_print_lat_fmt(struct trace_seq
  		softirq              ? 's' :
  		                       '.' ;
  

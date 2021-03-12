@@ -14,7 +14,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/kernel/locking/rtmutex.c
 +++ b/kernel/locking/rtmutex.c
-@@ -1469,12 +1469,33 @@ rt_mutex_fastunlock(struct rt_mutex *loc
+@@ -1451,12 +1451,33 @@ rt_mutex_fastunlock(struct rt_mutex *loc
  		rt_mutex_postunlock(&wake_q);
  }
  
@@ -50,7 +50,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  }
  
  #ifdef CONFIG_DEBUG_LOCK_ALLOC
-@@ -1515,16 +1536,7 @@ EXPORT_SYMBOL_GPL(rt_mutex_lock);
+@@ -1497,16 +1518,7 @@ EXPORT_SYMBOL_GPL(rt_mutex_lock);
   */
  int __sched rt_mutex_lock_interruptible(struct rt_mutex *lock)
  {
@@ -68,7 +68,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  }
  EXPORT_SYMBOL_GPL(rt_mutex_lock_interruptible);
  
-@@ -1541,6 +1553,14 @@ int __sched __rt_mutex_futex_trylock(str
+@@ -1523,6 +1535,14 @@ int __sched __rt_mutex_futex_trylock(str
  	return __rt_mutex_slowtrylock(lock);
  }
  
@@ -83,7 +83,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  /**
   * rt_mutex_trylock - try to lock a rt_mutex
   *
-@@ -1556,10 +1576,7 @@ int __sched rt_mutex_trylock(struct rt_m
+@@ -1538,10 +1558,7 @@ int __sched rt_mutex_trylock(struct rt_m
  {
  	int ret;
  
@@ -95,7 +95,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	if (ret)
  		mutex_acquire(&lock->dep_map, 0, 1, _RET_IP_);
  
-@@ -1567,6 +1584,11 @@ int __sched rt_mutex_trylock(struct rt_m
+@@ -1549,6 +1566,11 @@ int __sched rt_mutex_trylock(struct rt_m
  }
  EXPORT_SYMBOL_GPL(rt_mutex_trylock);
  

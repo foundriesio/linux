@@ -19,7 +19,7 @@ Signed-off-by: John Ogness <john.ogness@linutronix.de>
 
 --- a/arch/powerpc/xmon/xmon.c
 +++ b/arch/powerpc/xmon/xmon.c
-@@ -3017,9 +3017,9 @@ dump_log_buf(void)
+@@ -3013,9 +3013,9 @@ dump_log_buf(void)
  	catch_memory_errors = 1;
  	sync();
  

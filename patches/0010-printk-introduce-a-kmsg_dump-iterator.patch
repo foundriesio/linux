@@ -77,7 +77,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	 * Outside of a panic context the pollers will continue to run,
 --- a/arch/powerpc/xmon/xmon.c
 +++ b/arch/powerpc/xmon/xmon.c
-@@ -3005,7 +3005,7 @@ print_address(unsigned long addr)
+@@ -3001,7 +3001,7 @@ print_address(unsigned long addr)
  static void
  dump_log_buf(void)
  {
@@ -86,7 +86,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	unsigned char buf[128];
  	size_t len;
  
-@@ -3017,9 +3017,9 @@ dump_log_buf(void)
+@@ -3013,9 +3013,9 @@ dump_log_buf(void)
  	catch_memory_errors = 1;
  	sync();
  
@@ -121,7 +121,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	}
 --- a/drivers/hv/vmbus_drv.c
 +++ b/drivers/hv/vmbus_drv.c
-@@ -1362,7 +1362,8 @@ static void vmbus_isr(void)
+@@ -1389,7 +1389,8 @@ static void vmbus_isr(void)
   * buffer and call into Hyper-V to transfer the data.
   */
  static void hv_kmsg_dump(struct kmsg_dumper *dumper,
@@ -131,7 +131,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  {
  	size_t bytes_written;
  	phys_addr_t panic_pa;
-@@ -1377,7 +1378,7 @@ static void hv_kmsg_dump(struct kmsg_dum
+@@ -1404,7 +1405,7 @@ static void hv_kmsg_dump(struct kmsg_dum
  	 * Write dump contents to the page. No need to synchronize; panic should
  	 * be single-threaded.
  	 */

@@ -38,7 +38,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  #endif /* _LINUX_BH_H */
 --- a/kernel/softirq.c
 +++ b/kernel/softirq.c
-@@ -139,6 +139,21 @@ static DEFINE_PER_CPU(struct softirq_ctr
+@@ -141,6 +141,21 @@ static DEFINE_PER_CPU(struct softirq_ctr
  	.lock	= INIT_LOCAL_LOCK(softirq_ctrl.lock),
  };
  

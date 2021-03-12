@@ -16,7 +16,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/kernel/locking/rtmutex.c
 +++ b/kernel/locking/rtmutex.c
-@@ -1136,6 +1136,7 @@ void __lockfunc rt_spin_lock(spinlock_t
+@@ -1118,6 +1118,7 @@ void __lockfunc rt_spin_lock(spinlock_t
  {
  	spin_acquire(&lock->dep_map, 0, 0, _RET_IP_);
  	rt_spin_lock_fastlock(&lock->lock, rt_spin_lock_slowlock);
@@ -24,7 +24,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	migrate_disable();
  }
  EXPORT_SYMBOL(rt_spin_lock);
-@@ -1150,6 +1151,7 @@ void __lockfunc rt_spin_lock_nested(spin
+@@ -1132,6 +1133,7 @@ void __lockfunc rt_spin_lock_nested(spin
  {
  	spin_acquire(&lock->dep_map, subclass, 0, _RET_IP_);
  	rt_spin_lock_fastlock(&lock->lock, rt_spin_lock_slowlock);
@@ -32,7 +32,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	migrate_disable();
  }
  EXPORT_SYMBOL(rt_spin_lock_nested);
-@@ -1159,6 +1161,7 @@ void __lockfunc rt_spin_lock_nest_lock(s
+@@ -1141,6 +1143,7 @@ void __lockfunc rt_spin_lock_nest_lock(s
  {
  	spin_acquire_nest(&lock->dep_map, 0, 0, nest_lock, _RET_IP_);
  	rt_spin_lock_fastlock(&lock->lock, rt_spin_lock_slowlock);
@@ -40,7 +40,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	migrate_disable();
  }
  EXPORT_SYMBOL(rt_spin_lock_nest_lock);
-@@ -1169,6 +1172,7 @@ void __lockfunc rt_spin_unlock(spinlock_
+@@ -1151,6 +1154,7 @@ void __lockfunc rt_spin_unlock(spinlock_
  	/* NOTE: we always pass in '1' for nested, for simplicity */
  	spin_release(&lock->dep_map, _RET_IP_);
  	migrate_enable();
@@ -48,7 +48,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	rt_spin_lock_fastunlock(&lock->lock, rt_spin_lock_slowunlock);
  }
  EXPORT_SYMBOL(rt_spin_unlock);
-@@ -1198,6 +1202,7 @@ int __lockfunc rt_spin_trylock(spinlock_
+@@ -1180,6 +1184,7 @@ int __lockfunc rt_spin_trylock(spinlock_
  	ret = __rt_mutex_trylock(&lock->lock);
  	if (ret) {
  		spin_acquire(&lock->dep_map, 0, 1, _RET_IP_);
@@ -56,7 +56,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  		migrate_disable();
  	}
  	return ret;
-@@ -1212,6 +1217,7 @@ int __lockfunc rt_spin_trylock_bh(spinlo
+@@ -1194,6 +1199,7 @@ int __lockfunc rt_spin_trylock_bh(spinlo
  	ret = __rt_mutex_trylock(&lock->lock);
  	if (ret) {
  		spin_acquire(&lock->dep_map, 0, 1, _RET_IP_);

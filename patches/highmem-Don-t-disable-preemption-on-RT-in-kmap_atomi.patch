@@ -51,7 +51,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  }
  
  unsigned int __nr_free_highpages(void);
-@@ -184,7 +195,10 @@ static inline void __kunmap_local(void *
+@@ -179,7 +190,10 @@ static inline void __kunmap_local(void *
  
  static inline void *kmap_atomic(struct page *page)
  {
@@ -63,7 +63,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	pagefault_disable();
  	return page_address(page);
  }
-@@ -205,7 +219,10 @@ static inline void __kunmap_atomic(void
+@@ -200,7 +214,10 @@ static inline void __kunmap_atomic(void
  	kunmap_flush_on_unmap(addr);
  #endif
  	pagefault_enable();

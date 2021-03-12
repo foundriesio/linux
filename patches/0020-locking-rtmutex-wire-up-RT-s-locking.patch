@@ -5,7 +5,7 @@ Subject: [PATCH 20/22] locking/rtmutex: wire up RT's locking
 Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 ---
- include/linux/mutex.h             |   26 ++++++++++++++++----------
+ include/linux/mutex.h             |   25 +++++++++++++++----------
  include/linux/rwsem.h             |   12 ++++++++++++
  include/linux/spinlock.h          |   12 +++++++++++-
  include/linux/spinlock_api_smp.h  |    4 +++-
@@ -16,7 +16,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  kernel/locking/rwsem.c            |    6 ++++++
  kernel/locking/spinlock.c         |    7 +++++++
  kernel/locking/spinlock_debug.c   |    5 +++++
- 11 files changed, 77 insertions(+), 19 deletions(-)
+ 11 files changed, 76 insertions(+), 19 deletions(-)
 
 --- a/include/linux/mutex.h
 +++ b/include/linux/mutex.h
@@ -58,12 +58,11 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  #define __MUTEX_INITIALIZER(lockname) \
  		{ .owner = ATOMIC_LONG_INIT(0) \
  		, .wait_lock = __SPIN_LOCK_UNLOCKED(lockname.wait_lock) \
-@@ -224,4 +228,6 @@ enum mutex_trylock_recursive_enum {
- extern /* __deprecated */ __must_check enum mutex_trylock_recursive_enum
- mutex_trylock_recursive(struct mutex *lock);
+@@ -199,4 +203,5 @@ extern void mutex_unlock(struct mutex *l
+ 
+ extern int atomic_dec_and_mutex_lock(atomic_t *cnt, struct mutex *lock);
  
 +#endif /* !PREEMPT_RT */
-+
  #endif /* __LINUX_MUTEX_H */
 --- a/include/linux/rwsem.h
 +++ b/include/linux/rwsem.h
@@ -172,7 +171,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
 --- a/kernel/Kconfig.preempt
 +++ b/kernel/Kconfig.preempt
-@@ -59,6 +59,7 @@ config PREEMPT_RT
+@@ -60,6 +60,7 @@ config PREEMPT_RT
  	bool "Fully Preemptible Kernel (Real-Time)"
  	depends on EXPERT && ARCH_SUPPORTS_RT
  	select PREEMPTION
@@ -191,10 +190,10 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  # Avoid recursion lockdep -> KCSAN -> ... -> lockdep.
  KCSAN_SANITIZE_lockdep.o := n
-@@ -15,19 +15,23 @@ CFLAGS_REMOVE_mutex-debug.o = $(CC_FLAGS
- CFLAGS_REMOVE_rtmutex-debug.o = $(CC_FLAGS_FTRACE)
+@@ -16,19 +16,23 @@ CFLAGS_REMOVE_rtmutex-debug.o = $(CC_FLA
  endif
  
+ obj-$(CONFIG_DEBUG_IRQFLAGS) += irqflag-debug.o
 -obj-$(CONFIG_DEBUG_MUTEXES) += mutex-debug.o
  obj-$(CONFIG_LOCKDEP) += lockdep.o
  ifeq ($(CONFIG_PROC_FS),y)

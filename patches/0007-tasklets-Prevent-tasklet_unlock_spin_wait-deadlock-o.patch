@@ -27,7 +27,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/include/linux/interrupt.h
 +++ b/include/linux/interrupt.h
-@@ -663,7 +663,7 @@ enum
+@@ -654,7 +654,7 @@ enum
  	TASKLET_STATE_RUN	/* Tasklet is running (SMP only) */
  };
  
@@ -36,7 +36,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  static inline int tasklet_trylock(struct tasklet_struct *t)
  {
  	return !test_and_set_bit(TASKLET_STATE_RUN, &(t)->state);
-@@ -671,16 +671,8 @@ static inline int tasklet_trylock(struct
+@@ -662,16 +662,8 @@ static inline int tasklet_trylock(struct
  
  void tasklet_unlock(struct tasklet_struct *t);
  void tasklet_unlock_wait(struct tasklet_struct *t);
@@ -56,7 +56,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  static inline void tasklet_unlock(struct tasklet_struct *t) { }
 --- a/kernel/softirq.c
 +++ b/kernel/softirq.c
-@@ -614,6 +614,32 @@ void tasklet_init(struct tasklet_struct
+@@ -616,6 +616,32 @@ void tasklet_init(struct tasklet_struct
  }
  EXPORT_SYMBOL(tasklet_init);
  
@@ -89,7 +89,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  void tasklet_kill(struct tasklet_struct *t)
  {
  	if (in_interrupt())
-@@ -627,7 +653,7 @@ void tasklet_kill(struct tasklet_struct
+@@ -629,7 +655,7 @@ void tasklet_kill(struct tasklet_struct
  }
  EXPORT_SYMBOL(tasklet_kill);
  

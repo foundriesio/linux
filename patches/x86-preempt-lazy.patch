@@ -15,7 +15,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 
 --- a/arch/x86/Kconfig
 +++ b/arch/x86/Kconfig
-@@ -216,6 +216,7 @@ config X86
+@@ -221,6 +221,7 @@ config X86
  	select HAVE_PCI
  	select HAVE_PERF_REGS
  	select HAVE_PERF_USER_STACK_DUMP
@@ -25,7 +25,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  	select HAVE_REGS_AND_STACK_ACCESS_API
 --- a/arch/x86/include/asm/preempt.h
 +++ b/arch/x86/include/asm/preempt.h
-@@ -89,17 +89,48 @@ static __always_inline void __preempt_co
+@@ -90,17 +90,48 @@ static __always_inline void __preempt_co
   * a decrement which hits zero means we have no preempt_count and should
   * reschedule.
   */
@@ -119,7 +119,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  /*
 --- a/include/linux/entry-common.h
 +++ b/include/linux/entry-common.h
-@@ -58,7 +58,7 @@
+@@ -59,7 +59,7 @@
  
  #define EXIT_TO_USER_MODE_WORK						\
  	(_TIF_SIGPENDING | _TIF_NOTIFY_RESUME | _TIF_UPROBE |		\

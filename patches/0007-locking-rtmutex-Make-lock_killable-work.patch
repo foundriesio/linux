@@ -15,7 +15,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/kernel/locking/rtmutex.c
 +++ b/kernel/locking/rtmutex.c
-@@ -1197,18 +1197,13 @@ static int __sched
+@@ -1179,18 +1179,13 @@ static int __sched
  		if (try_to_take_rt_mutex(lock, current, waiter))
  			break;
  

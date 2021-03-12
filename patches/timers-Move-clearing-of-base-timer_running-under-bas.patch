@@ -25,7 +25,7 @@ Cc: stable-rt@vger.kernel.org
 
 --- a/kernel/time/timer.c
 +++ b/kernel/time/timer.c
-@@ -1263,8 +1263,10 @@ static inline void timer_base_unlock_exp
+@@ -1277,8 +1277,10 @@ static inline void timer_base_unlock_exp
  static void timer_sync_wait_running(struct timer_base *base)
  {
  	if (atomic_read(&base->timer_waiters)) {
@@ -36,7 +36,7 @@ Cc: stable-rt@vger.kernel.org
  	}
  }
  
-@@ -1455,14 +1457,14 @@ static void expire_timers(struct timer_b
+@@ -1469,14 +1471,14 @@ static void expire_timers(struct timer_b
  		if (timer->flags & TIMER_IRQSAFE) {
  			raw_spin_unlock(&base->lock);
  			call_timer_fn(timer, fn, baseclk);

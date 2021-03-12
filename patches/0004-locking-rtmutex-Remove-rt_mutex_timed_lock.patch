@@ -27,7 +27,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  extern void rt_mutex_unlock(struct rt_mutex *lock);
 --- a/kernel/locking/rtmutex.c
 +++ b/kernel/locking/rtmutex.c
-@@ -1406,21 +1406,6 @@ rt_mutex_fastlock(struct rt_mutex *lock,
+@@ -1388,21 +1388,6 @@ rt_mutex_fastlock(struct rt_mutex *lock,
  }
  
  static inline int
@@ -49,7 +49,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  rt_mutex_fasttrylock(struct rt_mutex *lock,
  		     int (*slowfn)(struct rt_mutex *lock))
  {
-@@ -1528,37 +1513,6 @@ int __sched __rt_mutex_futex_trylock(str
+@@ -1510,37 +1495,6 @@ int __sched __rt_mutex_futex_trylock(str
  }
  
  /**

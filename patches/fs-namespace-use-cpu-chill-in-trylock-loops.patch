@@ -22,7 +22,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  #include <linux/security.h>
  #include <linux/cred.h>
  #include <linux/idr.h>
-@@ -321,8 +322,11 @@ int __mnt_want_write(struct vfsmount *m)
+@@ -342,8 +343,11 @@ int __mnt_want_write(struct vfsmount *m)
  	 * incremented count after it has set MNT_WRITE_HOLD.
  	 */
  	smp_mb();

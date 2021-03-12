@@ -25,7 +25,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/include/linux/interrupt.h
 +++ b/include/linux/interrupt.h
-@@ -669,17 +669,8 @@ static inline int tasklet_trylock(struct
+@@ -660,17 +660,8 @@ static inline int tasklet_trylock(struct
  	return !test_and_set_bit(TASKLET_STATE_RUN, &(t)->state);
  }
  
@@ -53,9 +53,9 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  #include <linux/irq.h>
 +#include <linux/wait_bit.h>
  
- #define CREATE_TRACE_POINTS
- #include <trace/events/irq.h>
-@@ -619,6 +620,23 @@ void tasklet_kill(struct tasklet_struct
+ #include <asm/softirq_stack.h>
+ 
+@@ -621,6 +622,23 @@ void tasklet_kill(struct tasklet_struct
  }
  EXPORT_SYMBOL(tasklet_kill);
  

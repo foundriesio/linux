@@ -16,7 +16,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/include/linux/interrupt.h
 +++ b/include/linux/interrupt.h
-@@ -716,8 +716,7 @@ static inline void tasklet_disable_in_at
+@@ -707,8 +707,7 @@ static inline void tasklet_disable_in_at
  static inline void tasklet_disable(struct tasklet_struct *t)
  {
  	tasklet_disable_nosync(t);

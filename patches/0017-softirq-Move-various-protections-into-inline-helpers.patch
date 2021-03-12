@@ -16,7 +16,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/kernel/softirq.c
 +++ b/kernel/softirq.c
-@@ -205,6 +205,32 @@ void __local_bh_enable_ip(unsigned long
+@@ -207,6 +207,32 @@ void __local_bh_enable_ip(unsigned long
  }
  EXPORT_SYMBOL(__local_bh_enable_ip);
  
@@ -49,7 +49,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  static inline void invoke_softirq(void)
  {
  	if (ksoftirqd_running(local_softirq_pending()))
-@@ -317,7 +343,7 @@ asmlinkage __visible void __softirq_entr
+@@ -319,7 +345,7 @@ asmlinkage __visible void __softirq_entr
  
  	pending = local_softirq_pending();
  
@@ -58,7 +58,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	in_hardirq = lockdep_softirq_start();
  	account_softirq_enter(current);
  
-@@ -368,8 +394,7 @@ asmlinkage __visible void __softirq_entr
+@@ -370,8 +396,7 @@ asmlinkage __visible void __softirq_entr
  
  	account_softirq_exit(current);
  	lockdep_softirq_end(in_hardirq);
@@ -68,7 +68,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	current_restore_flags(old_flags, PF_MEMALLOC);
  }
  
-@@ -464,7 +489,7 @@ inline void raise_softirq_irqoff(unsigne
+@@ -466,7 +491,7 @@ inline void raise_softirq_irqoff(unsigne
  	 * Otherwise we wake up ksoftirqd to make sure we
  	 * schedule the softirq soon.
  	 */
@@ -77,7 +77,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  		wakeup_softirqd();
  }
  
-@@ -692,18 +717,18 @@ static int ksoftirqd_should_run(unsigned
+@@ -694,18 +719,18 @@ static int ksoftirqd_should_run(unsigned
  
  static void run_ksoftirqd(unsigned int cpu)
  {

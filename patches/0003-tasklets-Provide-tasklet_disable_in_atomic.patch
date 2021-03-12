@@ -19,7 +19,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/include/linux/interrupt.h
 +++ b/include/linux/interrupt.h
-@@ -680,10 +680,21 @@ static inline void tasklet_unlock_wait(s
+@@ -671,10 +671,21 @@ static inline void tasklet_unlock_wait(s
  	while (test_bit(TASKLET_STATE_RUN, &t->state))
  		cpu_relax();
  }
@@ -41,7 +41,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  #endif
  
  extern void __tasklet_schedule(struct tasklet_struct *t);
-@@ -708,6 +719,17 @@ static inline void tasklet_disable_nosyn
+@@ -699,6 +710,17 @@ static inline void tasklet_disable_nosyn
  	smp_mb__after_atomic();
  }
  

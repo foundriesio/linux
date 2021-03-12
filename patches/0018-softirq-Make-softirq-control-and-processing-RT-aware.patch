@@ -39,7 +39,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  #include <linux/mm.h>
  #include <linux/notifier.h>
  #include <linux/percpu.h>
-@@ -101,20 +102,189 @@ EXPORT_PER_CPU_SYMBOL_GPL(hardirq_contex
+@@ -103,20 +104,189 @@ EXPORT_PER_CPU_SYMBOL_GPL(hardirq_contex
  #endif
  
  /*
@@ -235,7 +235,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  void __local_bh_disable_ip(unsigned long ip, unsigned int cnt)
  {
  	unsigned long flags;
-@@ -275,6 +445,8 @@ asmlinkage __visible void do_softirq(voi
+@@ -277,6 +447,8 @@ asmlinkage __visible void do_softirq(voi
  	local_irq_restore(flags);
  }
  
@@ -244,7 +244,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  /*
   * We restart softirq processing for at most MAX_SOFTIRQ_RESTART times,
   * but break the loop if need_resched() is set or after 2 ms.
-@@ -379,8 +551,10 @@ asmlinkage __visible void __softirq_entr
+@@ -381,8 +553,10 @@ asmlinkage __visible void __softirq_entr
  		pending >>= softirq_bit;
  	}
  

@@ -16,43 +16,17 @@ highmem-Don-t-disable-preemption-on-RT-in-kmap_atomi.patch
 # 87lfea7gw8.fsf@nanos.tec.linutronix.de
 timers-Move-clearing-of-base-timer_running-under-bas.patch
 
-# 20210213075831.10852-2-song.bao.hua@hisilicon.com
-0001-mm-zswap-add-a-flag-to-indicate-if-zpool-can-do-slee.patch
-0002-mm-set-the-sleep_mapped-to-true-for-zbud-and-z3fold.patch
-
 ############################################################
 # POSTED
 ############################################################
-# blk-mq
-# linux-block 0a2efafbb1c752a7041652445bc1232114409633+
-blk-mq-Always-complete-remote-completions-requests-i.patch
-blk-mq-Use-llist_head-for-blk_cpu_done.patch
 
 # 20201110113848.801379-1-bigeasy@linutronix.de
 0001-kthread-Move-prio-affinite-change-into-the-newly-cre.patch
 0002-genirq-Move-prio-assignment-into-the-newly-created-t.patch
 
 # 20201122201904.30940-1-valentin.schneider@arm.com
+# ping
 notifier-Make-atomic_notifiers-use-raw_spinlock.patch
-
-# RCU
-# 20201215141649.796472-1-bigeasy@linutronix.de
-# rcu/dev 1edaf2221f8f193e78206dec914d15bf0932bb81+
-0001-rcu-Make-RCU_BOOST-default-on-CONFIG_PREEMPT_RT.patch
-0002-rcu-Unconditionally-use-rcuc-threads-on-PREEMPT_RT.patch
-0003-rcu-Enable-rcu_normal_after_boot-unconditionally-for.patch
-0004-doc-Update-RCU-s-requirements-page-about-the-PREEMPT.patch
-0005-doc-Use-CONFIG_PREEMPTION.patch
-
-# 20210203160549.480454190@goodmis.org
-# ftrace/for-next 36590c50b2d0729952511129916beeea30d31d81+
-0001-tracing-Merge-irqflags-preempt-counter.patch
-0002-tracing-Inline-tracing_gen_ctx_flags.patch
-0003-tracing-Use-in_serving_softirq-to-deduct-softirq-sta.patch
-0004-tracing-Remove-NULL-check-from-current-in-tracing_ge.patch
-
-# 87ft48doti.fsf@nanos.tec.linutronix.de
-tpm-remove-tpm_dev_wq_lock.patch
 
 # 20210219165648.2505482-1-bigeasy@linutronix.de
 powerpc-mm-Move-the-linear_mapping_mutex-to-the-ifde.patch
@@ -145,10 +119,6 @@ smp-Wake-ksoftirqd-on-PREEMPT_RT-instead-do_softirq.patch
 0018-softirq-Make-softirq-control-and-processing-RT-aware.patch
 0019-tick-sched-Prevent-false-positive-softirq-pending-wa.patch
 0020-rcu-Prevent-false-positive-softirq-warning-on-RT.patch
-
-# 20210202170104.1909200-1-bigeasy@linutronix.de
-0001-chelsio-cxgb-Replace-the-workqueue-with-threaded-int.patch
-0002-chelsio-cxgb-Disable-the-card-on-error-in-threaded-i.patch
 
 # RT-MUTEX
 0001-locking-rtmutex-Remove-cruft.patch
@@ -291,6 +261,9 @@ ptrace-fix-ptrace-vs-tasklist_lock-race.patch
 ptrace-fix-ptrace_unfreeze_traced-race-with-rt-lock.patch
 
 # RCU
+# 20210212192059.wytqwdf4qm4rnq3d@linutronix.de
+# 161365856280.719838.12423085451287256713.stgit@devnote2
+rcu-Delay-RCU-selftests.patch
 locking-Make-spinlock_t-and-rwlock_t-a-RCU-section-o.patch
 # atomic BH is longer doable in current softirq implemention.
 rcutorture-Avoid-problematic-critical-section-nestin.patch
@@ -324,8 +297,6 @@ irqwork-push_most_work_into_softirq_context.patch
 
 # crypto drivers
 # Revisit
-x86-crypto-reduce-preempt-disabled-regions.patch
-crypto-Reduce-preempt-disabled-regions-more-algos.patch
 crypto-limit-more-FPU-enabled-sections.patch
 crypto-cryptd-add-a-lock-instead-preempt_disable-loc.patch
 

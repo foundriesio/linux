@@ -45,7 +45,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
 --- a/fs/dcache.c
 +++ b/fs/dcache.c
-@@ -2525,21 +2525,24 @@ static inline void end_dir_add(struct in
+@@ -2551,21 +2551,24 @@ static inline void end_dir_add(struct in
  
  static void d_wait_lookup(struct dentry *dentry)
  {
@@ -81,7 +81,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  {
  	unsigned int hash = name->hash;
  	struct hlist_bl_head *b = in_lookup_hash(parent, hash);
-@@ -2654,7 +2657,7 @@ void __d_lookup_done(struct dentry *dent
+@@ -2680,7 +2683,7 @@ void __d_lookup_done(struct dentry *dent
  	hlist_bl_lock(b);
  	dentry->d_flags &= ~DCACHE_PAR_LOOKUP;
  	__hlist_bl_del(&dentry->d_u.d_in_lookup_hash);
@@ -103,7 +103,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  		/*
 --- a/fs/namei.c
 +++ b/fs/namei.c
-@@ -1520,7 +1520,7 @@ static struct dentry *__lookup_slow(cons
+@@ -1602,7 +1602,7 @@ static struct dentry *__lookup_slow(cons
  {
  	struct dentry *dentry, *old;
  	struct inode *inode = dir->d_inode;
@@ -112,7 +112,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  	/* Don't go there if it's already dead */
  	if (unlikely(IS_DEADDIR(inode)))
-@@ -3016,7 +3016,7 @@ static struct dentry *lookup_open(struct
+@@ -3131,7 +3131,7 @@ static struct dentry *lookup_open(struct
  	struct dentry *dentry;
  	int error, create_error = 0;
  	umode_t mode = op->mode;
@@ -163,7 +163,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	spin_lock(&dentry->d_lock);
 --- a/fs/proc/base.c
 +++ b/fs/proc/base.c
-@@ -96,6 +96,7 @@
+@@ -95,6 +95,7 @@
  #include <linux/posix-timers.h>
  #include <linux/time_namespace.h>
  #include <linux/resctrl.h>
@@ -171,7 +171,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  #include <trace/events/oom.h>
  #include "internal.h"
  #include "fd.h"
-@@ -2038,7 +2039,7 @@ bool proc_fill_cache(struct file *file,
+@@ -2037,7 +2038,7 @@ bool proc_fill_cache(struct file *file,
  
  	child = d_hash_and_lookup(dir, &qname);
  	if (!child) {

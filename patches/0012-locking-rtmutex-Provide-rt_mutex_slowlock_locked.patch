@@ -13,7 +13,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/kernel/locking/rtmutex.c
 +++ b/kernel/locking/rtmutex.c
-@@ -1234,35 +1234,16 @@ static void rt_mutex_handle_deadlock(int
+@@ -1216,35 +1216,16 @@ static void rt_mutex_handle_deadlock(int
  	}
  }
  
@@ -55,7 +55,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  	set_current_state(state);
  
-@@ -1270,16 +1251,16 @@ rt_mutex_slowlock(struct rt_mutex *lock,
+@@ -1252,16 +1233,16 @@ rt_mutex_slowlock(struct rt_mutex *lock,
  	if (unlikely(timeout))
  		hrtimer_start_expires(&timeout->timer, HRTIMER_MODE_ABS);
  
@@ -76,7 +76,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	}
  
  	/*
-@@ -1287,6 +1268,34 @@ rt_mutex_slowlock(struct rt_mutex *lock,
+@@ -1269,6 +1250,34 @@ rt_mutex_slowlock(struct rt_mutex *lock,
  	 * unconditionally. We might have to fix that up.
  	 */
  	fixup_rt_mutex_waiters(lock);
