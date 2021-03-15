@@ -1,0 +1,34 @@
+* Telechips Watchdog Timer for using PMU Watchdog.
+
+The watchdog timer used for reset the Main processor on TCC in the event
+of software malfunction. Watchdog on TCC Main processor use PMU Watchdog and
+SMU Timer. 
+
+Required properties:
+- compatible: Must be "telechips,wdt".
+- reg: Physical base address of the watchdog control register and timer control
+	register. 
+- clocks: Clock id for using watchdog timer.
+- clock-frequency: Clock frequency for watchdog timer.
+- interrupts: Interrupt # for watchdog kick timer(SMU timer)
+- have-rstcnt-reg: Chipset that has reset counter register which released after
+	TCC899x
+
+Example:
+        watchdog@144000D0 {
+                compatible = "telechips,wdt";
+                reg = <0x144000D8 0x4>, /* wdt_ctrl */
+                      <0x144000DC 0x4>, /* wdt_cnt */
+                      <0x144000E4 0x4>, /* wdt_clear */
+                      <0x14300070 0xC>, /* wdt_timer */
+                      <0x14300060 0x4>; /* wdt_int_sts */
+                clocks = <&clk_peri PERI_TCX &clk_peri PERI_TCT>;
+                clock-frequency = <24000000>;
+                interrupts = <GIC_SPI 39 0>;
+                int-offset = <6>;
+                clear-bit = <0>;
+
+                /* indicates separated reset count register later TCC899x */
+                have-rstcnt-reg;
+                /* status = "disabled"; */
+        };
