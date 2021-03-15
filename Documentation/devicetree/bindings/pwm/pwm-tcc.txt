@@ -1,0 +1,37 @@
+Telechips PWM drivers
+
+Required properties:
+- compatible		: "telechips,pwm"
+- reg				: Physical base address and size of the controller's register area.
+- tcc,pwm-number	: Should be 4. Total number of ports supported by the chip.
+					  Refer to Full Specification for ports infomation.	
+- #pwm-cells		: Should be 2. See pwm.txt in this directory for a description of
+  the cells format.
+- clocks			: phandle to input clock.
+- clock-frequency	: Desired PWM frequency in Hz.
+
+- pinctrl-names		: Sould be "default".
+- pinctrl-0			: phandle to pinctrl function.
+- gfb-port			: Port mapping number for PDM0, PDM1, PDM2, PDM3
+- status			: Activation status
+
+Note: You can control PWM unit in a simple way by automatically generating a
+LUT using a Linux Kernel generic LDE driver. Refer to the "Application Not for
+PWM" documentation.
+
+Example:
+
+pwm:pwm@16030000 { /* pwm */
+		compatible = "telechips,pwm";
+		reg = <0x16030000 0x90 0x1605104C 0x4 0x16051094 0x4>;
+		tcc,pwm-number = <4>;
+		#pwm-cells = <2>;
+		clocks = <&clk_peri PERI_PDM &clk_io IOBUS_PWM>;
+		clock-frequency = <400000000>;
+
+		pinctrl-names ="default"; 
+		pinctrl-0 = <&led_pin_a>; 
+		gfb-port = <52 0 0 0>;     //port mapping number for PDM0, PDM1, PDM2, PDM3 
+		status = "okay";
+};
+
