@@ -84,7 +84,8 @@ static bool tcc_sc_ufs_transfer_req_compl(struct tcc_sc_ufs_host *host)
 		return (bool)true;
 	}
 
-	dev_dbg(host->dev, "%s : sg_count = %d\n", __func__, cmd->sdb.table.nents);
+	dev_dbg(host->dev, "%s : sg_count = %d\n",
+			__func__, cmd->sdb.table.nents);
 	scsi_dma_unmap(cmd);
 	cmd->result = 0;
 	/* Mark completed command as NULL in LRB */
@@ -109,8 +110,7 @@ static uint32_t tcc_sc_ufs_scsi_to_upiu_lun(uint32_t scsi_lun)
 	if (scsi_is_wlun(scsi_lun) != 0) {
 		return ((scsi_lun & (uint32_t)UFS_UPIU_MAX_UNIT_NUM_ID)
 			| (uint32_t)(0x80/*UFS_UPIU_WLUN_ID*/));
-	}
-	else {
+	} else {
 		return (scsi_lun & (uint32_t)UFS_UPIU_MAX_UNIT_NUM_ID);
 	}
 }
@@ -133,19 +133,20 @@ static int tcc_sc_ufs_queuecommand_sc(struct Scsi_Host *host, struct scsi_cmnd *
 	struct tcc_sc_fw_ufs_cmd sc_cmd;
 	uint32_t direction;
 
-	if(host == NULL) {
-		(void)pr_err("%s: [ERROR][TCC_SC_UFS] scsi_host is null\n", __func__);
+	if (host == NULL) {
+		(void)pr_err("%s: [ERROR][TCC_SC_UFS] scsi_host is null\n",
+				__func__);
 		return -ENODEV;
 	}
 
 	sc_host = shost_priv(host);
-	if(sc_host == NULL) {
+	if (sc_host == NULL) {
 		(void)pr_err("%s: [ERROR][TCC_SC_UFS] sc_host is null\n",
 		       __func__);
 		return -ENODEV;
 	}
 
-	if(cmd == NULL) {
+	if (cmd == NULL) {
 		dev_err(sc_host->dev, "%s: [ERROR][TCC_SC_UFS] scsi_cmd is null\n",
 		       __func__);
 		return -ENODEV;
@@ -263,7 +264,7 @@ static void tcc_sc_ufs_slave_destroy(struct scsi_device *sdev)
 	if(sdev == NULL) {
 		(void)pr_err("%s:[ERROR]No scsi dev\n", __func__);
 	}
-	return ;
+	return;
 }
 
 static int tcc_sc_ufs_change_queue_depth(struct scsi_device *sdev, int depth)
@@ -293,7 +294,7 @@ static int tcc_sc_ufs_change_queue_depth(struct scsi_device *sdev, int depth)
 
 static int tcc_sc_ufs_eh_device_reset_handler(struct scsi_cmnd *cmd)
 {
-	if(cmd == NULL) {
+	if (cmd == NULL) {
 		(void)pr_err("%s:[ERROR] No scsi command\n", __func__);
 	}
 	
@@ -355,12 +356,12 @@ static int tcc_sc_ufs_probe(struct platform_device *pdev)
 	}
 
 	handle = tcc_sc_fw_get_handle(fw_np);
-	if(handle == NULL) {
+	if (handle == NULL) {
 		dev_err(&pdev->dev, "[ERROR][TCC_SC_ufs] Failed to get handle\n");
 		return -ENODEV;
 	}
 
-	if(handle->ops.ufs_ops->request_command == NULL) {
+	if (handle->ops.ufs_ops->request_command == NULL) {
 		dev_err(&pdev->dev, "[ERROR][TCC_SC_ufs] request_command callback function is not registered\n");
 		return -ENODEV;
 	}
@@ -412,7 +413,7 @@ static int tcc_sc_ufs_probe(struct platform_device *pdev)
 
 static int tcc_sc_ufs_remove(struct platform_device *pdev)
 {
-	if(pdev == NULL) {
+	if (pdev == NULL) {
 		(void)pr_err("%s:pdev is null\n", __func__);
 		return -ENODEV;
 	}
