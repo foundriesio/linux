@@ -2192,10 +2192,10 @@ void vout_m2m_display_update(struct tcc_vout_device *vout, struct v4l2_buffer *b
 			buf->m.planes[MPLANE_VID].reserved[VID_CROP_LEFT], buf->m.planes[MPLANE_VID].reserved[VID_CROP_TOP],
 			buf->m.planes[MPLANE_VID].reserved[VID_CROP_WIDTH], buf->m.planes[MPLANE_VID].reserved[VID_CROP_HEIGHT]);
 
-		vout->crop_src.left = buf->m.planes[MPLANE_VID].reserved[VID_CROP_LEFT];
-		vout->crop_src.top = buf->m.planes[MPLANE_VID].reserved[VID_CROP_TOP];
-		vout->crop_src.width = buf->m.planes[MPLANE_VID].reserved[VID_CROP_WIDTH];
-		vout->crop_src.height = buf->m.planes[MPLANE_VID].reserved[VID_CROP_HEIGHT];
+		vout->crop_src.left = ROUND_UP_2(buf->m.planes[MPLANE_VID].reserved[VID_CROP_LEFT]);
+		vout->crop_src.top = ROUND_UP_2(buf->m.planes[MPLANE_VID].reserved[VID_CROP_TOP]);
+		vout->crop_src.width = ROUND_UP_2(buf->m.planes[MPLANE_VID].reserved[VID_CROP_WIDTH]);
+		vout->crop_src.height = ROUND_UP_2(buf->m.planes[MPLANE_VID].reserved[VID_CROP_HEIGHT]);
 
 		tcc_get_base_address(vioc->m2m_rdma.fmt, base0,
 			vioc->m2m_rdma.y_stride ? vioc->m2m_rdma.y_stride : vioc->m2m_rdma.width,
