@@ -1,0 +1,142 @@
+* Telechips Clock driver
+
+The Telechips clock driver supports users to configure their clock on IP by
+using Telechips clock driver.
+
+Required Properties
+- compatible: Must contain following compatibles:
+	"telechips,clk-peri" - compatible that contains peripheral frequency
+		control logic.
+	"telechips,clk-fbus" - compatible that contains bus frequency control
+		logic.
+	"telechips,clk-iobus" - compatible that contains clock en/disable, and
+		swreset control logic for iobus.
+	"telechips,clk-hsiobus" - compatible that contains clock en/disable, and
+		swreset control logic for hsiobus.
+	"telechips,clk-ddibus" - compatible that contains clock en/disable, and
+		swreset control logic for ddibus.
+	"telechips,clk-vpubus" - compatible that contains clock en/disable, and
+		swreset control logic for vpubus.
+- clock-indices: clock id number used by entire Telechips clock driver. Refer
+	"include/dt-bindings/clock/telechips,[package_name]-clks.h".
+- clock-output-names: clock name used by sysfs.
+- telechips,clock-flags: for more information, refer
+	 "include/dt-bindings/clock/telechips,clk-common.h".
+
+Example:
+            clk_peri: clk@14000400 {
+                    compatible = "telechips,clk-peri";
+                    #clock-cells = <1>;
+                    clock-indices =
+                            <PERI_TCX>, <PERI_TCT>, <PERI_TCZ>,
+                            <PERI_LCDTIMER>, <PERI_LCD0>, <PERI_LCD1>,
+                            <PERI_LCD2>, <PERI_CPUINTERFACE0>,
+                            <PERI_CPUINTERFACE1>, <PERI_LCD3>, <PERI_GMAC>,
+                            <PERI_GMAC_PTP>, <PERI_PCIE0_AUX>,
+                            <PERI_PCIE0_REF_EXT>, <PERI_PCIE0_PHY_CR_CLK>,
+                            <PERI_PCIE1_AUX>, <PERI_PCIE1_REF_EXT>,
+                            <PERI_PCIE1_PHY_CR_CLK>, <PERI_RMT>, <PERI_GPSB3>,
+                            <PERI_SDMMC1>, <PERI_SDMMC2>, <PERI_CEC1_CORE>,
+                            <PERI_MDAI0>, <PERI_MFLT0_DAI>, <PERI_MSPDIF0>,
+                            <PERI_SRCH0_CORE>, <PERI_SRCH0_FILTER>,
+                            <PERI_SRCH0_SPDIF>, <PERI_PDM>, <PERI_CEC1_SFR>,
+                            <PERI_TSADC>, <PERI_I2C0>, <PERI_I2C1>, <PERI_I2C2>,
+                            <PERI_I2C3>, <PERI_UART0>, <PERI_UART1>,
+                            <PERI_UART2>, <PERI_UART3>, <PERI_MDAI1>,
+                            <PERI_MFLT1_DAI>, <PERI_MSPDIF1>, <PERI_MDAI2>,
+                            <PERI_GPSB0>, <PERI_GPSB1>, <PERI_GPSB2>,
+                            <PERI_GPSBMS0>, <PERI_GPSBMS1>, <PERI_GPSBMS2>,
+                            <PERI_UART4>, <PERI_AUX0_INPUT>,
+                            <PERI_AUX1_INPUT>, <PERI_MFLT2_DAI>,
+                            <PERI_AUX0_OUTPUT>, <PERI_AUX1_OUTPUT>,
+                            <PERI_MSPDIF2>, <PERI_IC_TC>, <PERI_SRCH1_CORE>,
+                            <PERI_SRCH1_FILTER>, <PERI_SRCH1_SPDIF>,
+                            <PERI_SRCH2_CORE>, <PERI_SRCH2_FILTER>,
+                            <PERI_SRCH2_SPDIF>, <PERI_SRCH3_CORE>,
+                            <PERI_SRCH3_FILTER>, <PERI_SRCH3_SPDIF>,
+                            <PERI_UART5>, <PERI_UART6>, <PERI_UART7>,
+                            <PERI_UART8>, <PERI_MDAI3>, <PERI_MFLT3_DAI>,
+                            <PERI_MSPDIF3>, <PERI_TSRX0>, <PERI_TSRX1>,
+                            <PERI_TSRX2>, <PERI_TSRX3>, <PERI_TSRX4>,
+                            <PERI_TSRX5>, <PERI_TSRX6>, <PERI_TSRX7>,
+                            <PERI_TSRX8>, <PERI_CB_WDT>, <PERI_OUT0>,
+                            <PERI_OUT1>, <PERI_OUT2>, <PERI_OUT3>, <PERI_OUT4>,
+                            <PERI_OUT5>, <PERI_HSMB>;
+
+			clock-output-names =
+                            "peri_tcx", "peri_tct", "peri_tcz",
+                            "peri_lcdtimer", "peri_lcd0", "peri_lcd1",
+                            "peri_lcd2", "peri_cpuinterface0",
+                            "peri_cpuinterface1", "peri_lcd3", "peri_gmac",
+                            "peri_gmac_ptp", "peri_pcie0_aux",
+                            "peri_pcie0_ref_ext", "peri_pcie0_phy_cr_clk",
+                            "peri_pcie1_aux", "peri_pcie1_ref_ext",
+                            "peri_pcie1_phy_cr_clk", "peri_rmt", "peri_gpsb3",
+                            "peri_sdmmc1", "peri_sdmmc2", "peri_cec1_core",
+                            "peri_mdai0", "peri_mflt0_dai", "peri_mspdif0",
+                            "peri_srch0_core", "peri_srch0_filter",
+                            "peri_srch0_spdif", "peri_pdm", "peri_cec1_sfr",
+                            "peri_tsadc", "peri_i2c0", "peri_i2c1", "peri_i2c2",
+                            "peri_i2c3", "peri_uart0", "peri_uart1",
+                            "peri_uart2", "peri_uart3", "peri_mdai1",
+                            "peri_mflt1_dai", "peri_mspdif1", "peri_mdai2",
+                            "peri_gpsb0", "peri_gpsb1", "peri_gpsb2",
+                            "peri_gpsbms0", "peri_gpsbms1", "peri_gpsbms2",
+                            "peri_uart4", "peri_aux0_input",
+                            "peri_aux1_input", "peri_mflt2_dai",
+                            "peri_aux0_output", "peri_aux1_output",
+                            "peri_mspdif2", "peri_ic_tc", "peri_srch1_core",
+                            "peri_srch1_filter", "peri_srch1_spdif",
+                            "peri_srch2_core", "peri_srch2_filter",
+                            "peri_srch2_spdif", "peri_srch3_core",
+                            "peri_srch3_filter", "peri_srch3_spdif",
+                            "peri_uart5", "peri_uart6", "peri_uart7",
+                            "peri_uart8", "peri_mdai3", "peri_mflt3_dai",
+                            "peri_mspdif3", "peri_tsrx0", "peri_tsrx1",
+                            "peri_tsrx2", "peri_tsrx3", "peri_tsrx4",
+                            "peri_tsrx5", "peri_tsrx6", "peri_tsrx7",
+                            "peri_tsrx8", "peri_cb_wdt", "peri_out0",
+                            "peri_out1", "peri_out2", "peri_out3", "peri_out4",
+                            "peri_out5", "peri_hsmb";
+
+                        telechips,clock-flags =
+                            <CLK_IGNORE_UNUSED>,    /* PERI_TCX */
+                            <CLK_IGNORE_UNUSED>,    /* PERI_TCT */
+                            <CLK_IGNORE_UNUSED>,    /* PERI_TCZ */
+                            <CLK_IGNORE_UNUSED>,    /* PERI_LCDTIMER */
+                            <CLK_IGNORE_UNUSED>,    /* PERI_LCD0 */
+                            <CLK_IGNORE_UNUSED>,    /* PERI_LCD1 */
+                            <CLK_IGNORE_UNUSED>,    /* PERI_LCD2 */
+                            <CLK_IGNORE_UNUSED>,    /* PERI_CPUINTERFACE0 */
+                            <CLK_IGNORE_UNUSED>,    /* PERI_CPUINTERFACE1 */
+                            <CLK_IGNORE_UNUSED>,    /* PERI_LCD3 */
+                            <CLK_IGNORE_UNUSED>,    /* PERI_GMAC */
+                            <CLK_IGNORE_UNUSED>,    /* PERI_GMAC_PTP */
+                            <CLK_IGNORE_UNUSED>,    /* PERI_PCIE0_AUX */
+                            <CLK_IGNORE_UNUSED>,    /* PERI_PCIE0_REF_EXT */
+                            <CLK_IGNORE_UNUSED>,    /* PERI_PCIE0_PHY_CR_CLK */
+                            <CLK_IGNORE_UNUSED>,    /* PERI_PCIE1_AUX */
+                            <CLK_IGNORE_UNUSED>,    /* PERI_PCIE1_REF_EXT */
+                            <CLK_IGNORE_UNUSED>,    /* PERI_PCIE1_PHY_CR_CLK */
+                            <CLK_IGNORE_UNUSED>,    /* PERI_RMT */
+                            <CLK_IGNORE_UNUSED>,    /* PERI_GPSB3 */
+                            <CLK_IGNORE_UNUSED>,    /* PERI_SDMMC1 */
+                            <CLK_IGNORE_UNUSED>,    /* PERI_SDMMC2 */
+                            <CLK_IGNORE_UNUSED>,    /* PERI_CEC1_CORE */
+                            <CLK_IGNORE_UNUSED>,    /* PERI_MDAI0 */
+                            <CLK_IGNORE_UNUSED>,    /* PERI_MFLT0_DAI */
+...
+
+Example 1 : An example of a driver that want to use Telechips clock driver API
+	on kernel.
+
+        uart1: serial@16610000 {
+		...
+                clocks = <&clk_peri PERI_UART1>, <&clk_io IOBUS_UART1>;
+		...
+        };
+
+	In this case, add attribute for 'clocks' that already registered on
+	"clk-*" nodes. "PERI_UART1" is representing ckc register of UART1, and
+	"IOBUS_UART1" is representing clock en/disable register field of UART1,
+	which exists on IOBUS configuration register.
