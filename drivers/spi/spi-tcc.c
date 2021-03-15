@@ -1458,6 +1458,29 @@ static int32_t tcc_spi_init(struct tcc_spi *tccspi)
 	uint32_t ac_val[2] = {0,};
 	struct device_node *np = tccspi->dev->of_node;
 
+	if (tccspi->pd->hclk == NULL)  {
+		return -ENOMEM;
+	}
+
+	if (tccspi->pd->pclk == NULL)  {
+		return -ENOMEM;
+	}
+
+	/* Enable clock */
+	status = clk_prepare_enable(tccspi->pd->hclk);
+	if (status < 0) {
+		dev_err(tccspi->dev, "[ERROR][SPI] Failed to enable hclk\n");
+		clk_disable_unprepare(tccspi->pd->hclk);
+		return status;
+	}
+	status = clk_prepare_enable(tccspi->pd->pclk);
+	if (status < 0) {
+		dev_err(tccspi->dev, "[ERROR][SPI] Failed to enable pclk\n");
+		clk_disable_unprepare(tccspi->pd->pclk);
+		clk_disable_unprepare(tccspi->pd->hclk);
+		return status;
+	}
+
 	/* Check CONTM support */
 	TCC_GPSB_BITSET(tccspi->base + TCC_GPSB_EVTCTRL,
 			TCC_GPSB_EVTCTRL_CONTM(0x3U));
@@ -1507,25 +1530,6 @@ static int32_t tcc_spi_init(struct tcc_spi *tccspi)
 
 	/* Set port configuration */
 	tcc_spi_set_port(tccspi);
-
-	/* Enable clock */
-	if (tccspi->pd->hclk != NULL)  {
-		status = clk_prepare_enable(tccspi->pd->hclk);
-		if (status < 0) {
-			dev_err(tccspi->dev, "[ERROR][SPI] Failed to enable hclk\n");
-			clk_disable_unprepare(tccspi->pd->hclk);
-			return status;
-		}
-	}
-	if (tccspi->pd->pclk != NULL)  {
-		status = clk_prepare_enable(tccspi->pd->pclk);
-		if (status < 0) {
-			dev_err(tccspi->dev, "[ERROR][SPI] Failed to enable pclk\n");
-			clk_disable_unprepare(tccspi->pd->pclk);
-			clk_disable_unprepare(tccspi->pd->hclk);
-			return status;
-		}
-	}
 
 	return 0;
 }
