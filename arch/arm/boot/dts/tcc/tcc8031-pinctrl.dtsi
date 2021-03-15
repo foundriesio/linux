@@ -1184,13 +1184,11 @@
 	uart20_data: uart20_data {
 		telechips,pins = "gpc-16", "gpc-17";
 		telechips,pin-function = <7>;
-		telechips,pull-up;
 	};
 
 	uart20_rtscts: uart20_rtscts {
 		telechips,pins = "gpc-18", "gpc-19";
 		telechips,pin-function = <7>;
-		telechips,pull-up;
 	};
 
 	uart21_data: uart21_data {
