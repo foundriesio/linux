@@ -19,7 +19,7 @@
 	#size-cells = <1>;
 
 	chosen {
-		bootargs = "vmalloc=480M cgroup_disable=memory console=ttyAMA0,115200n8 initrd=0x87000000,30M";
+		bootargs = "vmalloc=480M cgroup_disable=memory console=ttyAMA0,115200n8 initrd=0x87000000,22M quiet";
 		stdout-path = &uart0;
 	};
 
