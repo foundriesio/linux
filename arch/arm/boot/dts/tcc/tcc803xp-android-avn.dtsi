@@ -1367,6 +1367,12 @@
 };
 
 /* bluetooth */
+&uart20_data {
+	telechips,pull-up;
+};
+&uart20_rtscts {
+	telechips,pull-up;
+};
 &uart1 {
 	pinctrl-names = "default";
 	pinctrl-0 = <&uart20_data &uart20_rtscts>;
