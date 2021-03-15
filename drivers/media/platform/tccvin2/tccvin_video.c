@@ -2145,18 +2145,26 @@ static int32_t tccvin_video_subdevs_s_stream(struct tccvin_streaming *stream,
 	dev		= stream->dev;
 
 	if (onOff != 0) {
+		logd("The number of subdevs is %d\n", dev->bounded_subdevs);
 		for (idx = dev->bounded_subdevs - 1; idx >= 0; idx--) {
 			subdev = dev->linked_subdevs[idx].sd;
 
 			logi("call %s s_stream\n", subdev->name);
+
 			/* start stream */
 			ret = v4l2_subdev_call(subdev, video, s_stream, onOff);
+		}
 
-			/* signal check */
+		for (idx = 0; idx < dev->bounded_subdevs; idx++) {
+			subdev = dev->linked_subdevs[idx].sd;
+
+			/* check v4l2 subdev's status */
 			for (idxTry = 0; idxTry < nTry; idxTry++) {
+				logd("try: %d, call %s g_input_status\n",
+					idxTry, subdev->name);
+
 				ret = v4l2_subdev_call(subdev, video,
-						g_input_status,
-						&status);
+						g_input_status, &status);
 				if (ret < 0) {
 					logd("subdev is unavaliable\n");
 					break;
@@ -2169,6 +2177,7 @@ static int32_t tccvin_video_subdevs_s_stream(struct tccvin_streaming *stream,
 					logd("subdev is stable\n");
 					break;
 				}
+
 				/* 20msec is minimum in msleep() */
 				msleep(20);
 			}
@@ -2193,7 +2202,10 @@ int32_t tccvin_video_subdevs_streamon(struct tccvin_streaming *stream)
 	 * step 1
 	 * v4l2 sub dev - s_power
 	 */
-	tccvin_video_subdevs_s_power(stream, 1);
+	if (stream->is_handover_needed != V4L2_CAP_HANDOVER_NEED) {
+		/* set power */
+		tccvin_video_subdevs_s_power(stream, 1);
+	}
 
 	/*
 	 * step 2
@@ -2206,7 +2218,10 @@ int32_t tccvin_video_subdevs_streamon(struct tccvin_streaming *stream)
 	 * step 3
 	 * v4l2 sub dev - init
 	 */
-	tccvin_video_subdevs_init(stream, 1);
+	if (stream->is_handover_needed != V4L2_CAP_HANDOVER_NEED) {
+		/* init */
+		tccvin_video_subdevs_init(stream, 1);
+	}
 
 	/*
 	 * step 4
@@ -2219,7 +2234,10 @@ int32_t tccvin_video_subdevs_streamon(struct tccvin_streaming *stream)
 	 * step 5
 	 * call start stream of all subdevs
 	 */
-	tccvin_video_subdevs_s_stream(stream, 1);
+	if (stream->is_handover_needed != V4L2_CAP_HANDOVER_NEED) {
+		/* start stream */
+		tccvin_video_subdevs_s_stream(stream, 1);
+	}
 
 	/* return ret; */
 	return 0;
@@ -2249,33 +2267,34 @@ int32_t tccvin_video_streamon(struct tccvin_streaming *stream)
 	logi("preview method: %s\n", (stream->preview_method == PREVIEW_V4L2) ?
 		"PREVIEW_V4L2" : "PREVIEW_DD");
 
+	if (stream->is_handover_needed == V4L2_CAP_HANDOVER_NEED) {
+		logi("#### Handover - Skip to set the vioc path\n");
+	}
+	
+	ret = tccvin_video_subdevs_streamon(stream);
+	if (ret < 0) {
+		loge("to start v4l2 sub devices\n");
+		return -1;
+	}
+
+	/* load fw subdev call is not essential
+	 * to enable camera data stream
+	 */
+	tccvin_video_subdevs_load_fw(stream);
+
+	if (stream->is_handover_needed != V4L2_CAP_HANDOVER_NEED) {
+		ret = tccvin_start_stream(stream);
+		if (ret < 0) {
+			loge("Start Stream\n");
+			return -1;
+		}
+	}
+
 	if (stream->preview_method == PREVIEW_V4L2) {
 		ret = tccvin_request_irq(stream);
 		if (ret < 0) {
 			loge("Request IRQ\n");
 			return ret;
-		}
-	}
-
-	if (stream->is_handover_needed == V4L2_CAP_HANDOVER_NEED) {
-		stream->is_handover_needed = V4L2_CAP_HANDOVER_NONE;
-		logi("#### Handover - Skip to set the vioc path\n");
-	} else {
-		ret = tccvin_video_subdevs_streamon(stream);
-		if (ret < 0) {
-			loge("to start v4l2 sub devices\n");
-			return -1;
-		}
-
-		/* load fw subdev call is not essential
-		 * to enable camera data stream
-		 */
-		tccvin_video_subdevs_load_fw(stream);
-
-		ret = tccvin_start_stream(stream);
-		if (ret < 0) {
-			loge("Start Stream\n");
-			return -1;
 		}
 	}
 
