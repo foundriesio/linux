@@ -56,7 +56,7 @@ CONFIG_ACPI_CONFIGFS                            policy<{'amd64': 'm', 'arm64': '
 CONFIG_TPS68470_PMIC_OPREGION                   policy<{'amd64': 'y', 'arm64': 'y'}>
 CONFIG_X86_PM_TIMER                             policy<{'amd64': 'y'}>
 #
-CONFIG_ACPI_PROCFS_POWER                        mark<DEPRECATED>
+CONFIG_ACPI_PROCFS_POWER                        flag<DEPRECATED>
 CONFIG_ACPI_CUSTOM_METHOD                       mark<ENFORCED> note<SECURITY: allows arbitrary execution>
 CONFIG_ACPI_CUSTOM_DSDT_FILE                    note<might allow hardware damage>
 
@@ -4175,8 +4175,8 @@ CONFIG_SPI_HISI_SFC                             policy<{'arm64': 'm', 'armhf': '
 CONFIG_SPI_INTEL_SPI_PCI                        policy<{'amd64': 'n'}>
 CONFIG_SPI_INTEL_SPI_PLATFORM                   policy<{'amd64': 'n'}>
 #
-CONFIG_SPI_INTEL_SPI_PCI                        mark<ENFORCE> note<LP:1734147>
-CONFIG_SPI_INTEL_SPI_PLATFORM                   mark<ENFORCE> note<LP:1734147>
+CONFIG_SPI_INTEL_SPI_PCI                        mark<ENFORCED> note<LP:1734147>
+CONFIG_SPI_INTEL_SPI_PLATFORM                   mark<ENFORCED> note<LP:1734147>
 
 # Menu: Device Drivers >> Memory Technology Device (MTD) support >> Self-contained MTD device drivers
 CONFIG_MTD_PMC551                               policy<{'amd64': 'm', 'arm64': 'm', 'armhf': 'm', 'ppc64el': 'm'}>
@@ -4197,7 +4197,7 @@ CONFIG_MTD_BLOCK2MTD                            policy<{'amd64': 'm', 'arm64': '
 CONFIG_MTD_POWERNV_FLASH                        policy<{'ppc64el': 'm'}>
 CONFIG_MTD_DOCG3                                policy<{'amd64': 'n', 'arm64': 'n', 'armhf': 'n', 'ppc64el': 'n'}>
 #
-CONFIG_MTD_DOCG3                                mark<ENFORCE> note<LP:1792205>
+CONFIG_MTD_DOCG3                                mark<ENFORCED> note<LP:1792205>
 
 # Menu: Device Drivers >> Microsoft Hyper-V guest support
 CONFIG_HYPERV                                   policy<{'amd64': 'm'}>
@@ -4440,7 +4440,7 @@ CONFIG_MFD_VEXPRESS_SYSREG                      policy<{'arm64': 'y', 'armhf': '
 CONFIG_RAVE_SP_CORE                             policy<{'amd64': 'm', 'arm64': 'm', 'armhf': 'm', 'ppc64el': 'm', 's390x': 'n'}>
 #
 CONFIG_MFD_SM501                                note<boot essential on OMAP4>
-CONFIG_MFD_TPS65217                             mark<ENFORCE> note<boot essential on AM335x>
+CONFIG_MFD_TPS65217                             mark<ENFORCED> note<boot essential on AM335x>
 
 # Menu: Device Drivers >> Multifunction device drivers >> Cirrus Logic Madera codecs
 CONFIG_MFD_MADERA                               policy<{'amd64': 'm', 'arm64': 'm', 'armhf': 'm', 'ppc64el': 'm', 's390x': 'n'}>
@@ -6001,7 +6001,7 @@ CONFIG_SMSGIUCV                                 policy<{'s390x': 'y'}>
 CONFIG_SMSGIUCV_EVENT                           policy<{'s390x': 'm'}>
 CONFIG_ISM                                      policy<{'s390x': 'm'}>
 #
-CONFIG_ISM                                      mark<ENFORCE> note<LP:1789934>
+CONFIG_ISM                                      mark<ENFORCED> note<LP:1789934>
 
 # Menu: Device Drivers >> Network device support >> S/390 network device drivers >> Gigabit Ethernet device support
 CONFIG_QETH                                     policy<{'s390x': 'm'}>
@@ -7362,8 +7362,8 @@ CONFIG_SCSI_SCAN_ASYNC                          policy<{'amd64': 'y', 'arm64': '
 #
 CONFIG_SCSI                                     flag<REVIEW>
 CONFIG_CHR_DEV_SG                               note<not autoloadable>
-CONFIG_BLK_DEV_SD                               mark<ENFORCED> note <LP:1627330>
-CONFIG_BLK_DEV_SR                               mark<ENFORCED> note <LP:1627330>
+CONFIG_BLK_DEV_SD                               mark<ENFORCED> note<LP:1627330>
+CONFIG_BLK_DEV_SR                               mark<ENFORCED> note<LP:1627330>
 
 # Menu: Device Drivers >> SCSI device support >> SCSI device support >> SCSI Device Handlers
 CONFIG_SCSI_DH                                  policy<{'amd64': 'y', 'arm64': 'y', 'armhf': 'y', 'ppc64el': 'y', 's390x': 'y'}>
@@ -9507,7 +9507,7 @@ CONFIG_VIRTIO_INPUT                             policy<{'amd64': 'm', 'arm64': '
 CONFIG_VIRTIO_MMIO                              policy<{'amd64': 'y', 'arm64': 'y', 'armhf': 'y', 'ppc64el': 'y', 's390x': 'n'}>
 CONFIG_VIRTIO_MMIO_CMDLINE_DEVICES              policy<{'amd64': 'y', 'arm64': 'y', 'armhf': 'y', 'ppc64el': 'y'}>
 #
-CONFIG_VIRTIO_PCI                               mark<review>
+CONFIG_VIRTIO_PCI                               flag<REVIEW>
 CONFIG_VIRTIO_MMIO                              note<LP:1557689>
 
 # Menu: Device Drivers >> Virtualization drivers
@@ -9889,7 +9889,7 @@ CONFIG_XEN_ACPI_PROCESSOR                       policy<{'amd64': 'y'}>
 CONFIG_XEN_MCE_LOG                              policy<{'amd64': 'y'}>
 CONFIG_XEN_SYMS                                 policy<{'amd64': 'y'}>
 #
-CONFIG_XEN_ACPI_PROCESSOR                       mark<ENFORCED> <boot essential on XEN host>
+CONFIG_XEN_ACPI_PROCESSOR                       mark<ENFORCED> note<boot essential on XEN host>
 
 # Menu: Device Drivers >> Xen driver support >> Backend driver support
 CONFIG_XEN_BACKEND                              policy<{'amd64': 'y', 'arm64': 'y'}>
@@ -10633,7 +10633,7 @@ CONFIG_TASK_IO_ACCOUNTING                       policy<{'amd64': 'y', 'arm64': '
 CONFIG_PSI                                      policy<{'amd64': 'y', 'arm64': 'y', 'armhf': 'y', 'ppc64el': 'y', 's390x': 'y'}>
 CONFIG_PSI_DEFAULT_DISABLED                     policy<{'amd64': 'n', 'arm64': 'n', 'armhf': 'n', 'ppc64el': 'n', 's390x': 'y'}>
 #
-CONFIG_PSI_DEFAULT_DISABLED						mark<LP:1876044>
+CONFIG_PSI_DEFAULT_DISABLED                     note<LP:1876044>
 
 # Menu: General setup >> CPU/Task time and stats accounting >> Cputime accounting
 CONFIG_TICK_CPU_ACCOUNTING                      policy<{'amd64': 'y', 'arm64': 'y', 'armhf': 'y', 'ppc64el': 'y'}>
@@ -10707,7 +10707,7 @@ CONFIG_CFS_BANDWIDTH                            policy<{'amd64': 'y', 'arm64': '
 CONFIG_RT_GROUP_SCHED                           policy<{'amd64': 'n', 'arm64': 'n', 'armhf': 'n', 'ppc64el': 'n', 's390x': 'n'}>
 CONFIG_UCLAMP_TASK_GROUP                        policy<{'amd64': 'y', 'arm64': 'y', 'armhf': 'y', 'ppc64el': 'y'}>
 #
-CONFIG_RT_GROUP_SCHED                           mark <ENFORCED> note<LP#1284731> note<LP#1873315> note<LP#1875665>
+CONFIG_RT_GROUP_SCHED                           mark<ENFORCED> note<LP#1284731> note<LP#1873315> note<LP#1875665>
 
 # Menu: General setup >> IRQ subsystem
 CONFIG_IRQ_FORCED_THREADING_DEFAULT             policy<{'amd64-generic': 'n', 'amd64-lowlatency': 'y', 'arm64': 'n', 'armhf': 'n', 'ppc64el': 'n'}>
@@ -11190,7 +11190,7 @@ CONFIG_SAMPLE_VFIO_MDEV_MDPY_FB                 policy<{'amd64': 'n', 'arm64': '
 CONFIG_SAMPLE_VFIO_MDEV_MBOCHS                  policy<{'amd64': 'n', 'arm64': 'n', 'armhf': 'n', 'ppc64el': 'n', 's390x': 'n'}>
 CONFIG_SAMPLE_WATCHDOG                          policy<{'amd64': 'n', 'arm64': 'n', 'armhf': 'n', 'ppc64el': 'n', 's390x': 'n'}>
 #
-CONFIG_SAMPLE_TRACE_PRINTK                      mark<ENFORCE> note<Required for ftrace selftests>
+CONFIG_SAMPLE_TRACE_PRINTK                      mark<ENFORCED> note<Required for ftrace selftests>
 
 # Menu: Kernel hacking >> Scheduler Debugging
 CONFIG_SCHED_DEBUG                              policy<{'amd64': 'y', 'arm64': 'y', 'armhf': 'y', 'ppc64el': 'y', 's390x': 'y'}>
@@ -13395,7 +13395,7 @@ CONFIG_ARM_ERRATA_852421                        policy<{'armhf': 'y'}>
 CONFIG_ARM_ERRATA_852423                        policy<{'armhf': 'y'}>
 CONFIG_ARM_ERRATA_857272                        policy<{'armhf': 'y'}>
 #
-CONFIG_ARCH_TANGO                               mark<ENFORCED> note <LP:1787945>
+CONFIG_ARCH_TANGO                               mark<ENFORCED> note<LP:1787945>
 
 # Menu: System Type >> Aspeed BMC architectures >> Architecture: arm
 CONFIG_ARCH_ASPEED                              policy<{'armhf': 'y'}>
@@ -13649,7 +13649,7 @@ CONFIG_MACH_OMAP_GENERIC                        policy<{'armhf': 'y'}>
 CONFIG_HIO                                      policy<{'amd64': 'm', 'arm64': 'n', 'armhf': 'n', 'ppc64el': 'n', 's390x': 'n'}>
 CONFIG_UBUNTU_HOST                              policy<{'amd64': 'm', 'arm64': 'm', 'armhf': 'm', 'ppc64el': 'm', 's390x': 'm'}>
 #
-CONFIG_HIO                                      mark<ENFORCED> note <LP:1635594>
+CONFIG_HIO                                      mark<ENFORCED> note<LP:1635594>
 
 # Menu: Virtualization
 CONFIG_VIRTUALIZATION                           policy<{'amd64': 'y', 'arm64': 'y', 'ppc64el': 'y', 's390x': 'y'}>
@@ -13675,7 +13675,7 @@ CONFIG_KVM_WERROR                               policy<{'amd64': 'y'}>
 # Menu: Virtualization >> KVM
 CONFIG_KVM                                      policy<{'amd64': 'm', 'arm64': 'y', 'ppc64el': 'y', 's390x': 'y'}>
 #
-CONFIG_KVM                                      note <LP:1532886>
+CONFIG_KVM                                      note<LP:1532886>
 
 # Menu: Virtualization >> KVM >> Architecture: s390
 CONFIG_KVM_S390_UCONTROL                        policy<{'s390x': 'n'}>
