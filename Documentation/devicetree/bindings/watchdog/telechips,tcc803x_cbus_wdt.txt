@@ -1,0 +1,35 @@
+* Telechips Watchdog Timer for CA7s(CBUS Watchdog) on TCC803x
+
+The watchdog timer used for reset the CA7s processor on TCC803x in the event
+of software malfunction. Watchdog on CA7s uses two WDTs, CBUS WDT4, CBUS WDT5.
+CBUS WDT4 is used for kick timer, and CBUS WDT5 is used for real watchdog,
+which yields watchdog interrupt until it is not kicked.
+
+Required properties:
+- compatible: Must be "telechips,tcc-cb-wdt" 
+- reg: Physical base address of the watchdog control register. One is used for
+       watchdog kick timer, the other is used for real watchdog.
+- clocks: Information about clock ID used by kernel clock driver.
+       Refer 'clocks' node on Telechips device tree.
+       (arch/arm/boot/dts/tcc/tcc803x.dtsi).
+- clock-frequency: Set appropriate clock frequency for watchdog kick timer. 
+       By default, kick timer set to 12MHz. By changing this frequency might
+       cause variation on kick time interval.
+- interrupts: Interrupt # for watchdog kick timer(CBUS WDT4)
+- kick-interval: Kick time interval for kick watchdog counter.
+- expire-timeout: Expiration time for real watchdog(CBUS WDT5).
+
+Example:
+        tcc_cb_wdt: tcc_cb_wdt@3 {
+                compatible = "telechips,tcc-cb-wdt";
+                reg = <0x17040000 0x10000>,	/* watchdog kick timer */
+                    <0x17050000 0x10000>;	/* real watchdog */
+                clocks= <&clk_peri PERI_CB_WDT>;
+                clock-frequency = <12000000>;
+                interrupts = <GIC_SPI 121 0>;
+
+                kick-interval = <5>;
+                expire-timeout = <20>;
+
+                status = "okay";
+        };

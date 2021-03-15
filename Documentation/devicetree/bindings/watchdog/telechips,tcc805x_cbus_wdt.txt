@@ -1,0 +1,69 @@
+* Telechips Watchdog Timer for TCC805x(CBUS Watchdog)
+
+The watchdog timer used for reset the CA72, CA53 processor on TCC805x in the
+event of software malfunction. CA72 uses CBUS WDT0, and CA53 uses CBUS WDT4
+each other. 
+
+On CA72, 
+	***************  kick	*************
+--------* SMU Timer 0 *-------->* CBUS WDT0 *
+	***************		*************
+
+On CA53, 
+	***************  kick	*************
+--------* SMU Timer 1 *-------->* CBUS WDT4 *
+	***************		*************
+
+Required properties:
+- compatible: Must be "telechips,tcc-cb-wdt"
+- reg: Physical base address of the watchdog control register. 
+- interrupts: Interrupt # for watchdog kick timer.
+- clock-names: Clock attribute name used for specifying watchdog and timer for
+	kick watchdog.
+- clocks: Information about clock ID used by kernel clock driver.
+	Refer 'clocks' node on Telechips device tree.
+	(arch/arm64/boot/dts/tcc/tcc805x.dtsi).
+- clock-frequency: Set appropriate clock frequency for watchdog kick timer.
+	By default, kick timer set to 12MHz. Changing this frequency might
+	cause unstable result on kick time interval.
+- kick-timer-id: Watchdog kick timer id for each core. 0 for CA72 kick watchdog 
+	timer, 1 for CA53 watchdog kick timer.
+- pretimeout-sec: Watchdog time to be kicked(=cleared).
+- timeout-sec: Time until watchdog interrupt occurs.
+
+Example:
+- Main core : arch/arm64/boot/dts/tcc/tcc805x.dtsi
+...
+        cb_watchdog: cb_watchdog@0x17010000 {
+                compatible = "telechips,tcc-cb-wdt";
+                reg = <0x0 0x17010000 0x0 0x10>,
+                        <0x0 0x14300000 0x0 0xC>,
+                        <0x0 0x14300060 0x0 0x4>;
+                interrupts = <GIC_SPI 33 0>;
+                clock-names = "clk_wdt", "clk_kick";
+                clocks = <&clk_peri PERI_CB_WDT>, <&clk_peri PERI_TCT>;
+                clock-frequency = <24000000>;
+                status = "okay";
+
+                kick-timer-id = <0>;
+                pretimeout-sec = <5>;
+                timeout-sec = <20>;
+        };
+...
+- Subcore : arch/arm64/boot/dts/tcc/tcc8050-linux-subcore-a53q_sv1.0.dts
+...
+        cb_watchdog: cb_watchdog4@0x17050000 {
+                compatible = "telechips,tcc-cb-wdt";
+                reg = <0x17050000 0x10>,
+                        <0x14300010 0xC>,
+                        <0x14300060 0x4>;
+                interrupts = <GIC_SPI 34 0>;
+                clock-names = "clk_wdt", "clk_kick";
+                clocks = <&clk_peri PERI_CB_WDT>, <&clk_peri PERI_TCT>;
+                clock-frequency = <24000000>;
+
+                kick-timer-id = <1>;
+                pretimeout-sec = <5>;
+                timeout-sec = <20>;
+        };
+...
