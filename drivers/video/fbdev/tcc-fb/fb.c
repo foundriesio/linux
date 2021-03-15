@@ -72,6 +72,8 @@
 
 #define FB_VERSION "1.0.1"
 #define FB_BUF_MAX_NUM		(3)
+#define BYTE_TO_PAGES(range) (((range) + (PAGE_SIZE - 1)) >> PAGE_SHIFT)
+
 #if defined(CONFIG_VIOC_PVRIC_FBDC)
 static unsigned int fbdc_dec_1st_cfg = 0;
 static unsigned int fbdc_wdma_need_on = 0; /* 0: no, 1: need */
@@ -617,15 +619,14 @@ tca_vioc_configure_FBCDEC(unsigned int vioc_dec_id, unsigned int base_addr,
 			VIOC_RDMA_SetImageDisable(pRDMA);
 			VIOC_CONFIG_FBCDECPath(vioc_dec_id, rdmaPath, 1);
 			VIOC_PVRIC_FBDC_SetBasicConfiguration(pFBDC, base_addr, fmt, width, height, 0);
-			VIOC_PVRIC_FBDC_SetIrqMask(pFBDC, 1, PVRICSYS_IRQ_ALL);
+			VIOC_PVRIC_FBDC_SetRequestBase(pFBDC, base_addr);
 			VIOC_PVRIC_FBDC_TurnOn(pFBDC);
 			VIOC_PVRIC_FBDC_SetUpdateInfo(pFBDC, 1);
 			fbdc_dec_1st_cfg = 1;
 		}
 
 		else{
-			VIOC_PVRIC_FBDC_SetBasicConfiguration(pFBDC, base_addr, fmt, width, height, 0);
-//			VIOC_PVRIC_FBDC_TurnOn(pFBDC);
+			VIOC_PVRIC_FBDC_SetRequestBase(pFBDC, base_addr);
 			VIOC_PVRIC_FBDC_SetUpdateInfo(pFBDC, 1);
 			fbdc_dec_1st_cfg++;
 		}
@@ -707,6 +708,9 @@ static void fbX_activate_var(unsigned int dma_addr, struct fb_var_screeninfo *va
 	else
 		VIOC_RDMA_SetImageSize(par->pdata.rdma_info.virt_addr, var->xres, var->yres);
 	VIOC_RDMA_SetImageOffset(par->pdata.rdma_info.virt_addr, format, var->xres);
+	#if defined(CONFIG_VIOC_PVRIC_FBDC)
+	if(fbdc_dec_1st_cfg==1)	
+	#endif
 	VIOC_RDMA_SetImageBase(par->pdata.rdma_info.virt_addr, dma_addr, 0, 0);
 
 	if (format == VIOC_IMG_FMT_ARGB8888) {
@@ -753,22 +757,25 @@ static int fbX_pan_display(struct fb_var_screeninfo *var, struct fb_info *info)
 
 #if defined(CONFIG_VIOC_PVRIC_FBDC)
 	if (var->reserved[3] != 0) {
-		unsigned int bufnum=0;
-		if (var->yoffset == 0)
-			bufnum=1;
-		else if (var->yoffset == var->yres)
-			bufnum=2;
+		unsigned int bufID=0;
+		unsigned int FBCBufSize= 
+			BYTE_TO_PAGES((var->xres * var->yres * (var->bits_per_pixel/8)) +
+			FBDC_ALIGNED((var->xres * var->yres/64), 256)) * PAGE_SIZE;
+		if(var->yoffset == 0) 
+			bufID = 0;
+		else if (var->yoffset == var->yres) 
+			bufID = 1;
 		else
-			bufnum=3;
+			bufID = 2;
 		dma_addr =
-			par->map_dma +(
-				var->xres * var->yoffset *
-				(var->bits_per_pixel/8)) +
-				(FBDC_ALIGNED(
-					(var->xres * var->yres/64), 256) *
-					bufnum);
+				par->map_dma + FBCBufSize * bufID +
+				FBDC_ALIGNED((var->xres * var->yres/64), 256);
+			//dma_addr = par->map_dma + (FBDC_ALIGNED((var->xres * var->yres/64), 256)*bufnum);
+			pr_err("%s yoffset:%d yres:%d dma_addr:0x%x, FBCBufSize:%d bufnum:%d\n", __func__, var->yoffset, var->yres, dma_addr, FBCBufSize, bufID);
 	}
 	else
+		dma_addr = par->map_dma +
+			(var->xres * var->yoffset * (var->bits_per_pixel/8));
 #else
 	dma_addr = par->map_dma +
 		(var->xres * var->yoffset * (var->bits_per_pixel/8));
