@@ -10892,7 +10892,7 @@ CONFIG_PROC_PAGE_MONITOR                        policy<{'amd64': 'y', 'arm64': '
 CONFIG_TMPFS                                    policy<{'amd64': 'y', 'arm64': 'y', 'armhf': 'y', 'ppc64el': 'y', 's390x': 'y'}>
 CONFIG_TMPFS_POSIX_ACL                          policy<{'amd64': 'y', 'arm64': 'y', 'armhf': 'y', 'ppc64el': 'y', 's390x': 'y'}>
 CONFIG_TMPFS_XATTR                              policy<{'amd64': 'y', 'arm64': 'y', 'armhf': 'y', 'ppc64el': 'y', 's390x': 'y'}>
-CONFIG_TMPFS_INODE64                            policy<{'amd64': 'y', 'arm64': 'y', 'ppc64el': 'y'}>
+CONFIG_TMPFS_INODE64                            policy<{'amd64': 'y', 'arm64': 'y', 'ppc64el': 'y', 's390x': 'y'}>
 #
 CONFIG_TMPFS_POSIX_ACL                          mark<ENFORCED> note<some /dev nodes require POSIX ACLs, like /dev/dsp>
 
@@ -11084,7 +11084,7 @@ CONFIG_SLAB_FREELIST_HARDENED                   policy<{'amd64': 'y', 'arm64': '
 CONFIG_SHUFFLE_PAGE_ALLOCATOR                   policy<{'amd64': 'y', 'arm64': 'y', 'armhf': 'y', 'ppc64el': 'y', 's390x': 'y'}>
 CONFIG_SLUB_CPU_PARTIAL                         policy<{'amd64': 'y', 'arm64': 'y', 'armhf': 'y', 'ppc64el': 'y', 's390x': 'y'}>
 CONFIG_PROFILING                                policy<{'amd64': 'y', 'arm64': 'y', 'armhf': 'y', 'ppc64el': 'y', 's390x': 'y'}>
-CONFIG_COMPILE_TEST                             policy<{'amd64': 'n', 'arm64': 'n', 'armhf': 'n', 'ppc64el': 'n'}>
+CONFIG_COMPILE_TEST                             policy<{'amd64': 'n', 'arm64': 'n', 'armhf': 'n', 'ppc64el': 'n', 's390x': 'n'}>
 CONFIG_LOCALVERSION_AUTO                        policy<{'amd64': 'n', 'arm64': 'n', 'armhf': 'n', 'ppc64el': 'n', 's390x': 'n'}>
 CONFIG_CPU_ISOLATION                            policy<{'amd64': 'y', 'arm64': 'y', 'armhf': 'y', 'ppc64el': 'y', 's390x': 'y'}>
 #
