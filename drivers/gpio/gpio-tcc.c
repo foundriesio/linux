@@ -1,3 +1,4 @@
+#include <linux/module.h>
 #include <linux/gpio.h>
 #include <linux/platform_device.h>
 #include <linux/of_device.h>
@@ -432,6 +433,8 @@ static int telechips_gpio_probe(struct platform_device *pdev)
     struct device_node *sc_np;
 #endif
 
+    dev_dbg(&(pdev->dev), "%s: tcc gpio driver start\n", __func__);
+
     port = devm_kzalloc(&pdev->dev, sizeof(*port), GFP_KERNEL);
     if (!port)
 	return -ENOMEM;
@@ -678,4 +681,19 @@ static struct platform_driver telechips_gpio_driver = {
 		   },
 	.probe = telechips_gpio_probe,
 };
-builtin_platform_driver(telechips_gpio_driver);
+
+static int __init tcc_gpio_drv_register(void)
+{
+	return platform_driver_register(&telechips_gpio_driver);
+}
+postcore_initcall(tcc_gpio_drv_register);
+
+
+static void __exit tcc_gpio_drv_unregister(void)
+{
+	platform_driver_unregister(&telechips_gpio_driver);
+}
+module_exit(tcc_gpio_drv_unregister);
+
+MODULE_DESCRIPTION("Telechips GPIO driver");
+MODULE_LICENSE("GPL");
