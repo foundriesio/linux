@@ -2524,11 +2524,11 @@
 		gpio134 = &gpk;
 		gpio153 = &gpma;
 		gpio183 = &gpmb;
-		gpio209 = &gpmc;
-		gpio233 = &gpmd;
-		gpio251 = &gpsd0;
-		gpio266 = &gpsd1;
-		gpio277 = &gpsd2;
+		gpio215 = &gpmc;
+		gpio245 = &gpmd;
+		gpio263 = &gpsd0;
+		gpio278 = &gpsd1;
+		gpio289 = &gpsd2;
 };
 
 &gpio {
@@ -2654,36 +2654,36 @@
 	    };
 
  	    gpmb: gpmb {
-		reg-offset = <0x6C0>;
+		reg-offset = <0x700>;
 		gpio-controller;
 		#gpio-cells = <2>;
 		interrupt-controller;
 		#interrupt-cells = <2>;
 		source-num = <1 0 202 30>;
 		label = "gpiomb";
-		gpio-ranges = <&pinctrl 0 183 26>;
+		gpio-ranges = <&pinctrl 0 183 32>;
 	    };
 
  	    gpmc: gpmc {
-		reg-offset = <0x6C0>;
+		reg-offset = <0x740>;
 		gpio-controller;
 		#gpio-cells = <2>;
 		interrupt-controller;
 		#interrupt-cells = <2>;
 		source-num = <1 0 228 30>;
 		label = "gpiomc";
-		gpio-ranges = <&pinctrl 0 209 24>;
+		gpio-ranges = <&pinctrl 0 215 30>;
 	    };
 
  	    gpmd: gpmd {
-		reg-offset = <0x6C0>;
+		reg-offset = <0x780>;
 		gpio-controller;
 		#gpio-cells = <2>;
 		interrupt-controller;
 		#interrupt-cells = <2>;
 		source-num = <2 8 252 2 16 254 2>;
 		label = "gpiomd";
-		gpio-ranges = <&pinctrl 0 233 18>;
+		gpio-ranges = <&pinctrl 0 245 18>;
 	    };
 
  	    gpsd0: gpsd0 {
@@ -2694,7 +2694,7 @@
 		#interrupt-cells = <2>;
 		source-num = <1 0 166 15>;
 		label = "gpiosd0";
-		gpio-ranges = <&pinctrl 0 251 15>;
+		gpio-ranges = <&pinctrl 0 263 15>;
 	    };
 
  	    gpsd1: gpsd1 {
@@ -2705,7 +2705,7 @@
 		#interrupt-cells = <2>;
 		source-num = <1 0 181 11>;
 		label = "gpiosd1";
-		gpio-ranges = <&pinctrl 0 266 11>;
+		gpio-ranges = <&pinctrl 0 278 11>;
 	    };
 
  	    gpsd2: gpsd2 {
@@ -2716,7 +2716,7 @@
 		#interrupt-cells = <2>;
 		source-num = <1 0 192 10>;
 		label = "gpiosd2";
-		gpio-ranges = <&pinctrl 0 277 10>;
+		gpio-ranges = <&pinctrl 0 289 10>;
 	    };
 
 };
