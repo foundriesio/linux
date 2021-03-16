@@ -75,6 +75,8 @@ struct tcc_gpio_port {
 	int **irq_port_map;
 };
 
+static void tcc_gpio_set(struct gpio_chip *gc, unsigned int gpio, int val);
+
 static irqreturn_t tcc_gpio_irq_handler(int irq, void *data)
 {
 	struct tcc_gpio_group *gpio_gr = data;
@@ -316,6 +318,7 @@ static int tcc_gpio_direction_input(struct gpio_chip *chip, unsigned gpio)
 static int tcc_gpio_direction_output(struct gpio_chip *chip, unsigned gpio,
                                        int value)
 {
+	tcc_gpio_set(chip, gpio, value);
         return pinctrl_gpio_direction_output(chip->base + gpio);
 }
 
