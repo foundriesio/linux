@@ -1,0 +1,15 @@
+Telechips Mailbox Reset Driver
+
+Reset driver for TCC803x subcore (Cortex-A7 Single Core) which requests MCU
+of resetting via A7-R5 mailbox interface.
+
+Requeried properties:
+- compatible: Should be "telechips,mbox-reboot"
+- mboxes: List of phandle and mailbox channel specifiers.  Only the first set
+  of phandle and mailbox channel is valid, and other sets are ignored.
+
+Example:
+	mbox-reset {
+		compatible = "telechips,mbox-reboot";
+		mboxes = <&mailbox 0>;
+	};
