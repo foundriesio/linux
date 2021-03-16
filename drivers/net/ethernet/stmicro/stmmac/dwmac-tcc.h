@@ -1,29 +1,7 @@
+// SPDX-License-Identifier: GPL-2.0-or-later
 /*
- * linux/driver/net/tcc_gmac/tca_gmac.h
- * 	
- * Author : Telechips <linux@telechips.com>
- * Created : June 22, 2010
- * Description : This is the driver for the Telechips MAC 10/100/1000 on-chip Ethernet controllers.  
- *               Telechips Ethernet IPs are built around a Synopsys IP Core.
- *
- * Copyright (C) 2010 Telechips
- *
- * This program is free software; you can redistribute it and/or modify it
- * under the terms and conditions of the GNU General Public License,
- * version 2, as published by the Free Software Foundation.
- *
- * This program is distributed in the hope it will be useful, but WITHOUT
- * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
- * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
- * more details.
- *
- * You should have received a copy of the GNU General Public License along with
- * this program; if not, write to the Free Software Foundation, Inc.,
- * 51 Franklin St - Fifth Floor, Boston, MA 02110-1301 USA.
- *
- * The full GNU General Public License is included in this distribution in
- * the file called "COPYING".
- */ 
+ * Copyright (C) Telechips Inc.
+ */
 
 #ifndef _TCA_GMAC_H_
 #define _TCA_GMAC_H_
@@ -541,7 +519,7 @@ unsigned long tca_gmac_get_hsio_clk(struct gmac_dt_info_t *dt_info);
 phy_interface_t tca_gmac_get_phy_interface(struct gmac_dt_info_t *dt_info);
 void tca_gmac_phy_pwr_on(struct gmac_dt_info_t *dt_info);
 void tca_gmac_phy_pwr_off(struct gmac_dt_info_t *dt_info);
-void tca_gmac_phy_reset(struct gmac_dt_info_t *dt_info);
+void dwmac_tcc_phy_reset(struct gmac_dt_info_t *dt_info);
 void dwmac_tcc_tunning_timing(struct gmac_dt_info_t *dt_info, void __iomem *ioaddr);
 void dwmac_tcc_portinit(struct gmac_dt_info_t *dt_info, void __iomem *ioaddr);
 void IO_UTIL_ReadECID (unsigned ecid[]);

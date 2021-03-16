@@ -16,7 +16,13 @@
   the file called "COPYING".
 
   Author: Giuseppe Cavallaro <peppe.cavallaro@st.com>
-*******************************************************************************/
+*******************************************************************************
+
+* 	Modified by Telechips Inc.
+* 	Modified date: 2020/02/02
+* 	Description: TCC8050 CS
+
+*/
 
 #include <linux/platform_device.h>
 #include <linux/module.h>
@@ -385,8 +391,14 @@ stmmac_probe_config_dt(struct platform_device *pdev, const char **mac)
 	if (!plat)
 		return ERR_PTR(-ENOMEM);
 
-#if defined(CONFIG_TCC_GMAC_CS)
+	// dwmac_tcc_init is moved to device probing step. 
+	// becuase device probing step initialize private data and 
+	// dwmac tcc init performs parsing desvice tree and initialize 
+	// private data.
+#if 0
+#if defined(CONFIG_TCC_DWMAC_510A)
 	dwmac_tcc_init(np, NULL);
+#endif
 #endif
 
 	*mac = of_get_mac_address(np);
@@ -519,7 +531,7 @@ stmmac_probe_config_dt(struct platform_device *pdev, const char **mac)
 	clk_prepare_enable(plat->stmmac_clk);
 
 
-#if defined(CONFIG_TCC_GMAC_CS)
+#if defined(CONFIG_TCC_DWMAC_510A) || defined(CONFIG_TCC_DWMAC_373A)
 	plat->pclk = devm_clk_get(&pdev->dev, "gmac-pclk");
 #else
 	plat->pclk = devm_clk_get(&pdev->dev, "pclk");

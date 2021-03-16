@@ -1214,6 +1214,8 @@
 //	phyon-gpio	= <&gpc 27 0>;
 	phyrst-gpio = <&gpc 29 0>;
 	phy-interface = "rgmii";
+	phy-mode = "rgmii";
+	interrupt-names = "macirq";
 	//ecid-mac-addr;
 	txclk-o-dly = <18>;
 	txclk-o-inv = <0>;
