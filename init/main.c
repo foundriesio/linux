@@ -95,7 +95,7 @@
 #include <asm/sections.h>
 #include <asm/cacheflush.h>
 
-#if defined(CONFIG_BOOT_TIME) || defined(CONFIG_TCC_BOOTSTAGE)
+#if defined(CONFIG_TCC_BOOTSTAGE)
 #include <linux/arm-smccc.h>
 #endif
 
@@ -925,18 +925,9 @@ static void __init do_initcall_level(int level)
 static void __init do_initcalls(void)
 {
 	int level;
-#ifdef CONFIG_BOOT_TIME
-	struct arm_smccc_res res;
-
-	arm_smccc_smc(0x82007003, 0, 0, 0, 0, 0, 0, 0, &res);
-#endif
 
 	for (level = 0; level < ARRAY_SIZE(initcall_levels) - 1; level++)
 		do_initcall_level(level);
-
-#ifdef CONFIG_BOOT_TIME
-	arm_smccc_smc(0x82007003, 0, 0, 0, 0, 0, 0, 0, &res);
-#endif
 }
 
 /*
@@ -1035,12 +1026,8 @@ static inline void mark_readonly(void)
 static int __ref kernel_init(void *unused)
 {
 	int ret;
-#if defined(CONFIG_BOOT_TIME) || defined(CONFIG_TCC_BOOTSTAGE)
+#if defined(CONFIG_TCC_BOOTSTAGE)
 	struct arm_smccc_res res;
-#endif
-
-#if defined(CONFIG_BOOT_TIME)
-	arm_smccc_smc(0x82007003, 0, 0, 0, 0, 0, 0, 0, &res);
 #endif
 
 	kernel_init_freeable();
@@ -1054,7 +1041,7 @@ static int __ref kernel_init(void *unused)
 
 	rcu_end_inkernel_boot();
 
-#if defined(CONFIG_BOOT_TIME) || defined(CONFIG_TCC_BOOTSTAGE)
+#if defined(CONFIG_TCC_BOOTSTAGE)
 	arm_smccc_smc(0x82007003, 0, 0, 0, 0, 0, 0, 0, &res);
 #endif
 
@@ -1088,13 +1075,6 @@ static int __ref kernel_init(void *unused)
 	panic("No working init found.  Try passing init= option to kernel. "
 	      "See Linux Documentation/admin-guide/init.rst for guidance.");
 }
-
-#if defined(CONFIG_BOOT_TIME) && defined(CONFIG_ARCH_TCC803X)
-#define TC32MCNT 0x14300094
-#define READ_4_BYTES 0x4
-unsigned int basic_setup_done_time;
-EXPORT_SYMBOL(basic_setup_done_time);
-#endif
 
 static noinline void __init kernel_init_freeable(void)
 {
@@ -1130,12 +1110,6 @@ static noinline void __init kernel_init_freeable(void)
 	page_ext_init();
 
 	do_basic_setup();
-
-#if defined(CONFIG_BOOT_TIME) && defined(CONFIG_ARCH_TCC803X)
-	basic_setup_done_time = readl(ioremap(TC32MCNT, READ_4_BYTES));
-	pr_err("kernel basic setup done : %d\n", basic_setup_done_time);
-#endif
-
 
 	/* Open the /dev/console on the rootfs, this should never fail */
 	if (sys_open((const char __user *) "/dev/console", O_RDWR, 0) < 0)
