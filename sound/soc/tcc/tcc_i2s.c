@@ -286,12 +286,9 @@ static int tcc_i2s_set_dai_fmt(struct snd_soc_dai *dai, unsigned int fmt)
 	case SND_SOC_DAIFMT_I2S:
 		i2s_dai_dbg("[%d] I2S DAIFMT\n", i2s->blk_no);
 		if (i2s->tdm_mode == TRUE) {
-			if ((i2s->tdm_slots == 8) &&
-				(i2s->tdm_slot_width ==
-				CIRRUS_TDM_MODE_SLOT_WIDTH)) {
 #if defined(TCC803x_ES_SND)
-				if ((i2s->frame_invert == TRUE) &&
-					(system_rev != 0u)) {
+			if ((i2s->frame_invert == TRUE) &&
+				(system_rev != 0u)) {
 #else
 				if (i2s->frame_invert == TRUE) {
 #endif
@@ -305,12 +302,6 @@ static int tcc_i2s_set_dai_fmt(struct snd_soc_dai *dai, unsigned int fmt)
 						(uint32_t) i2s->tdm_slots,
 						(bool) i2s->tdm_late_mode);
 				}
-			} else {
-				i2s_dai_err("TDM mode is enabled, but i2s");
-				pr_err("tdm mode supports only slots 8,");
-				pr_err("slot_width 32\n");
-				ret = -EINVAL;
-			}
 		} else {
 			tcc_dai_set_i2s_mode(i2s->dai_reg);
 		}
@@ -356,19 +347,11 @@ static int tcc_i2s_set_dai_fmt(struct snd_soc_dai *dai, unsigned int fmt)
 		} else {
 #endif	//PCM_INTERFACE
 			if (i2s->tdm_mode == TRUE) {
-				if ((i2s->tdm_slot_width == 16) ||
-						(i2s->tdm_slot_width == 24)) {
-					tcc_dai_set_dsp_tdm_mode(
-						i2s->dai_reg,
-						(uint32_t) i2s->tdm_slots,
-						(uint32_t) i2s->tdm_slot_width,
-						FALSE);
-				} else {
-					i2s_dai_err("[%d] DSP_A TDM supports",
-							i2s->blk_no);
-					pr_err("nly 16bit or 24bit slotwidth\n");
-					ret = -ENOTSUPP;
-				}
+				tcc_dai_set_dsp_tdm_mode(
+					i2s->dai_reg,
+					(uint32_t) i2s->tdm_slots,
+					(uint32_t) i2s->tdm_slot_width,
+					FALSE);
 			} else {
 				i2s_dai_err("[%d] DSP_A", i2s->blk_no);
 				pr_err(" supports only TDM Mode\n");
@@ -401,17 +384,9 @@ static int tcc_i2s_set_dai_fmt(struct snd_soc_dai *dai, unsigned int fmt)
 		} else {
 #endif	//PCM_INTERFACE
 			if (i2s->tdm_mode == TRUE) {
-				if ((i2s->tdm_slot_width == 16) ||
-						(i2s->tdm_slot_width == 24)) {
-					tcc_dai_set_dsp_tdm_mode(i2s->dai_reg,
-					(uint32_t) i2s->tdm_slots,
-					(uint32_t) i2s->tdm_slot_width, TRUE);
-				} else {
-					i2s_dai_err("[%d] DSP_B TDM supports only 16bit",
-							i2s->blk_no);
-					pr_err("or 24bit slotwidth\n");
-					ret = -ENOTSUPP;
-				}
+				tcc_dai_set_dsp_tdm_mode(i2s->dai_reg,
+				(uint32_t) i2s->tdm_slots,
+				(uint32_t) i2s->tdm_slot_width, TRUE);
 			} else {
 				i2s_dai_err("[%d] DSP_B supports only TDM Mode\n",
 						i2s->blk_no);
@@ -840,6 +815,20 @@ static int tcc_i2s_hw_params(
 	if ((i2s->tdm_mode == true) && (channels != 2)
 			&& (channels != 4) && (channels != 8)) {
 		i2s_dai_err("%s - TDM only supports 2, 4, 8 channels\n",
+					__func__);
+#endif
+		ret = -ENOTSUPP;
+		goto hw_params_end;
+	}
+
+#if defined(TCC805x_CS_SND)
+	if ((i2s->tdm_mode == true) && (i2s->tdm_slot_width != 16)
+			&& (i2s->tdm_slot_width != 24) && (i2s->tdm_slot_width != 32)) {
+		i2s_dai_err("%s - TDM only supports 16, 24, 32 slot widths\n",
+					__func__);
+#else
+	if ((i2s->tdm_mode == true) && (i2s->tdm_slot_width != 32)) {
+		i2s_dai_err("%s - TDM only supports 32 slot width\n",
 					__func__);
 #endif
 		ret = -ENOTSUPP;
