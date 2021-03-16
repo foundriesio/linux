@@ -18,13 +18,19 @@ static inline void bootstage_err(const char *msg, s32 err)
 }
 
 #if defined(CONFIG_ARCH_TCC805X)
-#define NR_BOOT_STAGES (25U)
+#  define NR_BOOT_STAGES (25U)
+#elif defined(CONFIG_ARCH_TCC803X)
+#  define NR_BOOT_STAGES (23U)
+#else
+#  error "Bootstage is not supported on this platform!"
+#endif
 
 static const char *const bootstage_desc[NR_BOOT_STAGES] = {
+#if defined(CONFIG_ARCH_TCC805X)
 	/* Boot Stages on Storage Core BL0 */
 	"setup sc bl0",
-	"storage init",
-	"post storage init",
+	"init storage",
+	"init storage (post)",
 	"reset hsm",
 	"load sc fw header",
 	"load sc fw",
@@ -35,8 +41,8 @@ static const char *const bootstage_desc[NR_BOOT_STAGES] = {
 	/* Boot Stages on AP Boot Firmware */
 	"load bl1",
 	"setup bl1",
-	"load h/w config",
-	"initialize dram",
+	"load dram params",
+	"init dram",
 	"load bl2",
 	"load secure f/w",
 	"load bl3",
@@ -50,10 +56,36 @@ static const char *const bootstage_desc[NR_BOOT_STAGES] = {
 	"boot kernel",
 	/* Boot Stages on Kernel */
 	"kernel init",
-};
-#else
-#define NR_BOOT_STAGES (0U)
+#elif defined(CONFIG_ARCH_TCC803X)
+	/* Boot Stages on MCU Bootloader */
+	"setup mcu bl0",
+	"setup mcu bl1",
+	NULL,
+	/* Boot Stages on AP Boot Firmware */
+	NULL,
+	"setup bl1",
+	"load hsm (early)",
+	"init storage",
+	"load key table",
+	"load dram params",
+	"init dram",
+	"load subcore boot code",
+	"load hsm",
+	"load bl2",
+	"load secure f/w",
+	"load bl3",
+	/* Boot Stages on AP U-Boot */
+	"setup bl3",
+	"board init f",
+	"relocation",
+	"board init r",
+	"main loop",
+	"reset subcore",
+	"boot kernel",
+	/* Boot Stages on Kernel */
+	"kernel init",
 #endif
+};
 
 void add_boot_timestamp(void)
 {
@@ -143,7 +175,7 @@ static int bootstage_report_show(struct seq_file *m, void *v)
 		desc = (n < NR_BOOT_STAGES) ? bootstage_desc[n] : "-";
 		stamp = get_boot_timestamp(n);
 
-		if (stamp == 0U) {
+		if ((stamp == 0U) || (desc == NULL)) {
 			/* Ignore printing stamp for skipped stages */
 			continue;
 		}
@@ -188,6 +220,10 @@ static int bootstage_data_show(struct seq_file *m, void *v)
 
 		desc = (n < NR_BOOT_STAGES) ? bootstage_desc[n] : "-";
 		stamp = get_boot_timestamp(n);
+
+		if (desc == NULL) {
+			continue;
+		}
 
 		if (stamp == 0U) {
 			seq_printf(m, "%s,0\n", desc);

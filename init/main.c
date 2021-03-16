@@ -96,7 +96,7 @@
 #include <asm/cacheflush.h>
 
 #if defined(CONFIG_TCC_BOOTSTAGE)
-#include <linux/arm-smccc.h>
+#include <soc/tcc/bootstage.h>
 #endif
 
 static int kernel_init(void *);
@@ -1026,9 +1026,6 @@ static inline void mark_readonly(void)
 static int __ref kernel_init(void *unused)
 {
 	int ret;
-#if defined(CONFIG_TCC_BOOTSTAGE)
-	struct arm_smccc_res res;
-#endif
 
 	kernel_init_freeable();
 	/* need to finish all async __init code before freeing the memory */
@@ -1042,7 +1039,7 @@ static int __ref kernel_init(void *unused)
 	rcu_end_inkernel_boot();
 
 #if defined(CONFIG_TCC_BOOTSTAGE)
-	arm_smccc_smc(0x82007003, 0, 0, 0, 0, 0, 0, 0, &res);
+	add_boot_timestamp();
 #endif
 
 	if (ramdisk_execute_command) {
