@@ -22,7 +22,13 @@
 	http://www.stlinux.com
   Support available at:
 	https://bugzilla.stlinux.com/
-*******************************************************************************/
+******************************************************************************
+
+* 	Modified by Telechips Inc.
+* 	Modified date: 2020/02/02
+* 	Description: TCC8050 CS
+
+*/
 
 #include <linux/clk.h>
 #include <linux/kernel.h>
@@ -50,8 +56,9 @@
 #include <linux/reset.h>
 #include <linux/of_mdio.h>
 #include "dwmac1000.h"
+#include <linux/miscdevice.h>
 
-#if defined(CONFIG_TCC_GMAC_CS)
+#if defined(CONFIG_TCC_DWMAC_510A)
 #include "dwmac-tcc.h"
 #endif
 #include "dwmac4_dma.h"
@@ -120,6 +127,14 @@ static void stmmac_exit_fs(struct net_device *dev);
 #endif
 
 #define STMMAC_COAL_TIMER(x) (jiffies + usecs_to_jiffies(x))
+
+struct net_device *misc_ndev;
+
+struct iodata 
+{
+	unsigned short addr;
+	unsigned short data;
+};
 
 /**
  * stmmac_verify_args - verify the driver parameters.
@@ -811,6 +826,8 @@ static void stmmac_adjust_link(struct net_device *dev)
 
 	if (phydev->link) {
 		u32 ctrl = readl(priv->ioaddr + MAC_CTRL_REG);
+
+		netif_carrier_on(dev);
 
 		/* Now we make sure that we can be in full duplex mode.
 		 * If not, we operate in half-duplex mode. */
@@ -3806,6 +3823,67 @@ static int stmmac_ioctl(struct net_device *dev, struct ifreq *rq, int cmd)
 	return ret;
 }
 
+#define CMD_PHY_READ	0
+#define CMD_PHY_WRITE	1
+
+long stmmac_misc_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
+{
+	int ret = 0;
+	unsigned int rev_value;
+	unsigned int send_value;
+	struct miscdevice *misc = (struct miscdevice *) filp->private_data;
+	struct stmmac_priv *priv = netdev_priv(misc_ndev);
+
+	struct mii_bus * mii_bus = priv->mii;
+	struct iodata iodata;
+
+	int data = 0;
+	u32 addr;
+
+	iodata.addr = (arg & 0xFFFF);
+	iodata.data = (arg>>16);
+
+	printk("USERDATA, addr : 0x%08x, data : 0x%08x \n", iodata.addr, 
+			iodata.data);
+
+	switch(cmd){
+		case CMD_PHY_READ:
+			data = phy_read(misc_ndev->phydev, iodata.addr);
+			printk("Read addr: 0x%08x, value :0x%08x\n", 
+					iodata.addr, data);
+			return data;
+		case CMD_PHY_WRITE:
+			phy_write(misc_ndev->phydev, iodata.addr, iodata.data);
+			printk("Write addr: %08x, data: %08x\n", iodata.addr,
+					iodata.data);
+			printk("--Read: %08x\n", phy_read(misc_ndev->phydev,
+						iodata.addr));
+			break;
+		default:
+			printk("not supported IOCTL cmd: %08x\n", cmd);
+			break;
+	}
+	return ret;
+}
+
+int stmmac_misc_open(struct inode *inode, struct file *filp)
+{
+	printk("%s\n", __func__);
+	return 0;
+}
+
+int stmmac_misc_release(struct inode *inode, struct file *filp)
+{
+	printk("%s\n", __func__);
+	return 0;
+}
+
+static struct file_operations stmmac_misc_fops = {
+	.unlocked_ioctl	=	stmmac_misc_ioctl,
+	.open		= stmmac_misc_open,
+	.release	= stmmac_misc_release,
+};
+
 static int stmmac_set_mac_address(struct net_device *ndev, void *addr)
 {
 	struct stmmac_priv *priv = netdev_priv(ndev);
@@ -4086,11 +4164,20 @@ static int stmmac_hw_init(struct stmmac_priv *priv)
 	if (!mac)
 		return -ENOMEM;
 
-#if defined(CONFIG_TCC_GMAC_CS)
+#if defined(CONFIG_TCC_DWMAC_510A)
 	if ((unsigned)(priv->synopsys_id) != 0x51){
 		printk("%s.[WARN] Exit gmac probe due to version mismatch\n",
 				__func__);
 		printk("%s.[WARN] device driver : 5.1a version.\n", __func__);
+		printk("%s.[WARN] version read: %08x\n", __func__,
+				priv->synopsys_id);
+		return -ENODEV;
+	}
+#elif defined(CONFIG_TCC_DWMAC_373A)
+	if ((unsigned)(priv->synopsys_id) != 0x37){
+		printk("%s.[WARN] Exit gmac probe due to version mismatch\n",
+				__func__);
+		printk("%s.[WARN] device driver : 3.7a version.\n", __func__);
 		printk("%s.[WARN] version read: %08x\n", __func__,
 				priv->synopsys_id);
 		return -ENODEV;
@@ -4196,6 +4283,7 @@ int stmmac_dvr_probe(struct device *device,
 	u32 queue;
 
 	struct pinctrl *pin;
+	struct device_node *np = device->of_node;
 
 	ndev = alloc_etherdev_mqs(sizeof(struct stmmac_priv),
 				  MTL_MAX_TX_QUEUES,
@@ -4216,12 +4304,15 @@ int stmmac_dvr_probe(struct device *device,
 	priv->ioaddr = res->addr;
 	priv->dev->base_addr = (unsigned long)res->addr;
 
-#if defined(CONFIG_TCC_GMAC_CS)
+	printk("%s. \n", __func__);
+#if defined(CONFIG_TCC_DWMAC_510A)
 	// TCC specific function.
+	dwmac_tcc_init(np, &priv->dt_info);
 	pin = devm_pinctrl_get_select(priv->device, "rgmii");
 	dwmac_tcc_clk_enable(plat_dat);
-	dwmac_tcc_portinit(NULL, priv->ioaddr);
-	dwmac_tcc_tunning_timing(NULL, priv->ioaddr);
+	dwmac_tcc_portinit(&priv->dt_info, priv->ioaddr);
+	dwmac_tcc_tunning_timing(&priv->dt_info, priv->ioaddr);
+	dwmac_tcc_phy_reset(&priv->dt_info);
 #endif
 
 	priv->dev->irq = res->irq;
@@ -4230,6 +4321,22 @@ int stmmac_dvr_probe(struct device *device,
 
 	if (res->mac)
 		memcpy(priv->dev->dev_addr, res->mac, ETH_ALEN);
+
+	// misc driver registered.
+	priv->misc = kzalloc(sizeof(struct miscdevice), GFP_KERNEL);
+
+	if (priv->misc == 0)
+		printk("%s. Failed to alloc misc device\n", __func__);
+
+	priv->misc->minor	= MISC_DYNAMIC_MINOR;
+	priv->misc->fops	= &stmmac_misc_fops;
+	priv->misc->name	= "tcc_stmmac";
+	priv->misc->parent	= device;
+
+	ret = misc_register(priv->misc);
+
+	if (ret)
+		printk("%s. Failed to register misc device\n", __func__);
 
 	dev_set_drvdata(device, priv->dev);
 
@@ -4348,6 +4455,10 @@ int stmmac_dvr_probe(struct device *device,
 	}
 
 	ret = register_netdev(ndev);
+
+	// Add misc netdevice for mii interface.
+	misc_ndev = ndev;
+
 	if (ret) {
 		dev_err(priv->device, "%s: ERROR %i registering the device\n",
 			__func__, ret);
@@ -4463,6 +4574,9 @@ int stmmac_suspend(struct device *dev)
 	priv->oldlink = false;
 	priv->speed = SPEED_UNKNOWN;
 	priv->oldduplex = DUPLEX_UNKNOWN;
+
+	// stmmac_release(ndev);
+
 	return 0;
 }
 EXPORT_SYMBOL_GPL(stmmac_suspend);
@@ -4503,9 +4617,26 @@ int stmmac_resume(struct device *dev)
 	struct net_device *ndev = dev_get_drvdata(dev);
 	struct stmmac_priv *priv = netdev_priv(ndev);
 
+	struct device_node *np = priv->device->of_node;
+	struct plat_stmmacenet_data *plat_dat = priv->plat;
+	struct pinctrl *pin;
+
 	if (!netif_running(ndev))
 		return 0;
+	// else
+		// stmmac_open(ndev);
 
+#if defined(CONFIG_TCC_DWMAC_510A)
+	// TCC specific function.
+	dwmac_tcc_init(np, &priv->dt_info);
+	pin = devm_pinctrl_get_select(priv->device, "rgmii");
+	dwmac_tcc_clk_enable(plat_dat);
+	dwmac_tcc_portinit(&priv->dt_info, priv->ioaddr);
+	dwmac_tcc_tunning_timing(&priv->dt_info, priv->ioaddr);
+	dwmac_tcc_phy_reset(&priv->dt_info);
+#endif
+
+#if 1
 	/* Power Down bit, into the PM register, is cleared
 	 * automatically as soon as a magic packet or a Wake-up frame
 	 * is received. Anyway, it's better to manually clear
@@ -4554,6 +4685,7 @@ int stmmac_resume(struct device *dev)
 
 	if (ndev->phydev)
 		phy_start(ndev->phydev);
+#endif
 
 	return 0;
 }

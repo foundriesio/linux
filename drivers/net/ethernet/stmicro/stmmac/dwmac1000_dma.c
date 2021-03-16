@@ -221,7 +221,7 @@ static void dwmac1000_get_hw_feature(void __iomem *ioaddr,
 	dma_cap->half_duplex = (hw_cap & DMA_HW_FEAT_HDSEL) >> 2;
 	dma_cap->hash_filter = (hw_cap & DMA_HW_FEAT_HASHSEL) >> 4;
 	dma_cap->multi_addr = (hw_cap & DMA_HW_FEAT_ADDMAC) >> 5;
-	dma_cap->pcs = (hw_cap & DMA_HW_FEAT_PCSSEL) >> 6;
+	// dma_cap->pcs = (hw_cap & DMA_HW_FEAT_PCSSEL) >> 6;
 	dma_cap->sma_mdio = (hw_cap & DMA_HW_FEAT_SMASEL) >> 8;
 	dma_cap->pmt_remote_wake_up = (hw_cap & DMA_HW_FEAT_RWKSEL) >> 9;
 	dma_cap->pmt_magic_frame = (hw_cap & DMA_HW_FEAT_MGKSEL) >> 10;

@@ -1,29 +1,7 @@
+// SPDX-License-Identifier: GPL-2.0-or-later
 /*
- * arch/arm/mach-tccxxxx/tca_gmac.c
- * 	
- * Author : Telechips <linux@telechips.com>
- * Created : June 22, 2010
- * Description : This is the driver for the Telechips MAC 10/100/1000 on-chip Ethernet controllers.  
- *               Telechips Ethernet IPs are built around a Synopsys IP Core.
- *
- * Copyright (C) 2010 Telechips
- *
- * This program is free software; you can redistribute it and/or modify it
- * under the terms and conditions of the GNU General Public License,
- * version 2, as published by the Free Software Foundation.
- *
- * This program is distributed in the hope it will be useful, but WITHOUT
- * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
- * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
- * more details.
- *
- * You should have received a copy of the GNU General Public License along with
- * this program; if not, write to the Free Software Foundation, Inc.,
- * 51 Franklin St - Fifth Floor, Boston, MA 02110-1301 USA.
- *
- * The full GNU General Public License is included in this distribution in
- * the file called "COPYING".
- */ 
+ * Copyright (C) Telechips Inc.
+ */
 
 #include "dwmac-tcc.h"
 
@@ -34,17 +12,26 @@
 #include <linux/of_address.h>
 #define MAX_INTF_LEN	6
 
-static void __iomem *gmac_base = NULL;
 static void __iomem *hsio_base = NULL;
 
 int dwmac_tcc_init(struct device_node *np, struct gmac_dt_info_t *dt_info)
 {
+	int ret = 0;
+
 	hsio_base = of_iomap(np,1);
 
 	printk("%s. is called\n", __func__);
 
 	if (hsio_base == NULL)
 		printk(KERN_ERR "hsio base cannot get\n");
+
+	ret = of_get_named_gpio(np, "phyrst-gpio", 0);
+	if (ret < 0)
+		dt_info->phy_rst = (unsigned int)0;
+	else{
+		dt_info->phy_rst = ret;
+		gpio_request(dt_info->phy_rst, "PHY_RST");
+	}
 
 	return 0;
 }
@@ -89,5 +76,15 @@ void dwmac_tcc_tunning_timing(struct gmac_dt_info_t *dt_info, void __iomem *ioad
 		writel(0x0, ioaddr+GMACDLY5_OFFSET);
 		writel(0x0, ioaddr+GMACDLY6_OFFSET);
         }
+}
+
+void dwmac_tcc_phy_reset(struct gmac_dt_info_t *dt_info)
+{
+	if (dt_info->phy_rst != (unsigned int)0) {
+		gpio_direction_output(dt_info->phy_rst, 0);
+		msleep(10);
+		gpio_direction_output(dt_info->phy_rst, 1);
+		msleep(150);
+	}
 }
 
