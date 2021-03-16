@@ -26,7 +26,7 @@
 #define __STMMAC_H__
 
 
-#if defined(CONFIG_TCC_GMAC_CS)
+#if defined(CONFIG_TCC_DWMAC_510A) || defined(CONFIG_TCC_DWMAC_373A)
 #define STMMAC_RESOURCE_NAME   "hsio-clk"
 #else
 #define STMMAC_RESOURCE_NAME	"stmmaceth"
@@ -41,7 +41,7 @@
 #include <linux/ptp_clock_kernel.h>
 #include <linux/reset.h>
 
-#if defined(CONFIG_TCC_GMAC_CS)
+#if defined(CONFIG_TCC_DWMAC_510A)
 #include "dwmac-tcc.h"
 #endif
 
@@ -160,7 +160,10 @@ struct stmmac_priv {
 	struct dentry *dbgfs_rings_status;
 	struct dentry *dbgfs_dma_cap;
 #endif
+
+#if defined(CONFIG_TCC_DWMAC_510A)
 	struct gmac_dt_info_t dt_info;
+#endif
 	struct miscdevice *misc;
 };
 
