@@ -55,7 +55,7 @@ static const char *const bootstage_desc[NR_BOOT_STAGES] = {
 #define NR_BOOT_STAGES (0U)
 #endif
 
-static inline void add_boot_timestamp(void)
+void add_boot_timestamp(void)
 {
 	struct arm_smccc_res res;
 

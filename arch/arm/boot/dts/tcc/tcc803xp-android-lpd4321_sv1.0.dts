@@ -112,7 +112,3 @@
 &ictc {
 	status = "okay";
 };
-
-&boot_time {
-        status = "okay";
-};
