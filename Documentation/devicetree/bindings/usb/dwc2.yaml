@@ -107,6 +107,11 @@ properties:
     $ref: /schemas/types.yaml#/definitions/flag
     description: Support role switch.
 
+  role-switch-default-mode:
+    enum: [host, peripheral]
+    description: indicating if usb-role-switch is enabled, the default operation
+      mode of controller at init.
+
   g-rx-fifo-size:
     $ref: /schemas/types.yaml#/definitions/uint32
     description: size of rx fifo size in gadget mode.
