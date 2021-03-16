@@ -1,0 +1,145 @@
+Pin controller node:
+Required properties:
+ - compatible:
+		"telechips,tcc803x-pinctrl"
+ - reg: The pinctrl(gpio) address range, relative to the pinctrl range
+	<cell num>
+        1 : gpio base address(ap)
+        2 : range of gpio base address
+        3 : pmgpio base address(micom)
+        4 : range of pmgpio base address
+ - interrupts: The interrupt number to the cpu.The interrupt specifier format 
+               depends on the interrupt controller
+
+GPIO controller/bank node:
+Required properties:
+ - gpio-controller : Indicates this device is a GPIO controller
+ - #gpio-cells :
+    <cell num>
+         1 : pin number
+         2 : polarity
+              <value>
+                [0] : for active high
+                [1] : for active low
+ - reg: The gpio address range, relative to the pinctrl range
+    <cell num>
+        1 : offset from pinctrl base address
+        2 : start pin number
+        3 : pin number
+ - source-num: External interrupt source number of gpio pin
+               Multiple ranges can be registered
+    <cell num>
+       1 : Count of source number ranges
+//First source number ranges
+       2 : start pin number
+       3 : base source number
+       4 : number of pin
+//Second number ranges
+       5 : start pin number 
+       6 : base source number
+       7 : number of pin
+//Next number ranges
+      ...
+
+
+Optional properties:
+ - telechips,no-pull : Disable pull-up/down
+ - telechips,pull-up : Select pull-up and enable pull-up
+ - telechips,pull-down : Select pull-down and enable pull-down
+ - telechips,input-enable : Disable ouput
+ - telechips,output-low : Enable output and set to low
+ - telechips,output-high : Enable output and set to high
+ - telechips,input_buffer_enable : Enable input buffer
+ - telechips,input_buffer_disable : Disable input buffer
+ - telechips,schmitt-input : Set to Schmitt input type
+ - telechips,cmos-input : Set to CMOS input type
+ - telechips,slow-slew : Select slew rate to fast
+ - telechips,fast-slew : Select slew rate to low
+ - telechips,eclk-sel : Select external input clock
+ - telechips,drive-strength : Set port driver strength
+
+Example:
+
+pinctrl: pinctrl@14200000 {
+    compatible = "telechips,tcc803x-pinctrl";
+    reg = <0x14200000 0x300 0x1B937800 0x100>;  /* gpio, pmgpio */
+    gpio-controller;
+    #address-cells = <1>;
+    #size-cells = <0>;
+    #gpio-cells = <2>;
+    interrupts = <GIC_SPI 0 0>,
+             <GIC_SPI 1 0>,
+             <GIC_SPI 2 0>,
+             <GIC_SPI 3 0>,
+             <GIC_SPI 4 0>,
+             <GIC_SPI 5 0>,
+             <GIC_SPI 6 0>,
+             <GIC_SPI 7 0>,
+             <GIC_SPI 8 0>,
+             <GIC_SPI 9 0>,
+             <GIC_SPI 10 0>,
+             <GIC_SPI 11 0>,
+             <GIC_SPI 12 0>,
+             <GIC_SPI 13 0>,
+             <GIC_SPI 14 0>,
+             <GIC_SPI 15 0>,
+             <GIC_SPI 16 0>,
+             <GIC_SPI 17 0>,
+             <GIC_SPI 18 0>,
+             <GIC_SPI 19 0>,
+             <GIC_SPI 20 0>,
+             <GIC_SPI 21 0>,
+             <GIC_SPI 22 0>,
+             <GIC_SPI 23 0>,
+             <GIC_SPI 24 0>,
+             <GIC_SPI 25 0>,
+             <GIC_SPI 26 0>,
+             <GIC_SPI 27 0>,
+             <GIC_SPI 28 0>,
+             <GIC_SPI 29 0>,
+             <GIC_SPI 30 0>,
+             <GIC_SPI 31 0>;
+};
+
+&pinctrl {
+    gpa: gpa {
+        gpio-controller;
+        #gpio-cells = <2>;
+        reg = <0x0 0 32>;
+        source-num = <1 0 1 32>;
+    };
+
+    gpb: gpb {
+        gpio-controller;
+        #gpio-cells = <2>;
+        reg = <0x40 0 29>;
+        source-num = <1 0 33 29>;
+    };
+
+    gpx: gpx {
+        gpio-controller;
+        #gpio-cells = <2>;
+        reg = <0xXX 0 32>;
+        source-num = <2 0 100 10 3 120 5>;
+    };
+...
+    sd0_clk: sd0_clk {
+        telechips,pins = "gpsd0-0";
+        telechips,pin-function = <1>;
+        telechips,drive-strength = <3>;
+        telechips,input_buffer_enable;
+    };
+...
+    uart7_data: uart7_data {
+        telechips,pins = "gpa-12", "gpa-13";
+        telechips,pin-function = <7>;
+    };
+...
+    test: test {
+        telechips,pins = "gpx-1", "gpx-2";
+        telechips,pin-function = <2>;
+		telechips,drive-strength = <3>;
+		telechips,input_buffer_enable;
+		telechips,pull-up;
+    };
+};
