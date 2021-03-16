@@ -396,7 +396,7 @@ stmmac_probe_config_dt(struct platform_device *pdev, const char **mac)
 	// dwmac tcc init performs parsing desvice tree and initialize 
 	// private data.
 #if 0
-#if defined(CONFIG_TCC_GMAC_CS)
+#if defined(CONFIG_TCC_DWMAC_510A)
 	dwmac_tcc_init(np, NULL);
 #endif
 #endif
@@ -531,7 +531,7 @@ stmmac_probe_config_dt(struct platform_device *pdev, const char **mac)
 	clk_prepare_enable(plat->stmmac_clk);
 
 
-#if defined(CONFIG_TCC_GMAC_CS)
+#if defined(CONFIG_TCC_DWMAC_510A) || defined(CONFIG_TCC_DWMAC_373A)
 	plat->pclk = devm_clk_get(&pdev->dev, "gmac-pclk");
 #else
 	plat->pclk = devm_clk_get(&pdev->dev, "pclk");

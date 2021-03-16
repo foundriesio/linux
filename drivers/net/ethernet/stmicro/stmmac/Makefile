@@ -20,11 +20,12 @@ obj-$(CONFIG_DWMAC_STM32)	+= dwmac-stm32.o
 obj-$(CONFIG_DWMAC_SUNXI)	+= dwmac-sunxi.o
 obj-$(CONFIG_DWMAC_SUN8I)	+= dwmac-sun8i.o
 obj-$(CONFIG_DWMAC_DWC_QOS_ETH)	+= dwmac-dwc-qos-eth.o
+obj-$(CONFIG_TCC_DWMAC_373A) += dwmac-tcc-v2.o
+obj-$(CONFIG_TCC_DWMAC_510A) += dwmac-tcc.o
 obj-$(CONFIG_DWMAC_GENERIC)	+= dwmac-generic.o
 stmmac-platform-objs:= stmmac_platform.o
 dwmac-altr-socfpga-objs := altr_tse_pcs.o dwmac-socfpga.o
 
-obj-$(CONFIG_TCC_GMAC_CS) += dwmac-tcc.o
 
 # stmmac-objs += tca_gmac.o
 obj-$(CONFIG_STMMAC_PCI) += stmmac-pci.o

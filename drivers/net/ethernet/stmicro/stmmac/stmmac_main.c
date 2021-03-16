@@ -58,7 +58,7 @@
 #include "dwmac1000.h"
 #include <linux/miscdevice.h>
 
-#if defined(CONFIG_TCC_GMAC_CS)
+#if defined(CONFIG_TCC_DWMAC_510A)
 #include "dwmac-tcc.h"
 #endif
 #include "dwmac4_dma.h"
@@ -4164,11 +4164,20 @@ static int stmmac_hw_init(struct stmmac_priv *priv)
 	if (!mac)
 		return -ENOMEM;
 
-#if defined(CONFIG_TCC_GMAC_CS)
+#if defined(CONFIG_TCC_DWMAC_510A)
 	if ((unsigned)(priv->synopsys_id) != 0x51){
 		printk("%s.[WARN] Exit gmac probe due to version mismatch\n",
 				__func__);
 		printk("%s.[WARN] device driver : 5.1a version.\n", __func__);
+		printk("%s.[WARN] version read: %08x\n", __func__,
+				priv->synopsys_id);
+		return -ENODEV;
+	}
+#elif defined(CONFIG_TCC_DWMAC_373A)
+	if ((unsigned)(priv->synopsys_id) != 0x37){
+		printk("%s.[WARN] Exit gmac probe due to version mismatch\n",
+				__func__);
+		printk("%s.[WARN] device driver : 3.7a version.\n", __func__);
 		printk("%s.[WARN] version read: %08x\n", __func__,
 				priv->synopsys_id);
 		return -ENODEV;
@@ -4296,7 +4305,7 @@ int stmmac_dvr_probe(struct device *device,
 	priv->dev->base_addr = (unsigned long)res->addr;
 
 	printk("%s. \n", __func__);
-#if defined(CONFIG_TCC_GMAC_CS)
+#if defined(CONFIG_TCC_DWMAC_510A)
 	// TCC specific function.
 	dwmac_tcc_init(np, &priv->dt_info);
 	pin = devm_pinctrl_get_select(priv->device, "rgmii");
@@ -4617,7 +4626,7 @@ int stmmac_resume(struct device *dev)
 	// else
 		// stmmac_open(ndev);
 
-#if defined(CONFIG_TCC_GMAC_CS)
+#if defined(CONFIG_TCC_DWMAC_510A)
 	// TCC specific function.
 	dwmac_tcc_init(np, &priv->dt_info);
 	pin = devm_pinctrl_get_select(priv->device, "rgmii");
