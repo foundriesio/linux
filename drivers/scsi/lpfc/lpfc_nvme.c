@@ -1,7 +1,7 @@
 /*******************************************************************
  * This file is part of the Emulex Linux Device Driver for         *
  * Fibre Channel Host Bus Adapters.                                *
- * Copyright (C) 2017-2020 Broadcom. All Rights Reserved. The term *
+ * Copyright (C) 2017-2021 Broadcom. All Rights Reserved. The term *
  * “Broadcom” refers to Broadcom Inc. and/or its subsidiaries.  *
  * Copyright (C) 2004-2016 Emulex.  All rights reserved.           *
  * EMULEX and SLI are trademarks of Emulex.                        *
@@ -503,6 +503,10 @@ lpfc_nvme_ls_req(struct nvme_fc_local_port *pnvme_lport,
 				 ndlp->nlp_state, ndlp->nlp_type);
 		return -ENODEV;
 	}
+
+	if (!vport->phba->sli4_hba.nvmels_wq)
+		return -ENOMEM;
+
 	bmp = kmalloc(sizeof(struct lpfc_dmabuf), GFP_KERNEL);
 	if (!bmp) {
 
