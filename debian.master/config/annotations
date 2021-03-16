@@ -181,7 +181,6 @@ CONFIG_ARM64_ACPI_PARKING_PROTOCOL              policy<{'arm64': 'y'}>
 
 # Menu: Boot options >> Kernel command line type
 CONFIG_CMDLINE_FROM_BOOTLOADER                  policy<{'arm64': 'y'}>
-CONFIG_CMDLINE_EXTEND                           policy<{'arm64': 'n'}>
 CONFIG_CMDLINE_FORCE                            policy<{'arm64': 'n'}>
 
 # Menu: Boot options >> Kernel command line type >> Architecture: arm
