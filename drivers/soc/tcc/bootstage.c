@@ -11,16 +11,20 @@
 #include <linux/seq_file.h>
 #include <linux/suspend.h>
 #include <soc/tcc/tcc-sip.h>
+#include <asm/arch_timer.h>
 
 static inline void bootstage_err(const char *msg, s32 err)
 {
 	(void)pr_err("[ERROR][bootstage] Failed to %s (err: %d)\n", msg, err);
 }
 
+/* TODO: Parse descriptions and number of those from device tree? */
 #if defined(CONFIG_ARCH_TCC805X)
 #  define NR_BOOT_STAGES (25U)
-#elif defined(CONFIG_ARCH_TCC803X)
+#elif defined(CONFIG_ARCH_TCC803X) && !defined(CONFIG_TCC803X_CA7S)
 #  define NR_BOOT_STAGES (23U)
+#elif defined(CONFIG_ARCH_TCC803X) && defined(CONFIG_TCC803X_CA7S)
+#  define NR_BOOT_STAGES (1U)
 #else
 #  error "Bootstage is not supported on this platform!"
 #endif
@@ -56,7 +60,7 @@ static const char *const bootstage_desc[NR_BOOT_STAGES] = {
 	"boot kernel",
 	/* Boot Stages on Kernel */
 	"kernel init",
-#elif defined(CONFIG_ARCH_TCC803X)
+#elif defined(CONFIG_ARCH_TCC803X) && !defined(CONFIG_TCC803X_CA7S)
 	/* Boot Stages on MCU Bootloader */
 	"setup mcu bl0",
 	"setup mcu bl1",
@@ -84,9 +88,37 @@ static const char *const bootstage_desc[NR_BOOT_STAGES] = {
 	"boot kernel",
 	/* Boot Stages on Kernel */
 	"kernel init",
+#elif defined(CONFIG_ARCH_TCC803X) && defined(CONFIG_TCC803X_CA7S)
+	/* Boot Stages on Kernel */
+	"kernel init",
 #endif
 };
 
+#if defined(CONFIG_ARCH_TCC803X) && defined(CONFIG_TCC803X_CA7S)
+static u32 bootstage_stamp[NR_BOOT_STAGES];
+static u32 bootstage_count;
+
+void add_boot_timestamp(void)
+{
+	if (bootstage_count < NR_BOOT_STAGES) {
+		u32 cntfrq = arch_timer_get_cntfrq();
+		u32 cntvct = arch_counter_get_cntvct();
+
+		bootstage_stamp[bootstage_count] = cntvct / (cntfrq / 1000000);
+		++bootstage_count;
+	}
+}
+
+static inline u32 get_boot_timestamp(ulong index)
+{
+	return (index < NR_BOOT_STAGES) ? bootstage_stamp[index] : 0U;
+}
+
+static inline u32 get_boot_timestamp_num(void)
+{
+	return bootstage_count;
+}
+#else
 void add_boot_timestamp(void)
 {
 	struct arm_smccc_res res;
@@ -111,6 +143,7 @@ static inline u32 get_boot_timestamp_num(void)
 
 	return (u32)res.a0;
 }
+#endif
 
 static inline void validate_boot_timestamp_num(struct seq_file *m, u32 num)
 {
@@ -323,6 +356,11 @@ static int bootstage_init(void)
 		bootstage_err("register pm notifier", ret);
 		goto pm_notifier_register_error;
 	}
+
+#if defined(CONFIG_ARCH_TCC803X) && defined(CONFIG_TCC803X_CA7S)
+	memset(bootstage_stamp, 0, sizeof(u32) * NR_BOOT_STAGES);
+	bootstage_count = 0U;
+#endif
 
 	return 0;
 
