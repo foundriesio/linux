@@ -639,7 +639,7 @@ static s32 tcc_sc_fw_cmd_request_gpio_no_res_cmd(const struct tcc_sc_fw_handle *
 
 	ret = tcc_sc_fw_xfer_async(info, xfer);
 
-	if (ret != 0) {
+	if (ret < 0) {
 		dev_err(dev,
 			"[ERROR][TCC_SC_FW] Failed to send mbox (GPIO Command) (%d)\n",
 			ret);
