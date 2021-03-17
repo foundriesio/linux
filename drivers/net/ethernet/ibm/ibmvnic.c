@@ -1908,10 +1908,9 @@ static int ibmvnic_set_mac(struct net_device *netdev, void *p)
 	if (!is_valid_ether_addr(addr->sa_data))
 		return -EADDRNOTAVAIL;
 
-	if (adapter->state != VNIC_PROBED) {
-		ether_addr_copy(adapter->mac_addr, addr->sa_data);
+	ether_addr_copy(adapter->mac_addr, addr->sa_data);
+	if (adapter->state != VNIC_PROBED)
 		rc = __ibmvnic_set_mac(netdev, addr->sa_data);
-	}
 
 	return rc;
 }
@@ -5495,9 +5494,9 @@ static int ibmvnic_remove(struct vio_dev *dev)
 	 * after setting state, so __ibmvnic_reset() which is called
 	 * from the flush_work() below, can make progress.
 	 */
-	spin_lock_irqsave(&adapter->rwi_lock, flags);
+	spin_lock(&adapter->rwi_lock);
 	adapter->state = VNIC_REMOVING;
-	spin_unlock_irqrestore(&adapter->rwi_lock, flags);
+	spin_unlock(&adapter->rwi_lock);
 
 	spin_unlock_irqrestore(&adapter->state_lock, flags);
 
