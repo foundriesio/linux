@@ -1,10 +1,10 @@
 Telechips SDHCI Controller device tree bindings
 
-
 Required properties:
 These are the necessary properties to initialize the driver.
 
 - compatible: should be one of the following
+	- "telechips,tcc-sdhci" : For controllers compatible with default
 	- "telechips,tcc803x-sdhci" : For controllers compatible with TCC803x SoCs
 	- "telechips,tcc899x-sdhci" : For controllers compatible with TCC899x SoCs
 	- "telechips,tcc901x-sdhci" : For controllers compatible with TCC901x SoCs
