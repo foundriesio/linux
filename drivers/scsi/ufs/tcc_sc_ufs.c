@@ -118,13 +118,14 @@ static uint32_t tcc_sc_ufs_scsi_to_upiu_lun(uint32_t scsi_lun)
 static void tcc_sc_ufs_complete(void *args, void *msg)
 {
 	struct tcc_sc_ufs_host *sc_host = (struct tcc_sc_ufs_host *)args;
-	int *rx_msg = (int *)msg;
+	//int *rx_msg = (int *)msg;
 
 	/* Finish request */
 	tasklet_schedule(&sc_host->finish_tasklet);
 }
 
-static int tcc_sc_ufs_queuecommand_sc(struct Scsi_Host *host, struct scsi_cmnd *cmd)
+static int tcc_sc_ufs_queuecommand_sc(struct Scsi_Host *host,
+		struct scsi_cmnd *cmd)
 {
 	struct tcc_sc_ufs_host *sc_host;
 	int32_t tag;
@@ -179,7 +180,8 @@ static int tcc_sc_ufs_queuecommand_sc(struct Scsi_Host *host, struct scsi_cmnd *
 	}
 
 	sc_cmd.dir = direction;
-	sc_cmd.lun = (uint32_t)(tcc_sc_ufs_scsi_to_upiu_lun((uint32_t)cmd->device->lun));
+	sc_cmd.lun = (uint32_t)(tcc_sc_ufs_scsi_to_upiu_lun
+			((uint32_t)cmd->device->lun));
 	sc_cmd.tag = (uint32_t)tag;
 	sc_cmd.sg_count = scsi_dma_map(cmd);
 	sc_cmd.sg = cmd->sdb.table.sgl;
@@ -196,10 +198,10 @@ static int tcc_sc_ufs_queuecommand_sc(struct Scsi_Host *host, struct scsi_cmnd *
 	}
 
 	ret = handle->ops.ufs_ops->request_command(handle, &sc_cmd,
-									tcc_sc_ufs_complete, sc_host);
+			&tcc_sc_ufs_complete, sc_host);
 
-	if(ret < 0) {
-		dev_err(sc_host->dev,"error retuned(%d)\n", ret);
+	if (ret < 0) {
+		dev_err(sc_host->dev, "error retuned(%d)\n", ret);
 	} else {
 		ret = 0;
 	}
@@ -238,7 +240,7 @@ static int tcc_sc_ufs_slave_alloc(struct scsi_device *sdev)
 		return -ENODEV;
 	}
 
-	scsi_change_queue_depth(sdev, sc_host->nutrs);
+	(void)scsi_change_queue_depth(sdev, sc_host->nutrs);
 	return 0;
 }
 
@@ -261,10 +263,9 @@ static int tcc_sc_ufs_slave_configure(struct scsi_device *sdev)
 
 static void tcc_sc_ufs_slave_destroy(struct scsi_device *sdev)
 {
-	if(sdev == NULL) {
+	if (sdev == NULL) {
 		(void)pr_err("%s:[ERROR]No scsi dev\n", __func__);
 	}
-	return;
 }
 
 static int tcc_sc_ufs_change_queue_depth(struct scsi_device *sdev, int depth)
@@ -297,7 +298,7 @@ static int tcc_sc_ufs_eh_device_reset_handler(struct scsi_cmnd *cmd)
 	if (cmd == NULL) {
 		(void)pr_err("%s:[ERROR] No scsi command\n", __func__);
 	}
-	
+
 	return SUCCESS;
 }
 
@@ -321,7 +322,7 @@ static struct scsi_host_template tcc_sc_ufs_driver_template = {
 
 static const struct of_device_id tcc_sc_ufs_of_match_table[2] = {
 	{ .compatible = "telechips,tcc805x-sc-ufs", .data = NULL},
-	{ 0 }
+	{ }
 };
 MODULE_DEVICE_TABLE(of, tcc_sc_ufs_of_match_table);
 
@@ -345,7 +346,7 @@ static int tcc_sc_ufs_probe(struct platform_device *pdev)
 	struct tcc_sc_ufs_host *host;
 
 	if (pdev == NULL) {
-		dev_err(&pdev->dev, "[ERROR][TCC_SC_ufs] No pdev\n");
+		(void)pr_err("[ERROR][TCC_SC_ufs] No pdev\n");
 		return -ENODEV;
 	}
 
@@ -368,7 +369,7 @@ static int tcc_sc_ufs_probe(struct platform_device *pdev)
 	dev_info(&pdev->dev, "[INFO][TCC_SC_ufs] regitser tcc-sc-ufs\n");
 
 	scsi_host = scsi_host_alloc(&tcc_sc_ufs_driver_template,
-				sizeof(struct tcc_sc_ufs_host));
+				(int)sizeof(struct tcc_sc_ufs_host));
 	if (scsi_host == NULL) {
 		dev_err(&pdev->dev, "scsi_host_alloc failed\n");
 		return -ENOMEM;
@@ -396,7 +397,7 @@ static int tcc_sc_ufs_probe(struct platform_device *pdev)
 						  GFP_KERNEL);
 
 	tasklet_init(&host->finish_tasklet,
-		tcc_sc_ufs_tasklet_finish, (unsigned long)host);
+		&tcc_sc_ufs_tasklet_finish, (unsigned long)host);
 
 	platform_set_drvdata(pdev, host);
 
@@ -407,7 +408,7 @@ static int tcc_sc_ufs_probe(struct platform_device *pdev)
 		dev_err(&pdev->dev, "scsi_add_host failed\n");
 	}
 
-	(void)async_schedule(tcc_sc_ufs_async_scan, host);
+	(void)async_schedule(&tcc_sc_ufs_async_scan, host);
 	return ret;
 }
 
