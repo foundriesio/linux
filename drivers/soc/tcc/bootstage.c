@@ -83,8 +83,8 @@ static const char *const bootstage_desc[NR_BOOT_STAGES] = {
 	"board init f",
 	"relocation",
 	"board init r",
-	"main loop",
 	"reset subcore",
+	"main loop",
 	"boot kernel",
 	/* Boot Stages on Kernel */
 	"kernel init",
