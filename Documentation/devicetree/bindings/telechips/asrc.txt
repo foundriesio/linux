@@ -1,0 +1,34 @@
+* Device Tree Bindings for asrc
+
+Required properties:
+
+- compatible : property name that conveys the platform architecture identifiers,
+               as 'telechips,switch'
+- reg        :
+- interrupts :
+- clocks     :
+- clock-name :
+- dma        :
+- mcaudio    :
+- max-ch-per-pair :
+- path-type  :
+- sync-mode  :
+- async-refclk :
+- status     :
+
+Example
+-------
+	asrc0: asrc@16500000 {
+		compatible = "telechips,asrc";
+		reg = <0x0 0x16500000 0x0 0x1000>;
+		interrupts = <GIC_SPI 98 IRQ_TYPE_LEVEL_HIGH>;
+		clocks = <&clk_peri PERI_AUX0_INPUT &clk_peri PERI_AUX1_INPUT &clk_peri PERI_AUX0_OUTPUT &clk_peri PERI_AUX1_OUTPUT &clk_io IOBUS_ASRC>;
+		clock-names = "aux_in0", "aux_in1", "aux_out0", "aux_out1", "asrc_hclk";
+		dma = <&pl080_0>;
+		mcaudio = <&i2s0 &i2s4 &i2s5 &i2s6>;
+		max-ch-per-pair= <8 2 2 2>;
+		path-type = <0 0 0 0>; // 0:m2m, 1:m2p, 2:p2m
+		sync-mode = <1 1 1 1>; // 0:async, 1:sync
+		async-refclk = <99 99 99 99>; //0:DAI0_LRCK, 1:DAI1_LRCK, 2:DAI2_LRCK, 3:DAI3_LRCK, 99:AUXCLK
+		status = "disabled";
+	};
