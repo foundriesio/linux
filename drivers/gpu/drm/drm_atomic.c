@@ -1886,7 +1886,13 @@ int drm_atomic_connector_commit_dpms(struct drm_atomic_state *state,
 	}
 
 	crtc_state->active = active;
+	dev_dbg(
+		crtc->dev->dev, "DPMS_%s+\r\n",
+		(mode == DRM_MODE_DPMS_ON) ? "on" : "off");
 	ret = drm_atomic_commit(state);
+	dev_dbg(
+		crtc->dev->dev, "DPMS_%s-\r\n",
+		(mode == DRM_MODE_DPMS_ON) ? "on" : "off");
 out:
 	if (ret != 0)
 		connector->dpms = old_mode;
