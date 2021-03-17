@@ -1,0 +1,52 @@
+* Device Tree Bindings for snd-card
+
+Required properties:
+
+- compatible : property name that conveys the platform architecture identifiers,
+               as 'telechips,switch'
+- status        : disable or enable the device node
+
+
+Example
+-------
+	sound@0 {
+		compatible = "telechips,snd-card";
+		card-name = "TCC805x EVM Card";
+		status = "okay";
+
+		telechips,dai-link@0 {
+			stream-name="I2S_0";
+			codec,format = "i2s"; // i2s, left_j, right_j
+			codec,continuous-clock;
+			mclk_div = <16>; // 4,6,8,16
+			bclk_ratio = <64>; // 32,48,64fs
+			pcm = <&adma2>;
+			dai = <&i2s2>;
+			codec = <&ak4601>;
+			codec,dai-name = "ak4601-aif1";
+		};
+
+		telechips,dai-link@1 {
+			stream-name="SPDIF_0_TX";
+			pcm = <&adma2>;
+			dai = <&spdif2>;
+			playback-only;
+		};
+
+		telechips,dai-link@2 {
+			stream-name="SPDIF_1_RX";
+			pcm = <&adma3>;
+			dai = <&spdif3>;
+			capture-only;
+		};
+
+		telechips,dai-link@3 {
+			stream-name="I2S_3";
+			codec,format = "i2s"; // i2s, left_j, right_j
+			codec,continuous-clock;
+			mclk_div = <16>; // 4,6,8,16
+			bclk_ratio = <64>; // 32,48,64fs
+			pcm = <&adma3>;
+			dai = <&i2s3>;
+		};
+	};

@@ -1,0 +1,47 @@
+* Device Tree Bindings for asrc-card
+
+Required properties:
+
+- compatible : property name that conveys the platform architecture identifiers,
+               as 'telechips,switch'
+- card-name       : 
+- status          : disable or enable the device node
+- asrc            : 
+- codec, dai-name : 
+- i2s             : 
+- codec           :  
+- codec,dai-name  : 
+- asrc-jm2p-pairs : 
+- asrc-p2m-pairs  :
+- mclk_div        :
+- bclk_ratio      :
+- samplerate      : default samplerate
+- format          : default format
+- channels        : default chnnels
+
+Example
+-------
+	sound@0 {
+		compatible = "telechips,asrc-card";
+		card-name = "TCC805x EVM Card";
+		status = "okay";
+
+		asrc = <&asrc0>;
+
+		telechips,dai-link@0 {
+			codec,format = "i2s";
+
+			i2s = <&i2s0>;
+			codec = <&ak4601>;
+			codec,dai-name = "ak4601-aif1";
+
+			asrc-m2p-pairs = <0 1 2>;
+			asrc-p2m-pairs = <3>;
+
+			mclk_div = <16>; // 4,6,8,16
+			bclk_ratio = <64>; // 32,48,64fs
+			samplerate = <48000>;
+			format = <0>; // 0:S16LE, 1:S24LE
+			channels = <2>; //2, 4, 6, 8
+		};
+	};

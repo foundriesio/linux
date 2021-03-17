@@ -1,0 +1,21 @@
+* Device Tree Bindings for adma
+
+Required properties:
+
+- compatible   :
+- reg             :
+- clocks         :
+- interrupts     :
+- have-hopcnt-clear :
+- adrcnt-mode :
+
+Example
+-------
+	adma0: adma@16100000 {
+		compatible = "telechips,adma";
+		reg = <0x0 0x16100000 0x0 0x200>;
+		clocks = <&clk_io IOBUS_ADMA0>;
+		interrupts = <GIC_SPI 80 IRQ_TYPE_LEVEL_HIGH>;
+		have-hopcnt-clear = <1>;
+		adrcnt-mode = <1>;
+	};

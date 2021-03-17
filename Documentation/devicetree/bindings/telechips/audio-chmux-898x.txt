@@ -1,0 +1,19 @@
+* Device Tree Bindings for audio-chmux-898x
+
+Required properties:
+
+- compatible : property name that conveys the platform architecture identifiers,
+               as 'telechips,switch'
+- dai           :
+- spdif         :
+- status        : disable or enable the device node
+
+
+Example
+-------
+	audio_chmux@XXXXX000{
+		compatible = "telechips,audio-chmux-898x";
+		dai = <1 0 3 0 1 99 99 99>;	// i2s0(x) i2s1(x) i2s2(x) i2s3(x) i2s4(x) i2s5(x) i2s6(x) i2s7(x)
+		spdif = <99 99 4 5 99 99 99>;	// spdif0(x) spdif1(x) spdif2(x) spdif3(x) spdif4(x) spdif5(x) spdif6(x)
+		status = "okay";
+	};
