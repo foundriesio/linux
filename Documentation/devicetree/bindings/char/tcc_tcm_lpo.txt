@@ -1,0 +1,27 @@
+This is for 'telechips,tcm_lpo'.
+
+Required properties for telechips tcm38xx modules:
+
+	-compatible:
+		"telechips,tcm_lpo"
+
+        -clocks: clock peri to use
+        -clock-names: the name of the clocks referenced by the code.
+        -ext_clock_speed: clock speed
+        -pinctrl-names: Contains only one value - "default".
+        -pinctrl-0: Phandle to pinctrl group for tcc_tcm_lpo.
+
+-------------------------------------------------------------------------------
+
+Example:
+
+        /* for BT/WIFI LPO (32.768KHz) */
+        tcm_lpo: tcm_lpo {
+                compatible = "telechips,tcm-lpo";
+                clocks = <&clk_peri PERI_OUT0>;
+                clock-names = "ext_clock";
+                ext_clock_speed = <32768>;
+                pinctrl-names = "default";
+                pinctrl-0 = <&out0_clk>;
+        };
+
