@@ -712,6 +712,16 @@ void RGXMapBRN71422TargetPhysicalAddress(MMU_CONTEXT *psMMUContext)
 	ui64Entry = ui64Entry | RGX_MMUCTRL_PT_DATA_VALID_EN;
 	pui64Px[2] = ui64Entry;
 
+	{
+		PVRSRV_ERROR eError;
+		PVRSRV_DEVICE_NODE *psDevNode = (PVRSRV_DEVICE_NODE *)psMMUContext->psPhysMemCtx->psDevNode;
+		eError = psDevNode->sDevMMUPxSetup.pfnDevPxClean(psDevNode,
+				&psMemDesc->psMapping->sMemHandle,
+				psMemDesc->uiOffset,
+				psMemDesc->uiSize);
+		PVR_LOG_IF_ERROR(eError, "pfnDevPxClean");
+	}
+
 	PVR_DPF((PVR_DBG_MESSAGE, "%s: Mapping the BRN71422 workaround to target physical address 0x%" IMG_UINT64_FMTSPECx ".",
 	         __func__, RGX_BRN71422_TARGET_HARDWARE_PHYSICAL_ADDR));
 }
