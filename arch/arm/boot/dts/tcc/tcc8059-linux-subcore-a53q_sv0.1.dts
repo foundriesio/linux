@@ -2154,15 +2154,15 @@
 		boot-reason = <0x14400178 0xF 0x8>;
 	};
 
-	gpio: gpio@14200000 {
-		compatible = "telechips,tcc-gpio";
-		reg = <0x14200000 0x7C0>;
-		sc-firmware = <&tcc_sc_fw>;
-	};
-
 	pinctrl: pinctrl@14200000 {
 		compatible = "telechips,tcc-pinctrl";
 		reg = <0x14200000 0x7C0 0x1B937000 0xA30>;	/* gpio, pmgpio */
+		sc-firmware = <&tcc_sc_fw>;
+	};
+
+	gpio: gpio@14200000 {
+		compatible = "telechips,tcc-gpio";
+		reg = <0x14200000 0x7C0>;
 		sc-firmware = <&tcc_sc_fw>;
 	};
 
