@@ -602,10 +602,10 @@ static int radeon_ttm_backend_unbind(struct ttm_tt *ttm)
 {
 	struct radeon_ttm_tt *gtt = (void *)ttm;
 
-	radeon_gart_unbind(gtt->rdev, gtt->offset, ttm->num_pages);
-
 	if (gtt->userptr)
 		radeon_ttm_tt_unpin_userptr(ttm);
+
+	radeon_gart_unbind(gtt->rdev, gtt->offset, ttm->num_pages);
 
 	return 0;
 }
