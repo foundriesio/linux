@@ -107,17 +107,17 @@ struct fb_region {
 };
 
 struct fb_dp_device {
-	enum fb_power_status fb_power_status;		//true or false
+	enum fb_power_status fb_power_status; 	//true or false
 	unsigned int FbDeviceType;
 	unsigned int FbUpdateType;
 	unsigned int FbLayerOrder;
-	unsigned int FbWdmaPath;		/* 0: Display device path, 1: Wdma path */
-	struct clk *vioc_clock;		//vioc blcok clock
-	struct clk *ddc_clock;		//display blcok clock
-	struct fb_vioc_block ddc_info;		// display controller address
-	struct fb_vioc_block wdma_info;		// display controller address
-	struct fb_vioc_block wmixer_info;		// wmixer address
-	struct fb_vioc_block scaler_info;		// scaler address
+	unsigned int FbWdmaPath; 	// 0: Display device path, 1: Wdma path
+	struct clk *vioc_clock;		// vioc blcok clock
+	struct clk *ddc_clock;		// display blcok clock
+	struct fb_vioc_block ddc_info;	// display controller address
+	struct fb_vioc_block wdma_info;	// display controller address
+	struct fb_vioc_block wmixer_info;	// wmixer address
+	struct fb_vioc_block scaler_info;	// scaler address
 	struct fb_vioc_block rdma_info;		// rdma address
 	struct fb_vioc_block fbdc_info;		// rdma address
 	struct fb_region region;
@@ -183,7 +183,9 @@ irqreturn_t fbX_display_handler(int irq, void *dev_id)
 	unsigned int block_status;
 
 	if (dev_id == NULL) {
-		pr_err("[ERR][FBX] %s irq: %d dev_id:%p \n",__func__, irq, dev_id);
+		pr_err(
+			"[ERROR][FBX] %s irq: %d dev_id:%p \n",
+			__func__, irq, dev_id);
 		return IRQ_NONE;
 	}
 
@@ -418,7 +420,7 @@ static int fbX_setcolreg(unsigned regno, unsigned red, unsigned green,
 		break;
 
 	default:
-		pr_err("[ERR][FBX] error in %s: unknown type %d\n", __func__, info->fix.visual);
+		pr_err("[ERROR][FBX] error in %s: unknown type %d\n", __func__, info->fix.visual);
 		return 1;   /* unknown type */
 	}
 
@@ -497,18 +499,20 @@ static int fbX_prepare_m2m(struct fb_info *info)
 			pr_err("error in %s: pmap size are not enough(%d)\n", __func__, pmap.size);
 			ret = -ENODEV;
 		}
-	}while(0);
+	} while (0);
 
 	return ret;
 }
 
-static void fbX_m2m_activate_var(unsigned int dma_addr, struct fb_var_screeninfo *var, struct fbX_par *par)
+static void fbX_m2m_activate_var(
+	unsigned int dma_addr, struct fb_var_screeninfo *var,
+	struct fbX_par *par)
 {
 	unsigned int width, height, format, channel;
 
 	VIOC_DISP_GetSize(par->pdata.ddc_info.virt_addr, &width, &height);
 	if ((width == 0) || (height == 0)) {
-		pr_err("[ERR][FBX] error in %s: vioc invalid status (%dx%d)\n",
+		pr_err("[ERROR][FBX] error in %s: vioc invalid status (%dx%d)\n",
 			__func__, width, height);
 		return;
 	}
@@ -521,7 +525,9 @@ static void fbX_m2m_activate_var(unsigned int dma_addr, struct fb_var_screeninfo
 		format = VIOC_IMG_FMT_ARGB8888;
 		break;
 	default:
-		pr_err("[ERR][FBX] error in %s: can not support bpp %d\n", __func__, var->bits_per_pixel);
+		pr_err(
+			"[ERROR][FBX] error in %s: can not support bpp %d\n",
+			__func__, var->bits_per_pixel);
 		return;
 	}
 
@@ -664,7 +670,7 @@ static void fbX_activate_var(unsigned int dma_addr, struct fb_var_screeninfo *va
 	}
 
 	if ((width == 0) || (height == 0)) {
-		pr_err("[ERR][FBX] error in %s: vioc invalid status (%dx%d)\n",
+		pr_err("[ERROR][FBX] error in %s: vioc invalid status (%dx%d)\n",
 			__func__, width, height);
 		return;
 	}
@@ -684,7 +690,7 @@ static void fbX_activate_var(unsigned int dma_addr, struct fb_var_screeninfo *va
 		format = VIOC_IMG_FMT_ARGB8888;
 		break;
 	default:
-		pr_err("[ERR][FBX] error in %s: can not support bpp %d\n", __func__, var->bits_per_pixel);
+		pr_err("[ERROR][FBX] error in %s: can not support bpp %d\n", __func__, var->bits_per_pixel);
 		return;
 	}
 
@@ -709,7 +715,7 @@ static void fbX_activate_var(unsigned int dma_addr, struct fb_var_screeninfo *va
 		VIOC_RDMA_SetImageSize(par->pdata.rdma_info.virt_addr, var->xres, var->yres);
 	VIOC_RDMA_SetImageOffset(par->pdata.rdma_info.virt_addr, format, var->xres);
 	#if defined(CONFIG_VIOC_PVRIC_FBDC)
-	if(fbdc_dec_1st_cfg==1)	
+	if (fbdc_dec_1st_cfg==1)
 	#endif
 	VIOC_RDMA_SetImageBase(par->pdata.rdma_info.virt_addr, dma_addr, 0, 0);
 
@@ -758,12 +764,12 @@ static int fbX_pan_display(struct fb_var_screeninfo *var, struct fb_info *info)
 #if defined(CONFIG_VIOC_PVRIC_FBDC)
 	if (var->reserved[3] != 0) {
 		unsigned int bufID=0;
-		unsigned int FBCBufSize= 
+		unsigned int FBCBufSize=
 			BYTE_TO_PAGES((var->xres * var->yres * (var->bits_per_pixel/8)) +
 			FBDC_ALIGNED((var->xres * var->yres/64), 256)) * PAGE_SIZE;
-		if(var->yoffset == 0) 
+		if (var->yoffset == 0)
 			bufID = 0;
-		else if (var->yoffset == var->yres) 
+		else if (var->yoffset == var->yres)
 			bufID = 1;
 		else
 			bufID = 2;
@@ -901,7 +907,7 @@ static int fbX_blank(int blank, struct fb_info *info)
 	default:
 		dev_err(
 			info->dev,
-			"[ERR][FBX] error in %s: Invaild blank_mode %d\n",
+			"[ERROR][FBX] error in %s: Invaild blank_mode %d\n",
 			__func__, blank);
 		ret = -EINVAL;
 	}
@@ -922,13 +928,13 @@ static struct sg_table *fb_ion_map_dma_buf(struct dma_buf_attachment *attachment
 	struct fb_info *info = (struct fb_info *)attachment->dmabuf->priv;
 
 	if (info == NULL) {
-		pr_err("[ERR][FBX] %s: info is null\n", __func__);
+		pr_err("[ERROR][FBX] %s: info is null\n", __func__);
 		return ERR_PTR(-ENOMEM);
 	}
 
 	table = kzalloc(sizeof(struct sg_table), GFP_KERNEL);
 	if (table == NULL) {
-		pr_err("[ERR][FBX] %s: kzalloc failed\n", __func__);
+		pr_err("[ERROR][FBX] %s: kzalloc failed\n", __func__);
 		return ERR_PTR(-ENOMEM);
 	}
 
@@ -1195,7 +1201,7 @@ static int __init fb_map_video_memory(struct fb_info *info)
 		par->map_size  = info->var.xres_virtual * info->var.yres_virtual * (info->var.bits_per_pixel/ 8);
 		par->map_cpu = dma_alloc_writecombine(info->dev, par->map_size, &par->map_dma, GFP_KERNEL);
 		if (par->map_cpu == NULL) {
-			pr_err("[ERR][FBX] %s: error dma_alloc map_cpu\n", __func__);
+			pr_err("[ERROR][FBX] %s: error dma_alloc map_cpu\n", __func__);
 			goto exit;
 		}
 		pr_info("[INF][FBX] %s by dma_alloc_writecombine()\n", __func__);
@@ -1204,7 +1210,7 @@ static int __init fb_map_video_memory(struct fb_info *info)
 		par->map_size = resource_size(&res);
 		par->map_cpu = ioremap_nocache(par->map_dma, par->map_size);
 		if (par->map_cpu == NULL) {
-			pr_err("[ERR][FBX] %s: error ioremap map_cpu\n", __func__);
+			pr_err("[ERROR][FBX] %s: error ioremap map_cpu\n", __func__);
 			goto exit;
 		}
 		pr_info("[INF][FBX] %s by ioremap_nocache()\n", __func__);
@@ -1263,7 +1269,7 @@ static int fb_register_isr(struct fb_info *info)
 	if (par->pdata.FbUpdateType == FBX_OVERLAY_UPDATE) {
 		vioc_intr_clear(VIOC_INTR_RD0+get_vioc_index(par->pdata.rdma_info.blk_num), (0x1 << VIOC_RDMA_INTR_EOFR));
 		if (request_irq(par->pdata.rdma_info.irq_num, fbX_display_handler, IRQF_SHARED, info->fix.id, info) < 0) {
-			pr_err("[ERR][FBX] error in %s: can not register isr \n", __func__);
+			pr_err("[ERROR][FBX] error in %s: can not register isr \n", __func__);
 			return -EINVAL;
 		}
 		vioc_intr_enable(par->pdata.rdma_info.irq_num,
@@ -1275,7 +1281,7 @@ static int fb_register_isr(struct fb_info *info)
 	{
 		vioc_intr_clear(get_vioc_index(par->pdata.ddc_info.blk_num), VIOC_DISP_INTR_DISPLAY);
 		if (request_irq(par->pdata.ddc_info.irq_num, fbX_display_handler, IRQF_SHARED, info->fix.id, info) < 0) {
-			pr_err("[ERR][FBX] error in %s: can not register isr \n", __func__);
+			pr_err("[ERROR][FBX] error in %s: can not register isr \n", __func__);
 			return -EINVAL;
 		}
 		vioc_intr_enable(par->pdata.ddc_info.irq_num,
@@ -1303,26 +1309,26 @@ static int fb_dt_parse_data(struct fb_info *info)
 
 	if (info->dev->of_node != NULL) {
 		if (of_property_read_u32(info->dev->of_node, "xres", &info->var.xres)) {
-			pr_err("[ERR][FBX] error in %s: can nod find xres \n", __func__);
+			pr_err("[ERROR][FBX] error in %s: can nod find xres \n", __func__);
 			ret = -ENODEV;
 			goto err_dt_parse;
 		}
 		info->var.xres_virtual = info->var.xres;
 
 		if (of_property_read_u32(info->dev->of_node, "yres", &info->var.yres)) {
-			pr_err("[ERR][FBX] error in %s: can nod find yres \n", __func__);
+			pr_err("[ERROR][FBX] error in %s: can nod find yres \n", __func__);
 			ret = -ENODEV;
 			goto err_dt_parse;
 		}
 
 		if (of_property_read_u32(info->dev->of_node, "bpp", &info->var.bits_per_pixel)) {
-			pr_err("[ERR][FBX] error in %s: can nod find bpp \n", __func__);
+			pr_err("[ERROR][FBX] error in %s: can nod find bpp \n", __func__);
 			ret = -ENODEV;
 			goto err_dt_parse;
 		}
 
 		if (of_property_read_u32(info->dev->of_node, "mode", &index)) {
-			pr_err("[ERR][FBX] error in %s: can nod find mode \n", __func__);
+			pr_err("[ERROR][FBX] error in %s: can nod find mode \n", __func__);
 			ret = -ENODEV;
 			goto err_dt_parse;
 		}
@@ -1338,19 +1344,19 @@ static int fb_dt_parse_data(struct fb_info *info)
 			info->var.yres_virtual = info->var.yres * 3;
 			break;
 		default:
-			pr_err("[ERR][FBX] error in %s: Invaild fb mode(%d)\n",
+			pr_err("[ERROR][FBX] error in %s: Invaild fb mode(%d)\n",
 				__func__, index);
 		}
 		info->fix.line_length = info->var.xres * info->var.bits_per_pixel/8;
 
 		if (of_property_read_u32(info->dev->of_node, "update-type", &par->pdata.FbUpdateType)) {
-			pr_err("[ERR][FBX] error in %s: can nod find update-type \n", __func__);
+			pr_err("[ERROR][FBX] error in %s: can nod find update-type \n", __func__);
 			ret = -ENODEV;
 			goto err_dt_parse;
 		}
 
 		if (of_property_read_u32_index(info->dev->of_node, "device-priority", 0, &par->pdata.FbDeviceType)) {
-			pr_err("[ERR][FBX] error in %s: can nod find update-type \n", __func__);
+			pr_err("[ERROR][FBX] error in %s: can nod find update-type \n", __func__);
 			ret = -ENODEV;
 			goto err_dt_parse;
 		}
@@ -1373,13 +1379,13 @@ static int fb_dt_parse_data(struct fb_info *info)
 		}else {
 			np = of_parse_phandle(info->dev->of_node, "telechips,wdma", 0);
 			if (np == NULL) {
-				pr_err("[ERR][FBX] error in %s: can not find telechips,wdma \n", __func__);
+				pr_err("[ERROR][FBX] error in %s: can not find telechips,wdma \n", __func__);
 				ret = - ENODEV;
 				goto err_dt_parse;
 			}
 
 			if (par->pdata.FbUpdateType != FBX_NOWAIT_UPDATE) {
-				pr_err("[ERR][FBX] error in %s: can not support update type [%d]\n", __func__, par->pdata.FbUpdateType);
+				pr_err("[ERROR][FBX] error in %s: can not support update type [%d]\n", __func__, par->pdata.FbUpdateType);
 				ret = - ENODEV;
 				goto err_dt_parse;
 			}
@@ -1410,7 +1416,7 @@ static int fb_dt_parse_data(struct fb_info *info)
 			break;
 	#endif
 		default:
-			pr_err("[ERR][FBX] error in %s: can not get ddc clock \n", __func__);
+			pr_err("[ERROR][FBX] error in %s: can not get ddc clock \n", __func__);
 			par->pdata.ddc_clock = NULL;
 			break;
 		}
@@ -1420,7 +1426,7 @@ static int fb_dt_parse_data(struct fb_info *info)
 #if defined(CONFIG_VIOC_PVRIC_FBDC)
 		np = of_parse_phandle(info->dev->of_node, "telechips,fbdc", 0);
 		if (!np) {
-			pr_err("[ERR][FBX] error in %s: can not find telechips,fbdc \n", __func__);
+			pr_err("[ERROR][FBX] error in %s: can not find telechips,fbdc \n", __func__);
 			ret = -ENODEV;
 			goto err_dt_parse;
 		}
@@ -1432,7 +1438,7 @@ static int fb_dt_parse_data(struct fb_info *info)
 
 		np = of_parse_phandle(info->dev->of_node, "telechips,rdma", 0);
 		if (!np) {
-			pr_err("[ERR][FBX] error in %s: can not find telechips,rdma \n", __func__);
+			pr_err("[ERROR][FBX] error in %s: can not find telechips,rdma \n", __func__);
 			ret = -ENODEV;
 			goto err_dt_parse;
 		}
@@ -1447,7 +1453,7 @@ static int fb_dt_parse_data(struct fb_info *info)
 #endif
 		np = of_parse_phandle(info->dev->of_node, "telechips,wmixer", 0);
 		if (!np) {
-			pr_err("[ERR][FBX] error in %s: can not find telechips,wmixer \n", __func__);
+			pr_err("[ERROR][FBX] error in %s: can not find telechips,wmixer \n", __func__);
 			ret = -ENODEV;
 			goto err_dt_parse;
 		}
@@ -1474,25 +1480,25 @@ static int fb_dt_parse_data(struct fb_info *info)
 
 		if (np) {
 			if (of_property_read_u32(np, "x", &par->pdata.region.x)) {
-				pr_err("[ERR][FBX] error in %s: can nod find 'x' of fbx_region  \n", __func__);
+				pr_err("[ERROR][FBX] error in %s: can nod find 'x' of fbx_region  \n", __func__);
 				ret = -ENODEV;
 				goto err_dt_parse;
 			}
 
 			if (of_property_read_u32(np, "y", &par->pdata.region.y)) {
-				pr_err("[ERR][FBX] error in %s: can nod find 'y' of fbx_region  \n", __func__);
+				pr_err("[ERROR][FBX] error in %s: can nod find 'y' of fbx_region  \n", __func__);
 				ret = -ENODEV;
 				goto err_dt_parse;
 			}
 
 			if (of_property_read_u32(np, "width", &par->pdata.region.width)) {
-				pr_err("[ERR][FBX] error in %s: can nod find 'width' of fbx_region  \n", __func__);
+				pr_err("[ERROR][FBX] error in %s: can nod find 'width' of fbx_region  \n", __func__);
 				ret = -ENODEV;
 				goto err_dt_parse;
 			}
 
 			if (of_property_read_u32(np, "height", &par->pdata.region.height)) {
-				pr_err("[ERR][FBX] error in %s: can nod find 'height' of fbx_region  \n", __func__);
+				pr_err("[ERROR][FBX] error in %s: can nod find 'height' of fbx_region  \n", __func__);
 				ret = -ENODEV;
 				goto err_dt_parse;
 			}
@@ -1503,10 +1509,10 @@ static int fb_dt_parse_data(struct fb_info *info)
 		}
 
 		if (!IS_ERR_OR_NULL(par->pdata.vioc_clock)) {
-		clk_prepare_enable(par->pdata.vioc_clock);
+			clk_prepare_enable(par->pdata.vioc_clock);
 		}
 		if (!IS_ERR_OR_NULL(par->pdata.ddc_clock)) {
-		clk_prepare_enable(par->pdata.ddc_clock);
+			clk_prepare_enable(par->pdata.ddc_clock);
 		}
 
 		par->pdata.fb_power_status = EM_FB_UNBLANK;
@@ -1535,7 +1541,7 @@ static ssize_t fbX_ovp_store(struct device *dev, struct device_attribute *attr, 
 
 	value = simple_strtoul(buf, NULL, 10);
 	if ((int)value < 0 || value > 29) {
-		pr_err("[ERR][FBX] %s: invalid ovp%d\n", __func__, value);
+		pr_err("[ERROR][FBX] %s: invalid ovp%d\n", __func__, value);
 		return count;
 	}
 
@@ -1573,7 +1579,7 @@ static int __init fbX_probe (struct platform_device *pdev)
 
 	info = framebuffer_alloc(sizeof(struct fbX_par), &pdev->dev);
 	if (!info) {
-		pr_err("[ERR][FBX] error in %s: can not allocate fb\n", __func__);
+		pr_err("[ERROR][FBX] error in %s: can not allocate fb\n", __func__);
 		retval = -ENOMEM;
 		goto err_fb_probe;
 	}
@@ -1630,14 +1636,14 @@ static int __init fbX_probe (struct platform_device *pdev)
 
 	info->pseudo_palette = devm_kzalloc(&pdev->dev, sizeof(unsigned int) * 16, GFP_KERNEL);
 	if (!info->pseudo_palette) {
-		pr_err("[ERR][FBX] error in %s: can not allocate pseudo_palette\n", __func__);
+		pr_err("[ERROR][FBX] error in %s: can not allocate pseudo_palette\n", __func__);
 		retval = -ENOMEM;
 		goto err_fb_free;
 	}
 
 	retval =  fb_map_video_memory(info);
 	if (retval < 0) {
-		pr_err("[ERR][FBX] error in %s: can not remap framebuffer \n", __func__);
+		pr_err("[ERROR][FBX] error in %s: can not remap framebuffer \n", __func__);
 		retval = -ENOMEM;
 		goto err_fb_free;
 	}
@@ -1646,7 +1652,7 @@ static int __init fbX_probe (struct platform_device *pdev)
 	fbX_set_par(info);
 
 	if (register_framebuffer(info) < 0) {
-		pr_err("[ERR][FBX] error in %s: can not register framebuffer device\n", __func__);
+		pr_err("[ERROR][FBX] error in %s: can not register framebuffer device\n", __func__);
 		retval = -EINVAL;
 		goto err_palette_free;
 	}
@@ -1720,10 +1726,10 @@ static int fbX_remove(struct platform_device *pdev)
 
 		fb_unmap_video_memory(info);
 		if (!IS_ERR_OR_NULL(par->pdata.vioc_clock)) {
-		clk_put(par->pdata.vioc_clock);
+			clk_put(par->pdata.vioc_clock);
 		}
 		if (!IS_ERR_OR_NULL(par->pdata.ddc_clock)) {
-		clk_put(par->pdata.ddc_clock);
+			clk_put(par->pdata.ddc_clock);
 		}
 
 		unregister_framebuffer(info);
@@ -1907,8 +1913,12 @@ next_step:
 
 	switch (par->pdata.fb_power_status) {
 	case EM_FB_POWERDOWN:
-		if (!IS_ERR_OR_NULL(par->pdata.ddc_clock))
-			clk_prepare_enable(par->pdata.ddc_clock);
+		#if defined(CONFIG_FB_PANEL_LVDS_TCC)
+		if (par->panel) {
+			if (!IS_ERR_OR_NULL(par->pdata.ddc_clock))
+				clk_prepare_enable(par->pdata.ddc_clock);
+		}
+		#endif
 
 		if (par->pdata.FbUpdateType != FBX_NOWAIT_UPDATE)
 			fb_register_isr(info);
@@ -1943,7 +1953,7 @@ static int fbx_turn_off_resource_internal(
 	switch (fb_power_status) {
 	case EM_FB_POWERDOWN:
 		if (par->pdata.FbUpdateType != FBX_NOWAIT_UPDATE) {
-			if(
+			if (
 				par->pdata.fb_power_status == EM_FB_BLANK &&
 				par->pdata.FbUpdateType == FBX_OVERLAY_UPDATE)
 				dev_info(
@@ -1963,7 +1973,7 @@ static int fbx_turn_off_resource_internal(
 
 	/* Disable RDMA */
 	if (par->pdata.ddc_info.virt_addr) {
-		if(VIOC_DISP_Get_TurnOnOff(par->pdata.ddc_info.virt_addr))
+		if (VIOC_DISP_Get_TurnOnOff(par->pdata.ddc_info.virt_addr))
 			VIOC_RDMA_SetImageDisable(
 				par->pdata.rdma_info.virt_addr);
 		else
@@ -2018,10 +2028,12 @@ static int fbx_turn_off_resource_internal(
 		info->dev, "[INFO][FBX] reset rdma_%d\n",
 		get_vioc_index(par->pdata.rdma_info.blk_num));
 
-	if (fb_power_status == EM_FB_POWERDOWN)
+	#if defined(CONFIG_FB_PANEL_LVDS_TCC)
+	if (par->panel && fb_power_status == EM_FB_POWERDOWN)
 		if (!IS_ERR_OR_NULL(par->pdata.ddc_clock)) {
 			clk_disable_unprepare(par->pdata.ddc_clock);
 		}
+	#endif
 	par->pdata.fb_power_status = fb_power_status;
 out:
 	return 0;
@@ -2112,6 +2124,7 @@ static void fbX_prepare_vin_path_rdma(struct fbX_par *par)
 	unsigned int cur = 0;
 	int idx;
 	int status = 0;
+
 	VIOC_RDMA_GetImageEnable(par->pdata.rdma_info.virt_addr, &rdma_enable);
 	cur = VIOC_RDMA_Get_CAddress(par->pdata.rdma_info.virt_addr);
 #if 0
@@ -2125,18 +2138,21 @@ static void fbX_prepare_vin_path_rdma(struct fbX_par *par)
 	}
 #endif
 
-	if (rdma_enable) {
+	if (rdma_enable)
 		VIOC_RDMA_SetImageDisable(par->pdata.rdma_info.virt_addr);
-	}
 
 #if 0
 	pr_info("[INFO][FBX] rdma_enable = [%s], status = [%s]\n",
 						rdma_enable ? "enable" : "disable",
 						status? "working" : "not working");
 #endif
-	VIOC_CONFIG_SWReset_RAW(par->pdata.rdma_info.blk_num, VIOC_CONFIG_RESET);
-	VIOC_CONFIG_SWReset_RAW(par->pdata.rdma_info.blk_num, VIOC_CONFIG_CLEAR);
-	pr_info("[INFO][FBX] rdma[%d] SWReset.\n", par->pdata.rdma_info.blk_num - VIOC_RDMA);
+	VIOC_CONFIG_SWReset_RAW(
+		par->pdata.rdma_info.blk_num, VIOC_CONFIG_RESET);
+	VIOC_CONFIG_SWReset_RAW(
+		par->pdata.rdma_info.blk_num, VIOC_CONFIG_CLEAR);
+	pr_info(
+		"[INFO][FBX] rdma[%d] SWReset.\n", 
+		par->pdata.rdma_info.blk_num - VIOC_RDMA);
 }
 
 static struct platform_driver fbX_driver = {
