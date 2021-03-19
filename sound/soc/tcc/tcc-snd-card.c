@@ -166,8 +166,37 @@ static int tcc_snd_card_hw_params(struct snd_pcm_substream *substream,
 {
 	int ret = 0;
 
-	snd_card_dbg("%s - Not support operation", __func__);
+#ifdef CONFIG_SND_SOC_CS4265
+	struct snd_soc_pcm_runtime *rtd = substream->private_data;
+	struct snd_soc_dai *cpu_dai = rtd->cpu_dai;
+	struct snd_soc_dai *codec_dai = rtd->codec_dai;
+	struct tcc_card_info_t *card_info = snd_soc_card_get_drvdata(rtd->card);
+	struct tcc_dai_info_t *dai_info = tcc_snd_card_get_dai_info(card_info, cpu_dai);
+	unsigned int mclk = 0;
+	unsigned int mclk_fs = 0;
 
+	if(dai_info->tdm_slots != 0){ // the case of TDM
+		mclk_fs = dai_info->mclk_div * dai_info->tdm_slots * dai_info->tdm_width;
+	} else { // Not TDM
+		mclk_fs = dai_info->mclk_div * dai_info->bclk_ratio;
+	}
+
+	if (mclk_fs) {
+		mclk = params_rate(params) * mclk_fs;
+		ret = snd_soc_dai_set_sysclk(codec_dai, 0, mclk, SND_SOC_CLOCK_IN);
+		if (ret && ret != -ENOTSUPP) {
+			goto err;
+		}
+
+		/* Set CPU DAI is not implemented */
+		ret = snd_soc_dai_set_sysclk(cpu_dai, 0, mclk, SND_SOC_CLOCK_OUT);
+		if (ret && ret != -ENOTSUPP) {
+			goto err;
+		}
+	}
+	return 0;
+err:
+#endif
 	return ret;
 }
 
