@@ -36,7 +36,7 @@
 #define DRIVER_NAME	"tcc-drm"
 #endif
 #define DRIVER_DESC	"Telechips SoC DRM"
-#define DRIVER_DATE	"20210319
+#define DRIVER_DATE	"20210319"
 #define DRIVER_MAJOR	1
 #define DRIVER_MINOR	3
 #define DRIVER_PATCH	14
