@@ -27,10 +27,12 @@
 
 struct bit_field {
 	void __iomem *reg;
-	u32 mask;
-	u32 shift;
 	u32 val;
 };
+
+#define PMU_MICOM_USSTATUS	(0x14400178U)
+#define BOOT_REASON_MASK	(0xFU)
+#define BOOT_REASON_SHIFT	(0x8U)
 
 static inline void update_bit_field_val(struct bit_field *field)
 {
@@ -38,7 +40,7 @@ static inline void update_bit_field_val(struct bit_field *field)
 
 	if (field != NULL) {
 		regval = readl(field->reg);
-		field->val = (regval >> field->shift) & field->mask;
+		field->val = (regval >> BOOT_REASON_SHIFT) & BOOT_REASON_MASK;
 	}
 }
 
@@ -329,16 +331,7 @@ static s32 pm_fw_boot_reason_init(struct bit_field *reason, struct device *dev)
 	u32 prop[3];
 	s32 ret;
 
-	ret = of_property_read_u32_array(np, "boot-reason", prop, 3);
-	if (ret != 0) {
-		return ret;
-	}
-
-	reason->reg = ioremap(prop[0], sizeof(u32));
-	reason->mask = prop[1];
-	reason->shift = prop[2];
-	reason->val = 0;
-
+	reason->reg = ioremap(PMU_MICOM_USSTATUS, sizeof(u32));
 	if (reason->reg == NULL) {
 		return -ENOMEM;
 	}

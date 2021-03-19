@@ -944,10 +944,6 @@
 	};
 };
 
-&tcc_pm_fw {
-	pmic = <&da9062>;
-};
-
 &gpsb0 {
 	status = "okay";
 	gpsb-port = <22>;

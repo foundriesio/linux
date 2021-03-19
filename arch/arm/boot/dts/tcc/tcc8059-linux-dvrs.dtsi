@@ -1857,10 +1857,6 @@
 	};
 };
 
-&tcc_pm_fw {
-	pmic = <&da9062>;
-};
-
 &uart0 {
 	pinctrl-names = "default";
 	pinctrl-0 = <&uart18_data>;
