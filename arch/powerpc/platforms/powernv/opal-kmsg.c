@@ -20,8 +20,7 @@
  * message, it just ensures that OPAL completely flushes the console buffer.
  */
 static void kmsg_dump_opal_console_flush(struct kmsg_dumper *dumper,
-					 enum kmsg_dump_reason reason,
-					 struct kmsg_dumper_iter *iter)
+				     enum kmsg_dump_reason reason)
 {
 	/*
 	 * Outside of a panic context the pollers will continue to run,

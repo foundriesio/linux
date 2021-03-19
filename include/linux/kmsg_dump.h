@@ -30,13 +30,11 @@ enum kmsg_dump_reason {
 };
 
 /**
- * struct kmsg_dumper_iter - iterator for kernel crash message dumper
- * @active:	Flag that specifies if this is currently dumping
- * @cur_seq:	Points to the oldest message to dump (private)
- * @next_seq:	Points after the newest message to dump (private)
+ * struct kmsg_dump_iter - iterator for retrieving kernel messages
+ * @cur_seq:	Points to the oldest message to dump
+ * @next_seq:	Points after the newest message to dump
  */
-struct kmsg_dumper_iter {
-	bool	active;
+struct kmsg_dump_iter {
 	u64	cur_seq;
 	u64	next_seq;
 };
@@ -51,8 +49,7 @@ struct kmsg_dumper_iter {
  */
 struct kmsg_dumper {
 	struct list_head list;
-	void (*dump)(struct kmsg_dumper *dumper, enum kmsg_dump_reason reason,
-		     struct kmsg_dumper_iter *iter);
+	void (*dump)(struct kmsg_dumper *dumper, enum kmsg_dump_reason reason);
 	enum kmsg_dump_reason max_reason;
 	bool registered;
 };
@@ -60,13 +57,13 @@ struct kmsg_dumper {
 #ifdef CONFIG_PRINTK
 void kmsg_dump(enum kmsg_dump_reason reason);
 
-bool kmsg_dump_get_line(struct kmsg_dumper_iter *iter, bool syslog,
+bool kmsg_dump_get_line(struct kmsg_dump_iter *iter, bool syslog,
 			char *line, size_t size, size_t *len);
 
-bool kmsg_dump_get_buffer(struct kmsg_dumper_iter *iter, bool syslog,
+bool kmsg_dump_get_buffer(struct kmsg_dump_iter *iter, bool syslog,
 			  char *buf, size_t size, size_t *len_out);
 
-void kmsg_dump_rewind(struct kmsg_dumper_iter *iter);
+void kmsg_dump_rewind(struct kmsg_dump_iter *iter);
 
 int kmsg_dump_register(struct kmsg_dumper *dumper);
 
@@ -78,19 +75,19 @@ static inline void kmsg_dump(enum kmsg_dump_reason reason)
 {
 }
 
-static inline bool kmsg_dump_get_line(struct kmsg_dumper_iter *iter, bool syslog,
+static inline bool kmsg_dump_get_line(struct kmsg_dump_iter *iter, bool syslog,
 				const char *line, size_t size, size_t *len)
 {
 	return false;
 }
 
-static inline bool kmsg_dump_get_buffer(struct kmsg_dumper_iter *iter, bool syslog,
+static inline bool kmsg_dump_get_buffer(struct kmsg_dump_iter *iter, bool syslog,
 					char *buf, size_t size, size_t *len)
 {
 	return false;
 }
 
-static inline void kmsg_dump_rewind(struct kmsg_dumper_iter *iter)
+static inline void kmsg_dump_rewind(struct kmsg_dump_iter *iter)
 {
 }
 

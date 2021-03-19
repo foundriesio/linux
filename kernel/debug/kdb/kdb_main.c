@@ -2101,7 +2101,7 @@ static int kdb_dmesg(int argc, const char **argv)
 	int adjust = 0;
 	int n = 0;
 	int skip = 0;
-	struct kmsg_dumper_iter iter = { .active = 1 };
+	struct kmsg_dump_iter iter;
 	size_t len;
 	char buf[201];
 

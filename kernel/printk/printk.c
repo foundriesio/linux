@@ -44,8 +44,9 @@
 #include <linux/irq_work.h>
 #include <linux/ctype.h>
 #include <linux/uio.h>
-#include <linux/kthread.h>
 #include <linux/kdb.h>
+#include <linux/kgdb.h>
+#include <linux/kthread.h>
 #include <linux/clocksource.h>
 #include <linux/sched/clock.h>
 #include <linux/sched/debug.h>
@@ -350,11 +351,6 @@ static u64 syslog_seq;
 static size_t syslog_partial;
 static bool syslog_time;
 
-struct latched_seq {
-	seqcount_latch_t	latch;
-	u64			val[2];
-};
-
 /*
  * The next printk record to read after the last 'clear' command. There are
  * two copies (updated with seqcount_latch) so that reads can locklessly
@@ -373,7 +369,7 @@ static struct latched_seq clear_seq = {
 #endif
 
 /* the maximum size allowed to be reserved for a record */
-#define LOG_LINE_MAX		(1024 - PREFIX_MAX)
+#define LOG_LINE_MAX		(CONSOLE_LOG_MAX - PREFIX_MAX)
 
 #define LOG_LEVEL(v)		((v) & 0x07)
 #define LOG_FACILITY(v)		((v) >> 3 & 0xff)
@@ -415,7 +411,7 @@ static bool printk_percpu_data_ready(void)
 	return __printk_percpu_data_ready;
 }
 
-/* Must be called under syslog_lock. */
+/* Must be called under associated write-protection lock. */
 static void latched_seq_write(struct latched_seq *ls, u64 val)
 {
 	raw_write_seqcount_latch(&ls->latch);
@@ -1720,7 +1716,7 @@ static bool kernel_sync_mode(void)
 	return (oops_in_progress || sync_mode);
 }
 
-static bool console_can_sync(struct console *con)
+static bool console_may_sync(struct console *con)
 {
 	if (!(con->flags & CON_ENABLED))
 		return false;
@@ -1737,16 +1733,28 @@ static bool call_sync_console_driver(struct console *con, const char *text, size
 {
 	if (!(con->flags & CON_ENABLED))
 		return false;
-	if (con->write_atomic && kernel_sync_mode())
-		con->write_atomic(con, text, text_len);
-	else if (con->write_atomic && (con->flags & CON_HANDOVER) && !con->thread)
-		con->write_atomic(con, text, text_len);
-	else if (con->write && (con->flags & CON_BOOT) && !con->thread)
-		con->write(con, text, text_len);
-	else
-		return false;
 
-	return true;
+	if (con->write_atomic && kernel_sync_mode()) {
+		con->write_atomic(con, text, text_len);
+		return true;
+	}
+
+	if (con->write_atomic && (con->flags & CON_HANDOVER) && !con->thread) {
+		if (console_trylock()) {
+			con->write_atomic(con, text, text_len);
+			console_unlock();
+			return true;
+		}
+
+	} else if (con->write && (con->flags & CON_BOOT) && !con->thread) {
+		if (console_trylock()) {
+			con->write(con, text, text_len);
+			console_unlock();
+			return true;
+		}
+	}
+
+	return false;
 }
 
 static bool have_atomic_console(void)
@@ -1791,65 +1799,93 @@ static bool print_sync(struct console *con, u64 *seq)
 	return true;
 }
 
-static void print_sync_until(struct console *con, u64 seq)
+static u64 read_console_seq(struct console *con)
+{
+	u64 seq2;
+	u64 seq;
+
+	seq = latched_seq_read_nolock(&con->printk_seq);
+	seq2 = latched_seq_read_nolock(&con->printk_sync_seq[0]);
+	if (seq2 > seq)
+		seq = seq2;
+#if PRINTK_CTX_NUM > 1
+	seq2 = latched_seq_read_nolock(&con->printk_sync_seq[1]);
+	if (seq2 > seq)
+		seq = seq2;
+#endif
+	return seq;
+}
+
+static void print_sync_until(struct console *con, u64 seq, bool is_locked)
 {
 	unsigned int flags;
 	u64 printk_seq;
 
 	console_atomic_lock(&flags);
 	for (;;) {
-		printk_seq = atomic64_read(&con->printk_seq);
+		printk_seq = read_console_seq(con);
 		if (printk_seq >= seq)
 			break;
 		if (!print_sync(con, &printk_seq))
 			break;
-		atomic64_set(&con->printk_seq, printk_seq + 1);
+
+		if (is_locked) {
+			latched_seq_write(&con->printk_seq, printk_seq + 1);
+		} else {
+			int ctx = 0;
+
+#ifdef CONFIG_PRINTK_NMI
+			if (in_nmi())
+				ctx = 1;
+#endif
+			latched_seq_write(&con->printk_sync_seq[ctx], printk_seq + 1);
+		}
 	}
 	console_atomic_unlock(flags);
 }
 
-#ifdef CONFIG_PRINTK_NMI
-#define NUM_RECURSION_CTX 2
-#else
-#define NUM_RECURSION_CTX 1
-#endif
+/*
+ * Recursion is tracked separately on each CPU. If NMIs are supported, an
+ * additional NMI context per CPU is also separately tracked. Until per-CPU
+ * is available, a separate "early tracking" is performed.
+ */
+static DEFINE_PER_CPU(char [PRINTK_CTX_NUM], printk_count);
+static char printk_count_early[PRINTK_CTX_NUM];
 
-struct printk_recursion {
-	char	count[NUM_RECURSION_CTX];
-};
+/*
+ * Recursion is limited to keep the output sane. printk() should not require
+ * more than 1 level of recursion (allowing, for example, printk() to trigger
+ * a WARN), but a higher value is used in case some printk-internal errors
+ * exist, such as the ringbuffer validation checks failing.
+ */
+#define PRINTK_MAX_RECURSION 3
 
-static DEFINE_PER_CPU(struct printk_recursion, percpu_printk_recursion);
-static char printk_recursion_count[NUM_RECURSION_CTX];
-
+/* Return a pointer to the dedicated counter for the CPU+context of the caller. */
 static char *printk_recursion_counter(void)
 {
-	struct printk_recursion *rec;
-	char *count;
-
-	if (!printk_percpu_data_ready()) {
-		count = &printk_recursion_count[0];
-	} else {
-		rec = this_cpu_ptr(&percpu_printk_recursion);
-
-		count = &rec->count[0];
-	}
+	int ctx = 0;
 
 #ifdef CONFIG_PRINTK_NMI
 	if (in_nmi())
-		count++;
+		ctx = 1;
 #endif
-
-	return count;
+	if (!printk_percpu_data_ready())
+		return &printk_count_early[ctx];
+	return &((*this_cpu_ptr(&printk_count))[ctx]);
 }
 
+/*
+ * Enter recursion tracking. Interrupts are disabled to simplify tracking.
+ * The caller must check the return value to see if the recursion is allowed.
+ * On failure, interrupts are not disabled.
+ */
 static bool printk_enter_irqsave(unsigned long *flags)
 {
 	char *count;
 
 	local_irq_save(*flags);
 	count = printk_recursion_counter();
-	/* Only 1 level of recursion allowed. */
-	if (*count > 1) {
+	if (*count > PRINTK_MAX_RECURSION) {
 		local_irq_restore(*flags);
 		return false;
 	}
@@ -1858,6 +1894,7 @@ static bool printk_enter_irqsave(unsigned long *flags)
 	return true;
 }
 
+/* Exit recursion tracking, restoring interrupts. */
 static void printk_exit_irqrestore(unsigned long flags)
 {
 	char *count;
@@ -2064,8 +2101,8 @@ out:
 		struct console *con;
 
 		for_each_console(con) {
-			if (console_can_sync(con))
-				print_sync_until(con, seq + 1);
+			if (console_may_sync(con))
+				print_sync_until(con, seq + 1, false);
 		}
 	}
 
@@ -2162,7 +2199,6 @@ static int printk_kthread_func(void *data)
 	int ret = -ENOMEM;
 	char *text = NULL;
 	char *write_text;
-	u64 printk_seq;
 	size_t len;
 	int error;
 	u64 seq;
@@ -2182,7 +2218,7 @@ static int printk_kthread_func(void *data)
 	else
 		write_text = text;
 
-	seq = atomic64_read(&con->printk_seq);
+	seq = read_console_seq(con);
 
 	prb_rec_init_rd(&r, &info, text, LOG_LINE_MAX + PREFIX_MAX);
 
@@ -2223,9 +2259,16 @@ static int printk_kthread_func(void *data)
 				printk_time);
 		}
 
-		printk_seq = atomic64_read(&con->printk_seq);
-
 		console_lock();
+
+		/*
+		 * Even though the printk kthread is always preemptible, it is
+		 * still not allowed to call cond_resched() from within
+		 * console drivers. The task may become non-preemptible in the
+		 * console driver call chain. For example, vt_console_print()
+		 * takes a spinlock and then can call into fbcon_redraw(),
+		 * which can conditionally invoke cond_resched().
+		 */
 		console_may_schedule = 0;
 
 		if (kernel_sync_mode() && con->write_atomic) {
@@ -2247,7 +2290,7 @@ static int printk_kthread_func(void *data)
 		if (len)
 			printk_delay(r.info->level);
 
-		atomic64_cmpxchg_relaxed(&con->printk_seq, printk_seq, seq);
+		latched_seq_write(&con->printk_seq, seq);
 
 		console_unlock();
 	}
@@ -2292,8 +2335,8 @@ static void console_try_thread(struct console *con)
 	 * The printing threads have not been started yet. If this console
 	 * can print synchronously, print all unprinted messages.
 	 */
-	if (console_can_sync(con))
-		print_sync_until(con, prb_next_seq(prb));
+	if (console_may_sync(con))
+		print_sync_until(con, prb_next_seq(prb), true);
 }
 
 #else /* CONFIG_PRINTK */
@@ -2625,12 +2668,10 @@ void console_flush_on_panic(enum con_flush_mode mode)
 	if (!console_trylock())
 		return;
 
-	console_may_schedule = 0;
-
 	if (mode == CONSOLE_REPLAY_ALL) {
 		seq = prb_first_valid_seq(prb);
 		for_each_console(c)
-			atomic64_set(&c->printk_seq, seq);
+			latched_seq_write(&c->printk_seq, seq);
 	}
 
 	console_unlock();
@@ -2768,6 +2809,7 @@ static int try_enable_new_console(struct console *newcon, bool user_specified)
 void register_console(struct console *newcon)
 {
 	struct console *bcon = NULL;
+	u64 seq = 0;
 	int err;
 
 	for_each_console(bcon) {
@@ -2858,10 +2900,17 @@ void register_console(struct console *newcon)
 	if (newcon->flags & CON_EXTENDED)
 		nr_ext_console_drivers++;
 
-	if (newcon->flags & CON_PRINTBUFFER)
-		atomic64_set(&newcon->printk_seq, 0);
-	else
-		atomic64_set(&newcon->printk_seq, prb_next_seq(prb));
+	if (!(newcon->flags & CON_PRINTBUFFER))
+		seq = prb_next_seq(prb);
+
+	seqcount_latch_init(&newcon->printk_seq.latch);
+	latched_seq_write(&newcon->printk_seq, seq);
+	seqcount_latch_init(&newcon->printk_sync_seq[0].latch);
+	latched_seq_write(&newcon->printk_sync_seq[0], seq);
+#if PRINTK_CTX_NUM > 1
+	seqcount_latch_init(&newcon->printk_sync_seq[1].latch);
+	latched_seq_write(&newcon->printk_sync_seq[1], seq);
+#endif
 
 	console_try_thread(newcon);
 	console_unlock();
@@ -3215,7 +3264,6 @@ EXPORT_SYMBOL_GPL(kmsg_dump_reason_str);
  */
 void kmsg_dump(enum kmsg_dump_reason reason)
 {
-	struct kmsg_dumper_iter iter;
 	struct kmsg_dumper *dumper;
 
 	if (!oops_in_progress) {
@@ -3251,19 +3299,15 @@ void kmsg_dump(enum kmsg_dump_reason reason)
 		if (reason > max_reason)
 			continue;
 
-		/* initialize iterator with data about the stored records */
-		iter.active = true;
-		kmsg_dump_rewind(&iter);
-
 		/* invoke dumper which will iterate over records */
-		dumper->dump(dumper, reason, &iter);
+		dumper->dump(dumper, reason);
 	}
 	rcu_read_unlock();
 }
 
 /**
  * kmsg_dump_get_line - retrieve one kmsg log line
- * @iter: kmsg dumper iterator
+ * @iter: kmsg dump iterator
  * @syslog: include the "<4>" prefixes
  * @line: buffer to copy the line to
  * @size: maximum size of the buffer
@@ -3278,19 +3322,20 @@ void kmsg_dump(enum kmsg_dump_reason reason)
  * A return value of FALSE indicates that there are no more records to
  * read.
  */
-bool kmsg_dump_get_line(struct kmsg_dumper_iter *iter, bool syslog,
+bool kmsg_dump_get_line(struct kmsg_dump_iter *iter, bool syslog,
 			char *line, size_t size, size_t *len)
 {
+	u64 min_seq = latched_seq_read_nolock(&clear_seq);
 	struct printk_info info;
 	unsigned int line_count;
 	struct printk_record r;
 	size_t l = 0;
 	bool ret = false;
 
-	prb_rec_init_rd(&r, &info, line, size);
+	if (iter->cur_seq < min_seq)
+		iter->cur_seq = min_seq;
 
-	if (!iter->active)
-		goto out;
+	prb_rec_init_rd(&r, &info, line, size);
 
 	/* Read text or count text lines? */
 	if (line) {
@@ -3318,11 +3363,11 @@ EXPORT_SYMBOL_GPL(kmsg_dump_get_line);
 
 /**
  * kmsg_dump_get_buffer - copy kmsg log lines
- * @iter: kmsg dumper iterator
+ * @iter: kmsg dump iterator
  * @syslog: include the "<4>" prefixes
  * @buf: buffer to copy the line to
  * @size: maximum size of the buffer
- * @len: length of line placed into buffer
+ * @len_out: length of line placed into buffer
  *
  * Start at the end of the kmsg buffer and fill the provided buffer
  * with as many of the *youngest* kmsg records that fit into it.
@@ -3335,9 +3380,10 @@ EXPORT_SYMBOL_GPL(kmsg_dump_get_line);
  * A return value of FALSE indicates that there are no more records to
  * read.
  */
-bool kmsg_dump_get_buffer(struct kmsg_dumper_iter *iter, bool syslog,
+bool kmsg_dump_get_buffer(struct kmsg_dump_iter *iter, bool syslog,
 			  char *buf, size_t size, size_t *len_out)
 {
+	u64 min_seq = latched_seq_read_nolock(&clear_seq);
 	struct printk_info info;
 	struct printk_record r;
 	u64 seq;
@@ -3346,8 +3392,11 @@ bool kmsg_dump_get_buffer(struct kmsg_dumper_iter *iter, bool syslog,
 	bool ret = false;
 	bool time = printk_time;
 
-	if (!iter->active || !buf || !size)
+	if (!buf || !size)
 		goto out;
+
+	if (iter->cur_seq < min_seq)
+		iter->cur_seq = min_seq;
 
 	if (prb_read_valid_info(prb, iter->cur_seq, &info, NULL)) {
 		if (info.seq != iter->cur_seq) {
@@ -3399,13 +3448,13 @@ EXPORT_SYMBOL_GPL(kmsg_dump_get_buffer);
 
 /**
  * kmsg_dump_rewind - reset the iterator
- * @iter: kmsg dumper iterator
+ * @iter: kmsg dump iterator
  *
  * Reset the dumper's iterator so that kmsg_dump_get_line() and
  * kmsg_dump_get_buffer() can be called again and used multiple
  * times within the same dumper.dump() callback.
  */
-void kmsg_dump_rewind(struct kmsg_dumper_iter *iter)
+void kmsg_dump_rewind(struct kmsg_dump_iter *iter)
 {
 	iter->cur_seq = latched_seq_read_nolock(&clear_seq);
 	iter->next_seq = prb_next_seq(prb);
@@ -3425,6 +3474,8 @@ static struct prb_cpulock name = {					\
 	.owner = ATOMIC_INIT(-1),					\
 	.irqflags = &_##name##_percpu_irqflags,				\
 }
+
+static unsigned int kgdb_cpu = -1;
 
 static bool __prb_trylock(struct prb_cpulock *cpu_lock,
 			  unsigned int *cpu_store)
@@ -3486,10 +3537,15 @@ static void prb_lock(struct prb_cpulock *cpu_lock, unsigned int *cpu_store)
  */
 static void prb_unlock(struct prb_cpulock *cpu_lock, unsigned int cpu_store)
 {
+	bool trigger_kgdb = false;
 	unsigned long *flags;
 	unsigned int cpu;
 
 	cpu = atomic_read(&cpu_lock->owner);
+	if (cpu == kgdb_cpu && cpu_store == -1) {
+		trigger_kgdb = true;
+		kgdb_cpu = -1;
+	}
 	atomic_set_release(&cpu_lock->owner, cpu_store);
 
 	if (cpu_store == -1) {
@@ -3498,6 +3554,11 @@ static void prb_unlock(struct prb_cpulock *cpu_lock, unsigned int cpu_store)
 	}
 
 	put_cpu();
+
+	if (trigger_kgdb) {
+		pr_warn("re-triggering kgdb roundup for CPU#%d\n", cpu);
+		kgdb_roundup_cpu(cpu);
+	}
 }
 
 DECLARE_STATIC_PRINTKRB_CPULOCK(printk_cpulock);
@@ -3513,6 +3574,16 @@ void console_atomic_unlock(unsigned int flags)
 	prb_unlock(&printk_cpulock, flags);
 }
 EXPORT_SYMBOL(console_atomic_unlock);
+
+bool console_atomic_kgdb_cpu_delay(unsigned int cpu)
+{
+	if (cpu != atomic_read(&printk_cpulock.owner))
+		return false;
+
+	kgdb_cpu = cpu;
+	return true;
+}
+EXPORT_SYMBOL(console_atomic_kgdb_cpu_delay);
 
 static void pr_msleep(bool may_sleep, int ms)
 {
@@ -3559,7 +3630,7 @@ bool pr_flush(int timeout_ms, bool reset_on_progress)
 		for_each_console(con) {
 			if (!(con->flags & CON_ENABLED))
 				continue;
-			printk_seq = atomic64_read(&con->printk_seq);
+			printk_seq = read_console_seq(con);
 			if (printk_seq < seq)
 				diff += seq - printk_seq;
 		}
@@ -3567,7 +3638,7 @@ bool pr_flush(int timeout_ms, bool reset_on_progress)
 		if (diff != last_diff && reset_on_progress)
 			remaining = timeout_ms;
 
-		if (!diff || remaining == 0)
+		if (diff == 0 || remaining == 0)
 			break;
 
 		if (remaining < 0) {

@@ -3001,7 +3001,7 @@ print_address(unsigned long addr)
 static void
 dump_log_buf(void)
 {
-	struct kmsg_dumper_iter iter = { .active = 1 };
+	struct kmsg_dump_iter iter;
 	unsigned char buf[128];
 	size_t len;
 
