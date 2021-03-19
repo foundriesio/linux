@@ -11,7 +11,7 @@
 	/* Describe here after remove this statement if you have something to be override. */
 	lcd_drm_dummy {
 		status = "okay";
-		base_display = <&drm_tm123xdhp90>;
+		base_display = <&drm_dpv14_0>;
 	};
 
 	drm_dpv14_0 {

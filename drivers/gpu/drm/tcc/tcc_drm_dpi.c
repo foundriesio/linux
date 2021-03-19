@@ -23,6 +23,7 @@
 #include <linux/clk.h>
 
 #include <video/of_videomode.h>
+#include <video/of_display_timing.h>
 #include <video/videomode.h>
 #include <video/tcc/vioc_global.h>
 #include <tcc_drm_address.h>
@@ -111,7 +112,7 @@ struct tcc_dpi {
 	struct device_node *panel_node;
 	struct drm_connector connector;
 
-	struct videomode *vm;
+	struct display_timings *timings;
 
 	struct tcc_hw_device *hw_device;
 
@@ -455,10 +456,32 @@ static int tcc_dpi_get_modes(struct drm_connector *connector)
 			goto find_modes;
 	}
 	/* step2: Check detailed timing from device tree */
-	if (ctx->vm) {
-		drm_display_mode_from_videomode(ctx->vm, mode);
-		count = 1;
-		goto probed_add_modes;
+	if (ctx->timings) {
+		struct display_timings *timings = ctx->timings;
+
+		for (count = 0; count < timings->num_timings; count++) {
+			struct drm_display_mode *mode =
+				drm_mode_create(connector->dev);
+			struct videomode vm;
+
+			if (videomode_from_timings(timings, &vm, count))
+				break;
+
+			drm_display_mode_from_videomode(&vm, mode);
+
+			mode->type = DRM_MODE_TYPE_DRIVER;
+			drm_mode_set_name(mode);
+			if (timings->native_mode == count) {
+				dev_info(
+					ctx->dev,
+					"[INFO][%s] Native mode is detected at index [%d] name [%s]\r\n",
+					LOG_TAG, count, mode->name);
+				mode->type |= DRM_MODE_TYPE_PREFERRED;
+			}
+			drm_mode_probed_add(connector, mode);
+		}
+		if (count)
+			goto find_modes;
 	}
 	/* step3: Check kernel config */
 	if (!ctx->hw_device) {
@@ -518,12 +541,6 @@ static int tcc_dpi_get_modes(struct drm_connector *connector)
 		drm_detailed_timing_convert_to_drm_mode(dtd, mode);
 		count = 1;
 		break;
-	}
-
-probed_add_modes:
-	if (count) {
-		mode->type = DRM_MODE_TYPE_DRIVER | DRM_MODE_TYPE_PREFERRED;
-		drm_mode_probed_add(connector, mode);
 	}
 
 find_modes:
@@ -654,25 +671,15 @@ static int tcc_dpi_parse_dt(struct tcc_dpi *ctx)
 
 	np = of_get_child_by_name(dn, "display-timings");
 	if (np) {
-		struct videomode *vm;
-		int ret;
-
 		of_node_put(np);
 
-		vm = devm_kzalloc(dev, sizeof(*ctx->vm), GFP_KERNEL);
-		if (vm == NULL)
-			return -ENOMEM;
-
-		ret = of_get_videomode(dn, vm, 0);
-		if (ret < 0) {
+		ctx->timings = of_get_display_timings(dn);
+		if (!ctx->timings) {
 			dev_warn(dev,
-				"[WARN][%s] %s failed to of_get_videomode\n",
+				"[WARN][%s] %s failed to of_get_display_timings\n",
 				LOG_TAG, __func__);
-			devm_kfree(dev, vm);
-			return ret;
+			return -ENODEV;
 		}
-
-		ctx->vm = vm;
 	} else {
 		dev_dbg(dev,
 			"[DEBUG][%s] %s cannot find display-timings node\n",
@@ -907,7 +914,7 @@ struct drm_encoder *tcc_dpi_probe(
 		goto err_nomem;
 	}
 
-	ctx->vm = NULL;
+	ctx->timings = NULL;
 	ctx->panel = NULL;
 	ctx->dev = dev;
 	ctx->hw_device = hw_device;
@@ -919,15 +926,15 @@ struct drm_encoder *tcc_dpi_probe(
 	ctx->panel_node = of_graph_get_remote_node(dev->of_node, 0, -1);
 	if (ctx->panel_node != NULL)
 		ctx->panel = of_drm_find_panel(ctx->panel_node);
-	if (ctx->panel != NULL)
+	if (ctx->panel)
 		dev_info(
 			dev, "[INFO][%s] %s has DRM panel\r\n",
 			LOG_TAG, __func__);
 	#endif
 
 	/* Check resolutions */
-	if (ctx->panel == NULL) {
-		if (ctx->vm == NULL) {
+	if (!ctx->panel) {
+		if (!ctx->timings) {
 			if (ctx->hw_device->vic == 0) {
 				dev_err(
 					dev,
