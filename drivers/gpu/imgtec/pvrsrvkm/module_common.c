@@ -59,6 +59,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "srvcore.h"
 #if defined(SUPPORT_RGX)
 #include "rgxdevice.h"
+#include "rgxfwutils.h"
 #endif
 #include "pvrsrv_error.h"
 #include "pvr_drv.h"
@@ -77,6 +78,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #if defined(PVRSRV_ENABLE_PVR_ION_STATS)
 #include "pvr_ion_stats.h"
 #endif
+
+#include "rgxtimecorr.h"
 
 #if defined(SUPPORT_DISPLAY_CLASS)
 /* Display class interface */
@@ -389,6 +392,53 @@ int PVRSRVDeviceSuspend(PVRSRV_DEVICE_NODE *psDeviceNode)
 
 	LinuxBridgeBlockClientsAccess(IMG_FALSE);
 
+#if defined(SUPPORT_AUTOVZ)
+	if(PVRSRV_VZ_MODE_IS(GUEST))
+	{
+		PVRSRV_ERROR		eError;
+		IMG_BOOL bFwOffline = IMG_FALSE;
+		RGXFWIF_KCCB_CMD	sOfflineCmd = { 0 };
+
+		sOfflineCmd.eCmdType = RGXFWIF_KCCB_CMD_OS_ONLINE_STATE_CONFIGURE;
+		sOfflineCmd.uCmdData.sCmdOSOnlineStateData.eNewOSState = RGXFWIF_OS_OFFLINE;
+
+		eError = PVRSRVPowerLock(psDeviceNode);
+		PVR_LOG_RETURN_IF_ERROR(eError, "PVRSRVPowerLock()");
+
+		LOOP_UNTIL_TIMEOUT(MAX_HW_TIME_US)
+		{
+			/* Update the watchdog token to prevent the firmware from resetting
+			 * this driver's state to READY. It needs to stay OFFLINE until the
+			 * driver can confirm it. */
+			KM_SET_OS_ALIVE_TOKEN(KM_GET_FW_ALIVE_TOKEN(psDevInfo), psDevInfo);
+
+			eError = RGXSendCommandAndGetKCCBSlot(psDevInfo, &sOfflineCmd, PDUMP_FLAGS_CONTINUOUS, NULL);
+			if (eError != PVRSRV_ERROR_RETRY) break;
+
+			OSWaitus(MAX_HW_TIME_US/WAIT_TRY_COUNT);
+		} END_LOOP_UNTIL_TIMEOUT();
+
+
+		if (eError == PVRSRV_OK)
+		{
+			LOOP_UNTIL_TIMEOUT(SECONDS_TO_MICROSECONDS/2)
+			{
+				if (KM_FW_CONNECTION_IS(OFFLINE, psDevInfo))
+				{
+					bFwOffline = IMG_TRUE;
+					break;
+				}
+			} END_LOOP_UNTIL_TIMEOUT();
+		}
+
+		if(!bFwOffline)
+		{
+			KM_SET_OS_CONNECTION(OFFLINE, psDevInfo);
+		}
+		PVRSRVPowerUnlock(psDeviceNode);
+	}
+#endif
+
 	if (PVRSRVSetDeviceSystemPowerState(psDeviceNode,
 										PVRSRV_SYS_POWER_STATE_OFF) != PVRSRV_OK)
 	{
@@ -436,7 +486,7 @@ int PVRSRVDeviceResume(PVRSRV_DEVICE_NODE *psDeviceNode)
 		}
 		while (OSReadHWReg32(psDevInfo->pvRegsBaseKM, RGX_CR_OS0_SCRATCH3) != RGXFW_CONNECTION_FW_READY)
 		{
-			OSWaitus(1000000);
+			OSWaitus(10000);
 			//PVR_DPF((PVR_DBG_MESSAGE, "%s: Firmware Connection is not in Ready state. Waiting for Firmware ...", __func__));
 		}
 		PVR_DPF((PVR_DBG_MESSAGE, "%s: Firmware Connection is Ready. Initialisation proceeding.", __func__));
@@ -485,7 +535,7 @@ int PVRSRVDeviceResume(PVRSRV_DEVICE_NODE *psDeviceNode)
 		}
 		while (OSReadHWReg32(psDevInfo->pvRegsBaseKM, RGX_CR_OS0_SCRATCH3) != RGXFW_CONNECTION_FW_ACTIVE)
 		{
-			OSWaitus(1000000);
+			OSWaitus(10000);
 			//PVR_DPF((PVR_DBG_MESSAGE, "%s: Firmware Connection is not in Active state. Waiting for Firmware ...", __func__));
 		}
 		PVR_DPF((PVR_DBG_MESSAGE, "%s: Firmware Connection is Active. Initialisation proceeding.", __func__));

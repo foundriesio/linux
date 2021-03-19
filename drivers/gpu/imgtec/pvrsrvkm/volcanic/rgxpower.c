@@ -176,6 +176,9 @@ static PVRSRV_ERROR _RGXWaitForGuestsToDisconnect(PVRSRV_DEVICE_NODE *psDeviceNo
 
 		if (!bGuestOnline)
 		{
+			/* Allow Guests to finish reading Connection state registers */
+			OSSleepms(100);
+
 			PVR_DPF((PVR_DBG_WARNING, "%s: All Guest connections are down,"
 									  "Host can power down the GPU.", __func__));
 			eError = PVRSRV_OK;
@@ -194,7 +197,7 @@ static PVRSRV_ERROR _RGXWaitForGuestsToDisconnect(PVRSRV_DEVICE_NODE *psDeviceNo
 			}
 		}
 
-		OSSleepms(1000);
+		OSSleepms(10);
 	} END_LOOP_UNTIL_TIMEOUT();
 
 	if (!PVRSRVPwrLockIsLockedByMe(psDeviceNode))
@@ -229,8 +232,6 @@ PVRSRV_ERROR RGXPrePowerState(IMG_HANDLE				hDevHandle,
 
 		if (PVRSRV_VZ_MODE_IS(GUEST) || (psDeviceNode->bAutoVzFwIsUp))
 		{
-			/* Driver takes the connection down, preventing the firmware from submitting further interrutps */
-			KM_SET_OS_CONNECTION(OFFLINE, psDevInfo);
 			psDevInfo->bRGXPowered = IMG_FALSE;
 			return PVRSRV_OK;
 		}
