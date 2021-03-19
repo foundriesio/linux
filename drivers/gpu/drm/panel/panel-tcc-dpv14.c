@@ -222,26 +222,27 @@ static int panel_dpv14_parse_dt(struct Panel_Dpv14_Param_t *pstPanel_Dpv14_Param
 	int 	iRetVal = -ENODEV;
 
 	np = of_get_child_by_name(dn, "display-timings");
-	if (np != NULL)
-	{
+	if (np != NULL) {
 		of_node_put(np);
-
-		iRetVal = of_get_videomode(dn, &pstPanel_Dpv14_Param->video_mode, 0);
-		if (iRetVal < 0)
-		{
-			pr_err(	"[ERROR][%s:%s]failed to get of_get_videomode\r\n", LOG_DPV14_TAG, __func__);
+		iRetVal = of_get_videomode(
+			dn, &pstPanel_Dpv14_Param->video_mode,
+			OF_USE_NATIVE_MODE);
+		if (iRetVal < 0) {
+			pr_err(
+				"[ERROR][%s:%s]failed to get of_get_videomode\r\n",
+				LOG_DPV14_TAG, __func__);
 			goto err_parse_dt;
 		}
-	}
-	else
-	{
-		pr_err("[ERROR][%s:%s]failed to get display-timings property\r\n", LOG_DPV14_TAG, __func__);
+	} else {
+		pr_err(
+			"[ERROR][%s:%s]failed to get display-timings property\r\n",
+			LOG_DPV14_TAG, __func__);
 	}
 
 	/* pinctrl */
-	pstPanel_Dpv14_Param->stPanel_Pins.p = devm_pinctrl_get(pstPanel_Dpv14_Param->dev);
-	if (IS_ERR(pstPanel_Dpv14_Param->stPanel_Pins.p))
-	{
+	pstPanel_Dpv14_Param->stPanel_Pins.p =
+		devm_pinctrl_get(pstPanel_Dpv14_Param->dev);
+	if (IS_ERR(pstPanel_Dpv14_Param->stPanel_Pins.p)) {
 		pr_info(
 			"[INFO][%s:%s] There is no pinctrl - May be this panel controls backlight using serializer\r\n",
 			LOG_DPV14_TAG, __func__);
@@ -250,47 +251,64 @@ static int panel_dpv14_parse_dt(struct Panel_Dpv14_Param_t *pstPanel_Dpv14_Param
 		goto err_parse_dt;
 	}
 
-	pstPanel_Dpv14_Param->stPanel_Pins.pwr_port = pinctrl_lookup_state(pstPanel_Dpv14_Param->stPanel_Pins.p, "default");
-	if (IS_ERR(pstPanel_Dpv14_Param->stPanel_Pins.pwr_port))
-	{
-		pr_warning("[WARN][%s:%s] failed to find pwr_port\r\n", LOG_DPV14_TAG, __func__);
+	pstPanel_Dpv14_Param->stPanel_Pins.pwr_port =
+		pinctrl_lookup_state(
+			pstPanel_Dpv14_Param->stPanel_Pins.p, "default");
+	if (IS_ERR(pstPanel_Dpv14_Param->stPanel_Pins.pwr_port)) {
+		pr_warning(
+			"[WARN][%s:%s] failed to find pwr_port\r\n",
+			LOG_DPV14_TAG, __func__);
 		pstPanel_Dpv14_Param->stPanel_Pins.pwr_port = NULL;
 
 		goto err_parse_dt;
 	}
 
-	pstPanel_Dpv14_Param->stPanel_Pins.pwr_on = pinctrl_lookup_state(pstPanel_Dpv14_Param->stPanel_Pins.p, "power_on");
-	if (IS_ERR(pstPanel_Dpv14_Param->stPanel_Pins.pwr_on))
-	{
-		pr_warning("[WARN][%s:%s]failed to find power_on \r\n",	LOG_DPV14_TAG, __func__);
+	pstPanel_Dpv14_Param->stPanel_Pins.pwr_on =
+		pinctrl_lookup_state(pstPanel_Dpv14_Param->stPanel_Pins.p, "power_on");
+	if (IS_ERR(pstPanel_Dpv14_Param->stPanel_Pins.pwr_on)) {
+		pr_warning(
+			"[WARN][%s:%s]failed to find power_on \r\n",
+			LOG_DPV14_TAG, __func__);
 		pstPanel_Dpv14_Param->stPanel_Pins.pwr_on = NULL;
 	}
 
-	pstPanel_Dpv14_Param->stPanel_Pins.reset_off = pinctrl_lookup_state(pstPanel_Dpv14_Param->stPanel_Pins.p, "reset_off" );
-	if (IS_ERR(pstPanel_Dpv14_Param->stPanel_Pins.reset_off))
-	{
-		pr_warning("[WARN][%s:%s]failed to find reset_off \r\n",	LOG_DPV14_TAG, __func__);
+	pstPanel_Dpv14_Param->stPanel_Pins.reset_off =
+		pinctrl_lookup_state(
+			pstPanel_Dpv14_Param->stPanel_Pins.p, "reset_off" );
+	if (IS_ERR(pstPanel_Dpv14_Param->stPanel_Pins.reset_off)) {
+		pr_warning(
+			"[WARN][%s:%s]failed to find reset_off \r\n",
+			LOG_DPV14_TAG, __func__);
 		pstPanel_Dpv14_Param->stPanel_Pins.reset_off = NULL;
 	}
 
-	pstPanel_Dpv14_Param->stPanel_Pins.blk_on = pinctrl_lookup_state(pstPanel_Dpv14_Param->stPanel_Pins.p, "blk_on");
-	if (IS_ERR(pstPanel_Dpv14_Param->stPanel_Pins.blk_on))
-	{
-		pr_warning("[WARN][%s:%s]failed to find blk_on \r\n",	LOG_DPV14_TAG, __func__);
+	pstPanel_Dpv14_Param->stPanel_Pins.blk_on =
+		pinctrl_lookup_state(
+			pstPanel_Dpv14_Param->stPanel_Pins.p, "blk_on");
+	if (IS_ERR(pstPanel_Dpv14_Param->stPanel_Pins.blk_on)) {
+		pr_warning(
+			"[WARN][%s:%s]failed to find blk_on \r\n",
+			LOG_DPV14_TAG, __func__);
 		pstPanel_Dpv14_Param->stPanel_Pins.blk_on = NULL;
 	}
 
-	pstPanel_Dpv14_Param->stPanel_Pins.blk_off = pinctrl_lookup_state(pstPanel_Dpv14_Param->stPanel_Pins.p, "blk_off");
-	if (IS_ERR(pstPanel_Dpv14_Param->stPanel_Pins.blk_off))
-	{
-		pr_warning("[WARN][%s:%s]failed to find blk_off \r\n",	LOG_DPV14_TAG, __func__);
+	pstPanel_Dpv14_Param->stPanel_Pins.blk_off =
+		pinctrl_lookup_state(
+			pstPanel_Dpv14_Param->stPanel_Pins.p, "blk_off");
+	if (IS_ERR(pstPanel_Dpv14_Param->stPanel_Pins.blk_off)) {
+		pr_warning(
+			"[WARN][%s:%s]failed to find blk_off \r\n",
+			LOG_DPV14_TAG, __func__);
 		pstPanel_Dpv14_Param->stPanel_Pins.blk_off = NULL;
 	}
 
-	pstPanel_Dpv14_Param->stPanel_Pins.pwr_off = pinctrl_lookup_state(pstPanel_Dpv14_Param->stPanel_Pins.p, "power_off");
-	if (IS_ERR(pstPanel_Dpv14_Param->stPanel_Pins.pwr_off))
-	{
-		pr_warning("[WARN][%s:%s]failed to find power_off \r\n",	LOG_DPV14_TAG, __func__);
+	pstPanel_Dpv14_Param->stPanel_Pins.pwr_off =
+		pinctrl_lookup_state(
+			pstPanel_Dpv14_Param->stPanel_Pins.p, "power_off");
+	if (IS_ERR(pstPanel_Dpv14_Param->stPanel_Pins.pwr_off)) {
+		pr_warning(
+			"[WARN][%s:%s]failed to find power_off \r\n",
+			LOG_DPV14_TAG, __func__);
 		pstPanel_Dpv14_Param->stPanel_Pins.pwr_off = NULL;
 	}
 

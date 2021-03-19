@@ -4,6 +4,14 @@
  * Device tree for Telechips TCC8971 AVN board
  */
 
+/*
+ * DTB_DRM_EXT_NATIVE_IDX
+ * Definiation Native display timing for drm ext
+ *  - 0 : 1280x720
+ *  - 1 : 1920x1080
+ */
+#define DTB_DRM_EXT_NATIVE_IDX 0
+
 #include "tcc897x-display.dtsi"
 
 / {
@@ -53,5 +61,12 @@
 
 	tcc-drm-ext {
 		status = "okay";
+		display-timings {
+			#if DTB_DRM_EXT_NATIVE_IDX == 1
+			native-mode = <&timing_fhd>;
+			#else
+			native-mode = <&timing_hd>;
+			#endif
+		};
 	};
 };
