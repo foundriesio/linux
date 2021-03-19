@@ -1893,7 +1893,10 @@ static void discard_slab_delayed(struct kmem_cache *s, struct page *page,
 				 struct list_head *delayed_free)
 {
 	dec_slabs_node(s, page_to_nid(page), page->objects);
-	list_add(&page->lru, delayed_free);
+	if (unlikely(s->flags & SLAB_TYPESAFE_BY_RCU))
+		call_rcu(&page->rcu_head, rcu_free_slab);
+	else
+		list_add(&page->lru, delayed_free);
 }
 
 static void discard_slab(struct kmem_cache *s, struct page *page)
