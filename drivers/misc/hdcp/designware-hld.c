@@ -129,8 +129,13 @@ static long load_code(struct hl_device *hl_dev,
 	if (head.len > hl_dev->code_size)
 		return -ENOSPC;
 
+#if (0)
+	/**
+	 * Allow to load multiple time.
+	 */
 	if (hl_dev->code_loaded)
 		return -EBUSY;
+#endif
 
 	if (copy_from_user(hl_dev->code, &arg->data, head.len) != 0)
 		return -EFAULT;

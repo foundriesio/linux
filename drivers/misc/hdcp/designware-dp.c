@@ -16,7 +16,7 @@
 
 #include "hdcp_interface.h"
 
-#define HDCP_DRV_VERSION		("0.2.0")
+#define HDCP_DRV_VERSION		("0.3.0")
 
 /* Internal Options */
 // #define HDCP22_INT_USED
@@ -86,6 +86,23 @@ struct hdcp_device {
 	uint8_t			status;		/* hdcp status */
 	uint8_t			protocal;
 };
+
+static void hdcp_reset_controller(struct hdcp_device *hdcp)
+{
+	uint32_t val;
+
+	/* software reset */
+	val = ioread32(hdcp->reg + SWRESET);
+	iowrite32(val | SWRESET_HDCP, hdcp->reg + SWRESET);
+	udelay(10); /* at least 5usec to insure a successful reset. */
+	iowrite32(val & ~SWRESET_HDCP, hdcp->reg + SWRESET);
+
+	/* clear interrupts */
+	iowrite32(INT_MASK_VALUE, hdcp->reg + HDCPAPIINTCLR);
+
+	/* unmask insterrupt */
+	iowrite32(INT_UNMASK_VALUE, hdcp->reg + HDCPAPIINTMSK);
+}
 
 static int hdcp_start_authentication(struct hdcp_device *hdcp)
 {
@@ -209,6 +226,8 @@ static int hdcp_configure(struct hdcp_device *hdcp,
 
 static int hdcp_set_protocal(struct hdcp_device *hdcp, uint32_t protocal)
 {
+	hdcp_reset_controller(hdcp);
+
 	switch (protocal) {
 	case HDCP_PROTOCAL_HDCP_1_X:
 		iowrite32(HDCPCFG_DPCD12PLUS | HDCPCFG_ENCRYPTIONDISABLE |
@@ -387,21 +406,9 @@ static int hdcp_open(struct inode *inode, struct file *file)
 	struct hdcp_device *hdcp = dev_get_drvdata(dev->parent);
 
 	if (!hdcp->open_cs) {
-		uint32_t soft_reset;
-
 		dev_info(dev->parent, "%s\n", __func__);
 
-		/* software reset */
-		soft_reset = ioread32(hdcp->reg + SWRESET);
-		iowrite32(soft_reset | SWRESET_HDCP, hdcp->reg + SWRESET);
-		udelay(10); /* at least 5usec to insure a successful reset. */
-		iowrite32(soft_reset & ~SWRESET_HDCP, hdcp->reg + SWRESET);
-
-		/* clear interrupts */
-		iowrite32(INT_MASK_VALUE, hdcp->reg + HDCPAPIINTCLR);
-
-		/* unmask insterrupt */
-		iowrite32(INT_UNMASK_VALUE, hdcp->reg + HDCPAPIINTMSK);
+		hdcp_reset_controller(hdcp);
 
 		/*
 		 * Switch to HDCP2.2 and enable hdcp.
