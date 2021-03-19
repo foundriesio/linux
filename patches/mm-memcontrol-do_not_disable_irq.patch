@@ -36,7 +36,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  /* Whether legacy memory+swap accounting is active */
  static bool do_memsw_account(void)
  {
-@@ -5680,12 +5688,12 @@ static int mem_cgroup_move_account(struc
+@@ -5677,12 +5685,12 @@ static int mem_cgroup_move_account(struc
  
  	ret = 0;
  
@@ -51,7 +51,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  out_unlock:
  	unlock_page(page);
  out:
-@@ -6742,10 +6750,10 @@ int mem_cgroup_charge(struct page *page,
+@@ -6739,10 +6747,10 @@ int mem_cgroup_charge(struct page *page,
  	css_get(&memcg->css);
  	commit_charge(page, memcg);
  
@@ -64,7 +64,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  	/*
  	 * Cgroup1's unified memory+swap counter has been charged with the
-@@ -6801,11 +6809,11 @@ static void uncharge_batch(const struct
+@@ -6798,11 +6806,11 @@ static void uncharge_batch(const struct
  		memcg_oom_recover(ug->memcg);
  	}
  
@@ -78,7 +78,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  	/* drop reference from uncharge_page */
  	css_put(&ug->memcg->css);
-@@ -6938,10 +6946,10 @@ void mem_cgroup_migrate(struct page *old
+@@ -6935,10 +6943,10 @@ void mem_cgroup_migrate(struct page *old
  	css_get(&memcg->css);
  	commit_charge(newpage, memcg);
  
@@ -91,7 +91,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  }
  
  DEFINE_STATIC_KEY_FALSE(memcg_sockets_enabled_key);
-@@ -7124,6 +7132,7 @@ void mem_cgroup_swapout(struct page *pag
+@@ -7121,6 +7129,7 @@ void mem_cgroup_swapout(struct page *pag
  	struct mem_cgroup *memcg, *swap_memcg;
  	unsigned int nr_entries;
  	unsigned short oldid;
@@ -99,7 +99,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  	VM_BUG_ON_PAGE(PageLRU(page), page);
  	VM_BUG_ON_PAGE(page_count(page), page);
-@@ -7172,9 +7181,13 @@ void mem_cgroup_swapout(struct page *pag
+@@ -7169,9 +7178,13 @@ void mem_cgroup_swapout(struct page *pag
  	 * important here to have the interrupts disabled because it is the
  	 * only synchronisation we have for updating the per-CPU variables.
  	 */

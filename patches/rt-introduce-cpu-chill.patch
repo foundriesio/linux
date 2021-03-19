@@ -74,7 +74,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  #endif
 --- a/kernel/time/hrtimer.c
 +++ b/kernel/time/hrtimer.c
-@@ -1988,6 +1988,36 @@ SYSCALL_DEFINE2(nanosleep_time32, struct
+@@ -2006,6 +2006,36 @@ SYSCALL_DEFINE2(nanosleep_time32, struct
  }
  #endif
  

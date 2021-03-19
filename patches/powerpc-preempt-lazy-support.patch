@@ -180,7 +180,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  			schedule();
  		} else {
  			if (ti_flags & _TIF_SIGPENDING)
-@@ -474,11 +474,15 @@ notrace unsigned long interrupt_exit_ker
+@@ -473,11 +473,15 @@ notrace unsigned long interrupt_exit_ker
  		/* Returning to a kernel context with local irqs enabled. */
  		WARN_ON_ONCE(!(regs->msr & MSR_EE));
  again:
