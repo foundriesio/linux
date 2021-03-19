@@ -1,23 +1,23 @@
 From: John Ogness <john.ogness@linutronix.de>
-Date: Tue, 26 Jan 2021 17:43:19 +0106
-Subject: [PATCH 12/28] printk: remove logbuf_lock
+Date: Wed, 3 Mar 2021 11:15:26 +0100
+Subject: [PATCH 13/29] printk: remove logbuf_lock
 
 Since the ringbuffer is lockless, there is no need for it to be
 protected by @logbuf_lock. Remove @logbuf_lock.
-
-This means that printk_nmi_direct and printk_safe_flush_on_panic()
-no longer need to acquire any lock to run.
 
 @console_seq, @exclusive_console_stop_seq, @console_dropped are
 protected by @console_lock.
 
 Signed-off-by: John Ogness <john.ogness@linutronix.de>
+Reviewed-by: Petr Mladek <pmladek@suse.com>
+Signed-off-by: Petr Mladek <pmladek@suse.com>
+Link: https://lore.kernel.org/r/20210303101528.29901-14-john.ogness@linutronix.de
 Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 ---
  kernel/printk/internal.h    |    4 -
- kernel/printk/printk.c      |  118 ++++++++++++++------------------------------
- kernel/printk/printk_safe.c |   29 ++--------
- 3 files changed, 48 insertions(+), 103 deletions(-)
+ kernel/printk/printk.c      |  112 ++++++++++++++------------------------------
+ kernel/printk/printk_safe.c |   27 +++-------
+ 3 files changed, 46 insertions(+), 97 deletions(-)
 
 --- a/kernel/printk/internal.h
 +++ b/kernel/printk/internal.h
@@ -151,17 +151,16 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	return ret;
  }
  
-@@ -867,15 +833,15 @@ static __poll_t devkmsg_poll(struct file
+@@ -867,7 +833,7 @@ static __poll_t devkmsg_poll(struct file
  
  	poll_wait(file, &log_wait, wait);
  
 -	logbuf_lock_irq();
--	if (prb_read_valid_info(prb, user->seq, &info, NULL)) {
 +	printk_safe_enter_irq();
-+	if (prb_read_valid_info(prb, atomic64_read(&user->seq), &info, NULL)) {
+ 	if (prb_read_valid_info(prb, atomic64_read(&user->seq), &info, NULL)) {
  		/* return error when data has vanished underneath us */
  		if (info.seq != atomic64_read(&user->seq))
- 			ret = EPOLLIN|EPOLLRDNORM|EPOLLERR|EPOLLPRI;
+@@ -875,7 +841,7 @@ static __poll_t devkmsg_poll(struct file
  		else
  			ret = EPOLLIN|EPOLLRDNORM;
  	}
@@ -341,20 +340,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	}
  	console_unlock();
  	console_sysfs_notify();
-@@ -3410,10 +3370,10 @@ void kmsg_dump(enum kmsg_dump_reason rea
- 
- 		/* initialize iterator with data about the stored records */
- 		iter.active = true;
--		logbuf_lock_irqsave(flags);
-+		printk_safe_enter_irqsave(flags);
- 		iter.cur_seq = latched_seq_read_nolock(&clear_seq);
- 		iter.next_seq = prb_next_seq(prb);
--		logbuf_unlock_irqrestore(flags);
-+		printk_safe_exit_irqrestore(flags);
- 
- 		/* invoke dumper which will iterate over records */
- 		dumper->dump(dumper, reason, &iter);
-@@ -3500,9 +3460,9 @@ bool kmsg_dump_get_line(struct kmsg_dump
+@@ -3492,9 +3452,9 @@ bool kmsg_dump_get_line(struct kmsg_dump
  	unsigned long flags;
  	bool ret;
  
@@ -366,16 +352,16 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  	return ret;
  }
-@@ -3542,7 +3502,7 @@ bool kmsg_dump_get_buffer(struct kmsg_du
- 	if (!iter->active || !buf || !size)
- 		goto out;
+@@ -3538,7 +3498,7 @@ bool kmsg_dump_get_buffer(struct kmsg_du
+ 	if (iter->cur_seq < min_seq)
+ 		iter->cur_seq = min_seq;
  
 -	logbuf_lock_irqsave(flags);
 +	printk_safe_enter_irqsave(flags);
  	if (prb_read_valid_info(prb, iter->cur_seq, &info, NULL)) {
  		if (info.seq != iter->cur_seq) {
  			/* messages are gone, move to first available one */
-@@ -3552,7 +3512,7 @@ bool kmsg_dump_get_buffer(struct kmsg_du
+@@ -3548,7 +3508,7 @@ bool kmsg_dump_get_buffer(struct kmsg_du
  
  	/* last entry */
  	if (iter->cur_seq >= iter->next_seq) {
@@ -384,7 +370,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  		goto out;
  	}
  
-@@ -3586,7 +3546,7 @@ bool kmsg_dump_get_buffer(struct kmsg_du
+@@ -3582,7 +3542,7 @@ bool kmsg_dump_get_buffer(struct kmsg_du
  
  	iter->next_seq = next_seq;
  	ret = true;
@@ -393,7 +379,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  out:
  	if (len_out)
  		*len_out = len;
-@@ -3622,9 +3582,9 @@ void kmsg_dump_rewind(struct kmsg_dumper
+@@ -3618,9 +3578,9 @@ void kmsg_dump_rewind(struct kmsg_dump_i
  {
  	unsigned long flags;
  
@@ -416,14 +402,14 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
   * it uses an alternative implementation that temporary stores
   * the strings into a per-CPU buffer. The content of the buffer
   * is later flushed into the main ring buffer via IRQ work.
-@@ -266,18 +266,6 @@ void printk_safe_flush(void)
-  */
+@@ -267,17 +267,9 @@ void printk_safe_flush(void)
  void printk_safe_flush_on_panic(void)
  {
--	/*
+ 	/*
 -	 * Make sure that we could access the main ring buffer.
--	 * Do not risk a double release when more CPUs are up.
--	 */
++	 * Make sure that we could access the safe buffers.
+ 	 * Do not risk a double release when more CPUs are up.
+ 	 */
 -	if (raw_spin_is_locked(&logbuf_lock)) {
 -		if (num_online_cpus() > 1)
 -			return;
@@ -435,7 +421,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	if (raw_spin_is_locked(&safe_read_lock)) {
  		if (num_online_cpus() > 1)
  			return;
-@@ -319,9 +307,7 @@ void noinstr printk_nmi_exit(void)
+@@ -319,9 +311,7 @@ void noinstr printk_nmi_exit(void)
   * reordering.
   *
   * It has effect only when called in NMI context. Then printk()
@@ -446,7 +432,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
   */
  void printk_nmi_direct_enter(void)
  {
-@@ -376,20 +362,21 @@ void __printk_safe_exit(void)
+@@ -376,20 +366,21 @@ void __printk_safe_exit(void)
  #endif
  
  	/*

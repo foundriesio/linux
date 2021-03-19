@@ -1,40 +1,36 @@
 From: John Ogness <john.ogness@linutronix.de>
-Date: Thu, 10 Dec 2020 12:48:01 +0106
-Subject: [PATCH 06/28] printk: introduce CONSOLE_LOG_MAX for improved
- multi-line support
+Date: Wed, 3 Mar 2021 11:15:20 +0100
+Subject: [PATCH 07/29] printk: introduce CONSOLE_LOG_MAX
 
 Instead of using "LOG_LINE_MAX + PREFIX_MAX" for temporary buffer
 sizes, introduce CONSOLE_LOG_MAX. This represents the maximum size
 that is allowed to be printed to the console for a single record.
 
-Rather than setting CONSOLE_LOG_MAX to "LOG_LINE_MAX + PREFIX_MAX"
-(1024), increase it to 4096. With a larger buffer size, multi-line
-records that are nearly LOG_LINE_MAX in length will have a better
-chance of being fully printed. (When formatting a record for the
-console, each line of a multi-line record is prepended with a copy
-of the prefix.)
-
 Signed-off-by: John Ogness <john.ogness@linutronix.de>
+Reviewed-by: Petr Mladek <pmladek@suse.com>
+Signed-off-by: Petr Mladek <pmladek@suse.com>
+Link: https://lore.kernel.org/r/20210303101528.29901-8-john.ogness@linutronix.de
+Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 ---
- kernel/printk/printk.c |   18 +++++++++++-------
- 1 file changed, 11 insertions(+), 7 deletions(-)
+ kernel/printk/printk.c |   20 ++++++++++++--------
+ 1 file changed, 12 insertions(+), 8 deletions(-)
 
 --- a/kernel/printk/printk.c
 +++ b/kernel/printk/printk.c
-@@ -410,8 +410,13 @@ static u64 clear_seq;
+@@ -410,7 +410,12 @@ static u64 clear_seq;
  #else
  #define PREFIX_MAX		32
  #endif
+-#define LOG_LINE_MAX		(1024 - PREFIX_MAX)
++
++/* the maximum size of a formatted record (i.e. with prefix added per line) */
++#define CONSOLE_LOG_MAX		1024
 +
 +/* the maximum size allowed to be reserved for a record */
- #define LOG_LINE_MAX		(1024 - PREFIX_MAX)
++#define LOG_LINE_MAX		(CONSOLE_LOG_MAX - PREFIX_MAX)
  
-+/* the maximum size of a formatted record (i.e. with prefix added per line) */
-+#define CONSOLE_LOG_MAX		4096
-+
  #define LOG_LEVEL(v)		((v) & 0x07)
  #define LOG_FACILITY(v)		((v) >> 3 & 0xff)
- 
 @@ -1472,11 +1477,11 @@ static int syslog_print(char __user *buf
  	char *text;
  	int len = 0;

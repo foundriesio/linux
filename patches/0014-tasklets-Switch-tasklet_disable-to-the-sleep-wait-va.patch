@@ -1,5 +1,5 @@
 From: Thomas Gleixner <tglx@linutronix.de>
-Date: Tue, 9 Mar 2021 09:42:17 +0100
+Date: Thu, 4 Mar 2021 20:50:19 +0100
 Subject: [PATCH 14/20] tasklets: Switch tasklet_disable() to the sleep wait
  variant
 
@@ -16,7 +16,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/include/linux/interrupt.h
 +++ b/include/linux/interrupt.h
-@@ -707,8 +707,7 @@ static inline void tasklet_disable_in_at
+@@ -711,8 +711,7 @@ static inline void tasklet_disable_in_at
  static inline void tasklet_disable(struct tasklet_struct *t)
  {
  	tasklet_disable_nosync(t);

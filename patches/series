@@ -36,33 +36,35 @@ powerpc-mm-Move-the-linear_mapping_mutex-to-the-ifde.patch
 ############################################################
 
 # John's printk series.
-0002-printk-limit-second-loop-of-syslog_print_all.patch
-0003-printk-kmsg_dump-remove-unused-fields.patch
-0004-printk-refactor-kmsg_dump_get_buffer.patch
-0005-printk-consolidate-kmsg_dump_get_buffer-syslog_print.patch
-0006-printk-introduce-CONSOLE_LOG_MAX-for-improved-multi-.patch
-0007-printk-use-seqcount_latch-for-clear_seq.patch
-0008-printk-use-atomic64_t-for-devkmsg_user.seq.patch
-0009-printk-add-syslog_lock.patch
-0010-printk-introduce-a-kmsg_dump-iterator.patch
-0011-um-synchronize-kmsg_dumper.patch
-0012-printk-remove-logbuf_lock.patch
-0013-printk-kmsg_dump-remove-_nolock-variants.patch
-0014-printk-kmsg_dump-use-kmsg_dump_rewind.patch
+0001-um-synchronize-kmsg_dumper.patch
+0002-mtd-mtdoops-synchronize-kmsg_dumper.patch
+0003-printk-limit-second-loop-of-syslog_print_all.patch
+0004-printk-kmsg_dump-remove-unused-fields.patch
+0005-printk-refactor-kmsg_dump_get_buffer.patch
+0006-printk-consolidate-kmsg_dump_get_buffer-syslog_print.patch
+0007-printk-introduce-CONSOLE_LOG_MAX.patch
+0008-printk-use-seqcount_latch-for-clear_seq.patch
+0009-printk-use-atomic64_t-for-devkmsg_user.seq.patch
+0010-printk-add-syslog_lock.patch
+0011-printk-kmsg_dumper-remove-active-field.patch
+0012-printk-introduce-a-kmsg_dump-iterator.patch
+0013-printk-remove-logbuf_lock.patch
+0014-printk-kmsg_dump-remove-_nolock-variants.patch
 0015-printk-console-remove-unnecessary-safe-buffer-usage.patch
 0016-printk-track-limit-recursion.patch
 0017-printk-remove-safe-buffers.patch
 0018-printk-convert-syslog_lock-to-spin_lock.patch
 0019-console-add-write_atomic-interface.patch
-0020-serial-8250-implement-write_atomic.patch
-0021-printk-relocate-printk_delay-and-vprintk_default.patch
-0022-printk-combine-boot_delay_msec-into-printk_delay.patch
-0023-printk-change-console_seq-to-atomic64_t.patch
-0024-printk-introduce-kernel-sync-mode.patch
-0025-printk-move-console-printing-to-kthreads.patch
-0026-printk-remove-deferred-printing.patch
-0027-printk-add-console-handover.patch
-0028-printk-add-pr_flush.patch
+0020-kdb-only-use-atomic-consoles-for-output-mirroring.patch
+0021-serial-8250-implement-write_atomic.patch
+0022-printk-relocate-printk_delay-and-vprintk_default.patch
+0023-printk-combine-boot_delay_msec-into-printk_delay.patch
+0024-printk-use-seqcount_latch-for-console_seq.patch
+0025-printk-introduce-kernel-sync-mode.patch
+0026-printk-move-console-printing-to-kthreads.patch
+0027-printk-remove-deferred-printing.patch
+0028-printk-add-console-handover.patch
+0029-printk-add-pr_flush.patch
 
 # 20210218173124.iy5iyqv3a4oia4vv@linutronix.de
 kcov-Remove-kcov-include-from-sched.h-and-move-it-to.patch

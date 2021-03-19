@@ -1,6 +1,6 @@
 From: John Ogness <john.ogness@linutronix.de>
-Date: Mon, 30 Nov 2020 01:41:56 +0106
-Subject: [PATCH 04/28] printk: refactor kmsg_dump_get_buffer()
+Date: Wed, 3 Mar 2021 11:15:18 +0100
+Subject: [PATCH 05/29] printk: refactor kmsg_dump_get_buffer()
 
 kmsg_dump_get_buffer() requires nearly the same logic as
 syslog_print_all(), but uses different variable names and
@@ -13,11 +13,13 @@ separate helper function.
 
 Signed-off-by: John Ogness <john.ogness@linutronix.de>
 Reviewed-by: Petr Mladek <pmladek@suse.com>
+Signed-off-by: Petr Mladek <pmladek@suse.com>
+Link: https://lore.kernel.org/r/20210303101528.29901-6-john.ogness@linutronix.de
 Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 ---
  include/linux/kmsg_dump.h |    2 -
- kernel/printk/printk.c    |   60 ++++++++++++++++++++++++----------------------
- 2 files changed, 33 insertions(+), 29 deletions(-)
+ kernel/printk/printk.c    |   62 ++++++++++++++++++++++++----------------------
+ 2 files changed, 34 insertions(+), 30 deletions(-)
 
 --- a/include/linux/kmsg_dump.h
 +++ b/include/linux/kmsg_dump.h
@@ -32,6 +34,15 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
 --- a/kernel/printk/printk.c
 +++ b/kernel/printk/printk.c
+@@ -3410,7 +3410,7 @@ EXPORT_SYMBOL_GPL(kmsg_dump_get_line);
+  * @syslog: include the "<4>" prefixes
+  * @buf: buffer to copy the line to
+  * @size: maximum size of the buffer
+- * @len: length of line placed into buffer
++ * @len_out: length of line placed into buffer
+  *
+  * Start at the end of the kmsg buffer and fill the provided buffer
+  * with as many of the *youngest* kmsg records that fit into it.
 @@ -3424,7 +3424,7 @@ EXPORT_SYMBOL_GPL(kmsg_dump_get_line);
   * read.
   */

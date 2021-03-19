@@ -1,6 +1,6 @@
 From: John Ogness <john.ogness@linutronix.de>
-Date: Wed, 17 Feb 2021 18:28:05 +0100
-Subject: [PATCH 15/28] printk: console: remove unnecessary safe buffer usage
+Date: Wed, 3 Mar 2021 11:15:28 +0100
+Subject: [PATCH 15/29] printk: console: remove unnecessary safe buffer usage
 
 Upon registering a console, safe buffers are activated when setting
 up the sequence number to replay the log. However, these are already
@@ -8,6 +8,10 @@ protected by @console_sem and @syslog_lock. Remove the unnecessary
 safe buffer usage.
 
 Signed-off-by: John Ogness <john.ogness@linutronix.de>
+Reviewed-by: Petr Mladek <pmladek@suse.com>
+Signed-off-by: Petr Mladek <pmladek@suse.com>
+Link: https://lore.kernel.org/r/20210303101528.29901-16-john.ogness@linutronix.de
+Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 ---
  kernel/printk/printk.c |   10 +++-------
  1 file changed, 3 insertions(+), 7 deletions(-)

@@ -1,6 +1,6 @@
 From: John Ogness <john.ogness@linutronix.de>
-Date: Thu, 10 Dec 2020 15:33:40 +0106
-Subject: [PATCH 08/28] printk: use atomic64_t for devkmsg_user.seq
+Date: Wed, 3 Mar 2021 11:15:22 +0100
+Subject: [PATCH 09/29] printk: use atomic64_t for devkmsg_user.seq
 
 @user->seq is indirectly protected by @logbuf_lock. Once @logbuf_lock
 is removed, @user->seq will be no longer safe from an atomicity point
@@ -10,9 +10,13 @@ In preparation for the removal of @logbuf_lock, change it to
 atomic64_t to provide this safety.
 
 Signed-off-by: John Ogness <john.ogness@linutronix.de>
+Reviewed-by: Petr Mladek <pmladek@suse.com>
+Signed-off-by: Petr Mladek <pmladek@suse.com>
+Link: https://lore.kernel.org/r/20210303101528.29901-10-john.ogness@linutronix.de
+Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 ---
- kernel/printk/printk.c |   22 +++++++++++-----------
- 1 file changed, 11 insertions(+), 11 deletions(-)
+ kernel/printk/printk.c |   24 ++++++++++++------------
+ 1 file changed, 12 insertions(+), 12 deletions(-)
 
 --- a/kernel/printk/printk.c
 +++ b/kernel/printk/printk.c
@@ -85,9 +89,12 @@ Signed-off-by: John Ogness <john.ogness@linutronix.de>
  		break;
  	default:
  		ret = -EINVAL;
-@@ -866,7 +866,7 @@ static __poll_t devkmsg_poll(struct file
+@@ -864,9 +864,9 @@ static __poll_t devkmsg_poll(struct file
+ 	poll_wait(file, &log_wait, wait);
+ 
  	logbuf_lock_irq();
- 	if (prb_read_valid_info(prb, user->seq, &info, NULL)) {
+-	if (prb_read_valid_info(prb, user->seq, &info, NULL)) {
++	if (prb_read_valid_info(prb, atomic64_read(&user->seq), &info, NULL)) {
  		/* return error when data has vanished underneath us */
 -		if (info.seq != user->seq)
 +		if (info.seq != atomic64_read(&user->seq))

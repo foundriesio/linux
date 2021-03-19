@@ -1,64 +1,68 @@
 From: John Ogness <john.ogness@linutronix.de>
 Date: Fri, 11 Dec 2020 00:55:25 +0106
-Subject: [PATCH 16/28] printk: track/limit recursion
+Subject: [PATCH 16/29] printk: track/limit recursion
 
-Limit printk() recursion to 1 level. This is enough to print a
-stacktrace for the printk call, should a WARN or BUG occur.
+Track printk() recursion and limit it to 3 levels per-CPU and per-context.
 
 Signed-off-by: John Ogness <john.ogness@linutronix.de>
 Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 ---
- kernel/printk/printk.c |   74 +++++++++++++++++++++++++++++++++++++++++++++++--
- 1 file changed, 71 insertions(+), 3 deletions(-)
+ kernel/printk/printk.c |   80 +++++++++++++++++++++++++++++++++++++++++++++++--
+ 1 file changed, 77 insertions(+), 3 deletions(-)
 
 --- a/kernel/printk/printk.c
 +++ b/kernel/printk/printk.c
-@@ -1940,6 +1940,65 @@ static void call_console_drivers(const c
+@@ -1940,6 +1940,71 @@ static void call_console_drivers(const c
  	}
  }
  
++/*
++ * Recursion is tracked separately on each CPU. If NMIs are supported, an
++ * additional NMI context per CPU is also separately tracked. Until per-CPU
++ * is available, a separate "early tracking" is performed.
++ */
 +#ifdef CONFIG_PRINTK_NMI
-+#define NUM_RECURSION_CTX 2
++#define PRINTK_CTX_NUM 2
 +#else
-+#define NUM_RECURSION_CTX 1
++#define PRINTK_CTX_NUM 1
 +#endif
++static DEFINE_PER_CPU(char [PRINTK_CTX_NUM], printk_count);
++static char printk_count_early[PRINTK_CTX_NUM];
 +
-+struct printk_recursion {
-+	char	count[NUM_RECURSION_CTX];
-+};
++/*
++ * Recursion is limited to keep the output sane. printk() should not require
++ * more than 1 level of recursion (allowing, for example, printk() to trigger
++ * a WARN), but a higher value is used in case some printk-internal errors
++ * exist, such as the ringbuffer validation checks failing.
++ */
++#define PRINTK_MAX_RECURSION 3
 +
-+static DEFINE_PER_CPU(struct printk_recursion, percpu_printk_recursion);
-+static char printk_recursion_count[NUM_RECURSION_CTX];
-+
++/* Return a pointer to the dedicated counter for the CPU+context of the caller. */
 +static char *printk_recursion_counter(void)
 +{
-+	struct printk_recursion *rec;
-+	char *count;
-+
-+	if (!printk_percpu_data_ready()) {
-+		count = &printk_recursion_count[0];
-+	} else {
-+		rec = this_cpu_ptr(&percpu_printk_recursion);
-+
-+		count = &rec->count[0];
-+	}
++	int ctx = 0;
 +
 +#ifdef CONFIG_PRINTK_NMI
 +	if (in_nmi())
-+		count++;
++		ctx = 1;
 +#endif
-+
-+	return count;
++	if (!printk_percpu_data_ready())
++		return &printk_count_early[ctx];
++	return &((*this_cpu_ptr(&printk_count))[ctx]);
 +}
 +
++/*
++ * Enter recursion tracking. Interrupts are disabled to simplify tracking.
++ * The caller must check the return value to see if the recursion is allowed.
++ * On failure, interrupts are not disabled.
++ */
 +static bool printk_enter_irqsave(unsigned long *flags)
 +{
 +	char *count;
 +
 +	local_irq_save(*flags);
 +	count = printk_recursion_counter();
-+	/* Only 1 level of recursion allowed. */
-+	if (*count > 1) {
++	if (*count > PRINTK_MAX_RECURSION) {
 +		local_irq_restore(*flags);
 +		return false;
 +	}
@@ -67,6 +71,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 +	return true;
 +}
 +
++/* Exit recursion tracking, restoring interrupts. */
 +static void printk_exit_irqrestore(unsigned long flags)
 +{
 +	char *count;
@@ -79,7 +84,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  int printk_delay_msec __read_mostly;
  
  static inline void printk_delay(void)
-@@ -2040,11 +2099,13 @@ int vprintk_store(int facility, int leve
+@@ -2040,11 +2105,13 @@ int vprintk_store(int facility, int leve
  	struct prb_reserved_entry e;
  	enum log_flags lflags = 0;
  	struct printk_record r;
@@ -93,7 +98,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	u64 ts_nsec;
  
  	/*
-@@ -2055,6 +2116,9 @@ int vprintk_store(int facility, int leve
+@@ -2055,6 +2122,9 @@ int vprintk_store(int facility, int leve
  	 */
  	ts_nsec = local_clock();
  
@@ -103,7 +108,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	/*
  	 * The sprintf needs to come first since the syslog prefix might be
  	 * passed in as a parameter. An extra byte must be reserved so that
-@@ -2092,7 +2156,8 @@ int vprintk_store(int facility, int leve
+@@ -2092,7 +2162,8 @@ int vprintk_store(int facility, int leve
  				prb_commit(&e);
  			}
  
@@ -113,7 +118,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  		}
  	}
  
-@@ -2108,7 +2173,7 @@ int vprintk_store(int facility, int leve
+@@ -2108,7 +2179,7 @@ int vprintk_store(int facility, int leve
  
  		prb_rec_init_wr(&r, reserve_size + trunc_msg_len);
  		if (!prb_reserve(&e, prb, &r))
@@ -122,7 +127,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	}
  
  	/* fill message */
-@@ -2130,7 +2195,10 @@ int vprintk_store(int facility, int leve
+@@ -2130,7 +2201,10 @@ int vprintk_store(int facility, int leve
  	else
  		prb_final_commit(&e);
  

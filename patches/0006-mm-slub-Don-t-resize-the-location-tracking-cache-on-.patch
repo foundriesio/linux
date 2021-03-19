@@ -17,7 +17,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/mm/slub.c
 +++ b/mm/slub.c
-@@ -4819,6 +4819,9 @@ static int alloc_loc_track(struct loc_tr
+@@ -4822,6 +4822,9 @@ static int alloc_loc_track(struct loc_tr
  	struct location *l;
  	int order;
  

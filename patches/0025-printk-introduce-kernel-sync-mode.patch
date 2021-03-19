@@ -1,6 +1,6 @@
 From: John Ogness <john.ogness@linutronix.de>
 Date: Mon, 30 Nov 2020 01:42:06 +0106
-Subject: [PATCH 24/28] printk: introduce kernel sync mode
+Subject: [PATCH 25/29] printk: introduce kernel sync mode
 
 When the kernel performs an OOPS, enter into "sync mode":
 
@@ -14,9 +14,9 @@ Signed-off-by: John Ogness <john.ogness@linutronix.de>
 Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 ---
  include/linux/console.h |    4 +
- include/linux/printk.h  |    6 ++
- kernel/printk/printk.c  |  133 +++++++++++++++++++++++++++++++++++++++++++++---
- 3 files changed, 137 insertions(+), 6 deletions(-)
+ include/linux/printk.h  |    6 +
+ kernel/printk/printk.c  |  188 ++++++++++++++++++++++++++++++++++++++++++++----
+ 3 files changed, 184 insertions(+), 14 deletions(-)
 
 --- a/include/linux/console.h
 +++ b/include/linux/console.h
@@ -48,42 +48,70 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 + * The maximum size of a record formatted for console printing
 + * (i.e. with the prefix prepended to every line).
 + */
-+#define CONSOLE_LOG_MAX		4096
++#define CONSOLE_LOG_MAX		1024
 +
  /* printk's without a loglevel use this.. */
  #define MESSAGE_LOGLEVEL_DEFAULT CONFIG_MESSAGE_LOGLEVEL_DEFAULT
  
 --- a/kernel/printk/printk.c
 +++ b/kernel/printk/printk.c
-@@ -44,6 +44,7 @@
- #include <linux/irq_work.h>
+@@ -45,6 +45,7 @@
  #include <linux/ctype.h>
  #include <linux/uio.h>
+ #include <linux/kgdb.h>
 +#include <linux/clocksource.h>
  #include <linux/sched/clock.h>
  #include <linux/sched/debug.h>
  #include <linux/sched/task_stack.h>
-@@ -359,6 +360,9 @@ enum log_flags {
+@@ -360,6 +361,15 @@ enum log_flags {
  static DEFINE_SPINLOCK(syslog_lock);
  
  #ifdef CONFIG_PRINTK
 +/* Set to enable sync mode. Once set, it is never cleared. */
 +static bool sync_mode;
 +
++#ifdef CONFIG_PRINTK_NMI
++#define PRINTK_CTX_NUM 2
++#else
++#define PRINTK_CTX_NUM 1
++#endif
++
  DECLARE_WAIT_QUEUE_HEAD(log_wait);
  /* All 3 protected by @syslog_lock. */
  /* the next printk record to read by syslog(READ) or /proc/kmsg */
-@@ -398,9 +402,6 @@ static struct latched_seq clear_seq = {
- /* the maximum size allowed to be reserved for a record */
- #define LOG_LINE_MAX		(1024 - PREFIX_MAX)
+@@ -387,6 +397,21 @@ static struct latched_seq console_seq =
+ 	.val[1]		= 0,
+ };
+ 
++static struct latched_seq console_sync_seq[PRINTK_CTX_NUM] = {
++	{
++		.latch		= SEQCNT_LATCH_ZERO(console_sync_seq[0].latch),
++		.val[0]		= 0,
++		.val[1]		= 0,
++	},
++#if PRINTK_CTX_NUM > 1
++	{
++		.latch		= SEQCNT_LATCH_ZERO(console_sync_seq[1].latch),
++		.val[0]		= 0,
++		.val[1]		= 0,
++	},
++#endif
++};
++
+ /*
+  * The next printk record to read after the last 'clear' command. There are
+  * two copies (updated with seqcount_latch) so that reads can locklessly
+@@ -404,9 +429,6 @@ static struct latched_seq clear_seq = {
+ #define PREFIX_MAX		32
+ #endif
  
 -/* the maximum size of a formatted record (i.e. with prefix added per line) */
--#define CONSOLE_LOG_MAX		4096
+-#define CONSOLE_LOG_MAX		1024
 -
- #define LOG_LEVEL(v)		((v) & 0x07)
- #define LOG_FACILITY(v)		((v) >> 3 & 0xff)
+ /* the maximum size allowed to be reserved for a record */
+ #define LOG_LINE_MAX		(CONSOLE_LOG_MAX - PREFIX_MAX)
  
-@@ -1742,6 +1743,91 @@ static inline void printk_delay(int leve
+@@ -1750,6 +1772,114 @@ static inline void printk_delay(int leve
  	}
  }
  
@@ -92,7 +120,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 +	return (oops_in_progress || sync_mode);
 +}
 +
-+static bool console_can_sync(struct console *con)
++static bool console_may_sync(struct console *con)
 +{
 +	if (!(con->flags & CON_ENABLED))
 +		return false;
@@ -155,6 +183,23 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 +	return true;
 +}
 +
++static u64 read_console_seq(void)
++{
++	u64 seq2;
++	u64 seq;
++
++	seq = latched_seq_read_nolock(&console_seq);
++	seq2 = latched_seq_read_nolock(&console_sync_seq[0]);
++	if (seq2 > seq)
++		seq = seq2;
++#if PRINTK_CTX_NUM > 1
++	seq2 = latched_seq_read_nolock(&console_sync_seq[1]);
++	if (seq2 > seq)
++		seq = seq2;
++#endif
++	return seq;
++}
++
 +static void print_sync_until(struct console *con, u64 seq)
 +{
 +	unsigned int flags;
@@ -162,12 +207,18 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 +
 +	console_atomic_lock(&flags);
 +	for (;;) {
-+		printk_seq = atomic64_read(&console_seq);
++		int ctx = 0;
++
++#ifdef CONFIG_PRINTK_NMI
++		if (in_nmi())
++			ctx = 1;
++#endif
++		printk_seq = read_console_seq();
 +		if (printk_seq >= seq)
 +			break;
 +		if (!print_sync(con, &printk_seq))
 +			break;
-+		atomic64_set(&console_seq, printk_seq + 1);
++		latched_seq_write(&console_sync_seq[ctx], printk_seq + 1);
 +	}
 +	console_atomic_unlock(flags);
 +}
@@ -175,7 +226,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  /*
   * Special console_lock variants that help to reduce the risk of soft-lockups.
   * They allow to pass console_lock to another printk() call using a busy wait.
-@@ -1916,6 +2002,8 @@ static void call_console_drivers(const c
+@@ -1924,6 +2054,8 @@ static void call_console_drivers(const c
  		if (!cpu_online(smp_processor_id()) &&
  		    !(con->flags & CON_ANYTIME))
  			continue;
@@ -184,7 +235,19 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  		if (con->flags & CON_EXTENDED)
  			con->write(con, ext_text, ext_len);
  		else {
-@@ -2070,6 +2158,7 @@ int vprintk_store(int facility, int leve
+@@ -1939,11 +2071,6 @@ static void call_console_drivers(const c
+  * additional NMI context per CPU is also separately tracked. Until per-CPU
+  * is available, a separate "early tracking" is performed.
+  */
+-#ifdef CONFIG_PRINTK_NMI
+-#define PRINTK_CTX_NUM 2
+-#else
+-#define PRINTK_CTX_NUM 1
+-#endif
+ static DEFINE_PER_CPU(char [PRINTK_CTX_NUM], printk_count);
+ static char printk_count_early[PRINTK_CTX_NUM];
+ 
+@@ -2084,6 +2211,7 @@ int vprintk_store(int facility, int leve
  	const u32 caller_id = printk_caller_id();
  	struct prb_reserved_entry e;
  	enum log_flags lflags = 0;
@@ -192,7 +255,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	struct printk_record r;
  	unsigned long irqflags;
  	u16 trunc_msg_len = 0;
-@@ -2079,6 +2168,7 @@ int vprintk_store(int facility, int leve
+@@ -2093,6 +2221,7 @@ int vprintk_store(int facility, int leve
  	u16 text_len;
  	int ret = 0;
  	u64 ts_nsec;
@@ -200,7 +263,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  	/*
  	 * Since the duration of printk() can vary depending on the message
-@@ -2117,6 +2207,7 @@ int vprintk_store(int facility, int leve
+@@ -2131,6 +2260,7 @@ int vprintk_store(int facility, int leve
  	if (lflags & LOG_CONT) {
  		prb_rec_init_wr(&r, reserve_size);
  		if (prb_reserve_in_last(&e, prb, &r, caller_id, LOG_LINE_MAX)) {
@@ -208,7 +271,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  			text_len = printk_sprint(&r.text_buf[r.info->text_len], reserve_size,
  						 facility, &lflags, fmt, args);
  			r.info->text_len += text_len;
-@@ -2124,6 +2215,7 @@ int vprintk_store(int facility, int leve
+@@ -2138,6 +2268,7 @@ int vprintk_store(int facility, int leve
  			if (lflags & LOG_NEWLINE) {
  				r.info->flags |= LOG_NEWLINE;
  				prb_final_commit(&e);
@@ -216,7 +279,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  			} else {
  				prb_commit(&e);
  			}
-@@ -2148,6 +2240,8 @@ int vprintk_store(int facility, int leve
+@@ -2162,6 +2293,8 @@ int vprintk_store(int facility, int leve
  			goto out;
  	}
  
@@ -225,7 +288,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	/* fill message */
  	text_len = printk_sprint(&r.text_buf[0], reserve_size, facility, &lflags, fmt, args);
  	if (trunc_msg_len)
-@@ -2162,13 +2256,25 @@ int vprintk_store(int facility, int leve
+@@ -2176,13 +2309,25 @@ int vprintk_store(int facility, int leve
  		memcpy(&r.info->dev_info, dev_info, sizeof(r.info->dev_info));
  
  	/* A message without a trailing newline can be continued. */
@@ -245,7 +308,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 +		struct console *con;
 +
 +		for_each_console(con) {
-+			if (console_can_sync(con))
++			if (console_may_sync(con))
 +				print_sync_until(con, seq + 1);
 +		}
 +	}
@@ -253,7 +316,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	printk_exit_irqrestore(irqflags);
  	return ret;
  }
-@@ -2264,12 +2370,13 @@ EXPORT_SYMBOL(printk);
+@@ -2278,12 +2423,13 @@ EXPORT_SYMBOL(printk);
  
  #else /* CONFIG_PRINTK */
  
@@ -266,9 +329,9 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 +#define kernel_sync_mode()	false
 +
  static u64 syslog_seq;
+ #error FIXME
  static atomic64_t console_seq = ATOMIC64_INIT(0);
- static u64 exclusive_console_stop_seq;
-@@ -2562,6 +2669,8 @@ static int have_callable_console(void)
+@@ -2577,6 +2723,8 @@ static int have_callable_console(void)
   */
  static inline int can_use_console(void)
  {
@@ -277,8 +340,35 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	return cpu_online(raw_smp_processor_id()) || have_callable_console();
  }
  
-@@ -3374,6 +3483,18 @@ void kmsg_dump(enum kmsg_dump_reason rea
- 	struct kmsg_dumper_iter iter;
+@@ -2645,7 +2793,7 @@ void console_unlock(void)
+ 		size_t len;
+ 
+ skip:
+-		seq = latched_seq_read_nolock(&console_seq);
++		seq = read_console_seq();
+ 		if (!prb_read_valid(prb, seq, &r))
+ 			break;
+ 
+@@ -2725,7 +2873,7 @@ void console_unlock(void)
+ 	 * there's a new owner and the console_unlock() from them will do the
+ 	 * flush, no worries.
+ 	 */
+-	retry = prb_read_valid(prb, latched_seq_read_nolock(&console_seq), NULL);
++	retry = prb_read_valid(prb, read_console_seq(), NULL);
+ 	if (retry && console_trylock())
+ 		goto again;
+ }
+@@ -3026,7 +3174,7 @@ void register_console(struct console *ne
+ 		 * ignores console_lock.
+ 		 */
+ 		exclusive_console = newcon;
+-		exclusive_console_stop_seq = latched_seq_read_nolock(&console_seq);
++		exclusive_console_stop_seq = read_console_seq();
+ 
+ 		/* Get a consistent copy of @syslog_seq. */
+ 		spin_lock_irqsave(&syslog_lock, flags);
+@@ -3396,6 +3544,18 @@ void kmsg_dump(enum kmsg_dump_reason rea
+ {
  	struct kmsg_dumper *dumper;
  
 +	if (!oops_in_progress) {

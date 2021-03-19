@@ -1,6 +1,6 @@
 From: John Ogness <john.ogness@linutronix.de>
-Date: Mon, 30 Nov 2020 01:41:58 +0106
-Subject: [PATCH 07/28] printk: use seqcount_latch for clear_seq
+Date: Wed, 3 Mar 2021 11:15:21 +0100
+Subject: [PATCH 08/29] printk: use seqcount_latch for clear_seq
 
 kmsg_dump_rewind_nolock() locklessly reads @clear_seq. However,
 this is not done atomically. Since @clear_seq is 64-bit, this
@@ -10,6 +10,8 @@ value.
 
 Signed-off-by: John Ogness <john.ogness@linutronix.de>
 Reviewed-by: Petr Mladek <pmladek@suse.com>
+Signed-off-by: Petr Mladek <pmladek@suse.com>
+Link: https://lore.kernel.org/r/20210303101528.29901-9-john.ogness@linutronix.de
 Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 ---
  kernel/printk/printk.c |   58 ++++++++++++++++++++++++++++++++++++++++++-------

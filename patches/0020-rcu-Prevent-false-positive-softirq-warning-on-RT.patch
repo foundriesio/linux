@@ -1,5 +1,5 @@
 From: Thomas Gleixner <tglx@linutronix.de>
-Date: Tue, 9 Mar 2021 09:55:58 +0100
+Date: Fri, 4 Dec 2020 18:01:57 +0100
 Subject: [PATCH 20/20] rcu: Prevent false positive softirq warning on RT
 
 Soft interrupt disabled sections can legitimately be preempted or schedule

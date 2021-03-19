@@ -17,7 +17,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/mm/slub.c
 +++ b/mm/slub.c
-@@ -2487,26 +2487,70 @@ static inline void __flush_cpu_slab(stru
+@@ -2490,26 +2490,70 @@ static inline void __flush_cpu_slab(stru
  	unfreeze_partials(s, c, delayed_free);
  }
  
@@ -94,7 +94,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  }
  
  /*
-@@ -4009,7 +4053,7 @@ int __kmem_cache_shutdown(struct kmem_ca
+@@ -4012,7 +4056,7 @@ int __kmem_cache_shutdown(struct kmem_ca
  	int node;
  	struct kmem_cache_node *n;
  
@@ -103,7 +103,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	/* Attempt to free all objects */
  	for_each_kmem_cache_node(s, node, n) {
  		free_partial(s, n);
-@@ -4293,7 +4337,7 @@ int __kmem_cache_shrink(struct kmem_cach
+@@ -4296,7 +4340,7 @@ int __kmem_cache_shrink(struct kmem_cach
  	unsigned long flags;
  	int ret = 0;
  

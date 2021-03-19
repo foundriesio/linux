@@ -1,15 +1,17 @@
 From: John Ogness <john.ogness@linutronix.de>
-Date: Mon, 21 Dec 2020 11:10:03 +0106
-Subject: [PATCH 11/28] um: synchronize kmsg_dumper
+Date: Wed, 3 Mar 2021 11:15:14 +0100
+Subject: [PATCH 01/29] um: synchronize kmsg_dumper
 
 The kmsg_dumper can be called from any context and CPU, possibly
 from multiple CPUs simultaneously. Since a static buffer is used
 to retrieve the kernel logs, this buffer must be protected against
-simultaneous dumping.
+simultaneous dumping. Skip dumping if another context is already
+dumping.
 
-Cc: Richard Weinberger <richard@nod.at>
 Signed-off-by: John Ogness <john.ogness@linutronix.de>
 Reviewed-by: Petr Mladek <pmladek@suse.com>
+Signed-off-by: Petr Mladek <pmladek@suse.com>
+Link: https://lore.kernel.org/r/20210303101528.29901-2-john.ogness@linutronix.de
 Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 ---
  arch/um/kernel/kmsg_dump.c |    8 ++++++++
@@ -24,9 +26,9 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  #include <linux/console.h>
  #include <linux/string.h>
  #include <shared/init.h>
-@@ -10,8 +11,10 @@ static void kmsg_dumper_stdout(struct km
- 				enum kmsg_dump_reason reason,
- 				struct kmsg_dumper_iter *iter)
+@@ -9,8 +10,10 @@
+ static void kmsg_dumper_stdout(struct kmsg_dumper *dumper,
+ 				enum kmsg_dump_reason reason)
  {
 +	static DEFINE_SPINLOCK(lock);
  	static char line[1024];
@@ -35,7 +37,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	size_t len = 0;
  
  	/* only dump kmsg when no console is available */
-@@ -30,11 +33,16 @@ static void kmsg_dumper_stdout(struct km
+@@ -29,11 +32,16 @@ static void kmsg_dumper_stdout(struct km
  	if (con)
  		return;
  
@@ -43,7 +45,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 +		return;
 +
  	printf("kmsg_dump:\n");
- 	while (kmsg_dump_get_line(iter, true, line, sizeof(line), &len)) {
+ 	while (kmsg_dump_get_line(dumper, true, line, sizeof(line), &len)) {
  		line[len] = '\0';
  		printf("%s", line);
  	}

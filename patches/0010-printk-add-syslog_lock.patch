@@ -1,6 +1,6 @@
 From: John Ogness <john.ogness@linutronix.de>
-Date: Thu, 10 Dec 2020 16:58:02 +0106
-Subject: [PATCH 09/28] printk: add syslog_lock
+Date: Wed, 3 Mar 2021 11:15:23 +0100
+Subject: [PATCH 10/29] printk: add syslog_lock
 
 The global variables @syslog_seq, @syslog_partial, @syslog_time
 and write access to @clear_seq are protected by @logbuf_lock.
@@ -13,6 +13,9 @@ transition to removing @logbuf_lock. Once @logbuf_lock and the
 safe buffers are removed, @syslog_lock can change to spin_lock.
 
 Signed-off-by: John Ogness <john.ogness@linutronix.de>
+Reviewed-by: Petr Mladek <pmladek@suse.com>
+Signed-off-by: Petr Mladek <pmladek@suse.com>
+Link: https://lore.kernel.org/r/20210303101528.29901-11-john.ogness@linutronix.de
 Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 ---
  kernel/printk/printk.c |   41 +++++++++++++++++++++++++++++++++++++----

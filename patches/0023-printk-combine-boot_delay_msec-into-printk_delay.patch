@@ -1,6 +1,6 @@
 From: John Ogness <john.ogness@linutronix.de>
 Date: Mon, 30 Nov 2020 01:42:04 +0106
-Subject: [PATCH 22/28] printk: combine boot_delay_msec() into printk_delay()
+Subject: [PATCH 23/29] printk: combine boot_delay_msec() into printk_delay()
 
 boot_delay_msec() is always called immediately before printk_delay()
 so just combine the two.
@@ -25,7 +25,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	if (unlikely(printk_delay_msec)) {
  		int m = printk_delay_msec;
  
-@@ -2186,8 +2188,7 @@ asmlinkage int vprintk_emit(int facility
+@@ -2192,8 +2194,7 @@ asmlinkage int vprintk_emit(int facility
  		in_sched = true;
  	}
  

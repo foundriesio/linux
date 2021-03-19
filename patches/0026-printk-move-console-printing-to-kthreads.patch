@@ -1,6 +1,6 @@
 From: John Ogness <john.ogness@linutronix.de>
 Date: Mon, 30 Nov 2020 01:42:07 +0106
-Subject: [PATCH 25/28] printk: move console printing to kthreads
+Subject: [PATCH 26/29] printk: move console printing to kthreads
 
 Create a kthread for each console to perform console printing. Now
 all console printing is fully asynchronous except for the boot
@@ -13,32 +13,53 @@ their name says... locking and unlocking of the console.
 Signed-off-by: John Ogness <john.ogness@linutronix.de>
 Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 ---
- include/linux/console.h |    2 
- kernel/printk/printk.c  |  625 ++++++++++++++----------------------------------
- 2 files changed, 186 insertions(+), 441 deletions(-)
+ include/linux/console.h |   16 +
+ kernel/printk/printk.c  |  720 ++++++++++++++----------------------------------
+ 2 files changed, 238 insertions(+), 498 deletions(-)
 
 --- a/include/linux/console.h
 +++ b/include/linux/console.h
-@@ -154,6 +154,8 @@ struct console {
+@@ -17,6 +17,18 @@
+ #include <linux/atomic.h>
+ #include <linux/types.h>
+ #include <linux/printk.h>
++#include <linux/seqlock.h>
++
++#ifdef CONFIG_PRINTK_NMI
++#define PRINTK_CTX_NUM 2
++#else
++#define PRINTK_CTX_NUM 1
++#endif
++
++struct latched_seq {
++	seqcount_latch_t	latch;
++	u64			val[2];
++};
+ 
+ struct vc_data;
+ struct console_font_op;
+@@ -154,6 +166,10 @@ struct console {
  #ifdef CONFIG_PRINTK
  	char	sync_buf[CONSOLE_LOG_MAX];
  #endif
-+	atomic64_t printk_seq;
++	struct latched_seq printk_seq;
++	struct latched_seq printk_sync_seq[PRINTK_CTX_NUM];
++
 +	struct task_struct *thread;
  	void	*data;
  	struct	 console *next;
  };
 --- a/kernel/printk/printk.c
 +++ b/kernel/printk/printk.c
-@@ -44,6 +44,7 @@
- #include <linux/irq_work.h>
+@@ -45,6 +45,7 @@
  #include <linux/ctype.h>
  #include <linux/uio.h>
+ #include <linux/kgdb.h>
 +#include <linux/kthread.h>
  #include <linux/clocksource.h>
  #include <linux/sched/clock.h>
  #include <linux/sched/debug.h>
-@@ -268,11 +269,6 @@ static void __up_console_sem(unsigned lo
+@@ -269,11 +270,6 @@ static void __up_console_sem(unsigned lo
  static int console_locked, console_suspended;
  
  /*
@@ -50,7 +71,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
   *	Array of consoles built from command line options (console=)
   */
  
-@@ -356,10 +352,10 @@ enum log_flags {
+@@ -357,19 +353,13 @@ enum log_flags {
  	LOG_CONT	= 8,	/* text is a fragment of a continuation line */
  };
  
@@ -62,7 +83,16 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  /* Set to enable sync mode. Once set, it is never cleared. */
  static bool sync_mode;
  
-@@ -370,13 +366,6 @@ static u64 syslog_seq;
+-#ifdef CONFIG_PRINTK_NMI
+-#define PRINTK_CTX_NUM 2
+-#else
+-#define PRINTK_CTX_NUM 1
+-#endif
+-
+ DECLARE_WAIT_QUEUE_HEAD(log_wait);
+ /* All 3 protected by @syslog_lock. */
+ /* the next printk record to read by syslog(READ) or /proc/kmsg */
+@@ -377,41 +367,6 @@ static u64 syslog_seq;
  static size_t syslog_partial;
  static bool syslog_time;
  
@@ -70,13 +100,41 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 -static u64 exclusive_console_stop_seq;
 -static unsigned long console_dropped;
 -
--/* the next printk record to write to the console */
--static atomic64_t console_seq = ATOMIC64_INIT(0);
+-struct latched_seq {
+-	seqcount_latch_t	latch;
+-	u64			val[2];
+-};
 -
- struct latched_seq {
- 	seqcount_latch_t	latch;
- 	u64			val[2];
-@@ -1754,6 +1743,8 @@ static bool console_can_sync(struct cons
+-/*
+- * The next printk record to write to the console. There are two
+- * copies (updated with seqcount_latch) so that reads can locklessly
+- * access a valid value. Writers are synchronized by @console_sem.
+- */
+-static struct latched_seq console_seq = {
+-	.latch		= SEQCNT_LATCH_ZERO(console_seq.latch),
+-	.val[0]		= 0,
+-	.val[1]		= 0,
+-};
+-
+-static struct latched_seq console_sync_seq[PRINTK_CTX_NUM] = {
+-	{
+-		.latch		= SEQCNT_LATCH_ZERO(console_sync_seq[0].latch),
+-		.val[0]		= 0,
+-		.val[1]		= 0,
+-	},
+-#if PRINTK_CTX_NUM > 1
+-	{
+-		.latch		= SEQCNT_LATCH_ZERO(console_sync_seq[1].latch),
+-		.val[0]		= 0,
+-		.val[1]		= 0,
+-	},
+-#endif
+-};
+-
+ /*
+  * The next printk record to read after the last 'clear' command. There are
+  * two copies (updated with seqcount_latch) so that reads can locklessly
+@@ -1783,6 +1738,8 @@ static bool console_may_sync(struct cons
  		return false;
  	if (con->write_atomic && kernel_sync_mode())
  		return true;
@@ -85,41 +143,99 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	return false;
  }
  
-@@ -1763,6 +1754,8 @@ static bool call_sync_console_driver(str
+@@ -1790,12 +1747,21 @@ static bool call_sync_console_driver(str
+ {
+ 	if (!(con->flags & CON_ENABLED))
  		return false;
- 	if (con->write_atomic && kernel_sync_mode())
+-	if (con->write_atomic && kernel_sync_mode())
++
++	if (con->write_atomic && kernel_sync_mode()) {
  		con->write_atomic(con, text, text_len);
-+	else if (con->write && (con->flags & CON_BOOT) && !con->thread)
-+		con->write(con, text, text_len);
- 	else
- 		return false;
+-	else
+-		return false;
++		return true;
++	}
  
-@@ -1818,202 +1811,16 @@ static void print_sync_until(struct cons
+-	return true;
++	if (con->write && (con->flags & CON_BOOT) && !con->thread) {
++		if (console_trylock()) {
++			con->write(con, text, text_len);
++			console_unlock();
++			return true;
++		}
++	}
++
++	return false;
+ }
+ 
+ static bool have_atomic_console(void)
+@@ -1840,230 +1806,49 @@ static bool print_sync(struct console *c
+ 	return true;
+ }
+ 
+-static u64 read_console_seq(void)
++static u64 read_console_seq(struct console *con)
+ {
+ 	u64 seq2;
+ 	u64 seq;
+ 
+-	seq = latched_seq_read_nolock(&console_seq);
+-	seq2 = latched_seq_read_nolock(&console_sync_seq[0]);
++	seq = latched_seq_read_nolock(&con->printk_seq);
++	seq2 = latched_seq_read_nolock(&con->printk_sync_seq[0]);
+ 	if (seq2 > seq)
+ 		seq = seq2;
+ #if PRINTK_CTX_NUM > 1
+-	seq2 = latched_seq_read_nolock(&console_sync_seq[1]);
++	seq2 = latched_seq_read_nolock(&con->printk_sync_seq[1]);
+ 	if (seq2 > seq)
+ 		seq = seq2;
+ #endif
+ 	return seq;
+ }
+ 
+-static void print_sync_until(struct console *con, u64 seq)
++static void print_sync_until(struct console *con, u64 seq, bool is_locked)
+ {
+ 	unsigned int flags;
+ 	u64 printk_seq;
  
  	console_atomic_lock(&flags);
  	for (;;) {
--		printk_seq = atomic64_read(&console_seq);
-+		printk_seq = atomic64_read(&con->printk_seq);
+-		int ctx = 0;
+-
+-#ifdef CONFIG_PRINTK_NMI
+-		if (in_nmi())
+-			ctx = 1;
+-#endif
+-		printk_seq = read_console_seq();
++		printk_seq = read_console_seq(con);
  		if (printk_seq >= seq)
  			break;
  		if (!print_sync(con, &printk_seq))
  			break;
--		atomic64_set(&console_seq, printk_seq + 1);
-+		atomic64_set(&con->printk_seq, printk_seq + 1);
- 	}
- 	console_atomic_unlock(flags);
- }
+-		latched_seq_write(&console_sync_seq[ctx], printk_seq + 1);
+-	}
+-	console_atomic_unlock(flags);
+-}
  
 -/*
 - * Special console_lock variants that help to reduce the risk of soft-lockups.
 - * They allow to pass console_lock to another printk() call using a busy wait.
 - */
--
++		if (is_locked) {
++			latched_seq_write(&con->printk_seq, printk_seq + 1);
++		} else {
++			int ctx = 0;
+ 
 -#ifdef CONFIG_LOCKDEP
 -static struct lockdep_map console_owner_dep_map = {
 -	.name = "console_owner"
 -};
--#endif
++#ifdef CONFIG_PRINTK_NMI
++			if (in_nmi())
++				ctx = 1;
+ #endif
 -
 -static DEFINE_RAW_SPINLOCK(console_owner_lock);
 -static struct task_struct *console_owner;
@@ -292,14 +408,23 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 -			if (dropped_len)
 -				con->write(con, dropped_text, dropped_len);
 -			con->write(con, text, len);
--		}
--	}
--}
--
- #ifdef CONFIG_PRINTK_NMI
- #define NUM_RECURSION_CTX 2
- #else
-@@ -2284,39 +2091,16 @@ asmlinkage int vprintk_emit(int facility
++			latched_seq_write(&con->printk_sync_seq[ctx], printk_seq + 1);
+ 		}
+ 	}
++	console_atomic_unlock(flags);
+ }
+ 
+ /*
+@@ -2324,7 +2109,7 @@ int vprintk_store(int facility, int leve
+ 
+ 		for_each_console(con) {
+ 			if (console_may_sync(con))
+-				print_sync_until(con, seq + 1);
++				print_sync_until(con, seq + 1, false);
+ 		}
+ 	}
+ 
+@@ -2337,39 +2122,16 @@ asmlinkage int vprintk_emit(int facility
  			    const char *fmt, va_list args)
  {
  	int printed_len;
@@ -340,7 +465,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	wake_up_klogd();
  	return printed_len;
  }
-@@ -2368,38 +2152,158 @@ asmlinkage __visible int printk(const ch
+@@ -2421,39 +2183,164 @@ asmlinkage __visible int printk(const ch
  }
  EXPORT_SYMBOL(printk);
  
@@ -357,7 +482,6 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 +	int ret = -ENOMEM;
 +	char *text = NULL;
 +	char *write_text;
-+	u64 printk_seq;
 +	size_t len;
 +	int error;
 +	u64 seq;
@@ -381,9 +505,10 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 +		write_text = text;
  
 -#define kernel_sync_mode()	false
-+	seq = atomic64_read(&con->printk_seq);
++	seq = read_console_seq(con);
  
 -static u64 syslog_seq;
+-#error FIXME
 -static atomic64_t console_seq = ATOMIC64_INIT(0);
 -static u64 exclusive_console_stop_seq;
 -static unsigned long console_dropped;
@@ -398,7 +523,9 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 +
 +		if (error)
 +			continue;
-+
+ 
+-static size_t record_print_text(const struct printk_record *r,
+-				bool syslog, bool time)
 +		if (seq != r.info->seq) {
 +			dropped += r.info->seq - seq;
 +			seq = r.info->seq;
@@ -426,13 +553,18 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 +				printk_time);
 +		}
 +
-+		printk_seq = atomic64_read(&con->printk_seq);
-+
 +		console_lock();
++
++		/*
++		 * Even though the printk kthread is always preemptible, it is
++		 * still not allowed to call cond_resched() from within
++		 * console drivers. The task may become non-preemptible in the
++		 * console driver call chain. For example, vt_console_print()
++		 * takes a spinlock and then can call into fbcon_redraw(),
++		 * which can conditionally invoke cond_resched().
++		 */
 +		console_may_schedule = 0;
- 
--static size_t record_print_text(const struct printk_record *r,
--				bool syslog, bool time)
++
 +		if (kernel_sync_mode() && con->write_atomic) {
 +			console_unlock();
 +			break;
@@ -452,7 +584,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 +		if (len)
 +			printk_delay(r.info->level);
 +
-+		atomic64_cmpxchg_relaxed(&con->printk_seq, printk_seq, seq);
++		latched_seq_write(&con->printk_seq, seq);
 +
 +		console_unlock();
 +	}
@@ -501,8 +633,8 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 +	 * The printing threads have not been started yet. If this console
 +	 * can print synchronously, print all unprinted messages.
 +	 */
-+	if (console_can_sync(con))
-+		print_sync_until(con, prb_next_seq(prb));
++	if (console_may_sync(con))
++		print_sync_until(con, prb_next_seq(prb), true);
  }
 -static ssize_t msg_print_ext_body(char *buf, size_t size,
 -				  char *text, size_t text_len,
@@ -522,7 +654,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  #endif /* CONFIG_PRINTK */
  
-@@ -2644,36 +2548,6 @@ int is_console_locked(void)
+@@ -2698,36 +2585,6 @@ int is_console_locked(void)
  }
  EXPORT_SYMBOL(is_console_locked);
  
@@ -559,12 +691,13 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  /**
   * console_unlock - unlock the console system
   *
-@@ -2690,131 +2564,14 @@ static inline int can_use_console(void)
+@@ -2744,138 +2601,14 @@ static inline int can_use_console(void)
   */
  void console_unlock(void)
  {
 -	static char ext_text[CONSOLE_EXT_LOG_MAX];
 -	static char text[CONSOLE_LOG_MAX];
+-	unsigned long flags;
 -	bool do_cond_resched, retry;
 -	struct printk_info info;
 -	struct printk_record r;
@@ -611,13 +744,13 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 -		size_t len;
 -
 -skip:
--		seq = atomic64_read(&console_seq);
+-		seq = read_console_seq();
 -		if (!prb_read_valid(prb, seq, &r))
 -			break;
 -
 -		if (seq != r.info->seq) {
 -			console_dropped += r.info->seq - seq;
--			atomic64_set(&console_seq, r.info->seq);
+-			latched_seq_write(&console_seq, r.info->seq);
 -			seq = r.info->seq;
 -		}
 -
@@ -627,7 +760,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 -			 * directly to the console when we received it, and
 -			 * record that has level above the console loglevel.
 -			 */
--			atomic64_set(&console_seq, seq + 1);
+-			latched_seq_write(&console_seq, seq + 1);
 -			goto skip;
 -		}
 -
@@ -654,7 +787,9 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 -		len = record_print_text(&r,
 -				console_msg_format & MSG_FORMAT_SYSLOG,
 -				printk_time);
--		atomic64_set(&console_seq, seq + 1);
+-		latched_seq_write(&console_seq, seq + 1);
+-
+-		printk_safe_enter_irqsave(flags);
 -
 -		/*
 -		 * While actively printing out messages, if another printk()
@@ -668,8 +803,12 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 -		call_console_drivers(ext_text, ext_len, text, len);
 -		start_critical_timings();
 -
--		if (console_lock_spinning_disable_and_check())
+-		if (console_lock_spinning_disable_and_check()) {
+-			printk_safe_exit_irqrestore(flags);
 -			return;
+-		}
+-
+-		printk_safe_exit_irqrestore(flags);
 -
 -		if (do_cond_resched)
 -			cond_resched();
@@ -685,52 +824,54 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 -	 * there's a new owner and the console_unlock() from them will do the
 -	 * flush, no worries.
 -	 */
--	retry = prb_read_valid(prb, atomic64_read(&console_seq), NULL);
+-	retry = prb_read_valid(prb, read_console_seq(), NULL);
 -	if (retry && console_trylock())
 -		goto again;
  }
  EXPORT_SYMBOL(console_unlock);
  
-@@ -2864,18 +2621,20 @@ void console_unblank(void)
+@@ -2925,19 +2658,18 @@ void console_unblank(void)
   */
  void console_flush_on_panic(enum con_flush_mode mode)
  {
--	/*
--	 * If someone else is holding the console lock, trylock will fail
--	 * and may_schedule may be set.  Ignore and proceed to unlock so
--	 * that messages are flushed out.  As this can be called from any
--	 * context and we don't want to get preempted while flushing,
--	 * ensure may_schedule is cleared.
--	 */
--	console_trylock();
+-	if (console_trylock()) {
+-		if (mode == CONSOLE_REPLAY_ALL)
+-			latched_seq_write(&console_seq, prb_first_valid_seq(prb));
+-	} else {
+-		/*
+-		 * Another context is holding the console lock and
+-		 * @console_may_schedule may be set. Ignore and proceed to
+-		 * unlock so that messages are flushed out. As this can be
+-		 * called from any context and we don't want to get preempted
+-		 * while flushing, ensure @console_may_schedule is cleared.
+-		 */
+-		console_may_schedule = 0;
 +	struct console *c;
 +	u64 seq;
 +
 +	if (!console_trylock())
 +		return;
 +
- 	console_may_schedule = 0;
- 
--	if (mode == CONSOLE_REPLAY_ALL)
--		atomic64_set(&console_seq, prb_first_valid_seq(prb));
 +	if (mode == CONSOLE_REPLAY_ALL) {
 +		seq = prb_first_valid_seq(prb);
 +		for_each_console(c)
-+			atomic64_set(&c->printk_seq, seq);
-+	}
++			latched_seq_write(&c->printk_seq, seq);
+ 	}
 +
  	console_unlock();
  }
  
-@@ -3010,7 +2769,6 @@ static int try_enable_new_console(struct
+@@ -3072,8 +2804,8 @@ static int try_enable_new_console(struct
   */
  void register_console(struct console *newcon)
  {
 -	unsigned long flags;
  	struct console *bcon = NULL;
++	u64 seq = 0;
  	int err;
  
-@@ -3034,6 +2792,8 @@ void register_console(struct console *ne
+ 	for_each_console(bcon) {
+@@ -3096,6 +2828,8 @@ void register_console(struct console *ne
  		}
  	}
  
@@ -739,7 +880,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	if (console_drivers && console_drivers->flags & CON_BOOT)
  		bcon = console_drivers;
  
-@@ -3098,27 +2858,12 @@ void register_console(struct console *ne
+@@ -3160,27 +2894,19 @@ void register_console(struct console *ne
  	if (newcon->flags & CON_EXTENDED)
  		nr_ext_console_drivers++;
  
@@ -757,22 +898,29 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 -		 * ignores console_lock.
 -		 */
 -		exclusive_console = newcon;
--		exclusive_console_stop_seq = atomic64_read(&console_seq);
-+	if (newcon->flags & CON_PRINTBUFFER)
-+		atomic64_set(&newcon->printk_seq, 0);
-+	else
-+		atomic64_set(&newcon->printk_seq, prb_next_seq(prb));
+-		exclusive_console_stop_seq = read_console_seq();
++	if (!(newcon->flags & CON_PRINTBUFFER))
++		seq = prb_next_seq(prb);
  
 -		/* Get a consistent copy of @syslog_seq. */
 -		spin_lock_irqsave(&syslog_lock, flags);
--		atomic64_set(&console_seq, syslog_seq);
+-		latched_seq_write(&console_seq, syslog_seq);
 -		spin_unlock_irqrestore(&syslog_lock, flags);
 -	}
++	seqcount_latch_init(&newcon->printk_seq.latch);
++	latched_seq_write(&newcon->printk_seq, seq);
++	seqcount_latch_init(&newcon->printk_sync_seq[0].latch);
++	latched_seq_write(&newcon->printk_sync_seq[0], seq);
++#if PRINTK_CTX_NUM > 1
++	seqcount_latch_init(&newcon->printk_sync_seq[1].latch);
++	latched_seq_write(&newcon->printk_sync_seq[1], seq);
++#endif
++
 +	console_try_thread(newcon);
  	console_unlock();
  	console_sysfs_notify();
  
-@@ -3192,6 +2937,9 @@ int unregister_console(struct console *c
+@@ -3254,6 +2980,9 @@ int unregister_console(struct console *c
  	console_unlock();
  	console_sysfs_notify();
  
@@ -782,7 +930,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	if (console->exit)
  		res = console->exit(console);
  
-@@ -3274,6 +3022,15 @@ static int __init printk_late_init(void)
+@@ -3336,6 +3065,15 @@ static int __init printk_late_init(void)
  			unregister_console(con);
  		}
  	}
@@ -798,7 +946,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	ret = cpuhp_setup_state_nocalls(CPUHP_PRINTK_DEAD, "printk:dead", NULL,
  					console_cpu_notify);
  	WARN_ON(ret < 0);
-@@ -3289,7 +3046,6 @@ late_initcall(printk_late_init);
+@@ -3351,7 +3089,6 @@ late_initcall(printk_late_init);
   * Delayed printk version, for scheduler-internal messages:
   */
  #define PRINTK_PENDING_WAKEUP	0x01
@@ -806,7 +954,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  static DEFINE_PER_CPU(int, printk_pending);
  
-@@ -3297,14 +3053,8 @@ static void wake_up_klogd_work_func(stru
+@@ -3359,14 +3096,8 @@ static void wake_up_klogd_work_func(stru
  {
  	int pending = __this_cpu_xchg(printk_pending, 0);
  
@@ -822,7 +970,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  }
  
  static DEFINE_PER_CPU(struct irq_work, wake_up_klogd_work) =
-@@ -3325,13 +3075,6 @@ void wake_up_klogd(void)
+@@ -3387,13 +3118,6 @@ void wake_up_klogd(void)
  
  void defer_console_output(void)
  {
