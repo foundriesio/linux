@@ -489,8 +489,9 @@ static inline void tccvin_add_async_subdev(struct tccvin_device *vdev,
 					   struct device_node *node)
 {
 	struct v4l2_async_subdev *asd = NULL;
+	int linked_sd_idx = vdev->num_asd + vdev->bounded_subdevs;
 
-	asd = &(vdev->linked_subdevs[vdev->num_asd].asd);
+	asd = &(vdev->linked_subdevs[linked_sd_idx].asd);
 
 	asd->match_type = V4L2_ASYNC_MATCH_FWNODE;
 	asd->match.fwnode.fwnode = of_fwnode_handle(node);
@@ -512,6 +513,7 @@ static int tccvin_traversal_subdevices(struct tccvin_device *vdev,
 	int remote_output_ch = 0;
 	int local_input_ch = 0;
 	const char *io = NULL;
+	int linked_sd_idx = 0;
 
 	logi("========== current node is %s ==========\n", node->name);
 
@@ -522,8 +524,8 @@ static int tccvin_traversal_subdevices(struct tccvin_device *vdev,
 	if (founded_sd == NULL) {
 		tccvin_add_async_subdev(vdev, node);
 	} else {
-		vdev->linked_subdevs[vdev->num_asd + vdev->bounded_subdevs].sd =
-			founded_sd;
+		linked_sd_idx = vdev->num_asd + vdev->bounded_subdevs;
+		vdev->linked_subdevs[linked_sd_idx].sd = founded_sd;
 		vdev->bounded_subdevs++;
 		logi("already subdev(%s) is founded\n", node->name);
 	}
