@@ -157,18 +157,24 @@
 			compatible = "arm,cortex-a53";
 			reg = <0x1>;
 			enable-method = "psci";
+			cpu-idle-states = <&CPU_SLEEP_0_0>;
+			operating-points-v2 = <&cpu_opp_table>;
 		};
 		A53_2: cpu@2 {
 			device_type = "cpu";
 			compatible = "arm,cortex-a53";
 			reg = <0x2>;
 			enable-method = "psci";
+			cpu-idle-states = <&CPU_SLEEP_0_0>;
+			operating-points-v2 = <&cpu_opp_table>;
 		};
 		A53_3: cpu@3 {
 			device_type = "cpu";
 			compatible = "arm,cortex-a53";
 			reg = <0x3>;
 			enable-method = "psci";
+			cpu-idle-states = <&CPU_SLEEP_0_0>;
+			operating-points-v2 = <&cpu_opp_table>;
 		};
 
 		idle-states {
