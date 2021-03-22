@@ -90,7 +90,7 @@ struct tcc_sc_fw_info {
 	struct list_head xfers_list;
 	struct tcc_sc_fw_xfer *xfers;
 	spinlock_t rx_lock;
-	struct mutex xfers_lock;
+	spinlock_t xfers_lock;
 
 	struct tcc_sc_fw_version version;
 	struct tcc_sc_fw_handle *handle;
@@ -134,15 +134,16 @@ static struct tcc_sc_fw_info *handle_to_tcc_sc_fw_info
 static struct tcc_sc_fw_xfer *get_tcc_sc_fw_xfer(struct tcc_sc_fw_info *info)
 {
 	struct tcc_sc_fw_xfer *xfer;
+	unsigned long flags;
 
-	mutex_lock(&info->xfers_lock);
+	spin_lock_irqsave(&info->xfers_lock, flags);
 	if (list_empty(&info->xfers_list)) {
-		mutex_unlock(&info->xfers_lock);
+		spin_unlock_irqrestore(&info->xfers_lock, flags);
 		return NULL;
 	}
 	xfer = list_first_entry(&info->xfers_list, struct tcc_sc_fw_xfer, node);
 	list_del(&xfer->node);
-	mutex_unlock(&info->xfers_lock);
+	spin_unlock_irqrestore(&info->xfers_lock, flags);
 
 	return xfer;
 }
@@ -150,12 +151,15 @@ static struct tcc_sc_fw_xfer *get_tcc_sc_fw_xfer(struct tcc_sc_fw_info *info)
 static void put_tcc_sc_fw_xfer(struct tcc_sc_fw_xfer *xfer,
 					struct tcc_sc_fw_info *info)
 {
+	unsigned long flags;
+
 	xfer->complete = NULL;
 	xfer->args = NULL;
 
-	mutex_lock(&info->xfers_lock);
+	spin_lock_irqsave(&info->xfers_lock, flags);
 	list_add_tail(&xfer->node, &info->xfers_list);
-	mutex_unlock(&info->xfers_lock);
+	spin_unlock_irqrestore(&info->xfers_lock, flags);
+
 }
 
 const struct tcc_sc_fw_handle *tcc_sc_fw_get_handle(struct device_node *np)
@@ -838,7 +842,7 @@ static s32 tcc_sc_fw_probe(struct platform_device *pdev)
 	INIT_LIST_HEAD(&info->rx_pending);
 	INIT_LIST_HEAD(&info->xfers_list);
 	spin_lock_init(&info->rx_lock);
-	mutex_init(&info->xfers_lock);
+	spin_lock_init(&info->xfers_lock);
 
 	platform_set_drvdata(pdev, info);
 
