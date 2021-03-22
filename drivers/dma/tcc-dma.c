@@ -93,6 +93,7 @@ struct tcc_dma_desc {
 	u32 dst_addr;
 	u32 dst_inc;
 	u32 len;
+	u32 burst;
 	s32 slave_id;
 };
 
@@ -342,6 +343,7 @@ static void tcc_dma_do_single_block(struct tcc_dma_chan *tdmac,
 	u32 chctrl;
 	s32 width;
 	s32 burst;
+	u32 hop_cnt;
 
 	if ((tdmac == NULL) || (desc == NULL)) {
 		(void)pr_err(
@@ -372,11 +374,20 @@ static void tcc_dma_do_single_block(struct tcc_dma_chan *tdmac,
 	chctrl = DMA_CHCTRL_IEN | DMA_CHCTRL_WSIZE(0U) | DMA_CHCTRL_BSIZE(0U)
 	    | DMA_CHCTRL_FLAG | DMA_CHCTRL_TYPE(2U) | DMA_CHCTRL_EN;
 
+	/* Configure dma channel for current issue */
+	if ((desc->len % desc->burst) != 0) {
+		dev_err(chan2dev(&tdmac->chan),
+			"[ERROR][GDMA] ch%d: len(%d) should be a multiple of burst(%d)\n",
+			tdmac->chan.chan_id, desc->len, desc->burst);
+		return;
+	}
+	hop_cnt = desc->len / desc->burst;
+
 	channel_writel(tdmac, DMA_ST_SADR, desc->src_addr);
 	channel_writel(tdmac, DMA_SPARAM, DMA_SPARAM_SINC(desc->src_inc));
 	channel_writel(tdmac, DMA_ST_DADR, desc->dst_addr);
 	channel_writel(tdmac, DMA_DPARAM, DMA_DPARAM_DINC(desc->dst_inc));
-	channel_writel(tdmac, DMA_HCOUNT, DMA_HCOUNT_ST_HCOUNT(desc->len));
+	channel_writel(tdmac, DMA_HCOUNT, DMA_HCOUNT_ST_HCOUNT(hop_cnt));
 	if (is_slave_direction(tdmac->direction)) {
 		u32 slave_id;
 
@@ -385,7 +396,7 @@ static void tcc_dma_do_single_block(struct tcc_dma_chan *tdmac,
 			slave_id = slave_id - 32U;
 		}
 
-		chctrl |= DMA_CHCTRL_SYNC | DMA_CHCTRL_TYPE(3U);
+		chctrl |= DMA_CHCTRL_TYPE(3U);
 		channel_writel(tdmac, DMA_EXTREQ, ((u32)1UL << slave_id));
 	}
 
@@ -402,14 +413,23 @@ static void tcc_dma_do_single_block(struct tcc_dma_chan *tdmac,
 		burst = -1;
 	}
 
-	// Set word size
-	if (width != -1) {
-		chctrl |= (u32)width;
+	/* Set word size */
+	if (width == -1) {
+		dev_err(chan2dev(&tdmac->chan),
+			"[ERROR][GDMA] ch%d: Word size is wrong\n",
+			tdmac->chan.chan_id);
+		return;
 	}
-	// Set burst size
-	if (burst != -1) {
-		chctrl |= (u32)burst;
+	chctrl |= (u32)width;
+
+	/* Set burst size */
+	if (burst == -1) {
+		dev_err(chan2dev(&tdmac->chan),
+			"[ERROR][GDMA] ch%d: Burst size is wrong\n",
+			tdmac->chan.chan_id);
+		return;
 	}
+	chctrl |= (u32)burst;
 
 	channel_writel(tdmac, DMA_CHCTRL, chctrl);
 }
@@ -889,6 +909,12 @@ static struct dma_async_tx_descriptor *tcc_dma_prep_slave_sg(
 			desc->dst_inc = (u32)config->dst_addr_width;
 			desc->len = len;
 			desc->slave_id = (s32)config->slave_id;
+			if (config->src_maxburst == 0U) {
+				dev_err(dev,
+					"[ERROR][GDMA] source burst is wrong\n");
+				goto fail;
+			}
+			desc->burst = config->src_maxburst;
 
 			if (first == NULL) {
 				first = desc;
@@ -918,6 +944,12 @@ static struct dma_async_tx_descriptor *tcc_dma_prep_slave_sg(
 			desc->dst_inc = (u32)config->dst_addr_width;
 			desc->len = len;
 			desc->slave_id = (s32)config->slave_id;
+			if (config->dst_maxburst == 0U) {
+				dev_err(dev,
+					"[ERROR][GDMA] destination burst is wrong\n");
+				goto fail;
+			}
+			desc->burst = config->dst_maxburst;
 
 			if (first == NULL) {
 				first = desc;
