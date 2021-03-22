@@ -77,6 +77,10 @@ properties:
     enum: [1, 2, 4, 8, 12, 14, 16]
     default: 8
 
+  power-domains:
+    $ref: ../power/power-domain.yaml
+    maxItems: 1
+
 allOf:
   - $ref: rs485.yaml
 
