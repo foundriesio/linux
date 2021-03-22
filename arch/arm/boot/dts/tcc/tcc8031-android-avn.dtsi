@@ -1210,6 +1210,7 @@
 };
 
 &gmac {
+	compatible = "telechips,gmac","snps,dwmac-3.70a";
 	status = "okay";
 //	phyon-gpio	= <&gpc 27 0>;
 	phyrst-gpio = <&gpc 29 0>;

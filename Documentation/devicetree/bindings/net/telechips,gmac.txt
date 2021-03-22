@@ -2,8 +2,12 @@ This is for 'telechips gmac driver'.
 
 Required properties for gmac:
 	-compatible:
-		- tcc gmac driver :
+		- Legacy tcc gmac driver :
 			"telechips,gmac"
+		- Stmmac based tcc gmac driver for GMAC version 3.73a( ex. TCC803x ) :
+			 "telechips,gmac","snps,dwmac-3.70a"
+		- Stmmac based tcc gmac driver for GMAC version 5.10a( ex. TCC805x ) :
+			 "telechips,gmac","snps,dwmac-4.10a"
 	-reg:
 		- physical base address of the GMAC core register and HSIO bus
 		  base address.
@@ -11,7 +15,11 @@ Required properties for gmac:
 	 	- If ethernet phy device's reset is required, this property is
 	 	  the filed to set phy reset gpio.
 	-phy-interface:
-	 	- phy interface name.
+	 	- phy interface name. It is used only with lagacy
+	 	  tcc gmac driver.
+	-phy-mode:
+	 	- phy interface name. It is used only with stmmac based
+	 	  gmac driver
 	-pinctrl-*
 	 	- This is a properties for setting GPIO pinctrl for GMAC.
 
@@ -32,10 +40,12 @@ Example:
 
         gmac@11C00000 {
                 status = "okay";
-                compatible = "telechips,gmac";
+                compatible = "telechips,gmac","snps,dwmac-3.70a";
 //              phyon-gpio      = <&gpc 27 0>;
                 phyrst-gpio = <&gpa 24 0>;
                 phy-interface = "rgmii";
+                phy-mode = "rgmii";
+                interrupt-names = "macirq";
                 //ecid-mac-addr;
                 txclk-o-dly = <18>;
                 txclk-o-inv = <0>;
@@ -90,4 +100,3 @@ Example:
                              &gmac1_rxclk &gmac1_rxdv &gmac1_rxd0
                              &gmac1_rxd1 &gmac1_rxd2 &gmac1_rxd3>;
         };
-
