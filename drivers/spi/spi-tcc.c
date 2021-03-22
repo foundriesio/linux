@@ -492,8 +492,9 @@ static void tcc_spi_hwinit(struct tcc_spi *tccspi)
 				TCC_GPSB_MODE_CTF);
 	}
 	/* Set Tx and Rx FIFO threshold for interrupt/DMA request */
-	TCC_GPSB_BITCLR(tccspi->base + TCC_GPSB_INTEN,
-			TCC_GPSB_INTEN_CFGRTH_MASK);
+	TCC_GPSB_BITCSET(tccspi->base + TCC_GPSB_INTEN,
+			TCC_GPSB_INTEN_CFGRTH_MASK,
+			TCC_GPSB_INTEN_CFGRTH(tccspi->pd->cfgrth));
 	TCC_GPSB_BITCSET(tccspi->base + TCC_GPSB_INTEN,
 			TCC_GPSB_INTEN_CFGWTH_MASK,
 			TCC_GPSB_INTEN_CFGWTH(tccspi->pd->cfgwth));
@@ -805,7 +806,6 @@ static irqreturn_t tcc_spi_dma_irq(int32_t irq, void *data)
 #ifdef TCC_DMA_ENGINE
 /****** DMA-engine specific ******/
 #define TCC_SPI_GDMA_WSIZE	1 /* Default word size */
-#define TCC_SPI_GDMA_BSIZE	1 /* Default burst size */
 #define TCC_SPI_GDMA_SG_LEN	1
 
 /* Release dma-eninge channel */
@@ -876,6 +876,12 @@ static void tcc_dma_engine_tx_callback(void *data)
 	if ((status & TCC_GPSB_STAT_ERR) > 0U) {
 		dev_warn(tccspi->dev, "[WARN][SPI] [%s] Slave/FIFO error flag (status: 0x%08X)\n",
 				__func__, status);
+	}
+
+	/* CS is de-active already */
+	if (tccspi->pd->ctf) {
+		TCC_GPSB_BITCLR(tccspi->base + TCC_GPSB_MODE,
+				TCC_GPSB_MODE_CTF);
 	}
 }
 
@@ -951,8 +957,8 @@ static int32_t tcc_spi_dma_engine_slv_cfg
 	int32_t ret, error = 0;
 
 	/* Set Busrt size(BSIZE) */
-	slave_config->dst_maxburst = TCC_SPI_GDMA_BSIZE;
-	slave_config->src_maxburst = TCC_SPI_GDMA_BSIZE;
+	slave_config->dst_maxburst = tccspi->pd->dma_bsize;
+	slave_config->src_maxburst = tccspi->pd->dma_bsize;
 
 	/* Set source and destincation address */
 	slave_config->dst_addr = (dma_addr_t)(tccspi->pbase); /* GPSB PORT */
@@ -1678,11 +1684,21 @@ static struct tcc_spi_pl_data *tcc_spi_parse_dt(struct device *dev)
 		pd->cfgwth = 15; /* max value */
 	}
 
-	dev_info(dev, "[INFO][SPI] GPSB %s ctf mode: %d, prd: %d, Tx threshold: %d\n",
+	status = of_property_read_u32(np, "read-threshold", &pd->cfgrth);
+	if (status != 0) {
+		pd->cfgrth = 0U; /* default value */
+	}
+	if (pd->cfgrth > 15) {
+		pd->cfgrth = 15; /* max value */
+	}
+
+
+	dev_info(dev, "[INFO][SPI] GPSB %s ctf mode: %d, prd: %d, Tx threshold: %d, Rx threshold: %d\n",
 			pd->is_slave ? "Slave":"Master",
 			pd->ctf,
 			pd->prd,
-			pd->cfgwth);
+			pd->cfgwth,
+			pd->cfgrth);
 	if (!pd->is_slave) {
 		dev_info(dev, "[INFO][SPI] recovery-time: %d, hold-time: %d, setup-time: %d\n",
 				pd->recovery_time,
@@ -1695,8 +1711,13 @@ static struct tcc_spi_pl_data *tcc_spi_parse_dt(struct device *dev)
 	 */
 	if ((pd->gpsb_channel > 2) && (pd->gpsb_channel < 6)) {
 		pd->dma_enable = 1;
-		dev_dbg(dev, "[DEBUG][SPI] gpsb ch %d - use gdma\n",
-				pd->gpsb_channel);
+		status = of_property_read_u32(np, "dma-burst", &pd->dma_bsize);
+		if (status != 0) {
+			pd->dma_bsize = 1;
+		}
+		if (pd->dma_bsize > 4) {
+			pd->dma_bsize = 4;
+		}
 	} else {
 		pd->dma_enable = 0;
 	}
@@ -1903,7 +1924,7 @@ static int32_t tcc_spi_probe(struct platform_device *pdev)
 	}
 
 #ifdef TCC_USE_GFB_PORT
-	dev_info(dev, "[INFO][SPI] TCC SPI [%s] Id: %d [ch:%d][port: %d %d %d %d][irq: %d][CONTM: %d][gdma: %d][cs_num: %d]\n",
+	dev_info(dev, "[INFO][SPI] TCC SPI [%s] Id: %d [ch:%d][port: %d %d %d %d][irq: %d][CONTM: %d][gdma: %d][gdma burst: %d][cs_num: %d]\n",
 			pd->name,
 			master->bus_num,
 			pd->gpsb_channel,
@@ -1911,9 +1932,10 @@ static int32_t tcc_spi_probe(struct platform_device *pdev)
 			tccspi->irq,
 			tccspi->pd->contm_support,
 			tcc_spi_is_use_gdma(tccspi),
+			tccspi->pd->dma_bsize,
 			master->num_chipselect);
 #else
-	dev_info(dev, "[INFO][SPI] TCC SPI [%s] Id: %d [ch:%d][port: %d][irq: %d][CONTM: %d][gdma: %d][cs_num: %d]\n",
+	dev_info(dev, "[INFO][SPI] TCC SPI [%s] Id: %d [ch:%d][port: %d][irq: %d][CONTM: %d][gdma: %d][gdma burst: %d][cs_num: %d]\n",
 			pd->name,
 			master->bus_num,
 			pd->gpsb_channel,
@@ -1921,6 +1943,7 @@ static int32_t tcc_spi_probe(struct platform_device *pdev)
 			tccspi->irq,
 			tccspi->pd->contm_support,
 			tcc_spi_is_use_gdma(tccspi),
+			tccspi->pd->dma_bsize,
 			master->num_chipselect);
 #endif
 

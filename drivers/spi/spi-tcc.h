@@ -314,7 +314,8 @@ struct tcc_spi_pl_data {
 
 	/* GDMA usage */
 	int32_t dma_enable;
-
+	/* GDMA burst size */
+	uint32_t dma_bsize;
 	/* GDMA data */
 	struct tcc_spi_gdma	dma;
 
@@ -340,6 +341,8 @@ struct tcc_spi_pl_data {
 
 	/* Write FIFO threshold */
 	uint32_t cfgwth;
+	/* Read FIFO threshold */
+	uint32_t cfgrth;
 };
 
 /* TCC GPSB SPI Data */
