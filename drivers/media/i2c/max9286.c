@@ -348,9 +348,9 @@ static int max9286_g_input_status(struct v4l2_subdev *sd, u32 *status)
 		}
 	}
 
+end:
 	mutex_unlock(&dev->lock);
 
-end:
 	logi("status: 0x%08x\n", *status);
 	return ret;
 }
