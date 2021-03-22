@@ -1600,11 +1600,15 @@ static int32_t tccvin_start_stream(struct tccvin_streaming *vdev)
 		tccvin_set_deinterlacer(vdev);
 
 		if (vioc->viqe != -1) {
-			/* set skip_frame as 3
-			 * in case of viqe 3d mode (16ms * 3 frames)
+			/*
+			 * set skip 1 frame when use wdma frame by frame mode
+			 * set skip 3 frames in case of viqe 3d mode
 			 */
-			vdev->skip_frame_cnt += 3;
+			vdev->skip_frame_cnt = 4;
 		}
+	} else {
+		/* set skip 1 frame when use wdma frame by frame mode */
+		vdev->skip_frame_cnt = 1;
 	}
 
 	/* set scaler */
@@ -1897,9 +1901,6 @@ int tccvin_video_init(struct tccvin_streaming *stream)
 
 	/* preview method */
 	stream->preview_method		= PREVIEW_V4L2;
-
-	/* set count of frame to skip as 1 in default */
-	stream->skip_frame_cnt		= 1;
 
 	/* init v4l2 resources */
 	mutex_init(&stream->cif.lock);
