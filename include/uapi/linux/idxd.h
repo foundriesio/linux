@@ -181,8 +181,8 @@ struct dsa_completion_record {
 	uint32_t		bytes_completed;
 	uint64_t		fault_addr;
 	union {
-		uint16_t	delta_rec_size;
-		uint16_t	crc_val;
+		uint32_t	delta_rec_size;
+		uint32_t	crc_val;
 
 		/* DIF check & strip */
 		struct {
