@@ -1160,7 +1160,7 @@ static int32_t tcc_dwc3_phy_probe(struct platform_device *pdev)
 		return retval;
 	}
 
-	dev_err(&pdev->dev, "[INFO][USB] %s:%s\n", pdev->dev.kobj.name,
+	dev_info(&pdev->dev, "[INFO][USB] %s:%s\n", pdev->dev.kobj.name,
 			__func__);
 
 	return retval;
