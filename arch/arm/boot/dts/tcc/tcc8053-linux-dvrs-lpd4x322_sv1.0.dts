@@ -352,8 +352,9 @@
 		reg = <0x4b>;
 		pinctrl-names = "default";
 		pinctrl-0 = <&tsc0_default>;
-		irq-gpios = <&gpsd1 9 0x0>;
-		reset-gpios = <&gpb 16 0x0>;
+
+		interrupt-parent = <&gpsd1>;
+		interrupts = <9 IRQ_TYPE_EDGE_FALLING>;
 	};
 };
 
@@ -433,8 +434,9 @@
 		reg = <0x4d>;
 		pinctrl-names = "default";
 		pinctrl-0 = <&tsc1_default>;
-		irq-gpios = <&gpmc 19 0x0>;
-		reset-gpios = <&gpmc 22 0x0>;
+
+		interrupt-parent = <&gpmc>;
+		interrupts = <19 IRQ_TYPE_EDGE_FALLING>;
 	};
 
 	mxt_touch@4f {
@@ -443,8 +445,9 @@
 		reg = <0x4f>;
 		pinctrl-names = "default";
 		pinctrl-0 = <&tsc2_default>;
-		irq-gpios = <&gpmc 18 0x0>;
-		reset-gpios = <&gpmc 24 0x0>;
+
+		interrupt-parent = <&gpmc>;
+		interrupts = <18 IRQ_TYPE_EDGE_FALLING>;
 	};
 
 };
