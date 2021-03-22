@@ -1,0 +1,26 @@
+* Device Tree Bindings for mailbox-audio
+
+Required properties:
+
+- compatible : property name that conveys the platform architecture identifiers,
+               as 'telechips,switch'
+- status        : disable or enable the device node
+
+
+Example
+-------
+	audio_mbox0: audio_mbox@0 {
+		compatible = "telechips,mailbox-audio";
+		device-name ="audio-mbox-dev-a53";
+		mbox-names ="audio-mbox-a53";
+		mboxes = <&mbox1 TCC_MBOX1_CH_SND>;
+		status = "disabled";
+	};
+
+	audio_mbox1: audio_mbox@1 {
+		compatible = "telechips,mailbox-audio-r5";
+		device-name ="audio-mbox-dev-r5";
+		mbox-names ="audio-mbox-r5";
+		mboxes = <&mbox0 TCC_MBOX0_CH_SND>;
+		status = "disabled";
+	};
