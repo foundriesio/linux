@@ -3,8 +3,6 @@
  * Copyright (C) Telechips Inc.
 * Device tree for Telechips TCC897x
  */
-
-#include "../../../../../include/generated/autoconf.h"
 / {
 	/* Describe here after remove this statement if you have something to be override. */
 	lcd_drm_dummy {
@@ -53,8 +51,6 @@
 		planes = "primary";
 		status = "disabled";
 		display-timings {
-			#if defined(CONFIG_DRM_EXT_1280X720)
-			native-mode = <&timing_hd>;
 			timing_hd: 1280x720@60 {
 				clock-frequency = <74250000>;
 				hactive = <1280>;
@@ -70,9 +66,6 @@
 				de-active = <1>;
 				pixelclk-active = <1>;
 			};
-			#endif
-			#if defined(CONFIG_DRM_EXT_1920X1080)
-			native-mode = <&timing_fhd>;
 			timing_fhd: 1920x1080x60 {
 				clock-frequency = <148500000>;
 				hactive = <1920>;
@@ -88,7 +81,6 @@
 				de-active = <1>;
 				pixelclk-active = <1>;
 			};
-			#endif
 		};
 
 	};
