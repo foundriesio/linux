@@ -145,7 +145,7 @@ static CORE_ID GetCoreID(void)
 	/* We assume that Subcore is always started by default as Host and Maincore as Guest.
 	 * By checking the default DriverMode values, a driver can determine on which core it runs. */
 	IMG_UINT32 ui32AppHintDriverMode = GetApphintDriverMode();
-pr_info("PVRSRV_VZ_APPHINT_MODE:%d\n", PVRSRV_VZ_APPHINT_MODE(ui32AppHintDriverMode));
+	pr_info("PVRSRV_VZ_APPHINT_MODE:%d\n", PVRSRV_VZ_APPHINT_MODE(ui32AppHintDriverMode));
 
 	return (PVRSRV_VZ_APPHINT_MODE(ui32AppHintDriverMode) == DRIVER_MODE_HOST) ? CORE_SUB : CORE_MAIN;
 }
@@ -158,7 +158,7 @@ static void DeclareCoreAsHost(void)
 
 static IMG_BOOL DriverWasHostPreviously(void)
 {
-pr_info("gpsHostArbitrationCtrl->ui32HostCoreID:%d, %d\n", gpsHostArbitrationCtrl->ui32HostCoreID, GetCoreID());
+	pr_info("gpsHostArbitrationCtrl->ui32HostCoreID:%d, %d\n", gpsHostArbitrationCtrl->ui32HostCoreID, GetCoreID());
 	return (gpsHostArbitrationCtrl->ui32HostCoreID == GetCoreID());
 }
 
@@ -171,11 +171,11 @@ static IMG_BOOL HostInitialized(void)
 static IMG_BOOL ShouldEnterHostMode(void)
 {
 
-	pr_err("   >>>   %s: start: SubCoreFlag = %u; MainCoreFlag = %u; Turn = %u; HostCoreID = %u;", __func__,
+	pr_info("   >>>   %s: start: SubCoreFlag = %u; MainCoreFlag = %u; Turn = %u; HostCoreID = %u;", __func__,
 			gpsHostArbitrationCtrl->ui32SubCoreFlag, gpsHostArbitrationCtrl->ui32MainCoreFlag, gpsHostArbitrationCtrl->ui32Turn, gpsHostArbitrationCtrl->ui32HostCoreID);
 	if (PVRSRV_VZ_MODE_IS(HOST) || DriverWasHostPreviously())
 	{
-		pr_err("    >>   %s: TRUE (default host mode = %u, DriverWasHost = %u) \n", __func__, PVRSRV_VZ_MODE_IS(HOST), DriverWasHostPreviously());
+		pr_info("    >>   %s: TRUE (default host mode = %u, DriverWasHost = %u) \n", __func__, PVRSRV_VZ_MODE_IS(HOST), DriverWasHostPreviously());
 		return IMG_TRUE;
 	}
 	else
@@ -186,15 +186,15 @@ static IMG_BOOL ShouldEnterHostMode(void)
 		{
 			OSWaitus(1000000);
 			loopcount++;
-			pr_err("    >>   %s: Guest waiting of firmware to come online ... %u \n", __func__, loopcount);
+			pr_info("    >>   %s: Guest waiting of firmware to come online ... %u \n", __func__, loopcount);
 			if (loopcount == 5)
 				break;
 		}
-		pr_err("    >>   %s: Default Guest: %s ", __func__, (loopcount == 5) ? "timed out waiting for firmware, becoming Host" : "fw is online, staying Guest");
+		pr_info("    >>   %s: Default Guest: %s ", __func__, (loopcount == 5) ? "timed out waiting for firmware, becoming Host" : "fw is online, staying Guest");
 		return (loopcount == 5);
 	}
 
-	pr_err("   >>>   %s: finish: SubCoreFlag = %u; MainCoreFlag = %u; Turn = %u; HostCoreID = %u;", __func__,
+	pr_info("   >>>   %s: finish: SubCoreFlag = %u; MainCoreFlag = %u; Turn = %u; HostCoreID = %u;", __func__,
 			gpsHostArbitrationCtrl->ui32SubCoreFlag, gpsHostArbitrationCtrl->ui32MainCoreFlag, gpsHostArbitrationCtrl->ui32Turn, gpsHostArbitrationCtrl->ui32HostCoreID);
 }
 
@@ -214,9 +214,9 @@ static void EnterVzCriticalSection(void)
 			(gpsHostArbitrationCtrl->ui32Turn == this))
 	{
 		OSWaitus(1000);
-		pr_err("   >>>   %s: waiting to enter critical section", __func__);
+		pr_info("   >>>   %s: waiting to enter critical section", __func__);
 	}
-	pr_err("   >>>   %s: critical section entered", __func__);
+	pr_info("   >>>   %s: critical section entered", __func__);
 }
 
 static void ExitVzCriticalSection(void)
@@ -225,7 +225,7 @@ static void ExitVzCriticalSection(void)
 	IMG_UINT32 this = (GetCoreID() == CORE_SUB) ? 0 : 1;
 
 	aui32Flag[this] = 0;
-	pr_err("   >>>   %s: critical section exited", __func__);
+	pr_info("   >>>   %s: critical section exited", __func__);
 }
 #endif /* SUPPORT_DYNAMIC_DRIVER_MODE */
 
@@ -324,9 +324,9 @@ PVRSRV_ERROR SysDevInit(void *pvOSDevice, PVRSRV_DEVICE_CONFIG **ppsDevConfig)
 		
 	}
 
-	pr_err("   >>>   %s: Driver will initialize with mode %s;", __func__, PVRSRV_VZ_MODE_IS(GUEST) ? "GUEST" : "HOST");
+	PVR_LOG(("   >>>   %s: Driver will initialize with mode %s;", __func__, PVRSRV_VZ_MODE_IS(GUEST) ? "GUEST" : "HOST"));
 
-	pr_err("   >>>   %s: SubCoreFlag = %u; MainCoreFlag = %u; Turn = %u; HostCoreID = %u;", __func__,
+	pr_info("   >>>   %s: SubCoreFlag = %u; MainCoreFlag = %u; Turn = %u; HostCoreID = %u;", __func__,
 			gpsHostArbitrationCtrl->ui32SubCoreFlag, gpsHostArbitrationCtrl->ui32MainCoreFlag, gpsHostArbitrationCtrl->ui32Turn, gpsHostArbitrationCtrl->ui32HostCoreID);
 	iounmap(gpvRegBankOSID1);
 #else /* SUPPORT_DYNAMIC_DRIVER_MODE */
