@@ -1396,6 +1396,16 @@ static void tccvin_switch_buffers(struct tccvin_streaming *stream)
 
 	ts_enabled = atomic_read(&stream->timestamp);
 	if (ts_enabled) {
+		/* calc diff of timestamp */
+		if ((stream->ts_prev.tv_sec != 0) && (stream->ts_prev.tv_nsec != 0)) {
+			stream->ts_diff.tv_sec  = stream->ts_next.tv_sec  - stream->ts_prev.tv_sec;
+			stream->ts_diff.tv_nsec = stream->ts_next.tv_nsec - stream->ts_prev.tv_nsec;
+			if (stream->ts_diff.tv_nsec < 0) {
+				stream->ts_diff.tv_sec  -= 1;
+				stream->ts_diff.tv_nsec += 1000000000;
+			}
+		}
+
 		logi("prev: %9ld.%09ld, next: %9ld.%09ld, diff: %9ld.%09ld\n",
 			stream->ts_prev.tv_sec, stream->ts_prev.tv_nsec,
 			stream->ts_next.tv_sec, stream->ts_next.tv_nsec,
@@ -1469,24 +1479,14 @@ static irqreturn_t tccvin_wdma_isr(int irq, void *client_data)
 	/* preview operation */
 	VIOC_WDMA_GetStatus(wdma, &status);
 	if (status & VIOC_WDMA_IREQ_EOFR_MASK) {
-		getrawmonotonic(&vdev->ts_next);
-		if ((vdev->ts_prev.tv_sec != 0) &&
-			(vdev->ts_prev.tv_nsec != 0)) {
-			vdev->ts_diff.tv_sec  =
-				vdev->ts_next.tv_sec  - vdev->ts_prev.tv_sec;
-			vdev->ts_diff.tv_nsec =
-				vdev->ts_next.tv_nsec - vdev->ts_prev.tv_nsec;
-			if (vdev->ts_diff.tv_nsec < 0) {
-				vdev->ts_diff.tv_sec  -= 1;
-				vdev->ts_diff.tv_nsec += 1000000000;
-			}
-		}
-		vdev->ts_prev = vdev->ts_next;
-
 		vioc_intr_clear(vdev->cif.vioc_intr.id,
 			vdev->cif.vioc_intr.bits);
 
+		getrawmonotonic(&vdev->ts_next);
+
 		tccvin_switch_buffers(vdev);
+
+		vdev->ts_prev = vdev->ts_next;
 	}
 
 	return IRQ_HANDLED;
@@ -1579,9 +1579,6 @@ static int32_t tccvin_start_stream(struct tccvin_streaming *vdev)
 		return -1;
 	}
 #endif//defined(CONFIG_VIDEO_TCCVIN2_DIAG)
-
-	/* reset vioc path */
-	tccvin_reset_vioc_path(vdev);
 
 #if defined(CONFIG_OVERLAY_PGL)
 	/* set rdma for Parking Guide Line */
@@ -1712,9 +1709,6 @@ static int32_t tccvin_stop_stream(struct tccvin_streaming *vdev)
 	}
 #endif/* defined(CONFIG_OVERLAY_PGL) */
 
-	/* reset vioc path */
-	tccvin_reset_vioc_path(vdev);
-
 	return 0;
 }
 
@@ -1753,7 +1747,10 @@ static int32_t tccvin_request_irq(struct tccvin_streaming *vdev)
 		vioc_intr->bits	= VIOC_WDMA_IREQ_EOFR_MASK;
 
 		if (vdev->cif.vioc_irq_reg == 0) {
-			vioc_intr_clear(vioc_intr->id, vioc_intr->bits);
+			vioc_intr_disable(vdev->cif.vioc_irq_num,
+				vioc_intr->id, VIOC_WDMA_IREQ_ALL_MASK);
+			vioc_intr_clear(vioc_intr->id,
+				VIOC_WDMA_IREQ_ALL_MASK);
 			ret = request_irq(vdev->cif.vioc_irq_num,
 				tccvin_wdma_isr, IRQF_SHARED,
 				vdev->vdev.name, vdev);
@@ -2284,18 +2281,24 @@ int32_t tccvin_video_streamon(struct tccvin_streaming *stream)
 	tccvin_video_subdevs_load_fw(stream);
 
 	if (stream->is_handover_needed != V4L2_CAP_HANDOVER_NEED) {
-		ret = tccvin_start_stream(stream);
-		if (ret < 0) {
-			loge("Start Stream\n");
-			return -1;
-		}
+		/* reset vioc path */
+		tccvin_reset_vioc_path(stream);
 	}
 
+	/* IMPORTANT: VIOC Interrupt MUST BE Requested after VIOC RESET Sequence */
 	if (stream->preview_method == PREVIEW_V4L2) {
 		ret = tccvin_request_irq(stream);
 		if (ret < 0) {
 			loge("Request IRQ\n");
 			return ret;
+		}
+	}
+
+	if (stream->is_handover_needed != V4L2_CAP_HANDOVER_NEED) {
+		ret = tccvin_start_stream(stream);
+		if (ret < 0) {
+			loge("Start Stream\n");
+			return -1;
 		}
 	}
 
@@ -2308,6 +2311,12 @@ int32_t tccvin_video_streamoff(struct tccvin_streaming *stream)
 
 	WARN_ON(IS_ERR_OR_NULL(stream));
 
+	ret = tccvin_stop_stream(stream);
+	if (ret < 0) {
+		loge("Stop Stream\n");
+		return -1;
+	}
+
 	if (stream->preview_method == PREVIEW_V4L2) {
 		ret = tccvin_free_irq(stream);
 		if (ret < 0) {
@@ -2316,11 +2325,8 @@ int32_t tccvin_video_streamoff(struct tccvin_streaming *stream)
 		}
 	}
 
-	ret = tccvin_stop_stream(stream);
-	if (ret < 0) {
-		loge("Stop Stream\n");
-		return -1;
-	}
+	/* reset vioc path */
+	tccvin_reset_vioc_path(stream);
 
 	ret = tccvin_video_subdevs_streamoff(stream);
 	if (ret < 0) {

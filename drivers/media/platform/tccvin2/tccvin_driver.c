@@ -642,7 +642,7 @@ static int tccvin_core_probe(struct platform_device *pdev)
 
 	dev->pdev = pdev;
 
-	strlcpy(dev->name, "video-input path", sizeof(dev->name));
+	sprintf(dev->name, "videoinput%d", pdev->id);
 
 	/* Parse the Video Class control descriptor. */
 	if (tccvin_parse_control(dev) < 0) {
