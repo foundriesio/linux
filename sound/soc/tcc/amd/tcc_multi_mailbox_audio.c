@@ -107,9 +107,9 @@ static int tcc_mbox_audio_send_message_to_channel(struct mbox_audio_device
 {
 	int ret;
 
-	mutex_lock(&audio_dev->lock);	
+	mutex_lock(&audio_dev->lock);
 	ret = mbox_send_message(audio_dev->mbox_ch, mbox_data);
-#ifdef CONFIG_ARCH_TCC803X 
+#ifdef CONFIG_ARCH_TCC803X
 	mbox_client_txdone(audio_dev->mbox_ch, 0);
 #endif//CONFIG_ARCH_TCC803x
 	if (ret < 0)
@@ -242,8 +242,10 @@ int tcc_mbox_audio_send_command(struct mbox_audio_device *audio_dev,
 	    (header->msg_size & 0x000000FF);
 
 	//payload //TODO : assume msg_size as unsigned int
-	memcpy(&(mbox_data->cmd[AUDIO_MBOX_HEADER_SIZE]), msg,
-	       sizeof(unsigned int) * (MBOX_AUDIO_CMD_SIZE-AUDIO_MBOX_HEADER_SIZE));
+	memcpy(&(mbox_data->cmd[AUDIO_MBOX_HEADER_SIZE]),
+			msg,
+			sizeof(unsigned int) *
+			(MBOX_AUDIO_CMD_SIZE-AUDIO_MBOX_HEADER_SIZE));
 
 	maudio_dbg(
 			"%s : usage(0x%04x) type(0x%04x) available tx(%d) msg_size(%d) command(0x%08x)",
@@ -436,7 +438,10 @@ static int tcc_mbox_audio_set_message(struct mbox_audio_device *audio_dev,
 			(msg_size & 0x000000FF);
 
 		memcpy(&(audio_usr_msg->mbox_data.cmd[AUDIO_MBOX_HEADER_SIZE]),
-				msg, sizeof(unsigned int) * (MBOX_AUDIO_CMD_SIZE-AUDIO_MBOX_HEADER_SIZE));
+				msg,
+				sizeof(unsigned int) *
+				(MBOX_AUDIO_CMD_SIZE-
+				 AUDIO_MBOX_HEADER_SIZE));
 
 		//insert to queue
 		mutex_lock(&audio_dev->user_queue.uq_lock);
@@ -715,7 +720,8 @@ static void tcc_mbox_audio_message_received(struct mbox_client *client,
 		rx_queue_handle = cmd_type;
 	} else {
 		maudio_err("%s : invalid cmd type..drop msg cmd[0][0x%x],.\n",
-				__func__ , mbox_data->cmd[0]); 		
+				__func__,
+				mbox_data->cmd[0]);
 		goto mbox_audio_message_received_error;
 	}
 
@@ -771,12 +777,12 @@ static struct mbox_chan *audio_request_channel(struct platform_device *pdev,
 #ifdef CONFIG_ARCH_TCC803X
 	client->tx_block = false;
 	client->tx_done = client->tx_block ? tcc_mbox_audio_message_sent : NULL;
-#else 
+#else
 	client->tx_block = true;
 	client->tx_done = NULL;
 #endif//CONFIG_ARCH_TCC803X
 	client->rx_callback = tcc_mbox_audio_message_received;
-	client->knows_txdone = false;	
+	client->knows_txdone = false;
 	client->tx_tout = 500;
 
 	channel = mbox_request_channel_byname(client, name);
@@ -922,7 +928,7 @@ static ssize_t tcc_mbox_audio_read(struct file *filp, char __user *buf,
 		}
 		maudio_dbg("%s : read count = %zd, copy_byte_size = %d\n",
 				__func__, count, copy_byte_size);
-		
+
 		if (copy_to_user
 				(buf + copy_byte_size,
 				 &(audio_usr_msg->mbox_data.cmd[0]),
@@ -1024,6 +1030,7 @@ static long tcc_mbox_audio_ioctl(struct file *filp, unsigned int cmd,
 	    (struct tcc_mbox_audio_msg __user *)arg;
 
 	unsigned int *msg;
+	size_t sizeofuint = sizeof(unsigned int);
 
 	long ret = 0;
 
@@ -1249,8 +1256,10 @@ static long tcc_mbox_audio_ioctl(struct file *filp, unsigned int cmd,
 #endif //CONFIG_TCC_MULTI_MAILBOX_AUDIO_R5
 
 			memcpy(&(mbox_audio_msg.data[AUDIO_MBOX_HEADER_SIZE]),
-			       reply_data->msg,
-			       sizeof(unsigned int) * (MBOX_AUDIO_CMD_SIZE-AUDIO_MBOX_HEADER_SIZE));
+					reply_data->msg,
+					sizeofuint *
+					(MBOX_AUDIO_CMD_SIZE-
+					 AUDIO_MBOX_HEADER_SIZE));
 
 			// don't copy data area
 			/*
@@ -1261,7 +1270,7 @@ static long tcc_mbox_audio_ioctl(struct file *filp, unsigned int cmd,
 
 			if (copy_to_user
 			    (argp, &(mbox_audio_msg.data[0]),
-			     sizeof(unsigned int) * MBOX_AUDIO_CMD_SIZE)) {
+			     sizeofuint * MBOX_AUDIO_CMD_SIZE)) {
 				maudio_err("%s : copy to user fail..\n",
 						__func__);
 				ret = -EFAULT;
