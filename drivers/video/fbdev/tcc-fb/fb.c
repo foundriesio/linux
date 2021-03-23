@@ -1676,7 +1676,7 @@ static int __init fbX_probe (struct platform_device *pdev)
 		fb_register_isr(info);
 
 	fb_info(info, "%s frame buffer device v%s\n", info->fix.id, FB_VERSION);
-	pr_err("%s : update_type = %d ",__func__, par->pdata.FbUpdateType);
+	pr_info("%s : update_type = %d ", __func__, par->pdata.FbUpdateType);
 	if (sysfs_create_group(&pdev->dev.kobj, &fbX_dev_attgrp) != 0)
 		fb_warn(info, "failed to register attributes\n");
 
