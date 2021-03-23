@@ -865,11 +865,10 @@ static irqreturn_t tcc_thermal_irq_thread (int32_t irq, void *dev)
 	temp = (temp/100);
 	for (i = 0; i < (data->pdata->freq_tab_count - 1); i++) {
 		if ((temp >= data->pdata->freq_tab[i].temp_level) &&
-				(temp < data->pdata->freq_tab[i+1].temp_level)) {
+			(temp < data->pdata->freq_tab[i+1].temp_level)) {
 			data->pdata->cur_trip = i;
 			data->pdata->dest_trip = i+1;
-		}
-		else {
+		} else {
 			/**/
 		}
 	}
@@ -2830,7 +2829,8 @@ static int32_t tcc_thermal_probe(struct platform_device *pdev)
 	if (data->irq <= 0)
 		dev_err(&pdev->dev, "no irq resource\n");
 	else {
-		ret = request_irq(data->irq, tcc_thermal_irq,
+		ret = request_threaded_irq(data->irq, tcc_thermal_irq,
+				tcc_thermal_irq_thread,
 				IRQF_SHARED, "tcc_thermal", data);
 		if (ret) {
 			dev_err(&pdev->dev,
