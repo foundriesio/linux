@@ -39,7 +39,7 @@
 			telechips,pmap-secured = <1>;
 			no-map;
 		};
-
+		/*
 		pmap_fb1_video: fb1_video {
 			compatible = "telechips,pmap";
 			telechips,pmap-name = "fb1_video";
@@ -66,7 +66,7 @@
 			telechips,pmap-secured = <1>;
 			no-map;
 		};
-
+		*/
 		/*-----------------------------------------------------------
 		 * Secure Area 2 (CPU X, VPU X, GPU X, VIOC R/W)
 		 *-----------------------------------------------------------
@@ -115,7 +115,7 @@
 			telechips,pmap-secured = <2>;
 			no-map;
 		};
-
+		/*
 		pmap_viqe1: viqe1 {
 			compatible = "telechips,pmap";
 			telechips,pmap-name = "viqe1";
@@ -133,7 +133,7 @@
 			telechips,pmap-secured = <2>;
 			no-map;
 		};
-
+		*/
 		pmap_v4l2_vout0: v4l2_vout0 {
 			compatible = "telechips,pmap";
 			telechips,pmap-name = "v4l2_vout0";
@@ -271,6 +271,7 @@
 		 * Camera Memory
 		 *-----------------------------------------------------------
 		 */
+		/*
 		pmap_parking_gui: parking_gui {
 			compatible = "telechips,pmap";
 			telechips,pmap-name = "parking_gui";
@@ -278,7 +279,7 @@
 			size = <0x0 PMAP_SIZE_CAMERA_PGL>;
 			no-map;
 		};
-
+		*/
 		pmap_rearcamera_viqe: rearcamera_viqe {
 			compatible = "telechips,pmap";
 			telechips,pmap-name = "rearcamera_viqe";
@@ -294,7 +295,7 @@
 			size = <0x0 PMAP_SIZE_CAMERA_PREVIEW0>;
 			no-map;
 		};
-
+		/*
 		pmap_rearcamera1: rearcamera1 {
 			compatible = "telechips,pmap";
 			telechips,pmap-name = "rearcamera1";
@@ -318,7 +319,7 @@
 			size = <0x0 PMAP_SIZE_CAMERA_PREVIEW3>;
 			no-map;
 		};
-
+		*/
 		pmap_rearcamera4: rearcamera4 {
 			compatible = "telechips,pmap";
 			telechips,pmap-name = "rearcamera4";
@@ -355,13 +356,14 @@
 		 * Memory for PowerVR Virtualization
 		 *-----------------------------------------------------------
 		 */
+		/*
 		pmap_pvr_vz: pvr_vz {
 			compatible = "telechips,pmap";
 			telechips,pmap-name = "pvr_vz";
 			reg = <0x0 PVR_VZ_BASE 0x0 PVR_VZ_SIZE>;
 			no-map;
 		};
-
+		*/
 		/*-----------------------------------------------------------
 		 * Default Reserved Memory
 		 *-----------------------------------------------------------
