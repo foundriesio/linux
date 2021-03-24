@@ -29,6 +29,7 @@
  */
 #ifdef CONFIG_X86
 #include <asm/apic.h>
+#include <asm/cpu.h>
 #endif
 
 #define ACPI_PROCESSOR_CLASS            "processor"
@@ -550,6 +551,12 @@ static int acpi_idle_play_dead(struct cpuidle_device *dev, int index)
 			wait_for_freeze();
 		} else
 			return -ENODEV;
+
+#if defined(CONFIG_X86) && defined(CONFIG_HOTPLUG_CPU)
+		/* If NMI wants to wake up CPU0, start CPU0. */
+		if (wakeup_cpu0())
+			start_cpu0();
+#endif
 	}
 
 	/* Never reached */
