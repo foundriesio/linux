@@ -11680,6 +11680,7 @@ EXPORT_SYMBOL_GPL	 vmlinux 0x998819f5	bus_remove_file
 EXPORT_SYMBOL_GPL	 vmlinux 0x99a15319	scsi_host_unblock
 EXPORT_SYMBOL_GPL	 vmlinux 0x99e203df	bus_unregister_notifier
 EXPORT_SYMBOL_GPL	 vmlinux 0x99e8566c	transport_add_device
+EXPORT_SYMBOL_GPL	 vmlinux 0x99f2d00a	sysfs_emit_at
 EXPORT_SYMBOL_GPL	 vmlinux 0x9a11a0fc	crypto_attr_alg_name
 EXPORT_SYMBOL_GPL	 vmlinux 0x9a17504e	kvm_vcpu_read_guest
 EXPORT_SYMBOL_GPL	 vmlinux 0x9a1f7f01	uprobe_unregister
@@ -12708,6 +12709,7 @@ EXPORT_SYMBOL_GPL	 vmlinux 0xe75d4cb4	iommu_map_sg
 EXPORT_SYMBOL_GPL	 vmlinux 0xe765bdc3	kvm_release_page_dirty
 EXPORT_SYMBOL_GPL	 vmlinux 0xe769232e	sprint_symbol_no_offset
 EXPORT_SYMBOL_GPL	 vmlinux 0xe7833a5d	blkdev_read_iter
+EXPORT_SYMBOL_GPL	 vmlinux 0xe783e261	sysfs_emit
 EXPORT_SYMBOL_GPL	 vmlinux 0xe79bf0c4	klp_shadow_get
 EXPORT_SYMBOL_GPL	 vmlinux 0xe79ff4e4	device_add
 EXPORT_SYMBOL_GPL	 vmlinux 0xe7aa099f	devlink_param_driverinit_value_get
