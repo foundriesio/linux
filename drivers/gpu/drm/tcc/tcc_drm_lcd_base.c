@@ -150,8 +150,8 @@ static irqreturn_t lcd_irq_handler(int irq, void *dev_id)
 		is_vioc_display_device_intr_masked(
 			ctx->hw_data.display_device.blk_num,
 			VIOC_DISP_INTR_DISPLAY)) {
-		dev_warn(ctx->dev,
-				"[WARN][%s] %s interrupt was not enabled\r\n",
+		dev_dbg(ctx->dev,
+				"[DEBUG][%s] %s interrupt was not enabled\r\n",
 				LOG_TAG, __func__);
 		return IRQ_HANDLED;
 	}
@@ -224,22 +224,11 @@ static int lcd_enable_vblank(struct tcc_drm_crtc *crtc)
 			ctx->hw_data.display_device.blk_num,
 			VIOC_DISP_INTR_DISPLAY);
 
-		ret = devm_request_irq(
-			ctx->dev, ctx->hw_data.display_device.irq_num,
-			lcd_irq_handler, IRQF_SHARED, ctx->data->name, ctx);
-		if (ret < 0) {
-			dev_err(
-				ctx->dev,
-				"[ERROR][%s] %s failed to request irq\r\n",
-				LOG_TAG, __func__);
-			goto err_irq_request;
-		}
 		vioc_intr_enable(
 			ctx->hw_data.display_device.irq_num,
 			get_vioc_index(ctx->hw_data.display_device.blk_num),
 			VIOC_DISP_INTR_DISPLAY);
 	}
-err_irq_request:
 	spin_unlock_irqrestore(&ctx->irq_lock, irqflags);
 	return ret;
 }
@@ -255,8 +244,8 @@ static void lcd_disable_vblank(struct tcc_drm_crtc *crtc)
 			ctx->hw_data.display_device.irq_num,
 			get_vioc_index(ctx->hw_data.display_device.blk_num),
 			VIOC_DISP_INTR_DISPLAY);
-		devm_free_irq(
-			ctx->dev, ctx->hw_data.display_device.irq_num, ctx);
+		vioc_intr_clear(ctx->hw_data.display_device.blk_num,
+			VIOC_DISP_INTR_DISPLAY);
 	}
 	spin_unlock_irqrestore(&ctx->irq_lock, irqflags);
 }
@@ -986,6 +975,17 @@ static int lcd_bind(struct device *dev, struct device *master, void *data)
 	if (ret)
 		goto out;
 
+	ret = devm_request_irq(
+		ctx->dev, ctx->hw_data.display_device.irq_num,
+		lcd_irq_handler, IRQF_SHARED, ctx->data->name, ctx);
+	if (ret < 0) {
+		dev_err(
+			ctx->dev,
+			"[ERROR][%s] %s failed to request irq\r\n",
+			LOG_TAG, __func__);
+		goto out;
+	}
+
 	#if defined(CONFIG_PM)
 	pm_runtime_enable(dev);
 	#endif
@@ -999,9 +999,23 @@ static void lcd_unbind(struct device *dev, struct device *master,
 			void *data)
 {
 	struct lcd_context *ctx = dev_get_drvdata(dev);
+	unsigned long irqflags;
 
 	if (ctx->encoder)
 		tcc_dpi_remove(ctx->encoder);
+
+	spin_lock_irqsave(&ctx->irq_lock, irqflags);
+	if (test_and_clear_bit(CRTC_FLAGS_IRQ_BIT, &ctx->crtc_flags)) {
+		vioc_intr_disable(
+			ctx->hw_data.display_device.irq_num,
+			get_vioc_index(ctx->hw_data.display_device.blk_num),
+			VIOC_DISP_INTR_DISPLAY);
+		vioc_intr_clear(ctx->hw_data.display_device.blk_num,
+			VIOC_DISP_INTR_DISPLAY);
+	}
+	spin_unlock_irqrestore(&ctx->irq_lock, irqflags);
+
+	devm_free_irq(ctx->dev, ctx->hw_data.display_device.irq_num, ctx);
 
 	/* Deactivate CRTC clock */
 	if (test_and_clear_bit(CRTC_FLAGS_VCLK_BIT, &ctx->crtc_flags))
