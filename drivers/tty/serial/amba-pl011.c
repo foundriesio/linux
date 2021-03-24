@@ -340,6 +340,9 @@ struct uart_amba_port {
 	struct pl011_dmarx_data dmarx;
 	struct pl011_dmatx_data	dmatx;
 	bool			dma_probed;
+#ifdef CONFIG_DMA_ENGINE
+	spinlock_t		dma_rx_lock;
+#endif
 #endif
 };
 
@@ -1038,7 +1041,11 @@ static void pl011_dma_rx_irq(struct uart_amba_port *uap)
 	size_t pending;
 	struct dma_tx_state state;
 	enum dma_status dmastat;
+#ifdef CONFIG_DMA_ENGINE
+	unsigned long dma_rx_flags = 0;
 
+	spin_lock_irqsave(&uap->dma_rx_lock, dma_rx_flags);
+#endif
 	/*
 	 * Pause the transfer so we can trust the current counter,
 	 * do this before we pause the PL011 block, else we may
@@ -1074,6 +1081,9 @@ static void pl011_dma_rx_irq(struct uart_amba_port *uap)
 		uap->im |= UART011_RXIM;
 		pl011_write(uap->im, uap, REG_IMSC);
 	}
+#ifdef CONFIG_DMA_ENGINE
+	spin_unlock_irqrestore(&uap->dma_rx_lock, dma_rx_flags);
+#endif
 }
 
 static void pl011_dma_rx_callback(void *data)
@@ -1152,7 +1162,11 @@ static void pl011_dma_rx_poll(unsigned long args)
 	struct pl011_sgbuf *sgbuf;
 	int dma_count;
 	struct dma_tx_state state;
+#ifdef CONFIG_DMA_ENGINE
+	unsigned long dma_rx_flags = 0;
 
+	spin_lock_irqsave(&uap->dma_rx_lock, dma_rx_flags);
+#endif
 	sgbuf = dmarx->use_buf_b ? &uap->dmarx.sgbuf_b : &uap->dmarx.sgbuf_a;
 	rxchan->device->device_tx_status(rxchan, dmarx->cookie, &state);
 	if (likely(state.residue < dmarx->last_residue)) {
@@ -1186,6 +1200,9 @@ static void pl011_dma_rx_poll(unsigned long args)
 		mod_timer(&uap->dmarx.timer,
 			jiffies + msecs_to_jiffies(uap->dmarx.poll_rate));
 	}
+#ifdef CONFIG_DMA_ENGINE
+	spin_unlock_irqrestore(&uap->dma_rx_lock, dma_rx_flags);
+#endif
 }
 
 static void pl011_dma_startup(struct uart_amba_port *uap)
@@ -1294,10 +1311,10 @@ static void pl011_dma_shutdown(struct uart_amba_port *uap)
 	if (uap->using_rx_dma) {
 		dmaengine_terminate_all(uap->dmarx.chan);
 		/* Clean up the RX DMA */
+		if (uap->dmarx.poll_rate)
+		    del_timer_sync(&uap->dmarx.timer);
 		pl011_sgbuf_free(uap->dmarx.chan, &uap->dmarx.sgbuf_a, DMA_FROM_DEVICE);
 		pl011_sgbuf_free(uap->dmarx.chan, &uap->dmarx.sgbuf_b, DMA_FROM_DEVICE);
-		if (uap->dmarx.poll_rate)
-			del_timer_sync(&uap->dmarx.timer);
 		uap->using_rx_dma = false;
 	}
 }
@@ -2738,6 +2755,9 @@ static int pl011_setup_port(struct device *dev, struct uart_amba_port *uap,
 	uap->port.fifosize = uap->fifosize;
 	uap->port.flags = UPF_BOOT_AUTOCONF;
 	uap->port.line = index;
+#ifdef CONFIG_DMA_ENGINE
+	spin_lock_init(&uap->dma_rx_lock);
+#endif
 #if defined(CONFIG_PM_SLEEP) \
 	&&(defined(CONFIG_ARCH_TCC805X)||defined(CONFIG_ARCH_TCC803X)) \
 	&&(!defined(CONFIG_TCC803X_CA7S))
