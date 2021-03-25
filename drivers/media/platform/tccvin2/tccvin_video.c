@@ -1248,6 +1248,7 @@ static int32_t tccvin_set_wdma(struct tccvin_streaming *vdev)
 	uint32_t			format		= 0;
 	uint32_t			buf_index	= 0;
 	struct vb2_plane		*plane		= NULL;
+	struct vb2_queue		*q		= &vdev->queue.queue;
 	unsigned long			addr0		= 0;
 	unsigned long			addr1		= 0;
 	unsigned long			addr2		= 0;
@@ -1284,8 +1285,10 @@ static int32_t tccvin_set_wdma(struct tccvin_streaming *vdev)
 			switch (buf->buf.vb2_buf.memory) {
 			case VB2_MEMORY_MMAP:
 			case V4L2_MEMORY_DMABUF:
-				buf_index = buf->buf.vb2_buf.index;
-				addr0 = cif->preview_buf_addr[buf_index].addr0;
+				/* use vb2_queue */
+				addr0 = q->bufs[buf_index]->planes[0].m.offset;
+				addr1 = q->bufs[buf_index]->planes[1].m.offset;
+				addr2 = q->bufs[buf_index]->planes[2].m.offset;
 				break;
 			case VB2_MEMORY_USERPTR:
 				plane = &buf->buf.vb2_buf.planes[0];
@@ -1295,9 +1298,6 @@ static int32_t tccvin_set_wdma(struct tccvin_streaming *vdev)
 				loge("memory type is not supported\n");
 				return -1;
 			}
-			tccvin_convert_to_multi_planes_buffer_addresses(
-				width, height, vdev->cur_format->fcc,
-				&addr0, &addr1, &addr2);
 			logd("ADDR0: 0x%08lx, ADDR1: 0x%08lx, ADDR2: 0x%08lx\n",
 				addr0, addr1, addr2);
 			VIOC_WDMA_SetImageBase(wdma, addr0, addr1, addr2);
@@ -1321,20 +1321,26 @@ static int32_t tccvin_set_wdma(struct tccvin_streaming *vdev)
 	return 0;
 }
 
-static void tccvin_switch_buffers(struct tccvin_streaming *stream)
+static void tccvin_work_thread(struct work_struct *data)
 {
 	struct tccvin_cif		*cif		= NULL;
+	struct tccvin_streaming		*stream		= NULL;
 	struct tccvin_video_queue	*queue		= NULL;
+	struct vb2_queue		*q		= NULL;
 	struct tccvin_buffer		*buf		= NULL;
 	unsigned long			flags		= 0;
 
 	void __iomem			*wdma		= NULL;
-	struct vb2_plane		*plane		= NULL;
-	unsigned long			addr0		= 0;
-	unsigned long			addr1		= 0;
-	unsigned long			addr2		= 0;
-	uint32_t			buf_index	= 0;
 	long				ts_enabled	= 0;
+	int				ret		= 0;
+
+	WARN_ON(IS_ERR_OR_NULL(data));
+
+	cif		= container_of(data, struct tccvin_cif, wdma_work);
+	stream		= container_of(cif, struct tccvin_streaming, cif);
+	queue		= &stream->queue;
+	q		= &stream->queue.queue;
+	wdma		= VIOC_WDMA_GetAddress(stream->cif.vioc_path.wdma);
 
 	if (stream == NULL) {
 		loge("stream is NULL\n");
@@ -1380,7 +1386,7 @@ static void tccvin_switch_buffers(struct tccvin_streaming *stream)
 	if (stream->skip_frame_cnt > 0) {
 		stream->skip_frame_cnt--;
 		spin_unlock_irqrestore(&queue->irqlock, flags);
-		goto update_wdma;
+		goto end;
 	}
 
 	/*
@@ -1389,85 +1395,45 @@ static void tccvin_switch_buffers(struct tccvin_streaming *stream)
 	if (list_is_last(&(buf->queue), &queue->irqqueue) != 0) {
 		logw("driver has only one buffer!!\n");
 		spin_unlock_irqrestore(&queue->irqlock, flags);
-		goto update_wdma;
+		goto end;
 	} else {
 		spin_unlock_irqrestore(&queue->irqlock, flags);
 	}
 
 	ts_enabled = atomic_read(&stream->timestamp);
 	if (ts_enabled) {
-		/* calc diff of timestamp */
-		if ((stream->ts_prev.tv_sec != 0) && (stream->ts_prev.tv_nsec != 0)) {
-			stream->ts_diff.tv_sec  = stream->ts_next.tv_sec  - stream->ts_prev.tv_sec;
-			stream->ts_diff.tv_nsec = stream->ts_next.tv_nsec - stream->ts_prev.tv_nsec;
-			if (stream->ts_diff.tv_nsec < 0) {
-				stream->ts_diff.tv_sec  -= 1;
-				stream->ts_diff.tv_nsec += 1000000000;
-			}
-		}
-
-		logi("prev: %9ld.%09ld, next: %9ld.%09ld, diff: %9ld.%09ld\n",
-			stream->ts_prev.tv_sec, stream->ts_prev.tv_nsec,
-			stream->ts_next.tv_sec, stream->ts_next.tv_nsec,
-			stream->ts_diff.tv_sec, stream->ts_diff.tv_nsec);
+		logi("timestamp: %9ld.%09ld\n",
+			stream->ts_next.tv_sec, stream->ts_next.tv_nsec);
+		stream->ts_prev = stream->ts_next;
 	}
+
 	buf->buf.vb2_buf.timestamp = timespec_to_ns(&stream->ts_next);
 	buf->buf.field = V4L2_FIELD_NONE;
 	buf->buf.sequence = stream->sequence++;
 	buf->state = TCCVIN_BUF_STATE_READY;
 	buf->bytesused = buf->length;
-
 	dlog("VIN[%d] buf->length: 0x%08x\n", stream->vdev.num, buf->length);
 
-#if defined(CONFIG_VIDEO_TCCVIN2_MMAP_MEMCPY)
-	if (buf->buf.vb2_buf.memory == VB2_MEMORY_MMAP) {
-		// copy preview memory
-		memcpy(buf->mem, cif->vir, buf->length);
-	}
-#endif//defined(CONFIG_VIDEO_TCCVIN2_MMAP_MEMCPY)
+	stream->next_buf = tccvin_queue_next_buffer(&stream->queue, buf);
 
-	buf = tccvin_queue_next_buffer(&stream->queue, buf);
-
-update_wdma:
-	mutex_lock(&cif->lock);
-
-	if (buf != NULL) {
-		switch (buf->buf.vb2_buf.memory) {
-		case VB2_MEMORY_MMAP:
-		case V4L2_MEMORY_DMABUF:
-			buf_index = buf->buf.vb2_buf.index;
-			addr0 = cif->preview_buf_addr[buf_index].addr0;
-			break;
-		case VB2_MEMORY_USERPTR:
-			plane = &buf->buf.vb2_buf.planes[0];
-			addr0 = virt_to_phys((void *)plane->m.userptr);
-			break;
-		default:
-			loge("memory type is not supported\n");
-			return;
-		}
-		tccvin_convert_to_multi_planes_buffer_addresses(
-			stream->cur_frame->wWidth, stream->cur_frame->wHeight,
-			stream->cur_format->fcc, &addr0, &addr1, &addr2);
-		logd("ADDR0: 0x%08lx, ADDR1: 0x%08lx, ADDR2: 0x%08lx\n",
-			addr0, addr1, addr2);
-		VIOC_WDMA_SetImageBase(wdma, addr0, addr1, addr2);
-		VIOC_WDMA_SetImageEnable(wdma, OFF);
-	} else {
-		dlog("Buffer is not initialized successfully.\n");
-	}
-
-	mutex_unlock(&cif->lock);
+end:
+	logd("next_buf: 0x%px\n", stream->next_buf);
 }
 
 static irqreturn_t tccvin_wdma_isr(int irq, void *client_data)
 {
 	struct tccvin_streaming		*vdev		=
 		(struct tccvin_streaming *)client_data;
-	void __iomem			*wdma		=
+	struct tccvin_cif		*cif	= &vdev->cif;
+	void __iomem			*wdma	=
 		VIOC_WDMA_GetAddress(vdev->cif.vioc_path.wdma);
-	uint32_t			status		= 0;
-	bool				ret		= 0;
+	uint32_t			status	= 0;
+	struct vb2_queue *q = &vdev->queue.queue;
+	uint32_t			buf_index;
+	unsigned long			addr0		= 0;
+	unsigned long			addr1		= 0;
+	unsigned long			addr2		= 0;
+	bool				ret	= 0;
 
 	ret = is_vioc_intr_activatied(vdev->cif.vioc_intr.id,
 		vdev->cif.vioc_intr.bits);
@@ -1478,15 +1444,44 @@ static irqreturn_t tccvin_wdma_isr(int irq, void *client_data)
 
 	/* preview operation */
 	VIOC_WDMA_GetStatus(wdma, &status);
-	if (status & VIOC_WDMA_IREQ_EOFR_MASK) {
+	if (status & VIOC_WDMA_IREQ_EOFF_MASK) {
 		vioc_intr_clear(vdev->cif.vioc_intr.id,
-			vdev->cif.vioc_intr.bits);
+			VIOC_WDMA_IREQ_EOFF_MASK);
+
+		mutex_lock(&cif->lock);
+
+		if (vdev->next_buf != NULL) {
+			switch (vdev->next_buf->buf.vb2_buf.memory) {
+			case VB2_MEMORY_MMAP:
+			case VB2_MEMORY_DMABUF:
+				buf_index = vdev->next_buf->buf.vb2_buf.index;
+
+				/* use vb2_queue */
+				addr0 = q->bufs[buf_index]->planes[0].m.offset;
+				addr1 = q->bufs[buf_index]->planes[1].m.offset;
+				addr2 = q->bufs[buf_index]->planes[2].m.offset;
+				break;
+			default:
+				loge("memory type is not supported\n");
+				return IRQ_NONE;
+			}
+			dlog("ADDR0: 0x%08lx, ADDR1: 0x%08lx, ADDR2: 0x%08lx\n",
+				addr0, addr1, addr2);
+			VIOC_WDMA_SetImageBase(wdma, addr0, addr1, addr2);
+		} else {
+			dlog("Buffer is not initialized successfully.\n");
+		}
+		VIOC_WDMA_SetImageEnable(wdma, OFF);
+
+		mutex_unlock(&cif->lock);
+
+	} else if (status & VIOC_WDMA_IREQ_EOFR_MASK) {
+		vioc_intr_clear(vdev->cif.vioc_intr.id,
+			VIOC_WDMA_IREQ_EOFR_MASK);
 
 		getrawmonotonic(&vdev->ts_next);
 
-		tccvin_switch_buffers(vdev);
-
-		vdev->ts_prev = vdev->ts_next;
+		schedule_work(&vdev->cif.wdma_work);
 	}
 
 	return IRQ_HANDLED;
@@ -1529,7 +1524,7 @@ static int32_t tccvin_allocate_essential_buffers(struct tccvin_streaming *vdev)
 		logi("name: %20s, base: 0x%08llx, size: 0x%08llx\n",
 			pmap->name, pmap->base, pmap->size);
 	} else {
-		loge("get \"rearcamera_viqe\" pmap information.\n");
+		logw("get \"rearcamera_viqe\" pmap information.\n");
 		ret = -1;
 	}
 
@@ -1744,7 +1739,8 @@ static int32_t tccvin_request_irq(struct tccvin_streaming *vdev)
 		vioc_wdma_id	= get_vioc_index(vioc_path->wdma);
 
 		vioc_intr->id	= intr_base_id + (vioc_wdma_id - vioc_base_id);
-		vioc_intr->bits	= VIOC_WDMA_IREQ_EOFR_MASK;
+		vioc_intr->bits	= (VIOC_WDMA_IREQ_EOFF_MASK |
+				   VIOC_WDMA_IREQ_EOFR_MASK);
 
 		if (vdev->cif.vioc_irq_reg == 0) {
 			vioc_intr_disable(vdev->cif.vioc_irq_num,
@@ -1902,7 +1898,10 @@ int tccvin_video_init(struct tccvin_streaming *stream)
 	/* init v4l2 resources */
 	mutex_init(&stream->cif.lock);
 
-	/* allocate essential buffers */
+	// init work thread
+	INIT_WORK(&stream->cif.wdma_work, tccvin_work_thread);
+
+	// allocate essential buffers
 	tccvin_allocate_essential_buffers(stream);
 
 	if (stream->nformats == 0) {
@@ -2268,7 +2267,7 @@ int32_t tccvin_video_streamon(struct tccvin_streaming *stream)
 	if (stream->is_handover_needed == V4L2_CAP_HANDOVER_NEED) {
 		logi("#### Handover - Skip to set the vioc path\n");
 	}
-	
+
 	ret = tccvin_video_subdevs_streamon(stream);
 	if (ret < 0) {
 		loge("to start v4l2 sub devices\n");
@@ -2414,19 +2413,40 @@ int32_t tccvin_set_buffer_address(struct tccvin_streaming *stream,
 {
 	struct vb2_queue		*q		= NULL;
 	struct tccvin_dmabuf_phys_data	phys;
+	int				bufidx		= 0;
 	int32_t				ret		= 0;
 
-	WARN_ON(IS_ERR_OR_NULL(stream));
+	if (stream == NULL) {
+		loge("An instance of stream is NULL\n");
+		return -EINVAL;
+	}
 
 	q		= &stream->queue.queue;
 
 	switch (buf->memory) {
 	case V4L2_MEMORY_MMAP:
-		q->bufs[buf->index]->planes[0].m.offset =
+		logd("VIN[%d] bufidx: %d, buf->m.offset: 0x%08x\n",
+			stream->vdev.num, buf->index, buf->m.offset);
+
+		/* use vb2_queue */
+		bufidx = buf->index;
+
+		q->bufs[bufidx]->planes[0].m.offset =
 			stream->cif.pmap_preview.base + buf->m.offset;
-		stream->cif.preview_buf_addr[buf->index].addr0 =
-			stream->cif.pmap_preview.base + buf->m.offset;
-		buf->m.offset = stream->cif.pmap_preview.base + buf->m.offset;
+		tccvin_convert_to_multi_planes_buffer_addresses(
+			stream->cur_frame->wWidth,
+			stream->cur_frame->wHeight,
+			stream->cur_format->fcc,
+			(unsigned long *)&q->bufs[bufidx]->planes[0].m.offset,
+			(unsigned long *)&q->bufs[bufidx]->planes[1].m.offset,
+			(unsigned long *)&q->bufs[bufidx]->planes[2].m.offset);
+		logd("VIN[%d] bufidx: %d, addr: 0x%08x, 0x%08x, 0x%08x\n",
+			stream->vdev.num, bufidx,
+			q->bufs[bufidx]->planes[0].m.offset,
+			q->bufs[bufidx]->planes[1].m.offset,
+			q->bufs[bufidx]->planes[2].m.offset);
+
+		buf->m.offset = q->bufs[bufidx]->planes[0].m.offset;
 		break;
 	case V4L2_MEMORY_DMABUF:
 		phys.fd = q->bufs[buf->index]->planes[0].m.fd;
