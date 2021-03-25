@@ -1281,6 +1281,7 @@ static int32_t tccvin_set_wdma(struct tccvin_streaming *vdev)
 		spin_unlock_irqrestore(&queue->irqlock, flags);
 
 		mutex_lock(&cif->lock);
+
 		if (buf != NULL) {
 			switch (buf->buf.vb2_buf.memory) {
 			case VB2_MEMORY_MMAP:
@@ -1295,8 +1296,9 @@ static int32_t tccvin_set_wdma(struct tccvin_streaming *vdev)
 				addr0 = virt_to_phys((void *)plane->m.userptr);
 				break;
 			default:
-				loge("memory type is not supported\n");
-				return -1;
+				loge("memory type (%d) is not supported\n",
+					buf->buf.vb2_buf.memory);
+				break;
 			}
 			logd("ADDR0: 0x%08lx, ADDR1: 0x%08lx, ADDR2: 0x%08lx\n",
 				addr0, addr1, addr2);
@@ -1425,15 +1427,15 @@ static irqreturn_t tccvin_wdma_isr(int irq, void *client_data)
 	struct tccvin_streaming		*vdev		=
 		(struct tccvin_streaming *)client_data;
 	struct tccvin_cif		*cif	= &vdev->cif;
-	void __iomem			*wdma	=
+	void __iomem			*wdma		=
 		VIOC_WDMA_GetAddress(vdev->cif.vioc_path.wdma);
-	uint32_t			status	= 0;
+	uint32_t			status		= 0;
 	struct vb2_queue *q = &vdev->queue.queue;
 	uint32_t			buf_index;
 	unsigned long			addr0		= 0;
 	unsigned long			addr1		= 0;
 	unsigned long			addr2		= 0;
-	bool				ret	= 0;
+	bool				ret		= 0;
 
 	ret = is_vioc_intr_activatied(vdev->cif.vioc_intr.id,
 		vdev->cif.vioc_intr.bits);
@@ -1462,8 +1464,9 @@ static irqreturn_t tccvin_wdma_isr(int irq, void *client_data)
 				addr2 = q->bufs[buf_index]->planes[2].m.offset;
 				break;
 			default:
-				loge("memory type is not supported\n");
-				return IRQ_NONE;
+				loge("memory type (%d) is not supported\n",
+					vdev->next_buf->buf.vb2_buf.memory);
+				break;
 			}
 			dlog("ADDR0: 0x%08lx, ADDR1: 0x%08lx, ADDR2: 0x%08lx\n",
 				addr0, addr1, addr2);
