@@ -845,18 +845,6 @@ static void rtas_percpu_suspend_me(void *info)
 	__rtas_suspend_cpu((struct rtas_suspend_me_data *)info, 1);
 }
 
-int rtas_online_cpus_mask(cpumask_var_t cpus)
-{
-	return 0;
-}
-EXPORT_SYMBOL(rtas_online_cpus_mask);
-
-int rtas_offline_cpus_mask(cpumask_var_t cpus)
-{
-	return -ENOTSUPP;
-}
-EXPORT_SYMBOL(rtas_offline_cpus_mask);
-
 int rtas_ibm_suspend_me(u64 handle)
 {
 	long state;
