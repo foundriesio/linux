@@ -86,6 +86,9 @@ static inline int numa_update_cpu_topology(bool cpus_locked)
 {
 	return 0;
 }
+
+static inline void update_numa_cpu_lookup_table(unsigned int cpu, int node) {}
+
 static inline int of_drconf_to_nid_single(struct drmem_lmb *lmb)
 {
 	return first_online_node;
