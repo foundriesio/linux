@@ -1,0 +1,113 @@
+Required properties:
+ - compatible:
+        "telechips,tcc-gpio"
+ - reg: The gpio address range, relative to the gpio range
+	<cell num>
+        1 : gpio base address(ap)
+        2 : range of gpio base address
+ - gpio-controller : Indicates this device is a GPIO controller
+ - #gpio-cells :
+    <cell num>
+         1 : pin number
+         2 : polarity
+              <value>
+                [0] : for active high
+                [1] : for active low
+ - reg-offset: Offset from gpio base address
+ - source-num: External interrupt source number of gpio pin
+               Multiple ranges can be registered
+    <cell num>
+       1 : Count of source number ranges
+//First source number ranges
+       2 : start pin number
+       3 : base source number
+       4 : number of pin
+//Second number ranges
+       5 : start pin number 
+       6 : base source number
+       7 : number of pin
+//Next number ranges
+      ...
+ - pin-info:
+    <cell num>
+       1 : offset from gpio base address
+       2 : start pin number
+       3 : count of gpio pin
+ - interrupt-cells: Should be two. The first cell is the GPIO Number. The
+                    second cell is used to specify flags. The following
+                    subset of flags is supported:
+     - trigger type:
+       1 = low to high edge triggered
+       2 = high to low edge triggered
+       4 = active high level-sensitive
+       8 = active low level-sensitive
+ - interrupt-controller: Identifies the node as an interrupt controller
+ - interrupts: The interrupt number to fthe cpu.The interrupt specifier format 
+               depends on the interrupt controller
+
+Optional properties:
+
+Example:
+gpio: gpio@14200000 {
+    compatible = "telechips,tcc-gpio";
+    reg = <0x14200000 0x300>;
+};
+
+&gpio {
+               interrupts = <GIC_SPI 0 0>,
+                            <GIC_SPI 1 0>,
+                            <GIC_SPI 2 0>,
+                            <GIC_SPI 3 0>,
+                            <GIC_SPI 4 0>,
+                            <GIC_SPI 5 0>,
+                            <GIC_SPI 6 0>,
+                            <GIC_SPI 7 0>,
+                            <GIC_SPI 8 0>,
+                            <GIC_SPI 9 0>,
+                            <GIC_SPI 10 0>,
+                            <GIC_SPI 11 0>,
+                            <GIC_SPI 12 0>,
+                            <GIC_SPI 13 0>,
+                            <GIC_SPI 14 0>,
+                            <GIC_SPI 15 0>,
+                            <GIC_SPI 16 0>,
+                            <GIC_SPI 17 0>,
+                            <GIC_SPI 18 0>,
+                            <GIC_SPI 19 0>,
+                            <GIC_SPI 20 0>,
+                            <GIC_SPI 21 0>,
+                            <GIC_SPI 22 0>,
+                            <GIC_SPI 23 0>,
+                            <GIC_SPI 24 0>,
+                            <GIC_SPI 25 0>,
+                            <GIC_SPI 26 0>,
+                            <GIC_SPI 27 0>,
+                            <GIC_SPI 28 0>,
+                            <GIC_SPI 29 0>,
+                            <GIC_SPI 30 0>,
+                            <GIC_SPI 31 0>;
+
+        gpa: gpa {
+        reg-offset = <0x0>;
+        gpio-controller;
+        #gpio-cells = <2>;
+        interrupt-controller;
+        #interrupt-cells = <2>;
+        source-num = <1 0 1 32>;
+        label = "gpioa";
+        gpio-ranges = <&pinctrl 0 0 32>;
+        };
+};
+
+&pinctrl {
+    pinctrl_gpio {
+    gpa {
+        pin-info = <0x0 0 32>;
+    };
+
+    gpb {
+        pin-info = <0x40 0 29>;
+    };
+...
+};
+
