@@ -942,7 +942,7 @@ int __ref efi_mem_reserve_persistent(phys_addr_t addr, u64 size)
 	}
 
 	/* first try to find a slot in an existing linked list entry */
-	for (prsv = efi_memreserve_root->next; prsv; prsv = rsv->next) {
+	for (prsv = efi_memreserve_root->next; prsv; ) {
 		rsv = memremap(prsv, sizeof(*rsv), MEMREMAP_WB);
 		/* implement atomic_fetch_add_unless for
 		 * index = atomic_fetch_add_unless(&rsv->count, 1, rsv->size);
@@ -961,6 +961,7 @@ int __ref efi_mem_reserve_persistent(phys_addr_t addr, u64 size)
 			memunmap(rsv);
 			return 0;
 		}
+		prsv = rsv->next;
 		memunmap(rsv);
 	}
 
