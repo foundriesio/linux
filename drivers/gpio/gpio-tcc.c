@@ -114,6 +114,15 @@ static irqreturn_t tcc_gpio_irq_handler(int irq, void *data)
 		idx_sel_plc = i % 4;
 	}
 
+#elif defined(CONFIG_TCC803X_CA7S)
+	if (hwirq > 7) {
+		hwirq -= 8;
+		idx_sel_reg = hwirq / 2;
+		idx_sel_plc = hwirq % 2;
+	} else {
+		idx_sel_reg = hwirq / 2;
+		idx_sel_plc = hwirq % 2;
+	}
 #else
 	if (hwirq > 15) {
 		hwirq -= 16;
@@ -128,9 +137,15 @@ static irqreturn_t tcc_gpio_irq_handler(int irq, void *data)
 	pr_debug("[GPIO][DEBUG] %s: idx_sel_reg : %d idx_sel_lc : %d\n",
 		 __func__, idx_sel_reg, idx_sel_plc);
 
+#if defined(CONFIG_TCC803X_CA7S)
+	irq_source =
+	    0xff & (readl(port->base + (0x280 + (idx_sel_reg * 4))) >>
+		    (16 * idx_sel_plc));
+#else
 	irq_source =
 	    0xff & (readl(port->base + (0x280 + (idx_sel_reg * 4))) >>
 		    (8 * idx_sel_plc));
+#endif
 
 	pr_debug("[GPIO][DEBUG] %s: irq_source num : %d\n", __func__,
 		 irq_source);
@@ -238,10 +253,20 @@ static int tcc_gpio_irq_set_type(struct irq_data *d, u32 type)
 		pr_err("[GPIO][ERROR] %s: no more irq\n", __func__);
 		return -1;
 	}
-
+#if defined(CONFIG_TCC803X_CA7S)
+	idx_sel_reg = port->irq_port_map[i][0] / 2;
+	idx_sel_plc = port->irq_port_map[i][0] % 2;
+#else
 	idx_sel_reg = port->irq_port_map[i][0] / 4;
 	idx_sel_plc = port->irq_port_map[i][0] % 4;
+#endif
 
+#if defined(CONFIG_TCC803X_CA7S)
+	irq_source = (irq_source | (irq_source << 8)) << (idx_sel_plc * 16);
+	writel(readl(port->base + EINT_MUX + (idx_sel_reg * 4)) |
+	       irq_source,
+	       port->base + EINT_MUX + (idx_sel_reg * 4));
+#else
 #if defined(CONFIG_PINCTRL_TCC_SCFW)
 	(void)request_gpio_to_sc(port->raw_base + EINT_MUX + (idx_sel_reg * 4),
 			    (idx_sel_plc * 8), 8, irq_source);
@@ -249,6 +274,7 @@ static int tcc_gpio_irq_set_type(struct irq_data *d, u32 type)
 	writel(readl(port->base + EINT_MUX + (idx_sel_reg * 4)) |
 	       irq_source << (idx_sel_plc * 8),
 	       port->base + EINT_MUX + (idx_sel_reg * 4));
+#endif
 #endif
 	pr_debug("[GPIO][DEBUG] %s: both irq hwirq : %ld type!! : %d\n",
 		 __func__, d->hwirq, type);
