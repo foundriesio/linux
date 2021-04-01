@@ -233,7 +233,7 @@ static int mmc_clock_opt_set(void *data, u64 val)
 	return 0;
 }
 
-DEFINE_SIMPLE_ATTRIBUTE(mmc_clock_fops, mmc_clock_opt_get, mmc_clock_opt_set,
+DEFINE_DEBUGFS_ATTRIBUTE(mmc_clock_fops, mmc_clock_opt_get, mmc_clock_opt_set,
 	"%llu\n");
 
 void mmc_add_host_debugfs(struct mmc_host *host)
@@ -254,7 +254,7 @@ void mmc_add_host_debugfs(struct mmc_host *host)
 	if (!debugfs_create_file("ios", S_IRUSR, root, host, &mmc_ios_fops))
 		goto err_node;
 
-	if (!debugfs_create_file("clock", S_IRUSR | S_IWUSR, root, host,
+	if (!debugfs_create_file_unsafe("clock", S_IRUSR | S_IWUSR, root, host,
 			&mmc_clock_fops))
 		goto err_node;
 
