@@ -16,6 +16,7 @@
 #include <linux/module.h>
 #include <linux/of_gpio.h>
 #include <linux/of_platform.h>
+#include <linux/pinctrl/consumer.h>
 #include <linux/pm_runtime.h>
 #include <linux/reset.h>
 #include <linux/spi/spi.h>
@@ -463,6 +464,7 @@ static int stm32_spi_prepare_mbr(struct stm32_spi *spi, u32 speed_hz,
 /**
  * stm32h7_spi_prepare_fthlv - Determine FIFO threshold level
  * @spi: pointer to the spi controller data structure
+ * @xfer_len: length of the message to be transferred
  */
 static u32 stm32h7_spi_prepare_fthlv(struct stm32_spi *spi, u32 xfer_len)
 {
@@ -472,7 +474,10 @@ static u32 stm32h7_spi_prepare_fthlv(struct stm32_spi *spi, u32 xfer_len)
 	half_fifo = (spi->fifo_size / 2);
 
 	/* data_packet should not exceed transfer length */
-	packet = (half_fifo > xfer_len) ? xfer_len : half_fifo;
+	if (half_fifo > xfer_len)
+		packet = xfer_len;
+	else
+		packet = half_fifo;
 
 	if (spi->cur_bpw <= 8)
 		fthlv = packet;
@@ -483,9 +488,9 @@ static u32 stm32h7_spi_prepare_fthlv(struct stm32_spi *spi, u32 xfer_len)
 
 	/* align packet size with data registers access */
 	if (spi->cur_bpw > 8)
-		fthlv -= (fthlv % 2); /* multiple of 2 */
+		fthlv += (fthlv % 2) ? 1 : 0;
 	else
-		fthlv -= (fthlv % 4); /* multiple of 4 */
+		fthlv += (fthlv % 4) ? (4 - (fthlv % 4)) : 0;
 
 	if (!fthlv)
 		fthlv = 1;
@@ -2107,7 +2112,8 @@ static int stm32_spi_resume(struct device *dev)
 	}
 
 	ret = pm_runtime_get_sync(dev);
-	if (ret) {
+	if (ret < 0) {
+		pm_runtime_put_noidle(dev);
 		dev_err(dev, "Unable to power device:%d\n", ret);
 		return ret;
 	}
