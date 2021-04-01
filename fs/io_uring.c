@@ -1092,7 +1092,7 @@ static inline void io_prep_async_work(struct io_kiocb *req,
 	if (req->flags & REQ_F_ISREG) {
 		if (def->hash_reg_file)
 			io_wq_hash_work(&req->work, file_inode(req->file));
-	} else {
+	} else if (!req->file || !S_ISBLK(file_inode(req->file)->i_mode)) {
 		if (def->unbound_nonreg_file)
 			req->work.flags |= IO_WQ_WORK_UNBOUND;
 	}
