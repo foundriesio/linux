@@ -644,7 +644,7 @@ static void tc_block_indr_cleanup(struct flow_block_cb *block_cb)
 	struct tcf_block *block = block_cb->indr.data;
 	struct net_device *dev = block_cb->indr.dev;
 	struct netlink_ext_ack extack = {};
-	struct flow_block_offload bo;
+	struct flow_block_offload bo = {};
 
 	tcf_block_offload_init(&bo, dev, FLOW_BLOCK_UNBIND,
 			       block_cb->indr.binder_type,
