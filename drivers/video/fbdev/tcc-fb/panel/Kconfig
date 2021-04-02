@@ -8,6 +8,11 @@ config FB_PANEL_LVDS_TCC
 	help
 	  This driver supports LVDS panels that don't require device-specific
 	  handling of power supplies or control signals.
-endmenu
 
-#	default y if ARCH_TCC805X
+config FB_TCC_CTRL_BACKLIGHT
+	tristate "binding TCC LVDS & DP backlight driver(gpio, pwm ...)"
+	depends on OF && FB_NEW && ARCH_TCC805X
+	help
+	  This driver supports to bind FB_PANEL_XXX_TCC and backlight driver.
+
+endmenu

@@ -122,6 +122,8 @@ static int panel_lvds_disable(struct drm_panel *panel)
 			lvds->backlight->props.power = FB_BLANK_POWERDOWN;
 			lvds->backlight->props.state |= BL_CORE_FBBLANK;
 			backlight_update_status(lvds->backlight);
+		} else {
+			pr_err("[ERROR][%s] : backlight driver not valid\n", __func__);
 		}
 		#else
 		if (lvds->lvds_pins.blk_off != NULL)
@@ -202,6 +204,8 @@ static int panel_lvds_enable(struct drm_panel *panel)
 			lvds->backlight->props.state &= ~BL_CORE_FBBLANK;
 			lvds->backlight->props.power = FB_BLANK_UNBLANK;
 			backlight_update_status(lvds->backlight);
+		} else {
+			pr_err("[ERROR][%s] : backlight driver not valid\n", __func__);
 		}
 		#else
 		if (lvds->lvds_pins.blk_on != NULL)
@@ -506,6 +510,28 @@ static int panel_lvds_parse_dt(struct panel_lvds *lvds)
 			LOG_TAG, __func__);
 		lvds->lvds_pins.pwr_off = NULL;
 	}
+
+	#if defined(CONFIG_DRM_TCC_CTRL_BACKLIGHT)
+	np = of_parse_phandle(lvds->dev->of_node, "backlight", 0);
+	if (np) {
+		lvds->backlight = of_find_backlight_by_node(np);
+		of_node_put(np);
+
+		if (!lvds->backlight){ //backlight node is not valid
+			pr_err("[ERROR][%s] : backlight driver not valid\n", __func__);
+		}
+		else{
+			pr_info("[INFO][%s] : External backlight driver : max brightness[%d]\n",
+			__func__,
+			lvds->backlight->props.max_brightness);
+		}
+	} else {
+		pr_info("[INFO][%s] : Use pinctrl backlight\n", __func__);
+	}
+	#else
+		pr_info("[INFO][%s] : Use pinctrl backlight\n", __func__);
+	#endif
+
 err_parse_dt:
 	return ret;
 }
