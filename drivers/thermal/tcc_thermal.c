@@ -1618,7 +1618,7 @@ static void thermal_otp_read(struct tcc_thermal_data *data, int32_t probe)
 			(data->ts_test_info_low & (uint32_t)0xF);
 		break;
 	case 7:
-		ret = request_otp_to_sc(0x3228U);
+		ret = request_otp_to_sc(0x322CU);
 		data->buf_slope_sel_ts  = ((ret >> (uint32_t)28) &
 							(uint32_t)0xF);
 		data->d_otp_slope	= ((ret >> (uint32_t)24) &
