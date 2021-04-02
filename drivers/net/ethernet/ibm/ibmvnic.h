@@ -384,7 +384,7 @@ struct ibmvnic_phys_parms {
 #define IBMVNIC_10MBPS		0x40000000
 #define IBMVNIC_100MBPS		0x20000000
 #define IBMVNIC_1GBPS		0x10000000
-#define IBMVNIC_10GBP		0x08000000
+#define IBMVNIC_10GBPS		0x08000000
 #define IBMVNIC_40GBPS		0x04000000
 #define IBMVNIC_100GBPS		0x02000000
 #define IBMVNIC_25GBPS		0x01000000
@@ -856,6 +856,7 @@ struct ibmvnic_crq_queue {
 	union ibmvnic_crq *msgs;
 	int size, cur;
 	dma_addr_t msg_token;
+	/* Used for serialization of msgs, cur */
 	spinlock_t lock;
 	bool active;
 	char name[32];
@@ -881,12 +882,14 @@ struct ibmvnic_sub_crq_queue {
 	unsigned int irq;
 	unsigned int pool_index;
 	int scrq_num;
+	/* Used for serialization of msgs, cur */
 	spinlock_t lock;
 	struct sk_buff *rx_skb_top;
 	struct ibmvnic_adapter *adapter;
 	atomic_t used;
 	char name[32];
-};
+	u64 handle;
+} ____cacheline_aligned;
 
 struct ibmvnic_long_term_buff {
 	unsigned char *buff;
@@ -916,7 +919,7 @@ struct ibmvnic_tx_pool {
 	struct ibmvnic_long_term_buff long_term_buff;
 	int num_buffers;
 	int buf_size;
-};
+} ____cacheline_aligned;
 
 struct ibmvnic_rx_buff {
 	struct sk_buff *skb;
@@ -937,7 +940,7 @@ struct ibmvnic_rx_pool {
 	int next_alloc;
 	int active;
 	struct ibmvnic_long_term_buff long_term_buff;
-};
+} ____cacheline_aligned;
 
 struct ibmvnic_vpd {
 	unsigned char *buff;
@@ -994,7 +997,6 @@ struct ibmvnic_adapter {
 	struct ibmvnic_statistics stats;
 	dma_addr_t stats_token;
 	struct completion stats_done;
-	spinlock_t stats_lock;
 	int replenish_no_mem;
 	int replenish_add_buff_success;
 	int replenish_add_buff_failure;
@@ -1023,8 +1025,8 @@ struct ibmvnic_adapter {
 	atomic_t running_cap_crqs;
 	bool wait_capability;
 
-	struct ibmvnic_sub_crq_queue **tx_scrq;
-	struct ibmvnic_sub_crq_queue **rx_scrq;
+	struct ibmvnic_sub_crq_queue **tx_scrq ____cacheline_aligned;
+	struct ibmvnic_sub_crq_queue **rx_scrq ____cacheline_aligned;
 
 	/* rx structs */
 	struct napi_struct *napi;
@@ -1085,26 +1087,31 @@ struct ibmvnic_adapter {
 	u32 num_active_rx_napi;
 	u32 num_active_tx_scrqs;
 	u32 num_active_tx_pools;
+	u32 cur_rx_buf_sz;
 
 	struct tasklet_struct tasklet;
 	enum vnic_state state;
+	/* Used for serialization of state field. When taking both state
+	 * and rwi locks, take state lock first.
+	 */
+	spinlock_t state_lock;
 	enum ibmvnic_reset_reason reset_reason;
-	/* when taking both state and rwi locks, take state lock first */
-	spinlock_t rwi_lock;
 	struct list_head rwi_list;
+	/* Used for serialization of rwi_list. When taking both state
+	 * and rwi locks, take state lock first
+	 */
+	spinlock_t rwi_lock;
 	struct work_struct ibmvnic_reset;
 	struct delayed_work ibmvnic_delayed_reset;
 	unsigned long resetting;
 	bool napi_enabled, from_passive_init;
+	bool login_pending;
+	/* last device reset time */
+	unsigned long last_reset_time;
 
 	bool failover_pending;
 	bool force_reset_recovery;
 
 	struct ibmvnic_tunables desired;
 	struct ibmvnic_tunables fallback;
-
-	/* Used for serialization of state field. When taking both state
-	 * and rwi locks, take state lock first.
-	 */
-	spinlock_t state_lock;
 };
