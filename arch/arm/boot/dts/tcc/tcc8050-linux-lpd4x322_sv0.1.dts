@@ -563,3 +563,4 @@ dp_deserializer3:max96878@68 {
 	bt_hwake-gpio = <&gpk 2 0>;
 	status = "okay";
 };
+

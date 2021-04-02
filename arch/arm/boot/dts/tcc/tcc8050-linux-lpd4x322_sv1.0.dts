@@ -539,3 +539,4 @@
 	bt_hwake-gpio = <&gpk 2 0>;
 	status = "okay";
 };
+
