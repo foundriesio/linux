@@ -277,7 +277,7 @@ config ARCH_TCC
 	select HAVE_CLK
 	select SOC_TCC
 	select GPIOLIB
-	select DEBUG_FS
+	select DEBUG_FS if !ANDROID
 	help
 	  support for Telechips TCC based systems.
 

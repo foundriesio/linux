@@ -657,7 +657,7 @@ config ARCH_TCC
 	select NEED_MACH_GPIO_H
 	select ZONE_DMA if ARM_LPAE
 	select ARCH_DMA_ADDR_T_64BIT if ARM_LPAE
-	select DEBUG_FS
+	select DEBUG_FS if !ANDROID
 	help
 	  support for Telechips TCC based systems.
 
