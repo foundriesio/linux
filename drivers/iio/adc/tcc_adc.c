@@ -471,7 +471,7 @@ static int32_t tcc_adc_probe(struct platform_device *pdev)
 	adc = iio_priv(iio_dev);
 	adc->dev = &pdev->dev;
 	adc->soc_data = match->data;
-	platform_set_drvdata(pdev, adc);
+	platform_set_drvdata(pdev, iio_dev);
 
 	/* parsing device tree */
 	error = adc->soc_data->parsing_dt(adc);
