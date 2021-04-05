@@ -987,33 +987,11 @@ static int32_t tccvin_set_deinterlacer(struct tccvin_streaming *vdev)
 		u32	d3d_en		= OFF;
 		u32	deintl_en	= ON;
 
-#if 0
-		/* WEAVE MODE */
-		struct device_node	*node		= NULL;
-		u32	*viqe_set_reg1	= NULL;
-		u32	*viqe_set_reg2	= NULL;
-#endif
-
 		u32	vioc_format	= vdev->vs_info.data_format;
 		u32	v4l2_format	= vdev->cur_format->fcc;
 
 		logd("VIQE: 0x%px, Source Size - width: %d, height: %d\n",
 			viqe, width, height);
-
-#if 0
-		/* WEAVE MODE */
-		hdl_np = of_parse_phandle(vdev->dev->pdev->dev.of_node,
-			"viqe_set", 0);
-		if (!hdl_np) {
-			loge("could not find cam_viqe_set node!!\n");
-		} else {
-			viqe_set_reg1 = (unsigned int *)of_iomap(hdl_np, 0);
-			viqe_set_reg2 = (unsigned int *)of_iomap(hdl_np, 1);
-
-			BITCSET(*viqe_set_reg1, 1<<3, 1<<3);
-			BITCSET(*viqe_set_reg2, 1<<8 | 1<<9, 1<<8 | 1<<9);
-		}
-#endif
 
 		if (vioc->vin <= VIOC_VIN30) {
 			VIOC_CONFIG_PlugIn(vioc->viqe, vioc->vin);
@@ -1036,6 +1014,7 @@ static int32_t tccvin_set_deinterlacer(struct tccvin_streaming *vdev)
 			VIOC_VIQE_SetControlEnable(viqe, cdf_lut_en, his_en,
 				gamut_en, d3d_en, deintl_en);
 			VIOC_VIQE_SetDeintlModeWeave(viqe);
+			VIOC_VIQE_IgnoreDecError(viqe, ON, ON, ON);
 		}
 	} else if (vioc->deintl_s != -1) {
 		if (vioc->vin <= VIOC_VIN30) {

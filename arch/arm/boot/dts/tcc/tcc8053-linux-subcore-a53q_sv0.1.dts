@@ -1263,10 +1263,6 @@
 		reg = <0x1200d000 0x1000 0x12010000 0x1000>;
 	};
 
-	viqe_hidden:viqe_hidden{
-		reg = <0x1200d100 0x4 0x1200d10c 0x4>;
-	};
-
 	vioc_deintls:vioc_deintls@12003800{
 		compatible = "telechips,vioc_deintls";
 		reg = <0x12003800 0x100>;
@@ -1846,7 +1842,6 @@
 		use_pgl		= <0>;
 		vin		= <&vioc_vin		VIOC_VIN00>;
 		viqe		= <&vioc_viqe		VIOC_VIQE1>;
-		viqe_set	= <&viqe_hidden>;
 		deintls		= <&vioc_deintls	VIOC_DEINTLS0>;
 		scaler		= <&vioc_scaler		VIOC_SCALER2>;
 		wmixer		= <&vioc_wmix		VIOC_WMIX5>;
@@ -1871,7 +1866,6 @@
 		use_pgl		= <0>;
 		vin		= <&vioc_vin		VIOC_VIN10>;
 		viqe		= <&vioc_viqe		VIOC_VIQE1>;
-		viqe_set	= <&viqe_hidden>;
 		deintls		= <&vioc_deintls	VIOC_DEINTLS0>;
 		scaler		= <&vioc_scaler		VIOC_SCALER4>;
 		wmixer		= <&vioc_wmix		VIOC_WMIX6>;
@@ -1887,7 +1881,6 @@
 		use_pgl		= <0>;
 		vin		= <&vioc_vin		VIOC_VIN20>;
 		viqe		= <&vioc_viqe		VIOC_VIQE1>;
-		viqe_set	= <&viqe_hidden>;
 		deintls		= <&vioc_deintls	VIOC_DEINTLS0>;
 		scaler		= <&vioc_scaler		VIOC_SCALER5>;
 		wmixer		= <&vioc_wmix		VIOC_WMIX3>;
@@ -1903,7 +1896,6 @@
 		use_pgl		= <0>;
 		vin		= <&vioc_vin		VIOC_VIN30>;
 		viqe		= <&vioc_viqe		VIOC_VIQE1>;
-		viqe_set	= <&viqe_hidden>;
 		deintls		= <&vioc_deintls	VIOC_DEINTLS0>;
 		scaler		= <&vioc_scaler		VIOC_SCALER6>;
 		wmixer		= <&vioc_wmix		VIOC_WMIX4>;

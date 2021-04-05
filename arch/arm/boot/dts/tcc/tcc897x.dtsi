@@ -1447,10 +1447,6 @@
 		reg = <0x7200d000 0x1000 0x72010000 0x1000>;
 	};
 
-	viqe_hidden:viqe_hidden{
-		reg = <0x7200d100 0x4 0x7200d10c 0x4>;
-	};
-
 	vioc_lut:vioc_lut@72009000{
 		compatible = "telechips,vioc_lut";
 		reg = <0x72009000 0x800>;
@@ -1791,7 +1787,6 @@
 		rdma		= <&vioc_rdma		VIOC_RDMA15>;
 		vin		= <&vioc_vin		VIOC_VIN30>;
 		viqe		= <&vioc_viqe		VIOC_VIQE>;
-		viqe_set	= <&viqe_hidden>;
 		deintls		= <&vioc_deintls	VIOC_DEINTLS>;
 		scaler		= <&vioc_scaler		VIOC_SCALER2>;
 		wmixer		= <&vioc_wmix		VIOC_WMIX4>;

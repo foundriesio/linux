@@ -1162,7 +1162,6 @@
 		camera_pgl	= <&vioc_rdma	 16>;
 		camera_videoin	= <&vioc_vin	4 0>;
 		camera_viqe	= <&vioc_viqe	  0>;
-		camera_viqe_set	= <&viqe_hidden	   >;
 		camera_deintls	= <&vioc_deintls  0>;
 		camera_scaler	= <&vioc_scaler	  2>;
 		camera_wmixer	= <&vioc_wmixer	  5>;
