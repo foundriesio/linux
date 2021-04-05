@@ -454,6 +454,15 @@ static s32 tcc_sc_mmc_probe(struct platform_device *pdev)
 	const struct tcc_sc_fw_handle *handle;
 	struct mmc_host *mmc;
 	struct tcc_sc_mmc_host *host;
+	u32 sc_bus_width;
+	u32 sc_speed_mode[5][2] = {
+		{0, 0},
+		{MMC_CAP_MMC_HIGHSPEED, 0},
+		{(MMC_CAP_MMC_HIGHSPEED | MMC_CAP_1_8V_DDR), 0},
+		{MMC_CAP_MMC_HIGHSPEED, MMC_CAP2_HS200_1_8V_SDR},
+		{MMC_CAP_MMC_HIGHSPEED, (MMC_CAP2_HS400_1_8V |
+					MMC_CAP2_HS200_1_8V_SDR)}
+	};
 
 	fw_np = of_parse_phandle(pdev->dev.of_node, "sc-firmware", 0);
 	if (fw_np == NULL) {
@@ -527,6 +536,32 @@ static s32 tcc_sc_mmc_probe(struct platform_device *pdev)
 	mmc->max_blk_size = host->mmc_prot_info.blk_size;
 	mmc->max_req_size = 0x80000;
 	mmc->max_blk_count = 65535;
+	if (host->mmc_prot_info.clock) {
+		mmc->f_max = host->mmc_prot_info.clock;
+	}
+	sc_bus_width = host->mmc_prot_info.bus_width & 0x3;
+	if (sc_bus_width == 1) {
+		mmc->caps &= ~MMC_CAP_8_BIT_DATA;
+		mmc->caps |= MMC_CAP_4_BIT_DATA;
+	} else if (sc_bus_width == 2) {
+		mmc->caps &= ~MMC_CAP_4_BIT_DATA;
+		mmc->caps |= MMC_CAP_8_BIT_DATA;
+	} else {
+		mmc->caps &= ~(MMC_CAP_4_BIT_DATA | MMC_CAP_8_BIT_DATA);
+	}
+
+	mmc->caps &= ~(MMC_CAP_MMC_HIGHSPEED |
+			MMC_CAP_3_3V_DDR |
+			MMC_CAP_1_8V_DDR |
+			MMC_CAP_1_2V_DDR);
+	mmc->caps2 &= ~(MMC_CAP2_HS200_1_8V_SDR |
+			MMC_CAP2_HS200_1_2V_SDR |
+			MMC_CAP2_HS400_1_8V |
+			MMC_CAP2_HS400_1_2V |
+			MMC_CAP2_HS400_ES);
+
+	mmc->caps |= sc_speed_mode[host->mmc_prot_info.speed_mode][0];
+	mmc->caps2 |= sc_speed_mode[host->mmc_prot_info.speed_mode][1];
 
 	/* 32-bit mask as default */
 	ret = dma_set_mask_and_coherent(&pdev->dev, DMA_BIT_MASK(32ULL));

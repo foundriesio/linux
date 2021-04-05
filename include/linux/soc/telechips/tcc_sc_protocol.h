@@ -17,7 +17,11 @@ struct tcc_sc_fw_prot_mmc {
 	u32 max_seg_len;
 	u32 blk_size;
 	u32 max_blk_num;
-};
+	u8 speed_mode;
+	u8 bus_width;
+	u16 reserved;
+	u32 clock;
+} __attribute__ ((__packed__));
 
 struct tcc_sc_fw_version {
 	u16 major;
