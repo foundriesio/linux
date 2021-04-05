@@ -261,6 +261,7 @@ struct tccvin_streaming {
 	/* Buffers queue. */
 	unsigned int				frozen : 1;
 	struct tccvin_video_queue		queue;
+	struct tccvin_buffer			*prev_buf;
 	struct tccvin_buffer			*next_buf;
 
 	__u32 sequence;
