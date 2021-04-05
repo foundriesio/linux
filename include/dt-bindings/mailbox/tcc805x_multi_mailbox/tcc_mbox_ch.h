@@ -45,6 +45,17 @@
 #define TCC_HSM_MBOX1			(1)
 #define TCC_HSM_MBOX1_MAX		(2)
 
+
+/* CM4 MBOX0 : A72 <-> CM4 */
+#define TCC_CM4_MBOX0_RESERVED		(0)
+#define TCC_CM4_MBOX0			(1)
+#define TCC_CM4_MBOX0_MAX		(2)
+
+/* CM4 MBOX1 : A53 <-> CM4 */
+#define TCC_CM4_MBOX1_RESERVED		(0)
+#define TCC_CM4_MBOX1			(1)
+#define TCC_CM4_MBOX1_MAX		(2)
+
 /* MBOX ID length is 3 ~ 6. */
 
 /* Test client driver for tcc multi channel mbox test*/
@@ -67,4 +78,6 @@
 #define TCC_MBOX_SCRSHARE_ID    "SCRSHR"
 /* for touch share */
 #define TCC_MBOX_TCHSHARE_ID    "TCHSHR"
+/* for CM4 */
+#define TCC_MBOX_CM4_ID			"CM4"
 #endif
