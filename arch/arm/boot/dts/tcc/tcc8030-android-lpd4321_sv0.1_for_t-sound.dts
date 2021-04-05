@@ -196,7 +196,7 @@
 	 * //This is ref. code
 	 * //T-sound sound card 1
 	 *sound@1 {
-	 *	compatible = "telechips,vir-snd-card";
+	 *	compatible = "telechips,snd-card";
 	 *	card-name = "TCC8031 EVM Virtual Card";
 	 *	status = "okay";
 	 *
