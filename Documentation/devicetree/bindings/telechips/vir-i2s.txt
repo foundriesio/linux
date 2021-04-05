@@ -1,0 +1,30 @@
+* Device Tree Bindings for i2s
+This driver is only for T-sound SDK.
+Required properties:
+
+- compatible : property name that conveys the platform architecture identifiers,
+               as 'telechips,vir-i2s'
+- status       : disable or enable the device node
+
+Example
+-------
+	vi2s0: vi2s@0 {
+		compatible = "telechips,vir-i2s";
+		status = "disabled";
+	};
+
+	vi2s1: vi2s@1 {
+		compatible = "telechips,vir-i2s";
+		status = "disabled";
+	};
+
+	vi2s2: vi2s@2 {
+		compatible = "telechips,vir-i2s";
+		status = "disabled";
+	};
+
+	vi2s3: vi2s@3 {
+		compatible = "telechips,vir-i2s";
+		status = "disabled";
+	};
+
