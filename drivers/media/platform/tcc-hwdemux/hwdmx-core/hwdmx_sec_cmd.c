@@ -803,3 +803,9 @@ out:
 	return result;
 }
 EXPORT_SYMBOL(hwdmx_run_cipher_cmd);
+
+int hwdmx_set_smp(int dmxch, int enabled)
+{
+	/*dummy function*/
+	return 0;
+}

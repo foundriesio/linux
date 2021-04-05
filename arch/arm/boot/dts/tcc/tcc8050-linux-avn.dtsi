@@ -1557,8 +1557,14 @@
 	/* broadcast(ISDB-T/DAB/DMB) */
 
 	/* H/W Demux */
-	hwdemux: cmbus@19000000 {
+	hwdemux: cm_bus@19000000 {
 		 compatible = "telechips,hwdemux";
+		 reg = <0x0 0x19000000 0x0 0x1000>,
+			     <0x0 0x19001000 0x0 0x1000>,
+			     <0x0 0x19080000 0x0 0x10000>,
+			     <0x0 0x19090000 0x0 0x10000>,
+			     <0x0 0x19100000 0x0 0x10000>;
+		 reg-names = "mbox_0", "mbox_1", "code_mem", "data_mem", "config";
 		 status = "okay";
 	};
 
