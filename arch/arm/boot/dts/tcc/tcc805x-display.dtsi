@@ -556,5 +556,11 @@
 			};
 		};
 	};
+
+	lcd_port1_bl: lcd_port1_bl {};
+	lcd_port2_bl: lcd_port2_bl {};
+	lcd_port3_bl: lcd_port3_bl {};
+	lcd_port4_bl: lcd_port4_bl {};
+
 };
 

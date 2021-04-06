@@ -24,6 +24,8 @@
 		pinctrl-3 = <&lcd_port_blk_on1>;
 		pinctrl-4 = <&lcd_port_blk_off1>;
 		pinctrl-5 = <&lcd_port_reset_on1 &lcd_port_power_off1>;
+		/* binding external backlight driver */
+		backlight = <&lcd_port1_bl>;
 	};
 
 	drm_dpv14_1 {
@@ -36,6 +38,8 @@
 		pinctrl-3 = <&lcd_port_blk_on2>;
 		pinctrl-4 = <&lcd_port_blk_off2>;
 		pinctrl-5 = <&lcd_port_reset_on2 &lcd_port_power_off2>;
+		/* binding external backlight driver */
+		backlight = <&lcd_port2_bl>;
 	};
 
 	drm_tm123xdhp90 {
@@ -50,6 +54,8 @@
 		pinctrl-3 = <&lcd_port_blk_on2>;
 		pinctrl-4 = <&lcd_port_blk_off2>;
 		pinctrl-5 = <&lcd_port_reset_on2 &lcd_port_power_off2>;
+		/* binding external backlight driver */
+		backlight = <&lcd_port2_bl>;
 	};
 
 	tcc-drm-lcd {
@@ -85,5 +91,26 @@
 	tcc-drm-screen-share {
 		status = "okay";
 	};
+
+       lcd_port1_bl: lcd_port1_bl {
+               status = "okay";
+               compatible = "gpio-backlight"; /* use gpio backlight module */
+       };
+
+       lcd_port2_bl: lcd_port2_bl {
+               status = "okay";
+               compatible = "gpio-backlight";
+       };
+
+       lcd_port3_bl: lcd_port3_bl {
+               status = "disabled";
+               compatible = "gpio-backlight";
+       };
+
+       lcd_port4_bl: lcd_port4_bl {
+               status = "disabled";
+               compatible = "gpio-backlight";
+       };
+
 };
 

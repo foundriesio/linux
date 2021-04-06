@@ -48,6 +48,22 @@
 		mux-select = <2>;
 	};
 
+        lcd_port1_bl: lcd_port1_bl {
+                gpios = <&gph 6 0>;
+        };
+
+        lcd_port2_bl: lcd_port2_bl {
+                gpios = <&gph 7 0>;
+        };
+
+        lcd_port3_bl: lcd_port3_bl {
+                gpios = <&gpmb 29 0>;
+        };
+
+        lcd_port4_bl: lcd_port4_bl {
+                gpios = <&gpc 21 0>;
+        };
+
 	vqmmc_emmc: vqmmc_emmc {
 		compatible = "regulator-fixed";
 		regulator-name = "vqmmc_emmc";

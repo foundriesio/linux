@@ -40,6 +40,14 @@
 		mux-select = <2>;
 	};
 
+	lcd_port1_bl: lcd_port1_bl {
+		gpios = <&gpma 26 0>;
+	};
+
+	lcd_port2_bl: lcd_port2_bl {
+		gpios = <&gpma 27 0>;
+	};
+
 	vqmmc_emmc: vqmmc_emmc {
 		compatible = "regulator-fixed";
 		regulator-name = "vqmmc_emmc";
