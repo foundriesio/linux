@@ -157,6 +157,7 @@ ingenic	Ingenic Semiconductor
 innolux	Innolux Corporation
 inside-secure	INSIDE Secure
 intel	Intel Corporation
+intersil	Intersil
 intercontrol	Inter Control Group
 invensense	InvenSense Inc.
 inversepath	Inverse Path

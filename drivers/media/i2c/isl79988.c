@@ -119,7 +119,7 @@ struct v4l2_dv_timings isl79988_dv_timings = {
 		.width		= WIDTH,
 		.height		= HEIGHT,
 		.interlaced	= V4L2_DV_INTERLACED,
-		.polarities	= 0,//V4L2_DV_XSYNC_POS_POL,
+		.polarities	= 0,/* V4L2_DV_VSYNC_POS_POL */
 	},
 };
 
@@ -128,8 +128,8 @@ static u32 isl79988_codes[] = {
 };
 
 struct v4l2_mbus_config isl79988_mbus_config = {
-	.type = V4L2_MBUS_BT656,
-	.flags =
+	.type	= V4L2_MBUS_BT656,
+	.flags	=
 		V4L2_MBUS_DATA_ACTIVE_LOW |
 		V4L2_MBUS_PCLK_SAMPLE_FALLING |
 		V4L2_MBUS_VSYNC_ACTIVE_LOW |
@@ -236,7 +236,7 @@ static int isl79988_set_power(struct v4l2_subdev *sd, int on)
 	struct power_sequence	*gpio	= &dev->gpio;
 
 	if (on) {
-		// port configuration
+		/* port configuration */
 		if (dev->gpio.pwr_port > 0) {
 			gpio_direction_output(dev->gpio.pwr_port,
 				dev->gpio.pwr_value);
@@ -259,13 +259,13 @@ static int isl79988_set_power(struct v4l2_subdev *sd, int on)
 				gpio_get_value(dev->gpio.rst_port));
 		}
 
-		// power-up sequence
+		/* power-up sequence */
 		if (dev->gpio.rst_port > 0) {
 			gpio_set_value_cansleep(gpio->rst_port, 1);
 			msleep(20);
 		}
 	} else {
-		// power-down sequence
+		/* power-down sequence */
 		if (dev->gpio.rst_port > 0) {
 			gpio_set_value_cansleep(gpio->rst_port, 0);
 			msleep(20);

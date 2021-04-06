@@ -6,7 +6,7 @@ Required properties:
 
 - status     : disable or enable the device node
 - compatible : property name that conveys the platform architecture identifiers,
-               as 'adi,isl79988'
+               as 'intersil,isl79988'
 - reg        : I2C slave address
 - cifport    : specifies CIF port
 - rst-gpios  : specifies reset pin number
@@ -16,7 +16,7 @@ example
 -------
 	isl79988: isl79988 {
 		status		= "okay";
-		compatible	= "adi,isl79988";
+		compatible	= "intersil,isl79988";
 		pinctrl-names	= "default";
 		pinctrl-0	= <&cam0_clk &cam0_data_8bit>;
 		cifport		= <0>;
