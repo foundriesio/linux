@@ -295,11 +295,13 @@ static int tcc_i2s_set_dai_fmt(struct snd_soc_dai *dai, unsigned int fmt)
 					tcc_dai_set_i2s_tdm_mode(
 						i2s->dai_reg,
 						(uint32_t) i2s->tdm_slots,
+						(uint32_t) i2s->tdm_slot_width,
 						(bool) i2s->tdm_late_mode);
 				} else{
 					tcc_dai_set_cirrus_tdm_mode(
 						i2s->dai_reg,
 						(uint32_t) i2s->tdm_slots,
+						(uint32_t) i2s->tdm_slot_width,
 						(bool) i2s->tdm_late_mode);
 				}
 		} else {
@@ -886,11 +888,12 @@ static int tcc_i2s_hw_params(
 					ret = -EINVAL;
 					break;
 				}
+
+				tcc_dai_set_dsp_tdm_word_len(
+						i2s->dai_reg,
+						fmt_bitwidth);
 #if defined(PCM_INTERFACE)
 				if (i2s->tdm_pcm_mode) {
-					tcc_dai_set_dsp_pcm_word_len(
-							i2s->dai_reg,
-							fmt_bitwidth);
 					tcc_dai_set_dsp_tdm_mode_valid_data(
 							i2s->dai_reg,
 							i2s->tdm_slots,
