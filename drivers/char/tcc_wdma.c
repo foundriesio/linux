@@ -1178,6 +1178,289 @@ static int tcc_wdma_parse_dt(struct platform_device *pdev,
 
 }
 
+/*
+ * wdma screen capture
+ */
+static int wdma_screen_capture(unsigned int PmapType, char *Capture)
+{
+	int ret = 0;
+	struct miscdevice *misc;
+	struct tcc_wdma_dev *wdma_data;
+	struct pmap pmap_fb_video;
+	struct file *filp;
+
+	struct lcd_panel *panel;
+	struct VIOC_WDMA_IMAGE_INFO_Type ImageCfg;
+	unsigned int base_addr = 0, Wmix_Height = 0, Wmix_Width = 0;
+	unsigned int DDevice = 0;
+	int  dd_rgb = 0;
+	int addr_Y, addr_U, addr_V;
+	struct DisplayBlock_Info DDinfo;
+
+	struct file *filp_mem;
+	unsigned char *image_addr;
+	char pName[60]={0,};
+	mm_segment_t oldfs;
+
+	// Open wdma device
+	filp = filp_open("/dev/wdma_drv@0", O_RDWR, S_IRUSR|S_IWUSR); // Use /dev/wdma_drv@0
+	if(IS_ERR(filp))
+	{
+		pr_info("[INF][WDMA] %s can't open wdma device\n", __func__);
+		return -1;
+	}
+
+	//Set Image Info
+	misc = (struct miscdevice *)filp->private_data;
+	wdma_data = dev_get_drvdata(misc->parent);
+	if(PmapType == 1)
+	{
+		pmap_get_info("video", &pmap_fb_video);
+	}
+	else
+	{
+		pmap_get_info("fb_video", &pmap_fb_video);
+	}
+
+    memset((char *)&ImageCfg, 0x00, sizeof(ImageCfg));
+    ImageCfg.TargetWidth = 1920; // <- LCD width
+    ImageCfg.TargetHeight = 720; // <- LCD height
+    ImageCfg.BaseAddress = pmap_fb_video.base; // <- physical address of the buffer to store the captured image.
+    ImageCfg.ImgFormat = 0xC;  // Do not change (0x0C=ARGB888)
+
+	mutex_lock(&wdma_data->io_mutex);
+
+	if (wdma_data->block_operating) {
+		wdma_data->block_waiting = 1;
+		ret = wait_event_interruptible_timeout(
+			wdma_data->cmd_wq,
+			wdma_data->block_operating == 0,
+			msecs_to_jiffies(200));
+		if (ret <= 0) {
+			wdma_data->block_operating = 0;
+			pr_info("[INF][WDMA] ret: %d : wdma 0 timed_out block_operation:%d!! cmd_count:%d\n",
+				ret, wdma_data->block_waiting,
+				wdma_data->cmd_count);
+		}
+		ret = 0;
+	}
+
+	if (ret >= 0) {
+		if (wdma_data->block_operating >= 1) {
+			pr_info("[INF][WDMA] wdma driver :: block_operating(%d) - block_waiting(%d) - cmd_count(%d) - poll_count(%d)!!!\n",
+				wdma_data->block_operating,
+				wdma_data->block_waiting,
+				wdma_data->cmd_count,
+				wdma_data->poll_count);
+		}
+
+		wdma_data->block_waiting = 0;
+		wdma_data->block_operating = 1;
+
+		// Screen Capture
+		panel = tccfb_get_panel();
+
+		ImageCfg.Interlaced = 0;
+		ImageCfg.ContinuousMode = 0;
+		ImageCfg.SyncMode = 0;
+		ImageCfg.ImgSizeWidth = panel->xres;
+		ImageCfg.ImgSizeHeight = panel->yres;
+
+		base_addr = (unsigned int)ImageCfg.BaseAddress;
+
+		tccxxx_GetAddress(ImageCfg.ImgFormat, (unsigned int)base_addr,
+			ImageCfg.TargetWidth, ImageCfg.TargetHeight, 0, 0,
+			&addr_Y, &addr_U, &addr_V);
+
+		if (ImageCfg.ImgFormat == TCC_LCDC_IMG_FMT_YUV420SP
+			|| ImageCfg.ImgFormat == TCC_LCDC_IMG_FMT_RGB888) {
+			addr_U = GET_ADDR_YUV42X_spU(base_addr, ImageCfg.TargetWidth,
+				ImageCfg.TargetHeight);
+
+			if (ImageCfg.ImgFormat == TCC_LCDC_IMG_FMT_YUV420SP) {
+				addr_V = GET_ADDR_YUV420_spV(addr_U,
+					ImageCfg.TargetWidth, ImageCfg.TargetHeight);
+			} else {
+				addr_V = GET_ADDR_YUV422_spV(addr_U,
+					ImageCfg.TargetWidth, ImageCfg.TargetHeight);
+			}
+		}
+		ImageCfg.BaseAddress = addr_Y;
+		ImageCfg.BaseAddress1 = addr_U;
+		ImageCfg.BaseAddress2 = addr_V;
+
+		VIOC_WMIX_GetSize(wdma_data->wmix.reg, &Wmix_Width, &Wmix_Height);
+
+		DDevice = VIOC_DISP_Get_TurnOnOff(wdma_data->disp_info.virt_addr);
+		if ((Wmix_Width == 0) || (Wmix_Height == 0) || (DDevice == 0)) {
+			wdma_data->block_operating = 0;
+			pr_err("[ERR][WDMA] %s W:%d H:%d DD-Power:%d\n", __func__,
+				Wmix_Width, Wmix_Height, DDevice);
+			return 0;
+		}
+
+		dprintk("src  w:%d h:%d base:0x%08x\n", ImageCfg.ImgSizeWidth,
+			ImageCfg.ImgSizeHeight, ImageCfg.BaseAddress);
+		dprintk("dest w:%d h:%d fb_dd_num:%d\n", ImageCfg.TargetWidth,
+			ImageCfg.TargetHeight, wdma_data->fb_dd_num);
+		dprintk("wmixer size %d %d :base1:0x%08x base2:0x%08x\n", Wmix_Width,
+			Wmix_Height, ImageCfg.BaseAddress1, ImageCfg.BaseAddress2);
+		dprintk("ImgFormat:%d  set effect : hue:%d, bright:%d contrast:%d\n",
+			ImageCfg.ImgFormat, ImageCfg.Hue, ImageCfg.Bright,
+			ImageCfg.Contrast);
+
+		if (wdma_data->sc.reg) {
+			VIOC_SC_SetBypass(wdma_data->sc.reg, 0);
+			VIOC_SC_SetDstSize(wdma_data->sc.reg, ImageCfg.TargetWidth,
+				ImageCfg.TargetHeight);
+			VIOC_SC_SetOutSize(wdma_data->sc.reg, ImageCfg.TargetWidth,
+				ImageCfg.TargetHeight);
+			VIOC_SC_SetOutPosition(wdma_data->sc.reg, 0, 0);
+			VIOC_CONFIG_PlugIn(wdma_data->sc.id, wdma_data->wdma.id);
+			VIOC_SC_SetUpdate(wdma_data->sc.reg);
+		}
+
+		spin_lock_irq(&(wdma_data->cmd_lock));
+
+		if (wdma_data->fb_dd_num) {
+			VIOC_CONFIG_WMIXPath(VIOC_RDMA04, 1 /* Mixing */);
+			VIOC_CONFIG_WMIXPath(VIOC_RDMA07, 1 /* Mixing */);
+		} else {
+			VIOC_CONFIG_WMIXPath(VIOC_RDMA00, 1 /* Mixing */);
+			VIOC_CONFIG_WMIXPath(VIOC_RDMA03, 1 /* Mixing */);
+		}
+
+		// check display device format
+		VIOC_DISP_GetDisplayBlock_Info(wdma_data->disp_info.virt_addr,
+			&DDinfo);
+		dd_rgb = VIOC_DISP_FMT_isRGB(DDinfo.pCtrlParam.pxdw);
+
+		if (ImageCfg.ImgFormat <= TCC_LCDC_IMG_FMT_ARGB6666_3) {
+			if (dd_rgb) {
+				VIOC_WDMA_SetImageY2RMode(wdma_data->wdma.reg, 0x2);
+				VIOC_WDMA_SetImageY2REnable(wdma_data->wdma.reg, 0);
+				VIOC_WDMA_SetImageR2YEnable(wdma_data->wdma.reg, 0);
+			} else {
+				VIOC_WDMA_SetImageY2RMode(wdma_data->wdma.reg, 0x2);
+				VIOC_WDMA_SetImageY2REnable(wdma_data->wdma.reg, 1);
+				VIOC_WDMA_SetImageR2YEnable(wdma_data->wdma.reg, 0);
+			}
+		} else {
+			if (dd_rgb) {
+				VIOC_WDMA_SetImageR2YMode(wdma_data->wdma.reg, 0x2);
+				VIOC_WDMA_SetImageR2YEnable(wdma_data->wdma.reg, 1);
+				VIOC_WDMA_SetImageY2REnable(wdma_data->wdma.reg, 0);
+			} else {
+				VIOC_WDMA_SetImageR2YMode(wdma_data->wdma.reg, 0x2);
+				VIOC_WDMA_SetImageR2YEnable(wdma_data->wdma.reg, 0);
+				VIOC_WDMA_SetImageY2REnable(wdma_data->wdma.reg, 0);
+			}
+		}
+
+		VIOC_WDMA_SetImageSize(wdma_data->wdma.reg, ImageCfg.TargetWidth,
+			ImageCfg.TargetHeight);
+		VIOC_WDMA_SetImageFormat(wdma_data->wdma.reg, ImageCfg.ImgFormat);
+		VIOC_WDMA_SetImageOffset(wdma_data->wdma.reg, ImageCfg.ImgFormat,
+			ImageCfg.TargetWidth);
+		VIOC_WDMA_SetImageBase(wdma_data->wdma.reg, ImageCfg.BaseAddress,
+			ImageCfg.BaseAddress1, ImageCfg.BaseAddress2);
+		VIOC_WDMA_SetImageRGBSwapMode(wdma_data->wdma.reg, 0);
+		#if defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC901X)
+		VIOC_WDMA_SetImageEnhancer(wdma_data->wdma.reg, ImageCfg.Contrast,
+			ImageCfg.Bright, ImageCfg.Hue);
+		#endif
+		VIOC_WDMA_SetImageEnable(wdma_data->wdma.reg, ImageCfg.ContinuousMode);
+
+		spin_unlock_irq(&(wdma_data->cmd_lock));
+		wdma_data->vioc_intr->bits = (1 << VIOC_WDMA_INTR_EOFR);
+		vioc_intr_clear(wdma_data->vioc_intr->id, wdma_data->vioc_intr->bits);
+		vioc_intr_enable(wdma_data->irq, wdma_data->vioc_intr->id,
+			wdma_data->vioc_intr->bits);
+		ret = wait_event_interruptible_timeout(wdma_data->poll_wq,
+			wdma_data->block_operating == 0, msecs_to_jiffies(100));
+		if (ret <= 0) {
+			wdma_data->block_operating = 0;
+			pr_warn("[WAR][WDMA] time out: %d, Line: %d.\n", ret, __LINE__);
+		}
+
+		if (wdma_data->sc.reg)
+			VIOC_CONFIG_PlugOut(wdma_data->sc.id);
+
+		if (ret >= 0)
+			wdma_data->block_operating = 0;
+		ret = 0;
+	}
+
+	mutex_unlock(&wdma_data->io_mutex);
+	filp_close(filp, NULL);
+
+	//Write to the input path
+	strncpy(pName, Capture, strlen(Capture));
+	oldfs = get_fs();
+	set_fs(get_ds());
+
+	filp_mem = filp_open(pName, O_CREAT | O_WRONLY, S_IRUSR|S_IWUSR );
+	if(IS_ERR(filp_mem))
+	{
+		pr_info("[INF][WDMA] %s can't open %s\n", __func__, pName);
+		return -1;
+	}
+
+	image_addr = (unsigned char *)ioremap_nocache(ImageCfg.BaseAddress, PAGE_ALIGN(ImageCfg.TargetWidth*ImageCfg.TargetHeight*4));
+	ret = vfs_write(filp_mem, image_addr, ImageCfg.TargetWidth*ImageCfg.TargetHeight*4, &filp_mem->f_pos);
+	vfs_fsync(filp_mem, NULL);
+
+	iounmap((void*)image_addr);
+	set_fs(oldfs);
+	filp_close(filp_mem, NULL);
+
+	return ret;
+}
+
+/*
+ * sys-fs
+ */
+static char screencapture[60] = {0,};
+struct device_attribute dev_attr_screen_capture;
+
+static ssize_t wdma_screen_capture_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	return sprintf(buf, "%s\n", screencapture);
+}
+
+static ssize_t wdma_screen_capture_store(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
+{
+	int ret = 0;
+
+	static unsigned int PmapType;
+
+	sscanf(buf, "%d %s", &PmapType, screencapture);
+	pr_info("[INF][WDMA] %s PmapType : %d, File to be saved : %s\n",__func__, PmapType, screencapture);
+
+	ret = wdma_screen_capture(PmapType, screencapture);
+
+	if(ret > 0)
+	{
+		pr_info("[INF][WDMA] %s File saved : %s\n",__func__, screencapture);
+	}
+	else
+	{
+		pr_info("[INF][WDMA] %s Capture failure\n",__func__);
+	}
+
+	return count;
+}
+DEVICE_ATTR(screen_capture, S_IRUGO | S_IWUSR, wdma_screen_capture_show, wdma_screen_capture_store);
+
+void wdma_attr_create(struct platform_device *pdev)
+{
+	device_create_file(&pdev->dev, &dev_attr_screen_capture);
+}
+
+void wdma_attr_remove(struct platform_device *pdev)
+{
+	device_remove_file(&pdev->dev, &dev_attr_screen_capture);
+}
 
 static struct file_operations tcc_wdma_fops = {
 	.owner = THIS_MODULE,
@@ -1266,6 +1549,7 @@ static int  tcc_wdma_probe(struct platform_device *pdev)
 	init_waitqueue_head(&(wdma_data->cmd_wq));
 
 	platform_set_drvdata(pdev, (void *)wdma_data);
+	wdma_attr_create(pdev);
 
 	return 0;
 
