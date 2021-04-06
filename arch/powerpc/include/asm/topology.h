@@ -44,7 +44,6 @@ extern void __init dump_numa_cpu_topology(void);
 
 extern int sysfs_add_device_to_node(struct device *dev, int nid);
 extern void sysfs_remove_device_from_node(struct device *dev, int nid);
-extern int numa_update_cpu_topology(bool cpus_locked);
 
 static inline void update_numa_cpu_lookup_table(unsigned int cpu, int node)
 {
@@ -82,10 +81,8 @@ static inline void sysfs_remove_device_from_node(struct device *dev,
 {
 }
 
-static inline int numa_update_cpu_topology(bool cpus_locked)
-{
-	return 0;
-}
+static inline void update_numa_cpu_lookup_table(unsigned int cpu, int node) {}
+
 static inline int of_drconf_to_nid_single(struct drmem_lmb *lmb)
 {
 	return first_online_node;
@@ -94,37 +91,13 @@ static inline int of_drconf_to_nid_single(struct drmem_lmb *lmb)
 #endif /* CONFIG_NUMA */
 
 #if defined(CONFIG_NUMA) && defined(CONFIG_PPC_SPLPAR)
-extern int start_topology_update(void);
-extern int stop_topology_update(void);
-extern int prrn_is_enabled(void);
 extern int find_and_online_cpu_nid(int cpu);
-extern int timed_topology_update(int nsecs);
-extern void __init shared_proc_topology_init(void);
 #else
-static inline int start_topology_update(void)
-{
-	return 0;
-}
-static inline int stop_topology_update(void)
-{
-	return 0;
-}
-static inline int prrn_is_enabled(void)
-{
-	return 0;
-}
 static inline int find_and_online_cpu_nid(int cpu)
 {
 	return 0;
 }
-static inline int timed_topology_update(int nsecs)
-{
-	return 0;
-}
 
-#ifdef CONFIG_SMP
-static inline void shared_proc_topology_init(void) {}
-#endif
 #endif /* CONFIG_NUMA && CONFIG_PPC_SPLPAR */
 
 #include <asm-generic/topology.h>
@@ -146,7 +119,6 @@ int get_physical_package_id(int cpu);
 #define topology_core_cpumask(cpu)	(per_cpu(cpu_core_map, cpu))
 #define topology_core_id(cpu)		(cpu_to_core_id(cpu))
 
-int dlpar_cpu_readd(int cpu);
 #endif
 #endif
 

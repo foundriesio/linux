@@ -403,7 +403,7 @@ static ssize_t name_show(struct device *dev,
 	struct platform_device *ofdev;
 
 	ofdev = to_platform_device(dev);
-	return sprintf(buf, "%s\n", ofdev->dev.of_node->name);
+	return sprintf(buf, "%pOFn\n", ofdev->dev.of_node);
 }
 
 static ssize_t modalias_show(struct device *dev,
