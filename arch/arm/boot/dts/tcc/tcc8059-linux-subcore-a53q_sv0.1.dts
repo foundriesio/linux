@@ -1646,6 +1646,17 @@
 		     <0x1b942c00 0x400>,
 		     <0x1b940000 0x400>;
 	 };
+        lcd_port1_bl: lcd_port1_bl {};
+
+        lcd_port2_bl: lcd_port2_bl {
+                status = "okay";
+                compatible = "gpio-backlight";
+                gpios = <&gpma 27 0>;
+	};
+
+        lcd_port3_bl: lcd_port3_bl {};
+
+        lcd_port4_bl: lcd_port4_bl {};
 
 	/* Panel for Framebuffer driver */
 	fb_tm123xdhp90:fb_tm123xdhp90 {
@@ -1668,12 +1679,13 @@
 
 		pinctrl-names = "default", "pwr_on_1", "pwr_on_2", "blk_on",
 			"blk_off", "power_off";
-		pinctrl-0 = <&lcd_port_default1>;
-		pinctrl-1 = <&lcd_port_power_on1>;
-		pinctrl-2 = <&lcd_port_reset_off1>;
-		pinctrl-3 = <&lcd_port_blk_on1>;
-		pinctrl-4 = <&lcd_port_blk_off1>;
-		pinctrl-5 = <&lcd_port_reset_on1 &lcd_port_power_off1>;
+		pinctrl-0 = <&lcd_port_default2>;
+		pinctrl-1 = <&lcd_port_power_on2>;
+		pinctrl-2 = <&lcd_port_reset_off2>;
+		pinctrl-3 = <&lcd_port_blk_on2>;
+		pinctrl-4 = <&lcd_port_blk_off2>;
+		pinctrl-5 = <&lcd_port_reset_on2 &lcd_port_power_off2>;
+		backlight = <&lcd_port2_bl>;
 		display-timings {
 			native-mode = <&timing_fb_lvds_0>;
 			timing_fb_lvds_0: 1920x720p60 {
@@ -3896,76 +3908,76 @@
 	};
 
 	/* LCD POWER PORT 1 */
-	lcd_port_default0:lcd_port_default0 {
+	lcd_port_default1:lcd_port_default1 {
 		telechips,pins = "gpb-17", "gpb-18", "gpma-26";
 		telechips,pin-function = <0>;
 		telechips,no-pull;
 	};
 
-	lcd_port_power_on0:lcd_port_power_on0 {
+	lcd_port_power_on1:lcd_port_power_on1 {
 		telechips,pins = "gpb-17";
 		telechips,pin-function = <0>;
 		telechips,output-high;
 	};
-	lcd_port_power_off0:lcd_port_power_off0 {
+	lcd_port_power_off1:lcd_port_power_off1 {
 		telechips,pins = "gpb-17";
 		telechips,pin-function = <0>;
 		telechips,output-low;
 	};
-	lcd_port_reset_on0:lcd_port_reset_on0 {
+	lcd_port_reset_on1:lcd_port_reset_on1 {
 		telechips,pins = "gpb-18";
 		telechips,pin-function = <0>;
 		telechips,output-low;
 	};
-	lcd_port_reset_off0:lcd_port_reset_off0 {
+	lcd_port_reset_off1:lcd_port_reset_off1 {
 		telechips,pins = "gpb-18";
 		telechips,pin-function = <0>;
 		telechips,output-high;
 	};
-	lcd_port_blk_on0:lcd_port_blk_on0 {
+	lcd_port_blk_on1:lcd_port_blk_on1 {
 		telechips,pins = "gpma-26";
 		telechips,pin-function = <0>;
 		telechips,output-high;
 	};
-	lcd_port_blk_off0:lcd_port_blk_off0 {
+	lcd_port_blk_off1:lcd_port_blk_off1 {
 		telechips,pins = "gpma-26";
 		telechips,pin-function = <0>;
 		telechips,output-low;
 	};
 
 	/* LCD POWER PORT 2 */
-	lcd_port_default1:lcd_port_default1 {
+	lcd_port_default2:lcd_port_default2 {
 		telechips,pins = "gpc-8", "gpc-9", "gpma-27";
 		telechips,pin-function = <0>;
 		telechips,no-pull;
 	};
 	/* LVDS power on */
-	lcd_port_power_on1:lcd_port_power_on1 {
+	lcd_port_power_on2:lcd_port_power_on2 {
 		telechips,pins = "gpc-8";
 		telechips,pin-function = <0>;
 		telechips,output-high;
 	};
-	lcd_port_power_off1:lcd_port_power_off1 {
+	lcd_port_power_off2:lcd_port_power_off2 {
 		telechips,pins = "gpc-8";
 		telechips,pin-function = <0>;
 		telechips,output-low;
 	};
-	lcd_port_reset_on1:lcd_port_reset_on1 {
+	lcd_port_reset_on2:lcd_port_reset_on2 {
 		telechips,pins = "gpc-9";
 		telechips,pin-function = <0>;
 		telechips,output-low;
 	};
-	lcd_port_reset_off1:lcd_port_reset_off1 {
+	lcd_port_reset_off2:lcd_port_reset_off2 {
 		telechips,pins = "gpc-9";
 		telechips,pin-function = <0>;
 		telechips,output-high;
 	};
-	lcd_port_blk_on1:lcd_port_blk_on1 {
+	lcd_port_blk_on2:lcd_port_blk_on2 {
 		telechips,pins = "gpma-27";
 		telechips,pin-function = <0>;
 		telechips,output-high;
 	};
-	lcd_port_blk_off1:lcd_port_blk_off1 {
+	lcd_port_blk_off2:lcd_port_blk_off2 {
 		telechips,pins = "gpma-27";
 		telechips,pin-function = <0>;
 		telechips,output-low;
