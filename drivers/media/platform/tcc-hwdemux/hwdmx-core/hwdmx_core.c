@@ -33,8 +33,10 @@
 #include "tcc_hwdemux_tsif_rx.h"
 #include "HWDemux_bin.h"
 #if defined(CONFIG_ARCH_TCC805X)
+#include <linux/clk.h>
 #define USE_HW_FW
 struct HWDMX_HANDLE hHWDMX;
+struct clk *cmbus_clk;
 #endif
 
 #define HWDMX_DEV_NAME "tcc_hwdmx"
@@ -328,33 +330,18 @@ int hwdmx_parse_device_tree(struct platform_device *pdev)
 	int idxReg = 0;
 	int ret = 0;
 
-	idxReg = of_property_match_string(main_node, "reg-names", "mbox_0");
-	if (idxReg >= 0) {
-		hHWDMX.mbox0_base = (void __iomem *)of_iomap(main_node, idxReg);
-	} else {
+	cmbus_clk = of_clk_get(main_node, 0);
+	if(IS_ERR(cmbus_clk)){
+		pr_err("[ERR][HWDMX]cmbus clk parsing failed\n");
 		ret = -ENXIO;
 		goto goto_return;
-	}
-
-	idxReg = of_property_match_string(main_node, "reg-names", "mbox_1");
-	if (idxReg >= 0) {
-		hHWDMX.mbox1_base = (void __iomem *)of_iomap(main_node, idxReg);
-	} else {
-		ret = -ENXIO;
-		goto goto_return;
-	}
+	}else{
+		pr_info("[INFO][HWDMX]cmbus clk parsing ok\n");	
+	}	
 
 	idxReg = of_property_match_string(main_node, "reg-names", "code_mem");
 	if (idxReg >= 0) {
 		hHWDMX.code_base = (void __iomem *)of_iomap(main_node, idxReg);
-	} else {
-		ret = -ENXIO;
-		goto goto_return;
-	}
-
-	idxReg = of_property_match_string(main_node, "reg-names", "data_mem");
-	if (idxReg >= 0) {
-		hHWDMX.data_base = (void __iomem *)of_iomap(main_node, idxReg);
 	} else {
 		ret = -ENXIO;
 		goto goto_return;
@@ -369,9 +356,8 @@ int hwdmx_parse_device_tree(struct platform_device *pdev)
 	}
 
 	pr_err(
-	"[ERR][HWDMX] CODE(0x%08x), MBOX0(0x%08x), MBOX1(0x%08x), CFG(0x%08x)\n",
-	(unsigned int)hHWDMX.code_base, (unsigned int)hHWDMX.mbox0_base,
-	(unsigned int)hHWDMX.mbox1_base, (unsigned int)hHWDMX.cfg_base);
+	"[INFO][HWDMX] CODE(0x%08x), CFG(0x%08x)\n",
+	(unsigned int)hHWDMX.code_base, (unsigned int)hHWDMX.cfg_base);
 
 goto_return:
 	return ret;
@@ -382,6 +368,7 @@ static int hwdmx_probe(struct platform_device *pdev)
 {
 	int retval;
 #if defined(USE_HW_FW)
+	int ret = 0;
 	const char *fw_data = NULL;
 	unsigned int fw_size = 0;
 #endif
@@ -398,7 +385,7 @@ static int hwdmx_probe(struct platform_device *pdev)
 	class = class_create(THIS_MODULE, HWDMX_DEV_NAME);
 
 	dma_vaddr =
-	    dma_alloc_writecombine(&pdev->dev, HWDMX_RD_BUF_SIZE, &dma_paddr,
+	     dma_alloc_coherent(&pdev->dev, HWDMX_RD_BUF_SIZE, &dma_paddr,
 				   GFP_KERNEL);
 	if (dma_vaddr == NULL) {
 		pr_err("[ERROR][HWDMX] DMA alloc error.\n");
@@ -409,8 +396,15 @@ static int hwdmx_probe(struct platform_device *pdev)
 
 #if defined(USE_HW_FW)
 	// Parse the device tree
-	hwdmx_parse_device_tree(pdev);
-
+	retval = hwdmx_parse_device_tree(pdev);
+	if(retval == 0){
+		ret = IS_ERR_OR_NULL(cmbus_clk);
+		if(!ret){
+			clk_prepare_enable(cmbus_clk);
+			clk_set_rate(cmbus_clk, 333333333);
+			pr_info("[INFO][HWDMX] cmbus clk setting ok\n");
+		}
+	}
 	// Load firmware
 	fw_data = HWDemux_bin;
 	fw_size = sizeof(HWDemux_bin);
@@ -437,7 +431,7 @@ static int hwdmx_remove(struct platform_device *pdev)
 	pr_info("[INFO][HWDMX] %s\n", __func__);
 
 	if (dma_vaddr != NULL) {
-		dma_free_writecombine(&pdev->dev, HWDMX_RD_BUF_SIZE, dma_vaddr,
+		dma_free_coherent(&pdev->dev, HWDMX_RD_BUF_SIZE, dma_vaddr,
 				      dma_paddr);
 		dma_vaddr = NULL;
 	}

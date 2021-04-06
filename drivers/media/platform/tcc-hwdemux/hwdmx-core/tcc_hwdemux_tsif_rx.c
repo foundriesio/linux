@@ -83,8 +83,10 @@ struct tcc_tsif_pri_handle {
 #if defined(USE_REV_MEMORY)
 	struct pmap pmap_tsif;
 	void *mem_base;
+#if defined(CONFIG_ARCH_TCC899X)
 	struct pmap pmap_secure_tsif;
 	void *virt_secure_tsif;
+#endif	
 #endif
 	struct tea_dma_buf *static_dma_buffer[HWDMX_NUM];
 	struct tca_tsif_port_config port_cfg[HWDMX_NUM];
@@ -343,19 +345,15 @@ static int __maybe_unused rx_dma_buffer_alloc(int devid,
 {
 	dma->buf_size = TSIF_DMA_SIZE;
 	dma->v_addr =
-	    dma_alloc_writecombine(tsif_ex_pri.dev[devid], dma->buf_size,
-				   &dma->dma_addr, GFP_KERNEL);
-
+		dma_alloc_coherent(tsif_ex_pri.dev[devid], dma->buf_size, &dma->dma_addr, GFP_KERNEL);
 	if (dma->v_addr == NULL)
 		return -1;
 
 	dma->buf_sec_size = SECTION_DMA_SIZE;
-	dma->v_sec_addr =
-	    dma_alloc_writecombine(tsif_ex_pri.dev[devid], dma->buf_sec_size,
-				   &dma->dma_sec_addr, GFP_KERNEL);
+	dma->v_sec_addr = dma_alloc_coherent(
+		tsif_ex_pri.dev[devid], dma->buf_sec_size, &dma->dma_sec_addr, GFP_KERNEL);
 	if (dma->v_sec_addr == NULL) {
-		dma_free_writecombine(tsif_ex_pri.dev[devid], dma->buf_size,
-				      dma->v_addr, dma->dma_addr);
+		dma_free_coherent(tsif_ex_pri.dev[devid], dma->buf_size, dma->v_addr, dma->dma_addr);
 		return -1;
 	}
 
@@ -384,11 +382,11 @@ static int __maybe_unused rx_dma_buffer_free(int devid, struct tea_dma_buf *dma)
 	dma->buf_sec_size);
 
 	if (dma->v_addr)
-		dma_free_writecombine(tsif_ex_pri.dev[devid], dma->buf_size,
+		dma_free_coherent(tsif_ex_pri.dev[devid], dma->buf_size,
 				      dma->v_addr, dma->dma_addr);
 
 	if (dma->v_sec_addr)
-		dma_free_writecombine(tsif_ex_pri.dev[devid], dma->buf_sec_size,
+		dma_free_coherent(tsif_ex_pri.dev[devid], dma->buf_sec_size,
 				      dma->v_sec_addr, dma->dma_sec_addr);
 
 	return 0;
@@ -408,11 +406,18 @@ static int rx_dma_alloc_buffer(int devid)
 		return -ENOMEM;
 	}
 #ifdef USE_REV_MEMORY
+#if defined(CONFIG_ARCH_TCC899X)
 	if (tsif_ex_pri.mem_base == NULL
 	|| tsif_ex_pri.virt_secure_tsif == NULL) {
 		ret = -ENOMEM;
 		goto err;
 	}
+#else
+	if (tsif_ex_pri.mem_base == NULL) {
+		ret = -ENOMEM;
+		goto err;
+	}
+#endif
 
 	os = SECTION_DMA_SIZE;
 
@@ -434,12 +439,13 @@ static int rx_dma_alloc_buffer(int devid)
 		tsif_ex_pri.mem_base + os;
 	tsif_ex_pri.static_dma_buffer[devid]->dma_addr =
 		tsif_ex_pri.pmap_tsif.base + os;
+#if defined(CONFIG_ARCH_TCC899X)
 	/* Secure ts buffer */
 	tsif_ex_pri.static_dma_buffer[devid]->v_secure_addr =
 		tsif_ex_pri.virt_secure_tsif + os;
 	tsif_ex_pri.static_dma_buffer[devid]->secure_dma_addr =
 		tsif_ex_pri.pmap_secure_tsif.base + os;
-
+#endif
 	/* sec buffer: all demux share one buffer */
 	tsif_ex_pri.static_dma_buffer[devid]->buf_sec_size = SECTION_DMA_SIZE;
 	tsif_ex_pri.static_dma_buffer[devid]->v_sec_addr = tsif_ex_pri.mem_base;
@@ -1151,6 +1157,7 @@ int tcc_hwdmx_tsif_rx_init(struct device *dev)
 	/* This function returns 1 on success, and 0 on
 	 * failure. Weird function design.
 	 */
+#if defined(CONFIG_ARCH_TCC899X)
 	if (pmap_get_info("secure_tsif", &tsif_ex_pri.pmap_secure_tsif) != 1) {
 		ret = -EFAULT;
 		goto out;
@@ -1167,6 +1174,7 @@ int tcc_hwdmx_tsif_rx_init(struct device *dev)
 		"[INFO][HWDMX] secure tsif: pmap(PA: 0x%08x, VA: 0x%px, SIZE: %d)\n",
 		tsif_ex_pri.pmap_secure_tsif.base, tsif_ex_pri.virt_secure_tsif,
 		tsif_ex_pri.pmap_secure_tsif.size);
+#endif
 
 #endif /* USE_REV_MEMORY */
 
@@ -1188,11 +1196,15 @@ int tcc_hwdmx_tsif_rx_deinit(struct device *dev)
 
 #ifdef USE_REV_MEMORY
 	if (tsif_ex_pri.mem_base == NULL)
-		ret = -EFAULT;
+		ret = -EFAULT;	
 	iounmap(tsif_ex_pri.mem_base);
+	
+#if defined(CONFIG_ARCH_TCC899X)	
 	if (tsif_ex_pri.virt_secure_tsif == NULL)
 		ret = -EFAULT;
 	iounmap(tsif_ex_pri.virt_secure_tsif);
+#endif
+
 #endif /* USE_REV_MEMORY */
 
 	mutex_destroy(&(tsif_ex_pri.mutex));

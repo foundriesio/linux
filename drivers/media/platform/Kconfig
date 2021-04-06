@@ -682,3 +682,9 @@ config ISDBT_DEMUX
     	depends on (ARCH_TCC897X) && ISDBT_CONTROL
 	help
 	  Say Y here if you want Telechips isdbt demux drivers.
+
+config HWDEMUX_TEST
+         tristate "Telechips hardware demux test"
+         depends on (ARCH_TCC805X) && PLATFORM_HWDEMUX && HWDEMUX_ADAPTOR
+         help
+           Say Y here if you want Telechips hardware demux test.

@@ -22,13 +22,10 @@
 #include <linux/delay.h>
 #include <linux/dma-mapping.h>
 
-#include "tca_hwdemux_tsif.h"
-#if defined(CONFIG_ARCH_TCC802X)
-#include "../tcc_dxb_drv/HWDemux_bin_802x.h"
-#else
-#include "../tcc_dxb_drv/HWDemux_bin.h"
-#endif
-#include "tca_hwdemux_test_pkt.h"
+#include "hwdmx_cmd.h"
+#include "hwdmx_test.h"
+#include "tca_hwdemux_param.h"
+
 
 #define HWDMX_NUM (2)		// 4
 #define TS_PACKET_SIZE (188)
@@ -38,12 +35,12 @@
 static struct tcc_tsif_handle tTSIF[HWDMX_NUM];
 static struct tea_dma_buf tDMA[HWDMX_NUM];
 
-static unsigned char *Input_VAddr;
-static unsigned int Input_PAddr;
-static unsigned char *TSRev_VAddr;
-static unsigned int TSRev_PAddr;
-static unsigned char *SERev_VAddr;
-static unsigned int SERev_PAddr;
+static void *Input_VAddr;
+static dma_addr_t Input_PAddr;
+static void *TSRev_VAddr;
+static dma_addr_t TSRev_PAddr;
+static void *SERev_VAddr;
+static dma_addr_t SERev_PAddr;
 
 static char ReceivePacket[RECEIVE_SIZE];
 static char *pReceive;
@@ -101,11 +98,7 @@ static int tcc_hwdmx_test_callback(unsigned int dmxid, unsigned int ftype,
 			break;
 		}
 	default:{
-			pr_err
-			    ("[ERROR][HWDMX]
-			    Invalid parameter:
-			    Filter Type : %d\n",
-			     ftype);
+			pr_err("[ERR][HWDMX]Invalid Type : %d\n", ftype);
 			break;
 		}
 	}
@@ -166,23 +159,23 @@ static int TSFilterTest(struct tcc_tsif_handle *h)
 	// Add Filter
 	param.f_type = 1;	// HW_DEMUX_TS
 	param.f_pid = 0x333;
-	tca_tsif_add_filter(h, &param);
-	tca_tsif_set_pcrpid(h, 0x1ffe);
+	hwdmx_add_filter_cmd(h, &param);
+	hwdmx_set_pcrpid_cmd(h, 0x1ffe);
 
 	pReceive = ReceivePacket;
 	for (cc = 0; cc < 16; cc++) {
 		// Send Packet
 		MakeTSPacket(Input_VAddr, cc);
 		MakePCRPacket(Input_VAddr + TS_PACKET_SIZE, cc);
-		tca_tsif_input_internal(h->dmx_id, (unsigned int)Input_PAddr,
+		hwdmx_input_stream_cmd(h->dmx_id, (unsigned int)Input_PAddr,
 					TS_PACKET_SIZE * SEND_TS_CNT);
 	}
 	msleep(1000);
 	pReceive = 0;
 
 	// Remove Filter
-	tca_tsif_set_pcrpid(h, 0xffff);
-	tca_tsif_remove_filter(h, &param);
+	hwdmx_set_pcrpid_cmd(h, 0xffff);
+	hwdmx_remove_filter_cmd(h, &param);
 
 	// Check Packet
 	return CheckTSPacket(ReceivePacket);
@@ -230,20 +223,20 @@ static int SectionFilterTest(struct tcc_tsif_handle *h)
 	param.f_mask = &ucMask;
 	param.f_mode = &ucMode;
 	param.f_size = 1;
-	tca_tsif_add_filter(h, &param);
+	hwdmx_add_filter_cmd(h, &param);
 
 	pReceive = ReceivePacket;
 	for (cc = 0; cc < 16; cc++) {
 		// Send Packet
 		MakePATPacket(Input_VAddr + TS_PACKET_SIZE, cc);
-		tca_tsif_input_internal(h->dmx_id, (unsigned int)Input_PAddr,
+		hwdmx_input_stream_cmd(h->dmx_id, (unsigned int)Input_PAddr,
 					TS_PACKET_SIZE * SEND_TS_CNT);
 	}
 	msleep(1000);
 	pReceive = 0;
 
 	// Remove Filter
-	tca_tsif_remove_filter(h, &param);
+	hwdmx_remove_filter_cmd(h, &param);
 
 	// Check Packet
 	return CheckSectionPacket(ReceivePacket);
@@ -267,7 +260,7 @@ static int __init tca_hwdemux_test_start(void)
 	    (unsigned char *)dma_alloc_coherent(0, RECEIVE_SIZE * HWDMX_NUM,
 						&SERev_PAddr, GFP_KERNEL);
 
-	tca_tsif_set_interface(-1, 2);	// Set File Input
+	hwdmx_set_interface_cmd(-1, 2);
 
 	for (i = 0; i < HWDMX_NUM; i++) {
 		PrevOffset[i] = 0;
@@ -287,14 +280,12 @@ static int __init tca_hwdemux_test_start(void)
 		tDMA[i].v_sec_addr = SERev_VAddr + RECEIVE_SIZE * i;
 		tDMA[i].dma_sec_addr = SERev_PAddr + RECEIVE_SIZE * i;
 
-		h->fw_data = HWDemux_bin;
-		h->fw_size = sizeof(HWDemux_bin);
 		h->dma_mode = 1;
 		h->working_mode = 1;
 		h->dma_buffer = &tDMA[i];
 
-		tca_tsif_init(h);
-		tca_tsif_buffer_updated_callback(h, tcc_hwdmx_test_callback);
+		hwdmx_start_cmd(h);
+		hwdmx_buffer_updated_callback(h, tcc_hwdmx_test_callback);
 	}
 
 	for (i = 0; i < HWDMX_NUM; i++) {
@@ -312,7 +303,7 @@ static int __init tca_hwdemux_test_start(void)
 		pr_info("[INFO][HWDMX] HWDMX#%d Section Filter Result(%d)\n", i,
 			iRet);
 
-		tca_tsif_clean(&tTSIF[i]);
+//		tca_tsif_clean(&tTSIF[i]);
 	}
 
 	return 0;
@@ -320,13 +311,14 @@ static int __init tca_hwdemux_test_start(void)
 
 static void __exit tca_hwdemux_test_stop(void)
 {
-	int i;
-
 	pr_info("[INFO][HWDMX] %s\n", __func__);
 
+#if 0
+	int i;
+	pr_info("[INFO][HWDMX] %s\n", __func__);
 	for (i = HWDMX_NUM - 1; i >= 0; i--)
 		tca_tsif_clean(&tTSIF[i]);
-
+#endif
 	if (Input_VAddr)
 		dma_free_coherent(0, TS_PACKET_SIZE * SEND_TS_CNT, Input_VAddr,
 				  Input_PAddr);
@@ -338,7 +330,12 @@ static void __exit tca_hwdemux_test_stop(void)
 				  SERev_PAddr);
 }
 
+#if 0
 module_init(tca_hwdemux_test_start);
+#else
+device_initcall_sync(tca_hwdemux_test_start);
+#endif
+
 module_exit(tca_hwdemux_test_stop);
 
 MODULE_AUTHOR("Telechips Inc.");
