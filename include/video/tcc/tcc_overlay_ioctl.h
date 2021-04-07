@@ -39,6 +39,7 @@
 #define OVERLAY_SET_CONFIGURE      (50)
 #define OVERLAY_SET_LAYER          (51)
 #define OVERLAY_PUSH_VIDEO_BUFFER  (90)
+#define OVERLAY_PUSH_VIDEO_BUFFER_SCALING  (92)
 #define OVERLAY_GET_LAYER          (52)
 #define OVERLAY_DISALBE_LAYER      (53)
 #define OVERLAY_SET_OVP            (54)
@@ -69,6 +70,24 @@ typedef struct {
 	unsigned int afbc_dec_num;
 	unsigned int afbc_dec_need;
 } overlay_video_buffer_t;
+
+typedef struct {
+	unsigned int sx;
+	unsigned int sy;
+	unsigned int width;
+	unsigned int height;
+	unsigned int dstwidth;
+	unsigned int dstheight;
+	unsigned int format;
+	unsigned int transform;
+} overlay_config_scaling_t;
+
+typedef struct {
+	overlay_config_scaling_t cfg;
+	unsigned int addr;
+	unsigned int addr1;
+	unsigned int addr2;
+} overlay_video_buffer_scaling_t;
 
 #if defined(CONFIG_TCC_SCREEN_SHARE)
 typedef struct {

@@ -58,6 +58,7 @@
 #include <video/tcc/vioc_rdma.h>
 #include <video/tcc/vioc_wdma.h>
 #include <video/tcc/vioc_wmix.h>
+#include <video/tcc/vioc_scaler.h>
 #include <video/tcc/vioc_disp.h>
 #include <video/tcc/vioc_global.h>
 #include <video/tcc/vioc_config.h>
@@ -96,6 +97,7 @@ struct overlay_drv_type {
 	unsigned int layer_nlast;
 	struct overlay_drv_vioc rdma[4];
 	struct overlay_drv_vioc wmix;
+	struct overlay_drv_vioc	scaler;
 #if defined(CONFIG_VIOC_AFBCDEC)
 	struct overlay_drv_vioc afbc_dec;
 #endif
@@ -422,6 +424,124 @@ static int tcc_overlay_display_video_buffer(
 	return 0;
 }
 
+static int tcc_overlay_display_video_buffer_scaling(
+	overlay_video_buffer_scaling_t buffer_cfg,
+	struct overlay_drv_type *overlay_drv)
+{
+	unsigned int layer = 0, base0, base1, base2;
+
+	dprintk("%s addr:0x%x  fmt : 0x%x position:%d %d  size: %d %d\n",
+		__func__, buffer_cfg.addr, buffer_cfg.cfg.format,
+		buffer_cfg.cfg.sx, buffer_cfg.cfg.sy, buffer_cfg.cfg.width,
+		buffer_cfg.cfg.height);
+	layer = overlay_drv->layer_n;
+
+	struct panel_size_t panel;
+	unsigned int output_width, output_height;
+	volatile void __iomem *pDISPBase =
+		VIOC_DISP_GetAddress(VIOC_DISP + overlay_drv->fb_dd_num);
+	VIOC_DISP_GetSize(pDISPBase, &panel.xres, &panel.yres);
+
+	if (overlay_drv->rdma[layer].reg && overlay_drv->wmix.reg) {
+		dprintk("%s SET[%d] : %p %p\n", __func__, layer,
+			overlay_drv->rdma[layer].reg, overlay_drv->wmix.reg);
+
+		VIOC_RDMA_SetImageSize(
+			overlay_drv->rdma[layer].reg, buffer_cfg.cfg.width,
+			buffer_cfg.cfg.height);
+		VIOC_RDMA_SetImageFormat(
+			overlay_drv->rdma[layer].reg, buffer_cfg.cfg.format);
+		VIOC_RDMA_SetImageOffset(
+			overlay_drv->rdma[layer].reg, buffer_cfg.cfg.format,
+			buffer_cfg.cfg.width);
+
+		base0 = buffer_cfg.addr;
+		base1 = buffer_cfg.addr1;
+		base2 = buffer_cfg.addr2;
+
+		if (base1 == 0)
+			base1 = GET_ADDR_YUV42X_spU(
+				buffer_cfg.addr, buffer_cfg.cfg.width,
+				buffer_cfg.cfg.height);
+		if (base2 == 0) {
+			if (buffer_cfg.cfg.format == TCC_LCDC_IMG_FMT_444SEP)
+				base2 = (unsigned int)GET_ADDR_YUV42X_spU(
+					base1, buffer_cfg.cfg.width,
+					buffer_cfg.cfg.height);
+			else if (
+				buffer_cfg.cfg.format
+				== TCC_LCDC_IMG_FMT_YUV422SP)
+				base2 = (unsigned int)GET_ADDR_YUV422_spV(
+					base1, buffer_cfg.cfg.width,
+					buffer_cfg.cfg.height);
+			else
+				base2 = (unsigned int)GET_ADDR_YUV420_spV(
+					base1, buffer_cfg.cfg.width,
+					buffer_cfg.cfg.height);
+		}
+		VIOC_RDMA_SetImageBase(
+			overlay_drv->rdma[layer].reg, base0, base1, base2);
+		VIOC_RDMA_SetImageRGBSwapMode(overlay_drv->rdma[layer].reg, 0);
+
+		if (buffer_cfg.cfg.format >= VIOC_IMG_FMT_COMP) {
+			VIOC_RDMA_SetImageY2RMode(
+				overlay_drv->rdma[layer].reg, 2);
+			VIOC_RDMA_SetImageY2REnable(
+				overlay_drv->rdma[layer].reg, 1);
+		} else {
+			VIOC_RDMA_SetImageY2REnable(
+				overlay_drv->rdma[layer].reg, 0);
+		}
+
+		if(overlay_drv->scaler.reg) {
+			if((buffer_cfg.cfg.dstwidth <= 0) || (buffer_cfg.cfg.dstheight <= 0)) {
+				pr_err("dstination width/height out of range !! ");
+				return -1;
+			}
+			VIOC_SC_SetBypass(overlay_drv->scaler.reg, 0);
+
+			output_width =
+				(panel.xres - buffer_cfg.cfg.sx) < buffer_cfg.cfg.dstwidth ?
+				(panel.xres - buffer_cfg.cfg.sx) : buffer_cfg.cfg.dstwidth;
+			output_height =
+				(panel.yres - buffer_cfg.cfg.sy) < buffer_cfg.cfg.dstheight ?
+				(panel.yres - buffer_cfg.cfg.sy) : buffer_cfg.cfg.dstheight;
+
+			VIOC_SC_SetDstSize(overlay_drv->scaler.reg, output_width, output_height);
+			VIOC_SC_SetOutSize(overlay_drv->scaler.reg, output_width, output_height);
+			VIOC_SC_SetOutPosition(overlay_drv->scaler.reg, 0, 0);
+			VIOC_CONFIG_PlugIn(overlay_drv->scaler.id, overlay_drv->rdma[layer].id);
+			VIOC_SC_SetUpdate(overlay_drv->scaler.reg);
+		}
+
+		VIOC_WMIX_SetPosition(
+			overlay_drv->wmix.reg, layer, buffer_cfg.cfg.sx,
+			buffer_cfg.cfg.sy);
+		VIOC_WMIX_SetUpdate(overlay_drv->wmix.reg);
+
+#if defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC899X) \
+	|| defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC901X)
+			VIOC_RDMA_SetIssue(
+				overlay_drv->rdma[layer].reg, 15, 16);
+#endif
+
+		VIOC_RDMA_SetImageEnable(overlay_drv->rdma[layer].reg);
+
+		if (layer != overlay_drv->layer_nlast) {
+			VIOC_RDMA_SetImageDisable(
+				overlay_drv->rdma[overlay_drv->layer_nlast]
+					.reg);
+		}
+
+		overlay_drv->layer_nlast = overlay_drv->layer_n;
+
+#ifdef CONFIG_DISPLAY_EXT_FRAME
+		tcc_ctrl_ext_frame(0);
+#endif // CONFIG_DISPLAY_EXT_FRAME
+	}
+	return 0;
+}
+
 static long
 tcc_overlay_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 {
@@ -451,6 +571,18 @@ tcc_overlay_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 		overlay_drv->overBuffCfg = overBuffCfg;
 
 		return tcc_overlay_display_video_buffer(
+			overBuffCfg, overlay_drv);
+	}
+
+	case OVERLAY_PUSH_VIDEO_BUFFER_SCALING: {
+		overlay_video_buffer_scaling_t overBuffCfg;
+
+		if (copy_from_user(
+			    &overBuffCfg, (overlay_video_buffer_scaling_t *)arg,
+			    sizeof(overlay_video_buffer_scaling_t)))
+			return -EFAULT;
+
+		return tcc_overlay_display_video_buffer_scaling(
 			overBuffCfg, overlay_drv);
 	}
 
@@ -756,6 +888,20 @@ static int tcc_overlay_probe(struct platform_device *pdev)
 		       overlay_drv->misc->name);
 		overlay_drv->wmix.reg = NULL;
 	}
+
+	tmp_node = of_parse_phandle(pdev->dev.of_node, "scalers", 0);
+	of_property_read_u32_index(pdev->dev.of_node, "scalers", 1, &index);
+	if(tmp_node) {
+		overlay_drv->scaler.reg = VIOC_SC_GetAddress(index);
+		overlay_drv->scaler.id = index;
+	}
+	dprintk("%s-%d :: fd_num(%d) => scaler[%d]: %d %d/%p\n", __func__, __LINE__, overlay_drv->fb_dd_num, i, index, overlay_drv->scaler.id, overlay_drv->scaler.reg);
+
+	if (IS_ERR((void*)overlay_drv->scaler.reg)) {
+		printk("could not find scaler node of %s driver. \n", overlay_drv->misc->name);
+		overlay_drv->scaler.reg = NULL;
+	}
+
 	overlay_drv->open_cnt = 0;
 
 	platform_set_drvdata(pdev, overlay_drv);
