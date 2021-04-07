@@ -1255,7 +1255,9 @@ static int exynos5_dmc_init_clks(struct exynos5_dmc *dmc)
 
 	dmc->curr_volt = target_volt;
 
-	clk_set_parent(dmc->mout_mx_mspll_ccore, dmc->mout_spll);
+	ret = clk_set_parent(dmc->mout_mx_mspll_ccore, dmc->mout_spll);
+	if (ret)
+		return ret;
 
 	dmc->bypass_rate = clk_get_rate(dmc->mout_mx_mspll_ccore);
 
