@@ -349,17 +349,16 @@ static inline void tcc_dai_set_left_j_mode(void __iomem *base_addr)
 	dai_writel(value, base_addr + TCC_DAI_DAMR_OFFSET);
 }
 
-#define I2S_TDM_MODE_SLOT_WIDTH	(32)
-
 static inline void tcc_dai_set_i2s_tdm_mode(
 	void __iomem *base_addr,
-	uint32_t slots,
+	uint32_t tdm_slots,
+	uint32_t slot_width,
 	bool lateMode)
 {
 	uint32_t damr = readl(base_addr + TCC_DAI_DAMR_OFFSET);
 	uint32_t mccr0 = readl(base_addr + TCC_DAI_MCCR0_OFFSET);
 
-	int32_t frame_len = (int32_t) slots * I2S_TDM_MODE_SLOT_WIDTH;
+	int32_t frame_len = (int32_t) tdm_slots * slot_width;
 	int32_t half_frame_len = frame_len / 2;
 
 	damr &=
@@ -382,7 +381,15 @@ static inline void tcc_dai_set_i2s_tdm_mode(
 
 	frame_len -= 1;
 	half_frame_len -= 1;
-	mccr0 |= ((uint32_t) frame_len << (uint32_t) MCCR0_FRAME_SIZE_Pos);
+
+	if((tdm_slots == 32) && (slot_width == 32)){
+		mccr0 |= MCCR0_FRAME_SIZE_32TDM_32BITSLOT;
+	} else if ((tdm_slots == 32) && (slot_width == 24)){
+		mccr0 |= MCCR0_FRAME_SIZE_32TDM_24BITSLOT;
+	} else {
+		mccr0 |= ((uint32_t) frame_len << (uint32_t) MCCR0_FRAME_SIZE_Pos);
+	}
+
 	mccr0 |=
 	    ((uint32_t) half_frame_len <<
 	    (uint32_t) MCCR0_FRAME_END_POSTION_Pos);
@@ -398,8 +405,8 @@ static inline void tcc_dai_set_i2s_tdm_mode(
 	dai_writel(mccr0, base_addr + TCC_DAI_MCCR0_OFFSET);
 }
 
-#if defined(PCM_INTERFACE)
-static inline void tcc_dai_set_dsp_pcm_word_len(
+
+static inline void tcc_dai_set_dsp_tdm_word_len(
 	void __iomem *base_addr,
 	uint32_t bit_width)
 {
@@ -414,6 +421,7 @@ static inline void tcc_dai_set_dsp_pcm_word_len(
 	dai_writel(value, base_addr + TCC_DAI_DAMR_OFFSET);
 }
 
+#if defined(PCM_INTERFACE)
 static inline void tcc_dai_set_dsp_pcm_mode(
 	void __iomem *base_addr,
 	uint32_t slots,
@@ -438,7 +446,14 @@ static inline void tcc_dai_set_dsp_pcm_mode(
 
 	damr |= (DAMR_DAI_SYNC_IIS_DSP_TDM | DAMR_DSP_OR_TDM_MODE);
 
-	mccr0 |= ((slots*slot_width-1) << MCCR0_FRAME_SIZE_Pos);
+	if((slots == 32) && (slot_width == 32)){
+		mccr0 |= MCCR0_FRAME_SIZE_32TDM_32BITSLOT;
+	} else if ((slots == 32) && (slot_width == 24)){
+		mccr0 |= MCCR0_FRAME_SIZE_32TDM_24BITSLOT;
+	} else {
+		mccr0 |= ((slots*slot_width-1) << MCCR0_FRAME_SIZE_Pos);
+	}
+
 	mccr0 |= ((uint32_t) 0 << (uint32_t) MCCR0_FRAME_END_POSTION_Pos);
 	mccr0 |= MCCR0_FRAME_CLK_DIV_USE;
 
@@ -456,17 +471,17 @@ static inline void tcc_dai_set_dsp_pcm_mode(
 	dai_writel(mccr0, base_addr + TCC_DAI_MCCR0_OFFSET);
 }
 #endif //PCM_INTERFACE
-#define CIRRUS_TDM_MODE_SLOT_WIDTH	(32)
 
 static inline void tcc_dai_set_cirrus_tdm_mode(
 	void __iomem *base_addr,
 	uint32_t slots,
+	uint32_t slot_width,
 	bool late)
 {
 	uint32_t damr = readl(base_addr + TCC_DAI_DAMR_OFFSET);
 	uint32_t mccr0 = readl(base_addr + TCC_DAI_MCCR0_OFFSET);
 
-	int32_t frame_len = (int32_t) slots * CIRRUS_TDM_MODE_SLOT_WIDTH;
+	int32_t frame_len = (int32_t) slots * slot_width;
 	int32_t half_frame_len = frame_len / 2;
 #if defined(TCC805x_CS_SND)
 	uint32_t chip_rev = (uint32_t)get_chip_rev();
@@ -504,13 +519,19 @@ static inline void tcc_dai_set_cirrus_tdm_mode(
 	}
 #endif
 
-
-
 	damr |= (DAMR_DAI_SYNC_IIS_DSP_TDM | DAMR_DSP_OR_TDM_MODE);
 
 	frame_len -= 1;
 	half_frame_len -= 1;
-	mccr0 |= ((uint32_t) frame_len << (uint32_t) MCCR0_FRAME_SIZE_Pos);
+
+	if((slots == 32) && (slot_width == 32)){
+		mccr0 |= MCCR0_FRAME_SIZE_32TDM_32BITSLOT;
+	} else if ((slots == 32) && (slot_width == 24)){
+		mccr0 |= MCCR0_FRAME_SIZE_32TDM_24BITSLOT;
+	} else {
+		mccr0 |= ((uint32_t) frame_len << (uint32_t) MCCR0_FRAME_SIZE_Pos);
+	}
+
 	mccr0 |=
 	    ((uint32_t) half_frame_len <<
 	    (uint32_t) MCCR0_FRAME_END_POSTION_Pos);
@@ -575,14 +596,16 @@ static inline void tcc_dai_set_dsp_tdm_mode(
 		| MCCR0_FRAME_END_POSTION_Msk);
 
 	damr |= (DAMR_DAI_SYNC_IIS_DSP_TDM | DAMR_DSP_OR_TDM_MODE);
-	damr |=
-	    (slot_width ==
-	     (uint32_t) 24) ? ((uint32_t) DAMR_DSP_WORD_LEN_24BIT) :
-	     ((uint32_t) DAMR_DSP_WORD_LEN_16BIT);
 
-	mccr0 |=
-	    ((uint32_t) (frame_len - 1) <<
-	    (uint32_t) MCCR0_FRAME_SIZE_Pos);
+	 if((tdm_slots == 32) && (slot_width == 32)){
+		 mccr0 |= MCCR0_FRAME_SIZE_32TDM_32BITSLOT;
+	 } else if ((tdm_slots == 32) && (slot_width == 24)){
+		 mccr0 |= MCCR0_FRAME_SIZE_32TDM_24BITSLOT;
+	 } else {
+		 mccr0 |= ((uint32_t) (frame_len - 1) <<
+		 	(uint32_t) MCCR0_FRAME_SIZE_Pos);
+	 }
+
 	mccr0 |= ((uint32_t) 0 << (uint32_t) MCCR0_FRAME_END_POSTION_Pos);
 	mccr0 |= MCCR0_FRAME_CLK_DIV_USE;
 
