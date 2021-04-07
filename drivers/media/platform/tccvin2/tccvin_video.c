@@ -1526,7 +1526,6 @@ static int32_t tccvin_allocate_essential_buffers(struct tccvin_streaming *vdev)
 			pmap->name, pmap->base, pmap->size);
 	} else {
 		logw("get \"rearcamera_viqe\" pmap information.\n");
-		ret = -1;
 	}
 
 #if defined(CONFIG_OVERLAY_PGL)
@@ -1538,11 +1537,11 @@ static int32_t tccvin_allocate_essential_buffers(struct tccvin_streaming *vdev)
 			pmap->name, pmap->base, pmap->size);
 	} else {
 		loge("get \"parking_gui\" pmap information.\n");
-		ret = -1;
+		return -1;
 	}
 #endif/* defined(CONFIG_OVERLAY_PGL) */
 
-	return ret;
+	return 0;
 }
 
 static int32_t tccvin_start_stream(struct tccvin_streaming *vdev)
