@@ -706,6 +706,59 @@ static int tccvin_ioctl_g_input(struct file *file, void *fh,
 	return 0;
 }
 
+static int tccvin_g_selection(
+	struct v4l2_rect* (*affordable)(struct tccvin_streaming *stream,
+					struct v4l2_selection *s),
+	struct tccvin_streaming *stream,
+	struct v4l2_selection *s)
+{
+	struct v4l2_rect *rect_tgt, *rect_src;
+
+	rect_src = affordable(stream, s);
+	if (rect_src == NULL) {
+		return -1;
+	}
+
+	rect_tgt = &s->r;
+
+	mutex_lock(&stream->mutex);
+
+	rect_tgt->width		= rect_src->width;
+	rect_tgt->height	= rect_src->height;
+	rect_tgt->left		= rect_src->left;
+	rect_tgt->top		= rect_src->top;
+
+	mutex_unlock(&stream->mutex);
+
+	return 0;
+}
+
+static struct v4l2_rect* tccvin_affordable_rect_for_sel(
+	struct tccvin_streaming *stream, struct v4l2_selection *s)
+{
+	struct v4l2_rect* ret;
+	switch (s->target) {
+	case V4L2_SEL_TGT_CROP:
+	case V4L2_SEL_TGT_CROP_DEFAULT:
+		ret = &stream->rect_crop;
+		break;
+	case V4L2_SEL_TGT_CROP_BOUNDS:
+		ret = &stream->rect_bound;
+		break;
+	case V4L2_SEL_TGT_COMPOSE:
+	case V4L2_SEL_TGT_COMPOSE_DEFAULT:
+		ret = &stream->rect_compose;
+		break;
+	default:
+		logw("[WARN] Corresponding routine is not implemented\n");
+		ret = NULL;
+		break;
+	}
+
+	tccvin_get_default_rect(stream, ret, s->target);
+	return ret;
+}
+
 static int tccvin_ioctl_g_selection(struct file *file, void *fh,
 	struct v4l2_selection *s)
 {
@@ -713,12 +766,28 @@ static int tccvin_ioctl_g_selection(struct file *file, void *fh,
 	struct tccvin_streaming *stream = handle->stream;
 
 	memset(s, 0, sizeof(*s));
-	*s = stream->selection;
+	return tccvin_g_selection(tccvin_affordable_rect_for_sel, stream, s);
+}
 
-	mutex_lock(&stream->mutex);
-	s->r.width = stream->cur_frame->wWidth;
-	s->r.height = stream->cur_frame->wHeight;
-	mutex_unlock(&stream->mutex);
+static int tccvin_s_selection(
+	struct v4l2_rect* (*affordable)(struct tccvin_streaming *stream,
+					struct v4l2_selection *s),
+	struct tccvin_streaming *stream,
+	struct v4l2_selection *s)
+{
+	struct v4l2_rect	*rect_tgt, *rect_src;
+
+	rect_tgt = affordable(stream, s);
+	if (rect_tgt == NULL) {
+		return -1;
+	}
+
+	rect_src = &s->r;
+
+	rect_tgt->left		= rect_src->left;
+	rect_tgt->top		= rect_src->top;
+	rect_tgt->width 	= rect_src->width;
+	rect_tgt->height	= rect_src->height;
 
 	return 0;
 }
@@ -728,10 +797,7 @@ static int tccvin_ioctl_s_selection(struct file *file, void *fh,
 {
 	struct tccvin_fh *handle = fh;
 	struct tccvin_streaming *stream = handle->stream;
-
-	stream->selection = *s;
-
-	return 0;
+	return tccvin_s_selection(tccvin_affordable_rect_for_sel, stream, s);
 }
 
 static int tccvin_ioctl_g_parm(struct file *file, void *fh,
@@ -945,4 +1011,3 @@ const struct v4l2_file_operations tccvin_fops = {
 	.mmap		= tccvin_v4l2_mmap,
 	.poll		= tccvin_v4l2_poll,
 };
-

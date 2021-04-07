@@ -244,7 +244,9 @@ struct tccvin_streaming {
 	struct v4l2_mbus_config			mbus_config;
 	enum v4l2_buf_type			type;
 
-	struct v4l2_selection			selection;
+	struct v4l2_rect			rect_bound;
+	struct v4l2_rect			rect_crop;
+	struct v4l2_rect			rect_compose;
 
 	unsigned int				nformats;
 	struct tccvin_format			*format;
@@ -437,4 +439,6 @@ extern void tccvin_dmabuf_dmabuf_release(struct dma_buf *dmabuf);
 extern int tccvin_dmabuf_phys(struct platform_device *pdev, int fd,
 	phys_addr_t *addr, size_t *len);
 extern long tccvin_dmabuf_g_phys(struct tccvin_fh *fh, struct v4l2_buffer *buf);
+extern void tccvin_get_default_rect(struct tccvin_streaming *stream,
+				    struct v4l2_rect *rect, __u32 type);
 #endif

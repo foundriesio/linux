@@ -824,6 +824,8 @@ static int32_t tccvin_set_vin(struct tccvin_streaming *vdev)
 	struct tccvin_vs_info		*vs_info	= NULL;
 	struct v4l2_dv_timings		*dv_timings	= NULL;
 	struct v4l2_bt_timings		*bt_timings	= NULL;
+	struct v4l2_rect		*crop_rect	= NULL;
+	struct v4l2_rect		*crop_bound	= NULL;
 
 	uint32_t			data_order	= 0;
 	uint32_t			data_format	= 0;
@@ -855,6 +857,8 @@ static int32_t tccvin_set_vin(struct tccvin_streaming *vdev)
 	vs_info		= &vdev->vs_info;
 	dv_timings	= &vdev->dv_timings;
 	bt_timings	= &dv_timings->bt;
+	crop_rect	= &vdev->rect_crop;
+	crop_bound	= &vdev->rect_bound;
 
 	data_order	= vs_info->data_order;
 	data_format	= vs_info->data_format;
@@ -905,9 +909,13 @@ static int32_t tccvin_set_vin(struct tccvin_streaming *vdev)
 		data_format, data_order);
 	VIOC_VIN_SetInterlaceMode(vin, interlaced, intpl_en);
 	VIOC_VIN_SetImageSize(vin, width, height);
-	VIOC_VIN_SetImageOffset(vin, 0, 0, 0);
-	VIOC_VIN_SetImageCropSize(vin, width, height);
-	VIOC_VIN_SetImageCropOffset(vin, 0, 0);
+	VIOC_VIN_SetImageOffset(vin, crop_bound->left,
+				crop_bound->top >> interlaced,
+				crop_bound->top >> interlaced);
+	VIOC_VIN_SetImageCropSize(vin, crop_rect->width,
+				  (crop_rect->height >> interlaced));
+	VIOC_VIN_SetImageCropOffset(vin, crop_rect->left,
+				    (crop_rect->top >> interlaced));
 	VIOC_VIN_SetY2RMode(vin, 2);
 
 #if	defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC899X) || \
@@ -968,8 +976,8 @@ static int32_t tccvin_set_deinterlacer(struct tccvin_streaming *vdev)
 
 		u32	interlaced	=
 			!!(bt_timings->interlaced & V4L2_DV_INTERLACED);
-		u32	width		= bt_timings->width;
-		u32	height		= bt_timings->height >> interlaced;
+		u32	width		= vdev->rect_crop.width;
+		u32	height		= vdev->rect_crop.height >> interlaced;
 
 		u32	viqe_width	= 0;
 		u32	viqe_height	= 0;
@@ -1050,18 +1058,6 @@ static int32_t tccvin_set_scaler(struct tccvin_streaming *vdev,
 
 	unsigned int			width		= 0;
 	unsigned int			height		= 0;
-	unsigned int			sel_left	= 0;
-	unsigned int			sel_top		= 0;
-	unsigned int			sel_width	= 0;
-	unsigned int			sel_height	= 0;
-	unsigned int			crop_ratio_hor	= 0;
-	unsigned int			crop_ratio_ver	= 0;
-	unsigned int			dst_width	= 0;
-	unsigned int			dst_height	= 0;
-	unsigned int			out_posx	= 0;
-	unsigned int			out_posy	= 0;
-	unsigned int			out_width	= 0;
-	unsigned int			out_height	= 0;
 
 	WARN_ON(IS_ERR_OR_NULL(vdev));
 	WARN_ON(IS_ERR_OR_NULL(frame));
@@ -1069,56 +1065,20 @@ static int32_t tccvin_set_scaler(struct tccvin_streaming *vdev,
 	cif		= &vdev->cif;
 	sc		= VIOC_SC_GetAddress(cif->vioc_path.scaler);
 
-	width		= frame->wWidth;
-	height		= frame->wHeight;
-	sel_left	= vdev->selection.r.left;
-	sel_top		= vdev->selection.r.top;
-	sel_width	= vdev->selection.r.width;
-	sel_height	= vdev->selection.r.height;
-	crop_ratio_hor	= 100;
-	crop_ratio_ver	= 100;
-	dst_width	= width;
-	dst_height	= height;
-	out_width	= width;
-	out_height	= height;
-
-	if (!((sel_left == 0) &&
-	      (sel_top  == 0) &&
-	      (sel_width  == 0) &&
-	      (sel_height == 0))) {
-		if (vdev->selection.flags == V4L2_SEL_FLAG_GE) {
-			crop_ratio_hor	= width  * 100 / sel_width;
-			crop_ratio_ver	= height * 100 / sel_height;
-			dst_width	= width  * crop_ratio_hor / 100;
-			dst_height	= height * crop_ratio_ver / 100;
-			out_posx	= sel_left * crop_ratio_hor / 100;
-			out_posy	= sel_top  * crop_ratio_ver / 100;
-			/*sel_width  * crop_ratio_hor / 100*/
-			out_width	= width;
-			/*sel_height * crop_ratio_ver / 100*/
-			out_height	= height;
-		} else {
-			out_posx	= sel_left;
-			out_posy	= sel_top;
-			out_width	= sel_width;
-			out_height	= sel_height;
-		}
-	}
-
-
-	logd("SC: 0x%px, DST: %d * %d\n", sc, dst_width, dst_height);
-	logd("SC: 0x%px, OUT: (%d, %d) %d * %d\n", sc,
-		out_posx, out_posy, out_width, out_height);
-
 	/* Plug the scaler in */
 	VIOC_CONFIG_PlugIn(cif->vioc_path.scaler, cif->vioc_path.vin);
 
+	width = vdev->rect_compose.width;
+	height = vdev->rect_compose.height;
+
+	logd("Setting scaler width = %d, height = %d\n", width, height);
+
 	/* Configure the scaler */
 	VIOC_SC_SetBypass(sc, OFF);
-	VIOC_SC_SetDstSize(sc, dst_width, dst_height);
-	VIOC_SC_SetOutPosition(sc, out_posx, out_posy);
+	VIOC_SC_SetDstSize(sc, width, height);
+	VIOC_SC_SetOutPosition(sc, 0, 0);
 	/* workaround: scaler margin */
-	VIOC_SC_SetOutSize(sc, out_width, out_height + 1);
+	VIOC_SC_SetOutSize(sc, width, height + 1);
 	VIOC_SC_SetUpdate(sc);
 
 	return 0;
@@ -1164,11 +1124,9 @@ static int32_t tccvin_set_wmixer(struct tccvin_streaming *vdev)
 	width		= vdev->cur_frame->wWidth;
 	height		= vdev->cur_frame->wHeight;
 
-	if (!((vdev->selection.r.left == 0) && (vdev->selection.r.top == 0))) {
-		if (vdev->selection.flags != V4L2_SEL_FLAG_GE) {
-			out_posx	= vdev->selection.r.left;
-			out_posy	= vdev->selection.r.top;
-		}
+	if (!((vdev->rect_compose.left == 0) && (vdev->rect_compose.top == 0))) {
+		out_posx	= vdev->rect_compose.left;
+		out_posy	= vdev->rect_compose.top;
 	}
 
 #if defined(CONFIG_OVERLAY_PGL)
@@ -1554,6 +1512,70 @@ static int32_t tccvin_allocate_essential_buffers(struct tccvin_streaming *vdev)
 	return 0;
 }
 
+void tccvin_get_default_rect(struct tccvin_streaming *stream,
+			     struct v4l2_rect *rect, __u32 type)
+{
+	switch (type) {
+	case V4L2_SEL_TGT_COMPOSE_DEFAULT:
+		rect->left	= 0;
+		rect->top	= 0;
+		rect->width	= stream->cur_frame->wWidth;
+		rect->height	= stream->cur_frame->wHeight;
+		break;
+	case V4L2_SEL_TGT_CROP_DEFAULT:
+		rect->left	= 0;
+		rect->top	= 0;
+		rect->width	= stream->dv_timings.bt.width;
+		rect->height	= stream->dv_timings.bt.height;
+		break;
+	case V4L2_SEL_TGT_CROP_BOUNDS:
+		rect->left	= 0;
+		rect->top	= 0;
+		rect->width	= stream->dv_timings.bt.width;
+		rect->height	= stream->dv_timings.bt.height;
+		break;
+	default:
+		/* nothing to do */
+		break;
+	}
+}
+
+static int tccvin_is_null_rect(struct v4l2_rect *rect)
+{
+	return (rect->top == 0) && (rect->left == 0)
+		&& (rect->width == 0) && (rect->height == 0);
+}
+
+static void tccvin_init_selection(struct tccvin_streaming *stream,
+				  struct v4l2_rect *rect,
+				  __u32 type)
+{
+	if (tccvin_is_null_rect(rect)) {
+		tccvin_get_default_rect(stream, rect, type);
+	} else {
+		logd("Preview size has been passed from user application. \
+No need to use default setting in the type(0x%08x)\n", type);
+	}
+}
+
+/**
+ * tccvin_check_selection() - Check whether areas for stream are initialized
+ * @stream: An instance of streaming
+ *
+ * This is a function check & initialize areas for V4L2 common interfaces such
+ * as cropping and scaling. V4L2_SEL_TGT_CROP_BOUNDS is needed to set OFFSET of
+ * video input.
+ */
+static void tccvin_check_selections(struct tccvin_streaming *stream)
+{
+	tccvin_init_selection(stream, &stream->rect_compose,
+			      V4L2_SEL_TGT_COMPOSE_DEFAULT);
+	tccvin_init_selection(stream, &stream->rect_crop,
+			      V4L2_SEL_TGT_CROP_DEFAULT);
+	tccvin_init_selection(stream, &stream->rect_bound,
+			      V4L2_SEL_TGT_CROP_BOUNDS);
+}
+
 static int32_t tccvin_start_stream(struct tccvin_streaming *vdev)
 {
 	struct tccvin_cif		*cif		= NULL;
@@ -1592,6 +1614,8 @@ static int32_t tccvin_start_stream(struct tccvin_streaming *vdev)
 		tccvin_set_pgl(vdev);
 	}
 #endif/* defined(CONFIG_OVERLAY_PGL) */
+
+	tccvin_check_selections(vdev);
 
 	/* set vin */
 	tccvin_set_vin(vdev);
@@ -1895,12 +1919,6 @@ int tccvin_video_init(struct tccvin_streaming *stream)
 	}
 
 	stream->is_handover_needed	= 0;
-
-	/* vin window */
-	stream->selection.r.left	= 0;
-	stream->selection.r.top		= 0;
-	stream->selection.r.width	= 0;
-	stream->selection.r.height	= 0;
 
 	/* preview method */
 	stream->preview_method		= PREVIEW_V4L2;
