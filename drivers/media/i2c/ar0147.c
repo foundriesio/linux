@@ -639,6 +639,7 @@ const struct reg_sequence ar0147_reg_init[] = {
 	{0x3042, 0x0000, 0},		/* EXTRA_DELAY */
 	{0x3012, 0x0418, 0},		/* COARSE_INTEGRATION_TIME_ */
 	{0x321A, 0x000F, 0},		/* COARSE_INTEGRATION_TIME4 */
+	{0x3308, 0x0200, 0},		/* DIG_GAIN_GLOBAL */
 	{0x3238, 0x8777, 0},		/* EXPOSURE_RATIO */
 	{0x322A, 0x0939, 0},		/* FINE_INTEGRATION_CTRL */
 	{0x3014, 0x0271, 0},		/* FINE_INTEGRATION_TIME_ */
