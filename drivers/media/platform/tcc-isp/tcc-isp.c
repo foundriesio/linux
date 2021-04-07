@@ -54,7 +54,7 @@ struct v4l2_mbus_config isp_mbus_config = {
 		V4L2_MBUS_MASTER,
 };
 /*
- * Helper fuctions for reflection
+ * Helper functions for reflection
  */
 static inline struct v4l2_subdev *ctrl_to_sd(struct v4l2_ctrl *c)
 {
@@ -202,20 +202,6 @@ static inline void tcc_isp_update_register(struct tcc_isp_state *state)
 	regw(isp_base + REG_ISP_UP_CTL, UP_CTL_UP_ALL);
 }
 
-static inline void tcc_isp_set_adaptive_data(struct tcc_isp_state *state)
-{
-	void __iomem *mem_base = state->mem_base;
-	int i = 0;
-
-	for (i = 0; i < state->tune->adaptive_setting_size; i++) {
-		regw(mem_base + state->tune->adaptive[i].reg,
-				state->tune->adaptive[i].val);
-	}
-	tcc_isp_update_register(state);
-
-	logi(&(state->pdev->dev), "complete %s\n", __func__);
-}
-
 static inline void tcc_isp_mcu_enable(struct tcc_isp_state *state, int onOff)
 {
 	unsigned short val = 0;
@@ -246,8 +232,6 @@ static void tcc_isp_load_firmware(
 	void __iomem *isp_base = state->isp_base;
 	void __iomem *mem_base = state->mem_base;
 
-	tcc_isp_mcu_enable(state, OFF);
-
 	/* MCU memory download enable */
 	val = regr(isp_base + REG_ISP_MCU_MEM_CTL);
 	val &= ~(MCU_MEM_CTL_MCU_MEM_DL_EN_MASK <<
@@ -256,10 +240,17 @@ static void tcc_isp_load_firmware(
 		MCU_MEM_CTL_MCU_MEM_DL_EN_SHIFT);
 	regw(isp_base + REG_ISP_MCU_MEM_CTL, val);
 
-	logi(&(state->pdev->dev), "[INFO][tcc-isp-%d] copy firmware(%ld)\n",
-		state->pdev->id, count);
-	/* copy firmware to the MCU code memory */
-	memcpy(mem_base + ISP_MEM_OFFSET_CODE_MEM, fw, count);
+	if (count == ISP_MEM_SIZE_CODE_MEM) {
+		logi(&(state->pdev->dev), "COPY FW(code mem)\n");
+
+		/* copy firmware to the MCU memory(data) */
+		memcpy(mem_base + ISP_MEM_OFFSET_CODE_MEM, fw, count);
+	} else {
+		logi(&(state->pdev->dev), "COPY FW(code and data mem)\n");
+
+		/* copy firmware to the MCU memory(code + data) */
+		memcpy(mem_base + ISP_MEM_OFFSET_DATA_MEM, fw, count);
+	}
 
 	/*
 	 * after copying firmware,
@@ -274,8 +265,6 @@ static void tcc_isp_load_firmware(
 	val |= (MCU_MEM_CTL_MCU_MEM_DL_EN_DISABLE <<
 		MCU_MEM_CTL_MCU_MEM_DL_EN_SHIFT);
 	regw(isp_base + REG_ISP_MCU_MEM_CTL, val);
-
-	tcc_isp_mcu_enable(state, ON);
 }
 
 static void tcc_isp_callback_load_firmware(
@@ -293,10 +282,6 @@ static void tcc_isp_callback_load_firmware(
 	logi(&(state->pdev->dev), "FW size: %ld\n", fw->size);
 
 	tcc_isp_load_firmware(state, fw->data, fw->size);
-
-	usleep_range(5000, 6000);
-
-	tcc_isp_set_adaptive_data(state);
 
 	state->fw_load = 1;
 
@@ -338,7 +323,7 @@ static inline void tcc_isp_mem_share(struct tcc_isp_state *state, int onOff)
 	}
 }
 
-static inline void tcc_isp_set_regster_update_mode(struct tcc_isp_state *state)
+static inline void tcc_isp_set_register_update_mode(struct tcc_isp_state *state)
 {
 	void __iomem *isp_base = state->isp_base;
 	u32 up_sel1, up_sel2, up_mode1, up_mode2, user_cnt1, user_cnt2;
@@ -407,6 +392,27 @@ static inline void tcc_isp_set_regster_update_mode(struct tcc_isp_state *state)
 			UP_MODE2_TP_UP_MODE2_SHIFT)]);
 
 	regw(isp_base + REG_ISP_UP_MODE2, up_mode2);
+}
+
+static inline void tcc_isp_set_sensor_id(struct tcc_isp_state *state)
+{
+	void __iomem *isp_base = state->isp_base;
+	static const char * const i2c_slv_mode[] = {
+		"ADDR(8 bit), DATA(8 bit)",
+		"ADDR(8 bit), DATA(16 bit)",
+		"ADDR(16 bit), DATA(8 bit)",
+		"ADDR(16 bit), DATA(16 bit)"
+	};
+
+	logi(&(state->pdev->dev), "I2C SLAVE MODE is %s, ID is 0x%x\n",
+		i2c_slv_mode[state->tune->i2c_ctrl.i2c_slv_mode],
+		state->tune->i2c_ctrl.i2c_slv_id);
+
+	regw(isp_base + REG_ISP_ATI_I2C_SLV_CTL,
+		((state->tune->i2c_ctrl.i2c_slv_id <<
+		  ATI_I2C_SLV_CTL_I2C_SLV_ID_SHIFT) |
+		(state->tune->i2c_ctrl.i2c_slv_mode <<
+		 ATI_I2C_SLV_CTL_I2C_SLV_MODE_SHIFT)));
 }
 
 static inline void tcc_isp_set_wdma(struct tcc_isp_state *state, int onOff)
@@ -612,13 +618,16 @@ static inline void tcc_isp_reset(struct tcc_isp_state *state, int reset)
 static void tcc_isp_set_basic(struct tcc_isp_state *state)
 {
 	/* set register update control */
-	tcc_isp_set_regster_update_mode(state);
+	tcc_isp_set_register_update_mode(state);
 
 	/* disable wdma(IM896A-22) */
 	tcc_isp_set_wdma(state, OFF);
 
 	/* memory sharing */
 	tcc_isp_mem_share(state, state->mem_share);
+
+	/* set sensor I2C slave address */
+	tcc_isp_set_sensor_id(state);
 
 	/*
 	 * ZELCOVA setting
@@ -659,10 +668,9 @@ static void tcc_isp_enable(struct tcc_isp_state *state, unsigned int enable)
 	if (enable) {
 		/* enable isp */
 		tcc_isp_reset(state, ON);
-		usleep_range(5000, 6000);
-		tcc_isp_reset(state, OFF);
 		tcc_isp_set_basic(state);
 		tcc_isp_set_tune(state);
+		tcc_isp_reset(state, OFF);
 	} else {
 		/* disable isp */
 		tcc_isp_reset(state, ON);
@@ -735,9 +743,8 @@ static void tcc_isp_set_default(struct tcc_isp_state *state)
 	state->tune = &tune_value[state->pdev->id];
 
 	logi(&(state->pdev->dev),
-		"The number of isp and adaptive tune data(%d, %d)\n",
-		state->tune->isp_setting_size,
-		state->tune->adaptive_setting_size);
+		"The number of isp tune data(%d)\n",
+		state->tune->isp_setting_size);
 
 	/*
 	 * Because of ISP algorithm characteristics,
@@ -754,7 +761,7 @@ static void tcc_isp_set_default(struct tcc_isp_state *state)
 	 * set axi bus output disable
 	 */
 	/* set register update control */
-	tcc_isp_set_regster_update_mode(state);
+	tcc_isp_set_register_update_mode(state);
 
 	/* disable wdma(IM896A-22) */
 	tcc_isp_set_wdma(state, OFF);
@@ -861,10 +868,6 @@ static int tcc_isp_load_fw(struct v4l2_subdev *sd)
 			TCC_ISP_FIRMWARE_NAME);
 		goto end;
 	}
-#if 0
-	usleep_range(5000, 6000);
-	tcc_isp_set_adaptive_data(state);
-#endif
 end:
 	return ret;
 }
@@ -877,8 +880,6 @@ static int tcc_isp_s_stream(struct v4l2_subdev *sd, int enable)
 	if (enable) {
 		/* enable mcu */
 		tcc_isp_mcu_enable(state, ON);
-		usleep_range(5000, 6000);
-		tcc_isp_set_adaptive_data(state);
 	} else {
 		/* disable mcu */
 		tcc_isp_mcu_enable(state, OFF);

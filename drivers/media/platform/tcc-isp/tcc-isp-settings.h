@@ -56,10 +56,6 @@ const struct reg_setting setting_isp0[] = {
 	/* TODO */
 };
 
-const struct reg_setting setting_adaptive_data0[] = {
-	/* TODO */
-};
-
 /*
  * setting values below are used to set ISP0 ~ 3.
  * If the setting value is different for each ISP,
@@ -75,31 +71,39 @@ const struct hdr_state *hdr_value[4] = {
 const struct isp_tune tune_value[4] = {
 	/* FOR ISP0 */
 	{
+		.i2c_ctrl = {
+			.i2c_slv_id = 0x11, /* 7bit */
+			.i2c_slv_mode = ATI_I2C_SLV_CTL_I2C_SLV_MODE_16_16,
+		},
 		setting_isp0,
 		ARRAY_SIZE(setting_isp0),
-		setting_adaptive_data0,
-		ARRAY_SIZE(setting_adaptive_data0),
 	},
 	/* FOR ISP1 */
 	{
+		.i2c_ctrl = {
+			.i2c_slv_id = 0x12, /* 7bit */
+			.i2c_slv_mode = ATI_I2C_SLV_CTL_I2C_SLV_MODE_16_16,
+		},
 		setting_isp0,
 		ARRAY_SIZE(setting_isp0),
-		setting_adaptive_data0,
-		ARRAY_SIZE(setting_adaptive_data0),
 	},
 	/* FOR ISP2 */
 	{
+		.i2c_ctrl = {
+			.i2c_slv_id = 0x13, /* 7bit */
+			.i2c_slv_mode = ATI_I2C_SLV_CTL_I2C_SLV_MODE_16_16,
+		},
 		setting_isp0,
 		ARRAY_SIZE(setting_isp0),
-		setting_adaptive_data0,
-		ARRAY_SIZE(setting_adaptive_data0),
 	},
 	/* FOR ISP3 */
 	{
+		.i2c_ctrl = {
+			.i2c_slv_id = 0x14, /* 7bit */
+			.i2c_slv_mode = ATI_I2C_SLV_CTL_I2C_SLV_MODE_16_16,
+		},
 		setting_isp0,
 		ARRAY_SIZE(setting_isp0),
-		setting_adaptive_data0,
-		ARRAY_SIZE(setting_adaptive_data0),
 	},
 };
 

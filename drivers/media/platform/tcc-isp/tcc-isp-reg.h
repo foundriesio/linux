@@ -1061,6 +1061,18 @@
 #define REG_ISP_ATI_I2C_MST_WD				(0x2C48)
 #define REG_ISP_ATI_I2C_MST_RD				(0x2C4C)
 
+/* ATI_I2C_SLV_CTL */
+#define ATI_I2C_SLV_CTL_I2C_SLV_ID_MASK			(0x7F)
+#define ATI_I2C_SLV_CTL_I2C_SLV_MODE_MASK		(0x3)
+
+#define ATI_I2C_SLV_CTL_I2C_SLV_ID_SHIFT		(0)
+#define ATI_I2C_SLV_CTL_I2C_SLV_MODE_SHIFT		(8)
+
+/* set I2C data length(address / data bit) */
+#define ATI_I2C_SLV_CTL_I2C_SLV_MODE_16_16		(3)
+#define ATI_I2C_SLV_CTL_I2C_SLV_MODE_16_8		(2)
+#define ATI_I2C_SLV_CTL_I2C_SLV_MODE_8_16		(1)
+#define ATI_I2C_SLV_CTL_I2C_SLV_MODE_8_8		(0)
 
 /******************************************************************
  * DMA Configuration (4page 0x000~0x01C)

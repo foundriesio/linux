@@ -2252,13 +2252,19 @@ int32_t tccvin_video_subdevs_streamon(struct tccvin_streaming *stream)
 
 	/*
 	 * step 4
+	 * load fw subdev call is only for ISP in SoC.
+	 */
+	tccvin_video_subdevs_load_fw(stream);
+
+	/*
+	 * step 5
 	 * call g_dv_timings, get_fmt and g_mbus_config of subdevice
 	 * which is in front of video-in
 	 */
 	tccvin_video_subdevs_get_config(stream);
 
 	/*
-	 * step 5
+	 * step 6
 	 * call start stream of all subdevs
 	 */
 	if (stream->is_handover_needed != V4L2_CAP_HANDOVER_NEED) {
@@ -2304,11 +2310,6 @@ int32_t tccvin_video_streamon(struct tccvin_streaming *stream)
 		loge("to start v4l2 sub devices\n");
 		return -1;
 	}
-
-	/* load fw subdev call is not essential
-	 * to enable camera data stream
-	 */
-	tccvin_video_subdevs_load_fw(stream);
 
 	if (stream->is_handover_needed != V4L2_CAP_HANDOVER_NEED) {
 		/* reset vioc path */

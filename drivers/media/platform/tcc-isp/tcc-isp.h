@@ -60,12 +60,22 @@ struct isp_state {
 	struct output_state o_state;
 };
 
+struct i2c_slave_control {
+	/* 7bit */
+	unsigned int i2c_slv_id;
+	/* I2C data length */
+	unsigned int i2c_slv_mode;
+};
+
+struct reg_setting {
+	short reg;
+	unsigned long val;
+};
+
 struct isp_tune {
+	struct i2c_slave_control i2c_ctrl;
 	const struct reg_setting *isp;
 	unsigned int isp_setting_size;
-
-	const struct reg_setting *adaptive;
-	unsigned int adaptive_setting_size;
 };
 
 struct tcc_isp_state {
@@ -100,11 +110,6 @@ struct tcc_isp_state {
 
 	struct clk *clock;
 	u32 clk_frequency;
-};
-
-struct reg_setting {
-	short reg;
-	unsigned long val;
 };
 
 #endif
