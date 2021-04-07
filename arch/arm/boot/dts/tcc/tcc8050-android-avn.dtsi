@@ -960,14 +960,10 @@
 	/* cp_reset-gpio = <&gpk 11 0>; */
 };
 
-/* broadcast(DAB/DMB) */
+/* SDR tuner gpio control */
 &tcc_dxb_ctrl {
     compatible = "telechips,tcc_dxb_ctrl";
-    pw-gpios = <&gpa 23 0>;
-    dxb0-gpios = <&gpa 22 0>, <&gpa 21 0>, <0>, <0>;
-    dxb1-gpios = <&gpa 31 0>, <&gpa 25 0>, <0>, <0>;
-    ant-gpios = <0>, <0>;
-    tuner-gpios = <&gpg 0 0>, <&gpma 0 0>;
+    tuner-gpios = <&gpg 0 0>, <0>;
 };
 
 &smartcard {
