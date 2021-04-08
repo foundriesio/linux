@@ -26,7 +26,7 @@ else
     endif
 endif
 
-ccflags-y += -include $(srctree)/include/generated/uapi/linux/version.h \
+ccflags-y += -include include/generated/uapi/linux/version.h \
  -I$(srctree)/$(src)/$(PVR_ARCH)/hwdefs/km \
  -I$(srctree)/$(src)/$(PVR_ARCH)/hwdefs \
  -I$(srctree)/$(src)/$(PVR_ARCH) \
