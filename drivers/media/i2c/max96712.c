@@ -408,6 +408,129 @@ const struct reg_sequence max96712_reg_defaults_raw12[] = {
 	{0x0018, 0x0F, 100*1000},  //i MAX96712 one shot reset
 };
 
+const struct reg_sequence max96712_reg_defaults_raw8[] = {
+	//----- DeSerializer MAX96712 GMSL1 mode setting -----
+	{0x0006, 0x00, 0}, // GMSL1 mode  All LINK Disable.
+
+	// Pipe line Enable and control
+	{0x00F4, 0x0F, 0}, // pipe 0~3 enable
+	{0x00F0, 0x62, 0}, // PHY0,1-Z 0110 0010
+	{0x00F1, 0xEA, 0}, // PHY0,1-Z 1110 1010
+
+	{0x0B06, 0xEF, 0}, // HIM =1
+	{0x0C06, 0xEF, 0}, // HIM =1
+	{0x0D06, 0xEF, 0}, // HIM =1
+	{0x0E06, 0xEF, 0}, // HIM =1
+	{0x0010, 0x11, 0}, // 3G mode
+	{0x0011, 0x11, 0}, // 3G mode
+	{0x0B0F, 0x01, 0}, // Disable DE_EN
+	{0x0C0F, 0x01, 0}, // Disable DE_EN
+	{0x0D0F, 0x01, 0}, // Disable DE_EN
+	{0x0E0F, 0x01, 0}, // Disable DE_EN
+
+	//0x04,0x90,0x14,0xC4,0x04,  //REV FAST GMSL1(disable)
+
+	{0x0B0D, 0x80, 0}, // Local ACK for pipe 0 EN
+	{0x0C0D, 0x80, 0}, // Local ACK for pipe 1 EN
+	{0x0D0D, 0x80, 0}, // Local ACK for pipe 2 EN
+	{0x0E0D, 0x80, 0}, // Local ACK for pipe 3 EN
+
+	{0x0B07, 0xA4, 0}, // DBL BWS and HVEN =1
+	{0x0C07, 0xA4, 0}, // DBL BWS and HVEN =1
+	{0x0D07, 0xA4, 0}, // DBL BWS and HVEN =1
+	{0x0E07, 0xA4, 0}, // DBL BWS and HVEN =1
+
+	{0x0018, 0x0F, 100*1000}, // ----- One shot reset
+	//{0xFF,0x64, 0}, // sleep 100ms
+
+	// Pipe plie Enable and control
+	{0x00F4, 0x0F, 0}, // pipe 0~3 enable
+	{0x00F0, 0x62, 0}, // PHY0 1-Z 0110 0010
+	{0x00F1, 0xEA, 0}, // PHY0 1-Z 1110 1010
+
+	{0x040B, 0x40, 0}, // bpp for pipe0 and CSI_EN 5'b0_1100 0110 0 010
+
+	// Initial VC
+	{0x040C, 0x00, 0}, // VC=00 for pipe0 & pipe1
+	{0x040D, 0x00, 0}, // VC=00 for pipe2 & pipe3
+
+	//12 =2C = 6'b10_1100
+	{0x040E, 0xAA, 0}, // DT for pipe0 & 1 10 10 1100
+	{0x040F, 0xAA, 0}, // DT for pipe1 & 2 10 11 1100
+	{0x0410, 0xAA, 0}, // DT for pipe2 & 3 10 11 00 00 bpp 12 = 5'b0_1100
+	{0x0411, 0x48, 0}, // bpp for pipe1 & 2 011 0 1100 bpp 12 = 5'b0_1100
+	{0x0412, 0x20, 0}, // 0 01100 00 bpp for pipe1 & 2
+
+	//e YU_10_MUX mode for pipe 0-3. It is not needed.
+	//0x041A 0xF0
+
+	//PHY ting
+	//es ix4 mode
+	{0x08A0, 0x04, 0},
+	//ane ping for 4-lane port A and B
+	{0x08A3, 0xE4, 0},
+	{0x08A4, 0xE4, 0},
+
+	// lan-PHY-$ lans setting
+	{0x090A, 0xC0, 0},
+	{0x094A, 0xC0, 0},
+	{0x098A, 0xC0, 0},
+	{0x09CA, 0xC0, 0},
+
+	//on M PHYs
+	{0x08A2, 0xF4, 0},
+
+	//software override & MIPI data rate : 900Mbps
+	{0x0415, 0xE9, 0},
+	{0x0418, 0xE9, 0},
+
+	//Pipo MIPI Controller Mapping
+	// vi pipe 0  map FS/FE
+	{0x090B, 0x07, 0},
+	{0x092D, 0x15, 0}, // map to MIPI Controller 1  00 01 01 01
+	{0x090D, 0x2A, 0}, // SRC Long packet. 00 10 1100
+	{0x090E, 0x2A, 0}, // DST Long packet. Map to VC0. 00 10 1100
+	{0x090F, 0x00, 0}, // SRC short packet.
+	{0x0910, 0x00, 0}, // DST short packet. 00 00 0000
+	{0x0911, 0x01, 0}, // SRC short packet.
+	{0x0912, 0x01, 0}, // DST short packet.
+
+	// videpipe 1  map FS/FE
+	{0x094B, 0x07, 0},
+	{0x096D, 0x15, 0}, // map to MIPI Controller 1  00 01 01 01
+	{0x094D, 0x2A, 0}, // SRC Long packet. 00 10 1100
+	{0x094E, 0x6A, 0}, // DST Long packet. Map to VC1. 01 10 1100
+	{0x094F, 0x00, 0}, // SRC short packet.
+	{0x0950, 0x40, 0}, // DST short packet. 01 00 0000
+	{0x0951, 0x01, 0}, // SRC short packet.
+	{0x0952, 0x41, 0}, // DST short packet.
+
+	// RAW12 video pipe 2  map FS/FE
+	{0x098B, 0x07, 0},
+	{0x09AD, 0x15, 0}, // map to MIPI Controller 1  00 01 01 01
+	{0x098D, 0x2A, 0}, // SRC Long packet. 00 10 1100
+	{0x098E, 0xAA, 0}, // DST Long packet. Map to VC2. 10 10 1100
+	{0x098F, 0x00, 0}, // SRC short packet.
+	{0x0990, 0x80, 0}, // DST short packet. 10 00 0000
+	{0x0991, 0x01, 0}, // SRC short packet.
+	{0x0992, 0x81, 0}, // DST short packet.
+
+	// vio pipe 3  map FS/FE
+	{0x09CB, 0x07, 0},
+	{0x09ED, 0x15, 0}, // map to MIPI Controller 1  00 01 01 01
+	{0x09CD, 0x2A, 0}, // SRC Long packet. 00 10 1100
+	{0x09CE, 0xEA, 0}, // DST Long packet. Map to VC3. 11 10 1100
+	{0x09CF, 0x00, 0}, // SRC short packet.
+	{0x09D0, 0xC0, 0}, // DST short packet. 11 00 0000
+	{0x09D1, 0x01, 0}, // SRC short packet.
+	{0x09D2, 0xC1, 0}, // DST short packet.
+
+
+	//{0x0006,0x0F, 0}, // GMSL1 mode for all Links & All LINK enabled.
+	{0x0006, MAX96712_LINK_MODE, 0},
+
+	{0x0018, 0x0F, 100*1000},  //i MAX96712 one shot reset
+};
 const struct reg_sequence max96712_reg_s_stream[] = {
 	/* Local ACK for pipe 0~3 DISEN */
 	{0x0B0D, 0x00, 0},
@@ -505,6 +628,13 @@ static int max96712_init(struct v4l2_subdev *sd, u32 enable)
 			ret = regmap_multi_reg_write(dev->regmap,
 				max96712_reg_defaults_raw12,
 				ARRAY_SIZE(max96712_reg_defaults_raw12));
+		} else if (dev->fmt.code == MEDIA_BUS_FMT_Y8_1X8) {
+			/* format is MEDIA_BUS_FMT_Y8_1X8 */
+			logi("input format is MEDIA_BUS_FMT_Y8_1X8\n");
+			ret = regmap_multi_reg_write(dev->regmap,
+				max96712_reg_defaults_raw8,
+				ARRAY_SIZE(max96712_reg_defaults_raw8));
+
 		} else {
 			logi("input format is yuv422\n");
 			ret = regmap_multi_reg_write(dev->regmap,
@@ -949,6 +1079,9 @@ static int max96712_s_stream(struct v4l2_subdev *sd, int enable)
 				loge("Fail set alias of remote address\n");
 			}
 			reg_val = 0x62;
+		} else if (dev->fmt.code == MEDIA_BUS_FMT_Y8_1X8) {
+			/* format is MEDIA_BUS_FMT_Y8_1X8 */
+			reg_val = 0x42;
 		} else {
 			/* format is not MEDIA_BUS_FMT_SGRBG12_1X12 */
 			reg_val = 0x82;

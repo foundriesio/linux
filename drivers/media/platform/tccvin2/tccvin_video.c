@@ -2129,6 +2129,18 @@ static int32_t tccvin_video_subdevs_get_config(struct tccvin_streaming *stream)
 			logi("MEDIA_BUS_FMT_UYVY8_1X16\n");
 			stream->vs_info.data_format = FMT_YUV422_16BIT;
 			break;
+		case MEDIA_BUS_FMT_Y8_1X8:
+			logi("MEDIA_BUS_FMT_Y8_1X8\n");
+			stream->vs_info.data_format = FMT_YUV422_16BIT;
+			break;
+		case MEDIA_BUS_FMT_Y10_1X10:
+			logi("MEDIA_BUS_FMT_Y10_1X10\n");
+			stream->vs_info.data_format = FMT_YUV422_16BIT;
+			break;
+		case MEDIA_BUS_FMT_Y12_1X12:
+			logi("MEDIA_BUS_FMT_Y12_1X12\n");
+			stream->vs_info.data_format = FMT_YUV422_16BIT;
+			break;
 		default:
 			loge("MEDIA_BUS_FMT is wrong\n");
 			stream->vs_info.data_format = FMT_YUV422_8BIT;

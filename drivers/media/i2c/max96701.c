@@ -137,6 +137,31 @@ const struct reg_sequence max96701_reg_defaults_raw12[] = {
 	{0x07, 0xA4, 0},
 #endif
 };
+
+const struct reg_sequence max96701_reg_defaults_raw8[] = {
+	//MAX96701 SER
+	{0x04, 0x47, 10*1000},  // CLINK EN
+	{0x07, 0xA4, 0},  // DBL, BWS, HVEN=1
+	{0x20, 0x04, 0},
+	{0x21, 0x05, 0},
+	{0x22, 0x06, 0},
+	{0x23, 0x07, 0},
+	{0x24, 0x08, 0},
+	{0x25, 0x09, 0},
+	{0x26, 0x0A, 0},
+	{0x27, 0x0B, 0},
+	{0x20, 0x14, 0},
+	{0x21, 0x15, 0},
+	{0x22, 0x16, 0},
+	{0x23, 0x17, 0},
+	{0x24, 0x18, 0},
+	{0x25, 0x19, 0},
+	{0x26, 0x1A, 0},
+	{0x27, 0x1B, 0},
+	{0x67, 0xC4, 0}, // DBL_ALign =1
+
+};
+
 static const struct regmap_config max96701_regmap = {
 	.reg_bits		= 8,
 	.val_bits		= 8,
@@ -177,6 +202,12 @@ static int max96701_init(struct v4l2_subdev *sd, u32 enable)
 			ret = regmap_multi_reg_write(dev->regmap,
 				max96701_reg_defaults_raw12,
 				ARRAY_SIZE(max96701_reg_defaults_raw12));
+		} else if (dev->fmt.code == MEDIA_BUS_FMT_Y8_1X8) {
+			/* format is MEDIA_BUS_FMT_Y8_1X8 */
+			logi("input format is RAW8\n");
+			ret = regmap_multi_reg_write(dev->regmap,
+				max96701_reg_defaults_raw8,
+				ARRAY_SIZE(max96701_reg_defaults_raw8));
 		} else {
 			logi("input format is yuv422\n");
 			ret = regmap_multi_reg_write(dev->regmap,

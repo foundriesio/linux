@@ -1,0 +1,26 @@
+* Device Tree Bindings for AR0144 (ISP-less camera module)
+
+AR0144 is camera image sensor which outputs only IR data. 
+Basically, it is disabled by default for Telechips EVB.
+
+Required properties:
+
+- status     : disable or enable the device node
+- compatible : property name that conveys the platform architecture identifiers,
+               as 'onnn,ar0144'
+- reg        : I2C slave address
+- port       : specifies the endpoint of the sensor (output only)
+
+example
+-------
+	ar0144: ar0144 {
+		status		= "disabled";
+		compatible	= "onnn,ar0144";
+		reg		= <0x10>;
+		port {
+			ar0144_out: endpoint {
+				remote-endpoint = <&max96701_in>;
+				io-direction	= "output";
+			};
+		};
+	};

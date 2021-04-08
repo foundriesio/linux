@@ -100,6 +100,7 @@ obj-$(CONFIG_SDR_MAX2175) += max2175.o
 
 # Camera image sensor
 obj-$(CONFIG_VIDEO_AR0147)	+= ar0147.o
+obj-$(CONFIG_VIDEO_AR0144)	+= ar0144.o
 # External ISP(in camera module)
 obj-$(CONFIG_VIDEO_CXD5700)	+= cxd5700.o
 # deserializer
