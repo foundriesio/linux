@@ -2686,6 +2686,7 @@ do_rq:
 		dev_err(&cq->hwq.pdev->dev,
 			"FP: CQ Processed terminal reported rq_cons_idx 0x%x exceeds max 0x%x\n",
 			cqe_cons, rq->hwq.max_elements);
+		rc = -EINVAL;
 		goto done;
 	}
 
