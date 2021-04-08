@@ -24,16 +24,15 @@
 #include <linux/string.h>
 #include <linux/kdev_t.h>
 #include <linux/cdev.h>
-
+#include <linux/pinctrl/consumer.h>
+#include <linux/pinctrl-tcc.h>
+#include "../../../pinctrl/core.h"
 #include <video/tcc/vioc_ddicfg.h>
-
 #include <linux/uaccess.h>
 
 #include "videosource_common.h"
 #include "videosource_if.h"
 
-#include "../../../pinctrl/core.h"
-#include "../../../pinctrl/tcc/pinctrl-tcc.h"
 
 #define NUM_OVERLAY_FORMATS 2
 
