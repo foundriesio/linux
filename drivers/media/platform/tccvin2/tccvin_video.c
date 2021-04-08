@@ -1065,11 +1065,18 @@ static int32_t tccvin_set_scaler(struct tccvin_streaming *vdev,
 	cif		= &vdev->cif;
 	sc		= VIOC_SC_GetAddress(cif->vioc_path.scaler);
 
+	width = vdev->rect_compose.width;
+	height = vdev->rect_compose.height;
+
+	if ((width == vdev->cur_frame->wWidth) &&
+	    (height == vdev->cur_frame->wHeight)) {
+		logd("skip setting scaler\n");
+		goto end;
+	}
+
 	/* Plug the scaler in */
 	VIOC_CONFIG_PlugIn(cif->vioc_path.scaler, cif->vioc_path.vin);
 
-	width = vdev->rect_compose.width;
-	height = vdev->rect_compose.height;
 
 	logd("Setting scaler width = %d, height = %d\n", width, height);
 
@@ -1081,6 +1088,7 @@ static int32_t tccvin_set_scaler(struct tccvin_streaming *vdev,
 	VIOC_SC_SetOutSize(sc, width, height + 1);
 	VIOC_SC_SetUpdate(sc);
 
+end:
 	return 0;
 }
 
