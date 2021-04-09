@@ -1181,12 +1181,11 @@ static int tcc_wdma_parse_dt(struct platform_device *pdev,
 /*
  * wdma screen capture
  */
-static int wdma_screen_capture(unsigned int PmapType, char *Capture)
+static int wdma_screen_capture(unsigned int PmapAddr, char *Capture)
 {
 	int ret = 0;
 	struct miscdevice *misc;
 	struct tcc_wdma_dev *wdma_data;
-	struct pmap pmap_fb_video;
 	struct file *filp;
 
 	struct lcd_panel *panel;
@@ -1196,6 +1195,7 @@ static int wdma_screen_capture(unsigned int PmapType, char *Capture)
 	int  dd_rgb = 0;
 	int addr_Y, addr_U, addr_V;
 	struct DisplayBlock_Info DDinfo;
+	unsigned int image_size;
 
 	struct file *filp_mem;
 	unsigned char *image_addr;
@@ -1203,30 +1203,24 @@ static int wdma_screen_capture(unsigned int PmapType, char *Capture)
 	mm_segment_t oldfs;
 
 	// Open wdma device
-	filp = filp_open("/dev/wdma_drv@0", O_RDWR, S_IRUSR|S_IWUSR); // Use /dev/wdma_drv@0
+	filp = filp_open("/dev/wdma_drv@0", O_RDWR, S_IRUSR|S_IWUSR);
 	if(IS_ERR(filp))
 	{
-		pr_info("[INF][WDMA] %s can't open wdma device\n", __func__);
+		pr_err("[ERR][WDMA] %s can't open wdma device\n", __func__);
 		return -1;
 	}
-
-	//Set Image Info
 	misc = (struct miscdevice *)filp->private_data;
 	wdma_data = dev_get_drvdata(misc->parent);
-	if(PmapType == 1)
-	{
-		pmap_get_info("video", &pmap_fb_video);
-	}
-	else
-	{
-		pmap_get_info("fb_video", &pmap_fb_video);
-	}
 
-    memset((char *)&ImageCfg, 0x00, sizeof(ImageCfg));
+	// Set Image Info
+	memset((char *)&ImageCfg, 0x00, sizeof(ImageCfg));
     ImageCfg.TargetWidth = 1920; // <- LCD width
     ImageCfg.TargetHeight = 720; // <- LCD height
-    ImageCfg.BaseAddress = pmap_fb_video.base; // <- physical address of the buffer to store the captured image.
     ImageCfg.ImgFormat = 0xC;  // Do not change (0x0C=ARGB888)
+    image_size = ImageCfg.TargetWidth * ImageCfg.TargetHeight * 4;
+
+	// Use pmap
+	ImageCfg.BaseAddress = PmapAddr;
 
 	mutex_lock(&wdma_data->io_mutex);
 
@@ -1296,7 +1290,7 @@ static int wdma_screen_capture(unsigned int PmapType, char *Capture)
 			wdma_data->block_operating = 0;
 			pr_err("[ERR][WDMA] %s W:%d H:%d DD-Power:%d\n", __func__,
 				Wmix_Width, Wmix_Height, DDevice);
-			return 0;
+			return -1;
 		}
 
 		dprintk("src  w:%d h:%d base:0x%08x\n", ImageCfg.ImgSizeWidth,
@@ -1392,7 +1386,6 @@ static int wdma_screen_capture(unsigned int PmapType, char *Capture)
 	}
 
 	mutex_unlock(&wdma_data->io_mutex);
-	filp_close(filp, NULL);
 
 	//Write to the input path
 	strncpy(pName, Capture, strlen(Capture));
@@ -1402,16 +1395,23 @@ static int wdma_screen_capture(unsigned int PmapType, char *Capture)
 	filp_mem = filp_open(pName, O_CREAT | O_WRONLY, S_IRUSR|S_IWUSR );
 	if(IS_ERR(filp_mem))
 	{
-		pr_info("[INF][WDMA] %s can't open %s\n", __func__, pName);
+		pr_err("[ERR][WDMA] %s can't open %s\n", __func__, pName);
 		return -1;
 	}
 
-	image_addr = (unsigned char *)ioremap_nocache(ImageCfg.BaseAddress, PAGE_ALIGN(ImageCfg.TargetWidth*ImageCfg.TargetHeight*4));
-	ret = vfs_write(filp_mem, image_addr, ImageCfg.TargetWidth*ImageCfg.TargetHeight*4, &filp_mem->f_pos);
+	//ioremap to write to userspace
+	image_addr = (unsigned char *)ioremap_nocache(ImageCfg.BaseAddress, PAGE_ALIGN(image_size));
+	if(!image_addr)
+	{
+		pr_err("[ERR][WDMA] %s can't ioremap\n", __func__);
+		return -1;
+	}
+	ret = vfs_write(filp_mem, image_addr, image_size, &filp_mem->f_pos);
 	vfs_fsync(filp_mem, NULL);
 
 	iounmap((void*)image_addr);
 	set_fs(oldfs);
+	filp_close(filp, NULL);
 	filp_close(filp_mem, NULL);
 
 	return ret;
@@ -1421,23 +1421,22 @@ static int wdma_screen_capture(unsigned int PmapType, char *Capture)
  * sys-fs
  */
 static char screencapture[60] = {0,};
+static unsigned int PmapAddr = 0;
+
 struct device_attribute dev_attr_screen_capture;
 
 static ssize_t wdma_screen_capture_show(struct device *dev, struct device_attribute *attr, char *buf)
 {
-	return sprintf(buf, "%s\n", screencapture);
+	return sprintf(buf, "%x %s\n", PmapAddr, screencapture);
 }
 
 static ssize_t wdma_screen_capture_store(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
 {
 	int ret = 0;
 
-	static unsigned int PmapType;
+	sscanf(buf, "%x %s", &PmapAddr, screencapture);
 
-	sscanf(buf, "%d %s", &PmapType, screencapture);
-	pr_info("[INF][WDMA] %s PmapType : %d, File to be saved : %s\n",__func__, PmapType, screencapture);
-
-	ret = wdma_screen_capture(PmapType, screencapture);
+	ret = wdma_screen_capture(PmapAddr, screencapture);
 
 	if(ret > 0)
 	{
