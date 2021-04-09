@@ -33,6 +33,10 @@ int tcc_tsc_serdes_update(
 	unsigned char buf[3] = {0,};
 	int i, ret;
 
+	dev_info(&client->dev, "[INFO][TSC_SERDES] evb_board 0x%x, des_num %d revision %d\n",
+			evb_board,
+			des_num,
+			revision);
 	switch (evb_board) {
 	case TCC803X_EVB:
 		ser_reg = hdmi_max96751_ser_regs;

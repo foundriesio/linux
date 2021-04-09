@@ -2916,15 +2916,29 @@
 		telechips,input_buffer_enable;
 	};
 
-	tsc1_default: tsc1_default {
+	tsc1_sv01: tsc1_sv01 {
 		telechips,pins = "gpa-21", "gpmd-8";
 		telechips,pin-function = <0>;
 		telechips,no-pull;
 		telechips,input_buffer_enable;
 	};
 
-	tsc2_default: tsc2_default {
+	tsc1_sv10: tsc1_sv10 {
+		telechips,pins = "gpmc-19", "gpmc-22";
+		telechips,pin-function = <0>;
+		telechips,no-pull;
+		telechips,input_buffer_enable;
+	};
+
+	tsc2_sv01: tsc2_sv01 {
 		telechips,pins = "gpc-13", "gpc-12";
+		telechips,pin-function = <0>;
+		telechips,no-pull;
+		telechips,input_buffer_enable;
+	};
+
+	tsc2_sv10: tsc2_sv10 {
+		telechips,pins = "gpmc-18", "gpmc-24";
 		telechips,pin-function = <0>;
 		telechips,no-pull;
 		telechips,input_buffer_enable;

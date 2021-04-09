@@ -459,7 +459,7 @@ ak4601: ak4601@10 {
 		status = "disabled";
 		reg = <0x4d>;
 		pinctrl-names = "default";
-		pinctrl-0 = <&tsc1_default>;
+		pinctrl-0 = <&tsc1_sv01>;
 
 		interrupt-parent = <&gpa>;
 		interrupts = <21 IRQ_TYPE_EDGE_FALLING>;
@@ -470,7 +470,7 @@ ak4601: ak4601@10 {
 		status = "disabled";
 		reg = <0x4f>;
 		pinctrl-names = "default";
-		pinctrl-0 = <&tsc2_default>;
+		pinctrl-0 = <&tsc2_sv01>;
 
 		interrupt-parent = <&gpc>;
 		interrupts = <13 IRQ_TYPE_EDGE_FALLING>;
