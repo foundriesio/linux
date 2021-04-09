@@ -95,11 +95,13 @@
        lcd_port1_bl: lcd_port1_bl {
                status = "okay";
                compatible = "gpio-backlight"; /* use gpio backlight module */
+	       default-on;
        };
 
        lcd_port2_bl: lcd_port2_bl {
                status = "okay";
                compatible = "gpio-backlight";
+	       default-on;
        };
 
        lcd_port3_bl: lcd_port3_bl {
