@@ -32,7 +32,7 @@
 #include <linux/vmalloc.h>
 #include <linux/wait.h>
 #include <media/videobuf2-v4l2.h>
-#include <media/videobuf2-vmalloc.h>
+#include <media/videobuf2-dma-contig.h>
 
 #include "tccvin_video.h"
 
@@ -92,20 +92,20 @@ static int tccvin_queue_setup(struct vb2_queue *vq,
 {
 	struct tccvin_video_queue *queue = vb2_get_drv_priv(vq);
 	struct tccvin_streaming *stream = tccvin_queue_to_stream(queue);
-	unsigned int size = stream->cur_frame->dwMaxVideoFrameBufferSize;
+	int idxpln = 0;
+	unsigned int imagesize[VIDEO_MAX_PLANES];
 
-	/*
-	 * When called with plane sizes, validate them. The driver supports
-	 * single planar formats only, and requires buffers to be large enough
-	 * to store a complete frame.
-	 */
-	if (*nplanes) {
-		/* nplanes is wrong */
-		return *nplanes != 1 || sizes[0] < size ? -EINVAL : 0;
+	if (*nplanes == 0) {
+		/* the number of default planes is 3 */
+		*nplanes = stream->cur_format->num_planes;
 	}
 
-	*nplanes = 1;
-	sizes[0] = size;
+	tccvin_get_imagesize(stream->cur_frame->wWidth, stream->cur_frame->wHeight,
+		stream->cur_format->fcc, &imagesize);
+	for (idxpln = 0; idxpln < *nplanes; idxpln++) {
+		sizes[idxpln] = imagesize[idxpln];
+		logd("plane[%d].size: %d\n", idxpln, sizes[idxpln]);
+	}
 
 	return 0;
 }
@@ -215,17 +215,18 @@ int tccvin_queue_init(struct tccvin_video_queue *queue, enum v4l2_buf_type type,
 	int ret;
 
 	queue->queue.type = type;
-	queue->queue.io_modes = VB2_MMAP | VB2_USERPTR | VB2_DMABUF;
+	queue->queue.io_modes = VB2_MMAP | VB2_DMABUF;
 	queue->queue.bidirectional = 0;
 	queue->queue.is_output = DMA_TO_DEVICE;
 	queue->queue.drv_priv = queue;
 	queue->queue.buf_struct_size = sizeof(struct tccvin_buffer);
 	queue->queue.ops = &tccvin_queue_qops;
-	queue->queue.mem_ops = &vb2_vmalloc_memops;
+	queue->queue.mem_ops = &vb2_dma_contig_memops;
 	queue->queue.timestamp_flags = V4L2_BUF_FLAG_TIMESTAMP_MONOTONIC
 		| V4L2_BUF_FLAG_TSTAMP_SRC_SOE;
 	queue->queue.lock = &queue->mutex;
 	queue->queue.dev = &stream->dev->pdev->dev;
+	queue->queue.min_buffers_needed = 1;
 	ret = vb2_queue_init(&queue->queue);
 	if (ret) {
 		/* failure of queue init */
@@ -318,6 +319,59 @@ int tccvin_dequeue_buffer(struct tccvin_video_queue *queue,
 	return ret;
 }
 
+int tccvin_conv_to_paddr(struct tccvin_video_queue *queue,
+	struct v4l2_buffer *buf)
+{
+	struct vb2_queue *q = &queue->queue;
+        struct vb2_buffer *vb;
+	int idxpln;
+	int ret = 0;
+
+	mutex_lock(&queue->mutex);
+
+	if (buf->type != q->type) {
+		loge("wrong buffer type\n");
+		ret = -EINVAL;
+		goto end;
+	}
+
+	if (buf->index >= q->num_buffers) {
+		loge("buffer index out of range\n");
+		ret = -EINVAL;
+		goto end;
+	}
+
+	switch (buf->memory) {
+	case V4L2_MEMORY_MMAP:
+		if (!q->is_multiplanar) {
+			loge("multi planar is not supported\n");
+			ret = -1;
+		} else {
+			vb = q->bufs[buf->index];
+			logd("bufidx: %d, planes: %d, num_planes: %d\n",
+				buf->index, buf->length, vb->num_planes);
+			for (idxpln = 0; idxpln < buf->length; idxpln++) {
+				buf->m.planes[idxpln].m.mem_offset =
+					vb2_dma_contig_plane_dma_addr(vb, idxpln);
+				logd("bufidx: %d, plan: %d, addr: 0x%08x\n",
+					buf->index, idxpln,
+					buf->m.planes[idxpln].m.mem_offset);
+			}
+		}
+		break;
+
+	default:
+		loge("memory (%d) is wrong\n", buf->memory);
+		ret = -1;
+		break;
+	}
+
+end:
+	mutex_unlock(&queue->mutex);
+
+	return ret;
+}
+
 int tccvin_queue_streamon(struct tccvin_video_queue *queue,
 	enum v4l2_buf_type type)
 {
@@ -345,7 +399,13 @@ int tccvin_queue_streamoff(struct tccvin_video_queue *queue,
 int tccvin_queue_mmap(struct tccvin_video_queue *queue,
 	struct vm_area_struct *vma)
 {
-	return vb2_mmap(&queue->queue, vma);
+	int ret;
+
+	mutex_lock(&queue->mutex);
+	ret = vb2_mmap(&queue->queue, vma);
+	mutex_unlock(&queue->mutex);
+
+	return ret;
 }
 
 unsigned int tccvin_queue_poll(struct tccvin_video_queue *queue,
@@ -397,7 +457,7 @@ struct tccvin_buffer *tccvin_queue_next_buffer(struct tccvin_video_queue *queue,
 	if (!list_empty(&queue->irqqueue)) {
 		nextbuf = list_first_entry(&queue->irqqueue,
 			struct tccvin_buffer, queue);
-		dlog("buf[%d], type: 0x%08x, memory: 0x%08x\n",
+		logd("buf[%d] type: 0x%08x, memory: 0x%08x\n",
 			nextbuf->buf.vb2_buf.index, nextbuf->buf.vb2_buf.type,
 			nextbuf->buf.vb2_buf.memory);
 	} else {

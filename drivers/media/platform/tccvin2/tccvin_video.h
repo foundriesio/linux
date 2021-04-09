@@ -43,7 +43,11 @@
 #define DRIVER_VERSION			"2.0.0"
 
 /* vioc path */
-#define MAX_BUFFERS			4
+#define MAX_BUFFERS			(4)
+#ifdef	VIDEO_MAX_PLANES
+#undef	VIDEO_MAX_PLANES
+#define	VIDEO_MAX_PLANES		(3)
+#endif
 
 #define PGL_FORMAT			(VIOC_IMG_FMT_ARGB8888)
 #define PGL_BG_R			(0xff)
@@ -128,6 +132,7 @@ struct tccvin_format_desc {
 	__u32				guid;
 	__u32				fcc;
 	__u8				bpp;
+	__u32				num_planes;
 };
 
 /* The term 'entity' refers to both TCCVIN units and TCCVIN terminals.
@@ -179,7 +184,6 @@ struct tccvin_frame {
 	__u8  bFrameIndex;
 	__u16 wWidth;
 	__u16 wHeight;
-	__u32 dwMaxVideoFrameBufferSize;
 	__u8  bFrameIntervalType;
 	__u32 dwDefaultFrameInterval;
 	__u32 *dwFrameInterval;
@@ -190,6 +194,7 @@ struct tccvin_format {
 	__u8 bpp;
 	__u8 colorspace;
 	__u32 fcc;
+	__u32 num_planes;
 	__u32 flags;
 
 	char name[32];
@@ -366,8 +371,6 @@ extern unsigned int tccvin_timeout_param;
 					__func__, ##__VA_ARGS__); }
 #define logi(fmt, ...)		{ pr_info("[INFO][%s] %s - " fmt, LOG_TAG, \
 					__func__, ##__VA_ARGS__); }
-#define dlog(fmt, ...)		\
-	//{ do { if (debug) { ; logd(fmt, ##__VA_ARGS__); } while (0); }
 
 /* --------------------------------------------------------------------------
  * Internal functions.
@@ -377,6 +380,8 @@ extern unsigned int tccvin_timeout_param;
 extern int tccvin_queue_init(struct tccvin_video_queue *queue,
 	enum v4l2_buf_type type, int drop_corrupted);
 extern void tccvin_queue_release(struct tccvin_video_queue *queue);
+extern int tccvin_get_imagesize(unsigned int width, unsigned int height,
+	unsigned int fcc, unsigned int (*planes)[]);
 extern int tccvin_request_buffers(struct tccvin_video_queue *queue,
 	struct v4l2_requestbuffers *rb);
 extern int tccvin_query_buffer(struct tccvin_video_queue *queue,
@@ -387,6 +392,8 @@ extern int tccvin_export_buffer(struct tccvin_video_queue *queue,
 	struct v4l2_exportbuffer *exp);
 extern int tccvin_dequeue_buffer(struct tccvin_video_queue *queue,
 	struct v4l2_buffer *v4l2_buf, int nonblocking);
+extern int tccvin_conv_to_paddr(struct tccvin_video_queue *queue,
+	struct v4l2_buffer *buf);
 extern int tccvin_queue_streamon(struct tccvin_video_queue *queue,
 	enum v4l2_buf_type type);
 extern int tccvin_queue_streamoff(struct tccvin_video_queue *queue,
@@ -413,6 +420,7 @@ extern int tccvin_create_recovery_trigger(struct device *dev);
 extern int tccvin_create_timestamp(struct device *dev);
 extern int tccvin_count_supported_formats(void);
 extern struct tccvin_format_desc *tccvin_format_by_index(int index);
+extern struct tccvin_format_desc *tccvin_format_by_fcc(const __u32 fcc);
 extern int tccvin_count_supported_framesizes(void);
 extern struct framesize *tccvin_framesize_by_index(int index);
 extern int tccvin_count_supported_framerates(void);

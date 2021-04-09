@@ -99,13 +99,14 @@ static int tccvin_parse_format(struct tccvin_device *dev,
 	for (idxFormat = 0; idxFormat < streaming->nformats; idxFormat++) {
 		fmtdesc = tccvin_format_by_index(idxFormat);
 
-		streamimg_format = &streaming->format[idxFormat];
+		streamimg_format = &format[idxFormat];
 		streamimg_format->index = idxFormat;
 		strlcpy(streamimg_format->name, fmtdesc->name,
 			sizeof(streamimg_format->name));
 		streamimg_format->fcc = fmtdesc->fcc;
 		streamimg_format->bpp = fmtdesc->bpp;
 		streamimg_format->colorspace = 0;
+		streamimg_format->num_planes = fmtdesc->num_planes;
 		streamimg_format->flags = 0;
 		streamimg_format->nframes = format->nframes;
 		streamimg_format->frame = format->frame;
@@ -118,15 +119,12 @@ static int tccvin_parse_format(struct tccvin_device *dev,
 		logd("name: %s\n",		streamimg_format->name);
 		logd("nframes: %d\n",		streamimg_format->nframes);
 
-		for (idxFrame = 0; idxFrame < format->nframes; idxFrame++) {
-			frame = &format[idxFormat].frame[idxFrame];
+		for (idxFrame = 0; idxFrame < streamimg_format->nframes; idxFrame++) {
+			frame = &streamimg_format->frame[idxFrame];
 			frame->bFrameIndex = idxFrame;
 			framesize = tccvin_framesize_by_index(idxFrame);
 			frame->wWidth = framesize->width;
 			frame->wHeight = framesize->height;
-			frame->dwMaxVideoFrameBufferSize =
-				frame->wWidth * frame->wHeight *
-				streamimg_format->bpp / 8;
 			frame->bFrameIntervalType = nintervals;
 			for (idxInterval = 0; idxInterval < nintervals;
 				idxInterval++) {
@@ -140,8 +138,6 @@ static int tccvin_parse_format(struct tccvin_device *dev,
 			logd("index: %d\n",	frame->bFrameIndex);
 			logd("width: %d\n",	frame->wWidth);
 			logd("height: %d\n",	frame->wHeight);
-			logd("max_buf_size: 0x%08x\n",
-				frame->dwMaxVideoFrameBufferSize);
 			logd("default_frame_interval: %d\n",
 				frame->dwDefaultFrameInterval);
 			logd("frame_interval_type: %d\n",
@@ -174,7 +170,7 @@ static int tccvin_parse_streaming(struct tccvin_device *dev)
 	streaming->dev = dev;
 
 	/* Parse the header descriptor. */
-	streaming->type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+	streaming->type = V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE;
 
 	/* Count the format and frame descriptors. */
 	nformats = tccvin_count_supported_formats();
@@ -197,12 +193,12 @@ static int tccvin_parse_streaming(struct tccvin_device *dev)
 	frame = (struct tccvin_frame *)&format[nformats];
 	interval = (__u32 *)&frame[nframes];
 
-	streaming->format = format;
-	streaming->nformats = nformats;
-
-	/* Parse the format descriptors. */
-	format->frame = frame;
 	format->nframes = nframes;
+	format->frame = frame;
+
+	streaming->nformats = nformats;
+	streaming->format = format;
+
 	ret = tccvin_parse_format(dev, streaming, format,
 		&interval, nintervals);
 	if (ret < 0) {

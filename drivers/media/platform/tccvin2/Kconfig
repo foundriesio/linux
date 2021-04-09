@@ -10,8 +10,8 @@ config VIDEO_TCCVIN2
 	bool "Telechips Video-Input Path Driver V2"
 	depends on VIDEO_V4L2 && VIDEO_V4L2_SUBDEV_API && OF
 	default n
-	select VIDEOBUF2_VMALLOC
 	select V4L2_FWNODE
+	select VIDEOBUF2_DMA_CONTIG
 	---help---
 	Support v4l2 capture interface
 
@@ -41,15 +41,3 @@ config VIDEO_TCCVIN2_DIAG
 	- cif port pinctrl checking.
 	- cif port mapping checking.
 
-config VIDEO_TCCVIN2_MMAP_MEMCPY
-	bool "A debugging feature to check V4L2 MMAP mechanism using memcpy"
-	depends on VIDEO_TCCVIN2
-	default n
-	---help---
-	This is a debugging feature to check whether V4L2 MMAP is working.
-	This will use memcpy to convey video frame data to userspace from
-	video device driver.
-
-	Note that the driver is supported on the following conditions.
-	- An application in userspace should invoke functions to use
-	V4L2 MMAP.

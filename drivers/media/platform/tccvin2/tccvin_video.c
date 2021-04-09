@@ -40,13 +40,10 @@
 #include <asm/unaligned.h>
 
 #include <media/v4l2-common.h>
+#include <media/videobuf2-dma-contig.h>
 #include <soc/tcc/pmap.h>
 
 #include "tccvin_video.h"
-
-/* Rounds an integer value up to the next multiple of num */
-#define ROUND_UP_2(num)         (((num)+1)&~1)
-#define ROUND_UP_4(num)         (((num)+3)&~3)
 
 /* ------------------------------------------------------------------------
  * Video formats
@@ -61,6 +58,7 @@ struct tccvin_format_desc tccvin_format_list[] = {
 		/* 'RBG3' 24 RGB-8-8-8 */
 		.fcc		= V4L2_PIX_FMT_RGB24,
 		.bpp		= 24,
+		.num_planes	= 1,
 	},
 	{
 		.name		= "ARGB 8:8:8:8 (RGB4)",
@@ -69,6 +67,7 @@ struct tccvin_format_desc tccvin_format_list[] = {
 		/* 'RGB4' 32 RGB-8-8-8-8 */
 		.fcc		= V4L2_PIX_FMT_RGB32,
 		.bpp		= 32,
+		.num_planes	= 1,
 	},
 
 	/* sequential (YUV packed) */
@@ -79,6 +78,7 @@ struct tccvin_format_desc tccvin_format_list[] = {
 		/* 'UYVY' 16 YUV 4:2:2 */
 		.fcc		= V4L2_PIX_FMT_UYVY,
 		.bpp		= 16,
+		.num_planes	= 1,
 	},
 	{
 		.name		= "YUV 4:2:2 (VYUY)",
@@ -87,6 +87,7 @@ struct tccvin_format_desc tccvin_format_list[] = {
 		/* 'VYUY' 16 YUV 4:2:2 */
 		.fcc		= V4L2_PIX_FMT_VYUY,
 		.bpp		= 16,
+		.num_planes	= 1,
 	},
 	{
 		.name		= "YUV 4:2:2 (YUYV)",
@@ -95,6 +96,7 @@ struct tccvin_format_desc tccvin_format_list[] = {
 		/* 'YUYV' 16 YUV 4:2:2 */
 		.fcc		= V4L2_PIX_FMT_YUYV,
 		.bpp		= 16,
+		.num_planes	= 1,
 	},
 	{
 		.name		= "YUV 4:2:2 (YVYU)",
@@ -103,6 +105,7 @@ struct tccvin_format_desc tccvin_format_list[] = {
 		/* 'YVYU' 16 YVU 4:2:2 */
 		.fcc		= V4L2_PIX_FMT_YVYU,
 		.bpp		= 16,
+		.num_planes	= 1,
 	},
 
 	/* separated (Y, U, V planar) */
@@ -113,6 +116,7 @@ struct tccvin_format_desc tccvin_format_list[] = {
 		/* 'YV12' 12 YVU 4:2:0 */
 		.fcc		= V4L2_PIX_FMT_YVU420,
 		.bpp		= 12,
+		.num_planes	= 3,
 	},
 	{
 		.name		= "YUV 4:2:0 (YU12)",
@@ -121,6 +125,7 @@ struct tccvin_format_desc tccvin_format_list[] = {
 		/* 'YU12' 12 YUV 4:2:0 */
 		.fcc		= V4L2_PIX_FMT_YUV420,
 		.bpp		= 12,
+		.num_planes	= 3,
 	},
 	{
 		.name		= "YUV 4:2:2 (422P)",
@@ -129,6 +134,7 @@ struct tccvin_format_desc tccvin_format_list[] = {
 		/* '422P' 16 YVU422 Planar */
 		.fcc		= V4L2_PIX_FMT_YUV422P,
 		.bpp		= 16,
+		.num_planes	= 3,
 	},
 
 	/* interleaved (Y planar, UV planar) */
@@ -139,6 +145,7 @@ struct tccvin_format_desc tccvin_format_list[] = {
 		/* 'NV12' 12 Y/CbCr 4:2:0 */
 		.fcc		= V4L2_PIX_FMT_NV12,
 		.bpp		= 12,
+		.num_planes	= 2,
 	},
 	{
 		.name		= "YUV 4:2:0 (NV21)",
@@ -147,6 +154,7 @@ struct tccvin_format_desc tccvin_format_list[] = {
 		/* 'NV21' 12 Y/CrCb 4:2:0 */
 		.fcc		= V4L2_PIX_FMT_NV21,
 		.bpp		= 12,
+		.num_planes	= 2,
 	},
 	{
 		.name		= "YUV 4:2:0 (NV16)",
@@ -155,6 +163,7 @@ struct tccvin_format_desc tccvin_format_list[] = {
 		/* 'NV16' 16 Y/CbCr 4:2:2 */
 		.fcc		= V4L2_PIX_FMT_NV16,
 		.bpp		= 16,
+		.num_planes	= 2,
 	},
 	{
 		.name		= "YUV 4:2:0 (NV61)",
@@ -163,6 +172,7 @@ struct tccvin_format_desc tccvin_format_list[] = {
 		/* 'NV61' 16 Y/CrCb 4:2:2 */
 		.fcc		= V4L2_PIX_FMT_NV61,
 		.bpp		= 16,
+		.num_planes	= 2,
 	},
 };
 
@@ -368,7 +378,7 @@ struct tccvin_format_desc *tccvin_format_by_guid(const __u32 guid)
 	return NULL;
 }
 
-static struct tccvin_format_desc *tccvin_format_by_fcc(const __u32 fcc)
+struct tccvin_format_desc *tccvin_format_by_fcc(const __u32 fcc)
 {
 	uint32_t			len = ARRAY_SIZE(tccvin_format_list);
 	uint32_t			i;
@@ -381,68 +391,6 @@ static struct tccvin_format_desc *tccvin_format_by_fcc(const __u32 fcc)
 	}
 
 	return NULL;
-}
-
-static int32_t tccvin_convert_to_multi_planes_buffer_addresses(
-	uint32_t width, uint32_t height, uint32_t fcc,
-	unsigned long *addr0, unsigned long *addr1, unsigned long *addr2)
-{
-	unsigned long			y_offset	= 0;
-	unsigned long			uv_offset	= 0;
-	int32_t				ret		= 0;
-
-	if ((addr0 == NULL) || (addr1 == NULL) || (addr2 == NULL)) {
-		loge("Passed arguments is not available\n");
-		return -EINVAL;
-	}
-
-	switch (fcc) {
-	/* sepatated (Y, U, V planar) */
-	/* 'YV12' 12 YVU 4:2:0 */
-	case V4L2_PIX_FMT_YVU420:
-		y_offset	= ROUND_UP_4(width) * ROUND_UP_2(height);
-		uv_offset	= (ROUND_UP_4(width) / 2)
-					* (ROUND_UP_2(height) / 2);
-		*addr2		= *addr0 + y_offset;
-		*addr1		= *addr2 + uv_offset;
-		break;
-	/* 'YU12' 12 YUV 4:2:0 */
-	case V4L2_PIX_FMT_YUV420:
-		y_offset	= ROUND_UP_4(width) * ROUND_UP_2(height);
-		uv_offset	= (ROUND_UP_4(width) / 2)
-					* (ROUND_UP_2(height) / 2);
-		*addr1		= *addr0 + y_offset;
-		*addr2		= *addr1 + uv_offset;
-		break;
-	/* '422P' 16 YVU422 Planar */
-	case V4L2_PIX_FMT_YUV422P:
-		y_offset	= ROUND_UP_4(width) * height;
-		uv_offset	= (ROUND_UP_4(width) / 2) * height;
-		*addr1		= *addr0 + y_offset;
-		*addr2		= *addr1 + uv_offset;
-		break;
-
-	/* interleaved (Y planar, UV planar) */
-	/* 'NV12' 12 Y/CbCr 4:2:0 */
-	case V4L2_PIX_FMT_NV12:
-	/* 'NV21' 12 Y/CrCb 4:2:0 */
-	case V4L2_PIX_FMT_NV21:
-	/* 'NV16' 16 Y/CbCr 4:2:2 */
-	case V4L2_PIX_FMT_NV16:
-	/* 'NV61' 16 Y/CrCb 4:2:2 */
-	case V4L2_PIX_FMT_NV61:
-		y_offset	= ROUND_UP_4(width) * ROUND_UP_2(height);
-		*addr1		= *addr0 + y_offset;
-		*addr2		= 0;
-		break;
-
-	default:
-		*addr1		= 0;
-		*addr2		= 0;
-		break;
-	}
-
-	return ret;
 }
 
 /*
@@ -530,8 +478,8 @@ static int32_t tccvin_parse_device_tree(struct tccvin_streaming *vdev)
 			/* Parking Guide Line */
 			of_property_read_u32_index(main_node, "use_pgl", 0,
 				&vdev->cif.use_pgl);
-			dlog("%10s[%2d]: %d\n", "usage status pgl",
-			     vdev->vid_dev.minor, vdev->cif.use_pgl);
+			logd("%10s[%2d] - Use of PGL: %d\n", "VIN", vin_id,
+				vdev->cif.use_pgl);
 		} else {
 			logw("VIN[%d] - \"rdma\" node is not found.\n", vin_id);
 			return -ENODEV;
@@ -1068,12 +1016,6 @@ static int32_t tccvin_set_scaler(struct tccvin_streaming *vdev,
 	width = vdev->rect_compose.width;
 	height = vdev->rect_compose.height;
 
-	if ((width == vdev->cur_frame->wWidth) &&
-	    (height == vdev->cur_frame->wHeight)) {
-		logd("skip setting scaler\n");
-		goto end;
-	}
-
 	/* Plug the scaler in */
 	VIOC_CONFIG_PlugIn(cif->vioc_path.scaler, cif->vioc_path.vin);
 
@@ -1194,9 +1136,8 @@ static int32_t tccvin_set_wdma(struct tccvin_streaming *vdev)
 	uint32_t			buf_index	= 0;
 	struct vb2_plane		*plane		= NULL;
 	struct vb2_queue		*q		= &vdev->queue.queue;
-	unsigned long			addr0		= 0;
-	unsigned long			addr1		= 0;
-	unsigned long			addr2		= 0;
+	int				idxpln		= 0;
+	unsigned long			addr[3]		= { 0, };
 
 	WARN_ON(IS_ERR_OR_NULL(vdev));
 
@@ -1230,14 +1171,12 @@ static int32_t tccvin_set_wdma(struct tccvin_streaming *vdev)
 			switch (buf->buf.vb2_buf.memory) {
 			case VB2_MEMORY_MMAP:
 			case V4L2_MEMORY_DMABUF:
-				/* use vb2_queue */
-				addr0 = q->bufs[buf_index]->planes[0].m.offset;
-				addr1 = q->bufs[buf_index]->planes[1].m.offset;
-				addr2 = q->bufs[buf_index]->planes[2].m.offset;
-				break;
-			case VB2_MEMORY_USERPTR:
-				plane = &buf->buf.vb2_buf.planes[0];
-				addr0 = virt_to_phys((void *)plane->m.userptr);
+				for (idxpln = 0; idxpln < buf->buf.vb2_buf.num_planes; idxpln++) {
+					addr[idxpln] = vb2_dma_contig_plane_dma_addr(&buf->buf.vb2_buf, idxpln);
+					logi("VIN[%d] bufidx: %d, idxpln: %d, addr: 0x%08lx\n",
+						vdev->vdev.num, buf->buf.vb2_buf.index, idxpln, addr[idxpln]);
+				}
+
 				break;
 			default:
 				loge("VIN[%d] memory type: %d\n",
@@ -1245,10 +1184,10 @@ static int32_t tccvin_set_wdma(struct tccvin_streaming *vdev)
 					buf->buf.vb2_buf.memory);
 				break;
 			}
-			logd("VIN[%d] addr: 0x%08lx, 0x%08lx, 0x%08lx\n",
-				vdev->vdev.num,
-				addr0, addr1, addr2);
-			VIOC_WDMA_SetImageBase(wdma, addr0, addr1, addr2);
+			logd("VIN[%d] bufidx: %d, addr: 0x%08lx, 0x%08lx, 0x%08lx\n",
+				vdev->vdev.num, buf->buf.vb2_buf.index,
+				addr[0], addr[1], addr[2]);
+			VIOC_WDMA_SetImageBase(wdma, addr[0], addr[1], addr[2]);
 			VIOC_WDMA_SetImageEnable(wdma, OFF);
 		} else {
 			loge("VIN[%d] Buffer is NOT initialized\n",
@@ -1256,13 +1195,13 @@ static int32_t tccvin_set_wdma(struct tccvin_streaming *vdev)
 		}
 		mutex_unlock(&cif->lock);
 	} else {
-		addr0 = vdev->cif.pmap_preview.base;
-		addr1 = 0;
-		addr2 = 0;
+		addr[0] = vdev->cif.pmap_preview.base;
+		addr[1] = 0;
+		addr[2] = 0;
 
 		logd("ADDR0: 0x%08lx, ADDR1: 0x%08lx, ADDR2: 0x%08lx\n",
-			addr0, addr1, addr2);
-		VIOC_WDMA_SetImageBase(wdma, addr0, addr1, addr2);
+			addr[0], addr[1], addr[2]);
+		VIOC_WDMA_SetImageBase(wdma, addr[0], addr[1], addr[2]);
 		VIOC_WDMA_SetImageEnable(wdma, ON);
 	}
 
@@ -1352,10 +1291,8 @@ static irqreturn_t tccvin_wdma_isr(int irq, void *data)
 	unsigned long			flags;
 	uint32_t			status		= 0;
 	uint32_t			buf_index	= 0;
-	struct vb2_buffer		*buf		= NULL;
-	unsigned long			addr0		= 0;
-	unsigned long			addr1		= 0;
-	unsigned long			addr2		= 0;
+	int				idxpln		= 0;
+	unsigned long			addr[3]		= { 0, };
 	bool				ret		= 0;
 
 	WARN_ON(IS_ERR_OR_NULL(data));
@@ -1430,12 +1367,9 @@ static irqreturn_t tccvin_wdma_isr(int irq, void *data)
 		switch (stream->next_buf->buf.vb2_buf.memory) {
 		case VB2_MEMORY_MMAP:
 		case VB2_MEMORY_DMABUF:
-			buf_index = stream->next_buf->buf.vb2_buf.index;
-			buf = stream->queue.queue.bufs[buf_index];
-
-			addr0 = buf->planes[0].m.offset;
-			addr1 = buf->planes[1].m.offset;
-			addr2 = buf->planes[2].m.offset;
+			for (idxpln = 0; idxpln < stream->next_buf->buf.vb2_buf.num_planes; idxpln++) {
+				addr[idxpln] = vb2_dma_contig_plane_dma_addr(&stream->next_buf->buf.vb2_buf, idxpln);
+			}
 			break;
 		default:
 			loge("VIN[%d] - memory type: %d\n",
@@ -1452,8 +1386,8 @@ static irqreturn_t tccvin_wdma_isr(int irq, void *data)
 		logd("VIN[%d] - bufidx: %d, addr: 0x%08lx, 0x%08lx, 0x%08lx\n",
 			stream->vdev.num,
 			stream->next_buf->buf.vb2_buf.index,
-			addr0, addr1, addr2);
-		VIOC_WDMA_SetImageBase(wdma, addr0, addr1, addr2);
+			addr[0], addr[1], addr[2]);
+		VIOC_WDMA_SetImageBase(wdma, addr[0], addr[1], addr[2]);
 
 		schedule_work(&stream->cif.wdma_work);
 
@@ -2462,78 +2396,3 @@ int32_t tccvin_allocated_dmabuf(struct tccvin_streaming *stream, int32_t count)
 	return ret;
 }
 
-int32_t tccvin_set_buffer_address(struct tccvin_streaming *stream,
-	struct v4l2_buffer *buf)
-{
-	struct vb2_queue		*q		= NULL;
-	struct tccvin_dmabuf_phys_data	phys;
-	int				bufidx		= 0;
-	int32_t				ret		= 0;
-
-	if (stream == NULL) {
-		loge("An instance of stream is NULL\n");
-		return -EINVAL;
-	}
-
-	q		= &stream->queue.queue;
-
-	switch (buf->memory) {
-	case V4L2_MEMORY_MMAP:
-		logd("VIN[%d] bufidx: %d, buf->m.offset: 0x%08x\n",
-			stream->vdev.num, buf->index, buf->m.offset);
-
-		/* use vb2_queue */
-		bufidx = buf->index;
-
-		q->bufs[bufidx]->planes[0].m.offset =
-			stream->cif.pmap_preview.base + buf->m.offset;
-		tccvin_convert_to_multi_planes_buffer_addresses(
-			stream->cur_frame->wWidth,
-			stream->cur_frame->wHeight,
-			stream->cur_format->fcc,
-			(unsigned long *)&q->bufs[bufidx]->planes[0].m.offset,
-			(unsigned long *)&q->bufs[bufidx]->planes[1].m.offset,
-			(unsigned long *)&q->bufs[bufidx]->planes[2].m.offset);
-		logd("VIN[%d] bufidx: %d, addr: 0x%08x, 0x%08x, 0x%08x\n",
-			stream->vdev.num, bufidx,
-			q->bufs[bufidx]->planes[0].m.offset,
-			q->bufs[bufidx]->planes[1].m.offset,
-			q->bufs[bufidx]->planes[2].m.offset);
-
-		buf->m.offset = q->bufs[bufidx]->planes[0].m.offset;
-		break;
-	case V4L2_MEMORY_DMABUF:
-		phys.fd = q->bufs[buf->index]->planes[0].m.fd;
-		ret = tccvin_dmabuf_phys(stream->dev->pdev, phys.fd,
-					&phys.paddr, &phys.len);
-
-		if (ret < 0) {
-			loge("Fail conversion of physical address using fd\n");
-			return ret;
-		}
-
-		stream->cif.preview_buf_addr[buf->index].addr0 =
-			phys.paddr;
-		buf->reserved = phys.paddr;
-
-		logd("Successful conversion - physical: 0x%lx, fd: %d\n",
-			stream->cif.preview_buf_addr[buf->index].addr0,
-			q->bufs[buf->index]->planes[0].m.fd);
-		break;
-	case VB2_MEMORY_USERPTR:
-		/*
-		 * TODO: Need to implement to handle other memory
-		 * types. Because of the limit of memory address
-		 * between virtual addresses and physical address in
-		 * 64-bit environment, we need to use IOMMU to handle
-		 * this issue.
-		 */
-		logd("Need to be implemented\n");
-		ret = -ENOTTY;
-	default:
-		ret = -EINVAL;
-		break;
-	}
-
-	return ret;
-}

@@ -12,7 +12,7 @@
 #define CAMERA_OUTPUT_HEIGHT		1080
 
 #define FRAMES_CAMERA_VIQE		4
-#define FRAMES_CAMERA_PREVIEW0		4
+#define FRAMES_CAMERA_PREVIEW0		0
 #define FRAMES_CAMERA_PREVIEW1		0
 #define FRAMES_CAMERA_PREVIEW2		0
 #define FRAMES_CAMERA_PREVIEW3		0
@@ -20,7 +20,7 @@
 #define FRAMES_CAMERA_PREVIEW5		0
 #define FRAMES_CAMERA_PREVIEW6		0
 #define FRAMES_CAMERA_PREVIEW7		0
-#define FRAMES_CAMERA_PGL		1
+#define FRAMES_CAMERA_PGL		0
 
 
 //****************************** Calculation ******************************/

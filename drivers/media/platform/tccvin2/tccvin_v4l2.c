@@ -41,6 +41,10 @@
 
 #include "tccvin_video.h"
 
+/* Rounds an integer value up to the next multiple of num */
+#define ROUND_UP_2(num)         (((num)+1)&~1)
+#define ROUND_UP_4(num)         (((num)+3)&~3)
+
 /* ------------------------------------------------------------------------
  * V4L2 interface
  */
@@ -78,6 +82,83 @@ static __u32 tccvin_try_frame_interval(struct tccvin_frame *frame,
 	return interval;
 }
 
+int tccvin_get_imagesize(unsigned int width, unsigned int height,
+	unsigned int fcc, unsigned int (*planes)[])
+{
+	struct tccvin_format_desc *fmtdesc = NULL;
+
+	if (planes == NULL) {
+		loge("planes are not available\n");
+		return -EINVAL;
+	}
+
+	fmtdesc = tccvin_format_by_fcc(fcc);
+
+	switch (fcc) {
+	/* RGB */
+	/* 'RBG3' 24 RGB-8-8-8 */
+	case V4L2_PIX_FMT_RGB24:
+	/* 'RGB4' 32 RGB-8-8-8-8 */
+	case V4L2_PIX_FMT_RGB32:
+	/* sequential (YUV packed) */
+	/* 'UYVY' 16 YUV 4:2:2 */
+	case V4L2_PIX_FMT_UYVY:
+	/* 'VYUY' 16 YUV 4:2:2 */
+	case V4L2_PIX_FMT_VYUY:
+	/* 'YUYV' 16 YUV 4:2:2 */
+	case V4L2_PIX_FMT_YUYV:
+	/* 'YVYU' 16 YVU 4:2:2 */
+	case V4L2_PIX_FMT_YVYU:
+		(*planes)[0]	= ROUND_UP_4(width) * ROUND_UP_2(height) *
+					fmtdesc->bpp / 8;
+		(*planes)[1]	= 0;
+		(*planes)[2]	= 0;
+		break;
+
+	/* separated (Y, U, V planar) */
+	/* 'YV12' 12 YVU 4:2:0 */
+	case V4L2_PIX_FMT_YVU420:
+	/* 'YU12' 12 YUV 4:2:0 */
+	case V4L2_PIX_FMT_YUV420:
+		(*planes)[0]	= ROUND_UP_4(width) * ROUND_UP_2(height);
+		(*planes)[1]	= (*planes)[0] / 4;
+		(*planes)[2]	= (*planes)[0] / 4;
+		break;
+
+	/* '422P' 16 YVU422 Planar */
+	case V4L2_PIX_FMT_YUV422P:
+		(*planes)[0]	= ROUND_UP_4(width) * ROUND_UP_2(height);;
+		(*planes)[1]	= (*planes)[0] / 2;
+		(*planes)[2]	= (*planes)[0] / 2;
+		break;
+
+	/* interleaved (Y planar, UV planar) */
+	/* 'NV12' 12 Y/CbCr 4:2:0 */
+	case V4L2_PIX_FMT_NV12:
+	/* 'NV21' 12 Y/CrCb 4:2:0 */
+	case V4L2_PIX_FMT_NV21:
+		(*planes)[0]	= ROUND_UP_4(width) * ROUND_UP_2(height);
+		(*planes)[1]	= (*planes)[0] / 2;
+		(*planes)[2]	= 0;
+		break;
+
+	/* 'NV16' 16 Y/CbCr 4:2:2 */
+	case V4L2_PIX_FMT_NV16:
+	/* 'NV61' 16 Y/CrCb 4:2:2 */
+	case V4L2_PIX_FMT_NV61:
+		(*planes)[0]	= ROUND_UP_4(width) * ROUND_UP_2(height);
+		(*planes)[1]	= (*planes)[0];
+		(*planes)[2]	= 0;
+		break;
+
+	default:
+		loge("fcc is wrong\n");
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
 static __u32 tccvin_v4l2_get_bytesperline(const struct tccvin_format *format,
 	const struct tccvin_frame *frame)
 {
@@ -103,7 +184,9 @@ static int tccvin_v4l2_try_format(struct tccvin_streaming *stream,
 	__u16 rw, rh;
 	unsigned int d, maxd;
 	unsigned int i;
+	unsigned int imagesize[VIDEO_MAX_PLANES];
 	__u32 interval;
+	int idxpln = 0;
 	int ret = 0;
 	__u8 *fcc;
 
@@ -113,34 +196,34 @@ static int tccvin_v4l2_try_format(struct tccvin_streaming *stream,
 		return -EINVAL;
 	}
 
-	fcc = (__u8 *)&fmt->fmt.pix.pixelformat;
+	fcc = (__u8 *)&fmt->fmt.pix_mp.pixelformat;
 	logd("Trying format 0x%08x (%c%c%c%c): %ux%u.\n",
-			fmt->fmt.pix.pixelformat,
+			fmt->fmt.pix_mp.pixelformat,
 			fcc[0], fcc[1], fcc[2], fcc[3],
-			fmt->fmt.pix.width, fmt->fmt.pix.height);
+			fmt->fmt.pix_mp.width, fmt->fmt.pix_mp.height);
 
 	/* Check if the hardware supports the requested format, use the default
 	 * format otherwise.
 	 */
 	for (i = 0; i < stream->nformats; ++i) {
 		format = &stream->format[i];
-		if (format->fcc == fmt->fmt.pix.pixelformat) {
-			/* fcc is available */
+		if (format->fcc == fmt->fmt.pix_mp.pixelformat) {
+			logd("format is available\n");
 			break;
 		}
 	}
 
 	if (i == stream->nformats) {
 		format = stream->def_format;
-		fmt->fmt.pix.pixelformat = format->fcc;
+		fmt->fmt.pix_mp.pixelformat = format->fcc;
 	}
 
 	/* Find the closest image size. The distance between image sizes is
 	 * the size in pixels of the non-overlapping regions between the
 	 * requested size and the frame-specified size.
 	 */
-	rw = fmt->fmt.pix.width;
-	rh = fmt->fmt.pix.height;
+	rw = fmt->fmt.pix_mp.width;
+	rh = fmt->fmt.pix_mp.height;
 	maxd = (unsigned int)-1;
 
 	for (i = 0; i < format->nframes; ++i) {
@@ -162,36 +245,44 @@ static int tccvin_v4l2_try_format(struct tccvin_streaming *stream,
 
 	if (frame == NULL) {
 		loge("Unsupported size %ux%u.\n",
-				fmt->fmt.pix.width, fmt->fmt.pix.height);
+			fmt->fmt.pix_mp.width, fmt->fmt.pix_mp.height);
 		return -EINVAL;
 	}
 
 	/* Use the default frame interval. */
 	interval = frame->dwDefaultFrameInterval;
-	logd("Using default frame interval %u.%u us (%u.%u fps).\n",
+	logi("Using default frame interval %u.%u us (%u.%u fps).\n",
 		interval/10, interval%10, 10000000/interval,
 		(100000000/interval)%10);
 
 	/* Set the format index, frame index and frame interval. */
 	tccvin_try_frame_interval(frame, interval);
 
-	fmt->fmt.pix.width = frame->wWidth;
-	fmt->fmt.pix.height = frame->wHeight;
-	fmt->fmt.pix.field = V4L2_FIELD_NONE;
-	fmt->fmt.pix.bytesperline =
-		tccvin_v4l2_get_bytesperline(format, frame);
-	frame->dwMaxVideoFrameBufferSize =
-		frame->wWidth * frame->wHeight * format->bpp / 8;
-	fmt->fmt.pix.sizeimage = frame->dwMaxVideoFrameBufferSize;
-	fmt->fmt.pix.colorspace = format->colorspace;
-	fmt->fmt.pix.priv = 0;
+	fmt->fmt.pix_mp.width = frame->wWidth;
+	fmt->fmt.pix_mp.height = frame->wHeight;
+	fmt->fmt.pix_mp.field = V4L2_FIELD_NONE;
+	fmt->fmt.pix_mp.colorspace = format->colorspace;
+	fmt->fmt.pix_mp.num_planes = format->num_planes;
+	tccvin_get_imagesize(frame->wWidth, frame->wHeight,
+		format->fcc, &imagesize);
+	for (idxpln = 0; idxpln < fmt->fmt.pix_mp.num_planes; idxpln++) {
+		fmt->fmt.pix_mp.plane_fmt[idxpln].sizeimage =
+			imagesize[idxpln];
+		fmt->fmt.pix_mp.plane_fmt[idxpln].bytesperline =
+			tccvin_v4l2_get_bytesperline(format, frame);
+	}
 
 	logd("width: %d, height: %d\n",
-		fmt->fmt.pix.width, fmt->fmt.pix.height);
-	logd("field: 0x%08x\n",		fmt->fmt.pix.field);
-	logd("bytesperline: 0x%08x\n",	fmt->fmt.pix.bytesperline);
-	logd("sizeimage: 0x%08x\n",	fmt->fmt.pix.sizeimage);
-	logd("colorspace: 0x%08x\n",	fmt->fmt.pix.colorspace);
+		fmt->fmt.pix_mp.width, fmt->fmt.pix_mp.height);
+	logd("field: 0x%08x\n",		fmt->fmt.pix_mp.field);
+	logd("colorspace: 0x%08x\n",	fmt->fmt.pix_mp.colorspace);
+	logd("num_planes: 0x%08x\n",	fmt->fmt.pix_mp.num_planes);
+	for (idxpln = 0; idxpln < fmt->fmt.pix_mp.num_planes; idxpln++) {
+		logd("idxpln: %d, bytesperline: 0x%08x\n",
+			idxpln, fmt->fmt.pix_mp.plane_fmt[idxpln].bytesperline);
+		logd("idxpln: %d, sizeimage: 0x%08x\n",
+			idxpln, fmt->fmt.pix_mp.plane_fmt[idxpln].sizeimage);
+	}
 
 	if (tccvin_format != NULL) {
 		/* format is available */
@@ -210,6 +301,8 @@ static int tccvin_v4l2_get_format(struct tccvin_streaming *stream,
 {
 	struct tccvin_format *format;
 	struct tccvin_frame *frame;
+	int idxpln = 0;
+	unsigned int imagesize[VIDEO_MAX_PLANES];
 	int ret = 0;
 
 	if (fmt->type != stream->type) {
@@ -226,15 +319,20 @@ static int tccvin_v4l2_get_format(struct tccvin_streaming *stream,
 		goto done;
 	}
 
-	fmt->fmt.pix.pixelformat = format->fcc;
-	fmt->fmt.pix.width = frame->wWidth;
-	fmt->fmt.pix.height = frame->wHeight;
-	fmt->fmt.pix.field = V4L2_FIELD_NONE;
-	fmt->fmt.pix.bytesperline =
-		tccvin_v4l2_get_bytesperline(format, frame);
-	fmt->fmt.pix.sizeimage = frame->dwMaxVideoFrameBufferSize;
-	fmt->fmt.pix.colorspace = format->colorspace;
-	fmt->fmt.pix.priv = 0;
+	fmt->fmt.pix_mp.width = frame->wWidth;
+	fmt->fmt.pix_mp.height = frame->wHeight;
+	fmt->fmt.pix_mp.pixelformat = format->fcc;
+	fmt->fmt.pix_mp.field = V4L2_FIELD_NONE;
+	fmt->fmt.pix_mp.colorspace = format->colorspace;
+	fmt->fmt.pix_mp.num_planes = format->num_planes;
+	tccvin_get_imagesize(frame->wWidth, frame->wHeight,
+		format->fcc, &imagesize);
+	for (idxpln = 0; idxpln < fmt->fmt.pix_mp.num_planes; idxpln++) {
+		fmt->fmt.pix_mp.plane_fmt[idxpln].sizeimage =
+			imagesize[idxpln];
+		fmt->fmt.pix_mp.plane_fmt[idxpln].bytesperline =
+			tccvin_v4l2_get_bytesperline(format, frame);
+	}
 
 done:
 	mutex_unlock(&stream->mutex);
@@ -246,22 +344,24 @@ static int tccvin_v4l2_set_format(struct tccvin_streaming *stream,
 {
 	struct tccvin_format *format;
 	struct tccvin_frame *frame;
-	int ret;
+	int ret = 0;
 
 	if (fmt->type != stream->type) {
-		/* type is wrong */
+		loge("fmt->type: 0x%08x, stream->type: 0x%08x\n",
+			fmt->type, stream->type);
 		return -EINVAL;
 	}
 
 	ret = tccvin_v4l2_try_format(stream, fmt, &format, &frame);
 	if (ret < 0) {
-		/* failure of trying format */
+		loge("tccvin_v4l2_try_format, ret: %d\n", ret);
 		return ret;
 	}
 
 	mutex_lock(&stream->mutex);
 
 	if (tccvin_queue_is_allocated(&stream->queue)) {
+		loge("tccvin_queue_is_allocated\n");
 		ret = -EBUSY;
 		goto done;
 	}
@@ -305,12 +405,13 @@ static int tccvin_acquire_privileges(struct tccvin_fh *handle)
 {
 	/* Always succeed if the handle is already privileged. */
 	if (handle->state == TCCVIN_HANDLE_ACTIVE) {
-		/* state is active */
+		logd("state is already active\n");
 		return 0;
 	}
 
 	/* Check if the device already has a privileged handle. */
 	if (atomic_inc_return(&handle->stream->active) != 1) {
+		loge("the device already has a privileged handle.\n");
 		atomic_dec(&handle->stream->active);
 		return -EBUSY;
 	}
@@ -448,7 +549,7 @@ static int tccvin_ioctl_enum_fmt(struct tccvin_streaming *stream,
 	return 0;
 }
 
-static int tccvin_ioctl_enum_fmt_vid_cap(struct file *file, void *fh,
+static int tccvin_ioctl_enum_fmt_vid_cap_mplane(struct file *file, void *fh,
 	struct v4l2_fmtdesc *fmt)
 {
 	struct tccvin_fh *handle = fh;
@@ -460,7 +561,7 @@ static int tccvin_ioctl_enum_fmt_vid_cap(struct file *file, void *fh,
 	return ret;
 }
 
-static int tccvin_ioctl_g_fmt_vid_cap(struct file *file, void *fh,
+static int tccvin_ioctl_g_fmt_vid_cap_mplane(struct file *file, void *fh,
 				   struct v4l2_format *fmt)
 {
 	struct tccvin_fh *handle = fh;
@@ -469,7 +570,7 @@ static int tccvin_ioctl_g_fmt_vid_cap(struct file *file, void *fh,
 	return tccvin_v4l2_get_format(stream, fmt);
 }
 
-static int tccvin_ioctl_s_fmt_vid_cap(struct file *file, void *fh,
+static int tccvin_ioctl_s_fmt_vid_cap_mplane(struct file *file, void *fh,
 	struct v4l2_format *fmt)
 {
 	struct tccvin_fh *handle = fh;
@@ -478,14 +579,20 @@ static int tccvin_ioctl_s_fmt_vid_cap(struct file *file, void *fh,
 
 	ret = tccvin_acquire_privileges(handle);
 	if (ret < 0) {
-		/* failure of acquiring privileges */
+		loge("tccvin_acquire_privileges, ret: %d\n", ret);
 		return ret;
 	}
 
-	return tccvin_v4l2_set_format(stream, fmt);
+	ret = tccvin_v4l2_set_format(stream, fmt);
+	if (ret < 0) {
+		/* failure of tccvin_v4l2_set_formats */
+		loge("tccvin_v4l2_set_format, ret: %d\n", ret);
+	}
+
+	return ret;
 }
 
-static int tccvin_ioctl_try_fmt_vid_cap(struct file *file, void *fh,
+static int tccvin_ioctl_try_fmt_vid_cap_mplane(struct file *file, void *fh,
 	struct v4l2_format *fmt)
 {
 	struct tccvin_fh *handle = fh;
@@ -518,7 +625,7 @@ static int tccvin_ioctl_reqbufs(struct file *file, void *fh,
 	ret = tccvin_request_buffers(&stream->queue, rb);
 	mutex_unlock(&stream->mutex);
 	if (ret < 0) {
-		/* failure of requesting buffers */
+		loge("tccvin_request_buffers, ret: %d\n", ret);
 		return ret;
 	}
 
@@ -551,19 +658,9 @@ static int tccvin_ioctl_querybuf(struct file *file, void *fh,
 	}
 
 	ret = tccvin_query_buffer(&stream->queue, buf);
-	logd("index: %d\n",		buf->index);
-	logd("type: 0x%08x\n",		buf->type);
-	logd("bytesused: 0x%08x\n",	buf->bytesused);
-	logd("flags: 0x%08x\n",		buf->flags);
-	logd("field: 0x%08x\n",		buf->field);
-	logd("memory: 0x%08x\n",	buf->memory);
-	logd("m.offset: 0x%08x\n",	buf->m.offset);
-	logd("lengh: 0x%08x\n",		buf->length);
-
-	ret = tccvin_set_buffer_address(stream, buf);
 	if (ret < 0) {
-		loge("Fail to set buffer address, buffer index %d\n",
-			buf->index);
+		/* failure of querying buffers */
+		loge("tccvin_query_buffer, ret: %d\n", ret);
 	}
 
 	return ret;
@@ -589,8 +686,10 @@ static int tccvin_ioctl_expbuf(struct file *file, void *fh,
 	struct tccvin_fh *handle = fh;
 	struct tccvin_streaming *stream = handle->stream;
 
-	if (!tccvin_has_privileges(handle))
+	if (!tccvin_has_privileges(handle)) {
+		/* device is busy */
 		return -EBUSY;
+	}
 
 	return tccvin_export_buffer(&stream->queue, exp);
 }
@@ -608,6 +707,12 @@ static int tccvin_ioctl_dqbuf(struct file *file, void *fh,
 
 	return tccvin_dequeue_buffer(&stream->queue, buf,
 				  file->f_flags & O_NONBLOCK);
+}
+
+static int tccvin_ioctl_conv_to_paddr(struct tccvin_streaming *stream,
+	struct v4l2_buffer *buf)
+{
+	return tccvin_conv_to_paddr(&stream->queue, buf);
 }
 
 static int tccvin_ioctl_streamon(struct file *file, void *fh,
@@ -811,7 +916,7 @@ static int tccvin_ioctl_g_parm(struct file *file, void *fh,
 	memset(a, 0, sizeof(*a));
 	a->type = stream->type;
 	switch (a->type) {
-	case V4L2_BUF_TYPE_VIDEO_CAPTURE:
+	case V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE:
 		fract = &(a->parm.capture.timeperframe);
 		fract->numerator	= 1;
 		fract->denominator	=
@@ -833,7 +938,7 @@ static int tccvin_ioctl_s_parm(struct file *file, void *fh,
 	int ret = 0;
 
 	switch (stream->type) {
-	case V4L2_BUF_TYPE_VIDEO_CAPTURE:
+	case V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE:
 		/* Does the video-input path support this framerate? */
 		/* Do all the video sources support this framerate? */
 		stream->cur_frame->dwDefaultFrameInterval =
@@ -941,18 +1046,27 @@ static long tccvin_ioctl_default(struct file *file, void *fh, bool valid_prio,
 {
 	struct tccvin_fh *handle = fh;
 	struct tccvin_streaming *stream = handle->stream;
+	int ret = 0;
 
 	switch (cmd) {
+	case VIDIOC_CONV_TO_PADDR:
+		ret = tccvin_ioctl_conv_to_paddr(stream, (struct v4l2_buffer *)arg);
+		break;
+
 	case VIDIOC_CHECK_PATH_STATUS:
 		tccvin_check_path_status(stream, (int *)arg);
-		return 0;
+		break;
 
 	case VIDIOC_S_HANDOVER:
-		return tccvin_s_handover(stream, (int *)arg);
+		ret = tccvin_s_handover(stream, (int *)arg);
+		break;
 
 	default:
-		return -ENOTTY;
+		ret = -ENOTTY;
+		break;
 	}
+
+	return ret;
 }
 
 
@@ -981,10 +1095,10 @@ static unsigned int tccvin_v4l2_poll(struct file *file, poll_table *wait)
 
 const struct v4l2_ioctl_ops tccvin_ioctl_ops = {
 	.vidioc_querycap		= tccvin_ioctl_querycap,
-	.vidioc_enum_fmt_vid_cap	= tccvin_ioctl_enum_fmt_vid_cap,
-	.vidioc_g_fmt_vid_cap		= tccvin_ioctl_g_fmt_vid_cap,
-	.vidioc_s_fmt_vid_cap		= tccvin_ioctl_s_fmt_vid_cap,
-	.vidioc_try_fmt_vid_cap		= tccvin_ioctl_try_fmt_vid_cap,
+	.vidioc_enum_fmt_vid_cap_mplane	= tccvin_ioctl_enum_fmt_vid_cap_mplane,
+	.vidioc_g_fmt_vid_cap_mplane	= tccvin_ioctl_g_fmt_vid_cap_mplane,
+	.vidioc_s_fmt_vid_cap_mplane	= tccvin_ioctl_s_fmt_vid_cap_mplane,
+	.vidioc_try_fmt_vid_cap_mplane	= tccvin_ioctl_try_fmt_vid_cap_mplane,
 	.vidioc_reqbufs			= tccvin_ioctl_reqbufs,
 	.vidioc_querybuf		= tccvin_ioctl_querybuf,
 	.vidioc_qbuf			= tccvin_ioctl_qbuf,
