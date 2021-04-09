@@ -340,7 +340,7 @@ void mlx5e_sq_xmit(struct mlx5e_txqsq *sq, struct sk_buff *skb,
 	dseg =  wqe->data;
 
 #if IS_ENABLED(CONFIG_GENEVE)
-	if (skb->encapsulation)
+	if (skb->encapsulation && skb->ip_summed == CHECKSUM_PARTIAL)
 		mlx5e_tx_tunnel_accel(skb, eseg, ihs);
 #endif
 	mlx5e_txwqe_build_eseg_csum(sq, skb, eseg);
