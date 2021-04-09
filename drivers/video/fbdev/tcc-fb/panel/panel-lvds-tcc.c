@@ -405,7 +405,7 @@ static int panel_lvds_parse_dt(struct panel_lvds *lvds)
 		lvds->lvds_pins.pwr_off = NULL;
 	}
 
-	#if defined(CONFIG_DRM_TCC_CTRL_BACKLIGHT)
+	#if defined(CONFIG_FB_TCC_CTRL_BACKLIGHT)
 	np = of_parse_phandle(lvds->dev->of_node, "backlight", 0);
 	if (np) {
 		lvds->backlight = of_find_backlight_by_node(np);
