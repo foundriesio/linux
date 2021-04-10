@@ -6153,18 +6153,23 @@ static int fixup_bpf_calls(struct bpf_verifier_env *env)
 			struct bpf_insn *patchlet;
 			struct bpf_insn chk_and_div[] = {
 				/* [R,W]x div 0 -> 0 */
-				BPF_RAW_INSN(BPF_JMP |
-					     BPF_JNE | BPF_K, insn->src_reg,
-					     0, 2, 0),
+				BPF_RAW_INSN((is64 ? BPF_ALU64 : BPF_ALU) |
+					     BPF_MOV | BPF_X,
+					     BPF_REG_AX, insn->src_reg,
+					     0, 0),
+				BPF_JMP_IMM(BPF_JNE, BPF_REG_AX, 0, 2),
 				BPF_ALU32_REG(BPF_XOR, insn->dst_reg, insn->dst_reg),
 				BPF_JMP_IMM(BPF_JA, 0, 0, 1),
 				*insn,
 			};
 			struct bpf_insn chk_and_mod[] = {
 				/* [R,W]x mod 0 -> [R,W]x */
-				BPF_RAW_INSN(BPF_JMP |
-					     BPF_JEQ | BPF_K, insn->src_reg,
-					     0, 1 + (is64 ? 0 : 1), 0),
+				BPF_RAW_INSN((is64 ? BPF_ALU64 : BPF_ALU) |
+					     BPF_MOV | BPF_X,
+					     BPF_REG_AX, insn->src_reg,
+					     0, 0),
+				BPF_JMP_IMM(BPF_JNE, BPF_REG_AX, 0,
+					    1 + (is64 ? 0 : 1)),
 				*insn,
 				BPF_JMP_IMM(BPF_JA, 0, 0, 1),
 				BPF_MOV32_REG(insn->dst_reg, insn->dst_reg),
