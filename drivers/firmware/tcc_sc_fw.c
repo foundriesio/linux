@@ -64,6 +64,14 @@ struct tcc_sc_fw_xfer {
 	u32 rx_data_buf_len;
 
 	struct list_head node;
+	spinlock_t lock;
+
+	u8	status;
+#define TCC_SC_FW_XFER_STAT_IDLE	(0x0)
+#define TCC_SC_FW_XFER_STAT_TX_PEND	(0x1)
+#define TCC_SC_FW_XFER_STAT_TX_START	(0x2)
+#define TCC_SC_FW_XFER_STAT_RX_PEND	(0x3)
+#define TCC_SC_FW_XFER_STAT_HALT	(0x4)
 
 	void (*complete)(void *args, void *msg);
 	void *args;
@@ -89,6 +97,8 @@ struct tcc_sc_fw_info {
 	struct list_head rx_pending;
 	struct list_head xfers_list;
 	struct tcc_sc_fw_xfer *xfers;
+
+	spinlock_t lock;
 	spinlock_t rx_lock;
 	spinlock_t xfers_lock;
 
@@ -139,11 +149,17 @@ static struct tcc_sc_fw_xfer *get_tcc_sc_fw_xfer(struct tcc_sc_fw_info *info)
 	spin_lock_irqsave(&info->xfers_lock, flags);
 	if (list_empty(&info->xfers_list)) {
 		spin_unlock_irqrestore(&info->xfers_lock, flags);
+		dev_err(info->dev, "[ERROR][TCC_SC_FW] Failed to get xfer\n");
 		return NULL;
 	}
 	xfer = list_first_entry(&info->xfers_list, struct tcc_sc_fw_xfer, node);
-	list_del(&xfer->node);
+	list_del_init(&xfer->node);
 	spin_unlock_irqrestore(&info->xfers_lock, flags);
+
+	xfer->complete = NULL;
+	xfer->args = NULL;
+	xfer->tx_mssg.data_len = 0;
+	xfer->tx_mssg.cmd_len = 0;
 
 	return xfer;
 }
@@ -153,8 +169,9 @@ static void put_tcc_sc_fw_xfer(struct tcc_sc_fw_xfer *xfer,
 {
 	unsigned long flags;
 
-	xfer->complete = NULL;
-	xfer->args = NULL;
+	spin_lock_irqsave(&xfer->lock, flags);
+	xfer->status = TCC_SC_FW_XFER_STAT_IDLE;
+	spin_unlock_irqrestore(&xfer->lock, flags);
 
 	spin_lock_irqsave(&info->xfers_lock, flags);
 	list_add_tail(&xfer->node, &info->xfers_list);
@@ -179,18 +196,94 @@ const struct tcc_sc_fw_handle *tcc_sc_fw_get_handle(struct device_node *np)
 }
 EXPORT_SYMBOL_GPL(tcc_sc_fw_get_handle);
 
+static void tcc_sc_fw_halt_xfer(struct tcc_sc_fw_info *info,
+					struct tcc_sc_fw_xfer *xfer)
+{
+	unsigned long flags;
+	struct tcc_sc_fw_xfer *list;
+	u8 status;
+
+	spin_lock_irqsave(&xfer->lock, flags);
+	if(xfer->status == TCC_SC_FW_XFER_STAT_TX_PEND) {
+		xfer->status = TCC_SC_FW_XFER_STAT_HALT;
+		spin_unlock_irqrestore(&xfer->lock, flags);
+
+		dev_err(info->dev, "[ERROR][TCC_SC_FW] Halt tx pending xfer(%p)\n",
+			xfer);
+	} else if((xfer->status == TCC_SC_FW_XFER_STAT_TX_START) ||
+		(xfer->status == TCC_SC_FW_XFER_STAT_RX_PEND)){
+		status = xfer->status;
+		xfer->status = TCC_SC_FW_XFER_STAT_HALT;
+		spin_unlock_irqrestore(&xfer->lock, flags);
+
+		spin_lock_irqsave(&info->rx_lock, flags);
+		if (!list_empty(&info->rx_pending)) {
+			list_for_each_entry(list, &info->rx_pending, node) {
+				if(((list->tx_mssg.cmd[0] & 0xFFFF0000UL) ==
+					(xfer->tx_mssg.cmd[0] & 0xFFFF0000UL)) &&
+					(list->tx_mssg.cmd[1] == xfer->tx_mssg.cmd[1])) {
+
+					list_del_init(&list->node);
+
+					if(status == TCC_SC_FW_XFER_STAT_RX_PEND) {
+						dev_err(info->dev,
+							"[ERROR][TCC_SC_FW] Remove xfer(%p) from rx_pending list, put to pool\n",
+							xfer);
+						put_tcc_sc_fw_xfer(xfer, info);
+					} else {
+						dev_err(info->dev,
+							"[ERROR][TCC_SC_FW] Remove xfer(%p) from rx_pending list\n",
+							xfer);
+					}
+					break;
+				}
+			}
+		}
+		spin_unlock_irqrestore(&info->rx_lock, flags);
+
+	} else {
+		spin_unlock_irqrestore(&xfer->lock, flags);
+
+		dev_warn(info->dev, "[WARN][TCC_SC_FW] Wrong xfer(%p) status 0x%x (%s)\n",
+			xfer, xfer->status, __func__);
+		tcc_sc_fw_print_command(info,
+			(struct tcc_sc_fw_cmd *)xfer->tx_mssg.cmd);
+	}
+}
+
 static s32 tcc_sc_fw_xfer_async(struct tcc_sc_fw_info *info,
 					struct tcc_sc_fw_xfer *xfer)
 {
 	s32 ret;
 	struct device *dev = info->dev;
+	unsigned long flags;
 
 	trace_tcc_sc_fw_start_xfer(&xfer->tx_mssg);
 
+	spin_lock_irqsave(&info->lock, flags);
+	if(info->uid >= 0xFFFF)
+		info->uid = 0;
+	else
+		info->uid++;
+	spin_unlock_irqrestore(&info->lock, flags);
+
+	xfer->tx_mssg.cmd[0] &= ~(0xFFFF0000);
+	xfer->tx_mssg.cmd[0] |= ((info->uid & 0xFFFF) << 16);
+	xfer->tx_mssg.flags = 0;
+
+	spin_lock_irqsave(&xfer->lock, flags);
+	if(xfer->status != TCC_SC_FW_XFER_STAT_IDLE) {
+		dev_warn(info->dev, "[WARN][TCC_SC_FW] Wrong xfer(%p) status 0x%x (%s)\n",
+			xfer, xfer->status, __func__);
+	}
+	xfer->status = TCC_SC_FW_XFER_STAT_TX_PEND;
+	spin_unlock_irqrestore(&xfer->lock, flags);
+
 	ret = mbox_send_message(info->chan, &xfer->tx_mssg);
-	if (ret < 0)
+	if (ret < 0) {
 		dev_err(dev, "[ERROR][TCC_SC_FW] Failed to send command (%d)\n",
 			ret);
+	}
 
 	return ret;
 }
@@ -217,8 +310,6 @@ static s32 tcc_sc_fw_xfer_sync(struct tcc_sc_fw_info *info,
 {
 	s32 ret;
 	size_t timeout;
-	struct device *dev = info->dev;
-	unsigned long flags;
 	struct tcc_sc_fw_sync_ctx ctx;
 
 	init_completion(&ctx.done);
@@ -232,22 +323,18 @@ static s32 tcc_sc_fw_xfer_sync(struct tcc_sc_fw_info *info,
 	if (ret < 0)
 		return ret;
 
-	ret = 0;
-
 	/* And we wait for the response. */
 	timeout = msecs_to_jiffies(info->max_rx_timeout_ms);
 	/* Wait for Buffer Read Ready interrupt */
 	if (wait_for_completion_timeout(&ctx.done, timeout) == 0UL) {
-		dev_err(dev, "[ERROR][TCC_SC_FW] Rx Command timeout occur\n");
-		tcc_sc_fw_print_command(info,
-			(struct tcc_sc_fw_cmd *)xfer->tx_mssg.cmd);
+		dev_err(info->dev,
+			"[ERROR][TCC_SC_FW] Sync xfer(%p) timeout occur\n",
+			xfer);
+		tcc_sc_fw_halt_xfer(info, xfer);
 
-		spin_lock_irqsave(&info->rx_lock, flags);
-		list_del(&xfer->node);
-		spin_unlock_irqrestore(&info->rx_lock, flags);
-
-		put_tcc_sc_fw_xfer(xfer, info);
 		ret = -ETIMEDOUT;
+	} else {
+		ret = 0;
 	}
 
 	return ret;
@@ -260,42 +347,74 @@ static void tcc_sc_fw_tx_prepare(struct mbox_client *cl, void *msg)
 	struct tcc_sc_fw_info *info = cl_to_tcc_sc_fw_info(cl);
 	struct tcc_sc_fw_xfer *xfer = msg_to_tcc_sc_fw_xfer(tx_mbox_msg);
 
-	if(info->uid >= 0xFFFF)
-		info->uid = 0;
-	else
-		info->uid++;
-	xfer->tx_mssg.cmd[0] &= ~(0xFFFF0000);
-	xfer->tx_mssg.cmd[0] |= ((info->uid & 0xFFFF) << 16);
+	spin_lock_irqsave(&xfer->lock, flags);
+	if(xfer->status == TCC_SC_FW_XFER_STAT_HALT) {
+		spin_unlock_irqrestore(&xfer->lock, flags);
 
-	spin_lock_irqsave(&info->rx_lock, flags);
-	list_add_tail(&xfer->node, &info->rx_pending);
-	spin_unlock_irqrestore(&info->rx_lock, flags);
+		xfer->tx_mssg.flags = TCC_SC_MBOX_FLAG_SKIP_XFER;
+		dev_warn(info->dev,
+			"[WARN][TCC_SC_FW] xfer(%p) is halted. Skip transfer message\n",
+			xfer);
+	} else if(xfer->status == TCC_SC_FW_XFER_STAT_TX_PEND) {
+		xfer->status = TCC_SC_FW_XFER_STAT_TX_START;
+		spin_unlock_irqrestore(&xfer->lock, flags);
+
+		spin_lock_irqsave(&info->rx_lock, flags);
+		list_add_tail(&xfer->node, &info->rx_pending);
+		spin_unlock_irqrestore(&info->rx_lock, flags);
+	} else {
+		spin_unlock_irqrestore(&xfer->lock, flags);
+	}
+}
+
+static void tcc_sc_fw_tx_done(struct mbox_client *cl, void *msg, int r)
+{
+	unsigned long flags;
+	struct tcc_sc_mbox_msg *tx_mbox_msg = msg;
+	struct tcc_sc_fw_info *info = cl_to_tcc_sc_fw_info(cl);
+	struct tcc_sc_fw_xfer *xfer = msg_to_tcc_sc_fw_xfer(tx_mbox_msg);
+
+	spin_lock_irqsave(&xfer->lock, flags);
+	if(xfer->status == TCC_SC_FW_XFER_STAT_HALT) {
+		spin_unlock_irqrestore(&xfer->lock, flags);
+
+		dev_warn(info->dev,
+			"[WARN][TCC_SC_FW] put halted xfer(%p) to pool (%d)\n",
+			xfer, r);
+
+		put_tcc_sc_fw_xfer(xfer, info);
+	} else if(xfer->status == TCC_SC_FW_XFER_STAT_TX_START){
+		xfer->status = TCC_SC_FW_XFER_STAT_RX_PEND;
+		spin_unlock_irqrestore(&xfer->lock, flags);
+	} else {
+		spin_unlock_irqrestore(&xfer->lock, flags);
+	}
 }
 
 static void tcc_sc_fw_rx_callback(struct mbox_client *cl, void *mssg)
 {
 	struct tcc_sc_fw_info *info = cl_to_tcc_sc_fw_info(cl);
 	struct device *dev = info->dev;
-	struct tcc_sc_fw_xfer *xfer, *match;
+	struct tcc_sc_fw_xfer *xfer;
+	struct tcc_sc_fw_xfer *match;
 	struct tcc_sc_mbox_msg *mbox_msg = mssg;
 	struct tcc_sc_mbox_msg *rx_mbox_msg;
 	unsigned long flags;
 
 	trace_tcc_sc_fw_rx_complete(mbox_msg);
 
-	spin_lock_irqsave(&info->rx_lock, flags);
-	if (list_empty(&info->rx_pending)) {
-		spin_unlock_irqrestore(&info->rx_lock, flags);
-		return;
-	}
+	match = NULL;
 
-	list_for_each_entry(xfer, &info->rx_pending, node) {
-		if(((xfer->tx_mssg.cmd[0] & 0xFFFF0000UL) ==
-			(mbox_msg->cmd[0] & 0xFFFF0000UL)) &&
-			(xfer->tx_mssg.cmd[1] == mbox_msg->cmd[1])) {
-			list_del(&xfer->node);
-			match = xfer;
-			break;
+	spin_lock_irqsave(&info->rx_lock, flags);
+	if (!list_empty(&info->rx_pending)) {
+		list_for_each_entry(xfer, &info->rx_pending, node) {
+			if(((xfer->tx_mssg.cmd[0] & 0xFFFF0000UL) ==
+				(mbox_msg->cmd[0] & 0xFFFF0000UL)) &&
+				(xfer->tx_mssg.cmd[1] == mbox_msg->cmd[1])) {
+				list_del_init(&xfer->node);
+				match = xfer;
+				break;
+			}
 		}
 	}
 	spin_unlock_irqrestore(&info->rx_lock, flags);
@@ -339,8 +458,6 @@ static void tcc_sc_fw_rx_callback(struct mbox_client *cl, void *mssg)
 		dev_dbg(dev, "[DEBUG][TCC_SC_FW] Complete command rx\n");
 	}else {
 		dev_err(dev, "[ERROR][TCC_SC_FW] Invalid response\n");
-		tcc_sc_fw_print_command(info,
-			(struct tcc_sc_fw_cmd *)mbox_msg->cmd);
 	}
 
 }
@@ -587,12 +704,13 @@ static s32 tcc_sc_fw_cmd_request_gpio_cmd(const struct tcc_sc_fw_handle *handle,
 		return -EINVAL;
 
 	info = handle_to_tcc_sc_fw_info(handle);
-
 	if (info == NULL)
 		return -EINVAL;
 
 	dev = info->dev;
 	xfer = get_tcc_sc_fw_xfer(info);
+	if(xfer == NULL)
+		return -ENOMEM;
 
 	req_cmd.bsid = info->bsid;
 	req_cmd.cid = info->cid;
@@ -648,6 +766,8 @@ static s32 tcc_sc_fw_cmd_request_gpio_no_res_cmd(const struct tcc_sc_fw_handle *
 
 	dev = info->dev;
 	xfer = get_tcc_sc_fw_xfer(info);
+	if(xfer == NULL)
+		return -ENOMEM;
 
 	req_cmd.bsid = info->bsid;
 	req_cmd.cid = info->cid;
@@ -665,7 +785,6 @@ static s32 tcc_sc_fw_cmd_request_gpio_no_res_cmd(const struct tcc_sc_fw_handle *
 	memset(xfer->rx_mssg.cmd, 0, xfer->rx_cmd_buf_len);
 
 	ret = tcc_sc_fw_xfer_async(info, xfer);
-
 	if (ret < 0) {
 		dev_err(dev,
 			"[ERROR][TCC_SC_FW] Failed to send mbox (GPIO Command) (%d)\n",
@@ -674,8 +793,6 @@ static s32 tcc_sc_fw_cmd_request_gpio_no_res_cmd(const struct tcc_sc_fw_handle *
 
 	return ret;
 }
-
-
 
 static s32 tcc_sc_fw_cmd_get_otp_cmd (const struct tcc_sc_fw_handle *handle,
 				struct tcc_sc_fw_otp_cmd *cmd, uint32_t offset)
@@ -730,6 +847,18 @@ static s32 tcc_sc_fw_cmd_get_otp_cmd (const struct tcc_sc_fw_handle *handle,
 	return ret;
 }
 
+void tcc_sc_fw_halt_cmd(   const struct tcc_sc_fw_handle *handle,
+			   void *xfer_handle)
+{
+	struct tcc_sc_fw_info *info;
+
+	BUG_ON(handle == NULL);
+	BUG_ON(xfer_handle == NULL);
+
+	info = handle_to_tcc_sc_fw_info(handle);
+	tcc_sc_fw_halt_xfer(info, (struct tcc_sc_fw_xfer *)xfer_handle);
+}
+
 
 static const struct of_device_id tcc_sc_fw_of_match[2] = {
 	{.compatible = "telechips,tcc805x-sc-fw"},
@@ -771,6 +900,8 @@ static s32 tcc_sc_fw_alloc_xfer_list(struct device *dev,
 	for (i = 0; i < MAX_TCC_SC_FW_XFERS; i++, xfers++) {
 		list_add_tail(&xfers->node, &info->xfers_list);
 
+		xfers->status = TCC_SC_FW_XFER_STAT_IDLE;
+
 		xfers->tx_cmd_buf_len = TCC_SC_MAX_CMD_LENGTH;
 		xfers->tx_data_buf_len = TCC_SC_MAX_DATA_LENGTH;
 		xfers->tx_mssg.cmd =
@@ -808,6 +939,8 @@ static s32 tcc_sc_fw_alloc_xfer_list(struct device *dev,
 				"[ERROR][TCC_SC_FW] Failed to allocate memory for Rx data buffer\n");
 			return -ENOMEM;
 		}
+
+		spin_lock_init(&xfers->lock);
 	}
 
 	return 0;
@@ -841,8 +974,10 @@ static s32 tcc_sc_fw_probe(struct platform_device *pdev)
 
 	INIT_LIST_HEAD(&info->rx_pending);
 	INIT_LIST_HEAD(&info->xfers_list);
+
 	spin_lock_init(&info->rx_lock);
 	spin_lock_init(&info->xfers_lock);
+	spin_lock_init(&info->lock);
 
 	platform_set_drvdata(pdev, info);
 
@@ -852,6 +987,7 @@ static s32 tcc_sc_fw_probe(struct platform_device *pdev)
 	cl->tx_tout = TCC_SC_TX_TIMEOUT_MS;
 	cl->rx_callback = tcc_sc_fw_rx_callback;
 	cl->tx_prepare = tcc_sc_fw_tx_prepare;
+	cl->tx_done = tcc_sc_fw_tx_done;
 	cl->knows_txdone = false;
 
 	info->chan = mbox_request_channel(cl, 0);
