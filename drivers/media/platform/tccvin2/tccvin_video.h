@@ -111,7 +111,6 @@ struct tccvin_cif {
 
 	/* framebuffer */
 	struct buf_addr			preview_buf_addr[VB2_MAX_FRAME];
-	void __iomem			*vir;
 
 	unsigned int			skip_frame;
 

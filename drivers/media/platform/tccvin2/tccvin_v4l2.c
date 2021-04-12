@@ -709,12 +709,6 @@ static int tccvin_ioctl_dqbuf(struct file *file, void *fh,
 				  file->f_flags & O_NONBLOCK);
 }
 
-static int tccvin_ioctl_conv_to_paddr(struct tccvin_streaming *stream,
-	struct v4l2_buffer *buf)
-{
-	return tccvin_conv_to_paddr(&stream->queue, buf);
-}
-
 static int tccvin_ioctl_streamon(struct file *file, void *fh,
 	enum v4l2_buf_type type)
 {
@@ -1049,10 +1043,6 @@ static long tccvin_ioctl_default(struct file *file, void *fh, bool valid_prio,
 	int ret = 0;
 
 	switch (cmd) {
-	case VIDIOC_CONV_TO_PADDR:
-		ret = tccvin_ioctl_conv_to_paddr(stream, (struct v4l2_buffer *)arg);
-		break;
-
 	case VIDIOC_CHECK_PATH_STATUS:
 		tccvin_check_path_status(stream, (int *)arg);
 		break;

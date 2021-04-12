@@ -273,6 +273,30 @@ int tccvin_query_buffer(struct tccvin_video_queue *queue,
 
 	mutex_lock(&queue->mutex);
 	ret = vb2_querybuf(&queue->queue, buf);
+	if (ret == 0) {
+	        struct vb2_buffer *vb;
+		int idxpln;
+
+		switch (buf->memory) {
+		case V4L2_MEMORY_MMAP:
+			vb = queue->queue.bufs[buf->index];
+			logd("bufidx: %d, planes: %d, num_planes: %d\n",
+				buf->index, buf->length, vb->num_planes);
+			for (idxpln = 0; idxpln < buf->length; idxpln++) {
+				buf->m.planes[idxpln].reserved[0] =
+					vb2_dma_contig_plane_dma_addr(vb, idxpln);
+				logd("bufidx: %d, plan: %d, addr: 0x%08x\n",
+					buf->index, idxpln,
+					buf->m.planes[idxpln].reserved[0]);
+			}
+			break;
+
+		default:
+			loge("memory (%d) is wrong\n", buf->memory);
+			ret = -1;
+			break;
+		}
+	}
 	mutex_unlock(&queue->mutex);
 
 	return ret;
@@ -314,59 +338,6 @@ int tccvin_dequeue_buffer(struct tccvin_video_queue *queue,
 
 	mutex_lock(&queue->mutex);
 	ret = vb2_dqbuf(&queue->queue, buf, nonblocking);
-	mutex_unlock(&queue->mutex);
-
-	return ret;
-}
-
-int tccvin_conv_to_paddr(struct tccvin_video_queue *queue,
-	struct v4l2_buffer *buf)
-{
-	struct vb2_queue *q = &queue->queue;
-        struct vb2_buffer *vb;
-	int idxpln;
-	int ret = 0;
-
-	mutex_lock(&queue->mutex);
-
-	if (buf->type != q->type) {
-		loge("wrong buffer type\n");
-		ret = -EINVAL;
-		goto end;
-	}
-
-	if (buf->index >= q->num_buffers) {
-		loge("buffer index out of range\n");
-		ret = -EINVAL;
-		goto end;
-	}
-
-	switch (buf->memory) {
-	case V4L2_MEMORY_MMAP:
-		if (!q->is_multiplanar) {
-			loge("multi planar is not supported\n");
-			ret = -1;
-		} else {
-			vb = q->bufs[buf->index];
-			logd("bufidx: %d, planes: %d, num_planes: %d\n",
-				buf->index, buf->length, vb->num_planes);
-			for (idxpln = 0; idxpln < buf->length; idxpln++) {
-				buf->m.planes[idxpln].m.mem_offset =
-					vb2_dma_contig_plane_dma_addr(vb, idxpln);
-				logd("bufidx: %d, plan: %d, addr: 0x%08x\n",
-					buf->index, idxpln,
-					buf->m.planes[idxpln].m.mem_offset);
-			}
-		}
-		break;
-
-	default:
-		loge("memory (%d) is wrong\n", buf->memory);
-		ret = -1;
-		break;
-	}
-
-end:
 	mutex_unlock(&queue->mutex);
 
 	return ret;
