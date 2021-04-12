@@ -63,8 +63,6 @@
 		_IOWR('V', BASE_VIDIOC_PRIVATE+18, videosource_format_t)
 #define VIDIOC_S_HANDOVER			\
 		_IOWR('V', BASE_VIDIOC_PRIVATE+19, int)
-#define VIDIOC_CONV_TO_PADDR		\
-		_IOWR('V', BASE_VIDIOC_PRIVATE+20, struct v4l2_buffer)
 #define DIRECT_DISPLAY_IF_INITIALIZE	\
 		_IOWR('V', BASE_VIDIOC_PRIVATE+50, int)
 #define DIRECT_DISPLAY_IF_START		\

@@ -504,7 +504,7 @@ static int tccvin_ioctl_querycap(struct file *file, void *fh,
 	snprintf(cap->bus_info, sizeof(cap->bus_info), "video-capture-%s",
 		cap->driver);
 	cap->version = KERNEL_VERSION(4, 14, 00);
-	cap->device_caps = V4L2_CAP_STREAMING | V4L2_CAP_VIDEO_CAPTURE;
+	cap->device_caps = V4L2_CAP_STREAMING | V4L2_CAP_VIDEO_CAPTURE_MPLANE;
 	cap->capabilities = V4L2_CAP_DEVICE_CAPS | cap->device_caps;
 
 	logd("driver: %s\n", cap->driver);
