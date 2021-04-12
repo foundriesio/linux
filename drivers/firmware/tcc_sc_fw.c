@@ -462,7 +462,7 @@ static void tcc_sc_fw_rx_callback(struct mbox_client *cl, void *mssg)
 
 }
 
-static s32 tcc_sc_fw_cmd_request_mmc_cmd(const struct tcc_sc_fw_handle *handle,
+static void *tcc_sc_fw_cmd_request_mmc_cmd(const struct tcc_sc_fw_handle *handle,
 					struct tcc_sc_fw_mmc_cmd *cmd,
 					struct tcc_sc_fw_mmc_data *data,
 					void (*complete)(void *, void *),
@@ -475,19 +475,20 @@ static s32 tcc_sc_fw_cmd_request_mmc_cmd(const struct tcc_sc_fw_handle *handle,
 	dma_addr_t addr;
 	s32 ret, i;
 	u32 len;
+	void *xfer_handle;
 
 	if (handle == NULL)
-		return -EINVAL;
+		return NULL;
 
 	info = handle_to_tcc_sc_fw_info(handle);
 	if (info == NULL)
-		return -EINVAL;
+		return NULL;
 
 	trace_tcc_sc_fw_start_mmc_req(cmd, data);
 
 	xfer = get_tcc_sc_fw_xfer(info);
 	if(xfer == NULL)
-		return -ENOMEM;
+		return NULL;
 
 	memset(xfer->rx_mssg.cmd, 0, xfer->rx_cmd_buf_len);
 
@@ -525,8 +526,13 @@ static s32 tcc_sc_fw_cmd_request_mmc_cmd(const struct tcc_sc_fw_handle *handle,
 	xfer->complete = complete;
 	xfer->args = args;
 	ret = tcc_sc_fw_xfer_async(info, xfer);
+	if(ret < 0) {
+		xfer_handle = NULL;
+	} else {
+		xfer_handle = (void *)xfer;
+	}
 
-	return ret;
+	return xfer_handle;
 }
 
 static s32 tcc_sc_fw_cmd_get_mmc_prot_info(
@@ -869,6 +875,7 @@ MODULE_DEVICE_TABLE(of, tcc_sc_fw_of_match);
 
 static struct tcc_sc_fw_mmc_ops sc_fw_mmc_ops = {
 	.request_command = tcc_sc_fw_cmd_request_mmc_cmd,
+	.halt_cmd = tcc_sc_fw_halt_cmd,
 	.prot_info = tcc_sc_fw_cmd_get_mmc_prot_info,
 };
 

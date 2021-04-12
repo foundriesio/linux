@@ -53,6 +53,8 @@ struct tcc_sc_mmc_host {
 	struct mmc_host_ops mmc_host_ops;	/* MMC host ops */
 	u64 dma_mask;		/* custom DMA mask */
 
+	void *xfer_handle; /* tcc_sc_fw xfer handle */
+
 	struct tasklet_struct finish_tasklet;	/* Tasklet structures */
 	struct timer_list timer;	/* Timer for timeouts */
 
@@ -124,6 +126,7 @@ static s32 tcc_sc_mmc_request_done(struct tcc_sc_mmc_host *host)
 	}
 
 	host->mrq = NULL;
+	host->xfer_handle = NULL;
 
 	spin_unlock_irqrestore(&host->lock, flags);
 	mmc_request_done(host->mmc, mrq);
@@ -141,9 +144,16 @@ static void tcc_sc_mmc_tasklet_finish(unsigned long param)
 static void tcc_sc_mmc_timeout_timer(unsigned long data)
 {
 	struct tcc_sc_mmc_host *host;
+	const struct tcc_sc_fw_handle *handle;
 	unsigned long flags;
 
 	host = (struct tcc_sc_mmc_host *)data;
+
+	handle = host->handle;
+	if(host->xfer_handle != NULL) {
+		handle->ops.mmc_ops->halt_cmd(handle, host->xfer_handle);
+		host->xfer_handle = NULL;
+	}
 
 	spin_lock_irqsave((&host->lock), (flags));
 
@@ -247,7 +257,6 @@ static void tcc_sc_mmc_request(struct mmc_host *mmc, struct mmc_request *mrq)
 	struct tcc_sc_fw_mmc_data data = {0, };
 	unsigned long timeout;
 	struct scatterlist sg;
-	s32 ret;
 
 	if (mmc == NULL) {
 		pr_err("[ERROR][TCC_SC_MMC] mmc is null\n");
@@ -331,11 +340,11 @@ static void tcc_sc_mmc_request(struct mmc_host *mmc, struct mmc_request *mrq)
 		data.sg_count = mrq->cmd->data->sg_count;
 		data.sg_len = mrq->cmd->data->sg_len;
 
-		ret = handle->ops.mmc_ops->request_command(
+		host->xfer_handle = handle->ops.mmc_ops->request_command(
 						handle, &cmd, &data,
 						tcc_sc_mmc_complete, host);
 	} else {
-		ret = handle->ops.mmc_ops->request_command(
+		host->xfer_handle = handle->ops.mmc_ops->request_command(
 						handle, &cmd, NULL,
 						tcc_sc_mmc_complete, host);
 	}
@@ -351,6 +360,7 @@ static void tcc_sc_mmc_request(struct mmc_host *mmc, struct mmc_request *mrq)
 	mod_timer(&host->timer, timeout);
 
 	mmiowb();
+
 }
 
 static void tcc_sc_mmc_post_req(struct mmc_host *mmc, struct mmc_request *mrq,
