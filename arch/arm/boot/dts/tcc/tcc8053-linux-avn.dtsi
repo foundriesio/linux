@@ -21,8 +21,8 @@
 		stdout-path = &uart0;
 	};
 
-	pcie@11800000 {
-		reset-gpio = <&gpc 30 0>;
+	pcie@11000000 {
+		reset-gpio = <&gpmd 15 0>;
 		//status = "okay";
 	};
 
