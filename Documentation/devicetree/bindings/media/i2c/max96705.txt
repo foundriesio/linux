@@ -1,0 +1,36 @@
+* Device Tree Bindings for MAX96705
+
+Required properties:
+
+- status     : disable or enable the device node
+- compatible : property name that conveys the platform architecture identifiers,
+               as 'maxim,max96705'
+- reg        : I2C slave address
+- port       : specifies the endpoint of the sensor
+
+example
+-------
+	max96705: max96705 {
+		/* serializer */
+		status		= "okay";
+		compatible	= "maxim,max96705";
+		reg		= <0x40>;
+		ports {
+			#address-cells = <1>;
+			#size-cells = <0>;
+			port@0 {
+				reg = <0>;
+				max96705_in: endpoint {
+					remote-endpoint = <&ar0144_out>;
+					io-direction	= "input";
+				};
+			};
+			port@1 {
+				reg = <1>;
+				max96705_out: endpoint {
+					remote-endpoint = <&max96712_in0>;
+					io-direction	= "output";
+				};
+			};
+		};
+	};

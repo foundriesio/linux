@@ -2,7 +2,7 @@
  *
  * Copyright (C) 2018 Telechips Inc.
  *
- * This program is free software; you can redistribute it and/or modify it under
+ * This program is free software you can redistribute it and/or modify it under
  *the terms of the GNU General Public License as published by the Free Software
  *Foundation; either version 2 of the License, or (at your option) any later
  *version.
@@ -36,7 +36,7 @@
 #include <media/v4l2-subdev.h>
 #include <video/tcc/vioc_vin.h>
 
-#define LOG_TAG			"VSRC:MAX96701"
+#define LOG_TAG			"VSRC:MAX96705"
 
 #define loge(fmt, ...)		\
 		pr_err("[ERROR][%s] %s - "\
@@ -52,13 +52,12 @@
 			fmt, LOG_TAG, __func__, ##__VA_ARGS__)
 
 
-//#define USE_MCNEX_CAM_MODULE
 
 /*
  * This object contains essential v4l2 objects such as sub-device and
  * ctrl_handler
  */
-struct max96701 {
+struct max96705 {
 	struct v4l2_subdev		sd;
 	struct v4l2_mbus_framefmt	fmt;
 
@@ -72,102 +71,67 @@ struct max96701 {
 };
 
 /* for yuv422 HD camera module*/
-const struct reg_sequence max96701_reg_defaults[] = {
-	{0x04, 0x47, 0},
-	// Sensor Data Dout7 -> DIN0
-	{0x20, 0x07, 0},
-	{0x21, 0x06, 0},
-	{0x22, 0x05, 0},
-	{0x23, 0x04, 0},
-	{0x24, 0x03, 0},
-	{0x25, 0x02, 0},
-	{0x26, 0x01, 0},
-	{0x27, 0x00, 0},
-	{0x30, 0x17, 0},
-	{0x31, 0x16, 0},
-	{0x32, 0x15, 0},
-	{0x33, 0x14, 0},
-	{0x34, 0x13, 0},
-	{0x35, 0x12, 0},
-	{0x36, 0x11, 0},
-	{0x37, 0x10, 0},
-
-	{0x43, 0x01, 0},
-	{0x44, 0x00, 0},
-	{0x45, 0x33, 0},
-	{0x46, 0x90, 0},
-	{0x47, 0x00, 0},
-	{0x48, 0x0C, 0},
-	{0x49, 0xE4, 0},
-	{0x4A, 0x25, 0},
-	{0x4B, 0x83, 0},
-	{0x4C, 0x84, 0},
-	{0x43, 0x21, 0},
+const struct reg_sequence max96705_reg_defaults[] = {
 };
 
 /* for raw12 ispless camera module */
-const struct reg_sequence max96701_reg_defaults_raw12[] = {
-#ifdef USE_MCNEX_CAM_MODULE
-	{0x04, 0x47, 0}, // config mode(in the case of pclk detection fail)
-	{0x07, 0x40, 0}, // dbl off, hs/vs encoding off, 27bit
-	{0x0f, 0xbe, 300*1000}, // GPO output low to reset sensor
-	{0x0f, 0xbf, 100*1000}, // GPO output hight to reset release of sensor
-
-	/* test */
-	//{0x07, 0xa4, 0},
-	//{0x4d, 0xc0, 0},
-//	{0x07, 0xc0, 0}, // high bandwidth mode when BWS, HS/VS encoding disable
-	//{0xff,  100, 0},
-
-	// cross bar(Sensor Data Dout7 -> DIN0)
-	{0x20, 0x0b, 0},
-	{0x21, 0x0a, 0},
-	{0x22, 0x09, 0},
-	{0x23, 0x08, 0},
-	{0x24, 0x07, 0},
-	{0x25, 0x06, 0},
-	{0x26, 0x05, 0},
-	{0x27, 0x04, 0},
-	{0x28, 0x03, 0},
-	{0x29, 0x02, 0},
-	{0x2a, 0x01, 0},
-	{0x2b, 0x00, 0},
-#else
-	{0x04, 0x47, 50*1000},
-	{0x07, 0xA4, 0},
-#endif
+const struct reg_sequence max96705_reg_defaults_raw12[] = {
 };
 
-static const struct regmap_config max96701_regmap = {
-	.reg_bits		= 8,
-	.val_bits		= 8,
-
-	.max_register		= 0xFF,
-	.cache_type		= REGCACHE_NONE,
+const struct reg_sequence max96705_reg_defaults_raw8[] = {
+	//MAX96705 SER
+	{0x04, 0x47, 10*1000},	/* CLINK EN = 1, Delay 10ms */
+	{0x07, 0xA4, 0},	/* SER BWS=1, HVEN=1 */
+	{0x20, 0x04, 0},	/* Bit Shift */
+	{0x21, 0x05, 0},	/* Bit Shift */
+	{0x22, 0x06, 0},	/* Bit Shift */
+	{0x23, 0x07, 0},	/* Bit Shift */
+	{0x24, 0x08, 0},	/* Bit Shift */
+	{0x25, 0x09, 0},	/* Bit Shift */
+	{0x26, 0x0A, 0},	/* Bit Shift */
+	{0x27, 0x0B, 0},	/* Bit Shift */
+	{0x30, 0x04, 0},	/* Bit Shift */
+	{0x31, 0x05, 0},	/* Bit Shift */
+	{0x32, 0x06, 0},	/* Bit Shift */
+	{0x33, 0x07, 0},	/* Bit Shift */
+	{0x34, 0x08, 0},	/* Bit Shift */
+	{0x35, 0x09, 0},	/* Bit Shift */
+	{0x36, 0x0A, 0},	/* Bit Shift */
+	{0x37, 0x0B, 0},	/* Bit Shift */
+	{0x67, 0xc4, 0},	/* DBL Align */
+	{0x0f, 0x3c, 10*1000},	/* RESET "L", Delay 10ms */
+	{0x0f, 0x3e, 0},	/* RESET "H" */
 };
 
-static void max96701_init_format(struct max96701 *dev)
+static const struct regmap_config max96705_regmap = {
+	.reg_bits	= 8,
+	.val_bits	= 8,
+	.max_register	= 0xFF,
+	.cache_type	= REGCACHE_NONE,
+};
+
+static void max96705_init_format(struct max96705 *dev)
 {
-	dev->fmt.width = 1280;
-	dev->fmt.height	= 720,
-	dev->fmt.code = MEDIA_BUS_FMT_UYVY8_1X16;
-	dev->fmt.field = V4L2_FIELD_NONE;
+	dev->fmt.width		= 1280;
+	dev->fmt.height		= 800,
+	dev->fmt.code		= MEDIA_BUS_FMT_Y8_1X8;
+	dev->fmt.field		= V4L2_FIELD_NONE;
 	dev->fmt.colorspace = V4L2_COLORSPACE_SMPTE170M;
 }
 /*
- * Helper fuctions for reflection
+ * Helper functions for reflection
  */
-static inline struct max96701 *to_dev(struct v4l2_subdev *sd)
+static inline struct max96705 *to_dev(struct v4l2_subdev *sd)
 {
-	return container_of(sd, struct max96701, sd);
+	return container_of(sd, struct max96705, sd);
 }
 
 /*
  * v4l2_subdev_core_ops implementations
  */
-static int max96701_init(struct v4l2_subdev *sd, u32 enable)
+static int max96705_init(struct v4l2_subdev *sd, u32 enable)
 {
-	struct max96701		*dev	= to_dev(sd);
+	struct max96705		*dev	= to_dev(sd);
 	int			ret	= 0;
 
 	mutex_lock(&dev->lock);
@@ -176,16 +140,22 @@ static int max96701_init(struct v4l2_subdev *sd, u32 enable)
 		if (dev->fmt.code == MEDIA_BUS_FMT_SGRBG12_1X12) {
 			logi("input format is bayer raw\n");
 			ret = regmap_multi_reg_write(dev->regmap,
-				max96701_reg_defaults_raw12,
-				ARRAY_SIZE(max96701_reg_defaults_raw12));
+				max96705_reg_defaults_raw12,
+				ARRAY_SIZE(max96705_reg_defaults_raw12));
+		} else if (dev->fmt.code == MEDIA_BUS_FMT_Y8_1X8) {
+			/* format is MEDIA_BUS_FMT_Y8_1X8 */
+			logi("input format is RAW8\n");
+			ret = regmap_multi_reg_write(dev->regmap,
+				max96705_reg_defaults_raw8,
+				ARRAY_SIZE(max96705_reg_defaults_raw8));
 		} else {
 			logi("input format is yuv422\n");
 			ret = regmap_multi_reg_write(dev->regmap,
-				max96701_reg_defaults,
-				ARRAY_SIZE(max96701_reg_defaults));
+				max96705_reg_defaults,
+				ARRAY_SIZE(max96705_reg_defaults));
 		}
 		if (ret < 0)
-			loge("Fail initializing max96701 device\n");
+			loge("Fail initializing max96705 device\n");
 	} else if ((dev->i_cnt == 1) && (enable == 0)) {
 		//ret = regmap_write(dev->regmap, 0x15, 0x93);
 	}
@@ -203,9 +173,9 @@ static int max96701_init(struct v4l2_subdev *sd, u32 enable)
 /*
  * v4l2_subdev_video_ops implementations
  */
-static int max96701_s_stream(struct v4l2_subdev *sd, int enable)
+static int max96705_s_stream(struct v4l2_subdev *sd, int enable)
 {
-	struct max96701		*dev	= to_dev(sd);
+	struct max96705		*dev	= to_dev(sd);
 	int			ret	= 0;
 
 	mutex_lock(&dev->lock);
@@ -213,7 +183,7 @@ static int max96701_s_stream(struct v4l2_subdev *sd, int enable)
 	if ((dev->s_cnt == 0) && (enable == 1)) {
 		ret = regmap_write(dev->regmap, 0x04, 0x87);
 		if (ret < 0)
-			loge("Fail Serialization max96701 device\n");
+			loge("Fail Serialization max96705 device\n");
 	} else if ((dev->s_cnt == 1) && (enable == 0)) {
 		ret = regmap_write(dev->regmap, 0x04, 0x47);
 	}
@@ -229,11 +199,11 @@ static int max96701_s_stream(struct v4l2_subdev *sd, int enable)
 	return ret;
 }
 
-static int max96701_get_fmt(struct v4l2_subdev *sd,
+static int max96705_get_fmt(struct v4l2_subdev *sd,
 			    struct v4l2_subdev_pad_config *cfg,
 			    struct v4l2_subdev_format *format)
 {
-	struct max96701		*dev	= to_dev(sd);
+	struct max96705		*dev	= to_dev(sd);
 	int			ret	= 0;
 
 	mutex_lock(&dev->lock);
@@ -245,11 +215,11 @@ static int max96701_get_fmt(struct v4l2_subdev *sd,
 	return ret;
 }
 
-static int max96701_set_fmt(struct v4l2_subdev *sd,
+static int max96705_set_fmt(struct v4l2_subdev *sd,
 			    struct v4l2_subdev_pad_config *cfg,
 			    struct v4l2_subdev_format *format)
 {
-	struct max96701		*dev	= to_dev(sd);
+	struct max96705		*dev	= to_dev(sd);
 	int			ret	= 0;
 
 	mutex_lock(&dev->lock);
@@ -264,53 +234,53 @@ static int max96701_set_fmt(struct v4l2_subdev *sd,
 /*
  * v4l2_subdev_internal_ops implementations
  */
-static const struct v4l2_subdev_core_ops max96701_core_ops = {
-	.init			= max96701_init,
+static const struct v4l2_subdev_core_ops max96705_core_ops = {
+	.init			= max96705_init,
 };
 
-static const struct v4l2_subdev_video_ops max96701_video_ops = {
-	.s_stream		= max96701_s_stream,
+static const struct v4l2_subdev_video_ops max96705_video_ops = {
+	.s_stream		= max96705_s_stream,
 };
 
-static const struct v4l2_subdev_pad_ops max96701_pad_ops = {
-	.get_fmt		= max96701_get_fmt,
-	.set_fmt		= max96701_set_fmt,
+static const struct v4l2_subdev_pad_ops max96705_pad_ops = {
+	.get_fmt		= max96705_get_fmt,
+	.set_fmt		= max96705_set_fmt,
 };
 
-static const struct v4l2_subdev_ops max96701_ops = {
-	.core			= &max96701_core_ops,
-	.video			= &max96701_video_ops,
-	.pad			= &max96701_pad_ops,
+static const struct v4l2_subdev_ops max96705_ops = {
+	.core			= &max96705_core_ops,
+	.video			= &max96705_video_ops,
+	.pad			= &max96705_pad_ops,
 };
 
-struct max96701 max96701_data = {
+struct max96705 max96705_data = {
 };
 
-static const struct i2c_device_id max96701_id[] = {
-	{ "max96701", 0, },
+static const struct i2c_device_id max96705_id[] = {
+	{ "max96705", 0, },
 	{ }
 };
-MODULE_DEVICE_TABLE(i2c, max96701_id);
+MODULE_DEVICE_TABLE(i2c, max96705_id);
 
 #if IS_ENABLED(CONFIG_OF)
-const static struct of_device_id max96701_of_match[] = {
+const static struct of_device_id max96705_of_match[] = {
 	{
-		.compatible	= "maxim,max96701",
-		.data		= &max96701_data,
+		.compatible	= "maxim,max96705",
+		.data		= &max96705_data,
 	},
 	{}
 };
-MODULE_DEVICE_TABLE(of, max96701_of_match);
+MODULE_DEVICE_TABLE(of, max96705_of_match);
 #endif
 
-int max96701_probe(struct i2c_client *client, const struct i2c_device_id *id)
+int max96705_probe(struct i2c_client *client, const struct i2c_device_id *id)
 {
-	struct max96701		*dev	= NULL;
+	struct max96705		*dev	= NULL;
 	const struct of_device_id	*dev_id	= NULL;
 	int			ret	= 0;
 
 	// allocate and clear memory for a device
-	dev = devm_kzalloc(&client->dev, sizeof(struct max96701), GFP_KERNEL);
+	dev = devm_kzalloc(&client->dev, sizeof(struct max96705), GFP_KERNEL);
 	if (dev == NULL) {
 		loge("Allocate a device struct.\n");
 		return -ENOMEM;
@@ -318,7 +288,7 @@ int max96701_probe(struct i2c_client *client, const struct i2c_device_id *id)
 
 	// set the specific information
 	if (client->dev.of_node) {
-		dev_id = of_match_node(max96701_of_match, client->dev.of_node);
+		dev_id = of_match_node(max96705_of_match, client->dev.of_node);
 		memcpy(dev, (const void *)dev_id->data, sizeof(*dev));
 	}
 
@@ -328,7 +298,7 @@ int max96701_probe(struct i2c_client *client, const struct i2c_device_id *id)
 	mutex_init(&dev->lock);
 
 	// Register with V4L2 layer as a slave device
-	v4l2_i2c_subdev_init(&dev->sd, client, &max96701_ops);
+	v4l2_i2c_subdev_init(&dev->sd, client, &max96705_ops);
 
 	// register a v4l2 sub device
 	ret = v4l2_async_register_subdev(&dev->sd);
@@ -338,7 +308,7 @@ int max96701_probe(struct i2c_client *client, const struct i2c_device_id *id)
 		logi("%s is registered as a v4l2 sub device.\n", dev->sd.name);
 
 	// init regmap
-	dev->regmap = devm_regmap_init_i2c(client, &max96701_regmap);
+	dev->regmap = devm_regmap_init_i2c(client, &max96705_regmap);
 	if (IS_ERR(dev->regmap)) {
 		loge("devm_regmap_init_i2c is wrong\n");
 		ret = -1;
@@ -346,7 +316,7 @@ int max96701_probe(struct i2c_client *client, const struct i2c_device_id *id)
 	}
 
 	/* init format info */
-	max96701_init_format(dev);
+	max96705_init_format(dev);
 
 	goto goto_end;
 
@@ -358,10 +328,10 @@ goto_end:
 	return ret;
 }
 
-int max96701_remove(struct i2c_client *client)
+int max96705_remove(struct i2c_client *client)
 {
 	struct v4l2_subdev	*sd	= i2c_get_clientdata(client);
-	struct max96701		*dev	= to_dev(sd);
+	struct max96705		*dev	= to_dev(sd);
 
 	// release regmap
 	regmap_exit(dev->regmap);
@@ -374,14 +344,14 @@ int max96701_remove(struct i2c_client *client)
 	return 0;
 }
 
-static struct i2c_driver max96701_driver = {
-	.probe		= max96701_probe,
-	.remove		= max96701_remove,
+static struct i2c_driver max96705_driver = {
+	.probe		= max96705_probe,
+	.remove		= max96705_remove,
 	.driver		= {
-		.name		= "max96701",
-		.of_match_table	= of_match_ptr(max96701_of_match),
+		.name		= "max96705",
+		.of_match_table	= of_match_ptr(max96705_of_match),
 	},
-	.id_table	= max96701_id,
+	.id_table	= max96705_id,
 };
 
-module_i2c_driver(max96701_driver);
+module_i2c_driver(max96705_driver);

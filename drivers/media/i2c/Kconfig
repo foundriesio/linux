@@ -89,6 +89,19 @@ config VIDEO_MAX96701
 	  To compile this driver as a module, choose M here: the
 	  module will be called MAX96701.
 
+config VIDEO_MAX96705
+	tristate "Maxim MAX96705 Serializer"
+	depends on GPIOLIB && VIDEO_V4L2 && I2C && VIDEO_V4L2_SUBDEV_API
+	select REGMAP_I2C
+	---help---
+	  Maxim MAX96705 14-Bit GMSL Serializer is a compact serializer in a
+	  4mmx4mm TQFN package that is especially suited for automotive camera
+	  application. Say Y to include support for the Maxim MAX96705
+	  Serializer.
+
+	  To compile this driver as a module, choose M here: the
+	  module will be called MAX96705.
+
 config VIDEO_MAX9286
 	tristate "Maxim MAX9286 Deserializer"
 	depends on GPIOLIB && VIDEO_V4L2 && I2C && VIDEO_V4L2_SUBDEV_API
