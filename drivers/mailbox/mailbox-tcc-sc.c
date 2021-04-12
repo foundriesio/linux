@@ -81,6 +81,7 @@ struct tcc_sc_mbox_device {
 	struct device *dev;
 
 	spinlock_t lock;
+	struct tasklet_struct finish_tasklet;
 };
 
 static inline void tcc_sc_mbox_writel(struct tcc_sc_mbox_device *mdev, u32 val,
@@ -115,6 +116,14 @@ static struct tcc_sc_mbox_device *mbox_chan_to_tcc_sc_mbox(struct mbox_chan
 	return (struct tcc_sc_mbox_device *)chan->con_priv;
 }
 
+static void tcc_sc_fw_tasklet_finish(unsigned long param)
+{
+	struct tcc_sc_mbox_device *mdev = (struct tcc_sc_mbox_device *)param;
+
+	/* Notify completion */
+	mbox_chan_txdone(&mdev->mbox.chans[0], -EINVAL);
+}
+
 static s32 tcc_sc_mbox_send_data(struct mbox_chan *chan, void *data)
 {
 	struct tcc_sc_mbox_device *mdev = mbox_chan_to_tcc_sc_mbox(chan);
@@ -125,6 +134,17 @@ static s32 tcc_sc_mbox_send_data(struct mbox_chan *chan, void *data)
 	if ((mdev == NULL) || (msg == NULL)){
 		pr_err("[ERROR][TCC_SC_MBOX][%s] argument is null",__func__);
 		return -EINVAL;
+	}
+
+	/*
+	 * Clint can halt pending mbox message before send data
+	 * by setting this flag.
+	 */
+	if((msg->flags & TCC_SC_MBOX_FLAG_SKIP_XFER) != 0) {
+		dev_err(mdev->dev,
+			"[ERROR][TCC_SC_MBOX] Skip mbox message transfer\n");
+		tasklet_schedule(&mdev->finish_tasklet);
+		return 0;
 	}
 
 	/* check message */
@@ -577,6 +597,9 @@ static s32 tcc_sc_mbox_probe(struct platform_device *pdev)
 	mdev->mbox.txpoll_period = 0;
 
 	spin_lock_init(&mdev->lock);
+
+	tasklet_init(&mdev->finish_tasklet,
+		tcc_sc_fw_tasklet_finish, (unsigned long)mdev);
 
 	/* Disable output */
 	tcc_sc_mbox_clr_ctrl(mdev, ((u32) 0x1U << MBOX_CTRL_OEN));

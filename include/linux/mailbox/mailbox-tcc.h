@@ -29,7 +29,10 @@ struct tcc_sc_mbox_msg {
 	u32 *cmd;
 	u32 data_len;
 	u32 *data_buf;
+	u32 flags;
 };
+
+#define TCC_SC_MBOX_FLAG_SKIP_XFER	(1 << 0)
 
 
 #define MBOX_CMD(dev, cmd) \
