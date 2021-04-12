@@ -107,11 +107,13 @@
        lcd_port3_bl: lcd_port3_bl {
                status = "disabled";
                compatible = "gpio-backlight";
+               default-on;
        };
 
        lcd_port4_bl: lcd_port4_bl {
                status = "disabled";
                compatible = "gpio-backlight";
+               default-on;
        };
 
 };

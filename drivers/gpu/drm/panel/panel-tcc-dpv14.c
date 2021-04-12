@@ -33,7 +33,12 @@
 
 #include <tcc_drm_edid.h>
 
+#include <linux/backlight.h>
+
+
 #define LOG_DPV14_TAG "DRM_DPV14"
+
+//#define CONFIG_DRM_TCC_CTRL_BACKLIGHT
 
 struct lvds_match_data {
 	char* name;
@@ -115,7 +120,7 @@ static int panel_dpv14_disable(struct drm_panel *pstPanel)
 	if (pstPanel_Dpv14_Param->stPanel_Pins.pwr_off != NULL) {
 		pinctrl_select_state(pstPanel_Dpv14_Param->stPanel_Pins.p, pstPanel_Dpv14_Param->stPanel_Pins.pwr_off);
 	} else {
-		pr_warning("[WARN][%s:%s]%s blk_off func ptr is NULL \r\n",	LOG_DPV14_TAG, __func__, pstPanel_Dpv14_Param->data->name);
+		pr_warning("[WARN][%s:%s]%s pwr_off func ptr is NULL \r\n",	LOG_DPV14_TAG, __func__, pstPanel_Dpv14_Param->data->name);
 	}
 
 	return 0;
@@ -311,6 +316,27 @@ static int panel_dpv14_parse_dt(struct Panel_Dpv14_Param_t *pstPanel_Dpv14_Param
 			LOG_DPV14_TAG, __func__);
 		pstPanel_Dpv14_Param->stPanel_Pins.pwr_off = NULL;
 	}
+
+#if defined(CONFIG_DRM_TCC_CTRL_BACKLIGHT)
+	np = of_parse_phandle(pstPanel_Dpv14_Param->dev->of_node, "backlight", 0);
+	if (np != NULL) {
+		pstPanel_Dpv14_Param->backlight = of_find_backlight_by_node(np);
+		of_node_put(np);
+
+		if (!pstPanel_Dpv14_Param->backlight){ //backlight node is not valid
+			pr_err("[ERROR][%s:%s]backlight driver not valid\n", LOG_DPV14_TAG, __func__);
+		}
+		else{
+			pr_info("[INFO][%s:%s]External backlight driver : max brightness[%d]\n",
+			LOG_DPV14_TAG, __func__,
+			pstPanel_Dpv14_Param->backlight->props.max_brightness);
+		}
+	} else {
+		pr_info("[INFO][%s:%s] Use pinctrl backlight...\n", LOG_DPV14_TAG, __func__);
+	}
+#else
+	pr_info("[INFO][%s:%s] Use pinctrl backlight\n", LOG_DPV14_TAG, __func__);
+#endif
 
 err_parse_dt:
 	return iRetVal;
