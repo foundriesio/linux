@@ -1311,6 +1311,7 @@
 		mipi-chmux-1 = <0>;
 		mipi-chmux-2 = <0>;
 		mipi-chmux-3 = <0>;
+
 		/*
 		 * 0: select output of MIPI1
 		 * 1: select output of MIPI0
@@ -1366,7 +1367,7 @@
 				reg = <1>;
 				mipi_csi2_0_out0: endpoint {
 					//remote-endpoint = <&isp0_in>;
-					remote-endpoint = <&videoinput4_in>;
+					remote-endpoint	= <&videoinput4_in>;
 					io-direction	= "output";
 					channel		= <0>;
 					/*
@@ -1848,8 +1849,8 @@
 	videoinput0: videoinput@0 {
 		status		= "okay";
 		compatible	= "telechips,video-input";
-		cifport		= <&cifport 0>;
-		clocks		= <&clk_ddi DDIBUS_VIOC>;
+		cifport		= <&cifport		0>;
+		clocks		= <&clk_ddi		DDIBUS_VIOC>;
 		rdma		= <&vioc_rdma		VIOC_RDMA16>;
 		use_pgl		= <0>;
 		vin		= <&vioc_vin		VIOC_VIN00>;
@@ -1863,7 +1864,7 @@
 			videoinput0_in: endpoint {
 				remote-endpoint	= <&adv7182_out>;
 				io-direction	= "input";
-				bus-type 	= <0>;
+				bus-type	= <0>;
 				stream-enable	= <0>;	// VIN_CTRL.SE
 				flush-vsync	= <0>;	// VIN_MISC.FVS
 			};
@@ -1873,7 +1874,7 @@
 	videoinput1: videoinput@1 {
 		status		= "disabled";
 		compatible	= "telechips,video-input";
-		clocks		= <&clk_ddi DDIBUS_VIOC>;
+		clocks		= <&clk_ddi		DDIBUS_VIOC>;
 		rdma		= <&vioc_rdma		VIOC_RDMA17>;
 		use_pgl		= <0>;
 		vin		= <&vioc_vin		VIOC_VIN10>;
@@ -1888,7 +1889,7 @@
 	videoinput2: videoinput@2 {
 		status		= "disabled";
 		compatible	= "telechips,video-input";
-		clocks		= <&clk_ddi DDIBUS_VIOC>;
+		clocks		= <&clk_ddi		DDIBUS_VIOC>;
 		rdma		= <&vioc_rdma		VIOC_RDMA13>;
 		use_pgl		= <0>;
 		vin		= <&vioc_vin		VIOC_VIN20>;
@@ -1903,7 +1904,7 @@
 	videoinput3: videoinput@3 {
 		status		= "disabled";
 		compatible	= "telechips,video-input";
-		clocks		= <&clk_ddi DDIBUS_VIOC>;
+		clocks		= <&clk_ddi		DDIBUS_VIOC>;
 		rdma		= <&vioc_rdma		VIOC_RDMA15>;
 		use_pgl		= <0>;
 		vin		= <&vioc_vin		VIOC_VIN30>;
@@ -1918,8 +1919,8 @@
 	videoinput4: videoinput@4 {
 		status		= "okay";
 		compatible	= "telechips,video-input";
-		cifport	= <&cifport 5>;
-		clocks		= <&clk_ddi DDIBUS_VIOC>;
+		cifport		= <&cifport		5>;
+		clocks		= <&clk_ddi		DDIBUS_VIOC>;
 		vin		= <&vioc_vin		VIOC_VIN40>;
 		wdma		= <&vioc_wdma		VIOC_WDMA09>;
 		fifo		= <&vioc_fifo		VIOC_FIFO0>;
@@ -1938,8 +1939,8 @@
 	videoinput5: videoinput@5 {
 		status		= "okay";
 		compatible	= "telechips,video-input";
-		cifport	= <&cifport 6>;
-		clocks		= <&clk_ddi DDIBUS_VIOC>;
+		cifport		= <&cifport		6>;
+		clocks		= <&clk_ddi		DDIBUS_VIOC>;
 		vin		= <&vioc_vin		VIOC_VIN50>;
 		wdma		= <&vioc_wdma		VIOC_WDMA10>;
 		fifo		= <&vioc_fifo		VIOC_FIFO0>;
@@ -1958,8 +1959,8 @@
 	videoinput6: videoinput@6 {
 		status		= "okay";
 		compatible	= "telechips,video-input";
-		cifport	= <&cifport 7>;
-		clocks		= <&clk_ddi DDIBUS_VIOC>;
+		cifport		= <&cifport		7>;
+		clocks		= <&clk_ddi		DDIBUS_VIOC>;
 		vin		= <&vioc_vin		VIOC_VIN60>;
 		wdma		= <&vioc_wdma		VIOC_WDMA11>;
 		fifo		= <&vioc_fifo		VIOC_FIFO0>;
@@ -1978,8 +1979,8 @@
 	videoinput7: videoinput@7 {
 		status		= "okay";
 		compatible	= "telechips,video-input";
-		cifport	= <&cifport 8>;
-		clocks		= <&clk_ddi DDIBUS_VIOC>;
+		cifport		= <&cifport		8>;
+		clocks		= <&clk_ddi		DDIBUS_VIOC>;
 		vin		= <&vioc_vin		VIOC_VIN70>;
 		wdma		= <&vioc_wdma		VIOC_WDMA12>;
 		fifo		= <&vioc_fifo		VIOC_FIFO0>;

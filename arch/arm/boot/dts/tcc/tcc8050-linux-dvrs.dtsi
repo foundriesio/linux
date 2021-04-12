@@ -891,39 +891,6 @@
 				};
 			};
 		};
-
-#if 0
-		/* TODO */
-		videosource2: deserializer_max9276 {
-			compatible	= "maxim,max9276";
-			pinctrl-names	= "idle", "active";
-			cifport		= <0>;
-			pinctrl-0	= <&cam0_16bit_idle>;
-			pinctrl-1	= <&cam0_clk &cam0_hsync &cam0_vsync &cam0_fld &cam0_data_16bit>;
-			rst-gpios	= <&gpb 14 1>;
-			intb-gpios	= <&gpma 19 1>;
-			reg		= <0x4A>;	// 0x94 >> 1
-		};
-
-		videosource10: cis_ar0135 {
-			compatible	= "onsemiconductor,ar0135";
-			pinctrl-names	= "idle", "active";
-			cifport		= <0>;
-			pinctrl-0	= <&cam0_16bit_idle>;
-			pinctrl-1	= <&cam0_clk &cam0_hsync &cam0_vsync &cam0_data_16bit>;
-			rst-gpios	= <&gpb 14 1>;
-			reg		= <0x10>;	// 0x20 >> 1
-		};
-
-		videosource11: deserializer_max96759 {
-			compatible	= "maxim,max96759";
-			pinctrl-names	= "idle", "active";
-			cifport		= <0>;
-			pinctrl-0	= <&cam0_16bit_idle>;
-			pinctrl-1	= <&cam0_clk &cam0_hsync &cam0_vsync &cam0_fld &cam0_data_16bit>;
-			reg		= <0x49>;	// 0x92 >> 1
-		};
-#endif
 	};
 
 	/*
@@ -1174,8 +1141,8 @@
 	};
 
 	videoinput@0 {
-		status = "disabled";
-		cifport	= <&cifport 0>;
+		status		= "disabled";
+		cifport		= <&cifport		0>;
 		port {
 			videoinput0_in: endpoint {
 				remote-endpoint	= <&adv7182_out>;
@@ -1188,8 +1155,8 @@
 	};
 
 	videoinput@4 {
-		status = "okay";
-		cifport	= <&cifport 5>;
+		status		= "okay";
+		cifport		= <&cifport		5>;
 
 		port {
 			videoinput4_in: endpoint {
@@ -1203,8 +1170,8 @@
 	};
 
 	videoinput@5 {
-		status = "okay";
-		cifport	= <&cifport 6>;
+		status		= "okay";
+		cifport		= <&cifport		6>;
 
 		port {
 			videoinput5_in: endpoint {
@@ -1218,8 +1185,8 @@
 	};
 
 	videoinput@6 {
-		status = "okay";
-		cifport	= <&cifport 7>;
+		status		= "okay";
+		cifport		= <&cifport		7>;
 
 		port {
 			videoinput6_in: endpoint {
@@ -1233,8 +1200,8 @@
 	};
 
 	videoinput@7 {
-		status = "okay";
-		cifport	= <&cifport 8>;
+		status		= "okay";
+		cifport		= <&cifport		8>;
 
 		port {
 			videoinput7_in: endpoint {
