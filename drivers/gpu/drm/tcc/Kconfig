@@ -38,8 +38,7 @@ config DRM_TCC_LCD_VIC
 
 config DRM_TCC_KEEP_LOGO
         bool "DRM TCC KEEP LOGO"
-        default y if ARCH_TCC805X && !ANDROID
-        default n if !ARCH_TCC805X || ANDROID
+        default y
         help
           If this config is selected to y, DRM driver skips process that fills its plane with block color when it is binded.
 

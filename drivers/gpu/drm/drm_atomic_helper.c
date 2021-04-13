@@ -977,8 +977,42 @@ crtc_set_mode(struct drm_device *dev, struct drm_atomic_state *old_state)
 	for_each_new_crtc_in_state(old_state, crtc, new_crtc_state, i) {
 		const struct drm_crtc_helper_funcs *funcs;
 
+		#if defined(CONFIG_DRM_TCC)
+		/*
+		 * Telechips
+		 * When received DPMS_ON message, DRM core sets only
+		 * state->active_changed to 1, except state->mode_changed.
+		 * If state->mode_changed is not 1, DRM core does not calls
+		 * mode_set_nofb and atomic_mode_set.
+		 *
+		 * Because DRM core does not necessary to calls
+		 * drm_crtc_helper_func->mode_set_nofb and
+		 * drm_encoder_helper_func->atomic_mode_set when process
+		 * the DPMS_ON.
+		 *
+		 * However, TCCDRM must calls
+		 * drm_crtc_helper_func->mode_set_nofb and
+		 * drm_encoder_helper_func->atomic_mode_set when process the
+		 * DPMS_ON that is due to restriction about LVDS PHY and DP PHY.
+		 *
+		 * Note
+		 * 1) The restriction for DP PHY is that the display controller
+		 *    must be running before setting the DP PHY.
+		 * 2) The restriction of LVDS PHY is that the display
+		 *    controller should not operate before setting the LVDS
+		 *    Splitter.
+		 * 3) TCCDRM handles this restriction using
+		 *    drm_crtc_helper_func->mode_set_nofb,
+		 *    drm_encoder_helper_func->atomic_mode_set,
+		 *    drm_crtc_helper_func->atomic_enable and
+		 *    drm_encoder_helper_func->enable.
+		 */
+		if (!new_crtc_state->mode_changed &&
+			!new_crtc_state->active_changed)
+		#else
 		if (!new_crtc_state->mode_changed)
-			 continue;
+		#endif
+			continue;
 
 		funcs = crtc->helper_private;
 
@@ -1004,7 +1038,41 @@ crtc_set_mode(struct drm_device *dev, struct drm_atomic_state *old_state)
 		mode = &new_crtc_state->mode;
 		adjusted_mode = &new_crtc_state->adjusted_mode;
 
+		#if defined(CONFIG_DRM_TCC)
+		/*
+		 * Telechips
+		 * When received DPMS_ON message, DRM core sets only
+		 * state->active_changed to 1, except state->mode_changed.
+		 * If state->mode_changed is not 1, DRM core does not calls
+		 * mode_set_nofb and atomic_mode_set.
+		 *
+		 * Because DRM core does not necessary to calls
+		 * drm_crtc_helper_func->mode_set_nofb and
+		 * drm_encoder_helper_func->atomic_mode_set when process
+		 * the DPMS_ON.
+		 *
+		 * However, TCCDRM must calls
+		 * drm_crtc_helper_func->mode_set_nofb and
+		 * drm_encoder_helper_func->atomic_mode_set when process the
+		 * DPMS_ON that is due to restriction about LVDS PHY and DP PHY.
+		 *
+		 * Note
+		 * 1) The restriction for DP PHY is that the display controller
+		 *    must be running before setting the DP PHY.
+		 * 2) The restriction of LVDS PHY is that the display
+		 *    controller should not operate before setting the LVDS
+		 *    Splitter.
+		 * 3) TCCDRM handles this restriction using
+		 *    drm_crtc_helper_func->mode_set_nofb,
+		 *    drm_encoder_helper_func->atomic_mode_set,
+		 *    drm_crtc_helper_func->atomic_enable and
+		 *    drm_encoder_helper_func->enable.
+		 */
+		if (!new_crtc_state->mode_changed &&
+			!new_crtc_state->active_changed)
+		#else
 		if (!new_crtc_state->mode_changed)
+		#endif
 			continue;
 
 		DRM_DEBUG_ATOMIC("modeset on [ENCODER:%d:%s]\n",
