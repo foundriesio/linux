@@ -123,6 +123,8 @@ patternProperties:
       - phy-supply
       - '#phy-cells'
 
+    additionalProperties: false
+
 required:
   - compatible
   - reg
@@ -134,6 +136,8 @@ required:
   - '#clock-cells'
   - usb-phy@0
   - usb-phy@1
+
+additionalProperties: false
 
 examples:
   - |
