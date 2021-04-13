@@ -72,9 +72,6 @@ patternProperties:
       phy-supply:
         description: regulator providing 3V3 power supply to the PHY.
 
-      vbus-supply:
-        description: regulator providing 5V Vbus to the USB connector.
-
       st,phy-tuning:
         $ref: /schemas/types.yaml#definitions/phandle
         description:
@@ -103,6 +100,13 @@ patternProperties:
 
       '#phy-cells':
         enum: [ 0x0, 0x1 ]
+
+      connector:
+        type: object
+        allOf:
+          - $ref: ../connector/usb-connector.yaml
+        properties:
+          vbus-supply: true
 
     allOf:
       - if:
@@ -174,6 +178,10 @@ examples:
             phy-supply = <&vdd_usb>;
             #phy-cells = <0>;
             st,phy-tuning = <&usb_phy_tuning>;
+            connector {
+                compatible = "usb-a-connector";
+                vbus-supply = <&vbus_sw>;
+            };
         };
 
         usbphyc_port1: usb-phy@1 {
