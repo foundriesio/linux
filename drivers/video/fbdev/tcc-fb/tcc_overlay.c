@@ -216,6 +216,20 @@ static int tcc_overlay_display_shared_screen(
 		overlay_drv->layer_n, overlay_drv->layer_nlast,
 		buffer_cfg.layer);
 	layer = overlay_drv->layer_n = buffer_cfg.layer;
+
+	//Check if it is a format supported by RDMA
+	if(!VIOC_RDMA_IsVRDMA(overlay_drv->rdma[layer].id)){
+		if(buffer_cfg.fmt == TCC_LCDC_IMG_FMT_444SEP ||
+			buffer_cfg.fmt == TCC_LCDC_IMG_FMT_YUV420SP ||
+			buffer_cfg.fmt == TCC_LCDC_IMG_FMT_YUV422SP ||
+			(buffer_cfg.fmt >= TCC_LCDC_IMG_FMT_YUV420ITL0
+			&& buffer_cfg.fmt <= TCC_LCDC_IMG_FMT_YUV422ITL1)){
+			pr_err("[ERR][OVERLAY] This format %d is not supported by RDMA id %d.\n",
+				buffer_cfg.cfg.format, get_vioc_index(overlay_drv->rdma[layer].id));
+			return -1;
+		}
+	}
+
 	if (overlay_drv->rdma[layer].reg && overlay_drv->wmix.reg) {
 		dprintk("%s SET[%d] : %p %p\n", __func__, layer,
 			overlay_drv->rdma[layer].reg, overlay_drv->wmix.reg);
@@ -272,6 +286,19 @@ static int tcc_overlay_display_video_buffer(
 		buffer_cfg.cfg.sx, buffer_cfg.cfg.sy, buffer_cfg.cfg.width,
 		buffer_cfg.cfg.height);
 	layer = overlay_drv->layer_n;
+
+	//Check if it is a format supported by RDMA
+	if(!VIOC_RDMA_IsVRDMA(overlay_drv->rdma[layer].id)){
+		if(buffer_cfg.cfg.format == TCC_LCDC_IMG_FMT_444SEP ||
+			buffer_cfg.cfg.format == TCC_LCDC_IMG_FMT_YUV420SP ||
+			buffer_cfg.cfg.format == TCC_LCDC_IMG_FMT_YUV422SP ||
+			(buffer_cfg.cfg.format >= TCC_LCDC_IMG_FMT_YUV420ITL0
+			&& buffer_cfg.cfg.format <= TCC_LCDC_IMG_FMT_YUV422ITL1)){
+			pr_err("[ERR][OVERLAY] This format %d is not supported by RDMA id %d.\n",
+				buffer_cfg.cfg.format, get_vioc_index(overlay_drv->rdma[layer].id));
+			return -1;
+		}
+	}
 
 	if (overlay_drv->rdma[layer].reg && overlay_drv->wmix.reg) {
 		dprintk("%s SET[%d] : %p %p\n", __func__, layer,
@@ -435,6 +462,19 @@ static int tcc_overlay_display_video_buffer_scaling(
 		buffer_cfg.cfg.sx, buffer_cfg.cfg.sy, buffer_cfg.cfg.width,
 		buffer_cfg.cfg.height);
 	layer = overlay_drv->layer_n;
+
+	//Check if it is a format supported by RDMA
+	if(!VIOC_RDMA_IsVRDMA(overlay_drv->rdma[layer].id)){
+		if(buffer_cfg.cfg.format == TCC_LCDC_IMG_FMT_444SEP ||
+			buffer_cfg.cfg.format == TCC_LCDC_IMG_FMT_YUV420SP ||
+			buffer_cfg.cfg.format == TCC_LCDC_IMG_FMT_YUV422SP ||
+			(buffer_cfg.cfg.format >= TCC_LCDC_IMG_FMT_YUV420ITL0
+			&& buffer_cfg.cfg.format <= TCC_LCDC_IMG_FMT_YUV422ITL1)){
+			pr_err("[ERR][OVERLAY] This format %d is not supported by RDMA id %d.\n",
+				buffer_cfg.cfg.format, get_vioc_index(overlay_drv->rdma[layer].id));
+			return -1;
+		}
+	}
 
 	struct panel_size_t panel;
 	unsigned int output_width, output_height;
