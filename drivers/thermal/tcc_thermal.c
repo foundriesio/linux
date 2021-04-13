@@ -377,14 +377,14 @@ static int32_t code_to_temp(struct tcc_thermal_data *data, uint32_t temp_trim1,
 
 static uint32_t request_otp_to_sc(u32 offset)
 {
-        uint32_t ret = 0xFFFFFFFFU;
+	uint32_t ret = 0xFFFFFFFFU;
 	struct tcc_sc_fw_otp_cmd otp_cmd;
 
-        if (sc_fw_handle_for_otp != NULL) {
+	if (sc_fw_handle_for_otp != NULL) {
 		ret = (uint32_t)sc_fw_handle_for_otp
 			->ops.otp_ops->get_otp
 			(sc_fw_handle_for_otp, &otp_cmd, offset);
-        } else {
+	} else {
 		/**/
 	}
 	if (ret == 0U) {
@@ -858,8 +858,8 @@ static irqreturn_t tcc_thermal_irq_thread (int32_t irq, void *dev)
  * If need to change CPU frequency depending on CPU temperature,
  * modify this function
  */
-	writel(0, data->interrupt_enable); // Default interrupt disable
 	mutex_lock(&data->lock);
+	writel(0, data->interrupt_enable); // Default interrupt disable
 	writel(0x777777, data->interrupt_mask); // clear irq
 	temp = data->pdata->thermal_temp;
 	temp = (temp/100);
