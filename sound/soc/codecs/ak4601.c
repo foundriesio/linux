@@ -30,14 +30,14 @@
 #include <sound/tlv.h>
 
 #include <linux/of_gpio.h>
-#include <linux/regmap.h> 
+#include <linux/regmap.h>
 
 #include "ak4601.h"
 
 //#define AK4601_DEBUG			//used at debug mode
 
 //#define KERNEL_3_18_XX
-//#define KERNEL_4_4_XX 
+//#define KERNEL_4_4_XX
 #define KERNEL_4_9_XX
 
 #define PORT3_LINK	1			//Port Sel(1~2)
@@ -71,12 +71,12 @@ struct ak4601_priv {
 	struct i2c_client *i2c;
 	struct regmap *regmap;
 	int fs;
-	
+
 	int pdn_gpio;
 
     int PLLInput;  // 0 : XTI,   1 : BICK1,	2 : BICK2
-	int XtiFs;     // 0 : 12.288MHz,  1: 18.432MHz,	 2 : 24.576MHz 
-	
+	int XtiFs;     // 0 : 12.288MHz,  1: 18.432MHz,	 2 : 24.576MHz
+
 	int EXBCK[NUM_SDIO];		//0:Low 1:SD1 2:SD2
 	int SDfs[NUM_SYNCDOMAIN];     // 0:8kHz, 1:12kHz, 2:16kHz, 3:24kHz, 4:32kHz, 5:48kHz, 6:96kHz, 7:192kHz
     int SDBick[NUM_SYNCDOMAIN];   // 0:64fs, 1:48fs, 2:32fs, 3:128fs, 4:256fs, 5:512fs
@@ -91,7 +91,7 @@ struct ak4601_priv {
 	int DOEDGEbit[NUM_SDIO];	//
 	int DISLbit[NUM_SDIO];		// 0:24bit 1:20bit 2:16bit 3:32bit
 	int DOSLbit[NUM_SDIO];		// 0:24bit 1:20bit 2:16bit 3:32bit
-	
+
 	int DIDL3;
 
 #ifdef TCC_USE_MUTE_GPIO
@@ -743,13 +743,13 @@ static unsigned int codec_fsmode_table[] = { // single port case
 #endif
 
 static const char *sd_fs_texts[] = {
-	"8kHz", "12kHz",  "16kHz", "24kHz", 
+	"8kHz", "12kHz",  "16kHz", "24kHz",
     "32kHz", "48kHz", "96kHz", "192kHz",
 };
 
 static int sdfstab[] = {
-	8000, 12000, 16000, 24000, 
-    32000, 48000, 96000, 192000, 
+	8000, 12000, 16000, 24000,
+    32000, 48000, 96000, 192000,
 };
 
 static const char *sd_bick_texts[] = {
@@ -761,8 +761,8 @@ static int sdbicktab[] = {
 };
 
 static const struct soc_enum ak4601_sd_fs_enum[] = {
-    SOC_ENUM_SINGLE_EXT(ARRAY_SIZE(sd_fs_texts), sd_fs_texts), 
-    SOC_ENUM_SINGLE_EXT(ARRAY_SIZE(sd_bick_texts), sd_bick_texts), 
+    SOC_ENUM_SINGLE_EXT(ARRAY_SIZE(sd_fs_texts), sd_fs_texts),
+    SOC_ENUM_SINGLE_EXT(ARRAY_SIZE(sd_bick_texts), sd_bick_texts),
 };
 
 static const char *fsmodebit_texts[] = {
@@ -784,9 +784,9 @@ static int XtiFsTab[] = {
 };
 
 static int PLLInFsTab[] = {
-	256000, 384000, 512000, 768000, 1024000, 
-    1152000, 1536000, 2048000, 2304000, 3072000, 
-    4096000, 4608000, 6144000, 8192000, 9216000, 
+	256000, 384000, 512000, 768000, 1024000,
+    1152000, 1536000, 2048000, 2304000, 3072000,
+    4096000, 4608000, 6144000, 8192000, 9216000,
     12288000, 18432000, 24576000
 };
 
@@ -907,7 +907,7 @@ static int setSDClock(struct snd_soc_codec *codec,int nSDNo)
 		snd_soc_update_bits(codec, addr, 0x0F, (sdv | ((bdv & 0x100) >> 5) ));// BDV[8],SDV[2:0]
 
 		addr++;
-	
+
 		snd_soc_update_bits(codec, addr, 0xFF, ( bdv & 0xFF)); //BDIV[7:0]
 
 		if ( ak4601->PLLInput == (nSDNo + 1) ) {
@@ -1047,8 +1047,8 @@ static const char *xtifs_texts[]  = {
 };
 
 static const struct soc_enum ak4601_pllset_enum[] = {
-    SOC_ENUM_SINGLE_EXT(ARRAY_SIZE(pllinput_texts), pllinput_texts), 
-    SOC_ENUM_SINGLE_EXT(ARRAY_SIZE(xtifs_texts), xtifs_texts), 
+    SOC_ENUM_SINGLE_EXT(ARRAY_SIZE(pllinput_texts), pllinput_texts),
+    SOC_ENUM_SINGLE_EXT(ARRAY_SIZE(xtifs_texts), xtifs_texts),
 };
 
 static int get_pllinput(struct snd_kcontrol *kcontrol,struct snd_ctl_elem_value  *ucontrol)
@@ -1116,7 +1116,7 @@ static const char *ak4601_tdm_texts[] = {
 };
 
 static const struct soc_enum ak4601_tdm_enum[] = {
-    SOC_ENUM_SINGLE_EXT(ARRAY_SIZE(ak4601_tdm_texts), ak4601_tdm_texts), 
+    SOC_ENUM_SINGLE_EXT(ARRAY_SIZE(ak4601_tdm_texts), ak4601_tdm_texts),
 };
 
 static int get_sdin1_tdm(struct snd_kcontrol *kcontrol,struct snd_ctl_elem_value  *ucontrol)
@@ -1186,7 +1186,7 @@ static const char *ak4601_sd_ioformat_texts[] = {
 
 
 static const struct soc_enum ak4601_slotlen_enum[] = {
-    SOC_ENUM_SINGLE_EXT(ARRAY_SIZE(ak4601_sd_ioformat_texts), ak4601_sd_ioformat_texts), 
+    SOC_ENUM_SINGLE_EXT(ARRAY_SIZE(ak4601_sd_ioformat_texts), ak4601_sd_ioformat_texts),
 };
 
 
@@ -1420,7 +1420,7 @@ static const struct soc_enum ak4601_sdout_modeset_enum[] = {
 };
 
 static const char *clkosel_texts[] = {
-	"12.288MHz", "24.576MHz", "8.192MHz", "6.144MHz", 
+	"12.288MHz", "24.576MHz", "8.192MHz", "6.144MHz",
 	"4.096MHz", "2.048MHz",
 };
 
@@ -1485,12 +1485,12 @@ static const struct soc_enum ak4601_adc_input_vol_enum[] ={
 
 #ifdef AK4601_DEBUG
 
-static const char *test_reg_select[]   = 
+static const char *test_reg_select[]   =
 {
     "read AK4601 Reg 000:102",
 };
 
-static const struct soc_enum ak4601_test_enum[] = 
+static const struct soc_enum ak4601_test_enum[] =
 {
     SOC_ENUM_SINGLE_EXT(ARRAY_SIZE(test_reg_select), test_reg_select),
 };
@@ -1539,8 +1539,8 @@ struct snd_ctl_elem_value  *ucontrol)
 #endif
 
 static const struct snd_kcontrol_new ak4601_snd_controls[] = {
-	SOC_SINGLE("CLK Out Enable", AK4601_00F_CLKO_OUTPUT_SETTING, 3, 1, 0), 
-	SOC_ENUM("CLK Out Select",  ak4601_clkosel_enum[0]), 
+	SOC_SINGLE("CLK Out Enable", AK4601_00F_CLKO_OUTPUT_SETTING, 3, 1, 0),
+	SOC_ENUM("CLK Out Select",  ak4601_clkosel_enum[0]),
 	SOC_ENUM("LRCK2/SDOUT3 Pin BICK2/SDIN3 Pin Setting", ak4601_sdio3_enum[0]),
 
 	SOC_SINGLE_TLV("MIC Input Volume L", AK4601_062_MIC_AMP_GAIN, 4, 0x0F, 0, mgnl_tlv),
@@ -1567,12 +1567,12 @@ static const struct snd_kcontrol_new ak4601_snd_controls[] = {
 	SOC_SINGLE_TLV("VOL3 Digital Volume R", AK4601_07A_VOL3RCH_DIGITAL_VOLUME, 0, 0xFF, 1, volvol_tlv),
 
 	SOC_SINGLE("ADC1 Mute", AK4601_06C_ADC_MUTE_AND_HPF_CONTROL, 6, 1, 0),
-	SOC_SINGLE("ADC2 Mute", AK4601_06C_ADC_MUTE_AND_HPF_CONTROL, 5, 1, 0), 
-	SOC_SINGLE("ADCM Mute", AK4601_06C_ADC_MUTE_AND_HPF_CONTROL, 4, 1, 0), 
+	SOC_SINGLE("ADC2 Mute", AK4601_06C_ADC_MUTE_AND_HPF_CONTROL, 5, 1, 0),
+	SOC_SINGLE("ADCM Mute", AK4601_06C_ADC_MUTE_AND_HPF_CONTROL, 4, 1, 0),
 
-	SOC_SINGLE("DAC1 Mute", AK4601_073_DAC_MUTE_AND_FILTER_SETTING, 6, 1, 0), 
-	SOC_SINGLE("DAC2 Mute", AK4601_073_DAC_MUTE_AND_FILTER_SETTING, 5, 1, 0), 
-	SOC_SINGLE("DAC3 Mute", AK4601_073_DAC_MUTE_AND_FILTER_SETTING, 4, 1, 0), 
+	SOC_SINGLE("DAC1 Mute", AK4601_073_DAC_MUTE_AND_FILTER_SETTING, 6, 1, 0),
+	SOC_SINGLE("DAC2 Mute", AK4601_073_DAC_MUTE_AND_FILTER_SETTING, 5, 1, 0),
+	SOC_SINGLE("DAC3 Mute", AK4601_073_DAC_MUTE_AND_FILTER_SETTING, 4, 1, 0),
 
 
 	SOC_ENUM("MixerA Sync Domain", ak4601_sdsel_enum[6]),
@@ -1583,7 +1583,7 @@ static const struct snd_kcontrol_new ak4601_snd_controls[] = {
 	SOC_ENUM("ADC1 Sync Domain", ak4601_sdsel_enum[8]),
 	SOC_ENUM("CODEC Sync Domain", ak4601_sdsel_enum[9]),
 
-	SOC_ENUM("CODEC Sampling Frequency", ak4601_fsmode_enum[0]), 
+	SOC_ENUM("CODEC Sampling Frequency", ak4601_fsmode_enum[0]),
 	SOC_ENUM_EXT("Sync Domain 1 fs", ak4601_sd_fs_enum[0], get_sd1_fs, set_sd1_fs),
 	SOC_ENUM_EXT("Sync Domain 2 fs", ak4601_sd_fs_enum[0], get_sd2_fs, set_sd2_fs),
 	SOC_ENUM_EXT("Sync Domain 1 BICK", ak4601_sd_fs_enum[1], get_sd1_bick, set_sd1_bick),
@@ -1604,7 +1604,7 @@ static const struct snd_kcontrol_new ak4601_snd_controls[] = {
 	SOC_ENUM_EXT("SDOUT1 Slot Length", ak4601_slotlen_enum[0], get_sdout1_slot, set_sdout1_slot),
 	SOC_ENUM_EXT("SDOUT2 Slot Length", ak4601_slotlen_enum[0], get_sdout2_slot, set_sdout2_slot),
 	SOC_ENUM_EXT("SDOUT3 Slot Length", ak4601_slotlen_enum[0], get_sdout3_slot, set_sdout3_slot),
-	SOC_ENUM_EXT("SDIO3 Word Length", ak4601_slotlen_enum[0], get_sdio3_word_len, set_sdio3_word_len),	
+	SOC_ENUM_EXT("SDIO3 Word Length", ak4601_slotlen_enum[0], get_sdio3_word_len, set_sdio3_word_len),
 
 	SOC_ENUM("MixerA Input1 Data Change", ak4601_mixer_setting_enum[0]),
 	SOC_ENUM("MixerA Input2 Data Change", ak4601_mixer_setting_enum[1]),
@@ -1617,7 +1617,7 @@ static const struct snd_kcontrol_new ak4601_snd_controls[] = {
 
 	SOC_SINGLE("Lch Mic ZeroCross Enable", AK4601_063_ANALOG_INPUT_GAIN_CONTROL, 1, 1, 0),
 	SOC_SINGLE("Rch Mic ZeroCross Enable", AK4601_063_ANALOG_INPUT_GAIN_CONTROL, 0, 1, 0),
-	
+
 	SOC_ENUM("ADC Digital Filter Select", ak4601_adda_digfilsel_enum[0]),
 	SOC_ENUM("ADC Digital Volume Transition Time", ak4601_adda_trantime_enum[0]),
 	SOC_ENUM("DAC Digital Filter Select", ak4601_adda_digfilsel_enum[1]),
@@ -1640,7 +1640,7 @@ static const struct snd_kcontrol_new ak4601_snd_controls[] = {
 	SOC_ENUM("SDOUT1 Fast Mode Setting", ak4601_sdout_modeset_enum[0]),
 	SOC_ENUM("SDOUT2 Fast Mode Setting", ak4601_sdout_modeset_enum[1]),
 	SOC_ENUM("SDOUT3 Fast Mode Setting", ak4601_sdout_modeset_enum[2]),
-	
+
 	SOC_SINGLE("SDOUT1 Output Enable", AK4601_05E_OUTPUT_PORT_ENABLE_SETTING, 5, 1, 0),
 	SOC_SINGLE("SDOUT2 Output Enable", AK4601_05E_OUTPUT_PORT_ENABLE_SETTING, 4, 1, 0),
 	SOC_SINGLE("SDOUT3 Output Enable", AK4601_05E_OUTPUT_PORT_ENABLE_SETTING, 3, 1, 0),
@@ -1715,7 +1715,7 @@ static const struct snd_kcontrol_new ak4601_adcm_mux_control =
 
 
 static const char *ak4601_source_select_texts[] = {
-	"ALL0", 
+	"ALL0",
 	"SDIN1",  "SDIN1B", "SDIN1C", "SDIN1D",
 	"SDIN1E", "SDIN1F", "SDIN1G", "SDIN1H",
 	"SDIN2",  "SDIN3",  "VOL1", "VOL2", "VOL3",
@@ -1723,11 +1723,11 @@ static const char *ak4601_source_select_texts[] = {
 };
 
 static const unsigned int ak4601_source_select_values[] = {
-	0x00, 
+	0x00,
 	0x01, 0x02, 0x03, 0x04,
 	0x05, 0x06, 0x07, 0x08,
 	0x09, 0x0A, 0x10, 0x11, 0x12,
-	0x15, 0x16, 0x17, 0x18, 0x19, 
+	0x15, 0x16, 0x17, 0x18, 0x19,
 };
 
 static const struct soc_enum ak4601_sout1_mux_enum =
@@ -1949,7 +1949,7 @@ static const struct snd_soc_dapm_widget ak4601_dapm_widgets[] = {
 	SND_SOC_DAPM_AIF_IN("SDIN1", "AIF1 Playback", 0, SND_SOC_NOPM, 0, 0),
 	SND_SOC_DAPM_AIF_IN("SDIN2", "AIF2 Playback", 0, SND_SOC_NOPM, 0, 0),
 	SND_SOC_DAPM_AIF_IN("SDIN3", SDIO3_LINK" Playback", 0, SND_SOC_NOPM, 0, 0),
-	
+
 	SND_SOC_DAPM_AIF_OUT("SDOUT1", "AIF1 Capture", 0, SND_SOC_NOPM, 0, 0),
 	SND_SOC_DAPM_AIF_OUT("SDOUT2", "AIF2 Capture", 0, SND_SOC_NOPM, 0, 0),
 	SND_SOC_DAPM_AIF_OUT("SDOUT3", SDIO3_LINK" Capture", 0, SND_SOC_NOPM, 0, 0),
@@ -2020,7 +2020,7 @@ static const struct snd_soc_dapm_route ak4601_intercon[] = {
 	{"SDOUT1", NULL, "Clock Power"},
 	{"SDOUT2", NULL, "Clock Power"},
 	{"SDOUT3", NULL, "Clock Power"},
-	
+
 	{"ADC1", NULL, "CODEC Power"},
 	{"ADC2", NULL, "CODEC Power"},
 	{"ADCM", NULL, "CODEC Power"},
@@ -2469,7 +2469,7 @@ static int ak4601_hw_params(struct snd_pcm_substream *substream,
 {
 	struct snd_soc_codec *codec = dai->codec;
 	struct ak4601_priv *ak4601 = snd_soc_codec_get_drvdata(codec);
-	
+
 	int fsno, nmax;
 	int DIODLbit, addr, value, nPortNo;
 
@@ -2497,7 +2497,7 @@ static int ak4601_hw_params(struct snd_pcm_substream *substream,
 	}
 
 	switch(dai->id){
-		case AIF_PORT1: 
+		case AIF_PORT1:
 			nPortNo = 0;
 			break;
 		case AIF_PORT2:
@@ -2536,6 +2536,7 @@ static int ak4601_hw_params(struct snd_pcm_substream *substream,
 	/* set Word length */
 	value = DIODLbit;
 
+#ifdef TCC_AK4601_MULTI_CARD_ENABLE
 	/* set SDIN data format */
 	addr = AK4601_050_SDIN1_DIGITAL_INPUT_FORMAT + nPortNo;
 	snd_soc_update_bits(codec, addr, 0x03, value);
@@ -2543,6 +2544,18 @@ static int ak4601_hw_params(struct snd_pcm_substream *substream,
 	/* set SDOUT data format */
 	addr = AK4601_055_SDOUT1_DIGITAL_OUTPUT_FORMAT + nPortNo;
 	snd_soc_update_bits(codec, addr, 0x03, value);
+#else
+	for(nPortNo = 0; nPortNo <= AIF_PORT2; nPortNo++)
+	{
+		/* set SDIN data format */
+		addr = AK4601_050_SDIN1_DIGITAL_INPUT_FORMAT + nPortNo;
+		snd_soc_update_bits(codec, addr, 0x03, value);
+
+		/* set SDOUT data format */
+		addr = AK4601_055_SDOUT1_DIGITAL_OUTPUT_FORMAT + nPortNo;
+		snd_soc_update_bits(codec, addr, 0x03, value);
+	}
+#endif
 
 	return 0;
 }
@@ -2567,7 +2580,7 @@ static int ak4601_set_dai_fmt(struct snd_soc_dai *dai, unsigned int fmt)
 	akdbgprt("\t[AK4601] %s(%d)\n",__FUNCTION__,__LINE__);
 
 	switch (dai->id) {
-		case AIF_PORT1: 
+		case AIF_PORT1:
 			nPortNo = 0;
 			break;
 		case AIF_PORT2:
@@ -2657,7 +2670,7 @@ static int ak4601_set_dai_fmt(struct snd_soc_dai *dai, unsigned int fmt)
 	addr = AK4601_050_SDIN1_DIGITAL_INPUT_FORMAT + nPortNo;
 	value = (diedge <<  7) + (diolsb <<  3) + (dislot <<  4);
 	snd_soc_update_bits(codec, addr, 0xB8, value);
-	
+
 	addr = AK4601_055_SDOUT1_DIGITAL_OUTPUT_FORMAT + nPortNo;
 	value = (doedge <<  7) + (diolsb <<  3) + (doslot <<  4);
 	snd_soc_update_bits(codec, addr, 0xB8, value);
@@ -2672,7 +2685,7 @@ static bool ak4601_readable(struct device *dev, unsigned int reg)
 	if ( reg < AK4601_MAX_REGISTERS ) {
 		if ( ak4601_access_masks[reg].readable != 0 ) ret = true;
 		else ret = false;
-	}		
+	}
 	else ret = false;
 
 	return ret;
@@ -2707,7 +2720,7 @@ static bool ak4601_writeable(struct device *dev, unsigned int reg)
 	if ( reg < AK4601_MAX_REGISTERS ) {
 		if ( ak4601_access_masks[reg].writable != 0 ) ret = true;
 		else ret = false;
-	}		
+	}
 	else ret = false;
 
 	return ret;
@@ -2761,11 +2774,11 @@ unsigned int ak4601_read_register(struct snd_soc_codec *codec, unsigned int reg)
 	if (!ak4601_readable(NULL, reg)) return(-EINVAL);
 
 	if (!ak4601_volatile(NULL, reg) && ak4601_readable(NULL, reg)) {
-		ret = regmap_read(ak4601->regmap, reg, &rdata);  
+		ret = regmap_read(ak4601->regmap, reg, &rdata);
 		akdbgprt("[AK4601] %s (%02x, %02x)\n",__FUNCTION__, reg, rdata);
 		if (ret >= 0) {
 			return rdata;
-		} 
+		}
         else {
 			dev_err(codec->dev, "Cache read from %x failed: %d\n",
 				reg, ret);
@@ -2810,8 +2823,8 @@ static int ak4601_write_register(struct snd_soc_codec *codec,  unsigned int reg,
 
 	if (!ak4601_writeable(NULL, reg)) return(-EINVAL);
 
-	value2 = ( ((unsigned int)(ak4601_access_masks[reg].writable)) & value ); 
-	
+	value2 = ( ((unsigned int)(ak4601_access_masks[reg].writable)) & value );
+
 	akdbgprt("[AK4601] %s (%02x, %02x)\n",__FUNCTION__, reg, value2);
 
 	wlen = 4;
@@ -2825,7 +2838,7 @@ static int ak4601_write_register(struct snd_soc_codec *codec,  unsigned int reg,
 #else
 	rc = spi_write(ak4601->spi, tx, wlen);
 #endif
-	
+
 	if ( rc >= 0 ) {
 		if (!ak4601_volatile(NULL, reg)) {
 			rc = regmap_write(ak4601->regmap, reg, value);
@@ -2834,7 +2847,7 @@ static int ak4601_write_register(struct snd_soc_codec *codec,  unsigned int reg,
 					reg, rc);
 		}
 	}
-	
+
 	return rc;
 
 }
@@ -2856,7 +2869,7 @@ static int ak4601_set_bias_level(struct snd_soc_codec *codec,
 #ifdef TCC_USE_MUTE_GPIO
 		if (ak4601->playback_active) {
 			mdelay(2);
-			if (ak4601->cmute_gpio >= 0) {	
+			if (ak4601->cmute_gpio >= 0) {
 				gpio_set_value(ak4601->cmute_gpio, !ak4601->cmute_gpio_flags); //cmute off
 				akdbgprt("\t[AK4601] SND_SOC_BIAS_ON cmute_gpio unmute\n");
 			}
@@ -2865,30 +2878,30 @@ static int ak4601_set_bias_level(struct snd_soc_codec *codec,
 				akdbgprt("\t[AK4601] SND_SOC_BIAS_ON amute_gpio unmute\n");
 			}
 		}
-#endif//TCC_USE_MUTE_GPIO		
+#endif//TCC_USE_MUTE_GPIO
 		break;
 	case SND_SOC_BIAS_PREPARE:
 		akdbgprt("\t[AK4601] SND_SOC_BIAS_PREPARE\n");
 		break;
 	case SND_SOC_BIAS_STANDBY:
 		akdbgprt("\t[AK4601] SND_SOC_BIAS_STANDBY\n");
-#ifdef TCC_USE_MUTE_GPIO		
+#ifdef TCC_USE_MUTE_GPIO
 		if (snd_soc_codec_get_bias_level(codec) == SND_SOC_BIAS_OFF) {
 			if (ak4601->stanby_gpio >= 0) {
 				gpio_set_value(ak4601->stanby_gpio, ak4601->stanby_gpio_flags); //stanby on
 				akdbgprt("\t[AK4601] SND_SOC_BIAS_PREPARE stanby on\n");
 			}
 		}
-#endif//TCC_USE_MUTE_GPIO		
+#endif//TCC_USE_MUTE_GPIO
 		break;
 	case SND_SOC_BIAS_OFF:
 		akdbgprt("\t[AK4601] SND_SOC_BIAS_OFF\n");
-#ifdef TCC_USE_MUTE_GPIO		
+#ifdef TCC_USE_MUTE_GPIO
 		if (ak4601->stanby_gpio >= 0) {
 			gpio_set_value(ak4601->stanby_gpio, !ak4601->stanby_gpio_flags); //stanby off
 			akdbgprt("\t[AK4601] SND_SOC_BIAS_OFF stanby off\n");
 		}
-#endif//TCC_USE_MUTE_GPIO		
+#endif//TCC_USE_MUTE_GPIO
 		break;
 	}
 
@@ -2901,7 +2914,7 @@ static int ak4601_set_bias_level(struct snd_soc_codec *codec,
 	return 0;
 }
 
-static int ak4601_set_dai_mute(struct snd_soc_dai *dai, int mute) 
+static int ak4601_set_dai_mute(struct snd_soc_dai *dai, int mute)
 {
 #ifdef TCC_USE_MUTE_GPIO
 	struct ak4601_priv *ak4601 = snd_soc_codec_get_drvdata(dai->codec);
@@ -2923,7 +2936,7 @@ static int ak4601_set_dai_mute(struct snd_soc_dai *dai, int mute)
 	} else {
 #ifdef TCC_USE_MUTE_GPIO
 		if (snd_soc_codec_get_bias_level(dai->codec) == SND_SOC_BIAS_ON) {
-			mdelay(2);	
+			mdelay(2);
 			if (ak4601->cmute_gpio >= 0) {
 				gpio_set_value(ak4601->cmute_gpio, !ak4601->cmute_gpio_flags); //cmute off
 				akdbgprt("\t[AK4601] cmute_gpio unmute(%d)\n",__LINE__);
@@ -2940,7 +2953,7 @@ static int ak4601_set_dai_mute(struct snd_soc_dai *dai, int mute)
 	return 0;
 }
 
-#define AK4601_RATES			SNDRV_PCM_RATE_8000_192000	
+#define AK4601_RATES			SNDRV_PCM_RATE_8000_192000
 
 #define AK4601_DAC_FORMATS		SNDRV_PCM_FMTBIT_S16_LE | SNDRV_PCM_FMTBIT_S24_LE | SNDRV_PCM_FMTBIT_S32_LE
 #define AK4601_ADC_FORMATS		SNDRV_PCM_FMTBIT_S16_LE | SNDRV_PCM_FMTBIT_S24_LE | SNDRV_PCM_FMTBIT_S32_LE
@@ -3015,8 +3028,8 @@ static struct snd_soc_dai_ops ak4601_dai_ops = {
 #endif//TCC_USE_MUTE_GPIO
 };
 
-struct snd_soc_dai_driver ak4601_dai[] = {   
-	{										 
+struct snd_soc_dai_driver ak4601_dai[] = {
+	{
 		.name = "ak4601-aif1",
 		.id = AIF_PORT1,
 		.playback = {
@@ -3071,7 +3084,7 @@ static int ak4601_write_spidmy(struct snd_soc_codec *codec)
 	tx[3] = (unsigned char)(0x7A);
 
 	rd = spi_write(ak4601->spi, tx, wlen);
-	
+
 	return rd;
 }
 #endif
@@ -3080,13 +3093,13 @@ static int ak4601_init_reg(struct snd_soc_codec *codec)
 {
 	struct ak4601_priv *ak4601 = snd_soc_codec_get_drvdata(codec);
 	int i;
-	
+
 	akdbgprt("\t[AK4601] %s\n",__FUNCTION__);
 
 	if ( ak4601->pdn_gpio > 0 ) {
-		gpio_set_value(ak4601->pdn_gpio, 0);	
+		gpio_set_value(ak4601->pdn_gpio, 0);
 		mdelay(1);
-		gpio_set_value(ak4601->pdn_gpio, 1);	
+		gpio_set_value(ak4601->pdn_gpio, 1);
 		mdelay(1);
 	}
 
@@ -3097,7 +3110,7 @@ static int ak4601_init_reg(struct snd_soc_codec *codec)
 	printk("[AK4601] %s Check Connection...%s\n", __FUNCTION__, snd_soc_read(codec,AK4601_075_VOL1LCH_DIGITAL_VOLUME) == 0x18 ? "SUCCESS" : "FAILUE");
 
 	ak4601_set_bias_level(codec, SND_SOC_BIAS_STANDBY);
-	
+
 	ak4601->fs = 48000;
 	ak4601->PLLInput = 0;//XTI
 	ak4601->XtiFs    = 0;
@@ -3132,9 +3145,13 @@ static int ak4601_init_reg(struct snd_soc_codec *codec)
 	akdbgprt("\t[AK4601] %s\n addr=%03X data=%02X",__FUNCTION__, AK4601_05E_OUTPUT_PORT_ENABLE_SETTING, 0x38);
 
 	snd_soc_update_bits( codec, AK4601_05E_OUTPUT_PORT_ENABLE_SETTING, 0x38, 0x38 );//SDOUT1~3 OutputEnable=1
-
+#ifdef TCC_AK4601_MULTI_CARD_ENABLE
 	snd_soc_update_bits( codec, AK4601_013_SYNC_DOMAIN_SELECT_3, 0x07, 0x01);
 	snd_soc_update_bits( codec, AK4601_014_SYNC_DOMAIN_SELECT_4, 0x77, 0x23);
+#else
+	snd_soc_update_bits( codec, AK4601_013_SYNC_DOMAIN_SELECT_3, 0x07, 0x01);
+	snd_soc_update_bits( codec, AK4601_014_SYNC_DOMAIN_SELECT_4, 0x77, 0x11);
+#endif
 
 	snd_soc_update_bits( codec, AK4601_011_SYNC_DOMAIN_SELECT_1, 0x12, 0x12 );//LR/BICKx Output SDx
 
@@ -3153,7 +3170,7 @@ static int ak4601_init_reg_for_subcore(struct snd_soc_codec *codec)
 {
 	struct ak4601_priv *ak4601 = snd_soc_codec_get_drvdata(codec);
 	int i;
-	
+
 	akdbgprt("\t[AK4601] %s\n",__FUNCTION__);
 
 	printk("[AK4601] %s Check Connection...%s\n", __FUNCTION__, snd_soc_read(codec,AK4601_075_VOL1LCH_DIGITAL_VOLUME) == 0x18 ? "SUCCESS" : "FAILUE");
@@ -3215,20 +3232,20 @@ static int ak4601_init_reg_for_subcore(struct snd_soc_codec *codec)
 	snd_soc_update_bits( codec, AK4601_061_MIXER_B_SETTING, 0x0c, 0x0c);
 	//'SDOUT1 Source Selector' 'MixerB'
 	snd_soc_update_bits( codec, AK4601_021_SDOUT1_TDM_SLOT1_2_DATA_SELECT, 0x3F, 0x19);
-	//'SDOUT1 Output Enable' on        
+	//'SDOUT1 Output Enable' on
 	snd_soc_update_bits( codec, AK4601_05E_OUTPUT_PORT_ENABLE_SETTING, 0x20, 0x20);
-	//'ADC1 Mute' off                  
-	//'ADCM Mute' off                  
+	//'ADC1 Mute' off
+	//'ADCM Mute' off
 	snd_soc_update_bits( codec, AK4601_06C_ADC_MUTE_AND_HPF_CONTROL, 0x50, 0x00);
-	//'DAC1 Source Selector' 'SDIN1'   
-	//'DAC2 Source Selector' 'SDIN2'   
-	//'DAC3 Source Selector' 'SDIN1'  
+	//'DAC1 Source Selector' 'SDIN1'
+	//'DAC2 Source Selector' 'SDIN2'
+	//'DAC3 Source Selector' 'SDIN1'
 	snd_soc_update_bits( codec, AK4601_035_DAC1_INPUT_DATA_SELECT, 0x3F, 0x01);
 	snd_soc_update_bits( codec, AK4601_036_DAC2_INPUT_DATA_SELECT, 0x3F, 0x09);
 	snd_soc_update_bits( codec, AK4601_037_DAC3_INPUT_DATA_SELECT, 0x3F, 0x01);
-	//'DAC1 Mute' off    
-	//'DAC2 Mute' off                  
-	//'DAC3 Mute' off                  
+	//'DAC1 Mute' off
+	//'DAC2 Mute' off
+	//'DAC3 Mute' off
 	snd_soc_update_bits( codec, AK4601_073_DAC_MUTE_AND_FILTER_SETTING, 0x70, 0x00);
 
 	return 0;
@@ -3259,12 +3276,12 @@ static int ak4601_parse_dt(struct ak4601_priv *ak4601)
 	ak4601->cmute_gpio = of_get_named_gpio_flags(np, "cmute-gpios", 0, &gpio_flags);
 	if(ak4601->cmute_gpio < 0) {
 		ak4601->cmute_gpio = -1;
-	} else { 
+	} else {
 		if(gpio_is_valid(ak4601->cmute_gpio)) {
 			ak4601->cmute_gpio_flags = (gpio_flags & OF_GPIO_ACTIVE_LOW)? 0 : 1;
 			printk("[AK4601] use cmute gpio(%d)\n", ak4601->cmute_gpio);
-			if (devm_gpio_request_one(dev, 
-						ak4601->cmute_gpio, 
+			if (devm_gpio_request_one(dev,
+						ak4601->cmute_gpio,
 						(ak4601->cmute_gpio_flags ? GPIOF_OUT_INIT_HIGH : GPIOF_OUT_INIT_LOW),
 						"cmute-gpios")) {
 				ak4601->cmute_gpio = -1;
@@ -3278,12 +3295,12 @@ static int ak4601_parse_dt(struct ak4601_priv *ak4601)
 	ak4601->amute_gpio = of_get_named_gpio_flags(np, "amute-gpios", 0, &gpio_flags);
 	if(ak4601->amute_gpio < 0) {
 		ak4601->amute_gpio = -1;
-	} else { 
+	} else {
 		if(gpio_is_valid(ak4601->amute_gpio)) {
 			ak4601->amute_gpio_flags = (gpio_flags & OF_GPIO_ACTIVE_LOW)? 0 : 1;
 			printk("[AK4601] use amute gpio(%d)\n", ak4601->amute_gpio);
-			if (devm_gpio_request_one(dev, 
-						ak4601->amute_gpio, 
+			if (devm_gpio_request_one(dev,
+						ak4601->amute_gpio,
 						(ak4601->amute_gpio_flags ? GPIOF_OUT_INIT_HIGH : GPIOF_OUT_INIT_LOW),
 						"amute-gpios")) {
 				ak4601->amute_gpio = -1;
@@ -3298,12 +3315,12 @@ static int ak4601_parse_dt(struct ak4601_priv *ak4601)
 	ak4601->stanby_gpio = of_get_named_gpio_flags(np, "stanby-gpios", 0, &gpio_flags);
 	if(ak4601->stanby_gpio < 0) {
 		ak4601->stanby_gpio = -1;
-	} else { 
+	} else {
 		if(gpio_is_valid(ak4601->stanby_gpio)) {
 			ak4601->stanby_gpio_flags = (gpio_flags & OF_GPIO_ACTIVE_LOW)? 0 : 1;
 			printk("[AK4601] use stanby gpio(%d)\n", ak4601->stanby_gpio);
-			if (devm_gpio_request_one(dev, 
-						ak4601->stanby_gpio, 
+			if (devm_gpio_request_one(dev,
+						ak4601->stanby_gpio,
 						(ak4601->stanby_gpio_flags ? GPIOF_OUT_INIT_HIGH : GPIOF_OUT_INIT_LOW),
 						"stanby-gpios")) {
 				ak4601->stanby_gpio = -1;
@@ -3345,7 +3362,7 @@ static int ak4601_probe(struct snd_soc_codec *codec)
 		ret = 0;
 	}
 
-	if ( ak4601->pdn_gpio > 0 ) { 
+	if ( ak4601->pdn_gpio > 0 ) {
 		ret = gpio_request(ak4601->pdn_gpio, "ak4601 pdn");
 		gpio_direction_output(ak4601->pdn_gpio, 0);
 	}
@@ -3392,7 +3409,7 @@ static int ak4601_suspend(struct snd_soc_codec *codec)
 
 static int ak4601_resume(struct snd_soc_codec *codec)
 {
-	struct ak4601_priv *ak4601 = snd_soc_codec_get_drvdata(codec);	
+	struct ak4601_priv *ak4601 = snd_soc_codec_get_drvdata(codec);
 	int i;
 
 	for ( i = 0 ; i < ARRAY_SIZE(ak4601_reg) ; i++ ) {
@@ -3413,7 +3430,7 @@ struct snd_soc_codec_driver soc_codec_dev_ak4601 = {
 	.read = ak4601_read_register,
 	.write = ak4601_write_register,
 
-//	.idle_bias_off = true, 
+//	.idle_bias_off = true,
 	.set_bias_level = ak4601_set_bias_level,
 
 #ifdef KERNEL_4_9_XX
@@ -3457,13 +3474,13 @@ static int ak4601_i2c_probe(struct i2c_client *i2c,
 {
 	struct ak4601_priv *ak4601;
 	int ret=0;
-	
+
 	akdbgprt("\t[AK4601] %s(%d)\n",__FUNCTION__,__LINE__);
 
 	ak4601 = devm_kzalloc(&i2c->dev, sizeof(struct ak4601_priv), GFP_KERNEL);
 	if (ak4601 == NULL) return -ENOMEM;
 
-	ak4601->regmap = devm_regmap_init_i2c(i2c, &ak4601_regmap); 
+	ak4601->regmap = devm_regmap_init_i2c(i2c, &ak4601_regmap);
 	if (IS_ERR(ak4601->regmap)) {
 		devm_kfree(&i2c->dev, ak4601);
 		return PTR_ERR(ak4601->regmap);
