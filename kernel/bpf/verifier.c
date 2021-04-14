@@ -6168,7 +6168,7 @@ static int fixup_bpf_calls(struct bpf_verifier_env *env)
 					     BPF_MOV | BPF_X,
 					     BPF_REG_AX, insn->src_reg,
 					     0, 0),
-				BPF_JMP_IMM(BPF_JNE, BPF_REG_AX, 0,
+				BPF_JMP_IMM(BPF_JEQ, BPF_REG_AX, 0,
 					    1 + (is64 ? 0 : 1)),
 				*insn,
 				BPF_JMP_IMM(BPF_JA, 0, 0, 1),
