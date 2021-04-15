@@ -888,6 +888,15 @@ void VIOC_DISP_EmergencyFlag_SetHdmiVs(
 	__raw_writel(value, reg + DEFR);
 }
 
+void vioc_disp_set_clkdiv(volatile void __iomem *reg, unsigned int div)
+{
+	unsigned long value;
+
+	value = (__raw_readl(reg + DCLKDIV) & ~(DCLKDIV_PXCLKDIV_MASK));
+	value |= ((div << DCLKDIV_PXCLKDIV_SHIFT) & DCLKDIV_PXCLKDIV_MASK);
+	__raw_writel(value, reg + DCLKDIV);
+}
+
 void VIOC_DISP_DUMP(volatile void __iomem *reg, unsigned int vioc_id)
 {
 	unsigned int cnt = 0;

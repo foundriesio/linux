@@ -649,6 +649,7 @@ extern void VIOC_DISP_EmergencyFlag_SetEofm(volatile void __iomem *reg,
 extern void VIOC_DISP_EmergencyFlag_SetHdmiVs(volatile void __iomem *reg,
 	unsigned int hdmivs);
 extern volatile void __iomem *VIOC_DISP_GetAddress(unsigned int vioc_id);
+void vioc_disp_set_clkdiv(volatile void __iomem *reg, unsigned int div);
 extern void VIOC_DISP_DUMP(volatile void __iomem *reg, unsigned int vioc_id);
 
 #endif
