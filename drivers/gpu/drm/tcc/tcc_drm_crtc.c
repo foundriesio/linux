@@ -309,9 +309,7 @@ static int tcc_drm_crtc_check_pixelclock_match(
 static void tcc_drm_crtc_force_disable(struct drm_crtc *crtc,
 				     struct tcc_hw_device *hw_data)
 {
-	const struct drm_encoder_helper_funcs *funcs;
 	struct drm_encoder *encoder;
-	int i;
 
 	drm_for_each_encoder(encoder, crtc->dev)
 		if (encoder->crtc == crtc)
@@ -321,25 +319,33 @@ static void tcc_drm_crtc_force_disable(struct drm_crtc *crtc,
 go_find_crtc:
 	dev_info(
 		crtc->dev->dev,
-		"[INFO][%s] %s Turn off display device on this CRTC\r\n",
-		LOG_TAG, __func__);
+		"[INFO][%s] %s for display device(%d)\r\n",
+		LOG_TAG, __func__,
+		get_vioc_index(hw_data->display_device.blk_num));
 
-	/* Disable panels if exist */
-	funcs = encoder->helper_private;
-	if (funcs->disable != NULL)
-		funcs->disable(encoder);
+	if (encoder->helper_private) {
+		const struct drm_encoder_helper_funcs *funcs;
 
-	/* Turn off display device */
-	if (VIOC_DISP_Get_TurnOnOff(hw_data->display_device.virt_addr))
-		VIOC_DISP_TurnOff(hw_data->display_device.virt_addr);
-
-	/* Disable all planes on this crtc */
-	for (i = 0; i < RDMA_MAX_NUM; i++) {
-		if (hw_data->rdma[i].virt_addr != NULL)
-			VIOC_RDMA_SetImageDisableNW(
-				hw_data->rdma[i].virt_addr);
+		/* Disable panels if exist */
+		funcs = encoder->helper_private;
+		if (funcs->disable)
+			funcs->disable(encoder);
 	}
-	//PCK.
+	if (crtc->helper_private) {
+		const struct drm_crtc_helper_funcs *funcs;
+		struct drm_crtc_state old_crtc_state;
+
+		funcs = crtc->helper_private;
+		if (funcs->atomic_disable) {
+			/*
+			 * This valud indicates that atomic_disable is called
+			 * by tccdrm not by drm core.
+			 * Note: This value cannot be 0 in normal cases.
+			 */
+			old_crtc_state.active = 0;
+			funcs->atomic_disable(crtc, &old_crtc_state);
+		}
+	}
 }
 
 static int tcc_drm_crtc_check_display_timing(struct drm_crtc *crtc,
@@ -356,8 +362,9 @@ static int tcc_drm_crtc_check_display_timing(struct drm_crtc *crtc,
 	if (!ddinfo.enable) {
 		dev_info(
 			crtc->dev->dev,
-			"[INFO][%s] %s display device is disabled\r\n",
-			LOG_TAG, __func__);
+			"[INFO][%s] %s display device(%d) is disabled\r\n",
+			LOG_TAG, __func__,
+			get_vioc_index(hw_data->display_device.blk_num));
 		need_reset = 1;
 		goto out_state_on;
 	}
@@ -367,8 +374,9 @@ static int tcc_drm_crtc_check_display_timing(struct drm_crtc *crtc,
 	if (ddinfo.width != mode->hdisplay || ddinfo.height != vactive) {
 		dev_info(
 			crtc->dev->dev,
-			"[INFO][%s] %s display size is not match %dx%d : %dx%d\r\n",
+			"[INFO][%s] %s display device(%d) size is not match %dx%d : %dx%d\r\n",
 			LOG_TAG, __func__,
+			get_vioc_index(hw_data->display_device.blk_num),
 			ddinfo.width, ddinfo.height, mode->hdisplay, vactive);
 		need_reset = 1;
 		goto out_turnoff;
@@ -380,8 +388,10 @@ static int tcc_drm_crtc_check_display_timing(struct drm_crtc *crtc,
 				hw_data->ddc_clock), mode->clock * 1000)) {
 		dev_info(
 			crtc->dev->dev,
-			"[INFO][%s] %s clock is not match %ldHz : %dHz\r\n",
-			LOG_TAG, __func__, clk_get_rate(hw_data->ddc_clock),
+			"[INFO][%s] %s display device(%d) clock is not match %ldHz : %dHz\r\n",
+			LOG_TAG, __func__,
+			get_vioc_index(hw_data->display_device.blk_num),
+			clk_get_rate(hw_data->ddc_clock),
 			mode->clock * 1000);
 		need_reset = 1;
 		goto out_turnoff;
@@ -523,7 +533,7 @@ int tcc_crtc_parse_edid_ioctl(
 		struct edid *edid =
 			devm_kzalloc(dev->dev, EDID_LENGTH, GFP_KERNEL);
 
-		if (!edid ) {
+		if (!edid) {
 			ret = -ENOMEM;
 			goto err_out;
 		}
@@ -538,7 +548,7 @@ int tcc_crtc_parse_edid_ioctl(
 
 		memcpy(args->data, edid, EDID_LENGTH);
 		devm_kfree(dev->dev, edid);
-        }
+	}
 	return 0;
 err_out:
 	return ret;
@@ -656,7 +666,7 @@ int tcc_drm_crtc_set_display_timing(struct drm_crtc *crtc,
 
 	VIOC_WMIX_GetOverlayPriority(hw_data->wmixer.virt_addr, &ovp);
 	/* Restore ovp value of WMIX to drm default ovp value */
-	if(ovp == VIOC_WMIX_POR_OVP)
+	if (ovp == VIOC_WMIX_POR_OVP)
 		ovp = VIOC_WMIX_DRM_DEFAULT_OVP;
 	VIOC_CONFIG_SWReset(hw_data->wmixer.blk_num, VIOC_CONFIG_RESET);
 	VIOC_CONFIG_SWReset(hw_data->wmixer.blk_num, VIOC_CONFIG_CLEAR);
@@ -693,9 +703,10 @@ finish:
 			clk_get_rate(hw_data->ddc_clock), vm.pixelclock)) {
 		dev_info(
 			crtc->dev->dev,
-			"[INFO][%s] %s clock is not match %ldHz : %dHz\r\n",
-			LOG_TAG, __func__, clk_get_rate(hw_data->ddc_clock),
-			mode->clock * 1000);
+			"[INFO][%s] %s display device(%d) clock is not match %ldHz : %dHz\r\n",
+			LOG_TAG, __func__,
+			get_vioc_index(hw_data->display_device.blk_num),
+			clk_get_rate(hw_data->ddc_clock), mode->clock * 1000);
 		clk_set_rate(hw_data->ddc_clock, vm.pixelclock);
 	}
 

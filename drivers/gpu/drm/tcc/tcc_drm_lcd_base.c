@@ -650,12 +650,24 @@ static void lcd_disable(struct tcc_drm_crtc *crtc)
 	if (VIOC_DISP_Get_TurnOnOff(ctx->hw_data.display_device.virt_addr)) {
 		atomic_set(&ctx->wait_display_done_event, 1);
 		VIOC_DISP_TurnOff(ctx->hw_data.display_device.virt_addr);
-		if (
-			!wait_event_interruptible_timeout(
-				ctx->wait_display_done_queue,
-				!atomic_read(&ctx->wait_display_done_event),
-				msecs_to_jiffies(30)))
-			dev_warn(ctx->dev, "display done wait timed out.\n");
+		if (!test_bit(CRTC_FLAGS_IRQ_BIT, &ctx->crtc_flags)) {
+			msleep(30);
+			dev_info(
+				ctx->dev,
+				"[INFO][%s] %s It will be wait 30ms because interrupt is not enabled.\n",
+				LOG_TAG, __func__);
+		} else {
+			if (
+				!wait_event_interruptible_timeout(
+					ctx->wait_display_done_queue,
+					!atomic_read(
+						&ctx->wait_display_done_event),
+					msecs_to_jiffies(30)))
+				dev_warn(
+					ctx->dev,
+					"[WARN][%s] %s A timeout occurred while waiting for the display controller is shut down.\n",
+					LOG_TAG, __func__);
+		}
 	}
 
 	#if defined(CONFIG_PM)
@@ -925,6 +937,16 @@ static int lcd_bind(struct device *dev, struct device *master, void *data)
 			dev_err(
 				dev,
 				"[ERROR][%s] %s failed to enable the bus clk\n",
+				LOG_TAG, __func__);
+			goto out;
+		}
+	}
+	if (!test_and_set_bit(CRTC_FLAGS_PCLK_BIT, &ctx->crtc_flags)) {
+		ret = clk_prepare_enable(ctx->hw_data.ddc_clock);
+		if (ret < 0) {
+			dev_err(
+				dev,
+				"[ERROR][%s] %s failed to enable the ddc clk\n",
 				LOG_TAG, __func__);
 			goto out;
 		}
