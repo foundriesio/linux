@@ -97,7 +97,7 @@ irqreturn_t idxd_misc_thread(int vec, void *data)
 			struct idxd_wq *wq = &idxd->wqs[id];
 
 			if (wq->type == IDXD_WQT_USER)
-				wake_up_interruptible(&wq->idxd_cdev.err_queue);
+				wake_up_interruptible(&wq->err_queue);
 		} else {
 			int i;
 
@@ -105,7 +105,7 @@ irqreturn_t idxd_misc_thread(int vec, void *data)
 				struct idxd_wq *wq = &idxd->wqs[i];
 
 				if (wq->type == IDXD_WQT_USER)
-					wake_up_interruptible(&wq->idxd_cdev.err_queue);
+					wake_up_interruptible(&wq->err_queue);
 			}
 		}
 

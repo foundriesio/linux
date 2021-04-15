@@ -188,7 +188,7 @@ static int idxd_setup_internals(struct idxd_device *idxd)
 		mutex_init(&wq->wq_lock);
 		atomic_set(&wq->dq_count, 0);
 		init_waitqueue_head(&wq->submit_waitq);
-		wq->idxd_cdev.minor = -1;
+		init_waitqueue_head(&wq->err_queue);
 		wq->wqcfg = devm_kzalloc(dev, idxd->wqcfg_size, GFP_KERNEL);
 		if (!wq->wqcfg)
 			return -ENOMEM;
