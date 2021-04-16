@@ -1,0 +1,13 @@
+This is for 'component-adv7343-i2c'.
+
+Required properties for display:
+    -compatible:
+        "component-adv7343-i2c"
+
+-------------------------------------------------------------------------------
+
+Example:
+		adv7343@20 {
+			compatible = "component-adv7343-i2c";
+			reg = <0x2b>;	/* ALSB=1, Write=0x56, Read=0x57 */
+		};

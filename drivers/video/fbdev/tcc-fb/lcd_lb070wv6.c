@@ -37,13 +37,13 @@ static int lb080wv6_set_power(struct lcd_panel *panel, int on)
 
 	if (on) {
 		gpio_set_value(pdata->power_on, 1);
-		msleep(10);
+		usleep_range(10000, 11000);
 		gpio_set_value(pdata->reset, 1);
-		msleep(16);
+		usleep_range(16000, 17000);
 		gpio_set_value(pdata->display_on, 1);
 	} else {
 		gpio_set_value(pdata->display_on, 0);
-		msleep(10);
+		usleep_range(10000, 11000);
 		gpio_set_value(pdata->reset, 0);
 		gpio_set_value(pdata->power_on, 0);
 

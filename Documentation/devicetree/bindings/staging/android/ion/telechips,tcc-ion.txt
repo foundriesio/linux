@@ -1,0 +1,5 @@
+Device Tree ION bindings for tcc-ion
+
+Required properties:
+- compatible: shall be "telechips,tcc-ion"
+- telechips,ion-heap-name: shall be the corresponding names of the heap

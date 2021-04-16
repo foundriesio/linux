@@ -116,7 +116,7 @@ struct scaler_data {
 };
 
 struct vioc_block_res_type {
-	volatile void __iomem *reg;
+	void __iomem *reg;
 	unsigned int id;
 	unsigned int path;
 	//component position   0 : before mixer  , 1 : after mixer
@@ -124,7 +124,7 @@ struct vioc_block_res_type {
 };
 
 struct vioc_filter2d_block_res_type {
-	volatile void __iomem *reg;
+	void __iomem *reg;
 	unsigned int id;
 	// component position  berfore Mixer
 	// (0 : before scaler, 1 : after scaler)
@@ -134,7 +134,7 @@ struct vioc_filter2d_block_res_type {
 };
 
 struct vioc_sar_block_res_type {
-	volatile void __iomem *reg;
+	void __iomem *reg;
 	unsigned int id;
 	unsigned int level;
 };
@@ -379,8 +379,8 @@ static int tcc_scaler_drv_common_set_path_selection(
 
 #if defined(CONFIG_VIOC_AFBCDEC)
 static void tcc_scaler_drv_configure_AFBCDEC(
-	volatile void __iomem *pAFBC_Dec, unsigned int base_addr,
-	volatile void __iomem *pRDMA,
+	void __iomem *pAFBC_Dec, unsigned int base_addr,
+	void __iomem *pRDMA,
 	unsigned int bSplitMode, unsigned int bWideMode,
 	unsigned int fmt, unsigned int width, unsigned int height)
 {
@@ -498,10 +498,10 @@ static char tcc_scaler_drv_common_run(struct scaler_common_drv_type *scaler)
 	unsigned int crop_width;
 	unsigned int component_num = 0;
 	unsigned int bypass_mixer;
-	volatile void __iomem *pSC_RDMABase = scaler->rdma.reg;
-	volatile void __iomem *pSC_WMIXBase = scaler->wmix.reg;
-	volatile void __iomem *pSC_WDMABase = scaler->wdma.reg;
-	volatile void __iomem *pSC_SCALERBase = scaler->sc.reg;
+	void __iomem *pSC_RDMABase = scaler->rdma.reg;
+	void __iomem *pSC_WMIXBase = scaler->wmix.reg;
+	void __iomem *pSC_WDMABase = scaler->wdma.reg;
+	void __iomem *pSC_SCALERBase = scaler->sc.reg;
 
 	scaler->force_fmt_RGB = 0;
 	scaler->force_fmt_YUV = 0;
@@ -1270,16 +1270,16 @@ static int scaler_drv_common_open(struct inode *inode, struct file *filp)
 	return ret;
 }
 
-static struct file_operations scaler_drv_common_fops = {
-	.owner			= THIS_MODULE,
-	.unlocked_ioctl		= scaler_drv_common_ioctl,
-#ifdef CONFIG_COMPAT
-	.compat_ioctl	= scaler_drv_common_compat_ioctl,
-#endif
-	.mmap			= scaler_drv_common_mmap,
-	.open			= scaler_drv_common_open,
-	.release		= scaler_drv_common_release,
-	.poll			= scaler_drv_common_poll,
+static const struct file_operations scaler_drv_common_fops = {
+	.owner          = THIS_MODULE,
+	.unlocked_ioctl = scaler_drv_common_ioctl,
+	#ifdef CONFIG_COMPAT
+	.compat_ioctl   = scaler_drv_common_compat_ioctl,
+	#endif
+	.mmap           = scaler_drv_common_mmap,
+	.open           = scaler_drv_common_open,
+	.release        = scaler_drv_common_release,
+	.poll           = scaler_drv_common_poll,
 };
 
 static int scaler_drv_common_probe(struct platform_device *pdev)
@@ -1387,7 +1387,7 @@ static int scaler_drv_common_resume(struct platform_device *pdev)
 	return 0;
 }
 
-static struct of_device_id scaler_common_of_match[] = {
+static const struct of_device_id scaler_common_of_match[] = {
 	{ .compatible = "telechips,scaler_drv_common" },
 	{}
 };

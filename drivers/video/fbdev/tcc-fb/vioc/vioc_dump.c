@@ -84,7 +84,7 @@ static struct work_struct vioc_dump_handle_1;
 static struct work_struct vioc_dump_handle_2;
 
 static int capture_vioc_raw(
-	volatile void __iomem *vioc_preg, unsigned int *raw_reg,
+	void __iomem *vioc_preg, unsigned int *raw_reg,
 	unsigned int offset_end)
 {
 	unsigned int i, offset;
@@ -219,7 +219,7 @@ void fb_dump_vioc_status(unsigned int device_id)
 	unsigned int idx = 0;
 	struct vioc_dump_t *dump_regs = NULL;
 
-	volatile void __iomem *vioc_reg;
+	void __iomem *vioc_reg;
 
 	if (device_id < 3)
 		dump_regs = vioc_dump_regs[device_id];

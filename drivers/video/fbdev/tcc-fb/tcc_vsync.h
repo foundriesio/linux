@@ -95,7 +95,7 @@ typedef struct {
 	int enabled;
 	struct pmap pmapBuff;
 
-	volatile void __iomem *pRDMA;
+	void __iomem *pRDMA;
 
 	tcc_lastframe_reason reason;
 	unsigned int nCount;
@@ -160,7 +160,7 @@ struct tcc_vsync_display_info_t {
 	int lcdc_num;
 	int irq_num;
 	int irq_reged;
-	volatile void __iomem *virt_addr;
+	void __iomem *virt_addr;
 };
 
 #ifdef TCC_LCD_VIDEO_DISPLAY_BY_VSYNC_INT
@@ -205,5 +205,7 @@ void tcc_vsync_hdmi_end(struct tcc_dp_device *pdp_data);
 void tcc_video_clear_last_frame(unsigned int lcdc_layer, bool reset);
 VSYNC_CH_TYPE tcc_vsync_get_video_ch_type(unsigned int lcdc_layer);
 int tcc_video_check_last_frame(struct tcc_lcdc_image_update *ImageInfo);
+
+int tcc_ctrl_ext_frame(char enable);
 
 #endif /*__TCC_VSYNC_H__*/

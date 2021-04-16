@@ -657,7 +657,7 @@ int tcc_hdmi_phy_power_down(struct tcc_hdmi_dev *dev)
                 #if 0
                 {
                         unsigned int reg = hdmi_reg_read(dev, HDMIDP_PHYREG(0x74));
-                        printk(KERN_INFO "[INFO][HDMI_V14] Reg74  = 0x%02x \n", reg);
+                        pr_info("[INFO][HDMI_V14] Reg74  = 0x%02x \n", reg);
                 }
                 #endif
         }
@@ -670,14 +670,14 @@ void tcc_hdmi_phy_dump(struct tcc_hdmi_dev *dev)
         int phy_loop;
         unsigned int val;
 
-        printk(KERN_INFO "[INFO][HDMI_V14]HDMI PHY DUMP\r\n");
+        pr_info("[INFO][HDMI_V14]HDMI PHY DUMP\r\n");
         for(phy_loop = 0; phy_loop < HDMI_PHY_REGS; phy_loop++) {
                 val = hdmi_reg_read(dev, HDMIDP_PHYREG((phy_loop+1) << 2));
-                printk(KERN_INFO "[INFO][HDMI_V14] 0x%02x ", val);
-                if((phy_loop+1)%16 == 0) printk(KERN_INFO "[INFO][HDMI_V14] \r\n");
+                pr_info("[INFO][HDMI_V14] 0x%02x ", val);
+                if((phy_loop+1)%16 == 0) pr_info("[INFO][HDMI_V14] \r\n");
         }
 
-        printk(KERN_INFO "[INFO][HDMI_V14] \r\n\r\n");
+        pr_info("[INFO][HDMI_V14] \r\n\r\n");
 }
 
 int tcc_hdmi_phy_config_by_rawdata(struct tcc_hdmi_dev *dev, unsigned char* phy_regs, unsigned int len)
@@ -685,7 +685,7 @@ int tcc_hdmi_phy_config_by_rawdata(struct tcc_hdmi_dev *dev, unsigned char* phy_
         int ret = 0;
         int phy_loop;
         if(phy_regs == NULL) {
-                printk(KERN_ERR "[ERROR][HDMI_V14]%s phy_regs is NULL\r\n", __func__);
+                pr_err("[ERROR][HDMI_V14]%s phy_regs is NULL\r\n", __func__);
                 ret = -1;
                 goto end_process;
         }
@@ -732,12 +732,12 @@ int tcc_hdmi_phy_config(struct tcc_hdmi_dev *dev, unsigned int pixel_clock, unsi
         }
 
         if(phy_regs == NULL) {
-                printk(KERN_ERR "[ERROR][HDMI_V14]%s with %dHz %d pixel is failed\r\n", __func__, pixel_clock, bpp);
+                pr_err("[ERROR][HDMI_V14]%s with %dHz %d pixel is failed\r\n", __func__, pixel_clock, bpp);
                 ret = -1;
                 goto end_process;
         }
 
-	printk(KERN_INFO "[INFO][HDMI_V14]%s with %dHz %d bpp\r\n", __func__, pixel_clock, bpp);
+	pr_info("[INFO][HDMI_V14]%s with %dHz %d bpp\r\n", __func__, pixel_clock, bpp);
 	phy_status = hdmi_reg_read(dev, HDMI_SS_PHY_STATUS_0) & 0xFF;
 	if(!phy_status) {
 		hdmi_phy_reset(dev);
@@ -763,10 +763,10 @@ int tcc_hdmi_phy_config(struct tcc_hdmi_dev *dev, unsigned int pixel_clock, unsi
 
 	phy_status = hdmi_reg_read(dev, HDMI_SS_PHY_STATUS_0) & 0xFF;
 	if (!phy_status) {
-                printk(KERN_ERR "[ERROR][HDMI_V14]%s HDMI PHY is not ready!!!\n", __func__);
+                pr_err("[ERROR][HDMI_V14]%s HDMI PHY is not ready!!!\n", __func__);
         }
         else {
-                printk(KERN_INFO "[INFO][HDMI_V14]%s HDMI PHY is ready!!\n", __func__);
+                pr_info("[INFO][HDMI_V14]%s HDMI PHY is ready!!\n", __func__);
         }
 
         ret = 0;

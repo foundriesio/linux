@@ -1,10 +1,5 @@
 /*
- * linux/arch/arm/mach-tcc897x/include/mach/vioc_timer.h
- * Author:  <linux@telechips.com>
- * Created: June 10, 2008
- * Description: TCC VIOC h/w block
- *
- * Copyright (C) 2008-2009 Telechips
+ * Copyright (C) Telechips, Inc.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -67,11 +62,11 @@
 /*
  * Timer Interrupt k Register
  */
-#define TIREQ_EN_SHIFT			(31)
-#define TIREQ_TIME_SHIFT		(0)
+#define TIREQ_EN_SHIFT		(31)
+#define TIREQ_TIME_SHIFT	(0)
 
-#define TIREQ_EN_MASK			(0x1 << TIREQ_EN_SHIFT)
-#define TIREQ_TIME_MASK			(0xFFFF << TIREQ_TIME_SHIFT)
+#define TIREQ_EN_MASK		(0x1 << TIREQ_EN_SHIFT)
+#define TIREQ_TIME_MASK		(0xFFFF << TIREQ_TIME_SHIFT)
 
 /*
  * Interrupt Mask Register
@@ -99,25 +94,29 @@
 #define IRQSTAT_TIMER1_MASK		(0x1 << IRQSTAT_TIMER1_SHIFT)
 #define IRQSTAT_TIMER0_MASK		(0x1 << IRQSTAT_TIMER0_SHIFT)
 
-#define VIOC_TIMER_IRQSTAT_MASK         (\
-                                        IRQSTAT_TIREQ1_MASK |\
-                                        IRQSTAT_TIREQ0_MASK |\
-                                        IRQSTAT_TIMER1_MASK |\
-                                        IRQSTAT_TIMER0_MASK)
+#define VIOC_TIMER_IRQSTAT_MASK ( \
+	IRQSTAT_TIREQ1_MASK |\
+	IRQSTAT_TIREQ0_MASK |\
+	IRQSTAT_TIMER1_MASK |\
+	IRQSTAT_TIMER0_MASK)
 
-#endif
 
 enum vioc_timer_id {
-        VIOC_TIMER_TIMER0 = 0,
-        VIOC_TIMER_TIMER1,
-        VIOC_TIMER_TIREQ0,
-        VIOC_TIMER_TIREQ1
+	VIOC_TIMER_TIMER0 = 0,
+	VIOC_TIMER_TIMER1,
+	VIOC_TIMER_TIREQ0,
+	VIOC_TIMER_TIREQ1
 };
 
 unsigned int vioc_timer_get_curtime(void);
-int vioc_timer_set_timer(enum vioc_timer_id id, int enable, int timer_hz);
+int vioc_timer_set_timer(
+	enum vioc_timer_id id,
+	int enable,
+	int timer_hz);
 int vioc_timer_set_timer_req(
-	enum vioc_timer_id id,  int enable,  int units);
+	enum vioc_timer_id id,
+	int enable,
+	int units);
 int vioc_timer_set_irq_mask(enum vioc_timer_id id);
 int vioc_timer_clear_irq_mask(enum vioc_timer_id id);
 unsigned int vioc_timer_get_irq_status(void);
@@ -125,3 +124,5 @@ int vioc_timer_is_interrupted(enum vioc_timer_id id);
 int vioc_timer_clear_irq_status(enum vioc_timer_id id);
 int vioc_timer_suspend(void);
 int vioc_timer_resume(void);
+
+#endif /*__VIOC_TIMER_H__*/

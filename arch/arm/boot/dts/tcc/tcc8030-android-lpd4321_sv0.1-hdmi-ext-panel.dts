@@ -57,6 +57,8 @@
 
 	/* hdmi override. */
 	i2c@16300000 {
+		#address-cells = <1>;
+		#size-cells = <0>;
 		hdmi_pvlbjt {
 			compatible = "telechips,pvlbjt_020_01";
 			reg=<0x22>;

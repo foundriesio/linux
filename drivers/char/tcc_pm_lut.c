@@ -58,9 +58,13 @@
 #include <video/tcc/vioc_pixel_mapper.h>
 #include <video/tcc/vioc_global.h>
 
-#define TCC_PM_LUT_DEBUG	0
-#define dprintk(msg...)		if (TCC_PM_LUT_DEBUG) \
-				({ pr_debug("[DBG][PM_LUT] " msg); })
+
+#if 0
+#define dprintk(msg...) pr_info("[DBG][PM_LUT] " msg)
+#else
+#define dprintk(msg...)
+#endif
+
 struct VIOC_PM_LUT_VALUE_SET backup_pm_lut_cmd;
 
 struct pm_lut_drv_type {

@@ -31,7 +31,7 @@
 
 
 struct device_node *pMADI_np;
-volatile void __iomem *pMADI_reg[VMADI_MAX] = {0};
+void __iomem *pMADI_reg[VMADI_MAX] = {0};
 
 #define MEM_UV422 0 // internal YUV operation format
 
@@ -72,7 +72,7 @@ struct stMADI_Info *pVDEInt_1_Info;
 struct stMADI_Info *pVDEInt_lut_Info;
 struct stMADI_Info *pVDEInt_2_Info;
 
-static unsigned int _reg_r_ext(volatile void __iomem *reg)
+static unsigned int _reg_r_ext(void __iomem *reg)
 {
 	unsigned int szItem = 0x00;
 	unsigned int nReg = 0x00;
@@ -110,7 +110,7 @@ static unsigned int _reg_r_ext(volatile void __iomem *reg)
 	return 0x00;
 }
 
-static void _reg_w_ext(unsigned int value, volatile void __iomem *reg)
+static void _reg_w_ext(unsigned int value, void __iomem *reg)
 {
 	unsigned int szItem = 0x00;
 	unsigned int nReg = 0x00;
@@ -133,11 +133,11 @@ static void _reg_w_ext(unsigned int value, volatile void __iomem *reg)
 				pVDEInt_1_Info[i].value = value;
 
 				//if (pVDEInt_1_Info[i].offset < 0x80) {
-				//	pr_info("[INF][MADI] pVDEINT[0x%x] :: 0x%8x -> 0x%8x\n",
+				//	pr_info("pVDEINT[0x%x] 0x%8x->0x%8x\n",
 				//		pVDEInt_Info[i].offset,
 				//		pVDEInt_Info[i].value, value);
 				//	if (pVDEInt_1_Info[i].offset == 0x00) {
-				//		pr_info("[INF][MADI] pVDEINT[0x%x] :: 0x%8x -> 0x%8x\n",
+				//	pr_info("pVDEINT[0x%x] 0x%8x->0x%8x\n",
 				//		       pVDEInt_1_Info[i].offset,
 				//		       pVDEInt_1_Info[i].value,
 				//		       value);
@@ -219,7 +219,7 @@ msleep(100);
 #endif
 
 static void
-_viqe_madi_set_line_config(volatile void __iomem *reg, unsigned int bcap,
+_viqe_madi_set_line_config(void __iomem *reg, unsigned int bcap,
 			unsigned int base_offset, unsigned int linebuf_level,
 			unsigned int rowbytes, unsigned int linenum)
 {
@@ -258,7 +258,7 @@ _viqe_madi_set_line_config(volatile void __iomem *reg, unsigned int bcap,
 }
 
 static void
-_viqe_madi_vdeinit_top_bottom_field_offset(volatile void __iomem *reg,
+_viqe_madi_vdeinit_top_bottom_field_offset(void __iomem *reg,
 					unsigned int base_offset,
 					unsigned int field_offset)
 {
@@ -271,7 +271,7 @@ _viqe_madi_vdeinit_top_bottom_field_offset(volatile void __iomem *reg,
 	__madi_reg_w(value, reg + base_offset + MADIVDEINT_TOP_BOTTOM_OFFSET);
 }
 
-static void _viqe_madi_set_out_c_line_config(volatile void __iomem *reg,
+static void _viqe_madi_set_out_c_line_config(void __iomem *reg,
 					unsigned int base_offset,
 					unsigned int linebuf_level,
 					unsigned int rowbytes,
@@ -299,7 +299,7 @@ static void _viqe_madi_set_out_c_line_config(volatile void __iomem *reg,
 	__madi_reg_w(value, reg + base_offset + MADIVDEINT_OUT_C0_BC_OFFSET);
 }
 
-static void _viqe_madi_set_src_crop(volatile void __iomem *reg,
+static void _viqe_madi_set_src_crop(void __iomem *reg,
 				unsigned int base_offset,
 				unsigned int width /*crop_w*/,
 				unsigned int height /*crop_h*/)
@@ -325,7 +325,7 @@ static void _viqe_madi_set_src_crop(volatile void __iomem *reg,
 #endif
 }
 
-static void _viqe_madi_set_target_crop(volatile void __iomem *reg,
+static void _viqe_madi_set_target_crop(void __iomem *reg,
 				       unsigned int base_offset,
 				       unsigned int width, unsigned int height)
 {
@@ -344,7 +344,7 @@ void _viqe_madi_set_pclk_timming(unsigned int out_width /*crop_w*/,
 	unsigned int glb_vde_start_pclk = 0x00;
 	unsigned int value_h_w, value_h_h, value_w_w;
 	unsigned int value;
-	volatile void __iomem *reg = NULL;
+	void __iomem *reg = NULL;
 
 	value_h_w = ((out_height << 16) | out_width);
 	value_h_h = ((out_height << 16) | out_height);
@@ -466,7 +466,7 @@ void _viqe_madi_set_vde_m0_init(unsigned int out_width /*crop_w*/,
 {
 	unsigned int vde_width = 0x00;
 	unsigned int value;
-	volatile void __iomem *reg = NULL;
+	void __iomem *reg = NULL;
 
 	reg = VIQE_MADI_GetAddress(VMADI_DEINT);
 
@@ -540,7 +540,7 @@ void _viqe_madi_set_movie_m2_init(unsigned int out_width /*crop_w*/,
 				unsigned int out_height /*crop_h*/)
 {
 	unsigned int value;
-	volatile void __iomem *reg = NULL;
+	void __iomem *reg = NULL;
 
 	reg = VIQE_MADI_GetAddress(VMADI_DEINT);
 
@@ -583,7 +583,7 @@ void _viqe_madi_set_movie_m2_init(unsigned int out_width /*crop_w*/,
 void _viqe_madi_set_yuv_mode(unsigned int src_yuv420) // 1: yuv420, 0: yuv422
 {
 	unsigned int value;
-	volatile void __iomem *reg = NULL;
+	void __iomem *reg = NULL;
 
 	reg = VIQE_MADI_GetAddress(VMADI_CAP_IF);
 
@@ -609,7 +609,7 @@ void _viqe_madi_set_yuv_mode(unsigned int src_yuv420) // 1: yuv420, 0: yuv422
 void VIQE_MADI_Ctrl_Enable(enum MadiEn_Mode mode)
 {
 	unsigned long value;
-	volatile void __iomem *reg = VIQE_MADI_GetAddress(VMADI_CTRL_IF);
+	void __iomem *reg = VIQE_MADI_GetAddress(VMADI_CTRL_IF);
 
 	value = __madi_reg_r(reg + MADICTRL_OFFSET);
 
@@ -631,14 +631,14 @@ void VIQE_MADI_Ctrl_Enable(enum MadiEn_Mode mode)
 void VIQE_MADI_Ctrl_Disable(void)
 {
 	unsigned long value = 0x00;
-	volatile void __iomem *reg = VIQE_MADI_GetAddress(VMADI_CTRL_IF);
+	void __iomem *reg = VIQE_MADI_GetAddress(VMADI_CTRL_IF);
 
 	__madi_reg_w(value, reg + MADICTRL_OFFSET);
 }
 
 void VIQE_MADI_SetBasicConfiguration(unsigned int odd_first)
 {
-	volatile void __iomem *reg = NULL;
+	void __iomem *reg = NULL;
 	unsigned int szItem = 0x00;
 	unsigned int i = 0;
 
@@ -710,7 +710,7 @@ void VIQE_MADI_SetBasicConfiguration(unsigned int odd_first)
 void VIQE_MADI_Set_SrcImgBase(enum MadiADDR_Type type, unsigned int YAddr,
 			unsigned int CAddr)
 {
-	volatile void __iomem *reg = NULL;
+	void __iomem *reg = NULL;
 	unsigned int y_value = 0x00, u_value = 0x00;
 
 	if (type >= MADI_ADDR_MAX) {
@@ -753,7 +753,7 @@ void VIQE_MADI_Set_SrcImgBase(enum MadiADDR_Type type, unsigned int YAddr,
 void VIQE_MADI_Set_TargetImgBase(enum MadiADDR_Type type, unsigned int Alpha,
 				unsigned int YAddr, unsigned int CAddr)
 {
-	volatile void __iomem *reg = NULL;
+	void __iomem *reg = NULL;
 	unsigned int a_value = 0x00, y_value = 0x00, u_value = 0x00;
 
 	if (type >= MADI_ADDR_MAX) {
@@ -787,7 +787,7 @@ void VIQE_MADI_Set_TargetImgBase(enum MadiADDR_Type type, unsigned int Alpha,
 void VIQE_MADI_Get_TargetImgBase(enum MadiADDR_Type type,
 				unsigned int *YAddr, unsigned int *CAddr)
 {
-	volatile void __iomem *reg = NULL;
+	void __iomem *reg = NULL;
 	unsigned int y_value = 0x00, u_value = 0x00;
 
 	if (type >= MADI_ADDR_MAX) {
@@ -816,7 +816,7 @@ void VIQE_MADI_Set_SrcImgSize(unsigned int width, unsigned int height,
 	unsigned int crop_sy, unsigned int crop_w,
 	unsigned int crop_h)
 {
-	volatile void __iomem *reg = NULL;
+	void __iomem *reg = NULL;
 	unsigned int hwidth_bit = 0x00, acc_hwidth_bit = 0x00, stride = 0x00,
 		offset = 0x00, s_offset, rowbytes = 0x00;
 	unsigned int y_linebuf_level = 0x00, y_rowbytes = 0x00,
@@ -949,7 +949,7 @@ void VIQE_MADI_Set_TargetImgSize(unsigned int src_width,
 				unsigned int out_height /*crop_h*/,
 				unsigned int bpp)
 {
-	volatile volatile void __iomem *reg = NULL;
+	void __iomem *reg = NULL;
 	unsigned int hwidth_bit = 0x00, acc_hwidth_bit = 0x00;
 	unsigned int linebuf_level = 0x00, rowbytes = 0x00, linenum = 0x00;
 
@@ -1072,7 +1072,7 @@ void VIQE_MADI_Gen_Timming(unsigned int out_width, unsigned int out_height)
 	unsigned int v_front_porch = 0x00, v_back_porch = 0x00, v_active = 0x00,
 		v_sync_width = 0x00;
 	unsigned int h_total = 0x00, v_total = 0x00;
-	volatile void __iomem *reg = NULL;
+	void __iomem *reg = NULL;
 
 	h_active = out_width;
 	v_active = out_height;
@@ -1111,7 +1111,7 @@ void VIQE_MADI_Gen_Timming(unsigned int out_width, unsigned int out_height)
 
 void VIQE_MADI_Set_Clk_Gating(void)
 {
-	volatile void __iomem *reg = NULL;
+	void __iomem *reg = NULL;
 	unsigned int value = 0x00;
 
 	reg = VIQE_MADI_GetAddress(VMADI_TIMMING);
@@ -1121,7 +1121,7 @@ void VIQE_MADI_Set_Clk_Gating(void)
 
 void VIQE_MADI_Go_Request(void)
 {
-	volatile void __iomem *reg = NULL;
+	void __iomem *reg = NULL;
 	unsigned int value = 0x00;
 
 	reg = VIQE_MADI_GetAddress(VMADI_TIMMING);
@@ -1131,7 +1131,7 @@ void VIQE_MADI_Go_Request(void)
 
 void VIQE_MADI_Set_odd_field_first(unsigned int odd_first)
 {
-	volatile void __iomem *reg = NULL;
+	void __iomem *reg = NULL;
 	//unsigned int curr_cfg_field = 0x00;
 	//unsigned int next_cfg_field = 0x00;
 	//unsigned int curr_cfg_code = 0x00;
@@ -1156,7 +1156,7 @@ void VIQE_MADI_Set_odd_field_first(unsigned int odd_first)
 
 void VIQE_MADI_Change_Cfg(void)
 {
-	volatile void __iomem *reg = NULL;
+	void __iomem *reg = NULL;
 	unsigned int curr_cfg_code = 0x00, curr_cfg_field = 0x00;
 	unsigned int next_cfg_code = 0x00, next_cfg_field = 0x00;
 
@@ -1309,7 +1309,7 @@ struct stMADI_Region rw_region[] = {
 
 void VIQE_MADI_Reg_RW_Test(void)
 {
-	volatile void __iomem *reg = NULL;
+	void __iomem *reg = NULL;
 	unsigned int i = 0, st_size = 0;
 	unsigned int array_size = 0;
 	unsigned int value = 0x0;
@@ -1333,7 +1333,7 @@ msleep(500);
 				pr_debug("[DBG][MADI] %s :: Error-1 R/W 0x00-test failure => 0x%p(base+0x%x) : 0x%x\n",
 					__func__, reg+i, i, value);
 				fail_count_0x00++;
-				msleep(10);
+				usleep_range(10000, 11000);
 			}
 
 			//write 0xFFFFFFFF
@@ -1343,7 +1343,7 @@ msleep(500);
 				pr_debug("[DBG][MADI] %s :: Error-2 R/W 0xff-test failure => 0x%p(base+0x%x) : 0x%x\n",
 					__func__, reg+i, i, value);
 				fail_count_0xff++;
-				msleep(10);
+				usleep_range(10000, 11000);
 			}
 		}
 	}
@@ -1369,7 +1369,7 @@ VIQE_MADI_Ctrl_Enable(MADI_ON);
 VIQE_MADI_Change_Cfg();
 #endif
 
-volatile void __iomem *VIQE_MADI_GetAddress(enum VMADI_TYPE type)
+void __iomem *VIQE_MADI_GetAddress(enum VMADI_TYPE type)
 {
 	if (type >= VMADI_MAX)
 		goto err;
@@ -1387,7 +1387,7 @@ err:
 
 void VIQE_MADI_DUMP(enum VMADI_TYPE type, unsigned int size)
 {
-	volatile void __iomem *pReg;
+	void __iomem *pReg;
 	unsigned int cnt = 0;
 
 	if (pMADI_np == NULL)
@@ -1409,35 +1409,20 @@ static int __init viqe_madi_init(void)
 {
 #ifdef USE_REG_EXTRACTOR
 	pCap_Info = kzalloc(PAGE_ALIGN(sizeof(Data_Capture_IF)), GFP_KERNEL);
-	if (!pCap_Info)
-		pr_err("[ERR][MADI] can not alloc pCap_Info buffer\n");
-	else
-		memcpy(pCap_Info, Data_Capture_IF, sizeof(Data_Capture_IF));
+	memcpy(pCap_Info, Data_Capture_IF, sizeof(Data_Capture_IF));
 
 	pVDEInt_1_Info = kzalloc(PAGE_ALIGN(sizeof(CPU_CLK_VDEINT_1)),
 		GFP_KERNEL);
-	if (!pVDEInt_1_Info)
-		pr_err("[ERR][MADI] can not alloc pVDEInt_1_Info buffer\n");
-	else
-		memcpy(pVDEInt_1_Info, CPU_CLK_VDEINT_1,
-		       sizeof(CPU_CLK_VDEINT_1));
+	memcpy(pVDEInt_1_Info, CPU_CLK_VDEINT_1, sizeof(CPU_CLK_VDEINT_1));
 
 	pVDEInt_lut_Info = kzalloc(PAGE_ALIGN(sizeof(CPU_CLK_VDEINT_LUT)),
 		GFP_KERNEL);
-	if (!pVDEInt_lut_Info)
-		pr_err("[ERR][MADI] can not alloc pVDEInt_lut_Info buffer\n");
-	else
-		memcpy(pVDEInt_lut_Info, CPU_CLK_VDEINT_LUT,
-		       sizeof(CPU_CLK_VDEINT_LUT));
+	memcpy(pVDEInt_lut_Info, CPU_CLK_VDEINT_LUT,
+		sizeof(CPU_CLK_VDEINT_LUT));
 
 	pVDEInt_2_Info = kzalloc(PAGE_ALIGN(sizeof(CPU_CLK_VDEINT_2)),
 		GFP_KERNEL);
-	if (!pVDEInt_2_Info) {
-		pr_err("[ERR][MADI] can not alloc pVDEInt_2_Info buffer\n");
-	} else {
-		memcpy(pVDEInt_2_Info, CPU_CLK_VDEINT_2,
-		       sizeof(CPU_CLK_VDEINT_2));
-	}
+	memcpy(pVDEInt_2_Info, CPU_CLK_VDEINT_2, sizeof(CPU_CLK_VDEINT_2));
 
 	pMADI_reg[VMADI_CTRL_IF] = (void __iomem *)0x01000000;   // 0x12600000
 	pMADI_reg[VMADI_CAP_IF] = (void __iomem *)0x02000000;    // 0x12602000

@@ -49,11 +49,10 @@
 #include <video/tcc/tca_lcdc.h>
 #include <video/tcc/vioc_outcfg.h>
 #include <video/tcc/vioc_disp.h>
+#include <video/tcc/vioc_tve.h>
 
 #include "vioc/tcc_composite.h"
-extern void internal_tve_clock_onoff(unsigned int onoff);
-extern void internal_tve_enable(unsigned int type, unsigned int onoff);
-extern void internal_tve_init(void);
+
 
 #define NTSC 0
 #define PAL 1

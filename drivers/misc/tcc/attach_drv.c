@@ -48,7 +48,7 @@
 #include <video/tcc/tcc_attach_ioctrl.h>
 
 struct attach_drv_vioc {
-	volatile void __iomem *reg;
+	void __iomem *reg;
 	unsigned int id;
 	unsigned int path;
 };
@@ -64,8 +64,8 @@ struct attach_drv_type {
 	struct attach_drv_vioc  sc;
 	struct attach_drv_vioc  wdma;
 
-	struct clk      *clk;
-    ATTACH_INFO_TYPE *info;
+	struct clk *clk;
+	ATTACH_INFO_TYPE *info;
 
 	atomic_t buf_idx;
 	atomic_t irq_reged;
@@ -445,7 +445,7 @@ static int attach_drv_open(struct inode *inode, struct file *filp)
 	return ret;
 }
 
-static struct file_operations attach_drv_fops = {
+static const struct file_operations attach_drv_fops = {
 	.owner          = THIS_MODULE,
 	.unlocked_ioctl = attach_drv_ioctl,
 #ifdef CONFIG_COMPAT
@@ -616,7 +616,7 @@ static int attach_drv_resume(struct platform_device *pdev)
 	return 0;
 }
 
-static struct of_device_id attach_of_match[] = {
+static const struct of_device_id attach_of_match[] = {
 	{ .compatible = "telechips,attach_drv" },
 	{}
 };

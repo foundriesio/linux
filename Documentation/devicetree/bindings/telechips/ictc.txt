@@ -1,0 +1,119 @@
+* Telechips ICTC(input capture time counter)
+
+
+Required properties:
+- compatible:
+        Must be "telechips,ictc".
+- interrupts:
+        Interrupt source connected to ICTC.
+- reg:
+            Address of ICTC register with length 0x4d.
+
+
+Optional properties:
+- status:
+        This property defines state of ICTC to enabled/disabled.
+- clocks:
+        Phandle to the clock.
+- pinctrl-names:
+        Contains only one value - "default".
+- pinctrl-0:
+        Phandle to pinctrl group for ICTC.
+- f-in-gpio:
+        A GPIO from which the signal subjected to ICTC comes.
+- f-in-rtc-wkup:
+        The signal subjected to ICTC comes from RTC_WKUP pin instead of GPIO.
+- r-edge:
+        Rising edge matching value
+- f-edge:
+        Falling edge matching value
+- edge-maching-value:
+        Edge counter matching value
+- time-out:
+        Timeout value
+- duty-rounding-value:
+        Duty compare rounding value
+- prd-rounding-value:
+        Period compare rounding value
+- flt-f-mode:
+        Filter mode for falling edge
+        b00: RST mode
+        b01: HD mode
+        b10: UD mode
+        b11: IMM mode
+- flt-r-mode:
+        mode for rising edge
+        b00: RST mode
+        b01: HD mode
+        b10: UD mode
+        b11: IMM mode
+- cmp-err-sel:
+        Interrupt selection between period/duty compare result for counting
+        falling edge
+        b00: Select period compare interrupt
+        b01: Select duty compare interrupt
+        b1x: Select period and duty compare interrupt
+- abs-sel:
+        absolute value use
+        0: Not use absolute value difference
+        1: Use absolute value difference
+- edge-sel:
+        Select rising edge or falling edge for edge counter
+        0: Rising edge selection
+        1: Falling edge selection
+- tck-pol:
+        Pre-scaler output clock polarity change enable
+- tck-sel:
+        Pre-scaler output clock select
+        TCLK_SEL[2:0]: Select divided clock (2, 4, 8, 16, 32, 64, 128, 256)
+        TCLK_SEL[3] = b0: Counter out select for output clock
+        TCLK_SEL[3] = b1: Bypass clock select for output clock
+- lock-en:
+        Disable to change external input for capture
+- r-edge-int:
+        Rising edge interrupt enable
+- f-edge-int:
+        Falling edge interrupt enable
+- df-cnt-full-int:
+        Duty and frequency comparing counter full interrupt enable
+- f-chg-int:
+        Frequency changing interrupt enable
+- d-chg-int:
+        Duty changing interrupt enable
+- e-cnt-full-int:
+        Edge counter full interrupt enable
+- to-cnt-full-int:
+        Timeout counter full interrupt enable
+- nf-ed-cnt-full-int:
+        Noise-filter and edge detection counter full interrupt enable
+- time-stamp-cnt:
+        Time Stamp counter enable
+
+
+Example:
+
+ictc: ictc {
+    compatible = "telechips,ictc";
+    status = "okay";
+    reg = <0x16055000 0x4d>;
+    interrupts = <GIC_SPI 97 IRQ_TYPE_LEVEL_HIGH>;
+    clocks = <&clk_peri PERI_IC_TC>;
+    pinctrl-names = "default";
+    pinctrl-0 = <&ictc_f_in>;
+    f-in-gpio = <&gph 5 0>;
+    r-edge = <100>;
+    f-edge = <100>;
+    edge-matching-value = <100>;
+    time-out = <0>;
+    duty-rounding-value = <0x0ffffff0>;
+    prd-rounding-value = <0x0fffffff0>;
+    flt-f-mode = <0x3>;
+    flt-r-mode = <0x3>;
+    cmp-err-sel = <0>;
+    abs-sel = <1>;
+    edge-sel = <0>;
+    tck-pol = <0>;
+    tck-sel = <0>;
+    lock-en = <0>;
+    f-chg-int;
+};

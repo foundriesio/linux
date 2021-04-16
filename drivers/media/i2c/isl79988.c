@@ -505,7 +505,7 @@ int isl79988_probe(struct i2c_client *client, const struct i2c_device_id *id)
 
 	/* init mbus format */
 	memcpy((void *)&dev->fmt, (const void *)&isl79988_mbus_framefmt,
-		sizeof(dev->fmt));
+	       sizeof(dev->fmt));
 
 	// request gpio
 	isl79988_request_gpio(dev);

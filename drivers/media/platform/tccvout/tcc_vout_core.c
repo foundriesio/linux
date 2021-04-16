@@ -42,6 +42,8 @@
 #include <video/tcc/viocmg.h>
 #endif
 
+#include <tcc_vioc_fb.h>
+
 #ifdef CONFIG_VOUT_DISPLAY_LASTFRAME
 static struct pmap lastframe_pbuf;
 static int enable_LastFrame;
@@ -73,7 +75,7 @@ static unsigned int nFrame;
 static unsigned int nFrame_t0;
 static unsigned int nFrame_t1;
 static unsigned int nFrame_t2;
-#define dvprintk(msg...) //printk("[WAR][VOUT-DV] " msg);
+#define dvprintk(msg...) //pr_info("[WAR][VOUT-DV] " msg);
 #endif
 
 #ifdef CONFIG_TCC_HDMI_DRIVER_V2_0
@@ -1180,7 +1182,7 @@ static int vout_check_syncTime(struct tcc_vout_device *vout, struct v4l2_buffer 
 void vout_onthefly_dv_update(struct tcc_vout_device *vout, struct v4l2_buffer *buf)
 {
 	if (VIOC_CONFIG_DV_GET_EDR_PATH()) {
-		volatile void __iomem *pDisp_DV = VIOC_DV_GetAddress((enum DV_DISP_TYPE)EDR_BL);
+		void __iomem *pDisp_DV = VIOC_DV_GetAddress((enum DV_DISP_TYPE)EDR_BL);
 
 		if (vioc_get_out_type() == buf->m.planes[MPLANE_VID].reserved[VID_DOLBY_REG_OUT_TYPE]) {
 			vioc_v_dv_prog(buf->m.planes[MPLANE_VID].reserved[VID_DOLBY_MD_HDMI_ADDR],
@@ -2916,7 +2918,7 @@ static irqreturn_t vsync_irq_handler(int irq, void *client_data)
 	struct tcc_vout_vioc *vioc = vout->vioc;
 #ifdef CONFIG_VIOC_DOLBY_VISION_EDR
 	if (VIOC_CONFIG_DV_GET_EDR_PATH()) {
-		volatile volatile void __iomem *pDV_Cfg = VIOC_DV_VEDR_GetAddress(VDV_CFG);
+		void __iomem *pDV_Cfg = VIOC_DV_VEDR_GetAddress(VDV_CFG);
 		unsigned int status = 0;
 
 		VIOC_V_DV_GetInterruptPending(pDV_Cfg, &status);
@@ -3155,7 +3157,7 @@ void vout_intr_onoff(char on, struct tcc_vout_device *vout)
 		if (on) {
 			vioc_intr_enable(VIOC_INTR_TYPE0, VIOC_INTR_V_DV, 1<<FALL_HDMITX_VS);
 		} else {
-			volatile void __iomem *pDV_Cfg = VIOC_DV_VEDR_GetAddress(VDV_CFG);
+			void __iomem *pDV_Cfg = VIOC_DV_VEDR_GetAddress(VDV_CFG);
 
 			vioc_intr_disable(vioc->disp.irq, VIOC_INTR_V_DV, 1<<FALL_HDMITX_VS);
 			VIOC_V_DV_ClearInterrupt(pDV_Cfg, INT_CLR_F_TX_VS_MASK);

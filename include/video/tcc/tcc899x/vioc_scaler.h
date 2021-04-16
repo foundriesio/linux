@@ -117,10 +117,10 @@
 #define SCIRQMSK_MUPD_MASK  (0x1 << SCIRQMSK_MUPD_SHIFT)
 
 /* Interface APIs */
-extern void VIOC_SC_SetBypass(volatile void __iomem *reg,
+extern void VIOC_SC_SetBypass(void __iomem *reg,
 	unsigned int nOnOff);
-extern void VIOC_SC_SetUpdate(volatile void __iomem *reg);
-extern void VIOC_SC_SetSrcSize(volatile void __iomem *reg,
+extern void VIOC_SC_SetUpdate(void __iomem *reg);
+extern void VIOC_SC_SetSrcSize(void __iomem *reg,
 	unsigned int nWidth, unsigned int nHeight);
 
 #if defined(CONFIG_MC_WORKAROUND)
@@ -128,13 +128,13 @@ extern unsigned int VIOC_SC_GetPlusSize(
 	unsigned int src_height, unsigned int dst_height);
 #endif
 
-extern void VIOC_SC_SetDstSize(volatile void __iomem *reg,
+extern void VIOC_SC_SetDstSize(void __iomem *reg,
 	unsigned int nWidth, unsigned int nHeight);
-extern void VIOC_SC_SetOutSize(volatile void __iomem *reg,
+extern void VIOC_SC_SetOutSize(void __iomem *reg,
 	unsigned int nWidth, unsigned int nHeight);
-extern void VIOC_SC_SetOutPosition(volatile void __iomem *reg,
+extern void VIOC_SC_SetOutPosition(void __iomem *reg,
 	unsigned int nXpos, unsigned int nYpos);
-extern volatile void __iomem *VIOC_SC_GetAddress(unsigned int vioc_id);
-extern void VIOC_SCALER_DUMP(volatile void __iomem *reg, unsigned int vioc_id);
+extern void __iomem *VIOC_SC_GetAddress(unsigned int vioc_id);
+extern void VIOC_SCALER_DUMP(void __iomem *reg, unsigned int vioc_id);
 
 #endif /*__VIOC_SCALER_H__*/

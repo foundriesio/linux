@@ -68,6 +68,8 @@
 #include <video/tcc/vioc_afbcdec.h>
 #endif
 
+#include "tcc_vsync.h"
+
 #if 0
 static int debug	   = 1;
 #else
@@ -85,7 +87,7 @@ static int debug;
 #define OVERLAY_LAYER_MAX (4)
 
 struct overlay_drv_vioc {
-	volatile void __iomem *reg;
+	void __iomem *reg;
 	unsigned int id;
 };
 
@@ -110,14 +112,11 @@ struct overlay_drv_type {
 	// to back up image  infomation.
 	overlay_video_buffer_t overBuffCfg;
 };
-#ifdef CONFIG_DISPLAY_EXT_FRAME
-extern int tcc_ctrl_ext_frame(char enable);
-#endif
 
 #if defined(CONFIG_VIOC_AFBCDEC)
 static void tcc_overlay_configure_AFBCDEC(
-	volatile void __iomem *pAFBC_Dec, unsigned int afbc_dec_id,
-	volatile void __iomem *pRDMA, unsigned int rdmaPath,
+	void __iomem *pAFBC_Dec, unsigned int afbc_dec_id,
+	void __iomem *pRDMA, unsigned int rdmaPath,
 	unsigned int bSet_Comp, unsigned int onthefly, unsigned int bFirst,
 	unsigned int base_addr, unsigned int fmt, unsigned int bSplitMode,
 	unsigned int bWideMode, unsigned int width, unsigned int height)
@@ -161,13 +160,17 @@ static void tcc_overlay_configure_AFBCDEC(
 		VIOC_AFBCDec_TurnOFF(pAFBC_Dec);
 		VIOC_CONFIG_FBCDECPath(afbc_dec_id, rdmaPath, 0);
 
-		//VIOC_CONFIG_SWReset(VIOC_AFBCDEC + dec_num, VIOC_CONFIG_RESET);
-		//VIOC_CONFIG_SWReset(VIOC_AFBCDEC + dec_num, VIOC_CONFIG_CLEAR);
+		//VIOC_CONFIG_SWReset(VIOC_AFBCDEC + dec_num,
+		//	VIOC_CONFIG_RESET);
+		//VIOC_CONFIG_SWReset(VIOC_AFBCDEC + dec_num,
+		//	VIOC_CONFIG_CLEAR);
 	}
 }
 #endif
 
-static int tcc_overlay_mmap(struct file *file, struct vm_area_struct *vma)
+static int tcc_overlay_mmap(
+	struct file *file,
+	struct vm_area_struct *vma)
 {
 	if (range_is_allowed(vma->vm_pgoff, vma->vm_end - vma->vm_start) < 0) {
 		pr_err("[ERR][OVERLAY] this address is not allowed\n");
@@ -327,7 +330,7 @@ static int tcc_overlay_display_video_buffer(
 			|| (get_vioc_index(overlay_drv->afbc_dec.id)
 			    != buffer_cfg.afbc_dec_num)
 			|| (layer != overlay_drv->layer_nlast))) {
-			volatile void __iomem *reg =
+			void __iomem *reg =
 				overlay_drv->rdma[layer].reg;
 			unsigned int id = overlay_drv->rdma[layer].id;
 

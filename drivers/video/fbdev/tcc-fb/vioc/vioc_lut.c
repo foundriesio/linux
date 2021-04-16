@@ -30,7 +30,7 @@
 #include <video/tcc/vioc_ddicfg.h>	// is_VIOC_REMAP
 #include <video/tcc/vioc_lut.h>
 
-static volatile void __iomem *pLUT_reg;
+static void __iomem *pLUT_reg;
 
 #define REG_VIOC_LUT(offset) (pLUT_reg + (offset))
 #define LUT_CTRL_R REG_VIOC_LUT(0)
@@ -55,58 +55,57 @@ static volatile void __iomem *pLUT_reg;
 #define lut_readl __raw_readl
 
 
-void __iomem* lut_get_address(int lut_n, int * is_dev)
+void __iomem *lut_get_address(int lut_n, int *is_dev)
 {
-	void __iomem * reg;
+	void __iomem *reg;
 
-		switch(get_vioc_index(lut_n)){
-			case 0:
-				reg = (void __iomem *) REG_VIOC_LUT(VIOC_LUT_DEV0_OFFSET);
-				*is_dev = 1;
-				break;
-			case 1:
-				reg = (void __iomem *) REG_VIOC_LUT(VIOC_LUT_DEV1_OFFSET);
-				*is_dev = 1;
-				break;
-			case 2:
-				reg = (void __iomem *) REG_VIOC_LUT(VIOC_LUT_DEV2_OFFSET);
-				*is_dev = 1;
-				break;
-
-			case 3:
-				reg = (void __iomem *) REG_VIOC_LUT(VIOC_LUT_COMP0_OFFSET);
-				*is_dev = 0;
-				break;
-			case 4:
-				reg = (void __iomem *) REG_VIOC_LUT(VIOC_LUT_COMP1_OFFSET);
-				*is_dev = 0;
-				break;
-			#if defined (CONFIG_ARCH_TCC805X)
-			case 7:
-				reg = (void __iomem *) REG_VIOC_LUT(VIOC_LUT_DEV3_OFFSET);
-				*is_dev = 1;
-				break;
-			#endif
-			case 5:
-	/*
-		reg = (void __iomem *) REG_VIOC_LUT(VIOC_LUT_COMP2_OFFSET);
+	switch (get_vioc_index(lut_n)) {
+	case 0:
+		reg = (void __iomem *)REG_VIOC_LUT(VIOC_LUT_DEV0_OFFSET);
+		*is_dev = 1;
+		break;
+	case 1:
+		reg = (void __iomem *)REG_VIOC_LUT(VIOC_LUT_DEV1_OFFSET);
+		*is_dev = 1;
+		break;
+	case 2:
+		reg = (void __iomem *)REG_VIOC_LUT(VIOC_LUT_DEV2_OFFSET);
+		*is_dev = 1;
+		break;
+	case 3:
+		reg = (void __iomem *)REG_VIOC_LUT(VIOC_LUT_COMP0_OFFSET);
 		*is_dev = 0;
 		break;
-	*/
-			case 6:
-	/*
-		reg = (void __iomem *) REG_VIOC_LUT(VIOC_LUT_COMP3_OFFSET);
+	case 4:
+		reg = (void __iomem *)REG_VIOC_LUT(VIOC_LUT_COMP1_OFFSET);
 		*is_dev = 0;
 		break;
-	*/
-			default:
-		pr_err("[ERR][LUT] %s lut number 0x%x is out of range\r\n",
-							__func__, lut_n);
-				reg = NULL;
-				break;
-		}
+	#if defined(CONFIG_ARCH_TCC805X)
+	case 7:
+		reg = (void __iomem *)REG_VIOC_LUT(VIOC_LUT_DEV3_OFFSET);
+		*is_dev = 1;
+		break;
+	#endif
+	case 5:
+		#if 0
+		reg = (void __iomem *)REG_VIOC_LUT(VIOC_LUT_COMP2_OFFSET);
+		*is_dev = 0;
+		break;
+		#endif
+	case 6:
+		#if 0
+		reg = (void __iomem *)REG_VIOC_LUT(VIOC_LUT_COMP3_OFFSET);
+		*is_dev = 0;
+		break;
+		#endif
+	default:
+		pr_err("[ERR][LUT] %s lut number 0x%x is out of range\n",
+			__func__, lut_n);
+		reg = NULL;
+		break;
+	}
 
-		return reg;
+	return reg;
 }
 
 int lut_get_pluginComponent_index(unsigned int tvc_n)
@@ -115,30 +114,36 @@ int lut_get_pluginComponent_index(unsigned int tvc_n)
 	case get_vioc_type(VIOC_RDMA):
 		switch (get_vioc_index(tvc_n)) {
 		case 16:
-			pr_info(" >>plugin to rdma16\r\n");
-					return 17;
+			pr_info(" >>plugin to rdma16\n");
+			return 17;
 		case 17:
-			pr_info(" >>plugin to rdma17\r\n");
-					return 19;
+			pr_info(" >>plugin to rdma17\n");
+			return 19;
 		default:
-			pr_info(" >>plugin to rdma%02d\r\n",
+			pr_info(" >>plugin to rdma%02d\n",
 				 get_vioc_index(tvc_n));
-					return get_vioc_index(tvc_n);
+			return get_vioc_index(tvc_n);
 		}
+
 		break;
+
 	case get_vioc_type(VIOC_VIN):
 		switch (get_vioc_index(tvc_n)) {
 		case 0:
-			pr_info(" >>plugin to vin0\r\n");
-					return 16;
+			pr_info(" >>plugin to vin0\n");
+			return 16;
 		case 1:
-			pr_info(" >>plugin to vin1\r\n");
-					return 18;
-				default:
-					break;
+			pr_info(" >>plugin to vin1\n");
+			return 18;
+		default:
+			break;
 		}
+
+		break;
+
 	case get_vioc_type(VIOC_WDMA):
 		return (20 + (get_vioc_index(tvc_n)));
+
 	default:
 		return -1;
 	}
@@ -177,10 +182,10 @@ void tcc_set_lut_table_to_color(unsigned int lut_n,
 	void __iomem *table_reg = (void __iomem *)LUT_TABLE_R;
 	void __iomem *ctrl_reg = (void __iomem *)LUT_CTRL_R;
 
-	volatile unsigned int color = 0;
+	unsigned int color = 0;
 
 	color = ((R & 0x3FF) << 20) | ((G & 0x3FF) << 10) | (B & 0x3FF);
-	pr_info("%s R:0x%x, G:0x%x B:0x%x, color:0x%x \n",
+	pr_info("%s R:0x%x, G:0x%x B:0x%x, color:0x%x\n",
 		__func__, R, G, B, color);
 
 	/* Get Component index */
@@ -216,7 +221,7 @@ void tcc_set_lut_table(unsigned int lut_n, unsigned int *table)
 	// lut table select
 	lut_index = get_vioc_index(lut_n);
 	lut_writel(lut_index, ctrl_reg);
-	pr_info("%s ctrl lut_comp %d is %d\r\n", __func__, lut_index,
+	pr_info("%s ctrl lut_comp %d is %d\n", __func__, lut_index,
 		 lut_readl(ctrl_reg));
 
 	// lut table setting
@@ -233,7 +238,7 @@ void tcc_set_lut_table(unsigned int lut_n, unsigned int *table)
 	if (lut_index >= get_vioc_index(VIOC_LUT_COMP0)) {
 		lut_writel(1 << (lut_index - get_vioc_index(VIOC_LUT_COMP0)) |
 			   lut_readl(LUT_UPDATE_PEND), LUT_UPDATE_PEND);
-		pr_info("%s update_pend lut_comp %d is %d\r\n", __func__,
+		pr_info("%s update_pend lut_comp %d is %d\n", __func__,
 			 lut_index, lut_readl(LUT_UPDATE_PEND));
 	}
 	#endif
@@ -285,7 +290,7 @@ void tcc_set_default_lut_csc_coeff(void)
 void tcc_set_mix_config(int r2y_sel, int bypass)
 {
 	#if defined(LUT_MIX_CFG)
-	lut_writel(((r2y_sel & 0xF) << 4)| (bypass?1:0), LUT_MIX_CFG);
+	lut_writel(((r2y_sel & 0xF) << 4) | (bypass ? 1 : 0), LUT_MIX_CFG);
 	#endif
 }
 
@@ -298,14 +303,14 @@ int tcc_set_lut_plugin(unsigned int lut_n, unsigned int plugComp)
 	unsigned int lut_cfg_val;
 
 	reg = lut_get_address(lut_n, &is_dev);
-	if(reg == NULL){
-		pr_err("[ERR][LUT] %s lut number %d is out of range\r\n",
+	if (reg == NULL) {
+		pr_err("[ERR][LUT] %s lut number %d is out of range\n",
 		       __func__, lut_n);
 		return ret;
 	}
 
-	if(is_dev == 1){
-		pr_err("[ERR][LUT] %s lut number %d is out of range\r\n",
+	if (is_dev == 1) {
+		pr_err("[ERR][LUT] %s lut number %d is out of range\n",
 		       __func__, lut_n);
 		return ret;
 	}
@@ -314,7 +319,7 @@ int tcc_set_lut_plugin(unsigned int lut_n, unsigned int plugComp)
 
 	plugin = lut_get_pluginComponent_index(plugComp);
 	if (plugin < 0) {
-		pr_err("%s plugcomp(0x%x) is out of range \r\n", __func__,
+		pr_err("%s plugcomp(0x%x) is out of range\n", __func__,
 		       plugComp);
 		goto plugComp_is_out_of_range;
 	}
@@ -333,14 +338,14 @@ int tcc_get_lut_plugin(unsigned int lut_n)
 	int is_dev = -1;
 
 	reg = lut_get_address(lut_n, &is_dev);
-	if(reg == NULL){
-		pr_err("[ERR][LUT] %s lut number %d is out of range\r\n",
+	if (reg == NULL) {
+		pr_err("[ERR][LUT] %s lut number %d is out of range\n",
 		       __func__, lut_n);
 		return ret;
 	}
 
-	if(is_dev == 1){
-		pr_err("[ERR][LUT] %s lut number %d is out of range\r\n",
+	if (is_dev == 1) {
+		pr_err("[ERR][LUT] %s lut number %d is out of range\n",
 		       __func__, lut_n);
 		return -1;
 	}
@@ -358,13 +363,13 @@ void tcc_set_lut_enable(unsigned int lut_n, unsigned int enable)
 	int is_dev = -1;
 
 	reg = lut_get_address(lut_n, &is_dev);
-	if(reg == NULL){
-		pr_err("[ERR][LUT] %s lut number %d is out of range\r\n",
+	if (reg == NULL) {
+		pr_err("[ERR][LUT] %s lut number %d is out of range\n",
 		       __func__, lut_n);
 		return;
 	}
 
-	pr_info("%s lut_index(%d) %s\r\n", __func__, get_vioc_index(lut_n),
+	pr_info("%s lut_index(%d) %s\n", __func__, get_vioc_index(lut_n),
 		 enable ? "enable" : "disable");
 	// enable , disable
 	if (enable)
@@ -379,8 +384,8 @@ int tcc_get_lut_enable(unsigned int lut_n)
 	int is_dev = -1;
 
 	reg = lut_get_address(lut_n, &is_dev);
-	if(reg == NULL){
-		pr_err("[ERR][LUT] %s lut number %d is out of range\r\n",
+	if (reg == NULL) {
+		pr_err("[ERR][LUT] %s lut number %d is out of range\n",
 		       __func__, lut_n);
 		return -1;
 	}
@@ -408,10 +413,10 @@ int tcc_get_lut_update_pend(unsigned int lut_n)
 	return pend;
 }
 
-volatile void __iomem *VIOC_LUT_GetAddress(void)
+void __iomem *VIOC_LUT_GetAddress(void)
 {
 	if (pLUT_reg == NULL)
-		pr_err("[ERR][LUT] %s ADDRESS NULL \n", __func__);
+		pr_err("[ERR][LUT] %s ADDRESS NULL\n", __func__);
 
 	return pLUT_reg;
 }
@@ -424,9 +429,8 @@ static int __init vioc_lut_init(void)
 	if (ViocLUT_np == NULL) {
 		pr_info("[INF][LUT] disabled\n");
 	} else {
-		pLUT_reg = (volatile void __iomem *)of_iomap(ViocLUT_np,
-							     is_VIOC_REMAP ? 1 :
-							     0);
+		pLUT_reg = (void __iomem *)of_iomap(ViocLUT_np,
+			is_VIOC_REMAP ? 1 : 0);
 
 		if (pLUT_reg)
 			pr_info("[INF][LUT] 0x%p\n", pLUT_reg);

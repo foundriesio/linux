@@ -10,6 +10,7 @@ Required properties for display:
 		- THIRD_V1.x : "telechips,tcc-drm-third-v1.0"
 		- FOURTH : "telechips,tcc-drm-fourth"
 		- FOURTH_V1.x : "telechips,tcc-drm-fourth-v1.0"
+		- SCREEN SHARE : "telechips,tcc-drm-screen-share"
 	-reg:
 		physical base address of the controller and length
 		of memory mapped region.

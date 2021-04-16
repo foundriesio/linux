@@ -26,7 +26,7 @@
 #include <linux/of_address.h>
 #include <video/tcc/vioc_pxdemux.h>
 
-static volatile void __iomem *pPXDEMUX_reg;
+static void __iomem *pPXDEMUX_reg;
 
 /* VIOC_PXDEMUX_SetConfigure
  * Set pixel demuxer configuration
@@ -39,7 +39,7 @@ void VIOC_PXDEMUX_SetConfigure(
 	unsigned int idx, unsigned int lr, unsigned int bypass,
 	unsigned int width)
 {
-	volatile void __iomem *reg = VIOC_PXDEMUX_GetAddress();
+	void __iomem *reg = VIOC_PXDEMUX_GetAddress();
 
 	if ((idx >= PD_IDX_MAX) || (idx < 0))
 		goto error_set_cfg;
@@ -71,7 +71,7 @@ error_set_cfg:
 void VIOC_PXDEMUX_SetDataSwap(
 	unsigned int idx, unsigned int ch, unsigned int set)
 {
-	volatile void __iomem *reg = VIOC_PXDEMUX_GetAddress();
+	void __iomem *reg = VIOC_PXDEMUX_GetAddress();
 
 	if ((idx >= PD_IDX_MAX) || (idx < 0))
 		goto error_data_swap;
@@ -126,7 +126,7 @@ void VIOC_PXDEMUX_SetMuxOutput(
 	PD_MUX_TYPE mux, unsigned int ch, unsigned int select,
 	unsigned int enable)
 {
-	volatile void __iomem *reg = VIOC_PXDEMUX_GetAddress();
+	void __iomem *reg = VIOC_PXDEMUX_GetAddress();
 	unsigned int val;
 
 	if (reg) {
@@ -223,7 +223,7 @@ error_mux_output:
 void VIOC_PXDEMUX_SetDataPath(
 	unsigned int ch, unsigned int path, unsigned int set)
 {
-	volatile void __iomem *reg = VIOC_PXDEMUX_GetAddress();
+	void __iomem *reg = VIOC_PXDEMUX_GetAddress();
 	unsigned int offset;
 
 	if ((path < 0) || (path >= PD_TXOUT_SEL_MAX))
@@ -263,7 +263,7 @@ error_data_path:
 void VIOC_PXDEMUX_SetDataArray(
 	unsigned int ch, unsigned int data[TXOUT_MAX_LINE][TXOUT_DATA_PER_LINE])
 {
-	volatile void __iomem *reg = VIOC_PXDEMUX_GetAddress();
+	void __iomem *reg = VIOC_PXDEMUX_GetAddress();
 	unsigned int *lvdsdata = (unsigned int *)data;
 	unsigned int idx, value, path;
 	unsigned int data0, data1, data2, data3;
@@ -292,7 +292,7 @@ error_data_array:
 	pr_err("%s in error, invalid parameter(ch: %d)\n", __func__, ch);
 }
 
-volatile void __iomem *VIOC_PXDEMUX_GetAddress(void)
+void __iomem *VIOC_PXDEMUX_GetAddress(void)
 {
 	if (pPXDEMUX_reg == NULL)
 		pr_err("[ERR][P_DEMUX] %s pPD:%p\n", __func__, pPXDEMUX_reg);
@@ -311,7 +311,7 @@ static int __init vioc_pxdemux_init(void)
 		pr_info("[INF][P_DEMUX] vioc-pxdemux: disabled\n");
 	} else {
 		pPXDEMUX_reg =
-			(volatile void __iomem *)of_iomap(ViocPXDEMUX_np, 0);
+			(void __iomem *)of_iomap(ViocPXDEMUX_np, 0);
 
 		if (pPXDEMUX_reg)
 			pr_info("[INF][P_DEMUX] vioc-pxdemux: 0x%p\n",

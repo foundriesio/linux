@@ -155,7 +155,7 @@ static unsigned int viqe_madi_poll(struct file *filp, poll_table *wait)
 static irqreturn_t viqe_madi_handler(int irq, void *client_data)
 {
 	struct viqe_madi_type *viqe_madi = (struct viqe_madi_type *)client_data;
-	volatile void __iomem *reg = NULL;
+	void __iomem *reg = NULL;
 	unsigned int raw;
 	unsigned int enable;
 
@@ -166,6 +166,7 @@ static irqreturn_t viqe_madi_handler(int irq, void *client_data)
 
 	if (enable & raw & MADI_INT_START) {
 		dprintk("DDEI_TG Start!\n");
+		/* prevent KCS warning */
 	}
 
 	if (enable & raw & MADI_INT_ACTIVATED) {
@@ -179,15 +180,18 @@ static irqreturn_t viqe_madi_handler(int irq, void *client_data)
 
 	if (enable & raw & MADI_INT_VDEINT) {
 		dprintk("DDEI_TG V_DEINT!\n");
+		/* prevent KCS warning */
 	}
 
 	if (enable & raw & MADI_INT_VNR) {
 		dprintk("DDEI_TG V_NR!\n");
+		/* prevent KCS warning */
 	}
 
 	if (enable & raw & MADI_INT_DEACTIVATED) {
 		dprintk("DDEI_TG Deactivated!\n");
-		dprintk("%s:  block_operating(%d), block_waiting(%d), cmd_count(%d), poll_count(%d)\n",
+		dprintk(
+			"%s:  block_operating(%d), block_waiting(%d), cmd_count(%d), poll_count(%d)\n",
 			__func__,
 			viqe_madi->data->block_operating,
 			viqe_madi->data->block_waiting,
@@ -219,7 +223,8 @@ static long viqe_madi_ioctl(struct file *filp, unsigned int cmd,
 	mutex_lock(&viqe_madi->data->io_mutex);
 
 	if (viqe_madi->data->block_operating || viqe_madi->data->block_waiting)
-		dprintk("%s:  cmd(%d), block_operating(%d), block_waiting(%d), cmd_count(%d), poll_count(%d)\n",
+		dprintk(
+			"%s:  cmd(%d), block_operating(%d), block_waiting(%d), cmd_count(%d), poll_count(%d)\n",
 			__func__, cmd,
 			viqe_madi->data->block_operating,
 			viqe_madi->data->block_waiting,
@@ -318,7 +323,8 @@ static long viqe_madi_ioctl(struct file *filp, unsigned int cmd,
 			msleep(100);
 			_reg_print_ext();
 		#endif
-			dprintk("TCC_VIQE_MADI_INIT(0x%x) :: %dx%d, %d,%d ~ %dx%d, offset(%d/%d)\n",
+			dprintk(
+				"TCC_VIQE_MADI_INIT(0x%x): %dx%d, %d,%d ~ %dx%d, offset(%d/%d)\n",
 				viqe_madi->irq_status,
 				viqe_madi->info->init.src_ImgWidth,
 				viqe_madi->info->init.src_ImgHeight,
@@ -362,7 +368,7 @@ static long viqe_madi_ioctl(struct file *filp, unsigned int cmd,
 				viqe_madi->info->curr_src_index;
 
 			if (viqe_madi->info->init.src_one_field_only_frame) {
-				dprintk("TCC_VIQE_MADI_PROC :: one field only\n");
+				dprintk("TCC_VIQE_MADI_PROC: one field only\n");
 				VIQE_MADI_Set_SrcImgBase(cur_src_index,
 					proc_info.src_Yaddr,
 					proc_info.src_Uaddr);
@@ -371,32 +377,48 @@ static long viqe_madi_ioctl(struct file *filp, unsigned int cmd,
 					viqe_madi->info->max_buffer_cnt;
 			} else {
 				if (!proc_info.second_field_proc) {
-					dprintk("TCC_VIQE_MADI_PROC :: 1st field process (%d)\n",
+					dprintk(
+						"TCC_VIQE_MADI_PROC: 1st field process (%d)\n",
 						cur_src_index);
 					if (cur_src_index == 0) {
 						VIQE_MADI_Set_SrcImgBase(
-							viqe_madi->info->init.odd_first ? MADI_ADDR_1 : MADI_ADDR_0,
-							proc_info.src_Yaddr,
-							proc_info.src_Uaddr);
+						viqe_madi->info->init.odd_first
+						? MADI_ADDR_1 : MADI_ADDR_0,
+						proc_info.src_Yaddr,
+						proc_info.src_Uaddr);
+
 						VIQE_MADI_Set_SrcImgBase(
-							viqe_madi->info->init.odd_first ? MADI_ADDR_0 : MADI_ADDR_1,
-							proc_info.src_Yaddr + viqe_madi->info->Yoffset_bottom,
-							proc_info.src_Uaddr + viqe_madi->info->Coffset_bottom);
+						viqe_madi->info->init.odd_first
+						? MADI_ADDR_0 : MADI_ADDR_1,
+						proc_info.src_Yaddr +
+						viqe_madi->info->Yoffset_bottom,
+						proc_info.src_Uaddr +
+						viqe_madi->info->Coffset_bottom
+						);
+
 					} else {
 						VIQE_MADI_Set_SrcImgBase(
-							viqe_madi->info->init.odd_first ? MADI_ADDR_3 : MADI_ADDR_2,
-							proc_info.src_Yaddr,
-							proc_info.src_Uaddr);
+						viqe_madi->info->init.odd_first
+						? MADI_ADDR_3 : MADI_ADDR_2,
+						proc_info.src_Yaddr,
+						proc_info.src_Uaddr);
+
 						VIQE_MADI_Set_SrcImgBase(
-							viqe_madi->info->init.odd_first ? MADI_ADDR_2 : MADI_ADDR_3,
-							proc_info.src_Yaddr + viqe_madi->info->Yoffset_bottom,
-							proc_info.src_Uaddr + viqe_madi->info->Coffset_bottom);
+						viqe_madi->info->init.odd_first
+						? MADI_ADDR_2 : MADI_ADDR_3,
+						proc_info.src_Yaddr +
+						viqe_madi->info->Yoffset_bottom,
+						proc_info.src_Uaddr +
+						viqe_madi->info->Coffset_bottom
+						);
 					}
+
 					viqe_madi->info->curr_src_index =
 						(cur_src_index + 1) %
 						viqe_madi->info->max_buffer_cnt;
 				} else {
-					dprintk("TCC_VIQE_MADI_PROC :: 2nd field process\n");
+					dprintk(
+						"TCC_VIQE_MADI_PROC: 2nd field process\n");
 				}
 			}
 
@@ -435,7 +457,7 @@ static long viqe_madi_ioctl(struct file *filp, unsigned int cmd,
 	#ifndef USE_REG_EXTRACTOR // for testing!!
 		unsigned int cfg_code, cur_alpha_index, cur_yc_index;
 		struct stVIQE_MADI_RESULT_TYPE result;
-		volatile void __iomem *reg = NULL;
+		void __iomem *reg = NULL;
 
 		if (viqe_madi->info->first_frame
 			|| viqe_madi->info->skip_count > 0) {
@@ -592,6 +614,7 @@ static int viqe_madi_release(struct inode *inode, struct file *filp)
 
 	if (viqe_madi->data->dev_opened > 0) {
 		viqe_madi->data->dev_opened--;
+		/* prevent KCS warning */
 	}
 
 	if (viqe_madi->data->dev_opened == 0) {
@@ -678,16 +701,16 @@ static int viqe_madi_open(struct inode *inode, struct file *filp)
 	return ret;
 }
 
-static struct file_operations viqe_madi_fops = {
-	.owner			= THIS_MODULE,
-	.unlocked_ioctl	= viqe_madi_ioctl,
-#ifdef CONFIG_COMPAT
-	.compat_ioctl	= viqe_madi_compat_ioctl,
-#endif
-	.mmap			= viqe_madi_mmap,
-	.open			= viqe_madi_open,
-	.release		= viqe_madi_release,
-	.poll			= viqe_madi_poll,
+static const struct file_operations viqe_madi_fops = {
+	.owner          = THIS_MODULE,
+	.unlocked_ioctl = viqe_madi_ioctl,
+	#ifdef CONFIG_COMPAT
+	.compat_ioctl   = viqe_madi_compat_ioctl,
+	#endif
+	.mmap           = viqe_madi_mmap,
+	.open           = viqe_madi_open,
+	.release        = viqe_madi_release,
+	.poll           = viqe_madi_poll,
 };
 
 static int viqe_madi_probe(struct platform_device *pdev)
@@ -819,7 +842,7 @@ static int viqe_madi_resume(struct platform_device *pdev)
 	return 0;
 }
 
-static struct of_device_id viqe_madi_of_match[] = {
+static const struct of_device_id viqe_madi_of_match[] = {
 	{ .compatible = "telechips,viqe_madi" },
 	{}
 };

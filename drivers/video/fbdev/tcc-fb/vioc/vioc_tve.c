@@ -39,13 +39,13 @@
 static struct clk *tve_clk_ntscpal;
 static struct clk *tve_clk_dac;
 
-static volatile void __iomem *pTve;
-static volatile void __iomem *pTve_VEN;
+static void __iomem *pTve;
+static void __iomem *pTve_VEN;
 
 
 void internal_tve_set_mode(unsigned int type)
 {
-	volatile void __iomem *reg = VIOC_TVE_GetAddress();
+	void __iomem *reg = VIOC_TVE_GetAddress();
 	unsigned int val;
 
 	switch (type) {
@@ -120,8 +120,8 @@ void internal_tve_set_mode(unsigned int type)
 
 void internal_tve_set_config(unsigned int type)
 {
-	volatile void __iomem *ptve = VIOC_TVE_GetAddress();
-	volatile void __iomem *ptve_ven = VIOC_TVE_VEN_GetAddress();
+	void __iomem *ptve = VIOC_TVE_GetAddress();
+	void __iomem *ptve_ven = VIOC_TVE_VEN_GetAddress();
 	unsigned int val;
 
 	dprintk("%s\n", __func__);
@@ -284,8 +284,8 @@ void internal_tve_clock_onoff(unsigned int onoff)
 
 void internal_tve_enable(unsigned int type, unsigned int onoff)
 {
-	volatile void __iomem *ptve = VIOC_TVE_GetAddress();
-	volatile void __iomem *ptve_ven = VIOC_TVE_VEN_GetAddress();
+	void __iomem *ptve = VIOC_TVE_GetAddress();
+	void __iomem *ptve_ven = VIOC_TVE_VEN_GetAddress();
 	unsigned int val;
 
 	dprintk("%s(%d)\n", __func__, onoff);
@@ -354,6 +354,7 @@ unsigned int internal_tve_calc_cgms_crc(unsigned int data)
 	crc_val = 0;
 	for (i = 0; i < 6; i++) {
 		crc_val |= crc[i] << (5 - i);
+		/* prevent KCS warning */
 	}
 
 	dprintk("%s data:0x%x crc=0x%x (%d %d %d %d %d %d)\n", __func__, org,
@@ -365,7 +366,7 @@ unsigned int internal_tve_calc_cgms_crc(unsigned int data)
 void internal_tve_set_cgms(unsigned char odd_field_en,
 			   unsigned char even_field_en, unsigned int data)
 {
-	volatile void __iomem *ptve = VIOC_TVE_GetAddress();
+	void __iomem *ptve = VIOC_TVE_GetAddress();
 	unsigned int val;
 
 	if (odd_field_en) {
@@ -403,7 +404,7 @@ void internal_tve_get_cgms(unsigned char *odd_field_en,
 			   unsigned char *even_field_en, unsigned int *data,
 			   unsigned char *status)
 {
-	volatile void __iomem *ptve = VIOC_TVE_GetAddress();
+	void __iomem *ptve = VIOC_TVE_GetAddress();
 
 	*status = (unsigned char)(
 		(__raw_readl(ptve + CGMS_VSTAT) & CGMS_VSTAT_CGRDY_MASK)
@@ -442,7 +443,7 @@ void internal_tve_set_cgms_helper(unsigned char odd_field_en,
 		(odd_field_en | even_field_en) ? "ON" : "OFF");
 }
 
-volatile void __iomem *VIOC_TVE_VEN_GetAddress(void)
+void __iomem *VIOC_TVE_VEN_GetAddress(void)
 {
 	if (pTve_VEN == NULL)
 		pr_err("[ERR][TVO] %s: ADDRESS NULL\n", __func__);
@@ -450,7 +451,7 @@ volatile void __iomem *VIOC_TVE_VEN_GetAddress(void)
 	return pTve_VEN;
 }
 
-volatile void __iomem *VIOC_TVE_GetAddress(void)
+void __iomem *VIOC_TVE_GetAddress(void)
 {
 	if (pTve == NULL)
 		pr_err("[ERR][TVO] %s: ADDRESS NULL\n", __func__);
@@ -466,11 +467,11 @@ static int __init vioc_tve_init(void)
 	if (ViocTve_np == NULL) {
 		pr_info("[INF][TVO] disabled\n");
 	} else {
-		pTve = (volatile void __iomem *)of_iomap(ViocTve_np, 0);
+		pTve = (void __iomem *)of_iomap(ViocTve_np, 0);
 		if (pTve)
 			pr_info("[INF][TVO] 0x%p\n", pTve);
 
-		pTve_VEN = (volatile void __iomem *)of_iomap(ViocTve_np, 1);
+		pTve_VEN = (void __iomem *)of_iomap(ViocTve_np, 1);
 		if (pTve_VEN)
 			pr_info("[INF][TVO] vioc-pTve_VEN: 0x%p\n", pTve_VEN);
 

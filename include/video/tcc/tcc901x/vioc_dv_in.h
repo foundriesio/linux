@@ -170,7 +170,7 @@ extern void VIOC_DV_IN_SetCaptureModeEnable(
 /* VIN Enable/Disable */
 extern void VIOC_DV_IN_SetEnable(unsigned int vin_en);
 
-extern unsigned int VIOC_DV_IN_IsEnable(volatile void __iomem *reg);
+extern unsigned int VIOC_DV_IN_IsEnable(void __iomem *reg);
 extern void VIOC_DV_IN_SetVsyncFlush(unsigned int bflush);
 
 /* Image size setting */
@@ -194,7 +194,7 @@ extern void VIOC_DV_IN_Configure(
 	unsigned int in_width, unsigned int in_height,
 	unsigned int in_fmt, unsigned int bTunneling);
 
-extern volatile void __iomem *VIOC_DV_IN_GetAddress(void);
+extern void __iomem *VIOC_DV_IN_GetAddress(void);
 extern void VIOC_DV_IN_DUMP(void);
 
 #endif

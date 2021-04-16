@@ -534,128 +534,128 @@ struct DisplayBlock_Info {
 };
 
 /* Interface APIs */
-extern void VIOC_DISP_SetDefaultTimingParam(volatile void __iomem *reg,
+extern void VIOC_DISP_SetDefaultTimingParam(void __iomem *reg,
 	unsigned int nType);
-extern void VIOC_DISP_SetControlConfigure(volatile void __iomem *reg,
+extern void VIOC_DISP_SetControlConfigure(void __iomem *reg,
 	struct LCDCTR *pCtrlParam);
-extern void VIOC_DISP_SetPXDW(volatile void __iomem *reg,
+extern void VIOC_DISP_SetPXDW(void __iomem *reg,
 	unsigned char PXDW);
-extern void VIOC_DISP_SetR2YMD(volatile void __iomem *reg,
+extern void VIOC_DISP_SetR2YMD(void __iomem *reg,
 	unsigned char R2YMD);
-extern void VIOC_DISP_SetR2Y(volatile void __iomem *reg,
+extern void VIOC_DISP_SetR2Y(void __iomem *reg,
 	unsigned char R2Y);
-extern void VIOC_DISP_SetY2RMD(volatile void __iomem *reg,
+extern void VIOC_DISP_SetY2RMD(void __iomem *reg,
 	unsigned char Y2RMD);
-extern void VIOC_DISP_SetY2R(volatile void __iomem *reg,
+extern void VIOC_DISP_SetY2R(void __iomem *reg,
 	unsigned char Y2R);
-extern void VIOC_DISP_SetSWAP(volatile void __iomem *reg,
+extern void VIOC_DISP_SetSWAP(void __iomem *reg,
 	unsigned char SWAP);
-extern void VIOC_DISP_SetCKG(volatile void __iomem *reg,
+extern void VIOC_DISP_SetCKG(void __iomem *reg,
 	unsigned char CKG);
-extern void VIOC_DISP_SetSize(volatile void __iomem *reg,
+extern void VIOC_DISP_SetSize(void __iomem *reg,
 	unsigned int nWidth, unsigned int nHeight);
-extern void VIOC_DISP_GetSize(volatile void __iomem *reg,
+extern void VIOC_DISP_GetSize(void __iomem *reg,
 	unsigned int *nWidth, unsigned int *nHeight);
-extern void VIOC_DISP_SetAlign(volatile void __iomem *reg,
+extern void VIOC_DISP_SetAlign(void __iomem *reg,
 	unsigned int align);
-extern void VIOC_DISP_GetAlign(volatile void __iomem *reg,
+extern void VIOC_DISP_GetAlign(void __iomem *reg,
 	unsigned int *align);
-extern void VIOC_DISP_SetSwapbf(volatile void __iomem *reg,
+extern void VIOC_DISP_SetSwapbf(void __iomem *reg,
 	unsigned int swapbf);
-extern void VIOC_DISP_GetSwapbf(volatile void __iomem *reg,
+extern void VIOC_DISP_GetSwapbf(void __iomem *reg,
 	unsigned int *swapbf);
-extern void VIOC_DISP_SetSwapaf(volatile void __iomem *reg,
+extern void VIOC_DISP_SetSwapaf(void __iomem *reg,
 	unsigned int swapaf);
-extern void VIOC_DISP_GetSwapaf(volatile void __iomem *reg,
+extern void VIOC_DISP_GetSwapaf(void __iomem *reg,
 	unsigned int *swapaf);
 
-extern void VIOC_DISP_SetBGColor(volatile void __iomem *reg,
+extern void VIOC_DISP_SetBGColor(void __iomem *reg,
 	unsigned int BG0, unsigned int BG1,
 	unsigned int BG2, unsigned int BG3);
-extern void VIOC_DISP_SetPosition(volatile void __iomem *reg,
+extern void VIOC_DISP_SetPosition(void __iomem *reg,
 	unsigned int startX, unsigned int startY);
-extern void VIOC_DISP_GetPosition(volatile void __iomem *reg,
+extern void VIOC_DISP_GetPosition(void __iomem *reg,
 	unsigned int *startX, unsigned int *startY);
 
 #if defined(CONFIG_ARCH_TCC897X) \
 	|| defined(CONFIG_ARCH_TCC570X) \
 	|| defined(CONFIG_ARCH_TCC802X)
-extern void VIOC_DISP_SetColorEnhancement(volatile void __iomem *reg,
+extern void VIOC_DISP_SetColorEnhancement(void __iomem *reg,
 	signed char contrast, signed char brightness, signed char hue);
-extern void VIOC_DISP_GetColorEnhancement(volatile void __iomem *reg,
+extern void VIOC_DISP_GetColorEnhancement(void __iomem *reg,
 	signed char *contrast, signed char *brightness, signed char *hue);
 #else
-extern void VIOC_DISP_DCENH_hue_onoff(volatile void __iomem *reg,
+extern void VIOC_DISP_DCENH_hue_onoff(void __iomem *reg,
 	unsigned int onoff);
-extern void VIOC_DISP_DCENH_onoff(volatile void __iomem *reg,
+extern void VIOC_DISP_DCENH_onoff(void __iomem *reg,
 	unsigned int onoff);
-extern void VIOC_DISP_GetCENH_hue_onoff(volatile void __iomem *reg,
+extern void VIOC_DISP_GetCENH_hue_onoff(void __iomem *reg,
 	unsigned int *onoff);
-extern void VIOC_DISP_GetCENH_onoff(volatile void __iomem *reg,
+extern void VIOC_DISP_GetCENH_onoff(void __iomem *reg,
 	unsigned int *onoff);
-extern void VIOC_DISP_SetCENH_hue(volatile void __iomem *reg,
+extern void VIOC_DISP_SetCENH_hue(void __iomem *reg,
 	unsigned int val);
-extern void VIOC_DISP_SetCENH_brightness(volatile void __iomem *reg,
+extern void VIOC_DISP_SetCENH_brightness(void __iomem *reg,
 	unsigned int val);
-extern void VIOC_DISP_SetCENH_saturation(volatile void __iomem *reg,
+extern void VIOC_DISP_SetCENH_saturation(void __iomem *reg,
 	unsigned int val);
-extern void VIOC_DISP_SetCENH_contrast(volatile void __iomem *reg,
+extern void VIOC_DISP_SetCENH_contrast(void __iomem *reg,
 	unsigned int val);
-extern void VIOC_DISP_GetCENH_hue(volatile void __iomem *reg,
+extern void VIOC_DISP_GetCENH_hue(void __iomem *reg,
 	unsigned int *val);
-extern void VIOC_DISP_GetCENH_brightness(volatile void __iomem *reg,
+extern void VIOC_DISP_GetCENH_brightness(void __iomem *reg,
 	unsigned int *val);
-extern void VIOC_DISP_GetCENH_saturation(volatile void __iomem *reg,
+extern void VIOC_DISP_GetCENH_saturation(void __iomem *reg,
 	unsigned int *val);
-extern void VIOC_DISP_GetCENH_contrast(volatile void __iomem *reg,
+extern void VIOC_DISP_GetCENH_contrast(void __iomem *reg,
 	unsigned int *val);
 #endif
 extern unsigned int VIOC_DISP_FMT_isRGB(unsigned int pxdw);
-extern void VIOC_DISP_GetDisplayBlock_Info(volatile void __iomem *reg,
+extern void VIOC_DISP_GetDisplayBlock_Info(void __iomem *reg,
 	struct DisplayBlock_Info *DDinfo);
-extern void VIOC_DISP_SetClippingEnable(volatile void __iomem *reg,
+extern void VIOC_DISP_SetClippingEnable(void __iomem *reg,
 	unsigned int enable);
-extern void VIOC_DISP_GetClippingEnable(volatile void __iomem *reg,
+extern void VIOC_DISP_GetClippingEnable(void __iomem *reg,
 	unsigned int *enable);
-extern void VIOC_DISP_SetClipping(volatile void __iomem *reg,
+extern void VIOC_DISP_SetClipping(void __iomem *reg,
 	unsigned int uiUpperLimitY, unsigned int uiLowerLimitY,
 	unsigned int uiUpperLimitUV, unsigned int uiLowerLimitUV);
-extern void VIOC_DISP_GetClipping(volatile void __iomem *reg,
+extern void VIOC_DISP_GetClipping(void __iomem *reg,
 	unsigned int *uiUpperLimitY, unsigned int *uiLowerLimitY,
 	unsigned int *uiUpperLimitUV, unsigned int *uiLowerLimitUV);
-extern void VIOC_DISP_SetDither(volatile void __iomem *reg,
+extern void VIOC_DISP_SetDither(void __iomem *reg,
 	unsigned int ditherEn, unsigned int ditherSel,
 	unsigned char mat[4][4]);
-extern void VIOC_DISP_SetTimingParam(volatile void __iomem *reg,
+extern void VIOC_DISP_SetTimingParam(void __iomem *reg,
 	struct LCDTIMING *pTimeParam);
 //extern void VIOC_DISP_SetPixelClockDiv( void __iomem *reg,
 //	struct LCDTIMING *pTimeParam);
-extern void VIOC_DISP_SetPixelClockDiv(volatile void __iomem *reg,
+extern void VIOC_DISP_SetPixelClockDiv(void __iomem *reg,
 	unsigned int div);
-extern void VIOC_DISP_TurnOn(volatile void __iomem *reg);
+extern void VIOC_DISP_TurnOn(void __iomem *reg);
 #if defined(CONFIG_VIOC_DOLBY_VISION_EDR)
-extern void VIOC_DISP_TurnOnOff_With_DV(volatile void __iomem *reg,
+extern void VIOC_DISP_TurnOnOff_With_DV(void __iomem *reg,
 	unsigned int bOn);
 #endif
-extern void VIOC_DISP_TurnOff(volatile void __iomem *reg);
-extern unsigned int  VIOC_DISP_Get_TurnOnOff(volatile void __iomem *reg);
-extern int VIOC_DISP_Wait_DisplayDone(volatile void __iomem *reg);
-extern int VIOC_DISP_sleep_DisplayDone(volatile void __iomem *reg);
-extern void VIOC_DISP_SetControl(volatile void __iomem *reg,
+extern void VIOC_DISP_TurnOff(void __iomem *reg);
+extern unsigned int  VIOC_DISP_Get_TurnOnOff(void __iomem *reg);
+extern int VIOC_DISP_Wait_DisplayDone(void __iomem *reg);
+extern int VIOC_DISP_sleep_DisplayDone(void __iomem *reg);
+extern void VIOC_DISP_SetControl(void __iomem *reg,
 	struct LCDC_PARAM *pLcdParam);
-extern void VIOC_DISP_SetIreqMask(volatile void __iomem *pDISP,
+extern void VIOC_DISP_SetIreqMask(void __iomem *pDISP,
 	unsigned int mask, unsigned int set);
-extern void VIOC_DISP_SetStatus(volatile void __iomem *pDISP,
+extern void VIOC_DISP_SetStatus(void __iomem *pDISP,
 	unsigned int set);
-extern void VIOC_DISP_GetStatus(volatile void __iomem *pDISP,
+extern void VIOC_DISP_GetStatus(void __iomem *pDISP,
 	unsigned int *status);
-extern void VIOC_DISP_EmergencyFlagDisable(volatile void __iomem *reg);
-extern void VIOC_DISP_EmergencyFlag_SetEofm(volatile void __iomem *reg,
+extern void VIOC_DISP_EmergencyFlagDisable(void __iomem *reg);
+extern void VIOC_DISP_EmergencyFlag_SetEofm(void __iomem *reg,
 	unsigned int eofm);
-extern void VIOC_DISP_EmergencyFlag_SetHdmiVs(volatile void __iomem *reg,
+extern void VIOC_DISP_EmergencyFlag_SetHdmiVs(void __iomem *reg,
 	unsigned int hdmivs);
-extern volatile void __iomem *VIOC_DISP_GetAddress(unsigned int vioc_id);
+extern void __iomem *VIOC_DISP_GetAddress(unsigned int vioc_id);
 void vioc_disp_set_clkdiv(volatile void __iomem *reg, unsigned int div);
-extern void VIOC_DISP_DUMP(volatile void __iomem *reg, unsigned int vioc_id);
+extern void VIOC_DISP_DUMP(void __iomem *reg, unsigned int vioc_id);
 
 #endif

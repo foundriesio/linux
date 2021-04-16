@@ -181,4 +181,6 @@ extern G2D_INT_TYPE GRE_2D_IntCtrl(unsigned char wr, G2D_INT_TYPE flag,
 extern void GRE_2D_ClutCtrl(unsigned int ch, unsigned int index,
 	unsigned int data);
 
+extern void __iomem *GRE_2D_GetAddress(void);
+
 #endif//__GRE2D_H__

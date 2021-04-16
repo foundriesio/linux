@@ -1,0 +1,23 @@
+This is for 'telechips,lvds-fld0800' and 'telechips,fb-lvds-fld0800'.
+
+Required properties for display:
+	-compatible:
+		"telechips,lvds-fld0800"
+		"telechips,fb-lvds-fld0800"
+
+-------------------------------------------------------------------------------
+
+Example:
+   fld0800 {
+        compatible = "telechips,lvds-fld0800";
+        status = "okay";
+        lvds0 = <&lvds>;
+        //power-on-gpios = ; //LCD_ON
+        display-on-gpios = <&gpd 6 0>; //LCD_DISP
+        reset-gpios = <&gpf 19 0>; //LCD_RST
+        lvds-stby-gpios = <&gpb 19 0>; //LCD_DE = LVDS_STBY in LVDS
+        //lvds-power-gpios = ; //LVDS_EN
+        //lvds-power-gpios1 = ; //V_5V0_EN
+    };
+
+

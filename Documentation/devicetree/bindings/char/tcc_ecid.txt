@@ -1,0 +1,20 @@
+* Read EFUSE Data on Telechips SoCs
+
+- compatible : "telechips,tcc-cpu-id";
+- reg : physical base address of the controller and length of memory mapped
+region.
+	<ECID_Control register>,
+	<ECID Parrelel output data0 Register>,
+	<ECID Parrelel output data1 Register>,
+	<PMU Configuration Register>;
+
+Example:
+
+cpu_id: cpu-id@14200290{
+		compatible = "telechips,tcc-cpu-id";
+		reg = <0x0 0x14200290 0x0 0x4>,
+		    <0x0 0x14200298 0x0 0x4>,
+		    <0x0 0x1420029C 0x0 0x4>,
+		    <0x0 0x14400014 0x0 0x4>;
+		status = "okay";
+	};

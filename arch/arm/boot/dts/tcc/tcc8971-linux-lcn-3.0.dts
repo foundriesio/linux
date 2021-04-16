@@ -667,40 +667,13 @@
 		pinctrl-names = "default";
 		pinctrl-0 = <&i2c11_bus>;
 
-		ilitek@41 {
-			compatible = "ilitek,aimvF";
-			reg = <0x41>;
-			pinctrl-names = "default";
-			pinctrl-0 = <&tsc_default>;
-			int-gpios = <&gpd 21 0>;
-			rst-gpios = <&gpe 5 0>;
-		};
-
-		gt813@5d {
-			compatible = "goodix,gt813";
-			reg = <0x5d>;
-			pinctrl-names = "default";
-			pinctrl-0 = <&tsc_default>;
-			int-gpios = <&gpd 21 0>;
-			rst-gpios = <&gpe 5 0>;
-		};
-
-		vtl_ct26x@01 {
-			compatible = "vtl,ct36x";
-			reg = <0x01>;
-			pinctrl-names = "default";
-			pinctrl-0 = <&tsc_default>;
-			int-gpios = <&gpd 21 0>;
-			rst-gpios = <&gpe 5 0>;
-		};
-
 		ssd253x@48 {
 			compatible = "solomon,ssd253x";
 			reg = <0x48>;
 			pinctrl-names = "default";
 			pinctrl-0 = <&tsc_default>;
-			int-gpios = <&gpd 21 0>;
-			rst-gpios = <&gpe 5 0>;
+			int-gpio = <&gpd 21 0>;
+			reset-gpio = <&gpe 5 0>;
 		};
 	};
 

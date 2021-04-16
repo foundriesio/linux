@@ -27,7 +27,7 @@
 #include <linux/of_address.h>
 #include <video/tcc/vioc_lvds.h>
 
-static volatile void __iomem *pLVDS_reg;
+static void __iomem *pLVDS_reg;
 #define REG_VIOC_CONFIG(offset) (pLVDS_reg + (offset))
 #define LVDS_CTRL_R REG_VIOC_CONFIG(0x40)
 #define LVDS_TXO_SELN_R(x) REG_VIOC_CONFIG(0x44 + (4 * x))
@@ -192,7 +192,7 @@ static int __init vioc_lvds_init(void)
 	if (ViocLVDS_np == NULL) {
 		pr_info("[INF][LVDS] lvds_phy : disabled\n");
 	} else {
-		pLVDS_reg = (volatile void __iomem *)of_iomap(ViocLVDS_np, 0);
+		pLVDS_reg = (void __iomem *)of_iomap(ViocLVDS_np, 0);
 		pr_info("[INF][LVDS] lvds_phy address :  0x%p\n", pLVDS_reg);
 	}
 	return 0;

@@ -53,10 +53,10 @@ int hdmi_get_VBlank(void)
                         if(tcc_hdmi_api_dev->power_status) {
                                 blank = hdmi_get_VBlank_internal(tcc_hdmi_api_dev);
                         } else {
-                                printk(KERN_ERR "[ERROR][HDMI_V14]%s hdmi is power down at line(%d)\r\n", __func__, __LINE__);
+                                pr_err("[ERROR][HDMI_V14]%s hdmi is power down at line(%d)\r\n", __func__, __LINE__);
                         }
                 } else {
-                        printk(KERN_ERR "[ERROR][HDMI_V14]%s hdmi was in suspend at line(%d)\r\n", __func__, __LINE__);
+                        pr_err("[ERROR][HDMI_V14]%s hdmi was in suspend at line(%d)\r\n", __func__, __LINE__);
                 }
         }
         return blank;
@@ -71,10 +71,10 @@ void hdmi_start(void)
                         if(tcc_hdmi_api_dev->power_status) {
                                 hdmi_start_internal(tcc_hdmi_api_dev);
                         } else {
-                                printk(KERN_ERR "[ERROR][HDMI_V14]%s hdmi is power down at line(%d)\r\n", __func__, __LINE__);
+                                pr_err("[ERROR][HDMI_V14]%s hdmi is power down at line(%d)\r\n", __func__, __LINE__);
                         }
                 } else {
-                        printk(KERN_ERR "[ERROR][HDMI_V14]%s hdmi was in suspend at line(%d)\r\n", __func__, __LINE__);
+                        pr_err("[ERROR][HDMI_V14]%s hdmi was in suspend at line(%d)\r\n", __func__, __LINE__);
                 }
         }
 }
@@ -87,10 +87,10 @@ void hdmi_stop(void)
                         if(tcc_hdmi_api_dev->power_status) {
                                 hdmi_stop_internal(tcc_hdmi_api_dev);
                         } else {
-                                printk(KERN_ERR "[ERROR][HDMI_V14]%s hdmi is power down at line(%d)\r\n", __func__, __LINE__);
+                                pr_err("[ERROR][HDMI_V14]%s hdmi is power down at line(%d)\r\n", __func__, __LINE__);
                         }
                 } else {
-                        printk(KERN_ERR "[ERROR][HDMI_V14]%s hdmi was in suspend at line(%d)\r\n", __func__, __LINE__);
+                        pr_err("[ERROR][HDMI_V14]%s hdmi was in suspend at line(%d)\r\n", __func__, __LINE__);
                 }
         }
 }
@@ -102,7 +102,7 @@ void hdmi_api_power_on(void)
                 if(!tcc_hdmi_api_dev->suspend) {
                         tcc_hdmi_power_on(tcc_hdmi_api_dev);
                 } else {
-                        printk(KERN_ERR "[ERROR][HDMI_V14]%s hdmi was in suspend at line(%d)\r\n", __func__, __LINE__);
+                        pr_err("[ERROR][HDMI_V14]%s hdmi was in suspend at line(%d)\r\n", __func__, __LINE__);
                 }
         }
 }
@@ -114,7 +114,7 @@ void hdmi_api_power_off(void)
                 if(!tcc_hdmi_api_dev->suspend) {
                         tcc_hdmi_power_off(tcc_hdmi_api_dev);
                 } else {
-                        printk(KERN_ERR "[ERROR][HDMI_V14]%s hdmi was in suspend at line(%d)\r\n", __func__, __LINE__);
+                        pr_err("[ERROR][HDMI_V14]%s hdmi was in suspend at line(%d)\r\n", __func__, __LINE__);
                 }
         }
 }
@@ -131,7 +131,7 @@ int hdmi_api_set_spd_infoframe(packetParam_t *packetParam)
 				ret = hdmi_set_spd_infoframe(tcc_hdmi_api_dev);
 			}
 		} else {
-			printk(KERN_ERR "[ERROR][HDMI_V14]%s hdmi was in suspend at line(%d)\r\n", __func__, __LINE__);
+			pr_err("[ERROR][HDMI_V14]%s hdmi was in suspend at line(%d)\r\n", __func__, __LINE__);
 		}
 	}
 	return ret;
@@ -147,7 +147,7 @@ int hdmi_api_set_vsif_infoframe(packetParam_t *packetParam)
 				ret = hdmi_set_vsif_infoframe(tcc_hdmi_api_dev);
 			}
 		} else {
-			printk(KERN_ERR "[ERROR][HDMI_V14]%s hdmi was in suspend at line(%d)\r\n", __func__, __LINE__);
+			pr_err("[ERROR][HDMI_V14]%s hdmi was in suspend at line(%d)\r\n", __func__, __LINE__);
 		}
 	}
 	return ret;
@@ -190,10 +190,10 @@ int hdmi_api_phy_power_down(void)
                                 ret =  tcc_hdmi_phy_power_down(tcc_hdmi_api_dev);
                         }
                         else {
-                                printk(KERN_ERR "[ERROR][HDMI_V14]%s hdmi is power down at line(%d)\r\n", __func__, __LINE__);
+                                pr_err("[ERROR][HDMI_V14]%s hdmi is power down at line(%d)\r\n", __func__, __LINE__);
                         }
                 } else {
-                        printk(KERN_ERR "[ERROR][HDMI_V14]%s hdmi was in suspend at line(%d)\r\n", __func__, __LINE__);
+                        pr_err("[ERROR][HDMI_V14]%s hdmi was in suspend at line(%d)\r\n", __func__, __LINE__);
                 }
         }
         return ret;
@@ -209,10 +209,10 @@ int hdmi_api_phy_config(unsigned int pixel_clock, unsigned int bpp)
                                 ret =  tcc_hdmi_phy_config(tcc_hdmi_api_dev, pixel_clock, bpp);
                         }
                         else {
-                                printk(KERN_ERR "[ERROR][HDMI_V14]%s hdmi is power down at line(%d)\r\n", __func__, __LINE__);
+                                pr_err("[ERROR][HDMI_V14]%s hdmi is power down at line(%d)\r\n", __func__, __LINE__);
                         }
                 } else {
-                        printk(KERN_ERR "[ERROR][HDMI_V14]%s hdmi was in suspend at line(%d)\r\n", __func__, __LINE__);
+                        pr_err("[ERROR][HDMI_V14]%s hdmi was in suspend at line(%d)\r\n", __func__, __LINE__);
                 }
         }
         return ret;
@@ -225,11 +225,11 @@ int hdmi_api_video_config(videoParams_t *videoParam)
 
 	do {
 		if(tcc_hdmi_api_dev == NULL) {
-			printk(KERN_ERR "[ERROR][HDMI_V14]%s tcc_hdmi_api_dev is NULL\r\n", __func__);
+			pr_err("[ERROR][HDMI_V14]%s tcc_hdmi_api_dev is NULL\r\n", __func__);
 			break;
 		}
 		if(videoParam == NULL) {
-			printk(KERN_ERR "[ERROR][HDMI_V14]%s videoParam is NULL\r\n", __func__);
+			pr_err("[ERROR][HDMI_V14]%s videoParam is NULL\r\n", __func__);
 			break;
 		}
 
@@ -237,7 +237,7 @@ int hdmi_api_video_config(videoParams_t *videoParam)
 		memcpy(&tcc_hdmi_api_dev->videoParam, videoParam, sizeof(videoParams_t));
 
 		if(hdmi_video_config(tcc_hdmi_api_dev) < 0) {
-			printk(KERN_ERR "[ERROR][HDMI_V14]%s failed to set video configure\r\n", __func__);
+			pr_err("[ERROR][HDMI_V14]%s failed to set video configure\r\n", __func__);
 			break;
 		}
 
@@ -258,10 +258,10 @@ int hdmi_api_av_mute(int av_mute)
                                 ret =  hdmi_av_mute(tcc_hdmi_api_dev, av_mute);
                         }
                         else {
-                                printk(KERN_ERR "[ERROR][HDMI_V14]%s hdmi is power down at line(%d)\r\n", __func__, __LINE__);
+                                pr_err("[ERROR][HDMI_V14]%s hdmi is power down at line(%d)\r\n", __func__, __LINE__);
                         }
                 } else {
-                        printk(KERN_ERR "[ERROR][HDMI_V14]%s hdmi was in suspend at line(%d)\r\n", __func__, __LINE__);
+                        pr_err("[ERROR][HDMI_V14]%s hdmi was in suspend at line(%d)\r\n", __func__, __LINE__);
                 }
         }
         return ret;
@@ -274,11 +274,11 @@ int hdmi_api_audio_config(audioParams_t* audioParam)
 
 	do {
 		if(tcc_hdmi_api_dev == NULL) {
-			printk(KERN_ERR "[ERROR][HDMI_V14]%s tcc_hdmi_api_dev is NULL\r\n", __func__);
+			pr_err("[ERROR][HDMI_V14]%s tcc_hdmi_api_dev is NULL\r\n", __func__);
 			break;
 		}
 		if(audioParam == NULL) {
-			printk(KERN_ERR "[ERROR][HDMI_V14]%s audioParam is NULL\r\n", __func__);
+			pr_err("[ERROR][HDMI_V14]%s audioParam is NULL\r\n", __func__);
 			break;
 		}
 

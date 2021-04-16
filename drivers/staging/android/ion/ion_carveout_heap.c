@@ -33,10 +33,10 @@
 #define AUTO_FREE_BLK_LENGTH 6
 static int AUTO_FREE_BUF_LENGTH = 50;
 
-typedef struct af_desc {
+struct af_desc {
 	struct ion_buffer *buffer;
 	int valid;
-} af_desc;
+};
 
 struct ion_carveout_heap {
 	struct ion_heap heap;
@@ -52,7 +52,8 @@ struct ion_carveout_heap {
 static struct file *tccmem_file;
 
 static void ump_reserved_sw_manager(unsigned int cmd, unsigned int paddr,
-		    unsigned int size, unsigned int width, unsigned int height)
+				    unsigned int size, unsigned int width,
+				    unsigned int height)
 {
 	if (tccmem_file == NULL) {
 		tccmem_file = filp_open(TCC_MEM, O_RDWR, 0666);
@@ -113,7 +114,7 @@ static void af_alloc(struct ion_buffer *buffer, struct ion_heap *heap)
 			pr_debug("%s af_alloc_index=%d, af_free_index=%d,",
 				 __func__, carveout_heap->af_alloc_index,
 				carveout_heap->af_free_index);
-			pr_debug("addr:0x%lx, size:0x%x, index_check_cnt:%d\n",
+			pr_debug("addr:0x%lx, size:0x%zx, index_check_cnt:%d\n",
 				 paddr,
 				 buffer->size, index_check_cnt);
 			#endif
@@ -121,12 +122,11 @@ static void af_alloc(struct ion_buffer *buffer, struct ion_heap *heap)
 				(carveout_heap->af_alloc_index + 1)
 				% AUTO_FREE_BUF_LENGTH;
 			break;
-		} else {
-			carveout_heap->af_alloc_index =
+		}
+		carveout_heap->af_alloc_index =
 				(carveout_heap->af_alloc_index + 1)
 				% AUTO_FREE_BUF_LENGTH;
-			index_check_cnt++;
-		}
+		index_check_cnt++;
 	}
 	if (index_check_cnt == AUTO_FREE_BUF_LENGTH) {
 		AUTO_FREE_BUF_LENGTH += 10;
@@ -243,7 +243,7 @@ static int block_auto_free(struct ion_buffer *buffer, struct ion_heap *heap,
 	pr_debug("%s Success. af_alloc_index=%d, af_free_index=%d",
 		 __func__, carveout_heap->af_alloc_index,
 		 carveout_heap->af_free_index);
-	pr_debug(" size=0x%lx, avail_size=0x%x\n",
+	pr_debug(" size=0x%lx, avail_size=0x%zx\n",
 		 size, gen_pool_avail(carveout_heap->pool));
 	#endif
 	return 1;
@@ -257,7 +257,7 @@ static unsigned long ion_carveout_allocate(struct ion_heap *heap,
 	unsigned long offset = gen_pool_alloc(carveout_heap->pool, size);
 
 	#ifdef ION_AUTOFREE_DEBUG
-	pr_debug("%s-heap_name:%s Alloc %lx - 0x%lx avail_mem:0x%x\n",
+	pr_debug("%s-heap_name:%s Alloc %lx - 0x%lx avail_mem:0x%zx\n",
 		 __func__, heap->name, offset, size,
 		 gen_pool_avail(carveout_heap->pool));
 	#endif
@@ -286,7 +286,7 @@ static void ion_carveout_free(struct ion_heap *heap, unsigned long addr,
 		return;
 	gen_pool_free(carveout_heap->pool, addr, size);
 	#ifdef ION_AUTOFREE_DEBUG
-	pr_debug("%s-heap_name:%s, Free 0x%lx - 0x%lx avail_mem:0x%x\n",
+	pr_debug("%s-heap_name:%s, Free 0x%lx - 0x%lx avail_mem:0x%zx\n",
 		 __func__, heap->name, addr, size,
 		 gen_pool_avail(carveout_heap->pool));
 	#endif
@@ -418,7 +418,8 @@ struct ion_heap *ion_carveout_heap_create(struct ion_platform_heap *heap_data)
 	pr_info("%s heap size : 0x%zx\n", __func__, heap_data->size);
 
 	carveout_heap->af_buf =
-		kzalloc(sizeof(af_desc)*AUTO_FREE_BUF_LENGTH, GFP_KERNEL);
+		kzalloc(sizeof(struct af_desc)*AUTO_FREE_BUF_LENGTH,
+			GFP_KERNEL);
 	carveout_heap->af_alloc_index = 0;
 	carveout_heap->af_free_index = 0;
 	return &carveout_heap->heap;
@@ -468,7 +469,8 @@ struct ion_heap *ion_carveout_cam_heap_create(
 	pr_info("%s heap size : 0x%zx\n", __func__, heap_data->size);
 
 	carveout_heap->af_buf =
-		 kzalloc(sizeof(af_desc)*AUTO_FREE_BUF_LENGTH, GFP_KERNEL);
+		 kzalloc(sizeof(struct af_desc)*AUTO_FREE_BUF_LENGTH,
+			 GFP_KERNEL);
 	carveout_heap->af_alloc_index = 0;
 	carveout_heap->af_free_index = 0;
 

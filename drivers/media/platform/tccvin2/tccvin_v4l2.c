@@ -888,6 +888,11 @@ static int tccvin_s_selection(
 	rect_tgt->width 	= rect_src->width;
 	rect_tgt->height	= rect_src->height;
 
+	mutex_lock(&stream->mutex);
+	s->r.width = stream->cur_frame->wWidth;
+	s->r.height = stream->cur_frame->wHeight;
+	mutex_unlock(&stream->mutex);
+
 	return 0;
 }
 

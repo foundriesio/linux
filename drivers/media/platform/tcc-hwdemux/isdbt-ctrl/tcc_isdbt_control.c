@@ -92,16 +92,14 @@ static void GPIO_OUT_INIT(int pin)
 	int rc;
 
 	if (!gpio_is_valid(pin)) {
-		pr_err(
-		"[ERROR][TCC_ISDBT_CTRL] %s pin(0x%X) error\n",
-		__func__, pin);
+		pr_err("[ERROR][TCC_ISDBT_CTRL] %s pin(0x%X) error\n",
+		       __func__, pin);
 		return;
 	}
 	rc = gpio_request(pin, NULL);
 	if (rc) {
-		pr_err(
-		"[ERROR][TCC_ISDBT_CTRL] %s pin(0x%X) error(%d)\n",
-		__func__, pin, rc);
+		pr_err("[ERROR][TCC_ISDBT_CTRL] %s pin(0x%X) error(%d)\n",
+		       __func__, pin, rc);
 		return;
 	}
 	gpio_direction_output(pin, 0);
@@ -112,16 +110,14 @@ static void GPIO_IN_INIT(int pin)
 	int rc;
 
 	if (!gpio_is_valid(pin)) {
-		pr_err(
-		"[ERROR][TCC_ISDBT_CTRL] %s pin(0x%X) error\n",
-		__func__, pin);
+		pr_err("[ERROR][TCC_ISDBT_CTRL] %s pin(0x%X) error\n",
+		       __func__, pin);
 		return;
 	}
 	rc = gpio_request(pin, NULL);
 	if (rc) {
-		pr_err(
-		"[ERROR][TCC_ISDBT_CTRL] %s pin(0x%X) error(%d)\n",
-		__func__, pin, rc);
+		pr_err("[ERROR][TCC_ISDBT_CTRL] %s pin(0x%X) error(%d)\n",
+		       __func__, pin, rc);
 		return;
 	}
 
@@ -131,9 +127,8 @@ static void GPIO_IN_INIT(int pin)
 static void GPIO_SET_VALUE(int pin, int value)
 {
 	if (!gpio_is_valid(pin)) {
-		pr_err(
-		"[ERROR][TCC_ISDBT_CTRL] %s pin(0x%X) error\n",
-		__func__, pin);
+		pr_err("[ERROR][TCC_ISDBT_CTRL] %s pin(0x%X) error\n",
+		       __func__, pin);
 		return;
 	}
 
@@ -146,9 +141,8 @@ static void GPIO_SET_VALUE(int pin, int value)
 static int GPIO_GET_VALUE(int pin)
 {
 	if (!gpio_is_valid(pin)) {
-		pr_err(
-		"[ERROR][TCC_ISDBT_CTRL] %s pin(0x%X) error\n",
-		__func__, pin);
+		pr_err("[ERROR][TCC_ISDBT_CTRL] %s pin(0x%X) error\n",
+		       __func__, pin);
 		return -1;
 	}
 
@@ -220,8 +214,7 @@ static int tcc_isdbt_ctrl_ant_on(struct tcc_isdbt_ctrl_t *ctrl)
 		GPIO_IN_INIT(ctrl->gpio_check_ant_overload);
 		msleep(25);
 		if (GPIO_GET_VALUE(ctrl->gpio_check_ant_overload) == 0) {
-			pr_err(
-			"[ERROR][TCC_ISDBT_CTRL] ANT_OVERLOAD is low\n");
+			pr_err("[ERROR][TCC_ISDBT_CTRL] ANT_OVERLOAD is low\n");
 			GPIO_SET_VALUE(ctrl->gpio_ant_pwr, 0);
 			return 0;
 		}
@@ -232,12 +225,8 @@ static int tcc_isdbt_ctrl_ant_on(struct tcc_isdbt_ctrl_t *ctrl)
 				isr_checking_ant_overload,
 				IRQ_TYPE_EDGE_FALLING | IRQF_DISABLED,
 				"ANT_OVERLOAD_F", NULL);
-		if (err) {
-			pr_err(
-			"[ERROR][TCC_ISDBT_CTRL] fail ANT_OVERLOAD IRQ[%d].\n",
-			err);
+		if (err)
 			ctrl->irq_check_ant_overlaod = 0;
-		}
 		break;
 	}
 
@@ -260,157 +249,10 @@ static int tcc_isdbt_ctrl_ant_off(struct tcc_isdbt_ctrl_t *ctrl)
 }
 
 #if defined(CONFIG_ARCH_TCC897X)
-static long tcc_isdbt_ctrl_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
-{
-	switch (cmd)
-	{
-		case IOCTL_DXB_CTRL_HWDEMUX_CIPHER_SET_ALGORITHM:
-			{
-				stHWDEMUXCIPHER_ALGORITHM stAlgorithm;
-				if (copy_from_user((void *)&stAlgorithm, (const void *)arg, sizeof(stHWDEMUXCIPHER_ALGORITHM)) == 0)
-				{
-					tca_hwdemux_cipher_Set_Algorithm(&stAlgorithm);
-				}
-			}
-			break;
-
-		case IOCTL_DXB_CTRL_HWDEMUX_CIPHER_SET_KEY:
-			{
-				stHWDEMUXCIPHER_KEY stKeyInfo;
-				if (copy_from_user((void *)&stKeyInfo, (const void *)arg, sizeof(stHWDEMUXCIPHER_KEY)) == 0)
-				{
-					tca_hwdemux_cipher_Set_Key(&stKeyInfo);
-				}
-			}
-			break;
-
-		case IOCTL_DXB_CTRL_HWDEMUX_CIPHER_SET_VECTOR:
-			{
-				stHWDEMUXCIPHER_VECTOR stVectorInfo;
-				if (copy_from_user((void *)&stVectorInfo, (const void *)arg, sizeof(stHWDEMUXCIPHER_VECTOR)) == 0)
-				{
-					tca_hwdemux_cipher_Set_IV(&stVectorInfo);
-				}
-			}
-			break;
-
-		case IOCTL_DXB_CTRL_HWDEMUX_CIPHER_ENCRYPT:
-			{
-				stHWDEMUXCIPHER_EXECUTE stEncryptInfo;
-				if (copy_from_user((void *)&stEncryptInfo, (const void *)arg, sizeof(stHWDEMUXCIPHER_EXECUTE)) == 0)
-				{
-					tca_hwdemux_cipher_Cipher_Run(&stEncryptInfo);
-				}
-			}
-			break;
-
-		case IOCTL_DXB_CTRL_HWDEMUX_CIPHER_DECRYPT:
-			{
-				stHWDEMUXCIPHER_EXECUTE stDecryptInfo;
-				if (copy_from_user((void *)&stDecryptInfo, (const void *)arg, sizeof(stHWDEMUXCIPHER_EXECUTE)) == 0)
-				{
-					tca_hwdemux_cipher_Cipher_Run(&stDecryptInfo);
-				}
-			}
-			break;
-
-		case IOCTL_DXB_CTRL_HWDEMUX_CIPHER_EXECUTE:
-			{
-				stHWDEMUXCIPHER_EXECUTE stExecute;
-				if (copy_from_user((void *)&stExecute, (const void *)arg, sizeof(stHWDEMUXCIPHER_EXECUTE)) == 0)
-				{
-					tca_hwdemux_cipher_Cipher_Run(&stExecute);
-				}
-			}
-			break;
-
-		case IOCTL_DXB_CTRL_SET_CTRLMODE:
-			{
-				unsigned int uiAntCtrlMode;
-				if (copy_from_user((void *)&uiAntCtrlMode, (const void *)arg, sizeof(unsigned int)) != 0)
-					break;
-				gIsdbtCtrl->ant_ctrl_mode = uiAntCtrlMode;
-			}
-			break;
-
-		case IOCTL_DXB_CTRL_OFF:
-			{
-				if (gIsdbtCtrl->board_type < BOARD_MAX)
-				{
-					if (ISDBT_BB[gIsdbtCtrl->board_type].ant_ctrl == 1)
-					{
-						tcc_isdbt_ctrl_ant_off(gIsdbtCtrl);
-					}
-					if (ISDBT_BB[gIsdbtCtrl->board_type].ioctl != NULL)
-					{
-						unsigned int parg;
-						if (copy_from_user((void *)&parg, (const void *)arg, sizeof(unsigned int)) != 0)
-							break;
-						return ISDBT_BB[gIsdbtCtrl->board_type].ioctl(gIsdbtCtrl, cmd, parg);
-					}
-				}
-			}
-			break;
-
-		case IOCTL_DXB_CTRL_ON:
-			{
-				if (gIsdbtCtrl->board_type < BOARD_MAX)
-				{
-					if (ISDBT_BB[gIsdbtCtrl->board_type].ant_ctrl == 1)
-					{
-						tcc_isdbt_ctrl_ant_on(gIsdbtCtrl);
-					}
-					if (ISDBT_BB[gIsdbtCtrl->board_type].ioctl != NULL)
-					{
-						unsigned int parg;
-						if (copy_from_user((void *)&parg, (const void *)arg, sizeof(unsigned int)) != 0)
-							break;
-						return ISDBT_BB[gIsdbtCtrl->board_type].ioctl(gIsdbtCtrl, cmd, parg);
-					}
-				}
-			}
-			break;
-
-		case IOCTL_DXB_CTRL_SET_BOARD:
-			{
-				unsigned int uiboardtype;
-				if (copy_from_user((void *)&uiboardtype, (const void *)arg, sizeof(unsigned int)) != 0)
-					break;
-
-				gIsdbtCtrl->board_type = uiboardtype;
-				if (gIsdbtCtrl->board_type < BOARD_MAX)
-				{
-					tca_tsif_set_interface(ISDBT_BB[gIsdbtCtrl->board_type].tsif_mode);
-					if (ISDBT_BB[gIsdbtCtrl->board_type].ioctl != NULL)
-					{
-						return ISDBT_BB[gIsdbtCtrl->board_type].ioctl(gIsdbtCtrl, cmd, arg);
-					}
-				}
-			}
-			break;
-		default:
-			{
-				if (gIsdbtCtrl->board_type < BOARD_MAX)
-				{
-					if (ISDBT_BB[gIsdbtCtrl->board_type].ioctl != NULL)
-					{
-						unsigned int parg;
-						if (copy_from_user((void *)&parg, (const void *)arg, sizeof(unsigned int)) != 0)
-							break;
-						return ISDBT_BB[gIsdbtCtrl->board_type].ioctl(gIsdbtCtrl, cmd, parg);
-					}
-				}
-			}
-			break;
-	}
-	return 0;
-}
-#else
-static long tcc_isdbt_ctrl_ioctl(struct file *filp, unsigned int cmd,
-				 unsigned long arg)
+static long tcc_isdbt_ctrl_ioctl(struct file *filp,
+				 unsigned int cmd, unsigned long arg)
 {
 	switch (cmd) {
-	// for HWDEMUX Cipher
 	case IOCTL_DXB_CTRL_HWDEMUX_CIPHER_SET_ALGORITHM:
 		{
 			struct stHWDEMUXCIPHER_ALGORITHM stAlgorithm;
@@ -418,15 +260,7 @@ static long tcc_isdbt_ctrl_ioctl(struct file *filp, unsigned int cmd,
 			if (copy_from_user
 			    ((void *)&stAlgorithm, (const void *)arg,
 			     sizeof(struct stHWDEMUXCIPHER_ALGORITHM)) == 0) {
-				if (h) {
-					h->dmx_id = stAlgorithm.uDemuxId;
-					hwdmx_set_algo_cmd(h,
-						stAlgorithm.uAlgorithm,
-						stAlgorithm.uOperationMode,
-						stAlgorithm.uResidual,
-						stAlgorithm.uSmsg, 0,
-						NULL);
-				}
+				tca_hwdemux_cipher_Set_Algorithm(&stAlgorithm);
 			}
 		}
 		break;
@@ -438,13 +272,7 @@ static long tcc_isdbt_ctrl_ioctl(struct file *filp, unsigned int cmd,
 			if (copy_from_user
 			    ((void *)&stKeyInfo, (const void *)arg,
 			     sizeof(struct stHWDEMUXCIPHER_KEY)) == 0) {
-				if (h) {
-					h->dmx_id = stKeyInfo.uDemuxId;
-					hwdmx_set_key_cmd(h, stKeyInfo.uKeyType,
-						stKeyInfo.uKeyMode,
-						stKeyInfo.uLength,
-						stKeyInfo.pucData);
-				}
+				tca_hwdemux_cipher_Set_Key(&stKeyInfo);
 			}
 		}
 		break;
@@ -456,28 +284,31 @@ static long tcc_isdbt_ctrl_ioctl(struct file *filp, unsigned int cmd,
 			if (copy_from_user
 			    ((void *)&stVectorInfo, (const void *)arg,
 			     sizeof(struct stHWDEMUXCIPHER_VECTOR)) == 0) {
-				if (h) {
-					h->dmx_id = stVectorInfo.uDemuxId;
-					hwdmx_set_iv_cmd(h,
-						stVectorInfo.uOption,
-						stVectorInfo.uLength,
-						stVectorInfo.pucData);
-				}
+				tca_hwdemux_cipher_Set_IV(&stVectorInfo);
 			}
 		}
 		break;
 
-	case IOCTL_DXB_CTRL_HWDEMUX_CIPHER_SET_DATA:
+	case IOCTL_DXB_CTRL_HWDEMUX_CIPHER_ENCRYPT:
 		{
-			struct stHWDEMUXCIPHER_SENDDATA stSendData;
+			struct stHWDEMUXCIPHER_EXECUTE stEncryptInfo;
 
 			if (copy_from_user
-			    ((void *)&stSendData, (const void *)arg,
-			     sizeof(struct stHWDEMUXCIPHER_SENDDATA)) == 0) {
-				hwdmx_set_data_cmd(stSendData.uDemuxId,
-						stSendData.pucSrcAddr,
-						stSendData.pucDstAddr,
-						stSendData.uLength);
+			    ((void *)&stEncryptInfo, (const void *)arg,
+			     sizeof(struct stHWDEMUXCIPHER_EXECUTE)) == 0) {
+				tca_hwdemux_cipher_Cipher_Run(&stEncryptInfo);
+			}
+		}
+		break;
+
+	case IOCTL_DXB_CTRL_HWDEMUX_CIPHER_DECRYPT:
+		{
+			struct stHWDEMUXCIPHER_EXECUTE stDecryptInfo;
+
+			if (copy_from_user
+			    ((void *)&stDecryptInfo, (const void *)arg,
+			     sizeof(struct stHWDEMUXCIPHER_EXECUTE)) == 0) {
+				tca_hwdemux_cipher_Cipher_Run(&stDecryptInfo);
 			}
 		}
 		break;
@@ -489,11 +320,7 @@ static long tcc_isdbt_ctrl_ioctl(struct file *filp, unsigned int cmd,
 			if (copy_from_user
 			    ((void *)&stExecute, (const void *)arg,
 			     sizeof(struct stHWDEMUXCIPHER_EXECUTE)) == 0) {
-				hwdmx_run_cipher_cmd(stExecute.uDemuxId,
-						stExecute.uExecuteOption,
-						stExecute.uCWsel,
-						stExecute.uKLIdx,
-						stExecute.uKeyMode);
+				tca_hwdemux_cipher_Cipher_Run(&stExecute);
 			}
 		}
 		break;
@@ -514,14 +341,206 @@ static long tcc_isdbt_ctrl_ioctl(struct file *filp, unsigned int cmd,
 		{
 			if (gIsdbtCtrl->board_type < BOARD_MAX) {
 				if (ISDBT_BB[gIsdbtCtrl->board_type].ant_ctrl ==
+				    1)
+					tcc_isdbt_ctrl_ant_off(gIsdbtCtrl);
+				if (ISDBT_BB[gIsdbtCtrl->board_type].ioctl !=
+				    NULL) {
+					unsigned int parg;
+
+					if (copy_from_user(
+					(void *)&parg, (const void *)arg,
+					sizeof(unsigned int)) != 0)
+						break;
+					return ISDBT_BB[
+						gIsdbtCtrl->board_type].ioctl(
+						gIsdbtCtrl, cmd, parg);
+				}
+			}
+		}
+		break;
+
+	case IOCTL_DXB_CTRL_ON:
+		{
+			if (gIsdbtCtrl->board_type < BOARD_MAX) {
+				if (ISDBT_BB[gIsdbtCtrl->board_type].ant_ctrl ==
+				    1)
+					tcc_isdbt_ctrl_ant_on(gIsdbtCtrl);
+				if (ISDBT_BB[gIsdbtCtrl->board_type].ioctl !=
+				    NULL) {
+					unsigned int parg;
+
+					if (copy_from_user(
+					(void *)&parg, (const void *)arg,
+					sizeof(unsigned int)) != 0)
+						break;
+					return ISDBT_BB[
+						gIsdbtCtrl->board_type].ioctl(
+						gIsdbtCtrl, cmd, parg);
+				}
+			}
+		}
+		break;
+
+	case IOCTL_DXB_CTRL_SET_BOARD:
+		{
+			unsigned int uiboardtype;
+
+			if (copy_from_user(
+				(void *)&uiboardtype, (const void *)arg,
+			     sizeof(unsigned int)) != 0)
+				break;
+
+			gIsdbtCtrl->board_type = uiboardtype;
+			if (gIsdbtCtrl->board_type < BOARD_MAX) {
+				tca_tsif_set_interface(ISDBT_BB
+						       [gIsdbtCtrl->board_type].
+						       tsif_mode);
+				if (ISDBT_BB[gIsdbtCtrl->board_type].ioctl !=
+				    NULL)
+					return ISDBT_BB[
+					gIsdbtCtrl->board_type].ioctl(
+					gIsdbtCtrl, cmd, arg);
+			}
+		}
+		break;
+	default:
+		{
+			if (gIsdbtCtrl->board_type < BOARD_MAX) {
+				if (ISDBT_BB[gIsdbtCtrl->board_type].ioctl !=
+				    NULL) {
+					unsigned int parg;
+
+					if (copy_from_user(
+					(void *)&parg, (const void *)arg,
+					sizeof(unsigned int)) != 0)
+						break;
+					return ISDBT_BB[
+						gIsdbtCtrl->board_type].ioctl(
+						gIsdbtCtrl, cmd, parg);
+				}
+			}
+		}
+		break;
+	}
+	return 0;
+}
+#else
+static long tcc_isdbt_ctrl_ioctl(struct file *filp, unsigned int cmd,
+				 unsigned long arg)
+{
+	switch (cmd) {
+		// for HWDEMUX Cipher
+	case IOCTL_DXB_CTRL_HWDEMUX_CIPHER_SET_ALGORITHM:
+		{
+			struct stHWDEMUXCIPHER_ALGORITHM stAlgorithm;
+
+			if (copy_from_user(
+				(void *)&stAlgorithm, (const void *)arg,
+			     sizeof(struct stHWDEMUXCIPHER_ALGORITHM)) == 0) {
+				if (h) {
+					h->dmx_id = stAlgorithm.uDemuxId;
+					hwdmx_set_algo_cmd(h,
+						stAlgorithm.uAlgorithm,
+						stAlgorithm.uOperationMode,
+						stAlgorithm.uResidual,
+						stAlgorithm.uSmsg, 0,
+						NULL);
+				}
+			}
+		}
+		break;
+
+	case IOCTL_DXB_CTRL_HWDEMUX_CIPHER_SET_KEY:
+		{
+			struct stHWDEMUXCIPHER_KEY stKeyInfo;
+
+			if (copy_from_user(
+				(void *)&stKeyInfo, (const void *)arg,
+			     sizeof(struct stHWDEMUXCIPHER_KEY)) == 0) {
+				if (h) {
+					h->dmx_id = stKeyInfo.uDemuxId;
+					hwdmx_set_key_cmd(h, stKeyInfo.uKeyType,
+							  stKeyInfo.uKeyMode,
+							  stKeyInfo.uLength,
+							  stKeyInfo.pucData);
+				}
+			}
+		}
+		break;
+
+	case IOCTL_DXB_CTRL_HWDEMUX_CIPHER_SET_VECTOR:
+		{
+			struct stHWDEMUXCIPHER_VECTOR stVectorInfo;
+
+			if (copy_from_user(
+				(void *)&stVectorInfo, (const void *)arg,
+			     sizeof(struct stHWDEMUXCIPHER_VECTOR)) == 0) {
+				if (h) {
+					h->dmx_id = stVectorInfo.uDemuxId;
+					hwdmx_set_iv_cmd(h,
+							 stVectorInfo.uOption,
+							 stVectorInfo.uLength,
+							 stVectorInfo.pucData);
+				}
+			}
+		}
+		break;
+
+	case IOCTL_DXB_CTRL_HWDEMUX_CIPHER_SET_DATA:
+		{
+			struct stHWDEMUXCIPHER_SENDDATA stSendData;
+
+			if (copy_from_user(
+				(void *)&stSendData, (const void *)arg,
+			     sizeof(struct stHWDEMUXCIPHER_SENDDATA)) == 0) {
+				hwdmx_set_data_cmd(stSendData.uDemuxId,
+						   stSendData.pucSrcAddr,
+						   stSendData.pucDstAddr,
+						   stSendData.uLength);
+			}
+		}
+		break;
+
+	case IOCTL_DXB_CTRL_HWDEMUX_CIPHER_EXECUTE:
+		{
+			struct stHWDEMUXCIPHER_EXECUTE stExecute;
+
+			if (copy_from_user(
+				(void *)&stExecute, (const void *)arg,
+			     sizeof(struct stHWDEMUXCIPHER_EXECUTE)) == 0) {
+				hwdmx_run_cipher_cmd(stExecute.uDemuxId,
+						     stExecute.uExecuteOption,
+						     stExecute.uCWsel,
+						     stExecute.uKLIdx,
+						     stExecute.uKeyMode);
+			}
+		}
+		break;
+
+	case IOCTL_DXB_CTRL_SET_CTRLMODE:
+		{
+			unsigned int uiAntCtrlMode;
+
+			if (copy_from_user(
+				(void *)&uiAntCtrlMode, (const void *)arg,
+			     sizeof(unsigned int)) != 0)
+				break;
+			gIsdbtCtrl->ant_ctrl_mode = uiAntCtrlMode;
+		}
+		break;
+
+	case IOCTL_DXB_CTRL_OFF:
+		{
+			if (gIsdbtCtrl->board_type < BOARD_MAX) {
+				if (ISDBT_BB[gIsdbtCtrl->board_type].ant_ctrl ==
 				    1) {
 					tcc_isdbt_ctrl_ant_off(gIsdbtCtrl);
 				}
 				if (ISDBT_BB[gIsdbtCtrl->board_type].ioctl !=
 				    NULL) {
 					return ISDBT_BB
-						[gIsdbtCtrl->board_type].ioctl
-						(gIsdbtCtrl, cmd, arg);
+					    [gIsdbtCtrl->board_type].ioctl
+					    (gIsdbtCtrl, cmd, arg);
 				}
 			}
 		}
@@ -537,8 +556,8 @@ static long tcc_isdbt_ctrl_ioctl(struct file *filp, unsigned int cmd,
 				if (ISDBT_BB[gIsdbtCtrl->board_type].ioctl !=
 				    NULL) {
 					return ISDBT_BB
-						[gIsdbtCtrl->board_type].ioctl
-						(gIsdbtCtrl, cmd, arg);
+					    [gIsdbtCtrl->board_type].ioctl
+					    (gIsdbtCtrl, cmd, arg);
 				}
 			}
 		}
@@ -548,21 +567,21 @@ static long tcc_isdbt_ctrl_ioctl(struct file *filp, unsigned int cmd,
 		{
 			unsigned int uiboardtype;
 
-			if (copy_from_user
-			    ((void *)&uiboardtype, (const void *)arg,
+			if (copy_from_user(
+				(void *)&uiboardtype, (const void *)arg,
 			     sizeof(unsigned int)) != 0)
 				break;
 
 			gIsdbtCtrl->board_type = uiboardtype;
 			if (gIsdbtCtrl->board_type < BOARD_MAX) {
 				hwdmx_set_interface_cmd(-1,
-					ISDBT_BB
-					[gIsdbtCtrl->board_type].tsif_mode);
+					ISDBT_BB[
+					gIsdbtCtrl->board_type].tsif_mode);
 				if (ISDBT_BB[gIsdbtCtrl->board_type].ioctl !=
 				    NULL) {
-					return ISDBT_BB
-						[gIsdbtCtrl->board_type].ioctl
-						(gIsdbtCtrl, cmd, arg);
+					return ISDBT_BB[
+						gIsdbtCtrl->board_type].ioctl(
+						gIsdbtCtrl, cmd, arg);
 				}
 			}
 		}
@@ -574,8 +593,8 @@ static long tcc_isdbt_ctrl_ioctl(struct file *filp, unsigned int cmd,
 				if (ISDBT_BB[gIsdbtCtrl->board_type].ioctl !=
 				    NULL) {
 					return ISDBT_BB
-						[gIsdbtCtrl->board_type].ioctl
-						(gIsdbtCtrl, cmd, arg);
+					    [gIsdbtCtrl->board_type].ioctl
+					    (gIsdbtCtrl, cmd, arg);
 				}
 			}
 		}
@@ -630,15 +649,15 @@ const struct file_operations tcc_isdbt_ctrl_fops = {
 	.unlocked_ioctl = tcc_isdbt_ctrl_ioctl,
 };
 
-static ssize_t tcc_isdbt_ctrl_store(
-	struct device *dev, struct device_attribute *attr,
-	const char *buf, size_t count)
+static ssize_t tcc_isdbt_ctrl_store(struct device *dev,
+				    struct device_attribute *attr,
+				    const char *buf, size_t count)
 {
 	return count;
 }
 
-static ssize_t tcc_isdbt_ctrl_show(
-	struct device *dev, struct device_attribute *attr, char *buf)
+static ssize_t tcc_isdbt_ctrl_show(struct device *dev,
+				   struct device_attribute *attr, char *buf)
 {
 	int overload = -1;
 
@@ -647,6 +666,7 @@ static ssize_t tcc_isdbt_ctrl_show(
 
 	return sprintf(buf, "ANT_OVERLOAD=%d\n", overload);
 }
+
 static DEVICE_ATTR(state, 0644, tcc_isdbt_ctrl_show, tcc_isdbt_ctrl_store);
 
 /*****************************************************************************
@@ -667,17 +687,15 @@ static int tcc_isdbt_ctrl_probe(struct platform_device *pdev)
 	    device_create(tcc_isdbt_ctrl_class, NULL,
 			  MKDEV(major_num, ISDBT_CTRL_DEV_MINOR), NULL,
 			  ISDBT_CTRL_DEV_NAME))
-		pr_err(
-		"[ERROR][TCC_ISDBT_CTRL] %s device_create failed\n",
-		__func__);
+		pr_err("[ERROR][TCC_ISDBT_CTRL] %s device_create failed\n",
+		       __func__);
 
 	gIsdbtCtrl = kzalloc(sizeof(struct tcc_isdbt_ctrl_t), GFP_KERNEL);
 	if (gIsdbtCtrl == NULL)
 		return -ENOMEM;
 
 	if (device_create_file(dev, &dev_attr_state))
-		pr_err(
-		"[ERROR][TCC_ISDBT_CTRL] Failed to create file.\n");
+		pr_err("[ERROR][TCC_ISDBT_CTRL] Failed to create file.\n");
 
 #ifdef CONFIG_OF
 	gIsdbtCtrl->gpio_dxb_on =
@@ -707,18 +725,16 @@ static int tcc_isdbt_ctrl_probe(struct platform_device *pdev)
 	    of_get_named_gpio(dev->of_node, "ant-gpios", 1);
 #endif
 #if 0
-	pr_info(
-	"[DEBUG][TCC_ISDBT_CTRL] %s [0x%X][0x%X][0x%X][0x%X][0x%X]\n",
-	__func__, gIsdbtCtrl->gpio_dxb_on, gIsdbtCtrl->gpio_dxb_0_pwdn,
-	gIsdbtCtrl->gpio_dxb_0_rst, gIsdbtCtrl->gpio_dxb_0_irq,
-	gIsdbtCtrl->gpio_dxb_0_sdo);
+	pr_info("[DEBUG][TCC_ISDBT_CTRL] %s [0x%X][0x%X][0x%X][0x%X][0x%X]\n",
+		__func__, gIsdbtCtrl->gpio_dxb_on, gIsdbtCtrl->gpio_dxb_0_pwdn,
+		gIsdbtCtrl->gpio_dxb_0_rst, gIsdbtCtrl->gpio_dxb_0_irq,
+		gIsdbtCtrl->gpio_dxb_0_sdo);
 
-	pr_info(
-	"[DEBUG][TCC_ISDBT_CTRL] [0x%X][0x%X][0x%X][0x%X][0x%X][0x%X]\n",
-		__func__, gIsdbtCtrl->gpio_dxb_1_pwdn,
-		gIsdbtCtrl->gpio_dxb_1_rst, gIsdbtCtrl->gpio_dxb_1_irq,
-		gIsdbtCtrl->gpio_dxb_1_sdo, gIsdbtCtrl->gpio_ant_pwr,
-		gIsdbtCtrl->gpio_check_ant_overload);
+	pr_info
+	    ("[DEBUG][TCC_ISDBT_CTRL] [0x%X][0x%X][0x%X][0x%X][0x%X][0x%X]\n",
+	     __func__, gIsdbtCtrl->gpio_dxb_1_pwdn, gIsdbtCtrl->gpio_dxb_1_rst,
+	     gIsdbtCtrl->gpio_dxb_1_irq, gIsdbtCtrl->gpio_dxb_1_sdo,
+	     gIsdbtCtrl->gpio_ant_pwr, gIsdbtCtrl->gpio_check_ant_overload);
 
 #endif
 	gIsdbtCtrl->board_type = BOARD_ISDBT_TCC353X;
@@ -760,7 +776,7 @@ static struct platform_driver tcc_isdbt_ctrl = {
 	.probe = tcc_isdbt_ctrl_probe,
 	.remove = tcc_isdbt_ctrl_remove,
 	.driver = {
-			.name = ISDBT_CTRL_DEV_NAME,
+		   .name = ISDBT_CTRL_DEV_NAME,
 		   .owner = THIS_MODULE,
 #ifdef CONFIG_OF
 		   .of_match_table = tcc_isdbt_ctrl_of_match,

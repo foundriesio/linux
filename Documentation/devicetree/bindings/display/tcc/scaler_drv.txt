@@ -1,0 +1,43 @@
+This is for 'telechips,scaler_drv' and 'telechips,scaler_drv_common'
+
+Required properties for display:
+	-compatible:
+		"telechips,scaler_drv"
+		"telechips,scaler_drv_common"
+
+-------------------------------------------------------------------------------
+
+Example:
+	scaler_drv_common: scaler_drv_common@1 {
+		compatible = "telechips,scaler_drv_common";
+		reg = <0x1 0x0>;
+		clocks = <&clk_ddi DDIBUS_VIOC>;
+		interrupts = <GIC_SPI 20 IRQ_TYPE_LEVEL_HIGH>;
+		status = "disabled";
+	};
+
+	scaler_drv1: scaler_drv@1 {
+		compatible = "telechips,scaler_drv";
+		reg = <0x1 0x0>;
+		clocks = <&clk_ddi DDIBUS_VIOC>;
+		rdmas = <&vioc_rdma VIOC_RDMA16>;
+		scalers = <&vioc_scaler VIOC_SCALER1>;
+		wmixs = <&vioc_wmix VIOC_WMIX5>;	/* id:5, path:6 */
+		wdmas = <&vioc_wdma VIOC_WDMA06>;
+		settop_support = <0>;
+		status = "okay";
+	};
+
+	scaler_drv3: scaler_drv@3 {
+		compatible = "telechips,scaler_drv";
+		reg = <0x3 0x0>;
+		clocks = <&clk_ddi DDIBUS_VIOC>;
+		rdmas = <&vioc_rdma VIOC_RDMA07>;
+		scalers = <&vioc_scaler VIOC_SCALER3>;
+		wmixs = <&vioc_wmix VIOC_WMIX1>;	/* id:1, path:2 */
+		wdmas = <&vioc_wdma VIOC_WDMA01>;
+		settop_support = <0>;
+		status = "okay";
+	};
+
+

@@ -5,7 +5,7 @@
  * Description: TCC VPU h/w block
  */
 
-#include "autoconf.h"
+#include "../../generated/autoconf.h"
 
 #if defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC802X) || \
 	defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X)

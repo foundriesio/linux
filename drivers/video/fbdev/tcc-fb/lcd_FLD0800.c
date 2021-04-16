@@ -50,10 +50,11 @@
 #include <video/tcc/vioc_global.h>
 #include <video/tcc/vioc_lvds.h>
 
+#include "tcc_vioc_fb.h"
+
 #if defined(CONFIG_ARCH_TCC803X)
 #include <video/tcc/vioc_pxdemux.h>
 #endif
-extern int tccfb_register_ext_panel(struct lcd_panel *panel);
 
 #if defined(CONFIG_ARCH_TCC803X)
 /*

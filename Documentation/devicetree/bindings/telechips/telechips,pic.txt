@@ -1,0 +1,32 @@
+* Telechips PIC(Programmable Interrupt Controller)
+
+Telechips SoC use ARM GIC(Generic Interrupt Controller) basically
+as an interrupt controller. But, ARM GIC support only rising edge triggered
+or active high level interrupt. For this reason, the role of the PIC
+is minimized to set a polarity of interrupts.
+
+Required properties:
+- compatible: Dependent on Telechips SoC
+	"telechips,tcc805x-pic"
+	"telechips,tcc805x-pic"
+	"telechips,tcc803x-pic"
+	"telechips,tccsub-ca7-pic"
+	"telechips,tcc901x-pic"
+	"telechips,tcc899x-pic"
+	"telechips,tcc897x-pic"
+- reg: Specifies base physical address and size of the registers.
+- demarcation: The demarcation of the register set.
+	PIC registers have not designed sequentially and divided into two sections.
+- max_irq: Total interrupts that Telechips SoC has
+
+Example:
+tcc_pic: pic@14100000 {
+	compatible = "telechips,tcc805x-pic";
+	reg = <0x0 0x141000E0 0x0 0x0018>,  /* pol_0_base */
+	      <0x0 0x14600100 0x0 0x0024>,  /* pol_1_base */
+	      <0x0 0x14800040 0x0 0x003C>,  /* cmb_cm4_base */
+	      <0x0 0x14900040 0x0 0x003C>,  /* strgb_cm4_base */
+	      <0x0 0x0 0x0 0x0>;            /* ca7_irqo_en_base */
+	demarcation = <192>;
+	max_irq = <480>;
+};

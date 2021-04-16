@@ -34,6 +34,9 @@
 #include <linux/of_gpio.h>
 #include <video/tcc/tccfb.h>
 
+#include "tcc_vioc_fb.h"
+#include "tcc_vioc_interface.h"
+
 struct hdmi480tu_dev {
 	int power_status;
 	/* 0 : turn off by fb driver, 1: turn on by fb driver,
@@ -42,9 +45,6 @@ struct hdmi480tu_dev {
 	struct tcc_dp_device *fb_pdata;
 };
 
-extern int tccfb_register_ext_panel(struct lcd_panel *panel);
-extern void tca_vioc_displayblock_powerOn(
-	struct tcc_dp_device *pDisplayInfo, int specific_pclk);
 
 static int
 hdmi480tu_panel_init(struct lcd_panel *panel, struct tcc_dp_device *fb_pdata)

@@ -22,8 +22,6 @@
 #define DEBUG
 #endif
 
-#include <linux/printk.h>
-
 #define TLOG_DEBUG 4
 #define TLOG_INFO 3
 #define TLOG_WARNING 2

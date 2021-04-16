@@ -796,18 +796,18 @@
 #define IRQSELECT0_DEV1_SHIFT (1) // Display Device 1 Sync Interrupt Select
 #define IRQSELECT0_DEV0_SHIFT (0) // Display Device 0 Sync Interrupt Select
 
-#define IRQSELECT0_FIFO1_MASK (0x1 <<	IRQSELECT0_FIFO1_SHIFT)
-#define IRQSELECT0_FIFO0_MASK (0x1 <<	IRQSELECT0_FIFO0_SHIFT)
+#define IRQSELECT0_FIFO1_MASK (0x1 << IRQSELECT0_FIFO1_SHIFT)
+#define IRQSELECT0_FIFO0_MASK (0x1 << IRQSELECT0_FIFO0_SHIFT)
 #define IRQSELECT0_MC1_MASK (0x1 <<	IRQSELECT0_MC1_SHIFT)
 #define IRQSELECT0_MC0_MASK (0x1 <<	IRQSELECT0_MC0_SHIFT)
-#define IRQSELECT0_RD17_MASK (0x1 <<	IRQSELECT0_RD17_SHIFT)
-#define IRQSELECT0_RD16_MASK (0x1 <<	IRQSELECT0_RD16_SHIFT)
-#define IRQSELECT0_RD15_MASK (0x1 <<	IRQSELECT0_RD15_SHIFT)
-#define IRQSELECT0_RD14_MASK (0x1 <<	IRQSELECT0_RD14_SHIFT)
-#define IRQSELECT0_RD13_MASK (0x1 <<	IRQSELECT0_RD13_SHIFT)
-#define IRQSELECT0_RD12_MASK (0x1 <<	IRQSELECT0_RD12_SHIFT)
-#define IRQSELECT0_RD11_MASK (0x1 <<	IRQSELECT0_RD11_SHIFT)
-#define IRQSELECT0_RD10_MASK (0x1 <<	IRQSELECT0_RD10_SHIFT)
+#define IRQSELECT0_RD17_MASK (0x1 << IRQSELECT0_RD17_SHIFT)
+#define IRQSELECT0_RD16_MASK (0x1 << IRQSELECT0_RD16_SHIFT)
+#define IRQSELECT0_RD15_MASK (0x1 << IRQSELECT0_RD15_SHIFT)
+#define IRQSELECT0_RD14_MASK (0x1 << IRQSELECT0_RD14_SHIFT)
+#define IRQSELECT0_RD13_MASK (0x1 << IRQSELECT0_RD13_SHIFT)
+#define IRQSELECT0_RD12_MASK (0x1 << IRQSELECT0_RD12_SHIFT)
+#define IRQSELECT0_RD11_MASK (0x1 << IRQSELECT0_RD11_SHIFT)
+#define IRQSELECT0_RD10_MASK (0x1 << IRQSELECT0_RD10_SHIFT)
 #define IRQSELECT0_RD9_MASK (0x1 <<	IRQSELECT0_RD9_SHIFT)
 #define IRQSELECT0_RD8_MASK (0x1 <<	IRQSELECT0_RD8_SHIFT)
 #define IRQSELECT0_RD7_MASK (0x1 <<	IRQSELECT0_RD7_SHIFT)
@@ -818,10 +818,10 @@
 #define IRQSELECT0_RD2_MASK (0x1 <<	IRQSELECT0_RD2_SHIFT)
 #define IRQSELECT0_RD1_MASK (0x1 <<	IRQSELECT0_RD1_SHIFT)
 #define IRQSELECT0_RD0_MASK (0x1 <<	IRQSELECT0_RD0_SHIFT)
-#define IRQSELECT0_TIMER_MASK (0x1 <<	IRQSELECT0_TIMER_SHIFT)
-#define IRQSELECT0_DEV2_MASK (0x1 <<	IRQSELECT0_DEV2_SHIFT)
-#define IRQSELECT0_DEV1_MASK (0x1 <<	IRQSELECT0_DEV1_SHIFT)
-#define IRQSELECT0_DEV0_MASK (0x1 <<	IRQSELECT0_DEV0_SHIFT)
+#define IRQSELECT0_TIMER_MASK (0x1 << IRQSELECT0_TIMER_SHIFT)
+#define IRQSELECT0_DEV2_MASK (0x1 << IRQSELECT0_DEV2_SHIFT)
+#define IRQSELECT0_DEV1_MASK (0x1 << IRQSELECT0_DEV1_SHIFT)
+#define IRQSELECT0_DEV0_MASK (0x1 << IRQSELECT0_DEV0_SHIFT)
 
 /*
  * Interrupt Select 1 Registers
@@ -1266,58 +1266,60 @@ extern int VIOC_CONFIG_PlugIn(
 	unsigned int select);
 extern int VIOC_CONFIG_PlugOut(unsigned int component);
 extern int VIOC_CONFIG_WMIXPath(
-		unsigned int component_num,
-		unsigned int mode);
+	unsigned int component_num,
+	unsigned int mode);
+
 #if defined(CONFIG_VIOC_AFBCDEC)
 extern int VIOC_CONFIG_FBCDECPath(
-		unsigned int AFBCDecPath,
-		unsigned int rdmaPath,
-		unsigned int on);
+	unsigned int AFBCDecPath,
+	unsigned int rdmaPath,
+	unsigned int on);
 #endif
+
 extern int VIOC_CONFIG_MCPath(
-		unsigned int component,
-		unsigned int type);
+	unsigned int component,
+	unsigned int type);
 extern void VIOC_CONFIG_SWReset(
-		unsigned int component,
-		unsigned int mode);
+	unsigned int component,
+	unsigned int mode);
 extern void VIOC_CONFIG_SWReset_RAW(
-		unsigned int component,
-		unsigned int mode);
+	unsigned int component,
+	unsigned int mode);
 extern int VIOC_CONFIG_CheckPlugInOut(unsigned int nDevice);
 extern int VIOC_CONFIG_Device_PlugState(
-		unsigned int component,
-		VIOC_PlugInOutCheck *VIOC_PlugIn);
+	unsigned int component,
+	VIOC_PlugInOutCheck *VIOC_PlugIn);
 extern int VIOC_CONFIG_GetScaler_PluginToRDMA(
-		unsigned int RdmaNum);
+	unsigned int RdmaNum);
 extern int VIOC_CONFIG_GetViqeDeintls_PluginToRDMA(
-		unsigned int RdmaNum);
+	unsigned int RdmaNum);
 
 //map converter vioc config set
 extern int VIOC_CONFIG_GetMcNum_PluginRDMA(
 	unsigned int *MC_NUM,
 	unsigned int RdmaNum);
 extern int VIOC_CONFIG_SetMcNum_PluginRDMA(
-		unsigned int McN,
-		unsigned int RdmaNum,
-		unsigned int SetClr);
+	unsigned int McN,
+	unsigned int RdmaNum,
+	unsigned int SetClr);
 
 extern int VIOC_CONFIG_DMAPath_Select(unsigned int path);
 extern int VIOC_CONFIG_DMAPath_Set(
-		unsigned int path,
-		unsigned int dma);
+	unsigned int path,
+	unsigned int dma);
 extern int VIOC_CONFIG_DMAPath_UnSet(int dma);
 
 extern int VIOC_CONFIG_DMAPath_Support(void);
 extern void VIOC_CONFIG_StopRequest(unsigned int en);
 
 extern int VIOC_CONFIG_LCDPath_Select(
-		unsigned int lcdx_sel,
-		unsigned int lcdx_if);
+	unsigned int lcdx_sel,
+	unsigned int lcdx_if);
 
-extern volatile void __iomem *VIOC_IREQConfig_GetAddress(void);
+extern void __iomem *VIOC_IREQConfig_GetAddress(void);
 extern void VIOC_IREQConfig_DUMP(
-		unsigned int offset,
-		unsigned int size);
+	unsigned int offset,
+	unsigned int size);
 
 
 #endif

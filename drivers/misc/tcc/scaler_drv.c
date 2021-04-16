@@ -93,7 +93,7 @@ struct scaler_data {
 };
 
 struct scaler_drv_vioc {
-	volatile void __iomem *reg;
+	void __iomem *reg;
 	unsigned int id;
 //	unsigned int path;
 };
@@ -163,10 +163,10 @@ static char tcc_scaler_run(struct scaler_drv_type *scaler)
 	unsigned int pSrcBase0 = 0, pSrcBase1 = 0, pSrcBase2 = 0;
 	unsigned int crop_width = 0;
 
-	volatile void __iomem *pSC_RDMABase = scaler->rdma.reg;
-	volatile void __iomem *pSC_WMIXBase = scaler->wmix.reg;
-	volatile void __iomem *pSC_WDMABase = scaler->wdma.reg;
-	volatile void __iomem *pSC_SCALERBase = scaler->sc.reg;
+	void __iomem *pSC_RDMABase = scaler->rdma.reg;
+	void __iomem *pSC_WMIXBase = scaler->wmix.reg;
+	void __iomem *pSC_WDMABase = scaler->wdma.reg;
+	void __iomem *pSC_SCALERBase = scaler->sc.reg;
 
 	dprintk("%s():  IN.\n", __func__);
 
@@ -229,7 +229,8 @@ static char tcc_scaler_run(struct scaler_drv_type *scaler)
 			}
 			VIOC_CONFIG_DMAPath_Set(scaler->rdma.id, VIOC_MC1);
 		} else {
-			#if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X)
+			#if defined(CONFIG_ARCH_TCC803X) \
+				|| defined(CONFIG_ARCH_TCC805X)
 			VIOC_CONFIG_MCPath(scaler->wmix.id, VIOC_MC1);
 			#endif
 		}
@@ -247,9 +248,11 @@ static char tcc_scaler_run(struct scaler_drv_type *scaler)
 			scaler->info->src_winRight - scaler->info->src_winLeft,
 			scaler->info->src_winBottom - scaler->info->src_winTop,
 			y2r, &scaler->info->mapConv_info);
+
 		tca_map_convter_onoff(VIOC_MC1, 1, 0);
+
 	} else
-	#endif//
+	#endif
 	#ifdef CONFIG_VIOC_DTRC_DECOMP
 	if (scaler->info->dtrcConv_info.m_CompressedY[0] != 0) {
 		int y2r = 0;
@@ -539,10 +542,10 @@ static char tcc_scaler_data_copy_run(
 	struct scaler_drv_type *scaler, struct SCALER_DATA_COPY_TYPE *copy_info)
 {
 	int ret = 0;
-	volatile void __iomem *pSC_RDMABase = scaler->rdma.reg;
-	volatile void __iomem *pSC_WMIXBase = scaler->wmix.reg;
-	volatile void __iomem *pSC_WDMABase = scaler->wdma.reg;
-	volatile void __iomem *pSC_SCALERBase = scaler->sc.reg;
+	void __iomem *pSC_RDMABase = scaler->rdma.reg;
+	void __iomem *pSC_WMIXBase = scaler->wmix.reg;
+	void __iomem *pSC_WDMABase = scaler->wdma.reg;
+	void __iomem *pSC_SCALERBase = scaler->sc.reg;
 
 	dprintk("%s():\n", __func__);
 	dprintk(
@@ -704,7 +707,9 @@ static irqreturn_t scaler_drv_handler(int irq, void *client_data)
 		}
 		#endif
 	} else {
-		#if defined(CONFIG_VIOC_MAP_DECOMP) && (defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X))
+		#if defined(CONFIG_VIOC_MAP_DECOMP) \
+			&& (defined(CONFIG_ARCH_TCC803X) \
+			|| defined(CONFIG_ARCH_TCC805X))
 		VIOC_CONFIG_MCPath(scaler->wmix.id, scaler->rdma.id);
 		#endif
 	}
@@ -718,7 +723,7 @@ static long scaler_drv_ioctl(
 	struct miscdevice	*misc = (struct miscdevice *)filp->private_data;
 	struct scaler_drv_type	*scaler = dev_get_drvdata(misc->parent);
 
-//	volatile void __iomem *pSC_RDMABase = scaler->rdma.reg;
+//	void __iomem *pSC_RDMABase = scaler->rdma.reg;
 //	SCALER_PLUGIN_Type scaler_plugin;
 
 	struct SCALER_DATA_COPY_TYPE copy_info;
@@ -1016,7 +1021,9 @@ static int scaler_drv_release(struct inode *inode, struct file *filp)
 			VIOC_CONFIG_DMAPath_Set(
 				scaler->rdma.id, scaler->rdma.id);
 		} else {
-			#if defined(CONFIG_VIOC_MAP_DECOMP) && (defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X))
+			#if defined(CONFIG_VIOC_MAP_DECOMP) \
+				&& (defined(CONFIG_ARCH_TCC803X) \
+				|| defined(CONFIG_ARCH_TCC805X))
 			VIOC_CONFIG_MCPath(scaler->wmix.id, scaler->rdma.id);
 			#endif
 		}
@@ -1088,8 +1095,7 @@ static int scaler_drv_open(struct inode *inode, struct file *filp)
 		if (ret) {
 			if (scaler->clk)
 				clk_disable_unprepare(scaler->clk);
-			pr_err(
-				"[ERR][SCALER] failed(ret %d) to aquire %s request_irq(%d).\n",
+			pr_err("[ERR][SCALER] failed(ret %d) to aquire %s request_irq(%d).\n",
 				ret, scaler->misc->name, scaler->irq);
 			return -EFAULT;
 		}
@@ -1104,8 +1110,7 @@ static int scaler_drv_open(struct inode *inode, struct file *filp)
 				VIOC_CONFIG_DMAPath_Select(scaler->rdma.id);
 
 			if ((int)component_num < 0)
-				pr_info(
-					"[INF][SCALER] %s: RDMA :%d dma path selection none\n",
+				pr_info("[INF][SCALER] %s: RDMA :%d dma path selection none\n",
 					__func__, scaler->rdma.id);
 			else if (((int)component_num < VIOC_RDMA00) &&
 				(component_num > (VIOC_RDMA00 + VIOC_RDMA_MAX)))
@@ -1115,7 +1120,9 @@ static int scaler_drv_open(struct inode *inode, struct file *filp)
 			VIOC_CONFIG_DMAPath_Set(
 				scaler->rdma.id, scaler->rdma.id);
 		} else {
-			#if defined(CONFIG_VIOC_MAP_DECOMP) && (defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X))
+			#if defined(CONFIG_VIOC_MAP_DECOMP) \
+				&& (defined(CONFIG_ARCH_TCC803X) \
+				|| defined(CONFIG_ARCH_TCC805X))
 			VIOC_CONFIG_MCPath(scaler->wmix.id, scaler->rdma.id);
 			#endif
 		}
@@ -1130,7 +1137,7 @@ static int scaler_drv_open(struct inode *inode, struct file *filp)
 	return ret;
 }
 
-static struct file_operations scaler_drv_fops = {
+static const struct file_operations scaler_drv_fops = {
 	.owner			= THIS_MODULE,
 	.unlocked_ioctl		= scaler_drv_ioctl,
 #ifdef CONFIG_COMPAT
@@ -1330,7 +1337,7 @@ static int scaler_drv_resume(struct platform_device *pdev)
 	return 0;
 }
 
-static struct of_device_id scaler_of_match[] = {
+static const struct of_device_id scaler_of_match[] = {
 	{ .compatible = "telechips,scaler_drv" },
 	{}
 };

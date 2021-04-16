@@ -69,17 +69,18 @@
 #include <video/tcc/tccfb.h>
 #endif
 
+#include "../tcc_vioc_interface.h"
+
 #define ROUND_UP_16(num) (((num) + 15) & ~15)
 
-extern unsigned int tca_get_main_decompressor_num(void);
 
 void tca_dtrc_convter_wait_done(unsigned int component_num)
 {
 #define MAX_WAIT_TIEM 0x10000000
 
-	volatile unsigned int loop = 0, upd_loop = 0;
-	// volatile unsigned int ctrl_reg;
-	volatile void __iomem *HwVIOC_DTRC_RDMA =
+	unsigned int loop = 0, upd_loop = 0;
+	//unsigned int ctrl_reg;
+	void __iomem *HwVIOC_DTRC_RDMA =
 		VIOC_DTRC_GetAddress(component_num);
 
 	if (HwVIOC_DTRC_RDMA == NULL) {
@@ -117,7 +118,7 @@ void tca_dtrc_convter_wait_done(unsigned int component_num)
 void tca_dtrc_convter_onoff(unsigned int component_num, unsigned int onoff,
 			    unsigned int wait_done)
 {
-	volatile void __iomem *HwVIOC_DTRC_RDMA =
+	void __iomem *HwVIOC_DTRC_RDMA =
 		VIOC_DTRC_GetAddress(component_num);
 
 #if defined(CONFIG_VIOC_DOLBY_VISION_EDR)
@@ -132,7 +133,7 @@ void tca_dtrc_convter_onoff(unsigned int component_num, unsigned int onoff,
 
 #if defined(CONFIG_VIOC_DOLBY_VISION_EDR)
 	if (get_vioc_index(component_num) == 0) {
-		volatile void __iomem *pDisp_DV =
+		void __iomem *pDisp_DV =
 			VIOC_DV_GetAddress((enum DV_DISP_TYPE)EDR_BL);
 
 		if (onoff)
@@ -193,7 +194,7 @@ void tca_dtrc_convter_set(unsigned int component_num,
 	unsigned int ARID_REG;
 	unsigned int bpp = 8;
 
-	volatile void __iomem *HwVIOC_DTRC_RDMA =
+	void __iomem *HwVIOC_DTRC_RDMA =
 		VIOC_DTRC_GetAddress(component_num);
 
 #if defined(CONFIG_VIOC_DOLBY_VISION_EDR)
@@ -205,7 +206,8 @@ void tca_dtrc_convter_set(unsigned int component_num,
 #if 0  // debug log
 	{
 	pr_info("[INF][DTRC] DTRC[%d] >> R[0x%x/0x%x/0x%x] M[%d] idx[%d],
-	ID[%d] W:%d(%d) H:%d(%d) S(%d/%d) C:0x%8x/0x%8x T:0x%8x/0x%8x Str(%d) bpp(%d/%d) crop(%d/%d~%dx%d)\n", dtrc_num,
+	ID[%d] W:%d(%d) H:%d(%d) S(%d/%d) C:0x%8x/0x%8x T:0x%8x/0x%8x Str(%d)
+	bpp(%d/%d) crop(%d/%d~%dx%d)\n", dtrc_num,
 			__raw_readl(HwVIOC_DTRC_RDMA+DTRC_CTRL),
 			__raw_readl(HwVIOC_DTRC_RDMA+DTRC_BASE0),
 			__raw_readl(HwVIOC_DTRC_RDMA+DTRC_IRQ),
@@ -355,7 +357,7 @@ ImageInfo->Frame_height, ImageInfo->private_data.dtrcConv_info.m_iHeight,
 #if defined(CONFIG_VIOC_DOLBY_VISION_EDR)
 	if (VIOC_CONFIG_DV_GET_EDR_PATH() &&
 	    get_vioc_index(component_num) == tca_get_main_decompressor_num()) {
-		volatile void __iomem *pDisp_DV =
+		void __iomem *pDisp_DV =
 			VIOC_DV_GetAddress((enum DV_DISP_TYPE)EDR_BL);
 
 		if (ImageInfo->Lcdc_layer == RDMA_VIDEO ||
@@ -423,7 +425,7 @@ void tca_dtrc_convter_driver_set(unsigned int component_num,
 	unsigned int ARID_REG;
 	unsigned int bpp = 8;
 
-	volatile void __iomem *HwVIOC_DTRC_RDMA =
+	void __iomem *HwVIOC_DTRC_RDMA =
 		VIOC_DTRC_GetAddress(component_num);
 
 #if 0  // debug log

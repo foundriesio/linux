@@ -324,6 +324,6 @@ extern void VIOC_PXDEMUX_SetDataPath(
 extern void VIOC_PXDEMUX_SetDataArray(
 	unsigned int ch,
 	unsigned int data[TXOUT_MAX_LINE][TXOUT_DATA_PER_LINE]);
-extern volatile void __iomem *VIOC_PXDEMUX_GetAddress(void);
+extern void __iomem *VIOC_PXDEMUX_GetAddress(void);
 
 #endif

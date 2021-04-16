@@ -1438,13 +1438,6 @@
 		#dma-cells = <2>;
 	};
 
-	timer@14300080 {
-		compatible = "telechips,timer32";
-		reg = <0x14300080 0x1c>;
-		interrupts = <GIC_SPI 32 IRQ_TYPE_NONE>;
-		clocks = <&clk_peri PERI_TCZ>;
-	};
-
 	tcc_timer: timer@14300000 { /* tc0~tc5 */
 		compatible = "telechips,timer";
 		reg = <0x14300000 0xa0>;

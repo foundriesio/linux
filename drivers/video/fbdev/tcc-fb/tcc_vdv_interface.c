@@ -35,6 +35,7 @@
 #include <video/tcc/tccfb_ioctrl.h>
 #include <soc/tcc/pmap.h>
 
+#include "tcc_vioc_interface.h"
 
 #define __dv_reg_r	__raw_readl
 #define __dv_reg_w	__raw_writel
@@ -100,11 +101,6 @@ static char DV_RGB_Tunneling;
 #define dprintk(msg...) pr_info("[DBG][DV] " msg)
 #else
 #define dprintk(msg...)
-#endif
-
-#if defined(CONFIG_VIOC_DOLBY_VISION_CERTIFICATION_TEST)
-extern void tca_edr_inc_check_count(unsigned int nInt, unsigned int nTry,
-	unsigned int nProc, unsigned int nUpdated, unsigned int bInit_all);
 #endif
 
 //#define SHADOW_CONTEXT_AT_THE_SAME_TIME
@@ -187,6 +183,7 @@ void vioc_v_dv_set_mode(enum DV_MODE mode, unsigned char *vsvdb,
 	hdmi_sz_vsvdb = sz_vsvdb;
 	if (vsvdb && (sz_vsvdb > 0)) {
 		memcpy((void *)hdmi_vsvdb, (void *)vsvdb, sz_vsvdb);
+		/* prevent KCS warning */
 	}
 }
 
@@ -207,6 +204,7 @@ unsigned int vioc_v_dv_get_vsvdb(unsigned char *vsvdb)
 
 	if (vsvdb && (hdmi_sz_vsvdb > 0)) {
 		memcpy((void *)vsvdb, (void *)hdmi_vsvdb, hdmi_sz_vsvdb);
+		/* prevent KCS warning */
 	}
 
 	return hdmi_sz_vsvdb;
@@ -234,7 +232,9 @@ char vioc_v_dv_check_hdmi_out(void)
 	return DV_HDMI_OUT;
 }
 
-void vioc_v_dv_set_output_color_format(unsigned int pxdw, unsigned int swap)
+void vioc_v_dv_set_output_color_format(
+	unsigned int pxdw,
+	unsigned int swap)
 {
 	switch (pxdw) {
 	case 21:
@@ -244,6 +244,7 @@ void vioc_v_dv_set_output_color_format(unsigned int pxdw, unsigned int swap)
 	case 23:
 		if (swap == 0) {
 			out_color_format = 0;
+			/* prevent KCS warning */
 		} else {
 			out_color_format = 1;
 		}
@@ -323,8 +324,8 @@ void voic_v_dv_set_hdmi_timming(struct lcdc_timimg_parms_t *mode,
 
 void _vioc_v_dv_prog_1st_done(void)
 {
-	volatile void __iomem *pVEDR = NULL;
-	volatile void __iomem *pVPANEL = NULL;
+	void __iomem *pVEDR = NULL;
+	void __iomem *pVPANEL = NULL;
 	unsigned int value = 0x00;
 
 	pVEDR = VIOC_DV_VEDR_GetAddress(VEDR);
@@ -333,21 +334,24 @@ void _vioc_v_dv_prog_1st_done(void)
 	//@ (program_done);//force all LUT to function read mode
 	//force   `V_EDR.reg_glb_pq2lLut_lut_en      = 1'b0; // reg02
 	//force   `V_EDR.reg_glb_l2pqLut_lut_en      = 1'b0; // reg02
-	// *(volatile unsigned int *)(pVEDR + 0x3c008)   &= ~((0x1<<19)|(0x1<<11));
+	// *(volatile unsigned int *)(pVEDR + 0x3c008)
+	//	&= ~((0x1<<19)|(0x1<<11));
 	value = __dv_reg_r(pVEDR + 0x3c008) & ~((0x1<<19)|(0x1<<11));
 	value |= ((0x0<<19)|(0x0<<11));
 	__dv_reg_w(value, pVEDR + 0x3c008);
 
 	//force   `V_PANEL.reg_glb_pq2lLut_lut_en_u4 = 1'b0; // 014h
 	//force   `V_PANEL.reg_glb_l2pqLut_lut_en_u4 = 1'b0; // 014h
-	// *(volatile unsigned int *)(pVPANEL + 0x00014) &= ~((0x1<<19)|(0x1<<11));
+	// *(volatile unsigned int *)(pVPANEL + 0x00014)
+	//	&= ~((0x1<<19)|(0x1<<11));
 	value = __dv_reg_r(pVPANEL + 0x00014) & ~((0x1<<19)|(0x1<<11));
 	value |= ((0x0<<19)|(0x0<<11));
 	__dv_reg_w(value, pVPANEL + 0x00014);
 
 	//force   `V_PANEL.reg_glb_pq2lLut_lut_en_u6 = 1'b0; // 0b0h
 	//force   `V_PANEL.reg_glb_l2pqLut_lut_en_u6 = 1'b0; // 0b0h
-	// *(volatile unsigned int *)(pVPANEL + 0x000b0) &= ~((0x1<<19)|(0x1<<11));
+	// *(volatile unsigned int *)(pVPANEL + 0x000b0)
+	//	&= ~((0x1<<19)|(0x1<<11));
 	value = __dv_reg_r(pVPANEL + 0x000b0) & ~((0x1<<19)|(0x1<<11));
 	value |= ((0x0<<19)|(0x0<<11));
 	__dv_reg_w(value, pVPANEL + 0x000b0);
@@ -370,9 +374,9 @@ void _vioc_v_dv_prog_1st_done(void)
 
 void _vioc_v_dv_prog_start(void)
 {
-	volatile void __iomem *pVEDR = NULL;
-	volatile void __iomem *pVPANEL = NULL;
-	volatile void __iomem *pVDVCFG = NULL;
+	void __iomem *pVEDR = NULL;
+	void __iomem *pVPANEL = NULL;
+	void __iomem *pVDVCFG = NULL;
 	unsigned int value = 0x00;
 
 	pVEDR = VIOC_DV_VEDR_GetAddress(VEDR);
@@ -412,7 +416,8 @@ void _vioc_v_dv_prog_start(void)
 	value |= (0x1<<3);
 	__dv_reg_w(value, pVPANEL + 0x000b0);
 
-	value = __dv_reg_r(pVDVCFG + TX_INV) & ~(TX_INV_HS_MASK | TX_INV_VS_MASK);
+	value = __dv_reg_r(pVDVCFG + TX_INV)
+		& ~(TX_INV_HS_MASK | TX_INV_VS_MASK);
 	if (Hactive == 720 && Vactive == 480) {
 		// *(volatile unsigned int *)(pVDVCFG + 0x00010) |=
 		//	(0x1<<1 | 0x1<<0);
@@ -426,8 +431,8 @@ void _vioc_v_dv_prog_start(void)
 
 void _vioc_v_dv_prog_done(void)
 {
-	volatile void __iomem *pVEDR = NULL;
-	volatile void __iomem *pVPANEL = NULL;
+	void __iomem *pVEDR = NULL;
+	void __iomem *pVPANEL = NULL;
 	unsigned int value = 0x00;
 
 	pVEDR = VIOC_DV_VEDR_GetAddress(VEDR);
@@ -488,7 +493,7 @@ void _void_reset_edr_compnent(int ctrc, int dm, int composer)
 {
 	unsigned int reset = 0;
 	unsigned int value = 0x00;
-	volatile void __iomem *pVEDR = VIOC_DV_VEDR_GetAddress(VEDR);
+	void __iomem *pVEDR = VIOC_DV_VEDR_GetAddress(VEDR);
 
 	if (!ctrc)
 		reset |= 0x1;
@@ -505,10 +510,13 @@ void _void_reset_edr_compnent(int ctrc, int dm, int composer)
 	__dv_reg_w(value, pVEDR + 0x3c004);
 }
 
-void vioc_v_dv_swreset(unsigned int edr, unsigned int panel, unsigned int crtc)
+void vioc_v_dv_swreset(
+	unsigned int edr,
+	unsigned int panel,
+	unsigned int crtc)
 {
 	if (panel || crtc) {
-		volatile void __iomem *pVPANEL = NULL;
+		void __iomem *pVPANEL = NULL;
 		unsigned int value = 0x00;
 
 		pVPANEL = VIOC_DV_VEDR_GetAddress(VPANEL);
@@ -517,7 +525,7 @@ void vioc_v_dv_swreset(unsigned int edr, unsigned int panel, unsigned int crtc)
 			value = __dv_reg_r(pVPANEL + 0xC) & ~(0xFFFF);
 			__dv_reg_w(value, pVPANEL + 0xC);
 
-			msleep(1);
+			usleep_range(1000, 1100);
 			dprintk_dv_sequence("### V_DV PANEL s/w reset\n");
 
 			value = __dv_reg_r(pVPANEL + 0xC) & ~(0xFFFF);
@@ -530,7 +538,7 @@ void vioc_v_dv_swreset(unsigned int edr, unsigned int panel, unsigned int crtc)
 			value |= (0x1 << 31);
 			__dv_reg_w(value, pVPANEL + 0x0810);
 
-			msleep(1);
+			usleep_range(1000, 1100);
 			dprintk_dv_sequence("### V_DV CRTC s/w reset\n");
 
 			value = __dv_reg_r(pVPANEL + 0xC) & ~(0x1 << 31);
@@ -540,7 +548,7 @@ void vioc_v_dv_swreset(unsigned int edr, unsigned int panel, unsigned int crtc)
 
 	if (edr) {
 		_void_reset_edr_compnent(1, 1, 1);
-		msleep(1);
+		usleep_range(1000, 1100);
 		dprintk_dv_sequence("### V_DV EDR s/w reset\n");
 		_void_reset_edr_compnent(0, 0, 0);
 	}
@@ -549,61 +557,79 @@ void vioc_v_dv_swreset(unsigned int edr, unsigned int panel, unsigned int crtc)
 void _voic_set_edr_lut(void __iomem *reg_VirtAddr)
 {
 	int i = 0;
-	volatile void __iomem *pVEDR = NULL;
+	void __iomem *pVEDR = NULL;
 	struct TccEdrV1Reg *pReg_Src = (struct TccEdrV1Reg *)reg_VirtAddr;
 
 //LUT :: 0x12500000
 	pVEDR = VIOC_DV_VEDR_GetAddress(VEDR);
 
 	for (i = 0; i < 256; i++) {
-		//pVEDR->vedrLut.vdG2llut[i] = pReg_Src->vedrLut.vdG2llut[i]; // 0x0000
-		__dv_reg_w(pReg_Src->vedrLut.vdG2llut[i].value, pVEDR + 0x0000 + (0x4*i));
+		// 0x0000
+		//pVEDR->vedrLut.vdG2llut[i] = pReg_Src->vedrLut.vdG2llut[i];
+		__dv_reg_w(pReg_Src->vedrLut.vdG2llut[i].value,
+			pVEDR + 0x0000 + (0x4*i));
 	}
 
 	for (i = 0; i < 1024; i++) {
-		//pVEDR->vedrLut.pq2llut[i] = pReg_Src->vedrLut.pq2llut[i]; // 0x1000
-		__dv_reg_w(pReg_Src->vedrLut.pq2llut[i].value, pVEDR + 0x1000 + (0x4*i));
+		// 0x1000
+		//pVEDR->vedrLut.pq2llut[i] = pReg_Src->vedrLut.pq2llut[i];
+		__dv_reg_w(pReg_Src->vedrLut.pq2llut[i].value,
+			pVEDR + 0x1000 + (0x4*i));
 	}
 
 	for (i = 0; i < 128; i++) {
-		//pVEDR->vedrLut.l2pqlutx[i] = pReg_Src->vedrLut.l2pqlutx[i]; // 0x2000
-		__dv_reg_w(pReg_Src->vedrLut.l2pqlutx[i].value, pVEDR + 0x2000 + (0x4*i));
+		// 0x2000
+		//pVEDR->vedrLut.l2pqlutx[i] = pReg_Src->vedrLut.l2pqlutx[i];
+		__dv_reg_w(pReg_Src->vedrLut.l2pqlutx[i].value,
+			pVEDR + 0x2000 + (0x4*i));
 	}
 
 	for (i = 0; i < 128; i++) {
-		//pVEDR->vedrLut.l2pqluta[i] = pReg_Src->vedrLut.l2pqluta[i]; // 0x2200
-		__dv_reg_w(pReg_Src->vedrLut.l2pqluta[i].value, pVEDR + 0x2200 + (0x4*i));
+		// 0x2200
+		//pVEDR->vedrLut.l2pqluta[i] = pReg_Src->vedrLut.l2pqluta[i];
+		__dv_reg_w(pReg_Src->vedrLut.l2pqluta[i].value,
+			pVEDR + 0x2200 + (0x4*i));
 	}
 
 	for (i = 0; i < 128; i++) {
-		//pVEDR->vedrLut.l2pqlutb[i] = pReg_Src->vedrLut.l2pqlutb[i]; // 0x2400
-		__dv_reg_w(pReg_Src->vedrLut.l2pqlutb[i].value, pVEDR + 0x2400 + (0x4*i));
+		// 0x2400
+		//pVEDR->vedrLut.l2pqlutb[i] = pReg_Src->vedrLut.l2pqlutb[i];
+		__dv_reg_w(pReg_Src->vedrLut.l2pqlutb[i].value,
+			pVEDR + 0x2400 + (0x4*i));
 	}
 
 	for (i = 0; i < 256; i++) {
-		//pVEDR->vedrLut.vdTmluti[i] = pReg_Src->vedrLut.vdTmluti[i]; // 0x3000
-		__dv_reg_w(pReg_Src->vedrLut.vdTmluti[i].value, pVEDR + 0x3000 + (0x4*i));
+		// 0x3000
+		//pVEDR->vedrLut.vdTmluti[i] = pReg_Src->vedrLut.vdTmluti[i];
+		__dv_reg_w(pReg_Src->vedrLut.vdTmluti[i].value,
+			pVEDR + 0x3000 + (0x4*i));
 	}
 
 	for (i = 0; i < 256; i++) {
-		//pVEDR->vedrLut.vdSmluti[i] = pReg_Src->vedrLut.vdSmluti[i]; // 0x3400
-		__dv_reg_w(pReg_Src->vedrLut.vdSmluti[i].value, pVEDR + 0x3400 + (0x4*i));
+		// 0x3400
+		//pVEDR->vedrLut.vdSmluti[i] = pReg_Src->vedrLut.vdSmluti[i];
+		__dv_reg_w(pReg_Src->vedrLut.vdSmluti[i].value,
+			pVEDR + 0x3400 + (0x4*i));
 	}
 
 	for (i = 0; i < 256; i++) {
-		//pVEDR->vedrLut.vdTmluts[i] = pReg_Src->vedrLut.vdTmluts[i]; // 0x3800
-		__dv_reg_w(pReg_Src->vedrLut.vdTmluts[i].value, pVEDR + 0x3800 + (0x4*i));
+		// 0x3800
+		//pVEDR->vedrLut.vdTmluts[i] = pReg_Src->vedrLut.vdTmluts[i];
+		__dv_reg_w(pReg_Src->vedrLut.vdTmluts[i].value,
+			pVEDR + 0x3800 + (0x4*i));
 	}
 
 	for (i = 0; i < 256; i++) {
-		//pVEDR->vedrLut.vdSmluts[i] = pReg_Src->vedrLut.vdSmluts[i]; // 0x3c00
-		__dv_reg_w(pReg_Src->vedrLut.vdSmluts[i].value, pVEDR + 0x3c00 + (0x4*i));
+		// 0x3c00
+		//pVEDR->vedrLut.vdSmluts[i] = pReg_Src->vedrLut.vdSmluts[i];
+		__dv_reg_w(pReg_Src->vedrLut.vdSmluts[i].value,
+			pVEDR + 0x3c00 + (0x4*i));
 	}
 }
 
 void __vioc_set_edr_specific(struct TccEdrV1Reg *pReg_Src)
 {
-	volatile void __iomem *pVEDR = VIOC_DV_VEDR_GetAddress(VEDR);
+	void __iomem *pVEDR = VIOC_DV_VEDR_GetAddress(VEDR);
 	unsigned int value = 0x00;
 
 //Core :: 0x1253C014 ~ 2C
@@ -659,7 +685,7 @@ void _voic_set_edr(void __iomem *reg_VirtAddr, unsigned int frmcnt)
 {
 	int i = 0;
 	unsigned int value = 0x00;
-	volatile void __iomem *pVEDR = NULL;
+	void __iomem *pVEDR = NULL;
 	struct TccEdrV1Reg *pReg_Src = (struct TccEdrV1Reg *)reg_VirtAddr;
 
 	pVEDR = VIOC_DV_VEDR_GetAddress(VEDR);
@@ -709,44 +735,56 @@ void _voic_set_edr(void __iomem *reg_VirtAddr, unsigned int frmcnt)
 	__dv_reg_w(pReg_Src->vedr.core.comp8.value, pVEDR + 0x3c120);
 
 	for (i = 0; i < 27; i++) {
-		//pVEDR->vedr.core.blMapCoeffU[i] = pReg_Src->vedr.core.blMapCoeffU[i];	// 124 .. 18c
-		__dv_reg_w(pReg_Src->vedr.core.blMapCoeffU[i].value, pVEDR + 0x3c124 + (0x4*i));
-		//pVEDR->vedr.core.blMapCoeffV[i] = pReg_Src->vedr.core.blMapCoeffV[i];	// 190 .. 1f8
-		__dv_reg_w(pReg_Src->vedr.core.blMapCoeffV[i].value, pVEDR + 0x3c190 + (0x4*i));
+		//pVEDR->vedr.core.blMapCoeffU[i]
+		//	= pReg_Src->vedr.core.blMapCoeffU[i]; // 124 .. 18c
+		__dv_reg_w(pReg_Src->vedr.core.blMapCoeffU[i].value,
+			pVEDR + 0x3c124 + (0x4*i));
+		//pVEDR->vedr.core.blMapCoeffV[i]
+		//	= pReg_Src->vedr.core.blMapCoeffV[i]; // 190 .. 1f8
+		__dv_reg_w(pReg_Src->vedr.core.blMapCoeffV[i].value,
+			pVEDR + 0x3c190 + (0x4*i));
 	}
 
-	//pVEDR->vedr.core.comp63 = pReg_Src->vedr.core.comp63;           // 1fc
+	//pVEDR->vedr.core.comp63 = pReg_Src->vedr.core.comp63; // 1fc
 	__dv_reg_w(pReg_Src->vedr.core.comp63.value, pVEDR + 0x3c1fc);
-	//pVEDR->vedr.core.comp64 = pReg_Src->vedr.core.comp64;           // 200
+	//pVEDR->vedr.core.comp64 = pReg_Src->vedr.core.comp64; // 200
 	__dv_reg_w(pReg_Src->vedr.core.comp64.value, pVEDR + 0x3c200);
 
-	//pVEDR->vedr.core.elNlqCoeffY6332 = pReg_Src->vedr.core.elNlqCoeffY6332;  // 204
+	//pVEDR->vedr.core.elNlqCoeffY6332
+	//	= pReg_Src->vedr.core.elNlqCoeffY6332; // 204
 	__dv_reg_w(pReg_Src->vedr.core.elNlqCoeffY6332.value, pVEDR + 0x3c204);
-	//pVEDR->vedr.core.elNlqCoeffY310 = pReg_Src->vedr.core.elNlqCoeffY310;   // 208
+	//pVEDR->vedr.core.elNlqCoeffY310
+	//	= pReg_Src->vedr.core.elNlqCoeffY310; // 208
 	__dv_reg_w(pReg_Src->vedr.core.elNlqCoeffY310.value, pVEDR + 0x3c208);
-	//pVEDR->vedr.core.comp67 = pReg_Src->vedr.core.comp67;           // 20c
+	//pVEDR->vedr.core.comp67 = pReg_Src->vedr.core.comp67; // 20c
 	__dv_reg_w(pReg_Src->vedr.core.comp67.value, pVEDR + 0x3c20c);
 
-	//pVEDR->vedr.core.elNlqCoeffU6332 = pReg_Src->vedr.core.elNlqCoeffU6332;  // 210
+	//pVEDR->vedr.core.elNlqCoeffU6332
+	//	= pReg_Src->vedr.core.elNlqCoeffU6332;  // 210
 	__dv_reg_w(pReg_Src->vedr.core.elNlqCoeffU6332.value, pVEDR + 0x3c210);
-	//pVEDR->vedr.core.elNlqCoeffU310 = pReg_Src->vedr.core.elNlqCoeffU310;   // 214
+	//pVEDR->vedr.core.elNlqCoeffU310
+	//	= pReg_Src->vedr.core.elNlqCoeffU310;   // 214
 	__dv_reg_w(pReg_Src->vedr.core.elNlqCoeffU310.value, pVEDR + 0x3c214);
-	//pVEDR->vedr.core.comp70 = pReg_Src->vedr.core.comp70;           // 218
+	//pVEDR->vedr.core.comp70 = pReg_Src->vedr.core.comp70; // 218
 	__dv_reg_w(pReg_Src->vedr.core.comp70.value, pVEDR + 0x3c218);
-	//pVEDR->vedr.core.blMapPivotU310 = pReg_Src->vedr.core.blMapPivotU310;   // 21c
+	//pVEDR->vedr.core.blMapPivotU310
+	//	= pReg_Src->vedr.core.blMapPivotU310;   // 21c
 	__dv_reg_w(pReg_Src->vedr.core.blMapPivotU310.value, pVEDR + 0x3c21c);
-	//pVEDR->vedr.core.comp72 = pReg_Src->vedr.core.comp72;           // 220
+	//pVEDR->vedr.core.comp72 = pReg_Src->vedr.core.comp72; // 220
 	__dv_reg_w(pReg_Src->vedr.core.comp72.value, pVEDR + 0x3c220);
-	//pVEDR->vedr.core.blMapPivotY310 = pReg_Src->vedr.core.blMapPivotY310;   // 224
+	//pVEDR->vedr.core.blMapPivotY310
+	//	= pReg_Src->vedr.core.blMapPivotY310;   // 224
 	__dv_reg_w(pReg_Src->vedr.core.blMapPivotY310.value, pVEDR + 0x3c224);
-	//pVEDR->vedr.core.blMapPivotY6332 = pReg_Src->vedr.core.blMapPivotY6332;  // 228
+	//pVEDR->vedr.core.blMapPivotY6332
+	//	= pReg_Src->vedr.core.blMapPivotY6332;  // 228
 	__dv_reg_w(pReg_Src->vedr.core.blMapPivotY6332.value, pVEDR + 0x3c228);
-	//pVEDR->vedr.core.blMapPivotY9564 = pReg_Src->vedr.core.blMapPivotY9564;  // 22c
+	//pVEDR->vedr.core.blMapPivotY9564
+	//	= pReg_Src->vedr.core.blMapPivotY9564;  // 22c
 	__dv_reg_w(pReg_Src->vedr.core.blMapPivotY9564.value, pVEDR + 0x3c22c);
 
 	for (i = 0; i < 52; i++) {
 		//pVEDR->vedr.core.upsamplingCoeffY[i] =
-		//	pReg_Src->vedr.core.upsamplingCoeffY[i];    // 230 .. 2fc
+		//	pReg_Src->vedr.core.upsamplingCoeffY[i]; // 230 .. 2fc
 		__dv_reg_w(pReg_Src->vedr.core.upsamplingCoeffY[i].value,
 			pVEDR + 0x3c230 + (0x4*i));
 	}
@@ -868,7 +906,7 @@ void _voic_set_edr(void __iomem *reg_VirtAddr, unsigned int frmcnt)
 
 void __vioc_set_panel_specific(struct TccEdrV1Reg *pReg_Src)
 {
-	volatile void __iomem *pVPANEL = VIOC_DV_VEDR_GetAddress(VPANEL);
+	void __iomem *pVPANEL = VIOC_DV_VEDR_GetAddress(VPANEL);
 	unsigned int value = 0x00;
 
 	value = pReg_Src->vpanel.osd1.unkimapg12.value;
@@ -909,7 +947,8 @@ void __vioc_set_panel_specific(struct TccEdrV1Reg *pReg_Src)
 
 	value = pReg_Src->vpanel.out.unkomap03.value;
 	value &= ~(0xFFFFFFFF);	// 808
-	value |= (((Hactive + Hfront + Hsync + Hback-1) << 0) | ((Vactive + Vfront + Vsync + Vback-1) << 16));
+	value |= (((Hactive + Hfront + Hsync + Hback-1) << 0)
+		| ((Vactive + Vfront + Vsync + Vback-1) << 16));
 	//pVPANEL->out.unkomap03.value = value;
 	__dv_reg_w(value, pVPANEL + 0x0808);
 
@@ -925,10 +964,12 @@ void __vioc_set_panel_specific(struct TccEdrV1Reg *pReg_Src)
 	__dv_reg_w(value, pVPANEL + 0x0810);
 }
 
-void _voic_set_panel(void __iomem *reg_VirtAddr, void __iomem *meta_VirtAddr,
+void _voic_set_panel(
+	void __iomem *reg_VirtAddr,
+	void __iomem *meta_VirtAddr,
 	unsigned int frmcnt)
 {
-	volatile void __iomem *pVPANEL = NULL;
+	void __iomem *pVPANEL = NULL;
 	struct TccEdrV1Reg *pReg_Src = (struct TccEdrV1Reg *)reg_VirtAddr;
 	unsigned int value = 0x0;
 
@@ -966,16 +1007,19 @@ void _voic_set_panel(void __iomem *reg_VirtAddr, void __iomem *meta_VirtAddr,
 
 #if !defined(SHADOW_CONTEXT_AT_THE_SAME_TIME)
 	if (0) {//frmcnt%2 == 0) {
-		//pVPANEL->osd1.unkimapg04 = pReg_Src->vpanel.osd1.unkimapg04; // 10
-		__dv_reg_w(pReg_Src->vpanel.osd1.unkimapg04.value, pVPANEL + 0x0010);
+		//pVPANEL->osd1.unkimapg04
+		//	= pReg_Src->vpanel.osd1.unkimapg04; // 10
+		__dv_reg_w(pReg_Src->vpanel.osd1.unkimapg04.value,
+			pVPANEL + 0x0010);
 	} else {
 		//volatile union TccEdrDMImapgUnknown04Reg unK04Reg;
 		//unK04Reg = pReg_Src->vpanel.osd1.unkimapg04;
 		//unK04Reg.bits.shadowContext_cvm_in = bShadow_context;
 		//unK04Reg.bits.shadowContext_icsc_in = bShadow_context;
 
-		value = pReg_Src->vpanel.osd1.unkimapg04.value & ~((0x1<<12)|(0x1<<13));
-		value |= ((bShadow_context<<12)|(bShadow_context<<13));
+		value = pReg_Src->vpanel.osd1.unkimapg04.value
+			& ~((0x1<<12)|(0x1<<13));
+		value |= ((bShadow_context<<12) | (bShadow_context<<13));
 
 		//pr_info("shadow osd1 : 0x%x\n", unK04Reg.value);
 
@@ -986,7 +1030,8 @@ void _voic_set_panel(void __iomem *reg_VirtAddr, void __iomem *meta_VirtAddr,
 
 	if (frmcnt == 0) {
 	//pVPANEL->osd1.unkimapg05 = pReg_Src->vpanel.osd1.unkimapg05; // 14
-		__dv_reg_w(pReg_Src->vpanel.osd1.unkimapg05.value, pVPANEL + 0x0014);
+		__dv_reg_w(pReg_Src->vpanel.osd1.unkimapg05.value,
+			pVPANEL + 0x0014);
 	}
 
 	value = pReg_Src->vpanel.osd1.bioKsimapg00.value;
@@ -1112,58 +1157,58 @@ void _voic_set_panel(void __iomem *reg_VirtAddr, void __iomem *meta_VirtAddr,
 	__dv_reg_w(value, pVPANEL + 0x00b4);
 	}
 #else
-	//pVPANEL->osd3.bioKsimapgb00 = pReg_Src->vpanel.osd3.bioKsimapgb00; // b4
+	//pVPANEL->osd3.bioKsimapgb00 = pReg_Src->vpanel.osd3.bioKsimapgb00;//b4
 	__dv_reg_w(pReg_Src->vpanel.osd3.bioKsimapgb00.value, pVPANEL + 0x00b4);
 #endif
-	//pVPANEL->osd3.bioKsimapgb01 = pReg_Src->vpanel.osd3.bioKsimapgb01; // b8
+	//pVPANEL->osd3.bioKsimapgb01 = pReg_Src->vpanel.osd3.bioKsimapgb01;//b8
 	__dv_reg_w(pReg_Src->vpanel.osd3.bioKsimapgb01.value, pVPANEL + 0x00b8);
-	//pVPANEL->osd3.bioKsimapgb02 = pReg_Src->vpanel.osd3.bioKsimapgb02; // bc
+	//pVPANEL->osd3.bioKsimapgb02 = pReg_Src->vpanel.osd3.bioKsimapgb02;//bc
 	__dv_reg_w(pReg_Src->vpanel.osd3.bioKsimapgb02.value, pVPANEL + 0x00bc);
-	//pVPANEL->osd3.bioKsimapgb03 = pReg_Src->vpanel.osd3.bioKsimapgb03; // c0
+	//pVPANEL->osd3.bioKsimapgb03 = pReg_Src->vpanel.osd3.bioKsimapgb03;//c0
 	__dv_reg_w(pReg_Src->vpanel.osd3.bioKsimapgb03.value, pVPANEL + 0x00c0);
-	//pVPANEL->osd3.bioKsimapgb04 = pReg_Src->vpanel.osd3.bioKsimapgb04; // c4
+	//pVPANEL->osd3.bioKsimapgb04 = pReg_Src->vpanel.osd3.bioKsimapgb04;//c4
 	__dv_reg_w(pReg_Src->vpanel.osd3.bioKsimapgb04.value, pVPANEL + 0x00c4);
-	//pVPANEL->osd3.bioKsimapgb05 = pReg_Src->vpanel.osd3.bioKsimapgb05; // c8
+	//pVPANEL->osd3.bioKsimapgb05 = pReg_Src->vpanel.osd3.bioKsimapgb05;//c8
 	__dv_reg_w(pReg_Src->vpanel.osd3.bioKsimapgb05.value, pVPANEL + 0x00c8);
-	//pVPANEL->osd3.bioKsimapgb06 = pReg_Src->vpanel.osd3.bioKsimapgb06; // cc
+	//pVPANEL->osd3.bioKsimapgb06 = pReg_Src->vpanel.osd3.bioKsimapgb06;//cc
 	__dv_reg_w(pReg_Src->vpanel.osd3.bioKsimapgb06.value, pVPANEL + 0x00cc);
-	//pVPANEL->osd3.bioKsimapgb07 = pReg_Src->vpanel.osd3.bioKsimapgb07; // d0
+	//pVPANEL->osd3.bioKsimapgb07 = pReg_Src->vpanel.osd3.bioKsimapgb07;//d0
 	__dv_reg_w(pReg_Src->vpanel.osd3.bioKsimapgb07.value, pVPANEL + 0x00d0);
-	//pVPANEL->osd3.bioKsimapgb08 = pReg_Src->vpanel.osd3.bioKsimapgb08; // d4
+	//pVPANEL->osd3.bioKsimapgb08 = pReg_Src->vpanel.osd3.bioKsimapgb08;//d4
 	__dv_reg_w(pReg_Src->vpanel.osd3.bioKsimapgb08.value, pVPANEL + 0x00d4);
-	//pVPANEL->osd3.bioKsimapgb09 = pReg_Src->vpanel.osd3.bioKsimapgb09; // d8
+	//pVPANEL->osd3.bioKsimapgb09 = pReg_Src->vpanel.osd3.bioKsimapgb09;//d8
 	__dv_reg_w(pReg_Src->vpanel.osd3.bioKsimapgb09.value, pVPANEL + 0x00d8);
-	//pVPANEL->osd3.bioKsimapgb10 = pReg_Src->vpanel.osd3.bioKsimapgb10; // dc
+	//pVPANEL->osd3.bioKsimapgb10 = pReg_Src->vpanel.osd3.bioKsimapgb10;//dc
 	__dv_reg_w(pReg_Src->vpanel.osd3.bioKsimapgb10.value, pVPANEL + 0x00dc);
-	//pVPANEL->osd3.bioKsimapgb11 = pReg_Src->vpanel.osd3.bioKsimapgb11; // e0
+	//pVPANEL->osd3.bioKsimapgb11 = pReg_Src->vpanel.osd3.bioKsimapgb11;//e0
 	__dv_reg_w(pReg_Src->vpanel.osd3.bioKsimapgb11.value, pVPANEL + 0x00e0);
-	//pVPANEL->osd3.bioKsimapgb12 = pReg_Src->vpanel.osd3.bioKsimapgb12; // e4
+	//pVPANEL->osd3.bioKsimapgb12 = pReg_Src->vpanel.osd3.bioKsimapgb12;//e4
 	__dv_reg_w(pReg_Src->vpanel.osd3.bioKsimapgb12.value, pVPANEL + 0x00e4);
-	//pVPANEL->osd3.bioKsimapgb13 = pReg_Src->vpanel.osd3.bioKsimapgb13; // e8
+	//pVPANEL->osd3.bioKsimapgb13 = pReg_Src->vpanel.osd3.bioKsimapgb13;//e8
 	__dv_reg_w(pReg_Src->vpanel.osd3.bioKsimapgb13.value, pVPANEL + 0x00e8);
-	//pVPANEL->osd3.bioKsimapgb14 = pReg_Src->vpanel.osd3.bioKsimapgb14; // ec
+	//pVPANEL->osd3.bioKsimapgb14 = pReg_Src->vpanel.osd3.bioKsimapgb14;//ec
 	__dv_reg_w(pReg_Src->vpanel.osd3.bioKsimapgb14.value, pVPANEL + 0x00ec);
-	//pVPANEL->osd3.bioKsimapgb15 = pReg_Src->vpanel.osd3.bioKsimapgb15; // f0
+	//pVPANEL->osd3.bioKsimapgb15 = pReg_Src->vpanel.osd3.bioKsimapgb15;//f0
 	__dv_reg_w(pReg_Src->vpanel.osd3.bioKsimapgb15.value, pVPANEL + 0x00f0);
-	//pVPANEL->osd3.bioKsimapgb16 = pReg_Src->vpanel.osd3.bioKsimapgb16; // f4
+	//pVPANEL->osd3.bioKsimapgb16 = pReg_Src->vpanel.osd3.bioKsimapgb16;//f4
 	__dv_reg_w(pReg_Src->vpanel.osd3.bioKsimapgb16.value, pVPANEL + 0x00f4);
-	//pVPANEL->osd3.bioKsimapgb17 = pReg_Src->vpanel.osd3.bioKsimapgb17; // f8
+	//pVPANEL->osd3.bioKsimapgb17 = pReg_Src->vpanel.osd3.bioKsimapgb17;//f8
 	__dv_reg_w(pReg_Src->vpanel.osd3.bioKsimapgb17.value, pVPANEL + 0x00f8);
-	//pVPANEL->osd3.bioKsimapgb18 = pReg_Src->vpanel.osd3.bioKsimapgb18; // fc
+	//pVPANEL->osd3.bioKsimapgb18 = pReg_Src->vpanel.osd3.bioKsimapgb18;//fc
 	__dv_reg_w(pReg_Src->vpanel.osd3.bioKsimapgb18.value, pVPANEL + 0x00fc);
-	//pVPANEL->osd3.bioKsimapgb19 = pReg_Src->vpanel.osd3.bioKsimapgb19; // 100
+	//pVPANEL->osd3.bioKsimapgb19 =pReg_Src->vpanel.osd3.bioKsimapgb19;//100
 	__dv_reg_w(pReg_Src->vpanel.osd3.bioKsimapgb19.value, pVPANEL + 0x0100);
-	//pVPANEL->osd3.bioKsimapgb20 = pReg_Src->vpanel.osd3.bioKsimapgb20; // 104
+	//pVPANEL->osd3.bioKsimapgb20 =pReg_Src->vpanel.osd3.bioKsimapgb20;//104
 	__dv_reg_w(pReg_Src->vpanel.osd3.bioKsimapgb20.value, pVPANEL + 0x0104);
-	//pVPANEL->osd3.bioKsimapgb21 = pReg_Src->vpanel.osd3.bioKsimapgb21; // 108
+	//pVPANEL->osd3.bioKsimapgb21 =pReg_Src->vpanel.osd3.bioKsimapgb21;//108
 	__dv_reg_w(pReg_Src->vpanel.osd3.bioKsimapgb21.value, pVPANEL + 0x0108);
-	//pVPANEL->osd3.bioKsimapgb22 = pReg_Src->vpanel.osd3.bioKsimapgb22; // 10c
+	//pVPANEL->osd3.bioKsimapgb22 =pReg_Src->vpanel.osd3.bioKsimapgb22;//10c
 	__dv_reg_w(pReg_Src->vpanel.osd3.bioKsimapgb22.value, pVPANEL + 0x010c);
-	//pVPANEL->osd3.bioKsimapgb23 = pReg_Src->vpanel.osd3.bioKsimapgb23; // 110
+	//pVPANEL->osd3.bioKsimapgb23 =pReg_Src->vpanel.osd3.bioKsimapgb23;//110
 	__dv_reg_w(pReg_Src->vpanel.osd3.bioKsimapgb23.value, pVPANEL + 0x0110);
-	//pVPANEL->osd3.bioKsimapgb24 = pReg_Src->vpanel.osd3.bioKsimapgb24; // 114
+	//pVPANEL->osd3.bioKsimapgb24 =pReg_Src->vpanel.osd3.bioKsimapgb24;//114
 	__dv_reg_w(pReg_Src->vpanel.osd3.bioKsimapgb24.value, pVPANEL + 0x0114);
-	//pVPANEL->osd3.bioKsimapgb25 = pReg_Src->vpanel.osd3.bioKsimapgb25; // 118
+	//pVPANEL->osd3.bioKsimapgb25 =pReg_Src->vpanel.osd3.bioKsimapgb25;//118
 	__dv_reg_w(pReg_Src->vpanel.osd3.bioKsimapgb25.value, pVPANEL + 0x0118);
 	//pVPANEL->osd3.unkimapgb06 = pReg_Src->vpanel.osd3.unkimapgb06; // 11c
 	__dv_reg_w(pReg_Src->vpanel.osd3.unkimapgb06.value, pVPANEL + 0x011c);
@@ -1181,17 +1226,18 @@ void _voic_set_panel(void __iomem *reg_VirtAddr, void __iomem *meta_VirtAddr,
 	__dv_reg_w(pReg_Src->vpanel.osd3.unkimapgb12.value, pVPANEL + 0x0134);
 	//pVPANEL->osd3.unkimapgb13 = pReg_Src->vpanel.osd3.unkimapgb13; // 138
 	__dv_reg_w(pReg_Src->vpanel.osd3.unkimapgb13.value, pVPANEL + 0x0138);
-    //pVPANEL->osd3.unkimapgb14 = pReg_Src->vpanel.osd3.unkimapgb14; // 13c
+	//pVPANEL->osd3.unkimapgb14 = pReg_Src->vpanel.osd3.unkimapgb14; // 13c
 	__dv_reg_w(pReg_Src->vpanel.osd3.unkimapgb14.value, pVPANEL + 0x013c);
-    //pVPANEL->osd3.unkimapgb15 = pReg_Src->vpanel.osd3.unkimapgb15; // 140
+	//pVPANEL->osd3.unkimapgb15 = pReg_Src->vpanel.osd3.unkimapgb15; // 140
 	__dv_reg_w(pReg_Src->vpanel.osd3.unkimapgb15.value, pVPANEL + 0x0140);
-    //pVPANEL->osd3.unkimapgb16 = pReg_Src->vpanel.osd3.unkimapgb16; // 144
+	//pVPANEL->osd3.unkimapgb16 = pReg_Src->vpanel.osd3.unkimapgb16; // 144
 	__dv_reg_w(pReg_Src->vpanel.osd3.unkimapgb16.value, pVPANEL + 0x0144);
 
 //OUT :: 0x12540148
 	if (frmcnt == 0) {
 		//pVPANEL->out.unkomap00 = pReg_Src->vpanel.out.unkomap00;// 148
-		__dv_reg_w(pReg_Src->vpanel.out.unkomap00.value, pVPANEL + 0x0148);
+		__dv_reg_w(pReg_Src->vpanel.out.unkomap00.value,
+			pVPANEL + 0x0148);
 	}
 	//pVPANEL->out.bioKsomap00 = pReg_Src->vpanel.out.bioKsomap00;    // 14c
 	__dv_reg_w(pReg_Src->vpanel.out.bioKsomap00.value, pVPANEL + 0x014c);
@@ -1256,7 +1302,8 @@ void _voic_set_panel(void __iomem *reg_VirtAddr, void __iomem *meta_VirtAddr,
 
 	value = pReg_Src->vpanel.out.bioKsuds01.value;
 	if ((frmcnt == 0 || bMeta_changed) && (meta_VirtAddr != 0x00)) {
-		value |=  (0x1<<31); //enable vs load en for YUV444 -> YUV422
+		//enable vs load en for YUV444 -> YUV422
+		value |=  (0x1<<31);
 	}
 	//pVPANEL->out.bioKsuds01.value	= value;    // 1d4
 	__dv_reg_w(value, pVPANEL + 0x01d4);
@@ -1274,7 +1321,8 @@ void _voic_set_panel(void __iomem *reg_VirtAddr, void __iomem *meta_VirtAddr,
 				value |= (0x1<<31);
 			value |= (
 			((*(volatile unsigned char *)(meta_VirtAddr + 3)) << 8)
-			| ((*(volatile unsigned char *)(meta_VirtAddr + 4))<<0));
+			| ((*(volatile unsigned char *)(meta_VirtAddr + 4))
+				<< 0));
 		}
 		//pVPANEL->out.bioKsuds16.value	= value;  // 1d8
 		__dv_reg_w(value, pVPANEL + 0x01d8);
@@ -1304,130 +1352,183 @@ void _voic_set_panel(void __iomem *reg_VirtAddr, void __iomem *meta_VirtAddr,
 void _voic_set_panel_lut(void __iomem *reg_VirtAddr)
 {
 	int i = 0;
-	volatile void __iomem *pVPANEL_LUT = NULL;
+	void __iomem *pVPANEL_LUT = NULL;
 	struct TccEdrV1Reg *pReg_Src = (struct TccEdrV1Reg *)reg_VirtAddr;
 
 	pVPANEL_LUT = VIOC_DV_VEDR_GetAddress(VPANEL_LUT);
 
 //OSD1 :: 0x12580000
 	for (i = 0; i < 256; i++) {
-		//pVPANEL_LUT->osd1Lut.grG2llut[i] = pReg_Src->osd1Lut.grG2llut[i]; // 0x0000
-		__dv_reg_w(pReg_Src->osd1Lut.grG2llut[i].value, pVPANEL_LUT + 0x0000 + (0x4*i));
+		//pVPANEL_LUT->osd1Lut.grG2llut[i]
+		//	= pReg_Src->osd1Lut.grG2llut[i]; // 0x0000
+		__dv_reg_w(pReg_Src->osd1Lut.grG2llut[i].value,
+			pVPANEL_LUT + 0x0000 + (0x4*i));
 	}
 
 	for (i = 0; i < 1024; i++) {
-		//pVPANEL_LUT->osd1Lut.pq2llut[i] = pReg_Src->osd1Lut.pq2llut[i]; // 0x1000
-		__dv_reg_w(pReg_Src->osd1Lut.pq2llut[i].value, pVPANEL_LUT + 0x1000 + (0x4*i));
+		//pVPANEL_LUT->osd1Lut.pq2llut[i]
+		//	= pReg_Src->osd1Lut.pq2llut[i]; // 0x1000
+		__dv_reg_w(pReg_Src->osd1Lut.pq2llut[i].value,
+			pVPANEL_LUT + 0x1000 + (0x4*i));
 	}
 
 	for (i = 0; i < 128; i++) {
-		//pVPANEL_LUT->osd1Lut.l2pqlutx[i] = pReg_Src->osd1Lut.l2pqlutx[i]; // 0x2000
-		__dv_reg_w(pReg_Src->osd1Lut.l2pqlutx[i].value, pVPANEL_LUT + 0x2000 + (0x4*i));
+		//pVPANEL_LUT->osd1Lut.l2pqlutx[i]
+		//	= pReg_Src->osd1Lut.l2pqlutx[i]; // 0x2000
+		__dv_reg_w(pReg_Src->osd1Lut.l2pqlutx[i].value,
+			pVPANEL_LUT + 0x2000 + (0x4*i));
 	}
 	for (i = 0; i < 128; i++) {
-		//pVPANEL_LUT->osd1Lut.l2pqluta[i] = pReg_Src->osd1Lut.l2pqluta[i]; // 0x2200
-		__dv_reg_w(pReg_Src->osd1Lut.l2pqluta[i].value, pVPANEL_LUT + 0x2200 + (0x4*i));
+		//pVPANEL_LUT->osd1Lut.l2pqluta[i]
+		//	= pReg_Src->osd1Lut.l2pqluta[i]; // 0x2200
+		__dv_reg_w(pReg_Src->osd1Lut.l2pqluta[i].value,
+			pVPANEL_LUT + 0x2200 + (0x4*i));
 	}
 	for (i = 0; i < 128; i++) {
-		//pVPANEL_LUT->osd1Lut.l2pqlutb[i] = pReg_Src->osd1Lut.l2pqlutb[i]; // 0x2400
-		__dv_reg_w(pReg_Src->osd1Lut.l2pqlutb[i].value, pVPANEL_LUT + 0x2400 + (0x4*i));
+		//pVPANEL_LUT->osd1Lut.l2pqlutb[i]
+		//	= pReg_Src->osd1Lut.l2pqlutb[i]; // 0x2400
+		__dv_reg_w(pReg_Src->osd1Lut.l2pqlutb[i].value,
+			pVPANEL_LUT + 0x2400 + (0x4*i));
 	}
 
 	for (i = 0; i < 256; i++) {
-		//pVPANEL_LUT->osd1Lut.grTmluti[i] = pReg_Src->osd1Lut.grTmluti[i]; // 0x3000
-		__dv_reg_w(pReg_Src->osd1Lut.grTmluti[i].value, pVPANEL_LUT + 0x3000 + (0x4*i));
+		//pVPANEL_LUT->osd1Lut.grTmluti[i]
+		//	= pReg_Src->osd1Lut.grTmluti[i]; // 0x3000
+		__dv_reg_w(pReg_Src->osd1Lut.grTmluti[i].value,
+			pVPANEL_LUT + 0x3000 + (0x4*i));
 	}
 	for (i = 0; i < 256; i++) {
-		//pVPANEL_LUT->osd1Lut.grSmluti[i] = pReg_Src->osd1Lut.grSmluti[i]; // 0x3400
-		__dv_reg_w(pReg_Src->osd1Lut.grSmluti[i].value, pVPANEL_LUT + 0x3400 + (0x4*i));
+		//pVPANEL_LUT->osd1Lut.grSmluti[i]
+		//	= pReg_Src->osd1Lut.grSmluti[i]; // 0x3400
+		__dv_reg_w(pReg_Src->osd1Lut.grSmluti[i].value,
+			pVPANEL_LUT + 0x3400 + (0x4*i));
 	}
 	for (i = 0; i < 256; i++) {
-		//pVPANEL_LUT->osd1Lut.grTmluts[i] = pReg_Src->osd1Lut.grTmluts[i]; // 0x3800
-		__dv_reg_w(pReg_Src->osd1Lut.grTmluts[i].value, pVPANEL_LUT + 0x3800 + (0x4*i));
+		//pVPANEL_LUT->osd1Lut.grTmluts[i]
+		//	= pReg_Src->osd1Lut.grTmluts[i]; // 0x3800
+		__dv_reg_w(pReg_Src->osd1Lut.grTmluts[i].value,
+			pVPANEL_LUT + 0x3800 + (0x4*i));
 	}
 	for (i = 0; i < 256; i++) {
-		//pVPANEL_LUT->osd1Lut.grSmluts[i] = pReg_Src->osd1Lut.grSmluts[i]; // 0x3c00
-		__dv_reg_w(pReg_Src->osd1Lut.grSmluts[i].value, pVPANEL_LUT + 0x3c00 + (0x4*i));
+		//pVPANEL_LUT->osd1Lut.grSmluts[i]
+		//	= pReg_Src->osd1Lut.grSmluts[i]; // 0x3c00
+		__dv_reg_w(pReg_Src->osd1Lut.grSmluts[i].value,
+			pVPANEL_LUT + 0x3c00 + (0x4*i));
 	}
 
 //OSD3 :: 0x12584000
 	for (i = 0; i < 256; i++) {
-		//pVPANEL_LUT->osd3Lut.grG2llut[i] = pReg_Src->osd3Lut.grG2llut[i]; // 0x0000
-		__dv_reg_w(pReg_Src->osd3Lut.grG2llut[i].value, pVPANEL_LUT + 0x4000 + 0x0000+(0x4*i));
+		//pVPANEL_LUT->osd3Lut.grG2llut[i]
+		//	= pReg_Src->osd3Lut.grG2llut[i]; // 0x0000
+		__dv_reg_w(pReg_Src->osd3Lut.grG2llut[i].value,
+			pVPANEL_LUT + 0x4000 + 0x0000+(0x4*i));
 	}
 
 	for (i = 0; i < 1024; i++) {
-		//pVPANEL_LUT->osd3Lut.pq2llut[i] = pReg_Src->osd3Lut.pq2llut[i]; // 0x1000
-		__dv_reg_w(pReg_Src->osd3Lut.pq2llut[i].value, pVPANEL_LUT + 0x4000 + 0x1000 + (0x4*i));
+		//pVPANEL_LUT->osd3Lut.pq2llut[i]
+		//	= pReg_Src->osd3Lut.pq2llut[i]; // 0x1000
+		__dv_reg_w(pReg_Src->osd3Lut.pq2llut[i].value,
+			pVPANEL_LUT + 0x4000 + 0x1000 + (0x4*i));
 	}
 
 	for (i = 0; i < 128; i++) {
-		//pVPANEL_LUT->osd3Lut.l2pqlutx[i] = pReg_Src->osd3Lut.l2pqlutx[i]; // 0x2000
-		__dv_reg_w(pReg_Src->osd3Lut.l2pqlutx[i].value, pVPANEL_LUT + 0x4000 + 0x2000 + (0x4*i));
+		//pVPANEL_LUT->osd3Lut.l2pqlutx[i]
+		//	= pReg_Src->osd3Lut.l2pqlutx[i]; // 0x2000
+		__dv_reg_w(pReg_Src->osd3Lut.l2pqlutx[i].value,
+			pVPANEL_LUT + 0x4000 + 0x2000 + (0x4*i));
 	}
 	for (i = 0; i < 128; i++) {
-		//pVPANEL_LUT->osd3Lut.l2pqluta[i] = pReg_Src->osd3Lut.l2pqluta[i]; // 0x2200
-		__dv_reg_w(pReg_Src->osd3Lut.l2pqluta[i].value, pVPANEL_LUT + 0x4000 + 0x2200 + (0x4*i));
+		//pVPANEL_LUT->osd3Lut.l2pqluta[i]
+		//	= pReg_Src->osd3Lut.l2pqluta[i]; // 0x2200
+		__dv_reg_w(pReg_Src->osd3Lut.l2pqluta[i].value,
+			pVPANEL_LUT + 0x4000 + 0x2200 + (0x4*i));
 	}
 	for (i = 0; i < 128; i++) {
-		//pVPANEL_LUT->osd3Lut.l2pqlutb[i] = pReg_Src->osd3Lut.l2pqlutb[i]; // 0x2400
-		__dv_reg_w(pReg_Src->osd3Lut.l2pqlutb[i].value, pVPANEL_LUT + 0x4000 + 0x2400 + (0x4*i));
+		//pVPANEL_LUT->osd3Lut.l2pqlutb[i]
+		//	= pReg_Src->osd3Lut.l2pqlutb[i]; // 0x2400
+		__dv_reg_w(pReg_Src->osd3Lut.l2pqlutb[i].value,
+			pVPANEL_LUT + 0x4000 + 0x2400 + (0x4*i));
 	}
 
 	for (i = 0; i < 256; i++) {
-		//pVPANEL_LUT->osd3Lut.grTmluti[i] = pReg_Src->osd3Lut.grTmluti[i]; // 0x3000
-		__dv_reg_w(pReg_Src->osd3Lut.grTmluti[i].value, pVPANEL_LUT + 0x4000 + 0x3000 + (0x4*i));
+		//pVPANEL_LUT->osd3Lut.grTmluti[i]
+		//	= pReg_Src->osd3Lut.grTmluti[i]; // 0x3000
+		__dv_reg_w(pReg_Src->osd3Lut.grTmluti[i].value,
+			pVPANEL_LUT + 0x4000 + 0x3000 + (0x4*i));
 	}
 	for (i = 0; i < 256; i++) {
-		//pVPANEL_LUT->osd3Lut.grSmluti[i] = pReg_Src->osd3Lut.grSmluti[i]; // 0x3400
-		__dv_reg_w(pReg_Src->osd3Lut.grSmluti[i].value, pVPANEL_LUT + 0x4000 + 0x3400 + (0x4*i));
+		//pVPANEL_LUT->osd3Lut.grSmluti[i]
+		//	= pReg_Src->osd3Lut.grSmluti[i]; // 0x3400
+		__dv_reg_w(pReg_Src->osd3Lut.grSmluti[i].value,
+			pVPANEL_LUT + 0x4000 + 0x3400 + (0x4*i));
 	}
 	for (i = 0; i < 256; i++) {
-		//pVPANEL_LUT->osd3Lut.grTmluts[i] = pReg_Src->osd3Lut.grTmluts[i]; // 0x3800
-		__dv_reg_w(pReg_Src->osd3Lut.grTmluts[i].value, pVPANEL_LUT + 0x4000 + 0x3800 + (0x4*i));
+		//pVPANEL_LUT->osd3Lut.grTmluts[i]
+		//	= pReg_Src->osd3Lut.grTmluts[i]; // 0x3800
+		__dv_reg_w(pReg_Src->osd3Lut.grTmluts[i].value,
+			pVPANEL_LUT + 0x4000 + 0x3800 + (0x4*i));
 	}
 	for (i = 0; i < 256; i++) {
-		//pVPANEL_LUT->osd3Lut.grSmluts[i] = pReg_Src->osd3Lut.grSmluts[i]; // 0x3c00
-		__dv_reg_w(pReg_Src->osd3Lut.grSmluts[i].value, pVPANEL_LUT + 0x4000 + 0x3c00 + (0x4*i));
+		//pVPANEL_LUT->osd3Lut.grSmluts[i]
+		//	= pReg_Src->osd3Lut.grSmluts[i]; // 0x3c00
+		__dv_reg_w(pReg_Src->osd3Lut.grSmluts[i].value,
+			pVPANEL_LUT + 0x4000 + 0x3c00 + (0x4*i));
 	}
 
 //Out :: 0x12588000
 	for (i = 0; i < 128; i++) {
-		//pVPANEL_LUT->outLut.l2glutx[i] = pReg_Src->outLut.l2glutx[i];  // 0x0000
-		__dv_reg_w(pReg_Src->outLut.l2glutx[i].value, pVPANEL_LUT + 0x8000 + 0x0000 + (0x4*i));
+		//pVPANEL_LUT->outLut.l2glutx[i]
+		//	= pReg_Src->outLut.l2glutx[i];  // 0x0000
+		__dv_reg_w(pReg_Src->outLut.l2glutx[i].value,
+			pVPANEL_LUT + 0x8000 + 0x0000 + (0x4*i));
 	}
 	for (i = 0; i < 128; i++) {
-		//pVPANEL_LUT->outLut.l2gluta[i] = pReg_Src->outLut.l2gluta[i];  // 0x0200
-		__dv_reg_w(pReg_Src->outLut.l2gluta[i].value, pVPANEL_LUT + 0x8000 + 0x0200 + (0x4*i));
+		//pVPANEL_LUT->outLut.l2gluta[i]
+		//	= pReg_Src->outLut.l2gluta[i];  // 0x0200
+		__dv_reg_w(pReg_Src->outLut.l2gluta[i].value,
+			pVPANEL_LUT + 0x8000 + 0x0200 + (0x4*i));
 	}
 	for (i = 0; i < 128; i++) {
-		//pVPANEL_LUT->outLut.l2glutb[i] = pReg_Src->outLut.l2glutb[i];  // 0x0400
-		__dv_reg_w(pReg_Src->outLut.l2glutb[i].value, pVPANEL_LUT + 0x8000 + 0x0400 + (0x4*i));
+		//pVPANEL_LUT->outLut.l2glutb[i]
+		//	= pReg_Src->outLut.l2glutb[i];  // 0x0400
+		__dv_reg_w(pReg_Src->outLut.l2glutb[i].value,
+			pVPANEL_LUT + 0x8000 + 0x0400 + (0x4*i));
 	}
 
 	for (i = 0; i < 1024; i++) {
-		//pVPANEL_LUT->outLut.pq2llut[i] = pReg_Src->outLut.pq2llut[i]; // 0x1000
-		__dv_reg_w(pReg_Src->outLut.pq2llut[i].value, pVPANEL_LUT + 0x8000 + 0x1000 + (0x4*i));
+		//pVPANEL_LUT->outLut.pq2llut[i]
+		//	= pReg_Src->outLut.pq2llut[i]; // 0x1000
+		__dv_reg_w(pReg_Src->outLut.pq2llut[i].value,
+			pVPANEL_LUT + 0x8000 + 0x1000 + (0x4*i));
 	}
 
 	for (i = 0; i < 128; i++) {
-		//pVPANEL_LUT->outLut.l2pqlutx[i] = pReg_Src->outLut.l2pqlutx[i]; // 0x2000
-		__dv_reg_w(pReg_Src->outLut.l2pqlutx[i].value, pVPANEL_LUT + 0x8000 + 0x2000 + (0x4*i));
+		//pVPANEL_LUT->outLut.l2pqlutx[i]
+		//	= pReg_Src->outLut.l2pqlutx[i]; // 0x2000
+		__dv_reg_w(pReg_Src->outLut.l2pqlutx[i].value,
+			pVPANEL_LUT + 0x8000 + 0x2000 + (0x4*i));
 	}
 	for (i = 0; i < 128; i++) {
-		//pVPANEL_LUT->outLut.l2pqluta[i] = pReg_Src->outLut.l2pqluta[i]; // 0x2200
-		__dv_reg_w(pReg_Src->outLut.l2pqluta[i].value, pVPANEL_LUT + 0x8000 + 0x2200 + (0x4*i));
+		//pVPANEL_LUT->outLut.l2pqluta[i]
+		//	= pReg_Src->outLut.l2pqluta[i]; // 0x2200
+		__dv_reg_w(pReg_Src->outLut.l2pqluta[i].value,
+			pVPANEL_LUT + 0x8000 + 0x2200 + (0x4*i));
 	}
 	for (i = 0; i < 128; i++) {
-		//pVPANEL_LUT->outLut.l2pqlutb[i] = pReg_Src->outLut.l2pqlutb[i]; // 0x2400
-		__dv_reg_w(pReg_Src->outLut.l2pqlutb[i].value, pVPANEL_LUT + 0x8000 + 0x2400 + (0x4*i));
+		//pVPANEL_LUT->outLut.l2pqlutb[i]
+		//	= pReg_Src->outLut.l2pqlutb[i]; // 0x2400
+		__dv_reg_w(pReg_Src->outLut.l2pqlutb[i].value,
+			pVPANEL_LUT + 0x8000 + 0x2400 + (0x4*i));
 	}
 }
 
-void _voic_set_metadata(unsigned int meta_PhyAddr, void __iomem *meta_VirtAddr,
-	void __iomem *reg_VirtAddr, unsigned int frmcnt)
+void _voic_set_metadata(
+	unsigned int meta_PhyAddr,
+	void __iomem *meta_VirtAddr,
+	void __iomem *reg_VirtAddr,
+	unsigned int frmcnt)
 {
-	volatile void __iomem *pVPANEL = VIOC_DV_VEDR_GetAddress(VPANEL);
+	void __iomem *pVPANEL = VIOC_DV_VEDR_GetAddress(VPANEL);
 //	struct TccEdrV1Reg *pReg_Src = (struct TccEdrV1Reg *)reg_VirtAddr;
 	unsigned int value;
 
@@ -1435,8 +1536,10 @@ void _voic_set_metadata(unsigned int meta_PhyAddr, void __iomem *meta_VirtAddr,
 		//value	= pVPANEL->out.bioKsuds16.value;
 		value = __dv_reg_r(pVPANEL + 0x01d8);
 		value &= ~(0xFFFF<<0);
-		value |= (((*(volatile unsigned char *)(meta_VirtAddr + 3)) << 8)
-		| ((*(volatile unsigned char *)(meta_VirtAddr + 4)) << 0));
+		value |= (((*(volatile unsigned char *)(meta_VirtAddr + 3))
+				<< 8)
+			| ((*(volatile unsigned char *)(meta_VirtAddr + 4))
+				<< 0));
 		//pVPANEL->out.bioKsuds16.value	= value;
 		__dv_reg_w(value, pVPANEL + 0x01d8);
 		dprintk("md len : 0x%x\n", value);
@@ -1455,7 +1558,7 @@ char vioc_v_dv_get_sc(void)
 
 void vioc_v_dv_block_off(void)
 {
-	volatile void __iomem *pVEDR = NULL;
+	void __iomem *pVEDR = NULL;
 	unsigned int value = 0x00;
 
 	if (!VIOC_CONFIG_DV_GET_EDR_PATH())
@@ -1474,7 +1577,7 @@ void vioc_v_dv_block_off(void)
 
 void voic_v_dv_osd_ctrl(enum DV_DISP_TYPE type, unsigned int on)
 {
-	volatile void __iomem *pVPANEL = NULL;
+	void __iomem *pVPANEL = NULL;
 	unsigned int value;
 
 	if (!VIOC_CONFIG_DV_GET_EDR_PATH())
@@ -1510,7 +1613,7 @@ void voic_v_dv_osd_ctrl(enum DV_DISP_TYPE type, unsigned int on)
 
 void vioc_v_dv_el_bypass(void)
 {
-	volatile void __iomem *pVEDR = NULL;
+	void __iomem *pVEDR = NULL;
 
 	unsigned int value;
 
@@ -1528,9 +1631,10 @@ void vioc_v_dv_el_bypass(void)
 }
 
 #if defined(SHADOW_CONTEXT_AT_THE_SAME_TIME)
-static void _vioc_v_dv_set_shadow_context(void __iomem *reg_VirtAddr)
+static void _vioc_v_dv_set_shadow_context(
+	void __iomem *reg_VirtAddr)
 {
-	volatile void __iomem *pVPANEL, *pVEDR;
+	void __iomem *pVPANEL, *pVEDR;
 	unsigned int value = 0x0;
 	struct TccEdrV1Reg *pReg_Src = (struct TccEdrV1Reg *)reg_VirtAddr;
 
@@ -1584,7 +1688,8 @@ int vioc_v_dv_prog(unsigned int meta_PhyAddr, unsigned int reg_PhyAddr,
 		return -1;
 	}
 
-	if (((vioc_get_out_type() == DOVI) || (vioc_get_out_type() == DOVI_LL))
+	if (((vioc_get_out_type() == DOVI)
+		|| (vioc_get_out_type() == DOVI_LL))
 		&& meta_PhyAddr == 0x00) {
 		pr_err("[ERR][DV] meta_PhyAddr is NULL\n");
 		return -1;
@@ -1660,7 +1765,8 @@ static int __init _vioc_v_dv_init(void)
 	pBase_vAddr = ioremap_nocache((unsigned int)pmap_dv_regs.base,
 		PAGE_ALIGN(pmap_dv_regs.size));
 	if (pBase_vAddr == NULL) {
-		pr_err("[ERR][DV] Regs ioremap failed\n");
+		pr_err("[ERR][DV] %s: Regs ioremap failed\n",
+			__func__);
 	}
 
 	pr_info("[INF][DV] Pmap for Dolby :: Phy(0x%x - 0x%x) => Virt(0x%p)\n",

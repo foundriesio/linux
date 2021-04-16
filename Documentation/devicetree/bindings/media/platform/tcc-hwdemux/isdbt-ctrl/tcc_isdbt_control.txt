@@ -1,0 +1,27 @@
+TCC ISDBT Broadcasting Control(Power, Reset..)
+
+Required properties:
+	-compatible:
+		"telechips,tcc_isdbt_ctrl"
+
+Optional properties:
+	-pw-gpios:
+		gpio port for all tuner power control
+
+	-dxb0-gpios:
+		gpio port for reset/power_down of TCC353X 1st device
+
+	-dxb1-gpios:
+		gpio port for reset/power_down of TCC353X 2nd device
+
+	-ant-gpios:
+		gpio port for antenna power
+
+Example:
+	tcc_isdbt_ctrl {
+                compatible = "telechips,tcc_isdbt_ctrl";
+                pw-gpios = <&gpa 23 0>;
+                dxb0-gpios = <&gpa 22 0>, <&gpa 21 0>, <0>, <0>;
+                dxb1-gpios = <&gpa 31 0>, <&gpa 25 0>, <0>, <0>;
+                ant-gpios = <0>, <0>;
+        };

@@ -79,6 +79,9 @@
 #include <video/tcc/tcc_vsync_ioctl.h>
 #endif
 #include "tcc_component.h"
+#include "../tcc_vioc_interface.h"
+#include "../tcc_vioc_fb.h"
+
 
 /* Debugging stuff */
 //#define DBG_COMPONENT
@@ -100,16 +103,16 @@ static int Component_Disp_Num;
 static int Component_Scaler_Num;
 static int Component_Mode = -1;
 static int Component_RDMA_VIDEO_Num;
-static volatile void __iomem *pComponent_DISP;
-static volatile void __iomem *pComponent_WMIX;
-static volatile void __iomem *pComponent_RDMA_UI;
-static volatile void __iomem *pComponent_RDMA_VIDEO;
-static volatile void __iomem *pComponent_SCALER;
+static void __iomem *pComponent_DISP;
+static void __iomem *pComponent_WMIX;
+static void __iomem *pComponent_RDMA_UI;
+static void __iomem *pComponent_RDMA_VIDEO;
+static void __iomem *pComponent_SCALER;
 
-static volatile void __iomem *pComponent_Attach_DISP;
-static volatile void __iomem *pComponent_Attach_WMIX;
-static volatile void __iomem *pComponent_Attach_RDMA_UI;
-static volatile void __iomem *pComponent_Attach_RDMA_VIDEO;
+static void __iomem *pComponent_Attach_DISP;
+static void __iomem *pComponent_Attach_WMIX;
+static void __iomem *pComponent_Attach_RDMA_UI;
+static void __iomem *pComponent_Attach_RDMA_VIDEO;
 
 #define DEVICE_NAME "component"
 #define COMPONENT_MINOR 206
@@ -172,6 +175,7 @@ unsigned int component_calc_cgms_crc(unsigned int data)
 	crc_val = 0;
 	for (i = 0; i < 6; i++) {
 		crc_val |= crc[i] << (5 - i);
+		/* prevent KCS warning */
 	}
 
 	dprintk("%s: key=0x%x crc=0x%x (%d %d %d %d %d %d)\n", __func__,
@@ -262,7 +266,8 @@ int tcc_component_detect(void)
 /*
  * Function Name : tcc_component_get_spec()
  */
-void tcc_component_get_spec(enum COMPONENT_MODE_TYPE mode, 
+void tcc_component_get_spec(
+	enum COMPONENT_MODE_TYPE mode,
 	struct COMPONENT_SPEC_TYPE *spec)
 {
 	switch (mode) {
@@ -592,10 +597,14 @@ void tcc_component_set_lcd2tv(enum COMPONENT_MODE_TYPE mode,
 
 	#if defined(CONFIG_VIOC_DOLBY_VISION_EDR) && defined(CONFIG_TCC_DV_IN)
 		dv_reg_phyaddr = dv_md_phyaddr = 0x00;
-		//pr_info("[INF][COMPONENT] #### DV EDR Mode ? format(%d), reg(0x%x)/meta(0x%x), outDevice(%d)/Disp_0(%p =? %p)\n",
-		//	mode->format,
-		//	mode->dv_reg_phyaddr, mode->dv_md_phyaddr,
-		//	outDevice, pDISP, VIOC_DISP_GetAddress(0));
+
+		#if 0
+		pr_info("[INF][COMPONENT] #### DV EDR Mode ? format(%d), reg(0x%x)/meta(0x%x), outDevice(%d)/Disp_0(%p =? %p)\n",
+			mode->format,
+			mode->dv_reg_phyaddr, mode->dv_md_phyaddr,
+			outDevice, pDISP, VIOC_DISP_GetAddress(0));
+		#endif
+
 		if ((!tcc_component_attached)
 			&& (dp_device->ddc_info.virt_addr
 				== VIOC_DISP_GetAddress(0))) {
@@ -669,7 +678,6 @@ void tcc_plugout_for_component(int ch_layer)
 		BITCLR(onthefly_using, 1 << ch_layer);
 	}
 }
-EXPORT_SYMBOL(tcc_plugout_for_component);
 
 /*
  * Function Name : tcc_component_end()
@@ -1059,14 +1067,15 @@ static int tcc_component_release(struct inode *inode, struct file *file)
 #ifdef CONFIG_PM
 int component_runtime_suspend(struct device *dev)
 {
-	struct fb_info *info = registered_fb[0];
-	struct tccfb_info *tccfb_info = NULL;
-	struct tcc_dp_device *dp_device = NULL;
+	//struct fb_info *info = registered_fb[0];
+	//struct tccfb_info *tccfb_info = NULL;
+	//struct tcc_dp_device *dp_device = NULL;
 
 	dprintk("%s+++\n", __func__);
 
 	if (component_start) {
 		tcc_component_end();
+		/* prevent KCS warning */
 	}
 
 	gComponentSuspendStatus = 1;
@@ -1104,7 +1113,7 @@ static int component_resume(struct device *dev)
 }
 #endif
 
-static struct file_operations tcc_component_fops = {
+static const struct file_operations tcc_component_fops = {
 	.owner = THIS_MODULE,
 	.unlocked_ioctl = tcc_component_ioctl,
 	.open = tcc_component_open,
@@ -1303,7 +1312,7 @@ static const struct dev_pm_ops component_pm_ops = {
 };
 
 #ifdef CONFIG_OF
-static struct of_device_id component_of_match[] = {
+static const struct of_device_id component_of_match[] = {
 	{.compatible = "telechips,tcc-component"},
 	{}
 };

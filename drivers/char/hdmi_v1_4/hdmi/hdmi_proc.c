@@ -135,20 +135,20 @@ static const struct file_operations proc_fops_sampling_frequency = {
 void proc_interface_init(struct tcc_hdmi_dev *dev)
 {
 	if(dev == NULL){
-		printk(KERN_ERR "[ERROR][HDMI_V14]%s:Device is null\n", __func__);
+		pr_err("[ERROR][HDMI_V14]%s:Device is null\n", __func__);
 		return;
 	}
 
 	dev->hdmi_proc_dir = proc_mkdir("hdmi_tx", NULL);
 	if(dev->hdmi_proc_dir == NULL){
-		printk(KERN_ERR "[ERROR][HDMI_V14]%s:Could not create file system @ /proc/hdmi_tx\n",
+		pr_err("[ERROR][HDMI_V14]%s:Could not create file system @ /proc/hdmi_tx\n",
 			__func__);
 	}
 
         dev->hdmi_proc_sampling_frequency = proc_create_data("sampling_frequency", S_IFREG | S_IRUGO | S_IWUGO,
                         dev->hdmi_proc_dir, &proc_fops_sampling_frequency, dev);
         if(dev->hdmi_proc_sampling_frequency == NULL){
-                printk(KERN_ERR "[ERROR][HDMI_V14]%s:Could not create file system @"
+                pr_err("[ERROR][HDMI_V14]%s:Could not create file system @"
                                 " /proc/hdmi_tx/sampling_frequency\n", __func__);
         }
 }

@@ -1432,7 +1432,7 @@ extern void VIOC_CONFIG_StopRequest(unsigned int en);
 extern int VIOC_CONFIG_LCDPath_Select(unsigned int lcdx_sel,
 unsigned int lcdx_if);
 
-extern volatile void __iomem *VIOC_IREQConfig_GetAddress(void);
+extern void __iomem *VIOC_IREQConfig_GetAddress(void);
 extern void VIOC_IREQConfig_DUMP(unsigned int offset, unsigned int size);
 
 

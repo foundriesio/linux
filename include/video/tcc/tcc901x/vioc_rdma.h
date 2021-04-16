@@ -384,48 +384,48 @@
 #endif
 
 /* Interface APIs */
-extern void VIOC_RDMA_SetImageConfig(volatile void __iomem *reg);
-extern void VIOC_RDMA_SetImageUpdate(volatile void __iomem *reg);
-extern void VIOC_RDMA_SetImageEnable(volatile void __iomem *reg);
-extern void VIOC_RDMA_SetImageDisable(volatile void __iomem *reg);
-extern void VIOC_RDMA_SetImageDisableNW(volatile void __iomem *reg);
-extern void VIOC_RDMA_GetImageEnable(volatile void __iomem *reg, unsigned int *enable);
-extern void VIOC_RDMA_SetImageFormat(volatile void __iomem *reg, unsigned int nFormat);
-extern void VIOC_RDMA_SetImageRGBSwapMode(volatile void __iomem *reg, unsigned int rgb_mode);
-extern void VIOC_RDMA_SetImageAlphaEnable(volatile void __iomem *reg, unsigned int enable);
-extern void VIOC_RDMA_GetImageAlphaEnable(volatile void __iomem *reg, unsigned int *enable);
-extern void VIOC_RDMA_SetImageAlphaSelect(volatile void __iomem *reg, unsigned int select);
-extern void VIOC_RDMA_SetImageY2RMode(volatile void __iomem *reg, unsigned int y2r_mode);
-extern void VIOC_RDMA_SetImageY2REnable(volatile void __iomem *reg, unsigned int enable);
-extern void VIOC_RDMA_SetImageR2YMode(volatile void __iomem *reg, unsigned int y2r_mode);
-extern void VIOC_RDMA_SetImageR2YEnable(volatile void __iomem *reg, unsigned int enable);
-extern void VIOC_RDMA_GetImageR2YEnable(volatile void __iomem *reg, unsigned int *enable);
-extern void VIOC_RDMA_SetImageAlpha(volatile void __iomem *reg, unsigned int nAlpha0, unsigned int nAlpha1);
-extern void VIOC_RDMA_GetImageAlpha(volatile void __iomem *reg, unsigned int *nAlpha0, unsigned int *nAlpha1);
-extern void VIOC_RDMA_SetImageUVIEnable(volatile void __iomem *reg, unsigned int enable);
-extern void VIOC_RDMA_SetImage3DMode(volatile void __iomem *reg, unsigned int mode);
-extern void VIOC_RDMA_SetImageSize(volatile void __iomem *reg, unsigned int sw, unsigned int sh);
-extern void VIOC_RDMA_GetImageSize(volatile void __iomem *reg, unsigned int *sw, unsigned int *sh);
-extern void VIOC_RDMA_SetImageBase(volatile void __iomem *reg, unsigned int nBase0, unsigned int nBase1, unsigned int nBase2);
-extern void VIOC_RDMA_SetImageRBase(volatile void __iomem *reg, unsigned int nBase0, unsigned int nBase1, unsigned int nBase2);
-extern void VIOC_RDMA_SetImageOffset(volatile void __iomem *reg, unsigned int nOffset0, unsigned int nOffset1);
-extern void VIOC_RDMA_SetImageBfield(volatile void __iomem *reg, unsigned int bfield);
-extern void VIOC_RDMA_SetImageBFMD(volatile void __iomem *reg, unsigned int bfmd);
-extern void VIOC_RDMA_SetImageIntl (volatile void __iomem *reg, unsigned int intl_en);
-extern void VIOC_RDMA_SetStatus(volatile void __iomem *reg, unsigned int mask);
-extern void VIOC_RDMA_SetIssue(volatile void __iomem *reg, unsigned int burst_length, unsigned int issue_cnt);
-extern void VIOC_RDMA_SetIreqMask(volatile void __iomem *reg, unsigned int mask, unsigned int set);
-extern unsigned int VIOC_RDMA_GetStatus(volatile void __iomem *reg);
+extern void VIOC_RDMA_SetImageConfig(void __iomem *reg);
+extern void VIOC_RDMA_SetImageUpdate(void __iomem *reg);
+extern void VIOC_RDMA_SetImageEnable(void __iomem *reg);
+extern void VIOC_RDMA_SetImageDisable(void __iomem *reg);
+extern void VIOC_RDMA_SetImageDisableNW(void __iomem *reg);
+extern void VIOC_RDMA_GetImageEnable(void __iomem *reg, unsigned int *enable);
+extern void VIOC_RDMA_SetImageFormat(void __iomem *reg, unsigned int nFormat);
+extern void VIOC_RDMA_SetImageRGBSwapMode(void __iomem *reg, unsigned int rgb_mode);
+extern void VIOC_RDMA_SetImageAlphaEnable(void __iomem *reg, unsigned int enable);
+extern void VIOC_RDMA_GetImageAlphaEnable(void __iomem *reg, unsigned int *enable);
+extern void VIOC_RDMA_SetImageAlphaSelect(void __iomem *reg, unsigned int select);
+extern void VIOC_RDMA_SetImageY2RMode(void __iomem *reg, unsigned int y2r_mode);
+extern void VIOC_RDMA_SetImageY2REnable(void __iomem *reg, unsigned int enable);
+extern void VIOC_RDMA_SetImageR2YMode(void __iomem *reg, unsigned int y2r_mode);
+extern void VIOC_RDMA_SetImageR2YEnable(void __iomem *reg, unsigned int enable);
+extern void VIOC_RDMA_GetImageR2YEnable(void __iomem *reg, unsigned int *enable);
+extern void VIOC_RDMA_SetImageAlpha(void __iomem *reg, unsigned int nAlpha0, unsigned int nAlpha1);
+extern void VIOC_RDMA_GetImageAlpha(void __iomem *reg, unsigned int *nAlpha0, unsigned int *nAlpha1);
+extern void VIOC_RDMA_SetImageUVIEnable(void __iomem *reg, unsigned int enable);
+extern void VIOC_RDMA_SetImage3DMode(void __iomem *reg, unsigned int mode);
+extern void VIOC_RDMA_SetImageSize(void __iomem *reg, unsigned int sw, unsigned int sh);
+extern void VIOC_RDMA_GetImageSize(void __iomem *reg, unsigned int *sw, unsigned int *sh);
+extern void VIOC_RDMA_SetImageBase(void __iomem *reg, unsigned int nBase0, unsigned int nBase1, unsigned int nBase2);
+extern void VIOC_RDMA_SetImageRBase(void __iomem *reg, unsigned int nBase0, unsigned int nBase1, unsigned int nBase2);
+extern void VIOC_RDMA_SetImageOffset(void __iomem *reg, unsigned int nOffset0, unsigned int nOffset1);
+extern void VIOC_RDMA_SetImageBfield(void __iomem *reg, unsigned int bfield);
+extern void VIOC_RDMA_SetImageBFMD(void __iomem *reg, unsigned int bfmd);
+extern void VIOC_RDMA_SetImageIntl (void __iomem *reg, unsigned int intl_en);
+extern void VIOC_RDMA_SetStatus(void __iomem *reg, unsigned int mask);
+extern void VIOC_RDMA_SetIssue(void __iomem *reg, unsigned int burst_length, unsigned int issue_cnt);
+extern void VIOC_RDMA_SetIreqMask(void __iomem *reg, unsigned int mask, unsigned int set);
+extern unsigned int VIOC_RDMA_GetStatus(void __iomem *reg);
 
-extern volatile void __iomem* VIOC_RDMA_GetAddress(unsigned int vioc_id);
+extern void __iomem* VIOC_RDMA_GetAddress(unsigned int vioc_id);
 extern unsigned int VIOC_RDMA_Get_CAddress(volatile void __iomem *reg);
 extern int VIOC_RDMA_IsVRDMA(unsigned int vioc_id);
-extern void VIOC_RDMA_SetDataFormat(volatile void __iomem *reg, unsigned int fmt_type, unsigned int fill_mode);
+extern void VIOC_RDMA_SetDataFormat(void __iomem *reg, unsigned int fmt_type, unsigned int fill_mode);
 //#ifdef CONFIG_ARCH_TCC898X
-extern void VIOC_RDMA_DEC_CTRL(volatile void __iomem *reg, unsigned int base, unsigned int length, unsigned int has_alpha, unsigned int has_comp);
-extern void VIOC_RDMA_DEC_EN(volatile void __iomem *reg, unsigned int OnOff);
+extern void VIOC_RDMA_DEC_CTRL(void __iomem *reg, unsigned int base, unsigned int length, unsigned int has_alpha, unsigned int has_comp);
+extern void VIOC_RDMA_DEC_EN(void __iomem *reg, unsigned int OnOff);
 //#endif
-extern void VIOC_RDMA_DUMP(volatile void __iomem *reg, unsigned int vioc_id);
+extern void VIOC_RDMA_DUMP(void __iomem *reg, unsigned int vioc_id);
 #ifdef CONFIG_VIOC_DOLBY_VISION_CERTIFICATION_TEST_UI // No UI-Blending
 extern void VIOC_RDMA_PreventEnable_for_UI(char no_update, char disabled);
 #endif

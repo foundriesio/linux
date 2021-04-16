@@ -35,6 +35,8 @@
 };
 
 &reserved_memory {
+	#address-cells = <2>;
+	#size-cells = <2>;
 	/*-----------------------------------------------------------
 	 * Secure Area 1 (CPU R/W, VPU X, GPU R/W, VIOC R)
 	 *-----------------------------------------------------------
@@ -697,15 +699,6 @@
 	switch-active = <0>;
 };
 
-&cpu_id {
-	compatible = "telechips,tcc-cpu-id";
-	reg = <0x0 0x14200290 0x0 0x4>,
-	    <0x0 0x14200298 0x0 0x4>,
-	    <0x0 0x1420029C 0x0 0x4>,
-	    <0x0 0x14400014 0x0 0x4>;
-	status = "okay";
-};
-
 &overlaymixer {
 	status ="okay";
 	contiguousSize = <0x1000000>;  /* 16MB (if > 512MB RAM) refer to Guide 27 Page */
@@ -740,6 +733,8 @@
 };
 
 &i2c0 {
+	#address-cells = <1>;
+	#size-cells = <0>;
 	status = "okay";
 	port-mux = <12>;
 	pinctrl-names = "default";
@@ -854,6 +849,8 @@
 };
 
 &i2c2 {
+	#address-cells = <1>;
+	#size-cells = <0>;
 	status = "okay";
 	port-mux = <20>; /* [0]SCL [1]SDA */
 	pinctrl-names = "default";
@@ -869,6 +866,8 @@
 };
 
 &i2c3 {
+	#address-cells = <1>;
+	#size-cells = <0>;
 	status = "okay";
 	port-mux = <11>; /* [0]SCL [1]SDA */
 	pinctrl-names = "default";
@@ -905,6 +904,8 @@
 };
 
 &i2c7 {
+	#address-cells = <1>;
+	#size-cells = <0>;
 	status = "okay";
 	port-mux = <28>;
 	pinctrl-names = "default";
@@ -1715,26 +1716,7 @@
 };
 
 &smartcard {
-	compatible = "telechips,pl131-smartcard";
-	reg = <0x16601000 0xFFF 0x16684000 0x10>;                //smartcard #0,
 	//clocks = <&clk_io IOBUS_SMARTCARD0>;
-	clock-frequency = <50000000>;
-	smartcard-clock = <4000000>;                             // initail value 4Mhz
-	Fi = <372>;						 // clock rate conversion integer
-	Di = <1>;						 // initail value
-
-	uart_ch = <&uart1>;					 // uart and smartcard share clock
-	uart_chnum = <1>;
-	port-num = <0>;
-	tda8024-use = <1>;
-	rst_gpios =  <&gpb 16 0>;
-	detect_gpios = <&gph 7 0>;
-	pwren_gpios = <&gph 10 0>;
-	data_gfb = <21>;
-	clk_gfb = <22>;
-	pinctrl-names = "default";
-	pinctrl-0 = <&smartcard_bus>;
-	status = "disable";
 };
 
 &uart0 {

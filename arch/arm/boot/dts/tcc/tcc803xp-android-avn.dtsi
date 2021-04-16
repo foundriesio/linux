@@ -33,6 +33,8 @@
 };
 
 &reserved_memory {
+	#address-cells = <1>;
+	#size-cells = <1>;
 	/*-----------------------------------------------------------
 	 * Secure Area 1 (CPU R/W, VPU X, GPU R/W, VIOC R)
 	 *-----------------------------------------------------------
@@ -649,15 +651,15 @@
 	vbus-gpio = <&gpext1 2 0>;
 };
 &dwc3 {
-	status = "okay";                   
-	//usb3en-ctrl-able;                
-	//usb3en-gpio = <&gpc 20 0>;       
-	//vbus-source-ctrl;                
-	vbus-ctrl-able;                    
+	status = "okay";
+	//usb3en-ctrl-able;
+	//usb3en-gpio = <&gpc 20 0>;
+	//vbus-source-ctrl;
+	vbus-ctrl-able;
 	vbus-gpio = <&gpext1 2 0>;
-	//pinctrl-names = "default";       
+	//pinctrl-names = "default";
 	//vdd_dwc-supply = <&vdd_v5p0_reg>;
-}; 
+};
 
 /* USB 2.0 OTG */
 &ehci_phy {
@@ -728,12 +730,7 @@
 };
 
 &thermal {
-	compatible = "telechips,tcc-thermal";
-		reg = <0x14700000 0x4 0x14700030 0x4 0x14200290 0x4 0x1420029C 0x4
-		0x14200298 0x4
-		0x1470000C 0x4
-		0x14700010 0x4>;
-
+	interrupt-parent = <&gic>;
 	status = "okay";
 
 	throttle_count = <5>;
@@ -773,12 +770,6 @@
 			freq_max_cluster1 = <540000>;
 		};
 	};
-};
-
-&cpu_id {
-	compatible = "telechips,tcc-cpu-id";
-	reg = <0x14200290 0x4 0x14200298 0x4 0x1420029C 0x4 0x14400014 0x4>;
-	status = "okay";
 };
 
 &overlaymixer {
@@ -831,6 +822,8 @@
 };
 
 &i2c0 {
+	#address-cells = <1>;
+	#size-cells = <0>;
 	status = "okay";
 	port-mux = <11>;
 	pinctrl-names = "default";
@@ -852,6 +845,8 @@
 };
 
 &i2c1 {
+	#address-cells = <1>;
+	#size-cells = <0>;
 	status = "okay";
 	port-mux = <6>;
 	pinctrl-names = "default";
@@ -945,6 +940,8 @@
 
 
 &i2c2 {
+	#address-cells = <1>;
+	#size-cells = <0>;
 	status = "okay";
 	port-mux = <13>;
 	pinctrl-names = "default";
@@ -970,6 +967,8 @@
 };
 
 &i2c7 {
+	#address-cells = <1>;
+	#size-cells = <0>;
 	status = "okay";
 	port-mux = <12>; /* [0]SCL [1]SDA */
 	pinctrl-names = "default";
@@ -1045,7 +1044,7 @@
 	pinctrl-0 = <&m1dai1_bclk &m1dai1_lrck &m1dai1_dai0 &m1dai1_dai1 &m1dai1_dai2 &m1dai1_dai3>;
 	pinctrl-1 = <&m1dai1_bclk_idle &m1dai1_lrck_idle &m1dai1_dai0_idle &m1dai1_dai1_idle &m1dai1_dai2_idle &m1dai1_dai3_idle>;
 	status = "okay";
-};	
+};
 
 &i2s1 {
 	compatible = "telechips,sdr";
@@ -1085,7 +1084,7 @@
 &adma2 {
 	status = "disabled";
 };
-	
+
 &adma3 {
 	status = "okay";
 };
@@ -1093,21 +1092,21 @@
 &adma4 {
 	status = "disabled";
 };
-	
+
 &i2s0 {
 	pinctrl-names = "default", "idle";
 	pinctrl-0 = <&m1dai3_mclk &m1dai3_bclk &m1dai3_lrck &m1dai3_dao0 &m1dai3_dai0>;
 	pinctrl-1 = <&m1dai3_mclk_idle &m1dai3_bclk_idle &m1dai3_lrck_idle &m1dai3_dao0_idle &m1dai3_dai0_idle>;
-	status = "okay";		
+	status = "okay";
 };
 
 &i2s3 {
 	pinctrl-names = "default", "idle";
 	pinctrl-0 = <&m0dai0_bclk &m0dai0_lrck &m0dai0_dao0 &m0dai0_dai0>;
 	pinctrl-1 = <&m0dai0_bclk_idle &m0dai0_lrck_idle &m0dai0_dao0_idle &m0dai0_dai0_idle>;
-	status = "okay";		
+	status = "okay";
 };
-	
+
 &spdif0 {
 	pinctrl-names = "default", "idle";
 	pinctrl-0 = <&spdif4_tx>;
@@ -1179,7 +1178,7 @@
 		dai = <&spdif0>;
 		playback-only;
 	};
-		
+
 	telechips,dai-link@2 {
 		stream-name="SPDIF_1_RX";
 		pcm = <&adma3>;
@@ -1196,7 +1195,7 @@
 		pcm = <&adma3>;
 		dai = <&i2s3>;
 	};
-};				
+};
 
 &gmac {
 	status = "okay";
@@ -1335,26 +1334,7 @@
 };
 
 &smartcard {
-	compatible = "telechips,pl131-smartcard";
-	reg = <0x16601000 0xFFF 0x16684000 0x10>;                //smartcard #0,
 	//clocks = <&clk_io IOBUS_SMARTCARD0>;
-	clock-frequency = <50000000>;
-	smartcard-clock = <4000000>;                             // initail value 4Mhz
-	Fi = <372>;						 // clock rate conversion integer
-	Di = <1>;						 // initail value
-
-	uart_ch = <&uart1>;					 // uart and smartcard share clock
-	uart_chnum = <1>;
-	port-num = <0>;
-	tda8024-use = <1>;
-	rst_gpios =  <&gpb 16 0>;
-	detect_gpios = <&gph 7 0>;
-	pwren_gpios = <&gph 10 0>;
-	data_gfb = <21>;
-	clk_gfb = <22>;
-	pinctrl-names = "default";
-	pinctrl-0 = <&smartcard_bus>;
-	status = "disable";
 };
 
 &uart0 {

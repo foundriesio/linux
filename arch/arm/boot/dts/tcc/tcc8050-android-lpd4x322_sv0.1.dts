@@ -283,6 +283,8 @@
 
 
 &i2c0 {
+	#address-cells = <1>;
+	#size-cells = <0>;
 	status = "okay";
 	port-mux = <22>;
 	pinctrl-names = "default";
@@ -409,6 +411,8 @@
 };
 
 &i2c2 {
+	#address-cells = <1>;
+	#size-cells = <0>;
 	status = "okay";
 	port-mux = <30>; /* [0]SCL [1]SDA */
 	pinctrl-names = "default";
@@ -431,6 +435,8 @@
 };
 
 &i2c4 {
+	#address-cells = <1>;
+	#size-cells = <0>;
 	status = "okay";
 	port-mux = <6>; /* [0]SCL [1]SDA */
 	pinctrl-names = "default";
@@ -449,6 +455,8 @@
 };
 
 &i2c5 {
+	#address-cells = <1>;
+	#size-cells = <0>;
 	status = "okay";
 	port-mux = <33>; /* [0]SCL [1]SDA */
 	pinctrl-names = "default";
@@ -478,35 +486,37 @@
 };
 
 &i2c6 {
-		status = "okay";
-		port-mux = <37>;
-		pinctrl-names = "default";
-		pinctrl-0 = <&i2c37_bus>;
+	#address-cells = <1>;
+	#size-cells = <0>;
+	status = "okay";
+	port-mux = <37>;
+	pinctrl-names = "default";
+	pinctrl-0 = <&i2c37_bus>;
 
-		dp_serializer:max96851@60 {
-			compatible	= "maxim,serdes";
-			reg		= <0x60>;
-		};
-		
-		dp_deserializer0:max96878@48 {
-			compatible	= "maxim,serdes";
-			reg		= <0x48>;
-		};
-		
-		dp_deserializer1:max96878@4A {
-			compatible	= "maxim,serdes";
-			reg		= <0x4A>;
-		};
-		
-		dp_deserializer2:max96878@4C {
-			compatible	= "maxim,serdes";
-			reg		= <0x4C>;
-		};
-		
-		dp_deserializer3:max96878@68 {
-			compatible	= "maxim,serdes";
-			reg		= <0x68>;
-		};
+	dp_serializer:max96851@60 {
+		compatible	= "maxim,serdes";
+		reg		= <0x60>;
+	};
+
+	dp_deserializer0:max96878@48 {
+		compatible	= "maxim,serdes";
+		reg		= <0x48>;
+	};
+
+	dp_deserializer1:max96878@4A {
+		compatible	= "maxim,serdes";
+		reg		= <0x4A>;
+	};
+
+	dp_deserializer2:max96878@4C {
+		compatible	= "maxim,serdes";
+		reg		= <0x4C>;
+	};
+
+	dp_deserializer3:max96878@68 {
+		compatible	= "maxim,serdes";
+		reg		= <0x68>;
+	};
 };
 
 &max968xx_config {

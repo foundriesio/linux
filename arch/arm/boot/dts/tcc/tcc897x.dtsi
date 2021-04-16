@@ -546,13 +546,6 @@
 	 * Telechips DataSheet Part2. SMU & PMU
 	 */
 
-	timer@74300080 {
-		compatible = "telechips,timer32";
-		reg = <0x74300080 0x1c>;
-		interrupts = <GIC_SPI 1 0>;
-		clocks = <&clk_peri PERI_TCZ>;
-	};
-
 	timer@74300000 { /* tc0~tc5 */
 		compatible = "telechips,timer";
 		reg = <0x74300000 0x60 0x74300060 0x4>;

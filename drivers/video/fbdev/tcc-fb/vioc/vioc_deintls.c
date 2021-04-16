@@ -26,9 +26,9 @@
 #include <video/tcc/vioc_ddicfg.h>	// is_VIOC_REMAP
 #include <video/tcc/vioc_deintls.h>
 
-volatile void __iomem *pDEINTLS_reg = NULL;
+void __iomem *pDEINTLS_reg;
 
-volatile void __iomem *VIOC_DEINTLS_GetAddress(void)
+void __iomem *VIOC_DEINTLS_GetAddress(void)
 {
 	if (pDEINTLS_reg == NULL)
 		pr_err("[ERR][DEINTLS] %s: address NULL\n", __func__);
@@ -44,7 +44,7 @@ static int __init vioc_deintls_init(void)
 	if (dev_np == NULL) {
 		pr_info("[INF][DEINTLS] disabled\n");
 	} else {
-		pDEINTLS_reg = (volatile void __iomem *)of_iomap(dev_np,
+		pDEINTLS_reg = (void __iomem *)of_iomap(dev_np,
 						(is_VIOC_REMAP ? 1 : 0));
 
 		if (pDEINTLS_reg)

@@ -19,12 +19,12 @@
 #ifndef __VIOC_CHROMAINTERPOLATOR_H__
 #define	__VIOC_CHROMAINTERPOLATOR_H__
 
-extern void VIOC_ChromaInterpol_ctrl(volatile void __iomem *reg,
+extern void VIOC_ChromaInterpol_ctrl(void __iomem *reg,
 	unsigned int mode,
 	unsigned int r2y_en, unsigned int r2y_mode,
 	unsigned int y2r_en, unsigned int y2r_mode);
 
-extern volatile void __iomem *VIOC_ChromaInterpol_GetAddress(
+extern void __iomem *VIOC_ChromaInterpol_GetAddress(
 	unsigned int vioc_id);
 
 #endif//__VIOC_CHROMAINTERPOLATOR_H__

@@ -34,7 +34,6 @@ struct tcc_sc_mbox_msg {
 
 #define TCC_SC_MBOX_FLAG_SKIP_XFER	(1 << 0)
 
-
 #define MBOX_CMD(dev, cmd) \
 	((1 << 31) | (((dev) & 0xff) << 24) | ((cmd) & 0xffff))
 

@@ -27,7 +27,7 @@
 #include <video/tcc/vioc_global.h>
 #include <video/tcc/vioc_chromainterpolator.h>
 
-static volatile void __iomem *pCHROMA_reg[VIOC_CINTPL_MAX] = {0};
+static void __iomem *pCHROMA_reg[VIOC_CINTPL_MAX] = {0};
 
 /*
  * Register offset
@@ -51,11 +51,11 @@ static volatile void __iomem *pCHROMA_reg[VIOC_CINTPL_MAX] = {0};
 
 
 
-void VIOC_ChromaInterpol_ctrl(volatile void __iomem *reg, unsigned int mode,
+void VIOC_ChromaInterpol_ctrl(void __iomem *reg, unsigned int mode,
 		unsigned int r2y_en, unsigned int r2y_mode,
 		unsigned int y2r_en, unsigned int y2r_mode)
 {
-	volatile unsigned long val = 0;
+	unsigned long val = 0;
 
 	val = ((mode << CICTRL_MODE_SHIFT) & CICTRL_MODE_MASK)
 		|((r2y_en << CICTRL_R2Y_SHIFT) & CICTRL_R2Y_MASK)
@@ -147,7 +147,7 @@ static int __init test_api(void)
 }
 #endif// CHROMA_INTERPOLATOR_TEST
 
-volatile void __iomem *VIOC_ChromaInterpol_GetAddress(unsigned int vioc_id)
+void __iomem *VIOC_ChromaInterpol_GetAddress(unsigned int vioc_id)
 {
 	int Num = get_vioc_index(vioc_id);
 
@@ -177,11 +177,13 @@ static int __init vioc_chromainterpolator_init(void)
 		pr_info("[INF][CHROMA_I] vioc-chroma_intpr: disabled\n");
 	} else {
 		for (i = 0; i < VIOC_CINTPL_MAX; i++) {
-			pCHROMA_reg[i] = (volatile void __iomem *)of_iomap(
+			pCHROMA_reg[i] = (void __iomem *)of_iomap(
 							ViocChromaInter_np, i);
 
-			if (pCHROMA_reg[i])
-				pr_info("[INF][CHROMA_I] vioc-chroma_intpr%d: 0x%p\n", i, pCHROMA_reg[i]);
+			if (pCHROMA_reg[i]) {
+				pr_info("[INF][CHROMA_I] vioc-chroma_intpr%d: 0x%p\n",
+					i, pCHROMA_reg[i]);
+			}
 		}
 	}
 	return 0;

@@ -20,14 +20,14 @@
 #ifndef _TCC_VIOC_LUT_IOCTL_H_
 #define _TCC_VIOC_LUT_IOCTL_H_
 
-#include "autoconf.h"
+#include "../../generated/autoconf.h"
 //#include <linux/ioctl.h>
 
 #define CONFIG_LUT_SUPPORT_CSC_PRESET_SET
 
 #define LUT_IOC_MAGIC		'l'
 
-enum{
+enum {
 	LUT_DEV0 = 0,
 	LUT_DEV1 = 1,
 	LUT_DEV2 = 2,
@@ -38,31 +38,31 @@ enum{
 	LUT_DEV3 = 7,
 };
 
-enum{
-        LUT_CSC_PRESET_SDR_TO_HDR10 = 0,
-        LUT_CSC_PRESET_HDR10_TO_SDR,
-        LUT_CSC_PRESET_SDR_TO_HLG,
-        LUT_CSC_PRESET_HLG_TO_SDR,
-        LUT_CSC_PRESET_MAX
-};
-
-enum{
-        LUT_CSC_PRESET_BT709_TO_BT2020 = 0,
-        LUT_CSC_PRESET_BT2020_TO_BT709,
-        LUT_CSC_PRESET_BTXXX_MAX
+enum {
+	LUT_CSC_PRESET_SDR_TO_HDR10 = 0,
+	LUT_CSC_PRESET_HDR10_TO_SDR,
+	LUT_CSC_PRESET_SDR_TO_HLG,
+	LUT_CSC_PRESET_HLG_TO_SDR,
+	LUT_CSC_PRESET_MAX
 };
 
 enum {
-        LUT_CSC_COEFF11 = 0,
-        LUT_CSC_COEFF12,
-        LUT_CSC_COEFF13,
-        LUT_CSC_COEFF21,
-        LUT_CSC_COEFF22,
-        LUT_CSC_COEFF23,
-        LUT_CSC_COEFF31,
-        LUT_CSC_COEFF32,
-        LUT_CSC_COEFF33,
-        LUT_CSC_COEFF_MAX
+	LUT_CSC_PRESET_BT709_TO_BT2020 = 0,
+	LUT_CSC_PRESET_BT2020_TO_BT709,
+	LUT_CSC_PRESET_BTXXX_MAX
+};
+
+enum {
+	LUT_CSC_COEFF11 = 0,
+	LUT_CSC_COEFF12,
+	LUT_CSC_COEFF13,
+	LUT_CSC_COEFF21,
+	LUT_CSC_COEFF22,
+	LUT_CSC_COEFF23,
+	LUT_CSC_COEFF31,
+	LUT_CSC_COEFF32,
+	LUT_CSC_COEFF33,
+	LUT_CSC_COEFF_MAX
 };
 
 struct VIOC_LUT_VALUE_SET {
@@ -75,7 +75,7 @@ struct VIOC_LUT_VALUE_SET {
 	// 10bit RGB
 	unsigned int Gamma[1024];
 	//vioc componet : RGB ,  disp component : BGR
-#endif//
+#endif				//
 	unsigned int lut_number;
 	//enum VIOC_LUT_NUM
 };
@@ -86,25 +86,25 @@ struct VIOC_LUT_VALUE_SET {
  * variable to provides information of lut_size
  */
 struct VIOC_LUT_VALUE_SET_EX {
-        /** lookup table size */
-        unsigned int lut_size;
-        /** lookup table id */
-        unsigned int lut_number;
+	/** lookup table size */
+	unsigned int lut_size;
+	/** lookup table id */
+	unsigned int lut_number;
 	/** lookup parameter bit[ :0] table 0: rgb-table, 1: y-table */
 	unsigned int param;
-        /** lookup table */
-        unsigned int Gamma[1024];
+	/** lookup table */
+	unsigned int Gamma[1024];
 };
 
 struct VIOC_LUT_PLUG_IN_SET {
 	unsigned int enable;
-	unsigned int lut_number;  		//enum VIOC_LUT_NUM
-	unsigned int lut_plug_in_ch; 	//ex :VIOC_LUT_RDMA_00
+	unsigned int lut_number;	//enum VIOC_LUT_NUM
+	unsigned int lut_plug_in_ch;	//ex :VIOC_LUT_RDMA_00
 };
 
 struct VIOC_LUT_ONOFF_SET {
 	unsigned int lut_onoff;
-	unsigned int lut_number; 	//enum VIOC_LUT_NUM
+	unsigned int lut_number;	//enum VIOC_LUT_NUM
 };
 
 struct VIOC_LUT_SET_Type {
@@ -116,9 +116,9 @@ struct VIOC_LUT_SET_Type {
 };
 
 struct VIOC_LUT_CSC_PRESET_SET {
-        unsigned int lut_number;
-        unsigned int preset_id;
-        unsigned int enable;
+	unsigned int lut_number;
+	unsigned int preset_id;
+	unsigned int enable;
 };
 
 struct VIOC_LUT_CSC_COEFF {
@@ -141,7 +141,8 @@ struct VIOC_LUT_UPDATE_PEND {
 };
 
 #define TCC_LUT_SET\
-	_IOW(LUT_IOC_MAGIC, 2, struct VIOC_LUT_VALUE_SET) //hw vioc lut set
+	_IOW(LUT_IOC_MAGIC, 2, struct VIOC_LUT_VALUE_SET)
+	//hw vioc lut set
 #define TCC_LUT_PLUG_IN\
 	_IOW(LUT_IOC_MAGIC, 3, struct VIOC_LUT_PLUG_IN_SET)
 #define TCC_LUT_ONOFF\
@@ -166,8 +167,8 @@ struct VIOC_LUT_UPDATE_PEND {
 
 #ifndef ADDRESS_ALIGNED
 #define ADDRESS_ALIGNED
-#define ALIGN_BIT 			        (0x8-1)
-#define BIT_0 					3
+#define ALIGN_BIT			(0x8-1)
+#define BIT_0			3
 #define GET_ADDR_YUV42X_spY(Base_addr)\
 	(((((unsigned int)Base_addr) + ALIGN_BIT) >> BIT_0)<<BIT_0)
 #define GET_ADDR_YUV42X_spU(Yaddr, x, y)\
@@ -178,4 +179,4 @@ struct VIOC_LUT_UPDATE_PEND {
 	(((((unsigned int)Uaddr+(x*y/4)) + ALIGN_BIT) >> BIT_0)<<BIT_0)
 #endif
 
-#endif//
+#endif //

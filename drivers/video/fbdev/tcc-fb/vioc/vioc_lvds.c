@@ -42,8 +42,8 @@
 static unsigned int ref_ratio_arr[5][2] = {
 	{0, 1}, {1, 2}, {2, 4}, {3, 8}, {4, 16}
 };
-static volatile void __iomem *pLVDS_reg[LVDS_PHY_PORT_MAX];
-static volatile void __iomem *pLVDS_wrap_reg;
+static void __iomem *pLVDS_reg[LVDS_PHY_PORT_MAX];
+static void __iomem *pLVDS_wrap_reg;
 
 void LVDS_PHY_LaneSwap(
 	unsigned int s_port_en, unsigned int lvds_main, unsigned int lvds_sub,
@@ -121,8 +121,8 @@ static void LVDS_PHY_GetCalibrationLevel(
 int LVDS_PHY_GetUpsampleRatio(
 	unsigned int p_port, unsigned int s_port, unsigned int freq)
 {
-	volatile void __iomem *p_reg = LVDS_PHY_GetAddress(p_port);
-	volatile void __iomem *s_reg = LVDS_PHY_GetAddress(s_port);
+	void __iomem *p_reg = LVDS_PHY_GetAddress(p_port);
+	void __iomem *s_reg = LVDS_PHY_GetAddress(s_port);
 	int idx = -1;
 
 	if (p_reg) {
@@ -166,8 +166,8 @@ unsigned int LVDS_PHY_GetRefCnt(
 	unsigned int p_port, unsigned int s_port, unsigned int freq,
 	int upsample_ratio)
 {
-	volatile void __iomem *p_reg = LVDS_PHY_GetAddress(p_port);
-	volatile void __iomem *s_reg = LVDS_PHY_GetAddress(s_port);
+	void __iomem *p_reg = LVDS_PHY_GetAddress(p_port);
+	void __iomem *s_reg = LVDS_PHY_GetAddress(s_port);
 
 	if (p_reg) {
 		unsigned int pxclk;
@@ -205,7 +205,7 @@ void LVDS_PHY_SetFormat(
 	unsigned int port, unsigned int balance, unsigned int depth,
 	unsigned int format, unsigned int freq)
 {
-	volatile void __iomem *reg = LVDS_PHY_GetAddress(port);
+	void __iomem *reg = LVDS_PHY_GetAddress(port);
 
 	if (reg) {
 		unsigned int value;
@@ -236,7 +236,7 @@ void LVDS_PHY_SetUserMode(
 	unsigned int port, unsigned int lane, unsigned int skew,
 	unsigned int swap)
 {
-	volatile void __iomem *reg = LVDS_PHY_GetAddress(port);
+	void __iomem *reg = LVDS_PHY_GetAddress(port);
 
 	if (reg) {
 		unsigned int value;
@@ -320,7 +320,7 @@ void LVDS_PHY_SetUserMode(
 void LVDS_PHY_SetLaneSwap(
 	unsigned int port, unsigned int lane, unsigned int select)
 {
-	volatile void __iomem *reg = LVDS_PHY_GetAddress(port);
+	void __iomem *reg = LVDS_PHY_GetAddress(port);
 	unsigned int value;
 
 	if (reg) {
@@ -356,7 +356,7 @@ void LVDS_PHY_SetLaneSwap(
  */
 void LVDS_PHY_SetFifoEnableTiming(unsigned int port, unsigned int cycle)
 {
-	volatile void __iomem *reg = LVDS_PHY_GetAddress(port);
+	void __iomem *reg = LVDS_PHY_GetAddress(port);
 
 	if (reg) {
 		unsigned int value;
@@ -387,7 +387,7 @@ void LVDS_PHY_SetPortOption(
 	unsigned int use_other_port, unsigned int lane_en,
 	unsigned int sync_transmit_src)
 {
-	volatile void __iomem *reg = LVDS_PHY_GetAddress(port);
+	void __iomem *reg = LVDS_PHY_GetAddress(port);
 
 	if (reg) {
 		unsigned int value;
@@ -420,7 +420,7 @@ void LVDS_PHY_SetPortOption(
  */
 void LVDS_PHY_LaneEnable(unsigned int port, unsigned int enable)
 {
-	volatile void __iomem *reg = LVDS_PHY_GetAddress(port);
+	void __iomem *reg = LVDS_PHY_GetAddress(port);
 
 	if (reg) {
 		unsigned int value;
@@ -441,7 +441,7 @@ void LVDS_PHY_LaneEnable(unsigned int port, unsigned int enable)
  */
 void LVDS_PHY_FifoEnable(unsigned int port, unsigned int enable)
 {
-	volatile void __iomem *reg = LVDS_PHY_GetAddress(port);
+	void __iomem *reg = LVDS_PHY_GetAddress(port);
 
 	if (reg) {
 		unsigned int value;
@@ -469,7 +469,8 @@ void LVDS_PHY_FifoEnable(unsigned int port, unsigned int enable)
  */
 void LVDS_PHY_FifoReset(unsigned int port, unsigned int reset)
 {
-	volatile void __iomem *reg = LVDS_PHY_GetAddress(port);
+	void __iomem *reg = LVDS_PHY_GetAddress(port);
+
 	if (reg) {
 		if (reset)
 			__raw_writel(0x0000118F, reg + LVDS_RESETB);
@@ -485,7 +486,7 @@ void LVDS_PHY_FifoReset(unsigned int port, unsigned int reset)
  */
 void LVDS_PHY_SWReset(unsigned int port, unsigned int reset)
 {
-	volatile void __iomem *reg = LVDS_PHY_GetAddress(port);
+	void __iomem *reg = LVDS_PHY_GetAddress(port);
 
 	if (reg) {
 		if (reset)
@@ -502,7 +503,7 @@ void LVDS_PHY_SWReset(unsigned int port, unsigned int reset)
  */
 void LVDS_PHY_ClockEnable(unsigned int port, unsigned int enable)
 {
-	volatile void __iomem *reg = LVDS_PHY_GetAddress(port);
+	void __iomem *reg = LVDS_PHY_GetAddress(port);
 
 	if (reg) {
 		if (enable)
@@ -521,7 +522,7 @@ void LVDS_PHY_ClockEnable(unsigned int port, unsigned int enable)
 void LVDS_PHY_SetStrobe(
 	unsigned int port, unsigned int mode, unsigned int enable)
 {
-	volatile void __iomem *reg = LVDS_PHY_GetAddress(port);
+	void __iomem *reg = LVDS_PHY_GetAddress(port);
 
 	if (reg) {
 		unsigned int value;
@@ -551,7 +552,7 @@ void LVDS_PHY_SetFcon(
 	unsigned int port, unsigned int mode, unsigned int loop,
 	unsigned int division, unsigned int fcon)
 {
-	volatile void __iomem *reg = LVDS_PHY_GetAddress(port);
+	void __iomem *reg = LVDS_PHY_GetAddress(port);
 	unsigned int value;
 
 	if (reg) {
@@ -645,7 +646,7 @@ void LVDS_PHY_SetFcon(
 void LVDS_PHY_SetCFcon(
 	unsigned int port, unsigned int mode, unsigned int enable)
 {
-	volatile void __iomem *reg = LVDS_PHY_GetAddress(port);
+	void __iomem *reg = LVDS_PHY_GetAddress(port);
 	unsigned int value;
 	unsigned int time_out = 0;
 
@@ -700,8 +701,8 @@ closed_loop:
 
 void LVDS_PHY_CheckPLLStatus(unsigned int p_port, unsigned int s_port)
 {
-	volatile void __iomem *p_reg = LVDS_PHY_GetAddress(p_port);
-	volatile void __iomem *s_reg = LVDS_PHY_GetAddress(p_port);
+	void __iomem *p_reg = LVDS_PHY_GetAddress(p_port);
+	void __iomem *s_reg = LVDS_PHY_GetAddress(p_port);
 	unsigned int offset = LVDS_MONITOR_DEBUG1;
 	unsigned int time_out = 0;
 
@@ -737,7 +738,7 @@ void LVDS_PHY_CheckPLLStatus(unsigned int p_port, unsigned int s_port)
  */
 void LVDS_PHY_FConEnable(unsigned int port, unsigned int enable)
 {
-	volatile void __iomem *reg = LVDS_PHY_GetAddress(port);
+	void __iomem *reg = LVDS_PHY_GetAddress(port);
 	unsigned int value;
 
 	if (reg) {
@@ -758,7 +759,7 @@ void LVDS_PHY_FConEnable(unsigned int port, unsigned int enable)
  * value : the value you want
  */
 void LVDS_PHY_StrobeWrite(
-	volatile void __iomem *reg, unsigned int offset, unsigned int value)
+	void __iomem *reg, unsigned int offset, unsigned int value)
 {
 	unsigned int time_out = 0;
 
@@ -784,8 +785,8 @@ void LVDS_PHY_StrobeConfig(
 	unsigned int p_port, unsigned int s_port, unsigned int upsample_ratio,
 	unsigned int step, unsigned int vcm, unsigned int vsw)
 {
-	volatile void __iomem *p_reg = LVDS_PHY_GetAddress(p_port);
-	volatile void __iomem *s_reg = LVDS_PHY_GetAddress(s_port);
+	void __iomem *p_reg = LVDS_PHY_GetAddress(p_port);
+	void __iomem *s_reg = LVDS_PHY_GetAddress(s_port);
 	unsigned int vcmcal, swingcal;
 	unsigned int value;
 
@@ -1042,8 +1043,8 @@ void LVDS_PHY_StrobeConfig(
  */
 unsigned int LVDS_PHY_CheckStatus(unsigned int p_port, unsigned int s_port)
 {
-	volatile void __iomem *p_reg = LVDS_PHY_GetAddress(p_port);
-	volatile void __iomem *s_reg = LVDS_PHY_GetAddress(s_port);
+	void __iomem *p_reg = LVDS_PHY_GetAddress(p_port);
+	void __iomem *s_reg = LVDS_PHY_GetAddress(s_port);
 	unsigned int ret = 0, value;
 
 	if (p_reg) {
@@ -1075,7 +1076,7 @@ unsigned int LVDS_PHY_CheckStatus(unsigned int p_port, unsigned int s_port)
  */
 unsigned int LVDS_PHY_GetRegValue(unsigned int port, unsigned int offset)
 {
-	volatile void __iomem *reg = LVDS_PHY_GetAddress(port);
+	void __iomem *reg = LVDS_PHY_GetAddress(port);
 	unsigned int ret;
 	unsigned int time_out = 0;
 
@@ -1093,10 +1094,11 @@ end_func:
 	return ret;
 }
 
-volatile void __iomem *LVDS_PHY_GetAddress(unsigned int port)
+void __iomem *LVDS_PHY_GetAddress(unsigned int port)
 {
-	if (port >= LVDS_PHY_PORT_MAX){
-		//pr_warn("[WARN][LVDS] %s: unused port value. return NULL.", __func__);
+	if (port >= LVDS_PHY_PORT_MAX) {
+		//pr_warn("[WARN][LVDS] %s: unused port value. return NULL.",
+		//	__func__);
 		return NULL;
 	}
 
@@ -1116,7 +1118,7 @@ volatile void __iomem *LVDS_PHY_GetAddress(unsigned int port)
 void LVDS_WRAP_SetConfigure(
 	unsigned int lr, unsigned int bypass, unsigned int width)
 {
-	volatile void __iomem *reg = (volatile void __iomem *)pLVDS_wrap_reg;
+	void __iomem *reg = (void __iomem *)pLVDS_wrap_reg;
 
 	if (reg) {
 		unsigned int val =
@@ -1158,7 +1160,7 @@ void LVDS_WRAP_Set(
 
 void LVDS_WRAP_SetSyncPolarity(unsigned int sync)
 {
-	volatile void __iomem *reg = (volatile void __iomem *)pLVDS_wrap_reg;
+	void __iomem *reg = (void __iomem *)pLVDS_wrap_reg;
 	unsigned int val;
 
 	val = (readl(reg + SAL_1) & ~(SAL_HS_MASK | SAL_VS_MASK));
@@ -1178,7 +1180,7 @@ void LVDS_WRAP_SetSyncPolarity(unsigned int sync)
  */
 void LVDS_WRAP_SetDataSwap(unsigned int ch, unsigned int set)
 {
-	volatile void __iomem *reg = (volatile void __iomem *)pLVDS_wrap_reg;
+	void __iomem *reg = (void __iomem *)pLVDS_wrap_reg;
 
 	if (reg) {
 		unsigned int val;
@@ -1224,7 +1226,7 @@ void LVDS_WRAP_SetDataSwap(unsigned int ch, unsigned int set)
 void LVDS_WRAP_SetMuxOutput(
 	MUX_TYPE mux, unsigned int ch, unsigned int select, unsigned int enable)
 {
-	volatile void __iomem *reg = (volatile void __iomem *)pLVDS_wrap_reg;
+	void __iomem *reg = (void __iomem *)pLVDS_wrap_reg;
 	unsigned int val;
 
 	if (reg) {
@@ -1304,7 +1306,7 @@ error_mux_output:
  */
 void LVDS_WRAP_SetDataPath(unsigned int ch, unsigned int path, unsigned int set)
 {
-	volatile void __iomem *reg = (volatile void __iomem *)pLVDS_wrap_reg;
+	void __iomem *reg = (void __iomem *)pLVDS_wrap_reg;
 	unsigned int offset;
 
 	if ((path < 0) || (path >= TS_TXOUT_SEL_MAX))
@@ -1344,7 +1346,7 @@ error_data_path:
 void LVDS_WRAP_SetDataArray(
 	unsigned int ch, unsigned int data[TXOUT_MAX_LINE][TXOUT_DATA_PER_LINE])
 {
-	volatile void __iomem *reg = (volatile void __iomem *)pLVDS_wrap_reg;
+	void __iomem *reg = (void __iomem *)pLVDS_wrap_reg;
 	unsigned int *lvdsdata = (unsigned int *)data;
 	unsigned int idx, value, path;
 	unsigned int data0, data1, data2, data3;
@@ -1378,8 +1380,8 @@ error_data_array:
  */
 void LVDS_WRAP_SetAccessCode(void)
 {
-	volatile void __iomem *reg =
-		(volatile void __iomem *)pLVDS_wrap_reg + 0x1EC;
+	void __iomem *reg =
+		(void __iomem *)pLVDS_wrap_reg + 0x1EC;
 	if (__raw_readl(reg) == 0x1ACCE551)
 		return;
 
@@ -1394,8 +1396,8 @@ void LVDS_WRAP_SetAccessCode(void)
  */
 void LVDS_WRAP_ResetPHY(unsigned int port, unsigned int reset)
 {
-	volatile void __iomem *reg =
-		(volatile void __iomem *)pLVDS_wrap_reg + TS_SWRESET;
+	void __iomem *reg =
+		(void __iomem *)pLVDS_wrap_reg + TS_SWRESET;
 
 	if (reset) {
 		switch (port) {
@@ -1424,14 +1426,14 @@ static int __init vioc_lvds_init(void)
 		pr_info("[INF][LVDS] vioc-lvdsphy: disabled\n");
 	} else {
 		for (i = 0; i < LVDS_PHY_PORT_MAX; i++) {
-			pLVDS_reg[i] = (volatile void __iomem *)of_iomap(
+			pLVDS_reg[i] = (void __iomem *)of_iomap(
 				ViocLVDS_np, i);
 
 			if (pLVDS_reg[i])
 				pr_info("[INF][LVDS] vioc-lvdsphy%d: 0x%p\n", i,
 					pLVDS_reg[i]);
 		}
-		pLVDS_wrap_reg = (volatile void __iomem *)of_iomap(
+		pLVDS_wrap_reg = (void __iomem *)of_iomap(
 			ViocLVDS_np, IDX_LVDS_WRAP);
 		if (pLVDS_wrap_reg)
 			pr_info("[INF][LVDS] vioc-lvdswrap: 0x%p\n",

@@ -107,7 +107,7 @@ struct wdma_queue_list {
 };
 
 struct tcc_wdma_dev_vioc {
-	volatile void __iomem *reg;
+	void __iomem *reg;
 	unsigned int id;
 	//unsigned int path;
 };
@@ -190,8 +190,9 @@ unsigned int wdma_queue_list_init(struct wdma_queue_list *frame_list,
 		= cmd_data->buff_size / frame_size;
 	frame_list->q_index = frame_list->q_max_cnt;
 
-	frame_list->wbuf_list = kmalloc(frame_list->q_max_cnt
-		* sizeof(struct wdma_buffer_list), GFP_KERNEL);
+	frame_list->wbuf_list = kmalloc_array(frame_list->q_max_cnt,
+		sizeof(struct wdma_buffer_list),
+		GFP_KERNEL);
 
 	if (!frame_list->wbuf_list) {
 		pr_err("[ERR][WDMA] list alloc error\n");
@@ -236,11 +237,15 @@ list_alloc_fail:
 
 unsigned int wdma_queue_list_exit(struct wdma_queue_list *frame_list)
 {
-	if (frame_list->wbuf_list)
+	if (frame_list->wbuf_list != NULL) {
 		kfree(frame_list->wbuf_list);
+		/* prevent KCS warning */
+	}
 
-	if (frame_list->data)
+	if (frame_list->data != NULL) {
 		kfree(frame_list->data);
+		/* prevent KCS warning */
+	}
 
 	return 0;
 }
@@ -304,6 +309,7 @@ int wdma_set_index_of_status(struct wdma_queue_list *frame_list,
 	unsigned int index, unsigned int wdma_s)
 {
 	if ((wdma_s >= WDMA_S_MAX) || (frame_list->q_max_cnt <= index)) {
+		/* prevent KCS warning */
 		return -1;
 	}
 
@@ -559,6 +565,7 @@ char tccxxx_wdma_ctrl(unsigned long argp, struct tcc_wdma_dev *pwdma_data)
 		VIOC_CONFIG_PlugOut(pwdma_data->sc.id);
 
 	if (copy_to_user((void __user *)argp, &ImageCfg, sizeof(ImageCfg))) {
+		/* prevent KCS warning */
 		return -EFAULT;
 	}
 
@@ -648,7 +655,8 @@ long tccxxx_wdma_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 	struct miscdevice *misc = (struct miscdevice *)file->private_data;
 	struct tcc_wdma_dev *wdma_data = dev_get_drvdata(misc->parent);
 
-	dprintk("wdma: cmd(0x%x), block_operating(0x%x), block_waiting(0x%x), cmd_count(0x%x), poll_count(0x%x)\n",
+	dprintk("%s: cmd(0x%x), bo(0x%x), bw(0x%x), cc(0x%x), pc(0x%x)\n",
+		__func__,
 		cmd, wdma_data->block_operating, wdma_data->block_waiting,
 		wdma_data->cmd_count, wdma_data->poll_count);
 
@@ -890,10 +898,16 @@ long tccxxx_wdma_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 		CHECKING_AREA(wdma_data->frame_list.data->frame_x,
 			wdma_data->frame_list.data->frame_y);
 			checking_loop++) {
-			if (wdma_data->frame_list.wbuf_list[wbuffer.index].vbase_Yaddr[CHECKING_START_POS(wdma_data->frame_list.data->frame_x,
-			wdma_data->frame_list.data->frame_y)
-			+ checking_loop] != CHECKING_NUM)
+
+			if (wdma_data->frame_list.wbuf_list[
+				wbuffer.index].vbase_Yaddr[
+				CHECKING_START_POS(
+				wdma_data->frame_list.data->frame_x,
+				wdma_data->frame_list.data->frame_y)
+				+ checking_loop] != CHECKING_NUM) {
+
 				break;
+			}
 		}
 
 		if (checking_loop >= CHECKING_AREA(
@@ -979,7 +993,8 @@ long tccxxx_wdma_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 			wbuffer.frame_y =
 				wdma_data->frame_list.data->frame_y;
 
-			dprintk("%s index:%d Y:0x%08x U:0x%08x V:0x%08x fmt:%d X:%d Y:%d\n",
+			dprintk(
+				"%s index:%d, Y:0x%08x U:0x%08x V:0x%08x, fmt:%d X:%d Y:%d\n",
 				__func__,
 				wbuffer.index,
 				wbuffer.buff_Yaddr,
@@ -1461,7 +1476,7 @@ void wdma_attr_remove(struct platform_device *pdev)
 	device_remove_file(&pdev->dev, &dev_attr_screen_capture);
 }
 
-static struct file_operations tcc_wdma_fops = {
+static const struct file_operations tcc_wdma_fops = {
 	.owner = THIS_MODULE,
 	.unlocked_ioctl = tccxxx_wdma_ioctl,
 	.mmap = tccxxx_wdma_mmap,
@@ -1572,7 +1587,7 @@ static int tcc_wdma_remove(struct platform_device *pdev)
 }
 
 #ifdef CONFIG_OF
-static struct of_device_id tcc_wdma_of_match[] = {
+static const struct of_device_id tcc_wdma_of_match[] = {
 	{.compatible = "telechips,tcc_wdma"},
 	{}
 };

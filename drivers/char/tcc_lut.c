@@ -763,7 +763,10 @@ static long lut_drv_ioctl(struct file *filp, unsigned int cmd,
 #endif
 				}
 			}
-			//pr_info("%s LUT\n", (lut_number == 4 || lut_number == 6) ? "Y" : "RGB");
+
+			//pr_info("%s LUT\n",
+			//(lut_number == 4 || lut_number == 6) ? "Y" : "RGB");
+
 			lut_update_pend.update_pend =
 			    tcc_get_lut_update_pend(lut_number);
 #else

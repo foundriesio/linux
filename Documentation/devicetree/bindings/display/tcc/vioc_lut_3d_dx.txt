@@ -1,0 +1,11 @@
+This is for 'telechips,vioc_lut_3d_d0' and 'telechips,vioc_lut_3d_d1'.
+
+Required properties for display:
+	-compatible:
+		"telechips,vioc_lut_3d_d0"
+		"telechips,vioc_lut_3d_d1"
+
+-------------------------------------------------------------------------------
+
+Example:
+

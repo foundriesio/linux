@@ -1,0 +1,19 @@
+Telechips Mailbox device for Hypervisor Less Communication
+
+Required properties:
+- compatible: Should be "telechips,hlc-mbox"
+- device-name : the name of the device
+- mbox-name: Should be "hlc-mbox-a53"
+- mboxes : specifies the channel for the mailbox (IPC)
+
+Optional properties:
+N/A
+
+Examples:
+
+hlc_mbox2: hlc_mbox@0 {
+    compatible = "telechips,hlc-mbox";
+    device-name = "hlc-mbox-dev-a53";
+    mbox-names ="hlc-mbox-a53";
+    mboxes = <&mbox0 TCC_MBOX0_CH_HLC>;
+};

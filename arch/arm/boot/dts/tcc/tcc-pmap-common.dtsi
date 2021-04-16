@@ -684,11 +684,7 @@
 #endif
 #endif
 
-#if defined(CONFIG_POWERVR_VZ)
-#define PVR_VZ_SIZE		(0x4100000)
-#else
 #define PVR_VZ_SIZE             (0)
-#endif
 
 #define PVR_VZ_BASE             (PMAP_BASE)
 #define EARLY_REARCAM_BASE	(PVR_VZ_BASE + PVR_VZ_SIZE)

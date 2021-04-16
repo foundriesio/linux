@@ -31,7 +31,7 @@
 
 #define MAX_WAIT_CNT 0xF0000
 
-static volatile void __iomem *pDISP_reg[VIOC_DISP_MAX] = {0};
+static void __iomem *pDISP_reg[VIOC_DISP_MAX] = {0};
 
 #if defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC899X) \
 	|| defined(CONFIG_ARCH_TCC901X)
@@ -41,7 +41,7 @@ static volatile void __iomem *pDISP_reg[VIOC_DISP_MAX] = {0};
  * 0: 10 bits data bus align in output data path
  * 1: Change 10-to-8 bits data bus align in ouput data path
  */
-void VIOC_DISP_SetAlign(volatile void __iomem *reg, unsigned int align)
+void VIOC_DISP_SetAlign(void __iomem *reg, unsigned int align)
 {
 	unsigned long value;
 
@@ -50,7 +50,7 @@ void VIOC_DISP_SetAlign(volatile void __iomem *reg, unsigned int align)
 	__raw_writel(value, reg + DALIGN);
 }
 
-void VIOC_DISP_GetAlign(volatile void __iomem *reg, unsigned int *align)
+void VIOC_DISP_GetAlign(void __iomem *reg, unsigned int *align)
 {
 	*align = (__raw_readl(reg + DALIGN) & DALIGN_ALIGN_MASK)
 		>> DALIGN_ALIGN_SHIFT;
@@ -76,7 +76,7 @@ void VIOC_DISP_GetAlign(volatile void __iomem *reg, unsigned int *align)
  * TCC803X | bit[2:0]       | bit[5:3]
  * TCC805X | bit[2:0]       | bit[5:3]
  */
-void VIOC_DISP_SetSwapbf(volatile void __iomem *reg, unsigned int swapbf)
+void VIOC_DISP_SetSwapbf(void __iomem *reg, unsigned int swapbf)
 {
 	unsigned long value;
 
@@ -96,7 +96,7 @@ void VIOC_DISP_SetSwapbf(volatile void __iomem *reg, unsigned int swapbf)
 	__raw_writel(value, reg + DALIGN);
 }
 
-void VIOC_DISP_GetSwapbf(volatile void __iomem *reg, unsigned int *swapbf)
+void VIOC_DISP_GetSwapbf(void __iomem *reg, unsigned int *swapbf)
 {
 	*swapbf = (__raw_readl(reg + DALIGN) & DALIGN_SWAPBF_MASK)
 		>> DALIGN_SWAPBF_SHIFT;
@@ -105,7 +105,7 @@ void VIOC_DISP_GetSwapbf(volatile void __iomem *reg, unsigned int *swapbf)
 
 #if defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X) \
 	|| defined(CONFIG_ARCH_TCC901X) || defined(CONFIG_ARCH_TCC805X)
-void VIOC_DISP_SetSwapaf(volatile void __iomem *reg, unsigned int swapaf)
+void VIOC_DISP_SetSwapaf(void __iomem *reg, unsigned int swapaf)
 {
 	unsigned long value;
 
@@ -125,7 +125,7 @@ void VIOC_DISP_SetSwapaf(volatile void __iomem *reg, unsigned int swapaf)
 	__raw_writel(value, reg + DALIGN);
 }
 
-void VIOC_DISP_GetSwapaf(volatile void __iomem *reg, unsigned int *swapaf)
+void VIOC_DISP_GetSwapaf(void __iomem *reg, unsigned int *swapaf)
 {
 	*swapaf = (__raw_readl(reg + DALIGN) & DALIGN_SWAPAF_MASK)
 		>> DALIGN_SWAPAF_SHIFT;
@@ -133,7 +133,7 @@ void VIOC_DISP_GetSwapaf(volatile void __iomem *reg, unsigned int *swapaf)
 #endif
 
 void VIOC_DISP_SetSize(
-	volatile void __iomem *reg, unsigned int nWidth, unsigned int nHeight)
+	void __iomem *reg, unsigned int nWidth, unsigned int nHeight)
 {
 	__raw_writel(
 		(nHeight << DDS_VSIZE_SHIFT) | (nWidth << DDS_HSIZE_SHIFT),
@@ -141,7 +141,7 @@ void VIOC_DISP_SetSize(
 }
 
 void VIOC_DISP_GetSize(
-	volatile void __iomem *reg, unsigned int *nWidth, unsigned int *nHeight)
+	void __iomem *reg, unsigned int *nWidth, unsigned int *nHeight)
 {
 	*nWidth = (__raw_readl(reg + DDS) & DDS_HSIZE_MASK) >> DDS_HSIZE_SHIFT;
 	*nHeight = (__raw_readl(reg + DDS) & DDS_VSIZE_MASK) >> DDS_VSIZE_SHIFT;
@@ -149,7 +149,7 @@ void VIOC_DISP_GetSize(
 
 // BG0 : Red, BG1 : Green,BG2, Blue
 void VIOC_DISP_SetBGColor(
-	volatile void __iomem *reg, unsigned int BG0, unsigned int BG1,
+	void __iomem *reg, unsigned int BG0, unsigned int BG1,
 	unsigned int BG2, unsigned int BG3)
 {
 #if defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC899X) \
@@ -171,7 +171,7 @@ void VIOC_DISP_SetBGColor(
 }
 
 void VIOC_DISP_SetPosition(
-	volatile void __iomem *reg, unsigned int startX, unsigned int startY)
+	void __iomem *reg, unsigned int startX, unsigned int startY)
 {
 	__raw_writel(
 		(startY << DPOS_YPOS_SHIFT) | (startX << DPOS_XPOS_SHIFT),
@@ -179,7 +179,7 @@ void VIOC_DISP_SetPosition(
 }
 
 void VIOC_DISP_GetPosition(
-	volatile void __iomem *reg, unsigned int *startX, unsigned int *startY)
+	void __iomem *reg, unsigned int *startX, unsigned int *startY)
 {
 	*startX = (__raw_readl(reg + DPOS) & DPOS_XPOS_MASK) >> DPOS_XPOS_SHIFT;
 	*startY = (__raw_readl(reg + DPOS) & DPOS_YPOS_MASK) >> DPOS_YPOS_SHIFT;
@@ -187,7 +187,7 @@ void VIOC_DISP_GetPosition(
 
 #if defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC899X) \
 	|| defined(CONFIG_ARCH_TCC901X)
-void VIOC_DISP_DCENH_hue_onoff(volatile void __iomem *reg, unsigned int onoff)
+void VIOC_DISP_DCENH_hue_onoff(void __iomem *reg, unsigned int onoff)
 {
 	unsigned long value;
 
@@ -196,7 +196,7 @@ void VIOC_DISP_DCENH_hue_onoff(volatile void __iomem *reg, unsigned int onoff)
 	__raw_writel(value, reg + DCENH0);
 }
 
-void VIOC_DISP_DCENH_onoff(volatile void __iomem *reg, unsigned int onoff)
+void VIOC_DISP_DCENH_onoff(void __iomem *reg, unsigned int onoff)
 {
 	unsigned long value;
 
@@ -206,19 +206,19 @@ void VIOC_DISP_DCENH_onoff(volatile void __iomem *reg, unsigned int onoff)
 }
 
 void VIOC_DISP_GetCENH_hue_onoff(
-	volatile void __iomem *reg, unsigned int *onoff)
+	void __iomem *reg, unsigned int *onoff)
 {
 	*onoff = (__raw_readl(reg + DCENH0) & DCENH0_HEN_MASK)
 		>> DCENH0_HEN_SHIFT;
 }
 
-void VIOC_DISP_GetCENH_onoff(volatile void __iomem *reg, unsigned int *onoff)
+void VIOC_DISP_GetCENH_onoff(void __iomem *reg, unsigned int *onoff)
 {
 	*onoff = (__raw_readl(reg + DCENH1) & DCENH1_ENE_MASK)
 		>> DCENH1_ENE_SHIFT;
 }
 
-void VIOC_DISP_SetCENH_hue(volatile void __iomem *reg, unsigned int val)
+void VIOC_DISP_SetCENH_hue(void __iomem *reg, unsigned int val)
 {
 	unsigned long value;
 
@@ -227,7 +227,7 @@ void VIOC_DISP_SetCENH_hue(volatile void __iomem *reg, unsigned int val)
 	__raw_writel(value, reg + DCENH0);
 }
 
-void VIOC_DISP_SetCENH_brightness(volatile void __iomem *reg, unsigned int val)
+void VIOC_DISP_SetCENH_brightness(void __iomem *reg, unsigned int val)
 {
 	unsigned long value;
 
@@ -236,7 +236,7 @@ void VIOC_DISP_SetCENH_brightness(volatile void __iomem *reg, unsigned int val)
 	__raw_writel(value, reg + DCENH1);
 }
 
-void VIOC_DISP_SetCENH_saturation(volatile void __iomem *reg, unsigned int val)
+void VIOC_DISP_SetCENH_saturation(void __iomem *reg, unsigned int val)
 {
 	unsigned long value;
 
@@ -245,7 +245,7 @@ void VIOC_DISP_SetCENH_saturation(volatile void __iomem *reg, unsigned int val)
 	__raw_writel(value, reg + DCENH1);
 }
 
-void VIOC_DISP_SetCENH_contrast(volatile void __iomem *reg, unsigned int val)
+void VIOC_DISP_SetCENH_contrast(void __iomem *reg, unsigned int val)
 {
 	unsigned long value;
 
@@ -254,32 +254,32 @@ void VIOC_DISP_SetCENH_contrast(volatile void __iomem *reg, unsigned int val)
 	__raw_writel(value, reg + DCENH1);
 }
 
-void VIOC_DISP_GetCENH_hue(volatile void __iomem *reg, unsigned int *val)
+void VIOC_DISP_GetCENH_hue(void __iomem *reg, unsigned int *val)
 {
 	*val = (__raw_readl(reg + DCENH0) & DCENH0_HUE_MASK)
 		>> DCENH0_HUE_SHIFT;
 }
 
-void VIOC_DISP_GetCENH_brightness(volatile void __iomem *reg, unsigned int *val)
+void VIOC_DISP_GetCENH_brightness(void __iomem *reg, unsigned int *val)
 {
 	*val = (__raw_readl(reg + DCENH1) & DCENH1_BRIGHT_MASK)
 		>> DCENH1_BRIGHT_SHIFT;
 }
 
-void VIOC_DISP_GetCENH_saturation(volatile void __iomem *reg, unsigned int *val)
+void VIOC_DISP_GetCENH_saturation(void __iomem *reg, unsigned int *val)
 {
 	*val = (__raw_readl(reg + DCENH1) & DCENH1_SAT_MASK)
 		>> DCENH1_SAT_SHIFT;
 }
 
-void VIOC_DISP_GetCENH_contrast(volatile void __iomem *reg, unsigned int *val)
+void VIOC_DISP_GetCENH_contrast(void __iomem *reg, unsigned int *val)
 {
 	*val = (__raw_readl(reg + DCENH1) & DCENH1_CONTRAST_MASK)
 		>> DCENH1_CONTRAST_SHIFT;
 }
 #else // TCC803X, TCC897X
 void VIOC_DISP_SetColorEnhancement(
-	volatile void __iomem *reg, signed char contrast,
+	void __iomem *reg, signed char contrast,
 	signed char brightness, signed char hue)
 {
 	unsigned long value;
@@ -293,7 +293,7 @@ void VIOC_DISP_SetColorEnhancement(
 }
 
 void VIOC_DISP_GetColorEnhancement(
-	volatile void __iomem *reg, signed char *contrast,
+	void __iomem *reg, signed char *contrast,
 	signed char *brightness, signed char *hue)
 {
 	*contrast = (__raw_readl(reg + DCENH) & DCENH_CONTRAST_MASK)
@@ -305,7 +305,7 @@ void VIOC_DISP_GetColorEnhancement(
 #endif
 
 void VIOC_DISP_SetClippingEnable(
-	volatile void __iomem *reg, unsigned int enable)
+	void __iomem *reg, unsigned int enable)
 {
 	unsigned long value;
 
@@ -315,14 +315,14 @@ void VIOC_DISP_SetClippingEnable(
 }
 
 void VIOC_DISP_GetClippingEnable(
-	volatile void __iomem *reg, unsigned int *enable)
+	void __iomem *reg, unsigned int *enable)
 {
 	*enable = (__raw_readl(reg + DCTRL) & DCTRL_CLEN_MASK)
 		>> DCTRL_CLEN_SHIFT;
 }
 
 void VIOC_DISP_SetClipping(
-	volatile void __iomem *reg, unsigned int uiUpperLimitY,
+	void __iomem *reg, unsigned int uiUpperLimitY,
 	unsigned int uiLowerLimitY, unsigned int uiUpperLimitUV,
 	unsigned int uiLowerLimitUV)
 {
@@ -338,7 +338,7 @@ void VIOC_DISP_SetClipping(
 }
 
 void VIOC_DISP_GetClipping(
-	volatile void __iomem *reg, unsigned int *uiUpperLimitY,
+	void __iomem *reg, unsigned int *uiUpperLimitY,
 	unsigned int *uiLowerLimitY, unsigned int *uiUpperLimitUV,
 	unsigned int *uiLowerLimitUV)
 {
@@ -353,7 +353,7 @@ void VIOC_DISP_GetClipping(
 }
 
 void VIOC_DISP_SetDither(
-	volatile void __iomem *reg, unsigned int ditherEn,
+	void __iomem *reg, unsigned int ditherEn,
 	unsigned int ditherSel, unsigned char mat[4][4])
 {
 	unsigned long value;
@@ -410,7 +410,7 @@ void VIOC_DISP_SetDither(
 		 | (ditherSel << DDITH_DSEL_SHIFT));
 }
 
-void VIOC_DISP_SetTimingParam(volatile void __iomem *reg, stLTIMING *pTimeParam)
+void VIOC_DISP_SetTimingParam(void __iomem *reg, stLTIMING *pTimeParam)
 {
 	unsigned long value;
 
@@ -451,7 +451,7 @@ void VIOC_DISP_SetTimingParam(volatile void __iomem *reg, stLTIMING *pTimeParam)
 }
 
 void VIOC_DISP_SetControlConfigure(
-	volatile void __iomem *reg, stLCDCTR *pCtrlParam)
+	void __iomem *reg, stLCDCTR *pCtrlParam)
 {
 	unsigned long value;
 
@@ -527,7 +527,7 @@ unsigned int VIOC_DISP_FMT_isRGB(unsigned int pxdw)
 }
 
 void VIOC_DISP_GetDisplayBlock_Info(
-	volatile void __iomem *reg, struct DisplayBlock_Info *DDinfo)
+	void __iomem *reg, struct DisplayBlock_Info *DDinfo)
 {
 	unsigned int value = 0;
 
@@ -559,7 +559,7 @@ void VIOC_DISP_GetDisplayBlock_Info(
 		(__raw_readl(reg + DDS) & (DDS_VSIZE_MASK)) >> DDS_VSIZE_SHIFT;
 }
 
-void VIOC_DISP_SetPXDW(volatile void __iomem *reg, unsigned char PXDW)
+void VIOC_DISP_SetPXDW(void __iomem *reg, unsigned char PXDW)
 {
 	unsigned long value;
 
@@ -582,7 +582,7 @@ void VIOC_DISP_SetPXDW(volatile void __iomem *reg, unsigned char PXDW)
 	__raw_writel(value, reg + DCTRL);
 }
 
-void VIOC_DISP_SetR2YMD(volatile void __iomem *reg, unsigned char R2YMD)
+void VIOC_DISP_SetR2YMD(void __iomem *reg, unsigned char R2YMD)
 {
 	unsigned long value;
 
@@ -591,7 +591,7 @@ void VIOC_DISP_SetR2YMD(volatile void __iomem *reg, unsigned char R2YMD)
 	__raw_writel(value, reg + DCTRL);
 }
 
-void VIOC_DISP_SetR2Y(volatile void __iomem *reg, unsigned char R2Y)
+void VIOC_DISP_SetR2Y(void __iomem *reg, unsigned char R2Y)
 {
 	unsigned long value;
 
@@ -608,7 +608,7 @@ void VIOC_DISP_SetR2Y(volatile void __iomem *reg, unsigned char R2Y)
 	__raw_writel(value, reg + DCTRL);
 }
 
-void VIOC_DISP_SetY2RMD(volatile void __iomem *reg, unsigned char Y2RMD)
+void VIOC_DISP_SetY2RMD(void __iomem *reg, unsigned char Y2RMD)
 {
 	unsigned long value;
 
@@ -617,7 +617,7 @@ void VIOC_DISP_SetY2RMD(volatile void __iomem *reg, unsigned char Y2RMD)
 	__raw_writel(value, reg + DCTRL);
 }
 
-void VIOC_DISP_SetY2R(volatile void __iomem *reg, unsigned char Y2R)
+void VIOC_DISP_SetY2R(void __iomem *reg, unsigned char Y2R)
 {
 	unsigned long value;
 
@@ -637,7 +637,7 @@ void VIOC_DISP_SetY2R(volatile void __iomem *reg, unsigned char Y2R)
 	__raw_writel(value, reg + DCTRL);
 }
 
-void VIOC_DISP_SetSWAP(volatile void __iomem *reg, unsigned char SWAP)
+void VIOC_DISP_SetSWAP(void __iomem *reg, unsigned char SWAP)
 {
 	unsigned long value;
 
@@ -654,7 +654,7 @@ void VIOC_DISP_SetSWAP(volatile void __iomem *reg, unsigned char SWAP)
 	__raw_writel(value, reg + DCTRL);
 }
 
-void VIOC_DISP_SetCKG(volatile void __iomem *reg, unsigned char CKG)
+void VIOC_DISP_SetCKG(void __iomem *reg, unsigned char CKG)
 {
 	unsigned long value;
 
@@ -663,7 +663,7 @@ void VIOC_DISP_SetCKG(volatile void __iomem *reg, unsigned char CKG)
 	__raw_writel(value, reg + DCTRL);
 }
 
-void VIOC_DISP_TurnOn(volatile void __iomem *reg)
+void VIOC_DISP_TurnOn(void __iomem *reg)
 {
 	unsigned long value;
 
@@ -709,7 +709,7 @@ void VIOC_DISP_TurnOn(volatile void __iomem *reg)
 }
 
 #if defined(CONFIG_VIOC_DOLBY_VISION_EDR)
-void VIOC_DISP_TurnOnOff_With_DV(volatile void __iomem *reg, unsigned int bOn)
+void VIOC_DISP_TurnOnOff_With_DV(void __iomem *reg, unsigned int bOn)
 {
 	unsigned long value;
 
@@ -724,7 +724,7 @@ void VIOC_DISP_TurnOnOff_With_DV(volatile void __iomem *reg, unsigned int bOn)
 }
 #endif
 
-void VIOC_DISP_TurnOff(volatile void __iomem *reg)
+void VIOC_DISP_TurnOff(void __iomem *reg)
 {
 	unsigned long value;
 
@@ -757,7 +757,7 @@ void VIOC_DISP_TurnOff(volatile void __iomem *reg)
 #endif
 }
 
-unsigned int VIOC_DISP_Get_TurnOnOff(volatile void __iomem *reg)
+unsigned int VIOC_DISP_Get_TurnOnOff(void __iomem *reg)
 {
 #if defined(CONFIG_VIOC_DOLBY_VISION_EDR)
 	if ((VIOC_CONFIG_DV_GET_EDR_PATH() || vioc_v_dv_get_stage() != DV_OFF)
@@ -769,7 +769,7 @@ unsigned int VIOC_DISP_Get_TurnOnOff(volatile void __iomem *reg)
 	return (__raw_readl(reg + DCTRL) & DCTRL_LEN_MASK) ? 1 : 0;
 }
 
-int VIOC_DISP_Wait_DisplayDone(volatile void __iomem *reg)
+int VIOC_DISP_Wait_DisplayDone(void __iomem *reg)
 {
 	unsigned long loop = 0;
 	unsigned long status = 0;
@@ -793,7 +793,7 @@ int VIOC_DISP_Wait_DisplayDone(volatile void __iomem *reg)
 	return MAX_WAIT_CNT - loop;
 }
 
-int VIOC_DISP_sleep_DisplayDone(volatile void __iomem *reg)
+int VIOC_DISP_sleep_DisplayDone(void __iomem *reg)
 {
 	unsigned long loop = 0;
 	unsigned long status = 0;
@@ -813,12 +813,12 @@ int VIOC_DISP_sleep_DisplayDone(volatile void __iomem *reg)
 			loop++;
 		else
 			break;
-		msleep(1);
+		usleep_range(1000, 1100);
 	}
 	return 0;
 }
 
-void VIOC_DISP_SetControl(volatile void __iomem *reg, stLCDCPARAM *pLcdParam)
+void VIOC_DISP_SetControl(void __iomem *reg, stLCDCPARAM *pLcdParam)
 {
 	/* LCD Controller Stop */
 	VIOC_DISP_TurnOff(reg);
@@ -837,7 +837,7 @@ void VIOC_DISP_SetControl(volatile void __iomem *reg, stLCDCPARAM *pLcdParam)
  * enable)
  */
 void VIOC_DISP_SetIreqMask(
-	volatile void __iomem *reg, unsigned int mask, unsigned int set)
+	void __iomem *reg, unsigned int mask, unsigned int set)
 {
 	if (set == 0)/* Interrupt Enable*/
 		__raw_writel((__raw_readl(reg + DIM) & ~(mask)), reg + DIM);
@@ -849,17 +849,17 @@ void VIOC_DISP_SetIreqMask(
 /* set 1 : IREQ Masked( interrupt disable), set 0 : IREQ UnMasked( interrput
  * enable)
  */
-void VIOC_DISP_SetStatus(volatile void __iomem *reg, unsigned int set)
+void VIOC_DISP_SetStatus(void __iomem *reg, unsigned int set)
 {
 	__raw_writel(set, reg + DSTATUS);
 }
 
-void VIOC_DISP_GetStatus(volatile void __iomem *reg, unsigned int *status)
+void VIOC_DISP_GetStatus(void __iomem *reg, unsigned int *status)
 {
 	*status = __raw_readl(reg + DSTATUS);
 }
 
-void VIOC_DISP_EmergencyFlagDisable(volatile void __iomem *reg)
+void VIOC_DISP_EmergencyFlagDisable(void __iomem *reg)
 {
 	unsigned long value;
 
@@ -869,7 +869,7 @@ void VIOC_DISP_EmergencyFlagDisable(volatile void __iomem *reg)
 }
 
 void VIOC_DISP_EmergencyFlag_SetEofm(
-	volatile void __iomem *reg, unsigned int eofm)
+	void __iomem *reg, unsigned int eofm)
 {
 	unsigned long value;
 
@@ -879,7 +879,7 @@ void VIOC_DISP_EmergencyFlag_SetEofm(
 }
 
 void VIOC_DISP_EmergencyFlag_SetHdmiVs(
-	volatile void __iomem *reg, unsigned int hdmivs)
+	void __iomem *reg, unsigned int hdmivs)
 {
 	unsigned long value;
 
@@ -897,11 +897,11 @@ void vioc_disp_set_clkdiv(volatile void __iomem *reg, unsigned int div)
 	__raw_writel(value, reg + DCLKDIV);
 }
 
-void VIOC_DISP_DUMP(volatile void __iomem *reg, unsigned int vioc_id)
+void VIOC_DISP_DUMP(void __iomem *reg, unsigned int vioc_id)
 {
 	unsigned int cnt = 0;
 
-	volatile void __iomem *pReg = reg;
+	void __iomem *pReg = reg;
 
 	int Num = get_vioc_index(vioc_id);
 
@@ -931,7 +931,7 @@ err:
 	       VIOC_DISP_MAX);
 }
 
-volatile void __iomem *VIOC_DISP_GetAddress(unsigned int vioc_id)
+void __iomem *VIOC_DISP_GetAddress(unsigned int vioc_id)
 {
 	int Num = get_vioc_index(vioc_id);
 
@@ -960,7 +960,7 @@ static int __init vioc_disp_init(void)
 		pr_info("[INF][DISP] disabled [this is mandatory for vioc display]\n");
 	} else {
 		for (i = 0; i < VIOC_DISP_MAX; i++) {
-			pDISP_reg[i] = (volatile void __iomem *)of_iomap(
+			pDISP_reg[i] = (void __iomem *)of_iomap(
 				ViocDisp_np,
 				is_VIOC_REMAP ? (i + VIOC_DISP_MAX) : i);
 

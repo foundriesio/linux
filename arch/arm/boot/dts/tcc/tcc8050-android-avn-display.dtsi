@@ -59,6 +59,8 @@
 	};
 
 	tcc-drm-lcd {
+		#address-cells = <1>;
+		#size-cells = <0>;
 		status = "okay";
 		connector_type = "DP";
 		port@0 {
@@ -70,6 +72,8 @@
 	};
 
 	tcc-drm-ext {
+		#address-cells = <1>;
+		#size-cells = <0>;
 		status = "okay";
 		connector_type = "DP";
 		port@0 {

@@ -368,7 +368,7 @@ tcc_dpi_connector_atomic_get_property(struct drm_connector *connector,
 	if (property == ctx->dp_prop.audio_freq) {
 		uint64_t audio_freq;
 
-		//audio_freq = ctx->dp->funcs->get_audio_freq();
+		/* audio_freq = ctx->dp->funcs->get_audio_freq(); */
 		audio_freq = (uint64_t)ctx->dp_prop_data.audio_freq;
 		*val = audio_freq;
 	} else if (property == ctx->dp_prop.audio_type) {

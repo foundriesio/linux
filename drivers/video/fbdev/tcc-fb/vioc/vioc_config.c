@@ -175,11 +175,11 @@ int vioc_config_FBCDec_rdma_sel[] = {
 };
 #endif
 
-static volatile void __iomem *pIREQ_reg;
+static void __iomem *pIREQ_reg;
 
-static volatile void __iomem *CalcAddressViocComponent(unsigned int component)
+static void __iomem *CalcAddressViocComponent(unsigned int component)
 {
-	volatile void __iomem *reg;
+	void __iomem *reg;
 
 	switch (get_vioc_type(component)) {
 	case get_vioc_type(VIOC_RDMA):
@@ -665,8 +665,8 @@ int VIOC_CONFIG_PM_PlugChange(void)
 	unsigned long value = 0;
 	unsigned int loop = 0;
 	bool pluged_pm_num = 0;
-	volatile void __iomem *pm0_reg, *pm1_reg;
-	volatile void __iomem *plug_out_reg = NULL, *plug_in_reg = NULL;
+	void __iomem *pm0_reg, *pm1_reg;
+	void __iomem *plug_out_reg = NULL, *plug_in_reg = NULL;
 	int path;
 
 	pm0_reg = CalcAddressViocComponent(VIOC_PIXELMAP0);
@@ -744,7 +744,7 @@ int VIOC_CONFIG_PlugIn(unsigned int component, unsigned int select)
 {
 	unsigned long value = 0;
 	unsigned int loop = 0;
-	volatile void __iomem *reg;
+	void __iomem *reg;
 	int path;
 
 	reg = CalcAddressViocComponent(component);
@@ -833,9 +833,9 @@ int VIOC_CONFIG_PlugIn(unsigned int component, unsigned int select)
 	__raw_writel(value, reg);
 
 	if (__raw_readl(reg) & CFG_PATH_ERR_MASK) {
-		pr_err("[ERR][VIOC_CONFIG] %s, path configuration error(ERR_MASK). device is busy. VIOC(T:%d I:%d) Path:%d\n",
-		       __func__, get_vioc_type(component),
-		       get_vioc_index(component), path);
+		//pr_err("[ERR][VIOC_CONFIG] %s, path configuration error(ERR_MASK). device is busy. VIOC(T:%d I:%d) Path:%d\n",
+		//       __func__, get_vioc_type(component),
+		//       get_vioc_index(component), path);
 		value = (__raw_readl(reg) & ~(CFG_PATH_EN_MASK));
 		__raw_writel(value, reg);
 	}
@@ -850,9 +850,9 @@ int VIOC_CONFIG_PlugIn(unsigned int component, unsigned int select)
 		if (value == VIOC_PATH_CONNECTED)
 			break;
 		if (loop < 1) {
-			pr_err("[ERR][VIOC_CONFIG] %s, path configuration error(TIMEOUT). device is busy. VIOC(T:%d I:%d) Path:%d\n",
-			       __func__, get_vioc_type(component),
-			       get_vioc_index(component), path);
+			//pr_err("[ERR][VIOC_CONFIG] %s, path configuration error(TIMEOUT). device is busy. VIOC(T:%d I:%d) Path:%d\n",
+			//       __func__, get_vioc_type(component),
+			//       get_vioc_index(component), path);
 			return VIOC_DEVICE_BUSY;
 		}
 	}
@@ -872,7 +872,7 @@ int VIOC_CONFIG_FILTER2D_PlugIn(
 {
 	unsigned long value = 0;
 	unsigned int loop = 0;
-	volatile void __iomem *reg;
+	void __iomem *reg;
 	int path;
 
 	reg = CalcAddressViocComponent(component);
@@ -953,7 +953,7 @@ int VIOC_CONFIG_PlugOut(unsigned int component)
 {
 	unsigned long value = 0;
 	unsigned int loop = 0;
-	volatile void __iomem *reg;
+	void __iomem *reg;
 
 	reg = CalcAddressViocComponent(component);
 	if (reg == NULL)
@@ -1042,7 +1042,7 @@ int VIOC_CONFIG_WMIXPath(unsigned int component_num, unsigned int mode)
 	/* mode - 0: BY-PSSS PATH, 1: WMIX PATH */
 	unsigned long value;
 	int i, shift_mix_path, shift_vin_rdma_path, support_bypass = 0;
-	volatile void __iomem *config_reg = pIREQ_reg;
+	void __iomem *config_reg = pIREQ_reg;
 
 	for (i = 0; i < (sizeof(bypassDMA) / sizeof(unsigned int)); i++) {
 		if (component_num == bypassDMA[i]) {
@@ -1155,9 +1155,10 @@ int VIOC_CONFIG_WMIXPath(unsigned int component_num, unsigned int mode)
 		return 0;
 	}
 
-	dprintk("%s-%d :: ERROR This component(0x%x) doesn't support mixer bypass(%d) mode, %d/%d!!\n",
-		__func__, __LINE__, component_num, support_bypass,
+	dprintk("%s: vioc(0x%x) doesn't support mixer bypass(%d) mode, %d/%d\n",
+		__func__, component_num, support_bypass,
 		shift_mix_path, shift_vin_rdma_path);
+
 	return -1;
 }
 
@@ -1167,7 +1168,7 @@ void VIOC_CONFIG_WMIXPathReset(unsigned int component_num, unsigned int mode)
 	/* reset - 0 :Normal, 1:Mixing PATH reset */
 	unsigned long value;
 	int i, shift_mix_path, shift_vin_rdma_path, support_bypass = 0;
-	volatile void __iomem *config_reg = pIREQ_reg;
+	void __iomem *config_reg = pIREQ_reg;
 
 	for (i = 0; i < (sizeof(bypassDMA) / sizeof(unsigned int)); i++) {
 		if (component_num == bypassDMA[i]) {
@@ -1252,7 +1253,7 @@ int VIOC_CONFIG_FBCDECPath(
 {
 	unsigned long value = 0;
 	unsigned int select = 0;
-	volatile void __iomem *reg = (pIREQ_reg + CFG_FBC_DEC_SEL_OFFSET);
+	void __iomem *reg = (pIREQ_reg + CFG_FBC_DEC_SEL_OFFSET);
 
 	/* Check selection has type value. If has, select value is invalid */
 	select = CheckFBCDecPathSelection(rdmaPath);
@@ -1324,7 +1325,7 @@ int VIOC_CONFIG_MCPath(unsigned int component, unsigned int mc)
 {
 	int ret = 0;
 	unsigned long value;
-	volatile void __iomem *reg = (pIREQ_reg + CFG_PATH_MC_OFFSET);
+	void __iomem *reg = (pIREQ_reg + CFG_PATH_MC_OFFSET);
 
 	if (CheckMCPathSelection(component, mc) < 0) {
 		ret = -1;
@@ -1468,7 +1469,7 @@ void VIOC_CONFIG_SWReset(unsigned int component, unsigned int mode)
 void VIOC_CONFIG_SWReset_RAW(unsigned int component, unsigned int mode)
 {
 	unsigned long value;
-	volatile void __iomem *reg = pIREQ_reg;
+	void __iomem *reg = pIREQ_reg;
 
 	if (mode != VIOC_CONFIG_RESET && mode != VIOC_CONFIG_CLEAR) {
 		pr_err("[ERR][VIOC_CONFIG] %s, in error, invalid mode:%d\n",
@@ -1490,29 +1491,36 @@ void VIOC_CONFIG_SWReset_RAW(unsigned int component, unsigned int mode)
 
 	case get_vioc_type(VIOC_WMIX):
 #if defined(CONFIG_ARCH_TCC805X)
-		// read Bypass mode / Mix mode
-		value = (__raw_readl(reg + CFG_MISC0_OFFSET) &
-			(0x1 << (CFG_MISC0_MIX00_SHIFT + (get_vioc_index(component)*2))));
-		if(value){ // Mix Path reset
+		/* Read wmix mode (bypass or mixing) */
+		value = (__raw_readl(reg + CFG_MISC0_OFFSET)
+			& (0x1 << (CFG_MISC0_MIX00_SHIFT
+			+ (get_vioc_index(component) * 2))));
+
+		/* Mix Path reset */
+		if (value) {
 			value = (__raw_readl(reg + PWR_BLK_SWR1_OFFSET) &
-			 ~(PWR_BLK_SWR1_WMIX_MASK));
+				~(PWR_BLK_SWR1_WMIX_MASK));
 			value |= (mode << (PWR_BLK_SWR1_WMIX_SHIFT +
-				   get_vioc_index(component)));
+				get_vioc_index(component)));
 			__raw_writel(value, (reg + PWR_BLK_SWR1_OFFSET));
-			break;
-		}else{ // Bypass Path reset
-			value = (__raw_readl(reg + CFG_WMIX_PATH_SWR_OFFSET) &
-			 ~(0x1 << (get_vioc_index(component)*2)));
-			value |= (mode << (get_vioc_index(component)*2));
-			__raw_writel(value, (reg + CFG_WMIX_PATH_SWR_OFFSET));
+
 			break;
 		}
+
+		/* Bypass Path reset */
+		value = (__raw_readl(reg + CFG_WMIX_PATH_SWR_OFFSET) &
+			~(0x1 << (get_vioc_index(component)*2)));
+		value |= (mode << (get_vioc_index(component)*2));
+		__raw_writel(value, (reg + CFG_WMIX_PATH_SWR_OFFSET));
+
+		break;
 #else
 		value = (__raw_readl(reg + PWR_BLK_SWR1_OFFSET) &
-			 ~(PWR_BLK_SWR1_WMIX_MASK));
+			~(PWR_BLK_SWR1_WMIX_MASK));
 		value |= (mode << (PWR_BLK_SWR1_WMIX_SHIFT +
-				   get_vioc_index(component)));
+			get_vioc_index(component)));
 		__raw_writel(value, (reg + PWR_BLK_SWR1_OFFSET));
+
 		break;
 #endif
 	case get_vioc_type(VIOC_WDMA):
@@ -1845,7 +1853,7 @@ int VIOC_CONFIG_Device_PlugState(
 	unsigned int component, VIOC_PlugInOutCheck *VIOC_PlugIn)
 {
 	//	unsigned long value;
-	volatile void __iomem *reg = NULL;
+	void __iomem *reg = NULL;
 
 	reg = CalcAddressViocComponent(component);
 	if (reg == NULL)
@@ -1970,7 +1978,7 @@ int VIOC_CONFIG_GetRdma_PluginToComponent(
 int VIOC_CONFIG_DV_SET_EDR_PATH(unsigned int edr_on)
 {
 	unsigned long value;
-	volatile void __iomem *reg = pIREQ_reg;
+	void __iomem *reg = pIREQ_reg;
 
 	dprintk_dv_sequence("### EDR Path %s\n", edr_on ? "On" : "Off");
 	value =
@@ -1986,7 +1994,7 @@ int VIOC_CONFIG_DV_SET_EDR_PATH(unsigned int edr_on)
 unsigned int VIOC_CONFIG_DV_GET_EDR_PATH(void)
 {
 	unsigned long edr_on = 0;
-	volatile void __iomem *reg = pIREQ_reg;
+	void __iomem *reg = pIREQ_reg;
 
 	edr_on = (__raw_readl(reg + CFG_PATH_EDR_OFFSET)
 		  & CFG_PATH_EDR_EDR_S_MASK)
@@ -1998,7 +2006,7 @@ unsigned int VIOC_CONFIG_DV_GET_EDR_PATH(void)
 void VIOC_CONFIG_DV_Metadata_Enable(unsigned int addr, unsigned int endian)
 {
 	unsigned long value;
-	volatile void __iomem *reg = pIREQ_reg;
+	void __iomem *reg = pIREQ_reg;
 
 	if (vioc_v_dv_get_mode() != DV_STD)
 		return;
@@ -2027,7 +2035,7 @@ void VIOC_CONFIG_DV_Metadata_Enable(unsigned int addr, unsigned int endian)
 void VIOC_CONFIG_DV_Metadata_Disable(void)
 {
 	unsigned long value;
-	volatile void __iomem *reg = pIREQ_reg;
+	void __iomem *reg = pIREQ_reg;
 
 	value =
 		(__raw_readl(reg + DV_MD_DMA_CTRL_OFFSET)
@@ -2089,7 +2097,7 @@ void VIOC_CONFIG_DV_EX_VIOC_PROC(unsigned int component)
 			VIOC_CONFIG_GetViqe_PluginToRDMA(rdma_component);
 
 		if (nPlugged_scaler >= 0) { // SCALER
-			volatile void __iomem *pSC =
+			void __iomem *pSC =
 				VIOC_SC_GetAddress(nPlugged_scaler);
 
 			if (pSC) {
@@ -2106,7 +2114,7 @@ void VIOC_CONFIG_DV_EX_VIOC_PROC(unsigned int component)
 			}
 		} else if (nPlugged_viqe >= 0) { // VIQE
 			/* :: need to test
-			 *volatile void __iomem *pViqe = VIOC_VIQE_GetAddress(
+			 *void __iomem *pViqe = VIOC_VIQE_GetAddress(
 			 *		nPlugged_viqe-VIOC_VIQE0);
 			 *if(pViqe){
 			 *	VIOC_VIQE_SetDeintlSize(pViqe, 0, 0);
@@ -2125,7 +2133,7 @@ void VIOC_CONFIG_DV_EX_VIOC_PROC(unsigned int component)
 void VIOC_CONFIG_StopRequest(unsigned int en)
 {
 	unsigned long value;
-	volatile void __iomem *reg = pIREQ_reg;
+	void __iomem *reg = pIREQ_reg;
 
 	value = (__raw_readl(reg + CFG_MISC1_OFFSET) & ~(CFG_MISC1_S_REQ_MASK));
 
@@ -2141,7 +2149,7 @@ int VIOC_CONFIG_DMAPath_Select(unsigned int path)
 {
 	int i;
 	unsigned long value;
-	volatile void __iomem *reg;
+	void __iomem *reg;
 
 	reg = (void __iomem *)CalcAddressViocComponent(path);
 	if (!reg) {
@@ -2202,7 +2210,7 @@ int VIOC_CONFIG_DMAPath_Set(unsigned int path, unsigned int dma)
 	unsigned long value = 0x0;
 	unsigned int path_sel = 0;
 	unsigned int en, sel, status;
-	volatile void __iomem *cfg_path_reg;
+	void __iomem *cfg_path_reg;
 
 	cfg_path_reg = CalcAddressViocComponent(dma);
 	if (cfg_path_reg == NULL) {
@@ -2303,7 +2311,7 @@ int VIOC_CONFIG_DMAPath_UnSet(int dma)
 	unsigned int en = 0;
 	int loop = 0;
 	unsigned long value = 0;
-	volatile void __iomem *cfg_path_reg;
+	void __iomem *cfg_path_reg;
 
 	if (dma < 0)
 		return -1;
@@ -2383,7 +2391,7 @@ int VIOC_CONFIG_DMAPath_Support(void)
 void VIOC_CONFIG_DMAPath_Iint(void)
 {
 	int i;
-	volatile void __iomem *cfg_path_reg;
+	void __iomem *cfg_path_reg;
 
 	if (VIOC_CONFIG_DMAPath_Support()) {
 		for (i = 0; i < VIOC_RDMA_MAX; i++) {
@@ -2467,7 +2475,7 @@ int VIOC_CONFIG_LCDPath_Select(unsigned int lcdx_sel, unsigned int lcdx_if)
 	return ret;
 }
 
-volatile void __iomem *VIOC_IREQConfig_GetAddress(void)
+void __iomem *VIOC_IREQConfig_GetAddress(void)
 {
 	if (pIREQ_reg == NULL)
 		pr_err("[ERR][VIOC_CONFIG] %s VIOC_IREQConfig:%p\n", __func__,

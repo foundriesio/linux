@@ -36,7 +36,7 @@
 #define VIOC_RDMA_IREQ_SRC_MAX 7
 
 static struct device_node *ViocRdma_np;
-static volatile void __iomem *pRDMA_reg[VIOC_RDMA_MAX] = {0};
+static void __iomem *pRDMA_reg[VIOC_RDMA_MAX] = {0};
 
 #if defined(CONFIG_ARCH_TCC805X)
 static int VRDMAS[VIOC_RDMA_MAX] = {
@@ -67,7 +67,8 @@ static unsigned int noUpdate_FB_RDMA;
 static unsigned int Disable_FB_RDMA;
 void VIOC_RDMA_PreventEnable_for_UI(char no_update, char disabled)
 {
-	volatile void __iomem *reg = VIOC_RDMA_GetAddress(RDMA_FB);
+	void __iomem *reg = VIOC_RDMA_GetAddress(RDMA_FB);
+
 	noUpdate_FB_RDMA = no_update;
 	Disable_FB_RDMA = disabled;
 
@@ -81,7 +82,7 @@ void VIOC_RDMA_PreventEnable_for_UI(char no_update, char disabled)
 EXPORT_SYMBOL(VIOC_RDMA_PreventEnable_for_UI);
 
 void VIOC_RDMA_SetImageUpdate_for_CertiTest(
-	volatile void __iomem *reg, unsigned int sw, unsigned int sh,
+	void __iomem *reg, unsigned int sw, unsigned int sh,
 	unsigned int nBase0)
 {
 	unsigned long val;
@@ -106,7 +107,7 @@ void VIOC_RDMA_SetImageUpdate_for_CertiTest(
 EXPORT_SYMBOL(VIOC_RDMA_SetImageUpdate_for_CertiTest);
 #endif
 
-void VIOC_RDMA_SetImageUpdate(volatile void __iomem *reg)
+void VIOC_RDMA_SetImageUpdate(void __iomem *reg)
 {
 	unsigned long val;
 
@@ -122,7 +123,7 @@ void VIOC_RDMA_SetImageUpdate(volatile void __iomem *reg)
 }
 EXPORT_SYMBOL(VIOC_RDMA_SetImageUpdate);
 
-void VIOC_RDMA_SetImageEnable(volatile void __iomem *reg)
+void VIOC_RDMA_SetImageEnable(void __iomem *reg)
 {
 	unsigned long val;
 
@@ -181,7 +182,7 @@ void VIOC_RDMA_SetImageEnable(volatile void __iomem *reg)
 }
 EXPORT_SYMBOL(VIOC_RDMA_SetImageEnable);
 
-void VIOC_RDMA_GetImageEnable(volatile void __iomem *reg, unsigned int *enable)
+void VIOC_RDMA_GetImageEnable(void __iomem *reg, unsigned int *enable)
 {
 	*enable =
 		((__raw_readl(reg + RDMACTRL) & RDMACTRL_IEN_MASK)
@@ -189,7 +190,7 @@ void VIOC_RDMA_GetImageEnable(volatile void __iomem *reg, unsigned int *enable)
 }
 EXPORT_SYMBOL(VIOC_RDMA_GetImageEnable);
 
-void VIOC_RDMA_SetImageDisable(volatile void __iomem *reg)
+void VIOC_RDMA_SetImageDisable(void __iomem *reg)
 {
 	unsigned long val;
 	int i, scaler_blknum = -1;
@@ -244,7 +245,7 @@ void VIOC_RDMA_SetImageDisable(volatile void __iomem *reg)
 	// prevent Fifo underrun
 	scaler_blknum = VIOC_CONFIG_GetScaler_PluginToRDMA(vioc_id);
 	if (scaler_blknum >= VIOC_SCALER0) {
-		volatile void __iomem *pSC = VIOC_SC_GetAddress(scaler_blknum);
+		void __iomem *pSC = VIOC_SC_GetAddress(scaler_blknum);
 
 		VIOC_SC_SetDstSize(pSC, 0, 0);
 		VIOC_SC_SetOutSize(pSC, 0, 0);
@@ -302,7 +303,7 @@ void VIOC_RDMA_SetImageDisable(volatile void __iomem *reg)
 EXPORT_SYMBOL(VIOC_RDMA_SetImageDisable);
 
 // disable and no wait
-void VIOC_RDMA_SetImageDisableNW(volatile void __iomem *reg)
+void VIOC_RDMA_SetImageDisableNW(void __iomem *reg)
 {
 	unsigned long val;
 
@@ -331,7 +332,7 @@ void VIOC_RDMA_SetImageDisableNW(volatile void __iomem *reg)
 }
 EXPORT_SYMBOL(VIOC_RDMA_SetImageDisableNW);
 
-void VIOC_RDMA_SetImageFormat(volatile void __iomem *reg, unsigned int nFormat)
+void VIOC_RDMA_SetImageFormat(void __iomem *reg, unsigned int nFormat)
 {
 	unsigned long val;
 
@@ -346,7 +347,7 @@ void VIOC_RDMA_SetImageFormat(volatile void __iomem *reg, unsigned int nFormat)
 EXPORT_SYMBOL(VIOC_RDMA_SetImageFormat);
 
 void VIOC_RDMA_SetImageRGBSwapMode(
-	volatile void __iomem *reg, unsigned int rgb_mode)
+	void __iomem *reg, unsigned int rgb_mode)
 {
 	unsigned long val;
 
@@ -357,7 +358,7 @@ void VIOC_RDMA_SetImageRGBSwapMode(
 EXPORT_SYMBOL(VIOC_RDMA_SetImageRGBSwapMode);
 
 void VIOC_RDMA_SetImageAlphaEnable(
-	volatile void __iomem *reg, unsigned int enable)
+	void __iomem *reg, unsigned int enable)
 {
 	unsigned long val;
 
@@ -368,7 +369,7 @@ void VIOC_RDMA_SetImageAlphaEnable(
 EXPORT_SYMBOL(VIOC_RDMA_SetImageAlphaEnable);
 
 void VIOC_RDMA_GetImageAlphaEnable(
-	volatile void __iomem *reg, unsigned int *enable)
+	void __iomem *reg, unsigned int *enable)
 {
 	*enable =
 		((__raw_readl(reg + RDMACTRL) & RDMACTRL_AEN_MASK)
@@ -377,7 +378,7 @@ void VIOC_RDMA_GetImageAlphaEnable(
 EXPORT_SYMBOL(VIOC_RDMA_GetImageAlphaEnable);
 
 void VIOC_RDMA_SetImageAlphaSelect(
-	volatile void __iomem *reg, unsigned int select)
+	void __iomem *reg, unsigned int select)
 {
 	unsigned long val;
 
@@ -388,7 +389,7 @@ void VIOC_RDMA_SetImageAlphaSelect(
 EXPORT_SYMBOL(VIOC_RDMA_SetImageAlphaSelect);
 
 void VIOC_RDMA_SetImageY2RMode(
-	volatile void __iomem *reg, unsigned int y2r_mode)
+	void __iomem *reg, unsigned int y2r_mode)
 {
 	unsigned long val;
 
@@ -401,7 +402,7 @@ void VIOC_RDMA_SetImageY2RMode(
 EXPORT_SYMBOL(VIOC_RDMA_SetImageY2RMode);
 
 void VIOC_RDMA_SetImageY2REnable(
-	volatile void __iomem *reg, unsigned int enable)
+	void __iomem *reg, unsigned int enable)
 {
 	unsigned long val;
 
@@ -418,7 +419,7 @@ void VIOC_RDMA_SetImageY2REnable(
 EXPORT_SYMBOL(VIOC_RDMA_SetImageY2REnable);
 
 void VIOC_RDMA_SetImageR2YMode(
-	volatile void __iomem *reg, unsigned int r2y_mode)
+	void __iomem *reg, unsigned int r2y_mode)
 {
 	unsigned long val;
 
@@ -431,7 +432,7 @@ void VIOC_RDMA_SetImageR2YMode(
 EXPORT_SYMBOL(VIOC_RDMA_SetImageR2YMode);
 
 void VIOC_RDMA_SetImageR2YEnable(
-	volatile void __iomem *reg, unsigned int enable)
+	void __iomem *reg, unsigned int enable)
 {
 	unsigned long val;
 
@@ -447,7 +448,7 @@ void VIOC_RDMA_SetImageR2YEnable(
 EXPORT_SYMBOL(VIOC_RDMA_SetImageR2YEnable);
 
 void VIOC_RDMA_GetImageR2YEnable(
-	volatile void __iomem *reg, unsigned int *enable)
+	void __iomem *reg, unsigned int *enable)
 {
 	*enable =
 		((__raw_readl(reg + RDMACTRL) & RDMACTRL_R2Y_MASK)
@@ -456,7 +457,7 @@ void VIOC_RDMA_GetImageR2YEnable(
 EXPORT_SYMBOL(VIOC_RDMA_GetImageR2YEnable);
 
 void VIOC_RDMA_SetImageAlpha(
-	volatile void __iomem *reg, unsigned int nAlpha0, unsigned int nAlpha1)
+	void __iomem *reg, unsigned int nAlpha0, unsigned int nAlpha1)
 {
 	unsigned long val;
 
@@ -467,7 +468,7 @@ void VIOC_RDMA_SetImageAlpha(
 EXPORT_SYMBOL(VIOC_RDMA_SetImageAlpha);
 
 void VIOC_RDMA_GetImageAlpha(
-	volatile void __iomem *reg, unsigned int *nAlpha0,
+	void __iomem *reg, unsigned int *nAlpha0,
 	unsigned int *nAlpha1)
 {
 	*nAlpha1 =
@@ -480,7 +481,7 @@ void VIOC_RDMA_GetImageAlpha(
 EXPORT_SYMBOL(VIOC_RDMA_GetImageAlpha);
 
 void VIOC_RDMA_SetImageUVIEnable(
-	volatile void __iomem *reg, unsigned int enable)
+	void __iomem *reg, unsigned int enable)
 {
 	unsigned long val;
 
@@ -495,7 +496,7 @@ void VIOC_RDMA_SetImageUVIEnable(
 }
 EXPORT_SYMBOL(VIOC_RDMA_SetImageUVIEnable);
 
-void VIOC_RDMA_SetImage3DMode(volatile void __iomem *reg, unsigned int mode)
+void VIOC_RDMA_SetImage3DMode(void __iomem *reg, unsigned int mode)
 {
 	unsigned long val;
 
@@ -506,7 +507,7 @@ void VIOC_RDMA_SetImage3DMode(volatile void __iomem *reg, unsigned int mode)
 EXPORT_SYMBOL(VIOC_RDMA_SetImage3DMode);
 
 void VIOC_RDMA_SetImageSize(
-	volatile void __iomem *reg, unsigned int sw, unsigned int sh)
+	void __iomem *reg, unsigned int sw, unsigned int sh)
 {
 	unsigned long val;
 
@@ -521,7 +522,7 @@ void VIOC_RDMA_SetImageSize(
 EXPORT_SYMBOL(VIOC_RDMA_SetImageSize);
 
 void VIOC_RDMA_GetImageSize(
-	volatile void __iomem *reg, unsigned int *sw, unsigned int *sh)
+	void __iomem *reg, unsigned int *sw, unsigned int *sh)
 {
 	*sw = ((__raw_readl(reg + RDMASIZE) & RDMASIZE_WIDTH_MASK)
 	       >> RDMASIZE_WIDTH_SHIFT);
@@ -531,7 +532,7 @@ void VIOC_RDMA_GetImageSize(
 EXPORT_SYMBOL(VIOC_RDMA_GetImageSize);
 
 void VIOC_RDMA_SetImageBase(
-	volatile void __iomem *reg, unsigned int nBase0, unsigned int nBase1,
+	void __iomem *reg, unsigned int nBase0, unsigned int nBase1,
 	unsigned int nBase2)
 {
 #ifdef CONFIG_VIOC_DOLBY_VISION_CERTIFICATION_TEST_UI // No UI-Blending
@@ -546,7 +547,7 @@ void VIOC_RDMA_SetImageBase(
 EXPORT_SYMBOL(VIOC_RDMA_SetImageBase);
 
 void VIOC_RDMA_SetImageRBase(
-	volatile void __iomem *reg, unsigned int nBase0, unsigned int nBase1,
+	void __iomem *reg, unsigned int nBase0, unsigned int nBase1,
 	unsigned int nBase2)
 {
 #ifdef CONFIG_VIOC_DOLBY_VISION_CERTIFICATION_TEST_UI // No UI-Blending
@@ -560,7 +561,7 @@ void VIOC_RDMA_SetImageRBase(
 EXPORT_SYMBOL(VIOC_RDMA_SetImageRBase);
 
 void VIOC_RDMA_SetImageOffset(
-	volatile void __iomem *reg, unsigned int imgFmt, unsigned int imgWidth)
+	void __iomem *reg, unsigned int imgFmt, unsigned int imgWidth)
 {
 	unsigned long val;
 	unsigned long offset0 = 0, offset1 = 0;
@@ -668,7 +669,7 @@ void VIOC_RDMA_SetImageOffset(
 }
 EXPORT_SYMBOL(VIOC_RDMA_SetImageOffset);
 
-void VIOC_RDMA_SetImageBfield(volatile void __iomem *reg, unsigned int bfield)
+void VIOC_RDMA_SetImageBfield(void __iomem *reg, unsigned int bfield)
 {
 	unsigned long val;
 
@@ -678,7 +679,7 @@ void VIOC_RDMA_SetImageBfield(volatile void __iomem *reg, unsigned int bfield)
 }
 EXPORT_SYMBOL(VIOC_RDMA_SetImageBfield);
 
-void VIOC_RDMA_SetImageBFMD(volatile void __iomem *reg, unsigned int bfmd)
+void VIOC_RDMA_SetImageBFMD(void __iomem *reg, unsigned int bfmd)
 {
 	unsigned long val;
 
@@ -688,7 +689,7 @@ void VIOC_RDMA_SetImageBFMD(volatile void __iomem *reg, unsigned int bfmd)
 }
 EXPORT_SYMBOL(VIOC_RDMA_SetImageBFMD);
 
-void VIOC_RDMA_SetImageIntl(volatile void __iomem *reg, unsigned int intl_en)
+void VIOC_RDMA_SetImageIntl(void __iomem *reg, unsigned int intl_en)
 {
 	unsigned long val;
 
@@ -702,7 +703,7 @@ EXPORT_SYMBOL(VIOC_RDMA_SetImageIntl);
  * enable)
  */
 void VIOC_RDMA_SetIreqMask(
-	volatile void __iomem *reg, unsigned int mask, unsigned int set)
+	void __iomem *reg, unsigned int mask, unsigned int set)
 {
 	if (set == 0) /* Interrupt Enable*/
 		__raw_writel(~mask, reg + RDMAIRQMSK);
@@ -712,13 +713,13 @@ void VIOC_RDMA_SetIreqMask(
 EXPORT_SYMBOL(VIOC_RDMA_SetIreqMask);
 
 /* STAT set : to clear status*/
-void VIOC_RDMA_SetStatus(volatile void __iomem *reg, unsigned int mask)
+void VIOC_RDMA_SetStatus(void __iomem *reg, unsigned int mask)
 {
 	__raw_writel(mask, reg + RDMASTAT);
 }
 EXPORT_SYMBOL(VIOC_RDMA_SetStatus);
 
-unsigned int VIOC_RDMA_GetStatus(volatile void __iomem *reg)
+unsigned int VIOC_RDMA_GetStatus(void __iomem *reg)
 {
 	return __raw_readl(reg + RDMASTAT);
 }
@@ -727,7 +728,7 @@ EXPORT_SYMBOL(VIOC_RDMA_GetStatus);
 #if defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC899X) \
 	|| defined(CONFIG_ARCH_TCC901X)
 void VIOC_RDMA_SetIssue(
-	volatile void __iomem *reg, unsigned int burst_length,
+	void __iomem *reg, unsigned int burst_length,
 	unsigned int issue_cnt)
 {
 	unsigned long val;
@@ -741,7 +742,7 @@ EXPORT_SYMBOL(VIOC_RDMA_SetIssue);
 
 #if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X)
 void VIOC_RDMA_SetIssue(
-	volatile void __iomem *reg, unsigned int burst_length,
+	void __iomem *reg, unsigned int burst_length,
 	unsigned int issue_cnt)
 {
 	unsigned long val;
@@ -753,7 +754,7 @@ void VIOC_RDMA_SetIssue(
 EXPORT_SYMBOL(VIOC_RDMA_SetIssue);
 
 void VIOC_RDMA_SetImageScale(
-	volatile void __iomem *reg, unsigned int scaleX, unsigned int scaleY)
+	void __iomem *reg, unsigned int scaleX, unsigned int scaleY)
 {
 	unsigned long val;
 
@@ -769,7 +770,7 @@ EXPORT_SYMBOL(VIOC_RDMA_SetImageScale);
 #if defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC899X) \
 	|| defined(CONFIG_ARCH_TCC901X)
 void VIOC_RDMA_SetDataFormat(
-	volatile void __iomem *reg, unsigned int fmt_type,
+	void __iomem *reg, unsigned int fmt_type,
 	unsigned int fill_mode)
 {
 	unsigned long val;
@@ -784,7 +785,7 @@ EXPORT_SYMBOL(VIOC_RDMA_SetDataFormat);
 
 #ifdef CONFIG_ARCH_TCC898X
 void VIOC_RDMA_DEC_CTRL(
-	volatile void __iomem *reg, unsigned int base, unsigned int length,
+	void __iomem *reg, unsigned int base, unsigned int length,
 	unsigned int has_alpha, unsigned int has_comp)
 {
 	unsigned long val;
@@ -800,7 +801,7 @@ void VIOC_RDMA_DEC_CTRL(
 }
 EXPORT_SYMBOL(VIOC_RDMA_DEC_CTRL);
 
-void VIOC_RDMA_DEC_EN(volatile void __iomem *reg, unsigned int OnOff)
+void VIOC_RDMA_DEC_EN(void __iomem *reg, unsigned int OnOff)
 {
 	unsigned long val;
 
@@ -822,11 +823,11 @@ void VIOC_RDMA_DEC_EN(volatile void __iomem *reg, unsigned int OnOff)
 EXPORT_SYMBOL(VIOC_RDMA_DEC_EN);
 #endif
 
-void VIOC_RDMA_DUMP(volatile void __iomem *reg, unsigned int vioc_id)
+void VIOC_RDMA_DUMP(void __iomem *reg, unsigned int vioc_id)
 {
 	unsigned int cnt = 0;
 
-	volatile void __iomem *pReg = reg;
+	void __iomem *pReg = reg;
 
 	int Num = get_vioc_index(vioc_id);
 
@@ -856,7 +857,7 @@ err:
 }
 EXPORT_SYMBOL(VIOC_RDMA_DUMP);
 
-unsigned int VIOC_RDMA_Get_CAddress(volatile void __iomem *reg)
+unsigned int VIOC_RDMA_Get_CAddress(void __iomem *reg)
 {
 	unsigned int value = 0;
 
@@ -865,7 +866,7 @@ unsigned int VIOC_RDMA_Get_CAddress(volatile void __iomem *reg)
 	return value;
 }
 
-volatile void __iomem *VIOC_RDMA_GetAddress(unsigned int vioc_id)
+void __iomem *VIOC_RDMA_GetAddress(unsigned int vioc_id)
 {
 	int Num = get_vioc_index(vioc_id);
 
@@ -912,7 +913,7 @@ static int __init vioc_rdma_init(void)
 		pr_info("[INF][RDMA] disabled\n");
 	} else {
 		for (i = 0; i < VIOC_RDMA_MAX; i++) {
-			pRDMA_reg[i] = (volatile void __iomem *)of_iomap(
+			pRDMA_reg[i] = (void __iomem *)of_iomap(
 				ViocRdma_np,
 				is_VIOC_REMAP ? (i + VIOC_RDMA_MAX) : i);
 

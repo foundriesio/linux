@@ -30,9 +30,8 @@ static int tcc_reboot_mode_write(struct reboot_mode_driver *reboot,
 {
 	struct arm_smccc_res res;
 
-	if (reboot != NULL) {
+	if (reboot != NULL)
 		dev_dbg(reboot->dev, "magic=%x\n", magic);
-	}
 
 #if defined(CONFIG_ARM_PSCI) || defined(CONFIG_ARM64)
 	arm_smccc_smc(TCC_SIP_SET_RESET_REASON, magic, 0, 0, 0, 0, 0, 0, &res);
@@ -80,9 +79,8 @@ static int tcc_reboot_mode_probe(struct platform_device *pdev)
 	tcc_reboot_mode.dev = &pdev->dev;
 
 	ret = devm_reboot_mode_register(&pdev->dev, &tcc_reboot_mode);
-	if (ret != 0) {
+	if (ret != 0)
 		dev_err(&pdev->dev, "failed to register reboot mode\n");
-	}
 
 #if defined(BOOT_PANIC)
 	(void)atomic_notifier_chain_register(&panic_notifier_list,

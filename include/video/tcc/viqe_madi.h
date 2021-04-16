@@ -475,7 +475,7 @@ extern void VIQE_MADI_Change_Cfg(void);
 extern void VIQE_MADI_Reg_RW_Test(void);
 #endif
 
-extern volatile void __iomem *VIQE_MADI_GetAddress(enum VMADI_TYPE type);
+extern void __iomem *VIQE_MADI_GetAddress(enum VMADI_TYPE type);
 extern void VIQE_MADI_DUMP(enum VMADI_TYPE type, unsigned int size);
 
 #ifdef USE_REG_EXTRACTOR

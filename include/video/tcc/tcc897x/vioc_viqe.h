@@ -616,68 +616,68 @@ typedef enum VIOC_VIQE_FMT_TYPE {
 
 /* Interface APIs */
 extern void VIOC_VIQE_InitDeintlCoreTemporal(
-	volatile void __iomem *reg);
-extern void VIOC_VIQE_SetImageSize(volatile void __iomem *reg,
+	void __iomem *reg);
+extern void VIOC_VIQE_SetImageSize(void __iomem *reg,
 	unsigned int width, unsigned int height);
-extern void VIOC_VIQE_SetImageY2RMode(volatile void __iomem *reg,
+extern void VIOC_VIQE_SetImageY2RMode(void __iomem *reg,
 	unsigned int y2r_mode);
-extern void VIOC_VIQE_SetImageY2REnable(volatile void __iomem *reg,
+extern void VIOC_VIQE_SetImageY2REnable(void __iomem *reg,
 	unsigned int enable);
-extern void VIOC_VIQE_SetControlMisc(volatile void __iomem *reg,
+extern void VIOC_VIQE_SetControlMisc(void __iomem *reg,
 	unsigned int no_hor_intpl, unsigned int fmt_conv_disable,
 	unsigned int fmt_conv_disable_using_fmt, unsigned int update_disable,
 	unsigned int cfgupd, unsigned int h2h);
-extern void VIOC_VIQE_SetControlDontUse(volatile void __iomem *reg,
+extern void VIOC_VIQE_SetControlDontUse(void __iomem *reg,
 	unsigned int global_en_dont_use, unsigned int top_size_dont_use,
 	unsigned int stream_deintl_info_dont_use);
-extern void VIOC_VIQE_SetControlClockGate(volatile void __iomem *reg,
+extern void VIOC_VIQE_SetControlClockGate(void __iomem *reg,
 	unsigned int deintl_dis, unsigned int d3d_dis, unsigned int pm_dis);
-extern void VIOC_VIQE_SetControlEnable(volatile void __iomem *reg,
+extern void VIOC_VIQE_SetControlEnable(void __iomem *reg,
 	unsigned int his_cdf_or_lut_en, unsigned int his_en,
 	unsigned int gamut_en, unsigned int denoise3d_en,
 	unsigned int deintl_en);
-extern void VIOC_VIQE_SetControlMode(volatile void __iomem *reg,
+extern void VIOC_VIQE_SetControlMode(void __iomem *reg,
 	unsigned int his_cdf_or_lut_en, unsigned int his_en,
 	unsigned int gamut_en, unsigned int denoise3d_en,
 	unsigned int deintl_en);
-extern void VIOC_VIQE_SetControlRegister(volatile void __iomem *reg,
+extern void VIOC_VIQE_SetControlRegister(void __iomem *reg,
 	unsigned int width, unsigned int height, unsigned int fmt);
 
-extern void VIOC_VIQE_SetDeintlBase(volatile void __iomem *reg,
+extern void VIOC_VIQE_SetDeintlBase(void __iomem *reg,
 	unsigned int frmnum, unsigned int base0, unsigned int base1,
 	unsigned int base2, unsigned int base3);
-extern void VIOC_VIQE_SwapDeintlBase(volatile void __iomem *reg, int mode);
-extern void VIOC_VIQE_SetDeintlSize(volatile void __iomem *reg,
+extern void VIOC_VIQE_SwapDeintlBase(void __iomem *reg, int mode);
+extern void VIOC_VIQE_SetDeintlSize(void __iomem *reg,
 	unsigned int width, unsigned int height);
-extern void VIOC_VIQE_SetDeintlMisc(volatile void __iomem *reg,
+extern void VIOC_VIQE_SetDeintlMisc(void __iomem *reg,
 	unsigned int uvintpl, unsigned int cfgupd, unsigned int dma_enable,
 	unsigned int h2h, unsigned int top_size_dont_use);
-extern void VIOC_VIQE_SetDeintlControl(volatile void __iomem *reg,
+extern void VIOC_VIQE_SetDeintlControl(void __iomem *reg,
 	unsigned int fmt, unsigned int eof_control_ready,
 	unsigned int dec_divisor, unsigned int ac_k0_limit,
 	unsigned int ac_k1_limit, unsigned int ac_k2_limit);
-extern void VIOC_VIQE_SetDeintlFMT(volatile void __iomem *reg, int enable);
-extern void VIOC_VIQE_SetDeintlMode(volatile void __iomem *reg,
+extern void VIOC_VIQE_SetDeintlFMT(void __iomem *reg, int enable);
+extern void VIOC_VIQE_SetDeintlMode(void __iomem *reg,
 	enum VIOC_VIQE_DEINTL_MODE mode);
-extern void VIOC_VIQE_SetDeintlModeWeave(volatile void __iomem *reg);
-extern void VIOC_VIQE_SetDeintlRegion(volatile void __iomem *reg,
+extern void VIOC_VIQE_SetDeintlModeWeave(void __iomem *reg);
+extern void VIOC_VIQE_SetDeintlRegion(void __iomem *reg,
 	int region_enable, int region_idx_x_start,
 	int region_idx_x_end, int region_idx_y_start, int region_idx_y_end);
-extern void VIOC_VIQE_SetDeintlCore(volatile void __iomem *reg,
+extern void VIOC_VIQE_SetDeintlCore(void __iomem *reg,
 	unsigned int width, unsigned int height,
 	enum VIOC_VIQE_FMT_TYPE fmt, unsigned int bypass,
 	unsigned int top_size_dont_use);
-extern void VIOC_VIQE_SetDeintlRegister(volatile void __iomem *reg,
+extern void VIOC_VIQE_SetDeintlRegister(void __iomem *reg,
 	unsigned int fmt, unsigned int top_size_dont_use,
 	unsigned int width, unsigned int height,
 	enum VIOC_VIQE_DEINTL_MODE mode, unsigned int base0,
 	unsigned int base1, unsigned int base2, unsigned int base3);
-extern void VIOC_VIQE_SetDeintlJudderCnt(volatile void __iomem *reg,
+extern void VIOC_VIQE_SetDeintlJudderCnt(void __iomem *reg,
 	unsigned int cnt);
-extern void VIOC_VIQE_InitDeintlCoreVinMode(volatile void __iomem *reg);
-extern void VIOC_VIQE_IgnoreDecError(volatile void __iomem *reg,
+extern void VIOC_VIQE_InitDeintlCoreVinMode(void __iomem *reg);
+extern void VIOC_VIQE_IgnoreDecError(void __iomem *reg,
 	int sf, int er_ck, int hrer_en);
-extern void VIOC_VIQE_DUMP(volatile void __iomem *reg, unsigned int vioc_id);
-extern volatile void __iomem *VIOC_VIQE_GetAddress(unsigned int vioc_id);
+extern void VIOC_VIQE_DUMP(void __iomem *reg, unsigned int vioc_id);
+extern void __iomem *VIOC_VIQE_GetAddress(unsigned int vioc_id);
 
 #endif //__VIOC_VIQE_H__

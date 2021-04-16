@@ -1578,26 +1578,7 @@
 		status = "okay";
 	};
 	smartcard {
-		compatible = "telechips,pl131-smartcard";
-		reg = <0x16601000 0xFFF 0x16684000 0x10>;                //smartcard #0,
 		clocks = <&clk_io IOBUS_SMARTCARD4>;
-		clock-frequency = <50000000>;
-		smartcard-clock = <4000000>;                             // initail value 4Mhz
-		Fi = <372>;						 // clock rate conversion integer
-		Di = <1>;						 // initail value
-
-		uart_ch = <&uart1>;					 // uart and smartcard share clock
-		uart_chnum = <1>;
-		port-num = <0>;
-		tda8024-use = <1>;
-		rst_gpios =  <&gpb 16 0>;
-		detect_gpios = <&gph 7 0>;
-		pwren_gpios = <&gph 10 0>;
-		data_gfb = <21>;
-		clk_gfb = <22>;
-		pinctrl-names = "default";
-		pinctrl-0 = <&smartcard_bus>;
-		status = "disable";
 	};
 
 	tcc_sfmc@1B000000 {

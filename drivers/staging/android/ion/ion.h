@@ -81,12 +81,13 @@ struct ion_buffer {
 	unsigned long private_flags;
 	size_t size;
 	void *priv_virt;
-	struct mutex lock;
+	struct mutex lock;	/* protects the buffers cnt fields */
 	int kmap_cnt;
 	void *vaddr;
 	struct sg_table *sg_table;
 	struct list_head attachments;
 };
+
 void ion_buffer_destroy(struct ion_buffer *buffer);
 
 /**
@@ -99,7 +100,7 @@ void ion_buffer_destroy(struct ion_buffer *buffer);
 struct ion_device {
 	struct miscdevice dev;
 	struct rb_root buffers;
-	struct mutex buffer_lock;
+	struct mutex buffer_lock;	/* protect the tree of buffers */
 	struct rw_semaphore lock;
 	struct plist_head heaps;
 	struct dentry *debug_root;
@@ -167,7 +168,7 @@ struct ion_heap_ops {
  * @shrinker:		a shrinker for the heap
  * @free_list:		free list head if deferred free is used
  * @free_list_size	size of the deferred free list in bytes
- * @lock:		protects the free list
+ * @free_lock:		protects the free list
  * @waitqueue:		queue to wait on from deferred free thread
  * @task:		task struct of deferred free thread
  * @debug_show:		called when heap debug file is read to add any
@@ -189,7 +190,7 @@ struct ion_heap {
 	struct shrinker shrinker;
 	struct list_head free_list;
 	size_t free_list_size;
-	spinlock_t free_lock;
+	spinlock_t free_lock;	/* protects the free list */
 	wait_queue_head_t waitqueue;
 	struct task_struct *task;
 
@@ -304,7 +305,6 @@ size_t ion_heap_freelist_shrink(struct ion_heap *heap,
  */
 size_t ion_heap_freelist_size(struct ion_heap *heap);
 
-
 /**
  * functions for creating and destroying a heap pool -- allows you
  * to keep a pool of pre allocated memory to use from your heap.  Keeping
@@ -337,7 +337,7 @@ struct ion_page_pool {
 	bool cached;
 	struct list_head high_items;
 	struct list_head low_items;
-	struct mutex mutex;
+	struct mutex mutex;	/* lock protecting this struct */
 	gfp_t gfp_mask;
 	unsigned int order;
 	struct plist_node list;

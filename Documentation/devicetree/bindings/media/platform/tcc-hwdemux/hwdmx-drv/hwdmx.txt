@@ -1,0 +1,45 @@
+Hardware Demux Driver for TSIF
+
+Required properties:
+	-compatible:
+		"telechips,tcc89xx-hwdmx-tsif"
+		"telechips,tcc90xx-hwdmx-tsif"
+
+Optional properties:
+	-tsif-id:
+		tsif index (max:2)
+	-tsif-port:
+		tsif port number
+	-pinctrl-names:
+		pinctrl name for status
+	-pinctrl-0:
+		setting of idle for pinctrl for tsif data/valid/clock/sync
+	-pinctrl-1:
+		setting of active for pinctrl for tsif data/valid/clock/sync
+	-clocks:
+		tsif clock for peri_tsrx
+	-clock-names:
+		tsif clock name
+
+Example:
+	tcc_hwdmx_tsif@0 {
+                compatible = "telechips,tcc89xx-hwdmx-tsif";
+                tsif-id = <0>;
+                tsif-port = <0>;
+                pinctrl-names = "idle", "active";
+                pinctrl-0 = <&ts0_idle>;
+                pinctrl-1 = <&ts0_active>;
+                clocks = <&clk_peri PERI_TSRX0>;
+                clock-names = "tsrx0";
+        };
+
+        tcc_hwdmx_tsif@1 {
+                compatible = "telechips,tcc89xx-hwdmx-tsif";
+                tsif-id = <1>;
+                tsif-port = <1>;
+                pinctrl-names = "idle", "active";
+                pinctrl-0 = <&ts1_idle>;
+                pinctrl-1 = <&ts1_active>;
+                clocks = <&clk_peri PERI_TSRX1>;
+                clock-names = "tsrx1";
+        };

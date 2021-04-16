@@ -44,9 +44,9 @@
 static struct device_node *pVDV_np;
 static struct device_node *pVEDR_np;
 static struct device_node *pDNG_np;
-static volatile void __iomem *pVDV_reg[EDR_MAX];
-static volatile void __iomem *pVEDR_reg[VEDR_MAX];
-static volatile void __iomem *pDNG_reg;
+static void __iomem *pVDV_reg[EDR_MAX];
+static void __iomem *pVEDR_reg[VEDR_MAX];
+static void __iomem *pDNG_reg;
 
 #if defined(CONFIG_TCC_DV_IN)
 #define DV_CLK_CTRL
@@ -63,7 +63,7 @@ static int debug;
 		}						\
 	} while (0)
 
-static volatile void __iomem *get_v_dv_reg(volatile void __iomem *pRDMA)
+static void __iomem *get_v_dv_reg(void __iomem *pRDMA)
 {
 	int nRdma = EDR_MAX - 1;
 
@@ -91,7 +91,7 @@ static char convert_v_dv_PixelFmt(char rdma_format)
 }
 
 void VIOC_V_DV_SetInterruptEnable(
-	volatile void __iomem *reg, unsigned int nInterrupt, unsigned int en)
+	void __iomem *reg, unsigned int nInterrupt, unsigned int en)
 {
 	unsigned long val;
 
@@ -102,19 +102,19 @@ void VIOC_V_DV_SetInterruptEnable(
 }
 
 void VIOC_V_DV_GetInterruptPending(
-	volatile void __iomem *reg, unsigned int *pPending)
+	void __iomem *reg, unsigned int *pPending)
 {
 	*pPending = (unsigned int)(__raw_readl(reg + INT_PEND));
 }
 
 void VIOC_V_DV_GetInterruptStatus(
-	volatile void __iomem *reg, unsigned int *pStatus)
+	void __iomem *reg, unsigned int *pStatus)
 {
 	*pStatus = (unsigned int)(__raw_readl(reg + INT_STS));
 }
 
 void VIOC_V_DV_ClearInterrupt(
-	volatile void __iomem *reg, unsigned int nInterrupt)
+	void __iomem *reg, unsigned int nInterrupt)
 {
 	unsigned long val;
 
@@ -123,7 +123,7 @@ void VIOC_V_DV_ClearInterrupt(
 	__raw_writel(val, reg + INT_CLR);
 }
 
-int VIOC_V_DV_Is_EdrRDMA(volatile void __iomem *pRDMA)
+int VIOC_V_DV_Is_EdrRDMA(void __iomem *pRDMA)
 {
 	if (get_v_dv_reg(pRDMA) != NULL)
 		return 1;
@@ -131,11 +131,11 @@ int VIOC_V_DV_Is_EdrRDMA(volatile void __iomem *pRDMA)
 }
 
 void VIOC_V_DV_SetSize(
-	volatile void __iomem *pDISP, volatile void __iomem *pRDMA,
+	void __iomem *pDISP, void __iomem *pRDMA,
 	unsigned int sx, unsigned int sy, unsigned int width,
 	unsigned int height)
 {
-	volatile void __iomem *pDisp_DV = NULL;
+	void __iomem *pDisp_DV = NULL;
 
 	if (pDISP)
 		pDisp_DV = pDISP;
@@ -151,10 +151,10 @@ void VIOC_V_DV_SetSize(
 }
 
 void VIOC_V_DV_SetPosition(
-	volatile void __iomem *pDISP, volatile void __iomem *pRDMA,
+	void __iomem *pDISP, void __iomem *pRDMA,
 	unsigned int sx, unsigned int sy)
 {
-	volatile void __iomem *pDisp_DV = NULL;
+	void __iomem *pDisp_DV = NULL;
 
 	if (pDISP)
 		pDisp_DV = pDISP;
@@ -169,10 +169,10 @@ void VIOC_V_DV_SetPosition(
 }
 
 void VIOC_V_DV_SetPXDW(
-	volatile void __iomem *pDISP, volatile void __iomem *pRDMA,
+	void __iomem *pDISP, void __iomem *pRDMA,
 	unsigned int pixel_fmt)
 {
-	volatile void __iomem *pDisp_DV = NULL;
+	void __iomem *pDisp_DV = NULL;
 	unsigned int PXDW = 0;
 
 	if (pDISP) {
@@ -191,11 +191,11 @@ void VIOC_V_DV_SetPXDW(
 }
 
 void VIOC_V_DV_SetBGColor(
-	volatile void __iomem *pDISP, volatile void __iomem *pRDMA,
+	void __iomem *pDISP, void __iomem *pRDMA,
 	unsigned int R_y, unsigned int G_u, unsigned int B_v,
 	unsigned int alpha)
 {
-	volatile void __iomem *pDisp_DV = NULL;
+	void __iomem *pDisp_DV = NULL;
 
 	if (pDISP)
 		pDisp_DV = pDISP;
@@ -209,7 +209,7 @@ void VIOC_V_DV_SetBGColor(
 	}
 }
 
-static int _Set_BG_Color(volatile void __iomem *pDISP_DV)
+static int _Set_BG_Color(void __iomem *pDISP_DV)
 {
 	int off = 0;
 
@@ -227,15 +227,15 @@ static int _Set_BG_Color(volatile void __iomem *pDISP_DV)
 	return off;
 }
 
-static unsigned int VIOC_V_DV_Get_TurnOn(volatile void __iomem *reg)
+static unsigned int VIOC_V_DV_Get_TurnOn(void __iomem *reg)
 {
 	return (__raw_readl(reg + DCTRL) & DCTRL_LEN_MASK) ? 1 : 0;
 }
 
 void VIOC_V_DV_Turnon(
-	volatile void __iomem *pDISP, volatile void __iomem *pRDMA)
+	void __iomem *pDISP, void __iomem *pRDMA)
 {
-	volatile volatile void __iomem *pDisp_DV = NULL;
+	void __iomem *pDisp_DV = NULL;
 
 	if (pDISP)
 		pDisp_DV = pDISP;
@@ -296,9 +296,9 @@ void VIOC_V_DV_Turnon(
 }
 
 void VIOC_V_DV_Turnoff(
-	volatile void __iomem *pDISP, volatile void __iomem *pRDMA)
+	void __iomem *pDISP, void __iomem *pRDMA)
 {
-	volatile void __iomem *pDisp_DV = NULL;
+	void __iomem *pDisp_DV = NULL;
 
 	if (pDISP)
 		pDisp_DV = pDISP;
@@ -351,8 +351,8 @@ void VIOC_V_DV_All_Turnoff(void)
 	};
 	unsigned int enabled = 0;
 
-	volatile void __iomem *pDisp_DV = NULL;
-	volatile void __iomem *pRdma_DV = NULL;
+	void __iomem *pDisp_DV = NULL;
+	void __iomem *pRdma_DV = NULL;
 
 	// Very Important Sequence for DV_IN use case!!!
 	// ON  :: EDR Path -> Streaming IF -> V_DV -> RDMA -> DISP -> DV_IN ->
@@ -433,7 +433,7 @@ void VIOC_V_DV_All_Turnoff(void)
 
 void VIOC_V_DV_Power(char on)
 {
-	volatile void __iomem *pDDICONFIG = VIOC_DDICONFIG_GetAddress();
+	void __iomem *pDDICONFIG = VIOC_DDICONFIG_GetAddress();
 
 	dprintk_dv_sequence(
 		"### V_DV Power %s (for path %d) sequence IN ===>\n",
@@ -484,7 +484,7 @@ void VIOC_V_DV_Power(char on)
 		VIOC_DDICONFIG_SetPWDN(pDDICONFIG, DDICFG_TYPE_DV, 1);
 #endif
 	} else {
-		volatile void __iomem *reg;
+		void __iomem *reg;
 
 		// change the display path from EDR to VIOC.
 		VIOC_CONFIG_DV_SET_EDR_PATH(0);
@@ -565,7 +565,7 @@ void VIOC_V_DV_SWReset(unsigned int force, unsigned int bReset)
 
 void VIOC_V_DV_Base_Configure(int sx, int sy, int w, int h)
 {
-	volatile void __iomem *pReg = NULL;
+	void __iomem *pReg = NULL;
 	int nEDR_dma = EDR_EL;
 
 	if (!VIOC_CONFIG_DV_GET_EDR_PATH())
@@ -611,7 +611,7 @@ void VIOC_V_DV_Base_Configure(int sx, int sy, int w, int h)
 	}
 }
 
-volatile void __iomem *VIOC_DNG_GetAddress(void)
+void __iomem *VIOC_DNG_GetAddress(void)
 {
 	if (pDNG_reg == NULL)
 		pr_err("[ERR][V_DV] %s\n", __func__);
@@ -619,7 +619,7 @@ volatile void __iomem *VIOC_DNG_GetAddress(void)
 	return pDNG_reg;
 }
 
-volatile void __iomem *VIOC_DV_GetAddress(enum DV_DISP_TYPE type)
+void __iomem *VIOC_DV_GetAddress(enum DV_DISP_TYPE type)
 {
 	if (pVDV_reg[type] == NULL)
 		pr_err("[ERR][V_DV] %s\n", __func__);
@@ -629,7 +629,7 @@ volatile void __iomem *VIOC_DV_GetAddress(enum DV_DISP_TYPE type)
 
 void VIOC_DV_DUMP(enum DV_DISP_TYPE type, unsigned int size)
 {
-	volatile void __iomem *pReg;
+	void __iomem *pReg;
 	unsigned int cnt = 0;
 
 	if (!VIOC_CONFIG_DV_GET_EDR_PATH())
@@ -650,7 +650,7 @@ void VIOC_DV_DUMP(enum DV_DISP_TYPE type, unsigned int size)
 	}
 }
 
-volatile void __iomem *VIOC_DV_VEDR_GetAddress(enum VEDR_TYPE type)
+void __iomem *VIOC_DV_VEDR_GetAddress(enum VEDR_TYPE type)
 {
 	if (pVEDR_reg[type] == NULL)
 		pr_err("[ERR][V_DV] %s\n", __func__);
@@ -660,7 +660,7 @@ volatile void __iomem *VIOC_DV_VEDR_GetAddress(enum VEDR_TYPE type)
 
 void VIOC_DV_VEDR_DUMP(enum VEDR_TYPE type, unsigned int size)
 {
-	volatile void __iomem *pReg;
+	void __iomem *pReg;
 	unsigned int cnt = 0;
 
 	if (pVEDR_np == NULL)
@@ -687,7 +687,7 @@ static int __init ddi_nexguard_init(void)
 	if (pDNG_np == NULL)
 		pr_err("[ERR][V_DV] can not find ddi nextguard\n");
 
-	pDNG_reg = (volatile void __iomem *)of_iomap(pDNG_np, 0);
+	pDNG_reg = (void __iomem *)of_iomap(pDNG_np, 0);
 	if (pDNG_reg)
 		pr_info("[INF][V_DV] %s DDI NexGuard: %p\n", __func__,
 			pDNG_reg);
@@ -706,7 +706,7 @@ static int __init vioc_disp_dv_init(void)
 
 	for (type = 0; type < EDR_MAX; type++) {
 		pVDV_reg[type] =
-			(volatile void __iomem *)of_iomap(pVDV_np, type);
+			(void __iomem *)of_iomap(pVDV_np, type);
 		if (pVDV_reg[type])
 			pr_info("[INF][V_DV] %s disp_dv: 0x%p\n", __func__,
 				pVDV_reg[type]);
@@ -725,7 +725,7 @@ static int __init vioc_vedr_init(void)
 		pr_info("vioc-vedr: disabled\n");
 	} else {
 		for (type = 0; type < VEDR_MAX; type++) {
-			pVEDR_reg[type] = (volatile void __iomem *)of_iomap(
+			pVEDR_reg[type] = (void __iomem *)of_iomap(
 				pVEDR_np, type);
 
 			if (pVEDR_reg[type])

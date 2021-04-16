@@ -274,6 +274,7 @@
 			};
 		};
 	};
+
 	drm_dpv14_2:drm_dpv14_2 {
 		#address-cells = <1>;
 		#size-cells = <0>;

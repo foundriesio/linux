@@ -1,0 +1,18 @@
+This is for 'telechips,tcc-component'.
+
+Required properties for display:
+    -compatible:
+        "telechips,tcc-component"
+
+-------------------------------------------------------------------------------
+
+Example:
+	component {
+		status = "disabled";
+		compatible = "telechips,tcc-component";
+		clocks = <&clk_peri PERI_LCD0 &clk_peri PERI_LCD1>;
+		vioc-frequency = <74250000>;
+		scaler = <&vioc_scaler VIOC_SCALER1>;
+		config = <&vioc_config>;
+		ddicfg = <&ddi_config>;
+	};

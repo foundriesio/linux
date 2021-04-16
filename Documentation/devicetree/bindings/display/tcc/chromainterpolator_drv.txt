@@ -1,0 +1,10 @@
+This is for 'telechips,chromainterpolator_drv'.
+
+Required properties for display:
+	-compatible:
+		"telechips,chromainterpolator_drv"
+
+-------------------------------------------------------------------------------
+
+Example:
+

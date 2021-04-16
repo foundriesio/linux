@@ -283,6 +283,8 @@
 
 
 &i2c0 {
+	#address-cells = <1>;
+	#size-cells = <0>;
 	status = "okay";
 	port-mux = <6>;
 	pinctrl-names = "default";
@@ -420,6 +422,8 @@
 };
 
 &i2c2 {
+	#address-cells = <1>;
+	#size-cells = <0>;
 	status = "okay";
 	port-mux = <13>; /* [0]SCL [1]SDA */
 	pinctrl-names = "default";
@@ -435,6 +439,8 @@
 };
 
 &i2c3 {
+	#address-cells = <1>;
+	#size-cells = <0>;
 	status = "okay";
 	port-mux = <11>; /* [0]SCL [1]SDA */
 	pinctrl-names = "default";
@@ -477,6 +483,8 @@
 };
 
 &i2c5 {
+	#address-cells = <1>;
+	#size-cells = <0>;
 	status = "okay";
 	port-mux = <37>; /* [0]SCL [1]SDA */
 	pinctrl-names = "default";

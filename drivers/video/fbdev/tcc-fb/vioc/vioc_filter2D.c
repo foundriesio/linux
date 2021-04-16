@@ -213,8 +213,8 @@ static unsigned int f2d_simple_coeff[3][10] = {
 void filt2d_coeff_lpf(
 	unsigned int F2D_N, uint strength0, uint strength1, uint strength2)
 {
-	unsigned int volatile mask;
-	volatile void __iomem *pf2d = VIOC_Filter2D_GetAddress(F2D_N);
+	unsigned int mask;
+	void __iomem *pf2d = VIOC_Filter2D_GetAddress(F2D_N);
 
 	//	pf2d->uF2D_COEFF0.nREG[0] = f2d_lpf_luma_coeff[strength0][0];
 	__raw_writel(
@@ -248,8 +248,8 @@ void filt2d_coeff_lpf(
 void filt2d_coeff_hpf(
 	unsigned int F2D_N, uint strength0, uint strength1, uint strength2)
 {
-	volatile void __iomem *pf2d = VIOC_Filter2D_GetAddress(F2D_N);
-	volatile unsigned int mask;
+	void __iomem *pf2d = VIOC_Filter2D_GetAddress(F2D_N);
+	unsigned int mask;
 
 	//	mask = pf2d->uF2D_COEFF0.nREG[1] & 0xff;
 	mask = __raw_readl(pf2d + F2D_CD_CH_REG(0, 1)) & F2D_CD_A_Y_MASK;
@@ -291,8 +291,8 @@ void filt2d_coeff_hpf(
 
 void filt2d_coeff_simple(unsigned int F2D_N, uint plane, uint *coeff)
 {
-	volatile void __iomem *pf2d = VIOC_Filter2D_GetAddress(F2D_N);
-	volatile unsigned int value = 0;
+	void __iomem *pf2d = VIOC_Filter2D_GetAddress(F2D_N);
+	unsigned int value = 0;
 
 	if (plane == PLANE0) {
 		//		pf2d->uF2D_SCOEFF0_0.bREG.para_00   = coeff[0];
@@ -436,8 +436,8 @@ void filt2d_mode(
 	uint bypass0_en, uint bypass1_en, uint bypass2_en, uint simple0_mode,
 	uint simple1_mode, uint simple2_mode)
 {
-	volatile void __iomem *pf2d = VIOC_Filter2D_GetAddress(F2D_N);
-	volatile unsigned int value = 0;
+	void __iomem *pf2d = VIOC_Filter2D_GetAddress(F2D_N);
+	unsigned int value = 0;
 
 #if 0
 	pf2d->uF2D_CTRL.bREG.hpf0_en		=	hpf0_en;
@@ -466,8 +466,8 @@ void filt2d_mode(
 
 void filt2d_div(unsigned int F2D_N, uint pos, uint dtog, uint den)
 {
-	volatile void __iomem *pf2d = VIOC_Filter2D_GetAddress(F2D_N);
-	volatile unsigned int value = 0;
+	void __iomem *pf2d = VIOC_Filter2D_GetAddress(F2D_N);
+	unsigned int value = 0;
 #if 0
 	pf2d->uF2D_DIV.bREG.div_pos = pos;
 	pf2d->uF2D_DIV.bREG.div_tog = dtog;
@@ -483,8 +483,8 @@ void filt2d_div(unsigned int F2D_N, uint pos, uint dtog, uint den)
 
 void filt2d_enable(unsigned int F2D_N, uint enable)
 {
-	volatile void __iomem *pf2d = VIOC_Filter2D_GetAddress(F2D_N);
-	volatile unsigned int mask = 0;
+	void __iomem *pf2d = VIOC_Filter2D_GetAddress(F2D_N);
+	unsigned int mask = 0;
 	//	pf2d->uF2D_CTRL.bREG.enable = enable;
 	mask = __raw_readl(pf2d + F2D_CTRL_REG) & ~(F2D_EN_MASK);
 	mask |= ((enable << F2D_EN_SHIFT) & F2D_EN_MASK);
@@ -854,11 +854,11 @@ static int __init test_disp_api(unsigned int Nrdma_n, unsigned int front)
 	unsigned int disp_width, disp_height, width, height = 0;
 	unsigned int Src0, Src1, Src2, Dest0, Dest1, Dest2;
 
-	volatile void __iomem *wdma_reg;
-	volatile void __iomem *rdma_reg, *UIrdma_reg;
-	volatile void __iomem *wmix_reg;
-	volatile void __iomem *scaler_reg;
-	volatile void __iomem *disp_reg;
+	void __iomem *wdma_reg;
+	void __iomem *rdma_reg, *UIrdma_reg;
+	void __iomem *wmix_reg;
+	void __iomem *scaler_reg;
+	void __iomem *disp_reg;
 
 	pr_info("\n %s %d\n", __func__, Nrdma_n);
 
@@ -962,7 +962,7 @@ static int __init test_f2d_api(void)
 
 void __iomem *pF2D_reg[VIOC_F2D_MAX] = {0};
 
-volatile void __iomem *VIOC_Filter2D_GetAddress(unsigned int vioc_filter2d_id)
+void __iomem *VIOC_Filter2D_GetAddress(unsigned int vioc_filter2d_id)
 {
 	int Num = get_vioc_index(vioc_filter2d_id);
 

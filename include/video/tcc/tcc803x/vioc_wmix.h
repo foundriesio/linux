@@ -20,10 +20,10 @@
 #define __VIOC_WMIX_H__
 
 enum VIOC_WMIX_ALPHA_SELECT_Type {
-	VIOC_WMIX_ALPHA_SEL0 = 0, // image alpha 0~255 (0%~99.6%)
-	VIOC_WMIX_ALPHA_SEL1,     // not defined
-	VIOC_WMIX_ALPHA_SEL2,     // image alpha 1~256 (0.39% ~ 100%)
-	VIOC_WMIX_ALPHA_SEL3,     // image alpha 0~127, 129~256 (0%~49.6%, 50.3%~100%)
+	VIOC_WMIX_ALPHA_SEL0 = 0,
+	VIOC_WMIX_ALPHA_SEL1,
+	VIOC_WMIX_ALPHA_SEL2,
+	VIOC_WMIX_ALPHA_SEL3,
 	VIOC_WMIX_ALPHA_SEL_MAX
 };
 
@@ -35,67 +35,67 @@ enum VIOC_WMIX_ALPHA_ROPMODE_Type {
 };
 
 enum VIOC_WMIX_ALPHA_ACON0_Type {
-	VIOC_WMIX_ALPHA_ACON0_0 = 0, // Result_A = ALPHA0 * SEL0_Out, SEL0_Out = ALPHA1
-	VIOC_WMIX_ALPHA_ACON0_1,     // Result_A = ALPHA0 * SEL0_Out, SEL0_Out = 256 - ALPHA1
-	VIOC_WMIX_ALPHA_ACON0_2,     // Result_A = ALPHA0 * 256, SEL0_Out = ALPHA1
-	VIOC_WMIX_ALPHA_ACON0_3,     // Result_A = ALPHA0 * 256, SEL0_Out = 256 - ALPHA1
-	VIOC_WMIX_ALPHA_ACON0_4,     // Result_A = ALPHA0 * 128, SEL0_Out = ALPHA1
-	VIOC_WMIX_ALPHA_ACON0_5,     // Result_A = ALPHA0 * 128, SEL0_Out = 256 - ALPHA1
-	VIOC_WMIX_ALPHA_ACON0_6,     // Result_A = 0, SEL0_Out = ALPHA1
-	VIOC_WMIX_ALPHA_ACON0_7,     // Result_A = 0, SEL0_Out = 256 - ALPHA1
-	VIOC_WMIX_ALPHA_ACON0_MAX    // Result : AlphaDataOut = (Result_A + Result_B + 128) / 256
+	VIOC_WMIX_ALPHA_ACON0_0 = 0,
+	VIOC_WMIX_ALPHA_ACON0_1,
+	VIOC_WMIX_ALPHA_ACON0_2,
+	VIOC_WMIX_ALPHA_ACON0_3,
+	VIOC_WMIX_ALPHA_ACON0_4,
+	VIOC_WMIX_ALPHA_ACON0_5,
+	VIOC_WMIX_ALPHA_ACON0_6,
+	VIOC_WMIX_ALPHA_ACON0_7,
+	VIOC_WMIX_ALPHA_ACON0_MAX
 };
 
 enum VIOC_WMIX_ALPHA_ACON1_Type {
-	VIOC_WMIX_ALPHA_ACON1_0 = 0, // Result_B = ALPHA1 * SEL1_Out, SEL1_Out = ALPHA0
-	VIOC_WMIX_ALPHA_ACON1_1,     // Result_B = ALPHA1 * SEL1_Out, SEL1_Out = 256 - ALPHA0
-	VIOC_WMIX_ALPHA_ACON1_2,     // Result_B = ALPHA1 * 256, SEL1_Out = ALPHA0
-	VIOC_WMIX_ALPHA_ACON1_3,     // Result_B = ALPHA1 * 256, SEL1_Out = 256 - ALPHA0
-	VIOC_WMIX_ALPHA_ACON1_4,     // Result_B = ALPHA1 * 128, SEL1_Out = ALPHA0
-	VIOC_WMIX_ALPHA_ACON1_5,     // Result_B = ALPHA1 * 128, SEL1_Out = 256 - ALPHA0
-	VIOC_WMIX_ALPHA_ACON1_6,     // Result_B = 0, SEL1_Out = ALPHA0
-	VIOC_WMIX_ALPHA_ACON1_7,     // Result_B = 0, SEL1_Out = 256 - ALPHA0
-	VIOC_WMIX_ALPHA_ACON1_MAX    // Result : AlphaDataOut = (Result_A + Result_B + 128) / 256
+	VIOC_WMIX_ALPHA_ACON1_0 = 0,
+	VIOC_WMIX_ALPHA_ACON1_1,
+	VIOC_WMIX_ALPHA_ACON1_2,
+	VIOC_WMIX_ALPHA_ACON1_3,
+	VIOC_WMIX_ALPHA_ACON1_4,
+	VIOC_WMIX_ALPHA_ACON1_5,
+	VIOC_WMIX_ALPHA_ACON1_6,
+	VIOC_WMIX_ALPHA_ACON1_7,
+	VIOC_WMIX_ALPHA_ACON1_MAX
 };
 
 enum VIOC_WMIX_ALPHA_CCON0_Type {
-	VIOC_WMIX_ALPHA_CCON0_0 = 0, // Result_A = PixelDataA * SEL0_Out, SEL0_Out = ALPHA0
-	VIOC_WMIX_ALPHA_CCON0_1,     // Result_A = PixelDataA * SEL0_Out, SEL0_Out = ALPHA1
-	VIOC_WMIX_ALPHA_CCON0_2,     // Result_A = PixelDataA * SEL0_Out, SEL0_Out = 256 - ALPHA0
-	VIOC_WMIX_ALPHA_CCON0_3,     // Result_A = PixelDataA * SEL0_Out, SEL0_Out = 256 - ALPHA1
-	VIOC_WMIX_ALPHA_CCON0_4,     // Result_A = PixelDataA * 256, SEL0_Out = ALPHA0
-	VIOC_WMIX_ALPHA_CCON0_5,     // Result_A = PixelDataA * 256, SEL0_Out = ALPHA1
-	VIOC_WMIX_ALPHA_CCON0_6,     // Result_A = PixelDataA * 256, SEL0_Out = 256 - ALPHA0
-	VIOC_WMIX_ALPHA_CCON0_7,     // Result_A = PixelDataA * 256, SEL0_Out = 256 - ALPHA1
-	VIOC_WMIX_ALPHA_CCON0_8,     // Result_A = PixelDataA * 128, SEL0_Out = ALPHA0
-	VIOC_WMIX_ALPHA_CCON0_9,     // Result_A = PixelDataA * 128, SEL0_Out = ALPHA1
-	VIOC_WMIX_ALPHA_CCON0_10,    // Result_A = PixelDataA * 128, SEL0_Out = 256 - ALPHA0
-	VIOC_WMIX_ALPHA_CCON0_11,    // Result_A = PixelDataA * 128, SEL0_Out = 256 - ALPHA1
-	VIOC_WMIX_ALPHA_CCON0_12,    // Result_A = 0, SEL0_Out = ALPHA0
-	VIOC_WMIX_ALPHA_CCON0_13,    // Result_A = 0, SEL0_Out = ALPHA1
-	VIOC_WMIX_ALPHA_CCON0_14,    // Result_A = 0, SEL0_Out = 256 - ALPHA0
-	VIOC_WMIX_ALPHA_CCON0_15,    // Result_A = 0, SEL0_Out = 256 - ALPHA1
-	VIOC_WMIX_ALPHA_CCON0_MAX    // Result : PixelDataOut = (Result_A + Result_B + 128) / 256
+	VIOC_WMIX_ALPHA_CCON0_0 = 0,
+	VIOC_WMIX_ALPHA_CCON0_1,
+	VIOC_WMIX_ALPHA_CCON0_2,
+	VIOC_WMIX_ALPHA_CCON0_3,
+	VIOC_WMIX_ALPHA_CCON0_4,
+	VIOC_WMIX_ALPHA_CCON0_5,
+	VIOC_WMIX_ALPHA_CCON0_6,
+	VIOC_WMIX_ALPHA_CCON0_7,
+	VIOC_WMIX_ALPHA_CCON0_8,
+	VIOC_WMIX_ALPHA_CCON0_9,
+	VIOC_WMIX_ALPHA_CCON0_10,
+	VIOC_WMIX_ALPHA_CCON0_11,
+	VIOC_WMIX_ALPHA_CCON0_12,
+	VIOC_WMIX_ALPHA_CCON0_13,
+	VIOC_WMIX_ALPHA_CCON0_14,
+	VIOC_WMIX_ALPHA_CCON0_15,
+	VIOC_WMIX_ALPHA_CCON0_MAX
 };
 
 enum VIOC_WMIX_ALPHA_CCON1_Type {
-	VIOC_WMIX_ALPHA_CCON1_0 = 0, // Result_B = PixelDataB * SEL1_Out, SEL1_Out = ALPHA0
-	VIOC_WMIX_ALPHA_CCON1_1,     // Result_B = PixelDataB * SEL1_Out, SEL1_Out = ALPHA1
-	VIOC_WMIX_ALPHA_CCON1_2,     // Result_B = PixelDataB * SEL1_Out, SEL1_Out = 256 - ALPHA0
-	VIOC_WMIX_ALPHA_CCON1_3,     // Result_B = PixelDataB * SEL1_Out, SEL1_Out = 256 - ALPHA1
-	VIOC_WMIX_ALPHA_CCON1_4,     // Result_B = PixelDataB * 256, SEL1_Out = ALPHA0
-	VIOC_WMIX_ALPHA_CCON1_5,     // Result_B = PixelDataB * 256, SEL1_Out = ALPHA1
-	VIOC_WMIX_ALPHA_CCON1_6,     // Result_B = PixelDataB * 256, SEL1_Out = 256 - ALPHA0
-	VIOC_WMIX_ALPHA_CCON1_7,     // Result_B = PixelDataB * 256, SEL1_Out = 256 - ALPHA1
-	VIOC_WMIX_ALPHA_CCON1_8,     // Result_B = PixelDataB * 128, SEL1_Out = ALPHA0
-	VIOC_WMIX_ALPHA_CCON1_9,     // Result_B = PixelDataB * 128, SEL1_Out = ALPHA1
-	VIOC_WMIX_ALPHA_CCON1_10,    // Result_B = PixelDataB * 128, SEL1_Out = 256 - ALPHA0
-	VIOC_WMIX_ALPHA_CCON1_11,    // Result_B = PixelDataB * 128, SEL1_Out = 256 - ALPHA1
-	VIOC_WMIX_ALPHA_CCON1_12,    // Result_B = 0, SEL1_Out = ALPHA0
-	VIOC_WMIX_ALPHA_CCON1_13,    // Result_B = 0, SEL1_Out = ALPHA1
-	VIOC_WMIX_ALPHA_CCON1_14,    // Result_B = 0, SEL1_Out = 256 - ALPHA0
-	VIOC_WMIX_ALPHA_CCON1_15,    // Result_B = 0, SEL1_Out = 256 - ALPHA1
-	VIOC_WMIX_ALPHA_CCON1_MAX    // Result : PixelDataOut = (Result_A + Result_B + 128) / 256
+	VIOC_WMIX_ALPHA_CCON1_0 = 0,
+	VIOC_WMIX_ALPHA_CCON1_1,
+	VIOC_WMIX_ALPHA_CCON1_2,
+	VIOC_WMIX_ALPHA_CCON1_3,
+	VIOC_WMIX_ALPHA_CCON1_4,
+	VIOC_WMIX_ALPHA_CCON1_5,
+	VIOC_WMIX_ALPHA_CCON1_6,
+	VIOC_WMIX_ALPHA_CCON1_7,
+	VIOC_WMIX_ALPHA_CCON1_8,
+	VIOC_WMIX_ALPHA_CCON1_9,
+	VIOC_WMIX_ALPHA_CCON1_10,
+	VIOC_WMIX_ALPHA_CCON1_11,
+	VIOC_WMIX_ALPHA_CCON1_12,
+	VIOC_WMIX_ALPHA_CCON1_13,
+	VIOC_WMIX_ALPHA_CCON1_14,
+	VIOC_WMIX_ALPHA_CCON1_15,
+	VIOC_WMIX_ALPHA_CCON1_MAX
 };
 
 #define VIOC_WMIX_ALPHA_REGION_A		0x0
@@ -227,7 +227,7 @@ enum VIOC_WMIX_ALPHA_CCON1_Type {
 #define MSTS_DEOFW_SHIFT (28) // Download EOF_WAIT status
 #define MSTS_UINTL_SHIFT (27) // Upload interlace status
 #define MSTS_UUPD_SHIFT  (26) // Upload update status
-#define MSTS_UEN_SHIFT   (25) // Upload enab;e status
+#define MSTS_UEN_SHIFT   (25) // Upload enable status
 #define MSTS_UEOF_SHIFT  (24) // Upload EOF status
 #define MSTS_EOFF_SHIFT  (4)  // Falling EOF status
 #define MSTS_EOFR_SHIFT  (3)  // Rising EOF status
@@ -333,61 +333,61 @@ enum VIOC_WMIX_ALPHA_CCON1_Type {
 
 /* Interface APIs */
 extern void VIOC_WMIX_SetOverlayPriority(
-	volatile void __iomem *reg, unsigned int nOverlayPriority);
+	void __iomem *reg, unsigned int nOverlayPriority);
 extern void VIOC_WMIX_GetOverlayPriority(
-	volatile void __iomem *reg, unsigned int *nOverlayPriority);
-extern void VIOC_WMIX_SetUpdate(volatile void __iomem *reg);
-extern void VIOC_WMIX_SetSize(volatile void __iomem *reg,
+	void __iomem *reg, unsigned int *nOverlayPriority);
+extern void VIOC_WMIX_SetUpdate(void __iomem *reg);
+extern void VIOC_WMIX_SetSize(void __iomem *reg,
 	unsigned int nWidth, unsigned int nHeight);
-extern void VIOC_WMIX_GetSize(volatile void __iomem *reg,
+extern void VIOC_WMIX_GetSize(void __iomem *reg,
 	unsigned int *nWidth, unsigned int *nHeight);
-extern void VIOC_WMIX_SetBGColor(volatile void __iomem *reg,
+extern void VIOC_WMIX_SetBGColor(void __iomem *reg,
 	unsigned int nBG0, unsigned int nBG1,
 	unsigned int nBG2, unsigned int nBG3);
-extern void VIOC_WMIX_SetPosition(volatile void __iomem *reg,
+extern void VIOC_WMIX_SetPosition(void __iomem *reg,
 	unsigned int nChannel, unsigned int nX, unsigned int nY);
-extern void VIOC_WMIX_GetPosition(volatile void __iomem *reg,
+extern void VIOC_WMIX_GetPosition(void __iomem *reg,
 	unsigned int nChannel, unsigned int *nX, unsigned int *nY);
-extern void VIOC_WMIX_SetChromaKey(volatile void __iomem *reg,
+extern void VIOC_WMIX_SetChromaKey(void __iomem *reg,
 	unsigned int nLayer, unsigned int nKeyEn,
 	unsigned int nKeyR, unsigned int nKeyG, unsigned int nKeyB,
 	unsigned int nKeyMaskR, unsigned int nKeyMaskG, unsigned int nKeyMaskB);
-extern void VIOC_WMIX_GetChromaKey(volatile void __iomem *reg,
+extern void VIOC_WMIX_GetChromaKey(void __iomem *reg,
 	unsigned int nLayer, unsigned int *nKeyEn,
 	unsigned int *nKeyR, unsigned int *nKeyG, unsigned int *nKeyB,
 	unsigned int *nKeyMaskR, unsigned int *nKeyMaskG,
 	unsigned int *nKeyMaskB);
 extern void VIOC_WMIX_ALPHA_SetAlphaValueControl(
-	volatile void __iomem *reg, unsigned int layer,
+	void __iomem *reg, unsigned int layer,
 	unsigned int region, unsigned int acon0, unsigned int acon1);
-extern void VIOC_WMIX_ALPHA_SetColorControl(volatile void __iomem *reg,
+extern void VIOC_WMIX_ALPHA_SetColorControl(void __iomem *reg,
 	unsigned int layer, unsigned int region,
 	unsigned int ccon0, unsigned int ccon1);
-extern void VIOC_WMIX_ALPHA_SetROPMode(volatile void __iomem *reg,
+extern void VIOC_WMIX_ALPHA_SetROPMode(void __iomem *reg,
 	unsigned int layer, unsigned int mode);
-extern void VIOC_WMIX_ALPHA_SetAlphaSelection(volatile void __iomem *reg,
+extern void VIOC_WMIX_ALPHA_SetAlphaSelection(void __iomem *reg,
 	unsigned int layer, unsigned int asel);
-extern void VIOC_WMIX_ALPHA_SetAlphaValue(volatile void __iomem *reg,
+extern void VIOC_WMIX_ALPHA_SetAlphaValue(void __iomem *reg,
 	unsigned int layer, unsigned int alpha0, unsigned int alpha1);
-extern void VIOC_WMIX_ALPHA_SetROPPattern(volatile void __iomem *reg,
+extern void VIOC_WMIX_ALPHA_SetROPPattern(void __iomem *reg,
 	unsigned int layer, unsigned int patR,
 	unsigned int patG, unsigned int patB);
-extern void VIOC_WMIX_SetInterruptMask(volatile void __iomem *reg,
+extern void VIOC_WMIX_SetInterruptMask(void __iomem *reg,
 	unsigned int nMask);
-extern unsigned int VIOC_WMIX_GetStatus(volatile void __iomem *reg);
-extern void VIOC_API_WMIX_SetOverlayAlphaROPMode(volatile void __iomem *reg,
+extern unsigned int VIOC_WMIX_GetStatus(void __iomem *reg);
+extern void VIOC_API_WMIX_SetOverlayAlphaROPMode(void __iomem *reg,
 	unsigned int layer, unsigned int opmode);
-extern void VIOC_API_WMIX_SetOverlayAlphaValue(volatile void __iomem *reg,
+extern void VIOC_API_WMIX_SetOverlayAlphaValue(void __iomem *reg,
 	unsigned int layer, unsigned int alpha0, unsigned int alpha1);
-extern void VIOC_API_WMIX_SetOverlayAlphaSelection(volatile void __iomem *reg,
+extern void VIOC_API_WMIX_SetOverlayAlphaSelection(void __iomem *reg,
 	unsigned int layer, unsigned int asel);
 extern void VIOC_API_WMIX_SetOverlayAlphaValueControl(
-	volatile void __iomem *reg, unsigned int layer,
+	void __iomem *reg, unsigned int layer,
 	unsigned int region, unsigned int acon0, unsigned int acon1);
 extern void VIOC_API_WMIX_SetOverlayAlphaColorControl(
-	volatile void __iomem *reg, unsigned int layer,
+	void __iomem *reg, unsigned int layer,
 	unsigned int region, unsigned int ccon0, unsigned int ccon1);
-extern volatile void __iomem *VIOC_WMIX_GetAddress(unsigned int vioc_id);
-extern void VIOC_WMIX_DUMP(volatile void __iomem *reg, unsigned int vioc_id);
+extern void __iomem *VIOC_WMIX_GetAddress(unsigned int vioc_id);
+extern void VIOC_WMIX_DUMP(void __iomem *reg, unsigned int vioc_id);
 
 #endif

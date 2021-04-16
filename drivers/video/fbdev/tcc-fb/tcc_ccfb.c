@@ -1,23 +1,21 @@
-/****************************************************************************
-FileName    : kernel/drivers/video/tcc/tcc_ccfb.c
-Description :
-
-Copyright (C) 2013 Telechips Inc.
-
-This program is free software; you can redistribute it and/or modify it under
-the terms of the GNU General Public License as published by the Free Software
-Foundation; either version 2 of the License, or (at your option) any later
-version.
-
-This program is distributed in the hope that it will be useful, but WITHOUT ANY
-WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
-PARTICULAR PURPOSE. See the GNU General Public License for more details.
-
-You should have received a copy of the GNU General Public License along with
-this program; if not, write to the Free Software Foundation, Inc., 59 Temple
-Place, Suite 330, Boston, MA 02111-1307 USA
-****************************************************************************/
-
+/*
+ * Copyright (C) Telechips, Inc.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, see the file COPYING, or write
+ * to the Free Software Foundation, Inc.,
+ * 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+ */
 #include <linux/module.h>
 #include <linux/kernel.h>
 #include <linux/errno.h>
@@ -68,7 +66,7 @@ Place, Suite 330, Boston, MA 02111-1307 USA
  *DEFINITION OF TYPE
  ***************************************************************************
  */
-typedef enum {
+enum ccfb_state {
 	CCFB_STATE_CLOSED,
 	CCFB_STATE_OPENED,
 	CCFB_STATE_PREPARE,
@@ -76,17 +74,17 @@ typedef enum {
 	CCFB_STATE_PAUSE,
 
 	CCFB_STATE_MAX
-} ccfb_state_t;
+};
 
-typedef struct {
-	ccfb_state_t cur_state;
+struct ccfb_dev_config_t {
+	enum ccfb_state cur_state;
 	int32_t act_lcdc_idx;
 
-	volatile void __iomem *pCurLcdc;
-	volatile void __iomem *pCurWMix;
+	void __iomem *pCurLcdc;
+	void __iomem *pCurWMix;
 	struct clk *pLcdcClk[MAX_LCDC_NUM];
 	/* TCCxx machine has two LCD controller */
-} ccfb_dev_config_t;
+};
 
 /****************************************************************************
  *DEFINITION OF EXTERNAL VARIABLES
@@ -97,7 +95,7 @@ typedef struct {
  *DEFINITION OF STATIC VARIABLES
  **************************************************************************
  */
-static ccfb_dev_config_t g_dev_cfg;
+static struct ccfb_dev_config_t g_dev_cfg;
 static DEFINE_MUTEX(g_ccfb_mutex);
 static struct ccfb_config_t g_ccfg_cfg;
 
@@ -110,14 +108,14 @@ static struct ccfb_config_t g_ccfg_cfg;
  *DEFINITION OF LOCAL FUNCTIONS
  **************************************************************************
  */
-static ccfb_dev_config_t *get_ccfb_dev(void)
+static struct ccfb_dev_config_t *get_ccfb_dev(void)
 {
 	return &g_dev_cfg;
 }
 
 static void init_ccfb_dev(void)
 {
-	ccfb_dev_config_t *dev = get_ccfb_dev();
+	struct ccfb_dev_config_t *dev = get_ccfb_dev();
 
 	dev->cur_state = CCFB_STATE_CLOSED;
 	dev->act_lcdc_idx = -1;
@@ -127,7 +125,9 @@ static void init_ccfb_dev(void)
 	dev->pLcdcClk[1] = NULL;
 }
 
-static int tccxxx_ccfb_mmap(struct file *file, struct vm_area_struct *vma)
+static int tccxxx_ccfb_mmap(
+	struct file *file,
+	struct vm_area_struct *vma)
 {
 	dprintk("[DBG][CCFB] %s\n", __func__);
 
@@ -149,7 +149,9 @@ static int tccxxx_ccfb_mmap(struct file *file, struct vm_area_struct *vma)
 	return 0;
 }
 
-static int tccxxx_ccfb_act_clock(ccfb_dev_config_t *dev, int lcdc_num)
+static int tccxxx_ccfb_act_clock(
+	struct ccfb_dev_config_t *dev,
+	int lcdc_num)
 {
 	char *pDevName[2] = {"lcdc0", "lcdc1"};
 
@@ -183,7 +185,7 @@ static int tccxxx_ccfb_act_clock(ccfb_dev_config_t *dev, int lcdc_num)
 }
 
 #if 0
-static int tccxxx_ccfb_deact_clock(ccfb_dev_config_t *dev)
+static int tccxxx_ccfb_deact_clock(struct ccfb_dev_config_t *dev)
 {
 	int i;
 
@@ -200,7 +202,7 @@ static int tccxxx_ccfb_deact_clock(ccfb_dev_config_t *dev)
 #endif /* End of 0 */
 
 #if 0
-static int tccxxx_ccfb_lcdc_enable(ccfb_dev_config_t *dev)
+static int tccxxx_ccfb_lcdc_enable(struct ccfb_dev_config_t *dev)
 {
 	dprintk("[DBG][CCFB] %s\n", __func__);
 
@@ -210,7 +212,7 @@ static int tccxxx_ccfb_lcdc_enable(ccfb_dev_config_t *dev)
 }
 #endif /* 0 */
 
-static int tccxxx_ccfb_lcdc_disable(ccfb_dev_config_t *dev)
+static int tccxxx_ccfb_lcdc_disable(struct ccfb_dev_config_t *dev)
 {
 	dprintk("[DBG][CCFB] %s\n", __func__);
 
@@ -220,7 +222,9 @@ static int tccxxx_ccfb_lcdc_disable(ccfb_dev_config_t *dev)
 	return 0;
 }
 
-static int tccxxx_ccfb_get_config(ccfb_dev_config_t *dev, void *arg)
+static int tccxxx_ccfb_get_config(
+	struct ccfb_dev_config_t *dev,
+	void *arg)
 {
 	struct ccfb_config_t cfg;
 	struct lcd_panel *panel = tccfb_get_panel();
@@ -237,8 +241,9 @@ static int tccxxx_ccfb_get_config(ccfb_dev_config_t *dev, void *arg)
 	return 0;
 }
 
-static int
-tccxxx_ccfb_set_config(ccfb_dev_config_t *dev, struct ccfb_config_t *arg)
+static int tccxxx_ccfb_set_config(
+	struct ccfb_dev_config_t *dev,
+	struct ccfb_config_t *arg)
 {
 	int ret = -ENODEV;
 	struct ccfb_config_t cfg;
@@ -310,7 +315,9 @@ tccxxx_ccfb_set_config(ccfb_dev_config_t *dev, struct ccfb_config_t *arg)
 	return ret;
 }
 
-static int tccxxx_ccfb_disp_update(ccfb_dev_config_t *dev, unsigned int *arg)
+static int tccxxx_ccfb_disp_update(
+	struct ccfb_dev_config_t *dev,
+	unsigned int *arg)
 {
 	unsigned int cur_addr;
 
@@ -368,11 +375,13 @@ static int tccxxx_ccfb_disp_update(ccfb_dev_config_t *dev, unsigned int *arg)
 	return 0;
 }
 
-static long
-tccxxx_ccfb_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
+static long tccxxx_ccfb_ioctl(
+	struct file *file,
+	unsigned int cmd,
+	unsigned long arg)
 {
 	int ret = -EPERM;
-	ccfb_dev_config_t *dev = get_ccfb_dev();
+	struct ccfb_dev_config_t *dev = get_ccfb_dev();
 
 	dprintk("[DBG][CCFB] %s\n", __func__);
 
@@ -429,9 +438,11 @@ tccxxx_ccfb_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 	return ret;
 }
 
-static int tccxxx_ccfb_release(struct inode *inode, struct file *file)
+static int tccxxx_ccfb_release(
+	struct inode *inode,
+	struct file *file)
 {
-	ccfb_dev_config_t *dev = get_ccfb_dev();
+	struct ccfb_dev_config_t *dev = get_ccfb_dev();
 
 	dprintk("[DBG][CCFB] %s\n", __func__);
 
@@ -442,7 +453,7 @@ static int tccxxx_ccfb_release(struct inode *inode, struct file *file)
 
 	if ((dev->cur_state == CCFB_STATE_RUNNING)
 	    || (dev->cur_state == CCFB_STATE_PAUSE)) {
-		dprintk("[DBG][CCFB] [%s] ccfb is still running... ccfb close trying...\n",
+		pr_info("[DBG][CCFB] [%s] ccfb is running. try to close.\n",
 			__func__);
 		tccxxx_ccfb_lcdc_disable(dev);
 		// tccxxx_ccfb_deact_clock(dev);
@@ -469,7 +480,7 @@ static int tccxxx_ccfb_release(struct inode *inode, struct file *file)
 
 static int tccxxx_ccfb_open(struct inode *inode, struct file *file)
 {
-	ccfb_dev_config_t *dev = get_ccfb_dev();
+	struct ccfb_dev_config_t *dev = get_ccfb_dev();
 
 	dprintk("[DBG][CCFB] %s\n", __func__);
 
@@ -529,10 +540,12 @@ static int tcc_ccfb_remove(struct platform_device *pdev)
 
 #ifdef CONFIG_PM
 // static volatile LCDC_CHANNEL active_lcdc_backup;
-static int tcc_ccfb_suspend(struct platform_device *pdev, pm_message_t state)
+static int tcc_ccfb_suspend(
+	struct platform_device *pdev,
+	pm_message_t state)
 {
 #if 0
-	ccfb_dev_config_t	*dev = get_ccfb_dev();
+	struct ccfb_dev_config_t	*dev = get_ccfb_dev();
 
 	dprintk("[DBG][CCFB] %s\n", __func__);
 
@@ -549,7 +562,7 @@ static int tcc_ccfb_suspend(struct platform_device *pdev, pm_message_t state)
 static int tcc_ccfb_resume(struct platform_device *pdev)
 {
 #if 0
-	ccfb_dev_config_t	*dev = get_ccfb_dev();
+	struct ccfb_dev_config_t	*dev = get_ccfb_dev();
 
 	dprintk("[DBG][CCFB] %s\n", __func__);
 

@@ -33,7 +33,6 @@ Suite 330, Boston, MA 02111-1307 USA
 #include <asm/mach-types.h>
 #include <linux/uaccess.h>
 
-
 #include <asm/io.h>
 #ifdef CONFIG_PM
 #include <linux/pm.h>
@@ -64,7 +63,7 @@ static int tcc_hdmi_audio_set_clock(struct tcc_hdmi_dev *dev)
 
 	do {
 		if(dev == NULL) {
-			printk(KERN_ERR "[ERROR][HDMI_V14]%s dev is NULL\r\n", __func__);
+			pr_err("[ERROR][HDMI_V14]%s dev is NULL\r\n", __func__);
 			break;
 		}
 		if(!dev->power_status) {
@@ -76,7 +75,7 @@ static int tcc_hdmi_audio_set_clock(struct tcc_hdmi_dev *dev)
                 switch(dev->audioParam.mInterfaceType) {
                         case I2S:
 				if(IS_ERR_OR_NULL(dev->hdmi_audio_clk)) {
-					printk(KERN_ERR "[ERROR][HDMI_V14]%s hdmi audio clock is not valid\r\n", __func__);
+					pr_err("[ERROR][HDMI_V14]%s hdmi audio clock is not valid\r\n", __func__);
 					break;
 				}
 				clk_disable_unprepare(dev->hdmi_audio_clk);
@@ -85,7 +84,7 @@ static int tcc_hdmi_audio_set_clock(struct tcc_hdmi_dev *dev)
                                 clk_set_rate(dev->hdmi_audio_clk, audio_clk_rate);
                                 clk_prepare_enable(dev->hdmi_audio_clk);
 				#if defined(DEBUG_AUDIO_CLOCK)
-				printk(KERN_INFO "[INFO][HDMI_V14]%s I2S %dHz(%dHz) - req = %dHz(%dHz) \r\n", __func__,
+				pr_info("[INFO][HDMI_V14]%s I2S %dHz(%dHz) - req = %dHz(%dHz) \r\n", __func__,
 					clk_get_rate(dev->hdmi_audio_clk) >> 9, clk_get_rate(dev->hdmi_audio_clk),
 					dev->audioParam.mSamplingFrequency, audio_clk_rate);
 				#endif
@@ -94,18 +93,18 @@ static int tcc_hdmi_audio_set_clock(struct tcc_hdmi_dev *dev)
 
                         case SPDIF:
 				if(IS_ERR_OR_NULL(dev->hdmi_audio_spdif_clk)) {
-					printk(KERN_ERR "[ERROR][HDMI_V14]%s spdif is not valid\r\n", __func__);
+					pr_err("[ERROR][HDMI_V14]%s spdif is not valid\r\n", __func__);
 					break;
 				}
 				clk_set_rate(dev->hdmi_audio_spdif_clk, audio_clk_rate);
 				#if defined(DEBUG_AUDIO_CLOCK)
-				printk(KERN_INFO "[INFO][HDMI_V14]%s SPDIF CLK %d Hz - req = %dHz \r\n", __func__,
+				pr_info("[INFO][HDMI_V14]%s SPDIF CLK %d Hz - req = %dHz \r\n", __func__,
 					clk_get_rate(dev->hdmi_audio_spdif_clk) >> 9,
 					dev->audioParam.mSamplingFrequency);
 				#endif
 
                                 if(IS_ERR_OR_NULL(dev->hdmi_audio_clk)) {
-					printk(KERN_ERR "[ERROR][HDMI_V14]%s hdmi audio clock is not valid\r\n", __func__);
+					pr_err("[ERROR][HDMI_V14]%s hdmi audio clock is not valid\r\n", __func__);
 					break;
 				}
 				clk_disable_unprepare(dev->hdmi_audio_clk);
@@ -122,13 +121,13 @@ static int tcc_hdmi_audio_set_clock(struct tcc_hdmi_dev *dev)
 						break;
 				}
 				if(ret < 0) {
-					printk(KERN_ERR "[ERROR][HDMI_V14]%s spdif index is not valid\r\n", __func__);
+					pr_err("[ERROR][HDMI_V14]%s spdif index is not valid\r\n", __func__);
 					break;
 				}
                                 clk_set_rate(dev->hdmi_audio_clk, audio_clk_rate);
                                 clk_prepare_enable(dev->hdmi_audio_clk);
 				#if defined(DEBUG_AUDIO_CLOCK)
-				printk(KERN_INFO "[INFO][HDMI_V14]%s SPDIF %d Hz - req = %dHz \r\n", __func__,
+				pr_info("[INFO][HDMI_V14]%s SPDIF %d Hz - req = %dHz \r\n", __func__,
 					clk_get_rate(dev->hdmi_audio_clk) >> 9,
 					dev->audioParam.mSamplingFrequency);
 				#endif
@@ -167,7 +166,7 @@ static int hdmi_audio_set_samplingfreq(struct tcc_hdmi_dev *dev)
 
 	do {
 		if(dev == NULL) {
-			printk(KERN_ERR "[ERROR][HDMI_V14]%s dev is NULL\r\n", __func__);
+			pr_err("[ERROR][HDMI_V14]%s dev is NULL\r\n", __func__);
 			break;
 		}
 
@@ -214,7 +213,7 @@ static int hdmi_audio_set_samplingfreq(struct tcc_hdmi_dev *dev)
                 }
 
 		if(ret < 0) {
-			printk(KERN_ERR "[ERROR][HDMI_V14]%s frequency is not valid\r\n", __func__);
+			pr_err("[ERROR][HDMI_V14]%s frequency is not valid\r\n", __func__);
 			break;;
 		}
 
@@ -253,7 +252,7 @@ static int hdmi_audio_set_channel(struct tcc_hdmi_dev *dev)
 	unsigned int aui_byte4_val = 0;
 
 	if(!dev) {
-		pr_err("[ERROR][HDMI_V14] dev is NULL\r\n", __func__);
+		pr_err("[ERROR][HDMI_V14] dev is NULL\r\n");
 		ret = -1;
 		goto out;
 	}
@@ -321,7 +320,7 @@ static int hdmi_audio_set_coding_type(struct tcc_hdmi_dev *dev)
 
         do {
 		if(dev == NULL) {
-		    	printk(KERN_ERR "[ERROR][HDMI_V14]%s dev is NULL\r\n", __func__);
+		    	pr_err("[ERROR][HDMI_V14]%s dev is NULL\r\n", __func__);
 		    	break;
 	    	}
 		ret = 0;
@@ -338,7 +337,7 @@ static int hdmi_audio_set_coding_type(struct tcc_hdmi_dev *dev)
 					break;
 			}
 			if(ret < 0) {
-				printk(KERN_ERR "[ERROR][HDMI_V14]%s invalid parameter\r\n", __func__);
+				pr_err("[ERROR][HDMI_V14]%s invalid parameter\r\n", __func__);
 				break;
 			}
 
@@ -360,7 +359,7 @@ static int hdmi_audio_set_wordlength(struct tcc_hdmi_dev *dev)
 
         do {
 		if(dev == NULL) {
-		    	printk(KERN_ERR "[ERROR][HDMI_V14]%s dev is NULL\r\n", __func__);
+		    	pr_err("[ERROR][HDMI_V14]%s dev is NULL\r\n", __func__);
 		    	break;
 	    	}
 
@@ -424,7 +423,7 @@ static int hdmi_audio_set_i2s_config(struct tcc_hdmi_dev *dev)
 
         do {
 		if(dev == NULL) {
-		    	printk(KERN_ERR "[ERROR][HDMI_V14]%s dev is NULL\r\n", __func__);
+		    	pr_err("[ERROR][HDMI_V14]%s dev is NULL\r\n", __func__);
 		    	break;
 	    	}
 
@@ -450,7 +449,7 @@ static int hdmi_audio_set_i2s_config(struct tcc_hdmi_dev *dev)
                                 break;
                 }
                 if(ret < 0) {
-                        printk(KERN_ERR "[ERROR][HDMI_V14]%s invalid param at line(%d)\r\n", __func__, __LINE__);
+                        pr_err("[ERROR][HDMI_V14]%s invalid param at line(%d)\r\n", __func__, __LINE__);
                         break;
                 }
 
@@ -472,7 +471,7 @@ static int hdmi_audio_set_i2s_config(struct tcc_hdmi_dev *dev)
                                 break;
                 }
                 if(ret < 0) {
-                        printk(KERN_ERR "[ERROR][HDMI_V14]%s invalid param at line(%d)\r\n", __func__, __LINE__);
+                        pr_err("[ERROR][HDMI_V14]%s invalid param at line(%d)\r\n", __func__, __LINE__);
                         break;
                 }
 
@@ -496,7 +495,7 @@ static int hdmi_audio_set_i2s_config(struct tcc_hdmi_dev *dev)
                                 break;
                 }
                 if(ret < 0) {
-                        printk(KERN_ERR "[ERROR][HDMI_V14]%s invalid param at line(%d)\r\n", __func__, __LINE__);
+                        pr_err("[ERROR][HDMI_V14]%s invalid param at line(%d)\r\n", __func__, __LINE__);
                         break;
                 }
 
@@ -514,7 +513,7 @@ static int hdmi_audio_set_interface(	struct tcc_hdmi_dev *dev)
 
 	do {
 		if(dev == NULL) {
-			printk(KERN_ERR "[ERROR][HDMI_V14]%s dev is NULL\r\n", __func__);
+			pr_err("[ERROR][HDMI_V14]%s dev is NULL\r\n", __func__);
 			break;
 		}
 
@@ -617,7 +616,7 @@ static int hdmi_audio_set_packet_type(struct tcc_hdmi_dev *dev)
 
 	do {
 		if(dev == NULL) {
-			printk(KERN_ERR "[ERROR][HDMI_V14]%s dev is NULL\r\n", __func__);
+			pr_err("[ERROR][HDMI_V14]%s dev is NULL\r\n", __func__);
 			break;
 		}
 
@@ -663,44 +662,44 @@ int hdmi_audio_set_mode(struct tcc_hdmi_dev *dev)
 
 	do {
 		if(dev == NULL) {
-			printk(KERN_ERR "[ERROR][HDMI_V14]%s dev is NULL\r\n", __func__);
+			pr_err("[ERROR][HDMI_V14]%s dev is NULL\r\n", __func__);
 			break;
 		}
 
 		hdmi_audio_reset(dev);
 
 		if(hdmi_audio_set_samplingfreq(dev) < 0) {
-			printk(KERN_ERR "[ERROR][HDMI_V14]%s failed at line(%d)\r\n", __func__, __LINE__);
+			pr_err("[ERROR][HDMI_V14]%s failed at line(%d)\r\n", __func__, __LINE__);
 			break;
 		}
 
 		if(hdmi_audio_set_channel(dev) < 0) {
-			printk(KERN_ERR "[ERROR][HDMI_V14]%s failed at line(%d)\r\n", __func__, __LINE__);
+			pr_err("[ERROR][HDMI_V14]%s failed at line(%d)\r\n", __func__, __LINE__);
 			break;
 		}
 
 		if(hdmi_audio_set_coding_type(dev) < 0) {
-			printk(KERN_ERR "[ERROR][HDMI_V14]%s failed at line(%d)\r\n", __func__, __LINE__);
+			pr_err("[ERROR][HDMI_V14]%s failed at line(%d)\r\n", __func__, __LINE__);
 			break;
 		}
 
 		if(hdmi_audio_set_wordlength(dev) < 0) {
-			printk(KERN_ERR "[ERROR][HDMI_V14]%s failed at line(%d)\r\n", __func__, __LINE__);
+			pr_err("[ERROR][HDMI_V14]%s failed at line(%d)\r\n", __func__, __LINE__);
 			break;
 		}
 
 		if(hdmi_audio_set_i2s_config(dev) < 0) {
-			printk(KERN_ERR "[ERROR][HDMI_V14]%s failed at line(%d)\r\n", __func__, __LINE__);
+			pr_err("[ERROR][HDMI_V14]%s failed at line(%d)\r\n", __func__, __LINE__);
 			break;
 		}
 
 		if(hdmi_audio_set_interface(dev) < 0) {
-			printk(KERN_ERR "[ERROR][HDMI_V14]%s failed at line(%d)\r\n", __func__, __LINE__);
+			pr_err("[ERROR][HDMI_V14]%s failed at line(%d)\r\n", __func__, __LINE__);
 			break;
 		}
 
 		if(hdmi_audio_set_packet_type(dev) < 0) {
-			printk(KERN_ERR "[ERROR][HDMI_V14]%s failed at line(%d)\r\n", __func__, __LINE__);
+			pr_err("[ERROR][HDMI_V14]%s failed at line(%d)\r\n", __func__, __LINE__);
 			break;
 		}
 
@@ -725,7 +724,7 @@ int hdmi_audio_set_enable(struct tcc_hdmi_dev *dev, int enable)
 		}
 
  		if(dev->videoParam.mHdmi == DVI) {
-			printk(KERN_INFO "[INFO][HDMI_V14]%s HDMI output mode is DVI - SKIP\r\n", __func__);
+			pr_info("[INFO][HDMI_V14]%s HDMI output mode is DVI - SKIP\r\n", __func__);
 			enable = 0;
 		}
 

@@ -94,6 +94,6 @@ extern void tcc_set_lut_csc_coeff(unsigned int lut_csc_11_12,
 extern void tcc_set_default_lut_csc_coeff(void);
 extern int tcc_get_lut_update_pend(unsigned int lut_n);
 extern void tcc_set_mix_config(int r2y_sel, int bypass);
-extern volatile void __iomem *VIOC_LUT_GetAddress(void);
+extern void __iomem *VIOC_LUT_GetAddress(void);
 extern void __iomem *lut_get_address(int lut_n, int *is_dev);
 #endif

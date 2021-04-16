@@ -74,7 +74,7 @@
 
 extern void VIOC_OUTCFG_SetOutConfig(
 	unsigned int nType, unsigned int nDisp);
-extern volatile void __iomem *VIOC_OUTCONFIG_GetAddress(void);
+extern void __iomem *VIOC_OUTCONFIG_GetAddress(void);
 extern void VIOC_OUTCONFIG_DUMP(void);
 
 #endif

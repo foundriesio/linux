@@ -166,14 +166,14 @@
 #define CH_BASE_BASE_MASK	(0xFFFFFFFF << CH_BASE_BASE_SHIFT)
 
 extern void VIOC_ASYNC_FIFO_ConfigDMA(
-	volatile void __iomem *reg,
+	void __iomem *reg,
 	unsigned int nWDMA, unsigned int nRDMA0,
 	unsigned int nRDMA1, unsigned int nRDMA2);
 extern void VIOC_ASYNC_FIFO_ConfigEntry(
-	volatile void __iomem *pFIFO,
+	void __iomem *pFIFO,
 	unsigned int *buf);
 extern void VIOC_ASYNC_FIFO_SetEnable(
-	volatile void __iomem *pFIFO,
+	void __iomem *pFIFO,
 	unsigned int nWDMA, unsigned int nRDMA0,
 	unsigned int nRDMA1, unsigned int nRDMA2);
 

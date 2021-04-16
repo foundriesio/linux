@@ -41,16 +41,16 @@
 #define MC_MAX_N 2
 
 static struct device_node *ViocMC_np;
-static volatile void __iomem *pMC_reg[MC_MAX_N] = {0};
+static void __iomem *pMC_reg[MC_MAX_N] = {0};
 
-void VIOC_MC_Get_OnOff(volatile void __iomem *reg, uint *enable)
+void VIOC_MC_Get_OnOff(void __iomem *reg, uint *enable)
 {
 	*enable =
 		((__raw_readl(reg + MC_CTRL) & MC_CTRL_START_MASK)
 		 >> MC_CTRL_START_SHIFT);
 }
 
-void VIOC_MC_Start_OnOff(volatile void __iomem *reg, uint OnOff)
+void VIOC_MC_Start_OnOff(void __iomem *reg, uint OnOff)
 {
 	unsigned long val;
 
@@ -70,7 +70,7 @@ void VIOC_MC_Start_OnOff(volatile void __iomem *reg, uint OnOff)
 	__raw_writel(val, reg + MC_CTRL);
 }
 
-void VIOC_MC_UPD(volatile void __iomem *reg)
+void VIOC_MC_UPD(void __iomem *reg)
 {
 	unsigned long val;
 
@@ -82,7 +82,7 @@ void VIOC_MC_UPD(volatile void __iomem *reg)
 	__raw_writel(val, reg + MC_CTRL);
 }
 
-void VIOC_MC_Y2R_OnOff(volatile void __iomem *reg, uint OnOff, uint mode)
+void VIOC_MC_Y2R_OnOff(void __iomem *reg, uint OnOff, uint mode)
 {
 	unsigned long val;
 
@@ -93,7 +93,7 @@ void VIOC_MC_Y2R_OnOff(volatile void __iomem *reg, uint OnOff, uint mode)
 	__raw_writel(val, reg + MC_CTRL);
 }
 
-void VIOC_MC_Start_BitDepth(volatile void __iomem *reg, uint Chroma, uint Luma)
+void VIOC_MC_Start_BitDepth(void __iomem *reg, uint Chroma, uint Luma)
 {
 	unsigned long val;
 
@@ -104,7 +104,7 @@ void VIOC_MC_Start_BitDepth(volatile void __iomem *reg, uint Chroma, uint Luma)
 	__raw_writel(val, reg + MC_CTRL);
 }
 
-void VIOC_MC_OFFSET_BASE(volatile void __iomem *reg, uint base_y, uint base_c)
+void VIOC_MC_OFFSET_BASE(void __iomem *reg, uint base_y, uint base_c)
 {
 	__raw_writel(
 		((base_y & 0xFFFFFFFF) << MC_OFS_BASE_Y_BASE_SHIFT),
@@ -114,7 +114,7 @@ void VIOC_MC_OFFSET_BASE(volatile void __iomem *reg, uint base_y, uint base_c)
 		reg + MC_OFS_BASE_C);
 }
 
-void VIOC_MC_FRM_BASE(volatile void __iomem *reg, uint base_y, uint base_c)
+void VIOC_MC_FRM_BASE(void __iomem *reg, uint base_y, uint base_c)
 {
 	__raw_writel(
 		((base_y & 0xFFFFFFFF) << MC_FRM_BASE_Y_BASE_SHIFT),
@@ -124,7 +124,7 @@ void VIOC_MC_FRM_BASE(volatile void __iomem *reg, uint base_y, uint base_c)
 		reg + MC_FRM_BASE_C);
 }
 
-void VIOC_MC_FRM_SIZE(volatile void __iomem *reg, uint xsize, uint ysize)
+void VIOC_MC_FRM_SIZE(void __iomem *reg, uint xsize, uint ysize)
 {
 	unsigned long val;
 
@@ -139,7 +139,7 @@ void VIOC_MC_FRM_SIZE(volatile void __iomem *reg, uint xsize, uint ysize)
 }
 
 void VIOC_MC_FRM_SIZE_MISC(
-	volatile void __iomem *reg, uint pic_height, uint stride_y,
+	void __iomem *reg, uint pic_height, uint stride_y,
 	uint stride_c)
 {
 	unsigned long val;
@@ -152,7 +152,7 @@ void VIOC_MC_FRM_SIZE_MISC(
 	__raw_writel(val, reg + MC_FRM_STRIDE);
 }
 
-void VIOC_MC_FRM_POS(volatile void __iomem *reg, uint xpos, uint ypos)
+void VIOC_MC_FRM_POS(void __iomem *reg, uint xpos, uint ypos)
 {
 	unsigned long val;
 
@@ -162,7 +162,7 @@ void VIOC_MC_FRM_POS(volatile void __iomem *reg, uint xpos, uint ypos)
 }
 
 void VIOC_MC_ENDIAN(
-	volatile void __iomem *reg, uint ofs_endian, uint comp_endian)
+	void __iomem *reg, uint ofs_endian, uint comp_endian)
 {
 	unsigned long val;
 
@@ -174,7 +174,7 @@ void VIOC_MC_ENDIAN(
 	__raw_writel(val, reg + MC_FRM_MISC0);
 }
 
-void VIOC_MC_DITH_CONT(volatile void __iomem *reg, uint en, uint sel)
+void VIOC_MC_DITH_CONT(void __iomem *reg, uint en, uint sel)
 {
 	unsigned long val;
 
@@ -185,7 +185,7 @@ void VIOC_MC_DITH_CONT(volatile void __iomem *reg, uint en, uint sel)
 	__raw_writel(val, reg + MC_DITH_CTRL);
 }
 
-void VIOC_MC_SetDefaultAlpha(volatile void __iomem *reg, uint alpha)
+void VIOC_MC_SetDefaultAlpha(void __iomem *reg, uint alpha)
 {
 	unsigned long val;
 
@@ -194,7 +194,7 @@ void VIOC_MC_SetDefaultAlpha(volatile void __iomem *reg, uint alpha)
 	__raw_writel(val, reg + MC_TIMEOUT);
 }
 
-volatile void __iomem *VIOC_MC_GetAddress(unsigned int vioc_id)
+void __iomem *VIOC_MC_GetAddress(unsigned int vioc_id)
 {
 	int Num = get_vioc_index(vioc_id);
 
@@ -213,7 +213,7 @@ err:
 
 int tvc_mc_get_info(unsigned int component_num, mc_info_type *pMC_info)
 {
-	volatile void __iomem *reg;
+	void __iomem *reg;
 	unsigned int value = 0;
 
 	if ((component_num >= VIOC_MC0)
@@ -235,7 +235,7 @@ int tvc_mc_get_info(unsigned int component_num, mc_info_type *pMC_info)
 
 void VIOC_MC_DUMP(unsigned int vioc_id)
 {
-	volatile void __iomem *pReg;
+	void __iomem *pReg;
 	unsigned int cnt = 0;
 	int Num = get_vioc_index(vioc_id);
 
@@ -269,7 +269,7 @@ static int __init vioc_mc_init(void)
 		pr_info("[INF][MC] disabled\n");
 	} else {
 		for (i = 0; i < MC_MAX_N; i++) {
-			pMC_reg[i] = (volatile void __iomem *)of_iomap(
+			pMC_reg[i] = (void __iomem *)of_iomap(
 				ViocMC_np, is_VIOC_REMAP ? (i + MC_MAX_N) : i);
 
 			if (pMC_reg[i])

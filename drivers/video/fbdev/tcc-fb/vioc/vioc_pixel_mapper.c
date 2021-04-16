@@ -39,7 +39,7 @@
 		}					\
 	} while (0)
 
-static volatile void __iomem *pPIXELMAPPER_reg[VIOC_PIXELMAP_MAX] = {0};
+static void __iomem *pPIXELMAPPER_reg[VIOC_PIXELMAP_MAX] = {0};
 unsigned int lut_reg[729];
 
 int vioc_pm_cal_lut_reg(void)
@@ -178,9 +178,9 @@ int vioc_pm_set_lut_table(unsigned int PM_N, unsigned int *table)
 	int i = 0;
 	unsigned int nLUTSEL;
 
-	volatile void __iomem *table_reg, *setting_table_reg;
-	volatile void __iomem *reg;
-	volatile unsigned long value = 0;
+	void __iomem *table_reg, *setting_table_reg;
+	void __iomem *reg;
+	unsigned long value = 0;
 
 	int R, G, B, start_R, start_G, start_B;
 	unsigned int lut_addr;
@@ -261,15 +261,15 @@ int vioc_pm_set_lut_table(unsigned int PM_N, unsigned int *table)
 
 int vioc_pm_set_lut(unsigned int PM_N, unsigned int nLUTSEL)
 {
-	volatile void __iomem *table_reg, *setting_table_reg;
-	volatile void __iomem *reg;
-	volatile unsigned long value = 0;
+	void __iomem *table_reg, *setting_table_reg;
+	void __iomem *reg;
+	unsigned long value = 0;
 
 	int R, G, B, start_R, start_G, start_B;
 
-	volatile unsigned int Rout, Gout, Bout;
-	volatile unsigned int lut_addr;
-	volatile unsigned long long Rtmp, Gtmp, Btmp;
+	unsigned int Rout, Gout, Bout;
+	unsigned int lut_addr;
+	unsigned long long Rtmp, Gtmp, Btmp;
 
 	reg = get_pm_address(PM_N);
 	table_reg = reg + PM_LUT_TABLE_REG;
@@ -450,7 +450,7 @@ int vioc_pm_set_lut(unsigned int PM_N, unsigned int nLUTSEL)
 
 void VIOC_PM_SetLUT0(unsigned int PM_N, uint nLUTSEL)
 {
-	volatile void __iomem *table_reg, *reg;
+	void __iomem *table_reg, *reg;
 	uint R, G, B;
 	uint Rout, Gout, Bout;
 	uint lut_addr, value;
@@ -499,7 +499,7 @@ void VIOC_PM_SetLUT0(unsigned int PM_N, uint nLUTSEL)
 
 void VIOC_PM_SetLUT1(unsigned int PM_N, uint nLUTSEL)
 {
-	volatile void __iomem *table_reg, *reg;
+	void __iomem *table_reg, *reg;
 	uint R, G, B;
 	uint Rout, Gout, Bout;
 	uint lut_addr;
@@ -542,7 +542,7 @@ void VIOC_PM_SetLUT1(unsigned int PM_N, uint nLUTSEL)
 
 void VIOC_PM_SetLUT2(unsigned int PM_N, uint nLUTSEL)
 {
-	volatile void __iomem *table_reg, *reg;
+	void __iomem *table_reg, *reg;
 	uint R, G, B;
 	uint Rout, Gout, Bout;
 	uint lut_addr;
@@ -586,7 +586,7 @@ void VIOC_PM_SetLUT2(unsigned int PM_N, uint nLUTSEL)
 
 void VIOC_PM_SetLUT3(unsigned int PM_N, uint nLUTSEL)
 {
-	volatile void __iomem *table_reg, *reg;
+	void __iomem *table_reg, *reg;
 	uint R, G, B;
 	uint Rout, Gout, Bout;
 	uint lut_addr;
@@ -631,7 +631,7 @@ void VIOC_PM_SetLUT3(unsigned int PM_N, uint nLUTSEL)
 
 void VIOC_PM_SetLUT4(unsigned int PM_N, uint nLUTSEL)
 {
-	volatile void __iomem *table_reg, *reg;
+	void __iomem *table_reg, *reg;
 	uint R, G, B;
 	uint Rout, Gout, Bout;
 	uint lut_addr;
@@ -675,7 +675,7 @@ void VIOC_PM_SetLUT4(unsigned int PM_N, uint nLUTSEL)
 
 void VIOC_PM_SetLUT5(unsigned int PM_N, uint nLUTSEL)
 {
-	volatile void __iomem *table_reg, *reg;
+	void __iomem *table_reg, *reg;
 	uint R, G, B;
 	uint Rout, Gout, Bout;
 	uint lut_addr;
@@ -719,7 +719,7 @@ void VIOC_PM_SetLUT5(unsigned int PM_N, uint nLUTSEL)
 
 void VIOC_PM_SetLUT6(unsigned int PM_N, uint nLUTSEL)
 {
-	volatile void __iomem *table_reg, *reg;
+	void __iomem *table_reg, *reg;
 	uint R, G, B;
 	uint Rout, Gout, Bout;
 	uint lut_addr;
@@ -763,7 +763,7 @@ void VIOC_PM_SetLUT6(unsigned int PM_N, uint nLUTSEL)
 
 void VIOC_PM_SetLUT7(unsigned int PM_N, uint nLUTSEL)
 {
-	volatile void __iomem *table_reg, *reg;
+	void __iomem *table_reg, *reg;
 	uint R, G, B;
 	uint Rout, Gout, Bout;
 	uint lut_addr;
@@ -808,7 +808,7 @@ int vioc_pm_setupdate(unsigned int PM_N)
 {
 	unsigned int value;
 
-	volatile void __iomem *reg;
+	void __iomem *reg;
 
 	reg = get_pm_address(PM_N);
 	// LUT select
@@ -822,7 +822,7 @@ int vioc_pm_bypass(unsigned int PM_N, unsigned int onoff)
 {
 	unsigned int value;
 
-	volatile void __iomem *reg;
+	void __iomem *reg;
 
 	reg = get_pm_address(PM_N);
 	// LUT select
@@ -840,7 +840,7 @@ int vioc_pm_area_onoff(unsigned int PM_N, unsigned int onoff)
 {
 	unsigned int value;
 
-	volatile void __iomem *reg;
+	void __iomem *reg;
 
 	reg = get_pm_address(PM_N);
 
@@ -862,7 +862,7 @@ int vioc_pm_area_size(
 {
 	unsigned int horizontal, vertical;
 
-	volatile void __iomem *reg;
+	void __iomem *reg;
 
 	reg = get_pm_address(PM_N);
 
@@ -882,7 +882,7 @@ int vioc_pm_initialize_set(unsigned int PM_N)
 {
 	unsigned int value;
 
-	volatile void __iomem *reg;
+	void __iomem *reg;
 
 	reg = get_pm_address(PM_N);
 

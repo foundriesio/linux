@@ -56,7 +56,7 @@ extern G2D_DITHERING_TYPE gG2D_Dithering_type;
 #endif
 
 #if 0
-#define GRP_DBG(msg...)		printk(msg)
+#define GRP_DBG(msg...) pr_info(msg)
 #else
 #define GRP_DBG(msg...)
 #endif
@@ -81,7 +81,7 @@ struct g2d_drv_type {
 
 	struct miscdevice	*misc;
 
-	volatile void __iomem *reg;
+	void __iomem *reg;
 
 	struct clk		*clk;
 	struct g2d_data	*data;
@@ -150,9 +150,10 @@ int grp_common_ctrl(struct g2d_data	*data, G2D_COMMON_TYPE *g2d_p)
 		srcV = g2d_p->src2;
 	}
 
-	if (g2d_p->DefaultBuffer)
+	if (g2d_p->DefaultBuffer) {
 		return -EFAULT;
-	else {
+		/* prevent KCS warning */
+	} else {
 		tgtY = g2d_p->tgt0;
 
 		if (g2d_p->tgt1 == 0 || g2d_p->tgt2  == 0)
@@ -1023,7 +1024,6 @@ Ioctl_Error:
 
 	return ret;
 }
-
 EXPORT_SYMBOL(g2d_drv_ioctl);
 
 int g2d_drv_release(struct inode *inode, struct file *filp)
@@ -1091,7 +1091,7 @@ Open_Error:
 }
 EXPORT_SYMBOL(g2d_drv_open);
 
-static struct file_operations g2d_drv_fops = {
+static const struct file_operations g2d_drv_fops = {
 	.owner = THIS_MODULE,
 	.poll = g2d_drv_poll,
 	.unlocked_ioctl = g2d_drv_ioctl,
@@ -1185,7 +1185,7 @@ static int g2d_drv_resume(struct platform_device *pdev)
 	return 0;
 }
 
-static struct of_device_id g2d_of_match[] = {
+static const struct of_device_id g2d_of_match[] = {
 	{ .compatible = "telechips,graphic.2d" },
 	{}
 };

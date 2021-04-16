@@ -85,8 +85,8 @@
 		fb1 = &fb1;
 		fb2 = &fb2;
 		fb3 = &fb3;
-		wmixer-drv1 = &wmixer_drv1;
-		tcc-overlay-drv1 = &tcc_overlay_drv1;
+		wmixer_drv1 = &wmixer_drv1;
+		tcc_overlay_drv1 = &tcc_overlay_drv1;
 	};
 
 	cpus {

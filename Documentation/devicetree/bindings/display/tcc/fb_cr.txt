@@ -1,0 +1,19 @@
+This is for 'telechips,fb_cr'.
+
+Required properties for display:
+    -compatible:
+        "telechips,fb_cr"
+
+-------------------------------------------------------------------------------
+
+Example:
+	fb_cr: fb_cr@12000000{
+		compatible = "telechips,fb_cr";
+		status = "okay";
+
+		/* the number of interrupt source which is needed to be cleared */
+		telechips,num_comp = <2>;
+
+		/* android & linux video driver interrupt, fbdisplay interrupt */
+		telechips,vioc_comp = <VIOC_WDMA03 VIOC_DISP0>;
+	};

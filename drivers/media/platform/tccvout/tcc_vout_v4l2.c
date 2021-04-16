@@ -41,7 +41,7 @@
 #define TO_USER_SPACE		0
 
 #ifdef CONFIG_OF
-static struct of_device_id tccvout_of_match[] = {
+static const struct of_device_id tccvout_of_match[] = {
 	{ .compatible = "telechips,v4l2_vout" },
 	{}
 };
@@ -199,6 +199,7 @@ static int tcc_vout_try_fmt(unsigned int pixelformat)
 	for (ifmt = 0; ifmt < NUM_TCC_FMTDESC; ifmt++) {
 		if (tcc_fmtdesc[ifmt].pixelformat == pixelformat) {
 			return ifmt;
+			/* prevent KCS warning */
 		}
 	}
 
@@ -371,8 +372,12 @@ static int tcc_v4l2_buffer_set(struct tcc_vout_device *vout,
 	/* for sub_plane */
 	for (index = vout->nr_qbufs;
 		index < (vout->nr_qbufs + req->count); index++) {
-		b[index].buf.m.planes = kzalloc(
-			sizeof(struct v4l2_plane) * MPLANE_NUM, GFP_KERNEL);
+
+		// WARNING: Prefer kcalloc over kzalloc with multiply
+		//b[index].buf.m.planes = kzalloc(
+		//	sizeof(struct v4l2_plane) * MPLANE_NUM, GFP_KERNEL);
+		b[index].buf.m.planes = kcalloc(
+			MPLANE_NUM, sizeof(struct v4l2_plane), GFP_KERNEL);
 	}
 
 	if (req->memory == V4L2_MEMORY_USERPTR) {
@@ -608,10 +613,12 @@ static int tcc_deintl_buffer_set(struct tcc_vout_device *vout)
 	/* calculate buf count
 	 * Size of display image can't be bigger than panel size
 	 */
-	if (vout->deintl_buf_size)
-		actual_bufs = ((unsigned int)vout->deintl_pmap.size) / vout->deintl_buf_size;
-	else
+	if (vout->deintl_buf_size) {
+		actual_bufs = ((unsigned int)vout->deintl_pmap.size)
+			/ vout->deintl_buf_size;
+	} else {
 		actual_bufs = MIN_DEINTLBUF_NUM;
+	}
 
 	if (actual_bufs < 2) {
 		pr_err("[ERR][VOUT] deintl_nr_bufs is not enough (%d).\n",
@@ -623,8 +630,11 @@ static int tcc_deintl_buffer_set(struct tcc_vout_device *vout)
 	if ((vout->deintl_nr_bufs > actual_bufs) || (vout->deintl_nr_bufs <= 0))
 		vout->deintl_nr_bufs = actual_bufs;
 
-	vout->deintl_bufs = kzalloc(sizeof(struct tcc_v4l2_buffer) *
-		vout->deintl_nr_bufs, GFP_KERNEL);
+	// WARNING: Prefer kcalloc over kzalloc with multiply
+	//vout->deintl_bufs = kzalloc(sizeof(struct tcc_v4l2_buffer) *
+	//	vout->deintl_nr_bufs, GFP_KERNEL);
+	vout->deintl_bufs = kcalloc(vout->deintl_nr_bufs,
+		sizeof(struct tcc_v4l2_buffer), GFP_KERNEL);
 	if (!vout->deintl_bufs)
 		return -ENOMEM;
 	b = vout->deintl_bufs;
@@ -638,10 +648,10 @@ static int tcc_deintl_buffer_set(struct tcc_vout_device *vout)
 	#else
 	if (vout->id == VOUT_MAIN) {
 		#if defined(CONFIG_TCC_DUAL_DISPLAY)
-			width = DEINTL_WIDTH;
-			height = DEINTL_HEIGHT;
+		width = DEINTL_WIDTH;
+		height = DEINTL_HEIGHT;
 		#else
-			vout_wmix_getsize(vout, &width, &height);
+		vout_wmix_getsize(vout, &width, &height);
 		#endif
 	} else {
 		width = vout->disp_rect.width;
@@ -688,31 +698,43 @@ static int tcc_m2m_dual_buffer_set(struct tcc_vout_device *vout)
 	/* calculate buf count
 	 * Size of display image can't be bigger than panel size
 	 */
-	if(vout->m2m_dual_buf_size)
-		actual_bufs = ((unsigned int)vout->m2m_dual_pmap.size) / vout->m2m_dual_buf_size;
-	else
+	if (vout->m2m_dual_buf_size) {
+		actual_bufs = ((unsigned int)vout->m2m_dual_pmap.size)
+			/ vout->m2m_dual_buf_size;
+	} else {
 		actual_bufs = MIN_DEINTLBUF_NUM;
+	}
 
-	if (2 > actual_bufs) {
-		pr_err("[ERR][VOUT] m2m_dual_nr_bufs is not enough (%d).\n", actual_bufs);
+	if (actual_bufs < 2) {
+		pr_err("[ERR][VOUT] m2m_dual_nr_bufs is not enough (%d)\n",
+			actual_bufs);
 		return -ENOMEM;
 	}
 
-	dprintk("request m2m_dual_nr_bufs(%d), actual buf(%d)\n", vout->m2m_dual_nr_bufs, actual_bufs);
-	if ((vout->m2m_dual_nr_bufs > actual_bufs) || (vout->m2m_dual_nr_bufs <= 0))
-		vout->m2m_dual_nr_bufs = actual_bufs;
+	dprintk("request m2m_dual_nr_bufs(%d), actual buf(%d)\n",
+		vout->m2m_dual_nr_bufs, actual_bufs);
 
-	vout->m2m_dual_bufs = kzalloc(sizeof(struct tcc_v4l2_buffer) * vout->m2m_dual_nr_bufs, GFP_KERNEL);
+	if ((vout->m2m_dual_nr_bufs > actual_bufs)
+		|| (vout->m2m_dual_nr_bufs <= 0)) {
+		vout->m2m_dual_nr_bufs = actual_bufs;
+	}
+
+	vout->m2m_dual_bufs = kzalloc(sizeof(struct tcc_v4l2_buffer)
+		* vout->m2m_dual_nr_bufs, GFP_KERNEL);
 	if (!vout->m2m_dual_bufs)
 		return -ENOMEM;
 	b = vout->m2m_dual_bufs;
 
-	vout->m2m_dual_bufs_hdmi = kzalloc(sizeof(struct tcc_v4l2_buffer) * vout->m2m_dual_nr_bufs, GFP_KERNEL);
+	// WARNING: Prefer kcalloc over kzalloc with multiply
+	//vout->m2m_dual_bufs_hdmi = kzalloc(sizeof(struct tcc_v4l2_buffer)
+	//	* vout->m2m_dual_nr_bufs, GFP_KERNEL);
+	vout->m2m_dual_bufs_hdmi = kcalloc(vout->m2m_dual_nr_bufs,
+		sizeof(struct tcc_v4l2_buffer), GFP_KERNEL);
 	if (!vout->m2m_dual_bufs_hdmi)
 		return -ENOMEM;
 	bd = vout->m2m_dual_bufs_hdmi;
 
-	if(vout->id == VOUT_MAIN) {
+	if (vout->id == VOUT_MAIN) {
 		width = DEINTL_WIDTH;
 		height = DEINTL_HEIGHT;
 	} else {
@@ -721,10 +743,12 @@ static int tcc_m2m_dual_buffer_set(struct tcc_vout_device *vout)
 	}
 
 	y_offset = width * height;
-	if(vout->vioc->m2m_wdma.fmt == VIOC_IMG_FMT_YUV420IL0)
+	if (vout->vioc->m2m_wdma.fmt == VIOC_IMG_FMT_YUV420IL0) {
 		total_offset = PAGE_ALIGN(y_offset * 3 / 2);
-	else
+		/* prevent KCS warning */
+	} else {
 		total_offset = PAGE_ALIGN(y_offset * 2);
+	}
 
 	/* set base address each buffers
 	 */
@@ -733,25 +757,28 @@ static int tcc_m2m_dual_buffer_set(struct tcc_vout_device *vout)
 		b[i].index = i;
 		bd[i].index = i;
 		b[i].img_base0 = vout->m2m_dual_pmap.base + (total_offset * i);
-		bd[i].img_base0 = vout->m2m_dual_pmap.base + (total_offset * (i+vout->m2m_dual_nr_bufs));
+		bd[i].img_base0 = vout->m2m_dual_pmap.base
+			+ (total_offset * (i+vout->m2m_dual_nr_bufs));
 
-		if(vout->vioc->m2m_wdma.fmt == VIOC_IMG_FMT_YUV420IL0) {
+		if (vout->vioc->m2m_wdma.fmt == VIOC_IMG_FMT_YUV420IL0) {
 			b[i].img_base1 = b[i].img_base0 + y_offset;
 			bd[i].img_base1 = bd[i].img_base0 + y_offset;
-		}
-		else {
+		} else {
 			b[i].img_base1 = 0;
 			bd[i].img_base1 = 0;
 		}
 		b[i].img_base2 = 0;
 		bd[i].img_base2 = 0;
 
-		dprintk("   [%02d]     0x%08x  0x%08x  0x%08x\n", i, b[i].img_base0, b[i].img_base1, b[i].img_base2);
-		dprintk("   [%02d]     0x%08x  0x%08x  0x%08x\n", i, bd[i].img_base0, bd[i].img_base1, bd[i].img_base2);
+		dprintk("   [%02d]     0x%08x  0x%08x  0x%08x\n",
+			i, b[i].img_base0, b[i].img_base1, b[i].img_base2);
+		dprintk("   [%02d]     0x%08x  0x%08x  0x%08x\n",
+			i, bd[i].img_base0, bd[i].img_base1, bd[i].img_base2);
 	}
 	dprintk("-----------------------------------------------------\n");
 
-	print_v4l2_reqbufs_format(vout->pfmt, vout->src_pix.pixelformat, "tcc_m2m_dual_buffer_set");
+	print_v4l2_reqbufs_format(vout->pfmt, vout->src_pix.pixelformat,
+		"tcc_m2m_dual_buffer_set");
 	return 0;
 }
 #endif
@@ -832,6 +859,7 @@ static int vidioc_enum_fmt_vid_out(struct file *file, void *fh,
 
 	if (index >= NUM_TCC_FMTDESC) {
 		return -EINVAL;
+		/* prevent KCS warning */
 	}
 
 	memcpy(fmt, &tcc_fmtdesc[index], sizeof(struct v4l2_fmtdesc));
@@ -1206,11 +1234,11 @@ static int vidioc_s_fmt_vid_out(struct file *file, void *fh,
 
 		#if defined(CONFIG_TCC_DUAL_DISPLAY)
 			vout->deintl_buf_size =
-				PAGE_ALIGN(vout->disp_rect.width * vout->disp_rect.height
-							* 3 / 2);
+				PAGE_ALIGN(vout->disp_rect.width
+					* vout->disp_rect.height * 3 / 2);
 			vout->m2m_dual_buf_size =
-				PAGE_ALIGN(vout->disp_rect.width * vout->disp_rect.height
-							* 3 / 2);
+				PAGE_ALIGN(vout->disp_rect.width
+					* vout->disp_rect.height * 3 / 2);
 		#else
 			vout->deintl_buf_size =
 				PAGE_ALIGN(panel_width * panel_height * 3 / 2);
@@ -1253,9 +1281,10 @@ out_exit:
 	dprintk("pixelformat: %c%c%c%c -> %s\n",
 		fourcc2char(f->fmt.pix.pixelformat),
 		tcc_fmtdesc[vout->fmt_idx].description);
-	print_v4l2_pix_format(&vout->src_pix, "vidioc_s_fmt_vid_out user args");
+	print_v4l2_pix_format(&vout->src_pix,
+		"_vidioc_s_fmt_vid_out user args");
 	print_v4l2_rect(&vout->disp_rect,
-		"vidioc_s_fmt_vid_out output display");
+		"_vidioc_s_fmt_vid_out output display");
 	print_vioc_vout_path(vout, "vidioc_s_fmt_vid_out");
 	return ret;
 }
@@ -1292,10 +1321,12 @@ static int vidioc_s_fmt_vid_out_overlay(struct file *file, void *fh,
 	memcpy(&vout->disp_rect, &f->fmt.win.w, sizeof(struct v4l2_rect));
 
 #if defined(CONFIG_TCC_DUAL_DISPLAY)
-	if (f->fmt.win.clipcount>3)
+	if (f->fmt.win.clipcount > 3) {
 		vout->disp_mode = 0;
-	else
+		/* prevent KCS warning */
+	} else {
 		vout->disp_mode = f->fmt.win.clipcount;
+	}
 
 	if (f->fmt.win.bitmap == NULL) {
 		memcpy(&vout->dual_disp_rect, &f->fmt.win.w,
@@ -1357,20 +1388,26 @@ static int vidioc_s_fmt_vid_out_overlay(struct file *file, void *fh,
 			vout->dual_disp_rect.width = width;
 		}
 	} else {
-		if (width < vout->dual_disp_rect.left + vout->dual_disp_rect.width)
-			vout->dual_disp_rect.width = width - vout->dual_disp_rect.left;
+		if (width < vout->dual_disp_rect.left
+			+ vout->dual_disp_rect.width) {
+			vout->dual_disp_rect.width =
+				width - vout->dual_disp_rect.left;
+		}
 	}
 
 	if (vout->dual_disp_rect.top < 0) {
 		vout->dual_disp_rect.height = vout->dual_disp_rect.height
 			+ vout->dual_disp_rect.top;
-		if(height < vout->dual_disp_rect.height) {
+		if (height < vout->dual_disp_rect.height) {
 			vout->dual_disp_rect.top = 0;
 			vout->dual_disp_rect.height = height;
 		}
 	} else {
-		if (height < vout->dual_disp_rect.top + vout->dual_disp_rect.height)
-			vout->dual_disp_rect.height = height - vout->dual_disp_rect.top;
+		if (height < vout->dual_disp_rect.top
+			+ vout->dual_disp_rect.height) {
+			vout->dual_disp_rect.height =
+				height - vout->dual_disp_rect.top;
+		}
 	}
 
 	vout->dual_disp_rect.width = ROUND_DOWN_2(vout->dual_disp_rect.width);
@@ -1382,14 +1419,15 @@ static int vidioc_s_fmt_vid_out_overlay(struct file *file, void *fh,
 		goto overlay_exit;
 	}
 #if defined(CONFIG_TCC_DUAL_DISPLAY)
-	else if(vout->dual_disp_rect.width <= 0 || vout->dual_disp_rect.height <= 0)
-	{
+	else if (vout->dual_disp_rect.width <= 0 || vout->dual_disp_rect.height
+		<= 0) {
 		vout->status = TCC_VOUT_STOP;
 		goto overlay_exit;
 	}
 #endif
 	else {
 		vout->status = TCC_VOUT_RUNNING;
+		/* prevent KCS warning */
 	}
 	vout_video_overlay(vout);
 
@@ -1424,8 +1462,8 @@ static int vidioc_cropcap(struct file *file, void *fh,
 
 	dprintk("%d/%d\n", cropcap->pixelaspect.numerator,
 		cropcap->pixelaspect.denominator);
-	print_v4l2_rect(&cropcap->bounds, "vidioc_cropcap - bounds");
-	print_v4l2_rect(&cropcap->defrect, "vidioc_cropcap - defrect");
+	print_v4l2_rect(&cropcap->bounds, "_vidioc_cropcap - bounds");
+	print_v4l2_rect(&cropcap->defrect, "_vidioc_cropcap - defrect");
 	return 0;
 }
 
@@ -1465,7 +1503,7 @@ static int vidioc_s_crop(struct file *file, void *fh,
 s_crop_exit:
 	mutex_unlock(&vout->lock);
 
-	print_v4l2_rect(&crop->c, "vidioc_s_crop - user args");
+	print_v4l2_rect(&crop->c, "_vidioc_s_crop - user args");
 	return ret;
 }
 
@@ -1546,14 +1584,21 @@ static int vidioc_reqbufs(struct file *file, void *fh,
 			goto reqbufs_exit_err;
 		}
 
-		if (max_frame < req->count)
+		if (max_frame < req->count) {
 			req->count = max_frame;
+			/* prevent KCS warning */
+		}
 
 		/* init driver data */
-		vout->qbufs = kzalloc(sizeof(struct tcc_v4l2_buffer) *
-			req->count, GFP_KERNEL);
-		if (!vout->qbufs)
+		// WARNING: Prefer kcalloc over kzalloc with multiply
+		//vout->qbufs = kzalloc(sizeof(struct tcc_v4l2_buffer) *
+		//	req->count, GFP_KERNEL);
+		vout->qbufs = kcalloc(req->count,
+			sizeof(struct tcc_v4l2_buffer), GFP_KERNEL);
+		if (!vout->qbufs) {
 			return -ENOMEM;
+			/* prevent KCS warning */
+		}
 
 		ret = tcc_v4l2_buffer_set(vout, req);
 		if (ret < 0) {
@@ -1571,7 +1616,8 @@ static int vidioc_reqbufs(struct file *file, void *fh,
 	#if defined(CONFIG_TCC_DUAL_DISPLAY)
 		ret = tcc_m2m_dual_buffer_set(vout);
 		if (ret < 0) {
-			pr_err("[ERR][VOUT] tcc_m2m_dual_buffer_set(%d)\n", ret);
+			pr_err("[ERR][VOUT] tcc_m2m_dual_buffer_set(%d)\n",
+				ret);
 			goto reqbufs_deintl_err;
 		}
 	#endif
@@ -1582,7 +1628,7 @@ static int vidioc_reqbufs(struct file *file, void *fh,
 		vout->mapped = ON;
 
 		print_v4l2_pix_format(&vout->src_pix,
-			"vidioc_reqbufs src info");
+			"_vidioc_reqbufs src info");
 		print_v4l2_buf_type(req->type, "vidioc_reqbufs");
 		print_v4l2_memory(req->memory, "vidioc_reqbufs");
 		return ret;
@@ -1658,6 +1704,7 @@ static int vidioc_create_bufs(struct file *file, void *fh,
 
 	if (max_frame < create->count) {
 		create->count = max_frame;
+		/* prevent KCS warning */
 	}
 
 	ret = tcc_v4l2_buffer_add(vout, create);
@@ -1670,7 +1717,7 @@ static int vidioc_create_bufs(struct file *file, void *fh,
 
 	dprintk("buffer cout %d\n", create->count);
 
-	print_v4l2_pix_format(&vout->src_pix, "vidioc_create_bufs src info");
+	print_v4l2_pix_format(&vout->src_pix, "_vidioc_create_bufs src info");
 	print_v4l2_buf_type(create->format.type, "vidioc_create_bufs");
 	print_v4l2_memory(create->memory, "vidioc_create_bufs");
 
@@ -2286,10 +2333,11 @@ probe_err2:
 probe_err1:
 	v4l2_device_unregister(&vout->v4l2_dev);
 probe_err0:
-	if (vout->vioc)
+	//if (vout->vioc)
 		kfree(vout->vioc);
-	if (vout)
+	//if (vout)
 		kfree(vout);
+
 	return ret;
 }
 
@@ -2300,15 +2348,16 @@ static int tcc_vout_v4l2_remove(struct platform_device *pdev)
 #ifdef CONFIG_VOUT_DISPLAY_LASTFRAME
 	struct v4l2_buffer *plastframe = &vout->lastframe;
 
-	if (plastframe->m.planes)
+	//if (plastframe->m.planes)
 		kfree(plastframe->m.planes);
 #endif
 	tcc_vout_attr_remove(pdev);
 
-	if (vout->vioc)
+	//if (vout->vioc)
 		kfree(vout->vioc);
-	if (vout)
+	//if (vout)
 		kfree(vout);
+
 	dprintk("\n");
 	return 0;
 }

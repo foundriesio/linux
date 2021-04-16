@@ -74,8 +74,8 @@
 
 void tca_map_convter_wait_done(unsigned int component_num)
 {
-	volatile unsigned int loop = 0, upd_loop = 0;
-	volatile void __iomem *HwVIOC_MC;
+	unsigned int loop = 0, upd_loop = 0;
+	void __iomem *HwVIOC_MC;
 	unsigned int value;
 
 	HwVIOC_MC = VIOC_MC_GetAddress(component_num);
@@ -112,11 +112,11 @@ void tca_map_convter_swreset(unsigned int component_num)
 void tca_map_convter_onoff(unsigned int component_num, unsigned int onoff,
 			   unsigned int wait_done)
 {
-	volatile void __iomem *HwVIOC_MC = VIOC_MC_GetAddress(component_num);
+	void __iomem *HwVIOC_MC = VIOC_MC_GetAddress(component_num);
 
 #if defined(CONFIG_VIOC_DOLBY_VISION_EDR)
 	if (get_vioc_index(component_num) == 0) {
-		volatile void __iomem *pDisp_DV =
+		void __iomem *pDisp_DV =
 			VIOC_DV_GetAddress((enum DV_DISP_TYPE)EDR_BL);
 		if (onoff)
 			VIOC_V_DV_Turnon(pDisp_DV, NULL);
@@ -132,6 +132,7 @@ void tca_map_convter_onoff(unsigned int component_num, unsigned int onoff,
 
 	if (!onoff) {
 		VIOC_MC_FRM_SIZE(HwVIOC_MC, 0, 0);
+		/* prevent KCS warning */
 	}
 
 	VIOC_MC_Start_OnOff(HwVIOC_MC, onoff);
@@ -144,7 +145,7 @@ void tca_map_convter_onoff(unsigned int component_num, unsigned int onoff,
 
 #if 0//defined(CONFIG_VIOC_DOLBY_VISION_EDR)
 	if (get_vioc_index(component_num) == 0) {
-		volatile void __iomem *pDisp_DV =
+		void __iomem *pDisp_DV =
 			VIOC_DV_GetAddress((enum DV_DISP_TYPE)EDR_BL);
 		if (onoff)
 			VIOC_V_DV_Turnon(pDisp_DV, NULL);
@@ -177,7 +178,7 @@ void tca_map_convter_set(unsigned int component_num,
 	uint bit_depth_c;
 	uint offset_base_y, offset_base_c;
 	uint frame_base_y, frame_base_c;
-	volatile void __iomem *HwVIOC_MC =
+	void __iomem *HwVIOC_MC =
 		VIOC_MC_GetAddress(component_num);
 
 #if 0
@@ -309,13 +310,14 @@ void tca_map_convter_set(unsigned int component_num,
 #if defined(CONFIG_VIOC_DOLBY_VISION_EDR)
 	if (VIOC_CONFIG_DV_GET_EDR_PATH() && get_vioc_index(component_num)
 		== tca_get_main_decompressor_num()) {
-		volatile void __iomem *pDisp_DV =
+		void __iomem *pDisp_DV =
 
 		VIOC_DV_GetAddress((enum DV_DISP_TYPE)EDR_BL);
 
 		if (ImageInfo->Lcdc_layer == RDMA_VIDEO
 			|| ImageInfo->Lcdc_layer == RDMA_LASTFRM) {
-			if (vioc_get_out_type() == ImageInfo->private_data.dolbyVision_info.reg_out_type) {
+			if (vioc_get_out_type() ==
+			ImageInfo->private_data.dolbyVision_info.reg_out_type) {
 				VIOC_V_DV_SetPXDW(pDisp_DV, NULL,
 					VIOC_PXDW_FMT_24_RGB888);
 				VIOC_V_DV_SetSize(pDisp_DV, NULL,
@@ -326,14 +328,16 @@ void tca_map_convter_set(unsigned int component_num,
 
 				VIOC_MC_Start_OnOff(HwVIOC_MC, 1);
 
-				vioc_v_dv_prog(ImageInfo->private_data.dolbyVision_info.md_hdmi_addr,
-					ImageInfo->private_data.dolbyVision_info.reg_addr,
-					ImageInfo->private_data.optional_info[VID_OPT_CONTENT_TYPE],
+				vioc_v_dv_prog(
+			ImageInfo->private_data.dolbyVision_info.md_hdmi_addr,
+			ImageInfo->private_data.dolbyVision_info.reg_addr,
+			ImageInfo->private_data.optional_info[
+						VID_OPT_CONTENT_TYPE],
 					1);
 			} else {
 				pr_err("[ERR][MAPC] 1 Dolby Out type mismatch (%d != %d)\n",
 					vioc_get_out_type(),
-					ImageInfo->private_data.dolbyVision_info.reg_out_type);
+			ImageInfo->private_data.dolbyVision_info.reg_out_type);
 			}
 		} else {
 			pr_err("[ERR][MAPC] @@@@@@@@@ 3 @@@@@@@@@@ Should be implement other layer configuration\n");
@@ -347,7 +351,8 @@ void tca_map_convter_set(unsigned int component_num,
 }
 EXPORT_SYMBOL(tca_map_convter_set);
 
-void tca_map_convter_driver_set(unsigned int component_num, unsigned int Fwidth,
+void tca_map_convter_driver_set(
+				unsigned int component_num, unsigned int Fwidth,
 				unsigned int Fheight, unsigned int pos_x,
 				unsigned int pos_y, unsigned int Cwidth,
 				unsigned int Cheight, unsigned int y2r,
@@ -359,7 +364,7 @@ void tca_map_convter_driver_set(unsigned int component_num, unsigned int Fwidth,
 	uint bit_depth_c;
 	uint offset_base_y, offset_base_c;
 	uint frame_base_y, frame_base_c;
-	volatile void __iomem *HwVIOC_MC =
+	void __iomem *HwVIOC_MC =
 		VIOC_MC_GetAddress(component_num);
 #if 0  // debug log
 	pr_info("[DBG][MAPC] MC[%d] >> R[0x%lx/0x%lx/0x%lx] M[%d] F:%dx%d Str(%d/%d) C:0x%08x/0x%08x T:0x%08x/0x%08x bpp(%d/%d) crop(%d/%d~%dx%d) Reserved(%d)\n",

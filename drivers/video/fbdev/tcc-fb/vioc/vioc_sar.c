@@ -71,7 +71,7 @@ void __iomem *pSAR_reg[SAR_BLOCK_MAX] = {0};
 static struct clk *sar_ddi_clk;
 static struct clk *sar_peri_clk;
 
-volatile void __iomem *VIOC_SAR_GetAddress(enum SAR_BLOCK_T SAR_block_N);
+void __iomem *VIOC_SAR_GetAddress(enum SAR_BLOCK_T SAR_block_N);
 
 // SAR IN ctrl register
 #define SAR_IN_CTRL_REG (0x0)
@@ -186,8 +186,8 @@ void sarin_sync_polarity_set(
 	pSARIN->uSARIN_CTRL.bSARIN_CTRL.gen_field_en = gen_field_en;
 	pSARIN->uSARIN_CTRL.bSARIN_CTRL.pxclk_pol = pxclk_pol;
 #else
-	volatile unsigned int mask;
-	volatile void __iomem *reg = VIOC_SAR_GetAddress(SAR_IN);
+	unsigned int mask;
+	void __iomem *reg = VIOC_SAR_GetAddress(SAR_IN);
 
 	mask = __raw_readl(reg + SAR_IN_CTRL_REG);
 	if (hs_active_low)
@@ -236,8 +236,8 @@ void sarin_ctrl_set(
 	pSARIN->uSARIN_CTRL.bSARIN_CTRL.fmt = fmt;
 	pSARIN->uSARIN_CTRL.bSARIN_CTRL.data_order = data_order;
 #else
-	volatile unsigned int mask = 0;
-	volatile void __iomem *reg = VIOC_SAR_GetAddress(SAR_IN);
+	unsigned int mask = 0;
+	void __iomem *reg = VIOC_SAR_GetAddress(SAR_IN);
 
 	mask = __raw_readl(reg + SAR_IN_CTRL_REG);
 	if (conv_en)
@@ -269,8 +269,8 @@ void sarin_intl_set(uint intl_en, uint intpl_en)
 	pSARIN->uSARIN_CTRL.bSARIN_CTRL.intl_en = intl_en;
 	pSARIN->uSARIN_CTRL.bSARIN_CTRL.intpl_en = intpl_en;
 #else
-	volatile unsigned int mask;
-	volatile void __iomem *reg = VIOC_SAR_GetAddress(SAR_IN);
+	unsigned int mask;
+	void __iomem *reg = VIOC_SAR_GetAddress(SAR_IN);
 
 	mask = __raw_readl(reg + SAR_IN_CTRL_REG);
 	if (intl_en)
@@ -298,8 +298,8 @@ void sarin_size_set(
 	pSARIN->uSARIN_OFFS.bSARIN_OFFS.offs_height = offs_height;
 	pSARIN->uSARIN_OFFS_INTL.bSARIN_OFFS.offs_height = offs_height_intl;
 #else
-	volatile unsigned int size, offset_intl, offset = 0;
-	volatile void __iomem *reg = VIOC_SAR_GetAddress(SAR_IN);
+	unsigned int size, offset_intl, offset = 0;
+	void __iomem *reg = VIOC_SAR_GetAddress(SAR_IN);
 
 	size = ((height << SAR_IN_SIZE_HEIGHT_SHIFT) & SAR_IN_SIZE_HEIGHT_MASK)
 		| ((width << SAR_IN_SIZE_WIDTH_SHIFT) & SAR_IN_SIZE_WIDTH_MASK);
@@ -334,8 +334,8 @@ void sarin_enable(uint vin_en)
 #if 0
 	pSARIN->uSARIN_CTRL.bSARIN_CTRL.enable	=	vin_en;
 #else
-	volatile unsigned int mask = 0;
-	volatile void __iomem *reg = VIOC_SAR_GetAddress(SAR_IN);
+	unsigned int mask = 0;
+	void __iomem *reg = VIOC_SAR_GetAddress(SAR_IN);
 
 	if (vin_en)
 		mask = __raw_readl(reg + SAR_IN_CTRL_REG) | SAR_IN_CTRL_EN_MASK;
@@ -399,7 +399,7 @@ void VIOC_SAR_Set(unsigned int width, unsigned int height)
 void VIOC_SARIF_SetFormat(uint nFormat)
 {
 	unsigned long value;
-	volatile void __iomem *reg = VIOC_SAR_GetAddress(SAR_IF);
+	void __iomem *reg = VIOC_SAR_GetAddress(SAR_IF);
 
 	value = (__raw_readl(reg + DCTRL) & ~(DCTRL_PXDW_MASK));
 	value |= (nFormat << DCTRL_PXDW_SHIFT);
@@ -408,7 +408,7 @@ void VIOC_SARIF_SetFormat(uint nFormat)
 
 void VIOC_SARIF_SetSize(unsigned int nWidth, unsigned int nHeight)
 {
-	volatile void __iomem *reg = VIOC_SAR_GetAddress(SAR_IF);
+	void __iomem *reg = VIOC_SAR_GetAddress(SAR_IF);
 
 	__raw_writel(
 		(nHeight << DDS_VSIZE_SHIFT) | (nWidth << DDS_HSIZE_SHIFT),
@@ -417,8 +417,8 @@ void VIOC_SARIF_SetSize(unsigned int nWidth, unsigned int nHeight)
 
 void VIOC_SARIF_SetTimingParam(stLTIMING *pTimeParam)
 {
-	volatile unsigned long value;
-	volatile void __iomem *reg = VIOC_SAR_GetAddress(SAR_IF);
+	unsigned long value;
+	void __iomem *reg = VIOC_SAR_GetAddress(SAR_IF);
 
 	//	Horizon
 	value =
@@ -483,8 +483,8 @@ void VIOC_SARIF_SetTimingParamSimple(unsigned int nWidth, unsigned int nHeight)
 
 void VIOC_SARIF_SetNI(unsigned int NI)
 {
-	volatile unsigned long mask;
-	volatile void __iomem *reg = VIOC_SAR_GetAddress(SAR_IF);
+	unsigned long mask;
+	void __iomem *reg = VIOC_SAR_GetAddress(SAR_IF);
 
 	if (NI)
 		mask = __raw_readl(reg + DCTRL) | DCTRL_NI_MASK;
@@ -496,8 +496,8 @@ void VIOC_SARIF_SetNI(unsigned int NI)
 
 void VIOC_SARIF_TurnOn(void)
 {
-	volatile unsigned long value;
-	volatile void __iomem *reg = VIOC_SAR_GetAddress(SAR_IF);
+	unsigned long value;
+	void __iomem *reg = VIOC_SAR_GetAddress(SAR_IF);
 
 	value = (__raw_readl(reg + DCTRL) & ~(DCTRL_LEN_MASK));
 	value |= (0x1 << DCTRL_LEN_SHIFT);
@@ -506,8 +506,8 @@ void VIOC_SARIF_TurnOn(void)
 
 void VIOC_SARIF_TurnOff(void)
 {
-	volatile unsigned long value = 0;
-	volatile void __iomem *reg = VIOC_SAR_GetAddress(SAR_IF);
+	unsigned long value = 0;
+	void __iomem *reg = VIOC_SAR_GetAddress(SAR_IF);
 
 	value = (__raw_readl(reg + DCTRL) & ~(DCTRL_LEN_MASK));
 	value |= (0x0 << DCTRL_LEN_SHIFT);
@@ -540,10 +540,10 @@ void VIOC_SAR_TurnOn(
 	enum SARstrengh strength, unsigned int width, unsigned int height)
 
 {
-	volatile void __iomem *reg = VIOC_SAR_GetAddress(SAR);
-	volatile unsigned int deblk_strenth, deblk_boost, deblk_dr_th,
+	void __iomem *reg = VIOC_SAR_GetAddress(SAR);
+	unsigned int deblk_strenth, deblk_boost, deblk_dr_th,
 		snr_der_str, snr_ent_str, swan_bypass = 0;
-	volatile unsigned long mask = 0;
+	unsigned long mask = 0;
 
 	pr_info("[INF][SAR] %s strength ::%d , width:%d , height:%d\n",
 		__func__, strength, width, height);
@@ -667,7 +667,7 @@ void VIOC_SAR_TurnOn(
 
 void VIOC_SAR_TurnOff(void)
 {
-	volatile void __iomem *reg = VIOC_SAR_GetAddress(SAR);
+	void __iomem *reg = VIOC_SAR_GetAddress(SAR);
 
 	__raw_writel(0x0, reg + 0x00);
 }
@@ -715,7 +715,7 @@ int vioc_sar_off(void)
 	return 0;
 }
 
-volatile void __iomem *VIOC_SAR_GetAddress(enum SAR_BLOCK_T SAR_block_N)
+void __iomem *VIOC_SAR_GetAddress(enum SAR_BLOCK_T SAR_block_N)
 {
 	if (SAR_block_N < SAR_BLOCK_MAX)
 		return pSAR_reg[SAR_block_N];

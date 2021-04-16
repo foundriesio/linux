@@ -91,7 +91,7 @@ struct F2D_DIV_PARAM {
 #define TCC_F2D_SET_ENABLE				0x3FF
 
 
-extern volatile void __iomem *VIOC_Filter2D_GetAddress(
+extern void __iomem *VIOC_Filter2D_GetAddress(
 	unsigned int vioc_filter2d_id);
 extern void filt2d_mode(unsigned int F2D_N, uint hpf0_en, uint hpf1_en,
 	uint hpf2_en, uint bypass0_en, uint bypass1_en, uint bypass2_en,

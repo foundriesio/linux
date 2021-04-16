@@ -40,9 +40,9 @@ enum VIQE_RESET_REASON {
 };
 
 struct tcc_viqe_common_virt_addr_info_t {
-	volatile void __iomem *pVIQE0;
-	volatile void __iomem *pVIQE1;
-	volatile void __iomem *pDEINTLS;
+	void __iomem *pVIQE0;
+	void __iomem *pVIQE1;
+	void __iomem *pDEINTLS;
 	int gVIOC_Deintls;
 	int gVIOC_VIQE0;
 	int gVIOC_VIQE1;
@@ -50,7 +50,7 @@ struct tcc_viqe_common_virt_addr_info_t {
 };
 
 struct tcc_viqe_m2m_virt_addr_info_t {
-	volatile void __iomem *pRDMABase_m2m;
+	void __iomem *pRDMABase_m2m;
 	union {
 		int gVIQE_RDMA_num_m2m;
 		int gDEINTLS_RDMA_num_m2m;
@@ -58,10 +58,10 @@ struct tcc_viqe_m2m_virt_addr_info_t {
 };
 
 struct tcc_viqe_60hz_virt_addr_info_t {
-	volatile void __iomem *pRDMABase_60Hz;
-	volatile void __iomem *pSCALERBase_60Hz;
-	volatile void __iomem *pWMIXBase_60Hz;
-	volatile void __iomem *pDISPBase_60Hz;
+	void __iomem *pRDMABase_60Hz;
+	void __iomem *pSCALERBase_60Hz;
+	void __iomem *pWMIXBase_60Hz;
+	void __iomem *pDISPBase_60Hz;
 	int gVIQE_RDMA_num_60Hz;
 	int gSCALER_num_60Hz;
 };
@@ -72,7 +72,7 @@ struct tcc_viqe_m2m_scaler_data {
 };
 
 struct tcc_viqe_m2m_scaler_vioc {
-	volatile void __iomem *reg;
+	void __iomem *reg;
 	unsigned int id;
 	unsigned int path;
 };
@@ -151,8 +151,6 @@ extern int tca_edr_el_configure(struct tcc_lcdc_image_update *Src_ImageInfo,
 #endif
 
 extern TCC_OUTPUT_TYPE Output_SelectMode;
-extern struct tcc_dp_device *tca_fb_get_displayType(
-	TCC_OUTPUT_TYPE check_type);
 
 #ifdef CONFIG_TCC_HDMI_DRIVER_V2_0
 #include "../tcc_vsync.h"
@@ -165,10 +163,6 @@ extern void tcc_video_frame_backup(struct tcc_lcdc_image_update *Image);
 #endif
 
 extern void tcc_video_post_process(struct tcc_lcdc_image_update *ImageInfo);
-extern void tca_lcdc_set_onthefly(struct tcc_dp_device *pdp_data,
-	struct tcc_lcdc_image_update *ImageInfo);
-extern void tca_scale_display_update(struct tcc_dp_device *pdp_data,
-	struct tcc_lcdc_image_update *ImageInfo);
 
 extern int TCC_VIQE_Scaler_Init_Buffer_M2M(void);
 extern void TCC_VIQE_Scaler_DeInit_Buffer_M2M(void);

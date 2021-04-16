@@ -154,7 +154,7 @@ enum vioc_vin_intr_src {
 extern int vioc_intr_enable(int irq, int id, unsigned mask);
 extern int vioc_intr_disable(int irq, int id, unsigned mask);
 extern unsigned int vioc_intr_get_status(int id);
-extern bool check_vioc_irq_status(volatile void __iomem *reg, int id);
+extern bool check_vioc_irq_status(void __iomem *reg, int id);
 extern bool is_vioc_intr_activatied(int id, unsigned mask);
 extern int vioc_intr_clear(int id, unsigned mask);
 extern void vioc_intr_initialize(void);

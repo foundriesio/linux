@@ -229,59 +229,59 @@ typedef enum {
 
 
 /* Interface APIs */
-extern void VIOC_AFBCDec_GetBlockInfo(volatile void __iomem *reg,
+extern void VIOC_AFBCDec_GetBlockInfo(void __iomem *reg,
 	unsigned int *productID, unsigned int *verMaj,
 	unsigned int *verMin, unsigned int *verStat);
-extern void VIOC_AFBCDec_SetContiDecEnable(volatile void __iomem *reg,
+extern void VIOC_AFBCDec_SetContiDecEnable(void __iomem *reg,
 	unsigned int enable);
-extern void VIOC_AFBCDec_SetSurfaceN(volatile void __iomem *reg,
+extern void VIOC_AFBCDec_SetSurfaceN(void __iomem *reg,
 	VIOC_AFBCDEC_SURFACE_NUM nSurface, unsigned int enable);
-extern void VIOC_AFBCDec_SetAXICacheCfg(volatile void __iomem *reg,
+extern void VIOC_AFBCDec_SetAXICacheCfg(void __iomem *reg,
 	unsigned int cache);
-extern void VIOC_AFBCDec_SetAXIQoSCfg(volatile void __iomem *reg,
+extern void VIOC_AFBCDec_SetAXIQoSCfg(void __iomem *reg,
 	unsigned int qos);
-extern void VIOC_AFBCDec_SetSrcImgBase(volatile void __iomem *reg,
+extern void VIOC_AFBCDec_SetSrcImgBase(void __iomem *reg,
 	unsigned int base0, unsigned int base1);
-extern void VIOC_AFBCDec_SetWideModeEnable(volatile void __iomem *reg,
+extern void VIOC_AFBCDec_SetWideModeEnable(void __iomem *reg,
 	unsigned int enable);
-extern void VIOC_AFBCDec_SetSplitModeEnable(volatile void __iomem *reg,
+extern void VIOC_AFBCDec_SetSplitModeEnable(void __iomem *reg,
 	unsigned int enable);
-extern void VIOC_AFBCDec_SetYUVTransEnable(volatile void __iomem *reg,
+extern void VIOC_AFBCDec_SetYUVTransEnable(void __iomem *reg,
 	unsigned int enable);
-extern void VIOC_AFBCDec_SetImgFmt(volatile void __iomem *reg,
+extern void VIOC_AFBCDec_SetImgFmt(void __iomem *reg,
 	unsigned int fmt, unsigned int enable_10bit);
-extern void VIOC_AFBCDec_SetImgSize(volatile void __iomem *reg,
+extern void VIOC_AFBCDec_SetImgSize(void __iomem *reg,
 	unsigned int width, unsigned int height);
-extern void VIOC_AFBCDec_GetImgSize(volatile void __iomem *reg,
+extern void VIOC_AFBCDec_GetImgSize(void __iomem *reg,
 	unsigned int *width, unsigned int *height);
-extern void VIOC_AFBCDec_SetBoundingBox(volatile void __iomem *reg,
+extern void VIOC_AFBCDec_SetBoundingBox(void __iomem *reg,
 	unsigned int minX, unsigned int maxX,
 	unsigned int minY, unsigned int maxY);
-extern void VIOC_AFBCDec_GetBoundingBox(volatile void __iomem *reg,
+extern void VIOC_AFBCDec_GetBoundingBox(void __iomem *reg,
 	unsigned int *minX, unsigned int *maxX,
 	unsigned int *minY, unsigned int *maxY);
-extern void VIOC_AFBCDec_SetOutBufBase(volatile void __iomem *reg,
+extern void VIOC_AFBCDec_SetOutBufBase(void __iomem *reg,
 	unsigned int base0, unsigned int base1,
 	unsigned int fmt, unsigned int width);
-extern void VIOC_AFBCDec_SetBufferFlipX(volatile void __iomem *reg,
+extern void VIOC_AFBCDec_SetBufferFlipX(void __iomem *reg,
 	unsigned int enable);
-extern void VIOC_AFBCDec_SetBufferFlipY(volatile void __iomem *reg,
+extern void VIOC_AFBCDec_SetBufferFlipY(void __iomem *reg,
 	unsigned int enable);
-extern unsigned int VIOC_AFBCDec_GetStatus(volatile void __iomem *reg);
-extern void VIOC_AFBCDec_SetIrqMask(volatile void __iomem *reg,
+extern unsigned int VIOC_AFBCDec_GetStatus(void __iomem *reg);
+extern void VIOC_AFBCDec_SetIrqMask(void __iomem *reg,
 	unsigned int enable, unsigned int mask);
-extern void VIOC_AFBCDec_ClearIrq(volatile void __iomem *reg,
+extern void VIOC_AFBCDec_ClearIrq(void __iomem *reg,
 	unsigned int mask);
-extern void VIOC_AFBCDec_TurnOFF(volatile void __iomem *reg);
-extern void VIOC_AFBCDec_TurnOn(volatile void __iomem *reg,
+extern void VIOC_AFBCDec_TurnOFF(void __iomem *reg);
+extern void VIOC_AFBCDec_TurnOn(void __iomem *reg,
 	VIOC_AFBCDEC_SWAP swapmode);
-extern void VIOC_AFBCDec_SurfaceCfg(volatile void __iomem *reg,
+extern void VIOC_AFBCDec_SurfaceCfg(void __iomem *reg,
 	unsigned int base, unsigned int fmt,
 	unsigned int width, unsigned int height,
 	unsigned int b10bit, unsigned int split_mode, unsigned int wide_mode,
 	unsigned int nSurface, unsigned int bSetOutputBase);
-extern void VIOC_AFBCDec_DUMP(volatile void __iomem *reg,
+extern void VIOC_AFBCDec_DUMP(void __iomem *reg,
 	unsigned int vioc_id);
-extern volatile void __iomem *VIOC_AFBCDec_GetAddress(unsigned int vioc_id);
+extern void __iomem *VIOC_AFBCDec_GetAddress(unsigned int vioc_id);
 
 #endif //__VIOC_VIQE_H__

@@ -68,7 +68,7 @@
 
 void tca_lcdc_interrupt_onoff(char onoff, char lcdc)
 {
-	volatile void __iomem *pDISPBase;
+	void __iomem *pDISPBase;
 	unsigned int mask = VIOC_DISP_INT_MASK;
 
 	pDISPBase = VIOC_DISP_GetAddress(lcdc);
@@ -99,8 +99,8 @@ EXPORT_SYMBOL(tca_lcdc_interrupt_onoff);
 
 void lcdc_initialize(struct lcd_panel *lcd_spec, struct tcc_dp_device *pdata)
 {
-	volatile void __iomem *pDISPBase;
-	volatile void __iomem *pWMIXBase;
+	void __iomem *pDISPBase;
+	void __iomem *pWMIXBase;
 	unsigned int default_ovp = 24;
 	unsigned long val;
 
@@ -226,7 +226,7 @@ EXPORT_SYMBOL(lcdc_initialize);
 
 void tcc_lcdc_dithering_setting(struct tcc_dp_device *pdata)
 {
-	volatile void __iomem *reg = pdata->ddc_info.virt_addr;
+	void __iomem *reg = pdata->ddc_info.virt_addr;
 	unsigned long val;
 
 	/* dithering option */

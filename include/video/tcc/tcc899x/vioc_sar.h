@@ -49,6 +49,6 @@ extern void VIOC_SARIF_TurnOff(void);
 extern int vioc_sar_on(
 	unsigned int width, unsigned int height,
 	unsigned int level);
-extern volatile void __iomem *VIOC_SAR_GetAddress(enum SAR_BLOCK_T SAR_block_N);
+extern void __iomem *VIOC_SAR_GetAddress(enum SAR_BLOCK_T SAR_block_N);
 
 #endif /*__VIOC_SAR_H__*/

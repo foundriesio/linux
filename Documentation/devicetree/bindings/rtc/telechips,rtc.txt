@@ -1,0 +1,28 @@
+* Telechips RTC(Real Time Clock)
+
+Required properties:
+- compatible: Must be "telechips,rtc".
+- reg: Specifies base physical address and size of the registers.
+- interrupts: A single interrupt specifier.
+- clocks: Must contain one or more entry, for the RTC IP block.
+
+
+Optional properties:
+These properties are available at tcc805x.
+- rtc_clock: Clocksource for the RTC
+- rtc_timeout: RTC timeout in seconds for Suspend-To-RAM Telechips solution.
+	The system will be transit to the power-down mode when it is expired
+	after entering suspend mode.
+
+Example:
+
+rtc: rtc@0x16480000 {
+	compatible = "telechips,rtc";
+	reg = <0x0 0x16480000 0x0 0x50>;
+	clocks = <&clk_io IOBUS_RTC>;
+	interrupts = <GIC_SPI 73 0>;
+	/* Clocksource for RTC, 1: XTAL, 2: OSC */
+	rtc_clock = <1>;
+	/* RTC timeout in seconds for Suspend-To-RAM */
+	rtc_timeout = <172800>;
+};

@@ -1,0 +1,10 @@
+This is for 'telechips,vioc_pixel_mapper'.
+
+Required properties for display:
+	-compatible:
+		"telechips,vioc_pixel_mapper"
+
+-------------------------------------------------------------------------------
+
+Example:
+

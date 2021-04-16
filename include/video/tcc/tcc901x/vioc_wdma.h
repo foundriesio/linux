@@ -350,50 +350,50 @@ struct VIOC_WDMA_IMAGE_INFO_Type {
 	| WDMAIRQSTS_ST_EOF_MASK)
 
 /* Interface APIs. */
-extern void VIOC_WDMA_SetImageEnable(volatile void __iomem *reg,
+extern void VIOC_WDMA_SetImageEnable(void __iomem *reg,
 	unsigned int nContinuous);
-extern void VIOC_WDMA_SetImageDisable(volatile void __iomem *reg);
-extern void VIOC_WDMA_SetImageUpdate(volatile void __iomem *reg);
-extern void VIOC_WDMA_SetContinuousMode(volatile void __iomem *reg,
+extern void VIOC_WDMA_SetImageDisable(void __iomem *reg);
+extern void VIOC_WDMA_SetImageUpdate(void __iomem *reg);
+extern void VIOC_WDMA_SetContinuousMode(void __iomem *reg,
 	unsigned int enable);
-extern void VIOC_WDMA_SetImageFormat(volatile void __iomem *reg,
+extern void VIOC_WDMA_SetImageFormat(void __iomem *reg,
 	unsigned int nFormat);
-extern void VIOC_WDMA_SetDataFormat(volatile void __iomem *reg,
+extern void VIOC_WDMA_SetDataFormat(void __iomem *reg,
 	unsigned int fmt_type, unsigned int fill_mode);
-extern void VIOC_WDMA_SetImageRGBSwapMode(volatile void __iomem *reg,
+extern void VIOC_WDMA_SetImageRGBSwapMode(void __iomem *reg,
 	unsigned int rgb_mode);
-extern void VIOC_WDMA_SetImageInterlaced(volatile void __iomem *reg,
+extern void VIOC_WDMA_SetImageInterlaced(void __iomem *reg,
 	unsigned int intl);
-extern void VIOC_WDMA_SetImageR2YMode(volatile void __iomem *reg,
+extern void VIOC_WDMA_SetImageR2YMode(void __iomem *reg,
 	unsigned int r2y_mode);
-extern void VIOC_WDMA_SetImageR2YEnable(volatile void __iomem *reg,
+extern void VIOC_WDMA_SetImageR2YEnable(void __iomem *reg,
 	unsigned int enable);
-extern void VIOC_WDMA_SetImageY2RMode(volatile void __iomem *reg,
+extern void VIOC_WDMA_SetImageY2RMode(void __iomem *reg,
 	unsigned int y2r_mode);
-extern void VIOC_WDMA_SetImageY2REnable(volatile void __iomem *reg,
+extern void VIOC_WDMA_SetImageY2REnable(void __iomem *reg,
 	unsigned int enable);
-extern void VIOC_WDMA_SetImageSize(volatile void __iomem *reg,
+extern void VIOC_WDMA_SetImageSize(void __iomem *reg,
 	unsigned int sw, unsigned int sh);
-extern void VIOC_WDMA_SetImageBase(volatile void __iomem *reg,
+extern void VIOC_WDMA_SetImageBase(void __iomem *reg,
 	unsigned int nBase0, unsigned int nBase1, unsigned int nBase2);
-extern void VIOC_WDMA_SetImageOffset(volatile void __iomem *reg,
+extern void VIOC_WDMA_SetImageOffset(void __iomem *reg,
 	unsigned int imgFmt, unsigned int imgWidth);
-extern void VIOC_WDMA_SetImageOffset_withYV12(volatile void __iomem *reg,
+extern void VIOC_WDMA_SetImageOffset_withYV12(void __iomem *reg,
 	unsigned int imgWidth);
-extern void VIOC_WDMA_SetImageEnhancer(volatile void __iomem *reg,
+extern void VIOC_WDMA_SetImageEnhancer(void __iomem *reg,
 	unsigned int nContrast, unsigned int nBright, unsigned int nHue);
-extern void VIOC_WDMA_SetIreqMask(volatile void __iomem *reg,
+extern void VIOC_WDMA_SetIreqMask(void __iomem *reg,
 	unsigned int mask, unsigned int set);
-extern void VIOC_WDMA_SetIreqStatus(volatile void __iomem *reg,
+extern void VIOC_WDMA_SetIreqStatus(void __iomem *reg,
 	unsigned int mask);
-extern void VIOC_WDMA_ClearEOFR(volatile void __iomem *reg);
-extern void VIOC_WDMA_ClearEOFF(volatile void __iomem *reg);
+extern void VIOC_WDMA_ClearEOFR(void __iomem *reg);
+extern void VIOC_WDMA_ClearEOFF(void __iomem *reg);
 
-extern void VIOC_WDMA_GetStatus(volatile void __iomem *reg,
+extern void VIOC_WDMA_GetStatus(void __iomem *reg,
 	unsigned int *status);
-extern bool VIOC_WDMA_IsImageEnable(volatile void __iomem *reg);
-extern bool VIOC_WDMA_IsContinuousMode(volatile void __iomem *reg);
-extern volatile void __iomem *VIOC_WDMA_GetAddress(unsigned int vioc_id);
-extern void VIOC_WDMA_DUMP(volatile void __iomem *reg, unsigned int vioc_id);
+extern bool VIOC_WDMA_IsImageEnable(void __iomem *reg);
+extern bool VIOC_WDMA_IsContinuousMode(void __iomem *reg);
+extern void __iomem *VIOC_WDMA_GetAddress(unsigned int vioc_id);
+extern void VIOC_WDMA_DUMP(void __iomem *reg, unsigned int vioc_id);
 
 #endif

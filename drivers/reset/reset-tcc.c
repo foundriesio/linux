@@ -28,9 +28,8 @@ static inline s32 tcc_reset_internal(struct reset_controller_dev *rcdev,
 	struct arm_smccc_res res;
 	ulong flags;
 
-	if (priv == NULL) {
+	if (priv == NULL)
 		return -EINVAL;
-	}
 
 	pr_debug("[DEBUG][reset] %sassert: %lu\n", (ast == 1U) ? "" : "de", id);
 
@@ -64,19 +63,16 @@ static int tcc_reset_probe(struct platform_device *pdev)
 {
 	struct tcc_reset_data *priv;
 
-	if (pdev == NULL) {
+	if (pdev == NULL)
 		return -ENODEV;
-	}
 
 	priv = devm_kzalloc(&pdev->dev, sizeof(*priv), GFP_KERNEL);
-	if (priv == NULL) {
+	if (priv == NULL)
 		return -ENOMEM;
-	}
 
 	priv->op = (ulong)of_device_get_match_data(&pdev->dev);
-	if (WARN_ON(priv->op == 0UL)) {
+	if (WARN_ON(priv->op == 0UL))
 		return -EINVAL;
-	}
 
 	spin_lock_init(&priv->lock);
 

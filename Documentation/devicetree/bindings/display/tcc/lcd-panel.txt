@@ -1,0 +1,9 @@
+This is for
+	'telechips,lcd-at070tn93'
+	'telechips,ccirlcd'
+	'telechips,cvbslcd'
+
+-------------------------------------------------------------------------------
+
+Example:
+

@@ -43,7 +43,7 @@ Suite 330, Boston, MA 02111-1307 USA
 #define SINK_LIMITED_TO_YCC420          2
 
 #define CONFIG_HDMI_YCC420_PREFERRED
-#define PRINT_EDID(...) do { if(hdmi_print_log) { printk(KERN_INFO "[INFO][HDMI] "__VA_ARGS__); } } while(0);
+#define PRINT_EDID(...) do { if(hdmi_print_log) { pr_info("[INFO][HDMI] "__VA_ARGS__); } } while(0);
 
 #define EDID_HEADER_LENGTH      8
 #define EDID_LENGTH 128
@@ -219,37 +219,26 @@ static  int hdmi_read_edid(struct hdmi_tx_dev *dev, unsigned char *edid)
         const unsigned char header[] = {0x00, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x00};
 	ret = hdmi_ddc_read(dev, EDID_I2C_ADDR, EDID_I2C_SEGMENT_ADDR, 0, 0, EDID_HEADER_LENGTH, edid);
         if(ret < 0){
-                printk(KERN_INFO "[INFO][HDMI]%s failed to read a edid header \r\n", __func__);
+                pr_info("[INFO][HDMI]%s failed to read a edid header \r\n", __func__);
                 goto end_process;
         }
         ret = memcmp((unsigned char * ) edid, (unsigned char *) header, sizeof(header));
         if(ret){
-                printk(KERN_INFO "[INFO][HDMI]%s mismatch a edid header \r\n", __func__);
+                pr_info("[INFO][HDMI]%s mismatch a edid header \r\n", __func__);
                 ret = -1;
                 goto end_process;
         }
 
         ret = hdmi_ddc_read(dev, EDID_I2C_ADDR, EDID_I2C_SEGMENT_ADDR, 0, EDID_HEADER_LENGTH, EDID_LENGTH-EDID_HEADER_LENGTH, edid+EDID_HEADER_LENGTH);
         if(ret < 0){
-                printk(KERN_INFO "[INFO][HDMI]%s failed to read a edid data \r\n", __func__);
+                pr_info("[INFO][HDMI]%s failed to read a edid data \r\n", __func__);
                 goto end_process;
         }
-
-        #if 0
-        {
-                int i;
-                for(i = 0; i < EDID_LENGTH ; i++) {
-                        printk(KERN_INFO "[INFO][HDMI] %02x", edid[i]);
-                        if(!((i+1)%32)) printf("\r\n");
-                }
-                printk(KERN_INFO "[INFO][HDMI] \r\n");
-        }
-        #endif
 
         ret = hdmi_edid_checksum((unsigned char *) edid);
         if(ret){
                 ret = -1;
-                printk(KERN_INFO "[INFO][HDMI]%s mismatch a edid checksum \r\n", __func__);
+                pr_info("[INFO][HDMI]%s mismatch a edid checksum \r\n", __func__);
                 goto end_process;
         }
         ret = 0;
@@ -558,12 +547,12 @@ static int edid_parser_SimpleParseDataBlock(unsigned char* rawdata, struct sink_
 
         do {
                 if(rawdata == NULL) {
-                        printk(KERN_INFO "[INFO][HDMI]%s rawdata is NULL\r\n", __func__);
+                        pr_info("[INFO][HDMI]%s rawdata is NULL\r\n", __func__);
                         break;
                 }
 
                 if(sink_edid_simple == NULL) {
-                        printk(KERN_INFO "[INFO][HDMI]%s sink_edid_simple is NULL\r\n", __func__);
+                        pr_info("[INFO][HDMI]%s sink_edid_simple is NULL\r\n", __func__);
                         break;
                 }
                 tag = ((rawdata[0] >> 5) & 0x7);
@@ -586,18 +575,18 @@ static int edid_parser_simple_exension(unsigned char* rawdata, struct sink_edid_
 
         do {
                 if(rawdata == NULL) {
-                        printk(KERN_INFO "[INFO][HDMI]%s rawdata is NULL", __func__);
+                        pr_info("[INFO][HDMI]%s rawdata is NULL", __func__);
                         break;
                 }
 
                 if(sink_edid_simple == NULL) {
-                        printk(KERN_INFO "[INFO][HDMI]%s sink_edid_simple is NULL", __func__);
+                        pr_info("[INFO][HDMI]%s sink_edid_simple is NULL", __func__);
                         break;
                 }
 
                 /* Version */
                 if (rawdata[1] < 0x03){
-                        printk(KERN_INFO "[INFO][HDMI]Invalid version for CEA Extension block, only rev 3 or higher is supported");
+                        pr_info("[INFO][HDMI]Invalid version for CEA Extension block, only rev 3 or higher is supported");
                         break;
                 }
 
@@ -629,7 +618,7 @@ static int edid_read_simple(struct hdmi_tx_dev *dev, struct sink_edid_simple_t *
 
         do {
                 if(sink_edid_simple == NULL) {
-                        printk(KERN_INFO "[INFO][HDMI]%s sink_edid_simple is NULL\r\n", __func__);
+                        pr_info("[INFO][HDMI]%s sink_edid_simple is NULL\r\n", __func__);
                         break;
                 }
 
@@ -648,13 +637,13 @@ static int edid_read_simple(struct hdmi_tx_dev *dev, struct sink_edid_simple_t *
                 }while(edid_tries--);
 
                 if(ret < 0) {
-                        printk(KERN_INFO "[INFO][HDMI] [%s] Failed read edid base\r\n", __func__);
+                        pr_info("[INFO][HDMI] [%s] Failed read edid base\r\n", __func__);
                         break;
                 }
 
                 /* Support 4block only */
                 if(number_of_extension_blocks > 3) {
-                        printk(KERN_INFO "[INFO][HDMI]EDID limited to 4Block (%d)\r\n", number_of_extension_blocks);
+                        pr_info("[INFO][HDMI]EDID limited to 4Block (%d)\r\n", number_of_extension_blocks);
                         number_of_extension_blocks = 3;
                 }
 
@@ -670,7 +659,7 @@ static int edid_read_simple(struct hdmi_tx_dev *dev, struct sink_edid_simple_t *
                         }while(edid_tries--);
 
                         if(ret < 0) {
-                             printk(KERN_INFO "[INFO][HDMI] [%s] Failed read edid extension [%d] block", __func__, block+1);
+                             pr_info("[INFO][HDMI] [%s] Failed read edid extension [%d] block", __func__, block+1);
                              break;
                         }
                 }
@@ -705,20 +694,20 @@ static void hdmi_read_edid_and_parse(struct hdmi_tx_dev *dev)
                                 if(sink_edid_info.edid_done) {
                                         break;
                                 } else {
-                                        printk(KERN_INFO "[INFO][HDMI] Failed to parse EDID\r\n");
+                                        pr_info("[INFO][HDMI] Failed to parse EDID\r\n");
                                         ret = -1;
                                 }
                         }
                 }while(edid_tries--);
 
                 if(ret < 0) {
-                        printk(KERN_INFO "[INFO][HDMI] Failed read edid base\r\n");
+                        pr_info("[INFO][HDMI] Failed read edid base\r\n");
                         break;
                 }
 
                 /* Support 4block only */
                 if(number_of_extension_blocks > 3) {
-                        printk(KERN_INFO "[INFO][HDMI]EDID limited to 4Block (%d)\r\n", number_of_extension_blocks);
+                        pr_info("[INFO][HDMI]EDID limited to 4Block (%d)\r\n", number_of_extension_blocks);
                         number_of_extension_blocks = 3;
                 }
 
@@ -778,14 +767,14 @@ static void hdmi_read_edid_and_parse(struct hdmi_tx_dev *dev)
                         }while(edid_tries--);
 
                         if(ret < 0) {
-                             printk(KERN_INFO "[INFO][HDMI] [%s] Failed read and parse EXTENSION Blocks [%d]", __func__, block+1);
+                             pr_info("[INFO][HDMI] [%s] Failed read and parse EXTENSION Blocks [%d]", __func__, block+1);
                              break;
                         }
                 }
         } while(0);
 
         if(ret < 0) {
-                printk(KERN_INFO "[INFO][HDMI] [%s] Failed read edid extension [%d] block", __func__, block);
+                pr_info("[INFO][HDMI] [%s] Failed read edid extension [%d] block", __func__, block);
                 sink_edid_info.edid_done = 0;
         }
 }
@@ -939,7 +928,7 @@ int edid_get_optimal_settings(struct hdmi_tx_dev *dev, int *hdmi_mode, int *vic,
 	                        if(!memcmp(sink_edid_simple.rawdata, sink_edid_info.rawdata, EDID_4BLOCK_LENGTH)) {
 	                                break;
                                 }
-        			printk(KERN_INFO "[INFO][HDMI] EDID was unmatched \r\n");
+        			pr_info("[INFO][HDMI] EDID was unmatched \r\n");
                                 hdmi_read_edid_and_parse(dev);
                         }while(retry--);
                 }

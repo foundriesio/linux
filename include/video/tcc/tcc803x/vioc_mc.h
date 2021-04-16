@@ -124,8 +124,8 @@ typedef struct {
 /*
  * MC position for Crop Register
  */
-#define MC_FRM_POS_YPOS_SHIFT (16) // the vertical base position for crop image
-#define MC_FRM_POS_XPOS_SHIFT (0)  // the horizontal base position for crop image
+#define MC_FRM_POS_YPOS_SHIFT (16) // vertical base position for crop image
+#define MC_FRM_POS_XPOS_SHIFT (0)  // horizontal base position for crop image
 
 #define MC_FRM_POS_YPOS_MASK (0xFFFF << MC_FRM_POS_YPOS_SHIFT)
 #define MC_FRM_POS_XPOS_MASK (0xFFFF << MC_FRM_POS_XPOS_SHIFT)
@@ -142,10 +142,10 @@ typedef struct {
 /*
  * MC Miscellaneous Register
  */
-#define MC_FRM_MISC0_HS_PERIOD_SHIFT   (16) // the period of horizontal sync pulse
+#define MC_FRM_MISC0_HS_PERIOD_SHIFT   (16) // period of horizontal sync pulse
 #define MC_FRM_MISC0_COMP_ENDIAN_SHIFT (8)  // Endian of compressed data DMA
 #define MC_FRM_MISC0_OFS_ENDIAN_SHIFT  (4)  // Endian for offset table DMA
-#define MC_FRM_MISC0_OUT_MODE_SHIFT    (0)  // the type of output interface (DO NOT CHANGE)
+#define MC_FRM_MISC0_OUT_MODE_SHIFT    (0)  // output interface (DO NOT CHANGE)
 
 #define MC_FRM_MISC0_HS_PERIOD_MASK   (0x3FFF << MC_FRM_MISC0_HS_PERIOD_SHIFT)
 #define MC_FRM_MISC0_COMP_ENDIAN_MASK (0xF << MC_FRM_MISC0_COMP_ENDIAN_SHIFT)
@@ -237,43 +237,43 @@ typedef struct {
 
 /*
  * MC Luma Offset Table Last Address Register
+ * the latest transferred Luma AXI address in offset table DMA
  */
-#define MC_OFS_RADDR_Y_BASE_SHIFT (0) // the latest transferred Luma AXI address in offset table DMA
-
+#define MC_OFS_RADDR_Y_BASE_SHIFT (0)
 #define MC_OFS_RADDR_Y_BASE_MASK (0xFFFFFFFF << MC_OFS_RADDR_Y_BASE_SHIFT)
 
 /*
  * MC Chroma Offset Table Last Address Register
+ * the latest transferred Chroma AXI address in offset table DMA
  */
-#define MC_OFS_RADDR_C_BASE_SHIFT (0) // the latest transferred Chroma AXI address in offset table DMA
-
+#define MC_OFS_RADDR_C_BASE_SHIFT (0)
 #define MC_OFS_RADDR_C_BASE_MASK (0xFFFFFFFF << MC_OFS_RADDR_C_BASE_SHIFT)
 
 /*
  * MC Luma Comp. Last Address Register
+ * the latest transferred Luma AXI address in compressed data DMA
  */
-#define MC_COM_RADDR_Y_BASE_SHIFT (0) // the latest transferred Luma AXI address in compressed data DMA
-
+#define MC_COM_RADDR_Y_BASE_SHIFT (0)
 #define MC_COM_RADDR_Y_BASE_MASK (0xFFFFFFFF << MC_COM_RADDR_Y_BASE_SHIFT)
 
 /*
  * MC Chroma Comp. Last Address Register
+ * the latest transferred Chroma AXI address in compressed data DMA
  */
-#define MC_COM_RADDR_C_BASE_SHIFT (0) // the latest transferred Chroma AXI address in compressed data DMA
-
+#define MC_COM_RADDR_C_BASE_SHIFT (0)
 #define MC_COM_RADDR_C_BASE_MASK (0xFFFFFFFF << MC_COM_RADDR_C_BASE_SHIFT)
 
 /*
  * MC DMA status Register
  */
-#define MC_DMA_STAT_CDMA_AXI_C_SHIFT	(28)		// AXI status in chroma compressed data DMA
-#define MC_DMA_STAT_CDMA_C_SHIFT		(25)		// the status of chroma compressed data DMA
-#define MC_DMA_STAT_CDMA_AXI_Y_SHIFT	(20)		// AXI status in Luma compressed data DMA
-#define MC_DMA_STAT_CDMA_Y_SHIFT		(16)		// the status of Luma compressed data DMA
-#define MC_DMA_STAT_ODMA_AXI_C_SHIFT	(12)		// the chroma AXI status of offset table DMA
-#define MC_DMA_STAT_ODMA_C_SHIFT		(8)		// the status of chroma offset table DMA
-#define MC_DMA_STAT_ODMA_AXI_Y_SHIFT	(4)		// the Luma AXI status of offset table DMA
-#define MC_DMA_STAT_ODMA_Y_SHIFT		(0)		// the status of Luma offset table DMA
+#define MC_DMA_STAT_CDMA_AXI_C_SHIFT	(28)
+#define MC_DMA_STAT_CDMA_C_SHIFT		(25)
+#define MC_DMA_STAT_CDMA_AXI_Y_SHIFT	(20)
+#define MC_DMA_STAT_CDMA_Y_SHIFT		(16)
+#define MC_DMA_STAT_ODMA_AXI_C_SHIFT	(12)
+#define MC_DMA_STAT_ODMA_C_SHIFT		(8)
+#define MC_DMA_STAT_ODMA_AXI_Y_SHIFT	(4)
+#define MC_DMA_STAT_ODMA_Y_SHIFT		(0)
 
 #define MC_DMA_STAT_CDMA_AXI_C_MASK (0x3 << MC_DMA_STAT_CDMA_AXI_C_SHIFT)
 #define MC_DMA_STAT_CDMA_C_MASK     (0xF << MC_DMA_STAT_CDMA_C_SHIFT)
@@ -286,107 +286,110 @@ typedef struct {
 
 /*
  * MC Luma LineBuffer Count 0 Register
+ * the number of luma data count in the luma line buffer1
  */
-#define MC_LBUF_CNT0_YBUF_CNT1_SHIFT	(16)		// the number of luma data count in the luma line buffer1
-#define MC_LBUF_CNT0_YBUF_CNT0_SHIFT	(0)			// the number of luma data count in the luma line buffer0
+#define MC_LBUF_CNT0_YBUF_CNT1_SHIFT (16)
+#define MC_LBUF_CNT0_YBUF_CNT0_SHIFT (0)
 
 #define MC_LBUF_CNT0_YBUF_CNT1_MASK (0xFFFF << MC_LBUF_CNT0_YBUF_CNT1_SHIFT)
 #define MC_LBUF_CNT0_YBUF_CNT0_MASK (0xFFFF << MC_LBUF_CNT0_YBUF_CNT0_SHIFT)
 
 /*
  * MC Luma LineBuffer Count 1 Register
+ * the number of luma data count in the luma line buffer3
  */
-#define MC_LBUF_CNT0_YBUF_CNT3_SHIFT	(16)		// the number of luma data count in the luma line buffer3
-#define MC_LBUF_CNT0_YBUF_CNT2_SHIFT	(0)			// the number of luma data count in the luma line buffer2
+#define MC_LBUF_CNT0_YBUF_CNT3_SHIFT (16)
+#define MC_LBUF_CNT0_YBUF_CNT2_SHIFT (0)
 
 #define MC_LBUF_CNT0_YBUF_CNT3_MASK (0xFFFF << MC_LBUF_CNT0_YBUF_CNT3_SHIFT)
 #define MC_LBUF_CNT0_YBUF_CNT2_MASK (0xFFFF << MC_LBUF_CNT0_YBUF_CNT2_SHIFT)
 
 /*
  * MC Chroma LineBuffer Count 0 Register
+ * the number of chroma data count in the luma line buffer1
  */
-#define MC_CBUF_CNT_YBUF_CNT1_SHIFT		(16)		// the number of chroma data count in the luma line buffer1
-#define MC_CBUF_CNT_YBUF_CNT0_SHIFT		(0)			// the number of chorma data count in the luma line buffer0
+#define MC_CBUF_CNT_YBUF_CNT1_SHIFT (16)
+#define MC_CBUF_CNT_YBUF_CNT0_SHIFT (0)
 
-#define MC_CBUF_CNT_YBUF_CNT0_MASK (0xFFFF << MC_CBUF_CNT_YBUF_CNT0_SHIFT)
 #define MC_CBUF_CNT_YBUF_CNT1_MASK (0xFFFF << MC_CBUF_CNT_YBUF_CNT1_SHIFT)
+#define MC_CBUF_CNT_YBUF_CNT0_MASK (0xFFFF << MC_CBUF_CNT_YBUF_CNT0_SHIFT)
 
 /*
  * MC Position Status Register
  */
-#define MC_POS_STAT_LINE_CNT_SHIFT  (16) // vertical line position in DISP I/F
-#define MC_POS_STAT_PIXEL_CNT_SHIFT (0) // horizontal line position in DISP I/F
+#define MC_POS_STAT_LINE_CNT_SHIFT  (16)
+#define MC_POS_STAT_PIXEL_CNT_SHIFT (0)
 
-#define MC_POS_STAT_LINE_CNT_MASK	(0xFFFF << MC_POS_STAT_LINE_CNT_SHIFT)
-#define MC_POS_STAT_PIXEL_CNT_MASK	(0xFFFF << MC_POS_STAT_PIXEL_CNT_SHIFT)
+#define MC_POS_STAT_LINE_CNT_MASK (0xFFFF << MC_POS_STAT_LINE_CNT_SHIFT)
+#define MC_POS_STAT_PIXEL_CNT_MASK (0xFFFF << MC_POS_STAT_PIXEL_CNT_SHIFT)
 
 /*
  * MC Status Register
  */
-#define MC_STAT_BM_C_SHIFT			(10) // Chroma bit mode
-#define MC_STAT_BM_Y_SHIFT			(8)  // Luma bit mode
-#define MC_STAT_UDR_SHIFT			(7)  // Buffer underrun
-#define MC_STAT_ERR_SHIFT			(6)  // Error bit
-#define MC_STAT_DONE_SHIFT			(5)  // Done Flag
-#define MC_STAT_BUSY_SHIFT			(4)  // Buffer Flag
-#define MC_STAT_TG_STAT_SHIFT		(0)  // Status of DISP I/F
+#define MC_STAT_BM_C_SHIFT	(10) // Chroma bit mode
+#define MC_STAT_BM_Y_SHIFT	(8)  // Luma bit mode
+#define MC_STAT_UDR_SHIFT	(7)  // Buffer underrun
+#define MC_STAT_ERR_SHIFT	(6)  // Error bit
+#define MC_STAT_DONE_SHIFT	(5)  // Done Flag
+#define MC_STAT_BUSY_SHIFT	(4)  // Buffer Flag
+#define MC_STAT_TG_STAT_SHIFT	(0)  // Status of DISP I/F
 
-#define MC_STAT_BM_C_MASK			(0x3 << MC_STAT_BM_C_SHIFT)
-#define MC_STAT_BM_Y_MASK			(0x3 << MC_STAT_BM_Y_SHIFT)
-#define MC_STAT_UDR_MASK			(0x1 << MC_STAT_UDR_SHIFT)
-#define MC_STAT_ERR_MASK			(0x1 << MC_STAT_ERR_SHIFT)
-#define MC_STAT_DONE_MASK			(0x1 << MC_STAT_DONE_SHIFT)
-#define MC_STAT_BUSY_MASK			(0x1 << MC_STAT_BUSY_SHIFT)
-#define MC_STAT_TG_STAT_MASK		(0x7 << MC_STAT_TG_STAT_SHIFT)
+#define MC_STAT_BM_C_MASK	(0x3 << MC_STAT_BM_C_SHIFT)
+#define MC_STAT_BM_Y_MASK	(0x3 << MC_STAT_BM_Y_SHIFT)
+#define MC_STAT_UDR_MASK	(0x1 << MC_STAT_UDR_SHIFT)
+#define MC_STAT_ERR_MASK	(0x1 << MC_STAT_ERR_SHIFT)
+#define MC_STAT_DONE_MASK	(0x1 << MC_STAT_DONE_SHIFT)
+#define MC_STAT_BUSY_MASK	(0x1 << MC_STAT_BUSY_SHIFT)
+#define MC_STAT_TG_STAT_MASK	(0x7 << MC_STAT_TG_STAT_SHIFT)
 
 /*
  * MC IRQ Register
  */
-#define MC_IRQ_MUDR_SHIFT			(19) // Masked UDR Interrupt
-#define MC_IRQ_MERR_SHIFT			(18) // Masked ERR Interrupt
-#define MC_IRQ_MUPD_SHIFT			(17) // Masked UPD Interrupt
-#define MC_IRQ_MMD_SHIFT			(16) // Masked MC_DONE Interrupt
-#define MC_IRQ_UDR_SHIFT			(3)  // Under-run interrupt
-#define MC_IRQ_ERR_SHIFT			(2)  // Err flag interrupt
-#define MC_IRQ_UPD_SHIFT			(1)  // Update Done interrupt
-#define MC_IRQ_MD_SHIFT				(0)  // Map_conv Done interrupt
+#define MC_IRQ_MUDR_SHIFT	(19) // Masked UDR Interrupt
+#define MC_IRQ_MERR_SHIFT	(18) // Masked ERR Interrupt
+#define MC_IRQ_MUPD_SHIFT	(17) // Masked UPD Interrupt
+#define MC_IRQ_MMD_SHIFT	(16) // Masked MC_DONE Interrupt
+#define MC_IRQ_UDR_SHIFT	(3)  // Under-run interrupt
+#define MC_IRQ_ERR_SHIFT	(2)  // Err flag interrupt
+#define MC_IRQ_UPD_SHIFT	(1)  // Update Done interrupt
+#define MC_IRQ_MD_SHIFT		(0)  // Map_conv Done interrupt
 
-#define MC_IRQ_MUDR_MASK			(0x1 << MC_IRQ_MUDR_SHIFT)
-#define MC_IRQ_MERR_MASK			(0x1 << MC_IRQ_MERR_SHIFT)
-#define MC_IRQ_MUPD_MASK			(0x1 << MC_IRQ_MUPD_SHIFT)
-#define MC_IRQ_MMD_MASK				(0x1 << MC_IRQ_MMD_SHIFT)
-#define MC_IRQ_UDR_MASK				(0x1 << MC_IRQ_UDR_SHIFT)
-#define MC_IRQ_ERR_MASK				(0x1 << MC_IRQ_ERR_SHIFT)
-#define MC_IRQ_UPD_MASK				(0x1 << MC_IRQ_UPD_SHIFT)
-#define MC_IRQ_MD_MASK				(0x1 << MC_IRQ_MD_SHIFT)
+#define MC_IRQ_MUDR_MASK	(0x1 << MC_IRQ_MUDR_SHIFT)
+#define MC_IRQ_MERR_MASK	(0x1 << MC_IRQ_MERR_SHIFT)
+#define MC_IRQ_MUPD_MASK	(0x1 << MC_IRQ_MUPD_SHIFT)
+#define MC_IRQ_MMD_MASK		(0x1 << MC_IRQ_MMD_SHIFT)
+#define MC_IRQ_UDR_MASK		(0x1 << MC_IRQ_UDR_SHIFT)
+#define MC_IRQ_ERR_MASK		(0x1 << MC_IRQ_ERR_SHIFT)
+#define MC_IRQ_UPD_MASK		(0x1 << MC_IRQ_UPD_SHIFT)
+#define MC_IRQ_MD_MASK		(0x1 << MC_IRQ_MD_SHIFT)
 
 extern void VIOC_MC_Get_OnOff(
-	volatile void __iomem *reg, uint *enable);
+	void __iomem *reg, uint *enable);
 extern void VIOC_MC_Start_OnOff(
-	volatile void __iomem *reg, uint OnOff);
-extern void VIOC_MC_UPD(volatile void __iomem *reg);
+	void __iomem *reg, uint OnOff);
+extern void VIOC_MC_UPD(void __iomem *reg);
 extern void VIOC_MC_Y2R_OnOff(
-	volatile void __iomem *reg, uint OnOff, uint mode);
+	void __iomem *reg, uint OnOff, uint mode);
 extern void VIOC_MC_Start_BitDepth(
-	volatile void __iomem *reg, uint Chroma, uint Luma);
+	void __iomem *reg, uint Chroma, uint Luma);
 extern void VIOC_MC_OFFSET_BASE(
-	volatile void __iomem *reg, uint base_y, uint base_c);
+	void __iomem *reg, uint base_y, uint base_c);
 extern void VIOC_MC_FRM_BASE(
-	volatile void __iomem *reg, uint base_y, uint base_c);
+	void __iomem *reg, uint base_y, uint base_c);
 extern void VIOC_MC_FRM_SIZE(
-	volatile void __iomem *reg, uint xsize, uint ysize);
+	void __iomem *reg, uint xsize, uint ysize);
 extern void VIOC_MC_FRM_SIZE_MISC(
-	volatile void __iomem *reg, uint pic_height,
+	void __iomem *reg, uint pic_height,
 	uint stride_y, uint stride_c);
 extern void VIOC_MC_FRM_POS(
-	volatile void __iomem *reg, uint xpos, uint ypos);
+	void __iomem *reg, uint xpos, uint ypos);
 extern void VIOC_MC_ENDIAN(
-	volatile void __iomem *reg, uint ofs_endian, uint comp_endian);
+	void __iomem *reg, uint ofs_endian, uint comp_endian);
 extern void VIOC_MC_DITH_CONT(
-	volatile void __iomem *reg, uint en, uint sel);
+	void __iomem *reg, uint en, uint sel);
 extern void VIOC_MC_SetDefaultAlpha(
-	volatile void __iomem *reg, uint alpha);
-extern volatile void __iomem *VIOC_MC_GetAddress(
+	void __iomem *reg, uint alpha);
+extern void __iomem *VIOC_MC_GetAddress(
 	unsigned int vioc_id);
 extern int  tvc_mc_get_info(
 	unsigned int component_num, mc_info_type *pMC_info);

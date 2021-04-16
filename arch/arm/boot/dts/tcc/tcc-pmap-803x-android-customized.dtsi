@@ -3,8 +3,6 @@
  * Copyright (C) Telechips Inc.
  */
 
-#include "../../../../../include/generated/autoconf.h"
-
 #include <dt-bindings/pmap/tcc803x/pmap-tcc803x-android-ivi.h>
 
 #define CONF_ANDROID
@@ -14,12 +12,6 @@
 #define CONF_SUPPORT_TCC_JPU
 #define CONF_VDEC_CNT_2
 #define CONF_VENC_CNT_1
-
-#undef SZ_1MB
-#define SZ_1MB                          (1024*1024)
-#define ARRAY_16MBYTE(x)                ((((x) + ((16*SZ_1MB)-1))>> 24) << 24)
-#define ARRAY_MBYTE(x)                  ((((x) + (SZ_1MB-1))>> 20) << 20)
-#define ARRAY_256KBYTE(x)               ((((x) + ((SZ_1MB/4)-1))>> 18) << 18)
 
 // For HEVC/VPU framebuffer_size Calculation
 #define WAVE_CAL_PROCBUFFER(use,w,h,f) \

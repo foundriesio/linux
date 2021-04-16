@@ -51,27 +51,27 @@
 #include <video/tcc/vioc_global.h>
 #include <linux/delay.h>
 
-typedef struct {
+struct TS_Scaler_path {
 	unsigned int nRDMA;
 	unsigned int nMixer;
 	unsigned int nWDMA;
-} TS_Scaler_path;
+};
 
-typedef struct {
+struct TS_Scaler_size {
 	unsigned int width;
 	unsigned int height;
-} TS_Scaler_size;
+};
 
-TS_Scaler_path Sar_test_Path[] = {{7, 1, 1},  {10, 2, 2}, {11, 2, 2},
+struct TS_Scaler_path Sar_test_Path[] = {{7, 1, 1},  {10, 2, 2}, {11, 2, 2},
 				  {12, 3, 3}, {13, 3, 3}, {16, 5, 6},
 				  {17, 6, 8}
 				  };
 
-TS_Scaler_size Sar_dest_size[] = {
+struct TS_Scaler_size Sar_dest_size[] = {
 	{720, 480}, {1920, 1080}, {1280, 720}, {640, 480}, {800, 480}
 	};
 
-TS_Scaler_size Sar_source_size[] = {
+struct TS_Scaler_size Sar_source_size[] = {
 	{720, 480},
 	{1920, 1080},
 	{1280, 720},
@@ -108,9 +108,12 @@ static int __init test_sar_wdma_api(unsigned int loop)
 	void __iomem *rdma_reg;
 	void __iomem *wmix_reg, *scaler_reg;
 
-	mSarPath_TotalCnt = sizeof(Sar_test_Path) / sizeof(TS_Scaler_path);
-	mSarSize_TotalCnt = sizeof(Sar_dest_size) / sizeof(TS_Scaler_size);
-	mSarSRCSize_TotalCnt = sizeof(Sar_source_size) / sizeof(TS_Scaler_size);
+	mSarPath_TotalCnt =
+		sizeof(Sar_test_Path) / sizeof(struct TS_Scaler_path);
+	mSarSize_TotalCnt =
+		sizeof(Sar_dest_size) / sizeof(struct TS_Scaler_size);
+	mSarSRCSize_TotalCnt =
+		sizeof(Sar_source_size) / sizeof(struct TS_Scaler_size);
 
 	i = loop % mSarPath_TotalCnt;
 	pr_info("[INF][SAR] %s   loop:%d,   i : %d ", __func__, loop, i);
@@ -243,8 +246,8 @@ static int __init test_sar_wdma_api(unsigned int loop)
 
 	VIOC_SARIF_SetSize(width, height);
 	VIOC_SARIF_TurnOn();
-	pr_info("[INF][SAR] VIOC SARIF TurnOn ~~ \n");
-#endif //
+	pr_info("[INF][SAR] VIOC SARIF TurnOn\n");
+#endif
 
 	// WDMA setting...
 	VIOC_WDMA_SetIreqStatus(wdma_reg, 0x1FF);
@@ -253,7 +256,7 @@ static int __init test_sar_wdma_api(unsigned int loop)
 	VIOC_WDMA_SetDataFormat(wdma_reg, 0, 0);
 #else
 	VIOC_WDMA_SetImagePackingMode(wdma_reg, 5);
-#endif //
+#endif
 
 	VIOC_WDMA_SetImageSize(wdma_reg, dest_width, dest_height);
 	VIOC_WDMA_SetImageY2REnable(wdma_reg, 1);
@@ -267,7 +270,7 @@ static int __init test_sar_wdma_api(unsigned int loop)
 	//((VIOC_DISP *)(HwVIOC_DISP0))->uCTRL.bReg.Y2R = 1;
 	//((VIOC_DISP *)(HwVIOC_DISP0))->uCTRL.bReg.PXDW = 0x17;
 
-	volatile void __iomem *UIrdma_reg;
+	void __iomem *UIrdma_reg;
 
 	UIrdma_reg = VIOC_RDMA_GetAddress(VIOC_RDMA + 3);
 	VIOC_RDMA_SetImageFormat(UIrdma_reg, VIOC_IMG_FMT_ARGB8888);
@@ -355,11 +358,11 @@ static int __init test_disp_api(unsigned int Nrdma_n)
 	unsigned int disp_width, disp_height, width, height = 0;
 	unsigned int Src0, Src1, Src2, Dest0, Dest1, Dest2;
 
-	volatile void __iomem *wdma_reg;
-	volatile void __iomem *rdma_reg, *UIrdma_reg;
-	volatile void __iomem *wmix_reg;
-	volatile void __iomem *scaler_reg;
-	volatile void __iomem *disp_reg;
+	void __iomem *wdma_reg;
+	void __iomem *rdma_reg, *UIrdma_reg;
+	void __iomem *wmix_reg;
+	void __iomem *scaler_reg;
+	void __iomem *disp_reg;
 	unsigned int disp_status = 0;
 
 	rdma_n = Nrdma_n;
@@ -435,13 +438,13 @@ static int __init test_disp_api(unsigned int Nrdma_n)
 
 #if 0
 	VIOC_CONFIG_SWReset(VIOC_SAR, VIOC_CONFIG_RESET);
-	msleep(1);
+	usleep_range(1000, 1100);
 	VIOC_CONFIG_SWReset(VIOC_SAR, VIOC_CONFIG_CLEAR);
 #endif  //
 	//	VIOC_RDMA_SetImageDisableNW(UIrdma_reg);
 	//	VIOC_DISP_TurnOff(disp_reg);
 
-	msleep(1);
+	usleep_range(1000, 1100);
 
 	// WMXIER
 	//	VIOC_WMIX_SetSize(wmix_reg, width,
@@ -479,7 +482,7 @@ static int __init test_disp_api(unsigned int Nrdma_n)
 	}
 
 	VIOC_CONFIG_SWReset(VIOC_SAR, VIOC_CONFIG_RESET);
-	msleep(1);
+	usleep_range(1000, 1100);
 	VIOC_CONFIG_SWReset(VIOC_SAR, VIOC_CONFIG_CLEAR);
 	msleep(26);
 
@@ -490,11 +493,11 @@ static int __init test_disp_api(unsigned int Nrdma_n)
 
 static int __init test_disp(void)
 {
-	volatile unsigned int rdma_n, i, j;
+	unsigned int rdma_n, i, j;
 
 	VIOC_SAR_POWER_ONOFF(1);
 	VIOC_CONFIG_SWReset(VIOC_SAR, VIOC_CONFIG_RESET);
-	msleep(1);
+	usleep_range(1000, 1100);
 	VIOC_CONFIG_SWReset(VIOC_SAR, VIOC_CONFIG_CLEAR);
 
 	while (1) {
@@ -509,7 +512,7 @@ static int __init test_disp(void)
 				//	test_disp_api(rdma_n);
 				test_disp_api(1);
 			}
-			msleep(10);
+			usleep_range(10000, 11000);
 			pr_info("\x1b[1;38m[INF][SAR] ~~~~~~------J = %d------ ~~~~~~~  \x1b[0m\n",
 				j);
 		}
@@ -522,7 +525,7 @@ static int __init test_disp(void)
 		VIOC_CONFIG_PlugOut(VIOC_SAR0);
 		msleep(100);
 		VIOC_CONFIG_SWReset(VIOC_SAR, VIOC_CONFIG_RESET);
-		msleep(1);
+		usleep_range(1000, 1100);
 		VIOC_CONFIG_SWReset(VIOC_SAR, VIOC_CONFIG_CLEAR);
 		msleep(50);
 

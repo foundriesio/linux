@@ -1,0 +1,29 @@
+This is for 'telechips,wmixer_drv'.
+
+Required properties for display:
+	-compatible:
+		"telechips,wmixer_drv"
+
+-------------------------------------------------------------------------------
+
+Example:
+	wmixer_drv0: wmixer_drv@0 {
+		compatible = "telechips,wmixer_drv";
+		reg = <0x0 0x0>;	/* Dummy regs. */
+		clocks = <&clk_ddi DDIBUS_VIOC>;
+		rdmas = <&vioc_rdma VIOC_RDMA17>;
+		wmixs = <&vioc_wmix VIOC_WMIX6>;
+		wdmas = <&vioc_wdma VIOC_WDMA08>;
+		status = "disabled";	/* RDMA15 path is used by scaler_drv1 */
+	};
+
+	wmixer_drv1: wmixer_drv@1 {
+		compatible = "telechips,wmixer_drv";
+		reg = <0x1 0x0>;	/* Dummy regs. */
+		clocks = <&clk_ddi DDIBUS_VIOC>;
+		rdmas = <&vioc_rdma VIOC_RDMA13>;
+		scalers = <&vioc_scaler VIOC_SCALER0>;	/* id:0, path:15 */
+		wmixs = <&vioc_wmix VIOC_WMIX3>;	/* id:3, path:- TODO: WMIX_MAX occurs error*/
+		wdmas = <&vioc_wdma VIOC_WDMA03>;
+		status = "okay";
+	};

@@ -1,7 +1,12 @@
 Device tree configuration for Telechips I2C Slave Controller
 
 Required properties:
-- compatible	: Should be "telechips,i2c-slave"
+- compatible	: depending on the SoC this should be one of:
+		"telechips,i2c-slave"
+		"telechips,tcc803x-i2c-slave"
+		"telechips,tcc897x-i2c-slave"
+		"telechips,tcc899x-i2c-slave"
+		"telechips,tcc901x-i2c-slave"
 - reg		: Physical base address and size of the controller's register area.
 - interrupts	: Interrupt specifier.
 - clocks	: phandle to input clock.
