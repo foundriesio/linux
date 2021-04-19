@@ -1138,15 +1138,19 @@ static void tcc_serial_set_termios(struct uart_port *port, struct ktermios *term
 			break;
 	}
 
-	spin_lock_irqsave(&port->lock, flags);
-
 	/*
 	 * Update the per-port timeout.
 	 */
 	uart_update_timeout(port, termios->c_cflag, baud);
 
+	/*
+	 * Set clock rate that fits baudrate.
+	 */
+
 	tcc_serial_set_baud(tp, baud);
 	port->uartclk = baud;
+
+	spin_lock_irqsave(&port->lock, flags);
 
 	/*
 	 * Ask the core to calculate the divisor for us.
