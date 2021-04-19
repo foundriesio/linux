@@ -481,7 +481,7 @@ static int tcc_overlay_display_video_buffer_scaling(
 
 	struct panel_size_t panel;
 	unsigned int output_width, output_height;
-	volatile void __iomem *pDISPBase =
+	void __iomem *pDISPBase =
 		VIOC_DISP_GetAddress(VIOC_DISP + overlay_drv->fb_dd_num);
 	VIOC_DISP_GetSize(pDISPBase, &panel.xres, &panel.yres);
 
@@ -717,7 +717,7 @@ tcc_overlay_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 	case OVERLAY_GET_PANEL_SIZE: {
 		struct panel_size_t panel;
 
-		volatile void __iomem *pDISPBase = VIOC_DISP_GetAddress(VIOC_DISP + overlay_drv->fb_dd_num);
+		void __iomem *pDISPBase = VIOC_DISP_GetAddress(VIOC_DISP + overlay_drv->fb_dd_num);
 
 		VIOC_DISP_GetSize(pDISPBase, &panel.xres, &panel.yres);
 

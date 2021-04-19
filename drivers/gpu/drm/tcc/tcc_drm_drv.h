@@ -102,7 +102,7 @@ struct tcc_drm_plane_config {
 	unsigned int num_pixel_formats;
 	unsigned int capabilities;
 
-	volatile void __iomem *virt_addr;
+	void __iomem *virt_addr;
 };
 
 
