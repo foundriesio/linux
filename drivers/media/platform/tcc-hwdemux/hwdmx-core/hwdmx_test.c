@@ -21,20 +21,26 @@
 #include <linux/module.h>
 #include <linux/delay.h>
 #include <linux/dma-mapping.h>
+#include <linux/platform_device.h>
+#include <linux/of_device.h>
+
 
 #include "hwdmx_cmd.h"
 #include "hwdmx_test.h"
 #include "tca_hwdemux_param.h"
 
 
-#define HWDMX_NUM (2)		// 4
+#define HWDMX_NUM (2)
 #define TS_PACKET_SIZE (188)
 #define SEND_TS_CNT (3)
 #define RECEIVE_SIZE (TS_PACKET_SIZE * 30)
+#define HWDMX_TEST_DEV_NAME "tcc_hwdmx_test"
 
 static struct tcc_tsif_handle tTSIF[HWDMX_NUM];
 static struct tea_dma_buf tDMA[HWDMX_NUM];
 
+static int majornum;
+static struct class *class;
 static void *Input_VAddr;
 static dma_addr_t Input_PAddr;
 static void *TSRev_VAddr;
@@ -160,7 +166,7 @@ static int TSFilterTest(struct tcc_tsif_handle *h)
 	param.f_type = 1;	// HW_DEMUX_TS
 	param.f_pid = 0x333;
 	hwdmx_add_filter_cmd(h, &param);
-	hwdmx_set_pcrpid_cmd(h, 0x1ffe);
+	hwdmx_set_pcrpid_cmd(h, &param);
 
 	pReceive = ReceivePacket;
 	for (cc = 0; cc < 16; cc++) {
@@ -168,7 +174,7 @@ static int TSFilterTest(struct tcc_tsif_handle *h)
 		MakeTSPacket(Input_VAddr, cc);
 		MakePCRPacket(Input_VAddr + TS_PACKET_SIZE, cc);
 		hwdmx_input_stream_cmd(h->dmx_id, (unsigned int)Input_PAddr,
-					TS_PACKET_SIZE * SEND_TS_CNT);
+				TS_PACKET_SIZE * SEND_TS_CNT);
 	}
 	msleep(1000);
 	pReceive = 0;
@@ -230,7 +236,7 @@ static int SectionFilterTest(struct tcc_tsif_handle *h)
 		// Send Packet
 		MakePATPacket(Input_VAddr + TS_PACKET_SIZE, cc);
 		hwdmx_input_stream_cmd(h->dmx_id, (unsigned int)Input_PAddr,
-					TS_PACKET_SIZE * SEND_TS_CNT);
+				TS_PACKET_SIZE * SEND_TS_CNT);
 	}
 	msleep(1000);
 	pReceive = 0;
@@ -243,23 +249,14 @@ static int SectionFilterTest(struct tcc_tsif_handle *h)
 }
 
 //////////////////////////////////////////////////////////////////////////
-static int __init tca_hwdemux_test_start(void)
+static int tca_hwdemux_test_start(void)
 {
 	struct tcc_tsif_handle *h;
 	int i, iRet;
 
-	pr_info("[INFO][HWDMX] %s\n", __func__);
-
-	Input_VAddr =
-	    (unsigned char *)dma_alloc_coherent(0, TS_PACKET_SIZE * SEND_TS_CNT,
-						&Input_PAddr, GFP_KERNEL);
-	TSRev_VAddr =
-	    (unsigned char *)dma_alloc_coherent(0, RECEIVE_SIZE * HWDMX_NUM,
-						&TSRev_PAddr, GFP_KERNEL);
-	SERev_VAddr =
-	    (unsigned char *)dma_alloc_coherent(0, RECEIVE_SIZE * HWDMX_NUM,
-						&SERev_PAddr, GFP_KERNEL);
-
+	pr_info("[INFO][HWDMX] %s : In\n", __func__);
+	
+	pr_info("[INFO][HWDMX] %s : hwdmx_set_interface_cmd\n", __func__);
 	hwdmx_set_interface_cmd(-1, 2);
 
 	for (i = 0; i < HWDMX_NUM; i++) {
@@ -284,6 +281,7 @@ static int __init tca_hwdemux_test_start(void)
 		h->working_mode = 1;
 		h->dma_buffer = &tDMA[i];
 
+		pr_info("[INFO][HWDMX] %s : hwdmx_start_cmd(hwdmx = %d)\n", __func__, i);
 		hwdmx_start_cmd(h);
 		hwdmx_buffer_updated_callback(h, tcc_hwdmx_test_callback);
 	}
@@ -303,41 +301,129 @@ static int __init tca_hwdemux_test_start(void)
 		pr_info("[INFO][HWDMX] HWDMX#%d Section Filter Result(%d)\n", i,
 			iRet);
 
-//		tca_tsif_clean(&tTSIF[i]);
 	}
 
 	return 0;
 }
 
-static void __exit tca_hwdemux_test_stop(void)
+//////////////////////////////////////////////////////////////////////////
+static const struct file_operations fops = {
+	.owner = THIS_MODULE,
+};
+
+static int hwdemux_test_probe(struct platform_device *pdev)
+{
+	int retval;
+
+	pr_info("[INFO][HWDMX] %s\n", __func__);
+
+	retval = register_chrdev(0, HWDMX_TEST_DEV_NAME, &fops);
+	if (retval < 0)
+		return retval;
+
+	majornum = retval;
+	class = class_create(THIS_MODULE, HWDMX_TEST_DEV_NAME);
+
+	Input_VAddr =
+		(unsigned char *)dma_alloc_coherent(&pdev->dev, TS_PACKET_SIZE * SEND_TS_CNT,
+						&Input_PAddr, GFP_KERNEL);
+	if (Input_VAddr == NULL) {
+		pr_err("[ERROR][HWDMX]Input_VAddr DMA alloc error.\n");
+		retval = -ENOMEM;
+		goto dma_alloc_fail;
+	}
+
+	TSRev_VAddr =
+		(unsigned char *)dma_alloc_coherent(&pdev->dev, RECEIVE_SIZE * HWDMX_NUM,
+						&TSRev_PAddr, GFP_KERNEL);
+	if (TSRev_VAddr == NULL) {
+		pr_err("[ERROR][HWDMX]TSRev_VAddr DMA alloc error.\n");
+		retval = -ENOMEM;
+		goto dma_alloc_fail;
+	}
+	
+	SERev_VAddr =
+		(unsigned char *)dma_alloc_coherent(&pdev->dev, RECEIVE_SIZE * HWDMX_NUM,
+						&SERev_PAddr, GFP_KERNEL);
+	if (SERev_VAddr == NULL) {
+		pr_err("[ERROR][HWDMX]SERev_VAddr DMA alloc error.\n");
+		retval = -ENOMEM;
+		goto dma_alloc_fail;
+	}
+
+	tca_hwdemux_test_start();
+
+	return 0;
+
+dma_alloc_fail:
+	class_destroy(class);
+	unregister_chrdev(majornum, HWDMX_TEST_DEV_NAME);
+
+	return retval;
+}
+
+static int hwdemux_test_remove(struct platform_device *pdev)
 {
 	pr_info("[INFO][HWDMX] %s\n", __func__);
 
-#if 0
-	int i;
-	pr_info("[INFO][HWDMX] %s\n", __func__);
-	for (i = HWDMX_NUM - 1; i >= 0; i--)
-		tca_tsif_clean(&tTSIF[i]);
-#endif
-	if (Input_VAddr)
-		dma_free_coherent(0, TS_PACKET_SIZE * SEND_TS_CNT, Input_VAddr,
-				  Input_PAddr);
-	if (TSRev_VAddr)
-		dma_free_coherent(0, RECEIVE_SIZE * HWDMX_NUM, TSRev_VAddr,
+	if (Input_VAddr) {
+		dma_free_coherent(&pdev->dev, TS_PACKET_SIZE * SEND_TS_CNT, Input_VAddr,
+			  Input_PAddr);
+		Input_VAddr = NULL;
+	}
+	
+	if (TSRev_VAddr) {
+		dma_free_coherent(&pdev->dev, RECEIVE_SIZE * HWDMX_NUM, TSRev_VAddr,
 				  TSRev_PAddr);
-	if (SERev_VAddr)
-		dma_free_coherent(0, RECEIVE_SIZE * HWDMX_NUM, SERev_VAddr,
+		TSRev_VAddr = NULL;
+	}
+	if (SERev_VAddr) {
+		dma_free_coherent(&pdev->dev, RECEIVE_SIZE * HWDMX_NUM, SERev_VAddr,
 				  SERev_PAddr);
+		SERev_VAddr = NULL;
+	}
+	
+	class_destroy(class);
+	unregister_chrdev(majornum, HWDMX_TEST_DEV_NAME);
+	return 0;
 }
 
+#ifdef CONFIG_OF
+static const struct of_device_id match[] = {
+	{
+	 .compatible = "telechips,hwdemux_test",
+	 },
+	{},
+};
+
+MODULE_DEVICE_TABLE(of, match);
+#endif
+
+static struct platform_driver hwdmx_test = {
+	.probe = hwdemux_test_probe,
+	.remove = hwdemux_test_remove,
+	.driver = {
+		   .name = "tcc_hwdemux_test",
+		   .owner = THIS_MODULE,
+#ifdef CONFIG_OF
+		   .of_match_table = match,
+#endif
+		   },
+};
+
+
+
+
+#if 0
 #if 0
 module_init(tca_hwdemux_test_start);
 #else
 device_initcall_sync(tca_hwdemux_test_start);
 #endif
-
 module_exit(tca_hwdemux_test_stop);
+#endif
 
+module_platform_driver(hwdmx_test);
 MODULE_AUTHOR("Telechips Inc.");
 MODULE_DESCRIPTION("TCC HWDMX TEST Driver");
 MODULE_LICENSE("GPL");

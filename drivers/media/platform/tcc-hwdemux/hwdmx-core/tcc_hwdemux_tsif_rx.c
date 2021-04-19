@@ -86,7 +86,7 @@ struct tcc_tsif_pri_handle {
 #if defined(CONFIG_ARCH_TCC899X)
 	struct pmap pmap_secure_tsif;
 	void *virt_secure_tsif;
-#endif	
+#endif
 #endif
 	struct tea_dma_buf *static_dma_buffer[HWDMX_NUM];
 	struct tca_tsif_port_config port_cfg[HWDMX_NUM];

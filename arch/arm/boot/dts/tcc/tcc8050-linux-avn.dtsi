@@ -1528,6 +1528,11 @@
 
 	/* broadcast(ISDB-T/DAB/DMB) */
 
+	/*H/W Demux Test*/
+	tcc_hwdemux_test {
+		compatible = "telechips,hwdemux_test";
+	};
+	
 	/* H/W Demux */
         hwdemux: hwdemux@19000000 {
                  compatible = "telechips,hwdemux";

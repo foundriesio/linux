@@ -27,6 +27,7 @@
 #include <linux/dma-mapping.h>
 #include <linux/uaccess.h>
 #include <linux/io.h>
+#include <linux/delay.h>
 #include <linux/of_address.h>
 #include <linux/of_device.h>
 #include <linux/platform_data/media/hwdmx_ioctl.h>
@@ -34,6 +35,7 @@
 #include "HWDemux_bin.h"
 #if defined(CONFIG_ARCH_TCC805X)
 #include <linux/clk.h>
+
 #define USE_HW_FW
 struct HWDMX_HANDLE hHWDMX;
 struct clk *cmbus_clk;
@@ -302,26 +304,31 @@ static const struct file_operations fops = {
 #if defined(USE_HW_FW)
 static void hwdmx_unload_fw(void)
 {
-	volatile PCM_TSD_CFG pTSDCfg = (volatile PCM_TSD_CFG) hHWDMX.cfg_base;
+	//volatile PCM_TSD_CFG pTSDCfg = (volatile PCM_TSD_CFG) hHWDMX.cfg_base;
 
-	BITSET(pTSDCfg->CM_RESET.nREG, Hw1|Hw2); //m4 no reset
+	// CM4 No Reset
+	writel(readl(hHWDMX.cfg_base + CMB_RESET) | Hw1 | Hw2, 
+			hHWDMX.cfg_base + CMB_RESET);
 }
 
 static void hwdmx_load_fw(const char *fw_data, int fw_size)
 {
 	volatile unsigned int *pCodeMem =
 		(volatile unsigned int *) hHWDMX.code_base;
-	volatile PCM_TSD_CFG pTSDCfg =
-		(volatile PCM_TSD_CFG) hHWDMX.cfg_base;
+	//volatile PCM_TSD_CFG pTSDCfg =
+	//	(volatile PCM_TSD_CFG) hHWDMX.cfg_base;
 
-	BITCSET(pTSDCfg->REMAP0.nREG, 0xFFFFFFFF, 0x00234561);
-	BITCSET(pTSDCfg->REMAP1.nREG, 0xFFFFFFFF, 0x89ABCDEF);
+	writel(0x00234561, hHWDMX.cfg_base + REMAP0);
+	writel(0x89ABCDEF, hHWDMX.cfg_base + REMAP1);
 
 	hwdmx_unload_fw();
-	if (fw_data && fw_size > 0)
-		memcpy((void *)pCodeMem, (void *)fw_data, fw_size);
 
-	BITCLR(pTSDCfg->CM_RESET.nREG, Hw1|Hw2); //m4 reset
+	if (fw_data && fw_size > 0) {
+		memcpy((void *)pCodeMem, (void *)fw_data, fw_size);
+	}
+
+	writel(readl(hHWDMX.cfg_base + CMB_RESET) & ~(Hw1 | Hw2), 
+			hHWDMX.cfg_base + CMB_RESET);
 }
 
 int hwdmx_parse_device_tree(struct platform_device *pdev)
@@ -331,11 +338,11 @@ int hwdmx_parse_device_tree(struct platform_device *pdev)
 	int ret = 0;
 
 	cmbus_clk = of_clk_get(main_node, 0);
-	if(IS_ERR(cmbus_clk)){
+	if (IS_ERR(cmbus_clk)) {
 		pr_err("[ERR][HWDMX]cmbus clk parsing failed\n");
 		ret = -ENXIO;
 		goto goto_return;
-	}else{
+	} else {
 		pr_info("[INFO][HWDMX]cmbus clk parsing ok\n");	
 	}	
 
@@ -343,6 +350,7 @@ int hwdmx_parse_device_tree(struct platform_device *pdev)
 	if (idxReg >= 0) {
 		hHWDMX.code_base = (void __iomem *)of_iomap(main_node, idxReg);
 	} else {
+		pr_err("[ERR][HWDMX] code_mem parsing failed\n");
 		ret = -ENXIO;
 		goto goto_return;
 	}
@@ -351,6 +359,7 @@ int hwdmx_parse_device_tree(struct platform_device *pdev)
 	if (idxReg >= 0) {
 		hHWDMX.cfg_base = (void __iomem *)of_iomap(main_node, idxReg);
 	} else {
+		pr_err("[ERR][HWDMX] config parsing failed\n");
 		ret = -ENXIO;
 		goto goto_return;
 	}
@@ -373,8 +382,7 @@ static int hwdmx_probe(struct platform_device *pdev)
 	unsigned int fw_size = 0;
 #endif
 
-	pr_info("[INFO][HWDMX] %s\n", __func__);
-
+	pr_info("[INFO][HWDMX] %s : In\n", __func__);
 	tcc_hwdmx_tsif_rx_init(&pdev->dev);
 
 	retval = register_chrdev(0, HWDMX_DEV_NAME, &fops);
@@ -397,20 +405,27 @@ static int hwdmx_probe(struct platform_device *pdev)
 #if defined(USE_HW_FW)
 	// Parse the device tree
 	retval = hwdmx_parse_device_tree(pdev);
-	if(retval == 0){
+	if (retval == 0) {
 		ret = IS_ERR_OR_NULL(cmbus_clk);
-		if(!ret){
+		if (!ret) {
 			clk_prepare_enable(cmbus_clk);
 			clk_set_rate(cmbus_clk, 333333333);
 			pr_info("[INFO][HWDMX] cmbus clk setting ok\n");
+		} else {
+			pr_err("[ERR][HWDMX] cmbus clk setting is not ok.\n");
 		}
+	} else {
+		pr_err("[ERR][HWDMX] device tree does not parse.\n");
 	}
+
 	// Load firmware
 	fw_data = HWDemux_bin;
 	fw_size = sizeof(HWDemux_bin);
 	if (fw_data && fw_size) {
 		pr_info("[INFO][HWDMX] fw size:%d\n", fw_size);
 		hwdmx_load_fw(fw_data, fw_size);
+	
+		msleep(100); // Wait for CM Booting
 	}
 #endif
 

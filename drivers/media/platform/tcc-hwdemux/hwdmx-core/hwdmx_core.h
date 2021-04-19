@@ -65,14 +65,40 @@
 #define Hw0		0x00000001
 #define HwZERO	0x00000000
 
+/* CM4 BUS Configurationm Register Map */
+#define CM4_CFG_1			0x00
+#define CM4_CFG_2			0x04
+#define CM4_CFG_3			0x08
+#define CM4_CFG_4			0x0C
+#define HCLK_EN				0x14
+#define CMB_RESET			0x18
+#define STCLK_DIV_CFG		0x20
+#define ECNT				0x28
+#define VPIC_IRQEN_0		0x2C
+#define VPIC_IRQEN_1		0x30
+#define VPIC_IRQEN_2		0x34
+#define REMAP0				0x40
+#define REMAP1				0x44
+#define REMAP_CTRL			0x54
+#define CODE_SIZE_MAX		0x60
+#define DATA_SIZE_MAX		0x64
+#define IRAM0_SIZE_MAX		0x68
+#define IRAM1_SIZE_MAX		0x6C
+#define REMAP_BASE_IRAM0	0x70
+#define REMAP_BASE_IRAM1	0x74
+#define REMAP_BASE_DRAM		0x78
+#define X2X_CFG				0x7C
+
+
+
 #ifndef uint32_t
 typedef unsigned int uint32_t;
 #endif
 
-#define BITSET(X, M) ((X) |= ((uint32_t)(M)))
-#define BITCSETXC(X, C) (((uint32_t)(X)) & ~((uint32_t)(C)))
-#define BITCSET(X, C, S) ((X) = (BITCSETXC(X, C) | ((uint32_t)(S))))
-#define BITCLR(X, M) ((X) &= ~((uint32_t)(M)))
+//#define BITSET(X, M) ((X) |= ((uint32_t)(M)))
+//#define BITCSETXC(X, C) (((uint32_t)(X)) & ~((uint32_t)(C)))
+//#define BITCSET(X, C, S) ((X) = (BITCSETXC(X, C) | ((uint32_t)(S))))
+//#define BITCLR(X, M) ((X) &= ~((uint32_t)(M)))
 
 struct HWDMX_HANDLE {
 	void __iomem *mbox0_base;

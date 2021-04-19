@@ -213,12 +213,13 @@ void hwdmx_set_interface_cmd(int iDMXID, int mode)
 	int mbox_data[3];
 	int i, tsif;
 
-	if (mode == HWDMX_INTERNAL)
+	if (mode == HWDMX_INTERNAL) {
 		tsif = INTERNAL;
-	else if (mode == HWDMX_EXT_PARALLEL)
+	} else if (mode == HWDMX_EXT_PARALLEL) {
 		tsif = TSIF_PARALLEL;
-	else			// if (mode == HWDMX_EXT_SERIAL)
+	} else {			// if (mode == HWDMX_EXT_SERIAL)
 		tsif = TSIF_SERIAL;
+	}
 
 	if (iDMXID < 0) {
 		for (i = 0; i < 8; i++) {
