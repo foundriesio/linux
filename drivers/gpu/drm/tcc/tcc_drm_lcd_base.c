@@ -321,7 +321,7 @@ static void lcd_disable_video_output(struct lcd_context *ctx, unsigned int win)
 static int lcd_atomic_check(struct tcc_drm_crtc *crtc,
 				struct drm_crtc_state *state)
 {
-	volatile void __iomem *ddi_config;
+	void __iomem *ddi_config;
 	struct drm_display_mode *mode = &state->adjusted_mode;
 	struct lcd_context *ctx = crtc->ctx;
 	unsigned long ideal_clk, lcd_rate;
@@ -374,7 +374,7 @@ static int lcd_atomic_check(struct tcc_drm_crtc *crtc,
 static void lcd_win_set_pixfmt(struct lcd_context *ctx, unsigned int win,
 				uint32_t pixel_format, uint32_t width)
 {
-	volatile void __iomem *pRDMA = NULL;
+	void __iomem *pRDMA = NULL;
 	unsigned int vioc_swap = 0;
 	unsigned int vioc_y2r = 0;
 	unsigned int vioc_fmt;
@@ -462,8 +462,8 @@ static void lcd_update_plane(struct tcc_drm_crtc *crtc,
 	unsigned int enabled;
 
 	/* TCC specific structure */
-	volatile void __iomem *pWMIX;
-	volatile void __iomem *pRDMA;
+	void __iomem *pWMIX;
+	void __iomem *pRDMA;
 
 	if (ctx->keep_logo) {
 		dev_info(

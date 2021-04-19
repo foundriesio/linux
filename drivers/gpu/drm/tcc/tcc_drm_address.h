@@ -49,7 +49,7 @@ struct tcc_drm_device_data {
 };
 
 struct tcc_hw_block {
-	volatile void __iomem *virt_addr;
+	void __iomem *virt_addr;
 	unsigned int irq_num;
 	unsigned int blk_num;
 };
