@@ -166,7 +166,7 @@ static int TSFilterTest(struct tcc_tsif_handle *h)
 	param.f_type = 1;	// HW_DEMUX_TS
 	param.f_pid = 0x333;
 	hwdmx_add_filter_cmd(h, &param);
-	hwdmx_set_pcrpid_cmd(h, &param);
+	hwdmx_set_pcrpid_cmd(h, 0x1ffe);
 
 	pReceive = ReceivePacket;
 	for (cc = 0; cc < 16; cc++) {

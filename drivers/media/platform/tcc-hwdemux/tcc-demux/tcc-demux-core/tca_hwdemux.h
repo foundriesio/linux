@@ -62,21 +62,27 @@
 #define Hw0		0x00000001
 #define HwZERO	0x00000000
 
-#define BITSET(X, MASK) ((X) |= (unsigned int)(MASK))
-#define BITCSETXC(X, C) (((uint32_t)(X)) & ~((uint32_t)(C)))
-#define BITCSET(X, C, S) ((X) = (BITCSETXC(X, C) | ((uint32_t)(S))))
-#define BITCLR(X, MASK) ((X) &= ~((unsigned int)(MASK)))
+#define BITSET(X, MASK)				((X) |= (unsigned int)(MASK))
+#define BITSCLR(X, SMASK, CMASK)	((X) = ((((unsigned int)(X)) | ((unsigned int)(SMASK))) & ~((unsigned int)(CMASK))) )
+#define BITCSET(X, CMASK, SMASK)	((X) = ((((unsigned int)(X)) & ~((unsigned int)(CMASK))) | ((unsigned int)(SMASK))) )
+#define BITCLR(X, MASK)				((X) &= ~((unsigned int)(MASK)) )
+#define BITXOR(X, MASK)				((X) ^= (unsigned int)(MASK) )
+#define ISZERO(X, MASK)				(!(((unsigned int)(X))&((unsigned int)(MASK))))
+#define	ISSET(X, MASK)				((unsigned long)(X)&((unsigned long)(MASK)))
 
-struct HWDMX_HANDLE {
-	void __iomem *code_base;
-	void __iomem *mbox0_base;
-	void __iomem *mbox1_base;
-	void __iomem *cfg_base;
-	int irq;
 
-	u32 cmb_clk_rate;
-	struct clk *cmb_clk;
-	struct clk *tsif_clk[4];
-};
+typedef struct hwdemux_handler {
+    void __iomem *code_base;
+    void __iomem *mbox0_base;
+    void __iomem *mbox1_base;
+    void __iomem *cfg_base;
+    int irq;
 
-#endif //__TCC_HWDMX_H__
+    u32 cmb_clk_rate;
+    struct clk *cmb_clk;
+    struct clk *tsif_clk[4];
+} HWDMX_HANDLE;
+
+extern HWDMX_HANDLE hHWDMX;
+
+#endif//__TCC_HWDMX_H__

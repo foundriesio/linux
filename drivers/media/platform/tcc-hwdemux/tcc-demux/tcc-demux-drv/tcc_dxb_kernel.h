@@ -17,16 +17,18 @@
  * 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
+
 #ifndef	_TCC_DXB_DRV_H_
 #define	_TCC_DXB_DRV_H_
 
-struct tcc_dxb_inst_t {
+typedef struct tcc_dxb_inst_t
+{
 	struct device *dev;
 
-	struct dvb_adapter adapter;
-	struct tcc_fe_inst_t fe;
+	struct dvb_adapter     adapter;
+	struct tcc_fe_inst_t   fe;
 	struct tcc_tsif_inst_t tsif;
-	struct tcc_dmx_inst_t dmx;
-};
+	struct tcc_dmx_inst_t  dmx;
+} tcc_dxb_inst_t;
 
-#endif //_TCC_DXB_DRV_H_
+#endif//_TCC_DXB_DRV_H_

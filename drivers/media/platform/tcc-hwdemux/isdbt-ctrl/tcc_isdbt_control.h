@@ -77,4 +77,3 @@ enum DXB_BOARD_TYPE {
 #define IOCTL_DXB_CTRL_LOCK _IO(ISDBT_CTRL_DEV_MAJOR, 18)
 #endif
 #endif
-
