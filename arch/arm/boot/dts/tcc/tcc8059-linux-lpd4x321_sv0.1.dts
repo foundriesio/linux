@@ -177,6 +177,19 @@
 		vqmmc-supply = <&vqmmc_emmc>;
 	};
 
+	switch0:switch0 {
+		compatible = "telechips,switch";
+		status = "okay";
+
+#if 0	/* for softswitch */
+		pinctrl-names = "default";
+		pinctrl-0 = <&switch_ma15>;
+
+		switch-gpios = <&gpma 15 1>;
+		switch-active = <0>;
+#endif
+	};
+
         tcc-gpio-sample {
                 compatible = "gpio-sample";
                 leble = "TCC GPIO";

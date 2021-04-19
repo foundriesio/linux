@@ -661,17 +661,6 @@
 		status = "okay";
 	};
 
-	switch_reverse {
-		compatible = "telechips,switch";
-		status = "okay";
-
-		pinctrl-names = "default";
-		pinctrl-0 = <&switch_ma15>;
-
-		switch-gpios = <&gpma 15 1>;
-		switch-active = <0>;
-	};
-
 	fbdisplay: fbdisplay@12000000 {
 		telechips,fbdisplay_num = <0>;
 		//Linuxplatform

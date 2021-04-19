@@ -114,6 +114,19 @@
 		sc-firmware = <&tcc_sc_fw>;
 	};
 
+	switch0:switch0 {
+		compatible = "telechips,switch";
+		status = "okay";
+
+#if 0	/* for softswitch */
+		pinctrl-names = "default";
+		pinctrl-0 = <&switch_mb23>;
+
+		switch-gpios = <&gpmb 23 1>;
+		switch-active = <0>;
+#endif
+	};
+
 	/* USB 2.0 Host */
 	ehci_phy@11DA0010 {
 		status = "disabled";
@@ -570,4 +583,3 @@ dp_deserializer3:max96878@68 {
 	bt_hwake-gpio = <&gpk 2 0>;
 	status = "okay";
 };
-

@@ -688,17 +688,6 @@
 };
 */
 
-&switch_reverse {
-	compatible = "telechips,switch";
-	status = "okay";
-
-//	pinctrl-names = "default";
-//	pinctrl-0 = <&switch_ma15>;
-
-	switch-gpios = <&gpma 15 1>;
-	switch-active = <0>;
-};
-
 &overlaymixer {
 	status ="okay";
 	contiguousSize = <0x1000000>;  /* 16MB (if > 512MB RAM) refer to Guide 27 Page */
