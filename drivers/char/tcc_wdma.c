@@ -1196,7 +1196,7 @@ static int tcc_wdma_parse_dt(struct platform_device *pdev,
 /*
  * wdma screen capture
  */
-static int wdma_screen_capture(unsigned int PmapAddr, char *Capture)
+static int wdma_screen_capture(char *Capture)
 {
 	int ret = 0;
 	struct miscdevice *misc;
@@ -1213,9 +1213,10 @@ static int wdma_screen_capture(unsigned int PmapAddr, char *Capture)
 	unsigned int image_size;
 
 	struct file *filp_mem;
-	unsigned char *image_addr;
 	char pName[60]={0,};
 	mm_segment_t oldfs;
+	dma_addr_t handle;
+	void * image_virt_addr;
 
 	// Open wdma device
 	filp = filp_open("/dev/wdma_drv@0", O_RDWR, S_IRUSR|S_IWUSR);
@@ -1224,18 +1225,26 @@ static int wdma_screen_capture(unsigned int PmapAddr, char *Capture)
 		pr_err("[ERR][WDMA] %s can't open wdma device\n", __func__);
 		return -1;
 	}
+
 	misc = (struct miscdevice *)filp->private_data;
 	wdma_data = dev_get_drvdata(misc->parent);
 
 	// Set Image Info
 	memset((char *)&ImageCfg, 0x00, sizeof(ImageCfg));
-    ImageCfg.TargetWidth = 1920; // <- LCD width
-    ImageCfg.TargetHeight = 720; // <- LCD height
-    ImageCfg.ImgFormat = 0xC;  // Do not change (0x0C=ARGB888)
-    image_size = ImageCfg.TargetWidth * ImageCfg.TargetHeight * 4;
+	ImageCfg.TargetWidth = 1920; // <- LCD width
+	ImageCfg.TargetHeight = 720; // <- LCD height
+	ImageCfg.ImgFormat = 0xC;  // Do not change (0x0C=ARGB888)
+	image_size = ImageCfg.TargetWidth * ImageCfg.TargetHeight * 4;
 
-	// Use pmap
-	ImageCfg.BaseAddress = PmapAddr;
+	// Set Memory
+	image_virt_addr = dma_alloc_coherent(misc->parent, image_size, &handle, GFP_KERNEL);
+	if(!image_virt_addr)
+	{
+		pr_err("[ERR][WDMA] %s can't alloc memory \n", __func__);
+		return -1;
+	}
+
+	ImageCfg.BaseAddress = handle; // Use a physical address
 
 	mutex_lock(&wdma_data->io_mutex);
 
@@ -1294,6 +1303,7 @@ static int wdma_screen_capture(unsigned int PmapAddr, char *Capture)
 					ImageCfg.TargetWidth, ImageCfg.TargetHeight);
 			}
 		}
+
 		ImageCfg.BaseAddress = addr_Y;
 		ImageCfg.BaseAddress1 = addr_U;
 		ImageCfg.BaseAddress2 = addr_V;
@@ -1374,10 +1384,10 @@ static int wdma_screen_capture(unsigned int PmapAddr, char *Capture)
 		VIOC_WDMA_SetImageBase(wdma_data->wdma.reg, ImageCfg.BaseAddress,
 			ImageCfg.BaseAddress1, ImageCfg.BaseAddress2);
 		VIOC_WDMA_SetImageRGBSwapMode(wdma_data->wdma.reg, 0);
-		#if defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC901X)
+	#if defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC901X)
 		VIOC_WDMA_SetImageEnhancer(wdma_data->wdma.reg, ImageCfg.Contrast,
 			ImageCfg.Bright, ImageCfg.Hue);
-		#endif
+	#endif
 		VIOC_WDMA_SetImageEnable(wdma_data->wdma.reg, ImageCfg.ContinuousMode);
 
 		spin_unlock_irq(&(wdma_data->cmd_lock));
@@ -1402,7 +1412,7 @@ static int wdma_screen_capture(unsigned int PmapAddr, char *Capture)
 
 	mutex_unlock(&wdma_data->io_mutex);
 
-	//Write to the input path
+	// Write data to userspace
 	strncpy(pName, Capture, strlen(Capture));
 	oldfs = get_fs();
 	set_fs(get_ds());
@@ -1414,18 +1424,11 @@ static int wdma_screen_capture(unsigned int PmapAddr, char *Capture)
 		return -1;
 	}
 
-	//ioremap to write to userspace
-	image_addr = (unsigned char *)ioremap_nocache(ImageCfg.BaseAddress, PAGE_ALIGN(image_size));
-	if(!image_addr)
-	{
-		pr_err("[ERR][WDMA] %s can't ioremap\n", __func__);
-		return -1;
-	}
-	ret = vfs_write(filp_mem, image_addr, image_size, &filp_mem->f_pos);
-	vfs_fsync(filp_mem, NULL);
+	ret = vfs_write(filp_mem,  (char __user *)image_virt_addr, image_size, &filp_mem->f_pos);
 
-	iounmap((void*)image_addr);
+	vfs_fsync(filp_mem, NULL);
 	set_fs(oldfs);
+	dma_free_coherent(misc->parent, image_size, image_virt_addr, handle);
 	filp_close(filp, NULL);
 	filp_close(filp_mem, NULL);
 
@@ -1436,23 +1439,20 @@ static int wdma_screen_capture(unsigned int PmapAddr, char *Capture)
  * sys-fs
  */
 static char screencapture[60] = {0,};
-static unsigned int PmapAddr = 0;
-
 struct device_attribute dev_attr_screen_capture;
 
 static ssize_t wdma_screen_capture_show(struct device *dev, struct device_attribute *attr, char *buf)
 {
-	return sprintf(buf, "%x %s\n", PmapAddr, screencapture);
+	return sprintf(buf, "%s\n", screencapture);
 }
 
 static ssize_t wdma_screen_capture_store(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
 {
 	int ret = 0;
 
-	sscanf(buf, "%x %s", &PmapAddr, screencapture);
+	sscanf(buf, "%s", screencapture);
 
-	ret = wdma_screen_capture(PmapAddr, screencapture);
-
+	ret = wdma_screen_capture(screencapture);
 	if(ret > 0)
 	{
 		pr_info("[INF][WDMA] %s File saved : %s\n",__func__, screencapture);
