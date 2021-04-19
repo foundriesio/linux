@@ -119,6 +119,17 @@
 		status = "okay";
 	};
 
+	switch0:switch0 {
+		compatible = "telechips,switch";
+		status = "okay";
+
+		pinctrl-names = "default";
+		pinctrl-0 = <&switch_c13>;
+
+		switch-gpios = <&gpc 13 1>;
+		switch-active = <0>;
+	};
+
         tcc-gpio-sample {
                 compatible = "gpio-sample";
                 leble = "TCC GPIO";

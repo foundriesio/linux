@@ -110,6 +110,19 @@
 		sc-firmware = <&tcc_sc_fw>;
 	};
 
+	switch0:switch0 {
+		compatible = "telechips,switch";
+		status = "okay";
+
+#if 0	/* for softswitch */
+		pinctrl-names = "default";
+		pinctrl-0 = <&switch_c13>;
+
+		switch-gpios = <&gpc 13 1>;
+		switch-active = <0>;
+#endif
+	};
+
 	aux_detect {
 		compatible = "telechips,aux_detect";
 		status = "okay";
