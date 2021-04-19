@@ -368,7 +368,7 @@ tcc_dpi_connector_atomic_get_property(struct drm_connector *connector,
 	if (property == ctx->dp_prop.audio_freq) {
 		uint64_t audio_freq;
 
-		/* audio_freq = ctx->dp->funcs->get_audio_freq(); */
+		//audio_freq = ctx->dp->funcs->get_audio_freq();
 		audio_freq = (uint64_t)ctx->dp_prop_data.audio_freq;
 		*val = audio_freq;
 	} else if (property == ctx->dp_prop.audio_type) {
@@ -962,9 +962,9 @@ struct drm_encoder *tcc_dpi_probe(
 	#endif
 
 	#if defined(CONFIG_DRM_TCC_DPI_PROC)
-	drm_name = strrchr(ctx->dev->driver->name, '-');
+	drm_name = strrchr(dev_name(dev), '-');
 	if (drm_name == NULL)
-		drm_name = ctx->dev->driver->name;
+		drm_name = dev_name(dev);
 	else
 		drm_name++;
 	sprintf(proc_name, "dpi_%s", drm_name);
@@ -978,7 +978,7 @@ struct drm_encoder *tcc_dpi_probe(
 				ctx->dev,
 				"[WARN][%s] %s: Could not create file system @ /%s/%s/hpd\r\n",
 				LOG_TAG, __func__, proc_name,
-				ctx->dev->driver->name);
+				dev_name(dev));
 		ctx->proc_edid = proc_create_data(
 			"edid", S_IFREG | 0555,
 			ctx->proc_dir, &proc_fops_edid, ctx);
@@ -987,7 +987,7 @@ struct drm_encoder *tcc_dpi_probe(
 				ctx->dev,
 				"[WARN][%s] %s: Could not create file system @ /%s/%s/edid\r\n",
 				LOG_TAG, __func__, proc_name,
-				ctx->dev->driver->name);
+				dev_name(dev));
 	} else {
 		dev_warn(
 			ctx->dev,

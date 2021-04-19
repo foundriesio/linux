@@ -439,7 +439,13 @@ void tcc_drm_fbdev_restore_mode(struct drm_device *dev)
 	if (!private || !private->fb_helper)
 		return;
 
+	#if defined(CONFIG_DRM_TCC_SKIP_RESTORE_FBDEV)
+	dev_info(
+		dev->dev,
+		"[INFO][FBDEV] TCCDRM does not call drm_fb_helper_restore_fbdev_mode_unlocked\r\n");
+	#else
 	drm_fb_helper_restore_fbdev_mode_unlocked(private->fb_helper);
+	#endif
 }
 
 void tcc_drm_output_poll_changed(struct drm_device *dev)

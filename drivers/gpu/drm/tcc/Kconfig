@@ -16,20 +16,32 @@ config DRM_TCC_CTRL_CHROMAKEY
   help
     If this config is select then TCCDRM can controls chroma-key of WMIX.
 
+config DRM_TCC_SKIP_RESTORE_FBDEV
+  bool "DRM skips function to restores fbdev"
+  default n
+  help
+    Normally, at runtime drivers should restore the fbdev console by calling
+    drm_fb_helper_restore_fbdev_mode_unlocked() from their
+    &drm_driver.lastclosecallback. This ensures that the user isn't greeted
+    with a black screen when e.g. X dies.
+    But, If you don't need this function, please set this config to y then
+    TCCDRM does not call rm_fb_helper_restore_fbdev_mode_unlocked when
+    &drm_driver.lastclosecallback is called.
+
 comment "CRTCs"
 
 config DRM_TCC_LCD
-	bool "LCD"
+	bool "Telechips Primary Display"
 	select DRM_TCC_DPI
 	help
-	  Choose this option if you want to use LCD/LVDS I/F for DRM.
+	  Choose this option if you want to use LVDS/DP I/F for DRM.
 
 config DRM_TCC_VIC_MAX
   int "Maximum Video Identification Code supported by TCC DRM"
   default 1026
 
 config DRM_TCC_LCD_VIC
-	int "Video Identification Code for LCD"
+	int "Video Identification Code for Primary Display"
   depends on DRM_TCC_LCD
   default 1024
   range 0 DRM_TCC_VIC_MAX
@@ -43,7 +55,7 @@ config DRM_TCC_KEEP_LOGO
           If this config is selected to y, DRM driver skips process that fills its plane with block color when it is binded.
 
 config DRM_TCC_EXT
-        bool "TCC Extended LCD type"
+        bool "Telechips Extended Display"
         help
           Choose this option if you want to use Extended LCD for DRM.
 
@@ -56,7 +68,7 @@ config DRM_TCC_EXT_VIC
 	  Video Identification Code for Ext-Display
 
 config DRM_TCC_THIRD
-        bool "TCC third display type"
+        bool "Telechips third display"
 	depends on (ARCH_TCC803X || ARCH_TCC805X)
         help
           Choose this option if you want to use third display for DRM.
@@ -70,7 +82,7 @@ config DRM_TCC_THIRD_VIC
 	  Video Identification Code for Third-Display
 
 config DRM_TCC_FOURTH
-        bool "TCC fourth display type"
+        bool "Telechips fourth display"
 	depends on (ARCH_TCC803X || ARCH_TCC805X)
         help
           Choose this option if you want to use third display for DRM.
