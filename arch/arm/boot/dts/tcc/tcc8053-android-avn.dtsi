@@ -671,9 +671,9 @@
 
 &i2c7 {
 	status = "okay";
-	port-mux = <28>;
+	port-mux = <12>;
 	pinctrl-names = "default";
-	pinctrl-0 = <&i2c28_bus>;
+	pinctrl-0 = <&i2c12_bus>;
 
 	/* video decoder using parallel interface output */
 	adv7182: adv7182 {
