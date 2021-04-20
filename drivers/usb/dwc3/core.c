@@ -1229,6 +1229,59 @@ static void dwc3_check_params(struct dwc3 *dwc)
 	}
 }
 
+#if defined(CONFIG_USB_DWC3_DUAL_ROLE)
+static ssize_t dwc3_tcc_drd_mode_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	struct dwc3 *dwc = dev_get_drvdata(dev);
+	unsigned long flags;
+	u32 reg;
+	char* mode;
+
+	spin_lock_irqsave(&dwc->lock, flags);
+	reg = dwc3_readl(dwc->regs, DWC3_GCTL);
+	spin_unlock_irqrestore(&dwc->lock, flags);
+
+	switch (DWC3_GCTL_PRTCAP(reg)) {
+		case DWC3_GCTL_PRTCAP_HOST:
+			mode = "host";
+			break;
+		case DWC3_GCTL_PRTCAP_DEVICE:
+			mode = "device";
+			break;
+		default:
+			mode = "UNKNOWN";
+			break;
+	}
+
+	return sprintf(buf, "dwc3 dr_mode - %s\n", mode);
+}
+
+static ssize_t dwc3_tcc_drd_mode_store(struct device *dev,
+		struct device_attribute *attr,
+		const char *buf, size_t count)
+{
+	struct dwc3 *dwc = dev_get_drvdata(dev);
+	u32 mode = 0;
+
+	if (!strncmp(buf, "host", 4)) {
+		mode = DWC3_GCTL_PRTCAP_HOST;
+	} else if (!strncmp(buf, "device", 6)) {
+		mode = DWC3_GCTL_PRTCAP_DEVICE;
+	} else {
+		dev_warn(dwc->dev, "[WARN][USB] Value is invalid!\n");
+		return count;
+	}
+
+	dwc3_set_mode(dwc, mode);
+
+	return count;
+}
+
+static DEVICE_ATTR(dwc3_mode, 0644,
+		dwc3_tcc_drd_mode_show, dwc3_tcc_drd_mode_store);
+#endif /* CONFIG_USB_DWC3_DUAL_ROLE */
+
 static int dwc3_probe(struct platform_device *pdev)
 {
 	struct device		*dev = &pdev->dev;
@@ -1318,6 +1371,15 @@ static int dwc3_probe(struct platform_device *pdev)
 	dwc3_debugfs_init(dwc);
 	pm_runtime_put(dev);
 
+#if defined(CONFIG_USB_DWC3_DUAL_ROLE)
+	ret = device_create_file(&pdev->dev, &dev_attr_dwc3_mode);
+	if (ret != 0) {
+		dev_err(&pdev->dev,
+				"[ERROR][USB] failed to create dwc3_mode\n");
+		goto err5;
+	}
+#endif /* CONFIG_USB_DWC3_DUAL_ROLE */
+
 	return 0;
 
 err5:
@@ -1360,6 +1422,10 @@ static int dwc3_remove(struct platform_device *pdev)
 	 * memory region the next time probe is called.
 	 */
 	res->start -= DWC3_GLOBALS_REGS_START;
+
+#if defined(CONFIG_USB_DWC3_DUAL_ROLE)
+	device_remove_file(&pdev->dev, &dev_attr_dwc3_mode);
+#endif /* CONFIG_USB_DWC3_DUAL_ROLE */
 
 	dwc3_debugfs_exit(dwc);
 	dwc3_core_exit_mode(dwc);
