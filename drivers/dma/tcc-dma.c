@@ -400,14 +400,15 @@ static void tcc_dma_do_single_block(struct tcc_dma_chan *tdmac,
 		channel_writel(tdmac, DMA_EXTREQ, ((u32)1UL << slave_id));
 	}
 
-	if (tdmac->slave_config.src_addr_width !=
-			DMA_SLAVE_BUSWIDTH_UNDEFINED) {
+	if (tdmac->direction == DMA_MEM_TO_DEV) {
 		width = tcc_dma_width(tdmac->slave_config.src_addr_width);
 		burst = tcc_dma_burst((s32)tdmac->slave_config.src_maxburst);
-	} else if (tdmac->slave_config.dst_addr_width !=
-			DMA_SLAVE_BUSWIDTH_UNDEFINED) {
+	} else if (tdmac->direction == DMA_DEV_TO_MEM) {
 		width = tcc_dma_width(tdmac->slave_config.dst_addr_width);
 		burst = tcc_dma_burst((s32)tdmac->slave_config.dst_maxburst);
+	} else if (tdmac->direction == DMA_MEM_TO_MEM) {
+		width = tcc_dma_width(DMA_SLAVE_BUSWIDTH_1_BYTE);
+		burst = tcc_dma_burst(desc->burst);
 	} else {
 		width = -1;
 		burst = -1;
@@ -829,6 +830,7 @@ static struct dma_async_tx_descriptor *tcc_dma_prep_dma_memcpy(
 		desc->dst_inc = 1;
 
 		desc->len = xfer_count;
+		desc->burst = 1;
 
 		if (first == NULL) {
 			first = desc;
