@@ -1,15 +1,6 @@
-/* soc/tcc/pmap.h
- *
- * Copyright (C) 2010 Telechips, Inc.
- *
- * This software is licensed under the terms of the GNU General Public
- * License version 2, as published by the Free Software Foundation, and
- * may be copied, distributed, and modified under those terms.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
+/* SPDX-License-Identifier: GPL-2.0-or-later */
+/*
+ * Copyright (C) Telechips Inc.
  */
 
 #ifndef SOC_TCC_SIP_H
@@ -17,42 +8,48 @@
 
 #include <linux/arm-smccc.h>
 
-#define SIP_CMD_TAG		(0x82000000)
-/* 8200_TXXX	: SMC Function ID Struct*/
-/* [27:24] 2	: Service Call Range	*/
-/* [15:12] T	: Device Type		*/
-/* [11:00] XXX	: Sub Command		*/
+/*
+ * 8200_TXXX	: SMC Function ID Struct
+ * [27:24] 2	: Service Call Range
+ * [15:12] T	: Device Type
+ * [11:00] XXX	: Sub Command
+ */
 
-/* SMC function IDs for SiP Service queries */
-#define IS_SIP_DEV(x)		(((x)&SIP_CMD_TAG) ? 1 : 0)
-#define GET_SIP_DEV(x)		(((x)>>12)&0xF)
-#define SIP_DEV(x)		(((x)&0xF)<<12)
-#define SIP_DEV_CLK		(0x0)
-#define SIP_DEV_WAKEUP		(0x1)
-#define SIP_DEV_WATCHDOG	(0x2)
-#define SIP_DEV_RESET		(0x3)
-#define SIP_DEV_REMOCON		(0x4)
-#define SIP_DEV_TCSB		(0x5)
-#define SIP_DEV_DRAM		(0x6)
-#define SIP_DEV_CHIP		(0x7)
-#define SIP_DEV_RESERVED0	(0x8)
-#define SIP_DEV_RESERVED1	(0x9)
-#define SIP_DEV_RESERVED2	(0xA)
-#define SIP_DEV_RESERVED3	(0xB)
-#define SIP_DEV_RESERVED4	(0xC)
-#define SIP_DEV_CRYPTO		(0xD)
-#define SIP_DEV_CA7S		(0xE)
-#define SIP_DEV_RESERVED5	(0xF)
+#define SIP_CMD_TAG		(0x82000000UL)
 
-#define SIP_CMD(dev, cmd)	(SIP_CMD_TAG|SIP_DEV(dev)|(cmd&0xFFF))
+#define IS_SIP_DEV(x)		(((x) & 0xFFFF0000UL) == SIP_CMD_TAG)
+#define GET_SIP_DEV(x)		(((x) >> 12UL) & 0xFUL)
+#define SIP_DEV(x)		(((x) & 0xFUL) << 12UL)
+
+#define SIP_CMD(dev, cmd)	(SIP_CMD_TAG | SIP_DEV(dev) | ((cmd) & 0xFFFUL))
 
 #define SMC_OK			(0UL)
 #define SMC_UNK			(ULONG_MAX)
 
+/* Device Type */
+enum {
+	SIP_DEV_CLK = 0,	/* 0x0 */
+	SIP_DEV_WAKEUP,		/* 0x1 */
+	SIP_DEV_WATCHDOG,	/* 0x2 */
+	SIP_DEV_RESET,		/* 0x3 */
+	SIP_DEV_REMOCON,	/* 0x4 */
+	SIP_DEV_TCSB,		/* 0x5 */
+	SIP_DEV_DRAM,		/* 0x6 */
+	SIP_DEV_CHIP,		/* 0x7 */
+	SIP_DEV_OPTEE,		/* 0x8 */
+	SIP_DEV_RESERVED0,	/* 0x9: Reserved */
+	SIP_DEV_RESERVED1,	/* 0xA: Reserved */
+	SIP_DEV_RESERVED2,	/* 0xB: Reserved */
+	SIP_DEV_RESERVED3,	/* 0xC: Reserved */
+	SIP_DEV_CRYPTO,		/* 0xD */
+	SIP_DEV_CORE,		/* 0xE */
+	SIP_DEV_CORE_LEGACY,	/* 0xF: For compatibility with legacy f/w */
+};
+
 /* TCC SiP Service for Clock Driver */
 enum {
 	/* 0x8200_0000 */
-	SIP_CLK_INIT = SIP_CMD(SIP_DEV_CLK, 0x000),
+	SIP_CLK_INIT = SIP_CMD(SIP_DEV_CLK, 0x000UL),
 	SIP_CLK_SET_PLL,
 	SIP_CLK_GET_PLL,
 	SIP_CLK_SET_CLKCTRL,
@@ -95,12 +92,24 @@ enum {
 	SIP_CLK_SET_PCLKCTRL_DIV,
 	SIP_CLK_SET_PCLKCTRL_DCO,
 	SIP_CLK_SWRESET,
+	SIP_CLK_ENABLE_CPUBUS,
+	SIP_CLK_DISABLE_CPUBUS,
+	SIP_CLK_RESET_CPUBUS,
+	SIP_CLK_PWDN_CPUBUS,
+};
+
+/* TCC SiP Service for Wake-up */
+enum {
+	/* 0x8200_1000 */
+	SIP_SET_WAKEUP_SRC = SIP_CMD(SIP_DEV_WAKEUP, 0x000UL),
+	SIP_GET_WAKEUP_SRC,
+	SIP_GET_WAKEUP_STS,
 };
 
 /* TCC SiP Service for Watchdog */
 enum {
 	/* 0x8200_2000 */
-	SIP_WATCHDOG_SETUP = SIP_CMD(SIP_DEV_WATCHDOG, 0x000),
+	SIP_WATCHDOG_SETUP = SIP_CMD(SIP_DEV_WATCHDOG, 0x000UL),
 	SIP_WATCHDOG_START,
 	SIP_WATCHDOG_STOP,
 	SIP_WATCHDOG_PING,
@@ -108,10 +117,40 @@ enum {
 	SIP_WATCHDOG_SETUP_IRQCNT,
 };
 
+/* TCC SiP Service for Reset */
+enum {
+	/* 0x8200_3000 */
+	SIP_GET_RESET_REASON = SIP_CMD(SIP_DEV_RESET, 0x001UL),
+	SIP_SET_RESET_REASON,
+	SIP_GET_USER_DATA,
+	SIP_SET_USER_DATA,
+	SIP_GET_CORE_RESET_REASON,
+};
+
+/* TCC SiP Service for Remocon Driver */
+enum {
+	/* 0x8200_4000 */
+	SIP_REMOCON_CFG = SIP_CMD(SIP_DEV_REMOCON, 0x000UL),
+};
+
+/* TCC SiP Service for telechips secure boot */
+enum {
+	/* 0x8200_5000 */
+	SIP_TCSB_IMAGE_VERIFY = SIP_CMD(SIP_DEV_TCSB, 0x000UL),
+	SIP_TCSB_OTP_WRITE,
+	SIP_TCSB_JTAG_CLOSE,
+	SIP_WRITE_OTP,
+	SIP_READ_OTP,
+	SIP_GET_OTP_CRC,
+	SIP_GET_RAW_CRC,
+	SIP_READ_OTP_FROM_IMAGE,
+	SIP_READ_OTP_BY_IMAGE,
+};
+
 /* TCC SiP Service for DRAM */
 enum {
 	/* 0x8200_6000 */
-	SIP_DRAM_TOOL_RDQS = SIP_CMD(SIP_DEV_DRAM, 0x000),
+	SIP_DRAM_TOOL_RDQS = SIP_CMD(SIP_DEV_DRAM, 0x000UL),
 	SIP_DRAM_TOOL_WDQS,
 	SIP_DRAM_TOOL_RDQSL,
 	SIP_DRAM_TOOL_WDQSL,
@@ -131,7 +170,7 @@ enum {
 /* TCC SiP Service for chip info */
 enum {
 	/* 0x8200_7000 */
-	SIP_CHIP_REV = SIP_CMD(SIP_DEV_CHIP, 0x000),
+	SIP_CHIP_REV = SIP_CMD(SIP_DEV_CHIP, 0x000UL),
 	SIP_CHIP_NAME,
 	SIP_CHIP_ID,
 	SIP_CHIP_ADD_BOOTTIME,
@@ -143,10 +182,16 @@ enum {
 #define tcc_sip_chip(id, ...) \
 	(arm_smccc_smc((ulong)SIP_CHIP_##id, ##__VA_ARGS__))
 
-/* Crypto SIP Service */
+/* SiP Service for OPTEE OTP area */
+enum {
+	/* 0x8200_8000 */
+	SIP_OPTEE_READ_OTP = SIP_CMD(SIP_DEV_OPTEE, 0x000UL),
+};
+
+/* SiP Service for Crypto Engines */
 enum {
 	/* 0x8200_D000 */
-	SIP_CRYPTO_TRNG = SIP_CMD(SIP_DEV_CRYPTO, 0x000),
+	SIP_CRYPTO_TRNG = SIP_CMD(SIP_DEV_CRYPTO, 0x000UL),
 	SIP_CRYPTO_CIPHER_OPEN,
 	SIP_CRYPTO_CIPHER_CLOSE,
 	SIP_CRYPTO_CIPHER_ALGORITHM,
@@ -154,6 +199,20 @@ enum {
 	SIP_CRYPTO_CIPHER_KEY,
 	SIP_CRYPTO_CIPHER_SET,
 	SIP_CRYPTO_CIPHER_RUN,
+};
+
+/* SiP Service for CPU Core */
+enum {
+	/* 0x8200_E000 */
+	SIP_CORE_EL2_AARCH64_TO_32 = SIP_CMD(SIP_DEV_CORE, 0x000UL),
+	SIP_CORE_START_SUBCORE,
+	SIP_CORE_END_SUBCORE,
+};
+
+/* SiP Service for CPU Core (Legacy) */
+enum {
+	/* 0x8200_F000 */
+	SIP_POST_CORE_RESET = SIP_CMD(SIP_DEV_CORE_LEGACY, 0x001UL),
 };
 
 #endif /* SOC_TCC_SIP_H */
