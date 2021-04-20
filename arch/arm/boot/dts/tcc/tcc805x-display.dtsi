@@ -202,25 +202,25 @@
 		port@0 {
 			reg = <0>;
 			dpv14_0_input_0: endpoint {
-				remote-endpoint = <&lcd_display_out>;
+				//remote-endpoint = <&lcd_display_out>;
 			};
 		};
 		port@1 {
 			reg = <1>;
 			dpv14_0_input_1: endpoint {
-				remote-endpoint = <&ext_display_out>;
+				//remote-endpoint = <&ext_display_out>;
 			};
 		};
 		port@2 {
 			reg = <2>;
 			dpv14_0_input_2: endpoint {
-				remote-endpoint = <&third_display_out>;
+				//remote-endpoint = <&third_display_out>;
 			};
 		};
 		port@3 {
 			reg = <3>;
 			dpv14_0_input_3: endpoint {
-				remote-endpoint = <&fourth_display_out>;
+				//remote-endpoint = <&fourth_display_out>;
 			};
 		};
 	};
@@ -252,25 +252,25 @@
 		port@0 {
 			reg = <0>;
 			dpv14_1_input_0: endpoint {
-				remote-endpoint = <&lcd_display_out>;
+				//remote-endpoint = <&lcd_display_out>;
 			};
 		};
 		port@1 {
 			reg = <1>;
 			dpv14_1_input_1: endpoint {
-				remote-endpoint = <&ext_display_out>;
+				//remote-endpoint = <&ext_display_out>;
 			};
 		};
 		port@2 {
 			reg = <2>;
 			dpv14_1_input_2: endpoint {
-				remote-endpoint = <&third_display_out>;
+				//remote-endpoint = <&third_display_out>;
 			};
 		};
 		port@3 {
 			reg = <3>;
 			dpv14_1_input_3: endpoint {
-				remote-endpoint = <&fourth_display_out>;
+				//remote-endpoint = <&fourth_display_out>;
 			};
 		};
 	};
@@ -302,25 +302,25 @@
 		port@0 {
 			reg = <0>;
 			dpv14_2_input_0: endpoint {
-				remote-endpoint = <&lcd_display_out>;
+				//remote-endpoint = <&lcd_display_out>;
 			};
 		};
 		port@1 {
 			reg = <1>;
 			dpv14_2_input_1: endpoint {
-				remote-endpoint = <&ext_display_out>;
+				//remote-endpoint = <&ext_display_out>;
 			};
 		};
 		port@2 {
 			reg = <2>;
 			dpv14_2_input_2: endpoint {
-				remote-endpoint = <&third_display_out>;
+				//remote-endpoint = <&third_display_out>;
 			};
 		};
 		port@3 {
 			reg = <3>;
 			dpv14_2_input_3: endpoint {
-				remote-endpoint = <&fourth_display_out>;
+				//remote-endpoint = <&fourth_display_out>;
 			};
 		};
 	};
@@ -362,25 +362,25 @@
 		port@0 {
 			reg = <0>;
 			tm123xdhp90_input_0: endpoint {
-				remote-endpoint = <&lcd_display_out>;
+				//remote-endpoint = <&lcd_display_out>;
 			};
 		};
 		port@1 {
 			reg = <1>;
 			tm123xdhp90_input_1: endpoint {
-				remote-endpoint = <&ext_display_out>;
+				//remote-endpoint = <&ext_display_out>;
 			};
 		};
 		port@2 {
 			reg = <2>;
 			tm123xdhp90_input_2: endpoint {
-				remote-endpoint = <&third_display_out>;
+				//remote-endpoint = <&third_display_out>;
 			};
 		};
 		port@3 {
 			reg = <3>;
 			tm123xdhp90_input_3: endpoint {
-				remote-endpoint = <&fourth_display_out>;
+				//remote-endpoint = <&fourth_display_out>;
 			};
 		};
 	};
@@ -420,25 +420,25 @@
 		port@0 {
 			reg = <0>;
 			fld0800_input_0: endpoint {
-				remote-endpoint = <&lcd_display_out>;
+				//remote-endpoint = <&lcd_display_out>;
 			};
 		};
 		port@1 {
 			reg = <1>;
 			fld0800_input_1: endpoint {
-				remote-endpoint = <&ext_display_out>;
+				//remote-endpoint = <&ext_display_out>;
 			};
 		};
 		port@2 {
 			reg = <2>;
 			fld0800_input_2: endpoint {
-				remote-endpoint = <&third_display_out>;
+				//remote-endpoint = <&third_display_out>;
 			};
 		};
 		port@3 {
 			reg = <3>;
 			fld0800_input_3: endpoint {
-				remote-endpoint = <&fourth_display_out>;
+				//remote-endpoint = <&fourth_display_out>;
 			};
 		};
 	};
@@ -455,7 +455,6 @@
 		status = "disabled";
 
 		port@0 {
-
 			reg = <0>;
 			lcd_display_out: endpoint {
 				//remote-endpoint = <&dpv14_0_input_0>;
